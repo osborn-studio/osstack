@@ -1,0 +1,20 @@
+packages/cli/src/graph-branch-broker.test.ts:6:28 lint/correctness/noUnusedImports  FIXABLE  ━━━━━━━━━━
+
+  ! Several of these imports are unused.
+  
+    4 │ import { tmpdir } from "node:os";
+    5 │ import { afterEach, expect, it } from "vitest";
+  > 6 │ import { CapabilitySchema, GraphActionStore, GraphRunStore, openDb, type GraphRun } from "@osstack/core";
+      │                            ^^^^^^^^^^^^^^^^
+    7 │ import { FifoSemaphore } from "@osstack/autonomy";
+    8 │ import type { AgentAdapter, AgentTask } from "@osstack/agents";
+  
+  i Unused imports might be the result of an incomplete refactoring.
+  
+  i Unsafe fix: Remove the unused imports.
+  
+    6 │ import·{·CapabilitySchema,·GraphActionStore,·GraphRunStore,·openDb,·type·GraphRun·}·from·"@osstack/core";
+      │                            ------------------                                                            
+
+Checked 2 files in 23ms. No fixes applied.
+Found 1 warning.

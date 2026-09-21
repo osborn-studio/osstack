@@ -1,0 +1,43 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/graph
+
+ ❯ src/remote-checkpointer.test.ts (18 tests | 1 failed | 17 skipped) 17ms
+   ↓ rejects cross-run access and destructive deletion before transport
+   ↓ preserves parent, versions, namespaces, before/filter and complete pagination through real asynchronous SQLite IPC
+   ↓ matches the installed public reserved-index overwrite and ordinary first-write semantics after reopening SQLite
+   ↓ awaits a delayed commit ACK and propagates failed writes without reporting success
+   ↓ survives child kill before commit with stable-ID retry and explicit lost-ACK outcome
+   ↓ survives child kill after commit with stable-ID retry and explicit lost-ACK outcome
+   ↓ public Functional tasks persist RETURN/error and resume only incomplete work over delayed transport
+   ↓ public Functional interrupt preserves resume false through SQLite and asynchronous ACK
+   ↓ public Functional rejects transport failure at __return__ and recovers without inventing task completion
+   ↓ public Functional rejects transport failure at __end__ and recovers without inventing task completion
+   ↓ public Functional recovers when persistence process is killed before commit of __return__
+   ↓ public Functional recovers when persistence process is killed after commit of __return__
+   ↓ public Functional recovers when persistence process is killed before commit of __end__
+   ↓ public Functional recovers when persistence process is killed after commit of __end__
+   ↓ validates all reserved pending-write indexes against the installed public map and permits writes before put
+   ↓ rejects cursor-only pages that could silently skip public list history
+   ↓ serializes concurrent RPC write batches with a refreshed host fence
+   × bounds aggregate encoding before visiting later values in an oversized pending-write batch 17ms
+     → expected [Function] to throw error including 'CHECKPOINT_FRAME_LIMIT' but got 'CHECKPOINT_CODEC_INVALID: class or pr…'
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/remote-checkpointer.test.ts > bounds aggregate encoding before visiting later values in an oversized pending-write batch
+AssertionError: expected [Function] to throw error including 'CHECKPOINT_FRAME_LIMIT' but got 'CHECKPOINT_CODEC_INVALID: class or pr…'
+
+Expected: "CHECKPOINT_FRAME_LIMIT"
+Received: "CHECKPOINT_CODEC_INVALID: class or prototype"
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 17 skipped (18)
+   Start at  06:58:25
+   Duration  408ms (transform 65ms, setup 0ms, collect 230ms, tests 17ms, environment 0ms, prepare 35ms)
+
+undefined
+/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/graph:
+[ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL] Command failed with exit code 1: vitest run src/remote-checkpointer.test.ts -t 'bounds aggregate encoding'

@@ -1,0 +1,60 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-09-17",
+  "status": "passed_bounded_slice",
+  "scope": "Host-only per-action contained tests journal reopening; no business settlement, worker stop, resource release or takeover authority",
+  "productionReady": false,
+  "taskStatus": "in_progress",
+  "completedTaskCount": 25,
+  "totalTaskCount": 30,
+  "acceptedCodeCommit": "fd6687665bb01b68b09bf96a44c1356e8f3c2452",
+  "loop": {
+    "id": "G25-contained-reopen-acceptance-1",
+    "executed": 1,
+    "skipped": 0,
+    "outcome": "escalated",
+    "tests": 3368,
+    "packages": 22,
+    "verifiersPassed": 9,
+    "verifiersTotal": 10,
+    "failure": "missing report directory ENOENT"
+  },
+  "recheckLoop": {
+    "id": "G25-contained-reopen-recheck-1",
+    "executed": 1,
+    "skipped": 0,
+    "outcome": "success",
+    "executionTests": 12,
+    "verifiersPassed": 2
+  },
+  "distinctCheckGroupsSatisfied": 10,
+  "matrix": {
+    "testExecutions": 481,
+    "seed": 250921,
+    "repeat": 2,
+    "sourceUnchanged": true,
+    "artifactsUnchanged": true
+  },
+  "realChecks": {
+    "existingExecutorFaults": 6,
+    "candidateAndDelivery": 12,
+    "reopeningTests": 3,
+    "independentLedgerBoundSigkillScenario": true
+  },
+  "audits": {
+    "model": "kimi-code/k3",
+    "validApproved": [
+      "kimi-reopen",
+      "kimi-final-2"
+    ],
+    "rejectedSchemaAttempt": "kimi-final"
+  },
+  "limitations": [
+    "No Graph worker quiescence attestation",
+    "No all-admission executor inventory",
+    "No business result inference or G15 settlement",
+    "No release or takeover",
+    "Concurrent stop may conservatively fail; not coalesced",
+    "Whole suite macOS Node26; Linux containers only; no Node20/22 admission"
+  ]
+}

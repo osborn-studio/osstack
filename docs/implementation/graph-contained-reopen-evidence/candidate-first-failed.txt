@@ -1,0 +1,158 @@
+$ vitest run src/graph-verification.test.ts src/graph-delivery.integration.test.ts -t 'contained|substitution|actual child|repairs from|host bounded|finite branch|negative quality' --maxWorkers=1
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+ ❯ src/graph-verification.test.ts (36 tests | 4 failed | 30 skipped) 25285ms
+   ↓ restores the exact verified candidate into independent repositories and rejects reviewer writes
+   ↓ rejects wrong manifest and reviewer identity before restoring or invoking
+   ↓ persists actual stopped exit evidence and rejects tampering/replay
+   ↓ keeps unknown stop separate from stopped malformed review and valid changes_requested
+   ↓ runs real registered command and independent G04 review concurrently with an observable two-way barrier
+   ↓ rejects revoke during adapter availability before actual invocation
+   ↓ rejects mutate during adapter availability before actual invocation
+   ↓ snapshots callback/data replacement and rejects live revocation after preparation awaits
+   ↓ rejects mutation during restore before accepting any workspace baseline
+   ↓ releases preparation lease if authority is revoked while acquiring it
+   ↓ uses exact allowlisted exits, refusing model pass claims and unregistered commands
+   ↓ does not accept review done as executor stop proof through the actual broker
+   ↓ classifies stopped malformed output and reviewer filesystem mutation without a code-failure result
+   ↓ rejects manifest scope/SHA mismatch and independent identity verifier rejection before invocation
+   ↓ snapshots executor evidence before asynchronous verification and rechecks authority afterward
+   ↓ rejects actual successful command that mutates candidate: printf malicious > file
+   ↓ rejects actual successful command that mutates candidate: git update-index --assume-unchanged file; printf malicious > file
+   ↓ rejects actual successful command that mutates candidate: chmod +x file
+   ↓ rejects actual successful command that mutates candidate: chmod 600 file
+   ↓ rejects actual successful command that mutates candidate: git update-index --assume-unchanged file
+   ↓ rejects actual successful command that mutates candidate: printf staged > file; git add file; printf candidate > file
+   ↓ rejects actual successful command that mutates candidate: git -c user.name=test -c user.email=test@invalid commit --allow-empty -qm malicious
+   ↓ allocates distinct actual review sessions on explicit retry and persists prompt receipts
+   ↓ rejects an oversized envelope at the storage boundary before publishing any file
+   ↓ requires an actual invocation receipt and strips supplied writer context on every invocation
+   ↓ validates all new receipts when loading digest-consistent evidence
+   ↓ allows untracked build outputs from successful actual acceptance execution
+   ↓ confirms ordinary failing tests with escape-heavy and multibyte captured output
+   ↓ settles an oversized structured review as a bounded contract failure instead of unknown
+   × binds actual contained tests exit 0 to candidate/image/ledger without POSIX evidence 3422ms
+     → ENOENT: no such file or directory, open '/Volumes/AIMATE_WORK/tmp/g25-reopen/real-evidence/candidate-exit-0.json'
+   × binds actual contained tests exit 1 to candidate/image/ledger without POSIX evidence 3318ms
+     → ENOENT: no such file or directory, open '/Volumes/AIMATE_WORK/tmp/g25-reopen/real-evidence/candidate-exit-1.json'
+   × binds actual contained tests exit 42 to candidate/image/ledger without POSIX evidence 3511ms
+     → ENOENT: no such file or directory, open '/Volumes/AIMATE_WORK/tmp/g25-reopen/real-evidence/candidate-exit-42.json'
+   × binds actual contained tests exit 7 to candidate/image/ledger without POSIX evidence 3340ms
+     → ENOENT: no such file or directory, open '/Volumes/AIMATE_WORK/tmp/g25-reopen/real-evidence/candidate-exit-7.json'
+   ✓ rejects cross-candidate, image, generation, invocation and container receipt substitution  3791ms
+   ↓ retains admission and seals replay after contained DELETE acknowledgement loss
+   ✓ settles contained cancellation only after durable removal and prevents replay  7903ms
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-reopen/g21-delivery-g198wI/delivery/writer-0'...
+HEAD is now at 90f3a01 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-reopen/g21-delivery-MwHFOL/delivery/writer-0'...
+HEAD is now at 48f06a7 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-reopen/g21-delivery-tlopTg/delivery/writer-0'...
+HEAD is now at b833013 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-reopen/g21-delivery-6oWqkF/delivery/writer-0'...
+HEAD is now at d2be85d base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-reopen/g21-delivery-SKIoFl/delivery/writer-0'...
+HEAD is now at f8205a0 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-reopen/g21-delivery-EULVZJ/delivery/writer-0'...
+HEAD is now at e2602d5 base
+ ❯ src/graph-delivery.integration.test.ts (6 tests | 6 failed) 57405ms
+   × actual child delivery succeeds with review finishing last 6693ms
+     → ENOENT: no such file or directory, open '/Volumes/AIMATE_WORK/tmp/g25-reopen/real-evidence/delivery-direct-review.json'
+   × actual child delivery succeeds with tests finishing last 6824ms
+     → ENOENT: no such file or directory, open '/Volumes/AIMATE_WORK/tmp/g25-reopen/real-evidence/delivery-direct-tests.json'
+   × repairs from immutable complete join through physical child stop and G15 resume 13467ms
+     → ENOENT: no such file or directory, open '/Volumes/AIMATE_WORK/tmp/g25-reopen/real-evidence/delivery-repair-review.json'
+   × host bounded retry returns only final confirmed task result and fresh independent workspace 15137ms
+     → ENOENT: no such file or directory, open '/Volumes/AIMATE_WORK/tmp/g25-reopen/real-evidence/delivery-retry-review.json'
+   × finite branch failure stops without a failed task RETURN or poisoned join 8730ms
+     → ENOENT: no such file or directory, open '/Volumes/AIMATE_WORK/tmp/g25-reopen/real-evidence/delivery-failure-review.json'
+   × negative quality at epoch cap stops 6553ms
+     → ENOENT: no such file or directory, open '/Volumes/AIMATE_WORK/tmp/g25-reopen/real-evidence/delivery-negative-review.json'
+
+⎯⎯⎯⎯⎯⎯ Failed Tests 10 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/graph-delivery.integration.test.ts > actual child delivery succeeds with review finishing last
+Error: ENOENT: no such file or directory, open '/Volumes/AIMATE_WORK/tmp/g25-reopen/real-evidence/delivery-direct-review.json'
+ ❯ delivery src/graph-delivery.integration.test.ts:74:69
+
+ ❯ src/graph-delivery.integration.test.ts:79:13
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/10]⎯
+
+ FAIL  src/graph-delivery.integration.test.ts > actual child delivery succeeds with tests finishing last
+Error: ENOENT: no such file or directory, open '/Volumes/AIMATE_WORK/tmp/g25-reopen/real-evidence/delivery-direct-tests.json'
+ ❯ delivery src/graph-delivery.integration.test.ts:74:69
+
+ ❯ src/graph-delivery.integration.test.ts:79:13
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/10]⎯
+
+ FAIL  src/graph-delivery.integration.test.ts > repairs from immutable complete join through physical child stop and G15 resume
+Error: ENOENT: no such file or directory, open '/Volumes/AIMATE_WORK/tmp/g25-reopen/real-evidence/delivery-repair-review.json'
+ ❯ delivery src/graph-delivery.integration.test.ts:74:69
+
+ ❯ src/graph-delivery.integration.test.ts:82:11
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/10]⎯
+
+ FAIL  src/graph-delivery.integration.test.ts > host bounded retry returns only final confirmed task result and fresh independent workspace
+Error: ENOENT: no such file or directory, open '/Volumes/AIMATE_WORK/tmp/g25-reopen/real-evidence/delivery-retry-review.json'
+ ❯ delivery src/graph-delivery.integration.test.ts:74:69
+
+ ❯ src/graph-delivery.integration.test.ts:85:11
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/10]⎯
+
+ FAIL  src/graph-delivery.integration.test.ts > finite branch failure stops without a failed task RETURN or poisoned join
+Error: ENOENT: no such file or directory, open '/Volumes/AIMATE_WORK/tmp/g25-reopen/real-evidence/delivery-failure-review.json'
+ ❯ delivery src/graph-delivery.integration.test.ts:74:69
+
+ ❯ src/graph-delivery.integration.test.ts:88:11
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/10]⎯
+
+ FAIL  src/graph-delivery.integration.test.ts > negative quality at epoch cap stops
+Error: ENOENT: no such file or directory, open '/Volumes/AIMATE_WORK/tmp/g25-reopen/real-evidence/delivery-negative-review.json'
+ ❯ delivery src/graph-delivery.integration.test.ts:74:69
+
+ ❯ src/graph-delivery.integration.test.ts:91:11
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/10]⎯
+
+ FAIL  src/graph-verification.test.ts > binds actual contained tests exit 0 to candidate/image/ledger without POSIX evidence
+Error: ENOENT: no such file or directory, open '/Volumes/AIMATE_WORK/tmp/g25-reopen/real-evidence/candidate-exit-0.json'
+ ❯ src/graph-verification.test.ts:376:48
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/10]⎯
+
+ FAIL  src/graph-verification.test.ts > binds actual contained tests exit 1 to candidate/image/ledger without POSIX evidence
+Error: ENOENT: no such file or directory, open '/Volumes/AIMATE_WORK/tmp/g25-reopen/real-evidence/candidate-exit-1.json'
+ ❯ src/graph-verification.test.ts:376:48
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/10]⎯
+
+ FAIL  src/graph-verification.test.ts > binds actual contained tests exit 42 to candidate/image/ledger without POSIX evidence
+Error: ENOENT: no such file or directory, open '/Volumes/AIMATE_WORK/tmp/g25-reopen/real-evidence/candidate-exit-42.json'
+ ❯ src/graph-verification.test.ts:376:48
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[9/10]⎯
+
+ FAIL  src/graph-verification.test.ts > binds actual contained tests exit 7 to candidate/image/ledger without POSIX evidence
+Error: ENOENT: no such file or directory, open '/Volumes/AIMATE_WORK/tmp/g25-reopen/real-evidence/candidate-exit-7.json'
+ ❯ src/graph-verification.test.ts:376:48
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[10/10]⎯
+
+
+ Test Files  2 failed (2)
+      Tests  10 failed | 2 passed | 30 skipped (42)
+   Start at  16:30:20
+   Duration  83.99s (transform 500ms, setup 9ms, collect 1.08s, tests 82.69s, environment 0ms, prepare 54ms)
+
+/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli:
+[ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL] @osstack/cli@0.19.0 test: `vitest run src/graph-verification.test.ts src/graph-delivery.integration.test.ts -t 'contained|substitution|actual child|repairs from|host bounded|finite branch|negative quality' --maxWorkers=1`
+Exit status 1

@@ -1,0 +1,9 @@
+{
+  "verifiedAt": "2026-09-18T14:31:18.684Z",
+  "matrixSha256": "0d88f925aefe1543f4809a7263c31f56f1a2b0c645445437c2c41552660dcacd",
+  "testExecutions": 579,
+  "sourceFiles": 1072,
+  "artifactFiles": 1811,
+  "hashesMatched": true,
+  "reason": "Only external test harness timeout changed from 5s to30s; source and dist exactly match the passing matrix. Do not rerun unchanged broad tests."
+}

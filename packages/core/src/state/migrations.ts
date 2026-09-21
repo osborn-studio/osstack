@@ -1410,6 +1410,286 @@ export const MIGRATIONS: readonly Migration[] = [
         CHECK (state != 'delivered' OR pr_json IS NOT NULL)
       );
     `,
+  },  {
+    id: 28,
+    name: "graph_run_identity_and_worker_leases",
+    sql: `
+      CREATE TABLE graph_runs (
+        graph_run_id TEXT PRIMARY KEY NOT NULL,
+        scope_json TEXT NOT NULL,
+        source_json TEXT NOT NULL,
+        input_artifact_ref TEXT NOT NULL,
+        template TEXT NOT NULL,
+        identity_json TEXT NOT NULL,
+        status TEXT NOT NULL CHECK (status IN ('queued','running','ready','failed','cancelled','waiting_input','cancel_pending','reconciliation_required')),
+        generation INTEGER NOT NULL CHECK (typeof(generation) = 'integer' AND generation BETWEEN 0 AND 9007199254740991),
+        revision INTEGER NOT NULL CHECK (typeof(revision) = 'integer' AND revision BETWEEN 0 AND 9007199254740991),
+        lease_owner TEXT,
+        lease_expires_at INTEGER CHECK (lease_expires_at IS NULL OR typeof(lease_expires_at) = 'integer' AND lease_expires_at BETWEEN 0 AND 9007199254740991),
+        lease_acquired_at INTEGER CHECK (lease_acquired_at IS NULL OR typeof(lease_acquired_at) = 'integer' AND lease_acquired_at BETWEEN 0 AND 9007199254740991),
+        created_at INTEGER NOT NULL CHECK (typeof(created_at) = 'integer' AND created_at BETWEEN 0 AND 9007199254740991),
+        updated_at INTEGER NOT NULL CHECK (typeof(updated_at) = 'integer' AND updated_at BETWEEN created_at AND 9007199254740991),
+        CHECK ((generation = 0 AND lease_owner IS NULL AND lease_expires_at IS NULL AND lease_acquired_at IS NULL)
+          OR (generation > 0 AND lease_owner IS NOT NULL AND lease_expires_at IS NOT NULL AND lease_acquired_at IS NOT NULL AND lease_expires_at > lease_acquired_at)),
+        UNIQUE(scope_json, graph_run_id)
+      );
+      CREATE INDEX idx_graph_runs_scope_status ON graph_runs(scope_json, status, created_at, graph_run_id);
+      CREATE INDEX idx_graph_runs_input_ref ON graph_runs(scope_json, input_artifact_ref);
+      CREATE INDEX idx_graph_runs_source_parent ON graph_runs(scope_json, json_extract(source_json, '$.parentRunId'));
+      CREATE INDEX idx_graph_runs_lease_expiry ON graph_runs(lease_expires_at) WHERE lease_owner IS NOT NULL;
+      CREATE TABLE graph_requests (
+        scope_json TEXT NOT NULL,
+        idempotency_key TEXT NOT NULL,
+        graph_run_id TEXT NOT NULL,
+        input_digest TEXT NOT NULL,
+        kind TEXT NOT NULL CHECK (kind IN ('start','resume','cancel')),
+        created_at INTEGER NOT NULL CHECK (typeof(created_at) = 'integer' AND created_at BETWEEN 0 AND 9007199254740991),
+        PRIMARY KEY(scope_json, idempotency_key),
+        FOREIGN KEY(scope_json, graph_run_id) REFERENCES graph_runs(scope_json, graph_run_id)
+      );
+      CREATE INDEX idx_graph_requests_run ON graph_requests(graph_run_id);
+      CREATE TABLE graph_worker_leases (
+        graph_run_id TEXT NOT NULL REFERENCES graph_runs(graph_run_id),
+        generation INTEGER NOT NULL CHECK (typeof(generation) = 'integer' AND generation BETWEEN 1 AND 9007199254740991),
+        owner TEXT NOT NULL,
+        acquired_at INTEGER NOT NULL CHECK (typeof(acquired_at) = 'integer' AND acquired_at BETWEEN 0 AND 9007199254740991),
+        expires_at INTEGER NOT NULL CHECK (typeof(expires_at) = 'integer' AND expires_at > acquired_at AND expires_at <= 9007199254740991),
+        stopped_worker_json TEXT,
+        PRIMARY KEY(graph_run_id, generation),
+        CHECK ((generation = 1 AND stopped_worker_json IS NULL) OR (generation > 1 AND stopped_worker_json IS NOT NULL))
+      );
+      CREATE TRIGGER graph_runs_identity_immutable BEFORE UPDATE OF graph_run_id, scope_json, source_json, input_artifact_ref, template, identity_json, created_at ON graph_runs
+        BEGIN SELECT RAISE(ABORT, 'graph run identity is immutable'); END;
+      CREATE TRIGGER graph_runs_terminal_sealed BEFORE UPDATE ON graph_runs
+        WHEN OLD.status IN ('ready','failed','cancelled')
+        BEGIN SELECT RAISE(ABORT, 'terminal graph run is immutable'); END;
+      CREATE TRIGGER graph_requests_no_update BEFORE UPDATE ON graph_requests
+        BEGIN SELECT RAISE(ABORT, 'graph request is immutable'); END;
+      CREATE TRIGGER graph_requests_no_delete BEFORE DELETE ON graph_requests
+        BEGIN SELECT RAISE(ABORT, 'graph request is immutable'); END;
+      CREATE TRIGGER graph_worker_leases_identity_immutable BEFORE UPDATE OF graph_run_id, generation, owner, acquired_at, stopped_worker_json ON graph_worker_leases
+        BEGIN SELECT RAISE(ABORT, 'graph lease identity is immutable'); END;
+      CREATE TRIGGER graph_worker_leases_no_delete BEFORE DELETE ON graph_worker_leases
+        BEGIN SELECT RAISE(ABORT, 'graph lease history is immutable'); END;
+    `,
+  },
+  {
+    id: 29,
+    name: "graph_action_ledger_and_original_budget",
+    sql: `
+      ALTER TABLE graph_runs ADD COLUMN spec_json TEXT;
+      CREATE TRIGGER graph_runs_spec_immutable BEFORE UPDATE OF spec_json ON graph_runs
+        BEGIN SELECT RAISE(ABORT, 'graph original spec is immutable'); END;
+      CREATE TABLE graph_actions (
+        effect_key TEXT PRIMARY KEY,
+        graph_run_id TEXT NOT NULL REFERENCES graph_runs(graph_run_id),
+        epoch INTEGER NOT NULL CHECK (typeof(epoch) = 'integer' AND epoch BETWEEN 0 AND 2),
+        node_id TEXT NOT NULL,
+        effect_slot TEXT NOT NULL,
+        logical_attempt INTEGER NOT NULL CHECK (typeof(logical_attempt) = 'integer' AND logical_attempt BETWEEN 1 AND 9007199254740991),
+        effect_json TEXT NOT NULL,
+        action_json TEXT NOT NULL,
+        business_digest TEXT NOT NULL,
+        generation INTEGER NOT NULL CHECK (typeof(generation) = 'integer' AND generation BETWEEN 1 AND 9007199254740991),
+        reservation_tokens INTEGER NOT NULL CHECK (typeof(reservation_tokens) = 'integer' AND reservation_tokens BETWEEN 0 AND 9007199254740991),
+        state TEXT NOT NULL CHECK (state IN ('intent','running','confirmed','failed','unknown','cancel_pending')),
+        execution_ref TEXT,
+        outcome_json TEXT,
+        uncertainty_json TEXT,
+        actual_tokens INTEGER CHECK (actual_tokens IS NULL OR (typeof(actual_tokens) = 'integer' AND actual_tokens BETWEEN 0 AND 9007199254740991)),
+        observed_tokens INTEGER NOT NULL DEFAULT 0 CHECK (typeof(observed_tokens) = 'integer' AND observed_tokens BETWEEN 0 AND 9007199254740991),
+        accounting_blocked INTEGER NOT NULL DEFAULT 0 CHECK (accounting_blocked IN (0,1)),
+        retry_safe INTEGER NOT NULL DEFAULT 0 CHECK (retry_safe IN (0,1)),
+        created_at INTEGER NOT NULL CHECK (typeof(created_at) = 'integer' AND created_at BETWEEN 0 AND 9007199254740991),
+        updated_at INTEGER NOT NULL CHECK (typeof(updated_at) = 'integer' AND updated_at BETWEEN created_at AND 9007199254740991),
+        UNIQUE(graph_run_id, epoch, node_id, effect_slot, logical_attempt),
+        CHECK ((state IN ('confirmed','failed')) = (outcome_json IS NOT NULL)),
+        CHECK (retry_safe = 0 OR state = 'failed'),
+        CHECK (actual_tokens IS NULL OR state IN ('confirmed','failed'))
+      );
+      CREATE INDEX idx_graph_actions_run_state ON graph_actions(graph_run_id, state);
+      CREATE TRIGGER graph_actions_identity_immutable BEFORE UPDATE OF effect_key, graph_run_id, epoch, node_id,
+        effect_slot, logical_attempt, effect_json, action_json, business_digest, generation, reservation_tokens, created_at ON graph_actions
+        BEGIN SELECT RAISE(ABORT, 'graph action identity is immutable'); END;
+      CREATE TRIGGER graph_actions_outcome_immutable BEFORE UPDATE ON graph_actions
+        WHEN OLD.state IN ('confirmed','failed')
+        BEGIN SELECT RAISE(ABORT, 'graph action outcome is immutable'); END;
+      CREATE TRIGGER graph_actions_no_delete BEFORE DELETE ON graph_actions
+        BEGIN SELECT RAISE(ABORT, 'graph action history is immutable'); END;
+    `,
+  },
+  {
+    id: 30,
+    name: "graph_checkpoints",
+    sql: `
+      CREATE TABLE graph_checkpoints (
+        graph_run_id TEXT NOT NULL REFERENCES graph_runs(graph_run_id),
+        namespace TEXT NOT NULL CHECK (length(namespace) <= 1024),
+        checkpoint_id TEXT NOT NULL CHECK (length(checkpoint_id) BETWEEN 1 AND 256),
+        parent_checkpoint_id TEXT,
+        checkpoint TEXT NOT NULL CHECK (length(CAST(checkpoint AS BLOB)) <= 1048576),
+        metadata TEXT NOT NULL CHECK (length(CAST(metadata AS BLOB)) <= 1048576),
+        new_versions TEXT NOT NULL CHECK (length(CAST(new_versions AS BLOB)) <= 1048576),
+        PRIMARY KEY (graph_run_id, namespace, checkpoint_id)
+      );
+      CREATE INDEX idx_graph_checkpoints_page ON graph_checkpoints(graph_run_id, checkpoint_id DESC, namespace DESC);
+      -- Pending writes can arrive before put; bind to the run, not a yet-absent checkpoint.
+      CREATE TABLE graph_checkpoint_writes (
+        graph_run_id TEXT NOT NULL REFERENCES graph_runs(graph_run_id),
+        namespace TEXT NOT NULL CHECK (length(namespace) <= 1024),
+        checkpoint_id TEXT NOT NULL CHECK (length(checkpoint_id) BETWEEN 1 AND 256),
+        task_id TEXT NOT NULL CHECK (length(task_id) BETWEEN 1 AND 256),
+        write_index INTEGER NOT NULL CHECK (write_index BETWEEN -4 AND 4095),
+        channel TEXT NOT NULL CHECK (length(channel) BETWEEN 1 AND 256),
+        value TEXT NOT NULL CHECK (length(CAST(value AS BLOB)) <= 1048576),
+        PRIMARY KEY (graph_run_id, namespace, checkpoint_id, task_id, write_index)
+      );
+      CREATE TABLE graph_checkpoint_requests (
+        graph_run_id TEXT NOT NULL REFERENCES graph_runs(graph_run_id),
+        request_id TEXT NOT NULL CHECK (length(request_id) BETWEEN 1 AND 256),
+        payload_digest TEXT NOT NULL CHECK (length(payload_digest) = 64),
+        response_json TEXT NOT NULL CHECK (length(response_json) <= 1024),
+        generation INTEGER NOT NULL CHECK (generation >= 1),
+        PRIMARY KEY (graph_run_id, request_id)
+      );
+    `,
+  },
+  {
+    id: 31,
+    name: "graph_recovery_decisions",
+    sql: `
+      CREATE TABLE graph_recovery_decisions (
+        graph_run_id TEXT NOT NULL REFERENCES graph_runs(graph_run_id),
+        receipt_id TEXT NOT NULL,
+        effect_key TEXT REFERENCES graph_actions(effect_key),
+        interrupt_id TEXT NOT NULL,
+        snapshot_json TEXT NOT NULL,
+        proof_json TEXT NOT NULL,
+        decision_json TEXT NOT NULL,
+        committed_at INTEGER NOT NULL CHECK(committed_at >= 0 AND committed_at <= 9007199254740991),
+        PRIMARY KEY(graph_run_id, receipt_id)
+      );
+      CREATE TRIGGER graph_recovery_decisions_no_update BEFORE UPDATE ON graph_recovery_decisions
+        BEGIN SELECT RAISE(ABORT, 'graph recovery decision immutable'); END;
+      CREATE TRIGGER graph_recovery_decisions_no_delete BEFORE DELETE ON graph_recovery_decisions
+        BEGIN SELECT RAISE(ABORT, 'graph recovery decision immutable'); END;
+    `,
+  },
+  {
+    id: 32,
+    name: "graph_worker_launches",
+    sql: `
+      CREATE TABLE graph_worker_launches (
+        graph_run_id TEXT NOT NULL,
+        generation INTEGER NOT NULL CHECK(generation >= 1 AND generation <= 9007199254740991),
+        owner TEXT NOT NULL,
+        identity_json TEXT NOT NULL,
+        launched_at INTEGER NOT NULL CHECK(launched_at >= 0 AND launched_at <= 9007199254740991),
+        PRIMARY KEY(graph_run_id, generation),
+        FOREIGN KEY(graph_run_id, generation) REFERENCES graph_worker_leases(graph_run_id, generation)
+      );
+      CREATE TRIGGER graph_worker_launches_no_update BEFORE UPDATE ON graph_worker_launches
+        BEGIN SELECT RAISE(ABORT, 'graph worker launch immutable'); END;
+      CREATE TRIGGER graph_worker_launches_no_delete BEFORE DELETE ON graph_worker_launches
+        BEGIN SELECT RAISE(ABORT, 'graph worker launch immutable'); END;
+    `,
+  },
+  {
+    id: 33,
+    name: "graph_action_admissions",
+    sql: `
+      CREATE TABLE graph_action_admissions (
+        effect_key TEXT PRIMARY KEY REFERENCES graph_actions(effect_key),
+        graph_run_id TEXT NOT NULL REFERENCES graph_runs(graph_run_id),
+        generation INTEGER NOT NULL,
+        owner TEXT NOT NULL,
+        held_at INTEGER NOT NULL CHECK(held_at >= 0 AND held_at <= 9007199254740991),
+        released_at INTEGER CHECK(released_at >= held_at AND released_at <= 9007199254740991),
+        FOREIGN KEY(graph_run_id,generation) REFERENCES graph_worker_leases(graph_run_id,generation)
+      );
+      CREATE INDEX graph_admissions_pending ON graph_action_admissions(graph_run_id) WHERE released_at IS NULL;
+      CREATE TRIGGER graph_admissions_identity_immutable BEFORE UPDATE OF effect_key,graph_run_id,generation,owner,held_at ON graph_action_admissions
+        BEGIN SELECT RAISE(ABORT, 'graph admission identity immutable'); END;
+      CREATE TRIGGER graph_admissions_release_immutable BEFORE UPDATE OF released_at ON graph_action_admissions
+        WHEN OLD.released_at IS NOT NULL AND NEW.released_at IS NOT OLD.released_at
+        BEGIN SELECT RAISE(ABORT, 'graph admission release immutable'); END;
+      CREATE TRIGGER graph_admissions_no_delete BEFORE DELETE ON graph_action_admissions
+        BEGIN SELECT RAISE(ABORT, 'graph admission history immutable'); END;
+    `,
+  },
+  {
+    id: 34,
+    name: "graph_verification_joins",
+    sql: `
+      CREATE TABLE graph_verification_joins (
+        receipt_ref TEXT PRIMARY KEY,
+        graph_run_id TEXT NOT NULL REFERENCES graph_runs(graph_run_id),
+        epoch INTEGER NOT NULL CHECK(epoch BETWEEN 0 AND 2),
+        candidate_revision TEXT NOT NULL,
+        generation INTEGER NOT NULL,
+        owner TEXT NOT NULL,
+        bundle_json TEXT NOT NULL,
+        created_at INTEGER NOT NULL CHECK(created_at >= 0 AND created_at <= 9007199254740991),
+        UNIQUE(graph_run_id,epoch,candidate_revision),
+        FOREIGN KEY(graph_run_id,generation) REFERENCES graph_worker_leases(graph_run_id,generation)
+      );
+      CREATE TRIGGER graph_verification_joins_no_update BEFORE UPDATE ON graph_verification_joins
+        BEGIN SELECT RAISE(ABORT, 'graph verification join immutable'); END;
+      CREATE TRIGGER graph_verification_joins_no_delete BEFORE DELETE ON graph_verification_joins
+        BEGIN SELECT RAISE(ABORT, 'graph verification join immutable'); END;
+    `,
+  },
+  {
+    id: 35,
+    name: "graph_delivery_epochs",
+    sql: `
+      CREATE TABLE graph_delivery_epochs (
+        graph_run_id TEXT NOT NULL REFERENCES graph_runs(graph_run_id),
+        epoch INTEGER NOT NULL CHECK(epoch BETWEEN 0 AND 2),
+        join_ref TEXT REFERENCES graph_verification_joins(receipt_ref),
+        generation INTEGER NOT NULL,
+        created_at INTEGER NOT NULL,
+        PRIMARY KEY(graph_run_id, epoch)
+      );
+      CREATE TRIGGER graph_delivery_epochs_no_update BEFORE UPDATE ON graph_delivery_epochs
+        BEGIN SELECT RAISE(ABORT, 'graph delivery epoch immutable'); END;
+      CREATE TRIGGER graph_delivery_epochs_no_delete BEFORE DELETE ON graph_delivery_epochs
+        BEGIN SELECT RAISE(ABORT, 'graph delivery epoch immutable'); END;
+    `,
+  },
+  {
+    id: 36,
+    name: "graph_public_delivery",
+    sql: `
+      CREATE TABLE graph_public_delivery (
+        graph_run_id TEXT PRIMARY KEY REFERENCES graph_runs(graph_run_id),
+        descriptor_json TEXT NOT NULL,
+        result_json TEXT,
+        interrupt_json TEXT
+      );
+      CREATE TRIGGER graph_public_descriptor_immutable BEFORE UPDATE OF descriptor_json ON graph_public_delivery
+        BEGIN SELECT RAISE(ABORT, 'graph driver descriptor immutable'); END;
+    `,
+  },
+  {
+    id: 37,
+    name: "graph_worker_process_events",
+    sql: `
+      CREATE TABLE graph_worker_process_events (
+        sequence INTEGER PRIMARY KEY,
+        graph_run_id TEXT NOT NULL,
+        generation INTEGER NOT NULL,
+        kind TEXT NOT NULL CHECK(kind IN ('launched','spawn_failed','exited','exit_unconfirmed')),
+        event_json TEXT NOT NULL,
+        observed_at INTEGER NOT NULL CHECK(observed_at >= 0 AND observed_at <= 9007199254740991),
+        UNIQUE(graph_run_id,generation,kind),
+        FOREIGN KEY(graph_run_id,generation) REFERENCES graph_worker_launches(graph_run_id,generation)
+      );
+      CREATE TRIGGER graph_worker_process_events_no_update BEFORE UPDATE ON graph_worker_process_events
+        BEGIN SELECT RAISE(ABORT, 'graph process observation immutable'); END;
+      CREATE TRIGGER graph_worker_process_events_no_delete BEFORE DELETE ON graph_worker_process_events
+        BEGIN SELECT RAISE(ABORT, 'graph process observation immutable'); END;
+    `,
   },
 ];
 

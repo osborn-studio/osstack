@@ -1,0 +1,128 @@
+{
+  "node": "v26.5.0",
+  "offline": true,
+  "integrationTested": false,
+  "results": [
+    {
+      "name": "adk: typed parallel branches + AND barrier",
+      "pass": true,
+      "evidence": {
+        "maxActive": 2,
+        "joins": 1,
+        "received": {
+          "a": {
+            "ok": true,
+            "revision": "rev1"
+          },
+          "b": {
+            "ok": true,
+            "revision": "rev1"
+          }
+        }
+      },
+      "durationMs": 53
+    },
+    {
+      "name": "adk: conditional route is exclusive",
+      "pass": true,
+      "evidence": {
+        "seen": [
+          "repair"
+        ]
+      },
+      "durationMs": 2
+    },
+    {
+      "name": "adk: empty branch output still releases JoinNode",
+      "pass": true,
+      "evidence": {
+        "joins": 1,
+        "receivedKeys": [
+          "a",
+          "b"
+        ],
+        "missingOutputIsUndefined": true,
+        "outputSchemaDidNotRejectAbsence": true
+      },
+      "durationMs": 1
+    },
+    {
+      "name": "adk: invalid nonempty Zod output blocks downstream",
+      "pass": true,
+      "evidence": {
+        "downstream": 0,
+        "error": "NodeSchemaValidationError: Node 'bad' output does not match its outputSchema: [\n  {\n    \"expected\": \"boolean\",\n    \"code\": \"invalid_type\",\n    \"path\": [\n      \"ok\"\n    ],\n    \"message\": \"Invalid input: expected boolean, received string\"\n  }\n]"
+      },
+      "durationMs": 3
+    },
+    {
+      "name": "adk: retry attempts bounded at three",
+      "pass": true,
+      "evidence": {
+        "attempts": 3
+      },
+      "durationMs": 6
+    },
+    {
+      "name": "langgraph: typed parallel branches + AND barrier",
+      "pass": true,
+      "evidence": {
+        "maxActive": 2,
+        "joins": 1,
+        "output": {
+          "a": {
+            "ok": true,
+            "revision": "rev1"
+          },
+          "b": {
+            "ok": true,
+            "revision": "rev1"
+          },
+          "joined": true
+        }
+      },
+      "durationMs": 57
+    },
+    {
+      "name": "langgraph: business false requires explicit route/check",
+      "pass": true,
+      "evidence": {
+        "joins": 1,
+        "seen": [
+          "repair"
+        ],
+        "engineDoesNotInterpretBusinessOk": true
+      },
+      "durationMs": 9
+    },
+    {
+      "name": "langgraph: retry attempts bounded at three",
+      "pass": true,
+      "evidence": {
+        "attempts": 3
+      },
+      "durationMs": 14
+    },
+    {
+      "name": "langgraph: interrupt resumes by restarting interrupted node",
+      "pass": true,
+      "evidence": {
+        "priorRuns": 1,
+        "beforeInterruptRuns": 2,
+        "afterInterruptRuns": 1,
+        "persistence": "same-process MemorySaver only",
+        "resumeValueIsNotAuthorization": true
+      },
+      "durationMs": 16
+    },
+    {
+      "name": "langgraph: recursion limit stops unbounded cycle",
+      "pass": true,
+      "evidence": {
+        "runs": 4,
+        "error": "GraphRecursionError"
+      },
+      "durationMs": 2
+    }
+  ]
+}

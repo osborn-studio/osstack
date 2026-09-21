@@ -1,3 +1,5 @@
+import { healthyAutonomyHealth } from "./test-healthy-autonomy.js";
+import { execFileSync } from "node:child_process";
 import {
   chmod,
   mkdir,
@@ -15,7 +17,7 @@ import { setTimeout as sleep } from "node:timers/promises";
 import { KimiCodeAdapter } from "@osstack/agents";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { main } from "./bin.js";
-import { startDaemon, type DaemonHandles } from "./daemon.js";
+import { startDaemon as startRealDaemon, type DaemonHandles } from "./daemon.js";
 
 let tmp: string;
 let logs: string[];
@@ -1302,13 +1304,14 @@ echo review ok
   it("supports finite multi-cycle loop runs", async () => {
     const workspace = join(tmp, "cycles-workspace");
     await mkdir(join(workspace, "tasks"), { recursive: true });
-    setTimeout(() => {
-      void writeFile(join(workspace, "tasks", "late.json"), JSON.stringify({
-        task_id: "cli-cycle-task",
-        capability: "code.test",
-        prompt: "Exercise CLI cycles",
+    const producer = (async () => {
+      await expect.poll(async () => {
+        try { await readFile(join(workspace, "LOOP-STATE.json")); return true; } catch { return false; }
+      }, { timeout: 3_000, interval: 5 }).toBe(true);
+      await writeFile(join(workspace, "tasks", "late.json"), JSON.stringify({
+        task_id: "cli-cycle-task", capability: "code.test", prompt: "Exercise CLI cycles",
       }));
-    }, 5);
+    })();
 
     const exitCode = await main([
       "loop",
@@ -1325,6 +1328,7 @@ echo review ok
       "25",
     ]);
 
+    await producer;
     expect(exitCode).toBe(0);
     const output = logs.join("\n");
     expect(output).toContain("cycles=2");
@@ -1545,3 +1549,8 @@ async function git(cwd: string, args: string[]): Promise<string> {
     });
   });
 }
+
+const startDaemon = (options: Parameters<typeof startRealDaemon>[0]) => {
+  execFileSync("git", ["init", tmp], { stdio: "ignore" });
+  return startRealDaemon({ autonomyHealth: async () => healthyAutonomyHealth(), ...options });
+};

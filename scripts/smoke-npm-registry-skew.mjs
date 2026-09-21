@@ -99,9 +99,36 @@ async function registryVersion(item) {
     parseVersion(version);
     return { ...item, registryVersion: version };
   } catch (error) {
+    // A new public workspace package has no registry baseline yet. Test its
+    // local tarball; this does not grant npm bootstrap/publish readiness.
+    if (registryPackageMissing(error)) return { ...item, registryVersion: null };
     const output = [error?.stdout, error?.stderr, error?.message].filter(Boolean).join("\n");
     throw new Error(`${item.name}: ${sanitizeError(output)}`);
   }
+}
+
+function registryPackageMissing(error) {
+  if (error?.code !== 1 || error?.killed === true || error?.signal != null) return false;
+  try {
+    return JSON.parse(String(error?.stdout))?.error?.code === "E404";
+  } catch {
+    return false;
+  }
+}
+
+function isCandidate(item) {
+  return item.registryVersion === null || compareVersions(item.version, item.registryVersion) > 0;
+}
+
+function isRegression(item) {
+  return item.registryVersion !== null && compareVersions(item.version, item.registryVersion) < 0;
+}
+
+function registryAnchor(states) {
+  const cli = states.find((item) => item.name === "@osstack/cli");
+  if (cli === undefined) throw new Error("public workspace package @osstack/cli is missing");
+  if (cli.registryVersion === null) throw new Error("@osstack/cli has no registry baseline; registry-skew smoke requires a published anchor");
+  return cli;
 }
 
 async function run(command, args, options = {}) {
@@ -135,7 +162,37 @@ if (selfTest) {
   if (sanitized.includes("secret-session") || sanitized.includes("npm_exampletoken")) {
     throw new Error("registry smoke error sanitizer exposed authentication material");
   }
-  console.log(JSON.stringify({ ok: true, kind: "npm-registry-skew-self-test", cases: cases.length }));
+  const registryErrors = [
+    [{ code: 1, stdout: JSON.stringify({ error: { code: "E404" } }) }, true],
+    [{ code: 1, stdout: JSON.stringify({ error: { code: "E401" } }) }, false],
+    [{ code: 1, stdout: JSON.stringify({ error: { code: "E403" } }) }, false],
+    [{ code: 1, stdout: JSON.stringify({ error: { code: "ETIMEDOUT" } }) }, false],
+    [{ code: 1, stdout: "not json E404", stderr: "E404" }, false],
+    [{ code: 1, stdout: JSON.stringify("1.0.0"), stderr: "E404" }, false],
+    [{ code: "ETIMEDOUT", stdout: JSON.stringify({ error: { code: "E404" } }) }, false],
+    [{ code: 1, killed: true, stdout: JSON.stringify({ error: { code: "E404" } }) }, false],
+    [{ code: 1, signal: "SIGTERM", stdout: JSON.stringify({ error: { code: "E404" } }) }, false],
+  ];
+  for (const [error, expected] of registryErrors) {
+    if (registryPackageMissing(error) !== expected) throw new Error("registry error classification failed");
+  }
+  const versions = [
+    [{ version: "0.1.0", registryVersion: null }, true, false],
+    [{ version: "1.0.1", registryVersion: "1.0.0" }, true, false],
+    [{ version: "1.0.0", registryVersion: "1.0.0" }, false, false],
+    [{ version: "1.0.0", registryVersion: "1.0.1" }, false, true],
+  ];
+  for (const [item, candidate, regression] of versions) {
+    if (isCandidate(item) !== candidate || isRegression(item) !== regression) throw new Error("registry baseline classification failed");
+  }
+  for (const states of [[], [{ name: "@osstack/cli", version: "0.19.0", registryVersion: null }]]) {
+    let refused = false;
+    try { registryAnchor(states); } catch { refused = true; }
+    if (!refused) throw new Error("missing registry anchor was accepted");
+  }
+  const anchor = { name: "@osstack/cli", version: "0.19.0", registryVersion: "0.19.0" };
+  if (registryAnchor([anchor]) !== anchor) throw new Error("published registry anchor was rejected");
+  console.log(JSON.stringify({ ok: true, kind: "npm-registry-skew-self-test", cases: cases.length + registryErrors.length + versions.length + 3 }));
   process.exit(0);
 }
 
@@ -153,12 +210,13 @@ try {
   for (let index = 0; index < packages.length; index += 6) {
     states.push(...await Promise.all(packages.slice(index, index + 6).map(registryVersion)));
   }
-  const regressions = states.filter((item) => compareVersions(item.version, item.registryVersion) < 0);
+  const cli = registryAnchor(states);
+  const regressions = states.filter(isRegression);
   if (regressions.length > 0) {
     throw new Error(`workspace versions are behind npm:\n${regressions.map((item) =>
       `${item.name}: local ${item.version}, registry ${item.registryVersion}`).join("\n")}`);
   }
-  const candidates = states.filter((item) => compareVersions(item.version, item.registryVersion) > 0);
+  const candidates = states.filter(isCandidate);
   for (const candidate of candidates) {
     await run("pnpm", [
       "--filter",
@@ -176,8 +234,6 @@ try {
     throw new Error(`expected ${candidates.length} candidate tarballs, found ${tarballs.length}`);
   }
 
-  const cli = states.find((item) => item.name === "@osstack/cli");
-  if (cli === undefined) throw new Error("public workspace package @osstack/cli is missing");
   const cliCandidate = candidates.some((item) => item.name === "@osstack/cli");
   const installSpecs = [
     ...tarballs,

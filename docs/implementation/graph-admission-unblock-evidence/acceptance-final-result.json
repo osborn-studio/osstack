@@ -1,0 +1,403 @@
+{
+  "loop_id": "G25-G26-admission-2",
+  "state": {
+    "loop_id": "G25-G26-admission-2",
+    "started_at": "2026-09-19T05:55:11.806Z",
+    "updated_at": "2026-09-19T05:55:32.776Z",
+    "completed_tasks": [
+      {
+        "task_id": "G25-G26-admission-2",
+        "capability": "code.test",
+        "outcome": "success",
+        "iterations": 1,
+        "agent_id": "local-command",
+        "duration_ms": 20968,
+        "run_id": "run_16bc250a-a346-47b3-a744-b50d723afadb",
+        "started_at": "2026-09-19T05:55:11.808Z",
+        "completed_at": "2026-09-19T05:55:26.332Z",
+        "execution_summary": "Process group 64751 gone (kill(-pgid, 0): ESRCH); leader exit observed",
+        "execution_commands": [
+          {
+            "command": "node /Volumes/AIMATE_WORK/tmp/g25-claude-unblock/check.mjs reviewtests",
+            "exit_code": 0,
+            "duration_ms": 14524,
+            "summary": "reviewtests: exit=0 $ vitest run src/graph-admission.test.ts --maxWorkers=1 --reporter=default --reporter=json --outputFile=/Volumes/AIMATE_WORK/tmp/g25-claude-unblock/review-tests.json RUN v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstac"
+          }
+        ],
+        "verifier_agent_id": "local-verifier",
+        "verify_summary": "3 verifier commands and 0 verifier adapters passed. 3 evaluations passed.",
+        "verify_issue_count": 0,
+        "verify_commands": [
+          {
+            "command": "node /Volumes/AIMATE_WORK/tmp/g25-claude-unblock/check.mjs typecheck",
+            "exit_code": 0,
+            "duration_ms": 6302,
+            "summary": "typecheck: exit=0 $ pnpm -r typecheck Scope: 22 of 23 workspace projects packages/compliance typecheck$ tsc --noEmit packages/governance typecheck$ tsc --noEmit packages/github typecheck$ tsc --noEmit packages/contracts typecheck$ tsc --noE"
+          },
+          {
+            "command": "node /Volumes/AIMATE_WORK/tmp/g25-claude-unblock/check.mjs whitespace",
+            "exit_code": 0,
+            "duration_ms": 49,
+            "summary": "whitespace: exit=0"
+          },
+          {
+            "command": "node /Volumes/AIMATE_WORK/tmp/g25-claude-unblock/provenance.mjs",
+            "exit_code": 0,
+            "duration_ms": 35,
+            "summary": "Primary Loop and all 434 assertions passed; production/schema hashes unchanged. Only admission tests strengthened after review."
+          }
+        ],
+        "evaluations": [
+          {
+            "spec_id": "verify-command-1",
+            "mode": "command",
+            "description": "Shell verifier: node /Volumes/AIMATE_WORK/tmp/g25-claude-unblock/check.mjs typecheck",
+            "required": true,
+            "weight": 1,
+            "pass": true,
+            "summary": "command passed (6302 ms)",
+            "implicit": true
+          },
+          {
+            "spec_id": "verify-command-2",
+            "mode": "command",
+            "description": "Shell verifier: node /Volumes/AIMATE_WORK/tmp/g25-claude-unblock/check.mjs whitespace",
+            "required": true,
+            "weight": 1,
+            "pass": true,
+            "summary": "command passed (49 ms)",
+            "implicit": true
+          },
+          {
+            "spec_id": "verify-command-3",
+            "mode": "command",
+            "description": "Shell verifier: node /Volumes/AIMATE_WORK/tmp/g25-claude-unblock/provenance.mjs",
+            "required": true,
+            "weight": 1,
+            "pass": true,
+            "summary": "command passed (35 ms)",
+            "implicit": true
+          }
+        ],
+        "changed_files": [
+          "docs/guides/graph-delegation.md",
+          "docs/implementation/2026-09-13-osstack-graph-upgrade.md",
+          "docs/implementation/2026-09-13-osstack-graph-upgrade.tasks.json",
+          "packages/cli/src/graph-action-broker.test.ts",
+          "packages/cli/src/graph-action-broker.ts",
+          "packages/cli/src/graph-delivery.ts",
+          "packages/cli/src/graph-execution-command.test.ts",
+          "packages/cli/src/graph-execution-command.ts",
+          "packages/cli/src/graph-rpc.ts",
+          "packages/protocol/schemas/graph.schema.json",
+          "packages/protocol/src/graph.ts",
+          "?? docs/implementation/2026-09-18-graph-unblock-next-context.md",
+          "?? docs/implementation/graph-admission-unblock-evidence/acceptance.mjs",
+          "?? docs/implementation/graph-admission-unblock-evidence/baseline.json",
+          "?? docs/implementation/graph-admission-unblock-evidence/build.txt",
+          "?? docs/implementation/graph-admission-unblock-evidence/builtin-stop-capabilities.json",
+          "?? docs/implementation/graph-admission-unblock-evidence/check.mjs",
+          "?? docs/implementation/graph-admission-unblock-evidence/consult-response.md",
+          "?? docs/implementation/graph-admission-unblock-evidence/consult.json",
+          "?? docs/implementation/graph-admission-unblock-evidence/focused-response.md",
+          "?? docs/implementation/graph-admission-unblock-evidence/focused-result.json",
+          "?? docs/implementation/graph-admission-unblock-evidence/loop-doctor.txt",
+          "?? docs/implementation/graph-admission-unblock-evidence/review-input.json",
+          "?? docs/implementation/graph-admission-unblock-evidence/review-response.md",
+          "?? docs/implementation/graph-admission-unblock-evidence/review-result.json",
+          "?? packages/cli/src/graph-admission.test.ts"
+        ],
+        "diff_summary": "docs/guides/graph-delegation.md | 7 +++++ .../2026-09-13-osstack-graph-upgrade.md | 10 +++++--- .../2026-09-13-osstack-graph-upgrade.tasks.json | 30 +++++++++++++++++----- packages/cli/src/graph-action-broker.test.ts | 14 ++++++++-- package",
+        "commit_hash": "b6f8ac8"
+      }
+    ],
+    "in_progress": [],
+    "pending": [],
+    "deferred_tasks": [],
+    "key_metrics": {
+      "total_cycles": 1,
+      "avg_duration_ms": 20968,
+      "success_rate": 1,
+      "tokens_consumed": 0,
+      "cost_consumed": 0
+    },
+    "decisions": [
+      "G25-G26-admission-2: selected local-command - local execute command",
+      "G25-G26-admission-2: stop after iteration 1 - Verifier passed with score 1.00."
+    ]
+  },
+  "completedTasks": [
+    {
+      "task_id": "G25-G26-admission-2",
+      "capability": "code.test",
+      "outcome": "success",
+      "iterations": 1,
+      "agent_id": "local-command",
+      "duration_ms": 20968,
+      "run_id": "run_16bc250a-a346-47b3-a744-b50d723afadb",
+      "started_at": "2026-09-19T05:55:11.808Z",
+      "completed_at": "2026-09-19T05:55:26.332Z",
+      "execution_summary": "Process group 64751 gone (kill(-pgid, 0): ESRCH); leader exit observed",
+      "execution_commands": [
+        {
+          "command": "node /Volumes/AIMATE_WORK/tmp/g25-claude-unblock/check.mjs reviewtests",
+          "exit_code": 0,
+          "duration_ms": 14524,
+          "summary": "reviewtests: exit=0 $ vitest run src/graph-admission.test.ts --maxWorkers=1 --reporter=default --reporter=json --outputFile=/Volumes/AIMATE_WORK/tmp/g25-claude-unblock/review-tests.json RUN v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstac"
+        }
+      ],
+      "verifier_agent_id": "local-verifier",
+      "verify_summary": "3 verifier commands and 0 verifier adapters passed. 3 evaluations passed.",
+      "verify_issue_count": 0,
+      "verify_commands": [
+        {
+          "command": "node /Volumes/AIMATE_WORK/tmp/g25-claude-unblock/check.mjs typecheck",
+          "exit_code": 0,
+          "duration_ms": 6302,
+          "summary": "typecheck: exit=0 $ pnpm -r typecheck Scope: 22 of 23 workspace projects packages/compliance typecheck$ tsc --noEmit packages/governance typecheck$ tsc --noEmit packages/github typecheck$ tsc --noEmit packages/contracts typecheck$ tsc --noE"
+        },
+        {
+          "command": "node /Volumes/AIMATE_WORK/tmp/g25-claude-unblock/check.mjs whitespace",
+          "exit_code": 0,
+          "duration_ms": 49,
+          "summary": "whitespace: exit=0"
+        },
+        {
+          "command": "node /Volumes/AIMATE_WORK/tmp/g25-claude-unblock/provenance.mjs",
+          "exit_code": 0,
+          "duration_ms": 35,
+          "summary": "Primary Loop and all 434 assertions passed; production/schema hashes unchanged. Only admission tests strengthened after review."
+        }
+      ],
+      "evaluations": [
+        {
+          "spec_id": "verify-command-1",
+          "mode": "command",
+          "description": "Shell verifier: node /Volumes/AIMATE_WORK/tmp/g25-claude-unblock/check.mjs typecheck",
+          "required": true,
+          "weight": 1,
+          "pass": true,
+          "summary": "command passed (6302 ms)",
+          "implicit": true
+        },
+        {
+          "spec_id": "verify-command-2",
+          "mode": "command",
+          "description": "Shell verifier: node /Volumes/AIMATE_WORK/tmp/g25-claude-unblock/check.mjs whitespace",
+          "required": true,
+          "weight": 1,
+          "pass": true,
+          "summary": "command passed (49 ms)",
+          "implicit": true
+        },
+        {
+          "spec_id": "verify-command-3",
+          "mode": "command",
+          "description": "Shell verifier: node /Volumes/AIMATE_WORK/tmp/g25-claude-unblock/provenance.mjs",
+          "required": true,
+          "weight": 1,
+          "pass": true,
+          "summary": "command passed (35 ms)",
+          "implicit": true
+        }
+      ],
+      "changed_files": [
+        "docs/guides/graph-delegation.md",
+        "docs/implementation/2026-09-13-osstack-graph-upgrade.md",
+        "docs/implementation/2026-09-13-osstack-graph-upgrade.tasks.json",
+        "packages/cli/src/graph-action-broker.test.ts",
+        "packages/cli/src/graph-action-broker.ts",
+        "packages/cli/src/graph-delivery.ts",
+        "packages/cli/src/graph-execution-command.test.ts",
+        "packages/cli/src/graph-execution-command.ts",
+        "packages/cli/src/graph-rpc.ts",
+        "packages/protocol/schemas/graph.schema.json",
+        "packages/protocol/src/graph.ts",
+        "?? docs/implementation/2026-09-18-graph-unblock-next-context.md",
+        "?? docs/implementation/graph-admission-unblock-evidence/acceptance.mjs",
+        "?? docs/implementation/graph-admission-unblock-evidence/baseline.json",
+        "?? docs/implementation/graph-admission-unblock-evidence/build.txt",
+        "?? docs/implementation/graph-admission-unblock-evidence/builtin-stop-capabilities.json",
+        "?? docs/implementation/graph-admission-unblock-evidence/check.mjs",
+        "?? docs/implementation/graph-admission-unblock-evidence/consult-response.md",
+        "?? docs/implementation/graph-admission-unblock-evidence/consult.json",
+        "?? docs/implementation/graph-admission-unblock-evidence/focused-response.md",
+        "?? docs/implementation/graph-admission-unblock-evidence/focused-result.json",
+        "?? docs/implementation/graph-admission-unblock-evidence/loop-doctor.txt",
+        "?? docs/implementation/graph-admission-unblock-evidence/review-input.json",
+        "?? docs/implementation/graph-admission-unblock-evidence/review-response.md",
+        "?? docs/implementation/graph-admission-unblock-evidence/review-result.json",
+        "?? packages/cli/src/graph-admission.test.ts"
+      ],
+      "diff_summary": "docs/guides/graph-delegation.md | 7 +++++ .../2026-09-13-osstack-graph-upgrade.md | 10 +++++--- .../2026-09-13-osstack-graph-upgrade.tasks.json | 30 +++++++++++++++++----- packages/cli/src/graph-action-broker.test.ts | 14 ++++++++-- package",
+      "commit_hash": "b6f8ac8"
+    }
+  ],
+  "events": [
+    {
+      "event_id": "evt_06bb55d0-6057-47f8-83b0-a820ff5aeb31",
+      "loop_id": "G25-G26-admission-2",
+      "type": "loop.started",
+      "seq": 1,
+      "created_at": 1789797311807,
+      "payload": {
+        "workspace_path": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation"
+      }
+    },
+    {
+      "event_id": "evt_f800ba43-5481-4b47-b820-fa321a62bfc1",
+      "loop_id": "G25-G26-admission-2",
+      "type": "loop.cycle.started",
+      "seq": 2,
+      "created_at": 1789797311807,
+      "payload": {
+        "cycle": 1
+      }
+    },
+    {
+      "event_id": "evt_9a6eb9b9-c963-474d-9b7f-e215c8a92a31",
+      "loop_id": "G25-G26-admission-2",
+      "type": "loop.discover.done",
+      "seq": 3,
+      "created_at": 1789797311807,
+      "payload": {
+        "task_count": 1,
+        "discovered_task_count": 1,
+        "skipped_task_count": 0
+      }
+    },
+    {
+      "event_id": "evt_0803215b-2e12-4cd8-a72c-cc46b4ecdf26",
+      "loop_id": "G25-G26-admission-2",
+      "type": "loop.plan.done",
+      "seq": 4,
+      "created_at": 1789797311808,
+      "payload": {
+        "task_id": "G25-G26-admission-2",
+        "plan_id": "plan_222de0ba-7f52-48a8-95a1-7ecc75350e54",
+        "agent_id": "local-command",
+        "routing_reason": "local execute command",
+        "iteration": 1
+      }
+    },
+    {
+      "event_id": "evt_d26c30dd-b160-4a03-95b2-1ce4eada5774",
+      "loop_id": "G25-G26-admission-2",
+      "type": "loop.execute.done",
+      "seq": 5,
+      "created_at": 1789797326332,
+      "payload": {
+        "task_id": "G25-G26-admission-2",
+        "run_id": "run_16bc250a-a346-47b3-a744-b50d723afadb",
+        "outcome": "completed",
+        "agent_id": "local-command",
+        "summary": "Process group 64751 gone (kill(-pgid, 0): ESRCH); leader exit observed",
+        "iteration": 1
+      }
+    },
+    {
+      "event_id": "evt_307b3c06-3665-4212-91b0-bcbac4afcdd4",
+      "loop_id": "G25-G26-admission-2",
+      "type": "loop.verify.done",
+      "seq": 6,
+      "created_at": 1789797332776,
+      "payload": {
+        "task_id": "G25-G26-admission-2",
+        "pass": true,
+        "score": 1,
+        "issue_count": 0,
+        "evaluation_count": 3,
+        "failed_evaluation_ids": [],
+        "reviewer_agent_id": "local-verifier",
+        "summary": "3 verifier commands and 0 verifier adapters passed. 3 evaluations passed.",
+        "changed_files": [
+          "docs/guides/graph-delegation.md",
+          "docs/implementation/2026-09-13-osstack-graph-upgrade.md",
+          "docs/implementation/2026-09-13-osstack-graph-upgrade.tasks.json",
+          "packages/cli/src/graph-action-broker.test.ts",
+          "packages/cli/src/graph-action-broker.ts",
+          "packages/cli/src/graph-delivery.ts",
+          "packages/cli/src/graph-execution-command.test.ts",
+          "packages/cli/src/graph-execution-command.ts",
+          "packages/cli/src/graph-rpc.ts",
+          "packages/protocol/schemas/graph.schema.json",
+          "packages/protocol/src/graph.ts",
+          "?? docs/implementation/2026-09-18-graph-unblock-next-context.md",
+          "?? docs/implementation/graph-admission-unblock-evidence/acceptance.mjs",
+          "?? docs/implementation/graph-admission-unblock-evidence/baseline.json",
+          "?? docs/implementation/graph-admission-unblock-evidence/build.txt",
+          "?? docs/implementation/graph-admission-unblock-evidence/builtin-stop-capabilities.json",
+          "?? docs/implementation/graph-admission-unblock-evidence/check.mjs",
+          "?? docs/implementation/graph-admission-unblock-evidence/consult-response.md",
+          "?? docs/implementation/graph-admission-unblock-evidence/consult.json",
+          "?? docs/implementation/graph-admission-unblock-evidence/focused-response.md",
+          "?? docs/implementation/graph-admission-unblock-evidence/focused-result.json",
+          "?? docs/implementation/graph-admission-unblock-evidence/loop-doctor.txt",
+          "?? docs/implementation/graph-admission-unblock-evidence/review-input.json",
+          "?? docs/implementation/graph-admission-unblock-evidence/review-response.md",
+          "?? docs/implementation/graph-admission-unblock-evidence/review-result.json",
+          "?? packages/cli/src/graph-admission.test.ts"
+        ],
+        "diff_summary": "docs/guides/graph-delegation.md | 7 +++++ .../2026-09-13-osstack-graph-upgrade.md | 10 +++++--- .../2026-09-13-osstack-graph-upgrade.tasks.json | 30 +++++++++++++++++----- packages/cli/src/graph-action-broker.test.ts | 14 ++++++++-- package",
+        "commit_hash": "b6f8ac8",
+        "iteration": 1
+      }
+    },
+    {
+      "event_id": "evt_3e5a5ed3-5f4c-4fbf-bd70-d5a0af61b58a",
+      "loop_id": "G25-G26-admission-2",
+      "type": "loop.iterate.done",
+      "seq": 7,
+      "created_at": 1789797332776,
+      "payload": {
+        "task_id": "G25-G26-admission-2",
+        "action": "stop",
+        "reason": "Verifier passed with score 1.00.",
+        "iteration": 1,
+        "issue_count": 0,
+        "failed_evaluation_ids": []
+      }
+    },
+    {
+      "event_id": "evt_174f3bf8-0c02-49e6-b7ce-1ceddcf15808",
+      "loop_id": "G25-G26-admission-2",
+      "type": "loop.state.written",
+      "seq": 8,
+      "created_at": 1789797332778,
+      "payload": {
+        "jsonPath": "/Volumes/AIMATE_WORK/tmp/g25-claude-unblock/LOOP-STATE-final.json",
+        "markdownPath": "/Volumes/AIMATE_WORK/tmp/g25-claude-unblock/STATE-final.md"
+      }
+    },
+    {
+      "event_id": "evt_dbf204f4-9344-4a1d-8cbe-2517250f500e",
+      "loop_id": "G25-G26-admission-2",
+      "type": "loop.cycle.completed",
+      "seq": 9,
+      "created_at": 1789797332778,
+      "payload": {
+        "cycle": 1,
+        "task_count": 1,
+        "discovered_task_count": 1,
+        "skipped_task_count": 0,
+        "duration_ms": 20974
+      }
+    },
+    {
+      "event_id": "evt_6325ece7-d51a-4657-8e17-099203f6366a",
+      "loop_id": "G25-G26-admission-2",
+      "type": "loop.stopped",
+      "seq": 10,
+      "created_at": 1789797332778,
+      "payload": {
+        "reason_code": "completed",
+        "reason": "manual run completed"
+      }
+    }
+  ],
+  "jsonPath": "/Volumes/AIMATE_WORK/tmp/g25-claude-unblock/LOOP-STATE-final.json",
+  "markdownPath": "/Volumes/AIMATE_WORK/tmp/g25-claude-unblock/STATE-final.md",
+  "discoveredTaskCount": 1,
+  "executedTaskCount": 1,
+  "skippedTaskCount": 0
+}

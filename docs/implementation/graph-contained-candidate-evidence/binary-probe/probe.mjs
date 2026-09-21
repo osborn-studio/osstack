@@ -1,0 +1,15 @@
+import {prepareGraphContainedImage} from './graph-contained-tests.mjs';
+import {createContainedCommandExecutor} from '@osstack/agents';
+import {mkdir,readFile,writeFile} from 'node:fs/promises';
+import {execFileSync} from 'node:child_process';
+import {createHash} from 'node:crypto';
+const root='/Volumes/AIMATE_WORK/tmp/g25-candidate/binary-probe';const repo=root+'/repo';await mkdir(repo);await mkdir(root+'/journal');
+const bytes=Buffer.from([0,255,128,13,10]);await writeFile(repo+'/binary',bytes);
+const git=(...args)=>execFileSync('git',args,{cwd:repo,encoding:'utf8'}).trim();
+git('init','-q');git('add','.');git('-c','user.name=probe','-c','user.email=probe@invalid','commit','-qm','binary');
+const config=JSON.parse(await readFile('/Volumes/AIMATE_WORK/tmp/g25-candidate/candidate-config.json','utf8'));
+const image=await prepareGraphContainedImage({...config,journalRoot:root+'/journal',authorizeStop:()=>{},authorizeRead:()=>{}},repo,git('rev-parse','HEAD'),()=>{});
+const executor=await createContainedCommandExecutor({...config,imageId:image.imageId,workingDirectory:image.workingDirectory,journalRoot:root+'/journal',bindingRef:'d'.repeat(64),authorize:()=>{},command:`test "$(od -An -tx1 binary | tr -d ' \\n')" = 00ff800d0a; code=$?; echo binary-exit:$code; exit "$code"`});
+const result=await executor.execute('binary-probe',new AbortController().signal);
+const proof={scope:'Binary blob preservation through actual Git object export/image build/execution; not a new Graph recovery gate',inputSha256:createHash('sha256').update(bytes).digest('hex'),inputHex:bytes.toString('hex'),image,result,passed:result.exitCode===0};
+await writeFile(root+'/result.json',JSON.stringify(proof,null,2));console.log(JSON.stringify(proof));if(!proof.passed)process.exitCode=1;

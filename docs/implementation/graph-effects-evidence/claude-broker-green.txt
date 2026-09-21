@@ -1,0 +1,24 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+osstack: retaining write lease graph-action:75666865032e3bfa1e6a630fe54491be03ed5983fd972a22e6778058acee5fa3: Error: invalid result kind for registered operation
+ ✓ src/graph-action-broker-boundary.test.ts (6 tests) 314ms
+osstack: retaining write lease graph-action:62ff964be1058842f36fbf044799f0b7eb7698ed509b6e11e86f9d258359c920: Error: adapter result or execution unconfirmed
+osstack: retaining write lease graph-action:6f159b803dbae9f425d4666876f16786737530b667415c17c636a54dfc7b7fe2: Error: adapter result or execution unconfirmed
+osstack: retaining write lease graph-action:29123479d6d9d8bf30d15f87e279f592b5e0b53d17d5dd5353cc664cfc1636dc: Error: adapter result or execution unconfirmed
+osstack: retaining write lease graph-action:d43d0ba83a361237aa025330f7a48950c14469abdcedfb178f236f0e4fed61f2: Error: invalid result kind for registered operation
+osstack: retaining write lease graph-action:b8b59b9bb9810c7f9cde3adb36ba11c499bb868aa296c65ce4ad73fd81c0d82c: Error: invalid usage
+osstack: retaining write lease graph-action:fb55c8a220afffb2c48b108a0bf9236b3b47d9cc475f1e744954d01212c042f5: Error: invalid persisted evidence reference
+osstack: retaining write lease graph-action:ffe21f68bd7a170f50c019ba3b78a05d0b46fa452ab61148412f1e3b2a8061d9: SqliteError: injected
+osstack: retaining write lease graph-action:338edb3c22768a54dc36b27a0b18c0592622edc8521541e5115f79b1b83e1832: Error: adapter result or execution unconfirmed
+osstack: retaining write lease graph-action:26af4ac166e82d2101260f2c4943e1179ba48928f17fd68d0dd3c5670824824d: Error: adapter result or execution unconfirmed
+osstack: retaining write lease graph-action:a8ffce46f705d90a35505b40a44ab9b4886d8738587e09ca88dd424c49d766a2: Error: adapter result or execution unconfirmed
+osstack: retaining write lease graph-action:8eb0e21cdb1dc7e2f29b2ddcbbe10582e811a89f522d73f2e486388453c29b9e: Error: adapter result or execution unconfirmed
+osstack: retaining write lease graph-action:3ccb859a34187947fbefb3fd2ec320a6395f8f3040c1473dffaae1253a1b4b7b: Error: adapter result or execution unconfirmed
+ ✓ src/graph-action-broker.test.ts (31 tests) 1625ms
+
+ Test Files  2 passed (2)
+      Tests  37 passed (37)
+   Start at  07:04:51
+   Duration  2.52s (transform 444ms, setup 12ms, collect 1.45s, tests 1.94s, environment 0ms, prepare 74ms)
+

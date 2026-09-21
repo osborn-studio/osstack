@@ -1,0 +1,47 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+ ✓ src/graph-checkpoint-service.test.ts (4 tests) 139ms
+ ✓ src/graph-action-broker-boundary.test.ts (3 tests) 275ms
+ ✓ src/graph-checkpoint-daemon.test.ts (1 test) 45ms
+osstack: retaining write lease graph-action:b0af475411b9231268c1768dc1ad4bb294cc3c845726dd156341da2dc4b7df6c: Error: adapter result or execution unconfirmed
+ ✓ src/daemon-graph-action-broker.test.ts (1 test) 698ms
+   ✓ registers an in-process broker over the daemon database and shared admission  697ms
+osstack: retaining write lease graph-action:5da58815fbc0151b48f0b6264061e9b3a4587b2f95e8acb9490ef2209ee83f33: Error: adapter result or execution unconfirmed
+osstack: retaining write lease graph-action:e061fb371cda33c012723dbe6be0984598ecb5fd26e7ace980a3491180e5d9ac: Error: adapter result or execution unconfirmed
+osstack: retaining write lease graph-action:c3c2964fafc40ecfe705b6f9d08a01a5bce5b72abc402139383f417c2c167f6d: Error: invalid result kind for registered operation
+osstack: retaining write lease graph-action:41fefe50fd7030bcdc7b3f38b29a6db03222fca3ece36729dc6b7ed73708b415: Error: invalid usage
+osstack: retaining write lease graph-action:87d96b73947da2bd7e0301cf1043eca5d213eddc0b678b21011142cc822beb82: Error: invalid persisted evidence reference
+osstack: clock jump detected drift_ms=9980; re-running external health and recovery probes
+osstack: retaining write lease graph-action:44bab2cfca29511e6a1a6c04fdb772cc6b64a0df0947cf8954c3a45e1d8c727a: SqliteError: injected
+Preparing worktree (new branch 'other-worktree')
+osstack: retaining write lease graph-action:29ae9df8241f50b8c9062706eb7dcc5bf58bb8783ec8d6b041ba3736380ec523: Error: adapter result or execution unconfirmed
+ ✓ src/graph-action-broker.test.ts (27 tests) 2226ms
+ ✓ src/daemon-policy-gate.test.ts (5 tests) 2327ms
+   ✓ daemon policy gate (R2.2) > allows loop.run under mode: execute  571ms
+   ✓ daemon policy gate (R2.2) > stops a scheduled session on the next tick when policy.yaml is flipped to observe mid-session  600ms
+   ✓ holds daemon Loop behind a graph lease for a second worktree and aborts queued admission  758ms
+osstack: retaining write lease run-offline-production-recovery: guarded autonomy blocked or exit unconfirmed
+ ✓ src/daemon-loop.test.ts (25 tests) 9602ms
+   ✓ daemon loop RPC > persists deferred-work reasons across daemon restart instead of reporting idle  593ms
+   ✓ daemon loop RPC > routes guarded autonomy resume through the daemon socket  336ms
+   ✓ daemon loop RPC > limits guarded autonomy writers to two after persisting their queued runs  463ms
+   ✓ daemon loop RPC > keeps blocked delivery queued offline and resumes after network recovery  311ms
+   ✓ daemon loop RPC > runs and reports a local loop cycle through the daemon socket  539ms
+   ✓ daemon loop RPC > attaches neat evidence to a successful daemon loop without gating it  537ms
+   ✓ daemon loop RPC > runs finite multi-cycle loops through daemon RPC  492ms
+   ✓ daemon loop RPC > runs reviewer adapters through daemon loop.run  1027ms
+   ✓ daemon loop RPC > starts, reports, and stops a background polling loop  411ms
+   ✓ daemon loop RPC > stops a polling loop session when its budget is exceeded and persists the reason  504ms
+   ✓ daemon loop RPC > starts a cron-scheduled background loop  427ms
+   ✓ daemon loop RPC > includes background loop metrics in daemon stats  354ms
+   ✓ daemon loop RPC > creates a blocked kanban card when a background loop escalates  458ms
+   ✓ daemon loop RPC > creates a blocked kanban card after three same-capability loop failures  589ms
+   ✓ daemon loop RPC > stops a background polling loop when its goal command passes  502ms
+   ✓ daemon loop RPC > restores running background loops after daemon restart  463ms
+
+ Test Files  7 passed (7)
+      Tests  66 passed (66)
+   Start at  06:54:11
+   Duration  12.01s (transform 1.63s, setup 83ms, collect 12.79s, tests 15.31s, environment 1ms, prepare 458ms)
+

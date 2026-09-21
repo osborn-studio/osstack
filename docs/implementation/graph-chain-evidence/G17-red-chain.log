@@ -1,0 +1,15 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+
+  ../../../tmp/gc5/graph-chain-host.mjs  321.6kb
+
+⚡ Done in 18ms
+ ✓ src/graph-chain.integration.test.ts (9 tests | 8 skipped) 1646ms
+   ✓ assembly: real command implement → freeze persists a selfcontained candidate  1646ms
+
+ Test Files  1 passed (1)
+      Tests  1 passed | 8 skipped (9)
+   Start at  07:55:15
+   Duration  2.60s (transform 445ms, setup 7ms, collect 755ms, tests 1.65s, environment 0ms, prepare 41ms)
+

@@ -1,0 +1,25 @@
+{
+  "baseline": "360e226",
+  "sourceSha256": {
+    ".changeset/graph-kernel-contracts.md": "3ce562895bca9f607a2a2a439cca43089ebea27f8d0b0dfe074b74b9ff3bba1f",
+    "packages/graph/package.json": "dc66e9e355de1a6d2e6d2041b3327ca737bd3547c8199d11f385570e105dbfdf",
+    "packages/graph/src/checkpoint-codec.test.ts": "fe3c67d45d68cc5734399e8b86f93d0d8a791968acd20878042a02401d9fb04a",
+    "packages/graph/src/checkpoint-codec.ts": "4d7d654acf5d8abaf7f60c260ce19a0661316512fe57669f200099ce8736beca",
+    "packages/graph/src/index.ts": "3a2d854f9cf9322b05ac82804c1a38e1167287bf9c00d3d3c7fb93e6df8abc42",
+    "packages/graph/src/package-entry.test.ts": "a3e36aaa2c70bfcfeda5b2221b57e4d9f66242081c740e9fba12c787e96b9771",
+    "packages/graph/src/worker-entry.test.ts": "52d7f535decea9eea68fd0206c9d4483f8354b3799bf2eb2f7e907a05ecafcee",
+    "packages/graph/src/worker-entry.ts": "aeb102f423156cbc323c4a72a413e16ae71791b7a4474fb308d8b2bfa9885f88",
+    "packages/graph/tsconfig.json": "b1df01c7b3ffbfde2f65f433286f600e3ff181d47db39bce8337daea3c30a2c7",
+    "packages/protocol/schemas/graph.schema.json": "43a0d51c95810dbdf4f0d5b894b6ae01fa08418aafd1030111f729bc18ebeaa0",
+    "packages/protocol/src/generate.ts": "b135318f598b474e947d2ff544103011189cc158312e197a8991ebbe721205fc",
+    "packages/protocol/src/graph-review.test.ts": "e27f9b5aeaa2d3e76b1858bb3ec8d5dd62f2a96ca5a4384ceea97bf5d37d8455",
+    "packages/protocol/src/graph.test.ts": "077656eef2c06f5004f9f95a87c2b2e42c57a5c9d95435f788e05c37f808f99d",
+    "packages/protocol/src/graph.ts": "1ed52bed1d05b3910e1d134b2010484080d484436afc75eb43d808b8a80debb5",
+    "packages/protocol/src/index.ts": "0d5f5147115bdfcf8fa59aa26cae6cae0984760dda78947d10e3a98c5fd34e8c",
+    "packages/protocol/src/schemas.test.ts": "88eec4016218abaee487c08770048f5e11dfe5d463f62fddbe3e657b558961db",
+    "pnpm-lock.yaml": "6279cdde153bd8e188af21ea89d995e8367426a2372e1a1f3d097cef717d99aa",
+    "scripts/probe-graph-saver.mjs": "5e2cf18cce5788e9ffd8e9dc2d62a2dc0155319d2b17fd7ce923fe6b8831fbbb"
+  },
+  "note": "Computed after final runtime tests; final accepted source commit binds these bytes. Docs and generated build outputs excluded.",
+  "acceptedCodeCommit": "c1f461992a5967bbb9055f78f8e2cb648599d5c9"
+}

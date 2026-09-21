@@ -1,0 +1,110 @@
+$ vitest run src/graph-delivery.integration.test.ts src/graph-delivery-adversarial.test.ts src/graph-delivery-broker.test.ts src/graph-delivery-receipts.test.ts src/graph-shutdown.test.ts src/graph-execution-command.test.ts --maxWorkers=1
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-quiescence/g21-adversarial-hBRaQz/delivery/writer-0'...
+HEAD is now at a76bd20 base
+osstack: retaining write lease graph-action:8750b728b4dc893acac42e854071222bac263f332ce2edea6d3741fee1680d22: Error: external stop unconfirmed
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-quiescence/g21-adversarial-JxHITJ/delivery/writer-0'...
+HEAD is now at a712ee2 base
+osstack: retaining write lease graph-action:3bcb01660203fa0b1789571bf06533a7e36b3d12e27531a0354896a606a6ef35: Error: external stop unconfirmed
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-quiescence/g21-adversarial-PSp3hu/delivery/writer-0'...
+HEAD is now at fa818ba base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-quiescence/g21-adversarial-XNWmBs/delivery/writer-0'...
+HEAD is now at e03a151 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-quiescence/g21-adversarial-hblzOM/delivery/writer-0'...
+HEAD is now at 310196b base
+osstack: retaining write lease graph-action:01898e4d30c221acf7ada5d57fa3eeade7fc78f040f3fae98205440fb5af7dd6: Error: STALE_DELIVERY_OWNER
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-quiescence/g21-adversarial-OlIuhA/delivery/writer-0'...
+HEAD is now at 5e5accd base
+osstack: retaining write lease graph-action:b92a1ec1063c40020ff51194070c0079fec4cb782cf80908e7e0fa7d83091951: Error: authority revoked
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-quiescence/g21-adversarial-IxLgev/delivery/writer-0'...
+HEAD is now at 31b4bd0 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-quiescence/g21-adversarial-MaUVhW/delivery/writer-0'...
+HEAD is now at 76f10e4 base
+ ❯ src/graph-delivery-adversarial.test.ts (9 tests | 1 failed) 30125ms
+   ✓ retains unknown-review uncertainty without retry, repair or ready publication  3395ms
+   ✓ retains unknown-writer uncertainty without retry, repair or ready publication  1368ms
+   ✓ stops before freeze after actual token overrun and preserves charged action evidence  1400ms
+   ✓ captures business inputs, executors, commands and authority before asynchronous execution  5377ms
+   ✓ cannot project state after foreign-owner invalidates its authority  2198ms
+   ✓ cannot project state after revoked invalidates its authority  2195ms
+   × returns an explicit stop when preparation admission prevents an otherwise retryable branch 5371ms
+     → expected { kind: 'reconcile', epoch: +0, …(1) } to match object { kind: 'stop', …(1) }
+(1 matching property omitted from actual)
+   ✓ closes its runtime without projecting an unowned run when setup acquisition fails 75ms
+   ✓ renews the owned lease during an actual pending writer invocation and still completes  8744ms
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-quiescence/g21-delivery-K8TmYm/delivery/writer-0'...
+HEAD is now at 5e77edc base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-quiescence/g21-delivery-YCECzu/delivery/writer-0'...
+HEAD is now at 5886896 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-quiescence/g21-delivery-vZXWev/delivery/writer-0'...
+HEAD is now at 3829781 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-quiescence/g21-delivery-Ql1iMF/delivery/writer-0'...
+HEAD is now at 80cb4fd base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-quiescence/g21-delivery-zu76IP/delivery/writer-0'...
+HEAD is now at bda7c47 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-quiescence/g21-delivery-G5w0hm/delivery/writer-0'...
+HEAD is now at 67ea05e base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-quiescence/g21-delivery-PhZWnk/delivery/writer-0'...
+HEAD is now at ca4787f base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-quiescence/g21-delivery-nb6REh/delivery/writer-0'...
+HEAD is now at 6c091dc base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-quiescence/g21-delivery-lH3c2x/delivery/writer-0'...
+HEAD is now at 074fde0 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-quiescence/g21-delivery-vy9R2T/delivery/writer-0'...
+HEAD is now at 9e3e248 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-quiescence/g21-delivery-982V7O/delivery/writer-0'...
+HEAD is now at dbfb926 base
+ ✓ src/graph-delivery.integration.test.ts (11 tests) 68484ms
+   ✓ actual child delivery succeeds with review finishing last  5403ms
+   ✓ actual child delivery succeeds with tests finishing last  5413ms
+   ✓ repairs from immutable complete join through physical child stop and G15 resume  10808ms
+   ✓ host bounded retry returns only final confirmed task result and fresh independent workspace  7037ms
+   ✓ finite branch failure stops without a failed task RETURN or poisoned join  7034ms
+   ✓ negative quality at epoch cap stops  5384ms
+   ✓ keeps direct in reconciliation when real worker exit journaling failed  5302ms
+   ✓ keeps repair in reconciliation when real worker exit journaling failed  6281ms
+   ✓ cancels actual delivery with clean exit and inventory evidence  5282ms
+   ✓ cancels actual delivery with journal-failed exit and inventory evidence  5273ms
+   ✓ cancels actual delivery with missing-admission exit and inventory evidence  5267ms
+ ✓ src/graph-delivery-broker.test.ts (5 tests) 208ms
+ ✓ src/graph-shutdown.test.ts (1 test) 85ms
+ ✓ src/graph-execution-command.test.ts (7 tests) 33ms
+ ✓ src/graph-delivery-receipts.test.ts (4 tests) 28ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/graph-delivery-adversarial.test.ts > returns an explicit stop when preparation admission prevents an otherwise retryable branch
+AssertionError: expected { kind: 'reconcile', epoch: +0, …(1) } to match object { kind: 'stop', …(1) }
+(1 matching property omitted from actual)
+
+- Expected
++ Received
+
+  {
+-   "kind": "stop",
+-   "reason": "retry_dispatch_incomplete",
++   "kind": "reconcile",
++   "reason": "Error: QUIESCENCE_REQUIRED",
+  }
+
+ ❯ src/graph-delivery-adversarial.test.ts:106:27
+    104| it('retains reconciliation when denied preparation has no durable admi…
+    105|   const f = await fixture('retry-preparation-denied');
+    106|   // A failed action alone cannot substitute for a durable no-start/st…
+       |                           ^
+    107|   expect(f.result?.route).toMatchObject({ kind: 'reconcile', reason: e…
+    108|   expect(f.run.status).toBe('reconciliation_required'); expect(f.joins…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 5 passed (6)
+      Tests  1 failed | 36 passed (37)
+   Start at  17:28:06
+   Duration  101.30s (transform 520ms, setup 12ms, collect 1.73s, tests 98.96s, environment 0ms, prepare 156ms)
+
+/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli:
+[ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL] @osstack/cli@0.19.0 test: `vitest run src/graph-delivery.integration.test.ts src/graph-delivery-adversarial.test.ts src/graph-delivery-broker.test.ts src/graph-delivery-receipts.test.ts src/graph-shutdown.test.ts src/graph-execution-command.test.ts --maxWorkers=1`
+Exit status 1

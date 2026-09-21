@@ -1,0 +1,81 @@
+{
+  "loop_id": "G21-readonly-review",
+  "started_at": "2026-09-15T15:30:51.353Z",
+  "updated_at": "2026-09-15T15:33:06.049Z",
+  "completed_tasks": [
+    {
+      "task_id": "G21-readonly-review",
+      "capability": "code.write",
+      "outcome": "success",
+      "iterations": 1,
+      "agent_id": "codex-cli",
+      "duration_ms": 134695,
+      "run_id": "run_821ee61e-1a7b-4157-ba48-62efa38ab4cb",
+      "started_at": "2026-09-15T15:30:51.354Z",
+      "completed_at": "2026-09-15T15:33:05.980Z",
+      "execution_summary": "codex exited 0",
+      "verifier_agent_id": "local-verifier",
+      "verify_summary": "1 verifier command and 0 verifier adapters passed. 1 evaluation passed.",
+      "verify_issue_count": 0,
+      "verify_commands": [
+        {
+          "command": "git diff --check",
+          "exit_code": 0,
+          "duration_ms": 19
+        }
+      ],
+      "evaluations": [
+        {
+          "spec_id": "verify-command-1",
+          "mode": "command",
+          "description": "Shell verifier: git diff --check",
+          "required": true,
+          "weight": 1,
+          "pass": true,
+          "summary": "command passed (19 ms)",
+          "implicit": true
+        }
+      ],
+      "changed_files": [
+        "packages/cli/src/graph-action-broker.ts",
+        "packages/cli/src/graph-runtime.ts",
+        "packages/cli/src/graph-verification.ts",
+        "packages/core/src/state/graph-actions.ts",
+        "packages/core/src/state/graph-verification.ts",
+        "packages/core/src/state/migrations.ts",
+        "packages/graph/package.json",
+        "packages/graph/src/spec-compiler.test.ts",
+        "packages/graph/src/spec-compiler.ts",
+        "packages/graph/src/worker-runtime.ts",
+        "?? packages/cli/src/graph-delivery-adversarial.test.ts",
+        "?? packages/cli/src/graph-delivery-broker.test.ts",
+        "?? packages/cli/src/graph-delivery-receipts.test.ts",
+        "?? packages/cli/src/graph-delivery-receipts.ts",
+        "?? packages/cli/src/graph-delivery.integration.test.ts",
+        "?? packages/cli/src/graph-delivery.ts",
+        "?? packages/core/src/state/graph-delivery-epochs.test.ts",
+        "?? packages/graph/src/templates/code-delivery-v1.test.ts",
+        "?? packages/graph/src/templates/code-delivery-v1.ts"
+      ],
+      "diff_summary": "packages/cli/src/graph-action-broker.ts | 31 +++++++++++++++++---- packages/cli/src/graph-runtime.ts | 6 +++- packages/cli/src/graph-verification.ts | 34 +++++++++++++++-------- packages/core/src/state/graph-actions.ts | 10 +++++++ packages",
+      "commit_hash": "0a86fee",
+      "tokens_in": 88480,
+      "tokens_out": 3237,
+      "cost_usd": 0
+    }
+  ],
+  "in_progress": [],
+  "pending": [],
+  "deferred_tasks": [],
+  "key_metrics": {
+    "total_cycles": 1,
+    "avg_duration_ms": 134695,
+    "success_rate": 1,
+    "tokens_consumed": 91717,
+    "cost_consumed": 0
+  },
+  "decisions": [
+    "G21-readonly-review: selected codex-cli - agent_id override",
+    "G21-readonly-review: stop after iteration 1 - Verifier passed with score 1.00."
+  ]
+}

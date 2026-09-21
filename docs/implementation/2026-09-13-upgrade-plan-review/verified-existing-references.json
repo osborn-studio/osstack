@@ -1,0 +1,19 @@
+{
+  "files": {
+    "packages/cli/src/daemon-policy-gate.test.ts": true,
+    "packages/cli/src/session-rpc.test.ts": true,
+    "packages/cli/src/daemon-rpc-latency.test.ts": true,
+    "scripts/build-single-binary.mjs": true,
+    "scripts/bench-cli-startup.mjs": true,
+    "packages/protocol/scripts/generate-schemas.mjs": true
+  },
+  "protocolScripts": {
+    "build": "tsc -p .",
+    "prepack": "node ../../scripts/prepare-npm-package.mjs",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "generate:schemas": "node scripts/generate-schemas.mjs",
+    "check:schemas": "node scripts/generate-schemas.mjs --check"
+  },
+  "note": "Existence verified; commands not executed during planning."
+}

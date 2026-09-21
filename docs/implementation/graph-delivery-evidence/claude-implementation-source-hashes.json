@@ -1,0 +1,9 @@
+{
+  "packages/cli/src/graph-delivery.ts": "4a0f693514e7e3e6802fa33a00177b816a87071da9abc1e38b2b3008f82a94d5",
+  "packages/cli/src/graph-delivery-receipts.ts": "1fd5457a75dfff05b8afad54d91c5eddf7161d4f6af614d37c3f38543bf58e22",
+  "packages/graph/src/spec-compiler.ts": "4c61b28772157532e3216cdad6e95c853d7de47c9ec41a4c684121813ae406c4",
+  "packages/graph/src/templates/code-delivery-v1.ts": "823ec9917c77b8b090350c6b422e3200af267c90263bd24b6c8fdd208dc9dfdd",
+  "packages/cli/src/graph-verification-join.ts": "c805936dce3ac5fa4be1c90f861f9b8cf128fe5238d4e77a6e706abb949d234f",
+  "packages/graph/src/join.ts": "30cea001a760bd7c5c0a0f7cfe9f4de7c695bf293f654609899412043cad75ab",
+  "packages/graph/src/route.ts": "bb30dffe64cb8d744a0c4256bb487c4fff188aaf8e4a892fed9624916476aec5"
+}

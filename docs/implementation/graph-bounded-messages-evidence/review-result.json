@@ -1,0 +1,111 @@
+{
+  "duration_api_ms": 232588,
+  "stop_reason": "end_turn",
+  "session_id": "864e17a6-bdc4-4fe5-8de9-01650e29794a",
+  "total_cost_usd": 2.0025275000000002,
+  "usage": {
+    "input_tokens": 226,
+    "cache_creation_input_tokens": 53788,
+    "cache_read_input_tokens": 236558,
+    "output_tokens": 17283,
+    "output_tokens_details": {
+      "thinking_tokens": 11651
+    },
+    "server_tool_use": {
+      "web_search_requests": 0,
+      "web_fetch_requests": 0
+    },
+    "service_tier": "standard",
+    "cache_creation": {
+      "ephemeral_1h_input_tokens": 53788,
+      "ephemeral_5m_input_tokens": 0
+    },
+    "inference_geo": "not_available",
+    "iterations": [
+      {
+        "input_tokens": 32,
+        "output_tokens": 7689,
+        "cache_read_input_tokens": 55886,
+        "cache_creation_input_tokens": 702,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 0,
+          "ephemeral_1h_input_tokens": 702
+        },
+        "type": "message",
+        "model": null
+      }
+    ],
+    "speed": "standard"
+  },
+  "modelUsage": {
+    "claude-haiku-4-5-20251001": {
+      "inputTokens": 1138,
+      "outputTokens": 16,
+      "cacheReadInputTokens": 0,
+      "cacheCreationInputTokens": 0,
+      "webSearchRequests": 0,
+      "costUSD": 0.001218,
+      "contextWindow": 200000,
+      "maxOutputTokens": 32000,
+      "thinkingTokens": 0,
+      "canonicalModel": "claude-haiku-4-5",
+      "provider": "firstParty",
+      "costBasis": "list"
+    },
+    "claude-fable-5-1": {
+      "inputTokens": 226,
+      "outputTokens": 17283,
+      "cacheReadInputTokens": 236558,
+      "cacheCreationInputTokens": 53788,
+      "webSearchRequests": 0,
+      "costUSD": 2.0013095,
+      "contextWindow": 1000000,
+      "maxOutputTokens": 64000,
+      "thinkingTokens": 11651,
+      "canonicalModel": "claude-fable-5-1",
+      "provider": "firstParty",
+      "costBasis": "list"
+    }
+  },
+  "permission_denials": [],
+  "terminal_reason": "completed",
+  "fast_mode_state": "off",
+  "fast_mode_disabled_reason": "sdk_opt_in_required",
+  "subagent_stats": {
+    "spawned": 0,
+    "requested": {
+      "background": 0,
+      "foreground": 0,
+      "unset": 0
+    },
+    "started_in_background": 0,
+    "max_depth": 0,
+    "spawned_by_subagents": 0,
+    "completed": 0,
+    "failed": 0,
+    "killed": {
+      "parent": 0,
+      "user": 0,
+      "system": 0
+    },
+    "refused": {
+      "depth_limit": 0,
+      "concurrency_limit": 0,
+      "budget": 0
+    },
+    "by_type": {}
+  },
+  "is_error": false,
+  "num_turns": 23,
+  "subtype": "success",
+  "api_error_status": null,
+  "result": "Verdict: changes requested before this backs the API pilot. Read-only review, nothing executed. The core safety properties hold up on inspection: relative allowlisted paths with no dot segments, realpath and inode checks, per-file and snapshot byte caps, synchronous host authority re-checked before the write, atomic temp-and-rename with fsync, fixed origin with redirects refused, and transport failures left unconfirmed. The defects below are about liveness of the stop receipt, evidence quality, and contract mismatches with the graph consumers.\n\n1. **HTTP error responses are permanently unconfirmed.** `packages/agents/src/adapters/bounded-messages.ts:153` throws on any non-2xx, and line 182 only records a receipt when nothing was dispatched or a message completed. A 400, 401, 404 model-not-found, 413, 429 or 529 is a terminal answer from the fixed origin, not a network failure, yet the run stays `{stopped:false}` forever. Receipts are in-memory and line 121 refuses run-id reuse, so there is no recovery path. Downstream, `packages/cli/src/graph-action-broker.ts:559-562` then throws \"external stop unconfirmed\", turning an ordinary rate limit into a reconciliation incident. Fix: read the error body through `boundedBody`, and for 4xx with a parsed Anthropic error envelope set `stopped:true` with evidence `anthropic-bounded-v1:http-<status>:<sha256(body)>`. Keep fetch rejections, aborts, truncated bodies and 5xx unconfirmed.\n\n2. **Iterator close at the first yield leaves no receipt.** The `run.started` yield on line 125 sits outside the try. A consumer that calls `return()` while suspended there, as `packages/loop/src/executor.ts:274` and `packages/cli/src/adapter-lifecycle.ts:37` do, runs only the finally on line 185. Nothing was dispatched, but the receipt stays `{stopped:false}` for good. Fix: in the finally, if `!dispatched` and the stored receipt is not yet stopped, set `stopped:true` with the existing `no-request-dispatched` evidence.\n\n3. **Writer cannot rewrite files above roughly 20 KB.** Line 30 accepts replacement content up to 64 KiB, but line 140 caps output at 8192 tokens and the content must come back JSON-escaped. Larger files deterministically end in `max_tokens` and fail at line 161 after paid inference. Fix: raise `max_tokens` for the writer role and reject, before dispatch, any disclosed file whose byte size cannot fit the output budget with a dedicated error code.\n\n4. **Evidence is not bound to the request and embeds an unconstrained id.** Line 177 hashes only the response, and line 31 allows any 1 to 256 character provider id, including colons, newlines and control characters. A reconciler cannot check that a receipt belongs to this run's model, prompt and file digests, and a hostile id can corrupt line-oriented evidence records. Fix: constrain the id to `/^[A-Za-z0-9_-]{1,64}$/`, and emit `anthropic-bounded-v1:<id>:req=<sha256(request)>:res=<sha256(raw)>`. Include the request hash in the stopped-failure variant on line 182 as well.\n\n5. **Reviewer output budget disagrees with the graph parser.** Line 28 allows a 4000-character summary plus 32 findings of 2000 characters. `packages/graph/src/nodes/review.ts:11` rejects any serialized report over 8192 UTF-8 bytes as contract-invalid. A verbose but valid reviewer answer passes the adapter, is placed in `result_summary` on line 174, and then fails verification with a retry. Fix: enforce the 8192-byte serialized cap in the adapter schema and state the budget in the reviewer system prompt on line 143.\n\n6. **Failure cause is never surfaced.** Lines 181 to 184 swallow the error and emit a generic summary, so the host cannot distinguish a rate limit, a schema failure, a model mismatch or a cancelled write, which matters for retry-safety decisions. The error names are safe constants. Fix: if the message matches `/^BOUNDED_[A-Z_]+$/`, emit it as the `code` of a non-terminal `error` event or append it to `result_summary`; map anything else to `BOUNDED_INTERNAL`.\n\n7. **`usage.final` violates the Hermes schema.** Line 179 omits `duration_ms`, which `packages/hermes-adapter/src/events.ts:141-143` requires. The loop executor's lenient validator tolerates it, but any consumer applying the full event schema rejects the event. Fix: record the start time and emit `duration_ms`.\n\nFindings 1, 3 and 4 are the ones I would block the pilot on. The rest are cheap and worth folding into the same slice.",
+  "ttft_ms": 2202,
+  "type": "result",
+  "duration_ms": 231958,
+  "uuid": "1c617800-1ff4-4cee-848f-223d4b225772",
+  "ttft_stream_ms": 1990,
+  "time_to_request_ms": 533,
+  "first_content_frame_ms": 1992,
+  "queued_turn_count": 0
+}

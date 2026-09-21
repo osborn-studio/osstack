@@ -1,0 +1,5 @@
+{
+  "ok": true,
+  "kind": "npm-publish-order-smoke",
+  "cases": 7
+}

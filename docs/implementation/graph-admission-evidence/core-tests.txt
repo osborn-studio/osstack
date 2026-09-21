@@ -1,0 +1,44 @@
+$ vitest run --maxWorkers=2
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/core
+
+ ✓ src/kanban/kanban.test.ts (42 tests) 513ms
+ ✓ src/state/session-continuations.test.ts (33 tests) 433ms
+ ✓ src/state/improvement-proposals.test.ts (20 tests) 232ms
+ ✓ src/state/graph-runs.test.ts (30 tests) 831ms
+   ✓ graph run storage > serializes independent SQLite workers: same-request  324ms
+ ✓ src/state/autonomy-runs.test.ts (9 tests) 129ms
+ ✓ src/state/run-store.test.ts (11 tests) 131ms
+ ✓ src/state/probe-store.test.ts (9 tests) 139ms
+ ✓ src/state/memory.test.ts (8 tests) 97ms
+ ✓ src/state/knowledge-hygiene-store.test.ts (7 tests) 132ms
+ ✓ src/state/lessons.test.ts (6 tests) 128ms
+ ✓ src/state/sessions.test.ts (7 tests) 88ms
+ ✓ src/state/db.test.ts (20 tests) 315ms
+ ✓ src/state/knowledge-hygiene-recurrence.test.ts (5 tests) 87ms
+ ✓ src/state/evaluator-epochs.test.ts (4 tests) 52ms
+ ✓ src/state/contract-approvals.test.ts (4 tests) 56ms
+ ✓ src/state/probe-portfolio.test.ts (3 tests) 41ms
+ ✓ src/state/notification-outbox.test.ts (3 tests) 49ms
+ ✓ src/state/deploy-freezes.test.ts (3 tests) 43ms
+ ✓ src/state/rollback-drills.test.ts (2 tests) 29ms
+ ✓ src/graph/repository-scope.test.ts (6 tests) 5764ms
+   ✓ bounds Git subprocess output and terminates a hung Git process  5389ms
+ ✓ src/policy/agent-scorecard.test.ts (2 tests) 29ms
+ ✓ src/state/feedback-assets.test.ts (2 tests) 29ms
+ ✓ src/policy/profile.test.ts (37 tests) 37ms
+ ✓ src/state/probe-outcome-metrics.test.ts (2 tests) 29ms
+ ✓ src/state/knowledge-hygiene-store-v2.test.ts (5 tests) 51ms
+ ✓ src/orchestrator/router.test.ts (19 tests) 54ms
+ ✓ src/state/knowledge-hygiene-history-v2.test.ts (2 tests) 29ms
+ ✓ src/state/knowledge-hygiene-plan-store.test.ts (2 tests) 19ms
+ ✓ src/privacy/redactor.test.ts (11 tests) 3ms
+ ✓ src/state/dependency-obligation-store.test.ts (2 tests) 21ms
+ ✓ src/kanban/transition-guard.test.ts (3 tests) 2ms
+ ✓ src/state/protocol-mappers.test.ts (15 tests) 4ms
+ ✓ src/policy/engine.test.ts (8 tests) 2ms
+
+ Test Files  33 passed (33)
+      Tests  342 passed (342)
+   Start at  06:12:05
+   Duration  6.82s (transform 302ms, setup 0ms, collect 915ms, tests 9.60s, environment 2ms, prepare 808ms)

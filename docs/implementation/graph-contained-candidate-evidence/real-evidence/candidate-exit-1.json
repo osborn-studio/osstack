@@ -1,0 +1,143 @@
+{
+  "acceptance": {
+    "command": "test \"$(cat file)\" = candidate || exit 98; test \"$(pwd)\" != /tmp || exit 99; exit 1",
+    "failExitCodes": [
+      1
+    ],
+    "passExitCodes": [
+      0,
+      42
+    ],
+    "ref": "acceptance"
+  },
+  "binding": {
+    "acceptanceRef": "acceptance",
+    "artifactDigest": "8a4967190c875d42a19a6b23c1ded360fff68529e63ca0ce3414c28cc1cac5c1",
+    "candidateRevision": "7e1be68af9defc44e05fbb0f11469503b634621b",
+    "epoch": 0,
+    "graphRunId": "c529b8bf-aaf3-498f-acfd-cd1228921678",
+    "scope": {
+      "principalId": "p",
+      "schemaVersion": 1,
+      "tenantId": "t",
+      "workspaceId": "w"
+    },
+    "specHash": "2f30a89adfae2d23f96ffe5c3c4d023949b5c2c13b174873726071b00fd6940d"
+  },
+  "candidateIdentity": {
+    "after": {
+      "containedContentDigest": "74a02cb1b3217266498db4054c669e1ea501e5d09722d971d3642290563db1e3",
+      "head": "7e1be68af9defc44e05fbb0f11469503b634621b",
+      "indexDigest": "3ebd62645199fde3eb4cd992d402f1e7d44e0abffb95afdd2bb24529fafc8436",
+      "indexTree": "5be7a9f1fe235548a3bdf8fe97daf4312851eb2b",
+      "repositoryDigest": "27ff70b8916b863490c7db26efe6b2e2ee9a734aa28e804d74ec91990dd8001d",
+      "trackedDigest": "8866f62e436a830c7998425f5a0b571b03b1ff3d16fe977890aae8aed3dffd47",
+      "tree": "5be7a9f1fe235548a3bdf8fe97daf4312851eb2b"
+    },
+    "before": {
+      "containedContentDigest": "74a02cb1b3217266498db4054c669e1ea501e5d09722d971d3642290563db1e3",
+      "head": "7e1be68af9defc44e05fbb0f11469503b634621b",
+      "indexDigest": "3ebd62645199fde3eb4cd992d402f1e7d44e0abffb95afdd2bb24529fafc8436",
+      "indexTree": "5be7a9f1fe235548a3bdf8fe97daf4312851eb2b",
+      "repositoryDigest": "27ff70b8916b863490c7db26efe6b2e2ee9a734aa28e804d74ec91990dd8001d",
+      "trackedDigest": "8866f62e436a830c7998425f5a0b571b03b1ff3d16fe977890aae8aed3dffd47",
+      "tree": "5be7a9f1fe235548a3bdf8fe97daf4312851eb2b"
+    }
+  },
+  "effect": {
+    "effectSlot": "invoke",
+    "epoch": 0,
+    "graphRunId": "c529b8bf-aaf3-498f-acfd-cd1228921678",
+    "logicalAttempt": 1,
+    "nodeId": "tests",
+    "schemaVersion": 1,
+    "scope": {
+      "principalId": "p",
+      "schemaVersion": 1,
+      "tenantId": "t",
+      "workspaceId": "w"
+    },
+    "specHash": "2f30a89adfae2d23f96ffe5c3c4d023949b5c2c13b174873726071b00fd6940d"
+  },
+  "effectKey": "96cb6c74a3430f1808f84dab286a3327ef1edcebfd65a5a78b568d30bce998e3",
+  "effectSlot": "invoke",
+  "evidence": {
+    "candidate": {
+      "execution": {
+        "adapter_event_count": 1,
+        "agent_id": "registered-command",
+        "command_results": [],
+        "completed_at": "2026-09-17T02:49:01.747Z",
+        "duration_ms": 147,
+        "outcome": "failed",
+        "plan_id": "verification:6baf2ffe-805f-48d3-9912-e1349537e7a2",
+        "run_id": "run_9852993d-7438-4026-9dc6-4c0ba4198e8b",
+        "started_at": "2026-09-17T02:49:01.600Z",
+        "task_id": "verification:tests:2d2081e4-8111-4c3e-9e6d-0fbf92352e6c"
+      },
+      "status": "failed",
+      "workspace": {
+        "workspace_id": "w",
+        "workspace_path": "/Volumes/AIMATE_WORK/tmp/g25-candidate/g19-RCPPYG/verification/tests-a11d0909-fcfe-4b2f-b985-f1d1f84f204c"
+      }
+    },
+    "contained": {
+      "identity": {
+        "artifactDigest": "8a4967190c875d42a19a6b23c1ded360fff68529e63ca0ce3414c28cc1cac5c1",
+        "candidateRevision": "7e1be68af9defc44e05fbb0f11469503b634621b",
+        "command": "test \"$(cat file)\" = candidate || exit 98; test \"$(pwd)\" != /tmp || exit 99; exit 1",
+        "effectKey": "96cb6c74a3430f1808f84dab286a3327ef1edcebfd65a5a78b568d30bce998e3",
+        "generation": 1,
+        "graphRunId": "c529b8bf-aaf3-498f-acfd-cd1228921678",
+        "image": {
+          "archiveDigest": "53e3322e243c86464bbbe2d802f334c483725aa788eca6787ea1530676aeb5f0",
+          "baseImageId": "sha256:14358309a308569c32bdc37e2e0e9694be33a9d99e68afb0f5ff33cc1f695dce",
+          "contentDigest": "74a02cb1b3217266498db4054c669e1ea501e5d09722d971d3642290563db1e3",
+          "daemonId": "96300cab-3e55-44ea-be6f-834057ae56cc",
+          "imageId": "sha256:e019db56896d864e080247dffd86d051f56d3911148e9002ca7a9c21269a9b8d",
+          "version": 1,
+          "workingDirectory": "/osstack-candidate-7640741e-3005-4a50-9df6-095e76a1f5d8"
+        },
+        "invocationId": "run_9852993d-7438-4026-9dc6-4c0ba4198e8b",
+        "scope": {
+          "principalId": "p",
+          "schemaVersion": 1,
+          "tenantId": "t",
+          "workspaceId": "w"
+        },
+        "version": 1
+      },
+      "result": {
+        "cancelled": false,
+        "evidence": "docker-removed:f73463ef94b3630781e7513692a2103be2dabab00e930708642b99ab1207c007",
+        "exitCode": 1,
+        "output": "",
+        "stopReceipt": {
+          "confirmedAt": 1789613341738,
+          "kind": "docker_removed",
+          "launch": {
+            "containerId": "7bd11afa3dd4b4341c0e318ce233d1cf925c58ad0ceec7431ba4d8c7712b183a",
+            "daemonId": "96300cab-3e55-44ea-be6f-834057ae56cc",
+            "invocationId": "run_9852993d-7438-4026-9dc6-4c0ba4198e8b",
+            "nonce": "b6543f73-3629-4922-9e4f-49f70fa61b2a",
+            "specDigest": "41be151988ca8d113e59f4964c8596e6f4905a087ed30f34756686b2febb432d",
+            "version": 1
+          },
+          "version": 1
+        }
+      }
+    },
+    "status": "failed",
+    "stopped": true
+  },
+  "kind": "tests",
+  "nodeId": "tests",
+  "reviewerIdentity": "reviewer",
+  "schemaVersion": 1,
+  "workspace": {
+    "workspace_id": "w",
+    "workspace_path": "/Volumes/AIMATE_WORK/tmp/g25-candidate/g19-RCPPYG/verification/tests-a11d0909-fcfe-4b2f-b985-f1d1f84f204c"
+  },
+  "workspaceLeaseRef": "verification:6dc13429-57e7-4f33-9997-5832aaa206b4",
+  "writerIdentity": "writer"
+}

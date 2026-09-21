@@ -1,0 +1,16 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+ ✓ src/loop-cli.test.ts (39 tests) 5421ms
+   ✓ loop CLI > keeps legacy full-scan findings as warn evidence while strict baseline scope passes clean changes  332ms
+   ✓ loop CLI > blocks new changed-file errors in strict baseline scope  312ms
+   ✓ loop CLI > gates findings committed by an isolated worktree against the pre-run revision  469ms
+   ✓ loop CLI > passes --worktree through local loop runs  513ms
+   ✓ loop CLI > runs ds-review as a post-execution reviewer verifier  823ms
+   ✓ loop CLI > can run and inspect a loop through the daemon  329ms
+   ✓ loop CLI > can manage a daemon background polling loop  304ms
+
+ Test Files  1 passed (1)
+      Tests  39 passed (39)
+   Start at  06:11:50
+   Duration  6.92s (transform 820ms, setup 8ms, collect 1.29s, tests 5.42s, environment 0ms, prepare 40ms)

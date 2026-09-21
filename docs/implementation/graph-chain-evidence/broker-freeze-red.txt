@@ -1,0 +1,32 @@
+$ vitest run graph-action-freeze.test.ts
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+ ❯ src/graph-action-freeze.test.ts (1 test | 1 failed) 132ms
+   × freezes a real confirmed implementation under the same shared admission into a verified artifact 131ms
+     → unsupported graph action
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/graph-action-freeze.test.ts > freezes a real confirmed implementation under the same shared admission into a verified artifact
+Error: unsupported graph action
+ ❯ GraphActionBroker.register src/graph-action-broker.ts:125:81
+    123|         graphRunId: fixed.graphRunId, specHash: fixed.identity.specHas…
+    124|         nodeId: copy.nodeId, effectSlot: copy.effectSlot, action: copy…
+    125|       if (copy.action.kind === "freeze" || typeof persist !== "functio…
+       |                                                                                 ^
+    126|       if (!Number.isSafeInteger(copy.tokenReservation) || copy.tokenRe…
+    127|       let selected: RegisteredExecution; let access: "read" | "write" …
+ ❯ src/graph-action-freeze.test.ts:50:10
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed (1)
+   Start at  07:44:09
+   Duration  1.76s (transform 763ms, setup 18ms, collect 1.31s, tests 132ms, environment 0ms, prepare 71ms)
+
+/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli:
+[ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL] @osstack/cli@0.19.0 test: `vitest run graph-action-freeze.test.ts`
+Exit status 1

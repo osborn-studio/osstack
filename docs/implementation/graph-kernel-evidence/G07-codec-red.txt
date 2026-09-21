@@ -1,0 +1,29 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/graph
+
+
+⎯⎯⎯⎯⎯⎯ Failed Suites 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/checkpoint-codec.test.ts [ src/checkpoint-codec.test.ts ]
+Error: Cannot find module './checkpoint-codec.js' imported from '/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/graph/src/checkpoint-codec.test.ts'
+ ❯ src/checkpoint-codec.test.ts:2:1
+      1| import { describe, expect, it, vi } from 'vitest';
+      2| import { CheckpointCodec, assertCheckpointV4 } from './checkpoint-code…
+       | ^
+      3|
+      4| const codec = new CheckpointCodec();
+
+Caused by: Error: Failed to load url ./checkpoint-codec.js (resolved id: ./checkpoint-codec.js) in /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/graph/src/checkpoint-codec.test.ts. Does the file exist?
+ ❯ loadAndTransform ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:35835:17
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  no tests
+   Start at  18:11:29
+   Duration  199ms (transform 26ms, setup 0ms, collect 0ms, tests 0ms, environment 0ms, prepare 32ms)
+
+undefined
+/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/graph:
+[ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL] Command failed with exit code 1: vitest run src/checkpoint-codec.test.ts

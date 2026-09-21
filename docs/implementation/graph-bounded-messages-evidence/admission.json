@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-09-20",
+  "acceptedCodeCommit": "d443eeb1125e1bb0d5814fda3a065f1c81ac2868",
+  "slice": "G25-B1",
+  "decision": "bounded_backend_implemented_fixture_verified",
+  "liveProviderPilot": "pending_explicit_api_credential",
+  "parentTaskCount": {
+    "completed": 25,
+    "total": 30
+  },
+  "loop": {
+    "taskId": "G25-bounded-messages-1",
+    "executed": 1,
+    "skipped": 0,
+    "outcome": "success"
+  },
+  "tests": {
+    "agents": 46,
+    "cli": 89,
+    "loop": 141,
+    "total": 276,
+    "failed": 0
+  },
+  "checks": [
+    "pnpm build",
+    "pnpm typecheck:check",
+    "protocol check:schemas",
+    "CLI startup budget",
+    "git diff --check"
+  ],
+  "fableReview": {
+    "model": "claude-fable-5-1",
+    "initialConsultation": "invalid_pseudo_tool_output_not_counted",
+    "firstReview": "changes_requested",
+    "secondReview": "accept"
+  },
+  "remaining": [
+    "G25-B2 live API pilot",
+    "G25-C2 admitted effect recovery",
+    "G25-D original fault windows",
+    "G26-B compatibility"
+  ]
+}

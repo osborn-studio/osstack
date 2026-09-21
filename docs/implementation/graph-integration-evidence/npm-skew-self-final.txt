@@ -1,0 +1,1 @@
+{"ok":true,"kind":"npm-registry-skew-self-test","cases":22}

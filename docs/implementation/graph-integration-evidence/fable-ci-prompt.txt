@@ -1,0 +1,61 @@
+Independent final integration delta review. Do not use tools. Previously you accepted migration lineage and executor integration at fec0b18. Only CI job budget and a release smoke fixture are changing now, plus evidence/docs. Return accept or changes_requested, concrete blockers only.
+
+GitHub run 35550018695: all 3974 full-suite tests passed (3 explicit opt-in skips); both Node20.6 and22.23.1 matrix jobs passed; test stage took13m36s, then release-plan smoke failed querying real npm for unpublished @osstack/graph despite the fixture claiming all external conditions mocked. Local reproduction has same missing package. Adding the existing bootstrap override fixes the local smoke; real production readiness check remains unchanged. Existing product-entry-cli regression explicitly asserts missing bootstrap => npm readiness false. Whole CI budget changes20=>35 minutes because tests alone+build take16minutes before existing npm/release smokes; per-test and startup budgets remain unchanged. Installed isolated daemon/nativeSQLite tested disabled then enabled graph with local fixture provider, ready, source unchanged. No production changes or public npm publish.
+
+diff --git a/.github/workflows/ci.yml b/.github/workflows/ci.yml
+index e2405d2..6288ff8 100644
+--- a/.github/workflows/ci.yml
++++ b/.github/workflows/ci.yml
+@@ -22,7 +22,10 @@ concurrency:
+ jobs:
+   check:
+     runs-on: ubuntu-latest
+-    timeout-minutes: 20
++    # The integrated full suite takes ~14 minutes before the existing package
++    # install / release smokes. Keep their verification, and budget the whole
++    # job separately from unchanged per-test and startup latency limits.
++    timeout-minutes: 35
+     steps:
+       - uses: actions/checkout@v7
+         with:
+diff --git a/scripts/smoke-release-plan.mjs b/scripts/smoke-release-plan.mjs
+index 2b10200..d2c197c 100644
+--- a/scripts/smoke-release-plan.mjs
++++ b/scripts/smoke-release-plan.mjs
+@@ -322,6 +322,9 @@ function releasePlanEnv() {
+     ].join(","),
+     OSSTACK_TEST_RELEASE_NPM_AUTH: "ok",
+     OSSTACK_TEST_RELEASE_NPM_SCOPE_ACCESS: "ok",
++    // The ready-path fixture must not query the live registry for new packages.
++    // Missing-package refusal is covered by product-entry-cli.test.ts.
++    OSSTACK_TEST_RELEASE_NPM_BOOTSTRAP: "ok",
+     OSSTACK_TEST_RELEASE_EDGEONE_DEPLOY_HOOK: "ok",
+     OSSTACK_TEST_RELEASE_VERSION_PR: "none",
+     OSSTACK_TEST_RELEASE_KNOWLEDGE_WORKFLOW: "ok",
+
+Existing negative regression:
+
+  it("blocks Trusted Publishing when a public workspace package has not been bootstrapped", async () => {
+    process.env["OSSTACK_TEST_RELEASE_GITHUB_AUTH"] = "ok";
+    process.env["OSSTACK_TEST_RELEASE_SECRETS"] = "";
+    process.env["OSSTACK_TEST_RELEASE_NPM_BOOTSTRAP"] = "error:@osstack/new-package";
+    process.env["OSSTACK_TEST_RELEASE_VERSION_PR"] = "none";
+
+    const exitCode = await main(["release", "doctor", "--target", "npm", "--json"]);
+
+    expect(exitCode).toBe(1);
+    const result = JSON.parse(logs.join("\n")) as {
+      readiness: { npm_publish: boolean };
+      checks: Array<{ id: string; status: string; details?: Record<string, unknown> }>;
+      next_steps: string[];
+    };
+    expect(result.readiness.npm_publish).toBe(false);
+    expect(result.checks).toContainEqual(expect.objectContaining({
+      id: "npm_package_bootstrap",
+      status: "error",
+      details: expect.objectContaining({ missing: ["@osstack/new-package"] }),
+    }));
+    expect(result.next_steps.join("\n")).toContain("Bootstrap the unpublished npm package");
+  });
+
+  it("can include proof-core validation in release doctor readiness", async () => {

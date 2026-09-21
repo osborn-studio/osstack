@@ -1,0 +1,153 @@
+{
+  "taskReturns": [
+    {
+      "checkpoint": {
+        "configurable": {
+          "checkpoint_id": "1f1aff32-589a-6f10-ffff-cb9611e94a15",
+          "checkpoint_ns": "",
+          "thread_id": "c2"
+        }
+      },
+      "taskId": "a81d2ae5-9039-5b18-880e-9170929d3e09",
+      "value": {
+        "results": [
+          "completed"
+        ]
+      }
+    },
+    {
+      "checkpoint": {
+        "configurable": {
+          "checkpoint_id": "1f1aff32-589a-6f10-ffff-cb9611e94a15",
+          "checkpoint_ns": "",
+          "thread_id": "c2"
+        }
+      },
+      "taskId": "0e3d39cb-4a16-5881-ba34-27686d71b291",
+      "value": {
+        "results": [
+          "recovered"
+        ]
+      }
+    },
+    {
+      "checkpoint": {
+        "configurable": {
+          "checkpoint_id": "1f1aff32-589a-6f10-ffff-cb9611e94a15",
+          "checkpoint_ns": "",
+          "thread_id": "c2"
+        }
+      },
+      "taskId": "b0ec4e80-e20a-5eaa-9fab-28c435e45a6b",
+      "value": {
+        "results": [
+          "joined"
+        ]
+      }
+    }
+  ],
+  "counts": {
+    "completedBody": 1,
+    "completedWrapper": 2,
+    "flakyAttempts": 1,
+    "joinWrapper": 1,
+    "joinedBody": 1,
+    "recoveredBody": 1
+  },
+  "effects": {
+    "completed": {
+      "attempt": 1,
+      "effect": "completed",
+      "result": {
+        "results": [
+          "completed"
+        ]
+      },
+      "run": "functional-sync-effect-confirmed-crash",
+      "status": "confirmed"
+    },
+    "joined": {
+      "attempt": 1,
+      "effect": "joined",
+      "result": {
+        "results": [
+          "joined"
+        ]
+      },
+      "run": "functional-sync-effect-confirmed-crash",
+      "status": "confirmed"
+    },
+    "recovered": {
+      "attempt": 1,
+      "effect": "recovered",
+      "result": {
+        "results": [
+          "recovered"
+        ]
+      },
+      "run": "functional-sync-effect-confirmed-crash",
+      "status": "confirmed"
+    }
+  },
+  "tuple": {
+    "checkpoint": {
+      "channel_values": {
+        "__end__": {
+          "results": [
+            "completed",
+            "recovered",
+            "joined"
+          ]
+        },
+        "__pregel_tasks": [],
+        "__previous__": {
+          "results": [
+            "completed",
+            "recovered",
+            "joined"
+          ]
+        }
+      },
+      "channel_versions": {
+        "__end__": 2,
+        "__previous__": 2,
+        "__start__": 2
+      },
+      "id": "1f1aff32-5aac-6ba0-8000-1af1be14274f",
+      "ts": "2026-09-14T04:17:06.906Z",
+      "v": 4,
+      "versions_seen": {
+        "__input__": {},
+        "__interrupt__": {
+          "__start__": 1
+        },
+        "c2-static": {
+          "__start__": 1
+        },
+        "completed": {},
+        "flaky": {},
+        "join": {}
+      }
+    },
+    "config": {
+      "configurable": {
+        "checkpoint_id": "1f1aff32-5aac-6ba0-8000-1af1be14274f",
+        "checkpoint_ns": "",
+        "thread_id": "c2"
+      }
+    },
+    "metadata": {
+      "parents": {},
+      "source": "loop",
+      "step": 0
+    },
+    "parentConfig": {
+      "configurable": {
+        "checkpoint_id": "1f1aff32-589a-6f10-ffff-cb9611e94a15",
+        "checkpoint_ns": "",
+        "thread_id": "c2"
+      }
+    },
+    "pendingWrites": []
+  }
+}

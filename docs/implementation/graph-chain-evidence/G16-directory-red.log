@@ -1,0 +1,47 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/core
+
+Preparing worktree (detached HEAD 165095c)
+ ❯ src/graph/artifact-store.test.ts (15 tests | 1 failed | 14 skipped) 615ms
+   ↓ trusted graph artifact freeze > restores full reachable history and exact raw tree after deleting original repo and worktree
+   × trusted graph artifact freeze > captures tracked-file to directory replacement with unusual filenames 615ms
+     → unsupported nested repository, submodule or special file
+   ↓ trusted graph artifact freeze > rejects missing required receipt fields at runtime
+   ↓ trusted graph artifact freeze > does not return ready if durable ID publication fails; exported bytes remain recoverable
+   ↓ trusted graph artifact freeze > rejects manifest corruption under a pinned artifact digest
+   ↓ trusted graph artifact freeze > rejects same ID with changed receipt or content
+   ↓ trusted graph artifact freeze > rejects nonconforming async authority verifyLease
+   ↓ trusted graph artifact freeze > rejects nonconforming async authority verifyImplementationReceipt
+   ↓ trusted graph artifact freeze > rejects nonconforming async authority verifyProducersStopped
+   ↓ trusted graph artifact freeze > rechecks resolved producer evidence before capture and rejects revocation
+   ↓ trusted graph artifact freeze > rejects mismatched exact source identity and HEAD
+   ↓ trusted graph artifact freeze > does not invoke local hooks or filters during capture or restore
+   ↓ trusted graph artifact freeze > rejects submodules instead of exporting an incomplete tree
+   ↓ trusted graph artifact freeze > rejects corrupted bundles and manifests, including replay
+   ↓ trusted graph artifact freeze > refuses existing and escaping restore destinations
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/graph/artifact-store.test.ts > trusted graph artifact freeze > captures tracked-file to directory replacement with unusual filenames
+Error: unsupported nested repository, submodule or special file
+ ❯ captureArtifactTree src/graph/artifact-git.ts:50:57
+     48|     try { info = await lstat(path); } catch (error) { if ((error as No…
+     49|     if (await realpath(dirname(path)) !== dirname(path)) throw new Err…
+     50|     if (!info.isFile() && !info.isSymbolicLink()) throw new Error("uns…
+       |                                                         ^
+     51|     const data = info.isSymbolicLink() ? Buffer.from(await readlink(pa…
+     52|     const oid = await gitText(objectRepo, ["hash-object", "-w", "--std…
+ ❯ GraphArtifactStore.freeze src/graph/artifact-store.ts:107:20
+ ❯ src/graph/artifact-store.test.ts:55:20
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 14 skipped (15)
+   Start at  07:37:24
+   Duration  1.07s (transform 133ms, setup 0ms, collect 213ms, tests 615ms, environment 0ms, prepare 46ms)
+
+undefined
+/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/core:
+[ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL] Command failed with exit code 1: vitest run src/graph/artifact-store.test.ts -t tracked-file

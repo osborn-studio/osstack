@@ -1,0 +1,6 @@
+{
+  "changedAfterLaunch": [
+    "packages/cli/src/graph-delivery-adversarial.test.ts"
+  ],
+  "reason": "Only new renewal regression added after Loop launch. Final full suite actually ran the final 9-test file (3201 total), then full typecheck passed. Production sources unchanged. Final hashes include that test."
+}

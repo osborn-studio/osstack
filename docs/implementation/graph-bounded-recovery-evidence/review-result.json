@@ -1,0 +1,111 @@
+{
+  "duration_api_ms": 254042,
+  "stop_reason": "end_turn",
+  "session_id": "9098631f-1018-4934-bae7-41ac864a0a59",
+  "total_cost_usd": 2.637048,
+  "usage": {
+    "input_tokens": 194,
+    "cache_creation_input_tokens": 80134,
+    "cache_read_input_tokens": 247940,
+    "output_tokens": 19383,
+    "output_tokens_details": {
+      "thinking_tokens": 13028
+    },
+    "server_tool_use": {
+      "web_search_requests": 0,
+      "web_fetch_requests": 0
+    },
+    "service_tier": "standard",
+    "cache_creation": {
+      "ephemeral_1h_input_tokens": 80134,
+      "ephemeral_5m_input_tokens": 0
+    },
+    "inference_geo": "not_available",
+    "iterations": [
+      {
+        "input_tokens": 32,
+        "output_tokens": 8503,
+        "cache_read_input_tokens": 72233,
+        "cache_creation_input_tokens": 13497,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 0,
+          "ephemeral_1h_input_tokens": 13497
+        },
+        "type": "message",
+        "model": null
+      }
+    ],
+    "speed": "standard"
+  },
+  "modelUsage": {
+    "claude-haiku-4-5-20251001": {
+      "inputTokens": 1208,
+      "outputTokens": 17,
+      "cacheReadInputTokens": 0,
+      "cacheCreationInputTokens": 0,
+      "webSearchRequests": 0,
+      "costUSD": 0.001293,
+      "contextWindow": 200000,
+      "maxOutputTokens": 32000,
+      "thinkingTokens": 0,
+      "canonicalModel": "claude-haiku-4-5",
+      "provider": "firstParty",
+      "costBasis": "list"
+    },
+    "claude-fable-5-1": {
+      "inputTokens": 194,
+      "outputTokens": 19383,
+      "cacheReadInputTokens": 247940,
+      "cacheCreationInputTokens": 80134,
+      "webSearchRequests": 0,
+      "costUSD": 2.635755,
+      "contextWindow": 1000000,
+      "maxOutputTokens": 64000,
+      "thinkingTokens": 13028,
+      "canonicalModel": "claude-fable-5-1",
+      "provider": "firstParty",
+      "costBasis": "list"
+    }
+  },
+  "permission_denials": [],
+  "terminal_reason": "completed",
+  "fast_mode_state": "off",
+  "fast_mode_disabled_reason": "sdk_opt_in_required",
+  "subagent_stats": {
+    "spawned": 0,
+    "requested": {
+      "background": 0,
+      "foreground": 0,
+      "unset": 0
+    },
+    "started_in_background": 0,
+    "max_depth": 0,
+    "spawned_by_subagents": 0,
+    "completed": 0,
+    "failed": 0,
+    "killed": {
+      "parent": 0,
+      "user": 0,
+      "system": 0
+    },
+    "refused": {
+      "depth_limit": 0,
+      "concurrency_limit": 0,
+      "budget": 0
+    },
+    "by_type": {}
+  },
+  "is_error": false,
+  "num_turns": 24,
+  "subtype": "success",
+  "api_error_status": null,
+  "result": "Reading is complete. I've traced the recovery entry point, the journal, the reconciler, the recovery store, the receipt loader, the worker-exit proof, and the repo-lock release. Writing up the verdict now.\n\n## Verdict: changes_requested (one low-severity pin; everything else in scope holds)\n\n**Required change: pin the delivery program version in recovery.**\n`packages/cli/src/graph-bounded-recovery.ts:62-63` hardcodes the verdict result for template version 4 (`workspaceLeaseRef: 'e0.writer'`, `receiptRef: 'e0.implementation'`, matching `graph-delivery.ts:228`). The publish gate at `graph-bounded-recovery-journal.ts:78-81` keys only on generation 1, epoch 0, node `e0.implement`, kind `implement`. Neither side checks the run's program identity. A later template that keeps those node names but changes the persisted result would still be journaled and then settled with the v4 verdict. `validateWorkerActionResponse` at `graph-recovery.ts:345` pins kind and `workspaceLeaseRef` against the action but not `receiptRef`, so a wrong `receiptRef` would be durably confirmed on the ledger. This is the \"unexpected enabling on later graphs\" hole. Minimal fix, after the scope check at line 28:\n\n```ts\nimport { compileGraphSpec } from '@osstack/graph/spec-compiler';\nimport { graphDeliveryVersion } from './graph-delivery.js';\n// ...\nconst version = graphDeliveryVersion(compileGraphSpec(initial.snapshot.run.spec!));\nif (Object.entries(version).some(([k, v]) => (initial.snapshot.run.identity as Record<string, unknown>)[k] !== v)) throw Error('BOUNDED_RECOVERY_SCOPE');\n```\n\nRun identity already carries every field of `graphDeliveryVersion` (`graph-runs.ts:15-16,127`), so this binds recovery to the exact program the hardcoded verdict was written for. Bumping the template then fails closed until recovery is updated.\n\n**Checked and holding**\n\n- **Authority revocation during final transaction.** The store's verifier callback runs inside `BEGIN IMMEDIATE` (`graph-recovery.ts:232,290`) and calls `GraphReconciler.check` \u2192 `registration.authorize` \u2192 your `check()` \u2192 the RPC callback that sets `authorizationFailed` and rethrows (`graph-rpc.ts:188-189`). The transaction rolls back, and `graph-rpc.ts:191` rethrows instead of swallowing. A non-undefined return from `authorize` throws `BOUNDED_RECOVERY_AUTHORITY` without the flag, which is swallowed but still fails closed with no decision. Correct.\n- **Host-dead proof.** `dead()` uses the pid the host itself recorded (`journal.ts:87` requires `lockOwner.pid === process.pid`). ESRCH is required. EPERM and reuse both fail closed. It is rechecked inside the final transaction via `recheck()` and again by `releaseReconciledRepoWriteLock` (`repo-lock.ts:369,373`). A same-pid in-process restart is rejected as HOST_ALIVE. The only known blind spot is separate PID namespaces sharing a volume, which the existing lock code already shares. No lease expiry is consulted anywhere. Matches your stated requirement.\n- **Source and effect identity.** Predecessor receipt is bound to the current registration's `repositoryPath`, writer receipt to `writer-0`. Both re-verify `effect`, `effectKey`, generation, owner (`graph-delivery-receipts.ts:87-89`). `journal.workspacePath` is forced to `join(root,'writer-0')`, `commonDir` to its `.git`, and `resolveRepositoryScope` confirms both plus `repoId` (`recovery.ts:40-45`). The lock owner's `autonomy_run_id` is bound to `graph-action:<effectKey>`, matching `graph-action-broker.ts:331`. `candidate.workspace` and predecessor `baseRevision` are checked against the spec.\n- **Fingerprint exclusion.** Only `.git/osstack/writer-locks` is skipped. The lock file, its renewals, and the mutation guard directory (`repo-lock.ts:162`) all live there, so lease renewal and the release itself cannot invalidate the fingerprint. `nlink === 1` is safe because the clone uses `--no-hardlinks`. `sameOwner` ignores `expires_at` (`repo-lock.ts:201-207`), so a renewed lock still matches the journaled owner.\n- **Missing-lock lost ACK.** Verdict is durable before release. A replacement owner makes `sameOwner` fail, giving `release_pending` without unlinking (`recovery.ts:94`). A missing lock is acknowledged only after the producer is already proven stopped and the host dead. `GraphAdmissionStore.released` is idempotent (`graph-recovery.ts:84`), so a replayed `completeRelease` is harmless. The test at `graph-bounded-recovery.test.ts:77-89` exercises exactly this.\n- **Concurrent reconcile.** Each call builds its own `GraphReconciler`, so `NESTED_RECOVERY` is per instance. Two concurrent commits with the same `bounded-effect:<key>` receipt serialize under `BEGIN IMMEDIATE`; the loser hits `DECISION_CONFLICT` or `PROOF_SNAPSHOT_MISMATCH` and is swallowed at `graph-rpc.ts:191`. Release is serialized by the on-disk mutation guard, which also works cross-host. `assertExecutorInventory` in the final transaction (`recovery.ts:88`) catches any admission change between snapshot and commit.\n- **Corrupt or missing receipts and journal.** Every loader hashes bytes and enforces size and `O_NOFOLLOW`. Failures throw before any decision and are swallowed into a plain `cancel_pending` status. The journal is re-loaded and canonically compared in `recheck()`, and both receipts are re-hashed synchronously inside the final transaction (`recovery.ts:68-71`).\n- **Usage.** Recovery sums `tokens_in + tokens_out`, matching the broker's `measured` (`graph-action-broker.ts:366`). `settle` takes `max(observedTokens, actualTokens)` and `markUncertain` already raised `observedTokens` to at least the reservation, so the charge can never fall below the live path's floor. Missing or unsafe usage fails closed rather than normalizing to null.\n- **Stale idempotency semantics.** After a partial (effect committed, project failed) the revision advanced, so `graph-rpc.ts:162` no longer treats the same key as a replay and returns status. A fresh key retries release. This matches what you said is intended.\n\n**Optional hardening, not blocking**\n\n- `graph-bounded-recovery-journal.ts:96`: `linkSync` throws `EEXIST` if the target already exists. `publishDeliveryReceipt` handles that by digest comparison; the journal does not. Not reachable in this scope since `persist` runs once per invocation, but a byte-compare-on-EEXIST would make the two paths consistent.\n- `recovery.ts:69`: `boundedWorkspaceFingerprint` walks up to 32 MiB synchronously inside the store's `BEGIN IMMEDIATE`. That holds the control DB's write lock for the walk. Correct, but worth noting for shared-database deployments.\n\n**Test coverage gaps against the claims above, for when your run finishes**\n\n- No test revokes authority mid-flight (e.g. flip `allow` from inside a `GraphRecoveryStore.prototype.commit` spy) to exercise the rollback at `graph-recovery.ts:232` rather than the pre-check.\n- No test for a replacement lock owner present on the very first reconcile, as opposed to after a lost ACK. The code path is the same `sameOwner` branch, so this is low risk.",
+  "ttft_ms": 2169,
+  "type": "result",
+  "duration_ms": 253260,
+  "uuid": "bdead84d-cd76-4f83-949a-8ab9414cc714",
+  "ttft_stream_ms": 2019,
+  "time_to_request_ms": 429,
+  "first_content_frame_ms": 2019,
+  "queued_turn_count": 0
+}

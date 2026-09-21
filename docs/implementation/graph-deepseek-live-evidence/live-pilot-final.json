@@ -1,0 +1,486 @@
+{
+  "schemaVersion": 1,
+  "scope": "Live DeepSeek bounded backend pilot; not full G25 fault matrix or G29 internal rollout",
+  "root": "/Volumes/AIMATE_WORK/tmp/g25-deepseek/live-home/pilot-58GdTU",
+  "home": "/Volumes/AIMATE_WORK/tmp/g25-deepseek/live-home/pilot-58GdTU/home",
+  "model": "deepseek-v4-pro",
+  "baseUrl": "https://api.deepseek.com",
+  "startedAt": "2026-09-20T15:26:05.665Z",
+  "checks": [
+    {
+      "name": "real daemon graph writer/freeze/reviewer/acceptance/join ready; source unchanged; replay stable",
+      "passed": true
+    },
+    {
+      "name": "independent real reviewer rejects original defect with stopped evidence",
+      "passed": true
+    },
+    {
+      "name": "cancel admitted live writer; no freeze or forced release of unknown inference",
+      "passed": true
+    }
+  ],
+  "passed": true,
+  "health": {
+    "canRunLocal": true,
+    "writeBlockers": [],
+    "checks": [
+      {
+        "id": "state_db",
+        "status": "ok",
+        "scope": "none",
+        "detail": "state database is readable"
+      },
+      {
+        "id": "daemon_socket",
+        "status": "ok",
+        "scope": "none",
+        "detail": "daemon socket and pidfile are present"
+      },
+      {
+        "id": "disk_free",
+        "status": "ok",
+        "scope": "none",
+        "detail": "2247385325568 bytes free"
+      },
+      {
+        "id": "repo_registry",
+        "status": "warn",
+        "scope": "none",
+        "detail": "repository registry is not configured"
+      },
+      {
+        "id": "repo_locks",
+        "status": "ok",
+        "scope": "none",
+        "detail": "no repository write locks"
+      },
+      {
+        "id": "kimi_code",
+        "status": "ok",
+        "scope": "none",
+        "detail": "Kimi Code is available"
+      },
+      {
+        "id": "builder_agents",
+        "status": "ok",
+        "scope": "none",
+        "detail": "4 code-writing builders available"
+      },
+      {
+        "id": "github_auth",
+        "status": "ok",
+        "scope": "none",
+        "detail": "GitHub authentication is valid"
+      },
+      {
+        "id": "github_network",
+        "status": "ok",
+        "scope": "none",
+        "detail": "GitHub network is reachable"
+      },
+      {
+        "id": "deploy_freezes",
+        "status": "ok",
+        "scope": "none",
+        "detail": "no active production freezes"
+      },
+      {
+        "id": "resumable_runs",
+        "status": "ok",
+        "scope": "none",
+        "detail": "0 resumable autonomy runs"
+      },
+      {
+        "id": "proof_failures",
+        "status": "ok",
+        "scope": "none",
+        "detail": "0 proof or escalated run failures"
+      },
+      {
+        "id": "notification_outbox",
+        "status": "ok",
+        "scope": "none",
+        "detail": "notification outbox is drained"
+      },
+      {
+        "id": "power_policy",
+        "status": "warn",
+        "scope": "none",
+        "detail": "no power assertion selected; explicit Owner selection is required before soak"
+      },
+      {
+        "id": "clock_monitor",
+        "status": "ok",
+        "scope": "none",
+        "detail": "monotonic-v1 clock jump detection is active"
+      },
+      {
+        "id": "log_retention",
+        "status": "ok",
+        "scope": "none",
+        "detail": "0 oversized logs and 0 expired terminal proof directories"
+      },
+      {
+        "id": "launchd_service",
+        "status": "ok",
+        "scope": "none",
+        "detail": "launchctl print evidence sha256=b765cc27ff65a621f5cdc6e2654553c3ab7ee4f0cea2dda80efde7ee415be701"
+      }
+    ]
+  },
+  "successRunId": "098f02d5-ebf4-49e4-905f-13f8bc7d9fc4",
+  "success": {
+    "status": {
+      "schemaVersion": 1,
+      "scope": {
+        "schemaVersion": 1,
+        "tenantId": "local-pilot",
+        "principalId": "owner",
+        "workspaceId": "toy-increment"
+      },
+      "graphRunId": "098f02d5-ebf4-49e4-905f-13f8bc7d9fc4",
+      "source": {
+        "product": "osstack",
+        "requestId": "live-success"
+      },
+      "status": "ready",
+      "revision": 36,
+      "generation": 1,
+      "inputDigest": "31dbce32d551d7b720283e06b625163d79dacc62368e70c57b4023e16d6b73cd",
+      "specHash": "f344d20e68d16b621af03087d5cbf4834236c98b3aa96788716e4a79d3c9ebf9",
+      "createdAt": 1789917968485,
+      "updatedAt": 1789918001692,
+      "publication": "artifact_only",
+      "phase": "ready",
+      "budget": {
+        "limits": {
+          "maxEpochs": 2,
+          "maxBranchAttempts": 1,
+          "maxConcurrentReaders": 2,
+          "maxConcurrentWritersPerRepo": 1,
+          "maxActionStarts": 14,
+          "deadlineSeconds": 600,
+          "tokenReservationLimit": 196608
+        },
+        "actionStarts": 7,
+        "reservedTokens": "0",
+        "chargedTokens": "701",
+        "accountingBlocked": false
+      },
+      "candidate": {
+        "candidateRevision": "ac601da872b118792a22c9867d6669907271da13",
+        "artifactRefs": [
+          "graph-artifact:0511d1e3755981449286de9707eee819bca36d6ffae00b59263d2d19fcbf484a"
+        ],
+        "artifactDigest": "0511d1e3755981449286de9707eee819bca36d6ffae00b59263d2d19fcbf484a"
+      },
+      "evidenceRefs": [
+        "graph-join:ed20f83fb412e213e67322303092af4084254eba09428aaa0186e1d7ed692dd9"
+      ],
+      "resultRef": "graph-join:ed20f83fb412e213e67322303092af4084254eba09428aaa0186e1d7ed692dd9",
+      "delivery": "available"
+    },
+    "candidateSource": "export function increment(value) { return value + 1; }\n",
+    "actions": [
+      {
+        "node_id": "e0.workspace",
+        "state": "confirmed",
+        "outcome_json": "{\"actualTokens\":0,\"evidenceRef\":\"graph-delivery:d3ba29c51e2da7eff7fdfb16b75baf3ae987f94e35df1b74836630aa2ae9352c\",\"result\":{\"kind\":\"workspace\",\"receiptRef\":\"e0.workspace\",\"schemaVersion\":1,\"workspaceLeaseRef\":\"e0.writer\"},\"state\":\"confirmed\"}"
+      },
+      {
+        "node_id": "e0.implement",
+        "state": "confirmed",
+        "outcome_json": "{\"actualTokens\":343,\"evidenceRef\":\"graph-delivery:9f471f7a1f2e7b10e8e64518db8135f4ac9cbdb3d4fedd69d7754dd45a766786\",\"result\":{\"kind\":\"implementation_complete\",\"receiptRef\":\"e0.implementation\",\"schemaVersion\":1,\"workspaceLeaseRef\":\"e0.writer\"},\"state\":\"confirmed\"}"
+      },
+      {
+        "node_id": "e0.freeze",
+        "state": "confirmed",
+        "outcome_json": "{\"actualTokens\":0,\"evidenceRef\":\"graph-delivery:44b4fa758602fe8f782a06d63f0f323e4013838a8b0aef6d975f89d6da278058\",\"result\":{\"artifactDigest\":\"0511d1e3755981449286de9707eee819bca36d6ffae00b59263d2d19fcbf484a\",\"artifactRefs\":[\"graph-artifact:0511d1e3755981449286de9707eee819bca36d6ffae00b59263d2d19fcbf484a\"],\"candidateRevision\":\"ac601da872b118792a22c9867d6669907271da13\",\"kind\":\"candidate_ready\",\"schemaVersion\":1},\"state\":\"confirmed\"}"
+      },
+      {
+        "node_id": "e0.prepare_review",
+        "state": "confirmed",
+        "outcome_json": "{\"actualTokens\":0,\"evidenceRef\":\"graph-delivery:0005addfebb6828ad6f0908c6c6b61e243f5759eb0f6360a8e7ba0354f95fe97\",\"result\":{\"kind\":\"workspace\",\"receiptRef\":\"e0.prepared.review.1\",\"schemaVersion\":1,\"workspaceLeaseRef\":\"e0.review\"},\"state\":\"confirmed\"}"
+      },
+      {
+        "node_id": "e0.prepare_tests",
+        "state": "confirmed",
+        "outcome_json": "{\"actualTokens\":0,\"evidenceRef\":\"graph-delivery:dfe855b090038768ea1c84a80ba6cb24d49afd08aec3769fc39a6b1a3844fb69\",\"result\":{\"kind\":\"workspace\",\"receiptRef\":\"e0.prepared.tests.1\",\"schemaVersion\":1,\"workspaceLeaseRef\":\"e0.tests\"},\"state\":\"confirmed\"}"
+      },
+      {
+        "node_id": "e0.review",
+        "state": "confirmed",
+        "outcome_json": "{\"actualTokens\":358,\"evidenceRef\":\"graph-verification:1e8b45c0f1c4411467b89a936bdb606f84f5fee1e3748b6c4d9763f9aa006f36\",\"result\":{\"candidateRevision\":\"ac601da872b118792a22c9867d6669907271da13\",\"evidenceDigest\":\"1e8b45c0f1c4411467b89a936bdb606f84f5fee1e3748b6c4d9763f9aa006f36\",\"evidenceRefs\":[\"graph-verification:1e8b45c0f1c4411467b89a936bdb606f84f5fee1e3748b6c4d9763f9aa006f36\"],\"kind\":\"review\",\"schemaVersion\":1,\"verdict\":\"accept\"},\"state\":\"confirmed\"}"
+      },
+      {
+        "node_id": "e0.tests",
+        "state": "confirmed",
+        "outcome_json": "{\"actualTokens\":0,\"evidenceRef\":\"graph-verification:90fe3158d8519cd8fb8121e94cb69dd5cebb573ec356219b9aff9ede9ae02258\",\"result\":{\"candidateRevision\":\"ac601da872b118792a22c9867d6669907271da13\",\"evidenceDigest\":\"90fe3158d8519cd8fb8121e94cb69dd5cebb573ec356219b9aff9ede9ae02258\",\"evidenceRefs\":[\"graph-verification:90fe3158d8519cd8fb8121e94cb69dd5cebb573ec356219b9aff9ede9ae02258\"],\"kind\":\"tests\",\"passed\":true,\"schemaVersion\":1},\"state\":\"confirmed\"}"
+      }
+    ],
+    "join": {
+      "binding": {
+        "acceptanceRef": "closed-source-form",
+        "artifactDigest": "0511d1e3755981449286de9707eee819bca36d6ffae00b59263d2d19fcbf484a",
+        "candidateRevision": "ac601da872b118792a22c9867d6669907271da13",
+        "epoch": 0,
+        "graphRunId": "098f02d5-ebf4-49e4-905f-13f8bc7d9fc4",
+        "scope": {
+          "principalId": "owner",
+          "schemaVersion": 1,
+          "tenantId": "local-pilot",
+          "workspaceId": "toy-increment"
+        },
+        "specHash": "f344d20e68d16b621af03087d5cbf4834236c98b3aa96788716e4a79d3c9ebf9"
+      },
+      "branches": [
+        {
+          "binding": {
+            "acceptanceRef": "closed-source-form",
+            "artifactDigest": "0511d1e3755981449286de9707eee819bca36d6ffae00b59263d2d19fcbf484a",
+            "candidateRevision": "ac601da872b118792a22c9867d6669907271da13",
+            "epoch": 0,
+            "graphRunId": "098f02d5-ebf4-49e4-905f-13f8bc7d9fc4",
+            "scope": {
+              "principalId": "owner",
+              "schemaVersion": 1,
+              "tenantId": "local-pilot",
+              "workspaceId": "toy-increment"
+            },
+            "specHash": "f344d20e68d16b621af03087d5cbf4834236c98b3aa96788716e4a79d3c9ebf9"
+          },
+          "effectKey": "7a0d43fe8c8fbd3090af7b30afb1891b9e6b2577cd565bf43f67fca6d35bdc4e",
+          "effectSlot": "main",
+          "kind": "review",
+          "logicalAttempt": 1,
+          "nodeId": "e0.review",
+          "result": {
+            "candidateRevision": "ac601da872b118792a22c9867d6669907271da13",
+            "evidenceDigest": "1e8b45c0f1c4411467b89a936bdb606f84f5fee1e3748b6c4d9763f9aa006f36",
+            "evidenceRefs": [
+              "graph-verification:1e8b45c0f1c4411467b89a936bdb606f84f5fee1e3748b6c4d9763f9aa006f36"
+            ],
+            "kind": "review",
+            "schemaVersion": 1,
+            "verdict": "accept"
+          },
+          "schemaVersion": 1,
+          "state": "confirmed"
+        },
+        {
+          "binding": {
+            "acceptanceRef": "closed-source-form",
+            "artifactDigest": "0511d1e3755981449286de9707eee819bca36d6ffae00b59263d2d19fcbf484a",
+            "candidateRevision": "ac601da872b118792a22c9867d6669907271da13",
+            "epoch": 0,
+            "graphRunId": "098f02d5-ebf4-49e4-905f-13f8bc7d9fc4",
+            "scope": {
+              "principalId": "owner",
+              "schemaVersion": 1,
+              "tenantId": "local-pilot",
+              "workspaceId": "toy-increment"
+            },
+            "specHash": "f344d20e68d16b621af03087d5cbf4834236c98b3aa96788716e4a79d3c9ebf9"
+          },
+          "effectKey": "070f6e538b40467168d54639e9b226e25ab384ec8fcd98a3b236ddb0a4d15238",
+          "effectSlot": "main",
+          "kind": "tests",
+          "logicalAttempt": 1,
+          "nodeId": "e0.tests",
+          "result": {
+            "candidateRevision": "ac601da872b118792a22c9867d6669907271da13",
+            "evidenceDigest": "90fe3158d8519cd8fb8121e94cb69dd5cebb573ec356219b9aff9ede9ae02258",
+            "evidenceRefs": [
+              "graph-verification:90fe3158d8519cd8fb8121e94cb69dd5cebb573ec356219b9aff9ede9ae02258"
+            ],
+            "kind": "tests",
+            "passed": true,
+            "schemaVersion": 1
+          },
+          "schemaVersion": 1,
+          "state": "confirmed"
+        }
+      ],
+      "evidenceDigest": "467b7f20abea9155a92d0f59b6cb84579361f58ba2b6c8ce221c3b78521abc00",
+      "expected": {
+        "review": {
+          "effectSlot": "main",
+          "logicalAttempt": 1,
+          "nodeId": "e0.review"
+        },
+        "tests": {
+          "effectSlot": "main",
+          "logicalAttempt": 1,
+          "nodeId": "e0.tests"
+        }
+      },
+      "missing": [],
+      "schemaVersion": 1,
+      "status": "complete"
+    }
+  },
+  "negativeReviewEvents": [
+    {
+      "event_id": "live-negative-review:0",
+      "seq": 0,
+      "run_id": "live-negative-review",
+      "session_id": "independent-negative",
+      "created_at": 1789918001.79,
+      "terminal": false,
+      "type": "run.started",
+      "payload": {
+        "status": "running",
+        "controls": {
+          "cancel": true,
+          "approval_pending": false,
+          "clarify_pending": false,
+          "queue": false,
+          "goal": false
+        }
+      }
+    },
+    {
+      "event_id": "live-negative-review:1",
+      "seq": 1,
+      "run_id": "live-negative-review",
+      "session_id": "independent-negative",
+      "created_at": 1789918004.932,
+      "terminal": false,
+      "type": "token.delta",
+      "payload": {
+        "message_id": "live-negative-review",
+        "delta": "{\"schemaVersion\":1,\"verdict\":\"changes_requested\",\"summary\":\"The function body does not match the required implementation. It returns the input value instead of value + 1.\",\"findings\":[\"The function increment is defined as `export function increment(value) { return value; }`, but the acceptance criteria require `return value + 1;`.\",\"No other code is present, which meets the 'only the named function export' requirement, but the function logic is incorrect.\"]}",
+        "content_type": "text"
+      }
+    },
+    {
+      "event_id": "live-negative-review:2",
+      "seq": 2,
+      "run_id": "live-negative-review",
+      "session_id": "independent-negative",
+      "created_at": 1789918004.932,
+      "terminal": false,
+      "type": "usage.final",
+      "payload": {
+        "tokens_in": 254,
+        "tokens_out": 116,
+        "duration_ms": 3141
+      }
+    },
+    {
+      "event_id": "live-negative-review:3",
+      "seq": 3,
+      "run_id": "live-negative-review",
+      "session_id": "independent-negative",
+      "created_at": 1789918004.932,
+      "terminal": true,
+      "type": "done",
+      "payload": {
+        "status": "completed",
+        "last_seq": 2,
+        "result_summary": "{\"schemaVersion\":1,\"verdict\":\"changes_requested\",\"summary\":\"The function body does not match the required implementation. It returns the input value instead of value + 1.\",\"findings\":[\"The function increment is defined as `export function increment(value) { return value; }`, but the acceptance criteria require `return value + 1;`.\",\"No other code is present, which meets the 'only the named function export' requirement, but the function logic is incorrect.\"]}"
+      }
+    }
+  ],
+  "negativeReview": {
+    "review": {
+      "schemaVersion": 1,
+      "verdict": "changes_requested",
+      "summary": "The function body does not match the required implementation. It returns the input value instead of value + 1.",
+      "findings": [
+        "The function increment is defined as `export function increment(value) { return value; }`, but the acceptance criteria require `return value + 1;`.",
+        "No other code is present, which meets the 'only the named function export' requirement, but the function logic is incorrect."
+      ]
+    },
+    "stop": {
+      "stopped": true,
+      "evidence": "deepseek-bounded-v1:b99edb91-adc7-443f-b459-c700be4d11c1:req=d3cc96862b61f1f91e9c9a20c4ecae57fd66838e2df1e9c9dc873c9ed6bc836f:res=fa9cc9a45693d1b9d9c3fc3eddbbc81baa302479a29774dfd961809c8e2405db"
+    },
+    "usage": {
+      "tokens_in": 254,
+      "tokens_out": 116,
+      "duration_ms": 3141
+    }
+  },
+  "cancellation": {
+    "status": {
+      "schemaVersion": 1,
+      "scope": {
+        "schemaVersion": 1,
+        "tenantId": "local-pilot",
+        "principalId": "owner",
+        "workspaceId": "toy-increment"
+      },
+      "graphRunId": "9fd72c5c-6438-4236-bef7-ba924f45d07e",
+      "source": {
+        "product": "osstack",
+        "requestId": "live-cancel"
+      },
+      "status": "cancel_pending",
+      "revision": 12,
+      "generation": 1,
+      "inputDigest": "67fe08f91b18f099a92a71cb582a87e46ccf96e5065aed2424b2bfdf1cf9157a",
+      "specHash": "f344d20e68d16b621af03087d5cbf4834236c98b3aa96788716e4a79d3c9ebf9",
+      "createdAt": 1789918004937,
+      "updatedAt": 1789918017017,
+      "publication": "artifact_only",
+      "phase": "cancel_pending",
+      "budget": {
+        "limits": {
+          "maxEpochs": 2,
+          "maxBranchAttempts": 1,
+          "maxConcurrentReaders": 2,
+          "maxConcurrentWritersPerRepo": 1,
+          "maxActionStarts": 14,
+          "deadlineSeconds": 600,
+          "tokenReservationLimit": 196608
+        },
+        "actionStarts": 2,
+        "reservedTokens": "32768",
+        "chargedTokens": "0",
+        "accountingBlocked": false
+      },
+      "evidenceRefs": [],
+      "delivery": "delivery_unknown",
+      "error": {
+        "schemaVersion": 1,
+        "message": "Physical execution requires reconciliation",
+        "code": "CANCEL_UNCONFIRMED",
+        "retryable": false,
+        "nextAction": "reconcile"
+      }
+    },
+    "actions": [
+      {
+        "effect_key": "471eaeba94d1e897050063d4a708fbc3c407f4c3843df9f6cac606c05fda0e88",
+        "node_id": "e0.workspace",
+        "state": "confirmed",
+        "outcome_json": "{\"actualTokens\":0,\"evidenceRef\":\"graph-delivery:0190906992e52fe1ef4e333be06aafb0b1e3e93ef56f38e707cd869d515770e9\",\"result\":{\"kind\":\"workspace\",\"receiptRef\":\"e0.workspace\",\"schemaVersion\":1,\"workspaceLeaseRef\":\"e0.writer\"},\"state\":\"confirmed\"}"
+      },
+      {
+        "effect_key": "c4d1d680d78ea27d59b0939dfff1c439bd95c1e6d7e9795c6dcc532c5d0073ef",
+        "node_id": "e0.implement",
+        "state": "unknown",
+        "outcome_json": null
+      }
+    ],
+    "admissions": [
+      {
+        "effect_key": "471eaeba94d1e897050063d4a708fbc3c407f4c3843df9f6cac606c05fda0e88",
+        "held_at": 1789918010621,
+        "released_at": 1789918010729
+      },
+      {
+        "effect_key": "c4d1d680d78ea27d59b0939dfff1c439bd95c1e6d7e9795c6dcc532c5d0073ef",
+        "held_at": 1789918016494,
+        "released_at": null
+      }
+    ]
+  },
+  "daemonExit": {
+    "code": 0,
+    "signal": null
+  },
+  "completedAt": "2026-09-20T15:26:57.235Z"
+}

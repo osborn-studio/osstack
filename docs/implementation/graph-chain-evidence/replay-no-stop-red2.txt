@@ -1,0 +1,71 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+ ❯ src/graph-reconciler.test.ts (22 tests | 2 failed) 384ms
+   ✓ trusted reconciler > stops and independently verifies, commits before release, never invokes and retries lost release ack after restart 34ms
+   ✓ trusted reconciler > returns distinct unknown exit without sending effects 16ms
+   ✓ trusted reconciler > returns distinct not_applied exit without sending effects 17ms
+   ✓ trusted reconciler > rejects revocation after stop await with no decision 16ms
+   ✓ trusted reconciler > rejects revocation after worker await with no decision 15ms
+   ✓ trusted reconciler > rejects revocation after quiescence await with no decision 15ms
+   ✓ trusted reconciler > rejects revocation after outcome await with no decision 15ms
+   ✓ trusted reconciler > does not refresh the proof revision over a concurrent ledger update 16ms
+   ✓ trusted reconciler > snapshots request and registration before await; worker-shaped flags and unregistered connections have no authority 17ms
+   ✓ trusted reconciler > rejects non-undefined synchronous authority true 15ms
+   ✓ trusted reconciler > rejects non-undefined synchronous authority yes 14ms
+   ✓ trusted reconciler > rejects non-undefined synchronous authority Promise{…} 14ms
+   ✓ trusted reconciler > rejects changed outcome on receipt replay and revalidates release authority 18ms
+   ✓ trusted reconciler > rejects boolean self-authority from worker verifier 16ms
+   ✓ trusted reconciler > rejects boolean self-authority from quiescence verifier 15ms
+   ✓ trusted reconciler > rejects boolean self-authority from outcome verifier 15ms
+   ✓ trusted reconciler > keeps the decision durable when release-time verification is revoked 17ms
+   ✓ trusted reconciler > replays unknown without releasing, then appends a later receipt under the same stable interrupt 20ms
+   ✓ trusted reconciler > rejects asynchronous final recheck grants without an unhandled rejection 16ms
+   ✓ trusted reconciler > replays invalid usage as the same blocked accounting decision 19ms
+   × acknowledges an exact lost takeover response without stopping the replacement worker 22ms
+     → replacement must remain running
+   × refuses old-generation release replay before stopping a replacement worker 21ms
+     → expected [Function] to throw error including 'RECOVERY_GENERATION_CHANGED' but got 'replacement must remain running'
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/graph-reconciler.test.ts > acknowledges an exact lost takeover response without stopping the replacement worker
+Error: replacement must remain running
+ ❯ Object.<anonymous> src/graph-reconciler.test.ts:140:42
+    138|   const takeover = { kind: 'takeover' as const, fence: { ...fence(), n…
+    139|   const first = await reconciler.reconcile(connection, takeover); run …
+    140|   const stop = vi.fn(async () => { throw new Error('replacement must r…
+       |                                          ^
+    141|   registration = { ...registration, binding: { ...registration.binding…
+    142|   connection = {}; install();
+ ❯ GraphReconciler.proof src/graph-reconciler.ts:82:37
+ ❯ GraphReconciler.reconcile src/graph-reconciler.ts:117:30
+ ❯ src/graph-reconciler.test.ts:143:35
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  src/graph-reconciler.test.ts > refuses old-generation release replay before stopping a replacement worker
+AssertionError: expected [Function] to throw error including 'RECOVERY_GENERATION_CHANGED' but got 'replacement must remain running'
+
+Expected: "RECOVERY_GENERATION_CHANGED"
+Received: "replacement must remain running"
+
+ ❯ src/graph-reconciler.test.ts:155:3
+    153|   registration = { ...registration, binding: { ...registration.binding…
+    154|   connection = {}; install();
+    155|   await expect(reconciler.reconcile(connection, { ...request(), fence:…
+       |   ^
+    156|   expect(stop).not.toHaveBeenCalled();
+    157| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed | 20 passed (22)
+   Start at  07:59:58
+   Duration  756ms (transform 133ms, setup 7ms, collect 207ms, tests 384ms, environment 0ms, prepare 27ms)
+
+undefined
+/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli:
+[ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL] Command failed with exit code 1: vitest run src/graph-reconciler.test.ts

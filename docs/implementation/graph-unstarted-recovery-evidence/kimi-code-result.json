@@ -1,0 +1,135 @@
+[
+  {
+    "event_id": "kimi-code:0",
+    "seq": 0,
+    "run_id": "kimi-code",
+    "session_id": "kimi-code",
+    "created_at": 1789564324.409,
+    "terminal": false,
+    "type": "run.started",
+    "payload": {
+      "status": "running",
+      "controls": {
+        "cancel": true,
+        "approval_pending": false,
+        "clarify_pending": false,
+        "queue": false,
+        "goal": false
+      }
+    }
+  },
+  {
+    "event_id": "kimi-code:1",
+    "seq": 1,
+    "run_id": "kimi-code",
+    "session_id": "kimi-code",
+    "created_at": 1789564324.412,
+    "terminal": false,
+    "type": "progress",
+    "payload": {
+      "phase": "kimi.review.start",
+      "detail": "Starting bounded no-tool Kimi review"
+    }
+  },
+  {
+    "event_id": "kimi-code:2",
+    "seq": 2,
+    "run_id": "kimi-code",
+    "session_id": "kimi-code",
+    "created_at": 1789564574.285,
+    "terminal": false,
+    "type": "token.delta",
+    "payload": {
+      "message_id": "kimi-code:kimi-review",
+      "delta": "# Review\n\n## Scope\nBounded first-generation (generation 1) no-child recovery: `graph-unstarted-recovery.ts` + `GraphReconciler` + `GraphRecoveryStore` takeover path, `graph-runtime.ts` start/stop fencing, and real subprocess crash fixtures. Previously running executor recovery is explicitly out of scope.\n\n## Correctness / authorization (proof criterion)\n- Takeover is gated on durable evidence, not attestation: `GraphRecoveryStore.proof` requires the launch row plus exactly one matching `spawn_failed` event (owner, canonical identity, `launched_at <= confirmedAt`, exact `evidenceRef`/`confirmedAt`), refuses generation ≠ 1 via the unstarted verifier, and refuses if same-generation actions or checkpoint requests exist.\n- The all-run executor-absence scan (`graph_actions`, `graph_action_admissions`, `graph_checkpoints`, `graph_checkpoint_writes`, `graph_checkpoint_requests`) runs in `verifyQuiescence` and is re-executed synchronously inside the commit's `BEGIN IMMEDIATE` via the reconciler `recheck` → `verify(snapshot)` path. The injected mid-transaction `graph_checkpoint_writes` insert test confirms the recheck actually fires inside the transaction and rolls back.\n- Authority is synchronous everywhere (`synchronous()`/`authority()` rejecting promises), checked before proof, and re-checked inside the final transaction (`commit-revoked` test). Snapshot freshness is enforced by `unchanged()` (fresh capture must canonical-match) before proof verification, so authority/binding/premises are validated against current state.\n- Alternate routes are closed: `claim` refuses generation ≠ 0, `acquireLease` is blocked for start by the `graph_recovery_decisions` takeover-journal requirement in `runtime.start`, and replay of a committed takeover is a read-only return that cannot stop the replacement.\n\n## Races\n- Stale work: old host retry after takeover fails on `STALE_GENERATION` (live subprocess test, host still alive); a fresh daemon cannot reuse a consumed generation (`GRAPH_GENERATION_ALREADY_LAUNCH launch row`); competing takeovers resolve to exactly one winner via `BEGIN IMMEDIATE` + revision fencing.\n- Ambiguous windows: pre-spawn (intent consumed, no event) and pre-identity (child alive, `launched` not persisted) both remain held even after host death — verified with a real live worker PID; no replacement effects start.\n- Submit replay/cancel: idempotent replay returns the same run, `invoked: 0`, no actions/launches; the paused original continuation performs zero writes after cancel.\n- Deadline: original `createdAt + deadlineSeconds` bounds both recovery lease (`leaseExpiresAt > deadline` refused) and every post-takeover `authorize`.\n\n## Non-blocking observations\n- Defense-in-depth: the store-level `not_started` gate itself scans only `graph_actions`/`graph_checkpoint_requests`; the complete five-table all-run scan lives in the reconciler registration. Safe today because the only production verifier is the unstarted-recovery registration, but a future direct-store caller with a weaker verifier would inherit the narrower gate.\n- Quiescence `executorEvidenceRef`/`workspaceEvidenceRef` are synthetic digest labels; authenticity rests on in-transaction re-execution rather than the ref string.\n- Supplied evidence covers the changed suites (30 + 21 passed); the full monorepo acceptance run of `verify-graph-runtime.mjs` is noted as pending.\n\nNo blocking defects found in this bounded slice.",
+      "content_type": "text"
+    }
+  },
+  {
+    "event_id": "kimi-code:3",
+    "seq": 3,
+    "run_id": "kimi-code",
+    "session_id": "kimi-code",
+    "created_at": 1789564574.287,
+    "terminal": true,
+    "type": "done",
+    "payload": {
+      "status": "completed",
+      "last_seq": 2,
+      "result_summary": "approved: 3 finding(s)",
+      "review": {
+        "schema_version": 1,
+        "verdict": "approved",
+        "risk": "read_only",
+        "markdown": "# Review\n\nBounded first-generation no-child recovery slice. Takeover requires durable launch + exactly one matching spawn_failed receipt (owner/identity/time/ref), generation == 1, and all-run absence across actions/admissions/checkpoints/writes/requests; the absence scan and synchronous authority are re-executed inside the commit BEGIN IMMEDIATE via the reconciler recheck, with rollback proven by injected mid-transaction writes. acquireLease is closed as an alternate route by the takeover-journal requirement in runtime.start. Races: live old host retry is refused (STALE_GENERATION), consumed generations cannot be relaunched by fresh daemons, competing takeovers yield exactly one winner, pre-spawn/pre-identity windows with a live child remain held after host death, submit replay/cancel is idempotent with zero duplicate invocations, and the original createdAt-based deadline bounds both the replacement lease and every subsequent authorize. Non-blocking: the store-level not_started gate scans a narrower table set than the reconciler registration (full scan enforced only through the production verifier path); quiescence evidence refs are synthetic labels backed by in-transaction re-execution; full monorepo acceptance run of verify-graph-runtime.mjs remains pending. No blockers.",
+        "judgments": [
+          {
+            "id": "proof",
+            "pass": true,
+            "severity": "error",
+            "summary": "Only durable first-generation no-child receipts (launch row + exactly one matching spawn_failed event) plus all-run no-admitted-executor scans permit host-authorized takeover; authority, binding, snapshot freshness and physical premises are synchronously rechecked inside the final BEGIN IMMEDIATE transaction with rollback on failure."
+          },
+          {
+            "id": "races",
+            "pass": true,
+            "severity": "error",
+            "summary": "Old live hosts cannot start stale generations, fresh daemons cannot reuse consumed generations, pre-spawn/pre-identity ambiguity windows stay held with zero replacement effects, public submit replay/cancel is idempotent with no duplicate invocation, and the original run deadline is preserved and enforced."
+          }
+        ],
+        "findings": [
+          {
+            "rule_id": "recovery.store-narrow-absence-scan",
+            "severity": "warning",
+            "message": "GraphRecoveryStore.proof's own not_started gate checks only graph_actions and graph_checkpoint_requests; the complete five-table all-run executor-absence scan exists only in the unstarted-recovery reconciler registration. Safe under the current sole production verifier, but fragile for any future direct-store caller.",
+            "file": "packages/core/src/state/graph-recovery.ts",
+            "evidence": "not_started block queries graph_actions and graph_checkpoint_requests only; full scan lives in packages/cli/src/graph-unstarted-recovery.ts verify()",
+            "fingerprint": "b679654b3e302406dcc045edd9e4bc3694e392a0f2062234f39103fe2e0c555e"
+          },
+          {
+            "rule_id": "recovery.synthetic-quiescence-refs",
+            "severity": "info",
+            "message": "executorEvidenceRef/workspaceEvidenceRef for the no-child path are synthetic labels derived from the snapshot digest; authenticity is enforced by in-transaction re-execution of the absence scan rather than by the reference string itself.",
+            "file": "packages/cli/src/graph-unstarted-recovery.ts",
+            "fingerprint": "062c61b31980fb85be54a96179f63f33d3ae477c7c95c4c791838842b63c257c"
+          },
+          {
+            "rule_id": "evidence.full-acceptance-pending",
+            "severity": "info",
+            "message": "Deterministic evidence covers the changed core/cli suites (30 and 21 passed); a completed full-monorepo verify-graph-runtime.mjs acceptance report was not part of the supplied evidence.",
+            "file": "scripts/verify-graph-runtime.mjs",
+            "fingerprint": "d70734d2f5bb37a468f4088b470de45c0c4215a3096af48a4af7caf2a6d07c9b"
+          }
+        ],
+        "recommended_actions": [
+          "Consider moving the full five-table all-run executor-absence scan into GraphRecoveryStore's not_started proof gate so the durable layer is self-sufficient regardless of verifier.",
+          "Attach a completed verify-graph-runtime.mjs acceptance report to the release evidence once the full monorepo run finishes."
+        ],
+        "evidence_refs": [],
+        "runtime_identity": {
+          "adapter_id": "kimi-code",
+          "adapter_version": "0.29.1",
+          "auth_mode": "subprocess/login-reuse",
+          "provider_id": "kimi",
+          "model_id": "kimi-code/k3",
+          "agent_profile": "osstack-reviewer",
+          "evidence_source": "reported",
+          "binary_path_sha256": "7e5d172f83fc7d8ca22387234b5a9a4d9412aa1a27c71ee90be35db29dfa7dd2"
+        }
+      },
+      "evaluation_judgments": [
+        {
+          "id": "proof",
+          "pass": true,
+          "severity": "error",
+          "summary": "Only durable first-generation no-child receipts (launch row + exactly one matching spawn_failed event) plus all-run no-admitted-executor scans permit host-authorized takeover; authority, binding, snapshot freshness and physical premises are synchronously rechecked inside the final BEGIN IMMEDIATE transaction with rollback on failure."
+        },
+        {
+          "id": "races",
+          "pass": true,
+          "severity": "error",
+          "summary": "Old live hosts cannot start stale generations, fresh daemons cannot reuse consumed generations, pre-spawn/pre-identity ambiguity windows stay held with zero replacement effects, public submit replay/cancel is idempotent with no duplicate invocation, and the original run deadline is preserved and enforced."
+        }
+      ]
+    }
+  }
+]

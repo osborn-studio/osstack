@@ -1,0 +1,165 @@
+{
+  "reason": "Historical context copies retained source-relative links; correct destinations only. Original context bytes remain at commit e2edc68. No audit rules disabled.",
+  "repairs": [
+    {
+      "file": "docs/implementation/2026-09-13-upgrade-plan-review/claude-review-context.md",
+      "old": "2026-09-13-osstack-graph-upgrade.tasks.json",
+      "new": "../2026-09-13-osstack-graph-upgrade.tasks.json"
+    },
+    {
+      "file": "docs/implementation/2026-09-13-upgrade-plan-review/claude-review-context.md",
+      "old": "../design/2026-09-13-executable-graph-plan.md",
+      "new": "../../design/2026-09-13-executable-graph-plan.md"
+    },
+    {
+      "file": "docs/implementation/2026-09-13-upgrade-plan-review/claude-review-context.md",
+      "old": "../design/2026-09-13-os-products-definition.md",
+      "new": "../../design/2026-09-13-os-products-definition.md"
+    },
+    {
+      "file": "docs/implementation/2026-09-13-upgrade-plan-review/claude-review-context.md",
+      "old": "../handoffs/osbot/handoff.md",
+      "new": "../../handoffs/osbot/handoff.md"
+    },
+    {
+      "file": "docs/reports/2026-09-13-executable-graph-evidence/claude-round3-context.md",
+      "old": "../reports/2026-09-13-executable-graph-research.md",
+      "new": "../2026-09-13-executable-graph-research.md"
+    },
+    {
+      "file": "docs/reports/2026-09-13-os-products-evidence/claude-round1-context.md",
+      "old": "2026-09-13-executable-graph-claude-review.md",
+      "new": "../2026-09-13-executable-graph-claude-review.md"
+    },
+    {
+      "file": "docs/reports/2026-09-13-os-products-evidence/claude-round1-context.md",
+      "old": "2026-09-13-executable-graph-evidence/README.md",
+      "new": "../2026-09-13-executable-graph-evidence/README.md"
+    },
+    {
+      "file": "docs/reports/2026-09-13-os-products-evidence/claude-round1-context.md",
+      "old": "2026-09-13-executable-graph-research.md",
+      "new": "../2026-09-13-executable-graph-research.md"
+    },
+    {
+      "file": "docs/reports/2026-09-13-os-products-evidence/claude-round1-context.md",
+      "old": "FORK_ORIGIN.md",
+      "new": "https://github.com/osborn-studio/ostag/blob/5098f9141864d413718d776c9ae783951ea4b5c1/FORK_ORIGIN.md"
+    },
+    {
+      "file": "docs/reports/2026-09-13-os-products-evidence/claude-round1-context.md",
+      "old": "docs/action_receipt_protocol.md",
+      "new": "https://github.com/osborn-studio/ostag/blob/5098f9141864d413718d776c9ae783951ea4b5c1/docs/action_receipt_protocol.md"
+    },
+    {
+      "file": "docs/reports/2026-09-13-os-products-evidence/claude-round1-context.md",
+      "old": "docs/ambient_v2.md",
+      "new": "https://github.com/osborn-studio/ostag/blob/5098f9141864d413718d776c9ae783951ea4b5c1/docs/ambient_v2.md"
+    },
+    {
+      "file": "docs/reports/2026-09-13-os-products-evidence/claude-round1-context.md",
+      "old": "docs/async_runs.md",
+      "new": "https://github.com/osborn-studio/ostag/blob/5098f9141864d413718d776c9ae783951ea4b5c1/docs/async_runs.md"
+    },
+    {
+      "file": "docs/reports/2026-09-13-os-products-evidence/claude-round1-context.md",
+      "old": "docs/channel_policy.md",
+      "new": "https://github.com/osborn-studio/ostag/blob/5098f9141864d413718d776c9ae783951ea4b5c1/docs/channel_policy.md"
+    },
+    {
+      "file": "docs/reports/2026-09-13-os-products-evidence/claude-round1-context.md",
+      "old": "docs/claude_tag_strategy.md",
+      "new": "https://github.com/osborn-studio/ostag/blob/5098f9141864d413718d776c9ae783951ea4b5c1/docs/claude_tag_strategy.md"
+    },
+    {
+      "file": "docs/reports/2026-09-13-os-products-evidence/claude-round1-context.md",
+      "old": "docs/cli_reference.md",
+      "new": "https://github.com/osborn-studio/ostag/blob/5098f9141864d413718d776c9ae783951ea4b5c1/docs/cli_reference.md"
+    },
+    {
+      "file": "docs/reports/2026-09-13-os-products-evidence/claude-round1-context.md",
+      "old": "docs/connector_capabilities.md",
+      "new": "https://github.com/osborn-studio/ostag/blob/5098f9141864d413718d776c9ae783951ea4b5c1/docs/connector_capabilities.md"
+    },
+    {
+      "file": "docs/reports/2026-09-13-os-products-evidence/claude-round1-context.md",
+      "old": "docs/governed_writes.md",
+      "new": "https://github.com/osborn-studio/ostag/blob/5098f9141864d413718d776c9ae783951ea4b5c1/docs/governed_writes.md"
+    },
+    {
+      "file": "docs/reports/2026-09-13-os-products-evidence/claude-round1-context.md",
+      "old": "docs/ostag/acceptance_criteria.md",
+      "new": "https://github.com/osborn-studio/ostag/blob/5098f9141864d413718d776c9ae783951ea4b5c1/docs/ostag/acceptance_criteria.md"
+    },
+    {
+      "file": "docs/reports/2026-09-13-os-products-evidence/claude-round1-context.md",
+      "old": "docs/ostag/architecture.md",
+      "new": "https://github.com/osborn-studio/ostag/blob/5098f9141864d413718d776c9ae783951ea4b5c1/docs/ostag/architecture.md"
+    },
+    {
+      "file": "docs/reports/2026-09-13-os-products-evidence/claude-round1-context.md",
+      "old": "docs/ostag/deployment.md",
+      "new": "https://github.com/osborn-studio/ostag/blob/5098f9141864d413718d776c9ae783951ea4b5c1/docs/ostag/deployment.md"
+    },
+    {
+      "file": "docs/reports/2026-09-13-os-products-evidence/claude-round1-context.md",
+      "old": "docs/ostag/dingtalk_setup.md",
+      "new": "https://github.com/osborn-studio/ostag/blob/5098f9141864d413718d776c9ae783951ea4b5c1/docs/ostag/dingtalk_setup.md"
+    },
+    {
+      "file": "docs/reports/2026-09-13-os-products-evidence/claude-round1-context.md",
+      "old": "docs/ostag/feishu_setup.md",
+      "new": "https://github.com/osborn-studio/ostag/blob/5098f9141864d413718d776c9ae783951ea4b5c1/docs/ostag/feishu_setup.md"
+    },
+    {
+      "file": "docs/reports/2026-09-13-os-products-evidence/claude-round1-context.md",
+      "old": "docs/ostag/lark_setup.md",
+      "new": "https://github.com/osborn-studio/ostag/blob/5098f9141864d413718d776c9ae783951ea4b5c1/docs/ostag/lark_setup.md"
+    },
+    {
+      "file": "docs/reports/2026-09-13-os-products-evidence/claude-round1-context.md",
+      "old": "docs/ostag/operational_report.md",
+      "new": "https://github.com/osborn-studio/ostag/blob/5098f9141864d413718d776c9ae783951ea4b5c1/docs/ostag/operational_report.md"
+    },
+    {
+      "file": "docs/reports/2026-09-13-os-products-evidence/claude-round1-context.md",
+      "old": "docs/ostag/slack_setup.md",
+      "new": "https://github.com/osborn-studio/ostag/blob/5098f9141864d413718d776c9ae783951ea4b5c1/docs/ostag/slack_setup.md"
+    },
+    {
+      "file": "docs/reports/2026-09-13-os-products-evidence/claude-round1-context.md",
+      "old": "docs/ostag/work_monitor.md",
+      "new": "https://github.com/osborn-studio/ostag/blob/5098f9141864d413718d776c9ae783951ea4b5c1/docs/ostag/work_monitor.md"
+    },
+    {
+      "file": "docs/reports/2026-09-13-os-products-evidence/claude-round1-context.md",
+      "old": "docs/research/",
+      "new": "https://github.com/osborn-studio/ostag/tree/5098f9141864d413718d776c9ae783951ea4b5c1/docs/research/"
+    },
+    {
+      "file": "docs/reports/2026-09-13-os-products-evidence/claude-round1-context.md",
+      "old": "docs/run_ledger.md",
+      "new": "https://github.com/osborn-studio/ostag/blob/5098f9141864d413718d776c9ae783951ea4b5c1/docs/run_ledger.md"
+    },
+    {
+      "file": "docs/reports/2026-09-13-os-products-evidence/claude-round1-context.md",
+      "old": "docs/security_governance.md",
+      "new": "https://github.com/osborn-studio/ostag/blob/5098f9141864d413718d776c9ae783951ea4b5c1/docs/security_governance.md"
+    },
+    {
+      "file": "docs/reports/2026-09-13-os-products-evidence/claude-round1-context.md",
+      "old": "./self-host-restricted-network.md",
+      "new": "https://github.com/elie222/rakazo/blob/b286fc4a5d0f608005000ef35bee4c473c31a165/docs/self-host-restricted-network.md"
+    },
+    {
+      "file": "docs/reports/2026-09-13-os-products-evidence/claude-round1-context.md",
+      "old": "./self-host-secrets.md",
+      "new": "https://github.com/elie222/rakazo/blob/b286fc4a5d0f608005000ef35bee4c473c31a165/docs/self-host-secrets.md"
+    },
+    {
+      "file": "docs/reports/2026-09-13-os-products-evidence/claude-round1-context.md",
+      "old": "../design/2026-09-13-executable-graph-plan.md",
+      "new": "../../design/2026-09-13-executable-graph-plan.md"
+    }
+  ]
+}

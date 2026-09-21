@@ -1,0 +1,52 @@
+{
+  "taskReturns": [],
+  "counts": {
+    "completedBody": 1,
+    "completedWrapper": 1
+  },
+  "effects": {
+    "completed": {
+      "attempt": 1,
+      "effect": "completed",
+      "result": {
+        "results": [
+          "completed"
+        ]
+      },
+      "run": "functional-sync-effect-confirmed-crash",
+      "status": "confirmed"
+    }
+  },
+  "tuple": {
+    "checkpoint": {
+      "channel_values": {
+        "__pregel_tasks": [],
+        "__start__": {
+          "results": []
+        }
+      },
+      "channel_versions": {
+        "__start__": 1
+      },
+      "id": "1f1aff32-589a-6f10-ffff-cb9611e94a15",
+      "ts": "2026-09-14T04:17:06.689Z",
+      "v": 4,
+      "versions_seen": {
+        "__input__": {}
+      }
+    },
+    "config": {
+      "configurable": {
+        "checkpoint_id": "1f1aff32-589a-6f10-ffff-cb9611e94a15",
+        "checkpoint_ns": "",
+        "thread_id": "c2"
+      }
+    },
+    "metadata": {
+      "parents": {},
+      "source": "input",
+      "step": -1
+    },
+    "pendingWrites": []
+  }
+}

@@ -5,8 +5,8 @@
 //   E1: capability schema = Zod (single source of truth)
 //   D11: invocation = streaming AsyncIterable<HermesEvent>
 //        (events flow back to Hermes via the adapter, not buffered)
-//   D5: cancellation = explicit cancel(runId) method, NOT just rejecting the iterator
-//        (so the adapter can clean up sub-processes)
+//   D5: cancellation is requested through invoke(task, signal). Stop evidence
+//        is separate: aborting or rejecting the iterator does not prove exit.
 
 import type { Capability, CostTier } from "@osstack/core";
 import type { HermesEvent } from "@osstack/hermes-adapter";
@@ -51,6 +51,10 @@ export interface AgentRuntimeIdentity {
   evidence_source: "reported" | "configured" | "inferred";
 }
 
+export type AgentStopConfirmation =
+  | { stopped: true; evidence: string }
+  | { stopped: false };
+
 export interface AgentAdapter {
   readonly id: AgentId;
   readonly display_name: string;
@@ -75,9 +79,21 @@ export interface AgentAdapter {
    *
    * Implementations MUST honor an AbortSignal: when fired, stop the
    * underlying work, emit a final `done` with status "cancelled", and
-   * close the iterator.
+   * close the iterator. Legacy adapters may emit that status on request alone;
+   * it is NOT stop confirmation. Callers must tolerate uncooperative streams.
    */
   invoke(task: AgentTask, signal: AbortSignal): AsyncIterable<HermesEvent>;
+
+  /**
+   * Optional lifecycle evidence after cancellation of this exact invocation.
+   * Return stopped:true only after observing that ALL owned work (including
+   * subprocess descendants and remote side effects) has stopped. evidence is
+   * a nonempty resource/receipt reference or description of that observation.
+   * Signal delivery, iterator closure, and done(cancelled) alone are not proof.
+   * May wait for an observation; callers bound the wait and treat absence,
+   * rejection, or an unconfirmed result as requiring reconciliation.
+   */
+  confirmStopped?(runId: string): Promise<AgentStopConfirmation>;
 }
 
 // Resumable conversation support is deliberately a separate structural

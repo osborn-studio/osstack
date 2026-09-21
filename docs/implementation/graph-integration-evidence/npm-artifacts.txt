@@ -1,0 +1,10 @@
+{
+  "ok": true,
+  "kind": "npm-package-artifacts-smoke",
+  "checked": [
+    "runtime/type entries retained",
+    "test/spec artifacts excluded",
+    "symlinked dist rejected",
+    "symlinked dist/.npmignore rejected"
+  ]
+}

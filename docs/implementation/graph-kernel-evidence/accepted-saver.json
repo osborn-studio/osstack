@@ -1,0 +1,293 @@
+{
+  "testOnly": true,
+  "node": "v26.5.0",
+  "versions": {
+    "langgraph": "1.4.15",
+    "langgraph-checkpoint": "1.1.5",
+    "core": "1.2.11"
+  },
+  "productionReady": false,
+  "parentPid": 18331,
+  "phases": [
+    {
+      "phase": "contract-write",
+      "pid": 18351,
+      "assertions": [
+        {
+          "name": "missing getTuple and inherited get return undefined",
+          "passed": true
+        },
+        {
+          "name": "put returns identity and repeated put preserves full fields",
+          "passed": true
+        },
+        {
+          "name": "ordinary writes retain first value by task/index, separate tasks coexist",
+          "passed": true
+        },
+        {
+          "name": "reserved error/interrupt/resume/scheduled overwrite independent negative indexes",
+          "passed": true
+        },
+        {
+          "name": "putWrites before put remains attached and put retry does not erase writes",
+          "passed": true
+        }
+      ],
+      "observations": {},
+      "passed": true,
+      "exitCode": 0,
+      "signal": null,
+      "stderr": ""
+    },
+    {
+      "phase": "contract-read",
+      "pid": 18364,
+      "assertions": [
+        {
+          "name": "fresh process recovers all checkpoint/metadata/version/parent fields and byte values",
+          "passed": true
+        },
+        {
+          "name": "list returns full tuples with namespace/thread/id/filter/before/limit semantics",
+          "passed": true
+        },
+        {
+          "name": "list and getTuple project durable identity without serializing runnable callbacks",
+          "passed": true
+        },
+        {
+          "name": "inherited numeric version generation works and string generation requires override",
+          "passed": true
+        },
+        {
+          "name": "inherited beta history follows parent chain rather than unrelated fork",
+          "passed": true
+        },
+        {
+          "name": "deleteThread removes all namespaces and writes without deleting other threads",
+          "passed": true
+        }
+      ],
+      "observations": {},
+      "passed": true,
+      "exitCode": 0,
+      "signal": null,
+      "stderr": ""
+    },
+    {
+      "phase": "fail",
+      "pid": 18365,
+      "assertions": [
+        {
+          "name": "parallel superstep failure propagates after completed sibling write persists",
+          "passed": true
+        }
+      ],
+      "observations": {},
+      "passed": true,
+      "exitCode": 0,
+      "signal": null,
+      "stderr": ""
+    },
+    {
+      "phase": "recover",
+      "pid": 18372,
+      "assertions": [
+        {
+          "name": "new process has no memory canary and reads prior process durable checkpoint",
+          "passed": true
+        },
+        {
+          "name": "resume failed parallel step without rerunning completed sibling; join exactly once",
+          "passed": true
+        }
+      ],
+      "observations": {
+        "recovery": {
+          "completed": 1,
+          "flaky": 2,
+          "join": 1,
+          "results": [
+            "completed",
+            "recovered",
+            "joined"
+          ]
+        }
+      },
+      "passed": true,
+      "exitCode": 0,
+      "signal": null,
+      "stderr": ""
+    },
+    {
+      "phase": "interrupt",
+      "pid": 18374,
+      "assertions": [
+        {
+          "name": "interrupt payload and id survive pending writes on disk",
+          "passed": true
+        }
+      ],
+      "observations": {},
+      "passed": true,
+      "exitCode": 0,
+      "signal": null,
+      "stderr": ""
+    },
+    {
+      "phase": "resume",
+      "pid": 18377,
+      "assertions": [
+        {
+          "name": "fresh process resumes matching interrupt with falsy input and preserves resume writes",
+          "passed": true
+        },
+        {
+          "name": "public graph.getStateHistory preserves full state with live callbacks",
+          "passed": true
+        }
+      ],
+      "observations": {},
+      "passed": true,
+      "exitCode": 0,
+      "signal": null,
+      "stderr": ""
+    },
+    {
+      "phase": "absence",
+      "pid": 18381,
+      "assertions": [
+        {
+          "name": "negative control: fresh empty storage contains no recovered graph state",
+          "passed": true
+        }
+      ],
+      "observations": {},
+      "passed": true,
+      "exitCode": 0,
+      "signal": null,
+      "stderr": ""
+    },
+    {
+      "phase": "faults",
+      "pid": 18383,
+      "assertions": [
+        {
+          "name": "getTuple transport failure rejects graph invocation",
+          "passed": true
+        },
+        {
+          "name": "put transport failure rejects graph invocation",
+          "passed": true
+        },
+        {
+          "name": "putWrites transport failure rejects graph invocation",
+          "passed": true
+        },
+        {
+          "name": "public Send class is rejected rather than revived (v1 static graph restriction)",
+          "passed": true
+        },
+        {
+          "name": "record partial-abort counterexample separately from completed-sibling recovery",
+          "passed": true
+        },
+        {
+          "name": "partial-abort counterexample also occurs with unmodified public MemorySaver",
+          "passed": true
+        },
+        {
+          "name": "unsupported checkpoint v3 fails before persistence",
+          "passed": true
+        }
+      ],
+      "observations": {
+        "partialAbort": {
+          "limitation": "An aborted task with a partial output write is treated as cached on resume; its missing barrier write is not reconstructed.",
+          "pendingWrites": [
+            [
+              "2fa92c9f-8d37-53f2-8431-298d62b99c01",
+              "__error__",
+              {
+                "message": "injected parallel failure",
+                "name": "Error"
+              }
+            ],
+            [
+              "2efdf56f-e609-5dbe-b45f-88f13bc5040e",
+              "results",
+              [
+                "completed"
+              ]
+            ],
+            [
+              "2efdf56f-e609-5dbe-b45f-88f13bc5040e",
+              "__error__",
+              {
+                "message": "This operation was aborted",
+                "name": "AbortError"
+              }
+            ]
+          ],
+          "resumedResult": {
+            "results": [
+              "completed",
+              "recovered"
+            ]
+          },
+          "completedInvocations": 1,
+          "joinInvocations": 0,
+          "productionGate": "Resolve before arbitrary failure/crash recovery is admitted; no private patch applied."
+        },
+        "publicMemorySaverBaseline": {
+          "pendingWrites": [
+            [
+              "0a454655-1846-526a-8659-7c5afde5518c",
+              "__error__",
+              {
+                "message": "injected parallel failure",
+                "name": "Error"
+              }
+            ],
+            [
+              "be43fbd6-8b2a-5bfe-b68a-faa378103330",
+              "results",
+              [
+                "completed"
+              ]
+            ],
+            [
+              "be43fbd6-8b2a-5bfe-b68a-faa378103330",
+              "__error__",
+              {
+                "message": "This operation was aborted",
+                "name": "AbortError"
+              }
+            ]
+          ],
+          "result": {
+            "results": [
+              "completed",
+              "recovered"
+            ]
+          },
+          "joinInvocations": 0
+        }
+      },
+      "passed": true,
+      "exitCode": 0,
+      "signal": null,
+      "stderr": ""
+    }
+  ],
+  "assertions": [
+    {
+      "name": "all phases executed in separate processes with exited writers before readers",
+      "passed": true
+    }
+  ],
+  "passed": true,
+  "cleaned": true,
+  "storeSha256": "ab1aec4307b2fd33ed8013ee118920635dc14bf55aabc2947c37d781a3c0588c"
+}

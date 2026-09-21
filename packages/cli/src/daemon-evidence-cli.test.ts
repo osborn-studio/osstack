@@ -1,3 +1,5 @@
+import { healthyAutonomyHealth } from "./test-healthy-autonomy.js";
+import { execFileSync } from "node:child_process";
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -5,7 +7,7 @@ import { join } from "node:path";
 import { randomUUID } from "node:crypto";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { main } from "./bin.js";
-import { startDaemon, type DaemonHandles } from "./daemon.js";
+import { startDaemon as startRealDaemon, type DaemonHandles } from "./daemon.js";
 
 let tmp: string;
 let logs: string[];
@@ -111,3 +113,8 @@ describe("daemon evidence CLI", () => {
     });
   });
 });
+
+const startDaemon = (options: Parameters<typeof startRealDaemon>[0]) => {
+  execFileSync("git", ["init", tmp], { stdio: "ignore" });
+  return startRealDaemon({ autonomyHealth: async () => healthyAutonomyHealth(), ...options });
+};

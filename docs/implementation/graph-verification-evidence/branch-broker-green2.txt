@@ -1,0 +1,35 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+ ✓ src/graph-action-freeze.test.ts (1 test) 734ms
+   ✓ freezes a real confirmed implementation under the same shared admission into a verified artifact  733ms
+osstack: retaining write lease graph-action:5a76b469e612e98fd2a0e0ad9131c0aacc695fb87d7c0e4b42ae92c45adc594d: Error: adapter result or execution unconfirmed
+osstack: retaining write lease graph-action:b380ca935b433f00b2efbda3824f5f30c2c82b7750fe6a050811402f3fec06c5: Error: adapter result or execution unconfirmed
+osstack: retaining write lease graph-action:8cd055ed6f1c2ca034ee16fae07dce84e15d354b7947c5e1cf63ecc771895394: Error: adapter result or execution unconfirmed
+osstack: retaining write lease graph-action:1af10e3b97e0a8ba4dd512cf8dbfcbd699c95e463ae438efeac2589d314189a0: Error: invalid result kind for registered operation
+osstack: retaining write lease graph-action:5743c037ae2fcd5115fdfca9b28b751bf1ca217b717b29e9fe9fda5c26c438ac: Error: invalid usage
+osstack: retaining write lease graph-action:ff1ad221784f1c22e46741bbb21d1e55c1dbc8bc8804855268f96ad36f96aa5c: Error: invalid persisted evidence reference
+osstack: retaining write lease graph-action:724afd770fc576e91b141d52264b1c7af3ca63d0f06793433375e1ccd9c6cb26: SqliteError: injected
+osstack: retaining write lease graph-action:6b3d2a5b09409662eff36d28ce01363778a44e1bdee8bfca66c995c903cba9e3: Error: adapter result or execution unconfirmed
+osstack: retaining write lease graph-action:821927161e1b8e9c62ca6a92bc30812d3f5ddac40b5696d76231d635a72aa93d: Error: adapter result or execution unconfirmed
+osstack: retaining write lease graph-action:945be5318693067f280a8449adc9a31e333b3c715d41b0d84c8f5d46f01ed7c2: Error: adapter result or execution unconfirmed
+osstack: retaining write lease graph-action:ac3ad78a7c554f759f90480c917b0798e78fa9a30ca9c0df34fccb8ba8c22f45: Error: adapter result or execution unconfirmed
+osstack: retaining write lease graph-action:7797008f3c24b2371ff9366ea15ac0dda131e99bd326c067d61a3333491ed741: Error: adapter result or execution unconfirmed
+ ✓ src/graph-action-broker.test.ts (31 tests) 1804ms
+osstack: retaining write lease graph-action:45e8f99e171fbbe9a9b25c32f3907fe516df4bdba3d7c38fbf0a0fa4b10a8fee: Error: invalid result kind for registered operation
+osstack: retaining write lease graph-action:47c027703709778116ac5e2ca80be14301231e03edd5f9dc2e0d47d32b4d8a0f: Error: invalid persisted evidence reference
+osstack: retaining write lease graph-action:163b390c4d78676e01527c7d92673c93252ea329d0c6df63a541ea0c93454359: Error: candidate preflight refused
+osstack: retaining write lease graph-action:34f557e19d88712ff44f1e77225bd0f134a6d483a0ca13dfe6e7d51ef0df324e: Error: candidate preflight refused
+osstack: retaining write lease graph-action:e016d1424160104bcf5ba060bcb4b8dcf1f6dd1fd3e371e5a0b4a124f2cdbebe: Error: lost receipt
+osstack: retaining write lease graph-action:3a099fa48f90f1bdf8d7e43fd03eabc54aa400a05e2882c30ae3ebfa78eabea9: injected lock release failure
+osstack: retaining write lease graph-action:3a099fa48f90f1bdf8d7e43fd03eabc54aa400a05e2882c30ae3ebfa78eabea9: Error: injected lock release failure
+osstack: retaining write lease graph-action:6eb6b26bad1ae47dc7ef6dd5dd0afb23c5408bc7d2ca65d25a3a3f1498447356: release failure
+osstack: retaining write lease graph-action:6eb6b26bad1ae47dc7ef6dd5dd0afb23c5408bc7d2ca65d25a3a3f1498447356: Error: release failure
+ ✓ src/graph-action-broker-boundary.test.ts (17 tests) 919ms
+ ✓ src/graph-branch-broker.test.ts (5 tests) 290ms
+
+ Test Files  4 passed (4)
+      Tests  54 passed (54)
+   Start at  17:55:50
+   Duration  5.57s (transform 463ms, setup 10ms, collect 1.39s, tests 3.75s, environment 0ms, prepare 108ms)
+

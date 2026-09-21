@@ -1,0 +1,82 @@
+$ vitest run src/graph-worker-exit-proof.test.ts src/graph-unstarted-recovery.test.ts src/graph-contained-recovery.test.ts --maxWorkers=1
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+ ✓ src/graph-contained-recovery.test.ts (54 tests) 7567ms
+   ✓ graph quiescence sweep > sweeps actual worker and contained executor after reopening the ledger, without settling or releasing  379ms
+   ✓ graph quiescence sweep > sweeps two distinct contained invocations without re-execution and binds each physical receipt  334ms
+   ✓ graph quiescence sweep > does not omit released or missing-admission historical obligations (held=true)  301ms
+   ✓ graph quiescence sweep > never substitutes container absence for a deleted receipt in inspect mode  306ms
+   ✓ graph quiescence sweep > requires explicit stop mode and current stop grant for an orphan; never releases its ledger hold  309ms
+   ✓ graph quiescence sweep > rejects extra registration/authority before daemon access  335ms
+   ✓ graph quiescence sweep > captures trusted registrations and guards, and reports absent registries as unproven  343ms
+   ✓ graph quiescence sweep > keeps a substituted trusted manifest unproven before Docker calls  336ms
+ ✓ src/graph-worker-exit-proof.test.ts (37 tests) 1180ms
+   ✓ verifies a real parent-observed exit after reopening SQLite, including inside the G15 final transaction  326ms
+ ❯ src/graph-unstarted-recovery.test.ts (20 tests | 2 failed) 1401ms
+   ✓ takes over a durable no-child run through G15 and starts one replacement worker 283ms
+   ✓ refuses an intent-only launch window even after lease expiry 17ms
+   × refuses a launched worker even after its confirmed exit 271ms
+     → expected [Function] to throw error including 'GRAPH_NO_CHILD_PROOF_REQUIRED' but got 'GRAPH_EXECUTOR_ABSENCE_REQUIRED'
+   ✓ refuses persisted scheduling evidence in graph_checkpoints 19ms
+   ✓ refuses persisted scheduling evidence in graph_checkpoint_writes 17ms
+   ✓ refuses persisted scheduling evidence in graph_checkpoint_requests 18ms
+   ✓ requires synchronous current authority including the final transaction: revoked 17ms
+   ✓ requires synchronous current authority including the final transaction: async 17ms
+   ✓ requires synchronous current authority including the final transaction: commit-revoked 25ms
+   ✓ rechecks executor absence inside the commit transaction 19ms
+   ✓ allows one competing takeover while the failed original host remains alive 22ms
+   ✓ rejects changed recovery premise: owner 17ms
+   ✓ rejects changed recovery premise: program 17ms
+   ✓ rejects changed recovery premise: deadline 17ms
+   ✓ refuses recovery if any executor action was admitted 18ms
+   ✓ recovers repeated real no-child failures after restart and starts exactly one third-generation worker 268ms
+   ✓ does not ignore an empty historical generation: intent-only 18ms
+   × does not ignore an empty historical generation: exited 280ms
+     → expected [Function] to throw error including 'GRAPH_NO_CHILD_PROOF_REQUIRED' but got 'GRAPH_EXECUTOR_ABSENCE_REQUIRED'
+   ✓ does not ignore an empty historical generation: commit-drift 20ms
+   ✓ does not ignore an empty historical generation: grant 20ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/graph-unstarted-recovery.test.ts > refuses a launched worker even after its confirmed exit
+AssertionError: expected [Function] to throw error including 'GRAPH_NO_CHILD_PROOF_REQUIRED' but got 'GRAPH_EXECUTOR_ABSENCE_REQUIRED'
+
+Expected: "GRAPH_NO_CHILD_PROOF_REQUIRED"
+Received: "GRAPH_EXECUTOR_ABSENCE_REQUIRED"
+
+ ❯ src/graph-unstarted-recovery.test.ts:47:3
+     45|   const f = fixture(); await f.runtime.start(f.start).finalExit;
+     46|   const request = f.request(); request.fence.expectedRevision = new Gr…
+     47|   await expect(f.runtime.recoverUnstartedWorker(request, () => {})).re…
+       |   ^
+     48| });
+     49| it.each(['graph_checkpoints', 'graph_checkpoint_writes', 'graph_checkp…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  src/graph-unstarted-recovery.test.ts > does not ignore an empty historical generation: exited
+AssertionError: expected [Function] to throw error including 'GRAPH_NO_CHILD_PROOF_REQUIRED' but got 'GRAPH_EXECUTOR_ABSENCE_REQUIRED'
+
+Expected: "GRAPH_NO_CHILD_PROOF_REQUIRED"
+Received: "GRAPH_EXECUTOR_ABSENCE_REQUIRED"
+
+ ❯ src/graph-unstarted-recovery.test.ts:138:3
+    136|     confirmedAt: Date.now(), evidenceRef: 'worker-not-started:00000000…
+    137|   const request = { ...f.request(), receiptId: 'retry', owner: 'third'…
+    138|   await expect(f.runtime.recoverUnstartedWorker(request, () => {
+       |   ^
+    139|     if (f.db.inTransaction && mode === 'grant') throw Error('REVOKED');
+    140|     if (f.db.inTransaction && mode === 'commit-drift') journal.observe…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed | 2 passed (3)
+      Tests  2 failed | 109 passed (111)
+   Start at  05:53:39
+   Duration  12.61s (transform 854ms, setup 20ms, collect 2.07s, tests 10.15s, environment 0ms, prepare 95ms)
+
+/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli:
+[ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL] @osstack/cli@0.19.0 test: `vitest run src/graph-worker-exit-proof.test.ts src/graph-unstarted-recovery.test.ts src/graph-contained-recovery.test.ts --maxWorkers=1`
+Exit status 1

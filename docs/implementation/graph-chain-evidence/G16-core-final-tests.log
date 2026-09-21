@@ -1,0 +1,35 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/core
+
+Preparing worktree (detached HEAD 45974a8)
+Preparing worktree (detached HEAD e395883)
+Preparing worktree (detached HEAD ac7f35c)
+Preparing worktree (detached HEAD ac7f35c)
+Preparing worktree (detached HEAD c454ffc)
+Preparing worktree (detached HEAD 6a5e478)
+Preparing worktree (detached HEAD dd3df1e)
+Preparing worktree (detached HEAD dd3df1e)
+Preparing worktree (detached HEAD dd3df1e)
+Preparing worktree (detached HEAD dd3df1e)
+Preparing worktree (detached HEAD 6e0b8d8)
+Preparing worktree (detached HEAD 6e0b8d8)
+Preparing worktree (detached HEAD 6bf1a82)
+Preparing worktree (detached HEAD 2cf56fe)
+Preparing worktree (detached HEAD 2c4d195)
+ ✓ src/graph/artifact-store.test.ts (15 tests) 15852ms
+   ✓ trusted graph artifact freeze > restores full reachable history and exact raw tree after deleting original repo and worktree  3944ms
+   ✓ trusted graph artifact freeze > captures tracked-file to directory replacement with unusual filenames  1385ms
+   ✓ trusted graph artifact freeze > does not return ready if durable ID publication fails; exported bytes remain recoverable  1008ms
+   ✓ trusted graph artifact freeze > rejects manifest corruption under a pinned artifact digest  929ms
+   ✓ trusted graph artifact freeze > rejects same ID with changed receipt or content  2392ms
+   ✓ trusted graph artifact freeze > rechecks resolved producer evidence before capture and rejects revocation  369ms
+   ✓ trusted graph artifact freeze > does not invoke local hooks or filters during capture or restore  2031ms
+   ✓ trusted graph artifact freeze > rejects submodules instead of exporting an incomplete tree  482ms
+   ✓ trusted graph artifact freeze > rejects corrupted bundles and manifests, including replay  1315ms
+   ✓ trusted graph artifact freeze > refuses existing and escaping restore destinations  925ms
+
+ Test Files  1 passed (1)
+      Tests  15 passed (15)
+   Start at  07:38:08
+   Duration  16.67s (transform 277ms, setup 0ms, collect 426ms, tests 15.85s, environment 0ms, prepare 153ms)
+

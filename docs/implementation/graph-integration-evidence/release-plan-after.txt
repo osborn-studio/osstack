@@ -1,0 +1,17 @@
+{
+  "ok": true,
+  "kind": "release-plan-smoke",
+  "output": "/Volumes/AIMATE_WORK/tmp/g30-final/tmp/osstack-release-plan-smoke-T9pc6N/release-plan.md",
+  "status_output": "/Volumes/AIMATE_WORK/tmp/g30-final/tmp/osstack-release-plan-smoke-T9pc6N/release-status.md",
+  "edgeone_output": "/Volumes/AIMATE_WORK/tmp/g30-final/tmp/osstack-release-plan-smoke-T9pc6N/edgeone-setup.md",
+  "npm_output": "/Volumes/AIMATE_WORK/tmp/g30-final/tmp/osstack-release-plan-smoke-T9pc6N/npm-publish-setup.md",
+  "handoff_output_dir": "/Volumes/AIMATE_WORK/tmp/g30-final/tmp/osstack-release-plan-smoke-T9pc6N/release-handoff",
+  "cloud_url": "http://127.0.0.1:50863",
+  "target": "all",
+  "validation_commands": 17,
+  "publish_commands": 4,
+  "deploy_commands": 4,
+  "post_release_validation_commands": 14,
+  "knowledge_sync": "synced",
+  "knowledge_search": "proof-checksum-pack"
+}

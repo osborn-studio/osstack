@@ -1,0 +1,287 @@
+{
+  "loop_id": "G25-contained-proof-bridge-1",
+  "started_at": "2026-09-18T14:22:59.468Z",
+  "updated_at": "2026-09-18T14:31:25.660Z",
+  "completed_tasks": [
+    {
+      "task_id": "G25-contained-proof-bridge-1",
+      "capability": "code.test",
+      "outcome": "escalated",
+      "iterations": 1,
+      "agent_id": "local-command",
+      "duration_ms": 445052,
+      "run_id": "run_d3b1c956-8fcc-4c3d-b25b-032f962c0263",
+      "started_at": "2026-09-18T14:22:59.469Z",
+      "completed_at": "2026-09-18T14:23:19.002Z",
+      "execution_summary": "Process group 2116 gone (kill(-pgid, 0): ESRCH); leader exit observed",
+      "execution_commands": [
+        {
+          "command": "node /Volumes/AIMATE_WORK/tmp/g25-proof-bridge/check.mjs real",
+          "exit_code": 1,
+          "duration_ms": 19533,
+          "summary": "real: exit=1 sical operations ↓ graph quiescence sweep > rejects duplicate registration/authority before daemon access ↓ graph quiescence sweep > rejects extra registration/authority before daemon access ↓ graph quiescence sweep > rejects a"
+        }
+      ],
+      "verifier_agent_id": "local-verifier",
+      "verify_summary": "2 issues found by local verifier.",
+      "verify_issue_count": 2,
+      "verify_issues": [
+        {
+          "severity": "error",
+          "message": "Builder execution ended failed: Process group 2116 gone (kill(-pgid, 0): ESRCH); leader exit observed",
+          "rule": "execute.outcome_not_completed"
+        },
+        {
+          "severity": "error",
+          "message": "node /Volumes/AIMATE_WORK/tmp/g25-proof-bridge/check.mjs real failed (1): real: exit=1 sical operations ↓ graph quiescence sweep > rejects duplicate registration/authority before daemon access ↓ graph quiescence sweep > rejects extra registration/authority before daemon access ↓ graph quiescence sweep > rejects a",
+          "rule": "execute.command_failed"
+        }
+      ],
+      "verify_commands": [
+        {
+          "command": "node /Volumes/AIMATE_WORK/tmp/g25-proof-bridge/check.mjs matrix",
+          "exit_code": 0,
+          "duration_ms": 416704,
+          "summary": "matrix: exit=0 0-loop: PASS (112 tests), seed=250927 0-agents: PASS (47 tests), seed=250927 0-core: PASS (79 tests), seed=250927 0-cli: PASS (337 tests), seed=250927 1-cli: PASS (4 tests), seed=250928 {\"passed\":true,\"output\":\"/Volumes/AIMAT"
+        },
+        {
+          "command": "node /Volumes/AIMATE_WORK/tmp/g25-proof-bridge/check.mjs typecheck",
+          "exit_code": 0,
+          "duration_ms": 7324,
+          "summary": "typecheck: exit=0 $ pnpm -r typecheck Scope: 22 of 23 workspace projects packages/compliance typecheck$ tsc --noEmit packages/governance typecheck$ tsc --noEmit packages/contracts typecheck$ tsc --noEmit packages/github typecheck$ tsc --noE"
+        },
+        {
+          "command": "node /Volumes/AIMATE_WORK/tmp/g25-proof-bridge/check.mjs schemas",
+          "exit_code": 0,
+          "duration_ms": 356,
+          "summary": "schemas: exit=0 $ node scripts/generate-schemas.mjs --check schemas up to date"
+        },
+        {
+          "command": "node /Volumes/AIMATE_WORK/tmp/g25-proof-bridge/check.mjs startup",
+          "exit_code": 0,
+          "duration_ms": 921,
+          "summary": "startup: exit=0 ok osstack --version (fast path): median 36ms over 5 runs (budget 150ms; min 33, max 37) ok osstack --help (full command surface): median 116ms over 5 runs (budget 500ms; min 94, max 186)"
+        },
+        {
+          "command": "node /Volumes/AIMATE_WORK/tmp/g25-proof-bridge/check.mjs whitespace",
+          "exit_code": 0,
+          "duration_ms": 86,
+          "summary": "whitespace: exit=0"
+        }
+      ],
+      "evaluations": [
+        {
+          "spec_id": "verify-command-1",
+          "mode": "command",
+          "description": "Shell verifier: node /Volumes/AIMATE_WORK/tmp/g25-proof-bridge/check.mjs matrix",
+          "required": true,
+          "weight": 1,
+          "pass": true,
+          "summary": "command passed (416704 ms)",
+          "implicit": true
+        },
+        {
+          "spec_id": "verify-command-2",
+          "mode": "command",
+          "description": "Shell verifier: node /Volumes/AIMATE_WORK/tmp/g25-proof-bridge/check.mjs typecheck",
+          "required": true,
+          "weight": 1,
+          "pass": true,
+          "summary": "command passed (7324 ms)",
+          "implicit": true
+        },
+        {
+          "spec_id": "verify-command-3",
+          "mode": "command",
+          "description": "Shell verifier: node /Volumes/AIMATE_WORK/tmp/g25-proof-bridge/check.mjs schemas",
+          "required": true,
+          "weight": 1,
+          "pass": true,
+          "summary": "command passed (356 ms)",
+          "implicit": true
+        },
+        {
+          "spec_id": "verify-command-4",
+          "mode": "command",
+          "description": "Shell verifier: node /Volumes/AIMATE_WORK/tmp/g25-proof-bridge/check.mjs startup",
+          "required": true,
+          "weight": 1,
+          "pass": true,
+          "summary": "command passed (921 ms)",
+          "implicit": true
+        },
+        {
+          "spec_id": "verify-command-5",
+          "mode": "command",
+          "description": "Shell verifier: node /Volumes/AIMATE_WORK/tmp/g25-proof-bridge/check.mjs whitespace",
+          "required": true,
+          "weight": 1,
+          "pass": true,
+          "summary": "command passed (86 ms)",
+          "implicit": true
+        }
+      ],
+      "iteration_feedback": [
+        {
+          "attempt": 1,
+          "verdict_summary": "2 issues found by local verifier.",
+          "blocking_issues": [
+            {
+              "severity": "error",
+              "message": "Builder execution ended failed: Process group 2116 gone (kill(-pgid, 0): ESRCH); leader exit observed",
+              "rule": "execute.outcome_not_completed"
+            },
+            {
+              "severity": "error",
+              "message": "node /Volumes/AIMATE_WORK/tmp/g25-proof-bridge/check.mjs real failed (1): real: exit=1 sical operations ↓ graph quiescence sweep > rejects duplicate registration/authority before daemon access ↓ graph quiescence sweep > rejects extra registration/authority before daemon access ↓ graph quiescence sweep > rejects a",
+              "rule": "execute.command_failed"
+            }
+          ],
+          "failed_evaluations": [],
+          "suggested_focus": [],
+          "previous_diff_summary": "packages/agents/src/contained-command.test.ts | 37 +++++++++++- packages/agents/src/contained-command.ts | 57 +++++++++++++++++-- packages/cli/src/graph-contained-recovery.test.ts | 68 ++++++++++++++++++++++- packages/cli/src/graph-containe"
+        }
+      ],
+      "changed_files": [
+        "packages/agents/src/contained-command.test.ts",
+        "packages/agents/src/contained-command.ts",
+        "packages/cli/src/graph-contained-recovery.test.ts",
+        "packages/cli/src/graph-contained-recovery.ts"
+      ],
+      "diff_summary": "packages/agents/src/contained-command.test.ts | 37 +++++++++++- packages/agents/src/contained-command.ts | 57 +++++++++++++++++-- packages/cli/src/graph-contained-recovery.test.ts | 68 ++++++++++++++++++++++- packages/cli/src/graph-containe",
+      "commit_hash": "24a0dc2",
+      "error_summary": "Builder execution ended failed: Process group 2116 gone (kill(-pgid, 0): ESRCH); leader exit observed"
+    },
+    {
+      "task_id": "G25-contained-proof-bridge-2",
+      "capability": "code.test",
+      "outcome": "success",
+      "iterations": 1,
+      "agent_id": "local-command",
+      "duration_ms": 23586,
+      "run_id": "run_37b13408-d777-4a88-9200-19314b7ecb0d",
+      "started_at": "2026-09-18T14:31:02.074Z",
+      "completed_at": "2026-09-18T14:31:18.400Z",
+      "execution_summary": "Process group 9754 gone (kill(-pgid, 0): ESRCH); leader exit observed",
+      "execution_commands": [
+        {
+          "command": "node /Volumes/AIMATE_WORK/tmp/g25-proof-bridge/check.mjs real",
+          "exit_code": 0,
+          "duration_ms": 16326,
+          "summary": "real: exit=0 $ vitest run src/graph-contained-recovery.test.ts -t 'contained proof bridge' --maxWorkers=1 --testTimeout=30000 RUN v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli ✓ src/graph-containe"
+        }
+      ],
+      "verifier_agent_id": "local-verifier",
+      "verify_summary": "5 verifier commands and 0 verifier adapters passed. 5 evaluations passed.",
+      "verify_issue_count": 0,
+      "verify_commands": [
+        {
+          "command": "node /Volumes/AIMATE_WORK/tmp/g25-proof-bridge/check.mjs matrix",
+          "exit_code": 0,
+          "duration_ms": 289,
+          "summary": "matrix: exit=0 {\"verifiedAt\":\"2026-09-18T14:31:18.684Z\",\"matrixSha256\":\"0d88f925aefe1543f4809a7263c31f56f1a2b0c645445437c2c41552660dcacd\",\"testExecutions\":579,\"sourceFiles\":1072,\"artifactFiles\":1811,\"hashesMatched\":true,\"reason\":\"Only exter"
+        },
+        {
+          "command": "node /Volumes/AIMATE_WORK/tmp/g25-proof-bridge/check.mjs typecheck",
+          "exit_code": 0,
+          "duration_ms": 5976,
+          "summary": "typecheck: exit=0 $ pnpm -r typecheck Scope: 22 of 23 workspace projects packages/compliance typecheck$ tsc --noEmit packages/github typecheck$ tsc --noEmit packages/contracts typecheck$ tsc --noEmit packages/governance typecheck$ tsc --noE"
+        },
+        {
+          "command": "node /Volumes/AIMATE_WORK/tmp/g25-proof-bridge/check.mjs schemas",
+          "exit_code": 0,
+          "duration_ms": 293,
+          "summary": "schemas: exit=0 $ node scripts/generate-schemas.mjs --check schemas up to date"
+        },
+        {
+          "command": "node /Volumes/AIMATE_WORK/tmp/g25-proof-bridge/check.mjs startup",
+          "exit_code": 0,
+          "duration_ms": 600,
+          "summary": "startup: exit=0 ok osstack --version (fast path): median 27ms over 5 runs (budget 150ms; min 27, max 29) ok osstack --help (full command surface): median 79ms over 5 runs (budget 500ms; min 78, max 89)"
+        },
+        {
+          "command": "node /Volumes/AIMATE_WORK/tmp/g25-proof-bridge/check.mjs whitespace",
+          "exit_code": 0,
+          "duration_ms": 48,
+          "summary": "whitespace: exit=0"
+        }
+      ],
+      "evaluations": [
+        {
+          "spec_id": "verify-command-1",
+          "mode": "command",
+          "description": "Shell verifier: node /Volumes/AIMATE_WORK/tmp/g25-proof-bridge/check.mjs matrix",
+          "required": true,
+          "weight": 1,
+          "pass": true,
+          "summary": "command passed (289 ms)",
+          "implicit": true
+        },
+        {
+          "spec_id": "verify-command-2",
+          "mode": "command",
+          "description": "Shell verifier: node /Volumes/AIMATE_WORK/tmp/g25-proof-bridge/check.mjs typecheck",
+          "required": true,
+          "weight": 1,
+          "pass": true,
+          "summary": "command passed (5976 ms)",
+          "implicit": true
+        },
+        {
+          "spec_id": "verify-command-3",
+          "mode": "command",
+          "description": "Shell verifier: node /Volumes/AIMATE_WORK/tmp/g25-proof-bridge/check.mjs schemas",
+          "required": true,
+          "weight": 1,
+          "pass": true,
+          "summary": "command passed (293 ms)",
+          "implicit": true
+        },
+        {
+          "spec_id": "verify-command-4",
+          "mode": "command",
+          "description": "Shell verifier: node /Volumes/AIMATE_WORK/tmp/g25-proof-bridge/check.mjs startup",
+          "required": true,
+          "weight": 1,
+          "pass": true,
+          "summary": "command passed (600 ms)",
+          "implicit": true
+        },
+        {
+          "spec_id": "verify-command-5",
+          "mode": "command",
+          "description": "Shell verifier: node /Volumes/AIMATE_WORK/tmp/g25-proof-bridge/check.mjs whitespace",
+          "required": true,
+          "weight": 1,
+          "pass": true,
+          "summary": "command passed (48 ms)",
+          "implicit": true
+        }
+      ],
+      "changed_files": [
+        "packages/agents/src/contained-command.test.ts",
+        "packages/agents/src/contained-command.ts",
+        "packages/cli/src/graph-contained-recovery.test.ts",
+        "packages/cli/src/graph-contained-recovery.ts"
+      ],
+      "diff_summary": "packages/agents/src/contained-command.test.ts | 37 +++++++++++- packages/agents/src/contained-command.ts | 57 +++++++++++++++++-- packages/cli/src/graph-contained-recovery.test.ts | 68 ++++++++++++++++++++++- packages/cli/src/graph-containe",
+      "commit_hash": "24a0dc2"
+    }
+  ],
+  "in_progress": [],
+  "pending": [],
+  "deferred_tasks": [],
+  "key_metrics": {
+    "total_cycles": 2,
+    "avg_duration_ms": 234319,
+    "success_rate": 0.5,
+    "tokens_consumed": 0,
+    "cost_consumed": 0
+  },
+  "decisions": [
+    "G25-contained-proof-bridge-1: selected local-command - local execute command",
+    "G25-contained-proof-bridge-1: escalate after iteration 1 - Maximum iterations reached (1) with 2 verifier issues remaining.",
+    "G25-contained-proof-bridge-2: selected local-command - local execute command",
+    "G25-contained-proof-bridge-2: stop after iteration 1 - Verifier passed with score 1.00."
+  ]
+}

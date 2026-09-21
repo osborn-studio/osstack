@@ -1,0 +1,17 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+
+  ../../../tmp/gc5/g17-build-zO56tz/graph-chain-host.mjs  327.6kb
+
+⚡ Done in 14ms
+ ✓ src/graph-chain.integration.test.ts (28 tests | 25 skipped) 5763ms
+   ✓ assembly: bounded stop reports undrained actual broker Promise and refuses recovery before drainage  1759ms
+   ✓ assembly: original deadline aborts actual in-flight command through supervisor heartbeat  2424ms
+   ✓ assembly: cancel with unproven executor stop retains unknown effect even after broker drainage  1579ms
+
+ Test Files  1 passed (1)
+      Tests  3 passed | 25 skipped (28)
+   Start at  08:04:58
+   Duration  6.60s (transform 406ms, setup 7ms, collect 675ms, tests 5.76s, environment 0ms, prepare 35ms)
+

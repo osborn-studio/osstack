@@ -1,0 +1,10 @@
+{
+  "fable-review-prompt.txt": {
+    "path": "/Volumes/AIMATE_WORK/tmp/g25-public-reconcile/fable-review-prompt.txt",
+    "sha256": "ca8a9a923fdf4d473a5d71f4efcddf1623b58762cf6441ff43af6e622eb45bd3"
+  },
+  "fable-final-prompt.txt": {
+    "path": "/Volumes/AIMATE_WORK/tmp/g25-public-reconcile/fable-final-prompt.txt",
+    "sha256": "6e6e95dbe64c4b0c68dc19d911e1c566447b825df5919eeeac9756f7054a15b2"
+  }
+}

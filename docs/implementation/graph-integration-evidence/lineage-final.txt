@@ -1,0 +1,11 @@
+$ vitest run src/state/graph-migration-lineage.test.ts src/state/db.test.ts
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/core
+
+ ✓ src/state/db.test.ts (22 tests) 1473ms
+ ✓ src/state/graph-migration-lineage.test.ts (21 tests) 3913ms
+
+ Test Files  2 passed (2)
+      Tests  43 passed (43)
+   Start at  17:59:24
+   Duration  4.43s (transform 143ms, setup 0ms, collect 279ms, tests 5.39s, environment 0ms, prepare 150ms)

@@ -1,0 +1,46 @@
+$ vitest run graph-action-broker-boundary.test.ts
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+osstack: retaining write lease graph-action:d81fbfcd9f3758e4ac4cd13fa1141cb612d0a743fe64b40349b765b9e4fac4b1: Error: invalid result kind for registered operation
+osstack: retaining write lease graph-action:c0c3a7c97070def7a2865af8e191801ec9e0023867b5b3987fbf2ae13123b49e: Error: invalid persisted evidence reference
+osstack: retaining write lease graph-action:f61299c8432ab70f0bed3c4cf7318d108764dbc34135c6dbed3298047575043f: Error: candidate preflight refused
+osstack: retaining write lease graph-action:0f8f61c4f1fa13edd0cab2b2aa414f0d2c35606daa6479791c01c5616e8312df: Error: candidate preflight refused
+osstack: retaining write lease graph-action:fdac3578c157e8a293ab9127f2750cc9afc76d66a0dcd29204e54bbeee6846a6: Error: lost receipt
+ ❯ src/graph-action-broker-boundary.test.ts (11 tests | 1 failed) 691ms
+   ✓ rejects a Promise-returning synchronous authorizer instead of silently granting authority 53ms
+   ✓ rechecks repository policy after an asynchronous adapter availability probe 94ms
+   ✓ charges observed adapter usage even when the persistence mapper reports less 66ms
+   ✓ combines independently reported cumulative input and output usage without lowering either component 62ms
+   ✓ marks only a proven pre-invocation policy failure safe for a future explicit host retry 40ms
+   ✓ retains a saved evidence reference and known usage when result validation fails 56ms
+   ✓ does not let malformed persistence references prevent durable uncertainty recording 54ms
+   ✓ never settles an already-running effect (same execution) as a safe pre-invocation failure 59ms
+   ✓ never settles an already-running effect (different execution) as a safe pre-invocation failure 53ms
+   ✓ retires a supervised connection while its availability probe is pending 89ms
+   × keeps uncertain admission until its exact effect receives trusted release verification 64ms
+     → f.broker.releaseReconciled is not a function
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/graph-action-broker-boundary.test.ts > keeps uncertain admission until its exact effect receives trusted release verification
+TypeError: f.broker.releaseReconciled is not a function
+ ❯ src/graph-action-broker-boundary.test.ts:165:25
+    163|   expect(response).toMatchObject({ outcome: { state: 'unknown' } });
+    164|   const row = f.db.prepare('SELECT effect_key FROM graph_actions').get…
+    165|   await expect(f.broker.releaseReconciled(row.effect_key, async () => …
+       |                         ^
+    166|   expect(f.writes.in_use).toBe(1);
+    167|   await expect(f.broker.releaseReconciled(row.effect_key, async bindin…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 10 passed (11)
+   Start at  07:32:30
+   Duration  2.44s (transform 866ms, setup 12ms, collect 1.53s, tests 691ms, environment 0ms, prepare 51ms)
+
+/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli:
+[ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL] @osstack/cli@0.19.0 test: `vitest run graph-action-broker-boundary.test.ts`
+Exit status 1

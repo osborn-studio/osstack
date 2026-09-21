@@ -1,0 +1,26 @@
+{
+  "node": "v26.5.0",
+  "note": "Fresh processes, warm filesystem cache; not CLI startup benchmark.",
+  "measurements": {
+    "@google/adk": {
+      "samplesMs": [
+        601.017083,
+        307.74325,
+        341.639958,
+        290.943833,
+        288.854625
+      ],
+      "medianMs": 307.74325
+    },
+    "@langchain/langgraph": {
+      "samplesMs": [
+        177.811542,
+        132.54933400000002,
+        140.120666,
+        135.10275,
+        135.086291
+      ],
+      "medianMs": 135.10275
+    }
+  }
+}

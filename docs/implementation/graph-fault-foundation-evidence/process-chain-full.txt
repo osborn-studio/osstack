@@ -1,0 +1,674 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+
+  ../../../tmp/g25/g17-build-q1mUeF/graph-chain-host.mjs  454.4kb
+
+⚡ Done in 16ms
+ ❯ src/graph-chain.integration.test.ts (30 tests | 13 failed) 20565ms
+   ✓ uses real worker IPC and durable SQLite checkpoints, retires both ports and exposes OS exit  309ms
+   ✓ rejects asynchronous authority and terminal/old identities before spawning 15ms
+   ✓ assembly: real command implement → freeze persists a selfcontained candidate  1746ms
+   × daemon: real command implement → freeze persists a selfcontained candidate 257ms
+     → Host exited: node:net:2145
+      const error = new UVExceptionWithHostPort(rval, 'listen', address, port);
+                    ^
+
+Error: listen EPERM: operation not permitted /Volumes/AIMATE_WORK/tmp/g25/g17-chain-llG2YL/daemon.sock
+    at Server.setupListenHandle [as _listen2] (node:net:2145:21)
+    at listenInCluster (node:net:2224:12)
+    at Server.listen (node:net:2361:5)
+    at file:///Volumes/AIMATE_WORK/tmp/g25/g17-build-q1mUeF/graph-chain-host.mjs:9713:14 {
+  code: 'EPERM',
+  errno: -1,
+  syscall: 'listen',
+  address: '/Volumes/AIMATE_WORK/tmp/g25/g17-chain-llG2YL/daemon.sock',
+  port: -1
+}
+
+Node.js v26.5.0
+
+   ✓ assembly: SIGKILL at before-return resumes using actual SQLite saver and ledger  1458ms
+   ✓ assembly: SIGKILL at before-final resumes using actual SQLite saver and ledger  1400ms
+   ✓ assembly: SIGKILL at after-final resumes using actual SQLite saver and ledger  1378ms
+   ✓ assembly: restore then SIGKILL again re-enters implement without repeating the confirmed external command  1721ms
+   × daemon: SIGKILL at before-return resumes using actual SQLite saver and ledger 262ms
+     → Host exited: node:net:2145
+      const error = new UVExceptionWithHostPort(rval, 'listen', address, port);
+                    ^
+
+Error: listen EPERM: operation not permitted /Volumes/AIMATE_WORK/tmp/g25/g17-chain-2j9Nmt/daemon.sock
+    at Server.setupListenHandle [as _listen2] (node:net:2145:21)
+    at listenInCluster (node:net:2224:12)
+    at Server.listen (node:net:2361:5)
+    at file:///Volumes/AIMATE_WORK/tmp/g25/g17-build-q1mUeF/graph-chain-host.mjs:9713:14 {
+  code: 'EPERM',
+  errno: -1,
+  syscall: 'listen',
+  address: '/Volumes/AIMATE_WORK/tmp/g25/g17-chain-2j9Nmt/daemon.sock',
+  port: -1
+}
+
+Node.js v26.5.0
+
+   × daemon: SIGKILL at before-final resumes using actual SQLite saver and ledger 348ms
+     → Host exited: node:net:2145
+      const error = new UVExceptionWithHostPort(rval, 'listen', address, port);
+                    ^
+
+Error: listen EPERM: operation not permitted /Volumes/AIMATE_WORK/tmp/g25/g17-chain-GuOxjY/daemon.sock
+    at Server.setupListenHandle [as _listen2] (node:net:2145:21)
+    at listenInCluster (node:net:2224:12)
+    at Server.listen (node:net:2361:5)
+    at file:///Volumes/AIMATE_WORK/tmp/g25/g17-build-q1mUeF/graph-chain-host.mjs:9713:14 {
+  code: 'EPERM',
+  errno: -1,
+  syscall: 'listen',
+  address: '/Volumes/AIMATE_WORK/tmp/g25/g17-chain-GuOxjY/daemon.sock',
+  port: -1
+}
+
+Node.js v26.5.0
+
+   × daemon: SIGKILL at after-final resumes using actual SQLite saver and ledger 272ms
+     → Host exited: node:net:2145
+      const error = new UVExceptionWithHostPort(rval, 'listen', address, port);
+                    ^
+
+Error: listen EPERM: operation not permitted /Volumes/AIMATE_WORK/tmp/g25/g17-chain-NIODu5/daemon.sock
+    at Server.setupListenHandle [as _listen2] (node:net:2145:21)
+    at listenInCluster (node:net:2224:12)
+    at Server.listen (node:net:2361:5)
+    at file:///Volumes/AIMATE_WORK/tmp/g25/g17-build-q1mUeF/graph-chain-host.mjs:9713:14 {
+  code: 'EPERM',
+  errno: -1,
+  syscall: 'listen',
+  address: '/Volumes/AIMATE_WORK/tmp/g25/g17-chain-NIODu5/daemon.sock',
+  port: -1
+}
+
+Node.js v26.5.0
+
+   × daemon: restore then SIGKILL again re-enters implement without repeating the confirmed external command 261ms
+     → Host exited: node:net:2145
+      const error = new UVExceptionWithHostPort(rval, 'listen', address, port);
+                    ^
+
+Error: listen EPERM: operation not permitted /Volumes/AIMATE_WORK/tmp/g25/g17-chain-mt8d5W/daemon.sock
+    at Server.setupListenHandle [as _listen2] (node:net:2145:21)
+    at listenInCluster (node:net:2224:12)
+    at Server.listen (node:net:2361:5)
+    at file:///Volumes/AIMATE_WORK/tmp/g25/g17-build-q1mUeF/graph-chain-host.mjs:9713:14 {
+  code: 'EPERM',
+  errno: -1,
+  syscall: 'listen',
+  address: '/Volumes/AIMATE_WORK/tmp/g25/g17-chain-mt8d5W/daemon.sock',
+  port: -1
+}
+
+Node.js v26.5.0
+
+   × daemon: true daemon process SIGKILL/restart retains SQLite results and resumes through G15 254ms
+     → Host exited: node:net:2145
+      const error = new UVExceptionWithHostPort(rval, 'listen', address, port);
+                    ^
+
+Error: listen EPERM: operation not permitted /Volumes/AIMATE_WORK/tmp/g25/g17-chain-kAzcqV/daemon.sock
+    at Server.setupListenHandle [as _listen2] (node:net:2145:21)
+    at listenInCluster (node:net:2224:12)
+    at Server.listen (node:net:2361:5)
+    at file:///Volumes/AIMATE_WORK/tmp/g25/g17-build-q1mUeF/graph-chain-host.mjs:9713:14 {
+  code: 'EPERM',
+  errno: -1,
+  syscall: 'listen',
+  address: '/Volumes/AIMATE_WORK/tmp/g25/g17-chain-kAzcqV/daemon.sock',
+  port: -1
+}
+
+Node.js v26.5.0
+
+   ✓ assembly: real broker unknown stays quarantined, then durable applied release failure is retried without resending  819ms
+   ✓ assembly: trusted not_applied reconciliation releases exact retained broker lease without automatically retrying  692ms
+   ✓ assembly: cancel reaches actual command process group and kills abort-ignoring worker without starting freeze  638ms
+   × daemon: real broker unknown stays quarantined, then durable applied release failure is retried without resending 361ms
+     → Host exited: node:net:2145
+      const error = new UVExceptionWithHostPort(rval, 'listen', address, port);
+                    ^
+
+Error: listen EPERM: operation not permitted /Volumes/AIMATE_WORK/tmp/g25/g17-chain-rD8yYc/daemon.sock
+    at Server.setupListenHandle [as _listen2] (node:net:2145:21)
+    at listenInCluster (node:net:2224:12)
+    at Server.listen (node:net:2361:5)
+    at file:///Volumes/AIMATE_WORK/tmp/g25/g17-build-q1mUeF/graph-chain-host.mjs:9713:14 {
+  code: 'EPERM',
+  errno: -1,
+  syscall: 'listen',
+  address: '/Volumes/AIMATE_WORK/tmp/g25/g17-chain-rD8yYc/daemon.sock',
+  port: -1
+}
+
+Node.js v26.5.0
+
+   × daemon: trusted not_applied reconciliation releases exact retained broker lease without automatically retrying 346ms
+     → Host exited: node:net:2145
+      const error = new UVExceptionWithHostPort(rval, 'listen', address, port);
+                    ^
+
+Error: listen EPERM: operation not permitted /Volumes/AIMATE_WORK/tmp/g25/g17-chain-Slz02p/daemon.sock
+    at Server.setupListenHandle [as _listen2] (node:net:2145:21)
+    at listenInCluster (node:net:2224:12)
+    at Server.listen (node:net:2361:5)
+    at file:///Volumes/AIMATE_WORK/tmp/g25/g17-build-q1mUeF/graph-chain-host.mjs:9713:14 {
+  code: 'EPERM',
+  errno: -1,
+  syscall: 'listen',
+  address: '/Volumes/AIMATE_WORK/tmp/g25/g17-chain-Slz02p/daemon.sock',
+  port: -1
+}
+
+Node.js v26.5.0
+
+   × daemon: cancel reaches actual command process group and kills abort-ignoring worker without starting freeze 349ms
+     → Host exited: node:net:2145
+      const error = new UVExceptionWithHostPort(rval, 'listen', address, port);
+                    ^
+
+Error: listen EPERM: operation not permitted /Volumes/AIMATE_WORK/tmp/g25/g17-chain-Domcuw/daemon.sock
+    at Server.setupListenHandle [as _listen2] (node:net:2145:21)
+    at listenInCluster (node:net:2224:12)
+    at Server.listen (node:net:2361:5)
+    at file:///Volumes/AIMATE_WORK/tmp/g25/g17-build-q1mUeF/graph-chain-host.mjs:9713:14 {
+  code: 'EPERM',
+  errno: -1,
+  syscall: 'listen',
+  address: '/Volumes/AIMATE_WORK/tmp/g25/g17-chain-Domcuw/daemon.sock',
+  port: -1
+}
+
+Node.js v26.5.0
+
+   ✓ module: a fresh supervisor cannot relaunch a consumed generation from the persistent database 283ms
+   × daemon: unknown retained canonical lock survives actual daemon SIGKILL and releases only after G15 committed decision 295ms
+     → Host exited: node:net:2145
+      const error = new UVExceptionWithHostPort(rval, 'listen', address, port);
+                    ^
+
+Error: listen EPERM: operation not permitted /Volumes/AIMATE_WORK/tmp/g25/g17-chain-wdzYhE/daemon.sock
+    at Server.setupListenHandle [as _listen2] (node:net:2145:21)
+    at listenInCluster (node:net:2224:12)
+    at Server.listen (node:net:2361:5)
+    at file:///Volumes/AIMATE_WORK/tmp/g25/g17-build-q1mUeF/graph-chain-host.mjs:9713:14 {
+  code: 'EPERM',
+  errno: -1,
+  syscall: 'listen',
+  address: '/Volumes/AIMATE_WORK/tmp/g25/g17-chain-wdzYhE/daemon.sock',
+  port: -1
+}
+
+Node.js v26.5.0
+
+   ✓ module: durable original deadline refuses a live lease and cannot be reset by start 15ms
+   ✓ assembly: bounded stop reports undrained actual broker Promise and refuses recovery before drainage  1650ms
+   ✓ assembly: original deadline aborts actual in-flight command through supervisor heartbeat  2415ms
+   ✓ assembly: cancel with unproven executor stop retains unknown effect even after broker drainage  1623ms
+   × daemon: bounded stop reports undrained actual broker Promise and refuses recovery before drainage 270ms
+     → Host exited: node:net:2145
+      const error = new UVExceptionWithHostPort(rval, 'listen', address, port);
+                    ^
+
+Error: listen EPERM: operation not permitted /Volumes/AIMATE_WORK/tmp/g25/g17-chain-1GhMu5/daemon.sock
+    at Server.setupListenHandle [as _listen2] (node:net:2145:21)
+    at listenInCluster (node:net:2224:12)
+    at Server.listen (node:net:2361:5)
+    at file:///Volumes/AIMATE_WORK/tmp/g25/g17-build-q1mUeF/graph-chain-host.mjs:9713:14 {
+  code: 'EPERM',
+  errno: -1,
+  syscall: 'listen',
+  address: '/Volumes/AIMATE_WORK/tmp/g25/g17-chain-1GhMu5/daemon.sock',
+  port: -1
+}
+
+Node.js v26.5.0
+
+   × daemon: original deadline aborts actual in-flight command through supervisor heartbeat 253ms
+     → Host exited: node:net:2145
+      const error = new UVExceptionWithHostPort(rval, 'listen', address, port);
+                    ^
+
+Error: listen EPERM: operation not permitted /Volumes/AIMATE_WORK/tmp/g25/g17-chain-JwLTvl/daemon.sock
+    at Server.setupListenHandle [as _listen2] (node:net:2145:21)
+    at listenInCluster (node:net:2224:12)
+    at Server.listen (node:net:2361:5)
+    at file:///Volumes/AIMATE_WORK/tmp/g25/g17-build-q1mUeF/graph-chain-host.mjs:9713:14 {
+  code: 'EPERM',
+  errno: -1,
+  syscall: 'listen',
+  address: '/Volumes/AIMATE_WORK/tmp/g25/g17-chain-JwLTvl/daemon.sock',
+  port: -1
+}
+
+Node.js v26.5.0
+
+   × daemon: cancel with unproven executor stop retains unknown effect even after broker drainage 257ms
+     → Host exited: node:net:2145
+      const error = new UVExceptionWithHostPort(rval, 'listen', address, port);
+                    ^
+
+Error: listen EPERM: operation not permitted /Volumes/AIMATE_WORK/tmp/g25/g17-chain-335UM3/daemon.sock
+    at Server.setupListenHandle [as _listen2] (node:net:2145:21)
+    at listenInCluster (node:net:2224:12)
+    at Server.listen (node:net:2361:5)
+    at file:///Volumes/AIMATE_WORK/tmp/g25/g17-build-q1mUeF/graph-chain-host.mjs:9713:14 {
+  code: 'EPERM',
+  errno: -1,
+  syscall: 'listen',
+  address: '/Volumes/AIMATE_WORK/tmp/g25/g17-chain-335UM3/daemon.sock',
+  port: -1
+}
+
+Node.js v26.5.0
+
+   ✓ module: late actual worker OS exit replaces unconfirmed observation without rewriting bounded stop  349ms
+   ✓ keeps a database lifetime barrier after bounded stop reports pending host work 270ms
+
+⎯⎯⎯⎯⎯⎯ Failed Tests 13 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/graph-chain.integration.test.ts > daemon: real command implement → freeze persists a selfcontained candidate
+Error: Host exited: node:net:2145
+      const error = new UVExceptionWithHostPort(rval, 'listen', address, port);
+                    ^
+
+Error: listen EPERM: operation not permitted /Volumes/AIMATE_WORK/tmp/g25/g17-chain-llG2YL/daemon.sock
+    at Server.setupListenHandle [as _listen2] (node:net:2145:21)
+    at listenInCluster (node:net:2224:12)
+    at Server.listen (node:net:2361:5)
+    at file:///Volumes/AIMATE_WORK/tmp/g25/g17-build-q1mUeF/graph-chain-host.mjs:9713:14 {
+  code: 'EPERM',
+  errno: -1,
+  syscall: 'listen',
+  address: '/Volumes/AIMATE_WORK/tmp/g25/g17-chain-llG2YL/daemon.sock',
+  port: -1
+}
+
+Node.js v26.5.0
+
+ ❯ check src/graph-chain.integration.test.ts:88:125
+     86|     return new Promise((resolveNext, reject) => {
+     87|       const check = () => { const message = take(); if (message) { cle…
+     88|         else if (child.exitCode !== null || child.signalCode !== null)…
+       |                                                                                                                             ^
+     89|       const timer = setTimeout(() => { changed.delete(check); reject(n…
+     90|       changed.add(check); check();
+ ❯ ChildProcess.<anonymous> src/graph-chain.integration.test.ts:82:114
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/13]⎯
+
+ FAIL  src/graph-chain.integration.test.ts > daemon: SIGKILL at before-return resumes using actual SQLite saver and ledger
+Error: Host exited: node:net:2145
+      const error = new UVExceptionWithHostPort(rval, 'listen', address, port);
+                    ^
+
+Error: listen EPERM: operation not permitted /Volumes/AIMATE_WORK/tmp/g25/g17-chain-2j9Nmt/daemon.sock
+    at Server.setupListenHandle [as _listen2] (node:net:2145:21)
+    at listenInCluster (node:net:2224:12)
+    at Server.listen (node:net:2361:5)
+    at file:///Volumes/AIMATE_WORK/tmp/g25/g17-build-q1mUeF/graph-chain-host.mjs:9713:14 {
+  code: 'EPERM',
+  errno: -1,
+  syscall: 'listen',
+  address: '/Volumes/AIMATE_WORK/tmp/g25/g17-chain-2j9Nmt/daemon.sock',
+  port: -1
+}
+
+Node.js v26.5.0
+
+ ❯ check src/graph-chain.integration.test.ts:88:125
+     86|     return new Promise((resolveNext, reject) => {
+     87|       const check = () => { const message = take(); if (message) { cle…
+     88|         else if (child.exitCode !== null || child.signalCode !== null)…
+       |                                                                                                                             ^
+     89|       const timer = setTimeout(() => { changed.delete(check); reject(n…
+     90|       changed.add(check); check();
+ ❯ ChildProcess.<anonymous> src/graph-chain.integration.test.ts:82:114
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/13]⎯
+
+ FAIL  src/graph-chain.integration.test.ts > daemon: SIGKILL at before-final resumes using actual SQLite saver and ledger
+Error: Host exited: node:net:2145
+      const error = new UVExceptionWithHostPort(rval, 'listen', address, port);
+                    ^
+
+Error: listen EPERM: operation not permitted /Volumes/AIMATE_WORK/tmp/g25/g17-chain-GuOxjY/daemon.sock
+    at Server.setupListenHandle [as _listen2] (node:net:2145:21)
+    at listenInCluster (node:net:2224:12)
+    at Server.listen (node:net:2361:5)
+    at file:///Volumes/AIMATE_WORK/tmp/g25/g17-build-q1mUeF/graph-chain-host.mjs:9713:14 {
+  code: 'EPERM',
+  errno: -1,
+  syscall: 'listen',
+  address: '/Volumes/AIMATE_WORK/tmp/g25/g17-chain-GuOxjY/daemon.sock',
+  port: -1
+}
+
+Node.js v26.5.0
+
+ ❯ check src/graph-chain.integration.test.ts:88:125
+     86|     return new Promise((resolveNext, reject) => {
+     87|       const check = () => { const message = take(); if (message) { cle…
+     88|         else if (child.exitCode !== null || child.signalCode !== null)…
+       |                                                                                                                             ^
+     89|       const timer = setTimeout(() => { changed.delete(check); reject(n…
+     90|       changed.add(check); check();
+ ❯ ChildProcess.<anonymous> src/graph-chain.integration.test.ts:82:114
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/13]⎯
+
+ FAIL  src/graph-chain.integration.test.ts > daemon: SIGKILL at after-final resumes using actual SQLite saver and ledger
+Error: Host exited: node:net:2145
+      const error = new UVExceptionWithHostPort(rval, 'listen', address, port);
+                    ^
+
+Error: listen EPERM: operation not permitted /Volumes/AIMATE_WORK/tmp/g25/g17-chain-NIODu5/daemon.sock
+    at Server.setupListenHandle [as _listen2] (node:net:2145:21)
+    at listenInCluster (node:net:2224:12)
+    at Server.listen (node:net:2361:5)
+    at file:///Volumes/AIMATE_WORK/tmp/g25/g17-build-q1mUeF/graph-chain-host.mjs:9713:14 {
+  code: 'EPERM',
+  errno: -1,
+  syscall: 'listen',
+  address: '/Volumes/AIMATE_WORK/tmp/g25/g17-chain-NIODu5/daemon.sock',
+  port: -1
+}
+
+Node.js v26.5.0
+
+ ❯ check src/graph-chain.integration.test.ts:88:125
+     86|     return new Promise((resolveNext, reject) => {
+     87|       const check = () => { const message = take(); if (message) { cle…
+     88|         else if (child.exitCode !== null || child.signalCode !== null)…
+       |                                                                                                                             ^
+     89|       const timer = setTimeout(() => { changed.delete(check); reject(n…
+     90|       changed.add(check); check();
+ ❯ ChildProcess.<anonymous> src/graph-chain.integration.test.ts:82:114
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/13]⎯
+
+ FAIL  src/graph-chain.integration.test.ts > daemon: restore then SIGKILL again re-enters implement without repeating the confirmed external command
+Error: Host exited: node:net:2145
+      const error = new UVExceptionWithHostPort(rval, 'listen', address, port);
+                    ^
+
+Error: listen EPERM: operation not permitted /Volumes/AIMATE_WORK/tmp/g25/g17-chain-mt8d5W/daemon.sock
+    at Server.setupListenHandle [as _listen2] (node:net:2145:21)
+    at listenInCluster (node:net:2224:12)
+    at Server.listen (node:net:2361:5)
+    at file:///Volumes/AIMATE_WORK/tmp/g25/g17-build-q1mUeF/graph-chain-host.mjs:9713:14 {
+  code: 'EPERM',
+  errno: -1,
+  syscall: 'listen',
+  address: '/Volumes/AIMATE_WORK/tmp/g25/g17-chain-mt8d5W/daemon.sock',
+  port: -1
+}
+
+Node.js v26.5.0
+
+ ❯ check src/graph-chain.integration.test.ts:88:125
+     86|     return new Promise((resolveNext, reject) => {
+     87|       const check = () => { const message = take(); if (message) { cle…
+     88|         else if (child.exitCode !== null || child.signalCode !== null)…
+       |                                                                                                                             ^
+     89|       const timer = setTimeout(() => { changed.delete(check); reject(n…
+     90|       changed.add(check); check();
+ ❯ ChildProcess.<anonymous> src/graph-chain.integration.test.ts:82:114
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/13]⎯
+
+ FAIL  src/graph-chain.integration.test.ts > daemon: true daemon process SIGKILL/restart retains SQLite results and resumes through G15
+Error: Host exited: node:net:2145
+      const error = new UVExceptionWithHostPort(rval, 'listen', address, port);
+                    ^
+
+Error: listen EPERM: operation not permitted /Volumes/AIMATE_WORK/tmp/g25/g17-chain-kAzcqV/daemon.sock
+    at Server.setupListenHandle [as _listen2] (node:net:2145:21)
+    at listenInCluster (node:net:2224:12)
+    at Server.listen (node:net:2361:5)
+    at file:///Volumes/AIMATE_WORK/tmp/g25/g17-build-q1mUeF/graph-chain-host.mjs:9713:14 {
+  code: 'EPERM',
+  errno: -1,
+  syscall: 'listen',
+  address: '/Volumes/AIMATE_WORK/tmp/g25/g17-chain-kAzcqV/daemon.sock',
+  port: -1
+}
+
+Node.js v26.5.0
+
+ ❯ check src/graph-chain.integration.test.ts:88:125
+     86|     return new Promise((resolveNext, reject) => {
+     87|       const check = () => { const message = take(); if (message) { cle…
+     88|         else if (child.exitCode !== null || child.signalCode !== null)…
+       |                                                                                                                             ^
+     89|       const timer = setTimeout(() => { changed.delete(check); reject(n…
+     90|       changed.add(check); check();
+ ❯ ChildProcess.<anonymous> src/graph-chain.integration.test.ts:82:114
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/13]⎯
+
+ FAIL  src/graph-chain.integration.test.ts > daemon: real broker unknown stays quarantined, then durable applied release failure is retried without resending
+Error: Host exited: node:net:2145
+      const error = new UVExceptionWithHostPort(rval, 'listen', address, port);
+                    ^
+
+Error: listen EPERM: operation not permitted /Volumes/AIMATE_WORK/tmp/g25/g17-chain-rD8yYc/daemon.sock
+    at Server.setupListenHandle [as _listen2] (node:net:2145:21)
+    at listenInCluster (node:net:2224:12)
+    at Server.listen (node:net:2361:5)
+    at file:///Volumes/AIMATE_WORK/tmp/g25/g17-build-q1mUeF/graph-chain-host.mjs:9713:14 {
+  code: 'EPERM',
+  errno: -1,
+  syscall: 'listen',
+  address: '/Volumes/AIMATE_WORK/tmp/g25/g17-chain-rD8yYc/daemon.sock',
+  port: -1
+}
+
+Node.js v26.5.0
+
+ ❯ check src/graph-chain.integration.test.ts:88:125
+     86|     return new Promise((resolveNext, reject) => {
+     87|       const check = () => { const message = take(); if (message) { cle…
+     88|         else if (child.exitCode !== null || child.signalCode !== null)…
+       |                                                                                                                             ^
+     89|       const timer = setTimeout(() => { changed.delete(check); reject(n…
+     90|       changed.add(check); check();
+ ❯ ChildProcess.<anonymous> src/graph-chain.integration.test.ts:82:114
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/13]⎯
+
+ FAIL  src/graph-chain.integration.test.ts > daemon: trusted not_applied reconciliation releases exact retained broker lease without automatically retrying
+Error: Host exited: node:net:2145
+      const error = new UVExceptionWithHostPort(rval, 'listen', address, port);
+                    ^
+
+Error: listen EPERM: operation not permitted /Volumes/AIMATE_WORK/tmp/g25/g17-chain-Slz02p/daemon.sock
+    at Server.setupListenHandle [as _listen2] (node:net:2145:21)
+    at listenInCluster (node:net:2224:12)
+    at Server.listen (node:net:2361:5)
+    at file:///Volumes/AIMATE_WORK/tmp/g25/g17-build-q1mUeF/graph-chain-host.mjs:9713:14 {
+  code: 'EPERM',
+  errno: -1,
+  syscall: 'listen',
+  address: '/Volumes/AIMATE_WORK/tmp/g25/g17-chain-Slz02p/daemon.sock',
+  port: -1
+}
+
+Node.js v26.5.0
+
+ ❯ check src/graph-chain.integration.test.ts:88:125
+     86|     return new Promise((resolveNext, reject) => {
+     87|       const check = () => { const message = take(); if (message) { cle…
+     88|         else if (child.exitCode !== null || child.signalCode !== null)…
+       |                                                                                                                             ^
+     89|       const timer = setTimeout(() => { changed.delete(check); reject(n…
+     90|       changed.add(check); check();
+ ❯ ChildProcess.<anonymous> src/graph-chain.integration.test.ts:82:114
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/13]⎯
+
+ FAIL  src/graph-chain.integration.test.ts > daemon: cancel reaches actual command process group and kills abort-ignoring worker without starting freeze
+Error: Host exited: node:net:2145
+      const error = new UVExceptionWithHostPort(rval, 'listen', address, port);
+                    ^
+
+Error: listen EPERM: operation not permitted /Volumes/AIMATE_WORK/tmp/g25/g17-chain-Domcuw/daemon.sock
+    at Server.setupListenHandle [as _listen2] (node:net:2145:21)
+    at listenInCluster (node:net:2224:12)
+    at Server.listen (node:net:2361:5)
+    at file:///Volumes/AIMATE_WORK/tmp/g25/g17-build-q1mUeF/graph-chain-host.mjs:9713:14 {
+  code: 'EPERM',
+  errno: -1,
+  syscall: 'listen',
+  address: '/Volumes/AIMATE_WORK/tmp/g25/g17-chain-Domcuw/daemon.sock',
+  port: -1
+}
+
+Node.js v26.5.0
+
+ ❯ check src/graph-chain.integration.test.ts:88:125
+     86|     return new Promise((resolveNext, reject) => {
+     87|       const check = () => { const message = take(); if (message) { cle…
+     88|         else if (child.exitCode !== null || child.signalCode !== null)…
+       |                                                                                                                             ^
+     89|       const timer = setTimeout(() => { changed.delete(check); reject(n…
+     90|       changed.add(check); check();
+ ❯ ChildProcess.<anonymous> src/graph-chain.integration.test.ts:82:114
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[9/13]⎯
+
+ FAIL  src/graph-chain.integration.test.ts > daemon: unknown retained canonical lock survives actual daemon SIGKILL and releases only after G15 committed decision
+Error: Host exited: node:net:2145
+      const error = new UVExceptionWithHostPort(rval, 'listen', address, port);
+                    ^
+
+Error: listen EPERM: operation not permitted /Volumes/AIMATE_WORK/tmp/g25/g17-chain-wdzYhE/daemon.sock
+    at Server.setupListenHandle [as _listen2] (node:net:2145:21)
+    at listenInCluster (node:net:2224:12)
+    at Server.listen (node:net:2361:5)
+    at file:///Volumes/AIMATE_WORK/tmp/g25/g17-build-q1mUeF/graph-chain-host.mjs:9713:14 {
+  code: 'EPERM',
+  errno: -1,
+  syscall: 'listen',
+  address: '/Volumes/AIMATE_WORK/tmp/g25/g17-chain-wdzYhE/daemon.sock',
+  port: -1
+}
+
+Node.js v26.5.0
+
+ ❯ check src/graph-chain.integration.test.ts:88:125
+     86|     return new Promise((resolveNext, reject) => {
+     87|       const check = () => { const message = take(); if (message) { cle…
+     88|         else if (child.exitCode !== null || child.signalCode !== null)…
+       |                                                                                                                             ^
+     89|       const timer = setTimeout(() => { changed.delete(check); reject(n…
+     90|       changed.add(check); check();
+ ❯ ChildProcess.<anonymous> src/graph-chain.integration.test.ts:82:114
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[10/13]⎯
+
+ FAIL  src/graph-chain.integration.test.ts > daemon: bounded stop reports undrained actual broker Promise and refuses recovery before drainage
+Error: Host exited: node:net:2145
+      const error = new UVExceptionWithHostPort(rval, 'listen', address, port);
+                    ^
+
+Error: listen EPERM: operation not permitted /Volumes/AIMATE_WORK/tmp/g25/g17-chain-1GhMu5/daemon.sock
+    at Server.setupListenHandle [as _listen2] (node:net:2145:21)
+    at listenInCluster (node:net:2224:12)
+    at Server.listen (node:net:2361:5)
+    at file:///Volumes/AIMATE_WORK/tmp/g25/g17-build-q1mUeF/graph-chain-host.mjs:9713:14 {
+  code: 'EPERM',
+  errno: -1,
+  syscall: 'listen',
+  address: '/Volumes/AIMATE_WORK/tmp/g25/g17-chain-1GhMu5/daemon.sock',
+  port: -1
+}
+
+Node.js v26.5.0
+
+ ❯ check src/graph-chain.integration.test.ts:88:125
+     86|     return new Promise((resolveNext, reject) => {
+     87|       const check = () => { const message = take(); if (message) { cle…
+     88|         else if (child.exitCode !== null || child.signalCode !== null)…
+       |                                                                                                                             ^
+     89|       const timer = setTimeout(() => { changed.delete(check); reject(n…
+     90|       changed.add(check); check();
+ ❯ ChildProcess.<anonymous> src/graph-chain.integration.test.ts:82:114
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[11/13]⎯
+
+ FAIL  src/graph-chain.integration.test.ts > daemon: original deadline aborts actual in-flight command through supervisor heartbeat
+Error: Host exited: node:net:2145
+      const error = new UVExceptionWithHostPort(rval, 'listen', address, port);
+                    ^
+
+Error: listen EPERM: operation not permitted /Volumes/AIMATE_WORK/tmp/g25/g17-chain-JwLTvl/daemon.sock
+    at Server.setupListenHandle [as _listen2] (node:net:2145:21)
+    at listenInCluster (node:net:2224:12)
+    at Server.listen (node:net:2361:5)
+    at file:///Volumes/AIMATE_WORK/tmp/g25/g17-build-q1mUeF/graph-chain-host.mjs:9713:14 {
+  code: 'EPERM',
+  errno: -1,
+  syscall: 'listen',
+  address: '/Volumes/AIMATE_WORK/tmp/g25/g17-chain-JwLTvl/daemon.sock',
+  port: -1
+}
+
+Node.js v26.5.0
+
+ ❯ check src/graph-chain.integration.test.ts:88:125
+     86|     return new Promise((resolveNext, reject) => {
+     87|       const check = () => { const message = take(); if (message) { cle…
+     88|         else if (child.exitCode !== null || child.signalCode !== null)…
+       |                                                                                                                             ^
+     89|       const timer = setTimeout(() => { changed.delete(check); reject(n…
+     90|       changed.add(check); check();
+ ❯ ChildProcess.<anonymous> src/graph-chain.integration.test.ts:82:114
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[12/13]⎯
+
+ FAIL  src/graph-chain.integration.test.ts > daemon: cancel with unproven executor stop retains unknown effect even after broker drainage
+Error: Host exited: node:net:2145
+      const error = new UVExceptionWithHostPort(rval, 'listen', address, port);
+                    ^
+
+Error: listen EPERM: operation not permitted /Volumes/AIMATE_WORK/tmp/g25/g17-chain-335UM3/daemon.sock
+    at Server.setupListenHandle [as _listen2] (node:net:2145:21)
+    at listenInCluster (node:net:2224:12)
+    at Server.listen (node:net:2361:5)
+    at file:///Volumes/AIMATE_WORK/tmp/g25/g17-build-q1mUeF/graph-chain-host.mjs:9713:14 {
+  code: 'EPERM',
+  errno: -1,
+  syscall: 'listen',
+  address: '/Volumes/AIMATE_WORK/tmp/g25/g17-chain-335UM3/daemon.sock',
+  port: -1
+}
+
+Node.js v26.5.0
+
+ ❯ check src/graph-chain.integration.test.ts:88:125
+     86|     return new Promise((resolveNext, reject) => {
+     87|       const check = () => { const message = take(); if (message) { cle…
+     88|         else if (child.exitCode !== null || child.signalCode !== null)…
+       |                                                                                                                             ^
+     89|       const timer = setTimeout(() => { changed.delete(check); reject(n…
+     90|       changed.add(check); check();
+ ❯ ChildProcess.<anonymous> src/graph-chain.integration.test.ts:82:114
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[13/13]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  13 failed | 17 passed (30)
+   Start at  21:39:05
+   Duration  21.44s (transform 418ms, setup 7ms, collect 695ms, tests 20.57s, environment 0ms, prepare 46ms)
+
+undefined
+/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli:
+[ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL] Command failed with exit code 1: vitest run src/graph-chain.integration.test.ts

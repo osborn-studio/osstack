@@ -1,0 +1,90 @@
+{
+  "loop_id": "G25-contained-reopen-recheck-1",
+  "started_at": "2026-09-17T23:33:10.403Z",
+  "updated_at": "2026-09-17T23:34:36.879Z",
+  "completed_tasks": [
+    {
+      "task_id": "G25-contained-reopen-recheck-1",
+      "capability": "code.test",
+      "outcome": "success",
+      "iterations": 1,
+      "agent_id": "local-command",
+      "duration_ms": 86474,
+      "run_id": "run_a8101529-2c5a-4cd4-b1d9-025f78221df9",
+      "started_at": "2026-09-17T23:33:10.404Z",
+      "completed_at": "2026-09-17T23:34:32.386Z",
+      "execution_summary": "Process group 98804 gone (kill(-pgid, 0): ESRCH); leader exit observed",
+      "execution_commands": [
+        {
+          "command": "node /Volumes/AIMATE_WORK/tmp/g25-reopen/acceptance-command.mjs candidate",
+          "exit_code": 0,
+          "duration_ms": 81980,
+          "summary": "candidate: exit=0 WORK/tmp/g25-reopen/g21-delivery-tKiWkF/delivery/writer-0'... HEAD is now at 762ac19 base Cloning into '/Volumes/AIMATE_WORK/tmp/g25-reopen/g21-delivery-7rVq8L/delivery/writer-0'... HEAD is now at 5a8b7a2 base ✓ src/graph-"
+        }
+      ],
+      "verifier_agent_id": "local-verifier",
+      "verify_summary": "2 verifier commands and 0 verifier adapters passed. 2 evaluations passed.",
+      "verify_issue_count": 0,
+      "verify_commands": [
+        {
+          "command": "node /Volumes/AIMATE_WORK/tmp/g25-reopen/acceptance-command.mjs reopen",
+          "exit_code": 0,
+          "duration_ms": 4189,
+          "summary": "reopen: exit=0 $ vitest run src/graph-contained-recovery.test.ts -t 'reopens held|fresh host stops|missing stop receipt' --maxWorkers=1 RUN v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli ✓ src/grap"
+        },
+        {
+          "command": "node /Volumes/AIMATE_WORK/tmp/g25-reopen/retained-evidence.mjs",
+          "exit_code": 0,
+          "duration_ms": 246,
+          "summary": "{\"passed\":true,\"scope\":\"Retain previously passed checks only after exact source and build hash validation; first Loop failed solely on missing report directory\",\"sourceFiles\":1069,\"priorPassedVerifiers\":9,\"failedVerifierRerun\":\"candidate\",\""
+        }
+      ],
+      "evaluations": [
+        {
+          "spec_id": "verify-command-1",
+          "mode": "command",
+          "description": "Shell verifier: node /Volumes/AIMATE_WORK/tmp/g25-reopen/acceptance-command.mjs reopen",
+          "required": true,
+          "weight": 1,
+          "pass": true,
+          "summary": "command passed (4189 ms)",
+          "implicit": true
+        },
+        {
+          "spec_id": "verify-command-2",
+          "mode": "command",
+          "description": "Shell verifier: node /Volumes/AIMATE_WORK/tmp/g25-reopen/retained-evidence.mjs",
+          "required": true,
+          "weight": 1,
+          "pass": true,
+          "summary": "command passed (246 ms)",
+          "implicit": true
+        }
+      ],
+      "changed_files": [
+        "packages/cli/src/graph-contained-tests.ts",
+        "packages/core/src/state/graph-recovery.test.ts",
+        "packages/core/src/state/graph-recovery.ts",
+        "scripts/verify-graph-runtime.mjs",
+        "?? packages/cli/src/graph-contained-recovery.test.ts",
+        "?? packages/cli/src/graph-contained-recovery.ts"
+      ],
+      "diff_summary": "packages/cli/src/graph-contained-tests.ts | 21 ++++++++++++++------- packages/core/src/state/graph-recovery.test.ts | 20 +++++++++++++++++++- packages/core/src/state/graph-recovery.ts | 15 +++++++++++++++ scripts/verify-graph-runtime.mjs | ",
+      "commit_hash": "7a19ec9"
+    }
+  ],
+  "in_progress": [],
+  "pending": [],
+  "deferred_tasks": [],
+  "key_metrics": {
+    "total_cycles": 1,
+    "avg_duration_ms": 86474,
+    "success_rate": 1,
+    "tokens_consumed": 0,
+    "cost_consumed": 0
+  },
+  "decisions": [
+    "G25-contained-reopen-recheck-1: selected local-command - local execute command",
+    "G25-contained-reopen-recheck-1: stop after iteration 1 - Verifier passed with score 1.00."
+  ]
+}

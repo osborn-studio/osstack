@@ -1,0 +1,28 @@
+{
+  "task": {
+    "id": "G04",
+    "phase": "M0",
+    "title": "提炼一次候选实现",
+    "dependsOn": [
+      "G03"
+    ],
+    "files": [
+      "packages/loop/src/candidate-execution.ts",
+      "packages/loop/src/candidate-execution.test.ts",
+      "packages/loop/src/loop-engine.ts",
+      "packages/loop/src/index.ts"
+    ],
+    "acceptance": [
+      "新入口只执行一次已授权实现，返回 implementation_complete、执行证据与工作区引用；不 commit，也不等于 candidate_ready 或任务成功。",
+      "不执行 discovery、archive、cycle 状态写回、内置重复评审、merge 或未登记清理。",
+      "旧 Loop 通过明确 legacy 路径维持行为，治理/agent 选择和角色约束有回归测试。"
+    ],
+    "verify": "LOOP",
+    "size": "M",
+    "status": "in_progress"
+  },
+  "prompt": "Implement ONLY G04 in this existing isolated worktree. You are the coding executor invoked by OSStack LoopEngine. Parent supervisor is handling docs/status and review. Do not spawn agents or nested OSStack loops. Do not commit, push, merge, deploy, alter AGENTS.md, touch sibling repositories, or mark plan tasks done. All dependencies are installed and built. Read AGENTS.md, the implementation plan docs/implementation/2026-09-13-osstack-graph-upgrade.md and relevant source. Use TDD: add outcome tests first, run to establish RED, implement GREEN, then run affected tests and pnpm --filter @osstack/loop typecheck. Save concise real RED/GREEN evidence at docs/implementation/graph-foundation-evidence/G04-executor.md (only this evidence doc). CLI/database tests MUST use explicit inherited OSSTACK_HOME or scripts/graph-test-env.mjs, never default homes. Target card: {\"id\":\"G04\",\"phase\":\"M0\",\"title\":\"提炼一次候选实现\",\"dependsOn\":[\"G03\"],\"files\":[\"packages/loop/src/candidate-execution.ts\",\"packages/loop/src/candidate-execution.test.ts\",\"packages/loop/src/loop-engine.ts\",\"packages/loop/src/index.ts\"],\"acceptance\":[\"新入口只执行一次已授权实现，返回 implementation_complete、执行证据与工作区引用；不 commit，也不等于 candidate_ready 或任务成功。\",\"不执行 discovery、archive、cycle 状态写回、内置重复评审、merge 或未登记清理。\",\"旧 Loop 通过明确 legacy 路径维持行为，治理/agent 选择和角色约束有回归测试。\"],\"verify\":\"LOOP\",\"size\":\"M\",\"status\":\"in_progress\"}. Extract one candidate implementation primitive. Input is explicit preselected ExecutionPlan + registered workspace reference + mandatory authorization callback, no graph data treated as authority. Reuse executePlan; graph new API returns implementation_complete only on actual confirmed implementation completion; does NOT commit, verify, archive, schedule, discover or clean worktrees. Wire legacy Loop execution through shared seam while retaining admission/selection/role separation/verification/worktree behavior. No module deep imports across packages. Bind authorization to a stable snapshot of plan, command and workspace scope across await, rather than an object the authorizer or caller can mutate before execution. Caller cancellation must prevent effects even during pending authorization. Test denied/throwing auth before effects, preabort, workspace identity, no git commit/cleanup/state writes, failure mapping, existing governance and role separation. Important: unknown cancellation must not trigger a second legacy implementation attempt on the same workspace. Test with maxIterations > 1 that unconfirmed execution escalates/stops with one adapter invocation; preserve its evidence in the existing state audit without introducing future ledger/schema. Future G16 freezes candidate. Do not overbuild future graph services. Parent will review and run additional tests. Finish the full card, report limitations honestly.",
+  "verify": "pnpm --filter @osstack/loop exec vitest run src/executor.test.ts src/candidate-execution.test.ts src/loop-engine.test.ts && pnpm --filter @osstack/loop typecheck",
+  "baselineRuntime": "b476bcc",
+  "workspace": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation"
+}

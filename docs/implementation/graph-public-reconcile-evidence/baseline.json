@@ -1,0 +1,18 @@
+{
+  "AGENTS.md": {
+    "original": "674b11ba6e8bcf3c844af6b583d8aeaff3a2681f15c9ad1a0d02c603969e146f",
+    "worktree": "13470229f38ec22e4cf3dd993ffd1c7a47493c35a6798ec6b24bee629fd7f1c3"
+  },
+  "docs/implementation/2026-09-13-osstack-graph-upgrade.md": {
+    "original": "9da9c28da5c35bb3385f15bab4129c162767efd5b233d97fcecf0d1fe49d5637",
+    "worktree": "9da9c28da5c35bb3385f15bab4129c162767efd5b233d97fcecf0d1fe49d5637"
+  },
+  "docs/implementation/2026-09-13-osstack-graph-upgrade.tasks.json": {
+    "original": "dd4fe55de476b633ec846c7d450d9a59ac1b4b89074c45ee3f9cdbdeed0055d4",
+    "worktree": "dd4fe55de476b633ec846c7d450d9a59ac1b4b89074c45ee3f9cdbdeed0055d4"
+  },
+  "docs/guides/graph-delegation.md": {
+    "original": "6eef2a8441bd3966f61f59e71c28a00954bb27c86af4ea8dc1fbbf8b0f2c108f",
+    "worktree": "6eef2a8441bd3966f61f59e71c28a00954bb27c86af4ea8dc1fbbf8b0f2c108f"
+  }
+}

@@ -1,0 +1,83 @@
+{
+  "scope": "Exact ledger-bound contained executor cleanup after supervisor SIGKILL; no Graph worker stop, outcome settlement, release or takeover authority",
+  "passed": true,
+  "checks": [
+    "container continues running after SIGKILL of original executor host",
+    "fresh Node process reconstructs executor from action/admission/journal and removes live container",
+    "unknown business outcome and held admission retained",
+    "late start of exact deleted container returns 404"
+  ],
+  "processesBefore": {
+    "Processes": [
+      [
+        "2226",
+        "2202",
+        "2226",
+        "2226",
+        "/bin/sh -c trap '' TERM; setsid sh -c 'while :; do sleep 1; done' & while :; do sleep 1; done"
+      ],
+      [
+        "2238",
+        "2226",
+        "2238",
+        "2238",
+        "sh -c while :; do sleep 1; done"
+      ],
+      [
+        "2239",
+        "2226",
+        "2226",
+        "2226",
+        "sleep 1"
+      ],
+      [
+        "2240",
+        "2238",
+        "2238",
+        "2238",
+        "sleep 1"
+      ]
+    ],
+    "Titles": [
+      "PID",
+      "PPID",
+      "PGID",
+      "SID",
+      "COMMAND"
+    ]
+  },
+  "result": {
+    "stopped": true,
+    "evidence": "docker-removed:10add9cdba365914dae32cb31c94e2005a17e87139e93f612ed75d2ec4afe5a9",
+    "state": "unknown",
+    "held": true
+  },
+  "journal": {
+    "binding": {
+      "version": 1,
+      "bindingRef": "8dd1e6aaffc7933de8d58fc4d68fcb76f66f41fc9880bc7e5a584447074fc53f",
+      "data": "{\"artifactDigest\":\"ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff\",\"candidateRevision\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"command\":\"trap '' TERM; setsid sh -c 'while :; do sleep 1; done' & while :; do sleep 1; done\",\"effectKey\":\"ca03fad2b82d711c92ffba864a199b0cbcf1761c0cbe7822181095dc8feb836f\",\"generation\":1,\"graphRunId\":\"51f3efd3-f1ec-4933-9333-07193fdc9f70\",\"image\":{\"archiveDigest\":\"58d60025789feeff4bda0794ab184a120950ac2113dca09c3cc48bae75cc5fa1\",\"baseImageId\":\"sha256:14358309a308569c32bdc37e2e0e9694be33a9d99e68afb0f5ff33cc1f695dce\",\"contentDigest\":\"74a02cb1b3217266498db4054c669e1ea501e5d09722d971d3642290563db1e3\",\"daemonId\":\"96300cab-3e55-44ea-be6f-834057ae56cc\",\"imageId\":\"sha256:e869d11b9fc420e48816fa8d4ff2784f2c85305ad03a884fd5645d8fb806c177\",\"version\":1,\"workingDirectory\":\"/osstack-candidate-5e65226d-c732-4f9d-a585-1b3bf1717710\"},\"invocationId\":\"live-crashed-host\",\"scope\":{\"principalId\":\"p\",\"schemaVersion\":1,\"tenantId\":\"t\",\"workspaceId\":\"w\"},\"version\":1}"
+    },
+    "launch": {
+      "version": 1,
+      "invocationId": "live-crashed-host",
+      "specDigest": "9f88d00ca5d087456d2453c837f0d7237b73fa83e15f2c80ca3223b85f2d4b0a",
+      "daemonId": "96300cab-3e55-44ea-be6f-834057ae56cc",
+      "containerId": "899d42ba966d00deb6c67a609e48c517dc1a5bc0badb0dab1e919e96dbd6f29c",
+      "nonce": "dccb7341-3f34-4c80-9011-96c650103b1e"
+    },
+    "stopped": {
+      "version": 1,
+      "kind": "docker_removed",
+      "launch": {
+        "version": 1,
+        "invocationId": "live-crashed-host",
+        "specDigest": "9f88d00ca5d087456d2453c837f0d7237b73fa83e15f2c80ca3223b85f2d4b0a",
+        "daemonId": "96300cab-3e55-44ea-be6f-834057ae56cc",
+        "containerId": "899d42ba966d00deb6c67a609e48c517dc1a5bc0badb0dab1e919e96dbd6f29c",
+        "nonce": "dccb7341-3f34-4c80-9011-96c650103b1e"
+      },
+      "confirmedAt": 1789686911392
+    }
+  }
+}

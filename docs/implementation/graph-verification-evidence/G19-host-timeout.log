@@ -1,0 +1,62 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+osstack: retaining write lease graph-action:426a0c2ac9ff4484f7d82a9ee1d1c751a61059b91e4ac58c4711bb5be29d2112: Error: external stop unconfirmed
+ ❯ src/graph-verification.test.ts (15 tests | 2 failed) 41464ms
+   × restores the exact verified candidate into independent repositories and rejects reviewer writes 5006ms
+     → Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+   ✓ rejects wrong manifest and reviewer identity before restoring or invoking  1788ms
+   ✓ persists actual stopped exit evidence and rejects tampering/replay  3234ms
+   × keeps unknown stop separate from stopped malformed review and valid changes_requested 5008ms
+     → Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+   ✓ runs real registered command and independent G04 review concurrently with an observable two-way barrier  5745ms
+   ✓ rejects revoke during adapter availability before actual invocation  1746ms
+   ✓ rejects mutate during adapter availability before actual invocation  1696ms
+   ✓ snapshots callback/data replacement and rejects live revocation after preparation awaits  2588ms
+   ✓ rejects mutation during restore before accepting any workspace baseline  1921ms
+   ✓ releases preparation lease if authority is revoked while acquiring it  722ms
+   ✓ uses exact allowlisted exits, refusing model pass claims and unregistered commands  1874ms
+   ✓ does not accept review done as executor stop proof through the actual broker  1875ms
+   ✓ classifies stopped malformed output and reviewer filesystem mutation without a code-failure result  3372ms
+   ✓ rejects manifest scope/SHA mismatch and independent identity verifier rejection before invocation  824ms
+   ✓ snapshots executor evidence before asynchronous verification and rechecks authority afterward  4063ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/graph-verification.test.ts > restores the exact verified candidate into independent repositories and rejects reviewer writes
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ src/graph-verification.test.ts:35:1
+     33|   return { root, db, run, options, binding, candidate, authorize, admi…
+     34| }
+     35| it('restores the exact verified candidate into independent repositorie…
+       | ^
+     36|   const f = await fixture(); const prepared = await prepareGraphVerifi…
+     37|   expect(f.admitted()).toBe(false);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  src/graph-verification.test.ts > keeps unknown stop separate from stopped malformed review and valid changes_requested
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ src/graph-verification.test.ts:61:1
+     59|   await expect(loadGraphVerificationEvidence(f.options.root, saved.evi…
+     60| });
+     61| it('keeps unknown stop separate from stopped malformed review and vali…
+       | ^
+     62|   const f = await fixture(); const p = await prepareGraphVerification(…
+     63|   await expect(review.persist({ status: 'completed' })).rejects.toThro…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed | 13 passed (15)
+   Start at  18:07:53
+   Duration  42.48s (transform 479ms, setup 11ms, collect 825ms, tests 41.46s, environment 0ms, prepare 37ms)
+
+undefined
+/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli:
+[ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL] Command failed with exit code 1: vitest run src/graph-verification.test.ts

@@ -1,0 +1,37 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/agents
+
+ ❯ src/worktree.test.ts (8 tests | 1 failed) 1940ms
+   × git worktree lifecycle > persists graph retention across generic and prefix cleanup until trusted explicit export cleanup 188ms
+     → (0 , quarantineGraphWorktree) is not a function
+   ✓ git worktree lifecycle > does not execute repository hooks while creating isolation 157ms
+   ✓ git worktree lifecycle > commits isolated changes, fast-forwards the repo, and cleans up 231ms
+   ✓ git worktree lifecycle > removes orphaned osstack worktrees under the configured root 146ms
+   ✓ git worktree lifecycle > does not commit when the isolated worktree is unchanged  320ms
+   ✓ git worktree lifecycle > does not execute repository hooks while committing isolated changes 268ms
+   ✓ git worktree lifecycle > does not execute repository hooks while fast-forwarding verified changes 287ms
+   ✓ git worktree lifecycle > can remove a worktree while preserving its branch  342ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/worktree.test.ts > git worktree lifecycle > persists graph retention across generic and prefix cleanup until trusted explicit export cleanup
+TypeError: (0 , quarantineGraphWorktree) is not a function
+ ❯ src/worktree.test.ts:32:11
+     30|     await cleanupWorktree({ ...handle });
+     31|     expect((await cleanupOrphanedWorktrees(repo, { rootPath: root })).…
+     32|     await quarantineGraphWorktree(handle, "executor stop unknown");
+       |           ^
+     33|     expect(await readFile(join(handle.worktreePath, "dirty.txt"), "utf…
+     34|     await expect(cleanupGraphWorktree(handle, { artifactDigest: "a".re…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 7 passed (8)
+   Start at  07:29:18
+   Duration  2.17s (transform 29ms, setup 0ms, collect 31ms, tests 1.94s, environment 0ms, prepare 34ms)
+
+undefined
+/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/agents:
+[ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL] Command failed with exit code 1: vitest run src/worktree.test.ts

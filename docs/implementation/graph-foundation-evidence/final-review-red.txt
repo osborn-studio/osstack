@@ -1,0 +1,460 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/loop
+
+warning: Not a git repository. Use --no-index to compare two paths outside a working tree
+usage: git diff --no-index [<options>] <path> <path> [<pathspec>...]
+
+Diff output format options
+    -p, --patch           generate patch
+    -s, --no-patch        suppress diff output
+    -u                    generate patch
+    -U, --unified[=<n>]   generate diffs with <n> lines context
+    -W, --[no-]function-context
+                          generate diffs with <n> lines context
+    --raw                 generate the diff in raw format
+    --patch-with-raw      synonym for '-p --raw'
+    --patch-with-stat     synonym for '-p --stat'
+    --numstat             machine friendly --stat
+    --shortstat           output only the last line of --stat
+    -X, --dirstat[=<param1>,<param2>...]
+                          output the distribution of relative amount of changes for each sub-directory
+    --cumulative          synonym for --dirstat=cumulative
+    --dirstat-by-file[=<param1>,<param2>...]
+                          synonym for --dirstat=files,<param1>,<param2>...
+    --check               warn if changes introduce conflict markers or whitespace errors
+    --summary             condensed summary such as creations, renames and mode changes
+    --name-only           show only names of changed files
+    --name-status         show only names and status of changed files
+    --stat[=<width>[,<name-width>[,<count>]]]
+                          generate diffstat
+    --stat-width <width>  generate diffstat with a given width
+    --stat-name-width <width>
+                          generate diffstat with a given name width
+    --stat-graph-width <width>
+                          generate diffstat with a given graph width
+    --stat-count <count>  generate diffstat with limited lines
+    --[no-]compact-summary
+                          generate compact summary in diffstat
+    --binary              output a binary diff that can be applied
+    --[no-]full-index     show full pre- and post-image object names on the "index" lines
+    --[no-]color[=<when>] show colored diff
+    --ws-error-highlight <kind>
+                          highlight whitespace errors in the 'context', 'old' or 'new' lines in the diff
+    -z                    do not munge pathnames and use NULs as output field terminators in --raw or --numstat
+    --[no-]abbrev[=<n>]   use <n> digits to display object names
+    --src-prefix <prefix> show the given source prefix instead of "a/"
+    --dst-prefix <prefix> show the given destination prefix instead of "b/"
+    --line-prefix <prefix>
+                          prepend an additional prefix to every line of output
+    --no-prefix           do not show any source or destination prefix
+    --default-prefix      use default prefixes a/ and b/
+    --inter-hunk-context <n>
+                          show context between diff hunks up to the specified number of lines
+    --output-indicator-new <char>
+                          specify the character to indicate a new line instead of '+'
+    --output-indicator-old <char>
+                          specify the character to indicate an old line instead of '-'
+    --output-indicator-context <char>
+                          specify the character to indicate a context instead of ' '
+
+Diff rename options
+    -B, --break-rewrites[=<n>[/<m>]]
+                          break complete rewrite changes into pairs of delete and create
+    -M, --find-renames[=<n>]
+                          detect renames
+    -D, --irreversible-delete
+                          omit the preimage for deletes
+    -C, --find-copies[=<n>]
+                          detect copies
+    --[no-]find-copies-harder
+                          use unmodified files as source to find copies
+    --no-renames          disable rename detection
+    --[no-]rename-empty   use empty blobs as rename source
+    --[no-]follow         continue listing the history of a file beyond renames
+    -l <n>                prevent rename/copy detection if the number of rename/copy targets exceeds given limit
+
+Diff algorithm options
+    --minimal             produce the smallest possible diff
+    -w, --ignore-all-space
+                          ignore whitespace when comparing lines
+    -b, --ignore-space-change
+                          ignore changes in amount of whitespace
+    --ignore-space-at-eol ignore changes in whitespace at EOL
+    --ignore-cr-at-eol    ignore carrier-return at the end of line
+    --ignore-blank-lines  ignore changes whose lines are all blank
+    -I, --[no-]ignore-matching-lines <regex>
+                          ignore changes whose all lines match <regex>
+    --[no-]indent-heuristic
+                          heuristic to shift diff hunk boundaries for easy reading
+    --patience            generate diff using the "patience diff" algorithm
+    --histogram           generate diff using the "histogram diff" algorithm
+    --diff-algorithm <algorithm>
+                          choose a diff algorithm
+    --anchored <text>     generate diff using the "anchored diff" algorithm
+    --word-diff[=<mode>]  show word diff, using <mode> to delimit changed words
+    --word-diff-regex <regex>
+                          use <regex> to decide what a word is
+    --color-words[=<regex>]
+                          equivalent to --word-diff=color --word-diff-regex=<regex>
+    --[no-]color-moved[=<mode>]
+                          moved lines of code are colored differently
+    --[no-]color-moved-ws <mode>
+                          how white spaces are ignored in --color-moved
+
+Other diff options
+    --[no-]relative[=<prefix>]
+                          when run from subdir, exclude changes outside and show relative paths
+    -a, --[no-]text       treat all files as text
+    -R                    swap two inputs, reverse the diff
+    --[no-]exit-code      exit with 1 if there were differences, 0 otherwise
+    --[no-]quiet          disable all output of the program
+    --[no-]ext-diff       allow an external diff helper to be executed
+    --[no-]textconv       run external text conversion filters when comparing binary files
+    --ignore-submodules[=<when>]
+                          ignore changes to submodules in the diff generation
+    --submodule[=<format>]
+                          specify how differences in submodules are shown
+    --ita-invisible-in-index
+                          hide 'git add -N' entries from the index
+    --ita-visible-in-index
+                          treat 'git add -N' entries as real in the index
+    -S <string>           look for differences that change the number of occurrences of the specified string
+    -G <regex>            look for differences that change the number of occurrences of the specified regex
+    --pickaxe-all         show all changes in the changeset with -S or -G
+    --pickaxe-regex       treat <string> in -S as extended POSIX regular expression
+    -O <file>             control the order in which files appear in the output
+    --rotate-to <path>    show the change in the specified path first
+    --skip-to <path>      skip the output to the specified path
+    --find-object <object-id>
+                          look for differences that change the number of occurrences of the specified object
+    --diff-filter [(A|C|D|M|R|T|U|X|B)...[*]]
+                          select files by diff type
+    --max-depth <depth>   maximum tree depth to recurse
+    --output <file>       output to a specific file
+
+ ❯ src/candidate-execution.test.ts (29 tests | 5 failed | 24 skipped) 38ms
+   ↓ executeCandidateImplementation > executes once in the registered workspace without commit, cleanup, discovery, verification or state writes
+   ↓ executeCandidateImplementation > fails closed for deny authorization before adapter probes or command effects
+   ↓ executeCandidateImplementation > fails closed for throw authorization before adapter probes or command effects
+   ↓ executeCandidateImplementation > fails closed for missing authorization before adapter probes or command effects
+   ↓ executeCandidateImplementation > preabort prevents authorization and all effects
+   ↓ executeCandidateImplementation > cancels promptly during pending auth and ignores its late allow
+   ↓ executeCandidateImplementation > cancels promptly during pending auth and ignores its late reject
+   ↓ executeCandidateImplementation > keeps the original cancellation signal when the caller replaces it during authorization
+   ↓ executeCandidateImplementation > binds plan, command, workspace and signal across an authorization await
+   ↓ executeCandidateImplementation > uses the authorized plan snapshot and registered identity for the preselected adapter
+   ↓ executeCandidateImplementation > rejects invalid worktree workspace scope before authorization
+   ↓ executeCandidateImplementation > rejects invalid identity workspace scope before authorization
+   ↓ executeCandidateImplementation > rejects invalid relative workspace scope before authorization
+   ↓ executeCandidateImplementation > does not claim implementation for commandless local-noop
+   ↓ executeCandidateImplementation > does not claim implementation for commandless local-command
+   ↓ executeCandidateImplementation > preserves adapter failed evidence without promoting it
+   ↓ executeCandidateImplementation > preserves adapter cancelled evidence without promoting it
+   ↓ executeCandidateImplementation > preserves adapter expired evidence without promoting it
+   ↓ executeCandidateImplementation > retains protocol failure and uncertainty evidence for a stream without done
+   ↓ executeCandidateImplementation > propagates live caller cancellation and independently confirmed stop evidence
+   ↓ executeCandidateImplementation > maps failed commands and missing adapters to failed with execution evidence
+   ↓ executeCandidateImplementation > preserves unconfirmed cancellation instead of claiming completion
+   ↓ legacy single implementation seam > retains an unconfirmed worktree and stops later tasks/cycles, including an explicit retry after restart
+   ↓ legacy single implementation seam > escalates unknown execution after one invocation with maxIterations > 1 and saves audit evidence
+   × reviewed candidate boundaries > does not trust model text as a persistent stop instruction 34ms
+     → expected +0 to be 1 // Object.is equality
+   × reviewed candidate boundaries > authorizes the repo_path that will actually be used 1ms
+     → expected 'authorization_denied' to be 'implementation_complete' // Object.is equality
+   × reviewed candidate boundaries > rejects NUL in workspace before authority or effects 1ms
+     → The property 'options.cwd' must be a string, Uint8Array, or URL without null bytes. Received '/var/folders/97/wmwg4qzx02j74c3n73nh438w0000gn/T/osstack-candidate-RmZWh8\x00'
+   × reviewed candidate boundaries > rejects NUL in command before authority or effects 0ms
+     → The argument 'file' must be a string without null bytes. Received `node -e "require('fs').appendFileSync('output.txt', 'once')"\x00`
+   × reviewed candidate boundaries > returns uncertainty rather than throwing on an unexpected execution failure 0ms
+     → registry failed
+ ❯ src/executor.test.ts (108 tests | 6 failed | 102 skipped) 6360ms
+   ↓ executePlan > fails unknown non-local agents instead of treating them as no-op
+   ↓ executePlan > runs a registered adapter with repo_path in task context
+   ↓ executePlan > maps unavailable, terminal error, expired, and thrown adapter runs to failure
+   ↓ adapter cancellation > does not probe or invoke a preaborted adapter
+   ↓ adapter cancellation > bounds a hanging availability probe on external
+   ↓ adapter cancellation > bounds a hanging availability probe on timeout
+   ↓ adapter cancellation > does not invoke when availability aborts just before returning
+   ↓ adapter cancellation > passes external abort to invoke and bounds hanging next/return
+   ↓ adapter cancellation > passes timeout abort to invoke and bounds hanging next/return
+   ↓ adapter cancellation > does not infer stopped side effects from abort followed by close
+   ↓ adapter cancellation > does not infer stopped side effects from abort followed by throw
+   ↓ adapter cancellation > does not infer stopped side effects from abort followed by completed
+   ↓ adapter cancellation > does not infer stopped side effects from abort followed by cancelled
+   ↓ adapter cancellation > does not infer stopped side effects from abort followed by failed
+   ↓ adapter cancellation > records explicit stop evidence separately from the cancellation request
+   ↓ adapter cancellation > keeps stop confirmation hang uncertain
+   ↓ adapter cancellation > keeps stop confirmation throw uncertain
+   ↓ adapter cancellation > keeps stop confirmation false uncertain
+   ↓ adapter cancellation > keeps stop confirmation no evidence uncertain
+   ↓ adapter cancellation > accepts independent stop evidence even if the iterator never closes
+   ↓ adapter cancellation > does not revise returned uncertainty when stop proof arrives after grace
+   ↓ adapter cancellation > stops owned work after abnormal invalid stream exit
+   ↓ adapter cancellation > stops owned work after abnormal post-terminal stream exit
+   ↓ adapter cancellation > stops owned work after abnormal throw stream exit
+   ↓ adapter cancellation > keeps a protocol violation failed even with confirmed stop
+   ↓ adapter cancellation > does not reopen an expired grace after the wall clock rolls backward
+   ↓ adapter cancellation > uses safe defaults for invalid adapter timer durations: NaN
+   ↓ adapter cancellation > uses safe defaults for invalid adapter timer durations: Infinity
+   ↓ adapter cancellation > uses safe defaults for invalid adapter timer durations: -1
+   ↓ adapter cancellation > uses safe defaults for invalid adapter timer durations: 2147483648
+   ↓ adapter cancellation > blocks done success when the final next and stop confirmation both hang with real timers
+   ↓ adapter cancellation > cleans external listeners and timers after completed
+   ↓ adapter cancellation > cleans external listeners and timers after unavailable
+   ↓ adapter cancellation > cleans external listeners and timers after throw
+   ↓ adapter cancellation > cleans external listeners and timers after protocol
+   ↓ adapter cancellation > cleans external listeners and timers after cancel
+   ↓ adapter terminal protocol > classifies malformed event null and records stop uncertainty
+   ↓ adapter terminal protocol > classifies malformed event undefined and records stop uncertainty
+   ↓ adapter terminal protocol > classifies malformed event [] and records stop uncertainty
+   ↓ adapter terminal protocol > classifies malformed event {} and records stop uncertainty
+   ↓ adapter terminal protocol > classifies malformed event {"type":42} and records stop uncertainty
+   ↓ adapter terminal protocol > classifies malformed event {"event_id":"event-1","seq":1,"run_id":"run-1","session_id":"session-1","created_at":0,"terminal":true,"type":"error","payload":null} and records stop uncertainty
+   ↓ adapter terminal protocol > classifies malformed event {"event_id":"event-1","seq":1,"run_id":"run-1","session_id":"session-1","created_at":0,"terminal":true,"type":"error","payload":{"message":42}} and records stop uncertainty
+   ↓ adapter terminal protocol > classifies malformed event {"event_id":"event-1","seq":1,"run_id":"run-1","session_id":"session-1","created_at":0,"terminal":false,"type":"usage.final","payload":null} and records stop uncertainty
+   ↓ adapter terminal protocol > rejects empty stream as missing_done
+   ↓ adapter terminal protocol > rejects work without done as missing_done
+   ↓ adapter terminal protocol > rejects usage without done as missing_done
+   ↓ adapter terminal protocol > rejects nonterminal error without done as missing_done
+   ↓ adapter terminal protocol > rejects malformed done payload null
+   ↓ adapter terminal protocol > rejects malformed done payload undefined
+   ↓ adapter terminal protocol > rejects malformed done payload []
+   ↓ adapter terminal protocol > rejects malformed done payload "completed"
+   ↓ adapter terminal protocol > rejects malformed done payload {}
+   ↓ adapter terminal protocol > rejects malformed done payload {"status":"completed"}
+   ↓ adapter terminal protocol > rejects malformed done payload {"status":"unknown","last_seq":1}
+   ↓ adapter terminal protocol > rejects malformed done payload {"status":"completed","last_seq":-1}
+   ↓ adapter terminal protocol > rejects malformed done payload {"status":"completed","last_seq":1.5}
+   ↓ adapter terminal protocol > rejects malformed done payload {"status":"completed","last_seq":"1"}
+   ↓ adapter terminal protocol > rejects malformed done payload {"status":"completed","last_seq":1,"result_summary":42}
+   ↓ adapter terminal protocol > rejects malformed done payload {"status":"completed","last_seq":1,"usage":null}
+   ↓ adapter terminal protocol > rejects malformed done payload {"status":"completed","last_seq":1,"usage":{"tokens_in":"10"}}
+   ↓ adapter terminal protocol > rejects malformed done payload {"status":"completed","last_seq":1,"usage":{"tokens_in":-1,"tokens_out":0,"duration_ms":1}}
+   ↓ adapter terminal protocol > rejects malformed done payload {"status":"completed","last_seq":1,"review":{}}
+   ↓ adapter terminal protocol > rejects terminal error then success
+   ↓ adapter terminal protocol > rejects duplicate done
+   ↓ adapter terminal protocol > rejects failure then success
+   ↓ adapter terminal protocol > rejects success then failure
+   ↓ adapter terminal protocol > rejects done then terminal error
+   ↓ adapter terminal protocol > rejects done then progress then success
+   ↓ adapter terminal protocol > rejects terminal error then work
+   ↓ adapter terminal protocol > rejects token.delta after done
+   ↓ adapter terminal protocol > rejects tool.started after done
+   ↓ adapter terminal protocol > rejects tool.updated after done
+   ↓ adapter terminal protocol > rejects tool.done after done
+   ↓ adapter terminal protocol > rejects run.started after done
+   ↓ adapter terminal protocol > rejects status after done
+   ↓ adapter terminal protocol > rejects approval.requested after done
+   ↓ adapter terminal protocol > preserves a valid completed result
+   ↓ adapter terminal protocol > preserves a valid failed result
+   ↓ adapter terminal protocol > preserves a valid expired result
+   ↓ adapter terminal protocol > preserves a valid cancelled result
+   ↓ adapter terminal protocol > allows recovery from nonterminal errors before done
+   ↓ adapter terminal protocol > preserves terminal error with failed done: false and surrounding usage
+   ↓ adapter terminal protocol > preserves terminal error with failed done: true and surrounding usage
+   ↓ adapter terminal protocol > keeps the failed done summary after a terminal error
+   ↓ adapter terminal protocol > uses the latest usage totals across updates, done payload, and final summaries
+   ↓ runShellCommand > captures failures, truncates output, and reports timeouts
+   ↓ command process groups > uses a safe shell timeout default for NaN
+   ↓ command process groups > uses a safe shell timeout default for Infinity
+   ↓ command process groups > uses a safe shell timeout default for -1
+   ↓ command process groups > uses a safe shell timeout default for 2147483648
+   ↓ command process groups > confirms external termination of children and grandchildren
+   ↓ command process groups > confirms timeout termination of children and grandchildren
+   ↓ command process groups > escalates an ignored TERM to KILL within the configured bounds
+   ↓ command process groups > cleans surviving descendants after successful leader exit with inherit stdio
+   ↓ command process groups > cleans surviving descendants after successful leader exit with ignore stdio
+   ↓ command process groups > does not treat closed stdio as process exit
+   ↓ command process groups > waits for late graceful exit without letting exit zero erase cancellation
+   ↓ command process groups > fails closed when group inspection returns EPERM without leader exit
+   ↓ command process groups > fails closed when group inspection returns ESRCH without leader exit
+   ↓ command process groups > refuses unsupported process-group platforms before starting work
+   ↓ command process groups > does not start a preaborted shell command
+   × reviewed invocation lifecycle > confirms no invocation after a settled preflight is cancelled 8ms
+     → expected { …(13) } to match object { outcome: 'cancelled', …(1) }
+(13 matching properties omitted from actual)
+   × reviewed invocation lifecycle > does not reuse stop evidence when the same plan is invoked twice 13ms
+     → expected 'run_plan_6331bb02-fc5a-4217-9160-3c95…' not to be 'run_plan_6331bb02-fc5a-4217-9160-3c95…' // Object.is equality
+   × reviewed invocation lifecycle > knows an unsupported command was not started 1ms
+     → expected { command: 'exit 0', …(6) } to match object { …(2) }
+(9 matching properties omitted from actual)
+   × reviewed invocation lifecycle > cleans owned groups on parent SIGINT 2096ms
+     → Process fixture condition timed out
+   × reviewed invocation lifecycle > cleans owned groups on parent SIGTERM 2126ms
+     → Process fixture condition timed out
+   × reviewed invocation lifecycle > cleans owned groups on parent exit 2116ms
+     → Process fixture condition timed out
+
+⎯⎯⎯⎯⎯⎯ Failed Tests 11 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/candidate-execution.test.ts > reviewed candidate boundaries > does not trust model text as a persistent stop instruction
+AssertionError: expected +0 to be 1 // Object.is equality
+
+- Expected
++ Received
+
+- 1
++ 0
+
+ ❯ src/candidate-execution.test.ts:285:39
+    283|     await new LoopEngine({ ...options, inputTasks: [input.plan.task] }…
+    284|     const resumed = await new LoopEngine({ ...options, inputTasks: [{ …
+    285|     expect(resumed.executedTaskCount).toBe(1);
+       |                                       ^
+    286|   });
+    287|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/11]⎯
+
+ FAIL  src/candidate-execution.test.ts > reviewed candidate boundaries > authorizes the repo_path that will actually be used
+AssertionError: expected 'authorization_denied' to be 'implementation_complete' // Object.is equality
+
+Expected: "implementation_complete"
+Received: "authorization_denied"
+
+ ❯ src/candidate-execution.test.ts:291:66
+    289|     const input = fixture();
+    290|     input.authorize = (scope) => ({ allow: scope.plan.task.context?.["…
+    291|     expect((await executeCandidateImplementation(input)).status).toBe(…
+       |                                                                  ^
+    292|   });
+    293|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/11]⎯
+
+ FAIL  src/candidate-execution.test.ts > reviewed candidate boundaries > rejects NUL in workspace before authority or effects
+TypeError: The property 'options.cwd' must be a string, Uint8Array, or URL without null bytes. Received '/var/folders/97/wmwg4qzx02j74c3n73nh438w0000gn/T/osstack-candidate-RmZWh8\x00'
+ ❯ src/executor.ts:501:19
+    499|   }
+    500|   return await new Promise<CommandResult>((resolve) => {
+    501|     const child = spawn(command, {
+       |                   ^
+    502|       cwd: options.cwd,
+    503|       shell: true,
+ ❯ runShellCommand src/executor.ts:500:16
+ ❯ executePlan src/executor.ts:108:33
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/11]⎯
+
+ FAIL  src/candidate-execution.test.ts > reviewed candidate boundaries > rejects NUL in command before authority or effects
+TypeError: The argument 'file' must be a string without null bytes. Received `node -e "require('fs').appendFileSync('output.txt', 'once')"\x00`
+ ❯ src/executor.ts:501:19
+    499|   }
+    500|   return await new Promise<CommandResult>((resolve) => {
+    501|     const child = spawn(command, {
+       |                   ^
+    502|       cwd: options.cwd,
+    503|       shell: true,
+ ❯ runShellCommand src/executor.ts:500:16
+ ❯ executePlan src/executor.ts:108:33
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/11]⎯
+
+ FAIL  src/candidate-execution.test.ts > reviewed candidate boundaries > returns uncertainty rather than throwing on an unexpected execution failure
+Error: registry failed
+ ❯ Object.get id [as id] src/candidate-execution.test.ts:305:50
+    303|     const input = fixture();
+    304|     input.plan.agent_id = "broken-registry";
+    305|     input.adapters = [{ get id(): string { throw new Error("registry f…
+       |                                                  ^
+    306|     expect(await executeCandidateImplementation(input)).toMatchObject(…
+    307|   });
+ ❯ src/executor.ts:94:67
+ ❯ executePlan src/executor.ts:94:37
+ ❯ runImplementation src/candidate-execution.ts:92:10
+ ❯ executeCandidateImplementation src/candidate-execution.ts:76:27
+ ❯ src/candidate-execution.test.ts:306:12
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/11]⎯
+
+ FAIL  src/executor.test.ts > reviewed invocation lifecycle > confirms no invocation after a settled preflight is cancelled
+AssertionError: expected { …(13) } to match object { outcome: 'cancelled', …(1) }
+(13 matching properties omitted from actual)
+
+- Expected
++ Received
+
+  {
+    "cancellation": {
+-     "evidence": "invocation_not_started",
+      "invocation_started": false,
+-     "stop_confirmed": true,
++     "stop_confirmed": false,
+    },
+-   "outcome": "cancelled",
++   "outcome": "failed",
+  }
+
+ ❯ src/executor.test.ts:922:17
+    920|     const invoke = vi.spyOn(adapter, "invoke");
+    921|     const run = await executePlan(plan(adapter.id), { workspacePath: w…
+    922|     expect(run).toMatchObject({ outcome: "cancelled", cancellation: {
+       |                 ^
+    923|       invocation_started: false, stop_confirmed: true, evidence: "invo…
+    924|     } });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/11]⎯
+
+ FAIL  src/executor.test.ts > reviewed invocation lifecycle > does not reuse stop evidence when the same plan is invoked twice
+AssertionError: expected 'run_plan_6331bb02-fc5a-4217-9160-3c95…' not to be 'run_plan_6331bb02-fc5a-4217-9160-3c95…' // Object.is equality
+ ❯ src/executor.test.ts:946:30
+    944|     const first = await executePlan(executionPlan, options);
+    945|     const second = await executePlan(executionPlan, options);
+    946|     expect(first.run_id).not.toBe(second.run_id);
+       |                              ^
+    947|     expect(second.cancellation?.stop_confirmed).toBe(false);
+    948|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/11]⎯
+
+ FAIL  src/executor.test.ts > reviewed invocation lifecycle > knows an unsupported command was not started
+AssertionError: expected { command: 'exit 0', …(6) } to match object { …(2) }
+(9 matching properties omitted from actual)
+
+- Expected
++ Received
+
+  {
+    "failure_code": "process_control_unsupported",
+    "termination": {
+-     "stop_confirmed": true,
++     "stop_confirmed": false,
+    },
+  }
+
+ ❯ src/executor.test.ts:954:19
+    952|     try {
+    953|       const run = await runShellCommand("exit 0", { cwd: workspace, ti…
+    954|       expect(run).toMatchObject({ failure_code: "process_control_unsup…
+       |                   ^
+    955|     } finally { platform.mockRestore(); }
+    956|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/11]⎯
+
+ FAIL  src/executor.test.ts > reviewed invocation lifecycle > cleans owned groups on parent SIGINT
+ FAIL  src/executor.test.ts > reviewed invocation lifecycle > cleans owned groups on parent SIGTERM
+ FAIL  src/executor.test.ts > reviewed invocation lifecycle > cleans owned groups on parent exit
+Error: Process fixture condition timed out
+ ❯ waitUntil src/executor.test.ts:787:38
+    785|   const deadline = Date.now() + 2_000;
+    786|   while (!predicate()) {
+    787|     if (Date.now() > deadline) throw new Error("Process fixture condit…
+       |                                      ^
+    788|     await new Promise((resolve) => setTimeout(resolve, 10));
+    789|   }
+ ❯ src/executor.test.ts:970:9
+ ❯ withProcessFixture src/executor.test.ts:815:5
+ ❯ src/executor.test.ts:960:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[9/11]⎯
+
+
+ Test Files  2 failed (2)
+      Tests  11 failed | 126 skipped (137)
+   Start at  08:48:58
+   Duration  6.60s (transform 409ms, setup 0ms, collect 701ms, tests 6.40s, environment 0ms, prepare 71ms)
+
+undefined
+/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/loop:
+[ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL] Command failed with exit code 1: vitest run src/executor.test.ts src/candidate-execution.test.ts -t reviewed

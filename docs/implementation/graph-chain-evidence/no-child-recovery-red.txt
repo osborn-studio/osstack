@@ -1,0 +1,237 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/core
+
+ ❯ src/state/graph-recovery.test.ts (22 tests | 2 failed) 402ms
+   ✓ trusted graph recovery > settles original effect after expiry, persists restart replay and rejects changed proof/outcome 32ms
+   ✓ trusted graph recovery > retains observed maxima, charges settled maxima, preserves unknown evidence history 22ms
+   ✓ trusted graph recovery > rejects forged/stale snapshots and rolls back journal, outcome and revision on failure 19ms
+   ✓ trusted graph recovery > requires exact scope, program, owner, generation, action generation and action digest 28ms
+   ✓ trusted graph recovery > not_applied only enables later explicit retry, pending cancellation forbids retry/resume 18ms
+   ✓ trusted graph recovery > projects preworker cancellation and seals terminal runs; refuses cancellation with independent unresolved action 18ms
+   ✓ trusted graph recovery > keeps confirmed result and capacity blocked for bad usage -1 17ms
+   ✓ trusted graph recovery > keeps confirmed result and capacity blocked for bad usage NaN 17ms
+   ✓ trusted graph recovery > keeps confirmed result and capacity blocked for bad usage 1.5 16ms
+   ✓ trusted graph recovery > keeps confirmed result and capacity blocked for bad usage 9007199254740992 16ms
+   ✓ trusted graph recovery > settles an older effect only with current admin fencing and the exact original worker receipt 17ms
+   ✓ trusted graph recovery > retains confirmed evidence and rejects contradictory trusted outcomes even with a new receipt 17ms
+   ✓ trusted graph recovery > does not allocate or invoke safe retries and keeps failed reservation charged 16ms
+   ✓ trusted graph recovery > admin takeover requires settled independent actions and never bypasses pending cancellation 19ms
+   ✓ trusted graph recovery > rejects action drift without a revision bump and wrong result kinds 16ms
+   ✓ trusted graph recovery > rejects a reused receipt across effects, future proof time and invalid synchronous verifier returns 17ms
+   ✓ trusted graph recovery > rejects terminal cancellation while another independent action is unresolved 16ms
+   ✓ trusted graph recovery > does not turn an action pending cancellation into a retryable failure 15ms
+   ✓ trusted graph recovery > checks current time even for an exact durable replay 15ms
+   ✓ trusted graph recovery > lets the trusted verifier bind the exact decision, result and receipt before settlement 15ms
+   × recovers an authenticated no-child spawn failure without fabricating a stopped-process receipt 18ms
+     → [
+  {
+    "code": "invalid_union",
+    "unionErrors": [
+      {
+        "issues": [
+          {
+            "received": "not_started",
+            "code": "invalid_literal",
+            "expected": "stopped",
+            "path": [
+              "worker",
+              "kind"
+            ],
+            "message": "Invalid literal value, expected \"stopped\""
+          }
+        ],
+        "name": "ZodError"
+      },
+      {
+        "issues": [
+          {
+            "received": "not_started",
+            "code": "invalid_literal",
+            "expected": "preworker",
+            "path": [
+              "worker",
+              "kind"
+            ],
+            "message": "Invalid literal value, expected \"preworker\""
+          },
+          {
+            "code": "unrecognized_keys",
+            "keys": [
+              "graphRunId",
+              "generation",
+              "owner",
+              "confirmedAt"
+            ],
+            "path": [
+              "worker"
+            ],
+            "message": "Unrecognized key(s) in object: 'graphRunId', 'generation', 'owner', 'confirmedAt'"
+          }
+        ],
+        "name": "ZodError"
+      }
+    ],
+    "path": [
+      "worker"
+    ],
+    "message": "Invalid input"
+  }
+]
+   × refuses a no-child proof when that generation has admitted actions 17ms
+     → expected [Function] to throw error including 'WORKER_PROOF_MISMATCH' but got '[\n  {\n    "code": "invalid_union",\…'
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/state/graph-recovery.test.ts > recovers an authenticated no-child spawn failure without fabricating a stopped-process receipt
+ZodError: [
+  {
+    "code": "invalid_union",
+    "unionErrors": [
+      {
+        "issues": [
+          {
+            "received": "not_started",
+            "code": "invalid_literal",
+            "expected": "stopped",
+            "path": [
+              "worker",
+              "kind"
+            ],
+            "message": "Invalid literal value, expected \"stopped\""
+          }
+        ],
+        "name": "ZodError"
+      },
+      {
+        "issues": [
+          {
+            "received": "not_started",
+            "code": "invalid_literal",
+            "expected": "preworker",
+            "path": [
+              "worker",
+              "kind"
+            ],
+            "message": "Invalid literal value, expected \"preworker\""
+          },
+          {
+            "code": "unrecognized_keys",
+            "keys": [
+              "graphRunId",
+              "generation",
+              "owner",
+              "confirmedAt"
+            ],
+            "path": [
+              "worker"
+            ],
+            "message": "Unrecognized key(s) in object: 'graphRunId', 'generation', 'owner', 'confirmedAt'"
+          }
+        ],
+        "name": "ZodError"
+      }
+    ],
+    "path": [
+      "worker"
+    ],
+    "message": "Invalid input"
+  }
+]
+ ❯ Object.get error [as error] ../../node_modules/.pnpm/zod@3.25.76/node_modules/zod/v3/types.js:39:31
+ ❯ ZodObject.parse ../../node_modules/.pnpm/zod@3.25.76/node_modules/zod/v3/types.js:114:22
+ ❯ GraphRecoveryStore.proof src/state/graph-recovery.ts:110:31
+    108|   }
+    109|   private proof(snapshot: GraphRecoverySnapshot, value: GraphRecoveryP…
+    110|     const proof = proofSchema.parse(GraphJsonValue.parse(value));
+       |                               ^
+    111|     if (proof.snapshotDigest !== snapshot.digest || proof.verifiedAt <…
+    112|     const run = snapshot.run;
+ ❯ sqliteTransaction.<anonymous> src/state/graph-recovery.ts:171:26
+ ❯ sqliteTransaction ../../node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/lib/methods/transaction.js:65:24
+ ❯ GraphRecoveryStore.transaction src/state/graph-recovery.ts:58:36
+ ❯ GraphRecoveryStore.commit src/state/graph-recovery.ts:158:17
+ ❯ src/state/graph-recovery.test.ts:209:27
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  src/state/graph-recovery.test.ts > refuses a no-child proof when that generation has admitted actions
+AssertionError: expected [Function] to throw error including 'WORKER_PROOF_MISMATCH' but got '[\n  {\n    "code": "invalid_union",\…'
+
+- Expected
++ Received
+
+- WORKER_PROOF_MISMATCH
++ [
++   {
++     "code": "invalid_union",
++     "unionErrors": [
++       {
++         "issues": [
++           {
++             "received": "not_started",
++             "code": "invalid_literal",
++             "expected": "stopped",
++             "path": [
++               "worker",
++               "kind"
++             ],
++             "message": "Invalid literal value, expected \"stopped\""
++           }
++         ],
++         "name": "ZodError"
++       },
++       {
++         "issues": [
++           {
++             "received": "not_started",
++             "code": "invalid_literal",
++             "expected": "preworker",
++             "path": [
++               "worker",
++               "kind"
++             ],
++             "message": "Invalid literal value, expected \"preworker\""
++           },
++           {
++             "code": "unrecognized_keys",
++             "keys": [
++               "graphRunId",
++               "generation",
++               "owner",
++               "confirmedAt"
++             ],
++             "path": [
++               "worker"
++             ],
++             "message": "Unrecognized key(s) in object: 'graphRunId', 'generation', 'owner', 'confirmedAt'"
++           }
++         ],
++         "name": "ZodError"
++       }
++     ],
++     "path": [
++       "worker"
++     ],
++     "message": "Invalid input"
++   }
++ ]
+
+ ❯ src/state/graph-recovery.test.ts:217:120
+    215|     owner: run.leaseOwner!, confirmedAt: 125, evidenceRef: 'worker-not…
+    216|   trusted.add(proofKey(p));
+    217|   expect(() => recovery.commit(s, { kind: 'project', receiptId: 'forge…
+       |                                                                                                                        ^
+    218| });
+    219| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed | 20 passed (22)
+   Start at  08:03:54
+   Duration  744ms (transform 120ms, setup 0ms, collect 163ms, tests 402ms, environment 0ms, prepare 58ms)
+
+undefined
+/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/core:
+[ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL] Command failed with exit code 1: vitest run src/state/graph-recovery.test.ts

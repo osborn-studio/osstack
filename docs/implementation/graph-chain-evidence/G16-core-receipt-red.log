@@ -1,0 +1,60 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/core
+
+Preparing worktree (detached HEAD d0d80a3)
+ ❯ src/graph/artifact-store.test.ts (14 tests | 1 failed | 13 skipped) 1016ms
+   ↓ trusted graph artifact freeze > restores full reachable history and exact raw tree after deleting original repo and worktree
+   × trusted graph artifact freeze > rejects missing required receipt fields at runtime 1015ms
+     → promise resolved "{ schemaVersion: 1, …(4) }" instead of rejecting
+   ↓ trusted graph artifact freeze > does not return ready if durable ID publication fails; exported bytes remain recoverable
+   ↓ trusted graph artifact freeze > rejects manifest corruption under a pinned artifact digest
+   ↓ trusted graph artifact freeze > rejects same ID with changed receipt or content
+   ↓ trusted graph artifact freeze > rejects nonconforming async authority verifyLease
+   ↓ trusted graph artifact freeze > rejects nonconforming async authority verifyImplementationReceipt
+   ↓ trusted graph artifact freeze > rejects nonconforming async authority verifyProducersStopped
+   ↓ trusted graph artifact freeze > rechecks resolved producer evidence before capture and rejects revocation
+   ↓ trusted graph artifact freeze > rejects mismatched exact source identity and HEAD
+   ↓ trusted graph artifact freeze > does not invoke local hooks or filters during capture or restore
+   ↓ trusted graph artifact freeze > rejects submodules instead of exporting an incomplete tree
+   ↓ trusted graph artifact freeze > rejects corrupted bundles and manifests, including replay
+   ↓ trusted graph artifact freeze > refuses existing and escaping restore destinations
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/graph/artifact-store.test.ts > trusted graph artifact freeze > rejects missing required receipt fields at runtime
+AssertionError: promise resolved "{ schemaVersion: 1, …(4) }" instead of rejecting
+
+- Expected
++ Received
+
+- Error {
+-   "message": "rejected promise",
++ {
++   "artifactDigest": "a38d411747b6b2bfa19ea80dc6b3c95d9bb7730d068ce20552c43f3ed2c5781f",
++   "artifactRefs": [
++     "graph-artifact:a38d411747b6b2bfa19ea80dc6b3c95d9bb7730d068ce20552c43f3ed2c5781f",
++   ],
++   "candidateRevision": "a8698e3c035a52ae818b5f9205a457247ff2362c",
++   "kind": "candidate_ready",
++   "schemaVersion": 1,
+  }
+
+ ❯ src/graph/artifact-store.test.ts:54:70
+     52|     const f = await fixture(); const raw = { ...f.input } as Partial<G…
+     53|     delete raw.implementationReceiptRef;
+     54|     await expect(f.store.freeze(raw as GraphFreezeInput, f.authority))…
+       |                                                                      ^
+     55|   });
+     56|   it("does not return ready if durable ID publication fails; exported …
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 13 skipped (14)
+   Start at  07:35:13
+   Duration  1.36s (transform 95ms, setup 0ms, collect 137ms, tests 1.02s, environment 0ms, prepare 44ms)
+
+undefined
+/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/core:
+[ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL] Command failed with exit code 1: vitest run src/graph/artifact-store.test.ts -t 'missing required'

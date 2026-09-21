@@ -1,0 +1,102 @@
+{
+  "loop_id": "G15",
+  "started_at": "2026-09-14T14:30:33.269Z",
+  "updated_at": "2026-09-14T14:51:07.197Z",
+  "completed_tasks": [
+    {
+      "task_id": "G15",
+      "capability": "code.write",
+      "outcome": "success",
+      "iterations": 1,
+      "agent_id": "codex-cli",
+      "duration_ms": 1233926,
+      "run_id": "run_f1564190-9519-4e72-a003-eec605296896",
+      "started_at": "2026-09-14T14:30:33.271Z",
+      "completed_at": "2026-09-14T14:51:07.100Z",
+      "execution_summary": "codex exited 0",
+      "verifier_agent_id": "local-verifier",
+      "verify_summary": "1 verifier command and 0 verifier adapters passed. 1 evaluation passed.",
+      "verify_issue_count": 0,
+      "verify_commands": [
+        {
+          "command": "git diff --check",
+          "exit_code": 0,
+          "duration_ms": 37
+        }
+      ],
+      "evaluations": [
+        {
+          "spec_id": "verify-command-1",
+          "mode": "command",
+          "description": "Shell verifier: git diff --check",
+          "required": true,
+          "weight": 1,
+          "pass": true,
+          "summary": "command passed (37 ms)",
+          "implicit": true
+        }
+      ],
+      "changed_files": [
+        "packages/agents/src/index.ts",
+        "packages/agents/src/worktree.test.ts",
+        "packages/agents/src/worktree.ts",
+        "packages/autonomy/src/repo-lock.test.ts",
+        "packages/autonomy/src/repo-lock.ts",
+        "packages/cli/package.json",
+        "packages/cli/src/daemon.ts",
+        "packages/cli/src/governed-execution.test.ts",
+        "packages/cli/src/governed-execution.ts",
+        "packages/cli/src/graph-action-broker-boundary.test.ts",
+        "packages/cli/src/graph-action-broker.ts",
+        "packages/cli/src/graph-checkpoint-service.test.ts",
+        "packages/cli/src/graph-checkpoint-service.ts",
+        "packages/core/package.json",
+        "packages/core/src/state/graph-runs.test.ts",
+        "packages/core/src/state/graph-runs.ts",
+        "packages/core/src/state/migrations.ts",
+        "packages/graph/src/worker-entry.test.ts",
+        "packages/graph/src/worker-entry.ts",
+        "packages/protocol/src/generate.ts",
+        "packages/protocol/src/index.ts",
+        "packages/protocol/src/schemas.test.ts",
+        "pnpm-lock.yaml",
+        "?? packages/cli/src/graph-action-freeze.test.ts",
+        "?? packages/cli/src/graph-chain.integration.test.ts",
+        "?? packages/cli/src/graph-reconciler.test.ts",
+        "?? packages/cli/src/graph-reconciler.ts",
+        "?? packages/cli/src/graph-runtime.ts",
+        "?? packages/cli/src/graph-worker-manager.test.ts",
+        "?? packages/cli/src/graph-worker-manager.ts",
+        "?? packages/core/src/graph/artifact-git.ts",
+        "?? packages/core/src/graph/artifact-store.test.ts",
+        "?? packages/core/src/graph/artifact-store.ts",
+        "?? packages/core/src/state/graph-recovery.test.ts",
+        "?? packages/core/src/state/graph-recovery.ts",
+        "?? packages/graph/src/worker-client.ts",
+        "?? packages/graph/src/worker-runtime.ts",
+        "?? packages/protocol/schemas/graph-worker.schema.json",
+        "?? packages/protocol/src/graph-worker.test.ts",
+        "?? packages/protocol/src/graph-worker.ts"
+      ],
+      "diff_summary": "packages/agents/src/index.ts | 4 + packages/agents/src/worktree.test.ts | 43 +++++++- packages/agents/src/worktree.ts | 98 ++++++++++++++++++- packages/autonomy/src/repo-lock.test.ts | 24 +++++ packages/autonomy/src/repo-lock.ts | 33 ++++++",
+      "commit_hash": "30236fb",
+      "tokens_in": 193138,
+      "tokens_out": 37079,
+      "cost_usd": 0
+    }
+  ],
+  "in_progress": [],
+  "pending": [],
+  "deferred_tasks": [],
+  "key_metrics": {
+    "total_cycles": 1,
+    "avg_duration_ms": 1233926,
+    "success_rate": 1,
+    "tokens_consumed": 230217,
+    "cost_consumed": 0
+  },
+  "decisions": [
+    "G15: selected codex-cli - agent_id override",
+    "G15: stop after iteration 1 - Verifier passed with score 1.00."
+  ]
+}

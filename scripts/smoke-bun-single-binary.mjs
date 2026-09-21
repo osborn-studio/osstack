@@ -9,6 +9,7 @@ const root = process.cwd();
 const tempRoot = await mkdtemp(join(tmpdir(), "osstack-bun-binary-smoke-"));
 const outputDir = join(tempRoot, "release");
 const workspace = join(tempRoot, "workspace");
+process.env.OSSTACK_HOME = join(tempRoot, "home");
 
 try {
   const packageJson = JSON.parse(await readFile(join(root, "packages", "cli", "package.json"), "utf-8"));
@@ -44,6 +45,11 @@ try {
     throw new Error(`single binary loop doctor did not pass: ${doctor.stdout}`);
   }
 
+  const graph = spawnSync(binaryPath, ['graph', 'run', '--request', '/nonexistent', '--json'], { encoding: 'utf8', env: process.env });
+  if (graph.status !== 1 || !(graph.stdout + graph.stderr).includes('GRAPH_DISTRIBUTION_UNSUPPORTED')) throw new Error('Bun graph must reject explicitly before attempting delivery');
+  const explain = run(binaryPath, ['graph', 'explain', '--help'], { capture: true });
+  assertIncludes(explain.stdout, 'explain', 'legacy graph explain remains available');
+
   const manifest = JSON.parse(await readFile(manifestPath, "utf-8"));
   if (manifest.kind !== "osstack.single_binary.release_asset") {
     throw new Error(`unexpected single binary manifest kind: ${manifest.kind}`);
@@ -75,12 +81,13 @@ try {
     signed: manifest.signing.signed,
     notarized: manifest.signing.notarized,
     loop_doctor_ok: doctorParsed.ok,
+    graph_runtime_rejected: true,
   }, null, 2));
 } finally {
   if (process.env["OSSTACK_KEEP_BUN_BINARY_SMOKE"] !== "1") {
     await rm(tempRoot, { recursive: true, force: true });
   } else {
-    console.error(`kept bun single binary: ${binaryPath}`);
+    console.error(`kept bun single binary: ${outputDir}`);
   }
 }
 

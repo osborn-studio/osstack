@@ -1,0 +1,152 @@
+{
+  "taskReturns": [
+    {
+      "checkpoint": {
+        "configurable": {
+          "checkpoint_id": "1f1aff32-b1f6-6eb0-ffff-0cebb5f7eef9",
+          "checkpoint_ns": "",
+          "thread_id": "c2"
+        }
+      },
+      "taskId": "296d4df6-f9e1-581e-b33a-9c686fead72c",
+      "value": {
+        "results": [
+          "completed"
+        ]
+      }
+    },
+    {
+      "checkpoint": {
+        "configurable": {
+          "checkpoint_id": "1f1aff32-b1f6-6eb0-ffff-0cebb5f7eef9",
+          "checkpoint_ns": "",
+          "thread_id": "c2"
+        }
+      },
+      "taskId": "b994afc8-5b3d-5480-86d9-cff5b85d9fc9",
+      "value": {
+        "results": [
+          "recovered"
+        ]
+      }
+    },
+    {
+      "checkpoint": {
+        "configurable": {
+          "checkpoint_id": "1f1aff32-b1f6-6eb0-ffff-0cebb5f7eef9",
+          "checkpoint_ns": "",
+          "thread_id": "c2"
+        }
+      },
+      "taskId": "7a580afb-ea5e-5b67-af44-31342d96bebb",
+      "value": {
+        "results": [
+          "joined"
+        ]
+      }
+    }
+  ],
+  "counts": {
+    "completedBody": 1,
+    "completedWrapper": 1,
+    "flakyAttempts": 1,
+    "joinWrapper": 1,
+    "joinedBody": 1,
+    "recoveredBody": 1
+  },
+  "effects": {
+    "completed": {
+      "attempt": 1,
+      "effect": "completed",
+      "result": {
+        "results": [
+          "completed"
+        ]
+      },
+      "run": "functional-async-join-return-crash",
+      "status": "confirmed"
+    },
+    "joined": {
+      "attempt": 1,
+      "effect": "joined",
+      "result": {
+        "results": [
+          "joined"
+        ]
+      },
+      "run": "functional-async-join-return-crash",
+      "status": "confirmed"
+    },
+    "recovered": {
+      "attempt": 1,
+      "effect": "recovered",
+      "result": {
+        "results": [
+          "recovered"
+        ]
+      },
+      "run": "functional-async-join-return-crash",
+      "status": "confirmed"
+    }
+  },
+  "tuple": {
+    "checkpoint": {
+      "channel_values": {
+        "__pregel_tasks": [],
+        "__start__": {
+          "results": []
+        }
+      },
+      "channel_versions": {
+        "__start__": 1
+      },
+      "id": "1f1aff32-b1f6-6eb0-ffff-0cebb5f7eef9",
+      "ts": "2026-09-14T04:17:16.059Z",
+      "v": 4,
+      "versions_seen": {
+        "__input__": {}
+      }
+    },
+    "config": {
+      "configurable": {
+        "checkpoint_id": "1f1aff32-b1f6-6eb0-ffff-0cebb5f7eef9",
+        "checkpoint_ns": "",
+        "thread_id": "c2"
+      }
+    },
+    "metadata": {
+      "parents": {},
+      "source": "input",
+      "step": -1
+    },
+    "pendingWrites": [
+      [
+        "296d4df6-f9e1-581e-b33a-9c686fead72c",
+        "__return__",
+        {
+          "results": [
+            "completed"
+          ]
+        }
+      ],
+      [
+        "b994afc8-5b3d-5480-86d9-cff5b85d9fc9",
+        "__return__",
+        {
+          "results": [
+            "recovered"
+          ]
+        }
+      ],
+      [
+        "7a580afb-ea5e-5b67-af44-31342d96bebb",
+        "__return__",
+        {
+          "results": [
+            "joined"
+          ]
+        }
+      ]
+    ]
+  }
+}

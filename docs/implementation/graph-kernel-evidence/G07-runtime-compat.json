@@ -1,0 +1,32 @@
+[
+  {
+    "runtime": "node20",
+    "kind": "tests",
+    "exitCode": 0,
+    "log": "G07-node20-tests.txt"
+  },
+  {
+    "runtime": "node20",
+    "kind": "probe",
+    "exitCode": 0,
+    "log": "G07-node20-probe.json"
+  },
+  {
+    "runtime": "node22",
+    "kind": "tests",
+    "exitCode": 0,
+    "log": "G07-node22-tests.txt"
+  },
+  {
+    "runtime": "node22",
+    "kind": "probe",
+    "exitCode": 0,
+    "log": "G07-node22-probe.json"
+  },
+  {
+    "runtime": "node20floor",
+    "kind": "probe",
+    "exitCode": 0,
+    "log": "G07-node20floor-probe.json"
+  }
+]

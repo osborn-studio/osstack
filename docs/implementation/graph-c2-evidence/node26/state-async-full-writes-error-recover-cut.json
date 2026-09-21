@@ -1,0 +1,110 @@
+{
+  "taskReturns": [],
+  "counts": {
+    "completedBody": 1,
+    "completedWrapper": 1,
+    "flakyAttempts": 2,
+    "joinWrapper": 1,
+    "joinedBody": 1,
+    "recoveredBody": 1
+  },
+  "effects": {
+    "completed": {
+      "attempt": 1,
+      "effect": "completed",
+      "result": {
+        "results": [
+          "completed"
+        ]
+      },
+      "run": "state-async-full-writes-error",
+      "status": "confirmed"
+    },
+    "joined": {
+      "attempt": 1,
+      "effect": "joined",
+      "result": {
+        "results": [
+          "joined"
+        ]
+      },
+      "run": "state-async-full-writes-error",
+      "status": "confirmed"
+    },
+    "recovered": {
+      "attempt": 1,
+      "effect": "recovered",
+      "result": {
+        "results": [
+          "recovered"
+        ]
+      },
+      "run": "state-async-full-writes-error",
+      "status": "confirmed"
+    }
+  },
+  "tuple": {
+    "checkpoint": {
+      "channel_values": {
+        "__pregel_tasks": [],
+        "join:completed+flaky:join": [],
+        "results": [
+          "completed",
+          "recovered",
+          "joined"
+        ]
+      },
+      "channel_versions": {
+        "__start__": 2,
+        "branch:to:completed": 3,
+        "branch:to:flaky": 3,
+        "join:completed+flaky:join": 4,
+        "results": 5
+      },
+      "id": "1f1aff32-9424-6a40-8002-8056109a1067",
+      "ts": "2026-09-14T04:17:12.932Z",
+      "v": 4,
+      "versions_seen": {
+        "__input__": {},
+        "__interrupt__": {
+          "__start__": 2,
+          "branch:to:completed": 2,
+          "branch:to:flaky": 2,
+          "results": 2
+        },
+        "__start__": {
+          "__start__": 1
+        },
+        "completed": {
+          "branch:to:completed": 2
+        },
+        "flaky": {
+          "branch:to:flaky": 2
+        },
+        "join": {
+          "join:completed+flaky:join": 3
+        }
+      }
+    },
+    "config": {
+      "configurable": {
+        "checkpoint_id": "1f1aff32-9424-6a40-8002-8056109a1067",
+        "checkpoint_ns": "",
+        "thread_id": "c2"
+      }
+    },
+    "metadata": {
+      "parents": {},
+      "source": "loop",
+      "step": 2
+    },
+    "parentConfig": {
+      "configurable": {
+        "checkpoint_id": "1f1aff32-93ea-60c0-8001-44500361aeb0",
+        "checkpoint_ns": "",
+        "thread_id": "c2"
+      }
+    },
+    "pendingWrites": []
+  }
+}

@@ -1,0 +1,82 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-09-20",
+  "acceptedCodeCommit": "42a5f93e8e67163016cd15f8f6cf0f21ac60927c",
+  "decision": "G25-C2 bounded stopped-writer public recovery accepted; broader C2/D remain open",
+  "tests": {
+    "loopBatch": {
+      "core": 75,
+      "agents": 83,
+      "cli": 135,
+      "loop": 141
+    },
+    "loopBatchTotal": 434,
+    "finalReviewedRecoverySuite": 16,
+    "distinctIncludingFutureTemplate": 435,
+    "failed": 0
+  },
+  "loop": {
+    "taskId": "G25-C2-bounded-recovery-1",
+    "executed": 1,
+    "skipped": 0,
+    "outcome": "success"
+  },
+  "fable": {
+    "model": "claude-fable-5-1",
+    "initialVerdict": "changes_requested",
+    "fixed": "explicit delivery program identity compatibility pin",
+    "finalVerdict": "accept",
+    "conditionalFutureTemplateTest": "passed"
+  },
+  "verification": [
+    "full workspace build",
+    "final CLI rebuild",
+    "full workspace typecheck",
+    "schema freshness",
+    "CLI startup 58ms version / 178ms help",
+    "diff whitespace"
+  ],
+  "scope": {
+    "host": "real child process exits after journaled worker exit",
+    "provider": "fixture DeepSeek HTTP response through real bounded adapter; no paid live API this turn",
+    "recovery": "generation1 epoch0 v4 two-action cancellation only",
+    "positive": [
+      "stopped writer before ledger confirmation",
+      "ledger confirmed with lost ACK",
+      "release ACK lost and fresh host replay"
+    ],
+    "negative": [
+      "live original host",
+      "unknown HTTP result",
+      "missing worker exit",
+      "future template",
+      "workspace/receipt/journal tamper",
+      "symlink",
+      "missing journal",
+      "revoked grant at admission and final transaction",
+      "replacement writer lock"
+    ]
+  },
+  "parentTaskCount": {
+    "completed": 25,
+    "total": 30
+  },
+  "remaining": [
+    "G25-C2 abrupt host loss without journaled worker exit and broader producer coverage",
+    "G25-D complete original fault matrix",
+    "G26-B compatibility",
+    "G27",
+    "G28",
+    "G29"
+  ],
+  "sourceSha256": {
+    "packages/cli/src/graph-action-broker.ts": "e967fc3a162891fdb3af93ac2680edd6c933fd7ce9068484c625ac3f6a09f697",
+    "packages/cli/src/graph-bounded-messages.test.ts": "d418050d0e363a5c408e7320e85003381dbd0c576474312bb69b291f76a203c3",
+    "packages/cli/src/graph-bounded-recovery-journal.ts": "b0a7091f57e998003f8b844ee275ebe77105ba323406e9bcc5b596a14b2ce54b",
+    "packages/cli/src/graph-bounded-recovery.test.ts": "af443d6e8abb100cb63d0bc90698a5bab07b3a90fcd84b22afa17cdd22f87134",
+    "packages/cli/src/graph-bounded-recovery.ts": "f90af7c292e227827730da9d89bbf21906cfc42c992fdf46bea8d880dd092926",
+    "packages/cli/src/graph-delivery.ts": "edd6c6bd58bd838bd69dbf3d14e4121f638a79aacd2bb8e60710bfcd09f9400e",
+    "packages/cli/src/graph-rpc.ts": "5fd37a1ec7b4e572c2e7f7f09e8579def0fecef6042d7c5d55e55e7d9fe27295",
+    "scripts/fixtures/graph-bounded-settlement-crash.ts": "128da455a5ae1d01e618b040a760ef233e31ff757900424550bd011164ed5fa4"
+  }
+}

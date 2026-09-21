@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 1,
+  "gate": "C4",
+  "status": "passed",
+  "date": "2026-09-14",
+  "acceptedCodeCommit": "36eee05f6bc6ef6aa8148dd9f4e9271e2237d4fc",
+  "ledgerCommit": "b064928",
+  "baseline": "405b3183597e545391a220cc5a481691740abce7",
+  "tasks": [
+    "G11",
+    "G12",
+    "G13"
+  ],
+  "productionReady": false,
+  "executionModel": "langgraph-functional-v1",
+  "durability": "sync",
+  "node": "v26.5.0",
+  "pnpm": "11.4.0",
+  "betterSqlite3": "12.10.0",
+  "sqlite": "3.53.1",
+  "workspaceTestCount": 2856,
+  "testPackageCount": 22,
+  "verification": "Actual LoopEngine C4-final-acceptance-3: one executed successful task, zero skipped; all six verifier commands passed. Build and changed-file Biome passed.",
+  "scope": "Fenced action ledger, trusted in-process daemon broker/checkpoint ports, public RemoteCheckpointSaver and asynchronous SQLite child-process commit/ACK/crash tests.",
+  "limitations": [
+    "No production worker lifecycle or public worker RPC; G14/G17 remain pending",
+    "Unknown effects retain repository locks/capacity; authenticated reconciliation/artifact recovery deferred G15/G16",
+    "Checkpoint sync ACK means COMMIT under WAL synchronous=NORMAL, not power-loss durability",
+    "Quota uses octet_length on the verified bundled SQLite; formal native/runtime/distribution matrix remains G27",
+    "64 MiB counts payload/reply bytes, not total database file size; host may only tighten quotas",
+    "G28 daemon RPC/checkpoint/tick performance not accepted by CLI startup smoke",
+    "StateGraph partial-abort AND-join counterexample remains blocked"
+  ],
+  "evidence": [
+    "acceptance-result.json",
+    "accepted-full-tests.txt",
+    "accepted-typecheck.txt",
+    "accepted-schemas.txt",
+    "accepted-kernel.txt",
+    "accepted-functional.txt",
+    "accepted-startup.txt",
+    "build-closure.txt",
+    "biome-final.txt",
+    "source-hashes.json",
+    "claude-closure.md",
+    "claude-closure-adjudication.md"
+  ]
+}

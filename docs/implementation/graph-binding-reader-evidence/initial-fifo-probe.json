@@ -1,0 +1,27 @@
+{
+  "platform": "darwin",
+  "node": "v26.5.0",
+  "kind": "unmocked FIFO initial reopen child-process probe",
+  "runs": [
+    {
+      "version": "before",
+      "elapsedMs": 3004,
+      "ready": true,
+      "exitCode": null,
+      "signal": "SIGTERM",
+      "error": "ETIMEDOUT",
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "version": "after",
+      "elapsedMs": 200,
+      "ready": true,
+      "exitCode": 0,
+      "signal": null,
+      "stdout": "{\"rejected\":true,\"state\":{\"state\":\"running\",\"released_at\":null},\"transactionClosed\":true}\n",
+      "stderr": ""
+    }
+  ],
+  "passed": true
+}

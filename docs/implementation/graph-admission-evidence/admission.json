@@ -1,0 +1,45 @@
+{
+  "schemaVersion": 1,
+  "gate": "C3",
+  "status": "passed",
+  "date": "2026-09-14",
+  "acceptedCodeCommit": "055e217f7d4d29e0a93278544efb3b7b5b6f7beb",
+  "foundationCommit": "b3f77fc",
+  "baseline": "b95cc11",
+  "tasks": [
+    "G08",
+    "G09",
+    "G10"
+  ],
+  "productionReady": false,
+  "node": "v26.5.0",
+  "workspaceTestCount": 2737,
+  "testPackageCount": 22,
+  "verification": "actual LoopEngine C3-final-acceptance-2 succeeded, six verifier commands passed",
+  "postReviewChecks": [
+    "Loop lifecycle: 10 passed",
+    "Governed admission: 6 passed",
+    "rebuilt Loop/CLI and workspace strict typecheck passed"
+  ],
+  "scope": "Functional sync integration prerequisites; no production worker/broker/checkpoint chain",
+  "limitations": [
+    "Automated unknown-effect reconciliation deferred to G14/G15; offline quiescent recovery only",
+    "No mixed-version or shared-host/network filesystem guarantee",
+    "Node 20/22 original native smoke logs unavailable after temporary directory disappearance; G27 remains pending",
+    "Tick and daemon RPC overhead budgets remain G28"
+  ],
+  "evidence": [
+    "acceptance-result.json",
+    "accepted-full-tests.txt",
+    "accepted-typecheck.txt",
+    "accepted-schemas.txt",
+    "accepted-kernel.txt",
+    "accepted-functional.txt",
+    "accepted-startup.txt",
+    "loop-lease-final.txt",
+    "governed-lease-final.txt",
+    "source-hashes.json",
+    "claude-closure.md",
+    "recovery-boundary.md"
+  ]
+}

@@ -1,0 +1,25 @@
+packages/core/src/state/graph-storage.ts:30:      db.prepare("UPDATE graph_runs SET revision = ?, updated_at = ? WHERE graph_run_id = ?")
+packages/core/src/state/migrations.ts:1359:      CREATE TABLE graph_runs (
+packages/core/src/state/migrations.ts:1378:      CREATE INDEX idx_graph_runs_scope_status ON graph_runs(scope_json, status, created_at, graph_run_id);
+packages/core/src/state/migrations.ts:1379:      CREATE INDEX idx_graph_runs_input_ref ON graph_runs(scope_json, input_artifact_ref);
+packages/core/src/state/migrations.ts:1380:      CREATE INDEX idx_graph_runs_source_parent ON graph_runs(scope_json, json_extract(source_json, '$.parentRunId'));
+packages/core/src/state/migrations.ts:1381:      CREATE INDEX idx_graph_runs_lease_expiry ON graph_runs(lease_expires_at) WHERE lease_owner IS NOT NULL;
+packages/core/src/state/migrations.ts:1390:        FOREIGN KEY(scope_json, graph_run_id) REFERENCES graph_runs(scope_json, graph_run_id)
+packages/core/src/state/migrations.ts:1394:        graph_run_id TEXT NOT NULL REFERENCES graph_runs(graph_run_id),
+packages/core/src/state/migrations.ts:1403:      CREATE TRIGGER graph_runs_identity_immutable BEFORE UPDATE OF graph_run_id, scope_json, source_json, input_artifact_ref, template, identity_json, created_at ON graph_runs
+packages/core/src/state/migrations.ts:1405:      CREATE TRIGGER graph_runs_terminal_sealed BEFORE UPDATE ON graph_runs
+packages/core/src/state/migrations.ts:1422:      ALTER TABLE graph_runs ADD COLUMN spec_json TEXT;
+packages/core/src/state/migrations.ts:1423:      CREATE TRIGGER graph_runs_spec_immutable BEFORE UPDATE OF spec_json ON graph_runs
+packages/core/src/state/migrations.ts:1427:        graph_run_id TEXT NOT NULL REFERENCES graph_runs(graph_run_id),
+packages/core/src/state/migrations.ts:1468:        graph_run_id TEXT NOT NULL REFERENCES graph_runs(graph_run_id),
+packages/core/src/state/migrations.ts:1480:        graph_run_id TEXT NOT NULL REFERENCES graph_runs(graph_run_id),
+packages/core/src/state/migrations.ts:1490:        graph_run_id TEXT NOT NULL REFERENCES graph_runs(graph_run_id),
+packages/core/src/state/migrations.ts:1504:        graph_run_id TEXT NOT NULL REFERENCES graph_runs(graph_run_id),
+packages/core/src/state/migrations.ts:1545:        graph_run_id TEXT NOT NULL REFERENCES graph_runs(graph_run_id),
+packages/core/src/state/graph-recovery.ts:237:          this.db.prepare("UPDATE graph_runs SET generation = ?, lease_owner = ?, lease_expires_at = ?, lease_acquired_at = ? WHERE graph_run_id = ?")
+packages/core/src/state/graph-recovery.ts:245:      this.db.prepare("UPDATE graph_runs SET status = ?, revision = ?, updated_at = ? WHERE graph_run_id = ?").run(status, run.revision + 1, now, run.graphRunId);
+packages/core/src/state/graph-runs.ts:114:    const row = this.db.prepare("SELECT * FROM graph_runs WHERE scope_json = ? AND graph_run_id = ?")
+packages/core/src/state/graph-runs.ts:140:      this.db.prepare(`INSERT INTO graph_runs (graph_run_id, scope_json, source_json, input_artifact_ref,
+packages/core/src/state/graph-runs.ts:166:      this.db.prepare(`UPDATE graph_runs SET generation = ?, revision = ?, lease_owner = ?, lease_expires_at = ?,
+packages/core/src/state/graph-runs.ts:181:      this.db.prepare(`UPDATE graph_runs SET lease_expires_at = ?, revision = ?, updated_at = ?
+packages/core/src/state/graph-runs.ts:239:    this.db.prepare(`UPDATE graph_runs SET status = ?, revision = ?, updated_at = ?

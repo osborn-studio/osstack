@@ -1,0 +1,20 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+ ✓ src/graph-reconciler.test.ts (22 tests) 407ms
+ ✓ src/graph-worker-manager.test.ts (27 tests) 6565ms
+   ✓ handshakes asynchronously, executes Functional+remote sync checkpoints and isolates bounded logs  327ms
+   ✓ reserves each run synchronously and requires verified exit before replacement  382ms
+   ✓ executes snapshotted bytes even when the original trusted module is changed  320ms
+   ✓ expires leases and terminates an unresponsive child with actual exit evidence  2042ms
+   ✓ done leaves exit pending until the OS observes termination  335ms
+   ✓ revokes a running lease and old callbacks cannot respond through a replacement connection  347ms
+   ✓ caps each log stream independently and does not pass a DB home or node injection environment  302ms
+   ✓ allows startup grace before requiring heartbeats  334ms
+   ✓ does not apply a checkpoint RPC timeout to a healthy long-running governed action  605ms
+
+ Test Files  2 passed (2)
+      Tests  49 passed (49)
+   Start at  08:05:37
+   Duration  6.80s (transform 174ms, setup 15ms, collect 314ms, tests 6.97s, environment 0ms, prepare 72ms)
+

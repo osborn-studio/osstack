@@ -1,0 +1,1483 @@
+{
+  "schemaVersion": 1,
+  "createdAt": "2026-09-13",
+  "baseline": "b476bcc",
+  "objective": "OSStack Loop hardening and executable Graph code-delivery-v1",
+  "status": "in_progress",
+  "verificationCommands": {
+    "BASE": "记录 `git status --short` / `git rev-parse HEAD` / `node -v`；在隔离环境运行现有相关包测试与 `node scripts/bench-cli-startup.mjs`，保存基线。",
+    "LOOP": "`pnpm --filter @osstack/loop exec vitest run src/executor.test.ts src/loop-engine.test.ts`；新增 candidate 测试后同时运行；涉及 agents 时跑对应包测试。",
+    "PROTOCOL": "`pnpm --filter @osstack/protocol test`；build 后 `pnpm --filter @osstack/protocol generate:schemas` 和 `check:schemas`。",
+    "GRAPH_BUILD": "`pnpm --filter @osstack/graph build` 与 `typecheck`；记录根入口/worker 入口分别的模块加载链。",
+    "SAVER_SPIKE": "`pnpm --filter @osstack/graph test`；运行新 `node scripts/probe-graph-saver.mjs`，必须在显式临时目录跨进程验证。 C2 补充：node --test scripts/fixtures/graph-c2-*.test.mjs；node scripts/probe-graph-c2.mjs，区分实验断言通过和内核准入。",
+    "CORE": "`pnpm --filter @osstack/core test`；迁移/状态测试只使用临时数据库夹具。",
+    "LOCKS": "`pnpm --filter @osstack/autonomy test`；`pnpm --filter @osstack/core test` 中仓库身份夹具覆盖同仓多 worktree。",
+    "ADMISSION": "`pnpm --filter @osstack/cli exec vitest run src/governed-execution.test.ts src/daemon-policy-gate.test.ts src/daemon-loop.test.ts`；并跑 Loop policy-gate 测试。",
+    "BROKER": "`pnpm --filter @osstack/cli exec vitest run src/graph-action-broker.test.ts`，配合 core graph-actions 测试和 fake adapter 调用计数。",
+    "CHECKPOINT": "分别跑 core `graph-checkpoints.test.ts` 与 graph `remote-checkpointer.test.ts`；fixture 必须包括 pending writes 和陈旧 generation。",
+    "WORKER": "分别跑 cli `graph-worker-manager.test.ts` 与 graph `worker-entry.test.ts`；实际创建实验子进程，检查 IPC/退出行为。",
+    "RECOVERY": "cli `graph-reconciler.test.ts` + core `graph-actions.test.ts`；确认无自动重发的外部动作日志。",
+    "ARTIFACTS": "core `artifact-store.test.ts` + agents `worktree.test.ts`；用临时 git 仓库验证 commit/产物/GC。",
+    "CHAIN": "`pnpm --filter @osstack/cli exec vitest run src/graph-chain.integration.test.ts`；fixture 必须启动 daemon/worker，显式临时 OSSTACK_HOME。",
+    "GRAPH": "`pnpm --filter @osstack/graph test`；增加可观察的分支调用计数、版本与预算断言。",
+    "DELIVERY": "graph 模板测试 + cli `graph-delivery.integration.test.ts`；真实临时仓库和确定性 fake model/命令。",
+    "CLI_GRAPH": "`pnpm --filter @osstack/cli exec vitest run src/graph-command.test.ts src/graph-rpc.test.ts`；旧 explain 测试保留。",
+    "CONTRACT": "protocol 测试与 schema freshness；cli graph RPC caller 契约测试；不调用真实 OStag/OSBot。",
+    "FAULTS": "新 `node scripts/verify-graph-runtime.mjs` 与 graph fault/concurrency 集成测试，输出 JSON 证据和固定 seed。",
+    "COMPAT": "相关旧 Loop/session/daemon 测试和新 graph compatibility 集成测试；禁止默认控制面 DB。",
+    "RELEASE": "`pnpm build`、`pnpm typecheck`、`pnpm test`、protocol `check:schemas`，按现有发行脚本验证包含 worker 的构建；只用临时打包产物。",
+    "PERF": "`node scripts/bench-cli-startup.mjs` + 新 `node scripts/bench-graph-runtime.mjs` + 既有 RPC 测试；按本地/CI 原预算分别验收。",
+    "PILOT": "运行 G29 操作手册中的已授权试点；关联 G25/G27/G28 证据。不得以本次历史离线探针替代。"
+  },
+  "tasks": [
+    {
+      "id": "G00",
+      "phase": "M0",
+      "title": "冻结基线和升级边界",
+      "dependsOn": [],
+      "files": [
+        "docs/implementation/graph-baseline.md",
+        "scripts/graph-test-env.mjs",
+        "scripts/graph-test-env.test.mjs"
+      ],
+      "acceptance": [
+        "记录 HEAD、用户改动、迁移版本、Node/原生依赖和现有性能；逐卡核实现有文件与命令，历史失败单列。",
+        "生成显式隔离 OSSTACK_HOME 的测试夹具，拒绝默认和保留 serving home。",
+        "确认代码交付 v1 为 artifact_only，并登记受管仓库的合并/部署触发边界。"
+      ],
+      "verify": "BASE",
+      "size": "S",
+      "status": "completed",
+      "evidence": [
+        "docs/implementation/graph-baseline.md",
+        "docs/implementation/2026-09-13-graph-foundation-completion.md",
+        "docs/implementation/graph-foundation-evidence/acceptance-summary.json"
+      ],
+      "acceptedCodeCommit": "de4a3bbebc48fc119d9aca41d547d60da773e8a2"
+    },
+    {
+      "id": "G01",
+      "phase": "M0",
+      "title": "校验 adapter 终态事件",
+      "dependsOn": [
+        "G00"
+      ],
+      "files": [
+        "packages/loop/src/executor.ts",
+        "packages/loop/src/executor.test.ts"
+      ],
+      "acceptance": [
+        "无 done 且无明确失败的流不能 completed；终态 error 保持失败。",
+        "冲突终态、终态后非法事件和不合法 done payload 有确定失败分类。",
+        "正常完成、明确失败及现有用量累计行为保持兼容。"
+      ],
+      "verify": "LOOP",
+      "size": "S",
+      "status": "completed",
+      "implementationCommit": "3fe3793",
+      "evidence": [
+        "docs/implementation/graph-foundation-evidence/G01-executor.md",
+        "docs/implementation/graph-foundation-evidence/G01-STATE.md",
+        "docs/implementation/2026-09-13-graph-foundation-completion.md",
+        "docs/implementation/graph-foundation-evidence/acceptance-summary.json"
+      ],
+      "acceptedCodeCommit": "de4a3bbebc48fc119d9aca41d547d60da773e8a2"
+    },
+    {
+      "id": "G02",
+      "phase": "M0",
+      "title": "贯通图级取消信号",
+      "dependsOn": [
+        "G01"
+      ],
+      "files": [
+        "packages/loop/src/executor.ts",
+        "packages/loop/src/executor.test.ts",
+        "packages/agents/src/base.ts"
+      ],
+      "acceptance": [
+        "LocalExecutorOptions 接收外部 signal，并与内部 timeout 合并且清理 listener。",
+        "开始前已取消不启动 adapter；运行中取消向真实 invoke(signal) 传递。",
+        "signal 已发出与执行已停止分开记录，晚到 done 不抹掉未确认取消。"
+      ],
+      "verify": "LOOP",
+      "size": "M",
+      "status": "completed",
+      "evidence": [
+        "docs/implementation/graph-foundation-evidence/G02-executor.md",
+        "docs/implementation/graph-foundation-evidence/G02-STATE.md",
+        "docs/implementation/graph-foundation-evidence/g02-review-followup.md",
+        "docs/implementation/2026-09-13-graph-foundation-completion.md",
+        "docs/implementation/graph-foundation-evidence/acceptance-summary.json"
+      ],
+      "acceptedCodeCommit": "de4a3bbebc48fc119d9aca41d547d60da773e8a2",
+      "implementationCommit": "9b50d3b"
+    },
+    {
+      "id": "G03",
+      "phase": "M0",
+      "title": "确认命令进程退出",
+      "dependsOn": [
+        "G02"
+      ],
+      "files": [
+        "packages/loop/src/executor.ts",
+        "packages/loop/src/executor.test.ts"
+      ],
+      "acceptance": [
+        "命令超时/取消终止受控进程组，支持 TERM 宽限和必要的 KILL。",
+        "测试包含子孙进程、忽略 TERM、关闭管道但进程仍存活及晚到退出。",
+        "不能确认退出时返回明确未确认信息，不伪报 completed/cancelled。"
+      ],
+      "verify": "LOOP",
+      "size": "S",
+      "status": "completed",
+      "evidence": [
+        "docs/implementation/graph-foundation-evidence/G03-executor.md",
+        "docs/implementation/graph-foundation-evidence/G03-STATE.md",
+        "docs/implementation/graph-foundation-evidence/g02-review-followup.md",
+        "docs/implementation/2026-09-13-graph-foundation-completion.md",
+        "docs/implementation/graph-foundation-evidence/acceptance-summary.json"
+      ],
+      "acceptedCodeCommit": "de4a3bbebc48fc119d9aca41d547d60da773e8a2",
+      "implementationCommit": "3722e22"
+    },
+    {
+      "id": "G04",
+      "phase": "M0",
+      "title": "提炼一次候选实现",
+      "dependsOn": [
+        "G03"
+      ],
+      "files": [
+        "packages/loop/src/candidate-execution.ts",
+        "packages/loop/src/candidate-execution.test.ts",
+        "packages/loop/src/loop-engine.ts",
+        "packages/loop/src/index.ts",
+        "packages/loop/src/types.ts",
+        "packages/loop/src/loop-engine.test.ts"
+      ],
+      "acceptance": [
+        "新入口只执行一次已授权实现，返回 implementation_complete、执行证据与工作区引用；不 commit，也不等于 candidate_ready 或任务成功。",
+        "不执行 discovery、archive、cycle 状态写回、内置重复评审、merge 或未登记清理。",
+        "旧 Loop 通过明确 legacy 路径维持行为，治理/agent 选择和角色约束有回归测试。"
+      ],
+      "verify": "LOOP",
+      "size": "M",
+      "status": "completed",
+      "acceptedCodeCommit": "de4a3bbebc48fc119d9aca41d547d60da773e8a2",
+      "evidence": [
+        "docs/implementation/2026-09-13-graph-foundation-completion.md",
+        "docs/implementation/graph-foundation-evidence/acceptance-summary.json",
+        "docs/implementation/graph-foundation-evidence/G04-executor.md",
+        "docs/implementation/graph-foundation-evidence/G04-STATE.md"
+      ],
+      "implementationCommit": "de4a3bbebc48fc119d9aca41d547d60da773e8a2"
+    },
+    {
+      "id": "G05",
+      "phase": "M0",
+      "title": "定义图边界契约",
+      "dependsOn": [
+        "G00"
+      ],
+      "files": [
+        "packages/protocol/src/graph.ts",
+        "packages/protocol/src/graph.test.ts",
+        "packages/protocol/src/index.ts",
+        "packages/protocol/src/generate.ts",
+        "packages/protocol/schemas/graph.schema.json",
+        "packages/protocol/src/graph-review.test.ts",
+        "packages/protocol/src/schemas.test.ts"
+      ],
+      "acceptance": [
+        "定义 GraphSpec、范围、结果、错误、状态、预算及 WorkerActionRequest/Response，拒绝未知字段及未认证身份。",
+        "canonical inputDigest 排除 trace/time；idempotency 与 expectedRevision 语义固定。",
+        "保持 protocol 的现有 Zod 3 和 JSON Schema 生成路线，不要求跨进程传 Zod/SDK 实例。"
+      ],
+      "verify": "PROTOCOL",
+      "size": "M",
+      "status": "completed",
+      "implementationCommit": "8f94aa91601b75cd5b678d186baefcfe3e742b65",
+      "evidence": [
+        "docs/implementation/graph-kernel-evidence/G05-executor.md",
+        "docs/implementation/graph-kernel-evidence/G05-STATE.md",
+        "docs/implementation/graph-kernel-evidence/claude-g05-review.md"
+      ],
+      "followupCommit": "c1f461992a5967bbb9055f78f8e2cb648599d5c9"
+    },
+    {
+      "id": "G06",
+      "phase": "M0",
+      "title": "建立独立图包入口",
+      "dependsOn": [
+        "G05"
+      ],
+      "files": [
+        "packages/graph/package.json",
+        "packages/graph/tsconfig.json",
+        "packages/graph/src/index.ts",
+        "packages/graph/src/worker-entry.ts",
+        "pnpm-lock.yaml",
+        "packages/graph/src/package-entry.test.ts",
+        "packages/graph/src/worker-entry.test.ts"
+      ],
+      "acceptance": [
+        "只引入一套 LangGraph 内核，显式 worker 子入口；轻入口不导入重运行时。",
+        "固定已研究的包版本后验证依赖闭包，记录 Node 20/22 与原生 SQLite 兼容性。",
+        "graph 不依赖 loop/core/cli；通过 protocol 与受控 RPC 交互，避免反向包依赖。"
+      ],
+      "verify": "GRAPH_BUILD",
+      "size": "M",
+      "status": "completed",
+      "implementationCommit": "864c031d1b030dc12cd615dbab68dda14d54fa33",
+      "evidence": [
+        "docs/implementation/graph-kernel-evidence/G06-executor.md",
+        "docs/implementation/graph-kernel-evidence/G06-STATE.md",
+        "docs/implementation/graph-kernel-evidence/node-floor-smoke.json"
+      ],
+      "followupCommit": "c1f461992a5967bbb9055f78f8e2cb648599d5c9"
+    },
+    {
+      "id": "G07",
+      "phase": "M0",
+      "title": "验证公共 Saver 与序列化扩展",
+      "dependsOn": [
+        "G06"
+      ],
+      "files": [
+        "packages/graph/src/checkpoint-codec.ts",
+        "packages/graph/src/checkpoint-codec.test.ts",
+        "scripts/probe-graph-saver.mjs",
+        "docs/implementation/graph-saver-decision.md",
+        "packages/graph/package.json",
+        "packages/graph/src/worker-entry.ts"
+      ],
+      "acceptance": [
+        "覆盖 getTuple/list/put/putWrites 的完整字段、parent config、版本、pending writes 和错误通道。",
+        "纯 JSON/受限字节编码不依赖引擎私有类；在独立临时进程验证持久恢复与 pending-write 语义。",
+        "记录公开接口能否满足需求；失败须给最小反例和替代评估，禁止靠修改引擎内部掩盖。"
+      ],
+      "verify": "SAVER_SPIKE",
+      "size": "M",
+      "status": "completed",
+      "completedAt": "2026-09-13",
+      "implementationCommit": "c1f461992a5967bbb9055f78f8e2cb648599d5c9",
+      "evidence": [
+        "docs/implementation/graph-kernel-evidence/G07-result.json",
+        "docs/implementation/graph-kernel-evidence/acceptance-result.json",
+        "docs/implementation/graph-saver-decision.md",
+        "docs/implementation/graph-c2-evidence/admission.json"
+      ],
+      "qualification": "G07 可行性验证完成并保留 StateGraph partial-abort 反例；后续 C2 已限定准入 Functional + sync 供 M1 集成，生产运行时未实现。"
+    },
+    {
+      "id": "G08",
+      "phase": "M1",
+      "title": "保存图身份和 worker 代际",
+      "dependsOn": [
+        "G05",
+        "G07"
+      ],
+      "files": [
+        "packages/core/src/state/migrations.ts",
+        "packages/core/src/state/graph-runs.ts",
+        "packages/core/src/state/graph-runs.test.ts",
+        "packages/core/src/state/db.test.ts"
+      ],
+      "acceptance": [
+        "新增 graph run、请求摘要、scope、spec/version、lease/generation 和引用索引，迁移使用实施时最新编号。",
+        "同请求同内容返回原 run，不同内容拒绝；CAS/唯一约束覆盖并发与陈旧版本。",
+        "全新 DB、旧版夹具升级、重复打开和未来版本拒绝行为明确。",
+        "保存不可变 spec/input digest、executionModel、engine/checkpoint/template/registry/compiler/schema 版本及 compiledProgramDigest；恢复前拒绝程序身份和固定调用顺序不匹配。"
+      ],
+      "verify": "CORE",
+      "size": "M",
+      "status": "completed",
+      "requiresDecisionGates": [
+        "C2"
+      ],
+      "completedAt": "2026-09-14",
+      "evidence": "docs/implementation/graph-admission-evidence/admission.json",
+      "acceptedCodeCommit": "055e217f7d4d29e0a93278544efb3b7b5b6f7beb"
+    },
+    {
+      "id": "G09",
+      "phase": "M1",
+      "title": "统一仓库身份和写者租约",
+      "dependsOn": [
+        "G00",
+        "G05"
+      ],
+      "files": [
+        "packages/core/src/graph/repository-scope.ts",
+        "packages/core/src/graph/repository-scope.test.ts",
+        "packages/autonomy/src/repo-lock.ts",
+        "packages/autonomy/src/repo-lock.test.ts"
+      ],
+      "acceptance": [
+        "从可信注册/实际 git common dir 规范化仓库身份，拒绝 caller 伪造/遗漏标识绕锁。",
+        "不同 worktree 的共享 git 元数据操作遵守同一锁范围；无锁标识的受管写操作拒绝。",
+        "租约续期、释放、过期与跨进程竞争有可观察结果，不以纯内存 semaphore 当完整保护。"
+      ],
+      "verify": "LOCKS",
+      "size": "M",
+      "status": "completed",
+      "requiresDecisionGates": [
+        "C2"
+      ],
+      "completedAt": "2026-09-14",
+      "evidence": "docs/implementation/graph-admission-evidence/admission.json",
+      "acceptedCodeCommit": "055e217f7d4d29e0a93278544efb3b7b5b6f7beb"
+    },
+    {
+      "id": "G10",
+      "phase": "M1",
+      "title": "提炼共享执行准入",
+      "dependsOn": [
+        "G09",
+        "G02"
+      ],
+      "files": [
+        "packages/cli/src/governed-execution.ts",
+        "packages/cli/src/governed-execution.test.ts",
+        "packages/cli/src/daemon.ts",
+        "packages/loop/src/policy-gate.ts",
+        "packages/loop/src/policy-gate.test.ts"
+      ],
+      "acceptance": [
+        "迁移 daemon 私有门控为共享服务，保留健康检查、scope、grant、预算和锁顺序。",
+        "graph/daemon 直接执行/受管 Loop 使用同一准入；不能接入的旧写路径在受管冲突时明确拒绝。",
+        "身份来自可信本地连接/已验证委托；worker 传来的 tenant/principal 不自授权限。"
+      ],
+      "verify": "ADMISSION",
+      "size": "M",
+      "status": "completed",
+      "requiresDecisionGates": [
+        "C2"
+      ],
+      "completedAt": "2026-09-14",
+      "evidence": "docs/implementation/graph-admission-evidence/admission.json",
+      "acceptedCodeCommit": "055e217f7d4d29e0a93278544efb3b7b5b6f7beb",
+      "implementationSteps": [
+        "G10a shared admission and lease lifetime",
+        "G10b daemon/graph/Loop integration",
+        "G10c foreground CLI and legacy session paths",
+        "G10d process and compatibility acceptance"
+      ]
+    },
+    {
+      "id": "G11",
+      "phase": "M1",
+      "title": "实现动作账本与预算预留",
+      "dependsOn": [
+        "G08"
+      ],
+      "files": [
+        "packages/core/src/state/migrations.ts",
+        "packages/core/src/state/graph-actions.ts",
+        "packages/core/src/state/graph-actions.test.ts"
+      ],
+      "acceptance": [
+        "intent 先落库，逻辑 attempt 仅由 ledger 分配，effectKey 不含 worker generation。",
+        "同一 key 结果确认唯一；pending/unknown/cancel_pending 禁止凭新 attempt 绕过。",
+        "预留、确认、失败和未知用量原子计数；图/分支/epoch/动作预算共享权威。"
+      ],
+      "verify": "CORE",
+      "size": "M",
+      "status": "completed",
+      "requiresDecisionGates": [
+        "C2"
+      ],
+      "completedAt": "2026-09-14",
+      "evidence": "docs/implementation/graph-effects-evidence/admission.json",
+      "acceptedCodeCommit": "b064928",
+      "implementationSteps": [
+        "G11a immutable original budget and action ledger",
+        "G11b fenced transaction and migration26"
+      ]
+    },
+    {
+      "id": "G12",
+      "phase": "M1",
+      "title": "接通受控动作 broker",
+      "dependsOn": [
+        "G04",
+        "G10",
+        "G11"
+      ],
+      "files": [
+        "packages/cli/src/graph-action-broker.ts",
+        "packages/cli/src/graph-action-broker.test.ts",
+        "packages/cli/src/daemon.ts",
+        "packages/protocol/src/graph.ts"
+      ],
+      "acceptance": [
+        "节点调用受控实现/命令/工作区操作，confirmed 重放返回旧结果，不再 invoke。",
+        "每次实际动作重新检查当前授权与代际；过期、撤销、scope 扩张返回结构化原因。",
+        "账本粒度明确为受控 invocation/command 等，不伪称已逐工具截获所有 agent 内部副作用。"
+      ],
+      "verify": "BROKER",
+      "size": "M",
+      "status": "completed",
+      "requiresDecisionGates": [
+        "C2"
+      ],
+      "completedAt": "2026-09-14",
+      "evidence": "docs/implementation/graph-effects-evidence/admission.json",
+      "acceptedCodeCommit": "36eee05f6bc6ef6aa8148dd9f4e9271e2237d4fc",
+      "implementationSteps": [
+        "G12a immutable registration and controlled invocation",
+        "G12b lazy daemon assembly",
+        "G12c real process and authority boundary tests"
+      ]
+    },
+    {
+      "id": "G13",
+      "phase": "M1",
+      "title": "实现 daemon 持有的检查点存储",
+      "dependsOn": [
+        "G07",
+        "G08",
+        "G11"
+      ],
+      "files": [
+        "packages/core/src/state/graph-checkpoints.ts",
+        "packages/core/src/state/graph-checkpoints.test.ts",
+        "packages/graph/src/remote-checkpointer.ts",
+        "packages/graph/src/remote-checkpointer.test.ts",
+        "packages/core/src/state/migrations.ts"
+      ],
+      "acceptance": [
+        "存储协议保留 G07 验证的全部语义；daemon 不导入 LangGraph 重入口或执行任意反序列化代码。",
+        "put/putWrites 均校验 scope/generation，幂等缓存先检查代际；同 run 串行写入和切代。",
+        "v1 checkpoints/pending writes 与 run/action 同属控制面 SQLite，由同一迁移负责人建表；短事务绑定代际检查与写入，重启先核对 lease。",
+        "覆盖 Functional task RETURN、工作流结束批次、错误和 resume 值；保持 codec/整批写入/fencing，不能把测试 JournalSaver 当生产实现。",
+        "sync 模式下必须等待 daemon 持久事务提交后确认写入；延迟 RPC/失败/崩溃验证不能由同步文件夹具代替。"
+      ],
+      "verify": "CHECKPOINT",
+      "size": "M",
+      "status": "completed",
+      "requiresDecisionGates": [
+        "C2"
+      ],
+      "completedAt": "2026-09-14",
+      "evidence": "docs/implementation/graph-effects-evidence/admission.json",
+      "acceptedCodeCommit": "36eee05f6bc6ef6aa8148dd9f4e9271e2237d4fc",
+      "implementationSteps": [
+        "G13a bounded checkpoint wire schemas",
+        "G13b fenced SQLite migration27 storage",
+        "G13c public remote saver",
+        "G13d daemon authority and asynchronous crash fixtures"
+      ]
+    },
+    {
+      "id": "G14",
+      "phase": "M1",
+      "title": "管理独立 worker 生命周期",
+      "dependsOn": [
+        "G12",
+        "G13"
+      ],
+      "files": [
+        "packages/protocol/src/graph-worker.ts",
+        "packages/protocol/src/graph-worker.test.ts",
+        "packages/protocol/src/index.ts",
+        "packages/protocol/src/generate.ts",
+        "packages/graph/src/worker-client.ts",
+        "packages/cli/src/graph-worker-manager.ts",
+        "packages/cli/src/graph-worker-manager.test.ts",
+        "packages/graph/src/worker-entry.ts",
+        "packages/graph/src/worker-entry.test.ts",
+        "packages/graph/src/worker-runtime.ts",
+        "packages/graph/src/index.ts"
+      ],
+      "acceptance": [
+        "worker-entry 实现 protocol 动作请求/响应的 IPC 客户端，供节点注入调用；run/generation 绑定、日志隔离、帧限长、背压明确。",
+        "每 run 单有效 worker；daemon 内部取消经 worker/broker 传至 executor，超时转待确认；心跳/接管禁止陈旧 checkpoint 和动作。",
+        "worker 不持控制面 DB 写通路，启动不阻塞 daemon 主事件循环。",
+        "invoke abort 拒绝不等于停止：停止新动作后确认 worker 退出才可接管；独立 agent/命令仍由 broker 取消与对账，旧代写入拒绝。",
+        "v1 固定 executionModel=langgraph-functional-v1 与 durability=sync；恢复前验证不可变程序/input 身份，拒绝 async/exit 或身份不符。"
+      ],
+      "verify": "WORKER",
+      "size": "M",
+      "status": "completed",
+      "requiresDecisionGates": [
+        "C2"
+      ],
+      "acceptedCodeCommit": "50133c0eec518add33f556bfa95b746de350cc35",
+      "evidence": [
+        "docs/implementation/2026-09-14-graph-chain-completion.md",
+        "docs/implementation/graph-chain-evidence/admission.json",
+        "docs/implementation/graph-chain-evidence/G14-result.json"
+      ],
+      "implementationSteps": [
+        {
+          "id": "G14a",
+          "status": "completed",
+          "files": [
+            "packages/protocol/src/graph-worker.ts",
+            "packages/protocol/src/graph-worker.test.ts",
+            "packages/protocol/src/index.ts",
+            "packages/protocol/src/generate.ts",
+            "packages/graph/src/worker-client.ts"
+          ],
+          "evidence": "docs/implementation/2026-09-14-graph-chain-completion.md"
+        },
+        {
+          "id": "G14b",
+          "status": "completed",
+          "files": [
+            "packages/cli/src/graph-worker-manager.ts",
+            "packages/cli/src/graph-worker-manager.test.ts"
+          ],
+          "evidence": "docs/implementation/2026-09-14-graph-chain-completion.md"
+        },
+        {
+          "id": "G14c",
+          "status": "completed",
+          "files": [
+            "packages/graph/src/worker-entry.ts",
+            "packages/graph/src/worker-entry.test.ts",
+            "packages/graph/src/worker-runtime.ts",
+            "packages/graph/src/index.ts"
+          ],
+          "evidence": "docs/implementation/2026-09-14-graph-chain-completion.md"
+        }
+      ]
+    },
+    {
+      "id": "G15",
+      "phase": "M1",
+      "title": "恢复未知动作与暂停点",
+      "dependsOn": [
+        "G14"
+      ],
+      "files": [
+        "packages/core/src/state/graph-recovery.ts",
+        "packages/core/src/state/graph-recovery.test.ts",
+        "packages/core/src/state/migrations.ts",
+        "packages/core/src/state/graph-runs.ts",
+        "packages/core/src/state/graph-actions.ts",
+        "packages/cli/src/graph-reconciler.ts",
+        "packages/cli/src/graph-reconciler.test.ts",
+        "packages/cli/src/graph-action-broker.ts",
+        "packages/cli/src/graph-action-broker-boundary.test.ts",
+        "packages/cli/src/graph-action-broker.test.ts",
+        "packages/cli/src/governed-execution.ts",
+        "packages/cli/src/governed-execution.test.ts",
+        "packages/autonomy/src/repo-lock.ts",
+        "packages/autonomy/src/repo-lock.test.ts"
+      ],
+      "acceptance": [
+        "覆盖 intent/effect/result/checkpoint 窗口；unknown 不盲重发，confirmed 返回同一证据。",
+        "对账请求有稳定 interruptId/动作引用；有证据的已生效、未生效和仍未知裁定有不同出口。",
+        "cancelled 终态不能 resume 复活；恢复每个新动作前重新检查权限和资源。"
+      ],
+      "verify": "RECOVERY",
+      "size": "M",
+      "status": "completed",
+      "requiresDecisionGates": [
+        "C2"
+      ],
+      "acceptedCodeCommit": "50133c0eec518add33f556bfa95b746de350cc35",
+      "evidence": [
+        "docs/implementation/2026-09-14-graph-chain-completion.md",
+        "docs/implementation/graph-chain-evidence/admission.json",
+        "docs/implementation/graph-chain-evidence/G15-result.json"
+      ],
+      "implementationSteps": [
+        {
+          "id": "G15a",
+          "status": "completed",
+          "files": [
+            "packages/core/src/state/graph-recovery.ts",
+            "packages/core/src/state/graph-recovery.test.ts",
+            "packages/core/src/state/migrations.ts",
+            "packages/core/src/state/graph-runs.ts",
+            "packages/core/src/state/graph-actions.ts"
+          ],
+          "evidence": "docs/implementation/2026-09-14-graph-chain-completion.md"
+        },
+        {
+          "id": "G15b",
+          "status": "completed",
+          "files": [
+            "packages/cli/src/graph-reconciler.ts",
+            "packages/cli/src/graph-reconciler.test.ts"
+          ],
+          "evidence": "docs/implementation/2026-09-14-graph-chain-completion.md"
+        },
+        {
+          "id": "G15c",
+          "status": "completed",
+          "files": [
+            "packages/cli/src/graph-action-broker.ts",
+            "packages/cli/src/graph-action-broker-boundary.test.ts",
+            "packages/cli/src/graph-action-broker.test.ts",
+            "packages/cli/src/governed-execution.ts",
+            "packages/cli/src/governed-execution.test.ts"
+          ],
+          "evidence": "docs/implementation/2026-09-14-graph-chain-completion.md"
+        },
+        {
+          "id": "G15d",
+          "status": "completed",
+          "files": [
+            "packages/autonomy/src/repo-lock.ts",
+            "packages/autonomy/src/repo-lock.test.ts"
+          ],
+          "evidence": "docs/implementation/2026-09-14-graph-chain-completion.md"
+        }
+      ]
+    },
+    {
+      "id": "G16",
+      "phase": "M1",
+      "title": "冻结并保存可恢复候选产物",
+      "dependsOn": [
+        "G04",
+        "G09",
+        "G12",
+        "G13"
+      ],
+      "files": [
+        "packages/core/src/graph/artifact-store.ts",
+        "packages/core/src/graph/artifact-store.test.ts",
+        "packages/core/src/graph/artifact-git.ts",
+        "packages/core/package.json",
+        "packages/cli/src/graph-action-freeze.test.ts",
+        "packages/agents/src/worktree.ts",
+        "packages/agents/src/worktree.test.ts",
+        "packages/agents/src/index.ts"
+      ],
+      "acceptance": [
+        "只有本卡的 freeze 服务发 candidate_ready：可信 commit 与产物先持久化；清理原 worktree 后可重建并核对 tree，覆盖二进制/删除/文件模式。",
+        "旧进程未确认退出时隔离旧工作区；新写动作不复用其目录。",
+        "成功/失败保留与 GC 独立，活进程或未导出结果不被 finally/前缀扫描误删。"
+      ],
+      "verify": "ARTIFACTS",
+      "size": "M",
+      "status": "completed",
+      "requiresDecisionGates": [
+        "C2"
+      ],
+      "acceptedCodeCommit": "50133c0eec518add33f556bfa95b746de350cc35",
+      "evidence": [
+        "docs/implementation/2026-09-14-graph-chain-completion.md",
+        "docs/implementation/graph-chain-evidence/admission.json",
+        "docs/implementation/graph-chain-evidence/G16-result.json"
+      ],
+      "implementationSteps": [
+        {
+          "id": "G16a",
+          "status": "completed",
+          "files": [
+            "packages/core/src/graph/artifact-store.ts",
+            "packages/core/src/graph/artifact-store.test.ts",
+            "packages/core/src/graph/artifact-git.ts",
+            "packages/core/package.json",
+            "packages/cli/src/graph-action-freeze.test.ts"
+          ],
+          "evidence": "docs/implementation/2026-09-14-graph-chain-completion.md"
+        },
+        {
+          "id": "G16b",
+          "status": "completed",
+          "files": [
+            "packages/agents/src/worktree.ts",
+            "packages/agents/src/worktree.test.ts",
+            "packages/agents/src/index.ts"
+          ],
+          "evidence": "docs/implementation/2026-09-14-graph-chain-completion.md"
+        }
+      ]
+    },
+    {
+      "id": "G17",
+      "phase": "M1",
+      "title": "验收第一条可恢复执行链",
+      "dependsOn": [
+        "G15",
+        "G16"
+      ],
+      "files": [
+        "packages/cli/src/graph-runtime.ts",
+        "packages/cli/src/daemon.ts",
+        "packages/cli/package.json",
+        "packages/cli/src/graph-chain.integration.test.ts",
+        "scripts/fixtures/graph-chain-host.ts"
+      ],
+      "acceptance": [
+        "通过 daemon→worker IPC action client→broker→一次命令→持久结果贯穿两节点链；内部取消可停止后续节点并核对进程退出。",
+        "随机故障之外确定性击中三个落库窗口，重启后检查外部日志与账本。",
+        "仅实验/测试开启，不公开真实仓库写入；不能用 MemorySaver 替代集成持久化。",
+        "用真实 daemon/worker/broker 接口重跑 C2 的已确认效果到 RETURN、最终 checkpoint、恢复再次崩溃及不响应取消窗口。"
+      ],
+      "verify": "CHAIN",
+      "size": "M",
+      "status": "completed",
+      "requiresDecisionGates": [
+        "C2"
+      ],
+      "acceptedCodeCommit": "50133c0eec518add33f556bfa95b746de350cc35",
+      "evidence": [
+        "docs/implementation/2026-09-14-graph-chain-completion.md",
+        "docs/implementation/graph-chain-evidence/admission.json",
+        "docs/implementation/graph-chain-evidence/G17-result.json"
+      ],
+      "implementationSteps": [
+        {
+          "id": "G17a",
+          "status": "completed",
+          "files": [
+            "packages/cli/src/graph-runtime.ts",
+            "packages/cli/src/daemon.ts",
+            "packages/cli/package.json"
+          ],
+          "evidence": "docs/implementation/2026-09-14-graph-chain-completion.md"
+        },
+        {
+          "id": "G17b",
+          "status": "completed",
+          "files": [
+            "packages/cli/src/graph-chain.integration.test.ts",
+            "scripts/fixtures/graph-chain-host.ts"
+          ],
+          "evidence": "docs/implementation/2026-09-14-graph-chain-completion.md"
+        }
+      ]
+    },
+    {
+      "id": "G18",
+      "phase": "M2",
+      "title": "编译静态工程图规格",
+      "dependsOn": [
+        "G05",
+        "G06",
+        "G07"
+      ],
+      "files": [
+        "packages/graph/src/spec-compiler.ts",
+        "packages/graph/src/spec-compiler.test.ts",
+        "packages/graph/src/registry.ts",
+        "packages/graph/src/registry.test.ts",
+        "packages/graph/package.json"
+      ],
+      "acceptance": [
+        "仅注册节点/schema/路由；拒绝任意 JS、不可达依赖、缺输入及未授权工具。",
+        "最多三 epoch 静态展开，计算最坏动作预算并拒绝不可能满足的规格。",
+        "图、节点注册表和 schema 版本固定，输入映射类型与输出存在性运行时校验。",
+        "编译目标采用公开 entrypoint/task；固定 task 名称、顺序、输入映射及有限重试展开，生成 compiledProgramDigest；编排函数无 I/O/随机/时钟依赖。"
+      ],
+      "verify": "GRAPH",
+      "size": "M",
+      "status": "completed",
+      "requiresDecisionGates": [
+        "C2"
+      ],
+      "implementationCommit": "7e778de",
+      "acceptedCodeCommit": "00571bb862f27d9ab8e2e502d33e588196d62fee",
+      "evidence": [
+        "docs/implementation/2026-09-14-graph-verification-completion.md",
+        "docs/implementation/graph-verification-evidence/admission.json"
+      ],
+      "subtasks": [
+        {
+          "id": "G18a",
+          "title": "固定注册表与类型合同",
+          "status": "completed",
+          "evidence": "docs/implementation/2026-09-14-graph-verification-completion.md"
+        },
+        {
+          "id": "G18b",
+          "title": "确定性 Functional 骨架与预算预留",
+          "status": "completed",
+          "evidence": "docs/implementation/2026-09-14-graph-verification-completion.md"
+        }
+      ]
+    },
+    {
+      "id": "G19",
+      "phase": "M2",
+      "title": "执行独立评审与隔离测试",
+      "dependsOn": [
+        "G12",
+        "G16",
+        "G18",
+        "G14"
+      ],
+      "files": [
+        "packages/graph/src/nodes/review.ts",
+        "packages/graph/src/nodes/review.test.ts",
+        "packages/graph/src/nodes/tests.ts",
+        "packages/graph/src/nodes/tests.test.ts",
+        "packages/graph/src/nodes/branch.ts",
+        "packages/graph/src/nodes/branch.test.ts",
+        "packages/cli/src/graph-action-broker.ts",
+        "packages/cli/src/graph-branch-broker.test.ts",
+        "packages/cli/src/graph-verification.ts",
+        "packages/cli/src/graph-verification-store.ts",
+        "packages/cli/src/graph-verification.test.ts"
+      ],
+      "acceptance": [
+        "review/tests 基于同一 candidate SHA 的独立工作区，评审身份满足独立性约束。",
+        "测试命令来自允许的验收规格，真实收据含退出状态和报告摘要。",
+        "合法代码失败与输出格式/基础设施错误分开；后二者不消耗代码修复 epoch。"
+      ],
+      "verify": "GRAPH",
+      "size": "M",
+      "status": "completed",
+      "requiresDecisionGates": [
+        "C2"
+      ],
+      "implementationCommit": "b999b03",
+      "acceptedCodeCommit": "00571bb862f27d9ab8e2e502d33e588196d62fee",
+      "evidence": [
+        "docs/implementation/2026-09-14-graph-verification-completion.md",
+        "docs/implementation/graph-verification-evidence/admission.json"
+      ],
+      "subtasks": [
+        {
+          "id": "G19a",
+          "title": "分支节点合同",
+          "status": "completed",
+          "evidence": "docs/implementation/2026-09-14-graph-verification-completion.md"
+        },
+        {
+          "id": "G19b",
+          "title": "逐动作独立工作区与失败分类",
+          "status": "completed",
+          "evidence": "docs/implementation/2026-09-14-graph-verification-completion.md"
+        },
+        {
+          "id": "G19c",
+          "title": "独立恢复与持久收据",
+          "status": "completed",
+          "evidence": "docs/implementation/2026-09-14-graph-verification-completion.md"
+        },
+        {
+          "id": "G19d",
+          "title": "候选/会话/输出长度加固",
+          "status": "completed",
+          "evidence": "docs/implementation/2026-09-14-graph-verification-completion.md"
+        }
+      ]
+    },
+    {
+      "id": "G20",
+      "phase": "M2",
+      "title": "实现严格汇合与有界路由",
+      "dependsOn": [
+        "G18",
+        "G19"
+      ],
+      "files": [
+        "packages/graph/src/join.ts",
+        "packages/graph/src/join.test.ts",
+        "packages/graph/src/route.ts",
+        "packages/graph/src/route.test.ts",
+        "packages/core/package.json",
+        "packages/core/src/state/graph-actions.ts",
+        "packages/core/src/state/graph-verification.ts",
+        "packages/core/src/state/graph-verification.test.ts",
+        "packages/core/src/state/migrations.ts",
+        "packages/cli/src/graph-verification-join.ts",
+        "packages/cli/src/graph-verification-join.test.ts"
+      ],
+      "acceptance": [
+        "按 run/spec/epoch/candidate 绑定两个必需前驱，拒绝旧轮、空输出和跨 scope 结果。",
+        "节点成功产出合法失败报告可进入 join 再 repair；failed/skipped 分支不制造永久等待。",
+        "分支 retry 共用有限 attempt，代码 repair 最多两轮；达到任一预算停止新动作。"
+      ],
+      "verify": "GRAPH",
+      "size": "M",
+      "status": "completed",
+      "requiresDecisionGates": [
+        "C2"
+      ],
+      "implementationCommit": "a44e878",
+      "acceptedCodeCommit": "00571bb862f27d9ab8e2e502d33e588196d62fee",
+      "evidence": [
+        "docs/implementation/2026-09-14-graph-verification-completion.md",
+        "docs/implementation/graph-verification-evidence/admission.json"
+      ],
+      "subtasks": [
+        {
+          "id": "G20a",
+          "title": "纯汇合和有界路由",
+          "status": "completed",
+          "evidence": "docs/implementation/2026-09-14-graph-verification-completion.md"
+        },
+        {
+          "id": "G20b",
+          "title": "迁移31与事务发布",
+          "status": "completed",
+          "evidence": "docs/implementation/2026-09-14-graph-verification-completion.md"
+        },
+        {
+          "id": "G20c",
+          "title": "host 最新账本/证据复核",
+          "status": "completed",
+          "evidence": "docs/implementation/2026-09-14-graph-verification-completion.md"
+        },
+        {
+          "id": "G20d",
+          "title": "真实 worker 恢复与错误边界",
+          "status": "completed",
+          "evidence": "docs/implementation/2026-09-14-graph-verification-completion.md"
+        }
+      ]
+    },
+    {
+      "id": "G21",
+      "phase": "M2",
+      "title": "组合代码交付 v1 模板",
+      "dependsOn": [
+        "G17",
+        "G20"
+      ],
+      "files": [
+        "packages/cli/src/graph-action-broker.ts",
+        "packages/cli/src/graph-runtime.ts",
+        "packages/cli/src/graph-verification.ts",
+        "packages/core/src/state/graph-actions.ts",
+        "packages/core/src/state/graph-verification.ts",
+        "packages/core/src/state/migrations.ts",
+        "packages/graph/package.json",
+        "packages/graph/src/spec-compiler.test.ts",
+        "packages/graph/src/spec-compiler.ts",
+        "packages/graph/src/worker-runtime.ts",
+        "packages/cli/src/graph-delivery-adversarial.test.ts",
+        "packages/cli/src/graph-delivery-broker.test.ts",
+        "packages/cli/src/graph-delivery-receipts.test.ts",
+        "packages/cli/src/graph-delivery-receipts.ts",
+        "packages/cli/src/graph-delivery.integration.test.ts",
+        "packages/cli/src/graph-delivery.ts",
+        "packages/core/src/state/graph-delivery-epochs.test.ts",
+        "packages/graph/src/templates/code-delivery-v1.test.ts",
+        "packages/graph/src/templates/code-delivery-v1.ts"
+      ],
+      "acceptance": [
+        "实现→freeze→并行 review/tests→join→ready/repair/stop 全路径真实可执行。",
+        "ready 只交付候选包；无隐式 merge/push/deploy，无 task FSM 自动完成。",
+        "覆盖直接成功、修复后成功、分支错误、预算停止和不同先后顺序，只有一个质量门 owner。"
+      ],
+      "verify": "DELIVERY",
+      "size": "M",
+      "status": "completed",
+      "requiresDecisionGates": [
+        "C2"
+      ],
+      "acceptedCodeCommit": "ab988b32649c9eef084e997bb92d31c0108436fc",
+      "evidence": [
+        "docs/implementation/2026-09-15-graph-delivery-completion.md",
+        "docs/implementation/graph-delivery-evidence/admission.json",
+        "docs/implementation/graph-delivery-evidence/acceptance-result.json",
+        "docs/implementation/graph-delivery-evidence/review-adjudication.md"
+      ],
+      "implementationSubtasks": [
+        {
+          "id": "G21a",
+          "title": "持久轮次许可与可信注册",
+          "dependsOn": [
+            "G17",
+            "G20"
+          ],
+          "status": "completed"
+        },
+        {
+          "id": "G21b",
+          "title": "完整模板、host driver 与回执",
+          "dependsOn": [
+            "G21a"
+          ],
+          "status": "completed"
+        },
+        {
+          "id": "G21c",
+          "title": "真实集成、反例与验收",
+          "dependsOn": [
+            "G21b"
+          ],
+          "status": "completed"
+        }
+      ]
+    },
+    {
+      "id": "G22",
+      "phase": "M2",
+      "title": "交付 validate/run/status 命令",
+      "dependsOn": [
+        "G21"
+      ],
+      "files": [
+        "packages/cli/src/graph-command.ts",
+        "packages/cli/src/graph-command.test.ts",
+        "packages/cli/src/graph-rpc.ts",
+        "packages/cli/src/bin.ts",
+        "packages/cli/src/graph-rpc.test.ts"
+      ],
+      "acceptance": [
+        "validate 离线且不打开控制面 DB；run 经 daemon，status 为权威结果投影。",
+        "保留 graph explain，支持稳定 JSON、run id、阶段、候选版本、预算和错误。",
+        "幂等重投和不同 payload 冲突从用户入口可验证；重依赖不进入 help/version eager 路径。"
+      ],
+      "verify": "CLI_GRAPH",
+      "size": "M",
+      "status": "completed",
+      "requiresDecisionGates": [
+        "C2"
+      ],
+      "acceptedCodeCommit": "7da1be9ef70770bbdea5c52f6453764f6b4ba317",
+      "evidence": [
+        "docs/implementation/2026-09-15-graph-public-completion.md",
+        "docs/implementation/graph-public-evidence/admission.json",
+        "docs/implementation/graph-public-evidence/acceptance-result.json",
+        "docs/implementation/graph-public-evidence/review-adjudication.md"
+      ]
+    },
+    {
+      "id": "G23",
+      "phase": "M2",
+      "title": "交付 cancel/resume 与授权请求",
+      "dependsOn": [
+        "G15",
+        "G22"
+      ],
+      "files": [
+        "packages/cli/src/graph-command.ts",
+        "packages/cli/src/graph-command.test.ts",
+        "packages/cli/src/graph-rpc.ts",
+        "packages/cli/src/graph-rpc.test.ts"
+      ],
+      "acceptance": [
+        "CLI/RPC 暴露 M1 已验证的取消链，区分请求/确认；过程超时进入 cancel_pending/reconciliation_required，不在此卡补造底层取消。",
+        "resume 绑定 interruptId、expectedRevision、scope 和当前授权；过期/跨域/旧输入拒绝。",
+        "needs_authorization 回原授权域，布尔输入/模型说 approved 不能作为 grant。"
+      ],
+      "verify": "CLI_GRAPH",
+      "size": "M",
+      "status": "completed",
+      "requiresDecisionGates": [
+        "C2"
+      ],
+      "acceptedCodeCommit": "7da1be9ef70770bbdea5c52f6453764f6b4ba317",
+      "evidence": [
+        "docs/implementation/2026-09-15-graph-public-completion.md",
+        "docs/implementation/graph-public-evidence/admission.json",
+        "docs/implementation/graph-public-evidence/acceptance-result.json",
+        "docs/implementation/graph-public-evidence/review-adjudication.md"
+      ]
+    },
+    {
+      "id": "G24",
+      "phase": "M2",
+      "title": "稳定外部委托结果契约",
+      "dependsOn": [
+        "G23"
+      ],
+      "files": [
+        "packages/protocol/src/graph.ts",
+        "packages/protocol/src/graph.test.ts",
+        "packages/cli/src/graph-rpc.test.ts",
+        "docs/guides/graph-delegation.md"
+      ],
+      "acceptance": [
+        "冻结 submit/status/cancel/result 的 v1 行为，保留父子引用、业务 inputDigest 和 delivery_unknown。",
+        "用模拟 OStag/OSBot caller 验证重复请求、来源隔离及结果引用；未支持身份的远程 caller 明确拒绝。",
+        "只交付 OSStack 服务契约，不在本任务实现 Rakazo connector、OStag UI 或新公网 API。"
+      ],
+      "verify": "CONTRACT",
+      "size": "M",
+      "status": "completed",
+      "requiresDecisionGates": [
+        "C2"
+      ],
+      "acceptedCodeCommit": "7da1be9ef70770bbdea5c52f6453764f6b4ba317",
+      "evidence": [
+        "docs/implementation/2026-09-15-graph-public-completion.md",
+        "docs/implementation/graph-public-evidence/admission.json",
+        "docs/implementation/graph-public-evidence/acceptance-result.json",
+        "docs/implementation/graph-public-evidence/review-adjudication.md"
+      ]
+    },
+    {
+      "id": "G25",
+      "phase": "M3",
+      "title": "完成故障窗口和并发验收",
+      "dependsOn": [
+        "G24"
+      ],
+      "files": [
+        "packages/cli/src/graph-faults.integration.test.ts",
+        "packages/cli/src/graph-concurrency.integration.test.ts",
+        "scripts/verify-graph-runtime.mjs",
+        "docs/reports/graph-runtime-fault-validation.md",
+        "packages/cli/src/graph-unstarted-recovery.ts",
+        "packages/cli/src/graph-unstarted-recovery.test.ts",
+        "packages/cli/src/graph-recovery-crash.integration.test.ts",
+        "docs/reports/graph-unstarted-recovery-validation.md",
+        "packages/agents/src/contained-command.ts",
+        "packages/agents/src/contained-command.test.ts",
+        "packages/agents/src/contained-docker.ts",
+        "scripts/verify-contained-executor.mjs",
+        "docs/reports/graph-contained-executor-validation.md",
+        "packages/agents/src/contained.ts",
+        "packages/agents/src/index.ts",
+        "packages/cli/src/graph-action-broker.ts",
+        "packages/cli/src/graph-delivery.integration.test.ts",
+        "packages/cli/src/graph-delivery.ts",
+        "packages/cli/src/graph-verification-join.ts",
+        "packages/cli/src/graph-verification-store.ts",
+        "packages/cli/src/graph-verification.test.ts",
+        "packages/cli/src/graph-verification.ts",
+        "packages/agents/src/contained-image.test.ts",
+        "packages/agents/src/contained-image.ts",
+        "packages/cli/src/graph-contained-tests.ts",
+        "docs/reports/graph-contained-candidate-validation.md",
+        "packages/core/src/state/graph-recovery.ts",
+        "packages/core/src/state/graph-recovery.test.ts",
+        "packages/cli/src/graph-contained-recovery.ts",
+        "packages/cli/src/graph-contained-recovery.test.ts",
+        "docs/reports/graph-contained-reopen-validation.md",
+        "packages/cli/src/graph-delivery-adversarial.test.ts",
+        "packages/cli/src/graph-worker-exit-proof.test.ts",
+        "packages/cli/src/graph-worker-exit-proof.ts",
+        "docs/reports/graph-worker-quiescence-validation.md",
+        "packages/cli/src/graph-quiescence-sweep.ts",
+        "docs/reports/graph-quiescence-sweep-validation.md",
+        "docs/reports/graph-worker-coverage-validation.md",
+        "docs/reports/graph-contained-proof-validation.md",
+        "docs/reports/graph-binding-reader-validation.md",
+        "packages/cli/src/graph-rpc.ts",
+        "packages/cli/src/graph-reconcile-rpc.test.ts",
+        "packages/cli/src/graph-execution-command.ts",
+        "packages/cli/src/graph-command.ts",
+        "packages/cli/src/daemon.ts",
+        "packages/agents/src/adapters/bounded-messages.ts",
+        "packages/agents/src/adapters/bounded-messages.test.ts",
+        "packages/agents/src/bounded-messages.ts",
+        "packages/cli/src/graph-bounded-messages.test.ts",
+        "packages/cli/src/graph-host-config.test.ts",
+        "packages/agents/src/adapters/bounded-messages-provider.ts",
+        "scripts/verify-bounded-deepseek.mjs",
+        "packages/cli/src/graph-bounded-recovery-journal.ts",
+        "packages/cli/src/graph-bounded-recovery.test.ts",
+        "packages/cli/src/graph-bounded-recovery.ts",
+        "scripts/fixtures/graph-bounded-settlement-crash.ts"
+      ],
+      "acceptance": [
+        "逐项覆盖 F01–F12 确定性窗口，再做固定 seed 的重复运行。",
+        "旧 worker checkpoint/action 被拒，旧子进程写旧目录不污染新 candidate。",
+        "撤权、同 key 并发、pending writes 丢失与 cancel race 有可复核日志；不承诺外部物理恰好一次。",
+        "覆盖已确认外部效果与缓存 RETURN 的不同崩溃边界，区分函数重入次数、确认效果次数和逻辑 join 次数；错误程序身份不得恢复。",
+        "补齐 daemon 在未观察 worker 退出时崩溃的持久 PID/PGID/启动标识与独立执行器证明；覆盖已消耗启动权后注册失败、PID 重用和 artifact 临时锁残留，不以超时或租约过期推断可接管。"
+      ],
+      "verify": "FAULTS",
+      "size": "M",
+      "status": "completed",
+      "requiresDecisionGates": [
+        "C2"
+      ],
+      "progressNote": "固定 seed 250920/250921 最终679次通过；F01–F12限定受控恢复和保留未知结果边界已验收。",
+      "evidence": [
+        "docs/reports/graph-runtime-fault-validation.md",
+        "docs/implementation/2026-09-15-graph-fault-next-context.md",
+        "docs/implementation/graph-fault-foundation-evidence/admission.json",
+        "docs/reports/graph-unstarted-recovery-validation.md",
+        "docs/implementation/2026-09-16-graph-recovery-next-context.md",
+        "docs/implementation/graph-unstarted-recovery-evidence/admission.json",
+        "docs/reports/graph-contained-executor-validation.md",
+        "docs/implementation/2026-09-16-graph-contained-next-context.md",
+        "docs/implementation/graph-contained-executor-evidence/admission.json",
+        "docs/reports/graph-contained-candidate-validation.md",
+        "docs/implementation/2026-09-16-graph-candidate-next-context.md",
+        "docs/implementation/graph-contained-candidate-evidence/admission.json",
+        "docs/reports/graph-contained-reopen-validation.md",
+        "docs/implementation/2026-09-17-graph-reopen-next-context.md",
+        "docs/implementation/graph-contained-reopen-evidence/admission.json",
+        "docs/reports/graph-worker-quiescence-validation.md",
+        "docs/implementation/2026-09-17-graph-quiescence-next-context.md",
+        "docs/implementation/graph-worker-quiescence-evidence/admission.json",
+        "docs/reports/graph-quiescence-sweep-validation.md",
+        "docs/implementation/2026-09-18-graph-sweep-next-context.md",
+        "docs/implementation/graph-quiescence-sweep-evidence/admission.json",
+        "docs/reports/graph-worker-coverage-validation.md",
+        "docs/implementation/2026-09-18-graph-worker-coverage-next-context.md",
+        "docs/implementation/graph-worker-coverage-evidence/admission.json",
+        "docs/reports/graph-contained-proof-validation.md",
+        "docs/implementation/2026-09-18-graph-proof-next-context.md",
+        "docs/implementation/graph-contained-proof-evidence/admission.json",
+        "docs/reports/graph-binding-reader-validation.md",
+        "docs/implementation/2026-09-18-graph-binding-next-context.md",
+        "docs/implementation/graph-binding-reader-evidence/admission.json",
+        "docs/reports/graph-admission-unblock-validation.md",
+        "docs/implementation/2026-09-18-graph-unblock-next-context.md",
+        "docs/reports/graph-public-reconcile-validation.md",
+        "docs/implementation/2026-09-19-graph-reconcile-next-context.md",
+        "docs/reports/graph-bounded-messages-validation.md",
+        "docs/implementation/graph-bounded-messages-evidence/admission.json",
+        "docs/implementation/2026-09-20-graph-bounded-backend-next-context.md",
+        "docs/reports/graph-deepseek-live-validation.md",
+        "docs/implementation/graph-deepseek-live-evidence/admission.json",
+        "docs/implementation/2026-09-20-graph-deepseek-next-context.md",
+        "docs/reports/graph-bounded-recovery-validation.md",
+        "docs/implementation/2026-09-20-graph-bounded-recovery-next-context.md",
+        "docs/implementation/graph-bounded-recovery-evidence/admission.json",
+        "docs/reports/graph-upgrade-completion.md",
+        "docs/implementation/graph-integration-evidence/README.md"
+      ],
+      "remainingSlices": [],
+      "completedSlices": [
+        "G25-A",
+        "G25-C1",
+        "G25-B1",
+        "G25-B2",
+        "G25-B",
+        "G25-C2-bounded-writer",
+        "G25-C2",
+        "G25-D"
+      ],
+      "sliceStatus": {
+        "G25-B1": "completed",
+        "G25-B2": "completed_bounded_live_pilot",
+        "G25-B": "completed_bounded_scope",
+        "G25-C2": "completed_bounded_scope"
+      }
+    },
+    {
+      "id": "G26",
+      "phase": "M3",
+      "title": "验证旧模式与回滚共存",
+      "dependsOn": [
+        "G25"
+      ],
+      "files": [
+        "packages/cli/src/daemon-loop.test.ts",
+        "packages/cli/src/session-rpc.test.ts",
+        "packages/loop/src/loop-engine.test.ts",
+        "packages/cli/src/graph-compatibility.integration.test.ts",
+        "packages/cli/src/graph-admission.test.ts",
+        "packages/cli/src/graph-rpc.ts",
+        "docs/guides/graph-delegation.md"
+      ],
+      "acceptance": [
+        "旧 Loop/session/graph explain 语义回归通过，受管模式统一仓库租约，无第二条绕行 writer。",
+        "关闭新图准入后仍可查、取消、对账旧 run；不能靠删除 DB 实现回滚。",
+        "旧 checkpoint 不兼容时明确拒绝；备份恢复不会忽略尚存外部动作和未知结果。"
+      ],
+      "verify": "COMPAT",
+      "size": "M",
+      "status": "completed",
+      "requiresDecisionGates": [
+        "C2"
+      ],
+      "progressNote": "最新main迁移28–37整合、旧模式、禁用准入、备份、旧锁和回滚守卫回归通过；纯/混合试验DB显式拒绝。",
+      "evidence": [
+        "docs/reports/graph-admission-unblock-validation.md",
+        "docs/reports/graph-public-reconcile-validation.md",
+        "docs/reports/graph-upgrade-completion.md",
+        "docs/implementation/graph-integration-evidence/README.md"
+      ]
+    },
+    {
+      "id": "G27",
+      "phase": "M3",
+      "title": "验证运行时与发行构建",
+      "dependsOn": [
+        "G26"
+      ],
+      "files": [
+        ".github/workflows/ci.yml",
+        "scripts/build-single-binary.mjs",
+        "scripts/verify-graph-runtime.mjs",
+        "docs/implementation/graph-runtime-compatibility.md"
+      ],
+      "acceptance": [
+        "验证声明支持的 Node 20 范围与现有 CI Node 22，确认实际最低 minor 而非只看包标签。",
+        "原生 SQLite、worker 入口解析、协议 schema、新包依赖和单文件分发路径有验证记录。",
+        "若某分发形式暂不支持 graph，明确拒绝且保留旧功能；不静默改成 daemon 内嵌执行。",
+        "核验旧版本或外部锁获取路径不会回收仍有未知 graph 动作的保留锁；验证 full-history bundle 的仓库格式与大小边界。"
+      ],
+      "verify": "RELEASE",
+      "size": "M",
+      "status": "completed",
+      "requiresDecisionGates": [
+        "C2"
+      ],
+      "progressNote": "Node20.6最终45项迁移回归、Linux22.23.1最终389项、GitHub两版本runtime jobs及安装包关闭准入演练通过；Bun Graph仍明确拒绝。",
+      "evidence": [
+        "docs/reports/graph-upgrade-completion.md",
+        "docs/implementation/graph-integration-evidence/README.md"
+      ]
+    },
+    {
+      "id": "G28",
+      "phase": "M3",
+      "title": "验证 CLI 与 daemon 性能预算",
+      "dependsOn": [
+        "G27"
+      ],
+      "files": [
+        "scripts/bench-cli-startup.mjs",
+        "packages/cli/src/daemon-rpc-latency.test.ts",
+        "scripts/bench-graph-runtime.mjs",
+        "docs/reports/graph-runtime-performance.md"
+      ],
+      "acceptance": [
+        "version/help 继续满足既有预算，graph 首次启动不把重模块求值放在 daemon 主线程。",
+        "同时测非图 RPC p95、worker 启动、checkpoint/broker 开销，区分冷启动与热缓存。",
+        "Loop tick 开销预算与原有行为不回退；真实性能失败先修，不能只放宽阈值。",
+        "在事件循环阻塞与并行负载下验证 heartbeat、停止及 checkpoint 开销；区分保守超时和真正停止证明。"
+      ],
+      "verify": "PERF",
+      "size": "M",
+      "status": "completed",
+      "requiresDecisionGates": [
+        "C2"
+      ],
+      "progressNote": "最终RPC p95 1.452ms、Loop开销0.460866%、31MiB fingerprint p95 21.267ms，未提高性能预算。",
+      "evidence": [
+        "docs/reports/graph-upgrade-completion.md",
+        "docs/implementation/graph-integration-evidence/README.md"
+      ]
+    },
+    {
+      "id": "G29",
+      "phase": "M3",
+      "title": "交付受控内部试点与操作手册",
+      "dependsOn": [
+        "G28"
+      ],
+      "files": [
+        "docs/guides/graph-runtime.md",
+        "docs/runbooks/graph-runtime.md",
+        "docs/reports/graph-runtime-pilot.md",
+        "docs/implementation/2026-09-13-osstack-graph-upgrade.tasks.json"
+      ],
+      "acceptance": [
+        "在明确授权的单仓库任务中验证一条真实交付图，留下 candidate/评审/测试/停止与成本证据。",
+        "记录功能开关、迁移备份、启动、对账、取消、回收和禁用新准入的操作步骤。",
+        "全部发布门槛有证据后才标 beta 可用；未验证项保持未完成，默认不自动 merge 或部署。"
+      ],
+      "verify": "PILOT",
+      "size": "M",
+      "status": "in_progress",
+      "requiresDecisionGates": [
+        "C2"
+      ],
+      "progressNote": "真实DeepSeek试点、负对照、取消unknown和手册已完成；等待最终发布检查、最新推送独立审批、合并及分阶段部署收口。",
+      "evidence": [
+        "docs/reports/graph-upgrade-completion.md"
+      ]
+    }
+  ],
+  "updatedAt": "2026-09-19",
+  "implementation": {
+    "branch": "codex/graph-runtime-foundation",
+    "worktree": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation",
+    "acceptedCodeCommit": "fec0b1826abfcc6cf1b625f01f0881f9f7caf089",
+    "completedTaskCount": 29,
+    "totalTaskCount": 30,
+    "nextTasks": [
+      "G29"
+    ],
+    "report": "docs/reports/graph-upgrade-completion.md",
+    "nextGate": null,
+    "milestoneStatus": {
+      "M0": "completed",
+      "M1": "completed",
+      "M2": "completed",
+      "M3": "in_progress"
+    },
+    "reviewNote": "main整合已推送，Fable独立审查accept。最终故障/性能/平台及GitHub全仓测试通过；整条CI发布smoke、最终GitHub审批与分阶段部署待收口。",
+    "slicePlan": "docs/reports/graph-upgrade-completion.md"
+  },
+  "decisionGates": [
+    {
+      "id": "C2",
+      "status": "passed",
+      "reason": "C2 仅准入 langgraph-functional-v1 + durability:sync 供 M1 集成；StateGraph 1.4.15 的 partial-abort AND-join 反例仍未修复，不获准入。",
+      "evidence": "docs/implementation/graph-c2-evidence/admission.json",
+      "nextAction": "C2–C6 已通过限定准入，G21 本地验收完成；继续 G22–G24/C7，完整故障矩阵仍须 G25。",
+      "releaseCriteria": [
+        "对应 Functional 并行失败场景恢复完整结果，逻辑 join 效果一次；StateGraph 失败对照保持可复现",
+        "独立进程 partial write、异常、超时、取消、恢复二次 SIGKILL、interrupt false 矩阵通过",
+        "区分缓存 RETURN 与已确认效果，未知效果拒绝盲重发和新动作；恢复程序身份约束已绑定后续任务",
+        "Node 20.6.0/20.20.2/22.22.1/26.5.0 核心实验与序列化回归通过；生产 RPC/发行形式留待 M1/G27"
+      ],
+      "executionModel": "langgraph-functional-v1",
+      "durability": "sync",
+      "productionReady": false,
+      "acceptedCodeCommit": "b230eb5b51d3dd1e81dfe789f46f22d12b50f2cc"
+    },
+    {
+      "id": "C3",
+      "status": "passed",
+      "tasks": [
+        "G08",
+        "G09",
+        "G10"
+      ],
+      "reason": "G08/G09 identities and locks plus G10 shared admission accepted through actual Loop verification; production worker/broker not implemented.",
+      "evidence": "docs/implementation/graph-admission-evidence/admission.json",
+      "acceptedCodeCommit": "055e217f7d4d29e0a93278544efb3b7b5b6f7beb",
+      "productionReady": false
+    },
+    {
+      "id": "C4",
+      "status": "passed",
+      "tasks": [
+        "G11",
+        "G12",
+        "G13"
+      ],
+      "reason": "持久动作账本/预算、受控进程内 daemon broker/checkpoint、异步 SQLite commit/ACK/crash 经真实 Loop 全库验收；生产 worker 与恢复链留待 C5。",
+      "evidence": "docs/implementation/graph-effects-evidence/admission.json",
+      "acceptedCodeCommit": "36eee05f6bc6ef6aa8148dd9f4e9271e2237d4fc",
+      "productionReady": false
+    },
+    {
+      "id": "C5",
+      "status": "passed",
+      "tasks": [
+        "G14",
+        "G15",
+        "G16",
+        "G17"
+      ],
+      "reason": "独立 worker、可信恢复、持久候选及两节点 daemon 执行链经实际 Loop 全库验收；含持久资源释放义务与精确释放重试。",
+      "evidence": "docs/implementation/graph-chain-evidence/admission.json",
+      "productionReady": false,
+      "acceptedCodeCommit": "50133c0eec518add33f556bfa95b746de350cc35"
+    },
+    {
+      "id": "C6",
+      "status": "passed",
+      "tasks": [
+        "G18",
+        "G19",
+        "G20"
+      ],
+      "reason": "静态规格、独立候选验证、严格 host 汇合与有限路由经真实 Loop 全库验收；真实 Functional/SQLite 验证阶段恢复通过，完整模板与 epoch 推进留给 G21。",
+      "evidence": "docs/implementation/graph-verification-evidence/admission.json",
+      "productionReady": false,
+      "acceptedCodeCommit": "00571bb862f27d9ab8e2e502d33e588196d62fee"
+    },
+    {
+      "id": "C7",
+      "status": "passed",
+      "tasks": [
+        "G21",
+        "G22",
+        "G23",
+        "G24"
+      ],
+      "reason": "G21–G24 完成；离线CLI/真实daemon执行、取消/恢复、来源隔离及稳定外部契约通过限定验收；任意崩溃恢复和发布仍须G25–G29。",
+      "productionReady": false,
+      "evidence": "docs/implementation/graph-public-evidence/admission.json",
+      "acceptedCodeCommit": "7da1be9ef70770bbdea5c52f6453764f6b4ba317"
+    }
+  ]
+}

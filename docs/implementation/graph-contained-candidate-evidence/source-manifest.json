@@ -1,0 +1,18 @@
+{
+  "packages/agents/src/contained-command.test.ts": "3c5158c61c8efccb01dd9d092b4b45f6da14a4fbe32f83d720cd8d599ec3dff5",
+  "packages/agents/src/contained-command.ts": "de4ae3b63da7975ffa547efa66b5eb0889e9ebb83c50c62b2533c2797829e199",
+  "packages/agents/src/contained-docker.ts": "ded75c8309e1e60bdce3beea293c1c7de3bcd44256241b1d26918ea9f328c1c2",
+  "packages/agents/src/contained.ts": "c909ccbff095f3b0d8b681cd89d2bf50c41d8538948d901ae17387b40cc3d61c",
+  "packages/agents/src/index.ts": "0a3fb627f65c428aeea9f7a5abeb958f79ab363faf7812191ce8856fae4c6b37",
+  "packages/cli/src/graph-action-broker.ts": "e8018bfc959f92b814cc117ee03e2b4859509d07f55bbecc6b8b512de9aa9817",
+  "packages/cli/src/graph-delivery.integration.test.ts": "76958fe17532ef627e52ea70dcf7ddca3c5ece5aa20f8bab8ec58f3ae1e42cab",
+  "packages/cli/src/graph-delivery.ts": "a93cfba3ca638711ae7abb32eeb1677be4c8108fc30dc408a45e2b1316930f29",
+  "packages/cli/src/graph-verification-join.ts": "af9d2bab8fb1c7538227015718c37b66bd523d8a887b3afe9ac1e87140ffb517",
+  "packages/cli/src/graph-verification-store.ts": "8a00037294d1f38c49cb4753654e78c300efa17033e123b78fa0601e20af032c",
+  "packages/cli/src/graph-verification.test.ts": "08fecb00516f16167f7b520ad67e4c6439d1fc904e486533b54198951082dc0c",
+  "packages/cli/src/graph-verification.ts": "c1e17d04a28a2947cd45e37750f6bd62bfeebad321499607594d45ca2191294a",
+  "scripts/verify-graph-runtime.mjs": "0613e8b093a8fc02595d9ca0148c107047bfb157a3b9315442f6def8f0bdfc85",
+  "packages/agents/src/contained-image.test.ts": "dca312091aab9abd3e3e6b12b30bd5c2a96e0aa46453bf5977f80d8e1873d658",
+  "packages/agents/src/contained-image.ts": "00fa0e8017aa5ad24b00057820407c9ce9de2a2e039e8ead5f5516706186fac5",
+  "packages/cli/src/graph-contained-tests.ts": "ae06660763af7768fcc082f0cdea28b7955ef2b6abccc2f706e92879214d9299"
+}

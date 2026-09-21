@@ -1,0 +1,23 @@
+$ vitest run src/graph-contained-recovery.test.ts --maxWorkers=1
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+ ✓ src/graph-contained-recovery.test.ts (52 tests) 7500ms
+   ✓ sweeps actual worker and contained executor after reopening the ledger, without settling or releasing  389ms
+   ✓ sweeps two distinct contained invocations without re-execution and binds each physical receipt  364ms
+   ✓ does not omit released or missing-admission historical obligations (held=false)  368ms
+   ✓ does not omit released or missing-admission historical obligations (held=true)  350ms
+   ✓ can inspect a released contained action but cannot reacquire cleanup authority  326ms
+   ✓ requires explicit stop mode and current stop grant for an orphan; never releases its ledger hold  304ms
+   ✓ rejects revision drift inside executor authorization before subsequent physical operations  319ms
+   ✓ rejects grant drift inside executor authorization before subsequent physical operations  305ms
+   ✓ rejects duplicate registration/authority before daemon access  449ms
+   ✓ rejects extra registration/authority before daemon access  310ms
+   ✓ rejects async registration/authority before daemon access  322ms
+   ✓ captures trusted registrations and guards, and reports absent registries as unproven  361ms
+   ✓ rejects release drift after daemon I/O before further cleanup  321ms
+
+ Test Files  1 passed (1)
+      Tests  52 passed (52)
+   Start at  05:30:41
+   Duration  9.06s (transform 800ms, setup 9ms, collect 1.41s, tests 7.50s, environment 0ms, prepare 37ms)

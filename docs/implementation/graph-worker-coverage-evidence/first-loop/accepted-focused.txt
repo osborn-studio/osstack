@@ -1,0 +1,18 @@
+$ vitest run src/graph-worker-exit-proof.test.ts src/graph-unstarted-recovery.test.ts src/graph-contained-recovery.test.ts --maxWorkers=1
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+ ✓ src/graph-contained-recovery.test.ts (54 tests) 7174ms
+   ✓ graph quiescence sweep > sweeps actual worker and contained executor after reopening the ledger, without settling or releasing  325ms
+   ✓ graph quiescence sweep > sweeps two distinct contained invocations without re-execution and binds each physical receipt  366ms
+   ✓ graph quiescence sweep > can inspect a released contained action but cannot reacquire cleanup authority  301ms
+   ✓ graph quiescence sweep > never substitutes container absence for a deleted receipt in inspect mode  336ms
+   ✓ graph quiescence sweep > requires explicit stop mode and current stop grant for an orphan; never releases its ledger hold  319ms
+   ✓ graph quiescence sweep > requires old and current generation exit evidence before any container read or stop  412ms
+ ✓ src/graph-unstarted-recovery.test.ts (20 tests) 1346ms
+ ✓ src/graph-worker-exit-proof.test.ts (38 tests) 1052ms
+
+ Test Files  3 passed (3)
+      Tests  112 passed (112)
+   Start at  05:55:54
+   Duration  11.31s (transform 576ms, setup 11ms, collect 1.41s, tests 9.57s, environment 0ms, prepare 85ms)

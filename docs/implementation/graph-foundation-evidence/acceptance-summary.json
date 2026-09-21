@@ -1,0 +1,108 @@
+{
+  "acceptedAt": "2026-09-13T16:08:51.226Z",
+  "acceptanceRunId": "run_5b5ea886-5bbc-422a-9761-99285716496b",
+  "discoveredTasks": 1,
+  "executedTasks": 1,
+  "verifiersPassed": 6,
+  "packages": [
+    {
+      "package": "compliance",
+      "passed": 17
+    },
+    {
+      "package": "contracts",
+      "passed": 15
+    },
+    {
+      "package": "github",
+      "passed": 58
+    },
+    {
+      "package": "governance",
+      "passed": 301
+    },
+    {
+      "package": "knowledge",
+      "passed": 31
+    },
+    {
+      "package": "neat-eval",
+      "passed": 16
+    },
+    {
+      "package": "protocol",
+      "passed": 135
+    },
+    {
+      "package": "runtime",
+      "passed": 1
+    },
+    {
+      "package": "core",
+      "passed": 302
+    },
+    {
+      "package": "knowledge-cloud",
+      "passed": 36
+    },
+    {
+      "package": "autonomy",
+      "passed": 161
+    },
+    {
+      "package": "hermes-adapter",
+      "passed": 22
+    },
+    {
+      "package": "plugins",
+      "passed": 1
+    },
+    {
+      "package": "skill-registry",
+      "passed": 3
+    },
+    {
+      "package": "skills",
+      "passed": 2
+    },
+    {
+      "package": "agents",
+      "passed": 138
+    },
+    {
+      "package": "config",
+      "passed": 30
+    },
+    {
+      "package": "loop",
+      "passed": 381
+    },
+    {
+      "package": "conformance",
+      "passed": 9
+    },
+    {
+      "package": "supervisor",
+      "passed": 58
+    },
+    {
+      "package": "cli",
+      "passed": 850
+    }
+  ],
+  "testsPassed": 2567,
+  "sourceSha256": {
+    "packages/agents/src/base.ts": "4d039a9370a0f1fb2db9be138bbb2db01b3933be04b5fdf8fb7be319aeb03026",
+    "packages/loop/src/executor.ts": "5c517713e8e13ef54f3be865de1bb0360c9798c7fdcbdb1d0e810986f7402d50",
+    "packages/loop/src/executor.test.ts": "c393ca94840160a3e25090c3adde2a17c95e51f2d4484675ddf5fd51b4d57714",
+    "packages/loop/src/candidate-execution.ts": "95006bf5463aead4eb4c8e2203d1821fa8abd5588e4de3206f0a20e49f69badc",
+    "packages/loop/src/candidate-execution.test.ts": "d5219e39d59830f75367e512b11207ddfe9a3abd99ff039be8838addf4669497",
+    "packages/loop/src/loop-engine.ts": "e51cd8eb54b6ef03b3b0089a4f38af6a0fac7a5a4f5b7d6bc30a42572d47a430",
+    "packages/loop/src/loop-engine.test.ts": "e5770011c3f2cc4c9d705d71fa9aa10131f509267869dafa1a365abcb1f48afa",
+    "packages/loop/src/index.ts": "8e8a4783c83d4fdaf853191fe52fffef06f32f98c30d31ab7ca90a8c062669a7",
+    "packages/loop/src/types.ts": "2957c190fc51e2fbeee8609167b85619e42a6c3d2e5c0cef15280526f26ee415"
+  },
+  "note": "Acceptance ran against the working tree before the implementation commit; source hashes identify the exact accepted TypeScript bytes. Controller scripts are session-specific snapshots; run-card includes the later explicit sources correction.",
+  "implementationCommit": "de4a3bbebc48fc119d9aca41d547d60da773e8a2",
+  "logFormatting": "Archived text logs normalize trailing whitespace only; unformatted command output remains in the session temporary evidence directory."
+}

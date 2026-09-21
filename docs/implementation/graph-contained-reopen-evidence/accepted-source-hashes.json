@@ -1,0 +1,8 @@
+{
+  "packages/cli/src/graph-contained-recovery.ts": "014358097cba46e7dc94ff3f01320b2c61135ce3b33fcd30bd21e65abca21c6b",
+  "packages/cli/src/graph-contained-recovery.test.ts": "572422778f8a1657f6a9b2d2aa6be3e349b47558914e2f6ceceb090e5e1fa98a",
+  "packages/cli/src/graph-contained-tests.ts": "3fc9d95ee09c13fbab683e0cbcdb090c61004fecc57ffc335e619adcafffdf98",
+  "packages/core/src/state/graph-recovery.ts": "8327026b3f3f9bf3a1f9ef726ffcc79937d6c5db6d551c14ec4636eb56a7f5c1",
+  "packages/core/src/state/graph-recovery.test.ts": "b5239dc5c7e5cc92562d2f81ec135de6cb3a781a5ce292a51587466d79127941",
+  "scripts/verify-graph-runtime.mjs": "bf1d2efeb7f64580fee1594de7c959208dee67c8dc5f270c5bb00bbf299871ee"
+}

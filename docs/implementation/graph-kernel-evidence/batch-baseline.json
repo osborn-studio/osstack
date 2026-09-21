@@ -1,0 +1,34 @@
+{
+  "sourceCommit": "360e2263df95c10ca515fd3f355838342e8b68e6",
+  "worktree": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation",
+  "branch": "codex/graph-runtime-foundation",
+  "tasks": [
+    "G05",
+    "G06",
+    "G07"
+  ],
+  "controller": {
+    "runtime": "upgraded G00-G04 built LoopEngine + CodexCliAdapter",
+    "sources": [],
+    "maxIterations": 1,
+    "useWorktree": false,
+    "home": "/var/folders/97/wmwg4qzx02j74c3n73nh438w0000gn/T/osstack-graph-kernel-z3zisd4r/home"
+  },
+  "node": "v26.5.0",
+  "pnpm": "11.4.0",
+  "preflight": "loop doctor ok, workspace clean before batch; explicit temporary home",
+  "sourceReferences": [
+    {
+      "url": "https://docs.langchain.com/oss/javascript/langgraph/persistence",
+      "checkedAt": "2026-09-13"
+    },
+    {
+      "url": "https://docs.langchain.com/oss/javascript/langgraph/add-memory",
+      "checkedAt": "2026-09-13"
+    },
+    {
+      "url": "https://github.com/langchain-ai/langgraphjs/blob/592fd0cab0fd9287fab1b7c7fcfd4abc44675700/libs/checkpoint/src/base.ts",
+      "note": "Historical research checkout; verify installed package version before relying on signatures"
+    }
+  ]
+}

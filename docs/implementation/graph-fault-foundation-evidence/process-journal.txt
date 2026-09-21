@@ -1,0 +1,11 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+ ✓ src/graph-process-journal.test.ts (5 tests) 678ms
+   ✓ persists timeout separately from actual late exit and keeps DB drainage pending  343ms
+
+ Test Files  1 passed (1)
+      Tests  5 passed (5)
+   Start at  21:33:44
+   Duration  1.49s (transform 396ms, setup 7ms, collect 657ms, tests 678ms, environment 0ms, prepare 31ms)
+

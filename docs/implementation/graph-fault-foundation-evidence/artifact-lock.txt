@@ -1,0 +1,39 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/core
+
+Preparing worktree (detached HEAD 0a7c767)
+Preparing worktree (detached HEAD 21ac01c)
+Preparing worktree (detached HEAD 21ac01c)
+Preparing worktree (detached HEAD 227e4a5)
+Preparing worktree (detached HEAD 31381f9)
+Preparing worktree (detached HEAD 31381f9)
+Preparing worktree (detached HEAD 31381f9)
+Preparing worktree (detached HEAD a4e0576)
+Preparing worktree (detached HEAD 9f236ab)
+Preparing worktree (detached HEAD 9f236ab)
+Preparing worktree (detached HEAD 9f236ab)
+Preparing worktree (detached HEAD 9f236ab)
+Preparing worktree (detached HEAD 9f236ab)
+Preparing worktree (detached HEAD 9f236ab)
+Preparing worktree (detached HEAD 8220cb2)
+Preparing worktree (detached HEAD 39dd86a)
+Preparing worktree (detached HEAD 39dd86a)
+Preparing worktree (detached HEAD 47c5603)
+Preparing worktree (detached HEAD 47c5603)
+ ✓ src/graph/artifact-store.test.ts (19 tests) 9173ms
+   ✓ trusted graph artifact freeze > restores full reachable history and exact raw tree after deleting original repo and worktree  1594ms
+   ✓ trusted graph artifact freeze > rechecks authority after durable publication before returning ready  561ms
+   ✓ trusted graph artifact freeze > returns immutable candidate identity and artifact refs  541ms
+   ✓ trusted graph artifact freeze > captures tracked-file to directory replacement with unusual filenames  814ms
+   ✓ trusted graph artifact freeze > does not return ready if durable ID publication fails; exported bytes remain recoverable  659ms
+   ✓ trusted graph artifact freeze > rejects manifest corruption under a pinned artifact digest  576ms
+   ✓ trusted graph artifact freeze > rejects same ID with changed receipt or content  1083ms
+   ✓ trusted graph artifact freeze > does not invoke local hooks or filters during capture or restore  856ms
+   ✓ trusted graph artifact freeze > rejects corrupted bundles and manifests, including replay  747ms
+   ✓ trusted graph artifact freeze > refuses existing and escaping restore destinations  554ms
+
+ Test Files  1 passed (1)
+      Tests  19 passed (19)
+   Start at  21:29:15
+   Duration  9.38s (transform 68ms, setup 0ms, collect 92ms, tests 9.17s, environment 0ms, prepare 34ms)
+

@@ -1,3 +1,5 @@
+import { healthyAutonomyHealth } from "./test-healthy-autonomy.js";
+import { execFileSync } from "node:child_process";
 import { generateKeyPairSync, sign, randomUUID } from "node:crypto";
 import { mkdtempSync, rmSync } from "node:fs";
 import { connect } from "node:net";
@@ -52,7 +54,7 @@ const query: ControlledSessionQuery = ({ prompt, options }) => (async function* 
   }) };
 })();
 async function boot(keys = new Map([["owner", publicKey]]), options: Partial<StartDaemonOptions> = {}) {
-  handle = await startDaemon({ socketPath: socket, continuationTrustedPublicKeys: keys,
+  handle = await startDaemon({ autonomyHealth: async () => healthyAutonomyHealth(), socketPath: socket, continuationTrustedPublicKeys: keys,
     adapters: [createControlledSessionAdapter({ state_directory: join(home, "runtime"), environment: { ANTHROPIC_API_KEY: "fixture" }, query })], ...options });
 }
 function rpc(method: string, params?: unknown): Promise<Response> {
@@ -96,6 +98,7 @@ async function until(id: string, status: string) {
 }
 beforeEach(async () => {
   home = mkdtempSync(join(tmpdir(), "osstack-collaborator-"));
+  execFileSync("git", ["init", home], { stdio: "ignore" });
   socket = join(home, "daemon.sock");
   resumed = [];
   vi.stubEnv("OSSTACK_HOME", home);

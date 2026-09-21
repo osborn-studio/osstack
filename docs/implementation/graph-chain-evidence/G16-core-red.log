@@ -1,0 +1,71 @@
+$ vitest run -- src/graph/artifact-store.test.ts
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/core
+
+ ✓ src/state/run-store.test.ts (11 tests) 441ms
+ ✓ src/state/improvement-proposals.test.ts (20 tests) 782ms
+ ✓ src/state/db.test.ts (22 tests) 1147ms
+ ✓ src/state/session-continuations.test.ts (33 tests) 1354ms
+ ✓ src/state/probe-store.test.ts (9 tests) 407ms
+ ✓ src/state/knowledge-hygiene-store.test.ts (7 tests) 356ms
+ ✓ src/kanban/kanban.test.ts (42 tests) 1538ms
+ ✓ src/state/autonomy-runs.test.ts (9 tests) 549ms
+ ✓ src/state/memory.test.ts (8 tests) 417ms
+ ✓ src/state/graph-checkpoints.test.ts (15 tests) 2251ms
+   ✓ splits pages at transport traversal bounds even when many small pending writes fit the byte cap  1118ms
+ ✓ src/state/sessions.test.ts (7 tests) 427ms
+ ✓ src/state/lessons.test.ts (6 tests) 532ms
+ ✓ src/state/knowledge-hygiene-recurrence.test.ts (5 tests) 444ms
+ ✓ src/state/graph-runs.test.ts (31 tests) 2510ms
+   ✓ graph run storage > serializes independent SQLite workers: same-request  878ms
+ ✓ src/state/contract-approvals.test.ts (4 tests) 107ms
+ ✓ src/orchestrator/router.test.ts (19 tests) 63ms
+ ✓ src/state/probe-portfolio.test.ts (3 tests) 82ms
+ ✓ src/state/evaluator-epochs.test.ts (4 tests) 124ms
+ ✓ src/state/notification-outbox.test.ts (3 tests) 97ms
+ ✓ src/state/graph-actions.test.ts (31 tests) 2799ms
+   ✓ graph action ledger > serializes independent SQLite workers: same-key  973ms
+ ✓ src/state/knowledge-hygiene-store-v2.test.ts (5 tests) 238ms
+ ✓ src/state/deploy-freezes.test.ts (3 tests) 54ms
+ ✓ src/state/rollback-drills.test.ts (2 tests) 91ms
+ ✓ src/state/probe-outcome-metrics.test.ts (2 tests) 49ms
+ ✓ src/policy/agent-scorecard.test.ts (2 tests) 81ms
+ ✓ src/policy/profile.test.ts (37 tests) 110ms
+ ✓ src/state/feedback-assets.test.ts (2 tests) 44ms
+ ✓ src/state/dependency-obligation-store.test.ts (2 tests) 63ms
+ ✓ src/state/knowledge-hygiene-history-v2.test.ts (2 tests) 78ms
+ ✓ src/state/knowledge-hygiene-plan-store.test.ts (2 tests) 57ms
+ ✓ src/privacy/redactor.test.ts (11 tests) 3ms
+ ✓ src/kanban/transition-guard.test.ts (3 tests) 4ms
+ ✓ src/policy/engine.test.ts (8 tests) 5ms
+ ✓ src/state/protocol-mappers.test.ts (15 tests) 5ms
+ ✓ src/graph/repository-scope.test.ts (6 tests) 6913ms
+   ✓ trusted filesystem repository identity > accepts canonical hints, rejects forged identity and missing common-dir hints  359ms
+   ✓ bounds Git subprocess output and terminates a hung Git process  5839ms
+
+⎯⎯⎯⎯⎯⎯ Failed Suites 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/graph/artifact-store.test.ts [ src/graph/artifact-store.test.ts ]
+Error: Cannot find module './artifact-store.js' imported from '/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/core/src/graph/artifact-store.test.ts'
+ ❯ src/graph/artifact-store.test.ts:7:1
+      5| import { afterEach, describe, expect, it } from "vitest";
+      6| import { GraphResult } from "@osstack/protocol";
+      7| import { GraphArtifactStore, type GraphFreezeAuthority, type GraphFree…
+       | ^
+      8| import { resolveRepositoryScope } from "./repository-scope.js";
+      9| 
+
+Caused by: Error: Failed to load url ./artifact-store.js (resolved id: ./artifact-store.js) in /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/core/src/graph/artifact-store.test.ts. Does the file exist?
+ ❯ loadAndTransform ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:35835:17
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 35 passed (36)
+      Tests  391 passed (391)
+   Start at  07:29:11
+   Duration  7.37s (transform 986ms, setup 0ms, collect 3.82s, tests 24.22s, environment 10ms, prepare 3.38s)
+
+/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/core:
+[ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL] @osstack/core@0.17.0 test: `vitest run -- src/graph/artifact-store.test.ts`
+Exit status 1

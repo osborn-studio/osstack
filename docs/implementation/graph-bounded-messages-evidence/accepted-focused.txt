@@ -1,0 +1,508 @@
+$ vitest run src/adapters/bounded-messages.test.ts --reporter=default --reporter=json --outputFile=/Volumes/AIMATE_WORK/tmp/g25-bounded-messages/agents-tests.json
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/agents
+
+ ✓ src/adapters/bounded-messages.test.ts (46 tests) 94ms
+
+ Test Files  1 passed (1)
+      Tests  46 passed (46)
+   Start at  06:57:45
+   Duration  394ms (transform 88ms, setup 0ms, collect 112ms, tests 94ms, environment 0ms, prepare 47ms)
+
+JSON report written to /Volumes/AIMATE_WORK/tmp/g25-bounded-messages/agents-tests.json
+$ vitest run src/graph-bounded-messages.test.ts src/graph-host-config.test.ts src/graph-admission.test.ts src/graph-rpc.test.ts src/graph-delegation.integration.test.ts src/graph-reconcile-rpc.test.ts src/graph-shutdown.test.ts src/graph-action-broker.test.ts --maxWorkers=1 --reporter=default --reporter=json --outputFile=/Volumes/AIMATE_WORK/tmp/g25-bounded-messages/cli-tests.json
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-bounded-messages/g22-rpc-oZu3Ca/delivery/d910e6ca-d6b1-4c5d-ba35-68eb029266f3/writer-0'...
+HEAD is now at 0ba64bb base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-bounded-messages/g22-rpc-M97nW2/delivery/de45b60e-3ace-447c-948c-a6cd5de01a42/writer-0'...
+HEAD is now at b51b72a base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-bounded-messages/g22-rpc-bN9ekR/delivery/ef058ed1-1516-4068-83be-8ea3871c40d4/writer-0'...
+HEAD is now at 530775b base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-bounded-messages/g22-rpc-RqrBPy/delivery/6405b82c-1f4d-46b6-9f8a-823fa2725a7b/writer-0'...
+HEAD is now at c235ab9 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-bounded-messages/g22-rpc-0lAq50/delivery/65d8bb09-20ea-4b87-95fd-fc217e38bffb/writer-0'...
+HEAD is now at 3c97695 base
+osstack: retaining write lease graph-action:65a65611314cf593802b22ab2b0bb54830abf2b0eb2388c267f64c7b4f602f69: Error: external stop unconfirmed
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-bounded-messages/g22-rpc-UVvwVK/delivery/246dcc1b-29f7-4564-9e5a-09f424127515/writer-0'...
+HEAD is now at 450467a base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-bounded-messages/g22-rpc-hW7NFD/delivery/fadd7f10-20fb-4163-b22e-be311ad0916f/writer-0'...
+HEAD is now at 450467a base
+ ✓ src/graph-rpc.test.ts (10 tests) 33666ms
+   ✓ durably reserves before launch; concurrent replay and fresh service replay never launch twice; ready is atomic v1 evidence  6769ms
+   ✓ persisted cancel intent drives actual worker/executor abort and confirmed stop through G15  567ms
+   ✓ quality interrupt binds input/revision/current grants and resumes actual checkpoint through G15  13359ms
+   ✓ lost supervisor cannot resume durable waiting evidence or mint a new launch  5403ms
+   ✓ unknown external stop retains holds and cannot become cancelled from Promise drainage  1406ms
+   ✓ close persists cancellation and drains a live executor before returning  419ms
+   ✓ expired waiting lease refuses resume before acknowledging or spending a new budget  5399ms
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-bounded-messages/graph-delegation-j89KgW/home/graph-delivery/fb771ecb-6e79-4f19-8285-dc1aa316accc/writer-0'...
+HEAD is now at 72b257b base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-bounded-messages/graph-delegation-YMfF8Y/home/graph-delivery/b4758a7d-34e2-4d43-ab1a-f400eebbe813/writer-0'...
+HEAD is now at 9c9b5ba base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-bounded-messages/graph-delegation-YMfF8Y/home/graph-delivery/473eb9c1-e4d2-4fee-b2d1-838722daa309/writer-0'...
+HEAD is now at 9c9b5ba base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-bounded-messages/graph-delegation-ed2Tb9/home/graph-delivery/9f071799-ab5d-4dff-bddf-9542feb263c6/writer-0'...
+HEAD is now at f37cf76 base
+ ✓ src/graph-delegation.integration.test.ts (4 tests) 29608ms
+   ✓ real daemon loads owner config and CLI run/status retain durable idempotency and stable conflict codes  7135ms
+   ✓ simulated OSBot/OStag host bindings preserve parents, isolate source results and refuse unverified callers  15255ms
+   ✓ actual daemon lazily enrolls bounded owner config and CLI reaches ready with fixture provider responses  7076ms
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-bounded-messages/g22-rpc-LtwTWy/delivery/d205d078-133e-4290-b591-76b573012a8d/writer-0'...
+HEAD is now at baab29d base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-bounded-messages/g22-rpc-R7vsdm/delivery/cfba0697-82ad-4dd6-bab4-9f0f31826087/writer-0'...
+HEAD is now at 0836346 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-bounded-messages/g22-rpc-cG3KPa/delivery/7b715685-152c-4354-a718-ec29a4bf1374/writer-0'...
+HEAD is now at 8c477d8 base
+osstack: retaining write lease graph-action:a89bef4da8308171704f6592b52bec53ea5c142a75d234de9a7d71d8e93a17bf: Error: external stop unconfirmed
+ ✓ src/graph-bounded-messages.test.ts (3 tests) 13296ms
+   ✓ runs the bounded writer and independent reviewer through the public graph to ready  5418ms
+   ✓ routes a stopped negative review to a quality interrupt rather than ready  6447ms
+   ✓ keeps a dispatched disconnected inference unresolved through public reconcile  1430ms
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-bounded-messages/g22-rpc-LQw9bH/delivery/776e7341-5f9a-43b9-b3aa-32519781549e/writer-0'...
+HEAD is now at 9ca7736 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-bounded-messages/g22-rpc-k4Bm1D/delivery/4904f63f-f3e8-43f7-a777-e31749223756/writer-0'...
+HEAD is now at 9b730b6 base
+ ✓ src/graph-admission.test.ts (10 tests) 13239ms
+   ✓ disables new admission while retaining reads, exact replay and cancellation of admitted live work  489ms
+   ✓ admission disabled still permits an authorized live quality resume of the existing run  12131ms
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-bounded-messages/g22-rpc-eiAJ36/delivery/2a0e26ac-a4b0-4b73-964a-81094b0d27e9/writer-0'...
+HEAD is now at 2083f55 base
+osstack: retaining write lease graph-action:698f2fc1c19558546546351ea9b3c5e63cfe6df5182e2eb3603530638e2e154b: Error: external stop unconfirmed
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-bounded-messages/g22-rpc-pGqyqo/delivery/8c46c711-d2e3-4d67-80bf-35e7f4c9b2f0/writer-0'...
+HEAD is now at 7885dc6 base
+ ✓ src/graph-reconcile-rpc.test.ts (20 tests) 3546ms
+   ✓ keeps actual unknown external work and its admission held on a fresh host  1429ms
+   ✓ reconcile signals the actual live writer and leaves settlement to its supervisor  404ms
+osstack: retaining write lease graph-action:b078d058a99419c43e7f4c6b51c2496b4f17e87af06c87c8a8edd8d5d6e986aa: Error: adapter result or execution unconfirmed
+osstack: retaining write lease graph-action:c3d3b90ae6940da1e8a90b4a3dc0210fa6418d4df896cea4ce86f81a4170daf6: Error: adapter result or execution unconfirmed
+osstack: retaining write lease graph-action:9fd37f389474ca15ae30bef02444729b6a9cfba46affb4644bddafabad50e749: Error: adapter result or execution unconfirmed
+osstack: retaining write lease graph-action:cc1d066c82818bc7bd81a785dfabf1c352b43b2cd890501505cd4b61137fb589: Error: invalid result kind for registered operation
+osstack: retaining write lease graph-action:c8d6923977c8943835debcb4572cb77f0d052e0da8ceafdd617012e8982473ba: Error: invalid usage
+osstack: retaining write lease graph-action:42dde8da2b75a136729976b9a6cef1387c9c26bed662905d241dabf7bbf08985: Error: invalid persisted evidence reference
+osstack: retaining write lease graph-action:1df6e63f2e62683f75adcb9c027fea73b1ad8247cbee0fdde9a56a02c9c099a9: SqliteError: injected
+osstack: retaining write lease graph-action:cf7111a73c30343b4bfc81a51429658597de76039a154d418db84a78e44e374d: Error: adapter result or execution unconfirmed
+osstack: retaining write lease graph-action:dc1c6094fd7e844632774126e9918a675f56296ddc938d655cd4d3b6aca55ef9: Error: adapter result or execution unconfirmed
+osstack: retaining write lease graph-action:40f1f53f702f41eda2bffc9ac6c928d7fbec67f3c56a862b0b822a00bd43493c: Error: adapter result or execution unconfirmed
+osstack: retaining write lease graph-action:541d73fa93998b306ffed89c7a79c88d1a2856b55b040d3aa3c243c30807e6de: Error: adapter result or execution unconfirmed
+osstack: retaining write lease graph-action:f6a698474e3b50ccc11b2333fcc11a46c38b64586c95b27414fec156a1d280ac: Error: adapter result or execution unconfirmed
+ ✓ src/graph-action-broker.test.ts (32 tests) 1695ms
+ ✓ src/graph-shutdown.test.ts (1 test) 86ms
+ ✓ src/graph-host-config.test.ts (9 tests) 12ms
+
+ Test Files  8 passed (8)
+      Tests  89 passed (89)
+   Start at  06:57:46
+   Duration  98.57s (transform 642ms, setup 15ms, collect 2.58s, tests 95.15s, environment 1ms, prepare 211ms)
+
+JSON report written to /Volumes/AIMATE_WORK/tmp/g25-bounded-messages/cli-tests.json
+$ vitest run --passWithNoTests src/candidate-execution.test.ts src/executor.test.ts --maxWorkers=1 --reporter=default --reporter=json --outputFile=/Volumes/AIMATE_WORK/tmp/g25-bounded-messages/loop-tests.json
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/loop
+
+warning: Not a git repository. Use --no-index to compare two paths outside a working tree
+usage: git diff --no-index [<options>] <path> <path> [<pathspec>...]
+
+Diff output format options
+    -p, --patch           generate patch
+    -s, --no-patch        suppress diff output
+    -u                    generate patch
+    -U, --unified[=<n>]   generate diffs with <n> lines context
+    -W, --[no-]function-context
+                          generate diffs with <n> lines context
+    --raw                 generate the diff in raw format
+    --patch-with-raw      synonym for '-p --raw'
+    --patch-with-stat     synonym for '-p --stat'
+    --numstat             machine friendly --stat
+    --shortstat           output only the last line of --stat
+    -X, --dirstat[=<param1>,<param2>...]
+                          output the distribution of relative amount of changes for each sub-directory
+    --cumulative          synonym for --dirstat=cumulative
+    --dirstat-by-file[=<param1>,<param2>...]
+                          synonym for --dirstat=files,<param1>,<param2>...
+    --check               warn if changes introduce conflict markers or whitespace errors
+    --summary             condensed summary such as creations, renames and mode changes
+    --name-only           show only names of changed files
+    --name-status         show only names and status of changed files
+    --stat[=<width>[,<name-width>[,<count>]]]
+                          generate diffstat
+    --stat-width <width>  generate diffstat with a given width
+    --stat-name-width <width>
+                          generate diffstat with a given name width
+    --stat-graph-width <width>
+                          generate diffstat with a given graph width
+    --stat-count <count>  generate diffstat with limited lines
+    --[no-]compact-summary
+                          generate compact summary in diffstat
+    --binary              output a binary diff that can be applied
+    --[no-]full-index     show full pre- and post-image object names on the "index" lines
+    --[no-]color[=<when>] show colored diff
+    --ws-error-highlight <kind>
+                          highlight whitespace errors in the 'context', 'old' or 'new' lines in the diff
+    -z                    do not munge pathnames and use NULs as output field terminators in --raw or --numstat
+    --[no-]abbrev[=<n>]   use <n> digits to display object names
+    --src-prefix <prefix> show the given source prefix instead of "a/"
+    --dst-prefix <prefix> show the given destination prefix instead of "b/"
+    --line-prefix <prefix>
+                          prepend an additional prefix to every line of output
+    --no-prefix           do not show any source or destination prefix
+    --default-prefix      use default prefixes a/ and b/
+    --inter-hunk-context <n>
+                          show context between diff hunks up to the specified number of lines
+    --output-indicator-new <char>
+                          specify the character to indicate a new line instead of '+'
+    --output-indicator-old <char>
+                          specify the character to indicate an old line instead of '-'
+    --output-indicator-context <char>
+                          specify the character to indicate a context instead of ' '
+
+Diff rename options
+    -B, --break-rewrites[=<n>[/<m>]]
+                          break complete rewrite changes into pairs of delete and create
+    -M, --find-renames[=<n>]
+                          detect renames
+    -D, --irreversible-delete
+                          omit the preimage for deletes
+    -C, --find-copies[=<n>]
+                          detect copies
+    --[no-]find-copies-harder
+                          use unmodified files as source to find copies
+    --no-renames          disable rename detection
+    --[no-]rename-empty   use empty blobs as rename source
+    --[no-]follow         continue listing the history of a file beyond renames
+    -l <n>                prevent rename/copy detection if the number of rename/copy targets exceeds given limit
+
+Diff algorithm options
+    --minimal             produce the smallest possible diff
+    -w, --ignore-all-space
+                          ignore whitespace when comparing lines
+    -b, --ignore-space-change
+                          ignore changes in amount of whitespace
+    --ignore-space-at-eol ignore changes in whitespace at EOL
+    --ignore-cr-at-eol    ignore carrier-return at the end of line
+    --ignore-blank-lines  ignore changes whose lines are all blank
+    -I, --[no-]ignore-matching-lines <regex>
+                          ignore changes whose all lines match <regex>
+    --[no-]indent-heuristic
+                          heuristic to shift diff hunk boundaries for easy reading
+    --patience            generate diff using the "patience diff" algorithm
+    --histogram           generate diff using the "histogram diff" algorithm
+    --diff-algorithm <algorithm>
+                          choose a diff algorithm
+    --anchored <text>     generate diff using the "anchored diff" algorithm
+    --word-diff[=<mode>]  show word diff, using <mode> to delimit changed words
+    --word-diff-regex <regex>
+                          use <regex> to decide what a word is
+    --color-words[=<regex>]
+                          equivalent to --word-diff=color --word-diff-regex=<regex>
+    --[no-]color-moved[=<mode>]
+                          moved lines of code are colored differently
+    --[no-]color-moved-ws <mode>
+                          how white spaces are ignored in --color-moved
+
+Other diff options
+    --[no-]relative[=<prefix>]
+                          when run from subdir, exclude changes outside and show relative paths
+    -a, --[no-]text       treat all files as text
+    -R                    swap two inputs, reverse the diff
+    --[no-]exit-code      exit with 1 if there were differences, 0 otherwise
+    --[no-]quiet          disable all output of the program
+    --[no-]ext-diff       allow an external diff helper to be executed
+    --[no-]textconv       run external text conversion filters when comparing binary files
+    --ignore-submodules[=<when>]
+                          ignore changes to submodules in the diff generation
+    --submodule[=<format>]
+                          specify how differences in submodules are shown
+    --ita-invisible-in-index
+                          hide 'git add -N' entries from the index
+    --ita-visible-in-index
+                          treat 'git add -N' entries as real in the index
+    -S <string>           look for differences that change the number of occurrences of the specified string
+    -G <regex>            look for differences that change the number of occurrences of the specified regex
+    --pickaxe-all         show all changes in the changeset with -S or -G
+    --pickaxe-regex       treat <string> in -S as extended POSIX regular expression
+    -O <file>             control the order in which files appear in the output
+    --rotate-to <path>    show the change in the specified path first
+    --skip-to <path>      skip the output to the specified path
+    --find-object <object-id>
+                          look for differences that change the number of occurrences of the specified object
+    --diff-filter [(A|C|D|M|R|T|U|X|B)...[*]]
+                          select files by diff type
+    --max-depth <depth>   maximum tree depth to recurse
+    --output <file>       output to a specific file
+
+warning: Not a git repository. Use --no-index to compare two paths outside a working tree
+usage: git diff --no-index [<options>] <path> <path> [<pathspec>...]
+
+Diff output format options
+    -p, --patch           generate patch
+    -s, --no-patch        suppress diff output
+    -u                    generate patch
+    -U, --unified[=<n>]   generate diffs with <n> lines context
+    -W, --[no-]function-context
+                          generate diffs with <n> lines context
+    --raw                 generate the diff in raw format
+    --patch-with-raw      synonym for '-p --raw'
+    --patch-with-stat     synonym for '-p --stat'
+    --numstat             machine friendly --stat
+    --shortstat           output only the last line of --stat
+    -X, --dirstat[=<param1>,<param2>...]
+                          output the distribution of relative amount of changes for each sub-directory
+    --cumulative          synonym for --dirstat=cumulative
+    --dirstat-by-file[=<param1>,<param2>...]
+                          synonym for --dirstat=files,<param1>,<param2>...
+    --check               warn if changes introduce conflict markers or whitespace errors
+    --summary             condensed summary such as creations, renames and mode changes
+    --name-only           show only names of changed files
+    --name-status         show only names and status of changed files
+    --stat[=<width>[,<name-width>[,<count>]]]
+                          generate diffstat
+    --stat-width <width>  generate diffstat with a given width
+    --stat-name-width <width>
+                          generate diffstat with a given name width
+    --stat-graph-width <width>
+                          generate diffstat with a given graph width
+    --stat-count <count>  generate diffstat with limited lines
+    --[no-]compact-summary
+                          generate compact summary in diffstat
+    --binary              output a binary diff that can be applied
+    --[no-]full-index     show full pre- and post-image object names on the "index" lines
+    --[no-]color[=<when>] show colored diff
+    --ws-error-highlight <kind>
+                          highlight whitespace errors in the 'context', 'old' or 'new' lines in the diff
+    -z                    do not munge pathnames and use NULs as output field terminators in --raw or --numstat
+    --[no-]abbrev[=<n>]   use <n> digits to display object names
+    --src-prefix <prefix> show the given source prefix instead of "a/"
+    --dst-prefix <prefix> show the given destination prefix instead of "b/"
+    --line-prefix <prefix>
+                          prepend an additional prefix to every line of output
+    --no-prefix           do not show any source or destination prefix
+    --default-prefix      use default prefixes a/ and b/
+    --inter-hunk-context <n>
+                          show context between diff hunks up to the specified number of lines
+    --output-indicator-new <char>
+                          specify the character to indicate a new line instead of '+'
+    --output-indicator-old <char>
+                          specify the character to indicate an old line instead of '-'
+    --output-indicator-context <char>
+                          specify the character to indicate a context instead of ' '
+
+Diff rename options
+    -B, --break-rewrites[=<n>[/<m>]]
+                          break complete rewrite changes into pairs of delete and create
+    -M, --find-renames[=<n>]
+                          detect renames
+    -D, --irreversible-delete
+                          omit the preimage for deletes
+    -C, --find-copies[=<n>]
+                          detect copies
+    --[no-]find-copies-harder
+                          use unmodified files as source to find copies
+    --no-renames          disable rename detection
+    --[no-]rename-empty   use empty blobs as rename source
+    --[no-]follow         continue listing the history of a file beyond renames
+    -l <n>                prevent rename/copy detection if the number of rename/copy targets exceeds given limit
+
+Diff algorithm options
+    --minimal             produce the smallest possible diff
+    -w, --ignore-all-space
+                          ignore whitespace when comparing lines
+    -b, --ignore-space-change
+                          ignore changes in amount of whitespace
+    --ignore-space-at-eol ignore changes in whitespace at EOL
+    --ignore-cr-at-eol    ignore carrier-return at the end of line
+    --ignore-blank-lines  ignore changes whose lines are all blank
+    -I, --[no-]ignore-matching-lines <regex>
+                          ignore changes whose all lines match <regex>
+    --[no-]indent-heuristic
+                          heuristic to shift diff hunk boundaries for easy reading
+    --patience            generate diff using the "patience diff" algorithm
+    --histogram           generate diff using the "histogram diff" algorithm
+    --diff-algorithm <algorithm>
+                          choose a diff algorithm
+    --anchored <text>     generate diff using the "anchored diff" algorithm
+    --word-diff[=<mode>]  show word diff, using <mode> to delimit changed words
+    --word-diff-regex <regex>
+                          use <regex> to decide what a word is
+    --color-words[=<regex>]
+                          equivalent to --word-diff=color --word-diff-regex=<regex>
+    --[no-]color-moved[=<mode>]
+                          moved lines of code are colored differently
+    --[no-]color-moved-ws <mode>
+                          how white spaces are ignored in --color-moved
+
+Other diff options
+    --[no-]relative[=<prefix>]
+                          when run from subdir, exclude changes outside and show relative paths
+    -a, --[no-]text       treat all files as text
+    -R                    swap two inputs, reverse the diff
+    --[no-]exit-code      exit with 1 if there were differences, 0 otherwise
+    --[no-]quiet          disable all output of the program
+    --[no-]ext-diff       allow an external diff helper to be executed
+    --[no-]textconv       run external text conversion filters when comparing binary files
+    --ignore-submodules[=<when>]
+                          ignore changes to submodules in the diff generation
+    --submodule[=<format>]
+                          specify how differences in submodules are shown
+    --ita-invisible-in-index
+                          hide 'git add -N' entries from the index
+    --ita-visible-in-index
+                          treat 'git add -N' entries as real in the index
+    -S <string>           look for differences that change the number of occurrences of the specified string
+    -G <regex>            look for differences that change the number of occurrences of the specified regex
+    --pickaxe-all         show all changes in the changeset with -S or -G
+    --pickaxe-regex       treat <string> in -S as extended POSIX regular expression
+    -O <file>             control the order in which files appear in the output
+    --rotate-to <path>    show the change in the specified path first
+    --skip-to <path>      skip the output to the specified path
+    --find-object <object-id>
+                          look for differences that change the number of occurrences of the specified object
+    --diff-filter [(A|C|D|M|R|T|U|X|B)...[*]]
+                          select files by diff type
+    --max-depth <depth>   maximum tree depth to recurse
+    --output <file>       output to a specific file
+
+warning: Not a git repository. Use --no-index to compare two paths outside a working tree
+usage: git diff --no-index [<options>] <path> <path> [<pathspec>...]
+
+Diff output format options
+    -p, --patch           generate patch
+    -s, --no-patch        suppress diff output
+    -u                    generate patch
+    -U, --unified[=<n>]   generate diffs with <n> lines context
+    -W, --[no-]function-context
+                          generate diffs with <n> lines context
+    --raw                 generate the diff in raw format
+    --patch-with-raw      synonym for '-p --raw'
+    --patch-with-stat     synonym for '-p --stat'
+    --numstat             machine friendly --stat
+    --shortstat           output only the last line of --stat
+    -X, --dirstat[=<param1>,<param2>...]
+                          output the distribution of relative amount of changes for each sub-directory
+    --cumulative          synonym for --dirstat=cumulative
+    --dirstat-by-file[=<param1>,<param2>...]
+                          synonym for --dirstat=files,<param1>,<param2>...
+    --check               warn if changes introduce conflict markers or whitespace errors
+    --summary             condensed summary such as creations, renames and mode changes
+    --name-only           show only names of changed files
+    --name-status         show only names and status of changed files
+    --stat[=<width>[,<name-width>[,<count>]]]
+                          generate diffstat
+    --stat-width <width>  generate diffstat with a given width
+    --stat-name-width <width>
+                          generate diffstat with a given name width
+    --stat-graph-width <width>
+                          generate diffstat with a given graph width
+    --stat-count <count>  generate diffstat with limited lines
+    --[no-]compact-summary
+                          generate compact summary in diffstat
+    --binary              output a binary diff that can be applied
+    --[no-]full-index     show full pre- and post-image object names on the "index" lines
+    --[no-]color[=<when>] show colored diff
+    --ws-error-highlight <kind>
+                          highlight whitespace errors in the 'context', 'old' or 'new' lines in the diff
+    -z                    do not munge pathnames and use NULs as output field terminators in --raw or --numstat
+    --[no-]abbrev[=<n>]   use <n> digits to display object names
+    --src-prefix <prefix> show the given source prefix instead of "a/"
+    --dst-prefix <prefix> show the given destination prefix instead of "b/"
+    --line-prefix <prefix>
+                          prepend an additional prefix to every line of output
+    --no-prefix           do not show any source or destination prefix
+    --default-prefix      use default prefixes a/ and b/
+    --inter-hunk-context <n>
+                          show context between diff hunks up to the specified number of lines
+    --output-indicator-new <char>
+                          specify the character to indicate a new line instead of '+'
+    --output-indicator-old <char>
+                          specify the character to indicate an old line instead of '-'
+    --output-indicator-context <char>
+                          specify the character to indicate a context instead of ' '
+
+Diff rename options
+    -B, --break-rewrites[=<n>[/<m>]]
+                          break complete rewrite changes into pairs of delete and create
+    -M, --find-renames[=<n>]
+                          detect renames
+    -D, --irreversible-delete
+                          omit the preimage for deletes
+    -C, --find-copies[=<n>]
+                          detect copies
+    --[no-]find-copies-harder
+                          use unmodified files as source to find copies
+    --no-renames          disable rename detection
+    --[no-]rename-empty   use empty blobs as rename source
+    --[no-]follow         continue listing the history of a file beyond renames
+    -l <n>                prevent rename/copy detection if the number of rename/copy targets exceeds given limit
+
+Diff algorithm options
+    --minimal             produce the smallest possible diff
+    -w, --ignore-all-space
+                          ignore whitespace when comparing lines
+    -b, --ignore-space-change
+                          ignore changes in amount of whitespace
+    --ignore-space-at-eol ignore changes in whitespace at EOL
+    --ignore-cr-at-eol    ignore carrier-return at the end of line
+    --ignore-blank-lines  ignore changes whose lines are all blank
+    -I, --[no-]ignore-matching-lines <regex>
+                          ignore changes whose all lines match <regex>
+    --[no-]indent-heuristic
+                          heuristic to shift diff hunk boundaries for easy reading
+    --patience            generate diff using the "patience diff" algorithm
+    --histogram           generate diff using the "histogram diff" algorithm
+    --diff-algorithm <algorithm>
+                          choose a diff algorithm
+    --anchored <text>     generate diff using the "anchored diff" algorithm
+    --word-diff[=<mode>]  show word diff, using <mode> to delimit changed words
+    --word-diff-regex <regex>
+                          use <regex> to decide what a word is
+    --color-words[=<regex>]
+                          equivalent to --word-diff=color --word-diff-regex=<regex>
+    --[no-]color-moved[=<mode>]
+                          moved lines of code are colored differently
+    --[no-]color-moved-ws <mode>
+                          how white spaces are ignored in --color-moved
+
+Other diff options
+    --[no-]relative[=<prefix>]
+                          when run from subdir, exclude changes outside and show relative paths
+    -a, --[no-]text       treat all files as text
+    -R                    swap two inputs, reverse the diff
+    --[no-]exit-code      exit with 1 if there were differences, 0 otherwise
+    --[no-]quiet          disable all output of the program
+    --[no-]ext-diff       allow an external diff helper to be executed
+    --[no-]textconv       run external text conversion filters when comparing binary files
+    --ignore-submodules[=<when>]
+                          ignore changes to submodules in the diff generation
+    --submodule[=<format>]
+                          specify how differences in submodules are shown
+    --ita-invisible-in-index
+                          hide 'git add -N' entries from the index
+    --ita-visible-in-index
+                          treat 'git add -N' entries as real in the index
+    -S <string>           look for differences that change the number of occurrences of the specified string
+    -G <regex>            look for differences that change the number of occurrences of the specified regex
+    --pickaxe-all         show all changes in the changeset with -S or -G
+    --pickaxe-regex       treat <string> in -S as extended POSIX regular expression
+    -O <file>             control the order in which files appear in the output
+    --rotate-to <path>    show the change in the specified path first
+    --skip-to <path>      skip the output to the specified path
+    --find-object <object-id>
+                          look for differences that change the number of occurrences of the specified object
+    --diff-filter [(A|C|D|M|R|T|U|X|B)...[*]]
+                          select files by diff type
+    --max-depth <depth>   maximum tree depth to recurse
+    --output <file>       output to a specific file
+
+ ✓ src/candidate-execution.test.ts (29 tests) 2412ms
+   ✓ legacy single implementation seam > retains an unconfirmed worktree and stops later tasks/cycles, including an explicit retry after restart  1147ms
+   ✓ legacy single implementation seam > escalates unknown execution after one invocation with maxIterations > 1 and saves audit evidence  1035ms
+ ✓ src/executor.test.ts (112 tests) 2463ms
+   ✓ command process groups > confirms timeout termination of children and grandchildren  509ms
+
+ Test Files  2 passed (2)
+      Tests  141 passed (141)
+   Start at  06:59:25
+   Duration  5.94s (transform 491ms, setup 0ms, collect 843ms, tests 4.87s, environment 0ms, prepare 56ms)
+
+JSON report written to /Volumes/AIMATE_WORK/tmp/g25-bounded-messages/loop-tests.json

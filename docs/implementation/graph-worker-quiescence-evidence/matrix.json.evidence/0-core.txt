@@ -1,0 +1,46 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/core
+      Running tests with seed "250922"
+
+ ✓ src/state/graph-checkpoints.test.ts (15 tests) 725ms
+   ✓ splits pages at transport traversal bounds even when many small pending writes fit the byte cap  408ms
+ ✓ src/state/graph-recovery.test.ts (40 tests) 676ms
+Preparing worktree (detached HEAD 6d839d4)
+Preparing worktree (detached HEAD 6d839d4)
+Preparing worktree (detached HEAD 5213e07)
+Preparing worktree (detached HEAD 5213e07)
+Preparing worktree (detached HEAD 7b3d044)
+Preparing worktree (detached HEAD 7b3d044)
+Preparing worktree (detached HEAD 41c1d67)
+Preparing worktree (detached HEAD 41c1d67)
+Preparing worktree (detached HEAD 12cd89c)
+Preparing worktree (detached HEAD 12cd89c)
+Preparing worktree (detached HEAD 8a95339)
+Preparing worktree (detached HEAD 8a95339)
+Preparing worktree (detached HEAD 8a95339)
+Preparing worktree (detached HEAD 8a95339)
+Preparing worktree (detached HEAD 8a95339)
+Preparing worktree (detached HEAD 8a95339)
+Preparing worktree (detached HEAD 4ad2b6f)
+Preparing worktree (detached HEAD 419019e)
+Preparing worktree (detached HEAD 1d9fc30)
+Preparing worktree (detached HEAD 1d9fc30)
+ ✓ src/graph/artifact-store.test.ts (20 tests) 10352ms
+   ✓ trusted graph artifact freeze > restores full reachable history and exact raw tree after deleting original repo and worktree  1572ms
+   ✓ trusted graph artifact freeze > rechecks authority after durable publication before returning ready  636ms
+   ✓ trusted graph artifact freeze > returns immutable candidate identity and artifact refs  564ms
+   ✓ trusted graph artifact freeze > captures tracked-file to directory replacement with unusual filenames  817ms
+   ✓ trusted graph artifact freeze > does not return ready if durable ID publication fails; exported bytes remain recoverable  654ms
+   ✓ trusted graph artifact freeze > rejects manifest corruption under a pinned artifact digest  588ms
+   ✓ trusted graph artifact freeze > rejects same ID with changed receipt or content  1061ms
+   ✓ trusted graph artifact freeze > does not invoke local hooks or filters during capture or restore  891ms
+   ✓ trusted graph artifact freeze > rejects corrupted bundles and manifests, including replay  774ms
+   ✓ trusted graph artifact freeze > refuses existing and escaping restore destinations  587ms
+   ✓ F07: a late real process writing the old directory cannot mutate the exported candidate or its new restore  949ms
+
+ Test Files  3 passed (3)
+      Tests  75 passed (75)
+   Start at  17:29:58
+   Duration  12.24s (transform 110ms, setup 0ms, collect 197ms, tests 11.75s, environment 0ms, prepare 74ms)
+
+JSON report written to /Volumes/AIMATE_WORK/tmp/g25-quiescence/matrix.json.evidence/0-core.json

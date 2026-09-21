@@ -1,0 +1,12 @@
+ M AGENTS.md
+?? docs/design/2026-09-13-executable-graph-plan.md
+?? docs/design/2026-09-13-os-products-definition.md
+?? docs/handoffs/
+?? docs/implementation/
+?? docs/reports/2026-09-13-executable-graph-claude-review.md
+?? docs/reports/2026-09-13-executable-graph-context.md
+?? docs/reports/2026-09-13-executable-graph-evidence/
+?? docs/reports/2026-09-13-executable-graph-research.md
+?? docs/reports/2026-09-13-os-products-claude-review.md
+?? docs/reports/2026-09-13-os-products-context.md
+?? docs/reports/2026-09-13-os-products-evidence/

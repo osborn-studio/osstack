@@ -1,0 +1,10 @@
+{
+  "extends": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true
+  },
+  "files": [
+    "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli/src/graph-action-broker.ts",
+    "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli/src/graph-branch-broker.test.ts"
+  ]
+}

@@ -1,0 +1,159 @@
+[
+  {
+    "event_id": "kimi-sweep:0",
+    "seq": 0,
+    "run_id": "kimi-sweep",
+    "session_id": "kimi-sweep",
+    "created_at": 1789734735.062,
+    "terminal": false,
+    "type": "run.started",
+    "payload": {
+      "status": "running",
+      "controls": {
+        "cancel": true,
+        "approval_pending": false,
+        "clarify_pending": false,
+        "queue": false,
+        "goal": false
+      }
+    }
+  },
+  {
+    "event_id": "kimi-sweep:1",
+    "seq": 1,
+    "run_id": "kimi-sweep",
+    "session_id": "kimi-sweep",
+    "created_at": 1789734735.064,
+    "terminal": false,
+    "type": "progress",
+    "payload": {
+      "phase": "kimi.review.start",
+      "detail": "Starting bounded no-tool Kimi review"
+    }
+  },
+  {
+    "event_id": "kimi-sweep:2",
+    "seq": 2,
+    "run_id": "kimi-sweep",
+    "session_id": "kimi-sweep",
+    "created_at": 1789734839.371,
+    "terminal": false,
+    "type": "token.delta",
+    "payload": {
+      "message_id": "kimi-sweep:kimi-review",
+      "delta": "# Review\n\n## Summary\nThe G25 host-only quiescence sweep enumerates the full executor inventory (actions ∪ admissions, including released, settled, and missing-hold rows), verifies journaled exit for every action generation plus the current worker generation before any Docker access, and stops only explicitly registered, exactly-journaled contained invocations under an explicit `stop_contained` mode with re-validated synchronous grants. Released admissions are opened strictly in `read_only` mode and can never be stopped (`CONTAINED_INSPECTION_CANNOT_STOP` before any daemon call). No ledger mutation, release, replay, or container recreation is possible: both stores are constructed with throwing verifiers, and the executor's `authorize('start')` unconditionally throws.\n\nGuards are captured synchronously (structured-cloned request/registrations/options, captured grant references), and every async boundary re-runs `guard()` — comparing inventory digest and re-canonicalized worker exit observations — plus `recheck` in the reopen path re-validates admission digest and journal binding before each read/stop. Drift tests (release, revision, grant revocation, late worker-journal event, substituted bindings/manifests) confirm rejection before subsequent physical operations. Reports keep `recoveryAuthorized: false`, `workerDescendantsStatus`/`workspaceStatus: 'unproven'`, and only set `allInventoriedExecutorsStopped` when every worker and every inventoried executor is proven stopped; unknown states carry explicit reasons (`WORKER_EXIT_UNPROVEN`, `ADMISSION_MISSING`, `EXECUTOR_VERIFIER_UNAVAILABLE`, `CONTAINED_STOP_UNPROVEN`). Tests exercise real worker exit via the actual runtime, two independent contained invocations with distinct bound receipts, read-only release inspection, lost/uncertain receipts without repeated deletion, and cross-boundary state drift; 52 tests pass.\n\n## Notes\n- Info: worker generations are derived from action/admission inventory plus the current run generation; a hypothetical intermediate lease generation with zero actions and zero admissions would not be exit-verified. Such a generation has no inventoried executors to clean, and descendant state is already reported `unproven`, so this is not blocking.",
+      "content_type": "text"
+    }
+  },
+  {
+    "event_id": "kimi-sweep:3",
+    "seq": 3,
+    "run_id": "kimi-sweep",
+    "session_id": "kimi-sweep",
+    "created_at": 1789734839.375,
+    "terminal": true,
+    "type": "done",
+    "payload": {
+      "status": "completed",
+      "last_seq": 2,
+      "result_summary": "approved: 1 finding(s)",
+      "review": {
+        "schema_version": 1,
+        "verdict": "approved",
+        "risk": "read_only",
+        "markdown": "# Review\n\nThe sweep enumerates the complete inventory (actions union admissions, including released/settled/missing-hold rows) and verifies journaled exit for every action generation plus the current worker before any Docker call. Only explicitly registered, exactly-journaled contained invocations are reopened; released admissions open read_only and can never stop; no recreation, ledger mutation, or release is reachable (throwing recovery verifiers, start always rejected). Captured clones/references plus guard()/recheck re-validation reject grant, inventory, and worker-journal drift across every async boundary, before subsequent physical operations. Claims stay diagnostic-only: recoveryAuthorized false, workspace/worker-descendant status unproven, unknown states explicit. Tests cover real worker exit, independent contained identities with distinct receipts, readonly release, uncertain/lost receipts without repeated deletion, and drift; 52 pass.",
+        "judgments": [
+          {
+            "id": "scope",
+            "pass": true,
+            "severity": "error",
+            "summary": "Inventory is actions union admissions; every entry (held, released, settled, missing-admission) is observed with explicit reasons, and worker exit is verified for all entry generations plus the current run generation before any executor handling. Tests confirm released and missing-admission rows are never omitted or inferred stopped."
+          },
+          {
+            "id": "effects",
+            "pass": true,
+            "severity": "error",
+            "summary": "Stops require explicit stop_contained mode, a held (non-released) admission, an exact trusted registration matching ledger/journal binding, and current synchronous grants re-checked per operation. Recovery stores use throwing verifiers and executor start is unconditionally rejected, so no recreation, replay, ledger mutation, or admission release occurs; tests assert unchanged action state, held admission, and single DELETE."
+          },
+          {
+            "id": "races",
+            "pass": true,
+            "severity": "error",
+            "summary": "Request, registrations, and contained options are cloned and grants captured synchronously; guard() recompares inventory digest and re-canonicalized worker observations at every boundary and inside wrapped authorize callbacks, while reopen's recheck re-validates admission digest and journal bytes before each read/stop. Drift tests (release, revision, grant revocation, late worker event) reject before further daemon operations."
+          },
+          {
+            "id": "claims",
+            "pass": true,
+            "severity": "error",
+            "summary": "Report hardcodes recoveryAuthorized false and workspaceStatus/workerDescendantsStatus unproven; allInventoriedExecutorsStopped requires all workers stopped AND all executor observations stopped. Opaque, unregistered, missing-admission, and unverified states remain explicitly unproven with reasons; no global quiescence or G15 authority is inferred."
+          },
+          {
+            "id": "tests",
+            "pass": true,
+            "severity": "error",
+            "summary": "52 tests pass, including real runtime worker exit observation, two distinct contained invocations with independently bound receipts, read_only inspection of released admissions with stop rejection, missing/lost stop receipts staying unknown without repeated deletion, and cross-async-boundary drift (release, revision, grant, worker journal, substituted manifests) rejected before Docker calls."
+          }
+        ],
+        "findings": [
+          {
+            "rule_id": "scope.worker-generation-derivation",
+            "severity": "info",
+            "message": "Worker generations verified are derived from inventory entry generations plus the current run generation; a hypothetical intermediate lease generation with zero actions and zero admissions would not be exit-verified. Such a generation has no inventoried executors to clean and descendants are already reported unproven, so this is not blocking.",
+            "file": "packages/cli/src/graph-quiescence-sweep.ts",
+            "line": 38,
+            "evidence": "const generations = new Map(inventory.entries.map(e => [e.action.generation, e.owner])); if (inventory.snapshot.run.generation > 0) generations.set(...)",
+            "fingerprint": "64a47e6edd82319caf9cd35fc7e256dd9ecd63cefd31f9fa252e39742b5d9bec"
+          }
+        ],
+        "recommended_actions": [],
+        "evidence_refs": [
+          "packages/cli/src/graph-quiescence-sweep.ts",
+          "packages/cli/src/graph-contained-recovery.ts",
+          "packages/cli/src/graph-contained-recovery.test.ts"
+        ],
+        "runtime_identity": {
+          "adapter_id": "kimi-code",
+          "adapter_version": "0.29.1",
+          "auth_mode": "subprocess/login-reuse",
+          "provider_id": "kimi",
+          "model_id": "kimi-code/k3",
+          "agent_profile": "osstack-reviewer",
+          "evidence_source": "reported",
+          "binary_path_sha256": "7e5d172f83fc7d8ca22387234b5a9a4d9412aa1a27c71ee90be35db29dfa7dd2"
+        }
+      },
+      "evaluation_judgments": [
+        {
+          "id": "scope",
+          "pass": true,
+          "severity": "error",
+          "summary": "Inventory is actions union admissions; every entry (held, released, settled, missing-admission) is observed with explicit reasons, and worker exit is verified for all entry generations plus the current run generation before any executor handling. Tests confirm released and missing-admission rows are never omitted or inferred stopped."
+        },
+        {
+          "id": "effects",
+          "pass": true,
+          "severity": "error",
+          "summary": "Stops require explicit stop_contained mode, a held (non-released) admission, an exact trusted registration matching ledger/journal binding, and current synchronous grants re-checked per operation. Recovery stores use throwing verifiers and executor start is unconditionally rejected, so no recreation, replay, ledger mutation, or admission release occurs; tests assert unchanged action state, held admission, and single DELETE."
+        },
+        {
+          "id": "races",
+          "pass": true,
+          "severity": "error",
+          "summary": "Request, registrations, and contained options are cloned and grants captured synchronously; guard() recompares inventory digest and re-canonicalized worker observations at every boundary and inside wrapped authorize callbacks, while reopen's recheck re-validates admission digest and journal bytes before each read/stop. Drift tests (release, revision, grant revocation, late worker event) reject before further daemon operations."
+        },
+        {
+          "id": "claims",
+          "pass": true,
+          "severity": "error",
+          "summary": "Report hardcodes recoveryAuthorized false and workspaceStatus/workerDescendantsStatus unproven; allInventoriedExecutorsStopped requires all workers stopped AND all executor observations stopped. Opaque, unregistered, missing-admission, and unverified states remain explicitly unproven with reasons; no global quiescence or G15 authority is inferred."
+        },
+        {
+          "id": "tests",
+          "pass": true,
+          "severity": "error",
+          "summary": "52 tests pass, including real runtime worker exit observation, two distinct contained invocations with independently bound receipts, read_only inspection of released admissions with stop rejection, missing/lost stop receipts staying unknown without repeated deletion, and cross-async-boundary drift (release, revision, grant, worker journal, substituted manifests) rejected before Docker calls."
+        }
+      ]
+    }
+  }
+]

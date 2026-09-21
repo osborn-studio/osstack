@@ -1,3 +1,4 @@
+import type { LoopLifecycleAdmission } from "./policy-gate.js";
 import { randomUUID } from "node:crypto";
 import { dirname, isAbsolute, join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
@@ -23,7 +24,8 @@ import {
 import { checkBudget, clampTaskIterations, type BudgetUsage, type LoopBudget, type LoopBudgetStatus } from "./budget.js";
 import { createScanner } from "./discover.js";
 import { authorizeTask, type DiscoveryPolicy } from "./discovery-policy.js";
-import { executePlan, runShellCommand, type AgentRun, type CommandResult } from "./executor.js";
+import { executeLegacyImplementation, isImplementationUnconfirmed } from "./candidate-execution.js";
+import { runShellCommand, type AgentRun, type CommandResult } from "./executor.js";
 import { deriveIterationFeedback, issueFingerprint, withIterationFeedback } from "./feedback.js";
 import { evaluateIteration } from "./iterator.js";
 import { writeLessonDraft, type LessonDraftConfig } from "./lesson-draft.js";
@@ -116,6 +118,7 @@ export interface LoopRunOptions {
    * the gate is never allowed to crash the engine.
    */
   policyGate?: PolicyGate;
+  lifecycleLease?: LoopLifecycleAdmission;
 }
 
 /**
@@ -210,11 +213,17 @@ export interface LoopRunCyclesResult {
 
 export class LoopEngine {
   private seq = 0;
+  private implementationUnconfirmed = false;
+  private lifecycleEffectsStarted = false;
   private readonly events: LoopEvent[] = [];
 
   constructor(private readonly options: LoopRunOptions = {}) {}
 
   async runCycles(options: LoopRunCyclesOptions = {}): Promise<LoopRunCyclesResult> {
+    return this.withLifecycleLease(() => this.runCyclesAdmitted(options));
+  }
+
+  private async runCyclesAdmitted(options: LoopRunCyclesOptions): Promise<LoopRunCyclesResult> {
     const cycles = options.cycles ?? 1;
     const intervalMs = options.intervalMs ?? 0;
     if (!Number.isInteger(cycles) || cycles < 1) {
@@ -261,7 +270,7 @@ export class LoopEngine {
         estimated_cost_usd: result.state.key_metrics?.cost_consumed ?? 0,
         no_progress_cycles: noProgressCycles,
       });
-      if (budgetStatus?.exceeded === true) break;
+      if (budgetStatus?.exceeded === true || this.implementationUnconfirmed) break;
       if (result.goal?.pass === true) break;
       if (options.stopWhenIdle === true && result.executedTaskCount === 0) break;
       if (cycle < cycles && intervalMs > 0) await sleep(intervalMs);
@@ -294,6 +303,24 @@ export class LoopEngine {
   }
 
   async runOnce(): Promise<LoopRunResult> {
+    return this.withLifecycleLease(() => this.runOnceAdmitted());
+  }
+
+  private async withLifecycleLease<T>(run: () => Promise<T>): Promise<T> {
+    const lease = await this.options.lifecycleLease?.({ workspacePath: this.options.workspacePath ?? process.cwd() });
+    this.lifecycleEffectsStarted = false;
+    let settled = false;
+    try {
+      const result = await run();
+      settled = true;
+      return result;
+    } finally {
+      if (this.implementationUnconfirmed || (!settled && this.lifecycleEffectsStarted)) lease?.retain("execution or external stop unconfirmed");
+      else await lease?.release();
+    }
+  }
+
+  private async runOnceAdmitted(): Promise<LoopRunResult> {
     const eventStartIndex = this.events.length;
     // Entry consult (R2.2): refuse before ANY discovery/execution work. Covers
     // the daemon session scheduler too, which drives each tick via runOnce().
@@ -447,7 +474,17 @@ export class LoopEngine {
     const existingState = await readLoopState(jsonPath);
     const loopId = existingState?.loop_id ?? this.options.loopId ?? `loop_${randomUUID()}`;
     const state = existingState ?? createInitialLoopState(loopId);
+    this.implementationUnconfirmed ||= state.completed_tasks.some((task) =>
+      task.implementation_unconfirmed === true);
     const decisions = [...(state.decisions ?? [])];
+    if (this.implementationUnconfirmed) {
+      if (lifecycle.emitStopped) this.emit(loopId, "loop.stopped", completionStopPayload(state, 0));
+      return {
+        loop_id: loopId, state, completedTasks: [], events: this.events.slice(eventStartIndex),
+        jsonPath, markdownPath: markdownPath ?? join(dirname(jsonPath), "STATE.md"),
+        discoveredTaskCount: 0, executedTaskCount: 0, skippedTaskCount: 0,
+      };
+    }
 
     if (lifecycle.emitStarted) this.emit(loopId, "loop.started", { workspace_path: workspacePath });
     if (this.options.knowledge !== undefined) {
@@ -487,9 +524,11 @@ export class LoopEngine {
 
     for (const task of tasks) {
       pending.shift();
+      this.lifecycleEffectsStarted = true;
       const taskResult = await this.runTask(loopId, workspacePath, task, completed);
       completed.push(taskResult.completedTask);
       decisions.push(...taskResult.decisions);
+      if (this.implementationUnconfirmed) break;
       if (this.options.archiveCompletedTasks === true) {
         const archive = await archiveCompletedTaskFile(task, taskResult.completedTask, workspacePath);
         this.emit(loopId, "loop.queue.archived", {
@@ -506,7 +545,7 @@ export class LoopEngine {
     }
     await this.cleanupLoopWorktrees(loopId, workspacePath, cycle, "after_cycle", decisions);
 
-    const goal = await this.checkGoal(loopId, workspacePath);
+    const goal = this.implementationUnconfirmed ? undefined : await this.checkGoal(loopId, workspacePath);
     if (goal !== undefined) {
       decisions.push(`goal: ${goal.pass ? "passed" : "not met"} - ${goal.summary}`);
     }
@@ -541,17 +580,18 @@ export class LoopEngine {
       ...(this.options.knowledge !== undefined ? { knowledge: this.options.knowledge } : {}),
     });
 
+    const executedTaskCount = completed.length - previousCompletedCount;
     const paths = await writeLoopState(jsonPath, nextState, { ...(markdownPath !== undefined ? { markdownPath } : {}) });
     this.emit(loopId, "loop.state.written", { jsonPath: paths.jsonPath, markdownPath: paths.markdownPath });
     this.emit(loopId, "loop.cycle.completed", {
       cycle,
-      task_count: tasks.length,
+      task_count: executedTaskCount,
       discovered_task_count: discoveredTasks.length,
       skipped_task_count: skippedTaskCount,
       duration_ms: Date.now() - startedAt,
     });
     if (lifecycle.emitStopped) {
-      this.emit(loopId, "loop.stopped", completionStopPayload(nextState, tasks.length, goal));
+      this.emit(loopId, "loop.stopped", completionStopPayload(nextState, executedTaskCount, goal));
     }
 
     return {
@@ -562,7 +602,7 @@ export class LoopEngine {
       jsonPath: paths.jsonPath,
       markdownPath: paths.markdownPath,
       discoveredTaskCount: discoveredTasks.length,
-      executedTaskCount: tasks.length,
+      executedTaskCount,
       skippedTaskCount,
       ...(goal !== undefined ? { goal } : {}),
     };
@@ -746,7 +786,7 @@ export class LoopEngine {
         });
         decisions.push(`${task.task_id}: selected ${plan.agent_id} - ${agentSelection.reason}`);
 
-        finalRun = await executePlan(plan, {
+        finalRun = await executeLegacyImplementation(plan, {
           workspacePath: runWorkspacePath,
           sessionId: loopId,
           ...(this.options.adapters !== undefined ? { adapters: this.options.adapters } : {}),
@@ -773,6 +813,26 @@ export class LoopEngine {
           ...(worktree !== undefined ? { worktree_path: worktree.worktreePath } : {}),
           iteration,
         });
+
+        if (isImplementationUnconfirmed(finalRun)) {
+          this.implementationUnconfirmed = true;
+          preserveWorktreeBranch = worktree !== undefined;
+          outcome = "escalated";
+          // Preserve structured stop evidence in the existing summary audit.
+          // This is diagnostic evidence, not a graph ledger or a resume permit.
+          finalRun.summary = `execution_unconfirmed: ${JSON.stringify({
+            failure_code: finalRun.failure_code,
+            cancellation: finalRun.cancellation,
+            command_termination: finalRun.command_results.map((result) => result.termination),
+            summary: finalRun.summary,
+          })}`;
+          decisions.push(`${task.task_id}: ${finalRun.summary}; stopped for reconciliation; workspace retained`);
+          this.emit(loopId, "loop.escalated", {
+            task_id: task.task_id, reason: finalRun.summary, iteration,
+            max_iterations: maxIterations, escalate_to: "hermes", agent_id: finalRun.agent_id,
+          });
+          break;
+        }
 
         const verifierAgentIds = this.options.verifierAgentIds ?? [];
         if (
@@ -937,7 +997,7 @@ export class LoopEngine {
           : `${task.task_id}: isolated worktree had no git changes to merge`);
       }
     } finally {
-      if (worktree !== undefined) {
+      if (worktree !== undefined && !this.implementationUnconfirmed) {
         await cleanupWorktree(worktree, { removeBranch: !preserveWorktreeBranch });
         this.emit(loopId, "loop.worktree.cleaned", {
           task_id: task.task_id,
@@ -954,6 +1014,7 @@ export class LoopEngine {
         capability: task.capability,
         outcome,
         iterations,
+        ...(this.implementationUnconfirmed ? { implementation_unconfirmed: true } : {}),
         agent_id: finalRun?.agent_id ?? "local-noop",
         duration_ms: Date.now() - started,
         ...(finalRun !== null ? {
@@ -1174,6 +1235,7 @@ export class LoopEngine {
     const command = this.options.goalCommand;
     if (command === undefined || command.trim() === "") return undefined;
 
+    this.lifecycleEffectsStarted = true;
     const result = await runShellCommand(command, {
       cwd: workspacePath,
       timeoutMs: this.options.commandTimeoutMs ?? 120_000,
@@ -1203,7 +1265,8 @@ export class LoopEngine {
     phase: "before_cycle" | "after_cycle",
     decisions: string[],
   ): Promise<void> {
-    if (this.options.useWorktree !== true) return;
+    if (this.options.useWorktree !== true || this.implementationUnconfirmed) return;
+    this.lifecycleEffectsStarted = true;
     const result = await cleanupOrphanedWorktrees(workspacePath, {
       branchPrefix: loopWorktreeBranchPrefix(loopId),
       ...(this.options.worktreeRoot !== undefined ? { rootPath: this.options.worktreeRoot } : {}),
@@ -1272,6 +1335,9 @@ function completionStopPayload(
   executedTaskCount: number,
   goal?: LoopGoalResult,
 ): Record<string, unknown> {
+  if (state.completed_tasks.some((task) => task.implementation_unconfirmed === true)) {
+    return { reason_code: "execution_unconfirmed", reason: "Implementation stop is unconfirmed; reconciliation required before further execution or workspace cleanup" };
+  }
   if (goal?.pass === true) return { reason_code: "goal_passed", reason: "goal command passed" };
   if (state.wait_reason !== undefined) {
     const waiting = state.wait_reason;

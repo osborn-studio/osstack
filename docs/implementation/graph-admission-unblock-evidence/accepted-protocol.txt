@@ -1,0 +1,20 @@
+$ vitest run --maxWorkers=1 --reporter=default --reporter=json --outputFile=/Volumes/AIMATE_WORK/tmp/g25-claude-unblock/protocol-tests.json
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/protocol
+
+ ✓ src/graph.test.ts (62 tests) 22ms
+ ✓ src/protocol.test.ts (45 tests) 9ms
+ ✓ src/graph-checkpoint.test.ts (2 tests) 10ms
+ ✓ src/session-continuation-grant.test.ts (52 tests) 7ms
+ ✓ src/graph-review.test.ts (12 tests) 5ms
+ ✓ src/autonomy.test.ts (11 tests) 5ms
+ ✓ src/schemas.test.ts (24 tests) 5ms
+ ✓ src/graph-worker.test.ts (5 tests) 3ms
+ ✓ src/session-continuation.test.ts (7 tests) 3ms
+
+ Test Files  9 passed (9)
+      Tests  220 passed (220)
+   Start at  22:54:05
+   Duration  1.12s (transform 90ms, setup 0ms, collect 204ms, tests 69ms, environment 1ms, prepare 212ms)
+
+JSON report written to /Volumes/AIMATE_WORK/tmp/g25-claude-unblock/protocol-tests.json

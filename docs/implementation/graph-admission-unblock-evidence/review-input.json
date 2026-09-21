@@ -1,0 +1,6 @@
+{
+  "promptPath": "/Volumes/AIMATE_WORK/tmp/g25-claude-unblock/review-prompt.txt",
+  "promptSha256": "d703a5ef9c602cfecd17bf4fd1fdc391c08f23927721130f047fb86f3b63b1df",
+  "baseCommit": "b6f8ac8",
+  "note": "Code-review prompt retained locally. Consult/focused prompt temp files were overwritten during response extraction; their exact raw result objects and model usage are preserved. No claim of preserving those two input prompts."
+}

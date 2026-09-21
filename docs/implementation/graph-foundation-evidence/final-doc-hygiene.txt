@@ -1,0 +1,9 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/governance
+
+ ✓ src/knowledge-hygiene/osstack-config.test.ts (1 test) 55ms
+
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+   Start at  09:16:37
+   Duration  348ms (transform 102ms, setup 0ms, collect 142ms, tests 55ms, environment 0ms, prepare 38ms)

@@ -1,0 +1,107 @@
+{
+  "taskReturns": [
+    {
+      "checkpoint": {
+        "configurable": {
+          "checkpoint_id": "1f1aff32-c1e4-6110-ffff-909c349fe79a",
+          "checkpoint_ns": "",
+          "thread_id": "c2"
+        }
+      },
+      "taskId": "6e4e636d-97c6-57b4-9fd8-20162380d648",
+      "value": {
+        "results": [
+          "completed"
+        ]
+      }
+    }
+  ],
+  "counts": {
+    "completedBody": 1,
+    "completedWrapper": 1,
+    "flakyAttempts": 1,
+    "recoveredBody": 1
+  },
+  "effects": {
+    "completed": {
+      "attempt": 1,
+      "effect": "completed",
+      "result": {
+        "results": [
+          "completed"
+        ]
+      },
+      "run": "functional-async-timeout",
+      "status": "confirmed"
+    },
+    "recovered": {
+      "attempt": 1,
+      "effect": "recovered",
+      "result": {
+        "results": [
+          "recovered"
+        ]
+      },
+      "run": "functional-async-timeout",
+      "status": "confirmed"
+    }
+  },
+  "tuple": {
+    "checkpoint": {
+      "channel_values": {
+        "__pregel_tasks": [],
+        "__start__": {
+          "results": []
+        }
+      },
+      "channel_versions": {
+        "__start__": 1
+      },
+      "id": "1f1aff32-c1e4-6110-ffff-909c349fe79a",
+      "ts": "2026-09-14T04:17:17.729Z",
+      "v": 4,
+      "versions_seen": {
+        "__input__": {}
+      }
+    },
+    "config": {
+      "configurable": {
+        "checkpoint_id": "1f1aff32-c1e4-6110-ffff-909c349fe79a",
+        "checkpoint_ns": "",
+        "thread_id": "c2"
+      }
+    },
+    "metadata": {
+      "parents": {},
+      "source": "input",
+      "step": -1
+    },
+    "pendingWrites": [
+      [
+        "6e4e636d-97c6-57b4-9fd8-20162380d648",
+        "__return__",
+        {
+          "results": [
+            "completed"
+          ]
+        }
+      ],
+      [
+        "e57299ab-b2b0-5e34-b393-2bcf58747ba5",
+        "__error__",
+        {
+          "message": "Node \"flaky\" exceeded its run timeout of 80ms (elapsed: 81ms).",
+          "name": "NodeTimeoutError"
+        }
+      ],
+      [
+        "f16c3bca-2be8-50af-913f-a3ecb3a0f915",
+        "__error__",
+        {
+          "message": "This operation was aborted",
+          "name": "AbortError"
+        }
+      ]
+    ]
+  }
+}

@@ -1,0 +1,10 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/core
+
+ ✓ src/state/graph-recovery.test.ts (10 tests) 292ms
+
+ Test Files  1 passed (1)
+      Tests  10 passed (10)
+   Start at  07:36:44
+   Duration  888ms (transform 232ms, setup 0ms, collect 352ms, tests 292ms, environment 0ms, prepare 57ms)
+

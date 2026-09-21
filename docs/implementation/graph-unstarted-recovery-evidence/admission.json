@@ -1,0 +1,76 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-09-16",
+  "scope": "G25 first-generation durable no-child takeover only; no proof for previously running executors",
+  "status": "passed_bounded_slice",
+  "taskStatus": "in_progress",
+  "completedTaskCount": 25,
+  "totalTaskCount": 30,
+  "productionReady": false,
+  "acceptedCodeCommit": "e94dfda29c2659a3c5720a6a6b4323c5189ac48a",
+  "platform": "darwin",
+  "node": "v26.5.0",
+  "loop": {
+    "id": "G25-unstarted-recovery-acceptance-1",
+    "executed": 1,
+    "skipped": 0,
+    "outcome": "success",
+    "tests": 3289,
+    "packages": 22,
+    "verifiersPassed": 7
+  },
+  "matrix": {
+    "seed": 250916,
+    "repeat": 2,
+    "testExecutions": 402,
+    "runs": [
+      {
+        "package": "loop",
+        "iteration": 0,
+        "tests": 112,
+        "passed": true
+      },
+      {
+        "package": "core",
+        "iteration": 0,
+        "tests": 65,
+        "passed": true
+      },
+      {
+        "package": "cli",
+        "iteration": 0,
+        "tests": 221,
+        "passed": true
+      },
+      {
+        "package": "cli",
+        "iteration": 1,
+        "tests": 4,
+        "passed": true
+      }
+    ],
+    "sourceUnchanged": true,
+    "artifactsUnchanged": true
+  },
+  "audit": {
+    "verdict": "approved",
+    "runtimeIdentity": {
+      "adapter_id": "kimi-code",
+      "adapter_version": "0.29.1",
+      "auth_mode": "subprocess/login-reuse",
+      "provider_id": "kimi",
+      "model_id": "kimi-code/k3",
+      "agent_profile": "osstack-reviewer",
+      "evidence_source": "reported",
+      "binary_path_sha256": "7e5d172f83fc7d8ca22387234b5a9a4d9412aa1a27c71ee90be35db29dfa7dd2"
+    },
+    "blockingFindings": 0
+  },
+  "limitations": [
+    "Host-only API, first generation and no admitted effects/scheduling state only",
+    "Previously running opaque executors and detached descendants still unknown/held",
+    "No resource release or public generic resume",
+    "Darwin only; real Linux and stronger macOS process identity pending",
+    "Artifact lock recovery and full F01-F12 subcase counts pending"
+  ]
+}

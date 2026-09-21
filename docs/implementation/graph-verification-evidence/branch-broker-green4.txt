@@ -1,0 +1,11 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+osstack: retaining write lease graph-action:071586359e71ce42c8582d9b4711f14b08203c7851a6c1cbde74e207bc008a63: Error: external stop unconfirmed
+ ✓ src/graph-branch-broker.test.ts (7 tests) 464ms
+
+ Test Files  1 passed (1)
+      Tests  7 passed (7)
+   Start at  18:20:28
+   Duration  1.81s (transform 678ms, setup 12ms, collect 1.17s, tests 464ms, environment 0ms, prepare 44ms)
+

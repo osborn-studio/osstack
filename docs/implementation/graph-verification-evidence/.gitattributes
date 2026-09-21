@@ -1,0 +1,6 @@
+# Preserve raw tool logs byte-for-byte, as in C5 evidence.
+*.txt -whitespace
+*.log -whitespace
+*.jsonl -whitespace
+*.stderr -whitespace
+*-STATE.md -whitespace

@@ -1,0 +1,10 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+ ✓ src/graph-reconciler.test.ts (19 tests) 464ms
+
+ Test Files  1 passed (1)
+      Tests  19 passed (19)
+   Start at  07:43:31
+   Duration  1.17s (transform 269ms, setup 10ms, collect 463ms, tests 464ms, environment 0ms, prepare 33ms)
+

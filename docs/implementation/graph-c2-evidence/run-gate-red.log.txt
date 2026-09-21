@@ -1,0 +1,37 @@
+✔ only an independently confirmed matching result permits replay (0.744417ms)
+✔ receipt for another run, effect or attempt does not authorize replay (0.079ms)
+✔ malformed result is refused and returned data has no shared references (0.072458ms)
+✖ unresolved effect blocks new effects across the fixture run (0.607541ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 3
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 44.259416
+
+✖ failing tests:
+
+test at scripts/fixtures/graph-c2-ledger.test.mjs:24:1
+✖ unresolved effect blocks new effects across the fixture run (0.607541ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /reconcile/. Input:
+
+  'TypeError: assertCanStart is not a function'
+
+      at TestContext.<anonymous> (file:///Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/scripts/fixtures/graph-c2-ledger.test.mjs:27:12)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: TypeError: assertCanStart is not a function
+        at file:///Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/scripts/fixtures/graph-c2-ledger.test.mjs:27:25
+        at getActual (node:assert:580:5)
+        at strict.throws (node:assert:728:24)
+        at TestContext.<anonymous> (file:///Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/scripts/fixtures/graph-c2-ledger.test.mjs:27:12)
+        at async Test.run (node:internal/test_runner/test:1389:7)
+        at async Test.processPendingSubtests (node:internal/test_runner/test:960:7),
+    expected: /reconcile/,
+    operator: 'throws',
+    diff: 'simple'
+  }

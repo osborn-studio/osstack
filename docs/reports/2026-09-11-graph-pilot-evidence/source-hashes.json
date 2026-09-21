@@ -1,0 +1,21 @@
+{
+  "implementation_commit": "b3ee430",
+  "files": [
+    {
+      "path": "packages/cli/src/graph-command.ts",
+      "sha256": "486a8dfa8303f6daa8824c85c739337e7fcd6c078dc27f29f9ed211662bdd98b"
+    },
+    {
+      "path": "packages/cli/src/graph-command.test.ts",
+      "sha256": "13851116def236a0e66a879b5a25d8c333c32e6e4f45b7b7f83f7b55ad639a12"
+    },
+    {
+      "path": "packages/cli/src/bin.ts",
+      "sha256": "3b9c9e847d5f97f8a31612eb516c71fc58dbdc7509eb2aa3122a29334ab82aab"
+    },
+    {
+      "path": "scripts/verify-graph-pilot.mjs",
+      "sha256": "93670308db45b5c1cc7aa3200bc4a9fe79f5f39569ed84dbd8d695aa2c77f1db"
+    }
+  ]
+}

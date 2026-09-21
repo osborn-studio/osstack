@@ -1,0 +1,18 @@
+$ vitest run src/graph-verification.test.ts -t 'contained|substitution' --maxWorkers=1
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+osstack: retaining write lease graph-action:2d829d70c9d02e6dd1a894b560c8512443dc6754eb825d0c12585cdf7a4eed7e: Error: adapter result or execution unconfirmed
+ ✓ src/graph-verification.test.ts (35 tests | 29 skipped) 14988ms
+   ✓ binds actual contained tests exit 0 to candidate/image/ledger without POSIX evidence  2726ms
+   ✓ binds actual contained tests exit 1 to candidate/image/ledger without POSIX evidence  2634ms
+   ✓ binds actual contained tests exit 42 to candidate/image/ledger without POSIX evidence  2750ms
+   ✓ binds actual contained tests exit 7 to candidate/image/ledger without POSIX evidence  2662ms
+   ✓ rejects cross-candidate, image, generation, invocation and container receipt substitution  2686ms
+   ✓ retains admission and seals replay after contained DELETE acknowledgement loss  1529ms
+
+ Test Files  1 passed (1)
+      Tests  6 passed | 29 skipped (35)
+   Start at  19:25:18
+   Duration  15.79s (transform 417ms, setup 7ms, collect 691ms, tests 14.99s, environment 0ms, prepare 26ms)
+

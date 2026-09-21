@@ -1,0 +1,39 @@
+$ vitest run -- src/graph-worker.test.ts
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/protocol
+
+ ✓ src/session-continuation.test.ts (7 tests) 4ms
+ ✓ src/graph-review.test.ts (12 tests) 9ms
+ ✓ src/graph-checkpoint.test.ts (2 tests) 10ms
+ ✓ src/autonomy.test.ts (11 tests) 8ms
+ ✓ src/session-continuation-grant.test.ts (52 tests) 23ms
+ ✓ src/graph.test.ts (58 tests) 42ms
+ ✓ src/protocol.test.ts (45 tests) 12ms
+ ✓ src/schemas.test.ts (23 tests) 4ms
+
+⎯⎯⎯⎯⎯⎯ Failed Suites 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/graph-worker.test.ts [ src/graph-worker.test.ts ]
+Error: Cannot find module './graph-worker.js' imported from '/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/protocol/src/graph-worker.test.ts'
+ ❯ src/graph-worker.test.ts:3:1
+      1| import { PassThrough } from 'node:stream';
+      2| import { expect, it, vi } from 'vitest';
+      3| import { GraphWorkerIdentity, WorkerFrameDecoder, WorkerFramedTranspor…
+       | ^
+      4| 
+      5| it('rejects an oversize header before allocating body or parsing JSON'…
+
+Caused by: Error: Failed to load url ./graph-worker.js (resolved id: ./graph-worker.js) in /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/protocol/src/graph-worker.test.ts. Does the file exist?
+ ❯ loadAndTransform ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:35835:17
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 8 passed (9)
+      Tests  210 passed (210)
+   Start at  07:27:45
+   Duration  354ms (transform 434ms, setup 0ms, collect 812ms, tests 113ms, environment 1ms, prepare 434ms)
+
+/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/protocol:
+[ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL] @osstack/protocol@0.15.0 test: `vitest run -- src/graph-worker.test.ts`
+Exit status 1

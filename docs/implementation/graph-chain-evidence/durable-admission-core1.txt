@@ -1,0 +1,98 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/core
+
+ ❯ src/state/graph-recovery.test.ts (22 tests | 3 failed) 886ms
+   ✓ trusted graph recovery > settles original effect after expiry, persists restart replay and rejects changed proof/outcome 58ms
+   ✓ trusted graph recovery > retains observed maxima, charges settled maxima, preserves unknown evidence history 30ms
+   ✓ trusted graph recovery > rejects forged/stale snapshots and rolls back journal, outcome and revision on failure 38ms
+   ✓ trusted graph recovery > requires exact scope, program, owner, generation, action generation and action digest 29ms
+   × trusted graph recovery > not_applied only enables later explicit retry, pending cancellation forbids retry/resume 31ms
+     → expected [Function] to throw error matching /CANCEL/ but got 'ADMISSION_RELEASE_PENDING'
+   ✓ trusted graph recovery > projects preworker cancellation and seals terminal runs; refuses cancellation with independent unresolved action 26ms
+   ✓ trusted graph recovery > keeps confirmed result and capacity blocked for bad usage -1 28ms
+   ✓ trusted graph recovery > keeps confirmed result and capacity blocked for bad usage NaN 25ms
+   ✓ trusted graph recovery > keeps confirmed result and capacity blocked for bad usage 1.5 36ms
+   ✓ trusted graph recovery > keeps confirmed result and capacity blocked for bad usage 9007199254740992 40ms
+   ✓ trusted graph recovery > settles an older effect only with current admin fencing and the exact original worker receipt 42ms
+   ✓ trusted graph recovery > retains confirmed evidence and rejects contradictory trusted outcomes even with a new receipt 35ms
+   ✓ trusted graph recovery > does not allocate or invoke safe retries and keeps failed reservation charged 42ms
+   × trusted graph recovery > admin takeover requires settled independent actions and never bypasses pending cancellation 51ms
+     → ADMISSION_RELEASE_PENDING
+   ✓ trusted graph recovery > rejects action drift without a revision bump and wrong result kinds 45ms
+   ✓ trusted graph recovery > rejects a reused receipt across effects, future proof time and invalid synchronous verifier returns 51ms
+   × trusted graph recovery > rejects terminal cancellation while another independent action is unresolved 46ms
+     → expected [Function] to throw error matching /UNRESOLVED_ACTION/ but got 'ADMISSION_RELEASE_PENDING'
+   ✓ trusted graph recovery > does not turn an action pending cancellation into a retryable failure 52ms
+   ✓ trusted graph recovery > checks current time even for an exact durable replay 34ms
+   ✓ trusted graph recovery > lets the trusted verifier bind the exact decision, result and receipt before settlement 52ms
+   ✓ recovers an authenticated no-child spawn failure without fabricating a stopped-process receipt 50ms
+   ✓ refuses a no-child proof when that generation has admitted actions 44ms
+ ✓ src/state/graph-runs.test.ts (39 tests) 2094ms
+   ✓ graph run storage > serializes independent SQLite workers: same-request  508ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/state/graph-recovery.test.ts > trusted graph recovery > not_applied only enables later explicit retry, pending cancellation forbids retry/resume
+AssertionError: expected [Function] to throw error matching /CANCEL/ but got 'ADMISSION_RELEASE_PENDING'
+
+- Expected: 
+/CANCEL/
+
++ Received: 
+"ADMISSION_RELEASE_PENDING"
+
+ ❯ src/state/graph-recovery.test.ts:95:114
+     93|     expect(() => actions.retry(fence(130), key)).toThrow(/RETRY_NOT_SA…
+     94|     const s = recovery.snapshot(fence(130));
+     95|     expect(() => recovery.commit(s, { kind: "project", receiptId: "res…
+       |                                                                                                                  ^
+     96|   });
+     97|   it("projects preworker cancellation and seals terminal runs; refuses…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯
+
+ FAIL  src/state/graph-recovery.test.ts > trusted graph recovery > admin takeover requires settled independent actions and never bypasses pending cancellation
+Error: ADMISSION_RELEASE_PENDING
+ ❯ fail src/state/graph-recovery.ts:47:47
+     45|   return `{${Object.keys(r).sort().map((k) => `${JSON.stringify(k)}:${…
+     46| }
+     47| const fail = (code: string): never => { throw new Error(code); };
+       |                                               ^
+     48| const hash = (v: unknown) => createHash("sha256").update(canonical(v))…
+     49| export const graphRecoveryInterruptId = (effectKey: string): string =>…
+ ❯ sqliteTransaction.<anonymous> src/state/graph-recovery.ts:222:107
+ ❯ sqliteTransaction ../../node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/lib/methods/transaction.js:65:24
+ ❯ GraphRecoveryStore.transaction src/state/graph-recovery.ts:83:36
+ ❯ GraphRecoveryStore.commit src/state/graph-recovery.ts:198:17
+ ❯ src/state/graph-recovery.test.ts:147:20
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/3]⎯
+
+ FAIL  src/state/graph-recovery.test.ts > trusted graph recovery > rejects terminal cancellation while another independent action is unresolved
+AssertionError: expected [Function] to throw error matching /UNRESOLVED_ACTION/ but got 'ADMISSION_RELEASE_PENDING'
+
+- Expected: 
+/UNRESOLVED_ACTION/
+
++ Received: 
+"ADMISSION_RELEASE_PENDING"
+
+ ❯ src/state/graph-recovery.test.ts:177:120
+    175|     commit();
+    176|     const s = recovery.snapshot(fence(130));
+    177|     expect(() => recovery.commit(s, { kind: "project", receiptId: "can…
+       |                                                                                                                        ^
+    178|     expect(runs.get(scope, run.graphRunId)?.status).not.toBe("cancelle…
+    179|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/3]⎯
+
+
+ Test Files  1 failed | 1 passed (2)
+      Tests  3 failed | 58 passed (61)
+   Start at  08:24:27
+   Duration  2.78s (transform 278ms, setup 0ms, collect 670ms, tests 2.98s, environment 0ms, prepare 113ms)
+
+undefined
+/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/core:
+[ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL] Command failed with exit code 1: vitest run src/state/graph-recovery.test.ts src/state/graph-runs.test.ts

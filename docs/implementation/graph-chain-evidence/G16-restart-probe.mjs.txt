@@ -1,0 +1,23 @@
+import { execFileSync } from 'node:child_process';
+import { mkdtemp, mkdir, readFile, writeFile, rm } from 'node:fs/promises';
+import { join } from 'node:path';
+import assert from 'node:assert/strict';
+import { createWorktree, cleanupGraphWorktree } from '/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/agents/dist/worktree.js';
+const modulePath = '/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/agents/dist/worktree.js';
+const root = await mkdtemp('/Volumes/AIMATE_WORK/tmp/gc5/G16-restart-');
+const repo = join(root, 'repo'); await mkdir(repo);
+const git = args => execFileSync('git', args, { cwd: repo, env: { ...process.env, GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOSYSTEM: '1' }, encoding: 'utf8' });
+try {
+  git(['init', '-b', 'main']); await writeFile(join(repo, 'file'), 'base'); git(['add', '.']);
+  git(['-c', 'user.name=test', '-c', 'user.email=test@invalid', 'commit', '-m', 'base']);
+  const handle = await createWorktree({ repoPath: repo, runId: 'graph', rootPath: join(root, 'worktrees'), graphRetention: { runId: 'graph', generation: 1, scopeKey: 'tenant/workspace', workspaceLeaseRef: 'lease-1' } });
+  await writeFile(join(handle.worktreePath, 'unexported'), 'preserve');
+  const source = `import { cleanupWorktree, cleanupOrphanedWorktrees } from ${JSON.stringify(modulePath)}; const h = JSON.parse(process.argv[1]); await cleanupWorktree(h); console.log(JSON.stringify(await cleanupOrphanedWorktrees(h.repoPath, {rootPath:h.rootPath})));`;
+  const output = execFileSync(process.execPath, ['--input-type=module', '-e', source, JSON.stringify(handle)], { encoding: 'utf8', env: process.env });
+  assert.deepEqual(JSON.parse(output), { removed: [] });
+  assert.equal(await readFile(join(handle.worktreePath, 'unexported'), 'utf8'), 'preserve');
+  let proofs = 0;
+  await cleanupGraphWorktree(handle, { artifactDigest: 'a'.repeat(64), verifySafe: async record => { assert.equal(record.workspaceLeaseRef, 'lease-1'); proofs++; } });
+  await assert.rejects(readFile(join(handle.worktreePath, 'unexported')));
+  console.log(JSON.stringify({ freshChildProcess: true, genericCleanupRetained: true, prefixCleanupRetained: true, explicitVerifiedCleanupRemoved: true, proofChecks: proofs }));
+} finally { await rm(root, { recursive: true, force: true }); }

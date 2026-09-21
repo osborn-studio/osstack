@@ -1,0 +1,34 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+ ❯ src/graph-host-config.test.ts (3 tests | 1 failed) 7ms
+   ✓ requires owner-only regular config and rejects symlink aliases 2ms
+   × honors expiry, lets the original owner observe/cancel and accepts a same-binding grant renewal 3ms
+     → GRANT_EXPIRED
+   ✓ does not accept renewed grants for another authorization domain or missing operation 1ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/graph-host-config.test.ts > honors expiry, lets the original owner observe/cancel and accepts a same-binding grant renewal
+GraphContractError: GRANT_EXPIRED
+ ❯ authorize src/graph-rpc.ts:245:13
+    243|     if (bindingDigest(fresh) !== digest || !same(fresh.grant.scope, co…
+    244|       || !fresh.grant.operations.includes(operation) || ((operation ==…
+    245|       throw new GraphContractError('GRANT_EXPIRED');
+       |             ^
+    246|   };
+    247|   authorize();
+ ❯ loadLocalGraphRegistration src/graph-rpc.ts:247:3
+ ❯ src/graph-host-config.test.ts:34:21
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 2 passed (3)
+   Start at  18:27:12
+   Duration  842ms (transform 440ms, setup 8ms, collect 724ms, tests 7ms, environment 0ms, prepare 31ms)
+
+undefined
+/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli:
+[ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL] Command failed with exit code 1: vitest run src/graph-host-config.test.ts '--maxWorkers=1'

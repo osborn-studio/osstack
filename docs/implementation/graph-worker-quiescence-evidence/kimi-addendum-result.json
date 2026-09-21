@@ -1,0 +1,113 @@
+[
+  {
+    "event_id": "kimi-addendum:0",
+    "seq": 0,
+    "run_id": "kimi-addendum",
+    "session_id": "kimi-addendum",
+    "created_at": 1789691508.963,
+    "terminal": false,
+    "type": "run.started",
+    "payload": {
+      "status": "running",
+      "controls": {
+        "cancel": true,
+        "approval_pending": false,
+        "clarify_pending": false,
+        "queue": false,
+        "goal": false
+      }
+    }
+  },
+  {
+    "event_id": "kimi-addendum:1",
+    "seq": 1,
+    "run_id": "kimi-addendum",
+    "session_id": "kimi-addendum",
+    "created_at": 1789691508.966,
+    "terminal": false,
+    "type": "progress",
+    "payload": {
+      "phase": "kimi.review.start",
+      "detail": "Starting bounded no-tool Kimi review"
+    }
+  },
+  {
+    "event_id": "kimi-addendum:2",
+    "seq": 2,
+    "run_id": "kimi-addendum",
+    "session_id": "kimi-addendum",
+    "created_at": 1789691584.555,
+    "terminal": false,
+    "type": "token.delta",
+    "payload": {
+      "message_id": "kimi-addendum:kimi-review",
+      "delta": "# Review\n\n**Subject:** `kimi-addendum` — test-only update in `packages/cli/src/graph-delivery-adversarial.test.ts` for the denied-preparation scenario.\n\n## Contract assessment\n\nThe changed expectation is consistent with the new complete-inventory semantics visible in the supplied evidence:\n\n- `GraphRecoveryStore.inventory()` now includes in `requiredEffectKeys` any action whose admission row is **missing**, even if the action itself settled (`confirmed`/`failed`). A `failed` action row is explicitly not treated as a durable no-start/stop receipt.\n- In `GraphDelivery.run()`, the non-repair terminal path throws `QUIESCENCE_REQUIRED` when `inventory.requiredEffectKeys.length > 0`, and the catch block conservatively projects `reconciliation_required` and returns `{ kind: 'reconcile', reason: String(error) }` whenever the inventory is unknown/non-empty. An unreadable inventory is also treated as non-quiescent (`inventoryUnknown = true` on catch).\n\nIn the fixture, the retry-2 `prepare_review` admission acquire throws, so no hold row exists for that slot. The read-only inventory cannot prove the denied preparation never physically started, so refusing to project `failed`/stop and instead requiring reconciliation is the fail-closed direction. Nothing in the new assertion permits `ready`, takeover, release, or replay; `joins = 0` and `held = 0` are still asserted, and the run lands in the administratively recoverable `reconciliation_required` state rather than a terminal one.\n\n## Coverage assessment\n\nThe updated test retains meaningful real-run and persisted-state assertions: actual adapter invocation count (`reviewer = 1`), exact persisted action states (`e0.prepare_review` = `['confirmed','failed']`, `e0.tests` confirmed), join/admission counters, run status, and the route reason (`QUIESCENCE_REQUIRED`). Deterministic evidence shows the test passes against the real `GraphDelivery` path (exit 0).\n\nNo defect-hiding behavior found: the test now demands strictly *more* conservative behavior than before (reconciliation instead of a clean stop), which cannot mask an unsafe release.",
+      "content_type": "text"
+    }
+  },
+  {
+    "event_id": "kimi-addendum:3",
+    "seq": 3,
+    "run_id": "kimi-addendum",
+    "session_id": "kimi-addendum",
+    "created_at": 1789691584.558,
+    "terminal": true,
+    "type": "done",
+    "payload": {
+      "status": "completed",
+      "last_seq": 2,
+      "result_summary": "approved: 0 finding(s)",
+      "review": {
+        "schema_version": 1,
+        "verdict": "approved",
+        "risk": "read_only",
+        "markdown": "# Review\n\nThe denied-preparation test update legitimately encodes the new complete-executor-inventory contract: a settled `failed` action without a durable admission hold row is a proof obligation, so the read-only inventory cannot certify quiescence and the host correctly falls back to `reconcile`/`reconciliation_required` with reason `QUIESCENCE_REQUIRED` instead of projecting a terminal `failed`/stop. This is the fail-closed direction; it does not enable ready publication, takeover, release, or replay. Assertions remain meaningful: actual reviewer invocation count, exact persisted action states for `e0.prepare_review` (`['confirmed','failed']`) and `e0.tests`, zero joins, zero held admissions, and route reason are all still checked. Deterministic run passed.",
+        "judgments": [
+          {
+            "id": "contract",
+            "pass": true,
+            "severity": "warning",
+            "summary": "New expectation matches conservative missing-admission semantics: inventory treats the retry-2 prepare action's absent admission row as a requiredEffectKey, blocking terminal projection and forcing reconcile/QUIESCENCE_REQUIRED. No release, takeover, or replay-unsafe behavior is permitted or hidden."
+          },
+          {
+            "id": "coverage",
+            "pass": true,
+            "severity": "warning",
+            "summary": "Test retains real-run and persisted-state assertions: reviewer invoked exactly once, e0.prepare_review states ['confirmed','failed'], e0.tests confirmed, joins=0, held=0, run status reconciliation_required, route kind reconcile with QUIESCENCE_REQUIRED reason."
+          }
+        ],
+        "findings": [],
+        "recommended_actions": [],
+        "evidence_refs": [
+          "packages/cli/src/graph-delivery-adversarial.test.ts",
+          "packages/core/src/state/graph-recovery.ts",
+          "packages/cli/src/graph-delivery.ts"
+        ],
+        "runtime_identity": {
+          "adapter_id": "kimi-code",
+          "adapter_version": "0.29.1",
+          "auth_mode": "subprocess/login-reuse",
+          "provider_id": "kimi",
+          "model_id": "kimi-code/k3",
+          "agent_profile": "osstack-reviewer",
+          "evidence_source": "reported",
+          "binary_path_sha256": "7e5d172f83fc7d8ca22387234b5a9a4d9412aa1a27c71ee90be35db29dfa7dd2"
+        }
+      },
+      "evaluation_judgments": [
+        {
+          "id": "contract",
+          "pass": true,
+          "severity": "warning",
+          "summary": "New expectation matches conservative missing-admission semantics: inventory treats the retry-2 prepare action's absent admission row as a requiredEffectKey, blocking terminal projection and forcing reconcile/QUIESCENCE_REQUIRED. No release, takeover, or replay-unsafe behavior is permitted or hidden."
+        },
+        {
+          "id": "coverage",
+          "pass": true,
+          "severity": "warning",
+          "summary": "Test retains real-run and persisted-state assertions: reviewer invoked exactly once, e0.prepare_review states ['confirmed','failed'], e0.tests confirmed, joins=0, held=0, run status reconciliation_required, route kind reconcile with QUIESCENCE_REQUIRED reason."
+        }
+      ]
+    }
+  }
+]

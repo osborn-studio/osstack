@@ -1,0 +1,61 @@
+{
+  "recordedAt": "2026-09-14T14:44:08.471696+00:00",
+  "task": "G16",
+  "env": {
+    "OSSTACK_HOME": "/Volumes/AIMATE_WORK/tmp/gc5/home",
+    "TMPDIR": "/Volumes/AIMATE_WORK/tmp/gc5"
+  },
+  "checks": [
+    {
+      "name": "core artifact tests",
+      "exitCode": 0,
+      "tests": 17,
+      "log": "G16-core-acceptance-tests.log"
+    },
+    {
+      "name": "agents worktree tests",
+      "exitCode": 0,
+      "tests": 9,
+      "log": "G16-agents-final-tests.log"
+    },
+    {
+      "name": "core build",
+      "exitCode": 0,
+      "tests": null,
+      "log": "G16-core-final-build.log"
+    },
+    {
+      "name": "core typecheck",
+      "exitCode": 0,
+      "tests": null,
+      "log": "G16-core-final-typecheck.log"
+    },
+    {
+      "name": "agents build",
+      "exitCode": 0,
+      "tests": null,
+      "log": "G16-agents-final-build.log"
+    },
+    {
+      "name": "agents typecheck",
+      "exitCode": 0,
+      "tests": null,
+      "log": "G16-agents-final-typecheck.log"
+    },
+    {
+      "name": "fresh child-process retention probe",
+      "exitCode": 0,
+      "tests": null,
+      "log": "G16-restart-probe.log"
+    }
+  ],
+  "integration": "Parent owns exports, broker registration, actual G10/producers evidence resolvers and G17",
+  "unixSocketTestsRun": false,
+  "sourceFiles": [
+    "packages/core/src/graph/artifact-store.ts",
+    "packages/core/src/graph/artifact-git.ts",
+    "packages/core/src/graph/artifact-store.test.ts",
+    "packages/agents/src/worktree.ts",
+    "packages/agents/src/worktree.test.ts"
+  ]
+}

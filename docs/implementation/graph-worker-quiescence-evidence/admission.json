@@ -1,0 +1,58 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-09-17",
+  "status": "passed_bounded_slice",
+  "scope": "Durable direct Graph worker exit plus complete executor obligation inventory and transactional live delivery checks; no general supervisor-crash recovery",
+  "productionReady": false,
+  "taskStatus": "in_progress",
+  "completedTaskCount": 25,
+  "totalTaskCount": 30,
+  "acceptedCodeCommit": "138784c74caee698f0f8836cb5aa9ae9be47b869",
+  "loop": {
+    "id": "G25-durable-worker-quiescence-2",
+    "executed": 1,
+    "skipped": 0,
+    "outcome": "escalated",
+    "executionPassed": 36,
+    "executionFailed": 1,
+    "verifiersPassed": 7,
+    "failure": "Old denied-preparation test expected ordinary stop despite missing durable admission; conservative new contract updated."
+  },
+  "recheckLoop": {
+    "id": "G25-durable-worker-quiescence-recheck-1",
+    "executed": 1,
+    "skipped": 0,
+    "outcome": "success",
+    "executionTests": 37,
+    "verifiersPassed": 1
+  },
+  "matrix": {
+    "testExecutions": 512,
+    "seed": 250922,
+    "repeat": 2,
+    "sourceUnchanged": true,
+    "artifactsUnchanged": true,
+    "sourceFiles": 1071
+  },
+  "realChecks": {
+    "freshProcessExitProofSuite": 25,
+    "containedDeliverySuite": 11
+  },
+  "audits": {
+    "model": "kimi-code/k3",
+    "finalApproved": [
+      "kimi-accepted",
+      "kimi-addendum"
+    ],
+    "priorChangesRequested": "kimi-proof",
+    "intermediateApproved": "kimi-final"
+  },
+  "limitations": [
+    "Direct child exit is not descendants/external executor stop proof",
+    "Missing durable exit or admission remains an obligation",
+    "No complete all-executor recovery/settlement/release/takeover service",
+    "Cancel workspace evidence still aliases worker exit reference; takeover executor reference still uses join receipt",
+    "No Node20/22 or full Linux compatibility admission",
+    "Finite fixture adapters are not real LLM pilot"
+  ]
+}

@@ -1,0 +1,10 @@
+$ vitest run src/state/graph-recovery.test.ts --maxWorkers=1
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/core
+
+ ✓ src/state/graph-recovery.test.ts (44 tests) 947ms
+
+ Test Files  1 passed (1)
+      Tests  44 passed (44)
+   Start at  05:53:39
+   Duration  1.32s (transform 162ms, setup 0ms, collect 229ms, tests 947ms, environment 0ms, prepare 47ms)

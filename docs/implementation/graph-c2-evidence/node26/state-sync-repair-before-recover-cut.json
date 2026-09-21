@@ -1,0 +1,95 @@
+{
+  "taskReturns": [],
+  "counts": {
+    "completedBody": 1,
+    "completedWrapper": 1,
+    "flakyAttempts": 2,
+    "recoveredBody": 1
+  },
+  "effects": {
+    "completed": {
+      "attempt": 1,
+      "effect": "completed",
+      "result": {
+        "results": [
+          "completed"
+        ]
+      },
+      "run": "state-sync-repair-before",
+      "status": "confirmed"
+    },
+    "recovered": {
+      "attempt": 1,
+      "effect": "recovered",
+      "result": {
+        "results": [
+          "recovered"
+        ]
+      },
+      "run": "state-sync-repair-before",
+      "status": "confirmed"
+    }
+  },
+  "tuple": {
+    "checkpoint": {
+      "channel_values": {
+        "__pregel_tasks": [],
+        "join:completed+flaky:join": [
+          "flaky"
+        ],
+        "results": [
+          "completed",
+          "recovered"
+        ]
+      },
+      "channel_versions": {
+        "__start__": 2,
+        "branch:to:completed": 3,
+        "branch:to:flaky": 3,
+        "join:completed+flaky:join": 3,
+        "results": 3
+      },
+      "id": "1f1aff32-4769-6160-8001-0c96e6059055",
+      "ts": "2026-09-14T04:17:04.886Z",
+      "v": 4,
+      "versions_seen": {
+        "__input__": {},
+        "__interrupt__": {
+          "__start__": 2,
+          "branch:to:completed": 2,
+          "branch:to:flaky": 2,
+          "results": 2
+        },
+        "__start__": {
+          "__start__": 1
+        },
+        "completed": {
+          "branch:to:completed": 2
+        },
+        "flaky": {
+          "branch:to:flaky": 2
+        }
+      }
+    },
+    "config": {
+      "configurable": {
+        "checkpoint_id": "1f1aff32-4769-6160-8001-0c96e6059055",
+        "checkpoint_ns": "",
+        "thread_id": "c2"
+      }
+    },
+    "metadata": {
+      "parents": {},
+      "source": "loop",
+      "step": 1
+    },
+    "parentConfig": {
+      "configurable": {
+        "checkpoint_id": "1f1aff32-458f-6740-8000-263cb51ac4d6",
+        "checkpoint_ns": "",
+        "thread_id": "c2"
+      }
+    },
+    "pendingWrites": []
+  }
+}

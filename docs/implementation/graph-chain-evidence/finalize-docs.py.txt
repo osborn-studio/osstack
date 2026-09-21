@@ -1,0 +1,69 @@
+from pathlib import Path
+import json,re,subprocess,hashlib
+r=Path('/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation');e=Path('/Volumes/AIMATE_WORK/tmp/gc5');d=r/'docs/implementation'
+head=subprocess.check_output(['git','rev-parse','HEAD'],cwd=r,text=True).strip()
+a=json.loads((e/'acceptance-result.json').read_text())
+assert a['loop_id']=='C5-final-acceptance-3',a['loop_id']
+assert a['executedTaskCount']==1 and a['skippedTaskCount']==0
+assert len(a['completedTasks'])==1 and a['completedTasks'][0]['outcome']=='success'
+assert len(a['completedTasks'][0]['verify_commands'])==6 and all(x['exit_code']==0 for x in a['completedTasks'][0]['verify_commands'])
+h=json.loads((e/'source-hashes.json').read_text());assert h['head']==head
+assert all(hashlib.sha256((r/f).read_bytes()).hexdigest()==v for f,v in h['files'].items())
+counts=[];pkg=None
+for line in (e/'accepted-full-tests.txt').read_text().splitlines():
+ m=re.search(r'^\s*RUN\s+.*?/packages/(\S+)',line)
+ if m:pkg=m.group(1)
+ m=re.search(r'^\s*Tests\s+(\d+) passed',line)
+ if m:counts.append({'package':pkg,'passed':int(m.group(1))})
+total=sum(x['passed'] for x in counts);assert len(counts)==22 and total>=3013,(total,counts)
+(e/'test-counts.json').write_text(json.dumps({'total':total,'packageCount':len(counts),'packages':counts},indent=2)+'\n')
+report='docs/implementation/2026-09-14-graph-chain-completion.md';evidence='docs/implementation/graph-chain-evidence/admission.json'
+admission={'schemaVersion':1,'gate':'C5','status':'passed','date':'2026-09-14','acceptedCodeCommit':head,'baseline':'30236fb4d26f65b7b9c30aa20d9fc255490ec12e','tasks':['G14','G15','G16','G17'],'productionReady':False,'executionModel':'langgraph-functional-v1','durability':'sync','node':'v26.5.0','pnpm':'11.4.0','betterSqlite3':'12.10.0','sqlite':'3.53.1','workspaceTestCount':total,'testPackageCount':22,'chainTestCount':29,'verification':'Actual LoopEngine C5-final-acceptance-3: 1 executed, 0 skipped, success; all 6 verifier commands passed. Whole build and changed-source Biome passed (4 test IPC any warnings).','scope':'Trusted experimental daemon/worker/broker two-node execution chain, immutable recovery journal, durable artifact freeze and admission-release obligations.','limitations':['No public graph write CLI/RPC or full delivery graph until G18-G24','Daemon restart cases persist observed worker exit before killing daemon; unobserved live-worker/escaped-executor recovery and durable PID identity remain G25','Same-UID worker is not an OS sandbox','SQLite WAL NORMAL ACK is not a power-loss guarantee','Full-history artifact bundles: SHA1 non-shallow without submodules/skip-worktree; 60s and 256MiB per Git command; no automatic stale lock cleanup or GC','Node/native/distribution matrix G27, RPC/runtime performance G28 and real internal pilot G29 remain pending','Unknown effects and unconfirmed producers remain quarantined; no automatic resend, expiry takeover or terminal resurrection','StateGraph partial-abort AND-join counterexample remains blocked'],'evidence':['acceptance-result.json','accepted-full-tests.txt','accepted-typecheck.txt','accepted-schemas.txt','accepted-kernel.txt','accepted-functional.txt','accepted-startup.txt','build-final3.txt','biome-final2.txt','source-hashes.json','claude-admission.md','claude-adjudication.md','actor-summary.json']}
+(e/'admission.json').write_text(json.dumps(admission,ensure_ascii=False,indent=2)+'\n')
+p=d/'2026-09-13-osstack-graph-upgrade.tasks.json';j=json.loads(p.read_text())
+groups={
+'G14':[['G14a',['packages/protocol/src/graph-worker.ts','packages/protocol/src/graph-worker.test.ts','packages/protocol/src/index.ts','packages/protocol/src/generate.ts','packages/graph/src/worker-client.ts','packages/graph/src/worker-client.test.ts']],['G14b',['packages/cli/src/graph-worker-manager.ts','packages/cli/src/graph-worker-manager.test.ts']],['G14c',['packages/graph/src/worker-entry.ts','packages/graph/src/worker-entry.test.ts','packages/graph/src/worker-runtime.ts','packages/graph/src/index.ts']]],
+'G15':[['G15a',['packages/core/src/state/graph-recovery.ts','packages/core/src/state/graph-recovery.test.ts','packages/core/src/state/migrations.ts','packages/core/src/state/graph-runs.ts','packages/core/src/state/graph-actions.ts']],['G15b',['packages/cli/src/graph-reconciler.ts','packages/cli/src/graph-reconciler.test.ts']],['G15c',['packages/cli/src/graph-action-broker.ts','packages/cli/src/graph-action-broker-boundary.test.ts','packages/cli/src/graph-action-broker.test.ts','packages/cli/src/governed-execution.ts','packages/cli/src/governed-execution.test.ts']],['G15d',['packages/autonomy/src/repo-lock.ts','packages/autonomy/src/repo-lock.test.ts']]],
+'G16':[['G16a',['packages/core/src/graph/artifact-store.ts','packages/core/src/graph/artifact-store.test.ts','packages/core/src/graph/artifact-git.ts','packages/core/package.json','packages/cli/src/graph-action-freeze.test.ts']],['G16b',['packages/agents/src/worktree.ts','packages/agents/src/worktree.test.ts','packages/agents/src/index.ts']]],
+'G17':[['G17a',['packages/cli/src/graph-runtime.ts','packages/cli/src/daemon.ts','packages/cli/package.json']],['G17b',['packages/cli/src/graph-chain.integration.test.ts','scripts/fixtures/graph-chain-host.ts']]]}
+for t in j['tasks']:
+ if t['id'] in groups:
+  t.update(status='completed',acceptedCodeCommit=head,evidence=[report,evidence,'docs/implementation/graph-chain-evidence/'+t['id']+'-result.json'])
+  steps=[]
+  for key,files in groups[t['id']]:
+   files=[f for f in files if (r/f).is_file()]
+   steps.append({'id':key,'status':'completed','files':files,'evidence':report})
+  t['implementationSteps']=steps;t['files']=list(dict.fromkeys(f for s in steps for f in s['files']))
+j['implementation'].update(acceptedCodeCommit=head,completedTaskCount=18,nextTasks=['G18','G19','G20'],report=report,nextGate='C6',milestoneStatus={'M0':'completed','M1':'completed','M2':'pending','M3':'pending'})
+for g in j['decisionGates']:
+ if g['id']=='C2':g['nextAction']='C2–C5 已通过限定准入；继续 G18–G20/C6，完整故障矩阵仍须 G25。'
+ if g['id']=='C5':g.update(status='passed',reason='独立 worker、可信恢复、持久候选及两节点 daemon 执行链经实际 Loop 全库验收；含持久资源释放义务与精确释放重试。',evidence=evidence,acceptedCodeCommit=head)
+if not any(g['id']=='C6' for g in j['decisionGates']):j['decisionGates'].append({'id':'C6','status':'pending','tasks':['G18','G19','G20'],'reason':'静态工程图、独立评审/测试及汇合路由待实施。','evidence':None,'productionReady':False})
+p.write_text(json.dumps(j,ensure_ascii=False,indent=2)+'\n')
+p=d/'2026-09-13-osstack-graph-upgrade.md';s=p.read_text()
+s=s.replace('**状态：G00–G13 已完成，14/30；C2 Functional API + sync、C3 身份/锁/准入及 C4 账本/broker/checkpoint 已通过。M1 继续推进 G14–G17，完整生产图运行时尚未完成。**','**状态：G00–G17 已完成，18/30；M0/M1 与 C2–C5 已通过。下一批 G18–G20/C6：静态工程图、独立评审/测试、汇合路由。完整生产图运行时尚未完成。**')
+s=s.replace('36eee05f6bc6ef6aa8148dd9f4e9271e2237d4fc',head,1).replace('按 G14→G15/G16→G17 继续，见 [C4 验收](2026-09-14-graph-effects-completion.md)与[下一轮上下文](2026-09-14-graph-effects-next-context.md)。','按 G18→G19→G20 继续，见 [C5 验收](2026-09-14-graph-chain-completion.md)与[下一轮上下文](2026-09-14-graph-chain-next-context.md)。')
+s=s.replace('G00–G13 的已交付变化','G00–G17 的已交付变化').replace('- C5：G14–G17 后，两节点链经重启恢复；G16 可以在依赖满足后独立进行。','- **C5：限定通过。** G14–G17 的真实两节点链、候选恢复、可信对账与资源释放义务已验收。daemon 重启案例先持久保存已观察到的 worker 停止证据；未观察停止的故障矩阵仍须 G25。见 [C5 报告](2026-09-14-graph-chain-completion.md)。').replace('目前 G00–G13 完成，G14–G29 pending','目前 G00–G17 完成，G18–G29 pending')
+for tid in groups:
+ start=s.index('### '+tid+' ·');end=s.index('\n### ',start+1)
+ block=s[start:end].replace('**状态：** 未开始。','**状态：** 已完成，C5 通过。').replace('- [ ]','- [x]')
+ block+='\n**实现记录：** 以 [C5 报告](2026-09-14-graph-chain-completion.md)和机器清单中的后缀步骤/实际文件为准；同批五个源码提交，验收源 `'+head+'`。\n'
+ if tid=='G17':block=block.replace('- `packages/cli/src/graph-rpc.ts`','- `packages/cli/src/graph-runtime.ts`\n- `scripts/fixtures/graph-chain-host.ts`')
+ s=s[:start]+block+s[end:]
+s=s.replace('- G00–G13 与 C2/C3/C4 已完成；下一批执行 G14–G17，建立 worker 生命周期、可信对账、候选冻结和第一条可恢复执行链。','- G00–G17 与 C2–C5 已完成；下一批执行 G18–G20，完成静态工程图、独立评审/隔离测试、严格汇合与有界路由。')
+s=s.replace('- G18 是纯编译器分支，可在 M1 集成期间独立开发；G19 必须等真实 broker/产物接口稳定。','- M1 的真实 broker/产物接口已通过 C5；G18 编译器先行，G19 复用这些接口，G20 在两者后集成。')
+start=s.index('G00–G13 已完成，**14/30；C4 已通过，M1 仍在推进**。')
+end=s.find('\n',start)
+if end<0:end=len(s)
+s=s[:start]+'G00–G17 已完成，**18/30；C5 已通过，M0/M1 完成**。下一轮按 G18→G19→G20 实施静态工程图、独立评审/隔离测试和严格汇合路由，目标 C6。先读 [C5 接续上下文](2026-09-14-graph-chain-next-context.md)。固定 Functional API + sync，复用完整身份、逐动作准入、候选冻结、可信对账及持久释放义务。完整工程图、公开 CLI 与生产故障/兼容/性能/试点仍待后续任务。'+s[end:]
+p.write_text(s)
+p=d/'2026-09-14-graph-chain-completion.md';s=p.read_text().replace('**验收进行中，未更新任务完成状态。**','**C5 已通过；G00–G17 完成，18/30，M0/M1 完成。**')
+s=s.replace('G15c 精确资源释放','G15c broker 准入释放、G15d 精确磁盘锁释放').replace('G17b 故障窗口、G17c 重启/释放验收','G17b 故障窗口及重启/释放验收')
+s=s.replace('待最终 Loop 与 Claude 闭环后填写精确结果。初次父执行器已通过全部 28 项链测试；第 29 项迟到退出已由实现 actor 单独验证。最终验收必须覆盖现有全部测试，不把 actor 过滤执行或仅 `git diff --check` 的 Loop gate 当完整验收。',f'''实际 LoopEngine `C5-final-acceptance-3`：1 个任务执行、0 个跳过、success。全仓库 22 个测试包 **{total} 项通过**，包含全部 29 项 daemon/assembly 链测试；typecheck、schema freshness、G07 Saver 探针、C2 Functional 探针、CLI 启动预算和 diff 检查全部通过。完整构建通过；改动源文件 Biome 无错误，保留 4 条测试 IPC any 警告。
+
+G14–G17 均由真实 OSStack LoopEngine + CodexCliAdapter 执行，逐个 1 个任务、0 skipped。actor 的轻量 gate 不能代替上述父执行器全库验收。第一轮验收的 3009 项通过记录单独保留；最终轮增加资源释放回归后重新验收。
+
+Claude Fable 5.1 实际完成设计、worker/artifact、recovery/broker、daemon 闭环及资源释放补丁的独立审查。已修复长动作误用 RPC 超时、启动心跳、迟到退出、稀疏冻结、丢失接管 ACK 和未释放资源提前接管等问题；采纳/不采纳理由及剩余产品边界见 [裁定记录](graph-chain-evidence/claude-adjudication.md)。''')
+s=s.replace('原始证据将保存在','原始证据保存在');p.write_text(s)
+p=d/'2026-09-14-graph-chain-next-context.md';s=p.read_text().replace('当前 C5 最终验收进行中；开始下一批前检查','当前 C5 已通过，G00–G17 完成（18/30），验收源 `'+head+'`；开始下一批前检查');p.write_text(s)
+print(json.dumps({'head':head,'tests':total,'packages':len(counts),'files':len(h['files'])}))

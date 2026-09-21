@@ -1,0 +1,30 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+
+⎯⎯⎯⎯⎯⎯ Failed Suites 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/graph-chain.integration.test.ts [ src/graph-chain.integration.test.ts ]
+Error: Cannot find module './graph-runtime.js' imported from '/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli/src/graph-chain.integration.test.ts'
+ ❯ src/graph-chain.integration.test.ts:7:1
+      5| import { openDb, GraphRunStore, GraphCheckpointStore, type GraphProgra…
+      6| import type { StartGraphRequest } from '@osstack/protocol';
+      7| import { GraphRuntime } from './graph-runtime.js';
+       | ^
+      8| import { GraphActionBroker } from './graph-action-broker.js';
+      9| import { GraphCheckpointService } from './graph-checkpoint-service.js';
+
+Caused by: Error: Failed to load url ./graph-runtime.js (resolved id: ./graph-runtime.js) in /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli/src/graph-chain.integration.test.ts. Does the file exist?
+ ❯ loadAndTransform ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:35835:17
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  no tests
+   Start at  07:48:17
+   Duration  423ms (transform 145ms, setup 8ms, collect 0ms, tests 0ms, environment 0ms, prepare 45ms)
+
+undefined
+/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli:
+[ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL] Command failed with exit code 1: vitest run src/graph-chain.integration.test.ts

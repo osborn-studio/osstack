@@ -1,0 +1,18 @@
+{
+  "operation": "Trailing whitespace, trailing blank lines and final newline only in named text archives; raw temp files unchanged. JSON logs were not normalized. Do not compare normalized text bytes against any raw-log hashes.",
+  "files": [
+    "G07-byte-accessor-red.txt",
+    "G07-codec-red.txt",
+    "G07-node20-tests.txt",
+    "G07-node22-tests.txt",
+    "accepted-workspace-tests.txt",
+    "claude-g05-prompt.txt",
+    "final-node20-graph-tests.txt",
+    "final-node20-protocol-tests.txt",
+    "final-node22-graph-tests.txt",
+    "final-node22-protocol-tests.txt",
+    "final-review-graph-red.txt",
+    "final-review-protocol-red.txt",
+    "final-review-schema-stale.txt"
+  ]
+}

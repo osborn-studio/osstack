@@ -1,0 +1,11 @@
+$ vitest run src/graph-contained-recovery.test.ts -t 'sweeps actual' --maxWorkers=1
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+ ✓ src/graph-contained-recovery.test.ts (33 tests | 32 skipped) 511ms
+   ✓ sweeps actual worker and contained executor after reopening the ledger, without settling or releasing  510ms
+
+ Test Files  1 passed (1)
+      Tests  1 passed | 32 skipped (33)
+   Start at  05:26:28
+   Duration  1.50s (transform 509ms, setup 8ms, collect 850ms, tests 511ms, environment 0ms, prepare 37ms)

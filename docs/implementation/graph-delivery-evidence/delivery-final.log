@@ -1,0 +1,28 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+Cloning into '/Volumes/AIMATE_WORK/tmp/g21/g21-delivery-Gqla6L/delivery/writer-0'...
+HEAD is now at 554dfbf base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g21/g21-delivery-lFqUI2/delivery/writer-0'...
+HEAD is now at 0fff58b base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g21/g21-delivery-wQ3A8Y/delivery/writer-0'...
+HEAD is now at 7dbeb89 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g21/g21-delivery-gPYuQR/delivery/writer-0'...
+HEAD is now at 3229520 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g21/g21-delivery-Wfs2L8/delivery/writer-0'...
+HEAD is now at aa265dd base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g21/g21-delivery-Q7Xsn4/delivery/writer-0'...
+HEAD is now at c192fca base
+ ✓ src/graph-delivery.integration.test.ts (6 tests) 43461ms
+   ✓ actual child delivery succeeds with review finishing last  5407ms
+   ✓ actual child delivery succeeds with tests finishing last  5367ms
+   ✓ repairs from immutable complete join through physical child stop and G15 resume  10802ms
+   ✓ host bounded retry returns only final confirmed task result and fresh independent workspace  8087ms
+   ✓ finite branch failure stops without a failed task RETURN or poisoned join  8394ms
+   ✓ negative quality at epoch cap stops  5404ms
+
+ Test Files  1 passed (1)
+      Tests  6 passed (6)
+   Start at  08:18:59
+   Duration  44.29s (transform 439ms, setup 7ms, collect 717ms, tests 43.46s, environment 0ms, prepare 29ms)
+

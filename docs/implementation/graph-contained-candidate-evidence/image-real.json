@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "daemonId": "96300cab-3e55-44ea-be6f-834057ae56cc",
+  "baseImageId": "sha256:14358309a308569c32bdc37e2e0e9694be33a9d99e68afb0f5ff33cc1f695dce",
+  "imageId": "sha256:98e0fe504bf9caeede39abeacd33065269b074bb87322a907c8c8fe73882b3d5",
+  "contentDigest": "691cf4bef7a8a3543018ad9f42828b06b05ddf25aec45991298dc088ffb0cb47",
+  "archiveDigest": "dfeef8453e50ff75934a64d9fbe12888e6efbe7be9c9a339bbc5d92aff5975af",
+  "workingDirectory": "/osstack-candidate-1d95f57b-d022-4fa9-bef8-6e69f2f24cc4"
+}

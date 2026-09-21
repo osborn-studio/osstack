@@ -1,0 +1,37 @@
+{
+  "is_error": false,
+  "modelUsage": {
+    "claude-haiku-4-5-20251001": {
+      "inputTokens": 14958,
+      "outputTokens": 24,
+      "cacheReadInputTokens": 0,
+      "cacheCreationInputTokens": 0,
+      "webSearchRequests": 0,
+      "costUSD": 0.015078000000000001,
+      "contextWindow": 200000,
+      "maxOutputTokens": 32000,
+      "thinkingTokens": 0,
+      "canonicalModel": "claude-haiku-4-5",
+      "provider": "firstParty",
+      "costBasis": "list"
+    },
+    "claude-fable-5-1": {
+      "inputTokens": 2,
+      "outputTokens": 8437,
+      "cacheReadInputTokens": 0,
+      "cacheCreationInputTokens": 25081,
+      "webSearchRequests": 0,
+      "costUSD": 0.9234899999999999,
+      "contextWindow": 1000000,
+      "maxOutputTokens": 64000,
+      "thinkingTokens": 6529,
+      "canonicalModel": "claude-fable-5-1",
+      "provider": "firstParty",
+      "costBasis": "list"
+    }
+  },
+  "session_id": "68e0e509-17ca-465f-8c1c-95e95633b12e",
+  "duration_ms": 131195,
+  "num_turns": 1,
+  "permission_denials": []
+}

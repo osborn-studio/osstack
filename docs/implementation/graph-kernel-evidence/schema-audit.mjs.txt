@@ -1,0 +1,15 @@
+import {createRequire} from 'node:module';
+import {readFileSync,writeFileSync} from 'node:fs';
+const {Validator}=createRequire('/tmp/osstack-executable-graph-20260913/probes/node_modules/@langchain/core/package.json')('@cfworker/json-schema');
+const root='/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation';
+const schema=JSON.parse(readFileSync(root+'/packages/protocol/schemas/graph.schema.json','utf8'));
+const error={schemaVersion:1,code:'ACTION_OUTCOME_UNKNOWN',message:'Unknown',retryable:false,nextAction:'reconcile'};
+const scope={schemaVersion:1,tenantId:'tenant',principalId:'owner',workspaceId:'workspace'};
+const request={schemaVersion:1,kind:'resume',scope,graphRunId:'run',expectedRevision:4,interruptId:'interrupt',idempotencyKey:'key',input:{kind:'data',value:null}};
+const cases=[['error',error,true],['error',{...error,nextAction:'retry'},false],['error',{...error,code:'POLICY_DENIED',retryable:true,nextAction:'retry'},false],['error',{...error,code:'INTERNAL_ERROR',retryable:true,nextAction:'stop'},false],['request',request,true],['request',{...request,input:{kind:'data',value:{constructor:1}}},false],['request',{...request,extra:1},false]];
+const effect={schemaVersion:1,scope,graphRunId:'run',specHash:'a'.repeat(64),epoch:0,nodeId:'implement',effectSlot:'invoke',logicalAttempt:1};
+const response={schemaVersion:1,kind:'worker_action_response',requestId:'request',generation:1,effect,outcome:{state:'failed',error}};
+cases.push(['workerActionResponse',response,false],['workerActionResponse',{...response,outcome:{state:'failed',error:{...error,code:'CANCEL_UNCONFIRMED'}}},false],['scope',{...scope,tenantId:'a'+String.fromCharCode(127)+'b'},false],['workerActionResponse',{...response,outcome:{state:'failed',error:{...error,code:'INTERNAL_ERROR',retryable:true,nextAction:'retry'}}},true]);
+const results=cases.map(([key,value,expected])=>{const validator=new Validator({...schema,required:[key]},'7');const result=validator.validate({[key]:value});if(result.valid!==expected)throw Error(JSON.stringify({key,value,expected,result}));return {key,value,expected,actual:result.valid};});
+const output={validator:'@cfworker/json-schema 4.1.1 (research fixture only, no production dependency added)',schema:'graph.schema.json',passed:results.length,cases:results,note:'Original registry properties and root references retained, selecting only the root required field for each case. Aggregate byte/depth/refinement checks remain additional runtime obligations.'};
+const base=readFileSync('/tmp/osstack-graph-kernel-current-path.txt','utf8').trim();writeFileSync(base+'/evidence/schema-validator-audit.json',JSON.stringify(output,null,2));console.log(JSON.stringify({passed:results.length}));

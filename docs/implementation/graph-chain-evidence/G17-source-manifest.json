@@ -1,0 +1,37 @@
+{
+  "files": [
+    {
+      "path": "packages/cli/src/daemon.ts",
+      "bytes": 170626,
+      "sha256": "08dc121b71b666abe66a63d98b4359defdaffce85c55e2536b4b0e4c739098e2"
+    },
+    {
+      "path": "packages/cli/src/graph-runtime.ts",
+      "bytes": 10961,
+      "sha256": "6cdc7871ffe66869dc226eba9b98cfe0bed83fd4e8a4a399aef3588b7df4bf71"
+    },
+    {
+      "path": "packages/cli/src/graph-chain.integration.test.ts",
+      "bytes": 24458,
+      "sha256": "4ea477d8d87dbe3a24664741c1b4032a875abb98a0087362463be2b8d44d699f"
+    },
+    {
+      "path": "scripts/fixtures/graph-chain-host.ts",
+      "bytes": 21118,
+      "sha256": "2f39aa301e989e10e3ad8bd92bed2b0d1e7c8d2e73ec219d7678c7202777b95c"
+    }
+  ],
+  "finalFocusedFixtureRoots": [
+    "/Volumes/AIMATE_WORK/tmp/gc5/g17-chain-6Hk4re",
+    "/Volumes/AIMATE_WORK/tmp/gc5/g17-chain-9U0etK",
+    "/Volumes/AIMATE_WORK/tmp/gc5/g17-chain-DpbPqR",
+    "/Volumes/AIMATE_WORK/tmp/gc5/g17-chain-FHBw0o",
+    "/Volumes/AIMATE_WORK/tmp/gc5/g17-chain-PfYPhM",
+    "/Volumes/AIMATE_WORK/tmp/gc5/g17-chain-ZKPjvq",
+    "/Volumes/AIMATE_WORK/tmp/gc5/g17-chain-e6lhgB",
+    "/Volumes/AIMATE_WORK/tmp/gc5/g17-chain-fPLytn",
+    "/Volumes/AIMATE_WORK/tmp/gc5/g17-chain-jX3X4r",
+    "/Volumes/AIMATE_WORK/tmp/gc5/g17-chain-mOpyvU",
+    "/Volumes/AIMATE_WORK/tmp/gc5/g17-chain-nCvKlr"
+  ]
+}

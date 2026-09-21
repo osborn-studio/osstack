@@ -1,0 +1,311 @@
+{
+  "loop_id": "G25-contained-reopen-recheck-1",
+  "state": {
+    "loop_id": "G25-contained-reopen-recheck-1",
+    "started_at": "2026-09-17T23:33:10.403Z",
+    "updated_at": "2026-09-17T23:34:36.879Z",
+    "completed_tasks": [
+      {
+        "task_id": "G25-contained-reopen-recheck-1",
+        "capability": "code.test",
+        "outcome": "success",
+        "iterations": 1,
+        "agent_id": "local-command",
+        "duration_ms": 86474,
+        "run_id": "run_a8101529-2c5a-4cd4-b1d9-025f78221df9",
+        "started_at": "2026-09-17T23:33:10.404Z",
+        "completed_at": "2026-09-17T23:34:32.386Z",
+        "execution_summary": "Process group 98804 gone (kill(-pgid, 0): ESRCH); leader exit observed",
+        "execution_commands": [
+          {
+            "command": "node /Volumes/AIMATE_WORK/tmp/g25-reopen/acceptance-command.mjs candidate",
+            "exit_code": 0,
+            "duration_ms": 81980,
+            "summary": "candidate: exit=0 WORK/tmp/g25-reopen/g21-delivery-tKiWkF/delivery/writer-0'... HEAD is now at 762ac19 base Cloning into '/Volumes/AIMATE_WORK/tmp/g25-reopen/g21-delivery-7rVq8L/delivery/writer-0'... HEAD is now at 5a8b7a2 base ✓ src/graph-"
+          }
+        ],
+        "verifier_agent_id": "local-verifier",
+        "verify_summary": "2 verifier commands and 0 verifier adapters passed. 2 evaluations passed.",
+        "verify_issue_count": 0,
+        "verify_commands": [
+          {
+            "command": "node /Volumes/AIMATE_WORK/tmp/g25-reopen/acceptance-command.mjs reopen",
+            "exit_code": 0,
+            "duration_ms": 4189,
+            "summary": "reopen: exit=0 $ vitest run src/graph-contained-recovery.test.ts -t 'reopens held|fresh host stops|missing stop receipt' --maxWorkers=1 RUN v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli ✓ src/grap"
+          },
+          {
+            "command": "node /Volumes/AIMATE_WORK/tmp/g25-reopen/retained-evidence.mjs",
+            "exit_code": 0,
+            "duration_ms": 246,
+            "summary": "{\"passed\":true,\"scope\":\"Retain previously passed checks only after exact source and build hash validation; first Loop failed solely on missing report directory\",\"sourceFiles\":1069,\"priorPassedVerifiers\":9,\"failedVerifierRerun\":\"candidate\",\""
+          }
+        ],
+        "evaluations": [
+          {
+            "spec_id": "verify-command-1",
+            "mode": "command",
+            "description": "Shell verifier: node /Volumes/AIMATE_WORK/tmp/g25-reopen/acceptance-command.mjs reopen",
+            "required": true,
+            "weight": 1,
+            "pass": true,
+            "summary": "command passed (4189 ms)",
+            "implicit": true
+          },
+          {
+            "spec_id": "verify-command-2",
+            "mode": "command",
+            "description": "Shell verifier: node /Volumes/AIMATE_WORK/tmp/g25-reopen/retained-evidence.mjs",
+            "required": true,
+            "weight": 1,
+            "pass": true,
+            "summary": "command passed (246 ms)",
+            "implicit": true
+          }
+        ],
+        "changed_files": [
+          "packages/cli/src/graph-contained-tests.ts",
+          "packages/core/src/state/graph-recovery.test.ts",
+          "packages/core/src/state/graph-recovery.ts",
+          "scripts/verify-graph-runtime.mjs",
+          "?? packages/cli/src/graph-contained-recovery.test.ts",
+          "?? packages/cli/src/graph-contained-recovery.ts"
+        ],
+        "diff_summary": "packages/cli/src/graph-contained-tests.ts | 21 ++++++++++++++------- packages/core/src/state/graph-recovery.test.ts | 20 +++++++++++++++++++- packages/core/src/state/graph-recovery.ts | 15 +++++++++++++++ scripts/verify-graph-runtime.mjs | ",
+        "commit_hash": "7a19ec9"
+      }
+    ],
+    "in_progress": [],
+    "pending": [],
+    "deferred_tasks": [],
+    "key_metrics": {
+      "total_cycles": 1,
+      "avg_duration_ms": 86474,
+      "success_rate": 1,
+      "tokens_consumed": 0,
+      "cost_consumed": 0
+    },
+    "decisions": [
+      "G25-contained-reopen-recheck-1: selected local-command - local execute command",
+      "G25-contained-reopen-recheck-1: stop after iteration 1 - Verifier passed with score 1.00."
+    ]
+  },
+  "completedTasks": [
+    {
+      "task_id": "G25-contained-reopen-recheck-1",
+      "capability": "code.test",
+      "outcome": "success",
+      "iterations": 1,
+      "agent_id": "local-command",
+      "duration_ms": 86474,
+      "run_id": "run_a8101529-2c5a-4cd4-b1d9-025f78221df9",
+      "started_at": "2026-09-17T23:33:10.404Z",
+      "completed_at": "2026-09-17T23:34:32.386Z",
+      "execution_summary": "Process group 98804 gone (kill(-pgid, 0): ESRCH); leader exit observed",
+      "execution_commands": [
+        {
+          "command": "node /Volumes/AIMATE_WORK/tmp/g25-reopen/acceptance-command.mjs candidate",
+          "exit_code": 0,
+          "duration_ms": 81980,
+          "summary": "candidate: exit=0 WORK/tmp/g25-reopen/g21-delivery-tKiWkF/delivery/writer-0'... HEAD is now at 762ac19 base Cloning into '/Volumes/AIMATE_WORK/tmp/g25-reopen/g21-delivery-7rVq8L/delivery/writer-0'... HEAD is now at 5a8b7a2 base ✓ src/graph-"
+        }
+      ],
+      "verifier_agent_id": "local-verifier",
+      "verify_summary": "2 verifier commands and 0 verifier adapters passed. 2 evaluations passed.",
+      "verify_issue_count": 0,
+      "verify_commands": [
+        {
+          "command": "node /Volumes/AIMATE_WORK/tmp/g25-reopen/acceptance-command.mjs reopen",
+          "exit_code": 0,
+          "duration_ms": 4189,
+          "summary": "reopen: exit=0 $ vitest run src/graph-contained-recovery.test.ts -t 'reopens held|fresh host stops|missing stop receipt' --maxWorkers=1 RUN v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli ✓ src/grap"
+        },
+        {
+          "command": "node /Volumes/AIMATE_WORK/tmp/g25-reopen/retained-evidence.mjs",
+          "exit_code": 0,
+          "duration_ms": 246,
+          "summary": "{\"passed\":true,\"scope\":\"Retain previously passed checks only after exact source and build hash validation; first Loop failed solely on missing report directory\",\"sourceFiles\":1069,\"priorPassedVerifiers\":9,\"failedVerifierRerun\":\"candidate\",\""
+        }
+      ],
+      "evaluations": [
+        {
+          "spec_id": "verify-command-1",
+          "mode": "command",
+          "description": "Shell verifier: node /Volumes/AIMATE_WORK/tmp/g25-reopen/acceptance-command.mjs reopen",
+          "required": true,
+          "weight": 1,
+          "pass": true,
+          "summary": "command passed (4189 ms)",
+          "implicit": true
+        },
+        {
+          "spec_id": "verify-command-2",
+          "mode": "command",
+          "description": "Shell verifier: node /Volumes/AIMATE_WORK/tmp/g25-reopen/retained-evidence.mjs",
+          "required": true,
+          "weight": 1,
+          "pass": true,
+          "summary": "command passed (246 ms)",
+          "implicit": true
+        }
+      ],
+      "changed_files": [
+        "packages/cli/src/graph-contained-tests.ts",
+        "packages/core/src/state/graph-recovery.test.ts",
+        "packages/core/src/state/graph-recovery.ts",
+        "scripts/verify-graph-runtime.mjs",
+        "?? packages/cli/src/graph-contained-recovery.test.ts",
+        "?? packages/cli/src/graph-contained-recovery.ts"
+      ],
+      "diff_summary": "packages/cli/src/graph-contained-tests.ts | 21 ++++++++++++++------- packages/core/src/state/graph-recovery.test.ts | 20 +++++++++++++++++++- packages/core/src/state/graph-recovery.ts | 15 +++++++++++++++ scripts/verify-graph-runtime.mjs | ",
+      "commit_hash": "7a19ec9"
+    }
+  ],
+  "events": [
+    {
+      "event_id": "evt_17968e46-3278-4474-b2e7-3b8a575ba890",
+      "loop_id": "G25-contained-reopen-recheck-1",
+      "type": "loop.started",
+      "seq": 1,
+      "created_at": 1789687990404,
+      "payload": {
+        "workspace_path": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation"
+      }
+    },
+    {
+      "event_id": "evt_1529878e-b571-478e-950a-8a3fc2f6356b",
+      "loop_id": "G25-contained-reopen-recheck-1",
+      "type": "loop.cycle.started",
+      "seq": 2,
+      "created_at": 1789687990404,
+      "payload": {
+        "cycle": 1
+      }
+    },
+    {
+      "event_id": "evt_ebac3a77-4507-4373-a46a-9ae284a1ceb3",
+      "loop_id": "G25-contained-reopen-recheck-1",
+      "type": "loop.discover.done",
+      "seq": 3,
+      "created_at": 1789687990404,
+      "payload": {
+        "task_count": 1,
+        "discovered_task_count": 1,
+        "skipped_task_count": 0
+      }
+    },
+    {
+      "event_id": "evt_7d41d884-5c53-459e-af2b-c69944c7eebb",
+      "loop_id": "G25-contained-reopen-recheck-1",
+      "type": "loop.plan.done",
+      "seq": 4,
+      "created_at": 1789687990404,
+      "payload": {
+        "task_id": "G25-contained-reopen-recheck-1",
+        "plan_id": "plan_be31b580-d079-4877-a37d-3997bac9e558",
+        "agent_id": "local-command",
+        "routing_reason": "local execute command",
+        "iteration": 1
+      }
+    },
+    {
+      "event_id": "evt_2bf9c3a7-a8c4-4dff-8983-ceb0cdf8f718",
+      "loop_id": "G25-contained-reopen-recheck-1",
+      "type": "loop.execute.done",
+      "seq": 5,
+      "created_at": 1789688072386,
+      "payload": {
+        "task_id": "G25-contained-reopen-recheck-1",
+        "run_id": "run_a8101529-2c5a-4cd4-b1d9-025f78221df9",
+        "outcome": "completed",
+        "agent_id": "local-command",
+        "summary": "Process group 98804 gone (kill(-pgid, 0): ESRCH); leader exit observed",
+        "iteration": 1
+      }
+    },
+    {
+      "event_id": "evt_ee87d0ce-b7ef-4342-ac8b-1531c6fb679a",
+      "loop_id": "G25-contained-reopen-recheck-1",
+      "type": "loop.verify.done",
+      "seq": 6,
+      "created_at": 1789688076878,
+      "payload": {
+        "task_id": "G25-contained-reopen-recheck-1",
+        "pass": true,
+        "score": 1,
+        "issue_count": 0,
+        "evaluation_count": 2,
+        "failed_evaluation_ids": [],
+        "reviewer_agent_id": "local-verifier",
+        "summary": "2 verifier commands and 0 verifier adapters passed. 2 evaluations passed.",
+        "changed_files": [
+          "packages/cli/src/graph-contained-tests.ts",
+          "packages/core/src/state/graph-recovery.test.ts",
+          "packages/core/src/state/graph-recovery.ts",
+          "scripts/verify-graph-runtime.mjs",
+          "?? packages/cli/src/graph-contained-recovery.test.ts",
+          "?? packages/cli/src/graph-contained-recovery.ts"
+        ],
+        "diff_summary": "packages/cli/src/graph-contained-tests.ts | 21 ++++++++++++++------- packages/core/src/state/graph-recovery.test.ts | 20 +++++++++++++++++++- packages/core/src/state/graph-recovery.ts | 15 +++++++++++++++ scripts/verify-graph-runtime.mjs | ",
+        "commit_hash": "7a19ec9",
+        "iteration": 1
+      }
+    },
+    {
+      "event_id": "evt_9c873fc4-dbd9-4968-981f-39aed02bdb55",
+      "loop_id": "G25-contained-reopen-recheck-1",
+      "type": "loop.iterate.done",
+      "seq": 7,
+      "created_at": 1789688076878,
+      "payload": {
+        "task_id": "G25-contained-reopen-recheck-1",
+        "action": "stop",
+        "reason": "Verifier passed with score 1.00.",
+        "iteration": 1,
+        "issue_count": 0,
+        "failed_evaluation_ids": []
+      }
+    },
+    {
+      "event_id": "evt_40a6e0a0-5d08-4913-8d7b-95bb61ed6ae3",
+      "loop_id": "G25-contained-reopen-recheck-1",
+      "type": "loop.state.written",
+      "seq": 8,
+      "created_at": 1789688076880,
+      "payload": {
+        "jsonPath": "/Volumes/AIMATE_WORK/tmp/g25-reopen/recheck-LOOP-STATE.json",
+        "markdownPath": "/Volumes/AIMATE_WORK/tmp/g25-reopen/recheck-STATE.md"
+      }
+    },
+    {
+      "event_id": "evt_0f2676b7-4fcf-4864-a2a5-9a6434afa89a",
+      "loop_id": "G25-contained-reopen-recheck-1",
+      "type": "loop.cycle.completed",
+      "seq": 9,
+      "created_at": 1789688076880,
+      "payload": {
+        "cycle": 1,
+        "task_count": 1,
+        "discovered_task_count": 1,
+        "skipped_task_count": 0,
+        "duration_ms": 86479
+      }
+    },
+    {
+      "event_id": "evt_b9e92de2-7b62-46e9-812c-02f0375f593e",
+      "loop_id": "G25-contained-reopen-recheck-1",
+      "type": "loop.stopped",
+      "seq": 10,
+      "created_at": 1789688076880,
+      "payload": {
+        "reason_code": "completed",
+        "reason": "manual run completed"
+      }
+    }
+  ],
+  "jsonPath": "/Volumes/AIMATE_WORK/tmp/g25-reopen/recheck-LOOP-STATE.json",
+  "markdownPath": "/Volumes/AIMATE_WORK/tmp/g25-reopen/recheck-STATE.md",
+  "discoveredTaskCount": 1,
+  "executedTaskCount": 1,
+  "skippedTaskCount": 0
+}

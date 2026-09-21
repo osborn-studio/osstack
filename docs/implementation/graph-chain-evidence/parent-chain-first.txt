@@ -1,0 +1,39 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+
+  ../../../tmp/gc5/g17-build-4CTgHg/graph-chain-host.mjs  328.4kb
+
+⚡ Done in 14ms
+ ✓ src/graph-chain.integration.test.ts (28 tests) 38018ms
+   ✓ uses real worker IPC and durable SQLite checkpoints, retires both ports and exposes OS exit  318ms
+   ✓ assembly: real command implement → freeze persists a selfcontained candidate  2629ms
+   ✓ daemon: real command implement → freeze persists a selfcontained candidate  2139ms
+   ✓ assembly: SIGKILL at before-return resumes using actual SQLite saver and ledger  1600ms
+   ✓ assembly: SIGKILL at before-final resumes using actual SQLite saver and ledger  1505ms
+   ✓ assembly: SIGKILL at after-final resumes using actual SQLite saver and ledger  1294ms
+   ✓ assembly: restore then SIGKILL again re-enters implement without repeating the confirmed external command  1658ms
+   ✓ daemon: SIGKILL at before-return resumes using actual SQLite saver and ledger  1562ms
+   ✓ daemon: SIGKILL at before-final resumes using actual SQLite saver and ledger  1528ms
+   ✓ daemon: SIGKILL at after-final resumes using actual SQLite saver and ledger  1651ms
+   ✓ daemon: restore then SIGKILL again re-enters implement without repeating the confirmed external command  1836ms
+   ✓ daemon: true daemon process SIGKILL/restart retains SQLite results and resumes through G15  1777ms
+   ✓ assembly: real broker unknown stays quarantined, then durable applied release failure is retried without resending  716ms
+   ✓ assembly: trusted not_applied reconciliation releases exact retained broker lease without automatically retrying  653ms
+   ✓ assembly: cancel reaches actual command process group and kills abort-ignoring worker without starting freeze  609ms
+   ✓ daemon: real broker unknown stays quarantined, then durable applied release failure is retried without resending  843ms
+   ✓ daemon: trusted not_applied reconciliation releases exact retained broker lease without automatically retrying  786ms
+   ✓ daemon: cancel reaches actual command process group and kills abort-ignoring worker without starting freeze  749ms
+   ✓ daemon: unknown retained canonical lock survives actual daemon SIGKILL and releases only after G15 committed decision  2228ms
+   ✓ assembly: bounded stop reports undrained actual broker Promise and refuses recovery before drainage  1803ms
+   ✓ assembly: original deadline aborts actual in-flight command through supervisor heartbeat  2470ms
+   ✓ assembly: cancel with unproven executor stop retains unknown effect even after broker drainage  1567ms
+   ✓ daemon: bounded stop reports undrained actual broker Promise and refuses recovery before drainage  1704ms
+   ✓ daemon: original deadline aborts actual in-flight command through supervisor heartbeat  2440ms
+   ✓ daemon: cancel with unproven executor stop retains unknown effect even after broker drainage  1687ms
+
+ Test Files  1 passed (1)
+      Tests  28 passed (28)
+   Start at  08:06:36
+   Duration  38.87s (transform 399ms, setup 7ms, collect 669ms, tests 38.02s, environment 0ms, prepare 33ms)
+

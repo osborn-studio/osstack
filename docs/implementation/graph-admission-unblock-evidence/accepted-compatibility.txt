@@ -1,0 +1,24 @@
+$ vitest run src/daemon-loop.test.ts src/session-rpc.test.ts src/graph-command.test.ts --maxWorkers=1 --reporter=default --reporter=json --outputFile=/Volumes/AIMATE_WORK/tmp/g25-claude-unblock/compatibility-tests.json
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+osstack: clock jump detected drift_ms=9980; re-running external health and recovery probes
+osstack: retaining write lease run-offline-production-recovery: guarded autonomy blocked or exit unconfirmed
+ ✓ src/daemon-loop.test.ts (25 tests) 7658ms
+   ✓ daemon loop RPC > runs and reports a local loop cycle through the daemon socket  309ms
+   ✓ daemon loop RPC > runs finite multi-cycle loops through daemon RPC  356ms
+   ✓ daemon loop RPC > runs reviewer adapters through daemon loop.run  2152ms
+   ✓ daemon loop RPC > includes background loop metrics in daemon stats  301ms
+   ✓ daemon loop RPC > creates a blocked kanban card when a background loop escalates  343ms
+   ✓ daemon loop RPC > creates a blocked kanban card after three same-capability loop failures  456ms
+   ✓ daemon loop RPC > stops a background polling loop when its goal command passes  338ms
+   ✓ daemon loop RPC > restores running background loops after daemon restart  366ms
+ ✓ src/session-rpc.test.ts (19 tests) 1819ms
+ ✓ src/graph-command.test.ts (12 tests) 226ms
+
+ Test Files  3 passed (3)
+      Tests  56 passed (56)
+   Start at  22:53:49
+   Duration  11.52s (transform 703ms, setup 10ms, collect 1.49s, tests 9.70s, environment 0ms, prepare 77ms)
+
+JSON report written to /Volumes/AIMATE_WORK/tmp/g25-claude-unblock/compatibility-tests.json

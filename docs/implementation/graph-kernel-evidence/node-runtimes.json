@@ -1,0 +1,7 @@
+{
+  "node20": "/var/folders/97/wmwg4qzx02j74c3n73nh438w0000gn/T/osstack-graph-kernel-z3zisd4r/compat/node-v20.20.2-darwin-arm64/bin/node",
+  "version": "v20.20.2",
+  "download": "https://nodejs.org/dist/v20.20.2/node-v20.20.2-darwin-arm64.tar.gz",
+  "sha256": "466e05f3477c20dfb723054dfebffe55bc74660ee77f612166fca121dacb65b6",
+  "node22": "/opt/homebrew/opt/node@22/bin/node"
+}

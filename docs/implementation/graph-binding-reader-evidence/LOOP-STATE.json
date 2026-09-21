@@ -1,0 +1,134 @@
+{
+  "loop_id": "G25-binding-read-2",
+  "started_at": "2026-09-19T00:50:57.381Z",
+  "updated_at": "2026-09-19T00:51:14.817Z",
+  "completed_tasks": [
+    {
+      "task_id": "G25-binding-read-2",
+      "capability": "code.test",
+      "outcome": "success",
+      "iterations": 1,
+      "agent_id": "local-command",
+      "duration_ms": 17435,
+      "run_id": "run_c30eb61f-5adb-4b42-aa71-c080ef3824a2",
+      "started_at": "2026-09-19T00:50:57.382Z",
+      "completed_at": "2026-09-19T00:51:07.230Z",
+      "execution_summary": "Process group 2584 gone (kill(-pgid, 0): ESRCH); leader exit observed",
+      "execution_commands": [
+        {
+          "command": "node /Volumes/AIMATE_WORK/tmp/g25-binding-read-final/check.mjs focused",
+          "exit_code": 0,
+          "duration_ms": 9847,
+          "summary": "focused: exit=0 $ vitest run src/graph-contained-recovery.test.ts --maxWorkers=1 --reporter=default --reporter=json --outputFile=/Volumes/AIMATE_WORK/tmp/g25-binding-read-final/focused.json RUN v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/os"
+        }
+      ],
+      "verifier_agent_id": "local-verifier",
+      "verify_summary": "5 verifier commands and 0 verifier adapters passed. 5 evaluations passed.",
+      "verify_issue_count": 0,
+      "verify_commands": [
+        {
+          "command": "node /Volumes/AIMATE_WORK/tmp/g25-binding-read-final/check.mjs matrix",
+          "exit_code": 0,
+          "duration_ms": 223,
+          "summary": "matrix: exit=0 {\"passed\":true,\"priorMatrixTests\":585,\"productionSourcesUnchanged\":true,\"priorBuildArtifactsUnchanged\":true,\"amendedTestFile\":\"packages/cli/src/graph-contained-recovery.test.ts\",\"priorTestHash\":\"01912d08b051c12ea5933315102eb4"
+        },
+        {
+          "command": "node /Volumes/AIMATE_WORK/tmp/g25-binding-read-final/check.mjs typecheck",
+          "exit_code": 0,
+          "duration_ms": 6348,
+          "summary": "typecheck: exit=0 $ pnpm -r typecheck Scope: 22 of 23 workspace projects packages/compliance typecheck$ tsc --noEmit packages/github typecheck$ tsc --noEmit packages/contracts typecheck$ tsc --noEmit packages/governance typecheck$ tsc --noE"
+        },
+        {
+          "command": "node /Volumes/AIMATE_WORK/tmp/g25-binding-read-final/check.mjs schemas",
+          "exit_code": 0,
+          "duration_ms": 297,
+          "summary": "schemas: exit=0 $ node scripts/generate-schemas.mjs --check schemas up to date"
+        },
+        {
+          "command": "node /Volumes/AIMATE_WORK/tmp/g25-binding-read-final/check.mjs startup",
+          "exit_code": 0,
+          "duration_ms": 612,
+          "summary": "startup: exit=0 ok osstack --version (fast path): median 29ms over 5 runs (budget 150ms; min 28, max 30) ok osstack --help (full command surface): median 81ms over 5 runs (budget 500ms; min 79, max 82)"
+        },
+        {
+          "command": "node /Volumes/AIMATE_WORK/tmp/g25-binding-read-final/check.mjs whitespace",
+          "exit_code": 0,
+          "duration_ms": 51,
+          "summary": "whitespace: exit=0"
+        }
+      ],
+      "evaluations": [
+        {
+          "spec_id": "verify-command-1",
+          "mode": "command",
+          "description": "Shell verifier: node /Volumes/AIMATE_WORK/tmp/g25-binding-read-final/check.mjs matrix",
+          "required": true,
+          "weight": 1,
+          "pass": true,
+          "summary": "command passed (223 ms)",
+          "implicit": true
+        },
+        {
+          "spec_id": "verify-command-2",
+          "mode": "command",
+          "description": "Shell verifier: node /Volumes/AIMATE_WORK/tmp/g25-binding-read-final/check.mjs typecheck",
+          "required": true,
+          "weight": 1,
+          "pass": true,
+          "summary": "command passed (6348 ms)",
+          "implicit": true
+        },
+        {
+          "spec_id": "verify-command-3",
+          "mode": "command",
+          "description": "Shell verifier: node /Volumes/AIMATE_WORK/tmp/g25-binding-read-final/check.mjs schemas",
+          "required": true,
+          "weight": 1,
+          "pass": true,
+          "summary": "command passed (297 ms)",
+          "implicit": true
+        },
+        {
+          "spec_id": "verify-command-4",
+          "mode": "command",
+          "description": "Shell verifier: node /Volumes/AIMATE_WORK/tmp/g25-binding-read-final/check.mjs startup",
+          "required": true,
+          "weight": 1,
+          "pass": true,
+          "summary": "command passed (612 ms)",
+          "implicit": true
+        },
+        {
+          "spec_id": "verify-command-5",
+          "mode": "command",
+          "description": "Shell verifier: node /Volumes/AIMATE_WORK/tmp/g25-binding-read-final/check.mjs whitespace",
+          "required": true,
+          "weight": 1,
+          "pass": true,
+          "summary": "command passed (51 ms)",
+          "implicit": true
+        }
+      ],
+      "changed_files": [
+        "packages/cli/src/graph-contained-recovery.test.ts",
+        "packages/cli/src/graph-contained-recovery.ts"
+      ],
+      "diff_summary": "packages/cli/src/graph-contained-recovery.test.ts | 79 ++++++++++++++++++++++- packages/cli/src/graph-contained-recovery.ts | 14 +++- 2 files changed, 87 insertions(+), 6 deletions(-)",
+      "commit_hash": "3d5cd1d"
+    }
+  ],
+  "in_progress": [],
+  "pending": [],
+  "deferred_tasks": [],
+  "key_metrics": {
+    "total_cycles": 1,
+    "avg_duration_ms": 17435,
+    "success_rate": 1,
+    "tokens_consumed": 0,
+    "cost_consumed": 0
+  },
+  "decisions": [
+    "G25-binding-read-2: selected local-command - local execute command",
+    "G25-binding-read-2: stop after iteration 1 - Verifier passed with score 1.00."
+  ]
+}

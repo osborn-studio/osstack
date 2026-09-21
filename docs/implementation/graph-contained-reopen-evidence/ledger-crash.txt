@@ -1,0 +1,1 @@
+{"passed":true,"checks":["container continues running after SIGKILL of original executor host","fresh Node process reconstructs executor from action/admission/journal and removes live container","unknown business outcome and held admission retained","late start of exact deleted container returns 404"]}

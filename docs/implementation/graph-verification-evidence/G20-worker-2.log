@@ -1,0 +1,13 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+osstack: retaining write lease graph-action:ea5e3df56d2ecfe22c21b0a1f71661c670c3f0f2ff3044ce0b7e8151559b4e55: Error: external stop unconfirmed
+ ✓ src/graph-verification-join.test.ts (13 tests | 11 skipped) 9435ms
+   ✓ real worker partial RETURN survives stop/drain and G15 takeover; host retry supersedes cached malformed review  6979ms
+   ✓ actual Functional task throws for unknown verification outcome and host refuses worker pass proposal  2456ms
+
+ Test Files  1 passed (1)
+      Tests  2 passed | 11 skipped (13)
+   Start at  18:26:03
+   Duration  10.23s (transform 376ms, setup 7ms, collect 637ms, tests 9.44s, environment 0ms, prepare 27ms)
+

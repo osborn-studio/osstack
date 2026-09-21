@@ -1,0 +1,6 @@
+{
+  "passed": true,
+  "graphRunId": "d00e5fc9-c3c6-4864-8645-ec0d3ec54f88",
+  "hostPid": 14333,
+  "policy": "Host loader rejects every @langchain module; isolated worker runs normally"
+}

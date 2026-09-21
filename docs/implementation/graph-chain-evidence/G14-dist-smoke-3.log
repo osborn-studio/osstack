@@ -1,0 +1,3 @@
+(node:75284) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+{"resolvedWorker":"/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/graph/dist/worker-entry.js","result":42,"exit":{"kind":"exited","graphRunId":"smoke","generation":1,"owner":"host","pid":75391,"code":null,"signal":"SIGTERM","confirmedAt":1789396911086,"evidenceRef":"worker-exit:85f77b9d-46ff-4824-af54-7525f93216e4"},"checkpoints":["get","put","writes","writes","writes","put"],"hostLoadedHeavyModules":false,"scope":"G14 transport/program smoke; no broker effects, no durable DB, not C5/G17"}

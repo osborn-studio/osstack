@@ -1,0 +1,41 @@
+## Verdict: PASS — for the bounded G25 diagnostic slice only
+
+Source-only re-review of the supplied full files. **I ran nothing** — no tests, no build, no `/proc` probes. Every statement below is derived from reading the current sources; where a conclusion depends on a symbol not supplied (`workerCanonical`, `runShellCommand`, `openDb` pragmas) I say so.
+
+---
+
+## Adjudicated findings — verified closed
+
+**1. `spawn_failed` ≠ no-child (prior P0): closed.** Confirmed from the full `graph-worker-manager.ts`, not a diff. `spawnFailed` now opens with `if (child?.pid) { cancel(String(error)); return; }`. `spawn()` assigns `pid` synchronously on success and leaves it undefined on spawn-level failure, so the guard is a genuine no-child predicate, and every post-spawn `'error'` (kill/send failure) is routed to `cancel()` instead. I re-walked my original repro: registration commits → child spawns → `'spawn'` handler's `assertActive()` throws → `launched` never appended → kill fails → `'error'`. With the guard this now takes `cancel()`, and the journal ends at `exited` or `exit_unconfirmed`. `graph-recovery.ts` requires `events.length === 1 && events[0].kind === 'spawn_failed'`, which neither shape satisfies, so the takeover is refused. The `phase: 'spawn'` label is also now truthful: with the guard it can only mean "registration succeeded, OS spawn failed". The new `never classifies a post-spawn kill error as no-child` test drives the real `ChildProcess.prototype.kill` → `emit('error')` path and asserts `observations === [exited]`, which is the right assertion, not a proxy.
+
+**2. Discarded exit-journal failures (prior P0): closed.** `observe()` returns `{ ...evidence, journalError }`, and all three call sites resolve `exit`/`finalExit` with the returned receipt rather than the input. Physical truth is preserved and the durability failure rides on the receipt even when `result` already resolved — exactly the right shape. `surfaces failed exit journaling even after the successful program result has settled` pins it on the success path, which is the case my original finding identified as silently swallowed.
+
+**3. `detached` (prior P1): closed.** No `detached` in the `spawn` options; live process-group behaviour is unchanged. `pgid` is `number | null`, populated from the actual OS (`/proc/<pid>/stat` field 5 on linux, `ps -o pgid=` on darwin), and `launched()` asserts only internal consistency (`processIdentity.pgid === launch.pgid`), not `pgid === pid`. No recovered-pid signaling anywhere.
+
+**4. Canonicalization contract (prior P1): closed.** `passes an actual runtime no-child journal through the G15 canonical identity gate` writes the launch row via `GraphProcessJournal.consume` (`workerCanonical`) and the event via `observed`, then commits through a real `GraphRecoveryStore` whose `proof()` compares `launch.identity_json !== canonical(run.identity)` and re-parses `event_json` with the strict `noChildEvent` schema. Agreement between the two serializers — and strict-schema survival of the persisted event shape — is now load-bearing in a passing assertion rather than fabricated by raw `INSERT`s.
+
+**5. Evidence runner (prior P1): closed.** `pnpm build` runs first, `unchanged()` re-verifies sources across the build, `artifactHashes` covers every `packages/*/dist` file before and after, and `passed` now requires per-file assertion counts (`observedFiles.has(...) && result.assertionResults?.length > 0` for each requested file), which closes the zero-assertion-file gap. `report.limitations` correctly declines to claim matrix admission.
+
+**6. Unbounded DB drain: accepted as designed, and now verifiable.** My prior "unverifiable" caveat resolves in your favour: `retire()` only flips `record.retired` and unregisters from broker/checkpoints — it never removes the entry from `this.connections`, so cancelled and stopped handles stay in the drain set and a late `observed()` cannot land after `close()`. Given `finalExit` never resolves on a timeout, a bounded drain would be a false close-authorization; blocking is the correct trade.
+
+**7. Test helpers: closed.** `tsup` has a single entry (`src/cli-entry.ts`) with `splitting: true`; unreferenced modules are not reachable from that graph, so `graph-test-fixture.ts` / `graph-process-fixture.ts` are not emitted into `dist/`.
+
+**8. Command cancellation grace: reviewed, fix is correct.** `cancellationGraceMs: commandTerminationGraceMs + commandKillGraceMs + 500` (2500ms) for `kind === 'command'`, adapters unchanged at 50ms. I checked the interaction with the hard-coded 1000ms `confirmStopped` race below it: for commands, `confirmStopped` awaits `commandPending`, and the generator cannot yield `done` until `command = await commandPending` has assigned, so that race can only be reached with `command` already settled — it cannot degrade a confirmed stop into `stopped: false`. If `runShellCommand` overruns 2500ms the outcome is `execution_unconfirmed` → `ACTION_OUTCOME_UNKNOWN` with a retained admission, which fails safe. The `tests-slow-stop` fixture (real `node`, SIGTERM handler exiting at 150ms) is a genuine red/green discriminator, and the assertions on `evidence.stopped === true`, `retrySafe: false` and `released_at IS NULL → 0` are the right ones.
+
+**9. Corrupt PID / FK: closed as far as the supplied source goes.** `observeGraphProcessIdentity` now degrades (`{ state: 'unknown', reason: 'identity_invalid' }`) instead of throwing. Migration 29 shows `PRIMARY KEY(graph_run_id, generation)` on `graph_worker_launches`, satisfying migration 34's composite FK.
+
+---
+
+## Remaining non-blocking findings
+
+**N1 (P2) — `exit_unconfirmed` can persist a `pid: undefined` key.** `graph-worker-manager.ts` builds `{ kind: 'exit_unconfirmed', pid: child?.pid, error: ... }`; the key is always present, with value `undefined` when `child` exists but never got a pid. `GraphProcessJournal.append` stores `workerCanonical(event)` and `observe()` later does `JSON.parse(row.event_json)`. If `workerCanonical` mirrors the `canonical()` in `graph-recovery.ts` (`JSON.stringify(undefined)` → `undefined` interpolated into the template), the stored text is `{"pid":undefined,...}` — not parseable — and because `graph_worker_process_events` rows are delete/update-proof, `observe()` for that generation fails permanently. I cannot confirm `workerCanonical`'s undefined handling from the supplied files, and the reachable window is narrow (requires the full `shutdownMs + 2×terminationMs` chain to expire while the async spawn `'error'` never arrives). Fix is one token: `pid: child?.pid ?? null`, or omit the key. Worth doing before the crash-recovery slice, where this journal becomes authoritative.
+
+**N2 (P3) — `pgid: expect.any(Number)` is a platform assumption in two tests.** `graph-worker-manager.test.ts` ("records the authenticated child identity…") and `graph-process-journal.test.ts` ("retains launch and true exit…") both require a non-null `pgid`. `captureGraphProcessIdentity` legitimately returns `pgid: null` when `/bin/ps` is unavailable, denied, or times out — the degraded path the module is explicitly designed for. Consider `expect.toSatisfy(v => v === null || Number.isSafeInteger(v))` so a correct degradation does not read as a regression.
+
+**N3 (P3, informational) — `graph-artifact-crash.mjs` still imports `packages/core/dist/...` while the test-side consumer is `src`.** The runner's mandatory build plus `artifactHashes` removes the stale-dist hazard *inside the evidence run*; a bare `pnpm test` against a stale `dist` remains a possible false green for F07/F12 only.
+
+---
+
+## Explicitly not admitted by this PASS
+
+Automatic crash recovery, fresh-supervisor takeover of a live worker, executor/descendant quiescence proof, admin-lock recovery, full F01–F12 matrix admission, and any production or non-darwin/linux platform claim. This PASS covers the three prior blockers being genuinely closed in source with discriminating tests, within the bounded diagnostic slice as scoped.

@@ -1,0 +1,61 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+ ✓ src/graph-branch-broker.test.ts (5 tests) 721ms
+   ✓ executes in the immutable per-action workspace and releases its canonical admission  392ms
+osstack: retaining write lease graph-action:346562d6ebc9e8270710da29fd9ea19c8dfe10e5cb9034865167ce6ee1cf27f0: Error: invalid result kind for registered operation
+osstack: retaining write lease graph-action:7451a714adb1b797a0342ea880929b9b825bc5df684a536d518c24d50cf0bf5d: Error: invalid persisted evidence reference
+osstack: retaining write lease graph-action:8a1e10adf65ae50cd6a5062fe532943f76fc8e84db66a0764bb1b81ac860f9b5: Error: candidate preflight refused
+osstack: retaining write lease graph-action:ade636d070481af1e3cacf9d68161f6a71943ed31806dab1290e353643620511: Error: adapter result or execution unconfirmed
+osstack: retaining write lease graph-action:01a8b127542ee7bec9f46bc67cd2dd6095c9e899c871a8d229468beadb0b1d96: Error: candidate preflight refused
+osstack: retaining write lease graph-action:86404e94a2dfe9a581d8365c1df34617de9bccf7c405f58ef07f7e297e5eadd3: Error: adapter result or execution unconfirmed
+ ❯ src/graph-action-freeze.test.ts (1 test | 1 failed) 5016ms
+   × freezes a real confirmed implementation under the same shared admission into a verified artifact 5016ms
+     → Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+osstack: retaining write lease graph-action:b9d86b9788bb4a85fa6d12e14bebfd86c2b60e9ef4445a8f2b55f442034b61cd: Error: lost receipt
+osstack: retaining write lease graph-action:071067b42dc329b0ad5c587c8b79e23614961fdf00676f52e7d0c81c4ddd3167: injected lock release failure
+osstack: retaining write lease graph-action:071067b42dc329b0ad5c587c8b79e23614961fdf00676f52e7d0c81c4ddd3167: Error: injected lock release failure
+osstack: retaining write lease graph-action:b08fbf14a897e0918d2977a7c91ca0f6cdf739145210159a62d62beb515f727e: Error: adapter result or execution unconfirmed
+osstack: retaining write lease graph-action:5362c61daf0aaa0d83446ea1948b1b85b5a6aba1423c2a37644ccd3537878a2a: release failure
+osstack: retaining write lease graph-action:5362c61daf0aaa0d83446ea1948b1b85b5a6aba1423c2a37644ccd3537878a2a: Error: release failure
+osstack: retaining write lease graph-action:e8a16d32cbd580b6159c805fd0f29d429352f4e953ccb8147b2606fe43824806: Error: invalid result kind for registered operation
+ ✓ src/graph-action-broker-boundary.test.ts (17 tests) 5515ms
+   ✓ rejects a Promise-returning synchronous authorizer instead of silently granting authority  332ms
+   ✓ keeps uncertain admission until its exact effect receives trusted release verification  4078ms
+osstack: retaining write lease graph-action:7e5be63e05f517a2cba56025365fb96a71f97656ef541f4a59202ad060dc158f: Error: invalid usage
+osstack: retaining write lease graph-action:ed2a570b40d2d57a2677ee5ff03496ab3a005aeecc0ac22667729521d7ff4d9a: Error: invalid persisted evidence reference
+osstack: retaining write lease graph-action:c2a4264d4b0861a8a3c706064ed6ccfd8f48c81b00bd9dbe6754dd5cc7cd49d2: SqliteError: injected
+osstack: retaining write lease graph-action:7a1cbdc0867b5732f8a3187f0408b2aaf331ddfcdf713e99b2c42711a573af17: Error: adapter result or execution unconfirmed
+osstack: retaining write lease graph-action:03a506fa2e221a410257facad6a31000e8d34e2775b0ada70b86027babb740d1: Error: adapter result or execution unconfirmed
+osstack: retaining write lease graph-action:c2d7d84fb4d9632f7c7bcdd95e4df2bc6618232040b74bb49c0dc0e3af8103d0: Error: adapter result or execution unconfirmed
+osstack: retaining write lease graph-action:fdad10210ab776fce9333b79e6f9ef9fcd0fcbc1cbff73907413685d94ad4cbc: Error: adapter result or execution unconfirmed
+osstack: retaining write lease graph-action:4358420d4d3fbcfd733fe6cb5269945723df27c0375df50530bacacbf21a196d: Error: adapter result or execution unconfirmed
+ ✓ src/graph-action-broker.test.ts (31 tests) 6212ms
+   ✓ executes a registered command once and replays from SQLite after broker restart  382ms
+   ✓ pins request, registration, and adapter functions before asynchronous admission  4039ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/graph-action-freeze.test.ts > freezes a real confirmed implementation under the same shared admission into a verified artifact
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ src/graph-action-freeze.test.ts:15:1
+     13| const cleanups: Array<() => void> = [];
+     14| afterEach(() => { for (const f of cleanups.splice(0).reverse()) f(); }…
+     15| it('freezes a real confirmed implementation under the same shared admi…
+       | ^
+     16|   const root = mkdtempSync(join(tmpdir(), 'gfz-')); cleanups.push(() =…
+     17|   const repo = join(root, 'repo'); execFileSync('git', ['init', '-q', …
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 3 passed (4)
+      Tests  1 failed | 53 passed (54)
+   Start at  17:54:24
+   Duration  7.35s (transform 601ms, setup 63ms, collect 3.41s, tests 17.46s, environment 0ms, prepare 219ms)
+
+undefined
+/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli:
+[ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL] Command failed with exit code 1: vitest run src/graph-branch-broker.test.ts src/graph-action-broker.test.ts src/graph-action-broker-boundary.test.ts src/graph-action-freeze.test.ts

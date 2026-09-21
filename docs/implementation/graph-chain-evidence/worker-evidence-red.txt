@@ -1,0 +1,79 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+ ❯ src/graph-worker-manager.test.ts (27 tests | 2 failed) 6403ms
+   ✓ handshakes asynchronously, executes Functional+remote sync checkpoints and isolates bounded logs  306ms
+   ✓ reserves each run synchronously and requires verified exit before replacement  390ms
+   ✓ rejects async durability before spawning 1ms
+   ✓ rejects exit durability before spawning 1ms
+   ✓ rejects immutable input and program identity mismatch before child launch 2ms
+   ✓ executes snapshotted bytes even when the original trusted module is changed  327ms
+   × settles spawn failures and early exits without unhandled rejections 10ms
+     → expected { kind: 'spawn_failed', …(1) } to match object { kind: 'spawn_failed', …(5) }
+(1 matching property omitted from actual)
+   ✓ revocation aborts the injected broker and rejects later checkpoints without releasing its resources 250ms
+   ✓ expires leases and terminates an unresponsive child with actual exit evidence  2037ms
+   ✓ rejects expired authority before any worker is started 1ms
+   ✓ does not equate invoke rejection to worker exit or await inherited log pipes 284ms
+   ✓ rejects real child handshake with wrong graphRunId 34ms
+   ✓ rejects real child handshake with wrong generation 30ms
+   ✓ rejects real child handshake with wrong owner 28ms
+   ✓ rejects real child handshake with wrong scope 30ms
+   ✓ rejects real child handshake with wrong identity 28ms
+   ✓ rejects a real oversize IPC header without dispatching any request 29ms
+   ✓ bounds host outstanding callbacks even when a child ignores client backpressure 29ms
+   ✓ done leaves exit pending until the OS observes termination  338ms
+   ✓ revokes a running lease and old callbacks cannot respond through a replacement connection  392ms
+   ✓ caps each log stream independently and does not pass a DB home or node injection environment  310ms
+   ✓ rejects async authority and asynchronous registration without unhandled rejection 3ms
+   ✓ waits for the remote final checkpoint acknowledgement before resolving the program 298ms
+   ✓ bounds the handshake even if a child emits heartbeats without becoming ready 207ms
+   ✓ allows startup grace before requiring heartbeats  352ms
+   ✓ does not apply a checkpoint RPC timeout to a healthy long-running governed action  614ms
+   × preserves actual late OS exit evidence after the bounded stop result was unconfirmed 70ms
+     → Cannot read properties of undefined (reading 'then')
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/graph-worker-manager.test.ts > settles spawn failures and early exits without unhandled rejections
+AssertionError: expected { kind: 'spawn_failed', …(1) } to match object { kind: 'spawn_failed', …(5) }
+(1 matching property omitted from actual)
+
+- Expected
++ Received
+
+  {
+-   "confirmedAt": Any<Number>,
+-   "evidenceRef": StringMatching /^worker-not-started:/,
+-   "generation": 1,
+-   "graphRunId": "run",
+    "kind": "spawn_failed",
+-   "owner": "owner",
+  }
+
+ ❯ src/graph-worker-manager.test.ts:60:107
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  src/graph-worker-manager.test.ts > preserves actual late OS exit evidence after the bounded stop result was unconfirmed
+TypeError: Cannot read properties of undefined (reading 'then')
+ ❯ src/graph-worker-manager.test.ts:182:41
+    180|     if (bounded.kind !== 'exit_unconfirmed') throw new Error('expected…
+    181|     pid = bounded.pid;
+    182|     let final = false; void h.finalExit.then(() => { final = true; });
+       |                                         ^
+    183|     await new Promise(done => setTimeout(done, 20)); expect(final).toB…
+    184|     process.kill(pid!, 'SIGKILL');
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed | 25 passed (27)
+   Start at  08:03:52
+   Duration  6.65s (transform 58ms, setup 7ms, collect 76ms, tests 6.40s, environment 0ms, prepare 37ms)
+
+undefined
+/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli:
+[ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL] Command failed with exit code 1: vitest run src/graph-worker-manager.test.ts

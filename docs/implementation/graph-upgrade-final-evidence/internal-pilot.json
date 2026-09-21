@@ -1,0 +1,173 @@
+{
+  "schemaVersion": 1,
+  "scope": "G29 real OSStack internal patch: reject filesystem root in assertIsolatedHome; artifact only",
+  "root": "/Volumes/AIMATE_WORK/tmp/g30-final/pilot/pilot-C1MB7Q",
+  "home": "/Volumes/AIMATE_WORK/tmp/g30-final/pilot/pilot-C1MB7Q/home",
+  "model": "deepseek-v4-pro",
+  "baseUrl": "https://api.deepseek.com",
+  "startedAt": "2026-09-20T16:16:40.349Z",
+  "checks": [],
+  "passed": false,
+  "health": {
+    "canRunLocal": true,
+    "writeBlockers": [],
+    "checks": [
+      {
+        "id": "state_db",
+        "status": "ok",
+        "scope": "none",
+        "detail": "state database is readable"
+      },
+      {
+        "id": "daemon_socket",
+        "status": "ok",
+        "scope": "none",
+        "detail": "daemon socket and pidfile are present"
+      },
+      {
+        "id": "disk_free",
+        "status": "ok",
+        "scope": "none",
+        "detail": "2246159458304 bytes free"
+      },
+      {
+        "id": "repo_registry",
+        "status": "warn",
+        "scope": "none",
+        "detail": "repository registry is not configured"
+      },
+      {
+        "id": "repo_locks",
+        "status": "ok",
+        "scope": "none",
+        "detail": "no repository write locks"
+      },
+      {
+        "id": "kimi_code",
+        "status": "ok",
+        "scope": "none",
+        "detail": "Kimi Code is available"
+      },
+      {
+        "id": "builder_agents",
+        "status": "ok",
+        "scope": "none",
+        "detail": "4 code-writing builders available"
+      },
+      {
+        "id": "github_auth",
+        "status": "ok",
+        "scope": "none",
+        "detail": "GitHub authentication is valid"
+      },
+      {
+        "id": "github_network",
+        "status": "ok",
+        "scope": "none",
+        "detail": "GitHub network is reachable"
+      },
+      {
+        "id": "deploy_freezes",
+        "status": "ok",
+        "scope": "none",
+        "detail": "no active production freezes"
+      },
+      {
+        "id": "resumable_runs",
+        "status": "ok",
+        "scope": "none",
+        "detail": "0 resumable autonomy runs"
+      },
+      {
+        "id": "proof_failures",
+        "status": "ok",
+        "scope": "none",
+        "detail": "0 proof or escalated run failures"
+      },
+      {
+        "id": "notification_outbox",
+        "status": "ok",
+        "scope": "none",
+        "detail": "notification outbox is drained"
+      },
+      {
+        "id": "power_policy",
+        "status": "warn",
+        "scope": "none",
+        "detail": "no power assertion selected; explicit Owner selection is required before soak"
+      },
+      {
+        "id": "clock_monitor",
+        "status": "ok",
+        "scope": "none",
+        "detail": "monotonic-v1 clock jump detection is active"
+      },
+      {
+        "id": "log_retention",
+        "status": "ok",
+        "scope": "none",
+        "detail": "0 oversized logs and 0 expired terminal proof directories"
+      },
+      {
+        "id": "launchd_service",
+        "status": "ok",
+        "scope": "none",
+        "detail": "launchctl print evidence sha256=def2fd07ada51dd3c8aca58e103e523e23e46985b583d20e95374133d540e5d0"
+      }
+    ]
+  },
+  "successRunId": "9202a9ba-eaa9-45c2-8efc-a8dfe342a112",
+  "unexpectedStatus": {
+    "schemaVersion": 1,
+    "scope": {
+      "schemaVersion": 1,
+      "tenantId": "local-pilot",
+      "principalId": "owner",
+      "workspaceId": "osstack-internal"
+    },
+    "graphRunId": "9202a9ba-eaa9-45c2-8efc-a8dfe342a112",
+    "source": {
+      "product": "osstack",
+      "requestId": "live-success"
+    },
+    "status": "reconciliation_required",
+    "revision": 30,
+    "generation": 1,
+    "inputDigest": "b82e5c85d376c681c6c674cb5005ba888f5fcf81b350cc8d320bf5631150f739",
+    "specHash": "3c58bc53eaa9ac30accc0c63dce32531b05a9dd214f832998d849e71bf025c1f",
+    "createdAt": 1789921006614,
+    "updatedAt": 1789921463338,
+    "publication": "artifact_only",
+    "phase": "reconciliation_required",
+    "budget": {
+      "limits": {
+        "maxEpochs": 2,
+        "maxBranchAttempts": 1,
+        "maxConcurrentReaders": 2,
+        "maxConcurrentWritersPerRepo": 1,
+        "maxActionStarts": 14,
+        "deadlineSeconds": 600,
+        "tokenReservationLimit": 196608
+      },
+      "actionStarts": 5,
+      "reservedTokens": "0",
+      "chargedTokens": "1832",
+      "accountingBlocked": false
+    },
+    "evidenceRefs": [],
+    "delivery": "delivery_unknown",
+    "error": {
+      "schemaVersion": 1,
+      "message": "Physical execution requires reconciliation",
+      "code": "ACTION_OUTCOME_UNKNOWN",
+      "retryable": false,
+      "nextAction": "reconcile"
+    }
+  },
+  "error": "PILOT_NOT_READY",
+  "daemonExit": {
+    "code": 0,
+    "signal": null
+  },
+  "completedAt": "2026-09-20T16:24:23.524Z"
+}

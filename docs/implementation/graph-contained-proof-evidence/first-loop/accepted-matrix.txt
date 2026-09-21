@@ -1,0 +1,6 @@
+0-loop: PASS (112 tests), seed=250927
+0-agents: PASS (47 tests), seed=250927
+0-core: PASS (79 tests), seed=250927
+0-cli: PASS (337 tests), seed=250927
+1-cli: PASS (4 tests), seed=250928
+{"passed":true,"output":"/Volumes/AIMATE_WORK/tmp/g25-proof-bridge/matrix.json","runs":5}

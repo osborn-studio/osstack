@@ -1,0 +1,11 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/core
+
+ ✓ src/state/graph-checkpoints.test.ts (14 tests) 770ms
+   ✓ splits pages at transport traversal bounds even when many small pending writes fit the byte cap  439ms
+
+ Test Files  1 passed (1)
+      Tests  14 passed (14)
+   Start at  07:04:50
+   Duration  1.06s (transform 77ms, setup 0ms, collect 107ms, tests 770ms, environment 0ms, prepare 33ms)
+

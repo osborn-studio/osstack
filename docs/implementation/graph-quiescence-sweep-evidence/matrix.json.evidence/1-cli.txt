@@ -1,0 +1,21 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+      Running tests with seed "250925"
+
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-sweep/g22-rpc-SSExG5/delivery/e0bf3065-f923-4bfb-9340-6fb576d77cf9/writer-0'...
+HEAD is now at 5fa9e6e base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-sweep/g22-rpc-XhnDcq/delivery/79fb1dfe-3d29-4d63-96a5-96ca6afc52fc/writer-0'...
+HEAD is now at 413fd55 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-sweep/g22-rpc-HSFMY7/delivery/13ef6637-8a00-4299-a85d-0b970d647c4b/writer-0'...
+HEAD is now at b71c1c8 base
+ ✓ src/graph-concurrency.integration.test.ts (4 tests) 13251ms
+   ✓ F09 seed=250925: two SQLite connections deduplicate a submit burst and reject changed payloads  5558ms
+   ✓ F08/F11 seed=250925: competing cancellation revisions cannot relaunch a revoked writer  564ms
+   ✓ F09/F11 seed=250925: resume and cancel race commits one revision without resetting the budget  6905ms
+
+ Test Files  1 passed (1)
+      Tests  4 passed (4)
+   Start at  05:40:12
+   Duration  14.27s (transform 560ms, setup 8ms, collect 894ms, tests 13.25s, environment 0ms, prepare 29ms)
+
+JSON report written to /Volumes/AIMATE_WORK/tmp/g25-sweep/matrix.json.evidence/1-cli.json

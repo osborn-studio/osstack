@@ -1,0 +1,15 @@
+$ vitest run src/graph-contained-recovery.test.ts --maxWorkers=1
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+ ✓ src/graph-contained-recovery.test.ts (52 tests) 6899ms
+   ✓ graph quiescence sweep > sweeps actual worker and contained executor after reopening the ledger, without settling or releasing  355ms
+   ✓ graph quiescence sweep > can inspect a released contained action but cannot reacquire cleanup authority  373ms
+   ✓ graph quiescence sweep > requires explicit stop mode and current stop grant for an orphan; never releases its ledger hold  313ms
+   ✓ graph quiescence sweep > rejects worker-journal drift after daemon I/O before further cleanup  348ms
+   ✓ graph quiescence sweep > keeps a substituted trusted manifest unproven before Docker calls  369ms
+
+ Test Files  1 passed (1)
+      Tests  52 passed (52)
+   Start at  05:31:39
+   Duration  7.82s (transform 471ms, setup 8ms, collect 785ms, tests 6.90s, environment 0ms, prepare 33ms)

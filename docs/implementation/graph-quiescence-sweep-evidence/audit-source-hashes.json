@@ -1,0 +1,5 @@
+{
+  "packages/cli/src/graph-quiescence-sweep.ts": "7ed5a0025318c6c9880f29075242c81fe851c93921bb62275dad7ceec09894ad",
+  "packages/cli/src/graph-contained-recovery.ts": "de6cd4f00f6c275145ef439b2685709cf902fe8eaa7add919a69dcd0f50e34ab",
+  "packages/cli/src/graph-contained-recovery.test.ts": "57e08be5ba303ce20face1ea0548b1392c88ced1ce63797015b4f924b316f991"
+}

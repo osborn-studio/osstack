@@ -1,0 +1,33 @@
+{
+  "node": "v26.5.0",
+  "temporaryDirectory": "/var/folders/97/wmwg4qzx02j74c3n73nh438w0000gn/T/osgraph-durable-probe-2ew4Fl",
+  "offline": true,
+  "osstackIntegrationTested": false,
+  "results": [
+    {
+      "name": "SQLite: pause in process A, resume in process B",
+      "pass": true,
+      "evidence": {
+        "resumeLog": [
+          "prepare",
+          "before_interrupt",
+          "before_interrupt",
+          "after_interrupt"
+        ],
+        "completed": {
+          "prepared": true,
+          "approved": true
+        }
+      }
+    },
+    {
+      "name": "SIGKILL after effect before checkpoint demonstrates duplicate external effect on recovery",
+      "pass": true,
+      "evidence": {
+        "firstSignal": "SIGKILL",
+        "externalEffectCount": 2,
+        "note": "Intentional hazard demonstration; not an exactly-once success claim."
+      }
+    }
+  ]
+}

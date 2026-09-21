@@ -1,0 +1,204 @@
+{
+  "loop_id": "G25-unstarted-recovery-acceptance-1",
+  "started_at": "2026-09-16T13:12:29.706Z",
+  "updated_at": "2026-09-16T13:29:25.217Z",
+  "completed_tasks": [
+    {
+      "task_id": "G25-unstarted-recovery-acceptance-1",
+      "capability": "code.test",
+      "outcome": "success",
+      "iterations": 1,
+      "agent_id": "local-command",
+      "duration_ms": 1015509,
+      "run_id": "run_9371506e-8c84-4c25-97d3-a63966b61df1",
+      "started_at": "2026-09-16T13:12:29.707Z",
+      "completed_at": "2026-09-16T13:22:55.193Z",
+      "execution_summary": "Process group 96111 gone (kill(-pgid, 0): ESRCH); leader exit observed",
+      "execution_commands": [
+        {
+          "command": "node /Volumes/AIMATE_WORK/tmp/g25-recovery/acceptance-command.mjs full-tests",
+          "exit_code": 0,
+          "duration_ms": 625485,
+          "summary": "full-tests: exit=0 plist) — using the deployed home. ✓ src/upgrade-deployed-home.test.ts (9 tests) 13ms ✓ src/deployed-home.test.ts (10 tests) 9ms ✓ src/graph-process-identity.test.ts (3 tests) 7ms ✓ src/probe-gate.test.ts (2 tests) 7ms ✓ s"
+        }
+      ],
+      "verifier_agent_id": "local-verifier",
+      "verify_summary": "7 verifier commands and 0 verifier adapters passed. 7 evaluations passed.",
+      "verify_issue_count": 0,
+      "verify_commands": [
+        {
+          "command": "node /Volumes/AIMATE_WORK/tmp/g25-recovery/acceptance-command.mjs typecheck",
+          "exit_code": 0,
+          "duration_ms": 6006,
+          "summary": "typecheck: exit=0 t packages/contracts typecheck$ tsc --noEmit packages/governance typecheck$ tsc --noEmit packages/contracts typecheck: Done packages/github typecheck: Done packages/knowledge typecheck$ tsc --noEmit packages/neat-eval type"
+        },
+        {
+          "command": "node /Volumes/AIMATE_WORK/tmp/g25-recovery/acceptance-command.mjs schemas",
+          "exit_code": 0,
+          "duration_ms": 291,
+          "summary": "schemas: exit=0 $ node scripts/generate-schemas.mjs --check schemas up to date"
+        },
+        {
+          "command": "node /Volumes/AIMATE_WORK/tmp/g25-recovery/acceptance-command.mjs kernel",
+          "exit_code": 0,
+          "duration_ms": 2557,
+          "summary": "kernel: exit=0 ], \"resumedResult\": { \"results\": [ \"completed\", \"recovered\" ] }, \"completedInvocations\": 1, \"joinInvocations\": 0, \"productionGate\": \"Resolve before arbitrary failure/crash recovery is admitted; no private patch applied.\" }, \""
+        },
+        {
+          "command": "node /Volumes/AIMATE_WORK/tmp/g25-recovery/acceptance-command.mjs functional",
+          "exit_code": 0,
+          "duration_ms": 13615,
+          "summary": "functional: exit=0 { \"passed\": true, \"admitted\": false, \"node\": \"v26.5.0\", \"versions\": { \"langgraph\": \"1.4.15\", \"langgraph-checkpoint\": \"1.1.5\", \"core\": \"1.2.11\" }, \"assertions\": 56, \"failedAssertions\": [], \"experiments\": 42, \"processes\": 9"
+        },
+        {
+          "command": "node /Volumes/AIMATE_WORK/tmp/g25-recovery/acceptance-command.mjs startup",
+          "exit_code": 0,
+          "duration_ms": 616,
+          "summary": "startup: exit=0 ok osstack --version (fast path): median 28ms over 5 runs (budget 150ms; min 27, max 30) ok osstack --help (full command surface): median 77ms over 5 runs (budget 500ms; min 76, max 103)"
+        },
+        {
+          "command": "node /Volumes/AIMATE_WORK/tmp/g25-recovery/acceptance-command.mjs matrix",
+          "exit_code": 0,
+          "duration_ms": 366833,
+          "summary": "matrix: exit=0 0-loop: PASS (112 tests), seed=250916 0-core: PASS (65 tests), seed=250916 0-cli: PASS (221 tests), seed=250916 1-cli: PASS (4 tests), seed=250917 {\"passed\":true,\"output\":\"/Volumes/AIMATE_WORK/tmp/g25-recovery/matrix.json\",\"r"
+        },
+        {
+          "command": "node /Volumes/AIMATE_WORK/tmp/g25-recovery/acceptance-command.mjs whitespace",
+          "exit_code": 0,
+          "duration_ms": 49,
+          "summary": "whitespace: exit=0"
+        }
+      ],
+      "evaluations": [
+        {
+          "spec_id": "verify-command-1",
+          "mode": "command",
+          "description": "Shell verifier: node /Volumes/AIMATE_WORK/tmp/g25-recovery/acceptance-command.mjs typecheck",
+          "required": true,
+          "weight": 1,
+          "pass": true,
+          "summary": "command passed (6006 ms)",
+          "implicit": true
+        },
+        {
+          "spec_id": "verify-command-2",
+          "mode": "command",
+          "description": "Shell verifier: node /Volumes/AIMATE_WORK/tmp/g25-recovery/acceptance-command.mjs schemas",
+          "required": true,
+          "weight": 1,
+          "pass": true,
+          "summary": "command passed (291 ms)",
+          "implicit": true
+        },
+        {
+          "spec_id": "verify-command-3",
+          "mode": "command",
+          "description": "Shell verifier: node /Volumes/AIMATE_WORK/tmp/g25-recovery/acceptance-command.mjs kernel",
+          "required": true,
+          "weight": 1,
+          "pass": true,
+          "summary": "command passed (2557 ms)",
+          "implicit": true
+        },
+        {
+          "spec_id": "verify-command-4",
+          "mode": "command",
+          "description": "Shell verifier: node /Volumes/AIMATE_WORK/tmp/g25-recovery/acceptance-command.mjs functional",
+          "required": true,
+          "weight": 1,
+          "pass": true,
+          "summary": "command passed (13615 ms)",
+          "implicit": true
+        },
+        {
+          "spec_id": "verify-command-5",
+          "mode": "command",
+          "description": "Shell verifier: node /Volumes/AIMATE_WORK/tmp/g25-recovery/acceptance-command.mjs startup",
+          "required": true,
+          "weight": 1,
+          "pass": true,
+          "summary": "command passed (616 ms)",
+          "implicit": true
+        },
+        {
+          "spec_id": "verify-command-6",
+          "mode": "command",
+          "description": "Shell verifier: node /Volumes/AIMATE_WORK/tmp/g25-recovery/acceptance-command.mjs matrix",
+          "required": true,
+          "weight": 1,
+          "pass": true,
+          "summary": "command passed (366833 ms)",
+          "implicit": true
+        },
+        {
+          "spec_id": "verify-command-7",
+          "mode": "command",
+          "description": "Shell verifier: node /Volumes/AIMATE_WORK/tmp/g25-recovery/acceptance-command.mjs whitespace",
+          "required": true,
+          "weight": 1,
+          "pass": true,
+          "summary": "command passed (49 ms)",
+          "implicit": true
+        }
+      ],
+      "changed_files": [
+        "packages/cli/src/graph-runtime.ts",
+        "packages/core/src/state/graph-recovery.test.ts",
+        "packages/core/src/state/graph-recovery.ts",
+        "scripts/verify-graph-runtime.mjs",
+        "?? docs/implementation/2026-09-16-graph-recovery-next-context.md",
+        "?? docs/implementation/graph-unstarted-recovery-evidence/.gitattributes",
+        "?? docs/implementation/graph-unstarted-recovery-evidence/acceptance-command.mjs",
+        "?? docs/implementation/graph-unstarted-recovery-evidence/acceptance.mjs",
+        "?? docs/implementation/graph-unstarted-recovery-evidence/build.txt",
+        "?? docs/implementation/graph-unstarted-recovery-evidence/core-build.txt",
+        "?? docs/implementation/graph-unstarted-recovery-evidence/core-gate-green.txt",
+        "?? docs/implementation/graph-unstarted-recovery-evidence/core-gate-red.txt",
+        "?? docs/implementation/graph-unstarted-recovery-evidence/crash-first.txt",
+        "?? docs/implementation/graph-unstarted-recovery-evidence/crash-green.txt",
+        "?? docs/implementation/graph-unstarted-recovery-evidence/kimi-audit.mjs",
+        "?? docs/implementation/graph-unstarted-recovery-evidence/kimi-code-events.jsonl",
+        "?? docs/implementation/graph-unstarted-recovery-evidence/kimi-code-input.json",
+        "?? docs/implementation/graph-unstarted-recovery-evidence/kimi-code-readiness.json",
+        "?? docs/implementation/graph-unstarted-recovery-evidence/kimi-code-result.json",
+        "?? docs/implementation/graph-unstarted-recovery-evidence/kimi-code-run.txt",
+        "?? docs/implementation/graph-unstarted-recovery-evidence/kimi-design-events.jsonl",
+        "?? docs/implementation/graph-unstarted-recovery-evidence/kimi-design-input.json",
+        "?? docs/implementation/graph-unstarted-recovery-evidence/kimi-design-readiness.json",
+        "?? docs/implementation/graph-unstarted-recovery-evidence/kimi-design-result.json",
+        "?? docs/implementation/graph-unstarted-recovery-evidence/kimi-design-run.txt",
+        "?? docs/implementation/graph-unstarted-recovery-evidence/loop-doctor.txt",
+        "?? docs/implementation/graph-unstarted-recovery-evidence/recovery-green1.txt",
+        "?? docs/implementation/graph-unstarted-recovery-evidence/recovery-green2.txt",
+        "?? docs/implementation/graph-unstarted-recovery-evidence/recovery-green3.txt",
+        "?? docs/implementation/graph-unstarted-recovery-evidence/recovery-red.txt",
+        "?? docs/implementation/graph-unstarted-recovery-evidence/review-adjudication.md",
+        "?? docs/implementation/graph-unstarted-recovery-evidence/source-manifest.json",
+        "?? docs/implementation/graph-unstarted-recovery-evidence/typecheck1.txt",
+        "?? docs/implementation/graph-unstarted-recovery-evidence/typecheck2.txt",
+        "?? docs/reports/graph-unstarted-recovery-validation.md",
+        "?? packages/cli/src/graph-recovery-crash.integration.test.ts",
+        "?? packages/cli/src/graph-unstarted-recovery.test.ts",
+        "?? packages/cli/src/graph-unstarted-recovery.ts",
+        "?? scripts/fixtures/graph-recovery-host.ts",
+        "?? scripts/fixtures/graph-submission-crash.ts"
+      ],
+      "diff_summary": "packages/cli/src/graph-runtime.ts | 7 +++++++ packages/core/src/state/graph-recovery.test.ts | 6 +++--- packages/core/src/state/graph-recovery.ts | 1 + scripts/verify-graph-runtime.mjs | 9 +++++---- 4 files changed, 16 insertions(+), 7 dele",
+      "commit_hash": "ceb806d"
+    }
+  ],
+  "in_progress": [],
+  "pending": [],
+  "deferred_tasks": [],
+  "key_metrics": {
+    "total_cycles": 1,
+    "avg_duration_ms": 1015509,
+    "success_rate": 1,
+    "tokens_consumed": 0,
+    "cost_consumed": 0
+  },
+  "decisions": [
+    "G25-unstarted-recovery-acceptance-1: selected local-command - local execute command",
+    "G25-unstarted-recovery-acceptance-1: stop after iteration 1 - Verifier passed with score 1.00."
+  ]
+}

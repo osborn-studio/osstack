@@ -1,0 +1,55 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/core
+
+ ❯ src/state/graph-recovery.test.ts (19 tests | 1 failed) 336ms
+   ✓ trusted graph recovery > settles original effect after expiry, persists restart replay and rejects changed proof/outcome 31ms
+   ✓ trusted graph recovery > retains observed maxima, charges settled maxima, preserves unknown evidence history 19ms
+   ✓ trusted graph recovery > rejects forged/stale snapshots and rolls back journal, outcome and revision on failure 18ms
+   ✓ trusted graph recovery > requires exact scope, program, owner, generation, action generation and action digest 17ms
+   ✓ trusted graph recovery > not_applied only enables later explicit retry, pending cancellation forbids retry/resume 17ms
+   ✓ trusted graph recovery > projects preworker cancellation and seals terminal runs; refuses cancellation with independent unresolved action 18ms
+   ✓ trusted graph recovery > keeps confirmed result and capacity blocked for bad usage -1 16ms
+   ✓ trusted graph recovery > keeps confirmed result and capacity blocked for bad usage NaN 16ms
+   ✓ trusted graph recovery > keeps confirmed result and capacity blocked for bad usage 1.5 16ms
+   ✓ trusted graph recovery > keeps confirmed result and capacity blocked for bad usage 9007199254740992 16ms
+   ✓ trusted graph recovery > settles an older effect only with current admin fencing and the exact original worker receipt 17ms
+   ✓ trusted graph recovery > retains confirmed evidence and rejects contradictory trusted outcomes even with a new receipt 17ms
+   ✓ trusted graph recovery > does not allocate or invoke safe retries and keeps failed reservation charged 16ms
+   ✓ trusted graph recovery > admin takeover requires settled independent actions and never bypasses pending cancellation 19ms
+   ✓ trusted graph recovery > rejects action drift without a revision bump and wrong result kinds 16ms
+   ✓ trusted graph recovery > rejects a reused receipt across effects, future proof time and invalid synchronous verifier returns 17ms
+   ✓ trusted graph recovery > rejects terminal cancellation while another independent action is unresolved 16ms
+   ✓ trusted graph recovery > does not turn an action pending cancellation into a retryable failure 16ms
+   × trusted graph recovery > checks current time even for an exact durable replay 19ms
+     → expected [Function] to throw an error
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/state/graph-recovery.test.ts > trusted graph recovery > checks current time even for an exact durable replay
+AssertionError: expected [Function] to throw an error
+
+- Expected: 
+null
+
++ Received: 
+undefined
+
+ ❯ src/state/graph-recovery.test.ts:189:55
+    187|     const s = snapshot(); const p = proof(s); run = recovery.commit(s,…
+    188|     run = actions.reserve(fence(150), { ...admission, nodeId: "later" …
+    189|     expect(() => recovery.commit(s, applied, p, 140)).toThrow(/INVALID…
+       |                                                       ^
+    190|   });
+    191| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 18 passed (19)
+   Start at  07:45:37
+   Duration  601ms (transform 81ms, setup 0ms, collect 115ms, tests 336ms, environment 0ms, prepare 37ms)
+
+undefined
+/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/core:
+[ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL] Command failed with exit code 1: vitest run src/state/graph-recovery.test.ts

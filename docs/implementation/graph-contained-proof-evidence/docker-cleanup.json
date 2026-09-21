@@ -1,0 +1,7 @@
+{
+  "profile": "osstack-graph-test",
+  "containersRemaining": 0,
+  "defaultContext": "colima",
+  "profileStopped": true,
+  "defaultContextAfterStop": "colima"
+}

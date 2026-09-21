@@ -1,0 +1,23 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+osstack: retaining write lease run_01ae21834d971eb132feca30: session resume exit unconfirmed
+osstack: retaining write lease run_d661795789d490d106ecfe9d: session resume exit unconfirmed
+ ✓ src/collaborator-rpc.test.ts (11 tests) 22379ms
+   ✓ signed collaborator through daemon RPC > automatically advances two frozen phases and replay never resets spent budgets  3117ms
+   ✓ signed collaborator through daemon RPC > uses only the signed retry instruction within its finite budget  3247ms
+   ✓ signed collaborator through daemon RPC > cannot use a phase grant as a risk approval  1578ms
+   ✓ signed collaborator through daemon RPC > does not reinterpret a controlled result as a legacy decision directive  1338ms
+   ✓ signed collaborator through daemon RPC > preserves opaque results during a delegated resume  2134ms
+   ✓ signed collaborator through daemon RPC > rejects signature, runtime-policy and session-cursor changes without any send  1048ms
+   ✓ signed collaborator through daemon RPC > revokes an in-flight turn and stops before the next instruction  1840ms
+   ✓ signed collaborator through daemon RPC > bounds a stalled turn and blocks further automatic delivery  2457ms
+   ✓ signed collaborator through daemon RPC > retains a late real receipt but blocks when the timeout callback has not run yet  2093ms
+   ✓ signed collaborator through daemon RPC > recovers a reserved receipt as uncertain after restart without resending  679ms
+   ✓ signed collaborator through daemon RPC > defers persisted grants and refuses installs until initial health permits work  2846ms
+
+ Test Files  1 passed (1)
+      Tests  11 passed (11)
+   Start at  08:39:06
+   Duration  24.00s (transform 791ms, setup 12ms, collect 1.36s, tests 22.38s, environment 0ms, prepare 59ms)
+

@@ -1,0 +1,10 @@
+packages/cli/src/graph-action-broker.ts(351,88): error TS2345: Argument of type '{ state: "confirmed"; evidenceRef: string; actualTokens: number; result: { schemaVersion: 1; kind: "implementation_complete"; workspaceLeaseRef: string; receiptRef: string; } | { schemaVersion: 1; kind: "candidate_ready"; candidateRevision: string; artifactRefs: string[]; artifactDigest: string; } | { ...; } | { ......' is not assignable to parameter of type 'GraphActionOutcomeInput'.
+  Type '{ state: "failed"; evidenceRef: string; actualTokens: number; retrySafe: boolean; error: { code: "OUTPUT_CONTRACT_INVALID" | "INTERNAL_ERROR"; message: string; schemaVersion: 1; retryable: true; nextAction: "retry"; nodeId?: string | undefined; epoch?: number | undefined; actionId?: string | undefined; } | { ...; } ...' is not assignable to type 'GraphActionOutcomeInput'.
+    Types of property 'error' are incompatible.
+      Type '{ code: "OUTPUT_CONTRACT_INVALID" | "INTERNAL_ERROR"; message: string; schemaVersion: 1; retryable: true; nextAction: "retry"; nodeId?: string | undefined; epoch?: number | undefined; actionId?: string | undefined; } | { ...; } | { ...; } | { ...; }' is not assignable to type 'GraphJsonValue'.
+        Type '{ code: "OUTPUT_CONTRACT_INVALID" | "INTERNAL_ERROR"; message: string; schemaVersion: 1; retryable: true; nextAction: "retry"; nodeId?: string | undefined; epoch?: number | undefined; actionId?: string | undefined; }' is not assignable to type 'GraphJsonValue'.
+          Type '{ code: "OUTPUT_CONTRACT_INVALID" | "INTERNAL_ERROR"; message: string; schemaVersion: 1; retryable: true; nextAction: "retry"; nodeId?: string | undefined; epoch?: number | undefined; actionId?: string | undefined; }' is not assignable to type '{ [key: string]: GraphJsonValue; }'.
+            Property 'nodeId' is incompatible with index signature.
+              Type 'string | undefined' is not assignable to type 'GraphJsonValue'.
+                Type 'undefined' is not assignable to type 'GraphJsonValue'.
+packages/cli/src/graph-branch-broker.test.ts(6,28): error TS6133: 'GraphActionStore' is declared but its value is never read.

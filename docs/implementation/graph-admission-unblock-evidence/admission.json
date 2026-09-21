@@ -1,0 +1,54 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-09-18",
+  "scope": [
+    "G25-A executor capability admission",
+    "G26-A dynamic new-run gate"
+  ],
+  "accepted": true,
+  "G25Complete": false,
+  "G26Complete": false,
+  "productionReady": false,
+  "builtinGraphAdaptersSupported": false,
+  "primaryLoop": {
+    "id": "G25-G26-admission-1",
+    "executed": 1,
+    "skipped": 0,
+    "outcome": "success",
+    "tests": {
+      "graph": 127,
+      "legacyCli": 56,
+      "loopEngine": 31,
+      "protocol": 220
+    },
+    "total": 434
+  },
+  "finalLoop": {
+    "id": "G25-G26-admission-2",
+    "executed": 1,
+    "skipped": 0,
+    "outcome": "success",
+    "admissionTests": 10,
+    "verifications": [
+      "typecheck",
+      "whitespace",
+      "prior primary Loop + unchanged production/schema hashes"
+    ]
+  },
+  "review": {
+    "requestedModel": "claude-fable-5-1",
+    "actualPrimaryModel": "claude-fable-5-1",
+    "consultations": 2,
+    "codeReviews": 1,
+    "verdict": "Accept as the bounded slice. No blockers were introduced.",
+    "testOnlyFollowup": "truthy/omitted flag/fixture identity regressions; production unchanged"
+  },
+  "startupMs": {
+    "version": 28,
+    "help": 80
+  },
+  "completedParentTasks": 25,
+  "totalParentTasks": 30,
+  "nextContext": "docs/implementation/2026-09-18-graph-unblock-next-context.md",
+  "acceptedCodeCommit": "f263062731f678f6835ac76546227fcd85f54b43"
+}

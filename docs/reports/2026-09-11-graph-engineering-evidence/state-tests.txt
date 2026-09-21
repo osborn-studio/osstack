@@ -1,0 +1,10 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack/packages/core
+
+ ✓ src/state/dependency-obligation-store.test.ts (2 tests) 30ms
+ ✓ src/state/autonomy-runs.test.ts (9 tests) 121ms
+
+ Test Files  2 passed (2)
+      Tests  11 passed (11)
+   Start at  09:53:13
+   Duration  457ms (transform 165ms, setup 0ms, collect 230ms, tests 151ms, environment 0ms, prepare 81ms)

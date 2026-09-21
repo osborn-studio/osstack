@@ -1,0 +1,1373 @@
+Independent final scoped code review of OSStack C6 G18-G20. Actual Claude Fable 5.1 requested. Tools unavailable, source-only, do not claim executing tests. Prior review is below followed by latest sources. Check prior blocker and retry-intent fix, plus final G19 independent workspaces, actual fresh invocation sessions, before/after candidate receipts and strict host latest-ledger evidence join.
+Adjudication: P1 legacy failed shapes now stop with nonretryable fallback even when a valid envelope has no classification (never promote a failed ledger to envelope verdict). Retry now owns allocated intent before rechecking grants, settles stopped unstarted failure under SAME still-live fence; expired/replaced fence explicitly requires G15 (never mutate stale owner). Full-valid joins now publish immutable evidence even when route stops at original budgets. Policy remains strict deadline/accounting stop per approved plan; already-produced evidence not lost. Exact-cap ready still works. Lease renewal is an intentional snapshot conflict, not permitted to refresh away verified premise under C5 invariant. Caller stops/drains worker before recovery/quality join; G21 driver must renew its host lease before costly evaluate and retry any revision conflict with full re-verification within original deadline. Live continuous short-lease heartbeat evaluation liveness is a documented G21/G28 integration constraint, not permission to omit revision checks or pause a worker without stop. Please challenge if these choices contain concrete C6 false-pass/data-loss flaws, not just alternate policy.
+G21 full delivery/epoch advance/automatic retry scheduler/CLI are pending. G18 source is explicitly scaffold, immutable futurephase mappings/budget reserves; do not claim fullpipeline. SameUID not OSsandbox, no live provider call claimed. Host-owned artifacts/evidence grants assumed trusted; malicious sameUID can spoof storage and is excluded.
+Return PASS or REQUEST_CHANGES for scoped implementation, with exact concrete actionable remaining defects and any test gaps separated from future integration concerns. Prior review:
+**Verdict: REQUEST_CHANGES.** One blocker in the join service, three P2 defects, plus low-severity duplication notes. Findings are from reading the snapshots only. I ran no tools or tests.
+
+## Blocker
+
+**P1. The join service throws permanently on ledger `failed` outcomes the broker legitimately writes.**
+File `packages/cli/src/graph-verification-join.ts`, function `evaluate`, the `failed` handling inside the branch loop.
+
+The broker in `executeRequest` writes two failed shapes whose `error` is not a `GraphError`:
+- Pre-invocation refusal: `error: { message: "admission refused before invocation" }`, `retrySafe: !signal.aborted`, `evidenceRef: not-started:<uuid>`.
+- Stopped invocation without a G19 classification: `error: { message: "trusted stopped invocation failed" }`.
+
+The broker's own `response()` anticipates this with `safeParse` and a fallback. The join service does not. It calls `GraphError.parse(outcome.error)`, which throws a Zod error. Even if the error parsed, the non-verification path throws `UNATTESTED_RETRY` whenever `retrySafe` is true, which is the default for any uncancelled pre-invocation refusal.
+
+Concrete scenario: the review slot's admission is refused because the repository is quarantined by governed execution. The ledger row is `failed`, `retrySafe: true`. Every later `evaluate` for that epoch throws. No route is ever produced, not even `stop`. The run cannot be routed to failure through G20, and the tests evidence for the same epoch is never joined. This is a deterministic liveness failure, not a fail-closed guard.
+
+Minimal fix, keeping the file's stated intent that these failures are not promotable to retry:
+
+```ts
+const parsed = GraphError.safeParse(outcome.error);
+const error = parsed.success ? parsed.data
+  : { schemaVersion: 1 as const, code: 'POLICY_DENIED' as const, message: 'prior invocation failed', retryable: false, nextAction: 'stop' as const };
+if (!outcome.evidenceRef.startsWith('graph-verification:')) {
+  branches.push({ ...base, state: 'failed', error: { ...error, retryable: false, nextAction: 'stop' } }); continue;
+}
+```
+
+Apply the same fallback in the verification-evidence `failed` path when `envelope.verificationFailure` is absent, instead of throwing `JOIN_FAILURE_MISMATCH`. Keep the mismatch throw for the case where a classification exists and disagrees. Route then returns `stop('branch_failure')`. Note plainly in the comment that ledger `retrySafe` on pre-invocation failures remains reachable only through `retryAuthorized`, never through a route. Whether the route should honor it is a G21 decision, not part of this fix.
+
+## P2 defects
+
+**P2. Retry intent can be orphaned in `intent` state forever.**
+File `packages/cli/src/graph-action-broker.ts`, `retryAuthorized` then `executeRequest`.
+
+`retryAuthorized` allocates attempt N+1 via `actions.retry` and then enters `executeRequest`. In `executeRequest`, `owned` is only assigned after `reserve` succeeds. `check()` and the `this.fence(binding)` argument to `reserve` both run before that and can throw, for example on lease expiry, revocation, or a retired connection. When they throw, `owned` is undefined, so the catch block records nothing. Attempt N+1 stays `intent` under the current generation.
+
+Consequences: the verification snapshot counts it in `unresolvedActions`, so route returns `reconcile` forever. `projectInTransaction` blocks terminal states while an `intent` exists. A second `retryAuthorized` hits `RETRY_NOT_SAFE` because the current attempt is `intent`, not `failed`. Worker replays get an `unknown` response and never execute. Nothing in these files resolves it.
+
+Minimal fix: in `retryAuthorized`, pass `next` into `executeRequest` and assign `owned = next` before `check()` runs, so the existing catch path records `failed` with `retrySafe: !signal.aborted`. `recordOutcome` already permits `intent` to `failed`.
+
+**P2. Route gates `ready` behind budget checks that only matter for new spend, so a fully verified candidate is never published.**
+File `packages/graph/src/route.ts`, `routeVerification`, the ordering of `accounting_budget`, `deadline_budget`, and the `ready` return.
+
+Concrete scenario: the review adapter reports actual tokens above its reservation. `recordOutcome` sets `accounting_blocked`, as designed, to stop new actions. Both branches are `confirmed`, verdict `accept`, tests `passed`. Route returns `stop('accounting_budget')` before reaching the `ready` check. In `evaluate`, `ready` is a precondition for `store.commit`, so the join is never published and the verified evidence has no durable receipt. The same happens when `actionStarts` overran or when the deadline elapsed between the last confirmation and evaluation, contradicting the `recordOutcome` comment that started effects must not disappear because their budget ended.
+
+Minimal fix: after the `missing_predecessor` and unresolved/pending checks, evaluate the all-confirmed `accept && passed` case and return `ready` before the deadline, accounting, and capacity gates. Keep those gates for `retry_required` and `repair_required`, which do require new spend. Treating the deadline the same way is a policy call. I recommend it for consistency with core, but flag it as yours.
+
+**P2. `evaluate` cannot complete if a lease renewal lands during its async evidence reads.**
+File `packages/cli/src/graph-verification-join.ts`, `evaluate`, the second `store.snapshot` and `store.commit`.
+
+`renewLease` increments `revision`. The second snapshot reuses the caller's fence with the original `expectedRevision`, so `checkGraphRunFence` throws `REVISION_CONFLICT`. Even if it did not, the digest includes `run.revision`, `updatedAt`, and `leaseExpiresAt`, so `VERIFICATION_SNAPSHOT_CHANGED` fires. The evidence reads include artifact verification and evidence loading, which G19 is currently hardening for receipt size. If the host heartbeat period is shorter than that read time, `evaluate` never succeeds. Evaluation must run under a live lease, so renewals are guaranteed to be concurrent, not hypothetical.
+
+Minimal fix: compute the compared digest over a body that excludes `revision`, `updatedAt`, and `leaseExpiresAt` from `run`, keep every other field including generation, owner, status, actions, budget, and admissions. Have the second snapshot and `commit` fence on a freshly read revision, which `commit` already derives from `snapshot.run`, so pass `current` rather than the stale `snapshot` into `commit`. Alternatively document that the host must pause renewal during `evaluate`, which is fragile.
+
+## Low severity and simplification
+
+- **Unreachable and duplicated epoch caps.** `route.ts` hardcodes `epoch >= 2`, `graph-actions.ts` has `count.max(2)`, and `spec-compiler.ts` has `maxEpochs > 3`. Three places encode one constant. Export it once from protocol.
+- **`validateGraphPlan` per-node loop is subsumed.** The final canonical equality against `fixedPlan` rejects everything the loop rejects. Keep it only if you want it as a self-test of the template; otherwise drop it to halve the function.
+- **Binding re-validation hack in core.** `GraphVerificationStore.commit` parses a synthetic `candidate_ready` result with `artifactRefs: ['join-validation']` to validate binding fields, because core cannot import `@osstack/graph`. This works but is misleading. Moving `VerificationBinding` to protocol removes the hack and the duplicated field checks.
+- **Dead `cancelled` branch path.** The ledger has no `cancelled` action state, so `stop('cancelled_branch')` in `routeVerification` cannot fire from `evaluate`. Harmless, but remove or comment it.
+- **Silent misconfiguration.** If a `slots` node id does not match the compiled plan id for `binding.epoch`, `latest` returns nothing and route returns `stop('missing_predecessor')` rather than an error. A one-line check that `slots[kind].nodeId` equals the expected `e{epoch}.{kind}` id would turn a config bug into a loud failure.
+- **Unchecked prefix slice.** In the `confirmed` path, `evidenceDigest` is sliced from `evidenceRef` without checking the `graph-verification:` prefix. `loadGraphVerificationEvidence` probably rejects other refs, but the slice should guard explicitly.
+
+## Confirmed correct, no change requested
+
+- Attempt and branch accounting between `evaluate`, `joinVerificationBranches`, and core `admit` agree. `spent` is `1 + retries` per node, matching `BRANCH_BUDGET_EXHAUSTED`. Capacity math matches `ACTION_BUDGET_EXHAUSTED` and `TOKEN_BUDGET_EXHAUSTED` boundaries.
+- Publication is immutable in practice. A complete join requires all branches confirmed, and `retry` requires the current attempt to be `failed`, so the bundle for an epoch cannot legitimately change after commit. `JOIN_PUBLICATION_CONFLICT` is a true integrity check.
+- The attest-then-commit sequence has no await between the second snapshot, `attested` assignment, and `commit`, and the store rechecks digest, canonical equality, unresolved actions, and pending admissions inside the fenced transaction. Concurrent `evaluate` calls cannot double-publish.
+- Confirmed results are recomputed from the evidence envelope and compared to the ledger result, so a persisted `passed: true` or `accept` cannot pass without matching envelope content. This assumes `loadGraphVerificationEvidence` verifies envelope content against the digest in the ref and binds `acceptance` to `binding.acceptanceRef`. Both live in G19 and are out of this review's scope.
+- `retryAuthorized` cannot be claimed by an ordinary worker replay. A replay for the slot sees the new intent with `created: false` and a non-matching `retryEffectKey`, and receives an `unknown` response without invoking.
+
+## Deferred to G21, not blockers here
+
+- Host-side registration of restore and workspace lifecycle starts that the compiler pre-reserves via `2 * maxEpochs * maxBranchAttempts`.
+- Whether routes should ever honor ledger `retrySafe` on pre-invocation failures.
+- Mapping `intent` or `running` of the current generation to a `reconcile` route. After a proper drain this state should not exist, but the honest recommendation would be "wait", and G21's driver should decide.
+
+## Same-UID limitation
+
+Nothing in these files mitigates or worsens it. Review and test workspaces run under one UID, so the trust boundary between them remains process discipline rather than OS isolation. That is a documented limitation, not a C6 defect.
+
+FILE packages/cli/src/graph-verification-join.ts
+import type Database from 'better-sqlite3';
+import type { GraphAction, GraphRunFence } from '@osstack/core';
+import { GraphVerificationStore, type GraphVerificationSnapshot, type GraphVerificationRecord } from '@osstack/core/graph-verification';
+import type { GraphArtifactStore } from '@osstack/core/graph-artifacts';
+import { GraphError, GraphResult, freezeWorkerData } from '@osstack/protocol';
+import { joinVerificationBranches, type VerificationJoin } from '@osstack/graph/join';
+import { routeVerification, type VerificationRoutingState, type VerificationRoute } from '@osstack/graph/route';
+import { parseVerificationBinding, verificationCanonical, type VerificationBinding, type VerificationBranch } from '@osstack/graph/nodes/branch';
+import { loadGraphVerificationEvidence } from './graph-verification-store.js';
+type Kind = 'review' | 'tests';
+export interface GraphVerificationJoinOptions {
+  binding: VerificationBinding; evidenceRoot: string; artifacts: GraphArtifactStore;
+  slots: Record<Kind, { nodeId: string; effectSlot: string }>;
+  nextCost: VerificationRoutingState['nextCost'];
+  authorize: () => void;
+}
+export interface GraphVerificationDecision {
+  joined: VerificationJoin; route: VerificationRoute; snapshot: GraphVerificationSnapshot;
+  publication?: { record: GraphVerificationRecord; created: boolean };
+}
+/** Host-only, latest-ledger recomputation. Worker task RETURNs are deliberately
+ * not an input. A route is a recommendation, never an execution/retry grant.
+ * The caller must stop/drain the old worker before recovery and use a new fence. */
+export class GraphVerificationJoinService {
+  private readonly options: Omit<GraphVerificationJoinOptions, 'artifacts' | 'authorize'>;
+  private readonly authorize: () => void;
+  private readonly verifyArtifact: GraphArtifactStore['verify'];
+  constructor(private readonly db: Database.Database, options: GraphVerificationJoinOptions) {
+    this.options = freezeWorkerData(structuredClone({ binding: parseVerificationBinding(options.binding), evidenceRoot: options.evidenceRoot,
+      slots: options.slots, nextCost: options.nextCost }));
+    this.authorize = options.authorize; this.verifyArtifact = options.artifacts.verify.bind(options.artifacts);
+  }
+  private check(): void {
+    const value: unknown = this.authorize();
+    if (value !== undefined) { void Promise.resolve(value).catch(() => {}); throw Error('authority must be synchronous'); }
+  }
+  async evaluate(fenceValue: GraphRunFence, now: () => number = Date.now): Promise<GraphVerificationDecision> {
+    this.check(); const fence = freezeWorkerData(structuredClone(fenceValue));
+    let attested: { digest: string; joined: VerificationJoin } | undefined;
+    const store = new GraphVerificationStore(this.db, (snapshot, value) => {
+      this.check();
+      if (!attested || snapshot.digest !== attested.digest || verificationCanonical(value) !== verificationCanonical(attested.joined)) throw Error('JOIN_ATTESTATION_MISMATCH');
+    });
+    const snapshot = store.snapshot(fence); const { binding, slots } = this.options;
+    if (binding.graphRunId !== snapshot.run.graphRunId || binding.specHash !== snapshot.run.identity.specHash
+      || verificationCanonical(binding.scope) !== verificationCanonical(snapshot.run.scope) || !snapshot.run.spec
+      || binding.acceptanceRef !== snapshot.run.spec.input.acceptanceRef || binding.epoch >= snapshot.run.spec.limits.maxEpochs) throw Error('JOIN_BINDING_MISMATCH');
+    const manifest = await this.verifyArtifact(binding.artifactDigest); this.check();
+    if (manifest.candidateRevision !== binding.candidateRevision || manifest.input.runId !== binding.graphRunId
+      || verificationCanonical(manifest.input.scope) !== verificationCanonical(binding.scope)) throw Error('JOIN_ARTIFACT_MISMATCH');
+    const latest = (kind: Kind): GraphAction | undefined => snapshot.actions.filter(a => a.effect.epoch === binding.epoch
+      && a.effect.nodeId === slots[kind].nodeId && a.effect.effectSlot === slots[kind].effectSlot).sort((a,b) => b.effect.logicalAttempt - a.effect.logicalAttempt)[0];
+    const selected = { review: latest('review'), tests: latest('tests') };
+    const expected = { review: { ...slots.review, logicalAttempt: selected.review?.effect.logicalAttempt ?? 0 },
+      tests: { ...slots.tests, logicalAttempt: selected.tests?.effect.logicalAttempt ?? 0 } };
+    const branches: VerificationBranch[] = [];
+    for (const kind of ['review','tests'] as const) {
+      const action = selected[kind]; if (!action) continue;
+      if (action.action.kind !== kind || !('candidateRevision' in action.action) || action.action.candidateRevision !== binding.candidateRevision
+        || (action.action.kind === 'review' ? action.action.acceptanceRef : action.action.kind === 'tests' ? action.action.commandSpecRef : '') !== binding.acceptanceRef) throw Error('JOIN_ACTION_MISMATCH');
+      const base = { schemaVersion: 1 as const, binding, kind, nodeId: action.effect.nodeId, effectSlot: action.effect.effectSlot,
+        logicalAttempt: action.effect.logicalAttempt, effectKey: action.effectKey };
+      if (action.state === 'confirmed' || action.state === 'failed') {
+        const outcome = action.outcome; if (!outcome || outcome.state !== action.state) throw Error('JOIN_OUTCOME_MISMATCH');
+        // Pre-admission/policy failures lack a verification receipt and cannot be
+        // promoted to retryable structured review/code results.
+        if (outcome.state === 'failed' && !outcome.evidenceRef.startsWith('graph-verification:')) {
+          const parsed = GraphError.safeParse(outcome.error);
+          const error = parsed.success && !parsed.data.retryable ? parsed.data : GraphError.parse({ schemaVersion: 1, code: 'POLICY_DENIED',
+            message: 'Stopped action has no attested verification report; host must inspect admission/execution failure', retryable: false, nextAction: 'stop' });
+          branches.push({ ...base, state: 'failed', error }); continue;
+        }
+        const envelope = await loadGraphVerificationEvidence(this.options.evidenceRoot, outcome.evidenceRef, binding, { effect: action.effect, effectKey: action.effectKey }); this.check();
+        if (envelope.kind !== kind || envelope.nodeId !== action.effect.nodeId || envelope.effectSlot !== action.effect.effectSlot
+          || envelope.workspaceLeaseRef !== action.action.workspaceLeaseRef) throw Error('JOIN_EVIDENCE_MISMATCH');
+        if (outcome.state === 'confirmed') {
+          if (envelope.verificationFailure) throw Error('JOIN_FAILED_EVIDENCE');
+          const result = GraphResult.parse({ schemaVersion: 1, kind, candidateRevision: binding.candidateRevision,
+            evidenceRefs: [outcome.evidenceRef], evidenceDigest: outcome.evidenceRef.slice('graph-verification:'.length),
+            ...(kind === 'review' ? { verdict: envelope.report!.verdict } : { passed: envelope.acceptance.passExitCodes.includes(envelope.evidence.command!.exitCode) }) });
+          if (verificationCanonical(outcome.result) !== verificationCanonical(result)) throw Error('JOIN_RESULT_MISMATCH');
+          branches.push({ ...base, state: 'confirmed', result });
+        } else {
+          const failure = envelope.verificationFailure;
+          // A cancelled settlement can retain a valid receipt yet have no G19
+          // classification. Preserve the ledger failure instead of promoting the
+          // receipt's code verdict, and leave host retry policy to G21.
+          const error = failure ? GraphError.parse(outcome.error) : GraphError.parse({ schemaVersion: 1, code: 'INTERNAL_ERROR',
+            message: 'Stopped invocation has no retryable verification classification', retryable: false, nextAction: 'stop' });
+          if (failure && (error.code !== failure.code || error.message !== failure.message || error.retryable !== failure.retrySafe || outcome.retrySafe !== failure.retrySafe)) throw Error('JOIN_FAILURE_MISMATCH');
+          branches.push({ ...base, state: 'failed', error });
+        }
+      } else {
+        const cancelling = action.state === 'cancel_pending';
+        branches.push({ ...base, state: cancelling ? 'cancel_pending' : 'unknown', error: { schemaVersion: 1, code: cancelling ? 'CANCEL_UNCONFIRMED' : 'ACTION_OUTCOME_UNKNOWN',
+          message: 'Ledger execution requires reconciliation', retryable: false, nextAction: 'reconcile' } });
+      }
+    }
+    // Reject races after asynchronous evidence reads without refreshing away the
+    // premise that was verified. Admission releases may change without revision.
+    this.check(); const time = now(); const current = store.snapshot({ ...fence, now: time });
+    if (current.digest !== snapshot.digest) throw Error('VERIFICATION_SNAPSHOT_CHANGED');
+    const joined = joinVerificationBranches({ binding, expected, branches }, branch => {
+      if (!branches.some(original => verificationCanonical(branch) === verificationCanonical(original))) throw Error('JOIN_BRANCH_MISMATCH');
+    });
+    const spent = (kind: Kind) => selected[kind] ? 1 + snapshot.actions.filter(a => a.effect.epoch === binding.epoch
+      && a.effect.nodeId === slots[kind].nodeId && a.effect.logicalAttempt > 1).length : 0;
+    const route = routeVerification(joined, { binding, spec: snapshot.run.spec, runStatus: snapshot.run.status, runCreatedAt: snapshot.run.createdAt, now: time,
+      ...snapshot.budget, pendingAdmissions: snapshot.pendingAdmissions, unresolvedActions: snapshot.unresolvedActions,
+      branchAttemptsSpent: { review: spent('review'), tests: spent('tests') }, nextCost: this.options.nextCost });
+    if (joined.status !== 'complete' || snapshot.unresolvedActions || snapshot.pendingAdmissions || snapshot.run.status !== 'running') return freezeWorkerData({ joined, route, snapshot });
+    attested = { digest: snapshot.digest, joined };
+    const committed = store.commit(snapshot, joined, time);
+    return freezeWorkerData({ joined, route, snapshot: store.snapshot({ ...fence, expectedRevision: committed.run.revision, now: time }),
+      publication: { record: committed.record, created: committed.created } });
+  }
+}
+
+
+FILE packages/cli/src/graph-verification.ts
+import { execFileSync } from 'node:child_process';
+import { createHash, randomUUID } from 'node:crypto';
+import { existsSync, lstatSync, readdirSync, readFileSync, readlinkSync, realpathSync } from 'node:fs';
+import { mkdir, realpath } from 'node:fs/promises';
+import { dirname, isAbsolute, join, resolve } from 'node:path';
+import type { AgentAdapter, AgentTask } from '@osstack/agents';
+import type { GraphArtifactStore, GraphArtifactManifest } from '@osstack/core/graph-artifacts';
+import { GraphResult } from '@osstack/protocol';
+import { ExecutionPlan, type RegisteredCandidateWorkspace } from '@osstack/loop';
+import { parseVerificationBinding, verificationCanonical, type VerificationBinding } from '@osstack/graph/nodes/branch';
+import { createReviewRequest, parseReviewReport } from '@osstack/graph/nodes/review';
+import { createTestsRequest } from '@osstack/graph/nodes/tests';
+import type { AdmissionInput, ExecutionLease } from './governed-execution.js';
+import type { GraphActionEvidence, GraphRegisteredAction, PersistedGraphActionEvidence } from './graph-action-broker.js';
+import { parseAcceptanceCommand, publishGraphVerificationEvidence, validateVerificationEffect, type CandidateIdentity, type CandidateObservation, type ReviewerInvocation, type AcceptanceCommandSpec, type GraphVerificationEnvelope, type VerificationEffect } from './graph-verification-store.js';
+export { loadGraphVerificationEvidence } from './graph-verification-store.js';
+export type { AcceptanceCommandSpec, GraphVerificationEnvelope, VerificationEffect } from './graph-verification-store.js';
+type Kind = 'review' | 'tests';
+export interface ReviewerIdentity { writerIdentity: string; reviewerIdentity: string; adapterId: string; capabilityId: string }
+export interface GraphVerificationOptions {
+  root: string; artifacts: GraphArtifactStore; candidate: Extract<GraphResult, { kind: 'candidate_ready' }>; binding: VerificationBinding;
+  sourceWorkspace: RegisteredCandidateWorkspace; authorize: () => void; acquire: (input: AdmissionInput) => Promise<ExecutionLease>;
+  acceptanceRegistry: readonly AcceptanceCommandSpec[]; writerIdentity: string;
+  reviewer: { identity: string; adapter: AgentAdapter; capabilityId: string };
+  /** Independent host identity/credential check; never derived from review/model output. */
+  verifyReviewer: (identities: Readonly<ReviewerIdentity>) => Promise<void>;
+  /** Reads current running ledger record, including its actual logical attempt. */
+  effectIdentity: (kind: Kind) => VerificationEffect;
+  slots?: Partial<Record<Kind, { nodeId: string; effectSlot: string; workspaceLeaseRef: string; tokenReservation: number }>>;
+}
+export interface PreparedGraphVerification {
+  binding: VerificationBinding; reviewWorkspace: RegisteredCandidateWorkspace; testsWorkspace: RegisteredCandidateWorkspace;
+  actions: readonly GraphRegisteredAction[];
+}
+function snapshot<T>(value: T): T {
+  const copy = structuredClone(value);
+  const freeze = (item: unknown) => { if (item && typeof item === 'object') { Object.values(item).forEach(freeze); Object.freeze(item); } };
+  freeze(copy); return copy;
+}
+function checkedAuthority(authorize: () => void): () => void {
+  return () => { const result: unknown = authorize(); if (result !== undefined) { void Promise.resolve(result).catch(() => {}); throw new Error('authority must be synchronous'); } };
+}
+function gitRaw(path: string, ...args: string[]): string {
+  const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith('GIT_')));
+  return execFileSync('git', ['-c', 'core.hooksPath=/dev/null', '-c', 'core.fsmonitor=false', ...args], { cwd: path, encoding: 'utf8', timeout: 10000, maxBuffer: 16 * 1024 * 1024,
+    env: { ...env, GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOSYSTEM: '1', GIT_OPTIONAL_LOCKS: '0' } });
+}
+function git(path: string, ...args: string[]) { return gitRaw(path, ...args).trim(); }
+/** Raw bytes/modes/links, including ignored and untracked files. Git status alone
+ * misses ignored files, assume-unchanged and timestamp-preserving modifications. */
+function workspaceFingerprint(path: string): string {
+  const hash = createHash('sha256'); let count = 0;
+  const visit = (directory: string, prefix: string) => {
+    for (const name of readdirSync(directory).sort()) {
+      if (!prefix && name === '.git') continue;
+      if (++count > 100000) throw new Error('workspace inventory limit');
+      const relative = `${prefix}${name}`; const full = join(directory, name); const stat = lstatSync(full);
+      hash.update(JSON.stringify([relative, stat.mode & 0o777, stat.isDirectory() ? 'directory' : stat.isSymbolicLink() ? 'link' : 'file']));
+      if (stat.isSymbolicLink()) {
+        const target = resolve(dirname(full), readlinkSync(full));
+        if (!target.startsWith(`${path}/`) || (existsSync(target) && !realpathSync(target).startsWith(`${path}/`))) throw new Error('shared external symlink in candidate workspace');
+        hash.update(readlinkSync(full));
+      }
+      else if (stat.isDirectory()) visit(full, `${relative}/`);
+      else if (stat.isFile() && stat.size <= 256 * 1024 * 1024 && stat.nlink === 1) hash.update(readFileSync(full));
+      else throw new Error('unsupported workspace entry/shared writable hardlink');
+    }
+  };
+  visit(path, ''); return hash.digest('hex');
+}
+function assertExactCandidateFiles(path: string, revision: string): void {
+  const expected = new Set<string>();
+  for (const entry of gitRaw(path, 'ls-tree', '-rz', '--full-tree', revision).split('\0').filter(Boolean)) {
+    const match = /^(100644|100755|120000) blob ([a-f0-9]{40})\t([\s\S]+)$/.exec(entry);
+    if (!match) throw new Error('unsupported candidate tree entry');
+    const name = match[3]!; expected.add(name);
+    let parent = dirname(name); while (parent !== '.') { expected.add(parent); parent = dirname(parent); }
+    const file = join(path, name); const stat = lstatSync(file);
+    const bytes = match[1] === '120000' && stat.isSymbolicLink() ? Buffer.from(readlinkSync(file))
+      : match[1] !== '120000' && stat.isFile() ? readFileSync(file) : undefined;
+    if (!bytes || (match[1] !== '120000' && ((stat.mode & 0o111) !== 0) !== (match[1] === '100755'))
+      || createHash('sha1').update(`blob ${bytes.length}\0`).update(bytes).digest('hex') !== match[2]) throw new Error('candidate raw tree mismatch');
+  }
+  const visit = (directory: string, prefix: string): void => { for (const name of readdirSync(directory)) {
+    if (!prefix && name === '.git') continue;
+    const relative = `${prefix}${name}`; if (!expected.has(relative)) throw new Error('candidate has unexpected files');
+    const full = join(directory, name); if (lstatSync(full).isDirectory()) visit(full, `${relative}/`);
+  } };
+  visit(path, '');
+}
+function repositoryStamp(path: string): string {
+  const gitDir = join(path, '.git');
+  for (const p of [path, gitDir, join(gitDir, 'objects')]) if (!lstatSync(p).isDirectory() || realpathSync(p) !== p) throw new Error('workspace repository is not independent');
+  if (git(path, 'rev-parse', '--absolute-git-dir') !== gitDir || git(path, 'rev-parse', '--git-common-dir') !== '.git'
+    || existsSync(join(gitDir, 'objects', 'info', 'alternates')) || existsSync(join(gitDir, 'objects', 'info', 'http-alternates'))) throw new Error('shared repository storage forbidden');
+  // Every restored repository starts without caches, symlinked metadata or shared objects.
+  const inspect = (directory: string): void => { for (const name of readdirSync(directory)) { const p = join(directory, name); const stat = lstatSync(p); if (stat.isSymbolicLink() || (!stat.isDirectory() && (!stat.isFile() || stat.nlink !== 1))) throw new Error('shared repository metadata'); if (stat.isDirectory()) inspect(p); } };
+  inspect(gitDir);
+  return verificationCanonical([path, gitDir, join(gitDir, 'objects')].map(p => { const stat = lstatSync(p); return [p, stat.dev, stat.ino]; }));
+}
+/** Explicit trusted host preparation. No worker-supplied paths, commands, identity
+ * claims, writer history or automatic cleanup. Same UID is not an OS sandbox. */
+export async function prepareGraphVerification(options: GraphVerificationOptions): Promise<PreparedGraphVerification> {
+  // Capture ALL callbacks and values before the first await.
+  const { authorize, acquire, effectIdentity, verifyReviewer } = options;
+  const check = checkedAuthority(authorize); check();
+  const data = snapshot({ root: options.root, binding: parseVerificationBinding(options.binding), candidate: GraphResult.parse(options.candidate), source: options.sourceWorkspace,
+    writerIdentity: options.writerIdentity, reviewerIdentity: options.reviewer.identity, capabilityId: options.reviewer.capabilityId,
+    registry: options.acceptanceRegistry.map(parseAcceptanceCommand), slots: options.slots ?? {} });
+  const adapter = options.reviewer.adapter;
+  const capabilities = snapshot(adapter.capabilities());
+  const reviewer: AgentAdapter = Object.freeze({ id: adapter.id, display_name: adapter.display_name, cost_tier: adapter.cost_tier,
+    capabilities: () => structuredClone(capabilities), isAvailable: adapter.isAvailable.bind(adapter), invoke: adapter.invoke.bind(adapter),
+    ...(adapter.confirmStopped ? { confirmStopped: adapter.confirmStopped.bind(adapter) } : {}) });
+  const verifyArtifact = options.artifacts.verify.bind(options.artifacts); const restore = options.artifacts.restore.bind(options.artifacts);
+  const { binding } = data;
+  check();
+  if (!isAbsolute(data.root) || data.root.includes('\0') || !isAbsolute(data.source.workspace_path) || data.source.workspace_id !== binding.scope.workspaceId) throw new Error('invalid host workspace/root');
+  if (data.candidate.kind !== 'candidate_ready' || data.candidate.candidateRevision !== binding.candidateRevision || data.candidate.artifactDigest !== binding.artifactDigest) throw new Error('candidate binding mismatch');
+  if (!data.writerIdentity.trim() || !data.reviewerIdentity.trim() || data.writerIdentity === data.reviewerIdentity || data.reviewerIdentity !== reviewer.id || !reviewer.confirmStopped || typeof verifyReviewer !== 'function') throw new Error('independent reviewer identity/stop verifier required');
+  const matches = capabilities.filter(cap => cap.id === data.capabilityId);
+  if (matches.length !== 1 || matches[0]!.agent_id !== reviewer.id || !['review.code', 'code.review'].includes(matches[0]!.kind)) throw new Error('review capability mismatch');
+  const acceptanceMatches = data.registry.filter(spec => spec.ref === binding.acceptanceRef);
+  if (acceptanceMatches.length !== 1) throw new Error('acceptance must resolve unique trusted command');
+  const acceptance = acceptanceMatches[0]!;
+  const identities = snapshot({ writerIdentity: data.writerIdentity, reviewerIdentity: data.reviewerIdentity, adapterId: reviewer.id, capabilityId: data.capabilityId });
+  const checked = async <T>(operation: () => Promise<T>): Promise<T> => { check(); const value = await operation(); check(); return value; };
+  const independent = async () => { const result: unknown = await checked(() => verifyReviewer(identities)); if (result !== undefined) throw new Error('independent verifier must return void'); check(); };
+  await independent();
+  check();
+  const lease = await acquire({ kind: 'write', runId: `graph-verification-prepare:${randomUUID()}`, workspacePath: data.source.workspace_path, authorize: async () => { check(); } });
+  const preparedCheck = async () => { if (!lease.assertActive) throw new Error('canonical G10 preparation lease required'); await checked(() => lease.assertActive!()); };
+  let manifest!: GraphArtifactManifest; let reviewPath!: string; let testsPath!: string;
+  let preparationFailure: { error: unknown } | undefined;
+  try {
+    check();
+    await preparedCheck();
+    const validateManifest = (value: GraphArtifactManifest) => {
+      if (value.candidateRevision !== binding.candidateRevision || verificationCanonical(value.input.scope) !== verificationCanonical(binding.scope)
+        || value.input.runId !== binding.graphRunId || value.input.worktreePath !== data.source.workspace_path) throw new Error('artifact manifest binding mismatch');
+    };
+    manifest = snapshot(await checked(() => verifyArtifact(binding.artifactDigest))); validateManifest(manifest);
+    await checked(() => realpath(dirname(data.root)));
+    await checked(() => mkdir(data.root, { mode: 0o700, recursive: true }));
+    if (await checked(() => realpath(data.root)) !== data.root || data.root === data.source.workspace_path || data.root.startsWith(`${data.source.workspace_path}/`)) throw new Error('host root must be canonical and outside source workspace');
+    const paths: string[] = [];
+    for (const kind of ['review', 'tests']) {
+      await preparedCheck();
+      const restored = await checked(() => restore(binding.artifactDigest, { rootPath: data.root, directoryName: `${kind}-${randomUUID()}` }));
+      if (restored.candidateRevision !== binding.candidateRevision || restored.tree !== manifest.tree || dirname(restored.worktreePath) !== data.root) throw new Error('restored candidate mismatch');
+      paths.push(restored.worktreePath);
+      await preparedCheck();
+    }
+    reviewPath = paths[0]!; testsPath = paths[1]!;
+    const final = await checked(() => verifyArtifact(binding.artifactDigest)); validateManifest(final);
+    if (verificationCanonical(final) !== verificationCanonical(manifest)) throw new Error('artifact changed during preparation');
+    await preparedCheck();
+  } catch (error) { preparationFailure = { error }; }
+  // Restore promises have settled: no external agent exists during preparation.
+  // Leave allocated directories intact even when publication/authority fails.
+  try { await lease.release(); } catch (error) { lease.retain(String(error)); throw error; }
+  if (preparationFailure) throw preparationFailure.error;
+  check();
+  const reviewWorkspace = snapshot({ workspace_id: binding.scope.workspaceId, workspace_path: reviewPath });
+  const testsWorkspace = snapshot({ workspace_id: binding.scope.workspaceId, workspace_path: testsPath });
+  const actions = (['review', 'tests'] as const).map(kind => {
+    const workspace = kind === 'review' ? reviewWorkspace : testsWorkspace;
+    assertExactCandidateFiles(workspace.workspace_path, binding.candidateRevision);
+    // Paths come from the frozen tree, never from a potentially altered index.
+    const trackedPaths = gitRaw(workspace.workspace_path, 'ls-tree', '-rz', '--name-only', binding.candidateRevision).split('\0').filter(Boolean);
+    const trackedFingerprint = () => {
+      const hash = createHash('sha256');
+      for (const name of trackedPaths) {
+        const file = join(workspace.workspace_path, name);
+        let parent = dirname(file);
+        while (parent !== workspace.workspace_path) {
+          if (!lstatSync(parent).isDirectory() || lstatSync(parent).isSymbolicLink()) throw new Error('candidate tracked parent changed');
+          parent = dirname(parent);
+        }
+        const stat = lstatSync(file);
+        if ((!stat.isFile() && !stat.isSymbolicLink()) || stat.nlink !== 1 || stat.size > 256 * 1024 * 1024) throw new Error('unsupported tracked entry');
+        const bytes = stat.isSymbolicLink() ? Buffer.from(readlinkSync(file)) : readFileSync(file);
+        hash.update(JSON.stringify([name, stat.mode, bytes.length, createHash('sha256').update(bytes).digest('hex')]));
+      }
+      return hash.digest('hex');
+    };
+    const candidateIdentity = (): CandidateIdentity => ({
+      repositoryDigest: createHash('sha256').update(repositoryStamp(workspace.workspace_path)).digest('hex'),
+      head: git(workspace.workspace_path, 'rev-parse', 'HEAD'), tree: git(workspace.workspace_path, 'rev-parse', 'HEAD^{tree}'),
+      indexTree: git(workspace.workspace_path, 'write-tree'), indexDigest: createHash('sha256').update(gitRaw(workspace.workspace_path, 'ls-files', '--stage', '-v', '-z')).digest('hex'), trackedDigest: trackedFingerprint(),
+      ...(kind === 'review' ? { inventoryDigest: workspaceFingerprint(workspace.workspace_path) } : {}),
+    });
+    // Both workspaces start with a strict inventory; tests may later emit untracked build outputs.
+    workspaceFingerprint(workspace.workspace_path);
+    const before = snapshot(candidateIdentity());
+    if (before.head !== binding.candidateRevision || before.tree !== manifest.tree || before.indexTree !== manifest.tree) throw new Error('candidate workspace mutation detected');
+    const observe = (): CandidateObservation => {
+      try { return candidateIdentity(); } catch (error) { return { error: String(error).slice(0, 4096) }; }
+    };
+    const candidateCheck = () => {
+      check();
+      if (verificationCanonical(observe()) !== verificationCanonical(before)) throw new Error('candidate workspace mutation detected');
+      check();
+    };
+    candidateCheck();
+    const invocations = new Map<string, ReviewerInvocation>();
+    const slot = data.slots[kind] ?? { nodeId: kind, effectSlot: 'invoke', workspaceLeaseRef: `verification:${randomUUID()}`, tokenReservation: 0 };
+    if (!Number.isSafeInteger(slot.tokenReservation) || slot.tokenReservation < 0) throw new Error('invalid token reservation');
+    const requestInput = { binding, generation: 1, requestId: 'register', ...slot };
+    const request = kind === 'review' ? createReviewRequest(requestInput) : createTestsRequest(requestInput);
+    const verifyWorkspace = async () => { await independent(); candidateCheck(); };
+    const persist = async (raw: GraphActionEvidence): Promise<PersistedGraphActionEvidence> => {
+      const evidence = snapshot(raw); check();
+      if (evidence.stopped !== true || evidence.candidate?.status === 'execution_unconfirmed' || evidence.candidate?.execution?.failure_code === 'cancellation_unconfirmed'
+        || evidence.command?.failure_code === 'process_exit_unconfirmed' || evidence.command?.failure_code === 'surviving_descendants') throw new Error('executor stop unconfirmed');
+      const effect = snapshot(validateVerificationEffect(effectIdentity(kind), binding, slot.nodeId, slot.effectSlot));
+      await independent();
+      if (verificationCanonical(validateVerificationEffect(effectIdentity(kind), binding, slot.nodeId, slot.effectSlot)) !== verificationCanonical(effect)) throw new Error('ledger effect changed during verification');
+      const envelope: GraphVerificationEnvelope = { schemaVersion: 1, binding, kind, nodeId: slot.nodeId, effectSlot: slot.effectSlot, ...effect,
+        workspace, workspaceLeaseRef: slot.workspaceLeaseRef, candidateIdentity: { before, after: observe() }, acceptance, writerIdentity: data.writerIdentity, reviewerIdentity: data.reviewerIdentity, evidence };
+      if (verificationCanonical(envelope.candidateIdentity.after) !== verificationCanonical(before)) envelope.verificationFailure = { code: 'INTERNAL_ERROR', message: 'Candidate workspace mutation detected after execution', retrySafe: false };
+      if (kind === 'review') {
+        const receipt = invocations.get(evidence.candidate?.execution?.run_id ?? '');
+        if (!receipt || receipt.effectKey !== effect.effectKey) throw new Error('missing actual reviewer invocation receipt');
+        envelope.reviewerInvocation = receipt;
+        if (!envelope.verificationFailure) {
+          if (evidence.status !== 'completed' || evidence.candidate?.execution?.failure_code || evidence.candidate?.status !== 'implementation_complete') envelope.verificationFailure = { code: 'INTERNAL_ERROR', message: 'Review executor failed after stopping', retrySafe: true };
+          else {
+            try { envelope.report = parseReviewReport(JSON.parse(evidence.candidate.execution?.summary ?? 'null')); }
+            catch { envelope.verificationFailure = { code: 'OUTPUT_CONTRACT_INVALID', message: 'Review summary is not a valid structured report', retrySafe: true }; }
+          }
+        }
+      } else {
+        const command = evidence.command;
+        if (!command || command.command !== acceptance.command || command.termination?.stop_confirmed !== true) throw new Error('missing actual registered command stop evidence');
+        if (!envelope.verificationFailure && (command.failure_code || command.cancellation || command.termination.scope !== 'posix_process_group' || command.termination.trigger !== 'exit' || command.termination.leader_exit_code !== command.exitCode
+          || ![...acceptance.passExitCodes, ...acceptance.failExitCodes].includes(command.exitCode))) envelope.verificationFailure = { code: 'INTERNAL_ERROR', message: 'Acceptance command infrastructure failure or unregistered exit code', retrySafe: true };
+      }
+      return publishGraphVerificationEvidence(data.root, envelope, () => {
+        if (verificationCanonical(observe()) !== verificationCanonical(envelope.candidateIdentity.after)) throw new Error('candidate changed during persistence');
+        check(); if (verificationCanonical(validateVerificationEffect(effectIdentity(kind), binding, slot.nodeId, slot.effectSlot)) !== verificationCanonical(effect)) throw new Error('ledger effect changed during persistence');
+      });
+    };
+    // G04 reuses plan-derived session IDs on retry. Allocate the real session at invocation,
+    // rebuilding task/context from trusted fields so caller history/resume hints cannot pass through.
+    const plan = snapshot(ExecutionPlan.parse({ plan_id: `verification:${randomUUID()}`, agent_id: kind === 'review' ? reviewer.id : 'registered-command', max_iterations: 1,
+      task: { task_id: `verification:${kind}:${randomUUID()}`, capability: kind === 'review' ? matches[0]!.kind : 'code.test', source: 'manual',
+        prompt: kind === 'review' ? `Independently review frozen candidate ${binding.candidateRevision} against acceptance ${binding.acceptanceRef}. Return only JSON {"schemaVersion":1,"verdict":"accept"|"changes_requested","summary":string,"findings":string[]}. Do not modify files.` : `Run registered acceptance ${binding.acceptanceRef}.` },
+      stop_condition: { type: kind === 'review' ? 'review_approved' : 'tests_pass' } }));
+    const invocationReviewer: AgentAdapter = Object.freeze({ ...reviewer,
+      invoke: (task: AgentTask, signal: AbortSignal) => (async function* () {
+        const runId = task.run_id; const taskId = task.task_id;
+        await independent(); candidateCheck();
+        if (signal.aborted) throw new Error('review invocation cancelled');
+        if (taskId !== plan.task.task_id || invocations.has(runId)) throw new Error('invalid or repeated reviewer invocation');
+        const actual: AgentTask = snapshot({ run_id: runId, task_id: taskId, session_id: randomUUID(), capability_id: data.capabilityId,
+          prompt: plan.task.prompt, context: { repo_path: workspace.workspace_path } });
+        const effect = validateVerificationEffect(effectIdentity(kind), binding, slot.nodeId, slot.effectSlot);
+        invocations.set(runId, snapshot({ runId, taskId, sessionId: actual.session_id, adapterId: reviewer.id, capabilityId: actual.capability_id,
+          promptDigest: createHash('sha256').update(actual.prompt).digest('hex'), contextDigest: createHash('sha256').update(verificationCanonical(actual.context)).digest('hex'),
+          historyPassed: false, effectKey: effect.effectKey }));
+        check();
+        yield* reviewer.invoke(actual, signal);
+      })(),
+    });
+    const action: GraphRegisteredAction = { nodeId: slot.nodeId, effectSlot: slot.effectSlot, action: snapshot(request.action), tokenReservation: slot.tokenReservation,
+      workspace, verifyWorkspace, persist, execution: kind === 'review' ? { kind: 'adapter', plan, adapter: invocationReviewer, capabilityId: data.capabilityId } : { kind: 'command', plan, command: acceptance.command } };
+    Object.freeze(action.execution); return Object.freeze(action);
+  });
+  return Object.freeze({ binding, reviewWorkspace, testsWorkspace, actions: Object.freeze(actions) });
+}
+
+
+FILE packages/cli/src/graph-verification-store.ts
+import { createHash, randomUUID } from 'node:crypto';
+import { constants } from 'node:fs';
+import { chmod, link, lstat, mkdir, open, realpath, unlink } from 'node:fs/promises';
+import { dirname, isAbsolute, join } from 'node:path';
+import { GraphEffectIdentity, GraphJsonValue, GraphResult, computeGraphEffectKey } from '@osstack/protocol';
+import { parseVerificationBinding, verificationCanonical, verificationObject, type VerificationBinding } from '@osstack/graph/nodes/branch';
+import { parseReviewReport, type ReviewReport } from '@osstack/graph/nodes/review';
+import type { GraphActionEvidence, PersistedGraphActionEvidence } from './graph-action-broker.js';
+export interface AcceptanceCommandSpec { ref: string; command: string; passExitCodes: readonly number[]; failExitCodes: readonly number[] }
+export interface VerificationEffect { effect: GraphEffectIdentity; effectKey: string }
+export interface CandidateIdentity {
+  head: string; tree: string; indexTree: string; indexDigest: string; trackedDigest: string; repositoryDigest: string; inventoryDigest?: string;
+}
+export type CandidateObservation = CandidateIdentity | { error: string };
+export interface ReviewerInvocation {
+  runId: string; taskId: string; sessionId: string; adapterId: string; capabilityId: string;
+  promptDigest: string; contextDigest: string; historyPassed: false; effectKey: string;
+}
+export interface GraphVerificationEnvelope extends VerificationEffect {
+  schemaVersion: 1; binding: VerificationBinding; kind: 'review' | 'tests'; nodeId: string; effectSlot: string;
+  workspace: { workspace_id: string; workspace_path: string }; acceptance: AcceptanceCommandSpec;
+  workspaceLeaseRef: string; candidateIdentity: { before: CandidateIdentity; after: CandidateObservation };
+  reviewerInvocation?: ReviewerInvocation;
+  writerIdentity: string; reviewerIdentity: string; evidence: GraphActionEvidence;
+  report?: ReviewReport; verificationFailure?: NonNullable<PersistedGraphActionEvidence['verificationFailure']>;
+}
+export function parseAcceptanceCommand(value: unknown): AcceptanceCommandSpec {
+  const v = verificationObject(value, ['ref', 'command', 'passExitCodes', 'failExitCodes']);
+  if (typeof v.ref !== 'string' || !v.ref.trim() || v.ref.length > 256 || typeof v.command !== 'string' || !v.command.trim() || v.command.includes('\0') || v.command.length > 8192) throw new Error('invalid acceptance command');
+  for (const codes of [v.passExitCodes, v.failExitCodes]) if (!Array.isArray(codes) || codes.length > 256 || codes.some(c => !Number.isInteger(c) || c < 0 || c > 255) || new Set(codes).size !== codes.length) throw new Error('invalid acceptance exit codes');
+  const pass = v.passExitCodes as number[]; const fail = v.failExitCodes as number[];
+  if (!pass.length || pass.some(code => fail.includes(code))) throw new Error('ambiguous acceptance exit codes');
+  return structuredClone(value) as AcceptanceCommandSpec;
+}
+export function validateVerificationEffect(value: unknown, binding: VerificationBinding, nodeId: string, effectSlot: string): VerificationEffect {
+  const object = verificationObject(value, ['effect', 'effectKey']); const effect = GraphEffectIdentity.parse(object.effect);
+  if (effect.graphRunId !== binding.graphRunId || effect.specHash !== binding.specHash || effect.epoch !== binding.epoch || verificationCanonical(effect.scope) !== verificationCanonical(binding.scope)
+    || effect.nodeId !== nodeId || effect.effectSlot !== effectSlot || object.effectKey !== computeGraphEffectKey(effect)) throw new Error('evidence effect binding mismatch');
+  return { effect, effectKey: object.effectKey as string };
+}
+function validateEnvelope(value: unknown, expectedBinding: VerificationBinding, expectedEffect?: VerificationEffect): GraphVerificationEnvelope {
+  const object = verificationObject(value, ['schemaVersion', 'binding', 'kind', 'nodeId', 'effectSlot', 'effect', 'effectKey', 'workspace', 'acceptance', 'writerIdentity', 'reviewerIdentity', 'evidence', 'report', 'verificationFailure', 'workspaceLeaseRef', 'candidateIdentity', 'reviewerInvocation']);
+  const binding = parseVerificationBinding(object.binding);
+  if (verificationCanonical(binding) !== verificationCanonical(parseVerificationBinding(expectedBinding))) throw new Error('evidence binding mismatch');
+  if (object.schemaVersion !== 1 || !['review', 'tests'].includes(String(object.kind))) throw new Error('invalid evidence kind');
+  const effect = validateVerificationEffect({ effect: object.effect, effectKey: object.effectKey }, binding, String(object.nodeId), String(object.effectSlot));
+  if (expectedEffect && verificationCanonical(effect) !== verificationCanonical(expectedEffect)) throw new Error('evidence attempt replay');
+  const acceptance = parseAcceptanceCommand(object.acceptance);
+  if (acceptance.ref !== binding.acceptanceRef) throw new Error('acceptance binding mismatch');
+  const workspace = verificationObject(object.workspace, ['workspace_id', 'workspace_path']);
+  if (workspace.workspace_id !== binding.scope.workspaceId || typeof workspace.workspace_path !== 'string' || !isAbsolute(workspace.workspace_path)) throw new Error('evidence workspace mismatch');
+  if (typeof object.writerIdentity !== 'string' || !object.writerIdentity.trim() || typeof object.reviewerIdentity !== 'string' || !object.reviewerIdentity.trim() || object.writerIdentity === object.reviewerIdentity) throw new Error('independent identity required');
+  const evidence = verificationObject(object.evidence, ['status', 'stopped', 'candidate', 'command']);
+  if (evidence.stopped !== true || !['completed', 'failed'].includes(String(evidence.status))) throw new Error('executor stop unconfirmed');
+  const envelope = object as unknown as GraphVerificationEnvelope;
+  if (envelope.evidence.candidate?.status === 'execution_unconfirmed' || envelope.evidence.candidate?.execution?.failure_code === 'cancellation_unconfirmed'
+    || envelope.evidence.command?.failure_code === 'process_exit_unconfirmed' || envelope.evidence.command?.failure_code === 'surviving_descendants') throw new Error('executor stop evidence contradicts uncertainty');
+  if (object.verificationFailure !== undefined) {
+    const failure = verificationObject(object.verificationFailure, ['code', 'message', 'retrySafe']);
+    if (!['OUTPUT_CONTRACT_INVALID', 'INTERNAL_ERROR'].includes(String(failure.code)) || typeof failure.message !== 'string' || !failure.message.trim() || failure.message.length > 4096 || typeof failure.retrySafe !== 'boolean' || object.report !== undefined) throw new Error('invalid verification failure');
+  }
+  if (typeof object.workspaceLeaseRef !== 'string' || !object.workspaceLeaseRef.trim() || object.workspaceLeaseRef.length > 256) throw new Error('invalid workspace lease receipt');
+  const identities = verificationObject(object.candidateIdentity, ['before', 'after']);
+  const validateIdentity = (value: unknown) => {
+    const identity = verificationObject(value, ['head', 'tree', 'indexTree', 'indexDigest', 'trackedDigest', 'repositoryDigest', 'inventoryDigest']);
+    for (const key of ['head', 'tree', 'indexTree']) if (typeof identity[key] !== 'string' || !/^[a-f0-9]{40}$/.test(identity[key] as string)) throw new Error('invalid candidate identity');
+    for (const key of ['indexDigest', 'trackedDigest', 'repositoryDigest', ...(envelope.kind === 'review' ? ['inventoryDigest'] : [])]) if (typeof identity[key] !== 'string' || !/^[a-f0-9]{64}$/.test(identity[key] as string)) throw new Error('invalid candidate identity digest');
+    if (envelope.kind === 'tests' && identity.inventoryDigest !== undefined) throw new Error('unexpected tests inventory receipt');
+    return identity;
+  };
+  const before = validateIdentity(identities.before);
+  if (before.head !== binding.candidateRevision || before.tree !== before.indexTree) throw new Error('invalid frozen candidate identity');
+  const after = verificationObject(identities.after, ['head', 'tree', 'indexTree', 'indexDigest', 'trackedDigest', 'repositoryDigest', 'inventoryDigest', 'error']);
+  if (after.error !== undefined) {
+    if (Object.keys(after).length !== 1 || typeof after.error !== 'string' || !after.error.trim() || after.error.length > 4096) throw new Error('invalid candidate observation error');
+  } else validateIdentity(after);
+  if (verificationCanonical(before) !== verificationCanonical(after) && (envelope.verificationFailure?.code !== 'INTERNAL_ERROR' || envelope.verificationFailure.retrySafe !== false)) throw new Error('candidate mutation requires non-retryable failure');
+  if (envelope.kind === 'tests') {
+    if (object.reviewerInvocation !== undefined) throw new Error('tests cannot contain reviewer invocation');
+    const command = envelope.evidence.command;
+    if (!command || command.command !== acceptance.command || !Number.isInteger(command.exitCode) || typeof command.stdout !== 'string' || typeof command.stderr !== 'string' || !Number.isFinite(command.durationMs) || command.durationMs < 0
+      || command.termination?.stop_confirmed !== true || !command.termination.evidence.trim()) throw new Error('invalid stopped command evidence');
+    if (object.report !== undefined) throw new Error('tests cannot contain model report');
+    if (!envelope.verificationFailure && (command.failure_code || command.cancellation || command.termination.scope !== 'posix_process_group' || command.termination.trigger !== 'exit'
+      || command.termination.leader_exit_code !== command.exitCode || ![...acceptance.passExitCodes, ...acceptance.failExitCodes].includes(command.exitCode))) throw new Error('invalid acceptance outcome');
+  } else {
+    const candidate = envelope.evidence.candidate;
+    if (!candidate?.execution || candidate.execution.agent_id !== envelope.reviewerIdentity || !candidate.execution.run_id || verificationCanonical(candidate.workspace) !== verificationCanonical(workspace) || evidence.command !== undefined) throw new Error('review executor identity mismatch');
+    const receipt = verificationObject(object.reviewerInvocation, ['runId', 'taskId', 'sessionId', 'adapterId', 'capabilityId', 'promptDigest', 'contextDigest', 'historyPassed', 'effectKey']);
+    if (receipt.runId !== candidate.execution.run_id || receipt.taskId !== candidate.execution.task_id || receipt.adapterId !== envelope.reviewerIdentity
+      || typeof receipt.sessionId !== 'string' || !/^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/.test(receipt.sessionId)
+      || typeof receipt.capabilityId !== 'string' || !receipt.capabilityId.trim() || receipt.historyPassed !== false || receipt.effectKey !== effect.effectKey
+      || typeof receipt.promptDigest !== 'string' || !/^[a-f0-9]{64}$/.test(receipt.promptDigest)
+      || receipt.contextDigest !== sha(verificationCanonical({ repo_path: workspace.workspace_path }))) throw new Error('invalid reviewer invocation receipt');
+    if (!envelope.verificationFailure) {
+      const report = parseReviewReport(envelope.report);
+      if (candidate.execution.failure_code || candidate.status !== 'implementation_complete' || candidate.execution.outcome !== 'completed' || verificationCanonical(parseReviewReport(JSON.parse(candidate.execution.summary ?? 'null'))) !== verificationCanonical(report)) throw new Error('review report evidence mismatch');
+    }
+  }
+  return structuredClone(envelope);
+}
+const sha = (bytes: string | Buffer) => createHash('sha256').update(bytes).digest('hex');
+async function directory(root: string): Promise<string> {
+  if (!isAbsolute(root) || await realpath(root) !== root) throw new Error('host evidence root must be canonical');
+  const path = join(root, 'evidence'); await mkdir(path, { mode: 0o700, recursive: true });
+  if (!(await lstat(path)).isDirectory() || await realpath(path) !== path) throw new Error('invalid host evidence directory');
+  return path;
+}
+async function syncDirectory(path: string) { const file = await open(path, 'r'); try { await file.sync(); } finally { await file.close(); } }
+export async function publishGraphVerificationEvidence(root: string, value: GraphVerificationEnvelope, authorize: () => void): Promise<PersistedGraphActionEvidence> {
+  const envelope = validateEnvelope(value, value.binding); const bytes = verificationCanonical(envelope);
+  if (Buffer.byteLength(bytes, 'utf8') > 65536) throw new Error('evidence exceeds 64KiB file size limit');
+  GraphJsonValue.parse(envelope); const digest = sha(bytes);
+  const checked = async <T>(op: () => Promise<T>): Promise<T> => { authorize(); const result = await op(); authorize(); return result; };
+  const dir = await checked(() => directory(root)); const temporary = join(dir, `.${randomUUID()}.json`); const final = join(dir, `${digest}.json`);
+  authorize(); const file = await open(temporary, 'wx', 0o600);
+  try { authorize(); await checked(() => file.writeFile(bytes)); await checked(() => file.sync()); } finally { await file.close(); }
+  await checked(() => chmod(temporary, 0o400));
+  await checked(async () => { try { await link(temporary, final); } catch (error) { if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error; const existing = await open(final, constants.O_RDONLY | constants.O_NOFOLLOW); try { if (sha(await existing.readFile()) !== digest) throw new Error('evidence digest collision'); } finally { await existing.close(); } } });
+  await checked(() => syncDirectory(dir)); await checked(() => syncDirectory(root)); await checked(() => syncDirectory(dirname(root)));
+  await checked(() => unlink(temporary));
+  const evidenceRef = `graph-verification:${digest}`;
+  if (envelope.verificationFailure) return { evidenceRef, verificationFailure: envelope.verificationFailure };
+  const common = { schemaVersion: 1, candidateRevision: envelope.binding.candidateRevision, evidenceRefs: [evidenceRef], evidenceDigest: digest };
+  const result = GraphResult.parse(envelope.kind === 'review' ? { ...common, kind: 'review', verdict: envelope.report!.verdict }
+    : { ...common, kind: 'tests', passed: envelope.acceptance.passExitCodes.includes(envelope.evidence.command!.exitCode) });
+  return { evidenceRef, result };
+}
+/** Host-owned storage authenticates provenance; digest alone is not an authorization grant. */
+export async function loadGraphVerificationEvidence(root: string, evidenceRef: string, expectedBinding: VerificationBinding, expectedEffect?: VerificationEffect): Promise<GraphVerificationEnvelope> {
+  const binding = parseVerificationBinding(expectedBinding); const effect = expectedEffect ? structuredClone(expectedEffect) : undefined;
+  if (!/^graph-verification:[a-f0-9]{64}$/.test(evidenceRef)) throw new Error('invalid evidence reference');
+  const digest = evidenceRef.slice('graph-verification:'.length);
+  if (!isAbsolute(root) || await realpath(root) !== root) throw new Error('invalid host evidence root');
+  const dir = join(root, 'evidence'); if (await realpath(dir) !== dir || !(await lstat(dir)).isDirectory()) throw new Error('invalid host evidence directory');
+  const file = await open(join(dir, `${digest}.json`), constants.O_RDONLY | constants.O_NOFOLLOW);
+  let bytes: Buffer; try { const stat = await file.stat(); if (!stat.isFile() || stat.size > 65536) throw new Error('invalid evidence file'); bytes = await file.readFile(); } finally { await file.close(); }
+  if (bytes.length > 65536) throw new Error('evidence exceeds 64KiB file size limit');
+  if (sha(bytes) !== digest) throw new Error('evidence digest mismatch');
+  return validateEnvelope(JSON.parse(bytes.toString('utf8')), binding, effect);
+}
+
+
+FILE packages/cli/src/graph-action-broker.ts
+import { GraphAdmissionStore } from "@osstack/core/graph-recovery";
+import { randomUUID } from "node:crypto";
+import { isAbsolute } from "node:path";
+import type Database from "better-sqlite3";
+import type { GraphArtifactStore, GraphFreezeInput, GraphFreezeAuthority } from "@osstack/core/graph-artifacts";
+import { CapabilitySchema, GraphActionStore, GraphRunStore, type GraphRunFence, type GraphProgramIdentity,
+  type GraphAction } from "@osstack/core";
+import { GraphError as GraphErrorSchema, GraphJsonValue, GraphResult, GraphScope, WorkerActionRequest, WorkerActionResponse,
+  type GraphError, type GraphErrorCode } from "@osstack/protocol";
+import { ExecutionPlan, executeCandidateImplementation, runShellCommand,
+  type CandidateExecutionResult, type CommandResult, type RegisteredCandidateWorkspace } from "@osstack/loop";
+import type { AgentAdapter } from "@osstack/agents";
+import type { AdmissionInput, ExecutionLease } from "./governed-execution.js";
+
+type Action = WorkerActionRequest["action"];
+export interface GraphActionEvidence {
+  status: "completed" | "failed";
+  /** Set only after independent executor-stop verification. */
+  stopped?: true;
+  candidate?: CandidateExecutionResult;
+  command?: CommandResult;
+  workspace?: unknown;
+  frozenCandidate?: Extract<GraphResult, { kind: "candidate_ready" }>;
+}
+export interface PersistedGraphActionEvidence {
+  evidenceRef: string;
+  result?: GraphResult;
+  actualTokens?: number;
+  /** Trusted classification of a stopped verification invocation, never a worker claim. */
+  verificationFailure?: { code: "OUTPUT_CONTRACT_INVALID" | "INTERNAL_ERROR"; message: string; retrySafe: boolean };
+}
+type RegisteredExecution =
+  | { kind: "freeze"; store: Pick<GraphArtifactStore, "freeze">; input: GraphFreezeInput; authority: Omit<GraphFreezeAuthority, "lease"> }
+  | { kind: "adapter"; plan: ExecutionPlan; adapter: AgentAdapter; capabilityId: string }
+  | { kind: "command"; plan: ExecutionPlan; command: string }
+  | { kind: "workspace"; handler: (input: { workspace: RegisteredCandidateWorkspace; signal: AbortSignal }) => Promise<{
+      status: "completed" | "failed"; stopped: true; evidence: unknown;
+    }> };
+export interface GraphRegisteredAction {
+  nodeId: string;
+  effectSlot: string;
+  action: Action;
+  tokenReservation: number;
+  /** Host registered physical workspace within the same logical graph scope. */
+  workspace?: RegisteredCandidateWorkspace;
+  /** Revalidate candidate/workspace after availability, immediately before invocation. */
+  verifyWorkspace?: () => Promise<void>;
+  execution: RegisteredExecution;
+  /** Trusted persistence boundary. Worker receipts/checkpoints are never passed here. */
+  persist: (evidence: GraphActionEvidence) => Promise<PersistedGraphActionEvidence>;
+}
+export interface GraphWorkerRegistration {
+  scope: GraphScope;
+  graphRunId: string;
+  identity: GraphProgramIdentity;
+  generation: number;
+  owner: string;
+  epoch: number;
+  workspace: RegisteredCandidateWorkspace;
+  /** Synchronous host revocation check, including immediately before physical effects. */
+  authorize: () => void;
+  actions: readonly GraphRegisteredAction[];
+}
+export interface GraphRetainedAction {
+  effectKey: string; scope: GraphScope; graphRunId: string; generation: number;
+  owner: string; workspacePath: string;
+}
+export interface GraphActionBrokerOptions {
+  acquire: (input: AdmissionInput) => Promise<ExecutionLease>;
+  authorizePolicy?: (workspacePath: string) => Promise<void>;
+  now?: () => number;
+}
+type BoundAction = GraphRegisteredAction & { access: "read" | "write"; workspace: RegisteredCandidateWorkspace };
+type Binding = Omit<GraphWorkerRegistration, "actions"> & { actions: ReadonlyMap<string, BoundAction> };
+const slot = (node: string, effect: string) => JSON.stringify([node, effect]);
+const reads = new Set(["code.review", "review.code", "research.code"]);
+const writes = new Set(["code.write", "code.refactor", "code.debug", "code.test"]);
+function snapshot<T>(value: T): T {
+  const copy = structuredClone(value);
+  const freeze = (item: unknown): void => {
+    if (item !== null && typeof item === "object") { Object.values(item).forEach(freeze); Object.freeze(item); }
+  };
+  freeze(copy); return copy;
+}
+function canonical(value: unknown): string {
+  if (value === null || typeof value !== "object") return JSON.stringify(value);
+  if (Array.isArray(value)) return `[${value.map(canonical).join(",")}]`;
+  return `{${Object.keys(value).sort().map(key => `${JSON.stringify(key)}:${canonical((value as Record<string, unknown>)[key])}`).join(",")}}`;
+}
+class Denied extends Error { constructor(readonly code: GraphErrorCode, message: string) { super(message); } }
+function graphError(code: GraphErrorCode, message: string): GraphError {
+  return { schemaVersion: 1, code, message: message.slice(0, 4096) || code, retryable: false,
+    nextAction: code === "ACTION_OUTCOME_UNKNOWN" || code === "CANCEL_UNCONFIRMED" ? "reconcile" : "stop" } as GraphError;
+}
+function errorCode(error: unknown): GraphErrorCode {
+  if (error instanceof Denied) return error.code;
+  const message = String(error);
+  if (/GRANT_EXPIRED/.test(message)) return "GRANT_EXPIRED";
+  if (/STALE_GENERATION|OWNER_MISMATCH|LEASE_EXPIRED/.test(message)) return "STALE_GENERATION";
+  if (/PROGRAM_IDENTITY/.test(message)) return "CHECKPOINT_INCOMPATIBLE";
+  if (/UNRESOLVED|RETRY_NOT_SAFE/.test(message)) return "ACTION_OUTCOME_UNKNOWN";
+  if (/BUDGET|ACCOUNTING/.test(message)) return "BUDGET_EXHAUSTED";
+  if (/REVISION_CONFLICT/.test(message)) return "REVISION_CONFLICT";
+  return "POLICY_DENIED";
+}
+
+/** Trusted in-process action port; no RPC, worker launcher or node scheduler.
+ * Ledger granularity is one adapter invocation, registered command or host workspace
+ * operation. It does not intercept an agent's internal tools. Admission belongs to
+ * each action; callers must NOT hold a whole-run lease around this port. */
+export class GraphActionBroker {
+  private readonly connections = new WeakMap<object, Binding>();
+  private readonly retired = new WeakSet<object>();
+  private readonly retained = new Map<string, { lease: ExecutionLease; context: GraphRetainedAction }>();
+  private readonly admissions: GraphAdmissionStore;
+  private readonly runs: GraphRunStore;
+  private readonly actions: GraphActionStore;
+  constructor(db: Database.Database, private readonly options: GraphActionBrokerOptions) {
+    this.admissions = new GraphAdmissionStore(db);
+    this.runs = new GraphRunStore(db); this.actions = new GraphActionStore(db);
+  }
+
+  register(connection: object, input: GraphWorkerRegistration): void {
+    if (this.retired.has(connection)) throw new Error("worker connection retired");
+    if (this.connections.has(connection)) throw new Error("worker connection already registered");
+    const { actions, authorize, ...data } = input;
+    const fixed = snapshot(data);
+    GraphScope.parse(fixed.scope);
+    if (typeof authorize !== "function" || !fixed.owner || !isAbsolute(fixed.workspace.workspace_path)
+      || fixed.workspace.workspace_path.includes("\0") || fixed.workspace.workspace_id !== fixed.scope.workspaceId) throw new Error("invalid trusted worker registration");
+    const registered = new Map<string, BoundAction>();
+    for (const item of actions) {
+      const { execution, persist, verifyWorkspace, ...actionData } = item;
+      const copy = snapshot(actionData);
+      const workspace = snapshot(copy.workspace ?? fixed.workspace);
+      if (workspace.workspace_id !== fixed.scope.workspaceId || !isAbsolute(workspace.workspace_path)
+        || workspace.workspace_path.includes("\0") || (verifyWorkspace !== undefined && typeof verifyWorkspace !== "function")) throw new Error("invalid action workspace");
+      // Reuse the strict wire parser to validate exact compiled action/node/slot data.
+      WorkerActionRequest.parse({ schemaVersion: 1, kind: "worker_action", requestId: "registration", scope: fixed.scope,
+        graphRunId: fixed.graphRunId, specHash: fixed.identity.specHash, generation: fixed.generation, epoch: fixed.epoch,
+        nodeId: copy.nodeId, effectSlot: copy.effectSlot, action: copy.action });
+      if (typeof persist !== "function") throw new Error("unsupported graph action");
+      if (!Number.isSafeInteger(copy.tokenReservation) || copy.tokenReservation < 0) throw new Error("invalid token reservation");
+      let selected: RegisteredExecution; let access: "read" | "write" = "write";
+      if (execution.kind === "freeze") {
+        if (copy.action.kind !== "freeze" || typeof execution.store?.freeze !== "function") throw new Error("unsupported freeze registration");
+        const input = snapshot(execution.input);
+        if (canonical(input.scope) !== canonical(fixed.scope) || input.runId !== fixed.graphRunId || input.generation !== fixed.generation
+          || input.owner !== fixed.owner || input.worktreePath !== workspace.workspace_path
+          || input.workspaceLeaseRef !== copy.action.workspaceLeaseRef || input.implementationReceiptRef !== copy.action.receiptRef) throw new Error("freeze registration identity mismatch");
+        const { verifyLease, verifyImplementationReceipt, verifyProducersStopped } = execution.authority;
+        if ([verifyLease, verifyImplementationReceipt, verifyProducersStopped].some(fn => typeof fn !== "function")) throw new Error("freeze authority required");
+        selected = Object.freeze({ kind: "freeze", input, store: Object.freeze({ freeze: execution.store.freeze.bind(execution.store) }),
+          authority: Object.freeze({ verifyLease, verifyImplementationReceipt, verifyProducersStopped }) });
+      } else if (execution.kind === "workspace") {
+        if (!["workspace_create", "workspace_release"].includes(copy.action.kind) || typeof execution.handler !== "function") throw new Error("unsupported workspace handler");
+        selected = Object.freeze({ kind: "workspace", handler: execution.handler });
+      } else {
+        if (!["implement", "repair", "tests", "review"].includes(copy.action.kind)) throw new Error("unsupported candidate action");
+        const plan = snapshot(ExecutionPlan.parse(execution.plan));
+        if (plan.worktree_path !== undefined && plan.worktree_path !== workspace.workspace_path) throw new Error("workspace mismatch");
+        if (execution.kind === "command") {
+          if (!execution.command?.trim() || execution.command.includes("\0")) throw new Error("invalid registered command");
+          selected = Object.freeze({ kind: "command", plan, command: execution.command });
+        } else if (execution.kind === "adapter") {
+          const adapter = execution.adapter;
+          const capabilities = snapshot(adapter.capabilities().map(cap => CapabilitySchema.parse(cap)));
+          const matches = capabilities.filter(cap => cap.id === execution.capabilityId);
+          const cap = matches[0];
+          if (matches.length !== 1 || !cap || cap.agent_id !== adapter.id || plan.agent_id !== adapter.id
+            || plan.task.capability !== cap.kind || (!reads.has(cap.kind) && !writes.has(cap.kind))) throw new Error("unknown or ambiguous trusted capability");
+          // A multi-capability adapter can internally select a writer. Only entirely
+          // read-only registrations may consume a read permit.
+          if (capabilities.some(capability => !reads.has(capability.kind) && !writes.has(capability.kind))) throw new Error("unknown adapter capability");
+          access = capabilities.every(capability => reads.has(capability.kind)) ? "read" : "write";
+          const bound: AgentAdapter = Object.freeze({ id: adapter.id, display_name: adapter.display_name, cost_tier: adapter.cost_tier,
+            capabilities: () => structuredClone(capabilities), isAvailable: adapter.isAvailable.bind(adapter), invoke: adapter.invoke.bind(adapter),
+            ...(adapter.confirmStopped ? { confirmStopped: adapter.confirmStopped.bind(adapter) } : {}) });
+          selected = Object.freeze({ kind: "adapter", plan, adapter: bound, capabilityId: execution.capabilityId });
+        } else throw new Error("unsupported execution handler");
+      }
+      const key = slot(copy.nodeId, copy.effectSlot);
+      if (registered.has(key)) throw new Error("duplicate compiled action slot");
+      registered.set(key, Object.freeze({ ...copy, workspace, execution: selected, persist, access, ...(verifyWorkspace ? { verifyWorkspace } : {}) }));
+    }
+    const binding = Object.freeze({ ...fixed, authorize, actions: registered });
+    // Verify full registered identity at installation, then at every ledger access.
+    this.fence(binding);
+    this.connections.set(connection, binding);
+  }
+
+  unregister(connection: object): void {
+    this.connections.delete(connection);
+    this.retired.add(connection);
+  }
+
+  /** Trusted recovery service only. Commit the decision before verifying/releasing;
+   * this method deliberately cannot mutate outcomes or allocate another attempt. */
+  async releaseReconciled(effectKey: string, verify: (context: GraphRetainedAction) => Promise<void>): Promise<boolean> {
+    const entry = this.retained.get(effectKey);
+    if (!entry) return false;
+    if (!entry.lease.releaseAfterReconciliation) throw new Error("lease reconciliation unsupported");
+    const verification: unknown = await verify(snapshot(entry.context));
+    if (verification !== undefined) throw new Error("invalid reconciliation authority");
+    await entry.lease.releaseAfterReconciliation(() => verify(snapshot(entry.context)));
+    this.admissions.released(effectKey, this.options.now?.() ?? Date.now());
+    this.retained.delete(effectKey);
+    return true;
+  }
+
+  private authorize(binding: Binding): void {
+    const result: unknown = binding.authorize();
+    if (result !== undefined) {
+      // TypeScript allows async functions in void positions. Never silently
+      // treat a pending/rejected promise as synchronous permission.
+      void Promise.resolve(result).catch(() => {});
+      throw new Denied("POLICY_DENIED", "revocation check must be synchronous");
+    }
+  }
+
+  private fence(binding: Binding): GraphRunFence {
+    const run = this.runs.get(binding.scope, binding.graphRunId);
+    if (!run) throw new Denied("RUN_MISMATCH", "registered run not found");
+    if (run.generation !== binding.generation || run.leaseOwner !== binding.owner) throw new Denied("STALE_GENERATION", "registered worker lease changed");
+    if (canonical(run.identity) !== canonical(binding.identity)) throw new Denied("CHECKPOINT_INCOMPATIBLE", "registered program identity changed");
+    const now = this.options.now?.() ?? Date.now();
+    if (!run.leaseExpiresAt || run.leaseExpiresAt <= now) throw new Denied("STALE_GENERATION", "registered worker lease expired");
+    return { scope: binding.scope, graphRunId: binding.graphRunId, identity: binding.identity,
+      expectedGeneration: binding.generation, expectedOwner: binding.owner, expectedRevision: run.revision, now };
+  }
+
+  handle(connection: object, value: unknown, options: { signal?: AbortSignal } = {}): Promise<WorkerActionResponse> {
+    return this.executeRequest(connection, value, options);
+  }
+
+  /** Trusted host command, never part of worker transport. Only this call owns the
+   * freshly ledger-allocated retry intent; ordinary replays cannot claim it. */
+  async retryAuthorized(connection: object, effectKey: string, authorizeRetry: () => void,
+    options: { signal?: AbortSignal } = {}): Promise<WorkerActionResponse> {
+    const binding = this.connections.get(connection);
+    if (!binding) throw new Error("UNAUTHENTICATED");
+    this.authorize(binding);
+    const permitted: unknown = authorizeRetry();
+    if (permitted !== undefined) {
+      void Promise.resolve(permitted).catch(() => {});
+      throw new Error("invalid synchronous retry authority");
+    }
+    if (options.signal?.aborted) throw new Error("retry cancelled");
+    const prior = this.actions.get(this.fence(binding), effectKey).action;
+    const registered = binding.actions.get(slot(prior.effect.nodeId, prior.effect.effectSlot));
+    if (!registered || prior.effect.epoch !== binding.epoch || canonical(registered.action) !== canonical(prior.action)) throw new Error("unregistered retry slot");
+    const next = this.actions.retry(this.fence(binding), effectKey).action;
+    return this.executeRequest(connection, { schemaVersion: 1, kind: "worker_action", requestId: `retry:${randomUUID()}`,
+      scope: binding.scope, graphRunId: binding.graphRunId, generation: binding.generation, specHash: binding.identity.specHash,
+      epoch: binding.epoch, nodeId: prior.effect.nodeId, effectSlot: prior.effect.effectSlot, action: registered.action }, options, { action: next, binding }, authorizeRetry);
+  }
+
+  private async executeRequest(connection: object, value: unknown, options: { signal?: AbortSignal }, retry?: { action: GraphAction; binding: Binding }, authorizeRetry?: () => void): Promise<WorkerActionResponse> {
+    let request: WorkerActionRequest;
+    try { request = snapshot(WorkerActionRequest.parse(value)); }
+    catch { return { schemaVersion: 1, kind: "worker_action_rejected", requestId: "invalid-request", error: graphError("INPUT_CONTRACT_INVALID", "invalid worker action request") }; }
+    // Own the allocated retry before rechecking grants. If admission is denied,
+    // settle this caller's unstarted intent while its original fence is still live.
+    // Expired/replaced owners must instead use G15, never a refreshed generation.
+    const binding = this.connections.get(connection) ?? retry?.binding;
+    const retryEffectKey = retry?.action.effectKey;
+    const signal = options.signal ?? new AbortController().signal;
+    let executionWorkspace: RegisteredCandidateWorkspace | undefined;
+    let lease: ExecutionLease | undefined; let owned: GraphAction | undefined = retry?.action; let invoked = false; let uncertain = false; let observedTokens = 0; let persistedEvidenceRef: string | undefined;
+    const reject = (error: unknown): WorkerActionResponse => ({ schemaVersion: 1, kind: "worker_action_rejected", requestId: request.requestId,
+      error: graphError(errorCode(error), String(error)) });
+    try {
+      if (!binding) throw new Denied("UNAUTHENTICATED", "unregistered worker connection");
+      if (canonical(request.scope) !== canonical(binding.scope)) throw new Denied("SCOPE_MISMATCH", "scope does not match registered connection");
+      if (request.graphRunId !== binding.graphRunId) throw new Denied("RUN_MISMATCH", "run does not match registered connection");
+      if (request.generation !== binding.generation) throw new Denied("STALE_GENERATION", "generation does not match registered connection");
+      if (request.specHash !== binding.identity.specHash) throw new Denied("SPEC_MISMATCH", "spec does not match registered program");
+      if (request.epoch !== binding.epoch) throw new Denied("EPOCH_MISMATCH", "epoch does not match registered program");
+      const action = binding.actions.get(slot(request.nodeId, request.effectSlot));
+      if (!action) throw new Denied("POLICY_DENIED", "unregistered compiled action slot");
+      executionWorkspace = action.workspace;
+      if (canonical(action.action) !== canonical(request.action)) throw new Denied("IDEMPOTENCY_CONFLICT", "action differs from immutable compiled registration");
+      const check = (): void => { if (this.connections.get(connection) !== binding) throw new Denied("UNAUTHENTICATED", "worker connection retired"); if (signal.aborted) throw new Denied("POLICY_DENIED", "action cancelled before invocation"); this.authorize(binding); this.fence(binding);
+        if (authorizeRetry) {
+          const permitted: unknown = authorizeRetry();
+          if (permitted !== undefined) { void Promise.resolve(permitted).catch(() => {}); throw new Denied("POLICY_DENIED", "retry authority must be synchronous"); }
+        }
+      };
+      check();
+      const intent = this.actions.reserve(this.fence(binding), { epoch: binding.epoch, nodeId: action.nodeId, effectSlot: action.effectSlot,
+        reservationTokens: action.tokenReservation, action: action.action });
+      if (!intent.created && intent.action.effectKey !== retryEffectKey) return this.response(request, intent.action);
+      if (retryEffectKey && (intent.action.state !== "intent" || intent.action.generation !== binding.generation)) {
+        return this.response(request, intent.action);
+      }
+      owned = intent.action;
+      lease = await this.options.acquire({ kind: action.access, runId: `graph-action:${owned.effectKey}`, workspacePath: action.workspace.workspace_path,
+        signal, authorize: async () => { check(); await this.options.authorizePolicy?.(action.workspace.workspace_path); check(); } });
+      this.admissions.hold(owned.effectKey, this.options.now?.() ?? Date.now());
+      check();
+      // This synchronous gate runs inside the actual adapter invoke/command/host
+      // handler call, after G04's async authorization and availability windows.
+      const beforeEffect = (executionRunId: string): void => {
+        check();
+        let started: ReturnType<GraphActionStore["markRunning"]>;
+        try {
+          started = this.actions.markRunning(this.fence(binding), owned!.effectKey, `graph-execution:${owned!.effectKey}:${executionRunId}`);
+        } catch (error) {
+          // A different execution reference also proves somebody already started.
+          if (String(error).includes("EXECUTION_CONFLICT")) invoked = true;
+          throw error;
+        }
+        if (!started.changed) {
+          // Another trusted caller already started this effect. We cannot prove
+          // non-execution, so retain admission and require reconciliation.
+          invoked = true;
+          throw new Denied("ACTION_OUTCOME_UNKNOWN", "intent already started");
+        }
+        invoked = true;
+      };
+      const evidence = await this.execute(binding, action, signal, beforeEffect, tokens => { observedTokens = Math.max(observedTokens, tokens); }, lease);
+      if (!invoked) throw new Denied("POLICY_DENIED", "execution did not start");
+      const persisted = snapshot(await action.persist(evidence));
+      if (typeof persisted.evidenceRef !== "string" || !persisted.evidenceRef || persisted.evidenceRef.trim() !== persisted.evidenceRef
+        || persisted.evidenceRef.length > 256 || Array.from(persisted.evidenceRef).some(char => {
+          const code = char.charCodeAt(0); return code < 32 || (code >= 127 && code <= 159);
+        })) throw new Error("invalid persisted evidence reference");
+      persistedEvidenceRef = persisted.evidenceRef;
+      if (persisted.actualTokens !== undefined && (!Number.isSafeInteger(persisted.actualTokens) || persisted.actualTokens < 0)) throw new Error("invalid usage");
+      observedTokens = Math.max(observedTokens, persisted.actualTokens ?? 0);
+      const usage = evidence.candidate?.execution;
+      const measured = usage?.tokens_in !== undefined && usage.tokens_out !== undefined ? usage.tokens_in + usage.tokens_out : undefined;
+      if (measured !== undefined && !Number.isSafeInteger(measured)) throw new Error("invalid total token usage");
+      const actualTokens = Math.max(observedTokens, persisted.actualTokens ?? 0, measured ?? Math.max(action.tokenReservation, usage?.tokens_in ?? 0, usage?.tokens_out ?? 0));
+      const verification = action.action.kind === "review" || action.action.kind === "tests";
+      const failure = persisted.verificationFailure;
+      if (failure && (!verification || evidence.stopped !== true || signal.aborted || persisted.result !== undefined
+        || !["OUTPUT_CONTRACT_INVALID", "INTERNAL_ERROR"].includes(failure.code) || typeof failure.retrySafe !== "boolean")) throw new Error("invalid verification failure classification");
+      const failureError = failure ? GraphErrorSchema.parse({ schemaVersion: 1, code: failure.code, message: failure.message,
+        retryable: failure.retrySafe, nextAction: failure.retrySafe ? "retry" : "stop" }) : undefined;
+      const normalTestsExit = action.action.kind === "tests" && evidence.stopped === true
+        && evidence.command?.termination?.trigger === "exit" && evidence.command.termination.stop_confirmed
+        && !evidence.command.cancellation && !evidence.command.failure_code && !signal.aborted;
+      const completed = !failure && (evidence.status === "completed" || (normalTestsExit && persisted.result !== undefined));
+      let result: GraphResult | undefined;
+      if (completed) {
+        result = GraphResult.parse(persisted.result);
+        if (action.action.kind === "freeze" && (!evidence.frozenCandidate || canonical(result) !== canonical(evidence.frozenCandidate))) throw new Error("freeze result differs from durable artifact");
+        const expected = action.action.kind === "freeze" ? "candidate_ready" : action.action.kind === "implement" || action.action.kind === "repair" ? "implementation_complete"
+          : action.action.kind.startsWith("workspace_") ? "workspace" : action.action.kind;
+        if (result.kind !== expected) throw new Error("invalid result kind for registered operation");
+        if ("workspaceLeaseRef" in result && "workspaceLeaseRef" in action.action && result.workspaceLeaseRef !== action.action.workspaceLeaseRef) throw new Error("persisted workspace mismatch");
+        if ("candidateRevision" in result && "candidateRevision" in action.action && result.candidateRevision !== action.action.candidateRevision) throw new Error("persisted revision mismatch");
+      }
+      const settled = this.actions.recordOutcome(this.fence(binding), owned.effectKey, completed
+        ? { state: "confirmed", evidenceRef: persisted.evidenceRef, actualTokens, result: result! }
+        : { state: "failed", evidenceRef: persisted.evidenceRef, actualTokens, retrySafe: failure?.retrySafe ?? false, error: GraphJsonValue.parse(failureError ?? { message: "trusted stopped invocation failed" }) });
+      return this.response(request, settled.action);
+    } catch (error) {
+      if (binding && owned) {
+        if (invoked) {
+          uncertain = true; lease?.retain(String(error));
+          if (lease) this.retained.set(owned.effectKey, { lease, context: { effectKey: owned.effectKey,
+            scope: binding.scope, graphRunId: binding.graphRunId, generation: binding.generation,
+            owner: binding.owner, workspacePath: executionWorkspace?.workspace_path ?? binding.workspace.workspace_path } });
+          try { const unknown = this.actions.markUncertain(this.fence(binding), owned.effectKey, { state: "unknown", evidenceRef: persistedEvidenceRef ?? `unknown:${randomUUID()}`, observedTokens: Math.max(owned.reservationTokens, observedTokens) });
+            return this.response(request, unknown.action); } catch { /* Commit/fence failure preserves the original running reservation. */ }
+          return { schemaVersion: 1, kind: "worker_action_response", requestId: request.requestId, generation: request.generation,
+            effect: owned.effect, outcome: { state: "unknown", error: graphError("ACTION_OUTCOME_UNKNOWN", String(error)), reconciliationRef: owned.effectKey } };
+        }
+        // No physical invocation: resolve this caller's own intent without calling
+        // it unknown. Only a future explicit host retry can use this proof;
+        // cancellations remain sealed and worker replay never allocates attempts.
+        try { this.actions.recordOutcome(this.fence(binding), owned.effectKey, { state: "failed", evidenceRef: `not-started:${randomUUID()}`,
+          actualTokens: 0, retrySafe: !signal.aborted, error: { message: "admission refused before invocation" } }); } catch { /* A stale owner cannot mutate a newer generation. */ }
+      }
+      return reject(error);
+    } finally {
+      if (lease && !uncertain) await this.releaseAdmission(lease, binding, owned, executionWorkspace);
+    }
+  }
+
+  private async releaseAdmission(lease: ExecutionLease, binding: Binding | undefined, owned: GraphAction | undefined, workspace?: RegisteredCandidateWorkspace): Promise<void> {
+    let physicallyReleased = false;
+    try {
+      await lease.release(); physicallyReleased = true;
+      if (owned) this.admissions.released(owned.effectKey, this.options.now?.() ?? Date.now());
+    }
+    catch (error) {
+      // Release failure deliberately stops the chain without replacing durable
+      // effect truth. Keep its exact admission reachable for release-only recovery.
+      if (!physicallyReleased) lease.retain(String(error));
+      if (binding && owned) this.retained.set(owned.effectKey, { lease, context: {
+        effectKey: owned.effectKey, scope: binding.scope, graphRunId: binding.graphRunId,
+        generation: binding.generation, owner: binding.owner, workspacePath: workspace?.workspace_path ?? binding.workspace.workspace_path,
+      } });
+      throw error;
+    }
+  }
+
+  private response(request: WorkerActionRequest, action: GraphAction): WorkerActionResponse {
+    const base = { schemaVersion: 1 as const, kind: "worker_action_response" as const, requestId: request.requestId,
+      generation: request.generation, effect: action.effect };
+    if (action.state === "confirmed") return WorkerActionResponse.parse({ ...base, outcome: { state: "confirmed", result: action.outcome?.state === "confirmed" ? action.outcome.result : undefined } });
+    if (action.state === "failed") {
+      const error = GraphErrorSchema.safeParse(action.outcome?.state === "failed" ? action.outcome.error : undefined);
+      return WorkerActionResponse.parse({ ...base, outcome: { state: "failed", error: error.success ? error.data : graphError("POLICY_DENIED", "prior invocation failed; no automatic retry") } });
+    }
+    return { ...base, outcome: { state: "unknown", error: graphError("ACTION_OUTCOME_UNKNOWN", "existing action requires reconciliation; invocation was not repeated"), reconciliationRef: action.effectKey } };
+  }
+
+  private async execute(binding: Binding, action: BoundAction, signal: AbortSignal, beforeEffect: (executionRunId: string) => void, observeTokens: (tokens: number) => void, lease?: ExecutionLease): Promise<GraphActionEvidence> {
+    const execution = action.execution;
+    const verifyWorkspace = async (): Promise<void> => {
+      if (action.verifyWorkspace) {
+        const valid: unknown = await action.verifyWorkspace();
+        if (valid !== undefined) throw new Denied("POLICY_DENIED", "invalid workspace authority");
+      }
+      if (lease?.assertActive) await lease.assertActive();
+    };
+    if (execution.kind === "freeze") {
+      if (!lease?.assertActive) throw new Error("freeze requires canonical lease verification");
+      const check = (): void => { if (signal.aborted) throw new Error("freeze cancelled"); this.authorize(binding); this.fence(binding); };
+      await this.options.authorizePolicy?.(action.workspace.workspace_path); check();
+      await verifyWorkspace(); check(); beforeEffect(`freeze:${randomUUID()}`);
+      const frozenCandidate = await execution.store.freeze(execution.input, { ...execution.authority, lease,
+        verifyLease: async (input, actualLease) => {
+          if (actualLease !== lease) throw new Error("freeze lease identity mismatch");
+          check(); await lease.assertActive!(); check();
+          const decision: unknown = await execution.authority.verifyLease(input, actualLease);
+          if (decision !== undefined) throw new Error("invalid freeze authority");
+          check();
+        } });
+      return { status: "completed", frozenCandidate };
+    }
+    if (execution.kind === "workspace") {
+      await this.options.authorizePolicy?.(action.workspace.workspace_path);
+      await verifyWorkspace();
+      beforeEffect(`workspace:${randomUUID()}`);
+      const result = await execution.handler({ workspace: action.workspace, signal });
+      if (result?.stopped !== true || !["completed", "failed"].includes(result.status)) throw new Error("workspace outcome unconfirmed");
+      return { status: result.status, workspace: result.evidence };
+    }
+    let threw = false; let command: CommandResult | undefined; let invocationRunId: string | undefined;
+    const original = execution.kind === "adapter" ? execution.adapter : undefined;
+    const capabilities = execution.kind === "adapter" ? execution.adapter.capabilities().filter(cap => cap.id === execution.capabilityId) : [CapabilitySchema.parse({ id: "registered-command.write", kind: "code.write", agent_id: "registered-command", description: "Registered command" })];
+    const policy = this.options.authorizePolicy;
+    const cumulativeUsage: Record<string, number> = { tokens_in: 0, tokens_out: 0 };
+    const wrapper: AgentAdapter = {
+      id: original?.id ?? "registered-command", display_name: "Governed graph action", cost_tier: "low",
+      capabilities: () => capabilities, isAvailable: original?.isAvailable ?? (async () => ({ available: true, last_checked_at: 0 })),
+      invoke: (task, invocationSignal) => {
+        return (async function* () {
+          await policy?.(action.workspace.workspace_path);
+          if (invocationSignal.aborted) throw new Denied("POLICY_DENIED", "execution cancelled before invocation");
+          await verifyWorkspace();
+          beforeEffect(task.run_id); invocationRunId = task.run_id;
+          try {
+            if (original) {
+              for await (const event of original.invoke(task, invocationSignal)) {
+                const payload: unknown = event.type === "usage.updated" || event.type === "usage.final" ? event.payload
+                  : event.type === "done" && event.payload && typeof event.payload === "object" ? (event.payload as { usage?: unknown }).usage : undefined;
+                if (payload !== undefined) {
+                  if (!payload || typeof payload !== "object" || Array.isArray(payload)) throw new Error("invalid adapter usage payload");
+                  const usage = payload as Record<string, unknown>;
+                  let tokens = 0;
+                  for (const field of ["tokens_in", "tokens_out"]) {
+                    const amount = usage[field];
+                    if (amount !== undefined) {
+                      if (typeof amount !== "number" || !Number.isSafeInteger(amount) || amount < 0) throw new Error("invalid adapter token usage");
+                      cumulativeUsage[field] = Math.max(cumulativeUsage[field]!, amount);
+                    }
+                  }
+                  // Providers may send input/output counters in separate events.
+                  // Retain each cumulative maximum instead of only max(event sum).
+                  tokens = cumulativeUsage["tokens_in"]! + cumulativeUsage["tokens_out"]!;
+                  if (!Number.isSafeInteger(tokens)) throw new Error("invalid adapter total usage");
+                  observeTokens(tokens);
+                  const cost = usage["cost_usd"];
+                  if (cost !== undefined && (typeof cost !== "number" || !Number.isFinite(cost) || cost < 0)) throw new Error("invalid adapter cost usage");
+                }
+                yield event;
+              }
+              return;
+            }
+            if (execution.kind !== "command") throw new Error("invalid execution registration");
+            // runShellCommand starts synchronously before its returned promise; no
+            // untrusted await separates the fence above from the actual spawn.
+            command = await runShellCommand(execution.command, { cwd: action.workspace.workspace_path, timeoutMs: 120_000,
+              outputLimit: 16_000, ...(invocationSignal ? { signal: invocationSignal } : {}) });
+            yield { event_id: randomUUID(), run_id: task.run_id, session_id: task.session_id, seq: 1, type: "done" as const,
+              created_at: Date.now() / 1000, terminal: true, payload: { status: command.exitCode === 0 ? "completed" : "failed", last_seq: 0 } };
+          } catch (error) { threw = true; throw error; }
+        })();
+      },
+      confirmStopped: async runId => original?.confirmStopped ? original.confirmStopped(runId)
+        : { stopped: command?.termination?.stop_confirmed === true, evidence: command?.termination?.evidence ?? "no trusted stop receipt" },
+    };
+    const candidate = await executeCandidateImplementation({ plan: { ...execution.plan, agent_id: wrapper.id }, workspace: action.workspace,
+      adapters: [wrapper], signal, cancellationGraceMs: 50,
+      authorize: async () => { this.authorize(binding); this.fence(binding); return { allow: true }; } });
+    if (!invocationRunId) throw new Denied("POLICY_DENIED", candidate.reason ?? "candidate preflight refused");
+    if (threw || candidate.status === "execution_unconfirmed" || candidate.execution?.failure_code) throw new Error("adapter result or execution unconfirmed");
+    let stopTimer: ReturnType<typeof setTimeout> | undefined;
+    const stopped = await Promise.race([wrapper.confirmStopped!(invocationRunId),
+      new Promise<{ stopped: false }>(resolve => { stopTimer = setTimeout(() => resolve({ stopped: false }), 1000); })])
+      .finally(() => { if (stopTimer) clearTimeout(stopTimer); });
+    if (stopped.stopped !== true || !stopped.evidence?.trim()) throw new Error("external stop unconfirmed");
+    const usage = candidate.execution;
+    if ([usage?.tokens_in, usage?.tokens_out].some(value => value !== undefined && (!Number.isSafeInteger(value) || value < 0))) throw new Error("invalid adapter usage");
+    return { status: candidate.status === "implementation_complete" ? "completed" : "failed", stopped: true, candidate, ...(command ? { command } : {}) };
+  }
+}
+
+
+FILE packages/core/src/state/graph-verification.ts
+import { createHash } from 'node:crypto';
+import type Database from 'better-sqlite3';
+import { GraphJsonValue, GraphResult, freezeWorkerData, workerCanonical } from '@osstack/protocol';
+import type { GraphAction, GraphActionBudget } from './graph-actions.js';
+import { readGraphActionState } from './graph-actions.js';
+import { fencedGraphTransaction } from './graph-storage.js';
+import type { GraphRun, GraphRunFence } from './graph-runs.js';
+export interface GraphVerificationSnapshot {
+  run: GraphRun; actions: GraphAction[]; budget: GraphActionBudget;
+  pendingAdmissions: number; unresolvedActions: number; digest: string;
+}
+export interface GraphVerificationRecord {
+  receiptRef: string; graphRunId: string; epoch: number; candidateRevision: string;
+  generation: number; owner: string; bundle: GraphJsonValue; createdAt: number;
+}
+const hash = (value: unknown) => createHash('sha256').update(workerCanonical(value)).digest('hex');
+function fence(run: GraphRun, now: number): GraphRunFence {
+  return { scope: run.scope, graphRunId: run.graphRunId, identity: run.identity, expectedGeneration: run.generation,
+    expectedOwner: run.leaseOwner, expectedRevision: run.revision, now };
+}
+/** A durable immutable evidence publication, not an epoch scheduler or node FSM.
+ * The trusted host verifier must bind the bundle to current ledger attempts and
+ * independent artifact/executor evidence. No worker JSON port calls this store. */
+export class GraphVerificationStore {
+  constructor(private readonly db: Database.Database,
+    private readonly verify: (snapshot: GraphVerificationSnapshot, bundle: GraphJsonValue) => void) {}
+  private capture(run: GraphRun): GraphVerificationSnapshot {
+    const state = readGraphActionState(this.db, run.graphRunId);
+    const admissions = this.db.prepare('SELECT effect_key,released_at FROM graph_action_admissions WHERE graph_run_id=? ORDER BY effect_key').all(run.graphRunId) as Array<{ effect_key: string; released_at: number | null }>;
+    const body = { run, ...state, pendingAdmissions: admissions.filter(a => a.released_at === null).length,
+      unresolvedActions: state.actions.filter(a => ['intent','running','unknown','cancel_pending'].includes(a.state)).length };
+    return freezeWorkerData({ ...body, digest: hash({ body, admissions }) });
+  }
+  snapshot(input: GraphRunFence): GraphVerificationSnapshot {
+    return fencedGraphTransaction(this.db, input, run => ({ changed: false, value: this.capture(run) })).value;
+  }
+  commit(snapshotValue: GraphVerificationSnapshot, bundleValue: unknown, now: number): { record: GraphVerificationRecord; created: boolean; run: GraphRun } {
+    const snapshot = freezeWorkerData(structuredClone(snapshotValue)); const bundle = freezeWorkerData(GraphJsonValue.parse(bundleValue));
+    const result = fencedGraphTransaction(this.db, fence(snapshot.run, now), run => {
+      const current = this.capture(run);
+      if (current.digest !== snapshot.digest || workerCanonical(current) !== workerCanonical(snapshot)) throw Error('VERIFICATION_SNAPSHOT_CHANGED');
+      if (current.unresolvedActions) throw Error('UNRESOLVED_ACTION');
+      if (current.pendingAdmissions) throw Error('ADMISSION_RELEASE_PENDING');
+      if (!bundle || typeof bundle !== 'object' || Array.isArray(bundle)) throw Error('INVALID_JOIN');
+      const object = bundle as Record<string, GraphJsonValue>; const binding = object.binding;
+      if (!binding || typeof binding !== 'object' || Array.isArray(binding)) throw Error('INVALID_JOIN_BINDING');
+      const b = binding as Record<string, GraphJsonValue>;
+      const candidate = GraphResult.parse({ schemaVersion: 1, kind: 'candidate_ready', candidateRevision: b.candidateRevision, artifactDigest: b.artifactDigest, artifactRefs: ['join-validation'] });
+      if (candidate.kind !== 'candidate_ready' || object.schemaVersion !== 1 || object.status !== 'complete'
+        || b.graphRunId !== run.graphRunId || workerCanonical(b.scope) !== workerCanonical(run.scope) || b.specHash !== run.identity.specHash
+        || !Number.isSafeInteger(b.epoch) || (b.epoch as number) < 0 || (b.epoch as number) >= (run.spec?.limits.maxEpochs ?? 0)
+        || b.acceptanceRef !== run.spec?.input.acceptanceRef || typeof object.evidenceDigest !== 'string' || !/^[a-f0-9]{64}$/.test(object.evidenceDigest)) throw Error('INVALID_JOIN_BINDING');
+      if (typeof this.verify !== 'function') throw Error('trusted verifier required');
+      const verified: unknown = this.verify(current, bundle);
+      if (verified !== undefined) { void Promise.resolve(verified).catch(() => {}); throw Error('join verifier must be synchronous'); }
+      const receiptRef = `graph-join:${hash(binding)}`;
+      const saved = this.db.prepare('SELECT bundle_json,generation,owner,created_at,receipt_ref FROM graph_verification_joins WHERE graph_run_id=? AND epoch=? AND candidate_revision=?')
+        .get(run.graphRunId, b.epoch, candidate.candidateRevision) as { bundle_json: string; generation: number; owner: string; created_at: number; receipt_ref: string } | undefined;
+      if (saved && (saved.bundle_json !== workerCanonical(bundle) || saved.receipt_ref !== receiptRef)) throw Error('JOIN_PUBLICATION_CONFLICT');
+      if (!saved) this.db.prepare('INSERT INTO graph_verification_joins(receipt_ref,graph_run_id,epoch,candidate_revision,generation,owner,bundle_json,created_at) VALUES(?,?,?,?,?,?,?,?)')
+        .run(receiptRef, run.graphRunId, b.epoch, candidate.candidateRevision, run.generation, run.leaseOwner, workerCanonical(bundle), now);
+      const record: GraphVerificationRecord = { receiptRef, graphRunId: run.graphRunId, epoch: b.epoch as number, candidateRevision: candidate.candidateRevision,
+        generation: saved?.generation ?? run.generation, owner: saved?.owner ?? run.leaseOwner!, bundle, createdAt: saved?.created_at ?? now };
+      return { changed: !saved, value: { record, created: !saved } };
+    });
+    return freezeWorkerData({ ...result.value, run: result.run });
+  }
+}
+
+
+FILE packages/graph/src/join.ts
+import { createHash } from 'node:crypto';
+import { GraphEffectIdentity, computeGraphEffectKey, freezeWorkerData } from '@osstack/protocol';
+import { parseVerificationBinding, validateVerificationBranch, verificationCanonical, verificationObject, type VerificationBinding, type VerificationBranch } from './nodes/branch.js';
+export interface ExpectedVerificationBranch { nodeId: string; effectSlot: string; logicalAttempt: number }
+export interface VerificationJoinInput {
+  binding: VerificationBinding;
+  /** Current ledger attempts; zero means no invocation was admitted. */
+  expected: { review: ExpectedVerificationBranch; tests: ExpectedVerificationBranch };
+  branches: VerificationBranch[];
+}
+export interface VerificationJoin {
+  schemaVersion: 1;
+  binding: VerificationBinding;
+  expected: VerificationJoinInput['expected'];
+  status: 'complete' | 'blocked';
+  branches: VerificationBranch[];
+  missing: Array<'review' | 'tests'>;
+  evidenceDigest: string;
+}
+function parseExpected(value: unknown, binding: VerificationBinding): ExpectedVerificationBranch {
+  const row = verificationObject(value, ['nodeId', 'effectSlot', 'logicalAttempt']);
+  if (!Number.isSafeInteger(row.logicalAttempt) || (row.logicalAttempt as number) < 0) throw Error('OUTPUT_CONTRACT_INVALID: expected attempt');
+  const effect = GraphEffectIdentity.parse({ schemaVersion: 1, scope: binding.scope, graphRunId: binding.graphRunId, specHash: binding.specHash,
+    epoch: binding.epoch, nodeId: row.nodeId, effectSlot: row.effectSlot, logicalAttempt: row.logicalAttempt === 0 ? 1 : row.logicalAttempt });
+  return { nodeId: effect.nodeId, effectSlot: effect.effectSlot, logicalAttempt: row.logicalAttempt as number };
+}
+/** Pure assembly over a trusted ledger snapshot. verifyEvidence must compare each
+ * envelope to host-verified durable evidence, not just accept its reported digest.
+ * This function grants no authority, schedules no tasks, and has no second FSM.
+ * Recomputing this deterministic bundle after recovery is not a new external effect. */
+export function joinVerificationBranches(value: unknown, verifyEvidence: (branch: VerificationBranch) => void): VerificationJoin {
+  if (typeof verifyEvidence !== 'function') throw Error('trusted evidence verifier required');
+  const input = verificationObject(value, ['binding', 'expected', 'branches']);
+  const binding = parseVerificationBinding(input.binding);
+  const expectedInput = verificationObject(input.expected, ['review', 'tests']);
+  const expected = { review: parseExpected(expectedInput.review, binding), tests: parseExpected(expectedInput.tests, binding) };
+  if (expected.review.nodeId === expected.tests.nodeId) throw Error('JOIN_REVISION_MISMATCH: independent predecessor nodes required');
+  if (!Array.isArray(input.branches) || input.branches.length > 2) throw Error('OUTPUT_CONTRACT_INVALID: predecessor count');
+  const byKind = new Map<'review' | 'tests', VerificationBranch>();
+  for (const raw of input.branches) {
+    const branch = validateVerificationBranch(raw, binding); const target = expected[branch.kind];
+    if (byKind.has(branch.kind)) throw Error('JOIN_REVISION_MISMATCH: duplicate predecessor');
+    if (branch.nodeId !== target.nodeId || branch.effectSlot !== target.effectSlot || (branch.logicalAttempt ?? 0) !== target.logicalAttempt) throw Error('JOIN_REVISION_MISMATCH: stale predecessor');
+    if (target.logicalAttempt > 0) {
+      const key = computeGraphEffectKey({ schemaVersion: 1, scope: binding.scope, graphRunId: binding.graphRunId, specHash: binding.specHash,
+        epoch: binding.epoch, nodeId: target.nodeId, effectSlot: target.effectSlot, logicalAttempt: target.logicalAttempt });
+      if (branch.effectKey !== key) throw Error('JOIN_REVISION_MISMATCH: missing or incorrect effect key');
+    }
+    byKind.set(branch.kind, freezeWorkerData(branch));
+  }
+  const branches: VerificationBranch[] = []; const missing: Array<'review' | 'tests'> = [];
+  for (const kind of ['review', 'tests'] as const) {
+    const branch = byKind.get(kind);
+    if (!branch) { missing.push(kind); continue; }
+    const verified: unknown = verifyEvidence(branch);
+    if (verified !== undefined) { void Promise.resolve(verified).catch(() => {}); throw Error('evidence verification must be synchronous'); }
+    branches.push(branch);
+  }
+  const body = { schemaVersion: 1 as const, binding, expected, status: missing.length === 0 && branches.every(b => b.state === 'confirmed') ? 'complete' as const : 'blocked' as const, branches, missing };
+  return freezeWorkerData({ ...body, evidenceDigest: createHash('sha256').update(`osstack.graph.join.v1\n${verificationCanonical(body)}`).digest('hex') });
+}
+/** Recheck a serialized join's structure and digest. This is not evidence authentication. */
+export function parseVerificationJoin(value: unknown): VerificationJoin {
+  const input = verificationObject(value, ['schemaVersion', 'binding', 'expected', 'status', 'branches', 'missing', 'evidenceDigest']);
+  const rebuilt = joinVerificationBranches({ binding: input.binding, expected: input.expected, branches: input.branches }, () => {});
+  if (verificationCanonical(rebuilt) !== verificationCanonical(value)) throw Error('OUTPUT_CONTRACT_INVALID: join bundle');
+  return rebuilt;
+}
+
+
+FILE packages/graph/src/route.ts
+import { createHash } from 'node:crypto';
+import { GraphRunState, GraphSpec, freezeWorkerData, workerCanonical } from '@osstack/protocol';
+import { parseVerificationJoin } from './join.js';
+import { parseVerificationBinding, verificationCanonical, verificationObject, type VerificationBinding } from './nodes/branch.js';
+export interface VerificationActionCost { actions: number; tokens: number }
+export interface VerificationRoutingState {
+  binding: VerificationBinding; spec: GraphSpec; runStatus: GraphRunState;
+  runCreatedAt: number; now: number; actionStarts: number;
+  reservedTokens: string; chargedTokens: string; accountingBlocked: boolean;
+  pendingAdmissions: number; unresolvedActions: number;
+  branchAttemptsSpent: { review: number; tests: number };
+  nextCost: { repair: VerificationActionCost; review: VerificationActionCost; tests: VerificationActionCost };
+}
+export type VerificationRoute =
+  | { kind: 'ready'; epoch: number; evidenceDigest: string }
+  | { kind: 'repair_required'; epoch: number; nextEpoch: number; evidenceDigest: string }
+  | { kind: 'retry_required'; epoch: number; branches: Array<'review' | 'tests'> }
+  | { kind: 'reconcile'; epoch: number; reason: string }
+  | { kind: 'stop'; epoch: number; reason: string };
+function count(value: unknown): number {
+  if (typeof value !== 'number' || !Number.isSafeInteger(value) || value < 0) throw Error('INPUT_CONTRACT_INVALID: counter');
+  return value;
+}
+function tokens(value: unknown): string {
+  if (typeof value !== 'string' || !/^(?:0|[1-9][0-9]{0,127})$/.test(value)) throw Error('INPUT_CONTRACT_INVALID: token counter');
+  return value;
+}
+function cost(value: unknown): VerificationActionCost {
+  const object = verificationObject(value, ['actions', 'tokens']);
+  const actions = count(object.actions); if (!actions) throw Error('INPUT_CONTRACT_INVALID: action cost');
+  return { actions, tokens: count(object.tokens) };
+}
+function parseState(value: unknown): VerificationRoutingState {
+  const s = verificationObject(value, ['binding', 'spec', 'runStatus', 'runCreatedAt', 'now', 'actionStarts', 'reservedTokens', 'chargedTokens', 'accountingBlocked', 'pendingAdmissions', 'unresolvedActions', 'branchAttemptsSpent', 'nextCost']);
+  const binding = parseVerificationBinding(s.binding); const spec = GraphSpec.parse(s.spec);
+  if (createHash('sha256').update(`osstack.graph.spec.v1\n${workerCanonical(spec)}`).digest('hex') !== binding.specHash
+    || spec.input.acceptanceRef !== binding.acceptanceRef) throw Error('SPEC_MISMATCH: original routing limits');
+  const attempts = verificationObject(s.branchAttemptsSpent, ['review', 'tests']);
+  const costs = verificationObject(s.nextCost, ['repair', 'review', 'tests']);
+  const runCreatedAt = count(s.runCreatedAt); const now = count(s.now);
+  if (now < runCreatedAt || typeof s.accountingBlocked !== 'boolean') throw Error('INPUT_CONTRACT_INVALID: time/accounting');
+  return { binding, spec, runStatus: GraphRunState.parse(s.runStatus), runCreatedAt, now, actionStarts: count(s.actionStarts),
+    reservedTokens: tokens(s.reservedTokens), chargedTokens: tokens(s.chargedTokens), accountingBlocked: s.accountingBlocked,
+    pendingAdmissions: count(s.pendingAdmissions), unresolvedActions: count(s.unresolvedActions),
+    branchAttemptsSpent: { review: count(attempts.review), tests: count(attempts.tests) },
+    nextCost: { repair: cost(costs.repair), review: cost(costs.review), tests: cost(costs.tests) } };
+}
+/** Deterministic recommendation over a host-verified join and original ledger
+ * snapshot. It never allocates attempts, advances durable epochs, or authorizes
+ * execution. The host must recheck the current fence/grant and atomically reserve
+ * through the existing ledger before acting on retry_required/repair_required.
+ * now is supplied by that host; the replayable orchestration does not read clocks. */
+export function routeVerification(joinValue: unknown, stateValue: unknown): VerificationRoute {
+  const joined = parseVerificationJoin(joinValue); const state = parseState(stateValue);
+  if (verificationCanonical(joined.binding) !== verificationCanonical(state.binding)) throw Error('JOIN_REVISION_MISMATCH: routing snapshot');
+  const epoch = state.binding.epoch; const limits = state.spec.limits;
+  for (const kind of ['review', 'tests'] as const) {
+    if (state.branchAttemptsSpent[kind] < joined.expected[kind].logicalAttempt) throw Error('INPUT_CONTRACT_INVALID: branch accounting');
+  }
+  const stop = (reason: string): VerificationRoute => ({ kind: 'stop', epoch, reason });
+  const reconcile = (reason: string): VerificationRoute => ({ kind: 'reconcile', epoch, reason });
+  if (['ready', 'failed', 'cancelled'].includes(state.runStatus)) return stop('terminal_run');
+  if (state.runStatus === 'cancel_pending' || state.runStatus === 'reconciliation_required' || state.unresolvedActions > 0
+    || joined.branches.some(b => b.state === 'unknown' || b.state === 'cancel_pending')) return reconcile('unresolved_execution');
+  if (state.pendingAdmissions > 0) return reconcile('resource_release_pending');
+  if (state.runStatus !== 'running') return stop('run_not_running');
+  if (joined.branches.some(b => b.state === 'cancelled')) return stop('cancelled_branch');
+  if (epoch >= limits.maxEpochs) return stop('epoch_budget');
+  if (state.now - state.runCreatedAt >= limits.deadlineSeconds * 1000) return stop('deadline_budget');
+  const spentTokens = BigInt(state.reservedTokens) + BigInt(state.chargedTokens);
+  if (state.accountingBlocked || spentTokens > BigInt(limits.tokenReservationLimit) || state.actionStarts > limits.maxActionStarts) return stop('accounting_budget');
+  if (joined.missing.length) return stop('missing_predecessor');
+  const capacity = (costs: VerificationActionCost[]): boolean => {
+    const actions = costs.reduce((sum, c) => sum + BigInt(c.actions), BigInt(state.actionStarts));
+    const totalTokens = costs.reduce((sum, c) => sum + BigInt(c.tokens), spentTokens);
+    return actions <= BigInt(limits.maxActionStarts) && totalTokens <= BigInt(limits.tokenReservationLimit);
+  };
+  const failed = joined.branches.filter(b => b.state === 'failed');
+  if (failed.length) {
+    if (failed.some(b => !b.error?.retryable || !b.logicalAttempt || !['OUTPUT_CONTRACT_INVALID', 'INTERNAL_ERROR'].includes(b.error.code))) return stop('branch_failure');
+    if (failed.some(b => state.branchAttemptsSpent[b.kind] >= limits.maxBranchAttempts)) return stop('branch_budget');
+    if (!capacity(failed.map(b => state.nextCost[b.kind]))) return stop('action_or_token_budget');
+    return freezeWorkerData({ kind: 'retry_required', epoch, branches: failed.map(b => b.kind) });
+  }
+  const review = joined.branches.find(b => b.kind === 'review')?.result;
+  const tests = joined.branches.find(b => b.kind === 'tests')?.result;
+  if (joined.status !== 'complete' || review?.kind !== 'review' || tests?.kind !== 'tests') return stop('invalid_predecessor');
+  if (review.verdict === 'accept' && tests.passed) return freezeWorkerData({ kind: 'ready', epoch, evidenceDigest: joined.evidenceDigest });
+  if (epoch >= 2 || epoch + 1 >= limits.maxEpochs) return stop('epoch_budget');
+  if (!capacity([state.nextCost.repair])) return stop('action_or_token_budget');
+  return freezeWorkerData({ kind: 'repair_required', epoch, nextEpoch: epoch + 1, evidenceDigest: joined.evidenceDigest });
+}

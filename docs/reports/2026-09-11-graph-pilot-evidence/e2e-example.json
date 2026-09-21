@@ -1,0 +1,132 @@
+{
+  "verification": "passed",
+  "baseline": "independent SQL + Loop JSON",
+  "elapsed_ms_single_run": 155,
+  "source_bytes_unchanged": true,
+  "example": {
+    "schema_version": 1,
+    "scope": {
+      "task_id": "example-task",
+      "board": "demo",
+      "tenant_id": null
+    },
+    "sources": {
+      "database": {
+        "path": "<private-fixture>/state.db",
+        "observed_at": "2026-09-12T01:54:59.330Z",
+        "consistency": "single_read_transaction",
+        "authority": "stored_task_run_card_facts",
+        "tables": [
+          "tasks",
+          "runs",
+          "kanban_cards",
+          "kanban_card_links"
+        ]
+      },
+      "loop": {
+        "path": "<private-fixture>/LOOP-STATE.json",
+        "authority": "caller_supplied_file_content"
+      }
+    },
+    "task": {
+      "task_id": "example-task",
+      "status": "done",
+      "updated_at": 2
+    },
+    "cards": {
+      "items": [
+        {
+          "card_id": "review",
+          "task_id": "example-task",
+          "status": "blocked",
+          "blocked_reason": "review pending",
+          "updated_at": 2
+        }
+      ],
+      "truncated": false
+    },
+    "runs": {
+      "items": [
+        {
+          "run_id": "example-run",
+          "task_id": "example-task",
+          "phase": "execute",
+          "outcome": "success",
+          "started_at": 1,
+          "completed_at": null
+        }
+      ],
+      "truncated": false
+    },
+    "relations": {
+      "items": [
+        {
+          "parent_id": "review",
+          "child_id": "next",
+          "parent_task_id": "example-task",
+          "child_task_id": null,
+          "parent_status": "blocked",
+          "child_status": "todo",
+          "parent_blocked_reason": "review pending",
+          "child_blocked_reason": null
+        }
+      ],
+      "truncated": false
+    },
+    "loop": {
+      "loop_id": "example-loop",
+      "updated_at": "2026-09-11T00:01:00Z",
+      "sha256": "51604cf52d2c816bd44c4174c9801ef66644d8e2ca4537759b39ede3eefab555",
+      "binding": "caller_supplied_unverified",
+      "matches": {
+        "items": [
+          {
+            "location": "in_progress",
+            "index": 0,
+            "task_id": "example-task"
+          }
+        ],
+        "truncated": false
+      },
+      "locations": [
+        {
+          "location": "completed_tasks",
+          "total": 0,
+          "returned": 0,
+          "truncated": false
+        },
+        {
+          "location": "in_progress",
+          "total": 1,
+          "returned": 1,
+          "truncated": false
+        },
+        {
+          "location": "pending",
+          "total": 0,
+          "returned": 0,
+          "truncated": false
+        },
+        {
+          "location": "deferred_tasks",
+          "total": 0,
+          "returned": 0,
+          "truncated": false
+        }
+      ]
+    },
+    "coverage": {
+      "scope": "direct_card_links_in_selected_board_and_tenant",
+      "limit_per_collection": 100,
+      "truncated": false,
+      "loop_task_found": true
+    },
+    "notices": [],
+    "limitations": [
+      "Stored card links are associations, not scheduler dependencies or proof of blocking. Only stored blocked status/reasons are evidence of an existing blocker.",
+      "Database and Loop file have no shared snapshot. Their statuses are separate observations; disagreement does not establish a cause or a current unified state.",
+      "Loop files carry no tenant/repository identity. Task and run ID matches do not authenticate the caller-supplied file.",
+      "Only direct links within the requested scope are shown. Empty or truncated results do not prove no impact. not_in_returned_runs is not proof that a run never existed."
+    ]
+  }
+}

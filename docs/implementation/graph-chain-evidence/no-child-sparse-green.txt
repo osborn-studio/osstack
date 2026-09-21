@@ -1,0 +1,39 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/core
+
+Preparing worktree (detached HEAD 0e3d64a)
+ ✓ src/state/graph-recovery.test.ts (22 tests) 425ms
+Preparing worktree (detached HEAD e8a64c7)
+Preparing worktree (detached HEAD 5c8a4c7)
+Preparing worktree (detached HEAD 5c8a4c7)
+Preparing worktree (detached HEAD 78496c3)
+Preparing worktree (detached HEAD 78496c3)
+Preparing worktree (detached HEAD f69fe34)
+Preparing worktree (detached HEAD 472f36f)
+Preparing worktree (detached HEAD 19cf2bf)
+Preparing worktree (detached HEAD 19cf2bf)
+Preparing worktree (detached HEAD 19cf2bf)
+Preparing worktree (detached HEAD 19cf2bf)
+Preparing worktree (detached HEAD 19cf2bf)
+Preparing worktree (detached HEAD 19cf2bf)
+Preparing worktree (detached HEAD 5ac5224)
+Preparing worktree (detached HEAD 5ac5224)
+Preparing worktree (detached HEAD 20c7a10)
+Preparing worktree (detached HEAD 20c7a10)
+ ✓ src/graph/artifact-store.test.ts (18 tests) 8853ms
+   ✓ trusted graph artifact freeze > restores full reachable history and exact raw tree after deleting original repo and worktree  1636ms
+   ✓ trusted graph artifact freeze > rechecks authority after durable publication before returning ready  523ms
+   ✓ trusted graph artifact freeze > returns immutable candidate identity and artifact refs  555ms
+   ✓ trusted graph artifact freeze > captures tracked-file to directory replacement with unusual filenames  836ms
+   ✓ trusted graph artifact freeze > does not return ready if durable ID publication fails; exported bytes remain recoverable  657ms
+   ✓ trusted graph artifact freeze > rejects manifest corruption under a pinned artifact digest  568ms
+   ✓ trusted graph artifact freeze > rejects same ID with changed receipt or content  1053ms
+   ✓ trusted graph artifact freeze > does not invoke local hooks or filters during capture or restore  828ms
+   ✓ trusted graph artifact freeze > rejects corrupted bundles and manifests, including replay  695ms
+   ✓ trusted graph artifact freeze > refuses existing and escaping restore destinations  514ms
+
+ Test Files  2 passed (2)
+      Tests  40 passed (40)
+   Start at  08:05:38
+   Duration  9.15s (transform 109ms, setup 0ms, collect 228ms, tests 9.28s, environment 0ms, prepare 65ms)
+

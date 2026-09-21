@@ -1,0 +1,51 @@
+{
+  "schemaVersion": 1,
+  "gate": "C5",
+  "status": "passed",
+  "date": "2026-09-14",
+  "acceptedCodeCommit": "50133c0eec518add33f556bfa95b746de350cc35",
+  "baseline": "30236fb4d26f65b7b9c30aa20d9fc255490ec12e",
+  "tasks": [
+    "G14",
+    "G15",
+    "G16",
+    "G17"
+  ],
+  "productionReady": false,
+  "executionModel": "langgraph-functional-v1",
+  "durability": "sync",
+  "node": "v26.5.0",
+  "pnpm": "11.4.0",
+  "betterSqlite3": "12.10.0",
+  "sqlite": "3.53.1",
+  "workspaceTestCount": 3013,
+  "testPackageCount": 22,
+  "chainTestCount": 29,
+  "verification": "Actual LoopEngine C5-final-acceptance-3: 1 executed, 0 skipped, success; all 6 verifier commands passed. Whole build and changed-source Biome passed (4 test IPC any warnings).",
+  "scope": "Trusted experimental daemon/worker/broker two-node execution chain, immutable recovery journal, durable artifact freeze and admission-release obligations.",
+  "limitations": [
+    "No public graph write CLI/RPC or full delivery graph until G18-G24",
+    "Daemon restart cases persist observed worker exit before killing daemon; unobserved live-worker/escaped-executor recovery and durable PID identity remain G25",
+    "Same-UID worker is not an OS sandbox",
+    "SQLite WAL NORMAL ACK is not a power-loss guarantee",
+    "Full-history artifact bundles: SHA1 non-shallow without submodules/skip-worktree; 60s and 256MiB per Git command; no automatic stale lock cleanup or GC",
+    "Node/native/distribution matrix G27, RPC/runtime performance G28 and real internal pilot G29 remain pending",
+    "Unknown effects and unconfirmed producers remain quarantined; no automatic resend, expiry takeover or terminal resurrection",
+    "StateGraph partial-abort AND-join counterexample remains blocked"
+  ],
+  "evidence": [
+    "acceptance-result.json",
+    "accepted-full-tests.txt",
+    "accepted-typecheck.txt",
+    "accepted-schemas.txt",
+    "accepted-kernel.txt",
+    "accepted-functional.txt",
+    "accepted-startup.txt",
+    "build-final3.txt",
+    "biome-final2.txt",
+    "source-hashes.json",
+    "claude-admission.md",
+    "claude-adjudication.md",
+    "actor-summary.json"
+  ]
+}

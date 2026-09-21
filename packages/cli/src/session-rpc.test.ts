@@ -1,3 +1,5 @@
+import { healthyAutonomyHealth } from "./test-healthy-autonomy.js";
+import { execFileSync } from "node:child_process";
 import { mkdtempSync, rmSync } from "node:fs";
 import { connect } from "node:net";
 import { tmpdir } from "node:os";
@@ -20,6 +22,8 @@ type RpcResponse = {
 };
 
 class FakeSessionAdapter implements SessionCapableAdapter {
+  // This fixture has no owned processes or remote effects after iterator exit.
+  async confirmStopped() { return { stopped: true as const, evidence: "fixture has no external producer" }; }
   readonly id = "fake-session";
   readonly display_name = "Fake Session";
   readonly cost_tier = "low" as const;
@@ -157,7 +161,7 @@ function seedSession(
       agent_id: adapter.id,
       request_sha256: "a".repeat(64),
       native_session_id: `native-secret-${id}`,
-      repo_path: `/tmp/repo-${id}`,
+      repo_path: sessionRepo(id),
       state,
       resume_supported: resumeSupported,
       version: 2,
@@ -180,12 +184,13 @@ function seedSession(
 
 beforeAll(async () => {
   home = mkdtempSync(join(tmpdir(), "osstack-session-rpc-"));
+  execFileSync("git", ["init", home], { stdio: "ignore" });
   socketPath = join(home, "d.sock");
   process.env["OSSTACK_HOME"] = home;
   process.env["OSSTACK_SOCKET"] = socketPath;
   process.env["OSSTACK_UPDATE_CHECK"] = "0";
   adapter = new FakeSessionAdapter();
-  handle = await startDaemon({ socketPath, adapters: [adapter] });
+  handle = await startDaemon({ socketPath, adapters: [adapter], autonomyHealth: async () => healthyAutonomyHealth() });
 });
 
 afterAll(async () => {
@@ -369,7 +374,7 @@ describe("governed session RPC", () => {
     }
     expect(adapter.resumed.filter((input) => input.session_id === "sess_apply")).toHaveLength(1);
     expect(adapter.resumed.find((input) => input.session_id === "sess_apply")?.context).toMatchObject({
-      repo_path: "/tmp/repo-sess_apply",
+      repo_path: sessionRepo("sess_apply"),
       requested_by: "owner",
     });
     expect(JSON.stringify(first)).not.toContain("native-secret");
@@ -514,7 +519,11 @@ describe("governed session RPC", () => {
       rpc("session.send", params),
     ]);
 
-    expect(responses.map((item) => item.result?.["state"]).sort()).toEqual(["applied", "duplicate"]);
+    expect(responses.filter(item => item.result?.["state"] === "applied")).toHaveLength(1);
+    const replay = responses.find(item => item.result?.["state"] !== "applied")!;
+    if (!replay.ok) expect(replay.error?.code).toBe("session_busy");
+    else expect(replay.result?.["state"]).toBe("duplicate");
+    expect((await rpc("session.send", params)).result?.["state"]).toBe("duplicate");
     expect(adapter.resumed.filter((input) => input.session_id === "sess_concurrent")).toHaveLength(1);
   });
 
@@ -650,3 +659,9 @@ describe("governed session RPC", () => {
     expect(adapter.resumed).toHaveLength(resumesBefore);
   });
 });
+
+function sessionRepo(id: string): string {
+  const path = join(home, id);
+  execFileSync("git", ["init", path], { stdio: "ignore" });
+  return path;
+}

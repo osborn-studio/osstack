@@ -1,0 +1,69 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/graph
+
+ ❯ src/checkpoint-codec.test.ts (20 tests | 1 failed) 11ms
+   ✓ restricted checkpoint codec > round trips JSON, reserved channel tuples, and deterministic sorted keys 1ms
+   ✓ restricted checkpoint codec > implements the public typed serializer and rejects unknown wire/type versions 1ms
+   ✓ restricted checkpoint codec > permits only opt-in exact Uint8Array, with collision-free tags and byte limits 1ms
+   ✓ restricted checkpoint codec > rejects unsupported value undefined 0ms
+   ✓ restricted checkpoint codec > rejects unsupported value NaN 0ms
+   ✓ restricted checkpoint codec > rejects unsupported value Infinity 0ms
+   ✓ restricted checkpoint codec > rejects unsupported value -Infinity 0ms
+   ✓ restricted checkpoint codec > rejects unsupported value 1n 0ms
+   ✓ restricted checkpoint codec > rejects unsupported value () => 1 0ms
+   ✓ restricted checkpoint codec > rejects unsupported value Symbol(x) 0ms
+   ✓ restricted checkpoint codec > rejects unsupported value Sun Sep 13 2026 18:19:12 GMT-0700 (Pacific Daylight Time) 0ms
+   ✓ restricted checkpoint codec > rejects unsupported value Map{} 0ms
+   ✓ restricted checkpoint codec > rejects unsupported value Set{} 0ms
+   ✓ restricted checkpoint codec > rejects unsupported value Error: x 0ms
+   ✓ restricted checkpoint codec > rejects unsupported value /x/ 0ms
+   ✓ restricted checkpoint codec > rejects prototypes, pollution keys, getters, hooks, symbols, cycles and sparse arrays without executing code 1ms
+   × restricted checkpoint codec > rejects byte accessors before reading buffer/length and shared byte storage 4ms
+     → expected "spy" to not be called at all, but actually been called 1 times
+
+Received:
+
+  1st spy call:
+
+    Array []
+
+
+Number of calls: 1
+
+   ✓ restricted checkpoint codec > bounds encode/decode depth, nodes, strings and wire size; validates option ceilings 1ms
+   ✓ restricted checkpoint codec > rejects oversized/deep inputs before JSON.parse and malformed wire without revival 1ms
+   ✓ restricted checkpoint codec > validates checkpoint v4 required fields without losing engine metadata/extensions 0ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/checkpoint-codec.test.ts > restricted checkpoint codec > rejects byte accessors before reading buffer/length and shared byte storage
+AssertionError: expected "spy" to not be called at all, but actually been called 1 times
+
+Received:
+
+  1st spy call:
+
+    Array []
+
+
+Number of calls: 1
+
+ ❯ src/checkpoint-codec.test.ts:67:24
+     65|     const bytes = Object.defineProperty(new Uint8Array(1), 'buffer', {…
+     66|     expect(() => byteCodec.encode(bytes)).toThrow();
+     67|     expect(getter).not.toHaveBeenCalled();
+       |                        ^
+     68|     expect(() => byteCodec.encode(new Uint8Array(new SharedArrayBuffer…
+     69|     expect(() => byteCodec.decode(new Uint8Array(new SharedArrayBuffer…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 19 passed (20)
+   Start at  18:19:11
+   Duration  378ms (transform 76ms, setup 0ms, collect 75ms, tests 11ms, environment 0ms, prepare 51ms)
+
+undefined
+/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/graph:
+[ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL] Command failed with exit code 1: vitest run src/checkpoint-codec.test.ts

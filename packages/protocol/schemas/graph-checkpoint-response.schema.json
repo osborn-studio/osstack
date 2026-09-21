@@ -1,0 +1,258 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Graph Checkpoint Response",
+  "anyOf": [
+    {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "const": "get"
+        },
+        "tuple": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "threadId": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 256
+                },
+                "namespace": {
+                  "type": "string",
+                  "maxLength": 1024
+                },
+                "checkpointId": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 256
+                },
+                "parentCheckpointId": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 256
+                },
+                "checkpoint": {
+                  "type": "string",
+                  "maxLength": 1048576
+                },
+                "metadata": {
+                  "type": "string",
+                  "maxLength": 1048576
+                },
+                "newVersions": {
+                  "type": "string",
+                  "maxLength": 1048576
+                },
+                "pendingWrites": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "channel": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 256
+                      },
+                      "index": {
+                        "type": "integer",
+                        "minimum": -4,
+                        "maximum": 4095
+                      },
+                      "value": {
+                        "type": "string",
+                        "maxLength": 1048576
+                      },
+                      "taskId": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 256
+                      }
+                    },
+                    "required": [
+                      "channel",
+                      "index",
+                      "value",
+                      "taskId"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "maxItems": 4096
+                }
+              },
+              "required": [
+                "threadId",
+                "namespace",
+                "checkpointId",
+                "checkpoint",
+                "metadata",
+                "newVersions",
+                "pendingWrites"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "kind",
+        "tuple"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "const": "list"
+        },
+        "tuples": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "threadId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256
+              },
+              "namespace": {
+                "type": "string",
+                "maxLength": 1024
+              },
+              "checkpointId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256
+              },
+              "parentCheckpointId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256
+              },
+              "checkpoint": {
+                "type": "string",
+                "maxLength": 1048576
+              },
+              "metadata": {
+                "type": "string",
+                "maxLength": 1048576
+              },
+              "newVersions": {
+                "type": "string",
+                "maxLength": 1048576
+              },
+              "pendingWrites": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "channel": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 256
+                    },
+                    "index": {
+                      "type": "integer",
+                      "minimum": -4,
+                      "maximum": 4095
+                    },
+                    "value": {
+                      "type": "string",
+                      "maxLength": 1048576
+                    },
+                    "taskId": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 256
+                    }
+                  },
+                  "required": [
+                    "channel",
+                    "index",
+                    "value",
+                    "taskId"
+                  ],
+                  "additionalProperties": false
+                },
+                "maxItems": 4096
+              }
+            },
+            "required": [
+              "threadId",
+              "namespace",
+              "checkpointId",
+              "checkpoint",
+              "metadata",
+              "newVersions",
+              "pendingWrites"
+            ],
+            "additionalProperties": false
+          },
+          "maxItems": 16
+        },
+        "cursor": {
+          "type": "object",
+          "properties": {
+            "namespace": {
+              "type": "string",
+              "maxLength": 1024
+            },
+            "checkpointId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            }
+          },
+          "required": [
+            "namespace",
+            "checkpointId"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "kind",
+        "tuples"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "const": "put"
+        },
+        "checkpointId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        }
+      },
+      "required": [
+        "kind",
+        "checkpointId"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "const": "writes"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "additionalProperties": false
+    }
+  ]
+}

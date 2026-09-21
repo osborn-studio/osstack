@@ -1,0 +1,110 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+osstack: retaining write lease graph-action:812bc1f87abb6e5ea58da50021b726058e7b266503ddec62b7d91a3fa87d9834: Error: adapter result or execution unconfirmed
+osstack: retaining write lease graph-action:ed28717518f6f233250b84bbd031f498bdb964bd503d56d15623f9ab1a41efb5: Error: adapter result or execution unconfirmed
+osstack: retaining write lease graph-action:e867e260f9fbbad48824f529c9d3399de4126a9dc995fe77648aa649dc35d68d: Error: adapter result or execution unconfirmed
+osstack: retaining write lease graph-action:fbb1b1c8c466ccd3c1991f1a8d36b0eeb8321dadf11863f33cecc792b8d7da77: Error: invalid result kind for registered operation
+osstack: retaining write lease graph-action:20cd4286c1059de8d85cc1de194bd7844e862bcb838371a44e951603b0878aef: Error: invalid usage
+osstack: retaining write lease graph-action:1a10b3c7c30ee01aeaeae7edebf95cfdbea2eebcc4c024a4e6504c0a66f03e16: Error: invalid persisted evidence reference
+osstack: retaining write lease graph-action:788afb1b532e560d30874f5f2a8371c45b63943c58e5ffbed22c3acb572cd518: SqliteError: injected
+osstack: retaining write lease graph-action:47bc454178c6b399a24b6c74727e069f72eae8309ec9f990645b670889e065cd: Error: adapter result or execution unconfirmed
+osstack: retaining write lease graph-action:273d58215e922b6b2807e5132b41ff410ca8d01b5ff048125853e29a5e52391b: Error: adapter result or execution unconfirmed
+ ❯ src/graph-action-broker.test.ts (31 tests | 4 failed) 3379ms
+   ✓ executes a registered command once and replays from SQLite after broker restart 140ms
+   ✓ rejects changed payload without invoking 60ms
+   ✓ rejects changed node without invoking 54ms
+   ✓ rejects changed scope without invoking 64ms
+   ✓ rejects changed connection without invoking 60ms
+   ✓ rejects changed generation without invoking 45ms
+   ✓ concurrent same slot calls can invoke only the creator's intent 82ms
+   ✓ rechecks revocation after the shared admission queue without leaking a permit 192ms
+   ✓ never blindly retries throw after invocation 103ms
+   ✓ never blindly retries terminal-failure after invocation 96ms
+   ✓ never blindly retries cancel after invocation 202ms
+   ✓ pins request, registration, and adapter functions before asynchronous admission 164ms
+   ✓ fences revoke after G04 asynchronous availability and before actual invoke 120ms
+   ✓ fences generation after G04 asynchronous availability and before actual invoke 177ms
+   ✓ fences confirmed replay before lookup and keeps effect identity across a trusted fresh generation 108ms
+   ✓ unknown blocks a later separately registered action and retains actual capacity 93ms
+   ✓ retains uncertainty when trusted result fails after physical execution 98ms
+   ✓ retains uncertainty when trusted usage fails after physical execution 114ms
+   ✓ retains uncertainty when trusted receipt fails after physical execution 101ms
+   ✓ retains uncertainty when trusted commit fails after physical execution 213ms
+   ✓ accepts only a specific registered workspace handler, never a worker callback 156ms
+   ✓ refuses unknown/ambiguous capability registration and never runs a mixed writer with a read permit 110ms
+   ✓ rejects an accidentally async trusted revocation callback instead of granting on its Promise 60ms
+   ✓ policy failure before effects resolves only its own intent and releases the lease 74ms
+   ✓ rejects a wrong full program identity and forged worker authority fields 69ms
+   ✓ refuses unsupported freeze registration before acquiring capacity 50ms
+   ✓ forwards cancellation to the actual adapter and retains an unconfirmed external producer 191ms
+   × treats malformed raw adapter token usage bad as unknown even if later usage is valid 99ms
+     → expected { schemaVersion: 1, …(5) } to match object { outcome: { state: 'unknown' } }
+(18 matching properties omitted from actual)
+   × treats malformed raw adapter token usage -1 as unknown even if later usage is valid 107ms
+     → expected { schemaVersion: 1, …(5) } to match object { outcome: { state: 'unknown' } }
+(18 matching properties omitted from actual)
+   × treats malformed raw adapter token usage 1.5 as unknown even if later usage is valid 91ms
+     → expected { schemaVersion: 1, …(5) } to match object { outcome: { state: 'unknown' } }
+(18 matching properties omitted from actual)
+   × retains reported overrun reservation after the adapter throws 86ms
+     → expected { observed_tokens: 10 } to deeply equal { observed_tokens: 150 }
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 4 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/graph-action-broker.test.ts > treats malformed raw adapter token usage bad as unknown even if later usage is valid
+ FAIL  src/graph-action-broker.test.ts > treats malformed raw adapter token usage -1 as unknown even if later usage is valid
+ FAIL  src/graph-action-broker.test.ts > treats malformed raw adapter token usage 1.5 as unknown even if later usage is valid
+AssertionError: expected { schemaVersion: 1, …(5) } to match object { outcome: { state: 'unknown' } }
+(18 matching properties omitted from actual)
+
+- Expected
++ Received
+
+  {
+    "outcome": {
+-     "state": "unknown",
++     "state": "confirmed",
+    },
+  }
+
+ ❯ src/graph-action-broker.test.ts:237:58
+    235|   });
+    236|   const f = fixture(adapter);
+    237|   expect(await f.broker.handle(f.connection, f.request)).toMatchObject…
+       |                                                          ^
+    238|   expect(f.writes.in_use).toBe(1);
+    239| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/4]⎯
+
+ FAIL  src/graph-action-broker.test.ts > retains reported overrun reservation after the adapter throws
+AssertionError: expected { observed_tokens: 10 } to deeply equal { observed_tokens: 150 }
+
+- Expected
++ Received
+
+  {
+-   "observed_tokens": 150,
++   "observed_tokens": 10,
+  }
+
+ ❯ src/graph-action-broker.test.ts:247:75
+    245|   const f = fixture(adapter);
+    246|   expect(await f.broker.handle(f.connection, f.request)).toMatchObject…
+    247|   expect(f.db.prepare("SELECT observed_tokens FROM graph_actions").get…
+       |                                                                           ^
+    248| });
+    249| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/4]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  4 failed | 27 passed (31)
+   Start at  06:54:44
+   Duration  5.34s (transform 959ms, setup 11ms, collect 1.74s, tests 3.38s, environment 0ms, prepare 40ms)
+
+undefined
+/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli:
+[ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL] Command failed with exit code 1: vitest run src/graph-action-broker.test.ts

@@ -1,0 +1,129 @@
+{
+  "taskReturns": [
+    {
+      "checkpoint": {
+        "configurable": {
+          "checkpoint_id": "1f1aff32-dba6-64e0-ffff-db33a01285db",
+          "checkpoint_ns": "",
+          "thread_id": "c2"
+        }
+      },
+      "taskId": "f50ed4a1-b9b5-522c-bf5f-a91de84b3d22",
+      "value": {
+        "results": [
+          "completed"
+        ]
+      }
+    },
+    {
+      "checkpoint": {
+        "configurable": {
+          "checkpoint_id": "1f1aff32-dba6-64e0-ffff-db33a01285db",
+          "checkpoint_ns": "",
+          "thread_id": "c2"
+        }
+      },
+      "taskId": "be7dbf83-b572-5a2b-8741-64fc72bcc50f",
+      "value": {
+        "results": [
+          "recovered"
+        ]
+      }
+    }
+  ],
+  "counts": {
+    "completedBody": 1,
+    "completedWrapper": 1,
+    "flakyAttempts": 1,
+    "recoveredBody": 1
+  },
+  "effects": {
+    "completed": {
+      "attempt": 1,
+      "effect": "completed",
+      "result": {
+        "results": [
+          "completed"
+        ]
+      },
+      "run": "functional-async-interrupt-false",
+      "status": "confirmed"
+    },
+    "recovered": {
+      "attempt": 1,
+      "effect": "recovered",
+      "result": {
+        "results": [
+          "recovered"
+        ]
+      },
+      "run": "functional-async-interrupt-false",
+      "status": "confirmed"
+    }
+  },
+  "tuple": {
+    "checkpoint": {
+      "channel_values": {
+        "__pregel_tasks": [],
+        "__start__": {
+          "results": []
+        }
+      },
+      "channel_versions": {
+        "__start__": 1
+      },
+      "id": "1f1aff32-dba6-64e0-ffff-db33a01285db",
+      "ts": "2026-09-14T04:17:20.430Z",
+      "v": 4,
+      "versions_seen": {
+        "__input__": {}
+      }
+    },
+    "config": {
+      "configurable": {
+        "checkpoint_id": "1f1aff32-dba6-64e0-ffff-db33a01285db",
+        "checkpoint_ns": "",
+        "thread_id": "c2"
+      }
+    },
+    "metadata": {
+      "parents": {},
+      "source": "input",
+      "step": -1
+    },
+    "pendingWrites": [
+      [
+        "f50ed4a1-b9b5-522c-bf5f-a91de84b3d22",
+        "__return__",
+        {
+          "results": [
+            "completed"
+          ]
+        }
+      ],
+      [
+        "be7dbf83-b572-5a2b-8741-64fc72bcc50f",
+        "__return__",
+        {
+          "results": [
+            "recovered"
+          ]
+        }
+      ],
+      [
+        "836f35ed-d1ba-5fa6-ace2-3977fada5295",
+        "__interrupt__",
+        {
+          "id": "389ffbdc7e6f2fdf6fa263cf083508b1",
+          "value": {
+            "choices": [
+              false,
+              true
+            ],
+            "question": "continue?"
+          }
+        }
+      ]
+    ]
+  }
+}

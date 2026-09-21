@@ -1,0 +1,13 @@
+{
+  "commit": "d30a601e5ded64a595985e182b2b962519122ed3",
+  "tracked_files": 8,
+  "readme_lines": 690,
+  "linked_bullet_entries_by_section": {
+    "🎉 News": 1,
+    "📚 Related Survey Papers": 16,
+    "📜 Research Papers": 304,
+    "🏆 Benchmarks, Datasets, and Environments": 65,
+    "💻 Open-Source Libraries": 30,
+    "🚀 Applications": 28
+  }
+}

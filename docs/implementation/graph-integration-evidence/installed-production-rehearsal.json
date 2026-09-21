@@ -1,0 +1,10 @@
+{
+  "source": "private consistent copy of serving schema",
+  "from": 22,
+  "to": 37,
+  "oldTableCountsPreserved": true,
+  "oldTableCount": 51,
+  "integrity": "ok",
+  "foreignKeys": 0,
+  "newGraphRows": 0
+}

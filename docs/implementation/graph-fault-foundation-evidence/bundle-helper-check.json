@@ -1,0 +1,9 @@
+{
+  "buildLog": "build-final.txt",
+  "entry": "packages/cli/src/cli-entry.ts",
+  "buildConfig": "packages/cli/tsup.config.ts",
+  "helperSymbols": {
+    "graphRpcFixture": [],
+    "processFixture": []
+  }
+}

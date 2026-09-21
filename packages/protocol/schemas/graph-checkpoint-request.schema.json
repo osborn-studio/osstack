@@ -1,0 +1,222 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Graph Checkpoint Request",
+  "$comment": "Opaque bounded codec data; transport caps raw frames at 8 MiB. Host binds authenticated run and fences transaction before reads, writes and replay. No JSON field confers authority.",
+  "anyOf": [
+    {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "const": "get"
+        },
+        "threadId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "namespace": {
+          "type": "string",
+          "maxLength": 1024
+        },
+        "checkpointId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        }
+      },
+      "required": [
+        "kind",
+        "threadId",
+        "namespace"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "const": "list"
+        },
+        "threadId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "namespace": {
+          "type": "string",
+          "maxLength": 1024
+        },
+        "checkpointId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "before": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "cursor": {
+          "type": "object",
+          "properties": {
+            "namespace": {
+              "type": "string",
+              "maxLength": 1024
+            },
+            "checkpointId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            }
+          },
+          "required": [
+            "namespace",
+            "checkpointId"
+          ],
+          "additionalProperties": false
+        },
+        "pageSize": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 16
+        }
+      },
+      "required": [
+        "kind",
+        "threadId",
+        "pageSize"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "const": "put"
+        },
+        "requestId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "threadId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "namespace": {
+          "type": "string",
+          "maxLength": 1024
+        },
+        "checkpointId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "parentCheckpointId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "checkpoint": {
+          "type": "string",
+          "maxLength": 1048576
+        },
+        "metadata": {
+          "type": "string",
+          "maxLength": 1048576
+        },
+        "newVersions": {
+          "type": "string",
+          "maxLength": 1048576
+        }
+      },
+      "required": [
+        "kind",
+        "requestId",
+        "threadId",
+        "namespace",
+        "checkpointId",
+        "checkpoint",
+        "metadata",
+        "newVersions"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "const": "writes"
+        },
+        "requestId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "threadId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "namespace": {
+          "type": "string",
+          "maxLength": 1024
+        },
+        "checkpointId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "taskId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "writes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "channel": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256
+              },
+              "index": {
+                "type": "integer",
+                "minimum": -4,
+                "maximum": 4095
+              },
+              "value": {
+                "type": "string",
+                "maxLength": 1048576
+              }
+            },
+            "required": [
+              "channel",
+              "index",
+              "value"
+            ],
+            "additionalProperties": false
+          },
+          "maxItems": 4096
+        }
+      },
+      "required": [
+        "kind",
+        "requestId",
+        "threadId",
+        "namespace",
+        "checkpointId",
+        "taskId",
+        "writes"
+      ],
+      "additionalProperties": false
+    }
+  ]
+}

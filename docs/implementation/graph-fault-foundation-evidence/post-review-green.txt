@@ -1,0 +1,20 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+
+  ../../../tmp/g25/g17-build-wR0Py5/graph-chain-host.mjs  455.0kb
+
+⚡ Done in 15ms
+ ✓ src/graph-chain.integration.test.ts (30 tests | 28 skipped) 4440ms
+   ✓ assembly: stubborn command cancellation settles after proven process-group exit  1742ms
+   ✓ daemon: stubborn command cancellation settles after proven process-group exit  2698ms
+ ✓ src/graph-process-journal.test.ts (9 tests | 7 skipped) 648ms
+   ✓ retains launch and true exit, rejects changed identity and protects immutable observations  630ms
+ ✓ src/graph-worker-manager.test.ts (32 tests | 31 skipped) 344ms
+   ✓ records the authenticated child identity before its program receives init  343ms
+
+ Test Files  3 passed (3)
+      Tests  5 passed | 66 skipped (71)
+   Start at  22:12:37
+   Duration  7.96s (transform 576ms, setup 17ms, collect 2.03s, tests 5.43s, environment 0ms, prepare 124ms)
+

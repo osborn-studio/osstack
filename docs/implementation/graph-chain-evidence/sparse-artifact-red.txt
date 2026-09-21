@@ -1,0 +1,81 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/core
+
+Preparing worktree (detached HEAD 131a014)
+Preparing worktree (detached HEAD 25fc628)
+Preparing worktree (detached HEAD bedcb95)
+Preparing worktree (detached HEAD bedcb95)
+Preparing worktree (detached HEAD 2f75234)
+Preparing worktree (detached HEAD 2f75234)
+Preparing worktree (detached HEAD ffd14c2)
+Preparing worktree (detached HEAD ffd14c2)
+Preparing worktree (detached HEAD c693fc3)
+Preparing worktree (detached HEAD c693fc3)
+Preparing worktree (detached HEAD c693fc3)
+Preparing worktree (detached HEAD c693fc3)
+Preparing worktree (detached HEAD 6e28036)
+Preparing worktree (detached HEAD 6e28036)
+Preparing worktree (detached HEAD 6e28036)
+Preparing worktree (detached HEAD e901bbf)
+Preparing worktree (detached HEAD e901bbf)
+Preparing worktree (detached HEAD 2ef4813)
+ ❯ src/graph/artifact-store.test.ts (18 tests | 1 failed) 8949ms
+   ✓ trusted graph artifact freeze > restores full reachable history and exact raw tree after deleting original repo and worktree  1668ms
+   ✓ trusted graph artifact freeze > rechecks authority after durable publication before returning ready  578ms
+   ✓ trusted graph artifact freeze > returns immutable candidate identity and artifact refs  594ms
+   ✓ trusted graph artifact freeze > captures tracked-file to directory replacement with unusual filenames  812ms
+   ✓ trusted graph artifact freeze > rejects missing required receipt fields at runtime 85ms
+   ✓ trusted graph artifact freeze > does not return ready if durable ID publication fails; exported bytes remain recoverable  620ms
+   ✓ trusted graph artifact freeze > rejects manifest corruption under a pinned artifact digest  561ms
+   ✓ trusted graph artifact freeze > rejects same ID with changed receipt or content  933ms
+   ✓ trusted graph artifact freeze > rejects nonconforming async authority verifyLease 74ms
+   ✓ trusted graph artifact freeze > rejects nonconforming async authority verifyImplementationReceipt 74ms
+   ✓ trusted graph artifact freeze > rejects nonconforming async authority verifyProducersStopped 73ms
+   ✓ trusted graph artifact freeze > rechecks resolved producer evidence before capture and rejects revocation 130ms
+   ✓ trusted graph artifact freeze > rejects mismatched exact source identity and HEAD 111ms
+   ✓ trusted graph artifact freeze > does not invoke local hooks or filters during capture or restore  782ms
+   ✓ trusted graph artifact freeze > rejects submodules instead of exporting an incomplete tree 210ms
+   ✓ trusted graph artifact freeze > rejects corrupted bundles and manifests, including replay  672ms
+   ✓ trusted graph artifact freeze > refuses existing and escaping restore destinations  484ms
+   × rejects skip-worktree entries instead of silently freezing sparse omissions as deletions 486ms
+     → promise resolved "{ schemaVersion: 1, …(4) }" instead of rejecting
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/graph/artifact-store.test.ts > rejects skip-worktree entries instead of silently freezing sparse omissions as deletions
+AssertionError: promise resolved "{ schemaVersion: 1, …(4) }" instead of rejecting
+
+- Expected
++ Received
+
+- Error {
+-   "message": "rejected promise",
++ {
++   "artifactDigest": "c5798b0909083cd0773849c9be82380776017bd51accf1afac3804392cc5da31",
++   "artifactRefs": [
++     "graph-artifact:c5798b0909083cd0773849c9be82380776017bd51accf1afac3804392cc5da31",
++   ],
++   "candidateRevision": "1d574c7c1c6151d290e5e580325fecd32b054a30",
++   "kind": "candidate_ready",
++   "schemaVersion": 1,
+  }
+
+ ❯ src/graph/artifact-store.test.ts:149:52
+    147|   const f = await fixture();
+    148|   git(f.worktree, 'update-index', '--skip-worktree', 'base.txt'); awai…
+    149|   await expect(f.store.freeze(f.input, f.authority)).rejects.toThrow('…
+       |                                                    ^
+    150| });
+    151| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 17 passed (18)
+   Start at  08:02:02
+   Duration  9.20s (transform 62ms, setup 0ms, collect 87ms, tests 8.95s, environment 0ms, prepare 37ms)
+
+undefined
+/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/core:
+[ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL] Command failed with exit code 1: vitest run src/graph/artifact-store.test.ts

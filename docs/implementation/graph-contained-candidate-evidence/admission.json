@@ -1,0 +1,99 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-09-16",
+  "status": "passed_bounded_slice",
+  "scope": "Frozen candidate/image binding and contained tests through Graph broker/G04/store/join; no arbitrary crash/G15 recovery admission",
+  "productionReady": false,
+  "taskStatus": "in_progress",
+  "completedTaskCount": 25,
+  "totalTaskCount": 30,
+  "acceptedCodeCommit": "dc89a1a6851694887e7dde5a49850dc62b1ab668",
+  "loop": {
+    "id": "G25-contained-candidate-acceptance-1",
+    "executed": 1,
+    "skipped": 0,
+    "outcome": "success",
+    "tests": 3332,
+    "packages": 22,
+    "verifiersPassed": 9
+  },
+  "matrix": {
+    "testExecutions": 445,
+    "seed": 250919,
+    "repeat": 2,
+    "sourceUnchanged": true,
+    "artifactsUnchanged": true,
+    "runs": [
+      {
+        "package": "loop",
+        "iteration": 0,
+        "tests": 112,
+        "passed": true
+      },
+      {
+        "package": "agents",
+        "iteration": 0,
+        "tests": 36,
+        "passed": true
+      },
+      {
+        "package": "core",
+        "iteration": 0,
+        "tests": 65,
+        "passed": true
+      },
+      {
+        "package": "cli",
+        "iteration": 0,
+        "tests": 228,
+        "passed": true
+      },
+      {
+        "package": "cli",
+        "iteration": 1,
+        "tests": 4,
+        "passed": true
+      }
+    ]
+  },
+  "realCandidateChecks": 12,
+  "binaryProbePassed": true,
+  "reviews": [
+    {
+      "name": "kimi-code-2",
+      "verdict": "approved",
+      "runtimeIdentity": {
+        "adapter_id": "kimi-code",
+        "adapter_version": "0.29.1",
+        "auth_mode": "subprocess/login-reuse",
+        "provider_id": "kimi",
+        "model_id": "kimi-code/k3",
+        "agent_profile": "osstack-reviewer",
+        "evidence_source": "reported",
+        "binary_path_sha256": "7e5d172f83fc7d8ca22387234b5a9a4d9412aa1a27c71ee90be35db29dfa7dd2"
+      }
+    },
+    {
+      "name": "kimi-final",
+      "verdict": "approved",
+      "runtimeIdentity": {
+        "adapter_id": "kimi-code",
+        "adapter_version": "0.29.1",
+        "auth_mode": "subprocess/login-reuse",
+        "provider_id": "kimi",
+        "model_id": "kimi-code/k3",
+        "agent_profile": "osstack-reviewer",
+        "evidence_source": "reported",
+        "binary_path_sha256": "7e5d172f83fc7d8ca22387234b5a9a4d9412aa1a27c71ee90be35db29dfa7dd2"
+      }
+    }
+  ],
+  "startup": "ok   osstack --version (fast path): median 27ms over 5 runs (budget 150ms; min 27, max 28)\nok   osstack --help (full command surface): median 79ms over 5 runs (budget 500ms; min 78, max 83)",
+  "dockerApiReferenceSha256": "bc5543fa780e87a12b38a340638905778f60ca533facde10d66bb6839c6866d6",
+  "limitations": [
+    "No arbitrary crashed-worker stop/G15 reconciliation/release integration",
+    "Trusted host/base image/daemon/journal; regular-file candidates <=32MiB/10000 files; readonly candidate and offline execution",
+    "Full suites run on macOS; actual container commands on Linux; finite writer/reviewer fixtures are not a real LLM pilot",
+    "Retained create/launch and delete/receipt gaps remain unknown; no label/age cleanup"
+  ]
+}

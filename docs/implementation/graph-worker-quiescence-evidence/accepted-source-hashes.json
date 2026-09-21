@@ -1,0 +1,10 @@
+{
+  "packages/cli/src/graph-delivery-adversarial.test.ts": "fda0b567ffdbe6219b48e368f2f6d0f0dc1b3318ec8bd3fd2ee31cc56dbdd8cd",
+  "packages/cli/src/graph-delivery.integration.test.ts": "163ce7cd068d49e717978177ed4303d72eb22d4a4585e5bdba56412aef5af994",
+  "packages/cli/src/graph-delivery.ts": "ad9b394a641a946761b02e2be0bff71b1a71803c74aba6604f27f9ef395f1ccb",
+  "packages/cli/src/graph-worker-exit-proof.test.ts": "b87224e71d4fa5bf7d38a5d69eb9307a8c06bd8db9aceab44573d0eadc4e04a2",
+  "packages/cli/src/graph-worker-exit-proof.ts": "d240ea624f754551e9e484e4602653a702ab32309a4e4c341a28b262e8c1bb3e",
+  "packages/core/src/state/graph-recovery.test.ts": "70696b282d93189e9bc88379c6c55d5c10ea3771271531d8edcda8ce0a5bc62c",
+  "packages/core/src/state/graph-recovery.ts": "890c8e6fcb1b58c3d0571b119fa33c848aa005ea4ecb4b1ad527099a0cb683b1",
+  "scripts/verify-graph-runtime.mjs": "5a69d155dfe059a2a221cc5468d65a9a1c9f82c5549552a9f72c6cff0df9ad7f"
+}

@@ -1,0 +1,179 @@
+[
+  {
+    "event_id": "kimi-proof:0",
+    "seq": 0,
+    "run_id": "kimi-proof",
+    "session_id": "kimi-proof",
+    "created_at": 1789690633.282,
+    "terminal": false,
+    "type": "run.started",
+    "payload": {
+      "status": "running",
+      "controls": {
+        "cancel": true,
+        "approval_pending": false,
+        "clarify_pending": false,
+        "queue": false,
+        "goal": false
+      }
+    }
+  },
+  {
+    "event_id": "kimi-proof:1",
+    "seq": 1,
+    "run_id": "kimi-proof",
+    "session_id": "kimi-proof",
+    "created_at": 1789690633.284,
+    "terminal": false,
+    "type": "progress",
+    "payload": {
+      "phase": "kimi.review.start",
+      "detail": "Starting bounded no-tool Kimi review"
+    }
+  },
+  {
+    "event_id": "kimi-proof:2",
+    "seq": 2,
+    "run_id": "kimi-proof",
+    "session_id": "kimi-proof",
+    "created_at": 1789691031.724,
+    "terminal": false,
+    "type": "token.delta",
+    "payload": {
+      "message_id": "kimi-proof:kimi-review",
+      "delta": "# Review\n\n**Scope reviewed:** the bounded diff for `graph-worker-exit-proof.ts`, `graph-delivery.ts`, `graph-recovery.ts`/`graph-reconciler.ts` (included context), worker manager/journal, tests, and the verify script.\n\n**Exit proof (exit — pass).** `verifyJournaledGraphWorkerExit` binds lease owner/acquisition, launch owner/identity/timestamps, and ordered journal events (`launched` → optional single `exit_unconfirmed` → `exited`) in one synchronous statement; it enforces PID/PGID/processIdentity consistency, XOR of code/signal, monotone timestamps bounded by `now`, strict event-count/kind shape, and performs no OS queries or signals (PID-reuse safe, tested). Result-success, no-child, timeout-alone, and journal-failure are all correctly rejected, with tests for each. No false-proof path found.\n\n**Inventory (inventory — pass).** `inspectExecutors` unions actions and admissions per run, requires lease presence, rejects cross-run/generation/owner admission mismatch (`RECOVERY_ADMISSION_BINDING`), and flags missing holds, held releases, and non-terminal states without claiming physical proof. Tests cover legacy settled actions, impostor owners, and historical generations after takeover.\n\n**Transaction (transaction — pass).** `assertExecutorInventory` requires an ambient transaction and recomputes the full inventory digest inside the caller's BEGIN IMMEDIATE, catching admission releases that do not bump revision (explicitly tested). The exit-proof test re-verifies inside `store.commit` with `db.inTransaction` asserted.\n\n**Integration (integration — pass).** Takeover and cancel retain in-memory `observedExit`/`actionsSettled`/authorization gates and add the durable journal check; journal failure blocks takeover even after real OS exit (tested). `recheck` re-verifies synchronously and re-asserts inventory. Existing authorization/authority-synchronous gates are unchanged.\n\n**Tests (tests — fail).** Two honest gaps:\n1. The new `GraphDelivery.cancel()` path (durable exit proof + executor inventory + `assertExecutorInventory` in recheck) has no integration coverage; only repair-takeover journal-failure is tested. A regression in cancel's `verify()`/inventory wiring would not be caught.\n2. The deterministic evidence states the core recovery suite passed *before* the last inventory test was added and \"final Loop acceptance pending\" — the final state of those suites is not evidenced.\n3. Minor: the recovery `not_started` consumed-launch test inserts `identity_json` using the test's own canonicalizer rather than the real `GraphProcessJournal.consume` writer, so a divergence between `workerCanonical` and recovery's `canonical` would go undetected on that path.\n\nNo code-level false proof, race, or identity/time mismatch was identified in the reviewed logic; the blocking concern is the incomplete cancel-path test coverage required by the tests criterion.",
+      "content_type": "text"
+    }
+  },
+  {
+    "event_id": "kimi-proof:3",
+    "seq": 3,
+    "run_id": "kimi-proof",
+    "session_id": "kimi-proof",
+    "created_at": 1789691031.729,
+    "terminal": true,
+    "type": "done",
+    "payload": {
+      "status": "failed",
+      "last_seq": 2,
+      "result_summary": "changes_requested: 3 finding(s)",
+      "review": {
+        "schema_version": 1,
+        "verdict": "changes_requested",
+        "risk": "read_only",
+        "markdown": "# Review\n\nExit proof, inventory, G15 transaction recheck, and live takeover/cancel integration are sound: the journaled exit verifier binds lease/launch/exit records with ordered timestamps and no OS queries; inventory rejects cross-run/owner mismatch and covers missing holds and historical generations; assertExecutorInventory re-reads inside the ambient transaction and detects admission releases without revision bumps; journal failure blocks takeover after real OS exit. Blocking gap: the new GraphDelivery.cancel() durable-exit/inventory path has no integration test, the deterministic evidence admits the final core recovery case and Loop acceptance were not run, and the not_started recovery test bypasses the real journal writer when inserting identity_json.",
+        "judgments": [
+          {
+            "id": "exit",
+            "pass": true,
+            "severity": "error",
+            "summary": "Proof binds durable launched/exited records to run/generation/owner/PID with ordered timestamps; missing journals, no-child, timeout-alone, result-success and PID-reuse are all correctly rejected and tested."
+          },
+          {
+            "id": "inventory",
+            "pass": true,
+            "severity": "error",
+            "summary": "Inventory unions actions and admissions across historical generations, flags missing holds and unresolved/held actions, and rejects cross-run/owner mismatch without claiming physical proof."
+          },
+          {
+            "id": "transaction",
+            "pass": true,
+            "severity": "error",
+            "summary": "assertExecutorInventory requires the ambient G15 transaction and recomputes the full inventory digest, detecting admission releases that do not bump revision; tested including reopen and in-transaction re-verification."
+          },
+          {
+            "id": "integration",
+            "pass": true,
+            "severity": "error",
+            "summary": "Takeover/cancel retain observedExit, actionsSettled, and synchronous authorization gates; durable journal failure blocks takeover even after actual OS exit, and recheck re-verifies proof and inventory synchronously."
+          },
+          {
+            "id": "tests",
+            "pass": false,
+            "severity": "error",
+            "summary": "No integration test exercises the new cancel() durable-exit/inventory path; evidence states the final core recovery test and Loop acceptance were not run; the not_started test inserts identity_json via a test-local canonicalizer rather than the real journal writer."
+          }
+        ],
+        "findings": [
+          {
+            "rule_id": "tests.cancel_path_untested",
+            "severity": "error",
+            "message": "GraphDelivery.cancel() gained durable exit-proof and executor-inventory logic (verify closure, inspectExecutors, assertExecutorInventory in recheck) but no integration test drives a real cancel through it; only repair-takeover journal-failure is covered. A wiring regression in cancel would ship undetected.",
+            "file": "packages/cli/src/graph-delivery.integration.test.ts",
+            "evidence": "Changed integration tests add only 'refuses repair takeover when the real worker exited but exit journaling failed'; no cancel-mode delivery test exists in the diff.",
+            "fingerprint": "13aaa91504f98f3f84e1dbcf1d2dc808dbb73574d77f6c9fc6d91654b9e069fa"
+          },
+          {
+            "rule_id": "evidence.final_suites_pending",
+            "severity": "warning",
+            "message": "Deterministic results state the core recovery suite passed before the last terminal-held inventory case was added and final Loop acceptance is pending, so the final state of those suites is unverified even though the recorded commands exited 0.",
+            "fingerprint": "c46e56861dd9f66e96d9bd0cad964fed686b2ccdf67b0fa081b1d67c8f3ce531"
+          },
+          {
+            "rule_id": "tests.no_child_identity_writer_bypass",
+            "severity": "warning",
+            "message": "The consumed-launch not_started recovery test inserts graph_worker_launches.identity_json using the test's own proofKey canonicalizer instead of GraphProcessJournal.consume (workerCanonical); a divergence between workerCanonical and recovery's canonical would break or falsely pass the real no-child path undetected.",
+            "file": "packages/core/src/state/graph-recovery.test.ts",
+            "fingerprint": "f762d1e376d482f3d84fd2aea4e549799a86864652dafd8aae70c2433dd50038"
+          }
+        ],
+        "recommended_actions": [
+          "Add an integration test that cancels a live GraphDelivery run and proves the durable exit journal plus executor inventory gates (including a journal-failure variant that must leave the run held).",
+          "Re-run and record the full core recovery suite (including the final inventory case) and Loop acceptance so the evidence reflects the final code.",
+          "Build the not_started fixture through the real GraphProcessJournal.consume writer so identity_json canonicalization matches production."
+        ],
+        "evidence_refs": [
+          "packages/cli/src/graph-worker-exit-proof.ts",
+          "packages/cli/src/graph-worker-exit-proof.test.ts",
+          "packages/cli/src/graph-delivery.ts",
+          "packages/cli/src/graph-delivery.integration.test.ts",
+          "packages/core/src/state/graph-recovery.ts",
+          "packages/core/src/state/graph-recovery.test.ts",
+          "scripts/verify-graph-runtime.mjs"
+        ],
+        "runtime_identity": {
+          "adapter_id": "kimi-code",
+          "adapter_version": "0.29.1",
+          "auth_mode": "subprocess/login-reuse",
+          "provider_id": "kimi",
+          "model_id": "kimi-code/k3",
+          "agent_profile": "osstack-reviewer",
+          "evidence_source": "reported",
+          "binary_path_sha256": "7e5d172f83fc7d8ca22387234b5a9a4d9412aa1a27c71ee90be35db29dfa7dd2"
+        }
+      },
+      "evaluation_judgments": [
+        {
+          "id": "exit",
+          "pass": true,
+          "severity": "error",
+          "summary": "Proof binds durable launched/exited records to run/generation/owner/PID with ordered timestamps; missing journals, no-child, timeout-alone, result-success and PID-reuse are all correctly rejected and tested."
+        },
+        {
+          "id": "inventory",
+          "pass": true,
+          "severity": "error",
+          "summary": "Inventory unions actions and admissions across historical generations, flags missing holds and unresolved/held actions, and rejects cross-run/owner mismatch without claiming physical proof."
+        },
+        {
+          "id": "transaction",
+          "pass": true,
+          "severity": "error",
+          "summary": "assertExecutorInventory requires the ambient G15 transaction and recomputes the full inventory digest, detecting admission releases that do not bump revision; tested including reopen and in-transaction re-verification."
+        },
+        {
+          "id": "integration",
+          "pass": true,
+          "severity": "error",
+          "summary": "Takeover/cancel retain observedExit, actionsSettled, and synchronous authorization gates; durable journal failure blocks takeover even after actual OS exit, and recheck re-verifies proof and inventory synchronously."
+        },
+        {
+          "id": "tests",
+          "pass": false,
+          "severity": "error",
+          "summary": "No integration test exercises the new cancel() durable-exit/inventory path; evidence states the final core recovery test and Loop acceptance were not run; the not_started test inserts identity_json via a test-local canonicalizer rather than the real journal writer."
+        }
+      ]
+    }
+  }
+]

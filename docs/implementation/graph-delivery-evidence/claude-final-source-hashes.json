@@ -1,0 +1,6 @@
+{
+  "packages/cli/src/graph-delivery.ts": "eaa8d8e4ecd7ffa3a6d3b29e3b7cc80e4999b41366fb8fc18ec28985bf8570b6",
+  "packages/cli/src/graph-delivery-adversarial.test.ts": "aca69baed83533261e335268c2a131b2367baa9ca30a69d3ffa4ffdfd192b2cd",
+  "packages/cli/src/graph-delivery-receipts.ts": "1fd5457a75dfff05b8afad54d91c5eddf7161d4f6af614d37c3f38543bf58e22",
+  "packages/core/src/state/graph-delivery-epochs.test.ts": "71d77af0a5f9140761a73669495dd1dab9c44f323c077a0afecaebf18c42e0de"
+}

@@ -1,0 +1,57 @@
+packages/cli/src/graph-verification.test.ts:113:39 lint/correctness/useYield ━━━━━━━━━━━━━━━━━━━━━━━
+
+  × This generator function doesn't contain yield.
+  
+    111 │   f.options.authorize = () => { if (revoked) throw new Error('revoked'); };
+    112 │   f.options.reviewer.adapter.isAvailable = async () => { if (mode === 'revoke') revoked = true; else await writeFile(join(reviewPath, 'file'), 'changed'); return { available: true, last_checked_at: 0 }; };
+  > 113 │   f.options.reviewer.adapter.invoke = async function* () { invoked(); };
+        │                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    114 │   const f2 = await brokerFixture(f); reviewPath = f2.prepared.reviewWorkspace.workspace_path;
+    115 │   expect(await f2.invoke('review')).toMatchObject({ kind: 'worker_action_rejected' }); expect(invoked).not.toHaveBeenCalled();
+  
+
+packages/cli/src/graph-verification.test.ts:123:39 lint/correctness/useYield ━━━━━━━━━━━━━━━━━━━━━━━
+
+  × This generator function doesn't contain yield.
+  
+    121 │   const pending = prepareGraphVerification(f.options);
+    122 │   f.options.acceptanceRegistry = [{ ref: 'acceptance', command: 'malicious', passExitCodes: [0], failExitCodes: [] }];
+  > 123 │   f.options.reviewer.adapter.invoke = async function* () { throw new Error('replacement'); };
+        │                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    124 │   f.options.verifyReviewer = async () => { throw new Error('replacement callback'); };
+    125 │   release(); const p = await pending;
+  
+
+packages/cli/src/graph-verification.test.ts:179:91 lint/correctness/useYield ━━━━━━━━━━━━━━━━━━━━━━━
+
+  × This generator function doesn't contain yield.
+  
+    177 │ }, 15000);
+    178 │ it('rejects manifest scope/SHA mismatch and independent identity verifier rejection before invocation', async () => {
+  > 179 │   const f = await fixture(); const invoked = vi.fn(); f.options.reviewer.adapter.invoke = async function* () { invoked(); };
+        │                                                                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    180 │   await expect(prepareGraphVerification({ ...f.options, candidate: { ...f.candidate, candidateRevision: 'f'.repeat(40) } })).rejects.toThrow(/binding/);
+    181 │   await expect(prepareGraphVerification({ ...f.options, binding: { ...f.binding, scope: { ...f.binding.scope, tenantId: 'other' } } })).rejects.toThrow(/manifest/);
+  
+
+packages/cli/src/graph-verification.ts:160:81 lint/correctness/noUnsafeFinally ━━━━━━━━━━━━━━━━━━━━━
+
+  × Unsafe usage of 'throw'.
+  
+    158 │     // Restore promises have settled: no external agent exists during preparation.
+    159 │     // Leave allocated directories intact even when publication/authority fails.
+  > 160 │     try { await lease.release(); } catch (error) { lease.retain(String(error)); throw error; }
+        │                                                                                 ^^^^^^^^^^^^
+    161 │   }
+    162 │   check();
+  
+  i 'throw' in 'finally' overwrites the control flow statements inside 'try' and 'catch'.
+  
+
+Checked 9 files in 41ms. No fixes applied.
+Found 4 errors.
+check ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  × Some errors were emitted while running checks.
+  
+

@@ -1,0 +1,49 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/graph
+
+ ❯ src/checkpoint-codec.test.ts (21 tests | 1 failed) 10ms
+   × restricted checkpoint codec > rejects BOM consistently for raw bytes and string wire 4ms
+     → expected [Function] to throw an error
+   ✓ restricted checkpoint codec > round trips JSON, reserved channel tuples, and deterministic sorted keys 1ms
+   ✓ restricted checkpoint codec > implements the public typed serializer and rejects unknown wire/type versions 0ms
+   ✓ restricted checkpoint codec > permits only opt-in exact Uint8Array, with collision-free tags and byte limits 0ms
+   ✓ restricted checkpoint codec > rejects unsupported value undefined 0ms
+   ✓ restricted checkpoint codec > rejects unsupported value NaN 0ms
+   ✓ restricted checkpoint codec > rejects unsupported value Infinity 0ms
+   ✓ restricted checkpoint codec > rejects unsupported value -Infinity 0ms
+   ✓ restricted checkpoint codec > rejects unsupported value 1n 0ms
+   ✓ restricted checkpoint codec > rejects unsupported value () => 1 0ms
+   ✓ restricted checkpoint codec > rejects unsupported value Symbol(x) 0ms
+   ✓ restricted checkpoint codec > rejects unsupported value Sun Sep 13 2026 18:28:59 GMT-0700 (Pacific Daylight Time) 0ms
+   ✓ restricted checkpoint codec > rejects unsupported value Map{} 0ms
+   ✓ restricted checkpoint codec > rejects unsupported value Set{} 0ms
+   ✓ restricted checkpoint codec > rejects unsupported value Error: x 0ms
+   ✓ restricted checkpoint codec > rejects unsupported value /x/ 0ms
+   ✓ restricted checkpoint codec > rejects prototypes, pollution keys, getters, hooks, symbols, cycles and sparse arrays without executing code 1ms
+   ✓ restricted checkpoint codec > rejects byte accessors before reading buffer/length and shared byte storage 1ms
+   ✓ restricted checkpoint codec > bounds encode/decode depth, nodes, strings and wire size; validates option ceilings 0ms
+   ✓ restricted checkpoint codec > rejects oversized/deep inputs before JSON.parse and malformed wire without revival 1ms
+   ✓ restricted checkpoint codec > validates checkpoint v4 required fields without losing engine metadata/extensions 0ms
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 20 passed (21)
+   Start at  18:28:58
+   Duration  239ms (transform 32ms, setup 0ms, collect 34ms, tests 10ms, environment 0ms, prepare 39ms)
+
+undefined
+/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/graph:
+[ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL] Command failed with exit code 1: vitest run src/checkpoint-codec.test.ts
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/checkpoint-codec.test.ts > restricted checkpoint codec > rejects BOM consistently for raw bytes and string wire
+AssertionError: expected [Function] to throw an error
+ ❯ src/checkpoint-codec.test.ts:10:88
+      8|   it('rejects BOM consistently for raw bytes and string wire', () => {
+      9|     const wire = codec.encode(1);
+     10|     expect(() => codec.decode(Buffer.concat([Buffer.from([0xef, 0xbb, …
+       |                                                                                        ^
+     11|     expect(() => codec.decode('\uFEFF' + text(wire))).toThrow();
+     12|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯

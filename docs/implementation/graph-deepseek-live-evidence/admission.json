@@ -1,0 +1,55 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-09-20",
+  "acceptedCodeCommit": "e1aa11722182c2bfbf12ead60356c1b83749aba5",
+  "decision": "G25-B bounded backend live acceptance passed",
+  "provider": "deepseek",
+  "model": "deepseek-v4-pro",
+  "endpoint": "https://api.deepseek.com",
+  "livePilot": {
+    "report": "live-pilot-final.json",
+    "passed": true,
+    "scope": "4KiB single-file toy repository; actual daemon and health gate",
+    "positiveGraph": "ready with 7 confirmed actions and immutable join",
+    "negativeReview": "changes_requested",
+    "cancel": "unknown writer with exact unreleased hold; unchanged candidate; no freeze",
+    "daemonExit": 0
+  },
+  "tests": {
+    "agents": 83,
+    "cli": 93,
+    "loop": 141,
+    "total": 317,
+    "failed": 0
+  },
+  "loop": {
+    "taskId": "G25-deepseek-1",
+    "executed": 1,
+    "skipped": 0,
+    "outcome": "success"
+  },
+  "fableReview": {
+    "model": "claude-fable-5-1",
+    "providerAdapter": "accept",
+    "harness": "accept",
+    "obsoleteFindingsChallenged": [
+      "8192 maximum output tokens",
+      "aborted undocumented"
+    ]
+  },
+  "credentialScan": {
+    "sourceAndEvidenceContainKey": false
+  },
+  "parentTaskCount": {
+    "completed": 25,
+    "total": 30
+  },
+  "remaining": [
+    "G25-C2 admitted effect recovery",
+    "G25-D original fault matrix",
+    "G26-B compatibility",
+    "G27",
+    "G28",
+    "G29"
+  ]
+}

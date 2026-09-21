@@ -1,0 +1,28 @@
+========================================================================
+graph-engineering-playbook — reference pipeline
+========================================================================
+
+[1/4] extract   3 docs -> 15 entity mentions, 13 relation candidates (every one carries an evidence quote)
+[2/4] validate  2 relation(s) rejected in code — endpoints violate the ontology's domain/range
+[3/4] fuse      15 mentions -> 7 canonical entities, 9 edges
+                REJECT edge  checkout-flow -AFFECTED-> payments-api  (AFFECTED requires Incident->Service, got Service->Service)
+                REJECT edge  Nimbus Labs -EMPLOYED_BY-> Acme  (EMPLOYED_BY requires Person->Company, got Company->Company)
+                MERGE  'Bob Smith' = 'Robert Smith'  (score 1.0)
+                graph written to graph.json (provenance + merged_from on every fact)
+[4/4] serve
+
+  Q: What do we know about INC-2201?
+  GraphRAG context (2-hop, serialized triples):
+    (Acme)-[OWNS {source: doc1_incident_report}]->(payments-api)
+    (INC-2201)-[AFFECTED {source: doc1_incident_report, severity: high}]->(payments-api)
+    (Maya Chen)-[CONTRIBUTED_TO {source: doc1_incident_report}]->(payments-api)
+    (checkout-flow)-[DEPENDS_ON {source: doc1_incident_report}]->(payments-api)
+
+  Q: How is Maya Chen connected to Acme?
+  Path retrieval (the path IS the answer's skeleton):
+    (Maya Chen)-[CONTRIBUTED_TO]->(payments-api) -> (Acme)-[OWNS]->(payments-api)
+    (Maya Chen)-[EMPLOYED_BY]->(Nimbus Labs) -> (Acme)-[ACQUIRED]->(Nimbus Labs)
+    (Maya Chen)-[CONTRIBUTED_TO]->(checkout-flow) -> (checkout-flow)-[DEPENDS_ON]->(payments-api) -> (Acme)-[OWNS]->(payments-api)
+    (Maya Chen)-[CONTRIBUTED_TO]->(checkout-flow) -> (Nimbus Labs)-[OWNS]->(checkout-flow) -> (Acme)-[ACQUIRED]->(Nimbus Labs)
+
+Done. Fork extract.py / fuse.py / serve.py into your stack — that's the point.

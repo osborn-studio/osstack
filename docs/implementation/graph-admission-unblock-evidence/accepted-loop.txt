@@ -1,0 +1,15 @@
+$ vitest run --passWithNoTests src/loop-engine.test.ts --maxWorkers=1 --reporter=default --reporter=json --outputFile=/Volumes/AIMATE_WORK/tmp/g25-claude-unblock/loop-tests.json
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/loop
+
+ ✓ src/loop-engine.test.ts (31 tests) 3114ms
+   ✓ LoopEngine > can execute a successful task in an isolated git worktree and merge it back  354ms
+   ✓ LoopEngine > cleans loop-scoped orphaned worktrees after each cycle  419ms
+   ✓ LoopEngine > preserves the isolated branch when a successful task cannot fast-forward merge  345ms
+
+ Test Files  1 passed (1)
+      Tests  31 passed (31)
+   Start at  22:54:01
+   Duration  3.96s (transform 424ms, setup 0ms, collect 736ms, tests 3.11s, environment 0ms, prepare 28ms)
+
+JSON report written to /Volumes/AIMATE_WORK/tmp/g25-claude-unblock/loop-tests.json

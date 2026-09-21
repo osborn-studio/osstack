@@ -1,0 +1,8 @@
+{
+  "encodeGetterCalls": 1,
+  "encodeError": "Error: CHECKPOINT_CODEC_INVALID: byte properties",
+  "decodeGetterCalls": 1,
+  "decoded": {
+    "ok": 1
+  }
+}

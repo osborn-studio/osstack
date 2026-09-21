@@ -1,0 +1,13 @@
+$ vitest run src/graph-delivery-adversarial.test.ts -t 'denied preparation' --maxWorkers=1
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-quiescence/g21-adversarial-UHqr38/delivery/writer-0'...
+HEAD is now at 22efa26 base
+ ✓ src/graph-delivery-adversarial.test.ts (9 tests | 8 skipped) 5412ms
+   ✓ retains reconciliation when denied preparation has no durable admission receipt  5411ms
+
+ Test Files  1 passed (1)
+      Tests  1 passed | 8 skipped (9)
+   Start at  17:29:24
+   Duration  6.58s (transform 622ms, setup 8ms, collect 1.04s, tests 5.41s, environment 0ms, prepare 32ms)

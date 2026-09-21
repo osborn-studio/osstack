@@ -1,0 +1,9 @@
+{
+  "download": "https://nodejs.org/dist/v20.6.0/node-v20.6.0-darwin-arm64.tar.gz",
+  "sha256": "1ed71ea4ef5985f11b65c3961875ad91223c201f2042c00568a82fe7020a5cea",
+  "node": "/var/folders/97/wmwg4qzx02j74c3n73nh438w0000gn/T/osstack-graph-kernel-z3zisd4r/compat/node-v20.6.0-darwin-arm64/bin/node",
+  "exitCode": 0,
+  "stdout": "{\"node\":\"v20.6.0\",\"result\":{\"n\":42}}\n",
+  "stderr": "",
+  "scope": "declared floor smoke, real single-node graph through built worker export; not full OSStack certification"
+}

@@ -1,0 +1,62 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25/g22-rpc-IpjqNb/delivery/0e70946d-32b9-47f8-b1b1-013c581af849/writer-0'...
+HEAD is now at 9be749d base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25/g22-rpc-683tAV/delivery/26bc5c6f-026c-4d49-874e-0aeaa3d34565/writer-0'...
+HEAD is now at 02bbfe2 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25/g22-rpc-cqEySh/delivery/f5042454-abcb-4632-94a9-4008da91b115/writer-0'...
+HEAD is now at 02bbfe2 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25/g22-rpc-ed0GQS/delivery/c9fb917b-bb23-4012-8fae-8efc86c114de/writer-0'...
+HEAD is now at cc44741 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25/g22-rpc-gNJFXf/delivery/61271289-f2ae-4984-9b22-c72a6ef0ba25/writer-0'...
+HEAD is now at 03d7faa base
+osstack: retaining write lease graph-action:6e6a906014056bc75210fced745012743066d6a918cfaf5dd26ef6f3bd2c76fa: Error: external stop unconfirmed
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25/g22-rpc-GGrMKW/delivery/4e091f95-5eee-424b-8c3a-39e41e39bae7/writer-0'...
+HEAD is now at 50d2168 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25/g22-rpc-iN6uIA/delivery/ca85f901-70b2-4a49-90cf-121ecb960930/writer-0'...
+HEAD is now at 1cbacb0 base
+ ✓ src/graph-rpc.test.ts (10 tests) 31434ms
+   ✓ durably reserves before launch; concurrent replay and fresh service replay never launch twice; ready is atomic v1 evidence  5416ms
+   ✓ persisted cancel intent drives actual worker/executor abort and confirmed stop through G15  373ms
+   ✓ quality interrupt binds input/revision/current grants and resumes actual checkpoint through G15  10775ms
+   ✓ lost supervisor cannot resume durable waiting evidence or mint a new launch  5391ms
+   ✓ unknown external stop retains holds and cannot become cancelled from Promise drainage  1381ms
+   ✓ close persists cancellation and drains a live executor before returning  875ms
+   ✓ expired waiting lease refuses resume before acknowledging or spending a new budget  7022ms
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25/g22-rpc-vF0W23/delivery/ca3f607e-3286-41b5-a7b0-f019db72731c/writer-0'...
+HEAD is now at 87acb71 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25/g22-rpc-uFHDdI/delivery/37a66ce5-e126-4bd8-9e24-8cddfba6b9a1/writer-0'...
+HEAD is now at e014807 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25/g22-rpc-7cdFsT/delivery/b79c7e45-80e6-4411-aaf9-2ee0471cff03/writer-0'...
+HEAD is now at e014807 base
+ ❯ src/graph-concurrency.integration.test.ts (3 tests | 1 failed) 11285ms
+   × F09 seed=250915: two SQLite connections deduplicate a submit burst and reject changed payloads 5497ms
+     → no such table: graph_join_decisions
+   ✓ F08/F11 seed=250915: competing cancellation revisions cannot relaunch a revoked writer  397ms
+   ✓ F09/F11 seed=250915: resume and cancel race commits one revision without resetting the budget  5391ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/graph-concurrency.integration.test.ts > F09 seed=250915: two SQLite connections deduplicate a submit burst and reject changed payloads
+SqliteError: no such table: graph_join_decisions
+ ❯ Database.prepare ../../node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/lib/methods/wrappers.js:5:21
+ ❯ src/graph-concurrency.integration.test.ts:36:15
+     34|     expect(db.prepare('SELECT count(*) n FROM graph_worker_launches').…
+     35|     expect(db.prepare('SELECT count(*) n FROM graph_runs').get()).toEq…
+     36|     expect(db.prepare('SELECT count(*) n FROM graph_join_decisions').g…
+       |               ^
+     37|   } finally { await peer.close(); db.close(); await f.close(); }
+     38| }, 30000);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 1 passed (2)
+      Tests  1 failed | 12 passed (13)
+   Start at  21:28:37
+   Duration  43.94s (transform 440ms, setup 8ms, collect 942ms, tests 42.72s, environment 0ms, prepare 57ms)
+
+undefined
+/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli:
+[ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL] Command failed with exit code 1: vitest run src/graph-concurrency.integration.test.ts src/graph-rpc.test.ts '--maxWorkers=1'

@@ -1,0 +1,13 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+Cloning into '/Volumes/AIMATE_WORK/tmp/g21/g21-adversarial-lhpoZP/delivery/writer-0'...
+HEAD is now at b3a818b base
+ ✓ src/graph-delivery-adversarial.test.ts (9 tests | 8 skipped) 8725ms
+   ✓ renews the owned lease during an actual pending writer invocation and still completes  8725ms
+
+ Test Files  1 passed (1)
+      Tests  1 passed | 8 skipped (9)
+   Start at  08:32:12
+   Duration  9.64s (transform 472ms, setup 7ms, collect 798ms, tests 8.73s, environment 0ms, prepare 31ms)
+

@@ -1,0 +1,12 @@
+$ vitest run graph-runs.test.ts
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/core
+
+ ✓ src/state/graph-runs.test.ts (34 tests) 1340ms
+   ✓ graph run storage > serializes independent SQLite workers: same-request  374ms
+
+ Test Files  1 passed (1)
+      Tests  34 passed (34)
+   Start at  07:35:22
+   Duration  1.95s (transform 205ms, setup 0ms, collect 320ms, tests 1.34s, environment 0ms, prepare 47ms)
+

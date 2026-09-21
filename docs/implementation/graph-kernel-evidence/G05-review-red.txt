@@ -1,0 +1,173 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/protocol
+
+ ❯ src/graph-review.test.ts (9 tests | 8 failed) 14ms
+   × adversarial graph boundary regressions > denies worker identities every control-plane mutation even within their run 7ms
+     → expected [Function] to throw an error
+   × adversarial graph boundary regressions > checks trusted spec and epoch independently of wire claims 1ms
+     → UNAUTHENTICATED
+   ✓ adversarial graph boundary regressions > rejects contradictory standalone error instructions 0 1ms
+   × adversarial graph boundary regressions > rejects contradictory standalone error instructions 1 1ms
+     → expected true to be false // Object.is equality
+   × adversarial graph boundary regressions > rejects contradictory standalone error instructions 2 0ms
+     → expected true to be false // Object.is equality
+   × adversarial graph boundary regressions > binds response error location to its effect 0ms
+     → expected true to be false // Object.is equality
+   × adversarial graph boundary regressions > binds revision decisions to the scoped run snapshot 1ms
+     → [
+  {
+    "code": "unrecognized_keys",
+    "keys": [
+      "run"
+    ],
+    "path": [],
+    "message": "Unrecognized key(s) in object: 'run'"
+  }
+]
+   × adversarial graph boundary regressions > pairs identity and confirmed result kind against the actual request 0ms
+     → (0 , validateWorkerActionResponse) is not a function
+   × adversarial graph boundary regressions > returns stable boundary errors for malformed request data 1ms
+     → expected [Function] to throw error matching /INPUT_CONTRACT_INVALID/ but got '[\n  {\n    "code": "unrecognized_key…'
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 8 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/graph-review.test.ts > adversarial graph boundary regressions > denies worker identities every control-plane mutation even within their run
+AssertionError: expected [Function] to throw an error
+
+- Expected:
+null
+
++ Received:
+undefined
+
+ ❯ src/graph-review.test.ts:16:144
+     14| describe("adversarial graph boundary regressions", () => {
+     15|   it("denies worker identities every control-plane mutation even withi…
+     16|     expect(() => parseInboundGraphRequest(resume, () => ({ schemaVersi…
+       |                                                                                                                                                ^
+     17|     expect(parseInboundGraphRequest(resume, control)).toEqual(resume);
+     18|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/8]⎯
+
+ FAIL  src/graph-review.test.ts > adversarial graph boundary regressions > checks trusted spec and epoch independently of wire claims
+GraphContractError: UNAUTHENTICATED
+ ❯ authenticate src/graph.ts:249:9
+    247|     if (result.success) return result.data;
+    248|   } catch { /* Fail closed on unavailable/failed authentication. */ }
+    249|   throw new GraphContractError("UNAUTHENTICATED");
+       |         ^
+    250| }
+    251|
+ ❯ parseInboundWorkerActionRequest src/graph.ts:273:19
+ ❯ src/graph-review.test.ts:20:12
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/8]⎯
+
+ FAIL  src/graph-review.test.ts > adversarial graph boundary regressions > rejects contradictory standalone error instructions 1
+ FAIL  src/graph-review.test.ts > adversarial graph boundary regressions > rejects contradictory standalone error instructions 2
+AssertionError: expected true to be false // Object.is equality
+
+- Expected
++ Received
+
+- false
++ true
+
+ ❯ src/graph-review.test.ts:29:49
+     27|     { ...unknownError, code: "CANCEL_UNCONFIRMED", nextAction: "fix_in…
+     28|   ])("rejects contradictory standalone error instructions %#", (error)…
+     29|     expect(GraphError.safeParse(error).success).toBe(false);
+       |                                                 ^
+     30|   });
+     31|   it("binds response error location to its effect", () => {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/8]⎯
+
+ FAIL  src/graph-review.test.ts > adversarial graph boundary regressions > binds response error location to its effect
+AssertionError: expected true to be false // Object.is equality
+
+- Expected
++ Received
+
+- false
++ true
+
+ ❯ src/graph-review.test.ts:33:63
+     31|   it("binds response error location to its effect", () => {
+     32|     const uncertain = { ...response, outcome: { state: "unknown", erro…
+     33|     expect(WorkerActionResponse.safeParse(uncertain).success).toBe(fal…
+       |                                                               ^
+     34|     expect(WorkerActionResponse.safeParse({ ...uncertain, outcome: { .…
+     35|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/8]⎯
+
+ FAIL  src/graph-review.test.ts > adversarial graph boundary regressions > binds revision decisions to the scoped run snapshot
+ZodError: [
+  {
+    "code": "unrecognized_keys",
+    "keys": [
+      "run"
+    ],
+    "path": [],
+    "message": "Unrecognized key(s) in object: 'run'"
+  }
+]
+ ❯ Object.get error [as error] ../../node_modules/.pnpm/zod@3.25.76/node_modules/zod/v3/types.js:39:31
+ ❯ ZodEffects.parse ../../node_modules/.pnpm/zod@3.25.76/node_modules/zod/v3/types.js:114:22
+ ❯ validateGraphMutation src/graph.ts:315:54
+    313| export function validateGraphMutation(value: unknown, snapshot: unknow…
+    314|   const request = GraphRequest.parse(value);
+    315|   const { prior, currentRevision } = MutationContext.parse(snapshot);
+       |                                                      ^
+    316|   if (prior) {
+    317|     sameScope(prior.scope, request.scope);
+ ❯ src/graph-review.test.ts:38:12
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/8]⎯
+
+ FAIL  src/graph-review.test.ts > adversarial graph boundary regressions > pairs identity and confirmed result kind against the actual request
+TypeError: (0 , validateWorkerActionResponse) is not a function
+ ❯ src/graph-review.test.ts:44:12
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/8]⎯
+
+ FAIL  src/graph-review.test.ts > adversarial graph boundary regressions > returns stable boundary errors for malformed request data
+AssertionError: expected [Function] to throw error matching /INPUT_CONTRACT_INVALID/ but got '[\n  {\n    "code": "unrecognized_key…'
+
+- Expected:
+/INPUT_CONTRACT_INVALID/
+
++ Received:
+"[
+  {
+    \"code\": \"unrecognized_keys\",
+    \"keys\": [
+      \"extra\"
+    ],
+    \"path\": [],
+    \"message\": \"Unrecognized key(s) in object: 'extra'\"
+  }
+]"
+
+ ❯ src/graph-review.test.ts:50:78
+     48|   });
+     49|   it("returns stable boundary errors for malformed request data", () =…
+     50|     expect(() => parseInboundGraphRequest({ ...resume, extra: 1 }, con…
+       |                                                                              ^
+     51|     expect(() => parseInboundWorkerActionRequest({ ...worker, action: …
+     52|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/8]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  8 failed | 1 passed (9)
+   Start at  17:54:21
+   Duration  298ms (transform 66ms, setup 0ms, collect 72ms, tests 14ms, environment 0ms, prepare 40ms)
+
+undefined
+/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/protocol:
+[ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL] Command failed with exit code 1: vitest run src/graph-review.test.ts

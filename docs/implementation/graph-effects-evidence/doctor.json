@@ -1,0 +1,61 @@
+{
+  "ok": true,
+  "workspace_path": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation",
+  "state_json": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/LOOP-STATE.json",
+  "daemon_checked": false,
+  "socket_path": "/Volumes/AIMATE_WORK/tmp/gc4/home/daemon.sock",
+  "checks": [
+    {
+      "id": "workspace",
+      "status": "ok",
+      "summary": "workspace directory exists"
+    },
+    {
+      "id": "task_queue",
+      "status": "warn",
+      "summary": "tasks/ directory is missing; loop enqueue will create it",
+      "details": {
+        "path": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/tasks",
+        "error": "ENOENT: no such file or directory, scandir '/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/tasks'"
+      }
+    },
+    {
+      "id": "state_file",
+      "status": "warn",
+      "summary": "loop state file will be created after the first run",
+      "details": {
+        "path": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/LOOP-STATE.json"
+      }
+    },
+    {
+      "id": "git",
+      "status": "ok",
+      "summary": "git worktree is clean",
+      "details": {
+        "changed_files": 0
+      }
+    },
+    {
+      "id": "agent_instructions",
+      "status": "ok",
+      "summary": "AGENTS.md is canonical and CLAUDE.md references it",
+      "details": {
+        "source": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/AGENTS.md",
+        "claude": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/CLAUDE.md",
+        "mode": "one-line-reference"
+      }
+    },
+    {
+      "id": "protected_config",
+      "status": "ok",
+      "summary": "core instruction/config files are unchanged",
+      "details": {
+        "protected_files": [
+          "AGENTS.md",
+          "CLAUDE.md",
+          ".codex/config.toml"
+        ]
+      }
+    }
+  ]
+}

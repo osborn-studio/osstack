@@ -1,0 +1,53 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+osstack: retaining write lease graph-action:56f50f1d2a4ea12f0135f8a4f0ca6ee570fdbd0d8948073f232ff422fdacf1e1: Error: external stop unconfirmed
+osstack: retaining write lease graph-action:60d0f6ea3a374ef504c03a5df2ceb4297c6cfbe629cb31db08c4da20816f0e63: Error: G20_RELEASE_HELD
+osstack: retaining write lease graph-action:542167d457a45152684095a522074fba9476e911e3a4f6005080c64274086a5f: Error: G20_RELEASE_HELD
+osstack: retaining write lease graph-action:7258ed7d98e25ced0080fced29d6a0f523bef42604fb151d20ff57a380c17ed1: Error: external stop unconfirmed
+osstack: retaining write lease graph-action:c7fc1fba6fa7ebe0b3581d650bd5af10e9719340cf58d7cd3f7b6144b8510a71: Error: G20_RELEASE_HELD
+osstack: retaining write lease graph-action:567302464ca911149bb5b1f4299650a77a0407df65a6600340e848a0a3d09d32: Error: G20_RELEASE_HELD
+osstack: retaining write lease graph-action:0dd84ea6882d13bae47159e3e1af4c17f5db6ef478a5046b4b8df40a7d3bd521: Error: G20_LOST_PERSIST_ACK
+ ❯ src/graph-verification-join.test.ts (17 tests | 1 failed) 79553ms
+   ✓ joins real negative outcomes in review then tests order and publishes one immutable row  5564ms
+   ✓ joins real negative outcomes in tests then review order and publishes one immutable row  4976ms
+   ✓ unknown reviewer remains reconciliation-only on repeated evaluation and cannot allocate retry  2026ms
+   × host retry allocates attempt two and recomputes latest durable evidence instead of replaying failed RETURN 6376ms
+     → graph action outcome is immutable
+   ✓ rejects a stale fence and revoked authority across asynchronous artifact evidence verification  4800ms
+   ✓ held real admission release prevents publication even when both branches are confirmed  4732ms
+   ✓ revalidates durable evidence bytes after a successful publication instead of trusting a cached join  5040ms
+   ✓ retains original repair limits {"maxActionStarts":2} after actual branch execution  4872ms
+   ✓ retains original repair limits {"tokenReservationLimit":2} after actual branch execution  4475ms
+   ✓ retains original repair limits {"maxEpochs":1} after actual branch execution  4346ms
+   ✓ retains original branch-attempt limit on malformed output and original elapsed deadline  4537ms
+   ✓ real worker partial RETURN survives stop/drain and G15 takeover; host retry supersedes cached malformed review  7682ms
+   ✓ actual Functional task throws for unknown verification outcome and host refuses worker pass proposal  2778ms
+   ✓ rejects revoke changing during the actual durable envelope read  4336ms
+   ✓ rejects fence changing during the actual durable envelope read  4245ms
+   ✓ rejects admission-release changing during the actual durable envelope read  4352ms
+   ✓ a new actual unknown action invalidates routing from an already published join  4416ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/graph-verification-join.test.ts > host retry allocates attempt two and recomputes latest durable evidence instead of replaying failed RETURN
+SqliteError: graph action outcome is immutable
+ ❯ src/graph-verification-join.test.ts:146:6
+    144|   const published = f.rows();
+    145|   f.db.prepare('UPDATE graph_actions SET outcome_json=? WHERE effect_k…
+    146|     .run(JSON.stringify({ ...latest.outcome, evidenceRef: oldEvidence …
+       |      ^
+    147|   await expect(f.evaluate()).rejects.toThrow(/replay|identity|attempt/…
+    148| }, 20_000);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 16 passed (17)
+   Start at  18:29:24
+   Duration  80.84s (transform 635ms, setup 8ms, collect 1.09s, tests 79.55s, environment 0ms, prepare 37ms)
+
+undefined
+/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli:
+[ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL] Command failed with exit code 1: vitest run src/graph-verification-join.test.ts

@@ -1,0 +1,10 @@
+{
+  "packages/cli/src/graph-quiescence-sweep.ts": "ecf7913be972e3f8ef0403ab1b84e94a553a58019f2404a4f1de0022042fbcb5",
+  "packages/agents/src/contained-command.ts": "2076a8ba6f8206ccd5bf3c27a6ce3e94f61017910971aade269ed8597701e2fc",
+  "packages/core/src/state/graph-recovery.ts": "f5a489ac3861ab9d03074041da42025fbd3643ce6b08ef6a6233ec886df93e72",
+  "packages/cli/src/graph-reconciler.ts": "af7e5b624d72f9b28a6d31aa234600afe313f61b4dff7da74dfb2f5b26d1e7e3",
+  "packages/cli/src/graph-contained-tests.ts": "3fc9d95ee09c13fbab683e0cbcdb090c61004fecc57ffc335e619adcafffdf98",
+  "packages/agents/src/contained-command.test.ts": "7725b6ecb62c34137923bf800f683394c14185e92d1e1c842b275042c5443533",
+  "packages/cli/src/graph-contained-recovery.test.ts": "e83a924072b497ddb7e036408b55acc54152a912aa37104e8d9966dadaaf5551",
+  "packages/cli/src/graph-contained-recovery.ts": "c91bca1f9437d3e2442b2f61e2749772a4df62b4aeece377801661c8ed0ca5af"
+}

@@ -1,0 +1,13 @@
+{
+  "packages/cli/src/graph-contained-recovery.test.ts": "1c16d2326c969bdf41fb6202d59aca24f602f3b488758a9a3167053f6963af88",
+  "packages/cli/src/graph-worker-exit-proof.test.ts": "ee3be50e44a300c1021662ea3f08bb90997234052816e362428ab482d18813ac",
+  "packages/cli/src/graph-process-journal.ts": "df090f5898a6c55f5d51afaa847c8d96b661362a523841d22cd4648120448dbb",
+  "packages/cli/src/graph-quiescence-sweep.ts": "ecf7913be972e3f8ef0403ab1b84e94a553a58019f2404a4f1de0022042fbcb5",
+  "packages/core/src/state/graph-recovery.ts": "f5a489ac3861ab9d03074041da42025fbd3643ce6b08ef6a6233ec886df93e72",
+  "packages/cli/src/graph-unstarted-recovery.ts": "a4d29d367a614e9594df00208c7b91b0cd5c961eaa77e3543f4e2b870dc23855",
+  "packages/cli/src/graph-runtime.ts": "47d8182feeadbb9d6f09e301432a5689f260b16f8a9e844a9f7aaccc44719876",
+  "packages/cli/src/graph-worker-exit-proof.ts": "f4908dc4992ca0edcb4a24299f758e282091d49b15f46b3f905b1641728a6b27",
+  "packages/core/src/state/graph-recovery.test.ts": "eaffa648efe6251d6cced1675ba14e4986870aa725c631a8fa1c0c002c1b4511",
+  "packages/cli/src/graph-reconciler.ts": "af7e5b624d72f9b28a6d31aa234600afe313f61b4dff7da74dfb2f5b26d1e7e3",
+  "packages/cli/src/graph-unstarted-recovery.test.ts": "97e67445140752296be63c4231097238832c2d600175b53c866eac6a492f4cd4"
+}

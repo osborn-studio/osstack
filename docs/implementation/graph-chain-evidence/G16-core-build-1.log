@@ -1,0 +1,7 @@
+$ tsc -p .
+src/state/graph-recovery.test.ts(10,117): error TS2307: Cannot find module './graph-recovery.js' or its corresponding type declarations.
+src/state/graph-recovery.test.ts(28,126): error TS7006: Parameter '_s' implicitly has an 'any' type.
+src/state/graph-recovery.test.ts(28,130): error TS7006: Parameter 'p' implicitly has an 'any' type.
+/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/core:
+[ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL] @osstack/core@0.17.0 build: `tsc -p .`
+Exit status 2

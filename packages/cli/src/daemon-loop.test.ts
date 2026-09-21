@@ -1,3 +1,4 @@
+import type { AutonomyHealthReport } from "./autonomy-health.js";
 import { connect } from "node:net";
 import { chmod, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { mkdtempSync } from "node:fs";
@@ -8,77 +9,32 @@ import { setTimeout as sleep } from "node:timers/promises";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { encodeFrame, FrameDecoder } from "@osstack/hermes-adapter";
 import {
-  createAutonomyRun,
+  createAutonomyRun as persistAutonomyRun,
   enqueueAutonomyNotification,
   getNotification,
+  resolveRepositoryScope,
   transitionAutonomyRun,
 } from "@osstack/core";
 import { guardedOpenDb } from "./guarded-open-db.js";
-import { startDaemon, type DaemonHandles } from "./daemon.js";
-import type { AutonomyHealthReport } from "./autonomy-health.js";
+import { startDaemon as startRealDaemon, type DaemonHandles } from "./daemon.js";
+import { healthyAutonomyHealth } from "./test-healthy-autonomy.js";
+import { execFileSync } from "node:child_process";
+
+// Fixtures model real repository identities while keeping health deterministic.
+const startDaemon = (options: Parameters<typeof startRealDaemon>[0]) => startRealDaemon({ autonomyHealth: async () => healthyAutonomyHealth(), ...options });
+const createAutonomyRun: typeof persistAutonomyRun = (db, path, input) => {
+  execFileSync("git", ["init", input.workspace_path], { stdio: "ignore" });
+  return persistAutonomyRun(db, path, input);
+};
 
 let tmp: string;
 let oldHome: string | undefined;
 let daemon: DaemonHandles | null;
 
-function healthyAutonomyHealth(
-  overrides: Partial<AutonomyHealthReport> = {},
-): AutonomyHealthReport {
-  return {
-    ok: true,
-    can_run_local: true,
-    can_merge: true,
-    can_push_deploy: true,
-    drain_required: false,
-    disk_free_bytes: 20 * 1024 ** 3,
-    checks: [],
-    active_freezes: [],
-    resumable_runs: [],
-    proof_failures: [],
-    notification_outbox: {
-      pending_count: 0,
-      dead_letter_count: 0,
-      oldest_pending_at: null,
-      oldest_dead_letter_at: null,
-      oldest_attention_age_seconds: 0,
-    },
-    host_evidence: {
-      power_policy: {
-        mode: "process_assertion",
-        assertion_active: true,
-        recorded: true,
-      },
-      clock_monitor: {
-        mode: "monotonic-v1",
-        active: true,
-      },
-      retention: {
-        checked_at: 1,
-        max_log_bytes: 25 * 1024 ** 2,
-        max_log_files: 5,
-        proof_retention_days: 30,
-        proof_min_keep: 100,
-        largest_log_bytes: 0,
-        oversized_log_count: 0,
-        expired_terminal_proof_count: 0,
-        rotated_logs: [],
-        removed_proof_dirs: [],
-      },
-      launchd: {
-        required: true,
-        loaded: true,
-        print_sha256: "a".repeat(64),
-      },
-    },
-    external_blockers: [],
-    write_blockers: [],
-    next_actions: [],
-    ...overrides,
-  };
-}
 
 beforeEach(() => {
   tmp = mkdtempSync(join(tmpdir(), "osstack-daemon-loop-"));
+  execFileSync("git", ["init", tmp], { stdio: "ignore" });
   oldHome = process.env["OSSTACK_HOME"];
   process.env["OSSTACK_HOME"] = join(tmp, "home");
   daemon = null;
@@ -138,6 +94,8 @@ describe("daemon loop RPC", () => {
         },
       }),
     });
+    await daemonRpc(daemon.socketPath, "autonomy.health");
+    await sleep(50);
     const runtimeDb = guardedOpenDb({ path: daemon.dbPath });
     createAutonomyRun(runtimeDb, daemon.dbPath, {
       autonomy_run_id: "run-daemon-restart",
@@ -484,9 +442,10 @@ describe("daemon loop RPC", () => {
     ).toEqual({ total: 3 });
     inspectDb.close();
     for (const runId of started) {
-      const repoId = runId.endsWith("1") ? "repo-one" : "repo-two";
+      const repoId = ({ "run-concurrency-1": "repo-one", "run-concurrency-2": "repo-two", "run-concurrency-3": "repo-three" } as Record<string, string>)[runId]!;
+      const scope = await resolveRepositoryScope(join(tmp, repoId));
       await expect(readFile(
-        join(home, "locks", "repos", `${repoId}.lock`),
+        join(scope.commonDir, "osstack", "writer-locks", `${scope.repoId}.lock`),
         "utf-8",
       )).resolves.toContain(runId);
     }
@@ -498,11 +457,11 @@ describe("daemon loop RPC", () => {
         throw new Error("timed out waiting for queued guarded writer");
       }),
     ]);
-    expect([...started.slice(0, 2)].sort()).toEqual([
-      "run-concurrency-1",
-      "run-concurrency-2",
+    // Independent RPCs may finish Git identity validation in either order.
+    // All three start exactly once, with the third held until capacity returns.
+    expect([...started].sort()).toEqual([
+      "run-concurrency-1", "run-concurrency-2", "run-concurrency-3",
     ]);
-    expect(started[2]).toBe("run-concurrency-3");
     expect(maxActive).toBe(2);
 
     for (const release of releases.values()) release();
@@ -602,7 +561,7 @@ describe("daemon loop RPC", () => {
     while (resumed.length === 0 && Date.now() < deadline) {
       await sleep(20);
     }
-    expect(resumed).toEqual([runId]);
+    await expect.poll(() => resumed, { timeout: 3_000 }).toEqual([runId]);
   });
 
   it("recovers an interrupted production deployment while GitHub remains offline", async () => {
@@ -689,7 +648,7 @@ describe("daemon loop RPC", () => {
     while (resumed.length === 0 && Date.now() < deadline) {
       await sleep(20);
     }
-    expect(resumed).toEqual([runId]);
+    await expect.poll(() => resumed, { timeout: 3_000 }).toEqual([runId]);
   });
 
   it("blocks guarded writes until the initial autonomy health check completes", async () => {

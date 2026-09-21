@@ -1,0 +1,71 @@
+$ vitest run src/graph-reconcile-rpc.test.ts src/graph-unstarted-recovery.test.ts --maxWorkers=1
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+ ✓ src/graph-unstarted-recovery.test.ts (20 tests) 1432ms
+   ✓ takes over a durable no-child run through G15 and starts one replacement worker  383ms
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-public-reconcile/tmp/g22-rpc-FTYjDB/delivery/b2bbd7ac-dd4a-4972-be1d-a27ee8fb6147/writer-0'...
+HEAD is now at 5892e36 base
+osstack: retaining write lease graph-action:713e61225c25a1dce04e2e433ad832d74cc7559a7a70b056126d3a4c3c6a6efc: Error: external stop unconfirmed
+ ❯ src/graph-reconcile-rpc.test.ts (10 tests | 3 failed) 2317ms
+   ✓ reconciles an actual registration failure from a fresh SQLite connection with admission disabled and unsupported adapters 118ms
+   ✓ retries a previously acknowledged cancellation intent once no-child proof can be checked 96ms
+   × retains uncertainty when missing-journal prevents all-generation absence proof 93ms
+     → graph process observation immutable
+   ✓ retains uncertainty when checkpoint prevents all-generation absence proof 98ms
+   × retains uncertainty when old-generation prevents all-generation absence proof 94ms
+     → CHECK constraint failed: (generation = 1 AND stopped_worker_json IS NULL) OR (generation > 1 AND stopped_worker_json IS NOT NULL)
+   ✓ keeps actual unknown external work and its admission held on a fresh host  1449ms
+   ✓ does not use an old cancellation key to reconcile a later run revision 96ms
+   ✓ enforces current cancel permission and final transaction while handling denied 89ms
+   ✓ enforces current cancel permission and final transaction while handling commit-revoked 95ms
+   × enforces current cancel permission and final transaction while handling expired-deadline 88ms
+     → graph run identity is immutable
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/graph-reconcile-rpc.test.ts > retains uncertainty when missing-journal prevents all-generation absence proof
+SqliteError: graph process observation immutable
+ ❯ src/graph-reconcile-rpc.test.ts:53:114
+     51|   const f = await failedLaunch(); const host = new GraphRpcService(f.o…
+     52|   try {
+     53|     if (mode === 'missing-journal') f.db.prepare('DELETE FROM graph_wo…
+       |                                                                                                                  ^
+     54|     if (mode === 'checkpoint') f.db.prepare('INSERT INTO graph_checkpo…
+     55|     if (mode === 'old-generation') {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯
+
+ FAIL  src/graph-reconcile-rpc.test.ts > retains uncertainty when old-generation prevents all-generation absence proof
+SqliteError: CHECK constraint failed: (generation = 1 AND stopped_worker_json IS NULL) OR (generation > 1 AND stopped_worker_json IS NOT NULL)
+ ❯ src/graph-reconcile-rpc.test.ts:58:189
+     56|       // A later no-child journal cannot stand in for the earlier gene…
+     57|       f.db.prepare('UPDATE graph_runs SET generation=2,revision=revisi…
+     58|       f.db.prepare('INSERT INTO graph_worker_leases SELECT graph_run_i…
+       |                                                                                                                                                                                             ^
+     59|     }
+     60|     const before = await f.status(f.id, host); const request = cancel(…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/3]⎯
+
+ FAIL  src/graph-reconcile-rpc.test.ts > enforces current cancel permission and final transaction while handling expired-deadline
+SqliteError: graph run identity is immutable
+ ❯ src/graph-reconcile-rpc.test.ts:98:129
+     96|   } }] });
+     97|   try {
+     98|     if (mode === 'expired-deadline') f.db.prepare('UPDATE graph_runs S…
+       |                                                                                                                                 ^
+     99|     const before = await f.status(f.id, host); const request = cancel(…
+    100|     if (mode === 'expired-deadline') expect(await host.handle(f.connec…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/3]⎯
+
+
+ Test Files  1 failed | 1 passed (2)
+      Tests  3 failed | 27 passed (30)
+   Start at  00:53:44
+   Duration  5.08s (transform 547ms, setup 9ms, collect 1.09s, tests 3.75s, environment 0ms, prepare 61ms)
+
+/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli:
+[ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL] @osstack/cli@0.19.0 test: `vitest run src/graph-reconcile-rpc.test.ts src/graph-unstarted-recovery.test.ts --maxWorkers=1`
+Exit status 1

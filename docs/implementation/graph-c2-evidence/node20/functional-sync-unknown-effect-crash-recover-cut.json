@@ -1,0 +1,73 @@
+{
+  "taskReturns": [],
+  "counts": {
+    "completedBody": 1,
+    "completedWrapper": 2,
+    "flakyAttempts": 1
+  },
+  "effects": {
+    "completed": {
+      "attempt": 1,
+      "effect": "completed",
+      "run": "functional-sync-unknown-effect-crash",
+      "status": "started"
+    }
+  },
+  "tuple": {
+    "checkpoint": {
+      "channel_values": {
+        "__pregel_tasks": [],
+        "__start__": {
+          "results": []
+        }
+      },
+      "channel_versions": {
+        "__start__": 1
+      },
+      "id": "1f1aff2f-4117-6fd0-ffff-f9cfff5e9162",
+      "ts": "2026-09-14T04:15:43.693Z",
+      "v": 4,
+      "versions_seen": {
+        "__input__": {}
+      }
+    },
+    "config": {
+      "configurable": {
+        "checkpoint_id": "1f1aff2f-4117-6fd0-ffff-f9cfff5e9162",
+        "checkpoint_ns": "",
+        "thread_id": "c2"
+      }
+    },
+    "metadata": {
+      "parents": {},
+      "source": "input",
+      "step": -1
+    },
+    "pendingWrites": [
+      [
+        "875ab2c5-4142-50bd-9912-1d063cf86566",
+        "__error__",
+        {
+          "message": "reconcile: no confirmed effect",
+          "name": "Error"
+        }
+      ],
+      [
+        "92878b0f-d1d0-5502-b63c-78f4d4690b04",
+        "__error__",
+        {
+          "message": "reconcile: run has unresolved effects",
+          "name": "Error"
+        }
+      ],
+      [
+        "49b7faf7-9905-56e4-af8e-d979bc54ecc4",
+        "__error__",
+        {
+          "message": "This operation was aborted",
+          "name": "AbortError"
+        }
+      ]
+    ]
+  }
+}

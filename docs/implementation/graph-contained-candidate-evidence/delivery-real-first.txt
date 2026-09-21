@@ -1,0 +1,137 @@
+$ vitest run src/graph-delivery.integration.test.ts --maxWorkers=1
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-candidate/tmp/g21-delivery-MdM0Bc/delivery/writer-0'...
+HEAD is now at 8f3b590 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-candidate/tmp/g21-delivery-gZrUrn/delivery/writer-0'...
+HEAD is now at 84abb13 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-candidate/tmp/g21-delivery-ltWUR2/delivery/writer-0'...
+HEAD is now at 18c60e4 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-candidate/tmp/g21-delivery-FJzoFj/delivery/writer-0'...
+HEAD is now at 7105d37 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-candidate/tmp/g21-delivery-dIlivo/delivery/writer-0'...
+HEAD is now at 9741e1d base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-candidate/tmp/g21-delivery-Thsy0l/delivery/writer-0'...
+HEAD is now at 397b605 base
+ ❯ src/graph-delivery.integration.test.ts (6 tests | 6 failed) 40523ms
+   × actual child delivery succeeds with review finishing last 7009ms
+     → expected { n: +0 } to deeply equal { n: 1 }
+   × actual child delivery succeeds with tests finishing last 5405ms
+     → expected { n: +0 } to deeply equal { n: 1 }
+   × repairs from immutable complete join through physical child stop and G15 resume 5374ms
+     → expected [ { …(21) }, { …(21) } ] to have a length of 4 but got 2
+   × host bounded retry returns only final confirmed task result and fresh independent workspace 8647ms
+     → expected { n: +0 } to deeply equal { n: 1 }
+   × finite branch failure stops without a failed task RETURN or poisoned join 8720ms
+     → expected { kind: 'stop', epoch: +0, …(1) } to match object { kind: 'stop', …(1) }
+(1 matching property omitted from actual)
+   × negative quality at epoch cap stops 5368ms
+     → expected { n: +0 } to deeply equal { n: 1 }
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 6 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/graph-delivery.integration.test.ts > actual child delivery succeeds with review finishing last
+ FAIL  src/graph-delivery.integration.test.ts > actual child delivery succeeds with tests finishing last
+AssertionError: expected { n: +0 } to deeply equal { n: 1 }
+
+- Expected
++ Received
+
+  {
+-   "n": 1,
++   "n": 0,
+  }
+
+ ❯ delivery src/graph-delivery.integration.test.ts:73:84
+
+ ❯ src/graph-delivery.integration.test.ts:79:13
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/6]⎯
+
+ FAIL  src/graph-delivery.integration.test.ts > repairs from immutable complete join through physical child stop and G15 resume
+AssertionError: expected [ { …(21) }, { …(21) } ] to have a length of 4 but got 2
+
+- Expected
++ Received
+
+- 4
++ 2
+
+ ❯ delivery src/graph-delivery.integration.test.ts:59:64
+     57|     expect(actions.every(a=>['confirmed','failed'].includes(a.state)))…
+     58|     expect(db.prepare('SELECT count(*) AS n FROM graph_action_admissio…
+     59|     expect(actions.filter(a=>a.node_id.includes('.prepare_'))).toHaveL…
+       |                                                                ^
+     60|     expect(actions.filter(a=>a.node_id.endsWith('.review')).every(a=>a…
+     61|     expect(db.prepare('SELECT count(*) AS n FROM graph_checkpoints').g…
+ ❯ src/graph-delivery.integration.test.ts:82:11
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/6]⎯
+
+ FAIL  src/graph-delivery.integration.test.ts > host bounded retry returns only final confirmed task result and fresh independent workspace
+AssertionError: expected { n: +0 } to deeply equal { n: 1 }
+
+- Expected
++ Received
+
+  {
+-   "n": 1,
++   "n": 0,
+  }
+
+ ❯ delivery src/graph-delivery.integration.test.ts:73:84
+
+ ❯ src/graph-delivery.integration.test.ts:85:11
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/6]⎯
+
+ FAIL  src/graph-delivery.integration.test.ts > finite branch failure stops without a failed task RETURN or poisoned join
+AssertionError: expected { kind: 'stop', epoch: +0, …(1) } to match object { kind: 'stop', …(1) }
+(1 matching property omitted from actual)
+
+- Expected
++ Received
+
+  {
+    "kind": "stop",
+-   "reason": "branch_budget",
++   "reason": "TypeError: Cannot read properties of undefined (reading 'exitCode')",
+  }
+
+ ❯ src/graph-delivery.integration.test.ts:88:61
+     86| },30000);
+     87| it('finite branch failure stops without a failed task RETURN or poison…
+     88|   const f=await delivery('failure'); expect(f.result.route).toMatchObj…
+       |                                                             ^
+     89| },30000);
+     90| it('negative quality at epoch cap stops',async()=>{
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/6]⎯
+
+ FAIL  src/graph-delivery.integration.test.ts > negative quality at epoch cap stops
+AssertionError: expected { n: +0 } to deeply equal { n: 1 }
+
+- Expected
++ Received
+
+  {
+-   "n": 1,
++   "n": 0,
+  }
+
+ ❯ delivery src/graph-delivery.integration.test.ts:73:84
+
+ ❯ src/graph-delivery.integration.test.ts:91:11
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/6]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  6 failed (6)
+   Start at  19:30:38
+   Duration  41.43s (transform 483ms, setup 8ms, collect 784ms, tests 40.52s, environment 0ms, prepare 32ms)
+
+/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli:
+[ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL] @osstack/cli@0.19.0 test: `vitest run src/graph-delivery.integration.test.ts --maxWorkers=1`
+Exit status 1

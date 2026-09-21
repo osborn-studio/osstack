@@ -1,0 +1,95 @@
+{
+  "taskReturns": [
+    {
+      "checkpoint": {
+        "configurable": {
+          "checkpoint_id": "1f1aff32-be46-6c60-ffff-c15130d86988",
+          "checkpoint_ns": "",
+          "thread_id": "c2"
+        }
+      },
+      "taskId": "0b48e895-4c65-54bd-8857-303abbbc721d",
+      "value": {
+        "results": [
+          "completed"
+        ]
+      }
+    }
+  ],
+  "counts": {
+    "completedBody": 1,
+    "completedWrapper": 1,
+    "flakyAttempts": 1
+  },
+  "effects": {
+    "completed": {
+      "attempt": 1,
+      "effect": "completed",
+      "result": {
+        "results": [
+          "completed"
+        ]
+      },
+      "run": "functional-async-cancel",
+      "status": "confirmed"
+    }
+  },
+  "tuple": {
+    "checkpoint": {
+      "channel_values": {
+        "__pregel_tasks": [],
+        "__start__": {
+          "results": []
+        }
+      },
+      "channel_versions": {
+        "__start__": 1
+      },
+      "id": "1f1aff32-be46-6c60-ffff-c15130d86988",
+      "ts": "2026-09-14T04:17:17.350Z",
+      "v": 4,
+      "versions_seen": {
+        "__input__": {}
+      }
+    },
+    "config": {
+      "configurable": {
+        "checkpoint_id": "1f1aff32-be46-6c60-ffff-c15130d86988",
+        "checkpoint_ns": "",
+        "thread_id": "c2"
+      }
+    },
+    "metadata": {
+      "parents": {},
+      "source": "input",
+      "step": -1
+    },
+    "pendingWrites": [
+      [
+        "0b48e895-4c65-54bd-8857-303abbbc721d",
+        "__return__",
+        {
+          "results": [
+            "completed"
+          ]
+        }
+      ],
+      [
+        "3373fd74-fdef-5a69-b5cd-b7e1490061a5",
+        "__error__",
+        {
+          "message": "injected external cancel",
+          "name": "Error"
+        }
+      ],
+      [
+        "9a6c103c-3f9e-5765-9ccd-7c4875a595ba",
+        "__error__",
+        {
+          "message": "injected external cancel",
+          "name": "Error"
+        }
+      ]
+    ]
+  }
+}

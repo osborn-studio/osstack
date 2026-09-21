@@ -1,0 +1,76 @@
+JSON report written to /Volumes/AIMATE_WORK/tmp/g25/matrix-preflight.json.evidence/0-cli.json
+undefined
+/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli:
+[ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL] Command failed with exit code 1: vitest run src/graph-process-identity.test.ts src/graph-process-journal.test.ts src/graph-faults.integration.test.ts src/graph-chain.integration.test.ts src/graph-worker-manager.test.ts src/graph-checkpoint-service.test.ts src/graph-action-broker.test.ts src/graph-action-broker-boundary.test.ts src/graph-verification.test.ts src/graph-verification-join.test.ts src/graph-rpc.test.ts src/graph-concurrency.integration.test.ts src/graph-review-findings.test.ts '--maxWorkers=1' '--reporter=json' '--outputFile=/Volumes/AIMATE_WORK/tmp/g25/matrix-preflight.json.evidence/0-cli.json' --sequence.shuffle '--sequence.seed=250915'
+osstack: retaining write lease graph-action:5e134393be2b3eb507a2240403984b750518a9dd652e2a1ebe44f55e1e4c439c: Error: external stop unconfirmed
+osstack: retaining write lease graph-action:84899815eb09733eaa111212f2e07569573383796d54ea741514158f4aa0427b: Error: invalid usage
+osstack: retaining write lease graph-action:019eb40cb0963f97bf1af845ce02979dc763e0772f7592f0e6ae210fd950d476: Error: adapter result or execution unconfirmed
+osstack: retaining write lease graph-action:1d21ba947798b8a15ab154ce49815bccb0495d7d6d9712a24c6352cf9d6d5f68: SqliteError: injected
+osstack: retaining write lease graph-action:9191006f9d4bbe8066feaf6c69415ecdd5af99608bf5dcd49c21a12ca7e1febc: Error: adapter result or execution unconfirmed
+osstack: retaining write lease graph-action:0a8fc228c8f2f469e261571f94b11a8b612bd8e1c2297b64aca7a5c6b2183cf1: Error: adapter result or execution unconfirmed
+osstack: retaining write lease graph-action:2aef725dfa41b674f4d7bc7e189c943f719c5e0286136f4c9dc4e42fead05902: Error: adapter result or execution unconfirmed
+osstack: retaining write lease graph-action:746595d181ea3b5a2546233526bed3470220872da98701a9ea3a22f3703a6fed: Error: invalid persisted evidence reference
+osstack: retaining write lease graph-action:ba88855400d509f9f16527b84bbc780b7aa7355727b2252705df412d7c067c63: Error: adapter result or execution unconfirmed
+osstack: retaining write lease graph-action:52a2c7e91140c7f1d4d750ba238a3c187c455c160b447db7f9b1ed6912ac1102: Error: adapter result or execution unconfirmed
+osstack: retaining write lease graph-action:3f02c8cb4a798879b2b5c1f1b2c75da2dc396efda3d206b049947fee9b333252: Error: invalid result kind for registered operation
+osstack: retaining write lease graph-action:8bd89a7a275fcb96c803e9a0b44a5fffd97b2e9896833549b27ebd96dd1cbb61: Error: adapter result or execution unconfirmed
+osstack: retaining write lease graph-action:cab2b1579a5be224322c46d5914cc1fb15086c7b3be0541b2663d41f07fe693d: Error: adapter result or execution unconfirmed
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25/g22-rpc-uNwW1l/delivery/ab9932de-9fdd-4717-86ed-d1ea3a396eca/writer-0'...
+HEAD is now at 23c726a base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25/g22-rpc-xck3lI/delivery/d983fbf3-01dd-4c2a-91fa-78487360e812/writer-0'...
+HEAD is now at dc701e1 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25/g22-rpc-Dfb0jk/delivery/b6ec7142-97d9-47fd-b272-b35f8c20b3e0/writer-0'...
+HEAD is now at b18b247 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25/g22-rpc-n5q0F1/delivery/3b115643-f3a8-435a-8736-4f2d7d9c24b5/writer-0'...
+HEAD is now at 03cbec1 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25/g22-rpc-nL7Ygm/delivery/7c8b7847-efb1-4962-a34f-a48c48cd7fbc/writer-0'...
+HEAD is now at 03cbec1 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25/g22-rpc-fqzByj/delivery/b6af67ce-e93f-4214-901b-e49a6985a278/writer-0'...
+HEAD is now at e20895d base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25/g22-rpc-P0qfQp/delivery/e3b0ebee-61fa-4717-9a2c-a723f8cdda89/writer-0'...
+HEAD is now at e20895d base
+osstack: retaining write lease graph-action:0174f497e3e9a18eb605e45b5ca74dc1d5279012853de91c2595059a03d3b732: Error: external stop unconfirmed
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25/g22-rpc-0MD34W/delivery/6bc35128-d6ff-4db3-a1b2-1af2e81ecad4/writer-0'...
+HEAD is now at 7443a00 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25/g22-rpc-cEvjOu/delivery/1e9bbe1c-0239-45ec-afbf-e0631ec3dd66/writer-0'...
+HEAD is now at 94f714d base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25/g22-rpc-mdHOxX/delivery/c80c6f89-4129-4e0c-94a2-3b57252f1bdb/writer-0'...
+HEAD is now at dd3d90c base
+
+  ../../../../../tmp/g25/g25-process-build-lRNtet/host.mjs  77.1kb
+
+⚡ Done in 9ms
+osstack: retaining write lease graph-action:27ff7f63e7ed82545f6a5733c48837ac577d7af103bef5022bf327e7038595bc: Error: invalid result kind for registered operation
+osstack: retaining write lease graph-action:90ab9a9320dd68f5a259479e8a0a94132ae07aed9def88a43dc5d1df1a93c33d: Error: invalid persisted evidence reference
+osstack: retaining write lease graph-action:94432a5e6b4ddd4e40d8cfb64a1a7b83de5bc2fd1b8a8036c33bb1ffcc94e01f: Error: lost receipt
+osstack: retaining write lease graph-action:4756939a5739df52a57cf5a42b01a2c90b5615cfe9febad9710a0265917a49ff: injected lock release failure
+osstack: retaining write lease graph-action:4756939a5739df52a57cf5a42b01a2c90b5615cfe9febad9710a0265917a49ff: Error: injected lock release failure
+osstack: retaining write lease graph-action:8d60b6658854ae74cccbd195472898445cab5132d282fc8a9ac315e814a034b4: Error: candidate preflight refused
+osstack: retaining write lease graph-action:14ebd6a78b6247ec914a8d2859f470bbbe2d8365807e552b0b6483b74944b9dc: release failure
+osstack: retaining write lease graph-action:14ebd6a78b6247ec914a8d2859f470bbbe2d8365807e552b0b6483b74944b9dc: Error: release failure
+osstack: retaining write lease graph-action:b8c1df25b5799987f7b365c38f0a9cda81396aedb1dca0f5c09f6696ebc845c7: Error: candidate preflight refused
+osstack: retaining write lease graph-action:166e1ce32f685d7f7232249f952c3eddf94eb48de248487d119e902f81079125: Error: external stop unconfirmed
+osstack: retaining write lease graph-action:fe5f76aa8de96e58f5e5a7eda4c8e13f280d768a2f5b88c3810b3f2ab447e11d: Error: G20_RELEASE_HELD
+osstack: retaining write lease graph-action:0b0b342869de76914f8997a5ea60505a783c1e0f4d28c2ace074294a0133d0a9: Error: G20_RELEASE_HELD
+osstack: retaining write lease graph-action:ea95954629b8cf2de3c7808eef96b98dea9bc246bf2e833a5f5df00f4b16b3ac: Error: external stop unconfirmed
+osstack: retaining write lease graph-action:f694ba6163aabedd802bcf14b668174ecf19adc86a671ce1cb50611ef3341367: Error: G20_LOST_PERSIST_ACK
+osstack: retaining write lease graph-action:e500548d2bda3e29d18f8c66166a694edd86dc284196db6bb809ab2d2540ac93: Error: G20_RELEASE_HELD
+osstack: retaining write lease graph-action:e8f29f850a2b7dca54c6c6adb2bd90f6bd793ea982999c831017bf00c8e6bd41: Error: G20_RELEASE_HELD
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25/g22-rpc-YPeW5G/delivery/38d74efa-51dc-4427-9aef-9aa9f8c41784/writer-0'...
+HEAD is now at 2d5811c base
+osstack: retaining write lease graph-action:011fd5bcd5e9b41f049f13b76d92d473578fe14b80f25bac51acaaf454017b42: Error: adapter result or execution unconfirmed
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25/g22-rpc-0QVAqF/direct/writer-0'...
+HEAD is now at 0bbb0e4 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25/g22-rpc-vtDmhC/delivery/ec1938ce-b8e9-41aa-a34c-7f2a526b23bc/writer-0'...
+HEAD is now at e23518a base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25/g22-rpc-RAaRBd/direct/writer-0'...
+HEAD is now at ce230ee base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25/g22-rpc-HCo0PN/direct/writer-0'...
+HEAD is now at 1a5809e policy
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25/g22-rpc-F6iCZu/delivery/886d52ae-cf9e-450c-846e-288a53096657/writer-0'...
+HEAD is now at 76ace51 base
+osstack: retaining write lease graph-action:fb81108aeb9fdb2d8660777ef69f6bec37d877328e4f6ac109c31db4235d8a87: Error: adapter result or execution unconfirmed
+
+  ../../../tmp/g25/g17-build-olBvHl/graph-chain-host.mjs  454.4kb
+
+⚡ Done in 23ms

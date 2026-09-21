@@ -1,0 +1,26 @@
+{
+  "task": {
+    "id": "G01",
+    "phase": "M0",
+    "title": "校验 adapter 终态事件",
+    "dependsOn": [
+      "G00"
+    ],
+    "files": [
+      "packages/loop/src/executor.ts",
+      "packages/loop/src/executor.test.ts"
+    ],
+    "acceptance": [
+      "无 done 且无明确失败的流不能 completed；终态 error 保持失败。",
+      "冲突终态、终态后非法事件和不合法 done payload 有确定失败分类。",
+      "正常完成、明确失败及现有用量累计行为保持兼容。"
+    ],
+    "verify": "LOOP",
+    "size": "S",
+    "status": "pending"
+  },
+  "prompt": "Implement ONLY G01 in this existing isolated worktree. You are the coding executor invoked by OSStack LoopEngine. Parent supervisor is handling docs/status and review. Do not spawn agents or nested OSStack loops. Do not commit, push, merge, deploy, alter AGENTS.md, touch sibling repositories, or mark plan tasks done. All dependencies are installed and built. Read AGENTS.md, the implementation plan docs/implementation/2026-09-13-osstack-graph-upgrade.md and relevant source. Use TDD: add outcome tests first, run to establish RED, implement GREEN, then run affected tests and pnpm --filter @osstack/loop typecheck. Save concise real RED/GREEN evidence at docs/implementation/graph-foundation-evidence/G01-executor.md (only this evidence doc). CLI/database tests MUST use explicit inherited OSSTACK_HOME or scripts/graph-test-env.mjs, never default homes. Target card: {\"id\":\"G01\",\"phase\":\"M0\",\"title\":\"校验 adapter 终态事件\",\"dependsOn\":[\"G00\"],\"files\":[\"packages/loop/src/executor.ts\",\"packages/loop/src/executor.test.ts\"],\"acceptance\":[\"无 done 且无明确失败的流不能 completed；终态 error 保持失败。\",\"冲突终态、终态后非法事件和不合法 done payload 有确定失败分类。\",\"正常完成、明确失败及现有用量累计行为保持兼容。\"],\"verify\":\"LOOP\",\"size\":\"S\",\"status\":\"pending\"}. Preserve compatible adapters emitting terminal error followed by done(failed), and usage summaries around terminal events. Reject missing done success, malformed payload, terminal error followed by completed, duplicate/conflicting done, illegal work events after done. Do not change cancellation in this card. Parent will review and run additional tests. Finish the full card, report limitations honestly.",
+  "verify": "pnpm --filter @osstack/loop exec vitest run src/executor.test.ts src/loop-engine.test.ts && pnpm --filter @osstack/loop typecheck",
+  "baselineRuntime": "b476bcc",
+  "workspace": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation"
+}

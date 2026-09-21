@@ -1,0 +1,174 @@
+{
+  "taskReturns": [
+    {
+      "checkpoint": {
+        "configurable": {
+          "checkpoint_id": "1f1aff32-b853-6560-ffff-8e7cd05494d5",
+          "checkpoint_ns": "",
+          "thread_id": "c2"
+        }
+      },
+      "taskId": "bf3337b3-e8ab-50ad-b88c-cf51dcf91afd",
+      "value": {
+        "results": [
+          "completed"
+        ]
+      }
+    },
+    {
+      "checkpoint": {
+        "configurable": {
+          "checkpoint_id": "1f1aff32-b853-6560-ffff-8e7cd05494d5",
+          "checkpoint_ns": "",
+          "thread_id": "c2"
+        }
+      },
+      "taskId": "dbea021a-fbd6-504d-87bc-51143eea3843",
+      "value": {
+        "results": [
+          "recovered"
+        ]
+      }
+    },
+    {
+      "checkpoint": {
+        "configurable": {
+          "checkpoint_id": "1f1aff32-b853-6560-ffff-8e7cd05494d5",
+          "checkpoint_ns": "",
+          "thread_id": "c2"
+        }
+      },
+      "taskId": "c314bbaa-aa06-51c8-a999-978650cd0822",
+      "value": {
+        "results": [
+          "joined"
+        ]
+      }
+    }
+  ],
+  "counts": {
+    "completedBody": 1,
+    "completedWrapper": 1,
+    "flakyAttempts": 1,
+    "joinWrapper": 1,
+    "joinedBody": 1,
+    "recoveredBody": 1
+  },
+  "effects": {
+    "completed": {
+      "attempt": 1,
+      "effect": "completed",
+      "result": {
+        "results": [
+          "completed"
+        ]
+      },
+      "run": "functional-async-before-final-checkpoint-crash",
+      "status": "confirmed"
+    },
+    "joined": {
+      "attempt": 1,
+      "effect": "joined",
+      "result": {
+        "results": [
+          "joined"
+        ]
+      },
+      "run": "functional-async-before-final-checkpoint-crash",
+      "status": "confirmed"
+    },
+    "recovered": {
+      "attempt": 1,
+      "effect": "recovered",
+      "result": {
+        "results": [
+          "recovered"
+        ]
+      },
+      "run": "functional-async-before-final-checkpoint-crash",
+      "status": "confirmed"
+    }
+  },
+  "tuple": {
+    "checkpoint": {
+      "channel_values": {
+        "__pregel_tasks": [],
+        "__start__": {
+          "results": []
+        }
+      },
+      "channel_versions": {
+        "__start__": 1
+      },
+      "id": "1f1aff32-b853-6560-ffff-8e7cd05494d5",
+      "ts": "2026-09-14T04:17:16.726Z",
+      "v": 4,
+      "versions_seen": {
+        "__input__": {}
+      }
+    },
+    "config": {
+      "configurable": {
+        "checkpoint_id": "1f1aff32-b853-6560-ffff-8e7cd05494d5",
+        "checkpoint_ns": "",
+        "thread_id": "c2"
+      }
+    },
+    "metadata": {
+      "parents": {},
+      "source": "input",
+      "step": -1
+    },
+    "pendingWrites": [
+      [
+        "bf3337b3-e8ab-50ad-b88c-cf51dcf91afd",
+        "__return__",
+        {
+          "results": [
+            "completed"
+          ]
+        }
+      ],
+      [
+        "dbea021a-fbd6-504d-87bc-51143eea3843",
+        "__return__",
+        {
+          "results": [
+            "recovered"
+          ]
+        }
+      ],
+      [
+        "c314bbaa-aa06-51c8-a999-978650cd0822",
+        "__return__",
+        {
+          "results": [
+            "joined"
+          ]
+        }
+      ],
+      [
+        "d2d8012a-b7af-50a1-8892-6e831fa15a9a",
+        "__end__",
+        {
+          "results": [
+            "completed",
+            "recovered",
+            "joined"
+          ]
+        }
+      ],
+      [
+        "d2d8012a-b7af-50a1-8892-6e831fa15a9a",
+        "__previous__",
+        {
+          "results": [
+            "completed",
+            "recovered",
+            "joined"
+          ]
+        }
+      ]
+    ]
+  }
+}

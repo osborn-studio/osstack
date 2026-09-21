@@ -1,0 +1,94 @@
+{
+  "total": 3013,
+  "packageCount": 22,
+  "packages": [
+    {
+      "package": "compliance",
+      "passed": 17
+    },
+    {
+      "package": "contracts",
+      "passed": 15
+    },
+    {
+      "package": "github",
+      "passed": 58
+    },
+    {
+      "package": "governance",
+      "passed": 301
+    },
+    {
+      "package": "knowledge",
+      "passed": 31
+    },
+    {
+      "package": "neat-eval",
+      "passed": 16
+    },
+    {
+      "package": "protocol",
+      "passed": 216
+    },
+    {
+      "package": "runtime",
+      "passed": 1
+    },
+    {
+      "package": "core",
+      "passed": 440
+    },
+    {
+      "package": "graph",
+      "passed": 51
+    },
+    {
+      "package": "knowledge-cloud",
+      "passed": 36
+    },
+    {
+      "package": "autonomy",
+      "passed": 174
+    },
+    {
+      "package": "hermes-adapter",
+      "passed": 22
+    },
+    {
+      "package": "plugins",
+      "passed": 1
+    },
+    {
+      "package": "skill-registry",
+      "passed": 3
+    },
+    {
+      "package": "skills",
+      "passed": 2
+    },
+    {
+      "package": "agents",
+      "passed": 140
+    },
+    {
+      "package": "config",
+      "passed": 30
+    },
+    {
+      "package": "loop",
+      "passed": 385
+    },
+    {
+      "package": "conformance",
+      "passed": 9
+    },
+    {
+      "package": "supervisor",
+      "passed": 58
+    },
+    {
+      "package": "cli",
+      "passed": 1007
+    }
+  ]
+}

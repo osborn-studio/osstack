@@ -1,0 +1,14 @@
+{
+  "ok": true,
+  "kind": "npm-registry-skew-smoke",
+  "public_packages": 19,
+  "candidates": [
+    {
+      "name": "@osstack/graph",
+      "local_version": "0.1.0",
+      "registry_version": null
+    }
+  ],
+  "cli_source": "npm-registry",
+  "cli_version": "0.19.0"
+}

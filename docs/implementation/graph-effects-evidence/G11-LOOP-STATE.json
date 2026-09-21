@@ -1,0 +1,92 @@
+{
+  "loop_id": "G11",
+  "started_at": "2026-09-14T13:38:09.823Z",
+  "updated_at": "2026-09-14T13:52:43.697Z",
+  "completed_tasks": [
+    {
+      "task_id": "G11",
+      "capability": "code.write",
+      "outcome": "success",
+      "iterations": 1,
+      "agent_id": "codex-cli",
+      "duration_ms": 873873,
+      "run_id": "run_24cd5be9-604f-4108-862c-b797ac62c3f2",
+      "started_at": "2026-09-14T13:38:09.824Z",
+      "completed_at": "2026-09-14T13:52:43.612Z",
+      "execution_summary": "codex exited 0",
+      "verifier_agent_id": "local-verifier",
+      "verify_summary": "1 verifier command and 0 verifier adapters passed. 1 evaluation passed.",
+      "verify_issue_count": 0,
+      "verify_commands": [
+        {
+          "command": "git diff --check",
+          "exit_code": 0,
+          "duration_ms": 21
+        }
+      ],
+      "evaluations": [
+        {
+          "spec_id": "verify-command-1",
+          "mode": "command",
+          "description": "Shell verifier: git diff --check",
+          "required": true,
+          "weight": 1,
+          "pass": true,
+          "summary": "command passed (21 ms)",
+          "implicit": true
+        }
+      ],
+      "changed_files": [
+        "packages/cli/src/daemon.ts",
+        "packages/core/src/index.ts",
+        "packages/core/src/state/db.test.ts",
+        "packages/core/src/state/graph-runs.test.ts",
+        "packages/core/src/state/graph-runs.ts",
+        "packages/core/src/state/migrations.ts",
+        "packages/graph/package.json",
+        "packages/protocol/src/generate.ts",
+        "packages/protocol/src/index.ts",
+        "packages/protocol/src/schemas.test.ts",
+        "?? packages/cli/src/daemon-graph-action-broker.test.ts",
+        "?? packages/cli/src/graph-action-broker-boundary.test.ts",
+        "?? packages/cli/src/graph-action-broker.test.ts",
+        "?? packages/cli/src/graph-action-broker.ts",
+        "?? packages/cli/src/graph-checkpoint-daemon.test.ts",
+        "?? packages/cli/src/graph-checkpoint-service.test.ts",
+        "?? packages/cli/src/graph-checkpoint-service.ts",
+        "?? packages/core/src/state/graph-actions.test.ts",
+        "?? packages/core/src/state/graph-actions.ts",
+        "?? packages/core/src/state/graph-checkpoints.test.ts",
+        "?? packages/core/src/state/graph-checkpoints.ts",
+        "?? packages/core/src/state/graph-storage.ts",
+        "?? packages/graph/src/checkpoint-ipc-fixture.ts",
+        "?? packages/graph/src/remote-checkpointer.test.ts",
+        "?? packages/graph/src/remote-checkpointer.ts",
+        "?? packages/protocol/schemas/graph-checkpoint-request.schema.json",
+        "?? packages/protocol/schemas/graph-checkpoint-response.schema.json",
+        "?? packages/protocol/src/graph-checkpoint.test.ts",
+        "?? packages/protocol/src/graph-checkpoint.ts",
+        "?? scripts/fixtures/graph-checkpoint-server.mjs"
+      ],
+      "diff_summary": "packages/cli/src/daemon.ts | 35 +++++++++++++ packages/core/src/index.ts | 6 +++ packages/core/src/state/db.test.ts | 39 ++++++++++++++ packages/core/src/state/graph-runs.test.ts | 13 +++++ packages/core/src/state/graph-runs.ts | 46 +++++++",
+      "commit_hash": "405b318",
+      "tokens_in": 83931,
+      "tokens_out": 25088,
+      "cost_usd": 0
+    }
+  ],
+  "in_progress": [],
+  "pending": [],
+  "deferred_tasks": [],
+  "key_metrics": {
+    "total_cycles": 1,
+    "avg_duration_ms": 873873,
+    "success_rate": 1,
+    "tokens_consumed": 109019,
+    "cost_consumed": 0
+  },
+  "decisions": [
+    "G11: selected codex-cli - agent_id override",
+    "G11: stop after iteration 1 - Verifier passed with score 1.00."
+  ]
+}

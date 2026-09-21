@@ -1,0 +1,463 @@
+{
+  "versions": {
+    "langgraph": "1.4.15",
+    "langgraph-checkpoint": "1.1.5",
+    "core": "1.2.11"
+  },
+  "admitted": false,
+  "observations": [
+    {
+      "durability": "sync",
+      "maxConcurrency": 1,
+      "recovery": "resume",
+      "outputError": false,
+      "writes": [
+        [
+          "a2ffe284-7094-5bbc-80c8-60b08647085f",
+          "results",
+          [
+            "completed"
+          ]
+        ],
+        [
+          "a2ffe284-7094-5bbc-80c8-60b08647085f",
+          "join:completed+flaky:join",
+          "completed"
+        ]
+      ],
+      "counts": {
+        "completed": 1,
+        "flaky": 1,
+        "join": 1
+      },
+      "result": {
+        "results": [
+          "completed",
+          "recovered",
+          "joined"
+        ]
+      }
+    },
+    {
+      "durability": "sync",
+      "maxConcurrency": 1,
+      "recovery": "resume-exact",
+      "outputError": false,
+      "writes": [
+        [
+          "4cf396ea-3f83-52b9-af92-0b60b3365e5f",
+          "results",
+          [
+            "completed"
+          ]
+        ],
+        [
+          "4cf396ea-3f83-52b9-af92-0b60b3365e5f",
+          "join:completed+flaky:join",
+          "completed"
+        ]
+      ],
+      "counts": {
+        "completed": 2,
+        "flaky": 1,
+        "join": 1
+      },
+      "result": {
+        "results": [
+          "completed",
+          "recovered",
+          "joined"
+        ]
+      }
+    },
+    {
+      "durability": "sync",
+      "maxConcurrency": 2,
+      "recovery": "resume",
+      "error": "Error: injected parallel failure",
+      "outputError": true,
+      "writes": [
+        [
+          "21fc6400-2e22-59ef-8f47-65951bf4c560",
+          "__error__",
+          {
+            "message": "injected parallel failure",
+            "name": "Error"
+          }
+        ],
+        [
+          "f452e22c-eda0-5e9d-a111-c3adeea62123",
+          "results",
+          [
+            "completed"
+          ]
+        ],
+        [
+          "f452e22c-eda0-5e9d-a111-c3adeea62123",
+          "__error__",
+          {
+            "message": "This operation was aborted",
+            "name": "AbortError"
+          }
+        ]
+      ],
+      "counts": {
+        "completed": 1,
+        "flaky": 2,
+        "join": 0
+      },
+      "result": {
+        "results": [
+          "completed",
+          "recovered"
+        ]
+      }
+    },
+    {
+      "durability": "sync",
+      "maxConcurrency": 2,
+      "recovery": "resume-exact",
+      "error": "Error: injected parallel failure",
+      "outputError": true,
+      "writes": [
+        [
+          "8647df51-1662-5c37-8e96-4e93d6f1fa42",
+          "__error__",
+          {
+            "message": "injected parallel failure",
+            "name": "Error"
+          }
+        ],
+        [
+          "a54bc5ca-d2ea-510f-8b81-f7d5e8c290d6",
+          "results",
+          [
+            "completed"
+          ]
+        ],
+        [
+          "a54bc5ca-d2ea-510f-8b81-f7d5e8c290d6",
+          "__error__",
+          {
+            "message": "This operation was aborted",
+            "name": "AbortError"
+          }
+        ]
+      ],
+      "counts": {
+        "completed": 2,
+        "flaky": 2,
+        "join": 1
+      },
+      "result": {
+        "results": [
+          "completed",
+          "recovered",
+          "joined"
+        ]
+      }
+    },
+    {
+      "durability": "async",
+      "maxConcurrency": 1,
+      "recovery": "resume",
+      "outputError": false,
+      "writes": [
+        [
+          "90033c92-aa15-502b-b38c-19f81832d4c7",
+          "results",
+          [
+            "completed"
+          ]
+        ],
+        [
+          "90033c92-aa15-502b-b38c-19f81832d4c7",
+          "join:completed+flaky:join",
+          "completed"
+        ]
+      ],
+      "counts": {
+        "completed": 1,
+        "flaky": 1,
+        "join": 1
+      },
+      "result": {
+        "results": [
+          "completed",
+          "recovered",
+          "joined"
+        ]
+      }
+    },
+    {
+      "durability": "async",
+      "maxConcurrency": 1,
+      "recovery": "resume-exact",
+      "outputError": false,
+      "writes": [
+        [
+          "6d8a4e70-e24a-5a6e-a51c-5be5fc38975b",
+          "results",
+          [
+            "completed"
+          ]
+        ],
+        [
+          "6d8a4e70-e24a-5a6e-a51c-5be5fc38975b",
+          "join:completed+flaky:join",
+          "completed"
+        ]
+      ],
+      "counts": {
+        "completed": 2,
+        "flaky": 1,
+        "join": 1
+      },
+      "result": {
+        "results": [
+          "completed",
+          "recovered",
+          "joined"
+        ]
+      }
+    },
+    {
+      "durability": "async",
+      "maxConcurrency": 2,
+      "recovery": "resume",
+      "error": "Error: injected parallel failure",
+      "outputError": true,
+      "writes": [
+        [
+          "2349cf8b-197f-52ba-8b01-a014779b289f",
+          "__error__",
+          {
+            "message": "injected parallel failure",
+            "name": "Error"
+          }
+        ],
+        [
+          "9c2237b5-75e7-59eb-92b4-d03adcf9bdb8",
+          "results",
+          [
+            "completed"
+          ]
+        ],
+        [
+          "9c2237b5-75e7-59eb-92b4-d03adcf9bdb8",
+          "__error__",
+          {
+            "message": "This operation was aborted",
+            "name": "AbortError"
+          }
+        ]
+      ],
+      "counts": {
+        "completed": 1,
+        "flaky": 2,
+        "join": 0
+      },
+      "result": {
+        "results": [
+          "completed",
+          "recovered"
+        ]
+      }
+    },
+    {
+      "durability": "async",
+      "maxConcurrency": 2,
+      "recovery": "resume-exact",
+      "error": "Error: injected parallel failure",
+      "outputError": true,
+      "writes": [
+        [
+          "834e4001-8e30-5fda-b877-e9fa259dcb92",
+          "__error__",
+          {
+            "message": "injected parallel failure",
+            "name": "Error"
+          }
+        ],
+        [
+          "e5f015b3-eef9-55e5-a20a-6ba7b20558f0",
+          "results",
+          [
+            "completed"
+          ]
+        ],
+        [
+          "e5f015b3-eef9-55e5-a20a-6ba7b20558f0",
+          "__error__",
+          {
+            "message": "This operation was aborted",
+            "name": "AbortError"
+          }
+        ]
+      ],
+      "counts": {
+        "completed": 2,
+        "flaky": 2,
+        "join": 1
+      },
+      "result": {
+        "results": [
+          "completed",
+          "recovered",
+          "joined"
+        ]
+      }
+    },
+    {
+      "durability": "exit",
+      "maxConcurrency": 1,
+      "recovery": "resume",
+      "outputError": false,
+      "writes": [
+        [
+          "012fe333-db77-5458-9ac0-ae2e356f24d3",
+          "results",
+          [
+            "completed"
+          ]
+        ],
+        [
+          "012fe333-db77-5458-9ac0-ae2e356f24d3",
+          "join:completed+flaky:join",
+          "completed"
+        ]
+      ],
+      "counts": {
+        "completed": 1,
+        "flaky": 1,
+        "join": 1
+      },
+      "result": {
+        "results": [
+          "completed",
+          "recovered",
+          "joined"
+        ]
+      }
+    },
+    {
+      "durability": "exit",
+      "maxConcurrency": 1,
+      "recovery": "resume-exact",
+      "outputError": false,
+      "writes": [
+        [
+          "23a7bbdb-5f64-551d-af53-f123800764aa",
+          "results",
+          [
+            "completed"
+          ]
+        ],
+        [
+          "23a7bbdb-5f64-551d-af53-f123800764aa",
+          "join:completed+flaky:join",
+          "completed"
+        ]
+      ],
+      "counts": {
+        "completed": 2,
+        "flaky": 1,
+        "join": 1
+      },
+      "result": {
+        "results": [
+          "completed",
+          "recovered",
+          "joined"
+        ]
+      }
+    },
+    {
+      "durability": "exit",
+      "maxConcurrency": 2,
+      "recovery": "resume",
+      "error": "Error: injected parallel failure",
+      "outputError": true,
+      "writes": [
+        [
+          "596f04b6-fef5-56f1-88fa-9b830b8e7ce6",
+          "__error__",
+          {
+            "message": "injected parallel failure",
+            "name": "Error"
+          }
+        ],
+        [
+          "26d69e58-40b8-5d90-8e74-2fe0c486f4fd",
+          "results",
+          [
+            "completed"
+          ]
+        ],
+        [
+          "26d69e58-40b8-5d90-8e74-2fe0c486f4fd",
+          "__error__",
+          {
+            "message": "This operation was aborted",
+            "name": "AbortError"
+          }
+        ]
+      ],
+      "counts": {
+        "completed": 1,
+        "flaky": 2,
+        "join": 0
+      },
+      "result": {
+        "results": [
+          "completed",
+          "recovered"
+        ]
+      }
+    },
+    {
+      "durability": "exit",
+      "maxConcurrency": 2,
+      "recovery": "resume-exact",
+      "error": "Error: injected parallel failure",
+      "outputError": true,
+      "writes": [
+        [
+          "d07de0dc-897f-5738-93ef-86b7dc9aa25f",
+          "__error__",
+          {
+            "message": "injected parallel failure",
+            "name": "Error"
+          }
+        ],
+        [
+          "56fd64a8-05b0-5075-ac32-47c37adbab44",
+          "results",
+          [
+            "completed"
+          ]
+        ],
+        [
+          "56fd64a8-05b0-5075-ac32-47c37adbab44",
+          "__error__",
+          {
+            "message": "This operation was aborted",
+            "name": "AbortError"
+          }
+        ]
+      ],
+      "counts": {
+        "completed": 2,
+        "flaky": 2,
+        "join": 1
+      },
+      "result": {
+        "results": [
+          "completed",
+          "recovered",
+          "joined"
+        ]
+      }
+    }
+  ]
+}
