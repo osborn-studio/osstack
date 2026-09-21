@@ -42,13 +42,13 @@ OSSTACK_HOME=/absolute/private/new-pilot TMPDIR=/tmp \
 
 ### 本机分阶段部署顺序
 
-部署对象为现有 `ai.osstack.daemon`，保留当前 serving home。先确认最终 PR 提交的独立审批与检查，再合并；不能复用旧提交的审批绕过分支保护。使用合并提交打包的安装目录及提交哈希标识内部版本，保留旧安装，不直接覆盖独立的 OStag copilot 安装。仓库 package version 与当前已安装版本不同，不能把内部源码部署冒充已发布 npm 升级。
+部署对象为现有 `ai.osstack.daemon`，保留当前 serving home。先确认最终 PR 提交的独立审批与检查，再合并；不能复用旧提交的审批绕过分支保护。使用合并提交打包的安装目录及提交哈希标识内部版本，保留旧安装，不直接覆盖独立的 OStag copilot 安装。CLI 包标签仍为 0.19.0，与当前安装相同；core 0.17.0 是另一个包的版本。必须按源码提交和产物哈希区分内部构建，不能仅凭 `--version` 判断部署成功，也不能把内部源码部署冒充新的 npm 发布。
 
 1. 在隔离 prefix 安装所有 workspace tarball，校验真实 worker 入口、native SQLite 和 installed CLI。部署前对停止写入后的 serving home 做完整备份；线上副本演练已验证 schema 22→37、51 张原有表的记录数和 SQLite 完整性。
 2. 新安装通过正式安装流程声明 serving 权限；开发 checkout 不能获得生产 DB 访问例外。保留原 LaunchAgent、二进制路径、版本和备份清单，以提交哈希绑定部署证据。
 3. 先以 `admissionEnabled:false` 的完整 owner-only 注册配置启动。验证旧 RPC/Loop/session、schema 和无新增 Graph run；不启动新的图。缺少配置时 Graph 不可用，但不能把配置加载失败当作成功关闭准入。
 4. 首个内部仓库使用 OSStack 的独立工作副本和 `artifact_only` 模板，精确绑定 task、baseRevision、验证命令、scope 和有限授权期限。密钥只由现有私有凭据载入，不放入 Git、报告或 LaunchAgent 明文参数。
-5. 健康检查通过后只改该注册的 `admissionEnabled:true`，执行一个有界内部任务并保留 candidate、独立评审、测试、join、费用与源仓库不变证据。其他仓库不获授权。遇到 unknown，关闭新准入并保留证据，不清账重试。
+5. 等 `autonomy.health` 返回 `can_run_local:true`、初次健康检查完成后，只改该注册的 `admissionEnabled:true`。普通 `health` 表示 RPC 可用，不能代替写入准入健康检查。执行一个有界内部任务并保留 candidate、独立评审、测试、join、费用与源仓库不变证据。其他仓库不获授权。遇到 unknown，关闭新准入并保留证据，不清账重试。
 
 以上是部署步骤，不是已部署声明。实际执行状态以 PR 和部署证据为准。
 

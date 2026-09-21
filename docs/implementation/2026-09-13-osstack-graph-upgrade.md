@@ -1,6 +1,6 @@
 # OSStack 升级改造实施计划：Loop 强化与可执行 Graph v1
 
-日期：2026-09-13；更新：2026-09-20。**状态：25/30 已正式验收；G25–G29 的主要实现和真实内部试点已完成，最终故障、Linux/发行、压力性能及 main 集成尚待关闭。现按用户要求先提交 Draft PR，进入独立审批流程，不将未通过项标为完成。**
+日期：2026-09-13；更新：2026-09-20。**状态：G00–G28 已验收，29/30；G29 真实内部试点与手册已完成，最终发布检查、最新提交的独立审批与分阶段部署待收口。main 迁移冲突已解决；当前状态见 [收口报告](../reports/graph-upgrade-completion.md)。**
 
 实际实施分支：`codex/graph-runtime-foundation`；工作区：`/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation`。最新实现 `9011913`：锁保留、升级保护、平台边界和批量 artifact。全仓 22 包 3,727 测试通过；当前完成度、五类技术债和合并/部署门槛以[最新进展报告](../reports/graph-upgrade-completion.md)为准。
 
@@ -845,4 +845,4 @@ graph worker 启动、冷/热执行、checkpoint/IPC 和并行工作区准备成
 
 ## 13. 下一轮实施的明确起点
 
-G00–G24 已完成，**25/30；M0–M2 完成，M3 实施中**。G25 单容器证明、G15同步复核及binding读取边界限定阶段已验收；按 [最新上下文](2026-09-18-graph-binding-next-context.md) 继续独立 host/adapter/workspace 证明及 G15 对账释放，随后完成 artifact 锁、兼容、发行、性能与试点。
+历史阶段记录（已由本页开头及机器任务清单的 29/30 状态取代）：G00–G24 当时已完成，**25/30；M0–M2 完成，M3 实施中**。G25 单容器证明、G15同步复核及binding读取边界限定阶段已验收；按 [最新上下文](2026-09-18-graph-binding-next-context.md) 继续独立 host/adapter/workspace 证明及 G15 对账释放，随后完成 artifact 锁、兼容、发行、性能与试点。

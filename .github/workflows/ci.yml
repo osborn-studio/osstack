@@ -22,7 +22,10 @@ concurrency:
 jobs:
   check:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    # The integrated full suite takes ~14 minutes before the existing package
+    # install / release smokes. Keep their verification, and budget the whole
+    # job separately from unchanged per-test and startup latency limits.
+    timeout-minutes: 35
     steps:
       - uses: actions/checkout@v7
         with:

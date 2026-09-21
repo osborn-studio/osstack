@@ -1,0 +1,171 @@
+
+ RUN  v3.2.6 /work
+
+
+  ../tmp/g25-bounded-build-3wgkU9/host.mjs  233.0kb
+
+⚡ Done in 31ms
+ ✓ packages/cli/src/graph-bounded-recovery.test.ts (16 tests) 54471ms
+   ✓ public cancellation recovers a bounded writer before-commit across a real host exit without invoking again  3928ms
+   ✓ public cancellation recovers a bounded writer after-commit across a real host exit without invoking again  3874ms
+   ✓ retains admission when alive prevents recovery  3349ms
+   ✓ retains admission when disconnect prevents recovery  3089ms
+   ✓ retains admission when no-worker-exit prevents recovery  3325ms
+   ✓ retains admission when future-template prevents recovery  3272ms
+   ✓ retains admission when workspace-tampered prevents recovery  3741ms
+   ✓ retains admission when journal-tampered prevents recovery  3372ms
+   ✓ retains admission when missing-journal prevents recovery  3519ms
+   ✓ retains admission when receipt-tampered prevents recovery  3359ms
+   ✓ retains admission when ignored-file prevents recovery  3454ms
+   ✓ retains admission when symlink prevents recovery  3033ms
+   ✓ retains admission when revoked prevents recovery  3348ms
+   ✓ replays a lost release ACK after another service restart without unlinking a replacement owner  3723ms
+   ✓ rechecks cancellation authority inside the final recovery transaction  2756ms
+   ✓ concurrent reconciliation cannot duplicate a settlement or free another action  3324ms
+Cloning into '/tmp/g22-rpc-eCvLIW/delivery/a43b5191-c7c2-4da0-bfc0-e30717bae4ec/writer-0'...
+HEAD is now at 462cb33 base
+Cloning into '/tmp/g22-rpc-K2SxP7/delivery/138a5ac6-abc1-42bb-8cd8-de450d54a073/writer-0'...
+HEAD is now at 3b1f47a base
+Cloning into '/tmp/g22-rpc-XUlGM9/delivery/1b99be7b-445f-44ea-af06-5e22c0faa7ba/writer-0'...
+HEAD is now at 670766b base
+Cloning into '/tmp/g22-rpc-S6DeZ0/delivery/fa196cf3-99c6-418e-926f-e9c8e57cc4dd/writer-0'...
+HEAD is now at 40f7741 base
+Cloning into '/tmp/g22-rpc-2RKzmq/delivery/7d48a7d2-e577-474b-a06b-bb8583e5255f/writer-0'...
+HEAD is now at 803ee4c base
+osstack: retaining write lease graph-action:4155bf4110e8195d78e4dd58690a3c063b8bb1035efd398e9005305a50a680ff: Error: external stop unconfirmed
+Cloning into '/tmp/g22-rpc-PWxK7B/delivery/b2815af1-bdd2-4875-bd47-5e2a4dae9907/writer-0'...
+HEAD is now at cc76d1e base
+Cloning into '/tmp/g22-rpc-xpO2jZ/delivery/44c6bcdd-5e46-4dc8-bce5-d8ebeb5b3c76/writer-0'...
+HEAD is now at 475cb2d base
+ ✓ packages/cli/src/graph-rpc.test.ts (10 tests) 27792ms
+   ✓ durably reserves before launch; concurrent replay and fresh service replay never launch twice; ready is atomic v1 evidence  4586ms
+   ✓ persisted cancel intent drives actual worker/executor abort and confirmed stop through G15  1556ms
+   ✓ quality interrupt binds input/revision/current grants and resumes actual checkpoint through G15  8848ms
+   ✓ lost supervisor cannot resume durable waiting evidence or mint a new launch  4574ms
+   ✓ unknown external stop retains holds and cannot become cancelled from Promise drainage  2113ms
+   ✓ close persists cancellation and drains a live executor before returning  1360ms
+   ✓ expired waiting lease refuses resume before acknowledging or spending a new budget  4312ms
+ ✓ packages/core/src/state/graph-migration-lineage.test.ts (23 tests) 17046ms
+   ✓ upgrades deployed main v24 preserving its actual improvement execution  1064ms
+   ✓ upgrades deployed main v25 preserving its actual improvement execution  807ms
+   ✓ upgrades deployed main v26 preserving its actual improvement execution  634ms
+   ✓ upgrades deployed main v27 preserving its actual improvement execution  704ms
+   ✓ rejects unreleased Graph v25 without changing bytes or migration progress  828ms
+   ✓ rejects unreleased Graph v26 without changing bytes or migration progress  1021ms
+   ✓ rejects unreleased Graph v27 without changing bytes or migration progress  921ms
+   ✓ rejects unreleased Graph v28 without changing bytes or migration progress  749ms
+   ✓ rejects unreleased Graph v29 without changing bytes or migration progress  773ms
+   ✓ rejects unreleased Graph v30 without changing bytes or migration progress  855ms
+   ✓ rejects unreleased Graph v31 without changing bytes or migration progress  837ms
+   ✓ rejects unreleased Graph v32 without changing bytes or migration progress  602ms
+   ✓ rejects unreleased Graph v33 without changing bytes or migration progress  1125ms
+   ✓ rejects unreleased Graph v34 without changing bytes or migration progress  1183ms
+   ✓ allows read-only inspection of main v27 without applying graph DDL  823ms
+   ✓ rejects a main 26 / experimental 29 hybrid before any DDL  677ms
+   ✓ rejects a main 26 / experimental 34 hybrid before any DDL  793ms
+   ✓ rejects a main 27 / experimental 29 hybrid before any DDL  913ms
+   ✓ rejects a main 27 / experimental 34 hybrid before any DDL  1298ms
+ ✓ packages/cli/src/graph-worker-manager.test.ts (33 tests) 15797ms
+   ✓ handshakes asynchronously, executes Functional+remote sync checkpoints and isolates bounded logs  1063ms
+   ✓ reserves each run synchronously and requires verified exit before replacement  1068ms
+   ✓ executes snapshotted bytes even when the original trusted module is changed  770ms
+   ✓ settles spawn failures and early exits without unhandled rejections  791ms
+   ✓ revocation aborts the injected broker and rejects later checkpoints without releasing its resources  945ms
+   ✓ expires leases and terminates an unresponsive child with actual exit evidence  2445ms
+   ✓ does not equate invoke rejection to worker exit or await inherited log pipes  855ms
+   ✓ done leaves exit pending until the OS observes termination  350ms
+   ✓ revokes a running lease and old callbacks cannot respond through a replacement connection  389ms
+   ✓ caps each log stream independently and does not pass a DB home or node injection environment  1041ms
+   ✓ waits for the remote final checkpoint acknowledgement before resolving the program  1064ms
+   ✓ allows startup grace before requiring heartbeats  404ms
+   ✓ does not apply a checkpoint RPC timeout to a healthy long-running governed action  1203ms
+   ✓ records the authenticated child identity before its program receives init  825ms
+   ✓ surfaces failed exit journaling even after the successful program result has settled  749ms
+   ✓ host event-loop stalls can request conservative stop but never invent physical exit  767ms
+ ✓ packages/graph/src/spec-compiler.test.ts (137 tests) 8953ms
+ ✓ packages/graph/src/remote-checkpointer.test.ts (18 tests) 6950ms
+   ✓ preserves parent, versions, namespaces, before/filter and complete pagination through real asynchronous SQLite IPC  917ms
+   ✓ matches the installed public reserved-index overwrite and ordinary first-write semantics after reopening SQLite  425ms
+   ✓ survives child kill before commit with stable-ID retry and explicit lost-ACK outcome  359ms
+   ✓ survives child kill after commit with stable-ID retry and explicit lost-ACK outcome  418ms
+   ✓ public Functional tasks persist RETURN/error and resume only incomplete work over delayed transport  517ms
+   ✓ public Functional interrupt preserves resume false through SQLite and asynchronous ACK  440ms
+   ✓ public Functional rejects transport failure at __end__ and recovers without inventing task completion  423ms
+   ✓ public Functional recovers when persistence process is killed before commit of __return__  616ms
+   ✓ public Functional recovers when persistence process is killed after commit of __return__  455ms
+   ✓ public Functional recovers when persistence process is killed before commit of __end__  617ms
+   ✓ public Functional recovers when persistence process is killed after commit of __end__  457ms
+   ✓ serializes concurrent RPC write batches with a refreshed host fence  357ms
+ ✓ packages/autonomy/src/repo-lock.test.ts (20 tests) 5675ms
+   ✓ renewable repository lease > fails closed on an abandoned mutation guard instead of age-stealing it  2030ms
+   ✓ renewable repository lease > arbitrates real competing processes, renews and transfers only after release  1246ms
+   ✓ renewable repository lease > concurrent stale recovery never removes a newly acquired live process lock  1130ms
+   ✓ managed repository process quarantine > shares one lock across real worktrees and independent OSSTACK_HOMEs  440ms
+Preparing worktree (detached HEAD bf000ba)
+Preparing worktree (detached HEAD a8faeae)
+Preparing worktree (detached HEAD a8faeae)
+Preparing worktree (detached HEAD b908ff0)
+Preparing worktree (detached HEAD b908ff0)
+Preparing worktree (detached HEAD b908ff0)
+Preparing worktree (detached HEAD f6f0ade)
+Preparing worktree (detached HEAD f6f0ade)
+Preparing worktree (detached HEAD f6f0ade)
+Preparing worktree (detached HEAD f6f0ade)
+Preparing worktree (detached HEAD f6f0ade)
+Preparing worktree (detached HEAD f6f0ade)
+Preparing worktree (detached HEAD f6f0ade)
+Preparing worktree (detached HEAD f6f0ade)
+Preparing worktree (detached HEAD e9d091a)
+Preparing worktree (detached HEAD e9d091a)
+Preparing worktree (detached HEAD e9d091a)
+Preparing worktree (detached HEAD e9d091a)
+Preparing worktree (detached HEAD e9d091a)
+Preparing worktree (detached HEAD e9d091a)
+Preparing worktree (detached HEAD e7c0dfa)
+ ✓ packages/core/src/graph/artifact-store.test.ts (21 tests) 5118ms
+   ✓ trusted graph artifact freeze > restores full reachable history and exact raw tree after deleting original repo and worktree  906ms
+   ✓ trusted graph artifact freeze > rechecks authority after durable publication before returning ready  311ms
+   ✓ trusted graph artifact freeze > returns immutable candidate identity and artifact refs  319ms
+   ✓ trusted graph artifact freeze > captures tracked-file to directory replacement with unusual filenames  450ms
+   ✓ trusted graph artifact freeze > does not return ready if durable ID publication fails; exported bytes remain recoverable  321ms
+   ✓ trusted graph artifact freeze > rejects same ID with changed receipt or content  358ms
+   ✓ F07: a late real process writing the old directory cannot mutate the exported candidate or its new restore  572ms
+   ✓ rejects an oversized full-history bundle before reading it into memory  311ms
+ ✓ packages/cli/src/graph-process-journal.test.ts (9 tests) 3075ms
+   ✓ retains launch and true exit, rejects changed identity and protects immutable observations  920ms
+   ✓ persists timeout separately from actual late exit and keeps DB drainage pending  829ms
+   ✓ refuses changed compiled program bytes on a fresh runtime before launching  823ms
+
+  ../tmp/g25-process-build-s5L6nC/host.mjs  87.5kb
+
+⚡ Done in 24ms
+ ✓ packages/cli/src/graph-faults.integration.test.ts (1 test) 3260ms
+   ✓ fresh host observes a SIGKILLed supervisor without releasing or replaying the live worker or descendants  3257ms
+Cloning into '/tmp/g22-rpc-Y3i3uC/delivery/0375b3e8-4a9c-46b8-bf3b-043ee600b74e/writer-0'...
+HEAD is now at f97e6bb base
+osstack: retaining write lease graph-action:3769b65955fa4fe3268dcd69ba006725ba4bea541c7f414c1dbcc172166492c8: Error: external stop unconfirmed
+ ✓ packages/cli/src/graph-compatibility.integration.test.ts (2 tests) 2742ms
+   ✓ F12: restored SQLite snapshot and disabled admission retain unknown effects without replay or lock loss  2549ms
+ ✓ packages/core/src/state/graph-checkpoints.test.ts (15 tests) 2304ms
+   ✓ paginates equal checkpoint IDs across namespaces without skipping and bounds response bytes  455ms
+   ✓ splits pages at transport traversal bounds even when many small pending writes fit the byte cap  1098ms
+ ✓ packages/graph/src/route.test.ts (12 tests) 411ms
+ ✓ packages/graph/src/join.test.ts (8 tests) 130ms
+ ✓ packages/graph/src/package-entry.test.ts (1 test) 150ms
+ ✓ packages/graph/src/nodes/branch.test.ts (4 tests) 97ms
+ ✓ packages/graph/src/functional-entry.test.ts (3 tests) 122ms
+ ✓ packages/graph/src/worker-entry.test.ts (8 tests) 54ms
+ ✓ packages/graph/src/registry.test.ts (13 tests) 42ms
+ ✓ packages/core/src/graph/artifact-git.test.ts (1 test) 39ms
+ ✓ packages/graph/src/checkpoint-codec.test.ts (21 tests) 26ms
+ ✓ packages/cli/src/graph-process-identity.test.ts (3 tests) 11ms
+ ✓ packages/graph/src/nodes/review.test.ts (2 tests) 21ms
+ ✓ packages/graph/src/nodes/tests.test.ts (1 test) 10ms
+ ✓ packages/graph/src/templates/code-delivery-v1.test.ts (7 tests) 8ms
+
+ Test Files  25 passed (25)
+      Tests  389 passed (389)
+   Start at  01:07:13
+   Duration  176.69s (transform 3.69s, setup 0ms, collect 13.97s, tests 154.30s, environment 6ms, prepare 2.54s)
+
+JSON report written to /evidence/linux-node22-final.json

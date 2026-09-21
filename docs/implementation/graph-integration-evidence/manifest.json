@@ -1,0 +1,51 @@
+{
+  "schemaVersion": 1,
+  "runtimeCodeCommit": "fec0b1826abfcc6cf1b625f01f0881f9f7caf089",
+  "status": "ci_rerun_and_independent_github_approval_pending",
+  "fullRemoteTestsPassed": 3974,
+  "explicitOptInSkips": 3,
+  "localFullDiagnostic": {
+    "passed": 3955,
+    "failed": 6,
+    "accepted": false
+  },
+  "localRecheck": {
+    "passed": 95,
+    "failed": 8,
+    "accepted": false
+  },
+  "productionChanged": false,
+  "files": {
+    "README.md": "5ba8d296809f32dfaa4da04ff627bce1e6c5fcc60e844b05e9aea4da9f8ffb3b",
+    "changeset-final.txt": "2d5506d174cacbc4110ebca63b26ae9df6eaef0a5eee89143fe82e4d4e4f8844",
+    "ci-tests-summary.txt": "99508260ed1090fa4d21a06437b7cc821e2094e2943556e04c83f8b04ce427bc",
+    "executor-delta.txt": "9b1028b2cbd8e93644d71453dbc4e13870f53c796a0f95b9332af336282f8ff7",
+    "fable-ci-prompt.txt": "ce4a9e9cfac34a156e36e01d706f0a98ba44c0b2df95e825dc833433de99245a",
+    "fable-ci-result.json": "71b27a6466b61377783859bf5b7120c2b163d1e7c87adf0d1705c6984ddbb959",
+    "fable-final-result.json": "86ffbc2910212e8ec48ebcf6315e50885cc0ad269bcc368d2756767be9ccca61",
+    "fable-result.json": "76c3c84b5d99746e60b283f3faaa3516c0d76f31115d4d9f56e8ee7328599778",
+    "final-recheck.json": "1baa10e9ebd034beb952b3bb91ee7d3db8875bcd814498fcc31d780887bc6310",
+    "full-tests.txt": "9914fc657c458b3655255491d7c3acc572d1b1b1be167fed106636b8740b27ee",
+    "installed-enabled.json": "4314245f807a0c12332583e386fe487c9131c10cb97a01182b4c5f8d21364802",
+    "installed-enabled.mjs": "326d6660139a0fc2b887c4763fd16245ec0d971c6058ecfca7c4ca9e28762ebc",
+    "installed-production-rehearsal.json": "3a2e6ca0f04e3ac5b945fe698cddccc625f18e37b6376ef1190c135f96c896be",
+    "installed-staged-smoke.json": "98e25794ddbb9ec411586be8c0db5f53627e974f1743e7a1d704b0be682c12a0",
+    "installed-staged-smoke.mjs": "13eb790de253520c6b9ae44fafaad54197e79d488958638368a7d73c98ca564e",
+    "installed-startup.txt": "f606cf380dc6f5d039b9f54b615628b6972f95e8deecd55eef9ef62c190aa8e2",
+    "inventory-final.txt": "a59b7d9a6d962ccf0d22d13d2cc0f8acbb9e3653a63cce339211a5dfb3cd56e9",
+    "lineage-final.txt": "58482d13c0e20d7262ea275c90883edfd1af024c2b014e52e7f5a0f790400c2f",
+    "lint-final.txt": "9759376546fab100ba45785bbcc541d91bd7711c7a78ee7067360b8d4cecaa90",
+    "linux-clock-jumps.json": "6f739b1e00635d8427a1e7f668a93964611bd9c4b86cc67d9a2d7d1759be05d6",
+    "linux-node22-final.json": "0bd37b907bf530b9be3ec6fbee5d0424c57473ab8d90dfc943f099301168d7e3",
+    "linux-node22-final.txt": "4262be7e47aa3e38b38227bf8add4468b638d4a8ac6b43b1af540b4d57949e54",
+    "main-migrations.sha256": "a409fe59c6f7490e7ae03e2da488c147080c622397cb589999555d26b765aa5a",
+    "node20-final-delta.json": "c1acbe76228a765ceeb2880f15f3e246b23e45faf1dc13079526376f8f24c0d8",
+    "node20-integrated.json": "c2365b7c0815efab9de48e7981663f3853f8babefe213886d16a34d286b59f2c",
+    "npm-artifacts.txt": "6448e8f0ecc79872a832b7e6e1f6cf8d2cb13ea1a5ce6b8b208f8a4383eab8dc",
+    "production-rehearsal.json": "3a2e6ca0f04e3ac5b945fe698cddccc625f18e37b6376ef1190c135f96c896be",
+    "release-plan-after.txt": "4080ad3103e2f1c214e2202a3f9fb5175de0b403a89b6ab9a8dbde7b5006c08a",
+    "release-plan-before.txt": "0ba48df6f5b8793e5f001d175acaa616c415296f28f9924592ae90b24541197e",
+    "schemas-final.txt": "72eede8bd62b3a68d3e094d4aeccda65c0b3de5a92b0843adc8530af2c2cff41",
+    "typecheck-final.txt": "4c32d9b3de16ec7ecea21b3b7c26a17a591c80334c3d87038107719b726c3669"
+  }
+}

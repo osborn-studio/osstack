@@ -4,14 +4,14 @@
 
 | 形式 | 验证/行为 |
 |---|---|
-| macOS arm64 / Node 20.6.0 | 下载官方运行时并校验 SHA256；单独编译 ABI 115 的 better-sqlite3 12.10.0，SQLite 3.53.1。294 项内核/IPC/RPC/checkpoint 测试通过；最终变更另有回归。 |
-| Linux arm64 / Node 22.23.1 | 独立磁盘上的干净安装/构建；实际 native SQLite、进程启动身份、丢失 host、held action、候选导出/恢复。最终计数见验收证据。 |
+| macOS arm64 / Node 20.6.0 | 下载官方运行时并校验 SHA256；单独编译 ABI 115 的 better-sqlite3 12.10.0，SQLite 3.53.1。294 项内核/IPC/RPC/checkpoint 测试通过；整合后的最终迁移/DB 45 项通过。 |
+| Linux arm64 / Node 22.23.1 | 独立磁盘上的干净安装/构建；实际 native SQLite、进程启动身份、丢失 host、held action、候选导出/恢复。最终 389/389 通过；专用 VM 的两套时间同步冲突已消除。 |
 | macOS arm64 / Node 26.5.0 | 全库构建、类型、测试、故障矩阵、性能及真实 DeepSeek 试点。 |
 | Node <20.6 | Graph 显式拒绝 `GRAPH_NODE_VERSION_UNSUPPORTED`；未借此提高旧命令的全库地板。 |
 | Bun 单文件 | `GRAPH_DISTRIBUTION_UNSUPPORTED`；`--version`、help、Loop doctor、graph explain 帮助仍通过；无 daemon 内嵌引擎降级。 |
 | 发布基线 @osstack/autonomy 0.17.0 | 实际从 npm tarball 调用旧 acquire：strict parser 拒绝 managed lock，新锁字节不变。更旧版本未准入共用活跃 graph home。 |
 
-pnpm 11 是构建工具，CI 在 Node 22.23.1 安装与构建，再切换 Node 20.6.0 运行 Vitest 与匹配 ABI 的 SQLite。native module 必须重新编译/安装，不能把 Node 26 二进制复制给 Node 20。CI 添加了两个版本的 Graph 验证 job；本地验证结果不冒充远端 CI 已运行。
+pnpm 11 是构建工具，CI 在 Node 22.23.1 安装与构建，再切换 Node 20.6.0 运行 Vitest 与匹配 ABI 的 SQLite。native module 必须重新编译/安装，不能把 Node 26 二进制复制给 Node 20。GitHub CI run 35550018695 中两个版本的 Graph runtime job 均通过；完整 CI 的状态另外记录，不能把矩阵通过等同于整条 CI 已完成。
 
 干净安装发现 esbuild 原先仅是间接依赖，本机残留的根 `.bin/esbuild` 掩盖了缺失。现已把锁定的 0.28.1 声明为根 devDependency，不再依赖偶然的 hoisting。
 

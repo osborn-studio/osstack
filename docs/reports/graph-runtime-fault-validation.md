@@ -24,6 +24,8 @@
 
 额外修复：`recovery_policy:reconcile` 持久锁阻止默认/显式 stale recovery；真实已发布 0.17.0 获取入口也不能夺锁。升级/回滚在停止和备份前检查未终结图与保留准入，drain 期间拒绝新图。旧 checkpoint 格式拒绝，真实 SQLite 备份重开保持未知动作和原账本。具体结果见[兼容矩阵](../implementation/graph-runtime-compatibility.md)。
 
+最终 seed 250920/250921 矩阵通过：autonomy 20、graph 21、Loop 112、agents 47、core 81、CLI 394，另重复 CLI 并发 4 次，共 679 次执行；源码与 dist 前后哈希未变。[最终矩阵与绑定哈希](../implementation/graph-upgrade-final-evidence/faults.json)保留逐文件原始结果。该结果为 main 整合前代码；整合后的迁移/环境参数变更由独立平台和全仓 CI 补充验证。
+
 ## 2026-09-15 阶段报告
 
 日期：2026-09-15。**本批是 G25 的第一阶段，G25 尚未完成；任务总进度仍为 25/30。** 本批源码 `4590fcb494e1fff991138f77c687b47fa7544c5f` 已通过本地限定验收。

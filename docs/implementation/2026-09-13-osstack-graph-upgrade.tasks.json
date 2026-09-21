@@ -1176,11 +1176,11 @@
       ],
       "verify": "FAULTS",
       "size": "M",
-      "status": "in_progress",
+      "status": "completed",
       "requiresDecisionGates": [
         "C2"
       ],
-      "progressNote": "受控恢复与持久锁保护实现完成；最终 seed 矩阵正在运行，unknown 与残留锁保留是明确边界。",
+      "progressNote": "固定 seed 250920/250921 最终679次通过；F01–F12限定受控恢复和保留未知结果边界已验收。",
       "evidence": [
         "docs/reports/graph-runtime-fault-validation.md",
         "docs/implementation/2026-09-15-graph-fault-next-context.md",
@@ -1225,25 +1225,25 @@
         "docs/reports/graph-bounded-recovery-validation.md",
         "docs/implementation/2026-09-20-graph-bounded-recovery-next-context.md",
         "docs/implementation/graph-bounded-recovery-evidence/admission.json",
-        "docs/reports/graph-upgrade-completion.md"
+        "docs/reports/graph-upgrade-completion.md",
+        "docs/implementation/graph-integration-evidence/README.md"
       ],
-      "remainingSlices": [
-        "G25-C2",
-        "G25-D"
-      ],
+      "remainingSlices": [],
       "completedSlices": [
         "G25-A",
         "G25-C1",
         "G25-B1",
         "G25-B2",
         "G25-B",
-        "G25-C2-bounded-writer"
+        "G25-C2-bounded-writer",
+        "G25-C2",
+        "G25-D"
       ],
       "sliceStatus": {
         "G25-B1": "completed",
         "G25-B2": "completed_bounded_live_pilot",
         "G25-B": "completed_bounded_scope",
-        "G25-C2": "in_progress_bounded_writer_recovery_accepted"
+        "G25-C2": "completed_bounded_scope"
       }
     },
     {
@@ -1269,15 +1269,16 @@
       ],
       "verify": "COMPAT",
       "size": "M",
-      "status": "in_progress",
+      "status": "completed",
       "requiresDecisionGates": [
         "C2"
       ],
-      "progressNote": "SQLite backup/reopen、禁用准入保留旧操作、真实 foreground Loop 锁、drain 与 upgrade guard 通过回归；待联合验收和最新 main 回归。",
+      "progressNote": "最新main迁移28–37整合、旧模式、禁用准入、备份、旧锁和回滚守卫回归通过；纯/混合试验DB显式拒绝。",
       "evidence": [
         "docs/reports/graph-admission-unblock-validation.md",
         "docs/reports/graph-public-reconcile-validation.md",
-        "docs/reports/graph-upgrade-completion.md"
+        "docs/reports/graph-upgrade-completion.md",
+        "docs/implementation/graph-integration-evidence/README.md"
       ]
     },
     {
@@ -1301,13 +1302,14 @@
       ],
       "verify": "RELEASE",
       "size": "M",
-      "status": "in_progress",
+      "status": "completed",
       "requiresDecisionGates": [
         "C2"
       ],
-      "progressNote": "Node20.6 294项及最终25项通过；实际 Linux366项中363通过3超时，待复核；明确 Bun graph 不支持。",
+      "progressNote": "Node20.6最终45项迁移回归、Linux22.23.1最终389项、GitHub两版本runtime jobs及安装包关闭准入演练通过；Bun Graph仍明确拒绝。",
       "evidence": [
-        "docs/reports/graph-upgrade-completion.md"
+        "docs/reports/graph-upgrade-completion.md",
+        "docs/implementation/graph-integration-evidence/README.md"
       ]
     },
     {
@@ -1331,13 +1333,14 @@
       ],
       "verify": "PERF",
       "size": "M",
-      "status": "in_progress",
+      "status": "completed",
       "requiresDecisionGates": [
         "C2"
       ],
-      "progressNote": "真实仓库 freeze 179秒降至13秒；首轮预算与重引擎隔离通过，最终31MiB fingerprint压力测量待收口。",
+      "progressNote": "最终RPC p95 1.452ms、Loop开销0.460866%、31MiB fingerprint p95 21.267ms，未提高性能预算。",
       "evidence": [
-        "docs/reports/graph-upgrade-completion.md"
+        "docs/reports/graph-upgrade-completion.md",
+        "docs/implementation/graph-integration-evidence/README.md"
       ]
     },
     {
@@ -1364,7 +1367,7 @@
       "requiresDecisionGates": [
         "C2"
       ],
-      "progressNote": "DeepSeek实际OSStack代码任务ready、负对照拒绝、取消保留unknown/预算，手册已写；等待依赖门槛后宣布beta。",
+      "progressNote": "真实DeepSeek试点、负对照、取消unknown和手册已完成；等待最终发布检查、最新推送独立审批、合并及分阶段部署收口。",
       "evidence": [
         "docs/reports/graph-upgrade-completion.md"
       ]
@@ -1374,14 +1377,10 @@
   "implementation": {
     "branch": "codex/graph-runtime-foundation",
     "worktree": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation",
-    "acceptedCodeCommit": "90119134c06a84a6e83bf0670c3c3142c81c8c29",
-    "completedTaskCount": 25,
+    "acceptedCodeCommit": "fec0b1826abfcc6cf1b625f01f0881f9f7caf089",
+    "completedTaskCount": 29,
     "totalTaskCount": 30,
     "nextTasks": [
-      "G25",
-      "G26",
-      "G27",
-      "G28",
       "G29"
     ],
     "report": "docs/reports/graph-upgrade-completion.md",
@@ -1392,7 +1391,7 @@
       "M2": "completed",
       "M3": "in_progress"
     },
-    "reviewNote": "真实内部试点通过；22 包 3727 测试与四项 verifier 通过；Fable 独立复审 accept。剩余为最终故障矩阵、Linux 3 超时排查、最终压力性能、main 集成/CI与人工审批，先提交 Draft PR，未宣告30/30。",
+    "reviewNote": "main整合已推送，Fable独立审查accept。最终故障/性能/平台及GitHub全仓测试通过；整条CI发布smoke、最终GitHub审批与分阶段部署待收口。",
     "slicePlan": "docs/reports/graph-upgrade-completion.md"
   },
   "decisionGates": [
