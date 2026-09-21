@@ -31,15 +31,15 @@ surface that makes AI coding work visible and auditable.
 
 | Area | Status |
 |---|---|
-| npm package | Published: `@osstack/cli@0.19.0` |
-| GitHub release | npm packages: `@osstack/cli@0.19.0`; latest single binary: [`v0.8.1`](https://github.com/osborn-studio/osstack/releases/tag/v0.8.1) |
+| npm package | Release target: `@osstack/cli@0.20.0`; verify availability with `npm view @osstack/cli version` |
+| GitHub release | npm release target: `@osstack/cli@0.20.0`; latest single binary: [`v0.8.1`](https://github.com/osborn-studio/osstack/releases/tag/v0.8.1) |
 | macOS single binary | Published as explicit `public-ad-hoc` archive for `darwin-arm64` |
 | Knowledge Cloud | Live on EdgeOne: `https://osstack-knowledge-cloud-1grycf4k.edgeone.cool` |
-| Probe | CLI lifecycle shipped in `@osstack/cli@0.19.0`; report-only is gate behavior, not a background job. The two-week real-use checkpoint remains open. |
+| Probe | CLI lifecycle shipped in CLI 0.19.0; report-only is gate behavior, not a background job. The two-week real-use checkpoint remains open. |
 | License | MIT |
 | Monorepo | 22 workspace packages |
 
-**Release boundary (verified 2026-09-21):** npm latest is still `@osstack/cli@0.19.0`; `@osstack/graph` is not yet publicly published. Executable Graph below refers to main/source and internal Node installations, not a completed public Graph release. Check `osstack graph --help` before use. See the source installation below.
+**Release boundary:** This tree targets 0.20.0. At the 2026-09-21 pre-publication check, npm latest was CLI 0.19.0 and the graph package was absent. A version commit is not publication: verify the registry and GitHub release before treating 0.20.0 as available. Graph remains an internal beta with the execution limits below, even after npm publication.
 
 ## Current Capability Map
 
@@ -143,10 +143,10 @@ osstack --version
 osstack doctor --workspace .
 ```
 
-Expected:
+Expected for the 0.20.0 source build, or npm after publication:
 
 ```text
-osstack 0.19.0
+osstack 0.20.0
 ```
 
 ### macOS Single-Binary Archive
