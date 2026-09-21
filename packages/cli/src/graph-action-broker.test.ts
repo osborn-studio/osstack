@@ -282,3 +282,17 @@ it("does not discharge an arbitrary acquisition rejection without canonical clea
   await broker.handle(f.connection, f.request);
   expect(f.db.prepare('SELECT count(*) n FROM graph_action_admissions').get()).toEqual({ n: 0 });
 });
+
+it('refuses an expired returned lease before publishing admission or invoking an adapter', async () => {
+  let calls = 0, released = false;
+  const f = fixture(actor(async function* (task) { calls++; yield done(task); }));
+  const broker = new GraphActionBroker(f.db, { acquire: async () => ({
+    assertActive: async () => { throw Error('expired at acquire continuation'); },
+    retain: () => {}, release: async () => { released = true; },
+  }) });
+  broker.register(f.connection, f.registration);
+  await broker.handle(f.connection, f.request);
+  expect(calls).toBe(0); expect(released).toBe(true);
+  expect(f.db.prepare('SELECT count(*) n FROM graph_action_admissions').get()).toEqual({ n: 0 });
+  expect(f.db.prepare('SELECT state,execution_ref FROM graph_actions').get()).toEqual({ state: 'failed', execution_ref: null });
+});

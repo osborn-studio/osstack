@@ -333,6 +333,9 @@ export class GraphActionBroker {
       owned = intent.action;
       lease = await this.options.acquire({ kind: action.access, runId: `graph-action:${owned.effectKey}`, workspacePath: action.workspace.workspace_path,
         signal, onNotAcquired: () => { notAcquired = true; }, authorize: async () => { check(); await this.options.authorizePolicy?.(action.workspace.workspace_path); check(); } });
+      // The acquire continuation can itself be delayed by another branch.
+      // Do not publish durable admission for ownership that has already expired.
+      await lease.assertActive?.(); check();
       this.admissions.hold(owned.effectKey, this.options.now?.() ?? Date.now());
       check();
       // This synchronous gate runs inside the actual adapter invoke/command/host

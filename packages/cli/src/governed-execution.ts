@@ -72,6 +72,25 @@ export class GovernedExecution {
       this.activeRuns.delete(input.runId);
       if (scope && queue?.in_use === 0 && queue.pending === 0) this.options.repositories.delete(scope.repoId);
     };
+    let released = false;
+    let retained = false;
+    // Start as soon as the filesystem lock exists, including the final policy
+    // wait. Once admitted, a renewal failure retains the unknown producer.
+    let renewing: Promise<void> = Promise.resolve();
+    let timer: ReturnType<typeof setInterval> | undefined;
+    const startRenewal = () => {
+      timer = setInterval(() => {
+        renewing = renewing.then(async () => {
+          if (!released) await lock!.renew();
+        }).catch((error: unknown) => {
+          retained = true;
+          if (scope) this.quarantine(scope.repoId, input.runId);
+          process.stderr.write(`repository lease renewal failed; retained ${input.runId}: ${String(error)}\n`);
+          if (timer) clearInterval(timer);
+        });
+      }, 20_000);
+      timer.unref();
+    };
     try {
       if (input.kind === 'write' && scope) {
         queue = this.options.repositories.get(scope.repoId) ?? new FifoSemaphore(1);
@@ -83,32 +102,35 @@ export class GovernedExecution {
         // A failed filesystem acquisition may have left an ownership obligation.
         cleanup.confirmed = false;
         lock = await acquireRepoWriteLock({ root_dir: join(scope.commonDir, "osstack", "writer-locks"), recover_stale: false, repo_id: scope.repoId, autonomy_run_id: input.runId });
+        // Authorization may wait behind another branch's synchronous work.
+        // Start ownership renewal before that wait, not after publishing admission.
+        startRenewal();
       }
       if (input.kind === "write" && scope && this.quarantinedRepositories.has(scope.repoId)) throw new Error("repository external stop unconfirmed; reconciliation required");
       await check();
+      await renewing;
+      if (retained) throw new Error("repository lease renewal failed during admission");
+      await lock?.assertActive();
+      if (retained) throw new Error("repository lease renewal failed during admission");
+      if (input.signal?.aborted) throw new SemaphoreAcquireAbortedError();
     } catch (error) {
+      if (timer) clearInterval(timer);
+      await renewing;
       try {
         await lock?.release();
         if (lock) cleanup.confirmed = true;
+        // No executor was admitted. Remove only this rejected acquisition's quarantine.
+        if (scope) {
+          const owners = this.quarantinedRepositories.get(scope.repoId);
+          owners?.delete(input.runId);
+          if (owners?.size === 0) this.quarantinedRepositories.delete(scope.repoId);
+        }
+      } catch (releaseError) {
+        if (scope) this.quarantine(scope.repoId, input.runId);
+        throw new AggregateError([error, releaseError], 'admission rejected and ownership cleanup failed');
       } finally { releasePermits(); }
       throw error;
     }
-    let released = false;
-    let retained = false;
-    // A renewal failure quarantines this repository. Its unknown producer still
-    // consumes write capacity, while unrelated reads remain available.
-    let renewing: Promise<void> = Promise.resolve();
-    const timer = lock === undefined ? undefined : setInterval(() => {
-      renewing = renewing.then(async () => {
-        if (!released) await lock!.renew();
-      }).catch((error: unknown) => {
-        retained = true;
-        if (scope) this.quarantine(scope.repoId, input.runId);
-        process.stderr.write(`repository lease renewal failed; retained ${input.runId}: ${String(error)}\n`);
-        if (timer) clearInterval(timer);
-      });
-    }, 20_000);
-    timer?.unref();
     let reconciled: Promise<void> | undefined;
     return {
       assertActive: async () => {

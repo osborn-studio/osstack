@@ -1,9 +1,12 @@
+import { randomUUID } from 'node:crypto';
+import { writeFileSync } from 'node:fs';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { execFileSync } from 'node:child_process';
-import { afterEach, expect, it } from 'vitest';
-import { FifoSemaphore } from '@osstack/autonomy';
+import { afterEach, expect, it, vi } from 'vitest';
+import { FifoSemaphore, inspectRepoWriteLock, repoLockPath } from '@osstack/autonomy';
+import { resolveRepositoryScope } from '@osstack/core';
 import { GovernedExecution } from './governed-execution.js';
 const roots: string[] = [];
 async function fixture() {
@@ -18,7 +21,7 @@ async function fixture() {
     repositories, checkHealth: async () => { if (!allowed) throw new Error('health revoked'); } });
   return { admission, repo, other, writes, repositories, revoke: () => { allowed = false; } };
 }
-afterEach(async () => { await Promise.all(roots.splice(0).map(root => rm(root, { recursive: true, force: true }))); });
+afterEach(async () => { vi.useRealTimers(); vi.restoreAllMocks(); await Promise.all(roots.splice(0).map(root => rm(root, { recursive: true, force: true }))); });
 it('canonicalizes worktrees and rechecks health after queueing without leaking permits', async () => {
   const f = await fixture();
   const lease = await f.admission.acquire({ kind: 'write', runId: 'one', workspacePath: f.repo });
@@ -102,4 +105,71 @@ it('attests rejected acquisition cleanup but never attests an existing run is ab
   f.revoke();
   await expect(f.admission.acquire({ kind: 'write', runId: 'two', workspacePath: f.repo, onNotAcquired: () => { proof = true; } })).rejects.toThrow('health revoked');
   expect(proof).toBe(true); expect(f.writes.in_use).toBe(0);
+});
+
+it('renews the real repository lock during slow post-acquisition authorization', async () => {
+  const f = await fixture(); const scope = await resolveRepositoryScope(f.repo);
+  const lockRoot = join(scope.commonDir, 'osstack', 'writer-locks');
+  vi.useFakeTimers({ toFake: ['Date'] });
+  const initial = Date.now(); let tick: (() => void) | undefined;
+  const interval = globalThis.setInterval;
+  vi.spyOn(globalThis, 'setInterval').mockImplementation((callback, timeout, ...args) => {
+    if (timeout === 20_000) tick = callback as () => void;
+    return interval(callback, timeout, ...args);
+  });
+  let checks = 0;
+  const lease = await f.admission.acquire({ kind: 'write', runId: 'slow-authority', workspacePath: f.repo,
+    authorize: async () => {
+      if (++checks !== 2) return;
+      const before = await inspectRepoWriteLock(lockRoot, scope.repoId);
+      expect(before).not.toBeNull();
+      vi.setSystemTime(initial + 41_000);
+      expect(tick, 'renewal must already be running while authorization waits').toBeTypeOf('function');
+      tick!();
+      await expect.poll(async () => (await inspectRepoWriteLock(lockRoot, scope.repoId))?.expires_at).not.toBe(before!.expires_at);
+    } });
+  try {
+    vi.setSystemTime(initial + 65_000);
+    await expect(lease.assertActive!()).resolves.toBeUndefined();
+  } finally { await lease.release(); }
+  expect(f.writes.in_use).toBe(0);
+});
+
+
+it.each(['revoked', 'expired', 'aborted'] as const)('does not publish admission after slow authority is %s', async mode => {
+  const f = await fixture(); const scope = await resolveRepositoryScope(f.repo);
+  const lockRoot = join(scope.commonDir, 'osstack', 'writer-locks');
+  const clear = vi.spyOn(globalThis, 'clearInterval');
+  vi.useFakeTimers({ toFake: ['Date'] });
+  const initial = Date.now(); const abort = new AbortController(); let checks = 0, notAcquired = false;
+  await expect(f.admission.acquire({ kind: 'write', runId: 'rejected', workspacePath: f.repo, signal: abort.signal,
+    onNotAcquired: () => { notAcquired = true; }, authorize: async () => {
+      if (++checks !== 2) return;
+      expect(await inspectRepoWriteLock(lockRoot, scope.repoId)).not.toBeNull();
+      vi.setSystemTime(initial + (mode === 'expired' ? 61_000 : 41_000));
+      if (mode === 'revoked') throw Error('grant revoked');
+      if (mode === 'aborted') abort.abort();
+    } })).rejects.toThrow();
+  expect(notAcquired).toBe(true); expect(clear).toHaveBeenCalled();
+  expect(f.writes.in_use).toBe(0); expect(await inspectRepoWriteLock(lockRoot, scope.repoId)).toBeNull();
+  const next = await f.admission.acquire({ kind: 'write', runId: 'after', workspacePath: f.repo });
+  await next.release();
+});
+
+
+it('preserves both admission and cleanup errors and quarantines a replaced pre-admission lock', async () => {
+  const f = await fixture(); const scope = await resolveRepositoryScope(f.repo);
+  const root = join(scope.commonDir, 'osstack', 'writer-locks'); let checks = 0, notAcquired = false;
+  const token = randomUUID();
+  const attempt = f.admission.acquire({ kind: 'write', runId: 'replaced', workspacePath: f.repo,
+    onNotAcquired: () => { notAcquired = true; }, authorize: async () => {
+      if (++checks !== 2) return;
+      const owner = await inspectRepoWriteLock(root, scope.repoId);
+      writeFileSync(repoLockPath(root, scope.repoId), JSON.stringify({ ...owner, token }));
+      throw Error('grant revoked');
+    } });
+  await expect(attempt).rejects.toMatchObject({ name: 'AggregateError', errors: [expect.objectContaining({ message: 'grant revoked' }), expect.any(Error)] });
+  expect(notAcquired).toBe(false); expect(f.writes.in_use).toBe(0);
+  expect((await inspectRepoWriteLock(root, scope.repoId))?.token).toBe(token);
+  await expect(f.admission.acquire({ kind: 'write', runId: 'next', workspacePath: f.repo })).rejects.toThrow('reconciliation required');
 });
