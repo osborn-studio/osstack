@@ -24,7 +24,7 @@ function reviewAdapter(summary: () => string): GraphVerificationOptions['reviewe
 const close: Array<() => void> = [];
 afterEach(() => { for (const fn of close.splice(0)) fn(); });
 import { computeGraphEffectKey } from '@osstack/protocol';
-import { prepareGraphVerification, loadGraphVerificationEvidence, type GraphVerificationOptions } from './graph-verification.js';
+import { prepareGraphVerification, prepareGraphVerificationBranch, loadGraphVerificationEvidence, type GraphVerificationOptions } from './graph-verification.js';
 const git = (cwd: string, ...args: string[]) => execFileSync('git', args, { cwd, encoding: 'utf8' }).trim();
 async function fixture() {
   const root = await realpath(await mkdtemp(join(tmpdir(), 'g19-'))); const repo = join(root, 'source'); await mkdir(repo);
@@ -76,7 +76,9 @@ it('persists actual stopped exit evidence and rejects tampering/replay', async (
 it('keeps unknown stop separate from stopped malformed review and valid changes_requested', async () => {
   const f = await fixture(); let summary = 'garbage';
   f.options.reviewer.adapter.invoke = reviewAdapter(() => summary);
-  const p = await prepareGraphVerification(f.options); const review = p.actions[0]!;
+  // Only the review branch participates in these three persistence outcomes.
+  // Two-branch isolation and concurrency have separate real-workspace tests.
+  const p = await prepareGraphVerificationBranch(f.options, 'review'); const review = p.actions[0]!;
   await expect(review.persist({ status: 'completed' })).rejects.toThrow(/stop/);
   const raw = await invokeReview(review);
   const malformed = await review.persist(raw);

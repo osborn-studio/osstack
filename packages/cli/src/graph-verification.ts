@@ -55,6 +55,14 @@ function gitRaw(path: string, ...args: string[]): string {
     env: { ...env, GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOSYSTEM: '1', GIT_OPTIONAL_LOCKS: '0' } });
 }
 function git(path: string, ...args: string[]) { return gitRaw(path, ...args).trim(); }
+/** One subprocess per observation; never cache across authority/preimage checks.
+ * This is not an atomic filesystem snapshot: the caller still compares all evidence. */
+export function readCandidateRevisions(readGit: (...args: string[]) => string): Pick<CandidateIdentity, 'head' | 'tree'> {
+  const [head, tree, ...extra] = readGit('rev-parse', 'HEAD', 'HEAD^{tree}').split(/\r?\n/);
+  const revision = /^(?:[a-f0-9]{40}|[a-f0-9]{64})$/;
+  if (!head || !tree || extra.length || !revision.test(head) || !revision.test(tree)) throw Error('CANDIDATE_REVISIONS_INVALID');
+  return { head, tree };
+}
 /** Raw bytes/modes/links, including ignored and untracked files. Git status alone
  * misses ignored files, assume-unchanged and timestamp-preserving modifications. */
 function workspaceFingerprint(path: string): string {
@@ -222,7 +230,7 @@ async function prepareSelection(options: GraphVerificationOptions, kinds: readon
     };
     const candidateIdentity = (): CandidateIdentity => ({
       repositoryDigest: createHash('sha256').update(repositoryStamp(workspace.workspace_path)).digest('hex'),
-      head: git(workspace.workspace_path, 'rev-parse', 'HEAD'), tree: git(workspace.workspace_path, 'rev-parse', 'HEAD^{tree}'),
+      ...readCandidateRevisions((...args) => git(workspace.workspace_path, ...args)),
       indexTree: git(workspace.workspace_path, 'write-tree'), indexDigest: createHash('sha256').update(gitRaw(workspace.workspace_path, 'ls-files', '--stage', '-v', '-z')).digest('hex'), trackedDigest: trackedFingerprint(),
       ...(kind === 'tests' && containedImage ? { containedContentDigest: containedImage.contentDigest } : {}),
       ...(kind === 'review' ? { inventoryDigest: workspaceFingerprint(workspace.workspace_path) } : {}),
