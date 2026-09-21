@@ -1,6 +1,6 @@
 # OSStack：按任务选命令
 
-[返回 README](../../README.zh.md) · [Graph 完整参数](graph-quickstart.md) · [生成的顶层命令清单](../inventory/CLI_COMMANDS.md)
+[English](command-reference.en.md) · [返回 README](../../README.zh.md) · [Graph 完整参数](graph-quickstart.md) · [生成的顶层命令清单](../inventory/CLI_COMMANDS.md)
 
 本页是常用参数导航，完整选项以当前安装的 `osstack --help`、`osstack <command> --help` 为准。main、npm、内部安装和单文件渠道可能不同；源码 CLI 一律设置独立 OSSTACK_HOME。
 

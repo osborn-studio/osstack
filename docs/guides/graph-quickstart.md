@@ -1,6 +1,6 @@
 # Graph Engineering：从配置到候选结果
 
-[返回中文 README](../../README.zh.md#graph-engineering) · [English overview](../../README.md#graph-engineering) · [运维与恢复](../runbooks/graph-runtime.md)
+[English](graph-quickstart.en.md) · [返回中文 README](../../README.zh.md#graph-engineering) · [English overview](../../README.md#graph-engineering) · [运维与恢复](../runbooks/graph-runtime.md)
 
 本手册对应 main 的内部 beta。2026-09-21 查询 npm：CLI latest 为 0.19.0，Graph 包尚未公开发布。先使用从当前源码构建的 Node CLI，或已核验提交的内部 Node 安装。不要根据相同的 `--version` 推断内部构建一致。
 

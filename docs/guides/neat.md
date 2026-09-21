@@ -6,7 +6,7 @@ obligations, event history, and improvement proposals. Mechanical checks never
 use a model to invent findings or rewrite prose. Semantic calls, state writes,
 and repository edits require their own explicit command and safety gate.
 
-For a practical end-of-task workflow, see [任务收尾：检查、文档更新与提交](task-closeout.md).
+For a practical end-of-task workflow, see [task closeout](task-closeout.en.md) / [中文](task-closeout.md).
 
 ## Quick start
 

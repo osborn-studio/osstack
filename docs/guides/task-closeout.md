@@ -1,6 +1,6 @@
 # 任务结束后：用 neat 检查，再整理文档和交付
 
-[返回 README](../../README.zh.md#知识卫生neat) · [neat 完整指南](neat.md) · [常用命令](command-reference.md)
+[English](task-closeout.en.md) · [返回 README](../../README.zh.md#知识卫生neat) · [neat 完整指南](neat.md) · [常用命令](command-reference.md)
 
 可以把 neat 放在每轮开发收尾中。它负责检查知识与文档卫生，不能独自完成代码变更总结、产品说明更新和 GitHub 发布。目前没有一条 `osstack neat` 命令可以自动完成这些步骤。
 

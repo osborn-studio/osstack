@@ -23,9 +23,9 @@ surface that makes AI coding work visible and auditable.
 ## Start Here
 
 - [Graph Engineering](#graph-engineering): execution flow, supported scope and commands.
-- [Graph walkthrough and parameters (中文)](docs/guides/graph-quickstart.md): configuration, validation, execution, results and recovery.
+- [Graph walkthrough and parameters](docs/guides/graph-quickstart.en.md): configuration, validation, execution, results and recovery.
 - [Capability map](#current-capability-map) · [Install](#install) · [Main commands](#main-commands).
-- [Task-oriented command reference (中文)](docs/guides/command-reference.md) · [Top-level command inventory](docs/inventory/CLI_COMMANDS.md).
+- [Task-oriented command reference](docs/guides/command-reference.en.md) · [Top-level command inventory](docs/inventory/CLI_COMMANDS.md).
 
 ## Current Status
 
@@ -272,7 +272,7 @@ The current internal beta supports the fixed `code-delivery-v1` template, parall
 
 This is not yet an arbitrary DAG editor. Existing Loop adapters do not automatically qualify as Graph executors. `artifact_only` does not push, create PRs, merge or deploy; `ready` means candidate acceptance, not production deployment. Bun single binaries cannot execute Graph.
 
-Configure an isolated authorized daemon using the [complete walkthrough (中文)](docs/guides/graph-quickstart.md), then use:
+Configure an isolated authorized daemon using the [complete walkthrough](docs/guides/graph-quickstart.en.md), then use:
 
 ```sh
 osstack graph validate --spec /absolute/spec.json --json
@@ -284,7 +284,7 @@ osstack graph reconcile --request /absolute/cancel.json --json
 osstack graph resume --request /absolute/resume.json --json
 ```
 
-Request files use strict v1 schemas, explicit scope and idempotency keys. Submission is not completion: inspect `status`, then `result`. Exit code `2` means delivery is unknown; retry the identical request. See the [runtime guide](docs/guides/graph-runtime.md), [walkthrough and parameter reference](docs/guides/graph-quickstart.md), and [operator runbook](docs/runbooks/graph-runtime.md).
+Request files use strict v1 schemas, explicit scope and idempotency keys. Submission is not completion: inspect `status`, then `result`. Exit code `2` means delivery is unknown; retry the identical request. See the [runtime guide](docs/guides/graph-runtime.md), [walkthrough and parameter reference](docs/guides/graph-quickstart.en.md), and [operator runbook](docs/runbooks/graph-runtime.md).
 
 ## Main Commands
 
@@ -512,7 +512,7 @@ Use neat at task completion to check references, instruction surfaces, knowledge
 - Whole repository: `osstack neat check --all --json --fail-on none` (no change-contract evaluation).
 - Successful Loop: add `--neat-finalize` for non-gating audit evidence, not automatic remediation.
 
-See the [task closeout workflow (中文)](docs/guides/task-closeout.md) and [complete neat guide](docs/guides/neat.md).
+See the [task closeout workflow](docs/guides/task-closeout.en.md) and [complete neat guide](docs/guides/neat.md).
 
 ```bash
 # Current worktree; report findings without changing the exit status.
