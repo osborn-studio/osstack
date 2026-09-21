@@ -77,14 +77,23 @@ function workspaceFingerprint(path: string): string {
   };
   visit(path, ''); return hash.digest('hex');
 }
-function assertExactCandidateFiles(path: string, revision: string): void {
+export function assertExactCandidateFiles(path: string, revision: string): void {
   const expected = new Set<string>();
   for (const entry of gitRaw(path, 'ls-tree', '-rz', '--full-tree', revision).split('\0').filter(Boolean)) {
     const match = /^(100644|100755|120000) blob ([a-f0-9]{40})\t([\s\S]+)$/.exec(entry);
     if (!match) throw new Error('unsupported candidate tree entry');
-    const name = match[3]!; expected.add(name);
+    const name = match[3]!;
+    if (isAbsolute(name) || name.split('/').some(part => !part || part === '.' || part === '..' || part === '.git')) throw new Error('unsafe candidate tree path');
+    expected.add(name);
     let parent = dirname(name); while (parent !== '.') { expected.add(parent); parent = dirname(parent); }
-    const file = join(path, name); const stat = lstatSync(file);
+    const file = join(path, name);
+    parent = dirname(file);
+    while (parent !== path) {
+      if (!lstatSync(parent).isDirectory() || lstatSync(parent).isSymbolicLink()) throw new Error('candidate tracked parent changed');
+      parent = dirname(parent);
+    }
+    const stat = lstatSync(file);
+    if (stat.nlink !== 1 || stat.size > 256 * 1024 * 1024) throw new Error('unsupported tracked entry');
     const bytes = match[1] === '120000' && stat.isSymbolicLink() ? Buffer.from(readlinkSync(file))
       : match[1] !== '120000' && stat.isFile() ? readFileSync(file) : undefined;
     if (!bytes || (match[1] !== '120000' && ((stat.mode & 0o111) !== 0) !== (match[1] === '100755'))
