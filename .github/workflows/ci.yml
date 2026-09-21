@@ -21,12 +21,19 @@ concurrency:
 
 jobs:
   check:
+    needs: graph-macos-fixtures
+    if: ${{ always() }}
     runs-on: ubuntu-latest
     # The integrated full suite takes ~14 minutes before the existing package
     # install / release smokes. Keep their verification, and budget the whole
     # job separately from unchanged per-test and startup latency limits.
     timeout-minutes: 35
     steps:
+      - name: Require macOS Graph fixture success
+        env:
+          MACOS_GRAPH_RESULT: ${{ needs.graph-macos-fixtures.result }}
+        run: test "$MACOS_GRAPH_RESULT" = success
+
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
@@ -230,6 +237,28 @@ jobs:
           DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
           OSSTACK_NEAT_DEEPSEEK_MODEL: ${{ vars.OSSTACK_NEAT_DEEPSEEK_MODEL }}
         run: node scripts/smoke-neat-semantic-live.mjs --provider deepseek-no-tools
+
+  graph-macos-fixtures:
+    runs-on: macos-14
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @osstack/cli... build
+      # /tmp is an alias on macOS. Fixtures must canonicalize their roots;
+      # production path-identity guards must continue rejecting substitutions.
+      - name: Graph fixtures through macOS temporary-path alias
+        env:
+          TMPDIR: /tmp
+          OSSTACK_HOME: ${{ runner.temp }}/graph-macos-fixtures-home
+        run: pnpm --filter @osstack/cli exec vitest run src/graph-action-freeze.test.ts src/graph-contained-recovery.test.ts --maxWorkers=1
 
   graph-runtime-matrix:
     runs-on: ubuntu-latest

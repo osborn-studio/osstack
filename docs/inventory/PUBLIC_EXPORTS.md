@@ -133,6 +133,7 @@ export { GraphRunStore, GraphRunStorageError } from "./state/graph-runs.js";
 export { GraphActionStore, GraphActionStorageError } from "./state/graph-actions.js";
 export type {
 export type {
+export { readRepositoryGit } from "./graph/repository-git.js";
 export { resolveRepositoryScope } from "./graph/repository-scope.js";
 export type { RepositoryScope } from "./graph/repository-scope.js";
 export { GraphCheckpointStore } from './state/graph-checkpoints.js';

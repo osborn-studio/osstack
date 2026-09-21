@@ -197,11 +197,16 @@ async function childWriter(repoId = "shared", options: {
   const id = fixtureId++;
   const modulePath = join(directory, `lock-impl-${id}.mjs`);
   await writeFile(modulePath, compiled);
+  const gitSource = await readFile(new URL("../../core/src/graph/repository-git.ts", import.meta.url), "utf8");
+  const gitPath = join(directory, `repository-git-${id}.mjs`);
+  await writeFile(gitPath, ts.transpileModule(gitSource, { compilerOptions: {
+    target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ES2022,
+  } }).outputText);
   const scopeSource = await readFile(new URL("../../core/src/graph/repository-scope.ts", import.meta.url), "utf8");
   const scopePath = join(directory, `scope-${id}.mjs`);
   await writeFile(scopePath, ts.transpileModule(scopeSource, { compilerOptions: {
     target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ES2022,
-  } }).outputText);
+  } }).outputText.replace('from "./repository-git.js"', `from ${JSON.stringify(pathToFileURL(gitPath).href)}`));
   const driver = join(directory, `driver-${id}.mjs`);
   await writeFile(driver, `import { acquireRepoWriteLock } from ${JSON.stringify(pathToFileURL(modulePath).href)};
     import { resolveRepositoryScope } from ${JSON.stringify(pathToFileURL(scopePath).href)};

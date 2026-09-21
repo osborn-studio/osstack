@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, rmSync, readFileSync, writeFileSync, openSync, closeSync, fsyncSync } from 'node:fs';
+import { mkdtempSync, realpathSync, rmSync, readFileSync, writeFileSync, openSync, closeSync, fsyncSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { afterEach, expect, it } from 'vitest';
@@ -13,7 +13,7 @@ import { GovernedExecution } from './governed-execution.js';
 const cleanups: Array<() => void> = [];
 afterEach(() => { for (const f of cleanups.splice(0).reverse()) f(); });
 it('freezes a real confirmed implementation under the same shared admission into a verified artifact', async () => {
-  const root = mkdtempSync(join(tmpdir(), 'gfz-')); cleanups.push(() => rmSync(root, { recursive: true, force: true }));
+  const root = realpathSync(mkdtempSync(join(tmpdir(), 'gfz-'))); cleanups.push(() => rmSync(root, { recursive: true, force: true }));
   const repo = join(root, 'repo'); execFileSync('git', ['init', '-q', repo]);
   writeFileSync(join(repo, 'file.txt'), 'before\n');
   execFileSync('git', ['-C', repo, 'add', '.']);
@@ -56,4 +56,5 @@ it('freezes a real confirmed implementation under the same shared admission into
   const verified = await artifacts.verify(result.outcome.result.artifactDigest); expect(verified.candidateRevision).toBe(result.outcome.result.candidateRevision);
   expect(execFileSync('git', ['-C', repo, 'rev-parse', 'HEAD'], { encoding: 'utf8' }).trim()).toBe(base);
   expect(await invoke(1)).toEqual({ ...result, requestId: 'request-1' }); expect(writes.in_use).toBe(0);
-});
+// Real Git, filesystem durability and both broker actions share this test budget.
+}, 15_000);

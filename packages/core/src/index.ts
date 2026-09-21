@@ -30,6 +30,7 @@ export type {
   GraphRunFence, GraphLeaseAcquisition, GraphLeaseRenewal, GraphRunProjection,
   GraphRun, GraphRunStorageErrorCode,
 } from "./state/graph-runs.js";
+export { readRepositoryGit } from "./graph/repository-git.js";
 export { resolveRepositoryScope } from "./graph/repository-scope.js";
 export type { RepositoryScope } from "./graph/repository-scope.js";
 export { GraphCheckpointStore } from './state/graph-checkpoints.js';

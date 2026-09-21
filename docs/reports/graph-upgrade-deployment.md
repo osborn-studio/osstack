@@ -1,6 +1,22 @@
-# OSStack PR #225 部署记录 — 2026-09-20
+# OSStack Graph 部署记录 — 2026-09-21
 
-**已合并并完成关闭 Graph 新准入的部署；内部启用验收未通过，G29 仍在进行，29/30。**
+**当前仍为 29/30：PR #226 已独立审批、合并并部署；新准入关闭。历史运行安全恢复完成，但新生产试点在测试启动前被权限检查拒绝，G29 尚未完成。**
+
+## 2026-09-21 实际操作
+
+- PR #226 最终 head `ecb290a5ffe12d3095f01ead7098696add380402` 获 `gilberthello` 审批，合并 SHA `e6f0658efeef3074e8524ee24b1157ae9e17e3c7`；两个提交的源码 tree 均为 `60bdf4eb742ea653640691583956ecab244f6070`。已验收的 19 个 tarball 安装到 `/Users/osborn/.local/share/osstack/releases/e6f0658`，实际 daemon 进程路径与全局 shim 均核实。
+- 新安装声明 `stable-serving`、允许实际 home、schema 37。维护入口先只读检查，再建立 SQLite 一致性备份并通过既有权限恢复旧运行 `0b20f90b-1174-44ca-b237-15a0972ab3f5`。结果为 `cancelled`，所有动作记录不变、原费用 1832 tokens 保留、`upgradeHolds=0`。没有 SQL 强制改账、删除锁或重复模型调用。
+- 正常 drain 得到 `drained:true`、`graph_holds:0`，停止 LaunchAgent 后将完整 home 和旧 plist 备份到 `/Volumes/AIMATE_WORK/Backups/osstack/20260921-e6f0658`。69 张表计数记录、schema 37、完整性和外键检查通过。
+- 关闭新准入部署验证通过：旧 session/Loop/stats RPC 可用，`graph.start` 返回 `GRAPH_ADMISSION_DISABLED` 且零新增 run，历史动作记录与停机备份相同，`autonomy.health.can_run_local=true`。保留 Interactive/caffeinate/owner-only 凭据加载与 plist drift baseline。
+- 仅对授权独立副本开启一次试点：`44f72545-a950-4c27-a69f-ce91ee7eb7c8`。workspace、实现、冻结、两个验证工作区和独立 review 均 confirmed；review verdict `accept`。tests 在实际调用之前被拒绝，检查点为 `POLICY_DENIED`，图终态 `failed`。测试没有运行，因此不能宣称候选通过验收。
+- 该次已记账 **2963 tokens**（writer 1832、review 1131），无剩余预留。候选 `434e298e349299191de8d86dfd947a8743e6685c`、artifact `1d99a4b801987f9fcffc596583fb4c824a6c3f6e5cbe0f66734b60211712d20f` 均保留。新准入已自动关闭；原独立副本保持未应用候选。
+- 空闲时复查四个源码/候选目录的权限均通过。已单独复现 Node `execFile` 内建超时在主线程停顿后丢弃成功 Git 子进程输出：退出码为 0、stdout 却为空。修复和回归正在 follow-up 分支中验证，尚未部署该修复。不能把这一机制的复现替代新生产 canary。
+
+私有证据：`/Volumes/AIMATE_WORK/tmp/g226-deploy` 中的 `maintenance-inspect.json`、`maintenance-apply.json`、`disabled-verification.json`、`process-verification.json`、`canary-result.json`、`policy-diagnostic.log`、`child-poll-proof.log`。维护前一致性备份另存于 `/Volumes/AIMATE_WORK/Backups/osstack/graph-maintenance-jMnWfa/state.db`。这些包含主机运行信息的原始证据不上传公共 Git。
+
+## 2026-09-20 历史部署证据
+
+以下为 PR #225 时点的历史记录，当前状态以上述更新为准。
 
 ## 已验证
 

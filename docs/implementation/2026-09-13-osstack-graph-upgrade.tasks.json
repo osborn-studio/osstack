@@ -1367,18 +1367,18 @@
       "requiresDecisionGates": [
         "C2"
       ],
-      "progressNote": "PR225已独立审批、main CI通过并合并d2483d1；关闭Graph新准入的实际部署/schema37/旧RPC验收通过。真实生产试点完成实现与冻结后在验证准备阶段失败，支持的核对请求后为cancel_pending；准入已关闭，候选/账本/1832 tokens保留。G29等待修复、核对及内部启用验收，仍29/30。",
+      "progressNote": "PR226 已独立审批并合并 e6f0658，正式服务关闭新准入部署通过；旧 cancel_pending 已安全核对为 cancelled，动作不变、upgradeHolds=0。新生产试点 writer/freeze/review 已确认，但 tests 在调用前被 POLICY_DENIED 拒绝，已关闭准入；G29 等待 Git 身份检查在主线程停顿后的输出保全修复及生产复验，仍29/30。",
       "evidence": [
         "docs/reports/graph-upgrade-completion.md",
         "docs/reports/graph-upgrade-deployment.md"
       ]
     }
   ],
-  "updatedAt": "2026-09-20",
+  "updatedAt": "2026-09-21",
   "implementation": {
     "branch": "codex/graph-runtime-foundation",
     "worktree": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation",
-    "acceptedCodeCommit": "d2483d19d3a1bfd740be9412010aab2c93a44889",
+    "acceptedCodeCommit": "e6f0658efeef3074e8524ee24b1157ae9e17e3c7",
     "completedTaskCount": 29,
     "totalTaskCount": 30,
     "nextTasks": [
@@ -1392,7 +1392,7 @@
       "M2": "completed",
       "M3": "in_progress"
     },
-    "reviewNote": "PR225已独立审批、main CI通过并合并d2483d1；关闭Graph新准入的实际部署/schema37/旧RPC验收通过。真实生产试点完成实现与冻结后在验证准备阶段失败，支持的核对请求后为cancel_pending；准入已关闭，候选/账本/1832 tokens保留。G29等待修复、核对及内部启用验收，仍29/30。",
+    "reviewNote": "PR226 已独立审批并合并 e6f0658，正式服务关闭新准入部署通过；旧 cancel_pending 已安全核对为 cancelled，动作不变、upgradeHolds=0。新生产试点 writer/freeze/review 已确认，但 tests 在调用前被 POLICY_DENIED 拒绝，已关闭准入；G29 等待 Git 身份检查在主线程停顿后的输出保全修复及生产复验，仍29/30。",
     "slicePlan": "docs/reports/graph-upgrade-completion.md",
     "deploymentReport": "docs/reports/graph-upgrade-deployment.md"
   },

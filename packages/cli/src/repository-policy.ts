@@ -1,7 +1,5 @@
-import { execFile } from "node:child_process";
 import { realpath } from "node:fs/promises";
-import { promisify } from "node:util";
-import { loadPolicyProfile, resolveRepositoryScope } from "@osstack/core";
+import { loadPolicyProfile, readRepositoryGit, resolveRepositoryScope } from "@osstack/core";
 import type { PolicyGate } from "@osstack/loop";
 import { OBSERVE_POLICY_DENIED_REASON } from "./policy-gate.js";
 
@@ -14,16 +12,13 @@ export function makeRepositoryPolicyGate(workspacePath: string, requirePolicy = 
   return async () => {
     try {
       const scope = await resolveRepositoryScope(workspacePath);
-      const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith("GIT_")));
-      Object.assign(env, { GIT_CONFIG_NOSYSTEM: "1", GIT_CONFIG_GLOBAL: "/dev/null", GIT_TERMINAL_PROMPT: "0" });
-      const options = { cwd: scope.workspacePath, env, encoding: "utf8" as const, timeout: 5_000, killSignal: "SIGKILL" as const, maxBuffer: 64 * 1024, shell: false };
-      const top = await promisify(execFile)("git", ["rev-parse", "--show-toplevel"], options);
-      const listing = await promisify(execFile)("git", ["worktree", "list", "--porcelain", "-z"], options);
-      const first = listing.stdout.split("\0")[0];
+      const top = await readRepositoryGit(scope.workspacePath, "topLevel");
+      const listing = await readRepositoryGit(scope.workspacePath, "worktrees");
+      const first = listing.split("\0")[0];
       if (!first?.startsWith("worktree ")) throw new Error("primary repository policy root unavailable");
       const primary = await realpath(first.slice("worktree ".length));
       await resolveRepositoryScope(primary, { repoId: scope.repoId });
-      const root = await realpath(top.stdout.replace(/\r?\n$/, ""));
+      const root = await realpath(top.replace(/\r?\n$/, ""));
       let present = false;
       for (const path of new Set([primary, root, scope.workspacePath])) {
         const profile = await loadPolicyProfile(path);

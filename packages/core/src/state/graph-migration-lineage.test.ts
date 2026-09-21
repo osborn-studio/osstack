@@ -13,7 +13,11 @@ let root: string;
 beforeEach(() => { root = mkdtempSync(join(tmpdir(), 'graph-lineage-')); });
 afterEach(() => { rmSync(root, { recursive: true, force: true }); });
 const install = (db: Database.Database, migrations: typeof MIGRATIONS) => {
-  for (const m of migrations) { db.exec(m.sql); db.pragma(`user_version = ${m.id}`); }
+  // Construct the historical starting state atomically. Migration behavior is
+  // exercised below by openDb/runMigrations, not by fsyncing each fixture DDL.
+  db.transaction(() => {
+    for (const m of migrations) { db.exec(m.sql); db.pragma(`user_version = ${m.id}`); }
+  })();
 };
 it.each([true, false])('reopens the integrated current schema with readwrite=%s', readwrite => {
   const path = join(root, 'current.db');
