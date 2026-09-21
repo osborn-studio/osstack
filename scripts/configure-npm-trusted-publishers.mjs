@@ -16,7 +16,7 @@ if (rootFlag !== -1 && (args[rootFlag + 1] === undefined || args[rootFlag + 1].s
 const root = resolve(rootFlag === -1 ? process.cwd() : args[rootFlag + 1] ?? "");
 const execute = args.includes("--execute");
 const json = args.includes("--json");
-const expectedRepository = "gilosbornhello/osstack";
+const expectedRepository = "osborn-studio/osstack";
 const expectedWorkflow = "release.yml";
 const expectedAccount = "osbornhello";
 const registry = "https://registry.npmjs.org/";

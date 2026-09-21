@@ -10,7 +10,7 @@ import { GraphDelivery, type GraphDeliveryOptions } from './graph-delivery.js';
 import { GovernedExecution } from './governed-execution.js';
 import { GraphRuntime } from './graph-runtime.js';
 
-async function fixture(mode: 'unknown-review' | 'unknown-writer' | 'overrun' | 'mutation' | 'foreign-owner' | 'revoked' | 'retry-preparation-denied' | 'setup' | 'renewal') {
+async function fixture(mode: 'unknown-review' | 'unknown-writer' | 'overrun' | 'mutation' | 'foreign-owner' | 'revoked' | 'retry-preparation-denied' | 'retry-preparation-race' | 'setup' | 'renewal') {
   const root = await realpath(await mkdtemp(join(tmpdir(), 'g21-adversarial-'))); const repo = join(root, 'source'); await mkdir(repo);
   const git = (...args: string[]) => execFileSync('git', args, { cwd: repo, encoding: 'utf8' }).trim();
   git('init', '-q'); await writeFile(join(repo, 'answer'), '0\n'); git('add', '.');
@@ -38,7 +38,7 @@ async function fixture(mode: 'unknown-review' | 'unknown-writer' | 'overrun' | '
       if (kind === 'reviewer' && mode === 'revoked') allowed = false;
       stopped.add(task.run_id);
       yield { event_id: task.run_id, run_id: task.run_id, session_id: task.session_id, seq: 1, created_at: Date.now() / 1000, type: 'done', terminal: true,
-        payload: { status: 'completed', last_seq: 0, result_summary: kind === 'writer' ? 'implemented' : mode === 'retry-preparation-denied' ? 'malformed' : JSON.stringify({ schemaVersion: 1, verdict: 'accept', summary: 'checked', findings: [] }),
+        payload: { status: 'completed', last_seq: 0, result_summary: kind === 'writer' ? 'implemented' : mode.startsWith('retry-preparation-') ? 'malformed' : JSON.stringify({ schemaVersion: 1, verdict: 'accept', summary: 'checked', findings: [] }),
           usage: { tokens_in: mode === 'overrun' && kind === 'writer' ? 300000 : 1, tokens_out: 1, duration_ms: 1 } } };
     }, confirmStopped: async id => ({ stopped: stopped.has(id) && !(mode === 'unknown-review' && kind === 'reviewer') && !(mode === 'unknown-writer' && kind === 'writer'), evidence: `fixture:${id}` }) });
   const admission = new GovernedExecution({ reads: new FifoSemaphore(2), writes: new FifoSemaphore(2), repositories: new Map(), checkHealth: async () => {} });
@@ -46,11 +46,21 @@ async function fixture(mode: 'unknown-review' | 'unknown-writer' | 'overrun' | '
     writer: { identity: 'writer', adapter: adapter('writer'), capabilityId: 'writer' }, reviewer: { identity: 'reviewer', adapter: adapter('reviewer'), capabilityId: 'reviewer' },
     verifyReviewer: async pair => { if (pair.writerIdentity === pair.reviewerIdentity) throw Error('same identity'); },
     acceptanceRegistry: [{ ref: 'acceptance', command: 'test "$(cat answer)" = 1', passExitCodes: [0], failExitCodes: [1] }],
-    acquire: input => {
-      if (mode === 'retry-preparation-denied') {
+    acquire: async input => {
+      if (mode.startsWith('retry-preparation-')) {
         const key = input.runId.replace('graph-action:', '');
         const action = db.prepare('SELECT node_id,effect_slot FROM graph_actions WHERE effect_key=?').get(key) as { node_id: string; effect_slot: string } | undefined;
-        if (action?.node_id === 'e0.prepare_review' && action.effect_slot === 'retry-2') throw Error('fixture preparation admission denied');
+        if (action?.node_id === 'e0.prepare_review' && action.effect_slot === 'retry-2') {
+          // Isolate the missing-admission proof: the sibling must already have
+          // a durable outcome. A failed Functional task can abort sibling task
+          // promises even inside allSettled, before their physical work stops.
+          if (mode === 'retry-preparation-denied') await vi.waitFor(() => {
+            expect(db.prepare(`SELECT a.state, m.released_at FROM graph_actions a
+              JOIN graph_action_admissions m ON m.effect_key=a.effect_key
+              WHERE a.node_id='e0.tests'`).get()).toEqual({ state: 'confirmed', released_at: expect.any(Number) });
+          }, { timeout: 20_000, interval: 20 });
+          throw Error('fixture preparation admission denied');
+        }
       }
       return admission.acquire(input);
     }, authorize: () => { if (!allowed) throw Error('authority revoked'); },
@@ -68,8 +78,14 @@ async function fixture(mode: 'unknown-review' | 'unknown-writer' | 'overrun' | '
   try {
     let result: Awaited<ReturnType<GraphDelivery['run']>> | undefined; let error: unknown;
     try { result = await host.run(); } catch (caught) { error = caught; }
+    // Match service shutdown: runtime.close() bounds stop reporting, whereas
+    // this drain waits for every actual database user before snapshot/close.
+    await host.drainDatabaseUsers();
     return { result, error, calls, renewedWhileWriting, run: host.current(), root,
       actions: db.prepare('SELECT node_id,state FROM graph_actions ORDER BY created_at,rowid').all() as Array<{ node_id: string; state: string }>,
+      testsEvidence: db.prepare(`SELECT a.state, a.execution_ref, a.outcome_json, m.held_at, m.released_at
+        FROM graph_actions a LEFT JOIN graph_action_admissions m ON m.effect_key=a.effect_key
+        WHERE a.node_id='e0.tests'`).all() as Array<{ state: string; execution_ref: string | null; outcome_json: string | null; held_at: number | null; released_at: number | null }>,
       held: (db.prepare('SELECT count(*) AS n FROM graph_action_admissions WHERE released_at IS NULL').get() as { n: number }).n,
       joins: (db.prepare('SELECT count(*) AS n FROM graph_verification_joins').get() as { n: number }).n };
   } finally { db.close(); }
@@ -106,8 +122,29 @@ it('retains reconciliation when denied preparation has no durable admission rece
   // A failed action alone cannot substitute for a durable no-start/stop receipt.
   expect(f.result?.route).toMatchObject({ kind: 'reconcile', reason: expect.stringContaining('QUIESCENCE_REQUIRED') });
   expect(f.run.status).toBe('reconciliation_required'); expect(f.joins).toBe(0); expect(f.held).toBe(0); expect(f.calls.reviewer).toBe(1);
-  expect(f.actions.some(a => a.node_id === 'e0.tests' && a.state === 'confirmed')).toBe(true);
+  expect(f.actions.filter(a => a.node_id === 'e0.tests')).toEqual([{ node_id: 'e0.tests', state: 'confirmed' }]);
   expect(f.actions.filter(a => a.node_id === 'e0.prepare_review').map(a => a.state)).toEqual(['confirmed', 'failed']);
+}, 30_000);
+
+it('preserves sibling evidence when denied preparation races with tests', async () => {
+  const f = await fixture('retry-preparation-race');
+  expect(f.run.status).toBe('reconciliation_required'); expect(f.joins).toBe(0);
+  expect(f.result?.route.kind).toBe('reconcile'); expect(f.calls.reviewer).toBe(1);
+  // Keep the original unsequenced interleaving covered. A cancelled task wrapper
+  // says nothing about physical execution: any started effect needs either a
+  // durable terminal outcome or its admission retained for reconciliation.
+  for (const row of f.testsEvidence) {
+    if (row.state === 'confirmed' || row.state === 'failed') {
+      expect(row.outcome_json, JSON.stringify(row)).not.toBeNull();
+      expect(JSON.parse(row.outcome_json!)).toMatchObject({ state: row.state, evidenceRef: expect.any(String) });
+      expect(row.held_at, JSON.stringify(row)).not.toBeNull();
+      expect(row.released_at, JSON.stringify(row)).not.toBeNull();
+    } else {
+      expect(['unknown', 'cancel_pending']).toContain(row.state);
+      expect(row.released_at, JSON.stringify(row)).toBeNull();
+      if (row.execution_ref !== null) expect(row.held_at, JSON.stringify(row)).not.toBeNull();
+    }
+  }
 }, 30_000);
 
 it('closes its runtime without projecting an unowned run when setup acquisition fails', async () => {

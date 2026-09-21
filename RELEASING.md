@@ -56,7 +56,7 @@ gh workflow run "macOS Release Candidate" --ref main
 
 - Every public workspace package must exist on npm before Trusted Publishing
   can be configured. Publish a new package's first version manually from an
-  authorized npm account, then configure `gilosbornhello/osstack` and
+  authorized npm account, then configure `osborn-studio/osstack` and
   `release.yml` as that package's GitHub Actions Trusted Publisher.
 - The Release workflow uses GitHub OIDC (`id-token: write`) and does not need a
   long-lived `NPM_TOKEN`. Local npm login/token access is only a bootstrap and
@@ -131,6 +131,44 @@ gh run watch <latest-ci-run-id> --exit-status
 
 This is expected when GitHub requires an operator decision for the bot-created
 Version Packages PR workflow.
+
+### When organization policy blocks version PR creation
+
+`pull-requests: write` does not override the organization setting that forbids
+GitHub Actions from creating pull requests. A repository-level attempt to enable
+`can_approve_pull_request_reviews` can return HTTP 409 under that policy.
+Keep the organization policy intact and use an authorized maintainer's `gh`
+session to create the version PR from an isolated, clean checkout of current
+`main`: run `pnpm install --frozen-lockfile`, `pnpm build`, then
+`pnpm version:packages` (the inventory generator requires the built CLI),
+inspect the generated manifests, lockfile and changelogs, and commit/push the
+version branch. Create its PR with `gh pr create --base main` and require the
+same independent review and CI as any other release PR. Do not put a personal
+access token into the Release workflow to work around the organization setting.
+
+Merge only after package bootstrap and publisher verification succeed. With
+pending changesets consumed, the existing Changesets action takes its publish
+path on that merge; it no longer needs to create a version PR for that train.
+This is a manual release path, not a claim that automated PR creation is enabled.
+
+### Repository transfers and Trusted Publishers
+
+Package repository metadata and the npm publisher must both identify
+`osborn-studio/osstack`, with workflow `release.yml`. A GitHub redirect from
+`gilosbornhello/osstack` does not change the stored npm OIDC relationship.
+The configuration script deliberately refuses to replace a mismatched mapping.
+For a verified repository transfer, first inventory all existing package
+mappings. For each exact old mapping, use `npm trust revoke <package> --id <id>`,
+then `npm trust github <package> --repository osborn-studio/osstack
+--file release.yml --allow-publish`, preserving any existing staged-publish
+permission. Read it back before advancing. Stop on any unexpected repository,
+workflow, environment, or permission, and record partial progress for recovery.
+
+Use an interactive terminal for npm web authentication. npm's CLI requires both
+stdin and stdout to be terminals before opening its web-auth flow; capturing
+stdout in a subprocess can instead return `EOTP`, even after a successful login.
+The website's temporary skip window still requires completing the CLI web-auth
+handshake. Never print or persist the returned OTP as an operational workaround.
 
 ## Hotfix flow (between trains)
 
