@@ -23,7 +23,7 @@ Loop 同时保留 main 的显式环境参数、`inheritEnv` 语义与 Graph 的�
 | 最终性能 | RPC p95 1.452ms；Loop 开销 0.460866%；31 MiB fingerprint p95 21.267ms；尾延迟保留为债务 |
 | Node 20.6 | 原 294 项通过；整合最终迁移/DB 45 项通过；GitHub 对应 runtime job 通过 |
 | Linux arm64 Node 22.23.1 | 最终 389/389 通过；消除专用 VM 的两套时钟同步冲突后复跑 |
-| GitHub CI / 源码 fec0b18 | Node 20.6、22.23.1 runtime jobs、全仓 3,974 项通过、3 项显式 opt-in 跳过；类型、构建、inventory 与启动预算通过。发布 plan smoke 暴露真实 npm bootstrap 查询泄漏，测试夹具已修复，本机 smoke 通过，整条 CI 待复跑 |
+| GitHub CI / 源码 fec0b18 | Node 20.6、22.23.1 runtime jobs、全仓 3,974 项通过、3 项显式 opt-in 跳过；类型、构建、inventory 与启动预算通过。发布 plan smoke 暴露真实 npm bootstrap 查询泄漏，测试夹具已修复，本机 smoke 通过；registry-skew 对新包无历史版本的处理也已修复，22 项自检和真实混合安装通过，整条 CI 待复跑 |
 | 本机整合全仓诊断 | 3,955 通过、6 个 CLI 限时/状态等待失败、3 个显式 opt-in 跳过；原始失败保留，不宣称该次全绿。GitHub 同源码全仓测试已通过 |
 | 安装包关闭准入演练 | 独立 prefix、真实 daemon/native SQLite、旧 session/Loop/stats RPC 通过，Graph 返回 `GRAPH_ADMISSION_DISABLED`，新增 run 为零 |
 | 线上 DB 副本演练 | 使用实际安装包迁移 schema 22→37，51 张原有表的记录数保持，完整性通过；未改变线上 DB |
