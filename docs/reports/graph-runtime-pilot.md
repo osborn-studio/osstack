@@ -1,5 +1,14 @@
 # G29：真实 OSStack 内部任务试点
 
+## 2026-09-21 正式服务验收
+
+**30/30，G00–G29 已完成内部 beta 验收。PR #228 已独立审批、合并并部署为 `e28927d`；正式单仓库 canary `98bdc953-01a3-48e0-8320-c91e243eb420` 达到 ready，7 个动作 confirmed、独立 review accept、实际测试通过、join complete，2965 tokens、零预留、零遗留准入。**
+
+生产 candidate `7ee7e5ecaa1c5d2cdae4ab8501eee297f66f30b5`，artifact SHA256 `df19d6821800eda8705b37d4777bc6c60831db70642c90486682a7ff05fdaf41`。同 key 幂等重放未再执行；原独立副本未修改、未应用候选。维护、备份、关闭准入部署和费用见[实际部署记录](graph-upgrade-deployment.md)，可核验摘要见[生产证据](../implementation/graph-upgrade-final-evidence/production-canary.json)。下文的隔离成功、负对照和未知取消实验保留，不与生产完成状态混同。
+
+## 2026-09-20 隔离试点历史
+
+
 2026-09-20，使用授权的 DeepSeek API、`deepseek-v4-pro`，在 OSStack 的独立完整 Git clone 中修复 `scripts/graph-test-env.mjs`：`assertIsolatedHome` 必须拒绝文件系统根目录及其别名。只交付候选产物，未修改原仓库该文件，未合并或部署。
 
 ## 实际结果

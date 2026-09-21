@@ -3,7 +3,7 @@
   "createdAt": "2026-09-13",
   "baseline": "b476bcc",
   "objective": "OSStack Loop hardening and executable Graph code-delivery-v1",
-  "status": "in_progress",
+  "status": "completed",
   "verificationCommands": {
     "BASE": "记录 `git status --short` / `git rev-parse HEAD` / `node -v`；在隔离环境运行现有相关包测试与 `node scripts/bench-cli-startup.mjs`，保存基线。",
     "LOOP": "`pnpm --filter @osstack/loop exec vitest run src/executor.test.ts src/loop-engine.test.ts`；新增 candidate 测试后同时运行；涉及 agents 时跑对应包测试。",
@@ -1363,36 +1363,37 @@
       ],
       "verify": "PILOT",
       "size": "M",
-      "status": "in_progress",
+      "status": "completed",
       "requiresDecisionGates": [
         "C2"
       ],
-      "progressNote": "PR227 已独立审批合并 45bac9a，完整 CI 4006 项通过并已部署。关闭准入部署通过；正式 canary 七动作 confirmed，但验收脚本把 serving-home 内 cwd 当作允许目录导致 tests=false，同时慢权限检查前未启动续租留下 tests 锁。准入已关闭；正常 reconcile 后 cancel_pending/revision37，3100 tokens、零预留、一项准入保留。G29 仍29/30，续租/验收夹具/受控恢复修复正在验证。",
+      "progressNote": "PR228 经最终 head 38be28f 独立审批后合并 e28927d，PR CI 4027 项通过；main CI 35589920681 通过。旧 bef01154 运行经正式安装的 G15 维护入口安全取消，动作记录不变、升级 holds 清零。先关闭准入部署，再仅对 OSStack 独立副本启用。正式 canary 98bdc953-01a3-48e0-8320-c91e243eb420 ready，7 confirmed、review accept、tests pass、join complete、2965 tokens、零预留/准入，源仓库不变。公共 npm 发行未完成，另记发布流程债务。",
       "evidence": [
         "docs/reports/graph-upgrade-completion.md",
-        "docs/reports/graph-upgrade-deployment.md"
-      ]
+        "docs/reports/graph-upgrade-deployment.md",
+        "docs/implementation/graph-upgrade-final-evidence/production-canary.json",
+        "docs/reports/graph-runtime-pilot.md"
+      ],
+      "completedAt": "2026-09-21"
     }
   ],
   "updatedAt": "2026-09-21",
   "implementation": {
-    "branch": "codex/graph-runtime-foundation",
-    "worktree": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation",
-    "acceptedCodeCommit": "45bac9abdb0841c4372d29a85904faae7642f285",
-    "completedTaskCount": 29,
+    "branch": "codex/graph-production-beta-closeout",
+    "worktree": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-release-followup",
+    "acceptedCodeCommit": "e28927daa1010313c28085a8237dbb0ef8f7d781",
+    "completedTaskCount": 30,
     "totalTaskCount": 30,
-    "nextTasks": [
-      "G29"
-    ],
+    "nextTasks": [],
     "report": "docs/reports/graph-upgrade-completion.md",
     "nextGate": null,
     "milestoneStatus": {
       "M0": "completed",
       "M1": "completed",
       "M2": "completed",
-      "M3": "in_progress"
+      "M3": "completed"
     },
-    "reviewNote": "PR227 已独立审批合并 45bac9a，完整 CI 4006 项通过并已部署。关闭准入部署通过；正式 canary 七动作 confirmed，但验收脚本把 serving-home 内 cwd 当作允许目录导致 tests=false，同时慢权限检查前未启动续租留下 tests 锁。准入已关闭；正常 reconcile 后 cancel_pending/revision37，3100 tokens、零预留、一项准入保留。G29 仍29/30，续租/验收夹具/受控恢复修复正在验证。",
+    "reviewNote": "PR228 经最终 head 38be28f 独立审批后合并 e28927d，PR CI 4027 项通过；main CI 35589920681 通过。旧 bef01154 运行经正式安装的 G15 维护入口安全取消，动作记录不变、升级 holds 清零。先关闭准入部署，再仅对 OSStack 独立副本启用。正式 canary 98bdc953-01a3-48e0-8320-c91e243eb420 ready，7 confirmed、review accept、tests pass、join complete、2965 tokens、零预留/准入，源仓库不变。公共 npm 发行未完成，另记发布流程债务。",
     "slicePlan": "docs/reports/graph-upgrade-completion.md",
     "deploymentReport": "docs/reports/graph-upgrade-deployment.md"
   },

@@ -1,6 +1,6 @@
 # Graph retained verification closeout — 2026-09-21
 
-Status: PR #228 proposed repair; G29 remains incomplete (29/30). This report does not authorize installation or claim the production canary passed.
+Status: PR #228 independently approved and merged as `e28927daa1010313c28085a8237dbb0ef8f7d781`, installed and accepted in production for the bounded internal beta. G29 is complete (30/30). The earlier observations below describe the pre-deployment state; see [deployment evidence](graph-upgrade-deployment.md).
 
 ## Observed failure
 
@@ -46,3 +46,7 @@ CI run 35584829012 passed 4,026 tests across all 22 packages, including the comp
 After approval and merge, install into a new release prefix without switching the old service. Run the installed read-only preflight, capture the original owner, confirm no other active or queued work, and shut down the old LaunchAgent normally. Apply the installed maintenance operation with the original owner/PID/revision and a fresh consistent backup. Require cancelled, unchanged actions and zero upgrade holds before normal deployment with admission disabled.
 
 Only then update the pilot registration, enable the independent OSStack repository, and run a new bounded artifact-only canary. G29 requires actual passing tests, independent review, completed join and ready status; it is not complete at PR creation, approval, merge or installation.
+
+## Production closeout
+
+Final-head PR CI 35586967593 passed all 4027 tests (3 explicit opt-in skips); main CI 35589920681 passed. Normal shutdown, full backup and the installed G15 maintenance entry cancelled the old retained run with unchanged actions and zero upgrade holds. Only afterwards was acceptance registration updated and the release switched with admission OFF. Production canary `98bdc953-01a3-48e0-8320-c91e243eb420` then reached ready with seven confirmed actions, independent review acceptance, actual passing tests and a complete join: 2965 tokens, zero reservations/admissions, unchanged source and stable idempotent replay. Public npm release remains blocked separately by the macOS full-suite assertion recorded in the completion report.
