@@ -119,7 +119,7 @@ osstack --version
 osstack doctor --workspace .
 ```
 
-期望输出：
+0.20.0 源码构建或 npm 完成发行后的期望输出：
 
 ```text
 osstack 0.20.0

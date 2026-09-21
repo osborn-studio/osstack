@@ -2,6 +2,12 @@
 
 ## 0.20.0
 
+Release scope: the integrated CLI/host now supports the fixed `code-delivery-v1`
+internal beta with durable actions, checkpoints, parallel candidate verification,
+bounded repair and artifact-only delivery. The entries below retain the original
+implementation-stage summaries; their early-stage availability notes do not
+supersede the current runtime guide and compatibility limits.
+
 ### Minor Changes
 
 - 8e1c810: Expose LangGraph's public entrypoint/task API through the isolated worker entry and verify replay of completed tasks after a sibling failure. Add bounded recovery experiments for the proposed deterministic graph backend; production broker, worker cancellation, identity binding and persistent ledger integration remain separate admission requirements.
