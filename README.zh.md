@@ -29,15 +29,15 @@ DeepSeek 检查器以及你自己的脚本，组织成一套可路由、可循�
 
 | 领域 | 状态 |
 |---|---|
-| npm 包 | 已发布：`@osstack/cli@0.19.0` |
-| GitHub Release | npm 包：`@osstack/cli@0.19.0`；最新单文件二进制：[`v0.8.1`](https://github.com/osborn-studio/osstack/releases/tag/v0.8.1) |
+| npm 包 | 本次发行目标：`@osstack/cli@0.20.0`；实际可用版本用 `npm view @osstack/cli version` 核实 |
+| GitHub Release | npm 发行目标：`@osstack/cli@0.20.0`；最新单文件二进制：[`v0.8.1`](https://github.com/osborn-studio/osstack/releases/tag/v0.8.1) |
 | macOS 单文件二进制 | 已发布 `darwin-arm64` 的显式 `public-ad-hoc` archive |
 | Knowledge Cloud | 已部署到 EdgeOne：`https://osstack-knowledge-cloud-1grycf4k.edgeone.cool` |
-| Probe | CLI 生命周期已随 `@osstack/cli@0.19.0` 发布；report-only 是 gate 行为，不是后台任务。两周真实使用 checkpoint 仍未完成。 |
+| Probe | CLI 生命周期已随 CLI 0.19.0 发布；report-only 是 gate 行为，不是后台任务。两周真实使用 checkpoint 仍未完成。 |
 | License | MIT |
 | Monorepo | 22 个 workspace package |
 
-**版本边界（2026-09-21 核验）：** npm 的 `@osstack/cli` 最新版仍为 `0.19.0`，`@osstack/graph` 尚未公开发布。下文 Graph 执行能力属于 main 源码及内部 Node 安装，不能把旧版发布验收当作本次 Graph 公共发行完成。使用前先检查 `osstack graph --help`；源码安装方法见下文。
+**版本边界：** 当前源码目标为 0.20.0。2026-09-21 发布前核验时，npm latest 仍为 CLI 0.19.0，Graph 包尚未发布。版本提交不等于发布成功，须核对 npm 与 GitHub Release 后再使用公共 0.20.0。即使 npm 发布完成，Graph 仍保留下文的内部 beta 执行范围。
 
 ## 当前能力范围
 
@@ -122,7 +122,7 @@ osstack doctor --workspace .
 期望输出：
 
 ```text
-osstack 0.19.0
+osstack 0.20.0
 ```
 
 ### 使用 macOS 单文件 archive

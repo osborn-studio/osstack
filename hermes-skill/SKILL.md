@@ -9,7 +9,7 @@ metadata:
   hermes:
     tags: [orchestration, project-manager, software-development, osstack, claude-code, codex]
     related_skills: [writing-plans, requesting-code-review, plan, subagent-driven-development]
-    daemon_npm_version: "@osstack/cli@0.12.0"
+    daemon_npm_version: "@osstack/cli@0.20.0"
     hermes_min_version: "0.12.0"
 ---
 

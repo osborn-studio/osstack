@@ -1,5 +1,48 @@
 # @osstack/agents
 
+## 0.20.0
+
+### Minor Changes
+
+- 071c1ff: Add versioned session continuation requests and durable waiting diagnostics.
+  Parsing an agent-reported request does not authorize automatic continuation.
+  Track resumed sessions during daemon drain and
+  cancellation, and preserve uncertain delivery receipts in status output.
+
+  Keep improvement proposal identities and reviewed history stable. Gate-only checks
+  no longer claim that a candidate was applied. Migration 23 preserves legacy lesson
+  counters and records explicit failure observations without claiming effectiveness.
+
+- de4a3bb: Require valid adapter terminal events, propagate bounded cancellation with explicit stop evidence, and confirm owned command process-group exits. Add an authorized single-implementation entry point for future executable graph orchestration while retaining legacy Loop delivery behavior and preventing retries of unconfirmed executions.
+- 5a82b1c: Add signed, finite phase continuation for the controlled no-tools planning/review
+  session runtime. Bind frozen output checks and instructions to the exact session,
+  runtime policy, owner key, initial turn/version, deadlines and cumulative budgets.
+
+  Migration 24 persists grants and attempts alongside existing session receipts.
+  Revoke stops subsequent actions; crash recovery never automatically resends an
+  uncertain accepted delivery. Add collaborator inspect/draft/sign/install/status/revoke
+  commands. This does not grant code execution, GitHub approval, merge or deployment
+  powers to unrestricted agent sessions.
+
+### Patch Changes
+
+- f4c55ec: Align npm package repository metadata and Trusted Publisher tooling with the transferred osborn-studio/osstack repository. Existing mismatched trust mappings still require explicit operator review.
+- 29a3a17: Execute digest-approved low-risk improvement proposals in a retained candidate worktree with independent structured review, exact file boundaries, replay-safe execution records, and hashed evidence. Candidate verification does not mark a proposal applied or prove effectiveness. Add strict Codex completion and per-run execution environment support.
+- Updated dependencies [071c1ff]
+- Updated dependencies [f4c55ec]
+- Updated dependencies [1263519]
+- Updated dependencies [c1f4619]
+- Updated dependencies [9f17623]
+- Updated dependencies [9011913]
+- Updated dependencies [29a3a17]
+- Updated dependencies [5a82b1c]
+- Updated dependencies [f4de18d]
+- Updated dependencies [4a2646c]
+  - @osstack/protocol@0.20.0
+  - @osstack/core@0.20.0
+  - @osstack/governance@0.20.0
+  - @osstack/hermes-adapter@0.20.0
+
 ## 0.19.0
 
 ### Minor Changes

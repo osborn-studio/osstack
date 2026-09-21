@@ -1,5 +1,21 @@
 # @osstack/plugins
 
+## 0.20.0
+
+### Patch Changes
+
+- f4c55ec: Align npm package repository metadata and Trusted Publisher tooling with the transferred osborn-studio/osstack repository. Existing mismatched trust mappings still require explicit operator review.
+- Updated dependencies [071c1ff]
+- Updated dependencies [f4c55ec]
+- Updated dependencies [1263519]
+- Updated dependencies [9f17623]
+- Updated dependencies [9011913]
+- Updated dependencies [29a3a17]
+- Updated dependencies [5a82b1c]
+- Updated dependencies [f4de18d]
+- Updated dependencies [4a2646c]
+  - @osstack/core@0.20.0
+
 ## 0.17.0
 
 ### Patch Changes
