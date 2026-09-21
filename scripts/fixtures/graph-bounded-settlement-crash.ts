@@ -1,6 +1,6 @@
 import { appendFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { GraphActionStore, GraphRunStore } from '@osstack/core';
+import { GraphActionStore } from '@osstack/core';
 import { createBoundedMessagesAdapter } from '@osstack/agents';
 import { GraphDelegationStatus } from '@osstack/protocol';
 import { graphRpcFixture } from '../../packages/cli/src/graph-test-fixture.js';
@@ -10,10 +10,7 @@ import { GraphProcessJournal } from '../../packages/cli/src/graph-process-journa
 const [output, mode = 'before-commit'] = process.argv.slice(2);
 if (!output) throw Error('OUTPUT_REQUIRED');
 const f = await graphRpcFixture();
-if (mode === 'future-template') {
-  const create = GraphRunStore.prototype.create;
-  GraphRunStore.prototype.create = function (request, version, now) { return create.call(this, request, { ...version, templateVersion: '999' }, now); };
-}
+
 const original = GraphActionStore.prototype.recordOutcome;
 GraphActionStore.prototype.recordOutcome = function (...args) {
   if (args[2].state === 'confirmed' && args[2].result.kind === 'implementation_complete') {
@@ -46,6 +43,16 @@ for (let n = 0; ; n++) {
   await new Promise(resolve => setTimeout(resolve, 20));
 }
 await service.close(); await f.service.close();
+if (mode === 'future-template') {
+  // Seed an unsupported persisted history AFTER a real supported invocation.
+  // New starts reject this tuple before dispatch; this fixture tests recovery only.
+  f.db.transaction(() => {
+    const trigger = f.db.prepare("SELECT sql FROM sqlite_master WHERE type='trigger' AND name='graph_runs_identity_immutable'").get() as { sql: string };
+    f.db.exec('DROP TRIGGER graph_runs_identity_immutable');
+    f.db.prepare("UPDATE graph_runs SET identity_json=json_set(identity_json, '$.templateVersion', '999') WHERE graph_run_id=?").run(started.graphRunId);
+    f.db.exec(trigger.sql);
+  })();
+}
 const metadata = { root: f.root, id: started.graphRunId, request: f.request, registration: {
   id: registration.id, scope: registration.scope, product: registration.product, repositoryRef: registration.repositoryRef,
   taskRef: registration.taskRef, inputArtifactRef: registration.inputArtifactRef,
