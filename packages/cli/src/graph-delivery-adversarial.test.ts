@@ -78,6 +78,9 @@ async function fixture(mode: 'unknown-review' | 'unknown-writer' | 'overrun' | '
   try {
     let result: Awaited<ReturnType<GraphDelivery['run']>> | undefined; let error: unknown;
     try { result = await host.run(); } catch (caught) { error = caught; }
+    // Match service shutdown: runtime.close() bounds stop reporting, whereas
+    // this drain waits for every actual database user before snapshot/close.
+    await host.drainDatabaseUsers();
     return { result, error, calls, renewedWhileWriting, run: host.current(), root,
       actions: db.prepare('SELECT node_id,state FROM graph_actions ORDER BY created_at,rowid').all() as Array<{ node_id: string; state: string }>,
       testsEvidence: db.prepare(`SELECT a.state, a.execution_ref, a.outcome_json, m.held_at, m.released_at
@@ -126,7 +129,7 @@ it('retains reconciliation when denied preparation has no durable admission rece
 it('preserves sibling evidence when denied preparation races with tests', async () => {
   const f = await fixture('retry-preparation-race');
   expect(f.run.status).toBe('reconciliation_required'); expect(f.joins).toBe(0);
-  expect(f.result?.route.kind).not.toBe('ready'); expect(f.calls.reviewer).toBe(1);
+  expect(f.result?.route.kind).toBe('reconcile'); expect(f.calls.reviewer).toBe(1);
   // Keep the original unsequenced interleaving covered. A cancelled task wrapper
   // says nothing about physical execution: any started effect needs either a
   // durable terminal outcome or its admission retained for reconciliation.
@@ -137,7 +140,7 @@ it('preserves sibling evidence when denied preparation races with tests', async 
       expect(row.held_at, JSON.stringify(row)).not.toBeNull();
       expect(row.released_at, JSON.stringify(row)).not.toBeNull();
     } else {
-      expect(['intent', 'running', 'unknown', 'cancel_pending']).toContain(row.state);
+      expect(['unknown', 'cancel_pending']).toContain(row.state);
       expect(row.released_at, JSON.stringify(row)).toBeNull();
       if (row.execution_ref !== null) expect(row.held_at, JSON.stringify(row)).not.toBeNull();
     }
