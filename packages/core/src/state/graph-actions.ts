@@ -273,6 +273,17 @@ export class GraphActionStore {
    * Settlement after the wall-clock budget elapsed remains allowed with a live
    * fence; effects already started must not disappear because their budget ended. */
   recordOutcome(fence: GraphRunFence, effectKey: string, value: GraphActionOutcomeInput): GraphActionResult {
+    return this.settleOutcome(fence, effectKey, value, false);
+  }
+
+  /** Host-only: caller must own canonical acquisition and have its positive
+   * no-lease/cleanup proof. An exception or missing hold alone is not evidence.
+   * Commit the discharged obligation and failed intent in the same fenced write. */
+  recordUnstartedOutcome(fence: GraphRunFence, effectKey: string, value: GraphActionOutcomeInput): GraphActionResult {
+    return this.settleOutcome(fence, effectKey, value, true);
+  }
+
+  private settleOutcome(fence: GraphRunFence, effectKey: string, value: GraphActionOutcomeInput, dischargeUnstarted: boolean): GraphActionResult {
     keySchema.parse(effectKey);
     const usage = count.safeParse(value.actualTokens);
     const input = outcomeSchema.parse(GraphJsonValue.parse({ ...value, actualTokens: usage.success ? usage.data : null }));
@@ -281,6 +292,8 @@ export class GraphActionStore {
       : { ...input, error: GraphJsonValue.parse(input.error) };
     return this.write(fence, (run) => {
       const prior = this.find(run, effectKey);
+      if (dischargeUnstarted && (prior.state !== "intent" || prior.executionRef !== null || outcome.state !== "failed"
+        || outcome.actualTokens !== 0 || this.db.prepare("SELECT 1 FROM graph_action_admissions WHERE effect_key=?").get(effectKey))) fail("INVALID_ACTION_STATE");
       if (prior.outcome) {
         if (canonical(prior.outcome) !== canonical(outcome)) fail("OUTCOME_CONFLICT");
         return { action: prior, changed: false, created: false };
@@ -289,6 +302,9 @@ export class GraphActionStore {
       if (prior.generation !== run.generation) fail("ACTION_GENERATION_MISMATCH");
       if (prior.state === "unknown" || prior.state === "cancel_pending") fail("UNRESOLVED_ACTION");
       if (prior.state !== "running" && !(prior.state === "intent" && outcome.state === "failed")) fail("INVALID_ACTION_STATE");
+      if (dischargeUnstarted) this.db.prepare(`INSERT INTO graph_action_admissions
+        (effect_key,graph_run_id,generation,owner,held_at,released_at) VALUES(?,?,?,?,?,?)`)
+        .run(effectKey, run.graphRunId, run.generation, run.leaseOwner, fence.now, fence.now);
       const blocked = !usage.success || usage.data > prior.reservationTokens;
       this.db.prepare(`UPDATE graph_actions SET state = ?, outcome_json = ?, actual_tokens = ?, retry_safe = ?,
         accounting_blocked = ?, updated_at = ? WHERE effect_key = ?`).run(outcome.state, canonical(outcome), outcome.actualTokens,

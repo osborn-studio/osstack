@@ -89,3 +89,13 @@ it('keeps a repository quarantined until every retained reader is reconciled', a
   await second.releaseAfterReconciliation!(async () => {});
   const next = await f.admission.acquire({ kind: 'write', runId: 'after', workspacePath: f.repo }); await next.release();
 });
+
+it('attests rejected acquisition cleanup but never attests an existing run is absent', async () => {
+  const f = await fixture(); const lease = await f.admission.acquire({ kind: 'write', runId: 'one', workspacePath: f.repo });
+  let proof = false;
+  await expect(f.admission.acquire({ kind: 'write', runId: 'one', workspacePath: f.repo, onNotAcquired: () => { proof = true; } })).rejects.toThrow('already admitted');
+  expect(proof).toBe(false); await lease.release();
+  f.revoke();
+  await expect(f.admission.acquire({ kind: 'write', runId: 'two', workspacePath: f.repo, onNotAcquired: () => { proof = true; } })).rejects.toThrow('health revoked');
+  expect(proof).toBe(true); expect(f.writes.in_use).toBe(0);
+});

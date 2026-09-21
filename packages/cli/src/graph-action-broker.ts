@@ -300,6 +300,7 @@ export class GraphActionBroker {
     const retryEffectKey = retry?.action.effectKey;
     const signal = options.signal ?? new AbortController().signal;
     let executionWorkspace: RegisteredCandidateWorkspace | undefined;
+    let notAcquired = false;
     let lease: ExecutionLease | undefined; let owned: GraphAction | undefined = retry?.action; let invoked = false; let uncertain = false; let observedTokens = 0; let persistedEvidenceRef: string | undefined;
     const reject = (error: unknown): WorkerActionResponse => ({ schemaVersion: 1, kind: "worker_action_rejected", requestId: request.requestId,
       error: graphError(errorCode(error), String(error)) });
@@ -329,7 +330,7 @@ export class GraphActionBroker {
       }
       owned = intent.action;
       lease = await this.options.acquire({ kind: action.access, runId: `graph-action:${owned.effectKey}`, workspacePath: action.workspace.workspace_path,
-        signal, authorize: async () => { check(); await this.options.authorizePolicy?.(action.workspace.workspace_path); check(); } });
+        signal, onNotAcquired: () => { notAcquired = true; }, authorize: async () => { check(); await this.options.authorizePolicy?.(action.workspace.workspace_path); check(); } });
       this.admissions.hold(owned.effectKey, this.options.now?.() ?? Date.now());
       check();
       // This synchronous gate runs inside the actual adapter invoke/command/host
@@ -407,8 +408,12 @@ export class GraphActionBroker {
         // No physical invocation: resolve this caller's own intent without calling
         // it unknown. Only a future explicit host retry can use this proof;
         // cancellations remain sealed and worker replay never allocates attempts.
-        try { this.actions.recordOutcome(this.fence(binding), owned.effectKey, { state: "failed", evidenceRef: `not-started:${randomUUID()}`,
-          actualTokens: 0, retrySafe: !signal.aborted, error: { message: "admission refused before invocation" } }); } catch { /* A stale owner cannot mutate a newer generation. */ }
+        try {
+          const outcome = { state: "failed" as const, evidenceRef: `not-started:${randomUUID()}`,
+            actualTokens: 0, retrySafe: !signal.aborted, error: { message: "admission refused before invocation" } };
+          if (!lease && notAcquired) this.actions.recordUnstartedOutcome(this.fence(binding), owned.effectKey, outcome);
+          else this.actions.recordOutcome(this.fence(binding), owned.effectKey, outcome);
+        } catch { /* A stale owner cannot mutate a newer generation. */ }
       }
       return reject(error);
     } finally {

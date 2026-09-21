@@ -324,3 +324,26 @@ describe("graph action ledger", () => {
     } finally { await Promise.all(workers.map((worker) => worker.terminate())); }
   }, 12_000);
 });
+
+it("atomically settles a host-proven unstarted action with a discharged obligation", () => {
+  const intent = reserve(); const key = intent.action.effectKey;
+  const result = actions.recordUnstartedOutcome(fence(), key, { ...failed, actualTokens: 0 });
+  expect(result.action).toMatchObject({ state: 'failed', executionRef: null, actualTokens: 0 });
+  expect(db.prepare('SELECT owner,held_at,released_at FROM graph_action_admissions WHERE effect_key=?').get(key))
+    .toEqual({ owner: 'worker', held_at: 110, released_at: 110 });
+});
+it.each(['running', 'held', 'usage', 'confirmed'])("refuses %s as host-proven unstarted settlement", mode => {
+  const intent = reserve(); const key = intent.action.effectKey;
+  if (mode === 'running') start(key);
+  if (mode === 'held') db.prepare('INSERT INTO graph_action_admissions VALUES(?,?,?,?,?,NULL)').run(key, run.graphRunId, run.generation, run.leaseOwner, 110);
+  const before = db.prepare('SELECT * FROM graph_actions').all();
+  expect(() => actions.recordUnstartedOutcome(fence(), key, mode === 'confirmed' ? { ...confirmed, actualTokens: 0 }
+    : { ...failed, actualTokens: mode === 'usage' ? 1 : 0 })).toThrow('INVALID_ACTION_STATE');
+  expect(db.prepare('SELECT * FROM graph_actions').all()).toEqual(before);
+});
+it("rolls back the failed outcome when writing its discharged obligation fails", () => {
+  const key = reserve().action.effectKey;
+  db.exec("CREATE TRIGGER fail_admission BEFORE INSERT ON graph_action_admissions BEGIN SELECT RAISE(ABORT,'fixture disk failure'); END");
+  expect(() => actions.recordUnstartedOutcome(fence(), key, { ...failed, actualTokens: 0 })).toThrow('fixture disk failure');
+  expect(db.prepare('SELECT state,outcome_json FROM graph_actions').get()).toEqual({ state: 'intent', outcome_json: null });
+});
