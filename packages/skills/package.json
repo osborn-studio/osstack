@@ -1,6 +1,6 @@
 {
   "name": "@osstack/skills",
-  "version": "0.20.0",
+  "version": "0.17.0",
   "description": "Lifecycle skill templates (design/architecture/plan/review/verify/release-check). V1 V2 shim for osb-* commands lands here in S5.",
   "license": "MIT",
   "type": "module",

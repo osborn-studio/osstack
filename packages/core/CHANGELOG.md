@@ -1,50 +1,5 @@
 # @osstack/core
 
-## 0.20.0
-
-### Minor Changes
-
-- 1263519: Add trusted local `improve deliver`: one preview confirmation approves a draft proposal, builds and reviews a candidate, replays the saved patch in a clean checkout, verifies it again, and creates a draft GitHub PR. Persist delivery intents, exact commit bindings, cooperative stops and read-only reconciliation in schema 27. PR verification replaces ambient environment inheritance; existing verifier callers keep their defaults. Uncertain writes are never retried automatically. This does not enable daemon delegation, merge, release or hostile-worker isolation.
-- 29a3a17: Execute digest-approved low-risk improvement proposals in a retained candidate worktree with independent structured review, exact file boundaries, replay-safe execution records, and hashed evidence. Candidate verification does not mark a proposal applied or prove effectiveness. Add strict Codex completion and per-run execution environment support.
-- 5a82b1c: Add signed, finite phase continuation for the controlled no-tools planning/review
-  session runtime. Bind frozen output checks and instructions to the exact session,
-  runtime policy, owner key, initial turn/version, deadlines and cumulative budgets.
-
-  Migration 24 persists grants and attempts alongside existing session receipts.
-  Revoke stops subsequent actions; crash recovery never automatically resends an
-  uncertain accepted delivery. Add collaborator inspect/draft/sign/install/status/revoke
-  commands. This does not grant code execution, GitHub approval, merge or deployment
-  powers to unrestricted agent sessions.
-
-- f4de18d: Bind new candidate executions to worker identities and fence controlled writes after a durable stop request. Add `improve stop` and a complete `improve baseline` export. Indeterminate execution outcomes retain active occupancy instead of allowing an unsafe retry.
-
-  Core clients must pass the worker returned by `claim` to `recordWorktree` and `complete` for new executions. Pre-migration unowned records remain readable. Schema 26 requires a backed-up, coordinated upgrade; stopping is cooperative and does not attest to OS process termination or enable recovery.
-
-### Patch Changes
-
-- 071c1ff: Add versioned session continuation requests and durable waiting diagnostics.
-  Parsing an agent-reported request does not authorize automatic continuation.
-  Track resumed sessions during daemon drain and
-  cancellation, and preserve uncertain delivery receipts in status output.
-
-  Keep improvement proposal identities and reviewed history stable. Gate-only checks
-  no longer claim that a candidate was applied. Migration 23 preserves legacy lesson
-  counters and records explicit failure observations without claiming effectiveness.
-
-- a1c0471: Align npm package repository metadata and Trusted Publisher tooling with the transferred osborn-studio/osstack repository. Existing mismatched trust mappings still require explicit operator review.
-- 9f17623: Avoid false Graph worker heartbeat expiry after host event-loop stalls, preserve proven cleanup for rejected admission, and reconcile the exact legacy v4 preparation cancellation through independently checked worker-exit, workspace and lock-absence evidence. Preserve all original action outcomes and never replay effects or unlink replacement locks. Install the macOS daemon with the responsive process class used by the verified deployment.
-- 9011913: Complete the controlled internal executable Graph beta: preserve reconciliation-only repository locks across legacy acquisition, block upgrades while graph execution remains unresolved, and explicitly reject unsupported Node/Bun graph runtimes. Batch raw Git artifact capture and restoration with independent content and protocol limits so real repository delivery completes within its existing deadline.
-
-  Add compatibility, fault, runtime and performance verification, plus a real internal provider pilot and operations guide. Unknown external effects retain their lock and budget reservation; ready produces a candidate artifact without merging or deploying it.
-
-- 4a2646c: Preserve completed Git identity-query output when the daemon event loop stalls, while keeping bounded output and termination of hung queries. Reuse the guarded queries for repository policy checks and add macOS canonical-path regression coverage before merge.
-- Updated dependencies [071c1ff]
-- Updated dependencies [a1c0471]
-- Updated dependencies [c1f4619]
-- Updated dependencies [9011913]
-- Updated dependencies [5a82b1c]
-  - @osstack/protocol@0.20.0
-
 ## 0.17.0
 
 ### Minor Changes

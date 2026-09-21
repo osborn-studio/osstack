@@ -1,6 +1,6 @@
 {
   "name": "@osstack/autonomy",
-  "version": "0.20.0",
+  "version": "0.17.0",
   "description": "Guarded autonomy state machine, risk classifier, and delivery orchestration for osstack.",
   "license": "MIT",
   "type": "module",
