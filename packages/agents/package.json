@@ -9,6 +9,7 @@
   "exports": {
     "./*": "./*",
     ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js", "default": "./dist/index.js" },
+    "./experimental/changeset": { "types": "./dist/experimental/changeset.d.ts", "import": "./dist/experimental/changeset.js" },
     "./decision-advisor": { "types": "./dist/decisions/typesafe-client.d.ts", "import": "./dist/decisions/typesafe-client.js" }
   },
   "files": [

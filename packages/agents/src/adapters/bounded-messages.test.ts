@@ -66,6 +66,7 @@ it.each([
   { edit: { ...edit.edit, path: '../outside' } }, { edit: { ...edit.edit, beforeSha256: '0'.repeat(64) } },
   { edit: { ...edit.edit, content: '文'.repeat(30000) } }, { edit: { ...edit.edit, content: '\0' } },
   { edit: edit.edit, command: 'echo escaped' }, { edits: [edit.edit] },
+  { kind: 'propose', changes: [{ kind: 'replace', path: 'answer.txt', expectedSha256: edit.edit.beforeSha256, content: '42\n' }] },
 ])('rejects invalid model proposal without writing (provider stopped)', async output => {
   const f = fixture({ fetch: async () => response(output) });
   expect((await f.run()).at(-1)).toMatchObject({ payload: { status: 'failed' } }); expect(f.text()).toBe('41\n');
