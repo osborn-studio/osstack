@@ -50,7 +50,7 @@ OSSTACK_HOME=/absolute/private/new-pilot TMPDIR=/tmp \
 4. 首个内部仓库使用 OSStack 的独立工作副本和 `artifact_only` 模板，精确绑定 task、baseRevision、验证命令、scope 和有限授权期限。密钥只由现有私有凭据载入，不放入 Git、报告或 LaunchAgent 明文参数。
 5. 等 `autonomy.health` 返回 `can_run_local:true`、初次健康检查完成后，只改该注册的 `admissionEnabled:true`。普通 `health` 表示 RPC 可用，不能代替写入准入健康检查。执行一个有界内部任务并保留 candidate、独立评审、测试、join、费用与源仓库不变证据。其他仓库不获授权。遇到 unknown，关闭新准入并保留证据，不清账重试。
 
-以上是部署步骤，不是已部署声明。实际执行状态以 PR 和部署证据为准。
+当前已按上述步骤完成关闭新准入的部署，schema 37 与旧 RPC 已验证；内部试点未通过，核对后为 cancel_pending，Graph 准入保持关闭。见[实际部署记录](../reports/graph-upgrade-deployment.md)。本机 launchd 使用 ProcessType=Interactive；服务代码在系统盘标准安装目录，缓存/备份在工作盘。后续安装器重写 plist 时需保留该配置，不能放宽 worker 安全期限替代实际验证。
 
 ## 取消、对账、重试
 
