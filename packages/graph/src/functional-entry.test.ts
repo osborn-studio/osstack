@@ -2,6 +2,48 @@ import { MemorySaver } from '@langchain/langgraph-checkpoint';
 import { expect, it } from 'vitest';
 import { entrypoint, task } from './worker-entry.js';
 
+it('does not treat settled task promises as proof that a failed sibling stopped physical work', async () => {
+  let started!: () => void; let release!: () => void; let finished!: () => void;
+  const slowStarted = new Promise<void>(resolve => { started = resolve; });
+  const allowFinish = new Promise<void>(resolve => { release = resolve; });
+  const slowFinished = new Promise<void>(resolve => { finished = resolve; });
+  let physicalWorkFinished = false;
+  let fail = true; let slowCalls = 0;
+  const events: string[] = [];
+  let settlements: PromiseSettledResult<unknown>[] | undefined;
+  const slow = task({ name: 'stop-proof.slow', retry: { maxAttempts: 1 } }, async () => {
+    slowCalls++; events.push('slow-started'); started(); await allowFinish;
+    physicalWorkFinished = true; events.push('slow-finished'); finished(); return 'physical-result';
+  });
+  const failure = task({ name: 'stop-proof.failure', retry: { maxAttempts: 1 } }, async () => {
+    await slowStarted;
+    if (fail) throw new Error('injected branch failure');
+    return 'recovered';
+  });
+  const saver = new MemorySaver();
+  const workflow = entrypoint({ name: 'stop-proof', checkpointer: saver }, async () => {
+    settlements = await Promise.allSettled([slow(), failure()]);
+    const rejected = settlements.find(result => result.status === 'rejected');
+    if (rejected?.status === 'rejected') throw rejected.reason;
+    return 'ready';
+  });
+  const config = { configurable: { thread_id: 'physical-stop-proof' }, durability: 'sync' as const };
+  try {
+    await expect(workflow.invoke({}, config)).rejects.toThrow();
+    events.push('invoke-rejected');
+    expect(settlements?.map(result => result.status)).toEqual(['rejected', 'rejected']);
+    expect(physicalWorkFinished).toBe(false);
+    const checkpoint = await saver.getTuple(config);
+    expect(checkpoint?.pendingWrites?.some(([, channel]) => channel === '__error__')).toBe(true);
+    expect(checkpoint?.pendingWrites?.some(([, channel]) => channel === '__return__')).toBe(false);
+  } finally { release(); await slowFinished; }
+  expect(physicalWorkFinished).toBe(true);
+  expect(events).toEqual(['slow-started', 'invoke-rejected', 'slow-finished']);
+  fail = false;
+  await expect(workflow.invoke(null, config)).resolves.toBe('ready');
+  expect(slowCalls).toBe(2);
+});
+
 it('replays orchestration through the public worker entry without repeating completed tasks', async () => {
   const calls = { left: 0, right: 0, join: 0 };
   let fail = true;

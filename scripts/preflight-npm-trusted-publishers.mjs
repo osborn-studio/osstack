@@ -13,7 +13,7 @@ if (rootFlag !== -1 && (args[rootFlag + 1] === undefined || args[rootFlag + 1].s
 }
 const root = resolve(rootFlag === -1 ? process.cwd() : args[rootFlag + 1] ?? "");
 const json = args.includes("--json");
-const expectedRepository = process.env.OSSTACK_NPM_TRUSTED_REPOSITORY ?? "gilosbornhello/osstack";
+const expectedRepository = process.env.OSSTACK_NPM_TRUSTED_REPOSITORY ?? "osborn-studio/osstack";
 const expectedWorkflow = process.env.OSSTACK_NPM_TRUSTED_WORKFLOW ?? "release.yml";
 
 async function publicWorkspacePackages() {

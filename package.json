@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "description": "OSBORN stack (osstack) — Hermes-resident project manager agent for software development lifecycle. TypeScript daemon + Python Hermes skill wrapper.",
-  "repository": "https://github.com/gilosbornhello/osstack",
+  "repository": "https://github.com/osborn-studio/osstack",
   "license": "MIT",
   "packageManager": "pnpm@11.4.0",
   "engines": {
