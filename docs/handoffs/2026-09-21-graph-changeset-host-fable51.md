@@ -44,3 +44,11 @@ Node 22.22.1，独立 worktree，开发 CLI 仅使用临时 OSSTACK_HOME。
 - 新功能经历 RED→GREEN，包括无接口、原始 response bytes、慢授权时间、半提交拒绝结算、revision 竞争、损坏目录覆盖等。
 
 私有证据存储与 WAL FULL/EXTRA 要求已实现；进程 SIGKILL 不证明物理断电。production 默认仍未启用新服务。已有 response/terminal 证据的 unknown 恢复入口尚待实现，不能自动释放物理 admission。
+
+## 第二轮复核有效性记录
+
+第二轮 CLI 返回 is_error=false，且有 Fable modelUsage，但 result 只有准备读取 markUncertain 的工具调用文本，没有最终审计结论。不能把 API 成功或 modelUsage 当作审核通过。本轮工具已禁用，该文本未执行。结果 JSON SHA256：`d4dd17030967a0bf0d38c5e7ae94d5a93b9190f50f9c1be589655d34e7f5b642`。
+
+已补全 markUncertain/persistOutcome 等上下文，重发限字、无工具、单轮复核，并限制输出及调用费用。
+
+限字复核已完成：显式 `claude-fable-5-1`、effort=low、max-turns=1、输出上限3000、费用上限1美元，is_error=false。返回明确的最终结论为限定 host port 范围内没有 blocker，同时声明没有重跑测试。JSON SHA256：`8957e5676852ff4898994c4b2a1742fd138a490d4e86bde1d3e2b828419146fd`。该源码意见不等同于生产激活或合并授权；实际测试结果由本地工具独立验证。
