@@ -8,6 +8,10 @@ import { GraphEffectIdentity, GraphJsonValue, GraphResult, WorkerActionRequest, 
 import type { GraphRun, GraphRunFence } from "./graph-runs.js";
 import { fencedGraphTransaction } from "./graph-storage.js";
 
+import { parseInvocationRequest, parseInvocationResponse, readInvocation,
+  type GraphInvocationRequest, type GraphInvocationResponse, type GraphInvocationEvidence } from "./graph-invocations.js";
+export type { GraphInvocationRequest, GraphInvocationResponse, GraphInvocationEvidence } from "./graph-invocations.js";
+
 const count = z.number().int().min(0).max(Number.MAX_SAFE_INTEGER);
 // biome-ignore lint/suspicious/noControlCharactersInRegex: Persisted references must reject control characters.
 const ref = z.string().min(1).max(256).refine((v) => v.trim() === v && !/[\u0000-\u001f\u007f-\u009f]/.test(v));
@@ -69,7 +73,8 @@ export type GraphActionStorageErrorCode = "ADMISSION_RELEASE_PENDING" | "ORIGINA
   | "UNRESOLVED_ACTION" | "RETRY_NOT_SAFE" | "NOT_CURRENT_ATTEMPT" | "ACTION_GENERATION_MISMATCH"
   | "INVALID_ACTION_STATE" | "OUTCOME_CONFLICT" | "EXECUTION_CONFLICT" | "EPOCH_BUDGET_EXHAUSTED"
   | "BRANCH_BUDGET_EXHAUSTED" | "ACTION_BUDGET_EXHAUSTED" | "WALL_CLOCK_BUDGET_EXHAUSTED"
-  | "TOKEN_BUDGET_EXHAUSTED" | "ACCOUNTING_BLOCKED" | "RUN_STOPPING";
+  | "TOKEN_BUDGET_EXHAUSTED" | "ACCOUNTING_BLOCKED" | "RUN_STOPPING" | "INVOCATION_BINDING_MISMATCH" | "INVOCATION_CONFLICT"
+  | "INVOCATION_ADMISSION_REQUIRED" | "INVOCATION_NOT_FOUND" | "INVOCATION_RESPONSE_CONFLICT" | "INVOCATION_APPLY_REQUIRED";
 export class GraphActionStorageError extends Error {
   constructor(public readonly code: GraphActionStorageErrorCode) { super(code); this.name = "GraphActionStorageError"; }
 }
@@ -226,11 +231,75 @@ export class GraphActionStore {
   }
 
   markRunning(fence: GraphRunFence, effectKey: string, executionRef: string): GraphActionResult {
+    return this.start(fence, effectKey, executionRef);
+  }
+
+  /** Experimental host-only gate. Dispatch ONCE only when changed=true. Commit
+   * request evidence and the existing action's running transition atomically.
+   * A lost ACK, absent response, or process exit NEVER authorizes redispatch. */
+  beginInvocation(fence: GraphRunFence, effectKey: string, executionRef: string, value: GraphInvocationRequest): GraphActionResult {
+    return this.start(fence, effectKey, executionRef, parseInvocationRequest(value));
+  }
+
+  private requireInvocationAdmission(run: GraphRun, key: string): void {
+    if (!this.db.prepare(`SELECT 1 FROM graph_action_admissions WHERE effect_key=? AND graph_run_id=?
+      AND generation=? AND owner=? AND released_at IS NULL`).get(key, run.graphRunId, run.generation, run.leaseOwner)) {
+      fail("INVOCATION_ADMISSION_REQUIRED");
+    }
+  }
+
+  /** Evidence lookup, including historical generations, never permission to run. */
+  getInvocation(fence: GraphRunFence, effectKey: string): { invocation: GraphInvocationEvidence | null; run: GraphRun } {
+    keySchema.parse(effectKey);
+    const result = fencedGraphTransaction(this.db, fence, run => {
+      this.find(run, effectKey);
+      return { changed: false, value: readInvocation(this.db, effectKey) };
+    });
+    return { invocation: result.value, run: result.run };
+  }
+
+  /** Trusted host records validated, stopped provider evidence. Does not settle
+   * usage, declare implementation_complete, apply files or release admission. */
+  recordInvocationResponse(fence: GraphRunFence, effectKey: string, value: GraphInvocationResponse): GraphActionResult {
+    keySchema.parse(effectKey);
+    const response = parseInvocationResponse(value);
+    return this.write(fence, run => {
+      const action = this.find(run, effectKey);
+      this.checkEpoch(run, action.effect.epoch);
+      if (action.generation !== run.generation) fail("ACTION_GENERATION_MISMATCH");
+      const invocation = readInvocation(this.db, effectKey) ?? fail("INVOCATION_NOT_FOUND");
+      if (response.requestDigest !== invocation.request.requestDigest) fail("INVOCATION_BINDING_MISMATCH");
+      if (invocation.response) {
+        if (canonical(invocation.response) !== canonical(response)) fail("INVOCATION_RESPONSE_CONFLICT");
+        return { action, created: false, changed: false };
+      }
+      // A late response is evidence worth retaining; it never clears uncertainty.
+      if (!["running", "unknown", "cancel_pending"].includes(action.state)) fail("INVALID_ACTION_STATE");
+      this.requireInvocationAdmission(run, effectKey);
+      this.db.prepare("INSERT INTO graph_invocation_responses(effect_key,response_json,created_at) VALUES(?,?,?)")
+        .run(effectKey, canonical(response), fence.now);
+      return { action, created: false, changed: true };
+    });
+  }
+
+  private start(fence: GraphRunFence, effectKey: string, executionRef: string, request?: GraphInvocationRequest): GraphActionResult {
     keySchema.parse(effectKey); ref.parse(executionRef);
     return this.write(fence, (run) => {
       const prior = this.find(run, effectKey);
       this.checkEpoch(run, prior.effect.epoch);
       if (prior.generation !== run.generation) fail("ACTION_GENERATION_MISMATCH");
+      if (request) {
+        if ((prior.action.kind !== "implement" && prior.action.kind !== "repair")
+          || request.runId !== run.graphRunId || request.effectKey !== effectKey || request.generation !== run.generation
+          || request.programDigest !== run.identity.compiledProgramDigest || request.baseRevision !== run.spec!.input.baseRevision
+          || request.inputArtifactRef !== prior.action.inputArtifactRef || request.workspaceLeaseRef !== prior.action.workspaceLeaseRef) {
+          fail("INVOCATION_BINDING_MISMATCH");
+        }
+        this.requireInvocationAdmission(run, effectKey);
+        const existing = readInvocation(this.db, effectKey);
+        if (existing && canonical(existing.request) !== canonical(request)) fail("INVOCATION_CONFLICT");
+        if (prior.state === "running" && !existing) fail("INVOCATION_CONFLICT");
+      }
       if (prior.state === "running") {
         if (prior.executionRef !== executionRef) fail("EXECUTION_CONFLICT");
         return { action: prior, changed: false, created: false };
@@ -243,6 +312,8 @@ export class GraphActionStore {
         .get(run.graphRunId)) fail("UNRESOLVED_ACTION");
       if (this.budget(run).accountingBlocked) fail("ACCOUNTING_BLOCKED");
       if (fence.now - run.createdAt >= run.spec!.limits.deadlineSeconds * 1000) fail("WALL_CLOCK_BUDGET_EXHAUSTED");
+      if (request) this.db.prepare("INSERT INTO graph_invocation_requests(effect_key,request_json,created_at) VALUES(?,?,?)")
+        .run(effectKey, canonical(request), fence.now);
       this.db.prepare("UPDATE graph_actions SET state = 'running', execution_ref = ?, updated_at = ? WHERE effect_key = ?")
         .run(executionRef, fence.now, effectKey);
       return { action: this.find(run, effectKey), changed: true, created: false };
@@ -292,6 +363,10 @@ export class GraphActionStore {
       : { ...input, error: GraphJsonValue.parse(input.error) };
     return this.write(fence, (run) => {
       const prior = this.find(run, effectKey);
+      // P04 has no apply authority. Never let generic settlement promote a
+      // proposal receipt to successful implementation or create a new attempt.
+      if ((outcome.state === "confirmed" || outcome.retrySafe)
+        && this.db.prepare("SELECT 1 FROM graph_invocation_requests WHERE effect_key=?").get(effectKey)) fail("INVOCATION_APPLY_REQUIRED");
       if (dischargeUnstarted && (prior.state !== "intent" || prior.executionRef !== null || outcome.state !== "failed"
         || outcome.actualTokens !== 0 || this.db.prepare("SELECT 1 FROM graph_action_admissions WHERE effect_key=?").get(effectKey))) fail("INVALID_ACTION_STATE");
       if (prior.outcome) {

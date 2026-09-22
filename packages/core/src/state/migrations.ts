@@ -1691,6 +1691,36 @@ export const MIGRATIONS: readonly Migration[] = [
         BEGIN SELECT RAISE(ABORT, 'graph process observation immutable'); END;
     `,
   },
+  {
+    id: 38,
+    name: "graph_invocation_evidence",
+    sql: `
+      CREATE TABLE graph_invocation_requests (
+        effect_key TEXT PRIMARY KEY REFERENCES graph_actions(effect_key),
+        request_json TEXT NOT NULL CHECK(length(request_json) <= 8192),
+        created_at INTEGER NOT NULL CHECK(created_at >= 0 AND created_at <= 9007199254740991)
+      );
+      CREATE TABLE graph_invocation_responses (
+        effect_key TEXT PRIMARY KEY REFERENCES graph_invocation_requests(effect_key),
+        response_json TEXT NOT NULL CHECK(length(response_json) <= 4096),
+        created_at INTEGER NOT NULL CHECK(created_at >= 0 AND created_at <= 9007199254740991)
+      );
+      CREATE TRIGGER graph_invocation_requests_no_replace BEFORE INSERT ON graph_invocation_requests
+        WHEN EXISTS(SELECT 1 FROM graph_invocation_requests WHERE effect_key=NEW.effect_key)
+        BEGIN SELECT RAISE(ABORT, 'graph invocation request immutable'); END;
+      CREATE TRIGGER graph_invocation_responses_no_replace BEFORE INSERT ON graph_invocation_responses
+        WHEN EXISTS(SELECT 1 FROM graph_invocation_responses WHERE effect_key=NEW.effect_key)
+        BEGIN SELECT RAISE(ABORT, 'graph invocation response immutable'); END;
+      CREATE TRIGGER graph_invocation_requests_no_update BEFORE UPDATE ON graph_invocation_requests
+        BEGIN SELECT RAISE(ABORT, 'graph invocation request immutable'); END;
+      CREATE TRIGGER graph_invocation_requests_no_delete BEFORE DELETE ON graph_invocation_requests
+        BEGIN SELECT RAISE(ABORT, 'graph invocation request immutable'); END;
+      CREATE TRIGGER graph_invocation_responses_no_update BEFORE UPDATE ON graph_invocation_responses
+        BEGIN SELECT RAISE(ABORT, 'graph invocation response immutable'); END;
+      CREATE TRIGGER graph_invocation_responses_no_delete BEFORE DELETE ON graph_invocation_responses
+        BEGIN SELECT RAISE(ABORT, 'graph invocation response immutable'); END;
+    `,
+  },
 ];
 
 export const CURRENT_SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1]!.id;
