@@ -7,7 +7,7 @@ import { GraphArtifactStore } from '@osstack/core/graph-artifacts';
 import { GraphRecoveryStore, type GraphExecutorInventory, type GraphRecoveryVerdict } from '@osstack/core/graph-recovery';
 import { inspectRepoWriteLock, releaseReconciledRepoWriteLock, repoLockPath, type RepoLockOwner } from '@osstack/autonomy';
 import { workerCanonical } from '@osstack/protocol';
-import { compileGraphSpec } from '@osstack/graph/spec-compiler';
+import { resolveV4GraphProgram } from '@osstack/graph/program-resolver';
 import { deliveryEpoch } from '@osstack/graph/templates/code-delivery-v1';
 import { GraphReconciler } from './graph-reconciler.js';
 import { loadGraphVerificationEvidence, type AcceptanceCommandSpec } from './graph-verification-store.js';
@@ -42,11 +42,11 @@ export async function cancelStoppedGraphVerification(db: Database.Database, root
   const store = new GraphRecoveryStore(db, () => { throw Error('INSPECTION_ONLY'); });
   check(); const initial = store.inspectExecutors(input.fence); const run = initial.snapshot.run;
   if (run.status !== 'cancel_pending' || run.generation !== 1 || initial.workers.length !== 1 || initial.entries.length !== 7 || !run.spec) throw Error('VERIFICATION_RECOVERY_SCOPE');
-  const compiled = compileGraphSpec(run.spec);
-  const supported = { executionModel: 'langgraph-functional-v1', durability: 'sync', engineVersion: '1.4.15', checkpointVersion: '1.1.5',
-    templateVersion: '4', registryVersion: 'code-delivery-registry-v3', compilerVersion: 'code-delivery-functional-v4',
-    schemaVersion: 'code-delivery-schema-v3', compiledProgramDigest: compiled.compiledProgramDigest };
-  if (Object.entries(supported).some(([key, v]) => run.identity[key as keyof typeof run.identity] !== v)) throw Error('VERIFICATION_RECOVERY_PROGRAM');
+  // This recovery window only supports the frozen v4 action shape.
+  const compiled = (() => {
+    try { return resolveV4GraphProgram(run.spec, run.identity); }
+    catch { throw Error('VERIFICATION_RECOVERY_PROGRAM'); }
+  })();
   const epoch = deliveryEpoch(compiled, 0);
   const names = ['workspace','implement','freeze','prepare_review','prepare_tests','review','tests'] as const;
   const entries = names.map(name => {

@@ -173,3 +173,58 @@ it('preserves both admission and cleanup errors and quarantines a replaced pre-a
   expect((await inspectRepoWriteLock(root, scope.repoId))?.token).toBe(token);
   await expect(f.admission.acquire({ kind: 'write', runId: 'next', workspacePath: f.repo })).rejects.toThrow('reconciliation required');
 });
+
+it('provides writer-only scoped proof without releasing capacity after synchronous work', async () => {
+  const f = await fixture(); const lease = await f.admission.acquire({ kind: 'write', runId: 'guard', workspacePath: f.repo });
+  const scope = await resolveRepositoryScope(f.repo); let escaped: (() => void) | undefined;
+  expect(await lease.withWriteGuard!(scope.workspacePath, check => { check(); escaped = check; return 42; })).toBe(42);
+  expect(() => escaped!()).toThrow('guard'); expect(f.writes.in_use).toBe(1);
+  await expect(lease.withWriteGuard!(f.other, () => 1)).rejects.toThrow('workspace mismatch');
+  await lease.release(); expect(f.writes.in_use).toBe(0);
+  const read = await f.admission.acquire({ kind: 'read', runId: 'read', workspacePath: f.repo });
+  expect(read.withWriteGuard).toBeUndefined(); await read.release();
+});
+it('retains physical capacity and blocks subsequent work after guarded failure', async () => {
+  const f = await fixture(); const lease = await f.admission.acquire({ kind: 'write', runId: 'guard-failure', workspacePath: f.repo });
+  const scope = await resolveRepositoryScope(f.repo);
+  await expect(lease.withWriteGuard!(scope.workspacePath, () => { throw Error('partial'); })).rejects.toThrow('partial');
+  await expect(lease.release()).rejects.toThrow('unconfirmed'); expect(f.writes.in_use).toBe(1);
+  await expect(lease.withWriteGuard!(scope.workspacePath, () => 1)).rejects.toThrow('unavailable');
+  await lease.releaseAfterReconciliation!(async () => undefined); expect(f.writes.in_use).toBe(0);
+});
+it('rejects release and reconciliation while synchronous guarded work is in flight', async () => {
+  const f = await fixture(); const lease = await f.admission.acquire({ kind: 'write', runId: 'guard-release', workspacePath: f.repo });
+  const scope = await resolveRepositoryScope(f.repo); const pending: Promise<unknown>[] = [];
+  await lease.withWriteGuard!(scope.workspacePath, check => {
+    pending.push(expect(lease.release()).rejects.toThrow('guard in progress'));
+    pending.push(expect(lease.releaseAfterReconciliation!(async () => undefined)).rejects.toThrow('guard in progress'));
+    check();
+  });
+  await Promise.all(pending); expect(f.writes.in_use).toBe(1); await lease.release();
+});
+it('retains a mistaken asynchronous guarded callback and contains its rejection', async () => {
+  const f = await fixture(); const lease = await f.admission.acquire({ kind: 'write', runId: 'guard-async', workspacePath: f.repo });
+  const scope = await resolveRepositoryScope(f.repo);
+  await expect(lease.withWriteGuard!(scope.workspacePath, () => Promise.reject(Error('late')))).rejects.toThrow('synchronous');
+  await expect(lease.release()).rejects.toThrow('unconfirmed');
+  await lease.releaseAfterReconciliation!(async () => undefined);
+});
+
+it('rejects a new guard while reconciliation verification is already pending', async () => {
+  const f = await fixture(); const lease = await f.admission.acquire({ kind: 'write', runId: 'guard-recon', workspacePath: f.repo });
+  const scope = await resolveRepositoryScope(f.repo);
+  let finish!: () => void; const barrier = new Promise<void>(resolve => { finish = resolve; });
+  const release = lease.releaseAfterReconciliation!(() => barrier);
+  await expect(lease.withWriteGuard!(scope.workspacePath, () => 1)).rejects.toThrow('unavailable');
+  finish(); await release; expect(f.writes.in_use).toBe(0);
+});
+it('defers renewal ticks during guarded work and renews before releasing the guard state', async () => {
+  const f = await fixture(); vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] });
+  const lease = await f.admission.acquire({ kind: 'write', runId: 'guard-renew', workspacePath: f.repo });
+  const scope = await resolveRepositoryScope(f.repo);
+  try {
+    await lease.withWriteGuard!(scope.workspacePath, check => { vi.advanceTimersByTime(40000); check(); });
+    await lease.assertActive!(); expect(f.writes.in_use).toBe(1);
+  } finally { await lease.release(); }
+  expect(f.writes.in_use).toBe(0);
+});

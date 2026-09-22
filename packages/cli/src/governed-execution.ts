@@ -10,6 +10,9 @@ export interface ExecutionLease {
   releaseAfterReconciliation?(verify: () => Promise<void>): Promise<void>;
   /** Assert this exact canonical writer lease is still live. */
   assertActive?(): Promise<void>;
+  /** Scoped synchronous file operations under the canonical writer lock. This
+   * capability is absent on read leases. Failures retain admission until recovery. */
+  withWriteGuard?<T>(workspacePath: string, operation: (assertActive: () => void) => T): Promise<T>;
 }
 export interface AdmissionInput {
   kind: 'read' | 'write';
@@ -74,14 +77,16 @@ export class GovernedExecution {
     };
     let released = false;
     let retained = false;
+    let writeGuardActive = false;
     // Start as soon as the filesystem lock exists, including the final policy
     // wait. Once admitted, a renewal failure retains the unknown producer.
     let renewing: Promise<void> = Promise.resolve();
     let timer: ReturnType<typeof setInterval> | undefined;
     const startRenewal = () => {
       timer = setInterval(() => {
+        if (writeGuardActive) return;
         renewing = renewing.then(async () => {
-          if (!released) await lock!.renew();
+          if (!released && !writeGuardActive) await lock!.renew();
         }).catch((error: unknown) => {
           retained = true;
           if (scope) this.quarantine(scope.repoId, input.runId);
@@ -133,12 +138,43 @@ export class GovernedExecution {
     }
     let reconciled: Promise<void> | undefined;
     return {
+      ...(lock && scope ? { withWriteGuard: async <T>(workspacePath: string, operation: (assertActive: () => void) => T): Promise<T> => {
+        if (workspacePath !== scope.workspacePath) throw new Error('write guard workspace mismatch');
+        if (released || retained || writeGuardActive || reconciled) throw new Error('execution lease unavailable');
+        writeGuardActive = true;
+        try {
+          await renewing;
+          if (released || retained) throw new Error('execution lease unavailable');
+          // Do not let the timer contend with our metadata guard. Renew on both
+          // sides while still excluding release; renewal never revives expiry.
+          await lock!.renew();
+          const value = await lock!.withActiveGuard(check => {
+            const assertActive = () => {
+              if (released || retained) throw new Error('execution lease unavailable');
+              check();
+            };
+            assertActive(); const result = operation(assertActive);
+            if (result !== null && (typeof result === 'object' || typeof result === 'function') && 'then' in result) {
+              void Promise.resolve(result).catch(() => {});
+              throw new Error('write guard operation must be synchronous');
+            }
+            assertActive(); return result;
+          });
+          await lock!.renew();
+          return value;
+        } catch (error) {
+          retained = true; if (timer) clearInterval(timer);
+          this.quarantine(scope.repoId, input.runId);
+          throw error;
+        } finally { writeGuardActive = false; }
+      } } : {}),
       assertActive: async () => {
         if (released || retained) throw new Error("execution lease unavailable");
         await lock?.assertActive();
         if (released || retained) throw new Error("execution lease unavailable");
       },
       releaseAfterReconciliation: (verify) => {
+        if (writeGuardActive) return Promise.reject(new Error('write guard in progress'));
         if (released) return Promise.resolve();
         if (reconciled) return reconciled;
         if (typeof verify !== 'function') return Promise.reject(new Error('trusted reconciliation verifier required'));
@@ -166,6 +202,7 @@ export class GovernedExecution {
       },
       retain: (reason) => { retained = true; if (timer) clearInterval(timer); if (scope) this.quarantine(scope.repoId, input.runId); process.stderr.write(`osstack: retaining write lease ${input.runId}: ${reason}\n`); },
       release: async () => {
+        if (writeGuardActive) throw new Error('write guard in progress');
         if (released) return;
         if (retained) throw new Error("external stop unconfirmed; reconciliation required before release");
         released = true;

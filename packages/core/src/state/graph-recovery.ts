@@ -1,5 +1,6 @@
 // Trusted administrative recovery only. This port is never a worker JSON API.
 import { createHash } from "node:crypto";
+import { readApply } from "./graph-apply.js";
 import type Database from "better-sqlite3";
 import { z } from "zod";
 import { GraphJsonValue, GraphResult, validateWorkerActionResponse } from "@osstack/protocol";
@@ -66,7 +67,9 @@ function normalizeDecision(value: GraphRecoveryDecision): GraphRecoveryDecision 
 
 /** Host-owned physical admission bookkeeping, not a worker API. Record a hold
  * before invocation; record release only after the exact physical lease releases.
- * Recovery also records an obligation for legacy/acquire-crash actions. */
+ * Recovery also records an obligation for legacy/acquire-crash actions. This is
+ * bookkeeping, not proof of physical cleanup. Apply recovery uses the proof-checked
+ * GraphRecoveryStore release paths; never release merely because a call ended. */
 export class GraphAdmissionStore {
   constructor(private readonly db: Database.Database) {}
   hold(effectKey: string, now: number): void {
@@ -271,6 +274,29 @@ export class GraphRecoveryStore {
       return { run, action: snapshot.action, record, changed: false };
     });
   }
+  /** Quarantine release is physical-resource cleanup only. It never clears
+   * uncertainty, releases token reservations, permits retries or seals the run.
+   * Host must verify before physical cleanup and attest again after cleanup. */
+  verifyQuarantineRelease(snapshot: GraphRecoverySnapshot, receiptId: string, proof: GraphRecoveryProof, now: number): GraphRecoveryResult {
+    return this.quarantineRelease(snapshot, receiptId, proof, now, false);
+  }
+  completeQuarantineRelease(snapshot: GraphRecoverySnapshot, receiptId: string, proof: GraphRecoveryProof, now: number): GraphRecoveryResult {
+    return this.quarantineRelease(snapshot, receiptId, proof, now, true);
+  }
+  private quarantineRelease(snapshot: GraphRecoverySnapshot, receiptId: string, proof: GraphRecoveryProof, now: number, complete: boolean): GraphRecoveryResult {
+    return this.transaction(() => {
+      const run = this.unchanged(snapshot, now);
+      const record = this.record(run, receiptId) ?? fail("DECISION_NOT_FOUND");
+      const action = snapshot.action;
+      if (!action || record.snapshot.action?.effectKey !== action.effectKey || record.decision.kind !== "effect"
+        || record.decision.verdict.outcome !== "unknown" || !["unknown", "cancel_pending"].includes(action.state)
+        || readApply(this.db, action.effectKey)?.resolution?.kind !== "quarantined") fail("QUARANTINE_RELEASE_UNSUPPORTED");
+      this.proof(snapshot, proof, now, record.decision);
+      if (complete) new GraphAdmissionStore(this.db).released(action!.effectKey, now);
+      return { run, action, record, changed: false };
+    });
+  }
+
   commit(snapshotValue: GraphRecoverySnapshot, decisionValue: GraphRecoveryDecision, proofValue: GraphRecoveryProof, now: number): GraphRecoveryResult {
     const snapshot = structuredClone(snapshotValue); graphRunFenceSchema.parse(GraphJsonValue.parse(snapshot.fence)); count.parse(now);
     const decision = normalizeDecision(decisionValue);
@@ -327,10 +353,30 @@ export class GraphRecoveryStore {
     });
   }
   private settle(run: GraphRun, action: GraphAction, verdict: GraphRecoveryVerdict, now: number): void {
+    // Legacy stopped-worker proof cannot settle a provider request or prove a
+    // multifile apply. Preserve reservations until profile-specific recovery exists.
+    if (verdict.outcome !== "unknown" && this.db.prepare("SELECT 1 FROM graph_invocation_requests WHERE effect_key=?").get(action.effectKey)) {
+      // An immutable applied receipt can justify release-only recovery of an
+      // ALREADY confirmed fact. It cannot promote running/unknown or invent an
+      // outcome; canonical comparison below must match the original settlement.
+      if (verdict.outcome !== "applied" || action.state !== "confirmed" || action.outcome?.state !== "confirmed"
+        || !this.db.prepare("SELECT 1 FROM graph_apply_resolutions WHERE effect_key=? AND kind='applied'").get(action.effectKey)) {
+        fail("INVOCATION_RECOVERY_UNSUPPORTED");
+      }
+    }
     if (verdict.outcome === "unknown") {
       if (action.outcome) fail("OUTCOME_CONFLICT");
       const observed = Math.max(action.observedTokens, verdict.observedTokens);
       const state = run.status === "cancel_pending" || action.state === "cancel_pending" ? "cancel_pending" : "unknown";
+      const apply = readApply(this.db, action.effectKey);
+      if (apply && !apply.resolution) {
+        // Expired/crashed apply is quarantined under the existing stopped-worker
+        // proof, preserving its historical generation and immutable journal.
+        this.db.prepare("INSERT INTO graph_apply_resolutions(effect_key,kind,resolution_json,created_at) VALUES(?,'quarantined',?,?)")
+          .run(action.effectKey, canonical({ schemaVersion: 1, kind: "quarantined", proposalDigest: apply.intent.proposalDigest,
+            journalDigest: apply.intent.journalDigest, evidenceRef: verdict.evidenceRef, observedTokens: observed,
+            cancelled: state === "cancel_pending" }), now);
+      }
       this.db.prepare("UPDATE graph_actions SET state = ?, uncertainty_json = ?, observed_tokens = ?, accounting_blocked = ?, updated_at = ? WHERE effect_key = ?")
         .run(state, canonical({ state, evidenceRef: verdict.evidenceRef, observedTokens: observed }), observed,
           Number(action.accountingBlocked || observed > action.reservationTokens), now, action.effectKey);

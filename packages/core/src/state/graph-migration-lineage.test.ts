@@ -31,7 +31,7 @@ it.each([true, false])('reopens the integrated current schema with readwrite=%s'
     expect(reopened.pragma('integrity_check', { simple: true })).toBe('ok');
   } finally { reopened.close(); }
 });
-it.each([24, 25, 26, 27])('upgrades deployed main v%s preserving its actual improvement execution', version => {
+it.each([24, 25, 26, 27, 37])('upgrades deployed v%s preserving its actual improvement execution', version => {
   const path = join(root, 'main.db'); const old = new Database(path);
   install(old, MIGRATIONS.filter(m => m.id <= version));
   old.exec(`INSERT INTO improvement_proposals(proposal_id,repo_id,source_asset_ids_json,target,risk,title,rationale,proposed_changes_json,required_gates_json,status,created_at,updated_at) VALUES ('p','repo','[]','eval','low','title','reason','[]','[]','approved',1,1)`);

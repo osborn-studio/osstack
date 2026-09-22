@@ -10,6 +10,7 @@ import { verifyJournaledGraphWorkerExit } from './graph-worker-exit-proof.js';
 import { GraphArtifactStore } from '@osstack/core/graph-artifacts';
 import { GraphDeliveryEpochStore, GraphVerificationStore } from '@osstack/core/graph-verification';
 import { compileGraphSpec, type CompiledGraphSpec } from '@osstack/graph/spec-compiler';
+import { graphProgramVersion, resolveV4GraphProgram } from '@osstack/graph/program-resolver';
 import { deliveryEpoch } from '@osstack/graph/templates/code-delivery-v1';
 import { type GraphResult, WorkerActionRequest, workerCanonical, StartGraphRequest, freezeWorkerData, type WorkerActionResponse, type GraphWorkerResume } from '@osstack/protocol';
 import type { RegisteredCandidateWorkspace } from '@osstack/loop';
@@ -46,9 +47,7 @@ export function assertGraphDeliverySupported(options: Pick<GraphDeliveryOptions,
   assertGraphAdapterSupported(options.reviewer.adapter);
 }
 export function graphDeliveryVersion(compiled: CompiledGraphSpec) {
-  return { executionModel: 'langgraph-functional-v1' as const, durability: 'sync' as const,
-    engineVersion: '1.4.15', checkpointVersion: '1.1.5', templateVersion: '4', registryVersion: compiled.registryVersion,
-    compilerVersion: compiled.compilerVersion, schemaVersion: compiled.schemaVersion, compiledProgramDigest: compiled.compiledProgramDigest };
+  return graphProgramVersion(compiled);
 }
 type Candidate = Extract<GraphResult, { kind: 'candidate_ready' }>;
 type Kind = 'review' | 'tests';
@@ -93,7 +92,9 @@ export class GraphDelivery {
     options = this.options;
     const capability = options.writer.adapter.capabilities().find(c => c.id === options.writer.capabilityId);
     if (options.writer.identity !== options.writer.adapter.id || !capability || !['code.write','code.refactor','code.debug'].includes(capability.kind)) throw Error('WRITER_IDENTITY_REQUIRED');
-    this.compiled = compileGraphSpec(options.request.spec);
+    this.compiled = options.reservedRun
+      ? resolveV4GraphProgram(options.request.spec, options.reservedRun.identity)
+      : compileGraphSpec(options.request.spec);
     this.runs = new GraphRunStore(options.db);
     if (options.reservedRun) this.runValue = options.reservedRun;
     this.broker = new GraphActionBroker(options.db, { acquire: options.acquire,

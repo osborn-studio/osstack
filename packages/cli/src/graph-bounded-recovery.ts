@@ -4,7 +4,7 @@ import { GraphRunStore, resolveRepositoryScope, type GraphRunFence } from '@osst
 import { GraphRecoveryStore, type GraphExecutorInventory, type GraphRecoveryVerdict } from '@osstack/core/graph-recovery';
 import { inspectRepoWriteLock, releaseReconciledRepoWriteLock } from '@osstack/autonomy';
 import { workerCanonical } from '@osstack/protocol';
-import { compileGraphSpec } from '@osstack/graph/spec-compiler';
+import { resolveV4GraphProgram } from '@osstack/graph/program-resolver';
 import { GraphReconciler } from './graph-reconciler.js';
 import { verifyJournaledGraphWorkerExit } from './graph-worker-exit-proof.js';
 import { loadDeliveryReceipt } from './graph-delivery-receipts.js';
@@ -29,13 +29,9 @@ export async function cancelJournaledBoundedWriter(db: Database.Database, root: 
   if (initial.snapshot.run.status !== 'cancel_pending' || initial.workers.length !== 1 || initial.entries.length !== 2) throw Error('BOUNDED_RECOVERY_SCOPE');
   const run = initial.snapshot.run;
   if (!run.spec) throw Error('BOUNDED_RECOVERY_PROGRAM');
-  const compiled = compileGraphSpec(run.spec);
-  // Explicit compatibility boundary: do not automatically follow a future
-  // graphDeliveryVersion bump while reconstructing this v4 business result.
-  const supported = { executionModel: 'langgraph-functional-v1', durability: 'sync', engineVersion: '1.4.15',
-    checkpointVersion: '1.1.5', templateVersion: '4', registryVersion: compiled.registryVersion,
-    compilerVersion: compiled.compilerVersion, schemaVersion: compiled.schemaVersion, compiledProgramDigest: compiled.compiledProgramDigest };
-  if (Object.entries(supported).some(([key, value]) => run.identity[key as keyof typeof run.identity] !== value)) throw Error('BOUNDED_RECOVERY_PROGRAM');
+  // This recovery window only supports the frozen v4 action shape.
+  try { resolveV4GraphProgram(run.spec, run.identity); }
+  catch { throw Error('BOUNDED_RECOVERY_PROGRAM'); }
   const writer = initial.entries.find(e => e.action.effect.nodeId === 'e0.implement');
   const workspace = initial.entries.find(e => e.action.effect.nodeId === 'e0.workspace');
   if (!writer || !workspace || writer.action.generation !== 1 || workspace.action.generation !== 1
