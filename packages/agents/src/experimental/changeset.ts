@@ -87,19 +87,8 @@ function normalizedPolicy(value: unknown): ChangesetPathPolicy {
   return policy;
 }
 
-/** Host supplies independently verified current binding. A matching digest is not authorization.
- * Host must obtain policyDigest from the authorized grant/profile, never from the proposal.
- * proposalDigest is generation-scoped; durable cross-generation idempotency uses effectKey.
- * Host must check aliases against the entire live tree, including absent targets.
- * Host must recheck live preimages, path inode/link types, policy/grant and lease before applying.
- * create means mode 100644; replace preserves manifest mode; delete requires the exact preimage.
- * Each separately transported JSON input must be capped at 64 KiB before JSON.parse;
- * if bundled, cap the entire envelope at 64 KiB, not 64 KiB per member.
- * Manifest entries are writable targets only; read-only context is not supported in M1.
- */
-export function validateChangesetProposal(proposalValue: unknown, manifestValue: unknown,
-  policyValue: unknown, currentBindingValue: unknown) {
-  const proposal = proposalSchema.parse(GraphJsonValue.parse(proposalValue));
+/** Validate the complete disclosure before network dispatch. No execution authority. */
+export function validateChangesetInput(manifestValue: unknown, policyValue: unknown, currentBindingValue: unknown) {
   const manifest = manifestSchema.parse(GraphJsonValue.parse(manifestValue));
   const policy = normalizedPolicy(policyValue);
   const current = bindingSchema.parse(GraphJsonValue.parse(currentBindingValue));
@@ -116,6 +105,24 @@ export function validateChangesetProposal(proposalValue: unknown, manifestValue:
     }
   }
   if (manifestBytes > CHANGESET_LIMITS.maxManifestBytes) throw Error('CHANGESET_MANIFEST_LIMIT');
+  manifest.entries.sort((a, b) => a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
+  return freezeWorkerData({ manifest, policy, manifestDigest: boundDigest('manifest', manifest), policyDigest });
+}
+
+/** Host supplies independently verified current binding. A matching digest is not authorization.
+ * Host must obtain policyDigest from the authorized grant/profile, never from the proposal.
+ * proposalDigest is generation-scoped; durable cross-generation idempotency uses effectKey.
+ * Host must check aliases against the entire live tree, including absent targets.
+ * Host must recheck live preimages, path inode/link types, policy/grant and lease before applying.
+ * create means mode 100644; replace preserves manifest mode; delete requires the exact preimage.
+ * Each separately transported JSON input must be capped at 64 KiB before JSON.parse;
+ * if bundled, cap the entire envelope at 64 KiB, not 64 KiB per member.
+ * Manifest entries are writable targets only; read-only context is not supported in M1.
+ */
+export function validateChangesetProposal(proposalValue: unknown, manifestValue: unknown,
+  policyValue: unknown, currentBindingValue: unknown) {
+  const proposal = proposalSchema.parse(GraphJsonValue.parse(proposalValue));
+  const { manifest, policy, manifestDigest, policyDigest } = validateChangesetInput(manifestValue, policyValue, currentBindingValue);
   if (proposal.kind === 'propose') {
     checkPaths(proposal.changes.map(c => c.path));
     let bytes = 0;
@@ -133,8 +140,6 @@ export function validateChangesetProposal(proposalValue: unknown, manifestValue:
     if (bytes > CHANGESET_LIMITS.maxProposalContentBytes) throw Error('CHANGESET_CONTENT_LIMIT');
     proposal.changes.sort((a, b) => a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
   }
-  manifest.entries.sort((a, b) => a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
-  const manifestDigest = boundDigest('manifest', manifest);
   const proposalDigest = boundDigest('proposal', { manifestDigest, policyDigest, proposal });
   return freezeWorkerData({ proposal, manifest, policy, manifestDigest, policyDigest, proposalDigest });
 }

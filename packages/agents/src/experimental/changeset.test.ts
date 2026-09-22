@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { describe, expect, it, vi } from 'vitest';
-import { changesetPolicyDigest, validateChangesetProposal } from './changeset.js';
+import { changesetPolicyDigest, validateChangesetInput, validateChangesetProposal } from './changeset.js';
 const sha = (s: string) => createHash('sha256').update(s).digest('hex');
 const policy = { exactPaths: [], directoryPrefixes: ['src'], denyPaths: [], denyPrefixes: ['src/private'] };
 const binding = { runId: 'run', effectKey: 'a'.repeat(64), generation: 1, baseRevision: 'b'.repeat(40), treeRevision: 'c'.repeat(40), profileDigest: 'd'.repeat(64), grantDigest: 'e'.repeat(64), programDigest: 'f'.repeat(64), policyDigest: changesetPolicyDigest(policy) };
@@ -79,4 +79,12 @@ describe('experimental changeset contract (no execution authority)', () => {
   it('does not invoke input accessors', () => {
     const touched=vi.fn();expect(() => validate({get kind(){touched();return 'propose';}})).toThrow();expect(touched).not.toHaveBeenCalled();
   });
+});
+
+it('validates and freezes input before a provider response exists, preserving v1 digests', () => {
+  const input = validateChangesetInput(manifest, policy, binding);
+  const full = validate();
+  expect(input).toEqual({ manifest: full.manifest, policy: full.policy, manifestDigest: full.manifestDigest, policyDigest: full.policyDigest });
+  expect(Object.isFrozen(input.manifest.entries)).toBe(true);
+  expect(() => validateChangesetInput(manifest, policy, { ...binding, generation: 2 })).toThrow('CHANGESET_BINDING_MISMATCH');
 });

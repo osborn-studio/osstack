@@ -9,6 +9,7 @@
   "exports": {
     "./*": "./*",
     ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js", "default": "./dist/index.js" },
+    "./experimental/changeset-client": { "types": "./dist/experimental/changeset-client.d.ts", "import": "./dist/experimental/changeset-client.js" },
     "./experimental/changeset": { "types": "./dist/experimental/changeset.d.ts", "import": "./dist/experimental/changeset.js" }
   },
   "files": [
