@@ -1721,6 +1721,42 @@ export const MIGRATIONS: readonly Migration[] = [
         BEGIN SELECT RAISE(ABORT, 'graph invocation response immutable'); END;
     `,
   },
+  {
+    id: 39,
+    name: "graph_apply_evidence",
+    sql: `
+      CREATE TABLE graph_apply_intents (
+        effect_key TEXT PRIMARY KEY REFERENCES graph_invocation_responses(effect_key),
+        generation INTEGER NOT NULL CHECK(generation >= 1 AND generation <= 9007199254740991),
+        intent_json TEXT NOT NULL CHECK(length(intent_json) <= 8192),
+        created_at INTEGER NOT NULL CHECK(created_at >= 0 AND created_at <= 9007199254740991)
+      );
+      CREATE TABLE graph_apply_resolutions (
+        effect_key TEXT PRIMARY KEY REFERENCES graph_apply_intents(effect_key),
+        kind TEXT NOT NULL CHECK(kind IN ('applied','quarantined')),
+        resolution_json TEXT NOT NULL CHECK(length(resolution_json) <= 4096),
+        created_at INTEGER NOT NULL CHECK(created_at >= 0 AND created_at <= 9007199254740991)
+      );
+      CREATE TRIGGER graph_apply_intents_no_replace BEFORE INSERT ON graph_apply_intents
+        WHEN EXISTS(SELECT 1 FROM graph_apply_intents WHERE effect_key=NEW.effect_key)
+        BEGIN SELECT RAISE(ABORT, 'graph apply intents immutable'); END;
+      CREATE TRIGGER graph_apply_intents_no_update BEFORE UPDATE ON graph_apply_intents
+
+        BEGIN SELECT RAISE(ABORT, 'graph apply intents immutable'); END;
+      CREATE TRIGGER graph_apply_intents_no_delete BEFORE DELETE ON graph_apply_intents
+
+        BEGIN SELECT RAISE(ABORT, 'graph apply intents immutable'); END;
+      CREATE TRIGGER graph_apply_resolutions_no_replace BEFORE INSERT ON graph_apply_resolutions
+        WHEN EXISTS(SELECT 1 FROM graph_apply_resolutions WHERE effect_key=NEW.effect_key)
+        BEGIN SELECT RAISE(ABORT, 'graph apply resolutions immutable'); END;
+      CREATE TRIGGER graph_apply_resolutions_no_update BEFORE UPDATE ON graph_apply_resolutions
+
+        BEGIN SELECT RAISE(ABORT, 'graph apply resolutions immutable'); END;
+      CREATE TRIGGER graph_apply_resolutions_no_delete BEFORE DELETE ON graph_apply_resolutions
+
+        BEGIN SELECT RAISE(ABORT, 'graph apply resolutions immutable'); END;
+    `,
+  },
 ];
 
 export const CURRENT_SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1]!.id;
