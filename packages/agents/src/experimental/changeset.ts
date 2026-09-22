@@ -87,6 +87,14 @@ function normalizedPolicy(value: unknown): ChangesetPathPolicy {
   return policy;
 }
 
+/** Shared deny-first disclosure policy. Does not grant host authority. */
+export function assertChangesetDisclosurePaths(values: unknown, policyValue: unknown, expectedDigest: string): void {
+  const selected = paths.parse(GraphJsonValue.parse(values)); const policy = normalizedPolicy(policyValue);
+  if (changesetPolicyDigest(policy) !== expectedDigest) throw Error('CHANGESET_POLICY_MISMATCH');
+  checkPaths(selected);
+  for (const value of selected) if (!allowed(value, policy)) throw Error('CHANGESET_PATH_DENIED');
+}
+
 /** Validate the complete disclosure before network dispatch. No execution authority. */
 export function validateChangesetInput(manifestValue: unknown, policyValue: unknown, currentBindingValue: unknown) {
   const manifest = manifestSchema.parse(GraphJsonValue.parse(manifestValue));
