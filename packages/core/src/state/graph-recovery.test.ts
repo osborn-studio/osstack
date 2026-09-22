@@ -48,6 +48,25 @@ beforeEach(() => { dir = mkdtempSync(join(tmpdir(), "g15-")); db = openDb({ path
 afterEach(() => { if (db.open) db.close(); rmSync(dir, { recursive: true, force: true }); });
 
 describe("trusted graph recovery", () => {
+  it("never re-arms a released admission through a new recovery receipt or direct hold", () => {
+    commit();
+    const released = snapshot(140);
+    recovery.completeRelease(released, "receipt", proof(released, 140), 140);
+    const before = recovery.inspectAdmission(fence(140), key).admission;
+    commit({ ...applied, receiptId: "second-receipt" }, 150);
+    new GraphAdmissionStore(db).hold(key, 160);
+    expect(recovery.inspectAdmission(fence(160), key).admission).toEqual(before);
+    expect(before.releasedAt).toBe(140);
+  });
+  it("rejects failed recovery projection and normal terminal projection with unresolved effects", () => {
+    const s = recovery.snapshot(fence());
+    const bad = { kind: "project", receiptId: "fail", status: "failed" } as unknown as GraphRecoveryDecision;
+    expect(() => recovery.commit(s, bad, proof(s), 130)).toThrow();
+    expect(() => runs.project({ ...fence(130), status: "failed" })).toThrow("UNRESOLVED_ACTION");
+    expect(recovery.history(fence(130))).toHaveLength(0);
+    expect(actions.get(fence(130), key).action.state).toBe("intent");
+  });
+
   it("settles original effect after expiry, persists restart replay and rejects changed proof/outcome", () => {
     const s = snapshot(201); const p = proof(s, 210); const done = recovery.commit(s, applied, p, 210); run = done.run;
     expect(done.action).toMatchObject({ state: "confirmed", generation: 1, actualTokens: 20 });

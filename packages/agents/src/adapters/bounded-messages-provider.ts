@@ -5,7 +5,7 @@ const count = z.number().int().nonnegative().safe();
 const identifier = z.string().regex(/^[A-Za-z0-9_-]{1,128}$/);
 const anthropicMessage = z.object({ id: identifier, type: z.literal('message'), role: z.literal('assistant'), model: z.string(),
   stop_reason: z.enum(['end_turn', 'max_tokens', 'stop_sequence', 'refusal']),
-  content: z.array(z.object({ type: z.literal('text'), text: z.string() }).passthrough()).min(1),
+  content: z.array(z.object({ type: z.literal('text'), text: z.string() }).passthrough()),
   usage: z.object({ input_tokens: count, output_tokens: count, cache_creation_input_tokens: count.optional(), cache_read_input_tokens: count.optional() }).passthrough(),
 }).passthrough();
 const deepseekMessage = z.object({ id: identifier, object: z.literal('chat.completion'), model: z.string(),
@@ -25,7 +25,7 @@ export interface BoundedProviderProfile {
   credentialName: string;
   headers: (apiKey: string) => Record<string, string>;
   request: (input: { model: string; system: string; user: string; maxTokens: number }) => string;
-  response: (raw: string, model: string) => BoundedProviderResponse;
+  response: (raw: string, model: string, options?: { allowEmptyContent: boolean }) => BoundedProviderResponse;
   rejected: (status: number, raw: string) => boolean;
 }
 
@@ -54,7 +54,7 @@ export function createBoundedProvider(provider: BoundedMessagesProvider = 'anthr
       ? { model, max_tokens: maxTokens, stream: false, thinking: { type: 'disabled' }, response_format: { type: 'json_object' },
         messages: [{ role: 'system', content: system }, { role: 'user', content: user }] }
       : { model, max_tokens: maxTokens, stream: false, system, messages: [{ role: 'user', content: user }] }),
-    response: (raw: string, model: string): BoundedProviderResponse => {
+    response: (raw: string, model: string, options?: { allowEmptyContent: boolean }): BoundedProviderResponse => {
       if (provider === 'deepseek') {
         const value = deepseekMessage.parse(JSON.parse(raw));
         if (value.model !== model) throw Error('BOUNDED_MODEL_MISMATCH');
@@ -65,6 +65,8 @@ export function createBoundedProvider(provider: BoundedMessagesProvider = 'anthr
           tokensIn: value.usage.prompt_tokens, tokensOut: value.usage.completion_tokens };
       }
       const value = anthropicMessage.parse(JSON.parse(raw));
+      // Experimental proposal client opts in; preserve legacy bounded writer behavior.
+      if (value.content.length === 0 && !options?.allowEmptyContent) throw Error('BOUNDED_CONTENT_EMPTY');
       if (value.model !== model) throw Error('BOUNDED_MODEL_MISMATCH');
       const tokensIn = value.usage.input_tokens + (value.usage.cache_creation_input_tokens ?? 0) + (value.usage.cache_read_input_tokens ?? 0);
       if (!Number.isSafeInteger(tokensIn)) throw Error('BOUNDED_USAGE_INVALID');
