@@ -216,6 +216,7 @@ async function childWriter(repoId = "shared", options: {
     process.on("message", async (command) => {
       try {
         if (command === "acquire") { lock = await acquireRepoWriteLock({ root_dir: scope ? join(scope.commonDir, "osstack", "repo-locks") : ${JSON.stringify(directory)}, repo_id: scope?.repoId ?? ${JSON.stringify(repoId)}, autonomy_run_id: String(process.pid), lease_ms: ${options.leaseMs ?? 10000} }); process.send({ status: "acquired", owner: lock.owner }); }
+        if (command === "guard") { await lock.withActiveGuard(check => { check(); process.send({ status: "guarded" }); Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 30000); }); }
         if (command === "renew") { await lock.renew(); process.send({ status: "renewed", owner: lock.owner }); }
         if (command === "release") { await lock.release(); process.send({ status: "released" }); }
       } catch (error) { process.send({ status: "error", name: error.name, message: error.message }); }
@@ -425,3 +426,49 @@ it('never stale-reaps a managed graph lock through legacy or explicit recovery, 
   }
   await lock.release();
 });
+
+it('scopes synchronous active proof to a guarded callback and revokes escaped proof', async () => {
+  const lock = await acquireRepoWriteLock({ root_dir: directory, repo_id: 'guarded-sync', autonomy_run_id: 'run', recover_stale: false });
+  let escaped: (() => void) | undefined;
+  expect(await lock.withActiveGuard(check => { escaped = check; check(); return 42; })).toBe(42);
+  expect(() => escaped!()).toThrow('guard');
+  await lock.assertActive(); await lock.release();
+});
+it('rejects expiry inside a guarded callback without renewing or releasing ownership', async () => {
+  let time = Date.now();
+  const lock = await acquireRepoWriteLock({ root_dir: directory, repo_id: 'guard-expiry', autonomy_run_id: 'run', lease_ms: 100,
+    now: () => new Date(time).toISOString(), recover_stale: false });
+  await expect(lock.withActiveGuard(check => { time += 101; check(); })).rejects.toThrow('expired');
+  expect(await inspectRepoWriteLock(directory, 'guard-expiry')).toMatchObject({ token: lock.owner.token });
+  await lock.release();
+});
+it('rejects Promise results and revokes proof before the asynchronous continuation', async () => {
+  const lock = await acquireRepoWriteLock({ root_dir: directory, repo_id: 'guard-async', autonomy_run_id: 'run', recover_stale: false });
+  let escaped: (() => void) | undefined;
+  await expect(lock.withActiveGuard(check => { escaped = check; return Promise.resolve(1); })).rejects.toThrow('synchronous');
+  expect(() => escaped!()).toThrow('guard'); await lock.release();
+});
+it('serializes release behind synchronous guarded work', async () => {
+  const lock = await acquireRepoWriteLock({ root_dir: directory, repo_id: 'guard-release', autonomy_run_id: 'run', recover_stale: false });
+  let release: Promise<void> | undefined;
+  await lock.withActiveGuard(check => { release = lock.release(); check(); });
+  await release; await expect(lock.withActiveGuard(() => 1)).rejects.toThrow('ownership');
+});
+it('closes the guarded proof and unlocks metadata after callback failure', async () => {
+  const lock = await acquireRepoWriteLock({ root_dir: directory, repo_id: 'guard-error', autonomy_run_id: 'run', recover_stale: false });
+  let escaped: (() => void) | undefined;
+  await expect(lock.withActiveGuard(check => { escaped = check; throw Error('partial apply'); })).rejects.toThrow('partial apply');
+  expect(() => escaped!()).toThrow('guard'); await lock.assertActive(); await lock.release();
+});
+
+it('SIGKILL inside guarded work leaves ownership and the mutation guard for explicit recovery', async () => {
+  const child = await childWriter('guard-crash');
+  expect(await command(child, 'acquire')).toMatchObject({ status: 'acquired' });
+  const path = repoLockPath(directory, 'guard-crash'); const before = await readFile(path, 'utf8');
+  expect(await command(child, 'guard')).toEqual({ status: 'guarded' });
+  const exited = new Promise<void>(resolve => child.once('exit', () => resolve()));
+  child.kill('SIGKILL'); await exited;
+  await expect(acquireRepoWriteLock({ root_dir: directory, repo_id: 'guard-crash', autonomy_run_id: 'restart', recover_stale: false })).rejects.toThrow('guard');
+  expect(await readFile(path, 'utf8')).toBe(before);
+  expect(await readdir(directory)).toContain(basename(path) + '.guard');
+}, 10000);
