@@ -327,6 +327,11 @@ export class GraphRecoveryStore {
     });
   }
   private settle(run: GraphRun, action: GraphAction, verdict: GraphRecoveryVerdict, now: number): void {
+    // Legacy stopped-worker proof cannot settle a provider request or prove a
+    // multifile apply. Preserve reservations until profile-specific recovery exists.
+    if (verdict.outcome !== "unknown" && this.db.prepare("SELECT 1 FROM graph_invocation_requests WHERE effect_key=?").get(action.effectKey)) {
+      fail("INVOCATION_RECOVERY_UNSUPPORTED");
+    }
     if (verdict.outcome === "unknown") {
       if (action.outcome) fail("OUTCOME_CONFLICT");
       const observed = Math.max(action.observedTokens, verdict.observedTokens);
