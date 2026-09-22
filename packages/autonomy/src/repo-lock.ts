@@ -59,6 +59,10 @@ export interface RepoWriteLock {
   renew(): Promise<void>;
   assertOwnership(): Promise<void>;
   assertActive(): Promise<void>;
+  /** Trusted synchronous host work only. Holds the metadata mutation guard and
+   * supplies a time-bounded proof that cannot escape the callback. Expiry never
+   * authorizes lock stealing. The caller must retain physical admission on failure. */
+  withActiveGuard<T>(operation: (assertActive: () => void) => T): Promise<T>;
   release(): Promise<void>;
 }
 
@@ -244,6 +248,26 @@ function lockHandle(
     },
     async assertActive() {
       await withMutationGuard(path, async () => { active(await owned()); });
+    },
+    async withActiveGuard<T>(operation: (assertActive: () => void) => T): Promise<T> {
+      return withMutationGuard(path, async () => {
+        const current = await owned(); active(current);
+        let open = true;
+        const check = () => {
+          if (!open || released) throw new RepoLockOwnershipError(`${path} (guard closed)`);
+          active(current);
+        };
+        try {
+          const result = operation(check);
+          // Trusted code, not a sandbox: rejecting a Promise does not cancel
+          // code already scheduled by a mistaken asynchronous callback.
+          if (result !== null && (typeof result === 'object' || typeof result === 'function') && 'then' in result) {
+            void Promise.resolve(result).catch(() => {});
+            throw new Error('repository guarded operation must be synchronous');
+          }
+          check(); return result;
+        } finally { open = false; }
+      });
     },
     async renew() {
       await withMutationGuard(path, async () => {

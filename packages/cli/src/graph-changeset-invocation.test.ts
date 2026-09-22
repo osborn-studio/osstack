@@ -1,3 +1,6 @@
+import { FifoSemaphore } from '@osstack/autonomy';
+import { GovernedExecution } from './governed-execution.js';
+import { applyGraphChangesetWithLease } from './graph-changeset-guarded-apply.js';
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { GraphArtifactStore } from '@osstack/core/graph-artifacts';
@@ -335,4 +338,41 @@ it('rejects admission release during receipt evidence reads', async () => {
     return bytes;
   });
   await expect(f.freeze()).rejects.toThrow('FREEZE_ADMISSION_REQUIRED');
+});
+
+it('applies three files under the real writer guard and holds capacity until explicit release', async () => {
+  const f = await physicalFixture(true); const writes = new FifoSemaphore(1);
+  const governed = new GovernedExecution({ reads: new FifoSemaphore(1), writes, repositories: new Map(), checkHealth: async () => undefined });
+  const lease = await governed.acquire({ kind: 'write', runId: `graph-action:${f.key}`, workspacePath: f.workspace });
+  try {
+    const result = await applyGraphChangesetWithLease({ db: f.db, evidence: f.store, input: f.applyInput, fence: f.fence(), lease, verify: () => undefined });
+    expect(result.kind).toBe('applied'); expect(writes.in_use).toBe(1);
+    const scope = await resolveRepositoryScope(f.workspace);
+    const apply = f.actions.getApply(f.fence(), f.key).apply!;
+    if (apply.resolution?.kind !== 'applied') throw Error('fixture completion');
+    const artifacts = new GraphArtifactStore(join(f.root, 'guarded-artifacts'));
+    const candidate = await freezeGraphChangeset({ db: f.db, evidence: f.store, artifacts, fence: f.fence(), effectKey: f.key,
+      input: { artifactId: 'guarded', scope: f.scope, runId: f.run.graphRunId, generation: 1, owner: 'worker', workspaceLeaseRef: 'workspace',
+        repoId: scope.repoId, commonDir: scope.commonDir, worktreePath: f.workspace, baseRevision: f.git('rev-parse', 'HEAD'),
+        implementationReceiptRef: apply.resolution.evidenceRef, producerStopEvidenceRef: f.invocation.terminalRef },
+      authority: { lease, verifyLease: async (_input, actual) => { if (actual !== lease) throw Error('lease mismatch'); await lease.assertActive!(); },
+        verifyProducersStopped: () => undefined } });
+    expect((await artifacts.verify(candidate.artifactDigest)).tree).toBe(apply.intent.targetTreeRevision);
+    expect(writes.in_use).toBe(1); await lease.assertActive!();
+    expect(readFileSync(join(f.workspace, 'src/a.ts'), 'utf8')).toBe('new');
+    expect(readFileSync(join(f.workspace, 'keep.txt'), 'utf8')).toBe('updated');
+    expect(existsSync(join(f.workspace, 'remove.txt'))).toBe(false);
+  } finally { await lease.release(); }
+  expect(writes.in_use).toBe(0);
+}, 15000);
+it('retains real writer capacity when guarded apply becomes quarantined', async () => {
+  const f = await physicalFixture(true); const writes = new FifoSemaphore(1);
+  const governed = new GovernedExecution({ reads: new FifoSemaphore(1), writes, repositories: new Map(), checkHealth: async () => undefined });
+  const lease = await governed.acquire({ kind: 'write', runId: `graph-action:${f.key}`, workspacePath: f.workspace });
+  const spy = vi.spyOn(GraphActionStore.prototype, 'completeApply').mockImplementation(() => { throw Error('database unavailable'); });
+  try {
+    const result = await applyGraphChangesetWithLease({ db: f.db, evidence: f.store, input: f.applyInput, fence: f.fence(), lease, verify: () => undefined });
+    expect(result.kind).toBe('quarantined'); expect(writes.in_use).toBe(1);
+    await expect(lease.release()).rejects.toThrow('unconfirmed');
+  } finally { spy.mockRestore(); await lease.releaseAfterReconciliation!(async () => undefined); }
 });
