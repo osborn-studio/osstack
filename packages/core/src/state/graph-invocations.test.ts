@@ -219,3 +219,28 @@ it.each(["before_commit", "mid_transaction", "after_commit", "after_response", "
   expect(actions.get(fence(), key).budget).toMatchObject({ actionStarts: 1, reservedTokens: "40", chargedTokens: "0" });
   expect(actions.getInvocation(fence(), key).invocation?.response !== null).toBe(point === "before_commit" || point === "mid_transaction" || point === "after_receipt");
 }, 20000);
+it('atomically settles a terminal rejection, replays exactly after release, and forbids contradictory usage', () => {
+  start(); const before = run.revision;
+  const rejected = { ...response(), disposition: 'cannot_complete' as const, proposalDigest: null };
+  const result = actions.recordRejectedInvocation(fence(), key, rejected, 12); run = result.run;
+  expect(run.revision).toBe(before + 1);
+  expect(result.action).toMatchObject({ state: 'failed', retrySafe: false, actualTokens: 12 });
+  expect(actions.getInvocation(fence(), key).invocation?.response).toEqual(rejected);
+  new GraphAdmissionStore(db).released(key, 110);
+  expect(actions.recordRejectedInvocation(fence(), key, rejected, 12).changed).toBe(false);
+  expect(() => actions.recordRejectedInvocation(fence(), key, rejected, 13)).toThrow('OUTCOME_CONFLICT');
+});
+it('never uses a terminal rejection to clear unknown or turn a proposal into failure', () => {
+  start(); const rejected = { ...response(), disposition: 'rejected' as const, proposalDigest: null };
+  run = actions.markUncertain(fence(), key, { state: 'unknown', evidenceRef: 'lost', observedTokens: 12 }).run;
+  expect(() => actions.recordRejectedInvocation(fence(), key, rejected, 12)).toThrow('UNRESOLVED_ACTION');
+  expect(() => actions.recordRejectedInvocation(fence(), key, response(), 12)).toThrow('INVOCATION_BINDING_MISMATCH');
+  expect(actions.getInvocation(fence(), key).invocation?.response).toBeNull();
+});
+it('rolls back the rejection receipt when atomic failure settlement cannot commit', () => {
+  start(); const before = run.revision;
+  db.exec("CREATE TRIGGER fail_rejection BEFORE UPDATE OF state ON graph_actions WHEN NEW.state='failed' BEGIN SELECT RAISE(ABORT,'injected'); END");
+  expect(() => actions.recordRejectedInvocation(fence(), key, { ...response(), disposition: 'rejected', proposalDigest: null }, null)).toThrow('injected');
+  expect(actions.getInvocation(fence(), key).invocation?.response).toBeNull();
+  expect(actions.get(fence(), key)).toMatchObject({ action: { state: 'running' }, run: { revision: before } });
+});

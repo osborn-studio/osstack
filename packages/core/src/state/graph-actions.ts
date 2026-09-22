@@ -290,6 +290,38 @@ export class GraphActionStore {
     });
   }
 
+  /** Atomically retain a trusted terminal rejection and its nonretryable failure.
+   * No apply intent, unknown action, or physical admission release is permitted.
+   * Usage null retains capacity; over-cap usage blocks further accounting. */
+  recordRejectedInvocation(fence: GraphRunFence, effectKey: string, value: GraphInvocationResponse, actualTokens: number | null): GraphActionResult {
+    keySchema.parse(effectKey); const response = parseInvocationResponse(value);
+    if (response.disposition === "proposal") fail("INVOCATION_BINDING_MISMATCH");
+    const usage = count.safeParse(actualTokens);
+    return this.write(fence, run => {
+      const action = this.find(run, effectKey);
+      this.checkEpoch(run, action.effect.epoch);
+      if (action.generation !== run.generation) fail("ACTION_GENERATION_MISMATCH");
+      if (readApply(this.db, effectKey)) fail("APPLY_SETTLEMENT_REQUIRED");
+      const invocation = readInvocation(this.db, effectKey) ?? fail("INVOCATION_NOT_FOUND");
+      if (response.requestDigest !== invocation.request.requestDigest) fail("INVOCATION_BINDING_MISMATCH");
+      if (invocation.response && canonical(invocation.response) !== canonical(response)) fail("INVOCATION_RESPONSE_CONFLICT");
+      const outcome: GraphActionOutcome = { state: "failed", retrySafe: false, evidenceRef: response.stopEvidenceRef,
+        actualTokens: usage.success ? Math.max(action.observedTokens, usage.data) : null,
+        error: { code: response.disposition === "cannot_complete" ? "CHANGESET_CANNOT_COMPLETE" : "CHANGESET_PROPOSAL_REJECTED" } };
+      if (action.outcome) {
+        if (!invocation.response || canonical(action.outcome) !== canonical(outcome)) fail("OUTCOME_CONFLICT");
+        return { action, changed: false, created: false };
+      }
+      if (action.state === "unknown" || action.state === "cancel_pending") fail("UNRESOLVED_ACTION");
+      if (action.state !== "running") fail("INVALID_ACTION_STATE");
+      this.requireInvocationAdmission(run, effectKey);
+      if (!invocation.response) this.db.prepare("INSERT INTO graph_invocation_responses(effect_key,response_json,created_at) VALUES(?,?,?)")
+        .run(effectKey, canonical(response), fence.now);
+      this.persistOutcome(action, outcome, fence.now);
+      return { action: this.find(run, effectKey), changed: true, created: false };
+    });
+  }
+
   private start(fence: GraphRunFence, effectKey: string, executionRef: string, request?: GraphInvocationRequest): GraphActionResult {
     keySchema.parse(effectKey); ref.parse(executionRef);
     return this.write(fence, (run) => {
