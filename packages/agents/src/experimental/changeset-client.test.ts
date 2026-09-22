@@ -173,3 +173,9 @@ it('denies synchronous reentry before a second gate can claim a distinct effect'
   expect(await reentered).toMatchObject({ kind: 'not_authorized', reason: 'capacity' });
   expect(secondGate).not.toHaveBeenCalled(); expect(fetcher).toHaveBeenCalledTimes(1);
 });
+it('returns exact bounded response bytes for protected host persistence', async () => {
+  const raw = '\ufeff' + JSON.stringify(payload()); const { client, prepared } = setup(vi.fn(async () => new Response(raw)));
+  const result = await client.invoke(prepared, () => true);
+  if (result.kind !== 'terminal') throw Error('fixture');
+  expect(Buffer.from(result.responseBase64, 'base64')).toEqual(Buffer.from(raw));
+});
