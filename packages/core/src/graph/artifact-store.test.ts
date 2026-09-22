@@ -206,3 +206,49 @@ it('rejects an oversized full-history bundle before reading it into memory', asy
   await truncate(bundle, 256 * 1024 * 1024 + 1);
   await expect(f.store.verify(result.artifactDigest)).rejects.toThrow('maximum 256 MiB');
 });
+
+
+it('binds freeze and replay to the applied tree and invocation base tree', async () => {
+  const f = await fixture(); const base = git(f.worktree, 'rev-parse', 'HEAD^{tree}');
+  await writeFile(join(f.worktree, 'base.txt'), 'applied');
+  git(f.worktree, 'add', '.'); const candidate = git(f.worktree, 'write-tree');
+  const authority = { ...f.authority, expectedTrees: { base, candidate } };
+  const result = await f.store.freeze(f.input, authority);
+  expect((await f.store.verify(result.artifactDigest)).tree).toBe(candidate);
+  expect(await f.store.freeze(f.input, authority)).toEqual(result);
+  await expect(f.store.freeze(f.input, { ...authority, expectedTrees: { base, candidate: base } })).rejects.toThrow('applied tree mismatch');
+});
+it.each(['base', 'candidate'] as const)('rejects a mismatched %s tree before artifact publication', async field => {
+  const f = await fixture(); const tree = git(f.worktree, 'rev-parse', 'HEAD^{tree}');
+  const authority = { ...f.authority, expectedTrees: { base: tree, candidate: tree, [field]: '0'.repeat(40) } };
+  await expect(f.store.freeze(f.input, authority)).rejects.toThrow(/tree mismatch/);
+  expect(await readdir(join(f.root, 'artifacts', 'ids'))).toEqual([]);
+  expect(await readdir(join(f.root, 'artifacts', 'artifacts'))).toEqual([]);
+});
+it('pins tree constraints before calling asynchronous authority', async () => {
+  const f = await fixture(); const tree = git(f.worktree, 'rev-parse', 'HEAD^{tree}');
+  const expectedTrees = { base: tree, candidate: '0'.repeat(40) };
+  f.authority.verifyLease = () => { expectedTrees.candidate = tree; };
+  await expect(f.store.freeze(f.input, { ...f.authority, expectedTrees })).rejects.toThrow('applied tree mismatch');
+});
+it('rejects malformed tree constraints before invoking authority', async () => {
+  const f = await fixture(); let checked = false;
+  f.authority.verifyLease = () => { checked = true; };
+  await expect(f.store.freeze(f.input, { ...f.authority, expectedTrees: { base: 'HEAD', candidate: 'bad' } })).rejects.toThrow('invalid freeze tree constraint');
+  expect(checked).toBe(false);
+});
+
+it('constrained capture uses the same owner execute bit as the changeset applier', async () => {
+  const f = await fixture(); const tree = git(f.worktree, 'rev-parse', 'HEAD^{tree}');
+  await chmod(join(f.worktree, 'base.txt'), 0o645);
+  const candidate = await f.store.freeze(f.input, { ...f.authority, expectedTrees: { base: tree, candidate: tree } });
+  expect((await f.store.verify(candidate.artifactDigest)).tree).toBe(tree);
+});
+it('preserves historical ignored-file capture while constrained freeze detects the file', async () => {
+  const f = await fixture(); const tree = git(f.worktree, 'rev-parse', 'HEAD^{tree}');
+  await writeFile(join(f.root, 'ignore'), 'hidden.txt\n'); git(f.worktree, 'config', 'core.excludesFile', join(f.root, 'ignore'));
+  await writeFile(join(f.worktree, 'hidden.txt'), 'ignored');
+  const candidate = await f.store.freeze(f.input, f.authority);
+  expect((await f.store.verify(candidate.artifactDigest)).tree).toBe(tree);
+  await expect(f.store.freeze(f.input, { ...f.authority, expectedTrees: { base: tree, candidate: tree } })).rejects.toThrow('applied tree mismatch');
+});

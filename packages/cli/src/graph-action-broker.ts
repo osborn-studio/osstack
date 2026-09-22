@@ -167,7 +167,7 @@ export class GraphActionBroker {
         const { verifyLease, verifyImplementationReceipt, verifyProducersStopped } = execution.authority;
         if ([verifyLease, verifyImplementationReceipt, verifyProducersStopped].some(fn => typeof fn !== "function")) throw new Error("freeze authority required");
         selected = Object.freeze({ kind: "freeze", input, store: Object.freeze({ freeze: execution.store.freeze.bind(execution.store) }),
-          authority: Object.freeze({ verifyLease, verifyImplementationReceipt, verifyProducersStopped }) });
+          authority: Object.freeze({ ...(execution.authority.expectedTrees === undefined ? {} : { expectedTrees: snapshot(execution.authority.expectedTrees) }), verifyLease, verifyImplementationReceipt, verifyProducersStopped }) });
       } else if (execution.kind === "workspace") {
         if (!["workspace_create", "workspace_release"].includes(copy.action.kind) || typeof execution.handler !== "function") throw new Error("unsupported workspace handler");
         selected = Object.freeze({ kind: "workspace", handler: execution.handler });

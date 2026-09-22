@@ -1,4 +1,8 @@
+import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
+import { GraphArtifactStore } from '@osstack/core/graph-artifacts';
+import { resolveRepositoryScope } from '@osstack/core';
+import { freezeGraphChangeset } from './graph-changeset-freeze.js';
 import { GraphChangesetApplyHost } from './graph-changeset-apply-host.js';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { runInNewContext } from 'node:vm';
@@ -14,13 +18,13 @@ import { GraphChangesetInvocationHost } from './graph-changeset-invocation.js';
 const cleanups: Array<() => void | Promise<void>> = [];
 afterEach(async () => { for (const cleanup of cleanups.splice(0).reverse()) await cleanup(); });
 const payload = (text = JSON.stringify({ kind: 'propose', changes: [{ kind: 'create', path: 'src/a.ts', content: 'new' }] })) => ({ id: 'msg1', type: 'message', role: 'assistant', model: 'fixture', stop_reason: 'end_turn', content: [{ type: 'text', text }], usage: { input_tokens: 10, output_tokens: 10 } });
-function fixture() {
+function fixture(baseRevision = 'a'.repeat(40)) {
   const root = realpathSync(mkdtempSync(join(tmpdir(), 'changeset host-'))); cleanups.push(() => rmSync(root, { recursive: true, force: true }));
   const db = openDb({ path: join(root, 'state.db') }); cleanups.push(() => { if (db.open) db.close(); }); db.pragma('synchronous = FULL');
   const runs = new GraphRunStore(db); const actions = new GraphActionStore(db); const now = Date.now();
   const scope = { schemaVersion: 1 as const, tenantId: 't', principalId: 'p', workspaceId: 'w' };
   let run = runs.create({ schemaVersion: 1, kind: 'start', scope, idempotencyKey: 'start', inputArtifactRef: 'input', source: { product: 'osstack', requestId: 'r' },
-    spec: { schemaVersion: 1, template: 'code-delivery-v1', publication: 'artifact_only', input: { taskRef: 't', repositoryRef: 'repo', baseRevision: 'a'.repeat(40), acceptanceRef: 'a' },
+    spec: { schemaVersion: 1, template: 'code-delivery-v1', publication: 'artifact_only', input: { taskRef: 't', repositoryRef: 'repo', baseRevision, acceptanceRef: 'a' },
       limits: { maxEpochs: 2, maxBranchAttempts: 2, maxConcurrentReaders: 2, maxConcurrentWritersPerRepo: 1, maxActionStarts: 10, deadlineSeconds: 60, tokenReservationLimit: 2000 } } },
     { executionModel: 'langgraph-functional-v1', durability: 'sync', engineVersion: '1', checkpointVersion: '1', templateVersion: '1', registryVersion: '1', compilerVersion: '1', schemaVersion: '1', compiledProgramDigest: 'b'.repeat(64) }, now);
   const fence = () => ({ scope, graphRunId: run.graphRunId, expectedGeneration: run.generation, expectedOwner: run.leaseOwner, expectedRevision: runs.get(scope, run.graphRunId)!.revision, identity: run.identity, now: Date.now() });
@@ -28,7 +32,7 @@ function fixture() {
   const admitted = actions.reserve(fence(), { epoch: 0, nodeId: 'implement', effectSlot: 'invoke', reservationTokens: 1100, action: { kind: 'implement', inputArtifactRef: 'input', workspaceLeaseRef: 'workspace' } }); run = admitted.run;
   const key = admitted.action.effectKey; new GraphAdmissionStore(db).hold(key, Date.now());
   const policy = { exactPaths: ['src/a.ts'], directoryPrefixes: [], denyPaths: [], denyPrefixes: [] };
-  const binding = { runId: run.graphRunId, effectKey: key, generation: run.generation, baseRevision: 'a'.repeat(40), treeRevision: 'c'.repeat(40), profileDigest: 'd'.repeat(64), grantDigest: 'e'.repeat(64), programDigest: 'b'.repeat(64), policyDigest: changesetPolicyDigest(policy) };
+  const binding = { runId: run.graphRunId, effectKey: key, generation: run.generation, baseRevision, treeRevision: 'c'.repeat(40), profileDigest: 'd'.repeat(64), grantDigest: 'e'.repeat(64), programDigest: 'b'.repeat(64), policyDigest: changesetPolicyDigest(policy) };
   const input = { task: 'Create', binding, policy, manifest: { schemaVersion: 1, binding, entries: [{ path: 'src/a.ts', state: 'absent' }] }, inputTokenUpperBound: 1000, maxOutputTokens: 100, tokenBoundEvidenceRef: 'fixture-bound' };
   const store = new GraphInvocationEvidenceStore(join(root, 'evidence'));
   const fetcher = vi.fn(async () => new Response(JSON.stringify(payload())));
@@ -170,14 +174,30 @@ it('contains a rejecting foreign Promise from authority without granting dispatc
   await new Promise(resolve => setImmediate(resolve)); expect(f.fetcher).not.toHaveBeenCalled();
 });
 
-async function physicalFixture() {
-  const f = fixture(); const workspace = join(f.root, 'workspace'); mkdirSync(workspace);
+async function physicalFixture(multifile = false) {
+  const physicalRoot = realpathSync(mkdtempSync(join(tmpdir(), 'graph-physical-')));
+  cleanups.push(() => rmSync(physicalRoot, { recursive: true, force: true }));
+  const workspace = join(physicalRoot, 'workspace'); mkdirSync(workspace);
   const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith('GIT_')));
   const git = (...args: string[]) => execFileSync('git', ['-c', 'core.hooksPath=/dev/null', '-c', 'core.fsmonitor=false', ...args], {
     cwd: workspace, encoding: 'utf8', env: { ...env, GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOSYSTEM: '1' } }).trim();
-  git('init', '-q'); writeFileSync(join(workspace, 'keep.txt'), 'keep'); git('add', '.');
+  git('init', '-q'); writeFileSync(join(workspace, 'keep.txt'), 'keep');
+  if (multifile) writeFileSync(join(workspace, 'remove.txt'), 'old');
+  git('add', '.');
   git('-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.invalid', 'commit', '-qm', 'base');
+  const f = fixture(git('rev-parse', 'HEAD'));
   f.input.binding.treeRevision = git('rev-parse', 'HEAD^{tree}');
+  if (multifile) {
+    const sha = (value: string) => createHash('sha256').update(value).digest('hex');
+    f.input.policy.exactPaths.push('keep.txt', 'remove.txt'); f.input.binding.policyDigest = changesetPolicyDigest(f.input.policy);
+    const entries: unknown[] = f.input.manifest.entries;
+    entries.push({ path: 'keep.txt', state: 'present', content: 'keep', sha256: sha('keep'), mode: '100644' },
+      { path: 'remove.txt', state: 'present', content: 'old', sha256: sha('old'), mode: '100644' });
+    f.fetcher.mockImplementation(async () => new Response(JSON.stringify(payload(JSON.stringify({ kind: 'propose', changes: [
+      { kind: 'create', path: 'src/a.ts', content: 'new' }, { kind: 'replace', path: 'keep.txt', content: 'updated', expectedSha256: sha('keep') },
+      { kind: 'delete', path: 'remove.txt', expectedSha256: sha('old') },
+    ] })))));
+  }
   const invocation = await f.host.invoke(f.input, f.fence(), 'execution');
   if (invocation.kind !== 'recorded' || !invocation.result.validated) throw Error('fixture invocation');
   const applyInput = { workspace, binding: f.input.binding, manifest: f.input.manifest, policy: f.input.policy, proposal: invocation.result.validated.proposal };
@@ -238,4 +258,81 @@ it('does not silently adopt a new revision between authorized journal verificati
   expect(f.applyHost.apply(f.applyInput, f.fence()).kind).toBe('reconciliation_required');
   expect(existsSync(join(f.workspace, 'src'))).toBe(false);
   expect(f.actions.getApply(f.fence(), f.key).apply).toBeNull();
+});
+
+
+async function freezeFixture(orphan = false) {
+  const f = await physicalFixture(true);
+  const spy = orphan ? vi.spyOn(GraphActionStore.prototype, 'completeApply').mockImplementation(() => { throw Error('commit unavailable'); }) : undefined;
+  try { f.applyHost.apply(f.applyInput, f.fence()); } finally { spy?.mockRestore(); }
+  const scope = await resolveRepositoryScope(f.workspace);
+  const apply = f.actions.getApply(f.fence(), f.key).apply!;
+  const receipt = f.store.lookup({ schemaVersion: 1, scope: f.scope, runId: f.run.graphRunId, generation: 1, effectKey: f.key,
+    requestDigest: f.invocation.result.requestDigest, kind: 'apply_complete' });
+  if (!receipt) throw Error('fixture apply receipt');
+  const input = { artifactId: 'changeset-freeze', scope: f.scope, runId: f.run.graphRunId, generation: 1, owner: 'worker',
+    workspaceLeaseRef: 'workspace', repoId: scope.repoId, commonDir: scope.commonDir, worktreePath: f.workspace,
+    baseRevision: f.git('rev-parse', 'HEAD'), implementationReceiptRef: receipt, producerStopEvidenceRef: f.invocation.terminalRef };
+  const artifacts = new GraphArtifactStore(join(f.root, 'artifacts'));
+  const authority = { lease: {}, verifyLease: vi.fn(() => undefined), verifyProducersStopped: vi.fn(() => undefined) };
+  const freeze = () => freezeGraphChangeset({ db: f.db, evidence: f.store, artifacts, effectKey: f.key, input, fence: f.fence(), authority });
+  return { ...f, input, artifacts, authority, freeze, apply };
+}
+it('freezes, restores and replays exactly the ledger-confirmed applied candidate', async () => {
+  const f = await freezeFixture(); const candidate = await f.freeze();
+  expect((await f.artifacts.verify(candidate.artifactDigest)).tree).toBe(f.apply.intent.targetTreeRevision);
+  expect(await f.freeze()).toEqual(candidate);
+  const restored = await f.artifacts.restore(candidate.artifactDigest, { rootPath: f.root, directoryName: 'review' });
+  expect(readFileSync(join(restored.worktreePath, 'src/a.ts'), 'utf8')).toBe('new');
+  expect(readFileSync(join(restored.worktreePath, 'keep.txt'), 'utf8')).toBe('updated');
+  expect(existsSync(join(restored.worktreePath, 'remove.txt'))).toBe(false);
+  expect(f.authority.verifyProducersStopped).toHaveBeenCalled(); expect(f.fetcher).toHaveBeenCalledTimes(1);
+}, 15000);
+it('refuses extra changes after apply instead of freezing them into the candidate', async () => {
+  const f = await freezeFixture(); writeFileSync(join(f.workspace, 'keep.txt'), 'late producer');
+  await expect(f.freeze()).rejects.toThrow('applied tree mismatch');
+});
+it.each(['receipt', 'stop', 'scope', 'lease', 'owner', 'base'] as const)('refuses mismatched freeze %s binding', async field => {
+  const f = await freezeFixture();
+  if (field === 'receipt') f.input.implementationReceiptRef = 'forged';
+  if (field === 'stop') f.input.producerStopEvidenceRef = 'forged';
+  if (field === 'scope') f.input.scope = { ...f.scope, principalId: 'other' };
+  if (field === 'lease') f.input.workspaceLeaseRef = 'other';
+  if (field === 'owner') f.input.owner = 'other';
+  if (field === 'base') f.input.baseRevision = 'f'.repeat(40);
+  await expect(f.freeze()).rejects.toThrow('FREEZE_APPLY_BINDING');
+  expect(f.authority.verifyLease).not.toHaveBeenCalled();
+});
+it('refuses an orphan completion artifact without the committed apply resolution', async () => {
+  const f = await freezeFixture(true);
+  await expect(f.freeze()).rejects.toThrow('FREEZE_APPLY_BINDING');
+});
+it('rechecks fenced state after asynchronous physical authority verification', async () => {
+  const f = await freezeFixture();
+  f.authority.verifyLease.mockImplementation(() => { f.runs.project({ ...f.fence(), status: 'cancel_pending' }); });
+  await expect(f.freeze()).rejects.toThrow('FREEZE_APPLY_BINDING');
+});
+it('does not substitute provider completion for physical producer stop proof', async () => {
+  const f = await freezeFixture(); f.authority.verifyProducersStopped.mockImplementation(() => { throw Error('producer still active'); });
+  await expect(f.freeze()).rejects.toThrow('producer still active');
+});
+
+it('refuses freeze after implementation admission was released', async () => {
+  const f = await freezeFixture(); new GraphAdmissionStore(f.db).released(f.key, Date.now());
+  await expect(f.freeze()).rejects.toThrow('FREEZE_ADMISSION_REQUIRED');
+});
+it('rejects gitignored extra files planted after apply', async () => {
+  const f = await freezeFixture(); f.git('config', 'core.excludesFile', join(f.root, 'ignore'));
+  writeFileSync(join(f.root, 'ignore'), 'hidden.txt\n'); writeFileSync(join(f.workspace, 'hidden.txt'), 'late');
+  await expect(f.freeze()).rejects.toThrow('applied tree mismatch');
+});
+
+it('rejects admission release during receipt evidence reads', async () => {
+  const f = await freezeFixture(); const read = f.store.read.bind(f.store); let released = false;
+  vi.spyOn(f.store, 'read').mockImplementation((ref, binding) => {
+    const bytes = read(ref, binding);
+    if (!released) { released = true; new GraphAdmissionStore(f.db).released(f.key, Date.now()); }
+    return bytes;
+  });
+  await expect(f.freeze()).rejects.toThrow('FREEZE_ADMISSION_REQUIRED');
 });

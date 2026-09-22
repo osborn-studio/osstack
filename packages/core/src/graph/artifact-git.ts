@@ -34,8 +34,10 @@ export async function initArtifactRepo(path: string, bare = true): Promise<void>
   await mkdir(path, { recursive: true });
   await artifactGit(path, ["init", ...(bare ? ["--bare"] : []), "--object-format=sha1"]);
 }
-/** Raw bytes, no add/checkout/clean/smudge or global attributes transformations. */
-export async function captureArtifactTree(source: string, objectRepo: string): Promise<string> {
+/** Raw bytes, no add/checkout/clean/smudge or global attributes transformations.
+ * appliedTree matches the bounded applier: include ignored files and use Git
+ * owner-execute semantics. Default preserves historical v1 capture behavior. */
+export async function captureArtifactTree(source: string, objectRepo: string, options: { appliedTree?: boolean } = {}): Promise<string> {
   // Sparse checkout omissions are not deletions. Require a fully materialized
   // source instead of silently deleting skipped tracked files from the candidate.
   const flags = (await artifactGit(source, ["ls-files", "-t", "-z"])).toString("utf8").split("\0");
@@ -43,7 +45,7 @@ export async function captureArtifactTree(source: string, objectRepo: string): P
   const stages = (await artifactGit(source, ["ls-files", "--stage", "-z"])).toString("utf8").split("\0");
   if (stages.some(line => line.startsWith("160000 "))) throw new Error("unsupported submodule");
   if (stages.some(line => line && !/^\d+ [a-f0-9]+ 0\t/.test(line))) throw new Error("unmerged source index");
-  const namesRaw = await artifactGit(source, ["ls-files", "--cached", "--others", "--exclude-standard", "-z"]);
+  const namesRaw = await artifactGit(source, ["ls-files", "--cached", "--others", ...(options.appliedTree ? [] : ["--exclude-standard"]), "-z"]);
   if (!Buffer.from(namesRaw.toString("utf8"), "utf8").equals(namesRaw)) throw new Error("unsupported non-UTF8 path");
   const names = [...new Set(namesRaw.toString("utf8").split("\0").filter(Boolean))].sort();
   await artifactGit(objectRepo, ["read-tree", "--empty"]);
@@ -64,7 +66,7 @@ export async function captureArtifactTree(source: string, objectRepo: string): P
     total += data.length;
     if (total > 256 * 1024 * 1024 || entries.length >= 100000) throw new Error("artifact tree size limit");
     blobs.push(Buffer.from(`blob\nmark :${entries.length + 1}\ndata ${data.length}\n`), data, Buffer.from("\n"));
-    const mode = info.isSymbolicLink() ? "120000" : (info.mode & 0o111) !== 0 ? "100755" : "100644";
+    const mode = info.isSymbolicLink() ? "120000" : (info.mode & (options.appliedTree ? 0o100 : 0o111)) !== 0 ? "100755" : "100644";
     entries.push({ mode, name });
   }
   if (entries.length) {

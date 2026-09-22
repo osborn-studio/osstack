@@ -25,6 +25,9 @@ export interface GraphFreezeInput {
  * actual lease object, generation/owner, canonical repo and current authority. */
 export interface GraphFreezeAuthority {
   lease: object;
+  /** Optional host-derived apply constraints; never accepted from a worker.
+   * Kept out of the v1 manifest so legacy artifact identities remain stable. */
+  expectedTrees?: { base: string; candidate: string };
   verifyLease: (input: Readonly<GraphFreezeInput>, lease: object) => void | Promise<void>;
   verifyImplementationReceipt: (input: Readonly<GraphFreezeInput>) => void | Promise<void>;
   verifyProducersStopped: (input: Readonly<GraphFreezeInput>) => void | Promise<void>;
@@ -94,7 +97,9 @@ export class GraphArtifactStore {
   }
   async freeze(raw: GraphFreezeInput, rawAuthority: GraphFreezeAuthority): Promise<CandidateReady> {
     const input = snapshot(raw); validateInput(input);
-    const authority = Object.freeze({ ...rawAuthority });
+    const authority = Object.freeze({ ...rawAuthority, ...(rawAuthority.expectedTrees === undefined ? {} : { expectedTrees: snapshot(rawAuthority.expectedTrees) }) });
+    if (authority.expectedTrees !== undefined && (!authority.expectedTrees ||
+      ![authority.expectedTrees.base, authority.expectedTrees.candidate].every(value => typeof value === "string" && /^[a-f0-9]{40}$/.test(value)))) throw new Error("invalid freeze tree constraint");
     if (!authority.lease || typeof authority.lease !== "object") throw new Error("missing canonical lease authority");
     const check = async (): Promise<void> => {
       for (const fn of [() => authority.verifyImplementationReceipt(input), () => authority.verifyProducersStopped(input), () => authority.verifyLease(input, authority.lease)]) {
@@ -109,20 +114,22 @@ export class GraphArtifactStore {
     let scratch: string | undefined;
     try {
       const sourceIdentity = await this.source(input);
+      if (authority.expectedTrees && await gitText(input.worktreePath, ["rev-parse", `${input.baseRevision}^{tree}`]) !== authority.expectedTrees.base) throw new Error("invocation base tree mismatch");
       await check();
       scratch = await mkdtemp(join(root, "scratch", "capture-"));
       const objectRepo = join(scratch, "objects.git");
       await initArtifactRepo(objectRepo); await linkSourceObjects(objectRepo, input.commonDir);
       if (await this.source(input) !== sourceIdentity) throw new Error("source identity changed before capture");
       await check();
-      const tree = await captureArtifactTree(input.worktreePath, objectRepo);
+      const tree = await captureArtifactTree(input.worktreePath, objectRepo, { appliedTree: authority.expectedTrees !== undefined });
+      if (authority.expectedTrees && tree !== authority.expectedTrees.candidate) throw new Error("applied tree mismatch");
       if (await exists(binding)) {
         const saved = JSON.parse(await readFile(binding, "utf8")) as { inputDigest: string; artifactDigest: string };
         if (saved.inputDigest !== sha(canonical(input))) throw new Error("artifact replay identity mismatch");
         const manifest = await this.verify(saved.artifactDigest);
         if (canonical(manifest.input) !== canonical(input) || manifest.tree !== tree) throw new Error("artifact replay content mismatch");
         await check();
-        if (await this.source(input) !== sourceIdentity || await captureArtifactTree(input.worktreePath, objectRepo) !== tree) throw new Error("source content changed during replay");
+        if (await this.source(input) !== sourceIdentity || await captureArtifactTree(input.worktreePath, objectRepo, { appliedTree: authority.expectedTrees !== undefined }) !== tree) throw new Error("source content changed during replay");
         await check();
         return this.result(saved.artifactDigest, manifest);
       }
@@ -136,7 +143,7 @@ export class GraphArtifactStore {
       // Validate from a fresh object database with no alternates or prerequisites.
       await this.validateBundle(bundlePath, manifest, join(scratch, "verify.git"));
       await check();
-      if (await this.source(input) !== sourceIdentity || await captureArtifactTree(input.worktreePath, objectRepo) !== tree) throw new Error("source content or identity changed during freeze");
+      if (await this.source(input) !== sourceIdentity || await captureArtifactTree(input.worktreePath, objectRepo, { appliedTree: authority.expectedTrees !== undefined }) !== tree) throw new Error("source content or identity changed during freeze");
       await check();
       const bundleHandle = await open(bundlePath, "r"); try { await bundleHandle.sync(); } finally { await bundleHandle.close(); }
       await durableFile(join(staging, "manifest.json"), manifestBytes); await syncDirectory(staging);

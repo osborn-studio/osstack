@@ -296,3 +296,22 @@ it('refuses an expired returned lease before publishing admission or invoking an
   expect(f.db.prepare('SELECT count(*) n FROM graph_action_admissions').get()).toEqual({ n: 0 });
   expect(f.db.prepare('SELECT state,execution_ref FROM graph_actions').get()).toEqual({ state: 'failed', execution_ref: null });
 });
+
+it('pins and forwards host apply tree constraints to freeze', async () => {
+  const f = fixture(); const connection = {};
+  const expectedTrees = { base: 'a'.repeat(40), candidate: 'b'.repeat(40) };
+  const candidate = { schemaVersion: 1 as const, kind: 'candidate_ready' as const, candidateRevision: 'c'.repeat(40), artifactDigest: 'd'.repeat(64), artifactRefs: ['graph-artifact:' + 'd'.repeat(64)] };
+  let checked = false;
+  f.broker.register(connection, { ...f.registration, actions: [{ nodeId: 'freeze', effectSlot: 'capture', tokenReservation: 0,
+    action: { kind: 'freeze', workspaceLeaseRef: 'workspace', receiptRef: 'receipt' },
+    execution: { kind: 'freeze', input: { artifactId: 'artifact', scope, runId: f.run.graphRunId, generation: f.run.generation,
+      owner: 'worker', workspaceLeaseRef: 'workspace', repoId: 'repo', commonDir: join(f.repo, '.git'), worktreePath: f.repo,
+      baseRevision: 'a'.repeat(40), implementationReceiptRef: 'receipt', producerStopEvidenceRef: 'stop' },
+      authority: { expectedTrees, verifyLease: () => undefined, verifyImplementationReceipt: () => undefined, verifyProducersStopped: () => undefined },
+      store: { freeze: async (_input, authority) => { expect(authority.expectedTrees).toEqual({ base: 'a'.repeat(40), candidate: 'b'.repeat(40) }); checked = true; return candidate; } } },
+    persist: async () => ({ evidenceRef: 'frozen', result: candidate }) }] });
+  expectedTrees.candidate = 'e'.repeat(40);
+  const result = await f.broker.handle(connection, { ...f.request, nodeId: 'freeze', effectSlot: 'capture',
+    action: { kind: 'freeze', workspaceLeaseRef: 'workspace', receiptRef: 'receipt' } });
+  expect(result).toMatchObject({ outcome: { state: 'confirmed' } }); expect(checked).toBe(true);
+});
