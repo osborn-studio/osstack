@@ -5,7 +5,7 @@ import { z } from 'zod';
 import { GraphJsonValue, GraphScope, workerCanonical } from '@osstack/protocol';
 const digest = z.string().regex(/^[a-f0-9]{64}$/);
 const bindingSchema = z.object({ schemaVersion: z.literal(1), scope: GraphScope, runId: z.string().regex(/^[A-Za-z0-9_-]{1,256}$/),
-  effectKey: digest, generation: z.number().int().positive().safe(), requestDigest: digest, kind: z.enum(['request', 'response', 'terminal']) }).strict();
+  effectKey: digest, generation: z.number().int().positive().safe(), requestDigest: digest, kind: z.enum(['request', 'response', 'terminal', 'apply_journal', 'apply_complete', 'apply_quarantine']) }).strict();
 export type GraphInvocationEvidenceBinding = z.infer<typeof bindingSchema>;
 const MAX_BYTES = 524_288;
 const MAX_ENVELOPE_BYTES = 710_000;

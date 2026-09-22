@@ -1,4 +1,6 @@
-import { mkdtempSync, realpathSync, rmSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { GraphChangesetApplyHost } from './graph-changeset-apply-host.js';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { runInNewContext } from 'node:vm';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -166,4 +168,74 @@ it('contains a rejecting foreign Promise from authority without granting dispatc
   const host = new GraphChangesetInvocationHost(f.db, f.store, { ...f.options, verify: () => runInNewContext('Promise.reject(new Error("foreign authority rejected"))') });
   expect(await host.invoke(f.input, f.fence(), 'execution')).toMatchObject({ kind: 'deferred', reason: 'authorization_or_storage' });
   await new Promise(resolve => setImmediate(resolve)); expect(f.fetcher).not.toHaveBeenCalled();
+});
+
+async function physicalFixture() {
+  const f = fixture(); const workspace = join(f.root, 'workspace'); mkdirSync(workspace);
+  const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith('GIT_')));
+  const git = (...args: string[]) => execFileSync('git', ['-c', 'core.hooksPath=/dev/null', '-c', 'core.fsmonitor=false', ...args], {
+    cwd: workspace, encoding: 'utf8', env: { ...env, GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOSYSTEM: '1' } }).trim();
+  git('init', '-q'); writeFileSync(join(workspace, 'keep.txt'), 'keep'); git('add', '.');
+  git('-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.invalid', 'commit', '-qm', 'base');
+  f.input.binding.treeRevision = git('rev-parse', 'HEAD^{tree}');
+  const invocation = await f.host.invoke(f.input, f.fence(), 'execution');
+  if (invocation.kind !== 'recorded' || !invocation.result.validated) throw Error('fixture invocation');
+  const applyInput = { workspace, binding: f.input.binding, manifest: f.input.manifest, policy: f.input.policy, proposal: invocation.result.validated.proposal };
+  const applyHost = new GraphChangesetApplyHost(f.db, f.store, { verify: () => undefined });
+  return { ...f, workspace, git, invocation, applyInput, applyHost };
+}
+it('applies a real Git candidate only after durable provider and apply evidence, then settles the original action', async () => {
+  const f = await physicalFixture();
+  expect(f.applyHost.apply(f.applyInput, f.fence())).toMatchObject({ kind: 'applied', reconciliationRequired: false });
+  expect(readFileSync(join(f.workspace, 'src/a.ts'), 'utf8')).toBe('new');
+  const apply = f.actions.getApply(f.fence(), f.key).apply!;
+  expect(apply.resolution).toMatchObject({ kind: 'applied', actualTokens: 20 });
+  expect(f.actions.get(f.fence(), f.key)).toMatchObject({ action: { state: 'confirmed' }, budget: { chargedTokens: '20', reservedTokens: '0' } });
+  expect((f.db.prepare('SELECT released_at FROM graph_action_admissions WHERE effect_key=?').get(f.key) as { released_at: number | null }).released_at).toBeNull();
+  expect(() => f.applyHost.apply(f.applyInput, f.fence())).toThrow(); expect(f.fetcher).toHaveBeenCalledTimes(1);
+});
+it('rejects mismatched provider proposal before any physical change or apply intent', async () => {
+  const f = await physicalFixture(); f.applyInput.proposal = { kind: 'propose', changes: [{ kind: 'create', path: 'src/a.ts', content: 'forged' }] };
+  expect(() => f.applyHost.apply(f.applyInput, f.fence())).toThrow('APPLY_INVOCATION_BINDING');
+  expect(existsSync(join(f.workspace, 'src'))).toBe(false); expect(f.actions.getApply(f.fence(), f.key).apply).toBeNull();
+});
+it('keeps real workspace quarantined and reservation held if completeApply fails before commit', async () => {
+  const f = await physicalFixture(); const spy = vi.spyOn(GraphActionStore.prototype, 'completeApply').mockImplementation(() => { throw Error('DB failed'); });
+  try { expect(f.applyHost.apply(f.applyInput, f.fence()).kind).toBe('quarantined'); } finally { spy.mockRestore(); }
+  expect(f.actions.getApply(f.fence(), f.key).apply?.resolution?.kind).toBe('quarantined');
+  expect(f.actions.get(f.fence(), f.key)).toMatchObject({ action: { state: 'unknown' }, budget: { reservedTokens: '1100' } });
+  expect(readFileSync(join(f.workspace, 'src/a.ts'), 'utf8')).toBe('new');
+});
+it('does not overwrite a committed receipt when completeApply loses its ACK', async () => {
+  const f = await physicalFixture(); const complete = GraphActionStore.prototype.completeApply;
+  const spy = vi.spyOn(GraphActionStore.prototype, 'completeApply').mockImplementation(function (this: GraphActionStore, ...args) { complete.apply(this, args); throw Error('lost ACK'); });
+  try { expect(f.applyHost.apply(f.applyInput, f.fence()).reconciliationRequired).toBe(true); } finally { spy.mockRestore(); }
+  expect(f.actions.getApply(f.fence(), f.key).apply?.resolution?.kind).toBe('applied');
+  expect(f.actions.get(f.fence(), f.key).action.state).toBe('confirmed');
+});
+it('blocks physical apply when the provider terminal artifact is missing', async () => {
+  const f = await physicalFixture(); const read = f.store.read.bind(f.store);
+  vi.spyOn(f.store, 'read').mockImplementation((ref, binding) => { if (ref === f.invocation.terminalRef) throw Error('missing'); return read(ref, binding); });
+  expect(() => f.applyHost.apply(f.applyInput, f.fence())).toThrow('missing'); expect(existsSync(join(f.workspace, 'src'))).toBe(false);
+});
+it('stops physical application when canonical admission is released between file boundaries', async () => {
+  const f = await physicalFixture();
+  const host = new GraphChangesetApplyHost(f.db, f.store, { verify: () => {
+    if (existsSync(join(f.workspace, 'src'))) new GraphAdmissionStore(f.db).released(f.key, Date.now());
+  } });
+  expect(host.apply(f.applyInput, f.fence()).kind).toBe('quarantined');
+  expect(existsSync(join(f.workspace, 'src/a.ts'))).toBe(false);
+  expect(f.actions.get(f.fence(), f.key).action.state).toBe('unknown');
+  expect(f.actions.getApply(f.fence(), f.key).apply?.resolution?.kind).toBe('quarantined');
+});
+it('does not silently adopt a new revision between authorized journal verification and apply gate', async () => {
+  const f = await physicalFixture(); const read = f.store.read.bind(f.store); let changed = false;
+  vi.spyOn(f.store, 'read').mockImplementation((ref, binding) => {
+    const bytes = read(ref, binding);
+    if (!changed && (binding as { kind: string }).kind === 'apply_journal') { changed = true; f.runs.renewLease({ ...f.fence(), leaseExpiresAt: Date.now() + 120000 }); }
+    return bytes;
+  });
+  expect(f.applyHost.apply(f.applyInput, f.fence()).kind).toBe('reconciliation_required');
+  expect(existsSync(join(f.workspace, 'src'))).toBe(false);
+  expect(f.actions.getApply(f.fence(), f.key).apply).toBeNull();
 });

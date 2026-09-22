@@ -78,3 +78,10 @@ it('does not replace an existing published directory whose evidence file is miss
   rmSync(join(directory, 'evidence.json'));
   expect(() => store.put(binding, Buffer.from('different'))).toThrow();
 });
+it('keeps apply journal, completion and quarantine evidence separate from provider terminal', () => {
+  const { store } = fixture();
+  const kinds = ['terminal', 'apply_journal', 'apply_complete', 'apply_quarantine'];
+  const refs = kinds.map(kind => store.put({ ...binding, kind }, Buffer.from(kind)));
+  expect(new Set(refs).size).toBe(4);
+  kinds.forEach((kind, i) => { expect(store.read(refs[i]!, { ...binding, kind }).toString()).toBe(kind); });
+});

@@ -88,3 +88,10 @@ it('validates and freezes input before a provider response exists, preserving v1
   expect(Object.isFrozen(input.manifest.entries)).toBe(true);
   expect(() => validateChangesetInput(manifest, policy, { ...binding, generation: 2 })).toThrow('CHANGESET_BINDING_MISMATCH');
 });
+it('shares deny-first disclosure path validation with the host reviewer', async () => {
+  const { assertChangesetDisclosurePaths } = await import('./changeset.js');
+  const policy = { exactPaths: ['src/a.ts'], directoryPrefixes: ['docs'], denyPaths: ['docs/secret.txt'], denyPrefixes: [] };
+  expect(() => assertChangesetDisclosurePaths(['src/a.ts', 'docs/readme.md'], policy, changesetPolicyDigest(policy))).not.toThrow();
+  expect(() => assertChangesetDisclosurePaths(['docs/secret.txt'], policy, changesetPolicyDigest(policy))).toThrow('CHANGESET_PATH_DENIED');
+  expect(() => assertChangesetDisclosurePaths(['src/a.ts'], policy, 'f'.repeat(64))).toThrow('CHANGESET_POLICY_MISMATCH');
+});
