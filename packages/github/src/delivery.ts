@@ -4,6 +4,8 @@ import { isAbsolute } from "node:path";
 import { promisify } from "node:util";
 import { z } from "zod";
 
+import { CandidateEvidenceSchema, CandidateEvidenceContextSchema, assertCandidateEvidenceBinding, type CandidateEvidence, type CandidateEvidenceContext } from "./candidate-evidence.js";
+
 const execFileAsync = promisify(execFile);
 const GitCommitSha = z.string().regex(/^(?:[a-f0-9]{40}|[a-f0-9]{64})$/);
 const SafeRemote = z
@@ -43,6 +45,8 @@ const GitHubDeliveryInputSchema = z
       .refine(isAbsolute, "bodyFile must be absolute"),
     mergeStrategy: z.literal("squash"),
     ciTimeoutMs: z.number().int().min(1_000).max(86_400_000),
+    candidateEvidence: CandidateEvidenceSchema.optional(),
+    evidenceContext: CandidateEvidenceContextSchema.optional(),
   })
   .strict();
 
@@ -69,6 +73,8 @@ export interface GitHubDeliveryInput {
   bodyFile: string;
   mergeStrategy: "squash";
   ciTimeoutMs: number;
+  candidateEvidence?: CandidateEvidence | undefined;
+  evidenceContext?: CandidateEvidenceContext | undefined;
 }
 
 export interface GitHubDeliveryResult {
@@ -678,6 +684,11 @@ export async function deliverToGitHub(
   runner: DeliveryCommandRunner = defaultDeliveryCommandRunner,
 ): Promise<GitHubDeliveryResult> {
   const input = GitHubDeliveryInputSchema.parse(value);
+  if (
+    (input.candidateEvidence === undefined) !==
+    (input.evidenceContext === undefined)
+  )
+    throw new Error("candidate evidence requires current controller context");
   await assertCandidateBody(input.bodyFile);
   if (
     input.branch === input.base ||
@@ -762,7 +773,9 @@ export async function deliverToGitHub(
     remoteRepo === undefined ||
     remoteRepo.toLowerCase() !== repo.toLowerCase()
   ) {
-    throw new Error("Git remote repository does not match authenticated GitHub repository");
+    throw new Error(
+      "Git remote repository does not match authenticated GitHub repository",
+    );
   }
 
   const candidateProtection = await readEffectiveProtection(
@@ -772,7 +785,9 @@ export async function deliverToGitHub(
     input.branch,
   );
   if (candidateProtection.protected) {
-    throw new Error("refusing to push an effectively protected candidate branch");
+    throw new Error(
+      "refusing to push an effectively protected candidate branch",
+    );
   }
 
   const pushedCommit = GitCommitSha.parse(
@@ -786,23 +801,107 @@ export async function deliverToGitHub(
       )
     ).stdout.trim(),
   );
-  let pr = await resolvePullRequest(
-    runner,
-    input,
-    repo,
-    pushedCommit,
-  );
-  if (pr?.state === "MERGED") {
-    return await recoverMergedDelivery(
+  const evidence = input.candidateEvidence;
+  async function assertRemoteBinding(): Promise<void> {
+    const rows = (
+      await runOrThrow(
+        runner,
+        input,
+        "git",
+        [
+          "ls-remote",
+          "--refs",
+          input.remote,
+          `refs/heads/${input.branch}`,
+          `refs/heads/${input.base}`,
+        ],
+        "candidate remote evidence",
+      )
+    ).stdout
+      .trim()
+      .split("\n");
+    const expected = new Map([
+      [`refs/heads/${input.branch}`, pushedCommit],
+      [`refs/heads/${input.base}`, evidence!.baseSha],
+    ]);
+    if (
+      rows.length !== 2 ||
+      rows.some((row) => {
+        const fields = row.split("\t");
+        if (fields.length !== 2 || expected.get(fields[1]!) !== fields[0])
+          return true;
+        expected.delete(fields[1]!);
+        return false;
+      }) ||
+      expected.size !== 0
+    )
+      throw new Error("candidate remote head/base binding changed or missing");
+  }
+  if (evidence !== undefined) {
+    const protection = await readEffectiveProtection(
       runner,
       input,
       repo,
-      pushedCommit,
-      pr,
+      input.base,
     );
+    if (!protection.protected)
+      throw new Error("base branch has no effective protection");
+    assertCandidateEvidenceBinding(
+      evidence,
+      input.evidenceContext!,
+      repo,
+      pushedCommit,
+      protection.requiredChecks,
+    );
+    await assertRemoteBinding();
+  }
+  let pr = await resolvePullRequest(runner, input, repo, pushedCommit);
+  if (evidence !== undefined && pr?.state === "MERGED")
+    throw new Error("candidate evidence requires current open PR");
+  if (pr?.state === "MERGED") {
+    return await recoverMergedDelivery(runner, input, repo, pushedCommit, pr);
   }
 
-  await pushCandidate(runner, input);
+  async function assertPullRequestScope(number: number): Promise<void> {
+    const identity = z
+      .object({
+        headRefOid: GitCommitSha,
+        baseRefName: z.string(),
+        headRefName: z.string(),
+      })
+      .strict()
+      .parse(
+        parseJson(
+          (
+            await runOrThrow(
+              runner,
+              input,
+              "gh",
+              [
+                "pr",
+                "view",
+                String(number),
+                "--json",
+                "headRefOid,baseRefName,headRefName",
+              ],
+              "candidate scope evidence",
+            )
+          ).stdout,
+          "candidate scope evidence",
+        ),
+      );
+    if (
+      identity.headRefOid !== pushedCommit ||
+      identity.baseRefName !== input.base ||
+      identity.headRefName !== input.branch
+    )
+      throw new Error("candidate PR scope binding mismatched");
+  }
+  if (evidence !== undefined) {
+    if (pr === undefined || pr.state !== "OPEN")
+      throw new Error("candidate evidence requires current open PR");
+    await assertPullRequestScope(pr.number);
+  } else await pushCandidate(runner, input);
   const afterPushCommit = GitCommitSha.parse(
     (
       await runOrThrow(
@@ -820,12 +919,7 @@ export async function deliverToGitHub(
 
   let reused = pr !== undefined;
   if (pr === undefined) {
-    pr = await resolvePullRequest(
-      runner,
-      input,
-      repo,
-      pushedCommit,
-    );
+    pr = await resolvePullRequest(runner, input, repo, pushedCommit);
     reused = pr !== undefined;
     if (pr === undefined) {
       pr = await createPullRequest(runner, input, repo, pushedCommit);
@@ -833,27 +927,23 @@ export async function deliverToGitHub(
     }
   }
   if (pr.state === "MERGED") {
-    return await recoverMergedDelivery(
-      runner,
-      input,
-      repo,
-      pushedCommit,
-      pr,
-    );
+    return await recoverMergedDelivery(runner, input, repo, pushedCommit, pr);
   }
 
-  const checks = await runner.run(
-    "gh",
-    ["pr", "checks", String(pr.number), "--watch", "--fail-fast"],
-    {
-      cwd: input.workspacePath,
-      timeoutMs: input.ciTimeoutMs,
-    },
-  );
-  if (checks.exitCode === 124) {
-    throw new Error(`CI timeout after ${input.ciTimeoutMs} ms`);
+  if (evidence === undefined) {
+    const checks = await runner.run(
+      "gh",
+      ["pr", "checks", String(pr.number), "--watch", "--fail-fast"],
+      {
+        cwd: input.workspacePath,
+        timeoutMs: input.ciTimeoutMs,
+      },
+    );
+    if (checks.exitCode === 124) {
+      throw new Error(`CI timeout after ${input.ciTimeoutMs} ms`);
+    }
+    if (checks.exitCode !== 0) throw commandFailure("CI checks", checks);
   }
-  if (checks.exitCode !== 0) throw commandFailure("CI checks", checks);
 
   const baseProtection = await readEffectiveProtection(
     runner,
@@ -905,6 +995,34 @@ export async function deliverToGitHub(
     mergeCandidate.statusCheckRollup,
   );
 
+  if (evidence !== undefined) {
+    assertCandidateEvidenceBinding(
+      evidence,
+      input.evidenceContext!,
+      repo,
+      pushedCommit,
+      baseProtection.requiredChecks,
+    );
+    // Every matching current result must succeed: cancelled/duplicate/stale greens never authorize merge.
+    for (const required of baseProtection.requiredChecks) {
+      const matching = mergeCandidate.statusCheckRollup.filter(
+        (check) => rollupName(check) === required,
+      );
+      if (
+        matching.length !== 1 ||
+        (matching[0]!.conclusion != null
+          ? matching[0]!.conclusion!.toUpperCase() !== "SUCCESS"
+          : matching[0]!.state?.toUpperCase() !== "SUCCESS") ||
+        (matching[0]!.status != null &&
+          matching[0]!.status!.toUpperCase() !== "COMPLETED")
+      )
+        throw new Error(
+          "candidate current required checks are missing or unsuccessful",
+        );
+    }
+    await assertPullRequestScope(pr.number);
+    await assertRemoteBinding();
+  }
   await runOrThrow(
     runner,
     input,

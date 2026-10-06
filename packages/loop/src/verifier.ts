@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process";
 import type { AgentAdapter, AgentTask } from "@osstack/agents";
 import {
   StructuredReviewSchema,
@@ -42,6 +43,8 @@ export interface LocalVerifierOptions {
   adapters?: readonly AgentAdapter[];
   task?: Task;
   artifactVerification?: ArtifactVerificationOptions;
+  /** Trusted LoopEngine capture before execution; compare committed candidate plus dirty/untracked files. */
+  artifactBaseCommit?: string;
   sessionId?: string;
   timeoutMs?: number;
   outputLimit?: number;
@@ -67,6 +70,17 @@ interface CommandSpecRun {
 }
 
 export async function verifyRun(run: AgentRun, options: LocalVerifierOptions): Promise<Verdict> {
+  if (options.artifactBaseCommit !== undefined) {
+    const base = options.artifactBaseCommit;
+    if (!/^(?:[a-f0-9]{40}|[a-f0-9]{64})$/.test(base)) throw Error("INVALID_ARTIFACT_BASE_COMMIT");
+    const git = (args: string[]) => execFileSync("git", args, { cwd: options.workspacePath, encoding: "utf8", timeout: options.timeoutMs ?? 120_000, maxBuffer: 1_048_576 });
+    git(["merge-base", "--is-ancestor", base, "HEAD"]);
+    // Final structured review sees the complete committed candidate, not an empty clean-tree diff.
+    const changed = git(["diff", base, "--no-renames", "--name-only", "-z", "--", "."]) + git(["ls-files", "--others", "--exclude-standard", "-z"]);
+    const untracked = git(["ls-files", "--others", "--exclude-standard", "-z"]);
+    if (untracked.length > 0) throw Error("CANDIDATE_REVIEW_UNTRACKED");
+    options = { ...options, reviewCandidate: { changed_paths: changed.split("\0").filter(Boolean), diff: git(["diff", base, "--no-renames", "--", "."]) } };
+  }
   const explicitSpecs = options.task?.evaluation ?? [];
 
   // Legacy --verify commands become implicit command evaluation specs.
@@ -372,11 +386,21 @@ async function verifyArtifacts(
     return { issues: [], evaluations: [] };
   }
 
-  const diffResult = await runShellCommand("git diff --name-only -- . && git ls-files --others --exclude-standard", {
-    cwd: options.workspacePath,
-    timeoutMs: options.timeoutMs ?? 120_000,
-    outputLimit: options.outputLimit ?? 16_000,
-  });
+  const base = options.artifactBaseCommit;
+  if (base !== undefined && !/^(?:[a-f0-9]{40}|[a-f0-9]{64})$/.test(base)) throw Error("INVALID_ARTIFACT_BASE_COMMIT");
+  let diffResult: CommandResult;
+  if (base === undefined) {
+    diffResult = await runShellCommand("git diff --name-only -- . && git ls-files --others --exclude-standard", {
+      cwd: options.workspacePath, timeoutMs: options.timeoutMs ?? 120_000, outputLimit: options.outputLimit ?? 16_000,
+    });
+  } else {
+    const git = (args: string[]) => execFileSync("git", args, { cwd: options.workspacePath, encoding: "utf8", timeout: options.timeoutMs ?? 120_000, maxBuffer: 1_048_576 });
+    git(["merge-base", "--is-ancestor", base, "HEAD"]);
+    // Machine-readable paths must never pass through the executor's tail-truncated log buffer.
+    const stdout = git(["diff", base, "--no-renames", "--name-only", "-z", "--", "."]) + git(["ls-files", "--others", "--exclude-standard", "-z"]);
+    if (Buffer.byteLength(stdout) > 1_048_576) throw Error("CANDIDATE_ARTIFACT_RANGE_TOO_LARGE");
+    diffResult = { command: "git candidate range paths", exitCode: 0, stdout, stderr: "", durationMs: 0 };
+  }
   if (diffResult.exitCode !== 0) {
     const issue = commandIssue("verify.artifact_git_diff_failed", diffResult);
     const failAll = (spec: EvaluationSpec, implicit: boolean): EvaluationResult => ({
@@ -399,8 +423,8 @@ async function verifyArtifacts(
   }
 
   const changedFiles = [...new Set(diffResult.stdout
-    .split(/\r?\n/)
-    .map((line) => line.trim())
+    .split(base === undefined ? /\r?\n/ : /\0/)
+    .map((line) => base === undefined ? line.trim() : line)
     .filter((line) => line.length > 0))];
 
   const issues: Issue[] = [];
