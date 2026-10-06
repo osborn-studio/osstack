@@ -1,6 +1,6 @@
 # CI cost controls: first-version task plan
 
-Status snapshot: source implemented; final integration and review in progress, 2026-10-06. Current publication/CI status is recorded in the resulting draft PR; the source snapshot is not a live acceptance ledger. These changes are draft candidates. No measured saving, production rollout or product acceptance is claimed.
+Status snapshot: source implemented; local code integration and review complete; final documentation and draft publication in progress, 2026-10-06. Current publication/CI status is recorded in the resulting draft PR; the source snapshot is not a live acceptance ledger. These changes are draft candidates. No measured saving, production rollout or product acceptance is claimed.
 
 ## Approved scope and boundaries
 
@@ -16,9 +16,9 @@ All three tasks are integrated by the existing Wiki development session (`/root`
 
 | Task | Implementation owner | Independent reviewer | Branch and current status |
 | --- | --- | --- | --- |
-| Dependency caches | Wiki integrator `/root` | `/root/acceptance_schema`, actual Claude CLI Sonnet 5.5 | Wiki `codex/ci-dependency-cache-reviewed`, commit `87baa1a818bb0131329ed4cb158d5090ed5d33e8`, [draft PR #34](https://github.com/osborn-studio/osborn-wiki/pull/34). CI pending completion. |
-| Stages and bounded batches | `/root/next_tasks` | `/root/provenance_check`, integrator; Sonnet review pending | osstack `codex/ci-candidate-cost-controls-main`, baseline `8b2419a45b17cfdc2f85c9c3416f92b11fcfa201`; seven-file repair candidate passed 434 author tests on Node 26.5.0; final main-range scope and truncated-list/batch-state defects repaired; root Node24 qualification and repeat Sonnet audit required before publication. |
-| Exact-bound evidence reuse | `/root/provenance_check` | `/root/acceptance_schema`, integrator; Sonnet review pending | Same osstack branch; four-file source candidate implemented. Fresh main-based author verification: 78 GitHub tests (38 delivery tests) passed with Node 24.21.0 and type checks; independent final review and Sonnet audit pending. |
+| Dependency caches | Wiki integrator `/root` | `/root/acceptance_schema`, actual Claude CLI Sonnet 5.5 | Wiki `codex/ci-dependency-cache-reviewed`, commit `87baa1a818bb0131329ed4cb158d5090ed5d33e8`, [draft PR #34](https://github.com/osborn-studio/osborn-wiki/pull/34). Documentation is included at PR34 head `e6ee6063a58190b449ec277964b770b19a276ea0`; required exact-head CI pending completion. |
+| Stages and bounded batches | `/root/next_tasks` | `/root/provenance_check`, integrator; actual Sonnet 5.5 code v2 approved | osstack delivery `codex/ci-candidate-cost-controls-reviewed`, baseline `8b2419a45b17cfdc2f85c9c3416f92b11fcfa201`; seven-file repair candidate passed 434 author tests on Node 26.5.0; final main-range scope and truncated-list/batch-state defects repaired; independent Node24.21 qualification passed 434/434, and actual Sonnet5.5 code v2 approved. Integrated code commit `27c21488ddd2367057310ee6a095655033be0b0d`; draft publication pending. |
+| Exact-bound evidence reuse | `/root/provenance_check` | `/root/acceptance_schema`, integrator; actual Sonnet 5.5 code v2 approved | Same osstack branch; four-file source candidate implemented. Fresh main-based author verification: 78 GitHub tests (38 delivery tests) passed with Node 24.21.0 and type checks; independent final review and actual Sonnet5.5 code v2 approved. Same integrated code commit; draft publication pending. |
 
 The osstack source worktree started at local `b476bcc3` but is being migrated to freshly verified main `8b2419a`, preserving its lifecycle lease, contained executor and unconfirmed-execution guards. The original audit rejection and failed-attempt logs are retained; they cannot qualify the repaired candidate. Source checkout and installed runtime are distinct. Wiki still uses the fixed e28927d / 0.19.0 release; these new APIs are not active there.
 
@@ -50,14 +50,14 @@ Acceptance: unchanged default delivery behavior; correct same-binding behavior; 
 
 ## Remaining delivery and verification
 
-1. Finish osstack scope/batch/lifecycle fixes and freeze the integrated main-based candidate.
-2. Build consistent private workspace dependencies and run complete required local suites/type checks; preserve failed-attempt logs as historical evidence.
-3. Perform independent code review and actual Claude CLI `claude-sonnet-5-5` audit with source/evidence hashes. Review this Markdown with publication materials.
+1. Complete: main-based scope/batch/lifecycle fixes, exact code freeze, independent review, actual Sonnet v2 audit and isolated osstack code integration.
+2. Complete: consistent private dependencies, all non-Loop workspace suites (3,939 passed, 3 existing skipped) and full Loop suite (434 passed), Node24.21 build/type checks, plus isolated build/GitHub/Loop/type checks. Preserve failed attempts; no single initial parallel whole-suite success is claimed.
+3. Code review and actual `claude-sonnet-5-5` code audit complete. Review this updated Markdown and publication materials before publishing the draft.
 4. Create an osstack draft PR containing the finite implementation, tests, changeset and this plan. Record its exact commit and CI; do not merge or publish a release.
 5. Observe Wiki draft PR34's exact-head required CI. Cache hits and baseline-versus-candidate timings are separate future measurement, not assumed savings.
 6. Resume the existing Wiki backend packaging, initialization/lifecycle binding and finite local SDK work. PR32 and PR33 have all four exact-head CI checks successful; both remain draft, and source-only limitations remain.
 
-Full-workspace build passed. The initial parallel full test encountered one unchanged process-lifecycle timing failure; the package-serial attempt encountered one unchanged controlled-session timeout. Both logs are preserved. File-serial validation and audited scope repair are in progress; no full-workspace pass is claimed yet.
+Node24.21 full-workspace build and type checks passed. Workspace suites were qualified as non-Loop suites plus the full repaired Loop suite: 4,373 passed and 3 existing skipped. Initial parallel/package-serial attempts had unchanged process-lifecycle/controlled-session timing failures; failed logs are retained. Final serial runs preserved every assertion and timeout. The isolated reviewed-code integration separately passed build, GitHub 78, Loop 434 and all workspace type checks. CLI startup medians were 28ms for version and 92ms for help against unchanged 150/500ms local budgets; incremental new-module imports after existing Zod loaded measured 6.1/0.7ms. No savings or target-platform acceptance follows from these results.
 
 Some early diagnostic errors may retain the claim without writing a failed-stage record or state file; they reject ready and require controller reconciliation. Do not claim every exception produced a terminal diagnostic.
 
