@@ -9992,6 +9992,11 @@ async function fileExists(path: string): Promise<boolean> {
 }
 
 async function handleLoopCommand(args: string[]): Promise<number> {
+  if (args[0] === "run" || args[0] === "enqueue") {
+    const { applyLoopDefaults } = await import("./loop-defaults.js");
+    try { args = await applyLoopDefaults(args, osstackHome()); }
+    catch { console.error("osstack: LOOP_DEFAULTS_INVALID"); return 1; }
+  }
   const { LoopEngine, enqueueTask, readLoopState, renderLoopStateMarkdown } = await loadLoop();
   const { resolveLoopProfileRouting } = await import("./loop-profile-routing.js");
   const sub = args[0];
@@ -10204,7 +10209,7 @@ async function handleLoopCommand(args: string[]): Promise<number> {
         const { acquireLocalExecution } = await import("./local-execution.js");
         repositoryLease = await acquireLocalExecution({ workspacePath, runId: `local_loop_${randomUUID()}`,
           dbPath: await ensureLocalStateDbPath(), home: osstackHome(), socketPath: resolveSocketPath(),
-          requiresAgent: agentId !== undefined || autoAgent,
+          requiresAgent: agentId !== undefined || autoAgent || verifierAgentIds.length > 0,
         });
       }
     }
