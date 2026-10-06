@@ -64,7 +64,7 @@ export async function assertCandidateStateDirectory(directory: string): Promise<
   if (!st.isDirectory() || st.isSymbolicLink() || await realpath(directory) !== directory || (st.mode & 0o777) !== 0o700 || st.uid !== process.getuid?.()) throw Error("CANDIDATE_STATE_UNSAFE");
 }
 export async function assertCandidateStateFile(path: string): Promise<void> {
-  let st;
+  let st: Awaited<ReturnType<typeof lstat>>;
   try { st = await lstat(path); }
   catch (error) { if ((error as NodeJS.ErrnoException).code === "ENOENT") return; throw error; }
   if (!st.isFile() || st.isSymbolicLink() || st.nlink !== 1 || st.uid !== process.getuid?.() || (st.mode & 0o777) !== 0o600 || await realpath(path) !== path) throw Error("CANDIDATE_STATE_FILE_UNSAFE");
