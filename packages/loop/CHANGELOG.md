@@ -1,5 +1,22 @@
 # @osstack/loop
 
+## 0.21.0
+
+### Minor Changes
+
+- 27c2148: Add opt-in bounded candidate validation stages with private persistent records and GitHub delivery evidence reuse that rechecks current remote commits, protection and mandatory checks. Default execution and delivery behavior remain unchanged.
+
+### Patch Changes
+
+- Updated dependencies [27c2148]
+- Updated dependencies [1fa74af]
+- Updated dependencies [e3c0989]
+  - @osstack/github@0.21.0
+  - @osstack/agents@0.21.0
+  - @osstack/autonomy@0.21.0
+  - @osstack/core@0.21.0
+  - @osstack/hermes-adapter@0.21.0
+
 ## 0.20.0
 
 ### Minor Changes

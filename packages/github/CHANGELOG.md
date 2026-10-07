@@ -1,5 +1,12 @@
 # @osstack/github
 
+## 0.21.0
+
+### Minor Changes
+
+- 27c2148: Add opt-in bounded candidate validation stages with private persistent records and GitHub delivery evidence reuse that rechecks current remote commits, protection and mandatory checks. Default execution and delivery behavior remain unchanged.
+- e3c0989: Add a constructor-only trusted candidate context handoff to the existing guarded GitHub delivery path. Observe current branch, remote, protection, PR and unique successful required checks without writes, then re-sample context and live policy before handing the hint to the original fully rechecking delivery consumer. Absence remains the original route. No default tool identity producer, runtime activation or additional merge authority is introduced.
+
 ## 0.20.0
 
 ### Patch Changes

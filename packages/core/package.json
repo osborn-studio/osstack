@@ -1,6 +1,6 @@
 {
   "name": "@osstack/core",
-  "version": "0.20.0",
+  "version": "0.21.0",
   "description": "OSBORN stack core — orchestrator, lifecycle, policy, memory, learning, privacy, observability, knowledge-graph, state, events.",
   "license": "MIT",
   "type": "module",
@@ -47,7 +47,10 @@
       "import": "./dist/index.js",
       "default": "./dist/index.js"
     },
-    "./graph-invocation-evidence": { "types": "./dist/graph/invocation-evidence.d.ts", "import": "./dist/graph/invocation-evidence.js" },
+    "./graph-invocation-evidence": {
+      "types": "./dist/graph/invocation-evidence.d.ts",
+      "import": "./dist/graph/invocation-evidence.js"
+    },
     "./graph-recovery": {
       "types": "./dist/state/graph-recovery.d.ts",
       "import": "./dist/state/graph-recovery.js",

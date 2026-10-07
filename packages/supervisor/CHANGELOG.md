@@ -1,5 +1,14 @@
 # @osstack/supervisor
 
+## 0.21.0
+
+### Patch Changes
+
+- Updated dependencies [27c2148]
+- Updated dependencies [1fa74af]
+  - @osstack/loop@0.21.0
+  - @osstack/core@0.21.0
+
 ## 0.20.0
 
 ### Patch Changes

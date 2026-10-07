@@ -31,8 +31,8 @@ surface that makes AI coding work visible and auditable.
 
 | Area | Status |
 |---|---|
-| npm package | Release target: `@osstack/cli@0.20.0`; verify availability with `npm view @osstack/cli version` |
-| GitHub release | npm release target: `@osstack/cli@0.20.0`; latest single binary: [`v0.8.1`](https://github.com/osborn-studio/osstack/releases/tag/v0.8.1) |
+| npm package | Release target: `@osstack/cli@0.21.0`; verify availability with `npm view @osstack/cli version` |
+| GitHub release | npm release target: `@osstack/cli@0.21.0`; latest single binary: [`v0.8.1`](https://github.com/osborn-studio/osstack/releases/tag/v0.8.1) |
 | macOS single binary | Published as explicit `public-ad-hoc` archive for `darwin-arm64` |
 | Knowledge Cloud | Live on EdgeOne: `https://osstack-knowledge-cloud-1grycf4k.edgeone.cool` |
 | Probe | CLI lifecycle shipped in CLI 0.19.0; report-only is gate behavior, not a background job. The two-week real-use checkpoint remains open. |
@@ -146,7 +146,7 @@ osstack doctor --workspace .
 Expected for the 0.20.0 source build, or npm after publication:
 
 ```text
-osstack 0.20.0
+osstack 0.21.0
 ```
 
 ### macOS Single-Binary Archive

@@ -1,6 +1,6 @@
 {
   "name": "@osstack/agents",
-  "version": "0.20.0",
+  "version": "0.21.0",
   "description": "Sub-agent adapters (claude-code, codex-cli, …). Each implements AgentAdapter interface.",
   "license": "MIT",
   "type": "module",
@@ -8,9 +8,19 @@
   "types": "./dist/index.d.ts",
   "exports": {
     "./*": "./*",
-    ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js", "default": "./dist/index.js" },
-    "./experimental/changeset-client": { "types": "./dist/experimental/changeset-client.d.ts", "import": "./dist/experimental/changeset-client.js" },
-    "./experimental/changeset": { "types": "./dist/experimental/changeset.d.ts", "import": "./dist/experimental/changeset.js" }
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./experimental/changeset-client": {
+      "types": "./dist/experimental/changeset-client.d.ts",
+      "import": "./dist/experimental/changeset-client.js"
+    },
+    "./experimental/changeset": {
+      "types": "./dist/experimental/changeset.d.ts",
+      "import": "./dist/experimental/changeset.js"
+    }
   },
   "files": [
     "dist"
