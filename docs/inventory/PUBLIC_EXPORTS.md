@@ -149,6 +149,7 @@ export * from "./report.js";
 export * from "./stack.js";
 export * from "./portfolio-status.js";
 export * from "./delivery.js";
+export * from "./candidate-evidence.js";
 ```
 
 ## `@osstack/governance`
@@ -210,6 +211,7 @@ export * from "./iterator.js";
 export * from "./state-file.js";
 export * from "./report.js";
 export * from "./task-queue.js";
+export * from "./candidate-policy.js";
 export * from "./planner.js";
 export * from "./executor.js";
 export { executeCandidateImplementation } from "./candidate-execution.js";

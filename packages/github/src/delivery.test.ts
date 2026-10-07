@@ -1,9 +1,13 @@
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { readFile } from "node:fs/promises";
+import { stripTypeScriptTypes } from "node:module";
+import { compileFunction } from "node:vm";
 import {
   deliverToGitHub,
+  observeCurrentGreenCandidate,
   githubDeliveryEnvironment,
   type DeliveryCommandResult,
   type DeliveryCommandRunner,
@@ -762,4 +766,332 @@ describe("guarded GitHub delivery", () => {
       )?.options.timeoutMs,
     ).toBe(12_345);
   });
+});
+
+function evidenceInput(): GitHubDeliveryInput {
+  const context = {
+    environmentFingerprint: "c".repeat(64),
+    policyFingerprint: "d".repeat(64),
+    testsFingerprint: "e".repeat(64),
+  };
+  return input({
+    evidenceContext: context,
+    candidateEvidence: {
+      schemaVersion: 1,
+      repo: "gilosbornhello/osstack",
+      headSha: HEAD_SHA,
+      baseSha: OTHER_SHA,
+      ...context,
+      requiredChecks: ["ci"],
+      observedAt: new Date().toISOString(),
+    },
+  });
+}
+function evidenceRunner(override?: Override): ScenarioRunner {
+  const r = new ScenarioRunner((call, runner) => {
+    const custom = override?.(call, runner);
+    if (custom !== undefined) return custom;
+    if (call.command === "git" && call.args[0] === "ls-remote")
+      return result(
+        `${HEAD_SHA}\trefs/heads/osstack/task-123\n${OTHER_SHA}\trefs/heads/main\n`,
+      );
+    if (call.args.includes("headRefOid,baseRefName,headRefName"))
+      return result(
+        JSON.stringify({
+          headRefOid: HEAD_SHA,
+          baseRefName: "main",
+          headRefName: "osstack/task-123",
+        }),
+      );
+    return undefined;
+  });
+  r.prExists = true;
+  return r;
+}
+describe("opt-in candidate evidence", () => {
+  it("skips push/watch only on full binding and still reads current rollup and remote twice", async () => {
+    const r = evidenceRunner();
+    await deliverToGitHub(evidenceInput(), r);
+    expect(
+      r.calls.filter((c) => c.command === "git" && c.args[0] === "push"),
+    ).toHaveLength(0);
+    expect(r.calls.filter((c) => c.args.includes("--watch"))).toHaveLength(0);
+    expect(r.calls.filter((c) => c.args[0] === "ls-remote")).toHaveLength(2);
+    expect(
+      r.calls.some((c) =>
+        c.args.includes(
+          "number,url,headRefOid,state,mergeable,mergeStateStatus,statusCheckRollup",
+        ),
+      ),
+    ).toBe(true);
+  });
+  for (const field of [
+    "environmentFingerprint",
+    "policyFingerprint",
+    "testsFingerprint",
+  ] as const)
+    it(`refuses changed ${field} before writes`, async () => {
+      const value = evidenceInput();
+      value.evidenceContext![field] = "f".repeat(64);
+      const r = evidenceRunner();
+      await expect(deliverToGitHub(value, r)).rejects.toThrow("binding");
+      expect(
+        r.calls.some((c) => c.args[0] === "push" || c.args[1] === "merge"),
+      ).toBe(false);
+    });
+  it("rejects missing context, stale evidence and wrong SHA", async () => {
+    for (const delta of [
+      { evidenceContext: undefined },
+      {
+        candidateEvidence: {
+          ...evidenceInput().candidateEvidence!,
+          observedAt: "2020-01-01T00:00:00Z",
+        },
+      },
+      {
+        candidateEvidence: {
+          ...evidenceInput().candidateEvidence!,
+          headSha: OTHER_SHA,
+        },
+      },
+    ]) {
+      const r = evidenceRunner();
+      await expect(
+        deliverToGitHub({ ...evidenceInput(), ...delta }, r),
+      ).rejects.toThrow();
+      expect(
+        r.calls.some((c) => c.args[0] === "push" || c.args[1] === "merge"),
+      ).toBe(false);
+    }
+  });
+  for (const conclusion of ["CANCELLED", "FAILURE", null])
+    it(`fresh ${conclusion} CI prevents merge despite matching hint`, async () => {
+      const r = evidenceRunner((c) =>
+        c.args.includes(
+          "number,url,headRefOid,state,mergeable,mergeStateStatus,statusCheckRollup",
+        )
+          ? result(
+              JSON.stringify({
+                number: 42,
+                url: "https://github.com/gilosbornhello/osstack/pull/42",
+                headRefOid: HEAD_SHA,
+                state: "OPEN",
+                mergeable: "MERGEABLE",
+                mergeStateStatus: "CLEAN",
+                statusCheckRollup:
+                  conclusion === null
+                    ? []
+                    : [{ name: "ci", status: "COMPLETED", conclusion }],
+              }),
+            )
+          : undefined,
+      );
+      await expect(deliverToGitHub(evidenceInput(), r)).rejects.toThrow();
+      expect(r.calls.some((c) => c.args[1] === "merge")).toBe(false);
+    });
+  it("remote head race after current checks refuses merge", async () => {
+    let reads = 0;
+    const r = evidenceRunner((c) =>
+      c.args[0] === "ls-remote" && ++reads === 2
+        ? result(
+            `${OTHER_SHA}\trefs/heads/osstack/task-123\n${OTHER_SHA}\trefs/heads/main\n`,
+          )
+        : undefined,
+    );
+    await expect(deliverToGitHub(evidenceInput(), r)).rejects.toThrow(
+      "remote head/base",
+    );
+    expect(r.calls.some((c) => c.args[1] === "merge")).toBe(false);
+  });
+  it("current PR base mismatch refuses without push/watch", async () => {
+    const r = evidenceRunner((c) =>
+      c.args.includes("headRefOid,baseRefName,headRefName")
+        ? result(
+            JSON.stringify({
+              headRefOid: HEAD_SHA,
+              baseRefName: "other",
+              headRefName: "osstack/task-123",
+            }),
+          )
+        : undefined,
+    );
+    await expect(deliverToGitHub(evidenceInput(), r)).rejects.toThrow("scope");
+    expect(r.calls.some((c) => c.args[1] === "merge")).toBe(false);
+  });
+  it("conflicting stale green plus cancelled result cannot authorize merge", async () => {
+    const r = evidenceRunner((c) =>
+      c.args.includes(
+        "number,url,headRefOid,state,mergeable,mergeStateStatus,statusCheckRollup",
+      )
+        ? result(
+            JSON.stringify({
+              number: 42,
+              url: "https://github.com/gilosbornhello/osstack/pull/42",
+              headRefOid: HEAD_SHA,
+              state: "OPEN",
+              mergeable: "MERGEABLE",
+              mergeStateStatus: "CLEAN",
+              statusCheckRollup: [
+                {
+                  name: "ci",
+                  status: "COMPLETED",
+                  state: "SUCCESS",
+                  conclusion: "CANCELLED",
+                },
+              ],
+            }),
+          )
+        : undefined,
+    );
+    await expect(deliverToGitHub(evidenceInput(), r)).rejects.toThrow();
+    expect(r.calls.some((c) => c.args[1] === "merge")).toBe(false);
+  });
+  it("required-check policy identity cannot narrow itself", async () => {
+    const v = evidenceInput();
+    v.candidateEvidence!.requiredChecks = ["other"];
+    const r = evidenceRunner();
+    await expect(deliverToGitHub(v, r)).rejects.toThrow("binding");
+    expect(
+      r.calls.some((c) => c.args[0] === "push" || c.args[1] === "merge"),
+    ).toBe(false);
+  });
+
+  it("retargeted PR base after checks refuses at final current scope read", async () => {
+    let scopes = 0;
+    const r = evidenceRunner((c) =>
+      c.args.includes("headRefOid,baseRefName,headRefName") && ++scopes === 2
+        ? result(
+            JSON.stringify({
+              headRefOid: HEAD_SHA,
+              baseRefName: "other",
+              headRefName: "osstack/task-123",
+            }),
+          )
+        : undefined,
+    );
+    await expect(deliverToGitHub(evidenceInput(), r)).rejects.toThrow("scope");
+    expect(r.calls.some((c) => c.args[1] === "merge")).toBe(false);
+  });
+  it("missing remote ref refuses before writes", async () => {
+    const r = evidenceRunner((c) =>
+      c.args[0] === "ls-remote"
+        ? result(`${HEAD_SHA}\trefs/heads/osstack/task-123\n`)
+        : undefined,
+    );
+    await expect(deliverToGitHub(evidenceInput(), r)).rejects.toThrow("remote");
+    expect(
+      r.calls.some((c) => c.args[1] === "merge" || c.args[0] === "push"),
+    ).toBe(false);
+  });
+});
+
+describe("candidate evidence current-state regressions", () => {
+  const mergeFields = "number,url,headRefOid,state,mergeable,mergeStateStatus,statusCheckRollup";
+  const noWrite = (r: ScenarioRunner) => expect(r.calls.some(c => c.args[0] === "push" || c.args[1] === "merge")).toBe(false);
+  it("two same-name required runs success plus cancelled refuse instead of selecting old green", async () => {
+    const r = evidenceRunner(c => c.args.includes(mergeFields) ? result(JSON.stringify({number:42,url:"https://github.com/gilosbornhello/osstack/pull/42",headRefOid:HEAD_SHA,state:"OPEN",mergeable:"MERGEABLE",mergeStateStatus:"CLEAN",statusCheckRollup:[{name:"ci",status:"COMPLETED",conclusion:"SUCCESS"},{name:"ci",status:"COMPLETED",conclusion:"CANCELLED"}]})) : undefined);
+    await expect(deliverToGitHub(evidenceInput(), r)).rejects.toThrow("current required checks"); noWrite(r);
+  });
+  it("second remote read changing only base refuses despite unchanged candidate head", async () => {
+    let reads=0;const r=evidenceRunner(c=>c.args[0]==="ls-remote"&&++reads===2?result(`${HEAD_SHA}\trefs/heads/osstack/task-123\n${"c".repeat(40)}\trefs/heads/main\n`):undefined);
+    await expect(deliverToGitHub(evidenceInput(),r)).rejects.toThrow("remote head/base");expect(reads).toBe(2);noWrite(r);
+  });
+  it("future observation timestamp refuses before any publishing",async()=>{
+    const v=evidenceInput();v.candidateEvidence!.observedAt=new Date(Date.now()+60_000).toISOString();const r=evidenceRunner();
+    await expect(deliverToGitHub(v,r)).rejects.toThrow("binding");noWrite(r);
+  });
+  it("TTL expiring between initial binding and final current checks refuses merge",async()=>{
+    let clock=Date.now();const initial=clock;const spy=vi.spyOn(Date,"now").mockImplementation(()=>clock);
+    try { const v=evidenceInput();v.candidateEvidence!.observedAt=new Date(initial).toISOString();const r=evidenceRunner(c=>{if(c.args.includes(mergeFields))clock=initial+3_600_001;return undefined;});
+      await expect(deliverToGitHub(v,r)).rejects.toThrow("binding");expect(r.calls.some(c=>c.args.includes(mergeFields))).toBe(true);noWrite(r);
+    } finally {spy.mockRestore();}
+  });
+  it("matching hint with no current open PR refuses rather than creating or pushing",async()=>{
+    const r=evidenceRunner();r.prExists=false;await expect(deliverToGitHub(evidenceInput(),r)).rejects.toThrow("current open PR");noWrite(r);expect(r.calls.some(c=>c.args[1]==="create")).toBe(false);
+  });
+  it("second live protection lookup adding required check refuses before merge",async()=>{
+    let reads=0;const r=evidenceRunner(c=>c.args[0]==="api"&&c.args.some(a=>a.includes("/branches/main/protection"))&&++reads===2?result(JSON.stringify({required_status_checks:{contexts:["ci","new-required"],checks:[]}})):undefined);
+    await expect(deliverToGitHub(evidenceInput(),r)).rejects.toThrow("new-required");expect(reads).toBe(2);noWrite(r);
+  });
+});
+
+describe("stateless current candidate observer", () => {
+  const context = { environmentFingerprint: "c".repeat(64), policyFingerprint: "d".repeat(64), testsFingerprint: "e".repeat(64) };
+  it("observes current green reads, hands hint to same consumer and still repeats final CI", async () => {
+    const runner = evidenceRunner();
+    const hint = await observeCurrentGreenCandidate(input(), context, runner);
+    expect(hint).toMatchObject({ schemaVersion: 1, headSha: HEAD_SHA, baseSha: OTHER_SHA, requiredChecks: ["ci"], ...context });
+    const observerCalls = runner.calls.length;
+    expect(runner.calls.some(call => (call.command === "git" && call.args[0] === "push") || (call.command === "gh" && call.args[0] === "pr" && ["merge", "create"].includes(call.args[1] ?? "")) || call.args.includes("--watch"))).toBe(false);
+    await deliverToGitHub(input({ candidateEvidence: hint, evidenceContext: context }), runner);
+    expect(runner.calls.slice(observerCalls).filter(call => call.args.includes("number,url,headRefOid,state,mergeable,mergeStateStatus,statusCheckRollup"))).toHaveLength(1);
+    expect(commandStrings(runner).some(command => /git push|--watch/.test(command))).toBe(false);
+    expect(commandStrings(runner).some(command => command.includes("pr merge"))).toBe(true); // Strict fixture intercepts all commands.
+  });
+  it.each(["missing", "pending", "cancelled", "duplicate", "merged", "unmergeable"])("unproven %s returns no hint and performs no writes", async mode => {
+    const runner = evidenceRunner((call) => {
+      if (mode === "missing" && call.args.includes("number,url,headRefOid,state")) return result("", 1, "no pull requests found");
+      if (mode === "merged" && call.args.includes("number,url,headRefOid,state")) return result(JSON.stringify({ number: 42, url: "https://github.com/gilosbornhello/osstack/pull/42", headRefOid: HEAD_SHA, state: "MERGED" }));
+      if (call.args.includes("number,url,headRefOid,state,mergeable,mergeStateStatus,statusCheckRollup")) {
+        const check = { name: "ci", status: mode === "pending" ? "IN_PROGRESS" : "COMPLETED", conclusion: mode === "cancelled" ? "CANCELLED" : "SUCCESS" };
+        return result(JSON.stringify({ number: 42, url: "https://github.com/gilosbornhello/osstack/pull/42", headRefOid: HEAD_SHA, state: "OPEN", mergeable: "MERGEABLE", mergeStateStatus: mode === "unmergeable" ? "BLOCKED" : "CLEAN", statusCheckRollup: mode === "duplicate" ? [check, check] : [check] }));
+      }
+      return undefined;
+    });
+    expect(await observeCurrentGreenCandidate(input(), context, runner)).toBeUndefined();
+    expect(runner.calls.some(call => (call.command === "git" && call.args[0] === "push") || (call.command === "gh" && call.args[0] === "pr" && ["merge", "create"].includes(call.args[1] ?? "")) || call.args.includes("--watch"))).toBe(false);
+  });
+  it.each(["local-branch", "scope", "repository", "malformed"])("contradictory %s refuses with zero writes", async mode => {
+    const runner = evidenceRunner(call => {
+      if (mode === "local-branch" && call.args[0] === "branch") return result("foreign");
+      if (mode === "repository" && call.args[0] === "remote") return result("git@github.com:foreign/repo.git");
+      if (mode === "scope" && call.args.includes("headRefOid,baseRefName,headRefName")) return result(JSON.stringify({ headRefOid: HEAD_SHA, baseRefName: "foreign", headRefName: "osstack/task-123" }));
+      if (mode === "malformed" && call.args[0] === "ls-remote") return result("bad\nmetadata");
+      return undefined;
+    });
+    await expect(observeCurrentGreenCandidate(input(), context, runner)).rejects.toThrow();
+    expect(runner.calls.some(call => (call.command === "git" && call.args[0] === "push") || (call.command === "gh" && call.args[0] === "pr" && ["merge", "create"].includes(call.args[1] ?? "")) || call.args.includes("--watch"))).toBe(false);
+  });
+  it("refuses cached hint input before runner invocation", async () => {
+    const runner = evidenceRunner();
+    await expect(observeCurrentGreenCandidate(evidenceInput(), context, runner)).rejects.toThrow("no cached evidence");
+    expect(runner.calls).toHaveLength(0);
+  });
+});
+
+describe("current observer bounded ref metadata", () => {
+ const context = { environmentFingerprint: "c".repeat(64), policyFingerprint: "d".repeat(64), testsFingerprint: "e".repeat(64) };
+ it.each(["", `${HEAD_SHA}\trefs/heads/osstack/task-123\n`, `${OTHER_SHA}\trefs/heads/main\n`])("legitimately absent remote ref %j yields no hint and no write", async stdout => {
+  const runner = evidenceRunner(call => call.args[0] === "ls-remote" ? result(stdout) : undefined);
+  expect(await observeCurrentGreenCandidate(input(), context, runner)).toBeUndefined(); expect(runner.calls.some(call => call.args[0] === "push" || call.args[1] === "merge" || call.args[1] === "create" || call.args.includes("--watch"))).toBe(false);
+ });
+ it.each([`${HEAD_SHA}\trefs/heads/osstack/task-123\n${OTHER_SHA}\trefs/heads/main\n${HEAD_SHA}\trefs/heads/foreign\n`, `${HEAD_SHA}\trefs/heads/osstack/task-123\n${HEAD_SHA}\trefs/heads/osstack/task-123\n`, `${HEAD_SHA}\trefs/heads/foreign\n`, `badsha\trefs/heads/main\n`])("contradictory ref bytes %j refuse without fallback or writes", async stdout => {
+  const runner = evidenceRunner(call => call.args[0] === "ls-remote" ? result(stdout) : undefined);
+  await expect(observeCurrentGreenCandidate(input(), context, runner)).rejects.toThrow(); expect(runner.calls.some(call => call.args[0] === "push" || call.args[1] === "merge" || call.args[1] === "create" || call.args.includes("--watch"))).toBe(false);
+ });
+ it("PR closes between metadata and current rollup read cannot mint a hint", async () => {
+  const runner = evidenceRunner(call => call.args.includes("number,url,headRefOid,state,mergeable,mergeStateStatus,statusCheckRollup") ? result(JSON.stringify({ number:42,url:"https://github.com/gilosbornhello/osstack/pull/42",headRefOid:HEAD_SHA,state:"MERGED",mergeable:"MERGEABLE",mergeStateStatus:"CLEAN",statusCheckRollup:[{name:"ci",status:"COMPLETED",conclusion:"SUCCESS"}] })) : undefined);
+  await expect(observeCurrentGreenCandidate(input(), context, runner)).rejects.toThrow("OPEN"); expect(runner.calls.some(call => call.args[0] === "push" || call.args[1] === "merge")).toBe(false);
+ });
+ it("invalid raw context is rejected before any command", async () => {
+  const runner = evidenceRunner(); await expect(observeCurrentGreenCandidate(input(), { ...context, unexpected: true } as typeof context, runner)).rejects.toThrow(); expect(runner.calls).toHaveLength(0);
+ });
+});
+
+it("source mutant omitting unique final current checks permits stale green plus cancelled merge only after full positive baseline", async () => {
+ const baseline = evidenceRunner(); await expect(deliverToGitHub(evidenceInput(), baseline)).resolves.toBeDefined(); expect(baseline.calls.filter(call => call.args[1] === "merge")).toHaveLength(1);
+ const contradiction = () => evidenceRunner(call => call.args.includes("number,url,headRefOid,state,mergeable,mergeStateStatus,statusCheckRollup") ? result(JSON.stringify({ number:42,url:"https://github.com/gilosbornhello/osstack/pull/42",headRefOid:HEAD_SHA,state:"OPEN",mergeable:"MERGEABLE",mergeStateStatus:"CLEAN",statusCheckRollup:[{name:"ci",status:"COMPLETED",conclusion:"SUCCESS"},{name:"ci",status:"COMPLETED",conclusion:"CANCELLED"}] })) : undefined);
+ const normal = contradiction(); await expect(deliverToGitHub(evidenceInput(), normal)).rejects.toThrow("current required checks"); expect(normal.calls.some(call => call.args[1] === "merge")).toBe(false);
+ const source = await readFile(new URL("./delivery.ts", import.meta.url), "utf8"); const anchor = "assertUniqueCurrentRequiredChecks(baseProtection.requiredChecks, mergeCandidate.statusCheckRollup);"; expect(source.split(anchor)).toHaveLength(2);
+ const javascript = stripTypeScriptTypes(source.replace(anchor, "/* MUTANT: final uniqueness lost */"), { mode: "transform" }).replace(/import\s*\{([\s\S]*?)\}\s*from\s*["']([^"']+)["'];/g, (_, names: string, specifier: string) => `const {${names.replace(/\bas\b/g, ":")}} = await load(${JSON.stringify(specifier)});`).replace(/\bexport (?=(?:async|class|const|function))/g, "");
+ const load = async (specifier: string) => specifier === "./candidate-evidence.js" ? import("./candidate-evidence.js") : import(/* @vite-ignore */ specifier);
+ const module = await compileFunction(`return (async () => {${javascript}\nreturn { deliverToGitHub };})()`, ["load"])(load); expect(typeof module.deliverToGitHub).toBe("function");
+ const mutated = contradiction(); await expect(module.deliverToGitHub(evidenceInput(), mutated)).resolves.toBeDefined(); expect(mutated.calls.filter(call => call.args[1] === "merge")).toHaveLength(1); expect(mutated.calls.some(call => call.args[0] === "push" || call.args.includes("--watch"))).toBe(false);
+});
+
+it("current observer stale remote head returns no hint without writes so original consumer may decide pending push", async () => {
+ const context = { environmentFingerprint: "c".repeat(64), policyFingerprint: "d".repeat(64), testsFingerprint: "e".repeat(64) };
+ const runner = evidenceRunner(call => call.args[0] === "ls-remote" ? result(`${OTHER_SHA}\trefs/heads/osstack/task-123\n${OTHER_SHA}\trefs/heads/main\n`) : undefined);
+ expect(await observeCurrentGreenCandidate(input(), context, runner)).toBeUndefined(); expect(runner.calls.some(call => call.args[0] === "push" || call.args[1] === "merge" || call.args[1] === "create" || call.args.includes("--watch"))).toBe(false);
+ expect(runner.calls.filter(call => call.args[0] === "ls-remote")).toHaveLength(1); expect(runner.calls.some(call => call.args.includes("number,url,headRefOid,state,mergeable,mergeStateStatus,statusCheckRollup"))).toBe(false);
 });

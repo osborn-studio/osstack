@@ -3,6 +3,7 @@ import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { basename, join } from "node:path";
 import { z } from "zod";
 import { EvaluationSpec } from "./evaluation-spec.js";
+import { CandidateBatchBinding } from "./candidate-policy.js";
 import { Task, type CompletedTask, type Task as LoopTask } from "./types.js";
 
 export interface EnqueueTaskInput {
@@ -13,6 +14,7 @@ export interface EnqueueTaskInput {
   taskId?: string;
   context?: Record<string, unknown>;
   evaluation?: EvaluationSpec[];
+  candidateBatch?: CandidateBatchBinding;
 }
 
 export interface EnqueuedTask {
@@ -41,6 +43,7 @@ export async function enqueueTask(input: EnqueueTaskInput): Promise<EnqueuedTask
     source: "task_queue",
     ...(input.context !== undefined ? { context: input.context } : {}),
     ...(input.evaluation !== undefined ? { evaluation: input.evaluation } : {}),
+    ...(input.candidateBatch !== undefined ? { candidateBatch: input.candidateBatch } : {}),
   });
   const taskDir = join(input.workspacePath, "tasks");
   await mkdir(taskDir, { recursive: true });
@@ -53,6 +56,7 @@ export async function enqueueTask(input: EnqueueTaskInput): Promise<EnqueuedTask
     source: task.source,
     ...(task.context !== undefined ? { context: task.context } : {}),
     ...(task.evaluation !== undefined ? { evaluation: task.evaluation } : {}),
+    ...(task.candidateBatch !== undefined ? { candidateBatch: task.candidateBatch } : {}),
   }, null, 2)}\n`, "utf-8");
   return { task, path };
 }
@@ -71,6 +75,7 @@ export function parseTaskQueueFile(raw: unknown, options: ParseTaskQueueOptions 
       ...(options.taskFile === undefined ? {} : { task_file: options.taskFile }),
     },
     ...(item.evaluation !== undefined ? { evaluation: item.evaluation } : {}),
+    ...(item.candidateBatch !== undefined ? { candidateBatch: item.candidateBatch } : {}),
   }));
 }
 
@@ -116,6 +121,7 @@ const TaskQueueItem = z.object({
   source: z.literal("task_queue").optional(),
   context: z.record(z.unknown()).optional(),
   evaluation: z.array(EvaluationSpec).optional(),
+  candidateBatch: CandidateBatchBinding.optional(),
 }).strict();
 
 const TaskQueueFileItem = TaskQueueItem.extend({

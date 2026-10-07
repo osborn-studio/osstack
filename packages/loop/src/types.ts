@@ -10,6 +10,7 @@ import { z } from "zod";
 import { LoopBudgetStatus } from "./budget.js";
 import { TaskAuthorization } from "./discovery-policy.js";
 import { EvaluationResult, EvaluationSpec } from "./evaluation-spec.js";
+import { CandidateBatchBinding, CandidateEvidence } from "./candidate-policy.js";
 
 // ── Discover phase ────────────────────────────────────────────────────
 
@@ -36,6 +37,7 @@ export const Task = z.object({
   context: z.record(z.unknown()).optional(),
   /** First-class evaluation harness specs. Verifier emits per-spec results. */
   evaluation: z.array(EvaluationSpec).optional(),
+  candidateBatch: CandidateBatchBinding.optional(),
 });
 export type Task = z.infer<typeof Task>;
 
@@ -273,6 +275,7 @@ export const PublishedAssetEvidence = z.object({
 export type PublishedAssetEvidence = z.infer<typeof PublishedAssetEvidence>;
 
 export const CompletedTask = z.object({
+  candidate_evidence: CandidateEvidence.optional(),
   task_id: z.string(),
   capability: z.string().optional(),
   outcome: z.enum(["success", "failed", "escalated"]),
