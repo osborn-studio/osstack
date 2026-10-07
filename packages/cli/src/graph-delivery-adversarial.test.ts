@@ -10,7 +10,7 @@ import { GraphDelivery, type GraphDeliveryOptions } from './graph-delivery.js';
 import { GovernedExecution } from './governed-execution.js';
 import { GraphRuntime } from './graph-runtime.js';
 
-async function fixture(mode: 'unknown-review' | 'unknown-writer' | 'overrun' | 'mutation' | 'foreign-owner' | 'revoked' | 'retry-preparation-denied' | 'retry-preparation-race' | 'setup' | 'renewal') {
+async function fixture(mode: 'unknown-review' | 'unknown-writer' | 'overrun' | 'mutation' | 'foreign-owner' | 'revoked' | 'retry-preparation-denied' | 'retry-preparation-race' | 'retry-preparation-pre-admission' | 'setup' | 'renewal') {
   const root = await realpath(await mkdtemp(join(tmpdir(), 'g21-adversarial-'))); const repo = join(root, 'source'); await mkdir(repo);
   const git = (...args: string[]) => execFileSync('git', args, { cwd: repo, encoding: 'utf8' }).trim();
   git('init', '-q'); await writeFile(join(repo, 'answer'), '0\n'); git('add', '.');
@@ -18,6 +18,7 @@ async function fixture(mode: 'unknown-review' | 'unknown-writer' | 'overrun' | '
   const db = openDb({ path: join(root, 'control.sqlite') });
   const calls = { writer: 0, reviewer: 0, injected: 0 }; let allowed = true; let renewedWhileWriting = false;
   const stopped = new Set<string>();
+  let testsReached!: () => void; const testsAdmissionReached = new Promise<void>(resolve => { testsReached = resolve; });
   const adapter = (kind: 'writer' | 'reviewer'): AgentAdapter => ({ id: kind, display_name: kind, cost_tier: 'low',
     capabilities: () => [CapabilitySchema.parse({ id: kind, agent_id: kind, kind: kind === 'writer' ? 'code.write' : 'review.code', description: kind })],
     isAvailable: async () => ({ available: true, last_checked_at: 0 }),
@@ -50,7 +51,16 @@ async function fixture(mode: 'unknown-review' | 'unknown-writer' | 'overrun' | '
       if (mode.startsWith('retry-preparation-')) {
         const key = input.runId.replace('graph-action:', '');
         const action = db.prepare('SELECT node_id,effect_slot FROM graph_actions WHERE effect_key=?').get(key) as { node_id: string; effect_slot: string } | undefined;
+        if (mode === 'retry-preparation-pre-admission' && action?.node_id === 'e0.tests') {
+          testsReached();
+          // Wait for real task cancellation, then deny the closed admission port.
+          // No lease or host no-acquisition receipt is fabricated by this fixture.
+          if (!input.signal) throw Error('test admission signal missing');
+          if (!input.signal.aborted) await new Promise<void>(resolve => input.signal!.addEventListener('abort', () => resolve(), { once: true }));
+          throw Error('fixture sibling admission denied without receipt');
+        }
         if (action?.node_id === 'e0.prepare_review' && action.effect_slot === 'retry-2') {
+          if (mode === 'retry-preparation-pre-admission') await testsAdmissionReached;
           // Isolate the missing-admission proof: the sibling must already have
           // a durable outcome. A failed Functional task can abort sibling task
           // promises even inside allSettled, before their physical work stops.
@@ -133,8 +143,19 @@ it('preserves sibling evidence when denied preparation races with tests', async 
   // Keep the original unsequenced interleaving covered. A cancelled task wrapper
   // says nothing about physical execution: any started effect needs either a
   // durable terminal outcome or its admission retained for reconciliation.
-  for (const row of f.testsEvidence) {
-    if (row.state === 'confirmed' || row.state === 'failed') {
+  assertSiblingEvidence(f.testsEvidence);
+}, 30_000);
+
+type SiblingRow = { state: string; execution_ref: string | null; outcome_json: string | null; held_at: number | null; released_at: number | null };
+function assertSiblingEvidence(rows: SiblingRow[]) {
+  expect(rows.length).toBeGreaterThan(0);
+  for (const row of rows) {
+    if (row.state === 'failed' && row.execution_ref === null && row.held_at === null) {
+      expect(row.outcome_json, JSON.stringify(row)).not.toBeNull();
+      const outcome = JSON.parse(row.outcome_json!);
+      expect(outcome).toEqual({ state: 'failed', evidenceRef: expect.stringMatching(/^not-started:[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/), actualTokens: 0, retrySafe: false, error: { message: 'admission refused before invocation' } });
+      expect(row.released_at, JSON.stringify(row)).toBeNull();
+    } else if (row.state === 'confirmed' || row.state === 'failed') {
       expect(row.outcome_json, JSON.stringify(row)).not.toBeNull();
       expect(JSON.parse(row.outcome_json!)).toMatchObject({ state: row.state, evidenceRef: expect.any(String) });
       expect(row.held_at, JSON.stringify(row)).not.toBeNull();
@@ -145,6 +166,33 @@ it('preserves sibling evidence when denied preparation races with tests', async 
       if (row.execution_ref !== null) expect(row.held_at, JSON.stringify(row)).not.toBeNull();
     }
   }
+}
+
+it('deterministically preserves started terminal sibling admission and missing retry-preparation reconciliation', async () => {
+  const f = await fixture('retry-preparation-denied');
+  expect(f.run.status).toBe('reconciliation_required'); expect(f.result?.route.kind).toBe('reconcile'); expect(f.joins).toBe(0);
+  expect(f.testsEvidence).toHaveLength(1); expect(f.testsEvidence[0]).toMatchObject({ state: 'confirmed', execution_ref: expect.any(String), held_at: expect.any(Number), released_at: expect.any(Number) });
+  assertSiblingEvidence(f.testsEvidence);
+}, 30_000);
+
+it('deterministically retains cancelled pre-admission sibling with no fabricated admission or discharge', async () => {
+  const f = await fixture('retry-preparation-pre-admission');
+  expect(f.run.status).toBe('reconciliation_required'); expect(f.result?.route.kind).toBe('reconcile'); expect(f.joins).toBe(0);
+  expect(f.testsEvidence).toHaveLength(1); expect(f.testsEvidence[0]).toMatchObject({ state: 'failed', execution_ref: null, held_at: null, released_at: null });
+  assertSiblingEvidence(f.testsEvidence);
+  const assertUnready = (value: { status: string; kind: string | undefined; joins: number }) => {
+    expect(value.status).toBe('reconciliation_required'); expect(value.kind).toBe('reconcile'); expect(value.joins).toBe(0);
+  };
+  const valid = { status: f.run.status, kind: f.result?.route.kind, joins: f.joins };
+  assertUnready(valid);
+  expect(() => assertUnready({ ...valid, kind: 'ready' })).toThrow();
+  expect(() => assertUnready({ ...valid, joins: 1 })).toThrow();
+  const original = f.testsEvidence[0]!;
+  for (const change of [{ actualTokens: 1 }, { retrySafe: true }, { evidenceRef: 'not-started:malformed' }, { error: { message: 'fabricated no-start' } }]) {
+    const row = { ...original, outcome_json: JSON.stringify({ ...JSON.parse(original.outcome_json!), ...change }) };
+    expect(() => assertSiblingEvidence([row])).toThrow();
+  }
+  expect(() => assertSiblingEvidence([{ ...original, released_at: Date.now() }])).toThrow();
 }, 30_000);
 
 it('closes its runtime without projecting an unowned run when setup acquisition fails', async () => {
