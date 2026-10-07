@@ -9997,6 +9997,12 @@ async function handleLoopCommand(args: string[]): Promise<number> {
     try { args = await applyLoopDefaults(args, osstackHome()); }
     catch { console.error("osstack: LOOP_DEFAULTS_INVALID"); return 1; }
   }
+  let candidatePolicy: import("@osstack/loop").CandidatePolicy | undefined;
+  if (args.includes("--candidate-policy")) {
+    const { readLoopCandidateInput } = await import("./loop-candidate-input.js");
+    try { candidatePolicy = await readLoopCandidateInput(args); }
+    catch { console.error("osstack: LOOP_CANDIDATE_INPUT_INVALID"); return 1; }
+  }
   const { LoopEngine, enqueueTask, readLoopState, renderLoopStateMarkdown } = await loadLoop();
   const { resolveLoopProfileRouting } = await import("./loop-profile-routing.js");
   const sub = args[0];
@@ -10150,6 +10156,10 @@ async function handleLoopCommand(args: string[]): Promise<number> {
     const goalCommand = flagValue(args, "--goal");
     const worktreeRoot = flagValue(args, "--worktree-root");
     const verifyCommands = flagValues(args, "--verify");
+    if (candidatePolicy !== undefined) {
+      try { candidatePolicy = (await import("./loop-candidate-input.js")).withLoopCandidateVerifiers(candidatePolicy, verifyCommands); }
+      catch { console.error("osstack: LOOP_CANDIDATE_INPUT_INVALID"); return 1; }
+    }
     let verifierAgentIds = [...flagValues(args, "--reviewer"), ...flagValues(args, "--checker")];
     const artifactVerification = parseArtifactVerification(args);
     const discoveryPolicy = await parseDiscoveryPolicyFlag(args, workspacePath);
@@ -10198,6 +10208,9 @@ async function handleLoopCommand(args: string[]): Promise<number> {
       agentId = agentId ?? profileRouting.agentId;
       verifierAgentIds = verifierAgentIds.length > 0 ? verifierAgentIds : profileRouting.verifierAgentIds;
     }
+    if (candidatePolicy !== undefined && agentId !== undefined && verifierAgentIds.includes(agentId)) {
+      console.error("osstack: candidate Builder and Evaluator must differ"); return 1;
+    }
     let repositoryLease: import("./governed-execution.js").ExecutionLease | undefined;
     let unconfirmed = false;
     if (!useDaemon) {
@@ -10218,7 +10231,7 @@ async function handleLoopCommand(args: string[]): Promise<number> {
     const checkpoint = args.includes("--checkpoint") && !useWorktree
       ? await createShadowCheckpoint(realpathSync(workspacePath))
       : undefined;
-    const knowledge = await createKnowledgeProofEvidence(args, "loop run");
+    const knowledge = candidatePolicy === undefined ? await createKnowledgeProofEvidence(args, "loop run") : offKnowledgeEvidence();
     const governanceMode = parseLoopGovernanceMode(args);
     if (governanceMode instanceof Error) {
       console.error(`osstack: ${governanceMode.message}`);
@@ -10262,7 +10275,7 @@ async function handleLoopCommand(args: string[]): Promise<number> {
         ...(executeCommand !== undefined ? { executeCommand } : {}),
         ...(agentId !== undefined ? { agentId } : {}),
         ...(autoAgent ? { autoAgent } : {}),
-        ...(profileRouting !== undefined ? { enforceRoleSeparation: true } : {}),
+        ...(profileRouting !== undefined || candidatePolicy !== undefined ? { enforceRoleSeparation: true } : {}),
         ...(profileRouting !== undefined
           ? { profileRouting: profileRouting.summary }
           : {}),
@@ -10321,12 +10334,12 @@ async function handleLoopCommand(args: string[]): Promise<number> {
       : undefined;
     const engine = new LoopEngine({
       workspacePath,
-      stateFilePath,
+      ...(candidatePolicy === undefined ? { stateFilePath } : { candidatePolicy }),
       ...(markdownPath !== undefined ? { markdownPath } : {}),
       ...(executeCommand !== undefined ? { executeCommand } : {}),
       ...(agentId !== undefined ? { agentId } : {}),
       ...(autoAgent ? { autoAgent } : {}),
-      ...(profileRouting !== undefined ? { enforceRoleSeparation: true } : {}),
+      ...(profileRouting !== undefined || candidatePolicy !== undefined ? { enforceRoleSeparation: true } : {}),
       ...(profileRouting !== undefined
         ? { profileRouting: profileRouting.summary }
         : {}),
@@ -10370,18 +10383,17 @@ async function handleLoopCommand(args: string[]): Promise<number> {
     const events = governance === undefined
       ? result.events
       : appendGovernanceVerifyEvent(result.events, result.loop_id, governance);
-    const probeObservation = await observeLoopProbeEvents(workspacePath, events);
-    const artifacts = await writeRequestedLoopArtifacts(result.state, workspacePath, args, events, governance);
-    const learnedLessons = await learnLessonsFromLoopState(result.state);
-    const { runLoopNeatFinalizer } = await import("./loop-neat-finalizer.js");
-    const knowledgeHygiene = await runLoopNeatFinalizer({
+    const probeObservation = candidatePolicy === undefined ? await observeLoopProbeEvents(workspacePath, events) : undefined;
+    const artifacts = candidatePolicy === undefined ? await writeRequestedLoopArtifacts(result.state, workspacePath, args, events, governance) : undefined;
+    const learnedLessons = candidatePolicy === undefined ? await learnLessonsFromLoopState(result.state) : undefined;
+    const knowledgeHygiene = candidatePolicy === undefined ? await (await import("./loop-neat-finalizer.js")).runLoopNeatFinalizer({
       enabled: neatFinalize,
       loop_succeeded: result.state.completed_tasks.length > 0
         && result.state.completed_tasks.every((task) => task.outcome === "success")
         && governance?.blocking !== true
         && result.budget?.exceeded !== true,
       workspace_path: workspacePath,
-    });
+    }) : undefined;
     printLoopRun({
       loop_id: result.loop_id,
       json_path: result.jsonPath,
@@ -10440,6 +10452,7 @@ async function handleLoopCommand(args: string[]): Promise<number> {
       "--id",
       "--priority",
       "--context-json",
+      "--candidate-policy",
     ])).join(" ").trim();
     if (prompt === "") {
       console.error("osstack: loop enqueue requires a prompt");
@@ -10452,6 +10465,9 @@ async function handleLoopCommand(args: string[]): Promise<number> {
       ...(taskId !== undefined ? { taskId } : {}),
       ...(priority !== undefined ? { priority } : {}),
       ...(context !== undefined ? { context } : {}),
+      ...(candidatePolicy === undefined ? {} : {
+        candidateBatch: (await import("@osstack/loop")).candidateBinding(candidatePolicy),
+      }),
     });
     if (args.includes("--json")) {
       console.log(JSON.stringify({
@@ -10532,6 +10548,7 @@ async function handleLoopCommand(args: string[]): Promise<number> {
 
 Options:
   --workspace P       Workspace to scan and run commands in (default: cwd)
+  --candidate-policy P Private absolute CandidatePolicy JSON (local run/enqueue opt-in)
   --source S          Discovery source; repeatable. git_diff | task_queue | github_branch
   --agent ID          Run tasks through a registered adapter (for example codex-cli)
   --auto-agent        Let router + policy choose an available adapter by capability

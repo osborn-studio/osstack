@@ -2,8 +2,12 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { readFile } from "node:fs/promises";
+import { stripTypeScriptTypes } from "node:module";
+import { compileFunction } from "node:vm";
 import {
   deliverToGitHub,
+  observeCurrentGreenCandidate,
   githubDeliveryEnvironment,
   type DeliveryCommandResult,
   type DeliveryCommandRunner,
@@ -1009,4 +1013,85 @@ describe("candidate evidence current-state regressions", () => {
     let reads=0;const r=evidenceRunner(c=>c.args[0]==="api"&&c.args.some(a=>a.includes("/branches/main/protection"))&&++reads===2?result(JSON.stringify({required_status_checks:{contexts:["ci","new-required"],checks:[]}})):undefined);
     await expect(deliverToGitHub(evidenceInput(),r)).rejects.toThrow("new-required");expect(reads).toBe(2);noWrite(r);
   });
+});
+
+describe("stateless current candidate observer", () => {
+  const context = { environmentFingerprint: "c".repeat(64), policyFingerprint: "d".repeat(64), testsFingerprint: "e".repeat(64) };
+  it("observes current green reads, hands hint to same consumer and still repeats final CI", async () => {
+    const runner = evidenceRunner();
+    const hint = await observeCurrentGreenCandidate(input(), context, runner);
+    expect(hint).toMatchObject({ schemaVersion: 1, headSha: HEAD_SHA, baseSha: OTHER_SHA, requiredChecks: ["ci"], ...context });
+    const observerCalls = runner.calls.length;
+    expect(runner.calls.some(call => (call.command === "git" && call.args[0] === "push") || (call.command === "gh" && call.args[0] === "pr" && ["merge", "create"].includes(call.args[1] ?? "")) || call.args.includes("--watch"))).toBe(false);
+    await deliverToGitHub(input({ candidateEvidence: hint, evidenceContext: context }), runner);
+    expect(runner.calls.slice(observerCalls).filter(call => call.args.includes("number,url,headRefOid,state,mergeable,mergeStateStatus,statusCheckRollup"))).toHaveLength(1);
+    expect(commandStrings(runner).some(command => /git push|--watch/.test(command))).toBe(false);
+    expect(commandStrings(runner).some(command => command.includes("pr merge"))).toBe(true); // Strict fixture intercepts all commands.
+  });
+  it.each(["missing", "pending", "cancelled", "duplicate", "merged", "unmergeable"])("unproven %s returns no hint and performs no writes", async mode => {
+    const runner = evidenceRunner((call) => {
+      if (mode === "missing" && call.args.includes("number,url,headRefOid,state")) return result("", 1, "no pull requests found");
+      if (mode === "merged" && call.args.includes("number,url,headRefOid,state")) return result(JSON.stringify({ number: 42, url: "https://github.com/gilosbornhello/osstack/pull/42", headRefOid: HEAD_SHA, state: "MERGED" }));
+      if (call.args.includes("number,url,headRefOid,state,mergeable,mergeStateStatus,statusCheckRollup")) {
+        const check = { name: "ci", status: mode === "pending" ? "IN_PROGRESS" : "COMPLETED", conclusion: mode === "cancelled" ? "CANCELLED" : "SUCCESS" };
+        return result(JSON.stringify({ number: 42, url: "https://github.com/gilosbornhello/osstack/pull/42", headRefOid: HEAD_SHA, state: "OPEN", mergeable: "MERGEABLE", mergeStateStatus: mode === "unmergeable" ? "BLOCKED" : "CLEAN", statusCheckRollup: mode === "duplicate" ? [check, check] : [check] }));
+      }
+      return undefined;
+    });
+    expect(await observeCurrentGreenCandidate(input(), context, runner)).toBeUndefined();
+    expect(runner.calls.some(call => (call.command === "git" && call.args[0] === "push") || (call.command === "gh" && call.args[0] === "pr" && ["merge", "create"].includes(call.args[1] ?? "")) || call.args.includes("--watch"))).toBe(false);
+  });
+  it.each(["local-branch", "scope", "repository", "malformed"])("contradictory %s refuses with zero writes", async mode => {
+    const runner = evidenceRunner(call => {
+      if (mode === "local-branch" && call.args[0] === "branch") return result("foreign");
+      if (mode === "repository" && call.args[0] === "remote") return result("git@github.com:foreign/repo.git");
+      if (mode === "scope" && call.args.includes("headRefOid,baseRefName,headRefName")) return result(JSON.stringify({ headRefOid: HEAD_SHA, baseRefName: "foreign", headRefName: "osstack/task-123" }));
+      if (mode === "malformed" && call.args[0] === "ls-remote") return result("bad\nmetadata");
+      return undefined;
+    });
+    await expect(observeCurrentGreenCandidate(input(), context, runner)).rejects.toThrow();
+    expect(runner.calls.some(call => (call.command === "git" && call.args[0] === "push") || (call.command === "gh" && call.args[0] === "pr" && ["merge", "create"].includes(call.args[1] ?? "")) || call.args.includes("--watch"))).toBe(false);
+  });
+  it("refuses cached hint input before runner invocation", async () => {
+    const runner = evidenceRunner();
+    await expect(observeCurrentGreenCandidate(evidenceInput(), context, runner)).rejects.toThrow("no cached evidence");
+    expect(runner.calls).toHaveLength(0);
+  });
+});
+
+describe("current observer bounded ref metadata", () => {
+ const context = { environmentFingerprint: "c".repeat(64), policyFingerprint: "d".repeat(64), testsFingerprint: "e".repeat(64) };
+ it.each(["", `${HEAD_SHA}\trefs/heads/osstack/task-123\n`, `${OTHER_SHA}\trefs/heads/main\n`])("legitimately absent remote ref %j yields no hint and no write", async stdout => {
+  const runner = evidenceRunner(call => call.args[0] === "ls-remote" ? result(stdout) : undefined);
+  expect(await observeCurrentGreenCandidate(input(), context, runner)).toBeUndefined(); expect(runner.calls.some(call => call.args[0] === "push" || call.args[1] === "merge" || call.args[1] === "create" || call.args.includes("--watch"))).toBe(false);
+ });
+ it.each([`${HEAD_SHA}\trefs/heads/osstack/task-123\n${OTHER_SHA}\trefs/heads/main\n${HEAD_SHA}\trefs/heads/foreign\n`, `${HEAD_SHA}\trefs/heads/osstack/task-123\n${HEAD_SHA}\trefs/heads/osstack/task-123\n`, `${HEAD_SHA}\trefs/heads/foreign\n`, `badsha\trefs/heads/main\n`])("contradictory ref bytes %j refuse without fallback or writes", async stdout => {
+  const runner = evidenceRunner(call => call.args[0] === "ls-remote" ? result(stdout) : undefined);
+  await expect(observeCurrentGreenCandidate(input(), context, runner)).rejects.toThrow(); expect(runner.calls.some(call => call.args[0] === "push" || call.args[1] === "merge" || call.args[1] === "create" || call.args.includes("--watch"))).toBe(false);
+ });
+ it("PR closes between metadata and current rollup read cannot mint a hint", async () => {
+  const runner = evidenceRunner(call => call.args.includes("number,url,headRefOid,state,mergeable,mergeStateStatus,statusCheckRollup") ? result(JSON.stringify({ number:42,url:"https://github.com/gilosbornhello/osstack/pull/42",headRefOid:HEAD_SHA,state:"MERGED",mergeable:"MERGEABLE",mergeStateStatus:"CLEAN",statusCheckRollup:[{name:"ci",status:"COMPLETED",conclusion:"SUCCESS"}] })) : undefined);
+  await expect(observeCurrentGreenCandidate(input(), context, runner)).rejects.toThrow("OPEN"); expect(runner.calls.some(call => call.args[0] === "push" || call.args[1] === "merge")).toBe(false);
+ });
+ it("invalid raw context is rejected before any command", async () => {
+  const runner = evidenceRunner(); await expect(observeCurrentGreenCandidate(input(), { ...context, unexpected: true } as typeof context, runner)).rejects.toThrow(); expect(runner.calls).toHaveLength(0);
+ });
+});
+
+it("source mutant omitting unique final current checks permits stale green plus cancelled merge only after full positive baseline", async () => {
+ const baseline = evidenceRunner(); await expect(deliverToGitHub(evidenceInput(), baseline)).resolves.toBeDefined(); expect(baseline.calls.filter(call => call.args[1] === "merge")).toHaveLength(1);
+ const contradiction = () => evidenceRunner(call => call.args.includes("number,url,headRefOid,state,mergeable,mergeStateStatus,statusCheckRollup") ? result(JSON.stringify({ number:42,url:"https://github.com/gilosbornhello/osstack/pull/42",headRefOid:HEAD_SHA,state:"OPEN",mergeable:"MERGEABLE",mergeStateStatus:"CLEAN",statusCheckRollup:[{name:"ci",status:"COMPLETED",conclusion:"SUCCESS"},{name:"ci",status:"COMPLETED",conclusion:"CANCELLED"}] })) : undefined);
+ const normal = contradiction(); await expect(deliverToGitHub(evidenceInput(), normal)).rejects.toThrow("current required checks"); expect(normal.calls.some(call => call.args[1] === "merge")).toBe(false);
+ const source = await readFile(new URL("./delivery.ts", import.meta.url), "utf8"); const anchor = "assertUniqueCurrentRequiredChecks(baseProtection.requiredChecks, mergeCandidate.statusCheckRollup);"; expect(source.split(anchor)).toHaveLength(2);
+ const javascript = stripTypeScriptTypes(source.replace(anchor, "/* MUTANT: final uniqueness lost */"), { mode: "transform" }).replace(/import\s*\{([\s\S]*?)\}\s*from\s*["']([^"']+)["'];/g, (_, names: string, specifier: string) => `const {${names.replace(/\bas\b/g, ":")}} = await load(${JSON.stringify(specifier)});`).replace(/\bexport (?=(?:async|class|const|function))/g, "");
+ const load = async (specifier: string) => specifier === "./candidate-evidence.js" ? import("./candidate-evidence.js") : import(/* @vite-ignore */ specifier);
+ const module = await compileFunction(`return (async () => {${javascript}\nreturn { deliverToGitHub };})()`, ["load"])(load); expect(typeof module.deliverToGitHub).toBe("function");
+ const mutated = contradiction(); await expect(module.deliverToGitHub(evidenceInput(), mutated)).resolves.toBeDefined(); expect(mutated.calls.filter(call => call.args[1] === "merge")).toHaveLength(1); expect(mutated.calls.some(call => call.args[0] === "push" || call.args.includes("--watch"))).toBe(false);
+});
+
+it("current observer stale remote head returns no hint without writes so original consumer may decide pending push", async () => {
+ const context = { environmentFingerprint: "c".repeat(64), policyFingerprint: "d".repeat(64), testsFingerprint: "e".repeat(64) };
+ const runner = evidenceRunner(call => call.args[0] === "ls-remote" ? result(`${OTHER_SHA}\trefs/heads/osstack/task-123\n${OTHER_SHA}\trefs/heads/main\n`) : undefined);
+ expect(await observeCurrentGreenCandidate(input(), context, runner)).toBeUndefined(); expect(runner.calls.some(call => call.args[0] === "push" || call.args[1] === "merge" || call.args[1] === "create" || call.args.includes("--watch"))).toBe(false);
+ expect(runner.calls.filter(call => call.args[0] === "ls-remote")).toHaveLength(1); expect(runner.calls.some(call => call.args.includes("number,url,headRefOid,state,mergeable,mergeStateStatus,statusCheckRollup"))).toBe(false);
 });

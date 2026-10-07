@@ -679,6 +679,64 @@ async function recoverMergedDelivery(
   };
 }
 
+function assertUniqueCurrentRequiredChecks(requiredChecks: string[], checks: z.infer<typeof CheckRollup>[]): void {
+  if (requiredChecks.length === 0 || new Set(requiredChecks).size !== requiredChecks.length) throw new Error("candidate required checks must be nonempty and unique");
+  assertRequiredChecks(requiredChecks, checks);
+  for (const required of requiredChecks) {
+    const matching = checks.filter(check => rollupName(check) === required);
+    if (matching.length !== 1 ||
+      (matching[0]!.conclusion != null ? matching[0]!.conclusion!.toUpperCase() !== "SUCCESS" : matching[0]!.state?.toUpperCase() !== "SUCCESS") ||
+      (matching[0]!.status != null && matching[0]!.status!.toUpperCase() !== "COMPLETED")) throw new Error("candidate current required checks are missing or unsuccessful");
+  }
+}
+
+/** Stateless current observation only: never push/watch/create/merge or consume cached evidence. */
+export async function observeCurrentGreenCandidate(
+  value: GitHubDeliveryInput,
+  currentContext: CandidateEvidenceContext,
+  runner: DeliveryCommandRunner = defaultDeliveryCommandRunner,
+): Promise<CandidateEvidence | undefined> {
+  const input = GitHubDeliveryInputSchema.parse(value);
+  if (input.candidateEvidence !== undefined || input.evidenceContext !== undefined) throw new Error("observer accepts no cached evidence");
+  const context = CandidateEvidenceContextSchema.parse(currentContext);
+  if (input.branch === input.base || input.branch === "main" || input.branch === "master") throw new Error("refusing protected/base candidate");
+  await assertCandidateBody(input.bodyFile);
+  for (const ref of [input.branch, input.base]) await runOrThrow(runner, input, "git", ["check-ref-format", "--branch", ref], "observer ref validation");
+  const branch = (await runOrThrow(runner, input, "git", ["branch", "--show-current"], "observer branch")).stdout.trim();
+  if (branch !== input.branch) throw new Error("observer local branch changed");
+  if ((await runOrThrow(runner, input, "git", ["status", "--porcelain=v1", "-z"], "observer clean worktree")).stdout !== "") return undefined;
+  const head = GitCommitSha.parse((await runOrThrow(runner, input, "git", ["rev-parse", "HEAD"], "observer local HEAD")).stdout.trim());
+  const remoteUrl = (await runOrThrow(runner, input, "git", ["remote", "get-url", input.remote], "observer remote")).stdout;
+  const repo = RepoView.parse(parseJson((await runOrThrow(runner, input, "gh", ["repo", "view", "--json", "nameWithOwner"], "observer repository")).stdout, "observer repository")).nameWithOwner;
+  if (remoteRepository(remoteUrl)?.toLowerCase() !== repo.toLowerCase()) throw new Error("observer remote repository mismatch");
+  const rows = (await runOrThrow(runner, input, "git", ["ls-remote", "--refs", input.remote, `refs/heads/${input.branch}`, `refs/heads/${input.base}`], "observer remote commits")).stdout.trim().split("\n");
+  if (rows.length > 2) throw new Error("observer remote metadata has extra rows");
+  if (rows.length === 1 && rows[0] === "") return undefined;
+  const refs = new Map<string, string>();
+  for (const row of rows) {
+    const parts = row.split("\t");
+    if (parts.length !== 2 || refs.has(parts[1]!) || ![`refs/heads/${input.branch}`, `refs/heads/${input.base}`].includes(parts[1]!)) throw new Error("observer remote metadata malformed");
+    refs.set(parts[1]!, GitCommitSha.parse(parts[0]));
+  }
+  const remoteHead = refs.get(`refs/heads/${input.branch}`), base = refs.get(`refs/heads/${input.base}`);
+  if (remoteHead === undefined || base === undefined) return undefined;
+  if (remoteHead !== head) return undefined; // A normal pending push, never evidence of current green.
+  if ((await readEffectiveProtection(runner, input, repo, input.branch)).protected) throw new Error("observer candidate branch protected");
+  const protection = await readEffectiveProtection(runner, input, repo, input.base);
+  if (!protection.protected || !protection.requiredChecks.length) return undefined;
+  const pr = await resolvePullRequest(runner, input, repo, head);
+  if (pr === undefined || pr.state !== "OPEN") return undefined;
+  const scope = z.object({ headRefOid: GitCommitSha, baseRefName: z.string(), headRefName: z.string() }).strict().parse(parseJson((await runOrThrow(runner, input, "gh", ["pr", "view", String(pr.number), "--json", "headRefOid,baseRefName,headRefName"], "observer PR scope")).stdout, "observer PR scope"));
+  if (scope.headRefOid !== head || scope.baseRefName !== input.base || scope.headRefName !== input.branch) throw new Error("observer PR scope changed");
+  const candidate = MergeCandidate.parse(parseJson((await runOrThrow(runner, input, "gh", ["pr", "view", String(pr.number), "--json", "number,url,headRefOid,state,mergeable,mergeStateStatus,statusCheckRollup"], "observer current checks")).stdout, "observer current checks"));
+  pullRequestUrl(candidate.url, repo, pr.number);
+  if (candidate.number !== pr.number || candidate.headRefOid !== head) throw new Error("observer PR identity changed");
+  if (candidate.mergeable !== "MERGEABLE" || candidate.mergeStateStatus !== "CLEAN") return undefined;
+  try { assertUniqueCurrentRequiredChecks(protection.requiredChecks, candidate.statusCheckRollup); } catch { return undefined; }
+  // Observation is only a hint. The consumer repeats all current remote/CI checks before any merge.
+  return CandidateEvidenceSchema.parse({ schemaVersion: 1, repo, headSha: head, baseSha: base, ...context, requiredChecks: protection.requiredChecks, observedAt: new Date().toISOString() });
+}
+
 export async function deliverToGitHub(
   value: GitHubDeliveryInput,
   runner: DeliveryCommandRunner = defaultDeliveryCommandRunner,
@@ -1003,23 +1061,7 @@ export async function deliverToGitHub(
       pushedCommit,
       baseProtection.requiredChecks,
     );
-    // Every matching current result must succeed: cancelled/duplicate/stale greens never authorize merge.
-    for (const required of baseProtection.requiredChecks) {
-      const matching = mergeCandidate.statusCheckRollup.filter(
-        (check) => rollupName(check) === required,
-      );
-      if (
-        matching.length !== 1 ||
-        (matching[0]!.conclusion != null
-          ? matching[0]!.conclusion!.toUpperCase() !== "SUCCESS"
-          : matching[0]!.state?.toUpperCase() !== "SUCCESS") ||
-        (matching[0]!.status != null &&
-          matching[0]!.status!.toUpperCase() !== "COMPLETED")
-      )
-        throw new Error(
-          "candidate current required checks are missing or unsuccessful",
-        );
-    }
+    assertUniqueCurrentRequiredChecks(baseProtection.requiredChecks, mergeCandidate.statusCheckRollup);
     await assertPullRequestScope(pr.number);
     await assertRemoteBinding();
   }
