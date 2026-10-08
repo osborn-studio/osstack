@@ -1,5 +1,11 @@
 # @osstack/core
 
+## 0.21.0
+
+### Minor Changes
+
+- 1fa74af: Add experimental bounded changeset proposal, durable invocation/apply evidence, guarded multifile application, and apply-bound artifact freezing. Preserve historical Graph v4 compiler resolution and include complete cumulative and incremental review inputs. Add canonical writer guard capabilities with retained admission on uncertainty. Production changeset executor registration remains disabled pending lifecycle and reviewer integration.
+
 ## 0.20.0
 
 ### Minor Changes

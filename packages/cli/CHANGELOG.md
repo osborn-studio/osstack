@@ -1,5 +1,30 @@
 # @osstack/cli
 
+## 0.21.0
+
+### Minor Changes
+
+- 1fa74af: Add experimental bounded changeset proposal, durable invocation/apply evidence, guarded multifile application, and apply-bound artifact freezing. Preserve historical Graph v4 compiler resolution and include complete cumulative and incremental review inputs. Add canonical writer guard capabilities with retained admission on uncertainty. Production changeset executor registration remains disabled pending lifecycle and reviewer integration.
+- e3c0989: Add a constructor-only trusted candidate context handoff to the existing guarded GitHub delivery path. Observe current branch, remote, protection, PR and unique successful required checks without writes, then re-sample context and live policy before handing the hint to the original fully rechecking delivery consumer. Absence remains the original route. No default tool identity producer, runtime activation or additional merge authority is introduced.
+- e3c0989: Wire explicit private CandidatePolicy input into the existing local Loop enqueue/run paths. Preserve native lease, policy, required verification and evaluation gates; persist Task batch bindings and run bounded worktree batches with local/prepush/final preflight. Default execution remains compatible. No configuration is installed, runtime activated, push/merge enabled or cost savings claimed.
+- 47e29c2: Add opt-in persistent native argument defaults for local Loop enqueue/run while preserving existing parsers, verification gates and lease handling. Reviewer-only routes now request agent admission. No configuration is installed or runtime activated. The repository's linked `@osstack/*` release policy may align other package versions; this does not establish candidate batching, CI reuse, scope2/3 completion or cost savings.
+
+### Patch Changes
+
+- Updated dependencies [27c2148]
+- Updated dependencies [1fa74af]
+- Updated dependencies [e3c0989]
+  - @osstack/loop@0.21.0
+  - @osstack/github@0.21.0
+  - @osstack/agents@0.21.0
+  - @osstack/autonomy@0.21.0
+  - @osstack/core@0.21.0
+  - @osstack/graph@0.21.0
+  - @osstack/config@0.21.0
+  - @osstack/hermes-adapter@0.21.0
+  - @osstack/skill-registry@0.21.0
+  - @osstack/skills@0.21.0
+
 ## 0.20.0
 
 ### Minor Changes

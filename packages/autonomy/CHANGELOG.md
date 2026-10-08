@@ -1,5 +1,19 @@
 # @osstack/autonomy
 
+## 0.21.0
+
+### Minor Changes
+
+- 1fa74af: Add experimental bounded changeset proposal, durable invocation/apply evidence, guarded multifile application, and apply-bound artifact freezing. Preserve historical Graph v4 compiler resolution and include complete cumulative and incremental review inputs. Add canonical writer guard capabilities with retained admission on uncertainty. Production changeset executor registration remains disabled pending lifecycle and reviewer integration.
+
+### Patch Changes
+
+- Updated dependencies [27c2148]
+- Updated dependencies [1fa74af]
+- Updated dependencies [e3c0989]
+  - @osstack/github@0.21.0
+  - @osstack/core@0.21.0
+
 ## 0.20.0
 
 ### Minor Changes
