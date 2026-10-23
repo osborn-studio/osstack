@@ -9354,7 +9354,7 @@ function guardedProtectedPolicyPaths(
   return [...paths].sort();
 }
 
-async function guardedPolicySnapshot(workspacePath: string): Promise<{
+async function guardedPolicySnapshot(workspacePath: string, options: {requireAutoMerge?: boolean} = {}): Promise<{
   repoConfig: Exclude<
     Awaited<ReturnType<typeof loadRepoConfig>>,
     undefined
@@ -9435,7 +9435,7 @@ async function guardedPolicySnapshot(workspacePath: string): Promise<{
   if (repoConfig.schema_version !== 2) {
     throw new Error("effective guarded policy must remain schema_version 2");
   }
-  if (!repoConfig.git.auto_merge) {
+  if (options.requireAutoMerge !== false && !repoConfig.git.auto_merge) {
     throw new Error(
       "guarded-git requires repo git.auto_merge=true",
     );
