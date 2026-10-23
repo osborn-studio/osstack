@@ -51,7 +51,7 @@ it("reports the serving home identity through the actual CLI and preserves ID ac
   ).toBe(0);
   expect(JSON.parse(String(out.mock.calls[0]?.[0]))).toMatchObject({
     mode: "readonly_inventory",
-    homes: [{ status: "matched", observed: { generation: first.generation } }],
+    homes: [{ status: "matched_requested", observed: { generation: first.generation } }],
   });
   await daemon.close();
   daemon = await startDaemon({ socketPath: socket, adapters: [] });

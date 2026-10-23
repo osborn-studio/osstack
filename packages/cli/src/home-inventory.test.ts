@@ -1,4 +1,12 @@
-import { mkdtemp, mkdir, readFile, symlink, writeFile } from "node:fs/promises";
+import {
+  mkdtemp,
+  mkdir,
+  open,
+  readFile,
+  readdir,
+  symlink,
+  writeFile,
+} from "node:fs/promises";
 import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -7,6 +15,7 @@ import {
   DeploymentIdentitySchema,
   ensureDeploymentHomeId,
   inspectHomes,
+  handleHomesCommand,
   readHomeIdentity,
 } from "./home-inventory.js";
 
@@ -95,7 +104,7 @@ describe("read-only explicit homes inventory", () => {
       homes: [entry(socket)],
     });
     expect(result.homes[0]).toMatchObject({
-      status: "matched",
+      status: "matched_requested",
       observed: identity,
     });
   });
@@ -194,6 +203,7 @@ describe("read-only explicit homes inventory", () => {
       status: "disabled",
       observed: null,
     });
+    expect(result.complete).toBe(false);
   });
   it("rejects non-socket endpoints and duplicate aliases but accepts a pinned short socket alias", async () => {
     const home = await mkdtemp(join(tmpdir(), "home-endpoint-"));
@@ -212,7 +222,7 @@ describe("read-only explicit homes inventory", () => {
     expect(
       (await inspectHomes({ schema_version: 1, homes: [entry(alias)] }))
         .homes[0]?.status,
-    ).toBe("matched");
+    ).toBe("matched_requested");
     await expect(
       inspectHomes({
         schema_version: 1,
@@ -239,4 +249,102 @@ it("times out an unresponsive local endpoint and closes the connection", async (
   await new Promise<void>((resolve) => server.listen(socket, resolve));
   await expect(readHomeIdentity(socket, 20)).rejects.toThrow("unreachable");
   await vi.waitFor(() => expect(closed).toBe(true));
+});
+
+it("concurrent initialization and a canonical home alias converge on one complete pin", async () => {
+  const home = await mkdtemp(join(tmpdir(), "home-concurrent-"));
+  const alias = home + "-alias";
+  await symlink(home, alias);
+  const values = await Promise.all(
+    Array.from({ length: 16 }, (_, n) =>
+      ensureDeploymentHomeId(n % 2 ? alias : home),
+    ),
+  );
+  expect(new Set(values).size).toBe(1);
+  expect(await readdir(home)).toEqual(["deployment-identity.json"]);
+});
+it("file sync failure never publishes a partial pin and permits retry", async () => {
+  const home = await mkdtemp(join(tmpdir(), "home-fault-"));
+  const probe = await open(join(home, "probe"), "w");
+  const sync = vi
+    .spyOn(Object.getPrototypeOf(probe), "sync")
+    .mockRejectedValueOnce(
+      Object.assign(new Error("injected IO failure"), { code: "EIO" }),
+    );
+  try {
+    await expect(ensureDeploymentHomeId(home)).rejects.toThrow(
+      "identity_unavailable",
+    );
+    expect(await readdir(home)).toEqual(["probe"]);
+  } finally {
+    sync.mockRestore();
+    await probe.close();
+  }
+  expect(await ensureDeploymentHomeId(home)).toMatch(/^home_[a-f0-9]{32}$/);
+});
+it("normalizes missing and malformed manifest errors", async () => {
+  const home = await mkdtemp(join(tmpdir(), "home-manifest-"));
+  await expect(
+    handleHomesCommand(["inspect", "--manifest", join(home, "missing")]),
+  ).rejects.toThrow("invalid_manifest");
+  await writeFile(join(home, "bad"), "{private invalid contents");
+  await expect(
+    handleHomesCommand(["inspect", "--manifest", join(home, "bad")]),
+  ).rejects.toThrow("invalid_manifest");
+});
+it("classifies an endpoint closing without a response as unreachable", async () => {
+  const socket = await endpoint(Buffer.alloc(0), true);
+  expect(
+    (await inspectHomes({ schema_version: 1, homes: [entry(socket)] })).homes[0]
+      ?.status,
+  ).toBe("unreachable");
+});
+
+it("directory sync failure never changes the published pin on retry", async () => {
+  const home = await mkdtemp(join(tmpdir(), "home-dir-fault-"));
+  const probe = await open(join(home, "probe"), "w");
+  const prototype = Object.getPrototypeOf(probe);
+  const original = prototype.sync;
+  let calls = 0;
+  const sync = vi.spyOn(prototype, "sync").mockImplementation(async function (
+    this: typeof probe,
+  ) {
+    if (++calls === 2)
+      throw Object.assign(new Error("sync failed"), { code: "EIO" });
+    await original.call(this);
+  });
+  try {
+    await expect(ensureDeploymentHomeId(home)).rejects.toThrow(
+      "identity_unavailable",
+    );
+  } finally {
+    sync.mockRestore();
+    await probe.close();
+  }
+  const pinned = JSON.parse(
+    await readFile(join(home, "deployment-identity.json"), "utf8"),
+  ).home_id;
+  expect(await ensureDeploymentHomeId(home)).toBe(pinned);
+});
+it("does not repair an empty identity record", async () => {
+  const home = await mkdtemp(join(tmpdir(), "home-empty-"));
+  await writeFile(join(home, "deployment-identity.json"), "");
+  await expect(ensureDeploymentHomeId(home)).rejects.toThrow(
+    "identity_unavailable",
+  );
+  expect(await readFile(join(home, "deployment-identity.json"), "utf8")).toBe(
+    "",
+  );
+});
+it("rejects trailing bytes following a valid identity frame", async () => {
+  const body = Buffer.from(
+    JSON.stringify({ id: 1, ok: true, result: identity }),
+  );
+  const header = Buffer.alloc(4);
+  header.writeUInt32BE(body.length);
+  const socket = await endpoint(
+    Buffer.concat([header, body, Buffer.from("extra")]),
+    true,
+  );
+  await expect(readHomeIdentity(socket)).rejects.toThrow("invalid_response");
 });

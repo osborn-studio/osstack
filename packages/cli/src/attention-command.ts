@@ -19,6 +19,7 @@ Opt-in daemon: OSSTACK_ATTENTION=1 osstack serve
   attention loop --scope ID --loop-id ID --state-path PATH
   attention ci --scope ID --github-repo OWNER/REPO --pr N --head SHA --required JSON
   attention claude-hook --binding-file PATH
+  attention lesson --from-run ID --repo PATH --default-tenant [--dry-run] [--json]
   attention contract|routing-eval|triage|context|lesson --input PATH [--json]
 See docs/guides/attention.md for planning flags and verified hook setup.
 No daemon is automatically started. Hooks are explicit calls; no offline watchdog is installed.`;
@@ -41,6 +42,10 @@ export async function handleAttentionCommand(
     return 0;
   }
   try {
+    if (args[0] === "lesson" && args.includes("--from-run")) {
+      const {handleEvidenceLessonCommand} = await import("./attention-lesson.js");
+      return await handleEvidenceLessonCommand(args, io);
+    }
     if (args[0] === "claude-hook") {
       if (!io.rpc) throw new Error("daemon_connection_required");
       const { handleClaudeAttentionHook } = await import("./attention-hook.js");

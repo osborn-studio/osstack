@@ -1,6 +1,6 @@
 import { randomBytes } from "node:crypto";
 import { constants } from "node:fs";
-import { lstat, open, realpath, stat } from "node:fs/promises";
+import { link, open, realpath, stat, unlink } from "node:fs/promises";
 import { connect } from "node:net";
 import { isAbsolute, join } from "node:path";
 import { z } from "zod";
@@ -67,7 +67,7 @@ const Manifest = z
   );
 type HomeEntry = z.infer<typeof Manifest>["homes"][number];
 type Status =
-  | "matched"
+  | "matched_requested"
   | "drift"
   | "unknown"
   | "unreachable"
@@ -84,36 +84,54 @@ export interface HomeObservation {
 
 /** Only the authorized daemon startup calls this initializer. Inventory never does. */
 export async function ensureDeploymentHomeId(home: string): Promise<string> {
-  const path = join(home, "deployment-identity.json");
   try {
-    const parent = await lstat(home);
+    const canonicalHome = await realpath(home);
+    const path = join(canonicalHome, "deployment-identity.json");
+    const parent = await stat(canonicalHome);
     if (
       !parent.isDirectory() ||
       (process.getuid && parent.uid !== process.getuid())
     )
-      throw new Error();
+      throw new Error("identity_unavailable");
+    const temporary = join(
+      canonicalHome,
+      `.deployment-identity-${randomBytes(16).toString("hex")}.tmp`,
+    );
+    // Publish only a complete, file-synced record. link is create-only, so
+    // concurrent startup converges on one identity and never replaces a pin.
+    const created = await open(
+      temporary,
+      constants.O_CREAT |
+        constants.O_EXCL |
+        constants.O_WRONLY |
+        constants.O_NOFOLLOW,
+      0o600,
+    );
     try {
-      const file = await open(
-        path,
-        constants.O_CREAT |
-          constants.O_EXCL |
-          constants.O_WRONLY |
-          constants.O_NOFOLLOW,
-        0o600,
-      );
       try {
-        await file.writeFile(
+        await created.writeFile(
           JSON.stringify({
             schema_version: 1,
             home_id: `home_${randomBytes(16).toString("hex")}`,
           }),
         );
-        await file.sync();
+        await created.sync();
       } finally {
-        await file.close();
+        await created.close();
       }
-    } catch (error) {
-      if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
+      try {
+        await link(temporary, path);
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
+      }
+      const directory = await open(canonicalHome, constants.O_RDONLY);
+      try {
+        await directory.sync();
+      } finally {
+        await directory.close();
+      }
+    } finally {
+      await unlink(temporary).catch(() => undefined);
     }
     const file = await open(
       path,
@@ -126,10 +144,20 @@ export async function ensureDeploymentHomeId(home: string): Promise<string> {
         info.size > 256 ||
         (process.getuid && info.uid !== process.getuid())
       )
-        throw new Error();
+        throw new Error("identity_unavailable");
       const buffer = Buffer.alloc(257);
-      const { bytesRead } = await file.read(buffer, 0, buffer.length, 0);
-      if (bytesRead > 256) throw new Error();
+      let bytesRead = 0;
+      while (bytesRead < buffer.length) {
+        const chunk = await file.read(
+          buffer,
+          bytesRead,
+          buffer.length - bytesRead,
+          bytesRead,
+        );
+        if (!chunk.bytesRead) break;
+        bytesRead += chunk.bytesRead;
+      }
+      if (bytesRead > 256) throw new Error("identity_unavailable");
       return z
         .object({ schema_version: z.literal(1), home_id: HomeId })
         .strict()
@@ -137,8 +165,16 @@ export async function ensureDeploymentHomeId(home: string): Promise<string> {
     } finally {
       await file.close();
     }
-  } catch {
-    throw new Error("identity_unavailable");
+  } catch (error) {
+    if (
+      error instanceof SyntaxError ||
+      error instanceof z.ZodError ||
+      (error instanceof Error &&
+        (error.message === "identity_unavailable" ||
+          typeof (error as NodeJS.ErrnoException).code === "string"))
+    )
+      throw new Error("identity_unavailable");
+    throw error;
   }
 }
 
@@ -163,7 +199,9 @@ export function readHomeIdentity(
       Math.min(3000, Math.max(1, timeoutMs)),
     );
     socket.on("error", () => finish("unreachable"));
-    socket.on("close", () => finish("invalid_response"));
+    socket.on("close", () =>
+      finish(bytes.length === 0 ? "unreachable" : "invalid_response"),
+    );
     socket.on("connect", () => {
       const body = Buffer.from(
         JSON.stringify({ id: 1, method: "deployment.identity" }),
@@ -207,9 +245,7 @@ export function readHomeIdentity(
 }
 
 /** Local same-UID socket/file ownership is a trust boundary, not network authentication. */
-export async function inspectHomes(
-  raw: unknown,
-): Promise<{
+export async function inspectHomes(raw: unknown): Promise<{
   schema_version: 1;
   mode: "readonly_inventory";
   complete: boolean;
@@ -234,6 +270,7 @@ export async function inspectHomes(
       canonicalSockets.add(canonical);
     }
   }
+  const activeCanonicalSockets = new Set<string>();
   let next = 0;
   const worker = async () => {
     while (next < rows.length) {
@@ -241,6 +278,12 @@ export async function inspectHomes(
       if (!row.desired.enabled) continue;
       try {
         const canonical = await realpath(row.desired.socket);
+        if (activeCanonicalSockets.has(canonical)) {
+          row.status = "unsafe_endpoint";
+          row.reason = "duplicate_socket";
+          continue;
+        }
+        activeCanonicalSockets.add(canonical);
         const info = await stat(row.desired.socket);
         if (
           !info.isSocket() ||
@@ -293,7 +336,11 @@ export async function inspectHomes(
           (desired.deployment_kind !== undefined &&
             observed.deployment_kind !== "unknown" &&
             desired.deployment_kind !== observed.deployment_kind);
-        row.status = drift ? "drift" : unknown ? "unknown" : "matched";
+        row.status = drift
+          ? "drift"
+          : unknown
+            ? "unknown"
+            : "matched_requested";
         row.reason = unknown ? "deployment_evidence_unavailable" : null;
       } catch {
         row.status = "unreachable";
@@ -305,14 +352,17 @@ export async function inspectHomes(
   return {
     schema_version: 1,
     mode: "readonly_inventory",
-    complete: rows.every(
-      (row) => row.status === "matched" || row.status === "disabled",
-    ),
+    complete:
+      rows.some((row) => row.desired.enabled) &&
+      rows.every(
+        (row) =>
+          row.status === "matched_requested" || row.status === "disabled",
+      ),
     homes: rows,
     limitations: [
       "Local same-UID sockets with canonical alias deduplication only; no network or peer-credential attestation.",
       "No database opened, daemon started, software installed or deployment modified.",
-      "Matched applies only to declared desired fields; missing build/deployment evidence is never inferred.",
+      "Matched_requested applies only to declared desired fields; missing build/deployment evidence is never inferred.",
       "Snapshot only; generation is reported for comparison, not an upgrade authorization.",
     ],
   };
@@ -335,17 +385,32 @@ export async function handleHomesCommand(
     (args.length !== 3 && !(args.length === 4 && args[3] === "--json"))
   )
     throw new Error("invalid_homes_arguments");
-  const file = await open(args[2], constants.O_RDONLY | constants.O_NONBLOCK);
   let raw: unknown;
   try {
-    const info = await file.stat();
-    if (!info.isFile()) throw new Error("invalid_manifest");
-    const buffer = Buffer.alloc(65537);
-    const { bytesRead } = await file.read(buffer, 0, buffer.length, 0);
-    if (bytesRead > 65536) throw new Error("manifest_too_large");
-    raw = JSON.parse(buffer.subarray(0, bytesRead).toString());
-  } finally {
-    await file.close();
+    const file = await open(args[2], constants.O_RDONLY | constants.O_NONBLOCK);
+    try {
+      const info = await file.stat();
+      if (!info.isFile() || info.size > 65536)
+        throw new Error("invalid_manifest");
+      const buffer = Buffer.alloc(65537);
+      let bytesRead = 0;
+      while (bytesRead < buffer.length) {
+        const chunk = await file.read(
+          buffer,
+          bytesRead,
+          buffer.length - bytesRead,
+          bytesRead,
+        );
+        if (!chunk.bytesRead) break;
+        bytesRead += chunk.bytesRead;
+      }
+      if (bytesRead > 65536) throw new Error("invalid_manifest");
+      raw = JSON.parse(buffer.subarray(0, bytesRead).toString());
+    } finally {
+      await file.close();
+    }
+  } catch {
+    throw new Error("invalid_manifest");
   }
   const result = await inspectHomes(raw);
   out(JSON.stringify(result, null, 2));

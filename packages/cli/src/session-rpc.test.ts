@@ -893,6 +893,29 @@ it("manual daily reads watched repository state through the daemon without marki
   try { expect(auditDb.prepare("SELECT * FROM attention_seen ORDER BY scope_id,actor,item_id").all()).toEqual(seenBefore); } finally {auditDb.close();}
 });
 
+it("evidence lesson uses actual watched run RPC and preserves a reviewed investigation draft", async () => {
+  const id = "lesson-entrypoint";
+  seedSession(id);
+  const repo = realpathSync(sessionRepo(id));
+  expect(await rpc("attention.watch", {task_id:`task_${id}`,repo_path:repo,default_tenant:true})).toMatchObject({ok:true});
+  const params = {runId:`run_${id}`, repoPath:repo, default_tenant:true};
+  expect(await rpc("attention.lesson-evidence", params)).toMatchObject({ok:true,result:{state:"candidate",receipt:{qualification:"ordinary_run_unverified",run_id:`run_${id}`}}});
+  expect(await rpc("attention.lesson-evidence", {...params,passed:true})).toMatchObject({ok:false,error:{code:"invalid_lesson_request"}});
+  const executions = adapter.started.length + adapter.resumed.length;
+  const {readFileSync} = await import("node:fs");
+  const output = vi.spyOn(console, "log").mockImplementation(() => undefined);
+  try {
+    expect(await main(["attention","lesson","--from-run",`run_${id}`,"--repo",repo,"--default-tenant","--json"])).toBe(0);
+    const written = JSON.parse(String(output.mock.calls.at(-1)?.[0]));
+    expect(written).toMatchObject({state:"draft",created:true,promoted:false,qualification:"ordinary_run_unverified"});
+    expect(readFileSync(written.path,"utf8")).toContain("Investigation only");
+    expect(await main(["attention","lesson","--from-run",`run_${id}`,"--repo",repo,"--default-tenant","--json"])).toBe(0);
+    expect(JSON.parse(String(output.mock.calls.at(-1)?.[0]))).toMatchObject({created:false,path:written.path});
+  } finally {output.mockRestore();}
+  expect(adapter.started.length + adapter.resumed.length).toBe(executions);
+});
+
+
 it("waits for supervision stop before closing the daemon database", async () => {
   const { SupervisionService } = await import("./supervision-service.js");
   const stop = SupervisionService.prototype.stop;
