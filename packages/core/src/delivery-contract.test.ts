@@ -5,12 +5,13 @@ const command = "node --test";
 const raw = () => ({ schema_version: 2, contract_id: "c", task_id: "t", canonical_repo: "/repo", mode: "implement",
   base_head: "a".repeat(40), goal: "Fix", required_checks: [{ id: "test", registry_ref: deliveryCheckReference(command) }],
   review_policy_ref: "profile:guarded", requested_completion: "local_verified", allowed_paths: ["src"],
-  requested_actions: ["build", "verify"], budget_ref: "policy", policy_digest: "b".repeat(64),
+  requested_actions: ["build", "verify"], budget_ref: `policy:${"b".repeat(64)}`, policy_digest: "b".repeat(64),
   publication_scope: { mode: "none" }, merge_authority: { mode: "none" } });
 function receipt() {
   const frozen = freezeDeliveryContract(raw());
   return { schema_version: 2, source: "osstack_loop_host", run_id: "run", task_id: "t", run_kind: "guarded-local",
     contract_digest: frozen.digest, policy_digest: "b".repeat(64),
+    workspace_state_digest: "f".repeat(64),
     candidate: { base_head: "a".repeat(40), head: "c".repeat(40), tree_id: "d".repeat(40), diff_digest: "e".repeat(64) },
     checks: [{ id: "test", registry_ref: deliveryCheckReference(command), command_digest: deliveryCheckReference(command).slice(7), exit_code: 0, duration_ms: 1 }],
     review: { policy_ref: "profile:guarded", verdict: "approved", builder_agent_id: "builder", reviewer_agent_id: "reviewer",

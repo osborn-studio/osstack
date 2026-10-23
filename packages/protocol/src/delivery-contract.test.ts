@@ -9,6 +9,7 @@ it("accepts strict V2 local contracts without authorizing their declared scope",
   expect(DeliveryContractV2.parse(value()).schema_version).toBe(2);
   expect(() => DeliveryContractV2.parse({ ...value(), reviewed: true })).toThrow();
   expect(() => DeliveryContractV2.parse({ ...value(), schema_version: 1 })).toThrow();
+  expect(() => DeliveryContractV2.parse({ ...value(), requested_actions: ["verify"] })).toThrow();
 });
 it("rejects duplicate checks and scout writes or publication", () => {
   const c = value();

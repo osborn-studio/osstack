@@ -3,10 +3,11 @@ import { z } from "zod";
 const Digest = z.string().regex(/^[a-f0-9]{64}$/);
 const Commit = z.string().regex(/^(?:[a-f0-9]{40}|[a-f0-9]{64})$/);
 const Id = z.string().min(1).max(256);
+const hasControlCharacter = (value: string) => [...value].some(char => char.charCodeAt(0) < 32 || char.charCodeAt(0) === 127);
 const Ref = z.string().min(1).max(255).refine((value) =>
-  !value.startsWith("-") && !/[\s\x00-\x1f\x7f]/.test(value), "unsafe ref");
+  !value.startsWith("-") && !/\s/.test(value) && !hasControlCharacter(value), "unsafe ref");
 const RelativePath = z.string().min(1).max(4096).refine((value) =>
-  !value.startsWith("/") && !value.split(/[\\/]/).includes("..") && !/[\x00-\x1f]/.test(value), "unsafe relative path");
+  !value.startsWith("/") && !value.split(/[\\/]/).includes("..") && !hasControlCharacter(value), "unsafe relative path");
 
 export const DeliveryCompletionV2 = z.enum(["local_verified", "pr_opened", "merged", "deployed"]);
 export const DeliveryPublicationScopeV2 = z.discriminatedUnion("mode", [
@@ -26,7 +27,7 @@ export const DeliveryContractV2 = z.object({
   contract_id: Id,
   parent_contract_id: Id.optional(),
   task_id: Id,
-  canonical_repo: z.string().min(1).max(4096).refine((value) => value.startsWith("/") && !/[\x00-\x1f]/.test(value), "absolute repo required"),
+  canonical_repo: z.string().min(1).max(4096).refine((value) => value.startsWith("/") && !hasControlCharacter(value), "absolute repo required"),
   mode: z.enum(["scout", "implement"]),
   base_head: Commit,
   goal: z.string().min(1).max(16000),
@@ -46,6 +47,7 @@ export const DeliveryContractV2 = z.object({
   const error = (message: string) => context.addIssue({ code: z.ZodIssueCode.custom, message });
   if (new Set(value.required_checks.map((check) => check.id)).size !== value.required_checks.length) error("duplicate check ID");
   if (new Set(value.required_checks.map((check) => check.registry_ref)).size !== value.required_checks.length) error("duplicate check reference");
+  if (value.mode === "implement" && (!["build", "verify"].every(action => value.requested_actions.includes(action as "build" | "verify")))) error("implement requires build and verify actions");
   if (value.parent_contract_id === value.contract_id) error("contract cannot parent itself");
   if (value.mode === "scout" && (value.requested_completion !== "local_verified" || value.publication_scope.mode !== "none"
     || value.merge_authority.mode !== "none" || value.requested_actions.some((action) => action !== "verify"))) error("scout must remain read-only and local");
@@ -75,6 +77,7 @@ export const DeliveryVerificationReceiptV2 = z.object({
   contract_digest: Digest,
   policy_digest: Digest,
   candidate: DeliveryCandidateIdentityV2,
+  workspace_state_digest: Digest,
   checks: z.array(z.object({ id: Id, registry_ref: z.string().regex(/^sha256:[a-f0-9]{64}$/), command_digest: Digest,
     exit_code: z.number().int(), duration_ms: z.number().finite().nonnegative() }).strict()).min(1).max(200),
   review: z.object({

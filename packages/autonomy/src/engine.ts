@@ -1,6 +1,8 @@
 import { createHash } from "node:crypto";
 import {
   AUTONOMY_EMPTY_DIFF_SHA256,
+  FrozenDeliveryContractV2,
+  DeliveryReceiptReferenceV2,
   AutonomyRiskDecision,
   type AutonomyRiskPhase,
   type AutonomyRiskSignal,
@@ -15,6 +17,7 @@ import type {
 } from "@osstack/github";
 import {
   DeployTargetPolicy as DeployTargetPolicySchema,
+  assertFrozenDeliveryContract,
   type DeployTargetPolicy,
 } from "@osstack/core";
 import { z } from "zod";
@@ -85,8 +88,13 @@ const RuntimeIdentity = z
   .strict();
 export type RuntimeIdentity = z.infer<typeof RuntimeIdentity>;
 
+export const ContractPullRequestEvidence = z.object({ pushedCommit: GitCommitSha,
+  pr: z.object({ number: z.number().int().positive(), url: z.string().url(), reused: z.boolean() }).strict() }).strict();
+export type ContractPullRequestEvidence = z.infer<typeof ContractPullRequestEvidence>;
+
 export const LocalDeliveryResult = z
   .object({
+    delivery_receipt: DeliveryReceiptReferenceV2.optional(),
     verification_passed: z.boolean(),
     review_passed: z.boolean(),
     post_diff: PostDiffInput,
@@ -119,6 +127,8 @@ export interface CandidateProofInput {
   preflight_risk: AutonomyRiskDecision;
   post_diff_risk: AutonomyRiskDecision;
   local_result: LocalDeliveryResult;
+  delivery_contract?: FrozenDeliveryContractV2;
+  delivery_receipt?: DeliveryReceiptReferenceV2;
   approval_request?: ScopedApprovalRequest;
   approval_decision?: ScopedApprovalDecision;
 }
@@ -212,6 +222,11 @@ const DeployScriptAuthorityEvidenceSchema = z
 
 export const GuardedDeliveryContextSchema = z
   .object({
+    delivery_contract: FrozenDeliveryContractV2.optional(),
+    delivery_receipt: DeliveryReceiptReferenceV2.optional(),
+    delivery_completion_receipt: DeliveryReceiptReferenceV2.optional(),
+    achieved_completion: z.enum(["local_verified", "pr_opened", "merged", "deployed"]).optional(),
+    pr_delivery: ContractPullRequestEvidence.optional(),
     intent: AutonomyTaskIntent.optional(),
     started_at: z.string().datetime().optional(),
     routing: z.unknown().optional(),
@@ -275,9 +290,15 @@ export interface GuardedDeliveryPorts {
   ): Promise<AutonomyRunProjection>;
   runLocal(input: {
     workspacePath: string;
+    runId?: string;
+    contract?: FrozenDeliveryContractV2;
     routing: unknown;
     budget: DeliveryBudgetType;
   }): Promise<LocalDeliveryResult>;
+  verifyContractReceipt?: (input: { contract: FrozenDeliveryContractV2; ref: DeliveryReceiptReferenceV2; runId: string; workspacePath: string; expectedHeads: string[] }) => Promise<void>;
+  openPullRequest?: (input: GitHubDeliveryInput, scope: { repository: string; headCommit: string; draft: boolean }) => Promise<ContractPullRequestEvidence>;
+  writeContractCompletionReceipt?: (input: { runId: string; contract: FrozenDeliveryContractV2; verificationReceipt: DeliveryReceiptReferenceV2;
+    candidateProof: ProofReference; achievedCompletion: "local_verified" | "pr_opened"; publication?: ContractPullRequestEvidence }) => Promise<DeliveryReceiptReferenceV2>;
   writeCandidateProof(input: CandidateProofInput): Promise<ProofReference>;
   writeFinalProof(input: FinalProofInput): Promise<ProofReference>;
   commit(input: CommitInput): Promise<{ commit: string }>;
@@ -307,6 +328,7 @@ export interface GuardedDeliveryPorts {
 }
 
 export interface GuardedDeliveryPolicy {
+  delivery_contract?: FrozenDeliveryContractV2;
   policy_sha256: string;
   max_auto_risk?: "R1" | "R2";
   protected_policy_paths: readonly string[];
@@ -460,6 +482,11 @@ export class GuardedDeliveryEngine {
 
   async start(intentValue: AutonomyTaskIntentType): Promise<GuardedDeliveryResult> {
     const intent = AutonomyTaskIntent.parse(intentValue);
+    const contract = this.policy.delivery_contract === undefined ? undefined : assertFrozenDeliveryContract(this.policy.delivery_contract);
+    if (contract && (contract.digest !== intent.contract_sha256 || contract.contract.policy_digest !== this.policy.policy_sha256
+      || contract.contract.canonical_repo !== intent.workspace_path || contract.contract.task_id !== intent.task_id || contract.contract.goal !== intent.goal
+      || contract.contract.mode !== "implement" || contract.contract.requested_completion === "deployed" && this.policy.deploy === undefined))
+      throw new Error("delivery_contract_intent_mismatch");
     const startedAt = this.ports.now().toISOString();
     let run: AutonomyRunProjection = {
       autonomy_run_id: intent.autonomy_run_id,
@@ -467,6 +494,7 @@ export class GuardedDeliveryEngine {
       revision: 0,
       context: {
         intent,
+        ...(contract ? { delivery_contract: contract } : {}),
         started_at: startedAt,
         routing: this.policy.routing,
         budget: this.policy.budget,
@@ -485,7 +513,7 @@ export class GuardedDeliveryEngine {
       repo_id: intent.repo_id,
       protected_policy_paths: this.policy.protected_policy_paths,
     });
-    if (risk.level === "R0") {
+    if (risk.level === "R0" && !contract) {
       run = await this.transition(run, "completed", {
         risk_level: risk.level,
         risk_phase: "preflight",
@@ -535,6 +563,13 @@ export class GuardedDeliveryEngine {
     if (loaded === undefined) {
       throw new Error(`autonomy run ${autonomyRunId} was not found`);
     }
+    if (Boolean(loaded.context.delivery_contract) !== Boolean(this.policy.delivery_contract)) throw new Error("delivery_contract_resume_mismatch");
+    if (loaded.context.delivery_contract) {
+      const contract = assertFrozenDeliveryContract(loaded.context.delivery_contract);
+      if (contract.digest !== loaded.context.intent?.contract_sha256 || contract.contract.policy_digest !== this.policy.policy_sha256
+        || !this.policy.delivery_contract || assertFrozenDeliveryContract(this.policy.delivery_contract).digest !== contract.digest)
+        throw new Error("delivery_contract_resume_mismatch");
+    }
     if (loaded.state === "completed") {
       return { status: "completed", run: loaded };
     }
@@ -562,6 +597,9 @@ export class GuardedDeliveryEngine {
       });
       return await this.deliverGitAndFinalize(run);
     }
+    if (loaded.state === "final_proof" && loaded.context.delivery_contract
+      && ["local_verified", "pr_opened"].includes(loaded.context.delivery_contract.contract.requested_completion)) return await this.completeLimitedContract(loaded);
+    if (loaded.state === "opening_pr" && loaded.context.pr_delivery) return await this.completeLimitedContract(loaded);
     if (loaded.state === "candidate_proof") {
       return await this.writeCandidateAndDeliver(loaded);
     }
@@ -709,6 +747,7 @@ export class GuardedDeliveryEngine {
         localResult = LocalDeliveryResult.parse(
           await this.ports.runLocal({
             workspacePath: intent.workspace_path,
+            ...(run.context.delivery_contract ? { runId: run.autonomy_run_id, contract: run.context.delivery_contract } : {}),
             routing: run.context.routing ?? this.policy.routing,
             budget,
           }),
@@ -719,10 +758,15 @@ export class GuardedDeliveryEngine {
           `local delivery port failed: ${errorMessage(error)}`,
         );
       }
+      if (run.context.delivery_contract && localResult.verification_passed && localResult.review_passed) {
+        try { await this.verifyContract(run, localResult.delivery_receipt); }
+        catch (error) { return await this.escalate(run, `contract receipt rejected: ${errorMessage(error)}`); }
+      }
       attempts.builderIterations += 1;
       run = await this.transition(run, "verifying", {
         context_patch: {
           local_result: localResult,
+          ...(localResult.delivery_receipt ? { delivery_receipt: localResult.delivery_receipt } : {}),
           builder_iterations: attempts.builderIterations,
         },
       });
@@ -889,6 +933,7 @@ export class GuardedDeliveryEngine {
   ): Promise<GuardedDeliveryResult> {
     let candidate: ProofReference;
     try {
+      await this.verifyContract(run, run.context.delivery_receipt);
       candidate = ProofReference.parse(
         await this.ports.writeCandidateProof(
           this.candidateProofInput(run),
@@ -913,6 +958,10 @@ export class GuardedDeliveryEngine {
         reason: "candidate proof failed; commit and Git delivery were not invoked",
       };
     }
+    if (run.context.delivery_contract?.contract.requested_completion === "local_verified") {
+      const final = await this.transition(run, "final_proof", { context_patch: { candidate_proof: candidate } });
+      return await this.completeLimitedContract(final);
+    }
     const committing = await this.transition(run, "committing", {
       context_patch: { candidate_proof: candidate },
     });
@@ -927,6 +976,7 @@ export class GuardedDeliveryEngine {
     const diffSha256 = stagedDiffSha256(localResult.post_diff);
     let commit: { commit: string };
     try {
+      await this.verifyContract(run, run.context.delivery_receipt);
       this.assertPostDiffActionAuthorized(run, "commit");
       commit = await this.ports.commit({
         autonomy_run_id: run.autonomy_run_id,
@@ -960,13 +1010,34 @@ export class GuardedDeliveryEngine {
       );
     }
     try {
+      await this.verifyContract(run, run.context.delivery_receipt);
       this.assertPostDiffActionAuthorized(run, "push");
-      this.assertPostDiffActionAuthorized(run, "merge");
+      if (run.context.delivery_contract?.contract.requested_completion !== "pr_opened") this.assertPostDiffActionAuthorized(run, "merge");
     } catch (error) {
       return await this.escalate(
         run,
         `Git delivery scope check failed: ${errorMessage(error)}`,
       );
+    }
+    if (run.context.delivery_contract?.contract.requested_completion === "pr_opened") {
+      const contract = run.context.delivery_contract;
+      const scope = contract.contract.publication_scope;
+      try {
+        if (!this.ports.openPullRequest || scope.mode === "none" || scope.mode === "push") throw new Error("contract_pr_port_unavailable");
+        this.assertPostDiffActionAuthorized(run, "open_pr");
+        const publication = ContractPullRequestEvidence.parse(await this.ports.openPullRequest({
+          workspacePath: intent.workspace_path, remote: this.policy.git.remote, base: this.policy.git.base,
+          branch: this.policy.git.branch, title: this.policy.git.title, bodyFile: this.policy.git.body_file,
+          mergeStrategy: "squash", ciTimeoutMs: this.policy.git.ci_timeout_ms,
+        }, { repository: scope.repository, headCommit: commit.commit, draft: scope.mode === "draft_pr" }));
+        if (publication.pushedCommit !== commit.commit) throw new Error("contract_publication_head_mismatch");
+        const opened = await this.transition(run, "opening_pr", { context_patch: { pr_delivery: publication } });
+        return await this.completeLimitedContract(opened);
+      } catch (error) {
+        const blocked = await this.transition(run, "blocked_delivery", { context_patch: { blocked_delivery_resume_state: "pushing",
+          failure: { operation: "contract_pr_publication", message: errorMessage(error) } } });
+        return { status: "blocked", run: blocked, reason: "PR publication unconfirmed; reconcile this persisted run before retry" };
+      }
     }
     let gitDelivery: GitHubDeliveryResult;
     try {
@@ -1033,6 +1104,10 @@ export class GuardedDeliveryEngine {
   private async deployAfterMerge(
     run: AutonomyRunProjection,
   ): Promise<GuardedDeliveryResult> {
+    if (run.context.delivery_contract?.contract.requested_completion === "merged") {
+      const final = await this.transition(run, "final_proof");
+      return await this.writeFinalAndComplete(final);
+    }
     const stagingPolicy = this.policy.deploy?.staging;
     if (stagingPolicy === undefined) {
       const finalProof = await this.transition(run, "final_proof");
@@ -1616,6 +1691,9 @@ export class GuardedDeliveryEngine {
     }
     let finalProof: ProofReference;
     try {
+      await this.verifyContract(run, run.context.delivery_receipt);
+      if (run.context.delivery_contract?.contract.requested_completion === "deployed"
+        && !["staging_healthy", "production_healthy"].includes(run.context.deploy_outcome ?? "")) throw new Error("delivery_requested_deployment_not_achieved");
       finalProof = ProofReference.parse(
         await this.ports.writeFinalProof({
           ...this.candidateProofInput(run),
@@ -1672,7 +1750,9 @@ export class GuardedDeliveryEngine {
       );
     }
     const completed = await this.transition(run, "completed", {
-      context_patch: { final_proof: finalProof },
+      context_patch: { final_proof: finalProof, ...(run.context.delivery_contract ? {
+        achieved_completion: run.context.delivery_contract.contract.requested_completion,
+      } : {}) },
     });
     return { status: "completed", run: completed };
   }
@@ -1689,8 +1769,36 @@ export class GuardedDeliveryEngine {
     return {
       status: "blocked",
       run: failed,
-      reason: "Git merged but final delivery evidence could not be written",
+      reason: run.context.delivery_contract ? "Contract completion evidence could not be verified" : "Git merged but final delivery evidence could not be written",
     };
+  }
+
+  private async verifyContract(run: AutonomyRunProjection, ref: DeliveryReceiptReferenceV2 | undefined): Promise<void> {
+    const contract = run.context.delivery_contract;
+    if (!contract) return;
+    if (!ref || !this.ports.verifyContractReceipt) throw new Error("delivery_contract_host_receipt_required");
+    const frozen = assertFrozenDeliveryContract(contract);
+    await this.ports.verifyContractReceipt({ contract: frozen, ref, runId: run.autonomy_run_id, workspacePath: this.requireIntent(run).workspace_path,
+      expectedHeads: run.context.commit ? [run.context.commit.commit, ...(run.context.git_delivery ? [run.context.git_delivery.mergeCommit] : [])] : [frozen.contract.base_head] });
+  }
+
+  private async completeLimitedContract(initial: AutonomyRunProjection): Promise<GuardedDeliveryResult> {
+    let run = initial;
+    if (run.state === "opening_pr") run = await this.transition(run, "final_proof");
+    try {
+      await this.verifyContract(run, run.context.delivery_receipt);
+      const contract = run.context.delivery_contract;
+      const achieved = contract?.contract.requested_completion;
+      if (!contract || !["local_verified", "pr_opened"].includes(achieved ?? "") || !run.context.candidate_proof
+        || !run.context.delivery_receipt || !this.ports.writeContractCompletionReceipt
+        || achieved === "pr_opened" && !run.context.pr_delivery) throw new Error("delivery_contract_completion_evidence_missing");
+      const completion = DeliveryReceiptReferenceV2.parse(await this.ports.writeContractCompletionReceipt({ runId: run.autonomy_run_id,
+        contract, verificationReceipt: run.context.delivery_receipt, candidateProof: run.context.candidate_proof,
+        achievedCompletion: achieved as "local_verified" | "pr_opened", ...(run.context.pr_delivery ? { publication: run.context.pr_delivery } : {}) }));
+      const completed = await this.transition(run, "completed", { context_patch: { delivery_completion_receipt: completion,
+        achieved_completion: achieved, final_proof: run.context.candidate_proof } });
+      return { status: "completed", run: completed };
+    } catch (error) { return await this.failFinalEvidence(run, errorMessage(error)); }
   }
 
   private candidateProofInput(
@@ -1703,6 +1811,8 @@ export class GuardedDeliveryEngine {
       preflight_risk: this.requirePreflightRisk(run),
       post_diff_risk: this.requirePostDiffRisk(run),
       local_result: this.requireLocalResult(run),
+      ...(context.delivery_contract ? { delivery_contract: context.delivery_contract } : {}),
+      ...(context.delivery_receipt ? { delivery_receipt: context.delivery_receipt } : {}),
       ...(context.approval_request === undefined
         ? {}
         : { approval_request: context.approval_request }),

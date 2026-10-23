@@ -1,0 +1,26 @@
+# Delivery Contract V2: guarded host execution
+
+V2 freezes an explicit task and completion ceiling before guarded execution. It constrains existing host policy; a contract file, a parsed schema, or a reference to a policy does not grant permission to execute, publish, merge or deploy. V1 planning artifacts remain offline material and are rejected by this runtime.
+
+Use `osstack deliver --workspace <repo> --profile <profile> --autonomy guarded-local --contract <file> --json`. The host must supply a policy snapshot, its registered verification commands and budget. Guarded Git uses the same `--contract` option with `--autonomy guarded-git`. A `--execution-context <config>` option selects the separately documented pinned local context flow. Existing invocations without a contract retain their original behavior.
+
+The strict JSON contract declares schema version 2, contract/task IDs, canonical repository, full base commit, goal, allowed relative path prefixes, required check IDs with `sha256:<command digest>` registry references, profile review reference, `policy:<policy digest>` budget reference, policy digest, actions, publication scope and requested completion. Required commands must already be registered in the host policy. An explicit unregistered `--verify` is rejected; contract content never becomes an executable command. Implement mode requires build and verify actions. Scout execution is rejected until a host can guarantee a tool-free executor; the pure promotion helper creates a new contract and carries no prior receipt or approval.
+
+| Requested completion | Runtime boundary |
+| --- | --- |
+| `local_verified` | Host checks, independent reported review, policy and governance checks; no host commit, push or merge. Guarded-local retains its isolated candidate worktree. |
+| `pr_opened` | Existing authorized commit/push/PR code; exact candidate SHA, remote/repository/ref and draft state checks; returns before CI waiting or merge. |
+| `merged` | Existing guarded merge authorization and proof flow; configured deployment is not invoked. |
+| `deployed` | Existing guarded deployment policy and action checks; skipped or unhealthy deployment cannot satisfy the contract. |
+
+Local execution snapshots all tracked worktree bytes, untracked candidate files and the ignored-path set before checks and review, then carries that exact snapshot through receipt capture. Hidden index flags and new ignored files fail closed. Existing ignored dependency contents are not a hermetic environment qualification. The opt-in snapshot is bounded to 100,000 paths and 64 MiB of candidate/worktree file bytes. Rename sources and destinations are both checked against allowed paths. Scope, governance or verification rejection leaves the isolated candidate available for inspection; the original workspace is not merged. JSON output includes its candidate path. A successful local receipt is not a remote CI result, provider attestation or production acceptance.
+
+The local host maps policy builder/review limits to iteration limits and applies the existing cooperative Loop runtime/no-progress budget. CLI iteration and command timeout values can only tighten those limits. This is not a hard wall-clock cancellation SLA. Git execution retains its existing guarded budget and approval controls.
+
+Host receipts record the frozen contract digest, policy digest, base/candidate tree and diff identity, actual command results, reported independent review identity and context receipt references. Different adapter IDs plus different provider or model follows the existing profile independence rule; metadata is reported, not independently provider-attested. Content-addressed receipts reject changed bytes, symlinks, paths outside their host evidence directory and oversized records. Before side effects, the host reloads its persisted receipt and checks the actual candidate against the known base, recorded commit or recorded merge HEAD and the verified tree/diff.
+
+Guarded Git persists the frozen contract and receipt references in its existing autonomy context. Resume requires the same persisted contract and policy; it does not reread a replacement CLI contract file. Limited completion writes a separate host completion record alongside the candidate proof. Reference validation alone must never be used to promote arbitrary external JSON into trusted evidence.
+
+Context receipts distinguish prepared prompts from prompts observed at the adapter boundary, and record original knowledge-source repository separately from the candidate execution repository. These hashes describe `AgentTask.prompt`, not provider wire bytes or a qualified token window.
+
+Validation for this slice covers real local Git, Loop execution, SQLite persistence and restart boundaries with fake adapters and simulated GitHub command responses. It does not qualify live external publishing, deployment, retention history, Graph integration or tool sandboxing. Those qualifications remain separate work.
