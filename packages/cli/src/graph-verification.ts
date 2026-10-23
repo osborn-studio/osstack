@@ -8,6 +8,8 @@ import { dirname, isAbsolute, join, resolve } from 'node:path';
 import type { AgentAdapter, AgentTask } from '@osstack/agents';
 import type { GraphArtifactStore, GraphArtifactManifest } from '@osstack/core/graph-artifacts';
 import { GraphResult } from '@osstack/protocol';
+import type { FrozenDeliveryContractV2 } from '@osstack/protocol';
+import { assertGraphContractPaths } from './graph-delivery-contract.js';
 import { ExecutionPlan, type RegisteredCandidateWorkspace } from '@osstack/loop';
 import { parseVerificationBinding, verificationCanonical, type VerificationBinding } from '@osstack/graph/nodes/branch';
 import { createReviewRequest, parseReviewReport } from '@osstack/graph/nodes/review';
@@ -28,6 +30,7 @@ export interface GraphVerificationOptions {
   /** Opt-in immutable-image tests; default registered shell behavior is unchanged. */
   containedTests?: GraphContainedTestOptions;
   acceptanceRegistry: readonly AcceptanceCommandSpec[]; writerIdentity: string;
+  deliveryContract?: FrozenDeliveryContractV2;
   reviewer: { identity: string; adapter: AgentAdapter; capabilityId: string };
   /** Independent host identity/credential check; never derived from review/model output. */
   verifyReviewer: (identities: Readonly<ReviewerIdentity>) => Promise<void>;
@@ -186,6 +189,7 @@ async function prepareSelection(options: GraphVerificationOptions, kinds: readon
       await preparedCheck();
       const restored = await checked(() => restore(binding.artifactDigest, { rootPath: data.root, directoryName: `${kind}-${randomUUID()}` }));
       if (restored.candidateRevision !== binding.candidateRevision || restored.tree !== manifest.tree || dirname(restored.worktreePath) !== data.root) throw new Error('restored candidate mismatch');
+      if (options.deliveryContract) assertGraphContractPaths(options.deliveryContract, restored.worktreePath, binding.candidateRevision);
       if (kind === 'tests' && containedOptions) {
         assertExactCandidateFiles(restored.worktreePath, binding.candidateRevision);
         containedImage = snapshot(await checked(() => prepareGraphContainedImage(containedOptions, restored.worktreePath, binding.candidateRevision, check)));

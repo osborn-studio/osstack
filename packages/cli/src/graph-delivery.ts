@@ -22,12 +22,16 @@ import { GraphVerificationJoinService, type GraphVerificationDecision } from './
 import { publishDeliveryReceipt, loadDeliveryReceipt } from './graph-delivery-receipts.js';
 import { publishBoundedRecoveryJournal } from './graph-bounded-recovery-journal.js';
 import type { AdmissionInput, ExecutionLease } from './governed-execution.js';
+import { assertGraphContractPaths, parseGraphContractRegistration, verifyGraphContractEnvelope, type GraphDeliveryContractRegistration, type GraphContractHostEnvelope } from './graph-delivery-contract.js';
 
 export interface GraphDeliveryOptions {
   db: Database.Database; request: StartGraphRequest; root: string; repositoryPath: string;
   task: string; writer: { identity: string; adapter: AgentAdapter; capabilityId: string };
   reviewer: GraphVerificationOptions['reviewer']; verifyReviewer: GraphVerificationOptions['verifyReviewer'];
   acceptanceRegistry: GraphVerificationOptions['acceptanceRegistry'];
+  deliveryContract?: GraphDeliveryContractRegistration;
+  /** Durable host envelope from the same public reservation transaction. Never worker input. */
+  contractEnvelope?: GraphContractHostEnvelope;
   containedTests?: GraphVerificationOptions['containedTests'];
   acquire: (input: AdmissionInput) => Promise<ExecutionLease>; authorize: () => void;
   /** Reserved and exclusively selected by the public host before construction. */
@@ -85,11 +89,16 @@ export class GraphDelivery {
         ...(a.confirmStopped ? { confirmStopped: a.confirmStopped.bind(a) } : {}) });
     };
     this.options = Object.freeze({ ...options, request: freezeWorkerData(StartGraphRequest.parse(options.request)),
+      ...(options.deliveryContract ? { deliveryContract: parseGraphContractRegistration(options.deliveryContract) } : {}),
+      ...(options.contractEnvelope ? { contractEnvelope: freezeWorkerData(structuredClone(options.contractEnvelope)) } : {}),
       writer: Object.freeze({ ...options.writer, adapter: adapter(options.writer.adapter) }),
       reviewer: Object.freeze({ ...options.reviewer, adapter: adapter(options.reviewer.adapter) }),
       ...(options.containedTests ? { containedTests: Object.freeze({ ...options.containedTests }) } : {}),
       acceptanceRegistry: freezeWorkerData(structuredClone(options.acceptanceRegistry)) });
     options = this.options;
+    if (Boolean(options.deliveryContract) !== Boolean(options.contractEnvelope)) throw Error('GRAPH_CONTRACT_ENVELOPE_REQUIRED');
+    if (options.deliveryContract) verifyGraphContractEnvelope(options.contractEnvelope, options.request,
+      { ...options, deliveryContract: options.deliveryContract });
     const capability = options.writer.adapter.capabilities().find(c => c.id === options.writer.capabilityId);
     if (options.writer.identity !== options.writer.adapter.id || !capability || !['code.write','code.refactor','code.debug'].includes(capability.kind)) throw Error('WRITER_IDENTITY_REQUIRED');
     this.compiled = options.reservedRun
@@ -185,6 +194,7 @@ export class GraphDelivery {
           ...(this.options.authorizePolicy ? { authorizePolicy: (workspacePath: string) => this.options.authorizePolicy!({ policyRoot: this.options.repositoryPath, workspacePath }) } : {}),
           ...(this.options.containedTests ? { containedTests: this.options.containedTests } : {}),
           preparationLease: lease, acceptanceRegistry: this.options.acceptanceRegistry, writerIdentity: this.options.writer.identity,
+          ...(this.options.deliveryContract ? { deliveryContract: this.options.deliveryContract.frozen } : {}),
           reviewer: this.options.reviewer, verifyReviewer: this.options.verifyReviewer,
           slots: { [kind]: { nodeId: branch.id, effectSlot: branch.effectSlot, workspaceLeaseRef: `e${epoch}.${kind}`, tokenReservation: branch.tokenReservation } },
           effectIdentity: () => { const a = this.latest(branch.id); if (a?.state !== 'running') throw Error('RUNNING_EFFECT_REQUIRED'); return { effect: a.effect, effectKey: a.effectKey }; },
@@ -223,7 +233,7 @@ export class GraphDelivery {
       return { ...common, workspace, action, execution: { kind: 'adapter', adapter, capabilityId: capability.id, plan: {
         plan_id: `delivery-${r.graphRunId}-${epoch}`, agent_id: adapter.id, max_iterations: 1,
         task: { task_id: `delivery-${epoch}`, source: 'manual', capability: capability.kind, priority: 100,
-          prompt: `${this.options.task}${feedback ? `\nRepair frozen candidate ${action.kind === 'repair' ? action.candidateRevision : ''}. Complete host quality feedback:\n${feedback.bundle_json}` : ''}` },
+          prompt: `${this.options.task}${this.options.deliveryContract ? `\n\n${this.options.deliveryContract.frozen.brief}` : ''}${feedback ? `\nRepair frozen candidate ${action.kind === 'repair' ? action.candidateRevision : ''}. Complete host quality feedback:\n${feedback.bundle_json}` : ''}` },
         stop_condition: { type: 'tests_pass' },
       } }, persist: async evidence => ({ evidenceRef: await this.persist(n.id, workspace.workspace_path, evidence),
         ...(evidence.status === 'completed' && evidence.stopped ? { result: { schemaVersion: 1 as const, kind: 'implementation_complete' as const, workspaceLeaseRef, receiptRef: `e${epoch}.implementation` } } : {}) }) };
@@ -234,7 +244,8 @@ export class GraphDelivery {
       const workspace = this.workspace(); const scope = await resolveRepositoryScope(workspace.workspace_path);
       const checkProducer = async () => { const evidence = await loadDeliveryReceipt(this.options.root, implementation.outcome!.evidenceRef,
         this.receiptBinding(implementation.effect.nodeId, workspace.workspace_path));
-        if (evidence.stopped !== true || workerCanonical(evidence.candidate?.workspace) !== workerCanonical(workspace)) throw Error('PRODUCER_STOP_REQUIRED'); this.check(); };
+        if (evidence.stopped !== true || workerCanonical(evidence.candidate?.workspace) !== workerCanonical(workspace)) throw Error('PRODUCER_STOP_REQUIRED'); this.check();
+        if (this.options.deliveryContract) assertGraphContractPaths(this.options.deliveryContract.frozen, workspace.workspace_path); };
       return { ...common, workspace, action: { kind: 'freeze', workspaceLeaseRef, receiptRef: implementation.outcome.result.receiptRef },
         execution: { kind: 'freeze', store: this.artifacts, input: { artifactId: `delivery-${r.graphRunId}-${epoch}`, scope: r.scope, runId: r.graphRunId,
           generation: r.generation, owner: r.leaseOwner!, workspaceLeaseRef, repoId: scope.repoId, commonDir: scope.commonDir, worktreePath: workspace.workspace_path,
