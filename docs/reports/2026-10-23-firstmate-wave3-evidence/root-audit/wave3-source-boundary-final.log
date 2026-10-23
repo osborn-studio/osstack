@@ -1,0 +1,24 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-contract-integration/packages/cli
+
+ ✓ src/delivery-entrypoint.test.ts (2 tests) 3223ms
+   ✓ runs the real V2 delivery and rejects source mutation: false  2143ms
+   ✓ runs the real V2 delivery and rejects source mutation: true  1079ms
+ ✓ src/delivery-contract-host.test.ts (3 tests) 801ms
+   ✓ fences tracked and new files without altering the candidate index  594ms
+ ✓ src/deliver-cli.test.ts (23 tests) 9105ms
+   ✓ deliver CLI > runs guarded-local with separated profile roles and local-only evidence  847ms
+   ✓ V2 real guarded-local host boundary > retains isolated candidate and fences verification: valid  1447ms
+   ✓ V2 real guarded-local host boundary > retains isolated candidate and fences verification: outside  365ms
+   ✓ V2 real guarded-local host boundary > retains isolated candidate and fences verification: review_mutates  896ms
+   ✓ V2 real guarded-local host boundary > retains isolated candidate and fences verification: governance  983ms
+   ✓ V2 real guarded-local host boundary > retains isolated candidate and fences verification: policy_drift  1163ms
+   ✓ V2 real guarded-local host boundary > retains isolated candidate and fences verification: hidden_index  381ms
+   ✓ V2 real guarded-local host boundary > retains isolated candidate and fences verification: new_ignored  531ms
+   ✓ V2 real guarded-local host boundary > retains isolated candidate and fences verification: late_mutation  1119ms
+
+ Test Files  3 passed (3)
+      Tests  28 passed (28)
+   Start at  13:30:56
+   Duration  10.53s (transform 1.08s, setup 26ms, collect 2.15s, tests 13.13s, environment 0ms, prepare 102ms)
+

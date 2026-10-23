@@ -1,0 +1,8 @@
+{
+  "packages/cli/src/delivery-contract-host.ts": "8192d533469c0965ebf767c0dd7aebed4f0d7a28c2e3edbc0c95c5209a8ac017",
+  "packages/cli/src/deliver-command.ts": "763f40044ddbe62e518046789cc89b71b8aa1a1da6a3498f71b6a2596f8d16c3",
+  "packages/cli/src/delivery-entrypoint.test.ts": "af32bdd88eadd45f97c48b87522d0f04afa9729144c25fffb9bf6fe5cedbfc5d",
+  "packages/autonomy/src/engine.ts": "715dea47de8ca0b56705c8710a991a4f2589248d4a822ea8162293fa02fc85e8",
+  "packages/protocol/src/delivery-contract.ts": "b4ae1d5ef1a5d4497ccbc74a05559f03b35f2db69786e10748594af04ac94ed1",
+  "docs/guides/delivery-contract-v2.md": "bac614ef6da68fad05aecf3eaae76cc2d850f50e9e71ba4f11d967e5a4361f27"
+}

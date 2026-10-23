@@ -1,0 +1,28 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-contract-integration/packages/cli
+
+ ❯ src/delivery-entrypoint.test.ts (2 tests | 1 failed) 4675ms
+   ✓ runs the real V2 delivery and rejects source mutation: false  2744ms
+   × runs the real V2 delivery and rejects source mutation: true 1931ms
+     → expected +0 not to be +0 // Object.is equality
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/delivery-entrypoint.test.ts > runs the real V2 delivery and rejects source mutation: true
+AssertionError: expected +0 not to be +0 // Object.is equality
+ ❯ src/delivery-entrypoint.test.ts:267:22
+    265|   ]);
+    266|   if (mutateSource) {
+    267|     expect(code).not.toBe(0);
+       |                      ^
+    268|     expect(logs.join("\n") + errors.join("\n")).toContain("delivery_so…
+    269|     expect(await readFile(join(repo, "src/greeting.ts"), "utf8")).not.…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 1 passed (2)
+   Start at  13:26:10
+   Duration  5.95s (transform 1.23s, setup 13ms, collect 1.05s, tests 4.68s, environment 0ms, prepare 40ms)
+

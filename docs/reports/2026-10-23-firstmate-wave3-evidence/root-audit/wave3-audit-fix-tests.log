@@ -1,0 +1,122 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-contract-integration/packages/cli
+
+ ✓ src/delivery-entrypoint.test.ts (1 test) 1463ms
+   ✓ runs the real CLI, committed policy and private context receipt factories through an isolated V2 delivery  1462ms
+ ✓ src/execution-context.test.ts (24 tests) 309ms
+ ✓ src/execution-context-host.test.ts (1 test) 19ms
+To /tmp/os237-tests/osstack-guarded-git-yKGT7z/remote.git
+ * [new branch]      main -> main
+Switched to a new branch 'codex/guarded-test'
+To /tmp/os237-tests/osstack-guarded-git-TEf2Zx/remote.git
+ * [new branch]      main -> main
+Switched to a new branch 'codex/guarded-test'
+To /tmp/os237-tests/osstack-guarded-git-3xu0nW/remote.git
+ * [new branch]      main -> main
+Switched to a new branch 'codex/guarded-test'
+To /tmp/os237-tests/osstack-guarded-git-mmSkY3/remote.git
+ * [new branch]      main -> main
+Switched to a new branch 'codex/guarded-test'
+To /tmp/os237-tests/osstack-guarded-git-WmSPI0/remote.git
+ * [new branch]      main -> main
+Switched to a new branch 'codex/guarded-test'
+To /tmp/os237-tests/osstack-guarded-git-GiUjIU/remote.git
+ * [new branch]      main -> main
+Switched to a new branch 'codex/guarded-test'
+To /tmp/os237-tests/osstack-guarded-git-yXYidP/remote.git
+ * [new branch]      main -> main
+Switched to a new branch 'codex/guarded-test'
+To /tmp/os237-tests/osstack-guarded-git-HKTKNd/remote.git
+ * [new branch]      main -> main
+Switched to a new branch 'codex/guarded-test'
+To /tmp/os237-tests/osstack-guarded-git-ZfjF6q/remote.git
+ * [new branch]      main -> main
+Switched to a new branch 'codex/guarded-test'
+To /tmp/os237-tests/osstack-guarded-git-F3dVSX/remote.git
+ * [new branch]      main -> main
+Switched to a new branch 'codex/guarded-test'
+ ✓ src/deliver-cli.test.ts (23 tests) 7044ms
+   ✓ deliver CLI > runs guarded-local with separated profile roles and local-only evidence  722ms
+   ✓ V2 real guarded-local host boundary > retains isolated candidate and fences verification: valid  1134ms
+   ✓ V2 real guarded-local host boundary > retains isolated candidate and fences verification: review_mutates  803ms
+   ✓ V2 real guarded-local host boundary > retains isolated candidate and fences verification: governance  768ms
+   ✓ V2 real guarded-local host boundary > retains isolated candidate and fences verification: policy_drift  799ms
+   ✓ V2 real guarded-local host boundary > retains isolated candidate and fences verification: late_mutation  939ms
+To /tmp/os237-tests/osstack-guarded-git-zfpU0o/remote.git
+ * [new branch]      main -> main
+Switched to a new branch 'codex/guarded-test'
+ ✓ src/delivery-policy-host.test.ts (1 test) 138ms
+To /tmp/os237-tests/osstack-guarded-git-nwgXHE/remote.git
+ * [new branch]      main -> main
+Switched to a new branch 'codex/guarded-test'
+To /tmp/os237-tests/osstack-guarded-git-7dJhM6/remote.git
+ * [new branch]      main -> main
+Switched to a new branch 'codex/guarded-test'
+To /tmp/os237-tests/osstack-guarded-git-ThCus5/remote.git
+ * [new branch]      main -> main
+Switched to a new branch 'codex/guarded-test'
+To /tmp/os237-tests/osstack-guarded-git-QuEfuJ/remote.git
+ * [new branch]      main -> main
+Switched to a new branch 'codex/guarded-test'
+To /tmp/os237-tests/osstack-guarded-git-afZuqf/remote.git
+ * [new branch]      main -> main
+Switched to a new branch 'codex/guarded-test'
+To /tmp/os237-tests/osstack-guarded-git-pDvbaH/remote.git
+ * [new branch]      main -> main
+Switched to a new branch 'codex/guarded-test'
+(node:32505) ExperimentalWarning: stripTypeScriptTypes is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+To /tmp/os237-tests/osstack-guarded-mutant-SeHJOH/remote.git
+ * [new branch]      main -> main
+Switched to a new branch 'codex/guarded-test'
+To /tmp/os237-tests/osstack-guarded-git-l5VkD7/remote.git
+ * [new branch]      main -> main
+Switched to a new branch 'codex/guarded-test'
+To /tmp/os237-tests/osstack-guarded-git-ePUypE/remote.git
+ * [new branch]      main -> main
+Switched to a new branch 'codex/guarded-test'
+To /tmp/os237-tests/osstack-guarded-git-AGKggY/remote.git
+ * [new branch]      main -> main
+Switched to a new branch 'codex/guarded-test'
+To /tmp/os237-tests/osstack-guarded-git-OBlaK7/remote.git
+ * [new branch]      main -> main
+Switched to a new branch 'codex/guarded-test'
+To /tmp/os237-tests/osstack-guarded-git-SlMnZN/remote.git
+ * [new branch]      main -> main
+Switched to a new branch 'codex/guarded-test'
+To /tmp/os237-tests/osstack-guarded-git-FUa5Yn/remote.git
+ * [new branch]      main -> main
+Switched to a new branch 'codex/guarded-test'
+To /tmp/os237-tests/osstack-guarded-git-hsfiJO/remote.git
+ * [new branch]      main -> main
+Switched to a new branch 'codex/guarded-test'
+ ✓ src/guarded-git-runtime.test.ts (24 tests) 13986ms
+   ✓ GuardedGitRuntime > completes R1 documentation through exact commit and final proof  542ms
+   ✓ GuardedGitRuntime > completes R2 source through exact commit and final proof  490ms
+   ✓ GuardedGitRuntime > pauses a protected policy diff before proof, commit, or Git  417ms
+   ✓ GuardedGitRuntime > resumes blocked Git delivery after restart without rebuilding or recommitting  499ms
+   ✓ guarded context absent preserves original input with zero observer calls  475ms
+   ✓ guarded context undefined preserves original input with zero observer calls  483ms
+   ✓ trusted context actual observer reaches existing consumer without mutating routing/budget  632ms
+   ✓ trusted context throw refuses handoff without hiding callback errors  480ms
+   ✓ trusted context invalid refuses handoff without hiding callback errors  456ms
+   ✓ trusted context changed refuses handoff without hiding callback errors  615ms
+   ✓ unproven pending context falls back only to existing input before writes  584ms
+   ✓ unproven withdrawn context falls back only to existing input before writes  581ms
+   ✓ fallback undefined-policy-drift still checks fresh policy and refuses every delivery  425ms
+   ✓ fallback withdrawn-policy-drift still checks fresh policy and refuses every delivery  558ms
+   ✓ callback private exception text is sanitized on the actual guarded handoff  427ms
+   ✓ source mutant deleting second-context comparison hands off stale hint after actual positive baseline  1271ms
+   ✓ trusted raw-invalid actual handoff refuses rather than silently using original delivery  521ms
+   ✓ trusted badrefs actual handoff refuses rather than silently using original delivery  569ms
+   ✓ trusted missing-policy-guard actual handoff refuses rather than silently using original delivery  437ms
+   ✓ enabled actual runtime stale head falls back to original input only after final fresh policy recheck  549ms
+   ✓ stale-head fallback cannot bypass policy change after final context sample  515ms
+   ✓ V2 guarded runtime host receipts > binds real Loop evidence and obeys completion local_verified  974ms
+   ✓ V2 guarded runtime host receipts > binds real Loop evidence and obeys completion pr_opened  1280ms
+
+ Test Files  6 passed (6)
+      Tests  74 passed (74)
+   Start at  13:13:33
+   Duration  17.30s (transform 770ms, setup 27ms, collect 1.94s, tests 22.96s, environment 0ms, prepare 158ms)
+

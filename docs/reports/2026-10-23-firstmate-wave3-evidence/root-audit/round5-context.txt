@@ -1,0 +1,3544 @@
+Independent final follow-up static audit. No tools. Round4 source availability finding fixed: source-only ignored directories collapse to roots using git ls-files --directory --no-empty-directory, dependency file counts no longer enter cap; source tracked/untracked still bounded64MiB/100k and doc explicit. Fence initialization now structured blocked BEFORE enqueue; intermediate symlink directory escape rejected; final source check repeated after host artifacts/lesson/probe. Existing ignored contents/transient/outside writes explicitly NOT sandbox claims. Real tests green. Publication alleged blocker: previously omitted actual packages/github/src/delivery.ts included now. It checks remote URL vs gh repo vs contract repository, rechecks destination before push, validates PR identity, handles existing PR. Four existing PR-only regression tests below include remote rebind refusal. Please inspect actual code, retract false missing-source findings if appropriate. Legacy --action risk intent separately tracked unchanged; V2 requested_actions enforced all risks as prior round. Existing P2 limitations retained, do not represent new features as fixes. Report only confirmed remaining changed-surface P0/P1, limitations separately.
+## Verdict
+
+No confirmed P0. Static reading only; nothing was executed, and the 27-test result and the pending full-workspace run are unverified here.
+
+## P1-A (source mutation): mitigated for detection, with residual limits
+
+The source fence (`createDeliverySourceFence`) samples HEAD, the index, and the tracked/untracked/ignored-name snapshot of the original checkout. It runs before `engine.runOnce`, inside the candidate inspection before receipt capture, and again after the run before any success is reported. That covers the case where a builder writes into the source checkout and leaves it changed. The doc now states the limits accurately.
+
+Residual gaps:
+- Existing ignored contents, out-of-tree writes, and writes restored before a sample are not detected. This is documented.
+- Symlinked intermediate directories are followed by `lstat`/`open` in `snapshotDeliveryWorkspace`, so a tracked directory replaced by a symlink can cause reads outside the checkout. This is read-only and does not affect the write boundary, but it should be fenced.
+- Writes after the last sample are not covered: `writeRequestedLoopArtifacts` and `observeLoopProbeEvents(workspacePath, ...)` run after the final check. Whether either writes into the workspace is missing evidence.
+
+## New P1: source fence is over-restrictive on real repositories
+
+The fence reuses the candidate limits on the original checkout. `allFiles.length + ignored.length > 100000` counts ignored entries, so a checkout with a large `node_modules` (or similar dependency trees) fails closed before dispatch with `delivery_candidate_too_many_files`. The candidate worktree is fresh and does not have this problem, so this is a new regression on the changed surface.
+
+The failure also escapes the structured path. `createDeliverySourceFence` is awaited in `handleDeliverCommand` with no `try`, so the error bypasses `deliverBlocked`. The task has already been enqueued at that point. The fix is to wrap construction in `deliverBlocked` and either exclude ignored entries from the source cap or budget them separately. This is a fail-closed availability regression, not a safety breach.
+
+## Blocking contract defect for `pr_opened`
+
+The guide says publication checks cover "remote/repository/ref". In `openPullRequest` the repository comparison is between `contractScope.repository` and `scope.repository`, which both come from the contract, so it is tautological at call time. The real remote check happens only at start. The remote can be rebound between start and PR creation. Until `openPullRequestToGitHub` verifies the target at call time, `pr_opened` claims are not supported by the code, and the guide should be corrected or the check added.
+
+## Legacy `--action` (classified separately, not a V2 blocker)
+
+`assertPostDiffActionAuthorized` returns early for legacy runs below R3, so `--action` does not restrict commit, push, or merge in legacy mode. This is pre-existing behavior, disclosed in the guide and backlog. It is not part of the V2 contract, which enforces `requested_actions` for every risk level. It should be tracked as a legacy item.
+
+## Remaining P2 (unchanged, none blocking the V2 local claim)
+
+- Context receipt refs are not reopened by the verifier.
+- Receipt refs are unfiltered by run.
+- Reviewer identity is taken from the artifact, not the routed evaluator.
+- Guarded-git command timeouts are not clamped to `max_wall_time_ms`. The guide discloses this.
+- `deliveryContractDigest` uses `localeCompare` while `canonicalGuardedJson` uses code-unit order.
+- Execution-context config is re-read on resume.
+- A stale `delivery_receipt` survives a later failed iteration.
+- Guarded-local takes no lease.
+- Policy base is HEAD in `deliver-command`, not passed explicitly.
+
+## Missing evidence
+
+- `approval.ts` nonce consumption and whether `verifyScopedApprovalDecision` expects it to be recorded.
+- Whether `observeLoopProbeEvents` or `writeRequestedLoopArtifacts` write into the workspace.
+- `openPullRequestToGitHub` idempotency and reuse.
+- Whether `LoopEngine` overwrites reviewer `runtime_identity`.
+- How `main` handles exceptions thrown by `handleDeliverCommand`.
+- Whether the state machine permits `candidate_proof → final_proof`.
+
+## Scope
+
+Only the source-mutation finding has changed status. The 'blocked' outcome, the local-only receipt scope, and the non-cryptographic identity claims all stand as documented. No production guarantee is implied.
+
+FILE packages/cli/src/delivery-contract-host.ts
+import { createHash } from "node:crypto";
+import { execFile } from "node:child_process";
+import { constants } from "node:fs";
+import { lstat, mkdir, open, readlink, realpath, writeFile } from "node:fs/promises";
+import { dirname, isAbsolute, join, relative } from "node:path";
+import { promisify } from "node:util";
+import { assertDeliveryContractPaths, assertFrozenDeliveryContract, deliveryCheckReference, deliveryContractDigest, verifyDeliveryContractReceipt } from "@osstack/core";
+import { DeliveryVerificationReceiptV2, type DeliveryCandidateIdentityV2, type DeliveryReceiptReferenceV2, type FrozenDeliveryContractV2 } from "@osstack/protocol";
+import type { CommandAudit, ReviewArtifact } from "@osstack/loop";
+
+const exec = promisify(execFile);
+export const deliveryBytesDigest = (bytes: string | Buffer) => createHash("sha256").update(bytes).digest("hex");
+export async function deliveryGit(workspace: string, args: string[]): Promise<string> {
+  const safeArgs = args[0] === "diff" ? ["diff", "--no-ext-diff", "--no-textconv", ...args.slice(1)] : args;
+  return (await exec("git", ["-c", "core.hooksPath=/dev/null", "-c", "core.fsmonitor=false", ...safeArgs], {
+    cwd: workspace, encoding: "utf8", timeout: 30000, maxBuffer: 64 * 1024 * 1024,
+    env: { ...process.env, GIT_CONFIG_NOSYSTEM: "1", GIT_CONFIG_GLOBAL: "/dev/null", GIT_TERMINAL_PROMPT: "0" },
+  })).stdout;
+}
+export async function captureDeliveryCandidate(workspace: string, baseHead: string): Promise<DeliveryCandidateIdentityV2> {
+  const head = (await deliveryGit(workspace, ["rev-parse", "HEAD"])).trim();
+  const tree = (await deliveryGit(workspace, ["write-tree"])).trim();
+  const diff = await deliveryGit(workspace, ["diff", "--cached", "--binary", baseHead, "--"]);
+  return { base_head: baseHead, head, tree_id: tree, diff_digest: deliveryBytesDigest(diff) };
+}
+export async function persistDeliveryHostRecord(root: string, value: unknown): Promise<DeliveryReceiptReferenceV2> {
+  await mkdir(root, { recursive: true, mode: 0o700 });
+  const canonicalRoot = await realpath(root);
+  const body = `${JSON.stringify(value)}\n`;
+  const digest = deliveryBytesDigest(body);
+  const path = join(canonicalRoot, `${digest}.json`);
+  try { await writeFile(path, body, { flag: "wx", mode: 0o600 }); }
+  catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
+    await readDeliveryHostRecord(canonicalRoot, { path, digest });
+  }
+  return { path, digest };
+}
+export async function readDeliveryHostRecord(root: string, ref: DeliveryReceiptReferenceV2): Promise<unknown> {
+  const canonicalRoot = await realpath(root);
+  if (!isAbsolute(ref.path) || (await lstat(ref.path)).isSymbolicLink()) throw new Error("delivery_receipt_path_invalid");
+  const canonicalPath = await realpath(ref.path);
+  const local = relative(canonicalRoot, canonicalPath);
+  if (local.startsWith("..") || isAbsolute(local) || !/^[a-f0-9]{64}\.json$/.test(local)
+    || local !== `${ref.digest}.json`) throw new Error("delivery_receipt_path_invalid");
+  const handle = await open(canonicalPath, constants.O_RDONLY | constants.O_NOFOLLOW);
+  try {
+    const info = await handle.stat();
+    if (!info.isFile() || info.size > 1024 * 1024) throw new Error("delivery_receipt_size_invalid");
+    const body = Buffer.alloc(info.size + 1);
+    const { bytesRead } = await handle.read(body, 0, body.length, 0);
+    if (bytesRead !== info.size) throw new Error("delivery_receipt_size_changed");
+    const actual = body.subarray(0, bytesRead);
+    if (deliveryBytesDigest(actual) !== ref.digest) throw new Error("delivery_receipt_digest_mismatch");
+    return JSON.parse(actual.toString("utf8")) as unknown;
+  } finally { await handle.close(); }
+}
+export function buildDeliveryVerificationReceipt(input: {
+  frozen: FrozenDeliveryContractV2; runId: string; runKind: "guarded-local" | "guarded-git";
+  candidate: DeliveryCandidateIdentityV2; commands: readonly CommandAudit[]; reviews: readonly ReviewArtifact[];
+  builderAgentId: string; builderIdentity: Record<string, unknown>; workspaceStateDigest: string; contextReceiptRefs?: readonly DeliveryReceiptReferenceV2[];
+}) {
+  const { contract, digest } = assertFrozenDeliveryContract(input.frozen);
+  const review = input.reviews[0];
+  if (!review || input.reviews.some((item) => item.verdict !== "approved") || input.builderIdentity.evidence_source !== "reported"
+    || review.runtime_identity.evidence_source !== "reported") throw new Error("delivery_reported_review_missing");
+  const checks = input.commands.map((command, index) => {
+    const registryRef = deliveryCheckReference(command.command);
+    return { id: contract.required_checks.find((check) => check.registry_ref === registryRef)?.id ?? `host:${index}`,
+      registry_ref: registryRef, command_digest: registryRef.slice(7), exit_code: command.exit_code, duration_ms: command.duration_ms };
+  });
+  return DeliveryVerificationReceiptV2.parse({ schema_version: 2, source: "osstack_loop_host", run_id: input.runId,
+    task_id: contract.task_id, run_kind: input.runKind, contract_digest: digest, policy_digest: contract.policy_digest,
+    candidate: input.candidate, workspace_state_digest: input.workspaceStateDigest, checks, review: { policy_ref: contract.review_policy_ref, verdict: review.verdict,
+      builder_agent_id: input.builderAgentId, reviewer_agent_id: review.reviewer_agent_id,
+      builder_provider: input.builderIdentity.provider_id, builder_model: input.builderIdentity.model_id,
+      reviewer_provider: review.runtime_identity.provider_id, reviewer_model: review.runtime_identity.model_id,
+      identity_source: "reported", artifact_digest: deliveryContractDigest(input.reviews) },
+    observed_at: new Date().toISOString(), context_receipt_refs: input.contextReceiptRefs ?? [] });
+}
+/** Trusted host port: load its own immutable record and re-sample actual Git state.
+ * A committed candidate may change HEAD, but its verified tree and base-relative diff must not change. */
+export async function verifyPersistedDeliveryReceipt(input: {
+  root: string; ref: DeliveryReceiptReferenceV2; frozen: FrozenDeliveryContractV2; runId: string; workspace: string; expectedHeads?: readonly string[];
+}) {
+  const raw = await readDeliveryHostRecord(input.root, input.ref);
+  const receipt = DeliveryVerificationReceiptV2.parse(raw);
+  const current = await captureDeliveryCandidate(input.workspace, input.frozen.contract.base_head);
+  if (receipt.candidate.head !== input.frozen.contract.base_head
+    || !(input.expectedHeads ?? [input.frozen.contract.base_head]).includes(current.head)) throw new Error("delivery_candidate_head_mismatch");
+  if (current.tree_id !== receipt.candidate.tree_id || current.diff_digest !== receipt.candidate.diff_digest)
+    throw new Error("delivery_candidate_changed_after_verification");
+  if ((await snapshotDeliveryWorkspace(input.workspace, input.frozen.contract.base_head)).digest !== receipt.workspace_state_digest)
+    throw new Error("delivery_workspace_changed_after_verification");
+  // Unstaged/untracked edits were never part of the reviewed tree.
+  if ((await deliveryGit(input.workspace, ["diff", "--name-only"])).trim()
+    || (await deliveryGit(input.workspace, ["ls-files", "--others", "--exclude-standard"])).trim())
+    throw new Error("delivery_candidate_has_unverified_changes");
+  verifyDeliveryContractReceipt(input.frozen, raw, { runId: input.runId, candidate: { ...current, head: receipt.candidate.head },
+    policyDigest: input.frozen.contract.policy_digest });
+  return { receipt, current };
+}
+
+async function deliveryConfig(workspace: string): Promise<string> {
+  const config = await deliveryGit(workspace, ["config", "--local", "--null", "--list"]);
+  if (config.split("\0").some(entry => /^filter\..*\.(?:clean|smudge|process)\n/i.test(entry)))
+    throw new Error("delivery_git_filter_unsupported");
+  return config;
+}
+async function snapshotDeliveryWorkspace(workspace: string, baseHead: string, ignoredDirectories = false) {
+  const canonicalWorkspace = await realpath(workspace);
+  await deliveryConfig(workspace);
+  const flags = (await deliveryGit(workspace, ["ls-files", "-v", "-z"])).split("\0").filter(Boolean);
+  if (flags.some(entry => /^[a-zS]/.test(entry))) throw new Error("delivery_hidden_index_flags");
+  const tracked = (await deliveryGit(workspace, ["diff", "--no-renames", "--name-only", "-z", baseHead, "--"])).split("\0").filter(Boolean);
+  const untracked = (await deliveryGit(workspace, ["ls-files", "--others", "--exclude-standard", "-z"])).split("\0").filter(Boolean);
+  const ignored = (await deliveryGit(workspace, ["ls-files", "--others", "--ignored", "--exclude-standard", ...(ignoredDirectories ? ["--directory", "--no-empty-directory"] : []), "-z"])).split("\0").filter(Boolean).sort();
+  const paths = [...new Set([...tracked, ...untracked])].sort();
+  const allFiles = [...new Set([...flags.map(entry => entry.slice(2)), ...paths])].sort();
+  if (allFiles.length + ignored.length > 100000) throw new Error("delivery_candidate_too_many_files");
+  const changes: Array<{ path: string; digest: string | null; mode: number | null }> = [];
+  let bytes = 0;
+  for (const path of allFiles) {
+    const absolute = join(workspace, path);
+    const parent = await realpath(dirname(absolute)).catch(error => { if ((error as NodeJS.ErrnoException).code === "ENOENT") return undefined; throw error; });
+    if (parent !== undefined) { const rel = relative(canonicalWorkspace, parent); if (rel === ".." || rel.startsWith("../") || isAbsolute(rel)) throw new Error("delivery_candidate_parent_escape"); }
+    const info = await lstat(absolute).catch(error => { if ((error as NodeJS.ErrnoException).code === "ENOENT") return undefined; throw error; });
+    if (!info) { changes.push({ path, digest: null, mode: null }); continue; }
+    if (!info.isFile() && !info.isSymbolicLink()) throw new Error("delivery_candidate_file_invalid");
+    bytes += info.size;
+    if (bytes > 64 * 1024 * 1024) throw new Error("delivery_candidate_too_large");
+    let body: string | Buffer;
+    if (info.isSymbolicLink()) body = await readlink(absolute);
+    else {
+      const file = await open(absolute, constants.O_RDONLY | constants.O_NOFOLLOW);
+      try {
+        const opened = await file.stat();
+        if (!opened.isFile() || opened.size !== info.size) throw new Error("delivery_candidate_file_changed");
+        body = Buffer.alloc(info.size + 1);
+        const { bytesRead } = await file.read(body, 0, body.length, 0);
+        if (bytesRead !== info.size) throw new Error("delivery_candidate_file_changed");
+        body = body.subarray(0, bytesRead);
+      } finally { await file.close(); }
+    }
+    changes.push({ path, digest: deliveryBytesDigest(body), mode: info.isSymbolicLink() ? 0o120000 : info.mode & 0o111 ? 0o100755 : 0o100644 });
+  }
+  return { digest: deliveryContractDigest({ baseHead, changes, ignored }), paths, ignored };
+}
+/** One invocation owns its pre-build baseline and exact check/review snapshot.
+ * The same snapshot must survive staging and receipt capture; it is not re-baselined. */
+export function createDeliveryVerificationFence(frozen: FrozenDeliveryContractV2) {
+  const baselines = new Map<string, { ignored: Set<string>; config: string }>();
+  const verified = new Map<string, string>();
+  const sample = async (workspace: string) => {
+    const baseline = baselines.get(workspace);
+    if (!baseline) throw new Error("delivery_verification_baseline_missing");
+    if ((await deliveryGit(workspace, ["rev-parse", "HEAD"])).trim() !== frozen.contract.base_head)
+      throw new Error("delivery_candidate_base_changed");
+    if (await deliveryConfig(workspace) !== baseline.config) throw new Error("delivery_git_config_changed");
+    const snapshot = await snapshotDeliveryWorkspace(workspace, frozen.contract.base_head);
+    if (snapshot.ignored.some(path => !baseline.ignored.has(path))) throw new Error("delivery_new_ignored_file");
+    assertDeliveryContractPaths(frozen, snapshot.paths);
+    return snapshot.digest;
+  };
+  const fence = async (workspace: string): Promise<() => Promise<void>> => {
+    verified.delete(workspace);
+    const before = await sample(workspace);
+    return async () => {
+      if (await sample(workspace) !== before) throw new Error("delivery_candidate_changed_during_verification");
+      verified.set(workspace, before);
+    };
+  };
+  return Object.assign(fence, {
+    prepare: async (workspace: string) => {
+      const snapshot = await snapshotDeliveryWorkspace(workspace, frozen.contract.base_head);
+      baselines.set(workspace, { ignored: new Set(snapshot.ignored), config: await deliveryConfig(workspace) });
+      verified.delete(workspace);
+    },
+    assertVerified: async (workspace: string) => {
+      const digest = verified.get(workspace);
+      if (!digest || await sample(workspace) !== digest) throw new Error("delivery_reviewed_candidate_changed");
+      return digest;
+    },
+  });
+}
+
+/** Detect changes to the original checkout; this is not a filesystem sandbox.
+ * Existing ignored file contents and arbitrary paths outside the checkout are not sampled.
+ */
+export async function createDeliverySourceFence(workspace: string, baseHead: string): Promise<() => Promise<void>> {
+  const sample = async () => {
+    const [head, index, snapshot] = await Promise.all([
+      deliveryGit(workspace, ["rev-parse", "HEAD"]),
+      deliveryGit(workspace, ["ls-files", "--stage", "-z"]),
+      snapshotDeliveryWorkspace(workspace, baseHead, true),
+    ]);
+    return deliveryContractDigest({ head, index, snapshot: snapshot.digest });
+  };
+  const baseline = await sample();
+  return async () => { if (await sample() !== baseline) throw new Error("delivery_source_changed"); };
+}
+
+
+FILE packages/cli/src/deliver-command.ts
+import { assertDeliveryContractAdmission, assertDeliveryContractPaths, freezeDeliveryContract } from "@osstack/core";
+import type { FrozenDeliveryContractV2, DeliveryReceiptReferenceV2 } from "@osstack/protocol";
+import { createDeliveryVerificationFence, createDeliverySourceFence, buildDeliveryVerificationReceipt, captureDeliveryCandidate, deliveryGit, persistDeliveryHostRecord, verifyPersistedDeliveryReceipt } from "./delivery-contract-host.js";
+import { execFile } from "node:child_process";
+import { randomUUID } from "node:crypto";
+import { realpathSync } from "node:fs";
+import { readFile, stat } from "node:fs/promises";
+import { isAbsolute, join } from "node:path";
+import { promisify } from "node:util";
+import {
+  defaultAdapters,
+  type AgentAdapter,
+} from "@osstack/agents";
+import type { GovernanceFinding } from "@osstack/governance";
+import type { GuardedDeliveryPolicy, GuardedDeliveryResult } from "@osstack/autonomy";
+import {
+  enqueueTask,
+  LoopEngine,
+  type LoopEvent,
+  type LoopState,
+} from "@osstack/loop";
+import { z } from "zod";
+import {
+  resolveLoopProfileRouting,
+  type LoopProfileRoutingResult,
+} from "./loop-profile-routing.js";
+import { makePolicyGate } from "./policy-gate.js";
+
+const execFileAsync = promisify(execFile);
+const GUARDED_LOCAL_COMMAND_TIMEOUT_MS = 600_000;
+
+export const DeliverAutonomyMode = z.enum([
+  "legacy",
+  "guarded-local",
+  "guarded-git",
+  "guarded-deploy",
+]);
+export type DeliverAutonomyMode = z.infer<typeof DeliverAutonomyMode>;
+
+type DeliverGovernanceProofEvidence =
+  | {
+    status: "pass" | "fail";
+    ok: boolean;
+    scanned_files: number;
+    findings: GovernanceFinding[];
+  }
+  | {
+    status: "unknown";
+    ok: false;
+    scanned_files: 0;
+    reason: string;
+    findings: GovernanceFinding[];
+  };
+
+export type DeliverGovernanceMode = "warn" | "strict";
+export type DeliverGovernanceScope = "workspace" | "changed" | "baseline";
+
+export interface DeliverGovernanceBaselineSnapshot {
+  evidence?: DeliverGovernanceProofEvidence;
+  revision?: string;
+}
+
+type DeliverGovernanceScanEvidence =
+  DeliverGovernanceProofEvidence & {
+    error_findings: number;
+  };
+
+export type DeliverGovernanceEvidence =
+  DeliverGovernanceScanEvidence & {
+    mode: DeliverGovernanceMode;
+    scope: DeliverGovernanceScope;
+    blocking: boolean;
+    baseline_evidence?: DeliverGovernanceScanEvidence & {
+      mode: "warn";
+      scope: "workspace";
+      blocking: false;
+    };
+    changed_evidence?: DeliverGovernanceScanEvidence & {
+      scope: "changed";
+    };
+    baseline_revision?: string;
+    baseline_suppressed_findings?: number;
+  };
+
+export interface DeliverEvidenceArtifacts {
+  report?: string;
+  scorecard_markdown?: string;
+  scorecard_html?: string;
+  proof_dir?: string;
+  proof_zip?: string;
+  proof_manifest?: string;
+}
+
+export interface DeliverCommandDeps {
+  enforceObservePolicyGate: (
+    workspacePath: string,
+  ) => Promise<number | undefined>;
+  createShadowCheckpoint: (
+    workspacePath: string,
+  ) => Promise<unknown>;
+  createLoopGovernanceEvidence: (
+    mode: DeliverGovernanceMode,
+    workspacePath: string,
+    scope: DeliverGovernanceScope,
+    baselineSnapshot?: DeliverGovernanceBaselineSnapshot,
+  ) => Promise<DeliverGovernanceEvidence>;
+  captureLoopGovernanceBaseline?: (
+    workspacePath: string,
+    includeEvidence: boolean,
+  ) => Promise<DeliverGovernanceBaselineSnapshot>;
+  appendGovernanceVerifyEvent: (
+    events: LoopEvent[],
+    loopId: string,
+    governance: DeliverGovernanceEvidence,
+  ) => LoopEvent[];
+  observeLoopProbeEvents: (
+    workspacePath: string,
+    events: readonly unknown[],
+  ) => Promise<unknown>;
+  writeRequestedLoopArtifacts: (
+    state: LoopState,
+    workspacePath: string,
+    args: string[],
+    events: LoopEvent[],
+    governance?: DeliverGovernanceEvidence,
+    outputDirectory?: string,
+  ) => Promise<DeliverEvidenceArtifacts | undefined>;
+  learnLessonsFromLoopState: (
+    state: LoopState,
+  ) => Promise<unknown>;
+  adapters?: () => AgentAdapter[];
+  createDeliveryStateDirectory?: (contractDigest: string) => Promise<string>;
+  deliveryContractPolicy?: (workspacePath: string, baseRevision?: string) => Promise<{ policyDigest: string; verifyCommands: string[]; budgetRef: string; budget: GuardedDeliveryPolicy["budget"] }>;
+  createExecutionContext?: (input: { adapters: readonly AgentAdapter[]; workspacePath: string; configPath: string;
+    contractDigest?: string; contractBrief?: string }) => Promise<{ adapters: readonly AgentAdapter[]; receiptRefs(): readonly DeliveryReceiptReferenceV2[] }>;
+  startGuardedGit?: (input: {
+    prompt: string;
+    workspacePath: string;
+    taskId: string;
+    capability: string;
+    expectedPaths: string[];
+    requestedActions: string[];
+    verifyCommands: string[];
+    commandTimeoutMs: number;
+    deployPolicy?: "project";
+    profileRouting: LoopProfileRoutingResult;
+    frozenContract?: FrozenDeliveryContractV2;
+    executionContextPath?: string;
+  }) => Promise<GuardedDeliveryResult>;
+  remotePorts?: {
+    push: () => Promise<unknown>;
+    createPullRequest: () => Promise<unknown>;
+    merge: () => Promise<unknown>;
+    deploy: () => Promise<unknown>;
+  };
+}
+
+export async function handleDeliverCommand(
+  args: string[],
+  deps: DeliverCommandDeps,
+): Promise<number> {
+  if (args[0] === "help" || args.includes("--help") || args.includes("-h")) {
+    console.log(`osstack deliver — product entry from one intent to proof
+
+  osstack deliver "Add billing dashboard" [--workspace P] [--execute CMD] [--verify CMD] [--auto-agent] [--worktree] [--checkpoint] [--govern [warn|strict]] [--govern-scope workspace|changed|baseline] [--autonomy legacy|guarded-local|guarded-git|guarded-deploy] [--contract FILE] [--execution-context FILE] [--deploy-policy project] [--profile NAME] [--expected-path P] [--action A] [--command-timeout-ms N] [--json]
+
+Stages:
+  intake -> plan -> execute-loop -> verify-review -> proof
+
+guarded-git additionally performs:
+  preflight risk -> local verification/review -> post-diff risk -> candidate proof -> commit -> PR/CI/merge -> final proof
+
+guarded-deploy adds after merge:
+  project allowlist -> staging verify/health -> production verify/health -> rollback/freeze -> final proof
+`);
+    return 0;
+  }
+
+  let prompt = firstPositionalValue(args, new Set([
+    "--workspace",
+    "--contract",
+    "--execution-context",
+    "--state",
+    "--execute",
+    "--verify",
+    "--agent",
+    "--capability",
+    "--priority",
+    "--max-iter",
+    "--command-timeout-ms",
+    "--worktree-root",
+    "--govern",
+    "--govern-scope",
+    "--autonomy",
+    "--deploy-policy",
+    "--profile",
+    "--role",
+    "--reviewer",
+    "--checker",
+    "--expected-path",
+    "--action",
+  ]));
+  let frozenContract: FrozenDeliveryContractV2 | undefined;
+  const contractPath = flagValue(args, "--contract");
+  try {
+    if (contractPath !== undefined) {
+      if ((await stat(contractPath)).size > 128 * 1024) throw new Error("delivery_contract_too_large");
+      frozenContract = freezeDeliveryContract(JSON.parse(await readFile(contractPath, "utf8")));
+      prompt ??= frozenContract.contract.goal;
+    }
+  } catch (error) { return deliverBlocked(args, "invalid_delivery_contract", error instanceof Error ? error.message : String(error)); }
+  if (prompt === undefined) {
+    console.error("osstack: deliver requires a prompt");
+    return 1;
+  }
+  const workspacePath = flagValue(args, "--workspace") ?? process.cwd();
+  const policyGate = await deps.enforceObservePolicyGate(workspacePath);
+  if (policyGate !== undefined) return policyGate;
+  const autonomyResult = DeliverAutonomyMode.safeParse(
+    flagValue(args, "--autonomy") ?? "legacy",
+  );
+  if (!autonomyResult.success) {
+    console.error(
+      "osstack: --autonomy must be legacy, guarded-local, guarded-git, or guarded-deploy",
+    );
+    return 1;
+  }
+  const autonomy = autonomyResult.data;
+  const guardedLocal = autonomy === "guarded-local";
+  const guardedDeploy = autonomy === "guarded-deploy";
+  const guardedGit = autonomy === "guarded-git" || guardedDeploy;
+  const guarded = guardedLocal || guardedGit;
+  if (frozenContract && (!guarded || frozenContract.contract.mode === "scout" || flagValue(args, "--execute") !== undefined))
+    return deliverBlocked(args, "delivery_contract_runtime_unsupported", "V2 requires a guarded implement adapter; scout lacks a proven tool-free executor");
+  if (frozenContract && guardedLocal && frozenContract.contract.requested_completion !== "local_verified")
+    return deliverBlocked(args, "delivery_contract_completion_conflict", "guarded-local only produces a local candidate proof");
+  const deployPolicy = flagValue(args, "--deploy-policy");
+  if (
+    guardedDeploy
+    && deployPolicy !== "project"
+  ) {
+    return deliverBlocked(
+      args,
+      "deploy_policy_required",
+      "guarded-deploy requires --deploy-policy project",
+    );
+  }
+  if (
+    deployPolicy !== undefined
+    && (deployPolicy !== "project" || !guardedDeploy)
+  ) {
+    return deliverBlocked(
+      args,
+      "deploy_policy_invalid",
+      "--deploy-policy project is valid only with --autonomy guarded-deploy",
+    );
+  }
+  let stateFilePath = flagValue(args, "--state") ?? "LOOP-STATE.json";
+  const executeCommand = flagValue(args, "--execute");
+  let agentId = flagValue(args, "--agent");
+  let verifierAgentIds = [
+    ...flagValues(args, "--reviewer"),
+    ...flagValues(args, "--checker"),
+  ];
+  const capability = flagValue(args, "--capability") ?? "code.write";
+  const priority = parsePositiveIntegerFlag(
+    flagValue(args, "--priority"),
+    "--priority",
+  );
+  if (priority instanceof Error) {
+    console.error(`osstack: ${priority.message}`);
+    return 1;
+  }
+  const maxIterations = parsePositiveIntegerFlag(
+    flagValue(args, "--max-iter"),
+    "--max-iter",
+  );
+  if (maxIterations instanceof Error) {
+    console.error(`osstack: ${maxIterations.message}`);
+    return 1;
+  }
+  const commandTimeoutMs = parsePositiveIntegerFlag(
+    flagValue(args, "--command-timeout-ms"),
+    "--command-timeout-ms",
+  );
+  if (commandTimeoutMs instanceof Error) {
+    console.error(`osstack: ${commandTimeoutMs.message}`);
+    return 1;
+  }
+  const effectiveCommandTimeoutMs = commandTimeoutMs
+    ?? (guarded ? GUARDED_LOCAL_COMMAND_TIMEOUT_MS : undefined);
+  const explicitVerifyCommands = flagValues(args, "--verify");
+  const suggestedVerify = await suggestVerifyCommand(
+    workspacePath,
+    { includeYarn: guarded },
+  );
+  let verifyCommands = guarded
+    && explicitVerifyCommands.length === 0
+    && suggestedVerify !== undefined
+    ? [suggestedVerify]
+    : explicitVerifyCommands;
+  let contractPolicy: Awaited<ReturnType<NonNullable<DeliverCommandDeps["deliveryContractPolicy"]>>> | undefined;
+  if (frozenContract) {
+    if (!deps.deliveryContractPolicy) return deliverBlocked(args, "delivery_contract_policy_unavailable", "host policy binding is required");
+    try {
+      contractPolicy = await deps.deliveryContractPolicy(realpathSync(workspacePath));
+      if (!contractPolicy.budget || [contractPolicy.budget.max_builder_iterations, contractPolicy.budget.max_review_rounds, contractPolicy.budget.max_wall_time_ms, contractPolicy.budget.max_no_progress_rounds].some(value => !Number.isSafeInteger(value) || value <= 0)) throw new Error("delivery_contract_budget_invalid");
+      if (explicitVerifyCommands.some(command => !contractPolicy!.verifyCommands.includes(command))) throw new Error("delivery_check_not_registered");
+      verifyCommands = [...new Set(contractPolicy.verifyCommands)];
+      if (contractPolicy.budgetRef !== frozenContract.contract.budget_ref) throw new Error("delivery_contract_budget_ref_mismatch");
+      for (const [flag, allowed] of [["--expected-path", frozenContract.contract.allowed_paths], ["--action", frozenContract.contract.requested_actions]] as const) {
+        const explicit = flagValues(args, flag);
+        if (explicit.length && JSON.stringify([...new Set(explicit)].sort()) !== JSON.stringify([...allowed].sort())) throw new Error(`delivery_contract_cli_conflict:${flag}`);
+      }
+    } catch (error) { return deliverBlocked(args, "delivery_contract_policy_failed", error instanceof Error ? error.message : String(error)); }
+  }
+  if (guarded && verifyCommands.length === 0) {
+    return deliverBlocked(
+      args,
+      "verify_profile_missing",
+      `${autonomy} requires --verify or a detected project test command`,
+    );
+  }
+  if (guarded && !await isGitWorktree(workspacePath)) {
+    return deliverBlocked(
+      args,
+      "git_worktree_required",
+      `${autonomy} requires a Git worktree`,
+    );
+  }
+  const requestedGovernanceMode = parseDeliverGovernanceMode(args);
+  if (requestedGovernanceMode instanceof Error) {
+    console.error(`osstack: ${requestedGovernanceMode.message}`);
+    return 1;
+  }
+  const governanceMode = guarded
+    ? "strict"
+    : requestedGovernanceMode;
+  const governanceScope = parseDeliverGovernanceScope(
+    args,
+    governanceMode,
+  );
+  if (governanceScope instanceof Error) {
+    console.error(`osstack: ${governanceScope.message}`);
+    return 1;
+  }
+  if (
+    governanceScope !== undefined
+    && governanceScope !== "workspace"
+    && deps.captureLoopGovernanceBaseline === undefined
+  ) {
+    console.error(
+      "osstack: changed and baseline governance scopes are unavailable",
+    );
+    return 1;
+  }
+  const governanceBaseline =
+    governanceScope === "baseline" || governanceScope === "changed"
+      ? await deps.captureLoopGovernanceBaseline!(
+          workspacePath,
+          governanceScope === "baseline",
+        )
+      : undefined;
+  const autoAgent = args.includes("--auto-agent");
+  const useWorktree = guardedLocal || args.includes("--worktree");
+  const checkpoint = args.includes("--checkpoint") && !useWorktree
+    ? await deps.createShadowCheckpoint(realpathSync(workspacePath))
+    : undefined;
+  const adapters = guarded || agentId !== undefined || autoAgent
+    ? deps.adapters?.() ?? defaultAdapters()
+    : undefined;
+  const profileRouting = guarded
+    ? await resolveGuardedProfileRouting(
+      args,
+      agentId,
+      verifierAgentIds,
+      adapters!,
+    )
+    : undefined;
+  if (profileRouting instanceof Error) {
+    return deliverBlocked(
+      args,
+      "profile_routing_failed",
+      profileRouting.message,
+    );
+  }
+  if (profileRouting !== undefined) {
+    agentId = profileRouting.agentId;
+    verifierAgentIds = profileRouting.verifierAgentIds;
+  }
+  if (frozenContract) {
+    try { assertDeliveryContractAdmission(frozenContract, { canonicalRepo: realpathSync(workspacePath),
+      baseHead: (await deliveryGit(workspacePath, ["rev-parse", "HEAD"])).trim(), taskId: frozenContract.contract.task_id,
+      goal: prompt, policyDigest: contractPolicy!.policyDigest, reviewPolicyRef: `profile:${profileRouting!.summary.profile_name}`, acceptedCommands: verifyCommands }); }
+    catch (error) { return deliverBlocked(args, "delivery_contract_admission_failed", error instanceof Error ? error.message : String(error)); }
+  }
+  if (guardedGit) {
+    if (deps.startGuardedGit === undefined || profileRouting === undefined) {
+      return deliverBlocked(
+        args,
+        "guarded_git_unavailable",
+        "guarded-git runtime is not configured",
+      );
+    }
+    const taskId = frozenContract?.contract.task_id ?? `task_${randomUUID().slice(0, 8)}`;
+    let guardedResult: GuardedDeliveryResult;
+    try {
+      guardedResult = await deps.startGuardedGit({
+        prompt,
+        workspacePath: realpathSync(workspacePath),
+        taskId,
+        capability,
+        expectedPaths: frozenContract?.contract.allowed_paths ?? flagValues(args, "--expected-path"),
+        requestedActions: frozenContract?.contract.requested_actions ?? (
+          flagValues(args, "--action").length === 0
+            ? [
+                "build",
+                "commit",
+                ...(guardedDeploy
+                  ? ["deploy:production", "deploy:staging"]
+                  : []),
+                "merge",
+                "push",
+                "verify",
+              ]
+            : flagValues(args, "--action")),
+        verifyCommands,
+        commandTimeoutMs: effectiveCommandTimeoutMs!,
+        ...(guardedDeploy
+          ? { deployPolicy: "project" as const }
+          : {}),
+        profileRouting,
+        ...(frozenContract ? { frozenContract } : {}),
+        ...(flagValue(args, "--execution-context") ? { executionContextPath: flagValue(args, "--execution-context")! } : {}),
+      });
+    } catch (error) {
+      return deliverBlocked(
+        args,
+        "guarded_git_failed",
+        error instanceof Error ? error.message : String(error),
+      );
+    }
+    const summary = {
+      autonomy,
+      autonomy_run_id: guardedResult.run.autonomy_run_id,
+      state: guardedResult.run.state,
+      status: guardedResult.status,
+      profile: profileRouting.summary,
+      ...(guardedResult.approval_request === undefined
+        ? {}
+        : { approval_request: guardedResult.approval_request }),
+      ...(guardedResult.reason === undefined
+        ? {}
+        : { reason: guardedResult.reason }),
+      candidate_proof:
+        guardedResult.run.context.candidate_proof ?? null,
+      git_delivery:
+        guardedResult.run.context.git_delivery ?? null,
+      deploy_eligibility:
+        guardedResult.run.context.deploy_eligibility ?? null,
+      deploy_outcome:
+        guardedResult.run.context.deploy_outcome ?? null,
+      deploy_staging:
+        guardedResult.run.context.deploy_staging ?? null,
+      deploy_production:
+        guardedResult.run.context.deploy_production ?? null,
+      production_freeze:
+        guardedResult.run.context.production_freeze ?? null,
+      final_proof: guardedResult.run.context.final_proof ?? null,
+    };
+    if (args.includes("--json")) {
+      console.log(JSON.stringify(summary, null, 2));
+    } else {
+      console.log(`autonomy_run_id=${summary.autonomy_run_id}`);
+      console.log(`state=${summary.state}`);
+      console.log(`status=${summary.status}`);
+    }
+    return guardedResult.status === "completed" ? 0 : 2;
+  }
+  const stages = [
+    "intake",
+    "plan",
+    "execute-loop",
+    "verify-review",
+    "proof",
+  ];
+  let deliveryStateDirectory: string | undefined;
+  if (frozenContract) {
+    if (!deps.createDeliveryStateDirectory) return deliverBlocked(args, "delivery_state_unavailable", "V2 requires private host delivery state");
+    deliveryStateDirectory = await deps.createDeliveryStateDirectory(frozenContract.digest);
+    if (!isAbsolute(deliveryStateDirectory)) throw new Error("delivery_state_absolute_path_required");
+    if (flagValue(args, "--state") === undefined) stateFilePath = join(deliveryStateDirectory, "LOOP-STATE.json");
+  }
+  let assertSourceUnchanged: (() => Promise<void>) | undefined;
+  if (frozenContract) {
+    try { assertSourceUnchanged = await createDeliverySourceFence(workspacePath, frozenContract.contract.base_head); }
+    catch { return deliverBlocked(args, "delivery_source_check_unavailable", "Original checkout could not be safely sampled within the documented limits; no task was enqueued or dispatched."); }
+  }
+  const task = await enqueueTask({
+    workspacePath: deliveryStateDirectory ?? workspacePath,
+    prompt,
+    capability,
+    ...(frozenContract ? { taskId: frozenContract.contract.task_id } : {}),
+    ...(priority !== undefined ? { priority } : {}),
+    context: {
+      deliver_pipeline: {
+        stages,
+        ...(frozenContract ? { delivery_contract: frozenContract } : {}),
+        suggested_verify: suggestedVerify,
+        verify_commands: verifyCommands,
+        ...(effectiveCommandTimeoutMs !== undefined
+          ? { command_timeout_ms: effectiveCommandTimeoutMs }
+          : {}),
+        auto_agent: autoAgent,
+        ...(guarded
+          ? {
+              autonomy_mode: autonomy,
+              profile_routing: profileRouting?.summary,
+            }
+          : {}),
+      },
+    },
+  });
+  const worktreeRoot = flagValue(args, "--worktree-root");
+  let receiptRef: DeliveryReceiptReferenceV2 | undefined;
+  let candidateWorkspace: string | undefined;
+  let candidateGovernance: DeliverGovernanceEvidence | undefined;
+  const evidenceRoot = deliveryStateDirectory ? join(deliveryStateDirectory, "receipts") : join(workspacePath, ".osstack", "delivery-contracts", "legacy");
+  const contextPath = flagValue(args, "--execution-context");
+  let executionContext: Awaited<ReturnType<NonNullable<DeliverCommandDeps["createExecutionContext"]>>> | undefined;
+  if (contextPath) {
+    if (!deps.createExecutionContext || !adapters) return deliverBlocked(args, "execution_context_unavailable", "host execution context is not configured");
+    executionContext = await deps.createExecutionContext({ adapters, workspacePath: realpathSync(workspacePath), configPath: contextPath,
+      ...(frozenContract ? { contractDigest: frozenContract.digest, contractBrief: frozenContract.brief } : {}) });
+  }
+  const localContract = frozenContract;
+  const verificationFence = localContract ? createDeliveryVerificationFence(localContract) : undefined;
+  const engine = new LoopEngine({
+    workspacePath,
+    stateFilePath,
+    ...(executeCommand !== undefined ? { executeCommand } : {}),
+    ...(agentId !== undefined ? { agentId } : {}),
+    ...(autoAgent ? { autoAgent } : {}),
+    ...(adapters !== undefined ? { adapters: executionContext?.adapters ?? adapters } : {}),
+    ...(verifyCommands.length > 0 ? { verifyCommands } : {}),
+    ...(guardedLocal
+      ? {
+          verifierAgentIds,
+          enforceRoleSeparation: true,
+          ...(profileRouting !== undefined
+            ? { profileRouting: profileRouting.summary }
+            : {}),
+          artifactVerification: { requireGitDiff: true },
+        }
+      : {}),
+    sources: localContract ? [] : ["task_queue"],
+    ...(localContract ? { prepareVerification: verificationFence!.prepare, verificationFence: verificationFence!, inputTasks: [{ ...task.task, prompt: executionContext ? prompt : `${prompt}\n\n${localContract.brief}` }],
+      guardedLocalCandidate: { mode: "artifact_only" as const, inspect: async (input: { workspacePath: string; run: { run_id: string; agent_id: string };
+        verdict: { verify_commands?: import("@osstack/loop").CommandAudit[] | undefined }; reviews: readonly import("@osstack/loop").ReviewArtifact[] }) => {
+        await assertSourceUnchanged!();
+        const currentPolicy = await deps.deliveryContractPolicy!(realpathSync(workspacePath), localContract.contract.base_head);
+        if (currentPolicy.policyDigest !== localContract.contract.policy_digest || currentPolicy.budgetRef !== localContract.contract.budget_ref)
+          throw new Error("delivery_contract_policy_changed");
+        await verificationFence!.assertVerified(input.workspacePath);
+        candidateGovernance = await deps.createLoopGovernanceEvidence("strict", input.workspacePath, governanceScope ?? "workspace", governanceBaseline);
+        if (candidateGovernance.blocking) throw new Error("delivery_candidate_governance_blocked");
+        await verificationFence!.assertVerified(input.workspacePath);
+        const { stageGuardedCandidate } = await import("@osstack/autonomy");
+        const staged = await stageGuardedCandidate({ workspace_path: input.workspacePath, expected_base_commit_sha: localContract.contract.base_head, commands: verifyCommands, hardened: true });
+        assertDeliveryContractPaths(localContract, staged.changed_paths);
+        const candidate = await captureDeliveryCandidate(input.workspacePath, localContract.contract.base_head);
+        const receipt = buildDeliveryVerificationReceipt({ frozen: localContract, runId: input.run.run_id, runKind: "guarded-local", candidate,
+          workspaceStateDigest: await verificationFence!.assertVerified(input.workspacePath), commands: input.verdict.verify_commands ?? [], reviews: input.reviews, builderAgentId: input.run.agent_id,
+          builderIdentity: { ...profileRouting!.summary.builder_identity }, contextReceiptRefs: executionContext?.receiptRefs() ?? [] });
+        const ref = await persistDeliveryHostRecord(evidenceRoot, receipt);
+        await verifyPersistedDeliveryReceipt({ root: evidenceRoot, ref, frozen: localContract, runId: input.run.run_id, workspace: input.workspacePath });
+        await assertSourceUnchanged!();
+        receiptRef = ref; candidateWorkspace = input.workspacePath;
+      } }, lessonDrafts: { enabled: false } } : {}),
+    ...(maxIterations !== undefined ? { maxIterations } : {}),
+    ...(effectiveCommandTimeoutMs !== undefined
+      ? { commandTimeoutMs: effectiveCommandTimeoutMs }
+      : {}),
+    ...(localContract ? { budget: {
+      max_task_iterations: Math.min(contractPolicy!.budget.max_builder_iterations, contractPolicy!.budget.max_review_rounds),
+      max_runtime_ms: contractPolicy!.budget.max_wall_time_ms, no_progress_limit: contractPolicy!.budget.max_no_progress_rounds,
+    }, maxIterations: Math.min(maxIterations ?? 1, contractPolicy!.budget.max_builder_iterations, contractPolicy!.budget.max_review_rounds),
+    commandTimeoutMs: Math.min(effectiveCommandTimeoutMs ?? GUARDED_LOCAL_COMMAND_TIMEOUT_MS, contractPolicy!.budget.max_wall_time_ms) } : {}),
+    ...(useWorktree ? { useWorktree: true } : {}),
+    ...(worktreeRoot !== undefined ? { worktreeRoot } : {}),
+    policyGate: makePolicyGate(workspacePath),
+  });
+  const result = await engine.runOnce();
+  try { await assertSourceUnchanged?.(); } catch {
+    return deliverBlocked(args, "delivery_source_changed", "Original checkout changed during candidate execution; preserve both locations for inspection. No successful completion is claimed.");
+  }
+  const artifactArgs = ensureFlags(
+    args,
+    ["--report", "--scorecard", "--proof"],
+  );
+  const governance = candidateGovernance ?? (governanceMode === undefined
+    ? undefined
+    : await deps.createLoopGovernanceEvidence(
+      governanceMode,
+      workspacePath,
+      governanceScope ?? "workspace",
+      governanceBaseline,
+    ));
+  const events = governance === undefined
+    ? result.events
+    : deps.appendGovernanceVerifyEvent(
+      result.events,
+      result.loop_id,
+      governance,
+    );
+  const probeObservation = await deps.observeLoopProbeEvents(
+    workspacePath,
+    events,
+  );
+  const artifacts = await deps.writeRequestedLoopArtifacts(
+    result.state,
+    workspacePath,
+    artifactArgs,
+    events,
+    governance,
+    deliveryStateDirectory,
+  );
+  const learnedLessons = await deps.learnLessonsFromLoopState(result.state);
+  try { await assertSourceUnchanged?.(); } catch {
+    return deliverBlocked(args, "delivery_source_changed", "Original checkout changed while finalizing evidence; completion is blocked and changes are preserved.");
+  }
+  const contractSucceeded = receiptRef !== undefined && result.state.completed_tasks.length === 1
+    && result.state.completed_tasks.every(completed => completed.outcome === "success") && governance?.blocking !== true && result.budget?.exceeded !== true;
+  const summary = {
+    ...(localContract ? { delivery_contract: { digest: localContract.digest, brief: localContract.brief,
+      achieved_completion: contractSucceeded ? "local_verified" : null, verification_receipt: receiptRef ?? null,
+      candidate_workspace: candidateWorkspace ?? result.completedTasks.find(completed => completed.worktree_path)?.worktree_path ?? null, qualification: "local_host_receipt_only" } } : {}),
+    prompt,
+    stages,
+    suggested_verify: suggestedVerify,
+    verify_commands: verifyCommands,
+    task: task.task,
+    task_path: task.path,
+    loop_id: result.loop_id,
+    json_path: result.jsonPath,
+    markdown_path: result.markdownPath,
+    completed_tasks: result.state.completed_tasks,
+    events,
+    ...(guardedLocal
+      ? {
+          autonomy,
+          profile: profileRouting?.summary,
+        }
+      : {}),
+    ...(probeObservation === undefined
+      ? {}
+      : { probe_observation: probeObservation }),
+    ...(checkpoint !== undefined ? { checkpoint } : {}),
+    ...(artifacts !== undefined ? { artifacts } : {}),
+    ...(governance !== undefined ? { governance } : {}),
+    ...(learnedLessons !== undefined
+      ? { learned_lessons: learnedLessons }
+      : {}),
+    ...(result.state.key_metrics !== undefined
+      ? { metrics: result.state.key_metrics }
+      : {}),
+  };
+  if (args.includes("--json")) {
+    console.log(JSON.stringify(summary, null, 2));
+  } else {
+    console.log(`deliver=${result.loop_id}`);
+    console.log(`task=${task.path}`);
+    if (suggestedVerify !== undefined) {
+      console.log(`suggested_verify=${suggestedVerify}`);
+    }
+    if (governance !== undefined) {
+      console.log(
+        `governance=${governance.status} mode=${governance.mode} blocking=${governance.blocking ? "yes" : "no"}`,
+      );
+    }
+    if (artifacts?.report !== undefined) {
+      console.log(`report=${artifacts.report}`);
+    }
+    if (artifacts?.proof_dir !== undefined) {
+      console.log(`proof=${artifacts.proof_dir}`);
+    }
+  }
+  return (localContract !== undefined && !contractSucceeded) || result.state.completed_tasks.some(
+    (completed) => completed.outcome !== "success",
+  ) || governance?.blocking === true
+    ? 2
+    : 0;
+}
+
+function ensureFlags(args: string[], flags: string[]): string[] {
+  const next = [...args];
+  for (const flag of flags) {
+    if (!next.includes(flag)) next.push(flag);
+  }
+  return next;
+}
+
+export async function suggestVerifyCommand(
+  workspacePath: string,
+  options: { includeYarn?: boolean } = {},
+): Promise<string | undefined> {
+  if (await fileExists(join(workspacePath, "pnpm-lock.yaml"))) {
+    return "pnpm test";
+  }
+  if (
+    await fileExists(join(workspacePath, "bun.lockb"))
+    || await fileExists(join(workspacePath, "bun.lock"))
+  ) {
+    return "bun test";
+  }
+  if (await fileExists(join(workspacePath, "package-lock.json"))) {
+    return "npm test";
+  }
+  if (
+    options.includeYarn === true
+    && await fileExists(join(workspacePath, "yarn.lock"))
+  ) {
+    return "yarn test";
+  }
+  try {
+    const packageJson = JSON.parse(
+      await readFile(join(workspacePath, "package.json"), "utf-8"),
+    ) as unknown;
+    if (
+      isRecord(packageJson)
+      && isRecord(packageJson["scripts"])
+      && typeof packageJson["scripts"]["test"] === "string"
+    ) {
+      return "npm test";
+    }
+  } catch {
+    // No package.json or unreadable package metadata.
+  }
+  return undefined;
+}
+
+async function resolveGuardedProfileRouting(
+  args: string[],
+  agentId: string | undefined,
+  verifierAgentIds: readonly string[],
+  adapters: AgentAdapter[],
+): Promise<LoopProfileRoutingResult | Error> {
+  const resolution = await resolveLoopProfileRouting(
+    args,
+    agentId,
+    verifierAgentIds,
+    { adapters: () => adapters },
+  );
+  return resolution
+    ?? new Error("guarded-local did not resolve an execution profile");
+}
+
+function deliverBlocked(
+  args: string[],
+  code: string,
+  message: string,
+): 2 {
+  if (args.includes("--json")) {
+    console.log(JSON.stringify({
+      error: {
+        code,
+        message,
+      },
+    }, null, 2));
+  } else {
+    console.error(`osstack: [${code}] ${message}`);
+  }
+  return 2;
+}
+
+async function isGitWorktree(workspacePath: string): Promise<boolean> {
+  try {
+    const { stdout } = await execFileAsync(
+      "git",
+      ["-C", workspacePath, "rev-parse", "--is-inside-work-tree"],
+      { timeout: 10_000 },
+    );
+    return stdout.trim() === "true";
+  } catch {
+    return false;
+  }
+}
+
+function parseDeliverGovernanceMode(
+  args: string[],
+): DeliverGovernanceMode | undefined | Error {
+  const index = args.indexOf("--govern");
+  if (index < 0) return undefined;
+  const value = args[index + 1];
+  if (value === undefined || value.startsWith("--")) return "warn";
+  if (value === "warn" || value === "strict") return value;
+  return new Error("--govern must be warn or strict");
+}
+
+function parseDeliverGovernanceScope(
+  args: string[],
+  mode: DeliverGovernanceMode | undefined,
+): DeliverGovernanceScope | undefined | Error {
+  const index = args.indexOf("--govern-scope");
+  if (index < 0) return mode === undefined ? undefined : "workspace";
+  if (mode === undefined) {
+    return new Error("--govern-scope requires --govern");
+  }
+  const value = args[index + 1];
+  if (
+    value === "workspace"
+    || value === "changed"
+    || value === "baseline"
+  ) {
+    return value;
+  }
+  return new Error(
+    "--govern-scope must be workspace, changed, or baseline",
+  );
+}
+
+function parsePositiveIntegerFlag(
+  value: string | undefined,
+  name: string,
+): number | undefined | Error {
+  if (value === undefined) return undefined;
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed < 1) {
+    return new Error(`${name} must be a positive integer`);
+  }
+  return parsed;
+}
+
+function firstPositionalValue(
+  args: string[],
+  flagsWithValues: Set<string>,
+): string | undefined {
+  return positionalValues(args, flagsWithValues)[0];
+}
+
+function positionalValues(
+  args: string[],
+  flagsWithValues: Set<string>,
+): string[] {
+  const values: string[] = [];
+  for (let i = 0; i < args.length; i++) {
+    const arg = args[i]!;
+    if (flagsWithValues.has(arg)) {
+      i++;
+      continue;
+    }
+    if (arg.startsWith("--")) continue;
+    values.push(arg);
+  }
+  return values;
+}
+
+function flagValue(args: string[], name: string): string | undefined {
+  const index = args.indexOf(name);
+  return index >= 0 && index + 1 < args.length
+    ? args[index + 1]
+    : undefined;
+}
+
+function flagValues(args: string[], name: string): string[] {
+  const values: string[] = [];
+  for (let i = 0; i < args.length; i++) {
+    if (args[i] === name && i + 1 < args.length) {
+      values.push(args[i + 1]!);
+      i++;
+    }
+  }
+  return values;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object"
+    && value !== null
+    && !Array.isArray(value);
+}
+
+async function fileExists(path: string): Promise<boolean> {
+  try {
+    await stat(path);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+
+FILE packages/cli/src/delivery-contract-host.test.ts
+import { execFileSync } from "node:child_process";
+import { chmod, mkdir, readFile, rm, stat, symlink, writeFile } from "node:fs/promises";
+import { join } from "node:path";
+import { createScratchDir, deliveryCheckReference, freezeDeliveryContract } from "@osstack/core";
+import { afterEach, beforeEach, expect, it } from "vitest";
+import { deliveryGit, createDeliverySourceFence, createDeliveryVerificationFence, persistDeliveryHostRecord, readDeliveryHostRecord } from "./delivery-contract-host.js";
+
+let root: string;
+beforeEach(async () => { root = await createScratchDir("tests", "contract-host"); });
+afterEach(async () => { await rm(root, { recursive: true, force: true }); });
+it("reads only digest-bound local host files and rejects tampering, traversal and symlinks", async () => {
+  const directory = join(root, "receipts");
+  const ref = await persistDeliveryHostRecord(directory, { trusted: "host" });
+  await expect(readDeliveryHostRecord(directory, ref)).resolves.toEqual({ trusted: "host" });
+  const outside = join(root, `${ref.digest}.json`); await writeFile(outside, await readFile(ref.path));
+  await expect(readDeliveryHostRecord(directory, { ...ref, path: outside })).rejects.toThrow("path_invalid");
+  await rm(ref.path); await symlink(outside, ref.path);
+  await expect(readDeliveryHostRecord(directory, ref)).rejects.toThrow("path_invalid");
+  await expect(persistDeliveryHostRecord(directory, { trusted: "host" })).rejects.toThrow("path_invalid");
+  await rm(ref.path); await writeFile(ref.path, '{"trusted":"forged"}\n');
+  await expect(readDeliveryHostRecord(directory, ref)).rejects.toThrow("digest_mismatch");
+});
+it("fences tracked and new files without altering the candidate index", async () => {
+  const workspace = join(root, "repo"); await mkdir(workspace);
+  const git = (args: string[]) => execFileSync("git", args, { cwd: workspace, encoding: "utf8" }).trim();
+  git(["init", "-b", "main"]); await mkdir(join(workspace, "src")); await writeFile(join(workspace, "src/a.txt"), "old");
+  await writeFile(join(workspace, "private.txt"), "outside scope");
+  git(["add", "."]); git(["-c", "user.name=test", "-c", "user.email=test@example.invalid", "commit", "-m", "seed"]);
+  const base = git(["rev-parse", "HEAD"]);
+  const frozen = freezeDeliveryContract({ schema_version: 2, contract_id: "contract", task_id: "task", canonical_repo: workspace,
+    mode: "implement", base_head: base, goal: "change", required_checks: [{ id: "test", registry_ref: deliveryCheckReference("pnpm test") }],
+    review_policy_ref: "profile:test", requested_completion: "local_verified", allowed_paths: ["src"], requested_actions: ["build", "verify"],
+    budget_ref: "policy", policy_digest: "a".repeat(64), publication_scope: { mode: "none" }, merge_authority: { mode: "none" } });
+  const marker = join(root, "external-executed"); const hook = join(root, "hook.sh");
+  await writeFile(hook, `#!/bin/sh\nprintf hacked > '${marker}'\n`); await chmod(hook, 0o700);
+  git(["config", "core.fsmonitor", hook]); git(["config", "diff.external", hook]);
+  await writeFile(join(workspace, "src/a.txt"), "host-read");
+  await deliveryGit(workspace, ["diff", "--binary", "HEAD"]);
+  await deliveryGit(workspace, ["ls-files", "-v"]);
+  await expect(stat(marker)).rejects.toMatchObject({ code: "ENOENT" });
+  git(["config", "--unset", "core.fsmonitor"]); git(["config", "--unset", "diff.external"]);
+  await writeFile(join(workspace, "src/a.txt"), "old");
+  const verifier = createDeliveryVerificationFence(frozen); await verifier.prepare(workspace);
+  await writeFile(join(workspace, "src/a.txt"), "candidate");
+  const fence = await verifier(workspace);
+  expect(git(["diff", "--cached", "--name-only"])).toBe("");
+  await expect(fence()).resolves.toBeUndefined();
+  git(["add", "-A"]);
+  await expect(verifier.assertVerified(workspace)).resolves.toMatch(/^[a-f0-9]{64}$/);
+  await writeFile(join(workspace, "src/a.txt"), "changed during check");
+  await expect(fence()).rejects.toThrow("changed_during_verification");
+  await expect(verifier.assertVerified(workspace)).rejects.toThrow("reviewed_candidate_changed");
+  await writeFile(join(workspace, "src/new.txt"), "new candidate");
+  const newFence = await verifier(workspace);
+  await writeFile(join(workspace, "src/new.txt"), "changed new candidate");
+  await expect(newFence()).rejects.toThrow("changed_during_verification");
+  git(["mv", "private.txt", "src/private.txt"]);
+  await expect(verifier(workspace)).rejects.toThrow("path_outside_scope");
+});
+
+it("samples ignored source directories as roots and refuses intermediate symlink escapes", async () => {
+  const workspace=join(root,"source");await mkdir(workspace);const git=(...args:string[])=>execFileSync("git",args,{cwd:workspace,encoding:"utf8"}).trim();
+  git("init","-b","main");await mkdir(join(workspace,"src"));await writeFile(join(workspace,"src/a"),"original");await writeFile(join(workspace,".gitignore"),"node_modules/\nignored/\n");
+  git("add",".");git("-c","user.name=test","-c","user.email=test@example.invalid","commit","-m","seed");const base=git("rev-parse","HEAD");
+  await mkdir(join(workspace,"node_modules"));await writeFile(join(workspace,"node_modules/dependency"),"one");
+  const fence=await createDeliverySourceFence(workspace,base);
+  await writeFile(join(workspace,"node_modules/another"),"unqualified dependency contents");await expect(fence()).resolves.toBeUndefined();
+  await mkdir(join(workspace,"ignored"));await writeFile(join(workspace,"ignored/new"),"new ignored root");await expect(fence()).rejects.toThrow("delivery_source_changed");
+  await rm(join(workspace,"src"),{recursive:true});const outside=join(root,"outside");await mkdir(outside);await writeFile(join(outside,"a"),"secret");await symlink(outside,join(workspace,"src"));
+  await expect(createDeliverySourceFence(workspace,base)).rejects.toThrow("parent_escape");
+});
+
+
+FILE packages/cli/src/delivery-entrypoint.test.ts
+import { execFileSync } from "node:child_process";
+import { createHash } from "node:crypto";
+import { cp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { realpathSync } from "node:fs";
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+import type { AgentAdapter, AgentTask } from "@osstack/agents";
+import {
+  CapabilitySchema,
+  createScratchDir,
+  deliveryCheckReference,
+} from "@osstack/core";
+import type { HermesEvent } from "@osstack/hermes-adapter";
+import { afterEach, expect, it, vi } from "vitest";
+const ports = vi.hoisted(() => ({ adapters: [] as AgentAdapter[] }));
+vi.mock("@osstack/agents", async (original) => ({
+  ...(await original<typeof import("@osstack/agents")>()),
+  defaultAdapters: () => ports.adapters,
+}));
+import { createDeliverCommandDeps, main } from "./bin.js";
+let root: string | undefined;
+let candidate: string | undefined;
+let repo: string | undefined;
+afterEach(async () => {
+  vi.restoreAllMocks();
+  vi.unstubAllEnvs();
+  if (candidate && repo)
+    execFileSync("git", [
+      "-C",
+      repo,
+      "worktree",
+      "remove",
+      "--force",
+      candidate,
+    ]);
+  if (root) await rm(root, { recursive: true, force: true });
+  candidate = undefined;
+  repo = undefined;
+  root = undefined;
+});
+const hash = (value: string | Buffer) =>
+  createHash("sha256").update(value).digest("hex");
+it.each([false,true])("runs the real V2 delivery and rejects source mutation: %s", async (mutateSource) => {
+  root = realpathSync(await createScratchDir("tests", "delivery-entrypoint"));
+  repo = join(root, "repo");
+  await cp(
+    resolve(
+      dirname(fileURLToPath(import.meta.url)),
+      "../../../fixtures/guarded-local",
+    ),
+    repo,
+    { recursive: true },
+  );
+  const home = join(root, "home");
+  await mkdir(home);
+  vi.stubEnv("OSSTACK_HOME", home);
+  vi.stubEnv("OSSTACK_CONFIG", join(home, "absent.yaml"));
+  const git = (...args: string[]) =>
+    execFileSync("git", ["-C", repo!, ...args], {
+      encoding: "utf8",
+      stdio: "pipe",
+    }).trim();
+  git("init", "-b", "main");
+  await mkdir(join(repo, ".osstack"), { recursive: true });
+  await writeFile(
+    join(repo, ".osstack/repo.yaml"),
+    JSON.stringify({
+      schema_version: 2,
+      product: "entrypoint",
+      role: "core_product",
+      default_branch: "main",
+      verify_command: "pnpm test",
+      autonomy: {
+        max_auto_risk: "R2",
+        require_independent_evaluator: true,
+        max_builder_iterations: 1,
+        max_review_rounds: 1,
+        max_wall_time_minutes: 2,
+        max_no_progress_rounds: 1,
+      },
+      git: {
+        remote: "origin",
+        branch_prefix: "codex",
+        merge_strategy: "squash",
+        auto_merge: false,
+        protected_branches: ["main"],
+      },
+      verification: {
+        quick: ["pnpm test"],
+        standard: ["pnpm test"],
+        release: ["pnpm test"],
+      },
+    }),
+  );
+  await writeFile(
+    join(repo, ".osstack/policy.yaml"),
+    JSON.stringify({
+      schema_version: 1,
+      mode: "execute",
+      auto_apply: true,
+      allowed_auto_changes: ["docs", "tests"],
+      requires_approval: ["source"],
+      forbidden: ["secrets"],
+      budgets: { max_iterations: 5, max_runtime_minutes: 45, max_cost_usd: 20 },
+    }),
+  );
+  const pack = JSON.stringify({
+    id: "local/cache",
+    version: "1",
+    name: "Cache",
+    license: "MIT",
+    source_kind: "internal",
+    quality_score: 90,
+    scope: "project",
+    chunks: [
+      { chunk_id: "cache", title: "Cache", body: "Cache isolation reference" },
+    ],
+  });
+  await writeFile(join(repo, "pack.json"), pack);
+  const context = join(repo, "context.json");
+  await writeFile(
+    context,
+    JSON.stringify({
+      schema_version: 1,
+      mode: "local",
+      repo_path: repo,
+      default_tenant: true,
+      packs: [
+        {
+          path: "pack.json",
+          pack_id: "local/cache",
+          version: "1",
+          sha256: hash(pack),
+          scope: "project",
+          verified_at_ms: Date.now() - 1000,
+          expires_at_ms: Date.now() + 120000,
+        },
+      ],
+    }),
+  );
+  git("add", ".");
+  git(
+    "-c",
+    "user.name=Test",
+    "-c",
+    "user.email=test@example.invalid",
+    "commit",
+    "-m",
+    "fixture",
+  );
+  const base = git("rev-parse", "HEAD");
+  const source = await readFile(join(repo, "src/greeting.ts"), "utf8");
+  const policy = await createDeliverCommandDeps().deliveryContractPolicy!(repo);
+  const contract = join(root, "contract.json");
+  await writeFile(
+    contract,
+    JSON.stringify({
+      schema_version: 2,
+      contract_id: "entrypoint",
+      task_id: "entrypoint-task",
+      canonical_repo: repo,
+      mode: "implement",
+      base_head: base,
+      goal: "Improve cache isolation",
+      required_checks: [
+        { id: "tests", registry_ref: deliveryCheckReference("pnpm test") },
+      ],
+      review_policy_ref: "profile:mac-mini",
+      requested_completion: "local_verified",
+      allowed_paths: ["src"],
+      requested_actions: ["build", "verify"],
+      budget_ref: policy.budgetRef,
+      policy_digest: policy.policyDigest,
+      publication_scope: { mode: "none" },
+      merge_authority: { mode: "none" },
+    }),
+  );
+  const prompts = new Map<string, string>();
+  const identity = (id: string) => ({
+    adapter_id: id,
+    adapter_version: "1.0.0",
+    auth_mode: "test",
+    provider_id: id === "claude-code" ? "anthropic" : "kimi",
+    model_id: id === "claude-code" ? "claude-current" : "kimi-code/k3",
+    evidence_source: "reported" as const,
+  });
+  ports.adapters = ["claude-code", "kimi-code"].map((id) => ({
+    id,
+    display_name: id,
+    cost_tier: "mid" as const,
+    capabilities: () => [
+      CapabilitySchema.parse({
+        id: id + ".test",
+        agent_id: id,
+        kind: id === "claude-code" ? "code.write" : "code.review",
+        description: id,
+        cost_tier: "mid",
+      }),
+    ],
+    isAvailable: async () => ({ available: true, last_checked_at: 1 }),
+    runtimeIdentity: async () => identity(id),
+    async *invoke(task: AgentTask): AsyncIterable<HermesEvent> {
+      prompts.set(task.run_id, task.prompt);
+      if (id === "claude-code") {
+        candidate = String(task.context?.["repo_path"]);
+        if (mutateSource) await writeFile(join(repo!, "src/greeting.ts"), "\n// escaped candidate\n", {flag:"a"});
+        await writeFile(
+          join(candidate, "src/greeting.ts"),
+          "\nexport const isolated = true;\n",
+          { flag: "a" },
+        );
+      }
+      yield {
+        event_id: task.run_id + ":1",
+        seq: 1,
+        run_id: task.run_id,
+        session_id: task.session_id,
+        created_at: Date.now() / 1000,
+        terminal: true,
+        type: "done",
+        payload: {
+          status: "completed",
+          last_seq: 0,
+          result_summary: "complete",
+          ...(id === "kimi-code"
+            ? {
+                review: {
+                  schema_version: 1,
+                  verdict: "approved",
+                  risk: "read_only",
+                  markdown: "Approved",
+                  judgments: [],
+                  findings: [],
+                  recommended_actions: [],
+                  evidence_refs: [],
+                  runtime_identity: identity(id),
+                },
+              }
+            : {}),
+        },
+      };
+    },
+  }));
+  const logs: string[] = [];
+  const errors: string[] = [];
+  vi.spyOn(console, "log").mockImplementation((...args) => {
+    logs.push(args.map(String).join(" "));
+  });
+  vi.spyOn(console, "error").mockImplementation((...args) => {
+    errors.push(args.map(String).join(" "));
+  });
+  const code = await main([
+    "deliver",
+    "--workspace",
+    repo,
+    "--profile",
+    "mac-mini",
+    "--autonomy",
+    "guarded-local",
+    "--contract",
+    contract,
+    "--execution-context",
+    context,
+    "--json",
+  ]);
+  if (mutateSource) {
+    expect(code).not.toBe(0);
+    expect(logs.join("\n") + errors.join("\n")).toContain("delivery_source_changed");
+    expect(await readFile(join(repo, "src/greeting.ts"), "utf8")).not.toBe(source);
+    return;
+  }
+  expect(code, logs.join("\n") + errors.join("\n")).toBe(0);
+  const result = JSON.parse(logs.join("\n"));
+  expect(result.delivery_contract.achieved_completion).toBe("local_verified");
+  expect(git("rev-parse", "HEAD")).toBe(base);
+  expect(await readFile(join(repo, "src/greeting.ts"), "utf8")).toBe(source);
+  expect(git("status", "--porcelain")).toBe("");
+  expect(result.json_path.startsWith(join(home, "delivery-contracts"))).toBe(true);
+  expect(result.task_path.startsWith(join(home, "delivery-contracts"))).toBe(true);
+  const receipt = JSON.parse(
+    await readFile(result.delivery_contract.verification_receipt.path, "utf8"),
+  );
+  expect(receipt.context_receipt_refs.length).toBeGreaterThanOrEqual(4);
+  for (const ref of receipt.context_receipt_refs) {
+    const bytes = await readFile(ref.path);
+    expect(hash(bytes)).toBe(ref.digest);
+    expect(ref.path.startsWith(join(home, "execution-context-receipts"))).toBe(
+      true,
+    );
+    const recorded = JSON.parse(bytes.toString());
+    expect(recorded.prompt_sha256).toBe(hash(prompts.get(recorded.run_id)!));
+    expect(recorded.contract_digest).toBe(result.delivery_contract.digest);
+  }
+  expect(
+    [...prompts.values()].some((prompt) =>
+      prompt.includes("Cache isolation reference"),
+    ),
+  ).toBe(true);
+}, 60000);
+
+
+FILE packages/cli/src/guarded-git-runtime.ts
+import { realpath } from "node:fs/promises";
+import { createDeliveryVerificationFence, buildDeliveryVerificationReceipt, captureDeliveryCandidate, persistDeliveryHostRecord, verifyPersistedDeliveryReceipt, deliveryGit } from "./delivery-contract-host.js";
+import { createHash } from "node:crypto";
+import { mkdir, writeFile } from "node:fs/promises";
+import { join } from "node:path";
+import {
+  assertGuardedCandidateBase,
+  assertGuardedCandidateHead,
+  assertGuardedMergedCandidate,
+  commitGuardedCandidate,
+  computeDeployScriptAuthority,
+  contractDecisionIdForApprovalNonce,
+  evaluateDeployEligibility,
+  GuardedDeliveryEngine,
+  GuardedDeliveryContextSchema,
+  GuardedDeployPolicySchema,
+  LocalDeliveryResult,
+  runProjectDeploy,
+  SqliteGuardedDeliveryStore,
+  stageGuardedCandidate,
+  type CandidateProofInput,
+  type FinalProofInput,
+  type GuardedDeliveryPolicy,
+  type GuardedDeliveryResult,
+  type ProofReference,
+} from "@osstack/autonomy";
+import {
+  defaultAdapters,
+  type AgentAdapter,
+} from "@osstack/agents";
+import {
+  freezeProduction,
+  assertFrozenDeliveryContract,
+  assertDeliveryContractAdmission,
+  assertDeliveryContractPaths,
+  getProductionFreeze,
+  getContractDecision,
+} from "@osstack/core";
+import {
+  deliverToGitHub,
+  openPullRequestToGitHub,
+  observeCurrentGreenCandidate,
+  CandidateEvidenceContextSchema,
+  type CandidateEvidenceContext,
+  type DeliveryCommandRunner,
+  type GitHubDeliveryResult,
+} from "@osstack/github";
+import {
+  LoopEngine,
+  LoopProfileRoutingEvidence,
+  Task,
+  type LoopEvent,
+  type LoopState,
+} from "@osstack/loop";
+import {
+  ScopedApprovalDecision,
+  FrozenDeliveryContractV2,
+  type DeliveryReceiptReferenceV2,
+  type ScopedApprovalDecision as ScopedApprovalDecisionType,
+} from "@osstack/protocol";
+import { z } from "zod";
+import { makePolicyGate } from "./policy-gate.js";
+
+const Sha256 = z.string().regex(/^[a-f0-9]{64}$/);
+const GitCommitSha = z.string().regex(/^(?:[a-f0-9]{40}|[a-f0-9]{64})$/);
+const AbsolutePath = z.string().min(1).refine(
+  (value) => value.startsWith("/"),
+  "path must be absolute",
+);
+const RuntimeProfile = LoopProfileRoutingEvidence.extend({
+  builder_identity: z.record(z.unknown()),
+  evaluator_identity: z.record(z.unknown()),
+}).passthrough();
+
+export const GuardedGitRouting = z
+  .object({
+    delivery_contract: FrozenDeliveryContractV2.optional(),
+    execution_context_path: z.string().min(1).optional(),
+    schema_version: z.literal(1),
+    task: Task,
+    profile: RuntimeProfile,
+    verify_commands: z.array(z.string().min(1)).min(1),
+    command_timeout_ms: z.number().int().min(1_000),
+    evidence_root: AbsolutePath,
+    base_commit_sha: GitCommitSha,
+    policy_sha256: Sha256,
+    max_auto_risk: z.enum(["R1", "R2"]),
+    protected_policy_paths: z.array(z.string().min(1)),
+    approval_ttl_ms: z.number().int().min(1_000).max(86_400_000),
+    git: z
+      .object({
+        remote: z.string().min(1),
+        base: z.string().min(1),
+        branch: z.string().min(1),
+        title: z.string().min(1).max(256),
+        body_file: AbsolutePath,
+        ci_timeout_ms: z.number().int().min(1_000).max(86_400_000),
+      })
+      .strict(),
+    deploy: GuardedDeployPolicySchema.optional(),
+  })
+  .strict();
+export type GuardedGitRouting = z.infer<typeof GuardedGitRouting>;
+
+export type GuardedGitProofInput =
+  | {
+      stage: "candidate";
+      routing: GuardedGitRouting;
+      evidence: CandidateProofInput;
+    }
+  | {
+      stage: "final";
+      routing: GuardedGitRouting;
+      evidence: FinalProofInput;
+      candidate_proof: ProofReference;
+      git_delivery: GitHubDeliveryResult;
+    };
+
+export interface GuardedGitRuntimeDeps {
+  db: Parameters<typeof getContractDecision>[0];
+  dbPath: string;
+  trustedApprovalPublicKeys: ReadonlyMap<string, string>;
+  adapters?: () => AgentAdapter[];
+  createExecutionContext?: (input: { adapters: readonly AgentAdapter[]; workspacePath: string; configPath: string;
+    contractDigest?: string; contractBrief?: string }) => Promise<{ adapters: readonly AgentAdapter[]; receiptRefs(): readonly DeliveryReceiptReferenceV2[] }>;
+  now?: () => Date;
+  writeProof(input: GuardedGitProofInput): Promise<ProofReference>;
+  deliverGit?: typeof deliverToGitHub;
+  /** Trusted controller injection only; never derived from product/queue/routing JSON. */
+  candidateDeliveryContext?: (input: Readonly<{
+    workspacePath: string;
+    routing: GuardedGitRouting;
+    budget: GuardedDeliveryPolicy["budget"];
+  }>) => Promise<CandidateEvidenceContext | undefined>;
+  candidateDeliveryRunner?: DeliveryCommandRunner;
+  assertPolicyUnchanged?: (
+    workspacePath: string,
+    expectedPolicySha256: string,
+    baseRevision?: string,
+  ) => Promise<void>;
+  evaluateGovernance?: (
+    workspacePath: string,
+  ) => Promise<{ blocking: boolean; evidence: unknown }>;
+}
+
+export interface GuardedGitStartInput {
+  autonomy_run_id: string;
+  task_id: string;
+  repo_id: string;
+  workspace_path: string;
+  goal: string;
+  expected_paths: string[];
+  requested_actions: string[];
+  contract_sha256: string;
+  routing: GuardedGitRouting;
+  budget: GuardedDeliveryPolicy["budget"];
+}
+
+export interface GuardedGitResumeOptions {
+  recoveryKind?: "restart";
+}
+
+export interface GuardedLocalEvidence {
+  state: LoopState;
+  events: LoopEvent[];
+}
+
+function sha256(value: string): string {
+  return createHash("sha256").update(value).digest("hex");
+}
+
+function uniqueSorted(values: readonly string[]): string[] {
+  return [...new Set(values)].sort();
+}
+
+function stringIdentityField(
+  identity: Record<string, unknown>,
+  key: string,
+): string {
+  const value = identity[key];
+  if (typeof value !== "string" || value.length === 0) {
+    throw new Error(`runtime identity ${key} is missing`);
+  }
+  return value;
+}
+
+function runtimeIdentity(identity: Record<string, unknown>) {
+  const evidenceSource = stringIdentityField(
+    identity,
+    "evidence_source",
+  );
+  return {
+    provider_id: stringIdentityField(identity, "provider_id"),
+    model_id: stringIdentityField(identity, "model_id"),
+    evidence_source: evidenceSource,
+  };
+}
+
+function findingFingerprints(
+  completed: LoopState["completed_tasks"][number],
+): string[] {
+  return uniqueSorted(
+    (completed.review_artifacts ?? []).flatMap((artifact) =>
+      artifact.findings.map((finding) => finding.fingerprint)
+    ),
+  );
+}
+
+function failedCommands(
+  completed: LoopState["completed_tasks"][number],
+): string[] {
+  return uniqueSorted(
+    [
+      ...(completed.execution_commands ?? []),
+      ...(completed.verify_commands ?? []),
+    ]
+      .filter((command) => command.exit_code !== 0)
+      .map((command) => command.command),
+  );
+}
+
+function reviewPassed(
+  completed: LoopState["completed_tasks"][number],
+): boolean {
+  const artifacts = completed.review_artifacts ?? [];
+  return artifacts.length > 0
+    && artifacts.every((artifact) => artifact.verdict === "approved");
+}
+
+function countIssueRule(
+  completed: LoopState["completed_tasks"][number],
+  rule: string,
+): number {
+  return (completed.verify_issues ?? []).filter(
+    (issue) => issue.rule === rule,
+  ).length;
+}
+
+function countUnauthorizedGovernanceFindings(value: unknown): number {
+  if (Array.isArray(value)) {
+    return value.reduce(
+      (sum, item) => sum + countUnauthorizedGovernanceFindings(item),
+      0,
+    );
+  }
+  if (
+    typeof value !== "object"
+    || value === null
+  ) {
+    return 0;
+  }
+  let count = 0;
+  for (const [key, child] of Object.entries(value)) {
+    if (
+      (key === "rule" || key === "rule_id" || key === "code")
+      && typeof child === "string"
+      && /unauthorized(?:_action)?/i.test(child)
+    ) {
+      count += 1;
+      continue;
+    }
+    count += countUnauthorizedGovernanceFindings(child);
+  }
+  return count;
+}
+
+function policyFromRouting(
+  routing: GuardedGitRouting,
+  budget: GuardedDeliveryPolicy["budget"],
+  deps: GuardedGitRuntimeDeps,
+): GuardedDeliveryPolicy {
+  return {
+    ...(routing.delivery_contract ? { delivery_contract: routing.delivery_contract } : {}),
+    policy_sha256: routing.policy_sha256,
+    max_auto_risk: routing.max_auto_risk,
+    protected_policy_paths: routing.protected_policy_paths,
+    routing,
+    budget,
+    approval_ttl_ms: routing.approval_ttl_ms,
+    trusted_approval_public_keys: deps.trustedApprovalPublicKeys,
+    consume_approval_nonce: (nonce) =>
+      getContractDecision(
+        deps.db,
+        contractDecisionIdForApprovalNonce(nonce),
+      ) !== undefined,
+    ...(routing.deploy === undefined
+      ? {}
+      : { deploy: routing.deploy }),
+    git: routing.git,
+  };
+}
+
+export class GuardedGitRuntime {
+  private readonly deps: GuardedGitRuntimeDeps;
+  private readonly store: SqliteGuardedDeliveryStore;
+
+  constructor(deps: GuardedGitRuntimeDeps) {
+    this.deps = deps;
+    this.store = new SqliteGuardedDeliveryStore({
+      db: deps.db,
+      dbPath: deps.dbPath,
+      ...(deps.now === undefined ? {} : { now: deps.now }),
+    });
+  }
+
+  async start(input: GuardedGitStartInput): Promise<GuardedDeliveryResult> {
+    const routing = GuardedGitRouting.parse(input.routing);
+    if (routing.delivery_contract) {
+      input = { ...input, workspace_path: await realpath(input.workspace_path) };
+      const frozen = assertFrozenDeliveryContract(routing.delivery_contract);
+      assertDeliveryContractAdmission(frozen, { canonicalRepo: await realpath(input.workspace_path), baseHead: routing.base_commit_sha,
+        taskId: input.task_id, goal: input.goal, policyDigest: routing.policy_sha256, reviewPolicyRef: `profile:${routing.profile.profile_name}`,
+        acceptedCommands: routing.verify_commands });
+      if (frozen.contract.budget_ref !== `policy:${routing.policy_sha256}`) throw new Error("delivery_contract_budget_ref_mismatch");
+      if (input.contract_sha256 !== frozen.digest || routing.task.task_id !== input.task_id || routing.task.prompt !== input.goal
+        || JSON.stringify(uniqueSorted(input.expected_paths)) !== JSON.stringify(frozen.contract.allowed_paths)
+        || JSON.stringify(uniqueSorted(input.requested_actions)) !== JSON.stringify(frozen.contract.requested_actions)) throw new Error("delivery_contract_runtime_identity_mismatch");
+      const publication = frozen.contract.publication_scope;
+      if (publication.mode !== "none" && (publication.repository.toLowerCase() !== input.repo_id.toLowerCase()
+        || publication.remote !== routing.git.remote || publication.base_ref !== routing.git.base || publication.head_ref !== routing.git.branch))
+        throw new Error("delivery_contract_publication_scope_mismatch");
+    }
+    const verifiedBase = await assertGuardedCandidateBase({
+      workspace_path: input.workspace_path,
+      remote: routing.git.remote,
+      base: routing.git.base,
+    });
+    if (verifiedBase.base_commit_sha !== routing.base_commit_sha) {
+      throw new Error(
+        "guarded routing base commit does not match the fetched base",
+      );
+    }
+    await this.assertPolicy(routing, input.workspace_path);
+    return await this.engine(routing, input.budget).start({
+      autonomy_run_id: input.autonomy_run_id,
+      task_id: input.task_id,
+      repo_id: input.repo_id,
+      workspace_path: input.workspace_path,
+      goal: input.goal,
+      expected_paths: uniqueSorted(input.expected_paths),
+      requested_actions: uniqueSorted(input.requested_actions),
+      contract_sha256: Sha256.parse(input.contract_sha256),
+    });
+  }
+
+  async resume(
+    autonomyRunId: string,
+    decisionValue?: ScopedApprovalDecisionType,
+    options: GuardedGitResumeOptions = {},
+  ): Promise<GuardedDeliveryResult> {
+    const loaded = await this.store.load(autonomyRunId);
+    if (loaded === undefined) {
+      throw new Error(`autonomy run ${autonomyRunId} was not found`);
+    }
+    const context = GuardedDeliveryContextSchema.parse(loaded.context);
+    const routing = GuardedGitRouting.parse(context.routing);
+    const budget = context.budget;
+    const intent = context.intent;
+    if (budget === undefined || intent === undefined) {
+      throw new Error("persisted autonomy run lacks budget or intent");
+    }
+    // Before local execution, policy must still match the classified
+    // authority. Once an exact staged candidate exists, its persisted
+    // base/diff digests and the commit port's TOCTOU checks are authoritative.
+    // Re-reading a deliberately changed protected policy file here would
+    // otherwise make an approved post-diff R3 run impossible to resume.
+    if (context.local_result === undefined) {
+      await this.assertPolicy(routing, intent.workspace_path);
+    }
+    return await this.engine(
+      routing,
+      budget,
+      options.recoveryKind,
+    ).resume(
+      autonomyRunId,
+      decisionValue === undefined
+        ? undefined
+        : ScopedApprovalDecision.parse(decisionValue),
+    );
+  }
+
+  private engine(
+    routing: GuardedGitRouting,
+    budget: GuardedDeliveryPolicy["budget"],
+    recoveryKind?: "restart",
+  ): GuardedDeliveryEngine {
+    let recoveryRecorded = false;
+    return new GuardedDeliveryEngine(
+      policyFromRouting(routing, budget, this.deps),
+      {
+        now: this.deps.now ?? (() => new Date()),
+        load: (runId) => this.store.load(runId),
+        persist: async (event) => {
+          const recordRecovery =
+            recoveryKind !== undefined && !recoveryRecorded;
+          const persisted = await this.store.persist({
+            ...event,
+            ...(recordRecovery
+              ? { recovery: { kind: recoveryKind } }
+              : {}),
+          });
+          if (recordRecovery) recoveryRecorded = true;
+          return persisted;
+        },
+        runLocal: ({ workspacePath, runId }) =>
+          this.runLocal(workspacePath, routing, runId),
+        verifyContractReceipt: async ({ contract, ref, runId, workspacePath, expectedHeads }) => {
+          await this.assertPolicy(routing, workspacePath);
+          await verifyPersistedDeliveryReceipt({ root: join(routing.evidence_root, "contract-receipts"), ref,
+            frozen: contract, runId, workspace: workspacePath, expectedHeads });
+        },
+        writeContractCompletionReceipt: async (input) => persistDeliveryHostRecord(join(routing.evidence_root, "contract-receipts"), {
+          schema_version: 2, kind: "delivery_completion", ...input, qualification: "host_receipts_not_external_publication_qualification",
+        }),
+        openPullRequest: async (input, scope) => {
+          const contractScope = routing.delivery_contract?.contract.publication_scope;
+          if (!contractScope || contractScope.mode === "none" || contractScope.repository !== scope.repository
+            || contractScope.remote !== input.remote || contractScope.base_ref !== input.base || contractScope.head_ref !== input.branch)
+            throw new Error("delivery_publication_scope_changed");
+          if ((await deliveryGit(input.workspacePath, ["rev-parse", "HEAD"])).trim() !== scope.headCommit)
+            throw new Error("delivery_publication_candidate_changed");
+          return openPullRequestToGitHub(input, scope, this.deps.candidateDeliveryRunner);
+        },
+        writeCandidateProof: async (evidence) => {
+          const proof = await this.deps.writeProof({
+            stage: "candidate",
+            routing,
+            evidence,
+          });
+          await writeFile(
+            routing.git.body_file,
+            [
+              "# OSStack guarded delivery",
+              "",
+              "Candidate proof: local `manifest.json`",
+              `Candidate proof SHA-256: \`${proof.manifest_sha256}\``,
+              "",
+            ].join("\n"),
+            "utf8",
+          );
+          return proof;
+        },
+        writeFinalProof: (evidence) =>
+          this.deps.writeProof({
+            stage: "final",
+            routing,
+            evidence,
+            candidate_proof: evidence.candidate_proof,
+            git_delivery: evidence.git_delivery,
+          }),
+        commit: async (input) => {
+          const run = await this.store.load(input.autonomy_run_id);
+          const local = run?.context.local_result;
+          if (local === undefined) {
+            throw new Error("commit port has no persisted local result");
+          }
+          return await commitGuardedCandidate({
+            workspace_path: input.workspace_path,
+            expected_base_commit_sha:
+              local.post_diff.base_commit_sha,
+            expected_diff_sha256: input.diff_sha256,
+            idempotency_key: input.idempotency_key,
+            message: routing.git.title,
+            ...(routing.delivery_contract ? { hardened: true } : {}),
+          });
+        },
+        deliverGit: async (input) => {
+          const deliver = this.deps.deliverGit ?? deliverToGitHub;
+          const sample = this.deps.candidateDeliveryContext;
+          if (sample === undefined) return deliver(input);
+          if (this.deps.assertPolicyUnchanged === undefined) throw new Error("CANDIDATE_CONTEXT_POLICY_GUARD_REQUIRED");
+          const readContext = async () => {
+            try {
+              const value = await sample(structuredClone({ workspacePath: input.workspacePath, routing, budget }));
+              return value === undefined ? undefined : CandidateEvidenceContextSchema.parse(value);
+            } catch { throw new Error("CANDIDATE_CONTEXT_INVALID"); }
+          };
+          await this.assertPolicy(routing, input.workspacePath);
+          const before = await readContext();
+          if (before === undefined) { await this.assertPolicy(routing, input.workspacePath); return deliver(input); }
+          const evidence = await observeCurrentGreenCandidate(input, before, this.deps.candidateDeliveryRunner);
+          await this.assertPolicy(routing, input.workspacePath);
+          const after = await readContext();
+          if (after === undefined) { await this.assertPolicy(routing, input.workspacePath); return deliver(input); }
+          if (JSON.stringify(before) !== JSON.stringify(after)) throw new Error("CANDIDATE_CONTEXT_CHANGED");
+          await this.assertPolicy(routing, input.workspacePath);
+          return evidence === undefined ? deliver(input) : deliver({ ...input, candidateEvidence: evidence, evidenceContext: after });
+        },
+        prepareMergedWorkspace: async (input) => {
+          await this.assertPolicy(
+            routing,
+            input.workspace_path,
+          );
+          await assertGuardedMergedCandidate(input);
+        },
+        resolveDeployScriptAuthority:
+          computeDeployScriptAuthority,
+        evaluateDeploy: evaluateDeployEligibility,
+        deploy: runProjectDeploy,
+        isProductionFrozen: async (repoId) =>
+          getProductionFreeze(this.deps.db, repoId)?.frozen === 1,
+        freezeProduction: async (input) => {
+          const frozen = freezeProduction(
+            this.deps.db,
+            this.deps.dbPath,
+            input,
+          );
+          return {
+            repo_id: frozen.repo_id,
+            reason: frozen.reason,
+            source_run_id: frozen.source_run_id,
+            frozen_at: frozen.frozen_at,
+          };
+        },
+      },
+    );
+  }
+
+  private async assertPolicy(
+    routing: GuardedGitRouting,
+    workspacePath: string,
+  ): Promise<void> {
+    if (routing.delivery_contract && !this.deps.assertPolicyUnchanged) throw new Error("delivery_contract_policy_guard_required");
+    await this.deps.assertPolicyUnchanged?.(
+      workspacePath,
+      routing.policy_sha256,
+      ...(routing.delivery_contract ? [routing.delivery_contract.contract.base_head] : []),
+    );
+  }
+
+  private async runLocal(
+    workspacePath: string,
+    routing: GuardedGitRouting,
+    runId?: string,
+  ): Promise<LocalDeliveryResult> {
+    await assertGuardedCandidateHead(
+      workspacePath,
+      routing.base_commit_sha,
+    );
+    await this.assertPolicy(routing, workspacePath);
+    await mkdir(routing.evidence_root, { recursive: true });
+    const stateFilePath = join(
+      routing.evidence_root,
+      "LOOP-STATE.json",
+    );
+    const adapters = this.deps.adapters?.() ?? defaultAdapters();
+    const contract = routing.delivery_contract;
+    const verificationFence = contract ? createDeliveryVerificationFence(contract) : undefined;
+    let context: Awaited<ReturnType<NonNullable<GuardedGitRuntimeDeps["createExecutionContext"]>>> | undefined;
+    if (routing.execution_context_path) {
+      if (!this.deps.createExecutionContext) throw new Error("execution_context_unavailable");
+      context = await this.deps.createExecutionContext({ adapters, workspacePath, configPath: routing.execution_context_path,
+        ...(contract ? { contractDigest: contract.digest, contractBrief: contract.brief } : {}) });
+    }
+    const engine = new LoopEngine({
+      loopId: `loop_${routing.task.task_id}`,
+      workspacePath,
+      stateFilePath,
+      sources: [],
+      ...(contract ? { prepareVerification: verificationFence!.prepare, verificationFence: verificationFence! } : {}),
+      inputTasks: [contract && !context ? { ...routing.task, prompt: `${routing.task.prompt}\n\n${contract.brief}` } : routing.task],
+      skipCompletedTasks: false,
+      agentId: routing.profile.builder_agent_id,
+      adapters: context?.adapters ?? adapters,
+      verifierAgentIds: [routing.profile.evaluator_agent_id],
+      enforceRoleSeparation: true,
+      profileRouting: {
+        profile_name: routing.profile.profile_name,
+        reason: routing.profile.reason,
+        builder_agent_id: routing.profile.builder_agent_id,
+        evaluator_agent_id: routing.profile.evaluator_agent_id,
+        builder_identity: routing.profile.builder_identity,
+        evaluator_identity: routing.profile.evaluator_identity,
+        independent: routing.profile.independent,
+        independence_reason: routing.profile.independence_reason,
+        ...(routing.profile.designer_agent_id === undefined
+          ? {}
+          : {
+              designer_agent_id:
+                routing.profile.designer_agent_id,
+            }),
+        ...(routing.profile.designer_identity === undefined
+          ? {}
+          : {
+              designer_identity:
+                routing.profile.designer_identity,
+            }),
+      },
+      verifyCommands: routing.verify_commands,
+      maxIterations: 1,
+      commandTimeoutMs: routing.command_timeout_ms,
+      artifactVerification: { requireGitDiff: true },
+      policyGate: makePolicyGate(workspacePath),
+    });
+    const result = await engine.runOnce();
+    if (result.policy?.denied === true) {
+      throw new Error(result.policy.reason);
+    }
+    const completed = result.completedTasks.at(-1);
+    if (completed === undefined) {
+      throw new Error("guarded local loop produced no task result");
+    }
+    await writeFile(
+      join(routing.evidence_root, "events.json"),
+      `${JSON.stringify(result.events, null, 2)}\n`,
+      "utf8",
+    );
+    if (contract && completed.outcome === "success") await verificationFence!.assertVerified(workspacePath);
+    const postDiff = await stageGuardedCandidate({
+      workspace_path: workspacePath,
+      expected_base_commit_sha: routing.base_commit_sha,
+      commands: routing.verify_commands,
+      ...(contract ? { hardened: true } : {}),
+    });
+    if (contract && !this.deps.evaluateGovernance) throw new Error("delivery_contract_governance_required");
+    const governance = await this.deps.evaluateGovernance?.(
+      workspacePath,
+    );
+    const reviewsPass = reviewPassed(completed);
+    const verificationPass =
+      completed.outcome === "success"
+      && (completed.verify_commands ?? []).every(
+        (command) => command.exit_code === 0,
+      );
+    let receipt: DeliveryReceiptReferenceV2 | undefined;
+    if (contract && verificationPass && reviewsPass && governance?.blocking !== true) {
+      if (!runId) throw new Error("delivery_contract_host_run_required");
+      await verificationFence!.assertVerified(workspacePath);
+      assertDeliveryContractPaths(contract, postDiff.changed_paths);
+      const candidate = await captureDeliveryCandidate(workspacePath, contract.contract.base_head);
+      const value = buildDeliveryVerificationReceipt({ frozen: contract, runId, runKind: "guarded-git", candidate,
+        workspaceStateDigest: await verificationFence!.assertVerified(workspacePath), commands: completed.verify_commands ?? [], reviews: completed.review_artifacts ?? [],
+        builderAgentId: completed.agent_id, builderIdentity: routing.profile.builder_identity,
+        contextReceiptRefs: context?.receiptRefs() ?? [] });
+      receipt = await persistDeliveryHostRecord(join(routing.evidence_root, "contract-receipts"), value);
+      await verifyPersistedDeliveryReceipt({ root: join(routing.evidence_root, "contract-receipts"), ref: receipt,
+        frozen: contract, runId, workspace: workspacePath });
+    }
+    return LocalDeliveryResult.parse({
+      ...(receipt ? { delivery_receipt: receipt } : {}),
+      verification_passed:
+        verificationPass && governance?.blocking !== true,
+      review_passed: reviewsPass,
+      post_diff: postDiff,
+      progress: {
+        finding_fingerprints: findingFingerprints(completed),
+        changed_files_sha256: sha256(
+          JSON.stringify({
+            paths: postDiff.changed_paths,
+            diff: postDiff.staged_diff_binary,
+          }),
+        ),
+        verification_sha256: sha256(
+          JSON.stringify({
+            outcome: completed.outcome,
+            verify_commands: completed.verify_commands ?? [],
+            verify_issues: completed.verify_issues ?? [],
+            review_artifacts: completed.review_artifacts ?? [],
+            governance: governance?.evidence ?? null,
+          }),
+        ),
+        failed_commands: failedCommands(completed),
+        acceptance_score:
+          verificationPass
+            && reviewsPass
+            && governance?.blocking !== true
+            ? 1
+          : 0,
+      },
+      telemetry: {
+        reviewer_mutation_count: countIssueRule(
+          completed,
+          "verify.reviewer_mutation",
+        ),
+        unauthorized_action_count: countUnauthorizedGovernanceFindings(
+          governance?.evidence,
+        ),
+        adapter_unavailable_count: countIssueRule(
+          completed,
+          "verify.adapter_unavailable",
+        ),
+      },
+      builder_identity: runtimeIdentity(
+        routing.profile.builder_identity,
+      ),
+      evaluator_identity: runtimeIdentity(
+        routing.profile.evaluator_identity,
+      ),
+    });
+  }
+}
+
+
+FILE packages/github/src/delivery.ts
+import { execFile } from "node:child_process";
+import { lstat } from "node:fs/promises";
+import { isAbsolute } from "node:path";
+import { promisify } from "node:util";
+import { z } from "zod";
+
+import { CandidateEvidenceSchema, CandidateEvidenceContextSchema, assertCandidateEvidenceBinding, type CandidateEvidence, type CandidateEvidenceContext } from "./candidate-evidence.js";
+
+const execFileAsync = promisify(execFile);
+const GitCommitSha = z.string().regex(/^(?:[a-f0-9]{40}|[a-f0-9]{64})$/);
+const SafeRemote = z
+  .string()
+  .regex(/^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/);
+const SafeRef = z
+  .string()
+  .min(1)
+  .max(255)
+  .refine((value) => !value.startsWith("-"), "unsafe ref starts with '-'")
+  .refine(
+    (value) => ![...value].some((character) => {
+      const code = character.charCodeAt(0);
+      return code <= 0x20 || code === 0x7f;
+    }),
+    "ref contains whitespace or control characters",
+  );
+
+const GitHubDeliveryInputSchema = z
+  .object({
+    workspacePath: z
+      .string()
+      .min(1)
+      .refine(isAbsolute, "workspacePath must be absolute"),
+    remote: SafeRemote,
+    base: SafeRef,
+    branch: SafeRef,
+    title: z
+      .string()
+      .trim()
+      .min(1)
+      .max(256)
+      .refine((value) => !/[\r\n]/.test(value), "title must be one line"),
+    bodyFile: z
+      .string()
+      .min(1)
+      .refine(isAbsolute, "bodyFile must be absolute"),
+    mergeStrategy: z.literal("squash"),
+    ciTimeoutMs: z.number().int().min(1_000).max(86_400_000),
+    candidateEvidence: CandidateEvidenceSchema.optional(),
+    evidenceContext: CandidateEvidenceContextSchema.optional(),
+  })
+  .strict();
+
+export interface DeliveryCommandResult {
+  stdout: string;
+  stderr: string;
+  exitCode: number;
+}
+
+export interface DeliveryCommandRunner {
+  run(
+    command: string,
+    args: readonly string[],
+    options: { cwd: string; timeoutMs: number },
+  ): Promise<DeliveryCommandResult>;
+}
+
+export interface GitHubDeliveryInput {
+  workspacePath: string;
+  remote: string;
+  base: string;
+  branch: string;
+  title: string;
+  bodyFile: string;
+  mergeStrategy: "squash";
+  ciTimeoutMs: number;
+  candidateEvidence?: CandidateEvidence | undefined;
+  evidenceContext?: CandidateEvidenceContext | undefined;
+}
+
+export interface GitHubPullRequestResult {
+  pushedCommit: string;
+  pr: { number: number; url: string; reused: boolean };
+}
+export interface GitHubDeliveryResult {
+  pushedCommit: string;
+  pr: {
+    number: number;
+    url: string;
+    reused: boolean;
+  };
+  mergeCommit: string;
+  mergedAt: string;
+}
+
+const DEFAULT_COMMAND_TIMEOUT_MS = 30_000;
+const PUSH_TIMEOUT_MS = 120_000;
+const MAX_WRITE_ATTEMPTS = 3;
+const MAX_BODY_BYTES = 1024 * 1024;
+const DELIVERY_ENV_KEYS = [
+  "PATH",
+  "HOME",
+  "TMPDIR",
+  "TMP",
+  "TEMP",
+  "LANG",
+  "LC_ALL",
+  "TERM",
+  "NO_COLOR",
+  "SSH_AUTH_SOCK",
+  "GH_TOKEN",
+  "GITHUB_TOKEN",
+  "GH_HOST",
+  "GH_CONFIG_DIR",
+  "XDG_CONFIG_HOME",
+] as const;
+
+export function githubDeliveryEnvironment(
+  source: Readonly<NodeJS.ProcessEnv> = process.env,
+): NodeJS.ProcessEnv {
+  const environment: NodeJS.ProcessEnv = {
+    GIT_TERMINAL_PROMPT: "0",
+    GH_PROMPT_DISABLED: "1",
+    GCM_INTERACTIVE: "Never",
+  };
+  for (const key of DELIVERY_ENV_KEYS) {
+    const value = source[key];
+    if (value !== undefined) environment[key] = value;
+  }
+  return environment;
+}
+
+export const defaultDeliveryCommandRunner: DeliveryCommandRunner = {
+  async run(command, args, options) {
+    try {
+      const completed = await execFileAsync(command, [...args], {
+        cwd: options.cwd,
+        timeout: options.timeoutMs,
+        encoding: "utf8",
+        maxBuffer: 16 * 1024 * 1024,
+        env: githubDeliveryEnvironment(),
+      });
+      return {
+        stdout: completed.stdout,
+        stderr: completed.stderr,
+        exitCode: 0,
+      };
+    } catch (error) {
+      const failure = error as {
+        code?: number | string;
+        killed?: boolean;
+        signal?: string;
+        stdout?: string | Buffer;
+        stderr?: string | Buffer;
+      };
+      const timedOut =
+        failure.killed === true ||
+        failure.signal === "SIGTERM" ||
+        failure.code === "ETIMEDOUT";
+      return {
+        stdout: String(failure.stdout ?? ""),
+        stderr: String(failure.stderr ?? ""),
+        exitCode:
+          timedOut
+            ? 124
+            : typeof failure.code === "number"
+              ? failure.code
+              : 1,
+      };
+    }
+  },
+};
+
+const RepoView = z
+  .object({
+    nameWithOwner: z.string().regex(/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/),
+  })
+  .strict();
+
+const PullRequestIdentity = z
+  .object({
+    number: z.number().int().positive(),
+    url: z.string().url(),
+    headRefOid: GitCommitSha,
+    state: z.literal("OPEN"),
+  })
+  .strict();
+const PullRequestLookup = PullRequestIdentity.extend({
+  state: z.enum(["OPEN", "MERGED"]),
+}).strict();
+type PullRequestLookup = z.infer<typeof PullRequestLookup>;
+
+const CheckRollup = z
+  .object({
+    name: z.string().min(1).optional(),
+    context: z.string().min(1).optional(),
+    workflowName: z.string().min(1).optional(),
+    status: z.string().nullable().optional(),
+    conclusion: z.string().nullable().optional(),
+    state: z.string().nullable().optional(),
+  })
+  .passthrough();
+
+const MergeCandidate = PullRequestIdentity.extend({
+  mergeable: z.string().min(1),
+  mergeStateStatus: z.string().min(1),
+  statusCheckRollup: z.array(CheckRollup),
+}).strict();
+
+const MergedPullRequest = z
+  .object({
+    state: z.literal("MERGED"),
+    mergedAt: z.string().datetime(),
+    mergeCommit: z.object({ oid: GitCommitSha }).strict(),
+    url: z.string().url(),
+    headRefOid: GitCommitSha,
+  })
+  .strict();
+
+const RecoveredMergedPullRequest = MergedPullRequest.extend({
+  number: z.number().int().positive(),
+  baseRefName: z.string().min(1),
+  headRefName: z.string().min(1),
+  statusCheckRollup: z.array(CheckRollup),
+}).strict();
+
+const RulesetRule = z
+  .object({
+    type: z.string().min(1),
+    parameters: z.unknown().optional(),
+  })
+  .passthrough();
+
+interface ProtectionEvidence {
+  protected: boolean;
+  requiredChecks: string[];
+}
+
+function commandFailure(
+  operation: string,
+  completed: DeliveryCommandResult,
+): Error {
+  const detail = (completed.stderr || completed.stdout).trim();
+  return new Error(
+    `${operation} failed with exit ${completed.exitCode}` +
+      (detail === "" ? "" : `: ${detail}`),
+  );
+}
+
+function parseJson(value: string, label: string): unknown {
+  try {
+    return JSON.parse(value);
+  } catch {
+    throw new Error(`${label} returned malformed JSON`);
+  }
+}
+
+function pullRequestUrl(
+  value: string,
+  repo: string,
+  expectedNumber?: number,
+): URL {
+  let url: URL;
+  try {
+    url = new URL(value.trim());
+  } catch {
+    throw new Error("GitHub PR URL is malformed");
+  }
+  const expectedPath = new RegExp(
+    `^/${repo.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}/pull/(\\d+)$`,
+    "i",
+  );
+  const match = url.pathname.match(expectedPath);
+  const number = Number(match?.[1]);
+  if (
+    url.protocol !== "https:" ||
+    url.hostname !== "github.com" ||
+    match === null ||
+    !Number.isInteger(number) ||
+    number < 1 ||
+    (expectedNumber !== undefined && number !== expectedNumber)
+  ) {
+    throw new Error("GitHub PR URL does not match the current repository");
+  }
+  return url;
+}
+
+async function assertCandidateBody(bodyFile: string): Promise<void> {
+  let stats: Awaited<ReturnType<typeof lstat>>;
+  try {
+    stats = await lstat(bodyFile);
+  } catch {
+    throw new Error(`candidate proof body file does not exist: ${bodyFile}`);
+  }
+  if (!stats.isFile() || stats.isSymbolicLink()) {
+    throw new Error("candidate proof body must be a regular non-symlink file");
+  }
+  if (stats.size < 1 || stats.size > MAX_BODY_BYTES) {
+    throw new Error(
+      `candidate proof body size must be between 1 and ${MAX_BODY_BYTES} bytes`,
+    );
+  }
+}
+
+async function runOrThrow(
+  runner: DeliveryCommandRunner,
+  input: GitHubDeliveryInput,
+  command: string,
+  args: readonly string[],
+  operation: string,
+  timeoutMs = DEFAULT_COMMAND_TIMEOUT_MS,
+): Promise<DeliveryCommandResult> {
+  const completed = await runner.run(command, args, {
+    cwd: input.workspacePath,
+    timeoutMs,
+  });
+  if (completed.exitCode !== 0) throw commandFailure(operation, completed);
+  return completed;
+}
+
+function remoteRepository(remoteUrl: string): string | undefined {
+  const trimmed = remoteUrl.trim().replace(/\.git$/i, "");
+  const scp = trimmed.match(/^git@github\.com:([^/]+\/[^/]+)$/i);
+  if (scp?.[1] !== undefined) return scp[1];
+  try {
+    const url = new URL(trimmed);
+    if (url.hostname.toLowerCase() !== "github.com") return undefined;
+    const path = url.pathname.replace(/^\/+|\/+$/g, "");
+    return /^[^/]+\/[^/]+$/.test(path) ? path : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function isExplicitMissingPullRequest(completed: DeliveryCommandResult): boolean {
+  return /no pull request|no pull requests|could not resolve to a pullrequest/i.test(
+    `${completed.stderr}\n${completed.stdout}`,
+  );
+}
+
+async function resolvePullRequest(
+  runner: DeliveryCommandRunner,
+  input: GitHubDeliveryInput,
+  repo: string,
+  pushedCommit: string,
+  retryMissing = false,
+): Promise<PullRequestLookup | undefined> {
+  let lastHead: string | undefined;
+  for (let attempt = 1; attempt <= MAX_WRITE_ATTEMPTS; attempt += 1) {
+    const completed = await runner.run(
+      "gh",
+      [
+        "pr",
+        "view",
+        input.branch,
+        "--json",
+        "number,url,headRefOid,state",
+      ],
+      {
+        cwd: input.workspacePath,
+        timeoutMs: DEFAULT_COMMAND_TIMEOUT_MS,
+      },
+    );
+    if (completed.exitCode !== 0) {
+      if (isExplicitMissingPullRequest(completed)) {
+        if (retryMissing && attempt < MAX_WRITE_ATTEMPTS) continue;
+        return undefined;
+      }
+      throw commandFailure("GitHub PR lookup", completed);
+    }
+    const parsed = PullRequestLookup.safeParse(
+      parseJson(completed.stdout, "GitHub PR lookup"),
+    );
+    if (!parsed.success) {
+      throw new Error("GitHub PR lookup returned ambiguous or malformed metadata");
+    }
+    pullRequestUrl(parsed.data.url, repo, parsed.data.number);
+    if (parsed.data.headRefOid === pushedCommit) return parsed.data;
+    lastHead = parsed.data.headRefOid;
+  }
+  throw new Error(
+    `GitHub PR head SHA ${lastHead ?? "unknown"} does not match pushed SHA ${pushedCommit}`,
+  );
+}
+
+async function pushCandidate(
+  runner: DeliveryCommandRunner,
+  input: GitHubDeliveryInput,
+  contract?: { headCommit: string; fence: () => Promise<void> },
+): Promise<void> {
+  let last: DeliveryCommandResult | undefined;
+  for (let attempt = 1; attempt <= MAX_WRITE_ATTEMPTS; attempt += 1) {
+    await contract?.fence();
+    last = await runner.run(
+      "git",
+      contract ? ["push", input.remote, `${contract.headCommit}:refs/heads/${input.branch}`] : ["push", "--set-upstream", input.remote, input.branch],
+      {
+        cwd: input.workspacePath,
+        timeoutMs: PUSH_TIMEOUT_MS,
+      },
+    );
+    if (last.exitCode === 0) return;
+  }
+  throw commandFailure("git push", last!);
+}
+
+async function createPullRequest(
+  runner: DeliveryCommandRunner,
+  input: GitHubDeliveryInput,
+  repo: string,
+  pushedCommit: string,
+  draft = false,
+): Promise<PullRequestLookup> {
+  let last: DeliveryCommandResult | undefined;
+  for (let attempt = 1; attempt <= MAX_WRITE_ATTEMPTS; attempt += 1) {
+    last = await runner.run(
+      "gh",
+      [
+        "pr",
+        "create",
+        "--base",
+        input.base,
+        "--head",
+        input.branch,
+        "--title",
+        input.title,
+        "--body-file",
+        input.bodyFile,
+        ...(draft ? ["--draft"] : []),
+      ],
+      {
+        cwd: input.workspacePath,
+        timeoutMs: DEFAULT_COMMAND_TIMEOUT_MS,
+      },
+    );
+    if (last.exitCode === 0) {
+      pullRequestUrl(last.stdout, repo);
+      const resolved = await resolvePullRequest(
+        runner,
+        input,
+        repo,
+        pushedCommit,
+        true,
+      );
+      if (resolved === undefined) {
+        throw new Error("created PR acknowledgement could not be resolved");
+      }
+      return resolved;
+    }
+    const resolved = await resolvePullRequest(
+      runner,
+      input,
+      repo,
+      pushedCommit,
+      true,
+    );
+    if (resolved !== undefined) return resolved;
+  }
+  throw commandFailure("GitHub PR creation", last!);
+}
+
+function legacyRequiredChecks(value: unknown): string[] {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    throw new Error("legacy branch protection metadata is malformed");
+  }
+  const status = (value as Record<string, unknown>)["required_status_checks"];
+  if (status === null || status === undefined) return [];
+  if (typeof status !== "object" || Array.isArray(status)) {
+    throw new Error("legacy required status checks metadata is malformed");
+  }
+  const record = status as Record<string, unknown>;
+  const contexts = Array.isArray(record["contexts"])
+    ? record["contexts"].filter(
+        (entry): entry is string =>
+          typeof entry === "string" && entry.length > 0,
+      )
+    : [];
+  const checks = Array.isArray(record["checks"])
+    ? record["checks"]
+        .map((entry) =>
+          typeof entry === "object" && entry !== null
+            ? (entry as Record<string, unknown>)["context"]
+            : undefined,
+        )
+        .filter(
+          (entry): entry is string =>
+            typeof entry === "string" && entry.length > 0,
+        )
+    : [];
+  return [...contexts, ...checks];
+}
+
+function rulesetRequiredChecks(rules: readonly z.infer<typeof RulesetRule>[]): string[] {
+  const contexts: string[] = [];
+  for (const rule of rules) {
+    if (rule.type !== "required_status_checks") continue;
+    if (
+      typeof rule.parameters !== "object" ||
+      rule.parameters === null ||
+      Array.isArray(rule.parameters)
+    ) {
+      throw new Error("ruleset required status checks metadata is malformed");
+    }
+    const required = (rule.parameters as Record<string, unknown>)[
+      "required_status_checks"
+    ];
+    if (!Array.isArray(required)) {
+      throw new Error("ruleset required status checks are missing");
+    }
+    for (const item of required) {
+      const context =
+        typeof item === "object" && item !== null
+          ? (item as Record<string, unknown>)["context"]
+          : undefined;
+      if (typeof context !== "string" || context.length === 0) {
+        throw new Error("ruleset required check context is malformed");
+      }
+      contexts.push(context);
+    }
+  }
+  return contexts;
+}
+
+async function readEffectiveProtection(
+  runner: DeliveryCommandRunner,
+  input: GitHubDeliveryInput,
+  repo: string,
+  branch: string,
+): Promise<ProtectionEvidence> {
+  const encodedBranch = encodeURIComponent(branch);
+  const legacy = await runner.run(
+    "gh",
+    [
+      "api",
+      `repos/${repo}/branches/${encodedBranch}/protection`,
+      "-H",
+      "Accept: application/vnd.github+json",
+      "-H",
+      "X-GitHub-Api-Version: 2026-03-10",
+    ],
+    {
+      cwd: input.workspacePath,
+      timeoutMs: DEFAULT_COMMAND_TIMEOUT_MS,
+    },
+  );
+  let legacyValue: unknown | undefined;
+  if (legacy.exitCode === 0) {
+    legacyValue = parseJson(legacy.stdout, "legacy branch protection");
+  } else if (!/HTTP 404|not protected/i.test(`${legacy.stderr}\n${legacy.stdout}`)) {
+    throw commandFailure("legacy branch protection lookup", legacy);
+  }
+
+  const effectiveRules = await runner.run(
+    "gh",
+    [
+      "api",
+      `repos/${repo}/rules/branches/${encodedBranch}`,
+      "-H",
+      "Accept: application/vnd.github+json",
+      "-H",
+      "X-GitHub-Api-Version: 2026-03-10",
+    ],
+    {
+      cwd: input.workspacePath,
+      timeoutMs: DEFAULT_COMMAND_TIMEOUT_MS,
+    },
+  );
+  if (effectiveRules.exitCode !== 0) {
+    throw commandFailure("applicable repository rules lookup", effectiveRules);
+  }
+  const rulesValue = parseJson(
+    effectiveRules.stdout,
+    "applicable repository rules",
+  );
+  const rules = z.array(RulesetRule).safeParse(rulesValue);
+  if (!rules.success) {
+    throw new Error("applicable repository rules metadata is malformed");
+  }
+  const requiredChecks = [
+    ...(legacyValue === undefined ? [] : legacyRequiredChecks(legacyValue)),
+    ...rulesetRequiredChecks(rules.data),
+  ];
+  return {
+    protected: legacyValue !== undefined || rules.data.length > 0,
+    requiredChecks: [...new Set(requiredChecks)].sort(),
+  };
+}
+
+function rollupName(check: z.infer<typeof CheckRollup>): string | undefined {
+  return check.context ?? check.name ?? check.workflowName;
+}
+
+function checkSucceeded(check: z.infer<typeof CheckRollup>): boolean {
+  return (
+    check.conclusion?.toUpperCase() === "SUCCESS" ||
+    check.state?.toUpperCase() === "SUCCESS"
+  );
+}
+
+function assertRequiredChecks(
+  requiredChecks: readonly string[],
+  rollup: readonly z.infer<typeof CheckRollup>[],
+): void {
+  if (requiredChecks.length === 0) {
+    throw new Error("protected base has zero required checks");
+  }
+  if (rollup.length === 0) {
+    throw new Error("current pushed SHA has zero check results");
+  }
+  for (const required of requiredChecks) {
+    const matching = rollup.find((check) => rollupName(check) === required);
+    if (matching === undefined) {
+      throw new Error(
+        `required check ${required} is absent from the current pushed SHA`,
+      );
+    }
+    if (!checkSucceeded(matching)) {
+      throw new Error(
+        `required check ${required} did not succeed on the current pushed SHA`,
+      );
+    }
+  }
+}
+
+async function recoverMergedDelivery(
+  runner: DeliveryCommandRunner,
+  input: GitHubDeliveryInput,
+  repo: string,
+  pushedCommit: string,
+  pr: PullRequestLookup,
+): Promise<GitHubDeliveryResult> {
+  if (pr.state !== "MERGED") {
+    throw new Error("merged delivery recovery requires a merged PR");
+  }
+  const baseProtection = await readEffectiveProtection(
+    runner,
+    input,
+    repo,
+    input.base,
+  );
+  if (!baseProtection.protected) {
+    throw new Error("base branch has no effective protection");
+  }
+  const merged = RecoveredMergedPullRequest.parse(
+    parseJson(
+      (
+        await runOrThrow(
+          runner,
+          input,
+          "gh",
+          [
+            "pr",
+            "view",
+            String(pr.number),
+            "--json",
+            "number,state,mergedAt,mergeCommit,url,headRefOid,baseRefName,headRefName,statusCheckRollup",
+          ],
+          "recovered merged PR proof",
+        )
+      ).stdout,
+      "recovered merged PR proof",
+    ),
+  );
+  pullRequestUrl(merged.url, repo, pr.number);
+  if (
+    merged.number !== pr.number
+    || merged.headRefOid !== pushedCommit
+    || merged.baseRefName !== input.base
+    || merged.headRefName !== input.branch
+  ) {
+    throw new Error(
+      "recovered merged PR does not match the exact candidate scope",
+    );
+  }
+  assertRequiredChecks(
+    baseProtection.requiredChecks,
+    merged.statusCheckRollup,
+  );
+  return {
+    pushedCommit,
+    pr: {
+      number: pr.number,
+      url: merged.url,
+      reused: true,
+    },
+    mergeCommit: merged.mergeCommit.oid,
+    mergedAt: merged.mergedAt,
+  };
+}
+
+function assertUniqueCurrentRequiredChecks(requiredChecks: string[], checks: z.infer<typeof CheckRollup>[]): void {
+  if (requiredChecks.length === 0 || new Set(requiredChecks).size !== requiredChecks.length) throw new Error("candidate required checks must be nonempty and unique");
+  assertRequiredChecks(requiredChecks, checks);
+  for (const required of requiredChecks) {
+    const matching = checks.filter(check => rollupName(check) === required);
+    if (matching.length !== 1 ||
+      (matching[0]!.conclusion != null ? matching[0]!.conclusion!.toUpperCase() !== "SUCCESS" : matching[0]!.state?.toUpperCase() !== "SUCCESS") ||
+      (matching[0]!.status != null && matching[0]!.status!.toUpperCase() !== "COMPLETED")) throw new Error("candidate current required checks are missing or unsuccessful");
+  }
+}
+
+/** Stateless current observation only: never push/watch/create/merge or consume cached evidence. */
+export async function observeCurrentGreenCandidate(
+  value: GitHubDeliveryInput,
+  currentContext: CandidateEvidenceContext,
+  runner: DeliveryCommandRunner = defaultDeliveryCommandRunner,
+): Promise<CandidateEvidence | undefined> {
+  const input = GitHubDeliveryInputSchema.parse(value);
+  if (input.candidateEvidence !== undefined || input.evidenceContext !== undefined) throw new Error("observer accepts no cached evidence");
+  const context = CandidateEvidenceContextSchema.parse(currentContext);
+  if (input.branch === input.base || input.branch === "main" || input.branch === "master") throw new Error("refusing protected/base candidate");
+  await assertCandidateBody(input.bodyFile);
+  for (const ref of [input.branch, input.base]) await runOrThrow(runner, input, "git", ["check-ref-format", "--branch", ref], "observer ref validation");
+  const branch = (await runOrThrow(runner, input, "git", ["branch", "--show-current"], "observer branch")).stdout.trim();
+  if (branch !== input.branch) throw new Error("observer local branch changed");
+  if ((await runOrThrow(runner, input, "git", ["status", "--porcelain=v1", "-z"], "observer clean worktree")).stdout !== "") return undefined;
+  const head = GitCommitSha.parse((await runOrThrow(runner, input, "git", ["rev-parse", "HEAD"], "observer local HEAD")).stdout.trim());
+  const remoteUrl = (await runOrThrow(runner, input, "git", ["remote", "get-url", input.remote], "observer remote")).stdout;
+  const repo = RepoView.parse(parseJson((await runOrThrow(runner, input, "gh", ["repo", "view", "--json", "nameWithOwner"], "observer repository")).stdout, "observer repository")).nameWithOwner;
+  if (remoteRepository(remoteUrl)?.toLowerCase() !== repo.toLowerCase()) throw new Error("observer remote repository mismatch");
+  const rows = (await runOrThrow(runner, input, "git", ["ls-remote", "--refs", input.remote, `refs/heads/${input.branch}`, `refs/heads/${input.base}`], "observer remote commits")).stdout.trim().split("\n");
+  if (rows.length > 2) throw new Error("observer remote metadata has extra rows");
+  if (rows.length === 1 && rows[0] === "") return undefined;
+  const refs = new Map<string, string>();
+  for (const row of rows) {
+    const parts = row.split("\t");
+    if (parts.length !== 2 || refs.has(parts[1]!) || ![`refs/heads/${input.branch}`, `refs/heads/${input.base}`].includes(parts[1]!)) throw new Error("observer remote metadata malformed");
+    refs.set(parts[1]!, GitCommitSha.parse(parts[0]));
+  }
+  const remoteHead = refs.get(`refs/heads/${input.branch}`), base = refs.get(`refs/heads/${input.base}`);
+  if (remoteHead === undefined || base === undefined) return undefined;
+  if (remoteHead !== head) return undefined; // A normal pending push, never evidence of current green.
+  if ((await readEffectiveProtection(runner, input, repo, input.branch)).protected) throw new Error("observer candidate branch protected");
+  const protection = await readEffectiveProtection(runner, input, repo, input.base);
+  if (!protection.protected || !protection.requiredChecks.length) return undefined;
+  const pr = await resolvePullRequest(runner, input, repo, head);
+  if (pr === undefined || pr.state !== "OPEN") return undefined;
+  const scope = z.object({ headRefOid: GitCommitSha, baseRefName: z.string(), headRefName: z.string() }).strict().parse(parseJson((await runOrThrow(runner, input, "gh", ["pr", "view", String(pr.number), "--json", "headRefOid,baseRefName,headRefName"], "observer PR scope")).stdout, "observer PR scope"));
+  if (scope.headRefOid !== head || scope.baseRefName !== input.base || scope.headRefName !== input.branch) throw new Error("observer PR scope changed");
+  const candidate = MergeCandidate.parse(parseJson((await runOrThrow(runner, input, "gh", ["pr", "view", String(pr.number), "--json", "number,url,headRefOid,state,mergeable,mergeStateStatus,statusCheckRollup"], "observer current checks")).stdout, "observer current checks"));
+  pullRequestUrl(candidate.url, repo, pr.number);
+  if (candidate.number !== pr.number || candidate.headRefOid !== head) throw new Error("observer PR identity changed");
+  if (candidate.mergeable !== "MERGEABLE" || candidate.mergeStateStatus !== "CLEAN") return undefined;
+  try { assertUniqueCurrentRequiredChecks(protection.requiredChecks, candidate.statusCheckRollup); } catch { return undefined; }
+  // Observation is only a hint. The consumer repeats all current remote/CI checks before any merge.
+  return CandidateEvidenceSchema.parse({ schemaVersion: 1, repo, headSha: head, baseSha: base, ...context, requiredChecks: protection.requiredChecks, observedAt: new Date().toISOString() });
+}
+
+export async function deliverToGitHub(value: GitHubDeliveryInput,
+  runner: DeliveryCommandRunner = defaultDeliveryCommandRunner): Promise<GitHubDeliveryResult> {
+  return await runGitHubDelivery(value, runner) as GitHubDeliveryResult;
+}
+/** Existing push/PR implementation with a hard return before CI/merge/deploy.
+ * The caller must already hold the existing publish authority and writer lease. */
+export async function openPullRequestToGitHub(value: GitHubDeliveryInput,
+  scope: { repository: string; headCommit: string; draft: boolean },
+  runner: DeliveryCommandRunner = defaultDeliveryCommandRunner): Promise<GitHubPullRequestResult> {
+  const checked = z.object({ repository: z.string().regex(/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/),
+    headCommit: GitCommitSha, draft: z.boolean() }).strict().parse(scope);
+  return await runGitHubDelivery(value, runner, checked);
+}
+async function runGitHubDelivery(
+  value: GitHubDeliveryInput,
+  runner: DeliveryCommandRunner,
+  openOnly?: { repository: string; headCommit: string; draft: boolean },
+): Promise<GitHubDeliveryResult | GitHubPullRequestResult> {
+  const input = GitHubDeliveryInputSchema.parse(value);
+  if (
+    (input.candidateEvidence === undefined) !==
+    (input.evidenceContext === undefined)
+  )
+    throw new Error("candidate evidence requires current controller context");
+  await assertCandidateBody(input.bodyFile);
+  if (
+    input.branch === input.base ||
+    input.branch === "main" ||
+    input.branch === "master"
+  ) {
+    throw new Error("refusing to push a protected/base branch");
+  }
+
+  await runOrThrow(
+    runner,
+    input,
+    "gh",
+    ["auth", "status"],
+    "GitHub authentication",
+  );
+  await runOrThrow(
+    runner,
+    input,
+    "git",
+    ["check-ref-format", "--branch", input.branch],
+    "candidate branch validation",
+  );
+  await runOrThrow(
+    runner,
+    input,
+    "git",
+    ["check-ref-format", "--branch", input.base],
+    "base branch validation",
+  );
+
+  const currentBranch = (
+    await runOrThrow(
+      runner,
+      input,
+      "git",
+      ["branch", "--show-current"],
+      "current branch lookup",
+    )
+  ).stdout.trim();
+  if (currentBranch !== input.branch) {
+    throw new Error(
+      `current branch ${currentBranch || "(detached)"} does not match ${input.branch}`,
+    );
+  }
+  const status = await runOrThrow(
+    runner,
+    input,
+    "git",
+    ["status", "--porcelain=v1", "-z"],
+    "worktree status",
+  );
+  if (status.stdout.length !== 0) {
+    throw new Error("GitHub delivery requires a clean committed worktree");
+  }
+
+  const remoteUrl = (
+    await runOrThrow(
+      runner,
+      input,
+      "git",
+      ["remote", "get-url", input.remote],
+      "Git remote lookup",
+    )
+  ).stdout;
+  const repo = RepoView.parse(
+    parseJson(
+      (
+        await runOrThrow(
+          runner,
+          input,
+          "gh",
+          ["repo", "view", "--json", "nameWithOwner"],
+          "GitHub repository lookup",
+        )
+      ).stdout,
+      "GitHub repository lookup",
+    ),
+  ).nameWithOwner;
+  const remoteRepo = remoteRepository(remoteUrl);
+  if (
+    remoteRepo === undefined ||
+    remoteRepo.toLowerCase() !== repo.toLowerCase()
+  ) {
+    throw new Error(
+      "Git remote repository does not match authenticated GitHub repository",
+    );
+  }
+
+  if (openOnly && repo.toLowerCase() !== openOnly.repository.toLowerCase()) throw new Error("publication repository mismatch");
+  const candidateProtection = await readEffectiveProtection(
+    runner,
+    input,
+    repo,
+    input.branch,
+  );
+  if (candidateProtection.protected) {
+    throw new Error(
+      "refusing to push an effectively protected candidate branch",
+    );
+  }
+
+  const pushedCommit = GitCommitSha.parse(
+    (
+      await runOrThrow(
+        runner,
+        input,
+        "git",
+        ["rev-parse", "HEAD"],
+        "candidate commit lookup",
+      )
+    ).stdout.trim(),
+  );
+  if (openOnly && pushedCommit !== openOnly.headCommit) throw new Error("publication candidate head mismatch");
+  const evidence = input.candidateEvidence;
+  async function assertRemoteBinding(): Promise<void> {
+    const rows = (
+      await runOrThrow(
+        runner,
+        input,
+        "git",
+        [
+          "ls-remote",
+          "--refs",
+          input.remote,
+          `refs/heads/${input.branch}`,
+          `refs/heads/${input.base}`,
+        ],
+        "candidate remote evidence",
+      )
+    ).stdout
+      .trim()
+      .split("\n");
+    const expected = new Map([
+      [`refs/heads/${input.branch}`, pushedCommit],
+      [`refs/heads/${input.base}`, evidence!.baseSha],
+    ]);
+    if (
+      rows.length !== 2 ||
+      rows.some((row) => {
+        const fields = row.split("\t");
+        if (fields.length !== 2 || expected.get(fields[1]!) !== fields[0])
+          return true;
+        expected.delete(fields[1]!);
+        return false;
+      }) ||
+      expected.size !== 0
+    )
+      throw new Error("candidate remote head/base binding changed or missing");
+  }
+  if (evidence !== undefined) {
+    const protection = await readEffectiveProtection(
+      runner,
+      input,
+      repo,
+      input.base,
+    );
+    if (!protection.protected)
+      throw new Error("base branch has no effective protection");
+    assertCandidateEvidenceBinding(
+      evidence,
+      input.evidenceContext!,
+      repo,
+      pushedCommit,
+      protection.requiredChecks,
+    );
+    await assertRemoteBinding();
+  }
+  let pr = await resolvePullRequest(runner, input, repo, pushedCommit);
+  if (evidence !== undefined && pr?.state === "MERGED")
+    throw new Error("candidate evidence requires current open PR");
+  if (pr?.state === "MERGED") {
+    if (openOnly) throw new Error("PR-only delivery cannot adopt a merged PR");
+    return await recoverMergedDelivery(runner, input, repo, pushedCommit, pr);
+  }
+
+  async function assertPublicationState(number: number): Promise<void> {
+    const observed = z.object({ isDraft: z.boolean(), state: z.literal("OPEN") }).strict().parse(parseJson(
+      (await runOrThrow(runner, input, "gh", ["pr", "view", String(number), "--json", "isDraft,state"], "publication PR state")).stdout, "publication PR state"));
+    if (observed.isDraft !== openOnly?.draft) throw new Error("publication draft scope mismatch");
+  }
+  if (openOnly && pr) await assertPublicationState(pr.number);
+  async function assertPullRequestScope(number: number): Promise<void> {
+    const identity = z
+      .object({
+        headRefOid: GitCommitSha,
+        baseRefName: z.string(),
+        headRefName: z.string(),
+      })
+      .strict()
+      .parse(
+        parseJson(
+          (
+            await runOrThrow(
+              runner,
+              input,
+              "gh",
+              [
+                "pr",
+                "view",
+                String(number),
+                "--json",
+                "headRefOid,baseRefName,headRefName",
+              ],
+              "candidate scope evidence",
+            )
+          ).stdout,
+          "candidate scope evidence",
+        ),
+      );
+    if (
+      identity.headRefOid !== pushedCommit ||
+      identity.baseRefName !== input.base ||
+      identity.headRefName !== input.branch
+    )
+      throw new Error("candidate PR scope binding mismatched");
+  }
+  if (evidence !== undefined) {
+    if (pr === undefined || pr.state !== "OPEN")
+      throw new Error("candidate evidence requires current open PR");
+    await assertPullRequestScope(pr.number);
+  } else {
+    if (openOnly) await assertPublicationDestination();
+    await pushCandidate(runner, input, openOnly ? { headCommit: openOnly.headCommit, fence: assertPublicationDestination } : undefined);
+  }
+  const afterPushCommit = GitCommitSha.parse(
+    (
+      await runOrThrow(
+        runner,
+        input,
+        "git",
+        ["rev-parse", "HEAD"],
+        "post-push commit lookup",
+      )
+    ).stdout.trim(),
+  );
+  if (afterPushCommit !== pushedCommit) {
+    throw new Error("local HEAD changed after push; refusing PR delivery");
+  }
+
+  async function assertPublicationDestination(): Promise<void> {
+    const currentRemote = (await runOrThrow(runner, input, "git", ["remote", "get-url", input.remote], "publication remote fence")).stdout.trim();
+    const currentBranch = (await runOrThrow(runner, input, "git", ["branch", "--show-current"], "publication branch fence")).stdout.trim();
+    const currentHead = (await runOrThrow(runner, input, "git", ["rev-parse", "HEAD"], "publication head fence")).stdout.trim();
+    if (remoteRepository(currentRemote)?.toLowerCase() !== openOnly?.repository.toLowerCase()
+      || currentBranch !== input.branch || currentHead !== openOnly?.headCommit) throw new Error("publication destination changed");
+  }
+  if (openOnly) await assertPublicationDestination();
+  let reused = pr !== undefined;
+  if (pr === undefined) {
+    pr = await resolvePullRequest(runner, input, repo, pushedCommit);
+    reused = pr !== undefined;
+    if (pr === undefined) {
+      pr = await createPullRequest(runner, input, repo, pushedCommit, openOnly?.draft ?? false);
+      reused = false;
+    }
+  }
+  if (pr.state === "MERGED") {
+    if (openOnly) throw new Error("PR-only delivery cannot adopt a merged PR");
+    return await recoverMergedDelivery(runner, input, repo, pushedCommit, pr);
+  }
+
+  if (openOnly) {
+    await assertPullRequestScope(pr.number);
+    await assertPublicationState(pr.number);
+    return { pushedCommit, pr: { number: pr.number, url: pr.url, reused } };
+  }
+  if (evidence === undefined) {
+    const checks = await runner.run(
+      "gh",
+      ["pr", "checks", String(pr.number), "--watch", "--fail-fast"],
+      {
+        cwd: input.workspacePath,
+        timeoutMs: input.ciTimeoutMs,
+      },
+    );
+    if (checks.exitCode === 124) {
+      throw new Error(`CI timeout after ${input.ciTimeoutMs} ms`);
+    }
+    if (checks.exitCode !== 0) throw commandFailure("CI checks", checks);
+  }
+
+  const baseProtection = await readEffectiveProtection(
+    runner,
+    input,
+    repo,
+    input.base,
+  );
+  if (!baseProtection.protected) {
+    throw new Error("base branch has no effective protection");
+  }
+
+  const mergeCandidate = MergeCandidate.parse(
+    parseJson(
+      (
+        await runOrThrow(
+          runner,
+          input,
+          "gh",
+          [
+            "pr",
+            "view",
+            String(pr.number),
+            "--json",
+            "number,url,headRefOid,state,mergeable,mergeStateStatus,statusCheckRollup",
+          ],
+          "merge candidate lookup",
+        )
+      ).stdout,
+      "merge candidate lookup",
+    ),
+  );
+  pullRequestUrl(mergeCandidate.url, repo, pr.number);
+  if (mergeCandidate.number !== pr.number) {
+    throw new Error("merge candidate metadata resolved to a different PR");
+  }
+  if (mergeCandidate.headRefOid !== pushedCommit) {
+    throw new Error("PR head SHA changed after checks; refusing merge");
+  }
+  if (
+    mergeCandidate.mergeable !== "MERGEABLE" ||
+    mergeCandidate.mergeStateStatus !== "CLEAN"
+  ) {
+    throw new Error(
+      `PR is not cleanly mergeable: ${mergeCandidate.mergeable}/${mergeCandidate.mergeStateStatus}`,
+    );
+  }
+  assertRequiredChecks(
+    baseProtection.requiredChecks,
+    mergeCandidate.statusCheckRollup,
+  );
+
+  if (evidence !== undefined) {
+    assertCandidateEvidenceBinding(
+      evidence,
+      input.evidenceContext!,
+      repo,
+      pushedCommit,
+      baseProtection.requiredChecks,
+    );
+    assertUniqueCurrentRequiredChecks(baseProtection.requiredChecks, mergeCandidate.statusCheckRollup);
+    await assertPullRequestScope(pr.number);
+    await assertRemoteBinding();
+  }
+  await runOrThrow(
+    runner,
+    input,
+    "gh",
+    [
+      "pr",
+      "merge",
+      String(pr.number),
+      "--squash",
+      "--delete-branch",
+      "--match-head-commit",
+      pushedCommit,
+    ],
+    "SHA-bound PR merge",
+  );
+
+  const merged = MergedPullRequest.parse(
+    parseJson(
+      (
+        await runOrThrow(
+          runner,
+          input,
+          "gh",
+          [
+            "pr",
+            "view",
+            String(pr.number),
+            "--json",
+            "state,mergedAt,mergeCommit,url,headRefOid",
+          ],
+          "merged PR proof",
+        )
+      ).stdout,
+      "merged PR proof",
+    ),
+  );
+  pullRequestUrl(merged.url, repo, pr.number);
+  if (merged.headRefOid !== pushedCommit) {
+    throw new Error("merged PR head does not match the pushed commit");
+  }
+  return {
+    pushedCommit,
+    pr: {
+      number: pr.number,
+      url: pr.url,
+      reused,
+    },
+    mergeCommit: merged.mergeCommit.oid,
+    mergedAt: merged.mergedAt,
+  };
+}
+
+
+FILE docs/guides/delivery-contract-v2.md
+# Delivery Contract V2: guarded host execution
+
+V2 freezes an explicit task and completion ceiling before guarded execution. It constrains existing host policy; a contract file, a parsed schema, or a reference to a policy does not grant permission to execute, publish, merge or deploy. V1 planning artifacts remain offline material and are rejected by this runtime.
+
+Use `osstack deliver --workspace <repo> --profile <profile> --autonomy guarded-local --contract <file> --json`. The host must supply a policy snapshot, its registered verification commands and budget. Guarded Git uses the same `--contract` option with `--autonomy guarded-git`. A `--execution-context <config>` option selects the separately documented pinned local context flow. Existing invocations without a contract retain their original behavior.
+
+The strict JSON contract declares schema version 2, contract/task IDs, canonical repository, full base commit, goal, allowed relative path prefixes, required check IDs with `sha256:<command digest>` registry references, profile review reference, `policy:<policy digest>` budget reference, policy digest, actions, publication scope and requested completion. Required commands must already be registered in the host policy. An explicit unregistered `--verify` is rejected; contract content never becomes an executable command. Implement mode requires build and verify actions. Scout execution is rejected until a host can guarantee a tool-free executor; the pure promotion helper creates a new contract and carries no prior receipt or approval.
+
+| Requested completion | Runtime boundary |
+| --- | --- |
+| `local_verified` | Host checks, independent reported review, policy and governance checks; no host commit, push or merge. Guarded-local retains its isolated candidate worktree. |
+| `pr_opened` | Existing authorized commit/push/PR code; exact candidate SHA, remote/repository/ref and draft state checks; returns before CI waiting or merge. |
+| `merged` | Existing guarded merge authorization and proof flow; configured deployment is not invoked. |
+| `deployed` | Existing guarded deployment policy and action checks; skipped or unhealthy deployment cannot satisfy the contract. |
+
+Local execution snapshots all tracked worktree bytes, untracked candidate files and the ignored-path set before checks and review, then carries that exact snapshot through receipt capture. Hidden index flags and new ignored files fail closed. Existing ignored dependency contents are not a hermetic environment qualification. The opt-in snapshot is bounded to 100,000 paths and 64 MiB of candidate/worktree file bytes. Rename sources and destinations are both checked against allowed paths. Scope, governance or verification rejection leaves the isolated candidate available for inspection; the original workspace is not merged. JSON output includes its candidate path. A successful local receipt is not a remote CI result, provider attestation or production acceptance.
+
+The local host maps policy builder/review limits to iteration limits and applies the existing cooperative Loop runtime/no-progress budget. CLI iteration and command timeout values can only tighten those limits. This is not a hard wall-clock cancellation SLA. Git execution retains its existing guarded budget and approval controls.
+
+Host receipts record the frozen contract digest, policy digest, base/candidate tree and diff identity, actual command results, reported independent review identity and context receipt references. Different adapter IDs plus different provider or model follows the existing profile independence rule; metadata is reported, not independently provider-attested. Content-addressed receipts reject changed bytes, symlinks, paths outside their host evidence directory and oversized records. Before side effects, the host reloads its persisted receipt and checks the actual candidate against the known base, recorded commit or recorded merge HEAD and the verified tree/diff.
+
+Guarded Git persists the frozen contract and receipt references in its existing autonomy context. Resume requires the same persisted contract and policy; it does not reread a replacement CLI contract file. Limited completion writes a separate host completion record alongside the candidate proof. Reference validation alone must never be used to promote arbitrary external JSON into trusted evidence.
+
+Context receipts distinguish prepared prompts from prompts observed at the adapter boundary, and record original knowledge-source repository separately from the candidate execution repository. These hashes describe `AgentTask.prompt`, not provider wire bytes or a qualified token window.
+
+Validation for this slice covers real local Git, Loop execution, SQLite persistence and restart boundaries with fake adapters and simulated GitHub command responses. It does not qualify live external publishing, deployment, retention history, Graph integration or tool sandboxing. Those qualifications remain separate work.
+
+V2 guarded-local stores its default queue, state, verification receipts, reports and proof artifacts in a unique directory under the explicit OSStack home, so host bookkeeping does not write into the source checkout. An explicit `--state` still selects the operator-requested location. Candidate worktree Git metadata remains intentionally registered for inspection. For guarded Git, the contract pins the committed base policy; after an approved candidate edits policy files, the original base policy plus the current private overlay remains the authority for that run. Candidate integrity and scoped approvals still gate every effect; new policy is not silently self-authorized.
+
+The V2 local host also compares original checkout HEAD, index entries, all tracked/untracked file bytes and ignored directory roots before execution and at final verification. A change fails completion and is left in place for inspection; OSStack does not silently revert it. This is detection, not confinement: adapters can still access other paths, existing ignored dependency contents are not hashed, and transient writes restored before sampling cannot be proven absent. Keep explicit state/output locations outside the source checkout when using this check. Legacy `--action` is an intent/risk-classification input; only V2 `requested_actions` is the enforced per-effect allowlist in this slice.
+
+Source sampling collapses existing ignored directories (for example `node_modules/`) to directory roots, so dependency file count does not consume the source path limit. Tracked/untracked source bytes remain bounded to 64 MiB and 100,000 source entries. Unsupported/oversized source sampling returns a structured blocked result before task enqueue; it does not silently weaken the check.
+
+
+FILE packages/github/src/delivery.test.ts PR-only section
+describe("contract PR-only publication", () => {
+  const scope = { repository: "gilosbornhello/osstack", headCommit: HEAD_SHA, draft: false };
+  function runner(override?: Override) { return evidenceRunner((call, r) => {
+    const custom = override?.(call, r); if (custom) return custom;
+    if (call.args.includes("isDraft,state")) return result(JSON.stringify({ isDraft: false, state: "OPEN" }));
+    return undefined;
+  }); }
+  it("opens or reuses the exact PR and never watches CI or merges", async () => {
+    const r = runner(); const published = await openPullRequestToGitHub(input(), scope, r);
+    expect(published.pushedCommit).toBe(HEAD_SHA);
+    expect(commandStrings(r).some(c => c.includes("pr merge") || c.includes("pr checks"))).toBe(false);
+  });
+  it("rejects repository and candidate mismatches before pushing", async () => {
+    for (const bad of [{ ...scope, repository: "foreign/repo" }, { ...scope, headCommit: OTHER_SHA }]) {
+      const r = runner(); await expect(openPullRequestToGitHub(input(), bad, r)).rejects.toThrow(/mismatch/);
+      expect(commandStrings(r).some(c => c.startsWith("git push"))).toBe(false);
+    }
+  });
+  it("does not claim draft publication when an existing PR is ready", async () => {
+    const r = runner(); await expect(openPullRequestToGitHub(input(), { ...scope, draft: true }, r)).rejects.toThrow("draft scope mismatch");
+    expect(commandStrings(r).some(c => c.includes("pr merge"))).toBe(false);
+  });
+  it("rechecks destination before push and refuses remote changes", async () => {
+    let reads = 0; const r = runner(call => call.args[0] === "remote" && ++reads === 2 ? result("git@github.com:foreign/repo.git") : undefined);
+    await expect(openPullRequestToGitHub(input(), scope, r)).rejects.toThrow("publication destination changed");
+    expect(commandStrings(r).some(c => c.startsWith("git push"))).toBe(false);
+  });
+});
+
+
+ACTUAL HOST ARTIFACT/PROBE WRITERS
+async function observeLoopProbeEvents(
+  workspacePath: string,
+  events: readonly unknown[],
+): Promise<LoopProbeObservationSummaryV1 | undefined> {
+  if (!events.some((event) =>
+    isRecord(event) && event["type"] === "loop.implementation.deviation"
+  )) {
+    return undefined;
+  }
+  try {
+    const sourceRevision = await gitOutput(workspacePath, ["rev-parse", "HEAD"]);
+    if (sourceRevision instanceof Error || sourceRevision.trim() === "") {
+      throw new Error("structured implementation deviations require a Git source revision");
+    }
+    const repoRoot = realpathSync(workspacePath);
+    const db = openDb({ path: await ensureLocalStateDbPath() });
+    try {
+      const { resolveProbeRepositoryId } = await import("./probe-command.js");
+      const { observeLoopImplementationDeviations } = await import("./loop-probe-observer.js");
+      const observation = await observeLoopImplementationDeviations({
+        db,
+        repo_root: repoRoot,
+        repo_id: await resolveProbeRepositoryId(repoRoot),
+        source_revision: sourceRevision.trim(),
+        events,
+        now_ms: Date.now(),
+        create_item_id: () => `pi_${randomUUID()}`,
+        create_event_id: () => `pe_${randomUUID()}`,
+      });
+      return { status: "ok", ...observation };
+    } finally {
+      db.close();
+    }
+  } catch (error) {
+    return {
+      status: "error",
+      message: error instanceof Error ? error.message : String(error),
+    };
+  }
+}
+
+
+async function writeRequestedLoopArtifacts(
+  state: LoopState,
+  workspacePath: string,
+  args: string[],
+  events: LoopEvent[] = [],
+  governanceOverride?: GovernanceProofEvidence,
+  outputDirectory?: string,
+): Promise<LoopEvidenceArtifacts | undefined> {
+  const { createLoopStateScorecardFromState, renderLoopStateScorecardHtml, renderLoopStateScorecardMarkdown } = await loadLoop();
+  if (!hasRequestedLoopArtifacts(args)) return undefined;
+
+  const artifacts: LoopEvidenceArtifacts = {};
+  const loopId = safeFileSegment(state.loop_id);
+
+  if (args.includes("--report")) {
+    const reportDir = join(outputDirectory ?? workspacePath, "reports");
+    const reportPath = join(reportDir, `osstack-report-${loopId}.md`);
+    await mkdir(reportDir, { recursive: true });
+    await writeFile(reportPath, await renderReportMarkdownForArtifacts(state, events), "utf-8");
+    artifacts.report = reportPath;
+  }
+
+  if (args.includes("--scorecard")) {
+    const releaseDir = join(outputDirectory ?? workspacePath, "release");
+    const scorecard = createLoopStateScorecardFromState(state);
+    const markdownPath = join(releaseDir, `osstack-scorecard-${loopId}.md`);
+    const htmlPath = join(releaseDir, `osstack-scorecard-${loopId}.html`);
+    await mkdir(releaseDir, { recursive: true });
+    const language = resolveLanguage(flagValue(args, "--lang"));
+    await writeFile(markdownPath, renderLoopStateScorecardMarkdown(scorecard, { language }), "utf-8");
+    await writeFile(htmlPath, renderLoopStateScorecardHtml(scorecard, { language }), "utf-8");
+    artifacts.scorecard_markdown = markdownPath;
+    artifacts.scorecard_html = htmlPath;
+  }
+
+  if (args.includes("--proof")) {
+    const governance = governanceOverride ?? await scanWorkspaceGovernance(workspacePath);
+    const knowledge = await createKnowledgeProofEvidence(args, state.loop_id, state.knowledge);
+    const proof = await writeProofPack(state, join(outputDirectory ?? workspacePath, "release"), events, state.loop_id, governance, knowledge, [], workspacePath);
+    artifacts.proof_dir = proof.proof_dir;
+    artifacts.proof_zip = proof.proof_zip;
+    artifacts.proof_manifest = proof.proof_manifest;
+  }
+
+  return artifacts;
+}
+
