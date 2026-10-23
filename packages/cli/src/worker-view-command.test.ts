@@ -49,11 +49,15 @@ it("uses the real scoped service via injected RPC for list then inspect", async 
   const adversarial = { ...page, scope: { ...page.scope, repo_path: "/repo\u001b]52;c;YQ==\u0007\u202e\u200f\u061c\u2060\ufeff" } };
   remote.rpc.mockResolvedValueOnce(adversarial);
   expect(await handleWorkerViewCommand(["list", "--repo", root, "--default-tenant"], remote)).toBe(0);
-  expect(remote.stdout.mock.calls[0]![0]).not.toMatch(/[\u001b\u0007\p{Cf}]/u);
+  expect(remote.stdout.mock.calls[0]![0]).not.toContain(String.fromCharCode(27));
+  expect(remote.stdout.mock.calls[0]![0]).not.toContain(String.fromCharCode(7));
+  expect(remote.stdout.mock.calls[0]![0]).not.toMatch(/\p{Cf}/u);
   remote.rpc.mockResolvedValueOnce(adversarial);
   expect(await handleWorkerViewCommand(["list", "--repo", root, "--default-tenant", "--json"], remote)).toBe(0);
   const jsonOutput = remote.stdout.mock.calls[1]![0] as string;
-  expect(jsonOutput).not.toMatch(/[\u001b\u0007\p{Cf}]/u);
+  expect(jsonOutput).not.toContain(String.fromCharCode(27));
+  expect(jsonOutput).not.toContain(String.fromCharCode(7));
+  expect(jsonOutput).not.toMatch(/\p{Cf}/u);
   expect(JSON.parse(jsonOutput).scope.repo_path).toBe(adversarial.scope.repo_path);
   remote.rpc.mockResolvedValueOnce({ ...page, views: [{ ...page.views[0], view_id: "\u001b]52;bad" }] });
   expect(await handleWorkerViewCommand(["list", "--repo", root, "--default-tenant"], remote)).toBe(1);
