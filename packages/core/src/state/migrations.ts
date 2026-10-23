@@ -1842,6 +1842,27 @@ export const MIGRATIONS: readonly Migration[] = [
       );
     `,
   },
+  {
+    id: 43,
+    name: "attention_bounded_triage_attempts",
+    sql: `
+      CREATE TABLE attention_triage_attempts (
+        attempt_id TEXT PRIMARY KEY, scope_id TEXT NOT NULL, item_id TEXT NOT NULL,
+        item_revision INTEGER NOT NULL CHECK(item_revision>0), source_hash TEXT NOT NULL,
+        input_digest TEXT NOT NULL, requested_model TEXT NOT NULL, policy_fingerprint TEXT NOT NULL,
+        owner_generation INTEGER NOT NULL CHECK(owner_generation>0),
+        reserved_at INTEGER NOT NULL CHECK(reserved_at>=0), deadline_at INTEGER NOT NULL,
+        status TEXT NOT NULL CHECK(status IN ('reserved','running','succeeded','failed','stale','unknown')),
+        active_slot INTEGER UNIQUE CHECK(active_slot IS NULL OR active_slot=1),
+        reported_model TEXT, usage_json TEXT CHECK(usage_json IS NULL OR length(usage_json)<=2048),
+        result_json TEXT CHECK(result_json IS NULL OR length(result_json)<=2048),
+        result_digest TEXT, reason TEXT CHECK(reason IS NULL OR length(reason)<=256)
+      );
+      CREATE INDEX attention_triage_budget ON attention_triage_attempts(scope_id,reserved_at);
+      CREATE INDEX attention_triage_time ON attention_triage_attempts(reserved_at);
+      CREATE INDEX attention_triage_cache ON attention_triage_attempts(input_digest,requested_model,policy_fingerprint,status);
+    `,
+  },
 ];
 
 export const CURRENT_SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1]!.id;
