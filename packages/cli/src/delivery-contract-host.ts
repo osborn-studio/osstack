@@ -180,3 +180,19 @@ export function createDeliveryVerificationFence(frozen: FrozenDeliveryContractV2
     },
   });
 }
+
+/** Detect changes to the original checkout; this is not a filesystem sandbox.
+ * Existing ignored file contents and arbitrary paths outside the checkout are not sampled.
+ */
+export async function createDeliverySourceFence(workspace: string, baseHead: string): Promise<() => Promise<void>> {
+  const sample = async () => {
+    const [head, index, snapshot] = await Promise.all([
+      deliveryGit(workspace, ["rev-parse", "HEAD"]),
+      deliveryGit(workspace, ["ls-files", "--stage", "-z"]),
+      snapshotDeliveryWorkspace(workspace, baseHead),
+    ]);
+    return deliveryContractDigest({ head, index, snapshot: snapshot.digest });
+  };
+  const baseline = await sample();
+  return async () => { if (await sample() !== baseline) throw new Error("delivery_source_changed"); };
+}

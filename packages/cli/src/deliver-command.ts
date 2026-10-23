@@ -1,6 +1,6 @@
 import { assertDeliveryContractAdmission, assertDeliveryContractPaths, freezeDeliveryContract } from "@osstack/core";
 import type { FrozenDeliveryContractV2, DeliveryReceiptReferenceV2 } from "@osstack/protocol";
-import { createDeliveryVerificationFence, buildDeliveryVerificationReceipt, captureDeliveryCandidate, deliveryGit, persistDeliveryHostRecord, verifyPersistedDeliveryReceipt } from "./delivery-contract-host.js";
+import { createDeliveryVerificationFence, createDeliverySourceFence, buildDeliveryVerificationReceipt, captureDeliveryCandidate, deliveryGit, persistDeliveryHostRecord, verifyPersistedDeliveryReceipt } from "./delivery-contract-host.js";
 import { execFile } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { realpathSync } from "node:fs";
@@ -530,6 +530,7 @@ guarded-deploy adds after merge:
   }
   const localContract = frozenContract;
   const verificationFence = localContract ? createDeliveryVerificationFence(localContract) : undefined;
+  const assertSourceUnchanged = localContract ? await createDeliverySourceFence(workspacePath, localContract.contract.base_head) : undefined;
   const engine = new LoopEngine({
     workspacePath,
     stateFilePath,
@@ -552,7 +553,8 @@ guarded-deploy adds after merge:
     ...(localContract ? { prepareVerification: verificationFence!.prepare, verificationFence: verificationFence!, inputTasks: [{ ...task.task, prompt: executionContext ? prompt : `${prompt}\n\n${localContract.brief}` }],
       guardedLocalCandidate: { mode: "artifact_only" as const, inspect: async (input: { workspacePath: string; run: { run_id: string; agent_id: string };
         verdict: { verify_commands?: import("@osstack/loop").CommandAudit[] | undefined }; reviews: readonly import("@osstack/loop").ReviewArtifact[] }) => {
-        const currentPolicy = await deps.deliveryContractPolicy!(realpathSync(workspacePath));
+        await assertSourceUnchanged!();
+        const currentPolicy = await deps.deliveryContractPolicy!(realpathSync(workspacePath), localContract.contract.base_head);
         if (currentPolicy.policyDigest !== localContract.contract.policy_digest || currentPolicy.budgetRef !== localContract.contract.budget_ref)
           throw new Error("delivery_contract_policy_changed");
         await verificationFence!.assertVerified(input.workspacePath);
@@ -568,6 +570,7 @@ guarded-deploy adds after merge:
           builderIdentity: { ...profileRouting!.summary.builder_identity }, contextReceiptRefs: executionContext?.receiptRefs() ?? [] });
         const ref = await persistDeliveryHostRecord(evidenceRoot, receipt);
         await verifyPersistedDeliveryReceipt({ root: evidenceRoot, ref, frozen: localContract, runId: input.run.run_id, workspace: input.workspacePath });
+        await assertSourceUnchanged!();
         receiptRef = ref; candidateWorkspace = input.workspacePath;
       } }, lessonDrafts: { enabled: false } } : {}),
     ...(maxIterations !== undefined ? { maxIterations } : {}),
@@ -584,6 +587,9 @@ guarded-deploy adds after merge:
     policyGate: makePolicyGate(workspacePath),
   });
   const result = await engine.runOnce();
+  try { await assertSourceUnchanged?.(); } catch {
+    return deliverBlocked(args, "delivery_source_changed", "Original checkout changed during candidate execution; preserve both locations for inspection. No successful completion is claimed.");
+  }
   const artifactArgs = ensureFlags(
     args,
     ["--report", "--scorecard", "--proof"],
