@@ -16,6 +16,8 @@ import { cancelUnstartedGraphWorker } from './graph-unstarted-recovery.js';
 import { cancelJournaledBoundedWriter } from './graph-bounded-recovery.js';
 import { cancelUnstartedGraphPreparation } from './graph-preparation-recovery.js';
 import { bindGraphDeliveryContract, parseGraphContractRegistration, type GraphContractHostEnvelope, type GraphContractHostPolicy } from './graph-delivery-contract.js';
+import { loadGraphContractCompletion } from './graph-contract-receipt.js';
+import { snapshotGraphExecutionContext, type GraphExecutionContextRegistration } from './graph-execution-context.js';
 
 export interface GraphHostRegistration {
   id: string;
@@ -24,7 +26,7 @@ export interface GraphHostRegistration {
   repositoryRef: string;
   taskRef: string;
   inputArtifactRef: string;
-  delivery: Pick<GraphDeliveryOptions, 'repositoryPath' | 'task' | 'writer' | 'reviewer' | 'verifyReviewer' | 'acceptanceRegistry' | 'deliveryContract'>;
+  delivery: Pick<GraphDeliveryOptions, 'repositoryPath' | 'task' | 'writer' | 'reviewer' | 'verifyReviewer' | 'acceptanceRegistry' | 'deliveryContract' | 'executionContext'>;
   /** Current scope-specific grant, called on reads, mutations and each effect. */
   authorize: (operation?: 'read' | 'execute' | 'cancel' | 'resume') => void;
   /** Synchronous admission switch. Only new reservations; existing work keeps its grants. */
@@ -60,7 +62,7 @@ export function graphRpcError(error: unknown): { code: string; message: string }
     RUN_NOT_FOUND: 'RUN_MISMATCH', OWNER_MISMATCH: 'STALE_GENERATION', LEASE_EXPIRED: 'GRANT_EXPIRED',
     LIVE_QUIESCENCE_REQUIRED: 'ACTION_OUTCOME_UNKNOWN', PHYSICAL_WORKER_STOP_REQUIRED: 'ACTION_OUTCOME_UNKNOWN',
     PROGRAM_IDENTITY_MISMATCH: 'CHECKPOINT_INCOMPATIBLE', TERMINAL_RUN: 'REVISION_CONFLICT', CANCEL_PENDING: 'CANCEL_UNCONFIRMED' };
-  const parsed = GraphErrorCode.safeParse(aliases[supplied] ?? (supplied.startsWith('GRAPH_CONTRACT_') || supplied.startsWith('delivery_') ? 'POLICY_DENIED' : supplied));
+  const parsed = GraphErrorCode.safeParse(aliases[supplied] ?? (supplied.startsWith('GRAPH_CONTRACT_') || supplied.startsWith('GRAPH_CONTEXT_') || supplied.startsWith('delivery_') ? 'POLICY_DENIED' : supplied));
   const code = error instanceof z.ZodError ? 'INPUT_CONTRACT_INVALID' : parsed.success ? parsed.data : 'INTERNAL_ERROR';
   return { code, message: code };
 }
@@ -87,8 +89,10 @@ export class GraphRpcService {
     this.runs = new GraphRunStore(options.db);
     for (const value of options.registrations) {
       if (this.registrations.has(value.id)) throw Error('DUPLICATE_GRAPH_REGISTRATION');
+      if (value.delivery.executionContext && !value.delivery.deliveryContract) throw Error('GRAPH_CONTEXT_CONTRACT_REQUIRED');
       this.registrations.set(value.id, { ...value, scope: GraphScope.parse(value.scope), delivery: { ...value.delivery,
         ...(value.delivery.deliveryContract ? { deliveryContract: parseGraphContractRegistration(value.delivery.deliveryContract) } : {}),
+        ...(value.delivery.executionContext ? { executionContext: snapshotGraphExecutionContext(value.delivery.executionContext) } : {}),
         writer: { ...value.delivery.writer, adapter: snapshotAdapter(value.delivery.writer.adapter) }, reviewer: { ...value.delivery.reviewer, adapter: snapshotAdapter(value.delivery.reviewer.adapter) }, acceptanceRegistry: structuredClone(value.delivery.acceptanceRegistry) } });
     }
   }
@@ -149,6 +153,19 @@ export class GraphRpcService {
   }
   private async handleRequest(connection: object, method: string, params: unknown): Promise<unknown> {
     const registration = this.caller(connection);
+    if (method === 'graph.contract') {
+      synchronous(registration.authorize('read'));
+      const request = GraphStatusRequest.parse(params); const run = this.bound(registration, request.scope, request.graphRunId);
+      const row = this.row(run.graphRunId); const descriptor = JSON.parse(row.descriptor_json) as Descriptor;
+      const result = row.result_json ? JSON.parse(row.result_json) as StoredResult : undefined;
+      const refs = result?.evidenceRefs.filter(ref => ref.startsWith('graph-contract:')) ?? [];
+      if (!descriptor.contractEnvelope || !result?.candidate || !result.resultRef || refs.length !== 1) throw Error('GRAPH_CONTRACT_RECEIPT_UNPUBLISHED');
+      const receipt = await loadGraphContractCompletion(descriptor.root, refs[0]!, { run, envelope: descriptor.contractEnvelope,
+        joinRef: result.resultRef, candidateRevision: result.candidate.candidateRevision, artifactDigest: result.candidate.artifactDigest });
+      synchronous(registration.authorize('read'));
+      if (this.closed || workerCanonical(this.bound(registration, request.scope, request.graphRunId)) !== workerCanonical(run)) throw Error('GRAPH_CONTRACT_SNAPSHOT_CHANGED');
+      return receipt;
+    }
     if (method === 'graph.status' || method === 'graph.result') {
       synchronous(registration.authorize('read'));
       const request = GraphStatusRequest.parse(params);
@@ -278,9 +295,9 @@ export class GraphRpcService {
             ...(descriptor.contractEnvelope ? { contractEnvelope: descriptor.contractEnvelope } : {}),
             acquire: this.options.acquire, ...(this.options.authorizePolicy ? { authorizePolicy: this.options.authorizePolicy } : {}), authorize: () => { synchronous(registration.authorize()); },
             authorizeCancel: () => { synchronous(registration.authorize('cancel')); },
-            publish: (candidate, feedbackRef) => {
+            publish: (candidate, feedbackRef, contractReceiptRef) => {
               const { candidateRevision, artifactRefs, artifactDigest } = candidate;
-              const output: StoredResult = { candidate: { candidateRevision, artifactRefs, artifactDigest }, evidenceRefs: [feedbackRef], resultRef: feedbackRef };
+              const output: StoredResult = { candidate: { candidateRevision, artifactRefs, artifactDigest }, evidenceRefs: [feedbackRef, ...(contractReceiptRef ? [contractReceiptRef] : [])], resultRef: feedbackRef };
               this.options.db.prepare('UPDATE graph_public_delivery SET result_json=? WHERE graph_run_id=?').run(JSON.stringify(output), run.graphRunId);
             },
             qualityInterrupt: proof => {
@@ -337,6 +354,7 @@ const ref = z.string().min(1).max(256);
 const hostConfig = z.object({ schemaVersion: z.literal(1), admissionEnabled: z.boolean().optional(), registration: z.object({ id: ref, scope: GraphScope,
   repositoryRef: ref, repositoryPath: z.string().min(1), taskRef: ref, task: z.string().min(1).max(65536), inputArtifactRef: ref,
   deliveryContract: DeliveryContractV2.optional(),
+  executionContextPath: z.string().min(1).max(4096).optional(),
   writer: z.object({ agentId: ref, capabilityId: ref }).strict(), reviewer: z.object({ agentId: ref, capabilityId: ref }).strict(),
   boundedMessages: z.object({ provider: z.enum(['anthropic', 'deepseek']).optional(), baseUrl: z.string().min(1).max(2048).optional(),
     model: ref, files: z.array(ref).min(1).max(16), acceptance: z.string().min(1).max(16000) }).strict().optional(),
@@ -359,18 +377,22 @@ export interface LocalGraphRegistrationOptions {
     /** Synchronous live policy binding; not an async best-effort recheck. */
     assertCurrent: () => void;
   }>;
+  resolveExecutionContext?: (input: { configPath: string; repositoryPath: string; scope: GraphScope;
+    frozen: NonNullable<GraphDeliveryOptions['deliveryContract']>['frozen'] }) => Promise<GraphExecutionContextRegistration>;
 }
 export async function loadLocalGraphRegistration(path: string, adapters: ReadonlyMap<string, AgentAdapter>, options: LocalGraphRegistrationOptions = {}): Promise<GraphHostRegistration> {
   const config = trustedConfig(path).registration;
   const bindingDigest = (value: typeof config) => { const { grant: _grant, ...binding } = value; return createHash('sha256').update(workerCanonical(binding)).digest('hex'); };
   const digest = bindingDigest(config);
   let policyAuthority: (() => void) | undefined;
+  let executionContext: GraphExecutionContextRegistration | undefined;
   const authorize = (operation: 'read' | 'execute' | 'cancel' | 'resume' = 'execute') => {
     const fresh = trustedConfig(path).registration;
     if (bindingDigest(fresh) !== digest || !same(fresh.grant.scope, config.scope)
       || !fresh.grant.operations.includes(operation) || ((operation === 'execute' || operation === 'resume') && fresh.grant.expiresAt <= Date.now()))
       throw new GraphContractError('GRANT_EXPIRED');
     if (operation === 'execute' || operation === 'resume') synchronous(policyAuthority?.());
+    if (operation === 'execute' || operation === 'resume') synchronous(executionContext?.assertCurrent());
   };
   authorize('read');
   let deliveryContract: GraphDeliveryOptions['deliveryContract'];
@@ -380,6 +402,13 @@ export async function loadLocalGraphRegistration(path: string, adapters: Readonl
     if (typeof resolved.assertCurrent !== 'function') throw Error('GRAPH_CONTRACT_POLICY_REQUIRED');
     policyAuthority = resolved.assertCurrent;
     deliveryContract = parseGraphContractRegistration({ frozen: freezeDeliveryContract(config.deliveryContract), policy: resolved.policy });
+    authorize('execute');
+  }
+  if (config.executionContextPath) {
+    if (!deliveryContract || !options.resolveExecutionContext) throw Error('GRAPH_CONTEXT_REGISTRATION_REQUIRED');
+    if (config.scope.tenantId !== 'default') throw Error('GRAPH_CONTEXT_SCOPE_UNSUPPORTED');
+    executionContext = snapshotGraphExecutionContext(await options.resolveExecutionContext({ configPath: config.executionContextPath,
+      repositoryPath: config.repositoryPath, scope: config.scope, frozen: deliveryContract.frozen }));
     authorize('execute');
   }
   let writer = adapters.get(config.writer.agentId); let reviewer = adapters.get(config.reviewer.agentId);
@@ -401,6 +430,7 @@ export async function loadLocalGraphRegistration(path: string, adapters: Readonl
   return { id: config.id, scope: config.scope, product: 'osstack', repositoryRef: config.repositoryRef, taskRef: config.taskRef, inputArtifactRef: config.inputArtifactRef,
     authorize, admitNewRuns: () => trustedConfig(path).admissionEnabled !== false, delivery: { repositoryPath: config.repositoryPath, task: config.task,
       ...(deliveryContract ? { deliveryContract } : {}),
+      ...(executionContext ? { executionContext } : {}),
       writer: { identity: writer.id, adapter: writer, capabilityId: config.writer.capabilityId },
       reviewer: { identity: reviewer.id, adapter: reviewer, capabilityId: config.reviewer.capabilityId },
       verifyReviewer: async proof => { authorize('read'); if (proof.writerIdentity !== writerId || proof.reviewerIdentity !== reviewerId || writerId === reviewerId) throw Error('INDEPENDENT_REVIEWER_REQUIRED'); },

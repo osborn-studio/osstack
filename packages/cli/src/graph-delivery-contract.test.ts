@@ -48,3 +48,11 @@ it.each(['maxEpochs', 'maxBranchAttempts', 'maxConcurrentReaders', 'maxActionSta
     const f = fixture(); f.request.spec.limits[key] += 1;
     expect(() => bindGraphDeliveryContract(f.request, f.registration)).toThrow('BUDGET_EXCEEDED');
   });
+it('keeps the initial local knowledge path in default tenant and hashes its exact config', () => {
+  const f = fixture(); const registration = { ...f.registration, executionContext: { configDigest: 'd'.repeat(64) } };
+  expect(() => bindGraphDeliveryContract(f.request, registration)).toThrow('SCOPE_UNSUPPORTED');
+  f.request.scope.tenantId = 'default';
+  const first = bindGraphDeliveryContract(f.request, registration);
+  const changed = bindGraphDeliveryContract(f.request, { ...registration, executionContext: { configDigest: 'e'.repeat(64) } });
+  expect(first.envelope.contextDigest).toBe('d'.repeat(64)); expect(first.request.inputArtifactRef).not.toBe(changed.request.inputArtifactRef);
+});

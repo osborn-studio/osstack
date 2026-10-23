@@ -23,6 +23,8 @@ import { publishDeliveryReceipt, loadDeliveryReceipt } from './graph-delivery-re
 import { publishBoundedRecoveryJournal } from './graph-bounded-recovery-journal.js';
 import type { AdmissionInput, ExecutionLease } from './governed-execution.js';
 import { assertGraphContractPaths, parseGraphContractRegistration, verifyGraphContractEnvelope, type GraphDeliveryContractRegistration, type GraphContractHostEnvelope } from './graph-delivery-contract.js';
+import { publishGraphContractCompletion } from './graph-contract-receipt.js';
+import { prepareGraphExecutionContext, snapshotGraphExecutionContext, type GraphExecutionContextRegistration, type GraphContextEvidence } from './graph-execution-context.js';
 
 export interface GraphDeliveryOptions {
   db: Database.Database; request: StartGraphRequest; root: string; repositoryPath: string;
@@ -32,6 +34,7 @@ export interface GraphDeliveryOptions {
   deliveryContract?: GraphDeliveryContractRegistration;
   /** Durable host envelope from the same public reservation transaction. Never worker input. */
   contractEnvelope?: GraphContractHostEnvelope;
+  executionContext?: GraphExecutionContextRegistration;
   containedTests?: GraphVerificationOptions['containedTests'];
   acquire: (input: AdmissionInput) => Promise<ExecutionLease>; authorize: () => void;
   /** Reserved and exclusively selected by the public host before construction. */
@@ -40,7 +43,7 @@ export interface GraphDeliveryOptions {
   /** Current source authority is distinct from the physical candidate checkout. */
   authorizePolicy?: (input: { policyRoot: string; workspacePath: string }) => Promise<void>;
   qualityInterrupt?: (proof: GraphDeliveryInterrupt) => void;
-  publish?: (candidate: Candidate, feedbackRef: string) => void;
+  publish?: (candidate: Candidate, feedbackRef: string, contractReceiptRef?: string) => void;
 }
 export interface GraphDeliveryInterrupt {
   interruptId: string; inputDigest: string; kind: 'quality';
@@ -72,6 +75,7 @@ export class GraphDelivery {
   private readonly installed = new Map<string, Promise<void>>();
   private readonly branches = new Map<string, GraphRegisteredAction>();
   private readonly workspaces = new Map<number, RegisteredCandidateWorkspace>();
+  private readonly contextEvidence = new Map<string, GraphContextEvidence>();
   private feedbackRef: string | undefined;
   private connection: object | undefined;
   private closed = false;
@@ -91,12 +95,14 @@ export class GraphDelivery {
     this.options = Object.freeze({ ...options, request: freezeWorkerData(StartGraphRequest.parse(options.request)),
       ...(options.deliveryContract ? { deliveryContract: parseGraphContractRegistration(options.deliveryContract) } : {}),
       ...(options.contractEnvelope ? { contractEnvelope: freezeWorkerData(structuredClone(options.contractEnvelope)) } : {}),
+      ...(options.executionContext ? { executionContext: snapshotGraphExecutionContext(options.executionContext) } : {}),
       writer: Object.freeze({ ...options.writer, adapter: adapter(options.writer.adapter) }),
       reviewer: Object.freeze({ ...options.reviewer, adapter: adapter(options.reviewer.adapter) }),
       ...(options.containedTests ? { containedTests: Object.freeze({ ...options.containedTests }) } : {}),
       acceptanceRegistry: freezeWorkerData(structuredClone(options.acceptanceRegistry)) });
     options = this.options;
     if (Boolean(options.deliveryContract) !== Boolean(options.contractEnvelope)) throw Error('GRAPH_CONTRACT_ENVELOPE_REQUIRED');
+    if (options.executionContext && !options.deliveryContract) throw Error('GRAPH_CONTEXT_CONTRACT_REQUIRED');
     if (options.deliveryContract) verifyGraphContractEnvelope(options.contractEnvelope, options.request,
       { ...options, deliveryContract: options.deliveryContract });
     const capability = options.writer.adapter.capabilities().find(c => c.id === options.writer.capabilityId);
@@ -129,6 +135,10 @@ export class GraphDelivery {
     this.assertOwned();
     const value: unknown = this.options.authorize();
     if (value !== undefined) { void Promise.resolve(value).catch(() => {}); throw Error('AUTHORITY_MUST_BE_SYNCHRONOUS'); }
+    if (this.options.executionContext) {
+      const current: unknown = this.options.executionContext.assertCurrent();
+      if (current !== undefined) { void Promise.resolve(current).catch(() => {}); throw Error('GRAPH_CONTEXT_AUTHORITY'); }
+    }
   }
   private checkSettlement(): void {
     if (!this.stopping || this.current().status !== 'cancel_pending' || !this.options.authorizeCancel) { this.check(); return; }
@@ -195,6 +205,8 @@ export class GraphDelivery {
           ...(this.options.containedTests ? { containedTests: this.options.containedTests } : {}),
           preparationLease: lease, acceptanceRegistry: this.options.acceptanceRegistry, writerIdentity: this.options.writer.identity,
           ...(this.options.deliveryContract ? { deliveryContract: this.options.deliveryContract.frozen } : {}),
+          ...(this.options.executionContext ? { executionContext: this.options.executionContext, contextRepositoryPath: this.options.repositoryPath,
+            recordContextEvidence: (value: GraphContextEvidence) => { this.check(); this.contextEvidence.set(value.effectKey, value); } } : {}),
           reviewer: this.options.reviewer, verifyReviewer: this.options.verifyReviewer,
           slots: { [kind]: { nodeId: branch.id, effectSlot: branch.effectSlot, workspaceLeaseRef: `e${epoch}.${kind}`, tokenReservation: branch.tokenReservation } },
           effectIdentity: () => { const a = this.latest(branch.id); if (a?.state !== 'running') throw Error('RUNNING_EFFECT_REQUIRED'); return { effect: a.effect, effectKey: a.effectKey }; },
@@ -228,15 +240,24 @@ export class GraphDelivery {
       if (epoch && !feedback) throw Error('IMMUTABLE_FEEDBACK_REQUIRED');
       const action = epoch ? { kind: 'repair' as const, inputArtifactRef: this.options.request.inputArtifactRef, workspaceLeaseRef,
         candidateRevision: this.candidate(epoch - 1).candidateRevision, feedbackRef: this.feedbackRef! } : { kind: 'implement' as const, inputArtifactRef: this.options.request.inputArtifactRef, workspaceLeaseRef };
-      const adapter = this.options.writer.adapter;
+      const rawAdapter = this.options.writer.adapter;
+      const context = this.options.executionContext ? await prepareGraphExecutionContext({ registration: this.options.executionContext,
+        adapter: rawAdapter, workspacePath: this.options.repositoryPath, frozen: this.options.deliveryContract!.frozen, authorize: () => this.check() }) : undefined;
+      const adapter = context?.adapter ?? rawAdapter;
       const capability = adapter.capabilities().find(c => c.id === this.options.writer.capabilityId); if (!capability) throw Error('WRITER_CAPABILITY_REQUIRED');
       return { ...common, workspace, action, execution: { kind: 'adapter', adapter, capabilityId: capability.id, plan: {
         plan_id: `delivery-${r.graphRunId}-${epoch}`, agent_id: adapter.id, max_iterations: 1,
         task: { task_id: `delivery-${epoch}`, source: 'manual', capability: capability.kind, priority: 100,
-          prompt: `${this.options.task}${this.options.deliveryContract ? `\n\n${this.options.deliveryContract.frozen.brief}` : ''}${feedback ? `\nRepair frozen candidate ${action.kind === 'repair' ? action.candidateRevision : ''}. Complete host quality feedback:\n${feedback.bundle_json}` : ''}` },
+          prompt: `${this.options.task}${this.options.deliveryContract && !context ? `\n\n${this.options.deliveryContract.frozen.brief}` : ''}${feedback ? `\nRepair frozen candidate ${action.kind === 'repair' ? action.candidateRevision : ''}. Complete host quality feedback:\n${feedback.bundle_json}` : ''}` },
         stop_condition: { type: 'tests_pass' },
-      } }, persist: async evidence => ({ evidenceRef: await this.persist(n.id, workspace.workspace_path, evidence),
-        ...(evidence.status === 'completed' && evidence.stopped ? { result: { schemaVersion: 1 as const, kind: 'implementation_complete' as const, workspaceLeaseRef, receiptRef: `e${epoch}.implementation` } } : {}) }) };
+      } }, persist: async evidence => {
+        if (context && evidence.status === 'completed' && evidence.stopped) {
+          const action = this.latest(n.id)!; const recorded = await context.evidence(evidence.candidate?.execution?.run_id ?? '', { effect: action.effect, effectKey: action.effectKey });
+          this.check(); this.contextEvidence.set(action.effectKey, recorded);
+        }
+        return { evidenceRef: await this.persist(n.id, workspace.workspace_path, evidence),
+          ...(evidence.status === 'completed' && evidence.stopped ? { result: { schemaVersion: 1 as const, kind: 'implementation_complete' as const, workspaceLeaseRef, receiptRef: `e${epoch}.implementation` } } : {}) };
+      } };
     }
     if (name === 'freeze') {
       const implementation = this.latest(`e${epoch}.${epoch ? 'repair' : 'implement'}`);
@@ -409,14 +430,28 @@ export class GraphDelivery {
           const route = decision.route.kind === 'retry_required'
             ? { kind: 'stop' as const, epoch: this.epoch, reason: 'retry_dispatch_incomplete' } : decision.route;
           this.check();
+          const assertContractCurrent = () => {
+            this.check();
+            const current = new GraphVerificationStore(this.options.db, () => {}).snapshot(this.fence(decision.snapshot.run));
+            if (current.digest !== decision.snapshot.digest) throw Error('GRAPH_CONTRACT_SNAPSHOT_CHANGED');
+          };
+          const contractReceiptRef = route.kind === 'ready' && this.options.contractEnvelope ? await publishGraphContractCompletion({
+            root: this.options.root, envelope: this.options.contractEnvelope, decision, artifacts: this.artifacts, assertCurrent: assertContractCurrent,
+            contextEvidence: [...this.contextEvidence.values()],
+            ...(this.options.executionContext ? { contextReceiptRoot: this.options.executionContext.receiptRoot } : {}),
+          }) : undefined;
           const inspection = new GraphRecoveryStore(this.options.db, () => { throw Error('INSPECTION_ONLY'); });
           const inventory = inspection.inspectExecutors(this.fence(decision.snapshot.run));
           if (route.kind !== 'reconcile' && inventory.requiredEffectKeys.length) throw Error('QUIESCENCE_REQUIRED');
           if (this.current().status !== 'cancel_pending') this.options.db.transaction(() => {
+            if (contractReceiptRef) {
+              this.check();
+              new GraphVerificationStore(this.options.db, () => {}).assertCurrentInTransaction(decision.snapshot, Date.now());
+            }
             if (workerCanonical(verifyDurableExit()) !== workerCanonical(workerProof)) throw Error('PHYSICAL_WORKER_STOP_REQUIRED');
             inspection.assertExecutorInventory(inventory);
             this.runs.project({ ...this.fence(decision.snapshot.run), status: route.kind === 'ready' ? 'ready' : route.kind === 'reconcile' ? 'reconciliation_required' : 'failed' });
-            if (decision.publication) this.options.publish?.(candidate, decision.publication.record.receiptRef);
+            if (decision.publication) this.options.publish?.(candidate, decision.publication.record.receiptRef, contractReceiptRef);
           }).immediate();
           return { route, candidate, ...(decision.publication ? { feedbackRef: decision.publication.record.receiptRef } : {}) };
         }

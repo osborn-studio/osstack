@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { afterEach, expect, it, vi } from 'vitest';
 import { GraphArtifactStore } from '@osstack/core/graph-artifacts';
-import { resolveRepositoryScope, CapabilitySchema, openDb, GraphRunStore } from '@osstack/core';
+import { resolveRepositoryScope, CapabilitySchema, openDb, GraphRunStore, freezeDeliveryContract, deliveryCheckReference } from '@osstack/core';
 import { FifoSemaphore } from '@osstack/autonomy';
 import { executeCandidateImplementation } from '@osstack/loop';
 import { GraphActionBroker, type GraphRegisteredAction } from './graph-action-broker.js';
@@ -432,3 +432,22 @@ it('settles contained cancellation only after durable removal and prevents repla
   expect(receipt.kind).toBe('docker_removed');
   expect(f.db.prepare('SELECT released_at FROM graph_action_admissions WHERE released_at IS NULL').all()).toEqual([]);
 }, 30000);
+
+it('V2 rejects a second reviewer invocation for the same effect but permits a newly authorized logical attempt', async () => {
+  const f = await fixture(); const seen: AgentTask[] = [];
+  f.options.deliveryContract = freezeDeliveryContract({ schema_version: 2, contract_id: 'review-contract', task_id: 'task',
+    canonical_repo: f.options.sourceWorkspace.workspace_path, mode: 'implement', base_head: f.binding.candidateRevision, goal: 'review',
+    required_checks: [{ id: 'test', registry_ref: deliveryCheckReference('exit 1') }], review_policy_ref: 'host-review',
+    requested_completion: 'local_verified', allowed_paths: ['file'], requested_actions: ['build', 'verify'],
+    budget_ref: `policy:${'b'.repeat(64)}`, policy_digest: 'b'.repeat(64), publication_scope: { mode: 'none' }, merge_authority: { mode: 'none' } });
+  let attempt = 1; const original = f.options.effectIdentity;
+  f.options.effectIdentity = kind => { const effect = { ...original(kind).effect, logicalAttempt: attempt }; return { effect, effectKey: computeGraphEffectKey(effect) }; };
+  f.options.reviewer.adapter.invoke = async function* (task, signal) { seen.push(structuredClone(task)); yield* reviewAdapter(() => 'bad')(task, signal); };
+  const p = await prepareGraphVerification(f.options); const action = p.actions[0]!;
+  await invokeReview(action);
+  if (action.execution.kind !== 'adapter') throw Error('expected review adapter');
+  const repeated = action.execution.adapter.invoke({ ...seen[0]!, run_id: 'second-run' }, new AbortController().signal)[Symbol.asyncIterator]();
+  await expect(repeated.next()).rejects.toThrow('repeated reviewer invocation'); expect(seen).toHaveLength(1);
+  attempt = 2; await invokeReview(action); expect(seen).toHaveLength(2);
+  expect(seen[0]!.session_id).not.toBe(seen[1]!.session_id);
+}, 15000);

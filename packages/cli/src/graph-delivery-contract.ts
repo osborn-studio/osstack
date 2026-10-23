@@ -24,7 +24,7 @@ const policySchema = z.object({ policyDigest: digest, reviewPolicyRef: reference
 const acceptanceSchema = z.object({ ref: reference, command: z.string().min(1).max(8192),
   passExitCodes: z.array(z.number().int().min(0).max(255)), failExitCodes: z.array(z.number().int().min(0).max(255)) }).strict();
 const envelopeSchema = z.object({ schemaVersion: z.literal(1), sourceInputArtifactRef: reference,
-  frozen: FrozenDeliveryContractV2, policy: policySchema, acceptance: acceptanceSchema }).strict();
+  frozen: FrozenDeliveryContractV2, policy: policySchema, acceptance: acceptanceSchema, contextDigest: digest.optional() }).strict();
 export type GraphContractHostEnvelope = z.infer<typeof envelopeSchema>;
 
 export function parseGraphContractRegistration(value: unknown): GraphDeliveryContractRegistration {
@@ -36,10 +36,12 @@ export function parseGraphContractRegistration(value: unknown): GraphDeliveryCon
 export function bindGraphDeliveryContract(requestValue: StartGraphRequest, registration: {
   repositoryPath: string; task: string; acceptanceRegistry: readonly AcceptanceCommandSpec[];
   deliveryContract: GraphDeliveryContractRegistration;
+  executionContext?: { configDigest: string };
 }): { request: StartGraphRequest; envelope: GraphContractHostEnvelope } {
   const request = StartGraphRequest.parse(requestValue);
   const { frozen, policy } = parseGraphContractRegistration(registration.deliveryContract);
   const contract = frozen.contract;
+  if (registration.executionContext && request.scope.tenantId !== 'default') throw Error('GRAPH_CONTEXT_SCOPE_UNSUPPORTED');
   if (contract.mode !== 'implement' || contract.requested_completion !== 'local_verified'
     || contract.publication_scope.mode !== 'none' || contract.merge_authority.mode !== 'none'
     || contract.required_checks.length !== 1) throw Error('GRAPH_CONTRACT_UNSUPPORTED');
@@ -55,7 +57,7 @@ export function bindGraphDeliveryContract(requestValue: StartGraphRequest, regis
     if (request.spec.limits[name] > policy.limits[name]) throw Error('GRAPH_CONTRACT_BUDGET_EXCEEDED');
   }
   const envelope = freezeWorkerData(envelopeSchema.parse({ schemaVersion: 1, sourceInputArtifactRef: request.inputArtifactRef,
-    frozen, policy, acceptance }));
+    frozen, policy, acceptance, ...(registration.executionContext ? { contextDigest: registration.executionContext.configDigest } : {}) }));
   return { request: freezeWorkerData(StartGraphRequest.parse({ ...request, inputArtifactRef: graphContractInputRef(envelope) })), envelope };
 }
 
@@ -65,7 +67,7 @@ export function graphContractInputRef(envelope: GraphContractHostEnvelope): stri
 
 /** Parses durable host data; provenance and current grant remain the caller's responsibility. */
 export function verifyGraphContractEnvelope(value: unknown, request: StartGraphRequest,
-  registration: { repositoryPath: string; task: string; acceptanceRegistry: readonly AcceptanceCommandSpec[]; deliveryContract: GraphDeliveryContractRegistration }): GraphContractHostEnvelope {
+  registration: { repositoryPath: string; task: string; acceptanceRegistry: readonly AcceptanceCommandSpec[]; deliveryContract: GraphDeliveryContractRegistration; executionContext?: { configDigest: string } }): GraphContractHostEnvelope {
   const envelope = envelopeSchema.parse(value);
   const bound = bindGraphDeliveryContract({ ...request, inputArtifactRef: envelope.sourceInputArtifactRef }, registration);
   if (workerCanonical(bound.envelope) !== workerCanonical(envelope) || workerCanonical(bound.request) !== workerCanonical(request))
@@ -82,6 +84,6 @@ export function assertGraphContractPaths(frozen: FrozenDeliveryContractV2, works
   }).split('\0').filter(Boolean);
   const paths = read(['diff', '--no-ext-diff', '--no-textconv', '--no-renames', '--name-only', '-z', frozen.contract.base_head,
     ...(candidateRevision ? [candidateRevision] : []), '--']);
-  if (!candidateRevision) paths.push(...read(['ls-files', '--others', '--exclude-standard', '-z']));
+  if (!candidateRevision) paths.push(...read(['ls-files', '--others', '-z']));
   assertDeliveryContractPaths(frozen, paths);
 }

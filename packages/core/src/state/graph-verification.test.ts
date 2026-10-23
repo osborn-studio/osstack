@@ -70,5 +70,14 @@ it('detects release-only changes even when run revision stays the same', () => {
   const after = f.store.snapshot(f.fence());
   expect(after.run.revision).toBe(before.run.revision); expect(after.digest).not.toBe(before.digest);
   expect(() => f.store.commit(before, bundle(f), 130)).toThrow('VERIFICATION_SNAPSHOT_CHANGED');
+  expect(() => f.db.transaction(() => f.store.assertCurrentInTransaction(before, 130)).immediate()).toThrow('VERIFICATION_SNAPSHOT_CHANGED');
+  expect(() => f.db.transaction(() => f.store.assertCurrentInTransaction(after, 130)).immediate()).not.toThrow();
   expect(f.store.commit(after, bundle(f), 130).created).toBe(true);
+});
+it('requires a live publication transaction and rejects stale generation or revision without refreshing the premise', () => {
+  const f = fixture(); const snapshot = f.store.snapshot(f.fence());
+  expect(() => f.store.assertCurrentInTransaction(snapshot, 125)).toThrow('TRANSACTION_REQUIRED');
+  expect(() => f.db.transaction(() => f.store.assertCurrentInTransaction(snapshot, 10001)).immediate()).toThrow();
+  f.reserve();
+  expect(() => f.db.transaction(() => f.store.assertCurrentInTransaction(snapshot, 130)).immediate()).toThrow();
 });

@@ -5,7 +5,7 @@ import type { GraphAction, GraphActionBudget } from './graph-actions.js';
 import { readGraphActionState } from './graph-actions.js';
 export { readGraphActionState } from './graph-actions.js';
 import { fencedGraphTransaction } from './graph-storage.js';
-import type { GraphRun, GraphRunFence } from './graph-runs.js';
+import { GraphRunStore, checkGraphRunFence, type GraphRun, type GraphRunFence } from './graph-runs.js';
 export interface GraphVerificationSnapshot {
   run: GraphRun; actions: GraphAction[]; budget: GraphActionBudget;
   pendingAdmissions: number; unresolvedActions: number; digest: string;
@@ -34,6 +34,15 @@ export class GraphVerificationStore {
   }
   snapshot(input: GraphRunFence): GraphVerificationSnapshot {
     return fencedGraphTransaction(this.db, input, run => ({ changed: false, value: this.capture(run) })).value;
+  }
+  /** Final synchronous publication check inside the caller's existing IMMEDIATE transaction.
+   * No refreshed premise: includes admissions which can change without run revision. */
+  assertCurrentInTransaction(snapshot: GraphVerificationSnapshot, now: number): void {
+    if (!this.db.inTransaction) throw Error('GRAPH_PUBLICATION_TRANSACTION_REQUIRED');
+    const input = fence(snapshot.run, now);
+    const run = checkGraphRunFence(new GraphRunStore(this.db).get(input.scope, input.graphRunId), input, true);
+    const current = this.capture(run);
+    if (current.digest !== snapshot.digest || workerCanonical(current) !== workerCanonical(snapshot)) throw Error('VERIFICATION_SNAPSHOT_CHANGED');
   }
   commit(snapshotValue: GraphVerificationSnapshot, bundleValue: unknown, now: number): { record: GraphVerificationRecord; created: boolean; run: GraphRun } {
     const snapshot = freezeWorkerData(structuredClone(snapshotValue)); const bundle = freezeWorkerData(GraphJsonValue.parse(bundleValue));
