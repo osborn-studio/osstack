@@ -1,0 +1,10 @@
+{
+  "task": {
+    "task_id": "firstmate-wave6-schema-final-qualification",
+    "capability": "code.test",
+    "prompt": "Requalify final extension source after schema45 inventory expectation correction61579141 and merging final PR242 evidence. All eight checks; first full failed only stale schema assertion, preserve failure. No native/public provider claims.",
+    "priority": 50,
+    "source": "task_queue"
+  },
+  "path": "/Volumes/AIMATE_WORK/tmp/osstack/smoke/pr237-integration/wave6-schema-final-loop/tasks/firstmate-wave6-schema-final-qualification.json"
+}

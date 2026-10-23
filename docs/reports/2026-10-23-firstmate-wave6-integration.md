@@ -28,4 +28,6 @@
 
 ## 最终资格
 
-待主线程在最终源码上跑完整8项检查、记录OSStack任务与远端精确head CI后更新。
+首轮完整检查仅home-inventory-daemon.test.ts的旧schema44断言失败；实际新schema45正确。61579141改用CURRENT_SCHEMA_VERSION，14项真实daemon回归通过。原失败保留；生产代码未因该测试修复改变。最终8项重跑全部通过：22包5388passed/3既有skip，独立OSStack任务firstmate-wave6-schema-final-qualification及verifier零问题。最终证据见[资格记录](2026-10-23-firstmate-pr243-final-qualification/README.md)。远端精确head检查及Ready状态以PR#243的实时Checks为准。
+
+补充资格：独立快照14574347的10分钟实际socket混合观察soak通过，详见 `2026-10-23-firstmate-wave6-evidence/qualification-soak/report.md`。100来源、12001RPC、p95 2.206ms、零RPC错误，停止造数18.942秒全部追平。测量期间Graph只有完成状态的只读查询，不等于活跃Graph/最大容量或Loop tick预算资格。

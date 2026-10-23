@@ -1,0 +1,45 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/tmp/osstack/smoke/pr237-integration/qualification-soak
+
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/smoke/pr237-integration/qualification-soak/full/home/graph-delivery/a524d26c-ec51-4079-8208-74167b6c4fd0/writer-0'...
+HEAD is now at 9baab63 local fixture execute policy
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/smoke/pr237-integration/qualification-soak/full/home/graph-delivery/99add1b9-4ade-4e86-b17b-22a02e78ff65/writer-0'...
+HEAD is now at 9baab63 local fixture execute policy
+stdout | soak.test.ts > ten minute real socket mixed observation qualification
+SOAK_PROGRESS {"elapsed_ms":60108.527333,"produced":1011,"rpc":1203,"rpcErrors":0,"pending_events":197,"rss_bytes":250445824}
+
+stdout | soak.test.ts > ten minute real socket mixed observation qualification
+SOAK_PROGRESS {"elapsed_ms":120119.31712500002,"produced":2020,"rpc":2403,"rpcErrors":0,"pending_events":197,"rss_bytes":250445824}
+
+stdout | soak.test.ts > ten minute real socket mixed observation qualification
+SOAK_PROGRESS {"elapsed_ms":180222.274,"produced":3031,"rpc":3605,"rpcErrors":0,"pending_events":198,"rss_bytes":250445824}
+
+stdout | soak.test.ts > ten minute real socket mixed observation qualification
+SOAK_PROGRESS {"elapsed_ms":240415.693,"produced":4043,"rpc":4809,"rpcErrors":0,"pending_events":202,"rss_bytes":250445824}
+
+stdout | soak.test.ts > ten minute real socket mixed observation qualification
+SOAK_PROGRESS {"elapsed_ms":300570.088083,"produced":5055,"rpc":6012,"rpcErrors":0,"pending_events":205,"rss_bytes":250445824}
+
+stdout | soak.test.ts > ten minute real socket mixed observation qualification
+SOAK_PROGRESS {"elapsed_ms":360746.915791,"produced":6067,"rpc":7215,"rpcErrors":0,"pending_events":208,"rss_bytes":250445824}
+
+stdout | soak.test.ts > ten minute real socket mixed observation qualification
+SOAK_PROGRESS {"elapsed_ms":420883.916625,"produced":7078,"rpc":8418,"rpcErrors":0,"pending_events":210,"rss_bytes":250445824}
+
+stdout | soak.test.ts > ten minute real socket mixed observation qualification
+SOAK_PROGRESS {"elapsed_ms":481020.675875,"produced":8090,"rpc":9621,"rpcErrors":0,"pending_events":213,"rss_bytes":250445824}
+
+stdout | soak.test.ts > ten minute real socket mixed observation qualification
+SOAK_PROGRESS {"elapsed_ms":541134.069166,"produced":9100,"rpc":10823,"rpcErrors":0,"pending_events":214,"rss_bytes":250445824}
+
+stdout | soak.test.ts > ten minute real socket mixed observation qualification
+SOAK_COMPLETE {"activeWall":600060.563333,"events":10091,"rpc":{"count":12001,"p50_ms":0.5736670000478625,"p95_ms":2.2060420000052545,"p99_ms":3.5821669999859296,"max_ms":17.70633399998769},"drain_ms":18941.87070900004}
+
+ ✓ soak.test.ts (1 test) 630378ms
+   ✓ ten minute real socket mixed observation qualification  630377ms
+
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+   Start at  14:11:12
+   Duration  631.77s (transform 740ms, setup 0ms, collect 1.23s, tests 630.38s, environment 0ms, prepare 32ms)
+
