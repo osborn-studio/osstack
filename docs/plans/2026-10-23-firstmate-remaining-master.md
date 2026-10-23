@@ -58,3 +58,13 @@
 ### 后续共同边界
 
 V2 契约须同时包含 publication_scope（none/draft_pr/push 等严格枚举及目标 repo/ref）和 merge_authority（引用既有审批策略，字段本身不授予权限）；最终字段以真实既有风险与发布 API 为准。R2 重试去重只对本地幂等 artifact sender 作保证，不能直接复用于公共发送。Haiku 仅是独立调用的静态挑战，原始输入/输出留档，不冒充独立实机验证。
+
+### 生命周期补充：终态停止与逻辑等待
+
+`drain` 在此专指现有本地通知发送的有界 `AttentionExperience.drain`（已有 5 秒超时），不包括超时后尚未 settle 的底层 reader promise。stop 等待的是已由 abort/deadline race 截断的逻辑 pass 和这一个有界通知 drain；绝不 await 未 settle 的物理读取。DB 必须在逻辑 pass/drain 都完成后才关闭；“close 后零读取/写入”专指不再访问 SQLite 句柄，不表示内核文件 IO 已物理取消。
+
+服务实例的 stop 是终态，stop 后 start 明确拒绝；start/start 在未停止时幂等。物理读取占位以 scope_id + kind + subject_id + binding_hash 为稳定键，贯穿该实例全部扫描；直到原始 promise settle 才删除，不随 epoch/timeout 清除。全实例最多 100 个未 settle 的物理读取（包括已超时或已解除绑定者），达到上限只记录 unknown，不创建新读取。保留计数在 stop 后无需清零，因为实例不可复用；新 daemon 是新进程/新 owner，旧实例无 DB 写入权。
+
+reader 的显式原因区分 timeout、aborted、invalid_payload、source_missing、read_failed、read_capacity_exceeded。实际代码使用现有同步 better-sqlite3 事务和 owner generation 围栏；写入 guard 至提交之间无 await。确定性路由 golden 为每个 case 固定单一 entrypoint（capability 或 profile），分别调用对应真实函数，禁止按哪个结果好看选择函数。
+
+#237 完整测试及审计通过、PR ready 后即可开发以它为基线的依赖 PR；GitHub 独立人工批准控制合并，不是依赖分支开发的前置许可。Haiku 对计划的建议不增加用户未要求的审批停顿。
