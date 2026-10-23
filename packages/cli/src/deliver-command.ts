@@ -491,6 +491,11 @@ guarded-deploy adds after merge:
     if (!isAbsolute(deliveryStateDirectory)) throw new Error("delivery_state_absolute_path_required");
     if (flagValue(args, "--state") === undefined) stateFilePath = join(deliveryStateDirectory, "LOOP-STATE.json");
   }
+  let assertSourceUnchanged: (() => Promise<void>) | undefined;
+  if (frozenContract) {
+    try { assertSourceUnchanged = await createDeliverySourceFence(workspacePath, frozenContract.contract.base_head); }
+    catch { return deliverBlocked(args, "delivery_source_check_unavailable", "Original checkout could not be safely sampled within the documented limits; no task was enqueued or dispatched."); }
+  }
   const task = await enqueueTask({
     workspacePath: deliveryStateDirectory ?? workspacePath,
     prompt,
@@ -530,7 +535,6 @@ guarded-deploy adds after merge:
   }
   const localContract = frozenContract;
   const verificationFence = localContract ? createDeliveryVerificationFence(localContract) : undefined;
-  const assertSourceUnchanged = localContract ? await createDeliverySourceFence(workspacePath, localContract.contract.base_head) : undefined;
   const engine = new LoopEngine({
     workspacePath,
     stateFilePath,
@@ -622,6 +626,9 @@ guarded-deploy adds after merge:
     deliveryStateDirectory,
   );
   const learnedLessons = await deps.learnLessonsFromLoopState(result.state);
+  try { await assertSourceUnchanged?.(); } catch {
+    return deliverBlocked(args, "delivery_source_changed", "Original checkout changed while finalizing evidence; completion is blocked and changes are preserved.");
+  }
   const contractSucceeded = receiptRef !== undefined && result.state.completed_tasks.length === 1
     && result.state.completed_tasks.every(completed => completed.outcome === "success") && governance?.blocking !== true && result.budget?.exceeded !== true;
   const summary = {
