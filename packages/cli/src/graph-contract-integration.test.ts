@@ -215,3 +215,36 @@ it('refuses a durable contract envelope substituted after reservation',async()=>
     for(const method of ['graph.status','graph.result','graph.contract'])await expect(f.service.handle(f.connection,method,{schemaVersion:1,scope:f.request.scope,graphRunId:started.graphRunId})).rejects.toThrow('CHECKPOINT_INCOMPATIBLE');
   }finally{await f.close();}
 });
+
+it.each(['--assume-unchanged', '--skip-worktree'])('rejects writer %s flags before freezing an out-of-scope candidate', async flag => {
+  const f = await fixture(); await f.service.close();
+  const frozen = freezeDeliveryContract({ ...f.registration.delivery.deliveryContract.frozen.contract, allowed_paths: ['other'] });
+  const original = f.registration.delivery.writer.adapter;
+  const adapter = { ...original, invoke: async function* (...args: Parameters<typeof original.invoke>) {
+    yield* original.invoke(...args);
+    execFileSync('git', ['update-index', flag, 'answer'], { cwd: String(args[0].context?.['repo_path']) });
+  } };
+  const service = new GraphRpcService({ ...f.options, registrations: [{ ...f.registration, delivery: { ...f.registration.delivery,
+    writer: { ...f.registration.delivery.writer, adapter }, deliveryContract: { ...f.registration.delivery.deliveryContract, frozen } } }] });
+  try {
+    const start = GraphDelegationStatus.parse(await service.handle(f.connection, 'graph.start', f.request));
+    const deadline = Date.now() + 20000; let status = start;
+    while (!['failed', 'reconciliation_required'].includes(status.status)) {
+      if (Date.now() > deadline) throw Error(`timeout ${status.status}`); await new Promise(resolve => setTimeout(resolve, 20));
+      status = GraphDelegationStatus.parse(await service.handle(f.connection, 'graph.status', { schemaVersion: 1, scope: f.request.scope, graphRunId: start.graphRunId }));
+    }
+    expect(status.candidate).toBeUndefined(); expect(status.resultRef).toBeUndefined();
+    expect(f.db.prepare("SELECT count(*) n FROM graph_actions WHERE node_id LIKE '%.review' OR node_id LIKE '%.tests'").get()).toEqual({ n: 0 });
+  } finally { await service.close(); await f.close(); }
+}, 30000);
+
+it.each(['--assume-unchanged', '--skip-worktree'])('fails closed on %s at the pre-freeze scope gate', async flag => {
+  const f = await fixture();
+  try {
+    const repo = f.registration.delivery.repositoryPath;
+    const frozen = freezeDeliveryContract({ ...f.registration.delivery.deliveryContract.frozen.contract, allowed_paths: ['other'] });
+    execFileSync('git', ['update-index', flag, 'answer'], { cwd: repo });
+    await writeFile(join(repo, 'answer'), 'hidden change');
+    expect(() => assertGraphContractPaths(frozen, repo)).toThrow('GRAPH_CONTRACT_HIDDEN_INDEX_FLAGS');
+  } finally { await f.close(); }
+});

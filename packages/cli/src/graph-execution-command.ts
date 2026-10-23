@@ -21,7 +21,8 @@ export const GRAPH_EXECUTION_HELP = `Usage: osstack graph <command> [--json]
   resume --request FILE             Resume an exact interrupt with current host authorization
 Request/scope files are strict v1 JSON (max 64 KiB). No implicit scope or grant.
 run/cancel/reconcile/resume retain the request's idempotencyKey across transport retries.
-Exit: 0 acknowledged; 1 input/RPC rejection; 2 delivery_unknown (retry the same request).
+Exit: 0 acknowledged; 1 input/RPC rejection; 2 unknown outcome (follow returned nextAction).
+Transport loss permits retrying the same key; ACTION_OUTCOME_UNKNOWN/CANCEL_UNCONFIRMED require reconciliation.
 The server must have explicit trusted graph-host configuration. graph explain remains available.`;
 
 function readJson(path: string): unknown {
