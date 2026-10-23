@@ -1,3 +1,5 @@
+import { attentionDisplayText } from "./attention-dashboard.js";
+
 export interface CockpitTuiModel {
   mode: "terminal-cockpit";
   title: string;
@@ -116,6 +118,7 @@ export function cockpitTuiModel(daemonRaw: unknown, snapshotRaw: unknown, knowle
     workspace: String(dashboard["workspace_path"] ?? process.cwd()),
     daemon: `${String(daemon["version"] ?? "unknown")} phase=${String(daemon["phase"] ?? "unknown")}`,
     sections: [
+      ...(isRecord(snapshot["attention"]) ? [{ title: "Attention", lines: attentionLines(snapshot["attention"]) }] : []),
       {
         title: "Overview",
         lines: [
@@ -254,7 +257,7 @@ export function renderCockpitFullscreen(
       const marker = index === state.active_section_index ? ">" : " ";
       return [
         frameLine(`${marker} ${section.title}`, width),
-        ...section.lines.slice(0, 3).map((line) => frameLine(`  ${line}`, width)),
+        ...section.lines.slice(0, section.title === "Attention" ? 5 : 3).map((line) => frameLine(`  ${line}`, width)),
       ];
     }),
     frameLine("", width),
@@ -486,4 +489,27 @@ function shellQuote(value: string): string {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+/** Display only. These observations never become executable TUI actions. */
+function attentionLines(value: Record<string, unknown>): string[] {
+  const text = attentionDisplayText;
+  const totals = isRecord(value["totals"]) ? value["totals"] : undefined;
+  const lines = [
+    `${text(value["status"])}${value["reason"] ? " " + text(value["reason"]) : ""} | ${text(value["scope_filter"])} default tenant`,
+  ];
+  if (totals === undefined) lines.push("counts=unknown");
+  else {
+    lines.push(`open_items=${text(totals["open_items"])} uncertain_answers=${text(totals["uncertain_answers"])} pending_answers=${text(totals["pending_answers"])}`);
+    lines.push(`unmonitored_subjects=${text(totals["unmonitored_subjects"])} dead_letters=${text(totals["dead_letters"])} scopes=${text(totals["scopes"])}`);
+    lines.push(`applied_answers=${text(totals["applied_answers"])} (not task completion); missing_source_items=${text(totals["missing_source_items"])}`);
+    lines.push(`human_waits=${text(totals["human_waits"])} system_waits=${text(totals["system_waits"])} unknown_waits=${text(totals["unknown_waits"])}`);
+  }
+  const scopes = Array.isArray(value["scopes"]) ? value["scopes"].filter(isRecord) : [];
+  const issue = scopes.find(scope => scope["coverage"] !== "covered");
+  if (issue) lines.splice(3, 0, `${text(issue["task_title"])}: ${text(issue["coverage"])} ${text(issue["reason"])}`);
+  for (const scope of scopes) lines.push(`${text(scope["task_title"])}: ${text(scope["coverage"])} ${text(scope["reason"])} scope=${text(scope["scope_id"])}`);
+  if (value["truncated"] === true) lines.push(`More scopes: returned=${text(value["returned"])} next_after=${text(value["next_after"])}`);
+  lines.push("Read-only observation; use attention inventory/inbox for an explicit scope.");
+  return lines;
 }
