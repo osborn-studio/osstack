@@ -59,12 +59,12 @@ no execute, resume, cancel, terminal-attach, publish or cleanup controls.
 Each page contains at most 50 views (default 25). The complete JSON response,
 including its trailing newline and escaped Unicode control/format characters,
 is at most 64 KiB; wide identities can produce
-a shorter page with a cursor. `truncated` means more rows remain for this page.
+a shorter page with a cursor. `truncated` means another page is needed to read the remaining source rows.
 Pagination is ordered by source kind and internal ID. Each response uses one
 read transaction, but pages are independent live snapshots: concurrent source
 insertions/deletions can change totals or place new rows before the cursor.
 It is not a frozen scan. Input paths are limited to 4096 characters, tokens to
-2048 characters, and corrupt source identities longer than 256 characters
+2048 characters, and corrupt source identities longer than 256 UTF-16 units
 fail safely rather than becoming a misleading empty result. JSON-escaped
 identities also have a 1200-byte bound so generated tokens fit their input limit.
 
@@ -125,3 +125,5 @@ writes. These tests do not certify Graph/remote access or production p95.
 Rollback removes the two dispatcher branches and command registration. No
 migration, durable token table or provider invocation needs to be undone.
 Restart invalidates every outstanding view/cursor token.
+
+A malformed source identity or unsupported source state fails the entire affected page with `source_unavailable`. Pagination cannot skip that row; later rows remain unavailable until the source is repaired. This conservative failure is not a healthy empty list or partial success.

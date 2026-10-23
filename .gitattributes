@@ -11,3 +11,5 @@ docs/reports/2026-10-23-firstmate-pr238-final-qualification/*.log -whitespace
 docs/reports/2026-10-23-firstmate-wave2-evidence/**/*context.txt -whitespace
 docs/reports/2026-10-23-firstmate-wave2-evidence/*.log -whitespace
 docs/reports/2026-10-23-firstmate-wave2-evidence/**/*context*.txt -whitespace
+
+docs/reports/2026-10-23-firstmate-wave2-evidence/root-audit/*.log -whitespace

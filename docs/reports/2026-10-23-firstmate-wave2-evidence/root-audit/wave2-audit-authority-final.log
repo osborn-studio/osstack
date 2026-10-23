@@ -1,0 +1,12 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-contract-integration/packages/core
+
+ ✓ src/state/run-store.test.ts (13 tests) 269ms
+ ✓ src/state/attention-observer.test.ts (12 tests) 443ms
+ ✓ src/state/attention-run-projection.test.ts (34 tests) 855ms
+
+ Test Files  3 passed (3)
+      Tests  59 passed (59)
+   Start at  12:24:20
+   Duration  1.25s (transform 186ms, setup 0ms, collect 401ms, tests 1.57s, environment 0ms, prepare 133ms)
+
