@@ -173,6 +173,7 @@ interface SingleResponse {
 }
 
 interface DaemonContext {
+  deploymentIdentity?: import("./home-inventory.js").DeploymentIdentity;
   dbPath: string;
   loopSessionsPath: string;
   dailySessionsPath: string;
@@ -1132,6 +1133,10 @@ async function handleSingle(ctx: DaemonContext, req: DaemonRequest): Promise<Sin
     } catch(error) {return singleErr(req.id,error instanceof Error?error.message:"attention_error","Attention request failed; refresh source facts before retrying");}
   }
   switch (req.method) {
+    case "deployment.identity":
+      return ctx.deploymentIdentity
+        ? singleOk(req.id, ctx.deploymentIdentity)
+        : singleErr(req.id, "identity_unavailable", "Deployment identity unavailable");
     case "version":
       return singleOk(req.id, {
         version: DAEMON_VERSION,
@@ -3980,6 +3985,20 @@ export async function startDaemon(
       : { readConcurrency: opts.readConcurrency }),
   });
   failedContext = ctx;
+  // Initialize only after the authorized home/database startup. Read-only
+  // inventory never creates an identity and malformed records are not repaired.
+  try {
+    const {ensureDeploymentHomeId} = await import("./home-inventory.js");
+    ctx.deploymentIdentity = {
+      schema_version: 1, home_id: await ensureDeploymentHomeId(osstackHome()),
+      generation: `instance_${randomUUID().replaceAll("-", "")}`,
+      version: DAEMON_VERSION, protocol_version: PROTOCOL_VERSION,
+      database_schema: ctx.db.pragma("user_version", {simple:true}) as number,
+      started_at_ms: Date.now(), deployment_kind: "unknown",
+      build_digest: null, build_evidence: "unavailable",
+    };
+  } catch { /* retain unavailable identity; never guess or overwrite a pin */ }
+
   const getGraphRpc = (): Promise<GraphRpcService> => {
     if (checkpointClosed) return Promise.reject(new Error('GRAPH_SERVICE_CLOSED'));
     graphRpc ??= import('./graph-rpc.js').then(async ({ GraphRpcService, loadLocalGraphRegistration }) => {

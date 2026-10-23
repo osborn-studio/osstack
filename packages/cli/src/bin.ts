@@ -223,6 +223,7 @@ function renderChineseMainHelp(): string {
   stats               查看 agent 与 loop 指标
 
 项目命令：
+  homes inspect --manifest <file>  只读盘点显式登记的本地实例
   worker list|inspect --repo <path> --default-tenant  只读查看已绑定执行器
   attention status    只读查看任务状态与最新决策（未后台接管）
   attention routing-eval --input <path> --mode router_golden  验证真实确定性路由
@@ -428,6 +429,7 @@ Self-update:
                       and roll back automatically on failure.
 
 Project commands:
+  homes inspect --manifest <file>  Inspect explicitly pinned local home identities
   worker list|inspect --repo <path> --default-tenant  Inspect bound workers read-only
   attention status    Read-only task/session attention snapshot
   attention routing-eval --input <path> --mode router_golden  Validate real deterministic routing
@@ -971,6 +973,11 @@ See docs/V2_REFACTOR_PLAN.md for the full roadmap.
   if (cmd === "supervise") {
     const { handleSuperviseCommand } = await import("./supervise-command.js");
     return await handleSuperviseCommand(args.slice(1));
+  }
+
+  if (cmd === "homes") {
+    const {handleHomesCommand} = await import("./home-inventory.js");
+    return await handleHomesCommand(args.slice(1));
   }
 
   if (cmd === "worker") {
