@@ -93,14 +93,18 @@ export async function readDailyAttention(
             for (const key of Object.keys(counts.shape) as (keyof z.infer<typeof counts>)[])
               if (snapshot.totals[key] !== snapshot.scopes.reduce((sum, scope) => sum + scope[key], 0)) throw new Error("invalid_snapshot");
           }
-          const bytes = Buffer.byteLength(JSON.stringify(snapshot));
-          if (persistedBytes + bytes > 2 * 1024 * 1024) throw new Error("response_budget_exhausted");
-          persistedBytes += bytes;
-          const clockInvalid = snapshot.sampled_at_ms > options.nowMs + 5000 || snapshot.scopes.some(scope => scope.coverage === "unknown");
+          const unknownScope = snapshot.scopes.some(scope => scope.coverage === "unknown");
+          const clockInvalid = snapshot.sampled_at_ms > options.nowMs + 5000 || snapshot.scopes.some(scope => scope.coverage === "unknown" && (scope.reason === "clock_moved_backwards" || scope.sampled_at_ms > options.nowMs + 5000));
           const stale = options.nowMs - snapshot.sampled_at_ms > 65_000;
           const expiredEmpty = stale && snapshot.status === "not_watched";
-          return { workspace_path: path, status: clockInvalid || expiredEmpty ? "unknown" as const : snapshot.status === "unavailable" ? "unknown" as const : stale && snapshot.totals ? "stale" as const : snapshot.status,
-            reason: clockInvalid ? "clock_moved_backwards" : stale && snapshot.totals ? "cached_snapshot_expired" : snapshot.reason, snapshot: clockInvalid || expiredEmpty ? null : snapshot };
+          const discard = clockInvalid || unknownScope || expiredEmpty;
+          if (!discard) {
+            const bytes = Buffer.byteLength(JSON.stringify(snapshot));
+            if (persistedBytes + bytes > 2 * 1024 * 1024) throw new Error("response_budget_exhausted");
+            persistedBytes += bytes;
+          }
+          return { workspace_path: path, status: discard ? "unknown" as const : snapshot.status === "unavailable" ? "unknown" as const : stale && snapshot.totals ? "stale" as const : snapshot.status,
+            reason: clockInvalid ? "clock_moved_backwards" : unknownScope ? "source_coverage_unknown" : stale && snapshot.totals ? "cached_snapshot_expired" : snapshot.reason, snapshot: discard ? null : snapshot };
         };
         Object.assign(result, await Promise.race([read(), failure]));
       } catch (error) {

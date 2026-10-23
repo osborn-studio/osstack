@@ -28,13 +28,13 @@ more than five seconds ahead is unknown and its counts are discarded (small RPC 
 Each repository snapshot is internally consistent; the whole portfolio is not one
 transaction and duplicate registry aliases must not be summed as distinct scopes.
 
-At most 100 enabled repositories are sampled with two concurrent readers, a 500 ms
+At most 100 enabled repositories are sampled with two concurrent waiting slots, a 500 ms
 per-read timeout and a two-second asynchronous budget. Remaining repositories have
 explicit unknown/omitted coverage. Each read requests at most 100 scopes; full
 repository totals remain separate from the displayed page and truncation is
 reported. Timers cannot preempt synchronous SQLite work; this relies on the bounded
 existing Attention read model. Cancellable transports should honor the supplied
-signal; late results from non-cooperating transports are discarded.
+signal. A non-cooperating transport can continue after its slot times out; underlying in-flight operations may exceed two, although no more than 100 repository reads are started and the overall asynchronous budget still applies. Late results are discarded before parsing or budget accounting.
 
 ## Decisions and compatibility
 

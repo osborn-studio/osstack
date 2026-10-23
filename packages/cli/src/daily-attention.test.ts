@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, expect, it } from "vitest";
 import Database from "better-sqlite3";
-import { mkdtempSync, realpathSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, realpathSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { readAttentionDashboard } from "./attention-dashboard.js";
@@ -30,9 +30,14 @@ it.each([
 
 it("bounds stalled reads, propagates abort, and still reads another repo", async () => {
   let aborted = false;
-  const result = await readDailyAttention([...entries(), { repo_id: "two", path: root, enabled: true }], {
+  const other = join(root, "other"); mkdirSync(other);
+  const result = await readDailyAttention([...entries(), { repo_id: "two", path: other, enabled: true }], {
     nowMs: 100, timeoutMs: 20, budgetMs: 100,
-    reader: (() => { let calls = 0; return ({ signal }) => { if (++calls === 2) return snapshot(); signal.addEventListener("abort", () => { aborted = true; }); return new Promise(() => {}); }; })(),
+    reader: ({ workspacePath, signal }) => {
+      if (workspacePath === other) return { ...snapshot(), workspace_path: other };
+      signal.addEventListener("abort", () => { aborted = true; });
+      return new Promise(() => {});
+    },
   });
   expect(result.repos.map(r => r.status)).toEqual(["unknown", "disabled"]);
   expect(result.repos[0]?.reason).toBe("read_timeout");
@@ -99,6 +104,8 @@ it("drops future-clock counts instead of suggesting a current human wait", async
   expect(mismatch.repos[0]?.reason).toBe("invalid_snapshot");
   const futureScope = await readDailyAttention(entries(), { nowMs: 100, reader: () => ({ ...raw, status: "stale", sampled_at_ms: 100, scopes: raw.scopes.map(scope => ({ ...scope, coverage: "unknown", reason: "clock_moved_backwards" })) }) });
   expect(futureScope.repos[0]).toMatchObject({ status: "unknown", reason: "clock_moved_backwards", snapshot: null });
+  const unknownScope = await readDailyAttention(entries(), { nowMs: 100, reader: () => ({ ...raw, sampled_at_ms: 100, scopes: raw.scopes.map(scope => ({ ...scope, sampled_at_ms: 100, coverage: "unknown", reason: "source_unknown" })) }) });
+  expect(unknownScope.repos[0]).toMatchObject({ status: "unknown", reason: "source_coverage_unknown", snapshot: null });
 });
 
 it("caps persisted snapshot bytes and discloses budget-exhausted repository coverage", async () => {
@@ -108,7 +115,11 @@ it("caps persisted snapshot bytes and discloses budget-exhausted repository cove
   const result = await readDailyAttention(Array.from({ length: 3 }, (_, n) => ({ ...entries()[0]!, repo_id: String(n) })), { nowMs: 100, reader: () => raw });
   expect(result.repos.filter(repo => repo.reason === "response_budget_exhausted")).toHaveLength(1);
   expect(Buffer.byteLength(JSON.stringify(result))).toBeLessThan(2 * 1024 * 1024);
-  const timed = await readDailyAttention(Array.from({ length: 4 }, (_, n) => ({ ...entries()[0]!, repo_id: String(n) })), { nowMs: 100, budgetMs: 10, timeoutMs: 50, reader: () => new Promise(() => {}) });
+  let call = 0;
+  const discarded = await readDailyAttention(Array.from({ length: 3 }, (_, n) => ({ ...entries()[0]!, repo_id: String(n) })), { nowMs: 100, reader: () => ++call === 1 ? { ...raw, sampled_at_ms: 10_000 } : raw });
+  expect(discarded.repos.filter(repo => repo.status === "available")).toHaveLength(2);
+  expect(discarded.repos.some(repo => repo.reason === "response_budget_exhausted")).toBe(false);
+  const timed = await readDailyAttention(Array.from({ length: 10 }, (_, n) => ({ ...entries()[0]!, repo_id: String(n) })), { nowMs: 100, budgetMs: 10, timeoutMs: 50, reader: () => new Promise(() => {}) });
   expect(timed.repos.some(repo => repo.reason === "budget_exhausted")).toBe(true);
   expect(renderDailyAttention(timed).join("\n")).toContain("budget\\_exhausted");
 });
