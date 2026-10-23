@@ -298,3 +298,11 @@ it.each(["approval","clarify"])("checks %s resolved payload against current auth
     .run(family+".resolved",JSON.stringify({[idKey]:"a",status,[field]:"changed"}));
   observer.tick(2000);expect(cursor()?.last_seq).toBe(1);expect(facts().event_replay.gap).toBe("authority_resolution_mismatch");
 });
+
+it("does not copy oversized pending authority IDs into persistent subject payloads", () => {
+  const {event, observer, facts, db} = setup();
+  for (let seq=0;seq<20;seq++) event(seq,"approval.requested", {approval_id:`${seq}:` + "x".repeat(60000),tool_name:"test",description:"test",choices:[]});
+  observer.tick(1000);
+  expect(facts().pending_approvals).toEqual({ids:[],count:20,truncated:true});
+  expect(Buffer.byteLength((db.prepare("SELECT payload_json FROM attention_subjects WHERE kind='run'").get() as {payload_json:string}).payload_json)).toBeLessThan(4096);
+});

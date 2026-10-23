@@ -162,10 +162,11 @@ export function projectAttentionRun(store: AttentionStore, owner: AttentionOwner
     // A caught-up cursor verifies newly read rows and the last anchor only.
     // Mutable earlier rows are not continuously re-hashed; never certify history.
     const pending = (table: "approvals" | "clarifies", column: "approval_id" | "clarify_id") => {
-      const rows = store.db.prepare(`SELECT ${column} id FROM ${table} WHERE run_id=? AND status='pending' ORDER BY ${column} LIMIT 21`)
-        .all(runId) as { id: string }[];
-      return { ids: rows.slice(0, 20).map((row) => row.id), truncated: rows.length > 20,
-        count: (store.db.prepare(`SELECT COUNT(*) n FROM ${table} WHERE run_id=? AND status='pending'`).get(runId) as { n: number }).n };
+      const rows = store.db.prepare(`SELECT CASE WHEN length(CAST(${column} AS BLOB)) BETWEEN 1 AND 256 THEN ${column} ELSE NULL END id FROM ${table} WHERE run_id=? AND status='pending' ORDER BY ${column} LIMIT 21`)
+        .all(runId) as { id: string | null }[];
+      const ids = rows.slice(0, 20).flatMap(row => row.id === null ? [] : [row.id]);
+      const count = (store.db.prepare(`SELECT COUNT(*) n FROM ${table} WHERE run_id=? AND status='pending'`).get(runId) as { n: number }).n;
+      return { ids, truncated: count > ids.length, count };
     };
     store.db.prepare(`INSERT INTO attention_run_cursors(scope_id,run_id,binding_hash,last_seq,through_seq,last_event_hash,gap,facts_json,generation,updated_at)
       VALUES(?,?,?,?,?,?,?,?,?,?) ON CONFLICT(scope_id,run_id) DO UPDATE SET last_seq=excluded.last_seq,through_seq=excluded.through_seq,
