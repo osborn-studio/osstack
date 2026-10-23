@@ -311,3 +311,14 @@ it("never renders unavailable Attention counters as zero", () => {
   expect(model.sections[0]?.lines.join("\n")).toContain("counts=unknown");
   expect(model.sections[0]?.lines.join("\n")).not.toContain("open_items=0");
 });
+
+it("keeps actions and key hints visible when Attention fills a short terminal", () => {
+  const model = cockpitTuiModel({}, {dashboard:{workspace_path:"/repo"},next_steps:[1,2,3].map(n=>({label:`Action ${n}`,command:`command${n}`,status:"ready"}))}, emptyKnowledge);
+  model.sections.unshift({title:"Attention",lines:Array.from({length:5},(_,n)=>`observation ${n}`)});
+  const output=renderCockpitFullscreen(model,{width:80,height:20});
+  expect(output).toContain("> Attention");
+  expect(output).toContain("3. [ready] Action 3");
+  expect(output).toContain("Keys: up/down move");
+  expect(output.split("\n")).toHaveLength(20);
+  expect(output.split("\n").at(-1)).toMatch(/^\+-+\+$/);
+});

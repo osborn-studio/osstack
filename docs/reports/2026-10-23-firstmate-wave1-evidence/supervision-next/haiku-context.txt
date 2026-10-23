@@ -1,0 +1,1450 @@
+Independently challenge this R1 supervision lifecycle change. No tools are available. Report only confirmed defects with concrete race sequence, severity P0/P1/P2, file/function, and minimal fix. Distinguish limitations, test gaps, and issues outside this change. Constraints: fixed instance terminal stop, single-flight scans, coalesced dirty requests, Loop reader AbortSignal + 1s logical timeout, stable per-binding physical slot until raw IO actually settles, max100 physical reads including timed-out/released, late results never touch DB, release cannot resurrect, stop joins logical reads/scans and existing bounded 5s notification drain but never hangs on physical IO. Main integrator is responsible for daemon awaiting stop before db.close and dirty event wiring in same PR. This subtask deliberately does not replace Graph/governance, CI reader or core notification behavior. Raw IO may not be cancellable; retaining slot and ignoring result is intentional. Source hash is supplied; review current files not a guessed older version.
+BASE 42802bd2ab04bfcfcecab1205673b417744b5312
+
+
+FILE packages/cli/src/supervision-service.ts
+import { AttentionInbox } from "@osstack/protocol";
+import { randomUUID } from "node:crypto";
+import type Database from "better-sqlite3";
+import {
+  AttentionStore,
+  AttentionObserver,
+  AttentionExperience,
+  AttentionActions,
+  attentionDigest,
+  type AttentionSender,
+} from "@osstack/core";
+type LoopReadInput = { repo: string; path: string; loop_id: string; signal: AbortSignal };
+export interface SupervisionOptions {
+  loopReader?: (input: LoopReadInput) => Promise<unknown>;
+  readTimeoutMs?: number;
+}
+type ReadFailure = "timeout" | "aborted" | "invalid_payload" | "read_failed" | "read_capacity_exceeded";
+type LoopFacts = Record<string, unknown> & { state: string; reason?: string };
+interface ReadSlot {
+  controller: AbortController;
+  logical: Promise<LoopFacts>;
+}
+interface LoopBinding {
+  binding_hash: string;
+  admitted: number;
+  generation: number;
+  payload_json: string;
+}
+function validLoopFacts(value: unknown, id: string): value is LoopFacts {
+  if (!value || typeof value !== "object") return false;
+  const v = value as Record<string, unknown>;
+  if (v.loop_id !== id || typeof v.path !== "string" || v.process_liveness !== "unknown") return false;
+  if (v.state === "source_missing") return v.coverage === "uncovered" && v.gap === "source_missing";
+  return v.state === "snapshot_available" && v.coverage === "snapshot_only"
+    && v.gap === "best_effort_snapshot_no_event_replay" && typeof v.updated_at === "string"
+    && Array.isArray(v.in_progress) && Array.isArray(v.pending)
+    && Number.isSafeInteger(v.completed_count) && (v.completed_count as number) >= 0
+    && typeof v.recovery_required === "boolean";
+}
+/** The daemon has already acquired its kernel process lock before construction. */
+export class SupervisionService {
+  readonly store: AttentionStore;
+  readonly observer: AttentionObserver;
+  readonly experience: AttentionExperience;
+  private delivering = false;
+  private deliveryDone: Promise<void> | undefined;
+  private ciReader: import("@osstack/github").AttentionCiReader | undefined;
+  private timer: ReturnType<typeof setInterval> | undefined;
+  private started = false;
+  private stopped = false;
+  private dirty = false;
+  private scanDone: Promise<void> | undefined;
+  private stopDone: Promise<void> | undefined;
+  private epoch = 0;
+  // A slot outlives its logical timeout until the underlying promise settles.
+  // It holds no continuation that can access SQLite after stop.
+  private readonly readers = new Map<string, ReadSlot>();
+  private readonly logicalReads = new Set<Promise<LoopFacts>>();
+  private readonly readTimeoutMs: number;
+  constructor(
+    db: Database.Database,
+    path: string,
+    readonly sender?: AttentionSender,
+    private readonly options: SupervisionOptions = {}
+  ) {
+    this.readTimeoutMs = options.readTimeoutMs ?? 1000;
+    if (!Number.isFinite(this.readTimeoutMs) || this.readTimeoutMs < 1 || this.readTimeoutMs > 1000)
+      throw new Error("invalid_read_timeout");
+    this.store = new AttentionStore(db, path);
+    this.observer = new AttentionObserver(
+      this.store,
+      this.store.claimOwner(randomUUID())
+    );
+    this.experience = new AttentionExperience(this.store, this.observer.owner);
+    this.experience.recoverDeliveries();
+    new AttentionActions(this.store, this.observer.owner).recover();
+  }
+  private assertRunning(): void {
+    if (this.stopped) throw new Error("supervision_stopped");
+  }
+  start(): void {
+    this.assertRunning();
+    if (this.started) return;
+    this.started = true;
+    void this.requestScan("start").catch(() => {});
+    this.timer = setInterval(() => { void this.requestScan("timer").catch(() => {}); }, 30000);
+    this.timer.unref();
+  }
+  /** Dirty signals are hints; each pass still reads the persisted source facts. */
+  requestScan(_reason?: string): Promise<void> {
+    if (this.stopped) return Promise.reject(new Error("supervision_stopped"));
+    this.dirty = true;
+    this.scanDone ??= Promise.resolve().then(async () => {
+      while (this.dirty && !this.stopped) {
+        this.dirty = false;
+        try { await this.scan(); } catch { /* prior coverage expires */ }
+      }
+    }).finally(() => {
+      this.scanDone = undefined;
+      // A dirty signal can arrive after the loop exits but before this cleanup.
+      if (this.dirty && !this.stopped) return this.requestScan("coalesced");
+    });
+    return this.scanDone;
+  }
+  private async scan(): Promise<void> {
+    this.assertRunning();
+    this.observer.tick();
+    const loops = this.store.db.prepare(
+      "SELECT scope_id,subject_id,payload_json FROM attention_subjects WHERE kind='loop' AND admitted=1"
+    ).all() as { scope_id: string; subject_id: string; payload_json: string }[];
+    await Promise.all(loops.map(async (row) => {
+      let path: unknown;
+      try { path = (JSON.parse(row.payload_json) as Record<string, unknown>).state_path; } catch { /* below */ }
+      if (typeof path !== "string" || !path || path.length > 4096) {
+        if (!this.stopped) this.store.write(this.observer.owner, () => {
+          // Do not replace newer metadata or an explicit owner release.
+          this.store.db.prepare("UPDATE attention_subjects SET sampled_at=?,payload_json=? WHERE scope_id=? AND kind='loop' AND subject_id=? AND payload_json=?")
+            .run(Date.now(), JSON.stringify({ state: "unknown", reason: "invalid_payload", process_liveness: "unknown" }), row.scope_id, row.subject_id, row.payload_json);
+        });
+        return;
+      }
+      try {
+        await this.handle("attention.loop", {
+          scope_id: row.scope_id, loop_id: row.subject_id,
+          state_path: path,
+        });
+      } catch { /* source errors never suppress other readers */ }
+    }));
+    if (this.stopped) return;
+    for (const scope of this.store.listScopes()) this.experience.enqueue(scope.scope_id);
+    if (this.sender && !this.delivering) {
+      this.delivering = true;
+      this.deliveryDone = this.experience.drain(this.sender)
+        .catch(() => { /* delivery state retained */ })
+        .finally(() => { this.delivering = false; });
+    }
+  }
+  stop(): Promise<void> {
+    if (this.stopDone) return this.stopDone;
+    this.stopped = true;
+    this.epoch++;
+    this.dirty = false;
+    if (this.timer) clearInterval(this.timer);
+    this.timer = undefined;
+    for (const slot of this.readers.values()) slot.controller.abort();
+    this.stopDone = Promise.allSettled([this.scanDone, this.deliveryDone, ...this.logicalReads]).then(() => {});
+    return this.stopDone;
+  }
+  private loopBinding(scope: string, id: string): LoopBinding | undefined {
+    return this.store.db.prepare(
+      "SELECT binding_hash,admitted,generation,payload_json FROM attention_subjects WHERE scope_id=? AND kind='loop' AND subject_id=?"
+    ).get(scope, id) as LoopBinding | undefined;
+  }
+  private readLoop(scopeId: string, id: string, path: string): Promise<LoopFacts> {
+    this.assertRunning();
+    const epoch = this.epoch;
+    const binding = attentionDigest([path, id]);
+    const key = JSON.stringify([scopeId, "loop", id, binding]);
+    const scope = this.store.getScope(scopeId)!;
+    // Register the binding before IO, so release and competing RPCs see it.
+    this.store.write(this.observer.owner, () => {
+      this.assertRunning();
+      const old = this.loopBinding(scopeId, id);
+      if (old && old.binding_hash !== binding) throw new Error("loop_binding_conflict");
+      if (old) {
+        const payload = JSON.parse(old.payload_json) as Record<string, unknown>;
+        if (payload.reason === "owner_released") return;
+        const count = (this.store.db.prepare("SELECT COUNT(*) n FROM attention_subjects WHERE admitted=1").get() as { n: number }).n;
+        if (old.generation !== this.observer.owner.generation || (!old.admitted && count < 100))
+          this.store.db.prepare("UPDATE attention_subjects SET admitted=?,generation=?,sampled_at=0,payload_json=? WHERE scope_id=? AND kind='loop' AND subject_id=?")
+            .run(old.admitted || count < 100 ? 1 : 0, this.observer.owner.generation,
+              JSON.stringify({ ...payload, state: "unknown", reason: "read_pending" }), scopeId, id);
+        return;
+      }
+      const count = (this.store.db.prepare("SELECT COUNT(*) n FROM attention_subjects WHERE admitted=1").get() as { n: number }).n;
+      this.store.db.prepare(
+        "INSERT INTO attention_subjects(scope_id,kind,subject_id,binding_hash,source_version,admitted,discovered_at,sampled_at,generation,payload_json) VALUES(?,'loop',?,?,0,?,?,?,?,?)"
+      ).run(scopeId, id, binding, count < 100 ? 1 : 0, Date.now(), 0, this.observer.owner.generation,
+        JSON.stringify({ state_path: path, state: "unknown", reason: count < 100 ? "read_pending" : "capacity_exceeded" }));
+    });
+    const old = this.loopBinding(scopeId, id)!;
+    if (JSON.parse(old.payload_json).reason === "owner_released")
+      return Promise.resolve({ state: "unknown", reason: "owner_released" });
+    const existing = this.readers.get(key);
+    if (existing) return existing.logical;
+    const failure = (reason: ReadFailure): LoopFacts => ({ loop_id: id, path, state: "unknown",
+      process_liveness: "unknown", coverage: "uncovered", gap: "snapshot_unavailable", reason });
+    const commit = (facts: LoopFacts): LoopFacts => {
+      // No await from the lifecycle check through the owner-fenced commit.
+      if (this.stopped || epoch !== this.epoch) return facts;
+      this.store.write(this.observer.owner, () => {
+        const current = this.loopBinding(scopeId, id);
+        if (!current || current.binding_hash !== binding || current.generation !== this.observer.owner.generation
+          || current.admitted !== old.admitted || JSON.parse(current.payload_json).reason === "owner_released") return;
+        this.store.db.prepare(
+          "UPDATE attention_subjects SET sampled_at=?,payload_json=? WHERE scope_id=? AND kind='loop' AND subject_id=?"
+        ).run(Date.now(), JSON.stringify({ ...facts, state_path: path,
+          reason: facts.reason ?? (!current.admitted ? "capacity_exceeded" : facts.state === "source_missing"
+            ? "source_missing" : facts.recovery_required ? "recovery_required" : "snapshot_only") }), scopeId, id);
+      });
+      return facts;
+    };
+    if (this.readers.size >= 100) return Promise.resolve(commit(failure("read_capacity_exceeded")));
+    const controller = new AbortController();
+    let reason: ReadFailure = "aborted";
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let abortListener: (() => void) | undefined;
+    const aborted = new Promise<LoopFacts>((resolve) => {
+      abortListener = () => resolve(failure(reason));
+      controller.signal.addEventListener("abort", abortListener, { once: true });
+      timer = setTimeout(() => { reason = "timeout"; controller.abort(); }, this.readTimeoutMs);
+    });
+    const physical = Promise.resolve().then(async () => {
+      controller.signal.throwIfAborted();
+      const reader = this.options.loopReader ?? (await import("./attention-loop-source.js")).readAttentionLoop;
+      controller.signal.throwIfAborted();
+      return await reader({ repo: scope.repo_path, path, loop_id: id, signal: controller.signal });
+    }).then((value) => validLoopFacts(value, id) ? value : failure("invalid_payload"), (error: unknown) =>
+      failure(controller.signal.aborted ? reason : error instanceof SyntaxError
+        || (error instanceof Error && error.name === "ZodError") ? "invalid_payload" : "read_failed"));
+    // Physical settlement has no DB access, even if the logical deadline passed.
+    const settled = physical.finally(() => { this.readers.delete(key); });
+    const logical = Promise.race([settled, aborted]).then(commit).finally(() => {
+      if (timer) clearTimeout(timer);
+      if (abortListener) controller.signal.removeEventListener("abort", abortListener);
+      this.logicalReads.delete(logical);
+    });
+    this.readers.set(key, { controller, logical });
+    this.logicalReads.add(logical);
+    return logical;
+  }
+  async handle(method: string, params: unknown): Promise<unknown> {
+    this.assertRunning();
+    if (!params || typeof params !== "object")
+      throw new Error("explicit_scope_required");
+    const p = params as Record<string, unknown>;
+    const str = (key: string) => {
+      const value = p[key];
+      if (typeof value !== "string" || !value || value.length > 4096)
+        throw new Error(`invalid_${key}`);
+      return value;
+    };
+    if (method === "attention.watch") {
+      if (p["default_tenant"] !== true)
+        throw new Error("explicit_default_tenant_required");
+      const scope = this.store.registerScope(
+        this.observer.owner,
+        str("task_id"),
+        str("repo_path")
+      );
+      await this.requestScan("watch");
+      this.assertRunning();
+      return this.observer.inventory(scope.scope_id);
+    }
+    const scopeId = str("scope_id");
+    if (!this.store.getScope(scopeId)) throw new Error("not_found");
+    if (method === "attention.release") {
+      this.store.release(
+        this.observer.owner,
+        scopeId,
+        str("kind"),
+        str("subject_id"),
+        Number(p["expected_version"])
+      );
+      return {
+        released: true,
+        execution_affected: false,
+        coverage: "uncovered",
+      };
+    }
+    if (method === "attention.loop")
+      return await this.readLoop(scopeId, str("loop_id"), str("state_path"));
+    if (method === "attention.ci") {
+      const { AttentionCiReader } = await import("@osstack/github");
+      this.assertRunning();
+      this.ciReader ??= new AttentionCiReader();
+      return await this.ciReader.read({
+        repo: str("github_repo"),
+        pr: p["pr"],
+        head: str("head"),
+        required: p["required"],
+      });
+    }
+    if (method === "attention.brief")
+      return this.experience.brief(scopeId, str("actor"));
+    if (method === "attention.posture") {
+      const posture = str("posture");
+      if (!["quiet", "away", "attended"].includes(posture))
+        throw new Error("invalid_posture");
+      this.experience.posture(
+        scopeId,
+        str("actor"),
+        posture as "quiet" | "away" | "attended"
+      );
+      return { posture };
+    }
+    if (method === "attention.seen") {
+      if (!Array.isArray(p["revisions"])) throw new Error("invalid_revisions");
+      this.experience.seen(scopeId, str("actor"), p["revisions"]);
+      return { marked: true };
+    }
+    if (method === "attention.foreground") {
+      if (!Array.isArray(p["subjects"])) throw new Error("invalid_subjects");
+      return this.experience.foreground(scopeId, p["subjects"]);
+    }
+    if (method === "attention.handoff")
+      return this.experience.handoff(scopeId, str("client_id"), str("token"));
+    if (method === "attention.turn-end")
+      return this.experience.turnEnd(
+        scopeId,
+        str("client_id"),
+        str("token"),
+        str("role")
+      );
+    if (method === "attention.deliveries")
+      return this.store.db
+        .prepare(
+          "SELECT * FROM attention_deliveries WHERE scope_id=? AND delivery_id>? ORDER BY delivery_id LIMIT 100"
+        )
+        .all(scopeId, typeof p["after"] === "string" ? p["after"] : "");
+    if (method === "attention.inventory")
+      return this.observer.inventory(
+        scopeId,
+        Date.now(),
+        typeof p["after"] === "string" ? p["after"] : ""
+      );
+    if (method === "attention.inbox") {
+      const items = this.store.listItems(
+        scopeId,
+        typeof p["after"] === "string" ? p["after"] : ""
+      );
+      const counts = this.store.db
+        .prepare(
+          "SELECT state,COUNT(*) total FROM attention_items WHERE scope_id=? GROUP BY state"
+        )
+        .all(scopeId);
+      return AttentionInbox.parse({
+        schema_version: 1,
+        execution_takeover: false,
+        scope_id: scopeId,
+        items,
+        counts,
+        next_after: items.length === 100 ? items.at(-1)!.item_id : null,
+        coverage: this.observer.inventory(scopeId).coverage,
+      });
+    }
+    if (method === "attention.get") {
+      const item = this.store.getItem(scopeId, str("item_id"));
+      if (!item) throw new Error("not_found");
+      return item;
+    }
+    throw new Error("unsupported_attention_method");
+  }
+}
+
+
+FILE packages/cli/src/supervision-service.test.ts
+import { realpathSync, rmSync } from "node:fs";
+import { join } from "node:path";
+import { afterEach, expect, it, vi } from "vitest";
+import { attentionDigest, createScratchDirSync, openDb } from "@osstack/core";
+import { SupervisionService, type SupervisionOptions } from "./supervision-service.js";
+import { readAttentionLoop } from "./attention-loop-source.js";
+
+const cleanup: Array<() => Promise<void>> = [];
+afterEach(async () => {
+  for (const fn of cleanup.splice(0)) await fn();
+  vi.useRealTimers();
+});
+function setup(options: SupervisionOptions = {}) {
+  const root = realpathSync(createScratchDirSync("tests", "supervision-service"));
+  const path = join(root, "state.db");
+  const db = openDb({ path });
+  db.exec("INSERT INTO tasks(task_id,title,status,created_at,updated_at) VALUES('t','task','running',1,1)");
+  const service = new SupervisionService(db, path, undefined, options);
+  const scope = service.store.registerScope(service.observer.owner, "t", root);
+  cleanup.push(async () => {
+    await service.stop();
+    if (db.open) db.close();
+    rmSync(root, { recursive: true, force: true });
+  });
+  const params = (id = "loop") => ({ scope_id: scope.scope_id, loop_id: id, state_path: join(root, `${id}.json`) });
+  const seed = (id = "loop") => {
+    const p = params(id);
+    db.prepare("INSERT INTO attention_subjects(scope_id,kind,subject_id,binding_hash,source_version,admitted,discovered_at,sampled_at,generation,payload_json) VALUES(?,'loop',?,?,0,1,1,1,?,?)")
+      .run(scope.scope_id, id, attentionDigest([p.state_path, id]), service.observer.owner.generation, JSON.stringify({ state_path: p.state_path }));
+  };
+  return { service, db, root, scope, params, seed };
+}
+function snapshot(input: { loop_id: string; path: string }) {
+  return { ...input, state: "snapshot_available", updated_at: new Date().toISOString(), in_progress: [], pending: [],
+    completed_count: 0, wait: null, process_liveness: "unknown", coverage: "snapshot_only",
+    gap: "best_effort_snapshot_no_event_replay", recovery_required: false };
+}
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((done) => { resolve = done; });
+  return { promise, resolve };
+}
+it("starts once and makes stop terminal before any later database access", async () => {
+  vi.useFakeTimers();
+  const { service, db } = setup();
+  const tick = vi.spyOn(service.observer, "tick");
+  service.start();
+  service.start();
+  await vi.advanceTimersByTimeAsync(0);
+  expect(tick).toHaveBeenCalledTimes(1);
+  await service.stop();
+  db.close();
+  expect(() => service.start()).toThrow("supervision_stopped");
+  await expect(service.handle("attention.inventory", { scope_id: "x" }))
+    .rejects.toThrow("supervision_stopped");
+  await vi.advanceTimersByTimeAsync(60000);
+  expect(tick).toHaveBeenCalledTimes(1);
+});
+it("coalesces dirty passes and times out a stalled source without starving another", async () => {
+  vi.useFakeTimers();
+  const hanging = deferred<unknown>();
+  const reader = vi.fn(async (input) => input.loop_id === "bad" ? hanging.promise : snapshot(input));
+  const { service, db, seed } = setup({ loopReader: reader, readTimeoutMs: 20 });
+  seed("bad"); seed("good");
+  const tick = vi.spyOn(service.observer, "tick");
+  const first = service.requestScan();
+  await vi.advanceTimersByTimeAsync(0);
+  for (let i = 0; i < 100; i++) void service.requestScan("dirty");
+  await vi.advanceTimersByTimeAsync(25);
+  await first;
+  expect(tick).toHaveBeenCalledTimes(2);
+  expect(reader.mock.calls.filter(([input]) => input.loop_id === "bad")).toHaveLength(1);
+  const rows = db.prepare("SELECT subject_id,payload_json FROM attention_subjects ORDER BY subject_id").all();
+  expect(JSON.stringify(rows)).toContain("timeout");
+  expect(JSON.stringify(rows)).toContain("snapshot_available");
+  hanging.resolve(snapshot({ loop_id: "bad", path: "/ignored" }));
+  await vi.advanceTimersByTimeAsync(0);
+  expect(JSON.stringify(db.prepare("SELECT payload_json FROM attention_subjects WHERE subject_id='bad'").get())).toContain("timeout");
+});
+it("aborts RPC readers and joins logical work without waiting for physical IO", async () => {
+  const hanging = deferred<unknown>();
+  const reader = vi.fn<NonNullable<SupervisionOptions["loopReader"]>>(() => hanging.promise);
+  const { service, db, params } = setup({ loopReader: reader });
+  const read = service.handle("attention.loop", params());
+  await Promise.resolve();
+  await service.stop();
+  expect(reader.mock.calls[0]![0].signal.aborted).toBe(true);
+  await expect(read).resolves.toMatchObject({ state: "unknown", reason: "aborted" });
+  db.close();
+  hanging.resolve(snapshot({ loop_id: "loop", path: params().state_path }));
+  await Promise.resolve(); await Promise.resolve();
+  await expect(service.requestScan()).rejects.toThrow("supervision_stopped");
+});
+it("does not resurrect a released source when an RPC read completes", async () => {
+  const hanging = deferred<unknown>();
+  const { service, db, params } = setup({ loopReader: () => hanging.promise });
+  const p = params();
+  const read = service.handle("attention.loop", p);
+  await Promise.resolve();
+  await service.handle("attention.release", { scope_id: p.scope_id, kind: "loop", subject_id: p.loop_id, expected_version: 0 });
+  hanging.resolve(snapshot({ loop_id: p.loop_id, path: p.state_path }));
+  await read;
+  expect(db.prepare("SELECT admitted,payload_json FROM attention_subjects").get())
+    .toMatchObject({ admitted: 0, payload_json: expect.stringContaining("owner_released") });
+});
+it("counts timed-out and released physical readers toward the global bound until settlement", async () => {
+  vi.useFakeTimers();
+  const hanging = deferred<unknown>();
+  const reader = vi.fn<NonNullable<SupervisionOptions["loopReader"]>>(() => hanging.promise);
+  const { service, params, db } = setup({ loopReader: reader, readTimeoutMs: 10 });
+  const reads = Array.from({ length: 100 }, (_, i) => service.handle("attention.loop", params(`old${i}`)));
+  await vi.advanceTimersByTimeAsync(11);
+  expect(await Promise.all(reads)).toEqual(Array.from({ length: 100 }, () => expect.objectContaining({ reason: "timeout" })));
+  expect(reader).toHaveBeenCalledTimes(100);
+  for (let i = 0; i < 100; i++) {
+    const p = params(`old${i}`);
+    await service.handle("attention.release", { scope_id: p.scope_id, kind: "loop", subject_id: p.loop_id, expected_version: 0 });
+  }
+  expect(await service.handle("attention.loop", params("new"))).toMatchObject({ reason: "read_capacity_exceeded" });
+  expect(reader).toHaveBeenCalledTimes(100);
+  expect(JSON.stringify(db.prepare("SELECT payload_json FROM attention_subjects WHERE subject_id='new'").get())).toContain("read_capacity_exceeded");
+  hanging.resolve({ state: "late" });
+  await vi.advanceTimersByTimeAsync(0);
+  reader.mockImplementation(async (input) => snapshot(input));
+  expect(await service.handle("attention.loop", params("new"))).toMatchObject({ state: "snapshot_available" });
+  expect(reader).toHaveBeenCalledTimes(101);
+});
+it.each([
+  ["invalid returned payload", async () => ({}), "invalid_payload"],
+  ["bad JSON", async () => { throw new SyntaxError("bad JSON"); }, "invalid_payload"],
+  ["rejected reader", async () => { throw new Error("read failed"); }, "read_failed"],
+] as const)("records %s independently and permits a later successful read", async (_label, failing, reason) => {
+  const reader = vi.fn<NonNullable<SupervisionOptions["loopReader"]>>(failing);
+  const { service, params, db } = setup({ loopReader: reader });
+  expect(await service.handle("attention.loop", params())).toMatchObject({ state: "unknown", reason });
+  expect(JSON.stringify(db.prepare("SELECT payload_json FROM attention_subjects").get())).toContain(reason);
+  reader.mockImplementation(async (input) => snapshot(input));
+  expect(await service.handle("attention.loop", params())).toMatchObject({ state: "snapshot_available" });
+});
+it("keeps source_missing distinct from reader rejection", async () => {
+  const { service, params } = setup({ loopReader: readAttentionLoop });
+  expect(await service.handle("attention.loop", params())).toMatchObject({ state: "source_missing" });
+});
+it("shares one physical read between an RPC and a scan", async () => {
+  const hanging = deferred<unknown>();
+  const reader = vi.fn<NonNullable<SupervisionOptions["loopReader"]>>(() => hanging.promise);
+  const { service, params } = setup({ loopReader: reader });
+  const rpc = service.handle("attention.loop", params());
+  const pass = service.requestScan();
+  await Promise.resolve(); await Promise.resolve();
+  expect(reader).toHaveBeenCalledTimes(1);
+  hanging.resolve(snapshot({ loop_id: "loop", path: params().state_path }));
+  await Promise.all([rpc, pass]);
+});
+it("drops results after a binding replacement without changing the replacement", async () => {
+  const hanging = deferred<unknown>();
+  const { service, params, db } = setup({ loopReader: () => hanging.promise });
+  const read = service.handle("attention.loop", params());
+  db.prepare("UPDATE attention_subjects SET binding_hash='replacement',payload_json=?").run(JSON.stringify({ state: "replacement" }));
+  hanging.resolve(snapshot({ loop_id: "loop", path: params().state_path }));
+  await read;
+  expect(db.prepare("SELECT payload_json FROM attention_subjects").get()).toEqual({ payload_json: '{"state":"replacement"}' });
+});
+it("fences a stale owner and lets the next service reobserve the persisted binding", async () => {
+  const hanging = deferred<unknown>();
+  const { service, params, db } = setup({ loopReader: () => hanging.promise });
+  const read = service.handle("attention.loop", params());
+  const rejected = expect(read).rejects.toThrow("stale_owner");
+  const next = new SupervisionService(db, db.name, undefined, { loopReader: async (input) => snapshot(input) });
+  try {
+    hanging.resolve(snapshot({ loop_id: "loop", path: params().state_path }));
+    await rejected;
+    await expect(next.handle("attention.loop", params())).resolves.toMatchObject({ state: "snapshot_available" });
+    expect(db.prepare("SELECT generation,payload_json FROM attention_subjects").get()).toMatchObject({
+      generation: next.observer.owner.generation, payload_json: expect.stringContaining("snapshot_available"),
+    });
+  } finally { await next.stop(); }
+});
+it("waits for the bounded notification drain before stop resolves", async () => {
+  const { service } = setup();
+  const draining = deferred<void>();
+  Object.defineProperty(service, "sender", { value: async () => {} });
+  vi.spyOn(service.experience, "drain").mockReturnValue(draining.promise);
+  await service.requestScan();
+  let stopped = false;
+  const stop = service.stop().then(() => { stopped = true; });
+  await Promise.resolve();
+  expect(stopped).toBe(false);
+  draining.resolve();
+  await stop;
+  expect(stopped).toBe(true);
+});
+it("does not touch SQLite when a physical reader rejects after stop and close", async () => {
+  const late = deferred<void>();
+  const { service, db, params } = setup({ loopReader: async () => { await late.promise; throw new Error("late failure"); } });
+  const read = service.handle("attention.loop", params());
+  await Promise.resolve();
+  await service.stop();
+  db.close();
+  const prepare = vi.spyOn(db, "prepare");
+  const write = vi.spyOn(service.store, "write");
+  late.resolve();
+  await read;
+  await Promise.resolve(); await Promise.resolve();
+  expect(prepare).not.toHaveBeenCalled();
+  expect(write).not.toHaveBeenCalled();
+});
+it("isolates malformed saved Loop metadata and retries scans after a failed tick", async () => {
+  const reader = vi.fn<NonNullable<SupervisionOptions["loopReader"]>>(async (input) => snapshot(input));
+  const { service, seed, db } = setup({ loopReader: reader });
+  seed("bad"); seed("good");
+  db.prepare("UPDATE attention_subjects SET payload_json='{' WHERE subject_id='bad'").run();
+  const tick = vi.spyOn(service.observer, "tick");
+  tick.mockImplementationOnce(() => { throw new Error("disk busy"); });
+  await service.requestScan();
+  await service.requestScan();
+  expect(reader).toHaveBeenCalledTimes(1);
+  expect(JSON.stringify(db.prepare("SELECT payload_json FROM attention_subjects WHERE subject_id='bad'").get())).toContain("invalid_payload");
+  expect(JSON.stringify(db.prepare("SELECT payload_json FROM attention_subjects WHERE subject_id='good'").get())).toContain("snapshot_available");
+});
+
+
+FILE packages/cli/src/attention-loop-source.ts
+import { constants } from "node:fs";
+import { open, realpath, lstat } from "node:fs/promises";
+import { isAbsolute, relative } from "node:path";
+import { LoopState } from "@osstack/loop";
+/** No replay or cleanup port. A Loop JSON file is a lossy snapshot source. */
+export async function readAttentionLoop(input: {
+  repo: string;
+  path: string;
+  loop_id: string;
+  signal?: AbortSignal;
+}) {
+  input.signal?.throwIfAborted();
+  if (!isAbsolute(input.path) || !isAbsolute(input.repo) || !input.loop_id)
+    throw new Error("explicit_loop_binding_required");
+  const repo = await realpath(input.repo);
+  input.signal?.throwIfAborted();
+  let handle: Awaited<ReturnType<typeof open>> | undefined;
+  try {
+    const path = await realpath(input.path);
+    input.signal?.throwIfAborted();
+    const rel = relative(repo, path);
+    if (rel === ".." || rel.startsWith("../") || isAbsolute(rel))
+      throw new Error("loop_outside_scope");
+    const before = await lstat(path);
+    input.signal?.throwIfAborted();
+    if (!before.isFile())
+      throw new Error("regular_loop_file_required");
+    handle = await open(path, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
+    input.signal?.throwIfAborted();
+    const stat = await handle.stat();
+    input.signal?.throwIfAborted();
+    const resolvedAfterOpen = await realpath(path);
+    input.signal?.throwIfAborted();
+    if (resolvedAfterOpen !== path || before.dev !== stat.dev || before.ino !== stat.ino)
+      throw new Error("loop_source_changed");
+    if (!stat.isFile() || stat.size > 1024 * 1024)
+      throw new Error("unsupported_loop_source");
+    const buffer = Buffer.alloc(1024 * 1024 + 1);
+    const { bytesRead } = await handle.read(buffer, 0, buffer.length, 0);
+    input.signal?.throwIfAborted();
+    if (bytesRead > 1024 * 1024) throw new Error("oversized_loop_source");
+    const state = LoopState.parse(
+      JSON.parse(buffer.subarray(0, bytesRead).toString("utf8"))
+    );
+    if (state.loop_id !== input.loop_id)
+      throw new Error("loop_identity_conflict");
+    return {
+      loop_id: input.loop_id,
+      path,
+      state: "snapshot_available",
+      updated_at: state.updated_at,
+      in_progress: state.in_progress ?? [],
+      pending: state.pending,
+      completed_count: state.completed_tasks.length,
+      wait: state.wait_reason ?? null,
+      process_liveness: "unknown",
+      coverage: "snapshot_only",
+      gap: "best_effort_snapshot_no_event_replay",
+      recovery_required: (state.in_progress ?? []).length > 0,
+    };
+  } catch (error) {
+    input.signal?.throwIfAborted();
+    if ((error as NodeJS.ErrnoException).code === "ENOENT")
+      return {
+        loop_id: input.loop_id,
+        path: input.path,
+        state: "source_missing",
+        process_liveness: "unknown",
+        coverage: "uncovered",
+        gap: "source_missing",
+      };
+    throw error;
+  } finally {
+    await handle?.close();
+  }
+}
+
+
+FILE packages/cli/src/attention-loop-source.test.ts
+import { mkdtemp, writeFile, rm, rename, symlink } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { expect, it, vi } from "vitest";
+import { readAttentionLoop } from "./attention-loop-source.js";
+it("binds exact loop identity and never treats in-progress snapshots as live owners", async () => {
+  const root = await mkdtemp(join(tmpdir(), "loop-source-"));
+  try {
+    const path = join(root, "state.json");
+    await writeFile(
+      path,
+      JSON.stringify({
+        loop_id: "l",
+        started_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        completed_tasks: [],
+        pending: [],
+        in_progress: [],
+        decisions: [],
+      })
+    );
+    expect(
+      await readAttentionLoop({ repo: root, path, loop_id: "l" })
+    ).toMatchObject({ process_liveness: "unknown", coverage: "snapshot_only" });
+    await expect(
+      readAttentionLoop({ repo: root, path, loop_id: "other" })
+    ).rejects.toThrow("identity");
+    expect(
+      await readAttentionLoop({
+        repo: root,
+        path: join(root, "missing"),
+        loop_id: "l",
+      })
+    ).toMatchObject({ state: "source_missing" });
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+const race = vi.hoisted(() => ({ swap: undefined as (() => Promise<void>) | undefined }));
+vi.mock("node:fs/promises", async importOriginal => {
+  const original = await importOriginal<typeof import("node:fs/promises")>();
+  return { ...original, open: async (...args: Parameters<typeof original.open>) => {
+    const swap = race.swap; race.swap = undefined; await swap?.();
+    return original.open(...args);
+  } };
+});
+it("rejects a snapshot replaced between path validation and open", async () => {
+  const root = await mkdtemp(join(tmpdir(), "loop-race-"));
+  try {
+    const path = join(root, 'state.json'); const original = join(root, 'original.json');
+    await writeFile(path, '{}');
+    race.swap = async () => { await rename(path, original); await symlink(original, path); };
+    await expect(readAttentionLoop({ repo: root, path, loop_id: 'l' })).rejects.toThrow();
+    await rm(path); await rename(original, path);
+    race.swap = async () => { await rename(path, original); await writeFile(path, '{}'); };
+    await expect(readAttentionLoop({ repo: root, path, loop_id: 'l' })).rejects.toThrow('loop_source_changed');
+  } finally { race.swap = undefined; await rm(root, { recursive: true, force: true }); }
+});
+
+it("honors abort before IO and after opening without reading a snapshot", async () => {
+  const root = await mkdtemp(join(tmpdir(), "loop-abort-"));
+  try {
+    const path = join(root, "state.json");
+    await writeFile(path, "{}");
+    const controller = new AbortController();
+    controller.abort(new Error("stopped"));
+    await expect(readAttentionLoop({ repo: root, path, loop_id: "l", signal: controller.signal })).rejects.toThrow("stopped");
+    const during = new AbortController();
+    race.swap = async () => { during.abort(new Error("stopped during open")); };
+    await expect(readAttentionLoop({ repo: root, path, loop_id: "l", signal: during.signal })).rejects.toThrow("stopped during open");
+  } finally { race.swap = undefined; await rm(root, { recursive: true, force: true }); }
+});
+
+
+FILE packages/core/src/state/attention-store.ts
+import { createHash, randomUUID } from "node:crypto";
+import { realpathSync, statSync } from "node:fs";
+import type Database from "better-sqlite3";
+import { SessionDecision } from "@osstack/protocol";
+import { withWrite } from "./db.js";
+
+export function attentionDigest(value: unknown): string {
+  const canonical = (v: unknown): string => {
+    if (Array.isArray(v)) return `[${v.map(canonical).join(",")}]`;
+    if (v !== null && typeof v === "object")
+      return `{${Object.entries(v)
+        .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+        .map(([k, x]) => `${JSON.stringify(k)}:${canonical(x)}`)
+        .join(",")}}`;
+    return JSON.stringify(v);
+  };
+  return createHash("sha256").update(canonical(value)).digest("hex");
+}
+export interface AttentionOwner {
+  instance_id: string;
+  generation: number;
+  home_id: string;
+}
+export interface AttentionScope {
+  scope_id: string;
+  task_id: string;
+  repo_path: string;
+  discovery_after: string;
+  scan_complete: number;
+  sampled_at: number;
+  deadline: number;
+  generation: number;
+  error: string | null;
+}
+export interface AttentionItem {
+  item_id: string;
+  scope_id: string;
+  session_id: string;
+  turn_id: string;
+  decision_id: string;
+  content_hash: string;
+  decision: SessionDecision;
+  source_version: number;
+  revision: number;
+  state: string;
+  created_at: number;
+  updated_at: number;
+  external_message_id: string | null;
+}
+type ItemRow = Omit<AttentionItem, "decision"> & { decision_json: string };
+function parseItem(row: ItemRow): AttentionItem {
+  const { decision_json, ...rest } = row;
+  return {
+    ...rest,
+    decision: SessionDecision.parse(JSON.parse(decision_json)),
+  };
+}
+export class AttentionStore {
+  constructor(readonly db: Database.Database, readonly path: string) {}
+  /** Only called AFTER the daemon's process lock is acquired. Not an executor lease. */
+  claimOwner(instanceId: string): AttentionOwner {
+    return withWrite(this.db, this.path, () => {
+      this.db
+        .prepare(
+          `INSERT INTO daemon_owner(singleton,home_id,instance_id,generation) VALUES(1,?,?,1)
+        ON CONFLICT(singleton) DO UPDATE SET instance_id=excluded.instance_id,generation=generation+1`
+        )
+        .run(randomUUID(), instanceId);
+      return this.db
+        .prepare(
+          "SELECT home_id,instance_id,generation FROM daemon_owner WHERE singleton=1"
+        )
+        .get() as AttentionOwner;
+    });
+  }
+  assertOwner(owner: AttentionOwner): void {
+    if (
+      !this.db
+        .prepare(
+          "SELECT 1 FROM daemon_owner WHERE singleton=1 AND home_id=? AND instance_id=? AND generation=?"
+        )
+        .get(owner.home_id, owner.instance_id, owner.generation)
+    )
+      throw new Error("stale_owner");
+  }
+  write<T>(owner: AttentionOwner, fn: () => T): T {
+    if (this.db.inTransaction) {
+      this.assertOwner(owner);
+      return fn();
+    }
+    return withWrite(this.db, this.path, () => {
+      this.assertOwner(owner);
+      return fn();
+    });
+  }
+  registerScope(
+    owner: AttentionOwner,
+    taskId: string,
+    repoPath: string
+  ): AttentionScope {
+    const canonicalRepo = realpathSync(repoPath);
+    if (!statSync(canonicalRepo).isDirectory())
+      throw new Error("repository_directory_required");
+    return this.write(owner, () => {
+      const task = this.db
+        .prepare(
+          "SELECT created_at FROM tasks WHERE task_id=? AND tenant_id IS NULL"
+        )
+        .get(taskId) as { created_at: number } | undefined;
+      if (!task) throw new Error("not_found");
+      if (
+        (
+          this.db.prepare("SELECT COUNT(*) n FROM attention_scopes").get() as {
+            n: number;
+          }
+        ).n >= 100 &&
+        !this.db
+          .prepare(
+            "SELECT 1 FROM attention_scopes WHERE task_id=? AND repo_path=?"
+          )
+          .get(taskId, canonicalRepo)
+      )
+        throw new Error("scope_capacity");
+      const scopeId = attentionDigest([
+        owner.home_id,
+        taskId,
+        canonicalRepo,
+        task.created_at,
+      ]);
+      this.db
+        .prepare(
+          `INSERT INTO attention_scopes(scope_id,task_id,repo_path,generation) VALUES(?,?,?,?)
+        ON CONFLICT(scope_id) DO NOTHING`
+        )
+        .run(scopeId, taskId, canonicalRepo, owner.generation);
+      return this.getScope(scopeId)!;
+    });
+  }
+  getScope(scopeId: string): AttentionScope | undefined {
+    return this.db
+      .prepare("SELECT * FROM attention_scopes WHERE scope_id=?")
+      .get(scopeId) as AttentionScope | undefined;
+  }
+  listScopes(): AttentionScope[] {
+    return this.db
+      .prepare("SELECT * FROM attention_scopes ORDER BY scope_id")
+      .all() as AttentionScope[];
+  }
+  getItem(scopeId: string, itemId: string): AttentionItem | undefined {
+    const row = this.db
+      .prepare("SELECT * FROM attention_items WHERE scope_id=? AND item_id=?")
+      .get(scopeId, itemId) as ItemRow | undefined;
+    return row ? parseItem(row) : undefined;
+  }
+  listItems(scopeId: string, after = "", limit = 100): AttentionItem[] {
+    if (!Number.isSafeInteger(limit) || limit < 1 || limit > 100)
+      throw new Error("invalid_limit");
+    return (
+      this.db
+        .prepare(
+          "SELECT * FROM attention_items WHERE scope_id=? AND item_id>? ORDER BY item_id LIMIT ?"
+        )
+        .all(scopeId, after, limit) as ItemRow[]
+    ).map(parseItem);
+  }
+  projectDecision(
+    owner: AttentionOwner,
+    input: {
+      scopeId: string;
+      sessionId: string;
+      turnId: string;
+      sourceVersion: number;
+      decision: unknown;
+      now: number;
+    }
+  ): AttentionItem {
+    const decision = SessionDecision.parse(input.decision);
+    const contentHash = attentionDigest(decision);
+    const itemId = attentionDigest([
+      input.scopeId,
+      input.sessionId,
+      input.turnId,
+      decision.decision_id,
+    ]);
+    if (
+      !Number.isSafeInteger(input.sourceVersion) ||
+      input.sourceVersion < 1 ||
+      !Number.isFinite(input.now)
+    )
+      throw new Error("invalid_source_version");
+    return this.write(owner, () => {
+      if (!this.getScope(input.scopeId)) throw new Error("not_found");
+      const existing = this.getItem(input.scopeId, itemId);
+      if (existing && existing.content_hash !== contentHash)
+        throw new Error("decision_content_conflict");
+      if (existing && existing.source_version > input.sourceVersion)
+        throw new Error("stale_source");
+      this.db
+        .prepare(
+          `INSERT INTO attention_items(item_id,scope_id,session_id,turn_id,decision_id,content_hash,decision_json,source_version,created_at,updated_at)
+        VALUES(?,?,?,?,?,?,?,?,?,?) ON CONFLICT(item_id) DO UPDATE SET
+        revision=revision+CASE WHEN source_version<>excluded.source_version OR state='source_missing' THEN 1 ELSE 0 END,
+        state=CASE WHEN state='source_missing' THEN 'open' ELSE state END,
+        source_version=excluded.source_version,updated_at=excluded.updated_at`
+        )
+        .run(
+          itemId,
+          input.scopeId,
+          input.sessionId,
+          input.turnId,
+          decision.decision_id,
+          contentHash,
+          JSON.stringify(decision),
+          input.sourceVersion,
+          input.now,
+          input.now
+        );
+      return this.getItem(input.scopeId, itemId)!;
+    });
+  }
+  release(
+    owner: AttentionOwner,
+    scopeId: string,
+    kind: string,
+    subjectId: string,
+    expectedVersion: number
+  ): void {
+    if (!["session", "run", "loop"].includes(kind))
+      throw new Error("invalid_subject_kind");
+    this.write(owner, () => {
+      const row = this.db
+        .prepare(
+          "SELECT payload_json,source_version FROM attention_subjects WHERE scope_id=? AND kind=? AND subject_id=?"
+        )
+        .get(scopeId, kind, subjectId) as
+        | { payload_json: string; source_version: number }
+        | undefined;
+      if (!row || row.source_version !== expectedVersion)
+        throw new Error("subject_version_conflict");
+      this.db
+        .prepare(
+          "UPDATE attention_subjects SET admitted=0,payload_json=? WHERE scope_id=? AND kind=? AND subject_id=?"
+        )
+        .run(
+          JSON.stringify({
+            ...JSON.parse(row.payload_json),
+            reason: "owner_released",
+          }),
+          scopeId,
+          kind,
+          subjectId
+        );
+    });
+  }
+  markMissing(owner: AttentionOwner, scopeId: string, sessionId: string): void {
+    this.write(owner, () =>
+      this.db
+        .prepare(
+          `UPDATE attention_items SET state='source_missing',revision=revision+1
+      WHERE scope_id=? AND session_id=? AND state='open'`
+        )
+        .run(scopeId, sessionId)
+    );
+  }
+}
+
+
+FILE packages/core/src/state/attention-experience.ts
+import { AttentionObserver } from "./attention-observer.js";
+import { randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
+import {
+  AttentionStore,
+  attentionDigest,
+  type AttentionOwner,
+} from "./attention-store.js";
+interface Delivery {
+  delivery_id: string;
+  scope_id: string;
+  item_id: string;
+  revision: number;
+  state: string;
+  attempts: number;
+  next_at: number;
+  error: string | null;
+}
+export type AttentionSender = (
+  message: {
+    delivery_id: string;
+    scope_id: string;
+    item_id: string;
+    question: string;
+    state: string;
+  },
+  signal: AbortSignal
+) => Promise<void>;
+/** Local owner UX state; posture never changes any execution authority. */
+export class AttentionExperience {
+  constructor(readonly store: AttentionStore, readonly owner: AttentionOwner) {}
+  posture(
+    scope: string,
+    actor: string,
+    posture: "attended" | "quiet" | "away"
+  ): void {
+    this.actor(actor);
+    if (!["attended", "quiet", "away"].includes(posture))
+      throw new Error("invalid_posture");
+    this.store.write(this.owner, () => {
+      this.scope(scope);
+      this.store.db
+        .prepare(
+          "INSERT INTO attention_postures VALUES(?,?,?) ON CONFLICT(scope_id,actor) DO UPDATE SET posture=excluded.posture"
+        )
+        .run(scope, actor, posture);
+    });
+  }
+  brief(scope: string, actor: string) {
+    this.actor(actor);
+    this.scope(scope);
+    const db = this.store.db;
+    const items = db
+      .prepare(
+        `SELECT i.item_id,i.revision,i.state,i.decision_json,i.created_at FROM attention_items i LEFT JOIN attention_seen s ON s.scope_id=i.scope_id AND s.item_id=i.item_id AND s.actor=?
+   WHERE i.scope_id=? AND COALESCE(s.revision,0)<i.revision ORDER BY CASE WHEN i.state LIKE '%uncertain%' THEN 0 WHEN json_extract(i.decision_json,'$.continuation.gate_kind') IN ('risk_approval','task_authorization') THEN 1 WHEN i.state='open' THEN 2 ELSE 3 END,i.created_at,i.item_id LIMIT 3`
+      )
+      .all(actor, scope) as {
+      item_id: string;
+      revision: number;
+      state: string;
+      decision_json: string;
+      created_at: number;
+    }[];
+    const total = (
+      db
+        .prepare(
+          `SELECT COUNT(*) n FROM attention_items i LEFT JOIN attention_seen s ON s.scope_id=i.scope_id AND s.item_id=i.item_id AND s.actor=? WHERE i.scope_id=? AND COALESCE(s.revision,0)<i.revision`
+        )
+        .get(actor, scope) as { n: number }
+    ).n;
+    const dead = (
+      db
+        .prepare(
+          "SELECT COUNT(*) n FROM attention_deliveries WHERE scope_id=? AND state='dead_letter'"
+        )
+        .get(scope) as { n: number }
+    ).n;
+    return {
+      scope_id: scope,
+      actor,
+      total,
+      dead_letters: dead,
+      items: items.map(({ decision_json, ...r }) => ({
+        ...r,
+        question: JSON.parse(decision_json).question,
+      })),
+      read_is_not_seen: true,
+    };
+  }
+  seen(
+    scope: string,
+    actor: string,
+    revisions: { item_id: string; revision: number }[]
+  ): void {
+    this.actor(actor);
+    if (revisions.length > 100) throw new Error("too_many_items");
+    this.store.write(this.owner, () => {
+      this.scope(scope);
+      for (const r of revisions) {
+        const item = this.store.getItem(scope, r.item_id);
+        if (!item || item.revision !== r.revision)
+          throw new Error("stale_item");
+        this.store.db
+          .prepare(
+            "INSERT INTO attention_seen VALUES(?,?,?,?) ON CONFLICT(scope_id,actor,item_id) DO UPDATE SET revision=MAX(revision,excluded.revision)"
+          )
+          .run(scope, actor, r.item_id, r.revision);
+      }
+    });
+  }
+  enqueue(scope: string): void {
+    this.store.write(this.owner, () => {
+      this.scope(scope);
+      this.store.db
+        .prepare(
+          `INSERT OR IGNORE INTO attention_deliveries(delivery_id,scope_id,item_id,revision)
+    SELECT item_id||':'||revision,scope_id,item_id,revision FROM attention_items WHERE scope_id=? AND state IN ('open','answer_uncertain','source_missing')`
+        )
+        .run(scope);
+    });
+  }
+  recoverDeliveries(): void {
+    this.store.write(this.owner, () =>
+      this.store.db
+        .prepare(
+          "UPDATE attention_deliveries SET state=CASE WHEN attempts>=5 THEN 'dead_letter' ELSE 'pending' END,error='interrupted_delivery' WHERE state='sending'"
+        )
+        .run()
+    );
+  }
+  async drain(
+    sender: AttentionSender,
+    now = Date.now(),
+    timeoutMs = 5000
+  ): Promise<void> {
+    const db = this.store.db;
+    const row = this.store.write(this.owner, () => {
+      const d = db
+        .prepare(
+          `SELECT d.* FROM attention_deliveries d WHERE d.state='pending' AND d.next_at<=? AND NOT EXISTS(SELECT 1 FROM attention_postures p WHERE p.scope_id=d.scope_id AND p.posture='quiet') ORDER BY d.next_at,d.delivery_id LIMIT 1`
+        )
+        .get(now) as Delivery | undefined;
+      if (d) {
+        const item = this.store.getItem(d.scope_id, d.item_id);
+        if (
+          !item ||
+          item.revision !== d.revision ||
+          !["open", "answer_uncertain", "source_missing"].includes(item.state)
+        ) {
+          db.prepare(
+            "UPDATE attention_deliveries SET state='superseded' WHERE delivery_id=?"
+          ).run(d.delivery_id);
+          return undefined;
+        }
+      }
+      if (d)
+        db.prepare(
+          "UPDATE attention_deliveries SET state='sending',attempts=attempts+1 WHERE delivery_id=? AND state='pending'"
+        ).run(d.delivery_id);
+      return d;
+    });
+    if (!row) return;
+    const item = this.store.getItem(row.scope_id, row.item_id);
+    const controller = new AbortController();
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let error: string | null = null;
+    try {
+      if (!item) throw new Error("source_missing");
+      await Promise.race([
+        Promise.resolve().then(() =>
+          sender(
+            {
+              delivery_id: row.delivery_id,
+              scope_id: row.scope_id,
+              item_id: row.item_id,
+              question: item.decision.question,
+              state: item.state,
+            },
+            controller.signal
+          )
+        ),
+        new Promise<never>((_, reject) => {
+          timer = setTimeout(() => {
+            controller.abort();
+            reject(new Error("delivery_timeout"));
+          }, timeoutMs);
+        }),
+      ]);
+    } catch (e) {
+      error =
+        e instanceof Error && e.message === "delivery_timeout"
+          ? "delivery_timeout"
+          : "delivery_failed";
+    } finally {
+      if (timer) clearTimeout(timer);
+    }
+    this.store.write(this.owner, () =>
+      db
+        .prepare(
+          "UPDATE attention_deliveries SET state=?,next_at=?,error=? WHERE delivery_id=? AND attempts=? AND state='sending'"
+        )
+        .run(
+          error
+            ? row.attempts + 1 >= 5
+              ? "dead_letter"
+              : "pending"
+            : "delivered",
+          now + Math.min(300000, 1000 * 2 ** row.attempts),
+          error,
+          row.delivery_id,
+          row.attempts + 1
+        )
+    );
+  }
+  foreground(
+    scope: string,
+    subjects: { subject_id: string; source_version: number }[],
+    now = Date.now()
+  ) {
+    if (
+      !Array.isArray(subjects) ||
+      subjects.length < 1 ||
+      subjects.length > 100 ||
+      new Set(subjects.map((s) => s.subject_id)).size !== subjects.length
+    )
+      throw new Error("invalid_subject_set");
+    const token = randomBytes(32).toString("hex");
+    const clientId = randomUUID();
+    this.store.write(this.owner, () => {
+      this.scope(scope);
+      this.validateSubjects(scope, subjects);
+      this.store.db
+        .prepare(
+          "INSERT INTO attention_foregrounds(client_id,token_hash,scope_id,generation,expires_at,subjects_json) VALUES(?,?,?,?,?,?)"
+        )
+        .run(
+          clientId,
+          attentionDigest(token),
+          scope,
+          this.owner.generation,
+          now + 120000,
+          JSON.stringify(subjects)
+        );
+    });
+    return {
+      client_id: clientId,
+      token,
+      expires_at: now + 120000,
+      role: "foreground_owner",
+    };
+  }
+  handoff(scope: string, client: string, token: string, now = Date.now()) {
+    return this.store.write(this.owner, () => {
+      const row = this.authenticate(scope, client, token, now, true);
+      const prior = this.store.db
+        .prepare("SELECT * FROM attention_handoffs WHERE client_id=?")
+        .get(client) as
+        | {
+            receipt_id: string;
+            client_id: string;
+            scope_id: string;
+            generation: number;
+            subjects_json: string;
+            created_at: number;
+            valid_until: number;
+          }
+        | undefined;
+      if (prior) {
+        let currentlyValid =
+          new AttentionObserver(this.store, this.owner).inventory(scope, now)
+            .coverage === "covered";
+        try {
+          this.validateSubjects(scope, JSON.parse(row.subjects_json));
+        } catch {
+          currentlyValid = false;
+        }
+        return {
+          ...prior,
+          execution_takeover: false,
+          process_liveness: "unknown",
+          valid_until: (prior as { valid_until: number }).valid_until,
+          expired: now > (prior as { valid_until: number }).valid_until,
+          currently_valid:
+            currentlyValid &&
+            now <= (prior as { valid_until: number }).valid_until,
+        };
+      }
+      if (row.expires_at < now) throw new Error("invalid_foreground");
+      const s = this.scope(scope);
+      if (
+        new AttentionObserver(this.store, this.owner).inventory(scope, now)
+          .coverage !== "covered"
+      )
+        throw new Error("coverage_not_ready");
+      if (
+        !s.scan_complete ||
+        s.generation !== this.owner.generation ||
+        s.deadline < now ||
+        s.sampled_at > now ||
+        s.error ||
+        this.store.db
+          .prepare(
+            "SELECT 1 FROM attention_subjects WHERE scope_id=? AND (admitted=0 OR sampled_at<?) LIMIT 1"
+          )
+          .get(scope, now - 65000)
+      )
+        throw new Error("coverage_not_ready");
+      const subjects = JSON.parse(row.subjects_json) as {
+        subject_id: string;
+        source_version: number;
+      }[];
+      this.validateSubjects(scope, subjects);
+      const receipt = {
+        receipt_id: randomUUID(),
+        client_id: client,
+        scope_id: scope,
+        generation: this.owner.generation,
+        subjects_json: row.subjects_json,
+        created_at: now,
+        valid_until: s.deadline,
+      };
+      this.store.db
+        .prepare("INSERT INTO attention_handoffs VALUES(?,?,?,?,?,?,?)")
+        .run(
+          receipt.receipt_id,
+          client,
+          scope,
+          this.owner.generation,
+          row.subjects_json,
+          now,
+          s.deadline
+        );
+      this.store.db
+        .prepare(
+          "UPDATE attention_foregrounds SET handed_off=1 WHERE client_id=?"
+        )
+        .run(client);
+      return {
+        ...receipt,
+        execution_takeover: false,
+        process_liveness: "unknown",
+        valid_until: s.deadline,
+      };
+    });
+  }
+  turnEnd(
+    scope: string,
+    client: string,
+    token: string,
+    role: string,
+    now = Date.now()
+  ) {
+    return this.store.write(this.owner, () => {
+      if (role !== "foreground_owner") throw new Error("wrong_role");
+      const row = this.authenticate(scope, client, token, now, true);
+      if (row.reminder_sent || row.handed_off) return { reminder: null };
+      this.store.db
+        .prepare(
+          "UPDATE attention_foregrounds SET reminder_sent=1 WHERE client_id=?"
+        )
+        .run(client);
+      return {
+        reminder:
+          "Foreground ended. Check attention coverage and explicitly hand off unresolved work.",
+        continues: false,
+        offline_detection: false,
+        foreground_expired: row.expires_at < now,
+      };
+    });
+  }
+  private authenticate(
+    scope: string,
+    client: string,
+    token: string,
+    now: number,
+    allowExpired = false
+  ) {
+    const row = this.store.db
+      .prepare(
+        "SELECT * FROM attention_foregrounds WHERE client_id=? AND scope_id=?"
+      )
+      .get(client, scope) as
+      | {
+          token_hash: string;
+          generation: number;
+          expires_at: number;
+          subjects_json: string;
+          handed_off: number;
+          reminder_sent: number;
+        }
+      | undefined;
+    if (
+      typeof token !== "string" ||
+      token.length !== 64 ||
+      !row ||
+      !timingSafeEqual(
+        Buffer.from(row.token_hash),
+        Buffer.from(attentionDigest(token))
+      ) ||
+      row.generation !== this.owner.generation ||
+      (!allowExpired && row.expires_at < now)
+    )
+      throw new Error("invalid_foreground");
+    return row;
+  }
+  private validateSubjects(
+    scope: string,
+    subjects: { subject_id: string; source_version: number }[]
+  ): void {
+    for (const s of subjects) {
+      const row = this.store.db
+        .prepare(
+          "SELECT source_version,admitted,payload_json FROM attention_subjects WHERE scope_id=? AND kind='session' AND subject_id=?"
+        )
+        .get(scope, s.subject_id) as
+        | { source_version: number; admitted: number; payload_json: string }
+        | undefined;
+      const live = this.store.db
+        .prepare("SELECT version FROM agent_sessions WHERE session_id=?")
+        .get(s.subject_id) as { version: number } | undefined;
+      if (
+        !row ||
+        row.admitted !== 1 ||
+        row.source_version !== s.source_version ||
+        live?.version !== s.source_version ||
+        JSON.parse(row.payload_json).reason ||
+        JSON.parse(row.payload_json).gap === "history_gap" ||
+        (JSON.parse(row.payload_json).unresolved_receipts ?? []).length > 0
+      )
+        throw new Error("subject_not_covered");
+    }
+  }
+  private scope(scope: string) {
+    const s = this.store.getScope(scope);
+    if (!s) throw new Error("not_found");
+    return s;
+  }
+  private actor(actor: string): void {
+    if (typeof actor !== "string" || actor.length < 1 || actor.length > 256)
+      throw new Error("invalid_actor");
+  }
+}

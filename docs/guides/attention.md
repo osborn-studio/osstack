@@ -155,3 +155,11 @@ daemon 在 socket 清理、业务 DB 打开、恢复前取得独立 SQLite 文�
 旧 running/stopping Loop 和 daily 快照恢复为 stopped/recovery_required。启动和 Loop cycle 都不再强制删除未知 orphan worktree。保留成果后由操作者核对并明确开启新工作。未知外部 worker 不会被本功能终止或自动重启。
 
 整合前实验版 Attention 的 schema 25–26 与已发布 main 编号冲突，不能直接复用其 home；保留原目录与旧版本用于对账，在新隔离 home 验证。新版本会拒绝冲突的迁移谱系，不重置版本号或改写旧账本。
+
+## 集成能力与验证
+
+- [Cockpit 只读监督视图](attention-cockpit.md)
+- [真实确定性路由评估](attention-routing-evaluation.md)
+- [后续开发总计划](../plans/2026-10-23-firstmate-remaining-master.md)
+
+本地通知每轮最多处理 20 项、等待预算 1 秒，关闭时取消并等待逻辑回执完成。回执写失败在下一次扫描恢复；这只保证本地按 delivery ID 幂等的 artifact，不代表公共消息送达。

@@ -4,3 +4,6 @@ docs/reports/2026-10-23-firstmate-evidence/source-excerpts*.md -whitespace
 docs/reports/2026-10-23-firstmate-development-evidence/*-context.md -whitespace
 # Immutable audit inputs include quoted patches and source whitespace.
 docs/reports/2026-10-24-firstmate-integration-evidence/*-context.txt -whitespace
+# Preserve verbatim model audit inputs, including quoted diff whitespace.
+docs/reports/2026-10-23-firstmate-wave1-evidence/**/*context.txt -whitespace
+docs/reports/2026-10-23-firstmate-pr237-final-qualification/*.log -whitespace
