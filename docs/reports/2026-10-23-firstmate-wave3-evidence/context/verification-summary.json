@@ -1,0 +1,21 @@
+{
+  "component_tests": {
+    "knowledge": 44,
+    "cli_execution_context": 24,
+    "total": 68
+  },
+  "typecheck": "CLI passed",
+  "build": "core/knowledge/CLI passed",
+  "knowledge_import_cost": {
+    "package": "@osstack/knowledge",
+    "elapsed_ms": 11.704874999999998,
+    "baseline_ms": 10.232083
+  },
+  "audit_rounds": 3,
+  "final_audit": "No confirmed P0/P1; documented cooperative-local filesystem residual P2",
+  "model_requested": "claude-haiku-5-5",
+  "actual_loop_qualification": "pending reliability integration",
+  "bin_wiring": "root owned",
+  "default_mode": "off",
+  "provider_wire_qualification": false
+}

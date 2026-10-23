@@ -1,0 +1,16 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-supervision-next/packages/cli
+
+ ✓ src/delivery-contract-host.test.ts (2 tests) 282ms
+ ✓ src/deliver-cli.test.ts (20 tests) 4954ms
+   ✓ deliver CLI > runs guarded-local with separated profile roles and local-only evidence  712ms
+   ✓ V2 real guarded-local host boundary > retains isolated candidate and fences verification: valid  929ms
+   ✓ V2 real guarded-local host boundary > retains isolated candidate and fences verification: review_mutates  714ms
+   ✓ V2 real guarded-local host boundary > retains isolated candidate and fences verification: governance  664ms
+   ✓ V2 real guarded-local host boundary > retains isolated candidate and fences verification: policy_drift  716ms
+
+ Test Files  2 passed (2)
+      Tests  22 passed (22)
+   Start at  12:40:52
+   Duration  6.11s (transform 638ms, setup 17ms, collect 1.28s, tests 5.24s, environment 0ms, prepare 62ms)
+

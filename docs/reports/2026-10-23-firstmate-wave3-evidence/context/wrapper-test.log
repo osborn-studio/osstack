@@ -1,0 +1,10 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-routing-next/packages/cli
+
+ ✓ src/execution-context.test.ts (24 tests) 308ms
+
+ Test Files  1 passed (1)
+      Tests  24 passed (24)
+   Start at  12:36:48
+   Duration  787ms (transform 196ms, setup 9ms, collect 322ms, tests 308ms, environment 0ms, prepare 26ms)
+

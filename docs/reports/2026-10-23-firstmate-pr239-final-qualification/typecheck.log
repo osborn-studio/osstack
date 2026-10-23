@@ -1,0 +1,46 @@
+$ pnpm -r typecheck
+Scope: 22 of 23 workspace projects
+packages/compliance typecheck$ tsc --noEmit
+packages/contracts typecheck$ tsc --noEmit
+packages/github typecheck$ tsc --noEmit
+packages/governance typecheck$ tsc --noEmit
+packages/compliance typecheck: Done
+packages/knowledge typecheck$ tsc --noEmit
+packages/contracts typecheck: Done
+packages/neat-eval typecheck$ tsc --noEmit
+packages/github typecheck: Done
+packages/protocol typecheck$ tsc --noEmit
+packages/governance typecheck: Done
+packages/runtime typecheck$ tsc --noEmit
+packages/knowledge typecheck: Done
+packages/neat-eval typecheck: Done
+packages/protocol typecheck: Done
+packages/runtime typecheck: Done
+packages/core typecheck$ tsc --noEmit
+packages/graph typecheck$ tsc --noEmit
+packages/knowledge-cloud typecheck$ tsc --noEmit
+packages/knowledge-cloud typecheck: Done
+packages/graph typecheck: Done
+packages/core typecheck: Done
+packages/autonomy typecheck$ tsc --noEmit
+packages/hermes-adapter typecheck$ tsc --noEmit
+packages/plugins typecheck$ tsc --noEmit
+packages/skill-registry typecheck$ tsc --noEmit
+packages/hermes-adapter typecheck: Done
+packages/skills typecheck$ tsc --noEmit
+packages/plugins typecheck: Done
+packages/skill-registry typecheck: Done
+packages/autonomy typecheck: Done
+packages/skills typecheck: Done
+packages/agents typecheck$ tsc --noEmit
+packages/agents typecheck: Done
+packages/config typecheck$ tsc --noEmit
+packages/loop typecheck$ tsc --noEmit
+packages/config typecheck: Done
+packages/loop typecheck: Done
+packages/supervisor typecheck$ tsc --noEmit
+packages/conformance typecheck$ tsc --noEmit
+packages/conformance typecheck: Done
+packages/supervisor typecheck: Done
+packages/cli typecheck$ tsc --noEmit
+packages/cli typecheck: Done

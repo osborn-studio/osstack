@@ -1,0 +1,121 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-routing-next/packages/cli
+
+ ❯ src/execution-context.test.ts (20 tests | 4 failed) 297ms
+   ✓ defaults off with original adapter identity and zero loaders or receipts 2ms
+   ✓ passes the actual augmented prompt and preserves this-bound methods and stop uncertainty 3ms
+   ✓ rejects partial contract identity and mandatory overflow before invoking 1ms
+   ✓ blocks invocation if prepared evidence cannot be persisted 1ms
+   ✓ aborts and closes the iterator on observed-receipt failure without claiming physical stop 1ms
+   ✓ cancels a stalled loader and discards its late result without invocation 52ms
+   ✓ loads only explicit pinned local packs and strips source-declared authority 4ms
+   ✓ rejects invalid pack hash 2ms
+   ✓ rejects invalid pack version 2ms
+   ✓ rejects invalid pack tenant 2ms
+   ✓ rejects invalid pack scope 2ms
+   ✓ rejects invalid pack escape 2ms
+   ✓ rejects config repo mismatch, unknown settings and traversal before retrieval 3ms
+   × keeps pinned source scope separate from the candidate execution workspace 4ms
+     → expected false to be true // Object.is equality
+   × attributes aggregate receipts to tasks and sessions without relying on arrival order 3ms
+     → expected [ { …(2) }, { …(2) }, { …(2) }, …(1) ] to have a length of 2 but got 4
+   × does not publish late receipt refs after cancellation 55ms
+     → expected [ { …(2) } ] to deeply equal []
+   ✓ blocks expired sources after slow prepared persistence 0ms
+   ✓ bounds cleanup of an adapter with a stalled next and preserves stop uncertainty 156ms
+   ✓ preaborted invocation has no loader, evidence or adapter side effects 0ms
+   × rejects duplicate pack ids even when the loader is constructed directly 1ms
+     → expected [Function] to throw an error
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 4 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/execution-context.test.ts > keeps pinned source scope separate from the candidate execution workspace
+AssertionError: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ src/execution-context.test.ts:136:102
+    134|   expect(f.loadContext.mock.calls[0]![1]).toMatchObject({ workspacePat…
+    135|   expect(f.captured[0]!.context?.repo_path).toBe(candidate);
+    136|   expect(f.receipts.every(row => row.repo_path === f.root && row.execu…
+       |                                                                                                      ^
+    137| });
+    138| it("attributes aggregate receipts to tasks and sessions without relyin…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/4]⎯
+
+ FAIL  src/execution-context.test.ts > attributes aggregate receipts to tasks and sessions without relying on arrival order
+AssertionError: expected [ { …(2) }, { …(2) }, { …(2) }, …(1) ] to have a length of 2 but got 4
+
+- Expected
++ Received
+
+- 2
++ 4
+
+ ❯ src/execution-context.test.ts:144:17
+    142|   const first = wrapped.receiptRefs({ session_id: task.session_id, run…
+    143|   const other = wrapped.receiptRefs({ session_id: "other-session" });
+    144|   expect(first).toHaveLength(2); expect(other).toHaveLength(2); expect…
+       |                 ^
+    145|   expect(first.some(ref => other.some(row => row.path === ref.path))).…
+    146|   expect(wrapped.receiptRefs({ run_id: "absent" })).toEqual([]);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/4]⎯
+
+ FAIL  src/execution-context.test.ts > does not publish late receipt refs after cancellation
+AssertionError: expected [ { …(2) } ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   {
++     "digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
++     "path": "/Volumes/AIMATE_WORK/tmp/osstack/tests/execution-context-tuRIRx/late.json",
++   },
++ ]
+
+ ❯ src/execution-context.test.ts:156:33
+    154|   await expect(pending).rejects.toThrow("execution_context_aborted");
+    155|   finish({ path: join(f.root, "late.json"), digest: "a".repeat(64) });…
+    156|   expect(wrapped.receiptRefs()).toEqual([]); expect(f.captured).toEqua…
+       |                                 ^
+    157| });
+    158| it("blocks expired sources after slow prepared persistence", async () …
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/4]⎯
+
+ FAIL  src/execution-context.test.ts > rejects duplicate pack ids even when the loader is constructed directly
+AssertionError: expected [Function] to throw an error
+
+- Expected: 
+null
+
++ Received: 
+undefined
+
+ ❯ src/execution-context.test.ts:184:106
+    182| it("rejects duplicate pack ids even when the loader is constructed dir…
+    183|   const f = configFixture(); const config = await loadExecutionContext…
+    184|   expect(() => createPinnedLocalContextLoader({ ...config, packs: [...…
+       |                                                                                                          ^
+    185| });
+    186| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/4]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  4 failed | 16 passed (20)
+   Start at  12:31:05
+   Duration  828ms (transform 221ms, setup 9ms, collect 367ms, tests 297ms, environment 0ms, prepare 32ms)
+
+undefined
+/Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-routing-next/packages/cli:
+[ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL] Command failed with exit code 1: vitest run src/execution-context.test.ts

@@ -1,0 +1,12 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-supervision-next/packages/github
+
+(node:44947) ExperimentalWarning: stripTypeScriptTypes is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ src/delivery.test.ts (65 tests) 85ms
+
+ Test Files  1 passed (1)
+      Tests  65 passed (65)
+   Start at  12:32:59
+   Duration  382ms (transform 70ms, setup 0ms, collect 77ms, tests 85ms, environment 0ms, prepare 40ms)
+
