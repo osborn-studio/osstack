@@ -89,7 +89,7 @@ export class AttentionObserver {
         .run(this.owner.generation, now, scope.scope_id);
       db.prepare("UPDATE attention_subjects SET sampled_at=?,generation=?,payload_json=? WHERE scope_id=?")
         .run(now, this.owner.generation, JSON.stringify({ state: "source_missing", reason: "source_missing",
-          process_liveness: "unknown", gap: "history_gap", event_replay: { complete: false, caught_up: false, gap: "source_missing" } }), scope.scope_id);
+          process_liveness: "unknown", gap: "history_gap", event_replay: { complete: false, caught_up: false, gap: "source_missing", completeness_scope: "unverified_retention" } }), scope.scope_id);
       return;
     }
     // A scan advances a durable keyset, then restarts from the beginning. New IDs
@@ -316,9 +316,10 @@ export class AttentionObserver {
     const undiscovered = db
       .prepare(
         `SELECT 1 FROM agent_sessions s JOIN runs r ON r.run_id=s.run_id AND r.task_id=s.task_id
-      WHERE s.task_id=? AND r.tenant_id IS NULL AND NOT EXISTS(SELECT 1 FROM attention_subjects a WHERE a.scope_id=? AND a.kind='session' AND a.subject_id=s.session_id) LIMIT 1`
+      WHERE s.task_id=? AND r.tenant_id IS NULL AND NOT EXISTS(SELECT 1 FROM attention_subjects a WHERE a.scope_id=? AND a.kind='session' AND a.subject_id=s.session_id)
+      UNION ALL SELECT 1 FROM runs r WHERE r.task_id=? AND r.tenant_id IS NULL AND NOT EXISTS(SELECT 1 FROM attention_subjects a WHERE a.scope_id=? AND a.kind='run' AND a.subject_id=r.run_id) LIMIT 1`
       )
-      .get(scope.task_id, scope.scope_id);
+      .get(scope.task_id, scope.scope_id, scope.task_id, scope.scope_id);
 
     db.prepare(
       "UPDATE attention_scopes SET discovery_after=?,scan_complete=?,sampled_at=?,deadline=?,generation=?,error=NULL WHERE scope_id=?"
@@ -456,6 +457,8 @@ export class AttentionObserver {
   }
   private update(s: Subject, now: number, payload: unknown): void {
     this.store.assertOwner(this.owner);
+    if (s.kind === "run" && payload && typeof payload === "object")
+      payload = { event_replay: { complete: false, caught_up: false, gap: "invalid_source", completeness_scope: "unverified_retention" }, ...payload };
     let old: { gap?: string } = {};
     try {
       old = JSON.parse(s.payload_json) as { gap?: string };
@@ -527,7 +530,8 @@ export class AttentionObserver {
         ...r,
         facts: (() => {
           try { return JSON.parse(payload_json) as unknown; }
-          catch { return { state: "unknown", reason: "invalid_source", gap: "history_gap" }; }
+          catch { return { state: "unknown", reason: "invalid_source", gap: "history_gap",
+            ...(r.kind === "run" ? { event_replay: { complete: false, caught_up: false, gap: "invalid_source", completeness_scope: "unverified_retention" } } : {}) }; }
         })(),
       })),
       limitations: [

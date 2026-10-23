@@ -4,9 +4,9 @@
 // from the CLI's raw-SQL sites. An external consumer can now read run/event/proof
 // state through @osstack/core without the product-private CLI.
 //
-// Ownership relocation ONLY (ADR-001 §D2, owner-set): identical SQL semantics,
-// no schema change, no new DB design, no business-logic refactoring. The SQL and
-// result mapping below are extracted verbatim from their prior CLI locations.
+// Originally relocated without behavior changes under ADR-001 §D2. Subsequent
+// attention replay adds bounded reads and run-scoped, monotonic authority
+// resolutions; matching terminal-status echoes do not rewrite authority rows.
 
 import type Database from "better-sqlite3";
 import { withWrite } from "./db.js";

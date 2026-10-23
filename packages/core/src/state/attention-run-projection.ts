@@ -98,9 +98,10 @@ export function projectAttentionRun(store: AttentionStore, owner: AttentionOwner
       WHERE r.run_id=? AND r.task_id=? AND r.tenant_id IS NULL AND t.tenant_id IS NULL`).get(runId, scope.task_id) as Run | undefined;
     const saved = store.db.prepare("SELECT * FROM attention_run_cursors WHERE scope_id=? AND run_id=?")
       .get(scope.scope_id, runId) as Cursor | undefined;
-    const writeSubject = (facts: unknown) => store.db.prepare(
+    const writeSubject = (facts: Record<string, unknown>) => store.db.prepare(
       "UPDATE attention_subjects SET sampled_at=?,generation=?,payload_json=? WHERE scope_id=? AND kind='run' AND subject_id=?"
-    ).run(now, owner.generation, JSON.stringify(facts), scope.scope_id, runId);
+    ).run(now, owner.generation, JSON.stringify({ event_replay: { complete: false, caught_up: false,
+      gap: facts.reason ?? "source_unavailable", completeness_scope: "unverified_retention" }, ...facts }), scope.scope_id, runId);
     const quarantine = (reason: string) => store.db.prepare(
       "UPDATE attention_run_cursors SET gap=COALESCE(gap,?),generation=?,updated_at=? WHERE scope_id=? AND run_id=?"
     ).run(reason, owner.generation, now, scope.scope_id, runId);
@@ -123,10 +124,11 @@ export function projectAttentionRun(store: AttentionStore, owner: AttentionOwner
     let gap = saved?.gap ?? null;
     const state: Observed = { observed_status: null, unsupported_events: 0 };
     const prior = saved ? object(saved.facts_json) : null;
+    let priorValid = true;
     if (saved) {
       if (!prior || !(prior.observed_status === null || typeof prior.observed_status === "string")
         || !Number.isSafeInteger(prior.unsupported_events) || (prior.unsupported_events as number) < 0)
-        gap ??= "invalid_cursor_facts";
+        { gap ??= "invalid_cursor_facts"; priorValid = false; }
       else { state.observed_status = prior.observed_status; state.unsupported_events = prior.unsupported_events as number; }
     }
     let anchorValid = true;
@@ -138,7 +140,7 @@ export function projectAttentionRun(store: AttentionStore, owner: AttentionOwner
     const page = readRunEventPage(store.db, { taskId: scope.task_id, runId, afterSeq: cursor, limit: 200,
       ...(saved && saved.through_seq > cursor ? { throughSeq: saved.through_seq } : {}) });
     if (page.sequenceGap) gap ??= "event_sequence_gap";
-    if (anchorValid && gap !== "invalid_cursor_facts") {
+    if (anchorValid && priorValid) {
       for (const event of page.events) {
         if (event.seq !== cursor + 1) { gap ??= "event_sequence_gap"; break; }
         if (event.session_id !== run.session_id) { gap ??= "event_source_binding_conflict"; break; }
@@ -161,7 +163,7 @@ export function projectAttentionRun(store: AttentionStore, owner: AttentionOwner
     store.db.prepare(`INSERT INTO attention_run_cursors(scope_id,run_id,binding_hash,last_seq,through_seq,last_event_hash,gap,facts_json,generation,updated_at)
       VALUES(?,?,?,?,?,?,?,?,?,?) ON CONFLICT(scope_id,run_id) DO UPDATE SET last_seq=excluded.last_seq,through_seq=excluded.through_seq,
       last_event_hash=excluded.last_event_hash,gap=excluded.gap,facts_json=excluded.facts_json,generation=excluded.generation,updated_at=excluded.updated_at`)
-      .run(scope.scope_id, runId, binding, cursor, page.highWatermark, anchor, gap, JSON.stringify(state), owner.generation, now);
+      .run(scope.scope_id, runId, binding, cursor, page.highWatermark, anchor, gap, priorValid ? JSON.stringify(state) : saved!.facts_json, owner.generation, now);
     writeSubject({ state: { phase: run.phase, outcome: run.outcome }, ...state,
       reason: gap ? "history_gap" : backlog ? "event_backlog" : state.unsupported_events > 0 ? "unsupported_event_type" : "snapshot_only",
       repo_binding: "unverified", process_liveness: "unknown", gap: gap ? "history_gap" : "retention_unverified",

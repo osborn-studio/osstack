@@ -122,10 +122,11 @@ it("retains unknown evidence across source deletion and ID reuse", () => {
   db.prepare("DELETE FROM runs WHERE run_id='r'").run();
   observer.tick(2000);
   expect(facts().state).toBe("source_missing");
+  expect(facts().event_replay).toMatchObject({ complete: false, caught_up: false });
   expect(cursor()?.gap).toBe("source_missing");
   insertRun(db, path, { task_id: "t", run_id: "r", session_id: "s-new", agent_id: "hermes", capability_id: "code", phase: "execute", started_at: 3 });
   observer.tick(3000);
-  expect(facts()).toMatchObject({ state: "unknown", reason: "source_binding_conflict" });
+  expect(facts()).toMatchObject({ state: "unknown", reason: "source_binding_conflict", event_replay: { complete: false, caught_up: false } });
   expect(cursor()?.last_seq).toBe(0);
 });
 it("rolls back cursor and projected facts together on a failed projection write", () => {
@@ -204,7 +205,7 @@ it.each(["delete", "mutate"])("never certifies history even when a non-anchor pr
   if (kind === "delete") db.prepare("DELETE FROM events WHERE seq=0").run();
   else db.prepare("UPDATE events SET payload_json=? WHERE seq=0").run(JSON.stringify({ status: "failed" }));
   observer.tick(2000);
-  expect(facts().event_replay).toMatchObject({ complete: false, completeness_scope: "unverified_retention" });
+  expect(facts().event_replay).toMatchObject({ complete: false, caught_up: true, completeness_scope: "unverified_retention" });
 });
 it("detects identical run identity reuse through actual foreign-key anchor cascade", () => {
   const { event, observer, facts, cursor, db, path } = setup();
@@ -222,5 +223,32 @@ it("returns an invalid marker rather than losing the inventory to corrupt subjec
   db.prepare("UPDATE attention_subjects SET payload_json='{' WHERE kind='run'").run();
   const view = observer.inventory(scope.scope_id, 1000);
   expect(view.coverage).toBe("degraded");
-  expect(view.subjects[0]?.facts).toMatchObject({ state: "unknown", reason: "invalid_source" });
+  expect(view.subjects[0]?.facts).toMatchObject({ state: "unknown", reason: "invalid_source", event_replay: { complete: false, caught_up: false } });
+});
+it.each([null, "event_sequence_gap"])("stalls on corrupt cursor facts regardless of existing gap %s", (gap) => {
+  const { event, observer, cursor, facts, db } = setup();
+  event(0); observer.tick(1000);
+  db.prepare("UPDATE attention_run_cursors SET gap=?,facts_json='{' WHERE run_id='r'").run(gap);
+  event(1); observer.tick(2000); observer.tick(3000);
+  expect(cursor()?.last_seq).toBe(0);
+  expect(facts().event_replay).toMatchObject({ complete: false, caught_up: false });
+  expect(db.prepare("SELECT facts_json FROM attention_run_cursors").get()).toEqual({ facts_json: "{" });
+});
+it("marks discovery incomplete for a new run behind the persisted discovery key", () => {
+  const { observer, db, path, scope, store } = setup();
+  observer.tick(1000);
+  db.prepare("UPDATE attention_scopes SET discovery_after='1:z' WHERE scope_id=?").run(scope.scope_id);
+  insertRun(db, path, { task_id: "t", run_id: "behind", session_id: "s2", agent_id: "hermes", capability_id: "code", phase: "execute", started_at: 2 });
+  observer.tick(2000);
+  expect(store.getScope(scope.scope_id)?.scan_complete).toBe(0);
+  observer.tick(3000);
+  expect(observer.inventory(scope.scope_id, 3000).subject_total).toBe(2);
+  expect(store.getScope(scope.scope_id)?.scan_complete).toBe(1);
+});
+it("run projection failure returns an explicit incomplete event replay marker", () => {
+  const { observer, event, db, facts } = setup();
+  event(0); observer.tick(1000);
+  db.prepare("UPDATE attention_run_cursors SET last_seq=1.5 WHERE run_id='r'").run();
+  observer.tick(2000);
+  expect(facts()).toMatchObject({ reason: "invalid_source", event_replay: { complete: false, caught_up: false } });
 });
