@@ -50,6 +50,7 @@ export class SupervisionService {
   readonly observer: AttentionObserver;
   readonly experience: AttentionExperience;
   private delivering = false;
+  private deliveryRecoveryNeeded = false;
   private readonly deliveryAbort = new AbortController();
   private deliveryDone: Promise<void> | undefined;
   private ciReader: import("@osstack/github").AttentionCiReader | undefined;
@@ -138,10 +139,16 @@ export class SupervisionService {
     if (this.stopped) return;
     for (const scope of this.store.listScopes()) this.experience.enqueue(scope.scope_id);
     if (this.sender && !this.delivering) {
+      // Only this service owns the local idempotent sender. A failed receipt
+      // write leaves `sending`; reconcile it before the next bounded batch.
+      if (this.deliveryRecoveryNeeded) {
+        this.experience.recoverDeliveries();
+        this.deliveryRecoveryNeeded = false;
+      }
       this.delivering = true;
       this.deliveryDone = this.experience.drainBatch(this.sender, { signal: this.deliveryAbort.signal })
         .then(() => {})
-        .catch(() => { /* delivery state retained */ })
+        .catch(() => { this.deliveryRecoveryNeeded = true; })
         .finally(() => { this.delivering = false; });
     }
   }

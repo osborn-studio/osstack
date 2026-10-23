@@ -265,3 +265,39 @@ it("reports malformed persisted metadata through the direct RPC without IO", asy
   expect(await service.handle("attention.loop", params())).toMatchObject({ state: "unknown", reason: "invalid_payload" });
   expect(reader).not.toHaveBeenCalled();
 });
+
+it("recovers a failed local delivery receipt on the next scan without restart", async () => {
+  const { service, scope, db } = setup();
+  const sent = new Set<string>();
+  let calls = 0;
+  Object.defineProperty(service, "sender", { value: async (message: {delivery_id:string}) => { calls++; sent.add(message.delivery_id); } });
+  service.store.projectDecision(service.observer.owner, {scopeId:scope.scope_id,sessionId:"s",turnId:"turn",sourceVersion:1,decision:{decision_id:"d",question:"Choose",choices:[]},now:1});
+  db.exec("CREATE TRIGGER fail_receipt BEFORE UPDATE ON attention_deliveries WHEN NEW.state='delivered' BEGIN SELECT RAISE(ABORT,'receipt disk failure'); END");
+  await service.requestScan();
+  await vi.waitFor(() => expect(calls).toBe(1));
+  expect(db.prepare("SELECT state FROM attention_deliveries").get()).toEqual({state:"sending"});
+  db.exec("DROP TRIGGER fail_receipt");
+  await service.requestScan();
+  await vi.waitFor(() => expect(db.prepare("SELECT state FROM attention_deliveries").get()).toEqual({state:"delivered"}));
+  expect(calls).toBe(2);
+  expect(sent.size).toBe(1);
+});
+
+it("aborts and joins a real hung notification batch before database close", async () => {
+  const { service, scope, db } = setup();
+  const late = deferred<void>();
+  let called = false;
+  let signal: AbortSignal | undefined;
+  Object.defineProperty(service, "sender", { value: async (_message: unknown, abort: AbortSignal) => { called=true; signal=abort; await late.promise; } });
+  service.store.projectDecision(service.observer.owner, {scopeId:scope.scope_id,sessionId:"s",turnId:"turn",sourceVersion:1,decision:{decision_id:"d",question:"Choose",choices:[]},now:1});
+  await service.requestScan();
+  await vi.waitFor(() => expect(called).toBe(true));
+  await service.stop();
+  expect(signal?.aborted).toBe(true);
+  expect(db.prepare("SELECT state,attempts,error FROM attention_deliveries").get()).toEqual({state:"pending",attempts:0,error:"delivery_cancelled_indeterminate"});
+  db.close();
+  const prepare = vi.spyOn(db, "prepare");
+  late.resolve();
+  await Promise.resolve(); await Promise.resolve();
+  expect(prepare).not.toHaveBeenCalled();
+});

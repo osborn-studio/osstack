@@ -17,11 +17,17 @@ it("binds exact loop identity and never treats in-progress snapshots as live own
         pending: [],
         in_progress: [],
         decisions: [],
+        reason: "owner_released", admitted: 0, wait: {owner:"human"}, state_path:"/untrusted",
       })
     );
     expect(
       await readAttentionLoop({ repo: root, path, loop_id: "l" })
     ).toMatchObject({ process_liveness: "unknown", coverage: "snapshot_only" });
+    const facts = await readAttentionLoop({repo:root,path,loop_id:"l"});
+    expect(facts).not.toHaveProperty("reason");
+    expect(facts).not.toHaveProperty("admitted");
+    expect(facts).not.toHaveProperty("state_path");
+    expect(facts).toHaveProperty("wait", null);
     await expect(
       readAttentionLoop({ repo: root, path, loop_id: "other" })
     ).rejects.toThrow("identity");
