@@ -1,3 +1,4 @@
+import { FOLLOW_UP_DELIVERY_DDL } from "./follow-up-delivery-ddl.js";
 // SQLite migrations. Each migration is idempotent (CREATE ... IF NOT EXISTS)
 // or guarded by user_version pragma so it runs exactly once.
 //
@@ -1866,6 +1867,7 @@ export const MIGRATIONS: readonly Migration[] = [
     `,
   },
   { id: 44, name: "local_follow_up_obligations", sql: FOLLOW_UP_OBLIGATIONS_DDL },
+  { id: 45, name: "public_follow_up_delivery_attempts", sql: FOLLOW_UP_DELIVERY_DDL },
 ];
 
 export const CURRENT_SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1]!.id;

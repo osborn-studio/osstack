@@ -114,3 +114,8 @@ export { DeliveryContractV2, FrozenDeliveryContractV2, DeliveryVerificationRecei
 export { FollowUpState, FollowUpCreateParams, FollowUpListParams, FollowUpDraftParams,
   FollowUpResolveParams, FollowUpSourceSnapshot, FollowUpObligation,
   FollowUpMutationResult, FollowUpListItem, FollowUpListResult } from "./follow-up.js";
+export { FollowUpDeliveryTarget, FollowUpDeliverySubject, FollowUpDeliveryGrantBody, SignedFollowUpDeliveryGrant,
+  FollowUpDeliveryEnvelope, FollowUpDeliveryReceipt, FollowUpDeliveryState, FollowUpDeliveryPrepareParams,
+  FollowUpDeliveryActionParams, FollowUpDeliveryAuthorizeParams, FollowUpDeliveryRevokeParams,
+  FollowUpDeliveryInspectParams, FollowUpDeliveryListParams, FollowUpDeliveryAttempt,
+  FollowUpDeliveryResult, FollowUpDeliveryListItem, FollowUpDeliveryListResult } from "./follow-up-delivery.js";
