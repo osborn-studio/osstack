@@ -69,6 +69,7 @@ it('binds the durable host contract before the real Graph launch and never chang
     const source = [git('rev-parse', 'HEAD'), git('show-ref'), git('ls-files', '--stage'), await readFile(join(f.registration.delivery.repositoryPath, 'answer'), 'utf8')];
     const [a, b] = await Promise.all([f.start(), f.start()]); expect(a.graphRunId).toBe(b.graphRunId);
     expect(a.inputDigest).not.toBe(computeGraphInputDigest(f.request)); expect(f.writes()).toBe(0);
+    expect(a.admissionBinding).toEqual({requestInputDigest:computeGraphInputDigest(f.request),hostInputDigest:a.inputDigest,contractDigest:f.registration.delivery.deliveryContract.frozen.digest,policyDigest:f.registration.delivery.deliveryContract.policy.policyDigest});
     const descriptor = JSON.parse((f.db.prepare('SELECT descriptor_json FROM graph_public_delivery WHERE graph_run_id=?').get(a.graphRunId) as { descriptor_json: string }).descriptor_json);
     expect(descriptor.contractEnvelope.frozen.digest).toBe(f.registration.delivery.deliveryContract.frozen.digest);
     expect(descriptor.request.inputArtifactRef).toMatch(/^graph-contract-input:/);

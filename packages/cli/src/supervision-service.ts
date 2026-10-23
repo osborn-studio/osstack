@@ -7,6 +7,7 @@ import {
   AttentionExperience,
   AttentionActions,
   attentionDigest,
+  readAttentionRecovery,
   type AttentionSender,
 } from "@osstack/core";
 type LoopReadInput = { repo: string; path: string; loop_id: string; signal: AbortSignal };
@@ -114,7 +115,12 @@ export class SupervisionService {
   }
   private async scan(): Promise<void> {
     this.assertRunning();
-    this.observer.tick();
+    while (!this.stopped) {
+      const step = this.observer.step({maxSubjects:25,maxEvents:200,maxDurationMs:5});
+      if (step.passComplete) break;
+      await new Promise<void>(resolve => setImmediate(resolve));
+    }
+    if (this.stopped) return;
     const loops = this.store.db.prepare(
       "SELECT scope_id,subject_id,payload_json FROM attention_subjects WHERE kind='loop' AND admitted=1"
     ).all() as { scope_id: string; subject_id: string; payload_json: string }[];
@@ -279,6 +285,10 @@ export class SupervisionService {
     }
     const scopeId = str("scope_id");
     if (!this.store.getScope(scopeId)) throw new Error("not_found");
+    if (method === "attention.recovery") {
+      if (Array.isArray(p) || Object.keys(p).some(key => !["scope_id","after","limit"].includes(key)) || (p["after"] !== undefined && typeof p["after"] !== "string") || (p["limit"] !== undefined && typeof p["limit"] !== "number")) throw new Error("invalid_recovery_request");
+      return readAttentionRecovery(this.store,this.observer.owner,{scope_id:scopeId,...(p["after"] === undefined ? {} : {after:p["after"] as string}),...(p["limit"] === undefined ? {} : {limit:p["limit"] as number})});
+    }
     if (method === "attention.release") {
       this.store.release(
         this.observer.owner,

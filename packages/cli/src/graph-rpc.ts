@@ -117,6 +117,9 @@ export class GraphRpcService {
   }
   private status(run: GraphRun, registration: GraphHostRegistration) {
     const row = this.row(run.graphRunId);
+    const descriptor = JSON.parse(row.descriptor_json) as Descriptor;
+    const contract = descriptor.contractEnvelope;
+    if (contract && computeGraphInputDigest(descriptor.request) !== run.identity.inputDigest) throw new GraphContractError('CHECKPOINT_INCOMPATIBLE');
     const result = row.result_json ? JSON.parse(row.result_json) as StoredResult : { evidenceRefs: [] };
     const interrupt = row.interrupt_json ? JSON.parse(row.interrupt_json) as GraphDeliveryInterrupt : undefined;
     const { actions, budget } = readGraphActionState(this.options.db, run.graphRunId);
@@ -125,6 +128,8 @@ export class GraphRpcService {
     try { synchronous(registration.authorize('execute')); } catch { needsAuthorization = true; }
     return GraphDelegationStatus.parse({ schemaVersion: 1 as const, scope: run.scope, graphRunId: run.graphRunId, source: run.source, status: run.status,
       revision: run.revision, generation: run.generation, inputDigest: run.identity.inputDigest, specHash: run.identity.specHash,
+      ...(contract ? { admissionBinding: { requestInputDigest: computeGraphInputDigest({ ...descriptor.request, inputArtifactRef: contract.sourceInputArtifactRef }),
+        hostInputDigest: run.identity.inputDigest, contractDigest: contract.frozen.digest, policyDigest: contract.policy.policyDigest } } : {}),
       createdAt: run.createdAt, updatedAt: run.updatedAt, publication: 'artifact_only' as const,
       phase: actions.find(a => a.state === 'running')?.effect.nodeId ?? run.status,
       budget: { limits: run.spec!.limits, ...budget },

@@ -43,7 +43,7 @@ function deferred<T>() {
 it("starts once and makes stop terminal before any later database access", async () => {
   vi.useFakeTimers();
   const { service, db } = setup();
-  const tick = vi.spyOn(service.observer, "tick");
+  const tick = vi.spyOn(service.observer, "step");
   service.start();
   service.start();
   await vi.advanceTimersByTimeAsync(0);
@@ -62,7 +62,7 @@ it("coalesces dirty passes and times out a stalled source without starving anoth
   const reader = vi.fn(async (input) => input.loop_id === "bad" ? hanging.promise : snapshot(input));
   const { service, db, seed } = setup({ loopReader: reader, readTimeoutMs: 20 });
   seed("bad"); seed("good");
-  const tick = vi.spyOn(service.observer, "tick");
+  const tick = vi.spyOn(service.observer, "step");
   const first = service.requestScan();
   await vi.advanceTimersByTimeAsync(0);
   for (let i = 0; i < 100; i++) void service.requestScan("dirty");
@@ -210,7 +210,7 @@ it("isolates malformed saved Loop metadata and retries scans after a failed tick
   const { service, seed, db } = setup({ loopReader: reader });
   seed("bad"); seed("good");
   db.prepare("UPDATE attention_subjects SET payload_json='{' WHERE subject_id='bad'").run();
-  const tick = vi.spyOn(service.observer, "tick");
+  const tick = vi.spyOn(service.observer, "step");
   tick.mockImplementationOnce(() => { throw new Error("disk busy"); });
   await service.requestScan();
   await service.requestScan();
@@ -220,7 +220,7 @@ it("isolates malformed saved Loop metadata and retries scans after a failed tick
 });
 it("does not lose a dirty signal between the last pass and promise cleanup", async () => {
   const { service } = setup();
-  const tick = vi.spyOn(service.observer, "tick");
+  const tick = vi.spyOn(service.observer, "step");
   vi.spyOn(service.experience, "enqueue").mockImplementationOnce(() => {
     queueMicrotask(() => queueMicrotask(() => { void service.requestScan("late dirty"); }));
   });
@@ -318,4 +318,13 @@ it("isolates a scope enqueue failure and preserves delivery to another scope", a
   await service.requestScan();
   await vi.waitFor(()=>expect(sent).toEqual([other.scope_id]));
   expect(service.store.getItem(scope.scope_id,service.store.db.prepare("SELECT item_id FROM attention_items WHERE scope_id=?").pluck().get(scope.scope_id) as string)).toBeDefined();
+});
+it("yields between observation slices and checks stop before another slice", async () => {
+  const {service,db}=setup();
+  const step=vi.spyOn(service.observer,"step").mockReturnValue({passComplete:false,scopesVisited:1,subjectsSampled:1,eventQuotaUsed:1,durationMs:1});
+  const scan=service.requestScan();
+  const stopped=new Promise<void>(resolve=>setImmediate(()=>{void service.stop().then(resolve);}));
+  await scan;await stopped;
+  expect(step).toHaveBeenCalledTimes(1);db.close();
+  await new Promise<void>(resolve=>setImmediate(resolve));expect(step).toHaveBeenCalledTimes(1);
 });

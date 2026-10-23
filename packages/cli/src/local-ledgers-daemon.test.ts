@@ -323,3 +323,26 @@ it("exercises the default exported provider without credentials and fails as not
     result: { state: "fallback", reason: "not_authenticated", applied: false },
   });
 });
+
+it("reads scoped recovery through actual daemon and CLI without retry or private prompt disclosure", async()=>{
+  const f=await fixture(true,false);const request=await watched(f.repo);
+  const snapshot=await rpc("attention.recovery",{scope_id:request.scope_id,limit:1});
+  expect(snapshot).toMatchObject({ok:true});
+  expect(JSON.stringify(snapshot)).not.toContain("PRIVATE_NATIVE_ID");
+  expect(JSON.stringify(snapshot)).not.toContain("private prompt");
+  expect(await rpc("attention.recovery",{scope_id:request.scope_id,retry:true})).toMatchObject({ok:false});
+  expect(await rpc("attention.recovery",{scope_id:"a".repeat(64)})).toMatchObject({ok:false});
+  const output=vi.spyOn(console,"log").mockImplementation(()=>{});
+  expect(await main(["attention","recovery","--scope",request.scope_id,"--limit","1","--json"])).toBe(0);
+  const result=JSON.parse(output.mock.calls.at(-1)![0] as string);
+  expect(JSON.stringify(result)).toContain('"canAutoRetry":false');
+  const db=openDb({path:daemon!.dbPath});try{expect(db.prepare("SELECT COUNT(*) n FROM attention_actions").get()).toEqual({n:0});}finally{db.close();}
+});
+
+it("measures bounded recovery over the actual socket alongside mixed session and run observations",async()=>{
+  const f=await fixture(true,false);const request=await watched(f.repo);const samples:number[]=[];
+  for(let i=0;i<100;i++){const start=performance.now();expect(await rpc("attention.recovery",{scope_id:request.scope_id,limit:20})).toMatchObject({ok:true});samples.push(performance.now()-start);}
+  const ordered=[...samples].sort((a,b)=>a-b);const report={fixture:"real_daemon_one_session_one_run",samples:100,p50_ms:ordered[49],p95_ms:ordered[94],max_ms:ordered[99],capacity_qualification:false,model_calls:0};
+  if(process.env["OSSTACK_RECOVERY_BENCH_OUTPUT"]){const {writeFile}=await import("node:fs/promises");await writeFile(process.env["OSSTACK_RECOVERY_BENCH_OUTPUT"]!,JSON.stringify({...report,samples_ms:samples},null,2)+"\n");}
+  expect(Number.isFinite(report.p95_ms)).toBe(true);
+});

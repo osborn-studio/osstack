@@ -15,6 +15,7 @@ export const GRAPH_EXECUTION_HELP = `Usage: osstack graph <command> [--json]
   run --request FILE                Submit a StartGraphRequest to the local daemon
   status --run ID --scope FILE       Read authoritative run state
   result --run ID --scope FILE       Read artifact-only delivery and evidence references
+  contract --run ID --scope FILE     Read a verified host contract completion receipt
   cancel --request FILE             Persist cancellation intent; confirmation is separate
   reconcile --request FILE          Recheck cancellation using trusted host no-child evidence
   resume --request FILE             Resume an exact interrupt with current host authorization
@@ -85,7 +86,7 @@ export async function handleGraphExecutionCommand(args: string[], deps: GraphCom
       return 0;
     }
     let params: unknown; let method: string; let mutation: GraphRequest | undefined;
-    if (command === 'status' || command === 'result') {
+    if (command === 'status' || command === 'result' || command === 'contract') {
       const opts = options(args.slice(1), ['--run', '--scope']);
       params = GraphStatusRequest.parse({ schemaVersion: 1, scope: GraphScope.parse(readJson(opts.get('--scope')!)), graphRunId: opts.get('--run') });
       method = `graph.${command}`;
@@ -111,13 +112,21 @@ export async function handleGraphExecutionCommand(args: string[], deps: GraphCom
       return 1;
     }
     if (envelope.ok !== true) throw new GraphContractError('OUTPUT_CONTRACT_INVALID');
+    if (command === 'contract') {
+      const { GraphContractCompletionReceipt } = await import('./graph-contract-receipt.js');
+      const receipt = GraphContractCompletionReceipt.safeParse(envelope.result);
+      if (!receipt.success) throw new GraphContractError('OUTPUT_CONTRACT_INVALID');
+      const requested = GraphStatusRequest.parse(params);
+      if (JSON.stringify(receipt.data.scope) !== JSON.stringify(requested.scope) || receipt.data.graphRunId !== requested.graphRunId) throw new GraphContractError('RESPONSE_MISMATCH');
+      emit(receipt.data); return 0;
+    }
     const parsedStatus = GraphDelegationStatus.safeParse(envelope.result);
     if (!parsedStatus.success) throw new GraphContractError('OUTPUT_CONTRACT_INVALID');
     const status = parsedStatus.data;
     const requested = GraphStatusRequest.safeParse(params);
     if (JSON.stringify(status.scope) !== JSON.stringify((mutation ?? requested.data)!.scope)
       || (mutation?.kind !== 'start' && status.graphRunId !== (mutation ?? requested.data)!.graphRunId)
-      || (mutation?.kind === 'start' && status.inputDigest !== computeGraphInputDigest(mutation))) throw new GraphContractError('RESPONSE_MISMATCH');
+      || (mutation?.kind === 'start' && (status.admissionBinding?.requestInputDigest ?? status.inputDigest) !== computeGraphInputDigest(mutation))) throw new GraphContractError('RESPONSE_MISMATCH');
     emit(status); return 0;
   } catch (error) {
     // A malformed or mismatched acknowledgement cannot prove non-execution.

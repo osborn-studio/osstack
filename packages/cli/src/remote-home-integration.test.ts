@@ -23,7 +23,7 @@ let compiled:string,bundleRoot:string;
 beforeAll(async()=>{
  bundleRoot=await realpath(await createScratchDir("tests","remote-bundle"));compiled=join(bundleRoot,"exporter.mjs");
  await symlink(resolve("node_modules"),join(bundleRoot,"node_modules"));
- await build({stdin:{contents:'import {handleRemoteExportCommand} from "./remote-home-exporter.js"; process.exitCode=await handleRemoteExportCommand(process.argv.slice(2));',resolveDir:resolve("src"),sourcefile:"remote-runner.ts",loader:"ts"},bundle:true,platform:"node",target:"node22",format:"esm",packages:"external",outfile:compiled,logLevel:"silent"});
+ await build({stdin:{contents:'import {main} from "./bin.js"; process.exitCode=await main(["remote-export",...process.argv.slice(2)]);',resolveDir:resolve("src"),sourcefile:"remote-runner.ts",loader:"ts"},bundle:true,platform:"node",target:"node22",format:"esm",packages:"external",outfile:compiled,logLevel:"silent"});
 });
 afterAll(async()=>{await rm(bundleRoot,{recursive:true,force:true});});
 afterEach(async()=>{for(const fn of cleanup.splice(0).reverse())await fn();vi.unstubAllEnvs();});
