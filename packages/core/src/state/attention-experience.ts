@@ -128,11 +128,58 @@ export class AttentionExperience {
         .run()
     );
   }
-  async drain(
+  async drain(sender: AttentionSender, now = Date.now(), timeoutMs = 5000): Promise<void> {
+    await this.drainOne(sender, now, timeoutMs);
+  }
+  /** Local idempotent transports only. A timeout may still have delivered the
+   * same delivery_id; this does not authorize retrying public messages.
+   * maxItems bounds all claimed work, including superseded projections.
+   */
+  async drainBatch(sender: AttentionSender, options: {
+    maxItems?: number;
+    maxDurationMs?: number;
+    signal?: AbortSignal;
+  } = {}) {
+    const maxItems = options.maxItems ?? 20;
+    const maxDurationMs = options.maxDurationMs ?? 1000;
+    if (!Number.isInteger(maxItems) || maxItems < 1 || maxItems > 100 ||
+        !Number.isInteger(maxDurationMs) || maxDurationMs < 1 || maxDurationMs > 10_000) {
+      throw new Error("invalid_delivery_batch_bounds");
+    }
+    const started = performance.now();
+    const result = { processed: 0, attempted: 0, delivered: 0, retried: 0,
+      deadLetters: 0, superseded: 0, stale: 0,
+      stopped: "limit" as "limit" | "empty" | "deadline" | "aborted" };
+    while (result.processed < maxItems) {
+      if (options.signal?.aborted) { result.stopped = "aborted"; break; }
+      const remaining = maxDurationMs - (performance.now() - started);
+      if (remaining <= 0) { result.stopped = "deadline"; break; }
+      const outcome = await this.drainOne(sender, Date.now(), Math.min(5000, Math.ceil(remaining)), options.signal);
+      if (outcome === "idle") { result.stopped = "empty"; break; }
+      result.processed++;
+      if (outcome === "superseded") result.superseded++;
+      else {
+        result.attempted++;
+        if (outcome === "dead_letter") result.deadLetters++;
+        else result[outcome]++;
+      }
+    }
+    if (options.signal?.aborted) result.stopped = "aborted";
+    else if (performance.now() - started >= maxDurationMs) result.stopped = "deadline";
+    // Counts use the same eligibility predicate as claim; quiet and delayed
+    // retries remain persisted but are not currently deliverable.
+    const due = this.store.db.prepare(`SELECT COUNT(*) n, MIN(d.next_at) oldest
+      FROM attention_deliveries d WHERE d.state='pending' AND d.next_at<=?
+      AND NOT EXISTS(SELECT 1 FROM attention_postures p WHERE p.scope_id=d.scope_id AND p.posture='quiet')`
+    ).get(Date.now()) as { n: number; oldest: number | null };
+    return { ...result, remainingDue: due.n, oldestDueAt: due.oldest };
+  }
+  private async drainOne(
     sender: AttentionSender,
     now = Date.now(),
-    timeoutMs = 5000
-  ): Promise<void> {
+    timeoutMs: number,
+    signal?: AbortSignal
+  ): Promise<"idle" | "superseded" | "delivered" | "retried" | "dead_letter" | "stale"> {
     const db = this.store.db;
     const row = this.store.write(this.owner, () => {
       const d = db
@@ -150,7 +197,7 @@ export class AttentionExperience {
           db.prepare(
             "UPDATE attention_deliveries SET state='superseded' WHERE delivery_id=?"
           ).run(d.delivery_id);
-          return undefined;
+          return "superseded" as const;
         }
       }
       if (d)
@@ -159,16 +206,19 @@ export class AttentionExperience {
         ).run(d.delivery_id);
       return d;
     });
-    if (!row) return;
+    if (row === "superseded") return "superseded";
+    if (!row) return "idle";
     const item = this.store.getItem(row.scope_id, row.item_id);
     const controller = new AbortController();
     let timer: ReturnType<typeof setTimeout> | undefined;
     let error: string | null = null;
+    let onAbort: (() => void) | undefined;
     try {
       if (!item) throw new Error("source_missing");
       await Promise.race([
-        Promise.resolve().then(() =>
-          sender(
+        Promise.resolve().then(() => {
+          if (controller.signal.aborted) throw new Error("delivery_aborted");
+          return sender(
             {
               delivery_id: row.delivery_id,
               scope_id: row.scope_id,
@@ -177,8 +227,13 @@ export class AttentionExperience {
               state: item.state,
             },
             controller.signal
-          )
-        ),
+          );
+        }),
+        new Promise<never>((_, reject) => {
+          onAbort = () => { controller.abort(); reject(new Error("delivery_aborted")); };
+          signal?.addEventListener("abort", onAbort, { once: true });
+          if (signal?.aborted) onAbort();
+        }),
         new Promise<never>((_, reject) => {
           timer = setTimeout(() => {
             controller.abort();
@@ -193,8 +248,9 @@ export class AttentionExperience {
           : "delivery_failed";
     } finally {
       if (timer) clearTimeout(timer);
+      if (onAbort) signal?.removeEventListener("abort", onAbort);
     }
-    this.store.write(this.owner, () =>
+    const updated = this.store.write(this.owner, () =>
       db
         .prepare(
           "UPDATE attention_deliveries SET state=?,next_at=?,error=? WHERE delivery_id=? AND attempts=? AND state='sending'"
@@ -211,6 +267,8 @@ export class AttentionExperience {
           row.attempts + 1
         )
     );
+    if (updated.changes !== 1) return "stale";
+    return error ? row.attempts + 1 >= 5 ? "dead_letter" : "retried" : "delivered";
   }
   foreground(
     scope: string,
