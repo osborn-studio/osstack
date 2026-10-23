@@ -11,7 +11,7 @@ export async function handleAttentionPlanning(
     const key = args[i]!;
     const value = args[++i];
     if (
-      !["--input", "--head", "--evidence", "--budget", "--repo"].includes(
+      !["--input", "--head", "--evidence", "--budget", "--repo", "--mode"].includes(
         key
       ) ||
       !value ||
@@ -34,8 +34,29 @@ export async function handleAttentionPlanning(
   };
   const input = flags.get("--input");
   if (!input) throw new Error("input_required");
-  const data = await read(input);
   const planning = await import("@osstack/supervisor");
+  const mode = flags.get("--mode") ?? "supplied_predictions";
+  if (flags.has("--mode") && args[0] !== "routing-eval") throw new Error("mode_only_valid_for_routing_eval");
+  if (args[0] === "routing-eval") {
+    if (!["supplied_predictions", "router_golden"].includes(mode)) throw new Error("invalid_routing_eval_mode");
+    if ([...flags.keys()].some(k => !["--input", "--mode"].includes(k))) throw new Error("invalid_routing_eval_arguments");
+    if (mode === "router_golden") {
+      let raw: unknown;
+      try { raw = await read(input); }
+      catch {
+        const report = await planning.evaluateRoutingGolden(null);
+        report.dataset_hash = null;
+        report.errors = ["input_unreadable_or_invalid_json"];
+        out(JSON.stringify(report, null, 2));
+        return 1;
+      }
+      const { runProfileRoutingGolden } = await import("./attention-routing-evaluation.js");
+      const report = await planning.evaluateRoutingGolden(raw, runProfileRoutingGolden);
+      out(JSON.stringify(report, null, 2));
+      return report.status === "passed" ? 0 : 1;
+    }
+  }
+  const data = await read(input);
   let result: unknown;
   switch (args[0]) {
     case "contract":
@@ -49,7 +70,8 @@ export async function handleAttentionPlanning(
         : planning.deliveryContract(data);
       break;
     case "routing-eval":
-      result = planning.evaluateAttentionRouting(data);
+      result = { ...planning.evaluateAttentionRouting(data), mode: "supplied_predictions",
+        qualification: "supplied_predictions_only", router_executed: false };
       break;
     case "triage":
       result = planning.acceptAttentionTriage(data, 1, {

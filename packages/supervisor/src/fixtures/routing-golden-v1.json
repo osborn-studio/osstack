@@ -1,0 +1,1080 @@
+{
+  "version": 1,
+  "dataset_id": "firstmate-routing-regression-v1",
+  "cases": [
+    {
+      "id": "kind-lowest-cost",
+      "rationale": "A capability-kind request prefers the lowest-cost available adapter.",
+      "entrypoint": "capability",
+      "request": {
+        "kind": "code.write"
+      },
+      "adapters": [
+        {
+          "id": "writer",
+          "cost_tier": "high",
+          "availability": "available",
+          "capabilities": [
+            {
+              "id": "writer.code.write",
+              "kind": "code.write"
+            },
+            {
+              "id": "writer.code.review",
+              "kind": "code.review"
+            }
+          ]
+        },
+        {
+          "id": "cheap",
+          "cost_tier": "low",
+          "availability": "available",
+          "capabilities": [
+            {
+              "id": "cheap.code.write",
+              "kind": "code.write"
+            }
+          ]
+        }
+      ],
+      "expected": {
+        "kind": "selected",
+        "adapter_id": "cheap",
+        "capability_id": "cheap.code.write",
+        "reason": "kind=code.write lowest-cost (low)"
+      }
+    },
+    {
+      "id": "exact-capability-before-cost",
+      "rationale": "An exact available capability ID takes precedence over cheaper kind matches.",
+      "entrypoint": "capability",
+      "request": {
+        "capability_id": "writer.code.write"
+      },
+      "adapters": [
+        {
+          "id": "cheap",
+          "cost_tier": "low",
+          "availability": "available",
+          "capabilities": [
+            {
+              "id": "cheap.code.write",
+              "kind": "code.write"
+            }
+          ]
+        },
+        {
+          "id": "writer",
+          "cost_tier": "high",
+          "availability": "available",
+          "capabilities": [
+            {
+              "id": "writer.code.write",
+              "kind": "code.write"
+            },
+            {
+              "id": "writer.code.review",
+              "kind": "code.review"
+            }
+          ]
+        }
+      ],
+      "expected": {
+        "kind": "selected",
+        "adapter_id": "writer",
+        "capability_id": "writer.code.write",
+        "reason": "exact capability_id match"
+      }
+    },
+    {
+      "id": "explicit-override-before-cost",
+      "rationale": "Explicit builder selection cannot be replaced by a cheaper adapter.",
+      "entrypoint": "capability",
+      "request": {
+        "kind": "code.write",
+        "agent_id": "writer"
+      },
+      "adapters": [
+        {
+          "id": "cheap",
+          "cost_tier": "low",
+          "availability": "available",
+          "capabilities": [
+            {
+              "id": "cheap.code.write",
+              "kind": "code.write"
+            }
+          ]
+        },
+        {
+          "id": "writer",
+          "cost_tier": "high",
+          "availability": "available",
+          "capabilities": [
+            {
+              "id": "writer.code.write",
+              "kind": "code.write"
+            },
+            {
+              "id": "writer.code.review",
+              "kind": "code.review"
+            }
+          ]
+        }
+      ],
+      "expected": {
+        "kind": "selected",
+        "adapter_id": "writer",
+        "capability_id": "writer.code.write",
+        "reason": "agent_id override"
+      }
+    },
+    {
+      "id": "override-missing",
+      "rationale": "A missing explicitly selected adapter fails closed, even when an alternative exists.",
+      "entrypoint": "capability",
+      "request": {
+        "kind": "code.write",
+        "agent_id": "missing"
+      },
+      "adapters": [
+        {
+          "id": "cheap",
+          "cost_tier": "low",
+          "availability": "available",
+          "capabilities": [
+            {
+              "id": "cheap.code.write",
+              "kind": "code.write"
+            }
+          ]
+        }
+      ],
+      "expected": {
+        "kind": "rejected",
+        "code": "agent_not_found"
+      }
+    },
+    {
+      "id": "override-unavailable",
+      "rationale": "An unavailable explicit adapter fails closed instead of falling back.",
+      "entrypoint": "capability",
+      "request": {
+        "kind": "code.write",
+        "agent_id": "writer"
+      },
+      "adapters": [
+        {
+          "id": "cheap",
+          "cost_tier": "low",
+          "availability": "available",
+          "capabilities": [
+            {
+              "id": "cheap.code.write",
+              "kind": "code.write"
+            }
+          ]
+        },
+        {
+          "id": "writer",
+          "cost_tier": "high",
+          "availability": "unavailable",
+          "capabilities": [
+            {
+              "id": "writer.code.write",
+              "kind": "code.write"
+            }
+          ]
+        }
+      ],
+      "expected": {
+        "kind": "rejected",
+        "code": "agent_unavailable"
+      }
+    },
+    {
+      "id": "override-probe-error",
+      "rationale": "An explicit adapter probe exception is an unavailable rejection, never fallback.",
+      "entrypoint": "capability",
+      "request": {
+        "kind": "code.write",
+        "agent_id": "writer"
+      },
+      "adapters": [
+        {
+          "id": "cheap",
+          "cost_tier": "low",
+          "availability": "available",
+          "capabilities": [
+            {
+              "id": "cheap.code.write",
+              "kind": "code.write"
+            }
+          ]
+        },
+        {
+          "id": "writer",
+          "cost_tier": "high",
+          "availability": "error",
+          "capabilities": [
+            {
+              "id": "writer.code.write",
+              "kind": "code.write"
+            }
+          ]
+        }
+      ],
+      "expected": {
+        "kind": "rejected",
+        "code": "agent_unavailable"
+      }
+    },
+    {
+      "id": "override-capability-mismatch",
+      "rationale": "Explicit exact capability mismatch must not choose that adapter first capability.",
+      "entrypoint": "capability",
+      "request": {
+        "capability_id": "writer.code.debug",
+        "agent_id": "writer"
+      },
+      "adapters": [
+        {
+          "id": "writer",
+          "cost_tier": "high",
+          "availability": "available",
+          "capabilities": [
+            {
+              "id": "writer.code.write",
+              "kind": "code.write"
+            },
+            {
+              "id": "writer.code.review",
+              "kind": "code.review"
+            }
+          ]
+        },
+        {
+          "id": "cheap",
+          "cost_tier": "low",
+          "availability": "available",
+          "capabilities": [
+            {
+              "id": "cheap.code.write",
+              "kind": "code.write"
+            }
+          ]
+        }
+      ],
+      "expected": {
+        "kind": "rejected",
+        "code": "agent_capability_mismatch"
+      }
+    },
+    {
+      "id": "kind-unavailable-skipped",
+      "rationale": "Non-explicit unavailable adapters are skipped before cost selection.",
+      "entrypoint": "capability",
+      "request": {
+        "kind": "code.write"
+      },
+      "adapters": [
+        {
+          "id": "cheap",
+          "cost_tier": "low",
+          "availability": "unavailable",
+          "capabilities": [
+            {
+              "id": "cheap.code.write",
+              "kind": "code.write"
+            }
+          ]
+        },
+        {
+          "id": "writer",
+          "cost_tier": "high",
+          "availability": "available",
+          "capabilities": [
+            {
+              "id": "writer.code.write",
+              "kind": "code.write"
+            },
+            {
+              "id": "writer.code.review",
+              "kind": "code.review"
+            }
+          ]
+        }
+      ],
+      "expected": {
+        "kind": "selected",
+        "adapter_id": "writer",
+        "capability_id": "writer.code.write",
+        "reason": "kind=code.write lowest-cost (high)"
+      }
+    },
+    {
+      "id": "review-kind-suffix",
+      "rationale": "The review.code dotted suffix is recognized by the capability router.",
+      "entrypoint": "capability",
+      "request": {
+        "capability_id": "missing.review.code"
+      },
+      "adapters": [
+        {
+          "id": "cheap",
+          "cost_tier": "low",
+          "availability": "available",
+          "capabilities": [
+            {
+              "id": "cheap.code.write",
+              "kind": "code.write"
+            }
+          ]
+        },
+        {
+          "id": "review-engine",
+          "cost_tier": "mid",
+          "availability": "available",
+          "capabilities": [
+            {
+              "id": "review-engine.review.code",
+              "kind": "review.code"
+            }
+          ]
+        }
+      ],
+      "expected": {
+        "kind": "selected",
+        "adapter_id": "review-engine",
+        "capability_id": "review-engine.review.code",
+        "reason": "kind=review.code lowest-cost (mid)"
+      }
+    },
+    {
+      "id": "empty-adapters",
+      "rationale": "A non-explicit route with no adapters returns no candidate.",
+      "entrypoint": "capability",
+      "request": {
+        "kind": "code.write"
+      },
+      "adapters": [],
+      "expected": {
+        "kind": "none"
+      }
+    },
+    {
+      "id": "legacy-first-available",
+      "rationale": "Document existing generic fallback: unmatched kinds can select a first capability; this is not a review safety guarantee.",
+      "entrypoint": "capability",
+      "request": {
+        "kind": "design.architecture"
+      },
+      "adapters": [
+        {
+          "id": "cheap",
+          "cost_tier": "low",
+          "availability": "available",
+          "capabilities": [
+            {
+              "id": "cheap.code.write",
+              "kind": "code.write"
+            }
+          ]
+        }
+      ],
+      "expected": {
+        "kind": "selected",
+        "adapter_id": "cheap",
+        "capability_id": "cheap.code.write",
+        "reason": "fallback first-available"
+      }
+    },
+    {
+      "id": "profile-independent-review",
+      "rationale": "Delivery roles choose distinct adapters even though the writer also advertises review.",
+      "entrypoint": "profile",
+      "roles": {
+        "coding": {
+          "primary": "writer",
+          "fallback": []
+        },
+        "test-verify": {
+          "primary": "reviewer",
+          "fallback": [
+            "backup"
+          ]
+        },
+        "design": {
+          "primary": "designer",
+          "fallback": []
+        }
+      },
+      "explicit_evaluators": [],
+      "role_overrides": {},
+      "adapters": [
+        {
+          "id": "writer",
+          "cost_tier": "high",
+          "availability": "available",
+          "capabilities": [
+            {
+              "id": "writer.code.write",
+              "kind": "code.write"
+            },
+            {
+              "id": "writer.code.review",
+              "kind": "code.review"
+            }
+          ]
+        },
+        {
+          "id": "reviewer",
+          "cost_tier": "mid",
+          "availability": "available",
+          "capabilities": [
+            {
+              "id": "reviewer.code.review",
+              "kind": "code.review"
+            }
+          ]
+        }
+      ],
+      "expected": {
+        "kind": "profile_selected",
+        "builder": "writer",
+        "evaluator": "reviewer",
+        "independent": true,
+        "overrides": {}
+      }
+    },
+    {
+      "id": "profile-review-fallback",
+      "rationale": "An unavailable preferred evaluator uses the configured independent fallback.",
+      "entrypoint": "profile",
+      "roles": {
+        "coding": {
+          "primary": "writer",
+          "fallback": []
+        },
+        "test-verify": {
+          "primary": "reviewer",
+          "fallback": [
+            "backup"
+          ]
+        },
+        "design": {
+          "primary": "designer",
+          "fallback": []
+        }
+      },
+      "explicit_evaluators": [],
+      "role_overrides": {},
+      "adapters": [
+        {
+          "id": "writer",
+          "cost_tier": "high",
+          "availability": "available",
+          "capabilities": [
+            {
+              "id": "writer.code.write",
+              "kind": "code.write"
+            },
+            {
+              "id": "writer.code.review",
+              "kind": "code.review"
+            }
+          ]
+        },
+        {
+          "id": "reviewer",
+          "cost_tier": "mid",
+          "availability": "unavailable",
+          "capabilities": [
+            {
+              "id": "reviewer.code.review",
+              "kind": "code.review"
+            }
+          ]
+        },
+        {
+          "id": "backup",
+          "cost_tier": "low",
+          "availability": "available",
+          "capabilities": [
+            {
+              "id": "backup.code.test",
+              "kind": "code.test"
+            }
+          ]
+        }
+      ],
+      "expected": {
+        "kind": "profile_selected",
+        "builder": "writer",
+        "evaluator": "backup",
+        "independent": true,
+        "overrides": {}
+      }
+    },
+    {
+      "id": "profile-no-independent-review",
+      "rationale": "A sole writer/reviewer adapter cannot self-review delivery.",
+      "entrypoint": "profile",
+      "roles": {
+        "coding": {
+          "primary": "writer",
+          "fallback": []
+        },
+        "test-verify": {
+          "primary": "reviewer",
+          "fallback": [
+            "backup"
+          ]
+        },
+        "design": {
+          "primary": "designer",
+          "fallback": []
+        }
+      },
+      "explicit_evaluators": [],
+      "role_overrides": {},
+      "adapters": [
+        {
+          "id": "writer",
+          "cost_tier": "high",
+          "availability": "available",
+          "capabilities": [
+            {
+              "id": "writer.code.write",
+              "kind": "code.write"
+            },
+            {
+              "id": "writer.code.review",
+              "kind": "code.review"
+            }
+          ]
+        }
+      ],
+      "expected": {
+        "kind": "profile_rejected",
+        "message": "no independent Evaluator is available"
+      }
+    },
+    {
+      "id": "profile-no-builder",
+      "rationale": "A review-only adapter cannot serve the coding role.",
+      "entrypoint": "profile",
+      "roles": {
+        "coding": {
+          "primary": "writer",
+          "fallback": []
+        },
+        "test-verify": {
+          "primary": "reviewer",
+          "fallback": [
+            "backup"
+          ]
+        },
+        "design": {
+          "primary": "designer",
+          "fallback": []
+        }
+      },
+      "explicit_evaluators": [],
+      "role_overrides": {},
+      "adapters": [
+        {
+          "id": "reviewer",
+          "cost_tier": "mid",
+          "availability": "available",
+          "capabilities": [
+            {
+              "id": "reviewer.code.review",
+              "kind": "code.review"
+            }
+          ]
+        }
+      ],
+      "expected": {
+        "kind": "profile_rejected",
+        "message": "no Builder is available"
+      }
+    },
+    {
+      "id": "profile-explicit-builder-unavailable",
+      "rationale": "Explicit builder selection rejects an available substitute after role resolution.",
+      "entrypoint": "profile",
+      "roles": {
+        "coding": {
+          "primary": "writer",
+          "fallback": []
+        },
+        "test-verify": {
+          "primary": "reviewer",
+          "fallback": [
+            "backup"
+          ]
+        },
+        "design": {
+          "primary": "designer",
+          "fallback": []
+        }
+      },
+      "explicit_evaluators": [],
+      "role_overrides": {},
+      "adapters": [
+        {
+          "id": "cheap",
+          "cost_tier": "low",
+          "availability": "available",
+          "capabilities": [
+            {
+              "id": "cheap.code.write",
+              "kind": "code.write"
+            }
+          ]
+        },
+        {
+          "id": "reviewer",
+          "cost_tier": "mid",
+          "availability": "available",
+          "capabilities": [
+            {
+              "id": "reviewer.code.review",
+              "kind": "code.review"
+            }
+          ]
+        },
+        {
+          "id": "writer",
+          "cost_tier": "high",
+          "availability": "unavailable",
+          "capabilities": [
+            {
+              "id": "writer.code.write",
+              "kind": "code.write"
+            }
+          ]
+        }
+      ],
+      "expected": {
+        "kind": "profile_rejected",
+        "message": "explicit Builder \"writer\" is unavailable"
+      },
+      "explicit_builder": "writer"
+    },
+    {
+      "id": "profile-explicit-self-review",
+      "rationale": "Explicit builder and evaluator cannot be the same adapter.",
+      "entrypoint": "profile",
+      "roles": {
+        "coding": {
+          "primary": "writer",
+          "fallback": []
+        },
+        "test-verify": {
+          "primary": "reviewer",
+          "fallback": [
+            "backup"
+          ]
+        },
+        "design": {
+          "primary": "designer",
+          "fallback": []
+        }
+      },
+      "explicit_evaluators": [
+        "writer"
+      ],
+      "role_overrides": {},
+      "adapters": [
+        {
+          "id": "writer",
+          "cost_tier": "high",
+          "availability": "available",
+          "capabilities": [
+            {
+              "id": "writer.code.write",
+              "kind": "code.write"
+            },
+            {
+              "id": "writer.code.review",
+              "kind": "code.review"
+            }
+          ]
+        },
+        {
+          "id": "reviewer",
+          "cost_tier": "mid",
+          "availability": "available",
+          "capabilities": [
+            {
+              "id": "reviewer.code.review",
+              "kind": "code.review"
+            }
+          ]
+        }
+      ],
+      "expected": {
+        "kind": "profile_rejected",
+        "message": "explicit Builder and Evaluator must use different adapters"
+      },
+      "explicit_builder": "writer"
+    },
+    {
+      "id": "profile-explicit-evaluator-unavailable",
+      "rationale": "An explicit unavailable evaluator must not be silently replaced by the profile fallback.",
+      "entrypoint": "profile",
+      "roles": {
+        "coding": {
+          "primary": "writer",
+          "fallback": []
+        },
+        "test-verify": {
+          "primary": "reviewer",
+          "fallback": [
+            "backup"
+          ]
+        },
+        "design": {
+          "primary": "designer",
+          "fallback": []
+        }
+      },
+      "explicit_evaluators": [
+        "reviewer"
+      ],
+      "role_overrides": {},
+      "adapters": [
+        {
+          "id": "writer",
+          "cost_tier": "high",
+          "availability": "available",
+          "capabilities": [
+            {
+              "id": "writer.code.write",
+              "kind": "code.write"
+            },
+            {
+              "id": "writer.code.review",
+              "kind": "code.review"
+            }
+          ]
+        },
+        {
+          "id": "backup",
+          "cost_tier": "low",
+          "availability": "available",
+          "capabilities": [
+            {
+              "id": "backup.code.test",
+              "kind": "code.test"
+            }
+          ]
+        },
+        {
+          "id": "reviewer",
+          "cost_tier": "mid",
+          "availability": "unavailable",
+          "capabilities": [
+            {
+              "id": "reviewer.code.review",
+              "kind": "code.review"
+            }
+          ]
+        }
+      ],
+      "expected": {
+        "kind": "profile_rejected",
+        "message": "explicit Evaluator \"reviewer\" is unavailable or conflicts with the Builder"
+      }
+    },
+    {
+      "id": "profile-explicit-pair-recorded",
+      "rationale": "Both explicit role choices survive into the delivery routing summary.",
+      "entrypoint": "profile",
+      "roles": {
+        "coding": {
+          "primary": "writer",
+          "fallback": []
+        },
+        "test-verify": {
+          "primary": "reviewer",
+          "fallback": [
+            "backup"
+          ]
+        },
+        "design": {
+          "primary": "designer",
+          "fallback": []
+        }
+      },
+      "explicit_evaluators": [
+        "reviewer"
+      ],
+      "role_overrides": {},
+      "adapters": [
+        {
+          "id": "writer",
+          "cost_tier": "high",
+          "availability": "available",
+          "capabilities": [
+            {
+              "id": "writer.code.write",
+              "kind": "code.write"
+            },
+            {
+              "id": "writer.code.review",
+              "kind": "code.review"
+            }
+          ]
+        },
+        {
+          "id": "reviewer",
+          "cost_tier": "mid",
+          "availability": "available",
+          "capabilities": [
+            {
+              "id": "reviewer.code.review",
+              "kind": "code.review"
+            }
+          ]
+        },
+        {
+          "id": "cheap",
+          "cost_tier": "low",
+          "availability": "available",
+          "capabilities": [
+            {
+              "id": "cheap.code.write",
+              "kind": "code.write"
+            }
+          ]
+        }
+      ],
+      "expected": {
+        "kind": "profile_selected",
+        "builder": "writer",
+        "evaluator": "reviewer",
+        "independent": true,
+        "overrides": {
+          "coding": "writer",
+          "test-verify": "reviewer"
+        }
+      },
+      "explicit_builder": "writer"
+    },
+    {
+      "id": "profile-role-override-recorded",
+      "rationale": "A role override is routed by the real profile resolver and recorded in its summary.",
+      "entrypoint": "profile",
+      "roles": {
+        "coding": {
+          "primary": "writer",
+          "fallback": []
+        },
+        "test-verify": {
+          "primary": "reviewer",
+          "fallback": [
+            "backup"
+          ]
+        },
+        "design": {
+          "primary": "designer",
+          "fallback": []
+        }
+      },
+      "explicit_evaluators": [],
+      "role_overrides": {
+        "test-verify": "backup"
+      },
+      "adapters": [
+        {
+          "id": "writer",
+          "cost_tier": "high",
+          "availability": "available",
+          "capabilities": [
+            {
+              "id": "writer.code.write",
+              "kind": "code.write"
+            },
+            {
+              "id": "writer.code.review",
+              "kind": "code.review"
+            }
+          ]
+        },
+        {
+          "id": "reviewer",
+          "cost_tier": "mid",
+          "availability": "available",
+          "capabilities": [
+            {
+              "id": "reviewer.code.review",
+              "kind": "code.review"
+            }
+          ]
+        },
+        {
+          "id": "backup",
+          "cost_tier": "low",
+          "availability": "available",
+          "capabilities": [
+            {
+              "id": "backup.code.test",
+              "kind": "code.test"
+            }
+          ]
+        }
+      ],
+      "expected": {
+        "kind": "profile_selected",
+        "builder": "writer",
+        "evaluator": "backup",
+        "independent": true,
+        "overrides": {
+          "test-verify": "backup"
+        }
+      }
+    },
+    {
+      "id": "profile-role-preference-can-fallback",
+      "rationale": "Document existing --role preference semantics: an unavailable preference may use its configured fallback; this is not an explicit evaluator hard pin.",
+      "entrypoint": "profile",
+      "roles": {
+        "coding": {
+          "primary": "writer",
+          "fallback": []
+        },
+        "test-verify": {
+          "primary": "reviewer",
+          "fallback": [
+            "backup"
+          ]
+        },
+        "design": {
+          "primary": "designer",
+          "fallback": []
+        }
+      },
+      "explicit_evaluators": [],
+      "role_overrides": {
+        "test-verify": "missing"
+      },
+      "adapters": [
+        {
+          "id": "writer",
+          "cost_tier": "high",
+          "availability": "available",
+          "capabilities": [
+            {
+              "id": "writer.code.write",
+              "kind": "code.write"
+            },
+            {
+              "id": "writer.code.review",
+              "kind": "code.review"
+            }
+          ]
+        },
+        {
+          "id": "reviewer",
+          "cost_tier": "mid",
+          "availability": "available",
+          "capabilities": [
+            {
+              "id": "reviewer.code.review",
+              "kind": "code.review"
+            }
+          ]
+        },
+        {
+          "id": "backup",
+          "cost_tier": "low",
+          "availability": "available",
+          "capabilities": [
+            {
+              "id": "backup.code.test",
+              "kind": "code.test"
+            }
+          ]
+        }
+      ],
+      "expected": {
+        "kind": "profile_selected",
+        "builder": "writer",
+        "evaluator": "backup",
+        "independent": true,
+        "overrides": {
+          "test-verify": "missing"
+        }
+      }
+    },
+    {
+      "id": "profile-adapter-independence-only",
+      "rationale": "The production profile resolver requires distinct adapters, not distinct providers/models; do not overstate independence.",
+      "entrypoint": "profile",
+      "roles": {
+        "coding": {
+          "primary": "writer",
+          "fallback": []
+        },
+        "test-verify": {
+          "primary": "reviewer",
+          "fallback": [
+            "backup"
+          ]
+        },
+        "design": {
+          "primary": "designer",
+          "fallback": []
+        }
+      },
+      "explicit_evaluators": [],
+      "role_overrides": {},
+      "adapters": [
+        {
+          "id": "writer",
+          "cost_tier": "high",
+          "availability": "available",
+          "capabilities": [
+            {
+              "id": "writer.code.write",
+              "kind": "code.write"
+            },
+            {
+              "id": "writer.code.review",
+              "kind": "code.review"
+            }
+          ],
+          "identity": {
+            "provider_id": "same-provider",
+            "model_id": "same-model"
+          }
+        },
+        {
+          "id": "reviewer",
+          "cost_tier": "mid",
+          "availability": "available",
+          "capabilities": [
+            {
+              "id": "reviewer.code.review",
+              "kind": "code.review"
+            }
+          ],
+          "identity": {
+            "provider_id": "same-provider",
+            "model_id": "same-model"
+          }
+        }
+      ],
+      "expected": {
+        "kind": "profile_selected",
+        "builder": "writer",
+        "evaluator": "reviewer",
+        "independent": true,
+        "overrides": {}
+      }
+    }
+  ]
+}
