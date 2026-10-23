@@ -324,25 +324,519 @@ it("exercises the default exported provider without credentials and fails as not
   });
 });
 
-it("reads scoped recovery through actual daemon and CLI without retry or private prompt disclosure", async()=>{
-  const f=await fixture(true,false);const request=await watched(f.repo);
-  const snapshot=await rpc("attention.recovery",{scope_id:request.scope_id,limit:1});
-  expect(snapshot).toMatchObject({ok:true});
+it("reads scoped recovery through actual daemon and CLI without retry or private prompt disclosure", async () => {
+  const f = await fixture(true, false);
+  const request = await watched(f.repo);
+  const snapshot = await rpc("attention.recovery", {
+    scope_id: request.scope_id,
+    limit: 1,
+  });
+  expect(snapshot).toMatchObject({ ok: true });
   expect(JSON.stringify(snapshot)).not.toContain("PRIVATE_NATIVE_ID");
   expect(JSON.stringify(snapshot)).not.toContain("private prompt");
-  expect(await rpc("attention.recovery",{scope_id:request.scope_id,retry:true})).toMatchObject({ok:false});
-  expect(await rpc("attention.recovery",{scope_id:"a".repeat(64)})).toMatchObject({ok:false});
-  const output=vi.spyOn(console,"log").mockImplementation(()=>{});
-  expect(await main(["attention","recovery","--scope",request.scope_id,"--limit","1","--json"])).toBe(0);
-  const result=JSON.parse(output.mock.calls.at(-1)![0] as string);
+  expect(
+    await rpc("attention.recovery", {
+      scope_id: request.scope_id,
+      retry: true,
+    }),
+  ).toMatchObject({ ok: false });
+  expect(
+    await rpc("attention.recovery", { scope_id: "a".repeat(64) }),
+  ).toMatchObject({ ok: false });
+  const output = vi.spyOn(console, "log").mockImplementation(() => {});
+  expect(
+    await main([
+      "attention",
+      "recovery",
+      "--scope",
+      request.scope_id,
+      "--limit",
+      "1",
+      "--json",
+    ]),
+  ).toBe(0);
+  const result = JSON.parse(output.mock.calls.at(-1)![0] as string);
   expect(JSON.stringify(result)).toContain('"canAutoRetry":false');
-  const db=openDb({path:daemon!.dbPath});try{expect(db.prepare("SELECT COUNT(*) n FROM attention_actions").get()).toEqual({n:0});}finally{db.close();}
+  const db = openDb({ path: daemon!.dbPath });
+  try {
+    expect(
+      db.prepare("SELECT COUNT(*) n FROM attention_actions").get(),
+    ).toEqual({ n: 0 });
+  } finally {
+    db.close();
+  }
 });
 
-it("measures bounded recovery over the actual socket alongside mixed session and run observations",async()=>{
-  const f=await fixture(true,false);const request=await watched(f.repo);const samples:number[]=[];
-  for(let i=0;i<100;i++){const start=performance.now();expect(await rpc("attention.recovery",{scope_id:request.scope_id,limit:20})).toMatchObject({ok:true});samples.push(performance.now()-start);}
-  const ordered=[...samples].sort((a,b)=>a-b);const report={fixture:"real_daemon_one_session_one_run",samples:100,p50_ms:ordered[49],p95_ms:ordered[94],max_ms:ordered[99],capacity_qualification:false,model_calls:0};
-  if(process.env["OSSTACK_RECOVERY_BENCH_OUTPUT"]){const {writeFile}=await import("node:fs/promises");await writeFile(process.env["OSSTACK_RECOVERY_BENCH_OUTPUT"]!,JSON.stringify({...report,samples_ms:samples},null,2)+"\n");}
+it("measures bounded recovery over the actual socket alongside mixed session and run observations", async () => {
+  const f = await fixture(true, false);
+  const request = await watched(f.repo);
+  const samples: number[] = [];
+  for (let i = 0; i < 100; i++) {
+    const start = performance.now();
+    expect(
+      await rpc("attention.recovery", {
+        scope_id: request.scope_id,
+        limit: 20,
+      }),
+    ).toMatchObject({ ok: true });
+    samples.push(performance.now() - start);
+  }
+  const ordered = [...samples].sort((a, b) => a - b);
+  const report = {
+    fixture: "real_daemon_one_session_one_run",
+    samples: 100,
+    p50_ms: ordered[49],
+    p95_ms: ordered[94],
+    max_ms: ordered[99],
+    capacity_qualification: false,
+    model_calls: 0,
+  };
+  if (process.env["OSSTACK_RECOVERY_BENCH_OUTPUT"]) {
+    const { writeFile } = await import("node:fs/promises");
+    await writeFile(
+      process.env["OSSTACK_RECOVERY_BENCH_OUTPUT"]!,
+      JSON.stringify({ ...report, samples_ms: samples }, null, 2) + "\n",
+    );
+  }
   expect(Number.isFinite(report.p95_ms)).toBe(true);
+});
+
+it("watches actual daemon snapshots through the main CLI and leaves worker execution unchanged", async () => {
+  const f = await fixture(false, false);
+  const page = await rpc("worker.list", f.scope);
+  const views = page.result!["views"] as { view_id: string }[];
+  expect(views.length).toBeGreaterThan(0);
+  const chunks: string[] = [];
+  vi.spyOn(process.stdout, "write").mockImplementation(((
+    chunk: unknown,
+    ...args: unknown[]
+  ) => {
+    chunks.push(String(chunk));
+    const callback = args.find((arg) => typeof arg === "function") as
+      | (() => void)
+      | undefined;
+    queueMicrotask(() => callback?.());
+    return true;
+  }) as typeof process.stdout.write);
+  expect(
+    await main([
+      "worker",
+      "watch",
+      views[0]!.view_id,
+      "--repo",
+      f.repo,
+      "--default-tenant",
+      "--interval-ms",
+      "1000",
+      "--duration-ms",
+      "1000",
+    ]),
+  ).toBe(0);
+  expect(chunks.join("")).toContain("snapshot");
+  expect(chunks.join("")).not.toContain("PRIVATE_NATIVE_ID");
+  const db = openDb({ path: daemon!.dbPath });
+  try {
+    expect(
+      db
+        .prepare("SELECT state FROM agent_sessions WHERE session_id='session'")
+        .get(),
+    ).toEqual({ state: "awaiting_decision" });
+    expect(db.prepare("SELECT COUNT(*) n FROM session_messages").get()).toEqual(
+      { n: 0 },
+    );
+  } finally {
+    db.close();
+  }
+});
+
+it("serves local sources as explicitly disabled without a host registry and rejects request-selected paths", async () => {
+  const f = await fixture(false, false);
+  expect(
+    await rpc("source.inspect", { ...f.scope, source_id: "local" }),
+  ).toMatchObject({ ok: true, result: { state: "disabled", entries: [] } });
+  expect(
+    await rpc("source.inspect", {
+      ...f.scope,
+      source_id: "local",
+      path: "/etc/passwd",
+    }),
+  ).toMatchObject({ ok: false, error: { code: "invalid_request" } });
+  const { writeFile } = await import("node:fs/promises");
+  await writeFile(join(root!, "source-registry.json"), "{}", { mode: 0o600 });
+  expect(
+    await rpc("source.inspect", { ...f.scope, source_id: "local" }),
+  ).toMatchObject({ ok: true, result: { state: "unknown", entries: [] } });
+  const output: string[] = [];
+  vi.spyOn(process.stdout, "write").mockImplementation(((
+    chunk: unknown,
+    ...args: unknown[]
+  ) => {
+    output.push(String(chunk));
+    const callback = args.find((arg) => typeof arg === "function") as
+      | (() => void)
+      | undefined;
+    queueMicrotask(() => callback?.());
+    return true;
+  }) as typeof process.stdout.write);
+  expect(
+    await main([
+      "sources",
+      "inspect",
+      "local",
+      "--repo",
+      f.repo,
+      "--default-tenant",
+      "--json",
+    ]),
+  ).toBe(1);
+  expect(JSON.parse(output.join(""))).toMatchObject({
+    state: "unknown",
+    entries: [],
+  });
+});
+
+it("inspects a pinned snapshot through the real daemon and main CLI and honors live revocation", async () => {
+  const { repo, scope } = await fixture(false, false);
+  const { writeFile } = await import("node:fs/promises");
+  const { createHash } = await import("node:crypto");
+  const { localSourceManifestDigest } = await import(
+    "./local-data-source-registry.js"
+  );
+  const data = join(root!, "data");
+  await mkdir(data);
+  const now = Date.now();
+  const content = JSON.stringify({
+    schema_version: 1,
+    source_id: "notes",
+    version: "1",
+    revision: 1,
+    entries: [{ id: "one", text: "read-only external context" }],
+  });
+  await writeFile(join(data, "notes.json"), content);
+  const manifest = {
+    schema_version: 1,
+    id: "notes",
+    version: "1",
+    protocol: "local_json_snapshot_v1",
+    repo_path: repo,
+    default_tenant: true,
+    capabilities: ["snapshot.read"],
+    file: "notes.json",
+    max_bytes: 65536,
+    max_items: 20,
+    read_timeout_ms: 1000,
+    verified_at_ms: now,
+    expires_at_ms: now + 60000,
+    fresh_for_ms: 60000,
+  };
+  const config = join(root!, "source-registry.json");
+  await writeFile(
+    config,
+    JSON.stringify({
+      schema_version: 1,
+      registrations: [
+        {
+          source_root: data,
+          manifest,
+          manifest_digest: localSourceManifestDigest(manifest),
+          content_digest: createHash("sha256").update(content).digest("hex"),
+        },
+      ],
+    }),
+    { mode: 0o600 },
+  );
+  expect(
+    await rpc("source.inspect", { source_id: "notes", ...scope }),
+  ).toMatchObject({
+    ok: true,
+    result: {
+      state: "ready",
+      actions: "unsupported",
+      entries: [{ id: "one", text: "read-only external context" }],
+    },
+  });
+  expect(
+    await rpc("source.inspect", {
+      source_id: "notes",
+      ...scope,
+      repo_path: root,
+    }),
+  ).toMatchObject({
+    ok: true,
+    result: { state: "not_registered", entries: [] },
+  });
+  const output: string[] = [];
+  vi.spyOn(process.stdout, "write").mockImplementation(((
+    text: string,
+    cb?: () => void,
+  ) => {
+    output.push(String(text));
+    if (typeof cb === "function") cb();
+    return true;
+  }) as typeof process.stdout.write);
+  expect(
+    await main([
+      "sources",
+      "inspect",
+      "notes",
+      "--repo",
+      repo,
+      "--default-tenant",
+      "--json",
+    ]),
+  ).toBe(0);
+  expect(JSON.parse(output.join(""))).toMatchObject({
+    state: "ready",
+    scope: { repo_path: repo, tenant: "default" },
+  });
+  await writeFile(
+    config,
+    JSON.stringify({ schema_version: 1, registrations: [] }),
+  );
+  expect(
+    await rpc("source.inspect", { source_id: "notes", ...scope }),
+  ).toMatchObject({
+    ok: true,
+    result: { state: "not_registered", entries: [] },
+  });
+});
+
+it("keeps public delivery unavailable without trusted host targets even through the real CLI", async () => {
+  const { repo, scope } = await fixture(false, false);
+  const { writeFile } = await import("node:fs/promises");
+  const file = join(root!, "prepare.json");
+  await writeFile(
+    file,
+    JSON.stringify({
+      obligation_id: "00000000-0000-4000-8000-000000000001",
+      expected_obligation_revision: 1,
+      destination_ref: "arbitrary",
+      body: "body",
+      idempotency_key: "key",
+    }),
+  );
+  const errors = vi
+    .spyOn(process.stderr, "write")
+    .mockImplementation(() => true);
+  expect(
+    await main([
+      "follow-up-delivery",
+      "prepare",
+      "--repo",
+      repo,
+      "--default-tenant",
+      "--input",
+      file,
+    ]),
+  ).toBe(1);
+  expect(errors).toHaveBeenCalled();
+  expect(
+    await rpc("follow-up-delivery.prepare", {
+      ...scope,
+      obligation_id: "00000000-0000-4000-8000-000000000001",
+      expected_obligation_revision: 1,
+      destination_ref: "arbitrary",
+      body: "body",
+      idempotency_key: "key",
+      transport: "injected",
+    }),
+  ).toMatchObject({ ok: false });
+  const db = openDb({ path: daemon!.dbPath });
+  try {
+    expect(
+      db.prepare("SELECT count(*) n FROM follow_up_delivery_attempts").get(),
+    ).toEqual({ n: 0 });
+  } finally {
+    db.close();
+  }
+});
+
+async function deliveryFixture(hang = false) {
+  const { repo, scope } = await fixture(false, false);
+  await daemon!.close();
+  const { generateKeyPairSync, randomUUID, sign } = await import("node:crypto");
+  const { deliveryCanonical } = await import("@osstack/core");
+  const { FollowUpDeliveryResult } = await import("@osstack/protocol");
+  const { publicKey, privateKey } = generateKeyPairSync("ed25519");
+  let release!: () => void;
+  let sends = 0;
+  const options: NonNullable<StartDaemonOptions["followUpDeliveryOptions"]> = {
+    nowMs: () => 10000,
+    timeoutMs: 100,
+    allowTestTransports: true,
+    targets: new Map([
+      [
+        "thread",
+        {
+          destination_ref: "thread",
+          repo_path: repo,
+          provider_id: "github_comment",
+          account_id: "bot",
+          host: "github.com",
+          owner: "owner",
+          repository: "repo",
+          issue_number: 1,
+          target_node_id: "node",
+          actor_node_id: "actor",
+        },
+      ],
+    ]),
+    trustedKeys: new Map([
+      [
+        "key",
+        {
+          publicKey,
+          purpose: "follow_up_delivery",
+          repo_path: repo,
+          provider_id: "github_comment",
+          destination_refs: ["thread"],
+          max_validity_ms: 60000,
+        },
+      ],
+    ]),
+    transports: new Map([
+      [
+        "github_comment",
+        {
+          qualification: "test_only",
+          automatic_retries: false,
+          lookup_receipt: true,
+          sendOnce: async (e) => {
+            sends++;
+            if (hang)
+              await new Promise<void>((resolve) => {
+                release = resolve;
+              });
+            return {
+              provider_id: e.destination.provider_id,
+              account_id: e.destination.account_id,
+              target_node_id: e.destination.target_node_id,
+              author_node_id: e.destination.actor_node_id,
+              destination_digest: e.destination_digest,
+              body_sha256: e.body_sha256,
+              attempt_id: e.attempt_id,
+              provider_message_id: "message",
+              provider_request_id: "request",
+            };
+          },
+          lookup: async () => null,
+        },
+      ],
+    ]),
+  };
+  await start({ followUpDeliveryOptions: options });
+  const created = await rpc("follow-up.create", {
+    ...scope,
+    source_session_id: "session",
+    expected_source_version: 1,
+    idempotency_key: "ob",
+    actor: "local_test",
+    promise: "reply",
+    destination_ref: "local_operator",
+    resolution_condition: "manual",
+  });
+  expect(created.ok).toBe(true);
+  const obligation = created.result!["obligation"] as { obligation_id: string };
+  const prepared = await rpc("follow-up-delivery.prepare", {
+    ...scope,
+    obligation_id: obligation.obligation_id,
+    expected_obligation_revision: 1,
+    destination_ref: "thread",
+    body: "literal body",
+    idempotency_key: "send",
+  });
+  expect(prepared.ok).toBe(true);
+  const attempt = FollowUpDeliveryResult.parse(prepared.result).attempt;
+  const body = {
+    ...attempt.authorization_subject,
+    grant_id: randomUUID(),
+    issued_at_ms: 10000,
+    expires_at_ms: 20000,
+    max_calls: 1,
+  };
+  const authorized = await rpc("follow-up-delivery.authorize", {
+    ...scope,
+    attempt_id: attempt.attempt_id,
+    expected_revision: attempt.revision,
+    grant: {
+      body,
+      key_id: "key",
+      signature: sign(
+        null,
+        Buffer.from(deliveryCanonical(body)),
+        privateKey,
+      ).toString("base64"),
+    },
+  });
+  expect(authorized.ok).toBe(true);
+  const ready = FollowUpDeliveryResult.parse(authorized.result).attempt;
+  return {
+    repo,
+    scope,
+    attempt: ready,
+    sends: () => sends,
+    release: () => release(),
+  };
+}
+it("runs one signed fake delivery through main CLI without declaring a production send or resolving the promise", async () => {
+  const f = await deliveryFixture();
+  const out = vi.spyOn(process.stdout, "write").mockImplementation(() => true);
+  expect(
+    await main([
+      "follow-up-delivery",
+      "dispatch",
+      f.attempt.attempt_id,
+      "--repo",
+      f.repo,
+      "--default-tenant",
+      "--revision",
+      String(f.attempt.revision),
+    ]),
+  ).toBe(1);
+  expect(JSON.parse(out.mock.calls.at(-1)![0] as string)).toMatchObject({
+    attempt: { state: "delivered", qualification: "test_only" },
+  });
+  expect(f.sends()).toBe(1);
+  expect(
+    await rpc("follow-up-delivery.dispatch", {
+      ...f.scope,
+      attempt_id: f.attempt.attempt_id,
+      expected_revision: f.attempt.revision,
+    }),
+  ).toMatchObject({ ok: false });
+  expect(f.sends()).toBe(1);
+  const db = openDb({ path: daemon!.dbPath });
+  try {
+    expect(db.prepare("SELECT state FROM follow_up_obligations").get()).toEqual(
+      { state: "open" },
+    );
+  } finally {
+    db.close();
+  }
+});
+it("waits for bounded delivery finalization before closing the DB and never accepts a late success", async () => {
+  const f = await deliveryFixture(true);
+  const dbPath = daemon!.dbPath;
+  const pending = rpc("follow-up-delivery.dispatch", {
+    ...f.scope,
+    attempt_id: f.attempt.attempt_id,
+    expected_revision: f.attempt.revision,
+  });
+  await vi.waitFor(() => expect(f.sends()).toBe(1));
+  await daemon!.close();
+  daemon = undefined;
+  await pending;
+  f.release();
+  await new Promise((resolve) => setTimeout(resolve, 20));
+  const db = openDb({ path: dbPath });
+  try {
+    expect(
+      db.prepare("SELECT state FROM follow_up_delivery_attempts").get(),
+    ).toEqual({ state: "delivery_unknown" });
+    expect(db.prepare("SELECT state FROM follow_up_obligations").get()).toEqual(
+      { state: "open" },
+    );
+  } finally {
+    db.close();
+  }
 });

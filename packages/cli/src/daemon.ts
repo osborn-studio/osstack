@@ -175,6 +175,10 @@ interface SingleResponse {
 interface DaemonContext {
   deploymentIdentity?: import("./home-inventory.js").DeploymentIdentity;
   followUps?: import("@osstack/core").FollowUpObligationService;
+  followUpDelivery?: import("@osstack/core").FollowUpDeliveryService;
+  followUpDeliveryOptions?: import("@osstack/core").FollowUpDeliveryOptions;
+  followUpDeliveryPending?: Set<Promise<unknown>>;
+  localSources?: ReturnType<typeof import("./local-data-source-registry.js").createHostLocalDataSourceService>;
   attentionTriage?: Promise<import("./attention-triage.js").AttentionTriageService>;
   attentionTriageProviderFactory?: () => Promise<import("./attention-triage.js").AttentionTriageProvider>;
   dbPath: string;
@@ -1110,6 +1114,26 @@ async function getAttentionTriage(ctx: DaemonContext) {
 }
 
 async function handleSingle(ctx: DaemonContext, req: DaemonRequest): Promise<SingleResponse | null> {
+  if (req.method === "source.inspect") {
+    if (ctx.draining) return singleErr(req.id,"draining","Daemon is draining");
+    try {
+      const {createHostLocalDataSourceService} = await import("./local-data-source-registry.js");
+      if (ctx.draining) return singleErr(req.id,"draining","Daemon is draining");
+      ctx.localSources ??= createHostLocalDataSourceService({configPath:join(dirname(ctx.dbPath),"source-registry.json")});
+      return singleOk(req.id,await ctx.localSources.inspect(req.params));
+    } catch(error) {return singleErr(req.id,error instanceof Error && error.message === "invalid_request" ? "invalid_request" : "source_unavailable","Local source unavailable");}
+  }
+  if (["prepare","list","inspect","authorize","revoke","dispatch","reconcile"].some(action => req.method === "follow-up-delivery."+action)) {
+    if (ctx.draining) return singleErr(req.id,"draining","Daemon is draining");
+    const {FollowUpDeliveryService,FollowUpDeliveryError} = await import("@osstack/core");
+    if (ctx.draining) return singleErr(req.id,"draining","Daemon is draining");
+    ctx.followUpDelivery ??= new FollowUpDeliveryService(ctx.db,ctx.dbPath,ctx.followUpDeliveryOptions ?? {});
+    ctx.followUpDeliveryPending ??= new Set();
+    const pending=ctx.followUpDelivery.handle(req.method,req.params);ctx.followUpDeliveryPending.add(pending);
+    try {return singleOk(req.id,await pending);}
+    catch(error){return error instanceof FollowUpDeliveryError ? singleErr(req.id,error.code,"Follow-up delivery request failed") : singleErr(req.id,"delivery_unavailable","Follow-up delivery unavailable");}
+    finally{ctx.followUpDeliveryPending.delete(pending);}
+  }
   if (["follow-up.create", "follow-up.list", "follow-up.draft", "follow-up.resolve"].includes(req.method)) {
     if (ctx.draining) return singleErr(req.id, "draining", "Daemon is draining");
     const {FollowUpObligationService, FollowUpError} = await import("@osstack/core");
@@ -3815,6 +3839,8 @@ export interface DaemonHandles {
 }
 
 export interface StartDaemonOptions {
+  /** Trusted embedding only. Production has no target, signer or transport by default. */
+  followUpDeliveryOptions?: import("@osstack/core").FollowUpDeliveryOptions;
   /** Trusted host injection for local qualification; never RPC-configurable. */
   attentionTriageProviderFactory?: () => Promise<import("./attention-triage.js").AttentionTriageProvider>;
   /** Trusted host registry and actual socket authentication; never RPC fields. */
@@ -4049,6 +4075,7 @@ export async function startDaemon(
   });
   failedContext = ctx;
   if (opts.attentionTriageProviderFactory) ctx.attentionTriageProviderFactory = opts.attentionTriageProviderFactory;
+  if (opts.followUpDeliveryOptions) ctx.followUpDeliveryOptions = opts.followUpDeliveryOptions;
   // Initialize only after the authorized home/database startup. Read-only
   // inventory never creates an identity and malformed records are not repaired.
   const {ensureDeploymentHomeId} = await import("./home-inventory.js");
@@ -4321,6 +4348,7 @@ export async function startDaemon(
           ctx.draining = true;
           await ctx.attentionTriage?.then(service => service.stop()).catch(() => undefined);
           await ctx.supervision?.stop();
+          await Promise.allSettled([...(ctx.followUpDeliveryPending ?? [])]);
           if (graphRpc) {
             try { await (await graphRpc).close(); } catch { /* Initialization may have failed. */ }
           }

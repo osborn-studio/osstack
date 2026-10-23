@@ -225,8 +225,11 @@ function renderChineseMainHelp(): string {
 项目命令：
   remote-home inspect  Read a pinned remote home snapshot over fixed SSH export
   homes inspect --manifest <file>  只读盘点显式登记的本地实例
+  homes plan-upgrade|upgrade-status  多实例升级计划与只读状态
+  sources inspect      查看宿主登记且固定摘要的本地数据源
+  follow-up-delivery   授权交付账本（默认无外部传输）
   follow-up           本地承诺账本（不对外发送）
-  worker list|inspect --repo <path> --default-tenant  只读查看已绑定执行器
+  worker list|inspect|watch --repo <path> --default-tenant  只读查看已绑定执行器
   attention status    只读查看任务状态与最新决策（未后台接管）
   attention routing-eval --input <path> --mode router_golden  验证真实确定性路由
   graph               图执行 validate/run/status/cancel/resume；explain 只读关系诊断
@@ -442,8 +445,11 @@ Self-update:
 
 Project commands:
   homes inspect --manifest <file>  Inspect explicitly pinned local home identities
+  homes plan-upgrade|upgrade-status  Plan multi-home upgrades and inspect the journal
+  sources inspect      Inspect a host-registered pinned local source
+  follow-up-delivery   Manage authorized delivery attempts (no transport by default)
   follow-up           Manage local obligations and unsent drafts
-  worker list|inspect --repo <path> --default-tenant  Inspect bound workers read-only
+  worker list|inspect|watch --repo <path> --default-tenant  Inspect bound workers read-only
   attention status    Read-only task/session attention snapshot
   attention routing-eval --input <path> --mode router_golden  Validate real deterministic routing
   graph               Executable delivery graphs and read-only explain (graph --help)
@@ -996,12 +1002,36 @@ See docs/V2_REFACTOR_PLAN.md for the full roadmap.
       return response.result;
     }});
   }
+  if (cmd === "follow-up-delivery") {
+    const {handleFollowUpDeliveryCommand} = await import("./follow-up-delivery-command.js");
+    return await handleFollowUpDeliveryCommand(args.slice(1), {rpc: async (method, params) => {
+      const response = await rpc(method,params,35000) as {ok?:boolean;result?:unknown;error?:{code?:string}};
+      if (!response.ok) throw Error(response.error?.code ?? "delivery_unavailable");return response.result;
+    }});
+  }
+  if (cmd === "sources") {
+    const {handleLocalSourceCommand} = await import("./local-source-command.js");
+    return await handleLocalSourceCommand(args.slice(1), {rpc:async (method,params,timeout,signal)=>{
+      if (signal.aborted) throw Error("source_unavailable");
+      const response=await rpc(method,params,timeout) as {ok?:boolean;result?:unknown;error?:{code?:string}};
+      if (signal.aborted || !response.ok) throw Error("source_unavailable");return response.result;
+    }});
+  }
   if (cmd === "homes") {
+    if (["plan-upgrade", "upgrade-status"].includes(args[1] ?? "")) {
+      const {handleUpgradePlanCommand} = await import("./upgrade-plan-command.js");
+      return await handleUpgradePlanCommand(args.slice(1));
+    }
     const {handleHomesCommand} = await import("./home-inventory.js");
     return await handleHomesCommand(args.slice(1));
   }
 
   if (cmd === "worker") {
+    if (args[1] === "watch") {
+      const {handleWorkerViewerCommand} = await import("./worker-viewer-command.js");
+      const {inspectWorkerForViewer} = await import("./worker-viewer-rpc.js");
+      return await handleWorkerViewerCommand(args.slice(1), {rpc: (_method, params, _timeout, signal) => inspectWorkerForViewer(socketPath(), params, signal)});
+    }
     const {handleWorkerViewCommand} = await import("./worker-view-command.js");
     return await handleWorkerViewCommand(args.slice(1), {
       rpc: async (method, params) => {

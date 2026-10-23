@@ -228,7 +228,7 @@ it("upgrades schema38 with an existing request and response without modifying th
 
 it.each(["before_gate", "mid_gate", "after_gate", "partial", "after_files", "mid_completion", "after_receipt"])("does not repeat physical writes after SIGKILL at %s", async point => {
   const ts = await import("typescript");
-  for (const name of ["graph-actions", "graph-apply", "graph-invocations", "graph-storage", "graph-runs", "db", "migrations", "follow-up-obligations-ddl"]) {
+  for (const name of ["graph-actions", "graph-apply", "graph-invocations", "graph-storage", "graph-runs", "db", "migrations", "follow-up-obligations-ddl", "follow-up-delivery-ddl"]) {
     writeFileSync(join(dir, `${name}.js`), ts.transpileModule(readFileSync(new URL(`./${name}.ts`, import.meta.url), "utf8"),
       { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 } }).outputText);
   }
