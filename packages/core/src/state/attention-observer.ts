@@ -162,6 +162,8 @@ export class AttentionObserver {
         now,
         this.owner.generation,
         JSON.stringify({
+          ...(row.kind === "run" ? { event_replay: { complete: false, caught_up: false,
+            gap: admitted ? "not_sampled" : "capacity_exceeded", completeness_scope: "unverified_retention" } } : {}),
           state: source?.state ?? "unknown",
           awaiting_decision: source?.state === "awaiting_decision",
           reason: sourceError

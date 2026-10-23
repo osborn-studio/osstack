@@ -252,3 +252,25 @@ it("run projection failure returns an explicit incomplete event replay marker", 
   observer.tick(2000);
   expect(facts()).toMatchObject({ reason: "invalid_source", event_replay: { complete: false, caught_up: false } });
 });
+it("capacity-rejected runs expose explicit incomplete markers without exceeding 100 admissions", () => {
+  const { observer, db, path, scope } = setup();
+  for (let i = 0; i < 100; i++) insertRun(db, path, { task_id: "t", run_id: `x${String(i).padStart(3, "0")}`,
+    session_id: `s${i}`, agent_id: "hermes", capability_id: "code", phase: "execute", started_at: 2 });
+  observer.tick(1000);
+  const row = db.prepare("SELECT admitted,payload_json FROM attention_subjects WHERE kind='run' AND subject_id='x099'").get() as { admitted: number; payload_json: string };
+  expect(row.admitted).toBe(0);
+  expect(JSON.parse(row.payload_json)).toMatchObject({ reason: "capacity_exceeded",
+    event_replay: { complete: false, caught_up: false, gap: "capacity_exceeded" } });
+  expect(observer.inventory(scope.scope_id, 1000)).toMatchObject({ subject_total: 101, admitted: 100, coverage: "degraded" });
+});
+it("an explicit operator repair can resume reads but never clears the retained corruption gap", () => {
+  const { observer, event, db, cursor, facts } = setup();
+  event(0); observer.tick(1000);
+  db.prepare("UPDATE attention_run_cursors SET facts_json='{' WHERE run_id='r'").run();
+  event(1); observer.tick(2000);
+  expect(cursor()?.last_seq).toBe(0);
+  db.prepare("UPDATE attention_run_cursors SET facts_json=? WHERE run_id='r'").run(JSON.stringify({ observed_status: null, unsupported_events: 0 }));
+  observer.tick(3000);
+  expect(cursor()).toMatchObject({ last_seq: 1, gap: "invalid_cursor_facts" });
+  expect(facts().event_replay).toMatchObject({ complete: false, caught_up: false });
+});
