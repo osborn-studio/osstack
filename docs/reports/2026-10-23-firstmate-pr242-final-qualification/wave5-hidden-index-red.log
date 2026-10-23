@@ -1,0 +1,50 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-extension-integration/packages/cli
+
+ ❯ src/graph-contract-integration.test.ts (15 tests | 2 failed | 13 skipped) 195ms
+   ↓ binds the durable host contract before the real Graph launch and never changes source HEAD/refs/index/files
+   ↓ does not publish a durable completion file after grant changes during the last await
+   ↓ does not publish a durable completion file after revision changes during the last await
+   ↓ never exposes a contract completion when executor stop remains unknown
+   ↓ binds actual writer and rebuilt reviewer prompts to two-phase context receipts before ready
+   ↓ does not transfer a prior epoch context/check/review receipt to a repaired candidate
+   ↓ requires a trusted policy resolver in local registration and rechecks its live authority
+   ↓ rejects a changed contract under an existing idempotency key before a second launch
+   ↓ rejects a path outside contract before verification or ready publication
+   ↓ rejects an ignored untracked path outside the contract before candidate serialization
+   ↓ refuses a durable contract envelope substituted after reservation
+   ↓ rejects writer --assume-unchanged flags before freezing an out-of-scope candidate
+   ↓ rejects writer --skip-worktree flags before freezing an out-of-scope candidate
+   × fails closed on --assume-unchanged at the pre-freeze scope gate 111ms
+     → expected [Function] to throw an error
+   × fails closed on --skip-worktree at the pre-freeze scope gate 83ms
+     → expected [Function] to throw an error
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/graph-contract-integration.test.ts > fails closed on --assume-unchanged at the pre-freeze scope gate
+ FAIL  src/graph-contract-integration.test.ts > fails closed on --skip-worktree at the pre-freeze scope gate
+AssertionError: expected [Function] to throw an error
+
+- Expected: 
+null
+
++ Received: 
+undefined
+
+ ❯ src/graph-contract-integration.test.ts:248:58
+    246|     execFileSync('git', ['update-index', flag, 'answer'], { cwd: repo …
+    247|     await writeFile(join(repo, 'answer'), 'hidden change');
+    248|     expect(() => assertGraphContractPaths(frozen, repo)).toThrow('GRAP…
+       |                                                          ^
+    249|   } finally { await f.close(); }
+    250| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed | 13 skipped (15)
+   Start at  14:01:24
+   Duration  1.25s (transform 560ms, setup 8ms, collect 902ms, tests 195ms, environment 0ms, prepare 29ms)
+
