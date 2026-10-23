@@ -304,5 +304,35 @@ it("does not copy oversized pending authority IDs into persistent subject payloa
   for (let seq=0;seq<20;seq++) event(seq,"approval.requested", {approval_id:`${seq}:` + "x".repeat(60000),tool_name:"test",description:"test",choices:[]});
   observer.tick(1000);
   expect(facts().pending_approvals).toEqual({ids:[],count:20,truncated:true});
+  // This oversized-ID fixture retains only the envelope; 4 KiB is not a global payload contract.
   expect(Buffer.byteLength((db.prepare("SELECT payload_json FROM attention_subjects WHERE kind='run'").get() as {payload_json:string}).payload_json)).toBeLessThan(4096);
+});
+
+it("shares a sliced event budget fairly without draining a noisy run before the tail", () => {
+  const { observer, event, db, path, cursor } = setup();
+  for (let seq = 0; seq < 1000; seq++) event(seq);
+  insertRun(db, path, { task_id: "t", run_id: "tail", session_id: "tail-session", agent_id: "hermes", capability_id: "code", phase: "execute", started_at: 1 });
+  appendEvent(db, path, { event_id: "tail:0", run_id: "tail", session_id: "tail-session", seq: 0, type: "status", payload: { status: "running" }, terminal: false, created_at: 1 });
+  const slice = observer.step({ maxSubjects: 2, maxEvents: 10, maxDurationMs: 1000 }, 2000);
+  expect(slice).toMatchObject({ passComplete: true, subjectsSampled: 2, eventQuotaUsed: 10 });
+  expect(cursor()?.last_seq).toBe(4);
+  expect(db.prepare("SELECT last_seq FROM attention_run_cursors WHERE run_id='tail'").get()).toMatchObject({ last_seq: 0 });
+});
+it("rejects invalid projection budgets without changing persisted cursors", () => {
+  const { observer, event, store, owner, scope, cursor } = setup();
+  event(0); observer.tick(1000);
+  for (const limit of [0, 201, NaN, 1.5]) expect(() => projectAttentionRun(store, owner, scope, "r", 2000, limit)).toThrow("invalid_event_limit");
+  expect(cursor()?.last_seq).toBe(0);
+});
+
+it("retains at most twenty maximum-length authority IDs per family with truthful byte bounds", () => {
+  const { event, observer, facts, db } = setup();
+  for (let i=0;i<20;i++) {
+    event(i, "approval.requested", { approval_id: `a${String(i).padStart(2,'0')}`+'x'.repeat(253), tool_name: "test", description: "test", choices: [] });
+    event(i+20, "clarify.requested", { clarify_id: `c${String(i).padStart(2,'0')}`+'x'.repeat(253), question: "Choose" });
+  }
+  observer.tick(1000);
+  expect(facts().pending_approvals.ids).toHaveLength(20); expect(facts().pending_clarifies.ids).toHaveLength(20);
+  const bytes = Buffer.byteLength((db.prepare("SELECT payload_json FROM attention_subjects WHERE kind='run'").get() as { payload_json: string }).payload_json);
+  expect(bytes).toBeGreaterThan(4096); expect(bytes).toBeLessThan(16384);
 });

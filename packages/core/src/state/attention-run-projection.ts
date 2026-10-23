@@ -87,7 +87,8 @@ function reduce(event: BoundedRunEvent, state: Observed, store: AttentionStore):
 /** One bounded retained-log page. Projection and cursor share the owner-fenced
  * transaction; it never invokes an adapter, resolves an approval, or pins history. */
 export function projectAttentionRun(store: AttentionStore, owner: AttentionOwner,
-  scope: AttentionScope, runId: string, now: number): void {
+  scope: AttentionScope, runId: string, now: number, eventLimit = 200): void {
+  if (!Number.isSafeInteger(eventLimit) || eventLimit < 1 || eventLimit > 200) throw new Error("invalid_event_limit");
   if (!Number.isFinite(now)) throw new Error("invalid_clock");
   store.write(owner, () => {
     const persistedScope = store.getScope(scope.scope_id);
@@ -144,7 +145,7 @@ export function projectAttentionRun(store: AttentionStore, owner: AttentionOwner
       anchorValid = previous !== undefined && hash(previous) === anchor;
       if (!anchorValid) { gap ??= "event_anchor_changed"; state.observed_status = null; }
     }
-    const page = readRunEventPage(store.db, { taskId: scope.task_id, runId, afterSeq: cursor, limit: 200,
+    const page = readRunEventPage(store.db, { taskId: scope.task_id, runId, afterSeq: cursor, limit: eventLimit,
       ...(saved && saved.through_seq > cursor ? { throughSeq: saved.through_seq } : {}) });
     if (page.sequenceGap) gap ??= "event_sequence_gap";
     if (anchorValid && priorValid) {
