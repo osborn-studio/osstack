@@ -82,6 +82,8 @@ export function assertGraphContractPaths(frozen: FrozenDeliveryContractV2, works
     env: { ...Object.fromEntries(Object.entries(process.env).filter(([name]) => !name.startsWith('GIT_'))),
       GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOSYSTEM: '1', GIT_NO_REPLACE_OBJECTS: '1', GIT_TERMINAL_PROMPT: '0' },
   }).split('\0').filter(Boolean);
+  if (!candidateRevision && read(['ls-files', '-v', '-z']).some(entry => /^[a-zS] /.test(entry)))
+    throw Error('GRAPH_CONTRACT_HIDDEN_INDEX_FLAGS');
   const paths = read(['diff', '--no-ext-diff', '--no-textconv', '--no-renames', '--name-only', '-z', frozen.contract.base_head,
     ...(candidateRevision ? [candidateRevision] : []), '--']);
   if (!candidateRevision) paths.push(...read(['ls-files', '--others', '-z']));
