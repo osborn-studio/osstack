@@ -50,6 +50,7 @@ export class SupervisionService {
   readonly observer: AttentionObserver;
   readonly experience: AttentionExperience;
   private delivering = false;
+  private readonly deliveryAbort = new AbortController();
   private deliveryDone: Promise<void> | undefined;
   private ciReader: import("@osstack/github").AttentionCiReader | undefined;
   private timer: ReturnType<typeof setInterval> | undefined;
@@ -138,7 +139,8 @@ export class SupervisionService {
     for (const scope of this.store.listScopes()) this.experience.enqueue(scope.scope_id);
     if (this.sender && !this.delivering) {
       this.delivering = true;
-      this.deliveryDone = this.experience.drain(this.sender)
+      this.deliveryDone = this.experience.drainBatch(this.sender, { signal: this.deliveryAbort.signal })
+        .then(() => {})
         .catch(() => { /* delivery state retained */ })
         .finally(() => { this.delivering = false; });
     }
@@ -146,6 +148,7 @@ export class SupervisionService {
   stop(): Promise<void> {
     if (this.stopDone) return this.stopDone;
     this.stopped = true;
+    this.deliveryAbort.abort();
     this.epoch++;
     this.dirty = false;
     if (this.timer) clearInterval(this.timer);

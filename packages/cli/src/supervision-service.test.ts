@@ -178,15 +178,15 @@ it("fences a stale owner and lets the next service reobserve the persisted bindi
 });
 it("waits for the bounded notification drain before stop resolves", async () => {
   const { service } = setup();
-  const draining = deferred<void>();
+  const draining = deferred<Awaited<ReturnType<typeof service.experience.drainBatch>>>();
   Object.defineProperty(service, "sender", { value: async () => {} });
-  vi.spyOn(service.experience, "drain").mockReturnValue(draining.promise);
+  vi.spyOn(service.experience, "drainBatch").mockReturnValue(draining.promise);
   await service.requestScan();
   let stopped = false;
   const stop = service.stop().then(() => { stopped = true; });
   await Promise.resolve();
   expect(stopped).toBe(false);
-  draining.resolve();
+  draining.resolve({processed:0,attempted:0,delivered:0,retried:0,cancelled:0,deadLetters:0,superseded:0,stale:0,stopped:"aborted",remainingDue:0,oldestDueAt:null});
   await stop;
   expect(stopped).toBe(true);
 });

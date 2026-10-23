@@ -224,6 +224,7 @@ function renderChineseMainHelp(): string {
 
 项目命令：
   attention status    只读查看任务状态与最新决策（未后台接管）
+  attention routing-eval --input <path> --mode router_golden  验证真实确定性路由
   graph               图执行 validate/run/status/cancel/resume；explain 只读关系诊断
   doctor              检查 workspace、loop、agent 与下一步建议
   examples            输出可直接运行的工作流示例
@@ -427,6 +428,7 @@ Self-update:
 
 Project commands:
   attention status    Read-only task/session attention snapshot
+  attention routing-eval --input <path> --mode router_golden  Validate real deterministic routing
   graph               Executable delivery graphs and read-only explain (graph --help)
   doctor [--workspace P] [--daemon] [--json]
                       Product readiness check: loop + agents + next steps
