@@ -313,3 +313,13 @@ it("keeps unknown invocation quarantined after stop and restart, with no late su
     db.close();
   }
 });
+it("exercises the default exported provider without credentials and fails as not_authenticated", async () => {
+  vi.stubEnv("ANTHROPIC_API_KEY", "");
+  vi.stubEnv("ANTHROPIC_BASE_URL", "");
+  const f = await fixture(true, true);
+  const request = await watched(f.repo);
+  expect(await rpc("attention.triage", request)).toMatchObject({
+    ok: true,
+    result: { state: "fallback", reason: "not_authenticated", applied: false },
+  });
+});

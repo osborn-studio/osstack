@@ -114,3 +114,20 @@ it("retries a rejected provider factory and cleans a known not-started reservati
   expect(db.prepare("SELECT status,active_slot,reason FROM attention_triage_attempts").get()).toEqual({ status: "failed", active_slot: null, reason: "not_started" });
   expect(await service.run(request)).toMatchObject({ state: "advisory" });
 });
+it("shows existing scope quarantine even when triage has been disabled", async () => {
+  const active = createAttentionTriageService({ ledger, config, providerFactory: async () => provider(async () => new Promise(() => {})) });
+  const answer = active.run(request);
+  await vi.waitFor(() => expect(ledger.activeAttempt()).toBeDefined());
+  await active.stop(); await answer;
+  const disabled = createAttentionTriageService({ ledger, config: { ...config, enabled: false }, providerFactory: async () => provider() });
+  expect(disabled.diagnostics(request.scope_id)).toMatchObject({ state: "quarantined", enabled: false, quarantine: { reason: "daemon_stopped" } });
+  expect(disabled.diagnostics("f".repeat(64))).not.toHaveProperty("quarantine");
+});
+it("escapes model C1 terminal controls in CLI output", async () => {
+  const stdout = vi.fn();
+  await handleAttentionTriageCommand(["triage", "--scope", request.scope_id, "--item", request.item_id, "--model", request.model_id], {
+    stdout, rpc: async () => ({ ok: true, result: { state: "advisory", applied: false, explanation: "unsafe\u009b2J" } }),
+  });
+  expect(stdout.mock.calls[0]![0]).not.toContain("\u009b");
+  expect(JSON.parse(stdout.mock.calls[0]![0]).explanation).toBe("unsafe\u009b2J");
+});

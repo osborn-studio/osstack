@@ -118,17 +118,16 @@ export class AttentionTriageService {
       }).finally(() => { this.active.delete(attemptId); });
     });
   }
-  diagnostics(scopeId: string): { state: string; quarantine?: { attempt_id: string; reason: string | null; reserved_at: number } } {
-    if (!this.config.enabled) return { state: "disabled" };
+  diagnostics(scopeId: string): { state: string; enabled?: boolean; quarantine?: { attempt_id: string; reason: string | null; reserved_at: number } } {
     if (this.preparing) return { state: "provider_initialization_pending" };
     this.deps.ledger.store.assertOwner(this.deps.ledger.owner);
     const scope = this.deps.ledger.store.getScope(scopeId);
     const task = scope ? this.deps.ledger.store.db.prepare("SELECT created_at FROM tasks WHERE task_id=? AND tenant_id IS NULL").get(scope.task_id) as { created_at: number } | undefined : undefined;
     if (!scope || !task || attentionDigest([this.deps.ledger.owner.home_id, scope.task_id, scope.repo_path, task.created_at]) !== scopeId) return { state: "source_unknown" };
     const quarantined = this.deps.ledger.activeAttempt();
-    if (!quarantined) return { state: "no_quarantine" };
+    if (!quarantined) return { state: this.config.enabled ? "no_quarantine" : "disabled" };
     const row = this.deps.ledger.store.db.prepare("SELECT scope_id FROM attention_triage_attempts WHERE attempt_id=?").get(quarantined.attempt_id) as { scope_id: string };
-    return row.scope_id === scopeId ? { state: quarantined.status === "unknown" ? "quarantined" : "busy", quarantine: quarantined } : { state: "busy_elsewhere" };
+    return row.scope_id === scopeId ? { state: quarantined.status === "unknown" ? "quarantined" : "busy", quarantine: quarantined, enabled: this.config.enabled } : { state: "busy_elsewhere" };
   }
   async stop(): Promise<void> {
     if (this.stopped) return;
@@ -149,10 +148,14 @@ export async function handleAttentionTriageCommand(args: string[], io: { rpc: (m
   if (status) {
     if (flags.size !== 1 || !flags.has("--scope")) throw Error("explicit_status_scope_required");
     const response = z.object({ ok: z.literal(true), result: z.object({ state: z.string().max(64) }).passthrough() }).passthrough().parse(await io.rpc("attention.triage-status", { scope_id: flags.get("--scope")! }, 1000));
-    (io.stdout ?? console.log)(JSON.stringify(response.result, null, 2)); return 0;
+    (io.stdout ?? console.log)(serializeTriage(response.result)); return 0;
   }
   if (flags.size !== 3) throw Error("explicit_scope_item_model_required");
   const response = z.object({ ok: z.literal(true), result: z.object({ state: z.enum(["advisory", "fallback"]), applied: z.literal(false) }).passthrough() }).passthrough().parse(
     await io.rpc("attention.triage", { scope_id: flags.get("--scope")!, item_id: flags.get("--item")!, model_id: flags.get("--model")! }, 25000));
-  (io.stdout ?? console.log)(JSON.stringify(response.result, null, 2)); return response.result.state === "advisory" ? 0 : 1;
+  (io.stdout ?? console.log)(serializeTriage(response.result)); return response.result.state === "advisory" ? 0 : 1;
+}
+
+function serializeTriage(value: unknown): string {
+  return JSON.stringify(value, null, 2).replace(/[\u007f-\u009f]/g, character => "\\u" + character.charCodeAt(0).toString(16).padStart(4, "0"));
 }
