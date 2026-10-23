@@ -48,6 +48,10 @@ export const DeliveryContractV2 = z.object({
   if (new Set(value.required_checks.map((check) => check.id)).size !== value.required_checks.length) error("duplicate check ID");
   if (new Set(value.required_checks.map((check) => check.registry_ref)).size !== value.required_checks.length) error("duplicate check reference");
   if (value.mode === "implement" && (!["build", "verify"].every(action => value.requested_actions.includes(action as "build" | "verify")))) error("implement requires build and verify actions");
+  if (["pr_opened", "merged", "deployed"].includes(value.requested_completion)
+    && !["commit", "push", "open_pr"].every(action => value.requested_actions.some(requested => requested === action))) error("published completion requires commit, push and open_pr actions");
+  if (["merged", "deployed"].includes(value.requested_completion) && !value.requested_actions.includes("merge")) error("merged completion requires merge action");
+  if (value.requested_completion === "deployed" && !value.requested_actions.some(action => action.startsWith("deploy:"))) error("deployed completion requires an explicit deployment target action");
   if (value.parent_contract_id === value.contract_id) error("contract cannot parent itself");
   if (value.mode === "scout" && (value.requested_completion !== "local_verified" || value.publication_scope.mode !== "none"
     || value.merge_authority.mode !== "none" || value.requested_actions.some((action) => action !== "verify"))) error("scout must remain read-only and local");

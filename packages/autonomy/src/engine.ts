@@ -681,7 +681,7 @@ export class GuardedDeliveryEngine {
         phase: request.phase,
         contract_sha256: intent.contract_sha256,
         diff_sha256: currentDiffSha256,
-        action_scope: this.approvalActionScope(request.phase),
+        action_scope: this.approvalActionScope(request.phase, run),
       },
       trusted_public_keys: this.policy.trusted_approval_public_keys,
       now: () => this.ports.now().toISOString(),
@@ -895,7 +895,7 @@ export class GuardedDeliveryEngine {
       phase === "preflight"
         ? AUTONOMY_EMPTY_DIFF_SHA256
         : stagedDiffSha256(this.requireLocalResult(run).post_diff);
-    const actionScope = this.approvalActionScope(phase);
+    const actionScope = this.approvalActionScope(phase, run);
     const request = createScopedApprovalRequest({
       approval_id: `approval:${run.autonomy_run_id}:${phase}:${risk.input_sha256.slice(0, 16)}`,
       autonomy_run_id: run.autonomy_run_id,
@@ -1012,6 +1012,7 @@ export class GuardedDeliveryEngine {
     try {
       await this.verifyContract(run, run.context.delivery_receipt);
       this.assertPostDiffActionAuthorized(run, "push");
+      if (run.context.delivery_contract) this.assertPostDiffActionAuthorized(run, "open_pr");
       if (run.context.delivery_contract?.contract.requested_completion !== "pr_opened") this.assertPostDiffActionAuthorized(run, "merge");
     } catch (error) {
       return await this.escalate(
@@ -1401,14 +1402,11 @@ export class GuardedDeliveryEngine {
       }),
     );
     let actionApproved = false;
+    this.assertPostDiffActionAuthorized(run, `deploy:${target}`);
     if (
       this.requirePreflightRisk(run).level === "R3"
       || this.requirePostDiffRisk(run).level === "R3"
     ) {
-      this.assertPostDiffActionAuthorized(
-        run,
-        `deploy:${target}`,
-      );
       actionApproved = true;
     }
     let productionFrozen = false;
@@ -1928,6 +1926,10 @@ export class GuardedDeliveryEngine {
     run: AutonomyRunProjection,
     action: string,
   ): void {
+    const contract = run.context.delivery_contract;
+    if (contract && !contract.contract.requested_actions.some(requested => requested === action)) {
+      throw new Error(`${action} is absent from the frozen delivery contract`);
+    }
     const preflight = this.requirePreflightRisk(run);
     const postDiff = this.requirePostDiffRisk(run);
     if (preflight.level !== "R3" && postDiff.level !== "R3") return;
@@ -1968,8 +1970,23 @@ export class GuardedDeliveryEngine {
 
   private approvalActionScope(
     phase: AutonomyRiskPhase,
+    run: AutonomyRunProjection,
   ): string[] {
     if (phase === "preflight") return ["build", "verify"];
+    const contract = run.context.delivery_contract?.contract;
+    if (contract) {
+      // Bind only the effects needed by this completion, never broaden an older signed scope.
+      if (contract.requested_completion === "local_verified") return ["verify"];
+      const actions = new Set(["commit", "open_pr", "push"]);
+      if (["merged", "deployed"].includes(contract.requested_completion)) actions.add("merge");
+      if (contract.requested_completion === "deployed") {
+        for (const target of ["staging", "production"] as const) {
+          const action = `deploy:${target}`;
+          if (this.policy.deploy?.[target] && contract.requested_actions.some(requested => requested === action)) actions.add(action);
+        }
+      }
+      return [...actions].filter(action => contract.requested_actions.some(requested => requested === action)).sort();
+    }
     const actions = new Set(["commit", "merge", "push"]);
     if (this.policy.deploy?.staging !== undefined) {
       actions.add("deploy:staging");

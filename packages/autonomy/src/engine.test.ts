@@ -1099,6 +1099,31 @@ function contractHarness(completion: "local_verified" | "pr_opened" = "local_ver
   return { h, task: { ...task, contract_sha256: frozen.digest } };
 }
 describe("V2 contract completion ceilings", () => {
+  it("signs only PR effects for R3 and completes approval through PR-only publication", async () => {
+    const { h, task } = contractHarness("pr_opened");
+    const frozen = freezeDeliveryContract({ ...h.policy.delivery_contract!.contract, allowed_paths: ["src/auth/login.ts"] });
+    h.policy.delivery_contract = frozen;
+    h.localResults = [{ ...localSuccess(["src/auth/login.ts"]), delivery_receipt: { path: "/tmp/receipt.json", digest: SHA_A } }];
+    const runTask = { ...task, expected_paths: ["src/auth/login.ts"], contract_sha256: frozen.digest };
+    const preflight = await h.engine().start(runTask);
+    expect(preflight.status).toBe("needs_approval"); expect(preflight.approval_request?.action_scope).toEqual(["build", "verify"]);
+    const postDiff = await h.engine().resume(runTask.autonomy_run_id, signDecision(preflight.approval_request!));
+    expect(postDiff.status).toBe("needs_approval");
+    expect(postDiff.approval_request).toMatchObject({ phase: "post_diff", action_scope: ["commit", "open_pr", "push"] });
+    await expect(h.engine().resume(runTask.autonomy_run_id, signDecision(postDiff.approval_request!, { action_scope: ["commit", "merge", "open_pr", "push"] }))).rejects.toThrow();
+    expect(h.calls).not.toContain("commit");
+    const result = await h.engine().resume(runTask.autonomy_run_id, signDecision(postDiff.approval_request!));
+    expect(result.status, JSON.stringify(result)).toBe("completed");
+    expect(h.calls.filter(call => call === "commit")).toHaveLength(1);
+    expect(h.calls.filter(call => call === "openPullRequest")).toHaveLength(1);
+    expect(h.calls).not.toContain("deliverGit"); expect(h.calls.filter(call => call.startsWith("deploy:"))).toEqual([]);
+  });
+  it.each(["commit", "push", "open_pr"])("rejects low-risk publication missing %s before starting", async missing => {
+    const { h, task } = contractHarness("pr_opened");
+    h.policy.delivery_contract!.contract.requested_actions = h.policy.delivery_contract!.contract.requested_actions.filter(action => action !== missing);
+    await expect(h.engine().start(task)).rejects.toThrow();
+    expect(h.calls).toEqual([]);
+  });
   it("completes local verification without commit, push, merge or deploy", async () => {
     const { h, task } = contractHarness();
     const result = await h.engine().start(task);

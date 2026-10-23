@@ -20,9 +20,17 @@ it("rejects duplicate checks and scout writes or publication", () => {
 });
 it("PR-only forbids merge and merge authority references cannot cite another policy", () => {
   const c = { ...value(), requested_completion: "pr_opened", publication_scope: { mode: "draft_pr", hostname: "github.com",
-    repository: "owner/repo", remote: "origin", base_ref: "main", head_ref: "codex/work" } };
+    repository: "owner/repo", remote: "origin", base_ref: "main", head_ref: "codex/work" }, requested_actions: ["build", "verify", "commit", "push", "open_pr"] };
   expect(DeliveryContractV2.parse(c).requested_completion).toBe("pr_opened");
   expect(() => DeliveryContractV2.parse({ ...c, requested_actions: ["merge"] })).toThrow();
   expect(() => DeliveryContractV2.parse({ ...c, requested_completion: "merged", publication_scope: { ...c.publication_scope, mode: "review_pr" },
     merge_authority: { mode: "existing_guarded_policy", policy_ref: `sha256:${"c".repeat(64)}` } })).toThrow();
 });
+it.each([['pr_opened', 'commit'], ['pr_opened', 'push'], ['pr_opened', 'open_pr'], ['merged', 'merge'], ['deployed', 'deploy:staging']])(
+  'requires %s to declare its %s effect', (completion, missing) => {
+    const c = { ...value(), requested_completion: completion, publication_scope: { mode: 'review_pr', hostname: 'github.com', repository: 'owner/repo', remote: 'origin', base_ref: 'main', head_ref: 'codex/work' },
+      merge_authority: completion === 'pr_opened' ? { mode: 'none' } : { mode: 'existing_guarded_policy', policy_ref: `sha256:${'b'.repeat(64)}` },
+      requested_actions: ['build', 'verify', 'commit', 'push', 'open_pr', ...(completion === 'pr_opened' ? [] : ['merge']), ...(completion === 'deployed' ? ['deploy:staging'] : [])] };
+    expect(DeliveryContractV2.parse(c).requested_completion).toBe(completion);
+    expect(() => DeliveryContractV2.parse({ ...c, requested_actions: c.requested_actions.filter(action => action !== missing) })).toThrow();
+  });
