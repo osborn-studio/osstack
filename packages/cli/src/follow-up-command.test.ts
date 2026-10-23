@@ -34,6 +34,7 @@ it("escapes terminal controls and rejects unvalidated daemon payloads", async ()
   output.rpc.mockResolvedValue(payload);
   for (const extra of [[], ["--json"]]) {
     expect(await handleFollowUpCommand(["list", ...scope, ...extra], output)).toBe(0);
+    // biome-ignore lint/suspicious/noControlCharactersInRegex: regression rejects unsafe terminal control bytes.
     expect(output.stdout.mock.calls.at(-1)![0]).not.toMatch(/[\u001b\u009b\p{Cf}]/u);
   }
   output.rpc.mockResolvedValue({ private: "PRIVATE" }); expect(await handleFollowUpCommand(["list", ...scope], output)).toBe(1);

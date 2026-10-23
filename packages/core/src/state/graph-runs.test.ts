@@ -201,7 +201,7 @@ describe("graph run storage", () => {
     // Transpile the three storage files with the workspace's existing compiler.
     const ts = await import("typescript");
     const { symlinkSync, readFileSync, writeFileSync } = await import("node:fs");
-    for (const name of ["graph-runs", "db", "migrations"]) {
+    for (const name of ["graph-runs", "db", "migrations", "follow-up-obligations-ddl"]) {
       writeFileSync(join(dir, `${name}.js`), ts.transpileModule(
         readFileSync(join(process.cwd(), `src/state/${name}.ts`), "utf8"),
         { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 } },
