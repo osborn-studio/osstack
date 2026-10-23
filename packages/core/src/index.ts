@@ -45,3 +45,4 @@ export * from "./scratch.js";
 export { deliveryContractDigest, deliveryCheckReference, freezeDeliveryContract,
   assertFrozenDeliveryContract, resolveDeliveryContractChecks, assertDeliveryContractAdmission,
   assertDeliveryContractPaths, verifyDeliveryContractReceipt, promoteDeliveryScout } from "./delivery-contract.js";
+export { FollowUpObligationService, FollowUpError, FOLLOW_UP_ERROR_CODES, FOLLOW_UP_MAX_BYTES, serializeFollowUp } from "./state/follow-up-obligations.js";

@@ -3,6 +3,8 @@
 //
 // Engine pragmas (WAL etc.) are applied at connection open in db.ts, NOT here.
 
+import { FOLLOW_UP_OBLIGATIONS_DDL } from "./follow-up-obligations-ddl.js";
+
 export interface Migration {
   readonly id: number;
   readonly name: string;
@@ -1863,6 +1865,7 @@ export const MIGRATIONS: readonly Migration[] = [
       CREATE INDEX attention_triage_cache ON attention_triage_attempts(input_digest,requested_model,policy_fingerprint,status);
     `,
   },
+  { id: 44, name: "local_follow_up_obligations", sql: FOLLOW_UP_OBLIGATIONS_DDL },
 ];
 
 export const CURRENT_SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1]!.id;
