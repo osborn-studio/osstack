@@ -18,8 +18,10 @@ follow-up-delivery inspect ID --repo PATH --default-tenant [--json]
 follow-up-delivery authorize ID --repo PATH --default-tenant --revision N --grant FILE [--json]
 follow-up-delivery revoke ID --repo PATH --default-tenant --revision N --reason TEXT [--json]
 follow-up-delivery dispatch|reconcile ID --repo PATH --default-tenant --revision N [--json]
-No production provider is bundled: qualification_pending never consumes authorization.
-Authorize imports a signed, host-trusted, exact-target/body/scope/single-attempt grant; this CLI cannot create authority.
+GitHub delivery is disabled unless the host installs a private follow-up-delivery.json registry, credential, and trusted issuer key.
+Absent transport stays qualification_pending and never consumes authorization.
+Authorize imports a signed, host-trusted, exact-target/body/scope/single-attempt grant.
+Local issue-grant requires a host-provisioned private issuer and interactive exact-preview approval; RPC callers cannot create authority.
 Prepare input excludes repo_path/default_tenant. Unknown delivery never retries; reconcile only queries a registered provider.
 JSON output preserves exact reviewable content. Dispatch/reconcile exit 0 only for production-qualified delivered evidence; fake and sandbox evidence exit 1.
 Delivery does not resolve the independent local obligation.\n`;

@@ -85,6 +85,8 @@ export interface FollowUpDeliveryOptions {
   allowTestTransports?: boolean;
   nowMs?: () => number;
   timeoutMs?: number;
+  /** Trusted synchronous host revocation fence, evaluated inside authority transactions. */
+  assertHostConfiguration?: () => void;
 }
 interface Row {
   attempt_id: string;
@@ -305,6 +307,7 @@ export class FollowUpDeliveryService {
         this.revision(row, p.expected_revision);
         if (row.state !== "prepared") throw new FollowUpDeliveryError("delivery_terminal");
         if (existing) throw new FollowUpDeliveryError("delivery_invalid_authorization");
+        this.options.assertHostConfiguration?.();
         const now = this.clock(row.updated_at_ms);
         this.verifyGrant(row, p.grant, now);
         if (
@@ -382,6 +385,7 @@ export class FollowUpDeliveryService {
         if (!grant) throw new FollowUpDeliveryError("delivery_authorization_required");
         if (grant.state !== "active") throw new FollowUpDeliveryError("delivery_authorization_revoked");
         const now = this.clock(row.updated_at_ms);
+        this.options.assertHostConfiguration?.();
         // Verify current key, exact target, immutable content and time INSIDE the consuming transaction.
         this.verifyGrant(row, SignedFollowUpDeliveryGrant.parse(JSON.parse(grant.signed_json)), now);
         this.obligation(repo, row.obligation_id, row.obligation_revision);
