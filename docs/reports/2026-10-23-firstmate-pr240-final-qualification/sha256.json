@@ -1,0 +1,15 @@
+{
+  "wave3-final-loop-stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "lint.log": "dde07cdfd62a11394257384f60ffbcf2e23b0dbecad16148abc4958c569e4962",
+  "test.log": "3dc827e8c4ce00569bb91b948562584ef2e23c4bec9ecd1a73a204645a56384b",
+  "inventory-generate.log": "864f8d7f121cb71b530754916f239c73473df297d7f2214f917c3d93362dfa80",
+  "typecheck.log": "1bfbabff43ae893a1be34a12dcb378af65cc0cd0cb5989f3418e2247863008d2",
+  "schemas.log": "72eede8bd62b3a68d3e094d4aeccda65c0b3de5a92b0843adc8530af2c2cff41",
+  "wave3-final-checks.json": "bcd461e78379d8172d3d7032a08798919742eb4c1f67db6f560382d79876daea",
+  "wave3-final-loop-result.json": "364935e22d8b2ab31b541db2918d5d99c5ff4dd7339662413e1815ec544019fd",
+  "startup.log": "ab0f5a8756d2e589fbc1f3d72547ee0276287cb48663b6f964590bee0bc1ad43",
+  "wave3-final-loop-stdout.log": "a3cc64d34d25ed249b35ef6cad51e3bb9159e0eca478c9e0db2dc3a976987fdb",
+  "wave3-final-enqueue.json": "8d7b5ff7a3ec95129d2e6fdf41ec3f49e5a422bca543637595713fb482b3344d",
+  "inventory.log": "a59b7d9a6d962ccf0d22d13d2cc0f8acbb9e3653a63cce339211a5dfb3cd56e9",
+  "build.log": "4f289322c9e8abc6b98f37dcb757ae3d4e9f545e2409b2699b82279b720d6ac2"
+}

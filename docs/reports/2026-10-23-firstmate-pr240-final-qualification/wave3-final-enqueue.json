@@ -1,0 +1,10 @@
+{
+  "task": {
+    "task_id": "firstmate-wave3-final-source-qualification",
+    "capability": "code.test",
+    "prompt": "Qualify immutable source db16ec1a with all eight checks. Prior retry invalidated by concurrent source changes while source-fence regression was developed; retain it as failed. Source boundary now finalized and no changes during this task. No merge or deployment.",
+    "priority": 50,
+    "source": "task_queue"
+  },
+  "path": "/Volumes/AIMATE_WORK/tmp/osstack/smoke/pr237-integration/wave3-final-loop/tasks/firstmate-wave3-final-source-qualification.json"
+}

@@ -21,3 +21,7 @@ V2 契约已进入 guarded-local / guarded-git 的真实执行入口，检查与
 ## 验证记录
 
 真实 CLI + Git + policy + 私有 context writer 的成功与 source-escape 反例通过；最终 source边界定向 28 测试通过，typecheck/lint通过。首个完整任务失败于恢复了 tracked knowledge outputs 后的增量构建缓存，以及 schema 列表 fixture；第二个完整任务期间发现并开发 source 反例，该任务捕获红测试，保留失败，不作为最终资格。最终冻结源码使用全新的 OSStack 原生任务 `firstmate-wave3-final-source-qualification`，正在运行八项完整检查；最终结果与 exact-head CI 完成后补入。没有把旧结果改写成通过。
+
+## Final full qualification
+
+Production source was frozen at `db16ec1a`; documentation-only audit archival advanced the recorded head to `a48ccce0`. All eight stages passed, including 4974 tests passed and 3 intentionally skipped across 22 packages. Native task `firstmate-wave3-final-source-qualification` completed successfully with zero verifier issues. Full logs and native records are in [PR #240 qualification](2026-10-23-firstmate-pr240-final-qualification/). This supersedes the earlier pending qualification status; exact-head remote CI and review remain separate.
