@@ -1,0 +1,7 @@
+395ca614d2e3616e6d5c42e1371b5ab5a1182e74
+3a0ac07bebc826586d0b7157144383683120ce591aee400d93cea042de9edf16  packages/core/src/state/attention-observer.test.ts
+94bffc930f092c100c7a81ece30def50c70fe5fb4b2883e0f4e54c6c985e0184  packages/core/src/state/attention-observer.ts
+879d4512c5804fe0d51afa42de104e72419bc51e08ceef9913079c2d1922f222  packages/core/src/state/attention-run-projection.test.ts
+8911bd48a2afd648c690c658d2bcd299004f605f346ef9781d0b66932084e136  packages/core/src/state/attention-run-projection.ts
+4ec38a6b275074a72127f15d457b5e03ca69a4a47bff90cc3618e2d605ad532c  packages/core/src/state/run-store.test.ts
+f3a2ab8c32699cbfaac15cb688e431c66f9adff74e6232728ff0bee5bcf76b1c  packages/core/src/state/run-store.ts

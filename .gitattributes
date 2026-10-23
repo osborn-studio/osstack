@@ -7,3 +7,7 @@ docs/reports/2026-10-24-firstmate-integration-evidence/*-context.txt -whitespace
 # Preserve verbatim model audit inputs, including quoted diff whitespace.
 docs/reports/2026-10-23-firstmate-wave1-evidence/**/*context.txt -whitespace
 docs/reports/2026-10-23-firstmate-pr237-final-qualification/*.log -whitespace
+docs/reports/2026-10-23-firstmate-pr238-final-qualification/*.log -whitespace
+docs/reports/2026-10-23-firstmate-wave2-evidence/**/*context.txt -whitespace
+docs/reports/2026-10-23-firstmate-wave2-evidence/*.log -whitespace
+docs/reports/2026-10-23-firstmate-wave2-evidence/**/*context*.txt -whitespace

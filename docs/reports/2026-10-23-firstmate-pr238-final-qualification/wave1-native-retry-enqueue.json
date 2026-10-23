@@ -1,0 +1,39 @@
+{
+  "loop_id": "loop_112fb040-2e63-41d2-b3e7-cf2aa5332901",
+  "retry_of_task_id": "firstmate-wave1-qualification",
+  "retry_task": {
+    "task_id": "firstmate-wave1-qualification-retry",
+    "capability": "code.test",
+    "prompt": "Retry failed osstack loop task firstmate-wave1-qualification.\nPrevious outcome: escalated.\nPrevious agent: local-command.\nSummary: Builder execution ended failed: Process group 52105 gone (kill(-pgid, 0): ESRCH); leader exit observed",
+    "priority": 70,
+    "source": "task_queue",
+    "context": {
+      "retry_of_task_id": "firstmate-wave1-qualification",
+      "retry_from_loop_id": "loop_112fb040-2e63-41d2-b3e7-cf2aa5332901",
+      "previous_outcome": "escalated",
+      "previous_agent_id": "local-command",
+      "previous_iterations": 1,
+      "previous_run_id": "run_516fab54-0560-4f31-be05-ea0c8849000f",
+      "previous_error_summary": "Builder execution ended failed: Process group 52105 gone (kill(-pgid, 0): ESRCH); leader exit observed",
+      "previous_verify_summary": "3 issues found by local verifier. Failed evaluations: verify-command-1.",
+      "previous_verify_issues": [
+        {
+          "severity": "error",
+          "message": "Builder execution ended failed: Process group 52105 gone (kill(-pgid, 0): ESRCH); leader exit observed",
+          "rule": "execute.outcome_not_completed"
+        },
+        {
+          "severity": "error",
+          "message": "python3 /Volumes/AIMATE_WORK/tmp/osstack/smoke/pr237-integration/run-wave1-checks.py failed (1): build 0 inventory-generate 0 typecheck 0 test 1 lint 0 schemas 0 inventory 0 startup 0",
+          "rule": "execute.command_failed"
+        },
+        {
+          "severity": "error",
+          "message": "python3 /Volumes/AIMATE_WORK/tmp/osstack/smoke/pr237-integration/verify-wave1-checks.py failed (1): Traceback (most recent call last): File \"/Volumes/AIMATE_WORK/tmp/osstack/smoke/pr237-integration/verify-wave1-checks.py\", line 4, in <module> assert len(x)==8 and all(c[\"exit_code\"]==0 for c in x) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^",
+          "rule": "verify.command_failed"
+        }
+      ]
+    }
+  },
+  "path": "/Volumes/AIMATE_WORK/tmp/osstack/smoke/pr237-integration/wave1-loop/tasks/firstmate-wave1-qualification-retry.json"
+}

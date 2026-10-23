@@ -1,0 +1,265 @@
+$ biome check .
+packages/cli/src/daemon.ts:1087:12 lint/complexity/useOptionalChain  FIXABLE  ━━━━━━━━━━━━━━━━━━━━━━
+
+  ! Change to an optional chain.
+  
+    1085 │       if(req.method==="attention.abandon-receipt") {
+    1086 │         const p=req.params as {scope_id:string;session_id:string;message_id:string;expected_version:number;reason:string;evidence_sha256:string;acknowledge_unknown_effects:boolean};
+  > 1087 │         if(!p||p.acknowledge_unknown_effects!==true)throw new Error("explicit_unknown_effects_ack_required");
+         │            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    1088 │         if(ctx.activeSessionSends.has(p.session_id))throw new Error("delivery_in_flight");
+    1089 │         return singleOk(req.id,new AttentionActions(ctx.supervision.store,ctx.supervision.observer.owner).abandon(p));
+  
+  i Unsafe fix: Change to an optional chain.
+  
+    1085 1085 │         if(req.method==="attention.abandon-receipt") {
+    1086 1086 │           const p=req.params as {scope_id:string;session_id:string;message_id:string;expected_version:number;reason:string;evidence_sha256:string;acknowledge_unknown_effects:boolean};
+    1087      │ - ········if(!p||p.acknowledge_unknown_effects!==true)throw·new·Error("explicit_unknown_effects_ack_required");
+         1087 │ + ········if(p?.acknowledge_unknown_effects!==true)throw·new·Error("explicit_unknown_effects_ack_required");
+    1088 1088 │           if(ctx.activeSessionSends.has(p.session_id))throw new Error("delivery_in_flight");
+    1089 1089 │           return singleOk(req.id,new AttentionActions(ctx.supervision.store,ctx.supervision.observer.owner).abandon(p));
+  
+
+packages/cli/src/deployed-home.test.ts:26:4 lint/complexity/noAdjacentSpacesInRegex  FIXABLE  ━━━━━━━━━━
+
+  ! This regular expression contains unclear uses of consecutive spaces.
+  
+    25 │ const PLIST_HOME_ONLY = PLIST.replace(
+  > 26 │   /  <key>OSSTACK_SOCKET<\/key>\n    <string>[^<]*<\/string>\n/,
+       │    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    27 │   "",
+    28 │ );
+  
+  i It's hard to visually count the amount of spaces.
+  
+  i Safe fix: Use a quantifier instead.
+  
+     24  24 │   
+     25  25 │   const PLIST_HOME_ONLY = PLIST.replace(
+     26     │ - ··/··<key>OSSTACK_SOCKET<\/key>\n····<string>[^<]*<\/string>\n/,
+         26 │ + ··/·{2}<key>OSSTACK_SOCKET<\/key>\n·{4}<string>[^<]*<\/string>\n/,
+     27  27 │     "",
+     28  28 │   );
+  
+
+packages/cli/src/graph-chain.integration.test.ts:79:75 lint/suspicious/noExplicitAny ━━━━━━━━━━━━━━━
+
+  ! Unexpected any. Specify a different type.
+  
+    77 │   // Keep all fixture evidence under gc5 for parent inspection, including failures.
+    78 │   const child = fork(builtFixture, [root, mode, String(deadlineSeconds)], { cwd: repoRoot, stdio: ['ignore', 'pipe', 'pipe', 'ipc'], env: { ...process.env, OSSTACK_HOME: process.env['G17_TEST_HOME'] ?? join(root, 'home'), OSSTACK_DASHBOARD: '0' } });
+  > 79 │   let output = ''; let sequence = 0; const messages: Array<Record<string, any>> = []; const changed = new Set<() => void>();
+       │                                                                           ^^^
+    80 │   child.stdout!.on('data', chunk => { output += String(chunk); }); child.stderr!.on('data', chunk => { output += String(chunk); });
+    81 │   child.on('message', message => { messages.push(message as Record<string, any>); for (const fn of changed) fn(); });
+  
+  i any disables many type checking rules. Its use should be avoided.
+  
+
+packages/cli/src/graph-chain.integration.test.ts:81:76 lint/suspicious/noExplicitAny ━━━━━━━━━━━━━━━
+
+  ! Unexpected any. Specify a different type.
+  
+    79 │   let output = ''; let sequence = 0; const messages: Array<Record<string, any>> = []; const changed = new Set<() => void>();
+    80 │   child.stdout!.on('data', chunk => { output += String(chunk); }); child.stderr!.on('data', chunk => { output += String(chunk); });
+  > 81 │   child.on('message', message => { messages.push(message as Record<string, any>); for (const fn of changed) fn(); });
+       │                                                                            ^^^
+    82 │   child.on('exit', () => { writeFileSync(join(root, `host-${child.pid}.log`), output); for (const fn of changed) fn(); });
+    83 │   const next = async (predicate: (message: Record<string, any>) => boolean, timeout = 15_000): Promise<Record<string, any>> => {
+  
+  i any disables many type checking rules. Its use should be avoided.
+  
+
+packages/cli/src/graph-chain.integration.test.ts:83:59 lint/suspicious/noExplicitAny ━━━━━━━━━━━━━━━
+
+  ! Unexpected any. Specify a different type.
+  
+    81 │   child.on('message', message => { messages.push(message as Record<string, any>); for (const fn of changed) fn(); });
+    82 │   child.on('exit', () => { writeFileSync(join(root, `host-${child.pid}.log`), output); for (const fn of changed) fn(); });
+  > 83 │   const next = async (predicate: (message: Record<string, any>) => boolean, timeout = 15_000): Promise<Record<string, any>> => {
+       │                                                           ^^^
+    84 │     const take = () => { const index = messages.findIndex(predicate); return index < 0 ? undefined : messages.splice(index, 1)[0]; };
+    85 │     const found = take(); if (found) return found;
+  
+  i any disables many type checking rules. Its use should be avoided.
+  
+
+packages/cli/src/graph-chain.integration.test.ts:83:119 lint/suspicious/noExplicitAny ━━━━━━━━━━━━━━
+
+  ! Unexpected any. Specify a different type.
+  
+    81 │   child.on('message', message => { messages.push(message as Record<string, any>); for (const fn of changed) fn(); });
+    82 │   child.on('exit', () => { writeFileSync(join(root, `host-${child.pid}.log`), output); for (const fn of changed) fn(); });
+  > 83 │   const next = async (predicate: (message: Record<string, any>) => boolean, timeout = 15_000): Promise<Record<string, any>> => {
+       │                                                                                                                       ^^^
+    84 │     const take = () => { const index = messages.findIndex(predicate); return index < 0 ? undefined : messages.splice(index, 1)[0]; };
+    85 │     const found = take(); if (found) return found;
+  
+  i any disables many type checking rules. Its use should be avoided.
+  
+
+packages/cli/src/graph-preparation-recovery.ts:39:9 lint/complexity/useOptionalChain  FIXABLE  ━━━━━━━━━━
+
+  ! Change to an optional chain.
+  
+    37 │       : name === 'prepare_tests' ? epoch.preparationSlot('tests', 1) : node.effectSlot;
+    38 │     const entry = initial.entries.find(e => e.action.effect.nodeId === node.id && e.action.effect.effectSlot === slot);
+  > 39 │     if (!entry || entry.action.generation !== 1 || entry.action.effect.epoch !== 0 || entry.action.effect.logicalAttempt !== 1) throw Error('PREPARATION_RECOVERY_SCOPE');
+       │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    40 │     return entry;
+    41 │   });
+  
+  i Unsafe fix: Change to an optional chain.
+  
+     37  37 │         : name === 'prepare_tests' ? epoch.preparationSlot('tests', 1) : node.effectSlot;
+     38  38 │       const entry = initial.entries.find(e => e.action.effect.nodeId === node.id && e.action.effect.effectSlot === slot);
+     39     │ - ····if·(!entry·||·entry.action.generation·!==·1·||·entry.action.effect.epoch·!==·0·||·entry.action.effect.logicalAttempt·!==·1)·throw·Error('PREPARATION_RECOVERY_SCOPE');
+         39 │ + ····if·(entry?.action.generation·!==·1·||·entry.action.effect.epoch·!==·0·||·entry.action.effect.logicalAttempt·!==·1)·throw·Error('PREPARATION_RECOVERY_SCOPE');
+     40  40 │       return entry;
+     41  41 │     });
+  
+
+packages/cli/src/upgrade.ts:240:7 lint/complexity/useOptionalChain  FIXABLE  ━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! Change to an optional chain.
+  
+    238 │     npmRoot = rootResp0.ok ? rootResp0.output.trim() : null;
+    239 │   }
+  > 240 │   if (plistText !== null && plistText.includes("bin.js") && (npmRoot === null || npmRoot === "" || !plistText.includes(npmRoot))) {
+        │       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    241 │     log("this deployment serves a CHECKOUT dist (not the npm-global package); `osstack upgrade` does not apply — use the checkout deploy flow in PHASE2-RUNBOOK.md");
+    242 │     return 1;
+  
+  i Unsafe fix: Change to an optional chain.
+  
+    238 238 │       npmRoot = rootResp0.ok ? rootResp0.output.trim() : null;
+    239 239 │     }
+    240     │ - ··if·(plistText·!==·null·&&·plistText.includes("bin.js")·&&·(npmRoot·===·null·||·npmRoot·===·""·||·!plistText.includes(npmRoot)))·{
+        240 │ + ··if·(plistText?.includes("bin.js")·&&·(npmRoot·===·null·||·npmRoot·===·""·||·!plistText.includes(npmRoot)))·{
+    241 241 │       log("this deployment serves a CHECKOUT dist (not the npm-global package); `osstack upgrade` does not apply — use the checkout deploy flow in PHASE2-RUNBOOK.md");
+    242 242 │       return 1;
+  
+
+packages/core/src/state/attention-actions.ts:7:8 lint/style/useImportType  FIXABLE  ━━━━━━━━━━━━━━━━
+
+  ! Some named imports are only used as types.
+  
+     5 │ import { withWrite } from "./db.js";
+     6 │ import { SessionRepository, type SessionMessageInput } from "./sessions.js";
+   > 7 │ import {
+       │        ^
+   > 8 │   AttentionStore,
+   > 9 │   attentionDigest,
+  > 10 │   type AttentionOwner,
+  > 11 │ } from "./attention-store.js";
+       │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    12 │ /** Common human reservation, serialized with collaborator writes in the same DB. */
+    13 │ export function reserveSessionInstruction(
+  
+  i This import is only used as a type.
+  
+     6 │ import { SessionRepository, type SessionMessageInput } from "./sessions.js";
+     7 │ import {
+   > 8 │   AttentionStore,
+       │   ^^^^^^^^^^^^^^
+     9 │   attentionDigest,
+    10 │   type AttentionOwner,
+  
+  i Importing the types with import type ensures that they are removed by the compilers and avoids loading unnecessary modules.
+  
+  i Safe fix: Add inline type keywords.
+  
+    8 │ ··type·AttentionStore,
+      │   +++++               
+
+packages/core/src/state/attention-experience.ts:3:8 lint/style/useImportType  FIXABLE  ━━━━━━━━━━━━━
+
+  ! Some named imports are only used as types.
+  
+    1 │ import { AttentionObserver } from "./attention-observer.js";
+    2 │ import { randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
+  > 3 │ import {
+      │        ^
+  > 4 │   AttentionStore,
+  > 5 │   attentionDigest,
+  > 6 │   type AttentionOwner,
+  > 7 │ } from "./attention-store.js";
+      │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    8 │ interface Delivery {
+    9 │   delivery_id: string;
+  
+  i This import is only used as a type.
+  
+    2 │ import { randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
+    3 │ import {
+  > 4 │   AttentionStore,
+      │   ^^^^^^^^^^^^^^
+    5 │   attentionDigest,
+    6 │   type AttentionOwner,
+  
+  i Importing the types with import type ensures that they are removed by the compilers and avoids loading unnecessary modules.
+  
+  i Safe fix: Add inline type keywords.
+  
+    4 │ ··type·AttentionStore,
+      │   +++++               
+
+packages/core/src/state/attention-experience.ts:489:9 lint/complexity/useOptionalChain  FIXABLE  ━━━━━━━━━━
+
+  ! Change to an optional chain.
+  
+    487 │         .get(s.subject_id) as { version: number } | undefined;
+    488 │       if (
+  > 489 │         !row ||
+        │         ^^^^^^^
+  > 490 │         row.admitted !== 1 ||
+        │         ^^^^^^^^^^^^^^^^^^
+    491 │         row.source_version !== s.source_version ||
+    492 │         live?.version !== s.source_version ||
+  
+  i Unsafe fix: Change to an optional chain.
+  
+    487 487 │           .get(s.subject_id) as { version: number } | undefined;
+    488 488 │         if (
+    489     │ - ········!row·||
+    490     │ - ········row.admitted·!==·1·||
+        489 │ + ········row?.admitted·!==·1·||
+    491 490 │           row.source_version !== s.source_version ||
+    492 491 │           live?.version !== s.source_version ||
+  
+
+packages/core/src/state/attention-observer.ts:3:8 lint/style/useImportType  FIXABLE  ━━━━━━━━━━━━━━━
+
+  ! Some named imports are only used as types.
+  
+     1 │ import { classifyAttentionWait, type WaitInput } from "../attention.js";
+     2 │ import { realpathSync } from "node:fs";
+   > 3 │ import {
+       │        ^
+   > 4 │   attentionDigest,
+   > 5 │   AttentionStore,
+   > 6 │   type AttentionOwner,
+   > 7 │   type AttentionScope,
+   > 8 │ } from "./attention-store.js";
+       │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     9 │ interface Subject {
+    10 │   scope_id: string;
+  
+  i This import is only used as a type.
+  
+    3 │ import {
+    4 │   attentionDigest,
+  > 5 │   AttentionStore,
+      │   ^^^^^^^^^^^^^^
+    6 │   type AttentionOwner,
+    7 │   type AttentionScope,
+  
+  i Importing the types with import type ensures that they are removed by the compilers and avoids loading unnecessary modules.
+  
+  i Safe fix: Add inline type keywords.
+  
+    5 │ ··type·AttentionStore,
+      │   +++++               
+
+Checked 850 files in 391ms. No fixes applied.
+Found 12 warnings.
