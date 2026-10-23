@@ -171,7 +171,7 @@ export async function ensureDeploymentHomeId(home: string): Promise<string> {
       error instanceof z.ZodError ||
       (error instanceof Error &&
         (error.message === "identity_unavailable" ||
-          typeof (error as NodeJS.ErrnoException).code === "string"))
+          /^E[A-Z0-9]+$/.test((error as NodeJS.ErrnoException).code ?? "")))
     )
       throw new Error("identity_unavailable");
     throw error;

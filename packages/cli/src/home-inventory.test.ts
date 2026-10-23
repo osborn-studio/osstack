@@ -348,3 +348,12 @@ it("rejects trailing bytes following a valid identity frame", async () => {
   );
   await expect(readHomeIdentity(socket)).rejects.toThrow("invalid_response");
 });
+
+it("does not misclassify a Node programming error as unavailable filesystem identity", async () => {
+  const home = await mkdtemp(join(tmpdir(), "home-programming-error-"));
+  const probe = await open(join(home,"probe"), "w");
+  const failure = Object.assign(new TypeError("bad argument"), {code:"ERR_INVALID_ARG_TYPE"});
+  const sync = vi.spyOn(Object.getPrototypeOf(probe), "sync").mockRejectedValueOnce(failure);
+  try { await expect(ensureDeploymentHomeId(home)).rejects.toBe(failure); }
+  finally {sync.mockRestore();await probe.close();}
+});

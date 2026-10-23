@@ -1,0 +1,130 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-contract-integration/packages/cli
+
+ ❯ src/home-inventory.test.ts (10 tests | 5 failed) 22ms
+   ✓ read-only explicit homes inventory > persists a stable home ID only when initialized by the daemon 8ms
+   ✓ read-only explicit homes inventory > rejects a symlink identity without modifying its destination 1ms
+   × read-only explicit homes inventory > reads the real framed daemon response and matches pinned home and version 6ms
+     → expected { desired: { …(4) }, …(4) } to match object { status: 'matched', …(1) }
+(7 matching properties omitted from actual)
+   × read-only explicit homes inventory > never accepts the right version from the wrong home 1ms
+     → expected { desired: { …(4) }, …(4) } to match object { status: 'identity_mismatch', …(1) }
+(7 matching properties omitted from actual)
+   × read-only explicit homes inventory > compares desired build and deployment evidence without manufacturing it 1ms
+     → expected 'unsafe_endpoint' to be 'unknown' // Object.is equality
+   × read-only explicit homes inventory > reports actual version drift and keeps unreachable homes in the denominator 1ms
+     → expected [ 'unsafe_endpoint', 'unreachable' ] to deeply equal [ 'drift', 'unreachable' ]
+   ✓ read-only explicit homes inventory > rejects malformed, duplicate and oversized manifests before reading endpoints 1ms
+   × read-only explicit homes inventory > rejects oversized frame headers before buffering a body and malformed identity 2ms
+     → expected 'unsafe_endpoint' to be 'unknown' // Object.is equality
+   ✓ read-only explicit homes inventory > disabled entries never contact a socket and cannot count as a match 0ms
+   ✓ read-only explicit homes inventory > rejects non-socket endpoints and canonical path aliases 1ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 5 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/home-inventory.test.ts > read-only explicit homes inventory > reads the real framed daemon response and matches pinned home and version
+AssertionError: expected { desired: { …(4) }, …(4) } to match object { status: 'matched', …(1) }
+(7 matching properties omitted from actual)
+
+- Expected
++ Received
+
+  {
+-   "observed": {
+-     "build_digest": null,
+-     "build_evidence": "unavailable",
+-     "database_schema": 42,
+-     "deployment_kind": "unknown",
+-     "generation": "instance_12345678901234567890123456789012",
+-     "home_id": "home_12345678901234567890123456789012",
+-     "protocol_version": "2",
+-     "schema_version": 1,
+-     "started_at_ms": 1,
+-     "version": "1.2.3",
+-   },
+-   "status": "matched",
++   "observed": null,
++   "status": "unsafe_endpoint",
+  }
+
+ ❯ src/home-inventory.test.ts:31:139
+     29|  });
+     30|  it("reads the real framed daemon response and matches pinned home and…
+     31|   const socket=await endpoint(identity);const result=await inspectHome…
+       |                                                                                                                                           ^
+     32|  });
+     33|  it("never accepts the right version from the wrong home",async()=>{
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/5]⎯
+
+ FAIL  src/home-inventory.test.ts > read-only explicit homes inventory > never accepts the right version from the wrong home
+AssertionError: expected { desired: { …(4) }, …(4) } to match object { status: 'identity_mismatch', …(1) }
+(7 matching properties omitted from actual)
+
+- Expected
++ Received
+
+  {
+    "observed": null,
+-   "status": "identity_mismatch",
++   "status": "unsafe_endpoint",
+  }
+
+ ❯ src/home-inventory.test.ts:34:192
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/5]⎯
+
+ FAIL  src/home-inventory.test.ts > read-only explicit homes inventory > compares desired build and deployment evidence without manufacturing it
+AssertionError: expected 'unsafe_endpoint' to be 'unknown' // Object.is equality
+
+Expected: "unknown"
+Received: "unsafe_endpoint"
+
+ ❯ src/home-inventory.test.ts:38:190
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/5]⎯
+
+ FAIL  src/home-inventory.test.ts > read-only explicit homes inventory > reports actual version drift and keeps unreachable homes in the denominator
+AssertionError: expected [ 'unsafe_endpoint', 'unreachable' ] to deeply equal [ 'drift', 'unreachable' ]
+
+- Expected
++ Received
+
+  [
+-   "drift",
++   "unsafe_endpoint",
+    "unreachable",
+  ]
+
+ ❯ src/home-inventory.test.ts:41:256
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/5]⎯
+
+ FAIL  src/home-inventory.test.ts > read-only explicit homes inventory > rejects oversized frame headers before buffering a body and malformed identity
+AssertionError: expected 'unsafe_endpoint' to be 'unknown' // Object.is equality
+
+Expected: "unknown"
+Received: "unsafe_endpoint"
+
+ ❯ src/home-inventory.test.ts:50:132
+     48|  it("rejects oversized frame headers before buffering a body and malfo…
+     49|   const header=Buffer.alloc(4);header.writeUInt32BE(65537);const socke…
+     50|   const old=await endpoint({version:"1.2.3"});expect((await inspectHom…
+       |                                                                                                                                    ^
+     51|   expect(DeploymentIdentitySchema.safeParse({...identity,started_at_ms…
+     52|  });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/5]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  5 failed | 5 passed (10)
+   Start at  12:13:44
+   Duration  214ms (transform 30ms, setup 10ms, collect 27ms, tests 22ms, environment 0ms, prepare 31ms)
+
+undefined
+/Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-contract-integration/packages/cli:
+[ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL] Command failed with exit code 1: vitest run src/home-inventory.test.ts

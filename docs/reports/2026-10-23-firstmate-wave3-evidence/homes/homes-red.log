@@ -1,0 +1,25 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-contract-integration/packages/cli
+
+
+⎯⎯⎯⎯⎯⎯ Failed Suites 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/home-inventory.test.ts [ src/home-inventory.test.ts ]
+Error: Cannot find module './home-inventory.js' imported from '/Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-contract-integration/packages/cli/src/home-inventory.test.ts'
+ ❯ src/home-inventory.test.ts:6:1
+
+
+Caused by: Error: Failed to load url ./home-inventory.js (resolved id: ./home-inventory.js) in /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-contract-integration/packages/cli/src/home-inventory.test.ts. Does the file exist?
+ ❯ loadAndTransform ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:35835:17
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  no tests
+   Start at  12:12:50
+   Duration  187ms (transform 21ms, setup 11ms, collect 0ms, tests 0ms, environment 0ms, prepare 32ms)
+
+undefined
+/Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-contract-integration/packages/cli:
+[ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL] Command failed with exit code 1: vitest run src/home-inventory.test.ts
