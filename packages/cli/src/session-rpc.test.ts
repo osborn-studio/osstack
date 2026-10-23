@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, rmSync, realpathSync, writeFileSync } from "node:fs";
 import { connect } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -184,6 +184,7 @@ beforeAll(async () => {
   process.env["OSSTACK_HOME"] = home;
   process.env["OSSTACK_SOCKET"] = socketPath;
   process.env["OSSTACK_UPDATE_CHECK"] = "0";
+  process.env["OSSTACK_ATTENTION"] = "1";
   adapter = new FakeSessionAdapter();
   handle = await startDaemon({ socketPath, adapters: [adapter] });
 });
@@ -194,6 +195,7 @@ afterAll(async () => {
   delete process.env["OSSTACK_HOME"];
   delete process.env["OSSTACK_SOCKET"];
   delete process.env["OSSTACK_UPDATE_CHECK"];
+  delete process.env["OSSTACK_ATTENTION"];
 });
 
 describe("governed session RPC", () => {
@@ -375,7 +377,7 @@ describe("governed session RPC", () => {
     expect(JSON.stringify(first)).not.toContain("native-secret");
   });
 
-  it("keeps a failed adapter instruction recoverable instead of applying an empty turn", async () => {
+  it("retains failed delivery as uncertain instead of automatically replaying side effects", async () => {
     seedSession("sess_retry");
     const params = {
       session_id: "sess_retry",
@@ -406,14 +408,11 @@ describe("governed session RPC", () => {
         assistant_text: "请选择方向",
       },
     });
-    expect(retried).toMatchObject({
-      ok: true,
-      result: { state: "applied", session_version: 4 },
-    });
+    expect(retried).toMatchObject({ ok: false, error: { code: "delivery_uncertain" } });
     const db = openDb({ path: handle.dbPath });
     try {
       expect(new SessionRepository(db, handle.dbPath).getMessage("msg_retry")).toMatchObject({
-        state: "applied",
+        state: "failed",
       });
     } finally {
       db.close();
@@ -649,4 +648,46 @@ describe("governed session RPC", () => {
     expect(response).toMatchObject({ ok: false, error: { code: "runtime_mismatch" } });
     expect(adapter.resumed).toHaveLength(resumesBefore);
   });
+});
+
+it("attention watch/inbox/answer shares the exact governed session receipt", async () => {
+  seedSession("attention");const db=openDb({path:handle.dbPath});
+  db.prepare("UPDATE agent_sessions SET repo_path=?,state='awaiting_decision' WHERE session_id='attention'").run(realpathSync(home));
+  db.prepare("UPDATE session_turns SET decision_json=? WHERE session_id='attention'").run(JSON.stringify(structuredDecision));db.close();
+  const watched=await rpc("attention.watch",{task_id:"task_attention",repo_path:home,default_tenant:true});
+  expect(watched.ok).toBe(true);const scope=(watched.result!["scope"] as {scope_id:string}).scope_id;
+  const inbox=await rpc("attention.inbox",{scope_id:scope});const item=(inbox.result!["items"] as Array<Record<string,unknown>>)[0]!;
+  expect(item["state"]).toBe("open");const params={scope_id:scope,item_id:item["item_id"],action_id:"answer-once",revision:item["revision"],content_hash:item["content_hash"],text:"continue",takeover:false};
+  const before=adapter.resumed.length;expect(await rpc("attention.answer",params)).toMatchObject({ok:true,result:{state:"applied"}});
+  expect(await rpc("attention.answer",params)).toMatchObject({ok:true,result:{state:"applied",replay:true}});
+  expect(adapter.resumed.length-before).toBe(1);
+  expect(await rpc("attention.brief",{scope_id:scope,actor:"owner"})).toMatchObject({ok:true,result:{total:1}});
+});
+
+it("never resumes an abandoned receipt when its original direct message ID is replayed",async()=>{
+  const id="abandoned-rpc";seedSession(id);const db=openDb({path:handle.dbPath});
+  db.prepare("UPDATE agent_sessions SET repo_path=? WHERE session_id=?").run(realpathSync(home),id);
+  const sessions=new SessionRepository(db,handle.dbPath);
+  sessions.applyInbound({message_id:"old-abandoned",session_id:id,turn_id:"turn_"+id,direction:"inbound",kind:"instruction.send",payload:{text:"original"},state:"accepted",created_at:3},2,3);db.close();
+  const watch=await rpc("attention.watch",{task_id:"task_"+id,repo_path:home,default_tenant:true});const scope=(watch.result!["scope"] as {scope_id:string}).scope_id;
+  const before=adapter.resumed.length;
+  expect(await rpc("attention.abandon-receipt",{scope_id:scope,session_id:id,message_id:"old-abandoned",expected_version:3,reason:"Owner inspected effects; abandon original instruction",evidence_sha256:"a".repeat(64),acknowledge_unknown_effects:true})).toMatchObject({ok:true,result:{disposition:"abandoned_unknown",replayed:false}});
+  expect(await rpc("session.send",{session_id:id,runtime_id:adapter.id,turn_id:"turn_"+id,message_id:"old-abandoned",expected_version:2,text:"original"})).toMatchObject({ok:false,error:{code:"delivery_uncertain"}});
+  expect(adapter.resumed.length).toBe(before);
+  expect(await rpc("session.send",{session_id:id,runtime_id:adapter.id,turn_id:"turn_"+id,message_id:"new-owner-instruction",expected_version:3,text:"Inspect current state"})).toMatchObject({ok:true,result:{state:"applied"}});
+  expect(adapter.resumed.length).toBe(before+1);
+});
+it("readmits capacity-limited Loop snapshots but preserves an explicit release",async()=>{
+  const id="loop-admission-rpc";seedSession(id);const db=openDb({path:handle.dbPath});
+  db.prepare("UPDATE agent_sessions SET repo_path=? WHERE session_id=?").run(realpathSync(home),id);
+  const watch=await rpc("attention.watch",{task_id:"task_"+id,repo_path:home,default_tenant:true});const scope=(watch.result!["scope"] as {scope_id:string}).scope_id;
+  const path=join(home,"attention-loop.json");writeFileSync(path,JSON.stringify({loop_id:id,started_at:new Date().toISOString(),updated_at:new Date().toISOString(),completed_tasks:[],pending:[],in_progress:[],decisions:[]}));
+  const params={scope_id:scope,loop_id:id,state_path:path};expect((await rpc("attention.loop",params)).ok).toBe(true);
+  db.prepare("UPDATE attention_subjects SET admitted=0 WHERE kind='loop' AND subject_id=?").run(id);
+  expect((await rpc("attention.loop",params)).ok).toBe(true);
+  expect(db.prepare("SELECT admitted FROM attention_subjects WHERE kind='loop' AND subject_id=?").get(id)).toEqual({admitted:1});
+  expect((await rpc("attention.release",{scope_id:scope,kind:"loop",subject_id:id,expected_version:0})).ok).toBe(true);
+  expect((await rpc("attention.loop",params)).ok).toBe(true);
+  const row=db.prepare("SELECT admitted,payload_json FROM attention_subjects WHERE kind='loop' AND subject_id=?").get(id) as {admitted:number;payload_json:string};
+  expect(row.admitted).toBe(0);expect(JSON.parse(row.payload_json).reason).toBe("owner_released");db.close();
 });

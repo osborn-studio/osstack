@@ -355,6 +355,17 @@
           "type": "integer",
           "minimum": 0
         },
+        "next_cursor": {
+          "anyOf": [
+            {
+              "type": "string",
+              "maxLength": 4096
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
         "next_after": {
           "type": "object",
           "properties": {
@@ -394,6 +405,7 @@
         "latest_turn_only",
         "truncated",
         "omitted_binding_unknown",
+        "next_cursor",
         "next_after"
       ],
       "additionalProperties": false

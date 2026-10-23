@@ -13,3 +13,6 @@ export * from "./evaluator-epoch.js";
 export * from "./adversarial-pool.js";
 export * from "./loop-doc.js";
 export * from "./probe-outcomes.js";
+
+export { classifyAttentionWait, evaluateCoverage, evaluateActivity } from "./attention.js";
+export { AttentionDeliveryContract, deliveryContract, promoteScout, verifyDeliveryContract, acceptAttentionTriage, evaluateAttentionRouting, budgetAttentionContext } from './attention-planning.js';

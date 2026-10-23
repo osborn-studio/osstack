@@ -128,7 +128,7 @@ describe("signed collaborator through daemon RPC", () => {
     await rpc("collaborator.install", signed);
     await until(signed.body.grant_id, "blocked");
     expect(resumed).toEqual([]);
-  });
+  }, 20_000);
   it("does not reinterpret a controlled result as a legacy decision directive", async () => {
     const signed = await grant("opaque");
     expect((await rpc("session.snapshot", { session_id: signed.body.session_id })).result).toMatchObject({

@@ -22,7 +22,8 @@
       "next_after": {
         "run": null,
         "session": null
-      }
+      },
+      "next_cursor": null
     },
     "limitations": []
   }

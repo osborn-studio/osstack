@@ -1,0 +1,12 @@
+{
+  "$reason": "Observation never confers execution ownership",
+  "value": {
+    "schema_version": 1,
+    "scope_id": "scope",
+    "coverage": "uncovered",
+    "execution_takeover": true,
+    "counts": [],
+    "next_after": null,
+    "items": []
+  }
+}

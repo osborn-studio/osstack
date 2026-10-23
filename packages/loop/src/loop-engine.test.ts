@@ -826,7 +826,7 @@ describe("LoopEngine", () => {
       .rejects.toThrow();
   });
 
-  it("cleans loop-scoped orphaned worktrees after each cycle", async () => {
+  it("retains loop-scoped worktrees whose ownership is unproven", async () => {
     const workspace = await makeGitQueuedWorkspace("base\n");
     const loopId = "loop-orphan-cycle";
     const worktreeRoot = join(workspace, "..", "orphan-cycle-worktrees");
@@ -848,16 +848,9 @@ describe("LoopEngine", () => {
       worktreeRoot,
     }).runOnce();
 
-    expect(result.events).toContainEqual(expect.objectContaining({
-      type: "loop.worktree.orphans_cleaned",
-      payload: expect.objectContaining({
-        phase: "after_cycle",
-        removed_count: 1,
-        branches: ["osstack/loop/loop-orphan-cycle/manual-orphan"],
-      }),
-    }));
-    expect(await git(workspace, ["worktree", "list", "--porcelain"])).not.toContain(orphanPath);
-    await expect(git(workspace, ["rev-parse", "--verify", "osstack/loop/loop-orphan-cycle/manual-orphan"])).rejects.toThrow();
+    expect(result.events.some((event) => event.type === "loop.worktree.orphans_cleaned")).toBe(false);
+    expect(await git(workspace, ["worktree", "list", "--porcelain"])).toContain("osstack/loop/loop-orphan-cycle/manual-orphan");
+    await expect(git(workspace, ["rev-parse", "--verify", "osstack/loop/loop-orphan-cycle/manual-orphan"])).resolves.toBeTruthy();
   });
 
   it("leaves the completed task unchanged when self-improvement is disabled", async () => {

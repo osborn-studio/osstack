@@ -782,7 +782,7 @@ See docs/V2_REFACTOR_PLAN.md for the full roadmap.
 
   if (cmd === "attention") {
     const { handleAttentionCommand } = await import("./attention-command.js");
-    return await handleAttentionCommand(args.slice(1));
+    return await handleAttentionCommand(args.slice(1), { rpc });
   }
 
   if (cmd === "graph") {

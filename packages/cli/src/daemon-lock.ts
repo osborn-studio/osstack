@@ -1,50 +1,118 @@
-// Duplicate-daemon guard via pidfile. Two daemons sharing one SQLite file and
-// racing to bind the same socket is the kind of corruption you only debug
-// once — refuse to start instead.
-
-import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
-import { dirname } from "node:path";
+// The application DB is never used as a process mutex: opening it migrates it.
+// This private, fixed-inode SQLite file holds a native exclusive lock until close.
+import Database from "better-sqlite3";
+import {
+  lstatSync,
+  mkdirSync,
+  readFileSync,
+  realpathSync,
+  statfsSync,
+  unlinkSync,
+  writeFileSync,
+  openSync,
+  closeSync,
+  constants,
+} from "node:fs";
+import { dirname, join, basename } from "node:path";
 
 export class DaemonAlreadyRunningError extends Error {
-  readonly pid: number;
-  constructor(pid: number, pidFile: string) {
-    super(`osstack daemon already running (pid ${pid}, pidfile ${pidFile}). Stop it first or remove the stale pidfile.`);
+  constructor(readonly pid: number, pidFile: string) {
+    super(
+      `osstack daemon ownership is held (pid ${
+        pid || "unknown"
+      }, pidfile ${pidFile}). Stop the owner before restarting; do not delete the lock file.`
+    );
     this.name = "DaemonAlreadyRunningError";
-    this.pid = pid;
   }
 }
-
-function processAlive(pid: number): boolean {
+const held = new Set<string>();
+function diagnosticPid(path: string): number {
   try {
-    process.kill(pid, 0);
-    return true;
-  } catch (err) {
-    // EPERM = exists but owned by someone else — still "alive" for our purposes.
-    return (err as NodeJS.ErrnoException).code === "EPERM";
+    const pid = Number(readFileSync(path, "utf8").trim());
+    return Number.isSafeInteger(pid) && pid > 0 ? pid : 0;
+  } catch {
+    return 0;
   }
 }
-
-/**
- * Acquire the daemon lock. Throws DaemonAlreadyRunningError when another
- * live process holds it; silently replaces a stale pidfile (dead pid).
- * Returns a release function for shutdown.
+/** No application schema or migration. Kernel locks are released on process exit.
+ * Supported local FS only; SQLite's POSIX VFS does not inherit locks across fork.
+ * Never unlink/replace the lock DB: doing so would create two independent inodes.
  */
 export function acquireDaemonLock(pidFile: string): () => void {
-  if (existsSync(pidFile)) {
-    const pid = Number.parseInt(readFileSync(pidFile, "utf8").trim(), 10);
-    // Own pid counts as "running" too: a second startDaemon() in the same
-    // process (without releasing the first lock) must also be refused.
-    if (Number.isFinite(pid) && pid > 0 && processAlive(pid)) {
-      throw new DaemonAlreadyRunningError(pid, pidFile);
+  mkdirSync(dirname(pidFile), { recursive: true, mode: 0o700 });
+  const path = join(
+    realpathSync(dirname(pidFile)),
+    `${basename(pidFile)}.lock.db`
+  );
+  const localTypes = new Set([
+    0x1a, 0x11, 0xef53, 0x58465342, 0x9123683e, 0x01021994, 0x794c7630,
+  ]);
+  if (
+    !["darwin", "linux"].includes(process.platform) ||
+    !localTypes.has(Number(statfsSync(dirname(path)).type) >>> 0)
+  ) {
+    throw new Error(
+      `daemon_lock_unsupported_filesystem:${statfsSync(
+        dirname(path)
+      ).type.toString(16)}:${dirname(path)}`
+    );
+  }
+  if (held.has(path)) throw new DaemonAlreadyRunningError(process.pid, pidFile);
+  for (const candidate of [path, pidFile]) {
+    try {
+      const st = lstatSync(candidate);
+      if (!st.isFile() || st.isSymbolicLink() || st.nlink !== 1)
+        throw new Error("daemon_lock_requires_regular_file");
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
     }
   }
-  if (!existsSync(dirname(pidFile))) mkdirSync(dirname(pidFile), { recursive: true });
-  writeFileSync(pidFile, `${process.pid}\n`);
-  return () => {
+  const db = new Database(path, { timeout: 0 });
+  try {
+    if (db.pragma("journal_mode = DELETE", { simple: true }) !== "delete")
+      throw new Error("daemon_lock_wrong_journal_mode");
+    db.exec("BEGIN EXCLUSIVE");
+    held.add(path);
+    const fd = openSync(
+      pidFile,
+      constants.O_WRONLY |
+        constants.O_CREAT |
+        constants.O_TRUNC |
+        constants.O_NOFOLLOW,
+      0o600
+    );
     try {
-      // Only remove the pidfile if it is still ours.
-      const pid = Number.parseInt(readFileSync(pidFile, "utf8").trim(), 10);
-      if (pid === process.pid) unlinkSync(pidFile);
-    } catch { /* already gone */ }
+      writeFileSync(fd, `${process.pid}\n`);
+    } finally {
+      closeSync(fd);
+    }
+  } catch (error) {
+    held.delete(path);
+    db.close();
+    if (
+      error instanceof Database.SqliteError &&
+      ["SQLITE_BUSY", "SQLITE_LOCKED"].some((code) =>
+        error.code.startsWith(code)
+      )
+    ) {
+      throw new DaemonAlreadyRunningError(diagnosticPid(pidFile), pidFile);
+    }
+    throw error;
+  }
+  let released = false;
+  return () => {
+    if (released) return;
+    released = true;
+    try {
+      if (diagnosticPid(pidFile) === process.pid) unlinkSync(pidFile);
+    } catch {
+      /* diagnostics only */
+    }
+    // Closing rolls back the empty transaction and releases the OS lock.
+    try {
+      db.close();
+    } finally {
+      held.delete(path);
+    }
   };
 }

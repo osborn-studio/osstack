@@ -18,3 +18,9 @@ export * from "./observability/index.js";
 
 export const CORE_VERSION = "0.0.0";
 export { CURRENT_SCHEMA_VERSION } from "./state/migrations.js";
+
+export { AttentionStore, attentionDigest, type AttentionOwner, type AttentionScope, type AttentionItem } from "./state/attention-store.js";
+export { AttentionObserver } from "./state/attention-observer.js";
+export { AttentionActions, reserveSessionInstruction } from "./state/attention-actions.js";
+export { AttentionExperience, type AttentionSender } from "./state/attention-experience.js";
+export { classifyAttentionWait, evaluateCoverage, evaluateActivity, type WaitInput } from './attention.js';

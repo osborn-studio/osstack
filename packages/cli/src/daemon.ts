@@ -42,6 +42,8 @@ import {
 } from "@osstack/loop";
 import {
   AgentOverrideError,
+  reserveSessionInstruction,
+  AttentionActions,
   countEvents,
   countRuns,
   countRunsSince,
@@ -74,7 +76,6 @@ import { RpcLatencyRecorder, type RpcMethodLatency } from "./rpc-latency.js";
 import type Database from "better-sqlite3";
 import {
   AgentSessionEventSchema,
-  cleanupOrphanedWorktrees,
   defaultAdapters,
   createControlledSessionAdapter,
   isControlledSessionAdapter,
@@ -137,6 +138,9 @@ import {
   type LoopNeatFinalizerResultV1,
 } from "./loop-neat-finalizer.js";
 
+import { localAttentionSender } from "./attention-local-delivery.js";
+import { SupervisionService } from "./supervision-service.js";
+
 const DAEMON_VERSION = VERSION;
 const DAEMON_PHASE = "S1.5-controls";
 const LOOP_FAILURE_STREAK_THRESHOLD = 3;
@@ -178,12 +182,13 @@ interface DaemonContext {
   sessions: SessionRepository;
   continuations: SessionContinuationRepository;
   collaborator: SessionCollaborator | undefined;
+  supervision?: SupervisionService;
   /** Local browser dashboard, returned to chat bridges as a shareable URL. */
   dashboardUrl: string | null;
   /** Active runs by run_id → AbortController for cancellation. */
   activeRuns: Map<string, AbortController>;
   /** Sessions currently applying a non-duplicate inbound message. */
-  activeSessionSends: Set<string>;
+  activeSessionSends: Map<string,string>;
   /** Daemon-managed polling loop sessions, keyed by loop_session_id. */
   loopSessions: Map<string, LoopSession>;
   /** Daemon-managed daily-brief sessions, keyed by daily_session_id (R2.3). */
@@ -771,8 +776,7 @@ async function handleSessionSend(
       if (existingMessage.state !== "failed") {
         return singleErr(req.id, "version_conflict", "reserved message is not retryable");
       }
-      ctx.sessions.retryFailedMessage(p.message_id);
-      recoveredReservationVersion = replay.session_version;
+      return singleErr(req.id, "delivery_uncertain", "Failed execution may have had side effects; reconcile the existing receipt before retrying");
     } catch (err) {
       if (err instanceof SessionMessageIdConflict) {
         return singleErr(req.id, "message_id_conflict", "message_id was already used for different content");
@@ -804,7 +808,7 @@ async function handleSessionSend(
     applied = { outcome: "applied", session_version: recoveredReservationVersion };
   } else {
     try {
-      applied = ctx.sessions.applyInbound({
+      applied = reserveSessionInstruction(ctx.db, ctx.dbPath, {
         message_id: p.message_id,
         session_id: p.session_id,
         turn_id: p.turn_id,
@@ -821,6 +825,7 @@ async function handleSessionSend(
       if (err instanceof SessionMessageIdConflict) {
         return singleErr(req.id, "message_id_conflict", "message_id was already used for different content");
       }
+      if (err instanceof Error && ["delivery_uncertain", "continuation_in_flight", "grant_owned", "signed_approval_required", "invalid_decision"].includes(err.message)) return singleErr(req.id, err.message, "Refresh the decision and use its authorized owner route");
       throw err;
     }
   }
@@ -846,7 +851,7 @@ async function executeReservedSessionTurn(
 ): Promise<SingleResponse> {
   if (session.native_session_id === null) return singleErr(req.id, "resume_unsupported", "session cannot resume");
   const applied = { session_version: reservationVersion };
-  ctx.activeSessionSends.add(session.session_id);
+  ctx.activeSessionSends.set(session.session_id,p.message_id);
   const controller = options.controller ?? new AbortController();
   const now = Date.now() / 1000;
   ctx.activeRuns.set(session.run_id, controller);
@@ -992,6 +997,34 @@ async function executeReservedSessionTurn(
 // ──────────────────────────────────────────────────────────────────────
 
 async function handleSingle(ctx: DaemonContext, req: DaemonRequest): Promise<SingleResponse | null> {
+  if (req.method.startsWith("attention.")) {
+    if (!ctx.supervision) return singleErr(req.id,"attention_disabled","Start daemon with OSSTACK_ATTENTION=1 to opt in");
+    if (ctx.draining) return singleErr(req.id,"draining","Daemon is draining");
+    try {
+      if(req.method==="attention.abandon-receipt") {
+        const p=req.params as {scope_id:string;session_id:string;message_id:string;expected_version:number;reason:string;evidence_sha256:string;acknowledge_unknown_effects:boolean};
+        if(!p||p.acknowledge_unknown_effects!==true)throw new Error("explicit_unknown_effects_ack_required");
+        if(ctx.activeSessionSends.has(p.session_id))throw new Error("delivery_in_flight");
+        return singleOk(req.id,new AttentionActions(ctx.supervision.store,ctx.supervision.observer.owner).abandon(p));
+      }
+      if (req.method === "attention.answer") {
+        const p=req.params as {scope_id:string;item_id:string;action_id:string;revision:number;content_hash:string;text:string;takeover:boolean};
+        if (!p || typeof p.takeover!=="boolean" || typeof p.text!=="string")throw new Error("bad_request");
+        const item=ctx.supervision.store.getItem(p.scope_id,p.item_id);if(!item)throw new Error("not_found");
+        const actions=new AttentionActions(ctx.supervision.store,ctx.supervision.observer.owner);
+        const replay=actions.replay(p,ctx.activeSessionSends.get(item.session_id));if(replay)return singleOk(req.id,replay);
+        const session=ctx.sessions.getSession(item.session_id);if(!session)throw new Error("source_missing");
+        const adapter=ctx.adapters.get(session.agent_id);
+        if(!session.resume_supported||!session.native_session_id||!adapter||!isSessionCapableAdapter(adapter)||!adapter.sessionCapabilities().resume)throw new Error("resume_unsupported");
+        if(ctx.activeSessionSends.has(session.session_id))throw new Error("session_busy");
+        const action=actions.reserve(p);
+        if(action.replay)return singleOk(req.id,action);
+        const execution=await executeReservedSessionTurn(ctx,req,{session_id:session.session_id,runtime_id:session.agent_id,turn_id:item.turn_id,message_id:action.message_id,expected_version:action.reservation_version-1,text:p.text},session,adapter,action.reservation_version);
+        return singleOk(req.id,{...actions.reconcile(action),execution_error:execution.error?.code??null});
+      }
+      return singleOk(req.id,await ctx.supervision.handle(req.method,req.params));
+    } catch(error) {return singleErr(req.id,error instanceof Error?error.message:"attention_error","Attention request failed; refresh source facts before retrying");}
+  }
   switch (req.method) {
     case "version":
       return singleOk(req.id, {
@@ -2346,15 +2379,8 @@ async function restoreLoopSessions(ctx: DaemonContext): Promise<void> {
       workspacePath,
       stateFilePath,
     };
-    if (restoredRunOptions.useWorktree === true) {
-      try {
-        await cleanupOrphanedWorktrees(workspacePath, {
-          ...(restoredRunOptions.worktreeRoot !== undefined ? { rootPath: restoredRunOptions.worktreeRoot } : {}),
-        });
-      } catch (err) {
-        process.stderr.write(`osstack: loop orphaned worktree cleanup failed: ${(err as Error).message}\n`);
-      }
-    }
+    // A snapshot cannot prove the previous writer stopped or a side effect failed.
+    // Preserve worktrees and pending tasks; recovery requires explicit inspection.
     const restoredWait = LoopWaitReason.safeParse(saved.waitReason);
     const session: LoopSession = {
       loopSessionId: saved.loopSessionId,
@@ -2362,7 +2388,7 @@ async function restoreLoopSessions(ctx: DaemonContext): Promise<void> {
       stateFilePath,
       intervalMs: saved.intervalMs,
       stopWhenIdle: saved.stopWhenIdle,
-      status: saved.status === "running" ? "running" : saved.status === "stopping" ? "stopped" : saved.status,
+      status: saved.status === "running" || saved.status === "stopping" ? "stopped" : saved.status,
       startedAt: saved.startedAt,
       updatedAt: Date.now(),
       cycleCount: saved.cycleCount,
@@ -2387,10 +2413,11 @@ async function restoreLoopSessions(ctx: DaemonContext): Promise<void> {
       ...(saved.lastJsonPath !== undefined ? { lastJsonPath: saved.lastJsonPath } : {}),
       ...(saved.lastMarkdownPath !== undefined ? { lastMarkdownPath: saved.lastMarkdownPath } : {}),
       ...(saved.lastError !== undefined ? { lastError: saved.lastError } : {}),
-      ...(saved.stopReason !== undefined && saved.status !== "running" ? { stopReason: saved.stopReason } : {}),
+      ...(saved.status === "running" || saved.status === "stopping"
+        ? { stopReason: "recovery_required: previous writer and side effects are unconfirmed; work retained" }
+        : saved.stopReason !== undefined ? { stopReason: saved.stopReason } : {}),
     };
     ctx.loopSessions.set(session.loopSessionId, session);
-    if (session.status === "running") session.done = runLoopSession(ctx, session);
   }
   await persistLoopSessions(ctx);
 }
@@ -2575,7 +2602,7 @@ async function restoreDailySessions(ctx: DaemonContext): Promise<void> {
       intervalMs: saved.intervalMs,
       // An interrupted "stopping" session is treated as stopped on restore (its
       // abort never completed), mirroring loop-session restore semantics.
-      status: saved.status === "running" ? "running" : saved.status === "stopping" ? "stopped" : saved.status,
+      status: saved.status === "running" || saved.status === "stopping" ? "stopped" : saved.status,
       startedAt: saved.startedAt,
       updatedAt: Date.now(),
       tickCount: saved.tickCount ?? 0,
@@ -2585,10 +2612,12 @@ async function restoreDailySessions(ctx: DaemonContext): Promise<void> {
       ...(saved.lastBriefPath !== undefined ? { lastBriefPath: saved.lastBriefPath } : {}),
       ...(saved.lastResultStatus !== undefined ? { lastResultStatus: saved.lastResultStatus } : {}),
       ...(saved.lastError !== undefined ? { lastError: saved.lastError } : {}),
-      ...(saved.stopReason !== undefined && saved.status !== "running" ? { stopReason: saved.stopReason } : {}),
+      ...(saved.status === "running" || saved.status === "stopping"
+        ? { stopReason: "recovery_required: previous writer and side effects are unconfirmed; work retained" }
+        : saved.stopReason !== undefined ? { stopReason: saved.stopReason } : {}),
     };
     ctx.dailySessions.set(session.dailySessionId, session);
-    if (session.status === "running") session.done = runDailySession(ctx, session);
+    // Interrupted sessions remain stopped until an explicit new schedule.
   }
   await persistDailySessions(ctx);
 }
@@ -3525,6 +3554,7 @@ function buildContext(
   const dailySessionsPath = join(home, "daily-sessions.json");
   if (!existsSync(dirname(dbPath))) mkdirSync(dirname(dbPath), { recursive: true });
   const db = openDb({ path: dbPath });
+  try {
   const redactor = new PIIRedactor();
   const adapters = new Map<string, AgentAdapter>();
 
@@ -3546,7 +3576,7 @@ function buildContext(
     dbPath, loopSessionsPath, dailySessionsPath, db, redactor, adapters, policy, hermes, gbrain, kanban, sessions, continuations, collaborator: undefined,
     dashboardUrl: null,
     activeRuns: new Map(),
-    activeSessionSends: new Set(),
+    activeSessionSends: new Map(),
     loopSessions: new Map(),
     dailySessions: new Map(),
     hermesKanbanByRun: new Map(),
@@ -3583,6 +3613,7 @@ function buildContext(
     }),
     lastAutonomyHealth: undefined,
   };
+  } catch (error) { db.close(); throw error; }
 }
 
 export interface DaemonHandles {
@@ -3786,6 +3817,10 @@ export async function startDaemon(
   // Refuse to start when another daemon already owns the pidfile — two
   // daemons would race for the socket and share the SQLite writer.
   const releaseLock = acquireDaemonLock(pidFilePath());
+  let failedContext: DaemonContext | undefined;
+  let stopUpdates: (() => void) | undefined;
+  let failedServer: ReturnType<typeof createServer> | undefined;
+  try {
   cleanupStaleSocket(socketPath);
   // Bring up OTel before the daemon context so spans capture everything.
   await initOtel({ serviceVersion: DAEMON_VERSION });
@@ -3799,6 +3834,8 @@ export async function startDaemon(
       ? {}
       : { readConcurrency: opts.readConcurrency }),
   });
+  failedContext = ctx;
+  if (process.env["OSSTACK_ATTENTION"] === "1") { ctx.supervision = new SupervisionService(ctx.db, ctx.dbPath, process.env["OSSTACK_ATTENTION_NOTIFY"] === "local" ? localAttentionSender(osstackHome()) : undefined); ctx.supervision.start(); }
   ctx.collaborator = new SessionCollaborator({
     repository: ctx.continuations,
     adapters: ctx.adapters,
@@ -3844,6 +3881,7 @@ export async function startDaemon(
     );
   }
   const stopUpdateChecker = startUpdateChecker();
+  stopUpdates = stopUpdateChecker;
   let dashboard: DashboardServerHandle | null = null;
 
   const server = createServer((sock: Socket) => {
@@ -3893,7 +3931,7 @@ export async function startDaemon(
               if (resp === null) return;
               try { sock.write(encodeFrame(resp)); } catch { /* socket gone */ }
             },
-          ).finally(recordLatency);
+          ).catch(() => {try {sock.write(encodeFrame(singleErr(req.id,"internal","Request failed; inspect persisted receipts before retrying")));} catch {/* disconnected */}}).finally(recordLatency);
         }
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
@@ -3905,7 +3943,9 @@ export async function startDaemon(
     sock.on("error", () => { /* don't crash on client hangups */ });
   });
 
-  return new Promise((resolve, reject) => {
+  failedServer = server;
+  ctx.collaborator?.recover();
+  return await new Promise((resolve, reject) => {
     server.once("error", reject);
     void Promise.all([restoreLoopSessions(ctx), restoreDailySessions(ctx)]).then(() => {
       server.listen(socketPath, () => {
@@ -3969,11 +4009,12 @@ export async function startDaemon(
         if (shutdownPromise !== undefined) return await shutdownPromise;
         process.off("SIGTERM", onSig);
         process.off("SIGINT", onSig);
-        stopUpdateChecker();
+        try { stopUpdateChecker(); } catch { /* cleanup must continue */ }
         if (healthMonitor !== undefined) clearInterval(healthMonitor);
         shutdownPromise = (async () => {
           ctx.draining = true;
-          const collaboratorStopped = ctx.collaborator?.stop();
+          await ctx.supervision?.stop();
+          const collaboratorStopped = Promise.resolve().then(() => ctx.collaborator?.stop());
           // Abort any active runs so adapters get a chance to clean up.
           for (const ac of ctx.activeRuns.values()) ac.abort();
           for (const session of ctx.loopSessions.values()) {
@@ -3997,11 +4038,14 @@ export async function startDaemon(
             collaboratorStopped,
           ]);
           await new Promise<void>((resolveClose) => server.close(() => resolveClose()));
-          if (dashboard !== null) await dashboard.close();
-          try { ctx.db.close(); } catch { /* swallow */ }
-          try { cleanupStaleSocket(socketPath); } catch { /* swallow */ }
-          try { releaseLock(); } catch { /* swallow */ }
-          await shutdownOtel();
+          try { if (dashboard !== null) await dashboard.close(); }
+          finally {
+            try { ctx.db.close(); }
+            finally {
+              try { cleanupStaleSocket(socketPath); } catch { /* diagnostics only */ }
+              try { await shutdownOtel(); } finally { releaseLock(); }
+            }
+          }
         })();
         return await shutdownPromise;
       };
@@ -4035,9 +4079,26 @@ export async function startDaemon(
         process.stderr.write(`osstack: dashboard server failed: ${(err as Error).message}\n`);
       });
 
-      ctx.collaborator?.recover();
       resolve({ close: shutdown, socketPath, dbPath: ctx.dbPath });
       });
     }).catch(reject);
   });
+  } catch (error) {
+    // Preserve the startup error; every acquired resource gets its own cleanup.
+    try { stopUpdates?.(); } catch { /* continue cleanup */ }
+    if (failedContext) {
+      failedContext.draining = true;
+      await failedContext.supervision?.stop();
+      const stopped = Promise.resolve().then(() => failedContext!.collaborator?.stop());
+      for (const session of [...failedContext.dailySessions.values(), ...failedContext.loopSessions.values()]) {
+        session.shutdownRequested = true; session.abort.abort();
+      }
+      await Promise.allSettled([stopped, ...[...failedContext.dailySessions.values(), ...failedContext.loopSessions.values()].map((session) => session.done)]);
+    }
+    try { if (failedServer) await new Promise<void>((done) => failedServer!.close(() => done())); } catch { /* unbound */ }
+    try { failedContext?.db.close(); } catch { /* continue cleanup */ }
+    try { await shutdownOtel(); } catch { /* preserve original error */ }
+    finally { releaseLock(); }
+    throw error;
+  }
 }

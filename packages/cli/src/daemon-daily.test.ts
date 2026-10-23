@@ -201,7 +201,7 @@ describe("daemon daily RPC (R2.3)", () => {
     expect(stopped.last_result_status).toBe("error");
   });
 
-  it("restores a running session after daemon restart and it keeps ticking", async () => {
+  it("retains an interrupted daily session without automatically replaying its effects", async () => {
     const registry = await seedRegistry();
     daemon = await startDaemon({ socketPath: `/tmp/osstack-daemon-daily-${randomUUID()}.sock` });
     const scheduleResp = await daemonRpc(daemon.socketPath, "daily.schedule", {
@@ -218,9 +218,14 @@ describe("daemon daily RPC (R2.3)", () => {
     const after = await waitForDaily(
       daemon.socketPath,
       sessionId,
-      (candidate) => candidate.status === "running" && candidate.tick_count > before.tick_count,
+      (candidate) => candidate.status === "stopped",
     );
-    expect(after).toMatchObject({ daily_session_id: sessionId, status: "running", interval_ms: 20 });
+    expect(after).toMatchObject({ daily_session_id: sessionId, status: "stopped", interval_ms: 20 });
+    expect(after.stop_reason).toContain("recovery_required");
+    expect(after.tick_count).toBeGreaterThanOrEqual(before.tick_count);
+    await sleep(60);
+    const retained = await waitForDaily(daemon.socketPath, sessionId, (candidate) => candidate.status === "stopped");
+    expect(retained.tick_count).toBe(after.tick_count);
 
     const stopResp = await daemonRpc(daemon.socketPath, "daily.stop", { dailySessionId: sessionId });
     expect(stopResp.ok).toBe(true);
