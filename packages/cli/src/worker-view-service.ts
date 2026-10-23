@@ -95,7 +95,7 @@ const projection = (version: number) => `SELECT p.kind, substr(p.id,1,257) AS id
     AND m.direction='inbound' AND m.state IN ('pending','accepted','failed')) AS uncertain_delivery,
   EXISTS(SELECT 1 FROM session_messages m WHERE m.session_id=p.session_id
     AND m.direction='inbound' AND m.state IN ('pending','accepted','failed')
-    ${version >= 41 ? "AND NOT EXISTS(SELECT 1 FROM attention_receipt_resolutions r WHERE r.message_id=m.message_id AND r.session_id=m.session_id)" : ""}) AS unresolved_delivery
+    ${version >= 41 ? "AND NOT EXISTS(SELECT 1 FROM attention_receipt_resolutions r WHERE r.message_id=m.message_id AND r.session_id=m.session_id AND r.disposition='abandoned_unknown')" : ""}) AS unresolved_delivery
   FROM sources p LEFT JOIN session_turns turn ON turn.session_id=p.session_id
     AND turn.ordinal=(SELECT max(ordinal) FROM session_turns WHERE session_id=p.session_id)`;
 
