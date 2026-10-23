@@ -1,0 +1,13 @@
+{
+  "checks": [
+    {
+      "command": "git diff --check",
+      "exit_code": 0
+    },
+    {
+      "command": "git diff --cached --check",
+      "exit_code": 0
+    }
+  ],
+  "note": "Frozen audit contexts/excerpts retain original whitespace under narrowly scoped .gitattributes; source and authored docs remain checked."
+}

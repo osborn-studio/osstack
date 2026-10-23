@@ -1,0 +1,20 @@
+{
+  "subjects": 100,
+  "historical_turns": 1000,
+  "items": 1000,
+  "coverage": "covered",
+  "watch_ms": 119.85433299923898,
+  "inventory_rpc_p95_ms": 0.8137920003719046,
+  "inventory_samples": 100,
+  "hook_version": "2.1.291",
+  "hook_model_usage": [
+    "claude-haiku-5-5"
+  ],
+  "hook_reminder_sent": 1,
+  "duplicate_reminder": null,
+  "brief_total": 1000,
+  "brief_returned": 3,
+  "scratch": "/Volumes/AIMATE_WORK/tmp/osstack/smoke/attention-pilot-f952b2",
+  "production_home_touched": false,
+  "model_calls_in_observer": 0
+}

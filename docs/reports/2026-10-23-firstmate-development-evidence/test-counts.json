@@ -1,0 +1,26 @@
+{
+  "passed": 2520,
+  "packages": {
+    "packages/contracts": 15,
+    "packages/compliance": 17,
+    "packages/github": 60,
+    "packages/runtime": 1,
+    "packages/knowledge": 31,
+    "packages/protocol": 142,
+    "packages/governance": 301,
+    "packages/knowledge-cloud": 36,
+    "packages/core": 340,
+    "packages/hermes-adapter": 22,
+    "packages/plugins": 1,
+    "packages/skill-registry": 3,
+    "packages/skills": 2,
+    "packages/neat-eval": 16,
+    "packages/autonomy": 161,
+    "packages/agents": 138,
+    "packages/config": 30,
+    "packages/loop": 245,
+    "packages/supervisor": 65,
+    "packages/conformance": 9,
+    "packages/cli": 885
+  }
+}

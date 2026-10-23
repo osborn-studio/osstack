@@ -735,6 +735,10 @@ epochs, and the loop self-improvement hook). Next priorities:
 - optional notarized macOS release channel;
 - deeper agent scorecard learning.
 
+## Task attention
+
+`osstack attention status` reads scoped task/session snapshots. Opt-in background observation adds a persistent decision inbox, explicit answers and handoff receipts, local notifications, and a bounded Claude Code Stop hook. See [Attention guide](docs/guides/attention.md) for activation, recovery behavior, and the distinction between observation and execution authority.
+
 ## License
 
 MIT

@@ -1,0 +1,362 @@
+[
+  {
+    "id": "F01",
+    "repository": "firstmate",
+    "path": "bin/fm-busy-lib.sh",
+    "start_line": 269,
+    "end_line": 321,
+    "sha256": "912eee8e6578b2b480ed970ebaecd2c342d26e3a8dc79650c06be6f8de234ff8",
+    "url": "https://github.com/kunchenguid/firstmate/blob/af1c6817fc47589b162cbc361671c43cdb150933/bin/fm-busy-lib.sh#L269"
+  },
+  {
+    "id": "F02",
+    "repository": "firstmate",
+    "path": "bin/fm-busy-lib.sh",
+    "start_line": 1027,
+    "end_line": 1111,
+    "sha256": "912eee8e6578b2b480ed970ebaecd2c342d26e3a8dc79650c06be6f8de234ff8",
+    "url": "https://github.com/kunchenguid/firstmate/blob/af1c6817fc47589b162cbc361671c43cdb150933/bin/fm-busy-lib.sh#L1027"
+  },
+  {
+    "id": "F03",
+    "repository": "firstmate",
+    "path": "bin/fm-busy-event.sh",
+    "start_line": 1,
+    "end_line": 45,
+    "sha256": "d2dd303d5260d17a4a8c2e92de3e5f28ac1fb957500a59c37fb583c9ee126dbc",
+    "url": "https://github.com/kunchenguid/firstmate/blob/af1c6817fc47589b162cbc361671c43cdb150933/bin/fm-busy-event.sh#L1"
+  },
+  {
+    "id": "F04",
+    "repository": "firstmate",
+    "path": "bin/fm-wake-lib.sh",
+    "start_line": 196,
+    "end_line": 217,
+    "sha256": "d2c1f7f1d599cd1035575807097d2a4b3258bb519316c1f341b17378894cf88d",
+    "url": "https://github.com/kunchenguid/firstmate/blob/af1c6817fc47589b162cbc361671c43cdb150933/bin/fm-wake-lib.sh#L196"
+  },
+  {
+    "id": "F05",
+    "repository": "firstmate",
+    "path": "bin/fm-turnend-guard.sh",
+    "start_line": 1,
+    "end_line": 85,
+    "sha256": "2359dd92cc1324153caab79d9c7082a6df1083bc0cfc83f28f697ef9ecb3456b",
+    "url": "https://github.com/kunchenguid/firstmate/blob/af1c6817fc47589b162cbc361671c43cdb150933/bin/fm-turnend-guard.sh#L1"
+  },
+  {
+    "id": "F06",
+    "repository": "firstmate",
+    "path": "docs/captain-hold-lifecycle.md",
+    "start_line": 26,
+    "end_line": 136,
+    "sha256": "c409663250d2be694998acab619837a651a51524ed9301966c93bd8b32aff5f4",
+    "url": "https://github.com/kunchenguid/firstmate/blob/af1c6817fc47589b162cbc361671c43cdb150933/docs/captain-hold-lifecycle.md#L26"
+  },
+  {
+    "id": "F07",
+    "repository": "firstmate",
+    "path": "bin/fm-classify-lib.sh",
+    "start_line": 896,
+    "end_line": 975,
+    "sha256": "0bb6d8f8f72d79443d12704687ed2c42c92a21053d3fd8c8b5bf99c508ae1bc4",
+    "url": "https://github.com/kunchenguid/firstmate/blob/af1c6817fc47589b162cbc361671c43cdb150933/bin/fm-classify-lib.sh#L896"
+  },
+  {
+    "id": "F08",
+    "repository": "firstmate",
+    "path": "docs/fleet-ledger.md",
+    "start_line": 63,
+    "end_line": 89,
+    "sha256": "6e888074cddcead3e1644e77ad13ebab4a7cb23a2d5b18458a1d019eb9d4cbfd",
+    "url": "https://github.com/kunchenguid/firstmate/blob/af1c6817fc47589b162cbc361671c43cdb150933/docs/fleet-ledger.md#L63"
+  },
+  {
+    "id": "F09",
+    "repository": "firstmate",
+    "path": "bin/fm-lease-lib.sh",
+    "start_line": 1,
+    "end_line": 98,
+    "sha256": "f6880b43a333ea8b947282c46f52f414895a8a140dd307d9b2b57fba0bd55687",
+    "url": "https://github.com/kunchenguid/firstmate/blob/af1c6817fc47589b162cbc361671c43cdb150933/bin/fm-lease-lib.sh#L1"
+  },
+  {
+    "id": "F10",
+    "repository": "firstmate",
+    "path": "bin/fm-dod-lib.sh",
+    "start_line": 831,
+    "end_line": 895,
+    "sha256": "32acebb52d6d55eedab0792e68e121695b4c9f116a621ecfa85138dc9090ca22",
+    "url": "https://github.com/kunchenguid/firstmate/blob/af1c6817fc47589b162cbc361671c43cdb150933/bin/fm-dod-lib.sh#L831"
+  },
+  {
+    "id": "F11",
+    "repository": "firstmate",
+    "path": "bin/fm-backend.sh",
+    "start_line": 1180,
+    "end_line": 1249,
+    "sha256": "5ff7ed0a730e4336821359afde3196753487e8587ba27ac20dfdd36111adfe1f",
+    "url": "https://github.com/kunchenguid/firstmate/blob/af1c6817fc47589b162cbc361671c43cdb150933/bin/fm-backend.sh#L1180"
+  },
+  {
+    "id": "F12",
+    "repository": "firstmate",
+    "path": "docs/codex-app-backend.md",
+    "start_line": 1,
+    "end_line": 57,
+    "sha256": "acf624b55c9d455d44982ee7363dc5888276bc215a94abb08f58fd0689706690",
+    "url": "https://github.com/kunchenguid/firstmate/blob/af1c6817fc47589b162cbc361671c43cdb150933/docs/codex-app-backend.md#L1"
+  },
+  {
+    "id": "F13",
+    "repository": "firstmate",
+    "path": "docs/remote-secondmates.md",
+    "start_line": 602,
+    "end_line": 613,
+    "sha256": "8f0d36d7e88568caaabf323b3da67f7f2f074ae147bb0866409f6f7a683f7e00",
+    "url": "https://github.com/kunchenguid/firstmate/blob/af1c6817fc47589b162cbc361671c43cdb150933/docs/remote-secondmates.md#L602"
+  },
+  {
+    "id": "F14",
+    "repository": "firstmate",
+    "path": ".agents/skills/stow/SKILL.md",
+    "start_line": 19,
+    "end_line": 63,
+    "sha256": "c342f585d30973fae0e86a86e5aa9c796ef75b561ebbcd92331038d30b427c9d",
+    "url": "https://github.com/kunchenguid/firstmate/blob/af1c6817fc47589b162cbc361671c43cdb150933/.agents/skills/stow/SKILL.md#L19"
+  },
+  {
+    "id": "F15",
+    "repository": "firstmate",
+    "path": "bin/fm-teardown.sh",
+    "start_line": 31,
+    "end_line": 90,
+    "sha256": "4a7630a5c47916f6672ea0a39a70bd5155266f66be89dde931dea1ce0f899101",
+    "url": "https://github.com/kunchenguid/firstmate/blob/af1c6817fc47589b162cbc361671c43cdb150933/bin/fm-teardown.sh#L31"
+  },
+  {
+    "id": "F16",
+    "repository": "firstmate",
+    "path": "docs/supervision-host.md",
+    "start_line": 1,
+    "end_line": 70,
+    "sha256": "efd6c0af76a7e451fa9f98c673f24e48df1745ef0809ad0230181c9c58d9f274",
+    "url": "https://github.com/kunchenguid/firstmate/blob/af1c6817fc47589b162cbc361671c43cdb150933/docs/supervision-host.md#L1"
+  },
+  {
+    "id": "O01",
+    "repository": "osstack",
+    "path": "packages/agents/src/session.ts",
+    "start_line": 1,
+    "end_line": 120,
+    "sha256": "5e99fac22134e8795d504c373c327db384205a935f596190770f01140fc61a69",
+    "url": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack/packages/agents/src/session.ts:1"
+  },
+  {
+    "id": "O02",
+    "repository": "osstack",
+    "path": "packages/cli/src/session-wait.ts",
+    "start_line": 1,
+    "end_line": 43,
+    "sha256": "f6a124608662d01556e0da695e963a84f787c1a9dac15706a609e60629894f12",
+    "url": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack/packages/cli/src/session-wait.ts:1"
+  },
+  {
+    "id": "O03",
+    "repository": "osstack",
+    "path": "packages/core/src/state/sessions.ts",
+    "start_line": 157,
+    "end_line": 216,
+    "sha256": "923c69781b1bdf9370e92cefeaef2fdb8128c2105eb5bf20f4163d37d84d5710",
+    "url": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack/packages/core/src/state/sessions.ts:157"
+  },
+  {
+    "id": "O04",
+    "repository": "osstack",
+    "path": "packages/cli/src/session-collaborator.ts",
+    "start_line": 45,
+    "end_line": 137,
+    "sha256": "729f6511dbded2ee064e265f8e4022bc7e6ecbbccdc0da251f1f190f8db1c62f",
+    "url": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack/packages/cli/src/session-collaborator.ts:45"
+  },
+  {
+    "id": "O05",
+    "repository": "osstack",
+    "path": "packages/core/src/state/notification-outbox.ts",
+    "start_line": 1,
+    "end_line": 116,
+    "sha256": "1b45e871dda18f933e95a97098bb3c32be64c006d1ec38a9a9fc6714f74bce54",
+    "url": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack/packages/core/src/state/notification-outbox.ts:1"
+  },
+  {
+    "id": "O06",
+    "repository": "osstack",
+    "path": "packages/cli/src/daemon.ts",
+    "start_line": 3424,
+    "end_line": 3479,
+    "sha256": "9e5ef8efa61a61f41094aeb2ac56140f94c3ead9fa9339578615c2881c9448e2",
+    "url": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack/packages/cli/src/daemon.ts:3424"
+  },
+  {
+    "id": "O07",
+    "repository": "osstack",
+    "path": "packages/cli/src/daemon.ts",
+    "start_line": 2303,
+    "end_line": 2360,
+    "sha256": "9e5ef8efa61a61f41094aeb2ac56140f94c3ead9fa9339578615c2881c9448e2",
+    "url": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack/packages/cli/src/daemon.ts:2303"
+  },
+  {
+    "id": "O08",
+    "repository": "osstack",
+    "path": "packages/agents/src/worktree.ts",
+    "start_line": 109,
+    "end_line": 149,
+    "sha256": "db3c3dee400b2587e8dc7895ed50d16552ee3484bad5b8ed3e9dd48a9190e99c",
+    "url": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack/packages/agents/src/worktree.ts:109"
+  },
+  {
+    "id": "O09",
+    "repository": "osstack",
+    "path": "packages/cli/src/daemon-lock.ts",
+    "start_line": 1,
+    "end_line": 50,
+    "sha256": "188000fcd9d82c90ea7aca53b1ea215a2e1f5e6b1a086a95c9fe5ce356f45047",
+    "url": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack/packages/cli/src/daemon-lock.ts:1"
+  },
+  {
+    "id": "O10",
+    "repository": "osstack",
+    "path": "packages/cli/src/graph-command.ts",
+    "start_line": 159,
+    "end_line": 180,
+    "sha256": "486a8dfa8303f6daa8824c85c739337e7fcd6c078dc27f29f9ed211662bdd98b",
+    "url": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack/packages/cli/src/graph-command.ts:159"
+  },
+  {
+    "id": "O11",
+    "repository": "osstack",
+    "path": "packages/cli/src/daily-command.ts",
+    "start_line": 1,
+    "end_line": 20,
+    "sha256": "d28ca8873c8dad354c6846cf14892a45d239e8910a98f360cf03546b5c2c6009",
+    "url": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack/packages/cli/src/daily-command.ts:1"
+  },
+  {
+    "id": "O12",
+    "repository": "osstack",
+    "path": "packages/agents/src/adapters/codex-cli.ts",
+    "start_line": 1,
+    "end_line": 28,
+    "sha256": "b3395ca0959a1aa029b0b6de43104f914eb1aa9f7aac1b148587562a116811ba",
+    "url": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack/packages/agents/src/adapters/codex-cli.ts:1"
+  },
+  {
+    "id": "O13",
+    "repository": "osstack",
+    "path": "packages/cli/src/daemon.ts",
+    "start_line": 700,
+    "end_line": 837,
+    "sha256": "9e5ef8efa61a61f41094aeb2ac56140f94c3ead9fa9339578615c2881c9448e2",
+    "url": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack/packages/cli/src/daemon.ts:700"
+  },
+  {
+    "id": "O14",
+    "repository": "osstack",
+    "path": "packages/core/src/state/sessions.ts",
+    "start_line": 290,
+    "end_line": 383,
+    "sha256": "923c69781b1bdf9370e92cefeaef2fdb8128c2105eb5bf20f4163d37d84d5710",
+    "url": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack/packages/core/src/state/sessions.ts:290"
+  },
+  {
+    "id": "O15",
+    "repository": "osstack",
+    "path": "packages/core/src/state/migrations.ts",
+    "start_line": 1225,
+    "end_line": 1356,
+    "sha256": "ebf89e8eaceb6fafabcac61748777d6e6dcaabbcf9e67a53aff1d35a73396c61",
+    "url": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack/packages/core/src/state/migrations.ts:1225"
+  },
+  {
+    "id": "O16",
+    "repository": "osstack",
+    "path": "packages/supervisor/package.json",
+    "start_line": 1,
+    "end_line": 36,
+    "sha256": "65116c1d6a4880b013aa09f21afc3f83839170e9173a799f014077d60ec1ddcd",
+    "url": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack/packages/supervisor/package.json:1"
+  },
+  {
+    "id": "O17",
+    "repository": "osstack",
+    "path": "packages/cli/src/graph-command.ts",
+    "start_line": 78,
+    "end_line": 98,
+    "sha256": "486a8dfa8303f6daa8824c85c739337e7fcd6c078dc27f29f9ed211662bdd98b",
+    "url": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack/packages/cli/src/graph-command.ts:78"
+  },
+  {
+    "id": "O18",
+    "repository": "osstack",
+    "path": "packages/core/src/state/migrations.ts",
+    "start_line": 12,
+    "end_line": 68,
+    "sha256": "ebf89e8eaceb6fafabcac61748777d6e6dcaabbcf9e67a53aff1d35a73396c61",
+    "url": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack/packages/core/src/state/migrations.ts:12"
+  },
+  {
+    "id": "O19",
+    "repository": "osstack",
+    "path": "packages/core/src/state/migrations.ts",
+    "start_line": 125,
+    "end_line": 151,
+    "sha256": "ebf89e8eaceb6fafabcac61748777d6e6dcaabbcf9e67a53aff1d35a73396c61",
+    "url": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack/packages/core/src/state/migrations.ts:125"
+  },
+  {
+    "id": "O20",
+    "repository": "osstack",
+    "path": "packages/core/src/state/session-continuations.ts",
+    "start_line": 135,
+    "end_line": 155,
+    "sha256": "c400826b890a4d1fd249796195c7ad5e3e2b071065740498ed46c4fd7bdb6651",
+    "url": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack/packages/core/src/state/session-continuations.ts:135"
+  },
+  {
+    "id": "O21",
+    "repository": "osstack",
+    "path": "packages/core/src/state/session-continuations.ts",
+    "start_line": 274,
+    "end_line": 306,
+    "sha256": "c400826b890a4d1fd249796195c7ad5e3e2b071065740498ed46c4fd7bdb6651",
+    "url": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack/packages/core/src/state/session-continuations.ts:274"
+  },
+  {
+    "id": "O22",
+    "repository": "osstack",
+    "path": "packages/core/src/state/session-continuations.ts",
+    "start_line": 178,
+    "end_line": 235,
+    "sha256": "c400826b890a4d1fd249796195c7ad5e3e2b071065740498ed46c4fd7bdb6651",
+    "url": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack/packages/core/src/state/session-continuations.ts:178"
+  },
+  {
+    "id": "O23",
+    "repository": "osstack",
+    "path": "packages/loop/src/loop-engine.ts",
+    "start_line": 1199,
+    "end_line": 1223,
+    "sha256": "26636b8a432d928efbaa85d516528d66d560d14229c98a57dc6cc786a2516f71",
+    "url": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack/packages/loop/src/loop-engine.ts:1199"
+  },
+  {
+    "id": "O24",
+    "repository": "osstack",
+    "path": "packages/agents/src/adapters/codex-cli.ts",
+    "start_line": 365,
+    "end_line": 394,
+    "sha256": "b3395ca0959a1aa029b0b6de43104f914eb1aa9f7aac1b148587562a116811ba",
+    "url": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack/packages/agents/src/adapters/codex-cli.ts:365"
+  }
+]

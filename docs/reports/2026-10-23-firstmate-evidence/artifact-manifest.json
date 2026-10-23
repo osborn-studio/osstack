@@ -1,0 +1,152 @@
+[
+  {
+    "path": "docs/design/2026-10-23-firstmate-capability-adoption.md",
+    "bytes": 48495,
+    "sha256": "6d7a49b9e62ae7442ac6a476b510aa7e1ea9256372a9936a72d861c9dc9b2347"
+  },
+  {
+    "path": "docs/plans/2026-10-23-firstmate-adoption-plan.md",
+    "bytes": 17465,
+    "sha256": "0fa4e248c33ab5474ae1c8200c9e5939c0d599a452164df54ae409115b0f54ca"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-analysis.md",
+    "bytes": 21630,
+    "sha256": "7117167367ac328095fdcb9087b5ac05f7f8c8aecf161b6860bf03d3eeef842e"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-claude-audit.md",
+    "bytes": 8184,
+    "sha256": "49b89033f875a2d3b7f202b866a6b2c872f4c74d5aa9e8975e223262ee5f4f6f"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-evidence/README.md",
+    "bytes": 4252,
+    "sha256": "30484ae73863f508b1fe3d8735a563cb09a269a20d6c6e4b47d38edbe5fbba9e"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-evidence/claude-round1-context.md",
+    "bytes": 131225,
+    "sha256": "d8e4fff9a01e5e57176c2716aa765f755503154da1f9309999d7b33ddc921a92"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-evidence/claude-round1.json",
+    "bytes": 11748,
+    "sha256": "1cb34e9d8f56423b2d78ae2c319099f767668e94b801fc9cf86bec94fc6e2ac8"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-evidence/claude-round1.md",
+    "bytes": 9847,
+    "sha256": "8433ebef82b2ab5b9e2285a59b6ae37645059e15193f06d48bfe279e82d494e2"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-evidence/claude-round1.stderr.txt",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-evidence/claude-round2-context.md",
+    "bytes": 197516,
+    "sha256": "096714532213ffc88b97e40c4539d9d28cbd56c6eaae183e796e2ca126479501"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-evidence/claude-round2.json",
+    "bytes": 9347,
+    "sha256": "5907b8d92f014e14fa71d4743f762b554317128513a7faeebf341c980b3f8a3e"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-evidence/claude-round2.md",
+    "bytes": 7443,
+    "sha256": "1bf4f920ef7f901ce169622e5902b644f69f02f5d1620bb50905f697be202f02"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-evidence/claude-round2.stderr.txt",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-evidence/claude-round3-context.md",
+    "bytes": 115670,
+    "sha256": "63e467c5c90bf066e754956272b9ea33fd3b5b0b7f50876b21ed12c1a0ef252f"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-evidence/claude-round3.json",
+    "bytes": 7194,
+    "sha256": "deb2845ac180db2df0f9a779595f5897536e616044fc555e4450bb9afb2bae6c"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-evidence/claude-round3.md",
+    "bytes": 5329,
+    "sha256": "37c49d62e350bebcbcdacdd601403fe3398c8eac7cab343d82c96ca121e52eef"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-evidence/claude-round3.stderr.txt",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-evidence/final-validation.json",
+    "bytes": 1123,
+    "sha256": "ff37829de1f227c1839d39a01dab908226a5b5602c05a7f98faa93571ab96839"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-evidence/firstmate-LICENSE.txt",
+    "bytes": 1065,
+    "sha256": "945016bd37e1ba7211622ef60ee1d23ab727896ba7710edd21e8fbe983863969"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-evidence/firstmate-source-manifest.json",
+    "bytes": 137621,
+    "sha256": "5d210d602b8040b2bc2e65536e12b1bee45dca78de1e3aa5a2fdcb2220ac4339"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-evidence/model-probe.json",
+    "bytes": 1801,
+    "sha256": "a2ea09ef6db93f8badcec661da6dc1e421ae1c0d441be70612bf087fd20d03cf"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-evidence/osstack-initial-status.txt",
+    "bytes": 4345,
+    "sha256": "2588b3139c0fe3a89c39e3334ce59b3782239be05f28ea4d79c94bcd627fc490"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-evidence/osstack-source-manifest.json",
+    "bytes": 2999,
+    "sha256": "f9a39bd3cd98bf11bcf5c97930fee18b7702895cfd20ae1553e67a0dccd96748"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-evidence/source-excerpts-round2-addendum.md",
+    "bytes": 23387,
+    "sha256": "1e65606605b9b3beced57e0ad5da766f136c0e9fd399672370c8b6e76b228823"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-evidence/source-excerpts-round3-addendum.md",
+    "bytes": 13928,
+    "sha256": "6ddff2c541bf8221b1506f5399266c75a82b5ee1b36e5debb8e52c77584a08f8"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-evidence/source-excerpts.md",
+    "bytes": 102159,
+    "sha256": "42b08ce8e4e22327cefad297c1259bd5245c48519c8a015f1e070669d06a07f2"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-evidence/source-index.json",
+    "bytes": 13466,
+    "sha256": "c4b3e5108828fee7dcfdf863144d40d0bc7e54e3ce84098115598f9466dd5080"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-evidence/upstream-tests.log",
+    "bytes": 7439,
+    "sha256": "ac1ace5095c3a6d5fcd7d080bf549648145ad2f933e60d746cafe985df3251e9"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-evidence/upstream-validation.json",
+    "bytes": 906,
+    "sha256": "f319e57d490c6e04ca41002f91ac67621ecaed723fc318c2895969194a2a1713"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-evidence/validate-research.py",
+    "bytes": 6069,
+    "sha256": "eceb43dba8672c6d84dac667a9d4bc2c5788bb7a95b7673f156d5daa5c19fc51"
+  }
+]

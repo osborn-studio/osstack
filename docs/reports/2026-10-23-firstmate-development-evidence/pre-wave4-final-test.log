@@ -1,0 +1,1085 @@
+$ pnpm -r test
+Scope: 21 of 22 workspace projects
+packages/compliance test$ vitest run --passWithNoTests
+packages/governance test$ vitest run --passWithNoTests
+packages/contracts test$ vitest run
+packages/github test$ vitest run --passWithNoTests
+packages/contracts test:  RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack/packages/contracts
+packages/github test:  RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack/packages/github
+packages/compliance test:  RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack/packages/compliance
+packages/governance test:  RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack/packages/governance
+packages/governance test:  ✓ src/probe/priority.test.ts (7 tests) 10ms
+packages/contracts test:  ✓ src/validator.test.ts (3 tests) 26ms
+packages/contracts test:  ✓ src/hub-package.test.ts (12 tests) 46ms
+packages/github test:  ✓ src/branch-scorer.test.ts (7 tests) 3ms
+packages/github test:  ✓ src/report.test.ts (1 test) 3ms
+packages/contracts test:  Test Files  2 passed (2)
+packages/contracts test:       Tests  15 passed (15)
+packages/contracts test:    Start at  09:52:30
+packages/contracts test:    Duration  958ms (transform 78ms, setup 88ms, collect 67ms, tests 71ms, environment 0ms, prepare 533ms)
+packages/github test:  ✓ src/delivery.test.ts (18 tests) 29ms
+packages/github test:  ✓ src/stack.test.ts (15 tests) 13ms
+packages/compliance test:  ✓ src/index.test.ts (17 tests) 138ms
+packages/compliance test:  Test Files  1 passed (1)
+packages/compliance test:       Tests  17 passed (17)
+packages/compliance test:    Start at  09:52:30
+packages/compliance test:    Duration  1.04s (transform 77ms, setup 105ms, collect 70ms, tests 138ms, environment 0ms, prepare 183ms)
+packages/github test:  ✓ src/branch-scanner.test.ts (7 tests) 6ms
+packages/github test:  ✓ src/attention-ci.test.ts (2 tests) 4ms
+packages/github test:  ✓ src/portfolio-status.test.ts (10 tests) 12ms
+packages/github test:  Test Files  7 passed (7)
+packages/github test:       Tests  60 passed (60)
+packages/github test:    Start at  09:52:30
+packages/github test:    Duration  1.14s (transform 273ms, setup 617ms, collect 846ms, tests 71ms, environment 1ms, prepare 970ms)
+packages/contracts test: Done
+packages/knowledge test$ vitest run --passWithNoTests
+packages/compliance test: Done
+packages/protocol test$ vitest run
+packages/github test: Done
+packages/runtime test$ vitest run --passWithNoTests
+packages/governance test:  ✓ src/knowledge-hygiene/rules/rules.test.ts (9 tests) 12ms
+packages/governance test:  ✓ src/knowledge-hygiene/adapters/probe-artifacts.test.ts (3 tests) 80ms
+packages/governance test:  ✓ src/knowledge-hygiene/dependency.test.ts (2 tests) 41ms
+packages/governance test:  ✓ src/knowledge-hygiene/engine-v2.test.ts (5 tests) 65ms
+packages/governance test:  ✓ src/knowledge-hygiene/engine.test.ts (7 tests) 142ms
+packages/knowledge test:  RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack/packages/knowledge
+packages/protocol test:  RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack/packages/protocol
+packages/governance test:  ✓ src/knowledge-hygiene/transaction-applier.test.ts (9 tests) 506ms
+packages/governance test:  ✓ src/knowledge-hygiene/semantic-engine.test.ts (5 tests) 313ms
+packages/governance test:  ✓ src/knowledge-hygiene/patch-applier.test.ts (4 tests) 224ms
+packages/runtime test:  RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack/packages/runtime
+packages/governance test:  ✓ src/knowledge-hygiene/repository-reader.test.ts (4 tests) 44ms
+packages/governance test:  ✓ src/knowledge-hygiene/patch-provider.test.ts (5 tests) 240ms
+packages/governance test:  ✓ src/knowledge-hygiene/instruction-source.test.ts (6 tests) 35ms
+packages/governance test:  ✓ src/knowledge-hygiene/config.test.ts (18 tests) 199ms
+packages/governance test:  ✓ src/knowledge-hygiene/osstack-config.test.ts (1 test) 1161ms
+packages/governance test:    ✓ osstack neat dogfood config > keeps declared obligations real and the full audit clean  1160ms
+packages/protocol test:  ✓ src/session-continuation-grant.test.ts (52 tests) 13ms
+packages/protocol test:  ✓ src/attention.test.ts (1 test) 2ms
+packages/governance test:  ✓ src/knowledge-hygiene/adapters/claude-code-memory.test.ts (4 tests) 19ms
+packages/governance test:  ✓ src/probe/render.test.ts (2 tests) 277ms
+packages/protocol test:  ✓ src/session-continuation.test.ts (7 tests) 8ms
+packages/knowledge test:  ✓ src/pack.test.ts (31 tests) 471ms
+packages/knowledge test:  Test Files  1 passed (1)
+packages/knowledge test:       Tests  31 passed (31)
+packages/knowledge test:    Start at  09:52:31
+packages/knowledge test:    Duration  1.23s (transform 110ms, setup 41ms, collect 213ms, tests 471ms, environment 0ms, prepare 125ms)
+packages/protocol test:  ✓ src/autonomy.test.ts (11 tests) 5ms
+packages/governance test:  ✓ src/knowledge-hygiene/adapters/codex-local-memory.test.ts (4 tests) 60ms
+packages/protocol test:  ✓ src/schemas.test.ts (22 tests) 6ms
+packages/protocol test:  ✓ src/protocol.test.ts (49 tests) 13ms
+packages/runtime test:  ✓ src/index.test.ts (1 test) 1ms
+packages/governance test:  ✓ src/knowledge-hygiene/narrative-detector.test.ts (4 tests) 31ms
+packages/governance test:  ✓ src/knowledge-hygiene/rules/reference-rule.test.ts (5 tests) 112ms
+packages/runtime test:  Test Files  1 passed (1)
+packages/runtime test:       Tests  1 passed (1)
+packages/runtime test:    Start at  09:52:32
+packages/runtime test:    Duration  823ms (transform 49ms, setup 53ms, collect 16ms, tests 1ms, environment 0ms, prepare 180ms)
+packages/protocol test:  Test Files  6 passed (6)
+packages/protocol test:       Tests  142 passed (142)
+packages/protocol test:    Start at  09:52:31
+packages/protocol test:    Duration  1.43s (transform 563ms, setup 938ms, collect 1.29s, tests 46ms, environment 1ms, prepare 1.07s)
+packages/governance test:  ✓ src/probe/dynamic-input.test.ts (3 tests) 12ms
+packages/governance test:  ✓ src/knowledge-hygiene/transaction-plan.test.ts (3 tests) 118ms
+packages/knowledge test: Done
+packages/governance test:  ✓ src/knowledge-hygiene/patch-types.test.ts (7 tests) 4ms
+packages/governance test:  ✓ src/probe/gate.test.ts (3 tests) 13ms
+packages/protocol test: Done
+packages/governance test:  ✓ src/knowledge-hygiene/config-v2.test.ts (8 tests) 49ms
+packages/governance test:  ✓ src/knowledge-hygiene/change-set.test.ts (7 tests) 2179ms
+packages/governance test:    ✓ buildKnowledgeHygieneChangeSet > includes staged, unstaged, deleted, renamed, and untracked worktree paths  322ms
+packages/governance test:    ✓ buildKnowledgeHygieneChangeSet > resolves explicit range refs and records their SHAs  348ms
+packages/governance test:    ✓ buildKnowledgeHygieneChangeSet > builds base-to-worktree changes and changes diff_id with content or config  414ms
+packages/governance test:    ✓ buildKnowledgeHygieneChangeSet > keeps diff_id portable across clones of the same change  448ms
+packages/runtime test: Done
+packages/governance test:  ✓ src/probe/evaluation-compiler.test.ts (3 tests) 6ms
+packages/governance test:  ✓ src/knowledge-hygiene/resolution-v2.test.ts (3 tests) 6ms
+packages/governance test:  ✓ src/probe/types.test.ts (8 tests) 8ms
+packages/governance test:  ✓ src/review-boundary.test.ts (10 tests) 7ms
+packages/governance test:  ✓ src/scanner.test.ts (2 tests) 8ms
+packages/governance test:  ✓ src/knowledge-hygiene/schema.test.ts (22 tests) 9ms
+packages/governance test:  ✓ src/probe/reducer.test.ts (15 tests) 9ms
+packages/governance test:  ✓ src/knowledge-hygiene/types.test.ts (4 tests) 8ms
+packages/governance test:  ✓ src/knowledge-hygiene/rules/change-contract-rule.test.ts (4 tests) 13ms
+packages/governance test:  ✓ src/knowledge-hygiene/semantic-judge.test.ts (7 tests) 10ms
+packages/governance test:  ✓ src/knowledge-hygiene/types-v2.test.ts (8 tests) 17ms
+packages/governance test:  ✓ src/knowledge-hygiene/schema-v2.test.ts (21 tests) 8ms
+packages/governance test:  ✓ src/knowledge-hygiene/semantic-evidence.test.ts (2 tests) 4ms
+packages/governance test:  ✓ src/probe/schema.test.ts (11 tests) 5ms
+packages/governance test:  ✓ src/knowledge-hygiene/adapters/adapter-contract.test.ts (4 tests) 4ms
+packages/governance test:  ✓ src/knowledge-hygiene/transaction-builder.test.ts (2 tests) 13ms
+packages/governance test:  ✓ src/knowledge-hygiene/resolution.test.ts (6 tests) 23ms
+packages/governance test:  ✓ src/knowledge-hygiene/semantic-provider-error.test.ts (2 tests) 3ms
+packages/governance test:  ✓ src/knowledge-hygiene/path-pattern.test.ts (23 tests) 3ms
+packages/governance test:  ✓ src/probe/question-pack.test.ts (6 tests) 4ms
+packages/governance test:  ✓ src/knowledge-hygiene/fingerprint.test.ts (2 tests) 2ms
+packages/governance test:  ✓ src/public-api.test.ts (1 test) 1ms
+packages/governance test:  Test Files  47 passed (47)
+packages/governance test:       Tests  301 passed (301)
+packages/governance test:    Start at  09:52:30
+packages/governance test:    Duration  4.09s (transform 1.44s, setup 1.89s, collect 6.60s, tests 6.11s, environment 6ms, prepare 4.56s)
+packages/governance test: Done
+packages/core test$ vitest run
+packages/knowledge-cloud test$ vitest run --passWithNoTests
+packages/core test:  RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack/packages/core
+packages/knowledge-cloud test:  RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack/packages/knowledge-cloud
+packages/knowledge-cloud test:  ✓ src/bin.test.ts (13 tests) 66ms
+packages/core test:  ✓ src/state/run-store.test.ts (11 tests) 337ms
+packages/core test:  ✓ src/state/knowledge-hygiene-store.test.ts (7 tests) 322ms
+packages/knowledge-cloud test:  ✓ src/server.test.ts (23 tests) 418ms
+packages/knowledge-cloud test:  Test Files  2 passed (2)
+packages/knowledge-cloud test:       Tests  36 passed (36)
+packages/knowledge-cloud test:    Start at  09:52:34
+packages/knowledge-cloud test:    Duration  914ms (transform 123ms, setup 59ms, collect 178ms, tests 484ms, environment 0ms, prepare 155ms)
+packages/core test:  ✓ src/state/db.test.ts (16 tests) 472ms
+packages/core test:  ✓ src/state/probe-store.test.ts (9 tests) 399ms
+packages/core test:  ✓ src/state/autonomy-runs.test.ts (9 tests) 319ms
+packages/knowledge-cloud test: Done
+packages/core test:  ✓ src/state/improvement-proposals.test.ts (20 tests) 632ms
+packages/core test:  ✓ src/state/sessions.test.ts (7 tests) 228ms
+packages/core test:  ✓ src/state/knowledge-hygiene-recurrence.test.ts (5 tests) 213ms
+packages/core test:  ✓ src/state/lessons.test.ts (6 tests) 287ms
+packages/core test:  ✓ src/state/memory.test.ts (8 tests) 236ms
+packages/core test:  ✓ src/state/attention-experience.test.ts (5 tests) 180ms
+packages/core test:  ✓ src/state/attention-observer.test.ts (10 tests) 833ms
+packages/core test:    ✓ discovers beyond 200 with bounded admission and never claims complete capacity  322ms
+packages/core test:  ✓ src/state/knowledge-hygiene-store-v2.test.ts (5 tests) 115ms
+packages/core test:  ✓ src/state/session-continuations.test.ts (33 tests) 1098ms
+packages/core test:  ✓ src/state/contract-approvals.test.ts (4 tests) 105ms
+packages/core test:  ✓ src/policy/profile.test.ts (37 tests) 104ms
+packages/core test:  ✓ src/state/probe-portfolio.test.ts (3 tests) 114ms
+packages/core test:  ✓ src/kanban/kanban.test.ts (42 tests) 1262ms
+packages/core test:  ✓ src/state/evaluator-epochs.test.ts (4 tests) 103ms
+packages/core test:  ✓ src/state/attention-actions.test.ts (7 tests) 158ms
+packages/core test:  ✓ src/state/notification-outbox.test.ts (3 tests) 104ms
+packages/core test:  ✓ src/orchestrator/router.test.ts (19 tests) 60ms
+packages/core test:  ✓ src/state/knowledge-hygiene-history-v2.test.ts (2 tests) 48ms
+packages/core test:  ✓ src/state/feedback-assets.test.ts (2 tests) 51ms
+packages/core test:  ✓ src/policy/agent-scorecard.test.ts (2 tests) 51ms
+packages/core test:  ✓ src/state/attention-store.test.ts (3 tests) 67ms
+packages/core test:  ✓ src/state/deploy-freezes.test.ts (3 tests) 76ms
+packages/core test:  ✓ src/state/dependency-obligation-store.test.ts (2 tests) 37ms
+packages/core test:  ✓ src/state/rollback-drills.test.ts (2 tests) 68ms
+packages/core test:  ✓ src/state/probe-outcome-metrics.test.ts (2 tests) 60ms
+packages/core test:  ✓ src/scratch.test.ts (10 tests) 8ms
+packages/core test:  ✓ src/privacy/redactor.test.ts (11 tests) 6ms
+packages/core test:  ✓ src/policy/engine.test.ts (8 tests) 2ms
+packages/core test:  ✓ src/kanban/transition-guard.test.ts (3 tests) 4ms
+packages/core test:  ✓ src/state/knowledge-hygiene-plan-store.test.ts (2 tests) 32ms
+packages/core test:  ✓ src/state/protocol-mappers.test.ts (15 tests) 5ms
+packages/core test:  Test Files  36 passed (36)
+packages/core test:       Tests  337 passed (337)
+packages/core test:    Start at  09:52:34
+packages/core test:    Duration  2.54s (transform 866ms, setup 855ms, collect 3.03s, tests 8.20s, environment 4ms, prepare 2.06s)
+packages/core test: Done
+packages/plugins test$ vitest run --passWithNoTests
+packages/neat-eval test$ vitest run --passWithNoTests
+packages/autonomy test$ vitest run
+packages/hermes-adapter test$ vitest run
+packages/autonomy test:  RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack/packages/autonomy
+packages/plugins test:  RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack/packages/plugins
+packages/neat-eval test:  RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack/packages/neat-eval
+packages/hermes-adapter test:  RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack/packages/hermes-adapter
+packages/neat-eval test:  ✓ src/provider-readiness.test.ts (3 tests) 3ms
+packages/plugins test:  ✓ src/index.test.ts (1 test) 2ms
+packages/hermes-adapter test:  ✓ src/framing.test.ts (6 tests) 10ms
+packages/plugins test:  Test Files  1 passed (1)
+packages/plugins test:       Tests  1 passed (1)
+packages/plugins test:    Start at  09:52:37
+packages/plugins test:    Duration  877ms (transform 51ms, setup 55ms, collect 26ms, tests 2ms, environment 0ms, prepare 187ms)
+packages/hermes-adapter test:  ✓ src/events.test.ts (9 tests) 9ms
+packages/hermes-adapter test:  ✓ src/status-fsm.test.ts (7 tests) 9ms
+packages/hermes-adapter test:  Test Files  3 passed (3)
+packages/hermes-adapter test:       Tests  22 passed (22)
+packages/hermes-adapter test:    Start at  09:52:37
+packages/hermes-adapter test:    Duration  891ms (transform 129ms, setup 136ms, collect 149ms, tests 27ms, environment 0ms, prepare 149ms)
+packages/autonomy test:  ✓ src/repo-lock.test.ts (6 tests) 49ms
+packages/plugins test: Done
+packages/skill-registry test$ vitest run --passWithNoTests
+packages/hermes-adapter test: Done
+packages/skills test$ vitest run --passWithNoTests
+packages/autonomy test: To /Volumes/AIMATE_WORK/tmp/osstack/tests/w-XKY75S/osstack-remote-FXfaeI
+packages/autonomy test:  * [new branch]      HEAD -> main
+packages/autonomy test: Switched to a new branch 'osstack/feature'
+packages/autonomy test:  ✓ src/approval.test.ts (7 tests) 13ms
+packages/autonomy test:  ✓ src/session-continuation-grant.test.ts (26 tests) 21ms
+packages/autonomy test:  ✓ src/risk.test.ts (36 tests) 9ms
+packages/autonomy test:  ✓ src/progress-budget.test.ts (8 tests) 4ms
+packages/skill-registry test:  RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack/packages/skill-registry
+packages/autonomy test:  ✓ src/state-machine.test.ts (7 tests) 17ms
+packages/skills test:  RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack/packages/skills
+packages/autonomy test:  ✓ src/semaphore.test.ts (4 tests) 4ms
+packages/autonomy test: To /Volumes/AIMATE_WORK/tmp/osstack/tests/w-XKY75S/osstack-remote-HMCnH0
+packages/autonomy test:  * [new branch]      HEAD -> main
+packages/autonomy test: Switched to a new branch 'osstack/feature'
+packages/autonomy test:  ✓ src/types.test.ts (4 tests) 5ms
+packages/autonomy test: To /Volumes/AIMATE_WORK/tmp/osstack/tests/w-XKY75S/osstack-remote-HMCnH0
+packages/autonomy test:    1d076f5..06d315d  06d315de11af75ef167d0f300a598a0a6594bf00 -> main
+packages/skill-registry test:  ✓ src/manifest.test.ts (3 tests) 16ms
+packages/skill-registry test:  Test Files  1 passed (1)
+packages/skill-registry test:       Tests  3 passed (3)
+packages/skill-registry test:    Start at  09:52:38
+packages/skill-registry test:    Duration  643ms (transform 163ms, setup 30ms, collect 265ms, tests 16ms, environment 0ms, prepare 52ms)
+packages/neat-eval test:  ✓ src/corpus.test.ts (5 tests) 1255ms
+packages/neat-eval test:    ✓ neat parity development corpus > materializes clean/rot snapshots deterministically and rejects secret-like payloads  1212ms
+packages/neat-eval test:  ✓ src/runner.test.ts (4 tests) 226ms
+packages/skill-registry test: Done
+packages/skills test:  ✓ src/init/scaffold.test.ts (2 tests) 18ms
+packages/skills test:  Test Files  1 passed (1)
+packages/skills test:       Tests  2 passed (2)
+packages/skills test:    Start at  09:52:39
+packages/skills test:    Duration  627ms (transform 48ms, setup 43ms, collect 20ms, tests 18ms, environment 0ms, prepare 76ms)
+packages/autonomy test: To /Volumes/AIMATE_WORK/tmp/osstack/tests/w-XKY75S/osstack-remote-HMCnH0
+packages/autonomy test:  + 06d315d...1d076f5 1d076f5df65f0613edc4d53ddd2a159f96869e36 -> main (forced update)
+packages/autonomy test:  ✓ src/deploy-policy.test.ts (8 tests) 16ms
+packages/autonomy test:  ✓ src/repo-policy.test.ts (5 tests) 33ms
+packages/autonomy test:  ✓ src/engine.test.ts (30 tests) 42ms
+packages/skills test: Done
+packages/autonomy test:  ✓ src/core-persistence.test.ts (2 tests) 143ms
+packages/neat-eval test:  ✓ src/scorer.test.ts (4 tests) 1615ms
+packages/neat-eval test:    ✓ semantic parity scorer > passes only a powered hidden evaluation with independent custody and non-inferior B  503ms
+packages/neat-eval test:    ✓ semantic parity scorer > fails closed for self-custody or provider failures instead of moving thresholds  866ms
+packages/neat-eval test:  Test Files  4 passed (4)
+packages/neat-eval test:       Tests  16 passed (16)
+packages/neat-eval test:    Start at  09:52:37
+packages/neat-eval test:    Duration  2.60s (transform 1.04s, setup 209ms, collect 1.61s, tests 3.10s, environment 0ms, prepare 638ms)
+packages/neat-eval test: Done
+packages/autonomy test:  ✓ src/git-candidate.test.ts (6 tests) 2801ms
+packages/autonomy test:    ✓ guarded staged candidate > requires a clean candidate at the exact fetched base commit  746ms
+packages/autonomy test:    ✓ guarded staged candidate > binds post-merge deployment to the exact fetched merge tree  959ms
+packages/autonomy test:    ✓ guarded staged candidate > fails closed when Git cannot inspect a changed dependency manifest  595ms
+packages/autonomy test:  ✓ src/deploy-runner.test.ts (12 tests) 3336ms
+packages/autonomy test:    ✓ project deployment runner > rolls a timed-out production health check back exactly once  1172ms
+packages/autonomy test:    ✓ project deployment runner > does not claim rollback success when rollback or post-health fails  335ms
+packages/autonomy test:    ✓ project deployment runner > times out and cancels children with bounded evidence  1065ms
+packages/autonomy test:  Test Files  14 passed (14)
+packages/autonomy test:       Tests  161 passed (161)
+packages/autonomy test:    Start at  09:52:37
+packages/autonomy test:    Duration  5.73s (transform 1.45s, setup 1.07s, collect 9.46s, tests 6.49s, environment 1ms, prepare 1.63s)
+packages/autonomy test: Done
+packages/agents test$ vitest run
+packages/agents test:  RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack/packages/agents
+packages/agents test:  ✓ src/semantic/anthropic-no-tools.test.ts (5 tests) 9ms
+packages/agents test:  ✓ src/semantic/openai-compatible-no-tools.test.ts (8 tests) 22ms
+packages/agents test:  ✓ src/session.test.ts (5 tests) 7ms
+packages/agents test:  ✓ src/adapters/kimi-stream.test.ts (9 tests) 4ms
+packages/agents test:  ✓ src/adapter-conformance.test.ts (2 tests) 692ms
+packages/agents test:    ✓ adapter conformance > emits schema-valid terminal failure streams for subprocess adapter families  684ms
+packages/agents test:  ✓ src/adapters/kimi-contract.test.ts (9 tests) 5ms
+packages/agents test:  ✓ src/adapters/codex-cli.test.ts (4 tests) 1167ms
+packages/agents test:    ✓ CodexCliAdapter resumable sessions > uses a no-model resume help preflight and classifies a broken binary  474ms
+packages/agents test:  ✓ src/adapters/claude-code.test.ts (7 tests) 10ms
+packages/agents test:  ✓ src/adapters/design.test.ts (6 tests) 3ms
+packages/agents test:  ✓ src/child-env.test.ts (2 tests) 1ms
+packages/agents test:  ✓ src/adapters/deepseek.test.ts (7 tests) 1502ms
+packages/agents test:    ✓ DeepSeekReviewAdapter > advertises review capabilities and runs ds-review over git diff  402ms
+packages/agents test:    ✓ DeepSeekVerifyAdapter > advertises verifier capabilities and forwards strict output options  337ms
+packages/agents test:    ✓ DeepSeekVerifyAdapter > forwards evaluation specs via env file and reports per-spec judgments  373ms
+packages/agents test:    ✓ DeepSeekVerifyAdapter > maps command failures to terminal error and failed done events  384ms
+packages/agents test:  ✓ src/semantic/built-in-judges.test.ts (2 tests) 2ms
+packages/agents test:  ✓ src/worktree.test.ts (7 tests) 2036ms
+packages/agents test:    ✓ git worktree lifecycle > commits isolated changes, fast-forwards the repo, and cleans up  321ms
+packages/agents test:    ✓ git worktree lifecycle > does not execute repository hooks while committing isolated changes  351ms
+packages/agents test:    ✓ git worktree lifecycle > does not execute repository hooks while fast-forwarding verified changes  417ms
+packages/agents test:    ✓ git worktree lifecycle > can remove a worktree while preserving its branch  339ms
+packages/agents test:  ✓ src/adapters/subprocess-cli.test.ts (13 tests) 2108ms
+packages/agents test:    ✓ CodexCliAdapter > runs in task.context.repo_path instead of the adapter fallback directory  350ms
+packages/agents test:  ✓ src/adapters/autoresearch.test.ts (13 tests) 2760ms
+packages/agents test:    ✓ invoke — propose→train→eval→keep/rollback > ROLLS BACK a regression (git reset, train.py reverted)  339ms
+packages/agents test:    ✓ invoke — propose→train→eval→keep/rollback > handles a CRASH (null metric) → reset + status=crash  419ms
+packages/agents test:    ✓ invoke — propose→train→eval→keep/rollback > keeps only the best across several iterations  494ms
+packages/agents test:    ✓ invoke — propose→train→eval→keep/rollback > emits a token.delta per iteration with the result  304ms
+packages/agents test:  ✓ src/adapters/kimi-code.test.ts (17 tests) 2911ms
+packages/agents test:    ✓ KimiCodeAdapter > defaults to the model alias observed on the execution node  335ms
+packages/agents test:  ✓ src/controlled-session.test.ts (22 tests) 6040ms
+packages/agents test:    ✓ controlled no-tools sessions > launches and resumes with the same private settings and strips ambient authority  717ms
+packages/agents test:    ✓ controlled no-tools sessions > preserves structured decisions as a single text message for the daemon  303ms
+packages/agents test:    ✓ controlled no-tools sessions > separates a JSON result from its typed decision without replacing the result with the question  371ms
+packages/agents test:    ✓ controlled no-tools sessions > allows structured output with no decision: {"result":"ok","decision":null}  731ms
+packages/agents test:    ✓ controlled no-tools sessions > allows structured output with no decision: {"result":"ok"}  437ms
+packages/agents test:    ✓ controlled no-tools sessions > rejects malformed structured handoffs  320ms
+packages/agents test:    ✓ controlled no-tools sessions > requires initialization and a successful result  357ms
+packages/agents test:    ✓ controlled no-tools sessions > rejects unknown native sessions and persists its own binding across adapter restart  536ms
+packages/agents test:  Test Files  17 passed (17)
+packages/agents test:       Tests  138 passed (138)
+packages/agents test:    Start at  09:52:43
+packages/agents test:    Duration  6.42s (transform 1.04s, setup 341ms, collect 5.41s, tests 19.28s, environment 1ms, prepare 785ms)
+packages/agents test: Done
+packages/loop test$ vitest run --passWithNoTests
+packages/config test$ vitest run
+packages/loop test:  RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack/packages/loop
+packages/config test:  RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack/packages/config
+packages/config test:  ✓ src/config.test.ts (9 tests) 50ms
+packages/config test:  ✓ src/runtime-identity.test.ts (5 tests) 5ms
+packages/config test:  ✓ src/resolver.test.ts (16 tests) 7ms
+packages/config test:  Test Files  3 passed (3)
+packages/config test:       Tests  30 passed (30)
+packages/config test:    Start at  09:52:50
+packages/config test:    Duration  1.76s (transform 841ms, setup 146ms, collect 2.79s, tests 61ms, environment 0ms, prepare 282ms)
+packages/config test: Done
+packages/loop test:  ✓ src/policy-gate.test.ts (6 tests) 467ms
+packages/loop test:  ✓ src/discovery-policy.test.ts (14 tests) 563ms
+packages/loop test:  ✓ src/lesson-draft.test.ts (14 tests) 797ms
+packages/loop test:  ✓ src/budget.test.ts (16 tests) 789ms
+packages/loop test:  ✓ src/review-boundary.test.ts (9 tests) 1802ms
+packages/loop test:  ✓ src/waiting-reason.test.ts (7 tests) 1126ms
+packages/loop test:  ✓ src/discover.test.ts (8 tests) 537ms
+packages/loop test:  ✓ src/reviewer-isolation.test.ts (9 tests) 2815ms
+packages/loop test:    ✓ reviewer workspace isolation > rejects reviewer write to ignored file  367ms
+packages/loop test:    ✓ reviewer workspace isolation > rejects reviewer write to git hook  382ms
+packages/loop test:    ✓ reviewer workspace isolation > rejects reviewer write to git config  526ms
+packages/loop test:  ✓ src/evaluation-spec.test.ts (17 tests) 359ms
+packages/loop test:  ✓ src/publisher.test.ts (23 tests) 60ms
+packages/loop test:  ✓ src/task-queue.test.ts (7 tests) 49ms
+packages/loop test:  ✓ src/feedback.test.ts (10 tests) 280ms
+packages/loop test:  ✓ src/executor.test.ts (4 tests) 138ms
+packages/loop test:  ✓ src/loop-worktree-preservation.test.ts (1 test) 176ms
+packages/loop test:  ✓ src/input-tasks.test.ts (1 test) 171ms
+packages/loop test:  ✓ src/state-file.test.ts (3 tests) 37ms
+packages/loop test:  ✓ src/scheduler.test.ts (7 tests) 6ms
+packages/loop test:  ✓ src/bin.test.ts (3 tests) 265ms
+packages/loop test:  ✓ src/stack-retro.test.ts (5 tests) 3ms
+packages/loop test:  ✓ src/iterator.test.ts (5 tests) 6ms
+packages/loop test:  ✓ src/types.test.ts (3 tests) 4ms
+packages/loop test:  ✓ src/verifier.test.ts (18 tests) 3189ms
+packages/loop test:    ✓ verifyRun > blocks a structured changes_requested verdict and preserves the artifact  312ms
+packages/loop test:    ✓ verifyRun > blocks missing, unknown, and duplicate structured judgments  1177ms
+packages/loop test:    ✓ verifyRun > blocks malformed structured review artifacts  317ms
+packages/loop test:    ✓ verifyRun > blocks reviewer mutation after a valid approval  408ms
+packages/loop test:    ✓ verifyRun > passes an approved complete structured review without mutation  413ms
+packages/loop test:  ✓ src/report.test.ts (9 tests) 5ms
+packages/loop test:  ✓ src/protocol-mappers.test.ts (11 tests) 5ms
+packages/loop test:  ✓ src/scorecard.test.ts (3 tests) 5ms
+packages/loop test:  ✓ src/index.test.ts (1 test) 1ms
+packages/loop test:  ✓ src/loop-engine.test.ts (31 tests) 4208ms
+packages/loop test:    ✓ LoopEngine > persists redacted structured Kimi review evidence in events and completed tasks  658ms
+packages/loop test:    ✓ LoopEngine > can execute a successful task in an isolated git worktree and merge it back  374ms
+packages/loop test:  Test Files  27 passed (27)
+packages/loop test:       Tests  245 passed (245)
+packages/loop test:    Start at  09:52:50
+packages/loop test:    Duration  6.02s (transform 1.45s, setup 685ms, collect 16.07s, tests 17.86s, environment 4ms, prepare 1.47s)
+packages/loop test: Done
+packages/conformance test$ vitest run --passWithNoTests
+packages/supervisor test$ vitest run --passWithNoTests
+packages/conformance test:  RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack/packages/conformance
+packages/supervisor test:  RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack/packages/supervisor
+packages/conformance test:  ✓ src/import-boundary.test.ts (2 tests) 3ms
+packages/supervisor test:  ✓ src/attention-planning.test.ts (3 tests) 7ms
+packages/supervisor test:  ✓ src/failure-taxonomy.test.ts (8 tests) 3ms
+packages/conformance test:  ✓ src/db-conformance.test.ts (1 test) 23ms
+packages/conformance test:  ✓ src/gap-d2.test.ts (2 tests) 28ms
+packages/supervisor test:  ✓ src/adversarial-pool.test.ts (3 tests) 3ms
+packages/supervisor test:  ✓ src/attention.test.ts (4 tests) 8ms
+packages/supervisor test:  ✓ src/assetizer.test.ts (3 tests) 8ms
+packages/supervisor test:  ✓ src/proposal.test.ts (5 tests) 13ms
+packages/supervisor test:  ✓ src/hygiene-proposal.test.ts (4 tests) 6ms
+packages/conformance test:  ✓ src/probe-conformance.test.ts (1 test) 32ms
+packages/supervisor test:  ✓ src/probe-outcomes.test.ts (2 tests) 3ms
+packages/supervisor test:  ✓ src/repo-registry.test.ts (3 tests) 67ms
+packages/supervisor test:  ✓ src/hygiene-scanner.test.ts (3 tests) 125ms
+packages/supervisor test:  ✓ src/gate.test.ts (5 tests) 2ms
+packages/supervisor test:  ✓ src/loop-doc.test.ts (3 tests) 1ms
+packages/supervisor test:  ✓ src/evaluator-epoch.test.ts (6 tests) 4ms
+packages/supervisor test:  ✓ src/types.test.ts (7 tests) 6ms
+packages/supervisor test:  ✓ src/portfolio.test.ts (2 tests) 6ms
+packages/supervisor test:  ✓ src/trace-normalizer.test.ts (2 tests) 3ms
+packages/conformance test:  ✓ src/task-enqueue-conformance.test.ts (1 test) 4ms
+packages/conformance test:  ✓ src/agent-adapter-conformance.test.ts (1 test) 78ms
+packages/conformance test:  ✓ src/loop-run-conformance.test.ts (1 test) 124ms
+packages/conformance test:  Test Files  7 passed (7)
+packages/conformance test:       Tests  9 passed (9)
+packages/conformance test:    Start at  09:52:56
+packages/conformance test:    Duration  2.18s (transform 1.23s, setup 302ms, collect 7.15s, tests 291ms, environment 1ms, prepare 844ms)
+packages/supervisor test:  ✓ src/repo-scanner.test.ts (2 tests) 21ms
+packages/supervisor test:  Test Files  17 passed (17)
+packages/supervisor test:       Tests  65 passed (65)
+packages/supervisor test:    Start at  09:52:56
+packages/supervisor test:    Duration  2.14s (transform 1.48s, setup 463ms, collect 7.70s, tests 286ms, environment 1ms, prepare 1.47s)
+packages/conformance test: Done
+packages/supervisor test: Done
+packages/cli test$ vitest run
+packages/cli test:  RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack/packages/cli
+packages/cli test: To /Volumes/AIMATE_WORK/tmp/osstack/tests/w-AI3TMR/osstack-guarded-git-c0E4O9/remote.git
+packages/cli test:  * [new branch]      main -> main
+packages/cli test: Switched to a new branch 'codex/guarded-test'
+packages/cli test: osstack: clock jump detected drift_ms=9980; re-running external health and recovery probes
+packages/cli test:  ✓ src/neat-transaction-command.test.ts (4 tests) 1480ms
+packages/cli test:    ✓ neat memory and narrative transactions > plans, approves, dry-runs, and applies an exact memory move  450ms
+packages/cli test:    ✓ neat memory and narrative transactions > marks a plan stale when its approved memory root changes  312ms
+packages/cli test:    ✓ neat memory and narrative transactions > persists recovery_required after interruption and recovers via CLI  423ms
+packages/cli test: To /Volumes/AIMATE_WORK/tmp/osstack/tests/w-AI3TMR/osstack-guarded-git-clyeoP/remote.git
+packages/cli test:  * [new branch]      main -> main
+packages/cli test: Switched to a new branch 'codex/guarded-test'
+packages/cli test: To /Volumes/AIMATE_WORK/tmp/osstack/tests/w-AI3TMR/osstack-guarded-git-kCrK8i/remote.git
+packages/cli test:  * [new branch]      main -> main
+packages/cli test: Switched to a new branch 'codex/guarded-test'
+packages/cli test:  ✓ src/proof-cli.test.ts (44 tests) 3549ms
+packages/cli test:    ✓ proof CLI > writes a proof pack with manifest checksums  588ms
+packages/cli test:  ✓ src/daemon-loop.test.ts (25 tests) 3226ms
+packages/cli test:    ✓ daemon loop RPC > runs reviewer adapters through daemon loop.run  580ms
+packages/cli test:  ✓ src/daily-cli.test.ts (23 tests) 1439ms
+packages/cli test: To /Volumes/AIMATE_WORK/tmp/osstack/tests/w-AI3TMR/osstack-guarded-git-aRyBvx/remote.git
+packages/cli test:  * [new branch]      main -> main
+packages/cli test: Switched to a new branch 'codex/guarded-test'
+packages/cli test:  ✓ src/deliver-cli.test.ts (15 tests) 4232ms
+packages/cli test:    ✓ deliver CLI > records legacy findings as baseline evidence and gates only new findings  413ms
+packages/cli test:    ✓ deliver CLI > runs guarded-local with separated profile roles and local-only evidence  1724ms
+packages/cli test:  ✓ src/product-entry-cli.test.ts (46 tests) 4851ms
+packages/cli test:    ✓ product entry commands > runs a top-level product doctor across loop readiness and agent availability  2968ms
+packages/cli test:    ✓ product entry commands > blocks Trusted Publishing when a public workspace package has not been bootstrapped  1073ms
+packages/cli test: stderr | src/stack-cli.test.ts > handleStackCommand: ingest > errors and returns 1 when --prs is missing
+packages/cli test: osstack: stack ingest requires --prs <comma-separated PR numbers>
+packages/cli test: stderr | src/stack-cli.test.ts > handleStackCommand: ingest > errors and returns 1 when --prs is empty
+packages/cli test: osstack: stack ingest requires --prs <comma-separated PR numbers>
+packages/cli test: stdout | src/stack-cli.test.ts > handleStackCommand: ingest > is idempotent across repeated ingests (no duplicate-card crash)
+packages/cli test: ingested 3 PRs into board "stack" (order: 47,48,49)
+packages/cli test: stdout | src/stack-cli.test.ts > handleStackCommand: ingest > is idempotent across repeated ingests (no duplicate-card crash)
+packages/cli test: ingested 3 PRs into board "stack" (order: 47,48,49)
+packages/cli test: stdout | src/stack-cli.test.ts > handleStackCommand: ingest > passes --repo through to ingestStack when provided
+packages/cli test: ingested 1 PRs into board "stack" (order: 1)
+packages/cli test: stdout | src/stack-cli.test.ts > handleStackCommand: ingest > re-ingest is idempotent: comments stay at 1/card and no-op events do not grow
+packages/cli test: ingested 3 PRs into board "stack" (order: 47,48,49)
+packages/cli test: stdout | src/stack-cli.test.ts > handleStackCommand: ingest > re-ingest is idempotent: comments stay at 1/card and no-op events do not grow
+packages/cli test: ingested 3 PRs into board "stack" (order: 47,48,49)
+packages/cli test: stderr | src/stack-cli.test.ts > handleStackCommand: ingest > returns 1 (not a thrown rejection) when ingestStack fails
+packages/cli test: osstack: stack ingest failed: gh exploded
+packages/cli test: stderr | src/stack-cli.test.ts > handleStackCommand: ingest > returns 1 with a non-numeric message when --prs has a garbage token
+packages/cli test: osstack: --prs contains a non-numeric PR number: x
+packages/cli test: stderr | src/stack-cli.test.ts > handleStackCommand: ingest > rejects trailing garbage like '47abc' rather than silently truncating to 47
+packages/cli test: osstack: --prs contains a non-numeric PR number: 47abc
+packages/cli test: stdout | src/stack-cli.test.ts > handleStackCommand: ingest > dedups repeated PR numbers in --prs (47,47,48 -> two cards)
+packages/cli test: ingested 2 PRs into board "stack" (order: 47,48)
+packages/cli test: stdout | src/stack-cli.test.ts > handleStackCommand: board > prints lane headers, card ids, and a [0/N checks] marker
+packages/cli test: ingested 3 PRs into board "stack" (order: 47,48,49)
+packages/cli test: stdout | src/stack-cli.test.ts > handleStackCommand: board > reflects a passed check as [1/N checks] for that card
+packages/cli test: ingested 3 PRs into board "stack" (order: 47,48,49)
+packages/cli test: stdout | src/stack-cli.test.ts > handleStackCommand: move > moves a card to a new status and prints a confirmation
+packages/cli test: ingested 3 PRs into board "stack" (order: 47,48,49)
+packages/cli test: stdout | src/stack-cli.test.ts > handleStackCommand: move > returns 1 when moving a nonexistent card
+packages/cli test: ingested 3 PRs into board "stack" (order: 47,48,49)
+packages/cli test: stderr | src/stack-cli.test.ts > handleStackCommand: move > returns 1 when moving a nonexistent card
+packages/cli test: osstack: Kanban card not found: pr-999
+packages/cli test: stdout | src/stack-cli.test.ts > handleStackCommand: move > returns 1 for an invalid status string
+packages/cli test: ingested 3 PRs into board "stack" (order: 47,48,49)
+packages/cli test: stderr | src/stack-cli.test.ts > handleStackCommand: move > returns 1 for an invalid status string
+packages/cli test: osstack: invalid status "not-a-status"
+packages/cli test: stdout | src/stack-cli.test.ts > handleStackCommand: move > evaluates every transition guard and emits no move event when one denies
+packages/cli test: ingested 3 PRs into board "stack" (order: 47,48,49)
+packages/cli test: stderr | src/stack-cli.test.ts > handleStackCommand: move > evaluates every transition guard and emits no move event when one denies
+packages/cli test: osstack: transition denied by probe-readiness: readiness denied
+packages/cli test: stdout | src/stack-cli.test.ts > handleStackCommand: check > sets a check to pass and emits a check event
+packages/cli test: ingested 3 PRs into board "stack" (order: 47,48,49)
+packages/cli test: stdout | src/stack-cli.test.ts > handleStackCommand: check > returns 1 when the check idx does not exist
+packages/cli test: ingested 3 PRs into board "stack" (order: 47,48,49)
+packages/cli test: stderr | src/stack-cli.test.ts > handleStackCommand: check > returns 1 when the check idx does not exist
+packages/cli test: osstack: Kanban card check not found: pr-47#99
+packages/cli test: To /Volumes/AIMATE_WORK/tmp/osstack/tests/w-AI3TMR/osstack-guarded-git-B5hSke/remote.git
+packages/cli test:  * [new branch]      main -> main
+packages/cli test: stdout | src/stack-cli.test.ts > handleStackCommand: timeline > lists events in ascending order including created, moved, check kinds
+packages/cli test: ingested 3 PRs into board "stack" (order: 47,48,49)
+packages/cli test: stdout | src/stack-cli.test.ts > handleStackCommand: timeline > lists events in ascending order including created, moved, check kinds
+packages/cli test: moved pr-48 -> running
+packages/cli test: stdout | src/stack-cli.test.ts > handleStackCommand: timeline > lists events in ascending order including created, moved, check kinds
+packages/cli test: check pr-47#0 -> pass
+packages/cli test: Switched to a new branch 'codex/guarded-test'
+packages/cli test: stdout | src/stack-cli.test.ts > handleStackCommand: timeline > filters to a single card with --card
+packages/cli test: ingested 3 PRs into board "stack" (order: 47,48,49)
+packages/cli test: stdout | src/stack-cli.test.ts > handleStackCommand: timeline > filters to a single card with --card
+packages/cli test: moved pr-48 -> running
+packages/cli test: stderr | src/stack-cli.test.ts > handleStackCommand: unknown subcommand > returns 1 with a usage message for an unknown subcommand
+packages/cli test: osstack: usage: stack <ingest|board|move|check|timeline|runbook|recommend|retro> [...args]
+packages/cli test: stdout | src/stack-cli.test.ts > handleStackCommand: retro > preserves a approved proposal when a later retro suggests different gates
+packages/cli test: ingested 3 PRs into board "stack" (order: 47,48,49)
+packages/cli test: stdout | src/stack-cli.test.ts > handleStackCommand: retro > preserves a rejected proposal when a later retro suggests different gates
+packages/cli test: ingested 3 PRs into board "stack" (order: 47,48,49)
+packages/cli test: stdout | src/stack-cli.test.ts > handleStackCommand: retro > preserves a applied proposal when a later retro suggests different gates
+packages/cli test: ingested 3 PRs into board "stack" (order: 47,48,49)
+packages/cli test: stdout | src/stack-cli.test.ts > handleStackCommand: retro > preserves a needs_human proposal when a later retro suggests different gates
+packages/cli test: ingested 3 PRs into board "stack" (order: 47,48,49)
+packages/cli test: stdout | src/stack-cli.test.ts > handleStackCommand: retro > counts reworkCount from REAL blocked-transition events (2× blocked shows 2×; never-blocked shows none)
+packages/cli test: ingested 3 PRs into board "stack" (order: 47,48,49)
+packages/cli test: stdout | src/stack-cli.test.ts > handleStackCommand: retro > prints a retro for a seeded board
+packages/cli test: ingested 3 PRs into board "stack" (order: 47,48,49)
+packages/cli test: stdout | src/stack-cli.test.ts > handleStackCommand: retro > persists an idempotent memory fact under --write
+packages/cli test: ingested 3 PRs into board "stack" (order: 47,48,49)
+packages/cli test: stdout | src/stack-cli.test.ts > handleStackCommand: retro > records an improvement proposal under --write when a gate was missing
+packages/cli test: ingested 3 PRs into board "stack" (order: 47,48,49)
+packages/cli test: stdout | src/stack-cli.test.ts > handleStackCommand: runbook > returns 0 and prints the 3 PRs in bottom-up order with a [x] for the passed check
+packages/cli test: ingested 3 PRs into board "stack" (order: 47,48,49)
+packages/cli test: stdout | src/stack-cli.test.ts > handleStackCommand: recommend > returns 0 and prints role: merge-manager and agent: claude-code for a pr card with no learned preference
+packages/cli test: ingested 3 PRs into board "stack" (order: 47,48,49)
+packages/cli test: stdout | src/stack-cli.test.ts > handleStackCommand: recommend > uses a learned prefer_agent fact for the card's subject (card_type) to recommend codex-cli
+packages/cli test: ingested 3 PRs into board "stack" (order: 47,48,49)
+packages/cli test: stdout | src/stack-cli.test.ts > handleStackCommand: recommend > returns 1 for a missing card
+packages/cli test: ingested 3 PRs into board "stack" (order: 47,48,49)
+packages/cli test: stderr | src/stack-cli.test.ts > handleStackCommand: recommend > returns 1 for a missing card
+packages/cli test: osstack: card not found: pr-999
+packages/cli test: stdout | src/stack-cli.test.ts > handleStackCommand: recommend > with --assign, persists the recommended agent as the card's assignee
+packages/cli test: ingested 3 PRs into board "stack" (order: 47,48,49)
+packages/cli test: stdout | src/stack-cli.test.ts > handleStackCommand: recommend > honors the NEWEST preference when two conflicting facts exist (newest-wins, end-to-end)
+packages/cli test: ingested 3 PRs into board "stack" (order: 47,48,49)
+packages/cli test:  ✓ src/stack-cli.test.ts (41 tests) 921ms
+packages/cli test:  ✓ src/loop-cli.test.ts (39 tests) 5469ms
+packages/cli test:    ✓ loop CLI > keeps legacy full-scan findings as warn evidence while strict baseline scope passes clean changes  311ms
+packages/cli test:    ✓ loop CLI > blocks new changed-file errors in strict baseline scope  386ms
+packages/cli test:    ✓ loop CLI > gates findings committed by an isolated worktree against the pre-run revision  551ms
+packages/cli test:    ✓ loop CLI > passes --worktree through local loop runs  564ms
+packages/cli test:    ✓ loop CLI > runs ds-review as a post-execution reviewer verifier  607ms
+packages/cli test:  ✓ src/neat-dependency-command.test.ts (1 test) 830ms
+packages/cli test:    ✓ neat dependencies > records deterministic candidates idempotently and reads the downstream inbox  830ms
+packages/cli test:  ✓ src/daemon-daily.test.ts (9 tests) 1973ms
+packages/cli test:    ✓ daemon daily RPC (R2.3) > schedules a session whose tick writes a dated brief  347ms
+packages/cli test:    ✓ daemon daily RPC (R2.3) > counts consecutive failures and auto-stops after five  485ms
+packages/cli test:  ✓ src/dashboard-cli.test.ts (33 tests) 1428ms
+packages/cli test:    ✓ dashboard/cockpit CLI > runs queued work from the cockpit with evidence defaults  325ms
+packages/cli test:  ✓ src/agent-list-cli.test.ts (2 tests) 6513ms
+packages/cli test:    ✓ agent list CLI > lists local agents with roles, capabilities, and auth modes  3667ms
+packages/cli test:    ✓ agent list CLI > prints a role-oriented human list  2845ms
+packages/cli test:  ✓ src/guarded-git-runtime.test.ts (5 tests) 6169ms
+packages/cli test:    ✓ GuardedGitRuntime > completes R1 documentation through exact commit and final proof  1602ms
+packages/cli test:    ✓ GuardedGitRuntime > completes R2 source through exact commit and final proof  1359ms
+packages/cli test:    ✓ GuardedGitRuntime > pauses preflight R3 before invoking Builder  531ms
+packages/cli test:    ✓ GuardedGitRuntime > pauses a protected policy diff before proof, commit, or Git  1194ms
+packages/cli test:    ✓ GuardedGitRuntime > resumes blocked Git delivery after restart without rebuilding or recommitting  1483ms
+packages/cli test: warning: Not a git repository. Use --no-index to compare two paths outside a working tree
+packages/cli test: usage: git diff --no-index [<options>] <path> <path> [<pathspec>...]
+packages/cli test: Diff output format options
+packages/cli test:     -p, --patch           generate patch
+packages/cli test:     -s, --no-patch        suppress diff output
+packages/cli test:     -u                    generate patch
+packages/cli test:     -U, --unified[=<n>]   generate diffs with <n> lines context
+packages/cli test:     -W, --[no-]function-context
+packages/cli test:                           generate diffs with <n> lines context
+packages/cli test:     --raw                 generate the diff in raw format
+packages/cli test:     --patch-with-raw      synonym for '-p --raw'
+packages/cli test:     --patch-with-stat     synonym for '-p --stat'
+packages/cli test:     --numstat             machine friendly --stat
+packages/cli test:     --shortstat           output only the last line of --stat
+packages/cli test:     -X, --dirstat[=<param1>,<param2>...]
+packages/cli test:                           output the distribution of relative amount of changes for each sub-directory
+packages/cli test:     --cumulative          synonym for --dirstat=cumulative
+packages/cli test:     --dirstat-by-file[=<param1>,<param2>...]
+packages/cli test:                           synonym for --dirstat=files,<param1>,<param2>...
+packages/cli test:     --check               warn if changes introduce conflict markers or whitespace errors
+packages/cli test:     --summary             condensed summary such as creations, renames and mode changes
+packages/cli test:     --name-only           show only names of changed files
+packages/cli test:     --name-status         show only names and status of changed files
+packages/cli test:     --stat[=<width>[,<name-width>[,<count>]]]
+packages/cli test:                           generate diffstat
+packages/cli test:     --stat-width <width>  generate diffstat with a given width
+packages/cli test:     --stat-name-width <width>
+packages/cli test:                           generate diffstat with a given name width
+packages/cli test:     --stat-graph-width <width>
+packages/cli test:                           generate diffstat with a given graph width
+packages/cli test:     --stat-count <count>  generate diffstat with limited lines
+packages/cli test:     --[no-]compact-summary
+packages/cli test:                           generate compact summary in diffstat
+packages/cli test:     --binary              output a binary diff that can be applied
+packages/cli test:     --[no-]full-index     show full pre- and post-image object names on the "index" lines
+packages/cli test:     --[no-]color[=<when>] show colored diff
+packages/cli test:     --ws-error-highlight <kind>
+packages/cli test:                           highlight whitespace errors in the 'context', 'old' or 'new' lines in the diff
+packages/cli test:     -z                    do not munge pathnames and use NULs as output field terminators in --raw or --numstat
+packages/cli test:     --[no-]abbrev[=<n>]   use <n> digits to display object names
+packages/cli test:     --src-prefix <prefix> show the given source prefix instead of "a/"
+packages/cli test:     --dst-prefix <prefix> show the given destination prefix instead of "b/"
+packages/cli test:     --line-prefix <prefix>
+packages/cli test:                           prepend an additional prefix to every line of output
+packages/cli test:     --no-prefix           do not show any source or destination prefix
+packages/cli test:     --default-prefix      use default prefixes a/ and b/
+packages/cli test:     --inter-hunk-context <n>
+packages/cli test:                           show context between diff hunks up to the specified number of lines
+packages/cli test:     --output-indicator-new <char>
+packages/cli test:                           specify the character to indicate a new line instead of '+'
+packages/cli test:     --output-indicator-old <char>
+packages/cli test:                           specify the character to indicate an old line instead of '-'
+packages/cli test:     --output-indicator-context <char>
+packages/cli test:                           specify the character to indicate a context instead of ' '
+packages/cli test: Diff rename options
+packages/cli test:     -B, --break-rewrites[=<n>[/<m>]]
+packages/cli test:                           break complete rewrite changes into pairs of delete and create
+packages/cli test:     -M, --find-renames[=<n>]
+packages/cli test:                           detect renames
+packages/cli test:     -D, --irreversible-delete
+packages/cli test:                           omit the preimage for deletes
+packages/cli test:     -C, --find-copies[=<n>]
+packages/cli test:                           detect copies
+packages/cli test:     --[no-]find-copies-harder
+packages/cli test:                           use unmodified files as source to find copies
+packages/cli test:     --no-renames          disable rename detection
+packages/cli test:     --[no-]rename-empty   use empty blobs as rename source
+packages/cli test:     --[no-]follow         continue listing the history of a file beyond renames
+packages/cli test:     -l <n>                prevent rename/copy detection if the number of rename/copy targets exceeds given limit
+packages/cli test: Diff algorithm options
+packages/cli test:     --minimal             produce the smallest possible diff
+packages/cli test:     -w, --ignore-all-space
+packages/cli test:                           ignore whitespace when comparing lines
+packages/cli test:     -b, --ignore-space-change
+packages/cli test:                           ignore changes in amount of whitespace
+packages/cli test:     --ignore-space-at-eol ignore changes in whitespace at EOL
+packages/cli test:     --ignore-cr-at-eol    ignore carrier-return at the end of line
+packages/cli test:     --ignore-blank-lines  ignore changes whose lines are all blank
+packages/cli test:     -I, --[no-]ignore-matching-lines <regex>
+packages/cli test:                           ignore changes whose all lines match <regex>
+packages/cli test:     --[no-]indent-heuristic
+packages/cli test:                           heuristic to shift diff hunk boundaries for easy reading
+packages/cli test:     --patience            generate diff using the "patience diff" algorithm
+packages/cli test:     --histogram           generate diff using the "histogram diff" algorithm
+packages/cli test:     --diff-algorithm <algorithm>
+packages/cli test:                           choose a diff algorithm
+packages/cli test:     --anchored <text>     generate diff using the "anchored diff" algorithm
+packages/cli test:     --word-diff[=<mode>]  show word diff, using <mode> to delimit changed words
+packages/cli test:     --word-diff-regex <regex>
+packages/cli test:                           use <regex> to decide what a word is
+packages/cli test:     --color-words[=<regex>]
+packages/cli test:                           equivalent to --word-diff=color --word-diff-regex=<regex>
+packages/cli test:     --[no-]color-moved[=<mode>]
+packages/cli test:                           moved lines of code are colored differently
+packages/cli test:     --[no-]color-moved-ws <mode>
+packages/cli test:                           how white spaces are ignored in --color-moved
+packages/cli test: Other diff options
+packages/cli test:     --[no-]relative[=<prefix>]
+packages/cli test:                           when run from subdir, exclude changes outside and show relative paths
+packages/cli test:     -a, --[no-]text       treat all files as text
+packages/cli test:     -R                    swap two inputs, reverse the diff
+packages/cli test:     --[no-]exit-code      exit with 1 if there were differences, 0 otherwise
+packages/cli test:     --[no-]quiet          disable all output of the program
+packages/cli test:     --[no-]ext-diff       allow an external diff helper to be executed
+packages/cli test:     --[no-]textconv       run external text conversion filters when comparing binary files
+packages/cli test:     --ignore-submodules[=<when>]
+packages/cli test:                           ignore changes to submodules in the diff generation
+packages/cli test:     --submodule[=<format>]
+packages/cli test:                           specify how differences in submodules are shown
+packages/cli test:     --ita-invisible-in-index
+packages/cli test:                           hide 'git add -N' entries from the index
+packages/cli test:     --ita-visible-in-index
+packages/cli test:                           treat 'git add -N' entries as real in the index
+packages/cli test:     -S <string>           look for differences that change the number of occurrences of the specified string
+packages/cli test:     -G <regex>            look for differences that change the number of occurrences of the specified regex
+packages/cli test:     --pickaxe-all         show all changes in the changeset with -S or -G
+packages/cli test:     --pickaxe-regex       treat <string> in -S as extended POSIX regular expression
+packages/cli test:     -O <file>             control the order in which files appear in the output
+packages/cli test:     --rotate-to <path>    show the change in the specified path first
+packages/cli test:     --skip-to <path>      skip the output to the specified path
+packages/cli test:     --find-object <object-id>
+packages/cli test:                           look for differences that change the number of occurrences of the specified object
+packages/cli test:     --diff-filter [(A|C|D|M|R|T|U|X|B)...[*]]
+packages/cli test:                           select files by diff type
+packages/cli test:     --max-depth <depth>   maximum tree depth to recurse
+packages/cli test:     --output <file>       output to a specific file
+packages/cli test:  ✓ src/probe-command.test.ts (19 tests) 1119ms
+packages/cli test: warning: Not a git repository. Use --no-index to compare two paths outside a working tree
+packages/cli test: usage: git diff --no-index [<options>] <path> <path> [<pathspec>...]
+packages/cli test: Diff output format options
+packages/cli test:     -p, --patch           generate patch
+packages/cli test:     -s, --no-patch        suppress diff output
+packages/cli test:     -u                    generate patch
+packages/cli test:     -U, --unified[=<n>]   generate diffs with <n> lines context
+packages/cli test:     -W, --[no-]function-context
+packages/cli test:                           generate diffs with <n> lines context
+packages/cli test:     --raw                 generate the diff in raw format
+packages/cli test:     --patch-with-raw      synonym for '-p --raw'
+packages/cli test:     --patch-with-stat     synonym for '-p --stat'
+packages/cli test:     --numstat             machine friendly --stat
+packages/cli test:     --shortstat           output only the last line of --stat
+packages/cli test:     -X, --dirstat[=<param1>,<param2>...]
+packages/cli test:                           output the distribution of relative amount of changes for each sub-directory
+packages/cli test:     --cumulative          synonym for --dirstat=cumulative
+packages/cli test:     --dirstat-by-file[=<param1>,<param2>...]
+packages/cli test:                           synonym for --dirstat=files,<param1>,<param2>...
+packages/cli test:     --check               warn if changes introduce conflict markers or whitespace errors
+packages/cli test:     --summary             condensed summary such as creations, renames and mode changes
+packages/cli test:     --name-only           show only names of changed files
+packages/cli test:     --name-status         show only names and status of changed files
+packages/cli test:     --stat[=<width>[,<name-width>[,<count>]]]
+packages/cli test:                           generate diffstat
+packages/cli test:     --stat-width <width>  generate diffstat with a given width
+packages/cli test:     --stat-name-width <width>
+packages/cli test:                           generate diffstat with a given name width
+packages/cli test:     --stat-graph-width <width>
+packages/cli test:                           generate diffstat with a given graph width
+packages/cli test:     --stat-count <count>  generate diffstat with limited lines
+packages/cli test:     --[no-]compact-summary
+packages/cli test:                           generate compact summary in diffstat
+packages/cli test:     --binary              output a binary diff that can be applied
+packages/cli test:     --[no-]full-index     show full pre- and post-image object names on the "index" lines
+packages/cli test:     --[no-]color[=<when>] show colored diff
+packages/cli test:     --ws-error-highlight <kind>
+packages/cli test:                           highlight whitespace errors in the 'context', 'old' or 'new' lines in the diff
+packages/cli test:     -z                    do not munge pathnames and use NULs as output field terminators in --raw or --numstat
+packages/cli test:     --[no-]abbrev[=<n>]   use <n> digits to display object names
+packages/cli test:     --src-prefix <prefix> show the given source prefix instead of "a/"
+packages/cli test:     --dst-prefix <prefix> show the given destination prefix instead of "b/"
+packages/cli test:     --line-prefix <prefix>
+packages/cli test:                           prepend an additional prefix to every line of output
+packages/cli test:     --no-prefix           do not show any source or destination prefix
+packages/cli test:     --default-prefix      use default prefixes a/ and b/
+packages/cli test:     --inter-hunk-context <n>
+packages/cli test:                           show context between diff hunks up to the specified number of lines
+packages/cli test:     --output-indicator-new <char>
+packages/cli test:                           specify the character to indicate a new line instead of '+'
+packages/cli test:     --output-indicator-old <char>
+packages/cli test:                           specify the character to indicate an old line instead of '-'
+packages/cli test:     --output-indicator-context <char>
+packages/cli test:                           specify the character to indicate a context instead of ' '
+packages/cli test: Diff rename options
+packages/cli test:     -B, --break-rewrites[=<n>[/<m>]]
+packages/cli test:                           break complete rewrite changes into pairs of delete and create
+packages/cli test:     -M, --find-renames[=<n>]
+packages/cli test:                           detect renames
+packages/cli test:     -D, --irreversible-delete
+packages/cli test:                           omit the preimage for deletes
+packages/cli test:     -C, --find-copies[=<n>]
+packages/cli test:                           detect copies
+packages/cli test:     --[no-]find-copies-harder
+packages/cli test:                           use unmodified files as source to find copies
+packages/cli test:     --no-renames          disable rename detection
+packages/cli test:     --[no-]rename-empty   use empty blobs as rename source
+packages/cli test:     --[no-]follow         continue listing the history of a file beyond renames
+packages/cli test:     -l <n>                prevent rename/copy detection if the number of rename/copy targets exceeds given limit
+packages/cli test: Diff algorithm options
+packages/cli test:     --minimal             produce the smallest possible diff
+packages/cli test:     -w, --ignore-all-space
+packages/cli test:                           ignore whitespace when comparing lines
+packages/cli test:     -b, --ignore-space-change
+packages/cli test:                           ignore changes in amount of whitespace
+packages/cli test:     --ignore-space-at-eol ignore changes in whitespace at EOL
+packages/cli test:     --ignore-cr-at-eol    ignore carrier-return at the end of line
+packages/cli test:     --ignore-blank-lines  ignore changes whose lines are all blank
+packages/cli test:     -I, --[no-]ignore-matching-lines <regex>
+packages/cli test:                           ignore changes whose all lines match <regex>
+packages/cli test:     --[no-]indent-heuristic
+packages/cli test:                           heuristic to shift diff hunk boundaries for easy reading
+packages/cli test:     --patience            generate diff using the "patience diff" algorithm
+packages/cli test:     --histogram           generate diff using the "histogram diff" algorithm
+packages/cli test:     --diff-algorithm <algorithm>
+packages/cli test:                           choose a diff algorithm
+packages/cli test:     --anchored <text>     generate diff using the "anchored diff" algorithm
+packages/cli test:     --word-diff[=<mode>]  show word diff, using <mode> to delimit changed words
+packages/cli test:     --word-diff-regex <regex>
+packages/cli test:                           use <regex> to decide what a word is
+packages/cli test:     --color-words[=<regex>]
+packages/cli test:                           equivalent to --word-diff=color --word-diff-regex=<regex>
+packages/cli test:     --[no-]color-moved[=<mode>]
+packages/cli test:                           moved lines of code are colored differently
+packages/cli test:     --[no-]color-moved-ws <mode>
+packages/cli test:                           how white spaces are ignored in --color-moved
+packages/cli test: Other diff options
+packages/cli test:     --[no-]relative[=<prefix>]
+packages/cli test:                           when run from subdir, exclude changes outside and show relative paths
+packages/cli test:     -a, --[no-]text       treat all files as text
+packages/cli test:     -R                    swap two inputs, reverse the diff
+packages/cli test:     --[no-]exit-code      exit with 1 if there were differences, 0 otherwise
+packages/cli test:     --[no-]quiet          disable all output of the program
+packages/cli test:     --[no-]ext-diff       allow an external diff helper to be executed
+packages/cli test:     --[no-]textconv       run external text conversion filters when comparing binary files
+packages/cli test:     --ignore-submodules[=<when>]
+packages/cli test:                           ignore changes to submodules in the diff generation
+packages/cli test:     --submodule[=<format>]
+packages/cli test:                           specify how differences in submodules are shown
+packages/cli test:     --ita-invisible-in-index
+packages/cli test:                           hide 'git add -N' entries from the index
+packages/cli test:     --ita-visible-in-index
+packages/cli test:                           treat 'git add -N' entries as real in the index
+packages/cli test:     -S <string>           look for differences that change the number of occurrences of the specified string
+packages/cli test:     -G <regex>            look for differences that change the number of occurrences of the specified regex
+packages/cli test:     --pickaxe-all         show all changes in the changeset with -S or -G
+packages/cli test:     --pickaxe-regex       treat <string> in -S as extended POSIX regular expression
+packages/cli test:     -O <file>             control the order in which files appear in the output
+packages/cli test:     --rotate-to <path>    show the change in the specified path first
+packages/cli test:     --skip-to <path>      skip the output to the specified path
+packages/cli test:     --find-object <object-id>
+packages/cli test:                           look for differences that change the number of occurrences of the specified object
+packages/cli test:     --diff-filter [(A|C|D|M|R|T|U|X|B)...[*]]
+packages/cli test:                           select files by diff type
+packages/cli test:     --max-depth <depth>   maximum tree depth to recurse
+packages/cli test:     --output <file>       output to a specific file
+packages/cli test: warning: Not a git repository. Use --no-index to compare two paths outside a working tree
+packages/cli test: usage: git diff --no-index [<options>] <path> <path> [<pathspec>...]
+packages/cli test: Diff output format options
+packages/cli test:     -p, --patch           generate patch
+packages/cli test:     -s, --no-patch        suppress diff output
+packages/cli test:     -u                    generate patch
+packages/cli test:     -U, --unified[=<n>]   generate diffs with <n> lines context
+packages/cli test:     -W, --[no-]function-context
+packages/cli test:                           generate diffs with <n> lines context
+packages/cli test:     --raw                 generate the diff in raw format
+packages/cli test:     --patch-with-raw      synonym for '-p --raw'
+packages/cli test:     --patch-with-stat     synonym for '-p --stat'
+packages/cli test:     --numstat             machine friendly --stat
+packages/cli test:     --shortstat           output only the last line of --stat
+packages/cli test:     -X, --dirstat[=<param1>,<param2>...]
+packages/cli test:                           output the distribution of relative amount of changes for each sub-directory
+packages/cli test:     --cumulative          synonym for --dirstat=cumulative
+packages/cli test:     --dirstat-by-file[=<param1>,<param2>...]
+packages/cli test:                           synonym for --dirstat=files,<param1>,<param2>...
+packages/cli test:     --check               warn if changes introduce conflict markers or whitespace errors
+packages/cli test:     --summary             condensed summary such as creations, renames and mode changes
+packages/cli test:     --name-only           show only names of changed files
+packages/cli test:     --name-status         show only names and status of changed files
+packages/cli test:     --stat[=<width>[,<name-width>[,<count>]]]
+packages/cli test:                           generate diffstat
+packages/cli test:     --stat-width <width>  generate diffstat with a given width
+packages/cli test:     --stat-name-width <width>
+packages/cli test:                           generate diffstat with a given name width
+packages/cli test:     --stat-graph-width <width>
+packages/cli test:                           generate diffstat with a given graph width
+packages/cli test:     --stat-count <count>  generate diffstat with limited lines
+packages/cli test:     --[no-]compact-summary
+packages/cli test:                           generate compact summary in diffstat
+packages/cli test:     --binary              output a binary diff that can be applied
+packages/cli test:     --[no-]full-index     show full pre- and post-image object names on the "index" lines
+packages/cli test:     --[no-]color[=<when>] show colored diff
+packages/cli test:     --ws-error-highlight <kind>
+packages/cli test:                           highlight whitespace errors in the 'context', 'old' or 'new' lines in the diff
+packages/cli test:     -z                    do not munge pathnames and use NULs as output field terminators in --raw or --numstat
+packages/cli test:     --[no-]abbrev[=<n>]   use <n> digits to display object names
+packages/cli test:     --src-prefix <prefix> show the given source prefix instead of "a/"
+packages/cli test:     --dst-prefix <prefix> show the given destination prefix instead of "b/"
+packages/cli test:     --line-prefix <prefix>
+packages/cli test:                           prepend an additional prefix to every line of output
+packages/cli test:     --no-prefix           do not show any source or destination prefix
+packages/cli test:     --default-prefix      use default prefixes a/ and b/
+packages/cli test:     --inter-hunk-context <n>
+packages/cli test:                           show context between diff hunks up to the specified number of lines
+packages/cli test:     --output-indicator-new <char>
+packages/cli test:                           specify the character to indicate a new line instead of '+'
+packages/cli test:     --output-indicator-old <char>
+packages/cli test:                           specify the character to indicate an old line instead of '-'
+packages/cli test:     --output-indicator-context <char>
+packages/cli test:                           specify the character to indicate a context instead of ' '
+packages/cli test: Diff rename options
+packages/cli test:     -B, --break-rewrites[=<n>[/<m>]]
+packages/cli test:                           break complete rewrite changes into pairs of delete and create
+packages/cli test:     -M, --find-renames[=<n>]
+packages/cli test:                           detect renames
+packages/cli test:     -D, --irreversible-delete
+packages/cli test:                           omit the preimage for deletes
+packages/cli test:     -C, --find-copies[=<n>]
+packages/cli test:                           detect copies
+packages/cli test:     --[no-]find-copies-harder
+packages/cli test:                           use unmodified files as source to find copies
+packages/cli test:     --no-renames          disable rename detection
+packages/cli test:     --[no-]rename-empty   use empty blobs as rename source
+packages/cli test:     --[no-]follow         continue listing the history of a file beyond renames
+packages/cli test:     -l <n>                prevent rename/copy detection if the number of rename/copy targets exceeds given limit
+packages/cli test: Diff algorithm options
+packages/cli test:     --minimal             produce the smallest possible diff
+packages/cli test:     -w, --ignore-all-space
+packages/cli test:                           ignore whitespace when comparing lines
+packages/cli test:     -b, --ignore-space-change
+packages/cli test:                           ignore changes in amount of whitespace
+packages/cli test:     --ignore-space-at-eol ignore changes in whitespace at EOL
+packages/cli test:     --ignore-cr-at-eol    ignore carrier-return at the end of line
+packages/cli test:     --ignore-blank-lines  ignore changes whose lines are all blank
+packages/cli test:     -I, --[no-]ignore-matching-lines <regex>
+packages/cli test:                           ignore changes whose all lines match <regex>
+packages/cli test:     --[no-]indent-heuristic
+packages/cli test:                           heuristic to shift diff hunk boundaries for easy reading
+packages/cli test:     --patience            generate diff using the "patience diff" algorithm
+packages/cli test:     --histogram           generate diff using the "histogram diff" algorithm
+packages/cli test:     --diff-algorithm <algorithm>
+packages/cli test:                           choose a diff algorithm
+packages/cli test:     --anchored <text>     generate diff using the "anchored diff" algorithm
+packages/cli test:     --word-diff[=<mode>]  show word diff, using <mode> to delimit changed words
+packages/cli test:     --word-diff-regex <regex>
+packages/cli test:                           use <regex> to decide what a word is
+packages/cli test:     --color-words[=<regex>]
+packages/cli test:                           equivalent to --word-diff=color --word-diff-regex=<regex>
+packages/cli test:     --[no-]color-moved[=<mode>]
+packages/cli test:                           moved lines of code are colored differently
+packages/cli test:     --[no-]color-moved-ws <mode>
+packages/cli test:                           how white spaces are ignored in --color-moved
+packages/cli test: Other diff options
+packages/cli test:     --[no-]relative[=<prefix>]
+packages/cli test:                           when run from subdir, exclude changes outside and show relative paths
+packages/cli test:     -a, --[no-]text       treat all files as text
+packages/cli test:     -R                    swap two inputs, reverse the diff
+packages/cli test:     --[no-]exit-code      exit with 1 if there were differences, 0 otherwise
+packages/cli test:     --[no-]quiet          disable all output of the program
+packages/cli test:     --[no-]ext-diff       allow an external diff helper to be executed
+packages/cli test:     --[no-]textconv       run external text conversion filters when comparing binary files
+packages/cli test:     --ignore-submodules[=<when>]
+packages/cli test:                           ignore changes to submodules in the diff generation
+packages/cli test:     --submodule[=<format>]
+packages/cli test:                           specify how differences in submodules are shown
+packages/cli test:     --ita-invisible-in-index
+packages/cli test:                           hide 'git add -N' entries from the index
+packages/cli test:     --ita-visible-in-index
+packages/cli test:                           treat 'git add -N' entries as real in the index
+packages/cli test:     -S <string>           look for differences that change the number of occurrences of the specified string
+packages/cli test:     -G <regex>            look for differences that change the number of occurrences of the specified regex
+packages/cli test:     --pickaxe-all         show all changes in the changeset with -S or -G
+packages/cli test:     --pickaxe-regex       treat <string> in -S as extended POSIX regular expression
+packages/cli test:     -O <file>             control the order in which files appear in the output
+packages/cli test:     --rotate-to <path>    show the change in the specified path first
+packages/cli test:     --skip-to <path>      skip the output to the specified path
+packages/cli test:     --find-object <object-id>
+packages/cli test:                           look for differences that change the number of occurrences of the specified object
+packages/cli test:     --diff-filter [(A|C|D|M|R|T|U|X|B)...[*]]
+packages/cli test:                           select files by diff type
+packages/cli test:     --max-depth <depth>   maximum tree depth to recurse
+packages/cli test:     --output <file>       output to a specific file
+packages/cli test:  ✓ src/loop-self-improvement-cli.test.ts (5 tests) 1045ms
+packages/cli test:    ✓ loop run --self-improvement > requires --repo-id  463ms
+packages/cli test:  ✓ src/improve-cli.test.ts (8 tests) 845ms
+packages/cli test:    ✓ improve CLI > proposes low-risk eval proposals from stored assets  492ms
+packages/cli test:  ✓ src/lessons-cli.test.ts (5 tests) 631ms
+packages/cli test:    ✓ lessons CLI > learns pitfall lessons from failed loop state and lists them  518ms
+packages/cli test:  ✓ src/supervise-cli.test.ts (5 tests) 671ms
+packages/cli test:    ✓ supervise CLI > registers a repo into a JSON registry (upsert)  547ms
+packages/cli test:  ✓ src/autonomy-cli.test.ts (15 tests) 555ms
+packages/cli test:  ✓ src/pr-cli.test.ts (3 tests) 850ms
+packages/cli test:    ✓ pr CLI > writes a dry-run PR body from loop state, events, and proof evidence  457ms
+packages/cli test:    ✓ pr CLI > blocks create mode on the default branch  310ms
+packages/cli test:  ✓ src/start-control-cli.test.ts (20 tests) 884ms
+packages/cli test:  ✓ src/graph-command.test.ts (12 tests) 352ms
+packages/cli test:  ✓ src/evaluator-cli.test.ts (4 tests) 541ms
+packages/cli test:    ✓ evaluator CLI > challenge is advisory and reports the promotion delta  435ms
+packages/cli test:  ✓ src/agent-scorecard-cli.test.ts (4 tests) 545ms
+packages/cli test:    ✓ agent scorecard CLI > prints all agent scorecards from real run history  488ms
+packages/cli test:  ✓ src/neat-cli.test.ts (3 tests) 673ms
+packages/cli test:    ✓ top-level neat CLI > dispatches a read-only all-mode check through main  671ms
+packages/cli test:  ✓ src/scorecard-cli.test.ts (7 tests) 500ms
+packages/cli test:    ✓ scorecard CLI > writes markdown and html scorecards from workspace state  465ms
+packages/cli test:  ✓ src/report-cli.test.ts (8 tests) 553ms
+packages/cli test:    ✓ report CLI > renders an Osstack loop report from workspace state  529ms
+packages/cli test:  ✓ src/daemon-lock-ownership.test.ts (11 tests) 438ms
+packages/cli test:  ✓ src/steward-cli.test.ts (5 tests) 234ms
+packages/cli test:  ✓ src/daemon-loop-recovery-preservation.test.ts (2 tests) 395ms
+packages/cli test:  ✓ src/daemon-evidence-cli.test.ts (1 test) 264ms
+packages/cli test: osstack: autonomy health recovered — daemon resumed accepting work
+packages/cli test:  ✓ src/knowledge-cli.test.ts (24 tests) 311ms
+packages/cli test:  ✓ src/governance-cli.test.ts (3 tests) 360ms
+packages/cli test: osstack: autonomy health recovered — daemon resumed accepting work
+packages/cli test:  ✓ src/neat-command.test.ts (29 tests) 423ms
+packages/cli test: osstack: autonomy health recovered — daemon resumed accepting work
+packages/cli test: osstack: autonomy health recovered — daemon resumed accepting work
+packages/cli test: osstack: autonomy health recovered — daemon resumed accepting work
+packages/cli test: osstack: autonomy health recovered — daemon resumed accepting work
+packages/cli test:  ✓ src/daemon-drain-recovery.test.ts (9 tests) 301ms
+packages/cli test:  ✓ src/autonomy-health.test.ts (9 tests) 287ms
+packages/cli test:  ✓ src/daemon-policy-gate.test.ts (3 tests) 359ms
+packages/cli test:  ✓ src/probe-render.test.ts (4 tests) 319ms
+packages/cli test:  ✓ src/attention-read-model.test.ts (7 tests) 227ms
+packages/cli test:  ✓ src/probe-cli.test.ts (2 tests) 147ms
+packages/cli test:  ✓ src/compliance-cli.test.ts (3 tests) 183ms
+packages/cli test:  ✓ src/dashboard.test.ts (8 tests) 202ms
+packages/cli test:  ✓ src/policy-cli.test.ts (12 tests) 326ms
+packages/cli test:  ✓ src/neat-proposal-command.test.ts (5 tests) 231ms
+packages/cli test:  ✓ src/session-rpc.test.ts (20 tests) 269ms
+packages/cli test:  ✓ src/supervise-probe.test.ts (1 test) 195ms
+packages/cli test:  ✓ src/kimi-review-eval.test.ts (2 tests) 135ms
+packages/cli test:  ✓ src/contracts-cli.test.ts (2 tests) 250ms
+packages/cli test:  ✓ src/autonomy-scorecard.test.ts (2 tests) 72ms
+packages/cli test:  ✓ src/serve-install-cli.test.ts (12 tests) 197ms
+packages/cli test:  ✓ src/checkpoint-cli.test.ts (7 tests) 327ms
+packages/cli test:  ✓ src/loop-probe-observer.test.ts (2 tests) 72ms
+packages/cli test:  ✓ src/probe-kanban-guard.test.ts (2 tests) 63ms
+packages/cli test:  ✓ src/neat-trend-command.test.ts (4 tests) 88ms
+packages/cli test:  ✓ src/daemon-startup-ownership.test.ts (3 tests) 83ms
+packages/cli test:  ✓ src/autonomy-host.test.ts (2 tests) 58ms
+packages/cli test:  ✓ src/probe-compile.test.ts (2 tests) 53ms
+packages/cli test:  ✓ src/neat-review-command.test.ts (10 tests) 124ms
+packages/cli test:  ✓ src/neat-fix-command.test.ts (7 tests) 79ms
+packages/cli test:  ✓ src/neat-semantic-command.test.ts (13 tests) 83ms
+packages/cli test:  ✓ src/run-spec-files.test.ts (5 tests) 36ms
+packages/cli test:  ✓ src/copilot-relay.integration.test.ts (1 test) 82ms
+packages/cli test:  ✓ src/config-cli.test.ts (6 tests) 118ms
+packages/cli test:  ✓ src/autonomy-notification.test.ts (3 tests) 66ms
+packages/cli test:  ✓ src/neat-semantic-artifacts.test.ts (2 tests) 36ms
+packages/cli test:  ✓ src/probe-dynamic.test.ts (3 tests) 29ms
+packages/cli test:  ✓ src/neat-command-v2.test.ts (4 tests) 99ms
+packages/cli test: stderr | src/stack-cli.dryrun.test.ts > stack dry-run: Knowledge Layer 8-PR fixture (offline) > the fixture runner throws for an unknown PR, so nothing hits live gh
+packages/cli test: osstack: stack ingest failed: dry-run: no fixture for PR 99
+packages/cli test:  ✓ src/stack-cli.dryrun.test.ts (2 tests) 64ms
+packages/cli test:  ✓ src/deployed-home.test.ts (10 tests) 17ms
+packages/cli test: stdout | src/upgrade-deployed-home.test.ts > alignEnvWithDeployment > overrides a mismatched caller env (the incident shape)
+packages/cli test: osstack upgrade: note: OSSTACK_HOME in this shell (/Users/example/.osstack) differs from the deployed daemon's home (/Users/example/.osstack-stable, from launchd plist) — using the deployed home.
+packages/cli test:  ✓ src/upgrade-deployed-home.test.ts (9 tests) 28ms
+packages/cli test:  ✓ src/daemon-rpc-latency.test.ts (2 tests) 89ms
+packages/cli test:  ✓ src/store.test.ts (1 test) 31ms
+packages/cli test:  ✓ src/daemon.test.ts (8 tests) 57ms
+packages/cli test:  ✓ src/attention-local-delivery.test.ts (1 test) 7ms
+packages/cli test:  ✓ src/collaborator-command.test.ts (3 tests) 34ms
+packages/cli test:  ✓ src/daemon-agent-override.test.ts (1 test) 60ms
+packages/cli test: stdout | src/upgrade.test.ts > safe self-upgrade > drains and snapshots state before installing and health-checking
+packages/cli test: osstack upgrade: current version: 0.19.0 (channel: latest)
+packages/cli test: stdout | src/upgrade.test.ts > safe self-upgrade > drains and snapshots state before installing and health-checking
+packages/cli test: osstack upgrade: update available: 0.19.0 → 0.19.1
+packages/cli test: stdout | src/upgrade.test.ts > safe self-upgrade > drains and snapshots state before installing and health-checking
+packages/cli test: osstack upgrade: draining daemon (waiting for active runs, max 60s)…
+packages/cli test: stdout | src/upgrade.test.ts > safe self-upgrade > drains and snapshots state before installing and health-checking
+packages/cli test: osstack upgrade: state.db backed up → /Volumes/AIMATE_WORK/tmp/osstack/tests/w-RSjLP7/osstack-upgrade-JyRTBu/home/backups/state-v0.19.0-2026-10-23-16-53-13.db
+packages/cli test: osstack upgrade: installing @osstack/cli@0.19.1…
+packages/cli test: stdout | src/upgrade.test.ts > safe self-upgrade > drains and snapshots state before installing and health-checking
+packages/cli test: osstack upgrade: starting daemon (detached `osstack serve`)…
+packages/cli test: stdout | src/upgrade.test.ts > safe self-upgrade > drains and snapshots state before installing and health-checking
+packages/cli test: osstack upgrade: daemon healthy on 0.19.1.
+packages/cli test: osstack upgrade: upgrade complete: 0.19.0 → 0.19.1
+packages/cli test: stdout | src/upgrade.test.ts > safe self-upgrade > restores the previous binary and database after failed health
+packages/cli test: osstack upgrade: current version: 0.19.0 (channel: latest)
+packages/cli test: stdout | src/upgrade.test.ts > safe self-upgrade > restores the previous binary and database after failed health
+packages/cli test: osstack upgrade: update available: 0.19.0 → 0.19.1
+packages/cli test: stdout | src/upgrade.test.ts > safe self-upgrade > restores the previous binary and database after failed health
+packages/cli test: osstack upgrade: draining daemon (waiting for active runs, max 60s)…
+packages/cli test: stdout | src/upgrade.test.ts > safe self-upgrade > restores the previous binary and database after failed health
+packages/cli test: osstack upgrade: state.db backed up → /Volumes/AIMATE_WORK/tmp/osstack/tests/w-RSjLP7/osstack-upgrade-rVd6iC/home/backups/state-v0.19.0-2026-10-23-16-53-13.db
+packages/cli test: osstack upgrade: installing @osstack/cli@0.19.1…
+packages/cli test: stdout | src/upgrade.test.ts > safe self-upgrade > restores the previous binary and database after failed health
+packages/cli test: osstack upgrade: starting daemon (detached `osstack serve`)…
+packages/cli test: stdout | src/upgrade.test.ts > safe self-upgrade > restores the previous binary and database after failed health
+packages/cli test: osstack upgrade: daemon failed health check on 0.19.1 — ROLLING BACK to 0.19.0…
+packages/cli test: osstack upgrade: draining daemon (waiting for active runs, max 60s)…
+packages/cli test:  ✓ src/probe-gate.test.ts (2 tests) 19ms
+packages/cli test: stdout | src/upgrade.test.ts > safe self-upgrade > restores the previous binary and database after failed health
+packages/cli test: osstack upgrade: pre-upgrade state.db snapshot restored
+packages/cli test: stdout | src/upgrade.test.ts > safe self-upgrade > restores the previous binary and database after failed health
+packages/cli test: osstack upgrade: starting daemon (detached `osstack serve`)…
+packages/cli test: stdout | src/upgrade.test.ts > safe self-upgrade > restores the previous binary and database after failed health
+packages/cli test: osstack upgrade: rolled back to 0.19.0; daemon healthy again. Investigate before retrying.
+packages/cli test:  ✓ src/upgrade.test.ts (2 tests) 43ms
+packages/cli test:  ✓ src/control-plane-guard.test.ts (16 tests) 10ms
+packages/cli test:  ✓ src/hub-cli.test.ts (16 tests) 12ms
+packages/cli test:  ✓ src/session-wait.test.ts (12 tests) 4ms
+packages/cli test:  ✓ src/skills-command.test.ts (3 tests) 6ms
+packages/cli test:  ✓ src/control-plane-doctor.test.ts (8 tests) 11ms
+packages/cli test:  ✓ src/supervisor-cli-support.test.ts (6 tests) 9ms
+packages/cli test:  ✓ src/attention-loop-source.test.ts (1 test) 15ms
+packages/cli test:  ✓ src/steward-command.test.ts (1 test) 5ms
+packages/cli test:  ✓ src/session-command.test.ts (3 tests) 3ms
+packages/cli test:  ✓ src/continuation-output-checks.test.ts (2 tests) 4ms
+packages/cli test:  ✓ src/cockpit-tui.test.ts (8 tests) 5ms
+packages/cli test:  ✓ src/update-check.test.ts (7 tests) 3ms
+packages/cli test:  ✓ src/neat-patch-policy.test.ts (9 tests) 3ms
+packages/cli test:  ✓ src/i18n-cli.test.ts (2 tests) 3ms
+packages/cli test:  ✓ src/agent-command.test.ts (2 tests) 9ms
+packages/cli test:  ✓ src/loop-profile-routing.test.ts (12 tests) 8ms
+packages/cli test:  ✓ src/rpc-latency.test.ts (7 tests) 3ms
+packages/cli test:  ✓ src/stack-routing.test.ts (15 tests) 7ms
+packages/cli test:  ✓ src/task-command.test.ts (4 tests) 3ms
+packages/cli test:  ✓ src/proof-pack.test.ts (9 tests) 8ms
+packages/cli test:  ✓ src/hermes-command.test.ts (3 tests) 6ms
+packages/cli test:  ✓ src/loop-neat-finalizer.test.ts (4 tests) 3ms
+packages/cli test:  ✓ src/attention-command.test.ts (6 tests) 2ms
+packages/cli test:  ✓ src/attention-hook.test.ts (1 test) 1ms
+packages/cli test:  ✓ src/release-workflow.test.ts (13 tests) 5ms
+packages/cli test:  ✓ src/assurance-command.test.ts (3 tests) 5ms
+packages/cli test:  ✓ src/product-entry-command.test.ts (1 test) 3ms
+packages/cli test:  ✓ src/collaborator-rpc.test.ts (11 tests) 20069ms
+packages/cli test:    ✓ signed collaborator through daemon RPC > automatically advances two frozen phases and replay never resets spent budgets  4727ms
+packages/cli test:    ✓ signed collaborator through daemon RPC > uses only the signed retry instruction within its finite budget  5256ms
+packages/cli test:    ✓ signed collaborator through daemon RPC > cannot use a phase grant as a risk approval  2625ms
+packages/cli test:    ✓ signed collaborator through daemon RPC > does not reinterpret a controlled result as a legacy decision directive  1764ms
+packages/cli test:    ✓ signed collaborator through daemon RPC > preserves opaque results during a delegated resume  1150ms
+packages/cli test:    ✓ signed collaborator through daemon RPC > rejects signature, runtime-policy and session-cursor changes without any send  451ms
+packages/cli test:    ✓ signed collaborator through daemon RPC > revokes an in-flight turn and stops before the next instruction  619ms
+packages/cli test:    ✓ signed collaborator through daemon RPC > bounds a stalled turn and blocks further automatic delivery  1509ms
+packages/cli test:    ✓ signed collaborator through daemon RPC > retains a late real receipt but blocks when the timeout callback has not run yet  627ms
+packages/cli test:    ✓ signed collaborator through daemon RPC > recovers a reserved receipt as uncertain after restart without resending  387ms
+packages/cli test:    ✓ signed collaborator through daemon RPC > defers persisted grants and refuses installs until initial health permits work  952ms
+packages/cli test:  Test Files  106 passed (106)
+packages/cli test:       Tests  883 passed (883)
+packages/cli test:    Start at  09:52:58
+packages/cli test:    Duration  21.86s (transform 3.07s, setup 2.25s, collect 46.13s, tests 80.14s, environment 45ms, prepare 5.09s)
+packages/cli test: Done

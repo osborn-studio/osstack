@@ -1,0 +1,17 @@
+[
+  {
+    "stage": "d1",
+    "exit_code": 2,
+    "command": "pnpm --filter @osstack/cli exec vitest run src/daemon-lock-ownership.test.ts src/daemon-startup-ownership.test.ts"
+  },
+  {
+    "stage": "d2",
+    "exit_code": 2,
+    "command": "pnpm --filter @osstack/loop exec vitest run src/loop-engine.test.ts src/loop-worktree-preservation.test.ts"
+  },
+  {
+    "stage": "d3",
+    "exit_code": 2,
+    "command": "pnpm --filter @osstack/cli exec vitest run src/daemon-loop-recovery-preservation.test.ts src/daemon-daily.test.ts src/daemon-drain-recovery.test.ts"
+  }
+]

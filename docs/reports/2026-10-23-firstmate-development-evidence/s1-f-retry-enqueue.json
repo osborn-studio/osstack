@@ -1,0 +1,29 @@
+{
+  "loop_id": "loop_8588d8b1-c42f-43ca-ba63-58a23f7bcd4e",
+  "retry_of_task_id": "firstmate-s1-f",
+  "retry_task": {
+    "task_id": "firstmate-s1-f-retry",
+    "capability": "code.test",
+    "prompt": "Retry failed osstack loop task firstmate-s1-f.\nPrevious outcome: escalated.\nPrevious agent: local-command.\nSummary: cd /Volumes/AIMATE_WORK/Developer/CodeX/osstack && git diff --check failed (2): packages/cli/src/daemon.ts:4105: new blank line at EOF.",
+    "priority": 70,
+    "source": "task_queue",
+    "context": {
+      "retry_of_task_id": "firstmate-s1-f",
+      "retry_from_loop_id": "loop_8588d8b1-c42f-43ca-ba63-58a23f7bcd4e",
+      "previous_outcome": "escalated",
+      "previous_agent_id": "local-command",
+      "previous_iterations": 1,
+      "previous_run_id": "run_plan_ac313143-93f6-4145-9506-15a51d0559f9",
+      "previous_error_summary": "cd /Volumes/AIMATE_WORK/Developer/CodeX/osstack && git diff --check failed (2): packages/cli/src/daemon.ts:4105: new blank line at EOF.",
+      "previous_verify_summary": "1 issue found by local verifier. Failed evaluations: verify-command-1.",
+      "previous_verify_issues": [
+        {
+          "severity": "error",
+          "message": "cd /Volumes/AIMATE_WORK/Developer/CodeX/osstack && git diff --check failed (2): packages/cli/src/daemon.ts:4105: new blank line at EOF.",
+          "rule": "verify.command_failed"
+        }
+      ]
+    }
+  },
+  "path": "/Volumes/AIMATE_WORK/tmp/osstack/smoke/firstmate-development-20261023/queue/s1-f/tasks/firstmate-s1-f-retry.json"
+}

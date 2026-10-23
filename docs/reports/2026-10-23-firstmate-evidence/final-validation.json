@@ -1,0 +1,41 @@
+{
+  "validated_at_utc": "2026-10-23T15:32:33.997947+00:00",
+  "passed": true,
+  "errors": [],
+  "firstmate_commit": "af1c6817fc47589b162cbc361671c43cdb150933",
+  "firstmate_status": "",
+  "firstmate_baseline_files_checked": 728,
+  "osstack_head": "b476bcc3fbbfcc11953abd3d154e59f7f85c4660",
+  "osstack_baseline_files_checked": 19,
+  "tracked_status_unchanged": true,
+  "source_index_entries_checked": 40,
+  "document_links_checked": 56,
+  "json_files_parsed": 8,
+  "reviews": [
+    {
+      "file": "claude-round1.json",
+      "model_ids": [
+        "claude-fable-5-1"
+      ],
+      "duration_ms": 217702,
+      "is_error": false
+    },
+    {
+      "file": "claude-round2.json",
+      "model_ids": [
+        "claude-fable-5-1"
+      ],
+      "duration_ms": 228311,
+      "is_error": false
+    },
+    {
+      "file": "claude-round3.json",
+      "model_ids": [
+        "claude-fable-5-1"
+      ],
+      "duration_ms": 151628,
+      "is_error": false
+    }
+  ],
+  "limits": "Document/source integrity only; no new OSStack runtime functionality, no production DB access, no full upstream suite or live backend verification."
+}

@@ -1,0 +1,95 @@
+FM_TEST_BEGIN 2026-10-23T15:02:44Z tests/fm-busy-state.test.sh family=standalone expected_gate_skip=none
+ok - native progress is generation-bound, separately recorded, and cleared on arm and retire
+ok - the turn-ended notification rides the apply generation check
+ok - arm mints a gen sidecar and seeds busy fm-spawn at seq=1
+ok - apply advances seq under the armed gen and attributes the writing source
+ok - firstmate-owned interrupt and recovery events bind to the current gen
+ok - apply is refused for a task whose busy contract was never armed
+ok - retire waits for the writer lock and cannot remove a new incarnation
+ok - retire treats only an absent sidecar as already retired
+ok - the writer breaks a stale lock instead of dying on GNU stat output
+ok - a late event from a previous incarnation is rejected, record unchanged
+ok - a record from a stale incarnation classifies unknown, never idle
+ok - a converted adapter with no record classifies unknown, never idle
+ok - malformed records classify unknown malformed, never busy or idle
+ok - a record with no armed gen sidecar classifies unknown
+ok - a record is trusted only by the adapter whose source wrote it
+ok - converted adapters never classify busy from rendered footer text
+ok - a Claude launch parked on its trust or external-imports dialog classifies unknown launch-prompt
+ok - a Pi-family launch (pi, pi-signed, omp) parked on the project-trust dialog classifies unknown launch-prompt
+ok - the Pi signature requires both the dialog heading and its decline option, not the bare word trust
+ok - a Gemini launch parked on its trust, auth-picker, or API-key dialog classifies unknown launch-prompt
+ok - the launch-prompt backstop never reclassifies a genuinely working launch
+ok - the launch-prompt backstop is scoped to harnesses with a verified signature
+ok - the launch-prompt backstop only ever touches the untouched fm-spawn seed
+ok - the launch-prompt backstop never runs without a captured tail
+ok - the grok fallback is regex-scoped to grok and classifies only grok tasks
+ok - codex classifies unknown until a semantic source passes its verification gate
+ok - standalone kimi classifies unknown until the live verification gate opens
+ok - cursor classifies only from its transcript fold, never rendered text or native state
+ok - endpoint death is the only process-level override and yields dead, never busy
+ok - herdr's native verdict is trusted for busy only, and records outrank it
+ok - record parsing never clobbers the caller's positional parameters, glob setting, or fields
+ok - the boolean view reports busy only on an exact busy verdict
+all fm-busy-state tests passed
+FM_TEST_END 2026-10-23T15:02:50Z tests/fm-busy-state.test.sh exit=0 duration_ms=5685 gate_skip=false
+FM_TEST_BEGIN 2026-10-23T15:02:50Z tests/fm-classify-decision-key.test.sh family=pure-contract-unit expected_gate_skip=none
+ok - a stated [key=X] opens X whether it precedes or follows the verb colon
+ok - a keyless needs-decision still opens and closes the default key
+ok - a resolution closes its decision regardless of either line's key position
+ok - blocked [key=X] opens X in both key positions
+ok - two colon-form keyed decisions never collapse into one shared bucket
+ok - a [key=x] mentioned mid-note is prose, never an opened or closed key
+ok - a malformed stated key is rejected in both positions, never folded as default
+ok - status_line_verb strips every bracket tag before the colon, in any order, and recovers the bare verb
+ok - a [corr=...] tag ahead of [key=...] no longer swallows the verb: opens and closes under the stated key
+ok - a [corr=...] tag with no stated key opens under 'default', exactly like a bare needs-decision line
+ok - a [key=x] tag alone (no corr tag) still opens x - no regression from the tag-stripping fix
+ok - blocked/resolved parse their bare verb with any bracket-tag order preceding the colon
+ok - the incremental fold matches the full fold across appends in both key positions
+ok - status_key_closing_verb separates resolution, durable transfer, and still-open
+ok - status_key_closing_verb reports the last real transition, in either key position
+ok - per-key reads retain resolutions without subprocess work growing with unrelated history
+ok - overridden resolve and durable-transfer verbs still close keys behind unrelated history
+ok - per-key filtering retains ship/scout terminals, reopenings, and secondmate blockers
+ok - prose without a colon cannot impersonate a ship or scout terminal declaration
+ok - a stated default retraction closes its decision and leaves an unrelated keyless wait standing
+ok - a declared wait outlives answers for other keys beyond the event window, and its own resolved line retracts it
+ok - only a colon-bearing or keyed line is a decision transition in the fold
+ok - a recorded line stays recorded across a later resolve
+FM_TEST_END 2026-10-23T15:02:54Z tests/fm-classify-decision-key.test.sh exit=0 duration_ms=4072 gate_skip=false
+FM_TEST_BEGIN 2026-10-23T15:02:54Z tests/fm-dod-lib.test.sh family=pure-contract-unit expected_gate_skip=none
+ok - scout done: is not gated
+ok - unpushed ship done: is refused
+ok - no-mistakes pre-validation done: is not gated
+ok - named head on a remote-tracking ref is accepted
+ok - a moved remote branch that lacks the named head is refused
+ok - a 40-hex token in the note is not the named head
+ok - a recorded merged PR satisfies the gate after prune
+ok - the merged-PR short-circuit applies only to the recorded PR the done line names
+ok - a forge-recorded head for the named PR is accepted without a local object
+ok - a direct-PR recorded head does not cover a later unpushed commit
+ok - CI-ready notes require checks green and an actual PR reference
+ok - no-mistakes CI-ready done: with extra text is gated
+ok - keyed and spaced ship done: lines are gated
+ok - local-only linked named branch is reachable from the project clone
+ok - local-only detached HEAD only in the disposable copy is refused
+ok - standalone local-only done: requires the named head in the project clone
+ok - non-done lines are not gated
+ok - fenced and indented Captain lines are not authorized intent
+ok - PR-based DoD draft check uses gh-axi
+ok - promotion keeps a scout's recorded base branch and refuses local-only for it
+ok - forge=external composes with direct-PR only and refuses a base branch
+ok - external rule one forbids origin and task-prefixed pushes and names only the backup copy
+ok - external DoD renders the contract, the review grammar, and the adapter, and refuses without one
+ok - external review done: accepted on a canonical URL alone without a backup; PR, non-https, query, fragment, forge, and pattern mismatches refused
+ok - external review done with a backup: refused until HEAD is under refs/remotes/backup/backup/, then accepted
+ok - worker role names the skill and its fallback skill file
+all fm-dod-lib tests passed
+FM_TEST_END 2026-10-23T15:03:01Z tests/fm-dod-lib.test.sh exit=0 duration_ms=7077 gate_skip=false
+FM_TEST_SUMMARY total=3 failed=0 skipped_gate=0 duration_ms=16968
+FM_TEST_SUMMARY_FAMILY family=pure-contract-unit count=2 duration_ms=11149 failed=0
+FM_TEST_SUMMARY_FAMILY family=standalone count=1 duration_ms=5685 failed=0
+FM_TEST_SLOWEST rank=1 script=tests/fm-dod-lib.test.sh duration_ms=7077
+FM_TEST_SLOWEST rank=2 script=tests/fm-busy-state.test.sh duration_ms=5685
+FM_TEST_SLOWEST rank=3 script=tests/fm-classify-decision-key.test.sh duration_ms=4072

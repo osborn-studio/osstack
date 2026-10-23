@@ -1,0 +1,83 @@
+{
+  "head": "b476bcc3fbbfcc11953abd3d154e59f7f85c4660",
+  "branch": "codex/graph-readonly-pilot",
+  "source": "working tree; pre-existing modifications retained",
+  "files": [
+    {
+      "path": "packages/cli/src/daemon.ts",
+      "sha256": "9e5ef8efa61a61f41094aeb2ac56140f94c3ead9fa9339578615c2881c9448e2"
+    },
+    {
+      "path": "packages/agents/src/session.ts",
+      "sha256": "5e99fac22134e8795d504c373c327db384205a935f596190770f01140fc61a69"
+    },
+    {
+      "path": "packages/core/src/state/sessions.ts",
+      "sha256": "923c69781b1bdf9370e92cefeaef2fdb8128c2105eb5bf20f4163d37d84d5710"
+    },
+    {
+      "path": "packages/core/src/state/session-continuations.ts",
+      "sha256": "c400826b890a4d1fd249796195c7ad5e3e2b071065740498ed46c4fd7bdb6651"
+    },
+    {
+      "path": "packages/cli/src/session-collaborator.ts",
+      "sha256": "729f6511dbded2ee064e265f8e4022bc7e6ecbbccdc0da251f1f190f8db1c62f"
+    },
+    {
+      "path": "packages/cli/src/daily-command.ts",
+      "sha256": "d28ca8873c8dad354c6846cf14892a45d239e8910a98f360cf03546b5c2c6009"
+    },
+    {
+      "path": "packages/core/src/state/notification-outbox.ts",
+      "sha256": "1b45e871dda18f933e95a97098bb3c32be64c006d1ec38a9a9fc6714f74bce54"
+    },
+    {
+      "path": "packages/core/src/kanban/notify.ts",
+      "sha256": "201f5cd0448dc354b8df76351842aafdba91c2db9101cec173d3762f85d63876"
+    },
+    {
+      "path": "packages/cli/src/graph-command.ts",
+      "sha256": "486a8dfa8303f6daa8824c85c739337e7fcd6c078dc27f29f9ed211662bdd98b"
+    },
+    {
+      "path": "packages/runtime/src/index.ts",
+      "sha256": "181a4771c3e85ac6156bdcb2155ab4bd3b86889bc52e13c04f347d7cd00513de"
+    },
+    {
+      "path": "packages/core/src/state/migrations.ts",
+      "sha256": "ebf89e8eaceb6fafabcac61748777d6e6dcaabbcf9e67a53aff1d35a73396c61"
+    },
+    {
+      "path": "packages/agents/src/base.ts",
+      "sha256": "c5d0dfffd72c409f035f1a07d5417c6fa39f90faba443d8d6e5aa09fef2a1173"
+    },
+    {
+      "path": "packages/loop/src/loop-engine.ts",
+      "sha256": "26636b8a432d928efbaa85d516528d66d560d14229c98a57dc6cc786a2516f71"
+    },
+    {
+      "path": "packages/loop/src/types.ts",
+      "sha256": "86233be74963f03a658bcadb6053816795aae39eb5ab9106f3d62311eb8eb5a1"
+    },
+    {
+      "path": "packages/agents/src/worktree.ts",
+      "sha256": "db3c3dee400b2587e8dc7895ed50d16552ee3484bad5b8ed3e9dd48a9190e99c"
+    },
+    {
+      "path": "packages/autonomy/src/engine.ts",
+      "sha256": "d9340ad4ed8dccf8ea404343dc162a883b429894b23eab0595a4c1c2796d3247"
+    },
+    {
+      "path": "packages/cli/src/autonomy-notification.ts",
+      "sha256": "0f2de184b45c9fa4c9c667b1f4edce6fd3832dbb55eb4a954745ecc931ee5ab8"
+    },
+    {
+      "path": "packages/core/src/policy/engine.ts",
+      "sha256": "c17b9f778fb1f4ea53ce15a3f8f64caeaa3427dd5437ee6d3893e9e03e8c98c3"
+    },
+    {
+      "path": "packages/cli/src/control-plane-guard.ts",
+      "sha256": "b8455782f0526432d7dd61e74de9cee2f1d0a13f184d214c4be14ee38653cbe5"
+    }
+  ]
+}

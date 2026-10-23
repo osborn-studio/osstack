@@ -1,0 +1,4408 @@
+{
+  "url": "https://github.com/kunchenguid/firstmate",
+  "commit": "af1c6817fc47589b162cbc361671c43cdb150933",
+  "clone_path": "/Volumes/AIMATE_WORK/Developer/CodeX/firstmate",
+  "shallow": true,
+  "status": "",
+  "tracked_regular_files": 728,
+  "by_top_level": {
+    ".agents": 49,
+    ".claude": 14,
+    ".codex": 1,
+    ".cursor": 1,
+    ".gitattributes": 1,
+    ".github": 3,
+    ".gitignore": 1,
+    ".greptile": 1,
+    ".grok": 4,
+    ".no-mistakes.yaml": 1,
+    ".omp": 3,
+    ".opencode": 8,
+    ".pi": 15,
+    ".tasks.toml": 1,
+    "AGENTS.md": 1,
+    "CLAUDE.md": 1,
+    "CONTRIBUTING.md": 1,
+    "GROK_BOT.md": 1,
+    "LICENSE": 1,
+    "README.md": 1,
+    "VISION.md": 1,
+    "assets": 1,
+    "bin": 235,
+    "docs": 75,
+    "skills": 1,
+    "tests": 306
+  },
+  "shell_behavior_test_files": 277,
+  "files": [
+    {
+      "path": ".agents/skills/afk/SKILL.md",
+      "bytes": 32289,
+      "lines": 266,
+      "sha256": "8cf6334f9cc72c7d626cb6e408c69185c340e68ea67ccd372ff1eae03583db19"
+    },
+    {
+      "path": ".agents/skills/agent-skill-trigger-index/SKILL.md",
+      "bytes": 4886,
+      "lines": 34,
+      "sha256": "40151c28964c9fca61a779121b5ff54ae3f1ebd96c639fe608a07c7a5eebb1bb"
+    },
+    {
+      "path": ".agents/skills/ahoy/SKILL.md",
+      "bytes": 6387,
+      "lines": 57,
+      "sha256": "552fb3a93e05f7271d44958ded6a462e136ab40ba4357fb085b21962b9e960f2"
+    },
+    {
+      "path": ".agents/skills/ask-user-authority/SKILL.md",
+      "bytes": 4166,
+      "lines": 55,
+      "sha256": "ee683ca02a6a776df7a6f46c17442ede4796ac99f5d88508b1e91b3d53195e9f"
+    },
+    {
+      "path": ".agents/skills/away-quiet-supervision/SKILL.md",
+      "bytes": 2938,
+      "lines": 24,
+      "sha256": "6b94bb3efb9bb803905534ce4bf4356e51754380b5afaef1b80220e79f3af18f"
+    },
+    {
+      "path": ".agents/skills/bearings/SKILL.md",
+      "bytes": 27844,
+      "lines": 216,
+      "sha256": "6d0dde9af060778f5d08702cae7e7338f258e308bd603f9fac20e6313beb730b"
+    },
+    {
+      "path": ".agents/skills/bearings/assets/board-template.html",
+      "bytes": 37431,
+      "sha256": "06eeb315c141d5dd175be00bab9a221cc05467950ad83711f6b45bf3a1f6220b",
+      "lines": 749
+    },
+    {
+      "path": ".agents/skills/bootstrap-diagnostics/SKILL.md",
+      "bytes": 14601,
+      "lines": 79,
+      "sha256": "bdf323752aea68203f662d5f776531c0738f55962829a3fcce4ff92658fa0b3f"
+    },
+    {
+      "path": ".agents/skills/captain-hold-lifecycle/SKILL.md",
+      "bytes": 9534,
+      "lines": 69,
+      "sha256": "e585eae7d56e1037baeab50b8afd9c0e8b1f2c0a22c168aec777176b08865357"
+    },
+    {
+      "path": ".agents/skills/diagnostic-reasoning/SKILL.md",
+      "bytes": 3650,
+      "lines": 51,
+      "sha256": "74083d93a321efe5ab2675b44b6b85b7956f695c6204ac7000f9aaae4ed609de"
+    },
+    {
+      "path": ".agents/skills/firstmate-codexapp/SKILL.md",
+      "bytes": 5558,
+      "lines": 109,
+      "sha256": "fde64b94f7ff459c368edcce2006277c474790d7054e09c895d21e467e887f02"
+    },
+    {
+      "path": ".agents/skills/firstmate-codexapp/agents/openai.yaml",
+      "bytes": 243,
+      "sha256": "f3996db56de5f2396641e99c1d4d1127c7c43e5b9d36d5fb82cb2651e9ff72ad",
+      "lines": 4
+    },
+    {
+      "path": ".agents/skills/firstmate-coding-guidelines/SKILL.md",
+      "bytes": 12140,
+      "lines": 133,
+      "sha256": "46c315e1380448eb396c7e0d565ce266376de1d45f4e3a7ba3b238cbc746cb2c"
+    },
+    {
+      "path": ".agents/skills/firstmate-orca/SKILL.md",
+      "bytes": 5296,
+      "lines": 93,
+      "sha256": "61a855adf20ad6293105cf9bd2a682b59e17d1eff4f90a42dfe66c82103242a4"
+    },
+    {
+      "path": ".agents/skills/firstmate-self-repo/SKILL.md",
+      "bytes": 5336,
+      "lines": 71,
+      "sha256": "036c31efd2ade669b848a047656e610d64936b40014ef23367bd62d75565e077"
+    },
+    {
+      "path": ".agents/skills/fmx-respond/SKILL.md",
+      "bytes": 41583,
+      "lines": 324,
+      "sha256": "296ffb2b4ae144cf7e48d4e9b30cc5b33fba83eb1089116d215bed121ce5dee3"
+    },
+    {
+      "path": ".agents/skills/harness-adapters/SKILL.md",
+      "bytes": 6817,
+      "lines": 102,
+      "sha256": "5ff4680b848cf9fbf3d9a59950abf1b428bd0d90e434e710113b489faf95219c"
+    },
+    {
+      "path": ".agents/skills/harness-adapters/references/common/control-and-recovery.md",
+      "bytes": 3622,
+      "lines": 46,
+      "sha256": "c67cb9b0b601d044ada3915483466c3a3760dc7dad64babd8808f64a82ce53ff"
+    },
+    {
+      "path": ".agents/skills/harness-adapters/references/common/dispatch.md",
+      "bytes": 2746,
+      "lines": 33,
+      "sha256": "d81478457a53b2e002426cf7dbadd4c018fd547d116848ca0561bc0f42269bfe"
+    },
+    {
+      "path": ".agents/skills/harness-adapters/references/common/model-and-effort.md",
+      "bytes": 3050,
+      "lines": 44,
+      "sha256": "374585e96d8c138b47aa47d97a987ce04e37cc2db0beada0e2e83d97f4b3d3fd"
+    },
+    {
+      "path": ".agents/skills/harness-adapters/references/common/primary-hooks.md",
+      "bytes": 2660,
+      "lines": 40,
+      "sha256": "346c708d15c6f1d24e52d6a21c5bc8d866cfea7ce249d53e5d569cf5b1e7256c"
+    },
+    {
+      "path": ".agents/skills/harness-adapters/references/harness/agy.md",
+      "bytes": 6381,
+      "lines": 55,
+      "sha256": "77aae15c4c507fb4e14a7a32543a3a321a67b75ba068332f40847cbdb2891232"
+    },
+    {
+      "path": ".agents/skills/harness-adapters/references/harness/claude.md",
+      "bytes": 13355,
+      "lines": 109,
+      "sha256": "1328a0d8f07eff43bd72d32cff8d92a8275d31c3950c0528ff424e5e882bf167"
+    },
+    {
+      "path": ".agents/skills/harness-adapters/references/harness/codex.md",
+      "bytes": 5829,
+      "lines": 56,
+      "sha256": "a49098fe06f4f6e49547457c954502111f54908e1bec276b02f2f90d6f4a9a3d"
+    },
+    {
+      "path": ".agents/skills/harness-adapters/references/harness/commandcode.md",
+      "bytes": 4521,
+      "lines": 43,
+      "sha256": "80815b0ffa93a98f194d2462e59effe586e7514ad60f769965ab32a500a15458"
+    },
+    {
+      "path": ".agents/skills/harness-adapters/references/harness/cursor.md",
+      "bytes": 7453,
+      "lines": 78,
+      "sha256": "9706cd419090c36aa25b37d674be1afcc5955b7307108209814a117ab9e68031"
+    },
+    {
+      "path": ".agents/skills/harness-adapters/references/harness/devin.md",
+      "bytes": 4460,
+      "lines": 48,
+      "sha256": "534719cf67de8daea135c98040ce47f39e3e282952ed3a812aab742d3ae5336e"
+    },
+    {
+      "path": ".agents/skills/harness-adapters/references/harness/gemini.md",
+      "bytes": 12177,
+      "lines": 109,
+      "sha256": "753c0bf9010236d9124be254c6579212615d8d8f2c37f43f1b86e288ffa05684"
+    },
+    {
+      "path": ".agents/skills/harness-adapters/references/harness/grok.md",
+      "bytes": 8459,
+      "lines": 94,
+      "sha256": "0dc78ec961bde04d4d19fd4da4dab1257f549a3dd4cc8de438547c9ca3442b85"
+    },
+    {
+      "path": ".agents/skills/harness-adapters/references/harness/kimi.md",
+      "bytes": 7717,
+      "lines": 55,
+      "sha256": "00ffff5cfbdecface6d704846412da6b33b4dada23e7b6fe9d4ba3ea28e9840e"
+    },
+    {
+      "path": ".agents/skills/harness-adapters/references/harness/muse.md",
+      "bytes": 5721,
+      "lines": 70,
+      "sha256": "c7e7b519675396d34cf86fb887bb8a5500b7fad46ce23dc81e302ad076e0019c"
+    },
+    {
+      "path": ".agents/skills/harness-adapters/references/harness/omp.md",
+      "bytes": 8027,
+      "lines": 57,
+      "sha256": "3a1f034f41c24a2248fb05f92f250209347904fe2267523f01a05a3784c2aa92"
+    },
+    {
+      "path": ".agents/skills/harness-adapters/references/harness/opencode.md",
+      "bytes": 10314,
+      "lines": 56,
+      "sha256": "0540706aff329fa66f28193985259c9555300088f5f99fadd83308711bd9b399"
+    },
+    {
+      "path": ".agents/skills/harness-adapters/references/harness/pi.md",
+      "bytes": 6312,
+      "lines": 62,
+      "sha256": "4cd6edd66a094209fb7c7ead6b2c7f72f8accf5b616d498f43afc3878a570df0"
+    },
+    {
+      "path": ".agents/skills/harness-adapters/references/harness/polytoken.md",
+      "bytes": 8665,
+      "lines": 54,
+      "sha256": "3fafcdc0f15fc5ed0887b9c1901b43218aad47cc6f2bdd7314826b3a97c67bbc"
+    },
+    {
+      "path": ".agents/skills/harness-adapters/references/harness/rovo.md",
+      "bytes": 13289,
+      "lines": 76,
+      "sha256": "c1e9d1147a6bb3a1d0fa7a7336fe9f4729baa766ff932d117a5d6e8078112e40"
+    },
+    {
+      "path": ".agents/skills/operational-home-layout/SKILL.md",
+      "bytes": 29795,
+      "lines": 150,
+      "sha256": "625134d0e52283ba9bf5b79400d5b8572488e18b41ae89e64f42ad73d6a59c06"
+    },
+    {
+      "path": ".agents/skills/process-event-sources/SKILL.md",
+      "bytes": 18621,
+      "lines": 159,
+      "sha256": "d7559f0d900c131264c4d58082c9192b5e2c132b97b9e302674716323443a0b9"
+    },
+    {
+      "path": ".agents/skills/project-management/SKILL.md",
+      "bytes": 9240,
+      "lines": 104,
+      "sha256": "594c69a297c682351fa0a01077f85dea4ad7f2db94da9684ff8410ac23da8b3c"
+    },
+    {
+      "path": ".agents/skills/quiet/SKILL.md",
+      "bytes": 5412,
+      "lines": 85,
+      "sha256": "875aec59de9d00a4c4476ef510318f85de92b1eb476dd66a595a337967f766fc"
+    },
+    {
+      "path": ".agents/skills/quota-array-dispatch/SKILL.md",
+      "bytes": 12279,
+      "lines": 131,
+      "sha256": "689c9347a7c6de67acf17c1f333ca8399c70e176c3f08f59bec60fb772ba13f1"
+    },
+    {
+      "path": ".agents/skills/scout-completion/SKILL.md",
+      "bytes": 1393,
+      "lines": 16,
+      "sha256": "cdf7bc5d88f71c91d3e7ff2cf391efb2aaa05efc96ea0eadf0a6218bcd51ea61"
+    },
+    {
+      "path": ".agents/skills/secondmate-provisioning/SKILL.md",
+      "bytes": 31577,
+      "lines": 263,
+      "sha256": "bcd2b9cf7a35a9c72d52ab8345f89b166ea55c0b3cc4f53e5b3c0237dac18558"
+    },
+    {
+      "path": ".agents/skills/session-start-recovery/SKILL.md",
+      "bytes": 7077,
+      "lines": 43,
+      "sha256": "d8777669cc36b5abaf2c9e88d55f58e15e51e0592ec2e82f5ea0a977a5510e53"
+    },
+    {
+      "path": ".agents/skills/ship-landing/SKILL.md",
+      "bytes": 3457,
+      "lines": 30,
+      "sha256": "ad929780d4b65a2445d4dcd6cb8de32749d1d54b79762135f69befb2d0b4b033"
+    },
+    {
+      "path": ".agents/skills/stow/SKILL.md",
+      "bytes": 38803,
+      "lines": 324,
+      "sha256": "c342f585d30973fae0e86a86e5aa9c796ef75b561ebbcd92331038d30b427c9d"
+    },
+    {
+      "path": ".agents/skills/stuck-crewmate-recovery/SKILL.md",
+      "bytes": 9680,
+      "lines": 86,
+      "sha256": "d1c3c941bd335e07ac23f6416d0f38abd1052887034d40ce9eb50861776fc7d3"
+    },
+    {
+      "path": ".agents/skills/updatefirstmate/SKILL.md",
+      "bytes": 9825,
+      "lines": 107,
+      "sha256": "c95261f822c1f166e8c175ab73bbe5719390864ad54ab9ae52ee1b6287c73815"
+    },
+    {
+      "path": ".agents/skills/validation-supervision/SKILL.md",
+      "bytes": 3809,
+      "lines": 32,
+      "sha256": "09a290054ca050d3895c3fa880e4d20892858e38043dfbab635ae18e216ed82c"
+    },
+    {
+      "path": ".claude/mods/firstmate-calm/.claude-plugin/plugin.json",
+      "bytes": 581,
+      "sha256": "7fc8e14e9c5f2dc7c7563984312d634e514c6050bcfc43a75c1f618997f823dc",
+      "lines": 9
+    },
+    {
+      "path": ".claude/mods/firstmate-calm/hooks/hooks.json",
+      "bytes": 271,
+      "sha256": "7fde987e879dc5c5c052542f12e74b907ecab5e693609ba264fc6e25c8637bdf",
+      "lines": 4
+    },
+    {
+      "path": ".claude/mods/firstmate-calm/hooks/register.ts",
+      "bytes": 20027,
+      "sha256": "254aa32b1f4cd6ceb57c1624fd9944a97474ed2c4bd6891ad98c1c7081283b9e",
+      "lines": 504
+    },
+    {
+      "path": ".claude/mods/firstmate-calm/lib/fm-branch-notes.ts",
+      "bytes": 8349,
+      "sha256": "0f19935d41ce4c3e0a0f0a2a38b76b27dc69bffa4a4db3d5582412a3f4bab1f5",
+      "lines": 166
+    },
+    {
+      "path": ".claude/mods/firstmate-calm/lib/fm-calm-presentation.ts",
+      "bytes": 6749,
+      "sha256": "7bb013d1f1ecf5e14cefe0656031d5ad657c45027c773e4436a6694042e01b7a",
+      "lines": 157
+    },
+    {
+      "path": ".claude/mods/firstmate-calm/lib/fm-calm-preservation.ts",
+      "bytes": 613,
+      "sha256": "748e48710d9d5ae3c61a1337e8f3d4c314eda19de6d02b6c2cc617fadb5f5972",
+      "lines": 11
+    },
+    {
+      "path": ".claude/mods/firstmate-calm/lib/fm-calm-ship-raster.ts",
+      "bytes": 6133,
+      "sha256": "c0e2e3ad7f90c16a5d66a51e5b59180e112b60e34fee84e5ca98375f879a767e",
+      "lines": 138
+    },
+    {
+      "path": ".claude/mods/firstmate-calm/lib/fm-calm-working-ship-sprite.ts",
+      "bytes": 11899,
+      "sha256": "6638178617140f0230c46c699779986e880c6a563378cc09f46b44d0ee99739b",
+      "lines": 312
+    },
+    {
+      "path": ".claude/mods/firstmate-calm/lib/fm-operational-input.ts",
+      "bytes": 6199,
+      "sha256": "5699c5660a5a94ffccfacee81abf17f7b2c7ddba8c784c8a341b83e86406c7ef",
+      "lines": 130
+    },
+    {
+      "path": ".claude/mods/firstmate-calm/tests/branch-notes.test.ts",
+      "bytes": 7763,
+      "sha256": "9ce691a3c24f96c05d614996ea364480f5e543847a51249ef7661cf4ac760893",
+      "lines": 175
+    },
+    {
+      "path": ".claude/mods/firstmate-calm/tests/calm.test.ts",
+      "bytes": 22786,
+      "sha256": "2afc7f6dac949bc0d3cab3fd57b020ad595a1b2d038f1c61883f7abb0de3266d",
+      "lines": 480
+    },
+    {
+      "path": ".claude/mods/firstmate-calm/tests/support.ts",
+      "bytes": 12690,
+      "sha256": "dfa61bd556c68c11346c52048e61348425fbafeba3badda5d717af3a50454f0d",
+      "lines": 356
+    },
+    {
+      "path": ".claude/mods/firstmate-calm/tests/working-ship.test.ts",
+      "bytes": 10432,
+      "sha256": "1b9901f955a9e813c0d357863bbc1a1986325ebc7e876cc651b612e8b1c18a1b",
+      "lines": 188
+    },
+    {
+      "path": ".claude/settings.json",
+      "bytes": 2102,
+      "sha256": "1637fc5dc64419f30e3ef70d713aaafdb23a49a39850403ed88a62e06488c738",
+      "lines": 71
+    },
+    {
+      "path": ".codex/hooks.json",
+      "bytes": 2791,
+      "sha256": "c86e0e67325ebe5cbf914106ecdebff8356edcf7485020929948f97cf782c06b",
+      "lines": 43
+    },
+    {
+      "path": ".cursor/hooks.json",
+      "bytes": 1156,
+      "sha256": "36be27bf129ec465650e77803f3a5354997ea2a30340d5a406d1a49a9d50a8b5",
+      "lines": 48
+    },
+    {
+      "path": ".gitattributes",
+      "bytes": 95,
+      "sha256": "d6ad741f89e66f17a21f253b48f2ee02a9acf72153f8768bb09578dda9cb2de4",
+      "lines": 2
+    },
+    {
+      "path": ".github/workflows/ci.yml",
+      "bytes": 23990,
+      "sha256": "92648aa3df111b5ae6278622f640f62a29635fc979f5c9ea28559aebbf8854e5",
+      "lines": 546
+    },
+    {
+      "path": ".github/workflows/no-mistakes-required.yml",
+      "bytes": 1355,
+      "sha256": "4ee303b2610ea869fcd14f0547a2e9092ffa7dafd3c13419a5c1e23a99e67345",
+      "lines": 33
+    },
+    {
+      "path": ".github/workflows/windows-herdr-spike.yml",
+      "bytes": 26363,
+      "sha256": "05c134409e5f2a395e0b7942d56298e679bd0a643e37415cbdfd0dc93015faf7",
+      "lines": 438
+    },
+    {
+      "path": ".gitignore",
+      "bytes": 151,
+      "sha256": "c43f8c94355ec57156de09830545f52eaf7a362513abd7b584299bfe0aaa0d2d",
+      "lines": 15
+    },
+    {
+      "path": ".greptile/rules.md",
+      "bytes": 2180,
+      "sha256": "106f48237d08efc68a92fa5c79475b47b150f7feaa6adc9541c0e34b62ceaf75",
+      "lines": 37
+    },
+    {
+      "path": ".grok/hooks/fm-primary-cd-check.json",
+      "bytes": 345,
+      "sha256": "8ac2cd4784a8ba8d0c918a8d88f3907c34d4add4d3438c4624294935d85e1061",
+      "lines": 16
+    },
+    {
+      "path": ".grok/hooks/fm-primary-pretool-check.json",
+      "bytes": 346,
+      "sha256": "1f5debf0a6645d07126bec2b07a35832465abb7571241300fa80b9d327b787ab",
+      "lines": 16
+    },
+    {
+      "path": ".grok/hooks/fm-primary-sessionstart-nudge.json",
+      "bytes": 322,
+      "sha256": "9b7c27594ae67523e1005db6c5508611fa76fd705f80a38d5ca71f7e31ad6613",
+      "lines": 15
+    },
+    {
+      "path": ".grok/hooks/fm-primary-turnend-guard.json",
+      "bytes": 315,
+      "sha256": "e9f71f31fb37d17fa8377c0a4d53895325a9cf0f3bd6ae145f298f82fe2b063a",
+      "lines": 15
+    },
+    {
+      "path": ".no-mistakes.yaml",
+      "bytes": 5361,
+      "sha256": "e087cdf3831d3f99178d04d30d2f2a7b9cf348c2cb0f8595646159fac8df4440",
+      "lines": 51
+    },
+    {
+      "path": ".omp/extensions/fm-primary-omp-watch.ts",
+      "bytes": 48578,
+      "sha256": "cffc47d1b37afff5a827f770fe1c4d025c564bb0848864f7ac023bd15f1b8b36",
+      "lines": 1152
+    },
+    {
+      "path": ".omp/extensions/fm-primary-turnend-guard.ts",
+      "bytes": 22835,
+      "sha256": "7c2d30b6906586f4169e716429e360de61675de3309de19b9179a836325f49bb",
+      "lines": 620
+    },
+    {
+      "path": ".omp/fm-worker-overlay.yml",
+      "bytes": 1524,
+      "sha256": "292e4ce853a587fa038cd3a6a915d8631616f884d13df80eb19ac05bb1465c7c",
+      "lines": 27
+    },
+    {
+      "path": ".opencode/plugins/fm-primary-cd-check.js",
+      "bytes": 3171,
+      "sha256": "790bb15ae0e343833d39b05e0fbb1c3e0c312aea8095648874767d4720a066b4",
+      "lines": 91
+    },
+    {
+      "path": ".opencode/plugins/fm-primary-pretool-check.js",
+      "bytes": 3185,
+      "sha256": "91fc09aa4fd6d2160d6d43ecf9ed558f284bed4a584a3b4b5b731c42c657839b",
+      "lines": 91
+    },
+    {
+      "path": ".opencode/plugins/fm-primary-sessionstart-nudge.js",
+      "bytes": 2897,
+      "sha256": "5cffbb50ee01c42e0ca263088aba5b03ac69f0b83f12fd8ba99547dbfef22419",
+      "lines": 92
+    },
+    {
+      "path": ".opencode/plugins/fm-primary-turnend-guard.js",
+      "bytes": 4561,
+      "sha256": "0598c11aba6399ced653f9a4d73c172ac443fc290bfc8a7e143e37e4cdc5cc19",
+      "lines": 140
+    },
+    {
+      "path": ".opencode/plugins/fm-primary-watch-arm.js",
+      "bytes": 23169,
+      "sha256": "b1d0f2849070ac6fa8cfa2e06028e2084596ee912a7f7e17825b0540bd35e449",
+      "lines": 600
+    },
+    {
+      "path": ".opencode/plugins/lib/fm-opencode2.js",
+      "bytes": 4758,
+      "sha256": "627b154d9133896dd720647bc4f0ae22e76f1cc37e5d2623d021e240314bb4d8",
+      "lines": 129
+    },
+    {
+      "path": ".opencode/plugins/lib/fm-operational-input.js",
+      "bytes": 1652,
+      "sha256": "12f498f141cb5e750e1e3a1f9851010a05c67ded0a10573d9a648319b1b36202",
+      "lines": 43
+    },
+    {
+      "path": ".opencode/plugins/package.json",
+      "bytes": 42,
+      "sha256": "609158e6c5fbc237939fa3ddf7faab80ab690bdc0c8d584414a885130103c4e8",
+      "lines": 4
+    },
+    {
+      "path": ".pi/extensions/fm-branch-supervision.ts",
+      "bytes": 119194,
+      "sha256": "332df2b0dbf65cd39e64d1d3ef2c7b57522ab94e3c3e0b1e86cf8d12901965b3",
+      "lines": 2454
+    },
+    {
+      "path": ".pi/extensions/fm-calm.ts",
+      "bytes": 21989,
+      "sha256": "2ce64d6a568c13758f4b97f0c95d9fb115e27170ef770b4dc22dcdd686e01c96",
+      "lines": 514
+    },
+    {
+      "path": ".pi/extensions/fm-primary-pi-watch.ts",
+      "bytes": 53890,
+      "sha256": "94bd69a924f3283e914151741a42c23a93099c57cc25f6a9bc175031a14f1eb7",
+      "lines": 1307
+    },
+    {
+      "path": ".pi/extensions/fm-primary-turnend-guard.ts",
+      "bytes": 22238,
+      "sha256": "7457940acee8a92e80cdb555fd8d7441af54dac1112c27024e356c9d018ae1b0",
+      "lines": 652
+    },
+    {
+      "path": ".pi/extensions/lib/fm-async-exec.ts",
+      "bytes": 3766,
+      "sha256": "9b559c33347d2cfc7cc219e15a1393802b90d92de93a658a6d7c7b68633a965e",
+      "lines": 105
+    },
+    {
+      "path": ".pi/extensions/lib/fm-branch-dispatch.ts",
+      "bytes": 34801,
+      "sha256": "54352e9e142ec3a123ade61c517aaf6221084b9142553bf8df07eada0175975a",
+      "lines": 748
+    },
+    {
+      "path": ".pi/extensions/lib/fm-branch-model-picker.ts",
+      "bytes": 3082,
+      "sha256": "80ddc89c5935d2e924918d76eeda371ed4989b86210db8be160f3bef5c1faecb",
+      "lines": 77
+    },
+    {
+      "path": ".pi/extensions/lib/fm-calm-assistant-layout.ts",
+      "bytes": 4509,
+      "sha256": "9fa8a2fadd906131c173dc63e6bb0267e72a5c4cbfa4cb343934ccd496c2ff7b",
+      "lines": 106
+    },
+    {
+      "path": ".pi/extensions/lib/fm-calm-operational-user-layout.ts",
+      "bytes": 4937,
+      "sha256": "a2eb7e71d027e0f938bb22e1d22afad7013b089ac9241cc14e5b377aa8580db9",
+      "lines": 138
+    },
+    {
+      "path": ".pi/extensions/lib/fm-calm-pending-operational-layout.ts",
+      "bytes": 13971,
+      "sha256": "8d5f915de8a748c641df9c79d0f5d78c09c167c27291f3908955c06ce4ffa473",
+      "lines": 310
+    },
+    {
+      "path": ".pi/extensions/lib/fm-calm-visibility.ts",
+      "bytes": 2870,
+      "sha256": "bd5e4b2d477851f91b6233800f09b118b3e9acf43950eeb1b523643beff16a4a",
+      "lines": 99
+    },
+    {
+      "path": ".pi/extensions/lib/fm-calm-working-ship.ts",
+      "bytes": 5227,
+      "sha256": "6d30e050dac8cbbd6de716678371ce8ca6db003bf69e35fdb4ff4eb93adfaf46",
+      "lines": 113
+    },
+    {
+      "path": ".pi/extensions/lib/fm-native-contract.ts",
+      "bytes": 1575,
+      "sha256": "5e7e5792387ff53ae13f9e193b6a9f22f29a0a5e32b6338f12e6830e9169e95b",
+      "lines": 36
+    },
+    {
+      "path": ".pi/extensions/lib/fm-operational-input.ts",
+      "bytes": 4924,
+      "sha256": "ce23d511ac1a41e79753143a077bb61bddc5b306ecb6853549c1ee55be8ba036",
+      "lines": 139
+    },
+    {
+      "path": ".pi/extensions/lib/fm-sessionstart-supervisor.mjs",
+      "bytes": 1020,
+      "sha256": "99f8fe74680af3deb064401739ada4160662883d483472915111f79e1067c238",
+      "lines": 43
+    },
+    {
+      "path": ".tasks.toml",
+      "bytes": 106,
+      "sha256": "c5ea09bba244e6fef65c1a7d6244acb30462b4d28c39b1cb35a39689ee70ce59",
+      "lines": 6
+    },
+    {
+      "path": "AGENTS.md",
+      "bytes": 50896,
+      "sha256": "1d67d8fea74b30be6b4de1e1eec0d41f5ed7c7d0215c79d873c3facef96e3896",
+      "lines": 434
+    },
+    {
+      "path": "CLAUDE.md",
+      "bytes": 90,
+      "sha256": "71e896252aba5d0b619a26f0a5889420982741550c48d680f17e41f1867b4ff8",
+      "lines": 2
+    },
+    {
+      "path": "CONTRIBUTING.md",
+      "bytes": 18709,
+      "sha256": "1a5d445f403319e4ced3205a5a65a83e6b8a301b4bc6d12c9699dec00a4258b3",
+      "lines": 154
+    },
+    {
+      "path": "GROK_BOT.md",
+      "bytes": 4231,
+      "sha256": "e281c9f20e1170fc308c243f4963e98e359438031966fbf189e608dfbc7e43d4",
+      "lines": 31
+    },
+    {
+      "path": "LICENSE",
+      "bytes": 1065,
+      "sha256": "945016bd37e1ba7211622ef60ee1d23ab727896ba7710edd21e8fbe983863969",
+      "lines": 21
+    },
+    {
+      "path": "README.md",
+      "bytes": 22217,
+      "sha256": "8d481add11dea0345107d3079b14fec2b568c296284b37657e13e85ff2690661",
+      "lines": 263
+    },
+    {
+      "path": "VISION.md",
+      "bytes": 8932,
+      "sha256": "9be87707a1105de70965d91027b55779bb66e10e82bfe2b754eeb2fb824f9b31",
+      "lines": 78
+    },
+    {
+      "path": "assets/banner.png",
+      "bytes": 3011594,
+      "sha256": "71a0d9cd978c138de73bd284546852e8e5b8b42ab610ebc9cf30bf8d2435e590",
+      "lines": null
+    },
+    {
+      "path": "bin/backends/cmux.sh",
+      "bytes": 34686,
+      "lines": 653,
+      "sha256": "ed2e7ebd3b44d1b5da10a6c484a4ab29b05f378779cd2a490b878e54cccfb8e0"
+    },
+    {
+      "path": "bin/backends/herdr-agent-view.py",
+      "bytes": 3880,
+      "sha256": "b5f63b17dacc3173cb02c0e772ee899f1c562d617947326557dfb49ad9edbe9d",
+      "lines": 128
+    },
+    {
+      "path": "bin/backends/herdr-eventwait.py",
+      "bytes": 5536,
+      "sha256": "de4dcc2e61e63694959e0848ee96920434a0becb9fa7d224d86f21836513e231",
+      "lines": 157
+    },
+    {
+      "path": "bin/backends/herdr-workspace-move.py",
+      "bytes": 3420,
+      "sha256": "07fba3b51fb79cc4cf07c4ec1ed6e7b50813ec01e92cac908b5e417f8685d86a",
+      "lines": 114
+    },
+    {
+      "path": "bin/backends/herdr.sh",
+      "bytes": 210935,
+      "lines": 4078,
+      "sha256": "ed791d857e1d71dd4c14ea79bc65e6331b2d8e26196ae5569d9f87482267cef7"
+    },
+    {
+      "path": "bin/backends/orca.sh",
+      "bytes": 14296,
+      "lines": 346,
+      "sha256": "9c69b2b59ceec637dde88d701c284d3747371b36810456d9b1cf495980c87455"
+    },
+    {
+      "path": "bin/backends/paseo.sh",
+      "bytes": 32397,
+      "lines": 670,
+      "sha256": "cfa340a70107fd3aafd954d5364e6b7c6e1c21168c07447283f686bab48d6047"
+    },
+    {
+      "path": "bin/backends/rex-eventwait.lua",
+      "bytes": 1920,
+      "sha256": "f985203f1476725c3530c0bfd680831e2755590b6d2ba37c6bebda62af268f5e",
+      "lines": 56
+    },
+    {
+      "path": "bin/backends/rex.sh",
+      "bytes": 52585,
+      "lines": 1192,
+      "sha256": "87b873a1164f49d179fd7f1e721a7310938b1f0a70e1b666254110caec3f44ab"
+    },
+    {
+      "path": "bin/backends/tmux.sh",
+      "bytes": 22865,
+      "lines": 531,
+      "sha256": "ad7ef0fa6e32850b1a9e88ecc83f5d12001a140fd8b7070601116e08e40805ec"
+    },
+    {
+      "path": "bin/backends/zellij.sh",
+      "bytes": 38910,
+      "lines": 708,
+      "sha256": "9949964f65d69945934cbd5650afe1bad817060547a75c0b20024b3a23cf4e21"
+    },
+    {
+      "path": "bin/fm-afk-contract.sh",
+      "bytes": 34796,
+      "lines": 707,
+      "sha256": "5c0c9f8af53d74e36d7dc7b18e2ef1f9ac0d7bb06f75cd5af5ad8c26b634d401"
+    },
+    {
+      "path": "bin/fm-afk-launch.sh",
+      "bytes": 43599,
+      "lines": 991,
+      "sha256": "ca8535a4eba17aed86051e5e90d9b8c4c506c35086114e0a9dcbac8e3651f879"
+    },
+    {
+      "path": "bin/fm-afk-return.sh",
+      "bytes": 43460,
+      "lines": 931,
+      "sha256": "084352758ad66937b56f2028f208932ed15a4fd893569c6c1b24e1a4ab73b517"
+    },
+    {
+      "path": "bin/fm-afk-start.sh",
+      "bytes": 7530,
+      "lines": 185,
+      "sha256": "c5bc11db6264de06e1b512daefd0ea7b418d136890df68fac64fbb5e21bfb53b"
+    },
+    {
+      "path": "bin/fm-agent-process-lib.sh",
+      "bytes": 6568,
+      "lines": 120,
+      "sha256": "5bf44c30411128a45b4662ed09a9ef35ca5b64701fcbb8733a443d71fbfdbfd9"
+    },
+    {
+      "path": "bin/fm-agy-trust.sh",
+      "bytes": 8450,
+      "lines": 185,
+      "sha256": "f10a4e0d54a0960d6ee81116bc7e99b2bb193b9e78393884a38ad221c143bcbe"
+    },
+    {
+      "path": "bin/fm-approval-failover.sh",
+      "bytes": 4562,
+      "lines": 90,
+      "sha256": "875909fa9210230f9215859ff056c4c43b523f994be6b207545e31f8050e7bf9"
+    },
+    {
+      "path": "bin/fm-arm-command-policy.mjs",
+      "bytes": 38677,
+      "lines": 973,
+      "sha256": "5aaf6c166a78cd9154e41ca7e2cb6c6f5f784e9c65645c7be5d1873cad5c7931"
+    },
+    {
+      "path": "bin/fm-arm-pretool-check.sh",
+      "bytes": 7813,
+      "lines": 200,
+      "sha256": "f6091a9b15de85161001f30a5fa997041f02cd86fe83d8da98303fac2733180b"
+    },
+    {
+      "path": "bin/fm-backend-hometag-lib.sh",
+      "bytes": 2465,
+      "lines": 52,
+      "sha256": "ba1adf7377256345a3a7e3c671128364905435cd6d4087e0ac992e2379a2e4bd"
+    },
+    {
+      "path": "bin/fm-backend.sh",
+      "bytes": 55540,
+      "lines": 1250,
+      "sha256": "5ff7ed0a730e4336821359afde3196753487e8587ba27ac20dfdd36111adfe1f"
+    },
+    {
+      "path": "bin/fm-backlog-handoff.sh",
+      "bytes": 42866,
+      "lines": 1100,
+      "sha256": "6db0062a926a4e133636d7368c75915b1f7054b62c11dc945d38f5906be8895f"
+    },
+    {
+      "path": "bin/fm-backlog-receive.sh",
+      "bytes": 8528,
+      "lines": 188,
+      "sha256": "4a792e84cd5d195b2f7390d1f6c922ae4da47f789c92686a4209ebd44b5ad9ee"
+    },
+    {
+      "path": "bin/fm-backlog-transition-lib.sh",
+      "bytes": 50255,
+      "lines": 1237,
+      "sha256": "4c9efd330313ccf8ac4c2e96f7246eb2850302cb977835dc5fff8d1d12521e0d"
+    },
+    {
+      "path": "bin/fm-bearings-board.sh",
+      "bytes": 21303,
+      "lines": 459,
+      "sha256": "5c0ac979d8b4ec4fe3c73168b52d23709b28200d56fda77a67df02560b77a7a8"
+    },
+    {
+      "path": "bin/fm-bearings-snapshot.sh",
+      "bytes": 44650,
+      "lines": 740,
+      "sha256": "85a029c7b886d96dccffcf30e56b62cef230cb5406581c99965ac2225056fa13"
+    },
+    {
+      "path": "bin/fm-bootstrap.sh",
+      "bytes": 83576,
+      "lines": 1725,
+      "sha256": "d053e5c4ac9e6b2fa9d2c393b8c42933c75186c385ee4f75ab9f64de0f15b238"
+    },
+    {
+      "path": "bin/fm-branch-dispatch.mjs",
+      "bytes": 5605,
+      "lines": 131,
+      "sha256": "0e8d76f75bd238162477815837d0043cc476bc2952ec24bf72f40a4f5f68bbc2"
+    },
+    {
+      "path": "bin/fm-branch-outcome.sh",
+      "bytes": 33859,
+      "lines": 812,
+      "sha256": "4fb66175a469cb4c7c5c7638fe81cc0f86af76977180dae414cf731010a6f523"
+    },
+    {
+      "path": "bin/fm-branch-prompt.sh",
+      "bytes": 17013,
+      "lines": 173,
+      "sha256": "fb9b5ead2a92921fcfefe2696d979209744d1723747f047995245a5db7b5762e"
+    },
+    {
+      "path": "bin/fm-branch-report.sh",
+      "bytes": 6964,
+      "lines": 153,
+      "sha256": "0a635734e3773ef99d779a3662d0695df3b919b4f50780d2d3bca9a5d2093997"
+    },
+    {
+      "path": "bin/fm-brief-heading-lib.sh",
+      "bytes": 2789,
+      "lines": 95,
+      "sha256": "90ff8e4dd8a5caadd8bddbe6f48452e8ab1f51534f82d1e87eec94f4a1950eef"
+    },
+    {
+      "path": "bin/fm-brief.sh",
+      "bytes": 53019,
+      "lines": 822,
+      "sha256": "7dba01bde0a4d31afab92c3c62d30acb8e2f493a3a57a29efe26fa9082ce431b"
+    },
+    {
+      "path": "bin/fm-busy-event.sh",
+      "bytes": 9015,
+      "lines": 257,
+      "sha256": "d2dd303d5260d17a4a8c2e92de3e5f28ac1fb957500a59c37fb583c9ee126dbc"
+    },
+    {
+      "path": "bin/fm-busy-lib.sh",
+      "bytes": 53732,
+      "lines": 1227,
+      "sha256": "912eee8e6578b2b480ed970ebaecd2c342d26e3a8dc79650c06be6f8de234ff8"
+    },
+    {
+      "path": "bin/fm-capacity.sh",
+      "bytes": 30837,
+      "lines": 740,
+      "sha256": "69b18847430f78bce72643b8c6f12335ef23e2003bef6e20f3ac2c4eb360f0ce"
+    },
+    {
+      "path": "bin/fm-captain-hold.sh",
+      "bytes": 97480,
+      "lines": 2203,
+      "sha256": "88982d5cb9508a8bcaf441dfe6b238aa82c96065990d76edf0b22963e1513a90"
+    },
+    {
+      "path": "bin/fm-cd-command-policy.mjs",
+      "bytes": 6057,
+      "lines": 153,
+      "sha256": "f9f897ec09e764a3b7e4792385e10d8cecc08bc8f561dbdd3fb9ba3a9efbd88a"
+    },
+    {
+      "path": "bin/fm-cd-pretool-check.sh",
+      "bytes": 7668,
+      "lines": 190,
+      "sha256": "5920f565b466a76bb1c080fe58099110ec5183faea36f49bc1df59b64aaacf7c"
+    },
+    {
+      "path": "bin/fm-check-lib.sh",
+      "bytes": 2895,
+      "lines": 74,
+      "sha256": "b2b6ef0745f55079af24522271a92756ab275164829b7160334d688937b8c532"
+    },
+    {
+      "path": "bin/fm-check-register.sh",
+      "bytes": 1837,
+      "lines": 42,
+      "sha256": "473eafa95c3e6f8341986ba7ade9aa9aab6eefe9039bb7e4fb32ac588e4a25cd"
+    },
+    {
+      "path": "bin/fm-check-unregister.sh",
+      "bytes": 1722,
+      "lines": 52,
+      "sha256": "2277b28c8405484f424b98ee14464962d44b4421eb194e124e33c6de7b086ae3"
+    },
+    {
+      "path": "bin/fm-classify-lib.sh",
+      "bytes": 130396,
+      "lines": 2829,
+      "sha256": "0bb6d8f8f72d79443d12704687ed2c42c92a21053d3fd8c8b5bf99c508ae1bc4"
+    },
+    {
+      "path": "bin/fm-claude-stop-autoarm.sh",
+      "bytes": 29179,
+      "lines": 588,
+      "sha256": "8d6a928a84e465cdd296a24dec7ac5cdd3b537fdde503f614df04ed1a08dd0bf"
+    },
+    {
+      "path": "bin/fm-claude-trust.sh",
+      "bytes": 34070,
+      "lines": 593,
+      "sha256": "dc8685efe3a7bbff5db5c4dff400e82c49a98bcbdfbaf546269178aff46a87cc"
+    },
+    {
+      "path": "bin/fm-commandcode-mod.ts",
+      "bytes": 2783,
+      "lines": 68,
+      "sha256": "46d53d39b5b41162f1dbba93c3063383eea45c0c705d18d05cb74c983a0c6a1a"
+    },
+    {
+      "path": "bin/fm-composer-lib.sh",
+      "bytes": 112957,
+      "lines": 2274,
+      "sha256": "b0bf440c08d0c85302d4f70d8c93b279363fb93337517892e671a312080b2e69"
+    },
+    {
+      "path": "bin/fm-config-inherit-lib.sh",
+      "bytes": 60905,
+      "lines": 1462,
+      "sha256": "bc578458f4cdd35ddb7cb563b0924427d963cfb2653d0260ac25737fe5930ec6"
+    },
+    {
+      "path": "bin/fm-config-push.sh",
+      "bytes": 9236,
+      "lines": 264,
+      "sha256": "e10d071ab0a425ea6669c36a3ebd75bc00fdd526fa3ccaf3fe157c589a42aec9"
+    },
+    {
+      "path": "bin/fm-contributions.jq",
+      "bytes": 11322,
+      "sha256": "d0d0cfb31d8e2fab1961a4cd7a195e5c5d63865f22e7914ed127e782f1bb3020",
+      "lines": 152
+    },
+    {
+      "path": "bin/fm-contributions.sh",
+      "bytes": 42796,
+      "lines": 759,
+      "sha256": "df536ce59f8a3be707f63582d86297be98082fd90f506625fb926b45d26641de"
+    },
+    {
+      "path": "bin/fm-control-lib.sh",
+      "bytes": 28286,
+      "lines": 566,
+      "sha256": "709c3f61b5b189f00f63427ed39cdecae868d0b9f097e369e97f2a23f2b49cf7"
+    },
+    {
+      "path": "bin/fm-control.sh",
+      "bytes": 60718,
+      "lines": 1263,
+      "sha256": "7bdd56c39f83b5f88e6753889aa4a56eec60483db642a98cb831b1d13aa2a15e"
+    },
+    {
+      "path": "bin/fm-crew-state.sh",
+      "bytes": 67315,
+      "lines": 1388,
+      "sha256": "245882a72e5efaa1833bb7584b9847ef246118a6d6b491ca4cb6c7ce5018c536"
+    },
+    {
+      "path": "bin/fm-cursor-lib.sh",
+      "bytes": 13137,
+      "lines": 293,
+      "sha256": "e6e64dcf906cd3be2121fe91e28f3fcbbdb1a63ff89da4d4e23ee0a18e23a733"
+    },
+    {
+      "path": "bin/fm-decision-hold.sh",
+      "bytes": 8843,
+      "lines": 232,
+      "sha256": "14144c1ad15eec0e8e29f2b349bede3af6e3e432f127c9e94fdf2973664dbf9f"
+    },
+    {
+      "path": "bin/fm-devin-config.sh",
+      "bytes": 3408,
+      "lines": 59,
+      "sha256": "7f5e8405e103f76f1c4ddee9d3fb7c7af6bfde4f914804a566f8b5171efdc907"
+    },
+    {
+      "path": "bin/fm-dispatch-resolve.sh",
+      "bytes": 34115,
+      "lines": 561,
+      "sha256": "b1c723539770abb6d8d7fbdbdcf8809e9927ce19e69d2cb80256c6d1ff396bdc"
+    },
+    {
+      "path": "bin/fm-doc-audience-check.sh",
+      "bytes": 10447,
+      "lines": 269,
+      "sha256": "65c879b1a00cdb3cd24d1ecd55accc4ae45369244bb540d052569adc58dc6bea"
+    },
+    {
+      "path": "bin/fm-dod-lib.sh",
+      "bytes": 55751,
+      "lines": 895,
+      "sha256": "32acebb52d6d55eedab0792e68e121695b4c9f116a621ecfa85138dc9090ca22"
+    },
+    {
+      "path": "bin/fm-ensure-agents-md.sh",
+      "bytes": 9597,
+      "lines": 269,
+      "sha256": "e7211ddeba2f497ba024022c6ce7ff8fa5be56a77351267cd21443e1b5fa2dc8"
+    },
+    {
+      "path": "bin/fm-env-lib.sh",
+      "bytes": 1389,
+      "lines": 31,
+      "sha256": "d03765783ae746acd0697c68c8df30c9249cfb26b309390afd44265571d3af06"
+    },
+    {
+      "path": "bin/fm-exclude-tools-lib.sh",
+      "bytes": 2764,
+      "lines": 64,
+      "sha256": "c1c6e5621136ce734418766414fd0536fe7b9e89d80ab661064cbd12a8ec4a40"
+    },
+    {
+      "path": "bin/fm-extension-launch-barrier.mjs",
+      "bytes": 4883,
+      "lines": 129,
+      "sha256": "a928d000ad0a592aa7ccfcb573fb3972c7db4e873da125c1b40a4a686c1ccb44"
+    },
+    {
+      "path": "bin/fm-extension.mjs",
+      "bytes": 130507,
+      "lines": 2615,
+      "sha256": "9e215cf8bcecb5ea409e146afc4379452c9d61c59db513ee70d88584169720ab"
+    },
+    {
+      "path": "bin/fm-extension.sh",
+      "bytes": 597,
+      "lines": 16,
+      "sha256": "81ece53ed786eff6d6a9d505859ba748fd1fad767dd51667ac1855e91d5b76b6"
+    },
+    {
+      "path": "bin/fm-external-review-lib.sh",
+      "bytes": 7927,
+      "lines": 201,
+      "sha256": "8e8df92cf2dbb32f16d9b5a1f1da66b8df8a352c1d05e13d156290047c1dcd63"
+    },
+    {
+      "path": "bin/fm-ff-lib.sh",
+      "bytes": 23741,
+      "lines": 580,
+      "sha256": "f2f808f8c93d12e2935e31a0f4bf829366874b798ba033deb59885bd511ecdb1"
+    },
+    {
+      "path": "bin/fm-fleet-ledger.sh",
+      "bytes": 9039,
+      "lines": 234,
+      "sha256": "4b640861832269b024a293fddc841a9042206435e9252f5e3fc196c13c3f96eb"
+    },
+    {
+      "path": "bin/fm-fleet-snapshot.sh",
+      "bytes": 105320,
+      "lines": 2088,
+      "sha256": "3485e92394576b2bbcf95d1633aeec3d92e76b83b88c1b988afca844bea041c7"
+    },
+    {
+      "path": "bin/fm-fleet-sync.sh",
+      "bytes": 19652,
+      "lines": 465,
+      "sha256": "dea65fb597af33a0e477270dcc324370ba5b86f6117374527c4d98982f9b31a3"
+    },
+    {
+      "path": "bin/fm-fleet-view.sh",
+      "bytes": 3461,
+      "lines": 96,
+      "sha256": "2a3ff22b2db0ad53d6a9cba532f096f6c0e225fda7e8358e6814472f40fb9806"
+    },
+    {
+      "path": "bin/fm-forge-detect.sh",
+      "bytes": 2229,
+      "lines": 63,
+      "sha256": "5567b96a797c25c5f6249a9c939e45dc369399c9fa686946f960b8019d17b0d8"
+    },
+    {
+      "path": "bin/fm-gate-refuse-lib.sh",
+      "bytes": 8635,
+      "lines": 175,
+      "sha256": "4f2474646afc4d8c7565aeb7f20ef39f3871a09ba0855e85fa2ca10562540d49"
+    },
+    {
+      "path": "bin/fm-gemini-lib.sh",
+      "bytes": 4006,
+      "lines": 107,
+      "sha256": "02ef57ee50b23b4b2be3c3761dc568548d8800dde0c8786470141d1203edcf5b"
+    },
+    {
+      "path": "bin/fm-git-push-guard.sh",
+      "bytes": 6806,
+      "lines": 163,
+      "sha256": "9fd55f4d91cdda537e46cd46464d0da7fe2ca6cd17eca8ffa1a69e218e613bca"
+    },
+    {
+      "path": "bin/fm-git-strip-ai-trailers.sh",
+      "bytes": 15116,
+      "lines": 378,
+      "sha256": "bcc32d8c72875c424b7a972030c9aadbac056179b236493bed15ed7030779cc7"
+    },
+    {
+      "path": "bin/fm-guard.sh",
+      "bytes": 14497,
+      "lines": 292,
+      "sha256": "df81ee1b5c6927ecc5cf92d11472c63f0ec00e01affa66147ecbd00dfb96d143"
+    },
+    {
+      "path": "bin/fm-harness.sh",
+      "bytes": 34089,
+      "lines": 678,
+      "sha256": "28b09218d41e18b27536314fd53968e66bcd0e2a656716f65b66130107088fcc"
+    },
+    {
+      "path": "bin/fm-herdr-ci-cleanup.sh",
+      "bytes": 3950,
+      "lines": 115,
+      "sha256": "5751eb6f3204ab610b4c5b176ffa3f36b3a1279093cf38f617c53bf323859180"
+    },
+    {
+      "path": "bin/fm-herdr-groups.sh",
+      "bytes": 19228,
+      "lines": 540,
+      "sha256": "33e5d8771c9d82190b99f2f2949a77ed8f0d9088aee9f7c88dd2849bb5fee496"
+    },
+    {
+      "path": "bin/fm-herdr-lab-viewer.py",
+      "bytes": 6743,
+      "sha256": "8632eb9e03e5410d81ed41b91a1e3aa3f08fee7309d378cd7023bc2eb2a45d44",
+      "lines": 204
+    },
+    {
+      "path": "bin/fm-herdr-lab.sh",
+      "bytes": 21874,
+      "lines": 593,
+      "sha256": "e862f07947698ae19feb99529538dffc7710d21c6f06182c9d868142e750f317"
+    },
+    {
+      "path": "bin/fm-herdr-session-cleanup.sh",
+      "bytes": 15726,
+      "lines": 337,
+      "sha256": "3ef0f2d5ad344b96ef4dfdf76a6fcf5c4963ed5e11caf0a4abb6e95376ba018d"
+    },
+    {
+      "path": "bin/fm-hold-reason-lib.sh",
+      "bytes": 3281,
+      "lines": 78,
+      "sha256": "36a050114a47006df6adbee6f4a124fe14b20d987f8814ec5cd33c48a17eb095"
+    },
+    {
+      "path": "bin/fm-home-seed.sh",
+      "bytes": 37274,
+      "lines": 1023,
+      "sha256": "a03cf7cf390e8f53c698612ee3f272a81e1500892d43a729885883a69612bee9"
+    },
+    {
+      "path": "bin/fm-home-summary-refresh.sh",
+      "bytes": 8824,
+      "lines": 257,
+      "sha256": "26596900ad973b8f892ee620d8c2fafa4219436099802e507643cfcf199fe402"
+    },
+    {
+      "path": "bin/fm-hook-host-lib.sh",
+      "bytes": 1968,
+      "lines": 36,
+      "sha256": "d4ec4ed6408a9005cda3385dce9aa3c1fa27e4808b085cd6118c86bd43ac68fb"
+    },
+    {
+      "path": "bin/fm-host-mirror.sh",
+      "bytes": 14657,
+      "lines": 319,
+      "sha256": "6a5be371023d9c1e3301aa1e38a3ff4672d76805ce0ecc6c0454f07d3038a442"
+    },
+    {
+      "path": "bin/fm-inactive-reconcile.sh",
+      "bytes": 30036,
+      "lines": 710,
+      "sha256": "73362d377adc7c30ac123995777e1b1800529498c5e3b3d055b85452b733a349"
+    },
+    {
+      "path": "bin/fm-inbox.sh",
+      "bytes": 41565,
+      "lines": 1159,
+      "sha256": "9ebd8c2d786c035976f2c0a87f024ef779a841241e5276cbad82ac88b3cf8da9"
+    },
+    {
+      "path": "bin/fm-install-actionlint.sh",
+      "bytes": 3244,
+      "lines": 84,
+      "sha256": "2d58219cb106242d61b2edb74d094dacaa0e50ddd79073a231b38adff29c41d5"
+    },
+    {
+      "path": "bin/fm-install-herdr.sh",
+      "bytes": 3827,
+      "lines": 96,
+      "sha256": "d6d366db784f1af914bddf8ec8fc03a136025d520486fdf2788d834f495e2cb4"
+    },
+    {
+      "path": "bin/fm-install-shellcheck.sh",
+      "bytes": 3277,
+      "lines": 84,
+      "sha256": "a3cdb28bee870b5a69a54a526280a512b2e3735f65c3d75e9c551253dac4431c"
+    },
+    {
+      "path": "bin/fm-install-treehouse.sh",
+      "bytes": 3724,
+      "lines": 95,
+      "sha256": "e0b7ff5f8b678c4ea3074bdf215d0a338a7d17daec12986358551061cdc35c0e"
+    },
+    {
+      "path": "bin/fm-jev-mem-guard.py",
+      "bytes": 9488,
+      "sha256": "4e32c37a9baf36394cf70f9c66a48ebca89a137aea26380905a3cdfe0325ca1d",
+      "lines": 260
+    },
+    {
+      "path": "bin/fm-jev-mem-guard.sh",
+      "bytes": 250,
+      "lines": 7,
+      "sha256": "b87acd6127d07193e5f3a459d790a3c2418faa3a1a3a92a20f45e703703b3d81"
+    },
+    {
+      "path": "bin/fm-kimi-turnend-hook.sh",
+      "bytes": 10576,
+      "lines": 276,
+      "sha256": "ed0aaea47f959e8784a0e1f4db5ba9870017faefa6051deafd5fdb64faf8e273"
+    },
+    {
+      "path": "bin/fm-lab-home.sh",
+      "bytes": 5280,
+      "lines": 107,
+      "sha256": "9e9f685de10d1b7a5170ea3a16f213e9086db50737af70e4a3717cfe1094819c"
+    },
+    {
+      "path": "bin/fm-landed-lib.sh",
+      "bytes": 4028,
+      "lines": 79,
+      "sha256": "a53f8088154a7a1a252294df2887d7a4a1514ca6536b2cbe2b57886003033cce"
+    },
+    {
+      "path": "bin/fm-lease-lib.sh",
+      "bytes": 16260,
+      "lines": 333,
+      "sha256": "f6880b43a333ea8b947282c46f52f414895a8a140dd307d9b2b57fba0bd55687"
+    },
+    {
+      "path": "bin/fm-lease.sh",
+      "bytes": 8455,
+      "lines": 211,
+      "sha256": "39a3c73163bc42ecffce2ddb8bbf9f07bf8e3342138b2c86fbe0530eb7ff0061"
+    },
+    {
+      "path": "bin/fm-line-cap-lib.sh",
+      "bytes": 2432,
+      "lines": 51,
+      "sha256": "ef3666d98316d3ae6fd355a6f069bba90d9fd2847934a40f471859f261b72783"
+    },
+    {
+      "path": "bin/fm-lint-workflows.sh",
+      "bytes": 3950,
+      "lines": 137,
+      "sha256": "36d72a6195931cbf2b9dd1e50a429fb45d7b62e0aea5d704a7a3a8dd8b5f5532"
+    },
+    {
+      "path": "bin/fm-lint.sh",
+      "bytes": 55203,
+      "lines": 1408,
+      "sha256": "9aa5856d64a87aaffd9c2737656c8044b49e0148edaf1c4e7e106dcc31de1f8e"
+    },
+    {
+      "path": "bin/fm-live-lab.sh",
+      "bytes": 38718,
+      "lines": 869,
+      "sha256": "2767ebadf4a3f74ce7ed4f69a8b91c2d6072d5cf67da984e1d76b78f9553836b"
+    },
+    {
+      "path": "bin/fm-lock-lib.sh",
+      "bytes": 3658,
+      "lines": 104,
+      "sha256": "e8658dc6264d9f64ea84216bef516988dc9ccea659f87d691cd5f34e8e5e903c"
+    },
+    {
+      "path": "bin/fm-lock.sh",
+      "bytes": 14492,
+      "lines": 354,
+      "sha256": "4ab9f06c480415e7a9cad4d545f3322866dec210980786d59504c62928a36bf3"
+    },
+    {
+      "path": "bin/fm-mail-check.sh",
+      "bytes": 14486,
+      "lines": 396,
+      "sha256": "abe2a853bfc578997f6fba55f7662d5b598d883d69928adce51cbfd370c6297c"
+    },
+    {
+      "path": "bin/fm-mail.py",
+      "bytes": 20334,
+      "sha256": "9c75014f1558ea4e0dee043c556b6f5ec520ced448b591843d0dda8366ce6b3b",
+      "lines": 491
+    },
+    {
+      "path": "bin/fm-mail.sh",
+      "bytes": 26376,
+      "lines": 651,
+      "sha256": "1ca888697d075431c91b274b86889c1d08c5b12fc1784bdcb59a4dbb19ed8311"
+    },
+    {
+      "path": "bin/fm-marker-lib.sh",
+      "bytes": 573,
+      "lines": 12,
+      "sha256": "8dd10f56df9871e8c119e30340d2b0aa9c0e9d6c0a5a39db302de6b50d97266a"
+    },
+    {
+      "path": "bin/fm-merge-authority-lib.sh",
+      "bytes": 8351,
+      "lines": 192,
+      "sha256": "26f20a4224999756112851b691ad0391aa003152bc507d3a83b69822deaa7d9d"
+    },
+    {
+      "path": "bin/fm-merge-local.sh",
+      "bytes": 6565,
+      "lines": 146,
+      "sha256": "56eaa73402a15d0136b158b210304ef8ea5fb56d8209efef2038e4b224a08ac0"
+    },
+    {
+      "path": "bin/fm-merge-outcome-lib.sh",
+      "bytes": 5459,
+      "lines": 115,
+      "sha256": "5da19eef3fef4b0c17ffb597d54764011726c0a898b554deb0ddaf14f7ce9a92"
+    },
+    {
+      "path": "bin/fm-nm-run-lib.sh",
+      "bytes": 28052,
+      "lines": 584,
+      "sha256": "05c751377f8031ed57ac1ae080017044c4fcc97aa6f2105e58622aa0cd49364a"
+    },
+    {
+      "path": "bin/fm-on.sh",
+      "bytes": 6033,
+      "lines": 125,
+      "sha256": "3f8a255ab097d34285d72ab16e40dc69cb2cc0cd079b5d777f20eec639f8a19d"
+    },
+    {
+      "path": "bin/fm-operational-input.sh",
+      "bytes": 17263,
+      "lines": 435,
+      "sha256": "b796910c2ebbc2f77c18ef73722cbe76abb874d6f120cc9e2e326fbae219334d"
+    },
+    {
+      "path": "bin/fm-parent-channel-lib.sh",
+      "bytes": 8636,
+      "lines": 175,
+      "sha256": "0d80c9c37f27f612c12765fb09cfc2e5299fcaaf42d3efe3054103f1baa16ca0"
+    },
+    {
+      "path": "bin/fm-path-lib.sh",
+      "bytes": 1208,
+      "lines": 39,
+      "sha256": "4aa1aafe3406676fa5df289a0c30dc762115eba6a1a218921ea6857c26e86b98"
+    },
+    {
+      "path": "bin/fm-peek.sh",
+      "bytes": 1966,
+      "lines": 46,
+      "sha256": "42f1e5199e90920452864c4846ee1e61ad1db0cc43c34b775969052445021d12"
+    },
+    {
+      "path": "bin/fm-pending-reply-lib.sh",
+      "bytes": 73684,
+      "lines": 1700,
+      "sha256": "938d2eef4b9ba0cf0739422358e5940190ddda4d03c6f7b261aa3567a806f49c"
+    },
+    {
+      "path": "bin/fm-pipeline-spend.sh",
+      "bytes": 12971,
+      "lines": 298,
+      "sha256": "5021e1e134f945b11979db121df4f905f94bdf89c834531ca49aaa00b37c7a38"
+    },
+    {
+      "path": "bin/fm-polytoken-lib.sh",
+      "bytes": 26040,
+      "lines": 506,
+      "sha256": "a1f7a91dcfb2f0fb56b6e5848c92f5fbdc8e7bf3c0b5bbb988bf91e0d7ba68ec"
+    },
+    {
+      "path": "bin/fm-pr-check.sh",
+      "bytes": 14555,
+      "lines": 299,
+      "sha256": "cc3dda679424e8f7d86708512d07753a28ec47f2333ede23233c2af7eeadccfd"
+    },
+    {
+      "path": "bin/fm-pr-health.sh",
+      "bytes": 17598,
+      "lines": 344,
+      "sha256": "a92375fb6b0ea8287c47d3169d89b78a78f1b9bf6c433937dcaf5dda0eea3c0f"
+    },
+    {
+      "path": "bin/fm-pr-lib.sh",
+      "bytes": 64003,
+      "lines": 1541,
+      "sha256": "86ec05476356db224c4b4eb9d0f8e64ead56c61549568664965bb4fdc6037758"
+    },
+    {
+      "path": "bin/fm-pr-merge.sh",
+      "bytes": 80143,
+      "lines": 1841,
+      "sha256": "eb7fe197b3d3c8dd7d6ee39b877331c1da3ec2281858cc1fee5cd26f9d0fa6e6"
+    },
+    {
+      "path": "bin/fm-pr-poll.sh",
+      "bytes": 9851,
+      "lines": 237,
+      "sha256": "1ecb514c04dca8c7ff1d253998499335c162d73b76b143a2506d7b3627466dfe"
+    },
+    {
+      "path": "bin/fm-pr-reviewers.sh",
+      "bytes": 3151,
+      "lines": 101,
+      "sha256": "629d4c52fd0cf8b89ed5a29c9ccf1df3c116db0712fcfb71e5c947d4b3d28312"
+    },
+    {
+      "path": "bin/fm-pr-state.sh",
+      "bytes": 6454,
+      "lines": 171,
+      "sha256": "91ba063b7f41f23ed3c83b235ec4fe89d0adbac6bb76ede2468461054f283086"
+    },
+    {
+      "path": "bin/fm-primary-scope-lib.sh",
+      "bytes": 1602,
+      "lines": 42,
+      "sha256": "a241f87c9afa6c7726563ca1b177c56a5374cb5140060b2ba0721819687c0fe5"
+    },
+    {
+      "path": "bin/fm-procevent-extension-capture.pl",
+      "bytes": 13122,
+      "sha256": "c29845bf2c34fa470cab41a16ab457f1691ac6640686ba91dcbba12c66e6bfb0",
+      "lines": 275
+    },
+    {
+      "path": "bin/fm-procevent-lavish.sh",
+      "bytes": 42413,
+      "lines": 978,
+      "sha256": "daabb5220c359e9ce3d8a6f261ac4ecd89fa34dbf2d8aa42e59dee5265c8b64d"
+    },
+    {
+      "path": "bin/fm-procevent-lib.sh",
+      "bytes": 58163,
+      "lines": 1365,
+      "sha256": "bd14ff1b8e38000e61b98e4cf0cc09d41cf4fe78bdf6eb459268d60470adf1e1"
+    },
+    {
+      "path": "bin/fm-procevent-quota.sh",
+      "bytes": 12822,
+      "lines": 328,
+      "sha256": "8b776c3e90efa55ec6fd27b9c4ca6e6486c0bb44ac443b696696473ffa2e9ff1"
+    },
+    {
+      "path": "bin/fm-procevent-remote-reply.sh",
+      "bytes": 38450,
+      "lines": 844,
+      "sha256": "45df375951bd629443fa312a71423ba9d72647d3f47411b11264c8de8c2d92cc"
+    },
+    {
+      "path": "bin/fm-procevent-when.sh",
+      "bytes": 29149,
+      "lines": 638,
+      "sha256": "c0ad96b3e5ae353a2a4f41fbbc224bc9b0b9b56c71ab6a4c13ccb6f3b537f125"
+    },
+    {
+      "path": "bin/fm-procevent.sh",
+      "bytes": 119019,
+      "lines": 2570,
+      "sha256": "5d2ac1352a0b93060547e6165f2c5d0faba0d670698918f4d071c34d600a5dc3"
+    },
+    {
+      "path": "bin/fm-project-capacity-lib.sh",
+      "bytes": 11086,
+      "lines": 229,
+      "sha256": "8722b50acaa6c2988b7b31c1e56a12ec23769c3c3675d5afdc487e1480a0ba94"
+    },
+    {
+      "path": "bin/fm-project-mode.sh",
+      "bytes": 14553,
+      "lines": 263,
+      "sha256": "1b3ed9b0b91a07c1a9b9f885569b5017fedecb5dc63c6744c9b036b4a49c2607"
+    },
+    {
+      "path": "bin/fm-project-origin-lib.sh",
+      "bytes": 5420,
+      "lines": 180,
+      "sha256": "215d19dab218bd64a5e9da88039aa5136f1087f949b80a24a047cf2049022d14"
+    },
+    {
+      "path": "bin/fm-promote.sh",
+      "bytes": 24685,
+      "lines": 502,
+      "sha256": "02b3c434cd5e8522ec1937a912c272cb9be5103de2fb459f5994b3d0f7aa8039"
+    },
+    {
+      "path": "bin/fm-public-followup-collect.sh",
+      "bytes": 5650,
+      "lines": 125,
+      "sha256": "62a6182ba29988ac1f8814bffd7a9378e5682430ddfa98e5d8a9b4884c78bebd"
+    },
+    {
+      "path": "bin/fm-public-followup-emit.sh",
+      "bytes": 20397,
+      "lines": 419,
+      "sha256": "ae684c4e0b69bb1439fcf8f326642ebbae33e926a5665f399e75b3953b18f40e"
+    },
+    {
+      "path": "bin/fm-public-followup-lib.sh",
+      "bytes": 25872,
+      "lines": 599,
+      "sha256": "56ecfab51971ee517030b65df5ab82930d07f7279c5d8f97d7bf823df5730212"
+    },
+    {
+      "path": "bin/fm-public-followup.sh",
+      "bytes": 79187,
+      "lines": 1681,
+      "sha256": "3b8e4cf1219bddcabfd917f361f8bd8a83f62e1f1756ed79374d6990ca5e6309"
+    },
+    {
+      "path": "bin/fm-push-transition-lib.sh",
+      "bytes": 7474,
+      "lines": 173,
+      "sha256": "438f15bf944e64c6bfa2939a0130e74548ccb97d12d73ecb5407a9bdb5a2626a"
+    },
+    {
+      "path": "bin/fm-quota-axi-lib.sh",
+      "bytes": 7916,
+      "lines": 189,
+      "sha256": "b878ea1e8b6a3e7582b84edb6befbb84fae0bbd76a0b31067da038e78f7e7789"
+    },
+    {
+      "path": "bin/fm-quota-choose.sh",
+      "bytes": 18174,
+      "lines": 402,
+      "sha256": "3c7e4477e2b653af2e3480f75007f4ac55c13072478a599a7cedc46f7c47f968"
+    },
+    {
+      "path": "bin/fm-remote-delta-read.sh",
+      "bytes": 9667,
+      "lines": 231,
+      "sha256": "22384a57879b42aa98a8efa011cd4b9843a0e3443cc24664d67f8b033f9b36ec"
+    },
+    {
+      "path": "bin/fm-remote-doctor.sh",
+      "bytes": 38690,
+      "lines": 949,
+      "sha256": "78efccd6cb7a0123400e49fa323292a64c8e3c7ebd3717151be69f87735302fb"
+    },
+    {
+      "path": "bin/fm-remote-entrypoint.sh",
+      "bytes": 8659,
+      "lines": 193,
+      "sha256": "7b1a40404f78dd89fdd97e3627a8a00cae8cfb284bc8c78de1bc127aab774f57"
+    },
+    {
+      "path": "bin/fm-remote-file.sh",
+      "bytes": 9802,
+      "lines": 234,
+      "sha256": "26b2ba2ba93cc92869d06a509013b799bf7f589f6e435a3dd4edb4c20f8da821"
+    },
+    {
+      "path": "bin/fm-remote-herdr-guard.sh",
+      "bytes": 5236,
+      "lines": 108,
+      "sha256": "070f97a986a33922835ffec4e0ef6a21d0172803a9276694b777977a64c26173"
+    },
+    {
+      "path": "bin/fm-remote-herdr-owner-lib.sh",
+      "bytes": 7439,
+      "lines": 176,
+      "sha256": "8a6bdb474f7a126105482c3ebea937f961be46cfc16f9622ca69e92c2790bedb"
+    },
+    {
+      "path": "bin/fm-remote-home-provision.sh",
+      "bytes": 13430,
+      "lines": 283,
+      "sha256": "1b60e55000438c5873a2007874d4a11504ad9c8a1095c5a78b302ae6f90a9205"
+    },
+    {
+      "path": "bin/fm-remote-home-seed.sh",
+      "bytes": 12328,
+      "lines": 272,
+      "sha256": "ef5b2f4158da77271475cfe3aa32916942a5d272a2238173a6cd606399ae16c1"
+    },
+    {
+      "path": "bin/fm-remote-inherit-push.sh",
+      "bytes": 7194,
+      "lines": 181,
+      "sha256": "cd4638cf0e8f1168c8d0dd63f845c756c5183cd098134f7eecd5a7f6bee6d62e"
+    },
+    {
+      "path": "bin/fm-remote-inherit.sh",
+      "bytes": 9028,
+      "lines": 192,
+      "sha256": "070b4c4afcb7e8435205e4c062781e27e7387a338ba6aa7bc16bed0aeff65c6c"
+    },
+    {
+      "path": "bin/fm-remote-job-lib.sh",
+      "bytes": 67853,
+      "lines": 1521,
+      "sha256": "eb038d9d46f5d685fae86873531b480a43db8c3c1791d09f2bb5301bec4c54ed"
+    },
+    {
+      "path": "bin/fm-remote-job-reap-orphans.sh",
+      "bytes": 5844,
+      "lines": 137,
+      "sha256": "f026798a6c39f5ab1d2f90a6a8811e36dc22889bbeb9d0486c43aad65b38ce88"
+    },
+    {
+      "path": "bin/fm-remote-job-worker.sh",
+      "bytes": 55228,
+      "lines": 1349,
+      "sha256": "2a1e1b56d59f2d9166b0ffe239a22a8242c549f28c8bb213ca53c18be3f9a8cf"
+    },
+    {
+      "path": "bin/fm-remote-readiness-lib.sh",
+      "bytes": 1730,
+      "lines": 44,
+      "sha256": "e0ab0eb3f75a780ac84eca2e9fad21dd5f44fa190d40627e7020a21343d53050"
+    },
+    {
+      "path": "bin/fm-remote-secondmate-control.sh",
+      "bytes": 22033,
+      "lines": 457,
+      "sha256": "fda7f091793e4c5f4beef31a303a224ce24adc3728d26c423a96f6ffae3261ed"
+    },
+    {
+      "path": "bin/fm-remote-secondmate-relaunch.sh",
+      "bytes": 4209,
+      "lines": 95,
+      "sha256": "d92a14c171bd5016cc53cbba4d6e0cc75c857ee254c36ddd726c901be9982150"
+    },
+    {
+      "path": "bin/fm-review-check.sh",
+      "bytes": 5146,
+      "lines": 123,
+      "sha256": "92cde643b227694998c9599969a163831f9812558f289ac686df60f1c6aaf57e"
+    },
+    {
+      "path": "bin/fm-review-diff.sh",
+      "bytes": 7058,
+      "lines": 182,
+      "sha256": "47c20a1a68549a043e8039f16396a278223bacafb72b1386e28ec78256138e06"
+    },
+    {
+      "path": "bin/fm-role-lib.sh",
+      "bytes": 20670,
+      "lines": 544,
+      "sha256": "dfbd09127769ceab9abc1b38f0a677808bc45bd514bd635afed08414ddcb9df0"
+    },
+    {
+      "path": "bin/fm-role.sh",
+      "bytes": 2651,
+      "lines": 82,
+      "sha256": "6ffb3d96f83b9a29390988fb0858d4e0b067be7b4acf2657eef7cbf41b898b1f"
+    },
+    {
+      "path": "bin/fm-secondmate-charter-lib.sh",
+      "bytes": 1175,
+      "lines": 44,
+      "sha256": "2bfb6db625bf623ddbd209f3338bec7af80c8a337e9385d8f6863b4832a2d885"
+    },
+    {
+      "path": "bin/fm-secondmate-liveness-lib.sh",
+      "bytes": 14667,
+      "lines": 329,
+      "sha256": "885e3b5254ae7dfc6359f7bc34f150420e19a1d58d922b28c43d9a54300ca47a"
+    },
+    {
+      "path": "bin/fm-secondmate-nudge-lib.sh",
+      "bytes": 4795,
+      "lines": 106,
+      "sha256": "000d6a10ec35c02e59166c581f56c488b7a1419f4c908a32aa95a7b9403335b0"
+    },
+    {
+      "path": "bin/fm-secondmate-parent-lib.sh",
+      "bytes": 2743,
+      "lines": 70,
+      "sha256": "70d883d40ae08d79a530477d08bb63b9297693dd83bdf037e1fdc7ad86a3d938"
+    },
+    {
+      "path": "bin/fm-secondmate-reconcile.sh",
+      "bytes": 25175,
+      "lines": 588,
+      "sha256": "d50de8b7742e6e264e944e1f4ed8acf20665ac484886e5219c1e932d7bd52b8f"
+    },
+    {
+      "path": "bin/fm-secondmate-registry-lib.sh",
+      "bytes": 11521,
+      "lines": 311,
+      "sha256": "8ace16266479fedb84891b08bdf95a73970429324f83201ba83abcd28ffe0d23"
+    },
+    {
+      "path": "bin/fm-secondmate-report.sh",
+      "bytes": 3277,
+      "lines": 105,
+      "sha256": "2960c3760978ebbba8f274db7c4af8453e6906183ca5dcc8de8aea2fde45bb05"
+    },
+    {
+      "path": "bin/fm-secondmate-restart-lib.sh",
+      "bytes": 5574,
+      "lines": 101,
+      "sha256": "a2c665d68418727e8ea623656651b5fb15e608c56d8ff33fbf731dbef5a25894"
+    },
+    {
+      "path": "bin/fm-secondmate-restart.sh",
+      "bytes": 15947,
+      "lines": 396,
+      "sha256": "1a930b05630e2196b6d064129477a54869ae05507b64aab052174050b367b0d2"
+    },
+    {
+      "path": "bin/fm-send.sh",
+      "bytes": 61967,
+      "lines": 1211,
+      "sha256": "de4fb8dcede4c4d2cf6271d61785396da17f3c1f44fbf082c93ba0aa27865b91"
+    },
+    {
+      "path": "bin/fm-session-lock-lib.sh",
+      "bytes": 27396,
+      "lines": 601,
+      "sha256": "17e3f378154d272ffb1b55462bd7028800c1eebe08eee678060ccd2482d7fa5f"
+    },
+    {
+      "path": "bin/fm-session-start.sh",
+      "bytes": 58484,
+      "lines": 1125,
+      "sha256": "cd69878fa563dd07ae586107d2bbb0178b2d601d2f2d71a69fdb18e3e8067bcf"
+    },
+    {
+      "path": "bin/fm-sessionstart-cursor.sh",
+      "bytes": 1525,
+      "lines": 40,
+      "sha256": "787459d1f296c3a8d95c471aa02041533880b0d1a47b75fb786d8fffcc1f13e5"
+    },
+    {
+      "path": "bin/fm-sessionstart-nudge.sh",
+      "bytes": 2126,
+      "lines": 57,
+      "sha256": "51b849e2d0637f0d3c9b7858c4f93f2c700b363cba82b93f4f97550b9f45c1dc"
+    },
+    {
+      "path": "bin/fm-sessionstart-run.sh",
+      "bytes": 7164,
+      "lines": 155,
+      "sha256": "1c7e9aaa4ca5abe09d75bc07eb2e7964cc2ca6607c2d8e066c78d60a8e3b0f2f"
+    },
+    {
+      "path": "bin/fm-spawn.sh",
+      "bytes": 359493,
+      "lines": 6985,
+      "sha256": "b8e8ca3e730e775478838888bd57a74e964ea426db1cca9c5cdd2b41061cb3b1"
+    },
+    {
+      "path": "bin/fm-startup-growth-check.sh",
+      "bytes": 14757,
+      "lines": 417,
+      "sha256": "08b9c68525f79a2d1a37b8ce6227481bd46594ea8f180b3b3e297077dec573d2"
+    },
+    {
+      "path": "bin/fm-startup-memory-budget-lib.sh",
+      "bytes": 7666,
+      "lines": 224,
+      "sha256": "a9870453abe03c77b148e6bc55b59b9e560a48cd8440ba63b689b1ac221c853a"
+    },
+    {
+      "path": "bin/fm-startup-memory-budget.sh",
+      "bytes": 2931,
+      "lines": 94,
+      "sha256": "bbfd382cb62dd508b1678910e482101d4db40139a82e99001e7095d78d1da06a"
+    },
+    {
+      "path": "bin/fm-startup-network.sh",
+      "bytes": 34913,
+      "lines": 759,
+      "sha256": "875323bc94324174cf166e866e0432e27bbfafd85397833b71a6ecdd91aa7d40"
+    },
+    {
+      "path": "bin/fm-stow-cascade.sh",
+      "bytes": 9237,
+      "lines": 251,
+      "sha256": "686bb48ce7afdd3c4083aaf10013ba4cb886017011f109d142b4759951844c05"
+    },
+    {
+      "path": "bin/fm-subagent-pretool-check.sh",
+      "bytes": 9857,
+      "lines": 207,
+      "sha256": "8218f2303fa676f493891e9362b03f5f6929b44fcf9e025f18c490ef3dcdd719"
+    },
+    {
+      "path": "bin/fm-supervise-daemon.sh",
+      "bytes": 99975,
+      "lines": 2070,
+      "sha256": "7b358ea66b84ac04bb365ae4efa85fbe03b16304d9dee847b29a547a4121ea92"
+    },
+    {
+      "path": "bin/fm-supervision-engine-lib.sh",
+      "bytes": 20891,
+      "lines": 458,
+      "sha256": "608dce562d8241cf5aee355e4c4467513c006e3b5534bd0264164065c4e010c7"
+    },
+    {
+      "path": "bin/fm-supervision-host.sh",
+      "bytes": 55219,
+      "lines": 1214,
+      "sha256": "47dfa626d4f5874dac52f2f4612ddf23cff6eccfa35396cb1ed765af4005d302"
+    },
+    {
+      "path": "bin/fm-supervision-instructions.sh",
+      "bytes": 12091,
+      "lines": 303,
+      "sha256": "c0ea3fc2f1d0486a074271784769df5562827d67c78a47fc07653e0f59f202cb"
+    },
+    {
+      "path": "bin/fm-supervision-lib.sh",
+      "bytes": 4670,
+      "lines": 113,
+      "sha256": "e2302e86fd116c75dbc3d906211807e4107016f849e0ff637ee24e0715b45020"
+    },
+    {
+      "path": "bin/fm-supervisor-target-lib.sh",
+      "bytes": 4497,
+      "lines": 97,
+      "sha256": "f195625ebb6726652459c13b6410b1b8ce01bb04ba8572bb3160340112861f8c"
+    },
+    {
+      "path": "bin/fm-tangle-lib.sh",
+      "bytes": 2459,
+      "lines": 53,
+      "sha256": "2df0a821c3118aaba918e17b3638be8bc469cb3e7aad488187ff27dc144d306a"
+    },
+    {
+      "path": "bin/fm-task-inbox-lib.sh",
+      "bytes": 24005,
+      "lines": 546,
+      "sha256": "9b5d470e4aa82449e6756f48b063dbf94e2c6bce509beec86da3ad3d4b712392"
+    },
+    {
+      "path": "bin/fm-tasks-axi-lib.sh",
+      "bytes": 10812,
+      "lines": 262,
+      "sha256": "1b143bbe19350d12cad754aad65c970a386660c95c5c327db3f2960723549a9b"
+    },
+    {
+      "path": "bin/fm-tasks-axi.sh",
+      "bytes": 5884,
+      "lines": 154,
+      "sha256": "6946ed66716b868f41742b92768f84750b4b96b40137247615e0c63e226cffa7"
+    },
+    {
+      "path": "bin/fm-teardown.sh",
+      "bytes": 190440,
+      "lines": 4058,
+      "sha256": "4a7630a5c47916f6672ea0a39a70bd5155266f66be89dde931dea1ce0f899101"
+    },
+    {
+      "path": "bin/fm-test-isolation-proof.sh",
+      "bytes": 19265,
+      "lines": 589,
+      "sha256": "1d49404b3402201bb55e4c06a519fcb2259e0304d3fcad77dd5b27e8073437dc"
+    },
+    {
+      "path": "bin/fm-test-run.sh",
+      "bytes": 103683,
+      "lines": 2751,
+      "sha256": "03429a8a5cb421bd3aad825e382ea1ea42e19286f023f0f156a4ea969d823128"
+    },
+    {
+      "path": "bin/fm-timeout-lib.sh",
+      "bytes": 12587,
+      "lines": 304,
+      "sha256": "9a54b31cff16efa7a44772dfd69f2e80f73c7bf65742b6891ea8eff81701b268"
+    },
+    {
+      "path": "bin/fm-timing-lib.sh",
+      "bytes": 7615,
+      "lines": 179,
+      "sha256": "2e3b2c3cf41449b18f5a89b3592eb03464949a63c95666ae876fd5ed25d34a0f"
+    },
+    {
+      "path": "bin/fm-tmux-lib.sh",
+      "bytes": 17203,
+      "lines": 345,
+      "sha256": "1ab63e4064ecf29b14e29bca33d2004032413af23fb81e51ea1e4c9d34e7e15c"
+    },
+    {
+      "path": "bin/fm-tool-update-check.sh",
+      "bytes": 37826,
+      "lines": 941,
+      "sha256": "a2eeb3ae350808f025f797d7ec71baf6082dfaed9e3148aa115155d8676b3cc5"
+    },
+    {
+      "path": "bin/fm-trace-context-lib.sh",
+      "bytes": 11463,
+      "lines": 227,
+      "sha256": "1aa8843296e1c06048795a23b9aa7492f3cca250b4baefb17c855fd4f3eb15c5"
+    },
+    {
+      "path": "bin/fm-transition-lib.sh",
+      "bytes": 8762,
+      "lines": 171,
+      "sha256": "d0a3d09582871f70a742bd2e90d91aaab421cc8e30cd3c3a0239d536e246faa0"
+    },
+    {
+      "path": "bin/fm-turnend-guard-cursor.sh",
+      "bytes": 18918,
+      "lines": 440,
+      "sha256": "c555eb9cfaae0e2a0be33dea1126750fe3695d09cd5edc3c080e00b5f9bb8bbe"
+    },
+    {
+      "path": "bin/fm-turnend-guard-grok.sh",
+      "bytes": 3022,
+      "lines": 90,
+      "sha256": "3df6c37f614c36660d858fff669c95885ee49b27dd9dabba66f84302934bd05a"
+    },
+    {
+      "path": "bin/fm-turnend-guard.sh",
+      "bytes": 26014,
+      "lines": 549,
+      "sha256": "2359dd92cc1324153caab79d9c7082a6df1083bc0cfc83f28f697ef9ecb3456b"
+    },
+    {
+      "path": "bin/fm-update.sh",
+      "bytes": 12080,
+      "lines": 246,
+      "sha256": "8bad35d2ca30b00d5add3581bb49774cd0b89b2433c1f2d57e59f02f6e1ebd3b"
+    },
+    {
+      "path": "bin/fm-usage-warner.sh",
+      "bytes": 19856,
+      "lines": 519,
+      "sha256": "1ec67b3792876b9d39e094e4d2bb5e98797f2a00d03a34dd926ccaa16d91ae7b"
+    },
+    {
+      "path": "bin/fm-vendor-auth-probe.sh",
+      "bytes": 7494,
+      "lines": 190,
+      "sha256": "da372b65677e7d35f89900a64e751f40e9e903c43d6a0d992a2a766de7c23d20"
+    },
+    {
+      "path": "bin/fm-voice-client.py",
+      "bytes": 67302,
+      "sha256": "565925970cdca5cd44e6b3e6c957aeb6d86c7e7dec752ce4e024e5d2f1347616",
+      "lines": 1373
+    },
+    {
+      "path": "bin/fm-voice-relay.py",
+      "bytes": 58730,
+      "sha256": "b9ad739ab30359862209c78ae0a7cd6afdcb9af06300c4b7b53a77d4763ea7b5",
+      "lines": 1256
+    },
+    {
+      "path": "bin/fm-wake-drain.sh",
+      "bytes": 49805,
+      "lines": 1078,
+      "sha256": "126c22dc8e297872ea59025c995775696e6a0e458383f6ff93c230d49e439d3d"
+    },
+    {
+      "path": "bin/fm-wake-grant.sh",
+      "bytes": 3497,
+      "lines": 111,
+      "sha256": "2d0a040e7c5a31d1b8809e8b8daa966d2baaa871c59c4990cc506406e196fb41"
+    },
+    {
+      "path": "bin/fm-wake-lib.sh",
+      "bytes": 126767,
+      "lines": 3049,
+      "sha256": "d2c1f7f1d599cd1035575807097d2a4b3258bb519316c1f341b17378894cf88d"
+    },
+    {
+      "path": "bin/fm-watch-arm.sh",
+      "bytes": 34290,
+      "lines": 864,
+      "sha256": "fab288a11f21331c760d1d97ac6f53379d9bed13b135ac95df50fc5d6685b236"
+    },
+    {
+      "path": "bin/fm-watch-checkpoint.sh",
+      "bytes": 7506,
+      "lines": 213,
+      "sha256": "0a8f151d0cb4f99055bbeb5d5943166334647e0d849af0fcfeea7bd193972f77"
+    },
+    {
+      "path": "bin/fm-watch.sh",
+      "bytes": 219362,
+      "lines": 4106,
+      "sha256": "fd63f22c408931edeb8ad88ee5e0c5b67dcc1eb7e95ec36ebb9583c051b4ff38"
+    },
+    {
+      "path": "bin/fm-worker-account-lib.sh",
+      "bytes": 14500,
+      "lines": 311,
+      "sha256": "d5eb25d017a69c810cc9ead10c6dca469917400da091d2bc08fc334fbe872c5d"
+    },
+    {
+      "path": "bin/fm-x-dismiss.sh",
+      "bytes": 4946,
+      "lines": 122,
+      "sha256": "ebafaf74b7fe0ebbee29259f5d457fdbf8c7892d4bce928946c581971e51901c"
+    },
+    {
+      "path": "bin/fm-x-followup.sh",
+      "bytes": 12899,
+      "lines": 326,
+      "sha256": "b6dcb8d3a0e01ef784a567df4295c7121cbcad8dc9e2aa1a06a323b009907a1d"
+    },
+    {
+      "path": "bin/fm-x-lib.sh",
+      "bytes": 44306,
+      "lines": 1036,
+      "sha256": "caeff5a03213e19439a809c8afa53b4451c3119c1b59f3ac895cc9ca71436ea3"
+    },
+    {
+      "path": "bin/fm-x-link.sh",
+      "bytes": 10098,
+      "lines": 234,
+      "sha256": "3ba387ba23dce652af3aeafdbea87985f296430503e2725c2fae00f9f95455d9"
+    },
+    {
+      "path": "bin/fm-x-poll.sh",
+      "bytes": 9810,
+      "lines": 209,
+      "sha256": "ced38e48cf87dcb3c5afe46cda0e4fb9462bccd81523029e79a449a18255c8cd"
+    },
+    {
+      "path": "bin/fm-x-reply.sh",
+      "bytes": 17660,
+      "lines": 408,
+      "sha256": "920618a65e372b764413f9cad5be4771af21fe7b73cd84b5982359ef2a32f3e0"
+    },
+    {
+      "path": "bin/fm_voice_frame.py",
+      "bytes": 6200,
+      "sha256": "3985c20f49885aabdda6fb3183d9719a3b362c2aaf82398c1e3ac18da058d74d",
+      "lines": 166
+    },
+    {
+      "path": "bin/fm_voice_records.py",
+      "bytes": 24886,
+      "sha256": "d1678957eebb5750f1e20f981e19ab2379f2ba8557ee4984e0a4adb3b161bac2",
+      "lines": 597
+    },
+    {
+      "path": "docs/agent-control.md",
+      "bytes": 26864,
+      "lines": 208,
+      "sha256": "9ddb90c6a4517f2827d5986431d25b3a6c2e00d0ca8770f720dd720a9dacbd1e"
+    },
+    {
+      "path": "docs/architecture.md",
+      "bytes": 117385,
+      "lines": 541,
+      "sha256": "95b55e5dd461be17dbf01b1cd88b05f841b4786d33d2a98e5c2be3dee7b6c6ce"
+    },
+    {
+      "path": "docs/arm-pretool-check.md",
+      "bytes": 19641,
+      "lines": 251,
+      "sha256": "6ed3e17407910f76216c368fc69ff4aec7634d75c35c5aed4f146ac31da1718b"
+    },
+    {
+      "path": "docs/calm-mode-feasibility.md",
+      "bytes": 95084,
+      "lines": 893,
+      "sha256": "16a9cc50d02d552e9be808a9a1bd03703f099eedbaf4e50a51ca8d652664a528"
+    },
+    {
+      "path": "docs/calm.md",
+      "bytes": 20645,
+      "lines": 310,
+      "sha256": "44eb6f996322eac6f8f934d516bc54af33d64b296a19ddf0c02fb73260421330"
+    },
+    {
+      "path": "docs/captain-hold-lifecycle.md",
+      "bytes": 42967,
+      "lines": 648,
+      "sha256": "c409663250d2be694998acab619837a651a51524ed9301966c93bd8b32aff5f4"
+    },
+    {
+      "path": "docs/cd-guard.md",
+      "bytes": 16330,
+      "lines": 166,
+      "sha256": "403d2356faf9b61c8a38abed4def5f90c7c16d7beb85a074e14f635df9e25f23"
+    },
+    {
+      "path": "docs/cmux-backend.md",
+      "bytes": 8818,
+      "lines": 133,
+      "sha256": "3a7086be56bb50f93d329b35729c20e008eaf2d3b1835895f0609436f657f806"
+    },
+    {
+      "path": "docs/codex-app-backend.md",
+      "bytes": 3211,
+      "lines": 57,
+      "sha256": "acf624b55c9d455d44982ee7363dc5888276bc215a94abb08f58fd0689706690"
+    },
+    {
+      "path": "docs/configuration.md",
+      "bytes": 291822,
+      "lines": 2963,
+      "sha256": "dd089ab478ff1c10885a0dfd6d4af6d417fc48794d1d34eb84e6ee84cbfd7a9d"
+    },
+    {
+      "path": "docs/documentation-audiences.json",
+      "bytes": 16289,
+      "sha256": "172fbca8e2bfb98853f29d3c8bdaa91bbfc189c8aecbeccc079dc3a3a8636b59",
+      "lines": 626
+    },
+    {
+      "path": "docs/documentation-audiences.md",
+      "bytes": 2147,
+      "lines": 28,
+      "sha256": "26a89c1d35a9626618c5059946cfec88b96a3c40a73c901591bc70759e419d2d"
+    },
+    {
+      "path": "docs/examples/crew-dispatch.json",
+      "bytes": 1254,
+      "sha256": "f1ee518d7837c2b3cb222c257b8728dbb88368cbd984b7a48c5d47e262743341",
+      "lines": 26
+    },
+    {
+      "path": "docs/examples/process-event-extension/file-signal.mjs",
+      "bytes": 3314,
+      "lines": 96,
+      "sha256": "fa90eeea9f90e84afe07cd44797216fdd6196c0aefd9f0d3add25f2354eff82a"
+    },
+    {
+      "path": "docs/examples/process-event-extension/firstmate-extension.json",
+      "bytes": 363,
+      "sha256": "bc8f76ad0cb19e6d9e492eb3cab4c983938f57f40ea75def895d184274f7e32c",
+      "lines": 15
+    },
+    {
+      "path": "docs/examples/usage-warner",
+      "bytes": 1000,
+      "sha256": "2177cbbba4bb3d9b9f7773730689a1e50148655887185a9e67a2ab12fcded1f0",
+      "lines": 22
+    },
+    {
+      "path": "docs/examples/watched-tools.json",
+      "bytes": 796,
+      "sha256": "8d357dfa770701b8036cdbd9cd339e97f89130c57f0952bf1ae265d082805364",
+      "lines": 30
+    },
+    {
+      "path": "docs/examples/wedge-alarm",
+      "bytes": 1352,
+      "sha256": "0284d12ae30aa1df25e493c5d8f6a4e2971d3d8e52a79e23f42336649c7474a9",
+      "lines": 22
+    },
+    {
+      "path": "docs/extension-bindings.md",
+      "bytes": 21790,
+      "lines": 240,
+      "sha256": "35baa0bde694b389af1a3280b3957d7f0c311f9c625572ee7f1c2203e1d28667"
+    },
+    {
+      "path": "docs/external-review-forge.md",
+      "bytes": 5247,
+      "lines": 48,
+      "sha256": "c2288f68e354e5230efa22f69d88883c16fe51ef6e829115cc7d1d6aed8297b2"
+    },
+    {
+      "path": "docs/fleet-ledger.md",
+      "bytes": 7070,
+      "lines": 89,
+      "sha256": "6e888074cddcead3e1644e77ad13ebab4a7cb23a2d5b18458a1d019eb9d4cbfd"
+    },
+    {
+      "path": "docs/fm-test-isolation-proof.json",
+      "bytes": 2602,
+      "sha256": "502548173b3e94aa3a0aa768e3af48582f6e9f21873fb6a767d7f0ff0165dd56",
+      "lines": 37
+    },
+    {
+      "path": "docs/fm-test-isolation-proof.md",
+      "bytes": 18582,
+      "lines": 273,
+      "sha256": "b663759ada260e294364fc746a5df10da92ffeec2a46eddd990fa16986c4922a"
+    },
+    {
+      "path": "docs/fm-test-portable-shards.md",
+      "bytes": 16076,
+      "lines": 146,
+      "sha256": "f3ca8b94234222d14050cbeee3ad87c5c94cc6ecc532236ba52b0e3987a8350e"
+    },
+    {
+      "path": "docs/forgejo-tea-integration.md",
+      "bytes": 11705,
+      "lines": 213,
+      "sha256": "1359317289f9ef694ba3e0d4964db29868a35cd3c36c0289b60867523cadd63f"
+    },
+    {
+      "path": "docs/gerrit-change-watch.md",
+      "bytes": 8802,
+      "lines": 133,
+      "sha256": "632428a2835852dbbf5ae45c508379ab5f40bcce4f5ae85b707baa8b4c170b75"
+    },
+    {
+      "path": "docs/gerrit-forge-integration.md",
+      "bytes": 34929,
+      "lines": 355,
+      "sha256": "1a8cd1558d900a380e2621df177b50c4aa1bbd94d1d9868202b975ba146029d4"
+    },
+    {
+      "path": "docs/gitlab-merge-watch.md",
+      "bytes": 13670,
+      "lines": 276,
+      "sha256": "e442cb99ec3714ddecd46da5fe6da444029112ac6c2634a9c6074097d9a4e1c2"
+    },
+    {
+      "path": "docs/herdr-backend.md",
+      "bytes": 60711,
+      "lines": 988,
+      "sha256": "0c57d8a2bde07b92214582a5d708d4beb7322619f812fcc5f661da32fbe52f99"
+    },
+    {
+      "path": "docs/jev-guards.md",
+      "bytes": 3343,
+      "lines": 39,
+      "sha256": "27387948cd95e4b31c7d8bd47dc1a4040e89acc1a88c521654fab89d4c0ca8de"
+    },
+    {
+      "path": "docs/opencode-2-plugin-port-scope.md",
+      "bytes": 8154,
+      "lines": 80,
+      "sha256": "357654a6cbc71cffde0acd8b1dc01c506799773a3626ef133f9386f3831252c2"
+    },
+    {
+      "path": "docs/orca-backend.md",
+      "bytes": 5843,
+      "lines": 93,
+      "sha256": "eed9e11535d70ce0b328ba589dee5e538f689c3d123f6f56ff07a197eda11d82"
+    },
+    {
+      "path": "docs/paseo-backend.md",
+      "bytes": 9950,
+      "lines": 121,
+      "sha256": "d49e3798f0fa8aad55648625ff436fd9edd66413677e4ecc1f8dc1fd484d8b31"
+    },
+    {
+      "path": "docs/pi-supervision-branch-poster.svg",
+      "bytes": 10214,
+      "sha256": "edfa659a09fcaacb835119053817dd6cc858bade25bb1ae53ffae85b773c4aa3",
+      "lines": 125
+    },
+    {
+      "path": "docs/pi-supervision-branch.md",
+      "bytes": 49418,
+      "lines": 721,
+      "sha256": "f5136b9e8e9187648434929420073159529cd7c198f55f88abb2fcaceaab9dda"
+    },
+    {
+      "path": "docs/remote-secondmates.md",
+      "bytes": 42793,
+      "lines": 781,
+      "sha256": "8f0d36d7e88568caaabf323b3da67f7f2f074ae147bb0866409f6f7a683f7e00"
+    },
+    {
+      "path": "docs/rex-backend.md",
+      "bytes": 13339,
+      "lines": 151,
+      "sha256": "5bac4d5921f487037fb95796cee1ec447b4252e6076b5b1222c91dd32597ef70"
+    },
+    {
+      "path": "docs/scripts.md",
+      "bytes": 25294,
+      "lines": 179,
+      "sha256": "521a1e71ee7aa99a14d80e45a619f50ee92602b63d520a5847c2a945011819ea"
+    },
+    {
+      "path": "docs/secondmate-parent-channel.md",
+      "bytes": 8908,
+      "lines": 65,
+      "sha256": "bc201844f26c856e87d7a1d29211a328dff65e1682fa7429c5c5735142dde274"
+    },
+    {
+      "path": "docs/sessionstart-nudge.md",
+      "bytes": 23896,
+      "lines": 470,
+      "sha256": "8d4a82ada207f4d9339453c988c7e49b70afa41131503d2db3e4e1d43074baa5"
+    },
+    {
+      "path": "docs/subagent-guard.md",
+      "bytes": 26594,
+      "lines": 384,
+      "sha256": "2189764402344f1a5b73a9164512f0c1f07887fcedf37812353d54bb43d48cce"
+    },
+    {
+      "path": "docs/supervision-host.md",
+      "bytes": 35056,
+      "lines": 428,
+      "sha256": "efd6c0af76a7e451fa9f98c673f24e48df1745ef0809ad0230181c9c58d9f274"
+    },
+    {
+      "path": "docs/supervision-protocols/claude.md",
+      "bytes": 3479,
+      "lines": 27,
+      "sha256": "5f358f9bb69add66b18907fdab30727a4b0dcf11c4ac35b2a6ff3e049f941045"
+    },
+    {
+      "path": "docs/supervision-protocols/codex.md",
+      "bytes": 1603,
+      "lines": 16,
+      "sha256": "1e3c08bd98d5a2b2d0f32f0da4c4b587ed66198cc954acff2d0f1687f412408b"
+    },
+    {
+      "path": "docs/supervision-protocols/cursor.md",
+      "bytes": 3758,
+      "lines": 31,
+      "sha256": "13eeb7be35a27cefe4ec8df324d00369c87be2157a709b1ea71a0b9d38c1c2c6"
+    },
+    {
+      "path": "docs/supervision-protocols/grok.md",
+      "bytes": 3100,
+      "lines": 39,
+      "sha256": "447a6599293ddc45d435071cd2fa9c8843239acbc5cb2d5c21b2981364ff1c83"
+    },
+    {
+      "path": "docs/supervision-protocols/omp.md",
+      "bytes": 4517,
+      "lines": 30,
+      "sha256": "37d918e163a631dfc9dc0a0dd8d4bb0b678627f34d5dcdcb9e8334b329bc67e1"
+    },
+    {
+      "path": "docs/supervision-protocols/opencode.md",
+      "bytes": 2380,
+      "lines": 18,
+      "sha256": "70d4baf88d14a15c5fda772ff9e76243a3eb163b4d073ef156dbd6e7595cd523"
+    },
+    {
+      "path": "docs/supervision-protocols/pi.md",
+      "bytes": 7527,
+      "lines": 41,
+      "sha256": "57c13d470d12c749ca834b83a12d0da1853a1291ee67bbc250382dfb08ed7a78"
+    },
+    {
+      "path": "docs/supervision-protocols/supervision-host.md",
+      "bytes": 7014,
+      "lines": 31,
+      "sha256": "4e92b132a70bea63ac2216af5de1b274e5854a9ce59d528eab0ee0caadb99d94"
+    },
+    {
+      "path": "docs/supervision-protocols/unknown.md",
+      "bytes": 1070,
+      "lines": 13,
+      "sha256": "a9015f71414313eaffeede8f849094ca94720ee8d614dff6afe3f9f57afa06f3"
+    },
+    {
+      "path": "docs/tmux-backend.md",
+      "bytes": 10241,
+      "lines": 122,
+      "sha256": "cf087990f898e15eaa272b5736c88f4d95f464ce4e30668973c39b2c3785fb68"
+    },
+    {
+      "path": "docs/trace-context.md",
+      "bytes": 13415,
+      "lines": 117,
+      "sha256": "851654322356e6d7fa84823fcf0748b09a2fc0ba997e73892367dfbdc7917241"
+    },
+    {
+      "path": "docs/turnend-guard.md",
+      "bytes": 45614,
+      "lines": 610,
+      "sha256": "fa196613208b4ac1db7f16f84fedc48e1439705b3c561a28db4500f3e885ce8a"
+    },
+    {
+      "path": "docs/usage-warner.md",
+      "bytes": 6819,
+      "lines": 64,
+      "sha256": "1f118de86474808cd3639f2d99ae7d7b81fdba9b7bc1db13ffc6ea5b6ea2ca3c"
+    },
+    {
+      "path": "docs/verification/agy.md",
+      "bytes": 14075,
+      "lines": 170,
+      "sha256": "31fd0178242d8b658856a487020c62d346d76b46ca97c6144058b56d287cf0ed"
+    },
+    {
+      "path": "docs/verification/commandcode.md",
+      "bytes": 8709,
+      "lines": 93,
+      "sha256": "95ef760700814ce9f19e215ce0a4ca811eae0ff9a684b0ff5938fc1fab288a03"
+    },
+    {
+      "path": "docs/verification/devin.md",
+      "bytes": 8890,
+      "lines": 124,
+      "sha256": "667f55dc1fbf75eb40dbaa4b83e9ba3f752917142e077404458b9e6c4dc65af3"
+    },
+    {
+      "path": "docs/verification/dispatch-auth.md",
+      "bytes": 12385,
+      "lines": 207,
+      "sha256": "883379ee3d0238647ad949e33068eed9ed0fed4b77d6e1b8e5986f6494181648"
+    },
+    {
+      "path": "docs/verification/dispatch-resolve.md",
+      "bytes": 13024,
+      "lines": 124,
+      "sha256": "1d21bfd3ca414730b0e6e7f35d3928931d431de3ef8803e6c446d40f5fd35ec3"
+    },
+    {
+      "path": "docs/verification/lint-option-a.md",
+      "bytes": 2892,
+      "lines": 71,
+      "sha256": "368058403da023624b9290e7cd8ee33827b555f85309bc867225e98c6c8c9464"
+    },
+    {
+      "path": "docs/verification/muse.md",
+      "bytes": 13200,
+      "lines": 222,
+      "sha256": "fd7b7efb633ae5a760b9ab05733d2697f47f7497cd0a23fd0c2f5464e7aaa016"
+    },
+    {
+      "path": "docs/verification/polytoken.md",
+      "bytes": 6274,
+      "lines": 88,
+      "sha256": "191dcf4e9682f5f923928af6e1aeb7c7664817399baaaaefa139e7e91fcdfd3c"
+    },
+    {
+      "path": "docs/verification/process-event-sources.md",
+      "bytes": 41886,
+      "lines": 232,
+      "sha256": "397c9f01ec580f964dc5d4341b812fc3a18acfe7a8a4f382f54240f4626e9536"
+    },
+    {
+      "path": "docs/verification/public-followup.md",
+      "bytes": 17478,
+      "lines": 188,
+      "sha256": "9c02becab247997f61208d82575e74a69a8899299b52fdce8d91686e3c44161a"
+    },
+    {
+      "path": "docs/verification/rovo.md",
+      "bytes": 25820,
+      "lines": 237,
+      "sha256": "c0d37f6fb3eea76876e93243923ddd21f2285ce35ddc72d74755208dfbb37731"
+    },
+    {
+      "path": "docs/verification/runtime-backends.md",
+      "bytes": 241186,
+      "lines": 3018,
+      "sha256": "4cdc66a3d0f77ef850763fd027892ce76548ddf8a332fd2060a557aae830321f"
+    },
+    {
+      "path": "docs/verification/secondmate-parent-channel.md",
+      "bytes": 6367,
+      "lines": 95,
+      "sha256": "ff2045ec857adf149a5fc99b6b5fcfa2206a69ff5b203d7c4ff313c52c74d9f0"
+    },
+    {
+      "path": "docs/verification/stow-memory.md",
+      "bytes": 2591,
+      "lines": 53,
+      "sha256": "ae09fd38a6c252b8056823f4112a5d24ba0999d17fac8b7ba63490923b7be05c"
+    },
+    {
+      "path": "docs/verification/supervision.md",
+      "bytes": 67143,
+      "lines": 898,
+      "sha256": "265b2e333bc8bd659cbbdabc819a5a989b676f9a2cefac42170e51c9cf504c8c"
+    },
+    {
+      "path": "docs/verification/trace-context.md",
+      "bytes": 6262,
+      "lines": 31,
+      "sha256": "cdecf7aede901f02f68ba94661ebe5cf2eda47de901f17f8c13a557c322c25df"
+    },
+    {
+      "path": "docs/voice-relay.md",
+      "bytes": 19938,
+      "lines": 296,
+      "sha256": "aaefb4510f8e46f70a7781236a947c8ff67302af080c5edbcd6e16a8cebd9087"
+    },
+    {
+      "path": "docs/watcher-continuity.md",
+      "bytes": 38400,
+      "lines": 548,
+      "sha256": "09724af9c5cd6237947390baccfe6290404f54bd797c3872c0209b22263df41f"
+    },
+    {
+      "path": "docs/wedge-alarm.md",
+      "bytes": 2928,
+      "lines": 39,
+      "sha256": "fdfc9d186b0d3660c73fb2c200c2f35c439bb11014c9a09aaeb23ceb17bc7417"
+    },
+    {
+      "path": "docs/zellij-backend.md",
+      "bytes": 7279,
+      "lines": 114,
+      "sha256": "0690d25dc1b08f7ca14f1da135d74dc397fc482e9f2e71dbe9cf9ba6a80a7e5c"
+    },
+    {
+      "path": "skills/stow/SKILL.md",
+      "bytes": 20350,
+      "sha256": "33b3fe5b594d7c4daafc1037138c90bce6db380d0a9f97c9bf1e2df026157ee1",
+      "lines": 151
+    },
+    {
+      "path": "tests/assets/board-render-harness.mjs",
+      "bytes": 4585,
+      "lines": 126,
+      "sha256": "15ecae3235593c41caf45632e95c1f1c80673a278d50bd0c3778e8e826a4fcec"
+    },
+    {
+      "path": "tests/captures/no-mistakes-v1.70.1/README.md",
+      "bytes": 5243,
+      "lines": 52,
+      "sha256": "138756a89ea858eb5bb498ee827eb26658f3b24d383d6b73e6f1e1de8c17972a"
+    },
+    {
+      "path": "tests/captures/no-mistakes-v1.70.1/completed.toon",
+      "bytes": 710,
+      "sha256": "daa05f5a8b67b9776378f5302022e58f4988297ac7143dadbb6f8820aaa3bc7c",
+      "lines": 20
+    },
+    {
+      "path": "tests/captures/no-mistakes-v1.70.1/failed.toon",
+      "bytes": 1156,
+      "sha256": "35729da553bfd304451ad945ce8ab28244fcab36c4d7fdd0bd415ece30ccee12",
+      "lines": 19
+    },
+    {
+      "path": "tests/captures/no-mistakes-v1.70.1/overview.toon",
+      "bytes": 1368,
+      "sha256": "122af41339acd276eccaa4a4f00281af288c6e08091c5e0db2530e33f4c02f1b",
+      "lines": 12
+    },
+    {
+      "path": "tests/captures/no-mistakes-v1.70.1/parked.toon",
+      "bytes": 1696,
+      "sha256": "0ab46492af6a7229007645c0300560c33fa0239902a703650a954f3feef6d461",
+      "lines": 26
+    },
+    {
+      "path": "tests/captures/no-mistakes-v1.70.1/replacement.toon",
+      "bytes": 769,
+      "sha256": "6b7a9ee77570d6ec06fb7fb3ec8d000aefa14a47fc2d9a1761ab5fd224ad287d",
+      "lines": 20
+    },
+    {
+      "path": "tests/captures/no-mistakes-v1.70.1/same-branch-inventory.json",
+      "bytes": 2353,
+      "sha256": "7b7162da568881afbb5e0b6ae09f5fead75f1fd78e3f8323fd2c1e4e0fc91128",
+      "lines": 74
+    },
+    {
+      "path": "tests/captures/no-mistakes-v1.70.1/superseded.toon",
+      "bytes": 640,
+      "sha256": "d6f0ea10f75a39a09b32c247c9b291039bd8f7ef284d5611fb2743187c9f7f67",
+      "lines": 20
+    },
+    {
+      "path": "tests/captures/no-mistakes-v1.70.1/uninitialized.toon",
+      "bytes": 129,
+      "sha256": "d4c8f87399836fd2fe98c25ad1df3cb954e25fb37c0abe95bbafbd487ae3bd0a",
+      "lines": 2
+    },
+    {
+      "path": "tests/cmux-test-safety.sh",
+      "bytes": 2925,
+      "lines": 51,
+      "sha256": "cfe2674fa30182859428a40b9abb61777a5c5a0b42dc26f4c82d1fd0a0955bfb"
+    },
+    {
+      "path": "tests/fixtures.sh",
+      "bytes": 15827,
+      "lines": 457,
+      "sha256": "637e5b7ad797f36355fdbc64e8521dc81a408ba1fe1308831832fa2e48698337"
+    },
+    {
+      "path": "tests/fixtures/opencode-1.18.31-cwd/opencode-1.18.31-busy-wide-abs-cwd.ansi",
+      "bytes": 7303,
+      "sha256": "89f4929b7b602511021bd7fa71117af058d21e2d11e9cddf4a64581b4da8caab",
+      "lines": 20
+    },
+    {
+      "path": "tests/fixtures/opencode-1.18.31-cwd/opencode-1.18.31-idle-cwd.ansi",
+      "bytes": 7709,
+      "sha256": "f01245b6619ee47295c39417381cf6081030ec7a11088a67506abeec7f56bb56",
+      "lines": 20
+    },
+    {
+      "path": "tests/fixtures/opencode-1.18.31-cwd/opencode-1.18.31-idle-short-cwd.ansi",
+      "bytes": 8183,
+      "sha256": "28f7974a4dfd9d276c65d178e2f68e3ab15def6c3f00394f25a45a954ae2456a",
+      "lines": 20
+    },
+    {
+      "path": "tests/fixtures/opencode-1.18.31-cwd/opencode-1.18.31-idle-wide-abs-cwd.ansi",
+      "bytes": 7140,
+      "sha256": "ba9d76177b4cbb165bd0adf1d60b7f4d73cc5670b2c63b7f3a1bdd814088a1b1",
+      "lines": 20
+    },
+    {
+      "path": "tests/fixtures/rex-opencode-1.19.3/opencode-1.19.3-idle-format.vt",
+      "bytes": 17388,
+      "sha256": "6f0289f17b2c62263611c2c99ebd4535eb2b1c04262082dd34e80ae633780fe2",
+      "lines": 50
+    },
+    {
+      "path": "tests/fm-afk-contract.test.sh",
+      "bytes": 39673,
+      "lines": 687,
+      "sha256": "35ab0f4a5710cd6dfe874e34e4cbf8a55cac33ac28ec462722ccf832238c3228"
+    },
+    {
+      "path": "tests/fm-afk-inject-e2e.test.sh",
+      "bytes": 17837,
+      "lines": 468,
+      "sha256": "8fc1229827601e5de83f3ab166a40323bed70e7201e07e3f0e3ce7c29fa97eab"
+    },
+    {
+      "path": "tests/fm-afk-inject-herdr-e2e.test.sh",
+      "bytes": 21411,
+      "lines": 541,
+      "sha256": "17e4407b4878511e63e42795f25ef5908627ad332b344cf3b68c9ef79eb1130a"
+    },
+    {
+      "path": "tests/fm-afk-launch.test.sh",
+      "bytes": 91028,
+      "lines": 1846,
+      "sha256": "162554a6becbe26e61028af18bd6b540a87a98fdf7027577f1033c73ec22775a"
+    },
+    {
+      "path": "tests/fm-afk-pi-herdr-return-e2e.test.sh",
+      "bytes": 14704,
+      "lines": 283,
+      "sha256": "2d0eafffc672af1230bd94d4a070b35d02d7bd6b87ea7f4477370acf1b6deee7"
+    },
+    {
+      "path": "tests/fm-afk-return.test.sh",
+      "bytes": 89413,
+      "lines": 1388,
+      "sha256": "6203df4a099d1d006f8c4a6031c3fa5ee390ec4e40bfd0dc9a5266b62376ac87"
+    },
+    {
+      "path": "tests/fm-agy-harness.test.sh",
+      "bytes": 45683,
+      "lines": 930,
+      "sha256": "1b1e3a3d5191cf6dfc13fb27a2fd4123d64a442188f03fbd8b77ad32bc2011be"
+    },
+    {
+      "path": "tests/fm-agy-signals-live-e2e.test.sh",
+      "bytes": 8209,
+      "lines": 193,
+      "sha256": "862d0da25649e47a67af4217e871fe812f54680106e41736c64b4108fe9f4342"
+    },
+    {
+      "path": "tests/fm-approval-failover.test.sh",
+      "bytes": 12167,
+      "lines": 198,
+      "sha256": "6177d3ca235812fb0ef2170ce679378bb4170c65cc63e872e93109446933f959"
+    },
+    {
+      "path": "tests/fm-arm-pretool-check.test.sh",
+      "bytes": 24655,
+      "lines": 483,
+      "sha256": "f3c50a5d6dff13041f4b43b6bf537468686ebab00afc8da6f047f8a9ebe712a7"
+    },
+    {
+      "path": "tests/fm-ask-user-authority.test.sh",
+      "bytes": 2244,
+      "lines": 42,
+      "sha256": "f16631e81c64bdc798e78241d91c80cbabf06e74b9ad3962ec70c0222b410d00"
+    },
+    {
+      "path": "tests/fm-backend-autodetect-smoke.test.sh",
+      "bytes": 8793,
+      "lines": 189,
+      "sha256": "798a0d01e19a4b8d731a16bc25eb2df7c9e6a4a9cb9b83d2ec4db9aa1ef61c6c"
+    },
+    {
+      "path": "tests/fm-backend-cmux-smoke.test.sh",
+      "bytes": 9055,
+      "lines": 188,
+      "sha256": "a116008ac7a1b814eaa393027f5d9f81fa8194aef55cd1ef6e6a51bec14dd475"
+    },
+    {
+      "path": "tests/fm-backend-cmux.test.sh",
+      "bytes": 70341,
+      "lines": 1166,
+      "sha256": "4521b045df99b799b58dbab7bb069d91e519d79d70d19a6d6244763296a04b9e"
+    },
+    {
+      "path": "tests/fm-backend-herdr-agent-exit-shell-e2e.test.sh",
+      "bytes": 8240,
+      "lines": 213,
+      "sha256": "a029504d18f5495a6ed7c1a615bd8695c2065456633a4eb571a0c5a2a0174a88"
+    },
+    {
+      "path": "tests/fm-backend-herdr-eventwait-smoke.test.sh",
+      "bytes": 6789,
+      "lines": 136,
+      "sha256": "a99e0251298b9d1506c0bf997d15b9252c4118a5c6668b5336dd55e156234aeb"
+    },
+    {
+      "path": "tests/fm-backend-herdr-eventwait.test.py",
+      "bytes": 3023,
+      "sha256": "bdc29f3a68890ab58b266b4f9073fb8adae4c8652a10b42f83eb11a3ecaabe85",
+      "lines": 106
+    },
+    {
+      "path": "tests/fm-backend-herdr-focus-flash-e2e.test.sh",
+      "bytes": 20722,
+      "lines": 409,
+      "sha256": "b7ec7f93049502093c4ca12ce4ad439a6bf8a07cf1f421ccd90bf21c2b3728ea"
+    },
+    {
+      "path": "tests/fm-backend-herdr-launcher-workspace-e2e.test.sh",
+      "bytes": 24068,
+      "lines": 452,
+      "sha256": "b27eb2369fcc8f19f2fe80d274276d9672fca828c8766f8e2b3d487c4ebed87d"
+    },
+    {
+      "path": "tests/fm-backend-herdr-presentation-e2e.test.sh",
+      "bytes": 92267,
+      "lines": 1595,
+      "sha256": "b7fab631f5194c42d1ead96448a35b00422d7433b8ce7af5638a3a2eeda0a6a0"
+    },
+    {
+      "path": "tests/fm-backend-herdr-prune-safety-e2e.test.sh",
+      "bytes": 9277,
+      "lines": 180,
+      "sha256": "bedc348ce6976a1db756b9d38179883a8ba9f85e450fe1b074f6786861ac5978"
+    },
+    {
+      "path": "tests/fm-backend-herdr-respawn-idem-e2e.test.sh",
+      "bytes": 9677,
+      "lines": 182,
+      "sha256": "218cfec397a658218849a4d6b58fccc4fffc6b2517baabc338bdcbc18f91bac0"
+    },
+    {
+      "path": "tests/fm-backend-herdr-smoke.test.sh",
+      "bytes": 21069,
+      "lines": 367,
+      "sha256": "e1e8d73a6de89dc6ff1a43b0797c748c5cbffea83e761534d9c569ffcb08ceaa"
+    },
+    {
+      "path": "tests/fm-backend-herdr-stale-active-tab-e2e.test.sh",
+      "bytes": 3642,
+      "lines": 92,
+      "sha256": "b7ca3502568948c33fc25092abeac4d0c84eb080e7508840ce933c00d8234f4c"
+    },
+    {
+      "path": "tests/fm-backend-herdr-workspace-per-home-e2e.test.sh",
+      "bytes": 14706,
+      "lines": 269,
+      "sha256": "0392b1ac62b90b82a6f4253684d98b84444c7467232353fb65f9e7d7243ab686"
+    },
+    {
+      "path": "tests/fm-backend-herdr.test.sh",
+      "bytes": 412339,
+      "lines": 6179,
+      "sha256": "8998e72a4965d322e501e046c86a5205c05f720f22e21c3ef8d55ea7722b0692"
+    },
+    {
+      "path": "tests/fm-backend-orca.test.sh",
+      "bytes": 82346,
+      "lines": 1403,
+      "sha256": "609868bb5bbc06d7e4f8c1f02e7e66381256a709cdae81a2cba5c8725cbc4420"
+    },
+    {
+      "path": "tests/fm-backend-paseo-smoke.test.sh",
+      "bytes": 10616,
+      "lines": 227,
+      "sha256": "4eadce5c157944bb97fe1573c43fbb2769c954ef4a6ead1a47841507ce4a6004"
+    },
+    {
+      "path": "tests/fm-backend-paseo.test.sh",
+      "bytes": 59728,
+      "lines": 1100,
+      "sha256": "bd09c2adf7e1467eceefd57a68209704db3768bfce8b8567e4abff6ce52b77b7"
+    },
+    {
+      "path": "tests/fm-backend-rex-composer-live-e2e.test.sh",
+      "bytes": 5519,
+      "lines": 121,
+      "sha256": "06426e18617136d7395b1a36a4a0848291a3bd2307171411c0ed84e8f7ff94db"
+    },
+    {
+      "path": "tests/fm-backend-rex-eventwait-smoke.test.sh",
+      "bytes": 6071,
+      "lines": 123,
+      "sha256": "6882e7a3b508a94651d5d1ab8f6843cf787e8ee99f1f19f02dc667f97c62d3cf"
+    },
+    {
+      "path": "tests/fm-backend-rex-smoke.test.sh",
+      "bytes": 8347,
+      "lines": 131,
+      "sha256": "23cea70429c5b6095ac17f72b818e150483a1535e4f584edf59bb1b9aed3efb7"
+    },
+    {
+      "path": "tests/fm-backend-rex.test.sh",
+      "bytes": 50024,
+      "lines": 910,
+      "sha256": "8f041be5d744eeebea98f7549aaa416f1114787f9d8c12e081060084566eee33"
+    },
+    {
+      "path": "tests/fm-backend-tmux-smoke.test.sh",
+      "bytes": 15046,
+      "lines": 308,
+      "sha256": "c03b1e51f2b4f79103c874bd20e43f2a12cf00417751caea57e5464150f5bb51"
+    },
+    {
+      "path": "tests/fm-backend-zellij-smoke.test.sh",
+      "bytes": 10212,
+      "lines": 205,
+      "sha256": "6b8cb20a9fc717444d145e3a293dda62609dcaf7dbfd7ec04108660891d10d91"
+    },
+    {
+      "path": "tests/fm-backend-zellij.test.sh",
+      "bytes": 74188,
+      "lines": 1360,
+      "sha256": "5a0b0dc26153bf3d09a745e0dee8d41f5ea4c43c2aedf98d511cebb5f03b2550"
+    },
+    {
+      "path": "tests/fm-backend.test.sh",
+      "bytes": 72793,
+      "lines": 1350,
+      "sha256": "acc7cdde8abca49f3bc84e7e805e091dae03ded5bc8459f33f2a77572757a683"
+    },
+    {
+      "path": "tests/fm-backlog-atomicity.test.sh",
+      "bytes": 141313,
+      "lines": 3166,
+      "sha256": "180b5394c846dd81700158a29c909324386490e4220be9c22983f3d0708ad757"
+    },
+    {
+      "path": "tests/fm-backlog-handoff.test.sh",
+      "bytes": 62146,
+      "lines": 1397,
+      "sha256": "46c108dc09ce568547be9db06cb6e9e8093ede9e33b423a8f1cae9d96fbc9ee1"
+    },
+    {
+      "path": "tests/fm-backlog-read-bound.test.sh",
+      "bytes": 17470,
+      "lines": 430,
+      "sha256": "56af72ca7848700a705cd63feebbfcfce80a5ff33c3bd39cd1f64c7324bffc1c"
+    },
+    {
+      "path": "tests/fm-bearings-board-lavish-live-e2e.test.sh",
+      "bytes": 5117,
+      "lines": 122,
+      "sha256": "6c62e6561936a3f0a879b918ab4cd08f3623a29d59d85dbe48d113854be5c8ad"
+    },
+    {
+      "path": "tests/fm-bearings-board-render.test.sh",
+      "bytes": 13117,
+      "lines": 277,
+      "sha256": "993c82dd35536a095aacd71188b624bf69528b8cd81de626500c6b3e1e1ee251"
+    },
+    {
+      "path": "tests/fm-bearings-board.test.sh",
+      "bytes": 34290,
+      "lines": 789,
+      "sha256": "550a227895d14a8b8d42ff0438aab4d6028d0f310e12c899d87bcf262eeb67ed"
+    },
+    {
+      "path": "tests/fm-bearings-snapshot.test.sh",
+      "bytes": 173339,
+      "lines": 3420,
+      "sha256": "b3fa590fe51a31c8228624c8cc730927390151177c437d9860d755f84817e64d"
+    },
+    {
+      "path": "tests/fm-bootstrap-network-parallel.test.sh",
+      "bytes": 32123,
+      "lines": 771,
+      "sha256": "8e3dff577cf7cda1a77bfcc30341012a70b9cb8d4985193597b2f9ef69c9562f"
+    },
+    {
+      "path": "tests/fm-bootstrap.test.sh",
+      "bytes": 82797,
+      "lines": 1502,
+      "sha256": "dede8cf23a330b9a4c3c7997b63f436f3f67a411ee09fd5edb056b020be320a0"
+    },
+    {
+      "path": "tests/fm-branch-supervision.test.sh",
+      "bytes": 93573,
+      "lines": 1649,
+      "sha256": "90a74d304ab63415eb2e4b5311392ee0d4f5c1fe7fdb02a2ae363bc1658bdd4d"
+    },
+    {
+      "path": "tests/fm-brief.test.sh",
+      "bytes": 94414,
+      "lines": 1678,
+      "sha256": "bb7b1bb07dcfaf6dc68d155bf5291b9de2c1563712ce774fae97d1864caf3275"
+    },
+    {
+      "path": "tests/fm-busy-adapter-wiring.test.sh",
+      "bytes": 49956,
+      "lines": 971,
+      "sha256": "822386ff760d63464b3e650900ef82f6e5e661a0d8204e832124a59b64c6acc4"
+    },
+    {
+      "path": "tests/fm-busy-state.test.sh",
+      "bytes": 30309,
+      "lines": 650,
+      "sha256": "40f925bce9daed8ce254e07a276cccac4cccac91e9cafe6e56c16a5357849b8b"
+    },
+    {
+      "path": "tests/fm-calm-claude-mod-live-e2e.test.sh",
+      "bytes": 20024,
+      "lines": 508,
+      "sha256": "c01c8a31739e3ece28b58cd29aabb09501e657e8169461db513899ff4ed40268"
+    },
+    {
+      "path": "tests/fm-calm-claude-mod-plugin.test.sh",
+      "bytes": 4450,
+      "lines": 84,
+      "sha256": "6a6870b10151bfac2be9e0e26f193284533b9065d262cb5826e343f9aaa2cd16"
+    },
+    {
+      "path": "tests/fm-calm-claude-mod.test.sh",
+      "bytes": 39500,
+      "lines": 606,
+      "sha256": "7eb3bd51b8c29f2a554fdb334a246550212001909d19382d34a9126581aed633"
+    },
+    {
+      "path": "tests/fm-calm-pi-extension.test.sh",
+      "bytes": 242269,
+      "lines": 4998,
+      "sha256": "7fe4e791b68e79e070b53f42d313aa25af8a727fa05ba2ef55af314594886ee9"
+    },
+    {
+      "path": "tests/fm-calm-pi-queue-retention-live-e2e.test.sh",
+      "bytes": 7558,
+      "lines": 153,
+      "sha256": "38bade7de07c4d1f55f2d592d26c61766e5b1d6d4dbc28409d96a1394cf91ccd"
+    },
+    {
+      "path": "tests/fm-capacity.test.sh",
+      "bytes": 28490,
+      "lines": 545,
+      "sha256": "f7c46ba01bc114e1d75a6c63855898abcbe83d8b85a5f2e1ce32102c255d5ccd"
+    },
+    {
+      "path": "tests/fm-captain-hold-lifecycle.test.sh",
+      "bytes": 260878,
+      "lines": 4826,
+      "sha256": "f929de8a12956d180951baca6db6d6d8ba93f2c726e6475d94414e14b0b04336"
+    },
+    {
+      "path": "tests/fm-cd-pretool-check.test.sh",
+      "bytes": 16859,
+      "lines": 400,
+      "sha256": "c035a50da0a7aae3f73d57cd58fbc5b49d174fb4c42d9859f3a5d4397a89f63e"
+    },
+    {
+      "path": "tests/fm-check-unregister.test.sh",
+      "bytes": 7953,
+      "lines": 198,
+      "sha256": "b1e14e92421c9c25d7cd87e098b9faee5f3eb390318a8ed8a489437abdb012ae"
+    },
+    {
+      "path": "tests/fm-ci-workflow.test.sh",
+      "bytes": 19454,
+      "lines": 452,
+      "sha256": "354a4e8eeb2a9c41f4a8fbe261a760a55e80c6892d18f864041367ff594102a3"
+    },
+    {
+      "path": "tests/fm-classify-corr-token.test.sh",
+      "bytes": 42138,
+      "lines": 805,
+      "sha256": "a5a1c2204d4c01382b9d417e00ea1feda3509566e703ee083c605636f63b9fa7"
+    },
+    {
+      "path": "tests/fm-classify-decision-key.test.sh",
+      "bytes": 31543,
+      "lines": 606,
+      "sha256": "e946a469248d247ed54cb149942dae50f10be1f3f2a87032cd4da6111565815e"
+    },
+    {
+      "path": "tests/fm-claude-stop-autoarm-live-e2e.test.sh",
+      "bytes": 9534,
+      "lines": 186,
+      "sha256": "412bbf8b9c5624be1cceee2dde5f1ab48e4e1b5662e940b079b998a4ab780093"
+    },
+    {
+      "path": "tests/fm-claude-stop-autoarm.test.sh",
+      "bytes": 109992,
+      "lines": 2051,
+      "sha256": "58181ee36729efd8331a4207452c5e9f940e33cd750f7b22cf3a5c54465e6493"
+    },
+    {
+      "path": "tests/fm-claude-trust.test.sh",
+      "bytes": 44585,
+      "lines": 871,
+      "sha256": "65cceec9b2fc3a51b9e82687784dfc9612508d0e59e720c87f97517b755d3f99"
+    },
+    {
+      "path": "tests/fm-cmux-claude-composer-live-e2e.test.sh",
+      "bytes": 5339,
+      "lines": 110,
+      "sha256": "f19830a8b931ecda319895e5ff27b17bf8daed041d277e20bbd11706e37e1497"
+    },
+    {
+      "path": "tests/fm-codex-continuity-live-e2e.test.sh",
+      "bytes": 1742,
+      "lines": 53,
+      "sha256": "9ae555d73ae6deacd99f1bc27d1b5a20415ac182f0fbd4cad558f1cbe7e7ff24"
+    },
+    {
+      "path": "tests/fm-codex-hook-layer-live-e2e.test.sh",
+      "bytes": 4610,
+      "lines": 107,
+      "sha256": "ad6ee5ffd6ba00ee61c8d545ce71c57bfa1f973e297da8d14e3980c6780f5854"
+    },
+    {
+      "path": "tests/fm-commandcode-harness.test.sh",
+      "bytes": 13588,
+      "lines": 202,
+      "sha256": "2d5f026c54fafa346cda75000154880df3fe09f43c26d5f486cabf36affd4de6"
+    },
+    {
+      "path": "tests/fm-commandcode-signals-live-e2e.test.sh",
+      "bytes": 12951,
+      "lines": 219,
+      "sha256": "12edf3bf30a74a70064b85cc71b4fa1fe20d6262f6c33e6c4cff04483e0e0978"
+    },
+    {
+      "path": "tests/fm-composer-codex-idle-live-e2e.test.sh",
+      "bytes": 6500,
+      "lines": 145,
+      "sha256": "105921293e72962f65a1362b26b0fca2a0a7ae9b2b601ca581f430de3648ebfe"
+    },
+    {
+      "path": "tests/fm-composer-ghost.test.sh",
+      "bytes": 35596,
+      "lines": 716,
+      "sha256": "445e1d1e296185edd6ceae556755cab6475b501372193b944f9c885bb811a99c"
+    },
+    {
+      "path": "tests/fm-composer-lib.test.sh",
+      "bytes": 117041,
+      "lines": 1684,
+      "sha256": "905de67f3b366fd71eab40156ba537662c57724bb0ff0b11438404945aa7e80c"
+    },
+    {
+      "path": "tests/fm-composer-matrix-live-e2e.test.sh",
+      "bytes": 13051,
+      "lines": 279,
+      "sha256": "3c37ae4be888c5c77926b27aef64e743990d7a01ef6ce64eb6605a185988a550"
+    },
+    {
+      "path": "tests/fm-contributions.test.sh",
+      "bytes": 119204,
+      "lines": 1855,
+      "sha256": "3ab5c6d0dafc2ead8a14535b77a133d6238d08aebcdfd9979eefed73bcb65c58"
+    },
+    {
+      "path": "tests/fm-control-herdr-smoke.test.sh",
+      "bytes": 17742,
+      "lines": 368,
+      "sha256": "e53475858a33f5d679b03d7b65934d6d129238184232f18658ddaec14cb03c6d"
+    },
+    {
+      "path": "tests/fm-control-relaunch.test.sh",
+      "bytes": 146461,
+      "lines": 3056,
+      "sha256": "0d6c7c7a0931ceff71a955b65a7c51cfe576559cef7e3e4c2122446895281dfa"
+    },
+    {
+      "path": "tests/fm-control.test.sh",
+      "bytes": 62832,
+      "lines": 1336,
+      "sha256": "835ee173db6ffa82dbe8ddaf3b4310a558de49ed3a0247d8a34702a4df89872b"
+    },
+    {
+      "path": "tests/fm-crew-state.test.sh",
+      "bytes": 296152,
+      "lines": 5979,
+      "sha256": "415c3ea8368c6d9068fd23609dc438803be28a6bd2d05e9659cb475a7e412777"
+    },
+    {
+      "path": "tests/fm-cursor-harness.test.sh",
+      "bytes": 31592,
+      "lines": 619,
+      "sha256": "7fb3f6898560065e8079bbad425dbd9cb99ceb8d4af9bab5a3c0d0203dcdcee4"
+    },
+    {
+      "path": "tests/fm-cursor-primary-live-e2e.test.sh",
+      "bytes": 9870,
+      "lines": 213,
+      "sha256": "04749390df8c7bb35b459013541a1f2f87301b1ae00da6466d2d09a9bb6bd546"
+    },
+    {
+      "path": "tests/fm-cursor-primary.test.sh",
+      "bytes": 38752,
+      "lines": 827,
+      "sha256": "67b523407cf57f80b956f043d2a1f325920bbcaff6d9e5b6be41f9695359182d"
+    },
+    {
+      "path": "tests/fm-daemon.test.sh",
+      "bytes": 196911,
+      "lines": 3556,
+      "sha256": "3ceef9e3c7a8cf940fd66089e94d988883fb48632b1a012583ff0d14de1051aa"
+    },
+    {
+      "path": "tests/fm-devin-harness.test.sh",
+      "bytes": 8743,
+      "lines": 128,
+      "sha256": "0a324dcbd647041a2214d8c979c074103d1f03dde26d4179ae4afaf77cf6d129"
+    },
+    {
+      "path": "tests/fm-devin-signals-live-e2e.test.sh",
+      "bytes": 11174,
+      "lines": 180,
+      "sha256": "25e85c1c9efde710cea1e08a34da308e9d64a878924a8e476b8f1d5df4770da2"
+    },
+    {
+      "path": "tests/fm-dispatch-resolve.test.sh",
+      "bytes": 70847,
+      "lines": 1090,
+      "sha256": "fa7963fad1523b493e761fd9c74990c9e0130c3fdf5d41237a872610331311b7"
+    },
+    {
+      "path": "tests/fm-documentation-audiences.test.sh",
+      "bytes": 5110,
+      "lines": 141,
+      "sha256": "8c956aa66d8ceee6227ddb9d1ecc3be3301f2527c0d2564111632ea11e8089a5"
+    },
+    {
+      "path": "tests/fm-dod-lib.test.sh",
+      "bytes": 28453,
+      "lines": 602,
+      "sha256": "a576f4bdb8da33bf6acab7d70a34402a64853bc951fe6669f4e6094986269efd"
+    },
+    {
+      "path": "tests/fm-ensure-agents-md.test.sh",
+      "bytes": 22389,
+      "lines": 435,
+      "sha256": "33fa5f3e52221f076f2d40c0533a7a39fa8652f1d0d9e0566240bdc4d2de7a14"
+    },
+    {
+      "path": "tests/fm-extension-binding.test.sh",
+      "bytes": 137010,
+      "lines": 2332,
+      "sha256": "59abbb14826f25e34737a06ad0dcca0a1e050da3b640eb88e8772cfdf922c0dc"
+    },
+    {
+      "path": "tests/fm-fleet-ledger.test.sh",
+      "bytes": 13625,
+      "lines": 299,
+      "sha256": "d4407a1810ac73bc705d5082bae4c9a275337052dffddc43f40ca8578ab85707"
+    },
+    {
+      "path": "tests/fm-fleet-snapshot-contribution-input.test.sh",
+      "bytes": 2232,
+      "lines": 66,
+      "sha256": "4cd07df9de95cede9c90ffc8fbef40a1e7f3b95a3f45bb748a2e05c89ca0e039"
+    },
+    {
+      "path": "tests/fm-fleet-snapshot-view.test.sh",
+      "bytes": 57367,
+      "lines": 1172,
+      "sha256": "8d2e3acd231d23c893d10b6117da7e56fef6ec3ad254d2c934a00ce9021008c1"
+    },
+    {
+      "path": "tests/fm-fleet-sync.test.sh",
+      "bytes": 32166,
+      "lines": 776,
+      "sha256": "fd18952ae9a8a18a80e4326239982bd09790da56ffa0eb23371e37330cba7a70"
+    },
+    {
+      "path": "tests/fm-forge-detect.test.sh",
+      "bytes": 3833,
+      "lines": 95,
+      "sha256": "d34533c8708d304503aa1b494416f89ada58925b748c9783e9ae7d88fc552b00"
+    },
+    {
+      "path": "tests/fm-fork-free-helpers.test.sh",
+      "bytes": 10167,
+      "lines": 237,
+      "sha256": "055a7985ac8b993c43dc19e3e0671f4f9a1cdcf49ad89a479f5ad7fa8f021fdf"
+    },
+    {
+      "path": "tests/fm-gate-refuse.test.sh",
+      "bytes": 27891,
+      "lines": 570,
+      "sha256": "662d52130c33bbdce3055412a1d74a1704cc16d8ae3361b287ed8e1f2a814a35"
+    },
+    {
+      "path": "tests/fm-gemini-harness.test.sh",
+      "bytes": 13743,
+      "lines": 276,
+      "sha256": "f2ba44acbbf30235963da64d35404a90a62af4cd873adfa4f3c87d4b666297f3"
+    },
+    {
+      "path": "tests/fm-git-push-guard.test.sh",
+      "bytes": 7334,
+      "lines": 158,
+      "sha256": "50254eda5d806b9d02a55fd512edb834f849016dbccead7fdc3049d0a5fd209d"
+    },
+    {
+      "path": "tests/fm-git-strip-ai-trailers.test.sh",
+      "bytes": 26271,
+      "lines": 519,
+      "sha256": "25cc99f10ac39bc6e4373f9d6e60ba8222eeab83c1830f6be088520b990bd6bf"
+    },
+    {
+      "path": "tests/fm-gitignore-config.test.sh",
+      "bytes": 3404,
+      "lines": 91,
+      "sha256": "1a12f5fe964c90af8d0da2af5ff6c41a1f520a79df921e5b322fb3ce2262f5ed"
+    },
+    {
+      "path": "tests/fm-gotmp.test.sh",
+      "bytes": 12019,
+      "lines": 252,
+      "sha256": "a1441b3dd492960ca19745192fe9b142be9a7848514231b7ca8a740432ac3f4a"
+    },
+    {
+      "path": "tests/fm-grok-continuity-live-e2e.test.sh",
+      "bytes": 3773,
+      "lines": 109,
+      "sha256": "333eb340a01bbd53bd9a2d8386222fd48fae393d0f851151a799926faf166f64"
+    },
+    {
+      "path": "tests/fm-grok-harness.test.sh",
+      "bytes": 4462,
+      "lines": 117,
+      "sha256": "3b8f59d0403a8361c8cc5d05ab0ebc44598b6703319afc75d1d8251f95ade5ab"
+    },
+    {
+      "path": "tests/fm-grok-stop-live-e2e.test.sh",
+      "bytes": 10322,
+      "lines": 215,
+      "sha256": "657981db6b413833e8bd4889bbd4a532990b5bd3156d83b86b60568772f7334c"
+    },
+    {
+      "path": "tests/fm-guard-stale-banner.test.sh",
+      "bytes": 44378,
+      "lines": 978,
+      "sha256": "78d674a4d36a80840ca75579bcd186cc2f4e57b59f3880eff8048e024f4eccdb"
+    },
+    {
+      "path": "tests/fm-harness-adapter-instructions-live-e2e.test.sh",
+      "bytes": 7032,
+      "lines": 129,
+      "sha256": "a7567f7d7d71f262b463b9caa10be1ba8a4051b5cf4ef39cb7ef1f1b0ac199de"
+    },
+    {
+      "path": "tests/fm-harness-adapter-references.test.sh",
+      "bytes": 1189,
+      "lines": 30,
+      "sha256": "a66e3c852e0a959ccfbc1928a7e33d92fb5ccf0408ca0285bac30c2fef0a38db"
+    },
+    {
+      "path": "tests/fm-harness-liveness-drift-live-e2e.test.sh",
+      "bytes": 12335,
+      "lines": 238,
+      "sha256": "3359f37979d5e6bed4718767727f9f99baad21f414ad4e04cba3bad1c4655060"
+    },
+    {
+      "path": "tests/fm-harness-precedence.test.sh",
+      "bytes": 37448,
+      "lines": 843,
+      "sha256": "9c1f88b72b2ef1c5b87dbd15c6750453842c10415e0400405796066589c81737"
+    },
+    {
+      "path": "tests/fm-herdr-attached-viewer-live-e2e.test.sh",
+      "bytes": 12496,
+      "lines": 259,
+      "sha256": "b942a8f1000830ed0ac7639ff1a751c3e3c1ed3c6cb0877f853c83b2f0e345e8"
+    },
+    {
+      "path": "tests/fm-herdr-groups.test.sh",
+      "bytes": 21009,
+      "lines": 400,
+      "sha256": "2bb3fe242c8bb44ce7e4a5ae81cc78bf8dbd0a50f2a602a991fcd13660465909"
+    },
+    {
+      "path": "tests/fm-herdr-lab.test.sh",
+      "bytes": 27612,
+      "lines": 554,
+      "sha256": "290b7361278b61936bb06402daec96daa1ce731f1111c8365f97037a254978a1"
+    },
+    {
+      "path": "tests/fm-herdr-pi-stale-registration-live-e2e.test.sh",
+      "bytes": 8276,
+      "lines": 159,
+      "sha256": "35c04c9a6a69f980a238bfcad41b7742921120c4ca9298b381f119b80e9140d6"
+    },
+    {
+      "path": "tests/fm-herdr-session-cleanup-e2e.test.sh",
+      "bytes": 7593,
+      "lines": 146,
+      "sha256": "34c467eda9089e8bd22d603fba700adf3f936a77e56f6fee9053f118b9853d1b"
+    },
+    {
+      "path": "tests/fm-herdr-session-cleanup.test.sh",
+      "bytes": 14864,
+      "lines": 329,
+      "sha256": "b484f2c10667940ac5e2618fafad17880f32891ed5c41aa205fe8b4eba8e8f24"
+    },
+    {
+      "path": "tests/fm-herdr-submit-confirm-live-e2e.test.sh",
+      "bytes": 8917,
+      "lines": 209,
+      "sha256": "ee0aea86afaa7f38d02fe51779ea79aab94ea61d744d05e8807758a252baac97"
+    },
+    {
+      "path": "tests/fm-herdr-version-floor-live-e2e.test.sh",
+      "bytes": 7188,
+      "lines": 142,
+      "sha256": "ab5b209121bb161c35773698637edc8f07316559f5cbb1b53d7d057ca9ff874a"
+    },
+    {
+      "path": "tests/fm-home-summary-refresh.test.sh",
+      "bytes": 45212,
+      "lines": 1085,
+      "sha256": "33ca9e86779b488210907db09e2ce172b26f611300731ed773d8399eae157a5b"
+    },
+    {
+      "path": "tests/fm-host-mirror-live-e2e.test.sh",
+      "bytes": 9429,
+      "lines": 200,
+      "sha256": "8ff1262f6a46345ad662d35f73cc9ff9f74de6c03f3e2134ac5a8aac3cc7b654"
+    },
+    {
+      "path": "tests/fm-host-mirror.test.sh",
+      "bytes": 26413,
+      "lines": 477,
+      "sha256": "119dbcad7adb307442aad57ea1fe7aef056b61a39dadc0741242de1293c5ca95"
+    },
+    {
+      "path": "tests/fm-inactive-reconcile.test.sh",
+      "bytes": 57635,
+      "lines": 1079,
+      "sha256": "8b51501d272aa7aa2b2f05a2d421736e9cddd2d8f6122d7c0ee644b9bb5f29e6"
+    },
+    {
+      "path": "tests/fm-inbox.test.sh",
+      "bytes": 28124,
+      "lines": 546,
+      "sha256": "dd20dcce99a18a9a5e433f2579c98f5337b1c56cb169dba37229a0714bcd19fc"
+    },
+    {
+      "path": "tests/fm-jev-mem-guard.test.sh",
+      "bytes": 3848,
+      "lines": 101,
+      "sha256": "ab7f468692372af5df41f696d430d13d8d7a10146443f9a489cd2b17e653346f"
+    },
+    {
+      "path": "tests/fm-kimi-harness.test.sh",
+      "bytes": 53586,
+      "lines": 1166,
+      "sha256": "b21b16ec3f10057a75d030418eacc4ff77138fd51139aba190b9d7fb36c79730"
+    },
+    {
+      "path": "tests/fm-launch-prompt-signals-live-e2e.test.sh",
+      "bytes": 10303,
+      "lines": 205,
+      "sha256": "7c5a79e6214bc20da6f0f12d9d2e66c792e6d9b776df7778d112c1bd08f937ed"
+    },
+    {
+      "path": "tests/fm-lint-workflows.test.sh",
+      "bytes": 18836,
+      "lines": 532,
+      "sha256": "fd6b776ef8c53cf53f116a8559a602a7073a858bfe1274d97667424ffbfb1445"
+    },
+    {
+      "path": "tests/fm-lint.test.sh",
+      "bytes": 85979,
+      "lines": 2077,
+      "sha256": "921df5905d87281a83901b2a78ec943485faea07d9562f85d2806daad0df28fb"
+    },
+    {
+      "path": "tests/fm-live-gate.test.sh",
+      "bytes": 15042,
+      "lines": 331,
+      "sha256": "02d580f91d71919e661a90d2830907e172309f631a46869e7b9d77acfeeb3a5e"
+    },
+    {
+      "path": "tests/fm-live-lab-up-mate.test.sh",
+      "bytes": 2918,
+      "lines": 69,
+      "sha256": "af2aabb7785d39ff7d65dc645276efedf1fd557ecff56a4372489d6855204ccb"
+    },
+    {
+      "path": "tests/fm-live-lab.test.sh",
+      "bytes": 41274,
+      "lines": 765,
+      "sha256": "7f886f503bb7280ebd482a93e53118fae72125ee7d350edf3bc6659797a62215"
+    },
+    {
+      "path": "tests/fm-mail-check.test.sh",
+      "bytes": 21844,
+      "lines": 475,
+      "sha256": "c7e0702893ebfe8fe5b8ec8c972e3ab38eb850951a5a2d3a257bd0b813d9ebe8"
+    },
+    {
+      "path": "tests/fm-mail.test.sh",
+      "bytes": 118320,
+      "lines": 2659,
+      "sha256": "8c517a483d146d1c78d3386a9685d4cae6b21202f34e52256803319de2e8adc8"
+    },
+    {
+      "path": "tests/fm-muse-harness.test.sh",
+      "bytes": 41339,
+      "lines": 992,
+      "sha256": "4e4c84bc7664ca778f5d4a7c197f981be823a740d994efbb4ba725c2397d5772"
+    },
+    {
+      "path": "tests/fm-muse-signals-live-e2e.test.sh",
+      "bytes": 8033,
+      "lines": 201,
+      "sha256": "3fb5c7ed8089b990399bd794da32029d4a2ae3689ec51573488fd4630fc17624"
+    },
+    {
+      "path": "tests/fm-nm-test-contract.test.sh",
+      "bytes": 861,
+      "lines": 26,
+      "sha256": "bb3c8204873b46894fdcb99fa32899d41f758f36238d1e14075f28bc55ebaa05"
+    },
+    {
+      "path": "tests/fm-no-mistakes-required.test.sh",
+      "bytes": 3197,
+      "lines": 72,
+      "sha256": "e92f217f85148c93fbedf9770e0dc89c10bd2a7719b8995f8acc393c68bf7524"
+    },
+    {
+      "path": "tests/fm-omp-harness.test.sh",
+      "bytes": 50389,
+      "lines": 879,
+      "sha256": "21bbcac6eea13026404ef21d84fee52fba6cc3b8d7e335400ecedef0fd932798"
+    },
+    {
+      "path": "tests/fm-omp-primary-live-e2e.test.sh",
+      "bytes": 14988,
+      "lines": 313,
+      "sha256": "5655104484b2e40eb2ce8ce3c6ff2778fd8a4d7839e477c835c97fc8750526cc"
+    },
+    {
+      "path": "tests/fm-on.test.sh",
+      "bytes": 26024,
+      "lines": 548,
+      "sha256": "77ea4069716115466860e3c06c54e6259984396413f76ad984480f4fc2050802"
+    },
+    {
+      "path": "tests/fm-opencode-abs-cwd-rail-live-e2e.test.sh",
+      "bytes": 4300,
+      "lines": 101,
+      "sha256": "7f9dfc530970af1d84ab16a3803c12c8dd8faa3d6d7213eecaf247b706cd8179"
+    },
+    {
+      "path": "tests/fm-opencode-primary-live-e2e.test.sh",
+      "bytes": 19287,
+      "lines": 431,
+      "sha256": "c464918724e68e066f81854e98c1695083496657c2cd53c27e5748cd1dceb8a5"
+    },
+    {
+      "path": "tests/fm-operational-input.test.sh",
+      "bytes": 12751,
+      "lines": 258,
+      "sha256": "4d7b1ee6d58b2202eb5a0bd03383a8bf953716c47ed9aa941b606f0d50716fa6"
+    },
+    {
+      "path": "tests/fm-parent-channel-scan-exclusion.test.sh",
+      "bytes": 19600,
+      "lines": 414,
+      "sha256": "e31171a69efddafdd23bc009a2db7e68a9b8ef5be64eaf44a6fdec6f8ed8a37d"
+    },
+    {
+      "path": "tests/fm-peek-remote.test.sh",
+      "bytes": 4198,
+      "lines": 110,
+      "sha256": "9e173d3bbd1f4e626f5271abb958efef59024f340e53112a1c175a041e1b886f"
+    },
+    {
+      "path": "tests/fm-pending-reply.test.sh",
+      "bytes": 112245,
+      "lines": 2178,
+      "sha256": "3b17d8cf3179dd2e272488fab4dbab4b52011b3d21708ce53a5d0f027579c283"
+    },
+    {
+      "path": "tests/fm-pi-branch-extension.test.sh",
+      "bytes": 340987,
+      "lines": 6241,
+      "sha256": "5b3fef855efae0c58dcbbc9dad51973aeb795a53f34c6f87a52012b5e006f2ad"
+    },
+    {
+      "path": "tests/fm-pi-branch-live-e2e.test.sh",
+      "bytes": 77252,
+      "lines": 1448,
+      "sha256": "693796ddeff37058d57b0a5af3201bcb359e0f89ce65f4b752b07b96994d5901"
+    },
+    {
+      "path": "tests/fm-pi-branch-responsiveness-live-e2e.test.sh",
+      "bytes": 9973,
+      "lines": 238,
+      "sha256": "b08bbdd47f8c78ea65055dd24abfdb05ec0224537d47c2f149fe8fc92307f4c8"
+    },
+    {
+      "path": "tests/fm-pi-codex-native.test.sh",
+      "bytes": 14042,
+      "lines": 362,
+      "sha256": "96c35032a73243a20801dc33a5ab4dd941a26b2e421c72d9331e3802a1c8ee48"
+    },
+    {
+      "path": "tests/fm-pi-primary-live-e2e.test.sh",
+      "bytes": 16554,
+      "lines": 389,
+      "sha256": "fb694d0c39d734dfd3f763f3e3652ff64928f627da3ec0f40f8ad1d831efb50e"
+    },
+    {
+      "path": "tests/fm-pi-primary-types.test.sh",
+      "bytes": 4405,
+      "lines": 92,
+      "sha256": "39fd5d984a2165c0de28db966d68789148fe43314ccfbc63382c0bd68ae95c76"
+    },
+    {
+      "path": "tests/fm-pi-seeded-home-trust-live-e2e.test.sh",
+      "bytes": 6215,
+      "lines": 139,
+      "sha256": "a0cb3ea340001405883ad75f1a21eeaa81cabe0c82c7fac78f6e6ab88d87a321"
+    },
+    {
+      "path": "tests/fm-pi-watch-extension.test.sh",
+      "bytes": 250220,
+      "lines": 5748,
+      "sha256": "2bc4fb6942aaf6e85e81b6ac913c96ab5152d890006ecb5c2f28fbdf395fafab"
+    },
+    {
+      "path": "tests/fm-pi-windows-shell-invocation.test.sh",
+      "bytes": 4330,
+      "lines": 119,
+      "sha256": "1d8f77222001b2eb19fc483c267d5c7bf843c6143cfc645faddd4e816efed6b0"
+    },
+    {
+      "path": "tests/fm-pipeline-spend.test.sh",
+      "bytes": 24220,
+      "lines": 482,
+      "sha256": "d165baae3375a114423bab68499bdc998f49745577e0b6896cf370e4c6606d30"
+    },
+    {
+      "path": "tests/fm-polytoken-harness.test.sh",
+      "bytes": 61541,
+      "lines": 1222,
+      "sha256": "ba97215647b3684072814fc134d11811a7f6f83baf86ac5c2ed8c86f60f11022"
+    },
+    {
+      "path": "tests/fm-polytoken-signals-live-e2e.test.sh",
+      "bytes": 13637,
+      "lines": 231,
+      "sha256": "dda96244e07f41b9cda34047e885f6c672a79841bcc475859055199409d0fd07"
+    },
+    {
+      "path": "tests/fm-pr-check-security.test.sh",
+      "bytes": 174341,
+      "lines": 3651,
+      "sha256": "95a5f548c599f57a7fc668a4f0d389153491d5f4987009268798c5a47b98a0d1"
+    },
+    {
+      "path": "tests/fm-pr-health.test.sh",
+      "bytes": 32181,
+      "lines": 622,
+      "sha256": "bd1bd50726d7a31c44f3f0b24290f8de32730d19476d3716d1c497383a6a213b"
+    },
+    {
+      "path": "tests/fm-pr-merge.test.sh",
+      "bytes": 212505,
+      "lines": 4622,
+      "sha256": "c32e578b47ea6db2ada59920bc82b9fd5ba119b9f38ff2be03de0c589115a407"
+    },
+    {
+      "path": "tests/fm-pr-reviewers.test.sh",
+      "bytes": 4387,
+      "lines": 116,
+      "sha256": "1c023783e45f32c152402421432569ba1b57707cf1b8a31cacf721b2891c1e1e"
+    },
+    {
+      "path": "tests/fm-pr-state-live-e2e.test.sh",
+      "bytes": 1851,
+      "lines": 39,
+      "sha256": "1eb9ed0b88cc1ee30a95302144d79096dfa8f47601807f7259fbc1c5a0104b8f"
+    },
+    {
+      "path": "tests/fm-pr-state.test.sh",
+      "bytes": 16359,
+      "lines": 341,
+      "sha256": "4d121681b8dd588587e07ffa0b40e0bd9044f57f1f0b69a4ec3163e98cb12968"
+    },
+    {
+      "path": "tests/fm-procevent-quota.test.sh",
+      "bytes": 30904,
+      "lines": 499,
+      "sha256": "cf9db7acdd1c074bcbb994fb006f1061556db421d802a398094807570085ffda"
+    },
+    {
+      "path": "tests/fm-procevent-when.test.sh",
+      "bytes": 29017,
+      "lines": 649,
+      "sha256": "469934b6f692f51a2ec5d17039acdafb7842b786ffe06633f5baa386eb2b882c"
+    },
+    {
+      "path": "tests/fm-procevent.test.sh",
+      "bytes": 274947,
+      "lines": 5142,
+      "sha256": "365d6bfd222047eff3894bc279d4f2b4e9dc40f8a0cc2dc48063816f21825d4f"
+    },
+    {
+      "path": "tests/fm-project-capacity.test.sh",
+      "bytes": 30955,
+      "lines": 667,
+      "sha256": "4e9b3100854b65467bfdfc870414e374e4e58789fb0e09a4453eea570d31ed08"
+    },
+    {
+      "path": "tests/fm-project-mode.test.sh",
+      "bytes": 7215,
+      "lines": 110,
+      "sha256": "2ac4c94ad7b50ac31d4fb57fe4443f667b5cb1a8b069b088a8c89072bd74746e"
+    },
+    {
+      "path": "tests/fm-project-origin.test.sh",
+      "bytes": 4796,
+      "lines": 110,
+      "sha256": "528d69fc4ea6113d6bc5de605e3140ac959893b24251b76820eade52245fcfbd"
+    },
+    {
+      "path": "tests/fm-public-followup.test.sh",
+      "bytes": 216441,
+      "lines": 4011,
+      "sha256": "29263ef204b84027e803bca4dfcc4f70b7c9873fbc171d8e53a9ea26c36c7f78"
+    },
+    {
+      "path": "tests/fm-quota-array-dispatch-live-e2e.test.sh",
+      "bytes": 21149,
+      "lines": 524,
+      "sha256": "0868a8a7425559f301c5076cff7333ef7f8f9bbffdfc88e4c599693776d3a81c"
+    },
+    {
+      "path": "tests/fm-quota-choose.test.sh",
+      "bytes": 36329,
+      "lines": 769,
+      "sha256": "d12e7b9b045e733dbd52fc65b1159ef1fa2ae720a4b16d69668073ed5d2eb398"
+    },
+    {
+      "path": "tests/fm-remote-backlog-handoff.test.sh",
+      "bytes": 39250,
+      "lines": 715,
+      "sha256": "1b96c9af6b33e6f7cc4194b633b813c7d47850f0ad3efae013e4b52cf1770698"
+    },
+    {
+      "path": "tests/fm-remote-delta-read.test.sh",
+      "bytes": 11045,
+      "lines": 220,
+      "sha256": "0b46388c09988156312f947fca2a119c3da59e91d06b3a41d414c67d32b24bff"
+    },
+    {
+      "path": "tests/fm-remote-doctor.test.sh",
+      "bytes": 42353,
+      "lines": 889,
+      "sha256": "93674b12dd5f6929111fb8dac1e7eba34ddd2ca3113361653d075c55a9e5731e"
+    },
+    {
+      "path": "tests/fm-remote-entrypoint.test.sh",
+      "bytes": 2559,
+      "lines": 59,
+      "sha256": "5d0c8ee83b3ec51ffaaa9c0c8835925a46b1937da1fec5d559616cdc18d2580f"
+    },
+    {
+      "path": "tests/fm-remote-herdr-guard.test.sh",
+      "bytes": 14186,
+      "lines": 343,
+      "sha256": "06508dc4e2e694541333aaca3521285eb62e1e1738619205b84e3d511b20bf7c"
+    },
+    {
+      "path": "tests/fm-remote-job-claim-reap.test.sh",
+      "bytes": 6373,
+      "lines": 149,
+      "sha256": "0675c428a791158e6590c709c4855f6978c8a17bfbf4d8c59e383dea8e17c433"
+    },
+    {
+      "path": "tests/fm-remote-job-claim-retention.test.sh",
+      "bytes": 2017,
+      "lines": 44,
+      "sha256": "9d11d8347f91843d31af74969e4c04c053daa5430ac9d1b8c2bf0101eec405ab"
+    },
+    {
+      "path": "tests/fm-remote-job-launchagent.test.sh",
+      "bytes": 20640,
+      "lines": 437,
+      "sha256": "df5b990d52be5e85e2b4cf164b82a760ee7ef0d52f3cfa4acf581dc6087318ca"
+    },
+    {
+      "path": "tests/fm-remote-job-orphan-reap.test.sh",
+      "bytes": 9125,
+      "lines": 230,
+      "sha256": "0f920609d3a298ec7aad58d7b404672ff1a59516de142550ed452416de5102a4"
+    },
+    {
+      "path": "tests/fm-remote-job-process-start.test.sh",
+      "bytes": 12260,
+      "lines": 259,
+      "sha256": "de1d11d57951328663a8d5a1c813f0e9ca90052c9e0fece47a5651a1fa73c60b"
+    },
+    {
+      "path": "tests/fm-remote-job.test.sh",
+      "bytes": 78250,
+      "lines": 1551,
+      "sha256": "4b79876c672133d856039fe38e6a7db0d7e1289462e60aa5194cf64cd9f1b768"
+    },
+    {
+      "path": "tests/fm-remote-reply.test.sh",
+      "bytes": 76531,
+      "lines": 1301,
+      "sha256": "3fec0819e29d0e2ad010367085e241a7cb713472ea364b41304637bc77cfcb43"
+    },
+    {
+      "path": "tests/fm-remote-secondmate-lifecycle-e2e.test.sh",
+      "bytes": 94856,
+      "lines": 1693,
+      "sha256": "cf78c541d768261a79e60146570ad0976103a39ded35db13fbab3e76040da294"
+    },
+    {
+      "path": "tests/fm-remote-secondmate-parent-binding.test.sh",
+      "bytes": 15897,
+      "lines": 329,
+      "sha256": "873030f1137de4e5ad77ce34a863f2cabe9bb2e3342b46144e7480c2790d1095"
+    },
+    {
+      "path": "tests/fm-remote-secondmate-relaunch.test.sh",
+      "bytes": 8682,
+      "lines": 192,
+      "sha256": "82929814a12ce0478c0642b558d03e7e4bde71195439dfe36568410946f354b0"
+    },
+    {
+      "path": "tests/fm-remote-secondmate-trace-context.test.sh",
+      "bytes": 15871,
+      "lines": 316,
+      "sha256": "f067ca5bb51cc350c64f490ec345d394d41b6486cd437c3d6030597672036b5c"
+    },
+    {
+      "path": "tests/fm-remote-transport-lanes.test.sh",
+      "bytes": 20546,
+      "lines": 432,
+      "sha256": "a3e05a0f6ee7ccf76aace301e3f1ad70f41b985b5e5c3d8851d174208f3487fb"
+    },
+    {
+      "path": "tests/fm-review-check.test.sh",
+      "bytes": 5469,
+      "lines": 112,
+      "sha256": "4921b3514d1e6def835da32f6066ab67fe93460c57cc20f72ebefdbf5bbc1c0e"
+    },
+    {
+      "path": "tests/fm-review-diff.test.sh",
+      "bytes": 13787,
+      "lines": 307,
+      "sha256": "7aa27f5ff46c86c32195c888b3c6ef108177b647df5dae44445e7319c2281d16"
+    },
+    {
+      "path": "tests/fm-rovo-harness.test.sh",
+      "bytes": 23269,
+      "lines": 499,
+      "sha256": "7108d6f61d25cb6296e6c0c1ba89575276e4e7b601448bcb3a2b250c54b7862e"
+    },
+    {
+      "path": "tests/fm-rovo-signals-live-e2e.test.sh",
+      "bytes": 13771,
+      "lines": 358,
+      "sha256": "643bd957c6cbeffcb8870adeffd5626238fe5ba22e5f9893e0647dabb1d3b4e9"
+    },
+    {
+      "path": "tests/fm-secondmate-busy-contract-live-e2e.test.sh",
+      "bytes": 8732,
+      "lines": 207,
+      "sha256": "798a8134616248d98a42dd620185d1b523d3bf5598cd8334c02b768f2dcbe223"
+    },
+    {
+      "path": "tests/fm-secondmate-harness.test.sh",
+      "bytes": 151038,
+      "lines": 3016,
+      "sha256": "175d3f00ba73b2a3c1b301378bc28ddb5e25ee8c3af5d882d165a277aaca1d48"
+    },
+    {
+      "path": "tests/fm-secondmate-lifecycle-e2e.test.sh",
+      "bytes": 19745,
+      "lines": 342,
+      "sha256": "1c0f499c7ec956b6b7999471e5166b482dbbd6e79b53ad4602d8d74ccfd801a5"
+    },
+    {
+      "path": "tests/fm-secondmate-liveness.test.sh",
+      "bytes": 37751,
+      "lines": 846,
+      "sha256": "9d3c54a44edc157683507aee0c7a53341ffcbada380fef2c061a4cb752a9ae8c"
+    },
+    {
+      "path": "tests/fm-secondmate-reconcile.test.sh",
+      "bytes": 49777,
+      "lines": 1009,
+      "sha256": "802cb786dd0df9dfa8672e115746ad5e90372188bb02fbfcabcedf5572609a2e"
+    },
+    {
+      "path": "tests/fm-secondmate-restart.test.sh",
+      "bytes": 43959,
+      "lines": 953,
+      "sha256": "eec96ea7bc50c216dafb68aa112e6be004f5acde9d779c88d27217ab38ffeee5"
+    },
+    {
+      "path": "tests/fm-secondmate-safety.test.sh",
+      "bytes": 169473,
+      "lines": 3197,
+      "sha256": "e079d9729ef0711e62148ae8e0b1663f1868fd3fdb32e62541fe788ae5ed1e3b"
+    },
+    {
+      "path": "tests/fm-secondmate-sync.test.sh",
+      "bytes": 66158,
+      "lines": 1463,
+      "sha256": "486bb9d307b71f8b1bec3ff2f8faaafdd7a2b075c568f8c66551909ca4bef58b"
+    },
+    {
+      "path": "tests/fm-self-repo-role.test.sh",
+      "bytes": 39160,
+      "lines": 742,
+      "sha256": "b72c2a94436a045d958afa9a4121b7f10759784aadc118990869692471310e58"
+    },
+    {
+      "path": "tests/fm-send-agy-confirm.test.sh",
+      "bytes": 7981,
+      "lines": 165,
+      "sha256": "6a8871680574499f557018d85123f3a0022fa10d335803166d9e9112dba73331"
+    },
+    {
+      "path": "tests/fm-send-inbox-doorbell-live-e2e.test.sh",
+      "bytes": 9797,
+      "lines": 219,
+      "sha256": "0c992687b6ef23c96b4018a9ae1fbd82873f5d1676271480056e2c9c0915dfca"
+    },
+    {
+      "path": "tests/fm-send-inbox.test.sh",
+      "bytes": 24077,
+      "lines": 522,
+      "sha256": "5d4c708fc2ee73d8218460209106264fee60e2ab2627891eb4bbfe28d9b61410"
+    },
+    {
+      "path": "tests/fm-send-popup-settle.test.sh",
+      "bytes": 7956,
+      "lines": 167,
+      "sha256": "83fcdb620a78da6ee957857e108713973ad8222df24dc6529592cd0f7c46a4d2"
+    },
+    {
+      "path": "tests/fm-send-remote-delivery.test.sh",
+      "bytes": 39540,
+      "lines": 805,
+      "sha256": "bc795739fc3487a41c2083017e12b3902f83b5c61ec4ef576f6c5f5ccd763e8c"
+    },
+    {
+      "path": "tests/fm-send-resolve-key.test.sh",
+      "bytes": 48421,
+      "lines": 931,
+      "sha256": "64c773e292fb7b16455a741b21094a9f347eab7081ca3f63901f5ecf7bb7bb92"
+    },
+    {
+      "path": "tests/fm-send-secondmate-marker-herdr-e2e.test.sh",
+      "bytes": 7658,
+      "lines": 180,
+      "sha256": "4f35e8a45d60cd48284418d9024d80e133663a95746e031abd1eb065b46bbc37"
+    },
+    {
+      "path": "tests/fm-send-secondmate-marker.test.sh",
+      "bytes": 12821,
+      "lines": 278,
+      "sha256": "b5aee39acb0b664b535f87fcd127e310ef245e516f404a16a435d8758d1f76c0"
+    },
+    {
+      "path": "tests/fm-send-settle.test.sh",
+      "bytes": 6109,
+      "lines": 147,
+      "sha256": "de69705adff31cb7f44d7c89bfa991e840a01468d1439108ad4002065372016c"
+    },
+    {
+      "path": "tests/fm-send-strict.test.sh",
+      "bytes": 11783,
+      "lines": 242,
+      "sha256": "5e9b9951a9e048bbb925594297fdab6bdea2021f5bf751622632be83c66da26e"
+    },
+    {
+      "path": "tests/fm-session-lock-ancestry.test.sh",
+      "bytes": 77540,
+      "lines": 1594,
+      "sha256": "e932e9f3bf0db03fa2420e1d88d4471aed0ff661099c38c1e67519672d90ecca"
+    },
+    {
+      "path": "tests/fm-session-start.test.sh",
+      "bytes": 144920,
+      "lines": 3162,
+      "sha256": "558057df55028031520ae6aa19d3e5b0de5e790eaac38281c6c69267dc9adb11"
+    },
+    {
+      "path": "tests/fm-sessionstart-hook-live-e2e.test.sh",
+      "bytes": 29074,
+      "lines": 628,
+      "sha256": "1b4a67318f26635e41d7a324b35563265d30f6db158959a794f889c94f377b19"
+    },
+    {
+      "path": "tests/fm-sessionstart-instruction-refresh-live-e2e.test.sh",
+      "bytes": 9392,
+      "lines": 226,
+      "sha256": "562f7fc2e5b7f26641a2e2fd15f7c457d45fa7d30e0edbd1c5be98f023c7d407"
+    },
+    {
+      "path": "tests/fm-sessionstart-nudge.test.sh",
+      "bytes": 51505,
+      "lines": 1122,
+      "sha256": "530e5067b8526c099bc99c61682110f533562db1ad69c47d8ed1e4898aa1a69d"
+    },
+    {
+      "path": "tests/fm-shared-captain-inheritance.test.sh",
+      "bytes": 27839,
+      "lines": 610,
+      "sha256": "ec3a4550ef0ee1009853e334f77eb4ea42f48959f19fd1d6656dcbd87bc8c4d1"
+    },
+    {
+      "path": "tests/fm-spawn-batch.test.sh",
+      "bytes": 7651,
+      "lines": 152,
+      "sha256": "4756aef96981ec39a3723e351af5e29ad3c92aba01683048c2211f4f685019ca"
+    },
+    {
+      "path": "tests/fm-spawn-compact-adviser-disable-remote.test.sh",
+      "bytes": 8622,
+      "lines": 192,
+      "sha256": "b72b5c8becdfe9074feb4b940b5569a44727f5eff335b39240153fa8fa8d86a2"
+    },
+    {
+      "path": "tests/fm-spawn-compact-adviser-disable.test.sh",
+      "bytes": 16775,
+      "lines": 391,
+      "sha256": "6436dc57af240ff977501c3c32ff8d1800e0ab1715f74173c3814511e1b24614"
+    },
+    {
+      "path": "tests/fm-spawn-dispatch-profile.test.sh",
+      "bytes": 140745,
+      "lines": 2680,
+      "sha256": "b6c5158c1507da35396b1679de958d6a6f96a78339cea87ba9faf8b0808f024e"
+    },
+    {
+      "path": "tests/fm-spawn-external-review.test.sh",
+      "bytes": 6822,
+      "lines": 139,
+      "sha256": "d7ec31db4adcab1301dc157546a6b454b8d6401da76a3c84d0ca4a38868d4574"
+    },
+    {
+      "path": "tests/fm-spawn-orca-worktree.test.sh",
+      "bytes": 46220,
+      "lines": 884,
+      "sha256": "b45e0297fcb60dd2a61f3c8eb94d754bb2f7f2d553250d76413f7ca1478225be"
+    },
+    {
+      "path": "tests/fm-spawn-pool-base-freshen.test.sh",
+      "bytes": 57894,
+      "lines": 1206,
+      "sha256": "86941b055881992266a768d36b3af5236e5f655dbfbe9d53c83068e4c785779f"
+    },
+    {
+      "path": "tests/fm-spawn-worktree-settle.test.sh",
+      "bytes": 11461,
+      "lines": 262,
+      "sha256": "e83e76708406ed0ade94ac2a6d132c3acb0fa3b4e5e33d222b108be9fef9709e"
+    },
+    {
+      "path": "tests/fm-startup-growth-check.test.sh",
+      "bytes": 29875,
+      "lines": 629,
+      "sha256": "de156090ad06f1402ad262597fd401cb781203eabe8079a35b1912418e2207fc"
+    },
+    {
+      "path": "tests/fm-startup-memory-budget.test.sh",
+      "bytes": 14076,
+      "lines": 334,
+      "sha256": "df1ca13a2973750625241e44a5c113d749fb3c1fd0cc3a20443ecefa8ea63335"
+    },
+    {
+      "path": "tests/fm-startup-network.test.sh",
+      "bytes": 41852,
+      "lines": 883,
+      "sha256": "3d1f94ead3326305604790c0f85bf5cb0ec3d53f83886c76e375ec21310b0df9"
+    },
+    {
+      "path": "tests/fm-stat-shadowing.test.sh",
+      "bytes": 5852,
+      "lines": 139,
+      "sha256": "05906d78d3c5e362d05d16d5865d1ea23f40477cfbf785eb3fa8008383c2366e"
+    },
+    {
+      "path": "tests/fm-stow-cascade.test.sh",
+      "bytes": 15170,
+      "lines": 370,
+      "sha256": "e44a9ea5bd4598c29af4679d73b39d716e42fedeb05ce80a85ff3e6d9465731f"
+    },
+    {
+      "path": "tests/fm-subagent-pretool-check.test.sh",
+      "bytes": 13328,
+      "lines": 291,
+      "sha256": "f507522c585c3267b35c44bde643e304e437b633e09293b6b43c9e35a22397f1"
+    },
+    {
+      "path": "tests/fm-supervision-events.test.sh",
+      "bytes": 9490,
+      "lines": 166,
+      "sha256": "146114c747235c0bae502c35c4ddf5eeadf8d882866fd00b4e0d2a398ba812a1"
+    },
+    {
+      "path": "tests/fm-supervision-host-attended-live-e2e.test.sh",
+      "bytes": 26687,
+      "lines": 458,
+      "sha256": "673555393e93e8f40401fad377a447e7075d44d290c112de6de2d59ac55fb009"
+    },
+    {
+      "path": "tests/fm-supervision-host-live-e2e.test.sh",
+      "bytes": 7431,
+      "lines": 140,
+      "sha256": "0be7c3626f8a3d6ea48ead0d40aa4910baf059eb42156efd63b156d3262135ef"
+    },
+    {
+      "path": "tests/fm-supervision-host.test.sh",
+      "bytes": 211329,
+      "lines": 3289,
+      "sha256": "364cbd66814f452e4495d97b9f6d2ef01f85d3b6ad3e9d9bb50ac752606b0ebe"
+    },
+    {
+      "path": "tests/fm-supervision-instructions.test.sh",
+      "bytes": 23808,
+      "lines": 347,
+      "sha256": "c8a92b8af10caae00cbf4ab77c5908290f2e0df3a417dcc23c354327bb7c71b9"
+    },
+    {
+      "path": "tests/fm-tangle-guard.test.sh",
+      "bytes": 15321,
+      "lines": 310,
+      "sha256": "e0397714d1255c900b83676ee8327b96f7b61f0d356feed8d04785b397ece911"
+    },
+    {
+      "path": "tests/fm-task-delivery.test.sh",
+      "bytes": 104900,
+      "lines": 1771,
+      "sha256": "5dfba853134846cb7a9426d7aaa685ffb1dbf0f186e77c1f38dce7be29e54af2"
+    },
+    {
+      "path": "tests/fm-task-inbox.test.sh",
+      "bytes": 62075,
+      "lines": 1230,
+      "sha256": "b59eceb4ff5698ba62c45cc16c47f8ec934c40199a1c1d4c8c538e0d89f1dee8"
+    },
+    {
+      "path": "tests/fm-tasks-axi.test.sh",
+      "bytes": 12640,
+      "lines": 254,
+      "sha256": "bb82ba91d0ed7224b7fc983ca8e163e41abdaffd37e1e9d4a6eff720f42e9497"
+    },
+    {
+      "path": "tests/fm-teardown-endpoint-safety.test.sh",
+      "bytes": 75132,
+      "lines": 1487,
+      "sha256": "4abab612aa675851d9bf760b9f3b52cddb6537d350f8898840fc3bf802d9bf8f"
+    },
+    {
+      "path": "tests/fm-teardown.test.sh",
+      "bytes": 266981,
+      "lines": 5742,
+      "sha256": "43b098e92651df31a6fa9d4f2b09c4c2a845aac9a5f105c670945979c4a9e5fe"
+    },
+    {
+      "path": "tests/fm-test-fixture-cleanup.test.sh",
+      "bytes": 10079,
+      "lines": 253,
+      "sha256": "c0b33d4fcabaca4e76251bbdbd81ba9b4e82fc34e28e544cc789dbc017cbcd10"
+    },
+    {
+      "path": "tests/fm-test-fixtures.test.sh",
+      "bytes": 19162,
+      "lines": 402,
+      "sha256": "4cdeea61c879d19b3682f3b5955794e192efd8b048660a84406563aef96de636"
+    },
+    {
+      "path": "tests/fm-test-isolation-proof.test.sh",
+      "bytes": 11650,
+      "lines": 297,
+      "sha256": "1d75af2234891dae7489c6bcd989724aa93f46b62c1a85b9ab3bd65157585378"
+    },
+    {
+      "path": "tests/fm-test-run.test.sh",
+      "bytes": 85230,
+      "lines": 1869,
+      "sha256": "1e87574ffe0e9e51bb8ff759038c5bbd9f46af9d5c2d6facb755294f185ff296"
+    },
+    {
+      "path": "tests/fm-timeout-lib.test.sh",
+      "bytes": 19006,
+      "lines": 436,
+      "sha256": "53ecde844f9027363cf522b74f476222bee718a221e831dc4840fec2f1ad82fc"
+    },
+    {
+      "path": "tests/fm-tmux-agent-liveness.test.sh",
+      "bytes": 24940,
+      "lines": 499,
+      "sha256": "f1ea745512ce690543eb30407a0108fc534b8a4a854a8ff514b021c72dcf765e"
+    },
+    {
+      "path": "tests/fm-tmux-submit-busy.test.sh",
+      "bytes": 19588,
+      "lines": 423,
+      "sha256": "41680eb87c8d74631d74e0bd083a9c9ac5dd7d3e8f0205755c8437b20d5790b3"
+    },
+    {
+      "path": "tests/fm-tool-update-check.test.sh",
+      "bytes": 63656,
+      "lines": 1243,
+      "sha256": "8a7478f3f440c2466587be5f2fa5d96a597bbce0ba5e76c8da8f3cf35f460639"
+    },
+    {
+      "path": "tests/fm-trace-context-lib.test.sh",
+      "bytes": 15226,
+      "lines": 253,
+      "sha256": "0742d49877d77f739ceb4d6f9614487add2a6853a3fabe329f499e19502828b1"
+    },
+    {
+      "path": "tests/fm-trace-context-spawn.test.sh",
+      "bytes": 30170,
+      "lines": 638,
+      "sha256": "38a1f76e506363b3a2fa3cfb073ae07f5262469853323f1fd3f71b62e1da85bb"
+    },
+    {
+      "path": "tests/fm-transition-lib.test.sh",
+      "bytes": 5792,
+      "lines": 84,
+      "sha256": "ba08d024719590a227580fc170775b53d271f94d8d7ccac46b02f98a94a1dad5"
+    },
+    {
+      "path": "tests/fm-turnend-foreign-owner-arm-fix.test.sh",
+      "bytes": 261,
+      "lines": 6,
+      "sha256": "d476ef8bcbddd0456f32533476623b7c1bfb225e17d374ea55141aa9aefe94ed"
+    },
+    {
+      "path": "tests/fm-turnend-foreign-owner-repro.py",
+      "bytes": 13510,
+      "sha256": "9dd2db86735e42d707de27ba9bca852d19910c32ea9d9c87a50aa21307c22efe",
+      "lines": 297
+    },
+    {
+      "path": "tests/fm-turnend-guard.test.sh",
+      "bytes": 122418,
+      "lines": 2394,
+      "sha256": "db0604e45a08712fb91f66c7b89043b9abcc9c382854666a4b1fe0c9258b8344"
+    },
+    {
+      "path": "tests/fm-update.test.sh",
+      "bytes": 25528,
+      "lines": 576,
+      "sha256": "ad7c65d5ddfeca2d132c55ca65472f3c8bea7991da3fdf933f852fbad6435a4e"
+    },
+    {
+      "path": "tests/fm-usage-warner.test.sh",
+      "bytes": 28129,
+      "lines": 597,
+      "sha256": "115ea8f22183060c1471c4f2865749f8aed0a795f3cddf0329927e001588e011"
+    },
+    {
+      "path": "tests/fm-vendor-auth-probe.test.sh",
+      "bytes": 16661,
+      "lines": 395,
+      "sha256": "bf921ad623f4bed850ee11a016e957ff0f7522bd60eba0b37085c5bfd1c74a63"
+    },
+    {
+      "path": "tests/fm-voice-relay.test.sh",
+      "bytes": 220258,
+      "lines": 4785,
+      "sha256": "2f13e56c2fcfa8ad91d91ff9adaec644b5566fc585bc3e7e5a06b164640913f2"
+    },
+    {
+      "path": "tests/fm-wake-daemon-lifecycle-e2e.test.sh",
+      "bytes": 9104,
+      "lines": 171,
+      "sha256": "2f06b8cc65f0af85825a00ff61657050f5203051295e509fb247b349b225f266"
+    },
+    {
+      "path": "tests/fm-wake-drain-open-decisions-cursor.test.sh",
+      "bytes": 22750,
+      "lines": 419,
+      "sha256": "e1c190ad442ca4e7f60fa52f80ffae29836115bfdfdece1472ae177a4766a2d9"
+    },
+    {
+      "path": "tests/fm-wake-drain-open-decisions.test.sh",
+      "bytes": 10965,
+      "lines": 226,
+      "sha256": "61431536420bfd801d07e195296b5db64f4cfc074aa3934e4fab5d14cb9a6a96"
+    },
+    {
+      "path": "tests/fm-wake-drain-outcome-backstop.test.sh",
+      "bytes": 24652,
+      "lines": 533,
+      "sha256": "c705412ff97a37d7266efaa4e9d3544f15152d606441e201ca9ca75670aeb2aa"
+    },
+    {
+      "path": "tests/fm-wake-drain-unread-status.test.sh",
+      "bytes": 23567,
+      "lines": 465,
+      "sha256": "7f258264cac2df4bc60bf64451e4363ef30ca393b14dadc71d04e8535fa74bb0"
+    },
+    {
+      "path": "tests/fm-wake-queue.test.sh",
+      "bytes": 194591,
+      "lines": 3681,
+      "sha256": "18920217b06798fad24fbcf9833d05ad11f9c0013c06525bf49d25fd97588c61"
+    },
+    {
+      "path": "tests/fm-watch-arm.test.sh",
+      "bytes": 96325,
+      "lines": 1872,
+      "sha256": "9122c98c9e432da7053fdc7c25550d336e9dc07cef44cf187cdebda7339f4276"
+    },
+    {
+      "path": "tests/fm-watch-checkpoint.test.sh",
+      "bytes": 16999,
+      "lines": 358,
+      "sha256": "4c904ad43eed6bc9ffe70c54bfa0c17e95bad60dd4c8553d829cc9c304e26d2e"
+    },
+    {
+      "path": "tests/fm-watch-recovery-loop.test.sh",
+      "bytes": 13308,
+      "lines": 310,
+      "sha256": "1705ed6713482ad0ead9fc2fb69b358f22acda9eeb4327c0b9d5417b83796f21"
+    },
+    {
+      "path": "tests/fm-watch-triage.test.sh",
+      "bytes": 469594,
+      "lines": 7658,
+      "sha256": "3a848a9fe85fcbb6d66cc9087e458c2c726ce8a11fb52aa85590c0ded62f5722"
+    },
+    {
+      "path": "tests/fm-watch-wedge-cap-live.test.sh",
+      "bytes": 21106,
+      "lines": 422,
+      "sha256": "eaa12a1ffb9fb3fbea887f3bbf8c45fba5fe050e75614a3b1812198c07d8fe95"
+    },
+    {
+      "path": "tests/fm-watch-wedge-cap-unconfigured-parity.test.sh",
+      "bytes": 14888,
+      "lines": 291,
+      "sha256": "d7709f2691e0529e055ced87f7cdcdd09349893155070dd4e968a0d1e5df952d"
+    },
+    {
+      "path": "tests/fm-watch-wedge-cap.test.sh",
+      "bytes": 105715,
+      "lines": 1930,
+      "sha256": "e852946ec3dbf26af872f6b344ad001e635eda5cde9f67c0423a19ace25685d2"
+    },
+    {
+      "path": "tests/fm-watcher-lock.test.sh",
+      "bytes": 73442,
+      "lines": 1609,
+      "sha256": "bd8255210ac73ba5db7bf4bbb9abdb3712d37d9d03a1964ed534cf2214dfd9dd"
+    },
+    {
+      "path": "tests/fm-worker-account-live-e2e.test.sh",
+      "bytes": 6937,
+      "lines": 132,
+      "sha256": "fcc1c6392c4e9d52c43868c9531af1c09d1adc1a412957bd68208bf7dc0709b0"
+    },
+    {
+      "path": "tests/fm-worker-account.test.sh",
+      "bytes": 26555,
+      "lines": 505,
+      "sha256": "2374f5026d53599d3f74203711fdbf715c56096012caf2e4de755777ae9e7828"
+    },
+    {
+      "path": "tests/fm-x-mode.test.sh",
+      "bytes": 188673,
+      "lines": 3313,
+      "sha256": "414a6804b4cc9766e1fbc9bd1115cac4eff3dbd14d94019876b1d445bde0cbf9"
+    },
+    {
+      "path": "tests/git-config-helpers.sh",
+      "bytes": 1946,
+      "lines": 32,
+      "sha256": "6578b96be56fc0eb2041936e85baac899c045adedaf7c6c59d176e955f0c9ea3"
+    },
+    {
+      "path": "tests/herdr-client-pair-fixture.sh",
+      "bytes": 3833,
+      "lines": 64,
+      "sha256": "949427e84a18edf905bf17c644d9f0c2f29eb4655ab353ad17f6581306da4465"
+    },
+    {
+      "path": "tests/herdr-test-safety.sh",
+      "bytes": 2061,
+      "lines": 45,
+      "sha256": "8fafa4d54a50100ba2f67032e3384a02016636ae7257edf0b4fe2c9848333fdc"
+    },
+    {
+      "path": "tests/lib.sh",
+      "bytes": 37299,
+      "lines": 949,
+      "sha256": "34e46fe0148f0d47f27d4b4990206c4f695978615daccf470272db799a88d6c7"
+    },
+    {
+      "path": "tests/opencode-v2-live-fixture.py",
+      "bytes": 12557,
+      "sha256": "b2d06d689abb60cf429d8cb54ba6413238a5ef27c5811ce9032f365b562833b6",
+      "lines": 211
+    },
+    {
+      "path": "tests/remote-herdr-fixture.sh",
+      "bytes": 5997,
+      "lines": 128,
+      "sha256": "5085f91f9e0453c8fe56ae5fa3892657dba6f0af2cc1c4ff79f3dd489389aa03"
+    },
+    {
+      "path": "tests/rex-test-safety.sh",
+      "bytes": 9190,
+      "lines": 218,
+      "sha256": "5593fa664408946d2227966118bb7e81ab92fded21a6ea5e4116cca301fd639c"
+    },
+    {
+      "path": "tests/secondmate-helpers.sh",
+      "bytes": 7574,
+      "lines": 266,
+      "sha256": "1392004e954735d836f29f8f865babcfbfa2f9bfbcd6dc07b3d443d9795da294"
+    },
+    {
+      "path": "tests/wake-helpers.sh",
+      "bytes": 13923,
+      "lines": 379,
+      "sha256": "a74acb9a27362b5dba12aa1c6a863b872ac226c3d3dc73a5d6eb050e746986a0"
+    },
+    {
+      "path": "tests/zellij-test-safety.sh",
+      "bytes": 3310,
+      "lines": 60,
+      "sha256": "02a78eef460b9d437c69935d34a6360e0c20d51afbbd86079a39df13bce8cf39"
+    }
+  ],
+  "hash_inventory_note": "Initial research hashed 626 text files; final integrity pass added the remaining tracked regular files from the same clean fixed commit. Symlinks excluded."
+}

@@ -1,0 +1,107 @@
+[
+  {
+    "stage": "d1",
+    "exit_code": 2,
+    "command": "pnpm --filter @osstack/cli exec vitest run src/daemon-lock-ownership.test.ts src/daemon-startup-ownership.test.ts"
+  },
+  {
+    "stage": "d2",
+    "exit_code": 2,
+    "command": "pnpm --filter @osstack/loop exec vitest run src/loop-engine.test.ts src/loop-worktree-preservation.test.ts"
+  },
+  {
+    "stage": "d3",
+    "exit_code": 2,
+    "command": "pnpm --filter @osstack/cli exec vitest run src/daemon-loop-recovery-preservation.test.ts src/daemon-daily.test.ts src/daemon-drain-recovery.test.ts"
+  },
+  {
+    "stage": "s1-a",
+    "exit_code": 2,
+    "command": "pnpm --filter @osstack/supervisor exec vitest run src/attention.test.ts"
+  },
+  {
+    "stage": "s1-b",
+    "exit_code": 2,
+    "command": "pnpm --filter @osstack/core exec vitest run src/state/attention-store.test.ts"
+  },
+  {
+    "stage": "s1-c",
+    "exit_code": 2,
+    "command": "pnpm --filter @osstack/core exec vitest run src/state/attention-store.test.ts src/state/attention-actions.test.ts"
+  },
+  {
+    "stage": "s1-d",
+    "exit_code": 2,
+    "command": "pnpm --filter @osstack/core exec vitest run src/state/attention-observer.test.ts"
+  },
+  {
+    "stage": "s1-e",
+    "exit_code": 2,
+    "command": "pnpm --filter @osstack/cli exec vitest run src/session-rpc.test.ts"
+  },
+  {
+    "stage": "s1-f",
+    "exit_code": 2,
+    "command": "pnpm --filter @osstack/cli exec vitest run src/session-rpc.test.ts src/attention-command.test.ts"
+  },
+  {
+    "stage": "s1-g",
+    "exit_code": 2,
+    "command": "node scripts/bench-cli-startup.mjs"
+  },
+  {
+    "stage": "s2-a",
+    "exit_code": 2,
+    "command": "pnpm --filter @osstack/core exec vitest run src/state/attention-actions.test.ts"
+  },
+  {
+    "stage": "s2-b",
+    "exit_code": 2,
+    "command": "pnpm --filter @osstack/cli exec vitest run src/session-rpc.test.ts"
+  },
+  {
+    "stage": "s2-c",
+    "exit_code": 2,
+    "command": "pnpm --filter @osstack/cli exec vitest run src/attention-local-delivery.test.ts"
+  },
+  {
+    "stage": "s2-d",
+    "exit_code": 0,
+    "command": "pnpm --filter @osstack/core exec vitest run src/state/attention-experience.test.ts"
+  },
+  {
+    "stage": "s2-e",
+    "exit_code": 0,
+    "command": "pnpm --filter @osstack/core exec vitest run src/state/attention-observer.test.ts"
+  },
+  {
+    "stage": "s2-f",
+    "exit_code": 0,
+    "command": "pnpm --filter @osstack/cli exec vitest run src/attention-hook.test.ts"
+  },
+  {
+    "stage": "s2-g",
+    "exit_code": 0,
+    "command": "pnpm --filter @osstack/cli exec vitest run src/attention-command.test.ts src/session-rpc.test.ts"
+  },
+  {
+    "stage": "s3-a",
+    "exit_code": 0,
+    "command": "pnpm --filter @osstack/github exec vitest run src/attention-ci.test.ts"
+  },
+  {
+    "stage": "s3-b",
+    "exit_code": 0,
+    "command": "pnpm --filter @osstack/supervisor exec vitest run src/attention-planning.test.ts"
+  },
+  {
+    "stage": "s3-c",
+    "exit_code": 0,
+    "command": "pnpm --filter @osstack/supervisor exec vitest run src/attention-planning.test.ts"
+  },
+  {
+    "stage": "s3-d",
+    "exit_code": 0,
+    "command": "pnpm --filter @osstack/loop exec vitest run src/lesson-draft.test.ts"
+  }
+]
