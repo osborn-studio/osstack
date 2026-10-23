@@ -6,7 +6,7 @@ import { openDb } from "./db.js";
 import { AttentionStore, attentionDigest } from "./attention-store.js";
 import { AttentionTriageLedger } from "./attention-triage.js";
 const cleanups: Array<() => void> = [];
-afterEach(() => cleanups.splice(0).forEach(fn => fn()));
+afterEach(() => cleanups.splice(0).forEach(fn => { fn(); }));
 function setup() {
   const root = realpathSync(mkdtempSync(join(tmpdir(), "triage-ledger-"))); const path = join(root, "db"); const db = openDb({ path });
   cleanups.push(() => { if (db.open) db.close(); rmSync(root, { recursive: true, force: true }); });
@@ -51,8 +51,9 @@ it("keeps rolling budget after physical DB reopen and rejects clock rollback byp
   f.ledger.finish(first.attempt_id, { status: "failed", reason: "test" }); f.db.close();
   const reopened = openDb({ path: f.path }); try {
     const store = new AttentionStore(reopened, f.path); const owner = store.claimOwner("restarted");
-    const ledger = new AttentionTriageLedger(store, owner, () => 1); ledger.recover();
+    const ledger = new AttentionTriageLedger(store, owner, () => 10000000); ledger.recover();
     expect(ledger.reserve({ ...f.request, calls_per_hour: 1 })).toMatchObject({ reason: "budget_exhausted" });
+    expect(new AttentionTriageLedger(store, owner, () => 1).reserve(f.request)).toMatchObject({ reason: "clock_uncertain" });
   } finally { reopened.close(); }
 });
 
@@ -69,4 +70,26 @@ it("rejects an expired success even before a delayed event-loop timeout runs", (
   const first = ledger.reserve({ ...f.request, timeout_ms: 10 }); if (first.state !== "reserved") throw Error(); now = 1011;
   expect(ledger.finish(first.attempt_id, { status: "succeeded", reported_model: "exact-model", usage: { input_tokens: 1, output_tokens: 1 }, result: { category: "human_decision", explanation: "late" } })).toEqual({ status: "unknown" });
   expect(f.db.prepare("SELECT result_json,active_slot FROM attention_triage_attempts").get()).toEqual({ result_json: null, active_slot: null });
+});
+
+it.each(["tenant", "released", "scope", "binding", "run_session", "run_agent"])("refuses unauthorized source: %s", mode => {
+  const f = setup();
+  if (mode === "run_session") f.db.exec("UPDATE runs SET session_id='other'");
+  if (mode === "run_agent") f.db.exec("UPDATE runs SET agent_id='other'");
+  if (mode === "tenant") f.db.exec("UPDATE tasks SET tenant_id='foreign'");
+  if (mode === "released") f.db.exec("UPDATE attention_subjects SET admitted=0");
+  if (mode === "scope") f.request.scope_id = "b".repeat(64);
+  if (mode === "binding") f.db.exec("UPDATE attention_subjects SET binding_hash='invalid'");
+  expect(f.ledger.reserve(f.request)).toMatchObject({ state: "fallback", reason: "source_changed" });
+  expect(f.db.prepare("SELECT COUNT(*) n FROM attention_triage_attempts").get()).toEqual({ n: 0 });
+});
+
+it("does not extend an attempt deadline after a permitted backward wall-clock step", () => {
+  const f = setup(); const prior = f.ledger.reserve(f.request); if (prior.state !== "reserved") throw Error(); f.ledger.finish(prior.attempt_id, { status: "failed" });
+  let now = 9700000; let monotonic = 0;
+  const ledger = new AttentionTriageLedger(f.store, f.owner, () => now, () => monotonic);
+  const next = ledger.reserve({ ...f.request, timeout_ms: 10 }); if (next.state !== "reserved") throw Error();
+  now = 9700001; monotonic = 11;
+  expect(ledger.finish(next.attempt_id, { status: "succeeded", reported_model: "exact-model", usage: { input_tokens: 1, output_tokens: 1 }, result: { category: "human_decision", explanation: "late" } })).toEqual({ status: "unknown" });
+  expect(f.db.prepare("SELECT result_json FROM attention_triage_attempts WHERE attempt_id=?").get(next.attempt_id)).toEqual({ result_json: null });
 });

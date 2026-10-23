@@ -14,8 +14,8 @@ export interface AttentionTriageSnapshot {
 export interface AttentionTriageReservation {
   scope_id: string; item_id: string; model_id: string; policy_fingerprint: string; calls_per_hour: number; timeout_ms: number;
 }
-export type AttentionTriageAdmission = { state: "reserved"; attempt_id: string; input: AttentionTriageSnapshot }
-  | { state: "cached"; attempt_id: string; result: AttentionTriageResult; input: AttentionTriageSnapshot }
+export type AttentionTriageAdmission = { state: "reserved"; attempt_id: string; recorded_at: number; input: AttentionTriageSnapshot }
+  | { state: "cached"; attempt_id: string; recorded_at: number; result: AttentionTriageResult; input: AttentionTriageSnapshot }
   | { state: "fallback"; reason: string };
 export interface AttentionTriageCompletion {
   status: "succeeded" | "failed" | "unknown"; reason?: string; reported_model?: string;
@@ -23,11 +23,12 @@ export interface AttentionTriageCompletion {
 }
 interface Attempt {
   attempt_id: string; scope_id: string; item_id: string; input_digest: string; requested_model: string;
-  owner_generation: number; reserved_at: number; deadline_at: number; status: string; result_json: string | null; active_slot: number | null;
+  owner_generation: number; reserved_at: number; deadline_at: number; status: string; result_json: string | null; active_slot: number | null; reason: string | null;
 }
 /** Writes only the triage ledger; never answers, resumes, acknowledges or changes an item. */
 export class AttentionTriageLedger {
-  constructor(readonly store: AttentionStore, readonly owner: AttentionOwner, private readonly clock: () => number = Date.now) {}
+  private readonly deadlines = new Map<string, number>();
+  constructor(readonly store: AttentionStore, readonly owner: AttentionOwner, private readonly clock: () => number = Date.now, private readonly monotonicClock: () => number = () => performance.now()) {}
   private snapshot(scopeId: string, itemId: string): AttentionTriageSnapshot {
     if (!/^[a-f0-9]{64}$/.test(scopeId) || !/^[a-f0-9]{64}$/.test(itemId)) throw Error("source_changed");
     const db = this.store.db;
@@ -37,7 +38,7 @@ export class AttentionTriageLedger {
       FROM attention_items i JOIN attention_scopes s ON s.scope_id=i.scope_id
       JOIN tasks t ON t.task_id=s.task_id AND t.tenant_id IS NULL
       JOIN agent_sessions a ON a.session_id=i.session_id AND a.task_id=s.task_id AND a.state='awaiting_decision'
-      JOIN runs r ON r.run_id=a.run_id AND r.task_id=t.task_id AND r.tenant_id IS NULL
+      JOIN runs r ON r.run_id=a.run_id AND r.task_id=t.task_id AND r.session_id=a.session_id AND r.agent_id=a.agent_id AND r.tenant_id IS NULL
       JOIN attention_subjects u ON u.scope_id=s.scope_id AND u.kind='session' AND u.subject_id=a.session_id AND u.admitted=1
       JOIN session_turns v ON v.session_id=a.session_id AND v.turn_id=i.turn_id AND v.ordinal=(SELECT MAX(ordinal) FROM session_turns WHERE session_id=a.session_id)
       WHERE i.scope_id=? AND i.item_id=? AND i.state='open'`).get(scopeId, itemId) as Record<string, unknown> | undefined;
@@ -50,7 +51,7 @@ export class AttentionTriageLedger {
     const input = { schema_version: 1 as const, scope_id: scopeId, item_id: itemId, item_revision: Number(raw["revision"]),
       source_hash: attentionDigest([raw["content_hash"], raw["source_version"], raw["turn_id"], raw["binding_hash"]]),
       deterministic_category: "human_decision" as const, question_excerpt: decision.question };
-    if (Buffer.byteLength(JSON.stringify(input)) > 8192) throw Error("input_too_large");
+    if (Buffer.byteLength(JSON.stringify(input)) > 6144) throw Error("input_too_large");
     return { ...input, input_digest: attentionDigest(input) };
   }
   recover(): void {
@@ -60,24 +61,27 @@ export class AttentionTriageLedger {
     if (!Number.isSafeInteger(request.calls_per_hour) || request.calls_per_hour < 1 || request.calls_per_hour > 5
       || !Number.isSafeInteger(request.timeout_ms) || request.timeout_ms < 1 || request.timeout_ms > 20000
       || !/^[a-f0-9]{64}$/.test(request.policy_fingerprint) || !/^[a-zA-Z0-9._:-]{1,128}$/.test(request.model_id)) throw Error("invalid_triage_configuration");
-    return this.store.write(this.owner, () => {
+    const admission = this.store.write<AttentionTriageAdmission>(this.owner, () => {
       let input: AttentionTriageSnapshot;
-      try { input = this.snapshot(request.scope_id, request.item_id); } catch { return { state: "fallback", reason: "source_changed" }; }
+      try { input = this.snapshot(request.scope_id, request.item_id); } catch (error) { return { state: "fallback", reason: error instanceof Error && error.message === "input_too_large" ? "input_too_large" : "source_changed" }; }
       const db = this.store.db;
-      const cached = db.prepare("SELECT attempt_id,result_json FROM attention_triage_attempts WHERE input_digest=? AND requested_model=? AND policy_fingerprint=? AND status='succeeded' ORDER BY reserved_at DESC LIMIT 1").get(input.input_digest, request.model_id, request.policy_fingerprint) as Attempt | undefined;
-      if (cached?.result_json) return { state: "cached", attempt_id: cached.attempt_id, result: AttentionTriageResult.parse(JSON.parse(cached.result_json)), input };
+      const cached = db.prepare("SELECT attempt_id,result_json,reserved_at FROM attention_triage_attempts WHERE input_digest=? AND requested_model=? AND policy_fingerprint=? AND status='succeeded' ORDER BY reserved_at DESC LIMIT 1").get(input.input_digest, request.model_id, request.policy_fingerprint) as Attempt | undefined;
+      if (cached?.result_json) return { state: "cached", attempt_id: cached.attempt_id, recorded_at: cached.reserved_at, result: AttentionTriageResult.parse(JSON.parse(cached.result_json)), input };
       const active = db.prepare("SELECT status FROM attention_triage_attempts WHERE active_slot=1").get() as { status: string } | undefined;
       if (active) return { state: "fallback", reason: active.status === "unknown" ? "triage_quarantined" : "triage_busy" };
       const now = this.clock(); if (!Number.isSafeInteger(now) || now < 0) throw Error("invalid_clock");
       const prior = db.prepare("SELECT MAX(reserved_at) latest FROM attention_triage_attempts").get() as { latest: number | null };
+      if ((prior.latest ?? 0) > now + 300000) return { state: "fallback", reason: "clock_uncertain" };
       const effectiveNow = Math.max(now, prior.latest ?? 0);
       const count = db.prepare("SELECT COUNT(*) n FROM attention_triage_attempts WHERE scope_id=? AND reserved_at>?").get(request.scope_id, effectiveNow - 3600000) as { n: number };
       if (count.n >= request.calls_per_hour) return { state: "fallback", reason: "budget_exhausted" };
       const attemptId = randomUUID();
       db.prepare("INSERT INTO attention_triage_attempts(attempt_id,scope_id,item_id,item_revision,source_hash,input_digest,requested_model,policy_fingerprint,owner_generation,reserved_at,deadline_at,status,active_slot) VALUES(?,?,?,?,?,?,?,?,?,?,?,'reserved',1)")
-        .run(attemptId, request.scope_id, request.item_id, input.item_revision, input.source_hash, input.input_digest, request.model_id, request.policy_fingerprint, this.owner.generation, effectiveNow, effectiveNow + request.timeout_ms);
-      return { state: "reserved", attempt_id: attemptId, input };
+        .run(attemptId, request.scope_id, request.item_id, input.item_revision, input.source_hash, input.input_digest, request.model_id, request.policy_fingerprint, this.owner.generation, now, now + request.timeout_ms);
+      return { state: "reserved", attempt_id: attemptId, recorded_at: now, input };
     });
+    if (admission.state === "reserved") this.deadlines.set(admission.attempt_id, this.monotonicClock() + request.timeout_ms);
+    return admission;
   }
   start(attemptId: string): void {
     this.store.write(this.owner, () => {
@@ -85,7 +89,7 @@ export class AttentionTriageLedger {
     });
   }
   finish(attemptId: string, completion: AttentionTriageCompletion): { status: string } {
-    return this.store.write(this.owner, () => {
+    const outcome = this.store.write(this.owner, () => {
       const db = this.store.db;
       const attempt = db.prepare("SELECT * FROM attention_triage_attempts WHERE attempt_id=? AND owner_generation=? AND active_slot=1").get(attemptId, this.owner.generation) as Attempt | undefined;
       if (!attempt) throw Error("stale_attempt");
@@ -93,8 +97,13 @@ export class AttentionTriageLedger {
       let status: string = attempt.status === "unknown" ? "unknown" : completion.status;
       const now = this.clock();
       if (!Number.isSafeInteger(now) || now < 0) throw Error("invalid_clock");
-      if (status === "succeeded" && Math.max(now, attempt.reserved_at) > attempt.deadline_at) status = "unknown";
+      const monotonicDeadline = this.deadlines.get(attemptId);
+      if (status === "succeeded" && (now < attempt.reserved_at || now > attempt.deadline_at || monotonicDeadline === undefined || this.monotonicClock() > monotonicDeadline)) status = "unknown";
       let result: AttentionTriageResult | undefined; let usage: z.infer<typeof Usage> | undefined;
+      if (completion.usage !== undefined) {
+        if (completion.reported_model !== attempt.requested_model) throw Error("model_identity_mismatch");
+        usage = Usage.parse(completion.usage);
+      }
       if (status === "succeeded") {
         try {
           if (this.snapshot(attempt.scope_id, attempt.item_id).input_digest !== attempt.input_digest) throw Error();
@@ -108,9 +117,15 @@ export class AttentionTriageLedger {
       db.prepare("UPDATE attention_triage_attempts SET status=?,active_slot=?,reported_model=?,usage_json=?,result_json=?,result_digest=?,reason=? WHERE attempt_id=? AND owner_generation=?")
         .run(status, completion.status === "unknown" ? 1 : null, completion.reported_model?.slice(0,128) ?? null,
           usage ? JSON.stringify(usage) : null, result ? JSON.stringify(result) : null, result ? attentionDigest(result) : null,
-          completion.reason?.slice(0,256) ?? (status === "stale" ? "source_changed" : status === "unknown" ? "outcome_unconfirmed_or_expired" : null), attemptId, this.owner.generation);
+          (attempt.status === "unknown" ? attempt.reason : null) ?? completion.reason?.slice(0,256) ?? (status === "stale" ? "source_changed" : status === "unknown" ? "outcome_unconfirmed_or_expired" : null), attemptId, this.owner.generation);
       return { status };
     });
+    if (completion.status !== "unknown") this.deadlines.delete(attemptId);
+    return outcome;
+  }
+  activeAttempt(): { attempt_id: string; scope_id: string; status: string; reason: string | null; reserved_at: number } | undefined {
+    this.store.assertOwner(this.owner);
+    return this.store.db.prepare("SELECT attempt_id,scope_id,status,reason,reserved_at FROM attention_triage_attempts WHERE active_slot=1").get() as { attempt_id: string; scope_id: string; status: string; reason: string | null; reserved_at: number } | undefined;
   }
   /** Diagnostics are read-only; unknown active attempts cannot be silently released. */
   quarantine(): { attempt_id: string; reason: string | null; reserved_at: number } | undefined {
