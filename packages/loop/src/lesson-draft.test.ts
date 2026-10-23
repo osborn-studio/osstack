@@ -1,8 +1,9 @@
+import * as filesystem from "node:fs/promises";
 import { mkdtempSync } from "node:fs";
 import { access, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   LessonDraftConfig,
   discardLessonDraft,
@@ -16,6 +17,11 @@ import {
 } from "./lesson-draft.js";
 import { LoopEngine } from "./loop-engine.js";
 import type { IterationFeedback, Task } from "./types.js";
+
+vi.mock("node:fs/promises", async importOriginal => {
+  const actual = await importOriginal<typeof import("node:fs/promises")>();
+  return { ...actual, link: vi.fn(actual.link) };
+});
 
 let workspace: string;
 
@@ -286,3 +292,111 @@ async function enqueue(taskId: string): Promise<void> {
     "utf-8",
   );
 }
+
+describe("lesson lifecycle path confinement", () => {
+  it("rejects a promoted symlink before appending to an explicit skill", async () => {
+    const { symlink } = await import("node:fs/promises");
+    const draft = await writeLessonDraft(draftInput(), { workspacePath: workspace });
+    const outside = join(workspace, "outside"); await mkdir(outside);
+    const skill = join(workspace, "SKILL.md"); await writeFile(skill, "original");
+    await symlink(outside, join(workspace, "loop-lessons/promoted"));
+    await expect(promoteLessonDraft(workspace, "auth-session-expiry", { toSkillPath: skill })).rejects.toThrow("unsafe_lesson_path");
+    expect(await readFile(skill, "utf8")).toBe("original");
+    await expect(access(draft.path!)).resolves.toBeUndefined();
+  });
+  it("will not follow a symlink draft or overwrite an existing reviewed candidate", async () => {
+    const { symlink } = await import("node:fs/promises");
+    await mkdir(join(workspace, "loop-lessons/drafts"), { recursive: true });
+    await writeFile(join(workspace, "private.md"), "private");
+    await symlink(join(workspace, "private.md"), join(workspace, "loop-lessons/drafts/symlink.md"));
+    expect(await readLessonDraft(workspace, "symlink")).toBeNull();
+    const original = await writeLessonDraft(draftInput(), { workspacePath: workspace });
+    await mkdir(join(workspace, "loop-lessons/promoted"));
+    const reviewed = join(workspace, "loop-lessons/promoted/auth-session-expiry.md");
+    await writeFile(reviewed, "reviewed");
+    expect((await promoteLessonDraft(workspace, "auth-session-expiry")).promoted).toBe(false);
+    expect(await readFile(reviewed, "utf8")).toBe("reviewed"); await expect(access(original.path!)).resolves.toBeUndefined();
+  });
+});
+
+it("does not follow a symlink draft leaf when the legacy loop writer updates a task", async () => {
+  const { symlink } = await import("node:fs/promises");
+  await mkdir(join(workspace, "loop-lessons/drafts"), { recursive: true });
+  const target = join(workspace, "untouched.md"); await writeFile(target, "preserve");
+  await symlink(target, join(workspace, "loop-lessons/drafts/auth-session-expiry.md"));
+  await expect(writeLessonDraft(draftInput(), { workspacePath: workspace })).rejects.toThrow();
+  expect(await readFile(target, "utf8")).toBe("preserve");
+});
+
+it("preserves user edits, keeps stable revisions and honors reviewed task candidates", async () => {
+  const options = { workspacePath: workspace };
+  const first = await writeLessonDraft(draftInput(), options);
+  expect(await writeLessonDraft(draftInput(), options)).toMatchObject({ written: false, path: first.path });
+  await writeFile(first.path!, "human edit");
+  const revision = await writeLessonDraft(draftInput(), options);
+  expect(revision.path).not.toBe(first.path);
+  expect(await readFile(first.path!, "utf8")).toBe("human edit");
+  expect(await writeLessonDraft(draftInput(), options)).toMatchObject({ written: false, path: revision.path });
+  const entry = (await listLessonDrafts(workspace)).find(item => item.path === revision.path)!;
+  await discardLessonDraft(workspace, entry.id);
+  expect((await writeLessonDraft(draftInput(), options)).written).toBe(false);
+  expect(await readLessonDraft(workspace, entry.id)).toBeNull();
+});
+
+it("does not collide task IDs after filename normalization or truncation", async () => {
+  const paths: string[] = [];
+  for (const taskId of ["a b", "a-b", "x".repeat(90) + "1", "x".repeat(90) + "2"]) {
+    const input = draftInput(); input.task = { ...input.task, task_id: taskId };
+    paths.push((await writeLessonDraft(input, { workspacePath: workspace })).path!);
+  }
+  expect(new Set(paths).size).toBe(4);
+});
+
+it("does not overwrite concurrently published legacy drafts", async () => {
+  const outputs = await Promise.all([writeLessonDraft(draftInput(), { workspacePath: workspace }), writeLessonDraft(draftInput(), { workspacePath: workspace })]);
+  expect(outputs.filter(output => output.written)).toHaveLength(1);
+  expect(outputs[0]?.path).toBe(outputs[1]?.path);
+});
+
+
+it("retries a failed promotion move without duplicating the explicit skill append", async () => {
+  await writeLessonDraft(draftInput(), { workspacePath: workspace });
+  const skill = join(workspace, "SKILL.md"); await writeFile(skill, "# Skill\n");
+  const failMove = vi.spyOn(filesystem, "link").mockRejectedValueOnce(Object.assign(new Error("simulated move failure"), { code: "EIO" }));
+  try { await expect(promoteLessonDraft(workspace, "auth-session-expiry", { toSkillPath: skill })).rejects.toThrow("simulated move failure"); }
+  finally { failMove.mockRestore(); }
+  const afterFailure = await readFile(skill, "utf8"); expect(afterFailure).toContain("osstack-lesson:");
+  expect((await promoteLessonDraft(workspace, "auth-session-expiry", { toSkillPath: skill })).promoted).toBe(true);
+  expect(await readFile(skill, "utf8")).toBe(afterFailure);
+});
+
+
+it("preserves a symlinked explicit skill target and its permissions", async () => {
+  await writeLessonDraft(draftInput(), { workspacePath: workspace });
+  await mkdir(join(workspace, "canonical"));
+  const target = join(workspace, "canonical/SKILL.md"); await writeFile(target, "# Shared Skill\n"); await filesystem.chmod(target, 0o644);
+  const skill = join(workspace, "SKILL.md"); await filesystem.symlink(target, skill);
+  expect((await promoteLessonDraft(workspace, "auth-session-expiry", { toSkillPath: skill })).promoted).toBe(true);
+  expect((await filesystem.lstat(skill)).isSymbolicLink()).toBe(true);
+  expect(await readFile(target, "utf8")).toContain("## Lesson:");
+  expect((await filesystem.stat(target)).mode & 0o777).toBe(0o644);
+});
+
+it("reserves generated filename namespaces against literal task IDs", async () => {
+  const input = draftInput(); input.task = { ...input.task, task_id: "x".repeat(90) };
+  const first = await writeLessonDraft(input, { workspacePath: workspace });
+  const firstId = (await listLessonDrafts(workspace))[0]!.id;
+  await promoteLessonDraft(workspace, firstId);
+  input.task = { ...input.task, task_id: firstId };
+  const second = await writeLessonDraft(input, { workspacePath: workspace });
+  expect(second.written).toBe(true); expect(second.path).not.toBe(first.path);
+});
+
+
+it("refuses a SKILL.md symlink to a non-skill target without appending", async () => {
+  const draft = await writeLessonDraft(draftInput(), { workspacePath: workspace });
+  const target = join(workspace, "notes.md"); await writeFile(target, "notes");
+  await filesystem.symlink(target, join(workspace, "SKILL.md"));
+  expect((await promoteLessonDraft(workspace, "auth-session-expiry", { toSkillPath: "SKILL.md" })).promoted).toBe(false);
+  expect(await readFile(target, "utf8")).toBe("notes"); await expect(access(draft.path!)).resolves.toBeUndefined();
+});
