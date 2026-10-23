@@ -128,3 +128,9 @@ it('reads only a complete scoped host contract receipt and rejects substituted i
     f.deps.rpc.mockResolvedValue({ok:true,result:value}); expect(await handleGraphCommand(args,f.deps)).toBe(1);
   }
 });
+
+it.each(['ACTION_OUTCOME_UNKNOWN','CANCEL_UNCONFIRMED'])('keeps %s distinct from definite non-execution',async code=>{
+  const f=fixture();f.deps.rpc.mockResolvedValue({ok:false,error:{code,message:code}});
+  expect(await handleGraphCommand(['run','--request',f.file,'--json'],f.deps)).toBe(2);
+  expect(f.output()).toMatchObject({kind:'graph_error',error:{code,nextAction:'reconcile'}});
+});

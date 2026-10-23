@@ -74,6 +74,10 @@ function readBounded(
     if (fd !== undefined) closeSync(fd);
   }
 }
+function overlayFingerprint(path: string): string {
+  const bytes = readBounded(path, true, true);
+  return bytes === undefined ? "missing" : `present:${digest(bytes)}`;
+}
 const hex = z.string().regex(/^[a-f0-9]{64}$/);
 const graphPolicySchema = z
   .object({
@@ -159,9 +163,7 @@ export function createGraphContractHostResolvers(
       )
         throw Error("GRAPH_CONTRACT_SCOPE_MISMATCH");
       const overlay = overlayPath(home, repositoryPath, contract.base_head);
-      const overlayDigest = digest(
-        readBounded(overlay, true, true) ?? "absent",
-      );
+      const overlayDigest = overlayFingerprint(overlay);
       const policyFileDigest = digest(bytes);
       const assertCurrent = () => {
         if (
@@ -169,7 +171,7 @@ export function createGraphContractHostResolvers(
           realpathSync(osstackHome()) !== home ||
           realpathSync(repositoryPath) !== repositoryPath ||
           digest(readBounded(path, true)!) !== policyFileDigest ||
-          digest(readBounded(overlay, true, true) ?? "absent") !== overlayDigest
+          overlayFingerprint(overlay) !== overlayDigest
         )
           throw Error("GRAPH_CONTRACT_POLICY_CHANGED");
       };

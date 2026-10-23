@@ -205,3 +205,13 @@ it('rejects an ignored untracked path outside the contract before candidate seri
     expect(() => assertGraphContractPaths(f.registration.delivery.deliveryContract.frozen, repo)).toThrow('delivery_contract_path_outside_scope');
   } finally { await f.close(); }
 });
+
+it('refuses a durable contract envelope substituted after reservation',async()=>{
+  const f=await fixture();try{
+    const started=await f.start();const descriptor=JSON.parse((f.db.prepare('SELECT descriptor_json FROM graph_public_delivery WHERE graph_run_id=?').get(started.graphRunId) as {descriptor_json:string}).descriptor_json);
+    // Model disk corruption after explicitly removing the normal immutable-descriptor protection.
+    f.db.exec('DROP TRIGGER graph_public_descriptor_immutable');
+    descriptor.contractEnvelope.sourceInputArtifactRef='different-input';f.db.prepare('UPDATE graph_public_delivery SET descriptor_json=? WHERE graph_run_id=?').run(JSON.stringify(descriptor),started.graphRunId);
+    for(const method of ['graph.status','graph.result','graph.contract'])await expect(f.service.handle(f.connection,method,{schemaVersion:1,scope:f.request.scope,graphRunId:started.graphRunId})).rejects.toThrow('CHECKPOINT_INCOMPATIBLE');
+  }finally{await f.close();}
+});

@@ -468,3 +468,9 @@ it("loads contract authority through the default real daemon and keeps admission
     await daemon.close();
   }
 });
+
+it("does not confuse a missing overlay with a file containing the old sentinel",async()=>{
+  const f=await fixture();const binding=await f.resolve.resolveDeliveryContractPolicy!({repositoryPath:f.root,scope:f.scope,contract:f.frozen.contract});
+  mkdirSync(join(f.home,"repos"));writeFileSync(join(f.home,"repos/graph-test.yaml"),"absent",{mode:0o600});
+  expect(()=>binding.assertCurrent()).toThrow("GRAPH_CONTRACT_POLICY_CHANGED");
+});

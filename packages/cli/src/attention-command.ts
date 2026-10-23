@@ -293,7 +293,7 @@ async function handleLive(
           deliveries: await call("attention.deliveries"),
         }
       : await call("attention." + command);
-  const safeOutput = (value: unknown) => JSON.stringify(value,null,2).replace(/[\u007f-\u009f]/g, char => "\\u"+char.charCodeAt(0).toString(16).padStart(4,"0"));
+  const safeOutput = (value: unknown) => JSON.stringify(value,null,2).replace(/[\u007f-\u009f\p{Cf}]/gu, char => char.split("").map(unit => "\\u"+unit.charCodeAt(0).toString(16).padStart(4,"0")).join(""));
   (io.stdout ?? console.log)(
     json
       ? safeOutput(result)

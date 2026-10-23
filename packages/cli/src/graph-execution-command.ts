@@ -109,7 +109,7 @@ export async function handleGraphExecutionCommand(args: string[], deps: GraphCom
     if (envelope.ok === false) {
       const error = failure(envelope.error?.code, typeof envelope.error?.message === 'string' ? envelope.error.message : 'Graph request rejected');
       if (json) emit({ schemaVersion: 1, kind: 'graph_error', error }); else stderr(`osstack graph: ${error.code}: ${error.message}`);
-      return 1;
+      return ['ACTION_OUTCOME_UNKNOWN', 'CANCEL_UNCONFIRMED'].includes(error.code) ? 2 : 1;
     }
     if (envelope.ok !== true) throw new GraphContractError('OUTPUT_CONTRACT_INVALID');
     if (command === 'contract') {

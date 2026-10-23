@@ -55,3 +55,9 @@ it("routes explicit observation release with the inventory version", async () =>
     ],
   ]);
 });
+
+it("escapes terminal format controls without changing JSON diagnostic identity",async()=>{
+  const output:string[]=[];const unsafe="source"+String.fromCharCode(0x202e,0x009b)+"id";
+  expect(await handleAttentionCommand(["recovery","--scope","scope","--json"],{stdout:text=>output.push(text),rpc:async()=>({ok:true,result:{subject_id:unsafe,canAutoRetry:false}})})).toBe(0);
+  expect(output[0]).not.toContain(String.fromCharCode(0x202e));expect(output[0]).not.toContain(String.fromCharCode(0x009b));expect(JSON.parse(output[0]!).subject_id).toBe(unsafe);
+});
