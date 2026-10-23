@@ -192,10 +192,10 @@ it("cancels a batch in flight without taking more receipts, and pre-abort takes 
   const controller = new AbortController();
   let calls = 0;
   const result = await ux.drainBatch(async () => { calls++; controller.abort(); await new Promise<void>(() => {}); }, { signal: controller.signal });
-  expect(result).toMatchObject({ attempted: 1, retried: 1, stopped: "aborted" });
+  expect(result).toMatchObject({ attempted: 1, cancelled: 1, retried: 0, stopped: "aborted" });
   expect(await ux.drainBatch(async () => { calls++; }, { signal: controller.signal })).toMatchObject({ processed: 0, stopped: "aborted" });
   expect(calls).toBe(1);
-  expect(db.prepare("SELECT COUNT(*) n FROM attention_deliveries WHERE attempts=0").get()).toEqual({ n: 4 });
+  expect(db.prepare("SELECT COUNT(*) n FROM attention_deliveries WHERE attempts=0").get()).toEqual({ n: 5 });
 });
 
 it("rejects unbounded batch options before taking a receipt", async () => {
@@ -231,4 +231,22 @@ it("does not overwrite a changed receipt and counts terminal delivery failures",
   }, { maxItems: 1 })).toMatchObject({ attempted: 1, delivered: 0, stale: 1 });
   db.exec("UPDATE attention_deliveries SET attempts=4 WHERE delivery_id=(SELECT MIN(delivery_id) FROM attention_deliveries)");
   expect(await ux.drainBatch(async () => { throw new Error("offline"); }, { maxItems: 1 })).toMatchObject({ attempted: 1, deadLetters: 1, delivered: 0 });
+});
+
+ it("repeated caller cancellation does not exhaust the transport failure budget", async () => {
+  const { ux, scope, db } = setup();
+  ux.enqueue(scope);
+  for (let i = 0; i < 6; i++) {
+    db.exec("UPDATE attention_deliveries SET next_at=0");
+    const controller = new AbortController();
+    expect(await ux.drainBatch(async () => { controller.abort(); await new Promise<void>(() => {}); }, {signal: controller.signal})).toMatchObject({ cancelled: 1, deadLetters: 0 });
+  }
+  expect(db.prepare("SELECT SUM(attempts) n FROM attention_deliveries").get()).toEqual({n: 0});
+  expect(await ux.drainBatch(async () => {})).toMatchObject({deadLetters: 0});
+});
+
+it("returns a stale receipt after ownership changes during send", async () => {
+  const { ux, scope, store } = setup();
+  ux.enqueue(scope);
+  expect(await ux.drainBatch(async () => { store.claimOwner("replacement"); }, {maxItems: 1})).toMatchObject({stale: 1, delivered: 0});
 });

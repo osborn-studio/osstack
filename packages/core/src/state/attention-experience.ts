@@ -148,7 +148,7 @@ export class AttentionExperience {
     }
     const started = performance.now();
     const result = { processed: 0, attempted: 0, delivered: 0, retried: 0,
-      deadLetters: 0, superseded: 0, stale: 0,
+      deadLetters: 0, superseded: 0, stale: 0, cancelled: 0,
       stopped: "limit" as "limit" | "empty" | "deadline" | "aborted" };
     while (result.processed < maxItems) {
       if (options.signal?.aborted) { result.stopped = "aborted"; break; }
@@ -165,7 +165,6 @@ export class AttentionExperience {
       }
     }
     if (options.signal?.aborted) result.stopped = "aborted";
-    else if (performance.now() - started >= maxDurationMs) result.stopped = "deadline";
     // Counts use the same eligibility predicate as claim; quiet and delayed
     // retries remain persisted but are not currently deliverable.
     const due = this.store.db.prepare(`SELECT COUNT(*) n, MIN(d.next_at) oldest
@@ -179,7 +178,7 @@ export class AttentionExperience {
     now = Date.now(),
     timeoutMs: number,
     signal?: AbortSignal
-  ): Promise<"idle" | "superseded" | "delivered" | "retried" | "dead_letter" | "stale"> {
+  ): Promise<"idle" | "superseded" | "delivered" | "retried" | "dead_letter" | "stale" | "cancelled"> {
     const db = this.store.db;
     const row = this.store.write(this.owner, () => {
       const d = db
@@ -213,6 +212,7 @@ export class AttentionExperience {
     let timer: ReturnType<typeof setTimeout> | undefined;
     let error: string | null = null;
     let onAbort: (() => void) | undefined;
+    let cancelled = false;
     try {
       if (!item) throw new Error("source_missing");
       await Promise.race([
@@ -230,7 +230,7 @@ export class AttentionExperience {
           );
         }),
         new Promise<never>((_, reject) => {
-          onAbort = () => { controller.abort(); reject(new Error("delivery_aborted")); };
+          onAbort = () => { cancelled = true; controller.abort(); reject(new Error("delivery_aborted")); };
           signal?.addEventListener("abort", onAbort, { once: true });
           if (signal?.aborted) onAbort();
         }),
@@ -250,24 +250,33 @@ export class AttentionExperience {
       if (timer) clearTimeout(timer);
       if (onAbort) signal?.removeEventListener("abort", onAbort);
     }
+    let changed: number;
+    try {
     const updated = this.store.write(this.owner, () =>
       db
         .prepare(
-          "UPDATE attention_deliveries SET state=?,next_at=?,error=? WHERE delivery_id=? AND attempts=? AND state='sending'"
+          "UPDATE attention_deliveries SET state=?,next_at=?,error=?,attempts=attempts-? WHERE delivery_id=? AND attempts=? AND state='sending'"
         )
         .run(
-          error
+          cancelled ? "pending" : error
             ? row.attempts + 1 >= 5
               ? "dead_letter"
               : "pending"
             : "delivered",
           now + Math.min(300000, 1000 * 2 ** row.attempts),
-          error,
+          cancelled ? "delivery_cancelled_indeterminate" : error,
+          cancelled ? 1 : 0,
           row.delivery_id,
           row.attempts + 1
         )
     );
-    if (updated.changes !== 1) return "stale";
+    changed = updated.changes;
+    } catch (e) {
+      if (e instanceof Error && e.message === "stale_owner") return "stale";
+      throw e;
+    }
+    if (changed !== 1) return "stale";
+    if (cancelled) return "cancelled";
     return error ? row.attempts + 1 >= 5 ? "dead_letter" : "retried" : "delivered";
   }
   foreground(

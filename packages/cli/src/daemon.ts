@@ -705,6 +705,7 @@ async function handleSessionStart(
       else lease?.retain("session start exit unconfirmed");
     } else await lease?.release();
     ctx.activeRuns.delete(runId);
+    requestSupervisionScan(ctx, "session.start.settled");
   }
 }
 
@@ -1060,8 +1061,16 @@ async function executeReservedSessionTurn(
     } finally {
       ctx.activeSessionSends.delete(session.session_id);
       if (ctx.activeRuns.get(session.run_id) === controller) ctx.activeRuns.delete(session.run_id);
+      requestSupervisionScan(ctx, "session.send.settled");
     }
   }
+}
+
+function requestSupervisionScan(ctx: DaemonContext, reason: string): void {
+  if (ctx.draining || !ctx.supervision) return;
+  void ctx.supervision.requestScan(reason).catch(() => {
+    // The periodic pass is the recovery path; never fail a persisted session reply.
+  });
 }
 
 // ──────────────────────────────────────────────────────────────────────
@@ -1525,7 +1534,16 @@ async function handleSingle(ctx: DaemonContext, req: DaemonRequest): Promise<Sin
       const p = objectParams(req.params);
       if (p instanceof Error) return singleErr(req.id, "bad_request", p.message);
       const workspacePath = optionalString(p, "workspacePath");
+      const attentionAfter = p["attentionAfter"];
+      const attentionLimit = p["attentionLimit"];
+      if ((attentionAfter !== undefined && (typeof attentionAfter !== "string" || !/^[a-f0-9]{64}$/.test(attentionAfter))) ||
+          (attentionLimit !== undefined && (typeof attentionLimit !== "number" || !Number.isInteger(attentionLimit) || attentionLimit < 1 || attentionLimit > 100))) {
+        return singleErr(req.id, "bad_request", "Invalid Attention pagination");
+      }
       return singleOk(req.id, createDashboardSnapshot({
+        attentionService: ctx.draining ? "unavailable" : ctx.supervision ? "running" : "disabled",
+        ...(attentionAfter === undefined ? {} : {attentionAfter: attentionAfter as string}),
+        ...(attentionLimit === undefined ? {} : {attentionLimit: attentionLimit as number}),
         db: ctx.db,
         kanban: ctx.kanban,
         dbPath: ctx.dbPath,
@@ -3394,6 +3412,7 @@ async function handleTaskSubmit(
     for await (const ev of boundedAdapterEvents(adapter.invoke(task, ac.signal), ac.signal)) {
       try {
         appendEvent(ctx.db, ctx.dbPath, ev);
+        if (ev.terminal) requestSupervisionScan(ctx, "run.terminal.persisted");
       } catch (err) {
         process.stderr.write(`osstack: event persist failed: ${(err as Error).message}\n`);
       }
@@ -4237,7 +4256,11 @@ export async function startDaemon(
 
       const dashOpts = dashboardUrlFromEnv();
       void startDashboardServer(
-        () => createDashboardSnapshot({
+        (params) => createDashboardSnapshot({
+          attentionService: ctx.draining ? "unavailable" : ctx.supervision ? "running" : "disabled",
+          ...(params?.workspacePath === undefined ? {} : {workspacePath: resolve(params.workspacePath)}),
+          ...(params?.attentionAfter === undefined ? {} : {attentionAfter: params.attentionAfter}),
+          ...(params?.attentionLimit === undefined ? {} : {attentionLimit: params.attentionLimit}),
           db: ctx.db,
           kanban: ctx.kanban,
           dbPath: ctx.dbPath,
