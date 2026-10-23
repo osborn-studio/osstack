@@ -1011,9 +1011,12 @@ async function executeReservedSessionTurn(
       session_version: updatedSession.version,
       events: publicEvents,
     });
-  } catch (error) {
-    ctx.sessions.markMessageFailed(p.message_id);
-    return singleErr(req.id, "admission_denied", error instanceof Error ? error.message : String(error));
+  } catch {
+    try { ctx.sessions.markMessageFailed(p.message_id); }
+    catch {
+      return singleErr(req.id, "delivery_uncertain", "Execution receipt could not be finalized; inspect persisted state before retrying");
+    }
+    return singleErr(req.id, started ? "delivery_uncertain" : "admission_denied", "Session execution could not be confirmed; inspect persisted state before retrying");
   } finally {
     if (started && (!settled || controller.signal.aborted)) {
       controller.abort();

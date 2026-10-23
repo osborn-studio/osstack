@@ -1,5 +1,6 @@
 import type { Readable } from "node:stream";
-import { readFile, lstat } from "node:fs/promises";
+import { constants } from "node:fs";
+import { open, lstat } from "node:fs/promises";
 export interface ClaudeAttentionBinding {
   harness_version: string;
   session_id: string;
@@ -48,9 +49,17 @@ export async function handleClaudeAttentionHook(
     (st.mode & 0o077) !== 0
   )
     throw new Error("private_binding_file_required");
-  const binding = JSON.parse(
-    await readFile(path, "utf8")
-  ) as ClaudeAttentionBinding;
+  const handle = await open(path, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
+  let binding: ClaudeAttentionBinding;
+  try {
+    const current = await handle.stat();
+    if (!current.isFile() || current.dev !== st.dev || current.ino !== st.ino || current.nlink !== 1 || (current.mode & 0o077) !== 0 || current.size > 4096)
+      throw new Error("private_binding_file_required");
+    const bytes = Buffer.alloc(4097);
+    const { bytesRead } = await handle.read(bytes, 0, bytes.length, 0);
+    if (bytesRead > 4096) throw new Error("oversized_binding_file");
+    binding = JSON.parse(bytes.subarray(0, bytesRead).toString("utf8")) as ClaudeAttentionBinding;
+  } finally { await handle.close(); }
   if (typeof binding.token !== "string" || binding.token.length !== 64)
     throw new Error("invalid_binding");
   const raw = input ?? await readClaudeHookInput(process.stdin);

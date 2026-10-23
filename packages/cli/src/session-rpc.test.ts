@@ -725,3 +725,28 @@ it("keeps an Attention answer uncertain after adapter failure and never replays 
   expect(await rpc("attention.answer", params)).toMatchObject({ ok: true, result: { state: "uncertain", replay: true } });
   expect(adapter.resumed.length - before).toBe(1);
 });
+
+it("keeps the reserved answer uncertain when both completion and failure persistence throw", async () => {
+  const id = "attention-persistence-failed";
+  seedSession(id);
+  const db = openDb({ path: handle.dbPath });
+  db.prepare("UPDATE agent_sessions SET state='awaiting_decision' WHERE session_id=?").run(id);
+  db.prepare("UPDATE session_turns SET decision_json=? WHERE session_id=?").run(JSON.stringify(structuredDecision), id);
+  const repo = (db.prepare("SELECT repo_path FROM agent_sessions WHERE session_id=?").get(id) as { repo_path: string }).repo_path;
+  db.close();
+  const watch = await rpc("attention.watch", { task_id: `task_${id}`, repo_path: repo, default_tenant: true });
+  expect(watch.ok).toBe(true);
+  const scope = (watch.result!["scope"] as { scope_id: string }).scope_id;
+  const inbox = await rpc("attention.inbox", { scope_id: scope });
+  const item = (inbox.result!["items"] as Array<Record<string, unknown>>)[0]!;
+  const params = { scope_id: scope, item_id: item["item_id"], action_id: "answer-persistence-failed", revision: item["revision"], content_hash: item["content_hash"], text: "continue", takeover: false };
+  const before = adapter.resumed.length;
+  const complete = vi.spyOn(SessionRepository.prototype, "completeInboundTurn").mockImplementation(() => { throw new Error("injected completion persistence failure"); });
+  const fail = vi.spyOn(SessionRepository.prototype, "markMessageFailed").mockImplementation(() => { throw new Error("injected failure persistence failure"); });
+  try {
+    const response = await rpc("attention.answer", params);
+    expect(response, JSON.stringify(response)).toMatchObject({ ok: true, result: { state: "uncertain", execution_error: "delivery_uncertain" } });
+    expect(await rpc("attention.answer", params)).toMatchObject({ ok: true, result: { state: "uncertain", replay: true } });
+    expect(adapter.resumed.length - before).toBe(1);
+  } finally { complete.mockRestore(); fail.mockRestore(); }
+});

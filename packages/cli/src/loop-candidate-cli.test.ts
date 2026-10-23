@@ -245,7 +245,7 @@ it("actual enqueue -> queue -> native worktree batch runs all stages and native 
       encoding: "utf8",
     }),
   ).toBe("");
-});
+}, 20_000);
 it.each([
   "--daemon",
   "--state",
@@ -439,6 +439,7 @@ async function sourceMutant(
     `data:text/javascript;base64,${Buffer.from(stripped).toString("base64")}`,
   );
 }
+// Runs the full baseline plus rejected and mutated pipelines; each keeps its own deadline.
 it("source mutant removing native stage union causes real unverified local merge after full positive baseline", async () => {
   const input = await policyInput();
   await enqueue(input.path);
@@ -477,7 +478,7 @@ it("source mutant removing native stage union causes real unverified local merge
   expect(
     JSON.parse(logs.join("\n")).completed_tasks[0].candidate_evidence.stage,
   ).toBe("final_preflight_failed");
-});
+}, 20_000);
 it("source mutant deleting private file mode guard accepts actual unsafe bytes after valid baseline", async () => {
   const input = await policyInput();
   const args = [

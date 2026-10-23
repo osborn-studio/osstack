@@ -1,5 +1,5 @@
 import { PassThrough } from "node:stream";
-import { expect, it } from "vitest";
+import { expect, it, vi } from "vitest";
 import { classifyClaudeAttentionHook, readClaudeHookInput } from "./attention-hook.js";
 const binding = {
   harness_version: "2.1.291",
@@ -46,4 +46,33 @@ it("counts input bytes and preserves split UTF-8 chunks", async () => {
   const oversized = new PassThrough(); const rejected = expect(readClaudeHookInput(oversized)).rejects.toThrow('oversized_hook_input');
   oversized.write(Buffer.alloc(65537)); await rejected;
   expect(oversized.destroyed).toBe(true);
+});
+
+it("reads a private binding from its verified descriptor and rejects a symlink swap", async () => {
+  const { createScratchDirSync } = await import("@osstack/core");
+  const fs = await import("node:fs/promises");
+  const { join } = await import("node:path");
+  const { handleClaudeAttentionHook } = await import("./attention-hook.js");
+  const root = createScratchDirSync("tests", "hook-binding");
+  const path = join(root, "binding.json");
+  try {
+    await fs.writeFile(path, JSON.stringify(binding), { mode: 0o600 });
+    const rpc = vi.fn(async () => ({ ok: true, result: { reminder: "Check inbox" } }));
+    const output: string[] = [];
+    const input = JSON.stringify({ hook_event_name: "Stop", session_id: "s", stop_hook_active: false });
+    expect(await handleClaudeAttentionHook(["claude-hook", "--binding-file", path], rpc, s => output.push(s), input)).toBe(0);
+    expect(output).toEqual(['{"systemMessage":"Check inbox"}']);
+    rpc.mockClear();
+    bindingRace.swap = async () => { await fs.rename(path, path + ".old"); await fs.symlink(path + ".old", path); };
+    await expect(handleClaudeAttentionHook(["claude-hook", "--binding-file", path], rpc, () => {}, input)).rejects.toThrow();
+    expect(rpc).not.toHaveBeenCalled();
+  } finally { bindingRace.swap = undefined; await fs.rm(root, { recursive: true, force: true }); }
+});
+const bindingRace = vi.hoisted(() => ({ swap: undefined as (() => Promise<void>) | undefined }));
+vi.mock("node:fs/promises", async importOriginal => {
+  const original = await importOriginal<typeof import("node:fs/promises")>();
+  return { ...original, open: async (...args: Parameters<typeof original.open>) => {
+    const swap = bindingRace.swap; bindingRace.swap = undefined; await swap?.();
+    return original.open(...args);
+  } };
 });
