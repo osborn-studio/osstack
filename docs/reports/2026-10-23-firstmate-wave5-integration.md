@@ -18,3 +18,7 @@ Root wiring tests cover actual daemon policy loading, admission-disabled rejecti
 The larger 100-run/12,000-event component benchmark converged in 501 passes; step p95 was 5.205 ms and max 18.338 ms against a soft 5 ms goal. The goal is therefore not fully met. Each admitted source gets bounded work; the 100-subject admission cap has no automatic overflow rotation. Ten-minute mixed Loop/session/Graph soak, Loop overhead below 1%, platform crash matrix, a real SSH target and provider-side live model qualification remain pending.
 
 Full integrated qualification and independent root audit are in progress. No merge, deployment, public message, native multi-home upgrade or production SSH qualification is claimed by this report.
+
+## Final local source qualification
+
+Source317c2070: all8checks pass, 5204passed/3existing skipped across22packages, OSStack native qualification/verifier zeroissues. Root fourth Haiku challenge confirms no remaining P0/P1 in the raw pre-freeze fix. Evidence: [final archive](2026-10-23-firstmate-pr242-final-qualification/README.md). Initial CI inventory failure and both predecessor full runs are retained; latest exact-head CI remains a separate gate.

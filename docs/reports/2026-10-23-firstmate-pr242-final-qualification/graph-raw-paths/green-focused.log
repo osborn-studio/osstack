@@ -1,0 +1,14 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-routing-next/packages/cli
+
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/smoke/pr237-integration/graph-raw-paths/tmp/g22-rpc-mUVunM/delivery/a934f477-5766-4866-9045-5f6580e2cf0a/writer-0'...
+HEAD is now at e66941d base
+osstack: retaining write lease graph-action:0378ef7bf5ad9ae8e22685a334366fb060a556ab5286e8436daac9027da81182: Error: delivery_contract_path_outside_scope
+ ✓ src/graph-contract-integration.test.ts (17 tests | 15 skipped) 1835ms
+   ✓ rejects a writer stat-cache bypass before freezing or starting review  1680ms
+
+ Test Files  1 passed (1)
+      Tests  2 passed | 15 skipped (17)
+   Start at  14:10:27
+   Duration  3.52s (transform 888ms, setup 10ms, collect 1.50s, tests 1.84s, environment 0ms, prepare 33ms)
+

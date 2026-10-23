@@ -1,0 +1,34 @@
+[
+  {
+    "path": "packages/cli/src/graph-workspace-paths.ts",
+    "sha256": "21d12d7812762801694546f4b3b102942c4742a5401481437902d9adada22823"
+  },
+  {
+    "path": "packages/cli/src/graph-workspace-paths.test.ts",
+    "sha256": "8e329693df935614c6d89fa94488c7cc85a932945090d9c2bcfa286e3c7fa1a2"
+  },
+  {
+    "path": "packages/cli/src/graph-delivery-contract.ts",
+    "sha256": "b846da7ce5f4a6c861628b5218cc2984fdab31577e250c4fa9aca0aeb8932249"
+  },
+  {
+    "path": "packages/cli/src/graph-contract-integration.test.ts",
+    "sha256": "2551c815f42e6e7278f5d8b02a021da130db3069f0b7f6c41db7dbb04ea9a0f9"
+  },
+  {
+    "path": "packages/core/src/graph/artifact-store.ts",
+    "sha256": "d2eb57e8014f8b3a59c62bcbf7efd49d1991b3f19b5f5cf2c347a6a2a5c9af45"
+  },
+  {
+    "path": "packages/core/src/graph/artifact-git.ts",
+    "sha256": "dcc417c48e4b2e2d23b363d6659e5edbb0da194c160e42badd1ae6d0129ea470"
+  },
+  {
+    "path": "packages/cli/src/graph-delivery.ts",
+    "sha256": "f5ffb3f42985638afb47bca2e1f4382d99c9132fdb6db1bd0eb940594f8d7e99",
+    "lines": [
+      240,
+      282
+    ]
+  }
+]

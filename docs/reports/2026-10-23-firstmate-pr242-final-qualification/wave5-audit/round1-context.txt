@@ -1,0 +1,2827 @@
+Independent hostile static review of OSStack wave5 root integration. Use only supplied source, no tools. Return confirmed P0/P1 with concrete exploit/trigger, distinguish missing context from defects. Also list P2 and unresolved qualifications. Do not claim execution or prior audits. Prior component reviews passed but treat code independently. Focus host authority/live recheck; Graph original/durable digest dual-binding; readonly remote fixed-command SSH/pins; observer bounded slices and recovery no retry. No production SSH target exists. Graph supports single-check implement/local_verified/artifact_only, actual source preserved, no deployment. Local operator same-UID is trusted; no sandbox claim. External live model tests and 10-minute capacity soak are pending. Read-only real daemon recovery socket 100 samples p95 .286ms is ONE session+ONE run, not capacity proof. Exact source files follow.
+
+FILE packages/cli/src/graph-contract-host.ts
+import { execFileSync } from "node:child_process";
+import { createHash, randomUUID } from "node:crypto";
+import {
+  closeSync,
+  constants,
+  fstatSync,
+  lstatSync,
+  openSync,
+  readSync,
+  realpathSync,
+} from "node:fs";
+import { mkdir, open } from "node:fs/promises";
+import { basename, isAbsolute, join, relative, resolve } from "node:path";
+import { parse as parseYaml } from "yaml";
+import { z } from "zod";
+import { deliveryCheckReference } from "@osstack/core";
+import { GraphBudget, GraphScope, workerCanonical } from "@osstack/protocol";
+import type { LocalGraphRegistrationOptions } from "./graph-rpc.js";
+import { persistDeliveryHostRecord } from "./delivery-contract-host.js";
+import { osstackHome } from "./paths.js";
+
+const digest = (bytes: string | Buffer) =>
+  createHash("sha256").update(bytes).digest("hex");
+/** Bound synchronous authority reads: no await between final check and Graph CAS. */
+function readBounded(
+  path: string,
+  privateFile: boolean,
+  optional = false,
+): Buffer | undefined {
+  let fd: number | undefined;
+  try {
+    fd = openSync(
+      path,
+      constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK,
+    );
+    const before = fstatSync(fd);
+    if (
+      !before.isFile() ||
+      before.size > 65536 ||
+      (privateFile &&
+        ((before.mode & 0o077) !== 0 || before.uid !== process.getuid?.()))
+    )
+      throw Error("GRAPH_HOST_FILE_INVALID");
+    const buffer = Buffer.alloc(65537);
+    let length = 0;
+    while (length < buffer.length) {
+      const count = readSync(
+        fd,
+        buffer,
+        length,
+        buffer.length - length,
+        length,
+      );
+      if (!count) break;
+      length += count;
+    }
+    const after = fstatSync(fd);
+    const current = lstatSync(path);
+    if (
+      length > 65536 ||
+      before.size !== after.size ||
+      before.mtimeMs !== after.mtimeMs ||
+      current.isSymbolicLink() ||
+      current.ino !== before.ino ||
+      current.dev !== before.dev
+    )
+      throw Error("GRAPH_HOST_FILE_CHANGED");
+    return buffer.subarray(0, length);
+  } catch (error) {
+    if (optional && (error as NodeJS.ErrnoException).code === "ENOENT")
+      return undefined;
+    throw error;
+  } finally {
+    if (fd !== undefined) closeSync(fd);
+  }
+}
+const hex = z.string().regex(/^[a-f0-9]{64}$/);
+const graphPolicySchema = z
+  .object({
+    schema_version: z.literal(1),
+    repo_path: z.string().refine(isAbsolute),
+    scope: GraphScope,
+    base_policy_digest: hex,
+    review_policy_ref: z.string().min(1).max(256),
+    limits: z.unknown(),
+  })
+  .strict();
+function overlayPath(
+  home: string,
+  repository: string,
+  revision: string,
+): string {
+  if (!/^(?:[a-f0-9]{40}|[a-f0-9]{64})$/.test(revision))
+    throw Error("GRAPH_CONTRACT_BASE_INVALID");
+  const raw = execFileSync(
+    "git",
+    ["-C", repository, "show", `${revision}:.osstack/repo.yaml`],
+    {
+      encoding: "utf8",
+      maxBuffer: 65536,
+      timeout: 15000,
+      env: {
+        ...Object.fromEntries(
+          Object.entries(process.env).filter(
+            ([key]) => !key.startsWith("GIT_"),
+          ),
+        ),
+        GIT_CONFIG_GLOBAL: "/dev/null",
+        GIT_CONFIG_NOSYSTEM: "1",
+        GIT_NO_REPLACE_OBJECTS: "1",
+        GIT_TERMINAL_PROMPT: "0",
+      },
+    },
+  );
+  const product = (parseYaml(raw) as { product?: unknown })?.product;
+  const valid = (value: unknown): value is string =>
+    typeof value === "string" &&
+    /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/.test(value);
+  const id = valid(product)
+    ? product
+    : valid(basename(repository))
+      ? basename(repository)
+      : `repo-${digest(repository).slice(0, 16)}`;
+  return join(home, "repos", `${id}.yaml`);
+}
+
+/** Explicit local host authority; registration data alone cannot invent checks or budgets. */
+export function createGraphContractHostResolvers(
+  homePath: string,
+): LocalGraphRegistrationOptions {
+  if (!isAbsolute(homePath)) throw Error("GRAPH_HOST_HOME_REQUIRED");
+  const home = realpathSync(homePath);
+  return {
+    resolveDeliveryContractPolicy: async ({
+      repositoryPath,
+      scope,
+      contract,
+    }) => {
+      if (realpathSync(osstackHome()) !== home)
+        throw Error("GRAPH_HOST_HOME_CHANGED");
+      if (
+        !isAbsolute(repositoryPath) ||
+        realpathSync(repositoryPath) !== repositoryPath
+      )
+        throw Error("GRAPH_CONTRACT_REPOSITORY_INVALID");
+      const path = join(home, "graph-policy.json");
+      const bytes = readBounded(path, true)!;
+      const config = graphPolicySchema.parse(
+        JSON.parse(bytes.toString("utf8")),
+      );
+      const budget = GraphBudget.parse({
+        ...(config.limits as object),
+        schemaVersion: 1,
+      });
+      const { schemaVersion: _version, ...limits } = budget;
+      if (
+        config.repo_path !== repositoryPath ||
+        workerCanonical(config.scope) !== workerCanonical(scope)
+      )
+        throw Error("GRAPH_CONTRACT_SCOPE_MISMATCH");
+      const overlay = overlayPath(home, repositoryPath, contract.base_head);
+      const overlayDigest = digest(
+        readBounded(overlay, true, true) ?? "absent",
+      );
+      const policyFileDigest = digest(bytes);
+      const assertCurrent = () => {
+        if (
+          realpathSync(homePath) !== home ||
+          realpathSync(osstackHome()) !== home ||
+          realpathSync(repositoryPath) !== repositoryPath ||
+          digest(readBounded(path, true)!) !== policyFileDigest ||
+          digest(readBounded(overlay, true, true) ?? "absent") !== overlayDigest
+        )
+          throw Error("GRAPH_CONTRACT_POLICY_CHANGED");
+      };
+      // Reuse actual committed-base policy/overlay admission. This is a lazy Graph-only load.
+      const { createDeliverCommandDeps } = await import("./bin.js");
+      const policy = await createDeliverCommandDeps().deliveryContractPolicy!(
+        repositoryPath,
+        contract.base_head,
+      );
+      assertCurrent();
+      if (
+        policy.policyDigest !== config.base_policy_digest ||
+        contract.policy_digest !== policy.policyDigest ||
+        contract.review_policy_ref !== config.review_policy_ref ||
+        contract.required_checks.some(
+          (check) =>
+            !policy.verifyCommands.some(
+              (command) =>
+                deliveryCheckReference(command) === check.registry_ref,
+            ),
+        )
+      )
+        throw Error("GRAPH_CONTRACT_POLICY_MISMATCH");
+      return {
+        policy: {
+          policyDigest: policy.policyDigest,
+          reviewPolicyRef: config.review_policy_ref,
+          limits,
+        },
+        assertCurrent,
+      };
+    },
+    resolveExecutionContext: async ({
+      configPath,
+      repositoryPath,
+      scope,
+      frozen,
+    }) => {
+      if (scope.tenantId !== "default")
+        throw Error("GRAPH_CONTEXT_SCOPE_UNSUPPORTED");
+      const repository = realpathSync(repositoryPath);
+      const path = realpathSync(resolve(repository, configPath));
+      const local = relative(repository, path);
+      if (local.startsWith("..") || isAbsolute(local))
+        throw Error("GRAPH_CONTEXT_SOURCE_ESCAPE");
+      const configDigest = digest(readBounded(path, false)!);
+      const {
+        loadExecutionContextConfig,
+        createPinnedLocalContextLoader,
+        createExecutionContextAdapters,
+      } = await import("./execution-context.js");
+      const config = await loadExecutionContextConfig(configPath, repository);
+      const assertCurrent = () => {
+        if (
+          realpathSync(repositoryPath) !== repository ||
+          realpathSync(resolve(repository, configPath)) !== path ||
+          digest(readBounded(path, false)!) !== configDigest
+        )
+          throw Error("GRAPH_CONTEXT_CONFIG_CHANGED");
+      };
+      assertCurrent();
+      const receiptRoot = join(home, "graph-context-receipts", randomUUID());
+      await mkdir(receiptRoot, { recursive: true, mode: 0o700 });
+      assertCurrent();
+      return {
+        configDigest,
+        receiptRoot,
+        assertCurrent,
+        create: async (input) => {
+          assertCurrent();
+          if (
+            input.workspacePath !== repository ||
+            input.frozen.digest !== frozen.digest
+          )
+            throw Error("GRAPH_CONTEXT_SCOPE_MISMATCH");
+          const wrapped = createExecutionContextAdapters({
+            adapters: [input.adapter],
+            workspacePath: repository,
+            mode: "local",
+            loadContext: createPinnedLocalContextLoader(config),
+            maxPromptBytes: config.max_prompt_bytes,
+            maxKnowledgeBytes: config.max_knowledge_bytes,
+            contractDigest: frozen.digest,
+            contractBrief: frozen.brief,
+            recordReceipt: async (receipt) => {
+              assertCurrent();
+              const ref = await persistDeliveryHostRecord(receiptRoot, receipt);
+              assertCurrent();
+              for (const target of [
+                ref.path,
+                receiptRoot,
+                join(home, "graph-context-receipts"),
+              ]) {
+                const handle = await open(
+                  target,
+                  constants.O_RDONLY | constants.O_NOFOLLOW,
+                );
+                try {
+                  await handle.sync();
+                } finally {
+                  await handle.close();
+                }
+                assertCurrent();
+              }
+              return ref;
+            },
+          });
+          return {
+            adapter: wrapped.adapters[0]!,
+            receiptRefs: wrapped.receiptRefs,
+          };
+        },
+      };
+    },
+  };
+}
+
+
+FILE packages/cli/src/graph-contract-host.test.ts
+import { execFileSync } from "node:child_process";
+import {
+  chmodSync,
+  mkdirSync,
+  realpathSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
+import { join } from "node:path";
+import {
+  createScratchDirSync,
+  deliveryCheckReference,
+  freezeDeliveryContract,
+} from "@osstack/core";
+import { afterEach, expect, it, vi } from "vitest";
+import { createDeliverCommandDeps } from "./bin.js";
+import { createGraphContractHostResolvers } from "./graph-contract-host.js";
+const roots: string[] = [];
+afterEach(() => {
+  vi.unstubAllEnvs();
+  for (const root of roots.splice(0))
+    rmSync(root, { recursive: true, force: true });
+});
+async function fixture() {
+  const root = realpathSync(createScratchDirSync("tests", "graph-host-policy"));
+  roots.push(root);
+  const home = join(root, "home");
+  mkdirSync(home, { mode: 0o700 });
+  vi.stubEnv("OSSTACK_HOME", home);
+  mkdirSync(join(root, ".osstack"));
+  const git = (...args: string[]) =>
+    execFileSync("git", ["-C", root, ...args], { stdio: "pipe" })
+      .toString()
+      .trim();
+  git("init", "-b", "main");
+  git("config", "user.name", "Test");
+  git("config", "user.email", "test@example.invalid");
+  const config = {
+    schema_version: 2,
+    product: "graph-test",
+    role: "core_product",
+    default_branch: "main",
+    verify_command: "node --version",
+    autonomy: {
+      max_auto_risk: "R2",
+      require_independent_evaluator: true,
+      max_builder_iterations: 3,
+      max_review_rounds: 2,
+      max_wall_time_minutes: 15,
+      max_no_progress_rounds: 1,
+    },
+    git: {
+      remote: "origin",
+      branch_prefix: "codex",
+      merge_strategy: "squash",
+      auto_merge: false,
+      protected_branches: ["main"],
+    },
+    verification: {
+      quick: ["node --version"],
+      standard: ["node --version"],
+      release: ["node --version"],
+    },
+  };
+  writeFileSync(join(root, ".osstack/repo.yaml"), JSON.stringify(config));
+  writeFileSync(
+    join(root, ".osstack/policy.yaml"),
+    JSON.stringify({
+      schema_version: 1,
+      mode: "execute",
+      auto_apply: true,
+      allowed_auto_changes: ["docs", "tests"],
+      requires_approval: ["source"],
+      forbidden: ["secrets"],
+      budgets: { max_iterations: 5, max_runtime_minutes: 45, max_cost_usd: 20 },
+    }),
+  );
+  git("add", ".osstack");
+  git("commit", "-m", "policy");
+  const base = git("rev-parse", "HEAD");
+  const basePolicy = await createDeliverCommandDeps().deliveryContractPolicy!(
+    root,
+    base,
+  );
+  const scope = {
+    schemaVersion: 1 as const,
+    tenantId: "default",
+    principalId: "operator",
+    workspaceId: "workspace",
+  };
+  const limits = {
+    maxEpochs: 1,
+    maxBranchAttempts: 1,
+    maxConcurrentReaders: 2,
+    maxConcurrentWritersPerRepo: 1,
+    maxActionStarts: 20,
+    deadlineSeconds: 600,
+    tokenReservationLimit: 500000,
+  };
+  const graphPolicy = {
+    schema_version: 1,
+    repo_path: root,
+    scope,
+    base_policy_digest: basePolicy.policyDigest,
+    review_policy_ref: "graph:independent",
+    limits,
+  };
+  const policyPath = join(home, "graph-policy.json");
+  writeFileSync(policyPath, JSON.stringify(graphPolicy), { mode: 0o600 });
+  const frozen = freezeDeliveryContract({
+    schema_version: 2,
+    contract_id: "contract",
+    task_id: "task",
+    canonical_repo: root,
+    mode: "implement",
+    base_head: base,
+    goal: "change",
+    required_checks: [
+      { id: "check", registry_ref: deliveryCheckReference("node --version") },
+    ],
+    review_policy_ref: "graph:independent",
+    requested_completion: "local_verified",
+    allowed_paths: ["src"],
+    requested_actions: ["build", "verify"],
+    budget_ref: `policy:${basePolicy.policyDigest}`,
+    policy_digest: basePolicy.policyDigest,
+    publication_scope: { mode: "none" },
+    merge_authority: { mode: "none" },
+  });
+  return {
+    root,
+    home,
+    scope,
+    limits,
+    graphPolicy,
+    policyPath,
+    frozen,
+    resolve: createGraphContractHostResolvers(home),
+  };
+}
+it("uses explicit Graph budgets and detects private authority changes synchronously", async () => {
+  const f = await fixture();
+  const binding = await f.resolve.resolveDeliveryContractPolicy!({
+    repositoryPath: f.root,
+    scope: f.scope,
+    contract: f.frozen.contract,
+  });
+  expect(binding.policy).toEqual({
+    policyDigest: f.frozen.contract.policy_digest,
+    reviewPolicyRef: "graph:independent",
+    limits: f.limits,
+  });
+  expect(binding.assertCurrent()).toBeUndefined();
+  writeFileSync(
+    f.policyPath,
+    JSON.stringify({
+      ...f.graphPolicy,
+      limits: { ...f.limits, maxActionStarts: 19 },
+    }),
+  );
+  expect(() => binding.assertCurrent()).toThrow(
+    "GRAPH_CONTRACT_POLICY_CHANGED",
+  );
+});
+it("detects a newly introduced private overlay and rejects unregistered checks", async () => {
+  const f = await fixture();
+  const binding = await f.resolve.resolveDeliveryContractPolicy!({
+    repositoryPath: f.root,
+    scope: f.scope,
+    contract: f.frozen.contract,
+  });
+  mkdirSync(join(f.home, "repos"));
+  writeFileSync(join(f.home, "repos/graph-test.yaml"), "{}", { mode: 0o600 });
+  expect(() => binding.assertCurrent()).toThrow(
+    "GRAPH_CONTRACT_POLICY_CHANGED",
+  );
+  await expect(
+    f.resolve.resolveDeliveryContractPolicy!({
+      repositoryPath: f.root,
+      scope: f.scope,
+      contract: {
+        ...f.frozen.contract,
+        required_checks: [
+          {
+            id: "bad",
+            registry_ref: deliveryCheckReference("arbitrary command"),
+          },
+        ],
+      },
+    }),
+  ).rejects.toThrow();
+});
+it("rejects wrong scope, policy digest, unsafe permissions and implicit budgets", async () => {
+  const f = await fixture();
+  const input = {
+    repositoryPath: f.root,
+    scope: f.scope,
+    contract: f.frozen.contract,
+  };
+  await expect(
+    f.resolve.resolveDeliveryContractPolicy!({
+      ...input,
+      scope: { ...f.scope, tenantId: "other" },
+    }),
+  ).rejects.toThrow();
+  await expect(
+    f.resolve.resolveDeliveryContractPolicy!({
+      ...input,
+      contract: { ...f.frozen.contract, policy_digest: "a".repeat(64) },
+    }),
+  ).rejects.toThrow();
+  chmodSync(f.policyPath, 0o644);
+  await expect(
+    f.resolve.resolveDeliveryContractPolicy!(input),
+  ).rejects.toThrow();
+  chmodSync(f.policyPath, 0o600);
+  const { maxActionStarts: _omitted, ...partial } = f.limits;
+  writeFileSync(
+    f.policyPath,
+    JSON.stringify({ ...f.graphPolicy, limits: partial }),
+  );
+  await expect(
+    f.resolve.resolveDeliveryContractPolicy!(input),
+  ).rejects.toThrow();
+});
+it("rejects cross-tenant context before attempting to read its path", async () => {
+  const f = await fixture();
+  await expect(
+    f.resolve.resolveExecutionContext!({
+      configPath: "missing.json",
+      repositoryPath: f.root,
+      scope: { ...f.scope, tenantId: "other" },
+      frozen: f.frozen,
+    }),
+  ).rejects.toThrow("GRAPH_CONTEXT_SCOPE_UNSUPPORTED");
+});
+
+it("passes pinned context into actual invocation and persists both digest-bound receipts", async () => {
+  const f = await fixture();
+  const { executionContextDigest } = await import("@osstack/knowledge");
+  const { readFileSync, statSync } = await import("node:fs");
+  const pack = {
+    id: "test/pin",
+    version: "1",
+    name: "Pinned",
+    license: "MIT",
+    source_kind: "internal",
+    quality_score: 90,
+    scope: "project",
+    chunks: [
+      { chunk_id: "one", title: "Guidance", body: "pinned test instruction" },
+    ],
+  };
+  const raw = JSON.stringify(pack);
+  writeFileSync(join(f.root, "pack.json"), raw);
+  const path = join(f.root, "context.json");
+  writeFileSync(
+    path,
+    JSON.stringify({
+      schema_version: 1,
+      mode: "local",
+      repo_path: f.root,
+      default_tenant: true,
+      packs: [
+        {
+          path: "pack.json",
+          pack_id: "test/pin",
+          version: "1",
+          sha256: executionContextDigest(raw),
+          scope: "project",
+          verified_at_ms: Date.now() - 1000,
+          expires_at_ms: Date.now() + 60000,
+        },
+      ],
+    }),
+  );
+  const binding = await f.resolve.resolveExecutionContext!({
+    configPath: path,
+    repositoryPath: f.root,
+    scope: f.scope,
+    frozen: f.frozen,
+  });
+  const seen: string[] = [];
+  const adapter: import("@osstack/agents").AgentAdapter = {
+    id: "fake",
+    display_name: "Fake",
+    cost_tier: "low",
+    capabilities: () => [],
+    isAvailable: async () => ({ available: true, last_checked_at: 0 }),
+    async *invoke(task) {
+      seen.push(task.prompt);
+      yield {
+        type: "run.started",
+      } as import("@osstack/hermes-adapter").HermesEvent;
+    },
+  };
+  const wrapped = await binding.create({
+    adapter,
+    workspacePath: f.root,
+    frozen: f.frozen,
+  });
+  for await (const _event of wrapped.adapter.invoke(
+    {
+      run_id: "run",
+      task_id: "task",
+      session_id: "session",
+      capability_id: "code",
+      prompt: "Implement pinned test instruction",
+      context: { repo_path: f.root },
+    },
+    new AbortController().signal,
+  )) {
+    /* drain */
+  }
+  expect(seen).toHaveLength(1);
+  expect(seen[0]).toContain("pinned test instruction");
+  expect(seen[0]).toContain(f.frozen.brief);
+  const refs = wrapped.receiptRefs();
+  expect(refs).toHaveLength(2);
+  const receipts = refs.map((ref) => {
+    const bytes = readFileSync(ref.path);
+    expect(executionContextDigest(bytes)).toBe(ref.digest);
+    expect(statSync(ref.path).mode & 0o077).toBe(0);
+    return JSON.parse(bytes.toString());
+  });
+  expect(receipts.map((row) => row.phase)).toEqual([
+    "prepared",
+    "adapter_observed",
+  ]);
+  expect(
+    receipts.every(
+      (row) =>
+        row.prompt_sha256 === executionContextDigest(seen[0]!) &&
+        row.contract_digest === f.frozen.digest,
+    ),
+  ).toBe(true);
+  writeFileSync(path, "{}");
+  expect(() => binding.assertCurrent()).toThrow("GRAPH_CONTEXT_CONFIG_CHANGED");
+  await expect(
+    binding.create({ adapter, workspacePath: f.root, frozen: f.frozen }),
+  ).rejects.toThrow();
+});
+
+it("loads contract authority through the default real daemon and keeps admission disabled", async () => {
+  const f = await fixture();
+  const { startDaemon } = await import("./daemon.js");
+  const { healthyAutonomyHealth } = await import("./test-healthy-autonomy.js");
+  const { connect } = await import("node:net");
+  const { FrameDecoder, encodeFrame } = await import("@osstack/hermes-adapter");
+  const socket = join(
+    (await import("node:os")).tmpdir(),
+    `g-${(await import("node:crypto")).randomUUID().slice(0, 8)}.sock`,
+  );
+  const adapters = ["writer", "reviewer"].map((id) => ({
+    id,
+    display_name: id,
+    cost_tier: "low" as const,
+    capabilities: () => [],
+    isAvailable: async () => ({ available: true, last_checked_at: 0 }),
+    invoke: vi.fn(() => {
+      throw Error("MUST_NOT_INVOKE");
+    }),
+  }));
+  writeFileSync(
+    join(f.home, "graph-host.json"),
+    JSON.stringify({
+      schemaVersion: 1,
+      admissionEnabled: false,
+      registration: {
+        id: "local",
+        scope: f.scope,
+        repositoryRef: "repo",
+        repositoryPath: f.root,
+        taskRef: "task",
+        task: "change",
+        inputArtifactRef: "input",
+        deliveryContract: f.frozen.contract,
+        writer: { agentId: "writer", capabilityId: "write" },
+        reviewer: { agentId: "reviewer", capabilityId: "review" },
+        acceptanceRegistry: [
+          {
+            ref: "test",
+            command: "node --version",
+            passExitCodes: [0],
+            failExitCodes: [1],
+          },
+        ],
+        grant: {
+          scope: f.scope,
+          expiresAt: Date.now() + 60000,
+          operations: ["read", "execute"],
+        },
+      },
+    }),
+    { mode: 0o600 },
+  );
+  await (await import("./graph-rpc.js")).loadLocalGraphRegistration(
+    join(f.home, "graph-host.json"),
+    new Map(adapters.map((adapter) => [adapter.id, adapter])),
+    createGraphContractHostResolvers(f.home),
+  );
+  const daemon = await startDaemon({
+    socketPath: socket,
+    adapters,
+    autonomyHealth: async () => healthyAutonomyHealth(),
+  });
+  expect((await import("node:fs")).statSync(socket).mode & 0o077).toBe(0);
+  const rpc = (method: string, params: unknown) =>
+    new Promise<Record<string, unknown>>((resolve, reject) => {
+      const client = connect(socket);
+      const decoder = new FrameDecoder();
+      const timer = setTimeout(() => {
+        client.destroy();
+        reject(Error("timeout"));
+      }, 5000);
+      client.on("connect", () =>
+        client.write(encodeFrame({ id: 1, method, params })),
+      );
+      client.on("error", (error) => {
+        clearTimeout(timer);
+        reject(error);
+      });
+      client.on("data", (chunk) => {
+        const values = decoder.push(chunk);
+        if (values.length) {
+          clearTimeout(timer);
+          client.end();
+          resolve(values[0] as Record<string, unknown>);
+        }
+      });
+    });
+  try {
+    const request = {
+      schemaVersion: 1,
+      kind: "start",
+      scope: f.scope,
+      idempotencyKey: "one",
+      inputArtifactRef: "input",
+      source: { product: "osstack", requestId: "request" },
+      spec: {
+        schemaVersion: 1,
+        template: "code-delivery-v1",
+        publication: "artifact_only",
+        input: {
+          taskRef: "task",
+          repositoryRef: "repo",
+          baseRevision: f.frozen.contract.base_head,
+          acceptanceRef: "test",
+        },
+        limits: f.limits,
+      },
+    };
+    expect(await rpc("graph.start", request)).toMatchObject({
+      ok: false,
+      error: { code: "GRAPH_ADMISSION_DISABLED" },
+    });
+    expect(
+      await rpc("graph.contract", {
+        schemaVersion: 1,
+        scope: f.scope,
+        graphRunId: "missing",
+      }),
+    ).toMatchObject({ ok: false, error: { code: "RUN_MISMATCH" } });
+    expect(
+      adapters.every((adapter) => adapter.invoke.mock.calls.length === 0),
+    ).toBe(true);
+  } finally {
+    await daemon.close();
+  }
+});
+
+
+FILE packages/cli/src/graph-rpc.ts
+import { assertGraphPlatform } from './graph-platform.js';
+import { randomUUID, createHash } from 'node:crypto';
+import { constants, openSync, closeSync, fstatSync, readSync } from 'node:fs';
+import { join } from 'node:path';
+import type Database from 'better-sqlite3';
+import type { AgentAdapter } from '@osstack/agents';
+import { z } from 'zod';
+import { GraphRunStore, type GraphRun } from '@osstack/core';
+import { readGraphActionState } from '@osstack/core/graph-verification';
+import { DeliveryContractV2, GraphErrorCode, GraphStatusRequest, GraphDelegationStatus, GraphScope, GraphRequest, type StartGraphRequest, GraphSpec, computeGraphInputDigest, workerCanonical, GraphContractError } from '@osstack/protocol';
+import { freezeDeliveryContract } from '@osstack/core';
+import { compileGraphSpec } from '@osstack/graph/spec-compiler';
+import { GraphDelivery, assertGraphDeliverySupported, graphDeliveryVersion, type GraphDeliveryOptions, type GraphDeliveryInterrupt } from './graph-delivery.js';
+import { GraphReconciler } from './graph-reconciler.js';
+import { cancelUnstartedGraphWorker } from './graph-unstarted-recovery.js';
+import { cancelJournaledBoundedWriter } from './graph-bounded-recovery.js';
+import { cancelUnstartedGraphPreparation } from './graph-preparation-recovery.js';
+import { bindGraphDeliveryContract, parseGraphContractRegistration, type GraphContractHostEnvelope, type GraphContractHostPolicy } from './graph-delivery-contract.js';
+import { loadGraphContractCompletion } from './graph-contract-receipt.js';
+import { snapshotGraphExecutionContext, type GraphExecutionContextRegistration } from './graph-execution-context.js';
+
+export interface GraphHostRegistration {
+  id: string;
+  scope: GraphScope;
+  product: StartGraphRequest['source']['product'];
+  repositoryRef: string;
+  taskRef: string;
+  inputArtifactRef: string;
+  delivery: Pick<GraphDeliveryOptions, 'repositoryPath' | 'task' | 'writer' | 'reviewer' | 'verifyReviewer' | 'acceptanceRegistry' | 'deliveryContract' | 'executionContext'>;
+  /** Current scope-specific grant, called on reads, mutations and each effect. */
+  authorize: (operation?: 'read' | 'execute' | 'cancel' | 'resume') => void;
+  /** Synchronous admission switch. Only new reservations; existing work keeps its grants. */
+  admitNewRuns?: () => boolean;
+}
+export interface GraphRpcOptions {
+  db: Database.Database;
+  root: string;
+  registrations: readonly GraphHostRegistration[];
+  /** Host-authenticated connection capability -> registration ID. Never receives request JSON. */
+  resolveCaller: (connection: object) => string | null;
+  acquire: GraphDeliveryOptions['acquire'];
+  authorizePolicy?: GraphDeliveryOptions['authorizePolicy'];
+}
+interface Descriptor { registrationId: string; request: StartGraphRequest; root: string; launchOwner: string; contractEnvelope?: GraphContractHostEnvelope }
+interface StoredResult {
+  candidate?: { candidateRevision: string; artifactRefs: string[]; artifactDigest: string };
+  evidenceRefs: string[]; resultRef?: string;
+}
+interface PublicRow { descriptor_json: string; result_json: string | null; interrupt_json: string | null }
+const fence = (r: GraphRun) => ({ scope: r.scope, graphRunId: r.graphRunId, identity: r.identity,
+  expectedGeneration: r.generation, expectedOwner: r.leaseOwner, expectedRevision: r.revision, now: Date.now() });
+const same = (a: unknown, b: unknown) => workerCanonical(a) === workerCanonical(b);
+function synchronous(value: unknown): void {
+  if (value !== undefined) { void Promise.resolve(value).catch(() => {}); throw new GraphContractError('POLICY_DENIED'); }
+}
+
+/** Stable public errors never disclose host paths, commands, or raw adapter text. */
+export function graphRpcError(error: unknown): { code: string; message: string } {
+  const raw = error instanceof Error ? error.message : '';
+  const supplied = error && typeof error === 'object' && 'code' in error ? String(error.code) : raw;
+  const aliases: Record<string, string> = { ENOENT: 'UNAUTHENTICATED', EACCES: 'UNAUTHENTICATED', ELOOP: 'UNAUTHENTICATED',
+    RUN_NOT_FOUND: 'RUN_MISMATCH', OWNER_MISMATCH: 'STALE_GENERATION', LEASE_EXPIRED: 'GRANT_EXPIRED',
+    LIVE_QUIESCENCE_REQUIRED: 'ACTION_OUTCOME_UNKNOWN', PHYSICAL_WORKER_STOP_REQUIRED: 'ACTION_OUTCOME_UNKNOWN',
+    PROGRAM_IDENTITY_MISMATCH: 'CHECKPOINT_INCOMPATIBLE', TERMINAL_RUN: 'REVISION_CONFLICT', CANCEL_PENDING: 'CANCEL_UNCONFIRMED' };
+  const parsed = GraphErrorCode.safeParse(aliases[supplied] ?? (supplied.startsWith('GRAPH_CONTRACT_') || supplied.startsWith('GRAPH_CONTEXT_') || supplied.startsWith('delivery_') ? 'POLICY_DENIED' : supplied));
+  const code = error instanceof z.ZodError ? 'INPUT_CONTRACT_INVALID' : parsed.success ? parsed.data : 'INTERNAL_ERROR';
+  return { code, message: code };
+}
+
+/** Public durable admission. Process maps hold actual supervisors, never public state. */
+export class GraphRpcService {
+  private readonly runs: GraphRunStore;
+  private readonly registrations = new Map<string, GraphHostRegistration>();
+  private readonly live = new Map<string, { driver?: GraphDelivery; done: Promise<void> }>();
+  private readonly pendingRequests = new Set<Promise<unknown>>();
+  private readonly owner = randomUUID();
+  private closed = false;
+  private closing: Promise<void> | undefined;
+  private readonly options: GraphRpcOptions;
+  constructor(options: GraphRpcOptions) {
+    assertGraphPlatform();
+    this.options = Object.freeze({ ...options, resolveCaller: options.resolveCaller, acquire: options.acquire });
+    const snapshotAdapter = (a: AgentAdapter): AgentAdapter => {
+      const capabilities = structuredClone(a.capabilities());
+      return Object.freeze({ id: a.id, display_name: a.display_name, cost_tier: a.cost_tier,
+        capabilities: () => structuredClone(capabilities), isAvailable: a.isAvailable.bind(a), invoke: a.invoke.bind(a),
+        ...(a.confirmStopped ? { confirmStopped: a.confirmStopped.bind(a) } : {}) });
+    };
+    this.runs = new GraphRunStore(options.db);
+    for (const value of options.registrations) {
+      if (this.registrations.has(value.id)) throw Error('DUPLICATE_GRAPH_REGISTRATION');
+      if (value.delivery.executionContext && !value.delivery.deliveryContract) throw Error('GRAPH_CONTEXT_CONTRACT_REQUIRED');
+      this.registrations.set(value.id, { ...value, scope: GraphScope.parse(value.scope), delivery: { ...value.delivery,
+        ...(value.delivery.deliveryContract ? { deliveryContract: parseGraphContractRegistration(value.delivery.deliveryContract) } : {}),
+        ...(value.delivery.executionContext ? { executionContext: snapshotGraphExecutionContext(value.delivery.executionContext) } : {}),
+        writer: { ...value.delivery.writer, adapter: snapshotAdapter(value.delivery.writer.adapter) }, reviewer: { ...value.delivery.reviewer, adapter: snapshotAdapter(value.delivery.reviewer.adapter) }, acceptanceRegistry: structuredClone(value.delivery.acceptanceRegistry) } });
+    }
+  }
+  private caller(connection: object): GraphHostRegistration {
+    if (this.closed) throw Error('GRAPH_SERVICE_CLOSED');
+    const id = this.options.resolveCaller(connection);
+    const registration = id === null ? undefined : this.registrations.get(id);
+    if (!registration) throw new GraphContractError('UNAUTHENTICATED');
+    return registration;
+  }
+  private row(id: string): PublicRow {
+    const row = this.options.db.prepare('SELECT * FROM graph_public_delivery WHERE graph_run_id=?').get(id) as PublicRow | undefined;
+    if (!row) throw new GraphContractError('RUN_MISMATCH');
+    return row;
+  }
+  private bound(registration: GraphHostRegistration, scope: GraphScope, id: string): GraphRun {
+    if (!same(scope, registration.scope)) throw new GraphContractError('SCOPE_MISMATCH');
+    const run = this.runs.get(scope, id);
+    if (!run || run.source.product !== registration.product) throw new GraphContractError('RUN_MISMATCH');
+    if ((JSON.parse(this.row(id).descriptor_json) as Descriptor).registrationId !== registration.id) throw new GraphContractError('RUN_MISMATCH');
+    return run;
+  }
+  private status(run: GraphRun, registration: GraphHostRegistration) {
+    const row = this.row(run.graphRunId);
+    const descriptor = JSON.parse(row.descriptor_json) as Descriptor;
+    const contract = descriptor.contractEnvelope;
+    if (contract && computeGraphInputDigest(descriptor.request) !== run.identity.inputDigest) throw new GraphContractError('CHECKPOINT_INCOMPATIBLE');
+    const result = row.result_json ? JSON.parse(row.result_json) as StoredResult : { evidenceRefs: [] };
+    const interrupt = row.interrupt_json ? JSON.parse(row.interrupt_json) as GraphDeliveryInterrupt : undefined;
+    const { actions, budget } = readGraphActionState(this.options.db, run.graphRunId);
+    const uncertain = ['cancel_pending', 'reconciliation_required'].includes(run.status);
+    let needsAuthorization = false;
+    try { synchronous(registration.authorize('execute')); } catch { needsAuthorization = true; }
+    return GraphDelegationStatus.parse({ schemaVersion: 1 as const, scope: run.scope, graphRunId: run.graphRunId, source: run.source, status: run.status,
+      revision: run.revision, generation: run.generation, inputDigest: run.identity.inputDigest, specHash: run.identity.specHash,
+      ...(contract ? { admissionBinding: { requestInputDigest: computeGraphInputDigest({ ...descriptor.request, inputArtifactRef: contract.sourceInputArtifactRef }),
+        hostInputDigest: run.identity.inputDigest, contractDigest: contract.frozen.digest, policyDigest: contract.policy.policyDigest } } : {}),
+      createdAt: run.createdAt, updatedAt: run.updatedAt, publication: 'artifact_only' as const,
+      phase: actions.find(a => a.state === 'running')?.effect.nodeId ?? run.status,
+      budget: { limits: run.spec!.limits, ...budget },
+      delivery: uncertain ? 'delivery_unknown' as const : run.status === 'ready' ? 'available' as const : 'pending' as const,
+      ...result,
+      ...(needsAuthorization ? { authorization: { kind: 'needs_authorization' as const, scope: run.scope, requestRef: `graph-grant:${run.graphRunId}` } } : {}),
+      ...(interrupt && run.status === 'waiting_input' ? { interrupt: { interruptId: interrupt.interruptId, inputDigest: interrupt.inputDigest, kind: interrupt.kind } } : {}),
+      ...(run.status === 'failed' ? { error: { schemaVersion: 1 as const, code: 'INTERNAL_ERROR' as const, message: 'Graph delivery stopped before verified publication', retryable: false as const, nextAction: 'stop' as const } } : {}),
+      ...(uncertain ? { error: { schemaVersion: 1 as const, code: run.status === 'cancel_pending' ? 'CANCEL_UNCONFIRMED' as const : 'ACTION_OUTCOME_UNKNOWN' as const,
+        message: 'Physical execution requires reconciliation', retryable: false as const, nextAction: 'reconcile' as const } } : {}),
+    });
+  }
+  private replay(request: Exclude<GraphRequest, StartGraphRequest>): boolean {
+    const row = this.options.db.prepare('SELECT graph_run_id,input_digest FROM graph_requests WHERE scope_json=? AND idempotency_key=?')
+      .get(workerCanonical(request.scope), request.idempotencyKey) as { graph_run_id: string; input_digest: string } | undefined;
+    if (!row) return false;
+    if (row.graph_run_id !== request.graphRunId || row.input_digest !== computeGraphInputDigest(request)) throw new GraphContractError('IDEMPOTENCY_CONFLICT');
+    return true;
+  }
+  async handle(connection: object, method: string, params: unknown): Promise<unknown> {
+    const pending = this.handleRequest(connection, method, params);
+    this.pendingRequests.add(pending);
+    try { return await pending; }
+    catch (error) { throw new GraphContractError(GraphErrorCode.parse(graphRpcError(error).code)); }
+    finally { this.pendingRequests.delete(pending); }
+  }
+  private async handleRequest(connection: object, method: string, params: unknown): Promise<unknown> {
+    const registration = this.caller(connection);
+    if (method === 'graph.contract') {
+      synchronous(registration.authorize('read'));
+      const request = GraphStatusRequest.parse(params); const run = this.bound(registration, request.scope, request.graphRunId);
+      const row = this.row(run.graphRunId); const descriptor = JSON.parse(row.descriptor_json) as Descriptor;
+      const result = row.result_json ? JSON.parse(row.result_json) as StoredResult : undefined;
+      const refs = result?.evidenceRefs.filter(ref => ref.startsWith('graph-contract:')) ?? [];
+      if (!descriptor.contractEnvelope || !result?.candidate || !result.resultRef || refs.length !== 1) throw Error('GRAPH_CONTRACT_RECEIPT_UNPUBLISHED');
+      const receipt = await loadGraphContractCompletion(descriptor.root, refs[0]!, { run, envelope: descriptor.contractEnvelope,
+        joinRef: result.resultRef, candidateRevision: result.candidate.candidateRevision, artifactDigest: result.candidate.artifactDigest });
+      synchronous(registration.authorize('read'));
+      if (this.closed || workerCanonical(this.bound(registration, request.scope, request.graphRunId)) !== workerCanonical(run)) throw Error('GRAPH_CONTRACT_SNAPSHOT_CHANGED');
+      return receipt;
+    }
+    if (method === 'graph.status' || method === 'graph.result') {
+      synchronous(registration.authorize('read'));
+      const request = GraphStatusRequest.parse(params);
+      return this.status(this.bound(registration, request.scope, request.graphRunId), registration);
+    }
+    if (method === 'graph.validate') return compileGraphSpec(GraphSpec.parse(params));
+    const request = GraphRequest.parse(params);
+    if (!same(request.scope, registration.scope)) throw new GraphContractError('SCOPE_MISMATCH');
+    if ((method === 'graph.start' || method === 'graph.submit') && request.kind === 'start') return this.submit(registration, request);
+    const reconcile = method === 'graph.reconcile';
+    if ((!['graph.cancel', 'graph.reconcile'].includes(method) || request.kind !== 'cancel') && (method !== 'graph.resume' || request.kind !== 'resume')) throw new GraphContractError('INPUT_CONTRACT_INVALID');
+    synchronous(registration.authorize(request.kind === 'cancel' ? 'cancel' : 'resume'));
+    const run = this.bound(registration, request.scope, request.graphRunId);
+    const replay = this.replay(request);
+    // Only the unchanged cancellation intent can be retried as reconciliation.
+    // Later revisions/generations are a lookup, never authority to stop a new owner.
+    if (replay && !(reconcile && run.status === 'cancel_pending' && run.revision === request.expectedRevision + 1)) return this.status(run, registration);
+    if (!replay && run.revision !== request.expectedRevision) throw new GraphContractError('REVISION_CONFLICT');
+    if (request.kind === 'cancel') {
+      const pending = replay ? run : this.runs.projectRequest(request, { ...fence(run), status: 'cancel_pending' });
+      const entry = this.live.get(run.graphRunId);
+      if (entry?.driver) void entry.driver.cancel().catch(() => {});
+      else if (run.generation === 0) this.runs.project({ ...fence(pending), status: 'cancelled' });
+      if (reconcile && run.generation > 0) {
+        const receiptId = `public-cancel:${createHash('sha256').update(workerCanonical({ scope: request.scope,
+          idempotencyKey: request.idempotencyKey, digest: computeGraphInputDigest(request) })).digest('hex')}`;
+        let authorizationFailed = false;
+        try {
+          await cancelUnstartedGraphWorker(this.options.db, new GraphReconciler(this.options.db), { fence: fence(pending), receiptId },
+            () => {
+              try { synchronous(registration.authorize('cancel')); }
+              catch (error) { authorizationFailed = true; throw error; }
+            });
+        } catch (error) {
+          if (authorizationFailed) throw error;
+          synchronous(registration.authorize('cancel'));
+          // A finite bounded writer may have durable stopped/output evidence even
+          // when the ledger ACK was lost. Recovery never dispatches it again.
+          try {
+            const descriptor = JSON.parse(this.row(run.graphRunId).descriptor_json) as Descriptor;
+            await cancelJournaledBoundedWriter(this.options.db, descriptor.root, registration.delivery.repositoryPath,
+              { fence: fence(pending), receiptId }, () => {
+                try { synchronous(registration.authorize('cancel')); }
+                catch (failure) { authorizationFailed = true; throw failure; }
+              });
+          } catch (failure) {
+            if (authorizationFailed) throw failure;
+            try {
+              const descriptor = JSON.parse(this.row(run.graphRunId).descriptor_json) as Descriptor;
+              await cancelUnstartedGraphPreparation(this.options.db, descriptor.root, registration.delivery.repositoryPath,
+                { fence: fence(pending), receiptId }, () => {
+                  try { synchronous(registration.authorize('cancel')); }
+                  catch (denied) { authorizationFailed = true; throw denied; }
+                });
+            } catch (denied) {
+              if (authorizationFailed) throw denied;
+              // Operator diagnostics remain local. Never print raw filesystem,
+              // adapter or SQLite error text into either RPC or daemon logs.
+              const reasons = new Set(['SCOPE', 'PROGRAM', 'PREDECESSORS', 'NOT_STARTED', 'CANDIDATE',
+                'NOT_CANCELLING', 'CHANGED', 'ADMISSION', 'WORKSPACE', 'LOCK_PRESENT', 'DECISION']);
+              const reason = denied instanceof Error ? denied.message.replace(/^PREPARATION_RECOVERY_/, '') : '';
+              console.error(JSON.stringify({ event: 'graph_recovery_blocked', graphRunId: run.graphRunId,
+                stage: 'unstarted_preparation', code: reasons.has(reason) ? `PREPARATION_RECOVERY_${reason}` : graphRpcError(denied).code }));
+            }
+          }
+          // Intent is already durable. Missing/conflicting evidence cannot undo
+          // its acknowledgement; return current state without settling or releasing.
+        }
+        // Successful G15 commit rechecked the grant in its final transaction.
+        // Later expiry cannot turn that completed operation into a rejected request.
+      }
+      return this.status(this.runs.get(run.scope, run.graphRunId)!, registration);
+    }
+    const row = this.row(run.graphRunId);
+    const proof = row.interrupt_json ? JSON.parse(row.interrupt_json) as GraphDeliveryInterrupt : undefined;
+    if (run.status !== 'waiting_input' || !proof || proof.interruptId !== request.interruptId) throw new GraphContractError('REVISION_CONFLICT');
+    if (request.input.kind !== 'data' || !same(request.input.value, { inputDigest: run.identity.inputDigest }) || proof.inputDigest !== run.identity.inputDigest) throw new GraphContractError('INPUT_CONTRACT_INVALID');
+    const driver = this.live.get(run.graphRunId)?.driver;
+    if (!driver) throw new GraphContractError('ACTION_OUTCOME_UNKNOWN');
+    if (run.leaseExpiresAt === null || run.leaseExpiresAt <= Date.now() || Date.now() >= run.createdAt + run.spec!.limits.deadlineSeconds * 1000) throw new GraphContractError('GRANT_EXPIRED');
+    driver.verifyResume(proof);
+    this.runs.projectRequest(request, { ...fence(run), status: 'running' });
+    driver.resumeQuality(proof);
+    return this.status(this.runs.get(run.scope, run.graphRunId)!, registration);
+  }
+  private submit(registration: GraphHostRegistration, request: StartGraphRequest) {
+    if (request.source.product !== registration.product) throw new GraphContractError('UNAUTHENTICATED');
+    const input = request.spec.input;
+    if (input.repositoryRef !== registration.repositoryRef || input.taskRef !== registration.taskRef || request.inputArtifactRef !== registration.inputArtifactRef
+      || !registration.delivery.acceptanceRegistry.some(a => a.ref === input.acceptanceRef)) throw new GraphContractError('POLICY_DENIED');
+    const boundContract = registration.delivery.deliveryContract ? bindGraphDeliveryContract(request,
+      { ...registration.delivery, deliveryContract: registration.delivery.deliveryContract }) : undefined;
+    request = boundContract?.request ?? request;
+    const compiled = compileGraphSpec(request.spec);
+    let created = false;
+    const run = this.options.db.transaction(() => {
+      synchronous(registration.authorize());
+      const prior = this.options.db.prepare('SELECT graph_run_id FROM graph_requests WHERE scope_json=? AND idempotency_key=?')
+        .get(workerCanonical(request.scope), request.idempotencyKey) as { graph_run_id: string } | undefined;
+      if (!prior) {
+        if (registration.admitNewRuns) {
+          const admitted: unknown = registration.admitNewRuns();
+          if (admitted !== true) {
+            void Promise.resolve(admitted).catch(() => {});
+            throw new GraphContractError('GRAPH_ADMISSION_DISABLED');
+          }
+        }
+        assertGraphDeliverySupported(registration.delivery);
+      }
+      const run = this.runs.create(request, graphDeliveryVersion(compiled), Date.now());
+      if (prior && !this.options.db.prepare('SELECT 1 FROM graph_public_delivery WHERE graph_run_id=?').get(run.graphRunId)) throw new GraphContractError('CHECKPOINT_INCOMPATIBLE');
+      const descriptor: Descriptor = { registrationId: registration.id, request, root: join(this.options.root, run.graphRunId), launchOwner: this.owner,
+        ...(boundContract ? { contractEnvelope: boundContract.envelope } : {}) };
+      created = this.options.db.prepare('INSERT OR IGNORE INTO graph_public_delivery(graph_run_id,descriptor_json) VALUES (?,?)').run(run.graphRunId, JSON.stringify(descriptor)).changes === 1;
+      return this.bound(registration, run.scope, run.graphRunId);
+    }).immediate();
+    if (created) {
+      // Only the durable reservation winner schedules; even construction is deferred.
+      const entry: { driver?: GraphDelivery; done: Promise<void> } = { done: Promise.resolve() };
+      this.live.set(run.graphRunId, entry);
+      entry.done = new Promise<void>(resolve => setImmediate(resolve)).then(async () => {
+        if (this.closed || this.runs.get(run.scope, run.graphRunId)!.status === 'cancelled') return;
+        try {
+          const descriptor = JSON.parse(this.row(run.graphRunId).descriptor_json) as Descriptor;
+          if (descriptor.launchOwner !== this.owner) throw Error('LAUNCH_OWNER_MISMATCH');
+          entry.driver = new GraphDelivery({ ...registration.delivery, db: this.options.db, root: descriptor.root, request: descriptor.request, reservedRun: run,
+            ...(descriptor.contractEnvelope ? { contractEnvelope: descriptor.contractEnvelope } : {}),
+            acquire: this.options.acquire, ...(this.options.authorizePolicy ? { authorizePolicy: this.options.authorizePolicy } : {}), authorize: () => { synchronous(registration.authorize()); },
+            authorizeCancel: () => { synchronous(registration.authorize('cancel')); },
+            publish: (candidate, feedbackRef, contractReceiptRef) => {
+              const { candidateRevision, artifactRefs, artifactDigest } = candidate;
+              const output: StoredResult = { candidate: { candidateRevision, artifactRefs, artifactDigest }, evidenceRefs: [feedbackRef, ...(contractReceiptRef ? [contractReceiptRef] : [])], resultRef: feedbackRef };
+              this.options.db.prepare('UPDATE graph_public_delivery SET result_json=? WHERE graph_run_id=?').run(JSON.stringify(output), run.graphRunId);
+            },
+            qualityInterrupt: proof => {
+              const current = this.runs.get(run.scope, run.graphRunId)!;
+              this.options.db.transaction(() => {
+                synchronous(registration.authorize());
+                this.options.db.prepare('UPDATE graph_public_delivery SET interrupt_json=? WHERE graph_run_id=?').run(JSON.stringify(proof), run.graphRunId);
+                this.runs.project({ ...fence(current), status: 'waiting_input' });
+              }).immediate();
+            } });
+          await entry.driver.run();
+          const stopped = this.runs.get(run.scope, run.graphRunId)!;
+          if (stopped.generation === 0 && stopped.status === 'cancel_pending') this.runs.project({ ...fence(stopped), status: 'cancelled' });
+        } catch {
+          const current = this.runs.get(run.scope, run.graphRunId)!;
+          // Before a worker exists, failure has no ambiguous external effects.
+          if (current.generation === 0 && current.status === 'queued') this.runs.project({ ...fence(current), status: 'failed' });
+        }
+      });
+    }
+    return this.status(run, registration);
+  }
+  close(): Promise<void> {
+    this.closed = true;
+    this.closing ??= this.drain();
+    return this.closing;
+  }
+  private async drain(): Promise<void> {
+    const draining = [...this.live.entries()].map(async ([id, entry]) => {
+      try {
+        const descriptor = JSON.parse(this.row(id).descriptor_json) as Descriptor;
+        const run = this.runs.get(descriptor.request.scope, id)!;
+        if (!['ready', 'failed', 'cancelled', 'cancel_pending'].includes(run.status)) this.runs.project({ ...fence(run), status: 'cancel_pending' });
+        if (run.generation === 0) {
+          const current = this.runs.get(run.scope, id)!;
+          if (current.status === 'cancel_pending') this.runs.project({ ...fence(current), status: 'cancelled' });
+        }
+        await entry.driver?.cancel();
+      } finally {
+        // run() may still be preparing the module, and a bounded worker stop
+        // may leave action persistence/release pending. Neither is DB quiescence.
+        try { await entry.done; } finally { await entry.driver?.drainDatabaseUsers(); }
+      }
+    });
+    // A deadline cannot prove database users are gone. Forced process recovery
+    // keeps its existing durable uncertainty; graceful shutdown waits for I/O.
+    await Promise.allSettled([...draining, ...this.pendingRequests]);
+  }
+}
+
+// Explicit local owner trust: owner-only config plus a private Unix socket, never
+// a scope/principal taken from RPC JSON. Remote identities require resolveCaller.
+const ref = z.string().min(1).max(256);
+const hostConfig = z.object({ schemaVersion: z.literal(1), admissionEnabled: z.boolean().optional(), registration: z.object({ id: ref, scope: GraphScope,
+  repositoryRef: ref, repositoryPath: z.string().min(1), taskRef: ref, task: z.string().min(1).max(65536), inputArtifactRef: ref,
+  deliveryContract: DeliveryContractV2.optional(),
+  executionContextPath: z.string().min(1).max(4096).optional(),
+  writer: z.object({ agentId: ref, capabilityId: ref }).strict(), reviewer: z.object({ agentId: ref, capabilityId: ref }).strict(),
+  boundedMessages: z.object({ provider: z.enum(['anthropic', 'deepseek']).optional(), baseUrl: z.string().min(1).max(2048).optional(),
+    model: ref, files: z.array(ref).min(1).max(16), acceptance: z.string().min(1).max(16000) }).strict().optional(),
+  acceptanceRegistry: z.array(z.object({ ref, command: z.string().min(1), passExitCodes: z.array(z.number().int()), failExitCodes: z.array(z.number().int()) }).strict()).min(1),
+  grant: z.object({ scope: GraphScope, expiresAt: z.number().int().positive(), operations: z.array(z.enum(['read', 'execute', 'cancel', 'resume'])).min(1) }).strict(),
+}).strict() }).strict();
+function trustedConfig(path: string) {
+  const fd = openSync(path, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
+  try { const stat = fstatSync(fd);
+    if (!stat.isFile() || stat.size > 131072 || (stat.mode & 0o077) !== 0 || stat.uid !== process.getuid?.()) throw Error('GRAPH_CONFIG_OWNER_REQUIRED');
+    const bytes = Buffer.alloc(131073); let offset = 0;
+    for (;;) { const count = readSync(fd, bytes, offset, bytes.length - offset, offset); if (!count) break; offset += count;
+      if (offset === bytes.length) throw Error('GRAPH_CONFIG_LIMIT'); }
+    return hostConfig.parse(JSON.parse(bytes.subarray(0, offset).toString('utf8')));
+  } finally { closeSync(fd); }
+}
+export interface LocalGraphRegistrationOptions {
+  resolveDeliveryContractPolicy?: (input: { repositoryPath: string; scope: GraphScope; contract: DeliveryContractV2 }) => Promise<{
+    policy: GraphContractHostPolicy;
+    /** Synchronous live policy binding; not an async best-effort recheck. */
+    assertCurrent: () => void;
+  }>;
+  resolveExecutionContext?: (input: { configPath: string; repositoryPath: string; scope: GraphScope;
+    frozen: NonNullable<GraphDeliveryOptions['deliveryContract']>['frozen'] }) => Promise<GraphExecutionContextRegistration>;
+}
+export async function loadLocalGraphRegistration(path: string, adapters: ReadonlyMap<string, AgentAdapter>, options: LocalGraphRegistrationOptions = {}): Promise<GraphHostRegistration> {
+  const config = trustedConfig(path).registration;
+  const bindingDigest = (value: typeof config) => { const { grant: _grant, ...binding } = value; return createHash('sha256').update(workerCanonical(binding)).digest('hex'); };
+  const digest = bindingDigest(config);
+  let policyAuthority: (() => void) | undefined;
+  let executionContext: GraphExecutionContextRegistration | undefined;
+  const authorize = (operation: 'read' | 'execute' | 'cancel' | 'resume' = 'execute') => {
+    const fresh = trustedConfig(path).registration;
+    if (bindingDigest(fresh) !== digest || !same(fresh.grant.scope, config.scope)
+      || !fresh.grant.operations.includes(operation) || ((operation === 'execute' || operation === 'resume') && fresh.grant.expiresAt <= Date.now()))
+      throw new GraphContractError('GRANT_EXPIRED');
+    if (operation === 'execute' || operation === 'resume') synchronous(policyAuthority?.());
+    if (operation === 'execute' || operation === 'resume') synchronous(executionContext?.assertCurrent());
+  };
+  authorize('read');
+  let deliveryContract: GraphDeliveryOptions['deliveryContract'];
+  if (config.deliveryContract) {
+    if (!options.resolveDeliveryContractPolicy) throw Error('GRAPH_CONTRACT_POLICY_REQUIRED');
+    const resolved = await options.resolveDeliveryContractPolicy({ repositoryPath: config.repositoryPath, scope: config.scope, contract: config.deliveryContract });
+    if (typeof resolved.assertCurrent !== 'function') throw Error('GRAPH_CONTRACT_POLICY_REQUIRED');
+    policyAuthority = resolved.assertCurrent;
+    deliveryContract = parseGraphContractRegistration({ frozen: freezeDeliveryContract(config.deliveryContract), policy: resolved.policy });
+    authorize('execute');
+  }
+  if (config.executionContextPath) {
+    if (!deliveryContract || !options.resolveExecutionContext) throw Error('GRAPH_CONTEXT_REGISTRATION_REQUIRED');
+    if (config.scope.tenantId !== 'default') throw Error('GRAPH_CONTEXT_SCOPE_UNSUPPORTED');
+    executionContext = snapshotGraphExecutionContext(await options.resolveExecutionContext({ configPath: config.executionContextPath,
+      repositoryPath: config.repositoryPath, scope: config.scope, frozen: deliveryContract.frozen }));
+    authorize('execute');
+  }
+  let writer = adapters.get(config.writer.agentId); let reviewer = adapters.get(config.reviewer.agentId);
+  if (config.boundedMessages) {
+    const provider = config.boundedMessages.provider ?? 'anthropic';
+    if (config.writer.agentId !== `${provider}-bounded-writer` || config.writer.capabilityId !== `${provider}-bounded-writer.writer`
+      || config.reviewer.agentId !== `${provider}-bounded-reviewer` || config.reviewer.capabilityId !== `${provider}-bounded-reviewer.reviewer`) throw Error('GRAPH_BOUNDED_IDENTITIES_REQUIRED');
+    const { createBoundedMessagesAdapter } = await import('@osstack/agents');
+    const apiKey = process.env[provider === 'deepseek' ? 'DEEPSEEK_API_KEY' : 'ANTHROPIC_API_KEY'];
+    const { model, files, acceptance, baseUrl } = config.boundedMessages;
+    const common = { provider, model, files, acceptance, ...(baseUrl === undefined ? {} : { baseUrl }), ...(apiKey ? { apiKey } : {}),
+      authorize: () => authorize('execute') };
+    writer = await createBoundedMessagesAdapter({ ...common, role: 'writer' });
+    reviewer = await createBoundedMessagesAdapter({ ...common, role: 'reviewer' });
+    authorize('read');
+  }
+  if (!writer || !reviewer || writer.id === reviewer.id) throw Error('GRAPH_REGISTERED_AGENTS_REQUIRED');
+  const writerId = writer.id; const reviewerId = reviewer.id;
+  return { id: config.id, scope: config.scope, product: 'osstack', repositoryRef: config.repositoryRef, taskRef: config.taskRef, inputArtifactRef: config.inputArtifactRef,
+    authorize, admitNewRuns: () => trustedConfig(path).admissionEnabled !== false, delivery: { repositoryPath: config.repositoryPath, task: config.task,
+      ...(deliveryContract ? { deliveryContract } : {}),
+      ...(executionContext ? { executionContext } : {}),
+      writer: { identity: writer.id, adapter: writer, capabilityId: config.writer.capabilityId },
+      reviewer: { identity: reviewer.id, adapter: reviewer, capabilityId: config.reviewer.capabilityId },
+      verifyReviewer: async proof => { authorize('read'); if (proof.writerIdentity !== writerId || proof.reviewerIdentity !== reviewerId || writerId === reviewerId) throw Error('INDEPENDENT_REVIEWER_REQUIRED'); },
+      acceptanceRegistry: config.acceptanceRegistry } };
+}
+
+
+FILE packages/cli/src/graph-execution-command.ts
+import { assertGraphPlatform } from './graph-platform.js';
+import { closeSync, constants, fstatSync, openSync, readSync } from 'node:fs';
+import {
+  GRAPH_JSON_LIMITS, GraphContractError, GraphDelegationStatus, GraphDeliveryUnknown, GraphError,
+  GraphRequest, GraphScope, GraphStatusRequest, computeGraphInputDigest,
+} from '@osstack/protocol';
+
+export interface GraphCommandDependencies {
+  stdout?: (text: string) => void;
+  stderr?: (text: string) => void;
+  rpc?: (method: string, params: unknown) => Promise<unknown>;
+}
+export const GRAPH_EXECUTION_HELP = `Usage: osstack graph <command> [--json]
+  validate --spec FILE               Offline fixed-template and budget validation
+  run --request FILE                Submit a StartGraphRequest to the local daemon
+  status --run ID --scope FILE       Read authoritative run state
+  result --run ID --scope FILE       Read artifact-only delivery and evidence references
+  contract --run ID --scope FILE     Read a verified host contract completion receipt
+  cancel --request FILE             Persist cancellation intent; confirmation is separate
+  reconcile --request FILE          Recheck cancellation using trusted host no-child evidence
+  resume --request FILE             Resume an exact interrupt with current host authorization
+Request/scope files are strict v1 JSON (max 64 KiB). No implicit scope or grant.
+run/cancel/reconcile/resume retain the request's idempotencyKey across transport retries.
+Exit: 0 acknowledged; 1 input/RPC rejection; 2 delivery_unknown (retry the same request).
+The server must have explicit trusted graph-host configuration. graph explain remains available.`;
+
+function readJson(path: string): unknown {
+  const fd = openSync(path, constants.O_RDONLY | constants.O_NONBLOCK);
+  try {
+    const st = fstatSync(fd);
+    if (!st.isFile() || st.size > GRAPH_JSON_LIMITS.maxBytes) throw new GraphContractError('INPUT_CONTRACT_INVALID');
+    const bytes = Buffer.alloc(GRAPH_JSON_LIMITS.maxBytes + 1);
+    let size = 0;
+    while (size < bytes.length) {
+      const count = readSync(fd, bytes, size, bytes.length - size, null);
+      if (!count) break;
+      size += count;
+    }
+    if (size > GRAPH_JSON_LIMITS.maxBytes) throw new GraphContractError('INPUT_CONTRACT_INVALID');
+    return JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes.subarray(0, size))) as unknown;
+  } finally { closeSync(fd); }
+}
+function options(args: string[], allowed: string[]): Map<string, string> {
+  const found = new Map<string, string>();
+  for (let index = 0; index < args.length; index++) {
+    const key = args[index]!;
+    if (found.has(key) || ![...allowed, '--json'].includes(key)) throw new GraphContractError('INPUT_CONTRACT_INVALID');
+    const value = key === '--json' ? 'true' : args[++index];
+    if (!value || value.startsWith('--')) throw new GraphContractError('INPUT_CONTRACT_INVALID');
+    found.set(key, value);
+  }
+  for (const key of allowed) if (!found.has(key)) throw new GraphContractError('INPUT_CONTRACT_INVALID');
+  return found;
+}
+function failure(code: unknown, message: string): GraphError {
+  const nextAction = code === 'REVISION_CONFLICT' ? 'refresh' : code === 'UNAUTHENTICATED' || code === 'POLICY_DENIED' || code === 'GRANT_EXPIRED' ? 'reauthorize'
+    : code === 'ACTION_OUTCOME_UNKNOWN' || code === 'CANCEL_UNCONFIRMED' ? 'reconcile'
+    : code === 'EXECUTOR_UNSUPPORTED' || code === 'GRAPH_ADMISSION_DISABLED' ? 'stop' : 'fix_input';
+  const parsed = GraphError.safeParse({ schemaVersion: 1, code, message: message.slice(0, 4096) || 'Graph request rejected', retryable: false, nextAction });
+  return parsed.success ? parsed.data : { schemaVersion: 1, code: 'INTERNAL_ERROR', message: 'Graph request failed', retryable: false, nextAction: 'stop' };
+}
+export async function handleGraphExecutionCommand(args: string[], deps: GraphCommandDependencies = {}): Promise<number> {
+  const stdout = deps.stdout ?? console.log; const stderr = deps.stderr ?? console.error;
+  const json = args.includes('--json');
+  const emit = (value: unknown): void => { stdout(JSON.stringify(value, null, json ? 2 : undefined)); };
+  if (args.length === 2 && args[1] === '--help') { stdout(GRAPH_EXECUTION_HELP); return 0; }
+  let sentMutation: GraphRequest | undefined;
+  const unknownDelivery = (mutation: GraphRequest): number => {
+    emit(GraphDeliveryUnknown.parse({ schemaVersion: 1, kind: 'delivery_unknown', scope: mutation.scope,
+      idempotencyKey: mutation.idempotencyKey, inputDigest: computeGraphInputDigest(mutation),
+      ...(mutation.kind === 'start' ? {} : { graphRunId: mutation.graphRunId }), nextAction: 'retry_same_request' }));
+    return 2;
+  };
+  try {
+    const command = args[0];
+    if (command !== "validate") assertGraphPlatform();
+    if (command === 'validate') {
+      const opts = options(args.slice(1), ['--spec']);
+      const { compileGraphSpec } = await import('@osstack/graph/spec-compiler');
+      let compiled: ReturnType<typeof compileGraphSpec>;
+      try { compiled = compileGraphSpec(readJson(opts.get('--spec')!)); }
+      catch { throw new GraphContractError('SPEC_INVALID'); }
+      emit({ schemaVersion: 1, valid: true, specHash: compiled.specHash, template: compiled.spec.template,
+        compilerVersion: compiled.compilerVersion, compiledProgramDigest: compiled.compiledProgramDigest,
+        nodes: compiled.plan.nodes.map(({ id, operation, inputs }) => ({ id, operation, inputs })), budget: compiled.budget });
+      return 0;
+    }
+    let params: unknown; let method: string; let mutation: GraphRequest | undefined;
+    if (command === 'status' || command === 'result' || command === 'contract') {
+      const opts = options(args.slice(1), ['--run', '--scope']);
+      params = GraphStatusRequest.parse({ schemaVersion: 1, scope: GraphScope.parse(readJson(opts.get('--scope')!)), graphRunId: opts.get('--run') });
+      method = `graph.${command}`;
+    } else if (command === 'run' || command === 'cancel' || command === 'reconcile' || command === 'resume') {
+      const opts = options(args.slice(1), ['--request']);
+      mutation = GraphRequest.parse(readJson(opts.get('--request')!));
+      if (mutation.kind !== (command === 'run' ? 'start' : command === 'reconcile' ? 'cancel' : command)) throw new GraphContractError('INPUT_CONTRACT_INVALID');
+      params = mutation; method = command === 'reconcile' ? 'graph.reconcile' : `graph.${mutation.kind}`;
+    } else throw new GraphContractError('INPUT_CONTRACT_INVALID');
+    if (!deps.rpc) throw new GraphContractError('UNAUTHENTICATED');
+    let response: unknown;
+    sentMutation = mutation;
+    try { response = await deps.rpc(method, params); }
+    catch {
+      if (!mutation) throw new GraphContractError('INTERNAL_ERROR');
+      return unknownDelivery(mutation);
+    }
+    if (!response || typeof response !== 'object') throw new GraphContractError('OUTPUT_CONTRACT_INVALID');
+    const envelope = response as { ok?: unknown; result?: unknown; error?: { code?: unknown; message?: unknown } };
+    if (envelope.ok === false) {
+      const error = failure(envelope.error?.code, typeof envelope.error?.message === 'string' ? envelope.error.message : 'Graph request rejected');
+      if (json) emit({ schemaVersion: 1, kind: 'graph_error', error }); else stderr(`osstack graph: ${error.code}: ${error.message}`);
+      return 1;
+    }
+    if (envelope.ok !== true) throw new GraphContractError('OUTPUT_CONTRACT_INVALID');
+    if (command === 'contract') {
+      const { GraphContractCompletionReceipt } = await import('./graph-contract-receipt.js');
+      const receipt = GraphContractCompletionReceipt.safeParse(envelope.result);
+      if (!receipt.success) throw new GraphContractError('OUTPUT_CONTRACT_INVALID');
+      const requested = GraphStatusRequest.parse(params);
+      if (JSON.stringify(receipt.data.scope) !== JSON.stringify(requested.scope) || receipt.data.graphRunId !== requested.graphRunId) throw new GraphContractError('RESPONSE_MISMATCH');
+      emit(receipt.data); return 0;
+    }
+    const parsedStatus = GraphDelegationStatus.safeParse(envelope.result);
+    if (!parsedStatus.success) throw new GraphContractError('OUTPUT_CONTRACT_INVALID');
+    const status = parsedStatus.data;
+    const requested = GraphStatusRequest.safeParse(params);
+    if (JSON.stringify(status.scope) !== JSON.stringify((mutation ?? requested.data)!.scope)
+      || (mutation?.kind !== 'start' && status.graphRunId !== (mutation ?? requested.data)!.graphRunId)
+      || (mutation?.kind === 'start' && (status.admissionBinding?.requestInputDigest ?? status.inputDigest) !== computeGraphInputDigest(mutation))) throw new GraphContractError('RESPONSE_MISMATCH');
+    emit(status); return 0;
+  } catch (error) {
+    // A malformed or mismatched acknowledgement cannot prove non-execution.
+    if (sentMutation) return unknownDelivery(sentMutation);
+    const code = error instanceof GraphContractError ? error.code : 'INPUT_CONTRACT_INVALID';
+    const report = failure(code, error instanceof GraphContractError ? error.message : 'Invalid graph input or response');
+    if (json) emit({ schemaVersion: 1, kind: 'graph_error', error: report }); else stderr(`osstack graph: ${report.code}: ${report.message}`);
+    return 1;
+  }
+}
+
+
+FILE packages/cli/src/graph-execution-command.test.ts
+import { mkdtempSync, writeFileSync, rmSync, readdirSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { afterEach, expect, it, vi } from 'vitest';
+import { computeGraphInputDigest, StartGraphRequest } from '@osstack/protocol';
+import { handleGraphCommand } from './graph-command.js';
+const roots: string[] = [];
+afterEach(() => { vi.unstubAllEnvs(); for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true }); });
+function fixture() {
+  const root = mkdtempSync(join(tmpdir(), 'graph-command-')); roots.push(root);
+  const request = StartGraphRequest.parse({ schemaVersion: 1, kind: 'start', scope: { schemaVersion: 1, tenantId: 'local', principalId: 'owner', workspaceId: 'repo' },
+    idempotencyKey: 'one', inputArtifactRef: 'task-input', source: { product: 'osstack', requestId: 'source-one' },
+    spec: { schemaVersion: 1, template: 'code-delivery-v1', publication: 'artifact_only', input: { taskRef: 'task', repositoryRef: 'repo', baseRevision: 'a'.repeat(40), acceptanceRef: 'test' },
+      limits: { maxEpochs: 1, maxBranchAttempts: 1, maxConcurrentReaders: 2, maxConcurrentWritersPerRepo: 1, maxActionStarts: 7, deadlineSeconds: 60, tokenReservationLimit: 49152 } } });
+  const save = (name: string, value: unknown) => { const p = join(root, name); writeFileSync(p, JSON.stringify(value)); return p; };
+  const file = save('request.json', request); const scopeFile = save('scope.json', request.scope); const specFile = save('spec.json', request.spec);
+  const status = { schemaVersion: 1, scope: request.scope, graphRunId: 'graph-1', source: request.source, status: 'queued', revision: 0, generation: 0,
+    inputDigest: computeGraphInputDigest(request), specHash: 'b'.repeat(64), createdAt: 1, updatedAt: 1, publication: 'artifact_only', phase: 'queued',
+    budget: { limits: request.spec.limits, actionStarts: 0, reservedTokens: '0', chargedTokens: '0', accountingBlocked: false }, delivery: 'pending', evidenceRefs: [] };
+  const stdout = vi.fn(); const stderr = vi.fn(); const rpc = vi.fn().mockResolvedValue({ ok: true, result: status });
+  return { root, request, file, specFile, scopeFile, save, status, deps: { stdout, stderr, rpc }, output: () => JSON.parse(stdout.mock.calls.at(-1)![0] as string) as Record<string, unknown> };
+}
+it('validates offline without opening or migrating a reserved control plane', async () => {
+  const f = fixture(); f.save('control-plane-reserved.json', {}); writeFileSync(join(f.root, 'state.db'), 'must not open');
+  vi.stubEnv('OSSTACK_HOME', f.root); const before = readdirSync(f.root);
+  expect(await handleGraphCommand(['validate', '--spec', f.specFile, '--json'], f.deps)).toBe(0);
+  expect(f.output()).toMatchObject({ valid: true, budget: { maxActionStarts: 7 } });
+  expect(f.deps.rpc).not.toHaveBeenCalled(); expect(readdirSync(f.root)).toEqual(before);
+  const invalid = f.save('bad.json', { ...f.request.spec, limits: { ...f.request.spec.limits, maxActionStarts: 1 } });
+  expect(await handleGraphCommand(['validate', '--spec', invalid, '--json'], f.deps)).toBe(1);
+  expect(f.output()).toMatchObject({ error: { code: 'SPEC_INVALID' } });
+});
+it('submits exact business JSON and preserves key on duplicate CLI invocations', async () => {
+  const f = fixture();
+  for (let i = 0; i < 2; i++) expect(await handleGraphCommand(['run', '--request', f.file, '--json'], f.deps)).toBe(0);
+  expect(f.deps.rpc.mock.calls).toEqual([['graph.start', f.request], ['graph.start', f.request]]);
+  expect(f.output()).toMatchObject({ graphRunId: 'graph-1', status: 'queued', inputDigest: computeGraphInputDigest(f.request) });
+});
+it('reads scoped status and result via daemon; rejects mismatched response scope', async () => {
+  const f = fixture();
+  for (const command of ['status', 'result']) expect(await handleGraphCommand([command, '--run', 'graph-1', '--scope', f.scopeFile, '--json'], f.deps)).toBe(0);
+  expect(f.deps.rpc.mock.calls[0]).toEqual(['graph.status', { schemaVersion: 1, scope: f.request.scope, graphRunId: 'graph-1' }]);
+  f.deps.rpc.mockResolvedValue({ ok: true, result: { ...f.status, scope: { ...f.request.scope, principalId: 'someone-else' } } });
+  expect(await handleGraphCommand(['status', '--run', 'graph-1', '--scope', f.scopeFile, '--json'], f.deps)).toBe(1);
+  expect(f.output()).toMatchObject({ error: { code: 'RESPONSE_MISMATCH' } });
+});
+it('lost mutation response reports delivery_unknown and exact retry binding', async () => {
+  const f = fixture(); f.deps.rpc.mockRejectedValue(new Error('response lost'));
+  expect(await handleGraphCommand(['run', '--request', f.file, '--json'], f.deps)).toBe(2);
+  expect(f.output()).toEqual({ schemaVersion: 1, kind: 'delivery_unknown', scope: f.request.scope, idempotencyKey: 'one', inputDigest: computeGraphInputDigest(f.request), nextAction: 'retry_same_request' });
+  expect(f.deps.rpc).toHaveBeenCalledTimes(1);
+});
+it('preserves cancel/resume fences and cannot turn approved booleans into a resume request', async () => {
+  const f = fixture();
+  const cancel = { schemaVersion: 1, kind: 'cancel', scope: f.request.scope, graphRunId: 'graph-1', expectedRevision: 3, idempotencyKey: 'cancel-1' };
+  const resume = { ...cancel, kind: 'resume', idempotencyKey: 'resume-1', interruptId: 'i-1', input: { kind: 'data', value: { inputDigest: f.status.inputDigest } } };
+  for (const request of [cancel, resume]) {
+    expect(await handleGraphCommand([request.kind, '--request', f.save(`${request.kind}.json`, request), '--json'], f.deps)).toBe(0);
+    expect(f.deps.rpc.mock.calls.at(-1)).toEqual([`graph.${request.kind}`, request]);
+  }
+  const count = f.deps.rpc.mock.calls.length;
+  expect(await handleGraphCommand(['resume', '--request', f.save('approved.json', { ...resume, input: true }), '--json'], f.deps)).toBe(1);
+  expect(f.deps.rpc).toHaveBeenCalledTimes(count);
+});
+it('returns stable rejection codes and rejects duplicate flags and oversized JSON before RPC', async () => {
+  const f = fixture(); f.deps.rpc.mockResolvedValue({ ok: false, error: { code: 'IDEMPOTENCY_CONFLICT', message: 'same key, different business input' } });
+  expect(await handleGraphCommand(['run', '--request', f.file, '--json'], f.deps)).toBe(1);
+  expect(f.output()).toMatchObject({ error: { code: 'IDEMPOTENCY_CONFLICT', retryable: false } });
+  f.deps.rpc.mockClear();
+  for (const args of [['run', '--request', f.file, '--request', f.file], ['cancel', '--request', f.file], ['run', '--request', f.save('large.json', 'x'.repeat(70000))]]) {
+    expect(await handleGraphCommand([...args, '--json'], f.deps)).toBe(1);
+  }
+  expect(f.deps.rpc).not.toHaveBeenCalled();
+});
+
+it('malformed and mismatched mutation acknowledgements preserve the original retry key', async () => {
+  const f = fixture();
+  for (const reply of [null, { ok: true, result: {} }, { ok: true, result: { ...f.status, inputDigest: 'c'.repeat(64) } }]) {
+    f.deps.rpc.mockResolvedValue(reply);
+    expect(await handleGraphCommand(['run', '--request', f.file, '--json'], f.deps)).toBe(2);
+    expect(f.output()).toMatchObject({ kind: 'delivery_unknown', idempotencyKey: f.request.idempotencyKey, inputDigest: computeGraphInputDigest(f.request) });
+  }
+});
+
+it.each(['EXECUTOR_UNSUPPORTED', 'GRAPH_ADMISSION_DISABLED'])('surfaces %s as a definite nonretryable rejection', async code => {
+  const f = fixture(); f.deps.rpc.mockResolvedValue({ ok: false, error: { code, message: code } });
+  expect(await handleGraphCommand(['run', '--request', f.file, '--json'], f.deps)).toBe(1);
+  expect(f.output()).toMatchObject({ error: { code, retryable: false, nextAction: 'stop' } });
+  expect(f.deps.rpc).toHaveBeenCalledTimes(1);
+});
+
+it('reconcile sends the strict cancellation contract and preserves its exact retry identity on lost response', async () => {
+  const f = fixture(); const request = { schemaVersion: 1, kind: 'cancel', scope: f.request.scope, graphRunId: 'graph-1', expectedRevision: 3, idempotencyKey: 'settle' };
+  const file = f.save('reconcile.json', request);
+  expect(await handleGraphCommand(['reconcile', '--request', file, '--json'], f.deps)).toBe(0);
+  expect(f.deps.rpc.mock.calls[0]).toEqual(['graph.reconcile', request]);
+  f.deps.rpc.mockRejectedValue(Error('lost response'));
+  expect(await handleGraphCommand(['reconcile', '--request', file, '--json'], f.deps)).toBe(2);
+  expect(f.output()).toMatchObject({ kind: 'delivery_unknown', idempotencyKey: 'settle', inputDigest: computeGraphInputDigest(request), nextAction: 'retry_same_request' });
+  f.deps.rpc.mockClear();
+  expect(await handleGraphCommand(['reconcile', '--request', f.save('forged.json', { ...request, evidenceRefs: ['trust-me'], outcome: 'stopped' }), '--json'], f.deps)).toBe(1);
+  expect(f.deps.rpc).not.toHaveBeenCalled();
+});
+
+it('requires both original and durable digests for host-bound contract acknowledgements', async () => {
+  const f = fixture(); const hostInputDigest = 'e'.repeat(64);
+  const admissionBinding = { requestInputDigest: computeGraphInputDigest(f.request), hostInputDigest, contractDigest: 'a'.repeat(64), policyDigest: 'b'.repeat(64) };
+  f.deps.rpc.mockResolvedValue({ ok: true, result: { ...f.status, inputDigest: hostInputDigest, admissionBinding } });
+  expect(await handleGraphCommand(['run', '--request', f.file, '--json'], f.deps)).toBe(0);
+  for (const invalid of [{ ...admissionBinding, requestInputDigest: 'c'.repeat(64) }, { ...admissionBinding, hostInputDigest: 'd'.repeat(64) }]) {
+    f.deps.rpc.mockResolvedValue({ ok: true, result: { ...f.status, inputDigest: hostInputDigest, admissionBinding: invalid } });
+    expect(await handleGraphCommand(['run', '--request', f.file, '--json'], f.deps)).toBe(2);
+  }
+});
+it('reads only a complete scoped host contract receipt and rejects substituted identities', async () => {
+  const f = fixture(); const digest = 'a'.repeat(64); const effect = { effectKey: digest, evidenceRef: 'evidence', logicalAttempt: 1 };
+  const receipt = { schemaVersion: 1, source: 'osstack_graph_host', graphRunId: 'graph-1', scope: f.request.scope,
+    inputDigest: digest, specHash: digest, generation: 1, epoch: 0, contractDigest: digest, policyDigest: digest, baseHead: 'a'.repeat(40),
+    candidate: { revision: 'b'.repeat(40), tree: 'c'.repeat(40), artifactDigest: digest }, joinRef: 'join',
+    check: { ...effect, id: 'test', registryRef: 'sha256:'+digest, commandDigest: digest, exitCode: 0 },
+    review: { ...effect, verdict: 'accept', writerIdentity: 'writer', reviewerIdentity: 'reviewer', authority: 'registered_host_reviewer', promptDigest: digest },
+    achievedCompletion: 'local_verified', publication: 'artifact_only', contextEvidence: [] };
+  const args = ['contract', '--run', 'graph-1', '--scope', f.scopeFile, '--json'];
+  f.deps.rpc.mockResolvedValue({ ok: true, result: receipt });
+  expect(await handleGraphCommand(args, f.deps)).toBe(0);
+  expect(f.deps.rpc.mock.calls.at(-1)?.[0]).toBe('graph.contract');
+  for (const value of [{...receipt,graphRunId:'other'}, {...receipt,scope:{...f.request.scope,principalId:'other'}}, {...receipt,check:{...receipt.check,exitCode:1}}]) {
+    f.deps.rpc.mockResolvedValue({ok:true,result:value}); expect(await handleGraphCommand(args,f.deps)).toBe(1);
+  }
+});
+
+
+FILE packages/cli/src/graph-delivery-contract.ts
+import { execFileSync } from 'node:child_process';
+import { z } from 'zod';
+import { assertDeliveryContractAdmission, assertDeliveryContractPaths, assertFrozenDeliveryContract, deliveryCheckReference, deliveryContractDigest } from '@osstack/core';
+import { FrozenDeliveryContractV2, GraphBudget, StartGraphRequest, freezeWorkerData, workerCanonical } from '@osstack/protocol';
+import type { AcceptanceCommandSpec } from './graph-verification-store.js';
+
+export interface GraphContractHostPolicy {
+  policyDigest: string;
+  reviewPolicyRef: string;
+  limits: StartGraphRequest['spec']['limits'];
+}
+export interface GraphDeliveryContractRegistration {
+  frozen: FrozenDeliveryContractV2;
+  policy: GraphContractHostPolicy;
+}
+const digest = z.string().regex(/^[a-f0-9]{64}$/);
+const reference = z.string().min(1).max(256);
+const limits = z.unknown().transform((value, ctx): GraphContractHostPolicy['limits'] => {
+  const parsed = GraphBudget.safeParse(value && typeof value === 'object' && !Array.isArray(value) ? { ...value, schemaVersion: 1 } : null);
+  if (!parsed.success) { ctx.addIssue({ code: 'custom', message: 'graph contract policy limits' }); return z.NEVER; }
+  const { schemaVersion: _version, ...result } = parsed.data; return result;
+});
+const policySchema = z.object({ policyDigest: digest, reviewPolicyRef: reference, limits }).strict();
+const acceptanceSchema = z.object({ ref: reference, command: z.string().min(1).max(8192),
+  passExitCodes: z.array(z.number().int().min(0).max(255)), failExitCodes: z.array(z.number().int().min(0).max(255)) }).strict();
+const envelopeSchema = z.object({ schemaVersion: z.literal(1), sourceInputArtifactRef: reference,
+  frozen: FrozenDeliveryContractV2, policy: policySchema, acceptance: acceptanceSchema, contextDigest: digest.optional() }).strict();
+export type GraphContractHostEnvelope = z.infer<typeof envelopeSchema>;
+
+export function parseGraphContractRegistration(value: unknown): GraphDeliveryContractRegistration {
+  const parsed = z.object({ frozen: FrozenDeliveryContractV2, policy: policySchema }).strict().parse(value);
+  return freezeWorkerData({ ...parsed, frozen: assertFrozenDeliveryContract(parsed.frozen) });
+}
+
+/** Host policy is already authorized by the registration. This function grants nothing. */
+export function bindGraphDeliveryContract(requestValue: StartGraphRequest, registration: {
+  repositoryPath: string; task: string; acceptanceRegistry: readonly AcceptanceCommandSpec[];
+  deliveryContract: GraphDeliveryContractRegistration;
+  executionContext?: { configDigest: string };
+}): { request: StartGraphRequest; envelope: GraphContractHostEnvelope } {
+  const request = StartGraphRequest.parse(requestValue);
+  const { frozen, policy } = parseGraphContractRegistration(registration.deliveryContract);
+  const contract = frozen.contract;
+  if (registration.executionContext && request.scope.tenantId !== 'default') throw Error('GRAPH_CONTEXT_SCOPE_UNSUPPORTED');
+  if (contract.mode !== 'implement' || contract.requested_completion !== 'local_verified'
+    || contract.publication_scope.mode !== 'none' || contract.merge_authority.mode !== 'none'
+    || contract.required_checks.length !== 1) throw Error('GRAPH_CONTRACT_UNSUPPORTED');
+  const selected = registration.acceptanceRegistry.filter(item => item.ref === request.spec.input.acceptanceRef);
+  if (selected.length !== 1) throw Error('GRAPH_CONTRACT_REGISTRY_MISMATCH');
+  const acceptance = acceptanceSchema.parse(selected[0]);
+  if (acceptance.passExitCodes.length !== 1 || acceptance.passExitCodes[0] !== 0 || acceptance.failExitCodes.includes(0)
+    || deliveryCheckReference(acceptance.command) !== contract.required_checks[0]!.registry_ref) throw Error('GRAPH_CONTRACT_REGISTRY_MISMATCH');
+  assertDeliveryContractAdmission(frozen, { canonicalRepo: registration.repositoryPath, baseHead: request.spec.input.baseRevision,
+    taskId: request.spec.input.taskRef, goal: registration.task, policyDigest: policy.policyDigest,
+    reviewPolicyRef: policy.reviewPolicyRef, acceptedCommands: [acceptance.command] });
+  for (const name of Object.keys(policy.limits) as (keyof GraphContractHostPolicy['limits'])[]) {
+    if (request.spec.limits[name] > policy.limits[name]) throw Error('GRAPH_CONTRACT_BUDGET_EXCEEDED');
+  }
+  const envelope = freezeWorkerData(envelopeSchema.parse({ schemaVersion: 1, sourceInputArtifactRef: request.inputArtifactRef,
+    frozen, policy, acceptance, ...(registration.executionContext ? { contextDigest: registration.executionContext.configDigest } : {}) }));
+  return { request: freezeWorkerData(StartGraphRequest.parse({ ...request, inputArtifactRef: graphContractInputRef(envelope) })), envelope };
+}
+
+export function graphContractInputRef(envelope: GraphContractHostEnvelope): string {
+  return `graph-contract-input:${deliveryContractDigest(envelopeSchema.parse(envelope))}`;
+}
+
+/** Parses durable host data; provenance and current grant remain the caller's responsibility. */
+export function verifyGraphContractEnvelope(value: unknown, request: StartGraphRequest,
+  registration: { repositoryPath: string; task: string; acceptanceRegistry: readonly AcceptanceCommandSpec[]; deliveryContract: GraphDeliveryContractRegistration; executionContext?: { configDigest: string } }): GraphContractHostEnvelope {
+  const envelope = envelopeSchema.parse(value);
+  const bound = bindGraphDeliveryContract({ ...request, inputArtifactRef: envelope.sourceInputArtifactRef }, registration);
+  if (workerCanonical(bound.envelope) !== workerCanonical(envelope) || workerCanonical(bound.request) !== workerCanonical(request))
+    throw Error('GRAPH_CONTRACT_ENVELOPE_MISMATCH');
+  return freezeWorkerData(envelope);
+}
+
+/** Original base across every repair epoch; --no-renames includes both ends of moves. */
+export function assertGraphContractPaths(frozen: FrozenDeliveryContractV2, workspace: string, candidateRevision?: string): void {
+  const read = (args: string[]) => execFileSync('git', ['-c', 'core.hooksPath=/dev/null', '-c', 'core.fsmonitor=false', ...args], {
+    cwd: workspace, encoding: 'utf8', timeout: 30000, maxBuffer: 16 * 1024 * 1024,
+    env: { ...Object.fromEntries(Object.entries(process.env).filter(([name]) => !name.startsWith('GIT_'))),
+      GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOSYSTEM: '1', GIT_NO_REPLACE_OBJECTS: '1', GIT_TERMINAL_PROMPT: '0' },
+  }).split('\0').filter(Boolean);
+  const paths = read(['diff', '--no-ext-diff', '--no-textconv', '--no-renames', '--name-only', '-z', frozen.contract.base_head,
+    ...(candidateRevision ? [candidateRevision] : []), '--']);
+  if (!candidateRevision) paths.push(...read(['ls-files', '--others', '-z']));
+  assertDeliveryContractPaths(frozen, paths);
+}
+
+
+FILE packages/cli/src/graph-execution-context.ts
+import { createHash } from 'node:crypto';
+import { constants } from 'node:fs';
+import { open } from 'node:fs/promises';
+import { dirname, isAbsolute } from 'node:path';
+import type { AgentAdapter, AgentTask } from '@osstack/agents';
+import type { FrozenDeliveryContractV2 } from '@osstack/protocol';
+import { GraphEffectIdentity, computeGraphEffectKey, freezeWorkerData, workerCanonical } from '@osstack/protocol';
+import { persistDeliveryHostRecord, readDeliveryHostRecord } from './delivery-contract-host.js';
+import type { ExecutionContextReceipt, ExecutionContextReceiptReference } from './execution-context.js';
+
+export interface GraphExecutionContextRegistration {
+  configDigest: string;
+  receiptRoot: string;
+  assertCurrent: () => void;
+  create: (input: { adapter: AgentAdapter; workspacePath: string; frozen: FrozenDeliveryContractV2 }) => Promise<{
+    adapter: AgentAdapter;
+    receiptRefs: () => readonly ExecutionContextReceiptReference[];
+  }>;
+}
+export interface GraphContextEvidence {
+  effect: GraphEffectIdentity;
+  effectKey: string;
+  runId: string; taskId: string; sessionId: string;
+  promptDigest: string;
+  prepared: ExecutionContextReceiptReference;
+  adapterObserved: ExecutionContextReceiptReference;
+  link: ExecutionContextReceiptReference;
+}
+export function snapshotGraphExecutionContext(value: GraphExecutionContextRegistration): GraphExecutionContextRegistration {
+  if (!/^[a-f0-9]{64}$/.test(value.configDigest) || !isAbsolute(value.receiptRoot)
+    || typeof value.assertCurrent !== 'function' || typeof value.create !== 'function') throw Error('GRAPH_CONTEXT_REGISTRATION_INVALID');
+  return Object.freeze({ configDigest: value.configDigest, receiptRoot: value.receiptRoot,
+    assertCurrent: value.assertCurrent.bind(value), create: value.create.bind(value) });
+}
+
+/** Observation is inside context assembly, immediately before the actual adapter receives the final task. */
+export async function prepareGraphExecutionContext(input: {
+  registration: GraphExecutionContextRegistration; adapter: AgentAdapter; workspacePath: string;
+  frozen: FrozenDeliveryContractV2; authorize: () => void; observe?: (task: AgentTask) => void;
+}) {
+  const check = () => {
+    for (const call of [input.authorize, input.registration.assertCurrent]) {
+      const value: unknown = call(); if (value !== undefined) { void Promise.resolve(value).catch(() => {}); throw Error('GRAPH_CONTEXT_AUTHORITY'); }
+    }
+  };
+  check(); const tasks = new Map<string, AgentTask>(); const raw = input.adapter;
+  // The context wrapper uses a Proxy; a frozen target forbids method substitution.
+  const observed: AgentAdapter = { id: raw.id, display_name: raw.display_name, cost_tier: raw.cost_tier,
+    capabilities: raw.capabilities.bind(raw), isAvailable: raw.isAvailable.bind(raw),
+    ...(raw.runtimeIdentity ? { runtimeIdentity: raw.runtimeIdentity.bind(raw) } : {}),
+    ...(raw.confirmStopped ? { confirmStopped: raw.confirmStopped.bind(raw) } : {}),
+    invoke: async function* (task: AgentTask, signal: AbortSignal) {
+      check();
+      if (signal.aborted || tasks.size !== 0) throw Error('GRAPH_CONTEXT_INVOCATION_REPLAY');
+      const exact = freezeWorkerData(structuredClone(task)); tasks.set(task.run_id, exact); input.observe?.(exact);
+      yield* raw.invoke(exact, signal);
+    } };
+  const context = await input.registration.create({ adapter: observed, workspacePath: input.workspacePath, frozen: input.frozen }); check();
+  if (context.adapter.id !== raw.id || typeof context.adapter.confirmStopped !== 'function') throw Error('GRAPH_CONTEXT_ADAPTER_MISMATCH');
+  let started = false;
+  const adapter: AgentAdapter = { id: context.adapter.id, display_name: context.adapter.display_name, cost_tier: context.adapter.cost_tier,
+    capabilities: context.adapter.capabilities.bind(context.adapter), isAvailable: context.adapter.isAvailable.bind(context.adapter),
+    ...(context.adapter.runtimeIdentity ? { runtimeIdentity: context.adapter.runtimeIdentity.bind(context.adapter) } : {}),
+    confirmStopped: context.adapter.confirmStopped.bind(context.adapter),
+    invoke: async function* (task, signal) {
+      check(); if (started || signal.aborted) throw Error('GRAPH_CONTEXT_INVOCATION_REPLAY');
+      started = true; yield* context.adapter.invoke(task, signal);
+    } };
+  return { adapter,
+    evidence: async (runId: string, identity: { effect: GraphEffectIdentity; effectKey: string }): Promise<GraphContextEvidence> => {
+      check(); const task = tasks.get(runId); if (!task) throw Error('GRAPH_CONTEXT_ACTUAL_INVOCATION_REQUIRED');
+      const effect = GraphEffectIdentity.parse(identity.effect); const effectKey = computeGraphEffectKey(effect);
+      if (identity.effectKey !== effectKey) throw Error('GRAPH_CONTEXT_EFFECT_MISMATCH');
+      const promptDigest = createHash('sha256').update(task.prompt).digest('hex');
+      const records: Array<{ ref: ExecutionContextReceiptReference; receipt: ExecutionContextReceipt }> = [];
+      const refs = context.receiptRefs(); if (refs.length !== 2) throw Error('GRAPH_CONTEXT_RECEIPT_COUNT');
+      for (const ref of refs) {
+        const receipt = await readDeliveryHostRecord(input.registration.receiptRoot, ref) as ExecutionContextReceipt; check();
+        if (receipt.schema_version !== 1 || receipt.evidence_boundary !== 'agent_task_prompt_not_provider_wire'
+          || receipt.run_id !== task.run_id || receipt.task_id !== task.task_id || receipt.session_id !== task.session_id
+          || receipt.adapter_id !== raw.id || receipt.capability_id !== task.capability_id || receipt.contract_digest !== input.frozen.digest
+          || receipt.tenant !== 'default'
+          || receipt.prompt_sha256 !== promptDigest || receipt.prompt_bytes !== Buffer.byteLength(task.prompt)
+          || receipt.repo_path !== input.workspacePath || receipt.execution_repo_path !== task.context?.repo_path) throw Error('GRAPH_CONTEXT_RECEIPT_BINDING');
+        records.push({ ref, receipt });
+      }
+      const prepared = records.find(row => row.receipt.phase === 'prepared'); const adapterObserved = records.find(row => row.receipt.phase === 'adapter_observed');
+      if (!prepared || !adapterObserved) throw Error('GRAPH_CONTEXT_RECEIPT_PHASE');
+      const { phase: _phase, observed_at_ms: _observed, ...after } = adapterObserved.receipt;
+      const { phase: _beforePhase, ...before } = prepared.receipt;
+      if (workerCanonical(after) !== workerCanonical(before)) throw Error('GRAPH_CONTEXT_RECEIPT_CHANGED');
+      const value = { effect, effectKey, runId: task.run_id, taskId: task.task_id, sessionId: task.session_id, promptDigest,
+        prepared: { ...prepared.ref }, adapterObserved: { ...adapterObserved.ref } };
+      const link = await persistDeliveryHostRecord(input.registration.receiptRoot, { schemaVersion: 1, source: 'osstack_graph_context_host',
+        contractDigest: input.frozen.digest, contextDigest: input.registration.configDigest, ...value }); check();
+      for (const path of [link.path, input.registration.receiptRoot, dirname(input.registration.receiptRoot)]) {
+        const handle = await open(path, constants.O_RDONLY | constants.O_NOFOLLOW);
+        try { check(); await handle.sync(); check(); } finally { await handle.close(); }
+      }
+      check(); return { ...value, link };
+    },
+  };
+}
+
+
+FILE packages/cli/src/graph-contract-receipt.ts
+import { constants } from 'node:fs';
+import { open } from 'node:fs/promises';
+import { join } from 'node:path';
+import { z } from 'zod';
+import { GraphEffectIdentity, GraphScope, computeGraphEffectKey, freezeWorkerData, workerCanonical } from '@osstack/protocol';
+import { deliveryCheckReference } from '@osstack/core';
+import type { GraphRun } from '@osstack/core';
+import type { GraphArtifactStore } from '@osstack/core/graph-artifacts';
+import type { GraphVerificationDecision } from './graph-verification-join.js';
+import { loadGraphVerificationEvidence } from './graph-verification-store.js';
+import { persistDeliveryHostRecord, readDeliveryHostRecord } from './delivery-contract-host.js';
+import type { GraphContractHostEnvelope } from './graph-delivery-contract.js';
+import type { GraphContextEvidence } from './graph-execution-context.js';
+import { loadDeliveryReceipt } from './graph-delivery-receipts.js';
+
+const digest = z.string().regex(/^[a-f0-9]{64}$/);
+const reference = z.string().min(1).max(512);
+const commit = z.string().regex(/^(?:[a-f0-9]{40}|[a-f0-9]{64})$/);
+const evidence = z.object({ effectKey: digest, evidenceRef: reference, logicalAttempt: z.number().int().positive() }).strict();
+const contextRef = z.object({ path: z.string().min(1).max(4096), digest }).strict();
+const contextEvidenceSchema = z.object({ effect: GraphEffectIdentity, effectKey: digest, runId: reference, taskId: reference, sessionId: reference,
+  promptDigest: digest, prepared: contextRef, adapterObserved: contextRef, link: contextRef }).strict();
+export const GraphContractCompletionReceipt = z.object({
+  schemaVersion: z.literal(1), source: z.literal('osstack_graph_host'), graphRunId: reference, scope: GraphScope,
+  inputDigest: digest, specHash: digest, generation: z.number().int().positive(), epoch: z.number().int().nonnegative(),
+  contractDigest: digest, policyDigest: digest, baseHead: commit,
+  candidate: z.object({ revision: commit, tree: commit, artifactDigest: digest }).strict(),
+  joinRef: reference, check: evidence.extend({ id: reference, registryRef: reference, commandDigest: digest, exitCode: z.literal(0) }),
+  review: evidence.extend({ verdict: z.literal('accept'), writerIdentity: reference, reviewerIdentity: reference,
+    authority: z.literal('registered_host_reviewer'), promptDigest: digest }),
+  achievedCompletion: z.literal('local_verified'), publication: z.literal('artifact_only'),
+  contextDigest: digest.optional(), contextEvidence: z.array(contextEvidenceSchema).max(2),
+}).strict();
+export type GraphContractCompletionReceipt = z.infer<typeof GraphContractCompletionReceipt>;
+
+/** Called only after the existing join gate; independently reads host evidence, never worker RETURNs. */
+export async function publishGraphContractCompletion(input: {
+  root: string; envelope: GraphContractHostEnvelope; decision: GraphVerificationDecision;
+  artifacts: Pick<GraphArtifactStore, 'verify'>; assertCurrent: () => void;
+  contextEvidence: readonly GraphContextEvidence[]; contextReceiptRoot?: string;
+}): Promise<string> {
+  const { decision, envelope } = input; const { run } = decision.snapshot; const binding = decision.joined.binding;
+  const check = () => { const result: unknown = input.assertCurrent(); if (result !== undefined) { void Promise.resolve(result).catch(() => {}); throw Error('GRAPH_CONTRACT_AUTHORITY'); } };
+  check();
+  if (decision.route.kind !== 'ready' || decision.joined.status !== 'complete' || !decision.publication
+    || decision.snapshot.pendingAdmissions || decision.snapshot.unresolvedActions) throw Error('GRAPH_CONTRACT_COMPLETION_NOT_READY');
+  const manifest = await input.artifacts.verify(binding.artifactDigest); check();
+  if (manifest.candidateRevision !== binding.candidateRevision || manifest.input.runId !== run.graphRunId
+    || workerCanonical(manifest.input.scope) !== workerCanonical(run.scope)) throw Error('GRAPH_CONTRACT_CANDIDATE_MISMATCH');
+  const verified = {} as Record<'review' | 'tests', { envelope: Awaited<ReturnType<typeof loadGraphVerificationEvidence>>; ref: string; effectKey: string; logicalAttempt: number }>;
+  for (const kind of ['review', 'tests'] as const) {
+    const branch = decision.joined.branches.find(item => item.kind === kind);
+    const action = decision.snapshot.actions.find(item => item.effectKey === branch?.effectKey);
+    if (branch?.state !== 'confirmed' || !action || action.state !== 'confirmed' || action.outcome?.state !== 'confirmed') throw Error('GRAPH_CONTRACT_EFFECT_REQUIRED');
+    const receipt = await loadGraphVerificationEvidence(join(input.root, 'verification'), action.outcome.evidenceRef, binding,
+      { effect: action.effect, effectKey: action.effectKey }); check();
+    if (receipt.kind !== kind || receipt.verificationFailure || workerCanonical(receipt.acceptance) !== workerCanonical(envelope.acceptance)) throw Error('GRAPH_CONTRACT_VERIFICATION_MISMATCH');
+    verified[kind] = { envelope: receipt, ref: action.outcome.evidenceRef, effectKey: action.effectKey, logicalAttempt: action.effect.logicalAttempt };
+  }
+  const tests = verified.tests; const review = verified.review;
+  const exitCode = tests.envelope.evidence.contained?.result.exitCode ?? tests.envelope.evidence.command?.exitCode;
+  const reviewReceipt = review.envelope.reviewerInvocation;
+  if (exitCode !== 0 || review.envelope.report?.verdict !== 'accept' || !reviewReceipt
+    || review.envelope.writerIdentity === review.envelope.reviewerIdentity || reviewReceipt.adapterId !== review.envelope.reviewerIdentity
+    || reviewReceipt.effectKey !== review.effectKey) throw Error('GRAPH_CONTRACT_VERIFICATION_FAILED');
+  const required = envelope.frozen.contract.required_checks[0]!;
+  const commandRef = deliveryCheckReference(tests.envelope.acceptance.command);
+  if (envelope.frozen.contract.required_checks.length !== 1 || commandRef !== required.registry_ref) throw Error('GRAPH_CONTRACT_REGISTRY_MISMATCH');
+  const selectedContext: GraphContextEvidence[] = [];
+  const writer = decision.snapshot.actions.find(action => action.effect.epoch === binding.epoch
+    && action.effect.nodeId === `e${binding.epoch}.${binding.epoch ? 'repair' : 'implement'}` && action.state === 'confirmed');
+  if (writer?.outcome?.state !== 'confirmed' || writer.outcome.result.kind !== 'implementation_complete'
+    || writer.outcome.evidenceRef !== manifest.input.producerStopEvidenceRef || writer.generation !== manifest.input.generation) throw Error('GRAPH_CONTRACT_WRITER_REQUIRED');
+  const writerReceipt = await loadDeliveryReceipt(input.root, writer.outcome.evidenceRef, { effect: writer.effect, effectKey: writer.effectKey,
+    generation: writer.generation, owner: manifest.input.owner, workspacePath: manifest.input.worktreePath }); check();
+  if (writerReceipt.stopped !== true || writerReceipt.status !== 'completed' || writerReceipt.candidate?.status !== 'implementation_complete') throw Error('GRAPH_CONTRACT_WRITER_UNCONFIRMED');
+  if (envelope.contextDigest) {
+    if (!input.contextReceiptRoot) throw Error('GRAPH_CONTEXT_RECEIPT_ROOT_REQUIRED');
+    for (const key of [writer.effectKey, review.effectKey]) {
+      const rows = input.contextEvidence.filter(row => row.effectKey === key);
+      if (rows.length !== 1) throw Error('GRAPH_CONTEXT_EFFECT_MISMATCH');
+      const row = contextEvidenceSchema.parse(rows[0]);
+      const expectedEffect = key === writer.effectKey ? writer.effect : review.envelope.effect;
+      if (computeGraphEffectKey(row.effect) !== key || workerCanonical(row.effect) !== workerCanonical(expectedEffect)
+        || key === writer.effectKey && row.runId !== writerReceipt.candidate.execution?.run_id) throw Error('GRAPH_CONTEXT_EFFECT_MISMATCH');
+      if (key === review.effectKey && (row.runId !== reviewReceipt.runId || row.sessionId !== reviewReceipt.sessionId || row.promptDigest !== reviewReceipt.promptDigest)) throw Error('GRAPH_CONTEXT_REVIEW_MISMATCH');
+      const link = await readDeliveryHostRecord(input.contextReceiptRoot, row.link); check();
+      const { link: _link, ...linked } = row;
+      if (workerCanonical(link) !== workerCanonical({ schemaVersion: 1, source: 'osstack_graph_context_host',
+        contractDigest: envelope.frozen.digest, contextDigest: envelope.contextDigest, ...linked })) throw Error('GRAPH_CONTEXT_LINK_MISMATCH');
+      for (const [phase, ref] of [['prepared', row.prepared], ['adapter_observed', row.adapterObserved]] as const) {
+        const value = await readDeliveryHostRecord(input.contextReceiptRoot, ref) as Record<string, unknown>; check();
+        if (value.phase !== phase || value.run_id !== row.runId || value.task_id !== row.taskId || value.session_id !== row.sessionId
+          || value.prompt_sha256 !== row.promptDigest || value.contract_digest !== envelope.frozen.digest) throw Error('GRAPH_CONTEXT_RECEIPT_BINDING');
+      }
+      selectedContext.push(row);
+    }
+  }
+  const receipt = GraphContractCompletionReceipt.parse({ schemaVersion: 1, source: 'osstack_graph_host',
+    graphRunId: run.graphRunId, scope: run.scope, inputDigest: run.identity.inputDigest, specHash: run.identity.specHash, generation: run.generation, epoch: binding.epoch,
+    contractDigest: envelope.frozen.digest, policyDigest: envelope.policy.policyDigest, baseHead: envelope.frozen.contract.base_head,
+    candidate: { revision: binding.candidateRevision, tree: manifest.tree, artifactDigest: binding.artifactDigest }, joinRef: decision.publication.record.receiptRef,
+    check: { id: required.id, registryRef: required.registry_ref, commandDigest: commandRef.slice(7), exitCode: 0,
+      effectKey: tests.effectKey, evidenceRef: tests.ref, logicalAttempt: tests.logicalAttempt },
+    review: { verdict: 'accept', writerIdentity: review.envelope.writerIdentity, reviewerIdentity: review.envelope.reviewerIdentity,
+      authority: 'registered_host_reviewer', promptDigest: reviewReceipt.promptDigest, effectKey: review.effectKey, evidenceRef: review.ref, logicalAttempt: review.logicalAttempt },
+    achievedCompletion: 'local_verified', publication: 'artifact_only', contextEvidence: selectedContext,
+    ...(envelope.contextDigest ? { contextDigest: envelope.contextDigest } : {}) });
+  check();
+  const root = join(input.root, 'contract-receipts'); const saved = await persistDeliveryHostRecord(root, receipt); check();
+  // This record must be durable before the enclosing host transaction publishes its reference.
+  for (const path of [saved.path, root, input.root]) {
+    const handle = await open(path, constants.O_RDONLY | constants.O_NOFOLLOW);
+    try { check(); await handle.sync(); check(); } finally { await handle.close(); }
+  }
+  const actual = await readDeliveryHostRecord(root, saved); check();
+  if (workerCanonical(actual) !== workerCanonical(receipt)) throw Error('GRAPH_CONTRACT_RECEIPT_CHANGED');
+  return `graph-contract:${saved.digest}`;
+}
+
+/** A receipt file alone is not completion: caller must obtain ref from the ready DB projection. */
+export async function loadGraphContractCompletion(root: string, ref: string, expected: {
+  run: GraphRun; envelope: GraphContractHostEnvelope; joinRef: string; candidateRevision: string; artifactDigest: string;
+}): Promise<GraphContractCompletionReceipt> {
+  if (!/^graph-contract:[a-f0-9]{64}$/.test(ref) || expected.run.status !== 'ready') throw Error('GRAPH_CONTRACT_RECEIPT_UNPUBLISHED');
+  const digest = ref.slice('graph-contract:'.length); const directory = join(root, 'contract-receipts');
+  const receipt = GraphContractCompletionReceipt.parse(await readDeliveryHostRecord(directory, { path: join(directory, `${digest}.json`), digest }));
+  if (receipt.graphRunId !== expected.run.graphRunId || receipt.inputDigest !== expected.run.identity.inputDigest
+    || receipt.specHash !== expected.run.identity.specHash || receipt.generation !== expected.run.generation
+    || workerCanonical(receipt.scope) !== workerCanonical(expected.run.scope)
+    || receipt.contractDigest !== expected.envelope.frozen.digest || receipt.policyDigest !== expected.envelope.policy.policyDigest
+    || receipt.contextDigest !== expected.envelope.contextDigest || receipt.contextEvidence.length !== (expected.envelope.contextDigest ? 2 : 0)
+    || receipt.joinRef !== expected.joinRef || receipt.candidate.revision !== expected.candidateRevision || receipt.candidate.artifactDigest !== expected.artifactDigest)
+    throw Error('GRAPH_CONTRACT_RECEIPT_BINDING');
+  return freezeWorkerData(receipt);
+}
+
+
+FILE packages/cli/src/supervision-service.ts
+import { AttentionInbox } from "@osstack/protocol";
+import { randomUUID } from "node:crypto";
+import type Database from "better-sqlite3";
+import {
+  AttentionStore,
+  AttentionObserver,
+  AttentionExperience,
+  AttentionActions,
+  attentionDigest,
+  readAttentionRecovery,
+  type AttentionSender,
+} from "@osstack/core";
+type LoopReadInput = { repo: string; path: string; loop_id: string; signal: AbortSignal };
+export interface SupervisionOptions {
+  loopReader?: (input: LoopReadInput) => Promise<unknown>;
+  readTimeoutMs?: number;
+}
+type ReadFailure = "timeout" | "aborted" | "invalid_payload" | "read_failed" | "read_capacity_exceeded";
+type LoopFacts = Record<string, unknown> & { state: string; reason?: string };
+interface ReadSlot {
+  controller: AbortController;
+  logical: Promise<LoopFacts>;
+}
+interface LoopBinding {
+  binding_hash: string;
+  admitted: number;
+  generation: number;
+  payload_json: string;
+}
+function loopPayload(json: string): Record<string, unknown> | null {
+  try {
+    const value: unknown = JSON.parse(json);
+    return value && typeof value === "object" && !Array.isArray(value)
+      ? value as Record<string, unknown> : null;
+  } catch { return null; }
+}
+function validLoopFacts(value: unknown, id: string): value is LoopFacts {
+  if (!value || typeof value !== "object") return false;
+  const v = value as Record<string, unknown>;
+  if (v.loop_id !== id || typeof v.path !== "string" || v.process_liveness !== "unknown") return false;
+  if (v.state === "source_missing") return v.coverage === "uncovered" && v.gap === "source_missing";
+  return v.state === "snapshot_available" && v.coverage === "snapshot_only"
+    && v.gap === "best_effort_snapshot_no_event_replay" && typeof v.updated_at === "string"
+    && Array.isArray(v.in_progress) && Array.isArray(v.pending)
+    && Number.isSafeInteger(v.completed_count) && (v.completed_count as number) >= 0
+    && typeof v.recovery_required === "boolean";
+}
+/** The daemon has already acquired its kernel process lock before construction. */
+export class SupervisionService {
+  readonly store: AttentionStore;
+  readonly observer: AttentionObserver;
+  readonly experience: AttentionExperience;
+  private delivering = false;
+  private deliveryRecoveryNeeded = false;
+  private readonly deliveryAbort = new AbortController();
+  private deliveryDone: Promise<void> | undefined;
+  private ciReader: import("@osstack/github").AttentionCiReader | undefined;
+  private timer: ReturnType<typeof setInterval> | undefined;
+  private started = false;
+  private stopped = false;
+  private dirty = false;
+  private scanDone: Promise<void> | undefined;
+  private stopDone: Promise<void> | undefined;
+  private epoch = 0;
+  // A slot outlives its logical timeout until the underlying promise settles.
+  // It holds no continuation that can access SQLite after stop.
+  private readonly readers = new Map<string, ReadSlot>();
+  private readonly logicalReads = new Set<Promise<LoopFacts>>();
+  private readonly readTimeoutMs: number;
+  constructor(
+    db: Database.Database,
+    path: string,
+    readonly sender?: AttentionSender,
+    private readonly options: SupervisionOptions = {}
+  ) {
+    this.readTimeoutMs = options.readTimeoutMs ?? 1000;
+    if (!Number.isFinite(this.readTimeoutMs) || this.readTimeoutMs < 1 || this.readTimeoutMs > 1000)
+      throw new Error("invalid_read_timeout");
+    this.store = new AttentionStore(db, path);
+    this.observer = new AttentionObserver(
+      this.store,
+      this.store.claimOwner(randomUUID())
+    );
+    this.experience = new AttentionExperience(this.store, this.observer.owner);
+    this.experience.recoverDeliveries();
+    new AttentionActions(this.store, this.observer.owner).recover();
+  }
+  private assertRunning(): void {
+    if (this.stopped) throw new Error("supervision_stopped");
+  }
+  start(): void {
+    this.assertRunning();
+    if (this.started) return;
+    this.started = true;
+    void this.requestScan("start").catch(() => {});
+    this.timer = setInterval(() => { void this.requestScan("timer").catch(() => {}); }, 30000);
+    this.timer.unref();
+  }
+  /** Dirty signals are hints; each pass still reads the persisted source facts. */
+  requestScan(_reason?: string): Promise<void> {
+    if (this.stopped) return Promise.reject(new Error("supervision_stopped"));
+    this.dirty = true;
+    this.scanDone ??= Promise.resolve().then(async () => {
+      while (this.dirty && !this.stopped) {
+        this.dirty = false;
+        try { await this.scan(); } catch { /* prior coverage expires */ }
+      }
+    }).finally(() => {
+      this.scanDone = undefined;
+      // A dirty signal can arrive after the loop exits but before this cleanup.
+      if (this.dirty && !this.stopped) return this.requestScan("coalesced");
+      return undefined;
+    });
+    return this.scanDone;
+  }
+  private async scan(): Promise<void> {
+    this.assertRunning();
+    while (!this.stopped) {
+      const step = this.observer.step({maxSubjects:25,maxEvents:200,maxDurationMs:5});
+      if (step.passComplete) break;
+      await new Promise<void>(resolve => setImmediate(resolve));
+    }
+    if (this.stopped) return;
+    const loops = this.store.db.prepare(
+      "SELECT scope_id,subject_id,payload_json FROM attention_subjects WHERE kind='loop' AND admitted=1"
+    ).all() as { scope_id: string; subject_id: string; payload_json: string }[];
+    await Promise.allSettled(loops.map(async (row) => {
+      let path: unknown;
+      try { path = (JSON.parse(row.payload_json) as Record<string, unknown>).state_path; } catch { /* below */ }
+      if (typeof path !== "string" || !path || path.length > 4096) {
+        if (!this.stopped) this.store.write(this.observer.owner, () => {
+          // Do not replace newer metadata or an explicit owner release.
+          this.store.db.prepare("UPDATE attention_subjects SET sampled_at=?,payload_json=? WHERE scope_id=? AND kind='loop' AND subject_id=? AND payload_json=?")
+            .run(Date.now(), JSON.stringify({ state: "unknown", reason: "invalid_payload", process_liveness: "unknown" }), row.scope_id, row.subject_id, row.payload_json);
+        });
+        return;
+      }
+      try {
+        await this.handle("attention.loop", {
+          scope_id: row.scope_id, loop_id: row.subject_id,
+          state_path: path,
+        });
+      } catch { /* source errors never suppress other readers */ }
+    }));
+    if (this.stopped) return;
+    for (const scope of this.store.listScopes()) {
+      try { this.experience.enqueue(scope.scope_id); }
+      catch { /* Keep observed items; one unavailable scope must not block other notices. */ }
+    }
+    if (this.sender && !this.delivering) {
+      // Only this service owns the local idempotent sender. A failed receipt
+      // write leaves `sending`; reconcile it before the next bounded batch.
+      if (this.deliveryRecoveryNeeded) {
+        this.experience.recoverDeliveries();
+        this.deliveryRecoveryNeeded = false;
+      }
+      this.delivering = true;
+      this.deliveryDone = Promise.resolve().then(() => this.experience.drainBatch(this.sender!, { signal: this.deliveryAbort.signal }))
+        .then(() => {})
+        .catch(() => { this.deliveryRecoveryNeeded = true; })
+        .finally(() => { this.delivering = false; });
+    }
+  }
+  stop(): Promise<void> {
+    if (this.stopDone) return this.stopDone;
+    this.stopped = true;
+    this.deliveryAbort.abort();
+    this.epoch++;
+    this.dirty = false;
+    if (this.timer) clearInterval(this.timer);
+    this.timer = undefined;
+    for (const slot of this.readers.values()) slot.controller.abort();
+    this.stopDone = Promise.allSettled([this.scanDone, this.deliveryDone, ...this.logicalReads]).then(() => {});
+    return this.stopDone;
+  }
+  private loopBinding(scope: string, id: string): LoopBinding | undefined {
+    return this.store.db.prepare(
+      "SELECT binding_hash,admitted,generation,payload_json FROM attention_subjects WHERE scope_id=? AND kind='loop' AND subject_id=?"
+    ).get(scope, id) as LoopBinding | undefined;
+  }
+  private readLoop(scopeId: string, id: string, path: string): Promise<LoopFacts> {
+    this.assertRunning();
+    const epoch = this.epoch;
+    const binding = attentionDigest([path, id]);
+    const key = JSON.stringify([scopeId, "loop", id, binding]);
+    const scope = this.store.getScope(scopeId)!;
+    // Register the binding before IO, so release and competing RPCs see it.
+    this.store.write(this.observer.owner, () => {
+      this.assertRunning();
+      const old = this.loopBinding(scopeId, id);
+      if (old && old.binding_hash !== binding) throw new Error("loop_binding_conflict");
+      if (old) {
+        const payload = loopPayload(old.payload_json);
+        if (!payload || payload.reason === "owner_released") return;
+        const count = (this.store.db.prepare("SELECT COUNT(*) n FROM attention_subjects WHERE admitted=1").get() as { n: number }).n;
+        if (old.generation !== this.observer.owner.generation || (!old.admitted && count < 100))
+          this.store.db.prepare("UPDATE attention_subjects SET admitted=?,generation=?,sampled_at=0,payload_json=? WHERE scope_id=? AND kind='loop' AND subject_id=?")
+            .run(old.admitted || count < 100 ? 1 : 0, this.observer.owner.generation,
+              JSON.stringify({ ...payload, state: "unknown", reason: "read_pending" }), scopeId, id);
+        return;
+      }
+      const count = (this.store.db.prepare("SELECT COUNT(*) n FROM attention_subjects WHERE admitted=1").get() as { n: number }).n;
+      this.store.db.prepare(
+        "INSERT INTO attention_subjects(scope_id,kind,subject_id,binding_hash,source_version,admitted,discovered_at,sampled_at,generation,payload_json) VALUES(?,'loop',?,?,0,?,?,?,?,?)"
+      ).run(scopeId, id, binding, count < 100 ? 1 : 0, Date.now(), 0, this.observer.owner.generation,
+        JSON.stringify({ state_path: path, state: "unknown", reason: count < 100 ? "read_pending" : "capacity_exceeded" }));
+    });
+    const old = this.loopBinding(scopeId, id)!;
+    const failure = (reason: ReadFailure): LoopFacts => ({ loop_id: id, path, state: "unknown",
+      process_liveness: "unknown", coverage: "uncovered", gap: "snapshot_unavailable", reason });
+    const payload = loopPayload(old.payload_json);
+    if (!payload) return Promise.resolve(failure("invalid_payload"));
+    if (payload.reason === "owner_released")
+      return Promise.resolve({ state: "unknown", reason: "owner_released" });
+    const existing = this.readers.get(key);
+    if (existing) return existing.logical;
+    const commit = (facts: LoopFacts): LoopFacts => {
+      // No await from the lifecycle check through the owner-fenced commit.
+      if (this.stopped || epoch !== this.epoch) return facts;
+      this.store.write(this.observer.owner, () => {
+        const current = this.loopBinding(scopeId, id);
+        const currentPayload = current ? loopPayload(current.payload_json) : null;
+        if (!current || current.binding_hash !== binding || current.generation !== this.observer.owner.generation
+          || current.admitted !== old.admitted || !currentPayload || currentPayload.reason === "owner_released") return;
+        this.store.db.prepare(
+          "UPDATE attention_subjects SET sampled_at=?,payload_json=? WHERE scope_id=? AND kind='loop' AND subject_id=?"
+        ).run(Date.now(), JSON.stringify({ ...facts, state_path: path,
+          reason: facts.reason ?? (!current.admitted ? "capacity_exceeded" : facts.state === "source_missing"
+            ? "source_missing" : facts.recovery_required ? "recovery_required" : "snapshot_only") }), scopeId, id);
+      });
+      return facts;
+    };
+    if (!old.admitted || this.readers.size >= 100)
+      return Promise.resolve(commit(failure("read_capacity_exceeded")));
+    const controller = new AbortController();
+    let reason: ReadFailure = "aborted";
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let abortListener: (() => void) | undefined;
+    const aborted = new Promise<LoopFacts>((resolve) => {
+      abortListener = () => resolve(failure(reason));
+      controller.signal.addEventListener("abort", abortListener, { once: true });
+      timer = setTimeout(() => { reason = "timeout"; controller.abort(); }, this.readTimeoutMs);
+    });
+    const physical = Promise.resolve().then(async () => {
+      controller.signal.throwIfAborted();
+      const reader = this.options.loopReader ?? (await import("./attention-loop-source.js")).readAttentionLoop;
+      controller.signal.throwIfAborted();
+      return await reader({ repo: scope.repo_path, path, loop_id: id, signal: controller.signal });
+    }).then((value) => validLoopFacts(value, id) ? value : failure("invalid_payload"), (error: unknown) =>
+      failure(controller.signal.aborted ? reason : error instanceof SyntaxError
+        || (error instanceof Error && error.name === "ZodError") ? "invalid_payload" : "read_failed"));
+    // Physical settlement has no DB access, even if the logical deadline passed.
+    const settled = physical.finally(() => { this.readers.delete(key); });
+    const logical = Promise.race([settled, aborted]).then(commit).finally(() => {
+      if (timer) clearTimeout(timer);
+      if (abortListener) controller.signal.removeEventListener("abort", abortListener);
+      this.logicalReads.delete(logical);
+    });
+    this.readers.set(key, { controller, logical });
+    this.logicalReads.add(logical);
+    return logical;
+  }
+  async handle(method: string, params: unknown): Promise<unknown> {
+    this.assertRunning();
+    if (!params || typeof params !== "object")
+      throw new Error("explicit_scope_required");
+    const p = params as Record<string, unknown>;
+    const str = (key: string) => {
+      const value = p[key];
+      if (typeof value !== "string" || !value || value.length > 4096)
+        throw new Error(`invalid_${key}`);
+      return value;
+    };
+    if (method === "attention.watch") {
+      if (p["default_tenant"] !== true)
+        throw new Error("explicit_default_tenant_required");
+      const scope = this.store.registerScope(
+        this.observer.owner,
+        str("task_id"),
+        str("repo_path")
+      );
+      await this.requestScan("watch");
+      this.assertRunning();
+      return this.observer.inventory(scope.scope_id);
+    }
+    const scopeId = str("scope_id");
+    if (!this.store.getScope(scopeId)) throw new Error("not_found");
+    if (method === "attention.recovery") {
+      if (Array.isArray(p) || Object.keys(p).some(key => !["scope_id","after","limit"].includes(key)) || (p["after"] !== undefined && typeof p["after"] !== "string") || (p["limit"] !== undefined && typeof p["limit"] !== "number")) throw new Error("invalid_recovery_request");
+      return readAttentionRecovery(this.store,this.observer.owner,{scope_id:scopeId,...(p["after"] === undefined ? {} : {after:p["after"] as string}),...(p["limit"] === undefined ? {} : {limit:p["limit"] as number})});
+    }
+    if (method === "attention.release") {
+      this.store.release(
+        this.observer.owner,
+        scopeId,
+        str("kind"),
+        str("subject_id"),
+        Number(p["expected_version"])
+      );
+      return {
+        released: true,
+        execution_affected: false,
+        coverage: "uncovered",
+      };
+    }
+    if (method === "attention.loop")
+      return await this.readLoop(scopeId, str("loop_id"), str("state_path"));
+    if (method === "attention.ci") {
+      const { AttentionCiReader } = await import("@osstack/github");
+      this.assertRunning();
+      this.ciReader ??= new AttentionCiReader();
+      return await this.ciReader.read({
+        repo: str("github_repo"),
+        pr: p["pr"],
+        head: str("head"),
+        required: p["required"],
+      });
+    }
+    if (method === "attention.brief")
+      return this.experience.brief(scopeId, str("actor"));
+    if (method === "attention.posture") {
+      const posture = str("posture");
+      if (!["quiet", "away", "attended"].includes(posture))
+        throw new Error("invalid_posture");
+      this.experience.posture(
+        scopeId,
+        str("actor"),
+        posture as "quiet" | "away" | "attended"
+      );
+      return { posture };
+    }
+    if (method === "attention.seen") {
+      if (!Array.isArray(p["revisions"])) throw new Error("invalid_revisions");
+      this.experience.seen(scopeId, str("actor"), p["revisions"]);
+      return { marked: true };
+    }
+    if (method === "attention.foreground") {
+      if (!Array.isArray(p["subjects"])) throw new Error("invalid_subjects");
+      return this.experience.foreground(scopeId, p["subjects"]);
+    }
+    if (method === "attention.handoff")
+      return this.experience.handoff(scopeId, str("client_id"), str("token"));
+    if (method === "attention.turn-end")
+      return this.experience.turnEnd(
+        scopeId,
+        str("client_id"),
+        str("token"),
+        str("role")
+      );
+    if (method === "attention.deliveries")
+      return this.store.db
+        .prepare(
+          "SELECT * FROM attention_deliveries WHERE scope_id=? AND delivery_id>? ORDER BY delivery_id LIMIT 100"
+        )
+        .all(scopeId, typeof p["after"] === "string" ? p["after"] : "");
+    if (method === "attention.inventory")
+      return this.observer.inventory(
+        scopeId,
+        Date.now(),
+        typeof p["after"] === "string" ? p["after"] : ""
+      );
+    if (method === "attention.inbox") {
+      const items = this.store.listItems(
+        scopeId,
+        typeof p["after"] === "string" ? p["after"] : ""
+      );
+      const counts = this.store.db
+        .prepare(
+          "SELECT state,COUNT(*) total FROM attention_items WHERE scope_id=? GROUP BY state"
+        )
+        .all(scopeId);
+      return AttentionInbox.parse({
+        schema_version: 1,
+        execution_takeover: false,
+        scope_id: scopeId,
+        items,
+        counts,
+        next_after: items.length === 100 ? items.at(-1)!.item_id : null,
+        coverage: this.observer.inventory(scopeId).coverage,
+      });
+    }
+    if (method === "attention.get") {
+      const item = this.store.getItem(scopeId, str("item_id"));
+      if (!item) throw new Error("not_found");
+      return item;
+    }
+    throw new Error("unsupported_attention_method");
+  }
+}
+
+
+FILE packages/core/src/state/attention-recovery-view.ts
+import { realpathSync } from "node:fs";
+import { AgentSessionState } from "./schema.js";
+import { attentionDigest, type AttentionOwner, type AttentionStore } from "./attention-store.js";
+interface EvidencePage<T> { total: number; truncated: boolean; rows: T[] }
+interface MessageEvidence { message_id: string; turn_id: string; state: string; disposition: string | null }
+interface ActionEvidence { action_id: string; item_id: string; message_id: string; state: string }
+interface GrantEvidence { attempt_id: string; grant_id: string; status: string; message_id: string | null }
+export interface AttentionRecoverySubject {
+  kind: string; subject_id: string | null; source_version: number; owner_generation: number;
+  state: "unknown" | "pending_human" | "observed"; missing_evidence: string[]; next_step: string; canAutoRetry: false;
+  messages?: EvidencePage<MessageEvidence>; actions?: EvidencePage<ActionEvidence>; grant_attempts?: EvidencePage<GrantEvidence>;
+  retained_run_cursor?: { last_seq: number; through_seq: number; gap: string | null };
+}
+export interface AttentionRecoveryRequest { scope_id: string; after?: string; limit?: number }
+interface Subject { cursor: number; kind: string; subject_id: string | null; source_version: number; binding_hash: string; generation: number; sampled_at: number }
+/** Read-only diagnostic projection. It neither retries nor treats unknown as proof of termination. */
+export function readAttentionRecovery(store: AttentionStore, owner: AttentionOwner, request: AttentionRecoveryRequest, now = Date.now()) {
+  const limit = request.limit ?? 20; const after = request.after ?? "0";
+  if (!/^[a-f0-9]{64}$/.test(request.scope_id) || !Number.isSafeInteger(limit) || limit < 1 || limit > 25 || typeof after !== "string" || !/^[0-9]{1,16}$/.test(after) || !Number.isSafeInteger(Number(after)) || !Number.isFinite(now)) throw Error("invalid_recovery_request");
+  return store.db.transaction(() => {
+    store.assertOwner(owner);
+    const scope = store.getScope(request.scope_id);
+    const task = scope ? store.db.prepare("SELECT created_at FROM tasks WHERE task_id=? AND tenant_id IS NULL").get(scope.task_id) as { created_at: number } | undefined : undefined;
+    if (!scope || !task || attentionDigest([owner.home_id, scope.task_id, scope.repo_path, task.created_at]) !== scope.scope_id) throw Error("scope_unavailable");
+    const total = (store.db.prepare("SELECT COUNT(*) n FROM attention_subjects WHERE scope_id=? AND admitted=1").get(scope.scope_id) as { n: number }).n;
+    const rows = store.db.prepare("SELECT rowid cursor,kind,CASE WHEN length(subject_id)<=4096 THEN subject_id ELSE NULL END subject_id,source_version,binding_hash,generation,sampled_at FROM attention_subjects WHERE scope_id=? AND admitted=1 AND rowid>? ORDER BY rowid LIMIT ?").all(scope.scope_id, Number(after), limit + 1) as Subject[];
+    const subjects = rows.slice(0, limit).map((subject): AttentionRecoverySubject => {
+      const base: AttentionRecoverySubject = { kind: subject.kind, subject_id: subject.subject_id, source_version: subject.source_version, owner_generation: subject.generation,
+        state: "unknown", missing_evidence: ["source_binding"], next_step: "inspect_source", canAutoRetry: false };
+      if (subject.subject_id === null) return { ...base, missing_evidence: ["invalid_source_identity"] };
+      const readSubject = (): AttentionRecoverySubject => {
+      if (scope.generation !== owner.generation || scope.error || now < scope.sampled_at || now > scope.deadline
+        || subject.generation !== owner.generation || now < subject.sampled_at || now - subject.sampled_at > 65000) return { ...base, missing_evidence: ["fresh_observation"] };
+      if (subject.kind === "run") {
+        const run = store.db.prepare("SELECT run_id,task_id,session_id,agent_id,capability_id,started_at FROM runs WHERE run_id=? AND task_id=? AND tenant_id IS NULL").get(subject.subject_id, scope.task_id) as { run_id: string; task_id: string; session_id: string; agent_id: string; capability_id: string; started_at: number } | undefined;
+        const cursor = store.db.prepare("SELECT binding_hash,last_seq,through_seq,gap FROM attention_run_cursors WHERE scope_id=? AND run_id=?").get(scope.scope_id, subject.subject_id) as { binding_hash: string; last_seq: number; through_seq: number; gap: string | null } | undefined;
+        if (!run || subject.binding_hash !== attentionDigest([scope.scope_id, "run", run.run_id]) || !cursor
+          || cursor.binding_hash !== attentionDigest([owner.home_id, scope.scope_id, run.run_id, run.task_id, run.session_id, run.agent_id, run.capability_id, run.started_at])) return base;
+        return { ...base, missing_evidence: ["process_termination", ...(cursor.gap ? ["retained_history_integrity"] : [])], next_step: "inspect_run_authority",
+          retained_run_cursor: { last_seq: cursor.last_seq, through_seq: cursor.through_seq, gap: cursor.gap ? "history_gap" : null } };
+      }
+      if (subject.kind !== "session") return { ...base, missing_evidence: ["trusted_host_adapter"], next_step: "inspect_existing_host_recovery" };
+      const session = store.db.prepare(`SELECT s.session_id,s.run_id,s.request_sha256,s.agent_id,s.repo_path,s.version,s.state FROM agent_sessions s
+        JOIN runs r ON r.run_id=s.run_id AND r.task_id=s.task_id AND r.session_id=s.session_id AND r.agent_id=s.agent_id AND r.tenant_id IS NULL
+        WHERE s.session_id=? AND s.task_id=?`).get(subject.subject_id, scope.task_id) as { session_id: string; run_id: string; request_sha256: string; agent_id: string; repo_path: string; version: number; state: string } | undefined;
+      if (!session || !AgentSessionState.safeParse(session.state).success || session.version !== subject.source_version || attentionDigest([session.session_id, session.run_id, session.request_sha256, session.agent_id, session.repo_path]) !== subject.binding_hash) return base;
+      try { if (realpathSync(session.repo_path) !== scope.repo_path) return base; } catch { return base; }
+      const page = <T>(sql: string, countSql: string, params: string[]): EvidencePage<T> => {
+        const found = store.db.prepare(sql).all(...params) as T[];
+        if (found.some(row => Object.values(row as Record<string, unknown>).some(value => typeof value === "string" && value.length > 4096))) throw Error("oversized_evidence_identity");
+        const count = (store.db.prepare(countSql).get(...params) as { n: number }).n;
+        return { total: count, truncated: count > 20, rows: found.slice(0,20) };
+      };
+      const messages = page<MessageEvidence>(`SELECT substr(m.message_id,1,4097) message_id,substr(m.turn_id,1,4097) turn_id,m.state,r.disposition FROM session_messages m LEFT JOIN attention_receipt_resolutions r
+        ON r.message_id=m.message_id AND r.session_id=m.session_id WHERE m.session_id=? AND m.direction='inbound' ORDER BY m.created_at,m.message_id LIMIT 20`,
+        "SELECT COUNT(*) n FROM session_messages WHERE session_id=? AND direction='inbound'", [session.session_id]);
+      const actions = page<ActionEvidence>(`SELECT substr(a.action_id,1,4097) action_id,substr(a.item_id,1,4097) item_id,substr(a.message_id,1,4097) message_id,substr(a.state,1,65) state FROM attention_actions a JOIN attention_items i ON i.item_id=a.item_id AND i.scope_id=a.scope_id
+        JOIN session_messages m ON m.message_id=a.message_id AND m.session_id=i.session_id AND m.turn_id=i.turn_id WHERE a.scope_id=? AND i.session_id=? ORDER BY a.created_at,a.action_id LIMIT 20`,
+        `SELECT COUNT(*) n FROM attention_actions a JOIN attention_items i ON i.item_id=a.item_id AND i.scope_id=a.scope_id
+        JOIN session_messages m ON m.message_id=a.message_id AND m.session_id=i.session_id AND m.turn_id=i.turn_id WHERE a.scope_id=? AND i.session_id=?`, [scope.scope_id, session.session_id]);
+      const grants = page<GrantEvidence>(`SELECT substr(a.attempt_id,1,4097) attempt_id,substr(a.grant_id,1,4097) grant_id,a.status,substr(a.message_id,1,4097) message_id FROM session_continuation_attempts a JOIN session_continuation_grants g ON g.grant_id=a.grant_id WHERE g.session_id=? ORDER BY a.created_at,a.attempt_id LIMIT 20`,
+        "SELECT COUNT(*) n FROM session_continuation_attempts a JOIN session_continuation_grants g ON g.grant_id=a.grant_id WHERE g.session_id=?", [session.session_id]);
+      const unresolved = store.db.prepare("SELECT 1 FROM session_messages WHERE session_id=? AND direction='inbound' AND state IN ('pending','accepted','failed') LIMIT 1").get(session.session_id);
+      const activeGrant = store.db.prepare("SELECT 1 FROM session_continuation_attempts a JOIN session_continuation_grants g ON g.grant_id=a.grant_id WHERE g.session_id=? AND a.status IN ('checking','reserved') LIMIT 1").get(session.session_id);
+      const missing = [...(unresolved ? ["terminal_receipt"] : []), ...(activeGrant ? ["continuation_receipt"] : [])];
+      return { ...base, state: missing.length ? "unknown" : session.state === "awaiting_decision" ? "pending_human" : "observed", missing_evidence: missing,
+        next_step: missing.length ? "inspect_existing_receipts" : session.state === "awaiting_decision" ? "answer_current_decision" : "inspect_source", messages, actions, grant_attempts: grants };
+      };
+      try { return readSubject(); } catch { return { ...base, missing_evidence: ["invalid_evidence"] }; }
+    });
+    return { scope_id: scope.scope_id, canAutoRetry: false as const, process_liveness: "unknown" as const, total, returned: subjects.length, truncated: rows.length > limit,
+      next_after: rows.length > limit ? String(rows[limit - 1]!.cursor) : null, subjects };
+  }).deferred();
+}
+
+
+FILE packages/cli/src/remote-home-protocol.ts
+import { createHash } from "node:crypto";
+import { constants } from "node:fs";
+import { lstat, open, realpath } from "node:fs/promises";
+import { isAbsolute } from "node:path";
+import type { Readable, Writable } from "node:stream";
+import { z } from "zod";
+
+export const REMOTE_MAX_BYTES = 65536;
+export const REMOTE_PROTOCOL = 1;
+const digest = z.string().regex(/^[a-f0-9]{64}$/);
+const alias = z.string().regex(/^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$/);
+const path = z.string().min(1).max(4096).refine(isAbsolute).refine(s => !/[\p{C}]/u.test(s));
+const home = z.string().regex(/^home_[a-f0-9]{32}$/);
+const generation = z.string().regex(/^instance_[a-f0-9]{32}$/);
+const epoch = z.number().int().safe().nonnegative();
+const nonce = z.string().regex(/^[a-f0-9]{64}$/);
+const hostKey = z.string().max(128).refine(s => {
+  if (!/^ssh-ed25519 [A-Za-z0-9+/]+={0,2}$/.test(s)) return false;
+  const encoded = s.slice(12), bytes = Buffer.from(encoded, "base64");
+  return bytes.toString("base64") === encoded && bytes.length === 51 && bytes.readUInt32BE(0) === 11 && bytes.subarray(4,15).toString() === "ssh-ed25519" && bytes.readUInt32BE(15) === 32;
+});
+export const RemoteHomeEntry = z.object({
+  alias, host: z.string().max(253).regex(/^[a-zA-Z0-9](?:[a-zA-Z0-9.-]*[a-zA-Z0-9])?$/),
+  port: z.number().int().min(1).max(65535), user: z.string().regex(/^[a-zA-Z_][a-zA-Z0-9_-]{0,63}$/),
+  host_key: hostKey, identity_file: path.refine(s => !/[\s%'"\\]/u.test(s)), home_id: home, daemon_protocol: z.number().int().positive(), registry_sha256: digest, scope: alias,
+}).strict();
+export type RemoteHomeEntry = z.infer<typeof RemoteHomeEntry>;
+export const RemoteClientRegistry = z.object({version:z.literal(1),homes:z.array(RemoteHomeEntry).min(1).max(32)}).strict()
+  .refine(r => new Set(r.homes.map(h=>h.alias)).size===r.homes.length);
+export const RemoteServerRegistry = z.object({version:z.literal(1),home_id:home,daemon_protocol:z.number().int().positive(),socket:path,
+  scopes:z.array(z.object({alias,repo_path:path,default_tenant:z.literal(true)}).strict()).min(1).max(16),
+}).strict().refine(r=>new Set(r.scopes.map(s=>s.alias)).size===r.scopes.length);
+export type RemoteServerRegistry = z.infer<typeof RemoteServerRegistry>;
+export const RemoteHello = z.object({type:z.literal("hello"),protocol:z.literal(1),nonce,home_id:home,daemon_protocol:z.number().int().positive(),registry_sha256:digest,scope:alias}).strict();
+export const RemoteRead = z.object({type:z.literal("snapshot"),token:nonce,sequence:z.literal(1),limit:z.number().int().min(1).max(50)}).strict();
+const binding = {protocol:z.literal(1),nonce,home_id:home,generation,daemon_protocol:z.number().int().positive(),registry_sha256:digest,scope:alias};
+export const RemoteGrant = z.object({...binding,type:z.literal("grant"),token:nonce,methods:z.tuple([z.literal("snapshot")]),max_page:z.literal(50)}).strict();
+const state = z.enum(["starting","running","awaiting_decision","idle","completed","failed","cancelled","expired","outcome_pending","unknown"]);
+export const RemoteView = z.object({observation_ref:z.string().regex(/^view_[0-9]{1,2}$/),source_kind:z.enum(["run","session"]),state,
+  revision:z.number().int().safe().positive().nullable(),last_updated_at_ms:epoch.nullable(),
+  source_freshness:z.enum(["recent","stale","unknown"]),process_liveness:z.literal("unknown"),
+  wait_reason:z.enum(["decision_record_present","delivery_unknown","awaiting_instruction","none","unknown"]),
+  decision_present:z.boolean(),uncertain_delivery_recorded:z.boolean(),controls:z.literal("unsupported"),
+}).strict();
+export const RemoteSnapshot = z.object({...binding,type:z.literal("snapshot"),sequence:z.literal(1),sampled_at_ms:epoch,
+  total:z.number().int().safe().nonnegative(),views:z.array(RemoteView).max(50),has_more:z.boolean(),complete:z.boolean(),
+  coverage:z.literal("default_tenant_bound_session_run_only"),evidence_sha256:digest,
+}).strict().refine(s=>s.complete===!s.has_more && s.total>=s.views.length && (s.has_more || s.total===s.views.length))
+  .refine(s=>s.views.every((v,i)=>v.observation_ref===`view_${i+1}`));
+export type RemoteSnapshot = z.infer<typeof RemoteSnapshot>;
+export const remoteHash = (value: string | Buffer): string => createHash("sha256").update(value).digest("hex");
+function canonical(value:unknown):string {
+  if(Array.isArray(value))return `[${value.map(canonical).join(",")}]`;
+  if(value!==null&&typeof value==="object")return `{${Object.keys(value).sort().map(key=>`${JSON.stringify(key)}:${canonical((value as Record<string,unknown>)[key])}`).join(",")}}`;
+  const encoded=JSON.stringify(value);if(encoded===undefined)throw new Error("invalid_snapshot");return encoded;
+}
+export function snapshotHash(value: Omit<RemoteSnapshot,"evidence_sha256">): string { return remoteHash(canonical(value)); }
+export function encodeRemoteFrame(value: unknown): Buffer {
+  const body = Buffer.from(JSON.stringify(value));
+  if(body.length>REMOTE_MAX_BYTES-4) throw new Error("invalid_frame");
+  const header=Buffer.alloc(4);header.writeUInt32BE(body.length);return Buffer.concat([header,body]);
+}
+
+const ignoreLateStreamError=()=>{};
+
+/** Bounded channel: two sequential messages per direction, no generic RPC or buffering backlog. */
+export class RemoteChannel {
+  private bytes=Buffer.alloc(0);
+  private queue: unknown[]=[];
+  private failure: Error | null=null;
+  private count=0;
+  private sent=0;
+  private closed=false;
+  private pending: {resolve:(value:unknown)=>void;reject:(error:Error)=>void;timer:NodeJS.Timeout} | null=null;
+  constructor(private readonly input:Readable,private readonly output:Writable,private readonly inputLimit=REMOTE_MAX_BYTES) {
+    if(!Number.isInteger(inputLimit)||inputLimit<REMOTE_MAX_BYTES||inputLimit>REMOTE_MAX_BYTES+1024)throw new Error("invalid_frame");
+    input.on("data",this.data);input.on("end",this.end);input.on("error",this.error);output.on("error",this.error);
+  }
+  private error=()=>this.fail("transport_unavailable");
+  private end=()=>this.fail("transport_closed");
+  private data=(chunk:Buffer)=>{
+    if(this.failure)return;
+    if(this.bytes.length+chunk.length>this.inputLimit){this.fail("invalid_frame");return;}
+    this.bytes=Buffer.concat([this.bytes,chunk]);
+    if(this.bytes.length<4)return;
+    const length=this.bytes.readUInt32BE();
+    if(length===0||length>this.inputLimit-4){this.fail("invalid_frame");return;}
+    if(this.bytes.length<length+4)return;
+    if(this.bytes.length!==length+4||++this.count>2){this.fail("invalid_frame");return;}
+    let parsed:unknown;
+    try {parsed=JSON.parse(new TextDecoder("utf-8",{fatal:true}).decode(this.bytes.subarray(4)));}
+    catch {this.fail("invalid_frame");return;}
+    this.bytes=Buffer.alloc(0);
+    if(this.pending){const p=this.pending;this.pending=null;clearTimeout(p.timer);p.resolve(parsed);}
+    else if(this.queue.length===0)this.queue.push(parsed);else this.fail("invalid_frame");
+  };
+  private fail(reason:string){
+    if(this.failure)return;this.failure=new Error(reason);
+    if(this.pending){clearTimeout(this.pending.timer);this.pending.reject(this.failure);this.pending=null;}
+  }
+  async receive(timeoutMs=3000):Promise<unknown>{
+    if(this.failure)throw this.failure;
+    if(this.queue.length)return this.queue.shift();
+    if(this.pending)throw new Error("invalid_frame");
+    return new Promise((resolve,reject)=>{const timer=setTimeout(()=>this.fail("transport_timeout"),Math.max(1,Math.min(10000,timeoutMs)));this.pending={resolve,reject,timer};});
+  }
+  async send(value:unknown):Promise<void>{
+    if(this.failure)throw this.failure;
+    if(++this.sent>2)throw new Error("invalid_frame");
+    const frame=encodeRemoteFrame(value);
+    await new Promise<void>((resolve,reject)=>{
+      const timer=setTimeout(()=>{this.fail("transport_timeout");reject(new Error("transport_timeout"));},3000);
+      this.output.write(frame,error=>{clearTimeout(timer);error?reject(new Error("transport_unavailable")):resolve();});
+    });
+  }
+  close(){if(this.closed)return;this.closed=true;this.fail("transport_closed");this.input.off("data",this.data);this.input.off("end",this.end);this.input.off("error",this.error);this.output.off("error",this.error);this.input.on("error",ignoreLateStreamError);if((this.output as object)!==(this.input as object))this.output.on("error",ignoreLateStreamError);}
+}
+
+/** Owner-controlled local config; no symlinks, special files, unbounded reads or raw error text. */
+export async function readPinnedRemoteRegistry(filePath:string,expectedDigest:string):Promise<unknown>{
+  try {
+    if(!path.safeParse(filePath).success||!digest.safeParse(expectedDigest).success)throw new Error();
+    await assertPrivateRemoteFile(filePath);
+    const file=await open(filePath,constants.O_RDONLY|constants.O_NONBLOCK|constants.O_NOFOLLOW);
+    try {
+      const info=await file.stat();
+      if(!info.isFile()||(process.getuid&&info.uid!==process.getuid())||(info.mode&0o077)!==0||info.size>16384)throw new Error();
+      const buffer=Buffer.alloc(16385);let n=0;
+      while(n<buffer.length){const read=await file.read(buffer,n,buffer.length-n,n);if(!read.bytesRead)break;n+=read.bytesRead;}
+      const body=buffer.subarray(0,n);if(n>16384||remoteHash(body)!==expectedDigest)throw new Error();
+      return JSON.parse(new TextDecoder("utf-8",{fatal:true}).decode(body));
+    }finally{await file.close();}
+  }catch{throw new Error("invalid_registry");}
+}
+export async function assertPrivateRemoteFile(filePath:string):Promise<void>{
+  if(!path.safeParse(filePath).success||await realpath(filePath)!==filePath)throw new Error("unsafe_file");
+  const info=await lstat(filePath);
+  if(!info.isFile()||(process.getuid&&info.uid!==process.getuid())||(info.mode&0o077)!==0)throw new Error("unsafe_file");
+}
+
+
+FILE packages/cli/src/remote-home-exporter.ts
+import { randomBytes } from "node:crypto";
+import { access, lstat, realpath, stat } from "node:fs/promises";
+import { constants } from "node:fs";
+import { connect } from "node:net";
+import type { Readable, Writable } from "node:stream";
+import { z } from "zod";
+import { DeploymentIdentitySchema, type DeploymentIdentity } from "./home-inventory.js";
+import { WorkerListResultSchema } from "./worker-view-service.js";
+import { RemoteChannel, RemoteHello, RemoteRead, RemoteServerRegistry, RemoteSnapshot,
+  readPinnedRemoteRegistry, remoteHash, snapshotHash } from "./remote-home-protocol.js";
+
+async function endpoint(socketPath:string):Promise<string>{
+  if(await realpath(socketPath)!==socketPath)throw new Error("unsafe_endpoint");
+  const info=await lstat(socketPath);
+  if(!info.isSocket()||(process.getuid&&info.uid!==process.getuid())||(info.mode&0o022)!==0)throw new Error("unsafe_endpoint");
+  return `${info.dev}:${info.ino}`;
+}
+/** Deliberately private, and the method union is not an externally supplied RPC name. */
+async function localRead(socketPath:string,method:"deployment.identity"|"worker.list",params?:unknown):Promise<unknown>{
+  const before=await endpoint(socketPath);
+  const socket=connect(socketPath);const channel=new RemoteChannel(socket,socket,65536+1024);
+  try {
+    await channel.send({id:1,method,...(params===undefined?{}:{params})});
+    const raw=await channel.receive();
+    if(await endpoint(socketPath)!==before)throw new Error("endpoint_changed");
+    return z.object({id:z.literal(1),ok:z.literal(true),result:z.unknown()}).strict().parse(raw).result;
+  }finally{channel.close();socket.destroy();}
+}
+function sameIdentity(actual:DeploymentIdentity,registry:RemoteServerRegistry,generation?:string):void{
+  if(actual.home_id!==registry.home_id||actual.protocol_version!==registry.daemon_protocol||(generation!==undefined&&generation!==actual.generation))throw new Error("identity_mismatch");
+}
+export interface RemoteExporterDependencies {input?:Readable;output?:Writable;env?:NodeJS.ProcessEnv;}
+/** Call only from the dedicated stdio CLI branch. No DB imports/open, starts, or generic dispatch. */
+export async function handleRemoteExportCommand(args:string[],deps:RemoteExporterDependencies={}):Promise<number>{
+  if(args.length!==1||args[0]!=="--stdio")return 1;
+  const input=deps.input??process.stdin,output=deps.output??process.stdout,env=deps.env??process.env;
+  let registry:RemoteServerRegistry;let registryHash:string;
+  try {
+    registryHash=env["OSSTACK_REMOTE_EXPORT_SHA256"]??"";
+    registry=RemoteServerRegistry.parse(await readPinnedRemoteRegistry(env["OSSTACK_REMOTE_EXPORT_REGISTRY"]??"",registryHash));
+  }catch{return 1;}
+  const channel=new RemoteChannel(input,output);
+  try {
+    const hello=RemoteHello.parse(await channel.receive());
+    if(hello.home_id!==registry.home_id||hello.daemon_protocol!==registry.daemon_protocol||hello.registry_sha256!==registryHash)throw new Error("identity_mismatch");
+    const scope=registry.scopes.find(s=>s.alias===hello.scope);if(!scope)throw new Error("scope_mismatch");
+    if(await realpath(scope.repo_path)!==scope.repo_path||!(await stat(scope.repo_path)).isDirectory())throw new Error("scope_unavailable");
+    await access(scope.repo_path,constants.R_OK|constants.X_OK);
+    const identity=DeploymentIdentitySchema.parse(await localRead(registry.socket,"deployment.identity"));sameIdentity(identity,registry);
+    const binding={protocol:1 as const,nonce:hello.nonce,home_id:identity.home_id,generation:identity.generation,daemon_protocol:identity.protocol_version,registry_sha256:registryHash,scope:scope.alias};
+    const token=randomBytes(32).toString("hex");
+    await channel.send({...binding,type:"grant",token,methods:["snapshot"],max_page:50});
+    const request=RemoteRead.parse(await channel.receive());if(request.token!==token)throw new Error("invalid_token");
+    const before=DeploymentIdentitySchema.parse(await localRead(registry.socket,"deployment.identity"));sameIdentity(before,registry,identity.generation);
+    const result=WorkerListResultSchema.parse(await localRead(registry.socket,"worker.list",{repo_path:scope.repo_path,default_tenant:true,limit:request.limit}));
+    const after=DeploymentIdentitySchema.parse(await localRead(registry.socket,"deployment.identity"));sameIdentity(after,registry,identity.generation);
+    if(result.scope.repo_path!==scope.repo_path||result.scope.scope_id!==remoteHash(`default\0${scope.repo_path}`)||result.views.length>request.limit||result.truncated!==(result.next_cursor!==null))throw new Error("scope_mismatch");
+    const snapshot={...binding,type:"snapshot" as const,sequence:1 as const,sampled_at_ms:result.sampled_at_ms,total:result.total,
+      views:result.views.map((v,i)=>({observation_ref:`view_${i+1}`,source_kind:v.source_kind,state:v.state,revision:v.revision,
+        last_updated_at_ms:v.last_updated_at_ms===null||!Number.isSafeInteger(v.last_updated_at_ms)?null:v.last_updated_at_ms,
+        source_freshness:v.last_updated_at_ms!==null&&v.last_updated_at_ms>result.sampled_at_ms?"unknown" as const:v.freshness,
+        process_liveness:v.process_liveness,wait_reason:v.wait_reason,decision_present:v.latest_turn?.decision_present??false,
+        uncertain_delivery_recorded:v.uncertain_delivery_recorded,controls:v.controls})),
+      has_more:result.truncated,complete:!result.truncated,coverage:"default_tenant_bound_session_run_only" as const};
+    await channel.send(RemoteSnapshot.parse({...snapshot,evidence_sha256:snapshotHash(snapshot)}));
+    return 0;
+  }catch{return 1;}finally{channel.close();input.pause();}
+}
+
+
+FILE packages/cli/src/remote-home-reader.ts
+import { randomBytes } from "node:crypto";
+import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
+import { rm, writeFile } from "node:fs/promises";
+import { join } from "node:path";
+import { RemoteChannel, RemoteGrant, RemoteHomeEntry, RemoteSnapshot, assertPrivateRemoteFile, snapshotHash } from "./remote-home-protocol.js";
+
+/** The remote shell sees only this literal command; all variable fields are local SSH argv. */
+export function buildRemoteSshArgs(raw:RemoteHomeEntry,knownHostsPath:string):string[]{
+  const entry=RemoteHomeEntry.parse(raw);
+  if(!knownHostsPath.startsWith("/")||/[\s%'"\\\p{C}]/u.test(knownHostsPath))throw new Error("unsafe_file");
+  return ["-F","/dev/null","-T","-o","BatchMode=yes","-o","StrictHostKeyChecking=yes","-o","IdentitiesOnly=yes",
+    "-o","IdentityAgent=none","-o","PreferredAuthentications=publickey","-o","PasswordAuthentication=no","-o","KbdInteractiveAuthentication=no","-o","GSSAPIAuthentication=no","-o","ForwardAgent=no","-o","ForwardX11=no","-o","ClearAllForwardings=yes",
+    "-o","ProxyCommand=none","-o","ProxyJump=none","-o","ControlMaster=no","-o","ControlPath=none",
+    "-o","PermitLocalCommand=no","-o","GlobalKnownHostsFile=/dev/null","-o",`UserKnownHostsFile=${knownHostsPath}`,
+    "-o","HostKeyAlgorithms=ssh-ed25519","-o","UpdateHostKeys=no","-o","VerifyHostKeyDNS=no",
+    "-o","CanonicalizeHostname=no","-o","ConnectionAttempts=1","-o","ConnectTimeout=5",
+    "-o","ServerAliveInterval=5","-o","ServerAliveCountMax=1","-o","LogLevel=ERROR",
+    "-i",entry.identity_file,"-p",String(entry.port),"-l",entry.user,"--",entry.host,"osstack remote-export --stdio"];
+}
+export interface RemoteReadDependencies {
+  /** Host/test composition only, never loaded from a registry or remote request. */
+  spawn?:typeof spawn;
+  timeoutMs?:number;
+}
+export type RemoteReadResult = {
+  schema_version:1;mode:"remote_readonly_snapshot";alias:string;status:"observed";snapshot:RemoteSnapshot;
+  received_at_ms:number;round_trip_ms:number;freshness:"point_in_time_unverified_clock";remote_clock:"within_local_60s"|"skew_or_unknown";
+  qualification:"remote_host_pending";
+}|{schema_version:1;mode:"remote_readonly_snapshot";alias:string;status:"unknown";reason:"remote_observation_unavailable";qualification:"remote_host_pending";};
+/** Invalid caller input throws before transport; runtime/remote failures return an allowlisted unknown result. */
+export async function readRemoteHome(raw:RemoteHomeEntry,limit=25,deps:RemoteReadDependencies={}):Promise<RemoteReadResult>{
+  const entry=RemoteHomeEntry.parse(raw);
+  if(!Number.isInteger(limit)||limit<1||limit>50)throw new Error("invalid_request");
+  const unknown:RemoteReadResult={schema_version:1,mode:"remote_readonly_snapshot",alias:entry.alias,status:"unknown",reason:"remote_observation_unavailable",qualification:"remote_host_pending"};
+  let child:ChildProcessWithoutNullStreams|undefined,channel:RemoteChannel|undefined,dir:string|undefined,timer:NodeJS.Timeout|undefined;
+  const started=performance.now();
+  try {
+    await assertPrivateRemoteFile(entry.identity_file);
+    const { createScratchDir }=await import("@osstack/core");
+    dir=await createScratchDir("runtime","remote-read");
+    const known=join(dir,"known_hosts");const name=entry.port===22?entry.host:`[${entry.host}]:${entry.port}`;
+    await writeFile(known,`${name} ${entry.host_key}\n`,{mode:0o600,flag:"wx"});
+    const childEnv:NodeJS.ProcessEnv={PATH:"/usr/bin:/bin",LANG:"C",LC_ALL:"C"};
+    child=(deps.spawn??spawn)("/usr/bin/ssh",buildRemoteSshArgs(entry,known),{stdio:["pipe","pipe","pipe"],shell:false,env:childEnv}) as ChildProcessWithoutNullStreams;
+    channel=new RemoteChannel(child.stdout,child.stdin);
+    child.stderr.on("error",()=>{child?.stdout.destroy();child?.stdin.destroy();});
+    let stderrBytes=0;child.stderr.on("data",(chunk:Buffer)=>{stderrBytes+=chunk.length;if(stderrBytes>8192)child?.kill("SIGKILL");});
+    child.on("error",()=>{child?.stdout.destroy();child?.stdin.destroy();});
+    const timeoutMs=Math.max(1,Math.min(10000,deps.timeoutMs??10000));
+    const active=channel;
+    const exchange=async()=>{
+      const nonce=randomBytes(32).toString("hex");
+      const hello={type:"hello",protocol:1,nonce,home_id:entry.home_id,daemon_protocol:entry.daemon_protocol,registry_sha256:entry.registry_sha256,scope:entry.scope};
+      await active.send(hello);const grant=RemoteGrant.parse(await active.receive(timeoutMs));
+      if(grant.nonce!==nonce||grant.home_id!==entry.home_id||grant.daemon_protocol!==entry.daemon_protocol||grant.registry_sha256!==entry.registry_sha256||grant.scope!==entry.scope)throw new Error("binding_mismatch");
+      await active.send({type:"snapshot",token:grant.token,sequence:1,limit});
+      const snapshot=RemoteSnapshot.parse(await active.receive(timeoutMs));
+      if(snapshot.nonce!==nonce||snapshot.home_id!==entry.home_id||snapshot.generation!==grant.generation||snapshot.daemon_protocol!==entry.daemon_protocol||snapshot.registry_sha256!==entry.registry_sha256||snapshot.scope!==entry.scope||snapshot.views.length>limit)throw new Error("binding_mismatch");
+      const {evidence_sha256,...payload}=snapshot;if(snapshotHash(payload)!==evidence_sha256)throw new Error("evidence_mismatch");
+      const now=Date.now();return {schema_version:1 as const,mode:"remote_readonly_snapshot" as const,alias:entry.alias,status:"observed" as const,snapshot,received_at_ms:now,round_trip_ms:Math.round(performance.now()-started),freshness:"point_in_time_unverified_clock" as const,remote_clock:Math.abs(now-snapshot.sampled_at_ms)<=60000?"within_local_60s" as const:"skew_or_unknown" as const,qualification:"remote_host_pending" as const};
+    };
+    return await Promise.race([exchange(),new Promise<never>((_,reject)=>{timer=setTimeout(()=>reject(new Error("transport_timeout")),timeoutMs);})]);
+  }catch{return unknown;}finally{
+    if(timer)clearTimeout(timer);channel?.close();
+    if(child){child.stdin.destroy();child.stdout.destroy();child.stderr.destroy();if(child.exitCode===null)child.kill("SIGKILL");}
+    if(dir)await rm(dir,{recursive:true,force:true}).catch(()=>{});
+  }
+}
+
+
+FILE packages/cli/src/remote-home-command.ts
+import { RemoteClientRegistry, readPinnedRemoteRegistry, REMOTE_MAX_BYTES } from "./remote-home-protocol.js";
+import { readRemoteHome, type RemoteReadDependencies } from "./remote-home-reader.js";
+export const REMOTE_HOME_HELP=`remote-home inspect --registry FILE --sha256 HASH --alias NAME [--limit 1..50]\nRead a pinned remote home through fixed SSH stdio; partial pages and transport failures remain explicit.\n`;
+export async function handleRemoteHomeCommand(args:string[],deps:RemoteReadDependencies&{stdout?:(text:string)=>void;stderr?:(text:string)=>void}={}):Promise<number>{
+  const out=deps.stdout??(text=>{process.stdout.write(text);}),err=deps.stderr??(text=>{process.stderr.write(text);});
+  if(args.length===1&&args[0]==="--help"){out(REMOTE_HOME_HELP);return 0;}
+  try {
+    if(args[0]!=="inspect"||args.length>9||args.some(a=>a.length>4096))throw new Error();
+    const flags=new Map<string,string>();
+    for(let i=1;i<args.length;i+=2){const key=args[i]!,value=args[i+1];if(!["--registry","--sha256","--alias","--limit"].includes(key)||flags.has(key)||!value)throw new Error();flags.set(key,value);}
+    const limit=flags.get("--limit")??"25";if(!/^[1-9][0-9]?$/.test(limit)||Number(limit)>50)throw new Error();
+    const registry=RemoteClientRegistry.parse(await readPinnedRemoteRegistry(flags.get("--registry")??"",flags.get("--sha256")??""));
+    const entry=registry.homes.find(h=>h.alias===flags.get("--alias"));if(!entry)throw new Error();
+    const result=await readRemoteHome(entry,Number(limit),deps);const text=JSON.stringify(result)+"\n";
+    if(Buffer.byteLength(text)>REMOTE_MAX_BYTES)throw new Error();out(text);
+    return result.status==="observed"&&result.snapshot.complete?0:1;
+  }catch{err("invalid_remote_request\n");return 1;}
+}
+
+
+EXCERPT packages/cli/src/daemon.ts
+      database_schema: ctx.db.pragma("user_version", {simple:true}) as number,
+      started_at_ms: Date.now(), deployment_kind: "unknown",
+      build_digest: null, build_evidence: "unavailable",
+    };
+  } catch (error) {
+    if (!(error instanceof Error) || error.message !== "identity_unavailable") throw error;
+    console.warn("Deployment identity unavailable; explicit home inventory will report unknown.");
+  }
+
+  const getGraphRpc = (): Promise<GraphRpcService> => {
+    if (checkpointClosed) return Promise.reject(new Error('GRAPH_SERVICE_CLOSED'));
+    graphRpc ??= import('./graph-rpc.js').then(async ({ GraphRpcService, loadLocalGraphRegistration }) => {
+      const configured = opts.graphRpc;
+      const resolvers = configured ? undefined : (await import('./graph-contract-host.js')).createGraphContractHostResolvers(osstackHome());
+      const local = configured ? undefined : await loadLocalGraphRegistration(join(osstackHome(), 'graph-host.json'), ctx.adapters, resolvers);
+      const service = new GraphRpcService({ db: ctx.db, root: join(osstackHome(), 'graph-delivery'),
+        registrations: (configured?.registrations ?? [local!]).map(registration => ({ ...registration,
+          admitNewRuns: () => !ctx.draining && (registration.admitNewRuns ? registration.admitNewRuns() : true),
+        })),
+        resolveCaller: connection => {
+          if (!graphSockets.has(connection)) return null;
+          if (configured) return configured.resolveCaller(connection);
+          const socket = statSync(socketPath);
+          return socket.isSocket() && socket.uid === process.getuid?.() && (socket.mode & 0o077) === 0 ? local!.id : null;
+        },
+        acquire: input => admissionFor(ctx).acquire(input),
+        authorizePolicy: async ({ policyRoot, workspacePath }) => {
+          const source = await makeRepositoryPolicyGate(policyRoot, true)({ workspacePath: policyRoot });
+          if (!source.allow) throw new Error('POLICY_DENIED');
+          if (workspacePath !== policyRoot) {
+            const candidate = await makeRepositoryPolicyGate(workspacePath, false)({ workspacePath });
+            if (!candidate.allow) throw new Error('POLICY_DENIED');
+          }
+        } });
+      if (checkpointClosed) { void service.close(); throw new Error('GRAPH_SERVICE_CLOSED'); }
+      return service;
+    }).catch(error => { graphRpc = undefined; throw error; });
+    return graphRpc;
+  };
+  const getCheckpoints = async (): Promise<GraphCheckpointService> => {
+    if (checkpointClosed) throw new Error("CHECKPOINT_SERVICE_CLOSED");
+    checkpointService ??= Promise.all([import("./graph-checkpoint-service.js"), import("@osstack/core")])
+      .then(([{ GraphCheckpointService }, { GraphRunStore, GraphCheckpointStore }]) =>
+        new GraphCheckpointService({ runs: new GraphRunStore(ctx.db), checkpoints: new GraphCheckpointStore(ctx.db), bindings: checkpointBindings }));
+    const service = await checkpointService;
+    if (checkpointClosed) { service.close(); throw new Error("CHECKPOINT_SERVICE_CLOSED"); }
+
+EXCERPT packages/cli/src/daemon.ts
+  const stopUpdateChecker = startUpdateChecker();
+  stopUpdates = stopUpdateChecker;
+  let dashboard: DashboardServerHandle | null = null;
+
+  const server = createServer((sock: Socket) => {
+    graphSockets.add(sock);
+    sock.once('close', () => graphSockets.delete(sock));
+    const decoder = new FrameDecoder();
+
+    sock.on("data", (chunk) => {
+      try {
+        const frames = decoder.push(chunk);
+        for (const raw of frames) {
+          const req = raw as DaemonRequest;
+          if (typeof req !== "object" || req === null || typeof req.method !== "string") {
+            sock.write(encodeFrame(singleErr(req?.id ?? 0, "bad_request", "request must have a 'method' string")));
+            continue;
+          }
+
+          // Wall-clock per request, recorded into the per-method latency
+          // window that `osstack stats` reports. For the streaming methods
+          // (task.submit/task.observe) this measures the full handler
+          // lifetime, not time-to-first-byte.
+          const startedAt = performance.now();
+          const recordLatency = (): void => {
+            ctx.rpcLatency.record(req.method, performance.now() - startedAt);
+          };
+          const reportFailure = (error: unknown): void => {
+            try { sock.write(encodeFrame(singleErr(req.id, "execution_failed", error instanceof Error ? error.message : String(error)))); } catch { /* disconnected */ }
+          };
+
+          if (['graph.validate', 'graph.start', 'graph.submit', 'graph.status', 'graph.result', 'graph.contract', 'graph.cancel', 'graph.reconcile', 'graph.resume'].includes(req.method)) {
+            void getGraphRpc().then(service => service.handle(sock, req.method, req.params)).then(result => {
+              try { sock.write(encodeFrame(singleOk(req.id, result))); } catch { /* disconnected */ }
+            }).catch(async error => {
+              const { graphRpcError } = await import('./graph-rpc.js');
+              const failure = graphRpcError(error);
+              try { sock.write(encodeFrame(singleErr(req.id, failure.code, failure.message))); } catch { /* disconnected */ }
+            }).finally(recordLatency);
+            continue;
+          }
+          if (req.method === "task.submit") {
+            void traceSpan(
+              "osstack.task.submit",
+              { "osstack.method": req.method },
+              () => handleTaskSubmit(ctx, req, sock),
+
+EXCERPT packages/protocol/src/graph.ts
+export type GraphStatusRequest = z.infer<typeof GraphStatusRequest>;
+
+const DelegationFields = z.object({
+  schemaVersion: Version, scope: Scope, graphRunId: Id, source: Start.shape.source,
+  status: GraphRunState, revision: Count, generation: Count,
+  inputDigest: Digest, specHash: Digest, createdAt: Count, updatedAt: Count,
+  admissionBinding: z.object({ requestInputDigest: Digest, hostInputDigest: Digest, contractDigest: Digest, policyDigest: Digest }).strict().optional(),
+  publication: z.literal("artifact_only"), phase: Id,
+  budget: z.object({ limits: Spec.shape.limits, actionStarts: Count, reservedTokens: z.string().regex(/^(0|[1-9][0-9]{0,39})$/), chargedTokens: z.string().regex(/^(0|[1-9][0-9]{0,39})$/), accountingBlocked: z.boolean() }).strict(),
+  candidate: z.object({ candidateRevision: Commit, artifactRefs: Refs, artifactDigest: Digest }).strict().optional(),
+  evidenceRefs: z.array(Id).max(100), resultRef: Id.optional(),
+  delivery: z.enum(["pending", "available", "delivery_unknown"]),
+  interrupt: z.object({ interruptId: Id, inputDigest: Digest, kind: z.enum(["quality", "authorization"]) }).strict().optional(),
+  authorization: z.object({ kind: z.literal("needs_authorization"), scope: Scope, requestRef: Id }).strict().optional(),
+  error: ErrorObject.optional(),
+ }).strict();
+// Keep availability requirements in JSON Schema too, for non-TypeScript callers.
+const DelegationStatus = z.discriminatedUnion("status", [
+  DelegationFields.extend({ status: z.literal("ready"), delivery: z.literal("available"),
+    candidate: DelegationFields.shape.candidate.unwrap(), resultRef: Id, evidenceRefs: Refs }),
+  DelegationFields.extend({ status: z.enum(["cancel_pending", "reconciliation_required"]), delivery: z.literal("delivery_unknown") }),
+  DelegationFields.extend({ status: GraphRunState.exclude(["ready", "cancel_pending", "reconciliation_required"]), delivery: z.enum(["pending", "delivery_unknown"]) }),
+]).superRefine((value, ctx) => {
+  if (value.admissionBinding && value.admissionBinding.hostInputDigest !== value.inputDigest) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Admission must bind the durable host input" });
+  }
+  if (value.interrupt && value.interrupt.inputDigest !== value.inputDigest) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Interrupt must bind original input" });
+  }
+  if (value.authorization && canonical(value.authorization.scope) !== canonical(value.scope)) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Authorization must return to original scope" });
+  }
+});
+/** OSStack v1 delegation projection. References are verified by the serving host;
+ * consumers must not turn an artifact-only result into merge/push authorization. */
+export const GraphDelegationStatus = wire(DelegationStatus);
+export type GraphDelegationStatus = z.infer<typeof GraphDelegationStatus>;
+/** A lost mutation response is not a failed action. Retry the exact request/key. */
+export const GraphDeliveryUnknown = wire(z.object({
+  schemaVersion: Version, kind: z.literal("delivery_unknown"), scope: Scope,
+
+ROOT ENTRYPOINT DIFF
+commit c655448095d15bf8f7b827c41c5f82e7f1cc3652
+Author: gilosbornhello <osbornhello@gmail.com>
+Date:   Fri Oct 23 13:44:02 2026 -0700
+
+    feat(firstmate): wire Graph contracts and bounded recovery through real host
+
+diff --git a/packages/cli/src/attention-command.ts b/packages/cli/src/attention-command.ts
+index 71f7698d..984fa04b 100644
+--- a/packages/cli/src/attention-command.ts
++++ b/packages/cli/src/attention-command.ts
+@@ -10,6 +10,7 @@ Opt-in daemon: OSSTACK_ATTENTION=1 osstack serve
+   attention answer --scope ID --item ID --action ID --revision N --content-hash HASH --text TEXT [--takeover --grant ID]
+   attention release --scope ID --kind session|run|loop --subject ID --expected-version N
+   attention abandon-receipt --scope ID --session ID --message ID --expected-version N --reason TEXT --evidence-sha256 HASH --acknowledge-unknown-effects
++  attention recovery --scope ID [--after CURSOR] [--limit 1..25] [--json]
+   attention brief|cockpit --scope ID --actor NAME
+   attention posture --scope ID --actor NAME --posture attended|quiet|away
+   attention seen --scope ID --actor NAME --revisions JSON
+@@ -166,6 +167,7 @@ async function handleLive(
+   const allowed = [
+     "watch",
+     "inventory",
++    "recovery",
+     "inbox",
+     "get",
+     "answer",
+@@ -191,6 +193,7 @@ async function handleLive(
+     "repo",
+     "scope",
+     "after",
++    "limit",
+     "item",
+     "action",
+     "revision",
+@@ -262,7 +265,7 @@ async function handleLive(
+     };
+     const name = mapped[key] ?? key;
+     if (params[name] !== undefined) throw new Error("duplicate_flag:" + flag);
+-    params[name] = ["revision", "pr", "expected-version"].includes(key)
++    params[name] = ["revision", "pr", "expected-version", "limit"].includes(key)
+       ? Number(value)
+       : ["revisions", "subjects", "required"].includes(key)
+         ? JSON.parse(value)
+@@ -290,14 +293,11 @@ async function handleLive(
+           deliveries: await call("attention.deliveries"),
+         }
+       : await call("attention." + command);
++  const safeOutput = (value: unknown) => JSON.stringify(value,null,2).replace(/[\u007f-\u009f]/g, char => "\\u"+char.charCodeAt(0).toString(16).padStart(4,"0"));
+   (io.stdout ?? console.log)(
+     json
+-      ? JSON.stringify(result, null, 2)
+-      : `Attention · ${command}\n${JSON.stringify(
+-          result,
+-          null,
+-          2,
+-        )}\nDelivered means transport receipt; applied means instruction receipt; neither means task completed.`,
++      ? safeOutput(result)
++      : `Attention · ${command}\n${safeOutput(result)}\nDelivered means transport receipt; applied means instruction receipt; neither means task completed.`,
+   );
+   return 0;
+ }
+diff --git a/packages/cli/src/bin.ts b/packages/cli/src/bin.ts
+index d16159e2..6cc44592 100644
+--- a/packages/cli/src/bin.ts
++++ b/packages/cli/src/bin.ts
+@@ -223,6 +223,7 @@ function renderChineseMainHelp(): string {
+   stats               查看 agent 与 loop 指标
+ 
+ 项目命令：
++  remote-home inspect  Read a pinned remote home snapshot over fixed SSH export
+   homes inspect --manifest <file>  只读盘点显式登记的本地实例
+   follow-up           本地承诺账本（不对外发送）
+   worker list|inspect --repo <path> --default-tenant  只读查看已绑定执行器
+@@ -386,6 +387,16 @@ export async function main(args = process.argv.slice(2)): Promise<number> {
+     return 0;
+   }
+ 
++  // The remote stdio protocol must run before deployment defaults or any UI output.
++  if (cmd === "remote-export") {
++    const {handleRemoteExportCommand} = await import("./remote-home-exporter.js");
++    return handleRemoteExportCommand(args.slice(1));
++  }
++  if (cmd === "remote-home") {
++    const {handleRemoteHomeCommand} = await import("./remote-home-command.js");
++    return handleRemoteHomeCommand(args.slice(1));
++  }
++
+   // Talk to the daemon that is actually deployed. Without this, a plain shell
+   // (no OSSTACK_HOME/OSSTACK_SOCKET exported) resolves ~/.osstack/daemon.sock
+   // and every daemon-touching command reports "not running" against a healthy

@@ -1,0 +1,16 @@
+{
+  "packages/cli/src/graph-contract-host.ts": "8c1763a3aa7b4a3a42f8a381c46970d86c72911299d2cded7ffbce06fd85dfdd",
+  "packages/cli/src/graph-contract-host.test.ts": "a027478aaa411514caac190a855c32cd86e3cbda330f269f35a37404bd4c259e",
+  "packages/cli/src/graph-rpc.ts": "aa9ae19fd7d66f5f3a4094ec121258ee79797e9ec53c08522135e55e754c8db1",
+  "packages/cli/src/graph-execution-command.ts": "a64ecd875d11c512d7adfcdb650900c948e59d31315faf05dbc0a3dcea974280",
+  "packages/cli/src/graph-execution-command.test.ts": "912c4016170343bd555e2af66da26416e41c921643516f5905b5e061a9ff7952",
+  "packages/cli/src/graph-delivery-contract.ts": "13bbf422081cafe93e569e63e8882da38219723291ab4981cfa401a9e65fa6bd",
+  "packages/cli/src/graph-execution-context.ts": "1a96a939552a41908c47c7c6c50bb4338d65643c7faebdd095fabf8243518173",
+  "packages/cli/src/graph-contract-receipt.ts": "d3b322162c302472439af38c65d9147fa385cbcf38cd21ff720b55fa0f72cf56",
+  "packages/cli/src/supervision-service.ts": "209771931c94c8ee65e56a8c38abe8c1dfc2520895c982386f6bb35da26061ed",
+  "packages/core/src/state/attention-recovery-view.ts": "e90c79424b1c5cb47fec7cb52bfa2d315b1fcc14e0bf313fe33d1950190e69bd",
+  "packages/cli/src/remote-home-protocol.ts": "4f189de0cc706f03a15fd9d83b4c1a59d14b8bc85dec055d0d5c8ed338b1a8be",
+  "packages/cli/src/remote-home-exporter.ts": "e802f6a178585d6dc5d86d998b53666f0ed589ec0d507561102cb8a72c5fc7d2",
+  "packages/cli/src/remote-home-reader.ts": "bf5aec214e56ffa80af9ff50f053b0958cb0a98298089dc265d2dbd6cab297c6",
+  "packages/cli/src/remote-home-command.ts": "5a59c9ab1be6aac0c9d450d55f8af96f443ca46b820ec877b8779cf16e2b1e79"
+}

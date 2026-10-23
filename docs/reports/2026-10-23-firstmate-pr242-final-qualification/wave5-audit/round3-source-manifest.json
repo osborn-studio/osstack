@@ -1,0 +1,30 @@
+[
+  {
+    "path": "packages/cli/src/graph-delivery-contract.ts",
+    "sha256": "0c46cadccf6d1945a63c5437652c4ea54812a1b473a4fb94b8bae50ddc1b6a6d"
+  },
+  {
+    "path": "packages/cli/src/graph-contract-integration.test.ts",
+    "sha256": "6c6ced9da60b940f6597fa70dcfdf865bf1183ff185180369e61a3efdadba932"
+  },
+  {
+    "path": "packages/cli/src/graph-delivery.ts",
+    "sha256": "f5ffb3f42985638afb47bca2e1f4382d99c9132fdb6db1bd0eb940594f8d7e99"
+  },
+  {
+    "path": "packages/core/src/graph/artifact-git.ts",
+    "sha256": "dcc417c48e4b2e2d23b363d6659e5edbb0da194c160e42badd1ae6d0129ea470"
+  },
+  {
+    "path": "packages/cli/src/graph-verification.ts",
+    "sha256": "149d988199917df1b960237a17bc5ea0cd616203d4f67b9ac986b3f646847052"
+  },
+  {
+    "path": "packages/cli/src/graph-execution-command.ts",
+    "sha256": "75a1f3221f74b57a0236d398ba01c293aeec08a237a928a3da2225a4e57424cc"
+  },
+  {
+    "path": "packages/cli/src/graph-execution-command.test.ts",
+    "sha256": "65dc681aa9d5ca84e5d3b5cd0320053fd5b5e3328576b4732d1d7f5738c14542"
+  }
+]
