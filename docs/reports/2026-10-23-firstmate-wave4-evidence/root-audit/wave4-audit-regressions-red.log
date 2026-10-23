@@ -1,0 +1,81 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-local-ledgers/packages/cli
+
+ ❯ src/attention-triage.test.ts (17 tests | 2 failed) 529ms
+   ✓ stays disabled without initializing provider and refuses unconfigured model 29ms
+   ✓ records bounded advice and cache without changing human decision or any action state 22ms
+   ✓ rejects provider receipt: extra_command 21ms
+   ✓ rejects provider receipt: missing_usage 19ms
+   ✓ rejects provider receipt: wrong_model 20ms
+   ✓ rejects provider receipt: oversized 20ms
+   ✓ quarantines timeout and ignores late success while retaining rolling budget 74ms
+   ✓ stop returns promptly and late provider completion cannot access a closed database 21ms
+   ✓ stale source and owner replacement cannot install late advice 20ms
+   ✓ database failure prevents provider invocation 21ms
+   ✓ exposes only the explicit RPC command and no caller-controlled execution policy 21ms
+   ✓ exposes scoped quarantine diagnostics without a release action 73ms
+   ✓ never releases a slot from an unconfirmed provider stop error 21ms
+   ✓ bounds hung preflight and cancels it on daemon stop without consuming budget 31ms
+   ✓ retries a rejected provider factory and cleans a known not-started reservation 21ms
+   × shows existing scope quarantine even when triage has been disabled 76ms
+     → expected { state: 'disabled' } to match object { state: 'quarantined', …(2) }
+   × escapes model C1 terminal controls in CLI output 20ms
+     → expected '{\n  "state": "advisory",\n  "applied…' not to contain '\u009b'
+ ✓ src/local-ledgers-daemon.test.ts (5 tests) 363ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/attention-triage.test.ts > shows existing scope quarantine even when triage has been disabled
+AssertionError: expected { state: 'disabled' } to match object { state: 'quarantined', …(2) }
+
+- Expected
++ Received
+
+  {
+-   "enabled": false,
+-   "quarantine": {
+-     "reason": "daemon_stopped",
+-   },
+-   "state": "quarantined",
++   "state": "disabled",
+  }
+
+ ❯ src/attention-triage.test.ts:123:50
+    121|   await active.stop(); await answer;
+    122|   const disabled = createAttentionTriageService({ ledger, config: { ..…
+    123|   expect(disabled.diagnostics(request.scope_id)).toMatchObject({ state…
+       |                                                  ^
+    124|   expect(disabled.diagnostics("f".repeat(64))).not.toHaveProperty("qua…
+    125| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  src/attention-triage.test.ts > escapes model C1 terminal controls in CLI output
+AssertionError: expected '{\n  "state": "advisory",\n  "applied…' not to contain '\u009b'
+
+- Expected
++ Received
+
+- 
++ {
++   "state": "advisory",
++   "applied": false,
++   "explanation": "unsafe2J"
++ }
+
+ ❯ src/attention-triage.test.ts:131:40
+    129|     stdout, rpc: async () => ({ ok: true, result: { state: "advisory",…
+    130|   });
+    131|   expect(stdout.mock.calls[0]![0]).not.toContain("\u009b");
+       |                                        ^
+    132|   expect(JSON.parse(stdout.mock.calls[0]![0]).explanation).toBe("unsaf…
+    133| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed | 1 passed (2)
+      Tests  2 failed | 20 passed (22)
+   Start at  13:18:29
+   Duration  1.89s (transform 873ms, setup 21ms, collect 1.73s, tests 892ms, environment 0ms, prepare 69ms)
+

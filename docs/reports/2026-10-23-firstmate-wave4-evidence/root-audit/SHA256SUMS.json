@@ -1,0 +1,16 @@
+{
+  "round1-context.txt": "ade0851d9eb62e3c1fd568675366bb71dc434655fbfd50dc72e2384f324cd7dc",
+  "round1-result.json": "c42026138fbcb6ea837071cf3671f7ba4c44cee9852ca10bc0d7117e4c2852ca",
+  "round1-source-manifest.json": "5ab5b3826d6b9a44f9d42b2ca7da2a41b3ac67e43db348572a8a2a34f9deae29",
+  "round1-stderr.log": "61b1ec1babd05607d61c3c37883d25b807fc94e69c2090164e10676c0b2af903",
+  "round2-context.txt": "3ca7ea0fcb24d4ee9bc9bf6feedaf983a957aafec4104c108f8056fe7f3ee7e7",
+  "round2-result.json": "d35ed2b629c21fd6d405b67a0f3def84660336eb20375874ac64cf0eb087700d",
+  "round2-source-manifest.json": "8486b114c412d4471a95255a10d24ed4b4b1418f1261481d858e500fc780c4d5",
+  "round2-stderr.log": "61b1ec1babd05607d61c3c37883d25b807fc94e69c2090164e10676c0b2af903",
+  "wave4-audit-fix-typecheck.log": "8366207267355d3e3d5bf3bf6e8c94c5f93f6078c34f08973fa2b38cdda6cc92",
+  "wave4-audit-regressions-green.log": "2383ae67c322f4ed0353fa499355e20eb059a3776b1c0e44a666cf776ab16b52",
+  "wave4-audit-regressions-red.log": "9952af0604e200e31ed207c3f8066f161e8c71a46cfcceac44d92589a5ae4bf0",
+  "wave4-follow-up-integration.log": "4a9458d6ad92eaebc625915c85c9070501a8d5cde021c87a3e7e27100f83c8fc",
+  "wave4-ledgers-integration-retry2.log": "bb6639e828464a96b3ba8e57bad8fb3f4010d32606910e14fe3c3f48d421fa28",
+  "wave4-ledgers-integration.log": "b47959c1bde9048a7065a1e1f92dc8e4501d37a1b44f394747c72bdbfb7cda98"
+}
