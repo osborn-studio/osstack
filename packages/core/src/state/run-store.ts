@@ -140,10 +140,16 @@ export function appendEvent(
     } else if (ev.type === "approval.resolved") {
       const p = ev.payload as { approval_id?: string; choice?: string; status?: string };
       if (typeof p.approval_id === "string") {
-        d.prepare(
-          "UPDATE approvals SET status = ?, resolved_at = ?, choice = ? WHERE approval_id = ?",
-        ).run(p.status === "rejected" ? "rejected" : p.status === "timed_out" ? "timed_out" : "accepted",
-              ev.created_at, p.choice ?? null, p.approval_id);
+        if (!["accepted", "rejected", "timed_out"].includes(p.status ?? "")) throw new Error("invalid_approval_resolution");
+        const changed = d.prepare(
+          "UPDATE approvals SET status = ?, resolved_at = ?, choice = ? WHERE approval_id = ? AND run_id = ? AND status = 'pending'",
+        ).run(p.status, ev.created_at, p.choice ?? null, p.approval_id, ev.run_id).changes;
+        if (changed !== 1) {
+          const prior = d.prepare("SELECT status,choice FROM approvals WHERE approval_id=? AND run_id=?")
+            .get(p.approval_id, ev.run_id) as { status: string; choice: string | null } | undefined;
+          if (!prior || prior.status !== p.status || prior.choice !== (p.choice ?? null))
+            throw new Error("approval_resolution_conflict");
+        }
       }
     } else if (ev.type === "clarify.requested") {
       const p = ev.payload as { clarify_id?: string; question?: string };
@@ -155,10 +161,16 @@ export function appendEvent(
     } else if (ev.type === "clarify.resolved") {
       const p = ev.payload as { clarify_id?: string; answer?: string; status?: string };
       if (typeof p.clarify_id === "string") {
-        d.prepare(
-          "UPDATE clarifies SET status = ?, resolved_at = ?, answer = ? WHERE clarify_id = ?",
-        ).run(p.status === "timed_out" ? "timed_out" : p.status === "abandoned" ? "abandoned" : "answered",
-              ev.created_at, p.answer ?? null, p.clarify_id);
+        if (!["answered", "timed_out", "abandoned"].includes(p.status ?? "")) throw new Error("invalid_clarify_resolution");
+        const changed = d.prepare(
+          "UPDATE clarifies SET status = ?, resolved_at = ?, answer = ? WHERE clarify_id = ? AND run_id = ? AND status = 'pending'",
+        ).run(p.status, ev.created_at, p.answer ?? null, p.clarify_id, ev.run_id).changes;
+        if (changed !== 1) {
+          const prior = d.prepare("SELECT status,answer FROM clarifies WHERE clarify_id=? AND run_id=?")
+            .get(p.clarify_id, ev.run_id) as { status: string; answer: string | null } | undefined;
+          if (!prior || prior.status !== p.status || prior.answer !== (p.answer ?? null))
+            throw new Error("clarify_resolution_conflict");
+        }
       }
     }
   });
@@ -279,8 +291,11 @@ export function readRunEventPage(db: Database.Database, input: {
       seq,substr(type,1,257) type,created_at,terminal,length(CAST(payload_json AS BLOB)) payload_bytes,
       CASE WHEN length(CAST(payload_json AS BLOB))<=65536 THEN payload_json ELSE NULL END payload_json
       FROM events WHERE run_id=? AND seq>? AND seq<=? ORDER BY seq LIMIT ?`)
-      .all(input.runId, input.afterSeq, high, input.limit + 1) as BoundedRunEvent[];
-    const events = rows.slice(0, input.limit);
+      .all(input.runId, input.afterSeq, high, input.limit) as BoundedRunEvent[];
+    const events = rows;
+    const nextAfter = events.at(-1)?.seq ?? input.afterSeq;
+    const hasMore = db.prepare("SELECT 1 FROM events WHERE run_id=? AND seq>? AND seq<=? LIMIT 1")
+      .get(input.runId, nextAfter, high) !== undefined;
     let previous = input.afterSeq;
     let gap = max < input.afterSeq || max < high;
     for (const event of events) {
@@ -288,7 +303,7 @@ export function readRunEventPage(db: Database.Database, input: {
       previous = event.seq;
     }
     return { events, nextAfter: events.at(-1)?.seq ?? input.afterSeq, highWatermark: high,
-      availableHighWatermark: max, hasMore: rows.length > input.limit, sequenceGap: gap };
+      availableHighWatermark: max, hasMore, sequenceGap: gap };
   };
   return db.inTransaction ? read() : db.transaction(read)();
 }

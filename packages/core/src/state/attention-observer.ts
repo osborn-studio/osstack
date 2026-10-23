@@ -85,6 +85,11 @@ export class AttentionObserver {
       db.prepare(
         "UPDATE attention_scopes SET error='source_missing',scan_complete=0 WHERE scope_id=?"
       ).run(scope.scope_id);
+      db.prepare("UPDATE attention_run_cursors SET gap=COALESCE(gap,'source_missing'),generation=?,updated_at=? WHERE scope_id=?")
+        .run(this.owner.generation, now, scope.scope_id);
+      db.prepare("UPDATE attention_subjects SET sampled_at=?,generation=?,payload_json=? WHERE scope_id=?")
+        .run(now, this.owner.generation, JSON.stringify({ state: "source_missing", reason: "source_missing",
+          process_liveness: "unknown", gap: "history_gap", event_replay: { complete: false, caught_up: false, gap: "source_missing" } }), scope.scope_id);
       return;
     }
     // A scan advances a durable keyset, then restarts from the beginning. New IDs
@@ -93,7 +98,7 @@ export class AttentionObserver {
       .prepare(
         `SELECT '0:'||s.session_id AS key,s.session_id AS id,'session' AS kind FROM agent_sessions s JOIN runs r ON r.run_id=s.run_id AND r.task_id=s.task_id
       WHERE s.task_id=? AND r.tenant_id IS NULL AND '0:'||s.session_id>?
-      UNION ALL SELECT '1:'||r.run_id,r.run_id,'run' FROM runs r WHERE r.task_id=? AND r.tenant_id IS NULL AND '1:'||r.run_id>? AND NOT EXISTS (SELECT 1 FROM agent_sessions s WHERE s.run_id=r.run_id AND s.task_id=r.task_id)
+      UNION ALL SELECT '1:'||r.run_id,r.run_id,'run' FROM runs r WHERE r.task_id=? AND r.tenant_id IS NULL AND '1:'||r.run_id>?
       ORDER BY key LIMIT 250`
       )
       .all(
@@ -295,6 +300,8 @@ export class AttentionObserver {
           });
         })();
       } catch (error) {
+        if (error instanceof Error && error.message === "stale_owner") throw error;
+        this.store.assertOwner(this.owner);
         this.update(subject, now, {
           state: "unknown",
           reason: "invalid_source",
@@ -448,6 +455,7 @@ export class AttentionObserver {
       .all(id);
   }
   private update(s: Subject, now: number, payload: unknown): void {
+    this.store.assertOwner(this.owner);
     let old: { gap?: string } = {};
     try {
       old = JSON.parse(s.payload_json) as { gap?: string };
@@ -490,7 +498,7 @@ export class AttentionObserver {
       .get() as { generation: number };
     const faulty = db
       .prepare(
-        "SELECT 1 FROM attention_subjects WHERE scope_id=? AND (sampled_at<? OR generation<>? OR json_extract(payload_json,'$.reason') IS NOT NULL AND json_extract(payload_json,'$.reason')<>'snapshot_only' OR json_extract(payload_json,'$.gap')='history_gap') LIMIT 1"
+        "SELECT 1 FROM attention_subjects WHERE scope_id=? AND (sampled_at<? OR generation<>? OR CASE WHEN json_valid(payload_json) THEN (json_extract(payload_json,'$.reason') IS NOT NULL AND json_extract(payload_json,'$.reason')<>'snapshot_only' OR json_extract(payload_json,'$.gap')='history_gap') ELSE 1 END) LIMIT 1"
       )
       .get(scopeId, now - 65000, current.generation);
     const coverage =
@@ -517,7 +525,10 @@ export class AttentionObserver {
           : null,
       subjects: rows.slice(0, limit).map(({ payload_json, ...r }) => ({
         ...r,
-        facts: JSON.parse(payload_json),
+        facts: (() => {
+          try { return JSON.parse(payload_json) as unknown; }
+          catch { return { state: "unknown", reason: "invalid_source", gap: "history_gap" }; }
+        })(),
       })),
       limitations: [
         "No complete mutable-source history",

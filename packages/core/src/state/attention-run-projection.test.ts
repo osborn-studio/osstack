@@ -62,7 +62,7 @@ it("projects actual run events and resumes its durable cursor under a new owner"
   const owner = nextStore.claimOwner("next");
   new AttentionObserver(nextStore, owner).tick(2000);
   expect(cursor()).toMatchObject({ last_seq: 204, generation: owner.generation });
-  expect(facts()).toMatchObject({ observed_status: "running", event_replay: { complete: true } });
+  expect(facts()).toMatchObject({ observed_status: "running", event_replay: { complete: false, caught_up: true } });
   expect(() => projectAttentionRun(new AttentionStore(db, path), observer.owner, scope, "r", 3000)).toThrow("stale_owner");
 });
 it("keeps a sequence gap sticky even if a missing event later appears", () => {
@@ -104,7 +104,7 @@ it("does not claim caught up when another event arrived after a page watermark",
   expect(facts()).toMatchObject({ reason: "event_backlog", event_replay: { complete: false } });
   observer.tick(3000);
   expect(cursor()?.last_seq).toBe(201);
-  expect(facts().event_replay.complete).toBe(true);
+  expect(facts().event_replay).toMatchObject({ complete: false, caught_up: true });
 });
 it.each(["mutation", "deletion"])("marks an anchor %s unknown without advancing", (kind) => {
   const { event, observer, cursor, facts, db } = setup();
@@ -169,7 +169,7 @@ it("a backlogged run does not starve another run or rewrite authoritative busine
     terminal: true, created_at: 3, payload: { status: "completed", last_seq: 0 } });
   observer.tick(1000);
   const second = JSON.parse((db.prepare("SELECT payload_json FROM attention_subjects WHERE subject_id='second'").get() as { payload_json: string }).payload_json);
-  expect(second).toMatchObject({ observed_status: "completed", state: { phase: "execute", outcome: null }, event_replay: { complete: true } });
+  expect(second).toMatchObject({ observed_status: "completed", state: { phase: "execute", outcome: null }, event_replay: { complete: false, caught_up: true } });
   expect(db.prepare("SELECT last_seq FROM attention_run_cursors WHERE run_id='r'").get()).toEqual({ last_seq: 199 });
   expect(db.prepare("SELECT phase,outcome FROM runs WHERE run_id='second'").get()).toEqual({ phase: "execute", outcome: null });
 });
@@ -179,4 +179,48 @@ it("bounds pending authority references while preserving the total count", () =>
   observer.tick(1000);
   expect(facts().pending_clarifies).toMatchObject({ count: 25, truncated: true });
   expect(facts().pending_clarifies.ids).toHaveLength(20);
+});
+it.each(["delete", "retentant", "identity"])("quarantines every retained subject when task %s invalidates its scope", (kind) => {
+  const { event, observer, facts, cursor, db } = setup();
+  event(0); observer.tick(1000);
+  if (kind === "delete") db.prepare("DELETE FROM tasks WHERE task_id='t'").run();
+  if (kind === "retentant") db.prepare("UPDATE tasks SET tenant_id='other' WHERE task_id='t'").run();
+  if (kind === "identity") db.prepare("UPDATE tasks SET created_at=2 WHERE task_id='t'").run();
+  observer.tick(2000);
+  expect(facts()).toMatchObject({ reason: "source_missing", event_replay: { complete: false, caught_up: false } });
+  expect(cursor()?.gap).toBe("source_missing");
+});
+it("discovers the durable event stream even when the run also owns an agent session", () => {
+  const { event, observer, facts, cursor, db, root, scope } = setup();
+  db.prepare("INSERT INTO agent_sessions(session_id,task_id,run_id,agent_id,request_sha256,repo_path,state,resume_supported,version,updated_at) VALUES('session','t','r','hermes','aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',?,'running',1,1,1)").run(root);
+  event(0); observer.tick(1000);
+  expect(cursor()?.last_seq).toBe(0);
+  expect(facts().event_replay.caught_up).toBe(true);
+  expect(observer.inventory(scope.scope_id, 1000)).toMatchObject({ subject_total: 2, admitted: 2 });
+});
+it.each(["delete", "mutate"])("never certifies history even when a non-anchor prefix row is %s", (kind) => {
+  const { event, observer, facts, db } = setup();
+  event(0); event(1); observer.tick(1000);
+  if (kind === "delete") db.prepare("DELETE FROM events WHERE seq=0").run();
+  else db.prepare("UPDATE events SET payload_json=? WHERE seq=0").run(JSON.stringify({ status: "failed" }));
+  observer.tick(2000);
+  expect(facts().event_replay).toMatchObject({ complete: false, completeness_scope: "unverified_retention" });
+});
+it("detects identical run identity reuse through actual foreign-key anchor cascade", () => {
+  const { event, observer, facts, cursor, db, path } = setup();
+  event(0); observer.tick(1000);
+  db.prepare("DELETE FROM runs WHERE run_id='r'").run();
+  expect(db.prepare("SELECT COUNT(*) n FROM events").get()).toEqual({ n: 0 });
+  insertRun(db, path, { task_id: "t", run_id: "r", session_id: "s", agent_id: "hermes", capability_id: "code", phase: "execute", started_at: 1 });
+  observer.tick(2000);
+  expect(cursor()?.gap).toBe("event_anchor_changed");
+  expect(facts()).toMatchObject({ observed_status: null, event_replay: { complete: false, caught_up: false } });
+});
+it("returns an invalid marker rather than losing the inventory to corrupt subject JSON", () => {
+  const { event, observer, db, scope } = setup();
+  event(0); observer.tick(1000);
+  db.prepare("UPDATE attention_subjects SET payload_json='{' WHERE kind='run'").run();
+  const view = observer.inventory(scope.scope_id, 1000);
+  expect(view.coverage).toBe("degraded");
+  expect(view.subjects[0]?.facts).toMatchObject({ state: "unknown", reason: "invalid_source" });
 });

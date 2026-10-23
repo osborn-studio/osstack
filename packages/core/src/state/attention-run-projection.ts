@@ -90,6 +90,10 @@ export function projectAttentionRun(store: AttentionStore, owner: AttentionOwner
       .get(scope.scope_id, runId) as { admitted: number; binding_hash: string } | undefined;
     if (!subject?.admitted) throw new Error("run_not_admitted");
     if (subject.binding_hash !== attentionDigest([scope.scope_id, "run", runId])) throw new Error("run_subject_binding_conflict");
+    const task = store.db.prepare("SELECT created_at FROM tasks WHERE task_id=? AND tenant_id IS NULL")
+      .get(scope.task_id) as { created_at: number } | undefined;
+    if (!task || scope.scope_id !== attentionDigest([owner.home_id, scope.task_id, scope.repo_path, task.created_at]))
+      throw new Error("attention_scope_conflict");
     const run = store.db.prepare(`SELECT r.*,t.created_at task_created_at FROM runs r JOIN tasks t ON t.task_id=r.task_id
       WHERE r.run_id=? AND r.task_id=? AND r.tenant_id IS NULL AND t.tenant_id IS NULL`).get(runId, scope.task_id) as Run | undefined;
     const saved = store.db.prepare("SELECT * FROM attention_run_cursors WHERE scope_id=? AND run_id=?")
@@ -105,8 +109,6 @@ export function projectAttentionRun(store: AttentionStore, owner: AttentionOwner
       writeSubject({ state: "source_missing", reason: "source_missing", process_liveness: "unknown", gap: "history_gap" });
       return;
     }
-    if (scope.scope_id !== attentionDigest([owner.home_id, scope.task_id, scope.repo_path, run.task_created_at]))
-      throw new Error("attention_scope_conflict");
     const binding = attentionDigest([owner.home_id, scope.scope_id, run.run_id, run.task_id,
       run.session_id, run.agent_id, run.capability_id, run.started_at]);
     if (saved && saved.binding_hash !== binding) {
@@ -147,7 +149,9 @@ export function projectAttentionRun(store: AttentionStore, owner: AttentionOwner
       }
     }
     const backlog = cursor < page.highWatermark || cursor < page.availableHighWatermark;
-    const complete = cursor >= 0 && !gap && !backlog && state.unsupported_events === 0;
+    const caughtUp = cursor >= 0 && !gap && !backlog && state.unsupported_events === 0;
+    // A caught-up cursor verifies newly read rows and the last anchor only.
+    // Mutable earlier rows are not continuously re-hashed; never certify history.
     const pending = (table: "approvals" | "clarifies", column: "approval_id" | "clarify_id") => {
       const rows = store.db.prepare(`SELECT ${column} id FROM ${table} WHERE run_id=? AND status='pending' ORDER BY ${column} LIMIT 21`)
         .all(runId) as { id: string }[];
@@ -161,8 +165,8 @@ export function projectAttentionRun(store: AttentionStore, owner: AttentionOwner
     writeSubject({ state: { phase: run.phase, outcome: run.outcome }, ...state,
       reason: gap ? "history_gap" : backlog ? "event_backlog" : state.unsupported_events > 0 ? "unsupported_event_type" : "snapshot_only",
       repo_binding: "unverified", process_liveness: "unknown", gap: gap ? "history_gap" : "retention_unverified",
-      event_replay: { cursor, through_seq: page.highWatermark, complete, gap, completeness_scope: "retained_range_only" },
+      event_replay: { cursor, through_seq: page.highWatermark, complete: false, caught_up: caughtUp, gap, completeness_scope: "unverified_retention" },
       pending_approvals: pending("approvals", "approval_id"), pending_clarifies: pending("clarifies", "clarify_id"),
-      limitations: ["No historical retention guarantee", "Event observations do not authorize execution"] });
+      limitations: ["No historical retention or processed-prefix integrity guarantee", "Event observations do not authorize execution"] });
   });
 }
