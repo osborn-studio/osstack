@@ -1,6 +1,6 @@
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { readFile, writeFile } from 'node:fs/promises';
+import { readFile, readdir, utimes, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { expect, it, vi } from 'vitest';
 import { deliveryCheckReference, freezeDeliveryContract } from '@osstack/core';
@@ -248,3 +248,49 @@ it.each(['--assume-unchanged', '--skip-worktree'])('fails closed on %s at the pr
     expect(() => assertGraphContractPaths(frozen, repo)).toThrow('GRAPH_CONTRACT_HIDDEN_INDEX_FLAGS');
   } finally { await f.close(); }
 });
+
+async function hideSameSizeChange(repo: string): Promise<string> {
+  const git = (...args: string[]) => execFileSync('git', args, { cwd: repo, encoding: 'utf8' });
+  git('config', 'core.trustctime', 'false');
+  const path = join(repo, 'answer'); const stamp = new Date(1600000000000);
+  await writeFile(path, '0\n'); await utimes(path, stamp, stamp);
+  git('update-index', '--refresh');
+  await writeFile(path, '1\n'); await utimes(path, stamp, stamp);
+  return git('diff', '--name-only', 'HEAD');
+}
+it('detects raw out-of-scope bytes despite a same-size edit with restored mtime and untrusted ctime', async () => {
+  const f = await fixture();
+  try {
+    const repo = f.registration.delivery.repositoryPath;
+    const frozen = freezeDeliveryContract({ ...f.registration.delivery.deliveryContract.frozen.contract, allowed_paths: ['other'] });
+    expect(await hideSameSizeChange(repo)).toBe('');
+    expect(() => assertGraphContractPaths(frozen, repo)).toThrow('delivery_contract_path_outside_scope');
+  } finally { await f.close(); }
+});
+it('rejects a writer stat-cache bypass before freezing or starting review', async () => {
+  const f = await fixture(); await f.service.close();
+  const frozen = freezeDeliveryContract({ ...f.registration.delivery.deliveryContract.frozen.contract, allowed_paths: ['other'] });
+  const original = f.registration.delivery.writer.adapter; let hiddenDiff: string | undefined;
+  const adapter = { ...original, invoke: async function* (...args: Parameters<typeof original.invoke>) {
+    for await (const event of original.invoke(...args)) {
+      hiddenDiff = await hideSameSizeChange(String(args[0].context?.['repo_path'])); yield event;
+    }
+  } };
+  const service = new GraphRpcService({ ...f.options, registrations: [{ ...f.registration, delivery: { ...f.registration.delivery,
+    writer: { ...f.registration.delivery.writer, adapter }, deliveryContract: { ...f.registration.delivery.deliveryContract, frozen } } }] });
+  try {
+    const start = GraphDelegationStatus.parse(await service.handle(f.connection, 'graph.start', f.request));
+    let status = start; const deadline = Date.now() + 20000;
+    while (!['failed', 'reconciliation_required'].includes(status.status)) {
+      if (Date.now() > deadline) throw Error(`timeout ${status.status}`); await new Promise(resolve => setTimeout(resolve, 20));
+      status = GraphDelegationStatus.parse(await service.handle(f.connection, 'graph.status', { schemaVersion: 1, scope: f.request.scope, graphRunId: start.graphRunId }));
+    }
+    expect(hiddenDiff).toBe(''); expect(status.candidate).toBeUndefined(); expect(status.resultRef).toBeUndefined();
+    const artifacts = await readdir(join(f.options.root, start.graphRunId, 'artifacts', 'artifacts')).catch((error: NodeJS.ErrnoException) => {
+      if (error.code === 'ENOENT') return []; throw error;
+    });
+    expect(artifacts).toEqual([]);
+    expect(f.reviewPrompts).toEqual([]);
+    expect(f.db.prepare("SELECT count(*) n FROM graph_actions WHERE node_id LIKE '%.review' OR node_id LIKE '%.tests'").get()).toEqual({ n: 0 });
+  } finally { await service.close(); await f.close(); }
+}, 30000);

@@ -2,6 +2,7 @@ import { execFileSync } from 'node:child_process';
 import { z } from 'zod';
 import { assertDeliveryContractAdmission, assertDeliveryContractPaths, assertFrozenDeliveryContract, deliveryCheckReference, deliveryContractDigest } from '@osstack/core';
 import { FrozenDeliveryContractV2, GraphBudget, StartGraphRequest, freezeWorkerData, workerCanonical } from '@osstack/protocol';
+import { graphWorkspaceChangedPaths } from './graph-workspace-paths.js';
 import type { AcceptanceCommandSpec } from './graph-verification-store.js';
 
 export interface GraphContractHostPolicy {
@@ -84,8 +85,8 @@ export function assertGraphContractPaths(frozen: FrozenDeliveryContractV2, works
   }).split('\0').filter(Boolean);
   if (!candidateRevision && read(['ls-files', '-v', '-z']).some(entry => /^[a-zS] /.test(entry)))
     throw Error('GRAPH_CONTRACT_HIDDEN_INDEX_FLAGS');
-  const paths = read(['diff', '--no-ext-diff', '--no-textconv', '--no-renames', '--name-only', '-z', frozen.contract.base_head,
-    ...(candidateRevision ? [candidateRevision] : []), '--']);
-  if (!candidateRevision) paths.push(...read(['ls-files', '--others', '-z']));
+  const paths = candidateRevision
+    ? read(['diff', '--no-ext-diff', '--no-textconv', '--no-renames', '--name-only', '-z', frozen.contract.base_head, candidateRevision, '--'])
+    : graphWorkspaceChangedPaths(workspace, frozen.contract.base_head);
   assertDeliveryContractPaths(frozen, paths);
 }
