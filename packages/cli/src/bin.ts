@@ -223,6 +223,7 @@ function renderChineseMainHelp(): string {
   stats               查看 agent 与 loop 指标
 
 项目命令：
+  worker list|inspect --repo <path> --default-tenant  只读查看已绑定执行器
   attention status    只读查看任务状态与最新决策（未后台接管）
   attention routing-eval --input <path> --mode router_golden  验证真实确定性路由
   graph               图执行 validate/run/status/cancel/resume；explain 只读关系诊断
@@ -427,6 +428,7 @@ Self-update:
                       and roll back automatically on failure.
 
 Project commands:
+  worker list|inspect --repo <path> --default-tenant  Inspect bound workers read-only
   attention status    Read-only task/session attention snapshot
   attention routing-eval --input <path> --mode router_golden  Validate real deterministic routing
   graph               Executable delivery graphs and read-only explain (graph --help)
@@ -971,6 +973,17 @@ See docs/V2_REFACTOR_PLAN.md for the full roadmap.
     return await handleSuperviseCommand(args.slice(1));
   }
 
+  if (cmd === "worker") {
+    const {handleWorkerViewCommand} = await import("./worker-view-command.js");
+    return await handleWorkerViewCommand(args.slice(1), {
+      rpc: async (method, params) => {
+        const response = await rpc(method, params) as {ok?: boolean; result?: unknown; error?: {code?: string}};
+        if (!response.ok) throw new Error(response.error?.code ?? "worker_request_failed");
+        return response.result;
+      },
+    });
+  }
+
   if (cmd === "daily") {
     const sub = args[1];
     // Scheduling subcommands run through the daemon; bare `daily` (and its
@@ -979,7 +992,15 @@ See docs/V2_REFACTOR_PLAN.md for the full roadmap.
       return await handleDailyScheduleCommand(args.slice(1));
     }
     const { handleDailyCommand } = await import("./daily-command.js");
-    return await handleDailyCommand(args.slice(1));
+    return await handleDailyCommand(args.slice(1), {
+      attentionReader: async ({workspacePath, signal}) => {
+        signal.throwIfAborted();
+        const response = await rpc("dashboard.snapshot", {workspacePath, attentionLimit:100}, 500) as {ok?:boolean; result?:{attention?:unknown}};
+        signal.throwIfAborted();
+        if (!response.ok) throw new Error("attention_snapshot_unavailable");
+        return response.result?.attention;
+      },
+    });
   }
 
   if (cmd === "start") {

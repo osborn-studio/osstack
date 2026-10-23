@@ -2,7 +2,7 @@
 
 # CLI Commands
 
-Top-level `osstack` commands parsed from `--help` (48 total).
+Top-level `osstack` commands parsed from `--help` (49 total).
 
 - `agent`
 - `attention`
@@ -52,6 +52,7 @@ Top-level `osstack` commands parsed from `--help` (48 total).
 - `task`
 - `upgrade`
 - `version`
+- `worker`
 
 Doc 15 §2.2 context: this surface is the raw capability layer; the
 task-oriented golden paths (`daily` / `start` / `improve`) compose it.
