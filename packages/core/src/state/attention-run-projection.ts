@@ -70,6 +70,13 @@ function reduce(event: BoundedRunEvent, state: Observed, store: AttentionStore):
     if (event.type.endsWith(".resolved") && (typeof payload.status !== "string"
       || !(approval ? ["accepted", "rejected", "timed_out"] : ["answered", "timed_out", "abandoned"]).includes(payload.status)))
       return "invalid_event_payload";
+    if (event.type.endsWith(".resolved")) {
+      const field = approval ? "choice" : "answer";
+      if (typeof payload[field] !== "string") return "invalid_event_payload";
+      const matches = store.db.prepare(`SELECT 1 FROM ${table} WHERE ${family}_id=? AND run_id=? AND status=? AND ${field} IS ?`)
+        .get(id, event.run_id, payload.status, payload[field]);
+      if (!matches) return "authority_resolution_mismatch";
+    }
   } else if (event.type === "error") {
     if (typeof payload.code !== "string" || typeof payload.terminal !== "boolean") return "invalid_event_payload";
     if (payload.terminal) state.observed_status = "unknown";

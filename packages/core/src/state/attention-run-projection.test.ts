@@ -157,7 +157,8 @@ it("reads pending authorities without creating actions or treating event data as
   db.prepare("INSERT INTO events(event_id,run_id,session_id,seq,type,created_at,terminal,payload_json) VALUES('r:1','r','s',1,'approval.resolved',2,0,?)")
     .run(JSON.stringify({ approval_id: "approval", status: "accepted", choice: "yes" }));
   observer.tick(2000);
-  expect(cursor()?.last_seq).toBe(1);
+  expect(cursor()?.last_seq).toBe(0);
+  expect(facts().event_replay).toMatchObject({caught_up:false,gap:"authority_resolution_mismatch"});
   expect(facts().pending_approvals.count).toBe(1);
   expect(db.prepare("SELECT COUNT(*) n FROM attention_actions").get()).toEqual({ n: 0 });
   expect(db.prepare("SELECT status FROM approvals").get()).toEqual({ status: "pending" });
@@ -284,4 +285,16 @@ it("bounds a replay page by aggregate payload bytes without inventing a sequence
   expect(first.events.reduce((total,row)=>total+Buffer.byteLength(row.payload_json??""),0)).toBeLessThanOrEqual(65536);
   const next=readRunEventPage(db,{taskId:"t",runId:"r",afterSeq:first.nextAfter,throughSeq:first.highWatermark,limit:200});
   expect(next).toMatchObject({nextAfter:1,hasMore:true,sequenceGap:false});
+});
+
+it.each(["approval","clarify"])("checks %s resolved payload against current authoritative value without changing it", family => {
+  const {event,observer,cursor,db,facts}=setup();
+  const idKey=family+"_id";const field=family==="approval"?"choice":"answer";
+  const status=family==="approval"?"accepted":"answered";
+  event(0, family+".requested",{[idKey]:"a",action_summary:"test",question:"test"});
+  event(1, family+".resolved",{[idKey]:"a",status,[field]:"yes"});
+  observer.tick(1000);expect(cursor()?.last_seq).toBe(1);
+  db.prepare("INSERT INTO events(event_id,run_id,session_id,seq,type,created_at,terminal,payload_json) VALUES('r:2','r','s',2,?,3,0,?)")
+    .run(family+".resolved",JSON.stringify({[idKey]:"a",status,[field]:"changed"}));
+  observer.tick(2000);expect(cursor()?.last_seq).toBe(1);expect(facts().event_replay.gap).toBe("authority_resolution_mismatch");
 });
