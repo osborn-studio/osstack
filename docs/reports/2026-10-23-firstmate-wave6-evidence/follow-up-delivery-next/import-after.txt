@@ -1,0 +1,2 @@
+protocol 25.095125 ms; core 90.345333 ms
+Baseline protocol 29.70/core74.70 ms; single-process noisy samples, delta core +15.65 ms; no new package dependency. CLI remains lazy via root bin.

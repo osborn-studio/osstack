@@ -1,0 +1,11 @@
+{
+  "packages/protocol/src/follow-up-delivery.ts": "dfa46df4d47fe22607ad1cfa278e165a469e8453264138ea3f1f2a457e91955a",
+  "packages/core/src/state/follow-up-delivery.ts": "a5ea379e3523e5a55d45b643d7a6cb070998c68e0f66e362b33ceebbf10d1485",
+  "packages/core/src/state/follow-up-delivery-ddl.ts": "cfc8b15786203c67b4ac542f078848eaf1f18eaf5f277f6e0d696af7b78912f0",
+  "packages/core/src/state/follow-up-delivery.test.ts": "4bef77f51273441db76908a25d65fb45a86f984b9a3db5a6162547024b4868d2",
+  "packages/cli/src/follow-up-delivery-command.ts": "687b6f1b8f682ae909fda048fbc0d31b4f61bc7151afe57820812ec388ba8a57",
+  "packages/cli/src/follow-up-delivery-command.test.ts": "7a6f60b46f1d1508ac643bfffbd7f92faa67a9a636d7cc79d9a6bceb99e30853",
+  "docs/plans/2026-10-23-public-follow-up-delivery.md": "2a335e3a5399edd6c6a6863fc82d45122c26fc04c3d1431616e61d7c8180f912",
+  "docs/guides/follow-up-delivery.md": "eb2e8e67ab52d8d111f9db68bc47d31b71b211cc4083801a6a02ba1a88d3cf91",
+  "packages/protocol/src/follow-up-delivery.test.ts": "9c74254ca4488bc04932b34b02e12151707e0dde12a9f341aa7adc834dc2f6de"
+}

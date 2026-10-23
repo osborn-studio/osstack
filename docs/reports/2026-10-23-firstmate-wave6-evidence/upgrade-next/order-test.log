@@ -1,0 +1,10 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-supervision-next/packages/cli
+
+ ✓ src/upgrade-coordinator.test.ts (40 tests | 39 skipped) 138ms
+
+ Test Files  1 passed (1)
+      Tests  1 passed | 39 skipped (40)
+   Start at  13:56:31
+   Duration  715ms (transform 252ms, setup 9ms, collect 413ms, tests 138ms, environment 0ms, prepare 35ms)
+

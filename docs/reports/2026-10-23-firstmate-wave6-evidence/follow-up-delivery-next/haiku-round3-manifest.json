@@ -1,0 +1,15 @@
+{
+  "packages/protocol/src/follow-up-delivery.ts": "a40abb5f4409ce51e18ca2d4c8667f4c6a5c35ba67124f1d86a3e92f84f8a88f",
+  "packages/core/src/state/follow-up-delivery.ts": "b6ba02effe2cf215a20a03cfc55f62a4b74380e69049ca59af1b34b315a2b410",
+  "packages/core/src/state/follow-up-delivery-ddl.ts": "6283fdd46e111d2fb4f7374ed44b93f03df88b384f39a4ce5016abe06ec6c900",
+  "packages/core/src/state/follow-up-delivery.test.ts": "7b8b864dbaaf4cfda64ef3fb1eb16a4c093c62b998acda4e8f0a008fa9b2ae6d",
+  "packages/cli/src/follow-up-delivery-command.ts": "687b6f1b8f682ae909fda048fbc0d31b4f61bc7151afe57820812ec388ba8a57",
+  "packages/cli/src/follow-up-delivery-command.test.ts": "7a6f60b46f1d1508ac643bfffbd7f92faa67a9a636d7cc79d9a6bceb99e30853",
+  "docs/plans/2026-10-23-public-follow-up-delivery.md": "2a335e3a5399edd6c6a6863fc82d45122c26fc04c3d1431616e61d7c8180f912",
+  "docs/guides/follow-up-delivery.md": "e28fbc582384bc292ec3843a823030a3d04bee868c24c4ad5454624353b4beea",
+  "packages/protocol/src/follow-up-delivery.test.ts": "4f3898c54fefcb29a0fe894b38a18c022f995a19151544cda6ef6ea00564d586",
+  "packages/core/src/state/db.ts": "72057b005cdec61b08d27459d4fcf58b9bfea672056537038cdefe9b1b74f2c2",
+  "packages/core/src/state/migrations.ts": "d75747f6bb9b7e5d43d4affa0c41dd318bdee0a8de9beb7131208b86d780a567",
+  "packages/core/src/index.ts": "b2de2bcafb63776786efa877d70cc4cd6dd5211c64f768a12e6f670dff0e1b16",
+  "packages/protocol/src/index.ts": "d617c2429c5bbc054b97cf4bcdc8f82bc0ac278743e8c83d56468e40834b2ee1"
+}

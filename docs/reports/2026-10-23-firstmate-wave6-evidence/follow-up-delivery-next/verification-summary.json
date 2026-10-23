@@ -1,0 +1,35 @@
+{
+  "commit": "02f980ba86999570457af52bc86dee497d01521e",
+  "tests": {
+    "delivery_core": 43,
+    "obligations_core": 23,
+    "db": 24,
+    "delivery_cli": 13,
+    "obligations_cli": 12,
+    "delivery_protocol": 8,
+    "total": 123
+  },
+  "validation": "focused builds/typechecks/Biome/diff check passed; full integration owned by root",
+  "audit": {
+    "requested_model": "claude-haiku-5-5",
+    "rounds": 3,
+    "final_P1_fix_after_round3": true,
+    "clean_final_static_review_claimed": false,
+    "parent_final_audit_required": true,
+    "cli_unrecognized_model_warning": true
+  },
+  "qualification": {
+    "real_provider": "pending",
+    "real_messages_sent": 0,
+    "power_cut_storage": "pending",
+    "fake_transport_only": true
+  },
+  "limitations": [
+    "forward-clock quarantine has no reset",
+    "historical registration required for reconciliation",
+    "no-lookup transport must not be production-qualified",
+    "read displays may combine adjacent committed states; mutations CAS protected"
+  ],
+  "migration_lineage": "44 4c40310b23a7f7348985d4aecf2042e69843e06361d74a0c5b8792de39897aa6\n45 9f060b2f70d4be828d59f4a458def28a10db027277f975d1baff6885f6873c9a\n",
+  "generated_knowledge_dist": "restored, excluded from commit"
+}

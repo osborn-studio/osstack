@@ -151,3 +151,5 @@ it("routes plan and status through actual main without exposing an apply command
     vi.unstubAllEnvs();
   }
 });
+
+it('shows routed subcommand help without requiring a journal or contacting homes',async()=>{const stdout=vi.fn();expect(await handleUpgradePlanCommand(['plan-upgrade','--help'],{stdout})).toBe(0);expect(await handleUpgradePlanCommand(['upgrade-status','--help'],{stdout})).toBe(0);expect(stdout).toHaveBeenCalledTimes(2);});

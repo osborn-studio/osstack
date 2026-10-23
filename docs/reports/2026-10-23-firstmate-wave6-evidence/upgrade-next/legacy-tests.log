@@ -1,0 +1,79 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-supervision-next/packages/cli
+
+ ✓ src/home-inventory.test.ts (19 tests) 154ms
+stdout | src/upgrade.test.ts > safe self-upgrade > drains and snapshots state before installing and health-checking
+osstack upgrade: current version: 0.21.0 (channel: latest)
+
+stdout | src/upgrade.test.ts > safe self-upgrade > drains and snapshots state before installing and health-checking
+osstack upgrade: update available: 0.21.0 → 0.21.1
+
+stdout | src/upgrade.test.ts > safe self-upgrade > drains and snapshots state before installing and health-checking
+osstack upgrade: draining daemon (waiting for active runs, max 60s)…
+
+stdout | src/upgrade.test.ts > safe self-upgrade > drains and snapshots state before installing and health-checking
+osstack upgrade: state.db backed up → /Volumes/AIMATE_WORK/tmp/osstack/smoke/pr237-integration/upgrade-next/tmp/osstack-upgrade-8WKFPP/home/backups/state-v0.21.0-2026-10-23-20-43-07.db
+osstack upgrade: installing @osstack/cli@0.21.1…
+
+stdout | src/upgrade.test.ts > safe self-upgrade > drains and snapshots state before installing and health-checking
+osstack upgrade: starting daemon (detached `osstack serve`)…
+
+stdout | src/upgrade.test.ts > safe self-upgrade > drains and snapshots state before installing and health-checking
+osstack upgrade: daemon healthy on 0.21.1.
+osstack upgrade: upgrade complete: 0.21.0 → 0.21.1
+
+stdout | src/upgrade.test.ts > safe self-upgrade > restores the previous binary and database after failed health
+osstack upgrade: current version: 0.21.0 (channel: latest)
+
+stdout | src/upgrade.test.ts > safe self-upgrade > restores the previous binary and database after failed health
+osstack upgrade: update available: 0.21.0 → 0.21.1
+
+stdout | src/upgrade.test.ts > safe self-upgrade > restores the previous binary and database after failed health
+osstack upgrade: draining daemon (waiting for active runs, max 60s)…
+
+stdout | src/upgrade.test.ts > safe self-upgrade > restores the previous binary and database after failed health
+osstack upgrade: state.db backed up → /Volumes/AIMATE_WORK/tmp/osstack/smoke/pr237-integration/upgrade-next/tmp/osstack-upgrade-mpXtq4/home/backups/state-v0.21.0-2026-10-23-20-43-07.db
+osstack upgrade: installing @osstack/cli@0.21.1…
+
+stdout | src/upgrade.test.ts > safe self-upgrade > restores the previous binary and database after failed health
+osstack upgrade: starting daemon (detached `osstack serve`)…
+
+stdout | src/upgrade.test.ts > safe self-upgrade > restores the previous binary and database after failed health
+osstack upgrade: daemon failed health check on 0.21.1 — ROLLING BACK to 0.21.0…
+osstack upgrade: draining daemon (waiting for active runs, max 60s)…
+
+stdout | src/upgrade.test.ts > safe self-upgrade > restores the previous binary and database after failed health
+osstack upgrade: pre-upgrade state.db snapshot restored
+
+stdout | src/upgrade.test.ts > safe self-upgrade > restores the previous binary and database after failed health
+osstack upgrade: starting daemon (detached `osstack serve`)…
+
+stdout | src/upgrade.test.ts > safe self-upgrade > restores the previous binary and database after failed health
+osstack upgrade: rolled back to 0.21.0; daemon healthy again. Investigate before retrying.
+
+stdout | src/upgrade.test.ts > does not shut down or replace the installation when graph drain is incomplete
+osstack upgrade: current version: 0.21.0 (channel: latest)
+
+stdout | src/upgrade.test.ts > does not shut down or replace the installation when graph drain is incomplete
+osstack upgrade: update available: 0.21.0 → 0.21.1
+
+stdout | src/upgrade.test.ts > does not shut down or replace the installation when graph drain is incomplete
+osstack upgrade: draining daemon (waiting for active runs, max 60s)…
+
+stdout | src/upgrade.test.ts > does not shut down or replace the installation when graph drain is incomplete
+osstack upgrade: ABORT: daemon still has active runs or graph recovery holds
+
+stdout | src/upgrade.test.ts > does not shut down or replace the installation when graph drain is incomplete
+osstack upgrade: ABORT: could not quiesce the daemon — nothing was swapped.
+
+ ✓ src/upgrade.test.ts (3 tests) 15ms
+stdout | src/upgrade-deployed-home.test.ts > alignEnvWithDeployment > overrides a mismatched caller env (the incident shape)
+osstack upgrade: note: OSSTACK_HOME in this shell (/Users/example/.osstack) differs from the deployed daemon's home (/Users/example/.osstack-stable, from launchd plist) — using the deployed home.
+
+ ✓ src/upgrade-deployed-home.test.ts (9 tests) 19ms
+
+ Test Files  3 passed (3)
+      Tests  31 passed (31)
+   Start at  13:43:06
+   Duration  654ms (transform 277ms, setup 22ms, collect 571ms, tests 188ms, environment 0ms, prepare 98ms)
+

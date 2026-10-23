@@ -1,0 +1,11 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-extension-integration/packages/cli
+
+ ✓ src/upgrade-plan-command.test.ts (4 tests) 366ms
+   ✓ routes plan and status through actual main without exposing an apply command  346ms
+
+ Test Files  1 passed (1)
+      Tests  4 passed (4)
+   Start at  14:10:02
+   Duration  1.00s (transform 531ms, setup 10ms, collect 466ms, tests 366ms, environment 0ms, prepare 33ms)
+

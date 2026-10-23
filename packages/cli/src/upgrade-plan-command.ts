@@ -56,7 +56,7 @@ export async function handleUpgradePlanCommand(
   // biome-ignore lint/suspicious/noControlCharactersInRegex: intentional terminal sanitization
   const emit = (value: unknown) =>
     out(
-      JSON.stringify(value).replace(/[\u007f-\u009f\p{Cf}]/gu, (char) =>
+      JSON.stringify(value).replace(/[\u007f-\u009f\p{Cf}\u2028\u2029]/gu, (char) =>
         char
           .split("")
           .map(
@@ -65,7 +65,7 @@ export async function handleUpgradePlanCommand(
           .join(""),
       ),
     );
-  if (args.length === 1 && args[0] === "--help") {
+  if ((args.length === 1 && args[0] === "--help") || (args.length === 2 && ["plan-upgrade", "upgrade-status"].includes(args[0]!) && args[1] === "--help")) {
     out(UPGRADE_PLAN_HELP);
     return 0;
   }

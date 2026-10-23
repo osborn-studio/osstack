@@ -1,0 +1,78 @@
+[
+  {
+    "path": "packages/cli/src/upgrade-plan.ts",
+    "sha256": "393dfb55ced89ee8d1997c5a9747638f44f039ca622b3a03aee8f938dd539eda"
+  },
+  {
+    "path": "packages/cli/src/upgrade-journal.ts",
+    "sha256": "261962203ea15639891bda4d99b3b763b2658f02cd91a2ff1ca9857824f93ad0"
+  },
+  {
+    "path": "packages/cli/src/upgrade-coordinator.ts",
+    "sha256": "556ab18e1fcb27df39d57af858672d20cb329a2f957950fe599d71c97b92aecb"
+  },
+  {
+    "path": "packages/cli/src/upgrade-plan-command.ts",
+    "sha256": "6ed125009bcf546b917686498d7e7e47a38129bf306fd7d5a4cd03377e99e7d8"
+  },
+  {
+    "path": "packages/cli/src/local-data-source-registry.ts",
+    "sha256": "dffd57cfbfcb5d0a5722b8baa61246e688e4dbda9199fbf64f770ee133dd7d90"
+  },
+  {
+    "path": "packages/cli/src/local-source-command.ts",
+    "sha256": "f9d2e71f8c0ffd0ffdfc2b1748c0b2029f10a62ad5969d32bbb563ec88bbfc91"
+  },
+  {
+    "path": "packages/cli/src/worker-viewer-command.ts",
+    "sha256": "1499540823474e42ee47dbc272a0da5f36b81526947d49b2fd551bfde342702d"
+  },
+  {
+    "path": "packages/cli/src/worker-viewer-rpc.ts",
+    "sha256": "ea3f218f8e5424493d1a2d024456c25dc8e2624dfb1727847d7ce3471064e3ea"
+  },
+  {
+    "path": "packages/cli/src/worker-presentation.ts",
+    "sha256": "1def3efdc486d27d011f6218c320d2a881abb7238865797563f35c08db54e8f3"
+  },
+  {
+    "path": "docs/guides/firstmate-extension-host-wiring.md",
+    "sha256": "1bad688da6fb3ce31c82bf450a40241daf8cb37fc048b9ac12ea695142facabd"
+  },
+  {
+    "path": "packages/cli/src/daemon.ts",
+    "sha256": "30ed433d73d1f5315d154b51d32615dcf81c81b619b25eb86319cb5c94ed8e57",
+    "excerpts": [
+      [
+        160,
+        190
+      ],
+      [
+        1115,
+        1140
+      ],
+      [
+        3833,
+        3850
+      ],
+      [
+        4070,
+        4085
+      ],
+      [
+        4340,
+        4365
+      ]
+    ]
+  },
+  {
+    "path": "packages/cli/src/bin.ts",
+    "sha256": "98e156e140893720efd82984f54963e92398d4ef26c83d4b54bda3cfca0162a6",
+    "excerpts": [
+      [
+        990,
+        1050
+      ]
+    ]
+  }
+]

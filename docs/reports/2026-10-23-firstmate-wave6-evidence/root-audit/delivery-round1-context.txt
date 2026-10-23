@@ -1,0 +1,2087 @@
+Independent adversarial integration review. No tools; this is a static audit, runtime tests are separate. Find confirmed P0/P1 only with concrete reachable trace and minimal fix; distinguish P2 availability / qualification boundaries. Scope: OSStack local daemon trusted host; same-uid host config is trusted, public RPC cannot choose signer/provider. Public delivery defaults empty, explicit injected fake only in tests; U2 only plan/status exposed, NativeUpgradePort has NO production implementation and no apply command; sources pinned readonly no context injection; viewer bounded readonly no process authority. Prior audits fixed P1s, please test these boundaries instead of proposing brand-new features. Last O2 audit P1 was withWrite DEFERRED; now explicit IMMEDIATE with existing disk preflight and scoped FULL sync before network, restored before external call; root shutdown waits tracked pending service.handle until DB finalization. No automatic public retries. Return findings and confirmed blocker count.
+
+FILE packages/core/src/state/follow-up-delivery.ts
+import { createHash, randomUUID, verify, type KeyObject } from "node:crypto";
+import { accessSync, constants, realpathSync, statSync } from "node:fs";
+import { isAbsolute, resolve } from "node:path";
+import type Database from "better-sqlite3";
+import type { z } from "zod";
+import {
+  FollowUpDeliveryTarget,
+  FollowUpDeliverySubject,
+  FollowUpDeliveryEnvelope,
+  FollowUpDeliveryReceipt,
+  SignedFollowUpDeliveryGrant,
+  FollowUpDeliveryPrepareParams,
+  FollowUpDeliveryActionParams,
+  FollowUpDeliveryAuthorizeParams,
+  FollowUpDeliveryRevokeParams,
+  FollowUpDeliveryInspectParams,
+  FollowUpDeliveryListParams,
+  FollowUpDeliveryAttempt,
+  FollowUpDeliveryResult,
+  FollowUpDeliveryListItem,
+  FollowUpDeliveryListResult,
+} from "@osstack/protocol";
+import { preflightDiskSpace } from "./db.js";
+
+export function deliveryCanonical(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(deliveryCanonical).join(",")}]`;
+  if (value !== null && typeof value === "object")
+    return `{${Object.keys(value)
+      .sort()
+      .map((k) => `${JSON.stringify(k)}:${deliveryCanonical((value as Record<string, unknown>)[k])}`)
+      .join(",")}}`;
+  const encoded = JSON.stringify(value);
+  if (encoded === undefined) throw new Error("invalid_delivery_value");
+  return encoded;
+}
+const hash = (value: unknown) => createHash("sha256").update(deliveryCanonical(value)).digest("hex");
+const bodyHash = (body: string) => createHash("sha256").update(body).digest("hex");
+export const FOLLOW_UP_DELIVERY_ERRORS = [
+  "invalid_delivery_request",
+  "delivery_repository_unavailable",
+  "delivery_not_found",
+  "delivery_revision_conflict",
+  "delivery_obligation_changed",
+  "delivery_destination_unavailable",
+  "delivery_idempotency_conflict",
+  "delivery_unresolved_attempt",
+  "delivery_authorization_required",
+  "delivery_invalid_authorization",
+  "delivery_authorization_revoked",
+  "delivery_authorization_expired",
+  "delivery_terminal",
+  "delivery_invalid_clock",
+  "delivery_durability_unavailable",
+  "delivery_database_unavailable",
+  "delivery_response_too_large",
+  "delivery_unsupported_method",
+] as const;
+export class FollowUpDeliveryError extends Error {
+  constructor(readonly code: (typeof FOLLOW_UP_DELIVERY_ERRORS)[number]) {
+    super(code);
+    this.name = "FollowUpDeliveryError";
+  }
+}
+export interface FollowUpDeliveryTrust {
+  publicKey: KeyObject;
+  purpose: "follow_up_delivery";
+  repo_path: string;
+  provider_id: "github_comment";
+  destination_refs: readonly string[];
+  max_validity_ms: number;
+}
+export interface FollowUpTransport {
+  qualification: "test_only" | "sandbox_qualified" | "production_qualified";
+  /** The adapter must disable SDK retries; declaration is not provider qualification. */
+  automatic_retries: boolean;
+  lookup_receipt: boolean;
+  sendOnce(envelope: Readonly<FollowUpDeliveryEnvelope>, signal: AbortSignal): Promise<unknown>;
+  /** Trusted provider lookup; caller-supplied receipt objects never enter this port. */
+  lookup(envelope: Readonly<FollowUpDeliveryEnvelope>, signal: AbortSignal): Promise<unknown>;
+}
+export interface FollowUpDeliveryOptions {
+  targets?: ReadonlyMap<string, FollowUpDeliveryTarget>;
+  trustedKeys?: ReadonlyMap<string, FollowUpDeliveryTrust>;
+  transports?: ReadonlyMap<string, FollowUpTransport>;
+  allowTestTransports?: boolean;
+  nowMs?: () => number;
+  timeoutMs?: number;
+}
+interface Row {
+  attempt_id: string;
+  repo_path: string;
+  obligation_id: string;
+  obligation_revision: number;
+  idempotency_key: string;
+  create_digest: string;
+  envelope_json: string;
+  state: FollowUpDeliveryAttempt["state"];
+  revision: number;
+  created_at_ms: number;
+  updated_at_ms: number;
+  qualification: FollowUpDeliveryAttempt["qualification"];
+  receipt_json: string | null;
+  receipt_sha256: string | null;
+  reason: string | null;
+}
+interface GrantRow {
+  grant_id: string;
+  key_id: string;
+  signed_json: string;
+  state: "active" | "consumed" | "revoked";
+}
+export function serializeFollowUpDelivery(value: unknown): string {
+  return JSON.stringify(value).replace(/[\u007f-\u009f\u2028\u2029\p{Cf}]/gu, (c) =>
+    c
+      .split("")
+      .map((u) => `\\u${u.charCodeAt(0).toString(16).padStart(4, "0")}`)
+      .join(""),
+  );
+}
+function bounded<T>(value: T): T {
+  if (Buffer.byteLength(serializeFollowUpDelivery(value)) + 1 > 65536)
+    throw new FollowUpDeliveryError("delivery_response_too_large");
+  return value;
+}
+function parsed<T extends z.ZodTypeAny>(schema: T, value: unknown): z.infer<T> {
+  const result = schema.safeParse(value);
+  if (!result.success) throw new FollowUpDeliveryError("invalid_delivery_request");
+  return result.data;
+}
+function repoPath(path: string): string {
+  try {
+    if (!isAbsolute(path) || /[\p{C}]/u.test(path)) throw Error();
+    const repo = realpathSync(path);
+    if (!statSync(repo).isDirectory() || Buffer.byteLength(repo) > 4096) throw Error();
+    accessSync(repo, constants.R_OK | constants.X_OK);
+    return repo;
+  } catch {
+    throw new FollowUpDeliveryError("delivery_repository_unavailable");
+  }
+}
+function storedRepoPath(path: string): string {
+  if (!isAbsolute(path) || resolve(path) !== path || /[\p{C}]/u.test(path) || Buffer.byteLength(path) > 4096)
+    throw new FollowUpDeliveryError("delivery_repository_unavailable");
+  return path;
+}
+function frozen<T>(value: T): T {
+  if (value !== null && typeof value === "object") {
+    Object.freeze(value);
+    for (const child of Object.values(value)) frozen(child);
+  }
+  return value;
+}
+
+/** Host registries/keys are trusted composition, never RPC input. Construction performs no I/O. */
+export class FollowUpDeliveryService {
+  private observedClock = 0;
+  constructor(
+    private readonly db: Database.Database,
+    private readonly dbPath: string,
+    private readonly options: FollowUpDeliveryOptions = {},
+  ) {}
+  async handle(method: string, input: unknown): Promise<FollowUpDeliveryResult | FollowUpDeliveryListResult> {
+    switch (method) {
+      case "follow-up-delivery.prepare":
+        return this.prepare(input);
+      case "follow-up-delivery.list":
+        return this.list(input);
+      case "follow-up-delivery.inspect":
+        return this.inspect(input);
+      case "follow-up-delivery.authorize":
+        return this.authorize(input);
+      case "follow-up-delivery.revoke":
+        return this.revoke(input);
+      case "follow-up-delivery.dispatch":
+        return this.dispatch(input);
+      case "follow-up-delivery.reconcile":
+        return this.reconcile(input);
+      default:
+        throw new FollowUpDeliveryError("delivery_unsupported_method");
+    }
+  }
+  prepare(input: unknown): FollowUpDeliveryResult {
+    const p = parsed(FollowUpDeliveryPrepareParams, input),
+      repo = repoPath(p.repo_path),
+      createDigest = hash({ ...p, repo_path: repo });
+    return this.safe(() =>
+      this.durableWrite(() => {
+        const existing = this.db
+          .prepare(
+            "SELECT * FROM follow_up_delivery_attempts WHERE repo_path=? AND tenant='default' AND idempotency_key=?",
+          )
+          .get(repo, p.idempotency_key) as Row | undefined;
+        if (existing) {
+          if (existing.create_digest !== createDigest)
+            throw new FollowUpDeliveryError("delivery_idempotency_conflict");
+          return this.result(existing, "unchanged", true);
+        }
+        this.obligation(repo, p.obligation_id, p.expected_obligation_revision);
+        if (
+          this.db
+            .prepare(
+              "SELECT 1 FROM follow_up_delivery_attempts WHERE repo_path=? AND tenant='default' AND obligation_id=? AND state IN ('prepared','started','delivery_unknown')",
+            )
+            .get(repo, p.obligation_id)
+        )
+          throw new FollowUpDeliveryError("delivery_unresolved_attempt");
+        const target = this.target(repo, p.destination_ref),
+          now = this.clock(),
+          attemptId = randomUUID();
+        const payload = {
+          repo_path: repo,
+          default_tenant: true as const,
+          attempt_id: attemptId,
+          obligation_id: p.obligation_id,
+          obligation_revision: p.expected_obligation_revision,
+          destination: target,
+          destination_digest: hash(target),
+          body: p.body,
+          body_sha256: bodyHash(p.body),
+        };
+        const envelope = FollowUpDeliveryEnvelope.parse({ ...payload, envelope_digest: hash(payload) });
+        if (Buffer.byteLength(JSON.stringify(envelope)) > 49152)
+          throw new FollowUpDeliveryError("delivery_response_too_large");
+        this.db
+          .prepare(
+            "INSERT INTO follow_up_delivery_attempts(attempt_id,repo_path,tenant,obligation_id,obligation_revision,idempotency_key,create_digest,envelope_json,state,revision,created_at_ms,updated_at_ms,qualification) VALUES(?,?,'default',?,?,?,?,?,'prepared',1,?,?,'qualification_pending')",
+          )
+          .run(
+            attemptId,
+            repo,
+            p.obligation_id,
+            p.expected_obligation_revision,
+            p.idempotency_key,
+            createDigest,
+            JSON.stringify(envelope),
+            now,
+            now,
+          );
+        const row = this.row(repo, attemptId);
+        this.reserveReceiptSpace(row);
+        this.event(attemptId, 1, "prepared", { envelope_digest: envelope.envelope_digest }, now);
+        return this.result(row, "prepared");
+      }),
+    );
+  }
+  inspect(input: unknown): FollowUpDeliveryResult {
+    const p = parsed(FollowUpDeliveryInspectParams, input),
+      repo = storedRepoPath(p.repo_path);
+    return this.safe(() => this.result(this.row(repo, p.attempt_id), "unchanged"));
+  }
+  list(input: unknown): FollowUpDeliveryListResult {
+    const p = parsed(FollowUpDeliveryListParams, input),
+      repo = storedRepoPath(p.repo_path);
+    return this.safe(() => {
+      const rows = this.db
+        .prepare(
+          "SELECT * FROM follow_up_delivery_attempts WHERE repo_path=? AND tenant='default' AND attempt_id>? ORDER BY attempt_id LIMIT ?",
+        )
+        .all(repo, p.after_id ?? "", p.limit + 1) as Row[];
+      const items: z.infer<typeof FollowUpDeliveryListItem>[] = [];
+      let after: string | null = null;
+      for (let i = 0; i < Math.min(rows.length, p.limit); i++) {
+        const row = rows[i]!,
+          view = this.view(row),
+          { envelope, authorization_subject: _subject, receipt: _receipt, ...rest } = view;
+        const item = FollowUpDeliveryListItem.parse({
+          ...rest,
+          destination_ref: envelope.destination.destination_ref,
+          body_sha256: envelope.body_sha256,
+        });
+        const more = i + 1 < rows.length,
+          candidate = {
+            schema_version: 1 as const,
+            scope: { repo_path: repo, default_tenant: true as const },
+            attempts: [...items, item],
+            next_after_id: more ? row.attempt_id : null,
+          };
+        if (Buffer.byteLength(serializeFollowUpDelivery(candidate)) + 1 > 65536) {
+          if (!items.length) throw new FollowUpDeliveryError("delivery_response_too_large");
+          after = items[items.length - 1]!.attempt_id;
+          break;
+        }
+        items.push(item);
+        after = candidate.next_after_id;
+      }
+      return bounded(
+        FollowUpDeliveryListResult.parse({
+          schema_version: 1,
+          scope: { repo_path: repo, default_tenant: true },
+          attempts: items,
+          next_after_id: after,
+        }),
+      );
+    });
+  }
+  authorize(input: unknown): FollowUpDeliveryResult {
+    const p = parsed(FollowUpDeliveryAuthorizeParams, input),
+      repo = repoPath(p.repo_path);
+    return this.safe(() =>
+      this.durableWrite(() => {
+        const row = this.row(repo, p.attempt_id),
+          existing = this.grant(row.attempt_id);
+        if (existing && deliveryCanonical(JSON.parse(existing.signed_json)) === deliveryCanonical(p.grant))
+          return this.result(row, "unchanged", true);
+        this.revision(row, p.expected_revision);
+        if (row.state !== "prepared") throw new FollowUpDeliveryError("delivery_terminal");
+        if (existing) throw new FollowUpDeliveryError("delivery_invalid_authorization");
+        const now = this.clock(row.updated_at_ms);
+        this.verifyGrant(row, p.grant, now);
+        if (
+          this.db
+            .prepare("SELECT 1 FROM follow_up_delivery_grants WHERE grant_id=?")
+            .get(p.grant.body.grant_id)
+        )
+          throw new FollowUpDeliveryError("delivery_invalid_authorization");
+        this.db
+          .prepare(
+            "INSERT INTO follow_up_delivery_grants(grant_id,attempt_id,key_id,signed_json,state,created_at_ms,updated_at_ms) VALUES(?,?,?,?,'active',?,?)",
+          )
+          .run(p.grant.body.grant_id, row.attempt_id, p.grant.key_id, JSON.stringify(p.grant), now, now);
+        return this.result(
+          this.bump(row, "prepared", "authorized", now, {
+            grant_id: p.grant.body.grant_id,
+            key_id: p.grant.key_id,
+          }),
+          "authorized",
+        );
+      }),
+    );
+  }
+  revoke(input: unknown): FollowUpDeliveryResult {
+    const p = parsed(FollowUpDeliveryRevokeParams, input),
+      repo = storedRepoPath(p.repo_path);
+    return this.safe(() =>
+      this.durableWrite(() => {
+        const row = this.row(repo, p.attempt_id);
+        this.revision(row, p.expected_revision);
+        if (["delivered", "definitely_not_sent"].includes(row.state))
+          return this.result(row, "unchanged", true);
+        const now = this.evidenceClock(row.updated_at_ms);
+        this.db
+          .prepare(
+            "UPDATE follow_up_delivery_grants SET state='revoked',updated_at_ms=? WHERE attempt_id=? AND state='active'",
+          )
+          .run(now, row.attempt_id);
+        return this.result(
+          this.bump(
+            row,
+            row.state === "prepared" ? "definitely_not_sent" : "delivery_unknown",
+            row.state === "prepared" ? "revoked_before_send" : "revoked_after_start",
+            now,
+            { reason: p.reason, timestamp_basis: "monotone_revocation_record" },
+          ),
+          "revoked",
+        );
+      }),
+    );
+  }
+  async dispatch(input: unknown): Promise<FollowUpDeliveryResult> {
+    const p = parsed(FollowUpDeliveryActionParams, input),
+      repo = repoPath(p.repo_path);
+    const claim = this.safe(() =>
+      this.durableWrite(() => {
+        const row = this.row(repo, p.attempt_id);
+        this.revision(row, p.expected_revision);
+        if (row.state !== "prepared")
+          return {
+            result: this.result(
+              row,
+              row.state === "started"
+                ? "in_flight"
+                : row.state === "delivery_unknown"
+                  ? "delivery_unknown"
+                  : "unchanged",
+              true,
+            ),
+          };
+        const envelope = this.envelope(row),
+          transport = this.transport(envelope);
+        if (!transport) return { result: this.result(row, "qualification_pending") };
+        const grant = this.grant(row.attempt_id);
+        if (!grant) throw new FollowUpDeliveryError("delivery_authorization_required");
+        if (grant.state !== "active") throw new FollowUpDeliveryError("delivery_authorization_revoked");
+        const now = this.clock(row.updated_at_ms);
+        // Verify current key, exact target, immutable content and time INSIDE the consuming transaction.
+        this.verifyGrant(row, SignedFollowUpDeliveryGrant.parse(JSON.parse(grant.signed_json)), now);
+        this.obligation(repo, row.obligation_id, row.obligation_revision);
+        const consumed = this.db
+          .prepare(
+            "UPDATE follow_up_delivery_grants SET state='consumed',updated_at_ms=? WHERE attempt_id=? AND state='active'",
+          )
+          .run(now, row.attempt_id);
+        if (consumed.changes !== 1) throw new FollowUpDeliveryError("delivery_authorization_revoked");
+        const started = this.bump(
+          row,
+          "started",
+          "send_started",
+          now,
+          { grant_id: grant.grant_id },
+          transport.qualification,
+        );
+        return { row: started, envelope: frozen(envelope), transport };
+      }),
+    );
+    if ("result" in claim) return claim.result;
+    // No retry or fallback exists here. A throw after this call cannot prove non-delivery.
+    const outcome = await this.boundedCall((signal) => claim.transport.sendOnce(claim.envelope, signal));
+    return this.safe(() =>
+      this.durableWrite(() => {
+        const current = this.row(repo, p.attempt_id);
+        if (current.state !== "started" || current.revision !== claim.row.revision)
+          return this.result(current, "unchanged", true);
+        const now = this.evidenceClock(current.updated_at_ms),
+          receipt = outcome.ok ? this.receipt(claim.envelope, outcome.value) : null;
+        if (!receipt)
+          return this.result(
+            this.bump(
+              current,
+              "delivery_unknown",
+              outcome.ok ? "receipt_unconfirmed" : "send_outcome_unknown",
+              now,
+              {},
+            ),
+            "delivery_unknown",
+          );
+        return this.result(
+          this.bump(
+            current,
+            "delivered",
+            "provider_receipt",
+            now,
+            { receipt_sha256: hash(receipt) },
+            current.qualification,
+            receipt,
+          ),
+          "delivered",
+        );
+      }),
+    );
+  }
+  async reconcile(input: unknown): Promise<FollowUpDeliveryResult> {
+    const p = parsed(FollowUpDeliveryActionParams, input),
+      repo = storedRepoPath(p.repo_path);
+    const claim = this.safe(() =>
+      this.durableWrite(() => {
+        let row = this.row(repo, p.attempt_id);
+        this.revision(row, p.expected_revision);
+        if (row.state === "prepared") throw new FollowUpDeliveryError("delivery_authorization_required");
+        if (["delivered", "definitely_not_sent"].includes(row.state))
+          return { result: this.result(row, "unchanged", true) };
+        const envelope = this.envelope(row),
+          transport = this.transport(envelope);
+        if (!transport?.lookup_receipt || transport.qualification !== row.qualification)
+          return { result: this.result(row, "qualification_pending") };
+        const now = this.evidenceClock(row.updated_at_ms);
+        if (row.state === "started") row = this.bump(row, "delivery_unknown", "started_unconfirmed", now, {});
+        return { row, envelope: frozen(envelope), transport };
+      }),
+    );
+    if ("result" in claim) return claim.result;
+    const outcome = await this.boundedCall((signal) => claim.transport.lookup(claim.envelope, signal));
+    return this.safe(() =>
+      this.durableWrite(() => {
+        const row = this.row(repo, p.attempt_id);
+        if (row.state !== "delivery_unknown" || row.revision !== claim.row.revision)
+          return this.result(row, "unchanged", true);
+        const now = this.evidenceClock(row.updated_at_ms),
+          receipt = outcome.ok ? this.receipt(claim.envelope, outcome.value) : null;
+        if (!receipt)
+          return this.result(
+            this.bump(row, "delivery_unknown", "lookup_unconfirmed", now, {}),
+            "delivery_unknown",
+          );
+        return this.result(
+          this.bump(
+            row,
+            "delivered",
+            "provider_lookup_receipt",
+            now,
+            { receipt_sha256: hash(receipt) },
+            row.qualification,
+            receipt,
+          ),
+          "delivered",
+        );
+      }),
+    );
+  }
+  private async boundedCall(
+    call: (signal: AbortSignal) => Promise<unknown>,
+  ): Promise<{ ok: true; value: unknown } | { ok: false }> {
+    const controller = new AbortController();
+    let timer: NodeJS.Timeout | undefined;
+    try {
+      return await Promise.race([
+        Promise.resolve()
+          .then(() => call(controller.signal))
+          .then(
+            (value) => ({ ok: true as const, value }),
+            () => ({ ok: false as const }),
+          ),
+        new Promise<{ ok: false }>((resolve) => {
+          timer = setTimeout(
+            () => {
+              controller.abort();
+              resolve({ ok: false });
+            },
+            Math.max(1, Math.min(30000, this.options.timeoutMs ?? 5000)),
+          );
+        }),
+      ]);
+    } finally {
+      if (timer) clearTimeout(timer);
+      controller.abort();
+    }
+  }
+  private target(repo: string, ref: string): FollowUpDeliveryTarget {
+    const result = FollowUpDeliveryTarget.safeParse(this.options.targets?.get(ref));
+    if (!result.success || result.data.destination_ref !== ref || result.data.repo_path !== repo)
+      throw new FollowUpDeliveryError("delivery_destination_unavailable");
+    return result.data;
+  }
+  private transport(envelope: FollowUpDeliveryEnvelope): FollowUpTransport | undefined {
+    const current = this.target(envelope.repo_path, envelope.destination.destination_ref);
+    if (hash(current) !== envelope.destination_digest)
+      throw new FollowUpDeliveryError("delivery_destination_unavailable");
+    const t = this.options.transports?.get(current.provider_id);
+    if (
+      !t ||
+      t.automatic_retries ||
+      !(["test_only", "sandbox_qualified", "production_qualified"] as string[]).includes(t.qualification) ||
+      (t.qualification === "test_only" && !this.options.allowTestTransports)
+    )
+      return undefined;
+    return t;
+  }
+  private subject(envelope: FollowUpDeliveryEnvelope) {
+    return FollowUpDeliverySubject.parse({
+      domain: "osstack.follow-up-delivery.v1",
+      repo_path: envelope.repo_path,
+      default_tenant: true,
+      attempt_id: envelope.attempt_id,
+      provider_id: envelope.destination.provider_id,
+      account_id: envelope.destination.account_id,
+      destination_digest: envelope.destination_digest,
+      body_sha256: envelope.body_sha256,
+      envelope_digest: envelope.envelope_digest,
+    });
+  }
+  private verifyGrant(row: Row, grant: SignedFollowUpDeliveryGrant, now: number): void {
+    const envelope = this.envelope(row),
+      body = grant.body,
+      { grant_id: _id, issued_at_ms, expires_at_ms, max_calls: _calls, ...subject } = body,
+      key = this.options.trustedKeys?.get(grant.key_id);
+    if (
+      key?.purpose !== "follow_up_delivery" ||
+      key.publicKey.type !== "public" ||
+      key.publicKey.asymmetricKeyType !== "ed25519" ||
+      key.repo_path !== row.repo_path ||
+      key.provider_id !== envelope.destination.provider_id ||
+      !key.destination_refs.includes(envelope.destination.destination_ref) ||
+      !Number.isSafeInteger(key.max_validity_ms) ||
+      key.max_validity_ms < 1 ||
+      expires_at_ms - issued_at_ms > key.max_validity_ms ||
+      deliveryCanonical(subject) !== deliveryCanonical(this.subject(envelope))
+    )
+      throw new FollowUpDeliveryError("delivery_invalid_authorization");
+    if (now < issued_at_ms || now >= expires_at_ms)
+      throw new FollowUpDeliveryError("delivery_authorization_expired");
+    if (
+      hash(this.target(row.repo_path, envelope.destination.destination_ref)) !== envelope.destination_digest
+    )
+      throw new FollowUpDeliveryError("delivery_destination_unavailable");
+    if (
+      !verify(
+        null,
+        Buffer.from(deliveryCanonical(body)),
+        key.publicKey,
+        Buffer.from(grant.signature, "base64"),
+      )
+    )
+      throw new FollowUpDeliveryError("delivery_invalid_authorization");
+  }
+  private receipt(envelope: FollowUpDeliveryEnvelope, raw: unknown): FollowUpDeliveryReceipt | null {
+    const result = FollowUpDeliveryReceipt.safeParse(raw);
+    if (!result.success) return null;
+    const r = result.data;
+    return r.provider_id === envelope.destination.provider_id &&
+      r.account_id === envelope.destination.account_id &&
+      r.target_node_id === envelope.destination.target_node_id &&
+      r.author_node_id === envelope.destination.actor_node_id &&
+      r.destination_digest === envelope.destination_digest &&
+      r.body_sha256 === envelope.body_sha256 &&
+      r.attempt_id === envelope.attempt_id
+      ? r
+      : null;
+  }
+  private envelope(row: Row): FollowUpDeliveryEnvelope {
+    const e = FollowUpDeliveryEnvelope.parse(JSON.parse(row.envelope_json)),
+      { envelope_digest, ...payload } = e;
+    if (
+      e.attempt_id !== row.attempt_id ||
+      e.repo_path !== row.repo_path ||
+      e.obligation_id !== row.obligation_id ||
+      e.obligation_revision !== row.obligation_revision ||
+      e.body_sha256 !== bodyHash(e.body) ||
+      e.destination_digest !== hash(e.destination) ||
+      envelope_digest !== hash(payload)
+    )
+      throw new FollowUpDeliveryError("delivery_database_unavailable");
+    return e;
+  }
+  private grant(id: string): GrantRow | undefined {
+    return this.db.prepare("SELECT * FROM follow_up_delivery_grants WHERE attempt_id=?").get(id) as
+      | GrantRow
+      | undefined;
+  }
+  private row(repo: string, id: string): Row {
+    const r = this.db
+      .prepare(
+        "SELECT * FROM follow_up_delivery_attempts WHERE repo_path=? AND tenant='default' AND attempt_id=?",
+      )
+      .get(repo, id) as Row | undefined;
+    if (!r) throw new FollowUpDeliveryError("delivery_not_found");
+    return r;
+  }
+  private revision(row: Row, expected: number) {
+    if (row.revision !== expected) throw new FollowUpDeliveryError("delivery_revision_conflict");
+  }
+  private obligation(repo: string, id: string, revision: number) {
+    const row = this.db
+      .prepare(
+        "SELECT revision FROM follow_up_obligations WHERE repo_path=? AND tenant='default' AND obligation_id=?",
+      )
+      .get(repo, id) as { revision: number } | undefined;
+    if (!row || row.revision !== revision) throw new FollowUpDeliveryError("delivery_obligation_changed");
+  }
+  private readClock(): number {
+    const now = (this.options.nowMs ?? Date.now)();
+    if (Number.isSafeInteger(now) && now >= 0 && now <= 8_640_000_000_000_000)
+      this.observedClock = Math.max(this.observedClock, now);
+    return now;
+  }
+  private highWater(): number {
+    return (
+      this.db.prepare("SELECT observed_at_ms FROM follow_up_delivery_clock WHERE singleton=1").get() as {
+        observed_at_ms: number;
+      }
+    ).observed_at_ms;
+  }
+  private clock(minimum = 0): number {
+    const now = this.readClock();
+    if (
+      !Number.isSafeInteger(now) ||
+      now < Math.max(minimum, this.highWater()) ||
+      now > 8_640_000_000_000_000
+    )
+      throw new FollowUpDeliveryError("delivery_invalid_clock");
+    return now;
+  }
+  private evidenceClock(minimum: number): number {
+    this.readClock();
+    return Math.max(minimum, this.observedClock, this.highWater());
+  }
+  /** FULL commit is required before an irreversible call. No await permits connection sharing here. */
+  private durableWrite<T>(call: () => T): T {
+    if (this.db.inTransaction || this.db.pragma("journal_mode", { simple: true }) !== "wal")
+      throw new FollowUpDeliveryError("delivery_durability_unavailable");
+    const observedBefore = this.observedClock;
+    const previous = this.db.pragma("synchronous", { simple: true }) as number;
+    const previousFullFsync = this.db.pragma("fullfsync", { simple: true }) as number;
+    const persistClock = () => {
+      this.db
+        .prepare("UPDATE follow_up_delivery_clock SET observed_at_ms=MAX(observed_at_ms,?) WHERE singleton=1")
+        .run(this.observedClock);
+    };
+    try {
+      this.db.pragma("synchronous=FULL");
+      if (process.platform === "darwin") this.db.pragma("fullfsync=ON");
+      if (
+        this.db.pragma("synchronous", { simple: true }) !== 2 ||
+        (process.platform === "darwin" && this.db.pragma("fullfsync", { simple: true }) !== 1)
+      )
+        throw new FollowUpDeliveryError("delivery_durability_unavailable");
+      try {
+        preflightDiskSpace(this.dbPath);
+        return this.db
+          .transaction(() => {
+            const result = call();
+            persistClock();
+            return result;
+          })
+          .immediate();
+      } catch (error) {
+        // Failed expiry checks also advance the observed clock: a later rollback cannot revive the grant.
+        if (this.observedClock > observedBefore) {
+          preflightDiskSpace(this.dbPath);
+          this.db.transaction(persistClock).immediate();
+        }
+        throw error;
+      }
+    } finally {
+      this.db.pragma(`synchronous=${previous}`);
+      if (process.platform === "darwin") this.db.pragma(`fullfsync=${previousFullFsync}`);
+    }
+  }
+  private safe<T>(call: () => T): T {
+    try {
+      return call();
+    } catch (error) {
+      if (error instanceof FollowUpDeliveryError) throw error;
+      throw new FollowUpDeliveryError("delivery_database_unavailable");
+    }
+  }
+  private bump(
+    row: Row,
+    state: Row["state"],
+    reason: string,
+    now: number,
+    evidence: unknown,
+    qualification = row.qualification,
+    receipt: FollowUpDeliveryReceipt | null = null,
+  ): Row {
+    if (row.revision >= Number.MAX_SAFE_INTEGER - 1)
+      throw new FollowUpDeliveryError("delivery_revision_conflict");
+    const result = this.db
+      .prepare(
+        "UPDATE follow_up_delivery_attempts SET state=?,revision=revision+1,updated_at_ms=?,qualification=?,receipt_json=?,receipt_sha256=?,reason=? WHERE attempt_id=? AND revision=?",
+      )
+      .run(
+        state,
+        now,
+        qualification,
+        receipt ? JSON.stringify(receipt) : null,
+        receipt ? hash(receipt) : null,
+        reason,
+        row.attempt_id,
+        row.revision,
+      );
+    if (result.changes !== 1) throw new FollowUpDeliveryError("delivery_revision_conflict");
+    this.event(row.attempt_id, row.revision + 1, reason, evidence, now);
+    return this.row(row.repo_path, row.attempt_id);
+  }
+  private event(id: string, revision: number, transition: string, evidence: unknown, now: number) {
+    this.db
+      .prepare(
+        "INSERT INTO follow_up_delivery_events(attempt_id,revision,transition,evidence_json,created_at_ms) VALUES(?,?,?,?,?)",
+      )
+      .run(id, revision, transition, JSON.stringify(evidence), now);
+  }
+  private view(row: Row): FollowUpDeliveryAttempt {
+    const envelope = this.envelope(row);
+    return FollowUpDeliveryAttempt.parse({
+      attempt_id: row.attempt_id,
+      repo_path: row.repo_path,
+      default_tenant: true,
+      obligation_id: row.obligation_id,
+      obligation_revision: row.obligation_revision,
+      state: row.state,
+      revision: row.revision,
+      created_at_ms: row.created_at_ms,
+      updated_at_ms: row.updated_at_ms,
+      envelope,
+      authorization_subject: this.subject(envelope),
+      authorization_status: this.grant(row.attempt_id)?.state ?? "missing",
+      qualification: row.qualification,
+      receipt: row.receipt_json === null ? null : JSON.parse(row.receipt_json),
+      receipt_sha256: row.receipt_sha256,
+      reason: row.reason,
+      delivery_uncertain: row.state === "started" || row.state === "delivery_unknown",
+      promise_fulfillment: "independent_local_obligation",
+    });
+  }
+  /** Reserve the largest valid receipt before an irreversible transport call is possible. */
+  private reserveReceiptSpace(row: Row): void {
+    const view = this.view(row),
+      e = view.envelope;
+    const receipt: FollowUpDeliveryReceipt = {
+      provider_id: e.destination.provider_id,
+      account_id: e.destination.account_id,
+      target_node_id: e.destination.target_node_id,
+      author_node_id: e.destination.actor_node_id,
+      destination_digest: e.destination_digest,
+      body_sha256: e.body_sha256,
+      attempt_id: e.attempt_id,
+      provider_message_id: "x" + "\0".repeat(255),
+      provider_request_id: "x" + "\0".repeat(255),
+    };
+    bounded({
+      schema_version: 1,
+      outcome: "delivery_unknown",
+      attempt: {
+        ...view,
+        state: "delivery_unknown",
+        revision: Number.MAX_SAFE_INTEGER - 1,
+        updated_at_ms: 8_640_000_000_000_000,
+        qualification: "production_qualified",
+        authorization_status: "consumed",
+        receipt,
+        receipt_sha256: "f".repeat(64),
+        reason: "x".repeat(128),
+        delivery_uncertain: true,
+      },
+      duplicate: false,
+    });
+  }
+  private result(
+    row: Row,
+    outcome: FollowUpDeliveryResult["outcome"],
+    duplicate = false,
+  ): FollowUpDeliveryResult {
+    return bounded(
+      FollowUpDeliveryResult.parse({ schema_version: 1, outcome, attempt: this.view(row), duplicate }),
+    );
+  }
+}
+
+
+FILE packages/core/src/state/follow-up-delivery-ddl.ts
+/** Migration 45. Services never run schema creation themselves. */
+export const FOLLOW_UP_DELIVERY_DDL = `
+CREATE TABLE follow_up_delivery_clock (singleton INTEGER PRIMARY KEY CHECK(singleton=1),observed_at_ms INTEGER NOT NULL CHECK(observed_at_ms BETWEEN 0 AND 8640000000000000));
+INSERT INTO follow_up_delivery_clock(singleton,observed_at_ms) VALUES(1,0);
+CREATE TABLE follow_up_delivery_attempts (
+ attempt_id TEXT PRIMARY KEY NOT NULL,repo_path TEXT NOT NULL,tenant TEXT NOT NULL CHECK(tenant='default'),
+ obligation_id TEXT NOT NULL REFERENCES follow_up_obligations(obligation_id),obligation_revision INTEGER NOT NULL CHECK(obligation_revision>0),
+ idempotency_key TEXT NOT NULL,create_digest TEXT NOT NULL,envelope_json TEXT NOT NULL CHECK(json_valid(envelope_json) AND length(CAST(envelope_json AS BLOB))<=49152),
+ state TEXT NOT NULL CHECK(state IN ('prepared','started','delivered','delivery_unknown','definitely_not_sent')),
+ revision INTEGER NOT NULL CHECK(revision BETWEEN 1 AND 9007199254740990),created_at_ms INTEGER NOT NULL CHECK(created_at_ms>=0),updated_at_ms INTEGER NOT NULL CHECK(updated_at_ms>=created_at_ms),
+ qualification TEXT NOT NULL CHECK(qualification IN ('qualification_pending','test_only','sandbox_qualified','production_qualified')),
+ receipt_json TEXT CHECK(receipt_json IS NULL OR (json_valid(receipt_json) AND length(CAST(receipt_json AS BLOB))<=8192)),receipt_sha256 TEXT,reason TEXT,
+ UNIQUE(repo_path,tenant,idempotency_key),CHECK((state='delivered')=(receipt_json IS NOT NULL)),CHECK((receipt_json IS NULL)=(receipt_sha256 IS NULL))
+);
+CREATE UNIQUE INDEX follow_up_delivery_active_obligation ON follow_up_delivery_attempts(repo_path,tenant,obligation_id) WHERE state IN ('prepared','started','delivery_unknown');
+CREATE INDEX follow_up_delivery_scope_page ON follow_up_delivery_attempts(repo_path,tenant,attempt_id);
+CREATE TABLE follow_up_delivery_grants (
+ grant_id TEXT PRIMARY KEY NOT NULL,attempt_id TEXT NOT NULL UNIQUE REFERENCES follow_up_delivery_attempts(attempt_id),
+ key_id TEXT NOT NULL,signed_json TEXT NOT NULL CHECK(json_valid(signed_json) AND length(CAST(signed_json AS BLOB))<=16384),
+ state TEXT NOT NULL CHECK(state IN ('active','consumed','revoked')),created_at_ms INTEGER NOT NULL,updated_at_ms INTEGER NOT NULL CHECK(updated_at_ms>=created_at_ms)
+);
+CREATE TABLE follow_up_delivery_events (
+ attempt_id TEXT NOT NULL REFERENCES follow_up_delivery_attempts(attempt_id),revision INTEGER NOT NULL,transition TEXT NOT NULL,
+ evidence_json TEXT NOT NULL CHECK(json_valid(evidence_json) AND length(CAST(evidence_json AS BLOB))<=16384),created_at_ms INTEGER NOT NULL,
+ PRIMARY KEY(attempt_id,revision)
+);
+CREATE TRIGGER follow_up_delivery_identity_immutable BEFORE UPDATE OF attempt_id,repo_path,tenant,obligation_id,obligation_revision,idempotency_key,create_digest,envelope_json,created_at_ms ON follow_up_delivery_attempts BEGIN SELECT RAISE(ABORT,'delivery identity immutable'); END;
+CREATE TRIGGER follow_up_delivery_terminal_immutable BEFORE UPDATE ON follow_up_delivery_attempts WHEN OLD.state IN ('delivered','definitely_not_sent') BEGIN SELECT RAISE(ABORT,'delivery terminal immutable'); END;
+CREATE TRIGGER follow_up_delivery_state_forward BEFORE UPDATE OF state ON follow_up_delivery_attempts WHEN
+ (OLD.state='prepared' AND NEW.state NOT IN ('prepared','started','definitely_not_sent')) OR
+ (OLD.state='started' AND NEW.state NOT IN ('delivered','delivery_unknown')) OR
+ (OLD.state='delivery_unknown' AND NEW.state NOT IN ('delivered','delivery_unknown'))
+ BEGIN SELECT RAISE(ABORT,'delivery state cannot rewind'); END;
+CREATE TRIGGER follow_up_delivery_grant_no_rearm BEFORE UPDATE OF state ON follow_up_delivery_grants WHEN
+ (OLD.state='consumed' AND NEW.state!='consumed') OR (OLD.state='revoked' AND NEW.state!='revoked')
+ BEGIN SELECT RAISE(ABORT,'delivery grant cannot rearm'); END;
+CREATE TRIGGER follow_up_delivery_attempts_no_delete BEFORE DELETE ON follow_up_delivery_attempts BEGIN SELECT RAISE(ABORT,'delivery history immutable'); END;
+CREATE TRIGGER follow_up_delivery_grants_identity_immutable BEFORE UPDATE OF grant_id,attempt_id,key_id,signed_json,created_at_ms ON follow_up_delivery_grants BEGIN SELECT RAISE(ABORT,'delivery grant immutable'); END;
+CREATE TRIGGER follow_up_delivery_grants_no_delete BEFORE DELETE ON follow_up_delivery_grants BEGIN SELECT RAISE(ABORT,'delivery history immutable'); END;
+CREATE TRIGGER follow_up_delivery_events_no_update BEFORE UPDATE ON follow_up_delivery_events BEGIN SELECT RAISE(ABORT,'delivery history immutable'); END;
+CREATE TRIGGER follow_up_delivery_events_no_delete BEFORE DELETE ON follow_up_delivery_events BEGIN SELECT RAISE(ABORT,'delivery history immutable'); END;
+`;
+
+
+FILE packages/core/src/state/db.ts
+// SQLite connection management.
+//
+// Decisions locked in plan v0.6:
+//   - better-sqlite3 (synchronous, single connection per daemon process)
+//   - WAL mode for concurrent reader/writer safety
+//   - synchronous=NORMAL (WAL-safe, faster than FULL)
+//   - 64 MiB page cache
+//   - foreign_keys ON (so ON DELETE CASCADE works for runs/events on task delete)
+//
+// CRITICAL GAP G1 (plan v0.6 §8.3): disk-full must never cause a silent task
+// write loss. Every write goes through preflightDiskSpace(), which throws
+// DiskFullError before any INSERT/UPDATE can corrupt or stall a transaction.
+
+import Database from "better-sqlite3";
+import { statfsSync } from "node:fs";
+import { dirname } from "node:path";
+import { CURRENT_SCHEMA_VERSION, MIGRATIONS } from "./migrations.js";
+
+/** Default safety threshold for disk-full preflight (100 MiB). */
+export const DEFAULT_MIN_FREE_BYTES = 100 * 1024 * 1024;
+
+/** Cache size in -kibibyte units. negative = KiB (per SQLite docs). 64 MiB. */
+const PAGE_CACHE_KIB = -65536;
+
+export class DiskFullError extends Error {
+  readonly path: string;
+  readonly freeBytes: number;
+  readonly minFreeBytes: number;
+  constructor(path: string, freeBytes: number, minFreeBytes: number) {
+    super(
+      `Disk full preflight failed for ${path}: ${freeBytes} bytes free, ` +
+      `need ≥${minFreeBytes}. Refusing write so Hermes can be notified.`,
+    );
+    this.name = "DiskFullError";
+    this.path = path;
+    this.freeBytes = freeBytes;
+    this.minFreeBytes = minFreeBytes;
+  }
+}
+
+export interface OpenDbOptions {
+  /** Absolute path to the SQLite file (parent dir must exist). */
+  path: string;
+  /** When false, opens read-only. */
+  readwrite?: boolean;
+  /** Override the disk-full safety threshold (bytes). */
+  minFreeBytes?: number;
+}
+
+/**
+ * Run a free-space check against the filesystem holding `path`. Throws
+ * DiskFullError if below threshold; otherwise returns free byte count.
+ * Skips the check (returns Infinity) if statfsSync is unsupported on the
+ * platform — better to allow writes than to crash a daemon on a kernel quirk.
+ */
+export function preflightDiskSpace(
+  path: string,
+  minFreeBytes: number = DEFAULT_MIN_FREE_BYTES,
+): number {
+  let stats: { bsize: number; bavail: number };
+  try {
+    stats = statfsSync(dirname(path));
+  } catch {
+    return Number.POSITIVE_INFINITY;
+  }
+  const free = Number(stats.bsize) * Number(stats.bavail);
+  if (free < minFreeBytes) throw new DiskFullError(path, free, minFreeBytes);
+  return free;
+}
+
+/**
+ * Open the osstack state database, apply pragmas, and run pending migrations.
+ * Caller owns the lifetime — pair every openDb() with a db.close() in shutdown.
+ */
+export function openDb(opts: OpenDbOptions): Database.Database {
+  const { path, readwrite = true, minFreeBytes = DEFAULT_MIN_FREE_BYTES } = opts;
+  if (readwrite) preflightDiskSpace(path, minFreeBytes);
+
+  const db = new Database(path, { readonly: !readwrite });
+
+  try {
+    // Refuse an unsupported schema before changing journal mode or running DDL,
+    // including read-only inspection. A failed open never escapes with a live handle.
+    assertSupportedVersion(db.pragma("user_version", { simple: true }) as number);
+    assertMigrationLineage(db);
+    // Pragmas are applied per-connection in SQLite. Apply on every open.
+    if (readwrite) db.pragma("journal_mode = WAL");
+    db.pragma("synchronous = NORMAL");
+    db.pragma(`cache_size = ${PAGE_CACHE_KIB}`);
+    db.pragma("foreign_keys = ON");
+    db.pragma("busy_timeout = 5000");
+
+    if (readwrite) runMigrations(db);
+    return db;
+  } catch (error) {
+    db.close();
+    throw error;
+  }
+}
+
+// This schema is table-additive. Derive expected table introductions once;
+// a future DROP/RENAME migration must also update this lineage contract.
+const tableIntroductions = MIGRATIONS.flatMap(migration =>
+  [...migration.sql.matchAll(/^\s*CREATE\s+TABLE(?:\s+IF\s+NOT\s+EXISTS)?\s+([a-zA-Z_]\w*)\s*\(/gm)]
+    .map(match => ({ name: match[1]!, version: migration.id })));
+
+/** Reject pure or mixed unreleased Graph schemas before application pragmas or
+ * DDL. SQLite may itself checkpoint an abandoned WAL on close; logical ledger
+ * content and user_version must remain intact for the original binary. */
+function assertMigrationLineage(db: Database.Database): void {
+  const current = db.pragma("user_version", { simple: true }) as number;
+  const actual = new Set((db.prepare("SELECT name FROM sqlite_master WHERE type='table'").all() as { name: string }[]).map(row => row.name));
+  // Experimental Graph or Attention tables must never be migrated as released main.
+  const experimentalTable = (name: string) => name.startsWith("graph_") || name.startsWith("attention_") || name === "daemon_owner";
+  if (current < 25 && ![...actual].some(experimentalTable)) return;
+  const expected = new Set(tableIntroductions.filter(table => table.version <= current).map(table => table.name));
+  if ([...expected].some(name => !actual.has(name))
+    || [...actual].some(name => experimentalTable(name) && !expected.has(name))) {
+    throw new Error("GRAPH_EXPERIMENTAL_SCHEMA_CONFLICT: preserve this home and reconcile with its original build; do not reset user_version or reuse it for the integrated runtime");
+  }
+}
+
+function assertSupportedVersion(current: number): void {
+  if (current > CURRENT_SCHEMA_VERSION) {
+    throw new Error(`Migration state inconsistent: user_version=${current}, expected=${CURRENT_SCHEMA_VERSION}`);
+  }
+}
+
+/**
+ * Apply pending migrations idempotently. `user_version` PRAGMA tracks progress.
+ * The version pragma guarantees forward-only application. Many migrations
+ * contain non-idempotent CREATE/ALTER statements; never reset user_version.
+ */
+export function runMigrations(db: Database.Database): void {
+  const currentRow = db.pragma("user_version", { simple: true }) as number;
+  let current = Number(currentRow);
+  assertSupportedVersion(current);
+  assertMigrationLineage(db);
+  for (const m of MIGRATIONS) {
+    if (m.id <= current) continue;
+    db.exec("BEGIN");
+    try {
+      db.exec(m.sql);
+      db.pragma(`user_version = ${m.id}`);
+      db.exec("COMMIT");
+      current = m.id;
+    } catch (err) {
+      db.exec("ROLLBACK");
+      throw err;
+    }
+  }
+  if (current !== CURRENT_SCHEMA_VERSION) {
+    throw new Error(
+      `Migration state inconsistent: user_version=${current}, expected=${CURRENT_SCHEMA_VERSION}`,
+    );
+  }
+}
+
+/**
+ * Run a function inside a transaction with preflight. Use for any write path
+ * called from the daemon hot loop. Wraps better-sqlite3's transaction() so
+ * disk-space errors fire BEFORE BEGIN, not mid-transaction.
+ */
+export function withWrite<T>(
+  db: Database.Database,
+  path: string,
+  fn: (db: Database.Database) => T,
+  minFreeBytes: number = DEFAULT_MIN_FREE_BYTES,
+): T {
+  preflightDiskSpace(path, minFreeBytes);
+  const tx = db.transaction(fn);
+  return tx(db);
+}
+
+
+FILE packages/protocol/src/follow-up-delivery.ts
+import { z } from "zod";
+const text = (n: number) =>
+  z
+    .string()
+    .min(1)
+    .max(n)
+    .refine((s) => {
+      const bytes = new TextEncoder().encode(s);
+      return (
+        /[^\p{White_Space}\p{C}]/u.test(s) &&
+        bytes.length <= n &&
+        new TextDecoder("utf-8", { ignoreBOM: true }).decode(bytes) === s
+      );
+    });
+const id = z.string().uuid(),
+  digest = z.string().regex(/^[a-f0-9]{64}$/),
+  epoch = z.number().int().nonnegative().max(8_640_000_000_000_000),
+  revision = z
+    .number()
+    .int()
+    .positive()
+    .max(Number.MAX_SAFE_INTEGER - 1);
+const ref = z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$/);
+const scope = { repo_path: text(4096), default_tenant: z.literal(true) };
+export const FollowUpDeliveryTarget = z
+  .object({
+    destination_ref: ref,
+    repo_path: text(4096),
+    provider_id: z.literal("github_comment"),
+    account_id: ref,
+    host: z.literal("github.com"),
+    owner: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9-]{0,99}$/),
+    repository: z.string().regex(/^[A-Za-z0-9_][A-Za-z0-9_.-]{0,99}$/),
+    issue_number: z.number().int().safe().positive(),
+    target_node_id: text(256),
+    actor_node_id: text(256),
+  })
+  .strict();
+export type FollowUpDeliveryTarget = z.infer<typeof FollowUpDeliveryTarget>;
+export const FollowUpDeliverySubject = z
+  .object({
+    domain: z.literal("osstack.follow-up-delivery.v1"),
+    ...scope,
+    attempt_id: id,
+    provider_id: z.literal("github_comment"),
+    account_id: ref,
+    destination_digest: digest,
+    body_sha256: digest,
+    envelope_digest: digest,
+  })
+  .strict();
+export const FollowUpDeliveryGrantBody = FollowUpDeliverySubject.extend({
+  grant_id: id,
+  issued_at_ms: epoch,
+  expires_at_ms: epoch,
+  max_calls: z.literal(1),
+})
+  .strict()
+  .refine((g) => g.expires_at_ms > g.issued_at_ms);
+export const SignedFollowUpDeliveryGrant = z
+  .object({
+    body: FollowUpDeliveryGrantBody,
+    key_id: ref,
+    signature: z.string().regex(/^[A-Za-z0-9+/]{85}[AQgw]==$/),
+  })
+  .strict();
+export type SignedFollowUpDeliveryGrant = z.infer<typeof SignedFollowUpDeliveryGrant>;
+export const FollowUpDeliveryEnvelope = z
+  .object({
+    ...scope,
+    attempt_id: id,
+    obligation_id: id,
+    obligation_revision: revision,
+    destination: FollowUpDeliveryTarget,
+    destination_digest: digest,
+    body: text(16000),
+    body_sha256: digest,
+    envelope_digest: digest,
+  })
+  .strict();
+export type FollowUpDeliveryEnvelope = z.infer<typeof FollowUpDeliveryEnvelope>;
+export const FollowUpDeliveryReceipt = z
+  .object({
+    provider_id: z.literal("github_comment"),
+    account_id: ref,
+    target_node_id: text(256),
+    author_node_id: text(256),
+    destination_digest: digest,
+    body_sha256: digest,
+    attempt_id: id,
+    provider_message_id: text(256),
+    provider_request_id: text(256),
+  })
+  .strict();
+export type FollowUpDeliveryReceipt = z.infer<typeof FollowUpDeliveryReceipt>;
+export const FollowUpDeliveryState = z.enum([
+  "prepared",
+  "started",
+  "delivered",
+  "delivery_unknown",
+  "definitely_not_sent",
+]);
+const action = { ...scope, attempt_id: id, expected_revision: revision };
+export const FollowUpDeliveryPrepareParams = z
+  .object({
+    ...scope,
+    obligation_id: id,
+    expected_obligation_revision: revision,
+    destination_ref: ref,
+    body: text(16000),
+    idempotency_key: text(128),
+  })
+  .strict();
+export const FollowUpDeliveryActionParams = z.object(action).strict();
+export const FollowUpDeliveryAuthorizeParams = z
+  .object({ ...action, grant: SignedFollowUpDeliveryGrant })
+  .strict();
+export const FollowUpDeliveryRevokeParams = z.object({ ...action, reason: text(1024) }).strict();
+export const FollowUpDeliveryInspectParams = z.object({ ...scope, attempt_id: id }).strict();
+export const FollowUpDeliveryListParams = z
+  .object({
+    ...scope,
+    limit: z.number().int().min(1).max(50).default(20),
+    after_id: id.transform((value) => value.toLowerCase()).optional(),
+  })
+  .strict();
+export const FollowUpDeliveryAttempt = z
+  .object({
+    attempt_id: id,
+    repo_path: text(4096),
+    default_tenant: z.literal(true),
+    obligation_id: id,
+    obligation_revision: revision,
+    state: FollowUpDeliveryState,
+    revision,
+    created_at_ms: epoch,
+    updated_at_ms: epoch,
+    envelope: FollowUpDeliveryEnvelope,
+    authorization_subject: FollowUpDeliverySubject,
+    authorization_status: z.enum(["missing", "active", "consumed", "revoked"]),
+    qualification: z.enum([
+      "qualification_pending",
+      "test_only",
+      "sandbox_qualified",
+      "production_qualified",
+    ]),
+    receipt: FollowUpDeliveryReceipt.nullable(),
+    receipt_sha256: digest.nullable(),
+    reason: ref.nullable(),
+    delivery_uncertain: z.boolean(),
+    promise_fulfillment: z.literal("independent_local_obligation"),
+  })
+  .strict();
+export type FollowUpDeliveryAttempt = z.infer<typeof FollowUpDeliveryAttempt>;
+export const FollowUpDeliveryResult = z
+  .object({
+    schema_version: z.literal(1),
+    outcome: z.enum([
+      "prepared",
+      "authorized",
+      "revoked",
+      "delivered",
+      "delivery_unknown",
+      "in_flight",
+      "qualification_pending",
+      "unchanged",
+    ]),
+    attempt: FollowUpDeliveryAttempt,
+    duplicate: z.boolean(),
+  })
+  .strict();
+export type FollowUpDeliveryResult = z.infer<typeof FollowUpDeliveryResult>;
+export const FollowUpDeliveryListItem = FollowUpDeliveryAttempt.omit({
+  envelope: true,
+  authorization_subject: true,
+  receipt: true,
+}).extend({ destination_ref: ref, body_sha256: digest });
+export const FollowUpDeliveryListResult = z
+  .object({
+    schema_version: z.literal(1),
+    scope: z.object(scope).strict(),
+    attempts: z.array(FollowUpDeliveryListItem).max(50),
+    next_after_id: id.nullable(),
+  })
+  .strict();
+export type FollowUpDeliveryListResult = z.infer<typeof FollowUpDeliveryListResult>;
+
+
+FILE packages/cli/src/follow-up-delivery-command.ts
+import { constants } from "node:fs";
+import { open } from "node:fs/promises";
+import {
+  FollowUpDeliveryPrepareParams,
+  FollowUpDeliveryListParams,
+  FollowUpDeliveryInspectParams,
+  FollowUpDeliveryActionParams,
+  FollowUpDeliveryAuthorizeParams,
+  FollowUpDeliveryRevokeParams,
+  SignedFollowUpDeliveryGrant,
+  FollowUpDeliveryResult,
+  FollowUpDeliveryListResult,
+} from "@osstack/protocol";
+import { FOLLOW_UP_DELIVERY_ERRORS, serializeFollowUpDelivery } from "@osstack/core";
+export const FOLLOW_UP_DELIVERY_HELP = `follow-up-delivery prepare --repo PATH --default-tenant --input FILE [--json]
+follow-up-delivery list --repo PATH --default-tenant [--limit 1..50] [--after ID] [--json]
+follow-up-delivery inspect ID --repo PATH --default-tenant [--json]
+follow-up-delivery authorize ID --repo PATH --default-tenant --revision N --grant FILE [--json]
+follow-up-delivery revoke ID --repo PATH --default-tenant --revision N --reason TEXT [--json]
+follow-up-delivery dispatch|reconcile ID --repo PATH --default-tenant --revision N [--json]
+No production provider is bundled: qualification_pending never consumes authorization.
+Authorize imports a signed, host-trusted, exact-target/body/scope/single-attempt grant; this CLI cannot create authority.
+Prepare input excludes repo_path/default_tenant. Unknown delivery never retries; reconcile only queries a registered provider.
+JSON output preserves exact reviewable content. Dispatch/reconcile exit 0 only for production-qualified delivered evidence; fake and sandbox evidence exit 1.
+Delivery does not resolve the independent local obligation.\n`;
+export interface FollowUpDeliveryCommandDependencies {
+  rpc(method: string, params: unknown): Promise<unknown>;
+  stdout?: (text: string) => void;
+  stderr?: (text: string) => void;
+}
+export async function handleFollowUpDeliveryCommand(
+  args: string[],
+  deps: FollowUpDeliveryCommandDependencies,
+): Promise<number> {
+  const out =
+      deps.stdout ??
+      ((text) => {
+        process.stdout.write(text);
+      }),
+    err =
+      deps.stderr ??
+      ((text) => {
+        process.stderr.write(text);
+      });
+  if (!args.length || (args.length === 1 && ["help", "--help"].includes(args[0]!))) {
+    out(FOLLOW_UP_DELIVERY_HELP);
+    return 0;
+  }
+  const action = args[0];
+  let params: unknown;
+  try {
+    if (
+      args.length > 20 ||
+      args.some((a) => Buffer.byteLength(a) > 4096) ||
+      !["prepare", "list", "inspect", "authorize", "revoke", "dispatch", "reconcile"].includes(action!)
+    )
+      throw Error();
+    const identity = action !== "prepare" && action !== "list",
+      id = identity ? args[1] : undefined;
+    const allowed = [
+      "--repo",
+      "--default-tenant",
+      "--json",
+      ...(action === "prepare"
+        ? ["--input"]
+        : action === "list"
+          ? ["--limit", "--after"]
+          : action === "inspect"
+            ? []
+            : action === "authorize"
+              ? ["--revision", "--grant"]
+              : action === "revoke"
+                ? ["--revision", "--reason"]
+                : ["--revision"]),
+    ];
+    const flags = new Map<string, string | true>();
+    for (let i = identity ? 2 : 1; i < args.length; i++) {
+      const key = args[i]!;
+      if (!allowed.includes(key) || flags.has(key)) throw Error();
+      if (key === "--default-tenant" || key === "--json") flags.set(key, true);
+      else {
+        const value = args[++i];
+        if (!value || value.startsWith("--")) throw Error();
+        flags.set(key, value);
+      }
+    }
+    const scope = { repo_path: flags.get("--repo"), default_tenant: flags.get("--default-tenant") };
+    const number = (key: string) => {
+      const value = flags.get(key);
+      if (typeof value !== "string" || !/^[1-9][0-9]*$/.test(value)) throw Error();
+      return Number(value);
+    };
+    const file = async (key: string) => {
+      const path = flags.get(key);
+      if (typeof path !== "string") throw Error();
+      return readInput(path);
+    };
+    if (action === "prepare") {
+      const body = FollowUpDeliveryPrepareParams.omit({ repo_path: true, default_tenant: true }).parse(
+        await file("--input"),
+      );
+      params = FollowUpDeliveryPrepareParams.parse({ ...body, ...scope });
+    } else if (action === "list")
+      params = FollowUpDeliveryListParams.parse({
+        ...scope,
+        ...(flags.has("--limit") ? { limit: number("--limit") } : {}),
+        ...(flags.has("--after") ? { after_id: flags.get("--after") } : {}),
+      });
+    else if (action === "inspect") params = FollowUpDeliveryInspectParams.parse({ ...scope, attempt_id: id });
+    else {
+      const base = { ...scope, attempt_id: id, expected_revision: number("--revision") };
+      params =
+        action === "authorize"
+          ? FollowUpDeliveryAuthorizeParams.parse({
+              ...base,
+              grant: SignedFollowUpDeliveryGrant.parse(await file("--grant")),
+            })
+          : action === "revoke"
+            ? FollowUpDeliveryRevokeParams.parse({ ...base, reason: flags.get("--reason") })
+            : FollowUpDeliveryActionParams.parse(base);
+    }
+  } catch {
+    err("invalid_delivery_request\n");
+    return 1;
+  }
+  let raw: unknown;
+  try {
+    raw = await deps.rpc(`follow-up-delivery.${action}`, params);
+  } catch (error) {
+    const code = error instanceof Error ? error.message : "";
+    err(
+      `${(FOLLOW_UP_DELIVERY_ERRORS as readonly string[]).includes(code) ? code : "delivery_request_failed"}\n`,
+    );
+    return 1;
+  }
+  try {
+    if (Buffer.byteLength(serializeFollowUpDelivery(raw)) + 1 > 65536) throw Error();
+    const result =
+      action === "list" ? FollowUpDeliveryListResult.parse(raw) : FollowUpDeliveryResult.parse(raw);
+    const text = `${serializeFollowUpDelivery(result)}\n`;
+    if (Buffer.byteLength(text) > 65536) throw Error();
+    out(text);
+    return action === "dispatch" || action === "reconcile"
+      ? "attempt" in result &&
+        result.attempt.state === "delivered" &&
+        result.attempt.qualification === "production_qualified"
+        ? 0
+        : 1
+      : 0;
+  } catch {
+    err("invalid_delivery_response\n");
+    return 1;
+  }
+}
+async function readInput(path: string): Promise<unknown> {
+  const file = await open(path, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
+  try {
+    const stat = await file.stat();
+    if (!stat.isFile() || stat.size > 65536) throw Error();
+    const bytes = Buffer.alloc(65537);
+    let length = 0;
+    while (length < bytes.length) {
+      const read = await file.read(bytes, length, bytes.length - length, null);
+      if (!read.bytesRead) break;
+      length += read.bytesRead;
+    }
+    if (length > 65536) throw Error();
+    return JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes.subarray(0, length)));
+  } finally {
+    await file.close();
+  }
+}
+
+
+FILE packages/cli/src/local-ledgers-daemon.test.ts
+import { realpathSync } from "node:fs";
+import { mkdir, rm } from "node:fs/promises";
+import { connect } from "node:net";
+import { join } from "node:path";
+import { createScratchDir, openDb, insertRun, insertTask } from "@osstack/core";
+import { encodeFrame, FrameDecoder } from "@osstack/hermes-adapter";
+import { afterEach, expect, it, vi } from "vitest";
+import {
+  startDaemon,
+  type DaemonHandles,
+  type StartDaemonOptions,
+} from "./daemon.js";
+import { healthyAutonomyHealth } from "./test-healthy-autonomy.js";
+import { main } from "./bin.js";
+let daemon: DaemonHandles | undefined;
+let root: string | undefined;
+let socket: string;
+afterEach(async () => {
+  await daemon?.close();
+  daemon = undefined;
+  vi.unstubAllEnvs();
+  vi.restoreAllMocks();
+  if (root) await rm(root, { recursive: true, force: true });
+  root = undefined;
+});
+function rpc(
+  method: string,
+  params: unknown,
+): Promise<{
+  ok: boolean;
+  result?: Record<string, unknown>;
+  error?: { code: string };
+}> {
+  return new Promise((resolve, reject) => {
+    const sock = connect(socket);
+    const decoder = new FrameDecoder();
+    const timer = setTimeout(() => {
+      sock.destroy();
+      reject(Error("timeout"));
+    }, 5000);
+    sock.on("connect", () =>
+      sock.write(encodeFrame({ id: 1, method, params })),
+    );
+    sock.on("error", (error) => {
+      clearTimeout(timer);
+      reject(error);
+    });
+    sock.on("data", (chunk) => {
+      const values = decoder.push(chunk);
+      if (values.length) {
+        clearTimeout(timer);
+        sock.end();
+        resolve(values[0] as Awaited<ReturnType<typeof rpc>>);
+      }
+    });
+  });
+}
+async function start(options: StartDaemonOptions = {}) {
+  daemon = await startDaemon({
+    socketPath: socket,
+    adapters: [],
+    autonomyHealth: async () => healthyAutonomyHealth(),
+    ...options,
+  });
+  return daemon;
+}
+async function fixture(
+  attention: boolean,
+  triage: boolean,
+  options: StartDaemonOptions = {},
+) {
+  root = await createScratchDir("tests", "ledgers-daemon");
+  socket = join(root, "d.sock");
+  vi.stubEnv("OSSTACK_HOME", root);
+  vi.stubEnv("OSSTACK_SOCKET", socket);
+  vi.stubEnv("OSSTACK_UPDATE_CHECK", "0");
+  vi.stubEnv("OSSTACK_ATTENTION", attention ? "1" : "0");
+  vi.stubEnv("OSSTACK_ATTENTION_TRIAGE_ENABLED", triage ? "1" : "0");
+  vi.stubEnv("OSSTACK_ATTENTION_TRIAGE_MODEL", "exact-model");
+  vi.stubEnv("OSSTACK_ATTENTION_TRIAGE_CALLS_PER_HOUR", "1");
+  vi.stubEnv("OSSTACK_ATTENTION_TRIAGE_TIMEOUT_MS", "1000");
+  await start(options);
+  const repo = join(realpathSync(root), "repo");
+  await mkdir(repo);
+  const db = openDb({ path: daemon!.dbPath });
+  insertTask(db, daemon!.dbPath, {
+    task_id: "task",
+    title: "private prompt",
+    created_at: 1,
+  });
+  insertRun(db, daemon!.dbPath, {
+    run_id: "run",
+    task_id: "task",
+    session_id: "session",
+    agent_id: "fake",
+    capability_id: "code",
+    phase: "execute",
+    started_at: 1,
+  });
+  db.prepare(
+    "INSERT INTO agent_sessions(session_id,task_id,run_id,agent_id,request_sha256,native_session_id,repo_path,state,resume_supported,version,updated_at) VALUES('session','task','run','fake',?,'PRIVATE_NATIVE_ID',?,'awaiting_decision',0,1,1)",
+  ).run("a".repeat(64), repo);
+  db.prepare(
+    "INSERT INTO session_turns(turn_id,session_id,ordinal,state,decision_json,created_at,updated_at) VALUES('turn','session',1,'awaiting_decision',?,1,1)",
+  ).run(
+    JSON.stringify({
+      decision_id: "decision",
+      question: "Inspect result?",
+      choices: [],
+    }),
+  );
+  db.close();
+  return { repo, scope: { repo_path: repo, default_tenant: true } };
+}
+async function watched(repo: string) {
+  expect(
+    await rpc("attention.watch", {
+      task_id: "task",
+      repo_path: repo,
+      default_tenant: true,
+    }),
+  ).toMatchObject({ ok: true });
+  const db = openDb({ path: daemon!.dbPath });
+  try {
+    return {
+      ...(db
+        .prepare(
+          "SELECT scope_id,item_id FROM attention_items WHERE state='open' ORDER BY updated_at DESC LIMIT 1",
+        )
+        .get() as { scope_id: string; item_id: string }),
+      model_id: "exact-model",
+    };
+  } finally {
+    db.close();
+  }
+}
+const receipt = {
+  text: JSON.stringify({ category: "system_wait", explanation: "advice only" }),
+  requested_model: "exact-model",
+  reported_model: "exact-model",
+  usage: { input_tokens: 1, output_tokens: 1 },
+};
+const provider = (invoke = async () => receipt) => ({
+  policy: async () => ({
+    profile: "claude-triage-no-tools-v1" as const,
+    model_id: "exact-model",
+    fingerprint: "a".repeat(64),
+  }),
+  invoke,
+});
+it("keeps local follow-up available with Attention disabled and rejects public delivery claims", async () => {
+  const f = await fixture(false, false);
+  expect(
+    await rpc("attention.triage-status", { scope_id: "a".repeat(64) }),
+  ).toMatchObject({ ok: false, error: { code: "attention_disabled" } });
+  const input = {
+    ...f.scope,
+    source_session_id: "session",
+    expected_source_version: 1,
+    idempotency_key: "once",
+    actor: "operator",
+    promise: "Review",
+    destination_ref: "local_operator",
+    resolution_condition: "manual",
+    due_at: null,
+  };
+  expect(
+    await rpc("follow-up.create", {
+      ...input,
+      provider_receipt: "https://fake.example",
+    }),
+  ).toMatchObject({ ok: false, error: { code: "invalid_follow_up_request" } });
+  expect(await rpc("follow-up.create", input)).toMatchObject({
+    ok: true,
+    result: { obligation: { state: "open", external_delivery: "unsupported" } },
+  });
+  const output = vi
+    .spyOn(process.stdout, "write")
+    .mockImplementation(() => true);
+  expect(
+    await main([
+      "follow-up",
+      "list",
+      "--repo",
+      f.repo,
+      "--default-tenant",
+      "--json",
+    ]),
+  ).toBe(0);
+  expect(
+    output.mock.calls.map((call) => String(call[0])).join(""),
+  ).not.toContain("PRIVATE_NATIVE_ID");
+});
+it("does not initialize the triage provider when disabled, including the real command", async () => {
+  const factory = vi.fn(async () => provider());
+  const f = await fixture(true, false, {
+    attentionTriageProviderFactory: factory,
+  });
+  const request = await watched(f.repo);
+  expect(await rpc("attention.triage", request)).toMatchObject({
+    ok: true,
+    result: { state: "fallback", reason: "triage_disabled", applied: false },
+  });
+  vi.spyOn(console, "log").mockImplementation(() => {});
+  expect(
+    await main([
+      "attention",
+      "triage",
+      "--scope",
+      request.scope_id,
+      "--item",
+      request.item_id,
+      "--model",
+      "exact-model",
+      "--json",
+    ]),
+  ).toBe(1);
+  expect(factory).not.toHaveBeenCalled();
+});
+it("persists advisory cache and quota across daemon restart without answering or marking items seen", async () => {
+  const invoke = vi.fn(async () => receipt);
+  const factory = vi.fn(async () => provider(invoke));
+  const f = await fixture(true, true, {
+    attentionTriageProviderFactory: factory,
+  });
+  const request = await watched(f.repo);
+  expect(
+    await rpc("attention.triage", { ...request, tools: ["Bash"] }),
+  ).toMatchObject({ ok: false, error: { code: "invalid_triage_request" } });
+  expect(await rpc("attention.triage", request)).toMatchObject({
+    ok: true,
+    result: { state: "advisory", applied: false, cached: false },
+  });
+  await daemon!.close();
+  await start({ attentionTriageProviderFactory: factory });
+  expect(await rpc("attention.triage", request)).toMatchObject({
+    ok: true,
+    result: { state: "advisory", applied: false, cached: true },
+  });
+  const db = openDb({ path: daemon!.dbPath });
+  try {
+    for (const table of [
+      "attention_actions",
+      "attention_seen",
+      "session_messages",
+    ])
+      expect(db.prepare(`SELECT COUNT(*) n FROM ${table}`).get()).toEqual({
+        n: 0,
+      });
+    db.prepare("UPDATE agent_sessions SET version=2").run();
+    db.prepare(
+      "INSERT INTO session_turns(turn_id,session_id,ordinal,state,decision_json,created_at,updated_at) VALUES('turn2','session',2,'awaiting_decision',?,2,2)",
+    ).run(
+      JSON.stringify({
+        decision_id: "decision2",
+        question: "New question?",
+        choices: [],
+      }),
+    );
+  } finally {
+    db.close();
+  }
+  const changed = await watched(f.repo);
+  expect(await rpc("attention.triage", changed)).toMatchObject({
+    ok: true,
+    result: { state: "fallback", reason: "budget_exhausted" },
+  });
+  expect(invoke).toHaveBeenCalledTimes(1);
+});
+it("keeps unknown invocation quarantined after stop and restart, with no late success", async () => {
+  let settle!: (value: typeof receipt) => void;
+  const pending = new Promise<typeof receipt>((resolve) => {
+    settle = resolve;
+  });
+  const factory = vi.fn(async () => provider(async () => pending));
+  const f = await fixture(true, true, {
+    attentionTriageProviderFactory: factory,
+  });
+  const request = await watched(f.repo);
+  const answer = rpc("attention.triage", request);
+  await vi.waitFor(() => {
+    const db = openDb({ path: daemon!.dbPath });
+    try {
+      expect(
+        db.prepare("SELECT status FROM attention_triage_attempts").get(),
+      ).toEqual({ status: "running" });
+    } finally {
+      db.close();
+    }
+  });
+  await daemon!.close();
+  await answer.catch(() => undefined);
+  settle(receipt);
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  await start({ attentionTriageProviderFactory: async () => provider() });
+  expect(
+    await rpc("attention.triage-status", { scope_id: request.scope_id }),
+  ).toMatchObject({ ok: true, result: { state: "quarantined" } });
+  expect(await rpc("attention.triage", request)).toMatchObject({
+    ok: true,
+    result: { state: "fallback", reason: "triage_quarantined" },
+  });
+  const db = openDb({ path: daemon!.dbPath });
+  try {
+    expect(
+      db
+        .prepare(
+          "SELECT status,active_slot,result_json FROM attention_triage_attempts",
+        )
+        .get(),
+    ).toEqual({ status: "unknown", active_slot: 1, result_json: null });
+  } finally {
+    db.close();
+  }
+});
+it("exercises the default exported provider without credentials and fails as not_authenticated", async () => {
+  vi.stubEnv("ANTHROPIC_API_KEY", "");
+  vi.stubEnv("ANTHROPIC_BASE_URL", "");
+  const f = await fixture(true, true);
+  const request = await watched(f.repo);
+  expect(await rpc("attention.triage", request)).toMatchObject({
+    ok: true,
+    result: { state: "fallback", reason: "not_authenticated", applied: false },
+  });
+});
+
+it("reads scoped recovery through actual daemon and CLI without retry or private prompt disclosure", async()=>{
+  const f=await fixture(true,false);const request=await watched(f.repo);
+  const snapshot=await rpc("attention.recovery",{scope_id:request.scope_id,limit:1});
+  expect(snapshot).toMatchObject({ok:true});
+  expect(JSON.stringify(snapshot)).not.toContain("PRIVATE_NATIVE_ID");
+  expect(JSON.stringify(snapshot)).not.toContain("private prompt");
+  expect(await rpc("attention.recovery",{scope_id:request.scope_id,retry:true})).toMatchObject({ok:false});
+  expect(await rpc("attention.recovery",{scope_id:"a".repeat(64)})).toMatchObject({ok:false});
+  const output=vi.spyOn(console,"log").mockImplementation(()=>{});
+  expect(await main(["attention","recovery","--scope",request.scope_id,"--limit","1","--json"])).toBe(0);
+  const result=JSON.parse(output.mock.calls.at(-1)![0] as string);
+  expect(JSON.stringify(result)).toContain('"canAutoRetry":false');
+  const db=openDb({path:daemon!.dbPath});try{expect(db.prepare("SELECT COUNT(*) n FROM attention_actions").get()).toEqual({n:0});}finally{db.close();}
+});
+
+it("measures bounded recovery over the actual socket alongside mixed session and run observations",async()=>{
+  const f=await fixture(true,false);const request=await watched(f.repo);const samples:number[]=[];
+  for(let i=0;i<100;i++){const start=performance.now();expect(await rpc("attention.recovery",{scope_id:request.scope_id,limit:20})).toMatchObject({ok:true});samples.push(performance.now()-start);}
+  const ordered=[...samples].sort((a,b)=>a-b);const report={fixture:"real_daemon_one_session_one_run",samples:100,p50_ms:ordered[49],p95_ms:ordered[94],max_ms:ordered[99],capacity_qualification:false,model_calls:0};
+  if(process.env["OSSTACK_RECOVERY_BENCH_OUTPUT"]){const {writeFile}=await import("node:fs/promises");await writeFile(process.env["OSSTACK_RECOVERY_BENCH_OUTPUT"]!,JSON.stringify({...report,samples_ms:samples},null,2)+"\n");}
+  expect(Number.isFinite(report.p95_ms)).toBe(true);
+});
+
+it("watches actual daemon snapshots through the main CLI and leaves worker execution unchanged",async()=>{
+  const f=await fixture(false,false);const page=await rpc("worker.list",f.scope);
+  const views=page.result!["views"] as {view_id:string}[];expect(views.length).toBeGreaterThan(0);
+  const chunks:string[]=[];vi.spyOn(process.stdout,"write").mockImplementation(((chunk:unknown,...args:unknown[])=>{chunks.push(String(chunk));const callback=args.find(arg=>typeof arg==="function") as (()=>void)|undefined;queueMicrotask(()=>callback?.());return true;}) as typeof process.stdout.write);
+  expect(await main(["worker","watch",views[0]!.view_id,"--repo",f.repo,"--default-tenant","--interval-ms","1000","--duration-ms","1000"])).toBe(0);
+  expect(chunks.join("")).toContain("snapshot");expect(chunks.join("")).not.toContain("PRIVATE_NATIVE_ID");
+  const db=openDb({path:daemon!.dbPath});try{expect(db.prepare("SELECT state FROM agent_sessions WHERE session_id='session'").get()).toEqual({state:"awaiting_decision"});expect(db.prepare("SELECT COUNT(*) n FROM session_messages").get()).toEqual({n:0});}finally{db.close();}
+});
+
+it("serves local sources as explicitly disabled without a host registry and rejects request-selected paths",async()=>{
+  const f=await fixture(false,false);
+  expect(await rpc("source.inspect",{...f.scope,source_id:"local"})).toMatchObject({ok:true,result:{state:"disabled",entries:[]}});
+  expect(await rpc("source.inspect",{...f.scope,source_id:"local",path:"/etc/passwd"})).toMatchObject({ok:false,error:{code:"invalid_request"}});
+  const {writeFile}=await import("node:fs/promises");await writeFile(join(root!,"source-registry.json"),"{}",{mode:0o600});
+  expect(await rpc("source.inspect",{...f.scope,source_id:"local"})).toMatchObject({ok:true,result:{state:"unknown",entries:[]}});
+  const output:string[]=[];vi.spyOn(process.stdout,"write").mockImplementation(((chunk:unknown,...args:unknown[])=>{output.push(String(chunk));const callback=args.find(arg=>typeof arg==="function") as (()=>void)|undefined;queueMicrotask(()=>callback?.());return true;}) as typeof process.stdout.write);
+  expect(await main(["sources","inspect","local","--repo",f.repo,"--default-tenant","--json"])).toBe(1);
+  expect(JSON.parse(output.join(""))).toMatchObject({state:"unknown",entries:[]});
+});
+
+it('inspects a pinned snapshot through the real daemon and main CLI and honors live revocation', async () => {
+  const {repo,scope}=await fixture(false,false);
+  const {writeFile}=await import('node:fs/promises');const {createHash}=await import('node:crypto');
+  const {localSourceManifestDigest}=await import('./local-data-source-registry.js');
+  const data=join(root!,'data');await mkdir(data);const now=Date.now();
+  const content=JSON.stringify({schema_version:1,source_id:'notes',version:'1',revision:1,entries:[{id:'one',text:'read-only external context'}]});
+  await writeFile(join(data,'notes.json'),content);
+  const manifest={schema_version:1,id:'notes',version:'1',protocol:'local_json_snapshot_v1',repo_path:repo,default_tenant:true,capabilities:['snapshot.read'],file:'notes.json',max_bytes:65536,max_items:20,read_timeout_ms:1000,verified_at_ms:now,expires_at_ms:now+60000,fresh_for_ms:60000};
+  const config=join(root!,'source-registry.json');await writeFile(config,JSON.stringify({schema_version:1,registrations:[{source_root:data,manifest,manifest_digest:localSourceManifestDigest(manifest),content_digest:createHash('sha256').update(content).digest('hex')}]}),{mode:0o600});
+  expect(await rpc('source.inspect',{source_id:'notes',...scope})).toMatchObject({ok:true,result:{state:'ready',actions:'unsupported',entries:[{id:'one',text:'read-only external context'}]}});
+  expect(await rpc('source.inspect',{source_id:'notes',...scope,repo_path:root})).toMatchObject({ok:true,result:{state:'not_registered',entries:[]}});
+  const output:string[]=[];vi.spyOn(process.stdout,'write').mockImplementation(((text:string,cb?:()=>void)=>{output.push(String(text));if(typeof cb==='function')cb();return true;}) as typeof process.stdout.write);
+  expect(await main(['sources','inspect','notes','--repo',repo,'--default-tenant','--json'])).toBe(0);
+  expect(JSON.parse(output.join(''))).toMatchObject({state:'ready',scope:{repo_path:repo,tenant:'default'}});
+  await writeFile(config,JSON.stringify({schema_version:1,registrations:[]}));
+  expect(await rpc('source.inspect',{source_id:'notes',...scope})).toMatchObject({ok:true,result:{state:'not_registered',entries:[]}});
+});
+
+it('keeps public delivery unavailable without trusted host targets even through the real CLI',async()=>{
+  const {repo,scope}=await fixture(false,false);const {writeFile}=await import('node:fs/promises');
+  const file=join(root!,'prepare.json');await writeFile(file,JSON.stringify({obligation_id:'00000000-0000-4000-8000-000000000001',expected_obligation_revision:1,destination_ref:'arbitrary',body:'body',idempotency_key:'key'}));
+  const errors=vi.spyOn(process.stderr,'write').mockImplementation(()=>true);
+  expect(await main(['follow-up-delivery','prepare','--repo',repo,'--default-tenant','--input',file])).toBe(1);
+  expect(errors).toHaveBeenCalled();
+  expect(await rpc('follow-up-delivery.prepare',{...scope,obligation_id:'00000000-0000-4000-8000-000000000001',expected_obligation_revision:1,destination_ref:'arbitrary',body:'body',idempotency_key:'key',transport:'injected'})).toMatchObject({ok:false});
+  const db=openDb({path:daemon!.dbPath});try{expect(db.prepare('SELECT count(*) n FROM follow_up_delivery_attempts').get()).toEqual({n:0});}finally{db.close();}
+});
+
+async function deliveryFixture(hang=false){
+  const {repo,scope}=await fixture(false,false);await daemon!.close();
+  const {generateKeyPairSync,randomUUID,sign}=await import('node:crypto');
+  const {deliveryCanonical}=await import('@osstack/core');
+  const {FollowUpDeliveryResult}=await import('@osstack/protocol');
+  const {publicKey,privateKey}=generateKeyPairSync('ed25519');let release!:()=>void;let sends=0;
+  const options:NonNullable<StartDaemonOptions['followUpDeliveryOptions']>={nowMs:()=>10000,timeoutMs:100,allowTestTransports:true,
+    targets:new Map([['thread',{destination_ref:'thread',repo_path:repo,provider_id:'github_comment',account_id:'bot',host:'github.com',owner:'owner',repository:'repo',issue_number:1,target_node_id:'node',actor_node_id:'actor'}]]),
+    trustedKeys:new Map([['key',{publicKey,purpose:'follow_up_delivery',repo_path:repo,provider_id:'github_comment',destination_refs:['thread'],max_validity_ms:60000}]]),
+    transports:new Map([['github_comment',{qualification:'test_only',automatic_retries:false,lookup_receipt:true,
+      sendOnce:async e=>{sends++;if(hang)await new Promise<void>(resolve=>{release=resolve;});return {provider_id:e.destination.provider_id,account_id:e.destination.account_id,target_node_id:e.destination.target_node_id,author_node_id:e.destination.actor_node_id,destination_digest:e.destination_digest,body_sha256:e.body_sha256,attempt_id:e.attempt_id,provider_message_id:'message',provider_request_id:'request'};},lookup:async()=>null}]]),
+  };await start({followUpDeliveryOptions:options});
+  const created=await rpc('follow-up.create',{...scope,source_session_id:'session',expected_source_version:1,idempotency_key:'ob',actor:'local_test',promise:'reply',destination_ref:'local_operator',resolution_condition:'manual'});
+  expect(created.ok).toBe(true);const obligation=created.result!['obligation'] as {obligation_id:string};
+  const prepared=await rpc('follow-up-delivery.prepare',{...scope,obligation_id:obligation.obligation_id,expected_obligation_revision:1,destination_ref:'thread',body:'literal body',idempotency_key:'send'});
+  expect(prepared.ok).toBe(true);const attempt=FollowUpDeliveryResult.parse(prepared.result).attempt;
+  const body={...attempt.authorization_subject,grant_id:randomUUID(),issued_at_ms:10000,expires_at_ms:20000,max_calls:1};
+  const authorized=await rpc('follow-up-delivery.authorize',{...scope,attempt_id:attempt.attempt_id,expected_revision:attempt.revision,grant:{body,key_id:'key',signature:sign(null,Buffer.from(deliveryCanonical(body)),privateKey).toString('base64')}});
+  expect(authorized.ok).toBe(true);const ready=FollowUpDeliveryResult.parse(authorized.result).attempt;
+  return {repo,scope,attempt:ready,sends:()=>sends,release:()=>release()};
+}
+it('runs one signed fake delivery through main CLI without declaring a production send or resolving the promise',async()=>{
+  const f=await deliveryFixture();const out=vi.spyOn(process.stdout,'write').mockImplementation(()=>true);
+  expect(await main(['follow-up-delivery','dispatch',f.attempt.attempt_id,'--repo',f.repo,'--default-tenant','--revision',String(f.attempt.revision)])).toBe(1);
+  expect(JSON.parse(out.mock.calls.at(-1)![0] as string)).toMatchObject({attempt:{state:'delivered',qualification:'test_only'}});
+  expect(f.sends()).toBe(1);
+  expect(await rpc('follow-up-delivery.dispatch',{...f.scope,attempt_id:f.attempt.attempt_id,expected_revision:f.attempt.revision})).toMatchObject({ok:false});expect(f.sends()).toBe(1);
+  const db=openDb({path:daemon!.dbPath});try{expect(db.prepare('SELECT state FROM follow_up_obligations').get()).toEqual({state:'open'});}finally{db.close();}
+});
+it('waits for bounded delivery finalization before closing the DB and never accepts a late success',async()=>{
+  const f=await deliveryFixture(true);const dbPath=daemon!.dbPath;
+  const pending=rpc('follow-up-delivery.dispatch',{...f.scope,attempt_id:f.attempt.attempt_id,expected_revision:f.attempt.revision});
+  await vi.waitFor(()=>expect(f.sends()).toBe(1));await daemon!.close();daemon=undefined;await pending;
+  f.release();await new Promise(resolve=>setTimeout(resolve,20));
+  const db=openDb({path:dbPath});try{expect(db.prepare('SELECT state FROM follow_up_delivery_attempts').get()).toEqual({state:'delivery_unknown'});expect(db.prepare('SELECT state FROM follow_up_obligations').get()).toEqual({state:'open'});}finally{db.close();}
+});
+
+
+FILE docs/guides/follow-up-delivery.md
+# Public follow-up delivery ledger (O2a)
+
+This increment implements local preparation, signed authorization, single-attempt dispatch, revocation and explicit reconciliation. No production transport, external target registry or authorization issuer is configured by default. Real public delivery remains **qualification_pending**. The built-in code never generates a signing key or treats a caller's actor name, approval boolean, receipt JSON, or task success as permission to send.
+
+## Review and authority
+
+`follow-up-delivery prepare --repo /canonical/repo --default-tenant --input prepare.json` accepts a file containing `obligation_id`, `expected_obligation_revision`, `destination_ref`, `body`, and `idempotency_key`. The body is exact UTF-8 data, not instructions. The destination reference must resolve in a host-owned registry to a fixed GitHub account, repository, issue number and immutable target node ID and expected actor node ID. Arbitrary URL/recipient/provider fields in the request are rejected. Output contains the complete frozen envelope and digests for review.
+
+Preparation is not authorization. An external trusted authority must review and sign `authorization_subject` plus a unique `grant_id`, `issued_at_ms`, `expires_at_ms`, and `max_calls: 1` using Ed25519 over `deliveryCanonical(body)`. Host trust registration restricts the public key's purpose, canonical repository, provider, destination references and maximum validity. No issuer or private-key handling is included in this increment. A signature made with a caller-generated unregistered key has no authority.
+
+`follow-up-delivery authorize ID --repo /canonical/repo --default-tenant --revision N --grant grant.json` imports `{ body, key_id, signature }`. Grant fields bind the exact attempt, scope, provider/account, target digest, body digest and envelope digest. Dispatch rechecks signature, key registration, exact target, expiry and O1 obligation revision **inside the transaction that consumes authorization and records started**, immediately before the transport call. Host key removal or scoped revoke before this transaction prevents sending. Revocation after it cannot undo a call already in progress.
+
+The CLI uses the existing daemon's authenticated local RPC. Root wiring must inject host registries; requests never select a transport or public key. Constructor `FollowUpDeliveryService(db, dbPath, options)` performs no I/O/migration. Methods are `follow-up-delivery.prepare|list|inspect|authorize|revoke|dispatch|reconcile`; all require an explicit canonical repository/default tenant. Writes use the existing DB lease. Same-user database/host-registry compromise is outside this boundary.
+
+## Results and recovery
+
+`dispatch ID ... --revision N` performs at most one `sendOnce` call for that attempt. Missing transport, test transports without the host's explicit test flag, and adapters declaring automatic SDK retries yield `qualification_pending` without consuming the grant or creating started. Transport qualification labels are host configuration, not self-proving attestations; deployment must establish qualification separately.
+
+A durable started row is written before the call. Disconnect, timeout, invalid receipt, process death or lost response leave started/`delivery_unknown` with consumed authority. Neither duplicate dispatch nor a new idempotency key for the same unresolved obligation can resend. A timeout's late response never silently overwrites the returned outcome. Abort is best effort and is not proof that the provider stopped.
+
+`reconcile ID ... --revision N` calls only the registered provider's receipt lookup. The CLI cannot submit delivered=true or receipt data. A valid receipt must match provider, account, immutable target, pinned author node ID, body digest and attempt correlation; it stores bounded provider message/request IDs and its digest. Lookup failure or absence is still unknown. A future real provider must verify author, target and content from its authoritative response; this generic service cannot independently authenticate arbitrary adapter claims.
+
+`revoke ID ... --revision N --reason TEXT` makes an unsent prepared attempt definitely_not_sent. If sending already started, it remains unknown. `inspect ID` and `list [--limit 1..50] [--after ID]` read scoped state. List uses UUID keyset order with explicit continuation, not a snapshot; concurrent inserts before the marker require a new scan. History is append-only. O1 `fulfilled_local` and external sending remain independent: delivery never resolves the promise.
+
+Output is JSON, bounded to 64 KiB with terminal controls escaped and exact body preserved on parse. Prepare reserves room for the largest valid receipt before any send. Files must be regular, bounded, valid UTF-8, and not symlinks. `dispatch`/`reconcile` exit 0 only with `delivered` and `production_qualified`; test/sandbox evidence and uncertain/pending results exit 1, with the actual evidence still printed.
+
+## Qualification and rollback
+
+Local tests exercise actual SQLite transactions and signatures, two connections, CLI-to-service invocation, a SIGKILL child immediately after committed consumption, response loss, timeouts and late completion, target/author/body mismatch, key removal, revocation, scope, stale revisions and bounded outputs. Fake send counts prove local invocation behavior only; no real message is sent and no real provider delivery guarantee is claimed.
+
+O2b must separately supply a reviewed provider adapter, explicit human target/body approval issuer, pinned credentials/account, disabled SDK retries, real sandbox receipt lookups and controlled disconnect/crash qualification. Until then retain empty production registries. To roll back, disable the command/provider registration and retain migration 45's ledger. Do not drop unknown attempts, reset grants or down-migrate a serving DB to enable retries. Outstanding uncertainty requires reconciliation or operator investigation outside automatic sending.
+
+Revocation records a logical nondecreasing ledger time when the host clock regresses; it remains available to remove authority even then. Grant validation and dispatch still use strict wall-clock checks. Once consumed, grant status stays consumed permanently; a later revocation is a separate immutable transition event, not a rewrite of consumption. If revocation or reconciliation races an in-flight send, the stale sender does not overwrite the newer uncertainty state. An explicit authoritative lookup can subsequently prove delivery.
+
+A completed delivery does not authorize another message. A later update for the same obligation needs a new prepared envelope, a new attempt ID and a newly reviewed signature. Unresolved attempts block this path. An expired or removed-key grant on a prepared attempt is safely unsent but continues to reserve its obligation; inspect and explicitly revoke it before preparing a replacement. There is no automatic expiry cleanup or resend.
+
+## Daemon shutdown contract
+
+The host must stop accepting new calls, track every `service.handle(...)` promise and await their settlement before closing the database. Transport and lookup waits have a logical maximum of 30,000 ms each (default 5,000 ms); the final ledger transaction must also finish before the handle settles. Do not close the DB merely because a shorter shutdown deadline elapsed. Uncooperative asynchronous transports can remain alive after abort, but their late fulfillment/rejection has no database continuation: the already-settled race discards it. A blocking synchronous adapter or synchronous DB lock cannot be preempted by a JavaScript timer; host adapters must avoid blocking the event loop. No background timer initiates another dispatch or reconciliation.
+
+## Durability and clock boundary
+
+O2 writes temporarily require `journal_mode=WAL` and verified `synchronous=FULL`; on macOS they additionally enable and verify `fullfsync`. The synchronous transaction commits before the provider call, then restores the connection's prior settings without an intervening await. Other OSStack DB behavior is unchanged. This follows SQLite's documented [WAL durability settings](https://www.sqlite.org/pragma.html#pragma_synchronous) and [macOS fullfsync flag](https://www.sqlite.org/pragma.html#pragma_fullfsync). SIGKILL tests prove process-crash recovery, not physical power-cut or storage-device qualification; the filesystem/VFS/device must honor synchronization, which remains part of deployment qualification.
+
+Migration 45 also retains the maximum valid clock observed by O2 writes. A rejected expiry check persists its observation before returning, so a later clock rollback cannot revive that known-expired grant, even after service restart. Admission rejects a clock below this durable record. Post-send evidence and revocation use logical nondecreasing ledger timestamps, so a regressed clock does not prevent recording an irreversible result or removing authority. This is not an independent trusted time service: time never observed by the ledger cannot be reconstructed after downtime, and host-clock integrity remains a deployment requirement.
+
+Read/list/revoke/reconcile match the original stored canonical path string without requiring its directory to remain present; they cannot rebind the record to a moved directory or follow a new symlink. Prepare/authorize/dispatch still require the live canonical directory. Thus a moved/deleted repository can be inspected and its old authority removed using its exact historical scope. Body controls are permitted as exact data but escaped in review JSON; a future provider may reject them and must not silently normalize approved text. Pagination UUID case is normalized before comparison.
+
+## Remaining availability limits before O2b qualification
+
+A trusted-clock excursion far into the future can conservatively quarantine future admissions until that observed time is reached. Inspection/revocation still work. There is no automatic high-water reset: silently lowering it could revive already expired grants. Reviewed clock-recovery tooling is follow-on work.
+
+Reconciliation currently requires the original destination registration and the same qualified transport to remain registered. Retain that historical registration until uncertain attempts are resolved. A transport without receipt lookup can currently send, but cannot automatically recover uncertainty; it must not be production-qualified under this contract. Inspect/list may combine adjacent committed attempt/grant observations under concurrent writes; mutation CAS remains authoritative. These are recorded reliability limitations, not real-provider qualification. Daemon/CLI integration qualification and its final audit are still required.
+
+
+FILE packages/cli/src/daemon.ts lines 160-190
+}
+
+interface DaemonRequest {
+  id: string | number;
+  method: string;
+  params?: unknown;
+}
+
+interface SingleResponse {
+  id: string | number;
+  ok: boolean;
+  result?: unknown;
+  error?: { code: string; message: string };
+}
+
+interface DaemonContext {
+  deploymentIdentity?: import("./home-inventory.js").DeploymentIdentity;
+  followUps?: import("@osstack/core").FollowUpObligationService;
+  followUpDelivery?: import("@osstack/core").FollowUpDeliveryService;
+  followUpDeliveryOptions?: import("@osstack/core").FollowUpDeliveryOptions;
+  followUpDeliveryPending?: Set<Promise<unknown>>;
+  localSources?: ReturnType<typeof import("./local-data-source-registry.js").createHostLocalDataSourceService>;
+  attentionTriage?: Promise<import("./attention-triage.js").AttentionTriageService>;
+  attentionTriageProviderFactory?: () => Promise<import("./attention-triage.js").AttentionTriageProvider>;
+  dbPath: string;
+  loopSessionsPath: string;
+  dailySessionsPath: string;
+  db: Database.Database;
+  redactor: PIIRedactor;
+  adapters: Map<string, AgentAdapter>;
+  policy: PolicyEngine;
+
+FILE packages/cli/src/daemon.ts lines 1115-1140
+
+async function handleSingle(ctx: DaemonContext, req: DaemonRequest): Promise<SingleResponse | null> {
+  if (req.method === "source.inspect") {
+    if (ctx.draining) return singleErr(req.id,"draining","Daemon is draining");
+    try {
+      const {createHostLocalDataSourceService} = await import("./local-data-source-registry.js");
+      if (ctx.draining) return singleErr(req.id,"draining","Daemon is draining");
+      ctx.localSources ??= createHostLocalDataSourceService({configPath:join(dirname(ctx.dbPath),"source-registry.json")});
+      return singleOk(req.id,await ctx.localSources.inspect(req.params));
+    } catch(error) {return singleErr(req.id,error instanceof Error && error.message === "invalid_request" ? "invalid_request" : "source_unavailable","Local source unavailable");}
+  }
+  if (["prepare","list","inspect","authorize","revoke","dispatch","reconcile"].some(action => req.method === "follow-up-delivery."+action)) {
+    if (ctx.draining) return singleErr(req.id,"draining","Daemon is draining");
+    const {FollowUpDeliveryService,FollowUpDeliveryError} = await import("@osstack/core");
+    if (ctx.draining) return singleErr(req.id,"draining","Daemon is draining");
+    ctx.followUpDelivery ??= new FollowUpDeliveryService(ctx.db,ctx.dbPath,ctx.followUpDeliveryOptions ?? {});
+    ctx.followUpDeliveryPending ??= new Set();
+    const pending=ctx.followUpDelivery.handle(req.method,req.params);ctx.followUpDeliveryPending.add(pending);
+    try {return singleOk(req.id,await pending);}
+    catch(error){return error instanceof FollowUpDeliveryError ? singleErr(req.id,error.code,"Follow-up delivery request failed") : singleErr(req.id,"delivery_unavailable","Follow-up delivery unavailable");}
+    finally{ctx.followUpDeliveryPending.delete(pending);}
+  }
+  if (["follow-up.create", "follow-up.list", "follow-up.draft", "follow-up.resolve"].includes(req.method)) {
+    if (ctx.draining) return singleErr(req.id, "draining", "Daemon is draining");
+    const {FollowUpObligationService, FollowUpError} = await import("@osstack/core");
+    if (ctx.draining) return singleErr(req.id, "draining", "Daemon is draining");
+
+FILE packages/cli/src/daemon.ts lines 3833-3850
+  graphRuntime: (configuration: GraphRuntimeConfiguration) => Promise<GraphRuntime>;
+  close: () => Promise<void>;
+  socketPath: string;
+  dbPath: string;
+  /** In-process only. Identity must be the registered object, never worker fields. */
+  acquireGraphAdmission: (identity: object, input: { runId: string; repoId?: string; signal?: AbortSignal }) => Promise<ExecutionLease>;
+}
+
+export interface StartDaemonOptions {
+  /** Trusted embedding only. Production has no target, signer or transport by default. */
+  followUpDeliveryOptions?: import("@osstack/core").FollowUpDeliveryOptions;
+  /** Trusted host injection for local qualification; never RPC-configurable. */
+  attentionTriageProviderFactory?: () => Promise<import("./attention-triage.js").AttentionTriageProvider>;
+  /** Trusted host registry and actual socket authentication; never RPC fields. */
+  graphRpc?: Pick<GraphRpcOptions, 'registrations' | 'resolveCaller'>;
+  graphCheckpointBindings?: ReadonlyMap<object, GraphCheckpointBinding>;
+  /** Host launch configuration for direct adapter writes. */
+  workspacePath?: string;
+
+FILE packages/cli/src/daemon.ts lines 4070-4085
+      ? {}
+      : { writeConcurrency: opts.writeConcurrency }),
+    ...(opts.readConcurrency === undefined
+      ? {}
+      : { readConcurrency: opts.readConcurrency }),
+  });
+  failedContext = ctx;
+  if (opts.attentionTriageProviderFactory) ctx.attentionTriageProviderFactory = opts.attentionTriageProviderFactory;
+  if (opts.followUpDeliveryOptions) ctx.followUpDeliveryOptions = opts.followUpDeliveryOptions;
+  // Initialize only after the authorized home/database startup. Read-only
+  // inventory never creates an identity and malformed records are not repaired.
+  const {ensureDeploymentHomeId} = await import("./home-inventory.js");
+  try {
+    ctx.deploymentIdentity = {
+      schema_version: 1, home_id: await ensureDeploymentHomeId(osstackHome()),
+      generation: `instance_${randomUUID().replaceAll("-", "")}`,
+
+FILE packages/cli/src/daemon.ts lines 4340-4365
+          try { (await checkpointService).close(); } catch { /* Initialization failure created no service. */ }
+        }
+        if (shutdownPromise !== undefined) return await shutdownPromise;
+        process.off("SIGTERM", onSig);
+        process.off("SIGINT", onSig);
+        try { stopUpdateChecker(); } catch { /* cleanup must continue */ }
+        if (healthMonitor !== undefined) clearInterval(healthMonitor);
+        shutdownPromise = (async () => {
+          ctx.draining = true;
+          await ctx.attentionTriage?.then(service => service.stop()).catch(() => undefined);
+          await ctx.supervision?.stop();
+          await Promise.allSettled([...(ctx.followUpDeliveryPending ?? [])]);
+          if (graphRpc) {
+            try { await (await graphRpc).close(); } catch { /* Initialization may have failed. */ }
+          }
+          if (graphRuntime) {
+            try { const runtime = await graphRuntime; await runtime.close(); await runtime.drainDatabaseUsers(); } catch { /* Failed initialization launched no graph worker. */ }
+          }
+          const collaboratorStopped = Promise.resolve().then(() => ctx.collaborator?.stop());
+          // Abort any active runs so adapters get a chance to clean up.
+          for (const ac of ctx.activeRuns.values()) ac.abort();
+          for (const session of ctx.loopSessions.values()) {
+            session.shutdownRequested = true;
+            session.abort.abort();
+          }
+          for (const session of ctx.dailySessions.values()) {
+
+FILE packages/cli/src/bin.ts lines 990-1050
+  }
+
+  if (cmd === "supervise") {
+    const { handleSuperviseCommand } = await import("./supervise-command.js");
+    return await handleSuperviseCommand(args.slice(1));
+  }
+
+  if (cmd === "follow-up") {
+    const {handleFollowUpCommand} = await import("./follow-up-command.js");
+    return handleFollowUpCommand(args.slice(1), {rpc: async (method, params) => {
+      const response = await rpc(method, params) as {ok?:boolean;result?:unknown;error?:{code?:string}};
+      if (!response.ok) throw new Error(response.error?.code ?? "follow_up_request_failed");
+      return response.result;
+    }});
+  }
+  if (cmd === "follow-up-delivery") {
+    const {handleFollowUpDeliveryCommand} = await import("./follow-up-delivery-command.js");
+    return await handleFollowUpDeliveryCommand(args.slice(1), {rpc: async (method, params) => {
+      const response = await rpc(method,params,35000) as {ok?:boolean;result?:unknown;error?:{code?:string}};
+      if (!response.ok) throw Error(response.error?.code ?? "delivery_unavailable");return response.result;
+    }});
+  }
+  if (cmd === "sources") {
+    const {handleLocalSourceCommand} = await import("./local-source-command.js");
+    return await handleLocalSourceCommand(args.slice(1), {rpc:async (method,params,timeout,signal)=>{
+      if (signal.aborted) throw Error("source_unavailable");
+      const response=await rpc(method,params,timeout) as {ok?:boolean;result?:unknown;error?:{code?:string}};
+      if (signal.aborted || !response.ok) throw Error("source_unavailable");return response.result;
+    }});
+  }
+  if (cmd === "homes") {
+    if (["plan-upgrade", "upgrade-status"].includes(args[1] ?? "")) {
+      const {handleUpgradePlanCommand} = await import("./upgrade-plan-command.js");
+      return await handleUpgradePlanCommand(args.slice(1));
+    }
+    const {handleHomesCommand} = await import("./home-inventory.js");
+    return await handleHomesCommand(args.slice(1));
+  }
+
+  if (cmd === "worker") {
+    if (args[1] === "watch") {
+      const {handleWorkerViewerCommand} = await import("./worker-viewer-command.js");
+      const {inspectWorkerForViewer} = await import("./worker-viewer-rpc.js");
+      return await handleWorkerViewerCommand(args.slice(1), {rpc: (_method, params, _timeout, signal) => inspectWorkerForViewer(socketPath(), params, signal)});
+    }
+    const {handleWorkerViewCommand} = await import("./worker-view-command.js");
+    return await handleWorkerViewCommand(args.slice(1), {
+      rpc: async (method, params) => {
+        const response = await rpc(method, params) as {ok?: boolean; result?: unknown; error?: {code?: string}};
+        if (!response.ok) throw new Error(response.error?.code ?? "worker_request_failed");
+        return response.result;
+      },
+    });
+  }
+
+  if (cmd === "daily") {
+    const sub = args[1];
+    // Scheduling subcommands run through the daemon; bare `daily` (and its
+    // flags like --json/--registry) stays the in-process manual brief.
+    if (sub === "schedule" || sub === "sessions" || sub === "unschedule") {
+      return await handleDailyScheduleCommand(args.slice(1));

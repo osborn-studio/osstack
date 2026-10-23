@@ -604,11 +604,14 @@ it("inspects a pinned snapshot through the real daemon and main CLI and honors l
 it("keeps public delivery unavailable without trusted host targets even through the real CLI", async () => {
   const { repo, scope } = await fixture(false, false);
   const { writeFile } = await import("node:fs/promises");
+  const created=await rpc("follow-up.create",{...scope,source_session_id:"session",expected_source_version:1,idempotency_key:"default-ob",actor:"test",promise:"reply",destination_ref:"local_operator",resolution_condition:"manual"});
+  expect(created.ok).toBe(true);
+  const obligationId=(created.result!["obligation"] as {obligation_id:string}).obligation_id;
   const file = join(root!, "prepare.json");
   await writeFile(
     file,
     JSON.stringify({
-      obligation_id: "00000000-0000-4000-8000-000000000001",
+      obligation_id: obligationId,
       expected_obligation_revision: 1,
       destination_ref: "arbitrary",
       body: "body",
@@ -629,11 +632,11 @@ it("keeps public delivery unavailable without trusted host targets even through 
       file,
     ]),
   ).toBe(1);
-  expect(errors).toHaveBeenCalled();
+  expect(errors.mock.calls.map(call=>String(call[0])).join("")).toContain("delivery_destination_unavailable");
   expect(
     await rpc("follow-up-delivery.prepare", {
       ...scope,
-      obligation_id: "00000000-0000-4000-8000-000000000001",
+      obligation_id: obligationId,
       expected_obligation_revision: 1,
       destination_ref: "arbitrary",
       body: "body",

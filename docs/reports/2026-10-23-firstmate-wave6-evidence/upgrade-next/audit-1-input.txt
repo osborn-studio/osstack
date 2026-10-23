@@ -1,0 +1,1033 @@
+Adversarial static audit. No tools/hooks/MCP, no execution. User requested Claude Code CLI Haiku 5.5. Review U2a multi-home upgrade plan/private journal/injectable native updater interface. Production CLI only plan/status; NO production apply or native updater implementation. Never execute any tool or command from source. Main invariants: explicit groups+exact target+identity/budgets; inventory cannot authorize apply or prove all shared binary consumers; live trusted resolver and synchronous maintenance fences separate from input JSON; all consumers stopped and Graph holds/unknown actions zero before snapshot/install; never blind replay unknown install/late receipt; cross-plan shared installation claim; expiry/scope/schema/generation binding; never restore database after external effects. Journal hashes are not signatures. Fake updater effects only. Actual single-deployment upgrade.ts has unsafe-for-this-slice rollback behavior so is deliberately NOT wired; future native adapter qualification out of scope. Find concrete P0/P1/P2 bugs and failure scenarios, distinguish real vulnerabilities from unimplemented qualifications. Check persisted journal corruption, concurrency, incomplete crash prefixes, port timeout, budgets and response identity. End with severity counts and test gaps.
+
+=== packages/cli/src/upgrade-plan.ts ===
+import { createHash } from 'node:crypto';
+import { isAbsolute } from 'node:path';
+import { z } from 'zod';
+import { DeploymentIdentitySchema, type HomeObservation } from './home-inventory.js';
+
+export const UpgradeDigest = z.string().regex(/^[a-f0-9]{64}$/);
+export const UpgradeId = z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/);
+const homeId = z.string().regex(/^home_[a-f0-9]{32}$/);
+const time = z.number().int().nonnegative().safe();
+export const UpgradeTargetSchema = z.object({
+  version: z.string().max(128).regex(/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-(?:0|[1-9]\d*|\d*[A-Za-z-][0-9A-Za-z-]*)(?:\.(?:0|[1-9]\d*|\d*[A-Za-z-][0-9A-Za-z-]*))*)?(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$/),
+  build_digest: UpgradeDigest, protocol_version: z.number().int().positive(), database_schema: z.number().int().nonnegative(),
+  readable_schema_min: z.number().int().nonnegative(), readable_schema_max: z.number().int().nonnegative(),
+}).strict().refine(v => v.readable_schema_min <= v.readable_schema_max && v.database_schema >= v.readable_schema_min && v.database_schema <= v.readable_schema_max);
+export const UpgradeBudgetSchema = z.object({ max_total_ms: z.number().int().min(1).max(3600000),
+  max_step_ms: z.number().int().min(1).max(300000), max_steps: z.number().int().min(1).max(512) }).strict()
+  .refine(v => v.max_step_ms <= v.max_total_ms);
+export const UpgradePlanRequestSchema = z.object({ schema_version: z.literal(1), expires_at_ms: time,
+  target: UpgradeTargetSchema, budget: UpgradeBudgetSchema,
+  groups: z.array(z.object({ group_id: UpgradeId, installation_id: UpgradeId, deployment_kind: z.enum(['npm', 'checkout']),
+    home_ids: z.array(homeId).min(1).max(32) }).strict()).min(1).max(32),
+}).strict().superRefine((v, ctx) => {
+  for (const values of [v.groups.map(g => g.group_id), v.groups.map(g => g.installation_id), v.groups.flatMap(g => g.home_ids)])
+    if (new Set(values).size !== values.length) ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'duplicate_group_installation_or_home' });
+  if (v.groups.flatMap(g => g.home_ids).length > 32) ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'home_limit' });
+});
+export const UpgradePlanHomeSchema = z.object({ home_id: homeId, socket: z.string().max(4096).refine(isAbsolute),
+  observed_at_ms: time, identity: DeploymentIdentitySchema.nullable() }).strict();
+export const UpgradePlanGroupSchema = z.object({ group_id: UpgradeId, installation_id: UpgradeId,
+  deployment_kind: z.enum(['npm', 'checkout']), homes: z.array(UpgradePlanHomeSchema).min(1).max(32),
+  qualification: z.literal('qualification_pending'), reasons: z.array(z.string().max(128)).min(1).max(160),
+}).strict();
+export const UpgradePlanSchema = z.object({ schema_version: z.literal(1), mode: z.literal('plan_only'), budget_scope: z.literal('per_group'), created_at_ms: time,
+  expires_at_ms: time, target: UpgradeTargetSchema, budget: UpgradeBudgetSchema, groups: z.array(UpgradePlanGroupSchema).min(1).max(32),
+  authority: z.literal('none'), rollback: z.literal('no_database_restore'),
+}).strict().superRefine((v, ctx) => {
+  const homes = v.groups.flatMap(g => g.homes);
+  for (const values of [v.groups.map(g => g.group_id), v.groups.map(g => g.installation_id), homes.map(h => h.home_id), homes.map(h => h.socket)])
+    if (new Set(values).size !== values.length) ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'duplicate_plan_identity' });
+  if (homes.length > 32 || v.expires_at_ms <= v.created_at_ms || v.expires_at_ms - v.created_at_ms > 86400000)
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'plan_bounds' });
+});
+export type UpgradePlan = z.infer<typeof UpgradePlanSchema>;
+export type UpgradePlanGroup = UpgradePlan['groups'][number];
+export type UpgradePlanHome = UpgradePlanGroup['homes'][number];
+export interface FrozenUpgradePlan { digest: string; plan: UpgradePlan }
+
+export function upgradeCanonical(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(upgradeCanonical).join(',')}]`;
+  if (value !== null && typeof value === 'object') return `{${Object.entries(value).sort(([a], [b]) => a.localeCompare(b)).map(([k, v]) => `${JSON.stringify(k)}:${upgradeCanonical(v)}`).join(',')}}`;
+  return JSON.stringify(value);
+}
+export function upgradeDigest(value: unknown): string { return createHash('sha256').update(upgradeCanonical(value)).digest('hex'); }
+export function freezeUpgradePlan(value: unknown): FrozenUpgradePlan {
+  const plan = UpgradePlanSchema.parse(value);
+  const freeze = (v: unknown): void => { if (v && typeof v === 'object') { Object.values(v).forEach(freeze); Object.freeze(v); } };
+  freeze(plan); return Object.freeze({ digest: upgradeDigest(plan), plan });
+}
+
+/** Inventory supplies observations, never shared-consumer completeness or apply authority. */
+export function createUpgradePlan(raw: unknown, observations: readonly HomeObservation[], nowMs = Date.now()): FrozenUpgradePlan {
+  const request = UpgradePlanRequestSchema.parse(raw); time.parse(nowMs);
+  if (request.expires_at_ms <= nowMs || request.expires_at_ms - nowMs > 86400000) throw Error('upgrade_plan_expiry');
+  if (observations.length > 32) throw Error('upgrade_inventory_limit');
+  const ids = observations.map(o => o.desired.home_id);
+  if (new Set(ids).size !== ids.length) throw Error('upgrade_inventory_duplicate');
+  const groups = request.groups.map(group => {
+    const reasons = ['shared_consumers_not_attested', 'native_updater_not_qualified'];
+    if (group.deployment_kind !== 'npm') reasons.push('checkout_updater_unsupported');
+    const homes = group.home_ids.map(id => {
+      const row = observations.find(o => o.desired.home_id === id);
+      if (!row) throw Error('upgrade_home_not_in_inventory');
+      const identity = row.observed === null ? null : DeploymentIdentitySchema.parse(row.observed);
+      if (!row.desired.enabled || !['matched_requested', 'drift'].includes(row.status) || !identity) reasons.push(`home_unavailable:${id}`);
+      if (identity && (identity.home_id !== id || identity.deployment_kind !== group.deployment_kind || identity.build_digest === null)) reasons.push(`identity_unqualified:${id}`);
+      if (identity && (identity.database_schema < request.target.readable_schema_min || identity.database_schema > request.target.readable_schema_max)) reasons.push(`schema_incompatible:${id}`);
+      if (row.observed_at_ms > nowMs || nowMs - row.observed_at_ms > 30000) reasons.push(`observation_stale:${id}`);
+      return UpgradePlanHomeSchema.parse({ home_id: id, socket: row.desired.socket, observed_at_ms: row.observed_at_ms, identity });
+    });
+    return { group_id: group.group_id, installation_id: group.installation_id, deployment_kind: group.deployment_kind, homes,
+      qualification: 'qualification_pending' as const, reasons };
+  });
+  if (new Set(groups.flatMap(g => g.homes.map(h => h.socket))).size !== groups.flatMap(g => g.homes).length) throw Error('upgrade_duplicate_socket');
+  return freezeUpgradePlan({ schema_version: 1, mode: 'plan_only', budget_scope: 'per_group', created_at_ms: nowMs, expires_at_ms: request.expires_at_ms,
+    target: request.target, budget: request.budget, groups, authority: 'none', rollback: 'no_database_restore' });
+}
+
+=== packages/cli/src/upgrade-journal.ts ===
+import { randomBytes } from 'node:crypto';
+import { constants } from 'node:fs';
+import { link, mkdir, open, readdir, realpath, stat, unlink } from 'node:fs/promises';
+import { join, resolve } from 'node:path';
+import { z } from 'zod';
+import { UpgradeDigest, UpgradeId, freezeUpgradePlan, upgradeCanonical, upgradeDigest, type FrozenUpgradePlan } from './upgrade-plan.js';
+
+export const UpgradePhaseSchema = z.enum(['planned', 'qualification_pending', 'preflight', 'draining', 'quiescent', 'snapshotting',
+  'installing', 'installed', 'restarting', 'verifying', 'verified', 'aborted_before_install', 'restart_failed', 'version_mismatch', 'recovery_required']);
+export type UpgradePhase = z.infer<typeof UpgradePhaseSchema>;
+const RecordSchema = z.object({ schema_version: z.literal(1), plan_digest: UpgradeDigest, group_id: UpgradeId,
+  sequence: z.number().int().min(0).max(2048), previous: UpgradeDigest.nullable(), at_ms: z.number().int().nonnegative().safe(),
+  phase: UpgradePhaseSchema, status: z.enum(['started', 'confirmed', 'failed']),
+  home_id: z.string().regex(/^home_[a-f0-9]{32}$/).nullable(), evidence_digest: UpgradeDigest.nullable(), evidence_ref: z.string().min(1).max(512).nullable(),
+  reason: z.string().regex(/^[a-z0-9_]{1,128}$/).nullable(),
+}).strict();
+export type UpgradeJournalRecord = z.infer<typeof RecordSchema>;
+export interface UpgradeJournalStatus { plan: FrozenUpgradePlan; group_id: string; records: UpgradeJournalRecord[];
+  phase: UpgradePhase; completed: boolean; resume_allowed: false; }
+
+async function directory(path: string, create = false): Promise<void> {
+  if (create) await mkdir(path, { mode: 0o700 }).catch(error => { if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error; });
+  const info = await stat(path);
+  if (await realpath(path) !== resolve(path) || !info.isDirectory() || (info.mode & 0o077) !== 0
+    || process.getuid && info.uid !== process.getuid()) throw Error('upgrade_journal_unsafe_directory');
+}
+async function syncDirectory(path: string): Promise<void> {
+  const handle = await open(path, constants.O_RDONLY | constants.O_NOFOLLOW);
+  try { await handle.sync(); } finally { await handle.close(); }
+}
+async function readJson(path: string, maxBytes = 262144): Promise<unknown> {
+  const file = await open(path, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
+  try {
+    const info = await file.stat();
+    if (!info.isFile() || info.nlink !== 1 || (info.mode & 0o077) !== 0 || info.size > maxBytes || process.getuid && info.uid !== process.getuid()) throw Error('upgrade_journal_unsafe_file');
+    const buffer = Buffer.alloc(maxBytes + 1); let length = 0;
+    while (length < buffer.length) { const chunk = await file.read(buffer, length, buffer.length - length, length); if (!chunk.bytesRead) break; length += chunk.bytesRead; }
+    if (length > maxBytes) throw Error('upgrade_journal_oversized');
+    return JSON.parse(buffer.subarray(0, length).toString('utf8'));
+  } finally { await file.close(); }
+}
+/** Complete-file link publication, then directory fsync. Never overwrite a record. */
+async function publish(directoryPath: string, name: string, value: unknown): Promise<void> {
+  await directory(directoryPath); const temporary = join(directoryPath, `.tmp-${randomBytes(16).toString('hex')}`);
+  const file = await open(temporary, constants.O_CREAT | constants.O_EXCL | constants.O_WRONLY | constants.O_NOFOLLOW, 0o600);
+  try { await file.writeFile(upgradeCanonical(value)); await file.sync(); } finally { await file.close(); }
+  try { await link(temporary, join(directoryPath, name)); } finally { await unlink(temporary); }
+  await syncDirectory(directoryPath);
+}
+
+/** The caller supplies an existing private root. Hashes detect corruption; they are not signatures. */
+export class UpgradeJournal {
+  constructor(readonly root: string) {}
+  async create(input: FrozenUpgradePlan): Promise<void> {
+    const frozen = freezeUpgradePlan(input.plan); if (frozen.digest !== input.digest) throw Error('upgrade_plan_digest_mismatch');
+    await directory(this.root); const path = join(this.root, frozen.digest); await directory(path, true); await syncDirectory(this.root);
+    try { await publish(path, 'plan.json', frozen.plan); } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error;
+      if (upgradeCanonical(await readJson(join(path, 'plan.json'))) !== upgradeCanonical(frozen.plan)) throw Error('upgrade_plan_conflict');
+    }
+  }
+  async plan(digest: string): Promise<FrozenUpgradePlan> {
+    UpgradeDigest.parse(digest); await directory(this.root); await directory(join(this.root, digest));
+    const frozen = freezeUpgradePlan(await readJson(join(this.root, digest, 'plan.json')));
+    if (frozen.digest !== digest) throw Error('upgrade_plan_digest_mismatch'); return frozen;
+  }
+  async status(digest: string, groupId: string): Promise<UpgradeJournalStatus> {
+    UpgradeId.parse(groupId); const plan = await this.plan(digest);
+    if (!plan.plan.groups.some(g => g.group_id === groupId)) throw Error('upgrade_group_missing');
+    const path = join(this.root, digest); const names = await readdir(path);
+    if (names.length > 2200) throw Error('upgrade_journal_record_limit');
+    const records: UpgradeJournalRecord[] = []; let previous: string | null = null;
+    const prefix = `${upgradeDigest(groupId)}.`;
+    for (const name of names.filter(name => name.startsWith(prefix)).sort()) {
+      if (!/^[a-f0-9]{64}\.[0-9]{4}\.json$/.test(name)) throw Error('upgrade_journal_invalid_name');
+      const record = RecordSchema.parse(await readJson(join(path, name), 8192));
+      if (record.plan_digest !== digest || record.group_id !== groupId || record.sequence !== records.length || record.previous !== previous
+        || name !== `${upgradeDigest(groupId)}.${String(record.sequence).padStart(4, '0')}.json`) throw Error('upgrade_journal_chain_broken');
+      previous = upgradeDigest(record); records.push(record);
+    }
+    const phase = records.at(-1)?.phase ?? 'qualification_pending';
+    return { plan, group_id: groupId, records, phase, completed: phase === 'verified', resume_allowed: false };
+  }
+  /** Locks are keyed by shared installation, across plans. Never stale-steal by PID or timeout. */
+  async claim(digest: string, groupId: string): Promise<UpgradeJournalWriter> {
+    const state = await this.status(digest, groupId); const group = state.plan.plan.groups.find(g => g.group_id === groupId)!;
+    const claim = { plan_digest: digest, group_id: groupId, token: randomBytes(32).toString('hex') };
+    const name = `claim-${upgradeDigest(group.installation_id)}.json`;
+    try { await publish(this.root, name, claim); } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === 'EEXIST') throw Error('upgrade_recovery_required'); throw error;
+    }
+    const assertClaim = async () => { if (upgradeCanonical(await readJson(join(this.root, name), 4096)) !== upgradeCanonical(claim)) throw Error('upgrade_claim_changed'); };
+    let sequence = state.records.length; let previous = state.records.length ? upgradeDigest(state.records.at(-1)) : null; let writing = false;
+    return {
+      append: async value => {
+        if (writing) throw Error('upgrade_journal_concurrent_write'); writing = true;
+        try {
+          await assertClaim(); const record = RecordSchema.parse({ ...value, schema_version: 1, plan_digest: digest, group_id: groupId, sequence, previous });
+          await publish(join(this.root, digest), `${upgradeDigest(groupId)}.${String(sequence).padStart(4, '0')}.json`, record);
+          await assertClaim(); previous = upgradeDigest(record); sequence += 1; return record;
+        } finally { writing = false; }
+      },
+      releaseVerified: async () => {
+        await assertClaim(); const current = await this.status(digest, groupId);
+        if (!current.completed || writing) throw Error('upgrade_release_requires_verified');
+        await unlink(join(this.root, name)); await syncDirectory(this.root);
+      },
+    };
+  }
+}
+export interface UpgradeJournalWriter {
+  append(value: Pick<UpgradeJournalRecord, 'at_ms' | 'phase' | 'status' | 'home_id' | 'evidence_digest' | 'evidence_ref' | 'reason'>): Promise<UpgradeJournalRecord>;
+  releaseVerified(): Promise<void>;
+}
+
+=== packages/cli/src/upgrade-coordinator.ts ===
+import { z } from 'zod';
+import { DeploymentIdentitySchema, type DeploymentIdentity } from './home-inventory.js';
+import { UpgradeDigest, UpgradeId, freezeUpgradePlan, upgradeCanonical, upgradeDigest, type FrozenUpgradePlan, type UpgradePlanGroup, type UpgradePlanHome } from './upgrade-plan.js';
+import { UpgradeJournal, type UpgradeJournalWriter, type UpgradePhase } from './upgrade-journal.js';
+
+const ref = z.string().min(1).max(512);
+const AuthoritySchema = z.object({ plan_digest: UpgradeDigest, group_id: UpgradeId, installation_id: UpgradeId,
+  consumer_home_ids: z.array(z.string()).min(1).max(32), expires_at_ms: z.number().int().nonnegative().safe(),
+  completeness_evidence_ref: ref, qualification_ref: ref, authorization_ref: ref }).strict();
+export type UpgradeAuthority = z.infer<typeof AuthoritySchema> & { assertCurrent: () => void };
+const StoppedSchema = z.object({ home_id: z.string(), generation: z.string(), stopped: z.literal(true),
+  graph_holds: z.literal(0), unknown_actions: z.literal(0), receipt_ref: ref }).strict();
+export type UpgradeStopLease = { receipt: z.infer<typeof StoppedSchema>; assertHeld: () => void };
+const ReceiptSchema = z.object({ home_id: z.string(), source_generation: z.string(), receipt_ref: ref }).strict();
+const InstallSchema = z.object({ plan_digest: UpgradeDigest, installation_id: UpgradeId, version: z.string(), build_digest: UpgradeDigest, receipt_ref: ref }).strict();
+
+/** Trusted host injection only. No production implementation or apply CLI is registered in U2a.
+ * The future adapter must delegate to the native updater; it must never infer all consumers from inventory. */
+export interface NativeUpgradePort {
+  resolveAuthority(plan: FrozenUpgradePlan, group: UpgradePlanGroup, signal: AbortSignal): Promise<UpgradeAuthority | null>;
+  observe(home: UpgradePlanHome, signal: AbortSignal): Promise<{ identity: DeploymentIdentity; healthy: boolean; receipt_ref: string }>;
+  drain(home: UpgradePlanHome, signal: AbortSignal): Promise<UpgradeStopLease>;
+  snapshot(home: UpgradePlanHome, signal: AbortSignal): Promise<z.infer<typeof ReceiptSchema>>;
+  install(plan: FrozenUpgradePlan, group: UpgradePlanGroup, signal: AbortSignal): Promise<z.infer<typeof InstallSchema>>;
+  restart(home: UpgradePlanHome, signal: AbortSignal): Promise<z.infer<typeof ReceiptSchema>>;
+}
+export interface UpgradeExecutionResult { state: UpgradePhase; plan_digest: string; group_id: string; reason: string | null }
+function synchronous(call: () => void): void {
+  const value: unknown = call(); if (value !== undefined) { void Promise.resolve(value).catch(() => {}); throw Error('upgrade_async_authority'); }
+}
+
+/** Runs only with an explicit trusted port. A persisted plan never grants permission.
+ * Every side effect has a durable started record; incomplete prior attempts are never replayed. */
+export async function coordinateUpgrade(input: {
+  journal: UpgradeJournal; plan: FrozenUpgradePlan; groupId: string; port?: NativeUpgradePort;
+  nowMs?: () => number; monotonicMs?: () => number; signal?: AbortSignal;
+}): Promise<UpgradeExecutionResult> {
+  const plan = freezeUpgradePlan(input.plan.plan); if (plan.digest !== input.plan.digest) throw Error('upgrade_plan_digest_mismatch');
+  const group = plan.plan.groups.find(g => g.group_id === input.groupId); if (!group) throw Error('upgrade_group_missing');
+  const result = (state: UpgradePhase, reason: string | null = null): UpgradeExecutionResult => ({ state, plan_digest: plan.digest, group_id: group.group_id, reason });
+  await input.journal.create(plan); const prior = await input.journal.status(plan.digest, group.group_id);
+  if (prior.completed) return result('verified');
+  if (prior.records.some(r => r.phase !== 'qualification_pending')) return result('recovery_required', 'prior_attempt_requires_reconciliation');
+  if (!input.port) return result('qualification_pending', 'native_updater_not_qualified');
+  if (group.deployment_kind !== 'npm' || group.reasons.some(reason => !['shared_consumers_not_attested', 'native_updater_not_qualified'].includes(reason)))
+    return result('qualification_pending', 'plan_has_unqualified_consumers');
+  const port = input.port; const now = input.nowMs ?? Date.now; const mono = input.monotonicMs ?? (() => performance.now());
+  const startedAt = mono(); let steps = 0; let authority: UpgradeAuthority | undefined; let writer: UpgradeJournalWriter | undefined;
+  let phase: UpgradePhase = 'preflight'; let installStarted = false; let sideEffectStarted = false; let closed = false;
+  const stops: UpgradeStopLease[] = [];
+  const clockCheck = () => {
+    if (closed || input.signal?.aborted) throw Error('upgrade_cancelled');
+    if (now() < plan.plan.created_at_ms || now() >= plan.plan.expires_at_ms) throw Error('upgrade_plan_expired');
+    if (mono() - startedAt >= plan.plan.budget.max_total_ms) throw Error('upgrade_budget_exhausted');
+    if (authority) {
+      if (now() >= authority.expires_at_ms) throw Error('upgrade_authority_expired'); synchronous(authority.assertCurrent);
+    }
+  };
+  const append = async (status: 'started' | 'confirmed' | 'failed', home: UpgradePlanHome | null, evidence?: unknown, evidenceRef?: string, reason?: string) => {
+    if (!writer) return;
+    await writer.append({ phase, status, at_ms: now(), home_id: home?.home_id ?? null, evidence_digest: evidence === undefined ? null : upgradeDigest(evidence),
+      evidence_ref: evidenceRef ?? null, reason: reason ?? null });
+  };
+  const call = async <T>(operation: (signal: AbortSignal) => Promise<T>): Promise<T> => {
+    clockCheck(); if (steps >= plan.plan.budget.max_steps) throw Error('upgrade_budget_exhausted'); steps += 1;
+    const controller = new AbortController(); const abort = () => controller.abort(); input.signal?.addEventListener('abort', abort, { once: true });
+    const remaining = plan.plan.budget.max_total_ms - (mono() - startedAt);
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    try {
+      const deadline = new Promise<never>((_, reject) => { timer = setTimeout(() => { controller.abort(); reject(Error('upgrade_operation_unknown')); }, Math.max(1, Math.min(remaining, plan.plan.budget.max_step_ms))); });
+      // After timeout, the late operation cannot append or advance phases. Its physical effects remain unknown.
+      const value = await Promise.race([Promise.resolve().then(() => { clockCheck(); return operation(controller.signal); }), deadline]);
+      clockCheck(); return value;
+    } finally { if (timer) clearTimeout(timer); input.signal?.removeEventListener('abort', abort); }
+  };
+  try {
+    const resolved = await call(signal => port.resolveAuthority(plan, group, signal));
+    if (!resolved) return result('qualification_pending', 'shared_consumers_not_attested');
+    const { assertCurrent, ...raw } = resolved; const parsed = AuthoritySchema.parse(raw);
+    if (typeof assertCurrent !== 'function' || parsed.plan_digest !== plan.digest || parsed.group_id !== group.group_id || parsed.installation_id !== group.installation_id
+      || upgradeCanonical([...parsed.consumer_home_ids].sort()) !== upgradeCanonical(group.homes.map(h => h.home_id).sort())) throw Error('upgrade_authority_binding');
+    authority = { ...parsed, assertCurrent: assertCurrent.bind(resolved) }; clockCheck();
+    writer = await input.journal.claim(plan.digest, group.group_id); clockCheck(); await append('started', null);
+    for (const home of group.homes) {
+      const observation = await call(signal => port.observe(home, signal));
+      const identity = DeploymentIdentitySchema.parse(observation.identity);
+      if (observation.healthy !== true || upgradeCanonical(identity) !== upgradeCanonical(home.identity)) throw Error('upgrade_identity_changed');
+      ref.parse(observation.receipt_ref); await append('confirmed', home, identity, observation.receipt_ref); clockCheck();
+    }
+    phase = 'draining';
+    for (const home of group.homes) {
+      await append('started', home); clockCheck(); sideEffectStarted = true;
+      const lease = await call(signal => port.drain(home, signal)); const receipt = StoppedSchema.parse(lease.receipt);
+      if (receipt.home_id !== home.home_id || receipt.generation !== home.identity?.generation || typeof lease.assertHeld !== 'function') throw Error('upgrade_stop_binding');
+      const frozenLease = { receipt, assertHeld: lease.assertHeld.bind(lease) }; synchronous(frozenLease.assertHeld); stops.push(frozenLease);
+      await append('confirmed', home, receipt, receipt.receipt_ref); clockCheck();
+    }
+    const quiescent = () => { clockCheck(); for (const stop of stops) synchronous(stop.assertHeld); if (stops.length !== group.homes.length) throw Error('upgrade_all_consumers_required'); };
+    quiescent(); phase = 'quiescent'; await append('confirmed', null, stops.map(s => s.receipt)); quiescent(); phase = 'snapshotting';
+    for (const home of group.homes) {
+      await append('started', home); quiescent(); const receipt = ReceiptSchema.parse(await call(signal => port.snapshot(home, signal)));
+      quiescent(); if (receipt.home_id !== home.home_id || receipt.source_generation !== home.identity?.generation) throw Error('upgrade_snapshot_binding');
+      await append('confirmed', home, receipt, receipt.receipt_ref); quiescent();
+    }
+    phase = 'installing'; await append('started', null); quiescent(); installStarted = true;
+    const installed = InstallSchema.parse(await call(signal => port.install(plan, group, signal))); quiescent();
+    if (installed.plan_digest !== plan.digest || installed.installation_id !== group.installation_id || installed.version !== plan.plan.target.version || installed.build_digest !== plan.plan.target.build_digest) throw Error('upgrade_install_mismatch');
+    phase = 'installed'; await append('confirmed', null, installed, installed.receipt_ref); clockCheck(); phase = 'restarting';
+    for (const home of group.homes) {
+      await append('started', home); clockCheck(); const receipt = ReceiptSchema.parse(await call(signal => port.restart(home, signal)));
+      if (receipt.home_id !== home.home_id || receipt.source_generation !== home.identity?.generation) throw Error('upgrade_restart_binding');
+      await append('confirmed', home, receipt, receipt.receipt_ref); clockCheck();
+    }
+    phase = 'verifying';
+    for (const home of group.homes) {
+      await append('started', home); clockCheck(); const observed = await call(signal => port.observe(home, signal)); const identity = DeploymentIdentitySchema.parse(observed.identity);
+      if (observed.healthy !== true || identity.home_id !== home.home_id || identity.generation === home.identity?.generation || identity.deployment_kind !== 'npm'
+        || identity.version !== plan.plan.target.version || identity.build_digest !== plan.plan.target.build_digest || identity.build_evidence !== 'host_manifest'
+        || identity.protocol_version !== plan.plan.target.protocol_version || identity.database_schema !== plan.plan.target.database_schema) throw Error('upgrade_version_mismatch');
+      ref.parse(observed.receipt_ref); await append('confirmed', home, identity, observed.receipt_ref); clockCheck();
+    }
+    phase = 'verified'; clockCheck(); await append('confirmed', null); clockCheck(); await writer.releaseVerified(); closed = true; return result('verified');
+  } catch (error) {
+    const message = error instanceof Error && /^upgrade_[a-z_]+$/.test(error.message) ? error.message : 'upgrade_port_failure';
+    if (!writer && message !== 'upgrade_recovery_required') return result('qualification_pending', message);
+    const state: UpgradePhase = message === 'upgrade_recovery_required' || sideEffectStarted && !installStarted ? 'recovery_required'
+      : !installStarted ? 'aborted_before_install' : message === 'upgrade_version_mismatch' ? 'version_mismatch' : phase === 'restarting' && message !== 'upgrade_operation_unknown' ? 'restart_failed' : 'recovery_required';
+    phase = state; closed = true;
+    // A failed journal write leaves its previous started record. Never undo an external fact or steal the claim.
+    try { await append('failed', null, undefined, undefined, message); } catch { /* Caller must inspect the retained claim and previous record. */ }
+    return result(state, message);
+  }
+}
+
+=== packages/cli/src/upgrade-plan.test.ts ===
+import { expect, it } from 'vitest';
+import { upgradeFixture } from './upgrade-test-fixture.js';
+import { createUpgradePlan, freezeUpgradePlan } from './upgrade-plan.js';
+
+
+it('makes an immutable exact-version plan, never apply authority from inventory', () => {
+  const f = upgradeFixture(); const plan = createUpgradePlan(f.request, f.observations, f.now);
+  expect(plan.plan.authority).toBe('none'); expect(plan.plan.groups[0]!.qualification).toBe('qualification_pending');
+  expect(plan.plan.groups[0]!.reasons).toContain('shared_consumers_not_attested'); expect(Object.isFrozen(plan.plan.groups[0]!.homes)).toBe(true);
+  expect(freezeUpgradePlan(plan.plan)).toEqual(plan);
+  expect(createUpgradePlan({ ...f.request, target: { ...f.request.target, build_digest: 'c'.repeat(64) } }, f.observations, f.now).digest).not.toBe(plan.digest);
+});
+it.each(['latest', '^2.0.0', '2', '2.0', ' 2.0.0', '02.0.0', '2.0.0-01'])('rejects non-exact version %s', version => {
+  const f = upgradeFixture(); expect(() => createUpgradePlan({ ...f.request, target: { ...f.request.target, version } }, f.observations, f.now)).toThrow();
+});
+it('does not treat an unreachable consumer, checkout or incompatible schema as qualified', () => {
+  const f = upgradeFixture(); f.observations[1]!.observed = null; f.observations[1]!.status = 'unreachable';
+  f.request.groups[0]!.deployment_kind = 'checkout'; f.request.target.readable_schema_min = 41;
+  const plan = createUpgradePlan(f.request, f.observations, f.now);
+  expect(plan.plan.groups[0]!.reasons).toEqual(expect.arrayContaining(['checkout_updater_unsupported', `home_unavailable:${f.observations[1]!.desired.home_id}`, `schema_incompatible:${f.observations[0]!.desired.home_id}`]));
+});
+it('rejects duplicate or missing consumers and expired plans', () => {
+  const f = upgradeFixture(); f.request.groups[0]!.home_ids.push(f.request.groups[0]!.home_ids[0]!);
+  expect(() => createUpgradePlan(f.request, f.observations, f.now)).toThrow(); f.request.groups[0]!.home_ids.pop();
+  expect(() => createUpgradePlan(f.request, f.observations.slice(0, 1), f.now)).toThrow('not_in_inventory');
+  expect(() => createUpgradePlan(f.request, f.observations, f.request.expires_at_ms)).toThrow('expiry');
+});
+
+=== packages/cli/src/upgrade-journal.test.ts ===
+import { chmod, mkdir, readFile, readdir, rm, symlink, writeFile } from 'node:fs/promises';
+import { join } from 'node:path';
+import { afterEach, expect, it } from 'vitest';
+import { createScratchDir } from '@osstack/core';
+import { createUpgradePlan } from './upgrade-plan.js';
+import { UpgradeJournal } from './upgrade-journal.js';
+import { upgradeFixture } from './upgrade-test-fixture.js';
+
+const roots: string[] = []; afterEach(async () => { for (const root of roots.splice(0)) await rm(root, { recursive: true, force: true }); });
+async function fixture() {
+  const root = await createScratchDir('tests', 'upgrade-journal'); roots.push(root); await chmod(root, 0o700);
+  const f = upgradeFixture(); const plan = createUpgradePlan(f.request, f.observations, f.now); const journal = new UpgradeJournal(root); await journal.create(plan);
+  return { ...f, root, plan, journal };
+}
+const record = { at_ms: 100000, phase: 'planned' as const, status: 'confirmed' as const, home_id: null, evidence_digest: null, evidence_ref: null, reason: null };
+it('persists a read-only reopenable plan and chained phases without opening a database', async () => {
+  const f = await fixture(); const writer = await f.journal.claim(f.plan.digest, 'group');
+  await writer.append(record); await writer.append({ ...record, phase: 'draining', status: 'started' });
+  const result = await new UpgradeJournal(f.root).status(f.plan.digest, 'group');
+  expect(result.phase).toBe('draining'); expect(result.resume_allowed).toBe(false); expect(result.records[1]!.previous).toMatch(/^[a-f0-9]{64}$/);
+  await expect(new UpgradeJournal(f.root).claim(f.plan.digest, 'group')).rejects.toThrow('recovery_required');
+  await expect(writer.releaseVerified()).rejects.toThrow('requires_verified');
+});
+it('serializes competing operators across different plans for one shared installation', async () => {
+  const f = await fixture(); const next = createUpgradePlan({ ...f.request, expires_at_ms: f.request.expires_at_ms + 1 }, f.observations, f.now);
+  await f.journal.create(next);
+  const results = await Promise.allSettled([f.journal.claim(f.plan.digest, 'group'), new UpgradeJournal(f.root).claim(next.digest, 'group')]);
+  expect(results.filter(v => v.status === 'fulfilled')).toHaveLength(1); expect(results.filter(v => v.status === 'rejected')).toHaveLength(1);
+});
+it('detects hash-chain corruption and does not accept a copied plan under a new digest', async () => {
+  const f = await fixture(); const writer = await f.journal.claim(f.plan.digest, 'group'); await writer.append(record); await writer.append({ ...record, phase: 'draining' });
+  const path = join(f.root, f.plan.digest); const first = (await readdir(path)).filter(p => p.endsWith('.0000.json'))[0]!;
+  const raw = JSON.parse(await readFile(join(path, first), 'utf8')); raw.phase = 'installing'; await writeFile(join(path, first), JSON.stringify(raw));
+  await expect(f.journal.status(f.plan.digest, 'group')).rejects.toThrow('chain_broken');
+  const fake = 'e'.repeat(64); await mkdir(join(f.root, fake), { mode: 0o700 }); await writeFile(join(f.root, fake, 'plan.json'), JSON.stringify(f.plan.plan), { mode: 0o600 });
+  await expect(f.journal.plan(fake)).rejects.toThrow('digest_mismatch');
+});
+it('rejects symlink and shared-permission roots and leaves the original record intact', async () => {
+  const f = await fixture(); const alias = join(f.root, 'alias'); await symlink(join(f.root, f.plan.digest), alias);
+  await expect(new UpgradeJournal(alias).create(f.plan)).rejects.toThrow('unsafe_directory');
+  await chmod(f.root, 0o755); await expect(f.journal.plan(f.plan.digest)).rejects.toThrow('unsafe_directory'); await chmod(f.root, 0o700);
+  expect((await f.journal.plan(f.plan.digest)).digest).toBe(f.plan.digest);
+});
+
+=== packages/cli/src/upgrade-coordinator.test.ts ===
+import { chmod, readdir, rm } from 'node:fs/promises';
+import { afterEach, expect, it } from 'vitest';
+import { createScratchDir } from '@osstack/core';
+import { createUpgradePlan } from './upgrade-plan.js';
+import { UpgradeJournal } from './upgrade-journal.js';
+import { coordinateUpgrade, type NativeUpgradePort } from './upgrade-coordinator.js';
+import { upgradeFixture } from './upgrade-test-fixture.js';
+
+const roots: string[] = []; afterEach(async () => { for (const root of roots.splice(0)) await rm(root, { recursive: true, force: true }); });
+async function fixture() {
+  const f = upgradeFixture(); const root = await createScratchDir('tests', 'upgrade-coordinator'); await chmod(root, 0o700); roots.push(root);
+  const plan = createUpgradePlan(f.request, f.observations, f.now); const journal = new UpgradeJournal(root);
+  const calls: string[] = []; const restarted = new Set<string>(); let revoked = false;
+  const port: NativeUpgradePort = {
+    resolveAuthority: async (p, group) => ({ plan_digest: p.digest, group_id: group.group_id, installation_id: group.installation_id,
+      consumer_home_ids: group.homes.map(h => h.home_id), expires_at_ms: p.plan.expires_at_ms,
+      completeness_evidence_ref: 'fake-exclusive-installation-registration', qualification_ref: 'fake-updater-qualification', authorization_ref: 'fake-exact-plan-approval',
+      assertCurrent: () => { if (revoked) throw Error('upgrade_revoked'); } }),
+    observe: async home => { calls.push(`observe:${home.home_id}`); return { receipt_ref: `fake-observed:${home.home_id}`, healthy: true,
+      identity: restarted.has(home.home_id) ? { ...home.identity!, generation: `instance_${'9'.repeat(32)}`, version: plan.plan.target.version,
+        protocol_version: plan.plan.target.protocol_version, database_schema: plan.plan.target.database_schema, build_digest: plan.plan.target.build_digest,
+        started_at_ms: f.now } : home.identity! }; },
+    drain: async home => { calls.push(`drain:${home.home_id}`); return { receipt: { home_id: home.home_id, generation: home.identity!.generation,
+      stopped: true, graph_holds: 0, unknown_actions: 0, receipt_ref: `fake-stopped:${home.home_id}` }, assertHeld: () => {} }; },
+    snapshot: async home => { calls.push(`snapshot:${home.home_id}`); return { home_id: home.home_id, source_generation: home.identity!.generation, receipt_ref: `fake-consistent-snapshot:${home.home_id}` }; },
+    install: async (_plan, group) => { calls.push('install'); return { plan_digest: _plan.digest, installation_id: group.installation_id, version: plan.plan.target.version, build_digest: plan.plan.target.build_digest, receipt_ref: 'fake-install' }; },
+    restart: async home => { calls.push(`restart:${home.home_id}`); restarted.add(home.home_id); return { home_id: home.home_id, source_generation: home.identity!.generation, receipt_ref: `fake-restart:${home.home_id}` }; },
+  };
+  const run = (selectedPort: NativeUpgradePort | undefined = port) => coordinateUpgrade({ journal, plan, groupId: 'group', nowMs: () => f.now,
+    ...(selectedPort ? { port: selectedPort } : {}) });
+  return { ...f, root, plan, journal, calls, port, run, revoke: () => { revoked = true; } };
+}
+it('without a qualified host port persists only a plan and never installs, drains or restarts', async () => {
+  const f = await fixture(); const result = await coordinateUpgrade({ journal: f.journal, plan: f.plan, groupId: 'group' });
+  expect(result.state).toBe('qualification_pending'); expect(f.calls).toEqual([]);
+  expect((await new UpgradeJournal(f.root).status(f.plan.digest, 'group')).phase).toBe('qualification_pending');
+});
+it('requires the exact complete consumer set from trusted authority, not registry completeness', async () => {
+  const f = await fixture(); const resolve = f.port.resolveAuthority;
+  f.port.resolveAuthority = async (...args) => ({ ...(await resolve(...args))!, consumer_home_ids: [f.observations[0]!.desired.home_id] });
+  expect((await f.run()).state).toBe('qualification_pending'); expect(f.calls).toEqual([]);
+});
+it('stops every shared consumer before any snapshot/install and records exact verified identities', async () => {
+  const f = await fixture(); expect((await f.run()).state).toBe('verified');
+  expect(f.calls.map(c => c.split(':')[0])).toEqual(['observe', 'observe', 'drain', 'drain', 'snapshot', 'snapshot', 'install', 'restart', 'restart', 'observe', 'observe']);
+  const status = await new UpgradeJournal(f.root).status(f.plan.digest, 'group'); expect(status.completed).toBe(true);
+  expect(status.records.filter(r => r.phase === 'installing' && r.status === 'started')).toHaveLength(1);
+  const count = f.calls.length; expect((await f.run()).state).toBe('verified'); expect(f.calls).toHaveLength(count);
+  expect((await readdir(f.root)).filter(name => name.startsWith('claim-'))).toHaveLength(0);
+});
+it.each(['second_drain', 'graph_hold', 'unknown_action', 'lease_lost'] as const)('never installs with %s', async failure => {
+  const f = await fixture(); const drain = f.port.drain; let drained = 0;
+  f.port.drain = async (...args) => {
+    const lease = await drain(...args); drained += 1;
+    if (failure === 'second_drain' && drained === 2) throw Error('upgrade_stop_unknown');
+    if (failure === 'graph_hold') return { ...lease, receipt: { ...lease.receipt, graph_holds: 1 } } as unknown as Awaited<ReturnType<NativeUpgradePort['drain']>>;
+    if (failure === 'unknown_action') return { ...lease, receipt: { ...lease.receipt, unknown_actions: 1 } } as unknown as Awaited<ReturnType<NativeUpgradePort['drain']>>;
+    return failure === 'lease_lost' ? { ...lease, assertHeld: () => { if (drained === 2) throw Error('upgrade_stop_lease_lost'); } } : lease;
+  };
+  expect((await f.run()).state).toBe('recovery_required'); expect(f.calls).not.toContain('install');
+  expect(f.calls.some(c => c.startsWith('restart:'))).toBe(false);
+});
+it.each(['observe', 'drain', 'snapshot', 'install', 'restart'] as const)('retains a journal and never blindly replays %s after a fault', async method => {
+  const f = await fixture(); let attempted = 0;
+  f.port[method] = (async () => { attempted += 1; throw Error('simulated lost receipt'); }) as never;
+  const first = await f.run(); expect(first.state).not.toBe('verified'); expect(attempted).toBe(1);
+  const second = await coordinateUpgrade({ journal: new UpgradeJournal(f.root), plan: f.plan, groupId: 'group', port: f.port, nowMs: () => f.now });
+  expect(second.state).toBe('recovery_required'); expect(attempted).toBe(1);
+});
+it('treats an install timeout and late successful receipt as unknown without another install', async () => {
+  const f = await fixture(); const request = { ...f.request, budget: { ...f.request.budget, max_step_ms: 20 } };
+  const plan = createUpgradePlan(request, f.observations, f.now); let finish!: (value: Awaited<ReturnType<NativeUpgradePort['install']>>) => void; let calls = 0;
+  f.port.install = async () => { calls += 1; return new Promise(resolve => { finish = resolve; }); };
+  const run = () => coordinateUpgrade({ journal: f.journal, plan, groupId: 'group', port: f.port, nowMs: () => f.now });
+  expect((await run()).state).toBe('recovery_required');
+  const before = await f.journal.status(plan.digest, 'group');
+  finish({ plan_digest: plan.digest, installation_id: 'shared-npm-global', version: plan.plan.target.version, build_digest: plan.plan.target.build_digest, receipt_ref: 'late' });
+  await Promise.resolve(); expect(await f.journal.status(plan.digest, 'group')).toEqual(before);
+  expect((await run()).state).toBe('recovery_required'); expect(calls).toBe(1);
+});
+it.each(['home', 'generation', 'version', 'build', 'schema', 'health'] as const)('rejects wrong post-restart %s even if software reports target version', async changed => {
+  const f = await fixture(); const observe = f.port.observe; let count = 0;
+  f.port.observe = async (...args) => {
+    const value = await observe(...args); if (++count <= 2) return value;
+    if (changed === 'home') value.identity.home_id = `home_${'f'.repeat(32)}`;
+    if (changed === 'generation') value.identity.generation = args[0].identity!.generation;
+    if (changed === 'version') value.identity.version = '1.0.0';
+    if (changed === 'build') value.identity.build_digest = 'c'.repeat(64);
+    if (changed === 'schema') value.identity.database_schema = 42;
+    if (changed === 'health') value.healthy = false;
+    return value;
+  };
+  expect((await f.run()).state).toBe('version_mismatch'); expect(f.calls.filter(c => c === 'install')).toHaveLength(1);
+  expect((await f.run()).state).toBe('recovery_required');
+});
+it('does not race two operators into a shared install', async () => {
+  const f = await fixture(); const results = await Promise.all([f.run(), f.run()]);
+  expect(results.map(r => r.state).sort()).toEqual(['recovery_required', 'verified']); expect(f.calls.filter(c => c === 'install')).toHaveLength(1);
+});
+it('checks revocation after drain await before any snapshot or install', async () => {
+  const f = await fixture(); const drain = f.port.drain;
+  f.port.drain = async (...args) => { const value = await drain(...args); f.revoke(); return value; };
+  expect((await f.run()).state).toBe('recovery_required'); expect(f.calls.some(c => c.startsWith('snapshot:'))).toBe(false); expect(f.calls).not.toContain('install');
+});
+it('enforces step budget and refuses a changed generation before drain', async () => {
+  const f = await fixture(); const observe = f.port.observe;
+  f.port.observe = async (...args) => { const value = await observe(...args); return { ...value, identity: { ...value.identity, generation: `instance_${'f'.repeat(32)}` } }; };
+  expect((await f.run()).state).toBe('aborted_before_install'); expect(f.calls.some(c => c.startsWith('drain:'))).toBe(false);
+  const g = await fixture(); const plan = createUpgradePlan({ ...g.request, budget: { ...g.request.budget, max_steps: 1 } }, g.observations, g.now);
+  expect((await coordinateUpgrade({ journal: g.journal, plan, groupId: 'group', port: g.port, nowMs: () => g.now })).state).toBe('aborted_before_install');
+  expect(g.calls).toEqual([]);
+});
+
+it.each(['preflight', 'draining', 'quiescent', 'snapshotting', 'installing', 'installed', 'restarting', 'verifying'] as const)(
+  'reopens an abrupt process-loss journal at %s for reconciliation without invoking any updater port', async phase => {
+    const f = await fixture(); await f.journal.create(f.plan); const writer = await f.journal.claim(f.plan.digest, 'group');
+    await writer.append({ at_ms: f.now, phase, status: 'started', home_id: null, evidence_digest: null, evidence_ref: null, reason: null });
+    expect((await coordinateUpgrade({ journal: new UpgradeJournal(f.root), plan: f.plan, groupId: 'group', port: f.port, nowMs: () => f.now })).state).toBe('recovery_required');
+    expect(f.calls).toEqual([]);
+  });
+
+=== packages/cli/src/upgrade-test-fixture.ts ===
+import type { HomeObservation } from './home-inventory.js';
+
+export function upgradeFixture() {
+  const now = 100000; const id = (n: number) => `home_${String(n).padStart(32, '0')}`;
+  const observations: HomeObservation[] = [1, 2].map(n => ({ desired: { home_id: id(n), socket: `/home-${n}/socket`, enabled: true, desired: { version: '2.0.0' } },
+    observed: { schema_version: 1, home_id: id(n), generation: `instance_${String(n).padStart(32, '0')}`, version: '1.0.0',
+      protocol_version: 1, database_schema: 40, started_at_ms: 1, deployment_kind: 'npm', build_digest: 'a'.repeat(64), build_evidence: 'host_manifest' },
+    observed_at_ms: now, status: 'drift', reason: null }));
+  const request = { schema_version: 1, expires_at_ms: now + 200000,
+    target: { version: '2.0.0', build_digest: 'b'.repeat(64), protocol_version: 2, database_schema: 41, readable_schema_min: 40, readable_schema_max: 41 },
+    budget: { max_total_ms: 100000, max_step_ms: 5000, max_steps: 32 },
+    groups: [{ group_id: 'group', installation_id: 'shared-npm-global', deployment_kind: 'npm', home_ids: observations.map(o => o.desired.home_id) }] };
+  return { request, observations, now };
+}
+
+=== docs/guides/multi-home-upgrade-plan.md ===
+# Multi-home upgrade planning and journal
+
+U2a provides plans and a private phase journal. Production CLI integration exposes only plan/status. It does not register an apply operation, install packages, open home databases, start daemons or restart actual homes. Every ordinary plan remains `qualification_pending`; a home inventory is a snapshot, never proof that all consumers of a shared binary are known.
+
+## Plan contract
+
+`createUpgradePlan(request, inventory.homes, nowMs)` reuses `DeploymentIdentitySchema` from the real home inventory. The request contains:
+
+```json
+{
+  "schema_version": 1,
+  "expires_at_ms": 1792800000000,
+  "target": {
+    "version": "0.22.0",
+    "build_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "protocol_version": 2,
+    "database_schema": 45,
+    "readable_schema_min": 44,
+    "readable_schema_max": 45
+  },
+  "budget": { "max_total_ms": 300000, "max_step_ms": 60000, "max_steps": 32 },
+  "groups": [{
+    "group_id": "npm-primary",
+    "installation_id": "registered-shared-installation",
+    "deployment_kind": "npm",
+    "home_ids": ["home_00000000000000000000000000000001", "home_00000000000000000000000000000002"]
+  }]
+}
+```
+
+Replace the example expiry, target evidence and home IDs with actual registered values. Tags and version ranges are rejected. A plan binds the exact target, inventory identity/generation/build/schema, sockets, group membership, group order, expiration and budgets into its digest. The target's schema readability range is a requested constraint; only a future qualified updater can attest compatibility. A caller-supplied range cannot grant installation permission.
+
+Limits: 32 total homes; 32 groups; expiry within 24 hours; per-step limit at most 5 minutes; total limit at most 1 hour; at most 512 port calls. `budget_scope: "per_group"` is explicit: the coordinator handles one group per attempt, not a cross-group global maintenance window. Deadlines bound logical waiting and request cancellation; they do not prove physical stop. Stale, missing or incompatible observations remain recorded as unqualified reasons. Checkout deployments cannot use the npm path.
+
+## Persistence and status
+
+The caller creates an explicitly selected, existing private directory (0700, same UID, canonical path). `new UpgradeJournal(root).create(frozenPlan)` saves an immutable digest-checked plan. `status(planDigest, groupId)` only reads the plan and the bounded hash-linked phase records. It returns `phase`, `completed`, and `resume_allowed: false`; reading does not retry, steal a lock or invoke an updater.
+
+Records are published create-only after file sync, followed by directory sync. File ownership, permissions, type, hard links, byte bounds and paths are checked. Claims are keyed by installation ID across plan digests and acquired create-only. No PID heuristic, elapsed timeout or maintenance window can steal a claim. A completed verified run releases its claim; an interrupted or failed run retains it for reconciliation. Even a dead process is not proof that an installation had no effect. Claim cleanup/reconciliation is deliberately not automated in this slice.
+
+The journal hash chain detects corruption and binds local records. It is neither a signature nor cross-host authentication, and it does not protect against a malicious process with the same host account. Preserve the directory across disabling or upgrading this feature.
+
+## Qualified host boundary and future native adapter
+
+`coordinateUpgrade({journal, plan, groupId, port?})` is available for injected host adapters and fake fault tests. With no port, it only persists the plan and returns `qualification_pending`. No production implementation of `NativeUpgradePort` is supplied.
+
+A future host `resolveAuthority` must independently prove every consumer of the canonical installation, return the exact plan/group/installation/consumer binding, a current explicit authorization and qualification reference, expiration, and synchronous `assertCurrent`. Installation IDs must be canonical host registration identities: letting callers assign aliases for one installation would bypass shared-installation serialization. The registry manifest and its claimed completeness cannot satisfy this proof. These values come from the trusted host callback, never user JSON or model text.
+
+The same port supplies `observe`, `drain`, `snapshot`, `install` and `restart`. Each drain must return exact home/generation evidence, confirmed stop, zero durable Graph holds, zero unknown actions and a synchronous live maintenance-fence check. Every shared consumer must stop before any snapshot or installation. Fences are rechecked before and after snapshots and installation. The future adapter must enforce these requirements at the actual native effect boundary; receipt shapes alone cannot establish them.
+
+The existing `upgrade.ts` provides deployed-home resolution and single-deployment primitives, but its current command has a fixed launchd label, process-global environment and failure paths that restore old database files. Do not call that entire command as the new install port. U2b must separate and qualify suitable native primitives first. No snapshot in U2a authorizes restoring a database containing newer external facts: the plan fixes `rollback: "no_database_restore"`, and the port exposes no database rollback operation.
+
+## Failure behavior
+
+The sequence is preflight identity checks, all-consumer drain, quiescent, consistent snapshots, one installation, per-home restart, then exact healthy target identity verification. Each effect records `started` before calling the port and records evidence after confirmation. The verified daemon must have the pinned home ID, a new generation, target version/build/protocol/schema, and healthy status.
+
+An install timeout, missing receipt, revoked fence, wrong identity or restart failure never triggers another install or automatic database rollback. Late receipts cannot advance the journal. Reopening a partial journal returns `recovery_required` without invoking any updater. Partial drains also require reconciliation because some homes may already be stopped. Ordinary preflight failures before side effects are marked `aborted_before_install`; their claims are retained conservatively. All fake evidence references in tests are explicitly fake.
+
+Qualification status: plan/journal implementation and injected-port local fault tests are implemented; native installation, real shared-consumer completeness, launchd multi-instance management, cross-host authentication and real dual-home upgrades remain unqualified and disabled.
+
+=== packages/cli/src/home-inventory.ts ===
+import { randomBytes } from "node:crypto";
+import { constants } from "node:fs";
+import { link, open, realpath, stat, unlink } from "node:fs/promises";
+import { connect } from "node:net";
+import { isAbsolute, join } from "node:path";
+import { z } from "zod";
+
+const HomeId = z.string().regex(/^home_[a-f0-9]{32}$/);
+const Digest = z.string().regex(/^[a-f0-9]{64}$/);
+const boundedText = z
+  .string()
+  .min(1)
+  .max(256)
+  .regex(/^[A-Za-z0-9.+_-]+$/);
+export const DeploymentIdentitySchema = z
+  .object({
+    schema_version: z.literal(1),
+    home_id: HomeId,
+    generation: z.string().regex(/^instance_[a-f0-9]{32}$/),
+    version: boundedText,
+    protocol_version: z.number().int().positive(),
+    database_schema: z.number().int().nonnegative(),
+    started_at_ms: z.number().int().nonnegative(),
+    deployment_kind: z.enum(["npm", "checkout", "unknown"]),
+    build_digest: Digest.nullable(),
+    build_evidence: z.enum(["host_manifest", "unavailable"]),
+  })
+  .strict()
+  .refine(
+    (value) =>
+      (value.build_evidence === "unavailable") ===
+      (value.build_digest === null),
+  );
+export type DeploymentIdentity = z.infer<typeof DeploymentIdentitySchema>;
+const Manifest = z
+  .object({
+    schema_version: z.literal(1),
+    homes: z
+      .array(
+        z
+          .object({
+            home_id: HomeId,
+            socket: z.string().min(1).max(4096).refine(isAbsolute),
+            enabled: z.boolean(),
+            desired: z
+              .object({
+                version: boundedText,
+                protocol_version: z.number().int().positive().optional(),
+                database_schema: z.number().int().nonnegative().optional(),
+                deployment_kind: z.enum(["npm", "checkout"]).optional(),
+                build_digest: Digest.optional(),
+              })
+              .strict(),
+          })
+          .strict(),
+      )
+      .min(1)
+      .max(32),
+  })
+  .strict()
+  .refine(
+    (value) =>
+      new Set(value.homes.map((home) => home.home_id)).size ===
+        value.homes.length &&
+      new Set(value.homes.map((home) => home.socket)).size ===
+        value.homes.length,
+  );
+type HomeEntry = z.infer<typeof Manifest>["homes"][number];
+type Status =
+  | "matched_requested"
+  | "drift"
+  | "unknown"
+  | "unreachable"
+  | "identity_mismatch"
+  | "unsafe_endpoint"
+  | "disabled";
+export interface HomeObservation {
+  desired: HomeEntry;
+  observed: DeploymentIdentity | null;
+  observed_at_ms: number;
+  status: Status;
+  reason: string | null;
+}
+
+/** Only the authorized daemon startup calls this initializer. Inventory never does. */
+export async function ensureDeploymentHomeId(home: string): Promise<string> {
+  try {
+    const canonicalHome = await realpath(home);
+    const path = join(canonicalHome, "deployment-identity.json");
+    const parent = await stat(canonicalHome);
+    if (
+      !parent.isDirectory() ||
+      (process.getuid && parent.uid !== process.getuid())
+    )
+      throw new Error("identity_unavailable");
+    const temporary = join(
+      canonicalHome,
+      `.deployment-identity-${randomBytes(16).toString("hex")}.tmp`,
+    );
+    // Publish only a complete, file-synced record. link is create-only, so
+    // concurrent startup converges on one identity and never replaces a pin.
+    const created = await open(
+      temporary,
+      constants.O_CREAT |
+        constants.O_EXCL |
+        constants.O_WRONLY |
+        constants.O_NOFOLLOW,
+      0o600,
+    );
+    try {
+      try {
+        await created.writeFile(
+          JSON.stringify({
+            schema_version: 1,
+            home_id: `home_${randomBytes(16).toString("hex")}`,
+          }),
+        );
+        await created.sync();
+      } finally {
+        await created.close();
+      }
+      try {
+        await link(temporary, path);
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
+      }
+      const directory = await open(canonicalHome, constants.O_RDONLY);
+      try {
+        await directory.sync();
+      } finally {
+        await directory.close();
+      }
+    } finally {
+      await unlink(temporary).catch(() => undefined);
+    }
+    const file = await open(
+      path,
+      constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK,
+    );
+    try {
+      const info = await file.stat();
+      if (
+        !info.isFile() ||
+        info.size > 256 ||
+        (process.getuid && info.uid !== process.getuid())
+      )
+        throw new Error("identity_unavailable");
+      const buffer = Buffer.alloc(257);
+      let bytesRead = 0;
+      while (bytesRead < buffer.length) {
+        const chunk = await file.read(
+          buffer,
+          bytesRead,
+          buffer.length - bytesRead,
+          bytesRead,
+        );
+        if (!chunk.bytesRead) break;
+        bytesRead += chunk.bytesRead;
+      }
+      if (bytesRead > 256) throw new Error("identity_unavailable");
+      return z
+        .object({ schema_version: z.literal(1), home_id: HomeId })
+        .strict()
+        .parse(JSON.parse(buffer.subarray(0, bytesRead).toString())).home_id;
+    } finally {
+      await file.close();
+    }
+  } catch (error) {
+    if (
+      error instanceof SyntaxError ||
+      error instanceof z.ZodError ||
+      (error instanceof Error &&
+        (error.message === "identity_unavailable" ||
+          /^E[A-Z0-9]+$/.test((error as NodeJS.ErrnoException).code ?? "")))
+    )
+      throw new Error("identity_unavailable");
+    throw error;
+  }
+}
+
+/** Fixed read-only RPC, 64KiB total response bound before buffering. No DB or generic method port. */
+export function readHomeIdentity(
+  socketPath: string,
+  timeoutMs = 3000,
+): Promise<unknown> {
+  return new Promise((resolve, reject) => {
+    const socket = connect(socketPath);
+    let bytes = Buffer.alloc(0);
+    let settled = false;
+    const finish = (error?: string, value?: unknown) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      socket.destroy();
+      error ? reject(new Error(error)) : resolve(value);
+    };
+    const timer = setTimeout(
+      () => finish("unreachable"),
+      Math.min(3000, Math.max(1, timeoutMs)),
+    );
+    socket.on("error", () => finish("unreachable"));
+    socket.on("close", () =>
+      finish(bytes.length === 0 ? "unreachable" : "invalid_response"),
+    );
+    socket.on("connect", () => {
+      const body = Buffer.from(
+        JSON.stringify({ id: 1, method: "deployment.identity" }),
+      );
+      const header = Buffer.alloc(4);
+      header.writeUInt32BE(body.length);
+      socket.write(Buffer.concat([header, body]));
+    });
+    socket.on("data", (chunk) => {
+      if (bytes.length + chunk.length > 65536) {
+        finish("invalid_response");
+        return;
+      }
+      bytes = Buffer.concat([bytes, chunk]);
+      if (bytes.length < 4) return;
+      const size = bytes.readUInt32BE();
+      if (size > 65532) {
+        finish("invalid_response");
+        return;
+      }
+      if (bytes.length < 4 + size) return;
+      if (bytes.length !== 4 + size) {
+        finish("invalid_response");
+        return;
+      }
+      try {
+        const response = z
+          .object({
+            id: z.literal(1),
+            ok: z.literal(true),
+            result: DeploymentIdentitySchema,
+          })
+          .strict()
+          .parse(JSON.parse(bytes.subarray(4).toString()));
+        finish(undefined, response.result);
+      } catch {
+        finish("invalid_response");
+      }
+    });
+  });
+}
+
+/** Local same-UID socket/file ownership is a trust boundary, not network authentication. */
+export async function inspectHomes(raw: unknown): Promise<{
+  schema_version: 1;
+  mode: "readonly_inventory";
+  complete: boolean;
+  homes: HomeObservation[];
+  limitations: string[];
+}> {
+  const parsed = Manifest.safeParse(raw);
+  if (!parsed.success) throw new Error("invalid_manifest");
+  const rows: HomeObservation[] = parsed.data.homes.map((desired) => ({
+    desired,
+    observed: null,
+    observed_at_ms: Date.now(),
+    status: "disabled",
+    reason: null,
+  }));
+  const canonicalSockets = new Set<string>();
+  for (const row of rows) {
+    if (!row.desired.enabled) continue;
+    const canonical = await realpath(row.desired.socket).catch(() => null);
+    if (canonical !== null) {
+      if (canonicalSockets.has(canonical)) throw new Error("duplicate_socket");
+      canonicalSockets.add(canonical);
+    }
+  }
+  const activeCanonicalSockets = new Set<string>();
+  let next = 0;
+  const worker = async () => {
+    while (next < rows.length) {
+      const row = rows[next++]!;
+      if (!row.desired.enabled) continue;
+      try {
+        const canonical = await realpath(row.desired.socket);
+        if (activeCanonicalSockets.has(canonical)) {
+          row.status = "unsafe_endpoint";
+          row.reason = "duplicate_socket";
+          continue;
+        }
+        activeCanonicalSockets.add(canonical);
+        const info = await stat(row.desired.socket);
+        if (
+          !info.isSocket() ||
+          (process.getuid && info.uid !== process.getuid())
+        ) {
+          row.status = "unsafe_endpoint";
+          row.reason = "canonical_same_uid_socket_required";
+          continue;
+        }
+        let observed: DeploymentIdentity;
+        try {
+          observed = DeploymentIdentitySchema.parse(
+            await readHomeIdentity(row.desired.socket),
+          );
+        } catch (error) {
+          row.status =
+            error instanceof Error && error.message === "unreachable"
+              ? "unreachable"
+              : "unknown";
+          row.reason = "identity_unavailable";
+          continue;
+        }
+        if ((await realpath(row.desired.socket)) !== canonical) {
+          row.status = "unsafe_endpoint";
+          row.reason = "endpoint_changed";
+          continue;
+        }
+        row.observed_at_ms = Date.now();
+        if (observed.home_id !== row.desired.home_id) {
+          row.status = "identity_mismatch";
+          row.reason = "pinned_home_mismatch";
+          continue;
+        }
+        row.observed = observed;
+        const desired = row.desired.desired;
+        const unknown =
+          (desired.build_digest !== undefined &&
+            observed.build_digest === null) ||
+          (desired.deployment_kind !== undefined &&
+            observed.deployment_kind === "unknown");
+        const drift =
+          desired.version !== observed.version ||
+          (desired.protocol_version !== undefined &&
+            desired.protocol_version !== observed.protocol_version) ||
+          (desired.database_schema !== undefined &&
+            desired.database_schema !== observed.database_schema) ||
+          (desired.build_digest !== undefined &&
+            observed.build_digest !== null &&
+            desired.build_digest !== observed.build_digest) ||
+          (desired.deployment_kind !== undefined &&
+            observed.deployment_kind !== "unknown" &&
+            desired.deployment_kind !== observed.deployment_kind);
+        row.status = drift
+          ? "drift"
+          : unknown
+            ? "unknown"
+            : "matched_requested";
+        row.reason = unknown ? "deployment_evidence_unavailable" : null;
+      } catch {
+        row.status = "unreachable";
+        row.reason = "endpoint_unavailable";
+      }
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(4, rows.length) }, worker));
+  return {
+    schema_version: 1,
+    mode: "readonly_inventory",
+    complete:
+      rows.some((row) => row.desired.enabled) &&
+      rows.every(
+        (row) =>
+          row.status === "matched_requested" || row.status === "disabled",
+      ),
+    homes: rows,
+    limitations: [
+      "Local same-UID sockets with canonical alias deduplication only; no network or peer-credential attestation.",
+      "No database opened, daemon started, software installed or deployment modified.",
+      "Matched_requested applies only to declared desired fields; missing build/deployment evidence is never inferred.",
+      "Snapshot only; generation is reported for comparison, not an upgrade authorization.",
+    ],
+  };
+}
+
+export async function handleHomesCommand(
+  args: string[],
+  out: (value: string) => void = console.log,
+): Promise<number> {
+  if (args.length === 1 && args[0] === "--help") {
+    out(
+      "homes inspect --manifest FILE [--json]\nRead only explicitly pinned local home identities; never upgrades or opens databases.",
+    );
+    return 0;
+  }
+  if (
+    args[0] !== "inspect" ||
+    args[1] !== "--manifest" ||
+    !args[2] ||
+    (args.length !== 3 && !(args.length === 4 && args[3] === "--json"))
+  )
+    throw new Error("invalid_homes_arguments");
+  let raw: unknown;
+  try {
+    const file = await open(args[2], constants.O_RDONLY | constants.O_NONBLOCK);
+    try {
+      const info = await file.stat();
+      if (!info.isFile() || info.size > 65536)
+        throw new Error("invalid_manifest");
+      const buffer = Buffer.alloc(65537);
+      let bytesRead = 0;
+      while (bytesRead < buffer.length) {
+        const chunk = await file.read(
+          buffer,
+          bytesRead,
+          buffer.length - bytesRead,
+          bytesRead,
+        );
+        if (!chunk.bytesRead) break;
+        bytesRead += chunk.bytesRead;
+      }
+      if (bytesRead > 65536) throw new Error("invalid_manifest");
+      raw = JSON.parse(buffer.subarray(0, bytesRead).toString());
+    } finally {
+      await file.close();
+    }
+  } catch {
+    throw new Error("invalid_manifest");
+  }
+  const result = await inspectHomes(raw);
+  out(JSON.stringify(result, null, 2));
+  return result.complete ? 0 : 1;
+}

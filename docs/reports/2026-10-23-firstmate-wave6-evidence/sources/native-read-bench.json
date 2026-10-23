@@ -1,0 +1,18 @@
+{
+  "qualification": "native local-file service only; no socket or daemon latency claim",
+  "node": "v22.22.1",
+  "platform": "darwin",
+  "arch": "arm64",
+  "filesystem_type": 26,
+  "sample_count": 300,
+  "warmup": 50,
+  "source_bytes": 56589,
+  "entries": 20,
+  "states": {
+    "ready": 350
+  },
+  "p50_ms": 0.6833750000000123,
+  "p95_ms": 1.4024169999999856,
+  "max_ms": 2.980249999999984,
+  "bundle_sha256": "8410a64fa6e50346bbee1a7543af088a2ba390ed52636b67c7235d9cf6a52591"
+}

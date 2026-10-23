@@ -1,0 +1,30 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-cockpit/packages/cli
+
+
+⎯⎯⎯⎯⎯⎯ Failed Suites 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/worker-presentation.test.ts [ src/worker-presentation.test.ts ]
+Error: Cannot find module './worker-presentation.js' imported from '/Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-cockpit/packages/cli/src/worker-presentation.test.ts'
+ ❯ src/worker-presentation.test.ts:3:1
+      1| import { Writable } from "node:stream";
+      2| import { afterEach, expect, it, vi } from "vitest";
+      3| import { createTerminalPresentationBackend } from "./worker-presentati…
+       | ^
+      4| const request = { repo_path: '/repo', default_tenant: true as const, v…
+      5| const response = () => ({ schema_version:1, mode:'readonly_state_view'…
+
+Caused by: Error: Failed to load url ./worker-presentation.js (resolved id: ./worker-presentation.js) in /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-cockpit/packages/cli/src/worker-presentation.test.ts. Does the file exist?
+ ❯ loadAndTransform ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:35835:17
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  no tests
+   Start at  13:29:43
+   Duration  187ms (transform 23ms, setup 9ms, collect 0ms, tests 0ms, environment 0ms, prepare 32ms)
+
+undefined
+/Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-cockpit/packages/cli:
+[ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL] Command failed with exit code 1: vitest run src/worker-presentation.test.ts

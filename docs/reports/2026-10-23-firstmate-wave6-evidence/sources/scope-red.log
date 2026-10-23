@@ -1,0 +1,35 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-cockpit/packages/cli
+
+ ❯ src/local-source-command.test.ts (4 tests | 1 failed) 8ms
+   ✓ rejects request-selected paths or actions before any RPC 2ms
+   ✓ reports unavailable registration as unknown with no raw transport error 1ms
+   ✓ locally bounds a hung RPC without echoing malformed responses 2ms
+   × never displays a substituted ready snapshot from another repository 3ms
+     → expected +0 to be 1 // Object.is equality
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/local-source-command.test.ts > never displays a substituted ready snapshot from another repository
+AssertionError: expected +0 to be 1 // Object.is equality
+
+- Expected
++ Received
+
+- 1
++ 0
+
+ ❯ src/local-source-command.test.ts:23:174
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 3 passed (4)
+   Start at  13:55:34
+   Duration  543ms (transform 221ms, setup 9ms, collect 369ms, tests 8ms, environment 0ms, prepare 28ms)
+
+undefined
+/Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-cockpit/packages/cli:
+[ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL] Command failed with exit code 1: vitest run src/local-source-command.test.ts

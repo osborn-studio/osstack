@@ -2,7 +2,7 @@
 
 # CLI Commands
 
-Top-level `osstack` commands parsed from `--help` (51 total).
+Top-level `osstack` commands parsed from `--help` (53 total).
 
 - `agent`
 - `attention`
@@ -20,6 +20,7 @@ Top-level `osstack` commands parsed from `--help` (51 total).
 - `doctor`
 - `examples`
 - `follow-up`
+- `follow-up-delivery`
 - `govern`
 - `governance`
 - `graph`
@@ -47,6 +48,7 @@ Top-level `osstack` commands parsed from `--help` (51 total).
 - `serve`
 - `session`
 - `skills`
+- `sources`
 - `start`
 - `stats`
 - `status`
