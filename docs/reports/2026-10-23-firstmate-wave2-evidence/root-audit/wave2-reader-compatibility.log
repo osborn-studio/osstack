@@ -1,0 +1,12 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-followthrough/packages/cli
+
+ ✓ src/attention-read-model.test.ts (7 tests) 158ms
+ ✓ src/worker-view-command.test.ts (14 tests) 28ms
+ ✓ src/worker-view-service.test.ts (32 tests) 551ms
+
+ Test Files  3 passed (3)
+      Tests  53 passed (53)
+   Start at  12:20:25
+   Duration  955ms (transform 185ms, setup 19ms, collect 589ms, tests 737ms, environment 0ms, prepare 78ms)
+

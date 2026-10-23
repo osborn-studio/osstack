@@ -1,0 +1,13 @@
+{
+  "base": "6703ceb7bf2dda3c0f229bcd0504ff88a147c041",
+  "context_sha256": "c747e290fa3c68b7902a34012b64daaf6919915b6ec753fe070072654469289e",
+  "files": {
+    "packages/cli/src/worker-view-service.ts": "4e2f826084e6310fe6e72c53b73ddf1eb93f72b2de6f53632bcda8aba715b3e3",
+    "packages/cli/src/worker-view-command.ts": "26dc748a8e55606aebaccb6965218c193c5a33d6974b7a71d7cfd4f95528f6ad",
+    "packages/cli/src/daily-attention.ts": "40bed215c4ea37a39125f57f16a9cfb0097deb792ed72a5cd99ad83db71b54a5",
+    "packages/core/src/state/attention-run-projection.ts": "8911bd48a2afd648c690c658d2bcd299004f605f346ef9781d0b66932084e136",
+    "packages/core/src/state/attention-observer.ts": "94bffc930f092c100c7a81ece30def50c70fe5fb4b2883e0f4e54c6c985e0184",
+    "packages/core/src/state/run-store.ts": "f3a2ab8c32699cbfaac15cb688e431c66f9adff74e6232728ff0bee5bcf76b1c",
+    "packages/cli/src/attention-dashboard.ts": "5c4fe7294d740820fbf02d35028b617b7efe82c5c6f373b1aa9333b3d5dcf62a"
+  }
+}

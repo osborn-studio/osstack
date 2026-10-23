@@ -1,0 +1,21 @@
+{
+  "context.txt": "c747e290fa3c68b7902a34012b64daaf6919915b6ec753fe070072654469289e",
+  "disposition.md": "720087c087e0f9862ee8daa5af506e900f786db990e5468be25fff48d9c00ed9",
+  "manifest.json": "1c2ff7503b7fbe6c88a8307200d5d8d574955e53dfa45c57af894aa3fec6e16d",
+  "result.json": "401c0174a54cb2c914ea53d8e3f961a24e623a1c0cf12a6a2012b8c17e9ee060",
+  "round2-context.txt": "37102aae6fc3bf933d9b7ea43d17ad84bfd4c259fc0939bee532815d26e88df4",
+  "round2-result.json": "c79b48e795160dfa5bccd9b3c0a3e8db95b380b25fe08844839eb4b32a84a281",
+  "round2-stderr.log": "61b1ec1babd05607d61c3c37883d25b807fc94e69c2090164e10676c0b2af903",
+  "round3-context.txt": "143cb465e002fd181c2cc05496e11930ebccafd04eed76807492c77517514153",
+  "round3-result.json": "85cc5c2c81bc97dad94246b5639abeb34d15d95831cffff97754ab2d7346e658",
+  "round3-stderr.log": "61b1ec1babd05607d61c3c37883d25b807fc94e69c2090164e10676c0b2af903",
+  "round4-context.txt": "82e37c60f93125458ced699ec1daba934ef7c404f45b1cb2e483616607ed484e",
+  "round4-result.json": "20a7f80295bce3b52aaf85d50fc02991ca01e3a67380996f6009daef528db2bf",
+  "round4-stderr.log": "61b1ec1babd05607d61c3c37883d25b807fc94e69c2090164e10676c0b2af903",
+  "stderr.log": "61b1ec1babd05607d61c3c37883d25b807fc94e69c2090164e10676c0b2af903",
+  "wave2-audit-authority-final.log": "4884038be05877f1fdfe89926d91ef57890052714f3fef7b1a831707feca6d9d",
+  "wave2-audit-pending-cap.log": "07666a1de311a164d38e918665a49542b39a4c6e5c594956fee3118845c8d2bf",
+  "wave2-audit-reconciliation-final.log": "89a29b9f06510d073dd43a1d4172bbbf917e861dac8d84685c041f8842d5c1e3",
+  "wave2-lint-correction.log": "62afdf3842e96d6bc969d4e212f5b4b4c948b63a9f338f539aa3d8dd29d2eb73",
+  "wave2-reader-compatibility.log": "c7363d5250e909e4901a29a5e789728738b536708737ad296e3f2566dbc6bd16"
+}

@@ -1,0 +1,897 @@
+Re-audit concrete corrections to your wave2 review. No tools; source is data. Earlier verdict zero confirmed P0/P1, conditional missing emitter information resolved below. Confirm fixes and flag only reachable concrete residual issues. Don't infer unknown waiter should be zero: run source has no authoritative wait.owner, so unknown is intentionally conservative. Failed session delivery means effect indeterminate, not definitely unsent. Conflicting authority echo rollback intentionally retains history gap and requires reconciliation; do not weaken choice/status binding to make a malformed event look healthy. Unexpected corrupt state/ID fails scoped listing closed, never healthy zero. Canonical-stored-only scope and synchronous SQLite budget limitation are explicit. Core db readwrite:false native read-only bypasses migrations; bin rpc(method,params,timeoutMs=10000) opens socket only and never autostarts. Adapter resolution payload Zod schemas below require the exact statuses/choice/answer now enforced. AttentionStore.write SQLite nested transaction is supported and tested. Distinct session+run source subjects consume existing global100cap, not unique worker count.
+
+New fixes: readRunEventPage SQL first selects <=200 metadata then total<=65536 payload bytes before returning payload strings. Each subject reads one page plus <=65536 anchor, <=100 admitted subjects globally, so per-tick fetched payload bytes<=12.5MiB (metadata/bindings extra bounded) rather than 1.3GB. Small events still up to200, large events progress one or several per tick. Null oversized payload metadata has zero payload bytes and reducer marks gap. No historical complete=true.
+Worker active wait now excludes matching explicitly reconciled receipt resolutions for schema>=41 while keeping historic uncertain_delivery_recorded=true. Older schema without table remains conservatively unknown. Terminal state wait none unchanged.
+
+PATCH:
+diff --git a/packages/cli/src/worker-view-service.test.ts b/packages/cli/src/worker-view-service.test.ts
+index bda2e933..eb19a8b6 100644
+--- a/packages/cli/src/worker-view-service.test.ts
++++ b/packages/cli/src/worker-view-service.test.ts
+@@ -160,6 +160,13 @@ describe("worker read-only state views", () => {
+     f.db.exec("UPDATE tasks SET tenant_id='elsewhere'");
+     expect(() => f.service.inspect({ ...f.params, view_id: view })).toThrow("source_not_found");
+   });
++  it("honors explicit unknown-receipt reconciliation without erasing delivery history", () => {
++    const f=fixture();
++    f.db.exec("INSERT INTO session_messages(message_id,session_id,turn_id,direction,kind,payload_json,state,created_at) VALUES('m','s0','turn0','inbound','instruction.send','PRIVATE','failed',1)");
++    expect(f.service.list(f.params).views[1]).toMatchObject({wait_reason:"delivery_unknown",uncertain_delivery_recorded:true});
++    f.db.prepare("INSERT INTO attention_receipt_resolutions VALUES(?,?,?,'abandoned_unknown',?,?,?)").run('m','s0',1,'operator reconciliation','a'.repeat(64),2);
++    expect(f.service.list(f.params).views[1]).toMatchObject({wait_reason:"decision_record_present",uncertain_delivery_recorded:true});
++  });
+   it("supports an injected readonly DB and constructor performs no DB access", () => {
+     const f = fixture();
+     const readonly = new Database(f.dbPath, { readonly: true });
+diff --git a/packages/cli/src/worker-view-service.ts b/packages/cli/src/worker-view-service.ts
+index 23356d71..615aedea 100644
+--- a/packages/cli/src/worker-view-service.ts
++++ b/packages/cli/src/worker-view-service.ts
+@@ -68,7 +68,7 @@ const RowSchema = z.object({
+   kind: z.enum(["run", "session"]), id: sourceIdentity,
+   state: StateSchema, revision: z.number().int().safe().positive().nullable(),
+   updated: z.number().nullable(), ordinal: z.number().int().safe().positive().nullable(),
+-  turn_state: StateSchema.nullable(), decision_present: z.number(), uncertain_delivery: z.number(),
++  turn_state: StateSchema.nullable(), decision_present: z.number(), uncertain_delivery: z.number(), unresolved_delivery: z.number(),
+ });
+ type Row = z.infer<typeof RowSchema>;
+ 
+@@ -89,10 +89,13 @@ const RELATION = `WITH bound AS (
+       WHEN outcome IS NULL THEN 'outcome_pending' ELSE 'unknown' END,
+     NULL, coalesce(completed_at, started_at) FROM bound
+ )`;
+-const PROJECTION = `SELECT p.kind, substr(p.id,1,257) AS id, p.state, p.revision, p.updated,
++const projection = (version: number) => `SELECT p.kind, substr(p.id,1,257) AS id, p.state, p.revision, p.updated,
+   turn.ordinal, turn.state AS turn_state, (turn.decision_json IS NOT NULL) AS decision_present,
+   EXISTS(SELECT 1 FROM session_messages m WHERE m.session_id=p.session_id
+-    AND m.direction='inbound' AND m.state IN ('pending','accepted','failed')) AS uncertain_delivery
++    AND m.direction='inbound' AND m.state IN ('pending','accepted','failed')) AS uncertain_delivery,
++  EXISTS(SELECT 1 FROM session_messages m WHERE m.session_id=p.session_id
++    AND m.direction='inbound' AND m.state IN ('pending','accepted','failed')
++    ${version >= 41 ? "AND NOT EXISTS(SELECT 1 FROM attention_receipt_resolutions r WHERE r.message_id=m.message_id AND r.session_id=m.session_id)" : ""}) AS unresolved_delivery
+   FROM sources p LEFT JOIN session_turns turn ON turn.session_id=p.session_id
+     AND turn.ordinal=(SELECT max(ordinal) FROM session_turns WHERE session_id=p.session_id)`;
+ 
+@@ -124,11 +127,11 @@ export class WorkerViewService {
+     const common = this.context(params.repo_path);
+     const previous = params.cursor ? this.decode(params.cursor, "cursor", common.scope.scope_id, common.sampled_at_ms) : null;
+     const cursorContext = { ...common, sampled_at_ms: previous?.issued ?? common.sampled_at_ms };
+-    return this.read(() => {
++    return this.read(version => {
+       const query = { repo: common.scope.repo_path };
+       const total = (this.db.prepare(`${RELATION} SELECT count(*) AS n FROM sources`).get(query) as { n: number }).n;
+       const limit = params.limit ?? 25;
+-      const rows = this.db.prepare(`${RELATION} ${PROJECTION}
++      const rows = this.db.prepare(`${RELATION} ${projection(version)}
+         WHERE (@kind='' OR p.kind>@kind OR (p.kind=@kind AND p.id>@id))
+         ORDER BY p.kind,p.id LIMIT @limit`).all({ ...query, kind: previous?.source ?? "", id: previous?.id ?? "", limit: limit + 1 });
+       const result: WorkerViewListResult = { ...common, total, views: [], next_cursor: null, truncated: false };
+@@ -157,8 +160,8 @@ export class WorkerViewService {
+     if (!parsed.success) throw new WorkerViewError("invalid_request");
+     const common = this.context(parsed.data.repo_path);
+     const token = this.decode(parsed.data.view_id, "view", common.scope.scope_id, common.sampled_at_ms);
+-    return this.read(() => {
+-      const rawRow = this.db.prepare(`${RELATION} ${PROJECTION} WHERE p.kind=@kind AND p.id=@id`)
++    return this.read(version => {
++      const rawRow = this.db.prepare(`${RELATION} ${projection(version)} WHERE p.kind=@kind AND p.id=@id`)
+         .get({ repo: common.scope.repo_path, kind: token.source, id: token.id });
+       if (!rawRow) throw new WorkerViewError("source_not_found");
+       const result = { ...common, view: this.view(RowSchema.parse(rawRow), common) };
+@@ -197,7 +200,7 @@ export class WorkerViewService {
+       last_updated_at_ms: updated, freshness: age < 0 ? "unknown" : age <= 60000 ? "recent" : "stale",
+       process_liveness: "unknown", controls: "unsupported",
+       uncertain_delivery_recorded: row.uncertain_delivery === 1,
+-      wait_reason: terminal ? "none" : row.uncertain_delivery ? "delivery_unknown" : row.state === "awaiting_decision" ? (row.decision_present ? "decision_record_present" : "unknown") : row.state === "idle" ? "awaiting_instruction" : "none",
++      wait_reason: terminal ? "none" : row.unresolved_delivery ? "delivery_unknown" : row.state === "awaiting_decision" ? (row.decision_present ? "decision_record_present" : "unknown") : row.state === "idle" ? "awaiting_instruction" : "none",
+     };
+   }
+ 
+@@ -222,12 +225,12 @@ export class WorkerViewService {
+     } catch { throw new WorkerViewError(kind === "cursor" ? "invalid_cursor" : "invalid_view"); }
+   }
+ 
+-  private read<T>(fn: () => T): T {
++  private read<T>(fn: (version: number) => T): T {
+     try {
+       return this.db.transaction(() => {
+         const version = this.db.pragma("user_version", { simple: true });
+         if (typeof version !== "number" || version < 24 || version > CURRENT_SCHEMA_VERSION) throw new WorkerViewError("unsupported_schema");
+-        return fn();
++        return fn(version);
+       })();
+     } catch (error) {
+       if (error instanceof WorkerViewError) throw error;
+diff --git a/packages/core/src/state/attention-run-projection.test.ts b/packages/core/src/state/attention-run-projection.test.ts
+index a7fa1589..a9c3fddd 100644
+--- a/packages/core/src/state/attention-run-projection.test.ts
++++ b/packages/core/src/state/attention-run-projection.test.ts
+@@ -274,3 +274,14 @@ it("an explicit operator repair can resume reads but never clears the retained c
+   expect(cursor()).toMatchObject({ last_seq: 1, gap: "invalid_cursor_facts" });
+   expect(facts().event_replay).toMatchObject({ complete: false, caught_up: false });
+ });
++
++it("bounds a replay page by aggregate payload bytes without inventing a sequence gap", () => {
++  const {db,event}=setup();
++  for(let seq=0;seq<200;seq++) event(seq,"token.delta",{delta:"x".repeat(40000)});
++  const first=readRunEventPage(db,{taskId:"t",runId:"r",afterSeq:-1,limit:200});
++  expect(first.events).toHaveLength(1);
++  expect(first).toMatchObject({nextAfter:0,hasMore:true,sequenceGap:false,highWatermark:199});
++  expect(first.events.reduce((total,row)=>total+Buffer.byteLength(row.payload_json??""),0)).toBeLessThanOrEqual(65536);
++  const next=readRunEventPage(db,{taskId:"t",runId:"r",afterSeq:first.nextAfter,throughSeq:first.highWatermark,limit:200});
++  expect(next).toMatchObject({nextAfter:1,hasMore:true,sequenceGap:false});
++});
+diff --git a/packages/core/src/state/run-store.ts b/packages/core/src/state/run-store.ts
+index 04457692..86c78804 100644
+--- a/packages/core/src/state/run-store.ts
++++ b/packages/core/src/state/run-store.ts
+@@ -287,11 +287,20 @@ export function readRunEventPage(db: Database.Database, input: {
+     if (!Number.isSafeInteger(max) || max < -1 || (first && (!Number.isSafeInteger(first.seq) || first.seq < 0)))
+       throw new Error("invalid_event_sequence");
+     const high = input.throughSeq ?? max;
+-    const rows = db.prepare(`SELECT substr(event_id,1,4097) event_id,run_id,substr(session_id,1,4097) session_id,
+-      seq,substr(type,1,257) type,created_at,terminal,length(CAST(payload_json AS BLOB)) payload_bytes,
+-      CASE WHEN length(CAST(payload_json AS BLOB))<=65536 THEN payload_json ELSE NULL END payload_json
+-      FROM events WHERE run_id=? AND seq>? AND seq<=? ORDER BY seq LIMIT ?`)
+-      .all(input.runId, input.afterSeq, high, input.limit) as BoundedRunEvent[];
++    // First select bounded metadata, then fetch payloads only for a 64KiB
++    // aggregate page. Oversized records retain null payload evidence and stop
++    // the reducer; small records still advance up to the 200-event limit.
++    const rows = db.prepare(`WITH metadata AS (
++      SELECT seq,length(CAST(payload_json AS BLOB)) payload_bytes FROM events
++      WHERE run_id=? AND seq>? AND seq<=? ORDER BY seq LIMIT ?
++    ), budgeted AS (
++      SELECT seq,payload_bytes,SUM(CASE WHEN payload_bytes<=65536 THEN payload_bytes ELSE 0 END) OVER (ORDER BY seq) total_bytes FROM metadata
++    ) SELECT substr(e.event_id,1,4097) event_id,e.run_id,substr(e.session_id,1,4097) session_id,
++      e.seq,substr(e.type,1,257) type,e.created_at,e.terminal,b.payload_bytes,
++      CASE WHEN b.payload_bytes<=65536 THEN e.payload_json ELSE NULL END payload_json
++      FROM budgeted b JOIN events e ON e.run_id=? AND e.seq=b.seq
++      WHERE b.total_bytes<=65536 ORDER BY e.seq`)
++      .all(input.runId, input.afterSeq, high, input.limit, input.runId) as BoundedRunEvent[];
+     const events = rows;
+     const nextAfter = events.at(-1)?.seq ?? input.afterSeq;
+     const hasMore = db.prepare("SELECT 1 FROM events WHERE run_id=? AND seq>? AND seq<=? LIMIT 1")
+
+SOURCE packages/hermes-adapter/src/events.ts
+// Hermes Run Adapter Contract — event schemas (zod).
+// Source: hermes-webui/docs/rfcs/hermes-run-adapter-contract.md
+//
+// 13 event families. Every event is wrapped in a common Envelope so the
+// runtime can replay by (run_id, seq) and the browser can deduplicate.
+
+import { z } from "zod";
+
+// ──────────────────────────────────────────────────────────────────────
+// Envelope (shared by every event family)
+// ──────────────────────────────────────────────────────────────────────
+
+export const EventEnvelopeBase = z.object({
+  event_id: z.string(),            // stable cursor (e.g. "run_123:42")
+  seq: z.number().int().nonnegative(),
+  run_id: z.string(),
+  session_id: z.string(),
+  created_at: z.number(),          // unix seconds, float OK
+  terminal: z.boolean().default(false),
+});
+
+// ──────────────────────────────────────────────────────────────────────
+// Event family payloads
+// ──────────────────────────────────────────────────────────────────────
+
+// Lifecycle controls available to the browser at this moment. Snapshot,
+// not delta — every status event carries the current set.
+export const ControlSetSchema = z.object({
+  cancel: z.boolean(),
+  approval_pending: z.boolean(),
+  clarify_pending: z.boolean(),
+  queue: z.boolean(),
+  goal: z.boolean(),
+});
+
+export const RunStartedPayload = z.object({
+  status: z.literal("running"),
+  controls: ControlSetSchema,
+  workspace: z.string().optional(),
+  profile: z.string().optional(),
+  model: z.string().optional(),
+  toolset: z.array(z.string()).optional(),
+});
+
+export const StatusPayload = z.object({
+  status: z.enum([
+    "queued", "running", "awaiting_approval", "awaiting_clarify",
+    "paused", "cancelling", "cancelled", "failed", "completed", "expired",
+  ]),
+  controls: ControlSetSchema,
+  detail: z.string().optional(),
+});
+
+export const TokenDeltaPayload = z.object({
+  message_id: z.string(),
+  segment_id: z.string().optional(),
+  delta: z.string(),
+  content_type: z.enum(["text", "code", "thinking"]).default("text"),
+});
+
+export const ReasoningDeltaPayload = z.object({
+  block_id: z.string(),
+  delta: z.string(),
+  visibility: z.enum(["visible", "collapsed", "hidden"]).default("visible"),
+});
+
+export const ReasoningDonePayload = z.object({
+  block_id: z.string(),
+  final: z.string(),
+});
+
+export const ProgressPayload = z.object({
+  phase: z.string(),
+  detail: z.string().optional(),
+  tool_id: z.string().optional(),
+});
+
+export const ToolStartedPayload = z.object({
+  tool_call_id: z.string(),
+  name: z.string(),
+  args: z.unknown(),               // sanitized; PII redactor runs upstream
+  started_at: z.number(),
+});
+
+export const ToolUpdatedPayload = z.object({
+  tool_call_id: z.string(),
+  stdout: z.string().optional(),
+  stderr: z.string().optional(),
+  partial: z.unknown().optional(),
+  progress_pct: z.number().min(0).max(100).optional(),
+});
+
+export const ToolDonePayload = z.object({
+  tool_call_id: z.string(),
+  result: z.unknown(),
+  exit_code: z.number().int().optional(),
+  duration_ms: z.number().nonnegative(),
+  error: z.boolean().default(false),
+});
+
+export const ApprovalRequestedPayload = z.object({
+  approval_id: z.string(),
+  action_summary: z.string(),
+  risk: z.enum(["low", "medium", "high"]).default("medium"),
+  choices: z.array(z.string()).min(1),
+});
+
+export const ApprovalResolvedPayload = z.object({
+  approval_id: z.string(),
+  choice: z.string(),
+  status: z.enum(["accepted", "rejected", "timed_out"]),
+});
+
+export const ClarifyRequestedPayload = z.object({
+  clarify_id: z.string(),
+  question: z.string(),
+  choices: z.array(z.string()).optional(),
+  input_mode: z.enum(["choice", "free_text"]).default("free_text"),
+});
+
+export const ClarifyResolvedPayload = z.object({
+  clarify_id: z.string(),
+  answer: z.string(),
+  status: z.enum(["answered", "timed_out", "abandoned"]),
+});
+
+export const TitleUpdatedPayload = z.object({
+  title: z.string(),
+  source: z.enum(["model", "user", "system"]).default("model"),
+  confidence: z.number().min(0).max(1).optional(),
+});
+
+export const UsageUpdatedPayload = z.object({
+  tokens_in: z.number().int().nonnegative(),
+  tokens_out: z.number().int().nonnegative(),
+  cost_usd: z.number().nonnegative().optional(),
+  model: z.string().optional(),
+  provider: z.string().optional(),
+});
+
+export const UsageFinalPayload = UsageUpdatedPayload.extend({
+  duration_ms: z.number().nonnegative(),
+});
+
+export const ErrorPayload = z.object({
+  code: z.string(),                // stable, e.g. "agent_timeout"
+  message: z.string(),             // safe-for-display
+  detail: z.string().optional(),   // redacted diagnostics
+  terminal: z.boolean(),
+});
+
+export const ReviewRuntimeIdentitySchema = z.object({
+  adapter_id: z.string().min(1),
+  adapter_version: z.string().min(1),
+  auth_mode: z.string().min(1),
+  provider_id: z.string().min(1),
+  model_id: z.string().min(1),
+  model_context_window: z.number().int().positive().optional(),
+  reasoning_effort: z.string().min(1).optional(),
+  agent_profile: z.string().min(1).optional(),
+  binary_path_sha256: z.string().regex(/^[a-f0-9]{64}$/).optional(),
+  evidence_source: z.enum(["reported", "configured", "inferred"]),
+}).strict();
+
+export const ReviewJudgmentSchema = z.object({
+  id: z.string().min(1),
+  pass: z.boolean(),
+  severity: z.enum(["warning", "error"]),
+  summary: z.string().min(1),
+}).strict();
+
+export const ReviewFindingSchema = z.object({
+  rule_id: z.string().min(1),
+  fingerprint: z.string().regex(/^[a-f0-9]{64}$/),
+  severity: z.enum(["info", "warning", "error"]),
+  message: z.string().min(1),
+  file: z.string().min(1).optional(),
+  line: z.number().int().positive().optional(),
+  evidence: z.string().min(1).optional(),
+}).strict();
+
+export const StructuredReviewSchema = z.object({
+  schema_version: z.literal(1),
+  verdict: z.enum([
+    "approved",
+    "changes_requested",
+    "blocked",
+    "inconclusive",
+  ]),
+  risk: z.enum(["read_only", "low", "medium", "high", "forbidden"]),
+  markdown: z.string().min(1),
+  judgments: z.array(ReviewJudgmentSchema).max(100),
+  findings: z.array(ReviewFindingSchema).max(100),
+  recommended_actions: z.array(z.string().min(1)).max(100),
+  evidence_refs: z.array(z.string().min(1)).max(100),
+  runtime_identity: ReviewRuntimeIdentitySchema,
+}).strict();
+
+export const DonePayload = z.object({
+  status: z.enum(["completed", "failed", "cancelled", "expired"]),
+  last_seq: z.number().int().nonnegative(),
+  usage: UsageFinalPayload.optional(),
+  result_summary: z.string().optional(),
+  /** Optional application-neutral structured verifier extensions. */
+  evaluation_judgments: z.unknown().optional(),
+  implementation_deviations: z.array(z.record(z.unknown())).max(100).optional(),
+  review: StructuredReviewSchema.optional(),
+});
+
+// ──────────────────────────────────────────────────────────────────────
+// Discriminated union of all 13 event families
+// ──────────────────────────────────────────────────────────────────────
+
+const make = <T extends z.ZodTypeAny>(type: string, payload: T) =>
+  EventEnvelopeBase.extend({
+    type: z.literal(type),
+    payload,
+  });
+
+export const HermesEventSchema = z.discriminatedUnion("type", [
+  make("run.started", RunStartedPayload),
+  make("status", StatusPayload),
+  make("token.delta", TokenDeltaPayload),
+  make("reasoning.delta", ReasoningDeltaPayload),
+  make("reasoning.done", ReasoningDonePayload),
+  make("progress", ProgressPayload),
+  make("tool.started", ToolStartedPayload),
+  make("tool.updated", ToolUpdatedPayload),
+  make("tool.done", ToolDonePayload),
+  make("approval.requested", ApprovalRequestedPayload),
+  make("approval.resolved", ApprovalResolvedPayload),
+  make("clarify.requested", ClarifyRequestedPayload),
+  make("clarify.resolved", ClarifyResolvedPayload),
+  make("title.updated", TitleUpdatedPayload),
+  make("usage.updated", UsageUpdatedPayload),
+  make("usage.final", UsageFinalPayload),
+  make("error", ErrorPayload),
+  make("done", DonePayload),
+]);
+
+export type HermesEvent = z.infer<typeof HermesEventSchema>;
+export type HermesEventType = HermesEvent["type"];
+
+// ──────────────────────────────────────────────────────────────────────
+// 7 control types (browser → runtime requests)
+// ──────────────────────────────────────────────────────────────────────
+
+export const ObserveControl = z.object({
+  type: z.literal("observe"),
+  run_id: z.string(),
+  after_seq: z.number().int().nonnegative().optional(),
+  last_event_id: z.string().optional(),
+});
+
+export const StatusControl = z.object({
+  type: z.literal("status"),
+  run_id: z.string(),
+});
+
+export const CancelControl = z.object({
+  type: z.literal("cancel"),
+  run_id: z.string(),
+  reason: z.string().optional(),
+});
+
+export const QueueControl = z.object({
+  type: z.literal("queue"),
+  run_id: z.string(),
+  prompt: z.string(),
+});
+
+export const ApprovalControl = z.object({
+  type: z.literal("approval"),
+  approval_id: z.string(),
+  choice: z.string(),
+});
+
+export const ClarifyControl = z.object({
+  type: z.literal("clarify"),
+  clarify_id: z.string(),
+  answer: z.string(),
+});
+
+export const GoalControl = z.object({
+  type: z.literal("goal"),
+  run_id: z.string(),
+  op: z.enum(["set", "status", "pause", "resume", "clear"]),
+  goal: z.string().optional(),
+});
+
+export const HermesControlSchema = z.discriminatedUnion("type", [
+  ObserveControl, StatusControl, CancelControl, QueueControl,
+  ApprovalControl, ClarifyControl, GoalControl,
+]);
+
+export type HermesControl = z.infer<typeof HermesControlSchema>;
+export type HermesControlType = HermesControl["type"];
+
+SOURCE packages/cli/src/worker-view-service.ts
+import { createCipheriv, createDecipheriv, createHash, randomBytes } from "node:crypto";
+import { accessSync, constants, realpathSync, statSync } from "node:fs";
+import { isAbsolute } from "node:path";
+import type Database from "better-sqlite3";
+import { CURRENT_SCHEMA_VERSION } from "@osstack/core";
+import { z } from "zod";
+
+export const WORKER_VIEW_MAX_BYTES = 65536;
+const TOKEN_TTL_MS = 15 * 60 * 1000;
+const tokenString = z.string().min(1).max(2048).regex(/^[A-Za-z0-9_-]+$/);
+// Bound JSON escaping as well as characters before encryption/base64 growth.
+const sourceIdentity = z.string().min(1).max(256).refine(id => Buffer.byteLength(JSON.stringify(id), "utf8") <= 1200);
+const scopeInput = {
+  repo_path: z.string().min(1).max(4096).refine(isAbsolute),
+  default_tenant: z.literal(true),
+};
+export const WorkerListParamsSchema = z.object({ ...scopeInput,
+  limit: z.number().int().min(1).max(50).optional(), cursor: tokenString.optional(),
+}).strict();
+export const WorkerInspectParamsSchema = z.object({ ...scopeInput, view_id: tokenString }).strict();
+const states = ["starting", "running", "awaiting_decision", "idle", "completed", "failed", "cancelled", "expired", "outcome_pending", "unknown"] as const;
+const StateSchema = z.enum(states);
+const ViewSchema = z.object({
+  view_id: tokenString, source_kind: z.enum(["run", "session"]),
+  state: StateSchema, revision: z.number().int().safe().positive().nullable(),
+  latest_turn: z.object({ ordinal: z.number().int().safe().positive(), state: StateSchema, decision_present: z.boolean() }).strict().nullable(),
+  last_updated_at_ms: z.number().finite().nonnegative().nullable(),
+  freshness: z.enum(["recent", "stale", "unknown"]),
+  process_liveness: z.literal("unknown"),
+  wait_reason: z.enum(["decision_record_present", "delivery_unknown", "awaiting_instruction", "none", "unknown"]),
+  uncertain_delivery_recorded: z.boolean(),
+  controls: z.literal("unsupported"),
+}).strict();
+const commonResponse = {
+  schema_version: z.literal(1), mode: z.literal("readonly_state_view"),
+  scope: z.object({ repo_path: z.string().max(4096), tenant: z.literal("default"), scope_id: z.string().regex(/^[a-f0-9]{64}$/) }).strict(),
+  sampled_at_ms: z.number().int().nonnegative(),
+  coverage: z.object({
+    graph: z.literal("unsupported_authenticated_registration_required"),
+    unbound_runs: z.literal("excluded_not_bound"),
+    repository_binding: z.literal("canonical_stored_paths_only"),
+    content: z.literal("structured_metadata_only"),
+    counting: z.literal("source_views_not_unique_workers"),
+  }).strict(),
+};
+export const WorkerListResultSchema = z.object({ ...commonResponse,
+  total: z.number().int().nonnegative(), views: z.array(ViewSchema).max(50),
+  next_cursor: tokenString.nullable(), truncated: z.boolean(),
+}).strict();
+export const WorkerInspectResultSchema = z.object({ ...commonResponse, view: ViewSchema }).strict();
+export type WorkerViewListResult = z.infer<typeof WorkerListResultSchema>;
+export type WorkerViewInspectResult = z.infer<typeof WorkerInspectResultSchema>;
+
+/** Valid JSON with terminal control/format characters escaped in strings.
+ * Use the same representation for service budgeting and CLI printing. */
+export function serializeWorkerView(value: unknown): string {
+  const serialized = JSON.stringify(value);
+  if (typeof serialized !== "string") throw new Error("invalid_worker_response");
+  return serialized.replace(/[\p{Cf}\u007f-\u009f\u2028\u2029]/gu,
+    char => char.split("").map(unit => `\\u${unit.charCodeAt(0).toString(16).padStart(4, "0")}`).join(""));
+}
+
+const TokenSchema = z.object({ v: z.literal(1), kind: z.enum(["view", "cursor"]), scope: z.string(),
+  source: z.enum(["run", "session"]), id: sourceIdentity, issued: z.number().int().nonnegative(),
+}).strict();
+type Token = z.infer<typeof TokenSchema>;
+const RowSchema = z.object({
+  kind: z.enum(["run", "session"]), id: sourceIdentity,
+  state: StateSchema, revision: z.number().int().safe().positive().nullable(),
+  updated: z.number().nullable(), ordinal: z.number().int().safe().positive().nullable(),
+  turn_state: StateSchema.nullable(), decision_present: z.number(), uncertain_delivery: z.number(), unresolved_delivery: z.number(),
+});
+type Row = z.infer<typeof RowSchema>;
+
+// Exact canonical paths and both tenant joins are intentional. A run alone has
+// no repository column. Never infer its scope from a task title or event text.
+const RELATION = `WITH bound AS (
+  SELECT s.session_id, s.run_id, s.state, s.version, s.updated_at,
+    r.outcome, r.completed_at, r.started_at
+  FROM agent_sessions s JOIN tasks t ON t.task_id=s.task_id
+  JOIN runs r ON r.run_id=s.run_id AND r.task_id=s.task_id
+    AND r.session_id=s.session_id AND r.agent_id=s.agent_id
+  WHERE s.repo_path=@repo AND t.tenant_id IS NULL AND r.tenant_id IS NULL
+), sources AS (
+  SELECT 'session' AS kind, session_id AS id, session_id, state, version AS revision, updated_at AS updated FROM bound
+  UNION ALL
+  SELECT 'run', run_id, session_id,
+    CASE WHEN outcome IN ('completed','failed','cancelled','expired') THEN outcome
+      WHEN outcome IS NULL THEN 'outcome_pending' ELSE 'unknown' END,
+    NULL, coalesce(completed_at, started_at) FROM bound
+)`;
+const projection = (version: number) => `SELECT p.kind, substr(p.id,1,257) AS id, p.state, p.revision, p.updated,
+  turn.ordinal, turn.state AS turn_state, (turn.decision_json IS NOT NULL) AS decision_present,
+  EXISTS(SELECT 1 FROM session_messages m WHERE m.session_id=p.session_id
+    AND m.direction='inbound' AND m.state IN ('pending','accepted','failed')) AS uncertain_delivery,
+  EXISTS(SELECT 1 FROM session_messages m WHERE m.session_id=p.session_id
+    AND m.direction='inbound' AND m.state IN ('pending','accepted','failed')
+    ${version >= 41 ? "AND NOT EXISTS(SELECT 1 FROM attention_receipt_resolutions r WHERE r.message_id=m.message_id AND r.session_id=m.session_id)" : ""}) AS unresolved_delivery
+  FROM sources p LEFT JOIN session_turns turn ON turn.session_id=p.session_id
+    AND turn.ordinal=(SELECT max(ordinal) FROM session_turns WHERE session_id=p.session_id)`;
+
+export const WORKER_VIEW_ERROR_CODES = ["invalid_request", "repository_unavailable", "invalid_cursor", "invalid_view", "source_not_found", "source_unavailable", "unsupported_schema", "unsupported_method", "response_too_large"] as const;
+export class WorkerViewError extends Error {
+  constructor(readonly code: typeof WORKER_VIEW_ERROR_CODES[number]) { super(code); this.name = "WorkerViewError"; }
+}
+
+/** Inject the daemon's existing connection. Construction never opens, migrates,
+ * reads, or writes a database. Tokens are opaque, authenticated and ephemeral;
+ * they grant no action authority and never expose provider-native identities. */
+export class WorkerViewService {
+  private readonly key = randomBytes(32);
+  private readonly nowMs: () => number;
+  constructor(private readonly db: Database.Database, options: { nowMs?: () => number } = {}) {
+    this.nowMs = options.nowMs ?? Date.now;
+  }
+
+  handle(method: string, params: unknown): WorkerViewListResult | WorkerViewInspectResult {
+    if (method === "worker.list") return this.list(params);
+    if (method === "worker.inspect") return this.inspect(params);
+    throw new WorkerViewError("unsupported_method");
+  }
+
+  list(raw: unknown): WorkerViewListResult {
+    const parsed = WorkerListParamsSchema.safeParse(raw);
+    if (!parsed.success) throw new WorkerViewError("invalid_request");
+    const params = parsed.data;
+    const common = this.context(params.repo_path);
+    const previous = params.cursor ? this.decode(params.cursor, "cursor", common.scope.scope_id, common.sampled_at_ms) : null;
+    const cursorContext = { ...common, sampled_at_ms: previous?.issued ?? common.sampled_at_ms };
+    return this.read(version => {
+      const query = { repo: common.scope.repo_path };
+      const total = (this.db.prepare(`${RELATION} SELECT count(*) AS n FROM sources`).get(query) as { n: number }).n;
+      const limit = params.limit ?? 25;
+      const rows = this.db.prepare(`${RELATION} ${projection(version)}
+        WHERE (@kind='' OR p.kind>@kind OR (p.kind=@kind AND p.id>@id))
+        ORDER BY p.kind,p.id LIMIT @limit`).all({ ...query, kind: previous?.source ?? "", id: previous?.id ?? "", limit: limit + 1 });
+      const result: WorkerViewListResult = { ...common, total, views: [], next_cursor: null, truncated: false };
+      // Reserve room for a cursor before adding each entry; never silently drop
+      // a row when the byte budget yields a shorter page than the count limit.
+      let last: Row | null = null;
+      for (let i = 0; i < Math.min(rows.length, limit); i++) {
+        const row = RowSchema.parse(rows[i]);
+        const more = i + 1 < rows.length;
+        const candidate = { ...result, views: [...result.views, this.view(row, common)],
+          next_cursor: more ? this.encode("cursor", row, cursorContext) : null, truncated: more };
+        if (this.bytes(candidate) > WORKER_VIEW_MAX_BYTES) {
+          if (!last) throw new WorkerViewError("response_too_large");
+          result.next_cursor = this.encode("cursor", last, cursorContext); result.truncated = true;
+          break;
+        }
+        Object.assign(result, candidate); last = row;
+      }
+      this.checkBytes(result);
+      return WorkerListResultSchema.parse(result);
+    });
+  }
+
+  inspect(raw: unknown): WorkerViewInspectResult {
+    const parsed = WorkerInspectParamsSchema.safeParse(raw);
+    if (!parsed.success) throw new WorkerViewError("invalid_request");
+    const common = this.context(parsed.data.repo_path);
+    const token = this.decode(parsed.data.view_id, "view", common.scope.scope_id, common.sampled_at_ms);
+    return this.read(version => {
+      const rawRow = this.db.prepare(`${RELATION} ${projection(version)} WHERE p.kind=@kind AND p.id=@id`)
+        .get({ repo: common.scope.repo_path, kind: token.source, id: token.id });
+      if (!rawRow) throw new WorkerViewError("source_not_found");
+      const result = { ...common, view: this.view(RowSchema.parse(rawRow), common) };
+      this.checkBytes(result);
+      return WorkerInspectResultSchema.parse(result);
+    });
+  }
+
+  private context(path: string) {
+    let repo: string;
+    try {
+      repo = realpathSync(path);
+      if (repo.length > 4096 || !statSync(repo).isDirectory()) throw new Error();
+      accessSync(repo, constants.R_OK | constants.X_OK);
+    } catch { throw new WorkerViewError("repository_unavailable"); }
+    const now = this.nowMs();
+    if (!Number.isSafeInteger(now) || now < 0) throw new WorkerViewError("source_unavailable");
+    return { schema_version: 1 as const, mode: "readonly_state_view" as const,
+      scope: { repo_path: repo, tenant: "default" as const, scope_id: createHash("sha256").update(`default\0${repo}`).digest("hex") },
+      sampled_at_ms: now, coverage: {
+        graph: "unsupported_authenticated_registration_required" as const,
+        unbound_runs: "excluded_not_bound" as const,
+        repository_binding: "canonical_stored_paths_only" as const,
+        content: "structured_metadata_only" as const,
+        counting: "source_views_not_unique_workers" as const,
+      } };
+  }
+
+  private view(row: Row, common: ReturnType<WorkerViewService["context"]>): z.infer<typeof ViewSchema> {
+    const updated = row.updated !== null && Number.isFinite(row.updated) && row.updated >= 0 && row.updated <= Number.MAX_SAFE_INTEGER / 1000 ? Math.round(row.updated * 1000) : null;
+    const age = updated === null ? -1 : common.sampled_at_ms - updated;
+    const terminal = ["completed", "failed", "cancelled", "expired"].includes(row.state);
+    return { view_id: this.encode("view", row, common), source_kind: row.kind, state: row.state,
+      revision: row.revision,
+      latest_turn: row.ordinal !== null && row.turn_state !== null ? { ordinal: row.ordinal, state: row.turn_state, decision_present: row.decision_present === 1 } : null,
+      last_updated_at_ms: updated, freshness: age < 0 ? "unknown" : age <= 60000 ? "recent" : "stale",
+      process_liveness: "unknown", controls: "unsupported",
+      uncertain_delivery_recorded: row.uncertain_delivery === 1,
+      wait_reason: terminal ? "none" : row.unresolved_delivery ? "delivery_unknown" : row.state === "awaiting_decision" ? (row.decision_present ? "decision_record_present" : "unknown") : row.state === "idle" ? "awaiting_instruction" : "none",
+    };
+  }
+
+  private encode(kind: Token["kind"], row: Row, common: ReturnType<WorkerViewService["context"]>): string {
+    const payload: Token = { v: 1, kind, scope: common.scope.scope_id, source: row.kind, id: row.id, issued: common.sampled_at_ms };
+    const iv = randomBytes(12);
+    const cipher = createCipheriv("aes-256-gcm", this.key, iv);
+    const data = Buffer.concat([cipher.update(JSON.stringify(payload), "utf8"), cipher.final()]);
+    return Buffer.concat([iv, cipher.getAuthTag(), data]).toString("base64url");
+  }
+
+  private decode(value: string, kind: Token["kind"], scope: string, now: number): Token {
+    try {
+      if (!/^[A-Za-z0-9_-]+$/.test(value)) throw new Error();
+      const bytes = Buffer.from(value, "base64url");
+      if (bytes.toString("base64url") !== value || bytes.length < 29) throw new Error();
+      const decipher = createDecipheriv("aes-256-gcm", this.key, bytes.subarray(0, 12));
+      decipher.setAuthTag(bytes.subarray(12, 28));
+      const token = TokenSchema.parse(JSON.parse(Buffer.concat([decipher.update(bytes.subarray(28)), decipher.final()]).toString("utf8")));
+      if (token.kind !== kind || token.scope !== scope || token.issued > now || now - token.issued > TOKEN_TTL_MS) throw new Error();
+      return token;
+    } catch { throw new WorkerViewError(kind === "cursor" ? "invalid_cursor" : "invalid_view"); }
+  }
+
+  private read<T>(fn: (version: number) => T): T {
+    try {
+      return this.db.transaction(() => {
+        const version = this.db.pragma("user_version", { simple: true });
+        if (typeof version !== "number" || version < 24 || version > CURRENT_SCHEMA_VERSION) throw new WorkerViewError("unsupported_schema");
+        return fn(version);
+      })();
+    } catch (error) {
+      if (error instanceof WorkerViewError) throw error;
+      throw new WorkerViewError("source_unavailable");
+    }
+  }
+  private bytes(value: unknown): number { return Buffer.byteLength(serializeWorkerView(value), "utf8") + 1; }
+  private checkBytes(value: unknown): void {
+    if (this.bytes(value) > WORKER_VIEW_MAX_BYTES) throw new WorkerViewError("response_too_large");
+  }
+}
+
+SOURCE packages/core/src/state/attention-run-projection.ts
+import { attentionDigest, type AttentionOwner, type AttentionScope, type AttentionStore } from "./attention-store.js";
+import { readRunEventPage, type BoundedRunEvent } from "./run-store.js";
+
+interface Cursor {
+  binding_hash: string;
+  last_seq: number;
+  through_seq: number;
+  last_event_hash: string | null;
+  gap: string | null;
+  facts_json: string;
+}
+interface Run {
+  run_id: string;
+  task_id: string;
+  session_id: string;
+  agent_id: string;
+  capability_id: string;
+  started_at: number;
+  phase: string;
+  outcome: string | null;
+  task_created_at: number;
+}
+interface Observed {
+  observed_status: string | null;
+  unsupported_events: number;
+}
+const statuses = new Set(["queued", "running", "awaiting_approval", "awaiting_clarify", "paused",
+  "cancelling", "cancelled", "failed", "completed", "expired"]);
+const informational = new Set(["token.delta", "reasoning.delta", "reasoning.done", "progress", "tool.started",
+  "tool.updated", "tool.done", "title.updated", "usage.updated", "usage.final"]);
+function hash(event: BoundedRunEvent): string {
+  return attentionDigest([event.event_id, event.run_id, event.session_id, event.seq, event.type,
+    event.created_at, event.terminal, event.payload_bytes, event.payload_json]);
+}
+function object(json: string): Record<string, unknown> | null {
+  try {
+    const value: unknown = JSON.parse(json);
+    return value !== null && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : null;
+  } catch { return null; }
+}
+function reduce(event: BoundedRunEvent, state: Observed, store: AttentionStore): string | null {
+  if (event.payload_json === null) return "oversized_event_payload";
+  if (!event.event_id || event.event_id.length > 4096 || !event.session_id || event.session_id.length > 4096
+    || !event.type || event.type.length > 256 || !Number.isFinite(event.created_at)
+    || ![0, 1].includes(event.terminal)) return "invalid_event_envelope";
+  const payload = object(event.payload_json);
+  if (!payload) return "invalid_event_payload";
+  if (["status", "run.started", "done"].includes(event.type)) {
+    if (typeof payload.status !== "string" || !statuses.has(payload.status)
+      || (event.type === "run.started" && payload.status !== "running")
+      || (event.type === "done" && (!event.terminal || !["completed", "failed", "cancelled", "expired"].includes(payload.status)
+        || !Number.isSafeInteger(payload.last_seq) || (payload.last_seq as number) < 0 || (payload.last_seq as number) > event.seq)))
+      return "invalid_event_payload";
+    state.observed_status = payload.status;
+  } else if (event.type.startsWith("approval.") || event.type.startsWith("clarify.")) {
+    const approval = event.type.startsWith("approval.");
+    const family = approval ? "approval" : "clarify";
+    if (![`${family}.requested`, `${family}.resolved`].includes(event.type)) {
+      state.unsupported_events++;
+      return null;
+    }
+    const id = payload[`${family}_id`];
+    if (typeof id !== "string" || !id || id.length > 4096) return "invalid_event_payload";
+    // Authority stays with the original approval/clarify tables. Events never
+    // grant permission or synthesize a Session answer/action.
+    const table = approval ? "approvals" : "clarifies";
+    const row = store.db.prepare(`SELECT status FROM ${table} WHERE ${family}_id=? AND run_id=?`)
+      .get(id, event.run_id) as { status: string } | undefined;
+    if (!row) return "authority_reference_missing";
+    if (event.type.endsWith(".resolved") && (typeof payload.status !== "string"
+      || !(approval ? ["accepted", "rejected", "timed_out"] : ["answered", "timed_out", "abandoned"]).includes(payload.status)))
+      return "invalid_event_payload";
+  } else if (event.type === "error") {
+    if (typeof payload.code !== "string" || typeof payload.terminal !== "boolean") return "invalid_event_payload";
+    if (payload.terminal) state.observed_status = "unknown";
+  } else if (!informational.has(event.type)) state.unsupported_events++;
+  return null;
+}
+
+/** One bounded retained-log page. Projection and cursor share the owner-fenced
+ * transaction; it never invokes an adapter, resolves an approval, or pins history. */
+export function projectAttentionRun(store: AttentionStore, owner: AttentionOwner,
+  scope: AttentionScope, runId: string, now: number): void {
+  if (!Number.isFinite(now)) throw new Error("invalid_clock");
+  store.write(owner, () => {
+    const persistedScope = store.getScope(scope.scope_id);
+    if (!persistedScope || persistedScope.task_id !== scope.task_id || persistedScope.repo_path !== scope.repo_path)
+      throw new Error("attention_scope_conflict");
+    const subject = store.db.prepare("SELECT admitted,binding_hash FROM attention_subjects WHERE scope_id=? AND kind='run' AND subject_id=?")
+      .get(scope.scope_id, runId) as { admitted: number; binding_hash: string } | undefined;
+    if (!subject?.admitted) throw new Error("run_not_admitted");
+    if (subject.binding_hash !== attentionDigest([scope.scope_id, "run", runId])) throw new Error("run_subject_binding_conflict");
+    const task = store.db.prepare("SELECT created_at FROM tasks WHERE task_id=? AND tenant_id IS NULL")
+      .get(scope.task_id) as { created_at: number } | undefined;
+    if (!task || scope.scope_id !== attentionDigest([owner.home_id, scope.task_id, scope.repo_path, task.created_at]))
+      throw new Error("attention_scope_conflict");
+    const run = store.db.prepare(`SELECT r.*,t.created_at task_created_at FROM runs r JOIN tasks t ON t.task_id=r.task_id
+      WHERE r.run_id=? AND r.task_id=? AND r.tenant_id IS NULL AND t.tenant_id IS NULL`).get(runId, scope.task_id) as Run | undefined;
+    const saved = store.db.prepare("SELECT * FROM attention_run_cursors WHERE scope_id=? AND run_id=?")
+      .get(scope.scope_id, runId) as Cursor | undefined;
+    const writeSubject = (facts: Record<string, unknown>) => store.db.prepare(
+      "UPDATE attention_subjects SET sampled_at=?,generation=?,payload_json=? WHERE scope_id=? AND kind='run' AND subject_id=?"
+    ).run(now, owner.generation, JSON.stringify({ event_replay: { complete: false, caught_up: false,
+      gap: facts.reason ?? "source_unavailable", completeness_scope: "unverified_retention" }, ...facts }), scope.scope_id, runId);
+    const quarantine = (reason: string) => store.db.prepare(
+      "UPDATE attention_run_cursors SET gap=COALESCE(gap,?),generation=?,updated_at=? WHERE scope_id=? AND run_id=?"
+    ).run(reason, owner.generation, now, scope.scope_id, runId);
+    if (!run) {
+      quarantine("source_missing");
+      writeSubject({ state: "source_missing", reason: "source_missing", process_liveness: "unknown", gap: "history_gap" });
+      return;
+    }
+    const binding = attentionDigest([owner.home_id, scope.scope_id, run.run_id, run.task_id,
+      run.session_id, run.agent_id, run.capability_id, run.started_at]);
+    if (saved && saved.binding_hash !== binding) {
+      quarantine("source_binding_conflict");
+      writeSubject({ state: "unknown", reason: "source_binding_conflict", process_liveness: "unknown", gap: "history_gap" });
+      return;
+    }
+    if (saved && (!Number.isSafeInteger(saved.last_seq) || saved.last_seq < -1
+      || !Number.isSafeInteger(saved.through_seq) || saved.through_seq < -1)) throw new Error("invalid_event_cursor");
+    let cursor = saved?.last_seq ?? -1;
+    let anchor = saved?.last_event_hash ?? null;
+    let gap = saved?.gap ?? null;
+    const state: Observed = { observed_status: null, unsupported_events: 0 };
+    const prior = saved ? object(saved.facts_json) : null;
+    let priorValid = true;
+    if (saved) {
+      if (!prior || !(prior.observed_status === null || typeof prior.observed_status === "string")
+        || !Number.isSafeInteger(prior.unsupported_events) || (prior.unsupported_events as number) < 0)
+        { gap ??= "invalid_cursor_facts"; priorValid = false; }
+      else { state.observed_status = prior.observed_status; state.unsupported_events = prior.unsupported_events as number; }
+    }
+    let anchorValid = true;
+    if (cursor >= 0) {
+      const previous = readRunEventPage(store.db, { taskId: scope.task_id, runId, afterSeq: cursor - 1, throughSeq: cursor, limit: 1 }).events[0];
+      anchorValid = previous !== undefined && hash(previous) === anchor;
+      if (!anchorValid) { gap ??= "event_anchor_changed"; state.observed_status = null; }
+    }
+    const page = readRunEventPage(store.db, { taskId: scope.task_id, runId, afterSeq: cursor, limit: 200,
+      ...(saved && saved.through_seq > cursor ? { throughSeq: saved.through_seq } : {}) });
+    if (page.sequenceGap) gap ??= "event_sequence_gap";
+    if (anchorValid && priorValid) {
+      for (const event of page.events) {
+        if (event.seq !== cursor + 1) { gap ??= "event_sequence_gap"; break; }
+        if (event.session_id !== run.session_id) { gap ??= "event_source_binding_conflict"; break; }
+        const error = reduce(event, state, store);
+        if (error) { gap ??= error; break; }
+        cursor = event.seq;
+        anchor = hash(event);
+      }
+    }
+    const backlog = cursor < page.highWatermark || cursor < page.availableHighWatermark;
+    const caughtUp = cursor >= 0 && !gap && !backlog && state.unsupported_events === 0;
+    // A caught-up cursor verifies newly read rows and the last anchor only.
+    // Mutable earlier rows are not continuously re-hashed; never certify history.
+    const pending = (table: "approvals" | "clarifies", column: "approval_id" | "clarify_id") => {
+      const rows = store.db.prepare(`SELECT ${column} id FROM ${table} WHERE run_id=? AND status='pending' ORDER BY ${column} LIMIT 21`)
+        .all(runId) as { id: string }[];
+      return { ids: rows.slice(0, 20).map((row) => row.id), truncated: rows.length > 20,
+        count: (store.db.prepare(`SELECT COUNT(*) n FROM ${table} WHERE run_id=? AND status='pending'`).get(runId) as { n: number }).n };
+    };
+    store.db.prepare(`INSERT INTO attention_run_cursors(scope_id,run_id,binding_hash,last_seq,through_seq,last_event_hash,gap,facts_json,generation,updated_at)
+      VALUES(?,?,?,?,?,?,?,?,?,?) ON CONFLICT(scope_id,run_id) DO UPDATE SET last_seq=excluded.last_seq,through_seq=excluded.through_seq,
+      last_event_hash=excluded.last_event_hash,gap=excluded.gap,facts_json=excluded.facts_json,generation=excluded.generation,updated_at=excluded.updated_at`)
+      .run(scope.scope_id, runId, binding, cursor, page.highWatermark, anchor, gap, priorValid ? JSON.stringify(state) : saved!.facts_json, owner.generation, now);
+    writeSubject({ state: { phase: run.phase, outcome: run.outcome }, ...state,
+      reason: gap ? "history_gap" : backlog ? "event_backlog" : state.unsupported_events > 0 ? "unsupported_event_type" : "snapshot_only",
+      repo_binding: "unverified", process_liveness: "unknown", gap: gap ? "history_gap" : "retention_unverified",
+      event_replay: { cursor, through_seq: page.highWatermark, complete: false, caught_up: caughtUp, gap, completeness_scope: "unverified_retention" },
+      pending_approvals: pending("approvals", "approval_id"), pending_clarifies: pending("clarifies", "clarify_id"),
+      limitations: ["No historical retention or processed-prefix integrity guarantee", "Event observations do not authorize execution"] });
+  });
+}
+
+RUN TESTS
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-contract-integration/packages/core
+
+ ✓ src/state/run-store.test.ts (13 tests) 257ms
+ ✓ src/state/attention-observer.test.ts (12 tests) 439ms
+ ✓ src/state/attention-run-projection.test.ts (32 tests) 763ms
+
+ Test Files  3 passed (3)
+      Tests  57 passed (57)
+   Start at  12:17:43
+   Duration  1.20s (transform 256ms, setup 0ms, collect 491ms, tests 1.46s, environment 0ms, prepare 127ms)
+
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-contract-integration/packages/cli
+
+ ✓ src/worker-view-command.test.ts (14 tests) 32ms
+ ✓ src/worker-view-service.test.ts (32 tests) 629ms
+
+ Test Files  2 passed (2)
+      Tests  46 passed (46)
+   Start at  12:17:45
+   Duration  1.18s (transform 241ms, setup 22ms, collect 768ms, tests 661ms, environment 0ms, prepare 60ms)
+
