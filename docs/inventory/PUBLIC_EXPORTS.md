@@ -143,6 +143,7 @@ export { resolveRepositoryScope } from "./graph/repository-scope.js";
 export type { RepositoryScope } from "./graph/repository-scope.js";
 export { GraphCheckpointStore } from './state/graph-checkpoints.js';
 export * from "./scratch.js";
+export { deliveryContractDigest, deliveryCheckReference, freezeDeliveryContract,
 ```
 
 ## `@osstack/github`
@@ -190,6 +191,7 @@ export const HERMES_ADAPTER_VERSION = "0.0.0";
 ```ts
 export * from "./types.js";
 export * from "./pack.js";
+export { assembleExecutionContext, executionContextDigest, ExecutionContextBudgetError,
 ```
 
 ## `@osstack/knowledge-cloud`
@@ -263,6 +265,7 @@ export { AttentionInbox, AttentionStatus, AttentionSessionFact, AttentionWait } 
 export {
 export type { GraphCheckpointTransport } from './graph-checkpoint.js';
 export {
+export { DeliveryContractV2, FrozenDeliveryContractV2, DeliveryVerificationReceiptV2,
 ```
 
 ## `@osstack/runtime`

@@ -58,7 +58,7 @@ export function assertDeliveryContractAdmission(frozen: FrozenDeliveryContractV2
   if (contract.mode === "scout") throw new Error("delivery_scout_tool_guarantee_unavailable");
   if (contract.canonical_repo !== input.canonicalRepo || contract.base_head !== input.baseHead
     || contract.task_id !== input.taskId || contract.goal !== input.goal || contract.policy_digest !== input.policyDigest
-    || contract.review_policy_ref !== input.reviewPolicyRef) throw new Error("delivery_contract_admission_mismatch");
+    || contract.budget_ref !== `policy:${input.policyDigest}` || contract.review_policy_ref !== input.reviewPolicyRef) throw new Error("delivery_contract_admission_mismatch");
   resolveDeliveryContractChecks(frozen, input.acceptedCommands);
 }
 export function assertDeliveryContractPaths(frozen: FrozenDeliveryContractV2, paths: readonly string[]): void {
@@ -67,6 +67,8 @@ export function assertDeliveryContractPaths(frozen: FrozenDeliveryContractV2, pa
     throw new Error("delivery_contract_path_outside_scope");
 }
 /** Only use after a trusted host has loaded its persisted receipt by digest.
+ * Independence follows the existing profile rule: different adapter IDs and
+ * different provider OR model, based on reported metadata, not provider attestation.
  * Parsing or calling this function on arbitrary JSON does not confer provenance. */
 export function verifyDeliveryContractReceipt(frozen: FrozenDeliveryContractV2, value: unknown, expected: {
   runId: string; candidate: DeliveryCandidateIdentityV2; policyDigest: string;
@@ -80,7 +82,7 @@ export function verifyDeliveryContractReceipt(frozen: FrozenDeliveryContractV2, 
   if (new Set(receipt.checks.map((check) => check.id)).size !== receipt.checks.length) throw new Error("delivery_duplicate_receipt_check");
   for (const required of contract.required_checks) {
     const check = receipt.checks.find((item) => item.id === required.id && item.registry_ref === required.registry_ref);
-    if (!check || check.exit_code !== 0 || `sha256:${check.command_digest}` !== required.registry_ref) throw new Error("delivery_required_check_failed");
+    if (check?.exit_code !== 0 || `sha256:${check.command_digest}` !== required.registry_ref) throw new Error("delivery_required_check_failed");
   }
   if (receipt.checks.some((check) => check.exit_code !== 0)) throw new Error("delivery_host_check_failed");
   const review = receipt.review;
@@ -97,5 +99,5 @@ export function promoteDeliveryScout(frozen: FrozenDeliveryContractV2, input: {
   const parent = assertFrozenDeliveryContract(frozen);
   if (parent.contract.mode !== "scout" || input.contractId === parent.contract.contract_id) throw new Error("delivery_invalid_promotion");
   return freezeDeliveryContract({ ...parent.contract, contract_id: input.contractId, parent_contract_id: parent.contract.contract_id,
-    mode: "implement", base_head: input.baseHead, policy_digest: input.policyDigest, requested_actions: input.requestedActions });
+    mode: "implement", base_head: input.baseHead, policy_digest: input.policyDigest, budget_ref: `policy:${input.policyDigest}`, requested_actions: input.requestedActions });
 }

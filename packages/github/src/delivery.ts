@@ -77,6 +77,10 @@ export interface GitHubDeliveryInput {
   evidenceContext?: CandidateEvidenceContext | undefined;
 }
 
+export interface GitHubPullRequestResult {
+  pushedCommit: string;
+  pr: { number: number; url: string; reused: boolean };
+}
 export interface GitHubDeliveryResult {
   pushedCommit: string;
   pr: {
@@ -381,12 +385,14 @@ async function resolvePullRequest(
 async function pushCandidate(
   runner: DeliveryCommandRunner,
   input: GitHubDeliveryInput,
+  contract?: { headCommit: string; fence: () => Promise<void> },
 ): Promise<void> {
   let last: DeliveryCommandResult | undefined;
   for (let attempt = 1; attempt <= MAX_WRITE_ATTEMPTS; attempt += 1) {
+    await contract?.fence();
     last = await runner.run(
       "git",
-      ["push", "--set-upstream", input.remote, input.branch],
+      contract ? ["push", input.remote, `${contract.headCommit}:refs/heads/${input.branch}`] : ["push", "--set-upstream", input.remote, input.branch],
       {
         cwd: input.workspacePath,
         timeoutMs: PUSH_TIMEOUT_MS,
@@ -402,6 +408,7 @@ async function createPullRequest(
   input: GitHubDeliveryInput,
   repo: string,
   pushedCommit: string,
+  draft = false,
 ): Promise<PullRequestLookup> {
   let last: DeliveryCommandResult | undefined;
   for (let attempt = 1; attempt <= MAX_WRITE_ATTEMPTS; attempt += 1) {
@@ -418,6 +425,7 @@ async function createPullRequest(
         input.title,
         "--body-file",
         input.bodyFile,
+        ...(draft ? ["--draft"] : []),
       ],
       {
         cwd: input.workspacePath,
@@ -737,10 +745,24 @@ export async function observeCurrentGreenCandidate(
   return CandidateEvidenceSchema.parse({ schemaVersion: 1, repo, headSha: head, baseSha: base, ...context, requiredChecks: protection.requiredChecks, observedAt: new Date().toISOString() });
 }
 
-export async function deliverToGitHub(
+export async function deliverToGitHub(value: GitHubDeliveryInput,
+  runner: DeliveryCommandRunner = defaultDeliveryCommandRunner): Promise<GitHubDeliveryResult> {
+  return await runGitHubDelivery(value, runner) as GitHubDeliveryResult;
+}
+/** Existing push/PR implementation with a hard return before CI/merge/deploy.
+ * The caller must already hold the existing publish authority and writer lease. */
+export async function openPullRequestToGitHub(value: GitHubDeliveryInput,
+  scope: { repository: string; headCommit: string; draft: boolean },
+  runner: DeliveryCommandRunner = defaultDeliveryCommandRunner): Promise<GitHubPullRequestResult> {
+  const checked = z.object({ repository: z.string().regex(/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/),
+    headCommit: GitCommitSha, draft: z.boolean() }).strict().parse(scope);
+  return await runGitHubDelivery(value, runner, checked);
+}
+async function runGitHubDelivery(
   value: GitHubDeliveryInput,
-  runner: DeliveryCommandRunner = defaultDeliveryCommandRunner,
-): Promise<GitHubDeliveryResult> {
+  runner: DeliveryCommandRunner,
+  openOnly?: { repository: string; headCommit: string; draft: boolean },
+): Promise<GitHubDeliveryResult | GitHubPullRequestResult> {
   const input = GitHubDeliveryInputSchema.parse(value);
   if (
     (input.candidateEvidence === undefined) !==
@@ -836,6 +858,7 @@ export async function deliverToGitHub(
     );
   }
 
+  if (openOnly && repo.toLowerCase() !== openOnly.repository.toLowerCase()) throw new Error("publication repository mismatch");
   const candidateProtection = await readEffectiveProtection(
     runner,
     input,
@@ -859,6 +882,7 @@ export async function deliverToGitHub(
       )
     ).stdout.trim(),
   );
+  if (openOnly && pushedCommit !== openOnly.headCommit) throw new Error("publication candidate head mismatch");
   const evidence = input.candidateEvidence;
   async function assertRemoteBinding(): Promise<void> {
     const rows = (
@@ -917,9 +941,16 @@ export async function deliverToGitHub(
   if (evidence !== undefined && pr?.state === "MERGED")
     throw new Error("candidate evidence requires current open PR");
   if (pr?.state === "MERGED") {
+    if (openOnly) throw new Error("PR-only delivery cannot adopt a merged PR");
     return await recoverMergedDelivery(runner, input, repo, pushedCommit, pr);
   }
 
+  async function assertPublicationState(number: number): Promise<void> {
+    const observed = z.object({ isDraft: z.boolean(), state: z.literal("OPEN") }).strict().parse(parseJson(
+      (await runOrThrow(runner, input, "gh", ["pr", "view", String(number), "--json", "isDraft,state"], "publication PR state")).stdout, "publication PR state"));
+    if (observed.isDraft !== openOnly?.draft) throw new Error("publication draft scope mismatch");
+  }
+  if (openOnly && pr) await assertPublicationState(pr.number);
   async function assertPullRequestScope(number: number): Promise<void> {
     const identity = z
       .object({
@@ -959,7 +990,10 @@ export async function deliverToGitHub(
     if (pr === undefined || pr.state !== "OPEN")
       throw new Error("candidate evidence requires current open PR");
     await assertPullRequestScope(pr.number);
-  } else await pushCandidate(runner, input);
+  } else {
+    if (openOnly) await assertPublicationDestination();
+    await pushCandidate(runner, input, openOnly ? { headCommit: openOnly.headCommit, fence: assertPublicationDestination } : undefined);
+  }
   const afterPushCommit = GitCommitSha.parse(
     (
       await runOrThrow(
@@ -975,19 +1009,33 @@ export async function deliverToGitHub(
     throw new Error("local HEAD changed after push; refusing PR delivery");
   }
 
+  async function assertPublicationDestination(): Promise<void> {
+    const currentRemote = (await runOrThrow(runner, input, "git", ["remote", "get-url", input.remote], "publication remote fence")).stdout.trim();
+    const currentBranch = (await runOrThrow(runner, input, "git", ["branch", "--show-current"], "publication branch fence")).stdout.trim();
+    const currentHead = (await runOrThrow(runner, input, "git", ["rev-parse", "HEAD"], "publication head fence")).stdout.trim();
+    if (remoteRepository(currentRemote)?.toLowerCase() !== openOnly?.repository.toLowerCase()
+      || currentBranch !== input.branch || currentHead !== openOnly?.headCommit) throw new Error("publication destination changed");
+  }
+  if (openOnly) await assertPublicationDestination();
   let reused = pr !== undefined;
   if (pr === undefined) {
     pr = await resolvePullRequest(runner, input, repo, pushedCommit);
     reused = pr !== undefined;
     if (pr === undefined) {
-      pr = await createPullRequest(runner, input, repo, pushedCommit);
+      pr = await createPullRequest(runner, input, repo, pushedCommit, openOnly?.draft ?? false);
       reused = false;
     }
   }
   if (pr.state === "MERGED") {
+    if (openOnly) throw new Error("PR-only delivery cannot adopt a merged PR");
     return await recoverMergedDelivery(runner, input, repo, pushedCommit, pr);
   }
 
+  if (openOnly) {
+    await assertPullRequestScope(pr.number);
+    await assertPublicationState(pr.number);
+    return { pushedCommit, pr: { number: pr.number, url: pr.url, reused } };
+  }
   if (evidence === undefined) {
     const checks = await runner.run(
       "gh",

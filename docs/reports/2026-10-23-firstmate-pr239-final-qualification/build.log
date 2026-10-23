@@ -1,0 +1,212 @@
+$ pnpm -r build
+Scope: 22 of 23 workspace projects
+packages/compliance build$ tsc -p .
+packages/contracts build$ tsc -p .
+packages/github build$ tsc -p .
+packages/governance build$ tsc -p .
+packages/compliance build: Done
+packages/knowledge build$ tsc -p .
+packages/contracts build: Done
+packages/neat-eval build$ tsc -p .
+packages/github build: Done
+packages/protocol build$ tsc -p .
+packages/governance build: Done
+packages/runtime build$ tsc -p .
+packages/neat-eval build: Done
+packages/knowledge build: Done
+packages/protocol build: Done
+packages/runtime build: Done
+packages/core build$ tsc -p .
+packages/graph build$ tsc -p .
+packages/knowledge-cloud build$ tsc -p .
+packages/knowledge-cloud build: Done
+packages/graph build: Done
+packages/core build: Done
+packages/hermes-adapter build$ tsc -p .
+packages/autonomy build$ tsc -p .
+packages/plugins build$ tsc -p .
+packages/skill-registry build$ tsc -p .
+packages/skill-registry build: Done
+packages/hermes-adapter build: Done
+packages/skills build$ tsc -p .
+packages/plugins build: Done
+packages/autonomy build: Done
+packages/skills build: Done
+packages/agents build$ tsc -p . && node scripts/copy-assets.mjs
+packages/agents build: Done
+packages/config build$ tsc -p .
+packages/loop build$ tsc -p .
+packages/config build: Done
+packages/loop build: Done
+packages/conformance build$ tsc -p .
+packages/supervisor build$ tsc -p .
+packages/conformance build: Done
+packages/supervisor build: Done
+packages/cli build$ tsup
+packages/cli build: CLI Building entry: {"bin":"src/cli-entry.ts","graph-maintenance":"src/graph-maintenance.ts"}
+packages/cli build: CLI Using tsconfig: tsconfig.json
+packages/cli build: CLI tsup v8.5.1
+packages/cli build: CLI Using tsup config: /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-followthrough/packages/cli/tsup.config.ts
+packages/cli build: CLI Target: node20
+packages/cli build: CLI Cleaning output folder
+packages/cli build: ESM Build start
+packages/cli build: ESM dist/loop-defaults-2DR43YN5.js                     8.49 KB
+packages/cli build: ESM dist/loop-self-improvement-C6RV34AO.js             3.35 KB
+packages/cli build: ESM dist/improvement-environment-HY3TZFG3.js           19.88 KB
+packages/cli build: ESM dist/improvement-pr-delivery-6YF3LFUD.js           14.03 KB
+packages/cli build: ESM dist/loop-candidate-input-CPZMFAQR.js              5.99 KB
+packages/cli build: ESM dist/improvement-execution-command-FH7XZ7UT.js     24.78 KB
+packages/cli build: ESM dist/chunk-JNO5XFZH.js                             11.95 KB
+packages/cli build: ESM dist/evaluator-command-A3D6B4D5.js                 7.51 KB
+packages/cli build: ESM dist/loop-probe-observer-PGIZAWWS.js               9.05 KB
+packages/cli build: ESM dist/bin-JTPZSJAF.js                               497.72 KB
+packages/cli build: ESM dist/skills-command-ORY5WJRU.js                    4.47 KB
+packages/cli build: ESM dist/stack-cli-47VFCXPE.js                         17.77 KB
+packages/cli build: ESM dist/improve-command-7XQTCXI7.js                   9.96 KB
+packages/cli build: ESM dist/proof-pack-42MQGPIZ.js                        13.08 KB
+packages/cli build: ESM dist/probe-command-SWZDPAVS.js                     377.00 B
+packages/cli build: ESM dist/guarded-git-runtime-OTVNJI3H.js               15.75 KB
+packages/cli build: ESM dist/probe-kanban-guard-B4CESLOB.js                3.41 KB
+packages/cli build: ESM dist/steward-command-NGBOY6SS.js                   3.58 KB
+packages/cli build: ESM dist/supervise-command-6OFKMQVZ.js                 12.21 KB
+packages/cli build: ESM dist/chunk-UJ2RDY3U.js                             86.90 KB
+packages/cli build: ESM dist/neat-command-LHZKV7E5.js                      153.10 KB
+packages/cli build: ESM dist/worker-view-command-VTENFNGE.js               4.31 KB
+packages/cli build: ESM dist/assurance-command-22RNLVZ3.js                 11.84 KB
+packages/cli build: ESM dist/attention-command-LUMFGBIY.js                 17.22 KB
+packages/cli build: ESM dist/graph-command-2DLC7HV7.js                     11.71 KB
+packages/cli build: ESM dist/graph-execution-command-JATV2LEA.js           7.97 KB
+packages/cli build: ESM dist/deliver-command-WBNTDE6E.js                   17.19 KB
+packages/cli build: ESM dist/collaborator-command-PQXIDVDC.js              5.51 KB
+packages/cli build: ESM dist/autonomy-command-D7G4B63U.js                  34.81 KB
+packages/cli build: ESM dist/attention-planning-command-KLQSW6WP.js        3.97 KB
+packages/cli build: ESM dist/chunk-WZBABLU3.js                             3.21 KB
+packages/cli build: ESM dist/local-execution-SARXOOSP.js                   2.24 KB
+packages/cli build: ESM dist/control-plane-doctor-MXR6JISQ.js              8.67 KB
+packages/cli build: ESM dist/chunk-W7HABNGJ.js                             23.72 KB
+packages/cli build: ESM dist/daemon-NUTJ3ELQ.js                            211.39 KB
+packages/cli build: ESM dist/chunk-Y36SA4U3.js                             8.64 KB
+packages/cli build: ESM dist/attention-hook-UBFD3JZF.js                    3.46 KB
+packages/cli build: ESM dist/product-entry-command-K4Q43PQ2.js             8.18 KB
+packages/cli build: ESM dist/config-WCIZ5QZL.js                            12.26 KB
+packages/cli build: ESM dist/loop-profile-routing-MFSIOSHO.js              336.00 B
+packages/cli build: ESM dist/daily-command-NSIGNN46.js                     635.00 B
+packages/cli build: ESM dist/agent-command-6X3T2473.js                     5.03 KB
+packages/cli build: ESM dist/chunk-TBJL5LRR.js                             6.76 KB
+packages/cli build: ESM dist/attention-routing-evaluation-T4MBPTDX.js      1.33 KB
+packages/cli build: ESM dist/chunk-AIWUKJBX.js                             34.45 KB
+packages/cli build: ESM dist/attention-loop-source-KGYP47IM.js             2.75 KB
+packages/cli build: ESM dist/loop-neat-finalizer-JFZUGYT4.js               173.00 B
+packages/cli build: ESM dist/chunk-OSJZICG3.js                             846.00 B
+packages/cli build: ESM dist/chunk-Z4JQ2I6R.js                             12.85 KB
+packages/cli build: ESM dist/worker-view-service-YIMCE7SV.js               575.00 B
+packages/cli build: ESM dist/graph-action-broker-IR5IG64C.js               229.00 B
+packages/cli build: ESM dist/graph-runtime-MWGTHCDH.js                     181.00 B
+packages/cli build: ESM dist/graph-rpc-NQSKJATQ.js                         367.00 B
+packages/cli build: ESM dist/bin.js                                        988.00 B
+packages/cli build: ESM dist/chunk-RQSFGGJ4.js                             1.12 KB
+packages/cli build: ESM dist/graph-checkpoint-service-GDRIS2KG.js          182.00 B
+packages/cli build: ESM dist/chunk-D6VN52NA.js                             1022.00 B
+packages/cli build: ESM dist/graph-maintenance.js                          21.42 KB
+packages/cli build: ESM dist/chunk-ZJQGGVXO.js                             48.35 KB
+packages/cli build: ESM dist/chunk-R5AFYUTZ.js                             521.00 B
+packages/cli build: ESM dist/chunk-FHRFGXQK.js                             35.67 KB
+packages/cli build: ESM dist/chunk-53PZMZMH.js                             2.21 KB
+packages/cli build: ESM dist/hub-doctor-22MWU5DK.js                        3.15 KB
+packages/cli build: ESM dist/repository-policy-K5ZRFYSG.js                 209.00 B
+packages/cli build: ESM dist/chunk-2OSSKWNG.js                             1.57 KB
+packages/cli build: ESM dist/control-plane-guard-DIS4SZ4O.js               465.00 B
+packages/cli build: ESM dist/chunk-Q5XXYNA3.js                             145.99 KB
+packages/cli build: ESM dist/chunk-EVO6BSI7.js                             837.00 B
+packages/cli build: ESM dist/chunk-7OYRROL2.js                             9.03 KB
+packages/cli build: ESM dist/start-control-command-H4VSMC7Q.js             391.00 B
+packages/cli build: ESM dist/chunk-RJ47QEPZ.js                             1.95 KB
+packages/cli build: ESM dist/daily-attention-BKL3QKCN.js                   303.00 B
+packages/cli build: ESM dist/chunk-ONTDATAA.js                             729.00 B
+packages/cli build: ESM dist/chunk-RF5W6ZH4.js                             656.00 B
+packages/cli build: ESM dist/chunk-JBZLKUOV.js                             6.83 KB
+packages/cli build: ESM dist/chunk-VPNFZKW5.js                             24.95 KB
+packages/cli build: ESM dist/dist-WUP7LTU4.js                              2.42 KB
+packages/cli build: ESM dist/chunk-WUZIW2OQ.js                             5.34 KB
+packages/cli build: ESM dist/chunk-MGGT2GTG.js                             54.21 KB
+packages/cli build: ESM dist/loop-self-improvement-C6RV34AO.js.map         6.58 KB
+packages/cli build: ESM dist/loop-defaults-2DR43YN5.js.map                 16.71 KB
+packages/cli build: ESM dist/improvement-environment-HY3TZFG3.js.map       35.42 KB
+packages/cli build: ESM dist/improvement-pr-delivery-6YF3LFUD.js.map       24.97 KB
+packages/cli build: ESM dist/chunk-JNO5XFZH.js.map                         23.35 KB
+packages/cli build: ESM dist/loop-candidate-input-CPZMFAQR.js.map          11.40 KB
+packages/cli build: ESM dist/improvement-execution-command-FH7XZ7UT.js.map 42.71 KB
+packages/cli build: ESM dist/loop-probe-observer-PGIZAWWS.js.map           16.70 KB
+packages/cli build: ESM dist/skills-command-ORY5WJRU.js.map                7.81 KB
+packages/cli build: ESM dist/evaluator-command-A3D6B4D5.js.map             13.44 KB
+packages/cli build: ESM dist/proof-pack-42MQGPIZ.js.map                    25.50 KB
+packages/cli build: ESM dist/improve-command-7XQTCXI7.js.map               16.41 KB
+packages/cli build: ESM dist/stack-cli-47VFCXPE.js.map                     38.60 KB
+packages/cli build: ESM dist/probe-command-SWZDPAVS.js.map                 71.00 B
+packages/cli build: ESM dist/guarded-git-runtime-OTVNJI3H.js.map           30.08 KB
+packages/cli build: ESM dist/steward-command-NGBOY6SS.js.map               6.63 KB
+packages/cli build: ESM dist/probe-kanban-guard-B4CESLOB.js.map            5.77 KB
+packages/cli build: ESM dist/supervise-command-6OFKMQVZ.js.map             21.48 KB
+packages/cli build: ESM dist/worker-view-command-VTENFNGE.js.map           7.78 KB
+packages/cli build: ESM dist/assurance-command-22RNLVZ3.js.map             21.02 KB
+packages/cli build: ESM dist/attention-command-LUMFGBIY.js.map             31.34 KB
+packages/cli build: ESM dist/graph-execution-command-JATV2LEA.js.map       13.02 KB
+packages/cli build: ESM dist/graph-command-2DLC7HV7.js.map                 21.02 KB
+packages/cli build: ESM dist/deliver-command-WBNTDE6E.js.map               33.78 KB
+packages/cli build: ESM dist/collaborator-command-PQXIDVDC.js.map          9.39 KB
+packages/cli build: ESM dist/attention-planning-command-KLQSW6WP.js.map    7.01 KB
+packages/cli build: ESM dist/autonomy-command-D7G4B63U.js.map              61.99 KB
+packages/cli build: ESM dist/chunk-WZBABLU3.js.map                         6.61 KB
+packages/cli build: ESM dist/local-execution-SARXOOSP.js.map               3.62 KB
+packages/cli build: ESM dist/control-plane-doctor-MXR6JISQ.js.map          17.52 KB
+packages/cli build: ESM dist/chunk-W7HABNGJ.js.map                         46.56 KB
+packages/cli build: ESM dist/chunk-Y36SA4U3.js.map                         16.47 KB
+packages/cli build: ESM dist/attention-hook-UBFD3JZF.js.map                6.74 KB
+packages/cli build: ESM dist/product-entry-command-K4Q43PQ2.js.map         14.57 KB
+packages/cli build: ESM dist/config-WCIZ5QZL.js.map                        23.15 KB
+packages/cli build: ESM dist/loop-profile-routing-MFSIOSHO.js.map          71.00 B
+packages/cli build: ESM dist/attention-routing-evaluation-T4MBPTDX.js.map  2.45 KB
+packages/cli build: ESM dist/daily-command-NSIGNN46.js.map                 71.00 B
+packages/cli build: ESM dist/chunk-TBJL5LRR.js.map                         13.17 KB
+packages/cli build: ESM dist/agent-command-6X3T2473.js.map                 9.48 KB
+packages/cli build: ESM dist/attention-loop-source-KGYP47IM.js.map         4.82 KB
+packages/cli build: ESM dist/loop-neat-finalizer-JFZUGYT4.js.map           71.00 B
+packages/cli build: ESM dist/chunk-OSJZICG3.js.map                         2.44 KB
+packages/cli build: ESM dist/chunk-UJ2RDY3U.js.map                         157.94 KB
+packages/cli build: ESM dist/chunk-AIWUKJBX.js.map                         75.20 KB
+packages/cli build: ESM dist/chunk-Z4JQ2I6R.js.map                         23.11 KB
+packages/cli build: ESM dist/worker-view-service-YIMCE7SV.js.map           71.00 B
+packages/cli build: ESM dist/graph-runtime-MWGTHCDH.js.map                 71.00 B
+packages/cli build: ESM dist/bin.js.map                                    2.81 KB
+packages/cli build: ESM dist/chunk-RQSFGGJ4.js.map                         2.50 KB
+packages/cli build: ESM dist/graph-checkpoint-service-GDRIS2KG.js.map      71.00 B
+packages/cli build: ESM dist/chunk-D6VN52NA.js.map                         1.78 KB
+packages/cli build: ESM dist/graph-action-broker-IR5IG64C.js.map           71.00 B
+packages/cli build: ESM dist/graph-rpc-NQSKJATQ.js.map                     71.00 B
+packages/cli build: ESM dist/graph-maintenance.js.map                      37.07 KB
+packages/cli build: ESM dist/chunk-R5AFYUTZ.js.map                         1.02 KB
+packages/cli build: ESM dist/chunk-53PZMZMH.js.map                         5.04 KB
+packages/cli build: ESM dist/hub-doctor-22MWU5DK.js.map                    5.80 KB
+packages/cli build: ESM dist/chunk-ZJQGGVXO.js.map                         96.88 KB
+packages/cli build: ESM dist/repository-policy-K5ZRFYSG.js.map             71.00 B
+packages/cli build: ESM dist/chunk-FHRFGXQK.js.map                         65.66 KB
+packages/cli build: ESM dist/chunk-2OSSKWNG.js.map                         2.76 KB
+packages/cli build: ESM dist/control-plane-guard-DIS4SZ4O.js.map           71.00 B
+packages/cli build: ESM dist/chunk-7OYRROL2.js.map                         16.02 KB
+packages/cli build: ESM dist/start-control-command-H4VSMC7Q.js.map         71.00 B
+packages/cli build: ESM dist/chunk-RJ47QEPZ.js.map                         4.71 KB
+packages/cli build: ESM dist/chunk-EVO6BSI7.js.map                         3.07 KB
+packages/cli build: ESM dist/chunk-ONTDATAA.js.map                         1.88 KB
+packages/cli build: ESM dist/chunk-RF5W6ZH4.js.map                         1.59 KB
+packages/cli build: ESM dist/chunk-JBZLKUOV.js.map                         11.98 KB
+packages/cli build: ESM dist/daily-attention-BKL3QKCN.js.map               71.00 B
+packages/cli build: ESM dist/chunk-VPNFZKW5.js.map                         51.03 KB
+packages/cli build: ESM dist/dist-WUP7LTU4.js.map                          71.00 B
+packages/cli build: ESM dist/chunk-WUZIW2OQ.js.map                         12.93 KB
+packages/cli build: ESM dist/chunk-MGGT2GTG.js.map                         109.17 KB
+packages/cli build: ESM dist/neat-command-LHZKV7E5.js.map                  278.63 KB
+packages/cli build: ESM dist/bin-JTPZSJAF.js.map                           879.33 KB
+packages/cli build: ESM dist/chunk-Q5XXYNA3.js.map                         264.19 KB
+packages/cli build: ESM dist/daemon-NUTJ3ELQ.js.map                        394.84 KB
+packages/cli build: ESM ⚡️ Build success in 80ms
+packages/cli build: Done

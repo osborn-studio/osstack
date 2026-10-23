@@ -16,6 +16,7 @@ export interface StageCandidateInput {
   workspace_path: string;
   expected_base_commit_sha?: string;
   commands: string[];
+  hardened?: boolean;
 }
 
 export interface CommitStagedCandidateInput {
@@ -24,6 +25,7 @@ export interface CommitStagedCandidateInput {
   expected_diff_sha256: string;
   idempotency_key: string;
   message: string;
+  hardened?: boolean;
 }
 
 export interface AssertGuardedCandidateBaseInput {
@@ -46,11 +48,12 @@ function digest(value: string): string {
 async function git(
   workspacePath: string,
   args: readonly string[],
+  hardened = false,
 ): Promise<string> {
   try {
     const result = await execFileAsync(
       "git",
-      ["-c", "core.hooksPath=/dev/null", ...args],
+      ["-c", "core.hooksPath=/dev/null", "-c", "core.fsmonitor=false", ...args],
       {
         cwd: workspacePath,
         timeout: GIT_TIMEOUT_MS,
@@ -59,6 +62,7 @@ async function git(
         env: {
           ...process.env,
           GIT_TERMINAL_PROMPT: "0",
+          ...(hardened ? { GIT_CONFIG_NOSYSTEM: "1", GIT_CONFIG_GLOBAL: "/dev/null" } : {}),
         },
       },
     );
@@ -76,6 +80,12 @@ async function git(
       }${detail === "" ? "" : `: ${detail}`}`,
     );
   }
+}
+
+async function assertHardenedGitFilters(workspacePath: string): Promise<void> {
+  const config = await git(workspacePath, ["config", "--local", "--null", "--list"], true);
+  if (config.split("\0").some(entry => /^filter\..*\.(?:clean|smudge|process)\n/i.test(entry)))
+    throw new Error("guarded Git filters are unsupported for hardened candidates");
 }
 
 async function head(workspacePath: string): Promise<string> {
@@ -378,7 +388,7 @@ async function dependencyChanges(
   );
 }
 
-async function stagedMaterial(workspacePath: string): Promise<{
+async function stagedMaterial(workspacePath: string, hardened = false): Promise<{
   status: string;
   diff: string;
   changedPaths: string[];
@@ -389,15 +399,16 @@ async function stagedMaterial(workspacePath: string): Promise<{
       "--porcelain=v1",
       "-z",
       "--untracked-files=all",
-    ]),
+    ], hardened),
     git(workspacePath, [
       "diff",
       "--cached",
       "--binary",
       "--no-ext-diff",
+      "--no-textconv",
       "HEAD",
       "--",
-    ]),
+    ], hardened),
   ]);
   return {
     status,
@@ -409,6 +420,7 @@ async function stagedMaterial(workspacePath: string): Promise<{
 export async function stageGuardedCandidate(
   input: StageCandidateInput,
 ): Promise<PostDiffInputType> {
+  if (input.hardened) await assertHardenedGitFilters(input.workspace_path);
   const baseCommitSha = await head(input.workspace_path);
   if (
     input.expected_base_commit_sha !== undefined
@@ -418,8 +430,8 @@ export async function stageGuardedCandidate(
       "candidate base changed after exact remote-base verification",
     );
   }
-  await git(input.workspace_path, ["add", "-A", "--"]);
-  const material = await stagedMaterial(input.workspace_path);
+  await git(input.workspace_path, ["add", "-A", "--"], input.hardened);
+  const material = await stagedMaterial(input.workspace_path, input.hardened);
   const dependencies = await dependencyChanges(
     input.workspace_path,
     baseCommitSha,
@@ -477,7 +489,8 @@ async function idempotentCommittedHead(
 export async function commitGuardedCandidate(
   input: CommitStagedCandidateInput,
 ): Promise<{ commit: string }> {
-  const material = await stagedMaterial(input.workspace_path);
+  if (input.hardened) await assertHardenedGitFilters(input.workspace_path);
+  const material = await stagedMaterial(input.workspace_path, input.hardened);
   if (material.status === "" && material.diff === "") {
     const reused = await idempotentCommittedHead(input);
     if (reused === undefined) {
@@ -509,7 +522,7 @@ export async function commitGuardedCandidate(
       `OSSTACK-IDEMPOTENCY-KEY: ${input.idempotency_key}`,
       `OSSTACK-DIFF-SHA256: ${input.expected_diff_sha256}`,
     ].join("\n"),
-  ]);
+  ], input.hardened);
   const commit = await head(input.workspace_path);
   const after = await git(input.workspace_path, [
     "status",

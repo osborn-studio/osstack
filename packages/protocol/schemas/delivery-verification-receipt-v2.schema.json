@@ -65,6 +65,10 @@
       ],
       "additionalProperties": false
     },
+    "workspace_state_digest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
     "checks": {
       "type": "array",
       "items": {
@@ -210,6 +214,7 @@
     "contract_digest",
     "policy_digest",
     "candidate",
+    "workspace_state_digest",
     "checks",
     "review",
     "observed_at"

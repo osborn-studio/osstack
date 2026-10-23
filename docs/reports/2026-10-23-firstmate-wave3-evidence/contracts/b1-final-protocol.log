@@ -1,0 +1,10 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-supervision-next/packages/protocol
+
+ ✓ src/delivery-contract.test.ts (3 tests) 43ms
+
+ Test Files  1 passed (1)
+      Tests  3 passed (3)
+   Start at  12:50:35
+   Duration  1.01s (transform 50ms, setup 0ms, collect 59ms, tests 43ms, environment 0ms, prepare 133ms)
+

@@ -1,0 +1,29 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-routing-next/packages/knowledge
+
+
+⎯⎯⎯⎯⎯⎯ Failed Suites 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/context-budget.test.ts [ src/context-budget.test.ts ]
+Error: Cannot find module './context-budget.js' imported from '/Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-routing-next/packages/knowledge/src/context-budget.test.ts'
+ ❯ src/context-budget.test.ts:2:1
+      1| import { describe, expect, it } from "vitest";
+      2| import { assembleExecutionContext, executionContextDigest, type Execut…
+       | ^
+      3| 
+      4| const scope = { repo_path: "/repo", tenant: "default" as const };
+
+Caused by: Error: Failed to load url ./context-budget.js (resolved id: ./context-budget.js) in /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-routing-next/packages/knowledge/src/context-budget.test.ts. Does the file exist?
+ ❯ loadAndTransform ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:35835:17
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  no tests
+   Start at  12:17:08
+   Duration  277ms (transform 47ms, setup 0ms, collect 0ms, tests 0ms, environment 0ms, prepare 41ms)
+
+undefined
+/Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-routing-next/packages/knowledge:
+[ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL] Command failed with exit code 1: vitest run src/context-budget.test.ts

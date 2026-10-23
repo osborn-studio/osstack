@@ -307,3 +307,8 @@ describe("deterministic guarded-autonomy risk", () => {
     expect(maxRisk("R2", "R2")).toBe("R2");
   });
 });
+
+it.each(["packages/cli/src/delivery-contract-host.ts", "packages/cli/src/deliver-command.ts", "packages/core/src/delivery-contract.ts",
+  "packages/protocol/src/delivery-contract.ts", "packages/loop/src/loop-engine.ts", "packages/cli/src/execution-context.ts", "packages/knowledge/src/context-budget.ts"])("protects V2 authority source %s", path => {
+  expect(classifyPost({ paths: [path] }, { repo_id: "gilosbornhello/osstack" }).level).toBe("R3");
+});

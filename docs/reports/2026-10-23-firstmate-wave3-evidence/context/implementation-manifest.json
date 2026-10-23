@@ -1,0 +1,11 @@
+{
+  "files": {
+    "packages/knowledge/src/context-budget.ts": "0f0c10c9cfda5b1fef507f93c01de5194906b4015b199f12156175d902117c17",
+    "packages/knowledge/src/context-budget.test.ts": "60d405947db4487ce65e347c8dc31d052a4cd1eb829992d720930994e7ac0add",
+    "packages/knowledge/src/index.ts": "6988b87ec82069365e29145859c8cd2ca0bdd69eb152b8f647adf61751d4f9ca",
+    "packages/cli/src/execution-context.ts": "6cc128d9ec683d6f51c5f1c7b2376bbdc51da58701cad1864136d486c326e98e",
+    "packages/cli/src/execution-context.test.ts": "7766ba29064da852a067b4dc0d30e80babc34c3aa061b5d693bec9a3daaff257",
+    "docs/guides/execution-context.md": "862fcde8eb8762e5e57c7490b5825cb7ac53b7ab8a22ea0e831f3f1c62ce9505",
+    "docs/plans/2026-10-23-execution-context-implementation.md": "eb3c031b519ff13a04c081cbcf0d2815eea570cd797566848f43fc4702a7f40a"
+  }
+}

@@ -34,6 +34,8 @@ export interface ProofStageInput {
     manifest_sha256: string;
   };
   risk_evidence?: unknown;
+  delivery_contract_evidence?: unknown;
+  delivery_receipt_evidence?: unknown;
   approval_evidence?: unknown;
   git_delivery_evidence?: unknown;
   deploy_eligibility_evidence?: unknown;
@@ -63,12 +65,12 @@ export function createProofStageMetadata(
       throw new Error("candidate proof must not claim Git delivery evidence");
     }
     if (
-      input.deploy_eligibility_evidence !== undefined
-      || input.deploy_script_authority_evidence !== undefined
-      || input.deploy_staging_evidence !== undefined
-      || input.deploy_production_evidence !== undefined
-      || input.rollback_evidence !== undefined
-      || input.production_freeze_evidence !== undefined
+      input.deploy_eligibility_evidence !== undefined ||
+      input.deploy_script_authority_evidence !== undefined ||
+      input.deploy_staging_evidence !== undefined ||
+      input.deploy_production_evidence !== undefined ||
+      input.rollback_evidence !== undefined ||
+      input.production_freeze_evidence !== undefined
     ) {
       throw new Error(
         "candidate proof must not claim post-merge deploy evidence",
@@ -79,18 +81,24 @@ export function createProofStageMetadata(
 
   const supersedes = input.supersedes;
   if (supersedes === undefined) {
-    throw new Error("final proof requires supersedes candidate manifest metadata");
+    throw new Error(
+      "final proof requires supersedes candidate manifest metadata",
+    );
   }
   if (
-    supersedes.manifest_path.trim().length === 0
-    || supersedes.manifest_path.includes("\0")
-    || /^[A-Za-z]:[\\/]/.test(supersedes.manifest_path)
-    || supersedes.manifest_path.startsWith("/")
+    supersedes.manifest_path.trim().length === 0 ||
+    supersedes.manifest_path.includes("\0") ||
+    /^[A-Za-z]:[\\/]/.test(supersedes.manifest_path) ||
+    supersedes.manifest_path.startsWith("/")
   ) {
-    throw new Error("supersedes manifest_path must be a non-empty relative path");
+    throw new Error(
+      "supersedes manifest_path must be a non-empty relative path",
+    );
   }
   if (!/^[a-f0-9]{64}$/.test(supersedes.manifest_sha256)) {
-    throw new Error("supersedes manifest_sha256 must be 64 lowercase hex characters");
+    throw new Error(
+      "supersedes manifest_sha256 must be 64 lowercase hex characters",
+    );
   }
   return {
     proof_stage: "final",
@@ -113,6 +121,16 @@ export function createProofStageArtifacts(
     new Set(["request", "decision"]),
   );
   const artifacts: ProofArtifact[] = [];
+  pushJsonEvidenceArtifact(
+    artifacts,
+    "delivery-contract.json",
+    input.delivery_contract_evidence,
+  );
+  pushJsonEvidenceArtifact(
+    artifacts,
+    "delivery-verification-receipt-reference.json",
+    input.delivery_receipt_evidence,
+  );
   pushJsonEvidenceArtifact(
     artifacts,
     "risk-preflight.json",
@@ -158,11 +176,7 @@ export function createProofStageArtifacts(
     "deploy-production.json",
     input.deploy_production_evidence,
   );
-  pushJsonEvidenceArtifact(
-    artifacts,
-    "rollback.json",
-    input.rollback_evidence,
-  );
+  pushJsonEvidenceArtifact(artifacts, "rollback.json", input.rollback_evidence);
   pushJsonEvidenceArtifact(
     artifacts,
     "production-freeze.json",
@@ -196,9 +210,7 @@ function optionalEvidenceContainer(
   if (!isRecord(value)) {
     throw new Error(`${label} must be a JSON object`);
   }
-  const unexpectedKey = Object.keys(value).find(
-    (key) => !allowedKeys.has(key),
-  );
+  const unexpectedKey = Object.keys(value).find((key) => !allowedKeys.has(key));
   if (unexpectedKey !== undefined) {
     throw new Error(`${label} contains unexpected field: ${unexpectedKey}`);
   }
@@ -244,18 +256,9 @@ export function createPolicyDecisionEvidence(
     .filter((event) => event.type === "loop.plan.done")
     .map((event) => {
       const agentId = stringEventPayload(event, "agent_id");
-      const builderIdentity = recordEventPayload(
-        event,
-        "builder_identity",
-      );
-      const profileName = optionalStringEventPayload(
-        event,
-        "profile_name",
-      );
-      const independent = optionalBooleanEventPayload(
-        event,
-        "independent",
-      );
+      const builderIdentity = recordEventPayload(event, "builder_identity");
+      const profileName = optionalStringEventPayload(event, "profile_name");
+      const independent = optionalBooleanEventPayload(event, "independent");
       const independenceReason = optionalStringEventPayload(
         event,
         "independence_reason",
@@ -263,16 +266,14 @@ export function createPolicyDecisionEvidence(
       return {
         task_id: stringEventPayload(event, "task_id"),
         agent_id: agentId,
-        auth_mode: stringRecordValue(builderIdentity, "auth_mode")
-          ?? agentAuthMode(agentId),
-        roles: builderIdentity === undefined
-          ? rolesForAgentId(agentId)
-          : ["coding"],
+        auth_mode:
+          stringRecordValue(builderIdentity, "auth_mode") ??
+          agentAuthMode(agentId),
+        roles:
+          builderIdentity === undefined ? rolesForAgentId(agentId) : ["coding"],
         reason: stringEventPayload(event, "routing_reason"),
         event_seq: event.seq,
-        ...(profileName !== undefined
-          ? { profile_name: profileName }
-          : {}),
+        ...(profileName !== undefined ? { profile_name: profileName } : {}),
         ...(independent !== undefined ? { independent } : {}),
         ...(independenceReason !== undefined
           ? { independence_reason: independenceReason }
@@ -310,8 +311,8 @@ export function createAgentRuntimeEvidence(
   ): void => {
     const existing = byAgent.get(agentId) ?? {
       agent_id: agentId,
-      auth_mode: stringRecordValue(identity, "auth_mode")
-        ?? agentAuthMode(agentId),
+      auth_mode:
+        stringRecordValue(identity, "auth_mode") ?? agentAuthMode(agentId),
       roles: new Set<string>(),
       plan_event_seqs: [],
       verify_event_seqs: [],
@@ -325,8 +326,8 @@ export function createAgentRuntimeEvidence(
     }
     if (existing.identity === undefined && identity !== undefined) {
       existing.identity = identity;
-      existing.auth_mode = stringRecordValue(identity, "auth_mode")
-        ?? existing.auth_mode;
+      existing.auth_mode =
+        stringRecordValue(identity, "auth_mode") ?? existing.auth_mode;
     }
     byAgent.set(agentId, existing);
   };
@@ -334,8 +335,9 @@ export function createAgentRuntimeEvidence(
   for (const event of events) {
     if (event.type === "loop.plan.done") {
       const identity = recordEventPayload(event, "builder_identity");
-      const agentId = stringRecordValue(identity, "adapter_id")
-        ?? stringEventPayload(event, "agent_id");
+      const agentId =
+        stringRecordValue(identity, "adapter_id") ??
+        stringEventPayload(event, "agent_id");
       if (identity === undefined) {
         for (const role of rolesForAgentId(agentId)) {
           upsert(agentId, role, event.seq, "plan");
@@ -347,8 +349,9 @@ export function createAgentRuntimeEvidence(
     if (event.type === "loop.verify.done") {
       const identity = recordEventPayload(event, "evaluator_identity");
       if (identity === undefined) continue;
-      const agentId = stringRecordValue(identity, "adapter_id")
-        ?? stringEventPayload(event, "reviewer_agent_id");
+      const agentId =
+        stringRecordValue(identity, "adapter_id") ??
+        stringEventPayload(event, "reviewer_agent_id");
       upsert(agentId, "test-verify", event.seq, "verify", identity);
     }
   }
@@ -363,10 +366,7 @@ export function createAgentRuntimeEvidence(
     const adapterId = stringRecordValue(identity, "adapter_id");
     const providerId = stringRecordValue(identity, "provider_id");
     const modelId = stringRecordValue(identity, "model_id");
-    const evidenceSource = stringRecordValue(
-      identity,
-      "evidence_source",
-    );
+    const evidenceSource = stringRecordValue(identity, "evidence_source");
     return {
       agent_id: entry.agent_id,
       auth_mode: entry.auth_mode,
@@ -381,9 +381,7 @@ export function createAgentRuntimeEvidence(
       ...(evidenceSource !== undefined
         ? { evidence_source: evidenceSource }
         : {}),
-      ...(identity !== undefined
-        ? { runtime_identity: identity }
-        : {}),
+      ...(identity !== undefined ? { runtime_identity: identity } : {}),
     };
   });
   return redactEvidence({ status: "recorded", agents });
@@ -395,8 +393,8 @@ export function createVerifierOutputArtifacts(
   if (verifyResults.results === undefined) return [];
   const candidates = verifyResults.results.flatMap((result) => {
     if (
-      result.review_artifacts !== undefined
-      && result.review_artifacts.length > 0
+      result.review_artifacts !== undefined &&
+      result.review_artifacts.length > 0
     ) {
       return result.review_artifacts.flatMap((artifact) => {
         const redacted = redactReviewArtifact(artifact);
@@ -423,9 +421,10 @@ export function createVerifierOutputArtifacts(
       });
     }
 
-    const agentId = result.reviewer_agent_id === ""
-      ? "unknown-verifier"
-      : result.reviewer_agent_id;
+    const agentId =
+      result.reviewer_agent_id === ""
+        ? "unknown-verifier"
+        : result.reviewer_agent_id;
     const dir = verifierOutputDir(agentId);
     const basePath = `${dir}/${safeFileSegment(result.task_id)}-${safeFileSegment(agentId)}`;
     const content = [
@@ -438,12 +437,14 @@ export function createVerifierOutputArtifacts(
       result.summary,
       "",
     ].join("\n");
-    return [{
-      basePath,
-      extension: "txt",
-      eventSeq: result.event_seq,
-      content: redactText(content),
-    }];
+    return [
+      {
+        basePath,
+        extension: "txt",
+        eventSeq: result.event_seq,
+        content: redactText(content),
+      },
+    ];
   });
   const pathCounts = new Map<string, number>();
   for (const candidate of candidates) {
@@ -452,9 +453,10 @@ export function createVerifierOutputArtifacts(
   }
   const artifacts = candidates.map((candidate) => {
     const unsuffixedPath = `${candidate.basePath}.${candidate.extension}`;
-    const path = pathCounts.get(unsuffixedPath) === 1
-      ? unsuffixedPath
-      : `${candidate.basePath}-event-${String(candidate.eventSeq)}.${candidate.extension}`;
+    const path =
+      pathCounts.get(unsuffixedPath) === 1
+        ? unsuffixedPath
+        : `${candidate.basePath}-event-${String(candidate.eventSeq)}.${candidate.extension}`;
     return { path, content: candidate.content };
   });
   assertUniqueArtifactPaths(artifacts);
@@ -465,9 +467,11 @@ function redactReviewArtifact(artifact: ReviewArtifact): ReviewArtifact {
   const redacted = new PIIRedactor().redactDeep(artifact);
   if (redacted.stats.timed_out) {
     throw new Error(
-      `review proof redaction timed out${redacted.stats.timed_out_on !== undefined
-        ? ` on ${redacted.stats.timed_out_on}`
-        : ""}`,
+      `review proof redaction timed out${
+        redacted.stats.timed_out_on !== undefined
+          ? ` on ${redacted.stats.timed_out_on}`
+          : ""
+      }`,
     );
   }
   return redacted.value;
@@ -477,9 +481,11 @@ function redactText(content: string): string {
   const redacted = new PIIRedactor().redact(content);
   if (redacted.stats.timed_out) {
     throw new Error(
-      `proof redaction timed out${redacted.stats.timed_out_on !== undefined
-        ? ` on ${redacted.stats.timed_out_on}`
-        : ""}`,
+      `proof redaction timed out${
+        redacted.stats.timed_out_on !== undefined
+          ? ` on ${redacted.stats.timed_out_on}`
+          : ""
+      }`,
     );
   }
   return redacted.text;
@@ -489,9 +495,9 @@ function verifierOutputDir(
   agentId: string,
 ): "checker-output" | "reviewer-output" {
   const normalized = agentId.toLowerCase();
-  return normalized.includes("checker")
-    || normalized.includes("verify")
-    || normalized.includes("verifier")
+  return normalized.includes("checker") ||
+    normalized.includes("verify") ||
+    normalized.includes("verifier")
     ? "checker-output"
     : "reviewer-output";
 }
@@ -526,10 +532,7 @@ function rolesForAgentId(agentId: string): string[] {
   );
 }
 
-function stringEventPayload(
-  event: LoopEvent,
-  key: string,
-): string {
+function stringEventPayload(event: LoopEvent, key: string): string {
   return optionalStringEventPayload(event, key) ?? "unknown";
 }
 
@@ -538,9 +541,7 @@ function optionalStringEventPayload(
   key: string,
 ): string | undefined {
   const value = event.payload?.[key];
-  return typeof value === "string" && value.length > 0
-    ? value
-    : undefined;
+  return typeof value === "string" && value.length > 0 ? value : undefined;
 }
 
 function optionalBooleanEventPayload(
@@ -564,15 +565,11 @@ function stringRecordValue(
   key: string,
 ): string | undefined {
   const value = record?.[key];
-  return typeof value === "string" && value.length > 0
-    ? value
-    : undefined;
+  return typeof value === "string" && value.length > 0 ? value : undefined;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object"
-    && value !== null
-    && !Array.isArray(value);
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 function redactEvidence<T>(value: T): T {

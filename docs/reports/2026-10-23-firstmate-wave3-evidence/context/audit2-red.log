@@ -1,0 +1,100 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-routing-next/packages/cli
+
+ ❯ src/execution-context.test.ts (24 tests | 3 failed) 316ms
+   ✓ defaults off with original adapter identity and zero loaders or receipts 2ms
+   ✓ passes the actual augmented prompt and preserves this-bound methods and stop uncertainty 3ms
+   ✓ rejects partial contract identity and mandatory overflow before invoking 1ms
+   ✓ blocks invocation if prepared evidence cannot be persisted 1ms
+   ✓ aborts and closes the iterator on observed-receipt failure without claiming physical stop 1ms
+   ✓ cancels a stalled loader and discards its late result without invocation 53ms
+   ✓ loads only explicit pinned local packs and strips source-declared authority 3ms
+   ✓ rejects invalid pack hash 1ms
+   ✓ rejects invalid pack version 1ms
+   ✓ rejects invalid pack tenant 1ms
+   ✓ rejects invalid pack scope 1ms
+   ✓ rejects invalid pack escape 1ms
+   ✓ rejects config repo mismatch, unknown settings and traversal before retrieval 2ms
+   ✓ keeps pinned source scope separate from the candidate execution workspace 1ms
+   ✓ attributes aggregate receipts to tasks and sessions without relying on arrival order 1ms
+   ✓ does not publish late receipt refs after cancellation 52ms
+   ✓ blocks expired sources after slow prepared persistence 1ms
+   ✓ bounds cleanup of an adapter with a stalled next and preserves stop uncertainty 154ms
+   ✓ preaborted invocation has no loader, evidence or adapter side effects 0ms
+   ✓ rejects duplicate pack ids even when the loader is constructed directly 1ms
+   × does not advance the underlying adapter after cancellation while yielded 4ms
+     → expected true to be false // Object.is equality
+   × keeps selection time distinct from first-event observation time 2ms
+     → expected [ 500, 800 ] to deeply equal [ 500, 500 ]
+   × rejects non-regular sources with a stable unavailable error 3ms
+     → expected [Function] to throw error including 'execution_context_source_unavailable' but got 'execution_context_source_too_large'
+   ✓ rejects a pack before its full size would cross the combined byte budget 25ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/execution-context.test.ts > does not advance the underlying adapter after cancellation while yielded
+AssertionError: expected true to be false // Object.is equality
+
+- Expected
++ Received
+
+- false
++ true
+
+ ❯ src/execution-context.test.ts:192:20
+    190|   await iterator.next(); controller.abort();
+    191|   await expect(iterator.next()).rejects.toThrow("execution_context_abo…
+    192|   expect(advanced).toBe(false);
+       |                    ^
+    193| });
+    194| it("keeps selection time distinct from first-event observation time", …
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯
+
+ FAIL  src/execution-context.test.ts > keeps selection time distinct from first-event observation time
+AssertionError: expected [ 500, 800 ] to deeply equal [ 500, 500 ]
+
+- Expected
++ Received
+
+  [
+    500,
+-   500,
++   800,
+  ]
+
+ ❯ src/execution-context.test.ts:198:52
+    196|   f.adapter.invoke = async function* () { clock = 800; yield event; };
+    197|   await consume(createExecutionContextAdapters({ ...f.options, nowMs: …
+    198|   expect(f.receipts.map(row => row.sampled_at_ms)).toEqual([500, 500]);
+       |                                                    ^
+    199|   expect(f.receipts[0]!.observed_at_ms).toBeUndefined(); expect(f.rece…
+    200|   expect(f.receipts[0]!.mandatory.find(row => row.source_kind === "ins…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/3]⎯
+
+ FAIL  src/execution-context.test.ts > rejects non-regular sources with a stable unavailable error
+AssertionError: expected [Function] to throw error including 'execution_context_source_unavailable' but got 'execution_context_source_too_large'
+
+Expected: "execution_context_source_unavailable"
+Received: "execution_context_source_too_large"
+
+ ❯ src/execution-context.test.ts:205:3
+    203|   const f = configFixture(); const config = await loadExecutionContext…
+    204|   mkdirSync(join(f.root, "directory")); config.packs[0]!.path = "direc…
+    205|   await expect(createPinnedLocalContextLoader(config)(task, { workspac…
+       |   ^
+    206| });
+    207| it("rejects a pack before its full size would cross the combined byte …
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/3]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  3 failed | 21 passed (24)
+   Start at  12:36:34
+   Duration  817ms (transform 209ms, setup 9ms, collect 332ms, tests 316ms, environment 0ms, prepare 33ms)
+
+undefined
+/Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-routing-next/packages/cli:
+[ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL] Command failed with exit code 1: vitest run src/execution-context.test.ts
