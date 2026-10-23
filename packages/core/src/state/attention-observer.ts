@@ -1,8 +1,9 @@
 import { classifyAttentionWait, type WaitInput } from "../attention.js";
 import { realpathSync } from "node:fs";
+import { projectAttentionRun } from "./attention-run-projection.js";
 import {
   attentionDigest,
-  AttentionStore,
+  type AttentionStore,
   type AttentionOwner,
   type AttentionScope,
 } from "./attention-store.js";
@@ -178,18 +179,7 @@ export class AttentionObserver {
       try {
         db.transaction(() => {
           if (subject.kind === "run") {
-            const run = db
-              .prepare(
-                "SELECT phase,outcome FROM runs WHERE run_id=? AND task_id=? AND tenant_id IS NULL"
-              )
-              .get(subject.subject_id, scope.task_id);
-            this.update(subject, now, {
-              state: run ?? "source_missing",
-              reason: run ? "snapshot_only" : "source_missing",
-              repo_binding: "unverified",
-              process_liveness: "unknown",
-              gap: "snapshot_only",
-            });
+            projectAttentionRun(this.store, this.owner, scope, subject.subject_id, now);
             return;
           }
           if (subject.kind !== "session") return;

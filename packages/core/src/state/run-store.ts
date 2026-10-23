@@ -242,3 +242,53 @@ export function listEventsForRun(
     "SELECT event_id, run_id, session_id, seq, type, created_at, terminal, payload_json FROM events WHERE run_id = ? AND seq > ? ORDER BY seq ASC",
   ).all(runId, afterSeq) as StoredEventRow[];
 }
+
+/** Bounded local/default-tenant reader. Oversized payloads never enter JS. */
+export interface BoundedRunEvent extends Omit<StoredEventRow, "payload_json"> {
+  payload_json: string | null;
+  payload_bytes: number;
+}
+export function readRunEventPage(db: Database.Database, input: {
+  taskId: string;
+  runId: string;
+  afterSeq: number;
+  limit: number;
+  throughSeq?: number;
+}): {
+  events: BoundedRunEvent[];
+  nextAfter: number;
+  highWatermark: number;
+  availableHighWatermark: number;
+  hasMore: boolean;
+  sequenceGap: boolean;
+} {
+  if (!input.taskId || !input.runId || !Number.isSafeInteger(input.afterSeq) || input.afterSeq < -1
+    || !Number.isSafeInteger(input.limit) || input.limit < 1 || input.limit > 200
+    || (input.throughSeq !== undefined && (!Number.isSafeInteger(input.throughSeq) || input.throughSeq < input.afterSeq)))
+    throw new Error("invalid_event_page");
+  const read = () => {
+    const source = db.prepare(`SELECT 1 FROM runs r JOIN tasks t ON t.task_id=r.task_id
+      WHERE r.run_id=? AND r.task_id=? AND r.tenant_id IS NULL AND t.tenant_id IS NULL`).get(input.runId, input.taskId);
+    if (!source) throw new Error("run_source_not_found");
+    const max = (db.prepare("SELECT COALESCE(MAX(seq),-1) seq FROM events WHERE run_id=?").get(input.runId) as { seq: number }).seq;
+    const first = db.prepare("SELECT seq FROM events WHERE run_id=? ORDER BY seq LIMIT 1").get(input.runId) as { seq: number } | undefined;
+    if (!Number.isSafeInteger(max) || max < -1 || (first && (!Number.isSafeInteger(first.seq) || first.seq < 0)))
+      throw new Error("invalid_event_sequence");
+    const high = input.throughSeq ?? max;
+    const rows = db.prepare(`SELECT substr(event_id,1,4097) event_id,run_id,substr(session_id,1,4097) session_id,
+      seq,substr(type,1,257) type,created_at,terminal,length(CAST(payload_json AS BLOB)) payload_bytes,
+      CASE WHEN length(CAST(payload_json AS BLOB))<=65536 THEN payload_json ELSE NULL END payload_json
+      FROM events WHERE run_id=? AND seq>? AND seq<=? ORDER BY seq LIMIT ?`)
+      .all(input.runId, input.afterSeq, high, input.limit + 1) as BoundedRunEvent[];
+    const events = rows.slice(0, input.limit);
+    let previous = input.afterSeq;
+    let gap = max < input.afterSeq || max < high;
+    for (const event of events) {
+      if (!Number.isSafeInteger(event.seq) || event.seq !== previous + 1) gap = true;
+      previous = event.seq;
+    }
+    return { events, nextAfter: events.at(-1)?.seq ?? input.afterSeq, highWatermark: high,
+      availableHighWatermark: max, hasMore: rows.length > input.limit, sequenceGap: gap };
+  };
+  return db.inTransaction ? read() : db.transaction(read)();
+}
