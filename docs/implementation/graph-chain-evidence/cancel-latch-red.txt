@@ -1,0 +1,83 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/core
+
+ ❯ src/state/graph-runs.test.ts (39 tests | 5 failed) 1089ms
+   ✓ graph run storage > persists fresh identity, source and canonical idempotency through a real SQLite restart 30ms
+   ✓ graph run storage > persists the original spec and limits without allowing refresh or caller mutation to reset them 16ms
+   ✓ graph run storage > isolates requests and reads by tenantId 15ms
+   ✓ graph run storage > isolates requests and reads by principalId 20ms
+   ✓ graph run storage > isolates requests and reads by workspaceId 14ms
+   ✓ graph run storage > serializes competing connection CAS and requires stopped-worker evidence even after expiry 17ms
+   ✓ graph run storage > atomically deduplicates resume/cancel projection requests in the same scope/key namespace 18ms
+   ✓ graph run storage > renews with CAS and persists only a status projection; terminal runs cannot resurrect 21ms
+   ✓ graph run storage > rejects identity change to executionModel at creation and recovery 14ms
+   ✓ graph run storage > rejects identity change to durability at creation and recovery 15ms
+   ✓ graph run storage > rejects identity change to engineVersion at creation and recovery 81ms
+   ✓ graph run storage > rejects identity change to checkpointVersion at creation and recovery 18ms
+   ✓ graph run storage > rejects identity change to templateVersion at creation and recovery 15ms
+   ✓ graph run storage > rejects identity change to registryVersion at creation and recovery 14ms
+   ✓ graph run storage > rejects identity change to compilerVersion at creation and recovery 14ms
+   ✓ graph run storage > rejects identity change to schemaVersion at creation and recovery 14ms
+   ✓ graph run storage > rejects identity change to compiledProgramDigest at creation and recovery 14ms
+   ✓ graph run storage > rejects recovery with a different specHash 13ms
+   ✓ graph run storage > rejects recovery with a different inputDigest 13ms
+   ✓ graph run storage > rejects invalid counters and timestamps: -1 15ms
+   ✓ graph run storage > rejects invalid counters and timestamps: 0.5 14ms
+   ✓ graph run storage > rejects invalid counters and timestamps: NaN 14ms
+   ✓ graph run storage > rejects invalid counters and timestamps: Infinity 13ms
+   ✓ graph run storage > rejects invalid counters and timestamps: 9007199254740992 14ms
+   ✓ graph run storage > rejects oversized/non-JSON arguments, invalid owner, backward clock and counter overflow 15ms
+   ✓ graph run storage > rejects a stop receipt predating the last worker mutation and rolls back both tables on failure 14ms
+   ✓ graph run storage > never wraps generation at the safe integer boundary 14ms
+   ✓ graph run storage > protects immutable identity in SQLite itself 13ms
+   ✓ graph run storage > serializes independent SQLite workers: same-request  338ms
+   ✓ graph run storage > serializes independent SQLite workers: conflicting-request 60ms
+   ✓ graph run storage > serializes independent SQLite workers: lease-cas 62ms
+   ✓ refuses sealing ready while an external action is unresolved 19ms
+   ✓ refuses sealing failed while an external action is unresolved 16ms
+   ✓ refuses sealing cancelled while an external action is unresolved 15ms
+   × does not clear pending cancellation through ordinary running projection 18ms
+     → expected [Function] to throw an error
+   × does not clear pending cancellation through ordinary waiting_input projection 16ms
+     → expected [Function] to throw an error
+   × does not clear pending cancellation through ordinary queued projection 15ms
+     → expected [Function] to throw an error
+   × does not clear pending cancellation through ordinary ready projection 14ms
+     → expected [Function] to throw an error
+   × does not clear pending cancellation through ordinary failed projection 15ms
+     → expected [Function] to throw an error
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 5 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/state/graph-runs.test.ts > does not clear pending cancellation through ordinary running projection
+ FAIL  src/state/graph-runs.test.ts > does not clear pending cancellation through ordinary waiting_input projection
+ FAIL  src/state/graph-runs.test.ts > does not clear pending cancellation through ordinary queued projection
+ FAIL  src/state/graph-runs.test.ts > does not clear pending cancellation through ordinary ready projection
+ FAIL  src/state/graph-runs.test.ts > does not clear pending cancellation through ordinary failed projection
+AssertionError: expected [Function] to throw an error
+
+- Expected: 
+null
+
++ Received: 
+undefined
+
+ ❯ src/state/graph-runs.test.ts:258:58
+    256| it.each(['running', 'waiting_input', 'queued', 'ready', 'failed'] as c…
+    257|   const run = store.project({ ...fence(claim(store.create(request, pro…
+    258|   expect(() => store.project({ ...fence(run), status })).toThrow('CANC…
+       |                                                          ^
+    259|   expect(store.get(scope, run.graphRunId)?.status).toBe('cancel_pendin…
+    260|   expect(store.project({ ...fence(run), status: 'cancelled' }).status)…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/5]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  5 failed | 34 passed (39)
+   Start at  07:53:53
+   Duration  1.43s (transform 108ms, setup 0ms, collect 140ms, tests 1.09s, environment 0ms, prepare 40ms)
+
+undefined
+/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/core:
+[ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL] Command failed with exit code 1: vitest run src/state/graph-runs.test.ts

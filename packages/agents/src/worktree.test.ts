@@ -1,11 +1,14 @@
+import { createHash } from "node:crypto";
 import { mkdtempSync } from "node:fs";
 import { chmod, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   cleanupOrphanedWorktrees,
   cleanupWorktree,
+  cleanupGraphWorktree,
+  quarantineGraphWorktree,
   commitWorktreeChanges,
   createWorktree,
   mergeWorktree,
@@ -20,6 +23,44 @@ afterEach(async () => {
 });
 
 describe("git worktree lifecycle", () => {
+  it("persists graph retention across generic and prefix cleanup until trusted explicit export cleanup", async () => {
+    const { repo, root } = await makeRepo();
+    const handle = await createWorktree({ repoPath: repo, runId: "graph", rootPath: root,
+      graphRetention: { runId: "graph", scopeKey: "tenant/workspace", generation: 1, workspaceLeaseRef: "lease" } });
+    await writeFile(join(handle.worktreePath, "dirty.txt"), "unexported");
+    vi.resetModules();
+    const restarted = await import("./worktree.js");
+    await restarted.cleanupWorktree({ ...handle });
+    expect(await readFile(join(handle.worktreePath, "dirty.txt"), "utf8")).toBe("unexported");
+    expect((await cleanupOrphanedWorktrees(repo, { rootPath: root })).removed).toEqual([]);
+    await quarantineGraphWorktree(handle, "executor stop unknown");
+    expect(await readFile(join(handle.worktreePath, "dirty.txt"), "utf8")).toBe("unexported");
+    await expect(cleanupGraphWorktree(handle, { artifactDigest: "a".repeat(64), verifySafe: async () => { throw new Error("producer unknown"); } })).rejects.toThrow("producer unknown");
+    await expect(cleanupGraphWorktree(handle, { artifactDigest: "a".repeat(64), verifySafe: (async () => true) as unknown as () => Promise<void> })).rejects.toThrow(/authority/i);
+    let checked = 0;
+    await cleanupGraphWorktree(handle, { artifactDigest: "a".repeat(64), verifySafe: async (record, digest) => {
+      expect(record.runId).toBe("graph"); expect(record.worktreePath).toBe(handle.worktreePath); expect(digest).toBe("a".repeat(64)); checked++;
+    } });
+    expect(checked).toBeGreaterThanOrEqual(2);
+    await expect(readFile(join(handle.worktreePath, "dirty.txt"))).rejects.toThrow();
+  }, 15_000);
+
+  it("fails closed for corrupted persistent retention and revoked safe cleanup", async () => {
+    const { repo, root } = await makeRepo();
+    const handle = await createWorktree({ repoPath: repo, runId: "graph", rootPath: root,
+      graphRetention: { runId: "graph", scopeKey: "scope", generation: 1, workspaceLeaseRef: "lease" } });
+    let count = 0;
+    await expect(cleanupGraphWorktree(handle, { artifactDigest: "b".repeat(64), verifySafe: () => {
+      if (++count > 1) throw new Error("lease revoked");
+    } })).rejects.toThrow("lease revoked");
+    const key = createHash("sha256").update(handle.worktreePath).digest("hex");
+    await writeFile(join(repo, ".git", "osstack-graph-retention", `${key}.json`), "broken");
+    await cleanupWorktree(handle);
+    expect((await cleanupOrphanedWorktrees(repo, { rootPath: root })).removed).toEqual([]);
+    await expect(cleanupGraphWorktree(handle, { artifactDigest: "b".repeat(64), verifySafe: () => undefined })).rejects.toThrow();
+    expect(await readFile(join(handle.worktreePath, "README.md"), "utf8")).toBe("# test\n");
+  });
+
   it("does not execute repository hooks while creating isolation", async () => {
     const { repo, root } = await makeRepo();
     const marker = join(root, "checkout-hook-ran");

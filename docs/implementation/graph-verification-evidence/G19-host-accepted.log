@@ -1,0 +1,26 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+osstack: retaining write lease graph-action:13103879f88b26f3dab14fca40a81bd77b22c7475feadaba20465737ac837de2: Error: external stop unconfirmed
+ ✓ src/graph-verification.test.ts (15 tests) 32620ms
+   ✓ restores the exact verified candidate into independent repositories and rejects reviewer writes  2292ms
+   ✓ rejects wrong manifest and reviewer identity before restoring or invoking  917ms
+   ✓ persists actual stopped exit evidence and rejects tampering/replay  2119ms
+   ✓ keeps unknown stop separate from stopped malformed review and valid changes_requested  2355ms
+   ✓ runs real registered command and independent G04 review concurrently with an observable two-way barrier  2121ms
+   ✓ rejects revoke during adapter availability before actual invocation  2047ms
+   ✓ rejects mutate during adapter availability before actual invocation  2117ms
+   ✓ snapshots callback/data replacement and rejects live revocation after preparation awaits  2626ms
+   ✓ rejects mutation during restore before accepting any workspace baseline  1726ms
+   ✓ releases preparation lease if authority is revoked while acquiring it  753ms
+   ✓ uses exact allowlisted exits, refusing model pass claims and unregistered commands  1765ms
+   ✓ does not accept review done as executor stop proof through the actual broker  2036ms
+   ✓ classifies stopped malformed output and reviewer filesystem mutation without a code-failure result  5758ms
+   ✓ rejects manifest scope/SHA mismatch and independent identity verifier rejection before invocation  793ms
+   ✓ snapshots executor evidence before asynchronous verification and rechecks authority afterward  3195ms
+
+ Test Files  1 passed (1)
+      Tests  15 passed (15)
+   Start at  18:09:11
+   Duration  34.06s (transform 670ms, setup 7ms, collect 1.19s, tests 32.62s, environment 0ms, prepare 51ms)
+

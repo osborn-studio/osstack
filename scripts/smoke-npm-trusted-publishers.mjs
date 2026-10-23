@@ -41,7 +41,7 @@ await writeFile(join(bin, "npm"), `#!/usr/bin/env node
 const name = process.argv[4];
 if (process.argv[2] !== "trust" || process.argv[3] !== "list") process.exit(2);
 if (name === "@fixture/configured") {
-  console.log(JSON.stringify({ type: "github", repository: "gilosbornhello/osstack", file: "release.yml", permissions: ["createPackage"] }));
+  console.log(JSON.stringify({ type: "github", repository: "osborn-studio/osstack", file: "release.yml", permissions: ["createPackage"] }));
 } else if (name === "@fixture/mismatched") {
   console.log(JSON.stringify({ type: "github", repository: "wrong/repo", file: "publish.yml", permissions: [] }));
 } else if (name === "@fixture/auth") {

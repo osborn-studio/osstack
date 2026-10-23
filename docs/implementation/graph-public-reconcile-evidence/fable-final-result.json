@@ -1,0 +1,111 @@
+{
+  "duration_api_ms": 67769,
+  "stop_reason": "end_turn",
+  "session_id": "aad041b7-1f73-47c0-a4be-f5a25494155c",
+  "total_cost_usd": 0.85125875,
+  "usage": {
+    "input_tokens": 2,
+    "cache_creation_input_tokens": 29689,
+    "cache_read_input_tokens": 3219,
+    "output_tokens": 4707,
+    "output_tokens_details": {
+      "thinking_tokens": 3457
+    },
+    "server_tool_use": {
+      "web_search_requests": 0,
+      "web_fetch_requests": 0
+    },
+    "service_tier": "standard",
+    "cache_creation": {
+      "ephemeral_1h_input_tokens": 29689,
+      "ephemeral_5m_input_tokens": 0
+    },
+    "inference_geo": "not_available",
+    "iterations": [
+      {
+        "input_tokens": 2,
+        "output_tokens": 4707,
+        "cache_read_input_tokens": 3219,
+        "cache_creation_input_tokens": 29689,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 0,
+          "ephemeral_1h_input_tokens": 29689
+        },
+        "type": "message",
+        "model": null
+      }
+    ],
+    "speed": "standard"
+  },
+  "modelUsage": {
+    "claude-haiku-4-5-20251001": {
+      "inputTokens": 21229,
+      "outputTokens": 15,
+      "cacheReadInputTokens": 0,
+      "cacheCreationInputTokens": 0,
+      "webSearchRequests": 0,
+      "costUSD": 0.021304,
+      "contextWindow": 200000,
+      "maxOutputTokens": 32000,
+      "thinkingTokens": 0,
+      "canonicalModel": "claude-haiku-4-5",
+      "provider": "firstParty",
+      "costBasis": "list"
+    },
+    "claude-fable-5-1": {
+      "inputTokens": 2,
+      "outputTokens": 4707,
+      "cacheReadInputTokens": 3219,
+      "cacheCreationInputTokens": 29689,
+      "webSearchRequests": 0,
+      "costUSD": 0.82995475,
+      "contextWindow": 1000000,
+      "maxOutputTokens": 64000,
+      "thinkingTokens": 3457,
+      "canonicalModel": "claude-fable-5-1",
+      "provider": "firstParty",
+      "costBasis": "list"
+    }
+  },
+  "permission_denials": [],
+  "terminal_reason": "completed",
+  "fast_mode_state": "off",
+  "fast_mode_disabled_reason": "sdk_opt_in_required",
+  "subagent_stats": {
+    "spawned": 0,
+    "requested": {
+      "background": 0,
+      "foreground": 0,
+      "unset": 0
+    },
+    "started_in_background": 0,
+    "max_depth": 0,
+    "spawned_by_subagents": 0,
+    "completed": 0,
+    "failed": 0,
+    "killed": {
+      "parent": 0,
+      "user": 0,
+      "system": 0
+    },
+    "refused": {
+      "depth_limit": 0,
+      "concurrency_limit": 0,
+      "budget": 0
+    },
+    "by_type": {}
+  },
+  "is_error": false,
+  "num_turns": 1,
+  "subtype": "success",
+  "api_error_status": null,
+  "result": "**Verdict: accept.** The three required fixes land as described, the new tests pin the behaviors I asked for, and I found no new blocker in the introduced code.\n\n**Fix 1 (durable intent no longer rejected on proof failure)** is correct. The `authorizationFailed` flag is set only inside the grant wrapper, so any throw from the grant callback, including the transaction-only revocation in the commit-revoked test, still surfaces as `GRANT_EXPIRED`. Every other reconciler failure returns the current durable status after a fresh cancel permission check. I traced the competing-key test by hand. The first request runs synchronously through projection, snapshot, history and registration check before its first real suspension in `proof`, so its snapshot is at revision N+1. The second request projects N+2 before the first commits. The first commit fails on the stale snapshot, is swallowed, and reports `cancel_pending`. With a competing `graph.reconcile` the second commit wins and both callers see a terminal or pending status with exactly one decision row. With a competing plain `graph.cancel` the third key settles. That is the counterexample from my prior review, now closed.\n\n**Fix 2 (no post-commit grant recheck)** is correct as written. The final grant check already happens inside the G15 commit transaction through the attestation callback, so removing the trailing check cannot admit an unauthorized decision. One assumption I could not verify without running it: the post-commit expiry test keys its denial on the presence of a decision row. That only passes if the store invokes the attestation callback before inserting the row. You state the suite is self-tested, so I take that as confirmed.\n\n**Fix 3 (help text)** now says no-child evidence and adds `reconcile` to the idempotency line and the command dispatcher. The dispatcher maps a `cancel` request body to the `graph.reconcile` method without letting the body choose the method. Good.\n\n**Removed `concurrentCancellation` and its `bound` call.** This resolves the nit. The catch path now reads the run directly through the store.\n\n**Shutdown fixture.** The throwing `confirmStopped` is safe because the drain projects generation 0 to `cancelled` before `entry.done` resolves, and the deferred launcher returns early on `cancelled`. Nothing reaches the adapter.\n\n**Tests requested last time.** All seven are present: live supervisor, competing keys, plain cancel replay, generation-0 pending intent, generation-change without revision (retained as the unobserved-generation case, which is the store-invariant-respecting form), unauthenticated daemon reconcile, and the lease-expiry assertion under the mocked clock.\n\n**Residual, not blocking.** The generation-0 branch projects `cancelled` synchronously and is not covered by the swallow. Within one process it cannot race, because no await precedes it in the handler. Across two hosts sharing the same database, a second host replaying the same key after the first host has already projected `cancelled` would throw a stale-fence error from `project` and report `REVISION_CONFLICT` for a run that is durably cancelled. This is the same reporting class as finding 1, is limited to generation 0, and requires a topology the launch-owner check already discourages. If you want it closed, wrap that one `project` call in the same status-return fallback. I do not consider it a required follow-up for this slice.\n\n**Diagnostic trade-off, accepted.** Swallowed reconciler codes no longer reach the caller at all. The returned status carries `CANCEL_UNCONFIRMED` with `nextAction: reconcile`, which is the correct public answer, and the decision table remains the audit source. No new metric requested.\n\nNothing in the patch touches `GraphReconciler`, the recovery store, or the proof authority. Scope remains no-child cancellation. Ship it.",
+  "ttft_ms": 48567,
+  "type": "result",
+  "duration_ms": 66250,
+  "uuid": "ff734890-c81b-4ddb-bf25-5522dd4efe36",
+  "ttft_stream_ms": 5375,
+  "time_to_request_ms": 1697,
+  "first_content_frame_ms": 5375,
+  "queued_turn_count": 0
+}

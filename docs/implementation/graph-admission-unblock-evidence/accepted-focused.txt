@@ -1,0 +1,169 @@
+$ vitest run src/graph-admission.test.ts src/graph-action-broker.test.ts src/graph-rpc.test.ts src/graph-host-config.test.ts src/graph-execution-command.test.ts src/graph-delivery.integration.test.ts src/graph-delivery-adversarial.test.ts src/graph-branch-broker.test.ts src/graph-verification.test.ts src/graph-delegation.integration.test.ts --maxWorkers=1 --reporter=default --reporter=json --outputFile=/Volumes/AIMATE_WORK/tmp/g25-claude-unblock/focused-tests.json
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+osstack: retaining write lease graph-action:12ff011aa0ebbf93a3bbc1207d7fd775c412469e9adacfb5b77978566b56760a: Error: external stop unconfirmed
+osstack: retaining write lease graph-action:74660154cfc7a9ebb731b39781abdc941b534edda7935315805986b38e182ed2: Error: adapter result or execution unconfirmed
+ ✓ src/graph-verification.test.ts (36 tests) 103614ms
+   ✓ restores the exact verified candidate into independent repositories and rejects reviewer writes  1741ms
+   ✓ rejects wrong manifest and reviewer identity before restoring or invoking  655ms
+   ✓ persists actual stopped exit evidence and rejects tampering/replay  2806ms
+   ✓ keeps unknown stop separate from stopped malformed review and valid changes_requested  4329ms
+   ✓ runs real registered command and independent G04 review concurrently with an observable two-way barrier  4303ms
+   ✓ rejects revoke during adapter availability before actual invocation  1600ms
+   ✓ rejects mutate during adapter availability before actual invocation  1624ms
+   ✓ snapshots callback/data replacement and rejects live revocation after preparation awaits  2062ms
+   ✓ rejects mutation during restore before accepting any workspace baseline  1262ms
+   ✓ releases preparation lease if authority is revoked while acquiring it  562ms
+   ✓ uses exact allowlisted exits, refusing model pass claims and unregistered commands  6855ms
+   ✓ does not accept review done as executor stop proof through the actual broker  1721ms
+   ✓ classifies stopped malformed output and reviewer filesystem mutation without a code-failure result  5928ms
+   ✓ rejects manifest scope/SHA mismatch and independent identity verifier rejection before invocation  645ms
+   ✓ snapshots executor evidence before asynchronous verification and rechecks authority afterward  4559ms
+   ✓ rejects actual successful command that mutates candidate: printf malicious > file  2931ms
+   ✓ rejects actual successful command that mutates candidate: git update-index --assume-unchanged file; printf malicious > file  2952ms
+   ✓ rejects actual successful command that mutates candidate: chmod +x file  2902ms
+   ✓ rejects actual successful command that mutates candidate: chmod 600 file  3007ms
+   ✓ rejects actual successful command that mutates candidate: git update-index --assume-unchanged file  2956ms
+   ✓ rejects actual successful command that mutates candidate: printf staged > file; git add file; printf candidate > file  2904ms
+   ✓ rejects actual successful command that mutates candidate: git -c user.name=test -c user.email=test@invalid commit --allow-empty -qm malicious  2915ms
+   ✓ allocates distinct actual review sessions on explicit retry and persists prompt receipts  4366ms
+   ✓ rejects an oversized envelope at the storage boundary before publishing any file  2941ms
+   ✓ requires an actual invocation receipt and strips supplied writer context on every invocation  2937ms
+   ✓ validates all new receipts when loading digest-consistent evidence  2959ms
+   ✓ allows untracked build outputs from successful actual acceptance execution  2965ms
+   ✓ confirms ordinary failing tests with escape-heavy and multibyte captured output  3283ms
+   ✓ settles an oversized structured review as a bounded contract failure instead of unknown  2982ms
+   ✓ binds actual contained tests exit 0 to candidate/image/ledger without POSIX evidence  3039ms
+   ✓ binds actual contained tests exit 1 to candidate/image/ledger without POSIX evidence  2986ms
+   ✓ binds actual contained tests exit 42 to candidate/image/ledger without POSIX evidence  3045ms
+   ✓ binds actual contained tests exit 7 to candidate/image/ledger without POSIX evidence  3031ms
+   ✓ rejects cross-candidate, image, generation, invocation and container receipt substitution  3182ms
+   ✓ retains admission and seals replay after contained DELETE acknowledgement loss  1694ms
+   ✓ settles contained cancellation only after durable removal and prevents replay  2982ms
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-claude-unblock/g21-delivery-hrKRIT/delivery/writer-0'...
+HEAD is now at 6ebf66c base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-claude-unblock/g21-delivery-GcZfqA/delivery/writer-0'...
+HEAD is now at abd4269 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-claude-unblock/g21-delivery-oqsf5l/delivery/writer-0'...
+HEAD is now at acf1985 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-claude-unblock/g21-delivery-AGViuP/delivery/writer-0'...
+HEAD is now at a751eef base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-claude-unblock/g21-delivery-SySw5i/delivery/writer-0'...
+HEAD is now at 2da1746 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-claude-unblock/g21-delivery-xc5Q7V/delivery/writer-0'...
+HEAD is now at b1c54ea base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-claude-unblock/g21-delivery-690Xud/delivery/writer-0'...
+HEAD is now at ca62e94 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-claude-unblock/g21-delivery-JXV8VC/delivery/writer-0'...
+HEAD is now at d298195 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-claude-unblock/g21-delivery-vFFcnT/delivery/writer-0'...
+HEAD is now at 2260387 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-claude-unblock/g21-delivery-eqJULL/delivery/writer-0'...
+HEAD is now at aec17f2 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-claude-unblock/g21-delivery-lE7qJP/delivery/writer-0'...
+HEAD is now at f63283d base
+ ✓ src/graph-delivery.integration.test.ts (11 tests) 69708ms
+   ✓ actual child delivery succeeds with review finishing last  5458ms
+   ✓ actual child delivery succeeds with tests finishing last  5384ms
+   ✓ repairs from immutable complete join through physical child stop and G15 resume  10799ms
+   ✓ host bounded retry returns only final confirmed task result and fresh independent workspace  8236ms
+   ✓ finite branch failure stops without a failed task RETURN or poisoned join  8083ms
+   ✓ negative quality at epoch cap stops  5386ms
+   ✓ keeps direct in reconciliation when real worker exit journaling failed  5279ms
+   ✓ keeps repair in reconciliation when real worker exit journaling failed  5273ms
+   ✓ cancels actual delivery with clean exit and inventory evidence  5275ms
+   ✓ cancels actual delivery with journal-failed exit and inventory evidence  5264ms
+   ✓ cancels actual delivery with missing-admission exit and inventory evidence  5271ms
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-claude-unblock/g22-rpc-VK5N1N/delivery/a026a306-c877-40a7-a045-4fef607739b6/writer-0'...
+HEAD is now at 072a954 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-claude-unblock/g22-rpc-JuKsQk/delivery/a3afcc80-614a-45de-b069-ca2fcdf6e0b2/writer-0'...
+HEAD is now at 81b66a6 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-claude-unblock/g22-rpc-9taKut/delivery/1690030d-5714-43f7-a663-9cb71adea83b/writer-0'...
+HEAD is now at 81b66a6 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-claude-unblock/g22-rpc-8UJuCN/delivery/42f6829c-19b2-4d2c-a6e1-87b330b4659d/writer-0'...
+HEAD is now at f90998a base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-claude-unblock/g22-rpc-Z2Zxhf/delivery/35eba824-14c4-4bd2-857e-81e354b69da7/writer-0'...
+HEAD is now at d1105d2 base
+osstack: retaining write lease graph-action:7268afc42f9acf0e7e790e7261d6b7ea8786e768403c0ab52517120128b80edc: Error: external stop unconfirmed
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-claude-unblock/g22-rpc-Dl19HW/delivery/88da4808-875d-45e8-8353-614e2297fce1/writer-0'...
+HEAD is now at 3028f90 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-claude-unblock/g22-rpc-TtZRRV/delivery/effa2730-cc86-49ea-ab37-409d8759a41a/writer-0'...
+HEAD is now at 3028f90 base
+ ✓ src/graph-rpc.test.ts (10 tests) 30551ms
+   ✓ durably reserves before launch; concurrent replay and fresh service replay never launch twice; ready is atomic v1 evidence  5412ms
+   ✓ persisted cancel intent drives actual worker/executor abort and confirmed stop through G15  405ms
+   ✓ quality interrupt binds input/revision/current grants and resumes actual checkpoint through G15  11886ms
+   ✓ lost supervisor cannot resume durable waiting evidence or mint a new launch  5403ms
+   ✓ unknown external stop retains holds and cannot become cancelled from Promise drainage  1406ms
+   ✓ close persists cancellation and drains a live executor before returning  419ms
+   ✓ expired waiting lease refuses resume before acknowledging or spending a new budget  5406ms
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-claude-unblock/g21-adversarial-EU38JE/delivery/writer-0'...
+HEAD is now at 0cfdcb7 base
+osstack: retaining write lease graph-action:ef870bb6900e8ddb6ede95b4a9ac0495914ea3da11b6b6cf5e95ee522d27e782: Error: external stop unconfirmed
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-claude-unblock/g21-adversarial-dXIzXl/delivery/writer-0'...
+HEAD is now at 79138ce base
+osstack: retaining write lease graph-action:6bc36d9c30d8adcbca5858c9ae4d6a2d2aa71fec27b2dfa63a103f99d9fb76df: Error: external stop unconfirmed
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-claude-unblock/g21-adversarial-YjgIxJ/delivery/writer-0'...
+HEAD is now at 966f679 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-claude-unblock/g21-adversarial-Eigv3u/delivery/writer-0'...
+HEAD is now at 0c0f9bb base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-claude-unblock/g21-adversarial-0Qbyll/delivery/writer-0'...
+HEAD is now at 3834aa7 base
+osstack: retaining write lease graph-action:d816e7a187b585ae2c200ed05dbe7de4a157def86895757b8095e0e4305d1689: Error: STALE_DELIVERY_OWNER
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-claude-unblock/g21-adversarial-lwOHJh/delivery/writer-0'...
+HEAD is now at 1f43796 base
+osstack: retaining write lease graph-action:dc811069768af45fbc0d8afe3e3cf52af5e637e3d4d948060601388b750ba840: Error: authority revoked
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-claude-unblock/g21-adversarial-1e2yF0/delivery/writer-0'...
+HEAD is now at e07af60 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-claude-unblock/g21-adversarial-HUQkfx/delivery/writer-0'...
+HEAD is now at 9528b92 base
+ ✓ src/graph-delivery-adversarial.test.ts (9 tests) 30468ms
+   ✓ retains unknown-review uncertainty without retry, repair or ready publication  3457ms
+   ✓ retains unknown-writer uncertainty without retry, repair or ready publication  1398ms
+   ✓ stops before freeze after actual token overrun and preserves charged action evidence  1410ms
+   ✓ captures business inputs, executors, commands and authority before asynchronous execution  5393ms
+   ✓ cannot project state after foreign-owner invalidates its authority  2353ms
+   ✓ cannot project state after revoked invalidates its authority  2278ms
+   ✓ retains reconciliation when denied preparation has no durable admission receipt  5389ms
+   ✓ renews the owned lease during an actual pending writer invocation and still completes  8717ms
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-claude-unblock/graph-delegation-bYUU3G/home/graph-delivery/486c9c13-12b4-4beb-ae6d-059a19784f60/writer-0'...
+HEAD is now at 570fb90 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-claude-unblock/graph-delegation-K3LW8Z/home/graph-delivery/84ef12be-ccc1-4380-bb2b-78028f36956f/writer-0'...
+HEAD is now at 6282d8f base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-claude-unblock/graph-delegation-K3LW8Z/home/graph-delivery/ee3830f7-ac56-476f-bbe8-0302b7dfb4b7/writer-0'...
+HEAD is now at 6282d8f base
+ ✓ src/graph-delegation.integration.test.ts (2 tests) 21206ms
+   ✓ real daemon loads owner config and CLI run/status retain durable idempotency and stable conflict codes  7128ms
+   ✓ simulated OSBot/OStag host bindings preserve parents, isolate source results and refuse unverified callers  14077ms
+osstack: retaining write lease graph-action:47213f52ae783b9862e73cb4bbb35faaabd9b35f5f54a3c6412fa5b95cddde3a: Error: adapter result or execution unconfirmed
+osstack: retaining write lease graph-action:578f0dc7411318488162df15f2c90b50c4decc0741aea260043feb73d3a739af: Error: adapter result or execution unconfirmed
+osstack: retaining write lease graph-action:d3d04146a19eba1c0565b3e9992d9cc38c8cc75555bad4c076a1a60529b43e5a: Error: adapter result or execution unconfirmed
+osstack: retaining write lease graph-action:286c72a65bd7a979d8198ad38ab006df19b646d3660136abc5b8a723b789ed63: Error: invalid result kind for registered operation
+osstack: retaining write lease graph-action:72350491043445989a781642886f66f13c305871ebe917b60c2e9f8cfdefeac9: Error: invalid usage
+osstack: retaining write lease graph-action:089fd534b84132a20fcc07f64a118f08fee6086a989a290b16080f061082a61e: Error: invalid persisted evidence reference
+osstack: retaining write lease graph-action:90fd6369c8e430a1b4697ad89e6611f700678503f968b0a7a070d982adbebe05: SqliteError: injected
+osstack: retaining write lease graph-action:0b83ae6bf76c063b774bf1c76d1574217c9755aa706e9a33180347d9db60096e: Error: adapter result or execution unconfirmed
+osstack: retaining write lease graph-action:9a4d33697285141143fb1f1aa065e3e2a18c873caeaffdabef4cf9e7c5930b4a: Error: adapter result or execution unconfirmed
+osstack: retaining write lease graph-action:09c16721620fc38b3474d330cd5edc513d0a5e3b3ac3fb073e2b6dc4d3bbc752: Error: adapter result or execution unconfirmed
+osstack: retaining write lease graph-action:e2448e76320775eeaff9c728f7c103e1f6225cd54143d4954ee0235b596db27c: Error: adapter result or execution unconfirmed
+osstack: retaining write lease graph-action:69d5d35e4b5aa810e5ab48a23967823e1ee6716dd6cf9b9f4829b4947ed80f2e: Error: adapter result or execution unconfirmed
+ ✓ src/graph-action-broker.test.ts (32 tests) 1862ms
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-claude-unblock/g22-rpc-Na1AXr/delivery/2bc37ae1-e850-4f9f-b7a0-18b5f313f1a8/writer-0'...
+HEAD is now at c029d02 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-claude-unblock/g22-rpc-KQLO9l/delivery/a1ceb5d1-a464-4a2c-90f0-695fa045138f/writer-0'...
+HEAD is now at 4816d15 base
+ ✓ src/graph-admission.test.ts (7 tests) 11798ms
+   ✓ disables new admission while retaining reads, exact replay and cancellation of admitted live work  550ms
+   ✓ admission disabled still permits an authorized live quality resume of the existing run  10852ms
+osstack: retaining write lease graph-action:8a16bfa5d332bca9dbdcb53d931299d44aa5d715259dbe769c3342aa7dc45464: Error: external stop unconfirmed
+ ✓ src/graph-branch-broker.test.ts (8 tests) 437ms
+ ✓ src/graph-execution-command.test.ts (9 tests) 30ms
+ ✓ src/graph-host-config.test.ts (3 tests) 5ms
+
+ Test Files  10 passed (10)
+      Tests  127 passed (127)
+   Start at  22:49:14
+   Duration  273.66s (transform 677ms, setup 17ms, collect 2.95s, tests 269.68s, environment 1ms, prepare 252ms)
+
+JSON report written to /Volumes/AIMATE_WORK/tmp/g25-claude-unblock/focused-tests.json

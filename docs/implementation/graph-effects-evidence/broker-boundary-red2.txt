@@ -1,0 +1,67 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+ ❯ src/graph-action-broker-boundary.test.ts (3 tests | 2 failed) 194ms
+   ✓ rejects a Promise-returning synchronous authorizer instead of silently granting authority 45ms
+   × rechecks repository policy after an asynchronous adapter availability probe 90ms
+     → expected { schemaVersion: 1, …(5) } to match object { kind: 'worker_action_rejected' }
+(15 matching properties omitted from actual)
+   × charges observed adapter usage even when the persistence mapper reports less 59ms
+     → expected { actual_tokens: +0, …(1) } to deeply equal { actual_tokens: 200, …(1) }
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/graph-action-broker-boundary.test.ts > rechecks repository policy after an asynchronous adapter availability probe
+AssertionError: expected { schemaVersion: 1, …(5) } to match object { kind: 'worker_action_rejected' }
+(15 matching properties omitted from actual)
+
+- Expected
++ Received
+
+  {
+-   "kind": "worker_action_rejected",
++   "kind": "worker_action_response",
+  }
+
+ ❯ src/graph-action-broker-boundary.test.ts:85:26
+     83|   await expect.poll(() => probed).toBe(true);
+     84|   f.revokePolicy(); available();
+     85|   expect(await response).toMatchObject({ kind: 'worker_action_rejected…
+       |                          ^
+     86|   expect(invokes).toBe(0); expect(f.writes.in_use).toBe(0);
+     87| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  src/graph-action-broker-boundary.test.ts > charges observed adapter usage even when the persistence mapper reports less
+AssertionError: expected { actual_tokens: +0, …(1) } to deeply equal { actual_tokens: 200, …(1) }
+
+- Expected
++ Received
+
+  {
+-   "accounting_blocked": 1,
+-   "actual_tokens": 200,
++   "accounting_blocked": 0,
++   "actual_tokens": 0,
+  }
+
+ ❯ src/graph-action-broker-boundary.test.ts:97:15
+     95|   expect(await f.broker.handle(connection, f.request)).toMatchObject({…
+     96|   const row = f.db.prepare('SELECT actual_tokens, accounting_blocked F…
+     97|   expect(row).toEqual({ actual_tokens: 200, accounting_blocked: 1 });
+       |               ^
+     98| });
+     99| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed | 1 passed (3)
+   Start at  06:51:16
+   Duration  1.07s (transform 411ms, setup 7ms, collect 704ms, tests 194ms, environment 0ms, prepare 43ms)
+
+undefined
+/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli:
+[ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL] Command failed with exit code 1: vitest run src/graph-action-broker-boundary.test.ts

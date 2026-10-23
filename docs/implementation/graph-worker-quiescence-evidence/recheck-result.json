@@ -1,0 +1,285 @@
+{
+  "loop_id": "G25-durable-worker-quiescence-recheck-1",
+  "state": {
+    "loop_id": "G25-durable-worker-quiescence-recheck-1",
+    "started_at": "2026-09-18T00:38:04.921Z",
+    "updated_at": "2026-09-18T00:39:45.838Z",
+    "completed_tasks": [
+      {
+        "task_id": "G25-durable-worker-quiescence-recheck-1",
+        "capability": "code.test",
+        "outcome": "success",
+        "iterations": 1,
+        "agent_id": "local-command",
+        "duration_ms": 100916,
+        "run_id": "run_415475cb-8e28-4afe-be74-03654175b3b7",
+        "started_at": "2026-09-18T00:38:04.923Z",
+        "completed_at": "2026-09-18T00:39:45.671Z",
+        "execution_summary": "Process group 50385 gone (kill(-pgid, 0): ESRCH); leader exit observed",
+        "execution_commands": [
+          {
+            "command": "node /Volumes/AIMATE_WORK/tmp/g25-quiescence/acceptance-command.mjs delivery",
+            "exit_code": 0,
+            "duration_ms": 100748,
+            "summary": "delivery: exit=0 .. HEAD is now at 7b2b09f base Cloning into '/Volumes/AIMATE_WORK/tmp/g25-quiescence/g21-delivery-v0m8yV/delivery/writer-0'... HEAD is now at 4affb87 base Cloning into '/Volumes/AIMATE_WORK/tmp/g25-quiescence/g21-delivery-J"
+          }
+        ],
+        "verifier_agent_id": "local-verifier",
+        "verify_summary": "1 verifier command and 0 verifier adapters passed. 1 evaluation passed.",
+        "verify_issue_count": 0,
+        "verify_commands": [
+          {
+            "command": "node /Volumes/AIMATE_WORK/tmp/g25-quiescence/retained-evidence.mjs",
+            "exit_code": 0,
+            "duration_ms": 111,
+            "summary": "{\"passed\":true,\"sourceFiles\":1071,\"retainedVerifiers\":7,\"reason\":\"Prior delivery run failed only on conservative missing-admission contract expectation; final delivery rerun required. Seeded matrix and all retained verifiers attest final ex"
+          }
+        ],
+        "evaluations": [
+          {
+            "spec_id": "verify-command-1",
+            "mode": "command",
+            "description": "Shell verifier: node /Volumes/AIMATE_WORK/tmp/g25-quiescence/retained-evidence.mjs",
+            "required": true,
+            "weight": 1,
+            "pass": true,
+            "summary": "command passed (111 ms)",
+            "implicit": true
+          }
+        ],
+        "changed_files": [
+          "packages/cli/src/graph-delivery-adversarial.test.ts",
+          "packages/cli/src/graph-delivery.integration.test.ts",
+          "packages/cli/src/graph-delivery.ts",
+          "packages/core/src/state/graph-recovery.test.ts",
+          "packages/core/src/state/graph-recovery.ts",
+          "scripts/verify-graph-runtime.mjs",
+          "?? packages/cli/src/graph-worker-exit-proof.test.ts",
+          "?? packages/cli/src/graph-worker-exit-proof.ts"
+        ],
+        "diff_summary": ".../cli/src/graph-delivery-adversarial.test.ts | 7 +-- .../cli/src/graph-delivery.integration.test.ts | 63 ++++++++++++++++++++-- packages/cli/src/graph-delivery.ts | 62 +++++++++++++++------ packages/core/src/state/graph-recovery.test.ts |",
+        "commit_hash": "224a646"
+      }
+    ],
+    "in_progress": [],
+    "pending": [],
+    "deferred_tasks": [],
+    "key_metrics": {
+      "total_cycles": 1,
+      "avg_duration_ms": 100916,
+      "success_rate": 1,
+      "tokens_consumed": 0,
+      "cost_consumed": 0
+    },
+    "decisions": [
+      "G25-durable-worker-quiescence-recheck-1: selected local-command - local execute command",
+      "G25-durable-worker-quiescence-recheck-1: stop after iteration 1 - Verifier passed with score 1.00."
+    ]
+  },
+  "completedTasks": [
+    {
+      "task_id": "G25-durable-worker-quiescence-recheck-1",
+      "capability": "code.test",
+      "outcome": "success",
+      "iterations": 1,
+      "agent_id": "local-command",
+      "duration_ms": 100916,
+      "run_id": "run_415475cb-8e28-4afe-be74-03654175b3b7",
+      "started_at": "2026-09-18T00:38:04.923Z",
+      "completed_at": "2026-09-18T00:39:45.671Z",
+      "execution_summary": "Process group 50385 gone (kill(-pgid, 0): ESRCH); leader exit observed",
+      "execution_commands": [
+        {
+          "command": "node /Volumes/AIMATE_WORK/tmp/g25-quiescence/acceptance-command.mjs delivery",
+          "exit_code": 0,
+          "duration_ms": 100748,
+          "summary": "delivery: exit=0 .. HEAD is now at 7b2b09f base Cloning into '/Volumes/AIMATE_WORK/tmp/g25-quiescence/g21-delivery-v0m8yV/delivery/writer-0'... HEAD is now at 4affb87 base Cloning into '/Volumes/AIMATE_WORK/tmp/g25-quiescence/g21-delivery-J"
+        }
+      ],
+      "verifier_agent_id": "local-verifier",
+      "verify_summary": "1 verifier command and 0 verifier adapters passed. 1 evaluation passed.",
+      "verify_issue_count": 0,
+      "verify_commands": [
+        {
+          "command": "node /Volumes/AIMATE_WORK/tmp/g25-quiescence/retained-evidence.mjs",
+          "exit_code": 0,
+          "duration_ms": 111,
+          "summary": "{\"passed\":true,\"sourceFiles\":1071,\"retainedVerifiers\":7,\"reason\":\"Prior delivery run failed only on conservative missing-admission contract expectation; final delivery rerun required. Seeded matrix and all retained verifiers attest final ex"
+        }
+      ],
+      "evaluations": [
+        {
+          "spec_id": "verify-command-1",
+          "mode": "command",
+          "description": "Shell verifier: node /Volumes/AIMATE_WORK/tmp/g25-quiescence/retained-evidence.mjs",
+          "required": true,
+          "weight": 1,
+          "pass": true,
+          "summary": "command passed (111 ms)",
+          "implicit": true
+        }
+      ],
+      "changed_files": [
+        "packages/cli/src/graph-delivery-adversarial.test.ts",
+        "packages/cli/src/graph-delivery.integration.test.ts",
+        "packages/cli/src/graph-delivery.ts",
+        "packages/core/src/state/graph-recovery.test.ts",
+        "packages/core/src/state/graph-recovery.ts",
+        "scripts/verify-graph-runtime.mjs",
+        "?? packages/cli/src/graph-worker-exit-proof.test.ts",
+        "?? packages/cli/src/graph-worker-exit-proof.ts"
+      ],
+      "diff_summary": ".../cli/src/graph-delivery-adversarial.test.ts | 7 +-- .../cli/src/graph-delivery.integration.test.ts | 63 ++++++++++++++++++++-- packages/cli/src/graph-delivery.ts | 62 +++++++++++++++------ packages/core/src/state/graph-recovery.test.ts |",
+      "commit_hash": "224a646"
+    }
+  ],
+  "events": [
+    {
+      "event_id": "evt_d55b4868-f3fa-4f11-87f2-63777d91b910",
+      "loop_id": "G25-durable-worker-quiescence-recheck-1",
+      "type": "loop.started",
+      "seq": 1,
+      "created_at": 1789691884922,
+      "payload": {
+        "workspace_path": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation"
+      }
+    },
+    {
+      "event_id": "evt_12be8ab6-00ea-4099-b511-791f2a81c3f9",
+      "loop_id": "G25-durable-worker-quiescence-recheck-1",
+      "type": "loop.cycle.started",
+      "seq": 2,
+      "created_at": 1789691884922,
+      "payload": {
+        "cycle": 1
+      }
+    },
+    {
+      "event_id": "evt_a2fe5683-7af1-420b-8d3e-f32df711b6e8",
+      "loop_id": "G25-durable-worker-quiescence-recheck-1",
+      "type": "loop.discover.done",
+      "seq": 3,
+      "created_at": 1789691884922,
+      "payload": {
+        "task_count": 1,
+        "discovered_task_count": 1,
+        "skipped_task_count": 0
+      }
+    },
+    {
+      "event_id": "evt_02f6e40b-7b9f-45ff-acb3-92f4f3f0a901",
+      "loop_id": "G25-durable-worker-quiescence-recheck-1",
+      "type": "loop.plan.done",
+      "seq": 4,
+      "created_at": 1789691884923,
+      "payload": {
+        "task_id": "G25-durable-worker-quiescence-recheck-1",
+        "plan_id": "plan_c4535a41-a138-48f5-8159-66a9314da958",
+        "agent_id": "local-command",
+        "routing_reason": "local execute command",
+        "iteration": 1
+      }
+    },
+    {
+      "event_id": "evt_619d80fc-83af-4227-8ca5-206414f4ad7c",
+      "loop_id": "G25-durable-worker-quiescence-recheck-1",
+      "type": "loop.execute.done",
+      "seq": 5,
+      "created_at": 1789691985671,
+      "payload": {
+        "task_id": "G25-durable-worker-quiescence-recheck-1",
+        "run_id": "run_415475cb-8e28-4afe-be74-03654175b3b7",
+        "outcome": "completed",
+        "agent_id": "local-command",
+        "summary": "Process group 50385 gone (kill(-pgid, 0): ESRCH); leader exit observed",
+        "iteration": 1
+      }
+    },
+    {
+      "event_id": "evt_2a987518-fde8-4081-9cbc-925b4c44ef00",
+      "loop_id": "G25-durable-worker-quiescence-recheck-1",
+      "type": "loop.verify.done",
+      "seq": 6,
+      "created_at": 1789691985838,
+      "payload": {
+        "task_id": "G25-durable-worker-quiescence-recheck-1",
+        "pass": true,
+        "score": 1,
+        "issue_count": 0,
+        "evaluation_count": 1,
+        "failed_evaluation_ids": [],
+        "reviewer_agent_id": "local-verifier",
+        "summary": "1 verifier command and 0 verifier adapters passed. 1 evaluation passed.",
+        "changed_files": [
+          "packages/cli/src/graph-delivery-adversarial.test.ts",
+          "packages/cli/src/graph-delivery.integration.test.ts",
+          "packages/cli/src/graph-delivery.ts",
+          "packages/core/src/state/graph-recovery.test.ts",
+          "packages/core/src/state/graph-recovery.ts",
+          "scripts/verify-graph-runtime.mjs",
+          "?? packages/cli/src/graph-worker-exit-proof.test.ts",
+          "?? packages/cli/src/graph-worker-exit-proof.ts"
+        ],
+        "diff_summary": ".../cli/src/graph-delivery-adversarial.test.ts | 7 +-- .../cli/src/graph-delivery.integration.test.ts | 63 ++++++++++++++++++++-- packages/cli/src/graph-delivery.ts | 62 +++++++++++++++------ packages/core/src/state/graph-recovery.test.ts |",
+        "commit_hash": "224a646",
+        "iteration": 1
+      }
+    },
+    {
+      "event_id": "evt_b11ea48f-64e0-447c-8a91-43c9c60a6fb2",
+      "loop_id": "G25-durable-worker-quiescence-recheck-1",
+      "type": "loop.iterate.done",
+      "seq": 7,
+      "created_at": 1789691985838,
+      "payload": {
+        "task_id": "G25-durable-worker-quiescence-recheck-1",
+        "action": "stop",
+        "reason": "Verifier passed with score 1.00.",
+        "iteration": 1,
+        "issue_count": 0,
+        "failed_evaluation_ids": []
+      }
+    },
+    {
+      "event_id": "evt_7ee6e772-5e66-47ea-b64f-48328d0a959f",
+      "loop_id": "G25-durable-worker-quiescence-recheck-1",
+      "type": "loop.state.written",
+      "seq": 8,
+      "created_at": 1789691985839,
+      "payload": {
+        "jsonPath": "/Volumes/AIMATE_WORK/tmp/g25-quiescence/recheck-LOOP-STATE.json",
+        "markdownPath": "/Volumes/AIMATE_WORK/tmp/g25-quiescence/recheck-STATE.md"
+      }
+    },
+    {
+      "event_id": "evt_79585525-ca4d-4a75-9004-eb0e9cb1a521",
+      "loop_id": "G25-durable-worker-quiescence-recheck-1",
+      "type": "loop.cycle.completed",
+      "seq": 9,
+      "created_at": 1789691985839,
+      "payload": {
+        "cycle": 1,
+        "task_count": 1,
+        "discovered_task_count": 1,
+        "skipped_task_count": 0,
+        "duration_ms": 100920
+      }
+    },
+    {
+      "event_id": "evt_a17e16a8-8bd0-4b86-bf73-ac24f0fbd700",
+      "loop_id": "G25-durable-worker-quiescence-recheck-1",
+      "type": "loop.stopped",
+      "seq": 10,
+      "created_at": 1789691985839,
+      "payload": {
+        "reason_code": "completed",
+        "reason": "manual run completed"
+      }
+    }
+  ],
+  "jsonPath": "/Volumes/AIMATE_WORK/tmp/g25-quiescence/recheck-LOOP-STATE.json",
+  "markdownPath": "/Volumes/AIMATE_WORK/tmp/g25-quiescence/recheck-STATE.md",
+  "discoveredTaskCount": 1,
+  "executedTaskCount": 1,
+  "skippedTaskCount": 0
+}

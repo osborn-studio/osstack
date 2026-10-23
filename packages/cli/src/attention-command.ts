@@ -44,7 +44,7 @@ export async function handleAttentionCommand(
     if (args[0] === "claude-hook") {
       if (!io.rpc) throw new Error("daemon_connection_required");
       const { handleClaudeAttentionHook } = await import("./attention-hook.js");
-      return await handleClaudeAttentionHook(args, io.rpc, out);
+      return await handleClaudeAttentionHook(args, (method, params) => io.rpc!(method, params, 1000), out);
     }
     if (
       ["contract", "routing-eval", "triage", "context", "lesson"].includes(

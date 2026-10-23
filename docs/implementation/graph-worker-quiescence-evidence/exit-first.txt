@@ -1,0 +1,57 @@
+$ vitest run src/graph-worker-exit-proof.test.ts --maxWorkers=1
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+ ❯ src/graph-worker-exit-proof.test.ts (25 tests | 1 failed) 946ms
+   × verifies a real parent-observed exit after reopening SQLite, including inside the G15 final transaction 352ms
+     → REVISION_CONFLICT
+   ✓ requires real exit even when a program result succeeded or lease expired 248ms
+   ✓ does not promote an authenticated no-child event to an exited-worker proof 16ms
+   ✓ rejects malformed durable exit pid 15ms
+   ✓ rejects malformed durable exit scope 14ms
+   ✓ rejects malformed durable exit owner 14ms
+   ✓ rejects malformed durable exit generation 15ms
+   ✓ rejects malformed durable exit journal-error 14ms
+   ✓ rejects malformed durable exit no-exit-status 15ms
+   ✓ rejects malformed durable exit two-exit-statuses 15ms
+   ✓ rejects malformed durable exit before-launch 14ms
+   ✓ rejects malformed durable exit unknown-field 14ms
+   ✓ rejects contradictory launch pid 14ms
+   ✓ rejects contradictory launch pgid 14ms
+   ✓ rejects contradictory launch captured-at 14ms
+   ✓ rejects contradictory launch identity 14ms
+   ✓ rejects wrong binding or observation time owner 14ms
+   ✓ rejects wrong binding or observation time scope 15ms
+   ✓ rejects wrong binding or observation time identity 14ms
+   ✓ rejects wrong binding or observation time future 14ms
+   ✓ accepts timeout followed by actual exit, and rejects timeout alone 30ms
+   ✓ rejects conflicting wrong-pid observation 15ms
+   ✓ rejects conflicting after-exit observation 14ms
+   ✓ rejects conflicting spawn-failed observation 14ms
+   ✓ retains the original worker instance even when the same PID may be reused, without signals or OS queries 14ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/graph-worker-exit-proof.test.ts > verifies a real parent-observed exit after reopening SQLite, including inside the G15 final transaction
+GraphRunStorageError: REVISION_CONFLICT
+ ❯ error ../core/src/state/graph-recovery.ts:143:99
+ ❯ GraphRecoveryStore.run ../core/src/state/graph-recovery.ts:148:61
+ ❯ GraphRecoveryStore.capture ../core/src/state/graph-recovery.ts:165:22
+ ❯ sqliteTransaction.<anonymous> ../core/src/state/graph-recovery.ts:173:40
+ ❯ sqliteTransaction ../../node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/lib/methods/transaction.js:65:24
+ ❯ GraphRecoveryStore.transaction ../core/src/state/graph-recovery.ts:139:36
+ ❯ GraphRecoveryStore.snapshot ../core/src/state/graph-recovery.ts:173:17
+ ❯ src/graph-worker-exit-proof.test.ts:39:28
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 24 passed (25)
+   Start at  17:13:35
+   Duration  1.87s (transform 472ms, setup 8ms, collect 799ms, tests 946ms, environment 0ms, prepare 38ms)
+
+/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli:
+[ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL] @osstack/cli@0.19.0 test: `vitest run src/graph-worker-exit-proof.test.ts --maxWorkers=1`
+Exit status 1

@@ -1,0 +1,77 @@
+{
+  "loop_id": "graph-c2-investigation",
+  "started_at": "2026-09-14T03:47:53.383Z",
+  "updated_at": "2026-09-14T04:13:16.133Z",
+  "completed_tasks": [
+    {
+      "task_id": "c2-recovery",
+      "capability": "code.write",
+      "outcome": "success",
+      "iterations": 1,
+      "agent_id": "codex-cli",
+      "duration_ms": 1522749,
+      "run_id": "run_a5651dcc-3289-4bad-b126-df0a8195eca3",
+      "started_at": "2026-09-14T03:47:53.384Z",
+      "completed_at": "2026-09-14T04:12:59.780Z",
+      "execution_summary": "codex exited 0",
+      "verifier_agent_id": "local-verifier",
+      "verify_summary": "1 verifier command and 0 verifier adapters passed. 1 evaluation passed.",
+      "verify_issue_count": 0,
+      "verify_commands": [
+        {
+          "command": "node scripts/probe-graph-c2.mjs",
+          "exit_code": 0,
+          "duration_ms": 16292,
+          "summary": "{ \"passed\": true, \"admitted\": false, \"node\": \"v26.5.0\", \"versions\": { \"langgraph\": \"1.4.15\", \"langgraph-checkpoint\": \"1.1.5\", \"core\": \"1.2.11\" }, \"assertions\": 56, \"failedAssertions\": [], \"experiments\": 42, \"processes\": 96, \"actualSigkills\""
+        }
+      ],
+      "evaluations": [
+        {
+          "spec_id": "verify-command-1",
+          "mode": "command",
+          "description": "Shell verifier: node scripts/probe-graph-c2.mjs",
+          "required": true,
+          "weight": 1,
+          "pass": true,
+          "summary": "command passed (16292 ms)",
+          "implicit": true
+        }
+      ],
+      "changed_files": [
+        "docs/implementation/2026-09-13-osstack-graph-upgrade.md",
+        "docs/implementation/2026-09-13-osstack-graph-upgrade.tasks.json",
+        "packages/graph/src/worker-entry.ts",
+        "?? .changeset/graph-functional-kernel.md",
+        "?? docs/design/2026-09-13-graph-functional-runtime.md",
+        "?? docs/implementation/graph-c2-evidence/claude-functional-review.md",
+        "?? docs/implementation/graph-c2-evidence/executor.md",
+        "?? docs/implementation/graph-c2-evidence/supervisor.md",
+        "?? packages/graph/src/functional-entry.test.ts",
+        "?? scripts/fixtures/graph-c2-journal.test.mjs",
+        "?? scripts/fixtures/graph-c2-ledger.mjs",
+        "?? scripts/fixtures/graph-c2-ledger.test.mjs",
+        "?? scripts/fixtures/graph-c2-runtime.mjs",
+        "?? scripts/probe-graph-c2.mjs"
+      ],
+      "diff_summary": ".../2026-09-13-osstack-graph-upgrade.md | 12 ++++++++++++ .../2026-09-13-osstack-graph-upgrade.tasks.json | 20 +++++++++++++------- packages/graph/src/worker-entry.ts | 2 +- 3 files changed, 26 insertions(+), 8 deletions(-)",
+      "commit_hash": "937c87d",
+      "tokens_in": 278260,
+      "tokens_out": 35955,
+      "cost_usd": 0
+    }
+  ],
+  "in_progress": [],
+  "pending": [],
+  "deferred_tasks": [],
+  "key_metrics": {
+    "total_cycles": 1,
+    "avg_duration_ms": 1522749,
+    "success_rate": 1,
+    "tokens_consumed": 314215,
+    "cost_consumed": 0
+  },
+  "decisions": [
+    "c2-recovery: selected codex-cli - agent_id override",
+    "c2-recovery: stop after iteration 1 - Verifier passed with score 1.00."
+  ]
+}

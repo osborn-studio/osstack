@@ -4,6 +4,8 @@ import { isAbsolute } from "node:path";
 import { promisify } from "node:util";
 import { z } from "zod";
 
+import { CandidateEvidenceSchema, CandidateEvidenceContextSchema, assertCandidateEvidenceBinding, type CandidateEvidence, type CandidateEvidenceContext } from "./candidate-evidence.js";
+
 const execFileAsync = promisify(execFile);
 const GitCommitSha = z.string().regex(/^(?:[a-f0-9]{40}|[a-f0-9]{64})$/);
 const SafeRemote = z
@@ -43,6 +45,8 @@ const GitHubDeliveryInputSchema = z
       .refine(isAbsolute, "bodyFile must be absolute"),
     mergeStrategy: z.literal("squash"),
     ciTimeoutMs: z.number().int().min(1_000).max(86_400_000),
+    candidateEvidence: CandidateEvidenceSchema.optional(),
+    evidenceContext: CandidateEvidenceContextSchema.optional(),
   })
   .strict();
 
@@ -69,6 +73,8 @@ export interface GitHubDeliveryInput {
   bodyFile: string;
   mergeStrategy: "squash";
   ciTimeoutMs: number;
+  candidateEvidence?: CandidateEvidence | undefined;
+  evidenceContext?: CandidateEvidenceContext | undefined;
 }
 
 export interface GitHubDeliveryResult {
@@ -673,11 +679,74 @@ async function recoverMergedDelivery(
   };
 }
 
+function assertUniqueCurrentRequiredChecks(requiredChecks: string[], checks: z.infer<typeof CheckRollup>[]): void {
+  if (requiredChecks.length === 0 || new Set(requiredChecks).size !== requiredChecks.length) throw new Error("candidate required checks must be nonempty and unique");
+  assertRequiredChecks(requiredChecks, checks);
+  for (const required of requiredChecks) {
+    const matching = checks.filter(check => rollupName(check) === required);
+    if (matching.length !== 1 ||
+      (matching[0]!.conclusion != null ? matching[0]!.conclusion!.toUpperCase() !== "SUCCESS" : matching[0]!.state?.toUpperCase() !== "SUCCESS") ||
+      (matching[0]!.status != null && matching[0]!.status!.toUpperCase() !== "COMPLETED")) throw new Error("candidate current required checks are missing or unsuccessful");
+  }
+}
+
+/** Stateless current observation only: never push/watch/create/merge or consume cached evidence. */
+export async function observeCurrentGreenCandidate(
+  value: GitHubDeliveryInput,
+  currentContext: CandidateEvidenceContext,
+  runner: DeliveryCommandRunner = defaultDeliveryCommandRunner,
+): Promise<CandidateEvidence | undefined> {
+  const input = GitHubDeliveryInputSchema.parse(value);
+  if (input.candidateEvidence !== undefined || input.evidenceContext !== undefined) throw new Error("observer accepts no cached evidence");
+  const context = CandidateEvidenceContextSchema.parse(currentContext);
+  if (input.branch === input.base || input.branch === "main" || input.branch === "master") throw new Error("refusing protected/base candidate");
+  await assertCandidateBody(input.bodyFile);
+  for (const ref of [input.branch, input.base]) await runOrThrow(runner, input, "git", ["check-ref-format", "--branch", ref], "observer ref validation");
+  const branch = (await runOrThrow(runner, input, "git", ["branch", "--show-current"], "observer branch")).stdout.trim();
+  if (branch !== input.branch) throw new Error("observer local branch changed");
+  if ((await runOrThrow(runner, input, "git", ["status", "--porcelain=v1", "-z"], "observer clean worktree")).stdout !== "") return undefined;
+  const head = GitCommitSha.parse((await runOrThrow(runner, input, "git", ["rev-parse", "HEAD"], "observer local HEAD")).stdout.trim());
+  const remoteUrl = (await runOrThrow(runner, input, "git", ["remote", "get-url", input.remote], "observer remote")).stdout;
+  const repo = RepoView.parse(parseJson((await runOrThrow(runner, input, "gh", ["repo", "view", "--json", "nameWithOwner"], "observer repository")).stdout, "observer repository")).nameWithOwner;
+  if (remoteRepository(remoteUrl)?.toLowerCase() !== repo.toLowerCase()) throw new Error("observer remote repository mismatch");
+  const rows = (await runOrThrow(runner, input, "git", ["ls-remote", "--refs", input.remote, `refs/heads/${input.branch}`, `refs/heads/${input.base}`], "observer remote commits")).stdout.trim().split("\n");
+  if (rows.length > 2) throw new Error("observer remote metadata has extra rows");
+  if (rows.length === 1 && rows[0] === "") return undefined;
+  const refs = new Map<string, string>();
+  for (const row of rows) {
+    const parts = row.split("\t");
+    if (parts.length !== 2 || refs.has(parts[1]!) || ![`refs/heads/${input.branch}`, `refs/heads/${input.base}`].includes(parts[1]!)) throw new Error("observer remote metadata malformed");
+    refs.set(parts[1]!, GitCommitSha.parse(parts[0]));
+  }
+  const remoteHead = refs.get(`refs/heads/${input.branch}`), base = refs.get(`refs/heads/${input.base}`);
+  if (remoteHead === undefined || base === undefined) return undefined;
+  if (remoteHead !== head) return undefined; // A normal pending push, never evidence of current green.
+  if ((await readEffectiveProtection(runner, input, repo, input.branch)).protected) throw new Error("observer candidate branch protected");
+  const protection = await readEffectiveProtection(runner, input, repo, input.base);
+  if (!protection.protected || !protection.requiredChecks.length) return undefined;
+  const pr = await resolvePullRequest(runner, input, repo, head);
+  if (pr === undefined || pr.state !== "OPEN") return undefined;
+  const scope = z.object({ headRefOid: GitCommitSha, baseRefName: z.string(), headRefName: z.string() }).strict().parse(parseJson((await runOrThrow(runner, input, "gh", ["pr", "view", String(pr.number), "--json", "headRefOid,baseRefName,headRefName"], "observer PR scope")).stdout, "observer PR scope"));
+  if (scope.headRefOid !== head || scope.baseRefName !== input.base || scope.headRefName !== input.branch) throw new Error("observer PR scope changed");
+  const candidate = MergeCandidate.parse(parseJson((await runOrThrow(runner, input, "gh", ["pr", "view", String(pr.number), "--json", "number,url,headRefOid,state,mergeable,mergeStateStatus,statusCheckRollup"], "observer current checks")).stdout, "observer current checks"));
+  pullRequestUrl(candidate.url, repo, pr.number);
+  if (candidate.number !== pr.number || candidate.headRefOid !== head) throw new Error("observer PR identity changed");
+  if (candidate.mergeable !== "MERGEABLE" || candidate.mergeStateStatus !== "CLEAN") return undefined;
+  try { assertUniqueCurrentRequiredChecks(protection.requiredChecks, candidate.statusCheckRollup); } catch { return undefined; }
+  // Observation is only a hint. The consumer repeats all current remote/CI checks before any merge.
+  return CandidateEvidenceSchema.parse({ schemaVersion: 1, repo, headSha: head, baseSha: base, ...context, requiredChecks: protection.requiredChecks, observedAt: new Date().toISOString() });
+}
+
 export async function deliverToGitHub(
   value: GitHubDeliveryInput,
   runner: DeliveryCommandRunner = defaultDeliveryCommandRunner,
 ): Promise<GitHubDeliveryResult> {
   const input = GitHubDeliveryInputSchema.parse(value);
+  if (
+    (input.candidateEvidence === undefined) !==
+    (input.evidenceContext === undefined)
+  )
+    throw new Error("candidate evidence requires current controller context");
   await assertCandidateBody(input.bodyFile);
   if (
     input.branch === input.base ||
@@ -762,7 +831,9 @@ export async function deliverToGitHub(
     remoteRepo === undefined ||
     remoteRepo.toLowerCase() !== repo.toLowerCase()
   ) {
-    throw new Error("Git remote repository does not match authenticated GitHub repository");
+    throw new Error(
+      "Git remote repository does not match authenticated GitHub repository",
+    );
   }
 
   const candidateProtection = await readEffectiveProtection(
@@ -772,7 +843,9 @@ export async function deliverToGitHub(
     input.branch,
   );
   if (candidateProtection.protected) {
-    throw new Error("refusing to push an effectively protected candidate branch");
+    throw new Error(
+      "refusing to push an effectively protected candidate branch",
+    );
   }
 
   const pushedCommit = GitCommitSha.parse(
@@ -786,23 +859,107 @@ export async function deliverToGitHub(
       )
     ).stdout.trim(),
   );
-  let pr = await resolvePullRequest(
-    runner,
-    input,
-    repo,
-    pushedCommit,
-  );
-  if (pr?.state === "MERGED") {
-    return await recoverMergedDelivery(
+  const evidence = input.candidateEvidence;
+  async function assertRemoteBinding(): Promise<void> {
+    const rows = (
+      await runOrThrow(
+        runner,
+        input,
+        "git",
+        [
+          "ls-remote",
+          "--refs",
+          input.remote,
+          `refs/heads/${input.branch}`,
+          `refs/heads/${input.base}`,
+        ],
+        "candidate remote evidence",
+      )
+    ).stdout
+      .trim()
+      .split("\n");
+    const expected = new Map([
+      [`refs/heads/${input.branch}`, pushedCommit],
+      [`refs/heads/${input.base}`, evidence!.baseSha],
+    ]);
+    if (
+      rows.length !== 2 ||
+      rows.some((row) => {
+        const fields = row.split("\t");
+        if (fields.length !== 2 || expected.get(fields[1]!) !== fields[0])
+          return true;
+        expected.delete(fields[1]!);
+        return false;
+      }) ||
+      expected.size !== 0
+    )
+      throw new Error("candidate remote head/base binding changed or missing");
+  }
+  if (evidence !== undefined) {
+    const protection = await readEffectiveProtection(
       runner,
       input,
       repo,
-      pushedCommit,
-      pr,
+      input.base,
     );
+    if (!protection.protected)
+      throw new Error("base branch has no effective protection");
+    assertCandidateEvidenceBinding(
+      evidence,
+      input.evidenceContext!,
+      repo,
+      pushedCommit,
+      protection.requiredChecks,
+    );
+    await assertRemoteBinding();
+  }
+  let pr = await resolvePullRequest(runner, input, repo, pushedCommit);
+  if (evidence !== undefined && pr?.state === "MERGED")
+    throw new Error("candidate evidence requires current open PR");
+  if (pr?.state === "MERGED") {
+    return await recoverMergedDelivery(runner, input, repo, pushedCommit, pr);
   }
 
-  await pushCandidate(runner, input);
+  async function assertPullRequestScope(number: number): Promise<void> {
+    const identity = z
+      .object({
+        headRefOid: GitCommitSha,
+        baseRefName: z.string(),
+        headRefName: z.string(),
+      })
+      .strict()
+      .parse(
+        parseJson(
+          (
+            await runOrThrow(
+              runner,
+              input,
+              "gh",
+              [
+                "pr",
+                "view",
+                String(number),
+                "--json",
+                "headRefOid,baseRefName,headRefName",
+              ],
+              "candidate scope evidence",
+            )
+          ).stdout,
+          "candidate scope evidence",
+        ),
+      );
+    if (
+      identity.headRefOid !== pushedCommit ||
+      identity.baseRefName !== input.base ||
+      identity.headRefName !== input.branch
+    )
+      throw new Error("candidate PR scope binding mismatched");
+  }
+  if (evidence !== undefined) {
+    if (pr === undefined || pr.state !== "OPEN")
+      throw new Error("candidate evidence requires current open PR");
+    await assertPullRequestScope(pr.number);
+  } else await pushCandidate(runner, input);
   const afterPushCommit = GitCommitSha.parse(
     (
       await runOrThrow(
@@ -820,12 +977,7 @@ export async function deliverToGitHub(
 
   let reused = pr !== undefined;
   if (pr === undefined) {
-    pr = await resolvePullRequest(
-      runner,
-      input,
-      repo,
-      pushedCommit,
-    );
+    pr = await resolvePullRequest(runner, input, repo, pushedCommit);
     reused = pr !== undefined;
     if (pr === undefined) {
       pr = await createPullRequest(runner, input, repo, pushedCommit);
@@ -833,27 +985,23 @@ export async function deliverToGitHub(
     }
   }
   if (pr.state === "MERGED") {
-    return await recoverMergedDelivery(
-      runner,
-      input,
-      repo,
-      pushedCommit,
-      pr,
-    );
+    return await recoverMergedDelivery(runner, input, repo, pushedCommit, pr);
   }
 
-  const checks = await runner.run(
-    "gh",
-    ["pr", "checks", String(pr.number), "--watch", "--fail-fast"],
-    {
-      cwd: input.workspacePath,
-      timeoutMs: input.ciTimeoutMs,
-    },
-  );
-  if (checks.exitCode === 124) {
-    throw new Error(`CI timeout after ${input.ciTimeoutMs} ms`);
+  if (evidence === undefined) {
+    const checks = await runner.run(
+      "gh",
+      ["pr", "checks", String(pr.number), "--watch", "--fail-fast"],
+      {
+        cwd: input.workspacePath,
+        timeoutMs: input.ciTimeoutMs,
+      },
+    );
+    if (checks.exitCode === 124) {
+      throw new Error(`CI timeout after ${input.ciTimeoutMs} ms`);
+    }
+    if (checks.exitCode !== 0) throw commandFailure("CI checks", checks);
   }
-  if (checks.exitCode !== 0) throw commandFailure("CI checks", checks);
 
   const baseProtection = await readEffectiveProtection(
     runner,
@@ -905,6 +1053,18 @@ export async function deliverToGitHub(
     mergeCandidate.statusCheckRollup,
   );
 
+  if (evidence !== undefined) {
+    assertCandidateEvidenceBinding(
+      evidence,
+      input.evidenceContext!,
+      repo,
+      pushedCommit,
+      baseProtection.requiredChecks,
+    );
+    assertUniqueCurrentRequiredChecks(baseProtection.requiredChecks, mergeCandidate.statusCheckRollup);
+    await assertPullRequestScope(pr.number);
+    await assertRemoteBinding();
+  }
   await runOrThrow(
     runner,
     input,

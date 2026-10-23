@@ -1,0 +1,13 @@
+{
+  "status": "passed",
+  "tasks": 30,
+  "completed": 21,
+  "next": [
+    "G21"
+  ],
+  "dependencyGraph": "acyclic; all completed dependencies satisfied",
+  "newCompletedFiles": "all exist",
+  "currentReportLinks": "all local targets exist",
+  "originalAgentsSha256": "0aeac98453f7b46af92c269528ef81268c5de79ea39a8635bd0bd510b7b9d377",
+  "mirror": "owned plan/JSON, C6 report/context and text evidence only"
+}

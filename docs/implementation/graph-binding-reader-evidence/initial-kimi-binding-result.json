@@ -1,0 +1,142 @@
+[
+  {
+    "event_id": "kimi-binding:0",
+    "seq": 0,
+    "run_id": "kimi-binding",
+    "session_id": "kimi-binding",
+    "created_at": 1789778611.987,
+    "terminal": false,
+    "type": "run.started",
+    "payload": {
+      "status": "running",
+      "controls": {
+        "cancel": true,
+        "approval_pending": false,
+        "clarify_pending": false,
+        "queue": false,
+        "goal": false
+      }
+    }
+  },
+  {
+    "event_id": "kimi-binding:1",
+    "seq": 1,
+    "run_id": "kimi-binding",
+    "session_id": "kimi-binding",
+    "created_at": 1789778611.989,
+    "terminal": false,
+    "type": "progress",
+    "payload": {
+      "phase": "kimi.review.start",
+      "detail": "Starting bounded no-tool Kimi review"
+    }
+  },
+  {
+    "event_id": "kimi-binding:2",
+    "seq": 2,
+    "run_id": "kimi-binding",
+    "session_id": "kimi-binding",
+    "created_at": 1789778798.634,
+    "terminal": false,
+    "type": "token.delta",
+    "payload": {
+      "message_id": "kimi-binding:kimi-review",
+      "delta": "# Review\n\n## I/O hardening (`io`) — pass\n\n- `openSync` now uses `O_RDONLY | O_NOFOLLOW | O_NONBLOCK`. On POSIX, a FIFO opened `O_RDONLY|O_NONBLOCK` returns immediately instead of blocking for a writer, and the subsequent `fstatSync` rejects it via `!stat.isFile()`. The no-wait FIFO requirement is met.\n- The read loop fills a fixed `Buffer.alloc(65537)`; total bytes read can never exceed 65537 structurally, regardless of short reads. The post-fstat growth window is closed by the `offset > 65536` check after the loop, which catches growth even when the pre-read stat was ≤ 65536.\n- `closeSync(fd)` runs in a `finally`, covering success and every failure path after a successful open; if `openSync` itself throws there is no descriptor to leak. Tests confirm closure by asserting `fstatSync(fd)` throws afterward.\n- Positioned `readSync` calls are consistent (offset tracked manually), and a premature 0 read on a regular file leads to a JSON parse/canonical failure rather than silent acceptance.\n\n## Authority preservation (`authority`) — pass\n\nThe only change to `readBinding` is the open flags and the read mechanism; `verificationObject`, `bindingRef === sha(data)`, canonical-form, scope, epoch, revision, inventory (`assertExecutorInventory` / digest comparison), `authorizeRead`/`authorizeStop` sync-grant wrapping, and the quiescence `recheck` transaction requirement are all untouched in the diff and the full module. No settle/release/replay path is introduced; the module still throws `CONTAINED_REOPEN_IS_NOT_RECOVERY_AUTHORITY` for any recovery commit and explicitly disclaims full-graph proof (\"Per-invocation proof only\").\n\n## Tests (`tests`) — pass with one caveat\n\n- Both stages (initial `reopen()` and final synchronous in-transaction `proof.recheck()`) are exercised for FIFO and growth; transaction rollback (`db.inTransaction === false`) and no-grant-consumption (`f.calls` unchanged) are asserted.\n- The FIFO mock guard (`TEST_BLOCKING_FIFO_OPEN` when `O_NONBLOCK` is absent) makes a regression fail fast instead of wedging the Vitest worker — verified by the deterministic run showing old code fails these tests rather than hanging.\n- Short-read coverage forces 97-byte chunks (asserts >675 reads) at the exact 65536 boundary, and the injected read-error test proves descriptor closure on the failure path.\n- Mocks wrap `importActual` implementations, so real OS behavior runs unless a test deliberately interposes; the mock reset in `afterEach` is empirically safe (72 tests pass in order).\n- **Caveat (warning, not blocking):** per the deterministic evidence, the two growth tests also reject on the old code — the post-growth `recheck` fstat sees the oversized file — so they do not independently isolate the new post-stat read cap. The cap is currently established by code structure plus the boundary test, not by a discriminating test. A variant that keeps later stat sizes plausible (e.g., grow to exactly 65537 bytes of valid JSON plus one trailing space, with `fstatSync` stubbed small throughout) would fail on old code for the right reason.",
+      "content_type": "text"
+    }
+  },
+  {
+    "event_id": "kimi-binding:3",
+    "seq": 3,
+    "run_id": "kimi-binding",
+    "session_id": "kimi-binding",
+    "created_at": 1789778798.637,
+    "terminal": true,
+    "type": "done",
+    "payload": {
+      "status": "completed",
+      "last_seq": 2,
+      "result_summary": "approved: 2 finding(s)",
+      "review": {
+        "schema_version": 1,
+        "verdict": "approved",
+        "risk": "read_only",
+        "markdown": "# Review\n\n## io: pass\nO_NONBLOCK lets the FIFO open return immediately and fstat rejects it via !isFile() — no writer wait. Reads are bounded by a fixed 65537-byte buffer, so actual bytes read never exceed 65537 even under short reads or post-fstat growth (offset > 65536 check closes the stat/read TOCTOU window). closeSync runs in finally; tests verify the descriptor is closed on success and on injected read error.\n\n## authority: pass\nIdentity, canonical-form, bindingRef, scope/epoch/revision, inventory digest/assertExecutorInventory, and synchronous grant wrapping are unchanged; quiescence recheck still requires an enclosing transaction. No settlement, release, or replay path introduced; module still denies recovery authority and disclaims full-graph proof.\n\n## tests: pass (one warning)\nBoth reopen and final in-transaction recheck stages are covered for FIFO and growth; exact-65536 boundary with 97-byte short reads (>675 reads asserted) and injected read-error closure tests are present. The FIFO mock guard converts a missing-O_NONBLOCK regression into a fast failure instead of hanging the runner, confirmed by old-code failures. Caveat: the growth tests also reject on old code (later recheck fstat sees the oversized file), so they do not independently isolate the new read cap — the cap currently rests on code structure plus the boundary test. A discriminating variant (grow to 65537 with stubbed-small fstat throughout, content valid JSON plus trailing space) would strengthen this.",
+        "judgments": [
+          {
+            "id": "io",
+            "pass": true,
+            "severity": "error",
+            "summary": "O_NONBLOCK prevents FIFO writer-wait; fixed 65537-byte buffer bounds actual reads under short reads and post-stat growth; finally-block closeSync closes the descriptor on success and failure, verified by tests."
+          },
+          {
+            "id": "authority",
+            "pass": true,
+            "severity": "error",
+            "summary": "Binding identity, canonical bytes, scope, inventory, grants, and transactional recheck logic are untouched; no settlement/release/replay introduced; module retains non-authority guard."
+          },
+          {
+            "id": "tests",
+            "pass": true,
+            "severity": "warning",
+            "summary": "Both stages, exact boundary, short reads, and read errors are covered with real-OS-backed mocks and an anti-hang FIFO guard; however the growth tests do not independently establish the byte cap since old code also rejects via a later recheck stat."
+          }
+        ],
+        "findings": [
+          {
+            "rule_id": "tests.growth-not-discriminating",
+            "severity": "warning",
+            "message": "The post-fstat growth tests reject on the pre-patch code as well (a later recheck fstat observes the oversized file), so they do not by themselves prove the new post-stat read cap. The cap is currently supported by code inspection plus the exact-boundary short-read test.",
+            "file": "packages/cli/src/graph-contained-recovery.test.ts",
+            "evidence": "Deterministic run: 'Growth tests alone also reject in old code because a later read sees the oversized file; do not claim these two independently establish the byte cap.'",
+            "fingerprint": "52c2680b608c28ec94e712b3b9f3bcb56022585b8618dfae5c60233b7284ca82"
+          },
+          {
+            "rule_id": "io.nonblock-fifo-semantics",
+            "severity": "info",
+            "message": "FIFO rejection relies on POSIX semantics: O_RDONLY|O_NONBLOCK open succeeds immediately and fstat reports a non-regular file. Correct on POSIX; network-filesystem latency is explicitly out of scope per the task statement.",
+            "file": "packages/cli/src/graph-contained-recovery.ts",
+            "fingerprint": "af2c7fe79155aecac25e95e700a375f74fa2f0f10a2b50971fd78e43d94b0625"
+          }
+        ],
+        "recommended_actions": [
+          "Add a growth test variant where fstatSync is stubbed to report a small size throughout and the file grows to exactly 65537 bytes of otherwise-valid content (valid 65536-byte JSON plus one trailing byte), so the test fails on old code specifically because of the missing read cap."
+        ],
+        "evidence_refs": [
+          "packages/cli/src/graph-contained-recovery.ts",
+          "packages/cli/src/graph-contained-recovery.test.ts"
+        ],
+        "runtime_identity": {
+          "adapter_id": "kimi-code",
+          "adapter_version": "0.29.1",
+          "auth_mode": "subprocess/login-reuse",
+          "provider_id": "kimi",
+          "model_id": "kimi-code/k3",
+          "agent_profile": "osstack-reviewer",
+          "evidence_source": "reported",
+          "binary_path_sha256": "7e5d172f83fc7d8ca22387234b5a9a4d9412aa1a27c71ee90be35db29dfa7dd2"
+        }
+      },
+      "evaluation_judgments": [
+        {
+          "id": "io",
+          "pass": true,
+          "severity": "error",
+          "summary": "O_NONBLOCK prevents FIFO writer-wait; fixed 65537-byte buffer bounds actual reads under short reads and post-stat growth; finally-block closeSync closes the descriptor on success and failure, verified by tests."
+        },
+        {
+          "id": "authority",
+          "pass": true,
+          "severity": "error",
+          "summary": "Binding identity, canonical bytes, scope, inventory, grants, and transactional recheck logic are untouched; no settlement/release/replay introduced; module retains non-authority guard."
+        },
+        {
+          "id": "tests",
+          "pass": true,
+          "severity": "warning",
+          "summary": "Both stages, exact boundary, short reads, and read errors are covered with real-OS-backed mocks and an anti-hang FIFO guard; however the growth tests do not independently establish the byte cap since old code also rejects via a later recheck stat."
+        }
+      ]
+    }
+  }
+]

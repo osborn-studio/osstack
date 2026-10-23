@@ -1,0 +1,92 @@
+{
+  "name": "@osstack/graph",
+  "version": "0.21.0",
+  "description": "Isolated LangGraph kernel boundary for osstack graph workers.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./worker": {
+      "types": "./dist/worker-entry.d.ts",
+      "import": "./dist/worker-entry.js"
+    },
+    "./codec": {
+      "types": "./dist/checkpoint-codec.d.ts",
+      "import": "./dist/checkpoint-codec.js"
+    },
+    "./checkpointer": {
+      "types": "./dist/remote-checkpointer.d.ts",
+      "import": "./dist/remote-checkpointer.js"
+    },
+    "./registry": {
+      "types": "./dist/registry.d.ts",
+      "import": "./dist/registry.js"
+    },
+    "./spec-compiler": {
+      "types": "./dist/spec-compiler.d.ts",
+      "import": "./dist/spec-compiler.js"
+    },
+    "./nodes/branch": {
+      "types": "./dist/nodes/branch.d.ts",
+      "import": "./dist/nodes/branch.js"
+    },
+    "./nodes/review": {
+      "types": "./dist/nodes/review.d.ts",
+      "import": "./dist/nodes/review.js"
+    },
+    "./nodes/tests": {
+      "types": "./dist/nodes/tests.d.ts",
+      "import": "./dist/nodes/tests.js"
+    },
+    "./join": {
+      "types": "./dist/join.d.ts",
+      "import": "./dist/join.js"
+    },
+    "./route": {
+      "types": "./dist/route.d.ts",
+      "import": "./dist/route.js"
+    },
+    "./templates/code-delivery-v1": {
+      "types": "./dist/templates/code-delivery-v1.d.ts",
+      "import": "./dist/templates/code-delivery-v1.js"
+    },
+    "./program-resolver": {
+      "types": "./dist/program-resolver.d.ts",
+      "import": "./dist/program-resolver.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p .",
+    "prepack": "node ../../scripts/prepare-npm-package.mjs",
+    "test": "pnpm build && vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@langchain/core": "1.2.11",
+    "@langchain/langgraph": "1.4.15",
+    "@langchain/langgraph-checkpoint": "1.1.5",
+    "@osstack/protocol": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "22.19.19"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/osborn-studio/osstack.git",
+    "directory": "packages/graph"
+  },
+  "engines": {
+    "node": ">=20.6.0"
+  }
+}

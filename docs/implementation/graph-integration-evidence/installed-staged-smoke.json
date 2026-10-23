@@ -1,0 +1,37 @@
+{
+  "sourceCommit": "fec0b1826abfcc6cf1b625f01f0881f9f7caf089",
+  "scope": "installed package isolated admission-closed rehearsal",
+  "productionChanged": false,
+  "passed": true,
+  "version": "osstack 0.19.0",
+  "install": {
+    "label": "ai.osstack.daemon",
+    "plist_path": "/Volumes/AIMATE_WORK/tmp/g225-release/LaunchAgents/ai.osstack.daemon.plist",
+    "installed": true,
+    "loaded": false,
+    "load_skipped": true,
+    "socket_path": "/Volumes/AIMATE_WORK/tmp/g225-release/home/daemon.sock",
+    "home": "/Volumes/AIMATE_WORK/tmp/g225-release/home",
+    "logs_dir": "/Volumes/AIMATE_WORK/tmp/g225-release/home/logs",
+    "profile": "mac-mini",
+    "write_concurrency": 2,
+    "read_concurrency": 8,
+    "power_policy": "none",
+    "clock_monitor": "monotonic-v1",
+    "power_policy_record": "/Volumes/AIMATE_WORK/tmp/g225-release/home/host/power-policy.json"
+  },
+  "health": true,
+  "legacy": {
+    "session.list": true,
+    "loop.list": true,
+    "stats": true
+  },
+  "deniedCode": "GRAPH_ADMISSION_DISABLED",
+  "schema": 37,
+  "graphRuns": 0,
+  "integrity": "ok",
+  "exit": {
+    "code": 0,
+    "signal": null
+  }
+}

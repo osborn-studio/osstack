@@ -1,0 +1,68 @@
+[
+  {
+    "name": "faults",
+    "command": [
+      "node",
+      "scripts/verify-graph-runtime.mjs",
+      "--seed",
+      "250920",
+      "--repeat",
+      "2",
+      "--output",
+      "/Volumes/AIMATE_WORK/tmp/g30-final/faults.json"
+    ],
+    "code": 0
+  },
+  {
+    "name": "performance",
+    "command": [
+      "node",
+      "scripts/bench-graph-runtime.mjs",
+      "/Volumes/AIMATE_WORK/tmp/g30-final/performance-final.json"
+    ],
+    "code": 0
+  },
+  {
+    "name": "binary",
+    "command": [
+      "node",
+      "scripts/smoke-bun-single-binary.mjs"
+    ],
+    "code": 0
+  },
+  {
+    "name": "startup",
+    "command": [
+      "node",
+      "scripts/bench-cli-startup.mjs"
+    ],
+    "code": 0
+  },
+  {
+    "name": "schemas",
+    "command": [
+      "pnpm",
+      "--filter",
+      "@osstack/protocol",
+      "check:schemas"
+    ],
+    "code": 0
+  },
+  {
+    "name": "typecheck",
+    "command": [
+      "pnpm",
+      "typecheck:check"
+    ],
+    "code": 0
+  },
+  {
+    "name": "script-env",
+    "command": [
+      "node",
+      "--test",
+      "scripts/graph-test-env.test.mjs"
+    ],
+    "code": 0
+  }
+]

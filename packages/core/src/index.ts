@@ -24,3 +24,20 @@ export { AttentionObserver } from "./state/attention-observer.js";
 export { AttentionActions, reserveSessionInstruction } from "./state/attention-actions.js";
 export { AttentionExperience, type AttentionSender } from "./state/attention-experience.js";
 export { classifyAttentionWait, evaluateCoverage, evaluateActivity, type WaitInput } from './attention.js';
+export { GraphRunStore, GraphRunStorageError } from "./state/graph-runs.js";
+export { GraphActionStore, GraphActionStorageError } from "./state/graph-actions.js";
+export type {
+  GraphActionAdmission, GraphActionOutcomeInput, GraphActionOutcome, GraphActionUncertainty,
+  GraphAction, GraphActionBudget, GraphActionResult, GraphActionStorageErrorCode,
+} from "./state/graph-actions.js";
+export type {
+  GraphProgramVersion, GraphProgramIdentity, GraphStoppedWorkerEvidence,
+  GraphRunFence, GraphLeaseAcquisition, GraphLeaseRenewal, GraphRunProjection,
+  GraphRun, GraphRunStorageErrorCode,
+} from "./state/graph-runs.js";
+export { readRepositoryGit } from "./graph/repository-git.js";
+export { resolveRepositoryScope } from "./graph/repository-scope.js";
+export type { RepositoryScope } from "./graph/repository-scope.js";
+export { GraphCheckpointStore } from './state/graph-checkpoints.js';
+
+export * from "./scratch.js";

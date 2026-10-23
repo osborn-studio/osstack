@@ -1,0 +1,913 @@
+Claude Fable 5.1 C4 closure review. Tools disabled. Previous full implementation review found no worker-triggerable P1, three P2. Assess only followups against actual final code, no broad future G14/G15 demands. Respond Chinese <=700 words with remaining concrete blockers or explicit closure.
+Changes: (1) observed cumulative tokens captured on each event and per input/output dimension, preserved before persist failure; known mapper usage and saved evidenceRef retained when result invalid. Malformed references use diagnostic unknown marker so uncertainty can persist. Invalid raw usage keeps unknown and lock; confirmed valid overrun settles with accountingBlocked. (2) !invoked policy failure is retrySafe unless cancellation, but no worker retry method, future host explicit retry only. (3) fixed daemon per-run checkpoint quotas 1024 checkpoints,32768writes,32768requestids,64MiB payload+cached replies; only trusted tightening, full rollback if exceed. Bound counts first then byte sums. No DDL version changes required. Parent authority service rejects nonvoid async decision including false.
+Adjudication: retain repo lock on post-effect evidence/DB failure even with stop receipt is intentional current C3 failclosed boundary to preserve uncertain workspace/artifacts until G15/G16; do not release unidentified dirty workspace solely on worker/adapter exit. These are current ports only, no production workers. Shellcommand normal stop evidence and no extra G04 verification commands are verified by real command once test and source. Quarantined waiters require signal/offline recovery per C3.
+
+--- packages/core/src/state/graph-checkpoints.ts ---
+import { createHash } from 'node:crypto';
+import type Database from 'better-sqlite3';
+import {
+  parseGraphCheckpointRequest, parseGraphCheckpointResponse,
+  GRAPH_CHECKPOINT_MAX_FRAME_BYTES, GRAPH_CHECKPOINT_MAX_TUPLE_BYTES,
+  type GraphCheckpointRequest, type GraphCheckpointResponse, type GraphCheckpointTupleWire,
+} from '@osstack/protocol';
+import type { GraphRun, GraphRunFence } from './graph-runs.js';
+import { fencedGraphTransaction } from './graph-storage.js';
+
+type Put = Extract<GraphCheckpointRequest, { kind: 'put' }>;
+type Writes = Extract<GraphCheckpointRequest, { kind: 'writes' }>;
+type Address = { threadId: string; namespace: string; checkpointId: string };
+interface CheckpointRow { namespace: string; checkpoint_id: string; parent_checkpoint_id: string | null;
+  checkpoint: string; metadata: string; new_versions: string }
+interface WriteRow { task_id: string; channel: string; write_index: number; value: string }
+// Pinned checkpoint 1.1.5 public WRITES_IDX_MAP. Cross-package test compares with
+// the installed SDK; core never imports LangGraph or decodes its codec payloads.
+const reserved: Readonly<Record<string, number>> = { __error__: -1, __scheduled__: -2, __interrupt__: -3, __resume__: -4 };
+const fail = (code: string): never => { throw new Error(code); };
+function canonical(value: unknown): string {
+  if (value === null || typeof value !== 'object') return JSON.stringify(value);
+  if (Array.isArray(value)) return `[${value.map(canonical).join(',')}]`;
+  const object = value as Record<string, unknown>;
+  return `{${Object.keys(object).sort().map((key) => `${JSON.stringify(key)}:${canonical(object[key])}`).join(',')}}`;
+}
+
+/** Trusted daemon-only storage, in the control-plane DB. Authorization is supplied
+ * by a fixed host binding; checkpoint JSON cannot select scope/owner/generation.
+ * Every operation, including reads and replay, fences under BEGIN IMMEDIATE.
+ * Return means SQLite COMMIT completed (existing WAL/NORMAL policy), not a claim
+ * of power-loss durability or of atomicity with external effects. */
+export interface GraphCheckpointLimits { checkpoints: number; pendingWrites: number; requests: number; bytes: number }
+// Host storage limits, independent of worker data and model token budgets. The
+// compiler must account for these ceilings; transport retries cannot grow history
+// indefinitely under a valid lease. Hosts may tighten, never raise, the ceilings.
+const RUN_LIMITS: Readonly<GraphCheckpointLimits> = Object.freeze({
+  checkpoints: 1024, pendingWrites: 32_768, requests: 32_768, bytes: 64 * 1024 * 1024,
+});
+export class GraphCheckpointStore {
+  private readonly limits: Readonly<GraphCheckpointLimits>;
+  constructor(private readonly db: Database.Database, limits: Partial<GraphCheckpointLimits> = {}) {
+    const resolved = { ...RUN_LIMITS, ...limits };
+    for (const key of Object.keys(resolved) as (keyof GraphCheckpointLimits)[]) {
+      if (!(key in RUN_LIMITS) || !Number.isSafeInteger(resolved[key]) || resolved[key] < 1 || resolved[key] > RUN_LIMITS[key]) fail('CHECKPOINT_QUOTA_INVALID');
+    }
+    this.limits = Object.freeze(resolved);
+  }
+
+  execute(fence: GraphRunFence, value: GraphCheckpointRequest): { run: GraphRun; response: GraphCheckpointResponse } {
+    const request = parseGraphCheckpointRequest(value);
+    if (request.threadId !== fence.graphRunId) fail('CHECKPOINT_THREAD_MISMATCH');
+    const result = fencedGraphTransaction<GraphCheckpointResponse>(this.db, fence, () => {
+      if (request.kind === 'get') {
+        const row = this.db.prepare(`SELECT * FROM graph_checkpoints WHERE graph_run_id = ? AND namespace = ?
+          ${request.checkpointId ? 'AND checkpoint_id = ?' : ''} ORDER BY checkpoint_id DESC LIMIT 1`)
+          .get(request.threadId, request.namespace, ...(request.checkpointId ? [request.checkpointId] : [])) as CheckpointRow | undefined;
+        return { value: { kind: 'get', tuple: row ? this.tuple(request.threadId, row) : null }, changed: false };
+      }
+      if (request.kind === 'list') return { value: this.list(request), changed: false };
+      // Fence has already checked live lease and revision, even for cached IDs.
+      const digest = createHash('sha256').update(canonical(request)).digest('hex');
+      const prior = this.db.prepare('SELECT payload_digest, response_json FROM graph_checkpoint_requests WHERE graph_run_id = ? AND request_id = ?')
+        .get(request.threadId, request.requestId) as { payload_digest: string; response_json: string } | undefined;
+      if (prior) {
+        if (prior.payload_digest !== digest) fail('IDEMPOTENCY_CONFLICT');
+        return { value: parseGraphCheckpointResponse(JSON.parse(prior.response_json)), changed: false };
+      }
+      const response: GraphCheckpointResponse = request.kind === 'put' ? this.put(request) : this.writes(request);
+      this.db.prepare(`INSERT INTO graph_checkpoint_requests (graph_run_id, request_id, payload_digest, response_json, generation)
+        VALUES (?, ?, ?, ?, ?)`).run(request.threadId, request.requestId, digest, JSON.stringify(response), fence.expectedGeneration);
+      this.checkRunLimits(request.threadId);
+      return { value: response, changed: true };
+    });
+    return { run: result.run, response: result.value };
+  }
+
+  private checkRunLimits(runId: string): void {
+    // Check counts before scanning bounded payload bytes. All queries and the new
+    // rows are inside the same fenced transaction, so quota failure rolls back
+    // checkpoint/writes, dedup receipt AND revision. Reads/replays remain usable.
+    const counts = this.db.prepare(`SELECT
+      (SELECT count(*) FROM graph_checkpoints WHERE graph_run_id = ?) AS checkpoints,
+      (SELECT count(*) FROM graph_checkpoint_writes WHERE graph_run_id = ?) AS pendingWrites,
+      (SELECT count(*) FROM graph_checkpoint_requests WHERE graph_run_id = ?) AS requests`)
+      .get(runId, runId, runId) as Omit<GraphCheckpointLimits, 'bytes'>;
+    if (counts.checkpoints > this.limits.checkpoints || counts.pendingWrites > this.limits.pendingWrites
+      || counts.requests > this.limits.requests) fail('CHECKPOINT_RUN_LIMIT');
+    const usage = this.db.prepare(`SELECT
+      coalesce((SELECT sum(length(CAST(checkpoint AS BLOB)) + length(CAST(metadata AS BLOB)) + length(CAST(new_versions AS BLOB))) FROM graph_checkpoints WHERE graph_run_id = ?), 0)
+      + coalesce((SELECT sum(length(CAST(value AS BLOB))) FROM graph_checkpoint_writes WHERE graph_run_id = ?), 0)
+      + coalesce((SELECT sum(length(CAST(response_json AS BLOB))) FROM graph_checkpoint_requests WHERE graph_run_id = ?), 0) AS bytes`)
+      .get(runId, runId, runId) as { bytes: number };
+    if (usage.bytes > this.limits.bytes) fail('CHECKPOINT_RUN_LIMIT');
+  }
+
+  private pending(address: Address): GraphCheckpointTupleWire['pendingWrites'] {
+    const size = this.db.prepare(`SELECT count(*) AS count, coalesce(sum(length(CAST(value AS BLOB))), 0) AS bytes
+      FROM graph_checkpoint_writes WHERE graph_run_id = ? AND namespace = ? AND checkpoint_id = ?`)
+      .get(address.threadId, address.namespace, address.checkpointId) as { count: number; bytes: number };
+    if (size.count > 4096 || size.bytes > GRAPH_CHECKPOINT_MAX_TUPLE_BYTES) fail('CHECKPOINT_TUPLE_LIMIT');
+    const rows = this.db.prepare(`SELECT task_id, channel, write_index, value FROM graph_checkpoint_writes
+      WHERE graph_run_id = ? AND namespace = ? AND checkpoint_id = ? ORDER BY task_id, write_index LIMIT 4097`)
+      .all(address.threadId, address.namespace, address.checkpointId) as WriteRow[];
+    if (rows.length > 4096) fail('CHECKPOINT_TUPLE_LIMIT');
+    return rows.map((row) => ({ taskId: row.task_id, channel: row.channel, index: row.write_index, value: row.value }));
+  }
+  private tuple(threadId: string, row: CheckpointRow): GraphCheckpointTupleWire {
+    const address = { threadId, namespace: row.namespace, checkpointId: row.checkpoint_id };
+    const tuple: GraphCheckpointTupleWire = { ...address, ...(row.parent_checkpoint_id ? { parentCheckpointId: row.parent_checkpoint_id } : {}),
+      checkpoint: row.checkpoint, metadata: row.metadata, newVersions: row.new_versions, pendingWrites: this.pending(address) };
+    if (Buffer.byteLength(JSON.stringify(tuple)) > GRAPH_CHECKPOINT_MAX_TUPLE_BYTES) fail('CHECKPOINT_TUPLE_LIMIT');
+    return tuple;
+  }
+  private checkSize(address: Address): void {
+    const row = this.db.prepare('SELECT * FROM graph_checkpoints WHERE graph_run_id = ? AND namespace = ? AND checkpoint_id = ?')
+      .get(address.threadId, address.namespace, address.checkpointId) as CheckpointRow | undefined;
+    if (row) { this.tuple(address.threadId, row); return; }
+    // Pending writes may precede put. Still bound their accumulated footprint.
+    if (Buffer.byteLength(JSON.stringify(this.pending(address))) > GRAPH_CHECKPOINT_MAX_TUPLE_BYTES - 4096) fail('CHECKPOINT_TUPLE_LIMIT');
+  }
+  private put(request: Put): GraphCheckpointResponse {
+    if (request.parentCheckpointId && Buffer.compare(Buffer.from(request.parentCheckpointId), Buffer.from(request.checkpointId)) >= 0) fail('CHECKPOINT_PARENT_INVALID');
+    const prior = this.db.prepare('SELECT * FROM graph_checkpoints WHERE graph_run_id = ? AND namespace = ? AND checkpoint_id = ?')
+      .get(request.threadId, request.namespace, request.checkpointId) as CheckpointRow | undefined;
+    if (prior) {
+      if (prior.checkpoint !== request.checkpoint || prior.metadata !== request.metadata || prior.new_versions !== request.newVersions
+        || prior.parent_checkpoint_id !== (request.parentCheckpointId ?? null)) fail('CHECKPOINT_ID_CONFLICT');
+    } else {
+      this.db.prepare(`INSERT INTO graph_checkpoints (graph_run_id, namespace, checkpoint_id, parent_checkpoint_id, checkpoint, metadata, new_versions)
+        VALUES (?, ?, ?, ?, ?, ?, ?)`).run(request.threadId, request.namespace, request.checkpointId,
+          request.parentCheckpointId ?? null, request.checkpoint, request.metadata, request.newVersions);
+    }
+    this.checkSize(request);
+    return { kind: 'put', checkpointId: request.checkpointId };
+  }
+  private writes(request: Writes): GraphCheckpointResponse {
+    for (const [position, write] of request.writes.entries()) {
+      const index = Object.hasOwn(reserved, write.channel) ? reserved[write.channel]! : position;
+      if (write.index !== index) fail('CHECKPOINT_WRITE_INDEX');
+      this.db.prepare(`INSERT INTO graph_checkpoint_writes (graph_run_id, namespace, checkpoint_id, task_id, write_index, channel, value)
+        VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT(graph_run_id, namespace, checkpoint_id, task_id, write_index)
+        ${index < 0 ? 'DO UPDATE SET channel = excluded.channel, value = excluded.value' : 'DO NOTHING'}`)
+        .run(request.threadId, request.namespace, request.checkpointId, request.taskId, index, write.channel, write.value);
+    }
+    this.checkSize(request);
+    return { kind: 'writes' };
+  }
+  private list(request: Extract<GraphCheckpointRequest, { kind: 'list' }>): GraphCheckpointResponse {
+    const where = ['graph_run_id = ?']; const args: (string | number)[] = [request.threadId];
+    if (request.namespace !== undefined) { where.push('namespace = ?'); args.push(request.namespace); }
+    if (request.checkpointId) { where.push('checkpoint_id = ?'); args.push(request.checkpointId); }
+    if (request.before) { where.push('checkpoint_id < ?'); args.push(request.before); }
+    if (request.cursor) {
+      where.push('(checkpoint_id < ? OR (checkpoint_id = ? AND namespace < ?))');
+      args.push(request.cursor.checkpointId, request.cursor.checkpointId, request.cursor.namespace);
+    }
+    // Fetch IDs first; never allocate pageSize times the maximum tuple size.
+    const ids = this.db.prepare(`SELECT namespace, checkpoint_id FROM graph_checkpoints WHERE ${where.join(' AND ')}
+      ORDER BY checkpoint_id DESC, namespace DESC LIMIT ?`).all(...args, request.pageSize + 1) as { namespace: string; checkpoint_id: string }[];
+    const tuples: GraphCheckpointTupleWire[] = [];
+    let bytes = 1024;
+    for (const id of ids.slice(0, request.pageSize)) {
+      const row = this.db.prepare('SELECT * FROM graph_checkpoints WHERE graph_run_id = ? AND namespace = ? AND checkpoint_id = ?')
+        .get(request.threadId, id.namespace, id.checkpoint_id) as CheckpointRow;
+      const tuple = this.tuple(request.threadId, row);
+      const size = Buffer.byteLength(JSON.stringify(tuple)) + 1;
+      if (bytes + size > GRAPH_CHECKPOINT_MAX_FRAME_BYTES) break;
+      // JSON traversal/node limits also bound transport. A page of many tiny
+      // writes can hit those before the byte cap. Include cursor overhead now,
+      // so every page we return is transportable without dropping any rows.
+      try {
+        parseGraphCheckpointResponse({ kind: 'list', tuples: [...tuples, tuple],
+          cursor: { namespace: tuple.namespace, checkpointId: tuple.checkpointId } });
+      } catch (error) {
+        if (tuples.length && error instanceof Error && error.message === 'CHECKPOINT_FRAME_LIMIT') break;
+        throw error;
+      }
+      bytes += size; tuples.push(tuple);
+    }
+    const last = tuples.at(-1);
+    return { kind: 'list', tuples, ...(last && ids.length > tuples.length
+      ? { cursor: { namespace: last.namespace, checkpointId: last.checkpointId } } : {}) };
+  }
+}
+
+--- packages/cli/src/graph-action-broker.ts ---
+import { randomUUID } from "node:crypto";
+import { isAbsolute } from "node:path";
+import type Database from "better-sqlite3";
+import { CapabilitySchema, GraphActionStore, GraphRunStore, type GraphRunFence, type GraphProgramIdentity,
+  type GraphAction } from "@osstack/core";
+import { GraphResult, GraphScope, WorkerActionRequest, WorkerActionResponse,
+  type GraphError, type GraphErrorCode } from "@osstack/protocol";
+import { ExecutionPlan, executeCandidateImplementation, runShellCommand,
+  type CandidateExecutionResult, type CommandResult, type RegisteredCandidateWorkspace } from "@osstack/loop";
+import type { AgentAdapter } from "@osstack/agents";
+import type { AdmissionInput, ExecutionLease } from "./governed-execution.js";
+
+type Action = WorkerActionRequest["action"];
+export interface GraphActionEvidence {
+  status: "completed" | "failed";
+  candidate?: CandidateExecutionResult;
+  command?: CommandResult;
+  workspace?: unknown;
+}
+export interface PersistedGraphActionEvidence {
+  evidenceRef: string;
+  result?: GraphResult;
+  actualTokens?: number;
+}
+type RegisteredExecution =
+  | { kind: "adapter"; plan: ExecutionPlan; adapter: AgentAdapter; capabilityId: string }
+  | { kind: "command"; plan: ExecutionPlan; command: string }
+  | { kind: "workspace"; handler: (input: { workspace: RegisteredCandidateWorkspace; signal: AbortSignal }) => Promise<{
+      status: "completed" | "failed"; stopped: true; evidence: unknown;
+    }> };
+export interface GraphRegisteredAction {
+  nodeId: string;
+  effectSlot: string;
+  action: Action;
+  tokenReservation: number;
+  execution: RegisteredExecution;
+  /** Trusted persistence boundary. Worker receipts/checkpoints are never passed here. */
+  persist: (evidence: GraphActionEvidence) => Promise<PersistedGraphActionEvidence>;
+}
+export interface GraphWorkerRegistration {
+  scope: GraphScope;
+  graphRunId: string;
+  identity: GraphProgramIdentity;
+  generation: number;
+  owner: string;
+  epoch: number;
+  workspace: RegisteredCandidateWorkspace;
+  /** Synchronous host revocation check, including immediately before physical effects. */
+  authorize: () => void;
+  actions: readonly GraphRegisteredAction[];
+}
+export interface GraphActionBrokerOptions {
+  acquire: (input: AdmissionInput) => Promise<ExecutionLease>;
+  authorizePolicy?: (workspacePath: string) => Promise<void>;
+  now?: () => number;
+}
+type BoundAction = GraphRegisteredAction & { access: "read" | "write" };
+type Binding = Omit<GraphWorkerRegistration, "actions"> & { actions: ReadonlyMap<string, BoundAction> };
+const slot = (node: string, effect: string) => JSON.stringify([node, effect]);
+const reads = new Set(["code.review", "review.code", "research.code"]);
+const writes = new Set(["code.write", "code.refactor", "code.debug", "code.test"]);
+function snapshot<T>(value: T): T {
+  const copy = structuredClone(value);
+  const freeze = (item: unknown): void => {
+    if (item !== null && typeof item === "object") { Object.values(item).forEach(freeze); Object.freeze(item); }
+  };
+  freeze(copy); return copy;
+}
+function canonical(value: unknown): string {
+  if (value === null || typeof value !== "object") return JSON.stringify(value);
+  if (Array.isArray(value)) return `[${value.map(canonical).join(",")}]`;
+  return `{${Object.keys(value).sort().map(key => `${JSON.stringify(key)}:${canonical((value as Record<string, unknown>)[key])}`).join(",")}}`;
+}
+class Denied extends Error { constructor(readonly code: GraphErrorCode, message: string) { super(message); } }
+function graphError(code: GraphErrorCode, message: string): GraphError {
+  return { schemaVersion: 1, code, message: message.slice(0, 4096) || code, retryable: false,
+    nextAction: code === "ACTION_OUTCOME_UNKNOWN" || code === "CANCEL_UNCONFIRMED" ? "reconcile" : "stop" } as GraphError;
+}
+function errorCode(error: unknown): GraphErrorCode {
+  if (error instanceof Denied) return error.code;
+  const message = String(error);
+  if (/GRANT_EXPIRED/.test(message)) return "GRANT_EXPIRED";
+  if (/STALE_GENERATION|OWNER_MISMATCH|LEASE_EXPIRED/.test(message)) return "STALE_GENERATION";
+  if (/PROGRAM_IDENTITY/.test(message)) return "CHECKPOINT_INCOMPATIBLE";
+  if (/UNRESOLVED|RETRY_NOT_SAFE/.test(message)) return "ACTION_OUTCOME_UNKNOWN";
+  if (/BUDGET|ACCOUNTING/.test(message)) return "BUDGET_EXHAUSTED";
+  if (/REVISION_CONFLICT/.test(message)) return "REVISION_CONFLICT";
+  return "POLICY_DENIED";
+}
+
+/** Trusted in-process action port; no RPC, worker launcher or node scheduler.
+ * Ledger granularity is one adapter invocation, registered command or host workspace
+ * operation. It does not intercept an agent's internal tools. Admission belongs to
+ * each action; callers must NOT hold a whole-run lease around this port. */
+export class GraphActionBroker {
+  private readonly connections = new WeakMap<object, Binding>();
+  private readonly runs: GraphRunStore;
+  private readonly actions: GraphActionStore;
+  constructor(db: Database.Database, private readonly options: GraphActionBrokerOptions) {
+    this.runs = new GraphRunStore(db); this.actions = new GraphActionStore(db);
+  }
+
+  register(connection: object, input: GraphWorkerRegistration): void {
+    if (this.connections.has(connection)) throw new Error("worker connection already registered");
+    const { actions, authorize, ...data } = input;
+    const fixed = snapshot(data);
+    GraphScope.parse(fixed.scope);
+    if (typeof authorize !== "function" || !fixed.owner || !isAbsolute(fixed.workspace.workspace_path)
+      || fixed.workspace.workspace_path.includes("\0") || fixed.workspace.workspace_id !== fixed.scope.workspaceId) throw new Error("invalid trusted worker registration");
+    const registered = new Map<string, BoundAction>();
+    for (const item of actions) {
+      const { execution, persist, ...actionData } = item;
+      const copy = snapshot(actionData);
+      // Reuse the strict wire parser to validate exact compiled action/node/slot data.
+      WorkerActionRequest.parse({ schemaVersion: 1, kind: "worker_action", requestId: "registration", scope: fixed.scope,
+        graphRunId: fixed.graphRunId, specHash: fixed.identity.specHash, generation: fixed.generation, epoch: fixed.epoch,
+        nodeId: copy.nodeId, effectSlot: copy.effectSlot, action: copy.action });
+      if (copy.action.kind === "freeze" || typeof persist !== "function") throw new Error("unsupported graph action");
+      if (!Number.isSafeInteger(copy.tokenReservation) || copy.tokenReservation < 0) throw new Error("invalid token reservation");
+      let selected: RegisteredExecution; let access: "read" | "write" = "write";
+      if (execution.kind === "workspace") {
+        if (!["workspace_create", "workspace_release"].includes(copy.action.kind) || typeof execution.handler !== "function") throw new Error("unsupported workspace handler");
+        selected = Object.freeze({ kind: "workspace", handler: execution.handler });
+      } else {
+        if (!["implement", "repair", "tests", "review"].includes(copy.action.kind)) throw new Error("unsupported candidate action");
+        const plan = snapshot(ExecutionPlan.parse(execution.plan));
+        if (plan.worktree_path !== undefined && plan.worktree_path !== fixed.workspace.workspace_path) throw new Error("workspace mismatch");
+        if (execution.kind === "command") {
+          if (!execution.command?.trim() || execution.command.includes("\0")) throw new Error("invalid registered command");
+          selected = Object.freeze({ kind: "command", plan, command: execution.command });
+        } else if (execution.kind === "adapter") {
+          const adapter = execution.adapter;
+          const capabilities = snapshot(adapter.capabilities().map(cap => CapabilitySchema.parse(cap)));
+          const matches = capabilities.filter(cap => cap.id === execution.capabilityId);
+          const cap = matches[0];
+          if (matches.length !== 1 || !cap || cap.agent_id !== adapter.id || plan.agent_id !== adapter.id
+            || plan.task.capability !== cap.kind || (!reads.has(cap.kind) && !writes.has(cap.kind))) throw new Error("unknown or ambiguous trusted capability");
+          // A multi-capability adapter can internally select a writer. Only entirely
+          // read-only registrations may consume a read permit.
+          if (capabilities.some(capability => !reads.has(capability.kind) && !writes.has(capability.kind))) throw new Error("unknown adapter capability");
+          access = capabilities.every(capability => reads.has(capability.kind)) ? "read" : "write";
+          const bound: AgentAdapter = Object.freeze({ id: adapter.id, display_name: adapter.display_name, cost_tier: adapter.cost_tier,
+            capabilities: () => structuredClone(capabilities), isAvailable: adapter.isAvailable.bind(adapter), invoke: adapter.invoke.bind(adapter),
+            ...(adapter.confirmStopped ? { confirmStopped: adapter.confirmStopped.bind(adapter) } : {}) });
+          selected = Object.freeze({ kind: "adapter", plan, adapter: bound, capabilityId: execution.capabilityId });
+        } else throw new Error("unsupported execution handler");
+      }
+      const key = slot(copy.nodeId, copy.effectSlot);
+      if (registered.has(key)) throw new Error("duplicate compiled action slot");
+      registered.set(key, Object.freeze({ ...copy, execution: selected, persist, access }));
+    }
+    const binding = Object.freeze({ ...fixed, authorize, actions: registered });
+    // Verify full registered identity at installation, then at every ledger access.
+    this.fence(binding);
+    this.connections.set(connection, binding);
+  }
+
+  private authorize(binding: Binding): void {
+    const result: unknown = binding.authorize();
+    if (result !== undefined) {
+      // TypeScript allows async functions in void positions. Never silently
+      // treat a pending/rejected promise as synchronous permission.
+      void Promise.resolve(result).catch(() => {});
+      throw new Denied("POLICY_DENIED", "revocation check must be synchronous");
+    }
+  }
+
+  private fence(binding: Binding): GraphRunFence {
+    const run = this.runs.get(binding.scope, binding.graphRunId);
+    if (!run) throw new Denied("RUN_MISMATCH", "registered run not found");
+    if (run.generation !== binding.generation || run.leaseOwner !== binding.owner) throw new Denied("STALE_GENERATION", "registered worker lease changed");
+    if (canonical(run.identity) !== canonical(binding.identity)) throw new Denied("CHECKPOINT_INCOMPATIBLE", "registered program identity changed");
+    const now = this.options.now?.() ?? Date.now();
+    if (!run.leaseExpiresAt || run.leaseExpiresAt <= now) throw new Denied("STALE_GENERATION", "registered worker lease expired");
+    return { scope: binding.scope, graphRunId: binding.graphRunId, identity: binding.identity,
+      expectedGeneration: binding.generation, expectedOwner: binding.owner, expectedRevision: run.revision, now };
+  }
+
+  async handle(connection: object, value: unknown, options: { signal?: AbortSignal } = {}): Promise<WorkerActionResponse> {
+    let request: WorkerActionRequest;
+    try { request = snapshot(WorkerActionRequest.parse(value)); }
+    catch { return { schemaVersion: 1, kind: "worker_action_rejected", requestId: "invalid-request", error: graphError("INPUT_CONTRACT_INVALID", "invalid worker action request") }; }
+    const binding = this.connections.get(connection);
+    const signal = options.signal ?? new AbortController().signal;
+    let lease: ExecutionLease | undefined; let owned: GraphAction | undefined; let invoked = false; let uncertain = false; let observedTokens = 0; let persistedEvidenceRef: string | undefined;
+    const reject = (error: unknown): WorkerActionResponse => ({ schemaVersion: 1, kind: "worker_action_rejected", requestId: request.requestId,
+      error: graphError(errorCode(error), String(error)) });
+    try {
+      if (!binding) throw new Denied("UNAUTHENTICATED", "unregistered worker connection");
+      if (canonical(request.scope) !== canonical(binding.scope)) throw new Denied("SCOPE_MISMATCH", "scope does not match registered connection");
+      if (request.graphRunId !== binding.graphRunId) throw new Denied("RUN_MISMATCH", "run does not match registered connection");
+      if (request.generation !== binding.generation) throw new Denied("STALE_GENERATION", "generation does not match registered connection");
+      if (request.specHash !== binding.identity.specHash) throw new Denied("SPEC_MISMATCH", "spec does not match registered program");
+      if (request.epoch !== binding.epoch) throw new Denied("EPOCH_MISMATCH", "epoch does not match registered program");
+      const action = binding.actions.get(slot(request.nodeId, request.effectSlot));
+      if (!action) throw new Denied("POLICY_DENIED", "unregistered compiled action slot");
+      if (canonical(action.action) !== canonical(request.action)) throw new Denied("IDEMPOTENCY_CONFLICT", "action differs from immutable compiled registration");
+      const check = (): void => { if (signal.aborted) throw new Denied("POLICY_DENIED", "action cancelled before invocation"); this.authorize(binding); this.fence(binding); };
+      check();
+      const intent = this.actions.reserve(this.fence(binding), { epoch: binding.epoch, nodeId: action.nodeId, effectSlot: action.effectSlot,
+        reservationTokens: action.tokenReservation, action: action.action });
+      if (!intent.created) return this.response(request, intent.action);
+      owned = intent.action;
+      lease = await this.options.acquire({ kind: action.access, runId: `graph-action:${owned.effectKey}`, workspacePath: binding.workspace.workspace_path,
+        signal, authorize: async () => { check(); await this.options.authorizePolicy?.(binding.workspace.workspace_path); check(); } });
+      check();
+      // This synchronous gate runs inside the actual adapter invoke/command/host
+      // handler call, after G04's async authorization and availability windows.
+      const beforeEffect = (): void => {
+        check();
+        const started = this.actions.markRunning(this.fence(binding), owned!.effectKey, `graph-execution:${owned!.effectKey}`);
+        if (!started.changed) throw new Denied("ACTION_OUTCOME_UNKNOWN", "intent already started");
+        invoked = true;
+      };
+      const evidence = await this.execute(binding, action, signal, beforeEffect, tokens => { observedTokens = Math.max(observedTokens, tokens); });
+      if (!invoked) throw new Denied("POLICY_DENIED", "execution did not start");
+      const persisted = snapshot(await action.persist(evidence));
+      if (typeof persisted.evidenceRef !== "string" || !persisted.evidenceRef || persisted.evidenceRef.trim() !== persisted.evidenceRef
+        || persisted.evidenceRef.length > 256 || Array.from(persisted.evidenceRef).some(char => {
+          const code = char.charCodeAt(0); return code < 32 || (code >= 127 && code <= 159);
+        })) throw new Error("invalid persisted evidence reference");
+      persistedEvidenceRef = persisted.evidenceRef;
+      if (persisted.actualTokens !== undefined && (!Number.isSafeInteger(persisted.actualTokens) || persisted.actualTokens < 0)) throw new Error("invalid usage");
+      observedTokens = Math.max(observedTokens, persisted.actualTokens ?? 0);
+      const usage = evidence.candidate?.execution;
+      const measured = usage?.tokens_in !== undefined && usage.tokens_out !== undefined ? usage.tokens_in + usage.tokens_out : undefined;
+      if (measured !== undefined && !Number.isSafeInteger(measured)) throw new Error("invalid total token usage");
+      const actualTokens = Math.max(observedTokens, persisted.actualTokens ?? 0, measured ?? Math.max(action.tokenReservation, usage?.tokens_in ?? 0, usage?.tokens_out ?? 0));
+      let result: GraphResult | undefined;
+      if (evidence.status === "completed") {
+        result = GraphResult.parse(persisted.result);
+        const expected = action.action.kind === "implement" || action.action.kind === "repair" ? "implementation_complete"
+          : action.action.kind.startsWith("workspace_") ? "workspace" : action.action.kind;
+        if (result.kind !== expected) throw new Error("invalid result kind for registered operation");
+        if ("workspaceLeaseRef" in result && "workspaceLeaseRef" in action.action && result.workspaceLeaseRef !== action.action.workspaceLeaseRef) throw new Error("persisted workspace mismatch");
+        if ("candidateRevision" in result && "candidateRevision" in action.action && result.candidateRevision !== action.action.candidateRevision) throw new Error("persisted revision mismatch");
+      }
+      const settled = this.actions.recordOutcome(this.fence(binding), owned.effectKey, evidence.status === "completed"
+        ? { state: "confirmed", evidenceRef: persisted.evidenceRef, actualTokens, result: result! }
+        : { state: "failed", evidenceRef: persisted.evidenceRef, actualTokens, retrySafe: false, error: { message: "trusted stopped invocation failed" } });
+      return this.response(request, settled.action);
+    } catch (error) {
+      if (binding && owned) {
+        if (invoked) {
+          uncertain = true; lease?.retain(String(error));
+          try { const unknown = this.actions.markUncertain(this.fence(binding), owned.effectKey, { state: "unknown", evidenceRef: persistedEvidenceRef ?? `unknown:${randomUUID()}`, observedTokens: Math.max(owned.reservationTokens, observedTokens) });
+            return this.response(request, unknown.action); } catch { /* Commit/fence failure preserves the original running reservation. */ }
+          return { schemaVersion: 1, kind: "worker_action_response", requestId: request.requestId, generation: request.generation,
+            effect: owned.effect, outcome: { state: "unknown", error: graphError("ACTION_OUTCOME_UNKNOWN", String(error)), reconciliationRef: owned.effectKey } };
+        }
+        // No physical invocation: resolve this caller's own intent without calling
+        // it unknown. Only a future explicit host retry can use this proof;
+        // cancellations remain sealed and worker replay never allocates attempts.
+        try { this.actions.recordOutcome(this.fence(binding), owned.effectKey, { state: "failed", evidenceRef: `not-started:${randomUUID()}`,
+          actualTokens: 0, retrySafe: !signal.aborted, error: { message: "admission refused before invocation" } }); } catch { /* A stale owner cannot mutate a newer generation. */ }
+      }
+      return reject(error);
+    } finally {
+      if (lease && !uncertain) await lease.release();
+    }
+  }
+
+  private response(request: WorkerActionRequest, action: GraphAction): WorkerActionResponse {
+    const base = { schemaVersion: 1 as const, kind: "worker_action_response" as const, requestId: request.requestId,
+      generation: request.generation, effect: action.effect };
+    if (action.state === "confirmed") return WorkerActionResponse.parse({ ...base, outcome: { state: "confirmed", result: action.outcome?.state === "confirmed" ? action.outcome.result : undefined } });
+    if (action.state === "failed") return WorkerActionResponse.parse({ ...base, outcome: { state: "failed", error: graphError("POLICY_DENIED", "prior invocation failed; no automatic retry") } });
+    return { ...base, outcome: { state: "unknown", error: graphError("ACTION_OUTCOME_UNKNOWN", "existing action requires reconciliation; invocation was not repeated"), reconciliationRef: action.effectKey } };
+  }
+
+  private async execute(binding: Binding, action: BoundAction, signal: AbortSignal, beforeEffect: () => void, observeTokens: (tokens: number) => void): Promise<GraphActionEvidence> {
+    const execution = action.execution;
+    if (execution.kind === "workspace") {
+      await this.options.authorizePolicy?.(binding.workspace.workspace_path);
+      beforeEffect();
+      const result = await execution.handler({ workspace: binding.workspace, signal });
+      if (result?.stopped !== true || !["completed", "failed"].includes(result.status)) throw new Error("workspace outcome unconfirmed");
+      return { status: result.status, workspace: result.evidence };
+    }
+    let threw = false; let command: CommandResult | undefined; let invocationRunId: string | undefined;
+    const original = execution.kind === "adapter" ? execution.adapter : undefined;
+    const capabilities = execution.kind === "adapter" ? execution.adapter.capabilities().filter(cap => cap.id === execution.capabilityId) : [CapabilitySchema.parse({ id: "registered-command.write", kind: "code.write", agent_id: "registered-command", description: "Registered command" })];
+    const policy = this.options.authorizePolicy;
+    const cumulativeUsage: Record<string, number> = { tokens_in: 0, tokens_out: 0 };
+    const wrapper: AgentAdapter = {
+      id: original?.id ?? "registered-command", display_name: "Governed graph action", cost_tier: "low",
+      capabilities: () => capabilities, isAvailable: original?.isAvailable ?? (async () => ({ available: true, last_checked_at: 0 })),
+      invoke: (task, invocationSignal) => {
+        return (async function* () {
+          await policy?.(binding.workspace.workspace_path);
+          if (invocationSignal.aborted) throw new Denied("POLICY_DENIED", "execution cancelled before invocation");
+          beforeEffect(); invocationRunId = task.run_id;
+          try {
+            if (original) {
+              for await (const event of original.invoke(task, invocationSignal)) {
+                const payload: unknown = event.type === "usage.updated" || event.type === "usage.final" ? event.payload
+                  : event.type === "done" && event.payload && typeof event.payload === "object" ? (event.payload as { usage?: unknown }).usage : undefined;
+                if (payload !== undefined) {
+                  if (!payload || typeof payload !== "object" || Array.isArray(payload)) throw new Error("invalid adapter usage payload");
+                  const usage = payload as Record<string, unknown>;
+                  let tokens = 0;
+                  for (const field of ["tokens_in", "tokens_out"]) {
+                    const amount = usage[field];
+                    if (amount !== undefined) {
+                      if (typeof amount !== "number" || !Number.isSafeInteger(amount) || amount < 0) throw new Error("invalid adapter token usage");
+                      cumulativeUsage[field] = Math.max(cumulativeUsage[field]!, amount);
+                    }
+                  }
+                  // Providers may send input/output counters in separate events.
+                  // Retain each cumulative maximum instead of only max(event sum).
+                  tokens = cumulativeUsage["tokens_in"]! + cumulativeUsage["tokens_out"]!;
+                  if (!Number.isSafeInteger(tokens)) throw new Error("invalid adapter total usage");
+                  observeTokens(tokens);
+                  const cost = usage["cost_usd"];
+                  if (cost !== undefined && (typeof cost !== "number" || !Number.isFinite(cost) || cost < 0)) throw new Error("invalid adapter cost usage");
+                }
+                yield event;
+              }
+              return;
+            }
+            if (execution.kind !== "command") throw new Error("invalid execution registration");
+            // runShellCommand starts synchronously before its returned promise; no
+            // untrusted await separates the fence above from the actual spawn.
+            command = await runShellCommand(execution.command, { cwd: binding.workspace.workspace_path, timeoutMs: 120_000,
+              outputLimit: 16_000, ...(invocationSignal ? { signal: invocationSignal } : {}) });
+            yield { event_id: randomUUID(), run_id: task.run_id, session_id: task.session_id, seq: 1, type: "done" as const,
+              created_at: Date.now() / 1000, terminal: true, payload: { status: command.exitCode === 0 ? "completed" : "failed", last_seq: 0 } };
+          } catch (error) { threw = true; throw error; }
+        })();
+      },
+      confirmStopped: async runId => original?.confirmStopped ? original.confirmStopped(runId)
+        : { stopped: command?.termination?.stop_confirmed === true, evidence: command?.termination?.evidence ?? "no trusted stop receipt" },
+    };
+    const candidate = await executeCandidateImplementation({ plan: { ...execution.plan, agent_id: wrapper.id }, workspace: binding.workspace,
+      adapters: [wrapper], signal, cancellationGraceMs: 50,
+      authorize: async () => { this.authorize(binding); this.fence(binding); return { allow: true }; } });
+    if (!invocationRunId) throw new Denied("POLICY_DENIED", candidate.reason ?? "candidate preflight refused");
+    if (threw || candidate.status === "execution_unconfirmed" || candidate.execution?.failure_code) throw new Error("adapter result or execution unconfirmed");
+    let stopTimer: ReturnType<typeof setTimeout> | undefined;
+    const stopped = await Promise.race([wrapper.confirmStopped!(invocationRunId),
+      new Promise<{ stopped: false }>(resolve => { stopTimer = setTimeout(() => resolve({ stopped: false }), 1000); })])
+      .finally(() => { if (stopTimer) clearTimeout(stopTimer); });
+    if (stopped.stopped !== true || !stopped.evidence?.trim()) throw new Error("external stop unconfirmed");
+    const usage = candidate.execution;
+    if ([usage?.tokens_in, usage?.tokens_out].some(value => value !== undefined && (!Number.isSafeInteger(value) || value < 0))) throw new Error("invalid adapter usage");
+    return { status: candidate.status === "implementation_complete" ? "completed" : "failed", candidate, ...(command ? { command } : {}) };
+  }
+}
+
+--- packages/cli/src/graph-checkpoint-service.ts ---
+import { parseGraphCheckpointRequest, type GraphCheckpointResponse, type GraphScope } from '@osstack/protocol';
+import type { GraphCheckpointStore, GraphProgramIdentity, GraphRunStore } from '@osstack/core';
+
+/** Created by the trusted daemon supervisor, never from worker JSON or a checkpoint.
+ * The object used as the registry key represents an authenticated connection. G14
+ * supplies that connection; possession of scope strings is insufficient. */
+export interface GraphCheckpointBinding {
+  scope: GraphScope;
+  graphRunId: string;
+  generation: number;
+  owner: string;
+  identity: GraphProgramIdentity;
+  authorize: () => Promise<void>;
+}
+
+/** Control-plane assembly only. The database store fences inside its transaction;
+ * this service resolves authority outside the request and waits for commit before
+ * acknowledging. No LangGraph runtime or deserialization is loaded in the daemon. */
+export class GraphCheckpointService {
+  private readonly bindings = new Map<object, GraphCheckpointBinding>();
+  private closed = false;
+  constructor(private readonly options: {
+    runs: GraphRunStore;
+    checkpoints: GraphCheckpointStore;
+    bindings: ReadonlyMap<object, GraphCheckpointBinding>;
+    now?: () => number;
+  }) {
+    for (const [connection, binding] of options.bindings) {
+      if (typeof binding.authorize !== 'function') throw new Error('UNAUTHENTICATED');
+      const { authorize, ...data } = binding;
+      this.bindings.set(connection, { ...structuredClone(data), authorize });
+    }
+  }
+
+  close(): void { this.closed = true; }
+
+  async execute(connection: object, value: unknown): Promise<GraphCheckpointResponse> {
+    this.assertOpen();
+    const binding = this.bindings.get(connection);
+    if (!binding) throw new Error('UNAUTHENTICATED');
+    const request = parseGraphCheckpointRequest(value);
+    if (request.threadId !== binding.graphRunId) throw new Error('RUN_MISMATCH');
+    const authorize = binding.authorize;
+    const decision: unknown = await authorize();
+    if (decision !== undefined) throw new Error("POLICY_DENIED: authorization must resolve without a decision payload or throw");
+    this.assertOpen();
+    // Refresh only the revision, after the asynchronous authorization boundary.
+    // Keep the original connection's generation, owner and program identity. There
+    // is no await between this read and the store's transactional check/write.
+    const run = this.options.runs.get(binding.scope, binding.graphRunId);
+    if (!run) throw new Error('RUN_NOT_FOUND');
+    const result = this.options.checkpoints.execute({ scope: binding.scope,
+      graphRunId: binding.graphRunId, expectedGeneration: binding.generation,
+      expectedRevision: run.revision, expectedOwner: binding.owner,
+      identity: binding.identity, now: this.options.now?.() ?? Date.now(),
+    }, request);
+    return result.response;
+  }
+
+  private assertOpen(): void { if (this.closed) throw new Error('CHECKPOINT_SERVICE_CLOSED'); }
+}
+
+--- packages/graph/src/remote-checkpointer.ts ---
+import { randomUUID } from 'node:crypto';
+import type { RunnableConfig } from '@langchain/core/runnables';
+import {
+  BaseCheckpointSaver, WRITES_IDX_MAP, getCheckpointId,
+  type Checkpoint, type CheckpointMetadata, type CheckpointListOptions,
+  type CheckpointTuple, type ChannelVersions, type PendingWrite,
+} from '@langchain/langgraph-checkpoint';
+import {
+  GRAPH_CHECKPOINT_MAX_PAGE_SIZE, GRAPH_CHECKPOINT_MAX_FRAME_BYTES, parseGraphCheckpointRequest, parseGraphCheckpointResponse,
+  type GraphCheckpointRequest, type GraphCheckpointResponse, type GraphCheckpointTransport,
+  type GraphCheckpointTupleWire,
+} from '@osstack/protocol';
+import { CheckpointCodec, assertCheckpointV4 } from './checkpoint-codec.js';
+
+// Match SQLite BINARY ordering, including non-ASCII namespace names.
+const compare = (a: string, b: string) => Buffer.compare(Buffer.from(a), Buffer.from(b));
+
+/** Worker-only saver. Host supplies an authenticated, fixed-run transport closure.
+ * A transport retry MUST reuse the same request (including requestId). Rejections
+ * are propagated: the saver cannot infer external effect outcome from lost ACKs. */
+export class RemoteCheckpointSaver extends BaseCheckpointSaver {
+  private readonly codec: CheckpointCodec;
+  constructor(private readonly threadId: string, private readonly transport: GraphCheckpointTransport) {
+    const codec = new CheckpointCodec({ allowBytes: true });
+    super(codec);
+    this.codec = codec;
+    parseGraphCheckpointRequest({ kind: 'get', threadId, namespace: '' });
+  }
+
+  private address(config: RunnableConfig, allNamespaces = false) {
+    const thread = config.configurable?.['thread_id'];
+    if (thread !== undefined && thread !== this.threadId) throw new Error('CHECKPOINT_THREAD_MISMATCH');
+    const ns: unknown = config.configurable?.['checkpoint_ns'];
+    if (ns !== undefined && typeof ns !== 'string') throw new Error('CHECKPOINT_NAMESPACE_INVALID');
+    const checkpointId = getCheckpointId(config);
+    return { threadId: this.threadId, ...(ns !== undefined ? { namespace: ns } : allNamespaces ? {} : { namespace: '' }),
+      ...(checkpointId ? { checkpointId } : {}) };
+  }
+  private encode(value: unknown): string { return Buffer.from(this.codec.encode(value)).toString('utf8'); }
+  private async call(request: GraphCheckpointRequest): Promise<GraphCheckpointResponse> {
+    const response = parseGraphCheckpointResponse(await this.transport(parseGraphCheckpointRequest(request)));
+    if (response.kind !== request.kind) throw new Error('CHECKPOINT_RESPONSE_MISMATCH');
+    return response;
+  }
+  private tuple(wire: GraphCheckpointTupleWire): CheckpointTuple {
+    if (wire.threadId !== this.threadId) throw new Error('CHECKPOINT_THREAD_MISMATCH');
+    const checkpoint = this.codec.decode(wire.checkpoint);
+    assertCheckpointV4(checkpoint);
+    if (checkpoint.id !== wire.checkpointId) throw new Error('CHECKPOINT_ID_MISMATCH');
+    const config = (id: string): RunnableConfig => ({ configurable: {
+      thread_id: this.threadId, checkpoint_ns: wire.namespace, checkpoint_id: id,
+    } });
+    return { config: config(wire.checkpointId), checkpoint,
+      metadata: this.codec.decode(wire.metadata) as CheckpointMetadata,
+      ...(wire.parentCheckpointId ? { parentConfig: config(wire.parentCheckpointId) } : {}),
+      pendingWrites: wire.pendingWrites.map((w) => [w.taskId, w.channel, this.codec.decode(w.value)]),
+    };
+  }
+  async getTuple(config: RunnableConfig): Promise<CheckpointTuple | undefined> {
+    const address = this.address(config);
+    const response = await this.call({ kind: 'get', ...address, namespace: address.namespace ?? '' });
+    if (response.kind !== 'get' || !response.tuple) return undefined;
+    if (response.tuple.namespace !== address.namespace || (address.checkpointId && response.tuple.checkpointId !== address.checkpointId)) {
+      throw new Error('CHECKPOINT_RESPONSE_MISMATCH');
+    }
+    return this.tuple(response.tuple);
+  }
+  async *list(config: RunnableConfig, options: CheckpointListOptions = {}): AsyncGenerator<CheckpointTuple> {
+    const address = this.address(config, true);
+    if (options.before) this.address(options.before);
+    let remaining = options.limit ?? Infinity;
+    if (remaining !== Infinity && (!Number.isSafeInteger(remaining) || remaining < 0)) throw new Error('CHECKPOINT_LIMIT_INVALID');
+    const before = options.before ? getCheckpointId(options.before) : undefined;
+    let cursor: { namespace: string; checkpointId: string } | undefined;
+    while (remaining > 0) {
+      const response = await this.call({ kind: 'list', ...address, ...(before ? { before } : {}),
+        ...(cursor ? { cursor } : {}), pageSize: GRAPH_CHECKPOINT_MAX_PAGE_SIZE });
+      if (response.kind !== 'list') throw new Error('CHECKPOINT_RESPONSE_MISMATCH');
+      let previous = cursor;
+      for (const wire of response.tuples) {
+        if (previous && (compare(wire.checkpointId, previous.checkpointId) > 0
+          || (wire.checkpointId === previous.checkpointId && compare(wire.namespace, previous.namespace) >= 0))) {
+          throw new Error('CHECKPOINT_CURSOR_INVALID');
+        }
+        previous = wire;
+      }
+      const last = response.tuples.at(-1);
+      if (response.cursor && (!last || response.cursor.checkpointId !== last.checkpointId || response.cursor.namespace !== last.namespace)) {
+        throw new Error('CHECKPOINT_CURSOR_INVALID');
+      }
+      for (const wire of response.tuples) {
+        if ((address.namespace !== undefined && wire.namespace !== address.namespace)
+          || (address.checkpointId && wire.checkpointId !== address.checkpointId)
+          || (before && compare(wire.checkpointId, before) >= 0)) throw new Error('CHECKPOINT_RESPONSE_MISMATCH');
+        const tuple = this.tuple(wire);
+        if (options.filter && !Object.entries(options.filter).every(([key, value]) => {
+          const actual = (tuple.metadata as Record<string, unknown> | undefined)?.[key];
+          return actual !== undefined && this.encode(actual) === this.encode(value);
+        })) continue;
+        yield tuple;
+        if (--remaining <= 0) return;
+      }
+      if (!response.cursor) return;
+      if (cursor && (compare(response.cursor.checkpointId, cursor.checkpointId) > 0
+        || (response.cursor.checkpointId === cursor.checkpointId && compare(response.cursor.namespace, cursor.namespace) >= 0))) {
+        throw new Error('CHECKPOINT_CURSOR_INVALID');
+      }
+      cursor = response.cursor;
+    }
+  }
+  async put(config: RunnableConfig, checkpoint: Checkpoint, metadata: CheckpointMetadata, newVersions: ChannelVersions): Promise<RunnableConfig> {
+    const address = this.address(config);
+    const checkpointWire = this.encode(checkpoint);
+    const snapshot = this.codec.decode(checkpointWire);
+    assertCheckpointV4(snapshot);
+    const response = await this.call({ kind: 'put', requestId: randomUUID(), threadId: this.threadId,
+      namespace: address.namespace ?? '', checkpointId: snapshot.id,
+      ...(address.checkpointId ? { parentCheckpointId: address.checkpointId } : {}),
+      checkpoint: checkpointWire, metadata: this.encode(metadata), newVersions: this.encode(newVersions) });
+    if (response.kind !== 'put' || response.checkpointId !== snapshot.id) throw new Error('CHECKPOINT_RESPONSE_MISMATCH');
+    return { configurable: { thread_id: this.threadId, checkpoint_ns: address.namespace ?? '', checkpoint_id: snapshot.id } };
+  }
+  async putWrites(config: RunnableConfig, writes: PendingWrite[], taskId: string): Promise<void> {
+    const address = this.address(config);
+    if (!address.checkpointId) throw new Error('CHECKPOINT_ID_REQUIRED');
+    if (!Array.isArray(writes) || writes.length > 4096) throw new Error('CHECKPOINT_FRAME_LIMIT');
+    const request: Extract<GraphCheckpointRequest, { kind: 'writes' }> = {
+      kind: 'writes', requestId: randomUUID(), threadId: this.threadId,
+      namespace: address.namespace ?? '', checkpointId: address.checkpointId, taskId, writes: [],
+    };
+    parseGraphCheckpointRequest(request);
+    let bytes = Buffer.byteLength(JSON.stringify(request));
+    for (const [position, [channel, value]] of writes.entries()) {
+      const write = { channel, index: Object.hasOwn(WRITES_IDX_MAP, channel) ? WRITES_IDX_MAP[channel]! : position,
+        value: this.encode(value) };
+      bytes += Buffer.byteLength(JSON.stringify(write)) + 1;
+      if (bytes > GRAPH_CHECKPOINT_MAX_FRAME_BYTES) throw new Error('CHECKPOINT_FRAME_LIMIT');
+      request.writes.push(write);
+    }
+    await this.call(request);
+  }
+  async deleteThread(_threadId: string): Promise<void> { throw new Error('CHECKPOINT_DELETE_UNSUPPORTED'); }
+}
+
+--- new core quota tests ---
+, 'pendingWrites', 'requests', 'bytes'] as const)('enforces the daemon %s run quota atomically across addresses and reopening', (kind) => {
+  const limits = { checkpoints: 2, pendingWrites: 3, requests: 3, bytes: 200 };
+  store = new GraphCheckpointStore(db, limits);
+  execute(put());
+  const before = run;
+  if (kind === 'checkpoints') {
+    execute({ ...put('put2'), checkpointId: '002' });
+    const revision = run.revision;
+    expect(() => execute({ ...put('put3'), checkpointId: '003' })).toThrow('CHECKPOINT_RUN_LIMIT');
+    expect(runs.get(scope, run.graphRunId)?.revision).toBe(revision);
+  } else if (kind === 'pendingWrites') {
+    execute(writes());
+    expect(() => execute({ ...writes('writes2'), checkpointId: '002' })).toThrow('CHECKPOINT_RUN_LIMIT');
+    expect(db.prepare('SELECT count(*) AS n FROM graph_checkpoint_writes').get()).toEqual({ n: 2 });
+  } else if (kind === 'requests') {
+    execute(put('same-data-new-id-1')); execute(put('same-data-new-id-2'));
+    expect(() => execute(put('same-data-new-id-3'))).toThrow('CHECKPOINT_RUN_LIMIT');
+    // Original idempotency replay is still allowed, without growing history.
+    expect(execute(put())).toEqual({ kind: 'put', checkpointId: '001' });
+  } else {
+    expect(() => execute({ ...writes(), checkpointId: 'other', writes: [{ index: 0, channel: 'result', value: 'x'.repeat(201) }] })).toThrow('CHECKPOINT_RUN_LIMIT');
+    expect(runs.get(scope, run.graphRunId)).toEqual(before);
+  }
+  const dbPath = db.name; db.close(); db = openDb({ path: dbPath }); runs = new GraphRunStore(db);
+  store = new GraphCheckpointStore(db, limits);
+  expect(get().kind).toBe('get');
+  expect(db.prepare('SELECT count(*) AS n FROM graph_checkpoint_requests').get()).toEqual({ n: kind === 'requests' ? 3 : kind === 'bytes' ? 1 : 2 });
+});
+it('permits only trusted tightening of fixed checkpoint storage ceilings', () => {
+  expect(() => new GraphCheckpointStore(db, { bytes: Number.MAX_SAFE_INTEGER })).toThrow('CHECKPOINT_QUOTA_INVALID');
+  expect(() => new GraphCheckpointStore(db, { requests: 0 })).toThrow('CHECKPOINT_QUOTA_INVALID');
+});
+
+--- parent broker tests ---
+import { execFileSync } from "node:child_process";
+import { mkdtempSync, rmSync } from "node:fs";
+import { join } from "node:path";
+import { tmpdir } from "node:os";
+import { afterEach, expect, it } from "vitest";
+import { CapabilitySchema, GraphRunStore, openDb, type GraphRun } from "@osstack/core";
+import { FifoSemaphore } from "@osstack/autonomy";
+import type { AgentAdapter, AgentTask } from "@osstack/agents";
+import type { HermesEvent } from "@osstack/hermes-adapter";
+import { ExecutionPlan } from "@osstack/loop";
+import type { WorkerActionRequest } from "@osstack/protocol";
+import { GraphActionBroker, type GraphWorkerRegistration } from "./graph-action-broker.js";
+import { GovernedExecution } from "./governed-execution.js";
+import { healthyAutonomyHealth } from "./test-healthy-autonomy.js";
+
+const cleanups: Array<() => void> = [];
+afterEach(() => { for (const cleanup of cleanups.splice(0).reverse()) cleanup(); });
+const scope = { schemaVersion: 1 as const, tenantId: "tenant", principalId: "principal", workspaceId: "workspace" };
+const fence = (run: GraphRun) => ({ scope, graphRunId: run.graphRunId, expectedGeneration: run.generation,
+  expectedRevision: run.revision, expectedOwner: run.leaseOwner, identity: run.identity, now: Date.now() });
+function done(task: AgentTask, status: "completed" | "failed" | "cancelled" | "expired" = "completed"): HermesEvent {
+  return { event_id: "event", run_id: task.run_id, session_id: task.session_id, seq: 1, type: "done",
+    created_at: 0, terminal: true, payload: { status, last_seq: 0 } };
+}
+function actor(invoke: AgentAdapter["invoke"]): AgentAdapter {
+  return { id: "builder", display_name: "Builder", cost_tier: "low", invoke,
+    capabilities: () => [CapabilitySchema.parse({ id: "builder.write", agent_id: "builder", kind: "code.write", description: "write" })],
+    isAvailable: async () => ({ available: true, last_checked_at: 0 }),
+    confirmStopped: async () => ({ stopped: true, evidence: "fixture owns no background effects" }) };
+}
+function fixture(adapter?: AgentAdapter) {
+  const root = mkdtempSync(join(tmpdir(), "g12-"));
+  cleanups.push(() => rmSync(root, { recursive: true, force: true }));
+  const repo = join(root, "repo"); execFileSync("git", ["init", "-q", repo]);
+  const db = openDb({ path: join(root, "state.db") }); cleanups.push(() => { if (db.open) db.close(); });
+  const runs = new GraphRunStore(db);
+  const created = runs.create({ schemaVersion: 1, kind: "start", scope, idempotencyKey: "start", inputArtifactRef: "input",
+    source: { product: "osstack", requestId: "source" }, spec: { schemaVersion: 1, template: "code-delivery-v1", publication: "artifact_only",
+      input: { taskRef: "task", repositoryRef: "repo", baseRevision: "a".repeat(40), acceptanceRef: "acceptance" },
+      limits: { maxEpochs: 1, maxBranchAttempts: 2, maxConcurrentReaders: 2, maxConcurrentWritersPerRepo: 1,
+        maxActionStarts: 10, deadlineSeconds: 300, tokenReservationLimit: 100 } } },
+    { executionModel: "langgraph-functional-v1", durability: "sync", engineVersion: "1", checkpointVersion: "1",
+      templateVersion: "1", registryVersion: "1", compilerVersion: "1", schemaVersion: "1", compiledProgramDigest: "b".repeat(64) }, Date.now());
+  const run = runs.acquireLease({ ...fence(created), owner: "worker", leaseExpiresAt: Date.now() + 120_000 });
+  const reads = new FifoSemaphore(2); const writes = new FifoSemaphore(1);
+  const admission = new GovernedExecution({ reads, writes, repositories: new Map(), checkHealth: async () => {
+    if (!healthyAutonomyHealth().can_run_local) throw new Error("unhealthy");
+  } });
+  let allowed = true;
+  const registration: GraphWorkerRegistration = { scope, graphRunId: run.graphRunId, identity: run.identity,
+    generation: run.generation, owner: "worker", epoch: 0, workspace: { workspace_id: "workspace", workspace_path: repo },
+    authorize: () => { if (!allowed) throw new Error("revoked"); }, actions: [{ nodeId: "implement", effectSlot: "invocation",
+      action: { kind: "implement", inputArtifactRef: "input", workspaceLeaseRef: "workspace" }, tokenReservation: 10,
+      execution: { kind: adapter ? "adapter" : "command", plan: ExecutionPlan.parse({ plan_id: "plan", agent_id: adapter?.id ?? "local-command",
+        task: { task_id: "task", capability: "code.write", prompt: "implement once", source: "manual" }, stop_condition: { type: "tests_pass" } }),
+        ...(adapter ? { adapter, capabilityId: "builder.write" } : { command: "printf once >> output.txt" }) } as GraphWorkerRegistration["actions"][number]["execution"],
+      persist: async () => ({ evidenceRef: "trusted-evidence", result: { schemaVersion: 1, kind: "implementation_complete", workspaceLeaseRef: "workspace", receiptRef: "trusted-receipt" } }) }] };
+  const connection = {};
+  let policyAllowed = true;
+  const options = { acquire: admission.acquire.bind(admission), authorizePolicy: async () => { if (!policyAllowed) throw new Error("policy revoked"); } };
+  const broker = new GraphActionBroker(db, options); broker.register(connection, registration);
+  const request: WorkerActionRequest = { schemaVersion: 1, kind: "worker_action", requestId: "request", scope,
+    graphRunId: run.graphRunId, specHash: run.identity.specHash, generation: run.generation, epoch: 0,
+    nodeId: "implement", effectSlot: "invocation", action: { kind: "implement", inputArtifactRef: "input", workspaceLeaseRef: "workspace" } };
+  return { root, repo, db, runs, run, reads, writes, admission, registration, connection, broker, request, options,
+    revokePolicy: () => { policyAllowed = false; }, revoke: () => { allowed = false; } };
+}
+
+it('rejects a Promise-returning synchronous authorizer instead of silently granting authority', async () => {
+  let invokes = 0;
+  const f = fixture(actor(async function* (task) { invokes++; yield done(task); }));
+  const connection = {};
+  f.broker.register(connection, { ...f.registration, authorize: async () => {} });
+  expect(await f.broker.handle(connection, f.request)).toMatchObject({ kind: 'worker_action_rejected' });
+  expect(invokes).toBe(0); expect(f.writes.in_use).toBe(0);
+});
+it('rechecks repository policy after an asynchronous adapter availability probe', async () => {
+  let invokes = 0; let available!: () => void; let probed = false;
+  const adapter = actor(async function* (task) { invokes++; yield done(task); });
+  adapter.isAvailable = async () => { probed = true; await new Promise<void>(resolve => { available = resolve; }); return { available: true, last_checked_at: 0 }; };
+  const f = fixture(adapter);
+  const response = f.broker.handle(f.connection, f.request);
+  await expect.poll(() => probed).toBe(true);
+  f.revokePolicy(); available();
+  expect(await response).toMatchObject({ kind: 'worker_action_rejected' });
+  expect(invokes).toBe(0); expect(f.writes.in_use).toBe(0);
+});
+it('charges observed adapter usage even when the persistence mapper reports less', async () => {
+  const adapter = actor(async function* (task) {
+    yield { ...done(task), terminal: false, type: 'usage.final', payload: { tokens_in: 150, tokens_out: 50 } } as HermesEvent;
+    yield { ...done(task), seq: 2 };
+  });
+  const f = fixture(adapter); const connection = {};
+  f.broker.register(connection, { ...f.registration, actions: f.registration.actions.map(a => ({ ...a, persist: async () => ({ evidenceRef: 'receipt', actualTokens: 0, result: { schemaVersion: 1 as const, kind: 'implementation_complete' as const, workspaceLeaseRef: 'workspace', receiptRef: 'receipt' } }) })) });
+  expect(await f.broker.handle(connection, f.request)).toMatchObject({ outcome: { state: 'confirmed' } });
+  const row = f.db.prepare('SELECT actual_tokens, accounting_blocked FROM graph_actions').get();
+  expect(row).toEqual({ actual_tokens: 200, accounting_blocked: 1 });
+});
+it('combines independently reported cumulative input and output usage without lowering either component', async () => {
+  const adapter = actor(async function* (task) {
+    yield { ...done(task), terminal: false, type: 'usage.updated', payload: { tokens_in: 150 } } as HermesEvent;
+    yield { ...done(task), seq: 2, terminal: false, type: 'usage.final', payload: { tokens_out: 50 } } as HermesEvent;
+    yield { ...done(task), seq: 3 };
+  });
+  const f = fixture(adapter);
+  expect(await f.broker.handle(f.connection, f.request)).toMatchObject({ outcome: { state: 'confirmed' } });
+  expect(f.db.prepare('SELECT actual_tokens, accounting_blocked FROM graph_actions').get()).toEqual({ actual_tokens: 200, accounting_blocked: 1 });
+});
+it('marks only a proven pre-invocation policy failure safe for a future explicit host retry', async () => {
+  const f = fixture(); f.revokePolicy();
+  expect(await f.broker.handle(f.connection, f.request)).toMatchObject({ kind: 'worker_action_rejected' });
+  expect(f.db.prepare('SELECT state, retry_safe FROM graph_actions').get()).toEqual({ state: 'failed', retry_safe: 1 });
+});
+it('retains a saved evidence reference and known usage when result validation fails', async () => {
+  const f = fixture(actor(async function* (task) { yield done(task); })); const connection = {};
+  f.broker.register(connection, { ...f.registration, actions: f.registration.actions.map(a => ({ ...a, persist: async () => ({ evidenceRef: 'durable-invalid-result', actualTokens: 150, result: { schemaVersion: 1 as const, kind: 'workspace' as const, workspaceLeaseRef: 'workspace', receiptRef: 'saved' } }) })) });
+  expect(await f.broker.handle(connection, f.request)).toMatchObject({ outcome: { state: 'unknown' } });
+  const row = f.db.prepare('SELECT observed_tokens, uncertainty_json FROM graph_actions').get() as { observed_tokens: number; uncertainty_json: string };
+  expect(row.observed_tokens).toBe(150);
+  expect(JSON.parse(row.uncertainty_json)).toMatchObject({ evidenceRef: 'durable-invalid-result' });
+  expect(f.writes.in_use).toBe(1);
+});
+
+it('does not let malformed persistence references prevent durable uncertainty recording', async () => {
+  const f = fixture(actor(async function* (task) { yield done(task); })); const connection = {};
+  f.broker.register(connection, { ...f.registration, actions: f.registration.actions.map(a => ({ ...a, persist: async () => ({ evidenceRef: 'invalid\u0000reference' }) })) });
+  expect(await f.broker.handle(connection, f.request)).toMatchObject({ outcome: { state: 'unknown' } });
+  expect(f.db.prepare('SELECT state FROM graph_actions').get()).toEqual({ state: 'unknown' });
+});

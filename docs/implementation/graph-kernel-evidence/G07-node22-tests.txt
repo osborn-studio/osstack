@@ -1,0 +1,11 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/graph
+
+ ✓ src/package-entry.test.ts (1 test) 71ms
+ ✓ src/worker-entry.test.ts (1 test) 15ms
+ ✓ src/checkpoint-codec.test.ts (20 tests) 7ms
+
+ Test Files  3 passed (3)
+      Tests  22 passed (22)
+   Start at  18:25:33
+   Duration  416ms (transform 64ms, setup 0ms, collect 229ms, tests 93ms, environment 0ms, prepare 96ms)

@@ -1,0 +1,247 @@
+{
+  "validator": "@cfworker/json-schema 4.1.1 (research fixture only, no production dependency added)",
+  "schema": "graph.schema.json",
+  "passed": 11,
+  "cases": [
+    {
+      "key": "error",
+      "value": {
+        "schemaVersion": 1,
+        "code": "ACTION_OUTCOME_UNKNOWN",
+        "message": "Unknown",
+        "retryable": false,
+        "nextAction": "reconcile"
+      },
+      "expected": true,
+      "actual": true
+    },
+    {
+      "key": "error",
+      "value": {
+        "schemaVersion": 1,
+        "code": "ACTION_OUTCOME_UNKNOWN",
+        "message": "Unknown",
+        "retryable": false,
+        "nextAction": "retry"
+      },
+      "expected": false,
+      "actual": false
+    },
+    {
+      "key": "error",
+      "value": {
+        "schemaVersion": 1,
+        "code": "POLICY_DENIED",
+        "message": "Unknown",
+        "retryable": true,
+        "nextAction": "retry"
+      },
+      "expected": false,
+      "actual": false
+    },
+    {
+      "key": "error",
+      "value": {
+        "schemaVersion": 1,
+        "code": "INTERNAL_ERROR",
+        "message": "Unknown",
+        "retryable": true,
+        "nextAction": "stop"
+      },
+      "expected": false,
+      "actual": false
+    },
+    {
+      "key": "request",
+      "value": {
+        "schemaVersion": 1,
+        "kind": "resume",
+        "scope": {
+          "schemaVersion": 1,
+          "tenantId": "tenant",
+          "principalId": "owner",
+          "workspaceId": "workspace"
+        },
+        "graphRunId": "run",
+        "expectedRevision": 4,
+        "interruptId": "interrupt",
+        "idempotencyKey": "key",
+        "input": {
+          "kind": "data",
+          "value": null
+        }
+      },
+      "expected": true,
+      "actual": true
+    },
+    {
+      "key": "request",
+      "value": {
+        "schemaVersion": 1,
+        "kind": "resume",
+        "scope": {
+          "schemaVersion": 1,
+          "tenantId": "tenant",
+          "principalId": "owner",
+          "workspaceId": "workspace"
+        },
+        "graphRunId": "run",
+        "expectedRevision": 4,
+        "interruptId": "interrupt",
+        "idempotencyKey": "key",
+        "input": {
+          "kind": "data",
+          "value": {
+            "constructor": 1
+          }
+        }
+      },
+      "expected": false,
+      "actual": false
+    },
+    {
+      "key": "request",
+      "value": {
+        "schemaVersion": 1,
+        "kind": "resume",
+        "scope": {
+          "schemaVersion": 1,
+          "tenantId": "tenant",
+          "principalId": "owner",
+          "workspaceId": "workspace"
+        },
+        "graphRunId": "run",
+        "expectedRevision": 4,
+        "interruptId": "interrupt",
+        "idempotencyKey": "key",
+        "input": {
+          "kind": "data",
+          "value": null
+        },
+        "extra": 1
+      },
+      "expected": false,
+      "actual": false
+    },
+    {
+      "key": "workerActionResponse",
+      "value": {
+        "schemaVersion": 1,
+        "kind": "worker_action_response",
+        "requestId": "request",
+        "generation": 1,
+        "effect": {
+          "schemaVersion": 1,
+          "scope": {
+            "schemaVersion": 1,
+            "tenantId": "tenant",
+            "principalId": "owner",
+            "workspaceId": "workspace"
+          },
+          "graphRunId": "run",
+          "specHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "epoch": 0,
+          "nodeId": "implement",
+          "effectSlot": "invoke",
+          "logicalAttempt": 1
+        },
+        "outcome": {
+          "state": "failed",
+          "error": {
+            "schemaVersion": 1,
+            "code": "ACTION_OUTCOME_UNKNOWN",
+            "message": "Unknown",
+            "retryable": false,
+            "nextAction": "reconcile"
+          }
+        }
+      },
+      "expected": false,
+      "actual": false
+    },
+    {
+      "key": "workerActionResponse",
+      "value": {
+        "schemaVersion": 1,
+        "kind": "worker_action_response",
+        "requestId": "request",
+        "generation": 1,
+        "effect": {
+          "schemaVersion": 1,
+          "scope": {
+            "schemaVersion": 1,
+            "tenantId": "tenant",
+            "principalId": "owner",
+            "workspaceId": "workspace"
+          },
+          "graphRunId": "run",
+          "specHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "epoch": 0,
+          "nodeId": "implement",
+          "effectSlot": "invoke",
+          "logicalAttempt": 1
+        },
+        "outcome": {
+          "state": "failed",
+          "error": {
+            "schemaVersion": 1,
+            "code": "CANCEL_UNCONFIRMED",
+            "message": "Unknown",
+            "retryable": false,
+            "nextAction": "reconcile"
+          }
+        }
+      },
+      "expected": false,
+      "actual": false
+    },
+    {
+      "key": "scope",
+      "value": {
+        "schemaVersion": 1,
+        "tenantId": "ab",
+        "principalId": "owner",
+        "workspaceId": "workspace"
+      },
+      "expected": false,
+      "actual": false
+    },
+    {
+      "key": "workerActionResponse",
+      "value": {
+        "schemaVersion": 1,
+        "kind": "worker_action_response",
+        "requestId": "request",
+        "generation": 1,
+        "effect": {
+          "schemaVersion": 1,
+          "scope": {
+            "schemaVersion": 1,
+            "tenantId": "tenant",
+            "principalId": "owner",
+            "workspaceId": "workspace"
+          },
+          "graphRunId": "run",
+          "specHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "epoch": 0,
+          "nodeId": "implement",
+          "effectSlot": "invoke",
+          "logicalAttempt": 1
+        },
+        "outcome": {
+          "state": "failed",
+          "error": {
+            "schemaVersion": 1,
+            "code": "INTERNAL_ERROR",
+            "message": "Unknown",
+            "retryable": true,
+            "nextAction": "retry"
+          }
+        }
+      },
+      "expected": true,
+      "actual": true
+    }
+  ],
+  "note": "Original registry properties and root references retained, selecting only the root required field for each case. Aggregate byte/depth/refinement checks remain additional runtime obligations."
+}

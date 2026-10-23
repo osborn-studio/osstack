@@ -1,0 +1,66 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+osstack: retaining write lease graph-action:9ab1b56760491b1f2b10d41a126e9b16b2615a5ca0cf7099fd833372cf465eea: Error: invalid result kind for registered operation
+ ❯ src/graph-action-broker-boundary.test.ts (6 tests | 2 failed) 334ms
+   ✓ rejects a Promise-returning synchronous authorizer instead of silently granting authority 46ms
+   ✓ rechecks repository policy after an asynchronous adapter availability probe 88ms
+   ✓ charges observed adapter usage even when the persistence mapper reports less 71ms
+   ✓ combines independently reported cumulative input and output usage without lowering either component 47ms
+   × marks only a proven pre-invocation policy failure safe for a future explicit host retry 34ms
+     → expected { state: 'failed', retry_safe: +0 } to deeply equal { state: 'failed', retry_safe: 1 }
+   × retains a saved evidence reference and known usage when result validation fails 48ms
+     → expected 10 to be 150 // Object.is equality
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/graph-action-broker-boundary.test.ts > marks only a proven pre-invocation policy failure safe for a future explicit host retry
+AssertionError: expected { state: 'failed', retry_safe: +0 } to deeply equal { state: 'failed', retry_safe: 1 }
+
+- Expected
++ Received
+
+  {
+-   "retry_safe": 1,
++   "retry_safe": 0,
+    "state": "failed",
+  }
+
+ ❯ src/graph-action-broker-boundary.test.ts:112:77
+    110|   const f = fixture(); f.revokePolicy();
+    111|   expect(await f.broker.handle(f.connection, f.request)).toMatchObject…
+    112|   expect(f.db.prepare('SELECT state, retry_safe FROM graph_actions').g…
+       |                                                                             ^
+    113| });
+    114| it('retains a saved evidence reference and known usage when result val…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  src/graph-action-broker-boundary.test.ts > retains a saved evidence reference and known usage when result validation fails
+AssertionError: expected 10 to be 150 // Object.is equality
+
+- Expected
++ Received
+
+- 150
++ 10
+
+ ❯ src/graph-action-broker-boundary.test.ts:119:31
+    117|   expect(await f.broker.handle(connection, f.request)).toMatchObject({…
+    118|   const row = f.db.prepare('SELECT observed_tokens, uncertainty_json F…
+    119|   expect(row.observed_tokens).toBe(150);
+       |                               ^
+    120|   expect(JSON.parse(row.uncertainty_json)).toMatchObject({ evidenceRef…
+    121|   expect(f.writes.in_use).toBe(1);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed | 4 passed (6)
+   Start at  07:04:27
+   Duration  1.32s (transform 467ms, setup 8ms, collect 792ms, tests 334ms, environment 0ms, prepare 37ms)
+
+undefined
+/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli:
+[ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL] Command failed with exit code 1: vitest run src/graph-action-broker-boundary.test.ts

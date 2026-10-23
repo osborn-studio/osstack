@@ -1,0 +1,78 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-c2/tmp/g22-rpc-3ih6XC/delivery/15d85fa8-9ebb-4344-832f-851147564cba/writer-0'...
+HEAD is now at 2819f42 base
+osstack: retaining write lease graph-action:02adac1bc35c9b57ff818673b9ae7e7513ad672812c6ef7cb7eea2707543e815: Error: OUTPUT_CONTRACT_INVALID: unexpected fields
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-c2/tmp/g22-rpc-3j4IeJ/delivery/f96a437a-261d-49ac-8696-6af67162e9bf/writer-0'...
+HEAD is now at 7154430 base
+osstack: retaining write lease graph-action:d10c1e44ea51457319593dbf91b6ab2d76233aa7d8e9c504892b6353b1d4e13f: Error: OUTPUT_CONTRACT_INVALID: unexpected fields
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-c2/tmp/g22-rpc-XcR6sl/delivery/07ecb44b-ddbc-432d-a643-2d6e32079f84/writer-0'...
+HEAD is now at da4b28b base
+osstack: retaining write lease graph-action:3c1ba6559bcfa4a9e115b5a4de10d2f2e0ae2a7535cbd04b3ad617baf7699c1e: Error: OUTPUT_CONTRACT_INVALID: unexpected fields
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-c2/tmp/g22-rpc-vKDjcW/delivery/364fc615-c0f6-4523-9eb4-3d0c856d0a70/writer-0'...
+HEAD is now at d2dce96 base
+osstack: retaining write lease graph-action:7c67cc89d20b0dcb9f15d9a308ad4814651b897940abf4cf413a69852a8df497: Error: external stop unconfirmed
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-c2/tmp/g22-rpc-kzjFTS/delivery/979af907-8307-4761-a386-7c9414e16ff5/writer-0'...
+HEAD is now at 2bb1e42 base
+osstack: retaining write lease graph-action:1f760a8458f2dd7c0c94dd667a556bc3c6b52601aebf42c8a75d92d2c08d9e88: Error: external stop unconfirmed
+ ❯ src/graph-bounded-messages.test.ts (5 tests | 3 failed) 63239ms
+   × anthropic writer and independent reviewer run through public graph to ready 20132ms
+     → TIMEOUT: {"schemaVersion":1,"scope":{"schemaVersion":1,"tenantId":"t","principalId":"p","workspaceId":"w"},"graphRunId":"15d85fa8-9ebb-4344-832f-851147564cba","source":{"product":"osstack","requestId":"request","parentRunId":"parent"},"status":"reconciliation_required","revision":34,"generation":1,"inputDigest":"bcaecb1f334ef3a7b923d9293213ab8a2602eacb5cb45c0e7a74fc10f73c1375","specHash":"e358efb4f8d7cc18f89c29a1a4585614b1d19c47bed3e72047645a6816f6fb28","createdAt":1789918983086,"updatedAt":1789918986751,"publication":"artifact_only","phase":"reconciliation_required","budget":{"limits":{"maxEpochs":2,"maxBranchAttempts":1,"maxConcurrentReaders":2,"maxConcurrentWritersPerRepo":1,"maxActionStarts":14,"deadlineSeconds":120,"tokenReservationLimit":200000},"actionStarts":7,"reservedTokens":"16384","chargedTokens":"30","accountingBlocked":false},"evidenceRefs":[],"delivery":"delivery_unknown","error":{"schemaVersion":1,"message":"Physical execution requires reconciliation","code":"ACTION_OUTCOME_UNKNOWN","retryable":false,"nextAction":"reconcile"}}
+   × deepseek writer and independent reviewer run through public graph to ready 20094ms
+     → TIMEOUT: {"schemaVersion":1,"scope":{"schemaVersion":1,"tenantId":"t","principalId":"p","workspaceId":"w"},"graphRunId":"f96a437a-261d-49ac-8696-6af67162e9bf","source":{"product":"osstack","requestId":"request","parentRunId":"parent"},"status":"reconciliation_required","revision":34,"generation":1,"inputDigest":"d48d33daefaabd2c4387ae0a1dc31f19d151d7be87bb070b203f6fae0a70fa90","specHash":"75eb0390b254765f79408fc72868cdb7ca25add250ae9b7e0ef81e049230e3c0","createdAt":1789919003194,"updatedAt":1789919006877,"publication":"artifact_only","phase":"reconciliation_required","budget":{"limits":{"maxEpochs":2,"maxBranchAttempts":1,"maxConcurrentReaders":2,"maxConcurrentWritersPerRepo":1,"maxActionStarts":14,"deadlineSeconds":120,"tokenReservationLimit":200000},"actionStarts":7,"reservedTokens":"16384","chargedTokens":"30","accountingBlocked":false},"evidenceRefs":[],"delivery":"delivery_unknown","error":{"schemaVersion":1,"message":"Physical execution requires reconciliation","code":"ACTION_OUTCOME_UNKNOWN","retryable":false,"nextAction":"reconcile"}}
+   × routes a stopped negative review to a quality interrupt rather than ready 20101ms
+     → TIMEOUT: {"schemaVersion":1,"scope":{"schemaVersion":1,"tenantId":"t","principalId":"p","workspaceId":"w"},"graphRunId":"07ecb44b-ddbc-432d-a643-2d6e32079f84","source":{"product":"osstack","requestId":"request","parentRunId":"parent"},"status":"reconciliation_required","revision":34,"generation":1,"inputDigest":"04f5e9251079e1352d5c4ac1c4181ba9064090c99b0fe433b88d64e09ffcccc8","specHash":"0ad2058b152e8cc6b65ebe8939adf4c66724fea24acc653283e23906999bf621","createdAt":1789919023291,"updatedAt":1789919026928,"publication":"artifact_only","phase":"reconciliation_required","budget":{"limits":{"maxEpochs":2,"maxBranchAttempts":1,"maxConcurrentReaders":2,"maxConcurrentWritersPerRepo":1,"maxActionStarts":14,"deadlineSeconds":120,"tokenReservationLimit":200000},"actionStarts":7,"reservedTokens":"16384","chargedTokens":"30","accountingBlocked":false},"evidenceRefs":[],"delivery":"delivery_unknown","error":{"schemaVersion":1,"message":"Physical execution requires reconciliation","code":"ACTION_OUTCOME_UNKNOWN","retryable":false,"nextAction":"reconcile"}}
+   ✓ anthropic dispatched disconnected inference stays unresolved through public reconcile  1479ms
+   ✓ deepseek dispatched disconnected inference stays unresolved through public reconcile  1432ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/graph-bounded-messages.test.ts > anthropic writer and independent reviewer run through public graph to ready
+Error: TIMEOUT: {"schemaVersion":1,"scope":{"schemaVersion":1,"tenantId":"t","principalId":"p","workspaceId":"w"},"graphRunId":"15d85fa8-9ebb-4344-832f-851147564cba","source":{"product":"osstack","requestId":"request","parentRunId":"parent"},"status":"reconciliation_required","revision":34,"generation":1,"inputDigest":"bcaecb1f334ef3a7b923d9293213ab8a2602eacb5cb45c0e7a74fc10f73c1375","specHash":"e358efb4f8d7cc18f89c29a1a4585614b1d19c47bed3e72047645a6816f6fb28","createdAt":1789918983086,"updatedAt":1789918986751,"publication":"artifact_only","phase":"reconciliation_required","budget":{"limits":{"maxEpochs":2,"maxBranchAttempts":1,"maxConcurrentReaders":2,"maxConcurrentWritersPerRepo":1,"maxActionStarts":14,"deadlineSeconds":120,"tokenReservationLimit":200000},"actionStarts":7,"reservedTokens":"16384","chargedTokens":"30","accountingBlocked":false},"evidenceRefs":[],"delivery":"delivery_unknown","error":{"schemaVersion":1,"message":"Physical execution requires reconciliation","code":"ACTION_OUTCOME_UNKNOWN","retryable":false,"nextAction":"reconcile"}}
+ ❯ Object.until src/graph-bounded-messages.test.ts:37:40
+     35|     for (;;) {
+     36|       const value = await f.status(id, service); if (value.status === …
+     37|       if (Date.now() > deadline) throw Error(`TIMEOUT: ${JSON.stringif…
+       |                                        ^
+     38|       await new Promise(resolve => setTimeout(resolve, 15));
+     39|     }
+ ❯ src/graph-bounded-messages.test.ts:47:19
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯
+
+ FAIL  src/graph-bounded-messages.test.ts > deepseek writer and independent reviewer run through public graph to ready
+Error: TIMEOUT: {"schemaVersion":1,"scope":{"schemaVersion":1,"tenantId":"t","principalId":"p","workspaceId":"w"},"graphRunId":"f96a437a-261d-49ac-8696-6af67162e9bf","source":{"product":"osstack","requestId":"request","parentRunId":"parent"},"status":"reconciliation_required","revision":34,"generation":1,"inputDigest":"d48d33daefaabd2c4387ae0a1dc31f19d151d7be87bb070b203f6fae0a70fa90","specHash":"75eb0390b254765f79408fc72868cdb7ca25add250ae9b7e0ef81e049230e3c0","createdAt":1789919003194,"updatedAt":1789919006877,"publication":"artifact_only","phase":"reconciliation_required","budget":{"limits":{"maxEpochs":2,"maxBranchAttempts":1,"maxConcurrentReaders":2,"maxConcurrentWritersPerRepo":1,"maxActionStarts":14,"deadlineSeconds":120,"tokenReservationLimit":200000},"actionStarts":7,"reservedTokens":"16384","chargedTokens":"30","accountingBlocked":false},"evidenceRefs":[],"delivery":"delivery_unknown","error":{"schemaVersion":1,"message":"Physical execution requires reconciliation","code":"ACTION_OUTCOME_UNKNOWN","retryable":false,"nextAction":"reconcile"}}
+ ❯ Object.until src/graph-bounded-messages.test.ts:37:40
+     35|     for (;;) {
+     36|       const value = await f.status(id, service); if (value.status === …
+     37|       if (Date.now() > deadline) throw Error(`TIMEOUT: ${JSON.stringif…
+       |                                        ^
+     38|       await new Promise(resolve => setTimeout(resolve, 15));
+     39|     }
+ ❯ src/graph-bounded-messages.test.ts:47:19
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/3]⎯
+
+ FAIL  src/graph-bounded-messages.test.ts > routes a stopped negative review to a quality interrupt rather than ready
+Error: TIMEOUT: {"schemaVersion":1,"scope":{"schemaVersion":1,"tenantId":"t","principalId":"p","workspaceId":"w"},"graphRunId":"07ecb44b-ddbc-432d-a643-2d6e32079f84","source":{"product":"osstack","requestId":"request","parentRunId":"parent"},"status":"reconciliation_required","revision":34,"generation":1,"inputDigest":"04f5e9251079e1352d5c4ac1c4181ba9064090c99b0fe433b88d64e09ffcccc8","specHash":"0ad2058b152e8cc6b65ebe8939adf4c66724fea24acc653283e23906999bf621","createdAt":1789919023291,"updatedAt":1789919026928,"publication":"artifact_only","phase":"reconciliation_required","budget":{"limits":{"maxEpochs":2,"maxBranchAttempts":1,"maxConcurrentReaders":2,"maxConcurrentWritersPerRepo":1,"maxActionStarts":14,"deadlineSeconds":120,"tokenReservationLimit":200000},"actionStarts":7,"reservedTokens":"16384","chargedTokens":"30","accountingBlocked":false},"evidenceRefs":[],"delivery":"delivery_unknown","error":{"schemaVersion":1,"message":"Physical execution requires reconciliation","code":"ACTION_OUTCOME_UNKNOWN","retryable":false,"nextAction":"reconcile"}}
+ ❯ Object.until src/graph-bounded-messages.test.ts:37:40
+     35|     for (;;) {
+     36|       const value = await f.status(id, service); if (value.status === …
+     37|       if (Date.now() > deadline) throw Error(`TIMEOUT: ${JSON.stringif…
+       |                                        ^
+     38|       await new Promise(resolve => setTimeout(resolve, 15));
+     39|     }
+ ❯ src/graph-bounded-messages.test.ts:64:21
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/3]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  3 failed | 2 passed (5)
+   Start at  08:43:01
+   Duration  64.34s (transform 530ms, setup 8ms, collect 890ms, tests 63.24s, environment 0ms, prepare 48ms)
+
+undefined
+/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli:
+[ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL] Command failed with exit code 1: vitest run src/graph-bounded-messages.test.ts

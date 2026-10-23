@@ -1,0 +1,15 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/autonomy
+      Running tests with seed "250920"
+
+ ✓ src/repo-lock.test.ts (20 tests) 3304ms
+   ✓ renewable repository lease > fails closed on an abandoned mutation guard instead of age-stealing it  2013ms
+   ✓ renewable repository lease > concurrent stale recovery never removes a newly acquired live process lock  300ms
+   ✓ managed repository process quarantine > shares one lock across real worktrees and independent OSSTACK_HOMEs  392ms
+
+ Test Files  1 passed (1)
+      Tests  20 passed (20)
+   Start at  16:33:02
+   Duration  3.88s (transform 91ms, setup 0ms, collect 378ms, tests 3.30s, environment 0ms, prepare 58ms)
+
+JSON report written to /Volumes/AIMATE_WORK/tmp/g30-final/faults.json.evidence/0-autonomy.json

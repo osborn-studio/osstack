@@ -1,0 +1,144 @@
+[
+  {
+    "event_id": "kimi-design:0",
+    "seq": 0,
+    "run_id": "kimi-design",
+    "session_id": "kimi-design",
+    "created_at": 1789569390.317,
+    "terminal": false,
+    "type": "run.started",
+    "payload": {
+      "status": "running",
+      "controls": {
+        "cancel": true,
+        "approval_pending": false,
+        "clarify_pending": false,
+        "queue": false,
+        "goal": false
+      }
+    }
+  },
+  {
+    "event_id": "kimi-design:1",
+    "seq": 1,
+    "run_id": "kimi-design",
+    "session_id": "kimi-design",
+    "created_at": 1789569390.318,
+    "terminal": false,
+    "type": "progress",
+    "payload": {
+      "phase": "kimi.review.start",
+      "detail": "Starting bounded no-tool Kimi review"
+    }
+  },
+  {
+    "event_id": "kimi-design:2",
+    "seq": 2,
+    "run_id": "kimi-design",
+    "session_id": "kimi-design",
+    "created_at": 1789569549.647,
+    "terminal": true,
+    "type": "done",
+    "payload": {
+      "status": "failed",
+      "last_seq": 1,
+      "result_summary": "changes_requested: 6 finding(s)",
+      "review": {
+        "schema_version": 1,
+        "verdict": "changes_requested",
+        "risk": "read_only",
+        "markdown": "# Review\n\nScoped to the supplied prose and AgentAdapter excerpt only; no changed files, tests, or runtime evidence were provided. The design is intentionally fail-closed: exact full container ID, pinned daemon/image/config, durable launch record before start, DELETE force plus same-daemon absence plus durable receipt, and timeout/absence/PID treated as unknown. That matches the core stop-proof shape.\n\nBlocking concerns remain before this can be admitted as a proof slice. The create to launch-record gap can leave an exact container unknown to a fresh supervisor unless there is a deterministic label/name enumeration and reconciliation path; missing record must remain unknown but must not become unreachable. The design asserts removal fences a paused old starter, but it does not state Docker API concurrency/locking assumptions for Start versus Remove, daemon restart during stop, or required journal durability primitives such as atomic rename, fsync, local-not-NFS mkdir, and single-writer CAS. Network containment is under-specified: private network namespace is not equivalent to no egress unless network mode is none or explicitly denied. The Node process holding the Docker unix socket is root-equivalent and must be treated as outside the contained trust boundary with least exposure.",
+        "judgments": [
+          {
+            "id": "proof",
+            "pass": false,
+            "severity": "error",
+            "summary": "Mostly sound exact-ID delete plus same-daemon absence plus receipt model, and it correctly rejects absence/PID/timeout as proof, but create-record atomicity, journal durability, Start/Remove concurrency, and daemon-restart handling are not specified enough to prove no late restart or unreachable orphan."
+          },
+          {
+            "id": "scope",
+            "pass": true,
+            "severity": "warning",
+            "summary": "No mounts, read-only root, drop-all caps, no-new-privileges, fixed command/image, live reauthorization, snapshot config, and explicit withholding of G15 admission are good; remaining risks are Docker socket privilege concentration, unspecified network egress, and hash/filesystem details for replay resistance."
+          }
+        ],
+        "findings": [
+          {
+            "rule_id": "proof.create_record_gap",
+            "severity": "error",
+            "message": "Launch record is written after create before start; a crash between create and durable record leaves a real container whose full ID may be unknown to a fresh supervisor. Missing record must stay unknown, but the design needs a deterministic reconciliation path using unique labels/names and inspect before any mutation, never label-only deletion.",
+            "evidence": "durable immutable launch record AFTER create before start; Missing/incomplete launch record cannot prove absent/stopped",
+            "fingerprint": "2d158539103b8d45355353562563a8dd3a43d48f9c2ce6672f376a1245573137"
+          },
+          {
+            "rule_id": "proof.docker_remove_fence_undefined",
+            "severity": "error",
+            "message": "The claim that removal fences a paused old host late start depends on Docker Start versus Remove serialization and behavior across daemon restart or in-flight requests. State the exact API ordering, locking, daemon ID check after each response, and retry/unknown rules; otherwise cross-process late start is an assumption, not a proof.",
+            "evidence": "Stop uses DELETE exact full container ID with force=true; old start on removed full ID cannot resurrect it",
+            "fingerprint": "35028401452df944536749e54ede9ee54c004ee227bda5f942e104b7a06b1ed2"
+          },
+          {
+            "rule_id": "proof.journal_durability_under_specified",
+            "severity": "error",
+            "message": "Exclusive mkdir and immutable records are only fencing evidence if the journal root is local with atomic rename, fsync, single-writer CAS/state machine, and no shared-filesystem semantics. The evidence names durable records but not the durability primitives required for receipts after crash or cancellation.",
+            "evidence": "exclusive mkdir permanently consumes invocation; Journal receipt may be written after main run cancelled",
+            "fingerprint": "25985af7bda0fb6a6574207e09c27bdd22ea5a84e569c5c0c88397d4bdd43b8f"
+          },
+          {
+            "rule_id": "scope.network_egress_not_proven",
+            "severity": "warning",
+            "message": "Private network namespace alone may still permit bridge egress. Require explicit network mode none or an equivalent deny policy before claiming no leaked host/network capability.",
+            "evidence": "private PID/network/IPC namespaces",
+            "fingerprint": "f76bc85f620160b199b1aff929d9b2e6bfe43de138d85a7d0eb20a5f91de2ad5"
+          },
+          {
+            "rule_id": "scope.docker_socket_is_host_capability",
+            "severity": "warning",
+            "message": "The adapter-side Docker unix socket is root-equivalent host power even if the container gets no socket. Document least-privilege access to the socket, no container exposure, and authorization boundaries around the supervisor process itself.",
+            "evidence": "API via Node http unix socket; no mounts/volumes/socket",
+            "fingerprint": "d54eed7d539e6fe697fa4827ee3db2c9d1e917df0ff1e684e8c9451090628c05"
+          },
+          {
+            "rule_id": "scope.replay_hash_details_missing",
+            "severity": "warning",
+            "message": "Invocation replay resistance depends on using full-entropy invocation IDs, non-truncated hashes, nonce binding, and permanent consumed-state checks. The evidence says hashed filesystem key and nonce but does not fix hash width or collision handling.",
+            "evidence": "Invocation ID is hashed for filesystem key; config digest and nonce bound to fixed command/image",
+            "fingerprint": "138dfeda2242e314e674269be9743fec862393fc30a1fad8bd4acc05cb27bdd4"
+          }
+        ],
+        "recommended_actions": [
+          "Add a single-writer invocation state machine with CAS transitions: created recorded, started, stop requested, removed, receipt durable, unknown; make every transition fsynced and atomic before relying on it.",
+          "Define the orphaned-create reconciliation path: deterministic unique name/labels, list only as discovery, verify full ID plus daemon/config/namespaces/mounts/restart/nonce, then mutate exact ID or mark unknown.",
+          "Write down Docker API assumptions for concurrent Start/Remove, force DELETE semantics, inspect after delete, daemon restart, lost responses, and prohibition on name reuse; keep timeout as unknown.",
+          "Set network to none or explicit no-egress, publish the exact seccomp/AppArmor/cgroup/user-namespace profile, and state the supervisor Docker-socket threat model.",
+          "Bind invocation key with full sha256 or raw high-entropy ID, include nonce and config digest in every receipt, and explicitly withhold G15 recovery admission until these blockers are tested."
+        ],
+        "evidence_refs": [],
+        "runtime_identity": {
+          "adapter_id": "kimi-code",
+          "adapter_version": "0.29.1",
+          "auth_mode": "subprocess/login-reuse",
+          "provider_id": "kimi",
+          "model_id": "kimi-code/k3",
+          "agent_profile": "osstack-reviewer",
+          "evidence_source": "reported",
+          "binary_path_sha256": "7e5d172f83fc7d8ca22387234b5a9a4d9412aa1a27c71ee90be35db29dfa7dd2"
+        }
+      },
+      "evaluation_judgments": [
+        {
+          "id": "proof",
+          "pass": false,
+          "severity": "error",
+          "summary": "Mostly sound exact-ID delete plus same-daemon absence plus receipt model, and it correctly rejects absence/PID/timeout as proof, but create-record atomicity, journal durability, Start/Remove concurrency, and daemon-restart handling are not specified enough to prove no late restart or unreachable orphan."
+        },
+        {
+          "id": "scope",
+          "pass": true,
+          "severity": "warning",
+          "summary": "No mounts, read-only root, drop-all caps, no-new-privileges, fixed command/image, live reauthorization, snapshot config, and explicit withholding of G15 admission are good; remaining risks are Docker socket privilege concentration, unspecified network egress, and hash/filesystem details for replay resistance."
+        }
+      ]
+    }
+  }
+]

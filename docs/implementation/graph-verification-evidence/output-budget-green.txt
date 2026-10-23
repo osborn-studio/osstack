@@ -1,0 +1,12 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+ ✓ src/graph-verification.test.ts (29 tests | 27 skipped) 5085ms
+   ✓ confirms ordinary failing tests with escape-heavy and multibyte captured output  2582ms
+   ✓ settles an oversized structured review as a bounded contract failure instead of unknown  2503ms
+
+ Test Files  1 passed (1)
+      Tests  2 passed | 27 skipped (29)
+   Start at  18:38:27
+   Duration  5.91s (transform 387ms, setup 7ms, collect 664ms, tests 5.08s, environment 0ms, prepare 35ms)
+

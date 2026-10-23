@@ -1,0 +1,62 @@
+[
+  {
+    "path": "packages/cli/src/graph-worker-manager.ts",
+    "sha256": "9e142ea7c067d1f39cb9ea5f7ee92f2d5ed73f686145fdbc11f7ec000bbdbc92",
+    "bytes": 16155
+  },
+  {
+    "path": "packages/cli/src/graph-worker-manager.test.ts",
+    "sha256": "be99b3de716f277ca55425a3f746ee4a35391b23fc4d7f9f3f9df91da70c15d3",
+    "bytes": 14921
+  },
+  {
+    "path": "packages/graph/src/worker-entry.ts",
+    "sha256": "5537c916dfb38a891b59824425fe65c1fe9162ba2391338cc46aae237d231c7e",
+    "bytes": 922
+  },
+  {
+    "path": "packages/graph/src/worker-entry.test.ts",
+    "sha256": "a37011f64e2922376f3337b71d313b83640c0522fa1df3f2e95205d9d1656879",
+    "bytes": 3720
+  },
+  {
+    "path": "packages/graph/src/worker-runtime.ts",
+    "sha256": "9fe9d5045107a62e553ca69e63229c2ceb967bc95834dc9a3fa0f82bd01a5c52",
+    "bytes": 5206
+  },
+  {
+    "path": "packages/graph/src/worker-client.ts",
+    "sha256": "6406e02ad7c09e426152be3b2eeb74a93c8e9aef09aed6ecee98c4792a94e14f",
+    "bytes": 3688
+  },
+  {
+    "path": "packages/protocol/src/graph-worker.ts",
+    "sha256": "bd049ea30af73acadd2ec1c214ee7fc433283d3385851f0544ce8326235f2f87",
+    "bytes": 6605
+  },
+  {
+    "path": "packages/protocol/src/graph-worker.test.ts",
+    "sha256": "5f55cbfc9afaf485c3db1ef73a4b33c99a336bcc5aec26e03e15feeb9b3b2662",
+    "bytes": 1734
+  },
+  {
+    "path": "packages/protocol/src/index.ts",
+    "sha256": "a234a8a1f6b97c11772f73daf4676ff3161eab3c2f7a8d845df46450652560bc",
+    "bytes": 3289
+  },
+  {
+    "path": "packages/protocol/src/generate.ts",
+    "sha256": "d4e1d0a4004cb5bf2099261c9b38cb40c078635ec0e6a1c52f1de5d1d41313ed",
+    "bytes": 8915
+  },
+  {
+    "path": "packages/protocol/src/schemas.test.ts",
+    "sha256": "e160bd05b50a1f643b9eb7a2d3fd889ef33ef954906fb29289b2de162ea786ef",
+    "bytes": 2154
+  },
+  {
+    "path": "packages/protocol/schemas/graph-worker.schema.json",
+    "sha256": "0f11fea34a3ed5942e4c09c1cde840f994b0cb42048e41d025a08cd01887befc",
+    "bytes": 16110
+  }
+]

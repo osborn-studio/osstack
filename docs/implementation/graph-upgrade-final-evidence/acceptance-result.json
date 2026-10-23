@@ -1,0 +1,1037 @@
+{
+  "loop_id": "G25-G29-final-acceptance",
+  "state": {
+    "loop_id": "G25-G29-final-acceptance",
+    "started_at": "2026-09-20T16:17:48.008Z",
+    "updated_at": "2026-09-20T17:07:25.095Z",
+    "completed_tasks": [
+      {
+        "task_id": "G25-G29-final-acceptance",
+        "capability": "code.test",
+        "outcome": "escalated",
+        "iterations": 1,
+        "agent_id": "local-command",
+        "duration_ms": 32963,
+        "run_id": "run_c2f00a09-63c1-4789-8629-987f623ffd61",
+        "started_at": "2026-09-20T16:17:48.010Z",
+        "completed_at": "2026-09-20T16:18:05.578Z",
+        "execution_summary": "Process group 67369 gone (kill(-pgid, 0): ESRCH); leader exit observed",
+        "execution_commands": [
+          {
+            "command": "node /Volumes/AIMATE_WORK/tmp/g30-final/check.mjs full",
+            "exit_code": 1,
+            "duration_ms": 17568,
+            "summary": "packages/protocol test$ vitest run packages/governance test: ✓ src/knowledge-hygiene/dependency.test.ts (2 tests) 61ms packages/governance test: ✓ src/knowledge-hygiene/patch-applier.test.ts (4 tests) 72ms packages/governance test: ✓ src/kn"
+          }
+        ],
+        "verifier_agent_id": "local-verifier",
+        "verify_summary": "2 issues found by local verifier.",
+        "verify_issue_count": 2,
+        "verify_issues": [
+          {
+            "severity": "error",
+            "message": "Builder execution ended failed: Process group 67369 gone (kill(-pgid, 0): ESRCH); leader exit observed",
+            "rule": "execute.outcome_not_completed"
+          },
+          {
+            "severity": "error",
+            "message": "node /Volumes/AIMATE_WORK/tmp/g30-final/check.mjs full failed (1): packages/protocol test$ vitest run packages/governance test: ✓ src/knowledge-hygiene/dependency.test.ts (2 tests) 61ms packages/governance test: ✓ src/knowledge-hygiene/patch-applier.test.ts (4 tests) 72ms packages/governance test: ✓ src/kn",
+            "rule": "execute.command_failed"
+          }
+        ],
+        "verify_commands": [
+          {
+            "command": "node /Volumes/AIMATE_WORK/tmp/g30-final/check.mjs typecheck",
+            "exit_code": 0,
+            "duration_ms": 13216,
+            "summary": "typecheck: passed $ pnpm -r typecheck Scope: 22 of 23 workspace projects packages/compliance typecheck$ tsc --noEmit packages/contracts typecheck$ tsc --noEmit packages/github typecheck$ tsc --noEmit packages/governance typecheck$ tsc --noE"
+          },
+          {
+            "command": "node /Volumes/AIMATE_WORK/tmp/g30-final/check.mjs schemas",
+            "exit_code": 0,
+            "duration_ms": 638,
+            "summary": "schemas: passed $ node scripts/generate-schemas.mjs --check schemas up to date"
+          },
+          {
+            "command": "node /Volumes/AIMATE_WORK/tmp/g30-final/check.mjs startup",
+            "exit_code": 0,
+            "duration_ms": 1331,
+            "summary": "startup: passed ok osstack --version (fast path): median 57ms over 5 runs (budget 150ms; min 52, max 58) ok osstack --help (full command surface): median 185ms over 5 runs (budget 500ms; min 178, max 204)"
+          },
+          {
+            "command": "node /Volumes/AIMATE_WORK/tmp/g30-final/check.mjs whitespace",
+            "exit_code": 0,
+            "duration_ms": 98,
+            "summary": "whitespace: passed"
+          }
+        ],
+        "evaluations": [
+          {
+            "spec_id": "verify-command-1",
+            "mode": "command",
+            "description": "Shell verifier: node /Volumes/AIMATE_WORK/tmp/g30-final/check.mjs typecheck",
+            "required": true,
+            "weight": 1,
+            "pass": true,
+            "summary": "command passed (13216 ms)",
+            "implicit": true
+          },
+          {
+            "spec_id": "verify-command-2",
+            "mode": "command",
+            "description": "Shell verifier: node /Volumes/AIMATE_WORK/tmp/g30-final/check.mjs schemas",
+            "required": true,
+            "weight": 1,
+            "pass": true,
+            "summary": "command passed (638 ms)",
+            "implicit": true
+          },
+          {
+            "spec_id": "verify-command-3",
+            "mode": "command",
+            "description": "Shell verifier: node /Volumes/AIMATE_WORK/tmp/g30-final/check.mjs startup",
+            "required": true,
+            "weight": 1,
+            "pass": true,
+            "summary": "command passed (1331 ms)",
+            "implicit": true
+          },
+          {
+            "spec_id": "verify-command-4",
+            "mode": "command",
+            "description": "Shell verifier: node /Volumes/AIMATE_WORK/tmp/g30-final/check.mjs whitespace",
+            "required": true,
+            "weight": 1,
+            "pass": true,
+            "summary": "command passed (98 ms)",
+            "implicit": true
+          }
+        ],
+        "iteration_feedback": [
+          {
+            "attempt": 1,
+            "verdict_summary": "2 issues found by local verifier.",
+            "blocking_issues": [
+              {
+                "severity": "error",
+                "message": "Builder execution ended failed: Process group 67369 gone (kill(-pgid, 0): ESRCH); leader exit observed",
+                "rule": "execute.outcome_not_completed"
+              },
+              {
+                "severity": "error",
+                "message": "node /Volumes/AIMATE_WORK/tmp/g30-final/check.mjs full failed (1): packages/protocol test$ vitest run packages/governance test: ✓ src/knowledge-hygiene/dependency.test.ts (2 tests) 61ms packages/governance test: ✓ src/knowledge-hygiene/patch-applier.test.ts (4 tests) 72ms packages/governance test: ✓ src/kn",
+                "rule": "execute.command_failed"
+              }
+            ],
+            "failed_evaluations": [],
+            "suggested_focus": [],
+            "previous_diff_summary": ".github/workflows/ci.yml | 31 ++++++++++++++++++++++ packages/autonomy/src/repo-lock.test.ts | 14 ++++++++++ packages/autonomy/src/repo-lock.ts | 7 +++-- packages/cli/src/daemon-drain-recovery.test.ts | 12 +++++++++ packages/cli/src/daemon."
+          }
+        ],
+        "changed_files": [
+          ".github/workflows/ci.yml",
+          "packages/autonomy/src/repo-lock.test.ts",
+          "packages/autonomy/src/repo-lock.ts",
+          "packages/cli/src/daemon-drain-recovery.test.ts",
+          "packages/cli/src/daemon.ts",
+          "packages/cli/src/graph-bounded-recovery-journal.ts",
+          "packages/cli/src/graph-execution-command.ts",
+          "packages/cli/src/graph-rpc.ts",
+          "packages/cli/src/graph-worker-manager.ts",
+          "packages/cli/src/upgrade.test.ts",
+          "packages/cli/src/upgrade.ts",
+          "packages/core/src/graph/artifact-store.test.ts",
+          "packages/core/src/graph/artifact-store.ts",
+          "packages/protocol/schemas/graph.schema.json",
+          "packages/protocol/src/graph.ts",
+          "scripts/build-single-binary.mjs",
+          "scripts/smoke-bun-single-binary.mjs",
+          "scripts/verify-graph-runtime.mjs",
+          "?? packages/cli/src/graph-compatibility.integration.test.ts",
+          "?? packages/cli/src/graph-performance.test.ts",
+          "?? packages/cli/src/graph-platform.test.ts",
+          "?? packages/cli/src/graph-platform.ts",
+          "?? packages/cli/src/graph-upgrade-guard.ts",
+          "?? scripts/bench-graph-runtime.mjs",
+          "?? scripts/verify-graph-internal-pilot.mjs"
+        ],
+        "diff_summary": ".github/workflows/ci.yml | 31 ++++++++++++++++++++++ packages/autonomy/src/repo-lock.test.ts | 14 ++++++++++ packages/autonomy/src/repo-lock.ts | 7 +++-- packages/cli/src/daemon-drain-recovery.test.ts | 12 +++++++++ packages/cli/src/daemon.",
+        "commit_hash": "a12b0ea",
+        "error_summary": "Builder execution ended failed: Process group 67369 gone (kill(-pgid, 0): ESRCH); leader exit observed"
+      },
+      {
+        "task_id": "G25-G29-final-acceptance",
+        "capability": "code.test",
+        "outcome": "escalated",
+        "iterations": 1,
+        "agent_id": "local-command",
+        "duration_ms": 379017,
+        "run_id": "run_748966a5-f264-4e92-9bc2-e4acee12f827",
+        "started_at": "2026-09-20T16:20:06.169Z",
+        "completed_at": "2026-09-20T16:26:09.524Z",
+        "execution_summary": "Process group 15596 gone (kill(-pgid, 0): ESRCH); leader exit observed",
+        "execution_commands": [
+          {
+            "command": "node /Volumes/AIMATE_WORK/tmp/g30-final/check.mjs full",
+            "exit_code": 1,
+            "duration_ms": 363353,
+            "summary": "raph-chain-host.mjs:1002:60 packages/cli test: ❯ GraphReconciler.reconcile ../../../../../tmp/g30-final/g17-build-n9jDq3/graph-chain-host.mjs:1054:23 packages/cli test: ❯ process.<anonymous> ../../../../../tmp/g30-final/g17-build-n9jDq3/gra"
+          }
+        ],
+        "verifier_agent_id": "local-verifier",
+        "verify_summary": "2 issues found by local verifier.",
+        "verify_issue_count": 2,
+        "verify_issues": [
+          {
+            "severity": "error",
+            "message": "Builder execution ended failed: Process group 15596 gone (kill(-pgid, 0): ESRCH); leader exit observed",
+            "rule": "execute.outcome_not_completed"
+          },
+          {
+            "severity": "error",
+            "message": "node /Volumes/AIMATE_WORK/tmp/g30-final/check.mjs full failed (1): raph-chain-host.mjs:1002:60 packages/cli test: ❯ GraphReconciler.reconcile ../../../../../tmp/g30-final/g17-build-n9jDq3/graph-chain-host.mjs:1054:23 packages/cli test: ❯ process.<anonymous> ../../../../../tmp/g30-final/g17-build-n9jDq3/gra",
+            "rule": "execute.command_failed"
+          }
+        ],
+        "verify_commands": [
+          {
+            "command": "node /Volumes/AIMATE_WORK/tmp/g30-final/check.mjs typecheck",
+            "exit_code": 0,
+            "duration_ms": 13408,
+            "summary": "typecheck: passed $ pnpm -r typecheck Scope: 22 of 23 workspace projects packages/compliance typecheck$ tsc --noEmit packages/contracts typecheck$ tsc --noEmit packages/governance typecheck$ tsc --noEmit packages/github typecheck$ tsc --noE"
+          },
+          {
+            "command": "node /Volumes/AIMATE_WORK/tmp/g30-final/check.mjs schemas",
+            "exit_code": 0,
+            "duration_ms": 680,
+            "summary": "schemas: passed $ node scripts/generate-schemas.mjs --check schemas up to date"
+          },
+          {
+            "command": "node /Volumes/AIMATE_WORK/tmp/g30-final/check.mjs startup",
+            "exit_code": 0,
+            "duration_ms": 1324,
+            "summary": "startup: passed ok osstack --version (fast path): median 49ms over 5 runs (budget 150ms; min 39, max 59) ok osstack --help (full command surface): median 200ms over 5 runs (budget 500ms; min 159, max 225)"
+          },
+          {
+            "command": "node /Volumes/AIMATE_WORK/tmp/g30-final/check.mjs whitespace",
+            "exit_code": 0,
+            "duration_ms": 105,
+            "summary": "whitespace: passed"
+          }
+        ],
+        "evaluations": [
+          {
+            "spec_id": "verify-command-1",
+            "mode": "command",
+            "description": "Shell verifier: node /Volumes/AIMATE_WORK/tmp/g30-final/check.mjs typecheck",
+            "required": true,
+            "weight": 1,
+            "pass": true,
+            "summary": "command passed (13408 ms)",
+            "implicit": true
+          },
+          {
+            "spec_id": "verify-command-2",
+            "mode": "command",
+            "description": "Shell verifier: node /Volumes/AIMATE_WORK/tmp/g30-final/check.mjs schemas",
+            "required": true,
+            "weight": 1,
+            "pass": true,
+            "summary": "command passed (680 ms)",
+            "implicit": true
+          },
+          {
+            "spec_id": "verify-command-3",
+            "mode": "command",
+            "description": "Shell verifier: node /Volumes/AIMATE_WORK/tmp/g30-final/check.mjs startup",
+            "required": true,
+            "weight": 1,
+            "pass": true,
+            "summary": "command passed (1324 ms)",
+            "implicit": true
+          },
+          {
+            "spec_id": "verify-command-4",
+            "mode": "command",
+            "description": "Shell verifier: node /Volumes/AIMATE_WORK/tmp/g30-final/check.mjs whitespace",
+            "required": true,
+            "weight": 1,
+            "pass": true,
+            "summary": "command passed (105 ms)",
+            "implicit": true
+          }
+        ],
+        "iteration_feedback": [
+          {
+            "attempt": 1,
+            "verdict_summary": "2 issues found by local verifier.",
+            "blocking_issues": [
+              {
+                "severity": "error",
+                "message": "Builder execution ended failed: Process group 15596 gone (kill(-pgid, 0): ESRCH); leader exit observed",
+                "rule": "execute.outcome_not_completed"
+              },
+              {
+                "severity": "error",
+                "message": "node /Volumes/AIMATE_WORK/tmp/g30-final/check.mjs full failed (1): raph-chain-host.mjs:1002:60 packages/cli test: ❯ GraphReconciler.reconcile ../../../../../tmp/g30-final/g17-build-n9jDq3/graph-chain-host.mjs:1054:23 packages/cli test: ❯ process.<anonymous> ../../../../../tmp/g30-final/g17-build-n9jDq3/gra",
+                "rule": "execute.command_failed"
+              }
+            ],
+            "failed_evaluations": [],
+            "suggested_focus": [],
+            "previous_diff_summary": ".github/workflows/ci.yml | 31 ++++++++++++++ .../handoff-draft.md | 2 +- packages/autonomy/src/repo-lock.test.ts | 14 +++++++ packages/autonomy/src/repo-lock.ts | 7 +++- packages/cli/src/daemon-drain-recovery.test.ts | 12 ++++++ packages/cl"
+          }
+        ],
+        "changed_files": [
+          ".github/workflows/ci.yml",
+          "docs/implementation/graph-contained-reopen-evidence/handoff-draft.md",
+          "packages/autonomy/src/repo-lock.test.ts",
+          "packages/autonomy/src/repo-lock.ts",
+          "packages/cli/src/daemon-drain-recovery.test.ts",
+          "packages/cli/src/daemon.ts",
+          "packages/cli/src/graph-bounded-recovery-journal.ts",
+          "packages/cli/src/graph-execution-command.ts",
+          "packages/cli/src/graph-rpc.ts",
+          "packages/cli/src/graph-worker-manager.test.ts",
+          "packages/cli/src/graph-worker-manager.ts",
+          "packages/cli/src/upgrade.test.ts",
+          "packages/cli/src/upgrade.ts",
+          "packages/core/src/graph/artifact-git.ts",
+          "packages/core/src/graph/artifact-store.test.ts",
+          "packages/core/src/graph/artifact-store.ts",
+          "packages/graph/src/spec-compiler.test.ts",
+          "packages/protocol/schemas/graph.schema.json",
+          "packages/protocol/src/graph.ts",
+          "scripts/build-single-binary.mjs",
+          "scripts/smoke-bun-single-binary.mjs",
+          "scripts/verify-graph-runtime.mjs",
+          "?? packages/cli/src/graph-compatibility.integration.test.ts",
+          "?? packages/cli/src/graph-performance.test.ts",
+          "?? packages/cli/src/graph-platform.test.ts",
+          "?? packages/cli/src/graph-platform.ts",
+          "?? packages/cli/src/graph-upgrade-guard.ts",
+          "?? scripts/bench-graph-runtime.mjs",
+          "?? scripts/verify-graph-internal-pilot.mjs"
+        ],
+        "diff_summary": ".github/workflows/ci.yml | 31 ++++++++++++++ .../handoff-draft.md | 2 +- packages/autonomy/src/repo-lock.test.ts | 14 +++++++ packages/autonomy/src/repo-lock.ts | 7 +++- packages/cli/src/daemon-drain-recovery.test.ts | 12 ++++++ packages/cl",
+        "commit_hash": "a12b0ea",
+        "error_summary": "Builder execution ended failed: Process group 15596 gone (kill(-pgid, 0): ESRCH); leader exit observed"
+      },
+      {
+        "task_id": "G25-G29-final-acceptance",
+        "capability": "code.test",
+        "outcome": "escalated",
+        "iterations": 1,
+        "agent_id": "local-command",
+        "duration_ms": 749696,
+        "run_id": "run_79a7a007-0624-43c1-a117-04b66c77fb27",
+        "started_at": "2026-09-20T16:27:29.236Z",
+        "completed_at": "2026-09-20T16:39:47.384Z",
+        "execution_summary": "Process group 18360 gone (kill(-pgid, 0): ESRCH); leader exit observed",
+        "execution_commands": [
+          {
+            "command": "node /Volumes/AIMATE_WORK/tmp/g30-final/check.mjs full",
+            "exit_code": 1,
+            "duration_ms": 738147,
+            "summary": "Command exited from signal SIGTERM"
+          }
+        ],
+        "verifier_agent_id": "local-verifier",
+        "verify_summary": "2 issues found by local verifier.",
+        "verify_issue_count": 2,
+        "verify_issues": [
+          {
+            "severity": "error",
+            "message": "Builder execution ended failed: Process group 18360 gone (kill(-pgid, 0): ESRCH); leader exit observed",
+            "rule": "execute.outcome_not_completed"
+          },
+          {
+            "severity": "error",
+            "message": "node /Volumes/AIMATE_WORK/tmp/g30-final/check.mjs full failed (1): Command exited from signal SIGTERM",
+            "rule": "execute.command_failed"
+          }
+        ],
+        "verify_commands": [
+          {
+            "command": "node /Volumes/AIMATE_WORK/tmp/g30-final/check.mjs typecheck",
+            "exit_code": 0,
+            "duration_ms": 9652,
+            "summary": "typecheck: passed $ pnpm -r typecheck Scope: 22 of 23 workspace projects packages/contracts typecheck$ tsc --noEmit packages/compliance typecheck$ tsc --noEmit packages/github typecheck$ tsc --noEmit packages/governance typecheck$ tsc --noE"
+          },
+          {
+            "command": "node /Volumes/AIMATE_WORK/tmp/g30-final/check.mjs schemas",
+            "exit_code": 0,
+            "duration_ms": 450,
+            "summary": "schemas: passed $ node scripts/generate-schemas.mjs --check schemas up to date"
+          },
+          {
+            "command": "node /Volumes/AIMATE_WORK/tmp/g30-final/check.mjs startup",
+            "exit_code": 0,
+            "duration_ms": 1210,
+            "summary": "startup: passed ok osstack --version (fast path): median 50ms over 5 runs (budget 150ms; min 42, max 64) ok osstack --help (full command surface): median 160ms over 5 runs (budget 500ms; min 147, max 202)"
+          },
+          {
+            "command": "node /Volumes/AIMATE_WORK/tmp/g30-final/check.mjs whitespace",
+            "exit_code": 0,
+            "duration_ms": 111,
+            "summary": "whitespace: passed"
+          }
+        ],
+        "evaluations": [
+          {
+            "spec_id": "verify-command-1",
+            "mode": "command",
+            "description": "Shell verifier: node /Volumes/AIMATE_WORK/tmp/g30-final/check.mjs typecheck",
+            "required": true,
+            "weight": 1,
+            "pass": true,
+            "summary": "command passed (9652 ms)",
+            "implicit": true
+          },
+          {
+            "spec_id": "verify-command-2",
+            "mode": "command",
+            "description": "Shell verifier: node /Volumes/AIMATE_WORK/tmp/g30-final/check.mjs schemas",
+            "required": true,
+            "weight": 1,
+            "pass": true,
+            "summary": "command passed (450 ms)",
+            "implicit": true
+          },
+          {
+            "spec_id": "verify-command-3",
+            "mode": "command",
+            "description": "Shell verifier: node /Volumes/AIMATE_WORK/tmp/g30-final/check.mjs startup",
+            "required": true,
+            "weight": 1,
+            "pass": true,
+            "summary": "command passed (1210 ms)",
+            "implicit": true
+          },
+          {
+            "spec_id": "verify-command-4",
+            "mode": "command",
+            "description": "Shell verifier: node /Volumes/AIMATE_WORK/tmp/g30-final/check.mjs whitespace",
+            "required": true,
+            "weight": 1,
+            "pass": true,
+            "summary": "command passed (111 ms)",
+            "implicit": true
+          }
+        ],
+        "iteration_feedback": [
+          {
+            "attempt": 1,
+            "verdict_summary": "2 issues found by local verifier.",
+            "blocking_issues": [
+              {
+                "severity": "error",
+                "message": "Builder execution ended failed: Process group 18360 gone (kill(-pgid, 0): ESRCH); leader exit observed",
+                "rule": "execute.outcome_not_completed"
+              },
+              {
+                "severity": "error",
+                "message": "node /Volumes/AIMATE_WORK/tmp/g30-final/check.mjs full failed (1): Command exited from signal SIGTERM",
+                "rule": "execute.command_failed"
+              }
+            ],
+            "failed_evaluations": [],
+            "suggested_focus": [],
+            "previous_diff_summary": ".github/workflows/ci.yml | 31 +++++++++++++ .../handoff-draft.md | 2 +- package.json | 3 +- packages/autonomy/src/repo-lock.test.ts | 14 ++++++ packages/autonomy/src/repo-lock.ts | 7 ++- packages/cli/src/daemon-drain-recovery.test.ts | 12 +"
+          }
+        ],
+        "changed_files": [
+          ".github/workflows/ci.yml",
+          "docs/implementation/graph-contained-reopen-evidence/handoff-draft.md",
+          "package.json",
+          "packages/autonomy/src/repo-lock.test.ts",
+          "packages/autonomy/src/repo-lock.ts",
+          "packages/cli/src/daemon-drain-recovery.test.ts",
+          "packages/cli/src/daemon.ts",
+          "packages/cli/src/graph-bounded-recovery-journal.ts",
+          "packages/cli/src/graph-execution-command.ts",
+          "packages/cli/src/graph-rpc.ts",
+          "packages/cli/src/graph-worker-manager.test.ts",
+          "packages/cli/src/graph-worker-manager.ts",
+          "packages/cli/src/upgrade.test.ts",
+          "packages/cli/src/upgrade.ts",
+          "packages/core/src/graph/artifact-git.ts",
+          "packages/core/src/graph/artifact-store.test.ts",
+          "packages/core/src/graph/artifact-store.ts",
+          "packages/graph/src/spec-compiler.test.ts",
+          "packages/protocol/schemas/graph.schema.json",
+          "packages/protocol/src/graph.ts",
+          "pnpm-lock.yaml",
+          "scripts/build-single-binary.mjs",
+          "scripts/smoke-bun-single-binary.mjs",
+          "scripts/verify-graph-runtime.mjs",
+          "?? docs/guides/graph-runtime.md",
+          "?? docs/implementation/graph-runtime-compatibility.md",
+          "?? docs/reports/graph-runtime-performance.md",
+          "?? docs/reports/graph-runtime-pilot.md",
+          "?? docs/reports/graph-upgrade-completion.md",
+          "?? docs/runbooks/graph-runtime.md",
+          "?? packages/cli/src/graph-compatibility.integration.test.ts",
+          "?? packages/cli/src/graph-performance.test.ts",
+          "?? packages/cli/src/graph-platform.test.ts",
+          "?? packages/cli/src/graph-platform.ts",
+          "?? packages/cli/src/graph-upgrade-guard.ts",
+          "?? packages/core/src/graph/artifact-git.test.ts",
+          "?? scripts/bench-graph-runtime.mjs",
+          "?? scripts/verify-graph-internal-pilot.mjs"
+        ],
+        "diff_summary": ".github/workflows/ci.yml | 31 +++++++++++++ .../handoff-draft.md | 2 +- package.json | 3 +- packages/autonomy/src/repo-lock.test.ts | 14 ++++++ packages/autonomy/src/repo-lock.ts | 7 ++- packages/cli/src/daemon-drain-recovery.test.ts | 12 +",
+        "commit_hash": "a12b0ea",
+        "error_summary": "Builder execution ended failed: Process group 18360 gone (kill(-pgid, 0): ESRCH); leader exit observed"
+      },
+      {
+        "task_id": "G25-G29-final-acceptance",
+        "capability": "code.test",
+        "outcome": "success",
+        "iterations": 1,
+        "agent_id": "local-command",
+        "duration_ms": 760678,
+        "run_id": "run_6bfae2e1-2ff3-4013-9029-4a45c1962666",
+        "started_at": "2026-09-20T16:54:44.416Z",
+        "completed_at": "2026-09-20T17:07:17.345Z",
+        "execution_summary": "Process group 40745 gone (kill(-pgid, 0): ESRCH); leader exit observed",
+        "execution_commands": [
+          {
+            "command": "node /Volumes/AIMATE_WORK/tmp/g30-final/check.mjs full",
+            "exit_code": 0,
+            "duration_ms": 752929,
+            "summary": "full: passed /cli test: ✓ src/upgrade.test.ts (3 tests) 12ms packages/cli test: ✓ src/graph-checkpoint-daemon.test.ts (1 test) 33ms packages/cli test: ✓ src/run-spec-files.test.ts (5 tests) 17ms packages/cli test: ✓ src/probe-gate.test.ts ("
+          }
+        ],
+        "verifier_agent_id": "local-verifier",
+        "verify_summary": "4 verifier commands and 0 verifier adapters passed. 4 evaluations passed.",
+        "verify_issue_count": 0,
+        "verify_commands": [
+          {
+            "command": "node /Volumes/AIMATE_WORK/tmp/g30-final/check.mjs typecheck",
+            "exit_code": 0,
+            "duration_ms": 6713,
+            "summary": "typecheck: passed $ pnpm -r typecheck Scope: 22 of 23 workspace projects packages/compliance typecheck$ tsc --noEmit packages/contracts typecheck$ tsc --noEmit packages/github typecheck$ tsc --noEmit packages/governance typecheck$ tsc --noE"
+          },
+          {
+            "command": "node /Volumes/AIMATE_WORK/tmp/g30-final/check.mjs schemas",
+            "exit_code": 0,
+            "duration_ms": 302,
+            "summary": "schemas: passed $ node scripts/generate-schemas.mjs --check schemas up to date"
+          },
+          {
+            "command": "node /Volumes/AIMATE_WORK/tmp/g30-final/check.mjs startup",
+            "exit_code": 0,
+            "duration_ms": 624,
+            "summary": "startup: passed ok osstack --version (fast path): median 29ms over 5 runs (budget 150ms; min 29, max 31) ok osstack --help (full command surface): median 83ms over 5 runs (budget 500ms; min 81, max 85)"
+          },
+          {
+            "command": "node /Volumes/AIMATE_WORK/tmp/g30-final/check.mjs whitespace",
+            "exit_code": 0,
+            "duration_ms": 51,
+            "summary": "whitespace: passed"
+          }
+        ],
+        "evaluations": [
+          {
+            "spec_id": "verify-command-1",
+            "mode": "command",
+            "description": "Shell verifier: node /Volumes/AIMATE_WORK/tmp/g30-final/check.mjs typecheck",
+            "required": true,
+            "weight": 1,
+            "pass": true,
+            "summary": "command passed (6713 ms)",
+            "implicit": true
+          },
+          {
+            "spec_id": "verify-command-2",
+            "mode": "command",
+            "description": "Shell verifier: node /Volumes/AIMATE_WORK/tmp/g30-final/check.mjs schemas",
+            "required": true,
+            "weight": 1,
+            "pass": true,
+            "summary": "command passed (302 ms)",
+            "implicit": true
+          },
+          {
+            "spec_id": "verify-command-3",
+            "mode": "command",
+            "description": "Shell verifier: node /Volumes/AIMATE_WORK/tmp/g30-final/check.mjs startup",
+            "required": true,
+            "weight": 1,
+            "pass": true,
+            "summary": "command passed (624 ms)",
+            "implicit": true
+          },
+          {
+            "spec_id": "verify-command-4",
+            "mode": "command",
+            "description": "Shell verifier: node /Volumes/AIMATE_WORK/tmp/g30-final/check.mjs whitespace",
+            "required": true,
+            "weight": 1,
+            "pass": true,
+            "summary": "command passed (51 ms)",
+            "implicit": true
+          }
+        ],
+        "changed_files": [
+          ".github/workflows/ci.yml",
+          "docs/implementation/graph-contained-reopen-evidence/handoff-draft.md",
+          "docs/reports/graph-runtime-fault-validation.md",
+          "package.json",
+          "packages/agents/src/adapters/bounded-messages-provider.ts",
+          "packages/agents/src/adapters/bounded-messages.ts",
+          "packages/agents/src/contained-image.ts",
+          "packages/autonomy/src/repo-lock.test.ts",
+          "packages/autonomy/src/repo-lock.ts",
+          "packages/cli/src/daemon-drain-recovery.test.ts",
+          "packages/cli/src/daemon.ts",
+          "packages/cli/src/graph-bounded-recovery-journal.ts",
+          "packages/cli/src/graph-execution-command.ts",
+          "packages/cli/src/graph-rpc.ts",
+          "packages/cli/src/graph-worker-manager.test.ts",
+          "packages/cli/src/graph-worker-manager.ts",
+          "packages/cli/src/upgrade.test.ts",
+          "packages/cli/src/upgrade.ts",
+          "packages/core/src/graph/artifact-git.ts",
+          "packages/core/src/graph/artifact-store.test.ts",
+          "packages/core/src/graph/artifact-store.ts",
+          "packages/graph/src/spec-compiler.test.ts",
+          "packages/protocol/schemas/graph.schema.json",
+          "packages/protocol/src/graph.ts",
+          "pnpm-lock.yaml",
+          "scripts/build-single-binary.mjs",
+          "scripts/smoke-bun-single-binary.mjs",
+          "scripts/verify-graph-runtime.mjs",
+          "?? .changeset/graph-runtime-beta-gates.md",
+          "?? docs/guides/graph-runtime.md",
+          "?? docs/implementation/graph-runtime-compatibility.md",
+          "?? docs/implementation/graph-upgrade-final-evidence/README.md",
+          "?? docs/implementation/graph-upgrade-final-evidence/fable-batch-prompt.txt",
+          "?? docs/implementation/graph-upgrade-final-evidence/fable-batch-result.json",
+          "?? docs/implementation/graph-upgrade-final-evidence/fable-boundary-prompt.txt",
+          "?? docs/implementation/graph-upgrade-final-evidence/fable-boundary-result.json",
+          "?? docs/implementation/graph-upgrade-final-evidence/fable-final-prompt.txt",
+          "?? docs/implementation/graph-upgrade-final-evidence/fable-final-result.json",
+          "?? docs/implementation/graph-upgrade-final-evidence/fable-prompt.txt",
+          "?? docs/implementation/graph-upgrade-final-evidence/fable-result.json",
+          "?? docs/implementation/graph-upgrade-final-evidence/import-proof-entry.mjs",
+          "?? docs/implementation/graph-upgrade-final-evidence/import-proof-entry.ts",
+          "?? docs/implementation/graph-upgrade-final-evidence/import-proof-loader.mjs",
+          "?? docs/implementation/graph-upgrade-final-evidence/import-proof-log.txt",
+          "?? docs/implementation/graph-upgrade-final-evidence/import-proof-result.json",
+          "?? docs/implementation/graph-upgrade-final-evidence/internal-pilot-batch.json",
+          "?? docs/implementation/graph-upgrade-final-evidence/internal-pilot.json",
+          "?? docs/implementation/graph-upgrade-final-evidence/node20-accepted.json",
+          "?? docs/implementation/graph-upgrade-final-evidence/node20-final-delta.json",
+          "?? docs/implementation/graph-upgrade-final-evidence/old-locks-check.mjs",
+          "?? docs/implementation/graph-upgrade-final-evidence/old-locks-pack.json",
+          "?? docs/implementation/graph-upgrade-final-evidence/old-locks-result.json",
+          "?? docs/implementation/graph-upgrade-final-evidence/pilot-timing.json",
+          "?? docs/reports/graph-runtime-performance.md",
+          "?? docs/reports/graph-runtime-pilot.md",
+          "?? docs/reports/graph-upgrade-completion.md",
+          "?? docs/runbooks/graph-runtime.md",
+          "?? packages/cli/src/graph-compatibility.integration.test.ts",
+          "?? packages/cli/src/graph-performance.test.ts",
+          "?? packages/cli/src/graph-platform.test.ts",
+          "?? packages/cli/src/graph-platform.ts",
+          "?? packages/cli/src/graph-upgrade-guard.ts",
+          "?? packages/core/src/graph/artifact-git.test.ts",
+          "?? scripts/bench-graph-runtime.mjs",
+          "?? scripts/verify-graph-internal-pilot.mjs"
+        ],
+        "diff_summary": ".github/workflows/ci.yml | 31 +++++++++++++ .../handoff-draft.md | 2 +- docs/reports/graph-runtime-fault-validation.md | 32 +++++++++++-- package.json | 3 +- .../src/adapters/bounded-messages-provider.ts | 1 + packages/agents/src/adapters/b",
+        "commit_hash": "a12b0ea"
+      }
+    ],
+    "in_progress": [],
+    "pending": [],
+    "deferred_tasks": [],
+    "key_metrics": {
+      "total_cycles": 4,
+      "avg_duration_ms": 480589,
+      "success_rate": 0.25,
+      "tokens_consumed": 0,
+      "cost_consumed": 0
+    },
+    "decisions": [
+      "G25-G29-final-acceptance: selected local-command - local execute command",
+      "G25-G29-final-acceptance: escalate after iteration 1 - Maximum iterations reached (1) with 2 verifier issues remaining.",
+      "G25-G29-final-acceptance: selected local-command - local execute command",
+      "G25-G29-final-acceptance: escalate after iteration 1 - Maximum iterations reached (1) with 2 verifier issues remaining.",
+      "G25-G29-final-acceptance: selected local-command - local execute command",
+      "G25-G29-final-acceptance: escalate after iteration 1 - Maximum iterations reached (1) with 2 verifier issues remaining.",
+      "G25-G29-final-acceptance: selected local-command - local execute command",
+      "G25-G29-final-acceptance: stop after iteration 1 - Verifier passed with score 1.00."
+    ]
+  },
+  "completedTasks": [
+    {
+      "task_id": "G25-G29-final-acceptance",
+      "capability": "code.test",
+      "outcome": "success",
+      "iterations": 1,
+      "agent_id": "local-command",
+      "duration_ms": 760678,
+      "run_id": "run_6bfae2e1-2ff3-4013-9029-4a45c1962666",
+      "started_at": "2026-09-20T16:54:44.416Z",
+      "completed_at": "2026-09-20T17:07:17.345Z",
+      "execution_summary": "Process group 40745 gone (kill(-pgid, 0): ESRCH); leader exit observed",
+      "execution_commands": [
+        {
+          "command": "node /Volumes/AIMATE_WORK/tmp/g30-final/check.mjs full",
+          "exit_code": 0,
+          "duration_ms": 752929,
+          "summary": "full: passed /cli test: ✓ src/upgrade.test.ts (3 tests) 12ms packages/cli test: ✓ src/graph-checkpoint-daemon.test.ts (1 test) 33ms packages/cli test: ✓ src/run-spec-files.test.ts (5 tests) 17ms packages/cli test: ✓ src/probe-gate.test.ts ("
+        }
+      ],
+      "verifier_agent_id": "local-verifier",
+      "verify_summary": "4 verifier commands and 0 verifier adapters passed. 4 evaluations passed.",
+      "verify_issue_count": 0,
+      "verify_commands": [
+        {
+          "command": "node /Volumes/AIMATE_WORK/tmp/g30-final/check.mjs typecheck",
+          "exit_code": 0,
+          "duration_ms": 6713,
+          "summary": "typecheck: passed $ pnpm -r typecheck Scope: 22 of 23 workspace projects packages/compliance typecheck$ tsc --noEmit packages/contracts typecheck$ tsc --noEmit packages/github typecheck$ tsc --noEmit packages/governance typecheck$ tsc --noE"
+        },
+        {
+          "command": "node /Volumes/AIMATE_WORK/tmp/g30-final/check.mjs schemas",
+          "exit_code": 0,
+          "duration_ms": 302,
+          "summary": "schemas: passed $ node scripts/generate-schemas.mjs --check schemas up to date"
+        },
+        {
+          "command": "node /Volumes/AIMATE_WORK/tmp/g30-final/check.mjs startup",
+          "exit_code": 0,
+          "duration_ms": 624,
+          "summary": "startup: passed ok osstack --version (fast path): median 29ms over 5 runs (budget 150ms; min 29, max 31) ok osstack --help (full command surface): median 83ms over 5 runs (budget 500ms; min 81, max 85)"
+        },
+        {
+          "command": "node /Volumes/AIMATE_WORK/tmp/g30-final/check.mjs whitespace",
+          "exit_code": 0,
+          "duration_ms": 51,
+          "summary": "whitespace: passed"
+        }
+      ],
+      "evaluations": [
+        {
+          "spec_id": "verify-command-1",
+          "mode": "command",
+          "description": "Shell verifier: node /Volumes/AIMATE_WORK/tmp/g30-final/check.mjs typecheck",
+          "required": true,
+          "weight": 1,
+          "pass": true,
+          "summary": "command passed (6713 ms)",
+          "implicit": true
+        },
+        {
+          "spec_id": "verify-command-2",
+          "mode": "command",
+          "description": "Shell verifier: node /Volumes/AIMATE_WORK/tmp/g30-final/check.mjs schemas",
+          "required": true,
+          "weight": 1,
+          "pass": true,
+          "summary": "command passed (302 ms)",
+          "implicit": true
+        },
+        {
+          "spec_id": "verify-command-3",
+          "mode": "command",
+          "description": "Shell verifier: node /Volumes/AIMATE_WORK/tmp/g30-final/check.mjs startup",
+          "required": true,
+          "weight": 1,
+          "pass": true,
+          "summary": "command passed (624 ms)",
+          "implicit": true
+        },
+        {
+          "spec_id": "verify-command-4",
+          "mode": "command",
+          "description": "Shell verifier: node /Volumes/AIMATE_WORK/tmp/g30-final/check.mjs whitespace",
+          "required": true,
+          "weight": 1,
+          "pass": true,
+          "summary": "command passed (51 ms)",
+          "implicit": true
+        }
+      ],
+      "changed_files": [
+        ".github/workflows/ci.yml",
+        "docs/implementation/graph-contained-reopen-evidence/handoff-draft.md",
+        "docs/reports/graph-runtime-fault-validation.md",
+        "package.json",
+        "packages/agents/src/adapters/bounded-messages-provider.ts",
+        "packages/agents/src/adapters/bounded-messages.ts",
+        "packages/agents/src/contained-image.ts",
+        "packages/autonomy/src/repo-lock.test.ts",
+        "packages/autonomy/src/repo-lock.ts",
+        "packages/cli/src/daemon-drain-recovery.test.ts",
+        "packages/cli/src/daemon.ts",
+        "packages/cli/src/graph-bounded-recovery-journal.ts",
+        "packages/cli/src/graph-execution-command.ts",
+        "packages/cli/src/graph-rpc.ts",
+        "packages/cli/src/graph-worker-manager.test.ts",
+        "packages/cli/src/graph-worker-manager.ts",
+        "packages/cli/src/upgrade.test.ts",
+        "packages/cli/src/upgrade.ts",
+        "packages/core/src/graph/artifact-git.ts",
+        "packages/core/src/graph/artifact-store.test.ts",
+        "packages/core/src/graph/artifact-store.ts",
+        "packages/graph/src/spec-compiler.test.ts",
+        "packages/protocol/schemas/graph.schema.json",
+        "packages/protocol/src/graph.ts",
+        "pnpm-lock.yaml",
+        "scripts/build-single-binary.mjs",
+        "scripts/smoke-bun-single-binary.mjs",
+        "scripts/verify-graph-runtime.mjs",
+        "?? .changeset/graph-runtime-beta-gates.md",
+        "?? docs/guides/graph-runtime.md",
+        "?? docs/implementation/graph-runtime-compatibility.md",
+        "?? docs/implementation/graph-upgrade-final-evidence/README.md",
+        "?? docs/implementation/graph-upgrade-final-evidence/fable-batch-prompt.txt",
+        "?? docs/implementation/graph-upgrade-final-evidence/fable-batch-result.json",
+        "?? docs/implementation/graph-upgrade-final-evidence/fable-boundary-prompt.txt",
+        "?? docs/implementation/graph-upgrade-final-evidence/fable-boundary-result.json",
+        "?? docs/implementation/graph-upgrade-final-evidence/fable-final-prompt.txt",
+        "?? docs/implementation/graph-upgrade-final-evidence/fable-final-result.json",
+        "?? docs/implementation/graph-upgrade-final-evidence/fable-prompt.txt",
+        "?? docs/implementation/graph-upgrade-final-evidence/fable-result.json",
+        "?? docs/implementation/graph-upgrade-final-evidence/import-proof-entry.mjs",
+        "?? docs/implementation/graph-upgrade-final-evidence/import-proof-entry.ts",
+        "?? docs/implementation/graph-upgrade-final-evidence/import-proof-loader.mjs",
+        "?? docs/implementation/graph-upgrade-final-evidence/import-proof-log.txt",
+        "?? docs/implementation/graph-upgrade-final-evidence/import-proof-result.json",
+        "?? docs/implementation/graph-upgrade-final-evidence/internal-pilot-batch.json",
+        "?? docs/implementation/graph-upgrade-final-evidence/internal-pilot.json",
+        "?? docs/implementation/graph-upgrade-final-evidence/node20-accepted.json",
+        "?? docs/implementation/graph-upgrade-final-evidence/node20-final-delta.json",
+        "?? docs/implementation/graph-upgrade-final-evidence/old-locks-check.mjs",
+        "?? docs/implementation/graph-upgrade-final-evidence/old-locks-pack.json",
+        "?? docs/implementation/graph-upgrade-final-evidence/old-locks-result.json",
+        "?? docs/implementation/graph-upgrade-final-evidence/pilot-timing.json",
+        "?? docs/reports/graph-runtime-performance.md",
+        "?? docs/reports/graph-runtime-pilot.md",
+        "?? docs/reports/graph-upgrade-completion.md",
+        "?? docs/runbooks/graph-runtime.md",
+        "?? packages/cli/src/graph-compatibility.integration.test.ts",
+        "?? packages/cli/src/graph-performance.test.ts",
+        "?? packages/cli/src/graph-platform.test.ts",
+        "?? packages/cli/src/graph-platform.ts",
+        "?? packages/cli/src/graph-upgrade-guard.ts",
+        "?? packages/core/src/graph/artifact-git.test.ts",
+        "?? scripts/bench-graph-runtime.mjs",
+        "?? scripts/verify-graph-internal-pilot.mjs"
+      ],
+      "diff_summary": ".github/workflows/ci.yml | 31 +++++++++++++ .../handoff-draft.md | 2 +- docs/reports/graph-runtime-fault-validation.md | 32 +++++++++++-- package.json | 3 +- .../src/adapters/bounded-messages-provider.ts | 1 + packages/agents/src/adapters/b",
+      "commit_hash": "a12b0ea"
+    }
+  ],
+  "events": [
+    {
+      "event_id": "evt_33672189-f5aa-4478-8f08-1a39e1fd47d6",
+      "loop_id": "G25-G29-final-acceptance",
+      "type": "loop.started",
+      "seq": 1,
+      "created_at": 1789923284416,
+      "payload": {
+        "workspace_path": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation"
+      }
+    },
+    {
+      "event_id": "evt_60c4510d-616e-4d1a-909d-0296d5224fed",
+      "loop_id": "G25-G29-final-acceptance",
+      "type": "loop.cycle.started",
+      "seq": 2,
+      "created_at": 1789923284416,
+      "payload": {
+        "cycle": 1
+      }
+    },
+    {
+      "event_id": "evt_e8689ff2-65f6-4f03-90d3-5da821d6c76f",
+      "loop_id": "G25-G29-final-acceptance",
+      "type": "loop.discover.done",
+      "seq": 3,
+      "created_at": 1789923284416,
+      "payload": {
+        "task_count": 1,
+        "discovered_task_count": 1,
+        "skipped_task_count": 0
+      }
+    },
+    {
+      "event_id": "evt_7b54f0c1-251a-482e-89ef-f5c4c068532e",
+      "loop_id": "G25-G29-final-acceptance",
+      "type": "loop.plan.done",
+      "seq": 4,
+      "created_at": 1789923284416,
+      "payload": {
+        "task_id": "G25-G29-final-acceptance",
+        "plan_id": "plan_1b9c4ca2-75b4-4c60-ae25-8b1a5bcd61ff",
+        "agent_id": "local-command",
+        "routing_reason": "local execute command",
+        "iteration": 1
+      }
+    },
+    {
+      "event_id": "evt_5f5276a0-8688-4a10-b434-dd85b3a28a6b",
+      "loop_id": "G25-G29-final-acceptance",
+      "type": "loop.execute.done",
+      "seq": 5,
+      "created_at": 1789924037345,
+      "payload": {
+        "task_id": "G25-G29-final-acceptance",
+        "run_id": "run_6bfae2e1-2ff3-4013-9029-4a45c1962666",
+        "outcome": "completed",
+        "agent_id": "local-command",
+        "summary": "Process group 40745 gone (kill(-pgid, 0): ESRCH); leader exit observed",
+        "iteration": 1
+      }
+    },
+    {
+      "event_id": "evt_9fc090d1-7845-41c1-be2c-ccb8475aa242",
+      "loop_id": "G25-G29-final-acceptance",
+      "type": "loop.verify.done",
+      "seq": 6,
+      "created_at": 1789924045094,
+      "payload": {
+        "task_id": "G25-G29-final-acceptance",
+        "pass": true,
+        "score": 1,
+        "issue_count": 0,
+        "evaluation_count": 4,
+        "failed_evaluation_ids": [],
+        "reviewer_agent_id": "local-verifier",
+        "summary": "4 verifier commands and 0 verifier adapters passed. 4 evaluations passed.",
+        "changed_files": [
+          ".github/workflows/ci.yml",
+          "docs/implementation/graph-contained-reopen-evidence/handoff-draft.md",
+          "docs/reports/graph-runtime-fault-validation.md",
+          "package.json",
+          "packages/agents/src/adapters/bounded-messages-provider.ts",
+          "packages/agents/src/adapters/bounded-messages.ts",
+          "packages/agents/src/contained-image.ts",
+          "packages/autonomy/src/repo-lock.test.ts",
+          "packages/autonomy/src/repo-lock.ts",
+          "packages/cli/src/daemon-drain-recovery.test.ts",
+          "packages/cli/src/daemon.ts",
+          "packages/cli/src/graph-bounded-recovery-journal.ts",
+          "packages/cli/src/graph-execution-command.ts",
+          "packages/cli/src/graph-rpc.ts",
+          "packages/cli/src/graph-worker-manager.test.ts",
+          "packages/cli/src/graph-worker-manager.ts",
+          "packages/cli/src/upgrade.test.ts",
+          "packages/cli/src/upgrade.ts",
+          "packages/core/src/graph/artifact-git.ts",
+          "packages/core/src/graph/artifact-store.test.ts",
+          "packages/core/src/graph/artifact-store.ts",
+          "packages/graph/src/spec-compiler.test.ts",
+          "packages/protocol/schemas/graph.schema.json",
+          "packages/protocol/src/graph.ts",
+          "pnpm-lock.yaml",
+          "scripts/build-single-binary.mjs",
+          "scripts/smoke-bun-single-binary.mjs",
+          "scripts/verify-graph-runtime.mjs",
+          "?? .changeset/graph-runtime-beta-gates.md",
+          "?? docs/guides/graph-runtime.md",
+          "?? docs/implementation/graph-runtime-compatibility.md",
+          "?? docs/implementation/graph-upgrade-final-evidence/README.md",
+          "?? docs/implementation/graph-upgrade-final-evidence/fable-batch-prompt.txt",
+          "?? docs/implementation/graph-upgrade-final-evidence/fable-batch-result.json",
+          "?? docs/implementation/graph-upgrade-final-evidence/fable-boundary-prompt.txt",
+          "?? docs/implementation/graph-upgrade-final-evidence/fable-boundary-result.json",
+          "?? docs/implementation/graph-upgrade-final-evidence/fable-final-prompt.txt",
+          "?? docs/implementation/graph-upgrade-final-evidence/fable-final-result.json",
+          "?? docs/implementation/graph-upgrade-final-evidence/fable-prompt.txt",
+          "?? docs/implementation/graph-upgrade-final-evidence/fable-result.json",
+          "?? docs/implementation/graph-upgrade-final-evidence/import-proof-entry.mjs",
+          "?? docs/implementation/graph-upgrade-final-evidence/import-proof-entry.ts",
+          "?? docs/implementation/graph-upgrade-final-evidence/import-proof-loader.mjs",
+          "?? docs/implementation/graph-upgrade-final-evidence/import-proof-log.txt",
+          "?? docs/implementation/graph-upgrade-final-evidence/import-proof-result.json",
+          "?? docs/implementation/graph-upgrade-final-evidence/internal-pilot-batch.json",
+          "?? docs/implementation/graph-upgrade-final-evidence/internal-pilot.json",
+          "?? docs/implementation/graph-upgrade-final-evidence/node20-accepted.json",
+          "?? docs/implementation/graph-upgrade-final-evidence/node20-final-delta.json",
+          "?? docs/implementation/graph-upgrade-final-evidence/old-locks-check.mjs",
+          "?? docs/implementation/graph-upgrade-final-evidence/old-locks-pack.json",
+          "?? docs/implementation/graph-upgrade-final-evidence/old-locks-result.json",
+          "?? docs/implementation/graph-upgrade-final-evidence/pilot-timing.json",
+          "?? docs/reports/graph-runtime-performance.md",
+          "?? docs/reports/graph-runtime-pilot.md",
+          "?? docs/reports/graph-upgrade-completion.md",
+          "?? docs/runbooks/graph-runtime.md",
+          "?? packages/cli/src/graph-compatibility.integration.test.ts",
+          "?? packages/cli/src/graph-performance.test.ts",
+          "?? packages/cli/src/graph-platform.test.ts",
+          "?? packages/cli/src/graph-platform.ts",
+          "?? packages/cli/src/graph-upgrade-guard.ts",
+          "?? packages/core/src/graph/artifact-git.test.ts",
+          "?? scripts/bench-graph-runtime.mjs",
+          "?? scripts/verify-graph-internal-pilot.mjs"
+        ],
+        "diff_summary": ".github/workflows/ci.yml | 31 +++++++++++++ .../handoff-draft.md | 2 +- docs/reports/graph-runtime-fault-validation.md | 32 +++++++++++-- package.json | 3 +- .../src/adapters/bounded-messages-provider.ts | 1 + packages/agents/src/adapters/b",
+        "commit_hash": "a12b0ea",
+        "iteration": 1
+      }
+    },
+    {
+      "event_id": "evt_24f29458-9bd7-4c40-812c-97bc921168bf",
+      "loop_id": "G25-G29-final-acceptance",
+      "type": "loop.iterate.done",
+      "seq": 7,
+      "created_at": 1789924045094,
+      "payload": {
+        "task_id": "G25-G29-final-acceptance",
+        "action": "stop",
+        "reason": "Verifier passed with score 1.00.",
+        "iteration": 1,
+        "issue_count": 0,
+        "failed_evaluation_ids": []
+      }
+    },
+    {
+      "event_id": "evt_7db4ba96-6122-4853-b6b4-6563257b4b57",
+      "loop_id": "G25-G29-final-acceptance",
+      "type": "loop.state.written",
+      "seq": 8,
+      "created_at": 1789924045097,
+      "payload": {
+        "jsonPath": "/Volumes/AIMATE_WORK/tmp/g30-final/LOOP-STATE.json",
+        "markdownPath": "/Volumes/AIMATE_WORK/tmp/g30-final/STATE.md"
+      }
+    },
+    {
+      "event_id": "evt_557e3fd7-8f01-44c3-9a31-a42699f88088",
+      "loop_id": "G25-G29-final-acceptance",
+      "type": "loop.cycle.completed",
+      "seq": 9,
+      "created_at": 1789924045097,
+      "payload": {
+        "cycle": 1,
+        "task_count": 1,
+        "discovered_task_count": 1,
+        "skipped_task_count": 0,
+        "duration_ms": 760684
+      }
+    },
+    {
+      "event_id": "evt_ba8a5180-f2dc-4c50-a576-8934277ea2fa",
+      "loop_id": "G25-G29-final-acceptance",
+      "type": "loop.stopped",
+      "seq": 10,
+      "created_at": 1789924045097,
+      "payload": {
+        "reason_code": "completed",
+        "reason": "manual run completed"
+      }
+    }
+  ],
+  "jsonPath": "/Volumes/AIMATE_WORK/tmp/g30-final/LOOP-STATE.json",
+  "markdownPath": "/Volumes/AIMATE_WORK/tmp/g30-final/STATE.md",
+  "discoveredTaskCount": 1,
+  "executedTaskCount": 1,
+  "skippedTaskCount": 0
+}

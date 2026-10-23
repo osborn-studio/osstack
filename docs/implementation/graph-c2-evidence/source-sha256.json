@@ -1,0 +1,17 @@
+{
+  "baseline": "937c87de0d140b57b75d39e8fd7a4e9c2e75fc71",
+  "sha256ByPath": {
+    "packages/graph/src/worker-entry.ts": "2ca0bbb13020d4b77b1a902578e24bd8ccb7bf9c07c2d40ef0d970b32c5f0731",
+    "packages/graph/src/functional-entry.test.ts": "28948171fa95cf593c66254071b327c7a0c334d4b106394eac2b46ba319bca45",
+    "scripts/probe-graph-c2.mjs": "3a5c9fcd7d2330f52793344aaaf130480b82982399e346124ffc4634b57f8ca2",
+    "scripts/fixtures/graph-c2-runtime.mjs": "4481c2454addd2600d71873763a14d4ab3becc9feba53bd9035df04f0df11505",
+    "scripts/fixtures/graph-c2-ledger.test.mjs": "c7334eb00d7a3cd6769862855a39ccc06218a6fa99d96f029a3711c665ba30e5",
+    "scripts/fixtures/graph-c2-journal.test.mjs": "9e17e2a16341f8ac76799eafb22e1699a507f4e63bfb00771e862b1d90e4c7e2",
+    "scripts/fixtures/graph-c2-ledger.mjs": "2749c24b0c06a16a939f0c8aa66a83546193406c01c9003b3723043488588b7c",
+    "scripts/graph-test-env.mjs": "24abafbaf730814d6c26762d78ba98b25e995f22053cd8f53854cb87e429ddcf",
+    "packages/graph/src/checkpoint-codec.ts": "4d7d654acf5d8abaf7f60c260ce19a0661316512fe57669f200099ce8736beca",
+    "packages/graph/package.json": "dc66e9e355de1a6d2e6d2041b3327ca737bd3547c8199d11f385570e105dbfdf",
+    "pnpm-lock.yaml": "6279cdde153bd8e188af21ea89d995e8367426a2372e1a1f3d097cef717d99aa"
+  },
+  "acceptedCodeCommit": "b230eb5b51d3dd1e81dfe789f46f22d12b50f2cc"
+}

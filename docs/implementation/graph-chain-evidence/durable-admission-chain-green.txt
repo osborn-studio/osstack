@@ -1,0 +1,68 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+ ✓ src/graph-reconciler.test.ts (23 tests) 1367ms
+osstack: retaining write lease graph-action:2481da018781b30f0818451dfd6c569f9dbe56ade42681fd352eba9971ab5a18: Error: invalid result kind for registered operation
+osstack: retaining write lease graph-action:f97a8d86973c5ccb3e33aee1eaa7f6410a5dc6ccc1a90dbdb0506ea9311d7667: Error: invalid persisted evidence reference
+
+  ../../../tmp/gc5/g17-build-HHDYFh/graph-chain-host.mjs  329.4kb
+
+⚡ Done in 46ms
+osstack: retaining write lease graph-action:f9654b3278d894c116407355da20b8366fae06bac93d0c8dc72fec4e469bb16c: Error: candidate preflight refused
+osstack: retaining write lease graph-action:07d9cc771f4f2457f95238a89cbfdea884f4b67f4caae58464dc30bffd684682: Error: adapter result or execution unconfirmed
+osstack: retaining write lease graph-action:a50251911bb5be2158f45608e51604d1f43a28a3612af3e507a604b2e0649584: Error: candidate preflight refused
+osstack: retaining write lease graph-action:cd33f8085576f043eaee7568cebbb216a7df9ff801c684a0f65cd912f5e72194: Error: lost receipt
+osstack: retaining write lease graph-action:9e6318f37679beeaeb204a130c522a5b4518a89806457e930cd111e01c20206f: Error: adapter result or execution unconfirmed
+osstack: retaining write lease graph-action:0a5bed7d7b937bb9bf516380d8dad52371fdb0675e88b175eab4d12cee312ad3: injected lock release failure
+osstack: retaining write lease graph-action:0a5bed7d7b937bb9bf516380d8dad52371fdb0675e88b175eab4d12cee312ad3: Error: injected lock release failure
+osstack: retaining write lease graph-action:b9009e10b5a0e29e341027079732e1aa7a1d94b82fb1d8c5ce59c93b5e6add28: release failure
+osstack: retaining write lease graph-action:b9009e10b5a0e29e341027079732e1aa7a1d94b82fb1d8c5ce59c93b5e6add28: Error: release failure
+osstack: retaining write lease graph-action:1d8e39bfb25bbbad07940e4326507bc20545aeef1bc5572200717e556d0bc5ce: Error: adapter result or execution unconfirmed
+ ✓ src/graph-action-freeze.test.ts (1 test) 2656ms
+   ✓ freezes a real confirmed implementation under the same shared admission into a verified artifact  2654ms
+osstack: retaining write lease graph-action:995cc82d5f3fd8ad9a737f7ff461fb6236e1ec0dfde0c28279079d44682ed298: Error: invalid result kind for registered operation
+ ✓ src/graph-action-broker-boundary.test.ts (17 tests) 2678ms
+osstack: retaining write lease graph-action:3bcf1759ec439d50d374b851fe501db3a0a07468403c219ef85e6a9a9ea1bac2: Error: invalid usage
+osstack: retaining write lease graph-action:adbb682deabfff4a3ef0c69e28cfb12d5812725c30c2e2acc5a454b512966c23: Error: invalid persisted evidence reference
+osstack: retaining write lease graph-action:2f22c5a405952e5a31e345dd37f4e5606107d9fc33511d2c2594249b513d8cae: SqliteError: injected
+osstack: retaining write lease graph-action:0def85f9e91b7b022086b1c2e7c8a652f32f0ab5fb75b3b04eb10d162b04e794: Error: adapter result or execution unconfirmed
+osstack: retaining write lease graph-action:7b2d82d25a182a56606c2af748a1343e44267bdcb595837a6fe352a6eb77c4e2: Error: adapter result or execution unconfirmed
+osstack: retaining write lease graph-action:bd5484343fdf05a440d56f2d6f9d8fe5305acdcc517ffd94ffac1154ceb2ba67: Error: adapter result or execution unconfirmed
+osstack: retaining write lease graph-action:0eb0cb887b30fb06569d23731064058413c355606a2786dac69332514361325f: Error: adapter result or execution unconfirmed
+osstack: retaining write lease graph-action:98b03f697f03fabc7d84939ccdcb2f671eef65bf8ddb61b5317a3c6df94cbcc6: Error: adapter result or execution unconfirmed
+ ✓ src/graph-action-broker.test.ts (31 tests) 4036ms
+   ✓ never blindly retries cancel after invocation  337ms
+ ✓ src/graph-chain.integration.test.ts (29 tests) 69259ms
+   ✓ uses real worker IPC and durable SQLite checkpoints, retires both ports and exposes OS exit  726ms
+   ✓ assembly: real command implement → freeze persists a selfcontained candidate  3834ms
+   ✓ daemon: real command implement → freeze persists a selfcontained candidate  3625ms
+   ✓ assembly: SIGKILL at before-return resumes using actual SQLite saver and ledger  2925ms
+   ✓ assembly: SIGKILL at before-final resumes using actual SQLite saver and ledger  2881ms
+   ✓ assembly: SIGKILL at after-final resumes using actual SQLite saver and ledger  2742ms
+   ✓ assembly: restore then SIGKILL again re-enters implement without repeating the confirmed external command  3145ms
+   ✓ daemon: SIGKILL at before-return resumes using actual SQLite saver and ledger  3168ms
+   ✓ daemon: SIGKILL at before-final resumes using actual SQLite saver and ledger  3357ms
+   ✓ daemon: SIGKILL at after-final resumes using actual SQLite saver and ledger  3381ms
+   ✓ daemon: restore then SIGKILL again re-enters implement without repeating the confirmed external command  3842ms
+   ✓ daemon: true daemon process SIGKILL/restart retains SQLite results and resumes through G15  2952ms
+   ✓ assembly: real broker unknown stays quarantined, then durable applied release failure is retried without resending  1359ms
+   ✓ assembly: trusted not_applied reconciliation releases exact retained broker lease without automatically retrying  991ms
+   ✓ assembly: cancel reaches actual command process group and kills abort-ignoring worker without starting freeze  1321ms
+   ✓ daemon: real broker unknown stays quarantined, then durable applied release failure is retried without resending  1506ms
+   ✓ daemon: trusted not_applied reconciliation releases exact retained broker lease without automatically retrying  1634ms
+   ✓ daemon: cancel reaches actual command process group and kills abort-ignoring worker without starting freeze  1433ms
+   ✓ module: a fresh supervisor cannot relaunch a consumed generation from the persistent database  663ms
+   ✓ daemon: unknown retained canonical lock survives actual daemon SIGKILL and releases only after G15 committed decision  5830ms
+   ✓ assembly: bounded stop reports undrained actual broker Promise and refuses recovery before drainage  2919ms
+   ✓ assembly: original deadline aborts actual in-flight command through supervisor heartbeat  2657ms
+   ✓ assembly: cancel with unproven executor stop retains unknown effect even after broker drainage  2745ms
+   ✓ daemon: bounded stop reports undrained actual broker Promise and refuses recovery before drainage  3368ms
+   ✓ daemon: original deadline aborts actual in-flight command through supervisor heartbeat  2833ms
+   ✓ daemon: cancel with unproven executor stop retains unknown effect even after broker drainage  2731ms
+   ✓ module: late actual worker OS exit replaces unconfirmed observation without rewriting bounded stop  612ms
+
+ Test Files  5 passed (5)
+      Tests  101 passed (101)
+   Start at  08:28:49
+   Duration  72.07s (transform 1.72s, setup 92ms, collect 10.36s, tests 79.99s, environment 1ms, prepare 447ms)
+

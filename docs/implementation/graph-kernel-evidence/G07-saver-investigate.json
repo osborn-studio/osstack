@@ -1,0 +1,109 @@
+{
+  "testOnly": true,
+  "node": "v26.5.0",
+  "versions": {
+    "langgraph": "1.4.15",
+    "checkpoint": "1.1.5",
+    "core": "1.2.11"
+  },
+  "parentPid": 93799,
+  "phases": [
+    {
+      "phase": "contract-write",
+      "pid": 93800,
+      "assertions": [
+        {
+          "name": "missing getTuple and inherited get return undefined",
+          "passed": true
+        },
+        {
+          "name": "put returns identity and repeated put preserves full fields",
+          "passed": true
+        },
+        {
+          "name": "ordinary writes retain first value by task/index, separate tasks coexist",
+          "passed": true
+        },
+        {
+          "name": "reserved error/interrupt/resume/scheduled overwrite independent negative indexes",
+          "passed": true
+        },
+        {
+          "name": "putWrites before put remains attached and put retry does not erase writes",
+          "passed": true
+        }
+      ],
+      "passed": true,
+      "exitCode": 0,
+      "signal": null,
+      "stderr": ""
+    },
+    {
+      "phase": "contract-read",
+      "pid": 93802,
+      "assertions": [
+        {
+          "name": "fresh process recovers all checkpoint/metadata/version/parent fields and byte values",
+          "passed": true
+        },
+        {
+          "name": "list returns full tuples with namespace/thread/id/filter/before/limit semantics",
+          "passed": true
+        },
+        {
+          "name": "inherited numeric version generation works and string generation requires override",
+          "passed": true
+        },
+        {
+          "name": "inherited beta history follows parent chain rather than unrelated fork",
+          "passed": true
+        },
+        {
+          "name": "deleteThread removes all namespaces and writes without deleting other threads",
+          "passed": true
+        }
+      ],
+      "passed": true,
+      "exitCode": 0,
+      "signal": null,
+      "stderr": ""
+    },
+    {
+      "phase": "fail",
+      "pid": 93803,
+      "assertions": [
+        {
+          "name": "parallel superstep failure propagates after completed sibling write persists",
+          "passed": true
+        }
+      ],
+      "passed": true,
+      "exitCode": 0,
+      "signal": null,
+      "stderr": ""
+    },
+    {
+      "phase": "recover",
+      "pid": 93804,
+      "assertions": [
+        {
+          "name": "new process has no memory canary and reads prior process durable checkpoint",
+          "passed": true
+        },
+        {
+          "name": "resume failed parallel step without rerunning completed sibling; join exactly once",
+          "passed": false,
+          "error": "AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:\n+ actual - expected\n\n  [\n    'completed',\n-   'joined',\n    'recovered'\n  ]\n"
+        }
+      ],
+      "passed": false,
+      "exitCode": 1,
+      "signal": null,
+      "stderr": "{\"debugResult\":{\"results\":[\"completed\",\"recovered\"]},\"checkpoints\":[{\"checkpoint\":{\"channel_values\":{\"__pregel_tasks\":[],\"__start__\":{\"results\":[]},\"join:completed+flaky:join\":[],\"results\":[]},\"channel_versions\":{\"__start__\":1},\"id\":\"1f1afda1-9374-6560-ffff-f25631de2365\",\"ts\":\"2026-09-14T01:17:48.598Z\",\"v\":4,\"versions_seen\":{\"__input__\":{}}},\"config\":{\"configurable\":{\"checkpoint_id\":\"1f1afda1-9374-6560-ffff-f25631de2365\",\"checkpoint_ns\":\"\",\"thread_id\":\"parallel\"}},\"key\":[\"parallel\",\"\",\"1f1afda1-9374-6560-ffff-f25631de2365\"],\"metadata\":{\"parents\":{},\"source\":\"input\",\"step\":-1},\"newVersions\":{\"__start__\":1},\"parentConfig\":null},{\"checkpoint\":{\"channel_values\":{\"__pregel_tasks\":[],\"branch:to:completed\":null,\"branch:to:flaky\":null,\"join:completed+flaky:join\":[],\"results\":[]},\"channel_versions\":{\"__start__\":2,\"branch:to:completed\":2,\"branch:to:flaky\":2,\"results\":2},\"id\":\"1f1afda1-9391-6a20-8000-596f70d454fe\",\"ts\":\"2026-09-14T01:17:48.610Z\",\"v\":4,\"versions_seen\":{\"__input__\":{},\"__start__\":{\"__start__\":1}}},\"config\":{\"configurable\":{\"checkpoint_id\":\"1f1afda1-9391-6a20-8000-596f70d454fe\",\"checkpoint_ns\":\"\",\"thread_id\":\"parallel\"}},\"key\":[\"parallel\",\"\",\"1f1afda1-9391-6a20-8000-596f70d454fe\"],\"metadata\":{\"parents\":{},\"source\":\"loop\",\"step\":0},\"newVersions\":{\"__start__\":2,\"branch:to:completed\":2,\"branch:to:flaky\":2,\"results\":2},\"parentConfig\":{\"configurable\":{\"checkpoint_id\":\"1f1afda1-9374-6560-ffff-f25631de2365\",\"checkpoint_ns\":\"\",\"thread_id\":\"parallel\"}}},{\"checkpoint\":{\"channel_values\":{\"__pregel_tasks\":[],\"join:completed+flaky:join\":[\"flaky\"],\"results\":[\"completed\",\"recovered\"]},\"channel_versions\":{\"__start__\":2,\"branch:to:completed\":3,\"branch:to:flaky\":3,\"join:completed+flaky:join\":3,\"results\":3},\"id\":\"1f1afda1-94ec-6500-8001-2031c8b217d9\",\"ts\":\"2026-09-14T01:17:48.752Z\",\"v\":4,\"versions_seen\":{\"__input__\":{},\"__interrupt__\":{\"__start__\":2,\"branch:to:completed\":2,\"branch:to:flaky\":2,\"results\":2},\"__start__\":{\"__start__\":1},\"completed\":{\"branch:to:completed\":2},\"flaky\":{\"branch:to:flaky\":2}}},\"config\":{\"configurable\":{\"checkpoint_id\":\"1f1afda1-94ec-6500-8001-2031c8b217d9\",\"checkpoint_ns\":\"\",\"thread_id\":\"parallel\"}},\"key\":[\"parallel\",\"\",\"1f1afda1-94ec-6500-8001-2031c8b217d9\"],\"metadata\":{\"parents\":{},\"source\":\"loop\",\"step\":1},\"newVersions\":{\"branch:to:completed\":3,\"branch:to:flaky\":3,\"join:completed+flaky:join\":3,\"results\":3},\"parentConfig\":{\"configurable\":{\"checkpoint_id\":\"1f1afda1-9391-6a20-8000-596f70d454fe\",\"checkpoint_ns\":\"\",\"thread_id\":\"parallel\"}}}],\"writes\":[{\"channel\":\"results\",\"index\":0,\"key\":[\"parallel\",\"\",\"1f1afda1-9374-6560-ffff-f25631de2365\"],\"taskId\":\"7aa230ab-73e1-5ff2-a7a0-096f933adee0\",\"value\":[]},{\"channel\":\"branch:to:completed\",\"index\":1,\"key\":[\"parallel\",\"\",\"1f1afda1-9374-6560-ffff-f25631de2365\"],\"taskId\":\"7aa230ab-73e1-5ff2-a7a0-096f933adee0\",\"value\":null},{\"channel\":\"branch:to:flaky\",\"index\":2,\"key\":[\"parallel\",\"\",\"1f1afda1-9374-6560-ffff-f25631de2365\"],\"taskId\":\"7aa230ab-73e1-5ff2-a7a0-096f933adee0\",\"value\":null},{\"channel\":\"__error__\",\"index\":-1,\"key\":[\"parallel\",\"\",\"1f1afda1-9391-6a20-8000-596f70d454fe\"],\"taskId\":\"e21c83a6-c78d-5527-aeb7-6246853dd964\",\"value\":{\"message\":\"injected parallel failure\",\"name\":\"Error\"}},{\"channel\":\"results\",\"index\":0,\"key\":[\"parallel\",\"\",\"1f1afda1-9391-6a20-8000-596f70d454fe\"],\"taskId\":\"f4029624-7234-5f2c-8ee7-aaa3c3c253f1\",\"value\":[\"completed\"]},{\"channel\":\"__error__\",\"index\":-1,\"key\":[\"parallel\",\"\",\"1f1afda1-9391-6a20-8000-596f70d454fe\"],\"taskId\":\"f4029624-7234-5f2c-8ee7-aaa3c3c253f1\",\"value\":{\"message\":\"This operation was aborted\",\"name\":\"AbortError\"}},{\"channel\":\"results\",\"index\":0,\"key\":[\"parallel\",\"\",\"1f1afda1-9391-6a20-8000-596f70d454fe\"],\"taskId\":\"e21c83a6-c78d-5527-aeb7-6246853dd964\",\"value\":[\"recovered\"]},{\"channel\":\"join:completed+flaky:join\",\"index\":1,\"key\":[\"parallel\",\"\",\"1f1afda1-9391-6a20-8000-596f70d454fe\"],\"taskId\":\"e21c83a6-c78d-5527-aeb7-6246853dd964\",\"value\":\"flaky\"}]}\nAssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:\n+ actual - expected\n\n  [\n    'completed',\n-   'joined',\n    'recovered'\n  ]\n\n    at file:///Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/scripts/probe-graph-saver.mjs:277:14\n    at async check (file:///Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/scripts/probe-graph-saver.mjs:23:9)\n    at async child (file:///Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/scripts/probe-graph-saver.mjs:274:5)\n    at async main (file:///Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/scripts/probe-graph-saver.mjs:328:11)\n    at async file:///Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/scripts/probe-graph-saver.mjs:370:1\n"
+    }
+  ],
+  "assertions": [],
+  "passed": false,
+  "cleaned": true,
+  "error": "AssertionError [ERR_ASSERTION]: recover failed\n\n1 !== 0\n"
+}

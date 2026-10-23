@@ -1,0 +1,12 @@
+$ vitest run src/graph-contained-recovery.test.ts --maxWorkers=1
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+ ✓ src/graph-contained-recovery.test.ts (72 tests) 8497ms
+   ✓ contained proof bridge > uses the host closure inside actual G15 without inferring business outcome: valid  344ms
+   ✓ graph quiescence sweep > sweeps two distinct contained invocations without re-execution and binds each physical receipt  302ms
+
+ Test Files  1 passed (1)
+      Tests  72 passed (72)
+   Start at  17:41:56
+   Duration  9.49s (transform 523ms, setup 8ms, collect 866ms, tests 8.50s, environment 0ms, prepare 31ms)

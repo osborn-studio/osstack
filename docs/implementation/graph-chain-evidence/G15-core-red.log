@@ -1,0 +1,91 @@
+$ vitest run -- src/state/graph-recovery.test.ts
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/core
+
+Preparing worktree (detached HEAD 884cf96)
+ ✓ src/state/autonomy-runs.test.ts (9 tests) 477ms
+ ✓ src/state/db.test.ts (22 tests) 1205ms
+ ✓ src/state/run-store.test.ts (11 tests) 591ms
+ ✓ src/kanban/kanban.test.ts (42 tests) 1843ms
+ ✓ src/state/session-continuations.test.ts (33 tests) 1749ms
+ ✓ src/state/lessons.test.ts (6 tests) 290ms
+ ✓ src/state/knowledge-hygiene-recurrence.test.ts (5 tests) 223ms
+ ✓ src/state/sessions.test.ts (7 tests) 206ms
+ ✓ src/state/improvement-proposals.test.ts (20 tests) 1002ms
+ ✓ src/state/memory.test.ts (8 tests) 501ms
+ ✓ src/state/graph-runs.test.ts (31 tests) 3255ms
+   ✓ graph run storage > serializes independent SQLite workers: same-request  1232ms
+ ✓ src/state/graph-checkpoints.test.ts (15 tests) 3312ms
+   ✓ splits pages at transport traversal bounds even when many small pending writes fit the byte cap  2033ms
+ ✓ src/state/evaluator-epochs.test.ts (4 tests) 133ms
+ ✓ src/state/knowledge-hygiene-store-v2.test.ts (5 tests) 284ms
+ ✓ src/state/knowledge-hygiene-store.test.ts (7 tests) 625ms
+ ✓ src/state/probe-store.test.ts (9 tests) 691ms
+ ✓ src/state/graph-actions.test.ts (31 tests) 3586ms
+   ✓ graph action ledger > serializes independent SQLite workers: same-key  1145ms
+ ✓ src/policy/profile.test.ts (37 tests) 193ms
+ ✓ src/policy/agent-scorecard.test.ts (2 tests) 46ms
+ ✓ src/state/rollback-drills.test.ts (2 tests) 140ms
+ ✓ src/state/contract-approvals.test.ts (4 tests) 125ms
+ ✓ src/state/probe-portfolio.test.ts (3 tests) 195ms
+ ✓ src/state/knowledge-hygiene-history-v2.test.ts (2 tests) 122ms
+ ✓ src/state/notification-outbox.test.ts (3 tests) 295ms
+ ✓ src/state/dependency-obligation-store.test.ts (2 tests) 89ms
+Preparing worktree (detached HEAD 1e78f70)
+ ✓ src/orchestrator/router.test.ts (19 tests) 57ms
+ ✓ src/state/knowledge-hygiene-plan-store.test.ts (2 tests) 80ms
+ ✓ src/state/probe-outcome-metrics.test.ts (2 tests) 121ms
+ ✓ src/policy/engine.test.ts (8 tests) 4ms
+ ✓ src/state/feedback-assets.test.ts (2 tests) 150ms
+ ✓ src/state/deploy-freezes.test.ts (3 tests) 106ms
+ ✓ src/kanban/transition-guard.test.ts (3 tests) 5ms
+ ✓ src/privacy/redactor.test.ts (11 tests) 17ms
+ ✓ src/state/protocol-mappers.test.ts (15 tests) 10ms
+ ✓ src/graph/repository-scope.test.ts (6 tests) 6637ms
+   ✓ trusted filesystem repository identity > accepts canonical hints, rejects forged identity and missing common-dir hints  322ms
+   ✓ bounds Git subprocess output and terminates a hung Git process  5676ms
+Preparing worktree (detached HEAD a43d997)
+Preparing worktree (detached HEAD a43d997)
+Preparing worktree (detached HEAD a43d997)
+Preparing worktree (detached HEAD 901786f)
+Preparing worktree (detached HEAD 901786f)
+Preparing worktree (detached HEAD 901786f)
+Preparing worktree (detached HEAD 5508fba)
+Preparing worktree (detached HEAD 5801ca3)
+Preparing worktree (detached HEAD 3d972c1)
+ ✓ src/graph/artifact-store.test.ts (11 tests) 13525ms
+   ✓ trusted graph artifact freeze > restores full reachable history and exact raw tree after deleting original repo and worktree  4120ms
+   ✓ trusted graph artifact freeze > rejects same ID with changed receipt or content  2833ms
+   ✓ trusted graph artifact freeze > rechecks resolved producer evidence before capture and rejects revocation  399ms
+   ✓ trusted graph artifact freeze > rejects mismatched exact source identity and HEAD  358ms
+   ✓ trusted graph artifact freeze > does not invoke local hooks or filters during capture or restore  1978ms
+   ✓ trusted graph artifact freeze > rejects submodules instead of exporting an incomplete tree  468ms
+   ✓ trusted graph artifact freeze > rejects corrupted bundles and manifests, including replay  1621ms
+   ✓ trusted graph artifact freeze > refuses existing and escaping restore destinations  1071ms
+
+⎯⎯⎯⎯⎯⎯ Failed Suites 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/state/graph-recovery.test.ts [ src/state/graph-recovery.test.ts ]
+Error: Cannot find module './graph-recovery.js' imported from '/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/core/src/state/graph-recovery.test.ts'
+ ❯ src/state/graph-recovery.test.ts:10:1
+      8| import { GraphRunStore, type GraphRun, type GraphProgramVersion } from…
+      9| import { GraphActionStore } from "./graph-actions.js";
+     10| import { GraphRecoveryStore, type GraphRecoverySnapshot, type GraphRec…
+       | ^
+     11| 
+     12| const scope = { schemaVersion: 1 as const, tenantId: "t", principalId:…
+
+Caused by: Error: Failed to load url ./graph-recovery.js (resolved id: ./graph-recovery.js) in /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/core/src/state/graph-recovery.test.ts. Does the file exist?
+ ❯ loadAndTransform ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:35835:17
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 36 passed (37)
+      Tests  402 passed (402)
+   Start at  07:33:34
+   Duration  14.52s (transform 1.52s, setup 0ms, collect 7.41s, tests 41.89s, environment 8ms, prepare 3.58s)
+
+/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/core:
+[ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL] @osstack/core@0.17.0 test: `vitest run -- src/state/graph-recovery.test.ts`
+Exit status 1

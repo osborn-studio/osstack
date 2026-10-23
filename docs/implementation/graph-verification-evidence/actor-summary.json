@@ -1,0 +1,34 @@
+{
+  "G18": {
+    "executedTaskCount": 1,
+    "skippedTaskCount": 0,
+    "outcome": "success",
+    "agent_id": "codex-cli",
+    "run_id": "run_090c1e21-334c-4f2a-bfc3-19f5c7146702",
+    "verification": "actor diff-only gate; parent acceptance required"
+  },
+  "G19": {
+    "executedTaskCount": 1,
+    "skippedTaskCount": 0,
+    "outcome": "success",
+    "agent_id": "codex-cli",
+    "run_id": "run_ab593553-be69-43c3-b6f1-6b63b6fca47d",
+    "verification": "actor diff-only gate; parent acceptance required"
+  },
+  "G19-hardening": {
+    "executedTaskCount": 1,
+    "skippedTaskCount": 0,
+    "outcome": "success",
+    "agent_id": "codex-cli",
+    "run_id": "run_f5a70064-dfe9-48dd-b6cd-a766022dd46d",
+    "verification": "actor diff-only gate; parent acceptance required"
+  },
+  "G20-integration": {
+    "executedTaskCount": 1,
+    "skippedTaskCount": 0,
+    "outcome": "success",
+    "agent_id": "codex-cli",
+    "run_id": "run_9f10a753-c970-4660-a5ca-494ff52baa7b",
+    "verification": "actor diff-only gate; parent acceptance required"
+  }
+}

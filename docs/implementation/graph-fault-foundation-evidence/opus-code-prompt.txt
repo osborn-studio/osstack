@@ -1,0 +1,1180 @@
+Review this bounded G25 implementation as an independent adversarial Claude Opus 5 reviewer. Only supplied source; no tools or edits. User authorized Opus 5. This is explicitly a DIAGNOSTIC SAFETY SLICE, not completed G25, no automatic crash recovery, no claim macOS ps identity proves exact process or opaque executors stopped. Remaining G25 executor-proof/admin-lock-recovery work is disclosed; do not turn that deliberate scope into a bug or demand FIFO as sufficient proof. Find concrete regressions or unsafe behavior in the changed code: journaling lifecycle, finalExit DB lifetime, durable no_child authority, PID identity parsing, existing timeout/late exit paths, migration constraints, cleanup/tests and evidence runner. Separate actual bugs from future work. Return PASS or REQUEST_CHANGES, prioritized findings with exact file/symbol and reproduction scenario. For no findings say scope reviewed. <=2000 words. Do not claim tests you did not run.
+Baseline 9d02679; current diff and new source follows.
+diff --git a/packages/cli/src/graph-rpc.test.ts b/packages/cli/src/graph-rpc.test.ts
+index 311d67e..b4cea17 100644
+--- a/packages/cli/src/graph-rpc.test.ts
++++ b/packages/cli/src/graph-rpc.test.ts
+@@ -1,63 +1,8 @@
+-import { execFileSync } from 'node:child_process';
+-import { mkdtemp, mkdir, writeFile, readFile, realpath } from 'node:fs/promises';
+-import { tmpdir } from 'node:os';
++import { writeFile, readFile } from 'node:fs/promises';
+ import { join } from 'node:path';
+ import { expect, it } from 'vitest';
+-import { openDb, CapabilitySchema } from '@osstack/core';
+-import { GraphDelegationStatus, type StartGraphRequest } from '@osstack/protocol';
+-import { FifoSemaphore } from '@osstack/autonomy';
+-import { GraphRpcService, type GraphHostRegistration, loadLocalGraphRegistration } from './graph-rpc.js';
+-import { GovernedExecution } from './governed-execution.js';
+-import type { AgentAdapter } from '@osstack/agents';
+-const git = (cwd: string, ...args: string[]) => execFileSync('git', args, { cwd, encoding: 'utf8' }).trim();
+-async function fixture(mode: 'success' | 'repair' | 'cancel' | 'unknown' = 'success') {
+-  const root = await realpath(await mkdtemp(join(tmpdir(), 'g22-rpc-'))); const repo = join(root, 'source'); await mkdir(repo);
+-  git(repo, 'init', '-q'); await writeFile(join(repo, 'answer'), '0\n'); git(repo, 'add', '.'); git(repo, '-c', 'user.name=G22', '-c', 'user.email=g22@invalid', 'commit', '-qm', 'base');
+-  const db = openDb({ path: join(root, 'control.sqlite') }); let writes = 0; let granted = true; let abortObserved = false;
+-  const stopped = new Set<string>();
+-  const writer: AgentAdapter = { id: 'writer', display_name: 'writer', cost_tier: 'low',
+-    capabilities: () => [CapabilitySchema.parse({ id: 'write', agent_id: 'writer', kind: 'code.write', description: 'write' })],
+-    isAvailable: async () => ({ available: true, last_checked_at: 0 }),
+-    invoke: async function* (task, options) {
+-      writes++;
+-      if (mode === 'cancel') {
+-        await new Promise<void>(resolve => { if (options?.aborted) resolve(); else options?.addEventListener('abort', () => resolve(), { once: true }); });
+-        abortObserved = true;
+-      } else await writeFile(join(String(task.context?.['repo_path']), 'answer'), mode === 'repair' && writes === 1 ? '0\n' : '1\n');
+-      if (mode !== 'unknown') stopped.add(task.run_id);
+-      yield { event_id: task.run_id, run_id: task.run_id, session_id: task.session_id, seq: 1, created_at: Date.now() / 1000, type: 'done', terminal: true,
+-        payload: { status: mode === 'cancel' ? 'failed' : 'completed', last_seq: 0, result_summary: 'implemented', usage: { tokens_in: 1, tokens_out: 1, duration_ms: 1 } } };
+-    }, confirmStopped: async id => ({ stopped: stopped.has(id), evidence: `finite:${id}` }) };
+-  const reviewer: AgentAdapter = { ...writer, id: 'reviewer', capabilities: () => [CapabilitySchema.parse({ id: 'review', agent_id: 'reviewer', kind: 'review.code', description: 'review' })],
+-    invoke: async function* (task) {
+-      const good = (await readFile(join(String(task.context?.['repo_path']), 'answer'), 'utf8')).trim() === '1'; stopped.add(task.run_id);
+-      yield { event_id: task.run_id, run_id: task.run_id, session_id: task.session_id, seq: 1, created_at: Date.now() / 1000, type: 'done', terminal: true,
+-        payload: { status: 'completed', last_seq: 0, result_summary: JSON.stringify({ schemaVersion: 1, verdict: good ? 'accept' : 'changes_requested', summary: 'actual candidate', findings: good ? [] : ['answer must be 1'] }), usage: { tokens_in: 1, tokens_out: 1, duration_ms: 1 } } };
+-    } };
+-  const request: StartGraphRequest = { schemaVersion: 1, kind: 'start', scope: { schemaVersion: 1, tenantId: 't', principalId: 'p', workspaceId: 'w' },
+-    idempotencyKey: 'public-key', inputArtifactRef: 'input', source: { product: 'osstack', requestId: 'request', parentRunId: 'parent' },
+-    spec: { schemaVersion: 1, template: 'code-delivery-v1', publication: 'artifact_only', input: { taskRef: 'task', repositoryRef: 'repo', baseRevision: git(repo, 'rev-parse', 'HEAD'), acceptanceRef: 'acceptance' },
+-      limits: { maxEpochs: 2, maxBranchAttempts: 1, maxConcurrentReaders: 2, maxConcurrentWritersPerRepo: 1, maxActionStarts: 14, tokenReservationLimit: 200000, deadlineSeconds: 120 } } };
+-  const registration: GraphHostRegistration = { id: 'local', scope: request.scope, product: 'osstack', repositoryRef: 'repo', taskRef: 'task', inputArtifactRef: 'input',
+-    authorize: operation => { if (!granted && operation !== 'read' && operation !== 'cancel') throw Error('GRANT_EXPIRED'); },
+-    delivery: { repositoryPath: repo, task: 'Set answer to 1', writer: { identity: 'writer', adapter: writer, capabilityId: 'write' }, reviewer: { identity: 'reviewer', adapter: reviewer, capabilityId: 'review' },
+-      verifyReviewer: async proof => { if (proof.writerIdentity === proof.reviewerIdentity) throw Error('independence'); },
+-      acceptanceRegistry: [{ ref: 'acceptance', command: 'test "$(cat answer)" = 1', passExitCodes: [0], failExitCodes: [1] }] } };
+-  const connection = {};
+-  const admission = new GovernedExecution({ reads: new FifoSemaphore(2), writes: new FifoSemaphore(2), repositories: new Map(), checkHealth: async () => {} });
+-  const options = { db, root: join(root, 'delivery'), registrations: [registration], resolveCaller: (key: object) => key === connection ? 'local' : null, acquire: admission.acquire.bind(admission) };
+-  const service = new GraphRpcService(options);
+-  const start = async () => GraphDelegationStatus.parse(await service.handle(connection, 'graph.start', request));
+-  const status = async (id: string, host = service) => GraphDelegationStatus.parse(await host.handle(connection, 'graph.status', { schemaVersion: 1, scope: request.scope, graphRunId: id }));
+-  const until = async (id: string, predicate: (s: ReturnType<typeof GraphDelegationStatus.parse>) => boolean) => {
+-    const deadline = Date.now() + 20000;
+-    for (;;) { const value = await status(id); if (predicate(value)) return value;
+-      if (Date.now() > deadline) throw Error(`TIMEOUT: ${JSON.stringify(value)}`); await new Promise(resolve => setTimeout(resolve, 15)); }
+-  };
+-  return { root, db, request, registration, connection, service, start, status, until, options, writer, reviewer,
+-    writes: () => writes, abortObserved: () => abortObserved, grant: (value: boolean) => { granted = value; },
+-    close: async () => { await service.close(); db.close(); } };
+-}
++import { GraphRpcService, loadLocalGraphRegistration } from './graph-rpc.js';
++import { graphRpcFixture as fixture } from './graph-test-fixture.js';
+ it('durably reserves before launch; concurrent replay and fresh service replay never launch twice; ready is atomic v1 evidence', async () => {
+   const f = await fixture();
+   try {
+diff --git a/packages/cli/src/graph-runtime.ts b/packages/cli/src/graph-runtime.ts
+index 2ed1f29..4cf346e 100644
+--- a/packages/cli/src/graph-runtime.ts
++++ b/packages/cli/src/graph-runtime.ts
+@@ -1,9 +1,10 @@
+ import type { WorkerActionRequest, WorkerActionResponse } from '@osstack/protocol';
+ import type Database from 'better-sqlite3';
+ import { GraphRunStore, type GraphRun, type GraphProgramVersion } from '@osstack/core';
+-import { workerCanonical, freezeWorkerData, type StartGraphRequest, type GraphWorkerResume } from '@osstack/protocol';
++import { workerCanonical, freezeWorkerData, type StartGraphRequest, type GraphWorkerResume, type GraphWorkerBinding } from '@osstack/protocol';
+ import type { GraphActionBroker, GraphWorkerRegistration } from './graph-action-broker.js';
+ import type { GraphCheckpointService } from './graph-checkpoint-service.js';
++import { GraphProcessJournal, type GraphWorkerProcessReport } from './graph-process-journal.js';
+ import { GraphReconciler } from './graph-reconciler.js';
+ import { GraphWorkerManager, type GraphWorkerManagerOptions, type GraphWorkerHandle, type GraphWorkerExitEvidence } from './graph-worker-manager.js';
+ 
+@@ -50,6 +51,7 @@ export class GraphRuntime {
+   readonly reconciler: GraphReconciler;
+   private readonly runs: GraphRunStore;
+   private readonly workers: GraphWorkerManager;
++  private readonly processJournal: GraphProcessJournal;
+   private readonly connections = new Map<object, Connection>();
+   private readonly drainTimeoutMs: number;
+   private closed = false;
+@@ -57,6 +59,7 @@ export class GraphRuntime {
+     this.drainTimeoutMs = options.drainTimeoutMs ?? 5000;
+     if (!Number.isSafeInteger(this.drainTimeoutMs) || this.drainTimeoutMs < 1 || this.drainTimeoutMs > 60000) throw new Error('GRAPH_DRAIN_LIMIT');
+     this.runs = new GraphRunStore(options.db);
++    this.processJournal = new GraphProcessJournal(options.db);
+     this.reconciler = new GraphReconciler(options.db);
+     this.workers = new GraphWorkerManager({ ...options.workerOptions, programs: options.programs });
+   }
+@@ -87,6 +90,7 @@ export class GraphRuntime {
+         return decision.kind === 'takeover' && decision.owner === run.leaseOwner && snapshot.run.generation + 1 === run.generation;
+       })) throw new Error('RECOVERY_REQUIRED');
+     }
++    let consumed = false;
+     let connection: object | undefined;
+     let retired = false;
+     const authorize = (renew = true) => {
+@@ -127,15 +131,16 @@ export class GraphRuntime {
+           if (this.options.db.inTransaction) throw new Error('GRAPH_LAUNCH_REQUIRES_TRANSACTION');
+           this.options.db.transaction(() => {
+             authorize(false);
+-            const prior = this.options.db.prepare('SELECT 1 FROM graph_worker_launches WHERE graph_run_id = ? AND generation = ?')
+-              .get(fixed.graphRunId, fixed.generation);
+-            if (prior) throw new Error('GRAPH_GENERATION_ALREADY_LAUNCHED');
+-            this.options.db.prepare('INSERT INTO graph_worker_launches(graph_run_id,generation,owner,identity_json,launched_at) VALUES (?,?,?,?,?)')
+-              .run(fixed.graphRunId, fixed.generation, fixed.owner, workerCanonical(fixed.identity), Date.now());
++            this.processJournal.consume(fixed);
+           }).immediate();
++          consumed = true;
+           this.options.broker.register(key, { ...registration, authorize: () => { authorize(); } });
+           this.options.checkpoints.register(key, { ...fixed, authorize: async () => { authorize(); } });
+         },
++        lifecycle: {
++          launched: launch => this.processJournal.launched(binding, launch),
++          observed: evidence => { if (consumed) this.processJournal.observed(binding, evidence); },
++        },
+         action: (key, request, options) => track(dispatch ? dispatch(key, request, options) : this.options.broker.handle(key, request, options)),
+         checkpoint: (key, request) => track(this.options.checkpoints.execute(key, request)),
+       });
+@@ -152,6 +157,10 @@ export class GraphRuntime {
+     return Object.freeze({ ...handle, cancel: (reason?: string) => { retire(); handle.cancel(reason); },
+       stop: (reason?: string) => { retire(); return this.stop(handle.connection, reason); } });
+   }
++  /** Trusted host inspection only: no signaling, release, replay or recovery authority. */
++  observeWorkerProcess(binding: GraphWorkerBinding): GraphWorkerProcessReport {
++    this.open(); return this.processJournal.observe(binding);
++  }
+   observedExit(connection: object): GraphWorkerExitEvidence | undefined {
+     const receipt = this.connections.get(connection)?.exit;
+     return receipt === undefined ? undefined : structuredClone(receipt);
+@@ -171,10 +180,10 @@ export class GraphRuntime {
+   }
+   /** Database lifetime barrier, separate from bounded physical-stop observations.
+    * Call after close(): an unresolved producer keeps shutdown pending, never
+-   * authorizes closing SQLite while its broker finally/release still uses it. */
++   * authorizes closing SQLite while broker cleanup or late OS events still use it. */
+   async drainDatabaseUsers(): Promise<void> {
+     if (!this.closed) throw new Error('GRAPH_RUNTIME_MUST_CLOSE_BEFORE_DRAIN');
+-    await Promise.allSettled([...this.connections.values()].flatMap(record => [...record.pending]));
++    await Promise.allSettled([...this.connections.values()].flatMap(record => [record.handle.finalExit, ...record.pending]));
+   }
+   async close(): Promise<void> {
+     this.closed = true;
+diff --git a/packages/cli/src/graph-worker-manager.test.ts b/packages/cli/src/graph-worker-manager.test.ts
+index ff1baa0..6797614 100644
+--- a/packages/cli/src/graph-worker-manager.test.ts
++++ b/packages/cli/src/graph-worker-manager.test.ts
+@@ -186,3 +186,26 @@ it('preserves actual late OS exit evidence after the bounded stop result was unc
+     expect(await h.exit).toEqual(bounded);
+   } finally { ignoredKill.mockRestore(); if (pid) { try { process.kill(pid, 'SIGKILL'); } catch {} } }
+ });
++it('records the authenticated child identity before its program receives init', async () => {
++  const f = fixture(); let launch: unknown;
++  const h = f.launch({ ...f.start, lifecycle: {
++    launched: identity => { launch = identity; expect(f.requests).toHaveLength(0); },
++    observed: () => {},
++  }, checkpoint: async (connection, request) => { expect(launch).toBeDefined(); return f.start.checkpoint(connection, request); } });
++  expect(await h.result).toEqual({ task: 'task' }); await h.finalExit;
++  expect(launch).toMatchObject({ pid: expect.any(Number), pgid: expect.any(Number), processIdentity: { pid: expect.any(Number) } });
++});
++it('never sends init if durable launch recording fails', async () => {
++  const f = fixture(); const observations: unknown[] = [];
++  const h = f.launch({ ...f.start, lifecycle: { launched: () => { throw new Error('disk failure'); }, observed: event => { observations.push(event); } } });
++  await expect(h.ready).rejects.toThrow('disk failure'); await h.finalExit;
++  expect(f.requests).toHaveLength(0); expect(observations).toEqual([expect.objectContaining({ kind: 'exited' })]);
++});
++it('records consumed registration failure synchronously without pretending a child was launched', async () => {
++  const f = fixture(); const observations: unknown[] = [];
++  const h = f.launch({ ...f.start, register: () => { throw new Error('registration failed'); }, lifecycle: {
++    launched: () => { throw new Error('unexpected child'); }, observed: event => { observations.push(event); },
++  } });
++  expect(observations).toEqual([expect.objectContaining({ kind: 'spawn_failed', phase: 'registration' })]);
++  expect(await h.finalExit).toEqual(observations[0]);
++});
+diff --git a/packages/cli/src/graph-worker-manager.ts b/packages/cli/src/graph-worker-manager.ts
+index 8fdc632..fd078fe 100644
+--- a/packages/cli/src/graph-worker-manager.ts
++++ b/packages/cli/src/graph-worker-manager.ts
+@@ -3,6 +3,7 @@ import { createHash, randomUUID } from 'node:crypto';
+ import { existsSync, readFileSync } from 'node:fs';
+ import { fileURLToPath } from 'node:url';
+ import type { Duplex } from 'node:stream';
++import { captureGraphProcessIdentity, type GraphProcessIdentity } from './graph-process-identity.js';
+ import {
+   GraphWorkerBinding, GraphWorkerMessage, GraphWorkerResume, GraphJsonValue, StartGraphRequest, WorkerActionRequest,
+   WorkerFramedTransport, computeGraphInputDigest, parseGraphCheckpointRequest, parseGraphCheckpointResponse,
+@@ -22,6 +23,17 @@ export interface GraphWorkerStart {
+   register: (connection: object, binding: GraphWorkerBinding) => void;
+   action: (connection: object, request: WorkerActionRequest, options: { signal: AbortSignal }) => Promise<WorkerActionResponse>;
+   checkpoint: (connection: object, request: GraphCheckpointRequest) => Promise<GraphCheckpointResponse>;
++  /** Trusted synchronous durability port. Launch must commit before init. */
++  lifecycle?: {
++    launched: (launch: GraphWorkerLaunch) => void;
++    observed: (evidence: GraphWorkerExitEvidence) => void;
++  };
++}
++export interface GraphWorkerLaunch {
++  pid: number;
++  pgid: number | null;
++  processIdentity: GraphProcessIdentity;
++  capturedAt: number;
+ }
+ export type GraphWorkerExitEvidence =
+   | { kind: 'exited'; graphRunId: string; generation: number; owner: string; pid: number; code: number | null;
+@@ -130,6 +142,17 @@ export class GraphWorkerManager {
+     const entry = this.options.workerEntry ?? resolveGraphWorkerEntry();
+     const ready = deferred<void>(); const result = deferred<GraphJsonValue>(); const exit = deferred<GraphWorkerExitEvidence>();
+     const finalExit = deferred<Exclude<GraphWorkerExitEvidence, { kind: 'exit_unconfirmed' }>>();
++    const lifecycle = value.lifecycle ? { ...value.lifecycle } : undefined;
++    const persist = (callback: (() => unknown) | undefined) => {
++      const returned = callback?.();
++      if (returned !== undefined) {
++        void Promise.resolve(returned).catch(() => {}); throw new Error('WORKER_LIFECYCLE_MUST_BE_SYNC');
++      }
++    };
++    const observe = (evidence: GraphWorkerExitEvidence) => {
++      try { persist(lifecycle ? () => lifecycle.observed(freezeWorkerData(structuredClone(evidence))) : undefined); }
++      catch (error) { ready.reject(new Error(`WORKER_JOURNAL_FAILED: ${String(error)}`)); result.reject(new Error(`WORKER_JOURNAL_FAILED: ${String(error)}`)); }
++    };
+     const connection = Object.freeze({}); const abort = new AbortController();
+     const record = { binding, programId, input: computeGraphInputDigest(input), active: true };
+     this.runs.set(binding.graphRunId, record);
+@@ -156,7 +179,8 @@ export class GraphWorkerManager {
+           kill('SIGKILL');
+           timers.push(setTimeout(() => {
+             if (!observedExit) { transport?.close(); child?.stdout?.destroy(); child?.stderr?.destroy();
+-              exit.resolve({ kind: 'exit_unconfirmed', pid: child?.pid, error: 'WORKER_EXIT_UNCONFIRMED' }); clear(); }
++              const evidence = { kind: 'exit_unconfirmed' as const, pid: child?.pid, error: 'WORKER_EXIT_UNCONFIRMED' };
++              observe(evidence); exit.resolve(evidence); clear(); }
+           }, terminationMs));
+         }, terminationMs));
+       }, shutdownMs));
+@@ -215,7 +239,7 @@ export class GraphWorkerManager {
+       const evidence = { kind: 'spawn_failed' as const, graphRunId: binding.graphRunId, generation: binding.generation,
+         owner: binding.owner, confirmedAt: Date.now(), evidenceRef: `worker-not-started:${randomUUID()}`,
+         phase: registered ? 'spawn' as const : 'registration' as const, error: String(error) };
+-      exit.resolve(evidence); finalExit.resolve(evidence);
++      observe(evidence); exit.resolve(evidence); finalExit.resolve(evidence);
+     };
+     try {
+       const registration: unknown = value.register(connection, binding);
+@@ -224,7 +248,7 @@ export class GraphWorkerManager {
+       checkAuthority();
+       // Deliberately do not inherit OSSTACK_HOME, HOME, NODE_OPTIONS or DB/socket env.
+       child = spawn(this.options.executable ?? process.execPath, [entry, '--osstack-graph-worker'], {
+-        stdio: ['ignore', 'pipe', 'pipe', 'pipe'], env: { PATH: process.env['PATH'] ?? '', LANG: 'C.UTF-8' },
++        detached: process.platform !== 'win32', stdio: ['ignore', 'pipe', 'pipe', 'pipe'], env: { PATH: process.env['PATH'] ?? '', LANG: 'C.UTF-8' },
+       });
+       child.on('error', spawnFailed);
+       child.once('exit', (code, signal) => {
+@@ -233,7 +257,7 @@ export class GraphWorkerManager {
+         ready.reject(new Error('WORKER_EXITED_BEFORE_READY')); result.reject(new Error('WORKER_EXITED_BEFORE_RESULT'));
+         const evidence = { kind: 'exited' as const, graphRunId: binding.graphRunId, generation: binding.generation, owner: binding.owner,
+           pid: child!.pid!, code, signal, confirmedAt: Date.now(), evidenceRef: `worker-exit:${randomUUID()}` };
+-        exit.resolve(evidence); finalExit.resolve(evidence);
++        observe(evidence); exit.resolve(evidence); finalExit.resolve(evidence);
+       });
+       child.stdout!.on('error', error => cancel(String(error)));
+       child.stderr!.on('error', error => cancel(String(error)));
+@@ -243,6 +267,10 @@ export class GraphWorkerManager {
+       transport = new WorkerFramedTransport(pipe, pipe, receive, error => cancel(error.message));
+       child.once('spawn', () => {
+         try {
++          assertActive();
++          const launch = freezeWorkerData({ pid: child!.pid!, pgid: process.platform === 'win32' ? null : child!.pid!,
++            processIdentity: captureGraphProcessIdentity(child!.pid!), capturedAt: Date.now() });
++          persist(lifecycle ? () => lifecycle.launched(launch) : undefined);
+           assertActive(); transport!.send({ kind: 'init', binding, programId, source: program.source, input,
+             ...(resume ? { resume } : {}), heartbeatMs: Math.max(10, Math.floor(heartbeatMs / 3)), maxInFlight, requestTimeoutMs });
+         } catch (error) { cancel(String(error)); }
+diff --git a/packages/core/src/graph/artifact-store.test.ts b/packages/core/src/graph/artifact-store.test.ts
+index af39843..a123c9c 100644
+--- a/packages/core/src/graph/artifact-store.test.ts
++++ b/packages/core/src/graph/artifact-store.test.ts
+@@ -1,4 +1,6 @@
+-import { execFileSync } from "node:child_process";
++import { execFileSync, fork, spawn } from "node:child_process";
++import { once } from "node:events";
++import { fileURLToPath } from "node:url";
+ import { chmod, lstat, mkdir, mkdtemp, readFile, readdir, readlink, realpath, rm, symlink, writeFile } from "node:fs/promises";
+ import { tmpdir } from "node:os";
+ import { join } from "node:path";
+@@ -148,3 +150,52 @@ it('rejects skip-worktree entries instead of silently freezing sparse omissions
+   git(f.worktree, 'update-index', '--skip-worktree', 'base.txt'); await rm(join(f.worktree, 'base.txt'));
+   await expect(f.store.freeze(f.input, f.authority)).rejects.toThrow('skip-worktree');
+ });
++
++it('F07/F12: SIGKILL during freeze leaves a lock that a fresh store cannot guess away', async () => {
++  const f = await fixture();
++  const inputFile = join(f.root, 'crash-input.json');
++  const storeRoot = join(f.root, 'artifacts');
++  await writeFile(inputFile, JSON.stringify({ storeRoot, input: f.input }));
++  const child = fork(fileURLToPath(new URL('../../../../scripts/fixtures/graph-artifact-crash.mjs', import.meta.url)), [inputFile], {
++    stdio: ['ignore', 'pipe', 'pipe', 'ipc'], env: { ...process.env, OSSTACK_HOME: join(f.root, 'home') },
++  });
++  const exited = new Promise<void>(resolve => child.once('exit', () => resolve()));
++  try {
++    await new Promise<void>((resolve, reject) => {
++      const timer = setTimeout(() => reject(Error('LOCK_BARRIER_TIMEOUT')), 5000);
++      child.once('error', error => { clearTimeout(timer); reject(error); });
++      child.once('exit', () => { clearTimeout(timer); reject(Error('EARLY_PRODUCER_EXIT')); });
++      child.once('message', value => {
++        clearTimeout(timer);
++        if ((value as { kind?: string }).kind === 'lock-acquired') resolve(); else reject(Error('WRONG_BARRIER'));
++      });
++    });
++    child.kill('SIGKILL'); await exited;
++    const locks = await readdir(join(storeRoot, 'locks')); expect(locks).toHaveLength(1);
++    expect(await readdir(join(storeRoot, 'ids'))).toEqual([]);
++    await expect(new GraphArtifactStore(storeRoot).freeze(f.input, f.authority)).rejects.toMatchObject({ code: 'EEXIST' });
++    expect(await readdir(join(storeRoot, 'locks'))).toEqual(locks);
++    expect(await readFile(join(f.worktree, 'base.txt'), 'utf8')).toBe('base');
++    expect(await readdir(join(storeRoot, 'ids'))).toEqual([]);
++  } finally {
++    if (child.exitCode === null && child.signalCode === null) { child.kill('SIGKILL'); await exited; }
++  }
++}, 10000);
++
++it('F07: a late real process writing the old directory cannot mutate the exported candidate or its new restore', async () => {
++  const f = await fixture(); const candidate = await f.store.freeze(f.input, f.authority);
++  const child = spawn(process.execPath, ['-e',
++    'require("node:fs").writeFileSync(process.argv[1],"late old-generation write");process.send({written:true});setInterval(()=>{},1000)',
++    join(f.worktree, 'base.txt')], { stdio: ['ignore', 'pipe', 'pipe', 'ipc'] });
++  const exited = new Promise<void>(resolve => child.once('exit', () => resolve()));
++  try {
++    const [message] = await once(child, 'message', { signal: AbortSignal.timeout(5000) }); expect(message).toEqual({ written: true });
++    const restored = await f.store.restore(candidate.artifactDigest, { rootPath: f.root, directoryName: 'next-generation' });
++    expect(restored.worktreePath).not.toBe(f.worktree);
++    expect(await readFile(join(f.worktree, 'base.txt'), 'utf8')).toBe('late old-generation write');
++    expect(await readFile(join(restored.worktreePath, 'base.txt'), 'utf8')).toBe('base');
++    expect((await f.store.verify(candidate.artifactDigest)).candidateRevision).toBe(candidate.candidateRevision);
++  } finally {
++    if (child.exitCode === null && child.signalCode === null) { child.kill('SIGKILL'); await exited; }
++  }
++}, 10000);
+diff --git a/packages/core/src/state/graph-recovery.test.ts b/packages/core/src/state/graph-recovery.test.ts
+index 160071f..8022ebc 100644
+--- a/packages/core/src/state/graph-recovery.test.ts
++++ b/packages/core/src/state/graph-recovery.test.ts
+@@ -232,3 +232,28 @@ it('persists the admission obligation until an authenticated completed release a
+   expect(() => db.exec('UPDATE graph_action_admissions SET released_at=NULL')).toThrow('immutable');
+   expect(() => db.exec('DELETE FROM graph_action_admissions')).toThrow('immutable');
+ });
++it.each(['missing', 'wrong-owner', 'wrong-identity', 'wrong-ref', 'wrong-time', 'launched', 'valid'])(
++  'requires an exact durable no-child receipt for consumed launches: %s', mode => {
++    run = runs.create({ ...request, idempotencyKey: 'consumed' }, program, 100);
++    run = runs.acquireLease({ ...fence(110), owner: 'failed-owner', leaseExpiresAt: 200 });
++    db.prepare('INSERT INTO graph_worker_launches(graph_run_id,generation,owner,identity_json,launched_at) VALUES(?,?,?,?,?)')
++      .run(run.graphRunId, run.generation, run.leaseOwner, proofKey(mode === 'wrong-identity' ? { ...run.identity, compilerVersion: 'changed' } : run.identity), 115);
++    const s = recovery.snapshot(fence());
++    const worker = { kind: 'not_started' as const, graphRunId: run.graphRunId, generation: run.generation,
++      owner: run.leaseOwner!, confirmedAt: 125, evidenceRef: 'worker-not-started:consumed' };
++    const p = { ...proof(s), worker }; trusted.add(proofKey(p));
++    if (mode !== 'missing') {
++      const event = { ...worker, kind: 'spawn_failed', phase: 'registration', error: 'consumed register failure',
++        owner: mode === 'wrong-owner' ? 'other' : worker.owner,
++        evidenceRef: mode === 'wrong-ref' ? 'other' : worker.evidenceRef,
++        confirmedAt: mode === 'wrong-time' ? 126 : worker.confirmedAt };
++      db.prepare('INSERT INTO graph_worker_process_events(graph_run_id,generation,kind,event_json,observed_at) VALUES(?,?,?,?,?)')
++        .run(run.graphRunId, run.generation, 'spawn_failed', JSON.stringify(event), 125);
++      if (mode === 'launched') db.prepare('INSERT INTO graph_worker_process_events(graph_run_id,generation,kind,event_json,observed_at) VALUES(?,?,?,?,?)')
++        .run(run.graphRunId, run.generation, 'launched', '{}', 120);
++    }
++    const recover = () => recovery.commit(s, { kind: 'takeover', receiptId: 'replace-consumed', owner: 'replacement', leaseExpiresAt: 300 }, p, 130);
++    if (mode === 'valid') expect(recover().run.generation).toBe(2);
++    else expect(recover).toThrow('WORKER_PROOF_MISMATCH');
++  },
++);
+diff --git a/packages/core/src/state/graph-recovery.ts b/packages/core/src/state/graph-recovery.ts
+index 392b760..045fe36 100644
+--- a/packages/core/src/state/graph-recovery.ts
++++ b/packages/core/src/state/graph-recovery.ts
+@@ -15,6 +15,7 @@ const stopped = z.object({ kind: z.literal("stopped"), graphRunId: ref, generati
+ // No-child is a distinct trusted host receipt. Registration denials/duplicate
+ // launch claims are not proof that an existing generation never spawned.
+ const notStarted = stopped.extend({ kind: z.literal("not_started") });
++const noChildEvent = stopped.extend({ kind: z.literal("spawn_failed"), phase: z.enum(["registration", "spawn"]), error: z.string() });
+ const proofSchema = z.object({ snapshotDigest: digest, verifiedAt: count,
+   worker: z.union([stopped, notStarted, z.object({ kind: z.literal("preworker"), evidenceRef: ref }).strict()]),
+   effectWorker: stopped.optional(), executorEvidenceRef: ref, workspaceEvidenceRef: ref }).strict();
+@@ -142,6 +143,22 @@ export class GraphRecoveryStore {
+         || w.confirmedAt < run.leaseAcquiredAt! || w.confirmedAt > proof.verifiedAt) fail("WORKER_PROOF_MISMATCH");
+       if (w.kind === "not_started" && (this.db.prepare("SELECT 1 FROM graph_actions WHERE graph_run_id = ? AND generation = ? LIMIT 1").get(run.graphRunId, run.generation)
+         || this.db.prepare("SELECT 1 FROM graph_checkpoint_requests WHERE graph_run_id = ? AND generation = ? LIMIT 1").get(run.graphRunId, run.generation))) fail("WORKER_PROOF_MISMATCH");
++      if (w.kind === "not_started") {
++        const launch = this.db.prepare("SELECT owner,identity_json,launched_at FROM graph_worker_launches WHERE graph_run_id=? AND generation=?")
++          .get(run.graphRunId, run.generation) as { owner: string; identity_json: string; launched_at: number } | undefined;
++        if (launch) {
++          const events = this.db.prepare("SELECT kind,event_json FROM graph_worker_process_events WHERE graph_run_id=? AND generation=?")
++            .all(run.graphRunId, run.generation) as { kind: string; event_json: string }[];
++          // Consuming a generation is not evidence that no child ever existed.
++          if (launch.owner !== w.owner || launch.identity_json !== canonical(run.identity) || launch.launched_at > w.confirmedAt
++            || events.length !== 1 || events[0]!.kind !== "spawn_failed") fail("WORKER_PROOF_MISMATCH");
++          let event: z.infer<typeof noChildEvent>;
++          try { event = noChildEvent.parse(JSON.parse(events[0]!.event_json)); }
++          catch { return fail("WORKER_PROOF_MISMATCH"); }
++          if (event.graphRunId !== w.graphRunId || event.generation !== w.generation || event.owner !== w.owner
++            || event.evidenceRef !== w.evidenceRef || event.confirmedAt !== w.confirmedAt) fail("WORKER_PROOF_MISMATCH");
++        }
++      }
+       if (snapshot.action && snapshot.action.generation !== run.generation) {
+         const old = proof.effectWorker;
+         const lease = this.db.prepare("SELECT owner, acquired_at FROM graph_worker_leases WHERE graph_run_id = ? AND generation = ?")
+diff --git a/packages/core/src/state/migrations.ts b/packages/core/src/state/migrations.ts
+index 07583d7..5a1707e 100644
+--- a/packages/core/src/state/migrations.ts
++++ b/packages/core/src/state/migrations.ts
+@@ -1613,6 +1613,26 @@ export const MIGRATIONS: readonly Migration[] = [
+         BEGIN SELECT RAISE(ABORT, 'graph driver descriptor immutable'); END;
+     `,
+   },
++  {
++    id: 34,
++    name: "graph_worker_process_events",
++    sql: `
++      CREATE TABLE graph_worker_process_events (
++        sequence INTEGER PRIMARY KEY,
++        graph_run_id TEXT NOT NULL,
++        generation INTEGER NOT NULL,
++        kind TEXT NOT NULL CHECK(kind IN ('launched','spawn_failed','exited','exit_unconfirmed')),
++        event_json TEXT NOT NULL,
++        observed_at INTEGER NOT NULL CHECK(observed_at >= 0 AND observed_at <= 9007199254740991),
++        UNIQUE(graph_run_id,generation,kind),
++        FOREIGN KEY(graph_run_id,generation) REFERENCES graph_worker_launches(graph_run_id,generation)
++      );
++      CREATE TRIGGER graph_worker_process_events_no_update BEFORE UPDATE ON graph_worker_process_events
++        BEGIN SELECT RAISE(ABORT, 'graph process observation immutable'); END;
++      CREATE TRIGGER graph_worker_process_events_no_delete BEFORE DELETE ON graph_worker_process_events
++        BEGIN SELECT RAISE(ABORT, 'graph process observation immutable'); END;
++    `,
++  },
+ ];
+ 
+ export const CURRENT_SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1]!.id;
+
+
+NEW FILE: packages/cli/src/graph-concurrency.integration.test.ts
+import { join } from 'node:path';
+import { fork } from 'node:child_process';
+import { once } from 'node:events';
+import { writeFile } from 'node:fs/promises';
+import { fileURLToPath } from 'node:url';
+import { expect, it } from 'vitest';
+import { openDb } from '@osstack/core';
+import { GraphDelegationStatus } from '@osstack/protocol';
+import { GraphRpcService } from './graph-rpc.js';
+import { graphDeliveryVersion } from './graph-delivery.js';
+import { compileGraphSpec } from '@osstack/graph/spec-compiler';
+import { graphRpcFixture } from './graph-test-fixture.js';
+
+const seed = Number(process.env['G25_SEED'] ?? 250915);
+if (!Number.isSafeInteger(seed) || seed < 0 || seed > 0xffffffff) throw Error('INVALID_G25_SEED');
+function shuffle<T>(items: T[]): T[] {
+  let state = seed || 1;
+  for (let i = items.length - 1; i > 0; i--) {
+    state ^= state << 13; state ^= state >>> 17; state ^= state << 5;
+    const index = (state >>> 0) % (i + 1);
+    [items[i], items[index]] = [items[index]!, items[i]!];
+  }
+  return items;
+}
+
+it(`F09 seed=${seed}: two SQLite connections deduplicate a submit burst and reject changed payloads`, async () => {
+  const f = await graphRpcFixture();
+  const db = openDb({ path: join(f.root, 'control.sqlite') });
+  const peer = new GraphRpcService({ ...f.options, db });
+  try {
+    const calls = shuffle(Array.from({ length: 24 }, (_, i) => i));
+    const responses = await Promise.all(calls.map(i => (i % 2 ? peer : f.service).handle(f.connection, 'graph.submit', f.request)));
+    const ids = responses.map(value => GraphDelegationStatus.parse(value).graphRunId);
+    expect(new Set(ids).size).toBe(1);
+    const changed = { ...f.request, spec: { ...f.request.spec, limits: { ...f.request.spec.limits, maxActionStarts: 15 } } };
+    await expect(peer.handle(f.connection, 'graph.submit', changed)).rejects.toThrow('IDEMPOTENCY_CONFLICT');
+    const ready = await f.until(ids[0]!, value => value.status === 'ready');
+    expect(f.writes()).toBe(1);
+    expect(ready.budget.actionStarts).toBe(7);
+    expect(db.prepare('SELECT count(*) n FROM graph_worker_launches').get()).toEqual({ n: 1 });
+    expect(db.prepare('SELECT count(*) n FROM graph_runs').get()).toEqual({ n: 1 });
+    expect(db.prepare('SELECT count(*) n FROM graph_verification_joins').get()).toEqual({ n: 1 });
+  } finally { await peer.close(); db.close(); await f.close(); }
+}, 30000);
+
+it(`F08/F11 seed=${seed}: competing cancellation revisions cannot relaunch a revoked writer`, async () => {
+  const f = await graphRpcFixture('cancel');
+  try {
+    const first = await f.start(); await f.until(first.graphRunId, () => f.writes() === 1);
+    f.grant(false);
+    const before = await f.status(first.graphRunId);
+    const requests = shuffle(Array.from({ length: 12 }, (_, i) => ({ schemaVersion: 1, kind: 'cancel', scope: f.request.scope,
+      idempotencyKey: `cancel-${i}`, graphRunId: first.graphRunId, expectedRevision: before.revision })));
+    const outcomes = await Promise.allSettled(requests.map(request => f.service.handle(f.connection, 'graph.cancel', request)));
+    expect(outcomes.filter(result => result.status === 'fulfilled')).toHaveLength(1);
+    for (const result of outcomes) if (result.status === 'rejected') expect(String(result.reason)).toContain('REVISION_CONFLICT');
+    const cancelled = await f.until(first.graphRunId, value => value.status === 'cancelled');
+    const winner = requests[outcomes.findIndex(result => result.status === 'fulfilled')]!;
+    expect(await f.service.handle(f.connection, 'graph.cancel', winner)).toMatchObject({ status: 'cancelled' });
+    expect(cancelled.generation).toBe(1); expect(f.writes()).toBe(1); expect(f.abortObserved()).toBe(true);
+    expect(f.db.prepare('SELECT count(*) n FROM graph_action_admissions WHERE released_at IS NULL').get()).toEqual({ n: 0 });
+  } finally { await f.close(); }
+}, 30000);
+
+it(`F09/F11 seed=${seed}: resume and cancel race commits one revision without resetting the budget`, async () => {
+  const f = await graphRpcFixture('repair');
+  try {
+    const first = await f.start(); const waiting = await f.until(first.graphRunId, value => value.status === 'waiting_input');
+    const common = { schemaVersion: 1, scope: f.request.scope, graphRunId: first.graphRunId, expectedRevision: waiting.revision };
+    const requests = shuffle([
+      { method: 'graph.resume', request: { ...common, kind: 'resume', idempotencyKey: 'race-resume', interruptId: waiting.interrupt!.interruptId,
+        input: { kind: 'data', value: { inputDigest: waiting.inputDigest } } } },
+      { method: 'graph.cancel', request: { ...common, kind: 'cancel', idempotencyKey: 'race-cancel' } },
+    ]);
+    const results = await Promise.allSettled(requests.map(({ method, request }) => f.service.handle(f.connection, method, request)));
+    expect(results.filter(result => result.status === 'fulfilled')).toHaveLength(1);
+    const loser = results.find(result => result.status === 'rejected')!;
+    if (loser.status === 'rejected') expect(String(loser.reason)).toContain('REVISION_CONFLICT');
+    const final = await f.until(first.graphRunId, value => ['ready', 'cancelled'].includes(value.status));
+    expect(final.createdAt).toBe(first.createdAt);
+    expect(final.inputDigest).toBe(first.inputDigest);
+    expect(final.budget.actionStarts).toBeGreaterThanOrEqual(waiting.budget.actionStarts);
+    expect(f.writes()).toBe(final.status === 'ready' ? 2 : 1);
+  } finally { await f.close(); }
+}, 45000);
+
+it(`F09 seed=${seed}: independent processes race on the same durable key without creating a second run`, async () => {
+  const f = await graphRpcFixture();
+  const input = join(f.root, 'admission.json');
+  await writeFile(input, JSON.stringify({ path: join(f.root, 'control.sqlite'), request: f.request,
+    version: graphDeliveryVersion(compileGraphSpec(f.request.spec)) }));
+  const children = Array.from({ length: 4 }, () => fork(fileURLToPath(new URL('../../../scripts/fixtures/graph-submit-race.mjs', import.meta.url)), [input], {
+    stdio: ['ignore', 'pipe', 'pipe', 'ipc'], env: { ...process.env, OSSTACK_HOME: join(f.root, 'isolated-home') },
+  }));
+  const exits = children.map(child => once(child, 'exit'));
+  try {
+    const ready = await Promise.all(children.map(child => once(child, 'message', { signal: AbortSignal.timeout(5000) })));
+    for (const [message] of ready) expect(message).toEqual({ kind: 'ready' });
+    const replies = children.map(child => once(child, 'message', { signal: AbortSignal.timeout(5000) }));
+    for (const child of shuffle([...children])) child.send('go');
+    const responses = (await Promise.all(replies)).map(([value]) => value as { kind: string; graphRunId: string });
+    expect(responses.every(value => value.kind === 'created')).toBe(true);
+    expect(new Set(responses.map(value => value.graphRunId)).size).toBe(1);
+    await Promise.all(exits);
+    expect(f.db.prepare('SELECT count(*) n FROM graph_runs').get()).toEqual({ n: 1 });
+    expect(f.db.prepare('SELECT count(*) n FROM graph_requests').get()).toEqual({ n: 1 });
+    expect(f.db.prepare('SELECT count(*) n FROM graph_worker_launches').get()).toEqual({ n: 0 });
+  } finally {
+    for (const child of children) if (child.exitCode === null && child.signalCode === null) child.kill('SIGKILL');
+    await Promise.allSettled(exits); await f.close();
+  }
+}, 15000);
+
+
+NEW FILE: packages/cli/src/graph-faults.integration.test.ts
+import { fork, execFileSync, type ChildProcess } from 'node:child_process';
+import { once } from 'node:events';
+import { mkdtempSync, rmSync, existsSync, readFileSync, symlinkSync } from 'node:fs';
+import { join, resolve } from 'node:path';
+import { tmpdir } from 'node:os';
+import { fileURLToPath } from 'node:url';
+import { afterAll, afterEach, expect, it } from 'vitest';
+import type { GraphWorkerBinding } from '@osstack/protocol';
+import type { GraphWorkerProcessReport } from './graph-process-journal.js';
+
+const repo = fileURLToPath(new URL('../../../', import.meta.url));
+const build = mkdtempSync(join(tmpdir(), 'g25-process-build-'));
+const entry = join(build, 'host.mjs'); let built = false;
+const children: ChildProcess[] = []; const pids = new Set<number>(); const roots: string[] = [];
+afterEach(async () => {
+  for (const child of children.splice(0)) if (child.exitCode === null && child.signalCode === null) {
+    const exited = once(child, 'exit'); child.kill('SIGKILL'); await exited;
+  }
+  for (const pid of pids) { try { process.kill(pid, 'SIGKILL'); } catch {} } pids.clear();
+  for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true });
+});
+afterAll(() => rmSync(build, { recursive: true, force: true }));
+interface HostMessage { binding: GraphWorkerBinding; report: GraphWorkerProcessReport; afterDuplicate?: GraphWorkerProcessReport; duplicate?: {kind: string}; hostPid?: number }
+async function host(root: string, mode: 'start' | 'inspect') {
+  if (!built) {
+    symlinkSync(resolve(repo, 'packages/cli/node_modules'), join(build, 'node_modules'), 'dir');
+    execFileSync(resolve(repo, 'node_modules/.bin/esbuild'), [resolve(repo, 'scripts/fixtures/graph-process-host.ts'), '--bundle', '--platform=node', '--format=esm', '--packages=external', `--outfile=${entry}`]);
+    built = true;
+  }
+  const child = fork(entry, [root, mode], { cwd: repo, env: { ...process.env }, stdio: ['ignore', 'pipe', 'pipe', 'ipc'] }); children.push(child);
+  let stderr = ''; child.stderr!.on('data', chunk => { stderr += String(chunk); });
+  const message = await new Promise<HostMessage>((resolveMessage, reject) => {
+    child.once('message', value => { resolveMessage(value as HostMessage); });
+    child.once('exit', () => reject(new Error(`host exited before message: ${stderr}`)));
+    child.once('error', reject);
+  });
+  return { child, message };
+}
+it('fresh host observes a SIGKILLed supervisor without releasing or replaying the live worker or descendants', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'g25-process-crash-')); roots.push(root);
+  const first = await host(root, 'start');
+  expect(first.message.report).toMatchObject({ intentRecorded: true, observations: [], recovery: 'held', launch: { pid: expect.any(Number) } });
+  pids.add(first.message.report.launch!.pid);
+  await expect.poll(() => existsSync(join(root, 'worker.json'))).toBe(true);
+  const worker = JSON.parse(readFileSync(join(root, 'worker.json'), 'utf8')) as { pid: number; child: number; escaped: number };
+  pids.add(worker.child); pids.add(worker.escaped);
+  expect(worker.pid).toBe(first.message.report.launch!.pid);
+  for (const name of ['descendant.log', 'escaped.log']) await expect.poll(() => existsSync(join(root, name))).toBe(true);
+  const hostExit = once(first.child, 'exit'); first.child.kill('SIGKILL'); await hostExit;
+  const independent = await host(root, 'inspect');
+  expect(independent.message.hostPid).not.toBe(first.child.pid);
+  expect(independent.message.report.launch).toEqual(first.message.report.launch);
+  expect(independent.message.report.observations).toEqual([]);
+  expect(independent.message.report.leader.state).toBe(process.platform === 'linux' ? 'running' : 'unknown');
+  expect(independent.message.duplicate?.kind).toBe('spawn_failed');
+  expect(independent.message.afterDuplicate).toEqual(independent.message.report);
+  process.kill(worker.pid, 'SIGKILL'); pids.delete(worker.pid);
+  for (const name of ['descendant.log', 'escaped.log']) {
+    const file = join(root, name); const before = readFileSync(file, 'utf8').length;
+    await expect.poll(() => readFileSync(file, 'utf8').length).toBeGreaterThan(before);
+  }
+  const afterLeaderExit = await host(root, 'inspect');
+  expect(afterLeaderExit.message.report).toMatchObject({ observations: [], executors: { state: 'unknown' }, recovery: 'held' });
+  // An unobserved leader exit never upgrades the old host's journal into executor proof.
+  expect(afterLeaderExit.message.report.launch).toEqual(first.message.report.launch);
+});
+
+
+NEW FILE: packages/cli/src/graph-process-fixture.ts
+import type Database from 'better-sqlite3';
+import { createHash } from 'node:crypto';
+import { writeFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { openDb, GraphRunStore, GraphCheckpointStore, type GraphProgramVersion, type GraphRun } from '@osstack/core';
+import type { StartGraphRequest, GraphWorkerBinding } from '@osstack/protocol';
+import { GraphRuntime, type GraphRuntimeStart, type GraphRuntimeOptions } from './graph-runtime.js';
+import { GraphActionBroker } from './graph-action-broker.js';
+import { GraphCheckpointService } from './graph-checkpoint-service.js';
+
+interface ProcessFixture {
+  db: Database.Database;
+  runtime: GraphRuntime;
+  broker: GraphActionBroker;
+  checkpoints: GraphCheckpointService;
+  options: GraphRuntimeOptions;
+  run: GraphRun;
+  binding: GraphWorkerBinding;
+  start: GraphRuntimeStart;
+}
+export function processFixture(root: string, source = 'export async function run() { return 42; }'): ProcessFixture {
+  const db: Database.Database = openDb({ path: join(root, 'state.db') });
+  const modulePath = join(root, 'program.mjs'); writeFileSync(modulePath, source);
+  const programs = [{ id: 'process', modulePath, digest: createHash('sha256').update(source).digest('hex') }];
+  const version: GraphProgramVersion = { executionModel: 'langgraph-functional-v1', durability: 'sync', engineVersion: '1.4.15', checkpointVersion: '1.1.5', templateVersion: '1', registryVersion: '1', compilerVersion: '1', schemaVersion: '1', compiledProgramDigest: programs[0]!.digest };
+  const request: StartGraphRequest = { schemaVersion: 1, kind: 'start', scope: { schemaVersion: 1, tenantId: 't', principalId: 'p', workspaceId: 'w' }, idempotencyKey: 'process', inputArtifactRef: 'input', source: { product: 'osstack', requestId: 'process' },
+    spec: { schemaVersion: 1, template: 'code-delivery-v1', publication: 'artifact_only', input: { taskRef: 'task', repositoryRef: 'repo', baseRevision: 'a'.repeat(40), acceptanceRef: 'accept' }, limits: { maxEpochs: 1, maxBranchAttempts: 2, maxConcurrentReaders: 2, maxConcurrentWritersPerRepo: 1, maxActionStarts: 10, deadlineSeconds: 300, tokenReservationLimit: 100 } } };
+  const broker = new GraphActionBroker(db, { acquire: async () => { throw new Error('no executor'); } });
+  const checkpoints = new GraphCheckpointService({ runs: new GraphRunStore(db), checkpoints: new GraphCheckpointStore(db), bindings: new Map() });
+  const options = { db, broker, checkpoints, programs, workerOptions: { shutdownTimeoutMs: 30, terminationTimeoutMs: 30, heartbeatTimeoutMs: 60000 } };
+  const runtime = new GraphRuntime(options);
+  const prepared = runtime.prepare(request, version);
+  const run = prepared.generation === 0 ? runtime.claim(prepared, 'owner', Date.now() + 30000) : prepared;
+  const binding: GraphWorkerBinding = { scope: run.scope, graphRunId: run.graphRunId, identity: run.identity, generation: run.generation, owner: run.leaseOwner! };
+  const start: GraphRuntimeStart = { request, run, programId: 'process', authorize: () => {}, registration: { ...binding, epoch: 0,
+    workspace: { workspace_id: 'w', workspace_path: root }, authorize: () => {}, actions: [] } };
+  return { db, runtime, broker, checkpoints, options, run, binding, start };
+}
+
+
+NEW FILE: packages/cli/src/graph-process-identity.test.ts
+import { spawn } from 'node:child_process';
+import { once } from 'node:events';
+import { expect, it, vi } from 'vitest';
+import { captureGraphProcessIdentity, observeGraphProcessIdentity, compareGraphProcessIdentity } from './graph-process-identity.js';
+
+it('observes an actual isolated child without treating its leader as all executors', async () => {
+  const child = spawn(process.execPath, ['-e', 'setInterval(()=>{},1000)'], { detached: true, stdio: 'ignore' });
+  await once(child, 'spawn');
+  try {
+    const identity = captureGraphProcessIdentity(child.pid!);
+    expect(identity.pid).toBe(child.pid);
+    if (process.platform === 'linux') {
+      expect(identity).toMatchObject({ kind: 'linux', pgid: child.pid, bootId: expect.any(String), startTicks: expect.any(String) });
+      expect(observeGraphProcessIdentity(identity).state).toBe('running');
+      if (identity.kind === 'linux') expect(observeGraphProcessIdentity({ ...identity, startTicks: String(BigInt(identity.startTicks) + 1n) }))
+        .toMatchObject({ state: 'unknown', reason: 'identity_mismatch' });
+    } else expect(observeGraphProcessIdentity(identity).state).toBe('unknown');
+  } finally { const exited = once(child, 'exit'); child.kill('SIGKILL'); await exited; }
+});
+it('rejects PID reuse, boot changes, process group changes and coarse timestamps without signaling', () => {
+  const saved = { kind: 'linux' as const, pid: 123, pgid: 123, bootId: 'boot', startTicks: '100' };
+  const kill = vi.spyOn(process, 'kill');
+  try {
+    for (const changed of [{ startTicks: '101' }, { bootId: 'new' }, { pgid: 124 }, { pid: 124 }]) {
+      expect(compareGraphProcessIdentity(saved, { ...saved, ...changed })).toMatchObject({ state: 'unknown', reason: 'identity_mismatch' });
+    }
+    const coarse = { kind: 'unverifiable' as const, pid: 123, pgid: 123, platform: 'darwin', detail: 'same second' };
+    expect(compareGraphProcessIdentity(coarse, coarse).state).toBe('unknown');
+    expect(kill).not.toHaveBeenCalled();
+  } finally { kill.mockRestore(); }
+});
+it('does not probe invalid PIDs', () => {
+  expect(() => captureGraphProcessIdentity(-1)).toThrow('GRAPH_PROCESS_PID');
+  expect(() => captureGraphProcessIdentity(NaN)).toThrow('GRAPH_PROCESS_PID');
+});
+
+
+NEW FILE: packages/cli/src/graph-process-identity.ts
+import { execFileSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
+
+export type GraphProcessIdentity =
+  | { kind: 'linux'; pid: number; pgid: number; bootId: string; startTicks: string }
+  | { kind: 'unverifiable'; pid: number; pgid: number | null; platform: string; detail: string };
+export type GraphProcessObservation = {
+  state: 'running' | 'absent' | 'unknown';
+  reason: string;
+};
+function validPid(pid: number): void {
+  if (!Number.isSafeInteger(pid) || pid < 1) throw new Error('GRAPH_PROCESS_PID');
+}
+function linuxIdentity(pid: number): GraphProcessIdentity {
+  const bootId = readFileSync('/proc/sys/kernel/random/boot_id', 'utf8').trim();
+  const stat = readFileSync(`/proc/${pid}/stat`, 'utf8');
+  // comm can contain spaces and parentheses. Fields after its final ')' start at state (3).
+  const fields = stat.slice(stat.lastIndexOf(')') + 2).trim().split(/\s+/);
+  const pgid = Number(fields[2]); const startTicks = fields[19];
+  if (!bootId || !startTicks || !/^\d+$/.test(startTicks) || !Number.isSafeInteger(pgid) || pgid < 1
+    || Number(stat.slice(0, stat.indexOf(' '))) !== pid) throw new Error('GRAPH_PROCESS_STAT');
+  return { kind: 'linux', pid, pgid, bootId, startTicks };
+}
+/** Called for the direct child before init. A coarse start timestamp is diagnostic only. */
+export function captureGraphProcessIdentity(pid: number): GraphProcessIdentity {
+  validPid(pid);
+  try {
+    if (process.platform === 'linux') return linuxIdentity(pid);
+    if (process.platform === 'darwin') {
+      const detail = execFileSync('/bin/ps', ['-p', String(pid), '-o', 'pgid=', '-o', 'lstart='],
+        { encoding: 'utf8', timeout: 1000, stdio: ['ignore', 'pipe', 'pipe'], env: { LC_ALL: 'C' } }).trim();
+      const pgid = Number(detail.split(/\s+/)[0]);
+      return { kind: 'unverifiable', pid, pgid: Number.isSafeInteger(pgid) && pgid > 0 ? pgid : null,
+        platform: process.platform, detail: `coarse_lstart:${detail}` };
+    }
+  } catch { /* Missing or denied OS identity must not become a stop proof. */ }
+  return { kind: 'unverifiable', pid, pgid: null, platform: process.platform, detail: 'os_identity_unavailable' };
+}
+export function compareGraphProcessIdentity(saved: GraphProcessIdentity, current: GraphProcessIdentity): GraphProcessObservation {
+  if (saved.kind !== 'linux' || current.kind !== 'linux') return { state: 'unknown', reason: 'identity_unverifiable' };
+  if (saved.pid !== current.pid || saved.pgid !== current.pgid || saved.bootId !== current.bootId || saved.startTicks !== current.startTicks) {
+    return { state: 'unknown', reason: 'identity_mismatch' };
+  }
+  return { state: 'running', reason: 'same_linux_process' };
+}
+/** Read-only leader observation. Never proves descendants or opaque adapter effects stopped. */
+export function observeGraphProcessIdentity(saved: GraphProcessIdentity): GraphProcessObservation {
+  validPid(saved.pid);
+  if (saved.kind !== 'linux' || process.platform !== 'linux') return { state: 'unknown', reason: 'identity_unverifiable' };
+  try {
+    if (readFileSync('/proc/sys/kernel/random/boot_id', 'utf8').trim() !== saved.bootId) return { state: 'unknown', reason: 'boot_identity_mismatch' };
+    try { return compareGraphProcessIdentity(saved, linuxIdentity(saved.pid)); }
+    catch (error) {
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') return { state: 'absent', reason: 'leader_absent_only' };
+      throw error;
+    }
+  } catch { return { state: 'unknown', reason: 'os_identity_unavailable' }; }
+}
+
+
+NEW FILE: packages/cli/src/graph-process-journal.test.ts
+import { mkdtempSync, rmSync } from 'node:fs';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
+import { ChildProcess } from 'node:child_process';
+import { openDb } from '@osstack/core';
+import { afterEach, expect, it, vi } from 'vitest';
+import { processFixture } from './graph-process-fixture.js';
+import { GraphRuntime } from './graph-runtime.js';
+import { GraphProcessJournal } from './graph-process-journal.js';
+
+const cleanup: Array<() => Promise<void>> = [];
+afterEach(async () => { for (const close of cleanup.splice(0).reverse()) await close(); });
+function fixture(source?: string) {
+  const root = mkdtempSync(join(tmpdir(), 'g25-journal-')); const f = processFixture(root, source);
+  cleanup.push(async () => { await f.runtime.close(); await f.runtime.drainDatabaseUsers(); if (f.db.open) f.db.close(); rmSync(root, { recursive: true, force: true }); });
+  return f;
+}
+it('persists intent before registration and no-child registration failure after consuming generation', async () => {
+  const f = fixture();
+  const register = vi.spyOn(f.broker, 'register').mockImplementation(() => {
+    expect(f.runtime.observeWorkerProcess(f.binding)).toMatchObject({ intentRecorded: true, launch: null, leader: { state: 'unknown' } });
+    throw new Error('consumed registration failure');
+  });
+  const handle = f.runtime.start(f.start);
+  expect(f.runtime.observeWorkerProcess(f.binding).observations).toEqual([expect.objectContaining({ kind: 'spawn_failed', phase: 'registration' })]);
+  expect(await handle.finalExit).toMatchObject({ kind: 'spawn_failed' }); register.mockRestore();
+  const fresh = new GraphRuntime(f.options);
+  try {
+    const retry = fresh.start(f.start); expect(await retry.finalExit).toMatchObject({ kind: 'spawn_failed', error: expect.stringContaining('ALREADY_LAUNCHED') });
+    expect(fresh.observeWorkerProcess(f.binding).observations).toHaveLength(1);
+  } finally { await fresh.close(); await fresh.drainDatabaseUsers(); }
+});
+it('journals an actual failed OS spawn and never launches an already consumed generation', async () => {
+  const f = fixture(); const runtime = new GraphRuntime({ ...f.options, workerOptions: { executable: '/g25-missing-executable' } });
+  try {
+    expect(await runtime.start(f.start).finalExit).toMatchObject({ kind: 'spawn_failed', phase: 'spawn' });
+    expect(runtime.observeWorkerProcess(f.binding)).toMatchObject({ launch: null, leader: { state: 'absent', reason: 'authenticated_no_child' }, recovery: 'held' });
+  } finally { await runtime.close(); await runtime.drainDatabaseUsers(); }
+});
+it('retains launch and true exit, rejects changed identity and protects immutable observations', async () => {
+  const f = fixture(); const h = f.runtime.start(f.start); expect(await h.result).toBe(42); await h.finalExit;
+  const report = new GraphRuntime(f.options).observeWorkerProcess(f.binding);
+  expect(report.launch).toMatchObject({ pid: expect.any(Number), pgid: expect.any(Number) });
+  expect(report.observations).toEqual([expect.objectContaining({ kind: 'exited' })]);
+  expect(report).toMatchObject({ executors: { state: 'unknown' }, recovery: 'held' });
+  expect(() => f.runtime.observeWorkerProcess({ ...f.binding, identity: { ...f.binding.identity, compiledProgramDigest: 'f'.repeat(64) } })).toThrow('GRAPH_PROCESS_BINDING');
+  expect(() => f.runtime.observeWorkerProcess({ ...f.binding, owner: 'impostor' })).toThrow('GRAPH_PROCESS_BINDING');
+  expect(() => f.db.prepare('UPDATE graph_worker_process_events SET event_json = ?').run('{}')).toThrow('immutable');
+  expect(() => f.db.prepare('DELETE FROM graph_worker_process_events').run()).toThrow('immutable');
+});
+it('keeps the pre-spawn crash window unknown and does not derive stop from lease expiry', () => {
+  const f = fixture(); const journal = new GraphProcessJournal(f.db); journal.consume(f.binding);
+  const now = vi.spyOn(Date, 'now').mockReturnValue(f.run.leaseExpiresAt! + 1);
+  try {
+  expect(f.runtime.observeWorkerProcess(f.binding)).toMatchObject({ intentRecorded: true, launch: null, leader: { state: 'unknown', reason: 'launch_window_unobserved' }, recovery: 'held' });
+  } finally { now.mockRestore(); }
+});
+it('persists timeout separately from actual late exit and keeps DB drainage pending', async () => {
+  const f = fixture('export async function run(){process.on("SIGTERM",()=>{});console.log("running");while(true){}}');
+  const handle = f.runtime.start(f.start); await handle.ready;
+  await expect.poll(() => handle.logs().stdout).toContain('running');
+  const ignoredKill = vi.spyOn(ChildProcess.prototype, 'kill').mockReturnValue(true);
+  let pid: number | undefined;
+  try {
+    const bounded = await handle.stop(); expect(bounded.worker.kind).toBe('exit_unconfirmed');
+    const report = f.runtime.observeWorkerProcess(f.binding); pid = report.launch!.pid;
+    expect(report.observations.map(event => event.kind)).toEqual(['exit_unconfirmed']);
+    await f.runtime.close(); let drained = false; const drainage = f.runtime.drainDatabaseUsers().then(() => { drained = true; });
+    await new Promise(resolve => setImmediate(resolve)); expect(drained).toBe(false);
+    process.kill(pid, 'SIGKILL'); await handle.finalExit; await drainage;
+    expect(new GraphProcessJournal(f.db).observe(f.binding).observations.map(event => event.kind)).toEqual(['exit_unconfirmed', 'exited']);
+  } finally { ignoredKill.mockRestore(); if (pid) { try { process.kill(pid, 'SIGKILL'); } catch {} } }
+});
+
+it('reopens consumed registration failure from SQLite without inferring that an intent-only launch stopped', async () => {
+  const f = fixture(); const register = vi.spyOn(f.checkpoints, 'register').mockImplementation(() => { throw new Error('checkpoint registration failed'); });
+  const handle = f.runtime.start(f.start); const exit = await handle.finalExit;
+  register.mockRestore(); await f.runtime.close(); await f.runtime.drainDatabaseUsers();
+  const path = f.db.name; f.db.close(); const reopened = openDb({ path });
+  try {
+    const report = new GraphProcessJournal(reopened).observe(f.binding);
+    expect(report).toMatchObject({ intentRecorded: true, launch: null, leader: { state: 'absent', reason: 'authenticated_no_child' }, recovery: 'held' });
+    expect(report.observations).toEqual([exit]);
+  } finally { reopened.close(); }
+});
+it('refuses changed compiled program bytes on a fresh runtime before launching', async () => {
+  const f = fixture(); const handle = f.runtime.start(f.start); await handle.finalExit;
+  const fresh = new GraphRuntime(f.options);
+  try {
+    const identity = { ...f.run.identity, compiledProgramDigest: 'f'.repeat(64) };
+    expect(() => fresh.start({ ...f.start, run: { ...f.run, identity }, registration: { ...f.start.registration, identity } })).toThrow('PROGRAM_IDENTITY_MISMATCH');
+    expect(fresh.observeWorkerProcess(f.binding).observations).toHaveLength(1);
+  } finally { await fresh.close(); await fresh.drainDatabaseUsers(); }
+});
+
+
+NEW FILE: packages/cli/src/graph-process-journal.ts
+import type Database from 'better-sqlite3';
+import { GraphRunStore } from '@osstack/core';
+import { GraphWorkerBinding, workerCanonical } from '@osstack/protocol';
+import { observeGraphProcessIdentity, type GraphProcessObservation } from './graph-process-identity.js';
+import type { GraphWorkerLaunch, GraphWorkerExitEvidence } from './graph-worker-manager.js';
+
+type ProcessEvent = { kind: 'launched'; launch: GraphWorkerLaunch } | GraphWorkerExitEvidence;
+export interface GraphWorkerProcessReport {
+  binding: GraphWorkerBinding;
+  intentRecorded: boolean;
+  launch: GraphWorkerLaunch | null;
+  observations: GraphWorkerExitEvidence[];
+  leader: GraphProcessObservation;
+  executors: { state: 'unknown'; reason: 'opaque_adapters_and_descendants_unproven' };
+  recovery: 'held';
+}
+/** Append-only host observations, not recovery attestations. */
+export class GraphProcessJournal {
+  constructor(private readonly db: Database.Database) {}
+  private binding(value: GraphWorkerBinding): GraphWorkerBinding {
+    const binding = GraphWorkerBinding.parse(value);
+    const run = new GraphRunStore(this.db).get(binding.scope, binding.graphRunId);
+    if (!run || workerCanonical(run.identity) !== workerCanonical(binding.identity)) throw new Error('GRAPH_PROCESS_BINDING');
+    return binding;
+  }
+  private intent(binding: GraphWorkerBinding): boolean {
+    const row = this.db.prepare('SELECT owner, identity_json FROM graph_worker_launches WHERE graph_run_id = ? AND generation = ?')
+      .get(binding.graphRunId, binding.generation) as { owner: string; identity_json: string } | undefined;
+    if (!row) return false;
+    if (row.owner !== binding.owner || row.identity_json !== workerCanonical(binding.identity)) throw new Error('GRAPH_PROCESS_BINDING');
+    return true;
+  }
+  consume(value: GraphWorkerBinding): void {
+    const binding = this.binding(value);
+    if (this.intent(binding)) throw new Error('GRAPH_GENERATION_ALREADY_LAUNCHED');
+    this.db.prepare('INSERT INTO graph_worker_launches(graph_run_id,generation,owner,identity_json,launched_at) VALUES (?,?,?,?,?)')
+      .run(binding.graphRunId, binding.generation, binding.owner, workerCanonical(binding.identity), Date.now());
+  }
+  private append(value: GraphWorkerBinding, event: ProcessEvent): void {
+    const binding = this.binding(value);
+    if (!this.intent(binding)) throw new Error('GRAPH_PROCESS_INTENT_REQUIRED');
+    this.db.prepare('INSERT INTO graph_worker_process_events(graph_run_id,generation,kind,event_json,observed_at) VALUES (?,?,?,?,?)')
+      .run(binding.graphRunId, binding.generation, event.kind, workerCanonical(event), Date.now());
+  }
+  launched(binding: GraphWorkerBinding, launch: GraphWorkerLaunch): void {
+    if (!Number.isSafeInteger(launch.pid) || launch.pid < 1 || launch.processIdentity.pid !== launch.pid
+      || (launch.pgid !== null && launch.pgid !== launch.pid)
+      || (launch.processIdentity.pgid !== null && launch.processIdentity.pgid !== launch.pgid)) throw new Error('GRAPH_PROCESS_LAUNCH_IDENTITY');
+    this.append(binding, { kind: 'launched', launch });
+  }
+  observed(binding: GraphWorkerBinding, evidence: GraphWorkerExitEvidence): void {
+    if (evidence.kind !== 'exit_unconfirmed' && (evidence.graphRunId !== binding.graphRunId
+      || evidence.generation !== binding.generation || evidence.owner !== binding.owner)) throw new Error('GRAPH_PROCESS_BINDING');
+    this.append(binding, evidence);
+  }
+  observe(value: GraphWorkerBinding): GraphWorkerProcessReport {
+    const binding = this.binding(value); const intentRecorded = this.intent(binding);
+    const rows = this.db.prepare('SELECT event_json FROM graph_worker_process_events WHERE graph_run_id = ? AND generation = ? ORDER BY sequence')
+      .all(binding.graphRunId, binding.generation) as { event_json: string }[];
+    const events = rows.map(row => JSON.parse(row.event_json) as ProcessEvent);
+    const launch = events.find((event): event is Extract<ProcessEvent, { kind: 'launched' }> => event.kind === 'launched')?.launch ?? null;
+    const observations = events.filter((event): event is GraphWorkerExitEvidence => event.kind !== 'launched');
+    const leader: GraphProcessObservation = launch ? observeGraphProcessIdentity(launch.processIdentity)
+      : observations.some(event => event.kind === 'spawn_failed') ? { state: 'absent', reason: 'authenticated_no_child' }
+      : { state: 'unknown', reason: intentRecorded ? 'launch_window_unobserved' : 'no_launch_intent' };
+    return { binding, intentRecorded, launch, observations, leader,
+      executors: { state: 'unknown', reason: 'opaque_adapters_and_descendants_unproven' }, recovery: 'held' };
+  }
+}
+
+
+NEW FILE: packages/cli/src/graph-test-fixture.ts
+import type Database from 'better-sqlite3';
+import { execFileSync } from 'node:child_process';
+import { mkdtemp, mkdir, writeFile, readFile, realpath } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { openDb, CapabilitySchema } from '@osstack/core';
+import { GraphDelegationStatus, type StartGraphRequest } from '@osstack/protocol';
+import { FifoSemaphore } from '@osstack/autonomy';
+import { GraphRpcService, type GraphHostRegistration, type GraphRpcOptions } from './graph-rpc.js';
+import { GovernedExecution } from './governed-execution.js';
+import type { AgentAdapter } from '@osstack/agents';
+const git = (cwd: string, ...args: string[]) => execFileSync('git', args, { cwd, encoding: 'utf8' }).trim();
+interface GraphRpcFixture {
+  root: string; db: Database.Database; request: StartGraphRequest; registration: GraphHostRegistration;
+  connection: object; service: GraphRpcService; options: GraphRpcOptions; writer: AgentAdapter; reviewer: AgentAdapter;
+  start: () => Promise<GraphDelegationStatus>;
+  status: (id: string, host?: GraphRpcService) => Promise<GraphDelegationStatus>;
+  until: (id: string, predicate: (status: GraphDelegationStatus) => boolean) => Promise<GraphDelegationStatus>;
+  writes: () => number; abortObserved: () => boolean; grant: (value: boolean) => void; close: () => Promise<void>;
+}
+export async function graphRpcFixture(mode: 'success' | 'repair' | 'cancel' | 'unknown' = 'success'): Promise<GraphRpcFixture> {
+  const root = await realpath(await mkdtemp(join(tmpdir(), 'g22-rpc-'))); const repo = join(root, 'source'); await mkdir(repo);
+  git(repo, 'init', '-q'); await writeFile(join(repo, 'answer'), '0\n'); git(repo, 'add', '.'); git(repo, '-c', 'user.name=G22', '-c', 'user.email=g22@invalid', 'commit', '-qm', 'base');
+  const db: Database.Database = openDb({ path: join(root, 'control.sqlite') }); let writes = 0; let granted = true; let abortObserved = false;
+  const stopped = new Set<string>();
+  const writer: AgentAdapter = { id: 'writer', display_name: 'writer', cost_tier: 'low',
+    capabilities: () => [CapabilitySchema.parse({ id: 'write', agent_id: 'writer', kind: 'code.write', description: 'write' })],
+    isAvailable: async () => ({ available: true, last_checked_at: 0 }),
+    invoke: async function* (task, options) {
+      writes++;
+      if (mode === 'cancel') {
+        await new Promise<void>(resolve => { if (options?.aborted) resolve(); else options?.addEventListener('abort', () => resolve(), { once: true }); });
+        abortObserved = true;
+      } else await writeFile(join(String(task.context?.['repo_path']), 'answer'), mode === 'repair' && writes === 1 ? '0\n' : '1\n');
+      if (mode !== 'unknown') stopped.add(task.run_id);
+      yield { event_id: task.run_id, run_id: task.run_id, session_id: task.session_id, seq: 1, created_at: Date.now() / 1000, type: 'done', terminal: true,
+        payload: { status: mode === 'cancel' ? 'failed' : 'completed', last_seq: 0, result_summary: 'implemented', usage: { tokens_in: 1, tokens_out: 1, duration_ms: 1 } } };
+    }, confirmStopped: async id => ({ stopped: stopped.has(id), evidence: `finite:${id}` }) };
+  const reviewer: AgentAdapter = { ...writer, id: 'reviewer', capabilities: () => [CapabilitySchema.parse({ id: 'review', agent_id: 'reviewer', kind: 'review.code', description: 'review' })],
+    invoke: async function* (task) {
+      const good = (await readFile(join(String(task.context?.['repo_path']), 'answer'), 'utf8')).trim() === '1'; stopped.add(task.run_id);
+      yield { event_id: task.run_id, run_id: task.run_id, session_id: task.session_id, seq: 1, created_at: Date.now() / 1000, type: 'done', terminal: true,
+        payload: { status: 'completed', last_seq: 0, result_summary: JSON.stringify({ schemaVersion: 1, verdict: good ? 'accept' : 'changes_requested', summary: 'actual candidate', findings: good ? [] : ['answer must be 1'] }), usage: { tokens_in: 1, tokens_out: 1, duration_ms: 1 } } };
+    } };
+  const request: StartGraphRequest = { schemaVersion: 1, kind: 'start', scope: { schemaVersion: 1, tenantId: 't', principalId: 'p', workspaceId: 'w' },
+    idempotencyKey: 'public-key', inputArtifactRef: 'input', source: { product: 'osstack', requestId: 'request', parentRunId: 'parent' },
+    spec: { schemaVersion: 1, template: 'code-delivery-v1', publication: 'artifact_only', input: { taskRef: 'task', repositoryRef: 'repo', baseRevision: git(repo, 'rev-parse', 'HEAD'), acceptanceRef: 'acceptance' },
+      limits: { maxEpochs: 2, maxBranchAttempts: 1, maxConcurrentReaders: 2, maxConcurrentWritersPerRepo: 1, maxActionStarts: 14, tokenReservationLimit: 200000, deadlineSeconds: 120 } } };
+  const registration: GraphHostRegistration = { id: 'local', scope: request.scope, product: 'osstack', repositoryRef: 'repo', taskRef: 'task', inputArtifactRef: 'input',
+    authorize: operation => { if (!granted && operation !== 'read' && operation !== 'cancel') throw Error('GRANT_EXPIRED'); },
+    delivery: { repositoryPath: repo, task: 'Set answer to 1', writer: { identity: 'writer', adapter: writer, capabilityId: 'write' }, reviewer: { identity: 'reviewer', adapter: reviewer, capabilityId: 'review' },
+      verifyReviewer: async proof => { if (proof.writerIdentity === proof.reviewerIdentity) throw Error('independence'); },
+      acceptanceRegistry: [{ ref: 'acceptance', command: 'test "$(cat answer)" = 1', passExitCodes: [0], failExitCodes: [1] }] } };
+  const connection = {};
+  const admission = new GovernedExecution({ reads: new FifoSemaphore(2), writes: new FifoSemaphore(2), repositories: new Map(), checkHealth: async () => {} });
+  const options = { db, root: join(root, 'delivery'), registrations: [registration], resolveCaller: (key: object) => key === connection ? 'local' : null, acquire: admission.acquire.bind(admission) };
+  const service = new GraphRpcService(options);
+  const start = async () => GraphDelegationStatus.parse(await service.handle(connection, 'graph.start', request));
+  const status = async (id: string, host = service) => GraphDelegationStatus.parse(await host.handle(connection, 'graph.status', { schemaVersion: 1, scope: request.scope, graphRunId: id }));
+  const until = async (id: string, predicate: (s: ReturnType<typeof GraphDelegationStatus.parse>) => boolean) => {
+    const deadline = Date.now() + 20000;
+    for (;;) { const value = await status(id); if (predicate(value)) return value;
+      if (Date.now() > deadline) throw Error(`TIMEOUT: ${JSON.stringify(value)}`); await new Promise(resolve => setTimeout(resolve, 15)); }
+  };
+  return { root, db, request, registration, connection, service, start, status, until, options, writer, reviewer,
+    writes: () => writes, abortObserved: () => abortObserved, grant: (value: boolean) => { granted = value; },
+    close: async () => { await service.close(); db.close(); } };
+}
+
+
+NEW FILE: scripts/fixtures/graph-artifact-crash.mjs
+// Test-only producer; the second authority check occurs after acquiring the lock.
+import { readFileSync } from 'node:fs';
+import { GraphArtifactStore } from '../../packages/core/dist/graph/artifact-store.js';
+const { storeRoot, input } = JSON.parse(readFileSync(process.argv[2], 'utf8'));
+let checks = 0;
+const store = new GraphArtifactStore(storeRoot);
+await store.freeze(input, {
+  lease: {}, verifyLease: () => {}, verifyImplementationReceipt: () => {},
+  verifyProducersStopped: async () => {
+    if (++checks === 2) {
+      process.send({ kind: 'lock-acquired' });
+      await new Promise(() => {});
+    }
+  },
+});
+throw Error('FAULT_BARRIER_NOT_REACHED');
+
+
+NEW FILE: scripts/fixtures/graph-process-host.ts
+// G25 fault fixture: independent hosts use the real runtime and SQLite journal.
+import { resolve, join } from 'node:path';
+import { processFixture } from '../../packages/cli/src/graph-process-fixture.js';
+import { GraphRuntime } from '../../packages/cli/src/graph-runtime.js';
+const root = resolve(process.argv[2]!);
+const pulse = join(root, 'descendant.log');
+const escapedPulse = join(root, 'escaped.log');
+const marker = join(root, 'worker.json');
+const descendant = (file: string) => `const fs=require('node:fs');setInterval(()=>fs.appendFileSync(${JSON.stringify(file)},'alive\\n'),20);setTimeout(()=>process.exit(0),10000);`;
+const source = `export async function run() {
+  const fs = await import('node:fs'); const {spawn} = await import('node:child_process');
+  const child = spawn(process.execPath,['-e',${JSON.stringify(descendant(pulse))}],{stdio:'ignore'});
+  const escaped = spawn(process.execPath,['-e',${JSON.stringify(descendant(escapedPulse))}],{stdio:'ignore',detached:true});
+  fs.writeFileSync(${JSON.stringify(marker)},JSON.stringify({pid:process.pid,child:child.pid,escaped:escaped.pid}));
+  process.on('SIGTERM',()=>{}); while(true) {}
+}`;
+const f = processFixture(root, source);
+const runtime = new GraphRuntime({ ...f.options, workerOptions: { ...f.options.workerOptions, workerEntry: resolve('packages/graph/dist/worker-entry.js') } });
+if (process.argv[3] === 'start') {
+  const handle = runtime.start(f.start); await handle.ready;
+  process.send?.({ binding: f.binding, report: runtime.observeWorkerProcess(f.binding) });
+} else {
+  const report = runtime.observeWorkerProcess(f.binding);
+  const duplicate = runtime.start(f.start);
+  process.send?.({ binding: f.binding, report, duplicate: await duplicate.finalExit,
+    afterDuplicate: runtime.observeWorkerProcess(f.binding), hostPid: process.pid });
+  await runtime.close(); await runtime.drainDatabaseUsers(); await f.runtime.close(); await f.runtime.drainDatabaseUsers(); f.db.close();
+  process.disconnect();
+}
+
+
+NEW FILE: scripts/fixtures/graph-submit-race.mjs
+// Separate OS process for simultaneous SQLite admission; no executor is launched.
+import { readFileSync } from 'node:fs';
+import { openDb, GraphRunStore } from '../../packages/core/dist/index.js';
+const { path, request, version } = JSON.parse(readFileSync(process.argv[2], 'utf8'));
+const db = openDb({ path }); const runs = new GraphRunStore(db);
+process.once('message', message => {
+  if (message !== 'go') throw Error('INVALID_BARRIER');
+  try {
+    const run = runs.create(request, version, Date.now());
+    process.send({ kind: 'created', graphRunId: run.graphRunId });
+  } catch (error) { process.send({ kind: 'rejected', error: String(error) }); }
+  finally { db.close(); process.disconnect(); }
+});
+process.send({ kind: 'ready' });
+
+
+NEW FILE: scripts/verify-graph-runtime.mjs
+#!/usr/bin/env node
+// Repeatable fault-regression evidence, not a production/recovery admission gate.
+import { createHash } from 'node:crypto';
+import { mkdirSync, readFileSync, writeFileSync, realpathSync } from 'node:fs';
+import { homedir } from 'node:os';
+import { dirname, isAbsolute, join, resolve } from 'node:path';
+import { spawnSync, execFileSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
+
+const root = fileURLToPath(new URL('../', import.meta.url));
+const args = process.argv.slice(2);
+const options = { seed: 250915, repeat: 2, output: undefined };
+for (let index = 0; index < args.length; index += 2) {
+  const name = args[index]; const value = args[index + 1];
+  if (!['--seed', '--repeat', '--output'].includes(name) || !value) throw Error('Usage: verify-graph-runtime.mjs [--seed UINT32] [--repeat 1..10] [--output ABSOLUTE_JSON_PATH]');
+  if (name === '--output') options.output = value;
+  else options[name.slice(2)] = Number(value);
+}
+if (!Number.isSafeInteger(options.seed) || options.seed < 0 || options.seed > 0xffffffff
+  || !Number.isSafeInteger(options.repeat) || options.repeat < 1 || options.repeat > 10) throw Error('INVALID_SEED_OR_REPEAT');
+const home = process.env.OSSTACK_HOME;
+if (!home || !isAbsolute(home)) throw Error('EXPLICIT_ISOLATED_OSSTACK_HOME_REQUIRED');
+mkdirSync(home, { recursive: true });
+if (realpathSync(home) === resolve(homedir(), '.osstack')) throw Error('DEFAULT_OSSTACK_HOME_FORBIDDEN');
+const output = options.output ?? join(home, 'graph-fault-validation.json');
+if (!isAbsolute(output)) throw Error('ABSOLUTE_OUTPUT_REQUIRED');
+mkdirSync(dirname(output), { recursive: true });
+const evidence = `${output}.evidence`; mkdirSync(evidence, { recursive: true });
+const groups = [
+  { package: 'loop', files: ['src/executor.test.ts'] },
+  { package: 'core', files: ['src/state/graph-checkpoints.test.ts', 'src/state/graph-recovery.test.ts', 'src/graph/artifact-store.test.ts'] },
+  { package: 'cli', files: ['src/graph-process-identity.test.ts', 'src/graph-process-journal.test.ts',
+    'src/graph-faults.integration.test.ts', 'src/graph-chain.integration.test.ts', 'src/graph-worker-manager.test.ts',
+    'src/graph-checkpoint-service.test.ts', 'src/graph-action-broker.test.ts', 'src/graph-action-broker-boundary.test.ts',
+    'src/graph-verification.test.ts', 'src/graph-verification-join.test.ts', 'src/graph-rpc.test.ts',
+    'src/graph-concurrency.integration.test.ts', 'src/graph-review-findings.test.ts'] },
+];
+const coverage = {
+  F01: ['loop/src/executor.test.ts'],
+  F02: ['cli/src/graph-action-broker.test.ts', 'cli/src/graph-chain.integration.test.ts'],
+  F03: ['cli/src/graph-chain.integration.test.ts'],
+  F04: ['cli/src/graph-chain.integration.test.ts'],
+  F05: ['core/src/state/graph-checkpoints.test.ts', 'cli/src/graph-chain.integration.test.ts'],
+  F06: ['cli/src/graph-checkpoint-service.test.ts', 'cli/src/graph-action-broker-boundary.test.ts'],
+  F07: ['core/src/graph/artifact-store.test.ts'],
+  F08: ['cli/src/graph-review-findings.test.ts', 'cli/src/graph-concurrency.integration.test.ts'],
+  F09: ['cli/src/graph-concurrency.integration.test.ts'],
+  F10: ['cli/src/graph-verification.test.ts', 'cli/src/graph-verification-join.test.ts'],
+  F11: ['loop/src/executor.test.ts', 'cli/src/graph-chain.integration.test.ts', 'cli/src/graph-concurrency.integration.test.ts'],
+  F12: ['cli/src/graph-faults.integration.test.ts', 'cli/src/graph-rpc.test.ts', 'core/src/graph/artifact-store.test.ts'],
+};
+const hash = bytes => createHash('sha256').update(bytes).digest('hex');
+const listSources = () => execFileSync('git', ['ls-files', '-z', '--cached', '--others', '--exclude-standard', '--', 'packages', 'scripts'], { cwd: root, encoding: 'utf8' }).split('\0').filter(Boolean).sort();
+const sourceFiles = listSources();
+const sourceHashes = Object.fromEntries(sourceFiles.map(file => [file, hash(readFileSync(join(root, file)))]));
+const report = { schemaVersion: 1, scope: 'G25 fault regression diagnostics; no recovery or release authorization',
+  platform: process.platform, node: process.version, seed: options.seed, repeat: options.repeat,
+  startedAt: new Date().toISOString(), coverage, sourceHashes, runs: [], passed: false,
+  limitations: ['Coverage lists regression suites, not proof that every F01–F12 subcase or production platform is admitted.',
+    'Opaque executor quiescence and fresh-supervisor recovery remain separate requirements.',
+    'A stale artifact lock is retained, not automatically removed.'] };
+const save = () => writeFileSync(output, JSON.stringify(report, null, 2) + '\n');
+save();
+for (let iteration = 0; iteration < options.repeat; iteration++) {
+  const seed = (options.seed + iteration) >>> 0;
+  // Broad matrix once; repeat the seeded races without rerunning unrelated tests.
+  const batches = iteration === 0 ? groups : [{ package: 'cli', files: ['src/graph-concurrency.integration.test.ts'] }];
+  for (const group of batches) {
+    const prefix = `${iteration}-${group.package}`;
+    const jsonPath = join(evidence, `${prefix}.json`);
+    const command = ['--filter', `@osstack/${group.package}`, 'exec', 'vitest', 'run', ...group.files,
+      '--maxWorkers=1', '--reporter=json', `--outputFile=${jsonPath}`, '--sequence.shuffle', `--sequence.seed=${seed}`];
+    const result = spawnSync('pnpm', command, { cwd: root, env: { ...process.env, G25_SEED: String(seed) }, encoding: 'utf8', maxBuffer: 32 * 1024 * 1024 });
+    writeFileSync(join(evidence, `${prefix}.txt`), (result.stdout ?? '') + (result.stderr ?? ''));
+    let summary; let parseError;
+    try { summary = JSON.parse(readFileSync(jsonPath, 'utf8')); } catch (error) { parseError = String(error); }
+    const tests = summary?.testResults?.flatMap(file => file.assertionResults ?? []) ?? [];
+    const observedFiles = new Set((summary?.testResults ?? []).map(file => resolve(file.name)));
+    const passed = result.status === 0 && summary?.success === true && tests.length > 0
+      && tests.every(test => test.status === 'passed')
+      && group.files.every(file => observedFiles.has(resolve(root, 'packages', group.package, file)));
+    report.runs.push({ iteration, seed, package: group.package, command: ['pnpm', ...command], exitCode: result.status,
+      passed, tests: tests.map(test => ({ name: test.fullName, status: test.status })), jsonPath, ...(parseError ? { parseError } : {}),
+      ...(result.error ? { error: String(result.error) } : {}) });
+    save();
+    console.log(`${prefix}: ${passed ? 'PASS' : 'FAIL'} (${tests.length} tests), seed=${seed}`);
+    if (!passed) { process.exitCode = 1; break; }
+  }
+  if (process.exitCode) break;
+}
+report.sourceUnchanged = JSON.stringify(listSources()) === JSON.stringify(sourceFiles) && sourceFiles.every(file => hash(readFileSync(join(root, file))) === sourceHashes[file]);
+report.finishedAt = new Date().toISOString();
+report.passed = !process.exitCode && report.sourceUnchanged;
+save(); console.log(JSON.stringify({ passed: report.passed, output, runs: report.runs.length }));
+if (!report.passed) process.exitCode = 1;

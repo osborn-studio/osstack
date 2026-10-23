@@ -1,6 +1,6 @@
 ---
 name: osstack
-description: "Use when running a software development task that benefits from explicit project-manager-style orchestration: deciding which sub-agent (Claude Code, Codex, ...) handles it, tracking cross-task memory, learning from past outcomes, or routing through the full design→code→test→ship lifecycle. Bridges Hermes to the osstack daemon."
+description: "Use when running a software development task that benefits from explicit project-manager-style orchestration: deciding which sub-agent (Claude Code, Codex, ...) handles it, tracking cross-task memory, learning from past outcomes, or routing through the full design→code→test→ship lifecycle. Also use for publishing skills to OsbornSkillHub (api.osbornhub.com) through the OSStack Hub CLI. Bridges Hermes to the osstack daemon."
 version: 0.12.0
 author: Osborn (gilosbornhello)
 license: MIT
@@ -9,7 +9,7 @@ metadata:
   hermes:
     tags: [orchestration, project-manager, software-development, osstack, claude-code, codex]
     related_skills: [writing-plans, requesting-code-review, plan, subagent-driven-development]
-    daemon_npm_version: "@osstack/cli@0.12.0"
+    daemon_npm_version: "@osstack/cli@0.20.0"
     hermes_min_version: "0.12.0"
 ---
 
@@ -43,6 +43,27 @@ This skill itself is just a wrapper.
 ## Status: Production Stable Control Plane (v0.12.0)
 
 osstack is no longer a scaffold. The daemon runs as a launchd service (`ai.osstack.daemon`) on a versioned Node runtime, serving from a dedicated stable home (`OSSTACK_HOME`, default `~/.osstack-stable`) with a control-plane guard on every DB entry point, a 5-check `doctor` (including plist drift), fail-closed routing, and schema-governed migrations. Working today: agent routing + policy engine, loop sessions (`loop enqueue/run`), daily sessions, task memory (SQLite), kanban board + Telegram subscription relay, hub candidate/publish, stack CLI family, release train commands, and self-upgrade with health rollback.
+
+## OsbornSkillHub publishing (including external agents)
+
+For requests to upload/publish a skill to **OsbornSkillHub / api.osbornhub.com**, the existing route is `osstack hub publish`. It invokes the Hub companion, pushes the catalog Git repository, and waits for the deployed API version. Do not infer "no upload support" from the absence of a direct HTTP upload endpoint. `skills add` and `knowledge publish` serve different purposes.
+
+Use the installed `osstack` CLI directly; the Python bridge does not expose these Hub commands:
+
+```bash
+# Read-only discovery; does not execute companion scripts or grant permissions.
+osstack hub doctor --json
+# For an EXISTING Hub-managed asset, after the user's publication authorization:
+osstack hub publish <asset-id> --gate team --surfaces api --json
+```
+
+`OSSTACK_HUB_ROOT` (fallback `HUB_ROOT`) selects the trusted Hub checkout. `CATALOG_DIR` selects its catalog checkout (default: sibling `osborn-skill-catalog`). The catalog Git principal controls publishing; `SKILL_HUB_KEY` is only the API read credential used for verification. A readable API does not establish write access. Keep credentials in the trusted publisher runtime, never in messages or skill prompts.
+
+If `doctor` is unknown, the installed CLI predates this diagnostic. Report its version and check `osstack --help` for `hub publish`; an old command surface is not evidence that the Hub lacks a publishing channel. If root/tooling/catalog is missing, report the specific missing setup. For a new asset, candidate registration only records an external Git source reference; it does not import content into the catalog or publish it.
+
+For an external automated agent, obtain its actual runtime host/framework and authenticated principal before onboarding. A display name is not permission. `doctor` reports `publish_permission: unverified` even when configured. Missing booleans are `null`; report partial outcomes using `committed`, `pushed`, `apiVerified` and `delivery`. A nonzero exit is not completed delivery; a pushed but unverified result requires checking CI/API before a retry. Version verification is the companion's report, not independent artifact-digest attestation.
+
+See [the onboarding and recovery guide](../docs/guides/hub-agent-publishing.md).
 
 ## Quick Usage
 

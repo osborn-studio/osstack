@@ -1,0 +1,5 @@
+import {createRequire} from 'node:module';import {pathToFileURL} from 'node:url';
+const rq=createRequire('/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/graph/package.json');const {entrypoint,task,MemorySaver}=await import(pathToFileURL(rq.resolve('@langchain/langgraph')));
+const events=[];let bodyStarted;const started=new Promise(r=>bodyStarted=r);const control=new AbortController();
+const t=task('slow',async()=>{events.push('body-start');bodyStarted();await new Promise(r=>setTimeout(r,80));events.push('body-effect-after-delay');return 1});const j=task('join',()=>{events.push('join-effect');return 2});const flow=entrypoint({name:'cancel',checkpointer:new MemorySaver()},async()=>{const value=await t();events.push('workflow-continues');return j(value)});let error;
+const running=flow.invoke({}, {configurable:{thread_id:'cancel'},signal:control.signal}).catch(e=>{error=e.message;events.push('invoke-rejected')});await started;control.abort();await running;await new Promise(r=>setTimeout(r,200));console.log(JSON.stringify({error,events},null,2));

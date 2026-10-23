@@ -1,0 +1,13 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/loop
+
+ ✓ src/executor.test.ts (4 tests) 101ms
+ ✓ src/loop-engine.test.ts (31 tests) 3062ms
+   ✓ LoopEngine > can execute a successful task in an isolated git worktree and merge it back  327ms
+   ✓ LoopEngine > cleans loop-scoped orphaned worktrees after each cycle  399ms
+   ✓ LoopEngine > preserves the isolated branch when a successful task cannot fast-forward merge  348ms
+
+ Test Files  2 passed (2)
+      Tests  35 passed (35)
+   Start at  07:59:44
+   Duration  3.93s (transform 428ms, setup 0ms, collect 757ms, tests 3.16s, environment 0ms, prepare 87ms)

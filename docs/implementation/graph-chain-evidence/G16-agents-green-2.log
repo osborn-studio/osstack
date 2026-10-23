@@ -1,0 +1,18 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/agents
+
+ ✓ src/worktree.test.ts (9 tests) 3718ms
+   ✓ git worktree lifecycle > persists graph retention across generic and prefix cleanup until trusted explicit export cleanup  445ms
+   ✓ git worktree lifecycle > fails closed for corrupted persistent retention and revoked safe cleanup  503ms
+   ✓ git worktree lifecycle > commits isolated changes, fast-forwards the repo, and cleans up  495ms
+   ✓ git worktree lifecycle > removes orphaned osstack worktrees under the configured root  358ms
+   ✓ git worktree lifecycle > does not commit when the isolated worktree is unchanged  351ms
+   ✓ git worktree lifecycle > does not execute repository hooks while committing isolated changes  406ms
+   ✓ git worktree lifecycle > does not execute repository hooks while fast-forwarding verified changes  509ms
+   ✓ git worktree lifecycle > can remove a worktree while preserving its branch  410ms
+
+ Test Files  1 passed (1)
+      Tests  9 passed (9)
+   Start at  07:35:40
+   Duration  3.99s (transform 38ms, setup 0ms, collect 42ms, tests 3.72s, environment 0ms, prepare 36ms)
+

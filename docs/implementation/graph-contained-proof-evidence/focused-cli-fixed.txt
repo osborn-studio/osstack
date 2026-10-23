@@ -1,0 +1,18 @@
+$ vitest run src/graph-contained-recovery.test.ts --maxWorkers=1
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+ ✓ src/graph-contained-recovery.test.ts (66 tests) 8853ms
+   ✓ contained proof bridge > uses the host closure inside actual G15 without inferring business outcome: revoked  382ms
+   ✓ graph quiescence sweep > sweeps actual worker and contained executor after reopening the ledger, without settling or releasing  304ms
+   ✓ graph quiescence sweep > sweeps two distinct contained invocations without re-execution and binds each physical receipt  310ms
+   ✓ graph quiescence sweep > does not omit released or missing-admission historical obligations (held=false)  302ms
+   ✓ graph quiescence sweep > does not omit released or missing-admission historical obligations (held=true)  328ms
+   ✓ graph quiescence sweep > never substitutes container absence for a deleted receipt in stop_contained mode  327ms
+   ✓ graph quiescence sweep > requires explicit stop mode and current stop grant for an orphan; never releases its ledger hold  330ms
+   ✓ graph quiescence sweep > rejects worker-journal drift after daemon I/O before further cleanup  315ms
+
+ Test Files  1 passed (1)
+      Tests  66 passed (66)
+   Start at  07:21:03
+   Duration  10.01s (transform 597ms, setup 11ms, collect 1.00s, tests 8.85s, environment 0ms, prepare 38ms)

@@ -1,0 +1,72 @@
+{
+  "testOnly": true,
+  "node": "v26.5.0",
+  "versions": {
+    "langgraph": "1.4.15",
+    "langgraph-checkpoint": "1.1.5",
+    "core": "1.2.11"
+  },
+  "productionReady": false,
+  "parentPid": 98627,
+  "phases": [
+    {
+      "phase": "contract-write",
+      "pid": 98629,
+      "assertions": [
+        {
+          "name": "missing getTuple and inherited get return undefined",
+          "passed": true
+        },
+        {
+          "name": "put returns identity and repeated put preserves full fields",
+          "passed": true
+        },
+        {
+          "name": "ordinary writes retain first value by task/index, separate tasks coexist",
+          "passed": true
+        },
+        {
+          "name": "reserved error/interrupt/resume/scheduled overwrite independent negative indexes",
+          "passed": true
+        },
+        {
+          "name": "putWrites before put remains attached and put retry does not erase writes",
+          "passed": true
+        }
+      ],
+      "observations": {},
+      "passed": true,
+      "exitCode": 0,
+      "signal": null,
+      "stderr": ""
+    },
+    {
+      "phase": "contract-read",
+      "pid": 98630,
+      "assertions": [
+        {
+          "name": "fresh process recovers all checkpoint/metadata/version/parent fields and byte values",
+          "passed": true
+        },
+        {
+          "name": "list returns full tuples with namespace/thread/id/filter/before/limit semantics",
+          "passed": true
+        },
+        {
+          "name": "list and getTuple project durable identity without serializing runnable callbacks",
+          "passed": false,
+          "error": "Error: CHECKPOINT_CODEC_INVALID: unsupported value"
+        }
+      ],
+      "observations": {},
+      "passed": false,
+      "exitCode": 1,
+      "signal": null,
+      "stderr": "Error: CHECKPOINT_CODEC_INVALID: unsupported value\n    at fail (file:///Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/graph/dist/checkpoint-codec.js:20:31)\n    at visit (file:///Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/graph/dist/checkpoint-codec.js:83:17)\n    at file:///Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/graph/dist/checkpoint-codec.js:143:21\n    at Array.forEach (<anonymous>)\n    at visit (file:///Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/graph/dist/checkpoint-codec.js:137:29)\n    at file:///Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/graph/dist/checkpoint-codec.js:143:21\n    at Array.forEach (<anonymous>)\n    at visit (file:///Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/graph/dist/checkpoint-codec.js:137:29)\n    at CheckpointCodec.encode (file:///Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/graph/dist/checkpoint-codec.js:151:9)\n    at TestOnlyPersistentSaver.rpc (file:///Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/scripts/probe-graph-saver.mjs:62:38)\n"
+    }
+  ],
+  "assertions": [],
+  "passed": false,
+  "cleaned": true,
+  "error": "AssertionError [ERR_ASSERTION]: contract-read failed\n\n1 !== 0\n"
+}

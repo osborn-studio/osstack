@@ -1,5 +1,6 @@
+import { PassThrough } from "node:stream";
 import { expect, it } from "vitest";
-import { classifyClaudeAttentionHook } from "./attention-hook.js";
+import { classifyClaudeAttentionHook, readClaudeHookInput } from "./attention-hook.js";
 const binding = {
   harness_version: "2.1.291",
   session_id: "s",
@@ -28,4 +29,21 @@ it("accepts observed Claude root Stop shape and ignores cancellation, worker and
       harness_version: "unknown",
     })
   ).toBe("ignore");
+});
+
+it("bounds an unclosed hook producer and releases its input", async () => {
+  const stream = new PassThrough();
+  const result = readClaudeHookInput(stream, 20);
+  stream.write('{"unfinished":');
+  expect(await result).toBeNull();
+  expect(stream.destroyed).toBe(true);
+  expect(stream.listenerCount("data")).toBe(0);
+});
+it("counts input bytes and preserves split UTF-8 chunks", async () => {
+  const stream = new PassThrough(); const result = readClaudeHookInput(stream);
+  const bytes = Buffer.from('你好'); stream.write(bytes.subarray(0, 2)); stream.end(bytes.subarray(2));
+  expect(await result).toBe('你好');
+  const oversized = new PassThrough(); const rejected = expect(readClaudeHookInput(oversized)).rejects.toThrow('oversized_hook_input');
+  oversized.write(Buffer.alloc(65537)); await rejected;
+  expect(oversized.destroyed).toBe(true);
 });

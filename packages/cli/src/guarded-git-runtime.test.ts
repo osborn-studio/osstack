@@ -8,6 +8,9 @@ import {
 } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { stripTypeScriptTypes } from "node:module";
+import { compileFunction } from "node:vm";
 import type {
   AgentAdapter,
   AgentRuntimeIdentity,
@@ -420,6 +423,8 @@ function startInput(options: {
 }
 
 async function testRuntime(options: {
+  RuntimeType?: typeof GuardedGitRuntime;
+  omitPolicyGuard?: boolean;
   workspace: string;
   evidenceRoot: string;
   builderInvoke: AgentAdapter["invoke"];
@@ -427,6 +432,8 @@ async function testRuntime(options: {
     GuardedGitRuntimeConstructorDeps["deliverGit"]
   >;
   proofs: GuardedGitProofInput[];
+  candidateDeliveryContext?: GuardedGitRuntimeConstructorDeps["candidateDeliveryContext"];
+  candidateDeliveryRunner?: GuardedGitRuntimeConstructorDeps["candidateDeliveryRunner"];
   assertPolicyUnchanged?: NonNullable<
     GuardedGitRuntimeConstructorDeps["assertPolicyUnchanged"]
   >;
@@ -435,7 +442,7 @@ async function testRuntime(options: {
   const dbPath = join(root, "home", "state.db");
   await mkdir(join(root, "home"), { recursive: true });
   const db = guardedOpenDb({ path: dbPath });
-  const runtime = new GuardedGitRuntime({
+  const runtime = new (options.RuntimeType ?? GuardedGitRuntime)({
     db,
     dbPath,
     trustedApprovalPublicKeys: new Map(),
@@ -459,9 +466,11 @@ async function testRuntime(options: {
       };
     },
     deliverGit: options.deliverGit,
-    assertPolicyUnchanged:
+    ...(options.candidateDeliveryContext === undefined ? {} : { candidateDeliveryContext: options.candidateDeliveryContext }),
+    ...(options.candidateDeliveryRunner === undefined ? {} : { candidateDeliveryRunner: options.candidateDeliveryRunner }),
+    ...(options.omitPolicyGuard ? {} : { assertPolicyUnchanged:
       options.assertPolicyUnchanged
-      ?? (async () => undefined),
+      ?? (async () => undefined) }),
     evaluateGovernance: async () => ({
       blocking: false,
       evidence: { status: "pass" },
@@ -565,3 +574,114 @@ function doneEvent(
     payload,
   });
 }
+
+// Full existing guarded engine/local Git/proof flow. GH metadata and every delivery/merge are synthetic ports.
+async function contextScenario(mode: string, RuntimeType?: typeof GuardedGitRuntime) {
+  const workspace = await fixtureRepo(); const evidenceRoot = join(root, "context-evidence");
+  const input = startInput({ workspace, evidenceRoot, expectedPaths: ["docs/readme.md"] });
+  const original = structuredClone(input);
+  const context = { environmentFingerprint: "c".repeat(64), policyFingerprint: "d".repeat(64), testsFingerprint: "e".repeat(64) };
+  const calls: Array<{ command: string; args: readonly string[] }> = [];
+  let sampleCount = 0;
+  const sampledInputs: Array<{ routing: GuardedGitRouting; budget: typeof input.budget }> = [];
+  const sample = vi.fn(async (value: { routing: GuardedGitRouting; budget: typeof input.budget }) => {
+    sampleCount++; sampledInputs.push(structuredClone(value));
+    if (mode === "undefined" || mode === "undefined-policy-drift" || (["withdrawn", "withdrawn-policy-drift"].includes(mode) && sampleCount > 1)) return undefined;
+    if (mode === "throw") throw new Error("synthetic callback private marker must not echo");
+    if (mode === "invalid") return { ...context, unexpected: true };
+    if (mode === "raw-invalid") return null as unknown as typeof context;
+    value.routing.git.branch = "mutated-not-authoritative"; value.budget.max_review_rounds = 999;
+    return mode === "changed" && sampleCount > 1 ? { ...context, testsFingerprint: "f".repeat(64) } : context;
+  });
+  const runner: NonNullable<GuardedGitRuntimeConstructorDeps["candidateDeliveryRunner"]> = { run: async (command, args) => {
+    calls.push({ command, args: [...args] });
+    const head = git(workspace, ["rev-parse", "HEAD"]);
+    const ok = (stdout: string) => ({ stdout, stderr: "", exitCode: 0 });
+    if (command === "git") {
+      if (args[0] === "remote" && args[1] === "get-url") return ok("https://github.com/owner/repo.git");
+      if (args[0] === "ls-remote" && ["stale-head", "stale-policy-drift"].includes(mode)) return ok(`${original.routing.base_commit_sha}\trefs/heads/codex/guarded-test\n${original.routing.base_commit_sha}\trefs/heads/main\n`);
+      if (args[0] === "ls-remote" && mode === "badrefs") return ok(`${head}\trefs/heads/foreign\n`);
+      if (args[0] === "ls-remote") return ok(`${head}\trefs/heads/codex/guarded-test\n${original.routing.base_commit_sha}\trefs/heads/main\n`);
+      if (["check-ref-format", "branch", "status", "rev-parse"].includes(args[0] ?? "")) return ok(git(workspace, [...args]));
+      throw new Error("observer attempted non-read Git command");
+    }
+    if (command === "gh" && args[0] === "repo" && args[1] === "view") return ok(JSON.stringify({ nameWithOwner: "owner/repo" }));
+    if (command === "gh" && args[0] === "api") {
+      const endpoint = args.find(v => v.startsWith("repos/")) ?? "";
+      if (endpoint.includes("/rules/branches/")) return ok("[]");
+      if (endpoint.includes("/branches/codex%2Fguarded-test/protection")) return { stdout: "", stderr: "HTTP 404: Branch not protected", exitCode: 1 };
+      if (endpoint.includes("/branches/main/protection")) return ok(JSON.stringify({ required_status_checks: { contexts: ["ci"], checks: [] }, required_pull_request_reviews: {} }));
+    }
+    if (command === "gh" && args[0] === "pr" && args[1] === "view") {
+      if (args.includes("headRefOid,baseRefName,headRefName")) return ok(JSON.stringify({ headRefOid: head, baseRefName: "main", headRefName: "codex/guarded-test" }));
+      const metadata = { number: 12, url: "https://github.com/owner/repo/pull/12", headRefOid: head, state: "OPEN" };
+      if (args.includes("number,url,headRefOid,state")) return ok(JSON.stringify(metadata));
+      if (args.includes("number,url,headRefOid,state,mergeable,mergeStateStatus,statusCheckRollup")) return ok(JSON.stringify({ ...metadata, mergeable: "MERGEABLE", mergeStateStatus: "CLEAN", statusCheckRollup: [{ name: "ci", status: mode === "pending" ? "IN_PROGRESS" : "COMPLETED", conclusion: "SUCCESS" }] }));
+    }
+    throw new Error("synthetic runner denies unsupported or write command");
+  } };
+  const deliverGit = vi.fn(async (_input: Parameters<NonNullable<GuardedGitRuntimeConstructorDeps["deliverGit"]>>[0]) => ({ pushedCommit: git(workspace, ["rev-parse", "HEAD"]), pr: { number: 12, url: "https://github.com/owner/repo/pull/12", reused: true }, mergeCommit: "c".repeat(40), mergedAt: "2026-07-28T19:00:00.000Z" }));
+  const builderInvoke = vi.fn(async function* (task: AgentTask): AsyncIterable<HermesEvent> {
+    const repo = String(task.context?.["repo_path"]); await mkdir(join(repo, "docs"), { recursive: true }); await writeFile(join(repo, "docs/readme.md"), "synthetic guarded edit");
+    yield doneEvent(task, { status: "completed", last_seq: 0, result_summary: "built" });
+  });
+  const guard = vi.fn(async () => {
+    if ((mode === "undefined-policy-drift" && sampleCount === 1) || (mode === "withdrawn-policy-drift" && sampleCount === 2) || (mode === "stale-policy-drift" && sampleCount === 2)) throw new Error("SYNTHETIC_POLICY_CHANGED_AFTER_SAMPLE");
+  });
+  const { runtime, close } = await testRuntime({ ...(mode === "missing-policy-guard" ? { omitPolicyGuard: true } : {}), ...(RuntimeType === undefined ? {} : { RuntimeType }), workspace, evidenceRoot, builderInvoke, deliverGit, proofs: [], assertPolicyUnchanged: guard, ...(mode === "absent" ? {} : { candidateDeliveryContext: sample }), candidateDeliveryRunner: runner });
+  try { const result = await runtime.start(input); return { result, calls, sample, deliverGit, guard, input, original, context, sampledInputs }; } finally { close(); }
+}
+it.each(["absent", "undefined"])("guarded context %s preserves original input with zero observer calls", async mode => {
+  const observed = await contextScenario(mode); expect(observed.result.status).toBe("completed"); expect(observed.calls).toHaveLength(0);
+  expect(observed.deliverGit).toHaveBeenCalledTimes(1); expect(observed.deliverGit.mock.calls[0]?.[0]).not.toHaveProperty("candidateEvidence");
+  expect(observed.sample).toHaveBeenCalledTimes(mode === "absent" ? 0 : 1);
+});
+it("trusted context actual observer reaches existing consumer without mutating routing/budget", async () => {
+  const observed = await contextScenario("green"); expect(observed.result.status).toBe("completed"); expect(observed.sample).toHaveBeenCalledTimes(2);
+  const delivered = observed.deliverGit.mock.calls[0]?.[0]; expect(delivered).toHaveProperty("candidateEvidence"); expect(delivered).toHaveProperty("evidenceContext", observed.context);
+  expect(observed.input).toEqual(observed.original); expect(observed.sampledInputs).toHaveLength(2);
+  for (const value of observed.sampledInputs) { expect(value.routing.git.branch).toBe(observed.original.routing.git.branch); expect(value.budget).toEqual(observed.original.budget); }
+  expect(delivered?.branch).toBe(observed.original.routing.git.branch); expect(observed.guard.mock.calls.length).toBeGreaterThanOrEqual(3); expect(observed.calls.length).toBeGreaterThan(0);
+});
+it.each(["throw", "invalid", "changed"])("trusted context %s refuses handoff without hiding callback errors", async mode => {
+  const observed = await contextScenario(mode); expect(observed.result.status).not.toBe("completed"); expect(observed.deliverGit).not.toHaveBeenCalled();
+  expect(JSON.stringify(observed.result)).toContain(mode === "changed" ? "CANDIDATE_CONTEXT_CHANGED" : "CANDIDATE_CONTEXT_INVALID");
+});
+it.each(["pending", "withdrawn"])("unproven %s context falls back only to existing input before writes", async mode => {
+  const observed = await contextScenario(mode); expect(observed.result.status).toBe("completed"); expect(observed.deliverGit.mock.calls[0]?.[0]).not.toHaveProperty("candidateEvidence");
+});
+
+it.each(["undefined-policy-drift", "withdrawn-policy-drift"])("fallback %s still checks fresh policy and refuses every delivery", async mode => {
+ const observed = await contextScenario(mode); expect(observed.result.status).not.toBe("completed"); expect(observed.deliverGit).not.toHaveBeenCalled(); expect(JSON.stringify(observed.result)).toContain("SYNTHETIC_POLICY_CHANGED_AFTER_SAMPLE"); expect(observed.sample).toHaveBeenCalledTimes(mode === "undefined-policy-drift" ? 1 : 2);
+});
+it("callback private exception text is sanitized on the actual guarded handoff", async () => {
+ const observed = await contextScenario("throw"); expect(JSON.stringify(observed.result)).not.toContain("private marker"); expect(JSON.stringify(observed.result)).toContain("CANDIDATE_CONTEXT_INVALID"); expect(observed.deliverGit).not.toHaveBeenCalled();
+});
+it("source mutant deleting second-context comparison hands off stale hint after actual positive baseline", async () => {
+ const baseline = await contextScenario("green"); expect(baseline.result.status).toBe("completed"); expect(baseline.deliverGit.mock.calls[0]?.[0]).toHaveProperty("candidateEvidence");
+ await rm(root, { recursive: true, force: true }); root = mkdtempSync(join(tmpdir(), "osstack-guarded-mutant-")); process.env["OSSTACK_HOME"] = join(root, "home");
+ const sourcePath = fileURLToPath(new URL("./guarded-git-runtime.ts", import.meta.url)); const source = await readFile(sourcePath, "utf8");
+ const anchor = 'if (JSON.stringify(before) !== JSON.stringify(after)) throw new Error("CANDIDATE_CONTEXT_CHANGED");'; expect(source.split(anchor)).toHaveLength(2);
+ const mutatedSource = source.replace(anchor, "/* MUTANT: lost second context guard */");
+ const javascript = stripTypeScriptTypes(mutatedSource, { mode: "transform" }).replace(/import\s*\{([\s\S]*?)\}\s*from\s*["']([^"']+)["'];/g, (_, names: string, specifier: string) => `const {${names.replace(/\bas\b/g, ":")}} = await load(${JSON.stringify(specifier)});`).replace(/\bexport (?=(?:class|const|function))/g, "");
+ const load = async (specifier: string) => specifier === "./policy-gate.js" ? import("./policy-gate.js") : import(/* @vite-ignore */ specifier);
+ const module = await compileFunction(`return (async () => {${javascript}\nreturn { GuardedGitRuntime };})()`, ["load"])(load); expect(typeof module.GuardedGitRuntime).toBe("function");
+ const mutated = await contextScenario("changed", module.GuardedGitRuntime); expect(mutated.result.status).toBe("completed"); expect(mutated.sample).toHaveBeenCalledTimes(2); expect(mutated.deliverGit).toHaveBeenCalledTimes(1);
+ expect(mutated.deliverGit.mock.calls[0]?.[0]).toMatchObject({ candidateEvidence: { testsFingerprint: "e".repeat(64) }, evidenceContext: { testsFingerprint: "f".repeat(64) } });
+});
+
+it.each(["raw-invalid", "badrefs", "missing-policy-guard"])("trusted %s actual handoff refuses rather than silently using original delivery", async mode => {
+ const observed = await contextScenario(mode); expect(observed.result.status).not.toBe("completed"); expect(observed.deliverGit).not.toHaveBeenCalled();
+ expect(JSON.stringify(observed.result)).toContain(mode === "badrefs" ? "observer remote metadata malformed" : mode === "missing-policy-guard" ? "CANDIDATE_CONTEXT_POLICY_GUARD_REQUIRED" : "CANDIDATE_CONTEXT_INVALID");
+ if (mode !== "badrefs") expect(observed.calls).toHaveLength(0);
+});
+
+it("enabled actual runtime stale head falls back to original input only after final fresh policy recheck", async () => {
+ const observed = await contextScenario("stale-head"); expect(observed.result.status).toBe("completed"); expect(observed.sample).toHaveBeenCalledTimes(2); expect(observed.deliverGit).toHaveBeenCalledTimes(1);
+ const delivered = observed.deliverGit.mock.calls[0]![0]; expect(delivered).not.toHaveProperty("candidateEvidence"); expect(delivered).not.toHaveProperty("evidenceContext"); expect(delivered.branch).toBe(observed.original.routing.git.branch);
+ expect(observed.guard.mock.invocationCallOrder.at(-1)!).toBeGreaterThan(observed.sample.mock.invocationCallOrder.at(-1)!); expect(observed.guard.mock.invocationCallOrder.at(-1)!).toBeLessThan(observed.deliverGit.mock.invocationCallOrder[0]!);
+ expect(observed.calls.filter(call => call.args[0] === "ls-remote")).toHaveLength(1); expect(observed.calls.some(call => call.args.includes("number,url,headRefOid,state,mergeable,mergeStateStatus,statusCheckRollup"))).toBe(false);
+});
+it("stale-head fallback cannot bypass policy change after final context sample", async () => {
+ const observed = await contextScenario("stale-policy-drift"); expect(observed.result.status).not.toBe("completed"); expect(observed.sample).toHaveBeenCalledTimes(2); expect(observed.deliverGit).not.toHaveBeenCalled(); expect(JSON.stringify(observed.result)).toContain("SYNTHETIC_POLICY_CHANGED_AFTER_SAMPLE");
+});

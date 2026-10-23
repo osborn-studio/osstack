@@ -1,0 +1,167 @@
+{
+  "loop_id": "G21-final-acceptance-2",
+  "started_at": "2026-09-15T15:29:35.874Z",
+  "updated_at": "2026-09-15T15:37:30.676Z",
+  "completed_tasks": [
+    {
+      "task_id": "G21-final-acceptance-2",
+      "capability": "code.test",
+      "outcome": "success",
+      "iterations": 1,
+      "agent_id": "local-command",
+      "duration_ms": 474801,
+      "run_id": "run_daba2acb-df1f-470a-bdc5-badbd2f1cab2",
+      "started_at": "2026-09-15T15:29:35.875Z",
+      "completed_at": "2026-09-15T15:37:08.657Z",
+      "execution_summary": "Process group 91378 gone (kill(-pgid, 0): ESRCH); leader exit observed",
+      "execution_commands": [
+        {
+          "command": "node /Volumes/AIMATE_WORK/tmp/g21/acceptance-command.mjs full-tests",
+          "exit_code": 0,
+          "duration_ms": 452782,
+          "summary": "full-tests: exit=0 mple/.osstack) differs from the deployed daemon's home (/Users/example/.osstack-stable, from launchd plist) — using the deployed home. ✓ src/upgrade-deployed-home.test.ts (9 tests) 7ms ✓ src/probe-gate.test.ts (2 tests) 7"
+        }
+      ],
+      "verifier_agent_id": "local-verifier",
+      "verify_summary": "6 verifier commands and 0 verifier adapters passed. 6 evaluations passed.",
+      "verify_issue_count": 0,
+      "verify_commands": [
+        {
+          "command": "node /Volumes/AIMATE_WORK/tmp/g21/acceptance-command.mjs typecheck",
+          "exit_code": 0,
+          "duration_ms": 5295,
+          "summary": "typecheck: exit=0 Emit packages/governance typecheck$ tsc --noEmit packages/github typecheck$ tsc --noEmit packages/compliance typecheck: Done packages/knowledge typecheck$ tsc --noEmit packages/github typecheck: Done packages/neat-eval typ"
+        },
+        {
+          "command": "node /Volumes/AIMATE_WORK/tmp/g21/acceptance-command.mjs schemas",
+          "exit_code": 0,
+          "duration_ms": 285,
+          "summary": "schemas: exit=0 $ node scripts/generate-schemas.mjs --check schemas up to date"
+        },
+        {
+          "command": "node /Volumes/AIMATE_WORK/tmp/g21/acceptance-command.mjs kernel",
+          "exit_code": 0,
+          "duration_ms": 2454,
+          "summary": "kernel: exit=0 ], \"resumedResult\": { \"results\": [ \"completed\", \"recovered\" ] }, \"completedInvocations\": 1, \"joinInvocations\": 0, \"productionGate\": \"Resolve before arbitrary failure/crash recovery is admitted; no private patch applied.\" }, \""
+        },
+        {
+          "command": "node /Volumes/AIMATE_WORK/tmp/g21/acceptance-command.mjs functional",
+          "exit_code": 0,
+          "duration_ms": 13308,
+          "summary": "functional: exit=0 { \"passed\": true, \"admitted\": false, \"node\": \"v26.5.0\", \"versions\": { \"langgraph\": \"1.4.15\", \"langgraph-checkpoint\": \"1.1.5\", \"core\": \"1.2.11\" }, \"assertions\": 56, \"failedAssertions\": [], \"experiments\": 42, \"processes\": 9"
+        },
+        {
+          "command": "node /Volumes/AIMATE_WORK/tmp/g21/acceptance-command.mjs startup",
+          "exit_code": 0,
+          "duration_ms": 577,
+          "summary": "startup: exit=0 ok osstack --version (fast path): median 26ms over 5 runs (budget 150ms; min 25, max 28) ok osstack --help (full command surface): median 76ms over 5 runs (budget 500ms; min 73, max 85)"
+        },
+        {
+          "command": "node /Volumes/AIMATE_WORK/tmp/g21/acceptance-command.mjs whitespace",
+          "exit_code": 0,
+          "duration_ms": 50,
+          "summary": "whitespace: exit=0"
+        }
+      ],
+      "evaluations": [
+        {
+          "spec_id": "verify-command-1",
+          "mode": "command",
+          "description": "Shell verifier: node /Volumes/AIMATE_WORK/tmp/g21/acceptance-command.mjs typecheck",
+          "required": true,
+          "weight": 1,
+          "pass": true,
+          "summary": "command passed (5295 ms)",
+          "implicit": true
+        },
+        {
+          "spec_id": "verify-command-2",
+          "mode": "command",
+          "description": "Shell verifier: node /Volumes/AIMATE_WORK/tmp/g21/acceptance-command.mjs schemas",
+          "required": true,
+          "weight": 1,
+          "pass": true,
+          "summary": "command passed (285 ms)",
+          "implicit": true
+        },
+        {
+          "spec_id": "verify-command-3",
+          "mode": "command",
+          "description": "Shell verifier: node /Volumes/AIMATE_WORK/tmp/g21/acceptance-command.mjs kernel",
+          "required": true,
+          "weight": 1,
+          "pass": true,
+          "summary": "command passed (2454 ms)",
+          "implicit": true
+        },
+        {
+          "spec_id": "verify-command-4",
+          "mode": "command",
+          "description": "Shell verifier: node /Volumes/AIMATE_WORK/tmp/g21/acceptance-command.mjs functional",
+          "required": true,
+          "weight": 1,
+          "pass": true,
+          "summary": "command passed (13308 ms)",
+          "implicit": true
+        },
+        {
+          "spec_id": "verify-command-5",
+          "mode": "command",
+          "description": "Shell verifier: node /Volumes/AIMATE_WORK/tmp/g21/acceptance-command.mjs startup",
+          "required": true,
+          "weight": 1,
+          "pass": true,
+          "summary": "command passed (577 ms)",
+          "implicit": true
+        },
+        {
+          "spec_id": "verify-command-6",
+          "mode": "command",
+          "description": "Shell verifier: node /Volumes/AIMATE_WORK/tmp/g21/acceptance-command.mjs whitespace",
+          "required": true,
+          "weight": 1,
+          "pass": true,
+          "summary": "command passed (50 ms)",
+          "implicit": true
+        }
+      ],
+      "changed_files": [
+        "packages/cli/src/graph-action-broker.ts",
+        "packages/cli/src/graph-runtime.ts",
+        "packages/cli/src/graph-verification.ts",
+        "packages/core/src/state/graph-actions.ts",
+        "packages/core/src/state/graph-verification.ts",
+        "packages/core/src/state/migrations.ts",
+        "packages/graph/package.json",
+        "packages/graph/src/spec-compiler.test.ts",
+        "packages/graph/src/spec-compiler.ts",
+        "packages/graph/src/worker-runtime.ts",
+        "?? packages/cli/src/graph-delivery-adversarial.test.ts",
+        "?? packages/cli/src/graph-delivery-broker.test.ts",
+        "?? packages/cli/src/graph-delivery-receipts.test.ts",
+        "?? packages/cli/src/graph-delivery-receipts.ts",
+        "?? packages/cli/src/graph-delivery.integration.test.ts",
+        "?? packages/cli/src/graph-delivery.ts",
+        "?? packages/core/src/state/graph-delivery-epochs.test.ts",
+        "?? packages/graph/src/templates/code-delivery-v1.test.ts",
+        "?? packages/graph/src/templates/code-delivery-v1.ts"
+      ],
+      "diff_summary": "packages/cli/src/graph-action-broker.ts | 31 +++++++++++++++++---- packages/cli/src/graph-runtime.ts | 6 +++- packages/cli/src/graph-verification.ts | 34 +++++++++++++++-------- packages/core/src/state/graph-actions.ts | 10 +++++++ packages",
+      "commit_hash": "0a86fee"
+    }
+  ],
+  "in_progress": [],
+  "pending": [],
+  "deferred_tasks": [],
+  "key_metrics": {
+    "total_cycles": 1,
+    "avg_duration_ms": 474801,
+    "success_rate": 1,
+    "tokens_consumed": 0,
+    "cost_consumed": 0
+  },
+  "decisions": [
+    "G21-final-acceptance-2: selected local-command - local execute command",
+    "G21-final-acceptance-2: stop after iteration 1 - Verifier passed with score 1.00."
+  ]
+}

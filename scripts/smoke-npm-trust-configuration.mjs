@@ -81,7 +81,7 @@ if (args[0] === "trust" && args[1] === "github") {
   console.log("fixture configured " + name);
   state[name] = {
     type: "github",
-    repository: "gilosbornhello/osstack",
+    repository: "osborn-studio/osstack",
     file: "release.yml",
     permissions: ["publish"],
   };
@@ -94,7 +94,7 @@ await chmod(fakeNpm, 0o755);
 
 const expectedTrust = {
   type: "github",
-  repository: "gilosbornhello/osstack",
+  repository: "osborn-studio/osstack",
   file: "release.yml",
   permissions: ["publish"],
 };
@@ -158,7 +158,7 @@ assert(plan.code === 0, "plan mode must succeed without npm authentication");
 const parsedPlan = JSON.parse(plan.stdout);
 assert(parsedPlan.execute === false, "configuration must default to non-mutating plan mode");
 assert(parsedPlan.packages.length === 2, "plan must include public packages only");
-assert(parsedPlan.expected.repository === "gilosbornhello/osstack", "environment must not override the repository mutation target");
+assert(parsedPlan.expected.repository === "osborn-studio/osstack", "environment must not override the repository mutation target");
 assert(parsedPlan.expected.file === "release.yml", "environment must not override the workflow mutation target");
 assert((await readLog(happyLog)).length === 0, "plan mode must never invoke npm trust mutation");
 
@@ -178,7 +178,7 @@ const happyCalls = await readLog(happyLog);
 assert(happyCalls.length === 1, "execute mode must mutate only the missing package");
 assert(happyCalls[0].join(" ") === [
   "trust", "github", "@fixture/missing",
-  "--repository", "gilosbornhello/osstack",
+  "--repository", "osborn-studio/osstack",
   "--file", "release.yml",
   "--allow-publish", "--yes",
   "--registry", "https://registry.npmjs.org/",

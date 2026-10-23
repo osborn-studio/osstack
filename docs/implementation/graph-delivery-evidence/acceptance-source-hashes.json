@@ -1,0 +1,21 @@
+{
+  "packages/cli/src/graph-action-broker.ts": "9150fec900c5c1b6185705fa0b3b9ac01caae40922a5b59b9f3ded3bcaed6408",
+  "packages/cli/src/graph-runtime.ts": "22bd780158e1fb1c14c13071150683f6fd826aa7ccf580b93c23e8456dbba21c",
+  "packages/cli/src/graph-verification.ts": "834bf4f078ab0f83dd95da1b5f2cf27610ebfc4eaccff3087ba1807c609eb13b",
+  "packages/core/src/state/graph-actions.ts": "d482078f2eb3a007abd00e77fda2b0f7aa2dec9e0910582f828c888521951f38",
+  "packages/core/src/state/graph-verification.ts": "9c30d5b1b4795170a154672dc7679e7f3ffe56565e104f8e711b470ff14dcf54",
+  "packages/core/src/state/migrations.ts": "df2fa28a1223f8d6510096a88e907865b6157a38286c299f14db283aaf62cb96",
+  "packages/graph/package.json": "e13cf72c4d689d2c04054a86fc229a1c879c8243d9aa41317fa6918f282c7f2c",
+  "packages/graph/src/spec-compiler.test.ts": "768abd4fb4a05e55f0ccad430fa3ea8fe67436a9f655f750a41c0462f2ba135f",
+  "packages/graph/src/spec-compiler.ts": "4c61b28772157532e3216cdad6e95c853d7de47c9ec41a4c684121813ae406c4",
+  "packages/graph/src/worker-runtime.ts": "5901401b42be40730aa271c002ead85e392f5c6372b6dbf76f165715fa048da9",
+  "packages/cli/src/graph-delivery-adversarial.test.ts": "4d2855c22859f41d6b563ba01764df02b9d1d85ad4519c7dffe25b970ba7174c",
+  "packages/cli/src/graph-delivery-broker.test.ts": "bfdb2c82eb56f8943f7590e14f49598612455640e838c6e91f639b4af259d60b",
+  "packages/cli/src/graph-delivery-receipts.test.ts": "b0f59d98cd55bf1470e53fba8fca4fbb9900e059858363d4475ff2e1041c6fb1",
+  "packages/cli/src/graph-delivery-receipts.ts": "1fd5457a75dfff05b8afad54d91c5eddf7161d4f6af614d37c3f38543bf58e22",
+  "packages/cli/src/graph-delivery.integration.test.ts": "27215685207c411ca1ef5f8eae880ec9fa4c1213d9f4b90e35923f9d0d5953d1",
+  "packages/cli/src/graph-delivery.ts": "eaa8d8e4ecd7ffa3a6d3b29e3b7cc80e4999b41366fb8fc18ec28985bf8570b6",
+  "packages/core/src/state/graph-delivery-epochs.test.ts": "71d77af0a5f9140761a73669495dd1dab9c44f323c077a0afecaebf18c42e0de",
+  "packages/graph/src/templates/code-delivery-v1.test.ts": "9a941ef4330139d08475a840199dc8d149fa3e6cff9c5aead8ea66ac41c1338d",
+  "packages/graph/src/templates/code-delivery-v1.ts": "823ec9917c77b8b090350c6b422e3200af267c90263bd24b6c8fdd208dc9dfdd"
+}

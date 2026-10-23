@@ -1,5 +1,13 @@
 # @osstack/knowledge-cloud
 
+## 0.20.0
+
+### Patch Changes
+
+- f4c55ec: Align npm package repository metadata and Trusted Publisher tooling with the transferred osborn-studio/osstack repository. Existing mismatched trust mappings still require explicit operator review.
+- Updated dependencies [f4c55ec]
+  - @osstack/knowledge@0.20.0
+
 ## 0.15.0
 
 ### Patch Changes

@@ -1,0 +1,39 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/core
+
+Preparing worktree (detached HEAD 52929f6)
+ ✓ src/state/graph-recovery.test.ts (20 tests) 410ms
+ ✓ src/state/graph-runs.test.ts (39 tests) 1063ms
+Preparing worktree (detached HEAD 24ff421)
+Preparing worktree (detached HEAD a743b1c)
+Preparing worktree (detached HEAD a743b1c)
+Preparing worktree (detached HEAD 9532876)
+Preparing worktree (detached HEAD 9532876)
+Preparing worktree (detached HEAD 18544e6)
+Preparing worktree (detached HEAD 18544e6)
+Preparing worktree (detached HEAD 06eaf50)
+Preparing worktree (detached HEAD 120cdbd)
+Preparing worktree (detached HEAD 120cdbd)
+Preparing worktree (detached HEAD 120cdbd)
+Preparing worktree (detached HEAD 120cdbd)
+Preparing worktree (detached HEAD 120cdbd)
+Preparing worktree (detached HEAD dd73cad)
+Preparing worktree (detached HEAD dd73cad)
+Preparing worktree (detached HEAD bb2392a)
+ ✓ src/graph/artifact-store.test.ts (17 tests) 8582ms
+   ✓ trusted graph artifact freeze > restores full reachable history and exact raw tree after deleting original repo and worktree  1751ms
+   ✓ trusted graph artifact freeze > rechecks authority after durable publication before returning ready  547ms
+   ✓ trusted graph artifact freeze > returns immutable candidate identity and artifact refs  572ms
+   ✓ trusted graph artifact freeze > captures tracked-file to directory replacement with unusual filenames  831ms
+   ✓ trusted graph artifact freeze > does not return ready if durable ID publication fails; exported bytes remain recoverable  632ms
+   ✓ trusted graph artifact freeze > rejects manifest corruption under a pinned artifact digest  544ms
+   ✓ trusted graph artifact freeze > rejects same ID with changed receipt or content  981ms
+   ✓ trusted graph artifact freeze > does not invoke local hooks or filters during capture or restore  788ms
+   ✓ trusted graph artifact freeze > rejects corrupted bundles and manifests, including replay  672ms
+   ✓ trusted graph artifact freeze > refuses existing and escaping restore destinations  491ms
+
+ Test Files  3 passed (3)
+      Tests  76 passed (76)
+   Start at  07:57:36
+   Duration  8.92s (transform 188ms, setup 0ms, collect 383ms, tests 10.06s, environment 0ms, prepare 126ms)
+

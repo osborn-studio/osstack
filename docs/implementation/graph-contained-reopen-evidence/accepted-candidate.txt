@@ -1,0 +1,36 @@
+$ vitest run src/graph-verification.test.ts src/graph-delivery.integration.test.ts -t 'contained|substitution|actual child|repairs from|host bounded|finite branch|negative quality' --maxWorkers=1
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-reopen/g21-delivery-vVgwzx/delivery/writer-0'...
+HEAD is now at 566949c base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-reopen/g21-delivery-kR7DjF/delivery/writer-0'...
+HEAD is now at 4f06acd base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-reopen/g21-delivery-YgI6vV/delivery/writer-0'...
+HEAD is now at 06d2ac9 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-reopen/g21-delivery-9B6Rcp/delivery/writer-0'...
+HEAD is now at deadfff base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-reopen/g21-delivery-tKiWkF/delivery/writer-0'...
+HEAD is now at 762ac19 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-reopen/g21-delivery-7rVq8L/delivery/writer-0'...
+HEAD is now at 5a8b7a2 base
+ ✓ src/graph-delivery.integration.test.ts (6 tests) 57662ms
+   ✓ actual child delivery succeeds with review finishing last  6694ms
+   ✓ actual child delivery succeeds with tests finishing last  6686ms
+   ✓ repairs from immutable complete join through physical child stop and G15 resume  13237ms
+   ✓ host bounded retry returns only final confirmed task result and fresh independent workspace  8396ms
+   ✓ finite branch failure stops without a failed task RETURN or poisoned join  15480ms
+   ✓ negative quality at epoch cap stops  7168ms
+ ✓ src/graph-verification.test.ts (36 tests | 30 skipped) 22524ms
+   ✓ binds actual contained tests exit 0 to candidate/image/ledger without POSIX evidence  3543ms
+   ✓ binds actual contained tests exit 1 to candidate/image/ledger without POSIX evidence  3657ms
+   ✓ binds actual contained tests exit 42 to candidate/image/ledger without POSIX evidence  3614ms
+   ✓ binds actual contained tests exit 7 to candidate/image/ledger without POSIX evidence  3501ms
+   ✓ rejects cross-candidate, image, generation, invocation and container receipt substitution  3692ms
+   ✓ settles contained cancellation only after durable removal and prevents replay  4517ms
+
+ Test Files  2 passed (2)
+      Tests  12 passed | 30 skipped (42)
+   Start at  16:33:10
+   Duration  81.47s (transform 491ms, setup 8ms, collect 1.05s, tests 80.19s, environment 0ms, prepare 56ms)
+

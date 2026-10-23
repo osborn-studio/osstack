@@ -1,0 +1,53 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-09-19",
+  "scope": "G25-C1 public no-child cancellation reconciliation",
+  "accepted": true,
+  "G25Complete": false,
+  "G26Complete": false,
+  "productionReady": false,
+  "tests": {
+    "files": 9,
+    "passed": 109,
+    "failed": 0
+  },
+  "loop": {
+    "id": "G25-public-reconcile-3",
+    "executed": 1,
+    "skipped": 0,
+    "outcome": "success"
+  },
+  "checks": [
+    "build",
+    "full workspace typecheck",
+    "protocol schema freshness",
+    "CLI startup budgets",
+    "whitespace"
+  ],
+  "startupMs": {
+    "version": 29,
+    "help": 80
+  },
+  "review": {
+    "requestedModel": "claude-fable-5-1",
+    "actualPrimaryModel": "claude-fable-5-1",
+    "passes": 2,
+    "initialVerdict": "accept with required follow-ups",
+    "finalVerdict": "accept",
+    "followUpsAddressed": [
+      "durable intent racing proof conflict",
+      "post-commit grant expiry",
+      "no-child help text",
+      "targeted regression tests"
+    ]
+  },
+  "limitations": [
+    "no opaque-effect/workspace reconciliation",
+    "no new real builtin graph adapter",
+    "generation-0 shared-DB multi-host projection can still race and report a revision conflict; status/replay required"
+  ],
+  "nextTask": "G25-B real supported writer/reviewer execution profile",
+  "completedParentTasks": 25,
+  "totalParentTasks": 30,
+  "acceptedCodeCommit": "1893d09a845c0e2abdbd3eb392a184b0c89ee0e0"
+}

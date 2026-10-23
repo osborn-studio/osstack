@@ -1,0 +1,20 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+ ✓ src/graph-verification.test.ts (10 tests) 13964ms
+   ✓ restores the exact verified candidate into independent repositories and rejects reviewer writes  1650ms
+   ✓ rejects wrong manifest and reviewer identity before restoring or invoking  777ms
+   ✓ persists actual stopped exit evidence and rejects tampering/replay  1709ms
+   ✓ keeps unknown stop separate from stopped malformed review and valid changes_requested  1496ms
+   ✓ runs real registered command and independent G04 review concurrently with an observable two-way barrier  1732ms
+   ✓ rejects revoke during adapter availability before actual invocation  1500ms
+   ✓ rejects mutate during adapter availability before actual invocation  1497ms
+   ✓ snapshots callback/data replacement and rejects live revocation after preparation awaits  1913ms
+   ✓ rejects mutation during restore before accepting any workspace baseline  1180ms
+   ✓ releases preparation lease if authority is revoked while acquiring it  510ms
+
+ Test Files  1 passed (1)
+      Tests  10 passed (10)
+   Start at  18:03:29
+   Duration  14.92s (transform 459ms, setup 8ms, collect 757ms, tests 13.96s, environment 0ms, prepare 40ms)
+

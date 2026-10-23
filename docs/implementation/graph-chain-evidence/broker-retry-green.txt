@@ -1,0 +1,16 @@
+$ vitest run graph-action-broker-boundary.test.ts
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+osstack: retaining write lease graph-action:ff5001f8065098bec04b7a9b8202e64ffa7909fa6360c8dc77195a5e7db49d14: Error: invalid result kind for registered operation
+osstack: retaining write lease graph-action:758b0153d20556cd89a1ed3b19f8e52cbaa1c82fa1da972490c3429d49609188: Error: invalid persisted evidence reference
+osstack: retaining write lease graph-action:b0fec4951879daf934f043c75b28bb7034ff7d7e661c4767570a4680148bf850: Error: candidate preflight refused
+osstack: retaining write lease graph-action:f648a8388b3c18dd2b56fb2b192b6ec23575489ea95ede62e236db28ca00d707: Error: candidate preflight refused
+osstack: retaining write lease graph-action:bee19142bc472b3ed93629814edf788796860f63d83cb79cf4e765dce286b3e6: Error: lost receipt
+ ✓ src/graph-action-broker-boundary.test.ts (12 tests) 1200ms
+
+ Test Files  1 passed (1)
+      Tests  12 passed (12)
+   Start at  07:36:25
+   Duration  3.84s (transform 1.42s, setup 21ms, collect 2.37s, tests 1.20s, environment 0ms, prepare 78ms)
+

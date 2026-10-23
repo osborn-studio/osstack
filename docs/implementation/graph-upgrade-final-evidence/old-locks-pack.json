@@ -1,0 +1,236 @@
+[
+  {
+    "id": "@osstack/autonomy@0.17.0",
+    "name": "@osstack/autonomy",
+    "version": "0.17.0",
+    "size": 76938,
+    "unpackedSize": 469959,
+    "shasum": "e4feea1917d64c414f26dacfff99e46b5e4aa4f5",
+    "integrity": "sha512-6I8fzOPWl1jaT5syDWJyVsXMpzWj4l8gzDTBEkSGXWW3azffsjf4D221LKkAG/9sbSka908tr58TNj82uJ7J+g==",
+    "filename": "osstack-autonomy-0.17.0.tgz",
+    "files": [
+      {
+        "path": "LICENSE",
+        "size": 1063,
+        "mode": 420
+      },
+      {
+        "path": "dist/approval.d.ts",
+        "size": 4205,
+        "mode": 420
+      },
+      {
+        "path": "dist/approval.js",
+        "size": 7917,
+        "mode": 420
+      },
+      {
+        "path": "dist/approval.js.map",
+        "size": 7424,
+        "mode": 420
+      },
+      {
+        "path": "dist/core-persistence.d.ts",
+        "size": 776,
+        "mode": 420
+      },
+      {
+        "path": "dist/core-persistence.js",
+        "size": 11454,
+        "mode": 420
+      },
+      {
+        "path": "dist/core-persistence.js.map",
+        "size": 8849,
+        "mode": 420
+      },
+      {
+        "path": "dist/deploy-policy.d.ts",
+        "size": 2925,
+        "mode": 420
+      },
+      {
+        "path": "dist/deploy-policy.js",
+        "size": 10798,
+        "mode": 420
+      },
+      {
+        "path": "dist/deploy-policy.js.map",
+        "size": 11061,
+        "mode": 420
+      },
+      {
+        "path": "dist/deploy-runner.d.ts",
+        "size": 12127,
+        "mode": 420
+      },
+      {
+        "path": "dist/deploy-runner.js",
+        "size": 21396,
+        "mode": 420
+      },
+      {
+        "path": "dist/deploy-runner.js.map",
+        "size": 21082,
+        "mode": 420
+      },
+      {
+        "path": "dist/engine.d.ts",
+        "size": 98603,
+        "mode": 420
+      },
+      {
+        "path": "dist/engine.js",
+        "size": 52797,
+        "mode": 420
+      },
+      {
+        "path": "dist/engine.js.map",
+        "size": 43853,
+        "mode": 420
+      },
+      {
+        "path": "dist/git-candidate.d.ts",
+        "size": 1266,
+        "mode": 420
+      },
+      {
+        "path": "dist/git-candidate.js",
+        "size": 13337,
+        "mode": 420
+      },
+      {
+        "path": "dist/git-candidate.js.map",
+        "size": 11929,
+        "mode": 420
+      },
+      {
+        "path": "dist/index.d.ts",
+        "size": 481,
+        "mode": 420
+      },
+      {
+        "path": "dist/index.js",
+        "size": 514,
+        "mode": 420
+      },
+      {
+        "path": "dist/index.js.map",
+        "size": 429,
+        "mode": 420
+      },
+      {
+        "path": "dist/progress-budget.d.ts",
+        "size": 1270,
+        "mode": 420
+      },
+      {
+        "path": "dist/progress-budget.js",
+        "size": 4576,
+        "mode": 420
+      },
+      {
+        "path": "dist/progress-budget.js.map",
+        "size": 4321,
+        "mode": 420
+      },
+      {
+        "path": "dist/repo-lock.d.ts",
+        "size": 1844,
+        "mode": 420
+      },
+      {
+        "path": "dist/repo-lock.js",
+        "size": 6591,
+        "mode": 420
+      },
+      {
+        "path": "dist/repo-lock.js.map",
+        "size": 6695,
+        "mode": 420
+      },
+      {
+        "path": "dist/repo-policy.d.ts",
+        "size": 16297,
+        "mode": 420
+      },
+      {
+        "path": "dist/repo-policy.js",
+        "size": 11101,
+        "mode": 420
+      },
+      {
+        "path": "dist/repo-policy.js.map",
+        "size": 10615,
+        "mode": 420
+      },
+      {
+        "path": "dist/risk.d.ts",
+        "size": 593,
+        "mode": 420
+      },
+      {
+        "path": "dist/risk.js",
+        "size": 14944,
+        "mode": 420
+      },
+      {
+        "path": "dist/risk.js.map",
+        "size": 12396,
+        "mode": 420
+      },
+      {
+        "path": "dist/semaphore.d.ts",
+        "size": 479,
+        "mode": 420
+      },
+      {
+        "path": "dist/semaphore.js",
+        "size": 2240,
+        "mode": 420
+      },
+      {
+        "path": "dist/semaphore.js.map",
+        "size": 2080,
+        "mode": 420
+      },
+      {
+        "path": "dist/state-machine.d.ts",
+        "size": 1147,
+        "mode": 420
+      },
+      {
+        "path": "dist/state-machine.js",
+        "size": 6346,
+        "mode": 420
+      },
+      {
+        "path": "dist/state-machine.js.map",
+        "size": 5368,
+        "mode": 420
+      },
+      {
+        "path": "dist/types.d.ts",
+        "size": 4079,
+        "mode": 420
+      },
+      {
+        "path": "dist/types.js",
+        "size": 5752,
+        "mode": 420
+      },
+      {
+        "path": "dist/types.js.map",
+        "size": 6087,
+        "mode": 420
+      },
+      {
+        "path": "package.json",
+        "size": 852,
+        "mode": 420
+      }
+    ],
+    "entryCount": 44,
+    "bundled": []
+  }
+]

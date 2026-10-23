@@ -1,0 +1,790 @@
+You are Claude Fable 5.1 independent adversarial architect reviewing OSStack G22-G24. No tools. Review concrete plan below against given code facts. Identify blocking bugs and smallest workable design. No fake approval. The coding actor is implementing actual daemon public graph run/status/cancel/resume, host trusted registry and G15 recovery. Parent implements offline CLI validate and external stable v1 protocol. Need safe authority, source isolation, exactly-once admission (not physical effects), ambiguous delivery and cancellation. New daemon recovery without observed executor stop must fail closed; G25 covers arbitrary crash proof. User wants real usable local server configuration, not only test injected fake service.
+Parent CLI contract: graph validate --spec FILE [--json] pure compile (no DB); graph run --request FILE; cancel/resume --request FILE; status/result --run ID --scope FILE. bin passes existing rpc(method,params) dependency. Strict protocol requests used. methods graph.start/status/result/cancel/resume with params equal request object. Result expected {schemaVersion:1,kind:'graph_status', graphRunId, scope, source, inputDigest, specHash, state, revision, generation, phase, candidate?, budget, resultRef?, interrupt?, authorization?, error?, delivery:'pending'|'available'|'delivery_unknown'}. Please publish your desired projection shape ASAP; can adjust parent protocol to yours. Transport error from mutation will yield structured delivery_unknown and preserve exact key + inputDigest, instruct same request retry, never new key. Need local serve usable registered trust from config; no auto-grant repo write merely from caller scope. No ask user for config now; tests with explicit trusted config suffice + documented setup path.
+
+FILE docs/implementation/2026-09-15-graph-delivery-next-context.md
+# G21 接续上下文：G22–G24 / 用户入口与外部契约
+
+G21 本地验收通过，源 `ab988b32649c9eef084e997bb92d31c0108436fc`；G00–G21 完成（22/30），下一批 G22–G24，C7 pending。见 [G21 报告](2026-09-15-graph-delivery-completion.md)与[准入证据](graph-delivery-evidence/admission.json)。
+
+实施工作区 `/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation`，分支 `codex/graph-runtime-foundation`。原 checkout `/Volumes/AIMATE_WORK/Developer/CodeX/osstack` 仅镜像拥有的文档，保留其 AGENTS 和其他用户改动。开发 CLI 只能使用显式独立 OSSTACK_HOME；禁止打开默认或 reserved serving home。
+
+## 已实现接口
+
+`packages/cli/src/graph-delivery.ts` 的 GraphDelivery 是可信 host 的一次性编排入口，构造参数包括 db、完整 StartGraphRequest、隔离 root、可信 repositoryPath/task、writer/reviewer 与独立身份核验、acceptanceRegistry、G10 acquire、同步 authorize。run() 返回 host route、可选 candidate 与 feedbackRef；没有 freeze 的停止/未知结果没有 candidate。不得从 worker/caller JSON 直接提供 adapter、shell command、路径或身份授权回调。
+
+编译器 code-delivery-functional-v4；固定 registry/schema 仍为 v3，成本和操作定义未增加新工具。每轮 8 个 plan 节点，其中 7 个有实际效果。workspace/implement 或 repair/freeze 串行，两项准备也记账；review/tests 并行。公开 Functional task + sync saver；每轮 host 质量边界通过 interrupt，先观察物理 stop/drain，再由 G15 交接和 interrupt resume 实现修复。模板只缓存 confirmed action RETURN。
+
+GraphDeliveryEpochStore（core/graph-verification 子路径）与迁移32持久化 epoch 许可。GraphActionBroker.installActions 只追加当前连接动作；retryAuthorized 的 replacement 参数只供已授权尝试选择新工作区，payload/cap 保持相同。普通 worker 不能追加任意动作或分配 attempt。core 与 broker 对 code-delivery-functional- 家族要求初始许可，后续轮次需要最新合法负向 immutable join，无 unknown/held，原预算足够。
+
+GraphDelivery 保留自身 owner/generation，只能由自己成功的 G15 返回更新；最终状态必须用 join 快照 revision。不得为了通过冲突而读取最新 owner 冒充它。撤权/换代时旧 host 不投影状态；留给已授权恢复。retry_required 若无法实际准入，返回 stop/retry_dispatch_incomplete 并置 failed，不能返回 retry_required 却封死运行。
+
+prepareGraphVerification 保留旧双分支接口；新 prepareGraphVerificationBranch(options,kind) 只准备一个分支，返回 workspaces map。传入 preparationLease 时由 broker 负责释放，不能再次拿同源锁。动作/receipt 精确匹配 nodeId+effectSlot；retry-N 准备槽与分支 main 不可混淆。
+
+执行回执在 graph-delivery-receipts.ts：graph-delivery:<digest>、128KiB、精确 effect/generation/owner/workspace 绑定、fsync、no-overwrite/no-follow。G19 验证回执仍是 graph-verification:<digest>、64KiB、8KiB report/有界诊断。回执哈希只证明已保存内容；未知外部效果仍须独立核对，不能靠旧 stopped:true 在新 daemon 中自动解除隔离。
+
+## G22 实施要求
+
+保留现有 graph explain 关系诊断入口。新增 validate/run/status 应走已认证 daemon 的持久 run 服务；不要在每次 RPC 重试时盲目 new GraphDelivery().run()：它是 one-shot，root 下的 source 模块采用 exclusive create，已领取的 run 必须从持久状态返回或经 G23 恢复，不能再次 claim。先做 caller/scope、原始输入与幂等键映射，再安装可信 registry 与内部 driver。
+
+入口需要 lazy import；执行模块目前由内部源代码装配，不能宣称已通过完整安装包分发（G27）。添加 CLI/包 index 顶层依赖前测量加载成本。已有 --version <150ms、--help <500ms 本地预算不变。GraphSpec 仍是固定 code-delivery-v1，不开放任意 JavaScript 或任意图拓扑。
+
+## G23/G24 与未完成边界
+
+G23 取消必须先持久 cancel intent；Promise 完成不等于 worker/执行器停止，unknown/held 不得自动重试或清理。新 host 的恢复需由不可变 receipts、候选、checkpoints 和 G15 重新装配工作区注册；G21 验证的是同一 coordinator 中的实际计划性交接，并非任意 daemon crash 自动恢复。保留原 scope/program/input/specHash、createdAt、预算、effect attempt，不能重新给完整预算。
+
+G24 把内部 route/candidate/ref 映射为稳定外部结果，ready 只交付候选，不 merge/push/deploy，不自动完成 task FSM。OSBot/OStag 身份字段只是协议，不等于外部生产鉴权集成。C7 要等 G21–G24 全部完成；G25 故障、G26 兼容、G27 发行、G28 性能、G29 真实试点仍 pending。
+
+G28 特别检查 Git 同步 inventory、workspace clone 和长 artifact I/O；当前仅有续租窗口压缩的真实 heartbeat 测试，不能当作长时间性能试点。same-UID 不是 OS sandbox；WAL NORMAL 不保证断电；完整历史 bundle/平台限制沿用 C5。
+
+## 实际协作与验收
+
+仍使用真实 OSStack Loop；sources:[] + inputTasks、skipCompletedTasks:false、新 taskId/state/home，检查 executedTaskCount/outcome 和全部 verifier。Claude Fable 5.1 已完成两轮审查，最后回审因额度限制未执行；独立 Codex 只读审查通过，不冒充 Claude 的签核。额度恢复后可将本报告和 review-adjudication.md 给 Claude 复核，不需要因此回退已验证代码。
+
+下一批先核对当前 HEAD、任务清单、G21 报告和证据，再实施 G22。不得覆盖原 checkout 的用户文件，不 merge/push/deploy，除非用户随后明确要求。
+
+FILE packages/core/src/state/graph-runs.ts
+// Storage contracts only. Status is a projection of checkpoint/broker evidence,
+// never an independent scheduler or node FSM. No engine code is imported here.
+import { createHash, randomUUID } from "node:crypto";
+import type Database from "better-sqlite3";
+import { z } from "zod";
+import { GraphJsonValue, GraphScope, GraphRunState, GraphRequest, StartGraphRequest, computeGraphInputDigest } from "@osstack/protocol";
+import { preflightDiskSpace } from "./db.js";
+
+// biome-ignore lint/suspicious/noControlCharactersInRegex: Reject controls in persisted identity strings.
+const text = z.string().min(1).max(256).refine((s) => s.trim() === s && !/[\u0000-\u001f\u007f-\u009f]/.test(s));
+const counter = z.number().int().min(0).max(Number.MAX_SAFE_INTEGER);
+const digest = z.string().regex(/^[a-f0-9]{64}$/);
+const programSchema = z.object({
+  executionModel: z.literal("langgraph-functional-v1"), durability: z.literal("sync"),
+  engineVersion: text, checkpointVersion: text, templateVersion: text,
+  registryVersion: text, compilerVersion: text, schemaVersion: text, compiledProgramDigest: digest,
+}).strict();
+const identitySchema = programSchema.extend({ specHash: digest, inputDigest: digest });
+export type GraphProgramVersion = z.infer<typeof programSchema>;
+export type GraphProgramIdentity = z.infer<typeof identitySchema>;
+const stoppedSchema = z.object({
+  graphRunId: text, generation: counter.min(1), owner: text, confirmedAt: counter, evidenceRef: text,
+}).strict();
+/** A trusted supervisor's durable exit receipt, NOT a worker claim or an abort result.
+ * Caller must verify the receipt and independently reconcile/stop external actions
+ * and isolate old workspaces before takeover. This store cannot inspect processes. */
+export type GraphStoppedWorkerEvidence = z.infer<typeof stoppedSchema>;
+export const graphRunFenceSchema = z.object({
+  scope: GraphScope, graphRunId: text, expectedGeneration: counter, expectedRevision: counter,
+  expectedOwner: text.nullable(), identity: identitySchema, now: counter,
+}).strict();
+export type GraphRunFence = z.infer<typeof graphRunFenceSchema>;
+export interface GraphLeaseAcquisition extends GraphRunFence {
+  owner: string;
+  leaseExpiresAt: number;
+  stoppedWorker?: GraphStoppedWorkerEvidence;
+}
+export interface GraphLeaseRenewal extends GraphRunFence { leaseExpiresAt: number }
+export interface GraphRunProjection extends GraphRunFence { status: GraphRunState }
+const acquireSchema = graphRunFenceSchema.extend({ owner: text, leaseExpiresAt: counter, stoppedWorker: stoppedSchema.optional() });
+const renewSchema = graphRunFenceSchema.extend({ leaseExpiresAt: counter });
+const projectSchema = graphRunFenceSchema.extend({ status: GraphRunState });
+
+export interface GraphRun {
+  graphRunId: string;
+  scope: GraphScope;
+  source: StartGraphRequest["source"];
+  inputArtifactRef: string;
+  template: StartGraphRequest["spec"]["template"];
+  identity: GraphProgramIdentity;
+  /** Original immutable start spec; null for pre-migration-26 runs. */
+  spec: StartGraphRequest["spec"] | null;
+  status: GraphRunState;
+  generation: number;
+  revision: number;
+  leaseOwner: string | null;
+  leaseExpiresAt: number | null;
+  leaseAcquiredAt: number | null;
+  createdAt: number;
+  updatedAt: number;
+}
+export type GraphRunStorageErrorCode = "RUN_NOT_FOUND" | "IDEMPOTENCY_CONFLICT" | "PROGRAM_IDENTITY_MISMATCH"
+  | "STALE_GENERATION" | "REVISION_CONFLICT" | "OWNER_MISMATCH" | "LEASE_EXPIRED" | "STOPPED_WORKER_REQUIRED"
+  | "STOPPED_WORKER_MISMATCH" | "TERMINAL_RUN" | "UNRESOLVED_ACTION" | "CANCEL_PENDING" | "ADMISSION_RELEASE_PENDING" | "INVALID_TIME" | "COUNTER_EXHAUSTED";
+export class GraphRunStorageError extends Error {
+  constructor(public readonly code: GraphRunStorageErrorCode) { super(code); this.name = "GraphRunStorageError"; }
+}
+const fail = (code: GraphRunStorageErrorCode): never => { throw new GraphRunStorageError(code); };
+function canonical(value: unknown): string {
+  if (value === null || typeof value !== "object") return JSON.stringify(value);
+  if (Array.isArray(value)) return `[${value.map(canonical).join(",")}]`;
+  const record = value as Record<string, unknown>;
+  return `{${Object.keys(record).sort().map((k) => `${JSON.stringify(k)}:${canonical(record[k])}`).join(",")}}`;
+}
+function parse<T extends z.ZodTypeAny>(schema: T, value: unknown): z.output<T> {
+  // Bound the decoded object before recursive schema processing, including accessors.
+  return schema.parse(GraphJsonValue.parse(value));
+}
+function increment(value: number): number {
+  if (value === Number.MAX_SAFE_INTEGER) fail("COUNTER_EXHAUSTED");
+  return value + 1;
+}
+interface RunRow {
+  graph_run_id: string; scope_json: string; source_json: string; input_artifact_ref: string; template: GraphRun["template"];
+  spec_json: string | null; identity_json: string; status: GraphRunState; generation: number; revision: number;
+  lease_owner: string | null; lease_expires_at: number | null; lease_acquired_at: number | null; created_at: number; updated_at: number;
+}
+function decode(row: RunRow): GraphRun {
+  return { graphRunId: row.graph_run_id, scope: JSON.parse(row.scope_json) as GraphScope,
+    source: JSON.parse(row.source_json) as StartGraphRequest["source"], inputArtifactRef: row.input_artifact_ref,
+    spec: row.spec_json === null ? null : JSON.parse(row.spec_json) as StartGraphRequest["spec"],
+    template: row.template, identity: JSON.parse(row.identity_json) as GraphProgramIdentity,
+    status: row.status, generation: row.generation, revision: row.revision, leaseOwner: row.lease_owner,
+    leaseExpiresAt: row.lease_expires_at, leaseAcquiredAt: row.lease_acquired_at, createdAt: row.created_at, updatedAt: row.updated_at };
+}
+
+/** Daemon-owned synchronous store. Caller authenticates scope/owner, authorizes every
+ * operation, verifies compiler/artifact identity and supplies trusted epoch-ms time.
+ * Never expose this API directly to worker/request JSON. A matching lease is fencing,
+ * not authorization. G13 must bind checks and checkpoint writes in the SAME transaction. */
+export class GraphRunStore {
+  constructor(private readonly db: Database.Database) {}
+
+  private write<T>(fn: () => T): T {
+    preflightDiskSpace(this.db.name);
+    // Acquire write reservation BEFORE reading: independent connections cannot both
+    // admit the same key or update from the same revision (also avoids WAL upgrades).
+    return this.db.transaction(fn).immediate();
+  }
+
+  get(scopeValue: GraphScope, graphRunId: string): GraphRun | null {
+    const scope = GraphScope.parse(scopeValue);
+    text.parse(graphRunId);
+    const row = this.db.prepare("SELECT * FROM graph_runs WHERE scope_json = ? AND graph_run_id = ?")
+      .get(canonical(scope), graphRunId) as RunRow | undefined;
+    return row ? decode(row) : null;
+  }
+
+  /** Fresh server-generated run ID; one canonical business request per full scope/key.
+   * Metadata is excluded using the protocol digest. Compiler versions/digest are
+   * supplied by trusted compilation; start request/spec digests are computed here. */
+  create(requestValue: StartGraphRequest, versionValue: GraphProgramVersion, nowValue: number): GraphRun {
+    const request = StartGraphRequest.parse(requestValue);
+    const version = parse(programSchema, versionValue);
+    const now = counter.parse(nowValue);
+    const inputDigest = computeGraphInputDigest(request);
+    const identity: GraphProgramIdentity = { ...version, inputDigest,
+      specHash: createHash("sha256").update(`osstack.graph.spec.v1\n${canonical(request.spec)}`).digest("hex") };
+    const scopeJson = canonical(request.scope);
+    return this.write(() => {
+      const prior = this.db.prepare("SELECT graph_run_id, input_digest FROM graph_requests WHERE scope_json = ? AND idempotency_key = ?")
+        .get(scopeJson, request.idempotencyKey) as { graph_run_id: string; input_digest: string } | undefined;
+      if (prior) {
+        if (prior.input_digest !== inputDigest) fail("IDEMPOTENCY_CONFLICT");
+        const run = this.get(request.scope, prior.graph_run_id)!;
+        if (canonical(run.identity) !== canonical(identity)) fail("PROGRAM_IDENTITY_MISMATCH");
+        return run;
+      }
+      const id = randomUUID();
+      this.db.prepare(`INSERT INTO graph_runs (graph_run_id, scope_json, source_json, input_artifact_ref,
+        template, identity_json, spec_json, status, generation, revision, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, 'queued', 0, 0, ?, ?)`)
+        .run(id, scopeJson, canonical(request.source), request.inputArtifactRef, request.spec.template, canonical(identity), canonical(request.spec), now, now);
+      this.db.prepare(`INSERT INTO graph_requests (scope_json, idempotency_key, graph_run_id, input_digest, kind, created_at)
+        VALUES (?, ?, ?, ?, 'start', ?)`).run(scopeJson, request.idempotencyKey, id, inputDigest, now);
+      return this.get(request.scope, id)!;
+    });
+  }
+
+  private checked(input: GraphRunFence, requireLive: boolean): GraphRun {
+    return checkGraphRunFence(this.get(input.scope, input.graphRunId), input, requireLive);
+  }
+
+  acquireLease(value: GraphLeaseAcquisition): GraphRun {
+    const input = parse(acquireSchema, value);
+    return this.write(() => {
+      const run = this.checked(input, false);
+      if (input.leaseExpiresAt <= input.now) fail("INVALID_TIME");
+      if (run.generation > 0) {
+        const stopped = input.stoppedWorker ?? fail("STOPPED_WORKER_REQUIRED");
+        if (stopped.graphRunId !== run.graphRunId || stopped.generation !== run.generation || stopped.owner !== run.leaseOwner
+          || stopped.confirmedAt < run.updatedAt || stopped.confirmedAt > input.now) fail("STOPPED_WORKER_MISMATCH");
+      } else if (input.stoppedWorker) fail("STOPPED_WORKER_MISMATCH");
+      if (this.db.prepare("SELECT 1 FROM graph_action_admissions WHERE graph_run_id=? AND released_at IS NULL LIMIT 1").get(run.graphRunId)) fail("ADMISSION_RELEASE_PENDING");
+      const generation = increment(run.generation);
+      this.db.prepare(`UPDATE graph_runs SET generation = ?, revision = ?, lease_owner = ?, lease_expires_at = ?,
+        lease_acquired_at = ?, updated_at = ? WHERE graph_run_id = ? AND generation = ? AND revision = ?`)
+        .run(generation, increment(run.revision), input.owner, input.leaseExpiresAt, input.now, input.now, run.graphRunId, run.generation, run.revision);
+      this.db.prepare(`INSERT INTO graph_worker_leases (graph_run_id, generation, owner, acquired_at, expires_at, stopped_worker_json)
+        VALUES (?, ?, ?, ?, ?, ?)`).run(run.graphRunId, generation, input.owner, input.now, input.leaseExpiresAt,
+          input.stoppedWorker ? JSON.stringify(input.stoppedWorker) : null);
+      return this.get(input.scope, run.graphRunId)!;
+    });
+  }
+
+  renewLease(value: GraphLeaseRenewal): GraphRun {
+    const input = parse(renewSchema, value);
+    return this.write(() => {
+      const run = this.checked(input, true);
+      if (input.leaseExpiresAt <= input.now || input.leaseExpiresAt < run.leaseExpiresAt!) fail("INVALID_TIME");
+      this.db.prepare(`UPDATE graph_runs SET lease_expires_at = ?, revision = ?, updated_at = ?
+        WHERE graph_run_id = ? AND generation = ? AND revision = ?`)
+        .run(input.leaseExpiresAt, increment(run.revision), input.now, run.graphRunId, run.generation, run.revision);
+      this.db.prepare("UPDATE graph_worker_leases SET expires_at = ? WHERE graph_run_id = ? AND generation = ?")
+        .run(input.leaseExpiresAt, run.graphRunId, run.generation);
+      return this.get(input.scope, run.graphRunId)!;
+    });
+  }
+
+  /** Store an already-authorized resume/cancel decision and its projection together.
+   * Caller verifies interrupt/resume data, cancellation/exit evidence and policy;
+   * this method neither resumes a worker nor sends cancellation. All request kinds
+   * share one scope/key namespace. Replay returns the current run without mutation. */
+  projectRequest(requestValue: Exclude<GraphRequest, StartGraphRequest>, value: GraphRunProjection): GraphRun {
+    const request = GraphRequest.parse(requestValue);
+    const input = parse(projectSchema, value);
+    if (request.kind === "start") throw new Error("Expected resume or cancel request");
+    if (canonical(request.scope) !== canonical(input.scope) || request.graphRunId !== input.graphRunId) fail("RUN_NOT_FOUND");
+    const inputDigest = computeGraphInputDigest(request);
+    const scopeJson = canonical(input.scope);
+    return this.write(() => {
+      const run = this.get(input.scope, input.graphRunId) ?? fail("RUN_NOT_FOUND");
+      // Authenticate/fence before a cache hit, but do not reject a replay just
+      // because its original revision has advanced or the run is now terminal.
+      if (canonical(run.identity) !== canonical(input.identity)) fail("PROGRAM_IDENTITY_MISMATCH");
+      if (run.generation !== input.expectedGeneration) fail("STALE_GENERATION");
+      if (run.leaseOwner !== input.expectedOwner) fail("OWNER_MISMATCH");
+      const prior = this.db.prepare("SELECT graph_run_id, input_digest FROM graph_requests WHERE scope_json = ? AND idempotency_key = ?")
+        .get(scopeJson, request.idempotencyKey) as { graph_run_id: string; input_digest: string } | undefined;
+      if (prior) {
+        if (prior.graph_run_id !== run.graphRunId || prior.input_digest !== inputDigest) fail("IDEMPOTENCY_CONFLICT");
+        return run;
+      }
+      if (request.expectedRevision !== input.expectedRevision) fail("REVISION_CONFLICT");
+      const projected = this.projectInTransaction(input);
+      this.db.prepare(`INSERT INTO graph_requests (scope_json, idempotency_key, graph_run_id, input_digest, kind, created_at)
+        VALUES (?, ?, ?, ?, ?, ?)`).run(scopeJson, request.idempotencyKey, run.graphRunId, inputDigest, request.kind, input.now);
+      return projected;
+    });
+  }
+
+  /** Caller derives status from authoritative execution evidence. There is no
+   * transition map here; only irreversible terminal sealing and transactional CAS. */
+  project(value: GraphRunProjection): GraphRun {
+    const input = parse(projectSchema, value);
+    return this.write(() => this.projectInTransaction(input));
+  }
+
+  private projectInTransaction(input: GraphRunProjection): GraphRun {
+    const run = this.checked(input, true);
+    // Cancellation intent is irreversible even before external exit is confirmed.
+    if (run.status === "cancel_pending" && !["cancel_pending", "cancelled"].includes(input.status)) fail("CANCEL_PENDING");
+    // Never seal away the authority required to reconcile unfinished effects.
+    if (["ready", "failed", "cancelled"].includes(input.status)
+      && this.db.prepare("SELECT 1 FROM graph_actions WHERE graph_run_id = ? AND state IN ('intent','running','unknown','cancel_pending') LIMIT 1")
+        .get(run.graphRunId)) fail("UNRESOLVED_ACTION");
+    if (["ready", "failed", "cancelled"].includes(input.status)
+      && this.db.prepare("SELECT 1 FROM graph_action_admissions WHERE graph_run_id=? AND released_at IS NULL LIMIT 1").get(run.graphRunId)) fail("ADMISSION_RELEASE_PENDING");
+    this.db.prepare(`UPDATE graph_runs SET status = ?, revision = ?, updated_at = ?
+      WHERE graph_run_id = ? AND generation = ? AND revision = ?`)
+      .run(input.status, increment(run.revision), input.now, run.graphRunId, run.generation, run.revision);
+    return this.get(input.scope, run.graphRunId)!;
+  }
+}
+
+/** Internal shared storage check; call only while holding the SQLite write transaction. */
+export function checkGraphRunFence(value: GraphRun | null, input: GraphRunFence, requireLive: boolean): GraphRun {
+  const run = value ?? fail("RUN_NOT_FOUND");
+  if (canonical(run.identity) !== canonical(input.identity)) fail("PROGRAM_IDENTITY_MISMATCH");
+  if (run.generation !== input.expectedGeneration) fail("STALE_GENERATION");
+  if (run.revision !== input.expectedRevision) fail("REVISION_CONFLICT");
+  if (run.leaseOwner !== input.expectedOwner) fail("OWNER_MISMATCH");
+  if (["ready", "failed", "cancelled"].includes(run.status)) fail("TERMINAL_RUN");
+  if (input.now < run.updatedAt) fail("INVALID_TIME");
+  if (requireLive && (run.generation === 0 || run.leaseExpiresAt === null || run.leaseExpiresAt <= input.now)) fail("LEASE_EXPIRED");
+  increment(run.revision);
+  return run;
+}
+
+FILE packages/cli/src/graph-delivery.ts
+import { execFileSync } from 'node:child_process';
+import { randomUUID } from 'node:crypto';
+import { mkdir, writeFile, realpath } from 'node:fs/promises';
+import { join } from 'node:path';
+import type Database from 'better-sqlite3';
+import type { AgentAdapter } from '@osstack/agents';
+import { GraphRunStore, GraphActionStore, GraphCheckpointStore, resolveRepositoryScope, type GraphRun, type GraphRunFence } from '@osstack/core';
+import { GraphArtifactStore } from '@osstack/core/graph-artifacts';
+import { GraphDeliveryEpochStore, GraphVerificationStore } from '@osstack/core/graph-verification';
+import { compileGraphSpec, type CompiledGraphSpec } from '@osstack/graph/spec-compiler';
+import { deliveryEpoch } from '@osstack/graph/templates/code-delivery-v1';
+import { type GraphResult, WorkerActionRequest, workerCanonical, StartGraphRequest, freezeWorkerData, type WorkerActionResponse, type GraphWorkerResume } from '@osstack/protocol';
+import type { RegisteredCandidateWorkspace } from '@osstack/loop';
+import { GraphActionBroker, type GraphRegisteredAction, type GraphActionEvidence } from './graph-action-broker.js';
+import { GraphRuntime, type GraphRuntimeHandle, type GraphRuntimeStop } from './graph-runtime.js';
+import { GraphCheckpointService } from './graph-checkpoint-service.js';
+import { prepareGraphVerificationBranch, loadGraphVerificationEvidence, type GraphVerificationOptions } from './graph-verification.js';
+import { GraphVerificationJoinService, type GraphVerificationDecision } from './graph-verification-join.js';
+import { publishDeliveryReceipt, loadDeliveryReceipt } from './graph-delivery-receipts.js';
+import type { AdmissionInput, ExecutionLease } from './governed-execution.js';
+
+export interface GraphDeliveryOptions {
+  db: Database.Database; request: StartGraphRequest; root: string; repositoryPath: string;
+  task: string; writer: { identity: string; adapter: AgentAdapter; capabilityId: string };
+  reviewer: GraphVerificationOptions['reviewer']; verifyReviewer: GraphVerificationOptions['verifyReviewer'];
+  acceptanceRegistry: GraphVerificationOptions['acceptanceRegistry'];
+  acquire: (input: AdmissionInput) => Promise<ExecutionLease>; authorize: () => void;
+}
+type Candidate = Extract<GraphResult, { kind: 'candidate_ready' }>;
+type Kind = 'review' | 'tests';
+const git = (cwd: string, ...args: string[]) => execFileSync('git', ['-c','core.hooksPath=/dev/null','-c','core.fsmonitor=false', ...args], { cwd, encoding: 'utf8', timeout: 30000,
+  env: { ...Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith('GIT_'))), GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOSYSTEM: '1' } }).trim();
+
+/** Trusted host composition. No worker-selected executors, paths or commands.
+ * Functional tasks own replay; effects own invocation; immutable joins own repair. */
+export class GraphDelivery {
+  readonly compiled: CompiledGraphSpec;
+  readonly broker: GraphActionBroker;
+  readonly artifacts: GraphArtifactStore;
+  private readonly runs: GraphRunStore;
+  private runValue!: GraphRun;
+  private owned: GraphRun | undefined;
+  private runtime!: GraphRuntime;
+  private epoch = 0;
+  private readonly installed = new Map<string, Promise<void>>();
+  private readonly branches = new Map<string, GraphRegisteredAction>();
+  private readonly workspaces = new Map<number, RegisteredCandidateWorkspace>();
+  private feedbackRef: string | undefined;
+  private connection: object | undefined;
+  private closed = false;
+  private started = false;
+  private readonly options: GraphDeliveryOptions;
+  constructor(options: GraphDeliveryOptions) {
+    const adapter = (a: AgentAdapter): AgentAdapter => {
+      const capabilities = freezeWorkerData(structuredClone(a.capabilities()));
+      return Object.freeze({ id: a.id, display_name: a.display_name, cost_tier: a.cost_tier,
+        capabilities: () => structuredClone(capabilities), isAvailable: a.isAvailable.bind(a), invoke: a.invoke.bind(a),
+        ...(a.confirmStopped ? { confirmStopped: a.confirmStopped.bind(a) } : {}) });
+    };
+    this.options = Object.freeze({ ...options, request: freezeWorkerData(StartGraphRequest.parse(options.request)),
+      writer: Object.freeze({ ...options.writer, adapter: adapter(options.writer.adapter) }),
+      reviewer: Object.freeze({ ...options.reviewer, adapter: adapter(options.reviewer.adapter) }),
+      acceptanceRegistry: freezeWorkerData(structuredClone(options.acceptanceRegistry)) });
+    options = this.options;
+    const capability = options.writer.adapter.capabilities().find(c => c.id === options.writer.capabilityId);
+    if (options.writer.identity !== options.writer.adapter.id || !capability || !['code.write','code.refactor','code.debug'].includes(capability.kind)) throw Error('WRITER_IDENTITY_REQUIRED');
+    this.compiled = compileGraphSpec(options.request.spec);
+    this.runs = new GraphRunStore(options.db);
+    this.broker = new GraphActionBroker(options.db, { acquire: options.acquire });
+    this.artifacts = new GraphArtifactStore(join(options.root, 'artifacts'));
+  }
+  current(): GraphRun { return this.runs.get(this.runValue.scope, this.runValue.graphRunId)!; }
+  private leaseDeadline(): number {
+    const createdAt = this.runValue ? this.current().createdAt : Date.now();
+    return Math.min(Date.now() + 300000, createdAt + this.compiled.spec.limits.deadlineSeconds * 1000 + 1000);
+  }
+  private assertOwned(): void {
+    if (!this.owned) return;
+    const r = this.current();
+    if (r.generation !== this.owned.generation || r.leaseOwner !== this.owned.leaseOwner || workerCanonical(r.identity) !== workerCanonical(this.owned.identity)) throw Error('STALE_DELIVERY_OWNER');
+  }
+  private fence(premise = this.current()): GraphRunFence { this.assertOwned(); const r = premise; return { scope: r.scope, graphRunId: r.graphRunId, identity: r.identity,
+    expectedGeneration: r.generation, expectedOwner: r.leaseOwner, expectedRevision: r.revision, now: Date.now() }; }
+  private check(): void {
+    if (this.closed) throw Error('DELIVERY_CLOSED');
+    this.assertOwned();
+    const value: unknown = this.options.authorize();
+    if (value !== undefined) { void Promise.resolve(value).catch(() => {}); throw Error('AUTHORITY_MUST_BE_SYNCHRONOUS'); }
+  }
+  private latest(nodeId: string, effectSlot = 'main') {
+    const row = this.options.db.prepare('SELECT effect_key FROM graph_actions WHERE graph_run_id=? AND node_id=? AND effect_slot=? ORDER BY logical_attempt DESC LIMIT 1').get(this.current().graphRunId, nodeId, effectSlot) as { effect_key: string } | undefined;
+    return row ? new GraphActionStore(this.options.db).get(this.fence(), row.effect_key).action : undefined;
+  }
+  private result(nodeId: string): GraphResult {
+    const a = this.latest(nodeId);
+    if (a?.outcome?.state !== 'confirmed') throw Error(`PREDECESSOR_NOT_CONFIRMED: ${nodeId}`);
+    return a.outcome.result;
+  }
+  private candidate(epoch = this.epoch): Candidate {
+    const value = this.result(`e${epoch}.freeze`);
+    if (value.kind !== 'candidate_ready') throw Error('CANDIDATE_REQUIRED');
+    return value;
+  }
+  private binding() { const r = this.current(); const c = this.candidate(); return { scope: r.scope, graphRunId: r.graphRunId, specHash: r.identity.specHash,
+    epoch: this.epoch, candidateRevision: c.candidateRevision, artifactDigest: c.artifactDigest, acceptanceRef: r.spec!.input.acceptanceRef }; }
+  private receiptBinding(nodeId: string, workspacePath: string, effectSlot = 'main') {
+    const a = this.latest(nodeId, effectSlot); const r = this.current();
+    if (!a) throw Error('DELIVERY_EFFECT_REQUIRED');
+    const owner = this.options.db.prepare('SELECT owner FROM graph_worker_leases WHERE graph_run_id=? AND generation=?').get(r.graphRunId, a.generation) as { owner: string } | undefined;
+    if (!owner) throw Error('DELIVERY_EFFECT_LEASE_REQUIRED');
+    return { effect: a.effect, effectKey: a.effectKey, generation: a.generation, owner: owner.owner, workspacePath };
+  }
+  private async persist(nodeId: string, workspacePath: string, evidence: GraphActionEvidence, effectSlot = 'main'): Promise<string> {
+    if (this.latest(nodeId, effectSlot)?.state !== 'running') throw Error('RUNNING_EFFECT_REQUIRED');
+    return publishDeliveryReceipt(this.options.root, this.receiptBinding(nodeId, workspacePath, effectSlot), evidence, () => this.check());
+  }
+  private async restoreWorkspaceMappings(): Promise<void> {
+    // Functional replay may skip cached workspace callbacks. Recover mappings
+    // from exact content-addressed ledger receipts, never from worker RETURNs.
+    for (let epoch = 0; epoch <= this.epoch; epoch++) {
+      const nodeId = `e${epoch}.workspace`; const a = this.latest(nodeId);
+      if (a?.outcome?.state !== 'confirmed') continue;
+      const receipt = await loadDeliveryReceipt(this.options.root, a.outcome.evidenceRef, this.receiptBinding(nodeId, this.options.repositoryPath));
+      const value = receipt.workspace as { workspace?: RegisteredCandidateWorkspace } | undefined;
+      const workspace = value?.workspace;
+      if (!workspace || workspace.workspace_id !== this.current().scope.workspaceId || workspace.workspace_path !== join(this.options.root, `writer-${epoch}`)
+        || await realpath(workspace.workspace_path) !== workspace.workspace_path) throw Error('WORKSPACE_RECEIPT_MISMATCH');
+      this.check(); this.workspaces.set(epoch, Object.freeze({ ...workspace }));
+    }
+  }
+  private workspace(epoch = this.epoch): RegisteredCandidateWorkspace {
+    const w = this.workspaces.get(epoch); if (!w) throw Error('WORKSPACE_MAPPING_REQUIRED'); return w;
+  }
+  private async preparation(kind: Kind, attempt: number): Promise<GraphRegisteredAction> {
+    const p = deliveryEpoch(this.compiled, this.epoch); const n = p.node(`prepare_${kind}`); const candidate = this.candidate();
+    const epoch = this.epoch; const source = this.workspace(); const branch = p.node(kind);
+    return { nodeId: n.id, effectSlot: p.preparationSlot(kind, attempt), tokenReservation: n.tokenReservation,
+      action: { kind: 'workspace_create', repositoryRef: this.compiled.spec.input.repositoryRef, baseRevision: candidate.candidateRevision }, workspace: source,
+      execution: { kind: 'workspace', handler: async ({ lease }) => {
+        const prepared = await prepareGraphVerificationBranch({ root: join(this.options.root, 'verification'), artifacts: this.artifacts, candidate,
+          binding: this.binding(), sourceWorkspace: source, authorize: () => this.check(), acquire: this.options.acquire,
+          preparationLease: lease, acceptanceRegistry: this.options.acceptanceRegistry, writerIdentity: this.options.writer.identity,
+          reviewer: this.options.reviewer, verifyReviewer: this.options.verifyReviewer,
+          slots: { [kind]: { nodeId: branch.id, effectSlot: branch.effectSlot, workspaceLeaseRef: `e${epoch}.${kind}`, tokenReservation: branch.tokenReservation } },
+          effectIdentity: () => { const a = this.latest(branch.id); if (a?.state !== 'running') throw Error('RUNNING_EFFECT_REQUIRED'); return { effect: a.effect, effectKey: a.effectKey }; },
+        }, kind);
+        const action = prepared.actions[0]!; this.branches.set(branch.id, action);
+        return { status: 'completed', stopped: true, evidence: { workspace: action.workspace, workspaceLeaseRef: `e${epoch}.${kind}` } };
+      } }, persist: async evidence => ({ evidenceRef: await this.persist(n.id, source.workspace_path, evidence, p.preparationSlot(kind, attempt)), actualTokens: 0,
+        result: { schemaVersion: 1, kind: 'workspace', workspaceLeaseRef: `e${epoch}.${kind}`, receiptRef: `e${epoch}.prepared.${kind}.${attempt}` } }) };
+  }
+  private async registration(name: string): Promise<GraphRegisteredAction> {
+    const p = deliveryEpoch(this.compiled, this.epoch); const n = p.node(name); const r = this.current(); const epoch = this.epoch;
+    const common = { nodeId: n.id, effectSlot: n.effectSlot, tokenReservation: n.tokenReservation };
+    const workspaceLeaseRef = `e${epoch}.writer`;
+    if (name === 'workspace') {
+      const path = join(this.options.root, `writer-${epoch}`); const workspace = { workspace_id: r.scope.workspaceId, workspace_path: path };
+      const baseRevision = epoch === 0 ? this.compiled.spec.input.baseRevision : this.candidate(epoch - 1).candidateRevision;
+      return { ...common, workspace: { workspace_id: r.scope.workspaceId, workspace_path: this.options.repositoryPath },
+        action: { kind: 'workspace_create', repositoryRef: this.compiled.spec.input.repositoryRef, baseRevision },
+        execution: { kind: 'workspace', handler: async () => {
+          this.check();
+          if (epoch === 0) { if (git(this.options.repositoryPath, 'rev-parse', `${baseRevision}^{commit}`) !== baseRevision) throw Error('BASE_REVISION_MISMATCH'); git(this.options.root, 'clone', '--no-local', '--no-hardlinks', '--', this.options.repositoryPath, path); git(path, 'checkout', '--detach', baseRevision); }
+          else { const restored = await this.artifacts.restore(this.candidate(epoch - 1).artifactDigest, { rootPath: this.options.root, directoryName: `writer-${epoch}` }); if (restored.worktreePath !== path) throw Error('RESTORE_PATH_MISMATCH'); }
+          this.workspaces.set(epoch, workspace);
+          return { status: 'completed', stopped: true, evidence: { workspace, baseRevision } };
+        } }, persist: async evidence => ({ evidenceRef: await this.persist(n.id, this.options.repositoryPath, evidence), actualTokens: 0,
+          result: { schemaVersion: 1, kind: 'workspace', workspaceLeaseRef, receiptRef: `e${epoch}.workspace` } }) };
+    }
+    if (name === 'implement' || name === 'repair') {
+      this.result(`e${epoch}.workspace`); const workspace = this.workspace();
+      const feedback = epoch ? this.options.db.prepare('SELECT bundle_json FROM graph_verification_joins WHERE receipt_ref=? AND graph_run_id=?').get(this.feedbackRef, r.graphRunId) as { bundle_json: string } | undefined : undefined;
+      if (epoch && !feedback) throw Error('IMMUTABLE_FEEDBACK_REQUIRED');
+      const action = epoch ? { kind: 'repair' as const, inputArtifactRef: this.options.request.inputArtifactRef, workspaceLeaseRef,
+        candidateRevision: this.candidate(epoch - 1).candidateRevision, feedbackRef: this.feedbackRef! } : { kind: 'implement' as const, inputArtifactRef: this.options.request.inputArtifactRef, workspaceLeaseRef };
+      const adapter = this.options.writer.adapter;
+      const capability = adapter.capabilities().find(c => c.id === this.options.writer.capabilityId); if (!capability) throw Error('WRITER_CAPABILITY_REQUIRED');
+      return { ...common, workspace, action, execution: { kind: 'adapter', adapter, capabilityId: capability.id, plan: {
+        plan_id: `delivery-${r.graphRunId}-${epoch}`, agent_id: adapter.id, max_iterations: 1,
+        task: { task_id: `delivery-${epoch}`, source: 'manual', capability: capability.kind, priority: 100,
+          prompt: `${this.options.task}${feedback ? `\nRepair frozen candidate ${action.kind === 'repair' ? action.candidateRevision : ''}. Complete host quality feedback:\n${feedback.bundle_json}` : ''}` },
+        stop_condition: { type: 'tests_pass' },
+      } }, persist: async evidence => ({ evidenceRef: await this.persist(n.id, workspace.workspace_path, evidence),
+        ...(evidence.status === 'completed' && evidence.stopped ? { result: { schemaVersion: 1 as const, kind: 'implementation_complete' as const, workspaceLeaseRef, receiptRef: `e${epoch}.implementation` } } : {}) }) };
+    }
+    if (name === 'freeze') {
+      const implementation = this.latest(`e${epoch}.${epoch ? 'repair' : 'implement'}`);
+      if (implementation?.outcome?.state !== 'confirmed' || implementation.outcome.result.kind !== 'implementation_complete') throw Error('IMPLEMENTATION_REQUIRED');
+      const workspace = this.workspace(); const scope = await resolveRepositoryScope(workspace.workspace_path);
+      const checkProducer = async () => { const evidence = await loadDeliveryReceipt(this.options.root, implementation.outcome!.evidenceRef,
+        this.receiptBinding(implementation.effect.nodeId, workspace.workspace_path));
+        if (evidence.stopped !== true || workerCanonical(evidence.candidate?.workspace) !== workerCanonical(workspace)) throw Error('PRODUCER_STOP_REQUIRED'); this.check(); };
+      return { ...common, workspace, action: { kind: 'freeze', workspaceLeaseRef, receiptRef: implementation.outcome.result.receiptRef },
+        execution: { kind: 'freeze', store: this.artifacts, input: { artifactId: `delivery-${r.graphRunId}-${epoch}`, scope: r.scope, runId: r.graphRunId,
+          generation: r.generation, owner: r.leaseOwner!, workspaceLeaseRef, repoId: scope.repoId, commonDir: scope.commonDir, worktreePath: workspace.workspace_path,
+          baseRevision: epoch ? this.candidate(epoch - 1).candidateRevision : this.compiled.spec.input.baseRevision,
+          implementationReceiptRef: implementation.outcome.result.receiptRef, producerStopEvidenceRef: implementation.outcome.evidenceRef },
+        authority: { verifyLease: async (_input, lease) => { this.check(); await (lease as ExecutionLease).assertActive!(); }, verifyImplementationReceipt: checkProducer, verifyProducersStopped: checkProducer } },
+        persist: async evidence => { return { evidenceRef: await this.persist(n.id, workspace.workspace_path, evidence), actualTokens: 0, result: evidence.frozenCandidate! }; } };
+    }
+    if (name === 'prepare_review' || name === 'prepare_tests') return this.preparation(name === 'prepare_review' ? 'review' : 'tests', 1);
+    const action = this.branches.get(n.id); if (!action) throw Error('PREPARATION_REQUIRED'); return action;
+  }
+  private request(action: GraphRegisteredAction) { const r = this.current(); return { schemaVersion: 1 as const, kind: 'worker_action' as const, requestId: `host:${randomUUID()}`,
+    scope: r.scope, graphRunId: r.graphRunId, specHash: r.identity.specHash, generation: r.generation, epoch: this.epoch,
+    nodeId: action.nodeId, effectSlot: action.effectSlot, action: action.action }; }
+  private async dispatch(connection: object, value: WorkerActionRequest, options: { signal?: AbortSignal }): Promise<WorkerActionResponse> {
+    this.check(); const request = WorkerActionRequest.parse(value); const r = this.current();
+    if (request.epoch !== this.epoch || request.generation !== r.generation || request.graphRunId !== r.graphRunId || request.specHash !== r.identity.specHash || workerCanonical(request.scope) !== workerCanonical(r.scope)) throw Error('DELIVERY_IDENTITY_MISMATCH');
+    const name = request.nodeId.replace(`e${this.epoch}.`, ''); const n = deliveryEpoch(this.compiled, this.epoch).node(name);
+    if (request.effectSlot !== n.effectSlot) throw Error('DELIVERY_SLOT_MISMATCH');
+    if (!this.installed.has(n.id)) this.installed.set(n.id, this.registration(name).then(action => { this.check(); this.broker.installActions(connection, [action]); }));
+    await this.installed.get(n.id);
+    let response = await this.broker.handle(connection, request, options);
+    if (name !== 'review' && name !== 'tests') return response;
+    // The host inspects the actual attested failure. The task never caches failed RETURN.
+    while (response.kind === 'worker_action_response' && response.outcome.state === 'failed' && response.outcome.error.retryable) {
+      const prior = this.latest(n.id)!;
+      if (prior.effect.logicalAttempt >= n.maxLedgerAttempts) break;
+      if (!prior.outcome?.evidenceRef.startsWith('graph-verification:')) break;
+      const envelope = await loadGraphVerificationEvidence(join(this.options.root, 'verification'), prior.outcome!.evidenceRef, this.binding(), { effect: prior.effect, effectKey: prior.effectKey });
+      if (!envelope.verificationFailure?.retrySafe) break;
+      const snapshot = new GraphVerificationStore(this.options.db, () => {}).snapshot(this.fence());
+      const cost = deliveryEpoch(this.compiled, this.epoch).nextCost[name];
+      if (snapshot.budget.accountingBlocked || snapshot.budget.actionStarts + cost.actions > this.compiled.spec.limits.maxActionStarts
+        || BigInt(snapshot.budget.chargedTokens) + BigInt(snapshot.budget.reservedTokens) + BigInt(cost.tokens) > BigInt(this.compiled.spec.limits.tokenReservationLimit)) break;
+      const prep = await this.preparation(name, prior.effect.logicalAttempt + 1);
+      this.broker.installActions(connection, [prep]);
+      const prepared = await this.broker.handle(connection, this.request(prep), options);
+      if (prepared.kind !== 'worker_action_response' || prepared.outcome.state !== 'confirmed') return response;
+      response = await this.broker.retryAuthorized(connection, prior.effectKey, () => { this.check(); }, { ...options, replacement: this.branches.get(n.id)! });
+      if (response.kind === 'worker_action_response') response = { ...response, requestId: request.requestId };
+    }
+    return response;
+  }
+  private async evaluate(): Promise<GraphVerificationDecision> {
+    const p = deliveryEpoch(this.compiled, this.epoch);
+    return new GraphVerificationJoinService(this.options.db, { binding: this.binding(), artifacts: this.artifacts, evidenceRoot: join(this.options.root, 'verification'),
+      slots: p.slots, nextCost: p.nextCost, authorize: () => this.check() }).evaluate(this.fence());
+  }
+  private async takeover(handle: GraphRuntimeHandle, stopped: GraphRuntimeStop): Promise<void> {
+    const r = this.current(); const key = {};
+    const verify = () => { const observed = this.runtime.observedExit(handle.connection);
+      if (!stopped.actionsSettled || stopped.worker.kind !== 'exited' || workerCanonical(observed) !== workerCanonical(stopped.worker)) throw Error('PHYSICAL_WORKER_STOP_REQUIRED');
+      return stopped.worker;
+    };
+    this.runtime.reconciler.register(key, { binding: { scope: r.scope, graphRunId: r.graphRunId, identity: r.identity, generation: r.generation, owner: r.leaseOwner },
+      authorize: () => this.check(), stopWorker: async () => stopped,
+      verifyWorker: async () => { const exit = verify(); return { kind: 'stopped', graphRunId: exit.graphRunId, generation: exit.generation, owner: exit.owner, confirmedAt: exit.confirmedAt, evidenceRef: exit.evidenceRef }; },
+      verifyQuiescence: async () => { verify(); const decision = await this.evaluate(); if (decision.snapshot.pendingAdmissions || decision.snapshot.unresolvedActions) throw Error('QUIESCENCE_REQUIRED');
+        return { executorEvidenceRef: decision.publication!.record.receiptRef, workspaceEvidenceRef: this.candidate().artifactRefs[0]! }; },
+      verifyOutcome: async () => { throw Error('NO_EFFECT_RECONCILIATION'); }, recheck: () => { this.check(); verify(); }, release: async () => {},
+    });
+    try { const takeover = await this.runtime.reconciler.reconcile(key, { kind: 'takeover', fence: this.fence(), receiptId: `delivery-takeover-${this.epoch}`, owner: `delivery-${r.generation + 1}`, leaseExpiresAt: this.leaseDeadline() }); this.owned = takeover.result.run; }
+    finally { this.runtime.reconciler.unregister(key); }
+  }
+  async run(): Promise<{ route: GraphVerificationDecision['route']; candidate?: Candidate; feedbackRef?: string }> {
+    if (this.started) throw Error('DELIVERY_ALREADY_STARTED'); this.started = true;
+    this.check(); await mkdir(this.options.root, { recursive: true, mode: 0o700 }); this.check();
+    if (this.options.root === this.options.repositoryPath || this.options.root.startsWith(`${this.options.repositoryPath}/`) || await realpath(this.options.root) !== this.options.root || await realpath(this.options.repositoryPath) !== this.options.repositoryPath) throw Error('CANONICAL_HOST_PATHS_REQUIRED');
+    this.check();
+    const modulePath = join(this.options.root, 'delivery.mjs'); await writeFile(modulePath, this.compiled.source, { flag: 'wx', mode: 0o600 }); this.check();
+    const version = { executionModel: 'langgraph-functional-v1' as const, durability: 'sync' as const, engineVersion: '1.4.15', checkpointVersion: '1.1.5', templateVersion: '4',
+      registryVersion: this.compiled.registryVersion, compilerVersion: this.compiled.compilerVersion, schemaVersion: this.compiled.schemaVersion, compiledProgramDigest: this.compiled.compiledProgramDigest };
+    this.runtime = new GraphRuntime({ db: this.options.db, broker: this.broker,
+      checkpoints: new GraphCheckpointService({ runs: this.runs, checkpoints: new GraphCheckpointStore(this.options.db), bindings: new Map() }),
+      programs: [{ id: 'code-delivery-v1', modulePath, digest: this.compiled.compiledProgramDigest }] });
+    let resume: GraphWorkerResume | undefined;
+    let lastStopped: GraphRuntimeStop | undefined;
+    try {
+      this.runValue = this.runtime.prepare(this.options.request, version);
+      this.runValue = this.runtime.claim(this.runValue, 'delivery-1', this.leaseDeadline()); this.owned = this.runValue;
+      this.runs.project({ ...this.fence(), status: 'running' });
+      new GraphDeliveryEpochStore(this.options.db).activate(this.fence(), 0, deliveryEpoch(this.compiled, 0).cost);
+      for (;;) {
+        await this.restoreWorkspaceMappings();
+        const r = this.current(); this.installed.clear();
+        const handle = this.runtime.start({ request: this.options.request, run: r, programId: 'code-delivery-v1', leaseDurationMs: 60000, ...(resume ? { resume } : {}),
+          authorize: () => this.check(), registration: { scope: r.scope, graphRunId: r.graphRunId, identity: r.identity, generation: r.generation, owner: r.leaseOwner!, epoch: this.epoch,
+            workspace: { workspace_id: r.scope.workspaceId, workspace_path: this.options.repositoryPath }, authorize: () => this.check(), actions: [] },
+          dispatch: (key, request, options) => this.dispatch(key, request, options) });
+        this.connection = handle.connection;
+        let workerError: unknown;
+        try { await handle.result; } catch (error) { workerError = error; }
+        const stopped = await handle.stop(); lastStopped = stopped;
+        if (!stopped.actionsSettled || stopped.worker.kind !== 'exited') throw Error('PHYSICAL_WORKER_STOP_REQUIRED');
+        // No heartbeat now. Extend only the live lease, then capture a fresh immutable premise.
+        const current = this.current(); this.runs.renewLease({ ...this.fence(), leaseExpiresAt: Math.max(current.leaseExpiresAt!, this.leaseDeadline()) });
+        if (!this.latest(`e${this.epoch}.freeze`)) throw workerError ?? Error('FREEZE_REQUIRED');
+        const decision = await this.evaluate(); const candidate = this.candidate();
+        if (decision.route.kind !== 'repair_required') {
+          // Dispatch already exhausted or could not admit the explicit retry.
+          // A sealed failure must never advertise a retry that cannot be resumed.
+          const route = decision.route.kind === 'retry_required'
+            ? { kind: 'stop' as const, epoch: this.epoch, reason: 'retry_dispatch_incomplete' } : decision.route;
+          this.check();
+          if (this.current().status !== 'cancel_pending') this.runs.project({ ...this.fence(decision.snapshot.run), status: route.kind === 'ready' ? 'ready' : route.kind === 'reconcile' ? 'reconciliation_required' : 'failed' });
+          return { route, candidate, ...(decision.publication ? { feedbackRef: decision.publication.record.receiptRef } : {}) };
+        }
+        if (workerError || !decision.publication) throw workerError ?? Error('IMMUTABLE_JOIN_REQUIRED');
+        this.feedbackRef = decision.publication.record.receiptRef;
+        await this.takeover(handle, stopped);
+        const next = this.epoch + 1;
+        new GraphDeliveryEpochStore(this.options.db).activate(this.fence(), next, deliveryEpoch(this.compiled, next).cost, this.feedbackRef);
+        resume = { kind: 'interrupt', value: { ...decision.route, feedbackRef: this.feedbackRef } };
+        this.epoch = next;
+      }
+    } catch (error) {
+      // An idempotent prepare may find another owner's run. Failed acquisition
+      // grants no authority to project that run's status.
+      if (!this.owned) throw error;
+      const current = this.current();
+      const held = this.options.db.prepare('SELECT 1 FROM graph_action_admissions WHERE graph_run_id=? AND released_at IS NULL').get(current.graphRunId);
+      const unresolved = this.options.db.prepare("SELECT 1 FROM graph_actions WHERE graph_run_id=? AND state IN ('intent','running','unknown','cancel_pending')").get(current.graphRunId);
+      const reconcile = !!held || !!unresolved || !lastStopped?.actionsSettled || lastStopped.worker.kind !== 'exited';
+      try {
+        this.check();
+        if (!['ready','failed','cancelled','cancel_pending'].includes(current.status) && current.leaseExpiresAt! > Date.now()) {
+          this.runs.project({ ...this.fence(current), status: reconcile ? 'reconciliation_required' : 'failed' });
+        }
+      } catch { /* Revoked/stale hosts cannot project replacement or cancellation state. */ }
+      return { route: { kind: reconcile ? 'reconcile' : 'stop', epoch: this.epoch, reason: String(error).slice(0, 4096) } };
+    } finally { this.closed = true; await this.runtime.close(); if (this.connection) this.broker.unregister(this.connection); }
+  }
+}
+
+FILE packages/cli/src/graph-reconciler.ts
+// Host-only administrative recovery. No worker RPC, scheduler or automatic retry.
+import type Database from "better-sqlite3";
+import { z } from "zod";
+import { GraphJsonValue } from "@osstack/protocol";
+import type { GraphRunFence, GraphProgramIdentity } from "@osstack/core";
+import { GraphRecoveryStore, type GraphRecoverySnapshot, type GraphRecoveryProof,
+  type GraphRecoveryVerdict, type GraphRecoveryDecision, type GraphRecoveryResult } from "@osstack/core/graph-recovery";
+
+export interface GraphReconcilerRegistration {
+  binding: { scope: GraphRunFence["scope"]; graphRunId: string; generation: number; owner: string | null; identity: GraphProgramIdentity };
+  authorize: (snapshot: GraphRecoverySnapshot) => void;
+  /** Calls the actual supervisor. Its return alone is not evidence. */
+  stopWorker: (snapshot: GraphRecoverySnapshot) => Promise<unknown>;
+  verifyWorker: (snapshot: GraphRecoverySnapshot, stopResult: unknown) => Promise<GraphRecoveryProof["worker"]>;
+  /** Must independently stop all executors and export/quarantine the workspace. */
+  verifyQuiescence: (snapshot: GraphRecoverySnapshot, worker: GraphRecoveryProof["worker"]) => Promise<Pick<GraphRecoveryProof,
+    "executorEvidenceRef" | "workspaceEvidenceRef" | "effectWorker">>;
+  verifyOutcome: (snapshot: GraphRecoverySnapshot) => Promise<GraphRecoveryVerdict>;
+  /** Synchronous final check: permission and physical evidence remain valid. */
+  recheck: (snapshot: GraphRecoverySnapshot, proof: GraphRecoveryProof, decision: GraphRecoveryDecision) => void;
+  /** Idempotent exact-admission release. Call reverify inside the release guard. */
+  release: (result: GraphRecoveryResult, reverify: () => Promise<void>) => Promise<void>;
+}
+export type GraphReconciliationRequest = { fence: GraphRunFence; receiptId: string } & (
+  | { kind: "effect"; effectKey: string }
+  | { kind: "project"; status: "cancel_pending" | "cancelled" | "waiting_input" | "running" }
+  | { kind: "takeover"; owner: string; leaseExpiresAt: number });
+export interface GraphReconciliationResult {
+  exit: "applied" | "not_applied" | "unknown" | "projected" | "takeover" | "release_pending";
+  result: GraphRecoveryResult;
+  releaseError?: string;
+}
+// biome-ignore lint/suspicious/noControlCharactersInRegex: Reject control characters in persisted recovery references.
+const ref = z.string().min(1).max(256).regex(/^[^\x00-\x1f\x7f-\x9f]+$/).refine((s) => s.trim() === s);
+const requestSchema = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("effect"), fence: z.unknown(), receiptId: ref, effectKey: z.string().regex(/^[a-f0-9]{64}$/) }).strict(),
+  z.object({ kind: z.literal("project"), fence: z.unknown(), receiptId: ref, status: z.enum(["cancel_pending", "cancelled", "waiting_input", "running"]) }).strict(),
+  z.object({ kind: z.literal("takeover"), fence: z.unknown(), receiptId: ref, owner: ref, leaseExpiresAt: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER) }).strict(),
+]);
+function canonical(v: unknown): string {
+  if (v === null || typeof v !== "object") return JSON.stringify(v);
+  if (Array.isArray(v)) return `[${v.map(canonical).join(",")}]`;
+  const r = v as Record<string, unknown>;
+  return `{${Object.keys(r).sort().map((k) => `${JSON.stringify(k)}:${canonical(r[k])}`).join(",")}}`;
+}
+const fail = (code: string): never => { throw new Error(code); };
+const authority = (value: unknown) => {
+  if (value === undefined) return;
+  // Reject async grants while observing a rejected Promise so it cannot escape.
+  void Promise.resolve(value).catch(() => undefined);
+  fail("INVALID_RECOVERY_AUTHORITY");
+};
+
+export class GraphReconciler {
+  private readonly registrations = new Map<object, GraphReconcilerRegistration>();
+  private readonly store: GraphRecoveryStore;
+  private attestation: { connection: object; registration: GraphReconcilerRegistration; snapshot: GraphRecoverySnapshot; proof: GraphRecoveryProof; decision: GraphRecoveryDecision } | undefined;
+  constructor(db: Database.Database, private readonly now: () => number = Date.now) {
+    this.store = new GraphRecoveryStore(db, (snapshot, proof, decision) => {
+      const attestation = this.attestation;
+      if (!attestation || canonical(attestation.snapshot) !== canonical(snapshot) || canonical(attestation.proof) !== canonical(proof) || canonical(attestation.decision) !== canonical(decision)) fail("UNVERIFIED_RECOVERY_PROOF");
+      this.check(attestation!.connection, attestation!.registration, snapshot);
+      authority(attestation!.registration.recheck(structuredClone(snapshot), structuredClone(proof), structuredClone(decision)));
+    });
+  }
+  register(connection: object, registration: GraphReconcilerRegistration): void {
+    if (!connection || typeof connection !== "object" || this.registrations.has(connection)) fail("INVALID_RECOVERY_REGISTRATION");
+    for (const name of ["authorize", "stopWorker", "verifyWorker", "verifyQuiescence", "verifyOutcome", "recheck", "release"] as const) {
+      if (typeof registration[name] !== "function") fail("INVALID_RECOVERY_REGISTRATION");
+    }
+    this.registrations.set(connection, { ...registration, binding: structuredClone(registration.binding) });
+  }
+  unregister(connection: object): void { this.registrations.delete(connection); }
+  private check(connection: object, registration: GraphReconcilerRegistration, snapshot: GraphRecoverySnapshot): void {
+    if (this.registrations.get(connection) !== registration) fail("RECOVERY_REGISTRATION_REVOKED");
+    const run = snapshot.run;
+    if (canonical(registration.binding) !== canonical({ scope: run.scope, graphRunId: run.graphRunId, generation: run.generation,
+      owner: run.leaseOwner, identity: run.identity })) fail("RECOVERY_BINDING_MISMATCH");
+    authority(registration.authorize(structuredClone(snapshot)));
+  }
+  private async proof(connection: object, registration: GraphReconcilerRegistration, snapshot: GraphRecoverySnapshot): Promise<GraphRecoveryProof> {
+    this.check(connection, registration, snapshot);
+    const stop = await registration.stopWorker(structuredClone(snapshot));
+    this.check(connection, registration, snapshot);
+    const worker = structuredClone(await registration.verifyWorker(structuredClone(snapshot), stop));
+    this.check(connection, registration, snapshot);
+    const quiescence = structuredClone(await registration.verifyQuiescence(structuredClone(snapshot), structuredClone(worker)));
+    this.check(connection, registration, snapshot);
+    if (!quiescence || typeof quiescence !== "object" || Array.isArray(quiescence)
+      || Object.keys(quiescence).some((key) => !["executorEvidenceRef", "workspaceEvidenceRef", "effectWorker"].includes(key))) fail("INVALID_QUIESCENCE_PROOF");
+    const proof: GraphRecoveryProof = { ...quiescence, worker, snapshotDigest: snapshot.digest, verifiedAt: this.now() };
+    return proof;
+  }
+  private verified<T>(connection: object, registration: GraphReconcilerRegistration, snapshot: GraphRecoverySnapshot, proof: GraphRecoveryProof, decision: GraphRecoveryDecision, fn: () => T): T {
+    if (this.attestation) fail("NESTED_RECOVERY");
+    this.attestation = { connection, registration, snapshot: structuredClone(snapshot), proof: structuredClone(proof), decision: structuredClone(decision) };
+    try { return fn(); } finally { this.attestation = undefined; }
+  }
+  private async release(connection: object, registration: GraphReconcilerRegistration, result: GraphRecoveryResult): Promise<void> {
+    const reverify = async (completed = false) => {
+      const run = result.run;
+      const snapshot = this.store.snapshot({ scope: run.scope, graphRunId: run.graphRunId, identity: run.identity,
+        expectedGeneration: run.generation, expectedRevision: run.revision, expectedOwner: run.leaseOwner, now: this.now() }, result.action?.effectKey);
+      const proof = await this.proof(connection, registration, snapshot);
+      this.verified(connection, registration, snapshot, proof, result.record.decision, () => completed ? this.store.completeRelease(snapshot, result.record.decision.receiptId, proof, this.now()) : this.store.verifyRelease(snapshot, result.record.decision.receiptId, proof, this.now()));
+    };
+    await reverify();
+    authority(await registration.release(structuredClone(result), () => reverify()));
+    await reverify(true);
+  }
+  async reconcile(connection: object, value: GraphReconciliationRequest): Promise<GraphReconciliationResult> {
+    // Parse/clone every request field before the first await. No worker-selected callback.
+    const request = requestSchema.parse(GraphJsonValue.parse(value)) as GraphReconciliationRequest;
+    const registration = this.registrations.get(connection) ?? fail("RECOVERY_REGISTRATION_REQUIRED");
+    const snapshot = this.store.snapshot(request.fence, request.kind === "effect" ? request.effectKey : undefined);
+    this.check(connection, registration, snapshot);
+    const prior = this.store.history(request.fence).find((r) => r.decision.receiptId === request.receiptId);
+    if (prior && prior.snapshot.action?.effectKey !== snapshot.action?.effectKey) fail("DECISION_CONFLICT");
+    if (prior && prior.snapshot.run.generation !== snapshot.run.generation) {
+      // A lost takeover ACK is a read of immutable history, never permission to
+      // stop the replacement worker. Release of an old effect is a separate,
+      // explicit operation; do not infer authority over a newer generation.
+      if (request.kind === "takeover" && prior.decision.kind === "takeover") {
+        if (request.owner !== prior.decision.owner || request.leaseExpiresAt !== prior.decision.leaseExpiresAt) fail("DECISION_CONFLICT");
+        if (snapshot.run.generation === prior.snapshot.run.generation + 1 && snapshot.run.leaseOwner === prior.decision.owner) {
+          return { exit: "takeover", result: { run: snapshot.run, action: snapshot.action, record: prior, changed: false } };
+        }
+      }
+      fail("RECOVERY_GENERATION_CHANGED");
+    }
+    const proof = await this.proof(connection, registration, snapshot);
+    let decision: GraphRecoveryDecision;
+    if (request.kind === "effect") {
+      const received = structuredClone(await registration.verifyOutcome(structuredClone(snapshot)));
+      // Match storage normalization on replay: invalid usage means unknown usage,
+      // while the physical outcome/result remains durable and immutable.
+      const verdict = received && received.outcome !== "unknown" &&
+        (typeof received.actualTokens !== "number" || !Number.isSafeInteger(received.actualTokens) || received.actualTokens < 0)
+        ? { ...received, actualTokens: null } : received;
+      this.check(connection, registration, snapshot);
+      decision = { kind: "effect", receiptId: request.receiptId, verdict };
+    } else if (request.kind === "project") decision = { kind: "project", receiptId: request.receiptId, status: request.status };
+    else decision = { kind: "takeover", receiptId: request.receiptId, owner: request.owner, leaseExpiresAt: request.leaseExpiresAt };
+    // Proof time includes outcome verification, but no snapshot revision is refreshed.
+    proof.verifiedAt = this.now();
+    let result: GraphRecoveryResult;
+    if (prior) {
+      if (canonical(prior.decision) !== canonical(decision)) fail("DECISION_CONFLICT");
+      result = this.verified(connection, registration, snapshot, proof, decision, () => this.store.verifyDecision(snapshot, request.receiptId, proof, this.now()));
+    } else result = this.verified(connection, registration, snapshot, proof, decision, () => this.store.commit(snapshot, decision, proof, this.now()));
+    const exit = decision.kind === "effect" ? decision.verdict.outcome : decision.kind === "project" ? "projected" : "takeover";
+    if (exit === "unknown" || decision.kind !== "effect") return { exit, result };
+    // Decision is already durable. Release failure never rolls back physical truth.
+    try { await this.release(connection, registration, result); }
+    catch (error) { return { exit: "release_pending", result, releaseError: error instanceof Error ? error.message : "release failed" }; }
+    return { exit, result };
+  }
+}

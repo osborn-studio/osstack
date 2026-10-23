@@ -1,0 +1,24 @@
+{
+  "passed": false,
+  "admitted": false,
+  "node": "v26.5.0",
+  "versions": {
+    "langgraph": "1.4.15",
+    "langgraph-checkpoint": "1.1.5",
+    "core": "1.2.11"
+  },
+  "assertions": 25,
+  "failedAssertions": [
+    {
+      "name": "functional-sync-unknown-effect-crash: fresh process recovery",
+      "passed": false,
+      "error": "AssertionError [ERR_ASSERTION]: functional-sync-unknown-effect-crash/recover: AssertionError [ERR_ASSERTION]: The input did not match the regular expression /reconcile/. Input:\n\n'AggregateError: Multiple errors occurred during superstep 0. See the \"errors\" field of this exception for more details.'\n\n    at async child (file:///Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/scripts/probe-graph-c2.mjs:272:5)\n    at async main (file:///Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/scripts/probe-graph-c2.mjs:318:26)\n    at async file:///Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/scripts/probe-graph-c2.mjs:467:1\n\n\n1 !== 0\n"
+    }
+  ],
+  "experiments": 13,
+  "processes": 30,
+  "actualSigkills": 9,
+  "cleaned": true,
+  "evidence": "/var/folders/97/wmwg4qzx02j74c3n73nh438w0000gn/T/osstack-graph-c2-ijsk2plt/evidence",
+  "error": "AssertionError [ERR_ASSERTION]: functional-sync-unknown-effect-crash/recover: AssertionError [ERR_ASSERTION]: The input did not match the regular expression /reconcile/. Input:\n\n'AggregateError: Multiple errors occurred during superstep 0. See the \"errors\" field of this exception for more details.'\n\n    at async child (file:///Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/scripts/probe-graph-c2.mjs:272:5)\n    at async main (file:///Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/scripts/probe-graph-c2.mjs:318:26)\n    at async file:///Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/scripts/probe-graph-c2.mjs:467:1\n\n\n1 !== 0\n"
+}

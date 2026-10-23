@@ -1,0 +1,26 @@
+{
+  "task": {
+    "id": "G03",
+    "phase": "M0",
+    "title": "确认命令进程退出",
+    "dependsOn": [
+      "G02"
+    ],
+    "files": [
+      "packages/loop/src/executor.ts",
+      "packages/loop/src/executor.test.ts"
+    ],
+    "acceptance": [
+      "命令超时/取消终止受控进程组，支持 TERM 宽限和必要的 KILL。",
+      "测试包含子孙进程、忽略 TERM、关闭管道但进程仍存活及晚到退出。",
+      "不能确认退出时返回明确未确认信息，不伪报 completed/cancelled。"
+    ],
+    "verify": "LOOP",
+    "size": "S",
+    "status": "pending"
+  },
+  "prompt": "Implement ONLY G03 in this existing isolated worktree. You are the coding executor invoked by OSStack LoopEngine. Parent supervisor is handling docs/status and review. Do not spawn agents or nested OSStack loops. Do not commit, push, merge, deploy, alter AGENTS.md, touch sibling repositories, or mark plan tasks done. All dependencies are installed and built. Read AGENTS.md, the implementation plan docs/implementation/2026-09-13-osstack-graph-upgrade.md and relevant source. Use TDD: add outcome tests first, run to establish RED, implement GREEN, then run affected tests and pnpm --filter @osstack/loop typecheck. Save concise real RED/GREEN evidence at docs/implementation/graph-foundation-evidence/G03-executor.md (only this evidence doc). CLI/database tests MUST use explicit inherited OSSTACK_HOME or scripts/graph-test-env.mjs, never default homes. Target card: {\"id\":\"G03\",\"phase\":\"M0\",\"title\":\"确认命令进程退出\",\"dependsOn\":[\"G02\"],\"files\":[\"packages/loop/src/executor.ts\",\"packages/loop/src/executor.test.ts\"],\"acceptance\":[\"命令超时/取消终止受控进程组，支持 TERM 宽限和必要的 KILL。\",\"测试包含子孙进程、忽略 TERM、关闭管道但进程仍存活及晚到退出。\",\"不能确认退出时返回明确未确认信息，不伪报 completed/cancelled。\"],\"verify\":\"LOOP\",\"size\":\"S\",\"status\":\"pending\"}. POSIX detached process groups, TERM then grace then KILL; confirm group gone (kill(-pgid,0)), not merely shell exit or pipe closure. Surviving descendants on normal leader exit must not be ignored. Unsupported platforms/unconfirmed termination fail closed with explicit evidence. Real subprocess tests must leave no leaked descendants, with safety cleanup finally. Test ignoreTERM, descendants, closed stdio, late exit; use short configurable grace periods. Do not claim containment of deliberately detached processes. The supervising reviewer may write docs/implementation/graph-foundation-evidence/g02-review-followup.md while you work; read it before final validation and address any concrete executor fixes requested there with tests, keeping G03 process work and review fixes separately documented. Do not rerun the full agents test suite for shell-only changes; its known timing failure is documented, scoped loop tests suffice. Parent will review and run additional tests. Finish the full card, report limitations honestly.",
+  "verify": "pnpm --filter @osstack/loop exec vitest run src/executor.test.ts src/loop-engine.test.ts && pnpm --filter @osstack/loop typecheck",
+  "baselineRuntime": "b476bcc",
+  "workspace": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation"
+}

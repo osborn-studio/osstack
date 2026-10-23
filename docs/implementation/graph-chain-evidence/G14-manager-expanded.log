@@ -1,0 +1,20 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+ ✓ src/graph-worker-manager.test.ts (22 tests) 6722ms
+   ✓ handshakes asynchronously, executes Functional+remote sync checkpoints and isolates bounded logs  649ms
+   ✓ reserves each run synchronously and requires verified exit before replacement  606ms
+   ✓ executes snapshotted bytes even when the original trusted module is changed  428ms
+   ✓ settles spawn failures and early exits without unhandled rejections  323ms
+   ✓ revocation aborts the injected broker and rejects later checkpoints without releasing its resources  338ms
+   ✓ expires leases and terminates an unresponsive child with actual exit evidence  2162ms
+   ✓ does not equate invoke rejection to worker exit or await inherited log pipes  671ms
+   ✓ done leaves exit pending until the OS observes termination  352ms
+   ✓ revokes a running lease and old callbacks cannot respond through a replacement connection  362ms
+   ✓ caps each log stream independently and does not pass a DB home or node injection environment  485ms
+
+ Test Files  1 passed (1)
+      Tests  22 passed (22)
+   Start at  07:36:58
+   Duration  7.27s (transform 188ms, setup 19ms, collect 253ms, tests 6.72s, environment 0ms, prepare 58ms)
+

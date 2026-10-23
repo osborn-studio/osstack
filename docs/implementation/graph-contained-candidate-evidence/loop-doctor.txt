@@ -1,0 +1,14 @@
+Loop doctor: ok
+workspace=/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation
+state_json=/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/LOOP-STATE.json
+  [ok] workspace directory exists
+  [warn] tasks/ directory is missing; loop enqueue will create it
+      path=/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/tasks error=ENOENT: no such file or directory, scandir '/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/tasks'
+  [warn] loop state file will be created after the first run
+      path=/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/LOOP-STATE.json
+  [ok] git worktree is usable with local changes
+      changed_files=15
+  [ok] AGENTS.md is canonical and CLAUDE.md references it
+      source=/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/AGENTS.md claude=/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/CLAUDE.md mode=one-line-reference
+  [ok] core instruction/config files are unchanged
+      protected_files=[AGENTS.md,CLAUDE.md,.codex/config.toml]

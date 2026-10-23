@@ -1,0 +1,54 @@
+$ vitest run src/graph-verification.test.ts src/graph-action-broker.test.ts --maxWorkers=1
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+osstack: retaining write lease graph-action:c1890d2fcd8a7edb32fae87d7b78eff792681321a3864b63b22426b556e9b653: Error: external stop unconfirmed
+ ✓ src/graph-verification.test.ts (29 tests) 76121ms
+   ✓ restores the exact verified candidate into independent repositories and rejects reviewer writes  1618ms
+   ✓ rejects wrong manifest and reviewer identity before restoring or invoking  651ms
+   ✓ persists actual stopped exit evidence and rejects tampering/replay  2568ms
+   ✓ keeps unknown stop separate from stopped malformed review and valid changes_requested  3859ms
+   ✓ runs real registered command and independent G04 review concurrently with an observable two-way barrier  4027ms
+   ✓ rejects revoke during adapter availability before actual invocation  1399ms
+   ✓ rejects mutate during adapter availability before actual invocation  1483ms
+   ✓ snapshots callback/data replacement and rejects live revocation after preparation awaits  1879ms
+   ✓ rejects mutation during restore before accepting any workspace baseline  1125ms
+   ✓ releases preparation lease if authority is revoked while acquiring it  504ms
+   ✓ uses exact allowlisted exits, refusing model pass claims and unregistered commands  6357ms
+   ✓ does not accept review done as executor stop proof through the actual broker  1529ms
+   ✓ classifies stopped malformed output and reviewer filesystem mutation without a code-failure result  5662ms
+   ✓ rejects manifest scope/SHA mismatch and independent identity verifier rejection before invocation  581ms
+   ✓ snapshots executor evidence before asynchronous verification and rechecks authority afterward  3989ms
+   ✓ rejects actual successful command that mutates candidate: printf malicious > file  2639ms
+   ✓ rejects actual successful command that mutates candidate: git update-index --assume-unchanged file; printf malicious > file  2755ms
+   ✓ rejects actual successful command that mutates candidate: chmod +x file  2675ms
+   ✓ rejects actual successful command that mutates candidate: chmod 600 file  2958ms
+   ✓ rejects actual successful command that mutates candidate: git update-index --assume-unchanged file  2700ms
+   ✓ rejects actual successful command that mutates candidate: printf staged > file; git add file; printf candidate > file  2685ms
+   ✓ rejects actual successful command that mutates candidate: git -c user.name=test -c user.email=test@invalid commit --allow-empty -qm malicious  2603ms
+   ✓ allocates distinct actual review sessions on explicit retry and persists prompt receipts  3992ms
+   ✓ rejects an oversized envelope at the storage boundary before publishing any file  2496ms
+   ✓ requires an actual invocation receipt and strips supplied writer context on every invocation  2612ms
+   ✓ validates all new receipts when loading digest-consistent evidence  2635ms
+   ✓ allows untracked build outputs from successful actual acceptance execution  2678ms
+   ✓ confirms ordinary failing tests with escape-heavy and multibyte captured output  2800ms
+   ✓ settles an oversized structured review as a bounded contract failure instead of unknown  2661ms
+osstack: retaining write lease graph-action:b587fa73d61fa640db816d9b8fd05de779c37c7699be841f25051635cacc3a80: Error: adapter result or execution unconfirmed
+osstack: retaining write lease graph-action:5c71ff432f3a45d5171165a7d70d2fc176c63493a3fedc9d1dcd3064bb0d3f3d: Error: adapter result or execution unconfirmed
+osstack: retaining write lease graph-action:104972fb08e46e880def3dcd80ef4616c3efe51eedb4b49bada98ecc04cb0502: Error: adapter result or execution unconfirmed
+osstack: retaining write lease graph-action:1f4adda7f0ee256169a3ae8335d33e0ee3d0ae4124077b945ce7f7460c7f5eed: Error: invalid result kind for registered operation
+osstack: retaining write lease graph-action:6cf1aa11431840aa931b57140dedf2d337efa55dbeb34584f590ae4c8776470a: Error: invalid usage
+osstack: retaining write lease graph-action:ed53cd27c702edc1a796593e07f9c53967ee0e265bafeb899155f7d4ef803809: Error: invalid persisted evidence reference
+osstack: retaining write lease graph-action:0e84294637ef45b38eb80630a0891659ebf1af9d9c3d6118ec10b32a5e0f02b1: SqliteError: injected
+osstack: retaining write lease graph-action:c34448ab26f28bd35dfcf140dff688bf8c1fd5da63bcd5dd478701eb0c60c5e4: Error: adapter result or execution unconfirmed
+osstack: retaining write lease graph-action:d40422d9de43a625a3850ef4be159f428e725bd73243e24253d0a77471b5c5a0: Error: adapter result or execution unconfirmed
+osstack: retaining write lease graph-action:7c5dc371f07011ec683a48905ad2ad840ba8bb1ce52ed3bc376987aca9f60772: Error: adapter result or execution unconfirmed
+osstack: retaining write lease graph-action:1002bcc47541c500fb751a58a1a6d3f91fc556bc596ee984802c55d77f7384a2: Error: adapter result or execution unconfirmed
+osstack: retaining write lease graph-action:a82c5536c29408d8fd6deccfb02576984e5b8caf263b5820e1e563f4adf84581: Error: adapter result or execution unconfirmed
+ ✓ src/graph-action-broker.test.ts (31 tests) 1565ms
+
+ Test Files  2 passed (2)
+      Tests  60 passed (60)
+   Start at  19:21:59
+   Duration  78.89s (transform 460ms, setup 8ms, collect 981ms, tests 77.69s, environment 0ms, prepare 59ms)
+

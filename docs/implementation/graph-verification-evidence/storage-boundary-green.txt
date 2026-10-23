@@ -1,0 +1,11 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+ ✓ src/graph-verification.test.ts (29 tests | 28 skipped) 2538ms
+   ✓ rejects an oversized envelope at the storage boundary before publishing any file  2537ms
+
+ Test Files  1 passed (1)
+      Tests  1 passed | 28 skipped (29)
+   Start at  18:48:00
+   Duration  3.36s (transform 385ms, setup 7ms, collect 666ms, tests 2.54s, environment 0ms, prepare 35ms)
+

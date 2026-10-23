@@ -1,0 +1,87 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+
+  ../../../../../tmp/g25-c2/tmp/g25-bounded-build-1Xw1Za/host.mjs  231.1kb
+
+⚡ Done in 26ms
+ ❯ src/graph-bounded-recovery.test.ts (9 tests | 3 failed) 24623ms
+   × public cancellation recovers a bounded writer before-commit across a real host exit without invoking again 2985ms
+     → expected { schemaVersion: 1, …(16) } to match object { status: 'cancelled', …(2) }
+(26 matching properties omitted from actual)
+   × public cancellation recovers a bounded writer after-commit across a real host exit without invoking again 2932ms
+     → expected { schemaVersion: 1, …(16) } to match object { status: 'cancelled', …(2) }
+(26 matching properties omitted from actual)
+   ✓ retains admission when alive prevents recovery  2795ms
+   ✓ retains admission when disconnect prevents recovery  2843ms
+   ✓ retains admission when no-worker-exit prevents recovery  2674ms
+   ✓ retains admission when workspace-tampered prevents recovery  2827ms
+   ✓ retains admission when journal-tampered prevents recovery  2959ms
+   ✓ retains admission when revoked prevents recovery  2208ms
+   × replays a lost release ACK after another service restart without unlinking a replacement owner 2399ms
+     → expected { pid: 32082, …(5) } to be null
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/graph-bounded-recovery.test.ts > public cancellation recovers a bounded writer before-commit across a real host exit without invoking again
+ FAIL  src/graph-bounded-recovery.test.ts > public cancellation recovers a bounded writer after-commit across a real host exit without invoking again
+AssertionError: expected { schemaVersion: 1, …(16) } to match object { status: 'cancelled', …(2) }
+(26 matching properties omitted from actual)
+
+- Expected
++ Received
+
+  {
+    "budget": {
+      "actionStarts": 2,
+    },
+    "generation": 1,
+-   "status": "cancelled",
++   "status": "cancel_pending",
+  }
+
+ ❯ src/graph-bounded-recovery.test.ts:58:18
+     56|   expect(await inspectRepoWriteLock(lockRoot, journal.repoId)).not.toB…
+     57|   const request = await f.request(); const result = await f.reconcile(…
+     58|   expect(result).toMatchObject({ status: 'cancelled', generation: 1, b…
+       |                  ^
+     59|   expect(f.held().released_at).not.toBeNull(); expect(await inspectRep…
+     60|   expect(f.db.prepare("SELECT state FROM graph_actions WHERE effect_ke…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯
+
+ FAIL  src/graph-bounded-recovery.test.ts > replays a lost release ACK after another service restart without unlinking a replacement owner
+AssertionError: expected { pid: 32082, …(5) } to be null
+
+- Expected:
+null
+
++ Received:
+{
+  "acquired_at": "2026-09-20T15:48:04.889Z",
+  "autonomy_run_id": "graph-action:758c17c2f5faeb26c49bb515ffeff79145f776172d0179d731fa8e87149e5db5",
+  "expires_at": "2026-09-20T15:49:04.889Z",
+  "pid": 32082,
+  "repo_id": "repo-9665541d2a00ed7079ecb46ede247c926de636d1127f2992dc685027bce3f5e1",
+  "token": "dc7cdb7f-32fe-4749-9684-eb7e19baaa2d",
+}
+
+ ❯ src/graph-bounded-recovery.test.ts:81:105
+     79|   const fail = vi.spyOn(GraphRecoveryStore.prototype, 'completeRelease…
+     80|   expect(await f.reconcile(await f.request())).toMatchObject({ status:…
+     81|   expect(f.held().released_at).toBeNull(); expect(await inspectRepoWri…
+       |                                                                                                         ^
+     82|   const replacement = await acquireRepoWriteLock({ root_dir: lockRoot,…
+     83|   try {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/3]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  3 failed | 6 passed (9)
+   Start at  08:47:38
+   Duration  27.68s (transform 1.48s, setup 23ms, collect 2.56s, tests 24.62s, environment 0ms, prepare 123ms)
+
+undefined
+/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli:
+[ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL] Command failed with exit code 1: vitest run src/graph-bounded-recovery.test.ts

@@ -211,6 +211,7 @@ describe("serve launchd installer", () => {
     expect(plist).not.toContain("<key>KeepAlive</key>\n  <true/>");
     expect(plist).not.toContain("KIMI");
     // Native (non-.js) binary binPath runs directly — no node interpreter.
+    expect(plist).toContain("<key>ProcessType</key>\n  <string>Interactive</string>");
     expect(plist).not.toContain("<string>node</string>");
     expect(plist).not.toContain("<string>/usr/bin/caffeinate</string>");
     expect(JSON.parse(

@@ -322,6 +322,9 @@ function releasePlanEnv() {
     ].join(","),
     OSSTACK_TEST_RELEASE_NPM_AUTH: "ok",
     OSSTACK_TEST_RELEASE_NPM_SCOPE_ACCESS: "ok",
+    // The ready-path fixture must not query the live registry for new packages.
+    // Missing-package refusal is covered by product-entry-cli.test.ts.
+    OSSTACK_TEST_RELEASE_NPM_BOOTSTRAP: "ok",
     OSSTACK_TEST_RELEASE_EDGEONE_DEPLOY_HOOK: "ok",
     OSSTACK_TEST_RELEASE_VERSION_PR: "none",
     OSSTACK_TEST_RELEASE_KNOWLEDGE_WORKFLOW: "ok",

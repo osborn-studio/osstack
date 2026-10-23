@@ -1,0 +1,14 @@
+Claude Fable 5.1 最终边界核对，禁工具/修改文件/嵌套skill。中文800字内，只找下面收敛定义里的重大矛盾；不要再产生泛化新要求。
+补充源码事实：
+1.Rakazo executor.ts2606起实现add_mcp_server，包含数据库server登记与approval流程；README支持用户remote MCP/OpenAPI。因此注册扩展入口存在，尚未验证完整job submit/status/cancel契约。不必以“有无MCP注册点”拖延定义，默认固定上游+窄connector，只有policy或协议真实受阻才fork。
+2.OStag workflows/github_vercel_release.py330起实际github.approve(commit_id=head_sha)，随后vercel.deploy_production(source,action_id=receipt)。所以你说“OSStack是唯一仓库写凭据系统”过强；已有OStag发布executor必须保留为这类动作唯一owner，不能默默搬走或两者重复发布。OSStack唯一拥有受管仓库的候选修改/工程图/质量验收执行；OStag拥有业务收据和现有发布connector；若迁移发布executor再显式切换。
+3.Rakazo VISION称Team共享browseridentity，当前computer-runtime.md和browser-profile.test.ts实际是per-bot独立profile不互相copy；Team文件仍共享。这是文档漂移，不能把sharedlogin当已证实能力。首版公司个人独立instance/computer。
+
+最终角色：OSStack内部编程强化引擎(Loop+Graph，graph仍未实现)；OStag组织协作和业务治理层，非纯IM壳；OSBot持续数字同事(Web等，Pi/电脑/routine/记忆)，公司首版只读研究/草稿/工程委托，个人额外能力由独立授权定。
+OSBot可执行scratch脚本，但靠无受管repo写credential/mount/发布通路与出网控制防绕过，不靠目录和prompt。OStag非coding backend可保留pure inference或者经过明确能力限制的只读工具，不一概禁止所有工具；做不到工具约束才走受控executor。
+scope扩张结构化返回needs_authorization给发起方；来源OStag走组织receipt，来源个人CLI/OSBot走其已有授权交互，不能强制所有个人任务找OStag或声称OSStack不得问自己的用户。同一个已有且有效授权无需重复问。
+幂等key冻结来源scope/parent+child+occurrence，服务端inputDigest只含规范化业务字段不含trace/time；retry复用原mission和child，未知先查不重发；scheduleRevision被冻结旧occurrence不能随编辑重算，下一次可新版本；overlap默认skip_busy并记账，可选有限queue/cancel(取消需权限)。
+个人公司独立instances/serviceidentity/volumes/keys，同机仍hostadmin共有故障域；模型key/连接器key/浏览器cookie分三类，不跨服务整包复制。
+每个domain状态单独owner，各自存储不合并；osbot父mission/OStagcase/OSStackchildjob都有状态但不重复执行同一leaf。来源明确的一项工程job只能一个提交者；OSStack不反向发起新的业务mission，回传结果/授权需求不算循环新任务。
+当前交付产品定义+context+source/review evidence，不部署、不声称runtime测试通过；下一步固定上游单域试点与工程图P0可独立推进。
+请指出是否仍有重大产品边界矛盾。

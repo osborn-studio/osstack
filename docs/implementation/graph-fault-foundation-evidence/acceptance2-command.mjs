@@ -1,0 +1,11 @@
+import { spawn } from 'node:child_process';
+import { appendFileSync, writeFileSync } from 'node:fs';
+const commands = {"full-tests": ["pnpm", "-r", "--no-bail", "--workspace-concurrency=1", "test", "--maxWorkers=1"], "typecheck": ["pnpm", "typecheck:check"], "schemas": ["pnpm", "--filter", "@osstack/protocol", "check:schemas"], "kernel": ["node", "scripts/probe-graph-saver.mjs"], "functional": ["node", "scripts/probe-graph-c2.mjs"], "startup": ["node", "scripts/bench-cli-startup.mjs"], "whitespace": ["git", "diff", "--check"]};
+commands.matrix = ["node", "scripts/verify-graph-runtime.mjs", "--seed", "250915", "--repeat", "2", "--output", "/Volumes/AIMATE_WORK/tmp/g25/matrix2.json"];
+const name = process.argv[2]; const command = commands[name];
+if (!command) throw Error('unknown check');
+const child = spawn(command[0], command.slice(1), {cwd: "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation", env: process.env, stdio: ['ignore','pipe','pipe']});
+const log = '/Volumes/AIMATE_WORK/tmp/g25/accepted2-' + name + '.txt'; writeFileSync(log, '');
+let output = ''; const record = x => { output += x; appendFileSync(log, x); }; child.stdout.on('data', record); child.stderr.on('data', record);
+child.on('error', e => { console.error(e); process.exitCode = 1; });
+child.on('close', async code => { console.log(name + ': exit=' + code + '\n' + output.slice(-1600)); process.exitCode = code ?? 1; });

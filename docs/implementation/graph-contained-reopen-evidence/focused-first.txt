@@ -1,0 +1,69 @@
+$ vitest run src/graph-contained-recovery.test.ts --maxWorkers=1
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+ ❯ src/graph-contained-recovery.test.ts (32 tests | 1 failed) 1244ms
+   ✓ reopens held unknown action after DB restart and lease expiry without outcome inference or replay 130ms
+   ✓ rejects substituted generation binding before any daemon operation 40ms
+   ✓ rejects substituted invocationId binding before any daemon operation 42ms
+   ✓ rejects substituted effectKey binding before any daemon operation 48ms
+   ✓ rejects substituted candidateRevision binding before any daemon operation 33ms
+   ✓ rejects substituted artifactDigest binding before any daemon operation 33ms
+   ✓ rejects substituted daemon binding before any daemon operation 34ms
+   ✓ rejects substituted base binding before any daemon operation 35ms
+   ✓ rejects substituted image binding before any daemon operation 41ms
+   ✓ rejects substituted command binding before any daemon operation 33ms
+   ✓ rejects substituted scope binding before any daemon operation 32ms
+   ✓ rejects missing binding journal without daemon calls 33ms
+   ✓ rejects digest binding journal without daemon calls 36ms
+   ✓ rejects noncanonical binding journal without daemon calls 45ms
+   ✓ rejects oversize binding journal without daemon calls 37ms
+   ✓ rejects symlink binding journal without daemon calls 38ms
+   ✓ rejects incorrect trusted request scope 31ms
+   ✓ rejects incorrect trusted request epoch 31ms
+   ✓ rejects incorrect trusted request revision 31ms
+   ✓ rejects incorrect trusted request owner 33ms
+   ✓ rejects incorrect trusted request program 32ms
+   ✓ rejects incorrect trusted request command 31ms
+   ✓ rejects incorrect trusted request content 30ms
+   × rechecks read after reopen before any later effects 40ms
+     → expected [ 'GET /v1.47/info', …(17) ] to have a length of 16 but got 18
+   ✓ rechecks stop after reopen before any later effects 32ms
+   ✓ rechecks released after reopen before any later effects 36ms
+   ✓ rechecks revision after reopen before any later effects 35ms
+   ✓ rechecks binding after reopen before any later effects 35ms
+   ✓ snapshots caller options, request and returned identity and rejects async grants 40ms
+   ✓ missing stop receipt leaves physical and business outcome unknown after restart 41ms
+   ✓ fresh host stops an exactly journaled orphan after old stop permission failed 44ms
+   ✓ lost delete ACK remains unknown after reopening without repeated deletion 32ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/graph-contained-recovery.test.ts > rechecks read after reopen before any later effects
+AssertionError: expected [ 'GET /v1.47/info', …(17) ] to have a length of 16 but got 18
+
+- Expected
++ Received
+
+- 16
++ 18
+
+ ❯ src/graph-contained-recovery.test.ts:126:97
+    124|   if (mode === 'read') f.revokeRead(); else if (mode === 'stop') f.sto…
+    125|   else if (mode === 'revision') f.changeRevision(); else writeFileSync…
+    126|   const before = f.calls.length; await expect(opened.stop()).rejects.t…
+       |                                                                                                 ^
+    127| });
+    128| it('snapshots caller options, request and returned identity and reject…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 31 passed (32)
+   Start at  16:08:43
+   Duration  2.48s (transform 632ms, setup 11ms, collect 1.08s, tests 1.24s, environment 0ms, prepare 44ms)
+
+/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli:
+[ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL] @osstack/cli@0.19.0 test: `vitest run src/graph-contained-recovery.test.ts --maxWorkers=1`
+Exit status 1

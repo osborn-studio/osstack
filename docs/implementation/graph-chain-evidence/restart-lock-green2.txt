@@ -1,0 +1,13 @@
+$ vitest run repo-lock.test.ts
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/autonomy
+
+ ✓ src/repo-lock.test.ts (19 tests) 3190ms
+   ✓ renewable repository lease > fails closed on an abandoned mutation guard instead of age-stealing it  2013ms
+   ✓ managed repository process quarantine > shares one lock across real worktrees and independent OSSTACK_HOMEs  315ms
+
+ Test Files  1 passed (1)
+      Tests  19 passed (19)
+   Start at  07:42:28
+   Duration  3.71s (transform 48ms, setup 0ms, collect 269ms, tests 3.19s, environment 0ms, prepare 43ms)
+

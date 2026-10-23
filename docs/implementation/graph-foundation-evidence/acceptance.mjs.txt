@@ -1,0 +1,26 @@
+import { writeFileSync } from 'node:fs';
+import { LoopEngine } from '/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/loop/dist/index.js';
+const workspace = '/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation';
+const evidence = '/tmp/osstack-graph-foundation-controller/evidence';
+if (process.env.OSSTACK_HOME !== '/tmp/osstack-graph-foundation-controller/home') throw new Error('Explicit test home required');
+const commands = [
+ ['workspace-tests','pnpm -r --no-bail --workspace-concurrency=1 test --maxWorkers=2'],
+ ['typecheck','pnpm typecheck:check'],
+ ['fixture','node --test scripts/graph-test-env.test.mjs'],
+ ['startup','node scripts/bench-cli-startup.mjs'],
+ ['lint','pnpm exec biome check packages/agents/src/base.ts packages/loop/src/executor.ts packages/loop/src/executor.test.ts packages/loop/src/candidate-execution.ts packages/loop/src/candidate-execution.test.ts packages/loop/src/loop-engine.ts packages/loop/src/loop-engine.test.ts packages/loop/src/index.ts packages/loop/src/types.ts'],
+ ['diff','git diff --check'],
+];
+const result = await new LoopEngine({
+ loopId:'graph-foundation-acceptance', workspacePath:workspace,
+ stateFilePath:`${evidence}/acceptance-LOOP-STATE.json`, markdownPath:`${evidence}/acceptance-STATE.md`,
+ sources:[], inputTasks:[{task_id:'graph-foundation-acceptance', capability:'code.test', priority:90, source:'manual',
+ prompt:'Validate G00-G04 with the built public API, complete workspace suite, typechecks, isolated fixture, startup budget and lint.'}],
+ executeCommand:`node scripts/graph-test-env.mjs -- node docs/implementation/graph-foundation-evidence/candidate-demo.mjs > ${evidence}/accepted-demo.json 2>&1`,
+ verifyCommands:commands.map(([name,cmd])=>`${cmd} > ${evidence}/accepted-${name}.txt 2>&1`),
+ commandTimeoutMs:180000, maxIterations:1, useWorktree:false, skipCompletedTasks:false,
+ lessonDrafts:{enabled:false}, policyGate:async({workspacePath})=>workspacePath===workspace?{allow:true}:{allow:false,reason:'Outside implementation workspace'},
+}).runOnce();
+writeFileSync(`${evidence}/acceptance-result.json`,JSON.stringify(result,null,2));
+console.log(JSON.stringify({completed:result.completedTasks, state:result.jsonPath},null,2));
+process.exitCode=result.completedTasks.length===1 && result.completedTasks[0].outcome==='success'?0:2;

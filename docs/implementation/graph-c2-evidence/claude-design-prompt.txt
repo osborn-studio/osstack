@@ -1,0 +1,924 @@
+You are Claude Fable 5.1, adversarial architecture partner for OSStack C2. Tool-less: reason ONLY from supplied source, no tools/skills/hooks. User wants reliable executable code-delivery graph inside OSStack. We verified npm latest and GitHub main match pinned LangGraph 1.4.15; no newer public fix exists as of this session. Prior experiment: StateGraph START fans out completed+flaky then AND join. Immediate flaky exception aborts completed between state output writer and barrier writer. Engine _commit persists partial task.writes+ERROR; resume treats output as completed and misses join. Public MemorySaver reproduces. We may inspect but must NOT patch internals, filter ERROR, invent private channel writes, or claim 'passed known failure' is recovery. Future trusted ledger/agent broker exists in plan but not implemented. Probe may use clearly labeled deterministic test-only trusted effect store.
+Please challenge possible robust public remedies and recommend a minimal experiment: documented updateState(asNode) using trusted completed result / explicit checkpoint IDs, explicit receipt-based topology, public lower API, or bounded static scheduler fallback. bulkUpdateState is marked @internal in public d.ts so do not treat as stable. Pregel constructor docs discourage direct consumer construction. Expected business errors wrapped as data alone cannot prove crashes/cancel. Need actual join once + full output, completed effect not rerun, partial vs complete distinction, arbitrary timing at state/barrier writes, worker restart, error/cancel/timeout; crash around recovery itself must be safe. No architectural two-authority split. A solution can be conditional on future atomic ledger/lease integration, but cannot pretend those are implemented. Identify concrete flaws in candidates and exact public testable steps. If no adequate public option, say so and give minimal bounded static runtime admission plan (not generic multi-engine platform). Chinese, concise but technical, up to 6 findings/recommendations. We will reproduce, not blindly adopt.
+
+--- docs/implementation/graph-saver-decision.md ---
+# G07: public Saver and restricted checkpoint wire decision
+
+2026-09-13. Tested pins: `@langchain/langgraph` **1.4.15**, `@langchain/langgraph-checkpoint` **1.1.5**, `@langchain/core` **1.2.11**. Executor runtime: Node **26.5.0**, macOS arm64. Supervisor owns independent runtime/adversarial/full-repository validation.
+
+**Decision: the public Saver extension supports the restricted static JSON graph's storage seam, including cross-process completed-sibling recovery and interrupt/resume. Unconditional kernel admission is NOT established. A reproducible engine partial-abort counterexample remains a production recovery gate.** No engine patch, private import, production DB, checkpointer RPC or worker manager was introduced. A passing probe means its assertions (including recognition of the counterexample) passed; it explicitly reports `productionReady: false`.
+
+## Sources and scope
+
+The installed pinned package's public `dist/base.d.ts`, `dist/types.d.ts`, `dist/serde/base.d.ts`, `dist/index.d.ts` define the exact contract below. `dist/base.js`, `dist/memory.js` and `dist/serde/types.js` were inspected read-only for inherited behavior, reserved indexes and serialization types. The probe resolves only package-root exports and exported `package.json`; it asserts actual installed versions. It never reads or writes `MemorySaver` private storage. A separate unmodified public `MemorySaver` baseline reproduces the failure described below.
+
+Official [checkpointer documentation](https://docs.langchain.com/oss/javascript/langgraph/checkpointers) describes thread/namespace identities, newest-first history and retention of successful task writes when a sibling fails. Official [fault-tolerance documentation](https://docs.langchain.com/oss/javascript/langgraph/fault-tolerance) supplies the recovery context. Live docs can evolve; installed declarations at the pins above govern this experiment. The public-interface conclusion is based on the local experiment, not an inference that all documented recovery scenarios have passed.
+
+## Versioned method coverage
+
+Types below use public `RunnableConfig`, `Checkpoint`, `CheckpointMetadata`, `ChannelVersions`, `PendingWrite` and `CheckpointTuple`.
+
+| Public method at checkpoint 1.1.5 | Evidence and storage obligation |
+|---|---|
+| `getTuple(config): Promise<CheckpointTuple \| undefined>` (abstract) | Missing returns undefined; explicit ID and latest per thread/namespace; full tuple round trip in another process. Tuple includes `config`, `checkpoint`, `metadata`, optional `parentConfig`, and `[taskId, channel, value][]` pending writes. Never replace missing with an empty checkpoint. |
+| `list(config, options?): AsyncGenerator<CheckpointTuple>` (abstract) | Full tuple equality with getTuple; descending IDs; `before.configurable.checkpoint_id` exclusive, `limit` including zero, metadata `filter`, thread/namespace/ID selection and omitted-field wildcard. Future RPC must page/bound history; generator itself is worker-local. |
+| `put(config, checkpoint, metadata, newVersions): Promise<RunnableConfig>` (abstract) | Stores every checkpoint and metadata field, all `newVersions`, original parent identity and returns new identity. Exact put retry retains pending writes. Parent and fork history remain distinct. |
+| `putWrites(config, writes: [channel, unknown][], taskId: string): Promise<void>` (abstract) | Separate from full checkpoint; persists even before put; retains task/channel/value and explicit derived index. Tested ordinary retry, task isolation (including commas), duplicate channels at different indexes and reserved overwrite. |
+| `deleteThread(threadId): Promise<void>` (abstract) | Removes checkpoint and write rows across all namespaces for that thread; other thread survives. Destructive production authorization/retention is future work. |
+| `get(config): Promise<Checkpoint \| undefined>` (inherited) | Tested delegation and missing/loaded result. No new transport method needed. |
+| `getNextVersion(current: V \| undefined): V` (inherited) | Default numeric sequence undefined→1, 3→4. String input throws and requires an explicit monotonic override. String versions are preserved by storage, not silently coerced into numeric versions. |
+| `getDeltaChannelHistory({ config, channels }): Promise<Record<string, DeltaChannelHistory>>` (inherited, **beta**) | Tested empty request and parent-chain seed/writes, excluding unrelated fork and target's own pending writes. This verifies the inherited method's seam only. **DeltaChannel/DeltaSnapshot are excluded from v1**, not certified by this test. Future bounded history/ancestor cycles and compatibility need separate admission. |
+| `toJSON(): string` (inherited) | Framework diagnostic hook, not a persistent representation; facade does not serialize saver instances or runnable config callbacks. |
+| `serde: SerializerProtocol`; `dumpsTyped(data): Promise<[string, Uint8Array]>`; `loadsTyped(type, data: Uint8Array \| string): Promise<unknown>` | `CheckpointCodec` structurally implements the public interface, tested typed round trip and rejection of unknown type. Test facade supplies it to `super(codec)` and uses the same codec for request, file and response boundaries. |
+
+Checkpoint **v4** requires `v`, `id`, `ts`, `channel_values`, `channel_versions`, `versions_seen`. The probe preserves all six, an extra field, mixed numeric/string channel versions and per-node versions seen. Metadata includes `source`, `step`, `parents`, extra nested data, legacy/custom `writes` and optional beta `counters_since_delta_snapshot`. Unknown **JSON fields are retained**, not stripped. `assertCheckpointV4` rejects old/new unsupported versions and malformed required fields; it validates values already decoded by the codec and is not a standalone validator for executable in-process objects.
+
+Only durable config identity crosses the test wire: `thread_id`, defaulted `checkpoint_ns`, and optional `checkpoint_id`. The parent pointer uses the previous checkpoint ID, not the most recent ID globally. Live runnable configs also contain functions, callbacks, saver instances and engine runtime values: serializing the whole config is neither required nor safe. Persisted graph identity/spec hash/registry version/engine version and authenticated scope must be bound outside this codec by future protocol/storage work.
+
+## Pending writes and error channels
+
+Key ordinary writes by `(thread, namespace, checkpoint, taskId, index)`, **not by channel** or a comma-concatenated string. `CheckpointPendingWrite` on reads omits the index, but storage must retain it. The public `WRITES_IDX_MAP` specifies:
+
+| Public constant | Channel | Index | Retry policy |
+|---|---|---:|---|
+| `ERROR` | `__error__` | -1 | Replace earlier value for same task/index |
+| `SCHEDULED` | `__scheduled__` | -2 | Replace |
+| `INTERRUPT` | `__interrupt__` | -3 | Replace |
+| `RESUME` | `__resume__` | -4 | Replace |
+| `TASKS` | `__pregel_tasks` | Ordinary position | First committed value wins |
+| Other channels | Including barrier and output channels | Ordinary position | First committed value wins |
+
+The facade uses an own-property map lookup; it does not filter names beginning with `__`. Error and ordinary index zero can coexist. Repeated `putWrites` cannot change an already committed ordinary value, even if the retry changes its channel name. Two writes to the same channel at different indexes must both survive. Put retries do not clear writes; deletion is separate.
+
+The actual engine error write is a plain `{message, name}` record. Actual interrupt writes carry a plain interrupt **object** including `id` and `value`; the invoke result's interrupt collection is an array. Resume writes include the matching ID/input bookkeeping and survive `false` input. All of these pass the codec unchanged. `new Error()`, thrown values lacking a JSON-compatible message/name, or arbitrary class state are not automatically normalized: registered wrappers must produce compatible data or the saver rejects and the graph fails. The probe verifies `getTuple`, `put` and `putWrites` transport rejection reaches `graph.invoke`.
+
+## Restricted codec
+
+`packages/graph/src/checkpoint-codec.ts` has no runtime engine import; the public checkpoint imports are type-only. The supervisor exposes it at the explicit `@osstack/graph/codec` subentry, compiled to `dist/checkpoint-codec.js` and used by the repository probe. It loads only node:util; the root package remains descriptor/type-only. The daemon still depends only on protocol and must not gain a graph dependency merely to reuse this worker codec.
+
+Wire envelope: `["osstack-checkpoint", 1, value]`, serializer type `osstack-checkpoint-v1`. Null, boolean, finite number and strings are leaves. Containers are `["array", values]` and `["object", sortedKeyValuePairs]`. Opt-in bytes use `["bytes", lowercaseHex]`. User arrays resembling tags remain tagged arrays, eliminating byte-tag collisions. Object keys sort by JavaScript code-unit order. Negative zero normalizes to zero, as JSON does. A decode/re-encode produces the canonical wire; incoming JSON whitespace need not be canonical.
+
+| Per-message ceiling (callers may only tighten) | Value |
+|---|---:|
+| Wire UTF-8 bytes | 1,048,576 |
+| Logical depth (root 0) | 64 |
+| Logical value nodes | 50,000 |
+| String/key UTF-16 code units | 262,144 |
+| One restricted byte value | 262,144 bytes |
+
+Decode checks raw byte/character bounds before allocating decoded text, checks actual UTF-8 size, then scans nesting and structural token counts **before JSON.parse**. Tagged representation's preflight ceilings are `3 × maxDepth + 4` and `8 × maxNodes + 8`. Parsing therefore has a hard input/allocation ceiling even for malformed/unknown tags; logical limits are enforced while decoding. Hex size/syntax is checked before byte allocation. UTF-8 bytes use fatal decoding. Tests spy on JSON.parse to establish early rejection. Encode accounts for wire growth while emitting bounded chunks; object reflection operates on already-existing local objects, so this is not a process-memory quota for a caller that constructed a huge object before calling the codec.
+
+Rejected: undefined (including array holes), nonfinite numbers, bigint, functions, symbols, cycles, class instances, custom prototypes, accessors, hidden/symbol/extra array properties, `__proto__`/`constructor`/`prototype` keys, duplicate or unsorted decoded keys, unknown tags/versions, unbounded depth/nodes/strings/wire and malformed bytes. Null-prototype records are accepted and decoded as ordinary safe records. Proxies are rejected using Node's intrinsic proxy check. Hooks and `toJSON` are never invoked.
+
+Bytes are disabled by default. Opt-in accepts exact Uint8Array values without extra properties; Buffer, other typed arrays, subclasses and shared storage are rejected as state values. Raw wire Buffer/Uint8Array is accepted. Captured TypedArray intrinsic getters inspect raw storage without executing shadowed `buffer`, `byteLength`, `byteOffset` or `length` accessors; getter-counter regression tests cover both encode and decode. No loader, arbitrary constructor, engine-private class, JSONPlus revival or dynamic import is driven by persisted data.
+
+## Cross-process result and smallest failure
+
+Run after graph build:
+
+```sh
+node scripts/graph-test-env.mjs -- pnpm --filter @osstack/graph test
+node scripts/graph-test-env.mjs -- node scripts/probe-graph-saver.mjs
+```
+
+The probe creates its own owned temporary home, writes an owner token, and starts eight **separate Node processes** sequentially with 30-second timeouts and bounded output. Each writer exits before the reader starts. All requests reload the bounded file and cross JSON wire boundaries in both directions. File replacement writes/fsyncs before rename. A random global canary exists only in the first graph process; the recovery process verifies its absence and reads the previous PID from disk. Empty storage is a negative control. Cleanup checks the owner token, parent PID, canonical path and symlink state, then removes only this invocation's fixture. The result reports each assertion, phase PID/exit code, actual package pins, final file digest and cleanup outcome; failed assertions produce a nonzero exit.
+
+Successful graph: START fans out to `completed` and `flaky`; their AND edge leads to `join`. Failure is injected only after the completed task's **whole write batch**, including the barrier notification, has persisted. A second process resumes with null input. Observed counts: completed **1**, flaky **2**, join **1**; all three outputs present. Separate processes also persist an interrupt, recover its ID and resume with false.
+
+**Smallest counterexample retained in `faults`:** use the same graph, but let flaky throw immediately. In these pinned packages, the other task can write `results=["completed"]` and then be aborted before its `join:completed+flaky:join` write. Saved tuples show output plus `__error__={name:"AbortError",…}` for that task. Resume returns both result values but never executes join; completed count is 1 and join count is 0. The probe asserts and records this result separately, and reproduces it using an unmodified public MemorySaver (public getTuple only), so it is not attributed to JSON conversion or the test facade. The initial discovery log also preserves the full persisted checkpoints/writes. This counterexample is currently an in-process fault subcase; the positive recovery proof above is cross-process. It does not prove every crash window or ordering behaves identically.
+
+This is why “some output was stored” must not be equated with “the task completed.” The public saver receives writes and has no authoritative task-completion bit with which to reconstruct a missing engine-generated barrier notification safely. Do not silently discard the error, invent the missing write, rerun every sibling, or patch the engine to make the test green. **The supervisor must resolve/adjudicate this gate before claiming arbitrary failure recovery or complete kernel admission.**
+
+| Alternative | Evaluation, not implemented |
+|---|---|
+| Upstream public release fix | Preferred if it fixes the minimal counterexample and the entire pinned compatibility matrix; requires deliberate pin change and rerun. No automatic upgrade. |
+| Public node wrappers return structured branch-failure data | Avoids deliberate expected failures aborting a sibling; compatible with existing business-result design. Unexpected exceptions/cancellation/worker death remain unproved, so this alone is insufficient. |
+| Public custom channels / explicit completion receipts | Could avoid reliance on generated AND notifications; needs separate proof that partial writes cannot masquerade as completion. Must not become private engine patching or arbitrary write filtering. |
+| Bounded static scheduler | Matches the v1 static graph and can explicitly represent durable completion/barrier receipts; carries implementation and verification cost for retries, interrupts and replay. Concrete fallback if upstream/public seams cannot meet the crash matrix. |
+| ADK evaluation | Alternative engine spike would need the same saver/serialization/process/failure matrix. No compatibility or recovery claim made without running it. |
+
+A separate smallest serialization incompatibility is `codec.encode(new Send("node", {x:1}))`: public Send is a class and is intentionally rejected. Dynamic Send/DeltaChannel/message-class state are excluded from this static JSON v1 decision. Adding them requires an explicit versioned allowlist and new public-interface tests, not generic class revival.
+
+## Remaining production obligations
+
+The file facade is test-only, single-writer, synchronous and bounded to a small complete store. Its fsync/rename proof is process persistence, not power-loss durability or multi-process transaction isolation. There is no production auth, fencing, generation/idempotency/CAS enforcement, database schema, bounded RPC paging, cancellation reconciliation, migration, retention or worker management. These remain the planned M1+ work, along with the partial-abort admission gate. The daemon must remain core→protocol and validate scope/size/format before storage; it must not import the engine or deserialize executable classes.
+
+## Supervisor runtime supplement
+
+The graph codec/package tests passed on Node 20.20.2 and 22.22.1; the eight-process probe also ran on those runtimes and the declared graph floor Node 20.6.0. This does not certify all OSStack packages on every Node minor. Development pnpm 11.4.0 itself requires Node ≥22.13. Runtime and final source evidence are archived in `graph-kernel-evidence/`. Kernel C2 admission remains blocked by the retained partial-abort case, regardless of the spike task completion status.
+
+--- scripts/probe-graph-saver.mjs ---
+#!/usr/bin/env node
+// TEST ONLY: synchronous JSON file transport, one writer process at a time.
+// This is not the production daemon, a DB adapter, RPC server or worker manager.
+import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
+import { createHash, randomUUID } from 'node:crypto';
+import { closeSync, existsSync, fsyncSync, lstatSync, openSync, readFileSync, realpathSync, renameSync, statSync, writeFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
+import { join } from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+import { assertIsolatedHome, createGraphTestEnv } from './graph-test-env.mjs';
+
+// Resolve only published package exports, in the graph package's dependency scope.
+const requireGraph = createRequire(new URL('../packages/graph/package.json', import.meta.url));
+// Repository script is outside graph's package scope. Honor its declared ESM
+// import targets; createRequire.resolve would select unsupported CJS conditions.
+const graphManifestUrl = new URL('../packages/graph/package.json', import.meta.url);
+const graphManifest = JSON.parse(readFileSync(graphManifestUrl, 'utf8'));
+const importGraphEntry = (entry) => import(new URL(graphManifest.exports[entry].import, graphManifestUrl).href);
+const { MemorySaver, ERROR, INTERRUPT, RESUME, SCHEDULED, TASKS, WRITES_IDX_MAP } =
+  await import(pathToFileURL(requireGraph.resolve('@langchain/langgraph-checkpoint')).href);
+const { Annotation, StateGraph, START, END, interrupt, Command, BaseCheckpointSaver, GRAPH_KERNEL } =
+  await importGraphEntry('./worker');
+const { CheckpointCodec, assertCheckpointV4 } =
+  await importGraphEntry('./codec');
+const { Send } = await import(pathToFileURL(requireGraph.resolve('@langchain/langgraph')).href);
+const codec = new CheckpointCodec({ allowBytes: true });
+const assertions = [];
+const observations = {};
+const versions = Object.fromEntries(['langgraph', 'langgraph-checkpoint', 'core'].map((name) => [name, requireGraph(`@langchain/${name}/package.json`).version]));
+assert.deepEqual(versions, { langgraph: '1.4.15', 'langgraph-checkpoint': '1.1.5', core: '1.2.11' });
+assert.deepEqual(versions, { langgraph: GRAPH_KERNEL.version, 'langgraph-checkpoint': GRAPH_KERNEL.checkpointVersion, core: GRAPH_KERNEL.coreVersion });
+async function check(name, run) {
+  try { await run(); assertions.push({ name, passed: true }); }
+  catch (error) { assertions.push({ name, passed: false, error: String(error) }); throw error; }
+}
+const config = (thread, ns = '', id) => ({ configurable: {
+  thread_id: thread, checkpoint_ns: ns, ...(id === undefined ? {} : { checkpoint_id: id }),
+} });
+const selection = (input) => {
+  const fields = input?.configurable ?? {};
+  const selected = {};
+  for (const name of ['thread_id', 'checkpoint_ns', 'checkpoint_id']) {
+    if (fields[name] !== undefined) { assert.equal(typeof fields[name], 'string'); selected[name] = fields[name]; }
+  }
+  return { configurable: selected };
+};
+const identity = (input) => {
+  const fields = input?.configurable;
+  assert.equal(typeof fields?.thread_id, 'string');
+  assert.ok(fields.thread_id.length);
+  assert.equal(typeof (fields.checkpoint_ns ?? ''), 'string');
+  if (fields.checkpoint_id !== undefined) assert.equal(typeof fields.checkpoint_id, 'string');
+  return config(fields.thread_id, fields.checkpoint_ns ?? '', fields.checkpoint_id);
+};
+const key = (input) => {
+  const c = identity(input).configurable;
+  return [c.thread_id, c.checkpoint_ns, c.checkpoint_id ?? null];
+};
+const equal = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+const readWire = (file) => {
+  assert.ok(statSync(file).size <= 1_048_576, 'file allocation bound');
+  return codec.decode(readFileSync(file));
+};
+function persist(file, value) {
+  const bytes = codec.encode(value);
+  const temporary = `${file}.next`;
+  const fd = openSync(temporary, 'wx', 0o600);
+  try { writeFileSync(fd, bytes); fsyncSync(fd); } finally { closeSync(fd); }
+  renameSync(temporary, file);
+}
+
+class TestOnlyPersistentSaver extends BaseCheckpointSaver {
+  constructor(file, failMethod) { super(codec); this.file = file; this.failMethod = failMethod; }
+  rpc(request) {
+    // Simulates BOTH serialization boundaries. No reference from the caller is
+    // retained; every request reloads the file, including within one process.
+    const input = codec.decode(codec.encode(request));
+    if (input.method === this.failMethod) throw new Error(`injected saver ${input.method}`);
+    const store = existsSync(this.file) ? readWire(this.file) : { checkpoints: [], writes: [] };
+    const tuple = (row) => ({
+      config: row.config, checkpoint: row.checkpoint, metadata: row.metadata,
+      ...(row.parentConfig === null ? {} : { parentConfig: row.parentConfig }),
+      pendingWrites: store.writes.filter((w) => equal(w.key, row.key)).map((w) => [w.taskId, w.channel, w.value]),
+    });
+    let response = null;
+    if (input.method === 'getTuple' || input.method === 'list') {
+      const fields = input.config.configurable ?? {};
+      const options = input.options ?? {};
+      const rows = store.checkpoints.filter((row) =>
+        (fields.thread_id === undefined || row.key[0] === fields.thread_id)
+        && (fields.checkpoint_ns === undefined || row.key[1] === fields.checkpoint_ns)
+        && (fields.checkpoint_id === undefined || row.key[2] === fields.checkpoint_id)
+        && (!options.before?.configurable?.checkpoint_id || row.key[2] < options.before.configurable.checkpoint_id)
+        && Object.entries(options.filter ?? {}).every(([k, v]) => equal(row.metadata[k], v)))
+        .sort((a, b) => a.key[2] < b.key[2] ? 1 : a.key[2] > b.key[2] ? -1 : 0);
+      response = input.method === 'getTuple' ? (rows[0] ? tuple(rows[0]) : null)
+        : rows.slice(0, options.limit ?? rows.length).map(tuple);
+    } else if (input.method === 'put') {
+      assertCheckpointV4(input.checkpoint);
+      const current = input.config.configurable;
+      const nextConfig = config(current.thread_id, current.checkpoint_ns, input.checkpoint.id);
+      const rowKey = key(nextConfig);
+      const row = { key: rowKey, config: nextConfig, checkpoint: input.checkpoint,
+        metadata: input.metadata, newVersions: input.newVersions,
+        parentConfig: current.checkpoint_id === undefined ? null : input.config };
+      const index = store.checkpoints.findIndex((r) => equal(r.key, rowKey));
+      if (index < 0) store.checkpoints.push(row); else store.checkpoints[index] = row;
+      response = nextConfig;
+    } else if (input.method === 'putWrites') {
+      const rowKey = key(input.config);
+      assert.equal(typeof rowKey[2], 'string');
+      assert.equal(typeof input.taskId, 'string');
+      for (const [position, [channel, value]] of input.writes.entries()) {
+        // Own-property lookup: channel names never read Object.prototype.
+        const index = Object.hasOwn(WRITES_IDX_MAP, channel) ? WRITES_IDX_MAP[channel] : position;
+        const found = store.writes.findIndex((r) => equal(r.key, rowKey) && r.taskId === input.taskId && r.index === index);
+        const row = { key: rowKey, taskId: input.taskId, index, channel, value };
+        if (found < 0) store.writes.push(row); else if (index < 0) store.writes[found] = row;
+      }
+    } else if (input.method === 'deleteThread') {
+      store.checkpoints = store.checkpoints.filter((r) => r.key[0] !== input.threadId);
+      store.writes = store.writes.filter((r) => r.key[0] !== input.threadId);
+    } else throw new Error(`Unsupported public method ${input.method}`);
+    if (['put', 'putWrites', 'deleteThread'].includes(input.method)) persist(this.file, store);
+    return codec.decode(codec.encode(response));
+  }
+  async getTuple(input) { return this.rpc({ method: 'getTuple', config: identity(input) }) ?? undefined; }
+  async *list(input, options = {}) {
+    // Omitted config fields mean wildcard, unlike getTuple's root namespace default.
+    const wireOptions = {};
+    if (options.limit !== undefined) {
+      assert.ok(Number.isSafeInteger(options.limit) && options.limit >= 0);
+      wireOptions.limit = options.limit;
+    }
+    if (options.before !== undefined) wireOptions.before = selection(options.before);
+    if (options.filter !== undefined) wireOptions.filter = options.filter;
+    for (const row of this.rpc({ method: 'list', config: selection(input), options: wireOptions })) yield row;
+  }
+  async put(input, checkpoint, metadata, newVersions) {
+    return this.rpc({ method: 'put', config: identity(input), checkpoint, metadata, newVersions });
+  }
+  async putWrites(input, writes, taskId) {
+    this.rpc({ method: 'putWrites', config: identity(input), writes, taskId });
+    this.afterWrites?.(writes);
+  }
+  async deleteThread(threadId) { this.rpc({ method: 'deleteThread', threadId }); }
+}
+
+const checkpoint = (id) => ({
+  v: 4, id, ts: '2026-09-13T00:00:00.000Z',
+  channel_values: { result: ['seed'], bytes: new Uint8Array([0, 255]), [TASKS]: [{ node: 'next', args: { x: 1 } }] },
+  channel_versions: { result: '0002', [TASKS]: 3 },
+  versions_seen: { sibling: { result: '0001', [TASKS]: 2 } },
+  extension: { preserved: true },
+});
+const metadata = { source: 'loop', step: 2, parents: { outer: 'parent-id' }, writes: { sibling: { result: ['ok'] } }, counters_since_delta_snapshot: { result: [1, 2] }, extra: { label: 'keep' } };
+const newVersions = { result: '0002', [TASKS]: 3 };
+
+async function contractWrite(saver) {
+  await check('missing getTuple and inherited get return undefined', async () => {
+    assert.equal(await saver.getTuple(config('absent')), undefined);
+    assert.equal(await saver.get(config('absent')), undefined);
+  });
+  await check('put returns identity and repeated put preserves full fields', async () => {
+    const first = await saver.put(config('contract', 'ns'), checkpoint('0001'), metadata, newVersions);
+    assert.deepEqual(first, config('contract', 'ns', '0001'));
+    await saver.put(config('contract', 'ns'), checkpoint('0001'), metadata, newVersions);
+    await saver.put(first, checkpoint('0002'), metadata, newVersions);
+    await saver.put(first, checkpoint('0003'), { ...metadata, source: 'fork' }, newVersions);
+    await saver.put(config('contract', 'other'), checkpoint('0004'), metadata, newVersions);
+    await saver.put(config('other-thread', 'ns'), checkpoint('0005'), metadata, newVersions);
+  });
+  const target = config('contract', 'ns', '0002');
+  await check('ordinary writes retain first value by task/index, separate tasks coexist', async () => {
+    await saver.putWrites(target, [['result', 'first'], ['result', 'second']], 'task,with,comma');
+    await saver.putWrites(target, [['different-channel', 'ignored'], ['result', 'ignored']], 'task,with,comma');
+    await saver.putWrites(target, [['result', 'other-task']], 'task2');
+    await saver.putWrites(target, [[TASKS, { node: 'next', args: { x: 1 } }]], 'send-task');
+    const writes = (await saver.getTuple(target)).pendingWrites;
+    assert.deepEqual(writes.slice(0, 3), [['task,with,comma', 'result', 'first'], ['task,with,comma', 'result', 'second'], ['task2', 'result', 'other-task']]);
+  });
+  await check('reserved error/interrupt/resume/scheduled overwrite independent negative indexes', async () => {
+    assert.deepEqual(WRITES_IDX_MAP, { [ERROR]: -1, [SCHEDULED]: -2, [INTERRUPT]: -3, [RESUME]: -4 });
+    await saver.putWrites(target, [[ERROR, { message: 'first' }]], 'reserved');
+    await saver.putWrites(target, [[ERROR, { name: 'Error', message: 'latest' }]], 'reserved');
+    for (const channel of [INTERRUPT, RESUME, SCHEDULED]) {
+      await saver.putWrites(target, [[channel, ['old']]], 'reserved');
+      await saver.putWrites(target, [[channel, [{ id: 'interrupt-1', value: false }]]], 'reserved');
+    }
+    await saver.putWrites(target, [['result', 'ordinary-zero']], 'reserved');
+    const writes = (await saver.getTuple(target)).pendingWrites;
+    assert.deepEqual(writes.filter((w) => w[1] === ERROR), [['reserved', ERROR, { name: 'Error', message: 'latest' }]]);
+    for (const channel of [INTERRUPT, RESUME, SCHEDULED]) assert.deepEqual(writes.find((w) => w[1] === channel)[2], [{ id: 'interrupt-1', value: false }]);
+    assert.ok(writes.some((w) => w[0] === 'reserved' && w[1] === 'result'));
+  });
+  await check('putWrites before put remains attached and put retry does not erase writes', async () => {
+    const late = config('late', '', '0001');
+    await saver.putWrites(late, [['result', 'pending-before-checkpoint']], 'task');
+    await saver.put(config('late'), checkpoint('0001'), metadata, newVersions);
+    await saver.put(config('late'), checkpoint('0001'), metadata, newVersions);
+    assert.equal((await saver.getTuple(late)).pendingWrites.length, 1);
+  });
+}
+async function collect(generator) { const values = []; for await (const v of generator) values.push(v); return values; }
+async function contractRead(saver) {
+  await check('fresh process recovers all checkpoint/metadata/version/parent fields and byte values', async () => {
+    const row = await saver.getTuple(config('contract', 'ns', '0002'));
+    assert.deepEqual(row.checkpoint, checkpoint('0002'));
+    assert.deepEqual(row.metadata, metadata);
+    assert.deepEqual(row.config, config('contract', 'ns', '0002'));
+    assert.deepEqual(row.parentConfig, config('contract', 'ns', '0001'));
+    assert.equal(row.pendingWrites.length, 9);
+    assert.deepEqual(await saver.get(row.config), row.checkpoint);
+    assert.equal((await saver.getTuple(config('contract', 'ns'))).checkpoint.id, '0003');
+    assert.equal((await saver.getTuple(config('contract', 'ns', '0001'))).parentConfig, undefined);
+    const stored = readWire(saver.file);
+    assert.deepEqual(stored.checkpoints.find((r) => equal(r.key, ['contract', 'ns', '0002'])).newVersions, newVersions);
+    assert.deepEqual(stored.writes.filter((r) => r.taskId === 'reserved').map((r) => r.index).sort((a, b) => a - b), [-4, -3, -2, -1, 0]);
+  });
+  await check('list returns full tuples with namespace/thread/id/filter/before/limit semantics', async () => {
+    const rows = await collect(saver.list(config('contract', 'ns')));
+    assert.deepEqual(rows.map((r) => r.checkpoint.id), ['0003', '0002', '0001']);
+    assert.deepEqual(rows[1], await saver.getTuple(config('contract', 'ns', '0002')));
+    assert.deepEqual((await collect(saver.list(config('contract', 'ns'), { before: config('contract', 'ns', '0003'), limit: 1 }))).map((r) => r.checkpoint.id), ['0002']);
+    assert.equal((await collect(saver.list(config('contract', 'ns'), { filter: { source: 'fork' } }))).length, 1);
+    assert.equal((await collect(saver.list(config('contract', 'ns'), { limit: 0 }))).length, 0);
+    assert.equal((await collect(saver.list(config('contract', 'ns', '0002')))).length, 1);
+    assert.equal((await collect(saver.list({ configurable: { thread_id: 'contract' } }))).length, 4);
+    assert.equal((await collect(saver.list({}))).length, 6);
+  });
+  await check('list and getTuple project durable identity without serializing runnable callbacks', async () => {
+    const callback = () => { throw new Error('runtime callback must stay local'); };
+    const live = { configurable: { thread_id: 'contract', checkpoint_ns: 'ns', runtime: callback }, callbacks: callback };
+    assert.equal((await saver.getTuple(live)).checkpoint.id, '0003');
+    assert.ok((await collect(saver.list(undefined, { limit: undefined }))).length > 0);
+    const rows = await collect(saver.list(live, { before: { configurable: { checkpoint_id: '0003' }, callbacks: callback }, limit: 1 }));
+    assert.equal(rows[0].checkpoint.id, '0002');
+  });
+  await check('inherited numeric version generation works and string generation requires override', () => {
+    assert.equal(saver.getNextVersion(undefined), 1); assert.equal(saver.getNextVersion(3), 4);
+    assert.throws(() => saver.getNextVersion('0003'), /override/);
+  });
+  await check('inherited beta history follows parent chain rather than unrelated fork', async () => {
+    await saver.putWrites(config('contract', 'ns', '0001'), [['result', 'on-parent']], 'parent-task');
+    const history = await saver.getDeltaChannelHistory({ config: config('contract', 'ns', '0003'), channels: ['result'] });
+    assert.deepEqual(history, { result: { seed: ['seed'], writes: [['parent-task', 'result', 'on-parent']] } });
+    assert.deepEqual(await saver.getDeltaChannelHistory({ config: config('contract', 'ns', '0003'), channels: [] }), {});
+  });
+  await check('deleteThread removes all namespaces and writes without deleting other threads', async () => {
+    await saver.deleteThread('contract');
+    assert.equal((await collect(saver.list({ configurable: { thread_id: 'contract' } }))).length, 0);
+    assert.ok(await saver.getTuple(config('other-thread', 'ns')));
+    assert.ok(readWire(saver.file).writes.every((r) => r.key[0] !== 'contract'));
+  });
+}
+
+function parallelGraph(saver, home, fail, prefix = '') {
+  // Fail at a deterministic boundary: the sibling's COMPLETE task writes
+  // (including barrier notification) must be durable before the failure.
+  let committed;
+  const siblingCommitted = new Promise((resolve) => { committed = resolve; });
+  saver.afterWrites = (writes) => {
+    if (writes.some(([channel, value]) => channel === 'join:completed+flaky:join' && value === 'completed')) committed();
+  };
+  const count = (name) => {
+    const file = join(home, `${prefix}${name}.count`);
+    const n = existsSync(file) ? Number(readFileSync(file, 'utf8')) + 1 : 1;
+    writeFileSync(file, String(n), { mode: 0o600 });
+    return n;
+  };
+  const state = Annotation.Root({ results: Annotation({ reducer: (a, b) => a.concat(b), default: () => [] }) });
+  return new StateGraph(state)
+    .addNode('completed', () => { count('completed'); return { results: ['completed'] }; })
+    .addNode('flaky', async () => { count('flaky'); if (fail) { if (fail !== 'immediate') await siblingCommitted; throw new Error('injected parallel failure'); } return { results: ['recovered'] }; }, { retryPolicy: { maxAttempts: 1 } })
+    .addNode('join', (s) => { count('join'); assert.deepEqual([...s.results].sort(), ['completed', 'recovered']); return { results: ['joined'] }; })
+    .addEdge(START, 'completed').addEdge(START, 'flaky')
+    .addEdge(['completed', 'flaky'], 'join').addEdge('join', END).compile({ checkpointer: saver });
+}
+function interruptGraph(saver) {
+  const state = Annotation.Root({ answer: Annotation() });
+  return new StateGraph(state).addNode('ask', () => ({ answer: interrupt({ question: 'continue?', choices: [false, true] }) }))
+    .addEdge(START, 'ask').addEdge('ask', END).compile({ checkpointer: saver });
+}
+
+async function child(phase, home) {
+  assert.equal(realpathSync(home), assertIsolatedHome(process.env.OSSTACK_HOME));
+  assert.ok(!lstatSync(home).isSymbolicLink());
+  const owner = JSON.parse(readFileSync(join(home, 'probe-owner.json'), 'utf8'));
+  assert.equal(owner.token, process.env.GRAPH_SAVER_PROBE_TOKEN);
+  assert.equal(owner.parentPid, process.ppid);
+  const saver = new TestOnlyPersistentSaver(join(home, 'saver.wire'));
+  if (phase === 'contract-write') await contractWrite(saver);
+  else if (phase === 'contract-read') await contractRead(saver);
+  else if (phase === 'fail') {
+    globalThis.probeMemoryCanary = randomUUID();
+    persist(join(home, 'memory-canary.wire'), { canary: globalThis.probeMemoryCanary, pid: process.pid });
+    await check('parallel superstep failure propagates after completed sibling write persists', async () => {
+      const graph = parallelGraph(saver, home, true);
+      await assert.rejects(graph.invoke({ results: [] }, config('parallel')), /injected parallel failure/);
+      const row = await saver.getTuple(config('parallel'));
+      assert.ok(row.pendingWrites.some((w) => w[1] === 'results' && equal(w[2], ['completed'])));
+      assert.ok(row.pendingWrites.some((w) => w[1] === ERROR && w[2].message === 'injected parallel failure'));
+      assert.equal(readFileSync(join(home, 'completed.count'), 'utf8'), '1');
+      assert.equal(existsSync(join(home, 'join.count')), false);
+      assert.ok(Object.keys(row.checkpoint.versions_seen).length);
+      assert.ok(Object.keys(row.checkpoint.channel_versions).length);
+      assert.ok(row.parentConfig);
+    });
+  } else if (phase === 'recover') {
+    await check('new process has no memory canary and reads prior process durable checkpoint', async () => {
+      assert.equal(globalThis.probeMemoryCanary, undefined);
+      assert.notEqual(readWire(join(home, 'memory-canary.wire')).pid, process.pid);
+      assert.ok(await saver.getTuple(config('parallel')));
+    });
+    await check('resume failed parallel step without rerunning completed sibling; join exactly once', async () => {
+      const result = await parallelGraph(saver, home, false).invoke(null, config('parallel'));
+      assert.deepEqual([...result.results].sort(), ['completed', 'joined', 'recovered']);
+      assert.equal(readFileSync(join(home, 'completed.count'), 'utf8'), '1');
+      assert.equal(readFileSync(join(home, 'flaky.count'), 'utf8'), '2');
+      assert.equal(readFileSync(join(home, 'join.count'), 'utf8'), '1');
+      observations.recovery = { completed: 1, flaky: 2, join: 1, results: result.results };
+    });
+  } else if (phase === 'interrupt') {
+    await check('interrupt payload and id survive pending writes on disk', async () => {
+      const result = await interruptGraph(saver).invoke({ answer: null }, config('interrupt'));
+      assert.equal(result[INTERRUPT].length, 1);
+      const row = await saver.getTuple(config('interrupt'));
+      const pause = row.pendingWrites.find((w) => w[1] === INTERRUPT)[2];
+      assert.equal(typeof pause.id, 'string');
+      assert.deepEqual(pause.value, { question: 'continue?', choices: [false, true] });
+      persist(join(home, 'interrupt-id.wire'), pause.id);
+    });
+  } else if (phase === 'resume') {
+    await check('fresh process resumes matching interrupt with falsy input and preserves resume writes', async () => {
+      const pauseId = readWire(join(home, 'interrupt-id.wire'));
+      const graph = interruptGraph(saver);
+      const before = await graph.getState(config('interrupt'));
+      assert.equal(before.tasks[0].interrupts[0].id, pauseId);
+      const result = await graph.invoke(new Command({ resume: { [pauseId]: false } }), config('interrupt'));
+      assert.equal(result.answer, false);
+      assert.ok(readWire(saver.file).writes.some((w) => w.channel === RESUME));
+      assert.deepEqual((await graph.getState(config('interrupt'))).next, []);
+    });
+    await check('public graph.getStateHistory preserves full state with live callbacks', async () => {
+      const history = [];
+      for await (const item of interruptGraph(saver).getStateHistory({ ...config('interrupt'), callbacks: [{ handleChainStart() {} }] }, { limit: 2 })) history.push(item);
+      assert.equal(history.length, 2);
+      assert.equal(history[0].values.answer, false);
+      assert.ok(history[0].config.configurable.checkpoint_id);
+      assert.ok(history[0].parentConfig);
+    });
+  } else if (phase === 'absence') {
+    await check('negative control: fresh empty storage contains no recovered graph state', async () => {
+      const empty = new TestOnlyPersistentSaver(join(home, 'empty.wire'));
+      assert.equal(await empty.getTuple(config('parallel')), undefined);
+      assert.deepEqual((await parallelGraph(empty, home, false).getState(config('parallel'))).values, {});
+    });
+  } else if (phase === 'faults') {
+    for (const method of ['getTuple', 'put', 'putWrites']) await check(`${method} transport failure rejects graph invocation`, async () => {
+      const broken = new TestOnlyPersistentSaver(join(home, `${method}.wire`), method);
+      const state = Annotation.Root({ value: Annotation() });
+      const graph = new StateGraph(state).addNode('node', () => ({ value: 1 })).addEdge(START, 'node').addEdge('node', END).compile({ checkpointer: broken });
+      await assert.rejects(graph.invoke({ value: 0 }, config('failure')), new RegExp(`injected saver ${method}`));
+    });
+    await check('public Send class is rejected rather than revived (v1 static graph restriction)', () => {
+      assert.throws(() => codec.encode(new Send('node', { x: 1 })), /class or prototype/);
+    });
+    await check('record partial-abort counterexample separately from completed-sibling recovery', async () => {
+      await assert.rejects(parallelGraph(saver, home, 'immediate', 'partial-').invoke({ results: [] }, config('partial')), /injected parallel failure/);
+      const before = await saver.getTuple(config('partial'));
+      const partial = before.pendingWrites.find((w) => w[1] === 'results');
+      assert.ok(partial);
+      assert.ok(before.pendingWrites.some((w) => w[0] === partial[0] && w[1] === ERROR));
+      assert.ok(!before.pendingWrites.some((w) => w[0] === partial[0] && w[1].startsWith('join:')));
+      const recovered = await parallelGraph(saver, home, false, 'partial-').invoke(null, config('partial'));
+      assert.deepEqual([...recovered.results].sort(), ['completed', 'recovered']);
+      assert.equal(existsSync(join(home, 'partial-join.count')), false);
+      observations.partialAbort = {
+        limitation: 'An aborted task with a partial output write is treated as cached on resume; its missing barrier write is not reconstructed.',
+        pendingWrites: before.pendingWrites, resumedResult: recovered,
+        completedInvocations: Number(readFileSync(join(home, 'partial-completed.count'), 'utf8')),
+        joinInvocations: 0, productionGate: 'Resolve before arbitrary failure/crash recovery is admitted; no private patch applied.',
+      };
+    });
+    await check('partial-abort counterexample also occurs with unmodified public MemorySaver', async () => {
+      const baseline = new MemorySaver();
+      await assert.rejects(parallelGraph(baseline, home, 'immediate', 'baseline-').invoke({ results: [] }, config('baseline')), /injected parallel failure/);
+      const before = await baseline.getTuple(config('baseline'));
+      const result = await parallelGraph(baseline, home, false, 'baseline-').invoke(null, config('baseline'));
+      assert.deepEqual([...result.results].sort(), ['completed', 'recovered']);
+      assert.equal(existsSync(join(home, 'baseline-join.count')), false);
+      observations.publicMemorySaverBaseline = { pendingWrites: before.pendingWrites, result, joinInvocations: 0 };
+    });
+    await check('unsupported checkpoint v3 fails before persistence', async () => {
+      await assert.rejects(saver.put(config('old'), { ...checkpoint('0001'), v: 3 }, metadata, newVersions), /unsupported checkpoint version/);
+      assert.equal(await saver.getTuple(config('old')), undefined);
+    });
+  } else throw new Error(`Unknown child phase ${phase}`);
+}
+
+async function main() {
+  if (process.argv[2] === '--child') {
+    try { await child(process.argv[3], process.argv[4]); }
+    catch (error) { process.exitCode = 1; console.error(error.stack); }
+    console.log(JSON.stringify({ phase: process.argv[3], pid: process.pid, assertions, observations, passed: process.exitCode !== 1 }));
+    return;
+  }
+  assert.equal(process.argv.length, 2, 'Usage: node scripts/probe-graph-saver.mjs');
+  const fixture = createGraphTestEnv();
+  const token = randomUUID();
+  const ownerPath = join(fixture.home, 'probe-owner.json');
+  writeFileSync(ownerPath, JSON.stringify({ parentPid: process.pid, token }), { flag: 'wx', mode: 0o600 });
+  const results = [];
+  const result = { testOnly: true, node: process.version, versions, productionReady: false, parentPid: process.pid, phases: results, assertions, passed: false, cleaned: false };
+  try {
+    for (const phase of ['contract-write', 'contract-read', 'fail', 'recover', 'interrupt', 'resume', 'absence', 'faults']) {
+      const run = spawnSync(process.execPath, [fileURLToPath(import.meta.url), '--child', phase, fixture.home], {
+        env: { ...fixture.env, GRAPH_SAVER_PROBE_TOKEN: token, LANGCHAIN_TRACING_V2: 'false', LANGSMITH_TRACING: 'false' },
+        encoding: 'utf8', timeout: 30_000, maxBuffer: 1_048_576, killSignal: 'SIGKILL',
+      });
+      const output = run.stdout?.trim();
+      let report;
+      try { report = JSON.parse(output); } catch { report = { phase, stdout: output }; }
+      results.push({ ...report, exitCode: run.status, signal: run.signal, stderr: run.stderr, ...(run.error ? { error: String(run.error) } : {}) });
+      assert.equal(run.status, 0, `${phase} failed`);
+      assert.equal(report.passed, true);
+    }
+    await check('all phases executed in separate processes with exited writers before readers', () => {
+      assert.equal(new Set(results.map((r) => r.pid)).size, results.length);
+      assert.ok(results.every((r) => r.pid !== process.pid));
+    });
+    result.storeSha256 = createHash('sha256').update(readFileSync(join(fixture.home, 'saver.wire'))).digest('hex');
+    result.passed = true;
+  } catch (error) { result.error = String(error); process.exitCode = 1; }
+  finally {
+    // Delete only the fixture allocated by this invocation, after bounded children exit.
+    const owner = JSON.parse(readFileSync(ownerPath, 'utf8'));
+    assert.equal(owner.token, token); assert.equal(owner.parentPid, process.pid);
+    assert.equal(realpathSync(fixture.home), fixture.home);
+    assert.ok(!lstatSync(fixture.home).isSymbolicLink());
+    fixture.cleanup(); result.cleaned = !existsSync(fixture.home);
+    console.log(JSON.stringify(result, null, 2));
+  }
+}
+await main();
+
+--- packages/graph/node_modules/@langchain/langgraph/dist/pregel/runner.js ---
+import { CONFIG_KEY_ABORT_SIGNALS, CONFIG_KEY_CALL, CONFIG_KEY_SCRATCHPAD, ERROR, ERROR_SOURCE_NODE, INTERRUPT, NO_WRITES, RESUME, RETURN } from "../constants.js";
+import { isGraphBubbleUp, isGraphDrained, isGraphInterrupt } from "../errors.js";
+import { Call } from "./types.js";
+import { combineAbortSignals, patchConfigurable } from "./utils/index.js";
+import { _runWithRetry } from "./retry.js";
+//#region src/pregel/runner.ts
+const PROMISE_ADDED_SYMBOL = Symbol.for("promiseAdded");
+function createPromiseBarrier() {
+	const barrier = {
+		next: () => void 0,
+		wait: Promise.resolve(PROMISE_ADDED_SYMBOL)
+	};
+	function waitHandler(resolve) {
+		barrier.next = () => {
+			barrier.wait = new Promise(waitHandler);
+			resolve(PROMISE_ADDED_SYMBOL);
+		};
+	}
+	barrier.wait = new Promise(waitHandler);
+	return barrier;
+}
+/**
+* Responsible for handling task execution on each tick of the {@link PregelLoop}.
+*/
+var PregelRunner = class {
+	nodeFinished;
+	loop;
+	/**
+	* Exceptions already routed to a node-level error handler. Consulted when
+	* deciding whether a failed task should abort the run.
+	*/
+	handledExceptions = /* @__PURE__ */ new WeakSet();
+	/**
+	* Construct a new PregelRunner, which executes tasks from the provided PregelLoop.
+	* @param loop - The PregelLoop that produces tasks for this runner to execute.
+	*/
+	constructor({ loop, nodeFinished }) {
+		this.loop = loop;
+		this.nodeFinished = nodeFinished;
+	}
+	/**
+	* Execute tasks from the current step of the PregelLoop.
+	*
+	* Note: this method does NOT call {@link PregelLoop}#tick. That must be handled externally.
+	* @param options - Options for the execution.
+	*/
+	async tick(options = {}) {
+		const { timeout, retryPolicy, onStepWrite, maxConcurrency } = options;
+		const nodeErrors = /* @__PURE__ */ new Set();
+		let graphBubbleUp;
+		const exceptionSignalController = new AbortController();
+		const exceptionSignal = exceptionSignalController.signal;
+		const stepTimeoutSignal = timeout ? AbortSignal.timeout(timeout) : void 0;
+		const allTasks = Object.values(this.loop.tasks);
+		const pendingTasks = allTasks.filter((t) => t.writes.length === 0);
+		const { signals, disposeCombinedSignal } = this._initializeAbortSignals({
+			exceptionSignal,
+			stepTimeoutSignal,
+			signal: options.signal
+		});
+		const taskStream = this._executeTasksWithRetry(pendingTasks, {
+			signals,
+			retryPolicy,
+			maxConcurrency
+		});
+		for await (const { task, error, signalAborted } of taskStream) {
+			this._commit(task, error);
+			if (error !== void 0 && this.handledExceptions.has(error)) continue;
+			if (isGraphInterrupt(error)) graphBubbleUp = error;
+			else if (isGraphBubbleUp(error) && !isGraphInterrupt(graphBubbleUp)) graphBubbleUp = error;
+			else if (error && (nodeErrors.size === 0 || !signalAborted)) {
+				exceptionSignalController.abort();
+				nodeErrors.add(error);
+			}
+		}
+		disposeCombinedSignal?.();
+		onStepWrite?.(this.loop.step, allTasks.map((task) => task.writes).flat());
+		if (nodeErrors.size === 1) throw Array.from(nodeErrors)[0];
+		else if (nodeErrors.size > 1) throw new AggregateError(Array.from(nodeErrors), `Multiple errors occurred during superstep ${this.loop.step}. See the "errors" field of this exception for more details.`);
+		if (isGraphInterrupt(graphBubbleUp)) throw graphBubbleUp;
+		if (isGraphDrained(graphBubbleUp)) throw graphBubbleUp;
+		if (isGraphBubbleUp(graphBubbleUp) && this.loop.isNested) throw graphBubbleUp;
+	}
+	/**
+	* Initializes the current AbortSignals for the PregelRunner, handling the various ways that
+	* AbortSignals must be chained together so that the PregelLoop can be interrupted if necessary
+	* while still allowing nodes to gracefully exit.
+	*
+	* This method must only be called once per PregelRunner#tick. It has the side effect of updating
+	* the PregelLoop#config with the new AbortSignals so they may be propagated correctly to future
+	* ticks and subgraph calls.
+	*
+	* @param options - Options for the initialization.
+	* @returns The current abort signals.
+	* @internal
+	*/
+	_initializeAbortSignals({ exceptionSignal, stepTimeoutSignal, signal }) {
+		const previousSignals = this.loop.config.configurable?.["__pregel_abort_signals"] ?? {};
+		const externalAbortSignal = previousSignals.externalAbortSignal ?? signal;
+		const timeoutAbortSignal = stepTimeoutSignal ?? previousSignals.timeoutAbortSignal;
+		const { signal: composedAbortSignal, dispose: disposeCombinedSignal } = combineAbortSignals(externalAbortSignal, timeoutAbortSignal, exceptionSignal);
+		const signals = {
+			externalAbortSignal,
+			timeoutAbortSignal,
+			composedAbortSignal
+		};
+		this.loop.config = patchConfigurable(this.loop.config, { [CONFIG_KEY_ABORT_SIGNALS]: signals });
+		return {
+			signals,
+			disposeCombinedSignal
+		};
+	}
+	/**
+	* Concurrently executes tasks with the requested retry policy, yielding a {@link SettledPregelTask} for each task as it completes.
+	* @param tasks - The tasks to execute.
+	* @param options - Options for the execution.
+	*/
+	async *_executeTasksWithRetry(tasks, options) {
+		const { retryPolicy, maxConcurrency, signals } = options ?? {};
+		const barrier = createPromiseBarrier();
+		const executingTasksMap = {};
+		const thisCall = {
+			executingTasksMap,
+			barrier,
+			retryPolicy,
+			scheduleTask: async (task, writeIdx, call) => this.loop.acceptPush(task, writeIdx, call)
+		};
+		if (signals?.composedAbortSignal?.aborted) throw new Error("Abort");
+		let startedTasksCount = 0;
+		let listener;
+		const timeoutOrCancelSignal = combineAbortSignals(signals?.externalAbortSignal, signals?.timeoutAbortSignal);
+		const abortPromise = timeoutOrCancelSignal.signal ? new Promise((_resolve, reject) => {
+			listener = () => reject(/* @__PURE__ */ new Error("Abort"));
+			timeoutOrCancelSignal.signal?.addEventListener("abort", listener, { once: true });
+		}) : void 0;
+		while ((startedTasksCount === 0 || Object.keys(executingTasksMap).length > 0) && tasks.length) {
+			for (; Object.values(executingTasksMap).length < (maxConcurrency ?? tasks.length) && startedTasksCount < tasks.length; startedTasksCount += 1) {
+				const task = tasks[startedTasksCount];
+				executingTasksMap[task.id] = _runWithRetry(task, retryPolicy, { [CONFIG_KEY_CALL]: call?.bind(thisCall, this, task) }, signals?.composedAbortSignal).catch((error) => {
+					return {
+						task,
+						error,
+						signalAborted: signals?.composedAbortSignal?.aborted
+					};
+				});
+			}
+			const settledTask = await Promise.race([
+				...Object.values(executingTasksMap),
+				...abortPromise ? [abortPromise] : [],
+				barrier.wait
+			]);
+			if (settledTask === PROMISE_ADDED_SYMBOL) continue;
+			const settled = settledTask;
+			const { task: settledPregelTask, error: settledError } = settled;
+			if (settledError !== void 0 && !isGraphBubbleUp(settledError) && !this.loop.isErrorHandlerNode(String(settledPregelTask.name)) && this.loop.getErrorHandlerNode(String(settledPregelTask.name)) !== void 0) {
+				const handlerTask = this.loop.scheduleErrorHandler(settledPregelTask, settledError);
+				if (handlerTask !== void 0) {
+					executingTasksMap[handlerTask.id] = _runWithRetry(handlerTask, retryPolicy, { [CONFIG_KEY_CALL]: call?.bind(thisCall, this, handlerTask) }, signals?.composedAbortSignal).catch((error) => {
+						return {
+							task: handlerTask,
+							error,
+							signalAborted: signals?.composedAbortSignal?.aborted
+						};
+					});
+					barrier.next();
+				}
+			}
+			yield settled;
+			if (listener != null) {
+				timeoutOrCancelSignal.signal?.removeEventListener("abort", listener);
+				timeoutOrCancelSignal.dispose?.();
+			}
+			delete executingTasksMap[settledTask.task.id];
+		}
+	}
+	/**
+	* Whether a failed task should record {@link ERROR_SOURCE_NODE} provenance.
+	*/
+	_shouldRouteToErrorHandler(task) {
+		const name = String(task.name);
+		if (this.loop.isErrorHandlerNode(name)) return false;
+		return this.loop.getErrorHandlerNode(name) !== void 0;
+	}
+	/**
+	* Determines what writes to apply based on whether the task completed successfully, and what type of error occurred.
+	*
+	* Throws an error if the error is a {@link GraphBubbleUp} error and {@link PregelLoop}#isNested is true.
+	*
+	* @param task - The task to commit.
+	* @param error - The error that occurred, if any.
+	*/
+	_commit(task, error) {
+		if (error !== void 0) if (isGraphInterrupt(error)) {
+			if (error.interrupts.length) {
+				const interrupts = error.interrupts.map((interrupt) => [INTERRUPT, interrupt]);
+				const resumes = task.writes.filter((w) => w[0] === RESUME);
+				if (resumes.length) interrupts.push(...resumes);
+				this.loop.putWrites(task.id, interrupts);
+			}
+		} else if (isGraphDrained(error)) {
+			if (task.writes.length) this.loop.putWrites(task.id, task.writes);
+		} else if (isGraphBubbleUp(error) && task.writes.length) this.loop.putWrites(task.id, task.writes);
+		else {
+			task.writes.push([ERROR, {
+				message: error.message,
+				name: error.name
+			}]);
+			if (this._shouldRouteToErrorHandler(task)) {
+				task.writes.push([ERROR_SOURCE_NODE, String(task.name)]);
+				this.handledExceptions.add(error);
+			}
+			this.loop.putWrites(task.id, task.writes);
+		}
+		else {
+			if (this.nodeFinished && (task.config?.tags == null || !task.config.tags.includes("langsmith:hidden"))) this.nodeFinished(String(task.name));
+			if (task.writes.length === 0) task.writes.push([NO_WRITES, null]);
+			this.loop.putWrites(task.id, task.writes);
+		}
+	}
+};
+async function call(runner, task, func, name, input, options = {}) {
+	const scratchpad = task.config?.configurable?.[CONFIG_KEY_SCRATCHPAD];
+	if (!scratchpad) throw new Error(`BUG: No scratchpad found on task ${task.name}__${task.id}`);
+	const cnt = scratchpad.callCounter;
+	scratchpad.callCounter += 1;
+	const wcall = new Call({
+		func,
+		name,
+		input,
+		cache: options.cache,
+		retry: options.retry,
+		timeout: options.timeout,
+		callbacks: options.callbacks
+	});
+	const nextTask = await this.scheduleTask(task, cnt, wcall);
+	if (!nextTask) return void 0;
+	const existingPromise = this.executingTasksMap[nextTask.id];
+	if (existingPromise !== void 0) return existingPromise;
+	if (nextTask.writes.length > 0) {
+		const returns = nextTask.writes.filter(([c]) => c === RETURN);
+		const errors = nextTask.writes.filter(([c]) => c === ERROR);
+		if (returns.length > 0) {
+			if (returns.length === 1) return Promise.resolve(returns[0][1]);
+			throw new Error(`BUG: multiple returns found for task ${nextTask.name}__${nextTask.id}`);
+		}
+		if (errors.length > 0) {
+			if (errors.length === 1) {
+				const errorValue = errors[0][1];
+				const error = errorValue instanceof Error ? errorValue : new Error(String(errorValue));
+				return Promise.reject(error);
+			}
+			throw new Error(`BUG: multiple errors found for task ${nextTask.name}__${nextTask.id}`);
+		}
+		return;
+	} else {
+		const prom = _runWithRetry(nextTask, options.retry, { [CONFIG_KEY_CALL]: call.bind(this, runner, nextTask) });
+		this.executingTasksMap[nextTask.id] = prom;
+		this.barrier.next();
+		return prom.then(({ result, error }) => {
+			if (error) return Promise.reject(error);
+			return result;
+		});
+	}
+}
+//#endregion
+export { PregelRunner };
+
+//# sourceMappingURL=runner.js.map
+--- packages/graph/node_modules/@langchain/langgraph/dist/pregel/retry.js ---
+import { CONFIG_KEY_RESUMING, Command } from "../constants.js";
+import { isGraphBubbleUp, isParentCommand } from "../errors.js";
+import { getParentCheckpointNamespace } from "./utils/config.js";
+import { patchConfigurable } from "./utils/index.js";
+import { runAttemptWithTimeout } from "./timeout.js";
+const DEFAULT_STATUS_NO_RETRY = [
+	400,
+	401,
+	402,
+	403,
+	404,
+	405,
+	406,
+	407,
+	409
+];
+const DEFAULT_RETRY_ON_HANDLER = (error) => {
+	if (error.message.startsWith("Cancel") || error.message.startsWith("AbortError") || error.name === "AbortError") return false;
+	if (error.name === "GraphValueError") return false;
+	if (error?.code === "ECONNABORTED") return false;
+	const status = error?.response?.status ?? error?.status;
+	if (status && DEFAULT_STATUS_NO_RETRY.includes(+status)) return false;
+	if (error?.error?.code === "insufficient_quota") return false;
+	return true;
+};
+async function _runWithRetry(pregelTask, retryPolicy, configurable, signal) {
+	const resolvedRetryPolicy = pregelTask.retry_policy ?? retryPolicy;
+	let attempts = 0;
+	let error;
+	let result;
+	let config = pregelTask.config ?? {};
+	if (configurable) config = patchConfigurable(config, configurable);
+	config = {
+		...config,
+		signal
+	};
+	const firstAttemptTime = Date.now();
+	if (config.executionInfo != null) config.executionInfo = {
+		...config.executionInfo,
+		nodeFirstAttemptTime: firstAttemptTime
+	};
+	while (true) {
+		if (signal?.aborted) break;
+		pregelTask.writes.splice(0, pregelTask.writes.length);
+		error = void 0;
+		try {
+			if (pregelTask.timeout !== void 0) result = await runAttemptWithTimeout(pregelTask, config, pregelTask.timeout, (scopedConfig) => pregelTask.proc.invoke(pregelTask.input, scopedConfig));
+			else result = await pregelTask.proc.invoke(pregelTask.input, config);
+			break;
+		} catch (e) {
+			error = e;
+			error.pregelTaskId = pregelTask.id;
+			if (isParentCommand(error)) {
+				const ns = config?.configurable?.checkpoint_ns;
+				const cmd = error.command;
+				if (cmd.graph === ns) {
+					for (const writer of pregelTask.writers) await writer.invoke(cmd, config);
+					error = void 0;
+					break;
+				} else if (cmd.graph === Command.PARENT) {
+					const parentNs = getParentCheckpointNamespace(ns);
+					error.command = new Command({
+						...error.command,
+						graph: parentNs
+					});
+				}
+			}
+			if (isGraphBubbleUp(error)) break;
+			if (resolvedRetryPolicy === void 0) break;
+			attempts += 1;
+			if (attempts >= (resolvedRetryPolicy.maxAttempts ?? 3)) break;
+			if (!(resolvedRetryPolicy.retryOn ?? DEFAULT_RETRY_ON_HANDLER)(error)) break;
+			const initialInterval = resolvedRetryPolicy.initialInterval ?? 500;
+			const interval = Math.min(resolvedRetryPolicy.maxInterval ?? 128e3, initialInterval * (resolvedRetryPolicy.backoffFactor ?? 2) ** (attempts - 1));
+			const sleepMs = resolvedRetryPolicy.jitter ?? true ? interval + Math.random() * 1e3 : interval;
+			await new Promise((resolve) => setTimeout(resolve, sleepMs));
+			const errorName = error.name ?? error.constructor.unminifiable_name ?? error.constructor.name;
+			if (resolvedRetryPolicy?.logWarning ?? true) console.log(`Retrying task "${String(pregelTask.name)}" after ${sleepMs.toFixed(2)}ms (attempt ${attempts}) after ${errorName}: ${error}`);
+			config = patchConfigurable(config, { [CONFIG_KEY_RESUMING]: true });
+			if (config.executionInfo != null) config.executionInfo = {
+				...config.executionInfo,
+				nodeAttempt: attempts + 1,
+				nodeFirstAttemptTime: firstAttemptTime
+			};
+		}
+	}
+	return {
+		task: pregelTask,
+		result,
+		error,
+		signalAborted: signal?.aborted
+	};
+}
+//#endregion
+export { _runWithRetry };
+
+//# sourceMappingURL=retry.js.map

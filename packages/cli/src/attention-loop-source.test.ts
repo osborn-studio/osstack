@@ -1,7 +1,7 @@
-import { mkdtemp, writeFile, rm } from "node:fs/promises";
+import { mkdtemp, writeFile, rm, rename, symlink } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { expect, it } from "vitest";
+import { expect, it, vi } from "vitest";
 import { readAttentionLoop } from "./attention-loop-source.js";
 it("binds exact loop identity and never treats in-progress snapshots as live owners", async () => {
   const root = await mkdtemp(join(tmpdir(), "loop-source-"));
@@ -35,4 +35,25 @@ it("binds exact loop identity and never treats in-progress snapshots as live own
   } finally {
     await rm(root, { recursive: true, force: true });
   }
+});
+
+const race = vi.hoisted(() => ({ swap: undefined as (() => Promise<void>) | undefined }));
+vi.mock("node:fs/promises", async importOriginal => {
+  const original = await importOriginal<typeof import("node:fs/promises")>();
+  return { ...original, open: async (...args: Parameters<typeof original.open>) => {
+    const swap = race.swap; race.swap = undefined; await swap?.();
+    return original.open(...args);
+  } };
+});
+it("rejects a snapshot replaced between path validation and open", async () => {
+  const root = await mkdtemp(join(tmpdir(), "loop-race-"));
+  try {
+    const path = join(root, 'state.json'); const original = join(root, 'original.json');
+    await writeFile(path, '{}');
+    race.swap = async () => { await rename(path, original); await symlink(original, path); };
+    await expect(readAttentionLoop({ repo: root, path, loop_id: 'l' })).rejects.toThrow();
+    await rm(path); await rename(original, path);
+    race.swap = async () => { await rename(path, original); await writeFile(path, '{}'); };
+    await expect(readAttentionLoop({ repo: root, path, loop_id: 'l' })).rejects.toThrow('loop_source_changed');
+  } finally { race.swap = undefined; await rm(root, { recursive: true, force: true }); }
 });

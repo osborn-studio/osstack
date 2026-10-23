@@ -32,6 +32,11 @@ export {
 export {
 export function defaultAdapters(): AgentAdapter[] {
 export const AGENTS_VERSION = "0.0.0";
+export { createContainedCommandExecutor, createContainedCommandAdapter } from "./contained.js";
+export type { ContainedCommandOptions, ContainedStopReceipt, ContainedCommandExecutor } from "./contained.js";
+export { prepareContainedImage } from "./contained.js";
+export type { ContainedImageOptions, ContainedImageReceipt, ContainedCandidateFile, ContainedCommandResult } from "./contained.js";
+export { createBoundedMessagesAdapter, type BoundedMessagesOptions } from "./bounded-messages.js";
 ```
 
 ## `@osstack/autonomy`
@@ -124,6 +129,20 @@ export * from "./kg/index.js";
 export * from "./observability/index.js";
 export const CORE_VERSION = "0.0.0";
 export { CURRENT_SCHEMA_VERSION } from "./state/migrations.js";
+export { AttentionStore, attentionDigest, type AttentionOwner, type AttentionScope, type AttentionItem } from "./state/attention-store.js";
+export { AttentionObserver } from "./state/attention-observer.js";
+export { AttentionActions, reserveSessionInstruction } from "./state/attention-actions.js";
+export { AttentionExperience, type AttentionSender } from "./state/attention-experience.js";
+export { classifyAttentionWait, evaluateCoverage, evaluateActivity, type WaitInput } from './attention.js';
+export { GraphRunStore, GraphRunStorageError } from "./state/graph-runs.js";
+export { GraphActionStore, GraphActionStorageError } from "./state/graph-actions.js";
+export type {
+export type {
+export { readRepositoryGit } from "./graph/repository-git.js";
+export { resolveRepositoryScope } from "./graph/repository-scope.js";
+export type { RepositoryScope } from "./graph/repository-scope.js";
+export { GraphCheckpointStore } from './state/graph-checkpoints.js';
+export * from "./scratch.js";
 ```
 
 ## `@osstack/github`
@@ -136,6 +155,8 @@ export * from "./report.js";
 export * from "./stack.js";
 export * from "./portfolio-status.js";
 export * from "./delivery.js";
+export { AttentionCiReader, type AttentionCiResult } from './attention-ci.js';
+export * from "./candidate-evidence.js";
 ```
 
 ## `@osstack/governance`
@@ -146,6 +167,13 @@ export * from "./scanner.js";
 export * from "./review-boundary.js";
 export * from "./knowledge-hygiene/index.js";
 export * from "./probe/index.js";
+```
+
+## `@osstack/graph`
+
+```ts
+export const GRAPH_KERNEL = Object.freeze({
+export type {
 ```
 
 ## `@osstack/hermes-adapter`
@@ -190,10 +218,14 @@ export * from "./iterator.js";
 export * from "./state-file.js";
 export * from "./report.js";
 export * from "./task-queue.js";
+export * from "./candidate-policy.js";
 export * from "./planner.js";
 export * from "./executor.js";
+export { executeCandidateImplementation } from "./candidate-execution.js";
+export type {
 export * from "./verifier.js";
 export * from "./loop-engine.js";
+export type { LoopLifecycleLease, LoopLifecycleAdmission } from "./policy-gate.js";
 ```
 
 ## `@osstack/neat-eval` (private)
@@ -215,6 +247,8 @@ export const PLUGINS_VERSION = "0.0.0";
 
 ```ts
 export { PROTOCOL_VERSION, ProtocolVersion } from "./version.js";
+export {
+export type { AuthenticatedGraphTransportContext, ResolveAuthenticatedGraphTransport } from "./graph.js";
 export { Task, TaskSource } from "./task.js";
 export { RunOutcome, RunSummary } from "./run.js";
 export { EventEnvelope } from "./event.js";
@@ -224,6 +258,10 @@ export {
 export {
 export {
 export {
+export {
+export { AttentionInbox, AttentionStatus, AttentionSessionFact, AttentionWait } from "./attention.js";
+export {
+export type { GraphCheckpointTransport } from './graph-checkpoint.js';
 export {
 ```
 
@@ -266,4 +304,6 @@ export * from "./evaluator-epoch.js";
 export * from "./adversarial-pool.js";
 export * from "./loop-doc.js";
 export * from "./probe-outcomes.js";
+export { classifyAttentionWait, evaluateCoverage, evaluateActivity } from "./attention.js";
+export { AttentionDeliveryContract, deliveryContract, promoteScout, verifyDeliveryContract, acceptAttentionTriage, evaluateAttentionRouting, budgetAttentionContext } from './attention-planning.js';
 ```

@@ -1,0 +1,76 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/core
+
+ ❯ src/state/graph-recovery.test.ts (30 tests | 6 failed) 496ms
+   ✓ trusted graph recovery > settles original effect after expiry, persists restart replay and rejects changed proof/outcome 29ms
+   ✓ trusted graph recovery > retains observed maxima, charges settled maxima, preserves unknown evidence history 19ms
+   ✓ trusted graph recovery > rejects forged/stale snapshots and rolls back journal, outcome and revision on failure 18ms
+   ✓ trusted graph recovery > requires exact scope, program, owner, generation, action generation and action digest 17ms
+   ✓ trusted graph recovery > not_applied only enables later explicit retry, pending cancellation forbids retry/resume 17ms
+   ✓ trusted graph recovery > projects preworker cancellation and seals terminal runs; refuses cancellation with independent unresolved action 16ms
+   ✓ trusted graph recovery > keeps confirmed result and capacity blocked for bad usage -1 15ms
+   ✓ trusted graph recovery > keeps confirmed result and capacity blocked for bad usage NaN 15ms
+   ✓ trusted graph recovery > keeps confirmed result and capacity blocked for bad usage 1.5 15ms
+   ✓ trusted graph recovery > keeps confirmed result and capacity blocked for bad usage 9007199254740992 15ms
+   ✓ trusted graph recovery > settles an older effect only with current admin fencing and the exact original worker receipt 17ms
+   ✓ trusted graph recovery > retains confirmed evidence and rejects contradictory trusted outcomes even with a new receipt 17ms
+   ✓ trusted graph recovery > does not allocate or invoke safe retries and keeps failed reservation charged 17ms
+   ✓ trusted graph recovery > admin takeover requires settled independent actions and never bypasses pending cancellation 18ms
+   ✓ trusted graph recovery > rejects action drift without a revision bump and wrong result kinds 15ms
+   ✓ trusted graph recovery > rejects a reused receipt across effects, future proof time and invalid synchronous verifier returns 17ms
+   ✓ trusted graph recovery > rejects terminal cancellation while another independent action is unresolved 16ms
+   ✓ trusted graph recovery > does not turn an action pending cancellation into a retryable failure 15ms
+   ✓ trusted graph recovery > checks current time even for an exact durable replay 15ms
+   ✓ trusted graph recovery > lets the trusted verifier bind the exact decision, result and receipt before settlement 15ms
+   ✓ recovers an authenticated no-child spawn failure without fabricating a stopped-process receipt 15ms
+   ✓ refuses a no-child proof when that generation has admitted actions 14ms
+   ✓ persists the admission obligation until an authenticated completed release and seals its history 16ms
+   × requires an exact durable no-child receipt for consumed launches: missing 18ms
+     → expected [Function recover] to throw an error
+   × requires an exact durable no-child receipt for consumed launches: wrong-owner 16ms
+     → expected [Function recover] to throw an error
+   × requires an exact durable no-child receipt for consumed launches: wrong-identity 15ms
+     → expected [Function recover] to throw an error
+   × requires an exact durable no-child receipt for consumed launches: wrong-ref 15ms
+     → expected [Function recover] to throw an error
+   × requires an exact durable no-child receipt for consumed launches: wrong-time 15ms
+     → expected [Function recover] to throw an error
+   × requires an exact durable no-child receipt for consumed launches: launched 16ms
+     → expected [Function recover] to throw an error
+   ✓ requires an exact durable no-child receipt for consumed launches: valid 15ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 6 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/state/graph-recovery.test.ts > requires an exact durable no-child receipt for consumed launches: missing
+ FAIL  src/state/graph-recovery.test.ts > requires an exact durable no-child receipt for consumed launches: wrong-owner
+ FAIL  src/state/graph-recovery.test.ts > requires an exact durable no-child receipt for consumed launches: wrong-identity
+ FAIL  src/state/graph-recovery.test.ts > requires an exact durable no-child receipt for consumed launches: wrong-ref
+ FAIL  src/state/graph-recovery.test.ts > requires an exact durable no-child receipt for consumed launches: wrong-time
+ FAIL  src/state/graph-recovery.test.ts > requires an exact durable no-child receipt for consumed launches: launched
+AssertionError: expected [Function recover] to throw an error
+
+- Expected: 
+null
+
++ Received: 
+undefined
+
+ ❯ src/state/graph-recovery.test.ts:257:26
+    255|     const recover = () => recovery.commit(s, { kind: 'takeover', recei…
+    256|     if (mode === 'valid') expect(recover().run.generation).toBe(2);
+    257|     else expect(recover).toThrow('WORKER_PROOF_MISMATCH');
+       |                          ^
+    258|   },
+    259| );
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/6]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  6 failed | 24 passed (30)
+   Start at  21:34:17
+   Duration  744ms (transform 79ms, setup 0ms, collect 109ms, tests 496ms, environment 0ms, prepare 35ms)
+
+undefined
+/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/core:
+[ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL] Command failed with exit code 1: vitest run src/state/graph-recovery.test.ts

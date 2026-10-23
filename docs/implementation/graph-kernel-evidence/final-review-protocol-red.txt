@@ -1,0 +1,69 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/protocol
+
+ ❯ src/graph-review.test.ts (12 tests | 3 failed) 15ms
+   × adversarial graph boundary regressions > never labels unresolved ACTION_OUTCOME_UNKNOWN as a definite failure 9ms
+     → expected true to be false // Object.is equality
+   × adversarial graph boundary regressions > never labels unresolved CANCEL_UNCONFIRMED as a definite failure 1ms
+     → expected true to be false // Object.is equality
+   × adversarial graph boundary regressions > rejects DEL and C1 controls in identities at every position 0ms
+     → expected true to be false // Object.is equality
+   ✓ adversarial graph boundary regressions > denies worker identities every control-plane mutation even within their run 1ms
+   ✓ adversarial graph boundary regressions > checks trusted spec and epoch independently of wire claims 0ms
+   ✓ adversarial graph boundary regressions > rejects contradictory standalone error instructions 0 0ms
+   ✓ adversarial graph boundary regressions > rejects contradictory standalone error instructions 1 0ms
+   ✓ adversarial graph boundary regressions > rejects contradictory standalone error instructions 2 0ms
+   ✓ adversarial graph boundary regressions > binds response error location to its effect 0ms
+   ✓ adversarial graph boundary regressions > binds revision decisions to the scoped run snapshot 1ms
+   ✓ adversarial graph boundary regressions > pairs identity and confirmed result kind against the actual request 1ms
+   ✓ adversarial graph boundary regressions > returns stable boundary errors for malformed request data 0ms
+
+ Test Files  1 failed (1)
+      Tests  3 failed | 9 passed (12)
+   Start at  18:28:58
+   Duration  252ms (transform 43ms, setup 0ms, collect 59ms, tests 15ms, environment 0ms, prepare 45ms)
+
+undefined
+/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/protocol:
+[ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL] Command failed with exit code 1: vitest run src/graph-review.test.ts
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/graph-review.test.ts > adversarial graph boundary regressions > never labels unresolved ACTION_OUTCOME_UNKNOWN as a definite failure
+ FAIL  src/graph-review.test.ts > adversarial graph boundary regressions > never labels unresolved CANCEL_UNCONFIRMED as a definite failure
+AssertionError: expected true to be false // Object.is equality
+
+- Expected
++ Received
+
+- false
++ true
+
+ ❯ src/graph-review.test.ts:16:133
+     14| describe("adversarial graph boundary regressions", () => {
+     15|   it.each(["ACTION_OUTCOME_UNKNOWN", "CANCEL_UNCONFIRMED"])("never lab…
+     16|     expect(WorkerActionResponse.safeParse({ ...response, outcome: { st…
+       |                                                                                                                                     ^
+     17|   });
+     18|   it("rejects DEL and C1 controls in identities at every position", ()…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯
+
+ FAIL  src/graph-review.test.ts > adversarial graph boundary regressions > rejects DEL and C1 controls in identities at every position
+AssertionError: expected true to be false // Object.is equality
+
+- Expected
++ Received
+
+- false
++ true
+
+ ❯ src/graph-review.test.ts:21:70
+     19|     for (const character of ["\u007f", "\u0085", "\u009b", "\u009f"]) {
+     20|       for (const tenantId of [`${character}a`, `a${character}b`, `a${c…
+     21|         expect(GraphScope.safeParse({ ...scope, tenantId }).success).t…
+       |                                                                      ^
+     22|       }
+     23|     }
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/3]⎯

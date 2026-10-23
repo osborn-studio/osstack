@@ -1,0 +1,27 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+
+  ../../../tmp/g25/g17-build-4nv1rH/graph-chain-host.mjs  454.4kb
+
+⚡ Done in 14ms
+ ✓ src/graph-chain.integration.test.ts (30 tests | 13 skipped) 16801ms
+   ✓ uses real worker IPC and durable SQLite checkpoints, retires both ports and exposes OS exit  301ms
+   ✓ assembly: real command implement → freeze persists a selfcontained candidate  1639ms
+   ✓ assembly: SIGKILL at before-return resumes using actual SQLite saver and ledger  1515ms
+   ✓ assembly: SIGKILL at before-final resumes using actual SQLite saver and ledger  1422ms
+   ✓ assembly: SIGKILL at after-final resumes using actual SQLite saver and ledger  1408ms
+   ✓ assembly: restore then SIGKILL again re-enters implement without repeating the confirmed external command  1744ms
+   ✓ assembly: real broker unknown stays quarantined, then durable applied release failure is retried without resending  792ms
+   ✓ assembly: trusted not_applied reconciliation releases exact retained broker lease without automatically retrying  714ms
+   ✓ assembly: cancel reaches actual command process group and kills abort-ignoring worker without starting freeze  657ms
+   ✓ assembly: bounded stop reports undrained actual broker Promise and refuses recovery before drainage  1622ms
+   ✓ assembly: original deadline aborts actual in-flight command through supervisor heartbeat  2461ms
+   ✓ assembly: cancel with unproven executor stop retains unknown effect even after broker drainage  1619ms
+   ✓ module: late actual worker OS exit replaces unconfirmed observation without rewriting bounded stop  355ms
+
+ Test Files  1 passed (1)
+      Tests  17 passed | 13 skipped (30)
+   Start at  21:36:24
+   Duration  17.65s (transform 414ms, setup 6ms, collect 686ms, tests 16.80s, environment 0ms, prepare 35ms)
+

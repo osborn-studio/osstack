@@ -1,0 +1,1154 @@
+Independent adversarial implementation review of OSStack C5. Find concrete reachable correctness/security/availability bugs, not generic suggestions. Trusted host registrations are authority; worker is untrusted protocol source but same-UID OS sandbox is explicitly NOT claimed. Exact external producer stop proof must precede release, immutable recovery decisions precede release, retries only explicit host authorization. No public runtime CLI or automatic resume policy yet (G18+). Clock rollback fail-closed is intentional. For each finding give priority, exact source location, minimal failure sequence and recommended test. Distinguish actual bug from missing context. Reject weakening fencing/terminal seals. Prior design review context follows.
+先说结论：C4 代码里有 1 个会直接卡死 G15/G17 重试路径的实现 bug，G15 提案里有 3 处 fence 定义缺口会把 run 或仓库锁死成永久 unknown，G16 有 1 个会销毁保留工作区的现有清理路径。其余是 P2。
+
+## P1 阻塞
+
+**1. 实现 bug：host retry 产生的 attempt 无法被 worker 执行。** `retry()` 在当前代插入 attempt 2 的 `intent` 行；worker 重放同 slot 时 `reserve()` 返回该行且 `created:false`，`handle` 立即走 `response()`，intent 状态落入 unknown 分支，返回“需要对账”。反例：gen1 attempt1 因 admission 拒绝记 failed/retrySafe，host 调 retry，worker 重放，结果永远是 ACTION_OUTCOME_UNKNOWN，attempt 2 永远停在 intent 并阻塞 admit。最小修正：broker 维护进程内 `inFlight: Set<effectKey>`；当 `!created` 但 `action.state === "intent" && action.generation === binding.generation && !inFlight.has(key)` 时继续走 markRunning，由其 CAS 保证单次启动。同代重复请求仍被 inFlight 挡住。
+
+**2. 设计缺口：跨代行不可对账。** `markUncertain`/`recordOutcome` 都要求 `prior.generation === run.generation`。一旦 `acquireLease` 拿到 N+1，gen N 的 running/intent 行永久无法结算，`admit` 又永久 UNRESOLVED_ACTION。提案说恢复 fence “同 generation 检查”不成立。最小定义：恢复 fence = 当前 run 的 scope/program/generation/revision/owner/time 检查，去掉 TERMINAL 检查，允许 lease 过期；额外要求 `row.generation <= run.generation`，且当 `row.generation < run.generation` 时必须在 `graph_worker_leases` 中找到 generation = row.generation+1 那行的 `stopped_worker_json` 且其 owner/generation 与行匹配；当相等时按 acquireLease 同规则校验调用方提供的收据。顺序必须固定为：broker 排空该连接在飞 handle → 发出止收据 → acquireLease(N+1) → 对账所有 ≤N 行 → 释放锁 → 启动 worker。否则收据 confirmedAt 会早于对账写入的 updatedAt，acquireLease 报 STOPPED_WORKER_MISMATCH。
+
+**3. 设计缺口：终态 run 封死对账。** cancel 请求把状态投影成 `cancelled` 时 ledger 仍有 running/unknown 行，之后任何恢复写入都被 `checkGraphRunFence` 的 TERMINAL_RUN 拒绝，仓库锁永久保留。最小修正：恢复 store 的 fence 不做终态检查且永不改 status；同时 `projectRequest` 对 `cancelled/failed/ready` 增加“ledger 静止”前置，非静止只能投影到 `cancel_pending`/`reconciliation_required`。
+
+**4. 设计缺口：物理调用身份没有在调用前落盘。** `executionRef` 固定为 `graph-execution:<effectKey>`，与 `task.run_id`、PID、命令无关，verifier 拿到 effectKey 后无法绑定“到底哪个外部进程”。最小修正：`beforeEffect(task.run_id)`，executionRef 改为 `graph-execution:<effectKey>:<task.run_id>`；不同 run_id 触发 EXECUTION_CONFLICT 转 unknown 的语义保持不变。决策收据必须回填并比对此 executionRef。
+
+**5. 设计缺口：GovernedExecution 无对账释放且隔离不计数。** `quarantinedRepositories` 是 Set，没有任何清除路径；若 G15 加“清除”，同仓库另一个 retained 租约会被误放开。daemon 重启后内存状态全失，只剩文件锁。最小修正：改为 `Map<repoId, Set<runId>>`；新增 `releaseReconciled({repoId, runId, proofRef})`，先经锁 API 读取锁文件核对 `autonomy_run_id === runId`、repo_id 一致、PID 已死或为自身，再 release，仅当集合为空才解除隔离。并审计 daemon 内没有任何调用对 `osstack/writer-locks` 使用 `recover_stale:true`，否则耐久隔离被绕过。
+
+**6. G16 实现风险：现有清理会销毁保留工作区。** `cleanupOrphanedWorktrees` 按前缀+根目录无条件调用 `worktree remove --force` 和 `branch -D`，未导出的脏工作区会被删掉。最小修正：retain 时执行 `git worktree lock --reason osstack:<effectKey>`；`parseWorktreeList` 解析 `locked` 行并跳过；freeze 前置为该 workspaceLeaseRef 无 intent/running/unknown 行且持有仓库写锁，bundle `git bundle verify` 通过并写入 manifest digest 后才允许删除分支。
+
+## P2
+
+- **单一 interruptId 冲突。** unknown 也算决策时，同 effectKey 之后再判 applied 无法写入不可变收据。改为 applied/notApplied 不可变、unknown 为可重复的 recheck 记录，或 interruptId 带 seq。
+- **结算不应要求活租约。** broker `fence()` 在 recordOutcome 前检查 leaseExpiresAt；事件循环卡顿超过 TTL 会把已完成且已 persist 的真实结果变成 unknown+隔离。结算路径改用仅校验 generation/owner/revision 的 fence。
+- **notApplied 的 TOCTOU。** verifier 检查后生产者才生效。store 强制 `stopProof.confirmedAt <= evidence.checkedAt`，无 stopProof 或 cancelled 时 retrySafe 必须为 false。
+- **confirmStopped 1 秒竞速和 50ms grace。** G17 真实 agent 停止常超 1 秒，会制造 unknown 风暴。改为注册项可配，且 unknown 时记录被丢弃的 confirmStopped 结果引用。
+- **结果校验重复。** kind/workspaceLeaseRef/candidateRevision 校验只在 broker 里；恢复 store 判 applied 需同一逻辑，抽成 core 纯函数共用。
+- **时钟回拨。** `now < updatedAt` 全部 INVALID_TIME。daemon 提供 `max(Date.now(), last+1)` 高水位时钟。
+- **心跳与 REVISION_CONFLICT。** 每次 checkpoint 写都推进 revision，管理器续租必须同 tick 内 get+renew；冲突当作重试，不能当 worker 死亡。
+
+## 最小完整接口
+
+```
+GraphRecoveryStore(db)
+  decide(fence: GraphRecoveryFence, input: {
+    effectKey, idempotencyKey, payloadDigest,
+    expectedEffectGeneration, expectedExecutionRef,
+    stopProof: { receiptRef, confirmedAt } | null,
+    evidence: { verifierRef, checkedAt },
+    verdict: { kind: "applied", result, actualTokens }
+          | { kind: "notApplied", cancelled: boolean }
+          | { kind: "unknown", observedTokens }
+  }) -> { action, run, decision, changed }
+  get(fence, effectKey) -> decision[]
+```
+
+`GraphRecoveryFence` 即 GraphRunFence 加 `allowExpiredLease: true` 与可选 `stoppedWorker`，规则见 P1-2。intent 行且 execution_ref 为 null 可直接判 notApplied，依据是 markRunning 同步提交先于调用这一现有不变量。
+
+## 不属于本轮
+
+公开 worker RPC、任意图编译器、多 epoch 推进、模板容量校验、SQLite 支持矩阵和 RPC 延迟测量属于 G18–G29，以上均未按其缺失计为阻塞。
+SOURCE SNAPSHOT
+
+FILE packages/cli/src/graph-worker-manager.ts
+1: import { spawn, type ChildProcess } from 'node:child_process';
+2: import { createHash, randomUUID } from 'node:crypto';
+3: import { existsSync, readFileSync } from 'node:fs';
+4: import { fileURLToPath } from 'node:url';
+5: import type { Duplex } from 'node:stream';
+6: import {
+7:   GraphWorkerBinding, GraphWorkerMessage, GraphWorkerResume, GraphJsonValue, StartGraphRequest, WorkerActionRequest,
+8:   WorkerFramedTransport, computeGraphInputDigest, parseGraphCheckpointRequest, parseGraphCheckpointResponse,
+9:   validateWorkerActionResponse, workerCanonical, freezeWorkerData,
+10:   type GraphCheckpointRequest, type GraphCheckpointResponse, type WorkerActionResponse,
+11: } from '@osstack/protocol';
+12: 
+13: export interface GraphWorkerProgramRegistration { id: string; modulePath: string; digest: string }
+14: export interface GraphWorkerStart {
+15:   binding: GraphWorkerBinding;
+16:   programId: string;
+17:   /** Full original business request, whose digest is persisted by G08. */
+18:   input: StartGraphRequest;
+19:   resume?: GraphWorkerResume;
+20:   /** Must synchronously verify the durable full fence and revocation, then return current expiry. */
+21:   authorize: () => { leaseExpiresAt: number };
+22:   register: (connection: object, binding: GraphWorkerBinding) => void;
+23:   action: (connection: object, request: WorkerActionRequest, options: { signal: AbortSignal }) => Promise<WorkerActionResponse>;
+24:   checkpoint: (connection: object, request: GraphCheckpointRequest) => Promise<GraphCheckpointResponse>;
+25: }
+26: export type GraphWorkerExitEvidence =
+27:   | { kind: 'exited'; graphRunId: string; generation: number; owner: string; pid: number; code: number | null;
+28:       signal: NodeJS.Signals | null; confirmedAt: number; evidenceRef: string }
+29:   | { kind: 'spawn_failed'; error: string }
+30:   | { kind: 'exit_unconfirmed'; pid: number | undefined; error: string };
+31: export interface GraphWorkerHandle {
+32:   readonly connection: object;
+33:   readonly binding: GraphWorkerBinding;
+34:   readonly ready: Promise<void>;
+35:   /** Program outcome only, NOT proof that worker or external effects have stopped. */
+36:   readonly result: Promise<GraphJsonValue>;
+37:   readonly exit: Promise<GraphWorkerExitEvidence>;
+38:   cancel(reason?: string): void;
+39:   stop(reason?: string): Promise<GraphWorkerExitEvidence>;
+40:   logs(): { stdout: string; stderr: string };
+41: }
+42: export interface GraphWorkerManagerOptions {
+43:   programs: readonly GraphWorkerProgramRegistration[];
+44:   workerEntry?: string;
+45:   executable?: string;
+46:   heartbeatTimeoutMs?: number;
+47:   startupTimeoutMs?: number;
+48:   shutdownTimeoutMs?: number;
+49:   terminationTimeoutMs?: number;
+50:   requestTimeoutMs?: number;
+51:   maxInFlight?: number;
+52:   maxLogBytes?: number;
+53: }
+54: function deferred<T>() {
+55:   let resolve!: (value: T) => void; let reject!: (error: Error) => void;
+56:   const promise = new Promise<T>((res, rej) => { resolve = res; reject = rej; });
+57:   // A caller may wait for exit first. Internal observation prevents early lifecycle
+58:   // failures from creating unhandled rejections without changing the public promise.
+59:   void promise.catch(() => {});
+60:   return { promise, resolve, reject };
+61: }
+62: function boundedOption(value: number | undefined, fallback: number, max: number): number {
+63:   const result = value ?? fallback;
+64:   if (!Number.isSafeInteger(result) || result < 1 || result > max) throw new Error('WORKER_OPTION_INVALID');
+65:   return result;
+66: }
+67: /** Resolves without importing the heavy worker. Published CLI must depend on graph;
+68:  * sibling fallback supports this repository's source and built-package tests. */
+69: export function resolveGraphWorkerEntry(): string {
+70:   try { return fileURLToPath(import.meta.resolve('@osstack/graph/worker')); }
+71:   catch {
+72:     const sibling = fileURLToPath(new URL('../../graph/dist/worker-entry.js', import.meta.url));
+73:     if (existsSync(sibling)) return sibling;
+74:     throw new Error('GRAPH_WORKER_NOT_INSTALLED');
+75:   }
+76: }
+77: 
+78: /** In-memory process supervision, not a lease store or a node scheduler. No DB
+79:  * dependency, no broker permit release, no engine loaded into the host process. */
+80: export class GraphWorkerManager {
+81:   private readonly programs = new Map<string, { source: string; digest: string }>();
+82:   private readonly runs = new Map<string, { binding: GraphWorkerBinding; input: string; programId: string; active: boolean }>();
+83:   private readonly options: Readonly<GraphWorkerManagerOptions>;
+84:   constructor(options: GraphWorkerManagerOptions) {
+85:     this.options = Object.freeze({ ...options });
+86:     for (const item of options.programs) {
+87:       if (!item.id || item.id.length > 256 || this.programs.has(item.id) || !/^[a-f0-9]{64}$/.test(item.digest)) throw new Error('WORKER_PROGRAM_INVALID');
+88:       const bytes = readFileSync(item.modulePath);
+89:       if (bytes.length > 131072) throw new Error('WORKER_PROGRAM_LIMIT');
+90:       const source = bytes.toString('utf8');
+91:       if (createHash('sha256').update(bytes).digest('hex') !== item.digest || !bytes.equals(Buffer.from(source))) throw new Error('PROGRAM_IDENTITY');
+92:       this.programs.set(item.id, Object.freeze({ source, digest: item.digest }));
+93:     }
+94:   }
+95:   start(value: GraphWorkerStart): GraphWorkerHandle {
+96:     const binding = freezeWorkerData(GraphWorkerBinding.parse(value.binding));
+97:     const input = freezeWorkerData(StartGraphRequest.parse(value.input));
+98:     const resume = value.resume === undefined ? undefined : freezeWorkerData(GraphWorkerResume.parse(value.resume));
+99:     const programId = value.programId;
+100:     const program = this.programs.get(programId);
+101:     if (!program || program.digest !== binding.identity.compiledProgramDigest
+102:       || binding.identity.engineVersion !== '1.4.15' || binding.identity.checkpointVersion !== '1.1.5') throw new Error('PROGRAM_IDENTITY');
+103:     if (computeGraphInputDigest(input) !== binding.identity.inputDigest || workerCanonical(input.scope) !== workerCanonical(binding.scope)
+104:       || createHash('sha256').update(`osstack.graph.spec.v1\n${workerCanonical(input.spec)}`).digest('hex') !== binding.identity.specHash) throw new Error('INPUT_IDENTITY');
+105:     const previous = this.runs.get(binding.graphRunId);
+106:     if (previous?.active) throw new Error('WORKER_ALREADY_ACTIVE');
+107:     if (previous && (workerCanonical(previous.binding.identity) !== workerCanonical(binding.identity)
+108:       || workerCanonical(previous.binding.scope) !== workerCanonical(binding.scope) || previous.programId !== programId || previous.input !== computeGraphInputDigest(input))) throw new Error('PROGRAM_IDENTITY');
+109:     if (previous && previous.binding.generation >= binding.generation) throw new Error('STALE_GENERATION');
+110:     const authorize = value.authorize; const action = value.action; const checkpoint = value.checkpoint;
+111:     const checkAuthority = () => {
+112:       const decision: unknown = authorize();
+113:       if (decision && typeof (decision as Promise<unknown>).then === 'function') {
+114:         void Promise.resolve(decision).catch(() => {}); throw new Error('WORKER_AUTHORITY_MUST_BE_SYNC');
+115:       }
+116:       const expiry = (decision as { leaseExpiresAt?: unknown } | undefined)?.leaseExpiresAt;
+117:       if (typeof expiry !== 'number' || !Number.isSafeInteger(expiry) || expiry <= Date.now()) throw new Error('LEASE_EXPIRED');
+118:     };
+119:     checkAuthority();
+120:     const heartbeatMs = boundedOption(this.options.heartbeatTimeoutMs, 5000, 60000);
+121:     const startupMs = boundedOption(this.options.startupTimeoutMs, 10000, 60000);
+122:     const shutdownMs = boundedOption(this.options.shutdownTimeoutMs, 1000, 60000);
+123:     const terminationMs = boundedOption(this.options.terminationTimeoutMs, 1000, 60000);
+124:     const maxInFlight = boundedOption(this.options.maxInFlight, 16, 64);
+125:     const maxLogBytes = boundedOption(this.options.maxLogBytes, 16384, 1048576);
+126:     const requestTimeoutMs = boundedOption(this.options.requestTimeoutMs, 30000, 300000);
+127:     const entry = this.options.workerEntry ?? resolveGraphWorkerEntry();
+128:     const ready = deferred<void>(); const result = deferred<GraphJsonValue>(); const exit = deferred<GraphWorkerExitEvidence>();
+129:     const connection = Object.freeze({}); const abort = new AbortController();
+130:     const record = { binding, programId, input: computeGraphInputDigest(input), active: true };
+131:     this.runs.set(binding.graphRunId, record);
+132:     let child: ChildProcess | undefined; let transport: WorkerFramedTransport | undefined;
+133:     let stdout: Buffer = Buffer.alloc(0); let stderr: Buffer = Buffer.alloc(0);
+134:     let stopping = false; let observedExit = false; let didReady = false; let didDone = false;
+135:     const startedAt = Date.now();
+136:     let lastHeartbeat = startedAt; let lastRequest = 0;
+137:     const pending = new Set<string>(); const timers: ReturnType<typeof setTimeout>[] = [];
+138:     let monitor: ReturnType<typeof setInterval> | undefined;
+139:     const clear = () => { timers.forEach(clearTimeout); if (monitor) clearInterval(monitor); };
+140:     const append = (prior: Buffer, chunk: Buffer): Buffer => chunk.length >= maxLogBytes
+141:       ? Buffer.from(chunk.subarray(chunk.length - maxLogBytes))
+142:       : Buffer.concat([prior.subarray(Math.max(0, prior.length + chunk.length - maxLogBytes)), chunk]);
+143:     const cancel = (reason = 'WORKER_CANCELLED') => {
+144:       if (stopping || observedExit) return; stopping = true;
+145:       abort.abort(); ready.reject(new Error(reason)); result.reject(new Error(reason));
+146:       try { transport?.send({ kind: 'cancel', binding, reason: reason.slice(0, 4096) }); } catch { /* OS termination still follows. */ }
+147:       const kill = (signal: NodeJS.Signals) => { if (!observedExit) { try { child?.kill(signal); } catch { /* no exit evidence */ } } };
+148:       timers.push(setTimeout(() => {
+149:         kill('SIGTERM');
+150:         timers.push(setTimeout(() => {
+151:           kill('SIGKILL');
+152:           timers.push(setTimeout(() => {
+153:             if (!observedExit) { transport?.close(); child?.stdout?.destroy(); child?.stderr?.destroy();
+154:               exit.resolve({ kind: 'exit_unconfirmed', pid: child?.pid, error: 'WORKER_EXIT_UNCONFIRMED' }); clear(); }
+155:           }, terminationMs));
+156:         }, terminationMs));
+157:       }, shutdownMs));
+158:     };
+159:     const assertActive = () => {
+160:       if (stopping || observedExit || this.runs.get(binding.graphRunId) !== record) throw new Error('STALE_GENERATION');
+161:       checkAuthority();
+162:     };
+163:     const processRequest = async (message: Extract<GraphWorkerMessage, { kind: 'request' }>) => {
+164:       try {
+165:         assertActive(); let payload: unknown;
+166:         if (message.method === 'action') {
+167:           const request = WorkerActionRequest.parse(message.payload);
+168:           if (request.graphRunId !== binding.graphRunId || request.generation !== binding.generation
+169:             || request.specHash !== binding.identity.specHash || workerCanonical(request.scope) !== workerCanonical(binding.scope)) throw new Error('WORKER_IDENTITY');
+170:           payload = validateWorkerActionResponse(request, await action(connection, request, { signal: abort.signal }));
+171:         } else {
+172:           const request = parseGraphCheckpointRequest(message.payload);
+173:           if (request.threadId !== binding.graphRunId) throw new Error('WORKER_IDENTITY');
+174:           payload = parseGraphCheckpointResponse(await checkpoint(connection, request));
+175:           if ((payload as GraphCheckpointResponse).kind !== request.kind) throw new Error('WORKER_RESPONSE_MISMATCH');
+176:         }
+177:         assertActive(); transport!.send({ kind: 'response', binding, id: message.id, ok: true, payload });
+178:       } catch (error) {
+179:         try { assertActive(); transport!.send({ kind: 'response', binding, id: message.id, ok: false, error: String(error).slice(0, 4096) }); }
+180:         catch { cancel('STALE_GENERATION'); }
+181:       } finally { pending.delete(message.id); }
+182:     };
+183:     const receive = (raw: unknown) => {
+184:       const message = GraphWorkerMessage.parse(raw);
+185:       if (workerCanonical(message.binding) !== workerCanonical(binding)) throw new Error('WORKER_IDENTITY');
+186:       assertActive();
+187:       if (message.kind === 'ready') {
+188:         if (didReady) throw new Error('WORKER_READY_DUPLICATE'); didReady = true; lastHeartbeat = Date.now(); ready.resolve();
+189:       } else if (message.kind === 'heartbeat') { lastHeartbeat = Date.now(); }
+190:       else if (message.kind === 'done') {
+191:         if (didDone || (message.ok && (!didReady || pending.size > 0))) throw new Error('WORKER_DONE_UNEXPECTED');
+192:         didDone = true;
+193:         if (message.ok) result.resolve(GraphJsonValue.parse(message.value));
+194:         else result.reject(new Error(message.error ?? 'WORKER_INVOKE_FAILED'));
+195:         cancel(message.ok ? 'WORKER_FINISHED' : message.error ?? 'WORKER_INVOKE_FAILED');
+196:       } else if (message.kind === 'request') {
+197:         if (!didReady || pending.size >= maxInFlight) throw new Error('WORKER_BACKPRESSURE');
+198:         const seq = Number(message.id);
+199:         if (!Number.isSafeInteger(seq) || seq <= lastRequest || String(seq) !== message.id) throw new Error('WORKER_REQUEST_REPLAY');
+200:         lastRequest = seq; pending.add(message.id);
+201:         void processRequest(message).catch(error => cancel(String(error)));
+202:       } else throw new Error('WORKER_MESSAGE_UNEXPECTED');
+203:     };
+204:     const handle: GraphWorkerHandle = Object.freeze({ connection, binding, ready: ready.promise, result: result.promise, exit: exit.promise,
+205:       cancel, stop: (reason?: string) => { cancel(reason); return exit.promise; }, logs: () => ({ stdout: stdout.toString('utf8'), stderr: stderr.toString('utf8') }) });
+206:     const spawnFailed = (error: Error) => {
+207:       if (child?.pid) { cancel(String(error)); return; }
+208:       observedExit = true; record.active = false; abort.abort(); clear(); transport?.close();
+209:       ready.reject(error); result.reject(error); exit.resolve({ kind: 'spawn_failed', error: String(error) });
+210:     };
+211:     try {
+212:       const registration: unknown = value.register(connection, binding);
+213:       if (registration !== undefined) { void Promise.resolve(registration).catch(() => {}); throw new Error('WORKER_REGISTER_MUST_BE_SYNC'); }
+214:       checkAuthority();
+215:       // Deliberately do not inherit OSSTACK_HOME, HOME, NODE_OPTIONS or DB/socket env.
+216:       child = spawn(this.options.executable ?? process.execPath, [entry, '--osstack-graph-worker'], {
+217:         stdio: ['ignore', 'pipe', 'pipe', 'pipe'], env: { PATH: process.env['PATH'] ?? '', LANG: 'C.UTF-8' },
+218:       });
+219:       child.on('error', spawnFailed);
+220:       child.once('exit', (code, signal) => {
+221:         observedExit = true; record.active = false; abort.abort(); clear(); transport?.close();
+222:         child?.stdout?.destroy(); child?.stderr?.destroy(); // Never wait for close/inherited pipes.
+223:         ready.reject(new Error('WORKER_EXITED_BEFORE_READY')); result.reject(new Error('WORKER_EXITED_BEFORE_RESULT'));
+224:         exit.resolve({ kind: 'exited', graphRunId: binding.graphRunId, generation: binding.generation, owner: binding.owner,
+225:           pid: child!.pid!, code, signal, confirmedAt: Date.now(), evidenceRef: `worker-exit:${randomUUID()}` });
+226:       });
+227:       child.stdout!.on('error', error => cancel(String(error)));
+228:       child.stderr!.on('error', error => cancel(String(error)));
+229:       child.stdout!.on('data', (chunk: Buffer) => { stdout = append(stdout, chunk); });
+230:       child.stderr!.on('data', (chunk: Buffer) => { stderr = append(stderr, chunk); });
+231:       const pipe = child.stdio[3] as Duplex;
+232:       transport = new WorkerFramedTransport(pipe, pipe, receive, error => cancel(error.message));
+233:       child.once('spawn', () => {
+234:         try {
+235:           assertActive(); transport!.send({ kind: 'init', binding, programId, source: program.source, input,
+236:             ...(resume ? { resume } : {}), heartbeatMs: Math.max(10, Math.floor(heartbeatMs / 3)), maxInFlight, requestTimeoutMs });
+237:         } catch (error) { cancel(String(error)); }
+238:       });
+239:       monitor = setInterval(() => {
+240:         if (stopping || observedExit) return;
+241:         try {
+242:           assertActive();
+243:           if (!didReady && Date.now() - startedAt > startupMs) cancel('WORKER_STARTUP_TIMEOUT');
+244:           else if (Date.now() - lastHeartbeat > heartbeatMs) cancel('WORKER_HEARTBEAT_EXPIRED');
+245:         }
+246:         catch (error) { cancel(String(error)); }
+247:       }, Math.max(10, Math.min(100, Math.floor(heartbeatMs / 3))));
+248:     } catch (error) { spawnFailed(error instanceof Error ? error : new Error(String(error))); }
+249:     return handle;
+250:   }
+251: }
+
+FILE packages/graph/src/worker-client.ts
+1: import {
+2:   GraphWorkerMessage, WorkerActionRequest, validateWorkerActionResponse, parseGraphCheckpointRequest,
+3:   parseGraphCheckpointResponse, workerCanonical, freezeWorkerData,
+4:   type WorkerActionResponse, type GraphWorkerBinding, type WorkerFramedTransport, type GraphCheckpointTransport,
+5: } from '@osstack/protocol';
+6: 
+7: /** Per-connection client. Rejected capacity requests are never queued or retried. */
+8: export class GraphWorkerClient {
+9:   private sequence = 0;
+10:   private stopped: Error | undefined;
+11:   private readonly pending = new Map<string, { resolve: (value: unknown) => void; reject: (error: Error) => void; timer: ReturnType<typeof setTimeout> }>();
+12:   private readonly identity: string;
+13:   private readonly binding: GraphWorkerBinding;
+14:   constructor(binding: GraphWorkerBinding, private readonly transport: WorkerFramedTransport,
+15:     signal: AbortSignal, private readonly maxInFlight = 16, private readonly timeoutMs = 30000) {
+16:     this.binding = freezeWorkerData(structuredClone(binding)); this.identity = workerCanonical(this.binding);
+17:     if (signal.aborted) this.close(new Error('WORKER_CANCELLED'));
+18:     else signal.addEventListener('abort', () => this.close(new Error('WORKER_CANCELLED')), { once: true });
+19:   }
+20:   get outstanding(): number { return this.pending.size; }
+21:   private async request(method: 'action' | 'checkpoint', payload: unknown): Promise<unknown> {
+22:     if (this.stopped) throw this.stopped;
+23:     if (this.pending.size >= this.maxInFlight) throw new Error('WORKER_BACKPRESSURE');
+24:     const id = String(++this.sequence);
+25:     return new Promise((resolve, reject) => {
+26:       const timer = setTimeout(() => { this.close(new Error('WORKER_REQUEST_TIMEOUT')); }, this.timeoutMs);
+27:       this.pending.set(id, { resolve, reject, timer });
+28:       try { this.transport.send({ kind: 'request', binding: this.binding, id, method, payload }); }
+29:       catch (error) { this.pending.delete(id); clearTimeout(timer); reject(error); }
+30:     });
+31:   }
+32:   readonly action = async (value: WorkerActionRequest): Promise<WorkerActionResponse> => {
+33:     const request = WorkerActionRequest.parse(value);
+34:     if (request.graphRunId !== this.binding.graphRunId || request.generation !== this.binding.generation
+35:       || request.specHash !== this.binding.identity.specHash || workerCanonical(request.scope) !== workerCanonical(this.binding.scope)) throw new Error('WORKER_IDENTITY');
+36:     return validateWorkerActionResponse(request, await this.request('action', request));
+37:   };
+38:   readonly checkpoint: GraphCheckpointTransport = async value => {
+39:     const request = parseGraphCheckpointRequest(value);
+40:     if (request.threadId !== this.binding.graphRunId) throw new Error('WORKER_IDENTITY');
+41:     const response = parseGraphCheckpointResponse(await this.request('checkpoint', request));
+42:     if (response.kind !== request.kind) throw new Error('WORKER_RESPONSE_MISMATCH');
+43:     return response;
+44:   };
+45:   receive(value: unknown): void {
+46:     const message = GraphWorkerMessage.parse(value);
+47:     if (workerCanonical(message.binding) !== this.identity) throw new Error('WORKER_IDENTITY');
+48:     if (message.kind !== 'response' || this.stopped) throw new Error('WORKER_RESPONSE_UNEXPECTED');
+49:     const item = this.pending.get(message.id);
+50:     if (!item) throw new Error('WORKER_RESPONSE_UNEXPECTED');
+51:     this.pending.delete(message.id); clearTimeout(item.timer);
+52:     if (message.ok) item.resolve(message.payload); else item.reject(new Error(message.error ?? 'WORKER_RPC_REJECTED'));
+53:   }
+54:   close(error = new Error('WORKER_CLIENT_CLOSED')): void {
+55:     this.stopped ??= error;
+56:     for (const item of this.pending.values()) { clearTimeout(item.timer); item.reject(this.stopped); }
+57:     this.pending.clear();
+58:   }
+59: }
+
+FILE packages/graph/src/worker-runtime.ts
+1: import { createHash } from 'node:crypto';
+2: import { Socket } from 'node:net';
+3: import { Command, entrypoint, task } from '@langchain/langgraph';
+4: import {
+5:   GraphJsonValue, GraphWorkerMessage, WorkerFramedTransport, computeGraphInputDigest, workerCanonical, freezeWorkerData,
+6:   type GraphWorkerBinding, type GraphCheckpointTransport, type StartGraphRequest, type GraphWorkerResume,
+7: } from '@osstack/protocol';
+8: import { RemoteCheckpointSaver } from './remote-checkpointer.js';
+9: import { GraphWorkerClient } from './worker-client.js';
+10: import { GRAPH_KERNEL } from './index.js';
+11: 
+12: export interface GraphWorkerProgramContext {
+13:   readonly binding: GraphWorkerBinding;
+14:   readonly input: StartGraphRequest;
+15:   readonly resume?: GraphWorkerResume;
+16:   readonly action: GraphWorkerClient['action'];
+17:   readonly checkpoint: GraphCheckpointTransport;
+18:   readonly signal: AbortSignal;
+19:   /** Installed public Functional API. Registered source must be self-contained. */
+20:   readonly task: typeof task;
+21: }
+22: export interface GraphWorkerProgram { run(context: GraphWorkerProgramContext): Promise<GraphJsonValue> }
+23: 
+24: /** Architecture isolation only: no DB/home/connection is supplied to this process.
+25:  * This is NOT an OS sandbox against trusted code running as the same OS user. */
+26: export function runGraphWorker(): void {
+27:   const socket = new Socket({ fd: 3, readable: true, writable: true });
+28:   const abort = new AbortController();
+29:   let binding: GraphWorkerBinding | undefined;
+30:   let client: GraphWorkerClient | undefined;
+31:   let heartbeat: ReturnType<typeof setInterval> | undefined;
+32:   let completed = false;
+33:   const fail = (error: Error) => {
+34:     abort.abort(); client?.close(error); if (heartbeat) clearInterval(heartbeat);
+35:     // Only the manager's OS exit event can attest that this process has stopped.
+36:     process.exitCode = 1; socket.destroy();
+37:   };
+38:   const transport = new WorkerFramedTransport(socket, socket, value => {
+39:     const message = GraphWorkerMessage.parse(value);
+40:     if (binding) {
+41:       if (workerCanonical(binding) !== workerCanonical(message.binding)) throw new Error('WORKER_IDENTITY');
+42:       if (message.kind === 'cancel') { abort.abort(); client?.close(new Error('WORKER_CANCELLED')); return; }
+43:       client!.receive(message); return;
+44:     }
+45:     if (message.kind !== 'init') throw new Error('WORKER_INIT_REQUIRED');
+46:     binding = freezeWorkerData(message.binding);
+47:     client = new GraphWorkerClient(binding, transport, abort.signal, message.maxInFlight, message.requestTimeoutMs);
+48:     heartbeat = setInterval(() => { try { transport.send({ kind: 'heartbeat', binding }); } catch (error) { fail(new Error(String(error))); } }, message.heartbeatMs);
+49:     void execute(message, client).catch(error => finish(false, undefined, error));
+50:   }, fail);
+51:   function finish(ok: boolean, value?: GraphJsonValue, error?: unknown): void {
+52:     if (completed) return; completed = true;
+53:     try { transport.send({ kind: 'done', binding, ok, ...(ok ? { value } : { error: String(error).slice(0, 4096) }) }); }
+54:     catch (sendError) { fail(new Error(String(sendError))); }
+55:     // Remain alive until host stop. done/invoke rejection deliberately is not exit.
+56:   }
+57:   async function execute(init: Extract<GraphWorkerMessage, { kind: 'init' }>, contextClient: GraphWorkerClient): Promise<void> {
+58:     const identity = init.binding.identity;
+59:     if (identity.engineVersion !== GRAPH_KERNEL.version || identity.checkpointVersion !== GRAPH_KERNEL.checkpointVersion
+60:       || createHash('sha256').update(init.source).digest('hex') !== identity.compiledProgramDigest) throw new Error('PROGRAM_IDENTITY');
+61:     if (computeGraphInputDigest(init.input) !== identity.inputDigest || workerCanonical(init.input.scope) !== workerCanonical(init.binding.scope)
+62:       || createHash('sha256').update(`osstack.graph.spec.v1\n${workerCanonical(init.input.spec)}`).digest('hex') !== identity.specHash) throw new Error('INPUT_IDENTITY');
+63:     // Import the verified snapshot, not a path that could change between hash and import.
+64:     const program = await import(`data:text/javascript;base64,${Buffer.from(init.source).toString('base64')}`) as GraphWorkerProgram;
+65:     if (typeof program.run !== 'function') throw new Error('WORKER_PROGRAM_INVALID');
+66:     const input = freezeWorkerData(init.input);
+67:     const resume = init.resume ? freezeWorkerData(init.resume) : undefined;
+68:     const context = Object.freeze({ binding: init.binding, input, ...(resume ? { resume } : {}),
+69:       action: contextClient.action, checkpoint: contextClient.checkpoint, signal: abort.signal, task });
+70:     const workflow = entrypoint({ name: init.programId, checkpointer: new RemoteCheckpointSaver(init.binding.graphRunId, contextClient.checkpoint) },
+71:       async (_input: StartGraphRequest) => GraphJsonValue.parse(await program.run(context)));
+72:     if (abort.signal.aborted) throw new Error('WORKER_CANCELLED');
+73:     transport.send({ kind: 'ready', binding });
+74:     const invocation = resume ? resume.kind === 'continue' ? null : new Command({ resume: resume.value }) : input;
+75:     const result = await workflow.invoke(invocation, { configurable: { thread_id: init.binding.graphRunId }, durability: 'sync', signal: abort.signal });
+76:     finish(true, GraphJsonValue.parse(result));
+77:   }
+78: }
+
+FILE packages/protocol/src/graph-worker.ts
+1: import type { Readable, Writable } from 'node:stream';
+2: import { z } from 'zod';
+3: import { GraphScope, StartGraphRequest, GraphJsonValue } from './graph.js';
+4: 
+5: export const GRAPH_WORKER_MAX_FRAME_BYTES = 8 * 1024 * 1024;
+6: const id = z.string().min(1).max(256);
+7: const digest = z.string().regex(/^[a-f0-9]{64}$/);
+8: export const GraphWorkerIdentity = z.object({
+9:   executionModel: z.literal('langgraph-functional-v1'), durability: z.literal('sync'),
+10:   engineVersion: id, checkpointVersion: id, templateVersion: id, registryVersion: id,
+11:   compilerVersion: id, schemaVersion: id, compiledProgramDigest: digest, specHash: digest, inputDigest: digest,
+12: }).strict();
+13: export const GraphWorkerBinding = z.object({ scope: GraphScope, graphRunId: id,
+14:   generation: z.number().int().positive().max(Number.MAX_SAFE_INTEGER), owner: id, identity: GraphWorkerIdentity }).strict();
+15: export type GraphWorkerBinding = z.infer<typeof GraphWorkerBinding>;
+16: export const GraphWorkerResume = z.discriminatedUnion('kind', [
+17:   z.object({ kind: z.literal('continue') }).strict(),
+18:   z.object({ kind: z.literal('interrupt'), value: GraphJsonValue }).strict(),
+19: ]);
+20: export type GraphWorkerResume = z.infer<typeof GraphWorkerResume>;
+21: const bound = { binding: GraphWorkerBinding };
+22: export const GraphWorkerMessage = z.discriminatedUnion('kind', [
+23:   z.object({ kind: z.literal('init'), ...bound, programId: id, source: z.string().min(1).max(131072),
+24:     input: StartGraphRequest, resume: GraphWorkerResume.optional(),
+25:     heartbeatMs: z.number().int().min(10).max(60000), maxInFlight: z.number().int().min(1).max(64),
+26:     requestTimeoutMs: z.number().int().min(10).max(300000) }).strict(),
+27:   z.object({ kind: z.literal('ready'), ...bound }).strict(),
+28:   z.object({ kind: z.literal('heartbeat'), ...bound }).strict(),
+29:   z.object({ kind: z.literal('cancel'), ...bound, reason: z.string().max(4096) }).strict(),
+30:   z.object({ kind: z.literal('request'), ...bound, id, method: z.enum(['action', 'checkpoint']), payload: z.unknown() }).strict(),
+31:   z.object({ kind: z.literal('response'), ...bound, id, ok: z.boolean(), payload: z.unknown().optional(), error: z.string().max(4096).optional() }).strict(),
+32:   z.object({ kind: z.literal('done'), ...bound, ok: z.boolean(), value: GraphJsonValue.optional(), error: z.string().max(4096).optional() }).strict(),
+33: ]);
+34: export type GraphWorkerMessage = z.infer<typeof GraphWorkerMessage>;
+35: export function workerCanonical(value: unknown): string {
+36:   if (value === null || typeof value !== 'object') return JSON.stringify(value);
+37:   if (Array.isArray(value)) return `[${value.map(workerCanonical).join(',')}]`;
+38:   return `{${Object.keys(value).sort().map(k => `${JSON.stringify(k)}:${workerCanonical((value as Record<string, unknown>)[k])}`).join(',')}}`;
+39: }
+40: export function freezeWorkerData<T>(value: T): T {
+41:   if (value !== null && typeof value === 'object') { Object.values(value).forEach(freezeWorkerData); Object.freeze(value); }
+42:   return value;
+43: }
+44: export function encodeWorkerFrame(value: unknown, maxBytes = GRAPH_WORKER_MAX_FRAME_BYTES): Buffer {
+45:   const json = JSON.stringify(value); const size = Buffer.byteLength(json);
+46:   if (size === 0 || size > maxBytes) throw new Error('WORKER_FRAME_LIMIT');
+47:   const frame = Buffer.allocUnsafe(size + 4); frame.writeUInt32BE(size); frame.write(json, 4); return frame;
+48: }
+49: /** Never concatenates arbitrary incoming chunks. Only a checked length allocates a body. */
+50: export class WorkerFrameDecoder {
+51:   private readonly header = Buffer.alloc(4);
+52:   private headerUsed = 0;
+53:   private body: Buffer | undefined;
+54:   private used = 0;
+55:   private failed = false;
+56:   constructor(private readonly receive: (value: unknown) => void, private readonly maxBytes = GRAPH_WORKER_MAX_FRAME_BYTES) {}
+57:   get bufferedBytes(): number { return this.headerUsed + this.used; }
+58:   push(chunk: Buffer): void {
+59:     if (this.failed) throw new Error('WORKER_TRANSPORT_CLOSED');
+60:     try {
+61:       let offset = 0;
+62:       while (offset < chunk.length) {
+63:         if (!this.body) {
+64:           const count = Math.min(4 - this.headerUsed, chunk.length - offset);
+65:           chunk.copy(this.header, this.headerUsed, offset, offset + count); this.headerUsed += count; offset += count;
+66:           if (this.headerUsed < 4) continue;
+67:           const size = this.header.readUInt32BE(); this.headerUsed = 0;
+68:           if (!size || size > this.maxBytes) throw new Error('WORKER_FRAME_LIMIT');
+69:           this.body = Buffer.allocUnsafe(size); this.used = 0;
+70:         }
+71:         const count = Math.min(this.body.length - this.used, chunk.length - offset);
+72:         chunk.copy(this.body, this.used, offset, offset + count); this.used += count; offset += count;
+73:         if (this.used === this.body.length) {
+74:           const body = this.body; this.body = undefined; this.used = 0;
+75:           this.receive(JSON.parse(body.toString('utf8')));
+76:         }
+77:       }
+78:     } catch (error) { this.failed = true; this.body = undefined; this.used = 0; this.headerUsed = 0; throw error; }
+79:   }
+80: }
+81: /** Fail closed on a stalled peer; no additional userland send queue. */
+82: export class WorkerFramedTransport {
+83:   private closed = false;
+84:   private readonly maxFrameBytes: number;
+85:   private readonly maxBufferedBytes: number;
+86:   constructor(private readonly readable: Readable, private readonly writable: Writable,
+87:     receive: (value: unknown) => void, private readonly failure: (error: Error) => void,
+88:     limits: { maxFrameBytes?: number; maxBufferedBytes?: number } = {}) {
+89:     this.maxFrameBytes = limits.maxFrameBytes ?? GRAPH_WORKER_MAX_FRAME_BYTES;
+90:     this.maxBufferedBytes = limits.maxBufferedBytes ?? this.maxFrameBytes * 2 + 8;
+91:     const decoder = new WorkerFrameDecoder(value => { if (!this.closed) receive(value); }, this.maxFrameBytes);
+92:     readable.on('data', (chunk: Buffer) => { try { decoder.push(chunk); } catch (error) { this.fail(error); } });
+93:     readable.on('end', () => this.fail(new Error('WORKER_TRANSPORT_EOF')));
+94:     readable.on('error', error => this.fail(error));
+95:     writable.on('error', error => this.fail(error));
+96:   }
+97:   send(value: unknown): void {
+98:     if (this.closed) throw new Error('WORKER_TRANSPORT_CLOSED');
+99:     const frame = encodeWorkerFrame(value, this.maxFrameBytes);
+100:     if (this.writable.writableLength + frame.length > this.maxBufferedBytes) throw new Error('WORKER_BACKPRESSURE');
+101:     this.writable.write(frame, error => { if (error) this.fail(error); });
+102:   }
+103:   private fail(error: unknown): void {
+104:     if (this.closed) return;
+105:     this.close(); this.failure(error instanceof Error ? error : new Error(String(error)));
+106:   }
+107:   close(): void { this.closed = true; this.readable.destroy(); this.writable.destroy(); }
+108: }
+
+FILE packages/core/src/graph/artifact-store.ts
+1: import { createHash, randomUUID } from "node:crypto";
+2: import { chmod, lstat, mkdir, mkdtemp, open, readFile, realpath, rename, rm, symlink } from "node:fs/promises";
+3: import { dirname, isAbsolute, join } from "node:path";
+4: import type { GraphResult, GraphScope } from "@osstack/protocol";
+5: import { resolveRepositoryScope } from "./repository-scope.js";
+6: import { artifactGit, artifactPath, captureArtifactTree, gitText, initArtifactRepo, linkSourceObjects } from "./artifact-git.js";
+7: 
+8: export interface GraphFreezeInput {
+9:   artifactId: string;
+10:   scope: GraphScope;
+11:   runId: string;
+12:   generation: number;
+13:   owner: string;
+14:   workspaceLeaseRef: string;
+15:   repoId: string;
+16:   commonDir: string;
+17:   worktreePath: string;
+18:   baseRevision: string;
+19:   implementationReceiptRef: string;
+20:   producerStopEvidenceRef: string;
+21: }
+22: /** Trusted host capabilities, never worker-provided booleans/paths. Host retains
+23:  * the already-held canonical G10 writer lease and blocks new producers throughout.
+24:  * Each verifier must resolve undefined or throw; verifyLease authenticates the
+25:  * actual lease object, generation/owner, canonical repo and current authority. */
+26: export interface GraphFreezeAuthority {
+27:   lease: object;
+28:   verifyLease: (input: Readonly<GraphFreezeInput>, lease: object) => void | Promise<void>;
+29:   verifyImplementationReceipt: (input: Readonly<GraphFreezeInput>) => void | Promise<void>;
+30:   verifyProducersStopped: (input: Readonly<GraphFreezeInput>) => void | Promise<void>;
+31: }
+32: export interface GraphArtifactManifest {
+33:   version: 1;
+34:   input: GraphFreezeInput;
+35:   tree: string;
+36:   candidateRevision: string;
+37:   bundleDigest: string;
+38: }
+39: type CandidateReady = Extract<GraphResult, { kind: "candidate_ready" }>;
+40: const sha = (value: string | Buffer): string => createHash("sha256").update(value).digest("hex");
+41: function canonical(value: unknown): string {
+42:   if (value === null || typeof value !== "object") return JSON.stringify(value);
+43:   if (Array.isArray(value)) return `[${value.map(canonical).join(",")}]`;
+44:   return `{${Object.keys(value).sort().map(key => `${JSON.stringify(key)}:${canonical((value as Record<string, unknown>)[key])}`).join(",")}}`;
+45: }
+46: function snapshot<T>(value: T): T {
+47:   const result = structuredClone(value);
+48:   const freeze = (item: unknown): void => { if (item && typeof item === "object") { Object.values(item).forEach(freeze); Object.freeze(item); } };
+49:   freeze(result); return result;
+50: }
+51: function validateInput(input: GraphFreezeInput): void {
+52:   for (const key of ["artifactId", "runId", "owner", "workspaceLeaseRef", "repoId", "commonDir", "worktreePath", "baseRevision", "implementationReceiptRef", "producerStopEvidenceRef"] as const) {
+53:     const value = input[key];
+54:     if (typeof value !== "string" || !value || value.includes("\0")) throw new Error(`invalid freeze ${key}`);
+55:   }
+56:   if (!Number.isSafeInteger(input.generation) || input.generation < 1 || input.scope?.schemaVersion !== 1 || !input.scope.tenantId || !input.scope.principalId || !input.scope.workspaceId) throw new Error("invalid freeze identity");
+57:   if (![input.commonDir, input.worktreePath].every(isAbsolute) || !/^[a-f0-9]{40}$/.test(input.baseRevision)) throw new Error("invalid source path or revision (only SHA1 repositories supported)");
+58: }
+59: async function syncDirectory(path: string): Promise<void> {
+60:   const handle = await open(path, "r");
+61:   try { await handle.sync(); } catch (error) { if (!["EINVAL", "ENOTSUP", "EOPNOTSUPP"].includes((error as NodeJS.ErrnoException).code ?? "")) throw error; } finally { await handle.close(); }
+62: }
+63: async function durableFile(path: string, value: Buffer | string): Promise<void> {
+64:   const handle = await open(path, "wx", 0o600);
+65:   try { await handle.writeFile(value); await handle.sync(); } finally { await handle.close(); }
+66: }
+67: async function exists(path: string): Promise<boolean> {
+68:   try { await lstat(path); return true; } catch (error) { if ((error as NodeJS.ErrnoException).code === "ENOENT") return false; throw error; }
+69: }
+70: 
+71: /** On-disk immutable artifacts, no scheduler and no automatic GC. Store root and
+72:  * Git executable must be host-owned, inaccessible to untrusted producers. */
+73: export class GraphArtifactStore {
+74:   constructor(private readonly root: string) {
+75:     if (!isAbsolute(root)) throw new Error("artifact root must be absolute");
+76:   }
+77:   private async prepare(): Promise<string> {
+78:     // Require an existing parent so all newly created directory entries are synced.
+79:     await realpath(dirname(this.root));
+80:     await mkdir(this.root, { recursive: true, mode: 0o700 });
+81:     const root = await realpath(this.root);
+82:     for (const child of ["artifacts", "ids", "scratch", "locks"]) await mkdir(join(root, child), { recursive: true, mode: 0o700 });
+83:     await syncDirectory(root); await syncDirectory(dirname(root));
+84:     return root;
+85:   }
+86:   async freeze(raw: GraphFreezeInput, rawAuthority: GraphFreezeAuthority): Promise<CandidateReady> {
+87:     const input = snapshot(raw); validateInput(input);
+88:     const authority = Object.freeze({ ...rawAuthority });
+89:     if (!authority.lease || typeof authority.lease !== "object") throw new Error("missing canonical lease authority");
+90:     const check = async (): Promise<void> => {
+91:       for (const fn of [() => authority.verifyImplementationReceipt(input), () => authority.verifyProducersStopped(input), () => authority.verifyLease(input, authority.lease)]) {
+92:         if (await fn() !== undefined) throw new Error("nonconforming freeze authority");
+93:       }
+94:     };
+95:     await check();
+96:     const root = await this.prepare();
+97:     const id = sha(input.artifactId); const binding = join(root, "ids", `${id}.json`);
+98:     const lock = join(root, "locks", id);
+99:     await mkdir(lock); // Cross-process exclusion; stale locks fail closed, never guessed away.
+100:     let scratch: string | undefined;
+101:     try {
+102:       const sourceIdentity = await this.source(input);
+103:       await check();
+104:       scratch = await mkdtemp(join(root, "scratch", "capture-"));
+105:       const objectRepo = join(scratch, "objects.git");
+106:       await initArtifactRepo(objectRepo); await linkSourceObjects(objectRepo, input.commonDir);
+107:       if (await this.source(input) !== sourceIdentity) throw new Error("source identity changed before capture");
+108:       await check();
+109:       const tree = await captureArtifactTree(input.worktreePath, objectRepo);
+110:       if (await exists(binding)) {
+111:         const saved = JSON.parse(await readFile(binding, "utf8")) as { inputDigest: string; artifactDigest: string };
+112:         if (saved.inputDigest !== sha(canonical(input))) throw new Error("artifact replay identity mismatch");
+113:         const manifest = await this.verify(saved.artifactDigest);
+114:         if (canonical(manifest.input) !== canonical(input) || manifest.tree !== tree) throw new Error("artifact replay content mismatch");
+115:         await check();
+116:         if (await this.source(input) !== sourceIdentity || await captureArtifactTree(input.worktreePath, objectRepo) !== tree) throw new Error("source content changed during replay");
+117:         await check();
+118:         return this.result(saved.artifactDigest, manifest);
+119:       }
+120:       const candidateRevision = await gitText(objectRepo, ["commit-tree", tree, "-p", input.baseRevision], Buffer.from(`OSStack frozen candidate ${sha(canonical(input))}\n`));
+121:       await artifactGit(objectRepo, ["update-ref", "refs/heads/candidate", candidateRevision]);
+122:       const staging = join(scratch, "artifact"); await mkdir(staging);
+123:       const bundlePath = join(staging, "candidate.bundle");
+124:       await artifactGit(objectRepo, ["bundle", "create", bundlePath, "refs/heads/candidate"]);
+125:       const manifest: GraphArtifactManifest = { version: 1, input, tree, candidateRevision, bundleDigest: sha(await readFile(bundlePath)) };
+126:       const manifestBytes = canonical(manifest); const digest = sha(manifestBytes);
+127:       // Validate from a fresh object database with no alternates or prerequisites.
+128:       await this.validateBundle(bundlePath, manifest, join(scratch, "verify.git"));
+129:       await check();
+130:       if (await this.source(input) !== sourceIdentity || await captureArtifactTree(input.worktreePath, objectRepo) !== tree) throw new Error("source content or identity changed during freeze");
+131:       await check();
+132:       const bundleHandle = await open(bundlePath, "r"); try { await bundleHandle.sync(); } finally { await bundleHandle.close(); }
+133:       await durableFile(join(staging, "manifest.json"), manifestBytes); await syncDirectory(staging);
+134:       const destination = join(root, "artifacts", digest);
+135:       if (await exists(destination)) await this.verify(digest);
+136:       else await rename(staging, destination);
+137:       await syncDirectory(join(root, "artifacts"));
+138:       const temporaryBinding = join(root, "ids", `.${id}-${randomUUID()}`);
+139:       await durableFile(temporaryBinding, canonical({ inputDigest: sha(canonical(input)), artifactDigest: digest }));
+140:       await rename(temporaryBinding, binding); await syncDirectory(join(root, "ids"));
+141:       await check();
+142:       return this.result(digest, manifest);
+143:     } finally {
+144:       // Only scratch files are disposable. Never source worktrees/artifacts.
+145:       if (scratch) await rm(scratch, { recursive: true, force: true });
+146:       await rm(lock, { recursive: true });
+147:     }
+148:   }
+149:   private result(digest: string, manifest: GraphArtifactManifest): CandidateReady {
+150:     return snapshot({ schemaVersion: 1, kind: "candidate_ready", candidateRevision: manifest.candidateRevision, artifactDigest: digest, artifactRefs: [`graph-artifact:${digest}`] });
+151:   }
+152:   private async source(input: GraphFreezeInput): Promise<string> {
+153:     const scope = await resolveRepositoryScope(input.worktreePath, { repoId: input.repoId, commonDir: input.commonDir });
+154:     if (scope.workspacePath !== input.worktreePath || scope.commonDir !== input.commonDir || await gitText(input.worktreePath, ["rev-parse", "--show-toplevel"]) !== input.worktreePath) throw new Error("exact source identity mismatch");
+155:     if (await gitText(input.worktreePath, ["rev-parse", "HEAD"]) !== input.baseRevision) throw new Error("source HEAD revision mismatch");
+156:     if (await gitText(input.worktreePath, ["rev-parse", "--is-shallow-repository"]) !== "false") throw new Error("unsupported shallow source");
+157:     if ((await gitText(input.worktreePath, ["ls-tree", "-r", input.baseRevision])).split("\n").some(line => line.startsWith("160000 "))) throw new Error("unsupported submodule");
+158:     const gitDir = await realpath(await gitText(input.worktreePath, ["rev-parse", "--absolute-git-dir"]));
+159:     const identities = await Promise.all([input.worktreePath, input.commonDir, gitDir].map(async path => { const s = await lstat(path); return [path, s.dev, s.ino]; }));
+160:     return canonical(identities);
+161:   }
+162:   async verify(digest: string): Promise<GraphArtifactManifest> {
+163:     if (!/^[a-f0-9]{64}$/.test(digest)) throw new Error("invalid artifact digest");
+164:     const root = await this.prepare(); const directory = join(root, "artifacts", digest);
+165:     const bytes = await readFile(join(directory, "manifest.json"));
+166:     if (sha(bytes) !== digest) throw new Error("corrupt artifact manifest digest");
+167:     const manifest = JSON.parse(bytes.toString("utf8")) as GraphArtifactManifest;
+168:     if (manifest.version !== 1 || !/^[a-f0-9]{40}$/.test(manifest.tree) || !/^[a-f0-9]{40}$/.test(manifest.candidateRevision)) throw new Error("invalid artifact manifest");
+169:     validateInput(manifest.input);
+170:     const bundle = join(directory, "candidate.bundle");
+171:     if (sha(await readFile(bundle)) !== manifest.bundleDigest) throw new Error("corrupt artifact bundle digest");
+172:     const scratch = await mkdtemp(join(root, "scratch", "verify-"));
+173:     try { await this.validateBundle(bundle, manifest, join(scratch, "repo.git")); } finally { await rm(scratch, { recursive: true, force: true }); }
+174:     return snapshot(manifest);
+175:   }
+176:   private async validateBundle(bundle: string, manifest: GraphArtifactManifest, repo: string): Promise<void> {
+177:     await initArtifactRepo(repo);
+178:     await artifactGit(repo, ["bundle", "verify", bundle]);
+179:     await artifactGit(repo, ["bundle", "unbundle", bundle]);
+180:     await artifactGit(repo, ["update-ref", "refs/heads/candidate", manifest.candidateRevision]);
+181:     if (await gitText(repo, ["rev-parse", `${manifest.candidateRevision}^{tree}`]) !== manifest.tree || await gitText(repo, ["rev-parse", `${manifest.candidateRevision}^`]) !== manifest.input.baseRevision) throw new Error("artifact candidate tree/parent mismatch");
+182:     await artifactGit(repo, ["fsck", "--full", "--strict"]);
+183:   }
+184:   async restore(digest: string, destination: { rootPath: string; directoryName: string }): Promise<{ worktreePath: string; candidateRevision: string; tree: string }> {
+185:     const { rootPath, directoryName } = destination;
+186:     if (!isAbsolute(rootPath) || !/^[a-zA-Z0-9][a-zA-Z0-9._-]*$/.test(directoryName)) throw new Error("invalid exact restore destination");
+187:     const parent = await realpath(rootPath); const target = join(parent, directoryName);
+188:     if (await exists(target)) throw new Error("restore destination already exists");
+189:     const manifest = await this.verify(digest);
+190:     await mkdir(target); // exclusive allocation, never reuse or overwrite
+191:     const root = await realpath(this.root);
+192:     await initArtifactRepo(target, false);
+193:     await artifactGit(target, ["bundle", "unbundle", join(root, "artifacts", digest, "candidate.bundle")]);
+194:     await artifactGit(target, ["update-ref", "HEAD", manifest.candidateRevision]);
+195:     await artifactGit(target, ["read-tree", manifest.candidateRevision]);
+196:     const entries = (await artifactGit(target, ["ls-tree", "-rz", "--full-tree", manifest.candidateRevision])).toString("utf8").split("\0").filter(Boolean);
+197:     for (const entry of entries) {
+198:       const match = /^(100644|100755|120000) blob ([a-f0-9]{40})\t([\s\S]+)$/.exec(entry);
+199:       if (!match) throw new Error("unsupported artifact tree entry");
+200:       const path = artifactPath(target, match[3]!);
+201:       await mkdir(dirname(path), { recursive: true });
+202:       if (await realpath(dirname(path)) !== dirname(path) || await exists(path)) throw new Error("restore path collision or symlink ancestor");
+203:       const bytes = await artifactGit(target, ["cat-file", "blob", match[2]!]);
+204:       if (match[1] === "120000") await symlink(bytes, path);
+205:       else { await durableFile(path, bytes); await chmod(path, match[1] === "100755" ? 0o755 : 0o644); }
+206:     }
+207:     const scratch = await mkdtemp(join(root, "scratch", "restore-"));
+208:     try {
+209:       await initArtifactRepo(scratch);
+210:       if (await captureArtifactTree(target, scratch) !== manifest.tree) throw new Error("restored tree mismatch");
+211:     } finally { await rm(scratch, { recursive: true, force: true }); }
+212:     return { worktreePath: target, candidateRevision: manifest.candidateRevision, tree: manifest.tree };
+213:   }
+214: }
+
+FILE packages/core/src/graph/artifact-git.ts
+1: import { spawn } from "node:child_process";
+2: import { lstat, mkdir, readFile, readlink, realpath, writeFile } from "node:fs/promises";
+3: import { dirname, join, resolve, sep } from "node:path";
+4: 
+5: /** Plumbing only. Never inherit Git redirection, templates, hooks, filters or fsmonitor. */
+6: export async function artifactGit(cwd: string, args: string[], input?: Buffer): Promise<Buffer> {
+7:   const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith("GIT_")));
+8:   Object.assign(env, { GIT_CONFIG_NOSYSTEM: "1", GIT_CONFIG_GLOBAL: "/dev/null", GIT_TERMINAL_PROMPT: "0", GIT_NO_REPLACE_OBJECTS: "1", GIT_OPTIONAL_LOCKS: "0", LC_ALL: "C",
+9:     GIT_AUTHOR_NAME: "OSStack freeze", GIT_AUTHOR_EMAIL: "freeze@osstack.invalid", GIT_COMMITTER_NAME: "OSStack freeze", GIT_COMMITTER_EMAIL: "freeze@osstack.invalid", GIT_AUTHOR_DATE: "2000-01-01T00:00:00Z", GIT_COMMITTER_DATE: "2000-01-01T00:00:00Z" });
+10:   return await new Promise((resolvePromise, reject) => {
+11:     const child = spawn("git", ["-c", "core.hooksPath=/dev/null", "-c", "core.fsmonitor=false", "-c", "init.templateDir=", "-c", "commit.gpgSign=false", "-c", "gc.auto=0", ...args], { cwd, env, stdio: ["pipe", "pipe", "pipe"] });
+12:     const stdout: Buffer[] = []; const stderr: Buffer[] = []; let bytes = 0;
+13:     const timer = setTimeout(() => { child.kill("SIGKILL"); reject(new Error("artifact git timed out")); }, 60_000);
+14:     child.stdout.on("data", (part: Buffer) => { bytes += part.length; if (bytes > 256 * 1024 * 1024) { child.kill("SIGKILL"); reject(new Error("artifact git output limit")); } else stdout.push(part); });
+15:     child.stderr.on("data", (part: Buffer) => { if (stderr.length < 256) stderr.push(part); });
+16:     child.stdin.on("error", () => { /* exit status reports failed plumbing */ });
+17:     child.on("error", error => { clearTimeout(timer); reject(error); });
+18:     child.on("close", code => { clearTimeout(timer); if (code === 0) resolvePromise(Buffer.concat(stdout)); else reject(new Error(`artifact git ${args[0]} failed: ${Buffer.concat(stderr).toString().slice(0, 4096)}`)); });
+19:     child.stdin.end(input);
+20:   });
+21: }
+22: export async function gitText(cwd: string, args: string[], input?: Buffer): Promise<string> {
+23:   return (await artifactGit(cwd, args, input)).toString("utf8").trim();
+24: }
+25: export function artifactPath(root: string, name: string): string {
+26:   if (!name || name.includes("\0") || name.includes("\\") || name.split("/").some(part => !part || part === "." || part === ".." || part.toLowerCase() === ".git")) throw new Error("unsupported artifact path");
+27:   const path = resolve(root, name);
+28:   if (!path.startsWith(root + sep)) throw new Error("escaping artifact path");
+29:   return path;
+30: }
+31: export async function initArtifactRepo(path: string, bare = true): Promise<void> {
+32:   await mkdir(path, { recursive: true });
+33:   await artifactGit(path, ["init", ...(bare ? ["--bare"] : []), "--object-format=sha1"]);
+34: }
+35: /** Raw bytes, no add/checkout/clean/smudge or global attributes transformations. */
+36: export async function captureArtifactTree(source: string, objectRepo: string): Promise<string> {
+37:   const stages = (await artifactGit(source, ["ls-files", "--stage", "-z"])).toString("utf8").split("\0");
+38:   if (stages.some(line => line.startsWith("160000 "))) throw new Error("unsupported submodule");
+39:   if (stages.some(line => line && !/^\d+ [a-f0-9]+ 0\t/.test(line))) throw new Error("unmerged source index");
+40:   const namesRaw = await artifactGit(source, ["ls-files", "--cached", "--others", "--exclude-standard", "-z"]);
+41:   if (!Buffer.from(namesRaw.toString("utf8"), "utf8").equals(namesRaw)) throw new Error("unsupported non-UTF8 path");
+42:   const names = [...new Set(namesRaw.toString("utf8").split("\0").filter(Boolean))].sort();
+43:   await artifactGit(objectRepo, ["read-tree", "--empty"]);
+44:   const entries: string[] = [];
+45:   for (const name of names) {
+46:     const path = artifactPath(source, name);
+47:     let info;
+48:     try { info = await lstat(path); } catch (error) { if (["ENOENT", "ENOTDIR"].includes((error as NodeJS.ErrnoException).code ?? "")) continue; throw error; }
+49:     if (await realpath(dirname(path)) !== dirname(path)) throw new Error("source path has symlink ancestor");
+50:     if (info.isDirectory()) {
+51:       try { await lstat(join(path, ".git")); } catch (error) { if ((error as NodeJS.ErrnoException).code === "ENOENT") continue; throw error; }
+52:       throw new Error("unsupported nested repository or submodule");
+53:     }
+54:     if (!info.isFile() && !info.isSymbolicLink()) throw new Error("unsupported nested repository, submodule or special file");
+55:     const data = info.isSymbolicLink() ? await readlink(path, { encoding: "buffer" }) : await readFile(path);
+56:     const oid = await gitText(objectRepo, ["hash-object", "-w", "--stdin", "--no-filters"], data);
+57:     const mode = info.isSymbolicLink() ? "120000" : (info.mode & 0o111) !== 0 ? "100755" : "100644";
+58:     entries.push(`${mode} ${oid}\t${name}\0`);
+59:   }
+60:   await artifactGit(objectRepo, ["update-index", "-z", "--index-info"], Buffer.from(entries.join("")));
+61:   return await gitText(objectRepo, ["write-tree"]);
+62: }
+63: export async function linkSourceObjects(repo: string, commonDir: string): Promise<void> {
+64:   if (commonDir.includes("\n")) throw new Error("unsupported object directory path");
+65:   await mkdir(join(repo, "objects", "info"), { recursive: true });
+66:   await writeFile(join(repo, "objects", "info", "alternates"), `${join(commonDir, "objects")}\n`);
+67: }
+
+FILE packages/agents/src/worktree.ts
+1: import { spawn } from "node:child_process";
+2: import { lstat, mkdir, open, readFile, realpath, rename } from "node:fs/promises";
+3: import { tmpdir } from "node:os";
+4: import { isAbsolute, join, relative, resolve } from "node:path";
+5: import { createHash, randomUUID } from "node:crypto";
+6: 
+7: export interface WorktreeHandle {
+8:   repoPath: string;
+9:   worktreePath: string;
+10:   branch: string;
+11:   baseRef: string;
+12:   rootPath: string;
+13: }
+14: 
+15: export interface CreateWorktreeOptions {
+16:   repoPath: string;
+17:   runId: string;
+18:   rootPath?: string;
+19:   branchPrefix?: string;
+20:   baseRef?: string;
+21:   /** Register before exposing this directory to any graph producer. */
+22:   graphRetention?: GraphWorktreeRetention;
+23: }
+24: 
+25: export interface CommitWorktreeResult {
+26:   committed: boolean;
+27:   commit?: string;
+28: }
+29: 
+30: export interface CleanupOrphanedWorktreesOptions {
+31:   rootPath?: string;
+32:   branchPrefix?: string;
+33: }
+34: 
+35: export interface CleanupWorktreeOptions {
+36:   removeBranch?: boolean;
+37: }
+38: 
+39: export interface CleanupOrphanedWorktreesResult {
+40:   removed: WorktreeHandle[];
+41: }
+42: 
+43: const DEFAULT_BRANCH_PREFIX = "osstack/loop";
+44: const DISABLE_GIT_HOOKS_ARGS = [
+45:   "-c",
+46:   "core.hooksPath=/dev/null",
+47: ] as const;
+48: 
+49: export async function createWorktree(rawOptions: CreateWorktreeOptions): Promise<WorktreeHandle> {
+50:   const options = { ...rawOptions, ...(rawOptions.graphRetention === undefined ? {} : { graphRetention: { ...rawOptions.graphRetention } }) };
+51:   const repoPath = await gitOutput(options.repoPath, ["rev-parse", "--show-toplevel"]);
+52:   const rootPath = await resolveRootPath(options.rootPath);
+53:   await mkdir(rootPath, { recursive: true });
+54: 
+55:   const branchPrefix = options.branchPrefix ?? DEFAULT_BRANCH_PREFIX;
+56:   const safeRunId = sanitizePathPart(options.runId);
+57:   const suffix = randomUUID().slice(0, 8);
+58:   const branch = `${branchPrefix}/${safeRunId}-${suffix}`;
+59:   const worktreePath = join(rootPath, `${safeRunId}-${suffix}`);
+60:   const baseRef = options.baseRef ?? "HEAD";
+61: 
+62:   if (options.graphRetention !== undefined) {
+63:     await persistGraphRetention({ repoPath, worktreePath, branch, baseRef, rootPath }, options.graphRetention);
+64:   }
+65:   await runGit(repoPath, [
+66:     ...DISABLE_GIT_HOOKS_ARGS,
+67:     "worktree",
+68:     "add",
+69:     "-b",
+70:     branch,
+71:     worktreePath,
+72:     baseRef,
+73:   ]);
+74: 
+75:   if (options.graphRetention !== undefined) await runGit(repoPath, ["worktree", "lock", "--reason", "OSStack graph retained", worktreePath]);
+76: 
+77:   return {
+78:     repoPath,
+79:     worktreePath,
+80:     branch,
+81:     baseRef,
+82:     rootPath,
+83:   };
+84: }
+85: 
+86: export async function commitWorktreeChanges(
+87:   handle: WorktreeHandle,
+88:   message: string,
+89: ): Promise<CommitWorktreeResult> {
+90:   const status = await gitOutput(handle.worktreePath, ["status", "--porcelain"]);
+91:   if (status.trim() === "") return { committed: false };
+92: 
+93:   await runGit(handle.worktreePath, ["add", "-A"]);
+94:   await runGit(handle.worktreePath, [
+95:     ...DISABLE_GIT_HOOKS_ARGS,
+96:     "-c",
+97:     "user.name=osstack-loop",
+98:     "-c",
+99:     "user.email=osstack-loop@example.invalid",
+100:     "commit",
+101:     "-m",
+102:     message,
+103:   ]);
+104:   const commit = await gitOutput(handle.worktreePath, ["rev-parse", "HEAD"]);
+105:   return { committed: true, commit };
+106: }
+107: 
+108: export async function mergeWorktree(handle: WorktreeHandle): Promise<void> {
+109:   await runGit(handle.repoPath, [
+110:     ...DISABLE_GIT_HOOKS_ARGS,
+111:     "merge",
+112:     "--ff-only",
+113:     handle.branch,
+114:   ]);
+115: }
+116: 
+117: export async function cleanupWorktree(
+118:   handle: WorktreeHandle,
+119:   options: CleanupWorktreeOptions = {},
+120: ): Promise<void> {
+121:   if (await hasGraphRetention(handle)) return;
+122:   await runGit(handle.repoPath, ["worktree", "remove", "--force", handle.worktreePath], { allowFailure: true });
+123:   if (options.removeBranch !== false) {
+124:     await runGit(handle.repoPath, ["branch", "-D", handle.branch], { allowFailure: true });
+125:   }
+126: }
+127: 
+128: export async function cleanupOrphanedWorktrees(
+129:   repoPath: string,
+130:   options: CleanupOrphanedWorktreesOptions = {},
+131: ): Promise<CleanupOrphanedWorktreesResult> {
+132:   const normalizedRepo = await gitOutput(repoPath, ["rev-parse", "--show-toplevel"]);
+133:   const rootPath = await resolveRootPath(options.rootPath);
+134:   const branchPrefix = options.branchPrefix ?? DEFAULT_BRANCH_PREFIX;
+135:   const entries = parseWorktreeList(await gitOutput(normalizedRepo, ["worktree", "list", "--porcelain"]));
+136:   const removed: WorktreeHandle[] = [];
+137: 
+138:   for (const entry of entries) {
+139:     if (entry.branch === undefined) continue;
+140:     if (!entry.branch.startsWith(`${branchPrefix}/`)) continue;
+141:     if (!isPathInside(entry.worktreePath, rootPath)) continue;
+142:     const handle: WorktreeHandle = {
+143:       repoPath: normalizedRepo,
+144:       worktreePath: entry.worktreePath,
+145:       branch: entry.branch,
+146:       baseRef: entry.head ?? "HEAD",
+147:       rootPath,
+148:     };
+149:     if (await hasGraphRetention(handle)) continue;
+150:     await cleanupWorktree(handle);
+151:     removed.push(handle);
+152:   }
+153: 
+154:   return { removed };
+155: }
+156: 
+157: interface GitCommandOptions {
+158:   allowFailure?: boolean;
+159: }
+160: 
+161: async function runGit(cwd: string, args: string[], options: GitCommandOptions = {}): Promise<string> {
+162:   return await new Promise((resolve, reject) => {
+163:     const child = spawn("git", args, {
+164:       cwd,
+165:       env: { ...Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith("GIT_"))), GIT_CONFIG_NOSYSTEM: "1", GIT_CONFIG_GLOBAL: "/dev/null", GIT_TERMINAL_PROMPT: "0" },
+166:       stdio: ["ignore", "pipe", "pipe"],
+167:     });
+168:     let stdout = "";
+169:     let stderr = "";
+170:     child.stdout.on("data", (chunk: Buffer) => {
+171:       stdout += chunk.toString("utf-8");
+172:     });
+173:     child.stderr.on("data", (chunk: Buffer) => {
+174:       stderr += chunk.toString("utf-8");
+175:     });
+176:     child.on("error", reject);
+177:     child.on("close", (code) => {
+178:       if (code === 0 || options.allowFailure === true) {
+179:         resolve(stdout.trim());
+180:         return;
+181:       }
+182:       reject(new Error(`git ${args.join(" ")} failed (${code ?? 1}): ${stderr.trim() || stdout.trim()}`));
+183:     });
+184:   });
+185: }
+186: 
+187: async function gitOutput(cwd: string, args: string[]): Promise<string> {
+188:   return (await runGit(cwd, args)).trim();
+189: }
+190: 
+191: interface ListedWorktree {
+192:   worktreePath: string;
+193:   head?: string;
+194:   branch?: string;
+195: }
+196: 
+197: function parseWorktreeList(output: string): ListedWorktree[] {
+198:   const entries: ListedWorktree[] = [];
+199:   let current: Partial<ListedWorktree> = {};
+200: 
+201:   for (const line of output.split("\n")) {
+202:     if (line.trim() === "") {
+203:       pushCurrent(entries, current);
+204:       current = {};
+205:       continue;
+206:     }
+207:     if (line.startsWith("worktree ")) current.worktreePath = line.slice("worktree ".length);
+208:     else if (line.startsWith("HEAD ")) current.head = line.slice("HEAD ".length);
+209:     else if (line.startsWith("branch refs/heads/")) current.branch = line.slice("branch refs/heads/".length);
+210:   }
+211:   pushCurrent(entries, current);
+212:   return entries;
+213: }
+214: 
+215: function pushCurrent(entries: ListedWorktree[], current: Partial<ListedWorktree>): void {
+216:   if (current.worktreePath !== undefined) entries.push(current as ListedWorktree);
+217: }
+218: 
+219: async function resolveRootPath(rootPath: string | undefined): Promise<string> {
+220:   const resolved = rootPath === undefined
+221:     ? join(tmpdir(), "osstack-worktrees")
+222:     : isAbsolute(rootPath) ? rootPath : join(process.cwd(), rootPath);
+223:   await mkdir(resolved, { recursive: true });
+224:   return await realpath(resolved);
+225: }
+226: 
+227: function sanitizePathPart(value: string): string {
+228:   const sanitized = value.replace(/[^a-zA-Z0-9._-]+/g, "-").replace(/^-+|-+$/g, "");
+229:   return sanitized === "" ? "run" : sanitized.slice(0, 48);
+230: }
+231: 
+232: function isPathInside(path: string, rootPath: string): boolean {
+233:   const rel = relative(rootPath, path);
+234:   return rel === "" || (!rel.startsWith("..") && !isAbsolute(rel));
+235: }
+236: 
+237: 
+238: export interface GraphWorktreeRetention {
+239:   runId: string;
+240:   scopeKey: string;
+241:   generation: number;
+242:   workspaceLeaseRef: string;
+243: }
+244: export interface GraphWorktreeRetentionRecord extends GraphWorktreeRetention {
+245:   version: 1;
+246:   repoPath: string;
+247:   commonDir: string;
+248:   worktreePath: string;
+249:   branch: string;
+250:   quarantineReason?: string;
+251: }
+252: async function retentionLocation(handle: WorktreeHandle): Promise<{ path: string; commonDir: string; worktreePath: string }> {
+253:   const commonDir = await realpath(resolve(handle.repoPath, await gitOutput(handle.repoPath, ["rev-parse", "--git-common-dir"])));
+254:   // Resolve parent aliases even after a failed/removed allocation. Never resolve
+255:   // the leaf symlink into another directory and then silently delete it.
+256:   const worktreePath = resolve(handle.worktreePath);
+257:   if (!isAbsolute(handle.worktreePath) || await realpath(handle.rootPath) !== handle.rootPath || !isPathInside(worktreePath, handle.rootPath) || worktreePath === handle.rootPath) throw new Error("invalid exact graph worktree path");
+258:   const key = createHash("sha256").update(worktreePath).digest("hex");
+259:   return { path: join(commonDir, "osstack-graph-retention", `${key}.json`), commonDir, worktreePath };
+260: }
+261: async function hasGraphRetention(handle: WorktreeHandle): Promise<boolean> {
+262:   const { path } = await retentionLocation(handle);
+263:   try { await lstat(path); return true; } catch (error) { if ((error as NodeJS.ErrnoException).code === "ENOENT") return false; throw error; }
+264: }
+265: async function syncRetentionDirectory(path: string): Promise<void> {
+266:   const directory = await open(path, "r");
+267:   try { await directory.sync(); } catch (error) { if (!["EINVAL", "ENOTSUP", "EOPNOTSUPP"].includes((error as NodeJS.ErrnoException).code ?? "")) throw error; } finally { await directory.close(); }
+268: }
+269: async function saveRetention(path: string, record: GraphWorktreeRetentionRecord, replace = false): Promise<void> {
+270:   const directory = resolve(path, "..");
+271:   await mkdir(directory, { recursive: true, mode: 0o700 });
+272:   const temporary = replace ? `${path}.${randomUUID()}` : path;
+273:   const file = await open(temporary, "wx", 0o600);
+274:   try { await file.writeFile(JSON.stringify(record)); await file.sync(); } finally { await file.close(); }
+275:   if (replace) await rename(temporary, path);
+276:   await syncRetentionDirectory(directory); await syncRetentionDirectory(resolve(directory, ".."));
+277: }
+278: async function persistGraphRetention(handle: WorktreeHandle, raw: GraphWorktreeRetention): Promise<void> {
+279:   const identity = { ...raw };
+280:   if (!identity.runId || !identity.scopeKey || !identity.workspaceLeaseRef || !Number.isSafeInteger(identity.generation) || identity.generation < 1) throw new Error("invalid graph retention identity");
+281:   const location = await retentionLocation(handle);
+282:   await saveRetention(location.path, { ...identity, version: 1, repoPath: handle.repoPath, commonDir: location.commonDir, worktreePath: location.worktreePath, branch: handle.branch });
+283: }
+284: async function readRetention(handle: WorktreeHandle): Promise<{ path: string; record: Readonly<GraphWorktreeRetentionRecord> }> {
+285:   const location = await retentionLocation(handle);
+286:   const record = JSON.parse(await readFile(location.path, "utf8")) as GraphWorktreeRetentionRecord;
+287:   if (record.version !== 1 || record.commonDir !== location.commonDir || record.worktreePath !== location.worktreePath || record.branch !== handle.branch || record.repoPath !== handle.repoPath || !record.runId || !record.scopeKey || !record.workspaceLeaseRef || !Number.isSafeInteger(record.generation) || record.generation < 1) throw new Error("graph retention identity mismatch or corruption");
+288:   return { path: location.path, record: Object.freeze(record) };
+289: }
+290: /** Quarantine records uncertainty; it never kills producers or fabricates stop evidence. */
+291: export async function quarantineGraphWorktree(handle: WorktreeHandle, reason: string): Promise<void> {
+292:   if (!reason.trim()) throw new Error("quarantine reason required");
+293:   const { path, record } = await readRetention(handle);
+294:   await saveRetention(path, { ...record, quarantineReason: reason }, true);
+295: }
+296: /** Explicit trusted host operation under canonical G10 exclusion. verifySafe must
+297:  * authenticate ALL stopped producers and the exported durable digest for this
+298:  * exact retention identity. A boolean or a worker receipt is not a grant.
+299:  * Keep the record even after deletion: generic cleanup never reclaims it. */
+300: export async function cleanupGraphWorktree(handle: WorktreeHandle, options: {
+301:   artifactDigest: string;
+302:   verifySafe: (record: Readonly<GraphWorktreeRetentionRecord>, artifactDigest: string) => void | Promise<void>;
+303: }): Promise<void> {
+304:   const frozenHandle = Object.freeze({ ...handle });
+305:   const { artifactDigest, verifySafe } = options;
+306:   if (!/^[a-f0-9]{64}$/.test(artifactDigest) || typeof verifySafe !== "function") throw new Error("exported artifact and trusted authority required");
+307:   const { record } = await readRetention(frozenHandle);
+308:   if (await verifySafe(record, artifactDigest) !== undefined) throw new Error("nonconforming cleanup authority");
+309:   const current = await readRetention(frozenHandle);
+310:   if (JSON.stringify(current.record) !== JSON.stringify(record)) throw new Error("graph retention changed during cleanup");
+311:   if (await verifySafe(current.record, artifactDigest) !== undefined) throw new Error("nonconforming cleanup authority");
+312:   await runGit(frozenHandle.repoPath, [...DISABLE_GIT_HOOKS_ARGS, "worktree", "remove", "--force", "--force", frozenHandle.worktreePath]);
+313:   await runGit(frozenHandle.repoPath, ["branch", "-D", frozenHandle.branch]);
+314: }

@@ -1,0 +1,90 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+ ✓ src/graph-reconciler.test.ts (23 tests) 1369ms
+osstack: retaining write lease graph-action:111fdb188480053270218d65a910627af1457db94d40e25f46915aad3e412a53: Error: invalid result kind for registered operation
+osstack: retaining write lease graph-action:3415fe7fd4a16bf88f6964641f75a28980c0869474fefd37c885e00e66252627: Error: invalid persisted evidence reference
+osstack: retaining write lease graph-action:2e4181837fb460691635bc54a410dc5e6b752db6032b50503bd2fd81de013d4e: Error: candidate preflight refused
+osstack: retaining write lease graph-action:536f936a2e39c98dad1cd942f5b555d418a1391086a7b686bb5ccc12b050b71b: Error: adapter result or execution unconfirmed
+osstack: retaining write lease graph-action:c48ebb5189c40b2a85366d6210e9d65e1a1141693886d7db99d02b42f6ad6636: Error: candidate preflight refused
+osstack: retaining write lease graph-action:1ed72b9c4c04d9d0735120d3862887127f0d6687705f2e755f704f33eef29bcc: Error: lost receipt
+osstack: retaining write lease graph-action:2aa19c9c3617a14092d92b7cdbee07045a24b020dc6d232d3721a0a245e9c17f: Error: adapter result or execution unconfirmed
+osstack: retaining write lease graph-action:b1f8873ac9fd944d28925143e0dafa5d1b5d1f168632a2ad912fe91780b9fb1a: injected lock release failure
+osstack: retaining write lease graph-action:b1f8873ac9fd944d28925143e0dafa5d1b5d1f168632a2ad912fe91780b9fb1a: Error: injected lock release failure
+osstack: retaining write lease graph-action:94d4417950cc2b21b3a5782df65837a8da88e7d98488077d8a2526e088059865: release failure
+osstack: retaining write lease graph-action:94d4417950cc2b21b3a5782df65837a8da88e7d98488077d8a2526e088059865: Error: release failure
+osstack: retaining write lease graph-action:03a3d61b1d5ed07128dcad3db7645ca5b9093fba1bb3e1a5e656852ea85dbb04: Error: adapter result or execution unconfirmed
+ ✓ src/graph-action-freeze.test.ts (1 test) 2368ms
+   ✓ freezes a real confirmed implementation under the same shared admission into a verified artifact  2368ms
+ ✓ src/graph-action-broker-boundary.test.ts (17 tests) 2401ms
+osstack: retaining write lease graph-action:53527e0337fbbf65c123705a8e510a19c56a5f7d84431e550b987b87edf0f8d4: Error: invalid result kind for registered operation
+osstack: retaining write lease graph-action:37065c91fb18af50d8a7d75177c5d13656449bad760a2768b9add68596de9cb5: Error: invalid usage
+osstack: retaining write lease graph-action:4245e5d8a5be9791472c81a36087b170ee0e3d45252ddfe190a3dd7465aa4443: Error: invalid persisted evidence reference
+osstack: retaining write lease graph-action:79103996b7734237396ba7108d48c9f83ac213b3d2eccc10b359ad526997eee6: SqliteError: injected
+osstack: retaining write lease graph-action:e5791e4da4d5dfc63da2560cb2581a116282b3d7fe64c9747acccc42c9400500: Error: adapter result or execution unconfirmed
+osstack: retaining write lease graph-action:85352bfb2f52fede39ef94d96e1e0f1f9231dcf0ea7ba5fb0b727a1a2ed78dcd: Error: adapter result or execution unconfirmed
+osstack: retaining write lease graph-action:9ced3dcd4d7d4d5f84fc48ab9a22fcf7e43d5ec1511f62c8f758188f0176622f: Error: adapter result or execution unconfirmed
+osstack: retaining write lease graph-action:87d841e81d0da8e64593a2ce663006bbbb927d8a3360bc0db52cbd0bb1ee02e3: Error: adapter result or execution unconfirmed
+osstack: retaining write lease graph-action:22de29313067df10ca9785b0538e7fd8fc1ee2150c5c99111b635b9a7d5da518: Error: adapter result or execution unconfirmed
+ ❯ src/graph-action-broker.test.ts (31 tests | 1 failed) 3681ms
+   ✓ executes a registered command once and replays from SQLite after broker restart 142ms
+   ✓ rejects changed payload without invoking 78ms
+   ✓ rejects changed node without invoking 72ms
+   ✓ rejects changed scope without invoking 93ms
+   ✓ rejects changed connection without invoking 92ms
+   ✓ rejects changed generation without invoking 74ms
+   ✓ concurrent same slot calls can invoke only the creator's intent 98ms
+   ✓ rechecks revocation after the shared admission queue without leaking a permit 155ms
+   ✓ never blindly retries throw after invocation 152ms
+   ✓ never blindly retries terminal-failure after invocation 211ms
+   ✓ never blindly retries cancel after invocation  347ms
+   ✓ pins request, registration, and adapter functions before asynchronous admission 208ms
+   ✓ fences revoke after G04 asynchronous availability and before actual invoke 167ms
+   × fences generation after G04 asynchronous availability and before actual invoke 179ms
+     → ADMISSION_RELEASE_PENDING
+   ✓ fences confirmed replay before lookup and keeps effect identity across a trusted fresh generation 126ms
+   ✓ unknown blocks a later separately registered action and retains actual capacity 115ms
+   ✓ retains uncertainty when trusted result fails after physical execution 113ms
+   ✓ retains uncertainty when trusted usage fails after physical execution 125ms
+   ✓ retains uncertainty when trusted receipt fails after physical execution 124ms
+   ✓ retains uncertainty when trusted commit fails after physical execution 117ms
+   ✓ accepts only a specific registered workspace handler, never a worker callback 111ms
+   ✓ refuses unknown/ambiguous capability registration and never runs a mixed writer with a read permit 114ms
+   ✓ rejects an accidentally async trusted revocation callback instead of granting on its Promise 67ms
+   ✓ policy failure before effects resolves only its own intent and releases the lease 68ms
+   ✓ rejects a wrong full program identity and forged worker authority fields 50ms
+   ✓ refuses unsupported freeze registration before acquiring capacity 43ms
+   ✓ forwards cancellation to the actual adapter and retains an unconfirmed external producer 172ms
+   ✓ treats malformed raw adapter token usage bad as unknown even if later usage is valid 70ms
+   ✓ treats malformed raw adapter token usage -1 as unknown even if later usage is valid 74ms
+   ✓ treats malformed raw adapter token usage 1.5 as unknown even if later usage is valid 63ms
+   ✓ retains reported overrun reservation after the adapter throws 60ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/graph-action-broker.test.ts > fences generation after G04 asynchronous availability and before actual invoke
+GraphRunStorageError: ADMISSION_RELEASE_PENDING
+ ❯ fail ../core/src/state/graph-runs.ts:68:65
+ ❯ sqliteTransaction.<anonymous> ../core/src/state/graph-runs.ts:164:142
+ ❯ sqliteTransaction ../../node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/lib/methods/transaction.js:65:24
+ ❯ GraphRunStore.write ../core/src/state/graph-runs.ts:108:36
+ ❯ GraphRunStore.acquireLease ../core/src/state/graph-runs.ts:156:17
+ ❯ src/graph-action-broker.test.ts:133:12
+    131|   if (kind === "revoke") f.revoke();
+    132|   else { const current = f.runs.get(scope, f.run.graphRunId)!; const n…
+    133|     f.runs.acquireLease({ ...fence(current), now, owner: "new-worker",…
+       |            ^
+    134|       stoppedWorker: { graphRunId: current.graphRunId, generation: cur…
+    135|   release(); expect(await pending).toMatchObject({ kind: "worker_actio…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 3 passed (4)
+      Tests  1 failed | 71 passed (72)
+   Start at  08:26:51
+   Duration  6.44s (transform 1.59s, setup 80ms, collect 7.82s, tests 9.82s, environment 1ms, prepare 334ms)
+
+undefined
+/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli:
+[ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL] Command failed with exit code 1: vitest run src/graph-reconciler.test.ts src/graph-action-broker-boundary.test.ts src/graph-action-broker.test.ts src/graph-action-freeze.test.ts

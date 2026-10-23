@@ -9,7 +9,7 @@ import {
   reserveSessionInstruction,
 } from "./attention-actions.js";
 const cleanup: Array<() => void> = [];
-afterEach(() => cleanup.splice(0).forEach((f) => f()));
+afterEach(() => cleanup.splice(0).forEach((f) => { f(); }));
 function setup() {
   const root = realpathSync(mkdtempSync(join(tmpdir(), "actions-")));
   const path = join(root, "db");

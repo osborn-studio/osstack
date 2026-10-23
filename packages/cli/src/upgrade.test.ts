@@ -17,6 +17,9 @@ const mocks = vi.hoisted(() => ({
   spawn: vi.fn(),
 }));
 
+// Real SQLite graph hold checks have their own integration suite. This legacy
+// updater harness uses literal "known-good" bytes as its snapshot fixture.
+vi.mock("./graph-upgrade-guard.js", () => ({ assertGraphUpgradeSafe: async () => {} }));
 vi.mock("node:child_process", () => ({ spawn: mocks.spawn }));
 vi.mock("./update-check.js", () => ({
   fetchRegistryVersion: mocks.fetchRegistryVersion,
@@ -189,4 +192,12 @@ describe("safe self-upgrade", () => {
       ),
     ).toBe("known-good");
   });
+});
+
+it('does not shut down or replace the installation when graph drain is incomplete', async () => {
+  const withGraphHold = async (method: string) => method === 'daemon.drain'
+    ? { ok: true, result: { drained: false, graph_holds: 1 } } : rpc(method);
+  await expect(handleUpgradeCommand([], withGraphHold)).resolves.toBe(1);
+  expect(rpcMethods).not.toContain('daemon.shutdown');
+  expect(commands.some(c => c.command === 'npm' && c.args.includes('install'))).toBe(false);
 });

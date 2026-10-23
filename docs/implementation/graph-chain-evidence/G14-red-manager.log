@@ -1,0 +1,30 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+
+⎯⎯⎯⎯⎯⎯ Failed Suites 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/graph-worker-manager.test.ts [ src/graph-worker-manager.test.ts ]
+Error: Cannot find module './graph-worker-manager.js' imported from '/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli/src/graph-worker-manager.test.ts'
+ ❯ src/graph-worker-manager.test.ts:6:1
+      4| import { afterEach, expect, it } from 'vitest';
+      5| import { computeGraphInputDigest, workerCanonical, type StartGraphRequ…
+      6| import { GraphWorkerManager, type GraphWorkerStart, type GraphWorkerHa…
+       | ^
+      7| 
+      8| process.env['OSSTACK_HOME'] = '/Volumes/AIMATE_WORK/tmp/gc5/home';
+
+Caused by: Error: Failed to load url ./graph-worker-manager.js (resolved id: ./graph-worker-manager.js) in /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli/src/graph-worker-manager.test.ts. Does the file exist?
+ ❯ loadAndTransform ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:35835:17
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  no tests
+   Start at  07:30:29
+   Duration  294ms (transform 61ms, setup 9ms, collect 0ms, tests 0ms, environment 0ms, prepare 39ms)
+
+undefined
+/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli:
+[ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL] Command failed with exit code 1: vitest run src/graph-worker-manager.test.ts

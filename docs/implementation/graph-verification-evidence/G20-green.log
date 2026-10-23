@@ -1,0 +1,34 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+osstack: retaining write lease graph-action:d48bff2d761db11ce6e9b400faadb3ff96c0904e5179e91029b7bddaa5446d6f: Error: external stop unconfirmed
+osstack: retaining write lease graph-action:3bf75d46cb33bdec1165b9e1870c5f9637e00d7209a9162c45b10d2f8f9affaa: Error: G20_RELEASE_HELD
+osstack: retaining write lease graph-action:9eb76f66ba91bdcaba6f4a64bf737deca063d49c891bd01ed99599715cd70dbe: Error: G20_RELEASE_HELD
+osstack: retaining write lease graph-action:3ac227b8f525f85070b51f869d19ca891107c3fa8757d034113e73f694c1cb94: Error: external stop unconfirmed
+osstack: retaining write lease graph-action:78cf2767c715e14ca35f34eef656bf5881159e7aac216a83b2859bd255bda4de: Error: G20_RELEASE_HELD
+osstack: retaining write lease graph-action:ba54b9114104b3e5a7eb1d99896f3a37eb5270c7638aec27d813e7ee346ce285: Error: G20_RELEASE_HELD
+osstack: retaining write lease graph-action:ab511ffeb893727cb38f1ed40d52f73cb07f4fd5205ecf374f1893ca57b036be: Error: G20_LOST_PERSIST_ACK
+ ✓ src/graph-verification-join.test.ts (17 tests) 81274ms
+   ✓ joins real negative outcomes in review then tests order and publishes one immutable row  5175ms
+   ✓ joins real negative outcomes in tests then review order and publishes one immutable row  4401ms
+   ✓ unknown reviewer remains reconciliation-only on repeated evaluation and cannot allocate retry  1999ms
+   ✓ host retry allocates attempt two and recomputes latest durable evidence instead of replaying failed RETURN  6469ms
+   ✓ rejects a stale fence and revoked authority across asynchronous artifact evidence verification  4750ms
+   ✓ held real admission release prevents publication even when both branches are confirmed  4797ms
+   ✓ revalidates durable evidence bytes after a successful publication instead of trusting a cached join  4791ms
+   ✓ retains original repair limits {"maxActionStarts":2} after actual branch execution  4666ms
+   ✓ retains original repair limits {"tokenReservationLimit":2} after actual branch execution  4760ms
+   ✓ retains original repair limits {"maxEpochs":1} after actual branch execution  4518ms
+   ✓ retains original branch-attempt limit on malformed output and original elapsed deadline  4489ms
+   ✓ real worker partial RETURN survives stop/drain and G15 takeover; host retry supersedes cached malformed review  7338ms
+   ✓ actual Functional task throws for unknown verification outcome and host refuses worker pass proposal  2726ms
+   ✓ rejects revoke changing during the actual durable envelope read  4825ms
+   ✓ rejects fence changing during the actual durable envelope read  5725ms
+   ✓ rejects admission-release changing during the actual durable envelope read  4752ms
+   ✓ a new actual unknown action invalidates routing from an already published join  5094ms
+
+ Test Files  1 passed (1)
+      Tests  17 passed (17)
+   Start at  18:31:28
+   Duration  82.35s (transform 526ms, setup 9ms, collect 914ms, tests 81.27s, environment 0ms, prepare 32ms)
+

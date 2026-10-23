@@ -1,0 +1,40 @@
+$ vitest run --maxWorkers=2
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/autonomy
+
+To /Volumes/AIMATE_WORK/tmp/ga/osstack-remote-Qj5l1k
+ * [new branch]      HEAD -> main
+Switched to a new branch 'osstack/feature'
+To /Volumes/AIMATE_WORK/tmp/ga/osstack-remote-bqeZ9h
+ * [new branch]      HEAD -> main
+Switched to a new branch 'osstack/feature'
+To /Volumes/AIMATE_WORK/tmp/ga/osstack-remote-bqeZ9h
+   049b004..5212ba4  5212ba4376a8a565233f51408f4493bdad143166 -> main
+To /Volumes/AIMATE_WORK/tmp/ga/osstack-remote-bqeZ9h
+ + 5212ba4...049b004 049b004430e8f7ee892d2d648b2c62311f8e0afb -> main (forced update)
+ ✓ src/git-candidate.test.ts (6 tests) 1983ms
+   ✓ guarded staged candidate > requires a clean candidate at the exact fetched base commit  427ms
+   ✓ guarded staged candidate > binds post-merge deployment to the exact fetched merge tree  609ms
+   ✓ guarded staged candidate > fails closed when Git cannot inspect a changed dependency manifest  472ms
+ ✓ src/deploy-runner.test.ts (12 tests) 3266ms
+   ✓ project deployment runner > rolls a timed-out production health check back exactly once  1206ms
+   ✓ project deployment runner > does not claim rollback success when rollback or post-health fails  303ms
+   ✓ project deployment runner > times out and cancels children with bounded evidence  1063ms
+ ✓ src/core-persistence.test.ts (2 tests) 86ms
+ ✓ src/engine.test.ts (30 tests) 27ms
+ ✓ src/repo-policy.test.ts (5 tests) 23ms
+ ✓ src/deploy-policy.test.ts (8 tests) 24ms
+ ✓ src/session-continuation-grant.test.ts (26 tests) 23ms
+ ✓ src/approval.test.ts (7 tests) 8ms
+ ✓ src/state-machine.test.ts (7 tests) 8ms
+ ✓ src/risk.test.ts (36 tests) 8ms
+ ✓ src/repo-lock.test.ts (17 tests) 2826ms
+   ✓ renewable repository lease > fails closed on an abandoned mutation guard instead of age-stealing it  2011ms
+ ✓ src/types.test.ts (4 tests) 3ms
+ ✓ src/progress-budget.test.ts (8 tests) 3ms
+ ✓ src/semaphore.test.ts (4 tests) 2ms
+
+ Test Files  14 passed (14)
+      Tests  172 passed (172)
+   Start at  06:12:13
+   Duration  5.45s (transform 318ms, setup 0ms, collect 1.08s, tests 8.29s, environment 1ms, prepare 387ms)

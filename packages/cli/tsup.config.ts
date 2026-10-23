@@ -5,7 +5,7 @@ export default defineConfig({
   // the command surface, then lazily imports bin.ts (emitted as a split
   // chunk) for everything else. The output keeps the dist/bin.js name that
   // package.json#bin points at.
-  entry: { bin: "src/cli-entry.ts" },
+  entry: { bin: "src/cli-entry.ts", "graph-maintenance": "src/graph-maintenance.ts" },
   format: ["esm"],
   target: "node20",
   splitting: true,

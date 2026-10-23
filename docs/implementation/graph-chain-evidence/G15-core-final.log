@@ -1,0 +1,14 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/core
+
+ ✓ src/state/graph-recovery.test.ts (20 tests) 618ms
+ ✓ src/state/graph-runs.test.ts (34 tests) 1323ms
+   ✓ graph run storage > serializes independent SQLite workers: same-request  385ms
+ ✓ src/state/graph-actions.test.ts (31 tests) 1391ms
+   ✓ graph action ledger > serializes independent SQLite workers: same-key  313ms
+
+ Test Files  3 passed (3)
+      Tests  85 passed (85)
+   Start at  07:48:15
+   Duration  2.15s (transform 342ms, setup 0ms, collect 723ms, tests 3.33s, environment 0ms, prepare 426ms)
+

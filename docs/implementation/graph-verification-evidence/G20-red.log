@@ -1,0 +1,64 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+osstack: retaining write lease graph-action:cf2a0d5dad867793c7aa6c3ca8a45c09eb955b4d6f4a192a0046f5bb3fafccf6: Error: external stop unconfirmed
+osstack: retaining write lease graph-action:4db7837473b22d9c4150363c6c9a7655f77712e802518220375fedac5f24ffdf: Error: G20_RELEASE_HELD
+ ❯ src/graph-verification-join.test.ts (11 tests | 4 failed) 48636ms
+   ✓ joins real negative outcomes in review then tests order and publishes one immutable row  4869ms
+   ✓ joins real negative outcomes in tests then review order and publishes one immutable row  4740ms
+   ✓ unknown reviewer remains reconciliation-only on repeated evaluation and cannot allocate retry  2040ms
+   ✓ host retry allocates attempt two and recomputes latest durable evidence instead of replaying failed RETURN  6631ms
+   ✓ rejects a stale fence and revoked authority across asynchronous artifact evidence verification  4836ms
+   × held real admission release prevents publication even when both branches are confirmed 2995ms
+     → G20_RELEASE_HELD
+   ✓ revalidates durable evidence bytes after a successful publication instead of trusting a cached join  4593ms
+   × retains original repair limits {"maxActionStarts":2} after actual branch execution 4480ms
+     → expected [ { …(8) } ] to have a length of +0 but got 1
+   × retains original repair limits {"tokenReservationLimit":2} after actual branch execution 4460ms
+     → expected [ { …(8) } ] to have a length of +0 but got 1
+   × retains original repair limits {"maxEpochs":1} after actual branch execution 4492ms
+     → expected [ { …(8) } ] to have a length of +0 but got 1
+   ✓ retains original branch-attempt limit on malformed output and original elapsed deadline  4499ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 4 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/graph-verification-join.test.ts > held real admission release prevents publication even when both branches are confirmed
+Error: G20_RELEASE_HELD
+ ❯ Object.release src/graph-verification-join.test.ts:52:76
+     50|   const acquire: GovernedExecution['acquire'] = async input => {
+     51|     const lease = await admission.acquire(input);
+     52|     return { ...lease, release: async () => { if (state.holdRelease) t…
+       |                                                                            ^
+     53|   };
+     54|   const artifacts = new GraphArtifactStore(join(root, 'artifacts'));
+ ❯ GraphActionBroker.releaseAdmission src/graph-action-broker.ts:382:19
+ ❯ GraphActionBroker.executeRequest src/graph-action-broker.ts:375:43
+ ❯ src/graph-verification-join.test.ts:156:3
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/4]⎯
+
+ FAIL  src/graph-verification-join.test.ts > retains original repair limits {"maxActionStarts":2} after actual branch execution
+ FAIL  src/graph-verification-join.test.ts > retains original repair limits {"tokenReservationLimit":2} after actual branch execution
+ FAIL  src/graph-verification-join.test.ts > retains original repair limits {"maxEpochs":1} after actual branch execution
+AssertionError: expected [ { …(8) } ] to have a length of +0 but got 1
+
+- Expected
++ Received
+
+- 0
++ 1
+
+ ❯ src/graph-verification-join.test.ts:173:193
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/4]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  4 failed | 7 passed (11)
+   Start at  18:21:34
+   Duration  49.50s (transform 410ms, setup 7ms, collect 711ms, tests 48.64s, environment 0ms, prepare 33ms)
+
+undefined
+/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli:
+[ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL] Command failed with exit code 1: vitest run src/graph-verification-join.test.ts

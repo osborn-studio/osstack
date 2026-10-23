@@ -4,13 +4,13 @@ Attention 将 Firstmate 的关注列表、结束提醒和交接体验接到 OSSt
 
 ## 启用范围
 
-`attention status` 是独立只读入口，不启动 daemon、不运行迁移，支持已核对的数据库 schema 24、25、26。后台功能默认关闭；仅在显式启用 `OSSTACK_ATTENTION=1` 的 daemon 中运行。开发验证必须指定隔离 home：
+`attention status` 是独立只读入口，不启动 daemon、不运行迁移，支持已核对的数据库 schema 24–41（仅只读投影兼容，不保证实验分支数据库可迁移）。后台功能默认关闭；仅在显式启用 `OSSTACK_ATTENTION=1` 的 daemon 中运行。开发验证必须指定隔离 home：
 
 ```sh
 OSSTACK_HOME=/absolute/isolated-home OSSTACK_ATTENTION=1 osstack serve
 ```
 
-使用安装后的发行版本接入真实 home；不要从开发 checkout 指向默认或保留的控制面。迁移 25 新增观察、决策和体验表，迁移 26 新增人工回执处置和冻结的交接有效期。
+使用安装后的发行版本接入真实 home；不要从开发 checkout 指向默认或保留的控制面。迁移 40 新增观察、决策和体验表，迁移 41 新增人工回执处置和冻结的交接有效期。
 
 ## 单次快照
 
@@ -153,3 +153,5 @@ CI 使用已有 GitHub 命令执行器，独立并发上限 2、缓存上限 100
 daemon 在 socket 清理、业务 DB 打开、恢复前取得独立 SQLite 文件的内核排他锁。锁文件固定 inode，崩溃时内核释放；PID 文件仅用于诊断。限已验证的本地文件系统，不能删除锁文件强行抢占。
 
 旧 running/stopping Loop 和 daily 快照恢复为 stopped/recovery_required。启动和 Loop cycle 都不再强制删除未知 orphan worktree。保留成果后由操作者核对并明确开启新工作。未知外部 worker 不会被本功能终止或自动重启。
+
+整合前实验版 Attention 的 schema 25–26 与已发布 main 编号冲突，不能直接复用其 home；保留原目录与旧版本用于对账，在新隔离 home 验证。新版本会拒绝冲突的迁移谱系，不重置版本号或改写旧账本。

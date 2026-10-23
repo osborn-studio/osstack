@@ -1,0 +1,13 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/loop
+      Running tests with seed "250921"
+
+ ✓ src/executor.test.ts (112 tests) 2375ms
+   ✓ command process groups > confirms timeout termination of children and grandchildren  510ms
+
+ Test Files  1 passed (1)
+      Tests  112 passed (112)
+   Start at  16:24:04
+   Duration  2.58s (transform 78ms, setup 0ms, collect 94ms, tests 2.38s, environment 0ms, prepare 34ms)
+
+JSON report written to /Volumes/AIMATE_WORK/tmp/g25-reopen/matrix.json.evidence/0-loop.json

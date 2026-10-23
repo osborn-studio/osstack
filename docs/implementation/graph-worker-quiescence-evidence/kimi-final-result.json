@@ -1,0 +1,173 @@
+[
+  {
+    "event_id": "kimi-final:0",
+    "seq": 0,
+    "run_id": "kimi-final",
+    "session_id": "kimi-final",
+    "created_at": 1789691023.133,
+    "terminal": false,
+    "type": "run.started",
+    "payload": {
+      "status": "running",
+      "controls": {
+        "cancel": true,
+        "approval_pending": false,
+        "clarify_pending": false,
+        "queue": false,
+        "goal": false
+      }
+    }
+  },
+  {
+    "event_id": "kimi-final:1",
+    "seq": 1,
+    "run_id": "kimi-final",
+    "session_id": "kimi-final",
+    "created_at": 1789691023.137,
+    "terminal": false,
+    "type": "progress",
+    "payload": {
+      "phase": "kimi.review.start",
+      "detail": "Starting bounded no-tool Kimi review"
+    }
+  },
+  {
+    "event_id": "kimi-final:2",
+    "seq": 2,
+    "run_id": "kimi-final",
+    "session_id": "kimi-final",
+    "created_at": 1789691480.8,
+    "terminal": false,
+    "type": "token.delta",
+    "payload": {
+      "message_id": "kimi-final:kimi-review",
+      "delta": "# Review\n\n**Scope.** Bounded audit of the G25 durable parent-observed worker-exit proof, executor inventory, G15 final recheck, and GraphDelivery takeover/cancel integration. Only the supplied diff and deterministic evidence were used.\n\n## Criterion: exit (pass)\n`verifyJournaledGraphWorkerExit` binds the proof end-to-end: run identity vs binding, lease owner and acquisition time, launch-intent row owner/identity, launch event pid/pgid/processIdentity/capturedAt consistency, exit event graphRunId/generation/owner/pid, exactly-one-of code/signal, strict event-shape parsing (rejecting injected fields like `journalError`), and a complete ordered time chain (`acquired_at ≤ launched_at ≤ capturedAt ≤ observed_at ≤ confirmedAt ≤ observed_at ≤ now`). Structural rules enforce exactly `[launched, exited]` or `[launched, exit_unconfirmed, exited]`; timeout alone, no-child, missing journal, and result-success-without-exit all reject, and the tests cover each. No PID liveness queries or signals are used, so PID reuse cannot retarget the proof (asserted by the `process.kill` spy). The optional `exit_unconfirmed` middle event is bound by pid and time window.\n\n## Criterion: inventory (pass)\n`inspectExecutors` unions `graph_actions` and `graph_action_admissions` per run, covering historical generations, missing holds, unreleased holds on settled actions, and unresolved released actions; mismatched admission generation/owner/lease fails closed (`RECOVERY_ADMISSION_BINDING`). It is honestly documented as inspection, not physical quiescence proof.\n\n## Criterion: transaction (pass)\n`assertExecutorInventory` requires `db.inTransaction`, re-reads the full inventory synchronously inside the caller's BEGIN IMMEDIATE, and compares the digest — explicitly catching admission releases that do not bump run revision (tested, revision asserted unchanged). Delivery calls it inside the final `.immediate()` transaction before projection/publication, alongside a fresh `verifyJournaledGraphWorkerExit` comparison.\n\n## Criterion: integration (pass)\nTakeover and cancel retain `actionsSettled`, in-memory `observedExit` matching, authorize/authorizeCancel synchronous checks, and existing quiescence gates; durable journal failure now blocks takeover/cancellation even after real OS exit (both new fault tests passed per deterministic evidence). The error-path classifier conservatively routes to `reconciliation_required` when inventory is unreadable, exit is unjournaled, or settlement is incomplete.\n\n## Criterion: tests (pass, with non-blocking observations)\nReal child exit with SQLite reopen, in-transaction G15 re-verification, extensive malformed/contradictory/wrong-binding cases, inventory mutation detection, and repair-path journal-failure integration are all meaningfully exercised. Two omissions noted as findings below; neither weakens the verified behavior.\n\n## Findings\n1. **(warning)** No new test exercises the `GraphDelivery.cancel()` reconciliation path under durable exit-journal failure (cancel-time `verify()` throwing inside the registered reconciler, run held in `cancel_pending`). The same primitive is covered via the run-loop path, so this is a coverage gap, not a defect.\n2. **(info)** The fresh-process proof check is env-gated (`G25_EXIT_CHILD`); where unset, only in-process reopen verification runs. The task marks this test optional, so this is acceptable.\n\nNo races, false-proof paths, identity/time mismatches, or behavior weakenings were found in the supplied evidence.",
+      "content_type": "text"
+    }
+  },
+  {
+    "event_id": "kimi-final:3",
+    "seq": 3,
+    "run_id": "kimi-final",
+    "session_id": "kimi-final",
+    "created_at": 1789691480.803,
+    "terminal": true,
+    "type": "done",
+    "payload": {
+      "status": "completed",
+      "last_seq": 2,
+      "result_summary": "approved: 2 finding(s)",
+      "review": {
+        "schema_version": 1,
+        "verdict": "approved",
+        "risk": "read_only",
+        "markdown": "# Review\n\nG25 durable parent-observed worker-exit proof, executor inventory, and G15 recheck audited against the bounded diff. Exit proof binds lease/launch/exit records to run, generation, owner, pid, and a complete ordered time chain; structural rules reject timeout-only, no-child, missing-journal, and result-success cases, with no OS queries so PID reuse cannot retarget the proof. Inventory covers historical generations, missing holds, settled-held and unresolved-released actions, and fails closed on cross-run/owner mismatch. assertExecutorInventory re-reads synchronously inside the caller's BEGIN IMMEDIATE and detects admission releases that do not bump revision. Delivery takeover/cancel retain all existing physical-settlement and authorization gates; journal failure blocks takeover and terminal cancellation even after real OS exit (both new fault tests passed per supplied evidence). Two non-blocking test-coverage observations recorded.",
+        "judgments": [
+          {
+            "id": "exit",
+            "pass": true,
+            "severity": "error",
+            "summary": "Proof binds durable launched/exited records to scope/program/run/generation/owner/pid with an ordered, complete timestamp chain; missing journals, no-child, timeout alone, and result success are all rejected; no PID liveness or signal use prevents PID-reuse retargeting."
+          },
+          {
+            "id": "inventory",
+            "pass": true,
+            "severity": "error",
+            "summary": "Inventory unions actions and admissions across all generations, flags missing holds, unreleased settled holds, and unresolved released actions, and rejects cross-run/owner mismatches; documented as inspection rather than physical proof."
+          },
+          {
+            "id": "transaction",
+            "pass": true,
+            "severity": "error",
+            "summary": "assertExecutorInventory requires an active transaction and recomputes the full inventory synchronously inside the final G15 BEGIN IMMEDIATE, detecting admission releases that do not advance run revision (explicitly tested)."
+          },
+          {
+            "id": "integration",
+            "pass": true,
+            "severity": "error",
+            "summary": "Takeover/cancel retain in-memory observedExit, actionsSettled, and synchronous authorization gates; durable journal failure blocks takeover and terminal cancellation after real OS exit, with conservative reconciliation_required classification; deterministic fault tests passed."
+          },
+          {
+            "id": "tests",
+            "pass": true,
+            "severity": "warning",
+            "summary": "Real process exit, SQLite reopen, in-transaction G15 verification, malformed/contradictory records, inventory mutation, and repair-path journal failure are meaningfully tested; cancel-path journal-failure coverage is absent from the supplied diff and the fresh-process proof test is env-gated (per task, optional)."
+          }
+        ],
+        "findings": [
+          {
+            "rule_id": "tests.cancel_journal_gap",
+            "severity": "warning",
+            "message": "The supplied test diff adds journal-failure coverage for the run-loop and takeover-entry paths, but no test exercises GraphDelivery.cancel() reconciliation when the durable exit journal is missing (cancel-time verify() throwing inside the registered reconciler, leaving the run in cancel_pending). The shared verification primitive is covered elsewhere, so this is a coverage omission rather than a correctness defect.",
+            "file": "packages/cli/src/graph-delivery.integration.test.ts",
+            "evidence": "New fault tests cover 'direct' and 'repair' run modes only; no cancel() invocation under GraphProcessJournal.observed failure appears in the bounded diff.",
+            "fingerprint": "28034fc8a77913a78614ddcd2af99e05cf64eb4349d20e74f5b1aa7dfcad91ef"
+          },
+          {
+            "rule_id": "tests.fresh_process_optional",
+            "severity": "info",
+            "message": "The fresh-process SQLite proof verification is gated on the G25_EXIT_CHILD environment variable; where unset, only the in-process reopen verification runs. The task designates this test as optional, so this is noted for transparency, not as a defect.",
+            "file": "packages/cli/src/graph-worker-exit-proof.test.ts",
+            "evidence": "if (process.env['G25_EXIT_CHILD']) { ... execFileSync(process.execPath, [process.env['G25_EXIT_CHILD'], input] ...) }",
+            "fingerprint": "cd20a933402476e5739e1c8bcf49c6d1aadc6c9570233ae9d5052eb67bf3c14f"
+          }
+        ],
+        "recommended_actions": [
+          "Consider adding a cancel()-path integration test that injects durable exit-journal failure and asserts the run remains cancel_pending with no recovery decision recorded.",
+          "Ensure CI environments that claim fresh-process proof coverage set G25_EXIT_CHILD, or record it as skipped in evidence reports."
+        ],
+        "evidence_refs": [
+          "packages/cli/src/graph-worker-exit-proof.ts",
+          "packages/cli/src/graph-worker-exit-proof.test.ts",
+          "packages/cli/src/graph-delivery.ts",
+          "packages/cli/src/graph-delivery.integration.test.ts",
+          "packages/core/src/state/graph-recovery.ts",
+          "packages/core/src/state/graph-recovery.test.ts",
+          "scripts/verify-graph-runtime.mjs"
+        ],
+        "runtime_identity": {
+          "adapter_id": "kimi-code",
+          "adapter_version": "0.29.1",
+          "auth_mode": "subprocess/login-reuse",
+          "provider_id": "kimi",
+          "model_id": "kimi-code/k3",
+          "agent_profile": "osstack-reviewer",
+          "evidence_source": "reported",
+          "binary_path_sha256": "7e5d172f83fc7d8ca22387234b5a9a4d9412aa1a27c71ee90be35db29dfa7dd2"
+        }
+      },
+      "evaluation_judgments": [
+        {
+          "id": "exit",
+          "pass": true,
+          "severity": "error",
+          "summary": "Proof binds durable launched/exited records to scope/program/run/generation/owner/pid with an ordered, complete timestamp chain; missing journals, no-child, timeout alone, and result success are all rejected; no PID liveness or signal use prevents PID-reuse retargeting."
+        },
+        {
+          "id": "inventory",
+          "pass": true,
+          "severity": "error",
+          "summary": "Inventory unions actions and admissions across all generations, flags missing holds, unreleased settled holds, and unresolved released actions, and rejects cross-run/owner mismatches; documented as inspection rather than physical proof."
+        },
+        {
+          "id": "transaction",
+          "pass": true,
+          "severity": "error",
+          "summary": "assertExecutorInventory requires an active transaction and recomputes the full inventory synchronously inside the final G15 BEGIN IMMEDIATE, detecting admission releases that do not advance run revision (explicitly tested)."
+        },
+        {
+          "id": "integration",
+          "pass": true,
+          "severity": "error",
+          "summary": "Takeover/cancel retain in-memory observedExit, actionsSettled, and synchronous authorization gates; durable journal failure blocks takeover and terminal cancellation after real OS exit, with conservative reconciliation_required classification; deterministic fault tests passed."
+        },
+        {
+          "id": "tests",
+          "pass": true,
+          "severity": "warning",
+          "summary": "Real process exit, SQLite reopen, in-transaction G15 verification, malformed/contradictory records, inventory mutation, and repair-path journal failure are meaningfully tested; cancel-path journal-failure coverage is absent from the supplied diff and the fresh-process proof test is env-gated (per task, optional)."
+        }
+      ]
+    }
+  }
+]

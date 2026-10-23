@@ -1,0 +1,107 @@
+{
+  "taskReturns": [
+    {
+      "checkpoint": {
+        "configurable": {
+          "checkpoint_id": "1f1aff32-c6e8-63f0-ffff-0a2e23f2f410",
+          "checkpoint_ns": "",
+          "thread_id": "c2"
+        }
+      },
+      "taskId": "47d77eb2-d30a-581e-b189-6dd8ac6a9d5f",
+      "value": {
+        "results": [
+          "completed"
+        ]
+      }
+    }
+  ],
+  "counts": {
+    "completedBody": 1,
+    "completedWrapper": 1,
+    "flakyAttempts": 1,
+    "recoveredBody": 1
+  },
+  "effects": {
+    "completed": {
+      "attempt": 1,
+      "effect": "completed",
+      "result": {
+        "results": [
+          "completed"
+        ]
+      },
+      "run": "functional-async-cancel-uncooperative",
+      "status": "confirmed"
+    },
+    "recovered": {
+      "attempt": 1,
+      "effect": "recovered",
+      "result": {
+        "results": [
+          "recovered"
+        ]
+      },
+      "run": "functional-async-cancel-uncooperative",
+      "status": "confirmed"
+    }
+  },
+  "tuple": {
+    "checkpoint": {
+      "channel_values": {
+        "__pregel_tasks": [],
+        "__start__": {
+          "results": []
+        }
+      },
+      "channel_versions": {
+        "__start__": 1
+      },
+      "id": "1f1aff32-c6e8-63f0-ffff-0a2e23f2f410",
+      "ts": "2026-09-14T04:17:18.256Z",
+      "v": 4,
+      "versions_seen": {
+        "__input__": {}
+      }
+    },
+    "config": {
+      "configurable": {
+        "checkpoint_id": "1f1aff32-c6e8-63f0-ffff-0a2e23f2f410",
+        "checkpoint_ns": "",
+        "thread_id": "c2"
+      }
+    },
+    "metadata": {
+      "parents": {},
+      "source": "input",
+      "step": -1
+    },
+    "pendingWrites": [
+      [
+        "47d77eb2-d30a-581e-b189-6dd8ac6a9d5f",
+        "__return__",
+        {
+          "results": [
+            "completed"
+          ]
+        }
+      ],
+      [
+        "62fbbe6d-a1b9-50b3-a17b-c9164b2a436e",
+        "__error__",
+        {
+          "message": "injected external cancel",
+          "name": "Error"
+        }
+      ],
+      [
+        "4017730c-14e4-5860-a148-71639a2a38a9",
+        "__error__",
+        {
+          "message": "injected external cancel",
+          "name": "Error"
+        }
+      ]
+    ]
+  }
+}

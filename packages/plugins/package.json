@@ -1,6 +1,6 @@
 {
   "name": "@osstack/plugins",
-  "version": "0.17.0",
+  "version": "0.21.0",
   "description": "7 plugin slots (runtime / agent / workspace / tracker / notifier / reviewer / verifier). Each defines a TS interface + PluginModule.",
   "license": "MIT",
   "type": "module",
@@ -24,7 +24,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/gilosbornhello/osstack.git",
+    "url": "https://github.com/osborn-studio/osstack.git",
     "directory": "packages/plugins"
   },
   "engines": {

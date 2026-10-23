@@ -1,0 +1,416 @@
+[
+  {
+    "label": "node20",
+    "entry": "root",
+    "samples": [
+      {
+        "node": "v20.20.2",
+        "importMs": 6.497167000000005,
+        "descriptor": {
+          "engine": "langgraph",
+          "version": "1.4.15",
+          "coreVersion": "1.2.11",
+          "checkpointVersion": "1.1.5",
+          "workerEntry": "@osstack/graph/worker"
+        },
+        "wallMs": 143.692208
+      },
+      {
+        "node": "v20.20.2",
+        "importMs": 2.7116249999999997,
+        "descriptor": {
+          "engine": "langgraph",
+          "version": "1.4.15",
+          "coreVersion": "1.2.11",
+          "checkpointVersion": "1.1.5",
+          "workerEntry": "@osstack/graph/worker"
+        },
+        "wallMs": 25.69475
+      },
+      {
+        "node": "v20.20.2",
+        "importMs": 2.6291670000000007,
+        "descriptor": {
+          "engine": "langgraph",
+          "version": "1.4.15",
+          "coreVersion": "1.2.11",
+          "checkpointVersion": "1.1.5",
+          "workerEntry": "@osstack/graph/worker"
+        },
+        "wallMs": 25.085082999999997
+      },
+      {
+        "node": "v20.20.2",
+        "importMs": 2.598167,
+        "descriptor": {
+          "engine": "langgraph",
+          "version": "1.4.15",
+          "coreVersion": "1.2.11",
+          "checkpointVersion": "1.1.5",
+          "workerEntry": "@osstack/graph/worker"
+        },
+        "wallMs": 27.024292000000003
+      },
+      {
+        "node": "v20.20.2",
+        "importMs": 2.745375000000001,
+        "descriptor": {
+          "engine": "langgraph",
+          "version": "1.4.15",
+          "coreVersion": "1.2.11",
+          "checkpointVersion": "1.1.5",
+          "workerEntry": "@osstack/graph/worker"
+        },
+        "wallMs": 25.28720800000002
+      }
+    ],
+    "loadedESMOrCJSViaHook": 1,
+    "cjsCache": 0,
+    "importMedianMs": 2.7116249999999997
+  },
+  {
+    "label": "node20",
+    "entry": "worker",
+    "samples": [
+      {
+        "node": "v20.20.2",
+        "importMs": 127.635375,
+        "descriptor": {
+          "engine": "langgraph",
+          "version": "1.4.15",
+          "coreVersion": "1.2.11",
+          "checkpointVersion": "1.1.5",
+          "workerEntry": "@osstack/graph/worker"
+        },
+        "wallMs": 170.019542
+      },
+      {
+        "node": "v20.20.2",
+        "importMs": 111.713416,
+        "descriptor": {
+          "engine": "langgraph",
+          "version": "1.4.15",
+          "coreVersion": "1.2.11",
+          "checkpointVersion": "1.1.5",
+          "workerEntry": "@osstack/graph/worker"
+        },
+        "wallMs": 149.198666
+      },
+      {
+        "node": "v20.20.2",
+        "importMs": 111.044416,
+        "descriptor": {
+          "engine": "langgraph",
+          "version": "1.4.15",
+          "coreVersion": "1.2.11",
+          "checkpointVersion": "1.1.5",
+          "workerEntry": "@osstack/graph/worker"
+        },
+        "wallMs": 146.4844999999999
+      },
+      {
+        "node": "v20.20.2",
+        "importMs": 111.81241700000001,
+        "descriptor": {
+          "engine": "langgraph",
+          "version": "1.4.15",
+          "coreVersion": "1.2.11",
+          "checkpointVersion": "1.1.5",
+          "workerEntry": "@osstack/graph/worker"
+        },
+        "wallMs": 147.13741600000003
+      },
+      {
+        "node": "v20.20.2",
+        "importMs": 115.109709,
+        "descriptor": {
+          "engine": "langgraph",
+          "version": "1.4.15",
+          "coreVersion": "1.2.11",
+          "checkpointVersion": "1.1.5",
+          "workerEntry": "@osstack/graph/worker"
+        },
+        "wallMs": 153.22895800000015
+      }
+    ],
+    "loadedESMOrCJSViaHook": 516,
+    "cjsCache": 7,
+    "importMedianMs": 111.81241700000001
+  },
+  {
+    "label": "node22",
+    "entry": "root",
+    "samples": [
+      {
+        "node": "v22.22.1",
+        "importMs": 2.6767499999999984,
+        "descriptor": {
+          "engine": "langgraph",
+          "version": "1.4.15",
+          "coreVersion": "1.2.11",
+          "checkpointVersion": "1.1.5",
+          "workerEntry": "@osstack/graph/worker"
+        },
+        "wallMs": 47.99883399999999
+      },
+      {
+        "node": "v22.22.1",
+        "importMs": 2.358457999999999,
+        "descriptor": {
+          "engine": "langgraph",
+          "version": "1.4.15",
+          "coreVersion": "1.2.11",
+          "checkpointVersion": "1.1.5",
+          "workerEntry": "@osstack/graph/worker"
+        },
+        "wallMs": 48.07545800000025
+      },
+      {
+        "node": "v22.22.1",
+        "importMs": 2.3950840000000007,
+        "descriptor": {
+          "engine": "langgraph",
+          "version": "1.4.15",
+          "coreVersion": "1.2.11",
+          "checkpointVersion": "1.1.5",
+          "workerEntry": "@osstack/graph/worker"
+        },
+        "wallMs": 47.21704099999988
+      },
+      {
+        "node": "v22.22.1",
+        "importMs": 2.3164589999999983,
+        "descriptor": {
+          "engine": "langgraph",
+          "version": "1.4.15",
+          "coreVersion": "1.2.11",
+          "checkpointVersion": "1.1.5",
+          "workerEntry": "@osstack/graph/worker"
+        },
+        "wallMs": 49.40174999999999
+      },
+      {
+        "node": "v22.22.1",
+        "importMs": 2.263375,
+        "descriptor": {
+          "engine": "langgraph",
+          "version": "1.4.15",
+          "coreVersion": "1.2.11",
+          "checkpointVersion": "1.1.5",
+          "workerEntry": "@osstack/graph/worker"
+        },
+        "wallMs": 47.65437499999962
+      }
+    ],
+    "loadedESMOrCJSViaHook": 1,
+    "cjsCache": 0,
+    "importMedianMs": 2.358457999999999
+  },
+  {
+    "label": "node22",
+    "entry": "worker",
+    "samples": [
+      {
+        "node": "v22.22.1",
+        "importMs": 158.867584,
+        "descriptor": {
+          "engine": "langgraph",
+          "version": "1.4.15",
+          "coreVersion": "1.2.11",
+          "checkpointVersion": "1.1.5",
+          "workerEntry": "@osstack/graph/worker"
+        },
+        "wallMs": 216.46804199999997
+      },
+      {
+        "node": "v22.22.1",
+        "importMs": 155.18966600000002,
+        "descriptor": {
+          "engine": "langgraph",
+          "version": "1.4.15",
+          "coreVersion": "1.2.11",
+          "checkpointVersion": "1.1.5",
+          "workerEntry": "@osstack/graph/worker"
+        },
+        "wallMs": 212.88675000000012
+      },
+      {
+        "node": "v22.22.1",
+        "importMs": 156.371292,
+        "descriptor": {
+          "engine": "langgraph",
+          "version": "1.4.15",
+          "coreVersion": "1.2.11",
+          "checkpointVersion": "1.1.5",
+          "workerEntry": "@osstack/graph/worker"
+        },
+        "wallMs": 212.81116699999984
+      },
+      {
+        "node": "v22.22.1",
+        "importMs": 158.1745,
+        "descriptor": {
+          "engine": "langgraph",
+          "version": "1.4.15",
+          "coreVersion": "1.2.11",
+          "checkpointVersion": "1.1.5",
+          "workerEntry": "@osstack/graph/worker"
+        },
+        "wallMs": 216.829792
+      },
+      {
+        "node": "v22.22.1",
+        "importMs": 155.072958,
+        "descriptor": {
+          "engine": "langgraph",
+          "version": "1.4.15",
+          "coreVersion": "1.2.11",
+          "checkpointVersion": "1.1.5",
+          "workerEntry": "@osstack/graph/worker"
+        },
+        "wallMs": 211.77929200000017
+      }
+    ],
+    "loadedESMOrCJSViaHook": 516,
+    "cjsCache": 7,
+    "importMedianMs": 156.371292
+  },
+  {
+    "label": "node26",
+    "entry": "root",
+    "samples": [
+      {
+        "node": "v26.5.0",
+        "importMs": 1.0913339999999998,
+        "descriptor": {
+          "engine": "langgraph",
+          "version": "1.4.15",
+          "coreVersion": "1.2.11",
+          "checkpointVersion": "1.1.5",
+          "workerEntry": "@osstack/graph/worker"
+        },
+        "wallMs": 31.94666700000016
+      },
+      {
+        "node": "v26.5.0",
+        "importMs": 1.017999999999999,
+        "descriptor": {
+          "engine": "langgraph",
+          "version": "1.4.15",
+          "coreVersion": "1.2.11",
+          "checkpointVersion": "1.1.5",
+          "workerEntry": "@osstack/graph/worker"
+        },
+        "wallMs": 32.50920799999949
+      },
+      {
+        "node": "v26.5.0",
+        "importMs": 1.2091250000000002,
+        "descriptor": {
+          "engine": "langgraph",
+          "version": "1.4.15",
+          "coreVersion": "1.2.11",
+          "checkpointVersion": "1.1.5",
+          "workerEntry": "@osstack/graph/worker"
+        },
+        "wallMs": 31.724583999999595
+      },
+      {
+        "node": "v26.5.0",
+        "importMs": 0.9104159999999997,
+        "descriptor": {
+          "engine": "langgraph",
+          "version": "1.4.15",
+          "coreVersion": "1.2.11",
+          "checkpointVersion": "1.1.5",
+          "workerEntry": "@osstack/graph/worker"
+        },
+        "wallMs": 31.402374999999665
+      },
+      {
+        "node": "v26.5.0",
+        "importMs": 0.8543339999999997,
+        "descriptor": {
+          "engine": "langgraph",
+          "version": "1.4.15",
+          "coreVersion": "1.2.11",
+          "checkpointVersion": "1.1.5",
+          "workerEntry": "@osstack/graph/worker"
+        },
+        "wallMs": 29.63550000000032
+      }
+    ],
+    "loadedESMOrCJSViaHook": 1,
+    "cjsCache": 0,
+    "importMedianMs": 1.017999999999999
+  },
+  {
+    "label": "node26",
+    "entry": "worker",
+    "samples": [
+      {
+        "node": "v26.5.0",
+        "importMs": 153.88454199999998,
+        "descriptor": {
+          "engine": "langgraph",
+          "version": "1.4.15",
+          "coreVersion": "1.2.11",
+          "checkpointVersion": "1.1.5",
+          "workerEntry": "@osstack/graph/worker"
+        },
+        "wallMs": 200.0002910000003
+      },
+      {
+        "node": "v26.5.0",
+        "importMs": 159.969291,
+        "descriptor": {
+          "engine": "langgraph",
+          "version": "1.4.15",
+          "coreVersion": "1.2.11",
+          "checkpointVersion": "1.1.5",
+          "workerEntry": "@osstack/graph/worker"
+        },
+        "wallMs": 207.87583300000006
+      },
+      {
+        "node": "v26.5.0",
+        "importMs": 153.54308300000002,
+        "descriptor": {
+          "engine": "langgraph",
+          "version": "1.4.15",
+          "coreVersion": "1.2.11",
+          "checkpointVersion": "1.1.5",
+          "workerEntry": "@osstack/graph/worker"
+        },
+        "wallMs": 201.8547499999995
+      },
+      {
+        "node": "v26.5.0",
+        "importMs": 150.767583,
+        "descriptor": {
+          "engine": "langgraph",
+          "version": "1.4.15",
+          "coreVersion": "1.2.11",
+          "checkpointVersion": "1.1.5",
+          "workerEntry": "@osstack/graph/worker"
+        },
+        "wallMs": 195.73750000000018
+      },
+      {
+        "node": "v26.5.0",
+        "importMs": 148.907209,
+        "descriptor": {
+          "engine": "langgraph",
+          "version": "1.4.15",
+          "coreVersion": "1.2.11",
+          "checkpointVersion": "1.1.5",
+          "workerEntry": "@osstack/graph/worker"
+        },
+        "wallMs": 193.13224999999966
+      }
+    ],
+    "loadedESMOrCJSViaHook": 516,
+    "cjsCache": 7,
+    "importMedianMs": 153.54308300000002
+  }
+]

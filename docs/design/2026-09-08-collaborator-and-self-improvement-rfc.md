@@ -228,6 +228,8 @@ E1 是 S6/S7 的一个具体可验收案例，不是再建一套晋升平台。�
 
 设计阶段交付源码审计、公开资料研究、最初两轮指定模型的设计挑战及这份 RFC；用户补充两篇正文后，又完成两次论文专题挑战和需求增补。设计阶段未修改运行时代码。用户随后输入 `go`，开始本地分支上的 S0/S1/S5 基础实现，详见[实现记录](../reports/2026-09-08-collaborator-foundation-implementation.md)。继续 `go` 后完成 S2/S3 的[受限会话签名接续](../reports/2026-09-08-signed-session-collaborator.md)，支持提供材料的规划/评审阶段自动推进；现有 LoopEngine 代码流程、合并发布与 RSI 晋升仍待接入，服务端尚未安装此版本。
 
+后续开发已把基础实现提交为 [PR #217](https://github.com/osborn-studio/osstack/pull/217)，并完成 S6 的第一条[本地候选执行链](../reports/2026-09-08-improvement-candidate-execution.md)：提案摘要批准、执行请求预览、候选 worktree、Codex 构建、Kimi 对同一补丁的结构化评审和持久证据。该链仍要求操作者显式确认，尚未接入后台阶段授权；候选通过不等于效果提升，S7/S8、自动合并发布及线上安装仍待实现。
+
 验证与两轮讨论的实际结果见 [评审与验证记录](../reports/2026-09-08-collaborator-fable-review.md)。Fable 只收到用户需求和通用设计，没有获得仓库代码；其观点须由本地代码和实验复核。
 
 后续专题挑战见[Loop/Harness 补充评审](../reports/2026-09-08-loop-harness-fable-review.md)。采纳失败分类、独立对照和简化归因字段；不采纳用活动变化证明进步、普遍固定两轮、或用目标工具调用减少直接认定失败。实际采用的机制须由 E1 等实验验证。

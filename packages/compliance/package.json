@@ -1,6 +1,6 @@
 {
   "name": "@osstack/compliance",
-  "version": "0.15.0",
+  "version": "0.20.0",
   "description": "Osstack compliance mapping packs and evidence report rendering.",
   "license": "MIT",
   "type": "module",
@@ -23,7 +23,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/gilosbornhello/osstack.git",
+    "url": "https://github.com/osborn-studio/osstack.git",
     "directory": "packages/compliance"
   },
   "engines": {

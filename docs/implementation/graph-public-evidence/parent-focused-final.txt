@@ -1,0 +1,12 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+ ✓ src/graph-host-config.test.ts (3 tests) 6ms
+ ✓ src/graph-command.test.ts (12 tests) 218ms
+ ✓ src/graph-execution-command.test.ts (6 tests) 26ms
+
+ Test Files  3 passed (3)
+      Tests  21 passed (21)
+   Start at  18:31:02
+   Duration  1.62s (transform 426ms, setup 9ms, collect 1.08s, tests 249ms, environment 0ms, prepare 70ms)
+

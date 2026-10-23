@@ -1,0 +1,147 @@
+{
+  "@langchain/langgraph": {
+    "version": "1.4.15",
+    "engines": {
+      "node": ">=18"
+    },
+    "dependencies": {
+      "@langchain/protocol": "^0.0.19",
+      "@standard-schema/spec": "1.1.0",
+      "@langchain/langgraph-sdk": "~1.11.0",
+      "@langchain/langgraph-checkpoint": "^1.1.5"
+    },
+    "peerDependencies": {
+      "zod": "^3.25.32 || ^4.2.0",
+      "@langchain/core": "^1.1.48"
+    },
+    "dist": {
+      "shasum": "ead084c83ec7e0135f989346c0a4ede906d2486f",
+      "tarball": "https://registry.npmjs.org/@langchain/langgraph/-/langgraph-1.4.15.tgz",
+      "fileCount": 620,
+      "integrity": "sha512-QG8led1xbFfgikAIF9E5G1Kp1KLtq/xv7YASWy+wnPftQw0Hxu0kpPXl0Q1U2Dfpwb8w/Vfz0QarUR8eI/xtRw==",
+      "signatures": [
+        {
+          "sig": "MEUCIQDYTCMx18ffS8U1fKWZE7pqQwp26xevcCrcgYVsjYjzsQIgUZZm/FjHXPBx2o8U0Gig5lMg1AcQ+eI9puhz03SAWuE=",
+          "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U"
+        },
+        {
+          "sig": "MEYCIQDUU2TUbmdTXSopZpnSZtKioY8B/UnPypOcT850Zgeg4QIhAPAqNWdIllvBCcaFbBvlgjkbfWevRBco2VMo4neXAYx3",
+          "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U"
+        }
+      ],
+      "attestations": {
+        "url": "https://registry.npmjs.org/-/npm/v1/attestations/@langchain%2flanggraph@1.4.15",
+        "provenance": {
+          "predicateType": "https://slsa.dev/provenance/v1"
+        }
+      },
+      "unpackedSize": 4353765
+    },
+    "license": "MIT"
+  },
+  "@langchain/core": {
+    "version": "1.2.11",
+    "engines": {
+      "node": ">=20"
+    },
+    "dependencies": {
+      "zod": "^3.25.76 || ^4",
+      "p-queue": "^6.6.2",
+      "mustache": "^4.2.0",
+      "langsmith": ">=0.5.0 <1.0.0",
+      "js-tiktoken": "^1.0.12",
+      "@cfworker/json-schema": "^4.0.2",
+      "@standard-schema/spec": "^1.1.0"
+    },
+    "peerDependencies": null,
+    "dist": {
+      "shasum": "caa9497b948bd25152c6cc740ebb3884082a05a5",
+      "tarball": "https://registry.npmjs.org/@langchain/core/-/core-1.2.11.tgz",
+      "fileCount": 2046,
+      "integrity": "sha512-8yuWLLloTSYA453akm2JSadOVa8kGDY8v+kTzQ6kTY6aIETTEIxgysjZWyKrWQLo3UazctsSoGJ8JrdCGFL4/w==",
+      "signatures": [
+        {
+          "sig": "MEYCIQCOFqghNTZICDIBEfz/ywfiMAz4NxC8DsOUG71k/Ft9JwIhAM8wvnnZ2tmxmevf5KwWGnSkZBz53QR4E6f+XJbqfOTR",
+          "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U"
+        },
+        {
+          "sig": "MEYCIQDti4VZV5VPnurK0apqDFLYCdcbV2ZhybtZrnCJTxYs4AIhANNMceTsSpgliK4yhUSr+IWiq1rB9WErMQhmSsYONJC5",
+          "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U"
+        }
+      ],
+      "attestations": {
+        "url": "https://registry.npmjs.org/-/npm/v1/attestations/@langchain%2fcore@1.2.11",
+        "provenance": {
+          "predicateType": "https://slsa.dev/provenance/v1"
+        }
+      },
+      "unpackedSize": 7629959
+    },
+    "license": "MIT"
+  },
+  "@langchain/langgraph-checkpoint": {
+    "version": "1.1.5",
+    "engines": {
+      "node": ">=18"
+    },
+    "dependencies": null,
+    "peerDependencies": {
+      "@langchain/core": "^1.1.48"
+    },
+    "dist": {
+      "shasum": "c793177f9afcce31a1e9922f317f88fec1254282",
+      "tarball": "https://registry.npmjs.org/@langchain/langgraph-checkpoint/-/langgraph-checkpoint-1.1.5.tgz",
+      "fileCount": 101,
+      "integrity": "sha512-BwDwl5VeTOh6CVuiIPgsUgfK51vTJDMSbFcSCUfjJWsl8/DPdK/mbv+ejxJstkSk/BlSPMP4JfXWcN6jD2ea2Q==",
+      "signatures": [
+        {
+          "sig": "MEUCIQCwX6zSQeVFhiE0daGp+DEIHXIY44ycW53xRRY04zrfOAIgEqw3dbBuAUEXHGqM3mzurDa5UkRxFcPiWddcIralryg=",
+          "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U"
+        },
+        {
+          "sig": "MEUCIQDC5k1TFW/7crJLGoHEGASf8uiWI1s22dcyHaYJJujBtgIgHPy/2wXuQdQ1amxbrmGGS4CpKGU/ko4gsr/O8Gll8Vo=",
+          "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U"
+        }
+      ],
+      "attestations": {
+        "url": "https://registry.npmjs.org/-/npm/v1/attestations/@langchain%2flanggraph-checkpoint@1.1.5",
+        "provenance": {
+          "predicateType": "https://slsa.dev/provenance/v1"
+        }
+      },
+      "unpackedSize": 478850
+    },
+    "license": "MIT"
+  },
+  "better-sqlite3": {
+    "version": "12.10.0",
+    "engines": {
+      "node": "20.x || 22.x || 23.x || 24.x || 25.x || 26.x"
+    },
+    "dependencies": {
+      "bindings": "^1.5.0",
+      "prebuild-install": "^7.1.1"
+    },
+    "peerDependencies": null,
+    "dist": {
+      "shasum": "bde622d14a18008583a53bc53501ae98f1a12221",
+      "tarball": "https://registry.npmjs.org/better-sqlite3/-/better-sqlite3-12.10.0.tgz",
+      "fileCount": 49,
+      "integrity": "sha512-CyzaZRQKyHkB2ZInfTTl2nvT33EbDpjkLEbE8/Zck3Ll6O0qqvuGdrJ45HgtH+HykRg88ITY3AdreBGN70aBSQ==",
+      "signatures": [
+        {
+          "sig": "MEYCIQCkmsU8WKLSQ/sESTGuhNCeebiTw+mnvrsnLrYj4Rr+WgIhAOOgX14oWxfvCrn5PBOk5TFJt6ksVYvb4+CfinEEa75G",
+          "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U"
+        }
+      ],
+      "attestations": {
+        "url": "https://registry.npmjs.org/-/npm/v1/attestations/better-sqlite3@12.10.0",
+        "provenance": {
+          "predicateType": "https://slsa.dev/provenance/v1"
+        }
+      },
+      "unpackedSize": 10370472
+    },
+    "license": "MIT"
+  }
+}

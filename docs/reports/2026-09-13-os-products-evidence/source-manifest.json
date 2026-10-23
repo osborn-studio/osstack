@@ -1,0 +1,31 @@
+{
+  "date": "2026-09-13",
+  "repos": [
+    {
+      "name": "osstack",
+      "path": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack",
+      "sha": "b476bcc3fbbfcc11953abd3d154e59f7f85c4660",
+      "status": [
+        " M AGENTS.md",
+        "?? docs/design/2026-09-13-executable-graph-plan.md",
+        "?? docs/reports/2026-09-13-executable-graph-claude-review.md",
+        "?? docs/reports/2026-09-13-executable-graph-context.md",
+        "?? docs/reports/2026-09-13-executable-graph-evidence/",
+        "?? docs/reports/2026-09-13-executable-graph-research.md"
+      ]
+    },
+    {
+      "name": "OStag",
+      "path": "/Volumes/AIMATE_WORK/Developer/CodeX/OStag",
+      "sha": "5098f9141864d413718d776c9ae783951ea4b5c1",
+      "status": []
+    },
+    {
+      "name": "rakazo",
+      "path": "/Volumes/AIMATE_WORK/Developer/CodeX/rakazo",
+      "sha": "b286fc4a5d0f608005000ef35bee4c473c31a165",
+      "status": []
+    }
+  ],
+  "scope": "Product definition; source inspection only; no deployment or runtime tests"
+}

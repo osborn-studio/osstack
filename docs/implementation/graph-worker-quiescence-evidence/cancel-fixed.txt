@@ -1,0 +1,19 @@
+$ vitest run src/graph-delivery.integration.test.ts -t 'cancels actual' --maxWorkers=1
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-quiescence/g21-delivery-39jfNG/delivery/writer-0'...
+HEAD is now at 75f57c0 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-quiescence/g21-delivery-rJrjyv/delivery/writer-0'...
+HEAD is now at 1753ae6 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-quiescence/g21-delivery-5dzh4K/delivery/writer-0'...
+HEAD is now at 7e2405c base
+ ✓ src/graph-delivery.integration.test.ts (11 tests | 8 skipped) 17078ms
+   ✓ cancels actual delivery with clean exit and inventory evidence  6552ms
+   ✓ cancels actual delivery with journal-failed exit and inventory evidence  5263ms
+   ✓ cancels actual delivery with missing-admission exit and inventory evidence  5263ms
+
+ Test Files  1 passed (1)
+      Tests  3 passed | 8 skipped (11)
+   Start at  17:27:35
+   Duration  18.36s (transform 640ms, setup 10ms, collect 1.13s, tests 17.08s, environment 0ms, prepare 41ms)

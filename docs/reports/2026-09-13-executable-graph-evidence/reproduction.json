@@ -1,0 +1,41 @@
+{
+  "path": "/private/tmp/osgraph-reproduction-sis90tsc",
+  "commands": [
+    {
+      "command": [
+        "npm",
+        "ci",
+        "--ignore-scripts",
+        "--no-audit",
+        "--no-fund"
+      ],
+      "exitCode": 0,
+      "output": "npm warn deprecated prebuild-install@7.1.3: No longer maintained. Please contact the author of the relevant native addon; alternatives are available.\nnpm warn deprecated node-domexception@1.0.0: Use your platform's native DOMException instead\nnpm warn deprecated uuid@9.0.1: uuid@10 and below is no longer supported.  For ESM codebases, update to uuid@latest.  For CommonJS codebases, use uuid@11 (but be aware this version will likely be deprecated in 2028).\n\nadded 226 packages in 2s\n"
+    },
+    {
+      "command": [
+        "npm",
+        "rebuild",
+        "better-sqlite3"
+      ],
+      "exitCode": 0,
+      "output": "npm warn rebuild 4 packages have install scripts not yet covered by allowScripts. Run `npm approve-scripts --allow-scripts-pending` to review.\nrebuilt dependencies successfully\n"
+    },
+    {
+      "command": [
+        "node",
+        "semantic-probes.mjs"
+      ],
+      "exitCode": 0,
+      "output": "\u001b[33mWARN\u001b[39m: [ADK] 2026-09-13T13:41:49.247Z Class Workflow is experimental and may change in the future.\nRetrying task \"flaky\" after 1.00ms (attempt 1) after Error: Error: transient\nRetrying task \"flaky\" after 1.00ms (attempt 2) after Error: Error: transient\n10/10 semantic probes passed\n"
+    },
+    {
+      "command": [
+        "node",
+        "durable-probes.mjs"
+      ],
+      "exitCode": 0,
+      "output": "2/2 persistence and replay probes passed\n"
+    }
+  ]
+}

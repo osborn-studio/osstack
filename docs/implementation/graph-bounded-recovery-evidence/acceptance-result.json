@@ -1,0 +1,387 @@
+{
+  "loop_id": "G25-C2-bounded-recovery-1",
+  "state": {
+    "loop_id": "G25-C2-bounded-recovery-1",
+    "started_at": "2026-09-20T15:51:47.726Z",
+    "updated_at": "2026-09-20T15:56:44.446Z",
+    "completed_tasks": [
+      {
+        "task_id": "G25-C2-bounded-recovery-1",
+        "capability": "code.test",
+        "outcome": "success",
+        "iterations": 1,
+        "agent_id": "local-command",
+        "duration_ms": 296717,
+        "run_id": "run_5c89551b-6626-4663-95eb-9d9773a0a3e9",
+        "started_at": "2026-09-20T15:51:47.729Z",
+        "completed_at": "2026-09-20T15:56:28.123Z",
+        "execution_summary": "Process group 37361 gone (kill(-pgid, 0): ESRCH); leader exit observed",
+        "execution_commands": [
+          {
+            "command": "node /Volumes/AIMATE_WORK/tmp/g25-c2/check.mjs focused",
+            "exit_code": 0,
+            "duration_ms": 280393,
+            "summary": "focused: passed options --[no-]relative[=<prefix>] when run from subdir, exclude changes outside and show relative paths -a, --[no-]text treat all files as text -R swap two inputs, reverse the diff --[no-]exit-code exit with 1 if there were"
+          }
+        ],
+        "verifier_agent_id": "local-verifier",
+        "verify_summary": "4 verifier commands and 0 verifier adapters passed. 4 evaluations passed.",
+        "verify_issue_count": 0,
+        "verify_commands": [
+          {
+            "command": "node /Volumes/AIMATE_WORK/tmp/g25-c2/check.mjs typecheck",
+            "exit_code": 0,
+            "duration_ms": 14208,
+            "summary": "typecheck: passed $ pnpm -r typecheck Scope: 22 of 23 workspace projects packages/contracts typecheck$ tsc --noEmit packages/github typecheck$ tsc --noEmit packages/compliance typecheck$ tsc --noEmit packages/governance typecheck$ tsc --noE"
+          },
+          {
+            "command": "node /Volumes/AIMATE_WORK/tmp/g25-c2/check.mjs schemas",
+            "exit_code": 0,
+            "duration_ms": 602,
+            "summary": "schemas: passed $ node scripts/generate-schemas.mjs --check schemas up to date"
+          },
+          {
+            "command": "node /Volumes/AIMATE_WORK/tmp/g25-c2/check.mjs startup",
+            "exit_code": 0,
+            "duration_ms": 1306,
+            "summary": "startup: passed ok osstack --version (fast path): median 58ms over 5 runs (budget 150ms; min 53, max 58) ok osstack --help (full command surface): median 178ms over 5 runs (budget 500ms; min 172, max 198)"
+          },
+          {
+            "command": "node /Volumes/AIMATE_WORK/tmp/g25-c2/check.mjs whitespace",
+            "exit_code": 0,
+            "duration_ms": 89,
+            "summary": "whitespace: passed"
+          }
+        ],
+        "evaluations": [
+          {
+            "spec_id": "verify-command-1",
+            "mode": "command",
+            "description": "Shell verifier: node /Volumes/AIMATE_WORK/tmp/g25-c2/check.mjs typecheck",
+            "required": true,
+            "weight": 1,
+            "pass": true,
+            "summary": "command passed (14208 ms)",
+            "implicit": true
+          },
+          {
+            "spec_id": "verify-command-2",
+            "mode": "command",
+            "description": "Shell verifier: node /Volumes/AIMATE_WORK/tmp/g25-c2/check.mjs schemas",
+            "required": true,
+            "weight": 1,
+            "pass": true,
+            "summary": "command passed (602 ms)",
+            "implicit": true
+          },
+          {
+            "spec_id": "verify-command-3",
+            "mode": "command",
+            "description": "Shell verifier: node /Volumes/AIMATE_WORK/tmp/g25-c2/check.mjs startup",
+            "required": true,
+            "weight": 1,
+            "pass": true,
+            "summary": "command passed (1306 ms)",
+            "implicit": true
+          },
+          {
+            "spec_id": "verify-command-4",
+            "mode": "command",
+            "description": "Shell verifier: node /Volumes/AIMATE_WORK/tmp/g25-c2/check.mjs whitespace",
+            "required": true,
+            "weight": 1,
+            "pass": true,
+            "summary": "command passed (89 ms)",
+            "implicit": true
+          }
+        ],
+        "changed_files": [
+          "packages/cli/src/graph-action-broker.ts",
+          "packages/cli/src/graph-bounded-messages.test.ts",
+          "packages/cli/src/graph-delivery.ts",
+          "packages/cli/src/graph-rpc.ts",
+          "?? docs/implementation/2026-09-20-graph-bounded-recovery-next-context.md",
+          "?? docs/reports/graph-bounded-recovery-validation.md",
+          "?? packages/cli/src/graph-bounded-recovery-journal.ts",
+          "?? packages/cli/src/graph-bounded-recovery.test.ts",
+          "?? packages/cli/src/graph-bounded-recovery.ts",
+          "?? scripts/fixtures/graph-bounded-settlement-crash.ts"
+        ],
+        "diff_summary": "packages/cli/src/graph-action-broker.ts | 6 ++++-- packages/cli/src/graph-bounded-messages.test.ts | 6 ++++++ packages/cli/src/graph-delivery.ts | 6 +++++- packages/cli/src/graph-rpc.ts | 11 +++++++++++ 4 files changed, 26 insertions(+), 3 ",
+        "commit_hash": "0c467e0"
+      }
+    ],
+    "in_progress": [],
+    "pending": [],
+    "deferred_tasks": [],
+    "key_metrics": {
+      "total_cycles": 1,
+      "avg_duration_ms": 296717,
+      "success_rate": 1,
+      "tokens_consumed": 0,
+      "cost_consumed": 0
+    },
+    "decisions": [
+      "G25-C2-bounded-recovery-1: selected local-command - local execute command",
+      "G25-C2-bounded-recovery-1: stop after iteration 1 - Verifier passed with score 1.00."
+    ]
+  },
+  "completedTasks": [
+    {
+      "task_id": "G25-C2-bounded-recovery-1",
+      "capability": "code.test",
+      "outcome": "success",
+      "iterations": 1,
+      "agent_id": "local-command",
+      "duration_ms": 296717,
+      "run_id": "run_5c89551b-6626-4663-95eb-9d9773a0a3e9",
+      "started_at": "2026-09-20T15:51:47.729Z",
+      "completed_at": "2026-09-20T15:56:28.123Z",
+      "execution_summary": "Process group 37361 gone (kill(-pgid, 0): ESRCH); leader exit observed",
+      "execution_commands": [
+        {
+          "command": "node /Volumes/AIMATE_WORK/tmp/g25-c2/check.mjs focused",
+          "exit_code": 0,
+          "duration_ms": 280393,
+          "summary": "focused: passed options --[no-]relative[=<prefix>] when run from subdir, exclude changes outside and show relative paths -a, --[no-]text treat all files as text -R swap two inputs, reverse the diff --[no-]exit-code exit with 1 if there were"
+        }
+      ],
+      "verifier_agent_id": "local-verifier",
+      "verify_summary": "4 verifier commands and 0 verifier adapters passed. 4 evaluations passed.",
+      "verify_issue_count": 0,
+      "verify_commands": [
+        {
+          "command": "node /Volumes/AIMATE_WORK/tmp/g25-c2/check.mjs typecheck",
+          "exit_code": 0,
+          "duration_ms": 14208,
+          "summary": "typecheck: passed $ pnpm -r typecheck Scope: 22 of 23 workspace projects packages/contracts typecheck$ tsc --noEmit packages/github typecheck$ tsc --noEmit packages/compliance typecheck$ tsc --noEmit packages/governance typecheck$ tsc --noE"
+        },
+        {
+          "command": "node /Volumes/AIMATE_WORK/tmp/g25-c2/check.mjs schemas",
+          "exit_code": 0,
+          "duration_ms": 602,
+          "summary": "schemas: passed $ node scripts/generate-schemas.mjs --check schemas up to date"
+        },
+        {
+          "command": "node /Volumes/AIMATE_WORK/tmp/g25-c2/check.mjs startup",
+          "exit_code": 0,
+          "duration_ms": 1306,
+          "summary": "startup: passed ok osstack --version (fast path): median 58ms over 5 runs (budget 150ms; min 53, max 58) ok osstack --help (full command surface): median 178ms over 5 runs (budget 500ms; min 172, max 198)"
+        },
+        {
+          "command": "node /Volumes/AIMATE_WORK/tmp/g25-c2/check.mjs whitespace",
+          "exit_code": 0,
+          "duration_ms": 89,
+          "summary": "whitespace: passed"
+        }
+      ],
+      "evaluations": [
+        {
+          "spec_id": "verify-command-1",
+          "mode": "command",
+          "description": "Shell verifier: node /Volumes/AIMATE_WORK/tmp/g25-c2/check.mjs typecheck",
+          "required": true,
+          "weight": 1,
+          "pass": true,
+          "summary": "command passed (14208 ms)",
+          "implicit": true
+        },
+        {
+          "spec_id": "verify-command-2",
+          "mode": "command",
+          "description": "Shell verifier: node /Volumes/AIMATE_WORK/tmp/g25-c2/check.mjs schemas",
+          "required": true,
+          "weight": 1,
+          "pass": true,
+          "summary": "command passed (602 ms)",
+          "implicit": true
+        },
+        {
+          "spec_id": "verify-command-3",
+          "mode": "command",
+          "description": "Shell verifier: node /Volumes/AIMATE_WORK/tmp/g25-c2/check.mjs startup",
+          "required": true,
+          "weight": 1,
+          "pass": true,
+          "summary": "command passed (1306 ms)",
+          "implicit": true
+        },
+        {
+          "spec_id": "verify-command-4",
+          "mode": "command",
+          "description": "Shell verifier: node /Volumes/AIMATE_WORK/tmp/g25-c2/check.mjs whitespace",
+          "required": true,
+          "weight": 1,
+          "pass": true,
+          "summary": "command passed (89 ms)",
+          "implicit": true
+        }
+      ],
+      "changed_files": [
+        "packages/cli/src/graph-action-broker.ts",
+        "packages/cli/src/graph-bounded-messages.test.ts",
+        "packages/cli/src/graph-delivery.ts",
+        "packages/cli/src/graph-rpc.ts",
+        "?? docs/implementation/2026-09-20-graph-bounded-recovery-next-context.md",
+        "?? docs/reports/graph-bounded-recovery-validation.md",
+        "?? packages/cli/src/graph-bounded-recovery-journal.ts",
+        "?? packages/cli/src/graph-bounded-recovery.test.ts",
+        "?? packages/cli/src/graph-bounded-recovery.ts",
+        "?? scripts/fixtures/graph-bounded-settlement-crash.ts"
+      ],
+      "diff_summary": "packages/cli/src/graph-action-broker.ts | 6 ++++-- packages/cli/src/graph-bounded-messages.test.ts | 6 ++++++ packages/cli/src/graph-delivery.ts | 6 +++++- packages/cli/src/graph-rpc.ts | 11 +++++++++++ 4 files changed, 26 insertions(+), 3 ",
+      "commit_hash": "0c467e0"
+    }
+  ],
+  "events": [
+    {
+      "event_id": "evt_4412fc04-7f33-44c6-b361-0980f38012be",
+      "loop_id": "G25-C2-bounded-recovery-1",
+      "type": "loop.started",
+      "seq": 1,
+      "created_at": 1789919507727,
+      "payload": {
+        "workspace_path": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation"
+      }
+    },
+    {
+      "event_id": "evt_d2ec3d8a-79d0-42d7-afb6-3d077a59111e",
+      "loop_id": "G25-C2-bounded-recovery-1",
+      "type": "loop.cycle.started",
+      "seq": 2,
+      "created_at": 1789919507728,
+      "payload": {
+        "cycle": 1
+      }
+    },
+    {
+      "event_id": "evt_5cd5b86d-9a9f-41a1-8548-91facfbd00eb",
+      "loop_id": "G25-C2-bounded-recovery-1",
+      "type": "loop.discover.done",
+      "seq": 3,
+      "created_at": 1789919507728,
+      "payload": {
+        "task_count": 1,
+        "discovered_task_count": 1,
+        "skipped_task_count": 0
+      }
+    },
+    {
+      "event_id": "evt_9618301a-be43-41cd-96d6-597219e874e0",
+      "loop_id": "G25-C2-bounded-recovery-1",
+      "type": "loop.plan.done",
+      "seq": 4,
+      "created_at": 1789919507728,
+      "payload": {
+        "task_id": "G25-C2-bounded-recovery-1",
+        "plan_id": "plan_155446b0-8176-4c0f-856e-e7869a11cedd",
+        "agent_id": "local-command",
+        "routing_reason": "local execute command",
+        "iteration": 1
+      }
+    },
+    {
+      "event_id": "evt_d4028a39-70a8-4d87-9057-00016700eb95",
+      "loop_id": "G25-C2-bounded-recovery-1",
+      "type": "loop.execute.done",
+      "seq": 5,
+      "created_at": 1789919788123,
+      "payload": {
+        "task_id": "G25-C2-bounded-recovery-1",
+        "run_id": "run_5c89551b-6626-4663-95eb-9d9773a0a3e9",
+        "outcome": "completed",
+        "agent_id": "local-command",
+        "summary": "Process group 37361 gone (kill(-pgid, 0): ESRCH); leader exit observed",
+        "iteration": 1
+      }
+    },
+    {
+      "event_id": "evt_79d9ea50-5264-4da4-9fda-c364a4e0f284",
+      "loop_id": "G25-C2-bounded-recovery-1",
+      "type": "loop.verify.done",
+      "seq": 6,
+      "created_at": 1789919804445,
+      "payload": {
+        "task_id": "G25-C2-bounded-recovery-1",
+        "pass": true,
+        "score": 1,
+        "issue_count": 0,
+        "evaluation_count": 4,
+        "failed_evaluation_ids": [],
+        "reviewer_agent_id": "local-verifier",
+        "summary": "4 verifier commands and 0 verifier adapters passed. 4 evaluations passed.",
+        "changed_files": [
+          "packages/cli/src/graph-action-broker.ts",
+          "packages/cli/src/graph-bounded-messages.test.ts",
+          "packages/cli/src/graph-delivery.ts",
+          "packages/cli/src/graph-rpc.ts",
+          "?? docs/implementation/2026-09-20-graph-bounded-recovery-next-context.md",
+          "?? docs/reports/graph-bounded-recovery-validation.md",
+          "?? packages/cli/src/graph-bounded-recovery-journal.ts",
+          "?? packages/cli/src/graph-bounded-recovery.test.ts",
+          "?? packages/cli/src/graph-bounded-recovery.ts",
+          "?? scripts/fixtures/graph-bounded-settlement-crash.ts"
+        ],
+        "diff_summary": "packages/cli/src/graph-action-broker.ts | 6 ++++-- packages/cli/src/graph-bounded-messages.test.ts | 6 ++++++ packages/cli/src/graph-delivery.ts | 6 +++++- packages/cli/src/graph-rpc.ts | 11 +++++++++++ 4 files changed, 26 insertions(+), 3 ",
+        "commit_hash": "0c467e0",
+        "iteration": 1
+      }
+    },
+    {
+      "event_id": "evt_63d56dca-d964-484b-9ff4-66f49efecc94",
+      "loop_id": "G25-C2-bounded-recovery-1",
+      "type": "loop.iterate.done",
+      "seq": 7,
+      "created_at": 1789919804445,
+      "payload": {
+        "task_id": "G25-C2-bounded-recovery-1",
+        "action": "stop",
+        "reason": "Verifier passed with score 1.00.",
+        "iteration": 1,
+        "issue_count": 0,
+        "failed_evaluation_ids": []
+      }
+    },
+    {
+      "event_id": "evt_26767d18-977e-4cb5-95f1-8d6fcbccdd2b",
+      "loop_id": "G25-C2-bounded-recovery-1",
+      "type": "loop.state.written",
+      "seq": 8,
+      "created_at": 1789919804449,
+      "payload": {
+        "jsonPath": "/Volumes/AIMATE_WORK/tmp/g25-c2/LOOP-STATE.json",
+        "markdownPath": "/Volumes/AIMATE_WORK/tmp/g25-c2/STATE.md"
+      }
+    },
+    {
+      "event_id": "evt_57b43795-8b7f-4328-a611-851e7b22c2c6",
+      "loop_id": "G25-C2-bounded-recovery-1",
+      "type": "loop.cycle.completed",
+      "seq": 9,
+      "created_at": 1789919804449,
+      "payload": {
+        "cycle": 1,
+        "task_count": 1,
+        "discovered_task_count": 1,
+        "skipped_task_count": 0,
+        "duration_ms": 296726
+      }
+    },
+    {
+      "event_id": "evt_52182b0d-5637-42e9-92b8-cc7b0ead940c",
+      "loop_id": "G25-C2-bounded-recovery-1",
+      "type": "loop.stopped",
+      "seq": 10,
+      "created_at": 1789919804449,
+      "payload": {
+        "reason_code": "completed",
+        "reason": "manual run completed"
+      }
+    }
+  ],
+  "jsonPath": "/Volumes/AIMATE_WORK/tmp/g25-c2/LOOP-STATE.json",
+  "markdownPath": "/Volumes/AIMATE_WORK/tmp/g25-c2/STATE.md",
+  "discoveredTaskCount": 1,
+  "executedTaskCount": 1,
+  "skippedTaskCount": 0
+}

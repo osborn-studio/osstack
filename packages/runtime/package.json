@@ -1,6 +1,6 @@
 {
   "name": "@osstack/runtime",
-  "version": "0.15.0",
+  "version": "0.20.0",
   "description": "Optional Zellij 5-tab workspace launcher (preserved from V1 osb-runtime). Not required by daemon.",
   "license": "MIT",
   "type": "module",
@@ -21,7 +21,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/gilosbornhello/osstack.git",
+    "url": "https://github.com/osborn-studio/osstack.git",
     "directory": "packages/runtime"
   },
   "engines": {

@@ -1,0 +1,12 @@
+{
+  "status": "implementation_complete",
+  "admissions": 1,
+  "headUnchanged": true,
+  "loopStateCreated": false,
+  "taskQueueCreated": false,
+  "changedFiles": "?? implementation.txt",
+  "content": "one authorized implementation\n",
+  "commandExit": 0,
+  "processStopConfirmed": true,
+  "ownerCleansFixtureAfterAssertions": true
+}

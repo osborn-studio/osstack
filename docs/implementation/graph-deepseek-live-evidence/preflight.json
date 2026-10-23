@@ -1,0 +1,9 @@
+{
+  "origin": "https://api.deepseek.com",
+  "basePath": "/",
+  "status": 200,
+  "models": [
+    "deepseek-flash",
+    "deepseek-v4-pro"
+  ]
+}

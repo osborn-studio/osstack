@@ -1,0 +1,1799 @@
+Scope: 22 of 23 workspace projects
+$ vitest run --passWithNoTests --maxWorkers=1
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/compliance
+
+ ✓ src/index.test.ts (17 tests) 13ms
+
+ Test Files  1 passed (1)
+      Tests  17 passed (17)
+   Start at  18:48:48
+   Duration  143ms (transform 35ms, setup 0ms, collect 37ms, tests 13ms, environment 0ms, prepare 25ms)
+
+$ vitest run --maxWorkers=1
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/contracts
+
+ ✓ src/hub-package.test.ts (12 tests) 6ms
+ ✓ src/validator.test.ts (3 tests) 5ms
+
+ Test Files  2 passed (2)
+      Tests  15 passed (15)
+   Start at  18:48:48
+   Duration  224ms (transform 29ms, setup 0ms, collect 37ms, tests 11ms, environment 0ms, prepare 48ms)
+
+$ vitest run --passWithNoTests --maxWorkers=1
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/github
+
+ ✓ src/delivery.test.ts (18 tests) 12ms
+ ✓ src/stack.test.ts (15 tests) 4ms
+ ✓ src/branch-scanner.test.ts (7 tests) 4ms
+ ✓ src/portfolio-status.test.ts (10 tests) 4ms
+ ✓ src/branch-scorer.test.ts (7 tests) 2ms
+ ✓ src/report.test.ts (1 test) 1ms
+
+ Test Files  6 passed (6)
+      Tests  58 passed (58)
+   Start at  18:48:49
+   Duration  640ms (transform 61ms, setup 0ms, collect 100ms, tests 26ms, environment 0ms, prepare 134ms)
+
+$ vitest run --passWithNoTests --maxWorkers=1
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/governance
+
+ ✓ src/knowledge-hygiene/change-set.test.ts (7 tests) 849ms
+ ✓ src/knowledge-hygiene/transaction-applier.test.ts (9 tests) 182ms
+ ✓ src/knowledge-hygiene/osstack-config.test.ts (1 test) 80ms
+ ✓ src/knowledge-hygiene/semantic-engine.test.ts (5 tests) 42ms
+ ✓ src/knowledge-hygiene/engine-v2.test.ts (5 tests) 19ms
+ ✓ src/knowledge-hygiene/patch-applier.test.ts (4 tests) 18ms
+ ✓ src/knowledge-hygiene/engine.test.ts (7 tests) 18ms
+ ✓ src/knowledge-hygiene/adapters/probe-artifacts.test.ts (3 tests) 16ms
+ ✓ src/knowledge-hygiene/config.test.ts (18 tests) 12ms
+ ✓ src/knowledge-hygiene/adapters/codex-local-memory.test.ts (4 tests) 13ms
+ ✓ src/knowledge-hygiene/dependency.test.ts (2 tests) 12ms
+ ✓ src/knowledge-hygiene/patch-provider.test.ts (5 tests) 10ms
+ ✓ src/probe/render.test.ts (2 tests) 11ms
+ ✓ src/knowledge-hygiene/transaction-plan.test.ts (3 tests) 11ms
+ ✓ src/knowledge-hygiene/repository-reader.test.ts (4 tests) 10ms
+ ✓ src/probe/dynamic-input.test.ts (3 tests) 9ms
+ ✓ src/knowledge-hygiene/narrative-detector.test.ts (4 tests) 9ms
+ ✓ src/probe/gate.test.ts (3 tests) 9ms
+ ✓ src/knowledge-hygiene/rules/rules.test.ts (9 tests) 8ms
+ ✓ src/probe/priority.test.ts (7 tests) 7ms
+ ✓ src/probe/reducer.test.ts (15 tests) 7ms
+ ✓ src/knowledge-hygiene/config-v2.test.ts (8 tests) 7ms
+ ✓ src/knowledge-hygiene/instruction-source.test.ts (6 tests) 7ms
+ ✓ src/knowledge-hygiene/rules/change-contract-rule.test.ts (4 tests) 7ms
+ ✓ src/knowledge-hygiene/schema.test.ts (22 tests) 6ms
+ ✓ src/knowledge-hygiene/schema-v2.test.ts (21 tests) 6ms
+ ✓ src/knowledge-hygiene/resolution-v2.test.ts (3 tests) 6ms
+ ✓ src/probe/types.test.ts (8 tests) 5ms
+ ✓ src/knowledge-hygiene/types-v2.test.ts (8 tests) 5ms
+ ✓ src/knowledge-hygiene/adapters/claude-code-memory.test.ts (4 tests) 5ms
+ ✓ src/knowledge-hygiene/rules/reference-rule.test.ts (5 tests) 5ms
+ ✓ src/knowledge-hygiene/transaction-builder.test.ts (2 tests) 5ms
+ ✓ src/knowledge-hygiene/resolution.test.ts (6 tests) 4ms
+ ✓ src/knowledge-hygiene/semantic-judge.test.ts (7 tests) 4ms
+ ✓ src/probe/evaluation-compiler.test.ts (3 tests) 4ms
+ ✓ src/knowledge-hygiene/patch-types.test.ts (7 tests) 4ms
+ ✓ src/probe/schema.test.ts (11 tests) 3ms
+ ✓ src/probe/question-pack.test.ts (6 tests) 3ms
+ ✓ src/knowledge-hygiene/semantic-evidence.test.ts (2 tests) 3ms
+ ✓ src/knowledge-hygiene/types.test.ts (4 tests) 3ms
+ ✓ src/knowledge-hygiene/adapters/adapter-contract.test.ts (4 tests) 3ms
+ ✓ src/scanner.test.ts (2 tests) 3ms
+ ✓ src/review-boundary.test.ts (10 tests) 3ms
+ ✓ src/knowledge-hygiene/path-pattern.test.ts (23 tests) 2ms
+ ✓ src/knowledge-hygiene/semantic-provider-error.test.ts (2 tests) 2ms
+ ✓ src/knowledge-hygiene/fingerprint.test.ts (2 tests) 1ms
+ ✓ src/public-api.test.ts (1 test) 1ms
+
+ Test Files  47 passed (47)
+      Tests  301 passed (301)
+   Start at  18:48:50
+   Duration  6.45s (transform 266ms, setup 0ms, collect 978ms, tests 1.46s, environment 3ms, prepare 1.03s)
+
+$ vitest run --passWithNoTests --maxWorkers=1
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/knowledge
+
+ ✓ src/pack.test.ts (31 tests) 40ms
+
+ Test Files  1 passed (1)
+      Tests  31 passed (31)
+   Start at  18:48:56
+   Duration  193ms (transform 47ms, setup 0ms, collect 52ms, tests 40ms, environment 0ms, prepare 27ms)
+
+$ vitest run --passWithNoTests --maxWorkers=1
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/neat-eval
+
+ ✓ src/scorer.test.ts (4 tests) 391ms
+ ✓ src/corpus.test.ts (5 tests) 162ms
+ ✓ src/runner.test.ts (4 tests) 70ms
+ ✓ src/provider-readiness.test.ts (3 tests) 1ms
+
+ Test Files  4 passed (4)
+      Tests  16 passed (16)
+   Start at  18:48:57
+   Duration  1.06s (transform 53ms, setup 0ms, collect 82ms, tests 625ms, environment 0ms, prepare 92ms)
+
+$ vitest run --maxWorkers=1
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/protocol
+
+ ✓ src/graph.test.ts (58 tests) 20ms
+ ✓ src/protocol.test.ts (45 tests) 7ms
+ ✓ src/graph-checkpoint.test.ts (2 tests) 8ms
+ ✓ src/session-continuation-grant.test.ts (52 tests) 7ms
+ ✓ src/graph-review.test.ts (12 tests) 5ms
+ ✓ src/schemas.test.ts (24 tests) 4ms
+ ✓ src/autonomy.test.ts (11 tests) 4ms
+ ✓ src/graph-worker.test.ts (5 tests) 3ms
+ ✓ src/session-continuation.test.ts (7 tests) 3ms
+
+ Test Files  9 passed (9)
+      Tests  216 passed (216)
+   Start at  18:48:58
+   Duration  1.00s (transform 72ms, setup 0ms, collect 172ms, tests 62ms, environment 1ms, prepare 196ms)
+
+$ vitest run --passWithNoTests --maxWorkers=1
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/runtime
+
+ ✓ src/index.test.ts (1 test) 1ms
+
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+   Start at  18:48:59
+   Duration  112ms (transform 17ms, setup 0ms, collect 15ms, tests 1ms, environment 0ms, prepare 26ms)
+
+$ vitest run --maxWorkers=1
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/core
+
+Preparing worktree (detached HEAD 92eecf2)
+Preparing worktree (detached HEAD 065ed8e)
+Preparing worktree (detached HEAD 15a0983)
+Preparing worktree (detached HEAD 15a0983)
+Preparing worktree (detached HEAD f39c7cc)
+Preparing worktree (detached HEAD f39c7cc)
+Preparing worktree (detached HEAD 5b53c51)
+Preparing worktree (detached HEAD 5b53c51)
+Preparing worktree (detached HEAD a370f5a)
+Preparing worktree (detached HEAD a370f5a)
+Preparing worktree (detached HEAD a370f5a)
+Preparing worktree (detached HEAD a370f5a)
+Preparing worktree (detached HEAD 1c25e14)
+Preparing worktree (detached HEAD 1c25e14)
+Preparing worktree (detached HEAD 0470f14)
+Preparing worktree (detached HEAD 0470f14)
+Preparing worktree (detached HEAD 0470f14)
+Preparing worktree (detached HEAD ad09097)
+ ✓ src/graph/artifact-store.test.ts (18 tests) 8477ms
+   ✓ trusted graph artifact freeze > restores full reachable history and exact raw tree after deleting original repo and worktree  1491ms
+   ✓ trusted graph artifact freeze > rechecks authority after durable publication before returning ready  550ms
+   ✓ trusted graph artifact freeze > returns immutable candidate identity and artifact refs  510ms
+   ✓ trusted graph artifact freeze > captures tracked-file to directory replacement with unusual filenames  749ms
+   ✓ trusted graph artifact freeze > does not return ready if durable ID publication fails; exported bytes remain recoverable  660ms
+   ✓ trusted graph artifact freeze > rejects manifest corruption under a pinned artifact digest  555ms
+   ✓ trusted graph artifact freeze > rejects same ID with changed receipt or content  964ms
+   ✓ trusted graph artifact freeze > does not invoke local hooks or filters during capture or restore  800ms
+   ✓ trusted graph artifact freeze > rejects corrupted bundles and manifests, including replay  708ms
+   ✓ trusted graph artifact freeze > refuses existing and escaping restore destinations  519ms
+ ✓ src/graph/repository-scope.test.ts (6 tests) 5968ms
+   ✓ bounds Git subprocess output and terminates a hung Git process  5658ms
+ ✓ src/state/graph-runs.test.ts (39 tests) 890ms
+ ✓ src/state/graph-actions.test.ts (31 tests) 893ms
+ ✓ src/state/graph-checkpoints.test.ts (15 tests) 693ms
+   ✓ splits pages at transport traversal bounds even when many small pending writes fit the byte cap  384ms
+ ✓ src/kanban/kanban.test.ts (42 tests) 515ms
+ ✓ src/state/session-continuations.test.ts (33 tests) 450ms
+ ✓ src/state/db.test.ts (22 tests) 433ms
+ ✓ src/state/graph-recovery.test.ts (23 tests) 378ms
+ ✓ src/state/improvement-proposals.test.ts (20 tests) 250ms
+ ✓ src/state/run-store.test.ts (11 tests) 149ms
+ ✓ src/state/probe-store.test.ts (9 tests) 143ms
+ ✓ src/state/knowledge-hygiene-store.test.ts (7 tests) 132ms
+ ✓ src/state/autonomy-runs.test.ts (9 tests) 129ms
+ ✓ src/state/lessons.test.ts (6 tests) 127ms
+ ✓ src/state/graph-verification.test.ts (5 tests) 91ms
+ ✓ src/state/memory.test.ts (8 tests) 105ms
+ ✓ src/state/sessions.test.ts (7 tests) 91ms
+ ✓ src/state/knowledge-hygiene-recurrence.test.ts (5 tests) 86ms
+ ✓ src/state/probe-portfolio.test.ts (3 tests) 42ms
+ ✓ src/state/knowledge-hygiene-store-v2.test.ts (5 tests) 53ms
+ ✓ src/state/evaluator-epochs.test.ts (4 tests) 53ms
+ ✓ src/orchestrator/router.test.ts (19 tests) 55ms
+ ✓ src/state/contract-approvals.test.ts (4 tests) 54ms
+ ✓ src/state/notification-outbox.test.ts (3 tests) 51ms
+ ✓ src/state/deploy-freezes.test.ts (3 tests) 45ms
+ ✓ src/policy/profile.test.ts (37 tests) 31ms
+ ✓ src/state/rollback-drills.test.ts (2 tests) 31ms
+ ✓ src/state/probe-outcome-metrics.test.ts (2 tests) 30ms
+ ✓ src/state/feedback-assets.test.ts (2 tests) 29ms
+ ✓ src/policy/agent-scorecard.test.ts (2 tests) 28ms
+ ✓ src/state/knowledge-hygiene-history-v2.test.ts (2 tests) 27ms
+ ✓ src/state/dependency-obligation-store.test.ts (2 tests) 21ms
+ ✓ src/state/knowledge-hygiene-plan-store.test.ts (2 tests) 20ms
+ ✓ src/state/protocol-mappers.test.ts (15 tests) 4ms
+ ✓ src/privacy/redactor.test.ts (11 tests) 3ms
+ ✓ src/kanban/transition-guard.test.ts (3 tests) 2ms
+ ✓ src/policy/engine.test.ts (8 tests) 2ms
+
+ Test Files  38 passed (38)
+      Tests  445 passed (445)
+   Start at  18:48:59
+   Duration  24.77s (transform 289ms, setup 0ms, collect 923ms, tests 20.58s, environment 2ms, prepare 831ms)
+
+$ pnpm build && vitest run --maxWorkers=1
+$ tsc -p .
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/graph
+
+ ✓ src/remote-checkpointer.test.ts (18 tests) 2422ms
+   ✓ preserves parent, versions, namespaces, before/filter and complete pagination through real asynchronous SQLite IPC  323ms
+ ✓ src/spec-compiler.test.ts (44 tests) 1435ms
+   ✓ static graph compiler > reserves every possible action and trusted token cost for 1 epochs  323ms
+   ✓ static graph compiler > reserves every possible action and trusted token cost for 2 epochs  432ms
+   ✓ static graph compiler > reserves every possible action and trusted token cost for 3 epochs  552ms
+ ✓ src/route.test.ts (12 tests) 95ms
+ ✓ src/package-entry.test.ts (1 test) 44ms
+ ✓ src/worker-entry.test.ts (8 tests) 38ms
+ ✓ src/join.test.ts (8 tests) 27ms
+ ✓ src/functional-entry.test.ts (3 tests) 24ms
+ ✓ src/registry.test.ts (13 tests) 15ms
+ ✓ src/nodes/branch.test.ts (4 tests) 14ms
+ ✓ src/checkpoint-codec.test.ts (21 tests) 6ms
+ ✓ src/nodes/review.test.ts (2 tests) 4ms
+ ✓ src/nodes/tests.test.ts (1 test) 3ms
+
+ Test Files  12 passed (12)
+      Tests  135 passed (135)
+   Start at  18:49:25
+   Duration  5.97s (transform 107ms, setup 0ms, collect 811ms, tests 4.13s, environment 1ms, prepare 262ms)
+
+$ vitest run --passWithNoTests --maxWorkers=1
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/knowledge-cloud
+
+ ✓ src/server.test.ts (23 tests) 100ms
+ ✓ src/bin.test.ts (13 tests) 20ms
+
+ Test Files  2 passed (2)
+      Tests  36 passed (36)
+   Start at  18:49:31
+   Duration  378ms (transform 58ms, setup 0ms, collect 76ms, tests 120ms, environment 0ms, prepare 49ms)
+
+$ vitest run --maxWorkers=1
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/autonomy
+
+ ✓ src/deploy-runner.test.ts (12 tests) 2940ms
+   ✓ project deployment runner > rolls a timed-out production health check back exactly once  1153ms
+   ✓ project deployment runner > times out and cancels children with bounded evidence  1061ms
+ ✓ src/repo-lock.test.ts (19 tests) 2776ms
+   ✓ renewable repository lease > fails closed on an abandoned mutation guard instead of age-stealing it  2010ms
+To /Volumes/AIMATE_WORK/tmp/gc6/osstack-remote-LyWdtb
+ * [new branch]      HEAD -> main
+Switched to a new branch 'osstack/feature'
+To /Volumes/AIMATE_WORK/tmp/gc6/osstack-remote-ofnm8N
+ * [new branch]      HEAD -> main
+Switched to a new branch 'osstack/feature'
+To /Volumes/AIMATE_WORK/tmp/gc6/osstack-remote-ofnm8N
+   f9d992d..7d68198  7d681984af31c5c131fb5e1023719c79d7b22602 -> main
+To /Volumes/AIMATE_WORK/tmp/gc6/osstack-remote-ofnm8N
+ + 7d68198...f9d992d f9d992dc058019c3ff2d387239fb60f9d9fa58c3 -> main (forced update)
+ ✓ src/git-candidate.test.ts (6 tests) 1810ms
+   ✓ guarded staged candidate > requires a clean candidate at the exact fetched base commit  311ms
+   ✓ guarded staged candidate > binds post-merge deployment to the exact fetched merge tree  401ms
+   ✓ guarded staged candidate > fails closed when Git cannot inspect a changed dependency manifest  672ms
+ ✓ src/core-persistence.test.ts (2 tests) 86ms
+ ✓ src/engine.test.ts (30 tests) 26ms
+ ✓ src/repo-policy.test.ts (5 tests) 18ms
+ ✓ src/session-continuation-grant.test.ts (26 tests) 14ms
+ ✓ src/deploy-policy.test.ts (8 tests) 12ms
+ ✓ src/approval.test.ts (7 tests) 8ms
+ ✓ src/risk.test.ts (36 tests) 8ms
+ ✓ src/state-machine.test.ts (7 tests) 7ms
+ ✓ src/progress-budget.test.ts (8 tests) 3ms
+ ✓ src/types.test.ts (4 tests) 3ms
+ ✓ src/semaphore.test.ts (4 tests) 2ms
+
+ Test Files  14 passed (14)
+      Tests  174 passed (174)
+   Start at  18:49:32
+   Duration  9.76s (transform 222ms, setup 0ms, collect 810ms, tests 7.71s, environment 1ms, prepare 318ms)
+
+$ vitest run --maxWorkers=1
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/hermes-adapter
+
+ ✓ src/events.test.ts (9 tests) 3ms
+ ✓ src/status-fsm.test.ts (7 tests) 2ms
+ ✓ src/framing.test.ts (6 tests) 2ms
+
+ Test Files  3 passed (3)
+      Tests  22 passed (22)
+   Start at  18:49:42
+   Duration  312ms (transform 32ms, setup 0ms, collect 43ms, tests 6ms, environment 0ms, prepare 69ms)
+
+$ vitest run --passWithNoTests --maxWorkers=1
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/plugins
+
+ ✓ src/index.test.ts (1 test) 1ms
+
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+   Start at  18:49:42
+   Duration  110ms (transform 18ms, setup 0ms, collect 16ms, tests 1ms, environment 0ms, prepare 26ms)
+
+$ vitest run --passWithNoTests --maxWorkers=1
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/skill-registry
+
+ ✓ src/manifest.test.ts (3 tests) 4ms
+
+ Test Files  1 passed (1)
+      Tests  3 passed (3)
+   Start at  18:49:43
+   Duration  124ms (transform 22ms, setup 0ms, collect 27ms, tests 4ms, environment 0ms, prepare 26ms)
+
+$ vitest run --passWithNoTests --maxWorkers=1
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/skills
+
+ ✓ src/init/scaffold.test.ts (2 tests) 4ms
+
+ Test Files  1 passed (1)
+      Tests  2 passed (2)
+   Start at  18:49:43
+   Duration  119ms (transform 21ms, setup 0ms, collect 20ms, tests 4ms, environment 0ms, prepare 26ms)
+
+$ vitest run --maxWorkers=1
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/agents
+
+ ✓ src/controlled-session.test.ts (22 tests) 4258ms
+   ✓ controlled no-tools sessions > launches and resumes with the same private settings and strips ambient authority  376ms
+   ✓ controlled no-tools sessions > requires initialization and a successful result  350ms
+   ✓ controlled no-tools sessions > rejects unknown native sessions and persists its own binding across adapter restart  521ms
+ ✓ src/adapters/kimi-code.test.ts (17 tests) 4102ms
+   ✓ KimiCodeAdapter > probes the installed CLI version without invoking a model  381ms
+   ✓ KimiCodeAdapter > distinguishes installed but unauthenticated from a missing binary  363ms
+   ✓ KimiCodeAdapter > emits a schema-valid approved structured review  357ms
+   ✓ KimiCodeAdapter > maps a zero-exit changes_requested verdict to failed  356ms
+   ✓ KimiCodeAdapter > defaults to the model alias observed on the execution node  354ms
+   ✓ KimiCodeAdapter > rejects model identity that does not match the invocation  349ms
+   ✓ KimiCodeAdapter > fails closed on non-zero exit  346ms
+   ✓ KimiCodeAdapter > fails closed on malformed stream  511ms
+   ✓ KimiCodeAdapter > fails closed on missing result sentinel  328ms
+   ✓ KimiCodeAdapter > fails closed on duplicate result sentinel  346ms
+   ✓ KimiCodeAdapter > fails closed when the output byte limit is exceeded  352ms
+ ✓ src/adapters/subprocess-cli.test.ts (13 tests) 2839ms
+   ✓ ClaudeCliAdapter > probes and invokes a login-reuse CLI subprocess  335ms
+   ✓ OpenCodeCliAdapter > probes and invokes a login-reuse CLI subprocess  338ms
+   ✓ OpenCodeCliAdapter > can pass prompt on stdin when args omit the prompt template  342ms
+   ✓ ZCodeCliAdapter > probes with doctor and invokes via --prompt  347ms
+   ✓ CodexCliAdapter > runs in task.context.repo_path instead of the adapter fallback directory  350ms
+   ✓ CodexCliAdapter > uses an exec resume help preflight for availability  354ms
+   ✓ CodexCliAdapter > emits usage.final with net tokens from turn.completed (loop budget contract)  361ms
+   ✓ CodexCliAdapter > classifies a broken resume preflight  339ms
+ ✓ src/adapters/deepseek.test.ts (7 tests) 1678ms
+   ✓ DeepSeekReviewAdapter > advertises review capabilities and runs ds-review over git diff  436ms
+   ✓ DeepSeekVerifyAdapter > advertises verifier capabilities and forwards strict output options  408ms
+   ✓ DeepSeekVerifyAdapter > forwards evaluation specs via env file and reports per-spec judgments  409ms
+   ✓ DeepSeekVerifyAdapter > maps command failures to terminal error and failed done events  422ms
+ ✓ src/adapters/codex-cli.test.ts (4 tests) 1715ms
+   ✓ CodexCliAdapter resumable sessions > captures the native thread id and emits only bounded public session events  343ms
+   ✓ CodexCliAdapter resumable sessions > resumes the exact native thread with verified parent flags  344ms
+   ✓ CodexCliAdapter resumable sessions > fails closed when resume reports a different native thread  335ms
+   ✓ CodexCliAdapter resumable sessions > uses a no-model resume help preflight and classifies a broken binary  691ms
+ ✓ src/worktree.test.ts (9 tests) 1383ms
+ ✓ src/adapters/autoresearch.test.ts (13 tests) 1301ms
+ ✓ src/adapter-conformance.test.ts (2 tests) 1035ms
+   ✓ adapter conformance > emits schema-valid terminal failure streams for subprocess adapter families  1031ms
+ ✓ src/semantic/openai-compatible-no-tools.test.ts (8 tests) 9ms
+ ✓ src/semantic/anthropic-no-tools.test.ts (5 tests) 5ms
+ ✓ src/session.test.ts (5 tests) 5ms
+ ✓ src/adapters/kimi-stream.test.ts (9 tests) 4ms
+ ✓ src/adapters/kimi-contract.test.ts (9 tests) 4ms
+ ✓ src/adapters/claude-code.test.ts (7 tests) 3ms
+ ✓ src/semantic/built-in-judges.test.ts (2 tests) 2ms
+ ✓ src/adapters/design.test.ts (6 tests) 2ms
+ ✓ src/child-env.test.ts (2 tests) 1ms
+
+ Test Files  17 passed (17)
+      Tests  140 passed (140)
+   Start at  18:49:43
+   Duration  21.15s (transform 323ms, setup 0ms, collect 1.26s, tests 18.34s, environment 1ms, prepare 370ms)
+
+$ vitest run --maxWorkers=1
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/config
+
+ ✓ src/config.test.ts (9 tests) 19ms
+ ✓ src/resolver.test.ts (16 tests) 4ms
+ ✓ src/runtime-identity.test.ts (5 tests) 2ms
+
+ Test Files  3 passed (3)
+      Tests  30 passed (30)
+   Start at  18:50:05
+   Duration  963ms (transform 271ms, setup 0ms, collect 665ms, tests 24ms, environment 0ms, prepare 72ms)
+
+$ vitest run --passWithNoTests --maxWorkers=1
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/loop
+
+ ✓ src/loop-engine.test.ts (31 tests) 2691ms
+   ✓ LoopEngine > can execute a successful task in an isolated git worktree and merge it back  303ms
+   ✓ LoopEngine > cleans loop-scoped orphaned worktrees after each cycle  360ms
+ ✓ src/executor.test.ts (112 tests) 2477ms
+   ✓ command process groups > confirms timeout termination of children and grandchildren  511ms
+warning: Not a git repository. Use --no-index to compare two paths outside a working tree
+usage: git diff --no-index [<options>] <path> <path> [<pathspec>...]
+
+Diff output format options
+    -p, --patch           generate patch
+    -s, --no-patch        suppress diff output
+    -u                    generate patch
+    -U, --unified[=<n>]   generate diffs with <n> lines context
+    -W, --[no-]function-context
+                          generate diffs with <n> lines context
+    --raw                 generate the diff in raw format
+    --patch-with-raw      synonym for '-p --raw'
+    --patch-with-stat     synonym for '-p --stat'
+    --numstat             machine friendly --stat
+    --shortstat           output only the last line of --stat
+    -X, --dirstat[=<param1>,<param2>...]
+                          output the distribution of relative amount of changes for each sub-directory
+    --cumulative          synonym for --dirstat=cumulative
+    --dirstat-by-file[=<param1>,<param2>...]
+                          synonym for --dirstat=files,<param1>,<param2>...
+    --check               warn if changes introduce conflict markers or whitespace errors
+    --summary             condensed summary such as creations, renames and mode changes
+    --name-only           show only names of changed files
+    --name-status         show only names and status of changed files
+    --stat[=<width>[,<name-width>[,<count>]]]
+                          generate diffstat
+    --stat-width <width>  generate diffstat with a given width
+    --stat-name-width <width>
+                          generate diffstat with a given name width
+    --stat-graph-width <width>
+                          generate diffstat with a given graph width
+    --stat-count <count>  generate diffstat with limited lines
+    --[no-]compact-summary
+                          generate compact summary in diffstat
+    --binary              output a binary diff that can be applied
+    --[no-]full-index     show full pre- and post-image object names on the "index" lines
+    --[no-]color[=<when>] show colored diff
+    --ws-error-highlight <kind>
+                          highlight whitespace errors in the 'context', 'old' or 'new' lines in the diff
+    -z                    do not munge pathnames and use NULs as output field terminators in --raw or --numstat
+    --[no-]abbrev[=<n>]   use <n> digits to display object names
+    --src-prefix <prefix> show the given source prefix instead of "a/"
+    --dst-prefix <prefix> show the given destination prefix instead of "b/"
+    --line-prefix <prefix>
+                          prepend an additional prefix to every line of output
+    --no-prefix           do not show any source or destination prefix
+    --default-prefix      use default prefixes a/ and b/
+    --inter-hunk-context <n>
+                          show context between diff hunks up to the specified number of lines
+    --output-indicator-new <char>
+                          specify the character to indicate a new line instead of '+'
+    --output-indicator-old <char>
+                          specify the character to indicate an old line instead of '-'
+    --output-indicator-context <char>
+                          specify the character to indicate a context instead of ' '
+
+Diff rename options
+    -B, --break-rewrites[=<n>[/<m>]]
+                          break complete rewrite changes into pairs of delete and create
+    -M, --find-renames[=<n>]
+                          detect renames
+    -D, --irreversible-delete
+                          omit the preimage for deletes
+    -C, --find-copies[=<n>]
+                          detect copies
+    --[no-]find-copies-harder
+                          use unmodified files as source to find copies
+    --no-renames          disable rename detection
+    --[no-]rename-empty   use empty blobs as rename source
+    --[no-]follow         continue listing the history of a file beyond renames
+    -l <n>                prevent rename/copy detection if the number of rename/copy targets exceeds given limit
+
+Diff algorithm options
+    --minimal             produce the smallest possible diff
+    -w, --ignore-all-space
+                          ignore whitespace when comparing lines
+    -b, --ignore-space-change
+                          ignore changes in amount of whitespace
+    --ignore-space-at-eol ignore changes in whitespace at EOL
+    --ignore-cr-at-eol    ignore carrier-return at the end of line
+    --ignore-blank-lines  ignore changes whose lines are all blank
+    -I, --[no-]ignore-matching-lines <regex>
+                          ignore changes whose all lines match <regex>
+    --[no-]indent-heuristic
+                          heuristic to shift diff hunk boundaries for easy reading
+    --patience            generate diff using the "patience diff" algorithm
+    --histogram           generate diff using the "histogram diff" algorithm
+    --diff-algorithm <algorithm>
+                          choose a diff algorithm
+    --anchored <text>     generate diff using the "anchored diff" algorithm
+    --word-diff[=<mode>]  show word diff, using <mode> to delimit changed words
+    --word-diff-regex <regex>
+                          use <regex> to decide what a word is
+    --color-words[=<regex>]
+                          equivalent to --word-diff=color --word-diff-regex=<regex>
+    --[no-]color-moved[=<mode>]
+                          moved lines of code are colored differently
+    --[no-]color-moved-ws <mode>
+                          how white spaces are ignored in --color-moved
+
+Other diff options
+    --[no-]relative[=<prefix>]
+                          when run from subdir, exclude changes outside and show relative paths
+    -a, --[no-]text       treat all files as text
+    -R                    swap two inputs, reverse the diff
+    --[no-]exit-code      exit with 1 if there were differences, 0 otherwise
+    --[no-]quiet          disable all output of the program
+    --[no-]ext-diff       allow an external diff helper to be executed
+    --[no-]textconv       run external text conversion filters when comparing binary files
+    --ignore-submodules[=<when>]
+                          ignore changes to submodules in the diff generation
+    --submodule[=<format>]
+                          specify how differences in submodules are shown
+    --ita-invisible-in-index
+                          hide 'git add -N' entries from the index
+    --ita-visible-in-index
+                          treat 'git add -N' entries as real in the index
+    -S <string>           look for differences that change the number of occurrences of the specified string
+    -G <regex>            look for differences that change the number of occurrences of the specified regex
+    --pickaxe-all         show all changes in the changeset with -S or -G
+    --pickaxe-regex       treat <string> in -S as extended POSIX regular expression
+    -O <file>             control the order in which files appear in the output
+    --rotate-to <path>    show the change in the specified path first
+    --skip-to <path>      skip the output to the specified path
+    --find-object <object-id>
+                          look for differences that change the number of occurrences of the specified object
+    --diff-filter [(A|C|D|M|R|T|U|X|B)...[*]]
+                          select files by diff type
+    --max-depth <depth>   maximum tree depth to recurse
+    --output <file>       output to a specific file
+
+warning: Not a git repository. Use --no-index to compare two paths outside a working tree
+usage: git diff --no-index [<options>] <path> <path> [<pathspec>...]
+
+Diff output format options
+    -p, --patch           generate patch
+    -s, --no-patch        suppress diff output
+    -u                    generate patch
+    -U, --unified[=<n>]   generate diffs with <n> lines context
+    -W, --[no-]function-context
+                          generate diffs with <n> lines context
+    --raw                 generate the diff in raw format
+    --patch-with-raw      synonym for '-p --raw'
+    --patch-with-stat     synonym for '-p --stat'
+    --numstat             machine friendly --stat
+    --shortstat           output only the last line of --stat
+    -X, --dirstat[=<param1>,<param2>...]
+                          output the distribution of relative amount of changes for each sub-directory
+    --cumulative          synonym for --dirstat=cumulative
+    --dirstat-by-file[=<param1>,<param2>...]
+                          synonym for --dirstat=files,<param1>,<param2>...
+    --check               warn if changes introduce conflict markers or whitespace errors
+    --summary             condensed summary such as creations, renames and mode changes
+    --name-only           show only names of changed files
+    --name-status         show only names and status of changed files
+    --stat[=<width>[,<name-width>[,<count>]]]
+                          generate diffstat
+    --stat-width <width>  generate diffstat with a given width
+    --stat-name-width <width>
+                          generate diffstat with a given name width
+    --stat-graph-width <width>
+                          generate diffstat with a given graph width
+    --stat-count <count>  generate diffstat with limited lines
+    --[no-]compact-summary
+                          generate compact summary in diffstat
+    --binary              output a binary diff that can be applied
+    --[no-]full-index     show full pre- and post-image object names on the "index" lines
+    --[no-]color[=<when>] show colored diff
+    --ws-error-highlight <kind>
+                          highlight whitespace errors in the 'context', 'old' or 'new' lines in the diff
+    -z                    do not munge pathnames and use NULs as output field terminators in --raw or --numstat
+    --[no-]abbrev[=<n>]   use <n> digits to display object names
+    --src-prefix <prefix> show the given source prefix instead of "a/"
+    --dst-prefix <prefix> show the given destination prefix instead of "b/"
+    --line-prefix <prefix>
+                          prepend an additional prefix to every line of output
+    --no-prefix           do not show any source or destination prefix
+    --default-prefix      use default prefixes a/ and b/
+    --inter-hunk-context <n>
+                          show context between diff hunks up to the specified number of lines
+    --output-indicator-new <char>
+                          specify the character to indicate a new line instead of '+'
+    --output-indicator-old <char>
+                          specify the character to indicate an old line instead of '-'
+    --output-indicator-context <char>
+                          specify the character to indicate a context instead of ' '
+
+Diff rename options
+    -B, --break-rewrites[=<n>[/<m>]]
+                          break complete rewrite changes into pairs of delete and create
+    -M, --find-renames[=<n>]
+                          detect renames
+    -D, --irreversible-delete
+                          omit the preimage for deletes
+    -C, --find-copies[=<n>]
+                          detect copies
+    --[no-]find-copies-harder
+                          use unmodified files as source to find copies
+    --no-renames          disable rename detection
+    --[no-]rename-empty   use empty blobs as rename source
+    --[no-]follow         continue listing the history of a file beyond renames
+    -l <n>                prevent rename/copy detection if the number of rename/copy targets exceeds given limit
+
+Diff algorithm options
+    --minimal             produce the smallest possible diff
+    -w, --ignore-all-space
+                          ignore whitespace when comparing lines
+    -b, --ignore-space-change
+                          ignore changes in amount of whitespace
+    --ignore-space-at-eol ignore changes in whitespace at EOL
+    --ignore-cr-at-eol    ignore carrier-return at the end of line
+    --ignore-blank-lines  ignore changes whose lines are all blank
+    -I, --[no-]ignore-matching-lines <regex>
+                          ignore changes whose all lines match <regex>
+    --[no-]indent-heuristic
+                          heuristic to shift diff hunk boundaries for easy reading
+    --patience            generate diff using the "patience diff" algorithm
+    --histogram           generate diff using the "histogram diff" algorithm
+    --diff-algorithm <algorithm>
+                          choose a diff algorithm
+    --anchored <text>     generate diff using the "anchored diff" algorithm
+    --word-diff[=<mode>]  show word diff, using <mode> to delimit changed words
+    --word-diff-regex <regex>
+                          use <regex> to decide what a word is
+    --color-words[=<regex>]
+                          equivalent to --word-diff=color --word-diff-regex=<regex>
+    --[no-]color-moved[=<mode>]
+                          moved lines of code are colored differently
+    --[no-]color-moved-ws <mode>
+                          how white spaces are ignored in --color-moved
+
+Other diff options
+    --[no-]relative[=<prefix>]
+                          when run from subdir, exclude changes outside and show relative paths
+    -a, --[no-]text       treat all files as text
+    -R                    swap two inputs, reverse the diff
+    --[no-]exit-code      exit with 1 if there were differences, 0 otherwise
+    --[no-]quiet          disable all output of the program
+    --[no-]ext-diff       allow an external diff helper to be executed
+    --[no-]textconv       run external text conversion filters when comparing binary files
+    --ignore-submodules[=<when>]
+                          ignore changes to submodules in the diff generation
+    --submodule[=<format>]
+                          specify how differences in submodules are shown
+    --ita-invisible-in-index
+                          hide 'git add -N' entries from the index
+    --ita-visible-in-index
+                          treat 'git add -N' entries as real in the index
+    -S <string>           look for differences that change the number of occurrences of the specified string
+    -G <regex>            look for differences that change the number of occurrences of the specified regex
+    --pickaxe-all         show all changes in the changeset with -S or -G
+    --pickaxe-regex       treat <string> in -S as extended POSIX regular expression
+    -O <file>             control the order in which files appear in the output
+    --rotate-to <path>    show the change in the specified path first
+    --skip-to <path>      skip the output to the specified path
+    --find-object <object-id>
+                          look for differences that change the number of occurrences of the specified object
+    --diff-filter [(A|C|D|M|R|T|U|X|B)...[*]]
+                          select files by diff type
+    --max-depth <depth>   maximum tree depth to recurse
+    --output <file>       output to a specific file
+
+warning: Not a git repository. Use --no-index to compare two paths outside a working tree
+usage: git diff --no-index [<options>] <path> <path> [<pathspec>...]
+
+Diff output format options
+    -p, --patch           generate patch
+    -s, --no-patch        suppress diff output
+    -u                    generate patch
+    -U, --unified[=<n>]   generate diffs with <n> lines context
+    -W, --[no-]function-context
+                          generate diffs with <n> lines context
+    --raw                 generate the diff in raw format
+    --patch-with-raw      synonym for '-p --raw'
+    --patch-with-stat     synonym for '-p --stat'
+    --numstat             machine friendly --stat
+    --shortstat           output only the last line of --stat
+    -X, --dirstat[=<param1>,<param2>...]
+                          output the distribution of relative amount of changes for each sub-directory
+    --cumulative          synonym for --dirstat=cumulative
+    --dirstat-by-file[=<param1>,<param2>...]
+                          synonym for --dirstat=files,<param1>,<param2>...
+    --check               warn if changes introduce conflict markers or whitespace errors
+    --summary             condensed summary such as creations, renames and mode changes
+    --name-only           show only names of changed files
+    --name-status         show only names and status of changed files
+    --stat[=<width>[,<name-width>[,<count>]]]
+                          generate diffstat
+    --stat-width <width>  generate diffstat with a given width
+    --stat-name-width <width>
+                          generate diffstat with a given name width
+    --stat-graph-width <width>
+                          generate diffstat with a given graph width
+    --stat-count <count>  generate diffstat with limited lines
+    --[no-]compact-summary
+                          generate compact summary in diffstat
+    --binary              output a binary diff that can be applied
+    --[no-]full-index     show full pre- and post-image object names on the "index" lines
+    --[no-]color[=<when>] show colored diff
+    --ws-error-highlight <kind>
+                          highlight whitespace errors in the 'context', 'old' or 'new' lines in the diff
+    -z                    do not munge pathnames and use NULs as output field terminators in --raw or --numstat
+    --[no-]abbrev[=<n>]   use <n> digits to display object names
+    --src-prefix <prefix> show the given source prefix instead of "a/"
+    --dst-prefix <prefix> show the given destination prefix instead of "b/"
+    --line-prefix <prefix>
+                          prepend an additional prefix to every line of output
+    --no-prefix           do not show any source or destination prefix
+    --default-prefix      use default prefixes a/ and b/
+    --inter-hunk-context <n>
+                          show context between diff hunks up to the specified number of lines
+    --output-indicator-new <char>
+                          specify the character to indicate a new line instead of '+'
+    --output-indicator-old <char>
+                          specify the character to indicate an old line instead of '-'
+    --output-indicator-context <char>
+                          specify the character to indicate a context instead of ' '
+
+Diff rename options
+    -B, --break-rewrites[=<n>[/<m>]]
+                          break complete rewrite changes into pairs of delete and create
+    -M, --find-renames[=<n>]
+                          detect renames
+    -D, --irreversible-delete
+                          omit the preimage for deletes
+    -C, --find-copies[=<n>]
+                          detect copies
+    --[no-]find-copies-harder
+                          use unmodified files as source to find copies
+    --no-renames          disable rename detection
+    --[no-]rename-empty   use empty blobs as rename source
+    --[no-]follow         continue listing the history of a file beyond renames
+    -l <n>                prevent rename/copy detection if the number of rename/copy targets exceeds given limit
+
+Diff algorithm options
+    --minimal             produce the smallest possible diff
+    -w, --ignore-all-space
+                          ignore whitespace when comparing lines
+    -b, --ignore-space-change
+                          ignore changes in amount of whitespace
+    --ignore-space-at-eol ignore changes in whitespace at EOL
+    --ignore-cr-at-eol    ignore carrier-return at the end of line
+    --ignore-blank-lines  ignore changes whose lines are all blank
+    -I, --[no-]ignore-matching-lines <regex>
+                          ignore changes whose all lines match <regex>
+    --[no-]indent-heuristic
+                          heuristic to shift diff hunk boundaries for easy reading
+    --patience            generate diff using the "patience diff" algorithm
+    --histogram           generate diff using the "histogram diff" algorithm
+    --diff-algorithm <algorithm>
+                          choose a diff algorithm
+    --anchored <text>     generate diff using the "anchored diff" algorithm
+    --word-diff[=<mode>]  show word diff, using <mode> to delimit changed words
+    --word-diff-regex <regex>
+                          use <regex> to decide what a word is
+    --color-words[=<regex>]
+                          equivalent to --word-diff=color --word-diff-regex=<regex>
+    --[no-]color-moved[=<mode>]
+                          moved lines of code are colored differently
+    --[no-]color-moved-ws <mode>
+                          how white spaces are ignored in --color-moved
+
+Other diff options
+    --[no-]relative[=<prefix>]
+                          when run from subdir, exclude changes outside and show relative paths
+    -a, --[no-]text       treat all files as text
+    -R                    swap two inputs, reverse the diff
+    --[no-]exit-code      exit with 1 if there were differences, 0 otherwise
+    --[no-]quiet          disable all output of the program
+    --[no-]ext-diff       allow an external diff helper to be executed
+    --[no-]textconv       run external text conversion filters when comparing binary files
+    --ignore-submodules[=<when>]
+                          ignore changes to submodules in the diff generation
+    --submodule[=<format>]
+                          specify how differences in submodules are shown
+    --ita-invisible-in-index
+                          hide 'git add -N' entries from the index
+    --ita-visible-in-index
+                          treat 'git add -N' entries as real in the index
+    -S <string>           look for differences that change the number of occurrences of the specified string
+    -G <regex>            look for differences that change the number of occurrences of the specified regex
+    --pickaxe-all         show all changes in the changeset with -S or -G
+    --pickaxe-regex       treat <string> in -S as extended POSIX regular expression
+    -O <file>             control the order in which files appear in the output
+    --rotate-to <path>    show the change in the specified path first
+    --skip-to <path>      skip the output to the specified path
+    --find-object <object-id>
+                          look for differences that change the number of occurrences of the specified object
+    --diff-filter [(A|C|D|M|R|T|U|X|B)...[*]]
+                          select files by diff type
+    --max-depth <depth>   maximum tree depth to recurse
+    --output <file>       output to a specific file
+
+ ✓ src/candidate-execution.test.ts (29 tests) 2395ms
+   ✓ legacy single implementation seam > retains an unconfirmed worktree and stops later tasks/cycles, including an explicit retry after restart  1122ms
+   ✓ legacy single implementation seam > escalates unknown execution after one invocation with maxIterations > 1 and saves audit evidence  1046ms
+ ✓ src/verifier.test.ts (18 tests) 1044ms
+   ✓ verifyRun > blocks missing, unknown, and duplicate structured judgments  328ms
+ ✓ src/reviewer-isolation.test.ts (9 tests) 961ms
+ ✓ src/review-boundary.test.ts (9 tests) 816ms
+ ✓ src/waiting-reason.test.ts (7 tests) 493ms
+ ✓ src/lesson-draft.test.ts (14 tests) 298ms
+ ✓ src/budget.test.ts (16 tests) 287ms
+ ✓ src/policy-gate.test.ts (10 tests) 289ms
+ ✓ src/discovery-policy.test.ts (14 tests) 206ms
+ ✓ src/discover.test.ts (8 tests) 204ms
+ ✓ src/evaluation-spec.test.ts (17 tests) 156ms
+ ✓ src/feedback.test.ts (10 tests) 96ms
+ ✓ src/bin.test.ts (3 tests) 75ms
+ ✓ src/input-tasks.test.ts (1 test) 71ms
+ ✓ src/publisher.test.ts (23 tests) 33ms
+ ✓ src/task-queue.test.ts (7 tests) 9ms
+ ✓ src/report.test.ts (9 tests) 4ms
+ ✓ src/state-file.test.ts (3 tests) 4ms
+ ✓ src/scheduler.test.ts (7 tests) 3ms
+ ✓ src/protocol-mappers.test.ts (11 tests) 3ms
+ ✓ src/iterator.test.ts (5 tests) 3ms
+ ✓ src/stack-retro.test.ts (5 tests) 2ms
+ ✓ src/types.test.ts (3 tests) 2ms
+ ✓ src/scorecard.test.ts (3 tests) 2ms
+ ✓ src/index.test.ts (1 test) 1ms
+
+ Test Files  27 passed (27)
+      Tests  385 passed (385)
+   Start at  18:50:06
+   Duration  18.18s (transform 464ms, setup 0ms, collect 3.22s, tests 12.63s, environment 2ms, prepare 592ms)
+
+$ vitest run --passWithNoTests --maxWorkers=1
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/conformance
+
+ ✓ src/loop-run-conformance.test.ts (1 test) 74ms
+ ✓ src/agent-adapter-conformance.test.ts (1 test) 49ms
+ ✓ src/probe-conformance.test.ts (1 test) 25ms
+ ✓ src/gap-d2.test.ts (2 tests) 17ms
+ ✓ src/db-conformance.test.ts (1 test) 17ms
+ ✓ src/task-enqueue-conformance.test.ts (1 test) 2ms
+ ✓ src/import-boundary.test.ts (2 tests) 2ms
+
+ Test Files  7 passed (7)
+      Tests  9 passed (9)
+   Start at  18:50:24
+   Duration  2.01s (transform 351ms, setup 0ms, collect 1.18s, tests 185ms, environment 0ms, prepare 161ms)
+
+$ vitest run --passWithNoTests --maxWorkers=1
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/supervisor
+
+ ✓ src/hygiene-scanner.test.ts (3 tests) 26ms
+ ✓ src/repo-scanner.test.ts (2 tests) 16ms
+ ✓ src/repo-registry.test.ts (3 tests) 5ms
+ ✓ src/hygiene-proposal.test.ts (4 tests) 3ms
+ ✓ src/types.test.ts (7 tests) 3ms
+ ✓ src/proposal.test.ts (5 tests) 3ms
+ ✓ src/adversarial-pool.test.ts (3 tests) 3ms
+ ✓ src/trace-normalizer.test.ts (2 tests) 2ms
+ ✓ src/assetizer.test.ts (3 tests) 2ms
+ ✓ src/portfolio.test.ts (2 tests) 2ms
+ ✓ src/probe-outcomes.test.ts (2 tests) 2ms
+ ✓ src/failure-taxonomy.test.ts (8 tests) 2ms
+ ✓ src/evaluator-epoch.test.ts (6 tests) 1ms
+ ✓ src/gate.test.ts (5 tests) 1ms
+ ✓ src/loop-doc.test.ts (3 tests) 1ms
+
+ Test Files  15 passed (15)
+      Tests  58 passed (58)
+   Start at  18:50:27
+   Duration  2.61s (transform 384ms, setup 0ms, collect 1.23s, tests 74ms, environment 1ms, prepare 334ms)
+
+$ vitest run --maxWorkers=1
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+osstack: retaining write lease graph-action:3d019644faea77ac17200022c8306352fec38270f81a7aeecc5d57a972124177: Error: external stop unconfirmed
+osstack: retaining write lease graph-action:1a7f242e6242b8d2a907a41168af181f09cf4627d804d27ed6c485eee0e63f20: Error: G20_RELEASE_HELD
+osstack: retaining write lease graph-action:48894f50420ce00411480b225b40cf61165654c8bf130e62aa139d319b48bc33: Error: G20_RELEASE_HELD
+osstack: retaining write lease graph-action:f770472b4072d039e29cbefb62d0e6540411b4a31cd37a6b3bd05408776d9dd8: Error: external stop unconfirmed
+osstack: retaining write lease graph-action:1bc97d4a44cf8a55935463e706e70df32a30dce7b91b7a6a5c48b0328914cd24: Error: G20_RELEASE_HELD
+osstack: retaining write lease graph-action:f223cbf9d0e1dbac54f08be169ddad55e91292c7bc7c2b1a054cfba5c78ff49d: Error: G20_RELEASE_HELD
+osstack: retaining write lease graph-action:f46c04e4709cab99ee9fdb55af2cd62506c01604eb849ae9684f6ac438883d60: Error: G20_LOST_PERSIST_ACK
+ ✓ src/graph-verification-join.test.ts (21 tests) 84939ms
+   ✓ joins real negative outcomes in review then tests order and publishes one immutable row  4258ms
+   ✓ joins real negative outcomes in tests then review order and publishes one immutable row  4235ms
+   ✓ unknown reviewer remains reconciliation-only on repeated evaluation and cannot allocate retry  1748ms
+   ✓ host retry allocates attempt two and recomputes latest durable evidence instead of replaying failed RETURN  5553ms
+   ✓ rejects a stale fence and revoked authority across asynchronous artifact evidence verification  4018ms
+   ✓ held real admission release prevents publication even when both branches are confirmed  4034ms
+   ✓ revalidates durable evidence bytes after a successful publication instead of trusting a cached join  4412ms
+   ✓ retains original repair limits {"maxActionStarts":2} after actual branch execution  4034ms
+   ✓ retains original repair limits {"tokenReservationLimit":2} after actual branch execution  3985ms
+   ✓ retains original repair limits {"maxEpochs":1} after actual branch execution  4143ms
+   ✓ retains original branch-attempt limit on malformed output and original elapsed deadline  4028ms
+   ✓ real worker partial RETURN survives stop/drain and G15 takeover; host retry supersedes cached malformed review  6630ms
+   ✓ actual Functional task throws for unknown verification outcome and host refuses worker pass proposal  2462ms
+   ✓ rejects revoke changing during the actual durable envelope read  4097ms
+   ✓ rejects fence changing during the actual durable envelope read  4041ms
+   ✓ rejects renewal changing during the actual durable envelope read  4078ms
+   ✓ rejects admission-release changing during the actual durable envelope read  4032ms
+   ✓ a new actual unknown action invalidates routing from an already published join  4253ms
+   ✓ publishes an actual passing candidate at exact action and token limits  4157ms
+   ✓ routes a legacy pre-invocation failure to stop without requiring a GraphError or report  2747ms
+   ✓ preserves a failed ledger settlement with a valid unclassified verification receipt  3995ms
+
+  ../../../tmp/gc6/g17-build-0cy4vV/graph-chain-host.mjs  331.9kb
+
+⚡ Done in 10ms
+ ✓ src/graph-chain.integration.test.ts (29 tests) 36371ms
+   ✓ assembly: real command implement → freeze persists a selfcontained candidate  1538ms
+   ✓ daemon: real command implement → freeze persists a selfcontained candidate  1729ms
+   ✓ assembly: SIGKILL at before-return resumes using actual SQLite saver and ledger  1363ms
+   ✓ assembly: SIGKILL at before-final resumes using actual SQLite saver and ledger  1333ms
+   ✓ assembly: SIGKILL at after-final resumes using actual SQLite saver and ledger  1310ms
+   ✓ assembly: restore then SIGKILL again re-enters implement without repeating the confirmed external command  1598ms
+   ✓ daemon: SIGKILL at before-return resumes using actual SQLite saver and ledger  1568ms
+   ✓ daemon: SIGKILL at before-final resumes using actual SQLite saver and ledger  1534ms
+   ✓ daemon: SIGKILL at after-final resumes using actual SQLite saver and ledger  1578ms
+   ✓ daemon: restore then SIGKILL again re-enters implement without repeating the confirmed external command  1902ms
+   ✓ daemon: true daemon process SIGKILL/restart retains SQLite results and resumes through G15  1827ms
+   ✓ assembly: real broker unknown stays quarantined, then durable applied release failure is retried without resending  766ms
+   ✓ assembly: trusted not_applied reconciliation releases exact retained broker lease without automatically retrying  663ms
+   ✓ assembly: cancel reaches actual command process group and kills abort-ignoring worker without starting freeze  603ms
+   ✓ daemon: real broker unknown stays quarantined, then durable applied release failure is retried without resending  890ms
+   ✓ daemon: trusted not_applied reconciliation releases exact retained broker lease without automatically retrying  795ms
+   ✓ daemon: cancel reaches actual command process group and kills abort-ignoring worker without starting freeze  731ms
+   ✓ daemon: unknown retained canonical lock survives actual daemon SIGKILL and releases only after G15 committed decision  2222ms
+   ✓ assembly: bounded stop reports undrained actual broker Promise and refuses recovery before drainage  1567ms
+   ✓ assembly: original deadline aborts actual in-flight command through supervisor heartbeat  2421ms
+   ✓ assembly: cancel with unproven executor stop retains unknown effect even after broker drainage  1620ms
+   ✓ daemon: bounded stop reports undrained actual broker Promise and refuses recovery before drainage  1770ms
+   ✓ daemon: original deadline aborts actual in-flight command through supervisor heartbeat  2428ms
+   ✓ daemon: cancel with unproven executor stop retains unknown effect even after broker drainage  1748ms
+   ✓ module: late actual worker OS exit replaces unconfirmed observation without rewriting bounded stop  357ms
+osstack: retaining write lease run_04aead45842fa9bab733685c: session resume exit unconfirmed
+osstack: retaining write lease run_499b620adb532f9e61350c51: session resume exit unconfirmed
+ ✓ src/collaborator-rpc.test.ts (11 tests) 9926ms
+   ✓ signed collaborator through daemon RPC > automatically advances two frozen phases and replay never resets spent budgets  1230ms
+   ✓ signed collaborator through daemon RPC > uses only the signed retry instruction within its finite budget  1345ms
+   ✓ signed collaborator through daemon RPC > cannot use a phase grant as a risk approval  590ms
+   ✓ signed collaborator through daemon RPC > does not reinterpret a controlled result as a legacy decision directive  608ms
+   ✓ signed collaborator through daemon RPC > preserves opaque results during a delegated resume  910ms
+   ✓ signed collaborator through daemon RPC > rejects signature, runtime-policy and session-cursor changes without any send  495ms
+   ✓ signed collaborator through daemon RPC > revokes an in-flight turn and stops before the next instruction  806ms
+   ✓ signed collaborator through daemon RPC > bounds a stalled turn and blocks further automatic delivery  1610ms
+   ✓ signed collaborator through daemon RPC > retains a late real receipt but blocks when the timeout callback has not run yet  820ms
+   ✓ signed collaborator through daemon RPC > recovers a reserved receipt as uncertain after restart without resending  408ms
+   ✓ signed collaborator through daemon RPC > defers persisted grants and refuses installs until initial health permits work  1102ms
+ ✓ src/graph-worker-manager.test.ts (27 tests) 6474ms
+   ✓ reserves each run synchronously and requires verified exit before replacement  359ms
+   ✓ expires leases and terminates an unresponsive child with actual exit evidence  2039ms
+   ✓ done leaves exit pending until the OS observes termination  338ms
+   ✓ revokes a running lease and old callbacks cannot respond through a replacement connection  395ms
+   ✓ caps each log stream independently and does not pass a DB home or node injection environment  313ms
+   ✓ allows startup grace before requiring heartbeats  344ms
+   ✓ does not apply a checkpoint RPC timeout to a healthy long-running governed action  630ms
+osstack: clock jump detected drift_ms=9980; re-running external health and recovery probes
+osstack: retaining write lease run-offline-production-recovery: guarded autonomy blocked or exit unconfirmed
+ ✓ src/daemon-loop.test.ts (25 tests) 5798ms
+   ✓ daemon loop RPC > runs finite multi-cycle loops through daemon RPC  305ms
+   ✓ daemon loop RPC > runs reviewer adapters through daemon loop.run  927ms
+   ✓ daemon loop RPC > creates a blocked kanban card when a background loop escalates  321ms
+   ✓ daemon loop RPC > creates a blocked kanban card after three same-capability loop failures  386ms
+ ✓ src/loop-cli.test.ts (39 tests) 4437ms
+   ✓ loop CLI > keeps legacy full-scan findings as warn evidence while strict baseline scope passes clean changes  327ms
+   ✓ loop CLI > gates findings committed by an isolated worktree against the pre-run revision  434ms
+   ✓ loop CLI > passes --worktree through local loop runs  430ms
+   ✓ loop CLI > runs ds-review as a post-execution reviewer verifier  569ms
+osstack: retaining write lease run_ba1a9b34: adapter cancellation exit unconfirmed
+ ✓ src/daemon-admission.test.ts (6 tests) 3291ms
+   ✓ keeps a direct adapter's lease past terminal output until producer cleanup, then admits Loop  389ms
+   ✓ cancelled real producer: confirmed=false controls cross-instance admission  1263ms
+   ✓ cancelled real producer: confirmed=true controls cross-instance admission  1268ms
+osstack: retaining write lease graph-action:c2ca4c6109e89aa6a4632eae288479ca0cdbfb88e2a37d0ac255da39519c3fd8: Error: external stop unconfirmed
+ ✓ src/graph-verification.test.ts (29 tests) 74451ms
+   ✓ restores the exact verified candidate into independent repositories and rejects reviewer writes  1558ms
+   ✓ rejects wrong manifest and reviewer identity before restoring or invoking  595ms
+   ✓ persists actual stopped exit evidence and rejects tampering/replay  2497ms
+   ✓ keeps unknown stop separate from stopped malformed review and valid changes_requested  3758ms
+   ✓ runs real registered command and independent G04 review concurrently with an observable two-way barrier  3946ms
+   ✓ rejects revoke during adapter availability before actual invocation  1379ms
+   ✓ rejects mutate during adapter availability before actual invocation  1453ms
+   ✓ snapshots callback/data replacement and rejects live revocation after preparation awaits  1882ms
+   ✓ rejects mutation during restore before accepting any workspace baseline  1118ms
+   ✓ releases preparation lease if authority is revoked while acquiring it  499ms
+   ✓ uses exact allowlisted exits, refusing model pass claims and unregistered commands  6276ms
+   ✓ does not accept review done as executor stop proof through the actual broker  1466ms
+   ✓ classifies stopped malformed output and reviewer filesystem mutation without a code-failure result  5241ms
+   ✓ rejects manifest scope/SHA mismatch and independent identity verifier rejection before invocation  609ms
+   ✓ snapshots executor evidence before asynchronous verification and rechecks authority afterward  4030ms
+   ✓ rejects actual successful command that mutates candidate: printf malicious > file  2617ms
+   ✓ rejects actual successful command that mutates candidate: git update-index --assume-unchanged file; printf malicious > file  2571ms
+   ✓ rejects actual successful command that mutates candidate: chmod +x file  2545ms
+   ✓ rejects actual successful command that mutates candidate: chmod 600 file  2700ms
+   ✓ rejects actual successful command that mutates candidate: git update-index --assume-unchanged file  2643ms
+   ✓ rejects actual successful command that mutates candidate: printf staged > file; git add file; printf candidate > file  2561ms
+   ✓ rejects actual successful command that mutates candidate: git -c user.name=test -c user.email=test@invalid commit --allow-empty -qm malicious  2798ms
+   ✓ allocates distinct actual review sessions on explicit retry and persists prompt receipts  3933ms
+   ✓ rejects an oversized envelope at the storage boundary before publishing any file  2594ms
+   ✓ requires an actual invocation receipt and strips supplied writer context on every invocation  2607ms
+   ✓ validates all new receipts when loading digest-consistent evidence  2539ms
+   ✓ allows untracked build outputs from successful actual acceptance execution  2700ms
+   ✓ confirms ordinary failing tests with escape-heavy and multibyte captured output  2715ms
+   ✓ settles an oversized structured review as a bounded contract failure instead of unknown  2621ms
+To /Volumes/AIMATE_WORK/tmp/gc6/osstack-guarded-git-8MuDA4/remote.git
+ * [new branch]      main -> main
+Switched to a new branch 'codex/guarded-test'
+To /Volumes/AIMATE_WORK/tmp/gc6/osstack-guarded-git-n7hkax/remote.git
+ * [new branch]      main -> main
+Switched to a new branch 'codex/guarded-test'
+To /Volumes/AIMATE_WORK/tmp/gc6/osstack-guarded-git-ZPE7HS/remote.git
+ * [new branch]      main -> main
+Switched to a new branch 'codex/guarded-test'
+To /Volumes/AIMATE_WORK/tmp/gc6/osstack-guarded-git-1rCsqH/remote.git
+ * [new branch]      main -> main
+Switched to a new branch 'codex/guarded-test'
+To /Volumes/AIMATE_WORK/tmp/gc6/osstack-guarded-git-AVXlNR/remote.git
+ * [new branch]      main -> main
+Switched to a new branch 'codex/guarded-test'
+ ✓ src/guarded-git-runtime.test.ts (5 tests) 2364ms
+   ✓ GuardedGitRuntime > completes R1 documentation through exact commit and final proof  596ms
+   ✓ GuardedGitRuntime > completes R2 source through exact commit and final proof  550ms
+   ✓ GuardedGitRuntime > pauses a protected policy diff before proof, commit, or Git  443ms
+   ✓ GuardedGitRuntime > resumes blocked Git delivery after restart without rebuilding or recommitting  547ms
+ ✓ src/product-entry-cli.test.ts (46 tests) 2108ms
+   ✓ product entry commands > runs a top-level product doctor across loop readiness and agent availability  942ms
+   ✓ product entry commands > blocks Trusted Publishing when a public workspace package has not been bootstrapped  998ms
+ ✓ src/deliver-cli.test.ts (15 tests) 1624ms
+   ✓ deliver CLI > runs guarded-local with separated profile roles and local-only evidence  679ms
+ ✓ src/agent-list-cli.test.ts (2 tests) 1757ms
+   ✓ agent list CLI > lists local agents with roles, capabilities, and auth modes  901ms
+   ✓ agent list CLI > prints a role-oriented human list  856ms
+osstack: retaining write lease graph-action:203b6a58e250ed57734e4eeab4a5e5e17a5716e17f02006fdcaa81ea2b1321d5: Error: adapter result or execution unconfirmed
+osstack: retaining write lease graph-action:80448d8143fbbb086aec4d88662538edb8e531ff83ba0efc3c2d51cbc14d3af1: Error: adapter result or execution unconfirmed
+osstack: retaining write lease graph-action:011f7ed4285dce514f60d573e46a45597bd79a989fb4594370fd02a30369c74f: Error: adapter result or execution unconfirmed
+osstack: retaining write lease graph-action:a613bcfa470ca53310d4d59f5430193509867a79ec7d215388ce5eaccfe62224: Error: invalid result kind for registered operation
+osstack: retaining write lease graph-action:b3b208ce6118008ffe1fa9a492f59f194ac581462fa9ca70f2bc923bd7a16cd6: Error: invalid usage
+osstack: retaining write lease graph-action:8b1c71229acdf6673f57f05bebdda3813f706c98854859664137d5f4fc9ac0d5: Error: invalid persisted evidence reference
+osstack: retaining write lease graph-action:9e8cebcb8b8ee24732fefdd7937dd2974da587fe61e635691dd9a4f1a4d44990: SqliteError: injected
+osstack: retaining write lease graph-action:185766a0cf4e4ab4439e9d081bde94c0a2de8d402c402e092ebc50deedbbda21: Error: adapter result or execution unconfirmed
+osstack: retaining write lease graph-action:7a264df4411ef9cdc1e5bc20136ac926cb74ffcf8ada012dde546cc61c645e00: Error: adapter result or execution unconfirmed
+osstack: retaining write lease graph-action:75cd72430b33b3f5c37ff59257a1b80b362997cf1ba0148c9472a22197b91eba: Error: adapter result or execution unconfirmed
+osstack: retaining write lease graph-action:d6c290305a0a7f86bc82e864abfa3552658e60ecfb08291a53edcf33b6a7cced: Error: adapter result or execution unconfirmed
+osstack: retaining write lease graph-action:8d0ec05fb1bc23f6e0bde1f20fae969d4e16a7f69bc81126cc6ad2ce4c681790: Error: adapter result or execution unconfirmed
+ ✓ src/graph-action-broker.test.ts (31 tests) 1587ms
+ ✓ src/session-rpc.test.ts (19 tests) 1633ms
+Preparing worktree (new branch 'other-worktree')
+ ✓ src/daemon-policy-gate.test.ts (5 tests) 1075ms
+   ✓ daemon policy gate (R2.2) > stops a scheduled session on the next tick when policy.yaml is flipped to observe mid-session  326ms
+   ✓ holds daemon Loop behind a graph lease for a second worktree and aborts queued admission  345ms
+osstack: retaining write lease graph-action:7150ffe621e6a51734f9b860a1cd86f4a17a9f584e8106f1f6eb80fb96adb320: Error: invalid result kind for registered operation
+osstack: retaining write lease graph-action:765245a7a3a0ff32573a3c0c2c8eb2295372978cd7f6060ab4eee3fe3652437b: Error: invalid persisted evidence reference
+osstack: retaining write lease graph-action:b578d1b671611f7d26fa664d5513fbd517981e3f10a74c6f211fc5f667bf5645: Error: candidate preflight refused
+osstack: retaining write lease graph-action:adace3069e721f4ee85b096d31f361cda1b4028d7aaf4c440f2db1f9e325ed3a: Error: candidate preflight refused
+osstack: retaining write lease graph-action:45de650a97fc8606d3da6d3dc3b9cabc9610c4e3613594b94b6f0e5479879cf8: Error: lost receipt
+osstack: retaining write lease graph-action:b328aa995a9edec5bf0b1e173e57883ae274bc1aa2d0c57fa5276b3000c5efe7: injected lock release failure
+osstack: retaining write lease graph-action:b328aa995a9edec5bf0b1e173e57883ae274bc1aa2d0c57fa5276b3000c5efe7: Error: injected lock release failure
+osstack: retaining write lease graph-action:2fcf1f917f8a8f88439284b023739ac60204cc49ecf88fd25c186fcdffc37494: release failure
+osstack: retaining write lease graph-action:2fcf1f917f8a8f88439284b023739ac60204cc49ecf88fd25c186fcdffc37494: Error: release failure
+ ✓ src/graph-action-broker-boundary.test.ts (17 tests) 830ms
+ ✓ src/proof-cli.test.ts (44 tests) 802ms
+Preparing worktree (new branch 'other')
+Preparing worktree (new branch 'other')
+Preparing worktree (new branch 'other')
+osstack: retaining write lease one: external stop unconfirmed
+Preparing worktree (new branch 'other')
+Preparing worktree (new branch 'other')
+Preparing worktree (new branch 'other')
+osstack: retaining write lease retained: unknown
+Preparing worktree (new branch 'other')
+osstack: retaining write lease read1: uncertain read executor
+osstack: retaining write lease read2: other executor
+ ✓ src/governed-execution.test.ts (7 tests) 697ms
+ ✓ src/daemon-daily.test.ts (9 tests) 663ms
+ ✓ src/graph-action-freeze.test.ts (1 test) 679ms
+   ✓ freezes a real confirmed implementation under the same shared admission into a verified artifact  679ms
+ ✓ src/neat-transaction-command.test.ts (4 tests) 624ms
+ ✓ src/dashboard-cli.test.ts (33 tests) 553ms
+ ✓ src/daily-cli.test.ts (23 tests) 526ms
+stderr | src/stack-cli.test.ts > handleStackCommand: ingest > errors and returns 1 when --prs is missing
+osstack: stack ingest requires --prs <comma-separated PR numbers>
+
+stderr | src/stack-cli.test.ts > handleStackCommand: ingest > errors and returns 1 when --prs is empty
+osstack: stack ingest requires --prs <comma-separated PR numbers>
+
+stdout | src/stack-cli.test.ts > handleStackCommand: ingest > is idempotent across repeated ingests (no duplicate-card crash)
+ingested 3 PRs into board "stack" (order: 47,48,49)
+
+stdout | src/stack-cli.test.ts > handleStackCommand: ingest > is idempotent across repeated ingests (no duplicate-card crash)
+ingested 3 PRs into board "stack" (order: 47,48,49)
+
+stdout | src/stack-cli.test.ts > handleStackCommand: ingest > passes --repo through to ingestStack when provided
+ingested 1 PRs into board "stack" (order: 1)
+
+stdout | src/stack-cli.test.ts > handleStackCommand: ingest > re-ingest is idempotent: comments stay at 1/card and no-op events do not grow
+ingested 3 PRs into board "stack" (order: 47,48,49)
+
+stdout | src/stack-cli.test.ts > handleStackCommand: ingest > re-ingest is idempotent: comments stay at 1/card and no-op events do not grow
+ingested 3 PRs into board "stack" (order: 47,48,49)
+
+stderr | src/stack-cli.test.ts > handleStackCommand: ingest > returns 1 (not a thrown rejection) when ingestStack fails
+osstack: stack ingest failed: gh exploded
+
+stderr | src/stack-cli.test.ts > handleStackCommand: ingest > returns 1 with a non-numeric message when --prs has a garbage token
+osstack: --prs contains a non-numeric PR number: x
+
+stderr | src/stack-cli.test.ts > handleStackCommand: ingest > rejects trailing garbage like '47abc' rather than silently truncating to 47
+osstack: --prs contains a non-numeric PR number: 47abc
+
+stdout | src/stack-cli.test.ts > handleStackCommand: ingest > dedups repeated PR numbers in --prs (47,47,48 -> two cards)
+ingested 2 PRs into board "stack" (order: 47,48)
+
+stdout | src/stack-cli.test.ts > handleStackCommand: board > prints lane headers, card ids, and a [0/N checks] marker
+ingested 3 PRs into board "stack" (order: 47,48,49)
+
+stdout | src/stack-cli.test.ts > handleStackCommand: board > reflects a passed check as [1/N checks] for that card
+ingested 3 PRs into board "stack" (order: 47,48,49)
+
+stdout | src/stack-cli.test.ts > handleStackCommand: move > moves a card to a new status and prints a confirmation
+ingested 3 PRs into board "stack" (order: 47,48,49)
+
+stdout | src/stack-cli.test.ts > handleStackCommand: move > returns 1 when moving a nonexistent card
+ingested 3 PRs into board "stack" (order: 47,48,49)
+
+stderr | src/stack-cli.test.ts > handleStackCommand: move > returns 1 when moving a nonexistent card
+osstack: Kanban card not found: pr-999
+
+stdout | src/stack-cli.test.ts > handleStackCommand: move > returns 1 for an invalid status string
+ingested 3 PRs into board "stack" (order: 47,48,49)
+
+stderr | src/stack-cli.test.ts > handleStackCommand: move > returns 1 for an invalid status string
+osstack: invalid status "not-a-status"
+
+stdout | src/stack-cli.test.ts > handleStackCommand: move > evaluates every transition guard and emits no move event when one denies
+ingested 3 PRs into board "stack" (order: 47,48,49)
+
+stderr | src/stack-cli.test.ts > handleStackCommand: move > evaluates every transition guard and emits no move event when one denies
+osstack: transition denied by probe-readiness: readiness denied
+
+stdout | src/stack-cli.test.ts > handleStackCommand: check > sets a check to pass and emits a check event
+ingested 3 PRs into board "stack" (order: 47,48,49)
+
+stdout | src/stack-cli.test.ts > handleStackCommand: check > returns 1 when the check idx does not exist
+ingested 3 PRs into board "stack" (order: 47,48,49)
+
+stderr | src/stack-cli.test.ts > handleStackCommand: check > returns 1 when the check idx does not exist
+osstack: Kanban card check not found: pr-47#99
+
+stdout | src/stack-cli.test.ts > handleStackCommand: timeline > lists events in ascending order including created, moved, check kinds
+ingested 3 PRs into board "stack" (order: 47,48,49)
+
+stdout | src/stack-cli.test.ts > handleStackCommand: timeline > lists events in ascending order including created, moved, check kinds
+moved pr-48 -> running
+
+stdout | src/stack-cli.test.ts > handleStackCommand: timeline > lists events in ascending order including created, moved, check kinds
+check pr-47#0 -> pass
+
+stdout | src/stack-cli.test.ts > handleStackCommand: timeline > filters to a single card with --card
+ingested 3 PRs into board "stack" (order: 47,48,49)
+
+stdout | src/stack-cli.test.ts > handleStackCommand: timeline > filters to a single card with --card
+moved pr-48 -> running
+
+stderr | src/stack-cli.test.ts > handleStackCommand: unknown subcommand > returns 1 with a usage message for an unknown subcommand
+osstack: usage: stack <ingest|board|move|check|timeline|runbook|recommend|retro> [...args]
+
+stdout | src/stack-cli.test.ts > handleStackCommand: retro > preserves a approved proposal when a later retro suggests different gates
+ingested 3 PRs into board "stack" (order: 47,48,49)
+
+stdout | src/stack-cli.test.ts > handleStackCommand: retro > preserves a rejected proposal when a later retro suggests different gates
+ingested 3 PRs into board "stack" (order: 47,48,49)
+
+stdout | src/stack-cli.test.ts > handleStackCommand: retro > preserves a applied proposal when a later retro suggests different gates
+ingested 3 PRs into board "stack" (order: 47,48,49)
+
+stdout | src/stack-cli.test.ts > handleStackCommand: retro > preserves a needs_human proposal when a later retro suggests different gates
+ingested 3 PRs into board "stack" (order: 47,48,49)
+
+stdout | src/stack-cli.test.ts > handleStackCommand: retro > counts reworkCount from REAL blocked-transition events (2× blocked shows 2×; never-blocked shows none)
+ingested 3 PRs into board "stack" (order: 47,48,49)
+
+stdout | src/stack-cli.test.ts > handleStackCommand: retro > prints a retro for a seeded board
+ingested 3 PRs into board "stack" (order: 47,48,49)
+
+stdout | src/stack-cli.test.ts > handleStackCommand: retro > persists an idempotent memory fact under --write
+ingested 3 PRs into board "stack" (order: 47,48,49)
+
+stdout | src/stack-cli.test.ts > handleStackCommand: retro > records an improvement proposal under --write when a gate was missing
+ingested 3 PRs into board "stack" (order: 47,48,49)
+
+stdout | src/stack-cli.test.ts > handleStackCommand: runbook > returns 0 and prints the 3 PRs in bottom-up order with a [x] for the passed check
+ingested 3 PRs into board "stack" (order: 47,48,49)
+
+stdout | src/stack-cli.test.ts > handleStackCommand: recommend > returns 0 and prints role: merge-manager and agent: claude-code for a pr card with no learned preference
+ingested 3 PRs into board "stack" (order: 47,48,49)
+
+stdout | src/stack-cli.test.ts > handleStackCommand: recommend > uses a learned prefer_agent fact for the card's subject (card_type) to recommend codex-cli
+ingested 3 PRs into board "stack" (order: 47,48,49)
+
+stdout | src/stack-cli.test.ts > handleStackCommand: recommend > returns 1 for a missing card
+ingested 3 PRs into board "stack" (order: 47,48,49)
+
+stderr | src/stack-cli.test.ts > handleStackCommand: recommend > returns 1 for a missing card
+osstack: card not found: pr-999
+
+stdout | src/stack-cli.test.ts > handleStackCommand: recommend > with --assign, persists the recommended agent as the card's assignee
+ingested 3 PRs into board "stack" (order: 47,48,49)
+
+stdout | src/stack-cli.test.ts > handleStackCommand: recommend > honors the NEWEST preference when two conflicting facts exist (newest-wins, end-to-end)
+ingested 3 PRs into board "stack" (order: 47,48,49)
+
+ ✓ src/stack-cli.test.ts (41 tests) 507ms
+ ✓ src/graph-reconciler.test.ts (23 tests) 408ms
+osstack: retaining write lease graph-action:5ae629e42f114ddf4d76e64c7e06f611d43f56f0e0d55613fbaa2c0f26214923: Error: external stop unconfirmed
+ ✓ src/graph-branch-broker.test.ts (8 tests) 414ms
+warning: Not a git repository. Use --no-index to compare two paths outside a working tree
+usage: git diff --no-index [<options>] <path> <path> [<pathspec>...]
+
+Diff output format options
+    -p, --patch           generate patch
+    -s, --no-patch        suppress diff output
+    -u                    generate patch
+    -U, --unified[=<n>]   generate diffs with <n> lines context
+    -W, --[no-]function-context
+                          generate diffs with <n> lines context
+    --raw                 generate the diff in raw format
+    --patch-with-raw      synonym for '-p --raw'
+    --patch-with-stat     synonym for '-p --stat'
+    --numstat             machine friendly --stat
+    --shortstat           output only the last line of --stat
+    -X, --dirstat[=<param1>,<param2>...]
+                          output the distribution of relative amount of changes for each sub-directory
+    --cumulative          synonym for --dirstat=cumulative
+    --dirstat-by-file[=<param1>,<param2>...]
+                          synonym for --dirstat=files,<param1>,<param2>...
+    --check               warn if changes introduce conflict markers or whitespace errors
+    --summary             condensed summary such as creations, renames and mode changes
+    --name-only           show only names of changed files
+    --name-status         show only names and status of changed files
+    --stat[=<width>[,<name-width>[,<count>]]]
+                          generate diffstat
+    --stat-width <width>  generate diffstat with a given width
+    --stat-name-width <width>
+                          generate diffstat with a given name width
+    --stat-graph-width <width>
+                          generate diffstat with a given graph width
+    --stat-count <count>  generate diffstat with limited lines
+    --[no-]compact-summary
+                          generate compact summary in diffstat
+    --binary              output a binary diff that can be applied
+    --[no-]full-index     show full pre- and post-image object names on the "index" lines
+    --[no-]color[=<when>] show colored diff
+    --ws-error-highlight <kind>
+                          highlight whitespace errors in the 'context', 'old' or 'new' lines in the diff
+    -z                    do not munge pathnames and use NULs as output field terminators in --raw or --numstat
+    --[no-]abbrev[=<n>]   use <n> digits to display object names
+    --src-prefix <prefix> show the given source prefix instead of "a/"
+    --dst-prefix <prefix> show the given destination prefix instead of "b/"
+    --line-prefix <prefix>
+                          prepend an additional prefix to every line of output
+    --no-prefix           do not show any source or destination prefix
+    --default-prefix      use default prefixes a/ and b/
+    --inter-hunk-context <n>
+                          show context between diff hunks up to the specified number of lines
+    --output-indicator-new <char>
+                          specify the character to indicate a new line instead of '+'
+    --output-indicator-old <char>
+                          specify the character to indicate an old line instead of '-'
+    --output-indicator-context <char>
+                          specify the character to indicate a context instead of ' '
+
+Diff rename options
+    -B, --break-rewrites[=<n>[/<m>]]
+                          break complete rewrite changes into pairs of delete and create
+    -M, --find-renames[=<n>]
+                          detect renames
+    -D, --irreversible-delete
+                          omit the preimage for deletes
+    -C, --find-copies[=<n>]
+                          detect copies
+    --[no-]find-copies-harder
+                          use unmodified files as source to find copies
+    --no-renames          disable rename detection
+    --[no-]rename-empty   use empty blobs as rename source
+    --[no-]follow         continue listing the history of a file beyond renames
+    -l <n>                prevent rename/copy detection if the number of rename/copy targets exceeds given limit
+
+Diff algorithm options
+    --minimal             produce the smallest possible diff
+    -w, --ignore-all-space
+                          ignore whitespace when comparing lines
+    -b, --ignore-space-change
+                          ignore changes in amount of whitespace
+    --ignore-space-at-eol ignore changes in whitespace at EOL
+    --ignore-cr-at-eol    ignore carrier-return at the end of line
+    --ignore-blank-lines  ignore changes whose lines are all blank
+    -I, --[no-]ignore-matching-lines <regex>
+                          ignore changes whose all lines match <regex>
+    --[no-]indent-heuristic
+                          heuristic to shift diff hunk boundaries for easy reading
+    --patience            generate diff using the "patience diff" algorithm
+    --histogram           generate diff using the "histogram diff" algorithm
+    --diff-algorithm <algorithm>
+                          choose a diff algorithm
+    --anchored <text>     generate diff using the "anchored diff" algorithm
+    --word-diff[=<mode>]  show word diff, using <mode> to delimit changed words
+    --word-diff-regex <regex>
+                          use <regex> to decide what a word is
+    --color-words[=<regex>]
+                          equivalent to --word-diff=color --word-diff-regex=<regex>
+    --[no-]color-moved[=<mode>]
+                          moved lines of code are colored differently
+    --[no-]color-moved-ws <mode>
+                          how white spaces are ignored in --color-moved
+
+Other diff options
+    --[no-]relative[=<prefix>]
+                          when run from subdir, exclude changes outside and show relative paths
+    -a, --[no-]text       treat all files as text
+    -R                    swap two inputs, reverse the diff
+    --[no-]exit-code      exit with 1 if there were differences, 0 otherwise
+    --[no-]quiet          disable all output of the program
+    --[no-]ext-diff       allow an external diff helper to be executed
+    --[no-]textconv       run external text conversion filters when comparing binary files
+    --ignore-submodules[=<when>]
+                          ignore changes to submodules in the diff generation
+    --submodule[=<format>]
+                          specify how differences in submodules are shown
+    --ita-invisible-in-index
+                          hide 'git add -N' entries from the index
+    --ita-visible-in-index
+                          treat 'git add -N' entries as real in the index
+    -S <string>           look for differences that change the number of occurrences of the specified string
+    -G <regex>            look for differences that change the number of occurrences of the specified regex
+    --pickaxe-all         show all changes in the changeset with -S or -G
+    --pickaxe-regex       treat <string> in -S as extended POSIX regular expression
+    -O <file>             control the order in which files appear in the output
+    --rotate-to <path>    show the change in the specified path first
+    --skip-to <path>      skip the output to the specified path
+    --find-object <object-id>
+                          look for differences that change the number of occurrences of the specified object
+    --diff-filter [(A|C|D|M|R|T|U|X|B)...[*]]
+                          select files by diff type
+    --max-depth <depth>   maximum tree depth to recurse
+    --output <file>       output to a specific file
+
+warning: Not a git repository. Use --no-index to compare two paths outside a working tree
+usage: git diff --no-index [<options>] <path> <path> [<pathspec>...]
+
+Diff output format options
+    -p, --patch           generate patch
+    -s, --no-patch        suppress diff output
+    -u                    generate patch
+    -U, --unified[=<n>]   generate diffs with <n> lines context
+    -W, --[no-]function-context
+                          generate diffs with <n> lines context
+    --raw                 generate the diff in raw format
+    --patch-with-raw      synonym for '-p --raw'
+    --patch-with-stat     synonym for '-p --stat'
+    --numstat             machine friendly --stat
+    --shortstat           output only the last line of --stat
+    -X, --dirstat[=<param1>,<param2>...]
+                          output the distribution of relative amount of changes for each sub-directory
+    --cumulative          synonym for --dirstat=cumulative
+    --dirstat-by-file[=<param1>,<param2>...]
+                          synonym for --dirstat=files,<param1>,<param2>...
+    --check               warn if changes introduce conflict markers or whitespace errors
+    --summary             condensed summary such as creations, renames and mode changes
+    --name-only           show only names of changed files
+    --name-status         show only names and status of changed files
+    --stat[=<width>[,<name-width>[,<count>]]]
+                          generate diffstat
+    --stat-width <width>  generate diffstat with a given width
+    --stat-name-width <width>
+                          generate diffstat with a given name width
+    --stat-graph-width <width>
+                          generate diffstat with a given graph width
+    --stat-count <count>  generate diffstat with limited lines
+    --[no-]compact-summary
+                          generate compact summary in diffstat
+    --binary              output a binary diff that can be applied
+    --[no-]full-index     show full pre- and post-image object names on the "index" lines
+    --[no-]color[=<when>] show colored diff
+    --ws-error-highlight <kind>
+                          highlight whitespace errors in the 'context', 'old' or 'new' lines in the diff
+    -z                    do not munge pathnames and use NULs as output field terminators in --raw or --numstat
+    --[no-]abbrev[=<n>]   use <n> digits to display object names
+    --src-prefix <prefix> show the given source prefix instead of "a/"
+    --dst-prefix <prefix> show the given destination prefix instead of "b/"
+    --line-prefix <prefix>
+                          prepend an additional prefix to every line of output
+    --no-prefix           do not show any source or destination prefix
+    --default-prefix      use default prefixes a/ and b/
+    --inter-hunk-context <n>
+                          show context between diff hunks up to the specified number of lines
+    --output-indicator-new <char>
+                          specify the character to indicate a new line instead of '+'
+    --output-indicator-old <char>
+                          specify the character to indicate an old line instead of '-'
+    --output-indicator-context <char>
+                          specify the character to indicate a context instead of ' '
+
+Diff rename options
+    -B, --break-rewrites[=<n>[/<m>]]
+                          break complete rewrite changes into pairs of delete and create
+    -M, --find-renames[=<n>]
+                          detect renames
+    -D, --irreversible-delete
+                          omit the preimage for deletes
+    -C, --find-copies[=<n>]
+                          detect copies
+    --[no-]find-copies-harder
+                          use unmodified files as source to find copies
+    --no-renames          disable rename detection
+    --[no-]rename-empty   use empty blobs as rename source
+    --[no-]follow         continue listing the history of a file beyond renames
+    -l <n>                prevent rename/copy detection if the number of rename/copy targets exceeds given limit
+
+Diff algorithm options
+    --minimal             produce the smallest possible diff
+    -w, --ignore-all-space
+                          ignore whitespace when comparing lines
+    -b, --ignore-space-change
+                          ignore changes in amount of whitespace
+    --ignore-space-at-eol ignore changes in whitespace at EOL
+    --ignore-cr-at-eol    ignore carrier-return at the end of line
+    --ignore-blank-lines  ignore changes whose lines are all blank
+    -I, --[no-]ignore-matching-lines <regex>
+                          ignore changes whose all lines match <regex>
+    --[no-]indent-heuristic
+                          heuristic to shift diff hunk boundaries for easy reading
+    --patience            generate diff using the "patience diff" algorithm
+    --histogram           generate diff using the "histogram diff" algorithm
+    --diff-algorithm <algorithm>
+                          choose a diff algorithm
+    --anchored <text>     generate diff using the "anchored diff" algorithm
+    --word-diff[=<mode>]  show word diff, using <mode> to delimit changed words
+    --word-diff-regex <regex>
+                          use <regex> to decide what a word is
+    --color-words[=<regex>]
+                          equivalent to --word-diff=color --word-diff-regex=<regex>
+    --[no-]color-moved[=<mode>]
+                          moved lines of code are colored differently
+    --[no-]color-moved-ws <mode>
+                          how white spaces are ignored in --color-moved
+
+Other diff options
+    --[no-]relative[=<prefix>]
+                          when run from subdir, exclude changes outside and show relative paths
+    -a, --[no-]text       treat all files as text
+    -R                    swap two inputs, reverse the diff
+    --[no-]exit-code      exit with 1 if there were differences, 0 otherwise
+    --[no-]quiet          disable all output of the program
+    --[no-]ext-diff       allow an external diff helper to be executed
+    --[no-]textconv       run external text conversion filters when comparing binary files
+    --ignore-submodules[=<when>]
+                          ignore changes to submodules in the diff generation
+    --submodule[=<format>]
+                          specify how differences in submodules are shown
+    --ita-invisible-in-index
+                          hide 'git add -N' entries from the index
+    --ita-visible-in-index
+                          treat 'git add -N' entries as real in the index
+    -S <string>           look for differences that change the number of occurrences of the specified string
+    -G <regex>            look for differences that change the number of occurrences of the specified regex
+    --pickaxe-all         show all changes in the changeset with -S or -G
+    --pickaxe-regex       treat <string> in -S as extended POSIX regular expression
+    -O <file>             control the order in which files appear in the output
+    --rotate-to <path>    show the change in the specified path first
+    --skip-to <path>      skip the output to the specified path
+    --find-object <object-id>
+                          look for differences that change the number of occurrences of the specified object
+    --diff-filter [(A|C|D|M|R|T|U|X|B)...[*]]
+                          select files by diff type
+    --max-depth <depth>   maximum tree depth to recurse
+    --output <file>       output to a specific file
+
+warning: Not a git repository. Use --no-index to compare two paths outside a working tree
+usage: git diff --no-index [<options>] <path> <path> [<pathspec>...]
+
+Diff output format options
+    -p, --patch           generate patch
+    -s, --no-patch        suppress diff output
+    -u                    generate patch
+    -U, --unified[=<n>]   generate diffs with <n> lines context
+    -W, --[no-]function-context
+                          generate diffs with <n> lines context
+    --raw                 generate the diff in raw format
+    --patch-with-raw      synonym for '-p --raw'
+    --patch-with-stat     synonym for '-p --stat'
+    --numstat             machine friendly --stat
+    --shortstat           output only the last line of --stat
+    -X, --dirstat[=<param1>,<param2>...]
+                          output the distribution of relative amount of changes for each sub-directory
+    --cumulative          synonym for --dirstat=cumulative
+    --dirstat-by-file[=<param1>,<param2>...]
+                          synonym for --dirstat=files,<param1>,<param2>...
+    --check               warn if changes introduce conflict markers or whitespace errors
+    --summary             condensed summary such as creations, renames and mode changes
+    --name-only           show only names of changed files
+    --name-status         show only names and status of changed files
+    --stat[=<width>[,<name-width>[,<count>]]]
+                          generate diffstat
+    --stat-width <width>  generate diffstat with a given width
+    --stat-name-width <width>
+                          generate diffstat with a given name width
+    --stat-graph-width <width>
+                          generate diffstat with a given graph width
+    --stat-count <count>  generate diffstat with limited lines
+    --[no-]compact-summary
+                          generate compact summary in diffstat
+    --binary              output a binary diff that can be applied
+    --[no-]full-index     show full pre- and post-image object names on the "index" lines
+    --[no-]color[=<when>] show colored diff
+    --ws-error-highlight <kind>
+                          highlight whitespace errors in the 'context', 'old' or 'new' lines in the diff
+    -z                    do not munge pathnames and use NULs as output field terminators in --raw or --numstat
+    --[no-]abbrev[=<n>]   use <n> digits to display object names
+    --src-prefix <prefix> show the given source prefix instead of "a/"
+    --dst-prefix <prefix> show the given destination prefix instead of "b/"
+    --line-prefix <prefix>
+                          prepend an additional prefix to every line of output
+    --no-prefix           do not show any source or destination prefix
+    --default-prefix      use default prefixes a/ and b/
+    --inter-hunk-context <n>
+                          show context between diff hunks up to the specified number of lines
+    --output-indicator-new <char>
+                          specify the character to indicate a new line instead of '+'
+    --output-indicator-old <char>
+                          specify the character to indicate an old line instead of '-'
+    --output-indicator-context <char>
+                          specify the character to indicate a context instead of ' '
+
+Diff rename options
+    -B, --break-rewrites[=<n>[/<m>]]
+                          break complete rewrite changes into pairs of delete and create
+    -M, --find-renames[=<n>]
+                          detect renames
+    -D, --irreversible-delete
+                          omit the preimage for deletes
+    -C, --find-copies[=<n>]
+                          detect copies
+    --[no-]find-copies-harder
+                          use unmodified files as source to find copies
+    --no-renames          disable rename detection
+    --[no-]rename-empty   use empty blobs as rename source
+    --[no-]follow         continue listing the history of a file beyond renames
+    -l <n>                prevent rename/copy detection if the number of rename/copy targets exceeds given limit
+
+Diff algorithm options
+    --minimal             produce the smallest possible diff
+    -w, --ignore-all-space
+                          ignore whitespace when comparing lines
+    -b, --ignore-space-change
+                          ignore changes in amount of whitespace
+    --ignore-space-at-eol ignore changes in whitespace at EOL
+    --ignore-cr-at-eol    ignore carrier-return at the end of line
+    --ignore-blank-lines  ignore changes whose lines are all blank
+    -I, --[no-]ignore-matching-lines <regex>
+                          ignore changes whose all lines match <regex>
+    --[no-]indent-heuristic
+                          heuristic to shift diff hunk boundaries for easy reading
+    --patience            generate diff using the "patience diff" algorithm
+    --histogram           generate diff using the "histogram diff" algorithm
+    --diff-algorithm <algorithm>
+                          choose a diff algorithm
+    --anchored <text>     generate diff using the "anchored diff" algorithm
+    --word-diff[=<mode>]  show word diff, using <mode> to delimit changed words
+    --word-diff-regex <regex>
+                          use <regex> to decide what a word is
+    --color-words[=<regex>]
+                          equivalent to --word-diff=color --word-diff-regex=<regex>
+    --[no-]color-moved[=<mode>]
+                          moved lines of code are colored differently
+    --[no-]color-moved-ws <mode>
+                          how white spaces are ignored in --color-moved
+
+Other diff options
+    --[no-]relative[=<prefix>]
+                          when run from subdir, exclude changes outside and show relative paths
+    -a, --[no-]text       treat all files as text
+    -R                    swap two inputs, reverse the diff
+    --[no-]exit-code      exit with 1 if there were differences, 0 otherwise
+    --[no-]quiet          disable all output of the program
+    --[no-]ext-diff       allow an external diff helper to be executed
+    --[no-]textconv       run external text conversion filters when comparing binary files
+    --ignore-submodules[=<when>]
+                          ignore changes to submodules in the diff generation
+    --submodule[=<format>]
+                          specify how differences in submodules are shown
+    --ita-invisible-in-index
+                          hide 'git add -N' entries from the index
+    --ita-visible-in-index
+                          treat 'git add -N' entries as real in the index
+    -S <string>           look for differences that change the number of occurrences of the specified string
+    -G <regex>            look for differences that change the number of occurrences of the specified regex
+    --pickaxe-all         show all changes in the changeset with -S or -G
+    --pickaxe-regex       treat <string> in -S as extended POSIX regular expression
+    -O <file>             control the order in which files appear in the output
+    --rotate-to <path>    show the change in the specified path first
+    --skip-to <path>      skip the output to the specified path
+    --find-object <object-id>
+                          look for differences that change the number of occurrences of the specified object
+    --diff-filter [(A|C|D|M|R|T|U|X|B)...[*]]
+                          select files by diff type
+    --max-depth <depth>   maximum tree depth to recurse
+    --output <file>       output to a specific file
+
+ ✓ src/loop-self-improvement-cli.test.ts (5 tests) 388ms
+ ✓ src/probe-command.test.ts (19 tests) 367ms
+ ✓ src/repository-policy.test.ts (3 tests) 392ms
+ ✓ src/neat-dependency-command.test.ts (1 test) 375ms
+   ✓ neat dependencies > records deterministic candidates idempotently and reads the downstream inbox  374ms
+ ✓ src/daemon-evidence-cli.test.ts (1 test) 277ms
+ ✓ src/daemon-graph-action-broker.test.ts (1 test) 273ms
+ ✓ src/start-control-cli.test.ts (20 tests) 243ms
+ ✓ src/pr-cli.test.ts (3 tests) 247ms
+ ✓ src/improve-cli.test.ts (8 tests) 252ms
+ ✓ src/autonomy-cli.test.ts (15 tests) 224ms
+ ✓ src/graph-command.test.ts (12 tests) 201ms
+ ✓ src/lessons-cli.test.ts (5 tests) 176ms
+ ✓ src/evaluator-cli.test.ts (4 tests) 164ms
+ ✓ src/neat-cli.test.ts (3 tests) 162ms
+ ✓ src/supervise-cli.test.ts (5 tests) 153ms
+ ✓ src/agent-scorecard-cli.test.ts (4 tests) 153ms
+ ✓ src/copilot-relay.integration.test.ts (1 test) 140ms
+osstack: autonomy health recovered — daemon resumed accepting work
+osstack: autonomy health recovered — daemon resumed accepting work
+osstack: autonomy health recovered — daemon resumed accepting work
+osstack: autonomy health recovered — daemon resumed accepting work
+osstack: autonomy health recovered — daemon resumed accepting work
+osstack: autonomy health recovered — daemon resumed accepting work
+ ✓ src/daemon-drain-recovery.test.ts (9 tests) 147ms
+ ✓ src/neat-command.test.ts (29 tests) 134ms
+ ✓ src/autonomy-health.test.ts (9 tests) 126ms
+ ✓ src/probe-render.test.ts (4 tests) 93ms
+ ✓ src/governance-cli.test.ts (3 tests) 119ms
+ ✓ src/scorecard-cli.test.ts (7 tests) 116ms
+ ✓ src/report-cli.test.ts (8 tests) 125ms
+ ✓ src/policy-cli.test.ts (12 tests) 120ms
+ ✓ src/neat-proposal-command.test.ts (5 tests) 109ms
+ ✓ src/graph-checkpoint-service.test.ts (6 tests) 105ms
+ ✓ src/dashboard.test.ts (8 tests) 95ms
+ ✓ src/steward-cli.test.ts (5 tests) 88ms
+ ✓ src/knowledge-cli.test.ts (24 tests) 65ms
+ ✓ src/kimi-review-eval.test.ts (2 tests) 64ms
+repository lease renewal failed; retained broken: Error: lost lease
+ ✓ src/governed-execution-fault.test.ts (1 test) 63ms
+ ✓ src/supervise-probe.test.ts (1 test) 60ms
+ ✓ src/autonomy-notification.test.ts (3 tests) 54ms
+ ✓ src/autonomy-scorecard.test.ts (2 tests) 46ms
+ ✓ src/neat-trend-command.test.ts (4 tests) 44ms
+ ✓ src/contracts-cli.test.ts (2 tests) 44ms
+ ✓ src/compliance-cli.test.ts (3 tests) 45ms
+stderr | src/stack-cli.dryrun.test.ts > stack dry-run: Knowledge Layer 8-PR fixture (offline) > the fixture runner throws for an unknown PR, so nothing hits live gh
+osstack: stack ingest failed: dry-run: no fixture for PR 99
+
+ ✓ src/stack-cli.dryrun.test.ts (2 tests) 44ms
+ ✓ src/probe-cli.test.ts (2 tests) 42ms
+ ✓ src/daemon-rpc-latency.test.ts (2 tests) 44ms
+ ✓ src/loop-probe-observer.test.ts (2 tests) 40ms
+ ✓ src/probe-kanban-guard.test.ts (2 tests) 41ms
+ ✓ src/graph-checkpoint-daemon.test.ts (1 test) 30ms
+ ✓ src/neat-semantic-command.test.ts (13 tests) 38ms
+ ✓ src/neat-review-command.test.ts (10 tests) 28ms
+ ✓ src/neat-command-v2.test.ts (4 tests) 29ms
+ ✓ src/autonomy-host.test.ts (2 tests) 28ms
+ ✓ src/daemon.test.ts (8 tests) 27ms
+ ✓ src/checkpoint-cli.test.ts (7 tests) 28ms
+ ✓ src/daemon-agent-override.test.ts (1 test) 25ms
+ ✓ src/neat-fix-command.test.ts (7 tests) 23ms
+ ✓ src/serve-install-cli.test.ts (12 tests) 19ms
+ ✓ src/config-cli.test.ts (6 tests) 19ms
+ ✓ src/probe-compile.test.ts (2 tests) 18ms
+ ✓ src/store.test.ts (1 test) 16ms
+ ✓ src/run-spec-files.test.ts (5 tests) 11ms
+ ✓ src/neat-semantic-artifacts.test.ts (2 tests) 10ms
+ ✓ src/collaborator-command.test.ts (3 tests) 10ms
+stdout | src/upgrade.test.ts > safe self-upgrade > drains and snapshots state before installing and health-checking
+osstack upgrade: current version: 0.19.0 (channel: latest)
+
+stdout | src/upgrade.test.ts > safe self-upgrade > drains and snapshots state before installing and health-checking
+osstack upgrade: update available: 0.19.0 → 0.19.1
+
+stdout | src/upgrade.test.ts > safe self-upgrade > drains and snapshots state before installing and health-checking
+osstack upgrade: draining daemon (waiting for active runs, max 60s)…
+
+stdout | src/upgrade.test.ts > safe self-upgrade > drains and snapshots state before installing and health-checking
+osstack upgrade: state.db backed up → /Volumes/AIMATE_WORK/tmp/gc6/osstack-upgrade-zCSZWL/home/backups/state-v0.19.0-2026-09-15-01-55-01.db
+osstack upgrade: installing @osstack/cli@0.19.1…
+
+stdout | src/upgrade.test.ts > safe self-upgrade > drains and snapshots state before installing and health-checking
+osstack upgrade: starting daemon (detached `osstack serve`)…
+
+stdout | src/upgrade.test.ts > safe self-upgrade > drains and snapshots state before installing and health-checking
+osstack upgrade: daemon healthy on 0.19.1.
+osstack upgrade: upgrade complete: 0.19.0 → 0.19.1
+
+stdout | src/upgrade.test.ts > safe self-upgrade > restores the previous binary and database after failed health
+osstack upgrade: current version: 0.19.0 (channel: latest)
+
+stdout | src/upgrade.test.ts > safe self-upgrade > restores the previous binary and database after failed health
+osstack upgrade: update available: 0.19.0 → 0.19.1
+
+stdout | src/upgrade.test.ts > safe self-upgrade > restores the previous binary and database after failed health
+osstack upgrade: draining daemon (waiting for active runs, max 60s)…
+
+stdout | src/upgrade.test.ts > safe self-upgrade > restores the previous binary and database after failed health
+osstack upgrade: state.db backed up → /Volumes/AIMATE_WORK/tmp/gc6/osstack-upgrade-3fvqY1/home/backups/state-v0.19.0-2026-09-15-01-55-01.db
+osstack upgrade: installing @osstack/cli@0.19.1…
+
+stdout | src/upgrade.test.ts > safe self-upgrade > restores the previous binary and database after failed health
+osstack upgrade: starting daemon (detached `osstack serve`)…
+
+stdout | src/upgrade.test.ts > safe self-upgrade > restores the previous binary and database after failed health
+osstack upgrade: daemon failed health check on 0.19.1 — ROLLING BACK to 0.19.0…
+osstack upgrade: draining daemon (waiting for active runs, max 60s)…
+
+stdout | src/upgrade.test.ts > safe self-upgrade > restores the previous binary and database after failed health
+osstack upgrade: pre-upgrade state.db snapshot restored
+
+stdout | src/upgrade.test.ts > safe self-upgrade > restores the previous binary and database after failed health
+osstack upgrade: starting daemon (detached `osstack serve`)…
+
+stdout | src/upgrade.test.ts > safe self-upgrade > restores the previous binary and database after failed health
+osstack upgrade: rolled back to 0.19.0; daemon healthy again. Investigate before retrying.
+
+ ✓ src/upgrade.test.ts (2 tests) 10ms
+ ✓ src/control-plane-guard.test.ts (16 tests) 8ms
+stdout | src/upgrade-deployed-home.test.ts > alignEnvWithDeployment > overrides a mismatched caller env (the incident shape)
+osstack upgrade: note: OSSTACK_HOME in this shell (/Users/example/.osstack) differs from the deployed daemon's home (/Users/example/.osstack-stable, from launchd plist) — using the deployed home.
+
+ ✓ src/upgrade-deployed-home.test.ts (9 tests) 7ms
+ ✓ src/probe-gate.test.ts (2 tests) 7ms
+ ✓ src/control-plane-doctor.test.ts (8 tests) 6ms
+ ✓ src/probe-dynamic.test.ts (3 tests) 6ms
+ ✓ src/deployed-home.test.ts (10 tests) 5ms
+ ✓ src/hub-cli.test.ts (16 tests) 5ms
+ ✓ src/proof-pack.test.ts (9 tests) 4ms
+ ✓ src/adapter-lifecycle.test.ts (2 tests) 4ms
+ ✓ src/supervisor-cli-support.test.ts (6 tests) 4ms
+ ✓ src/loop-profile-routing.test.ts (12 tests) 4ms
+ ✓ src/cockpit-tui.test.ts (8 tests) 3ms
+ ✓ src/release-workflow.test.ts (13 tests) 3ms
+ ✓ src/skills-command.test.ts (3 tests) 3ms
+ ✓ src/session-wait.test.ts (12 tests) 3ms
+ ✓ src/task-command.test.ts (4 tests) 3ms
+ ✓ src/stack-routing.test.ts (15 tests) 3ms
+ ✓ src/steward-command.test.ts (1 test) 3ms
+ ✓ src/session-command.test.ts (3 tests) 2ms
+ ✓ src/neat-patch-policy.test.ts (9 tests) 2ms
+ ✓ src/i18n-cli.test.ts (2 tests) 2ms
+ ✓ src/hermes-command.test.ts (3 tests) 2ms
+ ✓ src/rpc-latency.test.ts (7 tests) 2ms
+ ✓ src/assurance-command.test.ts (3 tests) 2ms
+ ✓ src/agent-command.test.ts (2 tests) 3ms
+ ✓ src/loop-neat-finalizer.test.ts (4 tests) 2ms
+ ✓ src/product-entry-command.test.ts (1 test) 2ms
+ ✓ src/continuation-output-checks.test.ts (2 tests) 2ms
+ ✓ src/update-check.test.ts (7 tests) 1ms
+
+ Test Files  115 passed (115)
+      Tests  1065 passed (1065)
+   Start at  18:50:29
+   Duration  275.17s (transform 1.14s, setup 117ms, collect 13.62s, tests 251.27s, environment 7ms, prepare 2.55s)
+

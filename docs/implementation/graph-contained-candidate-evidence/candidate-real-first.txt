@@ -1,0 +1,17 @@
+$ vitest run src/graph-verification.test.ts -t 'contained|substitution' --maxWorkers=1
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+ ✓ src/graph-verification.test.ts (36 tests | 30 skipped) 18812ms
+   ✓ binds actual contained tests exit 0 to candidate/image/ledger without POSIX evidence  3127ms
+   ✓ binds actual contained tests exit 1 to candidate/image/ledger without POSIX evidence  3076ms
+   ✓ binds actual contained tests exit 42 to candidate/image/ledger without POSIX evidence  3013ms
+   ✓ binds actual contained tests exit 7 to candidate/image/ledger without POSIX evidence  3390ms
+   ✓ rejects cross-candidate, image, generation, invocation and container receipt substitution  3256ms
+   ✓ settles contained cancellation only after durable removal and prevents replay  2949ms
+
+ Test Files  1 passed (1)
+      Tests  6 passed | 30 skipped (36)
+   Start at  19:26:57
+   Duration  19.61s (transform 409ms, setup 7ms, collect 682ms, tests 18.81s, environment 0ms, prepare 26ms)
+

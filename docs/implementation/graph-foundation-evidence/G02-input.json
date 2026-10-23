@@ -1,0 +1,27 @@
+{
+  "task": {
+    "id": "G02",
+    "phase": "M0",
+    "title": "贯通图级取消信号",
+    "dependsOn": [
+      "G01"
+    ],
+    "files": [
+      "packages/loop/src/executor.ts",
+      "packages/loop/src/executor.test.ts",
+      "packages/agents/src/base.ts"
+    ],
+    "acceptance": [
+      "LocalExecutorOptions 接收外部 signal，并与内部 timeout 合并且清理 listener。",
+      "开始前已取消不启动 adapter；运行中取消向真实 invoke(signal) 传递。",
+      "signal 已发出与执行已停止分开记录，晚到 done 不抹掉未确认取消。"
+    ],
+    "verify": "LOOP",
+    "size": "M",
+    "status": "pending"
+  },
+  "prompt": "Implement ONLY G02 in this existing isolated worktree. You are the coding executor invoked by OSStack LoopEngine. Parent supervisor is handling docs/status and review. Do not spawn agents or nested OSStack loops. Do not commit, push, merge, deploy, alter AGENTS.md, touch sibling repositories, or mark plan tasks done. All dependencies are installed and built. Read AGENTS.md, the implementation plan docs/implementation/2026-09-13-osstack-graph-upgrade.md and relevant source. Use TDD: add outcome tests first, run to establish RED, implement GREEN, then run affected tests and pnpm --filter @osstack/loop typecheck. Save concise real RED/GREEN evidence at docs/implementation/graph-foundation-evidence/G02-executor.md (only this evidence doc). CLI/database tests MUST use explicit inherited OSSTACK_HOME or scripts/graph-test-env.mjs, never default homes. Target card: {\"id\":\"G02\",\"phase\":\"M0\",\"title\":\"贯通图级取消信号\",\"dependsOn\":[\"G01\"],\"files\":[\"packages/loop/src/executor.ts\",\"packages/loop/src/executor.test.ts\",\"packages/agents/src/base.ts\"],\"acceptance\":[\"LocalExecutorOptions 接收外部 signal，并与内部 timeout 合并且清理 listener。\",\"开始前已取消不启动 adapter；运行中取消向真实 invoke(signal) 传递。\",\"signal 已发出与执行已停止分开记录，晚到 done 不抹掉未确认取消。\"],\"verify\":\"LOOP\",\"size\":\"M\",\"status\":\"pending\"}. Cancellation requested must be distinct from stop confirmed. AbortSignal alone or stream closure/throw are not proof external side effects have stopped. Use bounded grace to avoid hanging on uncooperative iterator including isAvailable; do not await hanging iterator.return. Late completed done must never overwrite uncertain cancel. Preabort must not invoke adapter. Preserve legacy AgentRun outcome vocabulary if possible; express uncertainty as failed + structured evidence, never fake cancelled. Add configurable bounded grace for fast tests. Check real adapter signal argument and listener cleanup. Parent will review and run additional tests. Finish the full card, report limitations honestly.",
+  "verify": "pnpm --filter @osstack/loop exec vitest run src/executor.test.ts src/loop-engine.test.ts && pnpm --filter @osstack/loop typecheck",
+  "baselineRuntime": "b476bcc",
+  "workspace": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation"
+}

@@ -1,0 +1,2 @@
+ok   osstack --version (fast path): median 58ms over 5 runs (budget 150ms; min 53, max 58)
+ok   osstack --help (full command surface): median 178ms over 5 runs (budget 500ms; min 172, max 198)

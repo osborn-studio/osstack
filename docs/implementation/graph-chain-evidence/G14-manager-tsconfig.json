@@ -1,0 +1,5 @@
+{
+  "extends": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/tsconfig.base.json",
+  "compilerOptions": {"rootDir":"/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli/src", "outDir":"/Volumes/AIMATE_WORK/tmp/gc5/G14-manager-dist", "incremental":false},
+  "files": ["/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli/src/graph-worker-manager.ts", "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli/src/graph-worker-manager.test.ts"]
+}

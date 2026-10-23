@@ -1,0 +1,309 @@
+{
+  "schemaVersion": 1,
+  "scope": "Live DeepSeek bounded backend pilot; not full G25 fault matrix or G29 internal rollout",
+  "root": "/Volumes/AIMATE_WORK/tmp/g25-deepseek/live-home/pilot-ha430x",
+  "home": "/Volumes/AIMATE_WORK/tmp/g25-deepseek/live-home/pilot-ha430x/home",
+  "model": "deepseek-v4-pro",
+  "baseUrl": "https://api.deepseek.com",
+  "startedAt": "2026-09-20T15:22:43.998Z",
+  "checks": [
+    {
+      "name": "real daemon graph writer/freeze/reviewer/acceptance/join ready; source unchanged; replay stable",
+      "passed": true
+    },
+    {
+      "name": "independent real reviewer rejects original defect with stopped evidence",
+      "passed": true
+    },
+    {
+      "name": "cancel admitted live writer; no freeze or forced release of unknown inference",
+      "passed": true
+    }
+  ],
+  "passed": true,
+  "health": {
+    "canRunLocal": true,
+    "writeBlockers": [],
+    "checks": [
+      {
+        "id": "state_db",
+        "status": "ok",
+        "scope": "none",
+        "detail": "state database is readable"
+      },
+      {
+        "id": "daemon_socket",
+        "status": "ok",
+        "scope": "none",
+        "detail": "daemon socket and pidfile are present"
+      },
+      {
+        "id": "disk_free",
+        "status": "ok",
+        "scope": "none",
+        "detail": "2247387348992 bytes free"
+      },
+      {
+        "id": "repo_registry",
+        "status": "warn",
+        "scope": "none",
+        "detail": "repository registry is not configured"
+      },
+      {
+        "id": "repo_locks",
+        "status": "ok",
+        "scope": "none",
+        "detail": "no repository write locks"
+      },
+      {
+        "id": "kimi_code",
+        "status": "ok",
+        "scope": "none",
+        "detail": "Kimi Code is available"
+      },
+      {
+        "id": "builder_agents",
+        "status": "ok",
+        "scope": "none",
+        "detail": "4 code-writing builders available"
+      },
+      {
+        "id": "github_auth",
+        "status": "ok",
+        "scope": "none",
+        "detail": "GitHub authentication is valid"
+      },
+      {
+        "id": "github_network",
+        "status": "ok",
+        "scope": "none",
+        "detail": "GitHub network is reachable"
+      },
+      {
+        "id": "deploy_freezes",
+        "status": "ok",
+        "scope": "none",
+        "detail": "no active production freezes"
+      },
+      {
+        "id": "resumable_runs",
+        "status": "ok",
+        "scope": "none",
+        "detail": "0 resumable autonomy runs"
+      },
+      {
+        "id": "proof_failures",
+        "status": "ok",
+        "scope": "none",
+        "detail": "0 proof or escalated run failures"
+      },
+      {
+        "id": "notification_outbox",
+        "status": "ok",
+        "scope": "none",
+        "detail": "notification outbox is drained"
+      },
+      {
+        "id": "power_policy",
+        "status": "warn",
+        "scope": "none",
+        "detail": "no power assertion selected; explicit Owner selection is required before soak"
+      },
+      {
+        "id": "clock_monitor",
+        "status": "ok",
+        "scope": "none",
+        "detail": "monotonic-v1 clock jump detection is active"
+      },
+      {
+        "id": "log_retention",
+        "status": "ok",
+        "scope": "none",
+        "detail": "0 oversized logs and 0 expired terminal proof directories"
+      },
+      {
+        "id": "launchd_service",
+        "status": "ok",
+        "scope": "none",
+        "detail": "launchctl print evidence sha256=f868839569e5c1aa981ad67b478f9b664f9245c177d82f46cf8d70fb924b85bc"
+      }
+    ]
+  },
+  "successRunId": "28532dc9-cdf8-4606-a231-c95c3d8b2788",
+  "success": {
+    "status": {
+      "schemaVersion": 1,
+      "scope": {
+        "schemaVersion": 1,
+        "tenantId": "local-pilot",
+        "principalId": "owner",
+        "workspaceId": "toy-increment"
+      },
+      "graphRunId": "28532dc9-cdf8-4606-a231-c95c3d8b2788",
+      "source": {
+        "product": "osstack",
+        "requestId": "live-success"
+      },
+      "status": "ready",
+      "revision": 36,
+      "generation": 1,
+      "inputDigest": "f3a4ea9898d939d019a0f2a3f92c07d9d69393861ef6a83e9aa101a83443c651",
+      "specHash": "088e4e2121f3063243703ca78c15e5ea836b0cd1df1fed5a898411e86d642e98",
+      "createdAt": 1789917766676,
+      "updatedAt": 1789917800421,
+      "publication": "artifact_only",
+      "phase": "ready",
+      "budget": {
+        "limits": {
+          "maxEpochs": 2,
+          "maxBranchAttempts": 1,
+          "maxConcurrentReaders": 2,
+          "maxConcurrentWritersPerRepo": 1,
+          "maxActionStarts": 14,
+          "deadlineSeconds": 600,
+          "tokenReservationLimit": 196608
+        },
+        "actionStarts": 7,
+        "reservedTokens": "0",
+        "chargedTokens": "725",
+        "accountingBlocked": false
+      },
+      "candidate": {
+        "candidateRevision": "82f2465d51904b45f8bf18a6bbf94ebd62984d57",
+        "artifactRefs": [
+          "graph-artifact:cb0bc9e28bff591a4033a5d539edd7be9d8d217a00d7f803ebe3171c6daa2ff7"
+        ],
+        "artifactDigest": "cb0bc9e28bff591a4033a5d539edd7be9d8d217a00d7f803ebe3171c6daa2ff7"
+      },
+      "evidenceRefs": [
+        "graph-join:9c667fb08aefc0e2f9f4890175ab1b655b76fa99aac1f7734cc0308342810a45"
+      ],
+      "resultRef": "graph-join:9c667fb08aefc0e2f9f4890175ab1b655b76fa99aac1f7734cc0308342810a45",
+      "delivery": "available"
+    },
+    "candidateSource": "export function increment(value) { return value + 1; }\n",
+    "actions": [
+      {
+        "node_id": "e0.workspace",
+        "state": "confirmed",
+        "outcome_json": "{\"actualTokens\":0,\"evidenceRef\":\"graph-delivery:56b1f362b543ed7ac7b0eb3ce944c943ab6e680472c2a59562698de2adfe0f52\",\"result\":{\"kind\":\"workspace\",\"receiptRef\":\"e0.workspace\",\"schemaVersion\":1,\"workspaceLeaseRef\":\"e0.writer\"},\"state\":\"confirmed\"}"
+      },
+      {
+        "node_id": "e0.implement",
+        "state": "confirmed",
+        "outcome_json": "{\"actualTokens\":343,\"evidenceRef\":\"graph-delivery:71dc211a25c84e7d9ffbbf5628c7dced0ab48e959c35db5f5491985676862301\",\"result\":{\"kind\":\"implementation_complete\",\"receiptRef\":\"e0.implementation\",\"schemaVersion\":1,\"workspaceLeaseRef\":\"e0.writer\"},\"state\":\"confirmed\"}"
+      },
+      {
+        "node_id": "e0.freeze",
+        "state": "confirmed",
+        "outcome_json": "{\"actualTokens\":0,\"evidenceRef\":\"graph-delivery:43b7d9aa7b7ca8da176edef8d5649162f4c15212c3316d5b33e89d76707b2de5\",\"result\":{\"artifactDigest\":\"cb0bc9e28bff591a4033a5d539edd7be9d8d217a00d7f803ebe3171c6daa2ff7\",\"artifactRefs\":[\"graph-artifact:cb0bc9e28bff591a4033a5d539edd7be9d8d217a00d7f803ebe3171c6daa2ff7\"],\"candidateRevision\":\"82f2465d51904b45f8bf18a6bbf94ebd62984d57\",\"kind\":\"candidate_ready\",\"schemaVersion\":1},\"state\":\"confirmed\"}"
+      },
+      {
+        "node_id": "e0.prepare_review",
+        "state": "confirmed",
+        "outcome_json": "{\"actualTokens\":0,\"evidenceRef\":\"graph-delivery:51b474111a5e2d1a7a4ff275f126c74e82d9c7552e1703794eea4c7fb163903a\",\"result\":{\"kind\":\"workspace\",\"receiptRef\":\"e0.prepared.review.1\",\"schemaVersion\":1,\"workspaceLeaseRef\":\"e0.review\"},\"state\":\"confirmed\"}"
+      },
+      {
+        "node_id": "e0.prepare_tests",
+        "state": "confirmed",
+        "outcome_json": "{\"actualTokens\":0,\"evidenceRef\":\"graph-delivery:3b224455044c0cb683543b37096a221c320c7aa5e4b5d6f03d2ea33c7fa0f965\",\"result\":{\"kind\":\"workspace\",\"receiptRef\":\"e0.prepared.tests.1\",\"schemaVersion\":1,\"workspaceLeaseRef\":\"e0.tests\"},\"state\":\"confirmed\"}"
+      },
+      {
+        "node_id": "e0.review",
+        "state": "confirmed",
+        "outcome_json": "{\"actualTokens\":382,\"evidenceRef\":\"graph-verification:024962c5331ab51176c3117fccf03fe825a7782ef794071f2e3889ee4f9e2c07\",\"result\":{\"candidateRevision\":\"82f2465d51904b45f8bf18a6bbf94ebd62984d57\",\"evidenceDigest\":\"024962c5331ab51176c3117fccf03fe825a7782ef794071f2e3889ee4f9e2c07\",\"evidenceRefs\":[\"graph-verification:024962c5331ab51176c3117fccf03fe825a7782ef794071f2e3889ee4f9e2c07\"],\"kind\":\"review\",\"schemaVersion\":1,\"verdict\":\"accept\"},\"state\":\"confirmed\"}"
+      },
+      {
+        "node_id": "e0.tests",
+        "state": "confirmed",
+        "outcome_json": "{\"actualTokens\":0,\"evidenceRef\":\"graph-verification:04dfba43f66371eb919d55a12920d436aca413e61c95ea274235d983305a570e\",\"result\":{\"candidateRevision\":\"82f2465d51904b45f8bf18a6bbf94ebd62984d57\",\"evidenceDigest\":\"04dfba43f66371eb919d55a12920d436aca413e61c95ea274235d983305a570e\",\"evidenceRefs\":[\"graph-verification:04dfba43f66371eb919d55a12920d436aca413e61c95ea274235d983305a570e\"],\"kind\":\"tests\",\"passed\":true,\"schemaVersion\":1},\"state\":\"confirmed\"}"
+      }
+    ]
+  },
+  "negativeReview": {
+    "review": {
+      "schemaVersion": 1,
+      "verdict": "changes_requested",
+      "summary": "The implementation does not meet the acceptance criteria: the function returns the input value unchanged instead of incrementing it.",
+      "findings": [
+        "The function body is `return value;` but it must be `return value + 1;` to increment the value.",
+        "The acceptance criteria explicitly require the export to be a named function `increment` with the exact body `return value + 1;`. The provided file has `return value;`, which is incorrect."
+      ]
+    },
+    "stop": {
+      "stopped": true,
+      "evidence": "deepseek-bounded-v1:ced3fb86-560d-4212-b64f-518656c437c8:req=bf47679dce270f996055d7389b4b53d163ffe072f64d28c5ae2f64eb79370c98:res=88282643c9a49504a2986074ada4ae07a5b95a60ba0c6135120df1bb905ebdd9"
+    },
+    "usage": {
+      "tokens_in": 254,
+      "tokens_out": 126,
+      "duration_ms": 3590
+    }
+  },
+  "cancellation": {
+    "status": {
+      "schemaVersion": 1,
+      "scope": {
+        "schemaVersion": 1,
+        "tenantId": "local-pilot",
+        "principalId": "owner",
+        "workspaceId": "toy-increment"
+      },
+      "graphRunId": "f350c1d1-bbd1-4bf2-bc18-8e1ca3488d96",
+      "source": {
+        "product": "osstack",
+        "requestId": "live-cancel"
+      },
+      "status": "cancel_pending",
+      "revision": 12,
+      "generation": 1,
+      "inputDigest": "eed2c8c60c282d65b66e3646b57bc961c1f9200a4b2bc107ca8c7af667a80cdf",
+      "specHash": "088e4e2121f3063243703ca78c15e5ea836b0cd1df1fed5a898411e86d642e98",
+      "createdAt": 1789917804180,
+      "updatedAt": 1789917816879,
+      "publication": "artifact_only",
+      "phase": "cancel_pending",
+      "budget": {
+        "limits": {
+          "maxEpochs": 2,
+          "maxBranchAttempts": 1,
+          "maxConcurrentReaders": 2,
+          "maxConcurrentWritersPerRepo": 1,
+          "maxActionStarts": 14,
+          "deadlineSeconds": 600,
+          "tokenReservationLimit": 196608
+        },
+        "actionStarts": 2,
+        "reservedTokens": "32768",
+        "chargedTokens": "0",
+        "accountingBlocked": false
+      },
+      "evidenceRefs": [],
+      "delivery": "delivery_unknown",
+      "error": {
+        "schemaVersion": 1,
+        "message": "Physical execution requires reconciliation",
+        "code": "CANCEL_UNCONFIRMED",
+        "retryable": false,
+        "nextAction": "reconcile"
+      }
+    },
+    "actions": [
+      {
+        "node_id": "e0.workspace",
+        "state": "confirmed",
+        "outcome_json": "{\"actualTokens\":0,\"evidenceRef\":\"graph-delivery:4d8013999ff2aebf3475f6905b3099c4e1dbc7c140ece3f4257f05811b71426d\",\"result\":{\"kind\":\"workspace\",\"receiptRef\":\"e0.workspace\",\"schemaVersion\":1,\"workspaceLeaseRef\":\"e0.writer\"},\"state\":\"confirmed\"}"
+      },
+      {
+        "node_id": "e0.implement",
+        "state": "unknown",
+        "outcome_json": null
+      }
+    ]
+  },
+  "daemonExit": {
+    "code": 0,
+    "signal": null
+  },
+  "completedAt": "2026-09-20T15:23:37.095Z"
+}

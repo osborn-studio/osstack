@@ -1,3 +1,4 @@
+import { graphRpcFixture } from './graph-test-fixture.js';
 import { connect } from "node:net";
 import { rm } from "node:fs/promises";
 import { mkdtempSync } from "node:fs";
@@ -219,4 +220,15 @@ describe("daemon drain recovery", () => {
     expect(refused.ok).toBe(false);
     expect(refused.error?.code).toBe("draining");
   });
+});
+
+it('operator drain blocks new graph reservations over the real socket', async () => {
+  const f = await graphRpcFixture();
+  try {
+    daemon = await startDaemon({ socketPath: `/tmp/graph-drain-${randomUUID()}.sock`,
+      graphRpc: { registrations: [f.registration], resolveCaller: () => 'local' } });
+    expect(await daemonRpc(daemon.socketPath, 'daemon.drain', { timeout_ms: 0 })).toMatchObject({ ok: true, result: { drained: true, graph_holds: 0 } });
+    expect(await daemonRpc(daemon.socketPath, 'graph.start', f.request)).toMatchObject({ ok: false, error: { code: 'GRAPH_ADMISSION_DISABLED' } });
+    expect(f.writes()).toBe(0);
+  } finally { await f.close(); }
 });

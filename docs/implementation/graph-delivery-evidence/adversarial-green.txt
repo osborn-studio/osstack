@@ -1,0 +1,35 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+Cloning into '/Volumes/AIMATE_WORK/tmp/g21/g21-adversarial-NGoVco/delivery/writer-0'...
+HEAD is now at fbda77b base
+osstack: retaining write lease graph-action:ccfb16dbe834799aff106cc5ff24acbc91d2c610098a4faf04f28d4094c7b1a8: Error: external stop unconfirmed
+Cloning into '/Volumes/AIMATE_WORK/tmp/g21/g21-adversarial-wVO6sm/delivery/writer-0'...
+HEAD is now at 5b28707 base
+osstack: retaining write lease graph-action:c6ab94a2ace3c4f2aa97f9264d46a04d0e4b0b500e2ce82d1b0c5a8346e11f20: Error: external stop unconfirmed
+Cloning into '/Volumes/AIMATE_WORK/tmp/g21/g21-adversarial-xI6Juy/delivery/writer-0'...
+HEAD is now at cf57274 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g21/g21-adversarial-J2E1vv/delivery/writer-0'...
+HEAD is now at 411a906 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g21/g21-adversarial-8wPV0E/delivery/writer-0'...
+HEAD is now at ccf2036 base
+osstack: retaining write lease graph-action:7e37cd896a8e8c629bfdd9024823c06fa11e032dd8b673cafd6569c11558876d: Error: STALE_DELIVERY_OWNER
+Cloning into '/Volumes/AIMATE_WORK/tmp/g21/g21-adversarial-uiK7eW/delivery/writer-0'...
+HEAD is now at 18d1145 base
+osstack: retaining write lease graph-action:118e80c1039257796ec4c090deb7aace5a7877e4b994052b076980ae0435791d: Error: authority revoked
+Cloning into '/Volumes/AIMATE_WORK/tmp/g21/g21-adversarial-nyDFY8/delivery/writer-0'...
+HEAD is now at 879c6f5 base
+ ✓ src/graph-delivery-adversarial.test.ts (8 tests) 21640ms
+   ✓ retains unknown-review uncertainty without retry, repair or ready publication  3506ms
+   ✓ retains unknown-writer uncertainty without retry, repair or ready publication  1357ms
+   ✓ stops before freeze after actual token overrun and preserves charged action evidence  1389ms
+   ✓ captures business inputs, executors, commands and authority before asynchronous execution  5361ms
+   ✓ cannot project state after foreign-owner invalidates its authority  2302ms
+   ✓ cannot project state after revoked invalidates its authority  2285ms
+   ✓ returns an explicit stop when preparation admission prevents an otherwise retryable branch  5365ms
+
+ Test Files  1 passed (1)
+      Tests  8 passed (8)
+   Start at  08:27:12
+   Duration  22.53s (transform 479ms, setup 7ms, collect 777ms, tests 21.64s, environment 0ms, prepare 27ms)
+

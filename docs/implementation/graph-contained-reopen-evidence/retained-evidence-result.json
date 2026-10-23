@@ -1,0 +1,9 @@
+{
+  "passed": true,
+  "scope": "Retain previously passed checks only after exact source and build hash validation; first Loop failed solely on missing report directory",
+  "sourceFiles": 1069,
+  "priorPassedVerifiers": 9,
+  "failedVerifierRerun": "candidate",
+  "sourceUnchanged": true,
+  "artifactsUnchanged": true
+}

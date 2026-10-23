@@ -1,0 +1,31 @@
+{
+  "id": "G06",
+  "task": {
+    "id": "G06",
+    "phase": "M0",
+    "title": "建立独立图包入口",
+    "dependsOn": [
+      "G05"
+    ],
+    "files": [
+      "packages/graph/package.json",
+      "packages/graph/tsconfig.json",
+      "packages/graph/src/index.ts",
+      "packages/graph/src/worker-entry.ts",
+      "pnpm-lock.yaml"
+    ],
+    "acceptance": [
+      "只引入一套 LangGraph 内核，显式 worker 子入口；轻入口不导入重运行时。",
+      "固定已研究的包版本后验证依赖闭包，记录 Node 20/22 与原生 SQLite 兼容性。",
+      "graph 不依赖 loop/core/cli；通过 protocol 与受控 RPC 交互，避免反向包依赖。"
+    ],
+    "verify": "GRAPH_BUILD",
+    "size": "M",
+    "status": "in_progress"
+  },
+  "prompt": "You are the coding executor dispatched by OSStack LoopEngine. Implement ONLY G06 in /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation. Read AGENTS.md, docs/implementation/2026-09-13-osstack-graph-upgrade.md, docs/implementation/2026-09-13-graph-foundation-completion.md, docs/design/2026-09-13-executable-graph-plan.md. Parent supervisor handles task status, commits, independent review and full validation. Do not spawn nested agents/loops, commit/push/merge/deploy, modify AGENTS.md, access default OSSTACK_HOME or sibling repos. All CLI/DB/tests must use inherited explicit home or scripts/graph-test-env.mjs. Use TDD and keep RED/GREEN logs under /var/folders/97/wmwg4qzx02j74c3n73nh438w0000gn/T/osstack-graph-kernel-z3zisd4r/evidence; preserve concise evidence MD inside specified evidence directory. Do not modify task plan/JSON status. Parent may write docs/implementation/graph-kernel-evidence/review-followup.md while you work; read it before final validation. Concrete task: {\"id\":\"G06\",\"phase\":\"M0\",\"title\":\"建立独立图包入口\",\"dependsOn\":[\"G05\"],\"files\":[\"packages/graph/package.json\",\"packages/graph/tsconfig.json\",\"packages/graph/src/index.ts\",\"packages/graph/src/worker-entry.ts\",\"pnpm-lock.yaml\"],\"acceptance\":[\"只引入一套 LangGraph 内核，显式 worker 子入口；轻入口不导入重运行时。\",\"固定已研究的包版本后验证依赖闭包，记录 Node 20/22 与原生 SQLite 兼容性。\",\"graph 不依赖 loop/core/cli；通过 protocol 与受控 RPC 交互，避免反向包依赖。\"],\"verify\":\"GRAPH_BUILD\",\"size\":\"M\",\"status\":\"in_progress\"}. Create @osstack/graph with a lightweight public entry and explicit heavy worker subentry. Pin LangGraph 1.4.15 initially; verify actual registry engines and dependency closure, exact direct versions and lockfile. Zod3 protocol is not to be upgraded. graph depends on protocol and LangGraph public SDK packages only; not loop/core/cli, not native sqlite runtime unless specifically justified (planned daemon owns DB). Do not implement business graph/runtime or fake a production worker listener. Expose minimal kernel capability/version seam and test an actual tiny StateGraph in worker tests. Measure fresh-process root vs worker load costs and loaded-module graphs (public Node loader hook or trace), prove lightweight root does not load LangGraph and main CLI startup unaffected. Record Node20/22 compatibility including lowest supported minor dictated by engines; parent can supply local Node binaries for real checks. Public package exports and packaging scripts follow repository. TDD only meaningful boundary tests. Changes in packages/graph, pnpm-lock.yaml, and docs/implementation/graph-kernel-evidence/G06-executor.md. Do not touch G05 unless concrete incompatibility requires parent attention.",
+  "verify": "pnpm --filter @osstack/graph build && pnpm --filter @osstack/graph typecheck && pnpm --filter @osstack/graph test",
+  "workspace": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation",
+  "controllerBaseline": "360e226",
+  "sources": []
+}

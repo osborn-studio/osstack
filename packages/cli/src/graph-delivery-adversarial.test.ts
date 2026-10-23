@@ -1,0 +1,211 @@
+import { execFileSync } from 'node:child_process';
+import { mkdtemp, mkdir, writeFile, realpath } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { expect, it, vi } from 'vitest';
+import type { AgentAdapter } from '@osstack/agents';
+import { CapabilitySchema, openDb } from '@osstack/core';
+import { FifoSemaphore } from '@osstack/autonomy';
+import { GraphDelivery, type GraphDeliveryOptions } from './graph-delivery.js';
+import { GovernedExecution } from './governed-execution.js';
+import { GraphRuntime } from './graph-runtime.js';
+
+async function fixture(mode: 'unknown-review' | 'unknown-writer' | 'overrun' | 'mutation' | 'foreign-owner' | 'revoked' | 'retry-preparation-denied' | 'retry-preparation-race' | 'retry-preparation-pre-admission' | 'setup' | 'renewal') {
+  const root = await realpath(await mkdtemp(join(tmpdir(), 'g21-adversarial-'))); const repo = join(root, 'source'); await mkdir(repo);
+  const git = (...args: string[]) => execFileSync('git', args, { cwd: repo, encoding: 'utf8' }).trim();
+  git('init', '-q'); await writeFile(join(repo, 'answer'), '0\n'); git('add', '.');
+  git('-c', 'user.name=G21', '-c', 'user.email=g21@invalid', 'commit', '-qm', 'base');
+  const db = openDb({ path: join(root, 'control.sqlite') });
+  const calls = { writer: 0, reviewer: 0, injected: 0 }; let allowed = true; let renewedWhileWriting = false;
+  const stopped = new Set<string>();
+  let testsReached!: () => void; const testsAdmissionReached = new Promise<void>(resolve => { testsReached = resolve; });
+  const adapter = (kind: 'writer' | 'reviewer'): AgentAdapter => ({ id: kind, display_name: kind, cost_tier: 'low',
+    capabilities: () => [CapabilitySchema.parse({ id: kind, agent_id: kind, kind: kind === 'writer' ? 'code.write' : 'review.code', description: kind })],
+    isAvailable: async () => ({ available: true, last_checked_at: 0 }),
+    invoke: async function* (task) {
+      calls[kind]++;
+      if (kind === 'writer') await writeFile(join(String(task.context?.['repo_path']), 'answer'), '1\n');
+      if (kind === 'writer' && mode === 'renewal') {
+        // Compress the remaining lease window, not the original run deadline.
+        // The real worker heartbeat must renew while its G04 invocation is pending.
+        const expiry = Date.now() + 2200;
+        db.prepare('UPDATE graph_runs SET lease_expires_at=?,revision=revision+1').run(expiry);
+        await new Promise(resolve => setTimeout(resolve, 3000));
+        renewedWhileWriting = (db.prepare('SELECT lease_expires_at FROM graph_runs').get() as { lease_expires_at: number }).lease_expires_at > expiry;
+      }
+      // Fault injection: replace authority while the actual G04 invocation is live.
+      // The ordinary repair test separately proves the real G15 takeover path.
+      if (kind === 'reviewer' && mode === 'foreign-owner') db.prepare("UPDATE graph_runs SET generation=generation+1, revision=revision+1, lease_owner='foreign-host'").run();
+      if (kind === 'reviewer' && mode === 'revoked') allowed = false;
+      stopped.add(task.run_id);
+      yield { event_id: task.run_id, run_id: task.run_id, session_id: task.session_id, seq: 1, created_at: Date.now() / 1000, type: 'done', terminal: true,
+        payload: { status: 'completed', last_seq: 0, result_summary: kind === 'writer' ? 'implemented' : mode.startsWith('retry-preparation-') ? 'malformed' : JSON.stringify({ schemaVersion: 1, verdict: 'accept', summary: 'checked', findings: [] }),
+          usage: { tokens_in: mode === 'overrun' && kind === 'writer' ? 300000 : 1, tokens_out: 1, duration_ms: 1 } } };
+    }, confirmStopped: async id => ({ stopped: stopped.has(id) && !(mode === 'unknown-review' && kind === 'reviewer') && !(mode === 'unknown-writer' && kind === 'writer'), evidence: `fixture:${id}` }) });
+  const admission = new GovernedExecution({ reads: new FifoSemaphore(2), writes: new FifoSemaphore(2), repositories: new Map(), checkHealth: async () => {} });
+  const options: GraphDeliveryOptions = { db, root: join(root, 'delivery'), repositoryPath: repo, task: 'set answer to 1',
+    writer: { identity: 'writer', adapter: adapter('writer'), capabilityId: 'writer' }, reviewer: { identity: 'reviewer', adapter: adapter('reviewer'), capabilityId: 'reviewer' },
+    verifyReviewer: async pair => { if (pair.writerIdentity === pair.reviewerIdentity) throw Error('same identity'); },
+    acceptanceRegistry: [{ ref: 'acceptance', command: 'test "$(cat answer)" = 1', passExitCodes: [0], failExitCodes: [1] }],
+    acquire: async input => {
+      if (mode.startsWith('retry-preparation-')) {
+        const key = input.runId.replace('graph-action:', '');
+        const action = db.prepare('SELECT node_id,effect_slot FROM graph_actions WHERE effect_key=?').get(key) as { node_id: string; effect_slot: string } | undefined;
+        if (mode === 'retry-preparation-pre-admission' && action?.node_id === 'e0.tests') {
+          testsReached();
+          // Wait for real task cancellation, then deny the closed admission port.
+          // No lease or host no-acquisition receipt is fabricated by this fixture.
+          if (!input.signal) throw Error('test admission signal missing');
+          if (!input.signal.aborted) await new Promise<void>(resolve => input.signal!.addEventListener('abort', () => resolve(), { once: true }));
+          throw Error('fixture sibling admission denied without receipt');
+        }
+        if (action?.node_id === 'e0.prepare_review' && action.effect_slot === 'retry-2') {
+          if (mode === 'retry-preparation-pre-admission') await testsAdmissionReached;
+          // Isolate the missing-admission proof: the sibling must already have
+          // a durable outcome. A failed Functional task can abort sibling task
+          // promises even inside allSettled, before their physical work stops.
+          if (mode === 'retry-preparation-denied') await vi.waitFor(() => {
+            expect(db.prepare(`SELECT a.state, m.released_at FROM graph_actions a
+              JOIN graph_action_admissions m ON m.effect_key=a.effect_key
+              WHERE a.node_id='e0.tests'`).get()).toEqual({ state: 'confirmed', released_at: expect.any(Number) });
+          }, { timeout: 20_000, interval: 20 });
+          throw Error('fixture preparation admission denied');
+        }
+      }
+      return admission.acquire(input);
+    }, authorize: () => { if (!allowed) throw Error('authority revoked'); },
+    request: { schemaVersion: 1, kind: 'start', scope: { schemaVersion: 1, tenantId: 't', principalId: 'p', workspaceId: 'w' }, idempotencyKey: 'adversarial', inputArtifactRef: 'input',
+      source: { product: 'osstack', requestId: 'adversarial' }, spec: { schemaVersion: 1, template: 'code-delivery-v1', publication: 'artifact_only',
+        input: { taskRef: 'task', repositoryRef: 'repo', baseRevision: git('rev-parse', 'HEAD'), acceptanceRef: 'acceptance' },
+        limits: { maxEpochs: 1, maxBranchAttempts: 2, maxConcurrentReaders: 2, maxConcurrentWritersPerRepo: 1, maxActionStarts: 11, tokenReservationLimit: 200000, deadlineSeconds: 120 } } } };
+  const host = new GraphDelivery(options);
+  if (mode === 'mutation') {
+    options.authorize = () => { throw Error('replaced callback'); };
+    options.request.inputArtifactRef = 'replaced';
+    options.writer.adapter.invoke = () => { calls.injected++; throw Error('injected'); };
+    options.acceptanceRegistry[0]!.command = 'exit 7';
+  }
+  try {
+    let result: Awaited<ReturnType<GraphDelivery['run']>> | undefined; let error: unknown;
+    try { result = await host.run(); } catch (caught) { error = caught; }
+    // Match service shutdown: runtime.close() bounds stop reporting, whereas
+    // this drain waits for every actual database user before snapshot/close.
+    await host.drainDatabaseUsers();
+    return { result, error, calls, renewedWhileWriting, run: host.current(), root,
+      actions: db.prepare('SELECT node_id,state FROM graph_actions ORDER BY created_at,rowid').all() as Array<{ node_id: string; state: string }>,
+      testsEvidence: db.prepare(`SELECT a.state, a.execution_ref, a.outcome_json, m.held_at, m.released_at
+        FROM graph_actions a LEFT JOIN graph_action_admissions m ON m.effect_key=a.effect_key
+        WHERE a.node_id='e0.tests'`).all() as Array<{ state: string; execution_ref: string | null; outcome_json: string | null; held_at: number | null; released_at: number | null }>,
+      held: (db.prepare('SELECT count(*) AS n FROM graph_action_admissions WHERE released_at IS NULL').get() as { n: number }).n,
+      joins: (db.prepare('SELECT count(*) AS n FROM graph_verification_joins').get() as { n: number }).n };
+  } finally { db.close(); }
+}
+
+it.each(['unknown-review', 'unknown-writer'] as const)('retains %s uncertainty without retry, repair or ready publication', async mode => {
+  const f = await fixture(mode);
+  expect(f.run.status).toBe('reconciliation_required'); expect(f.joins).toBe(0); expect(f.held).toBeGreaterThan(0);
+  expect(f.calls.writer).toBe(1); expect(f.calls.reviewer).toBe(mode === 'unknown-review' ? 1 : 0);
+  expect(f.actions.some(a => ['unknown', 'running', 'cancel_pending'].includes(a.state))).toBe(true);
+  expect(f.result?.route.kind).not.toBe('ready');
+}, 30_000);
+
+it('stops before freeze after actual token overrun and preserves charged action evidence', async () => {
+  const f = await fixture('overrun'); expect(f.run.status).toBe('failed'); expect(f.calls).toEqual({ writer: 1, reviewer: 0, injected: 0 });
+  expect(f.actions).toEqual([{ node_id: 'e0.workspace', state: 'confirmed' }, { node_id: 'e0.implement', state: 'confirmed' }]);
+  expect(f.held).toBe(0); expect(f.joins).toBe(0); expect(f.result?.route.kind).not.toBe('ready');
+}, 30_000);
+
+it('captures business inputs, executors, commands and authority before asynchronous execution', async () => {
+  const f = await fixture('mutation'); expect(f.error).toBeUndefined(); expect(f.result?.route.kind).toBe('ready');
+  expect(f.run.inputArtifactRef).toBe('input'); expect(f.calls).toEqual({ writer: 1, reviewer: 1, injected: 0 });
+}, 30_000);
+
+it.each(['foreign-owner', 'revoked'] as const)('cannot project state after %s invalidates its authority', async mode => {
+  const f = await fixture(mode); expect(f.result?.route.kind).not.toBe('ready'); expect(f.joins).toBe(0);
+  expect(f.run.status).toBe('running');
+  if (mode === 'foreign-owner') { expect(f.run.leaseOwner).toBe('foreign-host'); expect(f.run.generation).toBe(2); }
+  expect(f.calls.writer).toBe(1); expect(f.calls.reviewer).toBe(1);
+}, 30_000);
+
+it('retains reconciliation when denied preparation has no durable admission receipt', async () => {
+  const f = await fixture('retry-preparation-denied');
+  // A failed action alone cannot substitute for a durable no-start/stop receipt.
+  expect(f.result?.route).toMatchObject({ kind: 'reconcile', reason: expect.stringContaining('QUIESCENCE_REQUIRED') });
+  expect(f.run.status).toBe('reconciliation_required'); expect(f.joins).toBe(0); expect(f.held).toBe(0); expect(f.calls.reviewer).toBe(1);
+  expect(f.actions.filter(a => a.node_id === 'e0.tests')).toEqual([{ node_id: 'e0.tests', state: 'confirmed' }]);
+  expect(f.actions.filter(a => a.node_id === 'e0.prepare_review').map(a => a.state)).toEqual(['confirmed', 'failed']);
+}, 30_000);
+
+it('preserves sibling evidence when denied preparation races with tests', async () => {
+  const f = await fixture('retry-preparation-race');
+  expect(f.run.status).toBe('reconciliation_required'); expect(f.joins).toBe(0);
+  expect(f.result?.route.kind).toBe('reconcile'); expect(f.calls.reviewer).toBe(1);
+  // Keep the original unsequenced interleaving covered. A cancelled task wrapper
+  // says nothing about physical execution: any started effect needs either a
+  // durable terminal outcome or its admission retained for reconciliation.
+  assertSiblingEvidence(f.testsEvidence);
+}, 30_000);
+
+type SiblingRow = { state: string; execution_ref: string | null; outcome_json: string | null; held_at: number | null; released_at: number | null };
+function assertSiblingEvidence(rows: SiblingRow[]) {
+  expect(rows.length).toBeGreaterThan(0);
+  for (const row of rows) {
+    if (row.state === 'failed' && row.execution_ref === null && row.held_at === null) {
+      expect(row.outcome_json, JSON.stringify(row)).not.toBeNull();
+      const outcome = JSON.parse(row.outcome_json!);
+      expect(outcome).toEqual({ state: 'failed', evidenceRef: expect.stringMatching(/^not-started:[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/), actualTokens: 0, retrySafe: false, error: { message: 'admission refused before invocation' } });
+      expect(row.released_at, JSON.stringify(row)).toBeNull();
+    } else if (row.state === 'confirmed' || row.state === 'failed') {
+      expect(row.outcome_json, JSON.stringify(row)).not.toBeNull();
+      expect(JSON.parse(row.outcome_json!)).toMatchObject({ state: row.state, evidenceRef: expect.any(String) });
+      expect(row.held_at, JSON.stringify(row)).not.toBeNull();
+      expect(row.released_at, JSON.stringify(row)).not.toBeNull();
+    } else {
+      expect(['unknown', 'cancel_pending']).toContain(row.state);
+      expect(row.released_at, JSON.stringify(row)).toBeNull();
+      if (row.execution_ref !== null) expect(row.held_at, JSON.stringify(row)).not.toBeNull();
+    }
+  }
+}
+
+it('deterministically preserves started terminal sibling admission and missing retry-preparation reconciliation', async () => {
+  const f = await fixture('retry-preparation-denied');
+  expect(f.run.status).toBe('reconciliation_required'); expect(f.result?.route.kind).toBe('reconcile'); expect(f.joins).toBe(0);
+  expect(f.testsEvidence).toHaveLength(1); expect(f.testsEvidence[0]).toMatchObject({ state: 'confirmed', execution_ref: expect.any(String), held_at: expect.any(Number), released_at: expect.any(Number) });
+  assertSiblingEvidence(f.testsEvidence);
+}, 30_000);
+
+it('deterministically retains cancelled pre-admission sibling with no fabricated admission or discharge', async () => {
+  const f = await fixture('retry-preparation-pre-admission');
+  expect(f.run.status).toBe('reconciliation_required'); expect(f.result?.route.kind).toBe('reconcile'); expect(f.joins).toBe(0);
+  expect(f.testsEvidence).toHaveLength(1); expect(f.testsEvidence[0]).toMatchObject({ state: 'failed', execution_ref: null, held_at: null, released_at: null });
+  assertSiblingEvidence(f.testsEvidence);
+  const assertUnready = (value: { status: string; kind: string | undefined; joins: number }) => {
+    expect(value.status).toBe('reconciliation_required'); expect(value.kind).toBe('reconcile'); expect(value.joins).toBe(0);
+  };
+  const valid = { status: f.run.status, kind: f.result?.route.kind, joins: f.joins };
+  assertUnready(valid);
+  expect(() => assertUnready({ ...valid, kind: 'ready' })).toThrow();
+  expect(() => assertUnready({ ...valid, joins: 1 })).toThrow();
+  const original = f.testsEvidence[0]!;
+  for (const change of [{ actualTokens: 1 }, { retrySafe: true }, { evidenceRef: 'not-started:malformed' }, { error: { message: 'fabricated no-start' } }]) {
+    const row = { ...original, outcome_json: JSON.stringify({ ...JSON.parse(original.outcome_json!), ...change }) };
+    expect(() => assertSiblingEvidence([row])).toThrow();
+  }
+  expect(() => assertSiblingEvidence([{ ...original, released_at: Date.now() }])).toThrow();
+}, 30_000);
+
+it('closes its runtime without projecting an unowned run when setup acquisition fails', async () => {
+  const claim = vi.spyOn(GraphRuntime.prototype, 'claim').mockImplementation(() => { throw Error('fixture claim denied'); });
+  const close = vi.spyOn(GraphRuntime.prototype, 'close');
+  try {
+    const f = await fixture('setup'); expect(String(f.error)).toContain('fixture claim denied');
+    expect(f.run.generation).toBe(0); expect(f.run.leaseOwner).toBeNull(); expect(f.actions).toEqual([]);
+    expect(close).toHaveBeenCalledTimes(1);
+  } finally { claim.mockRestore(); close.mockRestore(); }
+});
+
+it('renews the owned lease during an actual pending writer invocation and still completes', async () => {
+  const f = await fixture('renewal'); expect(f.renewedWhileWriting).toBe(true); expect(f.result?.route.kind).toBe('ready');
+  expect(f.run.generation).toBe(1); expect(f.run.spec!.limits.deadlineSeconds).toBe(120);
+}, 30_000);

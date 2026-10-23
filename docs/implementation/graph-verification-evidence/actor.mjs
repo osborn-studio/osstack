@@ -1,0 +1,11 @@
+import {readFile,writeFile,appendFile} from 'node:fs/promises';
+const root='/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation', out='/Volumes/AIMATE_WORK/tmp/gc6';
+process.env.OSSTACK_HOME=out+'/home';process.env.TMPDIR=out;process.env.OSSTACK_UPDATE_CHECK='0';
+const {LoopEngine}=await import(root+'/packages/loop/dist/index.js');
+const {CodexCliAdapter}=await import(root+'/packages/agents/dist/index.js');
+const id=process.argv[2];const prompt=await readFile(out+'/'+id+'-prompt.txt','utf8');
+const adapter=new CodexCliAdapter({cwd:root,sandbox:'workspace-write'});
+const invoke=adapter.invoke.bind(adapter);
+adapter.invoke=async function*(task,signal){for await(const e of invoke(task,signal)){await appendFile(out+'/'+id+'-events.jsonl',JSON.stringify(e)+'\n');yield e;}};
+const engine=new LoopEngine({loopId:id,workspacePath:root,sources:[],inputTasks:[{task_id:id,capability:'code.write',source:'manual',priority:100,prompt}],agentId:'codex-cli',adapters:[adapter],useWorktree:false,skipCompletedTasks:false,maxIterations:1,commandTimeoutMs:1800000,outputLimit:16000,stateFilePath:out+'/'+id+'-LOOP-STATE.json',markdownPath:out+'/'+id+'-STATE.md',policyGate:async({workspacePath})=>({allow:workspacePath===root}),verifyCommands:['git diff --check']});
+const result=await engine.runOnce();await writeFile(out+'/'+id+'-result.json',JSON.stringify(result,null,2));console.log(JSON.stringify(result.completedTasks));process.exitCode=result.completedTasks[0]?.outcome==='success'?0:1;

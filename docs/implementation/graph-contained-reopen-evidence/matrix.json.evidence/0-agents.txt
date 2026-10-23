@@ -1,0 +1,13 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/agents
+      Running tests with seed "250921"
+
+ ✓ src/contained-command.test.ts (20 tests) 249ms
+ ✓ src/contained-image.test.ts (16 tests) 22ms
+
+ Test Files  2 passed (2)
+      Tests  36 passed (36)
+   Start at  16:24:07
+   Duration  596ms (transform 40ms, setup 0ms, collect 73ms, tests 272ms, environment 0ms, prepare 53ms)
+
+JSON report written to /Volumes/AIMATE_WORK/tmp/g25-reopen/matrix.json.evidence/0-agents.json

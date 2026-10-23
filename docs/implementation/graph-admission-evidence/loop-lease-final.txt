@@ -1,0 +1,9 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/loop
+
+ ✓ src/policy-gate.test.ts (10 tests) 668ms
+
+ Test Files  1 passed (1)
+      Tests  10 passed (10)
+   Start at  06:24:55
+   Duration  3.33s (transform 1.30s, setup 0ms, collect 2.23s, tests 668ms, environment 0ms, prepare 84ms)

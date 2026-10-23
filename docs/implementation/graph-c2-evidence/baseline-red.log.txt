@@ -1,0 +1,18 @@
+{
+  "passed": false,
+  "admitted": false,
+  "node": "v26.5.0",
+  "versions": {
+    "langgraph": "1.4.15",
+    "langgraph-checkpoint": "1.1.5",
+    "core": "1.2.11"
+  },
+  "assertions": 10,
+  "failedAssertions": [],
+  "experiments": 0,
+  "processes": 0,
+  "actualSigkills": 0,
+  "cleaned": true,
+  "evidence": "/var/folders/97/wmwg4qzx02j74c3n73nh438w0000gn/T/osstack-graph-c2-ijsk2plt/evidence/red-control",
+  "error": "AssertionError [ERR_ASSERTION]: RED: baseline does not recover the actual AND join\n\n0 !== 1\n"
+}

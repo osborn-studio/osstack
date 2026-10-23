@@ -1,0 +1,5 @@
+*.txt -whitespace
+*.log -whitespace
+*.jsonl -whitespace
+*.stderr -whitespace
+*-STATE.md -whitespace

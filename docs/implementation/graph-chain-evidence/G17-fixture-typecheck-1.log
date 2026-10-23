@@ -1,0 +1,49 @@
+packages/cli/src/daemon.ts(446,27): error TS2322: Type '{ decision_id: string; question: string; choices: { choice_id: string; label: string; }[]; continuation?: { phase: string; evidence_refs: { sha256: string; evidence_id: string; }[]; version: 1; gate_kind: "phase_continue" | "task_authorization" | "risk_approval" | "external_input"; next_action: string; } | undefined...' is not assignable to type 'undefined'.
+packages/cli/src/daemon.ts(606,11): error TS18046: 'event' is of type 'unknown'.
+packages/cli/src/daemon.ts(607,66): error TS18046: 'event' is of type 'unknown'.
+packages/cli/src/daemon.ts(610,27): error TS18046: 'event' is of type 'unknown'.
+packages/cli/src/daemon.ts(616,11): error TS18046: 'event' is of type 'unknown'.
+packages/cli/src/daemon.ts(618,100): error TS18046: 'event' is of type 'unknown'.
+packages/cli/src/daemon.ts(622,36): error TS2339: Property 'decision_id' does not exist on type 'never'.
+packages/cli/src/daemon.ts(623,33): error TS2339: Property 'question' does not exist on type 'never'.
+packages/cli/src/daemon.ts(624,32): error TS2339: Property 'choices' does not exist on type 'never'.
+packages/cli/src/daemon.ts(625,27): error TS2339: Property 'continuation' does not exist on type 'never'.
+packages/cli/src/daemon.ts(625,87): error TS2339: Property 'continuation' does not exist on type 'never'.
+packages/cli/src/daemon.ts(627,37): error TS2339: Property 'question' does not exist on type 'never'.
+packages/cli/src/daemon.ts(630,26): error TS18046: 'event' is of type 'unknown'.
+packages/cli/src/daemon.ts(634,11): error TS18046: 'event' is of type 'unknown'.
+packages/cli/src/daemon.ts(635,22): error TS18046: 'event' is of type 'unknown'.
+packages/cli/src/daemon.ts(636,19): error TS18046: 'event' is of type 'unknown'.
+packages/cli/src/daemon.ts(637,18): error TS18046: 'event' is of type 'unknown'.
+packages/cli/src/daemon.ts(638,13): error TS18046: 'event' is of type 'unknown'.
+packages/cli/src/daemon.ts(638,69): error TS18046: 'event' is of type 'unknown'.
+packages/cli/src/daemon.ts(640,11): error TS18046: 'event' is of type 'unknown'.
+packages/cli/src/daemon.ts(640,48): error TS18046: 'event' is of type 'unknown'.
+packages/cli/src/daemon.ts(912,13): error TS18046: 'event' is of type 'unknown'.
+packages/cli/src/daemon.ts(913,15): error TS18046: 'event' is of type 'unknown'.
+packages/cli/src/daemon.ts(927,13): error TS18046: 'event' is of type 'unknown'.
+packages/cli/src/daemon.ts(928,15): error TS18046: 'event' is of type 'unknown'.
+packages/cli/src/daemon.ts(929,29): error TS18046: 'event' is of type 'unknown'.
+packages/cli/src/daemon.ts(938,13): error TS18046: 'event' is of type 'unknown'.
+packages/cli/src/daemon.ts(940,102): error TS18046: 'event' is of type 'unknown'.
+packages/cli/src/daemon.ts(944,38): error TS2339: Property 'decision_id' does not exist on type 'never'.
+packages/cli/src/daemon.ts(945,35): error TS2339: Property 'question' does not exist on type 'never'.
+packages/cli/src/daemon.ts(946,34): error TS2339: Property 'choices' does not exist on type 'never'.
+packages/cli/src/daemon.ts(947,29): error TS2339: Property 'continuation' does not exist on type 'never'.
+packages/cli/src/daemon.ts(947,89): error TS2339: Property 'continuation' does not exist on type 'never'.
+packages/cli/src/daemon.ts(949,39): error TS2339: Property 'question' does not exist on type 'never'.
+packages/cli/src/daemon.ts(952,28): error TS18046: 'event' is of type 'unknown'.
+packages/cli/src/daemon.ts(955,13): error TS18046: 'event' is of type 'unknown'.
+packages/cli/src/daemon.ts(956,24): error TS18046: 'event' is of type 'unknown'.
+packages/cli/src/daemon.ts(957,21): error TS18046: 'event' is of type 'unknown'.
+packages/cli/src/daemon.ts(958,20): error TS18046: 'event' is of type 'unknown'.
+packages/cli/src/daemon.ts(959,15): error TS18046: 'event' is of type 'unknown'.
+packages/cli/src/daemon.ts(959,71): error TS18046: 'event' is of type 'unknown'.
+packages/cli/src/daemon.ts(976,53): error TS18046: 'event' is of type 'unknown'.
+scripts/fixtures/graph-chain-host.ts(9,36): error TS2307: Cannot find module '@osstack/core/graph-artifacts' or its corresponding type declarations.
+scripts/fixtures/graph-chain-host.ts(85,27): error TS2345: Argument of type '{ schemaVersion: 1; kind: "start"; scope: { schemaVersion: 1; tenantId: string; principalId: string; workspaceId: string; }; idempotencyKey: string; inputArtifactRef: string; source: { product: "osstack"; requestId: string; }; spec: { ...; }; }' is not assignable to parameter of type '{ schemaVersion: 1; kind: "start"; spec: { schemaVersion: 1; template: "code-delivery-v1"; input: { taskRef: string; repositoryRef: string; baseRevision: string; acceptanceRef: string; }; limits: { ...; }; publication: "artifact_only"; }; ... 4 more ...; metadata?: { ...; } | undefined; }'.
+  The types of 'spec.limits.maxConcurrentWritersPerRepo' are incompatible between these types.
+    Type 'number' is not assignable to type '1'.
+scripts/fixtures/graph-chain-host.ts(179,32): error TS2322: Type '{ schemaVersion: 1; kind: "start"; scope: { schemaVersion: 1; tenantId: string; principalId: string; workspaceId: string; }; idempotencyKey: string; inputArtifactRef: string; source: { product: "osstack"; requestId: string; }; spec: { ...; }; }' is not assignable to type '{ schemaVersion: 1; kind: "start"; spec: { schemaVersion: 1; template: "code-delivery-v1"; input: { taskRef: string; repositoryRef: string; baseRevision: string; acceptanceRef: string; }; limits: { ...; }; publication: "artifact_only"; }; ... 4 more ...; metadata?: { ...; } | undefined; }'.
+  The types of 'spec.limits.maxConcurrentWritersPerRepo' are incompatible between these types.
+    Type 'number' is not assignable to type '1'.

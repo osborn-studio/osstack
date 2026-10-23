@@ -1,0 +1,8 @@
+{
+  "head": "405b3183597e545391a220cc5a481691740abce7",
+  "node": "v26.5.0",
+  "pnpm": "11.4.0",
+  "originalAgentsSha256": "0aeac98453f7b46af92c269528ef81268c5de79ea39a8635bd0bd510b7b9d377",
+  "statusCapturedAfterActorStart": " M packages/protocol/src/index.ts\n?? packages/graph/src/remote-checkpointer.test.ts\n?? packages/protocol/src/graph-checkpoint.ts\n",
+  "initialStatus": "clean (verified before starting G11/G13/G12 actors)"
+}

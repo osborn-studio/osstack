@@ -1,0 +1,28 @@
+$ vitest run graph-action-broker-boundary.test.ts governed-execution.test.ts
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+Preparing worktree (new branch 'other')
+Preparing worktree (new branch 'other')
+Preparing worktree (new branch 'other')
+osstack: retaining write lease one: external stop unconfirmed
+Preparing worktree (new branch 'other')
+Preparing worktree (new branch 'other')
+Preparing worktree (new branch 'other')
+osstack: retaining write lease retained: unknown
+Preparing worktree (new branch 'other')
+osstack: retaining write lease read1: uncertain read executor
+osstack: retaining write lease read2: other executor
+ ✓ src/governed-execution.test.ts (7 tests) 1023ms
+osstack: retaining write lease graph-action:0a3e2bc796dec3c91b488c42c0f268325edc69375829005c1ed5296e065f8f4d: Error: invalid result kind for registered operation
+osstack: retaining write lease graph-action:b6b2a562fd39702415ac979e39b703fcdff217b5713bddf0e765db5da29014cc: Error: invalid persisted evidence reference
+osstack: retaining write lease graph-action:b48fc4910edf431e37ac5e192fe91a1da6f4cfca4621614b5b34587114bd008c: Error: candidate preflight refused
+osstack: retaining write lease graph-action:edf442d7137b65d1b6a0a9d647000bfc24595585218c3fbb1c7de2ce44cbfc4a: Error: candidate preflight refused
+osstack: retaining write lease graph-action:f69651d1f1c0ab3b96c2b9c9319bae6aaf6ccd2110af35dad9e8151e5ed7bdce: Error: lost receipt
+ ✓ src/graph-action-broker-boundary.test.ts (11 tests) 664ms
+
+ Test Files  2 passed (2)
+      Tests  18 passed (18)
+   Start at  07:33:48
+   Duration  2.25s (transform 815ms, setup 19ms, collect 1.83s, tests 1.69s, environment 0ms, prepare 122ms)
+

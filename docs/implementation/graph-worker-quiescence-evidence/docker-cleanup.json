@@ -1,0 +1,11 @@
+{
+  "dedicatedProfile": "osstack-graph-test",
+  "status": "Stopped",
+  "containersBeforeStop": 0,
+  "defaultContext": "colima",
+  "otherRunningProfiles": [
+    "osborn-pa-staging"
+  ],
+  "imagesRetained": true,
+  "noBroadContainerCleanup": true
+}

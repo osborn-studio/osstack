@@ -1,0 +1,18 @@
+$ vitest run src/graph-admission.test.ts --maxWorkers=1 --reporter=default --reporter=json --outputFile=/Volumes/AIMATE_WORK/tmp/g25-claude-unblock/review-tests.json
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-claude-unblock/g22-rpc-0nYNC6/delivery/74de32d8-01e9-4b8e-b024-225a39b3dd1e/writer-0'...
+HEAD is now at bac2d5c base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-claude-unblock/g22-rpc-AEh6tB/delivery/411634d6-116e-436e-8139-3a9d02a51b90/writer-0'...
+HEAD is now at 21bdb68 base
+ ✓ src/graph-admission.test.ts (10 tests) 13132ms
+   ✓ disables new admission while retaining reads, exact replay and cancellation of admitted live work  610ms
+   ✓ admission disabled still permits an authorized live quality resume of the existing run  11909ms
+
+ Test Files  1 passed (1)
+      Tests  10 passed (10)
+   Start at  22:55:12
+   Duration  14.04s (transform 467ms, setup 7ms, collect 793ms, tests 13.13s, environment 0ms, prepare 27ms)
+
+JSON report written to /Volumes/AIMATE_WORK/tmp/g25-claude-unblock/review-tests.json

@@ -2,9 +2,10 @@
 
 # CLI Commands
 
-Top-level `osstack` commands parsed from `--help` (46 total).
+Top-level `osstack` commands parsed from `--help` (48 total).
 
 - `agent`
+- `attention`
 - `autonomy`
 - `checkpoint`
 - `cockpit`
@@ -20,6 +21,7 @@ Top-level `osstack` commands parsed from `--help` (46 total).
 - `examples`
 - `govern`
 - `governance`
+- `graph`
 - `guide`
 - `health`
 - `help`
@@ -53,7 +55,3 @@ Top-level `osstack` commands parsed from `--help` (46 total).
 
 Doc 15 §2.2 context: this surface is the raw capability layer; the
 task-oriented golden paths (`daily` / `start` / `improve`) compose it.
-
-## Attention (opt-in background surface)
-
-`attention status` is read-only and does not start the daemon. `watch`, `inventory`, `inbox`, `get`, `answer`, `abandon-receipt`, `release`, `brief`, `posture`, `seen`, `foreground`, `handoff`, `turn-end`, `claude-hook`, `deliveries`, `cockpit`, `loop`, and `ci` compose the local observation and receipt workflow. Offline helpers: `contract`, `routing-eval`, `triage`, `context`, `lesson`. See the [Attention guide](../guides/attention.md) for exact flags and capability limits.

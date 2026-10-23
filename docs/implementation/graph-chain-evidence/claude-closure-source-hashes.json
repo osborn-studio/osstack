@@ -1,0 +1,14 @@
+{
+  "packages/cli/src/graph-runtime.ts": "6cdc7871ffe66869dc226eba9b98cfe0bed83fd4e8a4a399aef3588b7df4bf71",
+  "packages/cli/src/graph-worker-manager.ts": "577bea184d0ece264681cf44a985dd6f9bd9a2ed0b71d5e016d339954fd78a69",
+  "packages/graph/src/worker-client.ts": "7246f32151562a9a695496044733e77889c89ad3d9bb67a18f162c5692028c7d",
+  "packages/graph/src/worker-runtime.ts": "9fe9d5045107a62e553ca69e63229c2ceb967bc95834dc9a3fa0f82bd01a5c52",
+  "packages/core/src/state/graph-recovery.ts": "875530cfa79774058f3625521484e9c86505231f6ecfe5939b8bed69ddcb3a6e",
+  "packages/cli/src/graph-reconciler.ts": "ddca28c08d7a8142e0093e14e1a28cc99aac330845a6291b866fd9ba544fab6b",
+  "packages/cli/src/graph-action-broker.ts": "f1fc1027ef7fe2c6a675704824ce89fafe11c585b314f1dd74c96b2c4405aa70",
+  "packages/cli/src/governed-execution.ts": "25819117f5c924008ba9fc2366d675806822a414d15d8365b85327a72c1765d5",
+  "packages/core/src/graph/artifact-git.ts": "384f68fa7ae09a6eba944456d1d0fbd6b0ef84262bb22d9257123a397c19be6c",
+  "packages/core/src/graph/artifact-store.ts": "5873e03d91b4a77edfea81c794330a694d2b996c9678671c5a1593f78cea5e8f",
+  "packages/cli/src/graph-chain.integration.test.ts": "4ea477d8d87dbe3a24664741c1b4032a875abb98a0087362463be2b8d44d699f",
+  "scripts/fixtures/graph-chain-host.ts": "2f39aa301e989e10e3ad8bd92bed2b0d1e7c8d2e73ec219d7678c7202777b95c"
+}

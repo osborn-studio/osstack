@@ -1,0 +1,10 @@
+{
+  "extends": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/tsconfig.base.json",
+  "compilerOptions": { "noEmit": true },
+  "files": [
+    "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/graph/src/registry.ts",
+    "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/graph/src/registry.test.ts",
+    "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/graph/src/spec-compiler.ts",
+    "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/graph/src/spec-compiler.test.ts"
+  ]
+}

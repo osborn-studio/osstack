@@ -1,0 +1,18 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+Cloning into '/Volumes/AIMATE_WORK/tmp/gc7/graph-delegation-vc33Kz/home/graph-delivery/c5a42e13-da12-4398-b4ba-231ed0842ccb/writer-0'...
+HEAD is now at 3c0f93e base
+Cloning into '/Volumes/AIMATE_WORK/tmp/gc7/graph-delegation-DDQduj/home/graph-delivery/194dc6f1-619e-4643-8e6b-eae40ad3f8a8/writer-0'...
+HEAD is now at bfb31c8 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/gc7/graph-delegation-DDQduj/home/graph-delivery/c60a17e7-4389-4828-b433-6930ef9b138b/writer-0'...
+HEAD is now at bfb31c8 base
+ ✓ src/graph-delegation.integration.test.ts (2 tests) 20240ms
+   ✓ real daemon loads owner config and CLI run/status retain durable idempotency and stable conflict codes  6722ms
+   ✓ simulated OSBot/OStag host bindings preserve parents, isolate source results and refuse unverified callers  13518ms
+
+ Test Files  1 passed (1)
+      Tests  2 passed (2)
+   Start at  18:30:15
+   Duration  21.23s (transform 596ms, setup 8ms, collect 866ms, tests 20.24s, environment 0ms, prepare 32ms)
+

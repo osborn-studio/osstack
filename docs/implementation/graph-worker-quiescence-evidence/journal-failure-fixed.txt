@@ -1,0 +1,16 @@
+$ vitest run src/graph-delivery.integration.test.ts -t 'journaling failed' --maxWorkers=1
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-quiescence/g21-delivery-krBSg5/delivery/writer-0'...
+HEAD is now at b49513a base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-quiescence/g21-delivery-ZzxQLi/delivery/writer-0'...
+HEAD is now at 6d8fb06 base
+ ✓ src/graph-delivery.integration.test.ts (8 tests | 6 skipped) 13993ms
+   ✓ keeps direct in reconciliation when real worker exit journaling failed  6969ms
+   ✓ keeps repair in reconciliation when real worker exit journaling failed  7023ms
+
+ Test Files  1 passed (1)
+      Tests  2 passed | 6 skipped (8)
+   Start at  17:20:05
+   Duration  15.15s (transform 619ms, setup 9ms, collect 1.01s, tests 13.99s, environment 0ms, prepare 36ms)

@@ -1,0 +1,11 @@
+$ tsc --noEmit
+src/contained-command.test.ts(17,28): error TS2559: Type '(req: any, res: any) => void' has no properties in common with type 'ServerOptions<typeof IncomingMessage, { new (req: IncomingMessage): ServerResponse<IncomingMessage>; prototype: ServerResponse<any>; ... 31 more ...; EventEmitterAsyncResource: typeof EventEmitterAsyncResource; }>'.
+src/contained-command.test.ts(17,29): error TS7006: Parameter 'req' implicitly has an 'any' type.
+src/contained-command.test.ts(17,34): error TS7006: Parameter 'res' implicitly has an 'any' type.
+src/contained-command.test.ts(21,28): error TS2559: Type '() => void' has no properties in common with type 'ServerOptions<typeof IncomingMessage, { new (req: IncomingMessage): ServerResponse<IncomingMessage>; prototype: ServerResponse<any>; ... 31 more ...; EventEmitterAsyncResource: typeof EventEmitterAsyncResource; }>'.
+src/contained-command.test.ts(24,28): error TS2560: Value of type '(_: any, res: any) => any' has no properties in common with type 'ServerOptions<typeof IncomingMessage, { new (req: IncomingMessage): ServerResponse<IncomingMessage>; prototype: ServerResponse<any>; ... 31 more ...; EventEmitterAsyncResource: typeof EventEmitterAsyncResource; }>'. Did you mean to call it?
+src/contained-command.test.ts(24,29): error TS7006: Parameter '_' implicitly has an 'any' type.
+src/contained-command.test.ts(24,32): error TS7006: Parameter 'res' implicitly has an 'any' type.
+/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/agents:
+[ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL] @osstack/agents@0.19.0 typecheck: `tsc --noEmit`
+Exit status 2

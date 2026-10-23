@@ -1,0 +1,674 @@
+{
+  "node20Floor": "20.6.0",
+  "node22Floor": "22.0.0",
+  "packages": 35,
+  "constraints": [
+    {
+      "name": "@osstack/graph",
+      "version": "0.1.0",
+      "engines": {
+        "node": ">=20.6.0"
+      },
+      "directory": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/graph",
+      "dependencies": {
+        "@langchain/core": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/@langchain+core@1.2.11_@opentelemetry+api@1.9.1_@opentelemetry+exporter-trace-otlp-prot_4e77be35c48e13836de5842a37e06f61/node_modules/@langchain/core",
+        "@langchain/langgraph": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/@langchain+langgraph@1.4.15_@langchain+core@1.2.11_@opentelemetry+api@1.9.1_@openteleme_f8656273625bd5db3c6585b0e1b06785/node_modules/@langchain/langgraph",
+        "@langchain/langgraph-checkpoint": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/@langchain+langgraph-checkpoint@1.1.5_@langchain+core@1.2.11_@opentelemetry+api@1.9.1_@_cc99a100d661940660b8ce003ad807f2/node_modules/@langchain/langgraph-checkpoint",
+        "@osstack/protocol": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/protocol"
+      }
+    },
+    {
+      "name": "@langchain/core",
+      "version": "1.2.11",
+      "engines": {
+        "node": ">=20"
+      },
+      "directory": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/@langchain+core@1.2.11_@opentelemetry+api@1.9.1_@opentelemetry+exporter-trace-otlp-prot_4e77be35c48e13836de5842a37e06f61/node_modules/@langchain/core",
+      "dependencies": {
+        "@cfworker/json-schema": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/@cfworker+json-schema@4.1.1/node_modules/@cfworker/json-schema",
+        "@standard-schema/spec": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/@standard-schema+spec@1.1.0/node_modules/@standard-schema/spec",
+        "js-tiktoken": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/js-tiktoken@1.0.21/node_modules/js-tiktoken",
+        "langsmith": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/langsmith@0.10.3_@opentelemetry+api@1.9.1_@opentelemetry+exporter-trace-otlp-proto@0.21_f9c091db51f802d5cbf21a6556c6f43b/node_modules/langsmith",
+        "mustache": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/mustache@4.2.0/node_modules/mustache",
+        "p-queue": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/p-queue@6.6.2/node_modules/p-queue",
+        "zod": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/zod@3.25.76/node_modules/zod"
+      }
+    },
+    {
+      "name": "p-queue",
+      "version": "6.6.2",
+      "engines": {
+        "node": ">=8"
+      },
+      "directory": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/p-queue@6.6.2/node_modules/p-queue",
+      "dependencies": {
+        "eventemitter3": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/eventemitter3@4.0.7/node_modules/eventemitter3",
+        "p-timeout": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/p-timeout@3.2.0/node_modules/p-timeout"
+      }
+    },
+    {
+      "name": "p-timeout",
+      "version": "3.2.0",
+      "engines": {
+        "node": ">=8"
+      },
+      "directory": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/p-timeout@3.2.0/node_modules/p-timeout",
+      "dependencies": {
+        "p-finally": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/p-finally@1.0.0/node_modules/p-finally"
+      }
+    },
+    {
+      "name": "p-finally",
+      "version": "1.0.0",
+      "engines": {
+        "node": ">=4"
+      },
+      "directory": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/p-finally@1.0.0/node_modules/p-finally",
+      "dependencies": {}
+    },
+    {
+      "name": "@opentelemetry/api",
+      "version": "1.9.1",
+      "engines": {
+        "node": ">=8.0.0"
+      },
+      "directory": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/@opentelemetry+api@1.9.1/node_modules/@opentelemetry/api",
+      "dependencies": {}
+    },
+    {
+      "name": "@opentelemetry/exporter-trace-otlp-proto",
+      "version": "0.218.0",
+      "engines": {
+        "node": "^18.19.0 || >=20.6.0"
+      },
+      "directory": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/@opentelemetry+exporter-trace-otlp-proto@0.218.0_@opentelemetry+api@1.9.1/node_modules/@opentelemetry/exporter-trace-otlp-proto",
+      "dependencies": {
+        "@opentelemetry/core": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/@opentelemetry+core@2.8.0_@opentelemetry+api@1.9.1/node_modules/@opentelemetry/core",
+        "@opentelemetry/otlp-exporter-base": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/@opentelemetry+otlp-exporter-base@0.218.0_@opentelemetry+api@1.9.1/node_modules/@opentelemetry/otlp-exporter-base",
+        "@opentelemetry/otlp-transformer": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/@opentelemetry+otlp-transformer@0.218.0_@opentelemetry+api@1.9.1/node_modules/@opentelemetry/otlp-transformer",
+        "@opentelemetry/resources": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/@opentelemetry+resources@2.7.1_@opentelemetry+api@1.9.1/node_modules/@opentelemetry/resources",
+        "@opentelemetry/sdk-trace-base": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/@opentelemetry+sdk-trace-base@2.7.1_@opentelemetry+api@1.9.1/node_modules/@opentelemetry/sdk-trace-base",
+        "@opentelemetry/api": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/@opentelemetry+api@1.9.1/node_modules/@opentelemetry/api"
+      }
+    },
+    {
+      "name": "@opentelemetry/core",
+      "version": "2.8.0",
+      "engines": {
+        "node": "^18.19.0 || >=20.6.0"
+      },
+      "directory": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/@opentelemetry+core@2.8.0_@opentelemetry+api@1.9.1/node_modules/@opentelemetry/core",
+      "dependencies": {
+        "@opentelemetry/semantic-conventions": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/@opentelemetry+semantic-conventions@1.41.1/node_modules/@opentelemetry/semantic-conventions",
+        "@opentelemetry/api": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/@opentelemetry+api@1.9.1/node_modules/@opentelemetry/api"
+      }
+    },
+    {
+      "name": "@opentelemetry/semantic-conventions",
+      "version": "1.41.1",
+      "engines": {
+        "node": ">=14"
+      },
+      "directory": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/@opentelemetry+semantic-conventions@1.41.1/node_modules/@opentelemetry/semantic-conventions",
+      "dependencies": {}
+    },
+    {
+      "name": "@opentelemetry/otlp-exporter-base",
+      "version": "0.218.0",
+      "engines": {
+        "node": "^18.19.0 || >=20.6.0"
+      },
+      "directory": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/@opentelemetry+otlp-exporter-base@0.218.0_@opentelemetry+api@1.9.1/node_modules/@opentelemetry/otlp-exporter-base",
+      "dependencies": {
+        "@opentelemetry/core": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/@opentelemetry+core@2.8.0_@opentelemetry+api@1.9.1/node_modules/@opentelemetry/core",
+        "@opentelemetry/otlp-transformer": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/@opentelemetry+otlp-transformer@0.218.0_@opentelemetry+api@1.9.1/node_modules/@opentelemetry/otlp-transformer",
+        "@opentelemetry/api": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/@opentelemetry+api@1.9.1/node_modules/@opentelemetry/api"
+      }
+    },
+    {
+      "name": "@opentelemetry/otlp-transformer",
+      "version": "0.218.0",
+      "engines": {
+        "node": "^18.19.0 || >=20.6.0"
+      },
+      "directory": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/@opentelemetry+otlp-transformer@0.218.0_@opentelemetry+api@1.9.1/node_modules/@opentelemetry/otlp-transformer",
+      "dependencies": {
+        "@opentelemetry/api-logs": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/@opentelemetry+api-logs@0.218.0/node_modules/@opentelemetry/api-logs",
+        "@opentelemetry/core": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/@opentelemetry+core@2.8.0_@opentelemetry+api@1.9.1/node_modules/@opentelemetry/core",
+        "@opentelemetry/resources": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/@opentelemetry+resources@2.7.1_@opentelemetry+api@1.9.1/node_modules/@opentelemetry/resources",
+        "@opentelemetry/sdk-logs": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/@opentelemetry+sdk-logs@0.218.0_@opentelemetry+api@1.9.1/node_modules/@opentelemetry/sdk-logs",
+        "@opentelemetry/sdk-metrics": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/@opentelemetry+sdk-metrics@2.7.1_@opentelemetry+api@1.9.1/node_modules/@opentelemetry/sdk-metrics",
+        "@opentelemetry/sdk-trace-base": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/@opentelemetry+sdk-trace-base@2.7.1_@opentelemetry+api@1.9.1/node_modules/@opentelemetry/sdk-trace-base",
+        "@opentelemetry/api": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/@opentelemetry+api@1.9.1/node_modules/@opentelemetry/api"
+      }
+    },
+    {
+      "name": "@opentelemetry/api-logs",
+      "version": "0.218.0",
+      "engines": {
+        "node": ">=8.0.0"
+      },
+      "directory": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/@opentelemetry+api-logs@0.218.0/node_modules/@opentelemetry/api-logs",
+      "dependencies": {
+        "@opentelemetry/api": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/@opentelemetry+api@1.9.1/node_modules/@opentelemetry/api"
+      }
+    },
+    {
+      "name": "@opentelemetry/resources",
+      "version": "2.7.1",
+      "engines": {
+        "node": "^18.19.0 || >=20.6.0"
+      },
+      "directory": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/@opentelemetry+resources@2.7.1_@opentelemetry+api@1.9.1/node_modules/@opentelemetry/resources",
+      "dependencies": {
+        "@opentelemetry/core": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/@opentelemetry+core@2.8.0_@opentelemetry+api@1.9.1/node_modules/@opentelemetry/core",
+        "@opentelemetry/semantic-conventions": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/@opentelemetry+semantic-conventions@1.41.1/node_modules/@opentelemetry/semantic-conventions",
+        "@opentelemetry/api": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/@opentelemetry+api@1.9.1/node_modules/@opentelemetry/api"
+      }
+    },
+    {
+      "name": "@opentelemetry/sdk-logs",
+      "version": "0.218.0",
+      "engines": {
+        "node": "^18.19.0 || >=20.6.0"
+      },
+      "directory": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/@opentelemetry+sdk-logs@0.218.0_@opentelemetry+api@1.9.1/node_modules/@opentelemetry/sdk-logs",
+      "dependencies": {
+        "@opentelemetry/api-logs": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/@opentelemetry+api-logs@0.218.0/node_modules/@opentelemetry/api-logs",
+        "@opentelemetry/core": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/@opentelemetry+core@2.8.0_@opentelemetry+api@1.9.1/node_modules/@opentelemetry/core",
+        "@opentelemetry/resources": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/@opentelemetry+resources@2.7.1_@opentelemetry+api@1.9.1/node_modules/@opentelemetry/resources",
+        "@opentelemetry/semantic-conventions": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/@opentelemetry+semantic-conventions@1.41.1/node_modules/@opentelemetry/semantic-conventions",
+        "@opentelemetry/api": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/@opentelemetry+api@1.9.1/node_modules/@opentelemetry/api"
+      }
+    },
+    {
+      "name": "@opentelemetry/sdk-metrics",
+      "version": "2.7.1",
+      "engines": {
+        "node": "^18.19.0 || >=20.6.0"
+      },
+      "directory": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/@opentelemetry+sdk-metrics@2.7.1_@opentelemetry+api@1.9.1/node_modules/@opentelemetry/sdk-metrics",
+      "dependencies": {
+        "@opentelemetry/core": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/@opentelemetry+core@2.8.0_@opentelemetry+api@1.9.1/node_modules/@opentelemetry/core",
+        "@opentelemetry/resources": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/@opentelemetry+resources@2.7.1_@opentelemetry+api@1.9.1/node_modules/@opentelemetry/resources",
+        "@opentelemetry/api": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/@opentelemetry+api@1.9.1/node_modules/@opentelemetry/api"
+      }
+    },
+    {
+      "name": "@opentelemetry/sdk-trace-base",
+      "version": "2.7.1",
+      "engines": {
+        "node": "^18.19.0 || >=20.6.0"
+      },
+      "directory": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/@opentelemetry+sdk-trace-base@2.7.1_@opentelemetry+api@1.9.1/node_modules/@opentelemetry/sdk-trace-base",
+      "dependencies": {
+        "@opentelemetry/core": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/@opentelemetry+core@2.8.0_@opentelemetry+api@1.9.1/node_modules/@opentelemetry/core",
+        "@opentelemetry/resources": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/@opentelemetry+resources@2.7.1_@opentelemetry+api@1.9.1/node_modules/@opentelemetry/resources",
+        "@opentelemetry/semantic-conventions": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/@opentelemetry+semantic-conventions@1.41.1/node_modules/@opentelemetry/semantic-conventions",
+        "@opentelemetry/api": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/@opentelemetry+api@1.9.1/node_modules/@opentelemetry/api"
+      }
+    },
+    {
+      "name": "@langchain/langgraph",
+      "version": "1.4.15",
+      "engines": {
+        "node": ">=18"
+      },
+      "directory": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/@langchain+langgraph@1.4.15_@langchain+core@1.2.11_@opentelemetry+api@1.9.1_@openteleme_f8656273625bd5db3c6585b0e1b06785/node_modules/@langchain/langgraph",
+      "dependencies": {
+        "@langchain/protocol": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/@langchain+protocol@0.0.19/node_modules/@langchain/protocol",
+        "@standard-schema/spec": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/@standard-schema+spec@1.1.0/node_modules/@standard-schema/spec",
+        "@langchain/langgraph-checkpoint": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/@langchain+langgraph-checkpoint@1.1.5_@langchain+core@1.2.11_@opentelemetry+api@1.9.1_@_cc99a100d661940660b8ce003ad807f2/node_modules/@langchain/langgraph-checkpoint",
+        "@langchain/langgraph-sdk": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/@langchain+langgraph-sdk@1.11.0_@langchain+core@1.2.11_@opentelemetry+api@1.9.1_@opente_566c65ddfc6c45929fddef330c6f26df/node_modules/@langchain/langgraph-sdk",
+        "@langchain/core": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/@langchain+core@1.2.11_@opentelemetry+api@1.9.1_@opentelemetry+exporter-trace-otlp-prot_4e77be35c48e13836de5842a37e06f61/node_modules/@langchain/core",
+        "zod": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/zod@3.25.76/node_modules/zod"
+      }
+    },
+    {
+      "name": "@langchain/langgraph-checkpoint",
+      "version": "1.1.5",
+      "engines": {
+        "node": ">=18"
+      },
+      "directory": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/@langchain+langgraph-checkpoint@1.1.5_@langchain+core@1.2.11_@opentelemetry+api@1.9.1_@_cc99a100d661940660b8ce003ad807f2/node_modules/@langchain/langgraph-checkpoint",
+      "dependencies": {
+        "@langchain/core": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/@langchain+core@1.2.11_@opentelemetry+api@1.9.1_@opentelemetry+exporter-trace-otlp-prot_4e77be35c48e13836de5842a37e06f61/node_modules/@langchain/core"
+      }
+    },
+    {
+      "name": "p-queue",
+      "version": "9.3.3",
+      "engines": {
+        "node": ">=20"
+      },
+      "directory": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/p-queue@9.3.3/node_modules/p-queue",
+      "dependencies": {
+        "eventemitter3": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/eventemitter3@5.0.4/node_modules/eventemitter3",
+        "p-timeout": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/p-timeout@7.0.2/node_modules/p-timeout"
+      }
+    },
+    {
+      "name": "p-timeout",
+      "version": "7.0.2",
+      "engines": {
+        "node": ">=20"
+      },
+      "directory": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/p-timeout@7.0.2/node_modules/p-timeout",
+      "dependencies": {}
+    },
+    {
+      "name": "p-retry",
+      "version": "7.1.1",
+      "engines": {
+        "node": ">=20"
+      },
+      "directory": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/p-retry@7.1.1/node_modules/p-retry",
+      "dependencies": {
+        "is-network-error": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/is-network-error@1.3.2/node_modules/is-network-error"
+      }
+    },
+    {
+      "name": "is-network-error",
+      "version": "1.3.2",
+      "engines": {
+        "node": ">=16"
+      },
+      "directory": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/is-network-error@1.3.2/node_modules/is-network-error",
+      "dependencies": {}
+    },
+    {
+      "name": "@osstack/protocol",
+      "version": "0.15.0",
+      "engines": {
+        "node": ">=20"
+      },
+      "directory": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/protocol",
+      "dependencies": {
+        "zod": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/zod@3.25.76/node_modules/zod"
+      }
+    }
+  ],
+  "entries": [
+    {
+      "name": "@osstack/graph",
+      "version": "0.1.0",
+      "engines": {
+        "node": ">=20.6.0"
+      },
+      "directory": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/graph",
+      "dependencies": {
+        "@langchain/core": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/@langchain+core@1.2.11_@opentelemetry+api@1.9.1_@opentelemetry+exporter-trace-otlp-prot_4e77be35c48e13836de5842a37e06f61/node_modules/@langchain/core",
+        "@langchain/langgraph": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/@langchain+langgraph@1.4.15_@langchain+core@1.2.11_@opentelemetry+api@1.9.1_@openteleme_f8656273625bd5db3c6585b0e1b06785/node_modules/@langchain/langgraph",
+        "@langchain/langgraph-checkpoint": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/@langchain+langgraph-checkpoint@1.1.5_@langchain+core@1.2.11_@opentelemetry+api@1.9.1_@_cc99a100d661940660b8ce003ad807f2/node_modules/@langchain/langgraph-checkpoint",
+        "@osstack/protocol": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/protocol"
+      }
+    },
+    {
+      "name": "@langchain/core",
+      "version": "1.2.11",
+      "engines": {
+        "node": ">=20"
+      },
+      "directory": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/@langchain+core@1.2.11_@opentelemetry+api@1.9.1_@opentelemetry+exporter-trace-otlp-prot_4e77be35c48e13836de5842a37e06f61/node_modules/@langchain/core",
+      "dependencies": {
+        "@cfworker/json-schema": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/@cfworker+json-schema@4.1.1/node_modules/@cfworker/json-schema",
+        "@standard-schema/spec": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/@standard-schema+spec@1.1.0/node_modules/@standard-schema/spec",
+        "js-tiktoken": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/js-tiktoken@1.0.21/node_modules/js-tiktoken",
+        "langsmith": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/langsmith@0.10.3_@opentelemetry+api@1.9.1_@opentelemetry+exporter-trace-otlp-proto@0.21_f9c091db51f802d5cbf21a6556c6f43b/node_modules/langsmith",
+        "mustache": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/mustache@4.2.0/node_modules/mustache",
+        "p-queue": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/p-queue@6.6.2/node_modules/p-queue",
+        "zod": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/zod@3.25.76/node_modules/zod"
+      }
+    },
+    {
+      "name": "@cfworker/json-schema",
+      "version": "4.1.1",
+      "engines": {},
+      "directory": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/@cfworker+json-schema@4.1.1/node_modules/@cfworker/json-schema",
+      "dependencies": {}
+    },
+    {
+      "name": "@standard-schema/spec",
+      "version": "1.1.0",
+      "engines": {},
+      "directory": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/@standard-schema+spec@1.1.0/node_modules/@standard-schema/spec",
+      "dependencies": {}
+    },
+    {
+      "name": "js-tiktoken",
+      "version": "1.0.21",
+      "engines": {},
+      "directory": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/js-tiktoken@1.0.21/node_modules/js-tiktoken",
+      "dependencies": {
+        "base64-js": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/base64-js@1.5.1/node_modules/base64-js"
+      }
+    },
+    {
+      "name": "base64-js",
+      "version": "1.5.1",
+      "engines": {},
+      "directory": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/base64-js@1.5.1/node_modules/base64-js",
+      "dependencies": {}
+    },
+    {
+      "name": "langsmith",
+      "version": "0.10.3",
+      "engines": {},
+      "directory": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/langsmith@0.10.3_@opentelemetry+api@1.9.1_@opentelemetry+exporter-trace-otlp-proto@0.21_f9c091db51f802d5cbf21a6556c6f43b/node_modules/langsmith",
+      "dependencies": {
+        "p-queue": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/p-queue@6.6.2/node_modules/p-queue",
+        "@opentelemetry/api": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/@opentelemetry+api@1.9.1/node_modules/@opentelemetry/api",
+        "@opentelemetry/exporter-trace-otlp-proto": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/@opentelemetry+exporter-trace-otlp-proto@0.218.0_@opentelemetry+api@1.9.1/node_modules/@opentelemetry/exporter-trace-otlp-proto",
+        "@opentelemetry/sdk-trace-base": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/@opentelemetry+sdk-trace-base@2.7.1_@opentelemetry+api@1.9.1/node_modules/@opentelemetry/sdk-trace-base"
+      }
+    },
+    {
+      "name": "p-queue",
+      "version": "6.6.2",
+      "engines": {
+        "node": ">=8"
+      },
+      "directory": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/p-queue@6.6.2/node_modules/p-queue",
+      "dependencies": {
+        "eventemitter3": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/eventemitter3@4.0.7/node_modules/eventemitter3",
+        "p-timeout": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/p-timeout@3.2.0/node_modules/p-timeout"
+      }
+    },
+    {
+      "name": "eventemitter3",
+      "version": "4.0.7",
+      "engines": {},
+      "directory": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/eventemitter3@4.0.7/node_modules/eventemitter3",
+      "dependencies": {}
+    },
+    {
+      "name": "p-timeout",
+      "version": "3.2.0",
+      "engines": {
+        "node": ">=8"
+      },
+      "directory": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/p-timeout@3.2.0/node_modules/p-timeout",
+      "dependencies": {
+        "p-finally": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/p-finally@1.0.0/node_modules/p-finally"
+      }
+    },
+    {
+      "name": "p-finally",
+      "version": "1.0.0",
+      "engines": {
+        "node": ">=4"
+      },
+      "directory": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/p-finally@1.0.0/node_modules/p-finally",
+      "dependencies": {}
+    },
+    {
+      "name": "@opentelemetry/api",
+      "version": "1.9.1",
+      "engines": {
+        "node": ">=8.0.0"
+      },
+      "directory": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/@opentelemetry+api@1.9.1/node_modules/@opentelemetry/api",
+      "dependencies": {}
+    },
+    {
+      "name": "@opentelemetry/exporter-trace-otlp-proto",
+      "version": "0.218.0",
+      "engines": {
+        "node": "^18.19.0 || >=20.6.0"
+      },
+      "directory": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/@opentelemetry+exporter-trace-otlp-proto@0.218.0_@opentelemetry+api@1.9.1/node_modules/@opentelemetry/exporter-trace-otlp-proto",
+      "dependencies": {
+        "@opentelemetry/core": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/@opentelemetry+core@2.8.0_@opentelemetry+api@1.9.1/node_modules/@opentelemetry/core",
+        "@opentelemetry/otlp-exporter-base": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/@opentelemetry+otlp-exporter-base@0.218.0_@opentelemetry+api@1.9.1/node_modules/@opentelemetry/otlp-exporter-base",
+        "@opentelemetry/otlp-transformer": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/@opentelemetry+otlp-transformer@0.218.0_@opentelemetry+api@1.9.1/node_modules/@opentelemetry/otlp-transformer",
+        "@opentelemetry/resources": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/@opentelemetry+resources@2.7.1_@opentelemetry+api@1.9.1/node_modules/@opentelemetry/resources",
+        "@opentelemetry/sdk-trace-base": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/@opentelemetry+sdk-trace-base@2.7.1_@opentelemetry+api@1.9.1/node_modules/@opentelemetry/sdk-trace-base",
+        "@opentelemetry/api": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/@opentelemetry+api@1.9.1/node_modules/@opentelemetry/api"
+      }
+    },
+    {
+      "name": "@opentelemetry/core",
+      "version": "2.8.0",
+      "engines": {
+        "node": "^18.19.0 || >=20.6.0"
+      },
+      "directory": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/@opentelemetry+core@2.8.0_@opentelemetry+api@1.9.1/node_modules/@opentelemetry/core",
+      "dependencies": {
+        "@opentelemetry/semantic-conventions": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/@opentelemetry+semantic-conventions@1.41.1/node_modules/@opentelemetry/semantic-conventions",
+        "@opentelemetry/api": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/@opentelemetry+api@1.9.1/node_modules/@opentelemetry/api"
+      }
+    },
+    {
+      "name": "@opentelemetry/semantic-conventions",
+      "version": "1.41.1",
+      "engines": {
+        "node": ">=14"
+      },
+      "directory": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/@opentelemetry+semantic-conventions@1.41.1/node_modules/@opentelemetry/semantic-conventions",
+      "dependencies": {}
+    },
+    {
+      "name": "@opentelemetry/otlp-exporter-base",
+      "version": "0.218.0",
+      "engines": {
+        "node": "^18.19.0 || >=20.6.0"
+      },
+      "directory": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/@opentelemetry+otlp-exporter-base@0.218.0_@opentelemetry+api@1.9.1/node_modules/@opentelemetry/otlp-exporter-base",
+      "dependencies": {
+        "@opentelemetry/core": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/@opentelemetry+core@2.8.0_@opentelemetry+api@1.9.1/node_modules/@opentelemetry/core",
+        "@opentelemetry/otlp-transformer": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/@opentelemetry+otlp-transformer@0.218.0_@opentelemetry+api@1.9.1/node_modules/@opentelemetry/otlp-transformer",
+        "@opentelemetry/api": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/@opentelemetry+api@1.9.1/node_modules/@opentelemetry/api"
+      }
+    },
+    {
+      "name": "@opentelemetry/otlp-transformer",
+      "version": "0.218.0",
+      "engines": {
+        "node": "^18.19.0 || >=20.6.0"
+      },
+      "directory": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/@opentelemetry+otlp-transformer@0.218.0_@opentelemetry+api@1.9.1/node_modules/@opentelemetry/otlp-transformer",
+      "dependencies": {
+        "@opentelemetry/api-logs": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/@opentelemetry+api-logs@0.218.0/node_modules/@opentelemetry/api-logs",
+        "@opentelemetry/core": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/@opentelemetry+core@2.8.0_@opentelemetry+api@1.9.1/node_modules/@opentelemetry/core",
+        "@opentelemetry/resources": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/@opentelemetry+resources@2.7.1_@opentelemetry+api@1.9.1/node_modules/@opentelemetry/resources",
+        "@opentelemetry/sdk-logs": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/@opentelemetry+sdk-logs@0.218.0_@opentelemetry+api@1.9.1/node_modules/@opentelemetry/sdk-logs",
+        "@opentelemetry/sdk-metrics": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/@opentelemetry+sdk-metrics@2.7.1_@opentelemetry+api@1.9.1/node_modules/@opentelemetry/sdk-metrics",
+        "@opentelemetry/sdk-trace-base": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/@opentelemetry+sdk-trace-base@2.7.1_@opentelemetry+api@1.9.1/node_modules/@opentelemetry/sdk-trace-base",
+        "@opentelemetry/api": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/@opentelemetry+api@1.9.1/node_modules/@opentelemetry/api"
+      }
+    },
+    {
+      "name": "@opentelemetry/api-logs",
+      "version": "0.218.0",
+      "engines": {
+        "node": ">=8.0.0"
+      },
+      "directory": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/@opentelemetry+api-logs@0.218.0/node_modules/@opentelemetry/api-logs",
+      "dependencies": {
+        "@opentelemetry/api": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/@opentelemetry+api@1.9.1/node_modules/@opentelemetry/api"
+      }
+    },
+    {
+      "name": "@opentelemetry/resources",
+      "version": "2.7.1",
+      "engines": {
+        "node": "^18.19.0 || >=20.6.0"
+      },
+      "directory": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/@opentelemetry+resources@2.7.1_@opentelemetry+api@1.9.1/node_modules/@opentelemetry/resources",
+      "dependencies": {
+        "@opentelemetry/core": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/@opentelemetry+core@2.8.0_@opentelemetry+api@1.9.1/node_modules/@opentelemetry/core",
+        "@opentelemetry/semantic-conventions": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/@opentelemetry+semantic-conventions@1.41.1/node_modules/@opentelemetry/semantic-conventions",
+        "@opentelemetry/api": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/@opentelemetry+api@1.9.1/node_modules/@opentelemetry/api"
+      }
+    },
+    {
+      "name": "@opentelemetry/sdk-logs",
+      "version": "0.218.0",
+      "engines": {
+        "node": "^18.19.0 || >=20.6.0"
+      },
+      "directory": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/@opentelemetry+sdk-logs@0.218.0_@opentelemetry+api@1.9.1/node_modules/@opentelemetry/sdk-logs",
+      "dependencies": {
+        "@opentelemetry/api-logs": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/@opentelemetry+api-logs@0.218.0/node_modules/@opentelemetry/api-logs",
+        "@opentelemetry/core": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/@opentelemetry+core@2.8.0_@opentelemetry+api@1.9.1/node_modules/@opentelemetry/core",
+        "@opentelemetry/resources": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/@opentelemetry+resources@2.7.1_@opentelemetry+api@1.9.1/node_modules/@opentelemetry/resources",
+        "@opentelemetry/semantic-conventions": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/@opentelemetry+semantic-conventions@1.41.1/node_modules/@opentelemetry/semantic-conventions",
+        "@opentelemetry/api": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/@opentelemetry+api@1.9.1/node_modules/@opentelemetry/api"
+      }
+    },
+    {
+      "name": "@opentelemetry/sdk-metrics",
+      "version": "2.7.1",
+      "engines": {
+        "node": "^18.19.0 || >=20.6.0"
+      },
+      "directory": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/@opentelemetry+sdk-metrics@2.7.1_@opentelemetry+api@1.9.1/node_modules/@opentelemetry/sdk-metrics",
+      "dependencies": {
+        "@opentelemetry/core": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/@opentelemetry+core@2.8.0_@opentelemetry+api@1.9.1/node_modules/@opentelemetry/core",
+        "@opentelemetry/resources": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/@opentelemetry+resources@2.7.1_@opentelemetry+api@1.9.1/node_modules/@opentelemetry/resources",
+        "@opentelemetry/api": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/@opentelemetry+api@1.9.1/node_modules/@opentelemetry/api"
+      }
+    },
+    {
+      "name": "@opentelemetry/sdk-trace-base",
+      "version": "2.7.1",
+      "engines": {
+        "node": "^18.19.0 || >=20.6.0"
+      },
+      "directory": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/@opentelemetry+sdk-trace-base@2.7.1_@opentelemetry+api@1.9.1/node_modules/@opentelemetry/sdk-trace-base",
+      "dependencies": {
+        "@opentelemetry/core": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/@opentelemetry+core@2.8.0_@opentelemetry+api@1.9.1/node_modules/@opentelemetry/core",
+        "@opentelemetry/resources": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/@opentelemetry+resources@2.7.1_@opentelemetry+api@1.9.1/node_modules/@opentelemetry/resources",
+        "@opentelemetry/semantic-conventions": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/@opentelemetry+semantic-conventions@1.41.1/node_modules/@opentelemetry/semantic-conventions",
+        "@opentelemetry/api": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/@opentelemetry+api@1.9.1/node_modules/@opentelemetry/api"
+      }
+    },
+    {
+      "name": "mustache",
+      "version": "4.2.0",
+      "engines": {},
+      "directory": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/mustache@4.2.0/node_modules/mustache",
+      "dependencies": {}
+    },
+    {
+      "name": "zod",
+      "version": "3.25.76",
+      "engines": {},
+      "directory": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/zod@3.25.76/node_modules/zod",
+      "dependencies": {}
+    },
+    {
+      "name": "@langchain/langgraph",
+      "version": "1.4.15",
+      "engines": {
+        "node": ">=18"
+      },
+      "directory": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/@langchain+langgraph@1.4.15_@langchain+core@1.2.11_@opentelemetry+api@1.9.1_@openteleme_f8656273625bd5db3c6585b0e1b06785/node_modules/@langchain/langgraph",
+      "dependencies": {
+        "@langchain/protocol": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/@langchain+protocol@0.0.19/node_modules/@langchain/protocol",
+        "@standard-schema/spec": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/@standard-schema+spec@1.1.0/node_modules/@standard-schema/spec",
+        "@langchain/langgraph-checkpoint": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/@langchain+langgraph-checkpoint@1.1.5_@langchain+core@1.2.11_@opentelemetry+api@1.9.1_@_cc99a100d661940660b8ce003ad807f2/node_modules/@langchain/langgraph-checkpoint",
+        "@langchain/langgraph-sdk": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/@langchain+langgraph-sdk@1.11.0_@langchain+core@1.2.11_@opentelemetry+api@1.9.1_@opente_566c65ddfc6c45929fddef330c6f26df/node_modules/@langchain/langgraph-sdk",
+        "@langchain/core": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/@langchain+core@1.2.11_@opentelemetry+api@1.9.1_@opentelemetry+exporter-trace-otlp-prot_4e77be35c48e13836de5842a37e06f61/node_modules/@langchain/core",
+        "zod": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/zod@3.25.76/node_modules/zod"
+      }
+    },
+    {
+      "name": "@langchain/protocol",
+      "version": "0.0.19",
+      "engines": {},
+      "directory": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/@langchain+protocol@0.0.19/node_modules/@langchain/protocol",
+      "dependencies": {}
+    },
+    {
+      "name": "@langchain/langgraph-checkpoint",
+      "version": "1.1.5",
+      "engines": {
+        "node": ">=18"
+      },
+      "directory": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/@langchain+langgraph-checkpoint@1.1.5_@langchain+core@1.2.11_@opentelemetry+api@1.9.1_@_cc99a100d661940660b8ce003ad807f2/node_modules/@langchain/langgraph-checkpoint",
+      "dependencies": {
+        "@langchain/core": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/@langchain+core@1.2.11_@opentelemetry+api@1.9.1_@opentelemetry+exporter-trace-otlp-prot_4e77be35c48e13836de5842a37e06f61/node_modules/@langchain/core"
+      }
+    },
+    {
+      "name": "@langchain/langgraph-sdk",
+      "version": "1.11.0",
+      "engines": {},
+      "directory": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/@langchain+langgraph-sdk@1.11.0_@langchain+core@1.2.11_@opentelemetry+api@1.9.1_@opente_566c65ddfc6c45929fddef330c6f26df/node_modules/@langchain/langgraph-sdk",
+      "dependencies": {
+        "@langchain/protocol": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/@langchain+protocol@0.0.19/node_modules/@langchain/protocol",
+        "@types/json-schema": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/@types+json-schema@7.0.15/node_modules/@types/json-schema",
+        "p-queue": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/p-queue@9.3.3/node_modules/p-queue",
+        "p-retry": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/p-retry@7.1.1/node_modules/p-retry",
+        "@langchain/core": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/@langchain+core@1.2.11_@opentelemetry+api@1.9.1_@opentelemetry+exporter-trace-otlp-prot_4e77be35c48e13836de5842a37e06f61/node_modules/@langchain/core"
+      }
+    },
+    {
+      "name": "@types/json-schema",
+      "version": "7.0.15",
+      "engines": {},
+      "directory": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/@types+json-schema@7.0.15/node_modules/@types/json-schema",
+      "dependencies": {}
+    },
+    {
+      "name": "p-queue",
+      "version": "9.3.3",
+      "engines": {
+        "node": ">=20"
+      },
+      "directory": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/p-queue@9.3.3/node_modules/p-queue",
+      "dependencies": {
+        "eventemitter3": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/eventemitter3@5.0.4/node_modules/eventemitter3",
+        "p-timeout": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/p-timeout@7.0.2/node_modules/p-timeout"
+      }
+    },
+    {
+      "name": "eventemitter3",
+      "version": "5.0.4",
+      "engines": {},
+      "directory": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/eventemitter3@5.0.4/node_modules/eventemitter3",
+      "dependencies": {}
+    },
+    {
+      "name": "p-timeout",
+      "version": "7.0.2",
+      "engines": {
+        "node": ">=20"
+      },
+      "directory": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/p-timeout@7.0.2/node_modules/p-timeout",
+      "dependencies": {}
+    },
+    {
+      "name": "p-retry",
+      "version": "7.1.1",
+      "engines": {
+        "node": ">=20"
+      },
+      "directory": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/p-retry@7.1.1/node_modules/p-retry",
+      "dependencies": {
+        "is-network-error": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/is-network-error@1.3.2/node_modules/is-network-error"
+      }
+    },
+    {
+      "name": "is-network-error",
+      "version": "1.3.2",
+      "engines": {
+        "node": ">=16"
+      },
+      "directory": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/is-network-error@1.3.2/node_modules/is-network-error",
+      "dependencies": {}
+    },
+    {
+      "name": "@osstack/protocol",
+      "version": "0.15.0",
+      "engines": {
+        "node": ">=20"
+      },
+      "directory": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/protocol",
+      "dependencies": {
+        "zod": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/node_modules/.pnpm/zod@3.25.76/node_modules/zod"
+      }
+    }
+  ]
+}

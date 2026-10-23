@@ -1,0 +1,7 @@
+{
+  "packages/core/src/graph/artifact-store.ts": "5873e03d91b4a77edfea81c794330a694d2b996c9678671c5a1593f78cea5e8f",
+  "packages/core/src/graph/artifact-git.ts": "55c61156ad9c3c642db660ee63e2f5a6e0ae56de7bc37211d020867f3006f7cc",
+  "packages/core/src/graph/artifact-store.test.ts": "a77980912832180c8851f0ad5ae06c4e71134e30bc41b421ad0bc22f1dfb42ee",
+  "packages/agents/src/worktree.ts": "e67c80cc564f449488ff8bd889c1639e679936cb300ba570b75d90a928938d92",
+  "packages/agents/src/worktree.test.ts": "e9ffbce9bd8d248d8b78ea98b747af033140b29b76fd878f79889c28b7dd9ca6"
+}

@@ -1,0 +1,29 @@
+{
+  "acceptedCodeCommit": "d443eeb1125e1bb0d5814fda3a065f1c81ac2868",
+  "sha256": {
+    "acceptance.mjs": "7ed084c0d7fbe41d8aef3840bff4882cc6e25c442701231c956a023d6fe409b3",
+    "check.mjs": "db2bc8e0ac04327e34cd7fd7cf6d63d743bdf08be14cd0eb6bf53f5376ae23f2",
+    "acceptance-result.json": "ef56c91cc11dd5ebac1ea40e14af360bfef88fb6917e094c20a03970f9685d2f",
+    "LOOP-STATE.json": "5154cce02fc30f22fa026d2ca01e42065c5300a587a9a86c5cd3b0393e6f16ed",
+    "STATE.md": "753ba62dbe707cbc758dd61735ca31300fe1935f2c284437e78f3f260b4891ad",
+    "agents-tests.json": "bf7233a0d9d08a56120ad3ce95ad152ed0ace1449e2f405a0a0fee2ad67b337d",
+    "cli-tests.json": "328402ee2c60d7a8adba88b42001f2895d73b0d66d7f1fe25124fe79da1b7a1c",
+    "loop-tests.json": "ef5f3ad086ddc1cec22f49cbb824348eaab3b3e7152d9f50784660e9dc5baaaf",
+    "accepted-focused.txt": "c35de42aba262bc1f4887598017682cb30979fae17b644320da5d56f276f9036",
+    "accepted-typecheck.txt": "2072d76ba654dcd887516e7a6894a0ea5e02eef61caeae8981cded4b530efe95",
+    "accepted-schemas.txt": "72eede8bd62b3a68d3e094d4aeccda65c0b3de5a92b0843adc8530af2c2cff41",
+    "accepted-startup.txt": "494e45039b3ac5d5452df88364a56b300f9c1bb4650726a16ed0bda20e9ecf55",
+    "accepted-whitespace.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "build.txt": "b7d3f593a7082fad6c3734338bfffab03d3784c7bfe8dc7f7d0a631d0d3d43fb",
+    "import-cost.json": "9e0648ea4052d961d3ebce19c9d9bcb554b1c0589c98d1d1b439da44d1d5a611",
+    "design.txt": "ea608e0fab88a940332e3ad12feff09115904acb6969257a43bae1fd8b090127",
+    "design-result.json": "86d9943e4b33d092890d6eff9347a7d15ef400d2c07a70ae096d88a81647fb33",
+    "design-response.md": "eef6bd556689397e77c679e0fdf1600abc65974a32b317f2978daac2325d29e0",
+    "review-instructions.txt": "a84d4a975b6f91441a031fffe9b7dda2a58dbddc11c390d6db5a854fc1758bda",
+    "review-result.json": "f978ac9b26d8626fcb6bb3197ea545771fb4428b64cfc7b04b419dd4447c6cb3",
+    "review-response.md": "2f1c123706b3c32e9ac1b9d70dbc39535702cea15a9337ea431c8e362efac79e",
+    "final-review-prompt.txt": "25e99cbd75c1f9a606b29479ab0fc6612ebba64372d8aed6d57af5790b123bc7",
+    "final-review-result.json": "73ffbc7e47dc7441c13a4f9d565753c2bbb45852872930241102f4c881a77180",
+    "final-review-response.md": "93021550bff733cccf36739510c36f4803cc887c63917b4fd9217837f4448f0f"
+  }
+}

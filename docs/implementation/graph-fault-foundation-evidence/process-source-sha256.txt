@@ -1,0 +1,6 @@
+9e336728afb46efe26288652fad3d6f30b4f1574840b896cc216bf7b44825d2d  packages/cli/src/graph-process-identity.ts
+0b5dea91a567d30aba638caa82c854685a25f0f29097e4153cdda23ff840f392  packages/cli/src/graph-process-journal.ts
+b758c41e8042f72b38edb8b10d2c21e8a862cd1ac55f64a4dd6fdb8e7ad54808  packages/cli/src/graph-worker-manager.ts
+f593b592002aa7c5b0f66b6c089be45f3c8b23b8d3c740317da2c6deead4ad60  packages/cli/src/graph-runtime.ts
+1c417c168c9f5380b831d704fb22e5ade72ef0a15b83860613aa19374331d328  packages/core/src/state/migrations.ts
+fade78c5925c5447fd962e66c8077fa31d875374af8a0ac5f19d9bd0dec42125  packages/core/src/state/graph-recovery.ts

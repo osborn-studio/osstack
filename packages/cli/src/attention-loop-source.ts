@@ -1,3 +1,4 @@
+import { constants } from "node:fs";
 import { open, realpath, lstat } from "node:fs/promises";
 import { isAbsolute, relative } from "node:path";
 import { LoopState } from "@osstack/loop";
@@ -14,12 +15,16 @@ export async function readAttentionLoop(input: {
   try {
     const path = await realpath(input.path);
     const rel = relative(repo, path);
-    if (rel.startsWith("..") || isAbsolute(rel))
+    if (rel === ".." || rel.startsWith("../") || isAbsolute(rel))
       throw new Error("loop_outside_scope");
-    if (!(await lstat(path)).isFile())
+    const before = await lstat(path);
+    if (!before.isFile())
       throw new Error("regular_loop_file_required");
-    handle = await open(path, "r");
+    handle = await open(path, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
     const stat = await handle.stat();
+    const resolvedAfterOpen = await realpath(path);
+    if (resolvedAfterOpen !== path || before.dev !== stat.dev || before.ino !== stat.ino)
+      throw new Error("loop_source_changed");
     if (!stat.isFile() || stat.size > 1024 * 1024)
       throw new Error("unsupported_loop_source");
     const buffer = Buffer.alloc(1024 * 1024 + 1);

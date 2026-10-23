@@ -1,0 +1,161 @@
+[
+  {
+    "event_id": "kimi-bridge:0",
+    "seq": 0,
+    "run_id": "kimi-bridge",
+    "session_id": "kimi-bridge",
+    "created_at": 1789741380.349,
+    "terminal": false,
+    "type": "run.started",
+    "payload": {
+      "status": "running",
+      "controls": {
+        "cancel": true,
+        "approval_pending": false,
+        "clarify_pending": false,
+        "queue": false,
+        "goal": false
+      }
+    }
+  },
+  {
+    "event_id": "kimi-bridge:1",
+    "seq": 1,
+    "run_id": "kimi-bridge",
+    "session_id": "kimi-bridge",
+    "created_at": 1789741380.351,
+    "terminal": false,
+    "type": "progress",
+    "payload": {
+      "phase": "kimi.review.start",
+      "detail": "Starting bounded no-tool Kimi review"
+    }
+  },
+  {
+    "event_id": "kimi-bridge:2",
+    "seq": 2,
+    "run_id": "kimi-bridge",
+    "session_id": "kimi-bridge",
+    "created_at": 1789741537.379,
+    "terminal": false,
+    "type": "token.delta",
+    "payload": {
+      "message_id": "kimi-bridge:kimi-review",
+      "delta": "# Review\n\n## Summary\n\nThe bridge adds a second durable receipt (`isolated.json`) that is written **only** after `inspect()` revalidates the exact live container policy (image ID, no mounts, NetworkMode none, ReadonlyRootfs, no privilege, CapDrop ALL, fixed working dir, nonce/spec labels), and `captureQuiescence` then requires **both** receipts plus a fresh daemon-ID/Linux/404 confirmation before returning frozen per-invocation refs.\n\n**isolation** — Pass. `recordIsolation` runs only post-inspect; `durable()` uses atomic no-replace link + fsync; `isolation()` re-reads via `O_NOFOLLOW`/`fstat` bounded read, strict schema, exact launch equality (containerId+nonce+specDigest+daemonId) and policy-digest recomputation. Missing, symlinked, oversized, policy-tampered, launch-swapped, and future receipts all fail before any daemon call (tested). Legacy removed invocations without `isolated.json` fail closed and cannot be retrofitted (`confirmStopped` does not create receipts; `stop()` short-circuits on already-stopped).\n\n**physical** — Pass. `captureQuiescence` requires the durable stop receipt bound to the same launch, then a fresh `confirmStopped` (daemon ID + OSType revalidated, exact container-ID 404), and rejects if live evidence differs from the journaled receipt. No absence/expiry/PID inference; evidence refs are hashes of the full receipts; recheck is synchronous, network-free, and detects journal drift. Trusted-daemon/admin boundary is explicitly documented and matches the task's stated threat model.\n\n**transaction** — Pass. The reopen closure pins the complete `GraphExecutorInventory` at reopen and, inside the caller's G15 transaction, uses `assertExecutorInventory` (requires `db.inTransaction`, recomputes the full inventory digest in-place — no nested `BEGIN`, no daemon await) plus a synchronous binding-journal re-read and the executor's synchronous `proof.recheck()`. Current grants are re-authorized synchronously on every recheck; revocation, release drift, inventory/other-action drift, and receipt loss all fail closed inside the real `GraphReconciler` commit path (tested via actual `store.commit` verifier callback). Unknown business verdict is persisted with admission retained; no release occurs.\n\n**scope** — Pass. Proof is explicitly `contained-invocation` scoped; sweep and reopen APIs do not infer graph-wide quiescence; opaque adapters remain unproven (`addOpaque` drift test); no RPC, replay, auto-release, or takeover added; general cancel/takeover remains TODO as stated.\n\n**Non-blocking observations** (warnings, not failures against the stated criteria):\n- Deterministic evidence notes real Docker/Loop daemon tests are still pending; all coverage here is fixture/mock-daemon based. The \"actual G15 integration test\" uses a mocked daemon boundary, so end-to-end Docker inspect/DELETE behavior against a real daemon remains unverified.\n- Residual TOCTOU between `realpathSync` directory validation and the subsequent `O_NOFOLLOW` file open (directory components could be swapped by an actor already inside the trusted host-journal boundary). Accepted by the stated trust model.\n- The deterministic log notes one test correction mid-run (\"stale revision after successful G15 commit\"); the corrected expectation is reasonable but the initial failure is only summarized, not shown.\n\nAll four evaluation criteria pass on the supplied evidence; no blocking findings. Approved with advisory follow-ups.",
+      "content_type": "text"
+    }
+  },
+  {
+    "event_id": "kimi-bridge:3",
+    "seq": 3,
+    "run_id": "kimi-bridge",
+    "session_id": "kimi-bridge",
+    "created_at": 1789741537.381,
+    "terminal": true,
+    "type": "done",
+    "payload": {
+      "status": "completed",
+      "last_seq": 2,
+      "result_summary": "approved: 3 finding(s)",
+      "review": {
+        "schema_version": 1,
+        "verdict": "approved",
+        "risk": "read_only",
+        "markdown": "# Review\n\nThe contained proof bridge persists a separate isolation receipt only after exact Docker inspect validates the live container policy, and captureQuiescence requires both durable receipts plus a fresh exact-daemon Linux/404 confirmation before returning frozen per-invocation refs with a synchronous, network-free recheck. Receipt tamper/swap/missing/future/symlink/oversize cases all fail closed before daemon access; legacy stopped receipts without isolation cannot be retrofitted. The G15 final-transaction closure re-checks current synchronous grants, the complete pinned GraphExecutorInventory (no nested transaction, no daemon await), and the binding journal; drift or revocation fails closed with the unknown business verdict preserved and admission held. Scope stays strictly per-invocation; no RPC, replay, release, or takeover authority added. Advisory: real Docker/Loop integration remains pending (fixture-only evidence) and a bounded directory-component TOCTOU exists inside the trusted host-journal boundary.",
+        "judgments": [
+          {
+            "id": "isolation",
+            "pass": true,
+            "severity": "error",
+            "summary": "Isolation receipt is written only after inspect() validates the exact immutable policy, published atomically with no-replace link+fsync, and re-validated on every capture via O_NOFOLLOW bounded read, strict schema, exact launch equality, and recomputed policy digest; missing, swapped, tampered, future, symlinked, and oversized receipts all fail before any daemon call, and legacy invocations cannot be retrofitted."
+          },
+          {
+            "id": "physical",
+            "pass": true,
+            "severity": "error",
+            "summary": "captureQuiescence first requires both durable receipts bound to the same launch, then performs a fresh confirmStopped with daemon-ID/OSType revalidation and exact container-ID 404, rejecting any mismatch with journaled evidence; no absence/expiry/PID inference, exact-ID-only deletion, immutable frozen refs, and a synchronous network-free recheck under the explicitly documented trusted daemon/admin boundary."
+          },
+          {
+            "id": "transaction",
+            "pass": true,
+            "severity": "error",
+            "summary": "The returned closure requires db.inTransaction, re-authorizes current synchronous grants, asserts the complete pinned GraphExecutorInventory in-place (no nested BEGIN, no daemon await), re-reads the binding journal, and runs the executor's synchronous proof recheck; grant revocation, admission release drift, inventory/other-action changes, and receipt loss all fail closed inside the actual GraphReconciler G15 commit, with unknown verdict persisted and no release."
+          },
+          {
+            "id": "scope",
+            "pass": true,
+            "severity": "error",
+            "summary": "Proof is explicitly scoped 'contained-invocation', cannot authorize graph recovery, sweep/reopen paths do not infer graph-wide quiescence, opaque-adapter actions remain unproven, legacy stopped receipts without isolation stay unproven, and no public RPC, business verdict, auto replay/release/takeover was added; general cancel/takeover remains documented TODO."
+          }
+        ],
+        "findings": [
+          {
+            "rule_id": "evidence.real-daemon-pending",
+            "severity": "warning",
+            "message": "All verification is fixture/mock-daemon based; deterministic evidence states real Docker/Loop integration tests are still pending, so end-to-end inspect/DELETE behavior against a live daemon is unverified.",
+            "file": "packages/cli/src/graph-contained-recovery.test.ts",
+            "evidence": "Deterministic results summary: 'Dedicated Linux daemon and pinned cached image verified. Real Loop/Docker tests pending.'",
+            "fingerprint": "6a791c5960951e4d6bb25caff5bb69465b57a950d1389cbcb0ecd8c3a1410211"
+          },
+          {
+            "rule_id": "journal.directory-toctou",
+            "severity": "warning",
+            "message": "Residual TOCTOU between realpathSync directory validation and the O_NOFOLLOW file open: an actor able to swap directory components inside the trusted host-journal root could race the read. Within the stated trusted host-journal boundary, but worth a future hardening note (e.g., dirfd-relative opens).",
+            "file": "packages/agents/src/contained-command.ts",
+            "evidence": "directory() checks realpathSync(dir) !== dir, then read() opens join(dir, name) as a fresh path lookup.",
+            "fingerprint": "4043f4befe882b341125b94fb455a6ca3fe54b118c92c8b70e5feb1ef90fba5d"
+          },
+          {
+            "rule_id": "evidence.test-correction-opacity",
+            "severity": "info",
+            "message": "One recovery test expectation was corrected mid-run for a stale revision read after successful G15 commit; the correction is consistent with the commit advancing revision, but the original failing assertion is only summarized in the evidence.",
+            "file": "packages/cli/src/graph-contained-recovery.test.ts",
+            "evidence": "Deterministic results summary: '66 tests pass after correcting a test read with stale revision after successful G15 commit; initial 65pass/1fail preserved.'",
+            "fingerprint": "10459ca2f2f5ce0a8697ecafb98fc9b00154637c1ad9b46c36174ebe7e804c3f"
+          }
+        ],
+        "recommended_actions": [
+          "Run the pending real Docker/Loop integration tests against the dedicated pinned Linux daemon to validate inspect/DELETE/404 behavior end-to-end before relying on the bridge outside fixtures.",
+          "Consider dirfd-relative (openat-style) reads for journal files to eliminate the residual directory-component swap race within the trusted journal root."
+        ],
+        "evidence_refs": [],
+        "runtime_identity": {
+          "adapter_id": "kimi-code",
+          "adapter_version": "0.29.1",
+          "auth_mode": "subprocess/login-reuse",
+          "provider_id": "kimi",
+          "model_id": "kimi-code/k3",
+          "agent_profile": "osstack-reviewer",
+          "evidence_source": "reported",
+          "binary_path_sha256": "7e5d172f83fc7d8ca22387234b5a9a4d9412aa1a27c71ee90be35db29dfa7dd2"
+        }
+      },
+      "evaluation_judgments": [
+        {
+          "id": "isolation",
+          "pass": true,
+          "severity": "error",
+          "summary": "Isolation receipt is written only after inspect() validates the exact immutable policy, published atomically with no-replace link+fsync, and re-validated on every capture via O_NOFOLLOW bounded read, strict schema, exact launch equality, and recomputed policy digest; missing, swapped, tampered, future, symlinked, and oversized receipts all fail before any daemon call, and legacy invocations cannot be retrofitted."
+        },
+        {
+          "id": "physical",
+          "pass": true,
+          "severity": "error",
+          "summary": "captureQuiescence first requires both durable receipts bound to the same launch, then performs a fresh confirmStopped with daemon-ID/OSType revalidation and exact container-ID 404, rejecting any mismatch with journaled evidence; no absence/expiry/PID inference, exact-ID-only deletion, immutable frozen refs, and a synchronous network-free recheck under the explicitly documented trusted daemon/admin boundary."
+        },
+        {
+          "id": "transaction",
+          "pass": true,
+          "severity": "error",
+          "summary": "The returned closure requires db.inTransaction, re-authorizes current synchronous grants, asserts the complete pinned GraphExecutorInventory in-place (no nested BEGIN, no daemon await), re-reads the binding journal, and runs the executor's synchronous proof recheck; grant revocation, admission release drift, inventory/other-action changes, and receipt loss all fail closed inside the actual GraphReconciler G15 commit, with unknown verdict persisted and no release."
+        },
+        {
+          "id": "scope",
+          "pass": true,
+          "severity": "error",
+          "summary": "Proof is explicitly scoped 'contained-invocation', cannot authorize graph recovery, sweep/reopen paths do not infer graph-wide quiescence, opaque-adapter actions remain unproven, legacy stopped receipts without isolation stay unproven, and no public RPC, business verdict, auto replay/release/takeover was added; general cancel/takeover remains documented TODO."
+        }
+      ]
+    }
+  }
+]

@@ -1,0 +1,70 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+ ❯ src/graph-reconciler.test.ts (23 tests | 1 failed) 1023ms
+   ✓ trusted reconciler > stops and independently verifies, commits before release, never invokes and retries lost release ack after restart 173ms
+   ✓ trusted reconciler > returns distinct unknown exit without sending effects 34ms
+   ✓ trusted reconciler > returns distinct not_applied exit without sending effects 62ms
+   ✓ trusted reconciler > rejects revocation after stop await with no decision 32ms
+   ✓ trusted reconciler > rejects revocation after worker await with no decision 30ms
+   ✓ trusted reconciler > rejects revocation after quiescence await with no decision 45ms
+   ✓ trusted reconciler > rejects revocation after outcome await with no decision 48ms
+   ✓ trusted reconciler > does not refresh the proof revision over a concurrent ledger update 41ms
+   ✓ trusted reconciler > snapshots request and registration before await; worker-shaped flags and unregistered connections have no authority 35ms
+   ✓ trusted reconciler > rejects non-undefined synchronous authority true 33ms
+   ✓ trusted reconciler > rejects non-undefined synchronous authority yes 44ms
+   ✓ trusted reconciler > rejects non-undefined synchronous authority Promise{…} 37ms
+   ✓ trusted reconciler > rejects changed outcome on receipt replay and revalidates release authority 32ms
+   ✓ trusted reconciler > rejects boolean self-authority from worker verifier 33ms
+   ✓ trusted reconciler > rejects boolean self-authority from quiescence verifier 32ms
+   ✓ trusted reconciler > rejects boolean self-authority from outcome verifier 25ms
+   ✓ trusted reconciler > keeps the decision durable when release-time verification is revoked 35ms
+   ✓ trusted reconciler > replays unknown without releasing, then appends a later receipt under the same stable interrupt 36ms
+   ✓ trusted reconciler > rejects asynchronous final recheck grants without an unhandled rejection 24ms
+   ✓ trusted reconciler > replays invalid usage as the same blocked accounting decision 41ms
+   ✓ acknowledges an exact lost takeover response without stopping the replacement worker 37ms
+   × refuses old-generation release replay before stopping a replacement worker 50ms
+     → ADMISSION_RELEASE_PENDING
+   ✓ blocks takeover and terminal sealing until durable resource release completes after restart 61ms
+osstack: retaining write lease graph-action:f20d6ab4a65dd4ba2a1d2d1f413b7a6bf85aedeaefe67d0c4d7e7043718a2626: Error: invalid result kind for registered operation
+osstack: retaining write lease graph-action:d5f4baa0a40e67bf2c2146ffd708e74193dcfdd0dad3fdca7ebb66e362d0ba1f: Error: invalid persisted evidence reference
+osstack: retaining write lease graph-action:7e2b7a9fc4117556927a77a72520deac00b2c272200bc358c958a574e4a5c800: Error: candidate preflight refused
+osstack: retaining write lease graph-action:1bcb6e2db5ac8028a1622b648db412e91cab1028d6358c11fe22377d3909fffb: Error: candidate preflight refused
+osstack: retaining write lease graph-action:01e1a557e3ae48690564b7c788e89215512623a4501df53b21e2ce417d0936a1: Error: lost receipt
+osstack: retaining write lease graph-action:d6b34bf331a068b4505ea4ebce1295ac7e5f0d95bb57e5dadb5a8e7f71fba976: injected lock release failure
+osstack: retaining write lease graph-action:d6b34bf331a068b4505ea4ebce1295ac7e5f0d95bb57e5dadb5a8e7f71fba976: Error: injected lock release failure
+osstack: retaining write lease graph-action:40118d250af3cd8f6773a22682a71480c076b20a1f3787354b8ea4f4739378a6: release failure
+osstack: retaining write lease graph-action:40118d250af3cd8f6773a22682a71480c076b20a1f3787354b8ea4f4739378a6: Error: release failure
+ ✓ src/graph-action-broker-boundary.test.ts (16 tests) 1818ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/graph-reconciler.test.ts > refuses old-generation release replay before stopping a replacement worker
+Error: ADMISSION_RELEASE_PENDING
+ ❯ fail ../core/src/state/graph-recovery.ts:47:47
+ ❯ sqliteTransaction.<anonymous> ../core/src/state/graph-recovery.ts:222:107
+ ❯ sqliteTransaction ../../node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/lib/methods/transaction.js:65:24
+ ❯ GraphRecoveryStore.transaction ../core/src/state/graph-recovery.ts:83:36
+ ❯ GraphRecoveryStore.commit ../core/src/state/graph-recovery.ts:198:17
+ ❯ src/graph-reconciler.ts:150:105
+    148|       if (canonical(prior.decision) !== canonical(decision)) fail("DEC…
+    149|       result = this.verified(connection, registration, snapshot, proof…
+    150|     } else result = this.verified(connection, registration, snapshot, …
+       |                                                                                                         ^
+    151|     const exit = decision.kind === "effect" ? decision.verdict.outcome…
+    152|     if (exit === "unknown" || decision.kind !== "effect") return { exi…
+ ❯ GraphReconciler.verified src/graph-reconciler.ts:97:18
+ ❯ GraphReconciler.reconcile src/graph-reconciler.ts:150:26
+ ❯ src/graph-reconciler.test.ts:151:10
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 1 passed (2)
+      Tests  1 failed | 38 passed (39)
+   Start at  08:24:25
+   Duration  4.61s (transform 1.42s, setup 46ms, collect 3.04s, tests 2.84s, environment 0ms, prepare 204ms)
+
+undefined
+/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli:
+[ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL] Command failed with exit code 1: vitest run src/graph-reconciler.test.ts src/graph-action-broker-boundary.test.ts

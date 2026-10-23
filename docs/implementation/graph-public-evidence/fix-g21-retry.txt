@@ -1,0 +1,52 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+Cloning into '/Volumes/AIMATE_WORK/tmp/gc7/g21-adversarial-WhsafD/delivery/writer-0'...
+HEAD is now at 5b257d0 base
+ ❯ src/graph-delivery-adversarial.test.ts (9 tests | 1 failed | 8 skipped) 5236ms
+   ↓ retains unknown-review uncertainty without retry, repair or ready publication
+   ↓ retains unknown-writer uncertainty without retry, repair or ready publication
+   ↓ stops before freeze after actual token overrun and preserves charged action evidence
+   ↓ captures business inputs, executors, commands and authority before asynchronous execution
+   ↓ cannot project state after foreign-owner invalidates its authority
+   ↓ cannot project state after revoked invalidates its authority
+   × returns an explicit stop when preparation admission prevents an otherwise retryable branch 5236ms
+     → expected { kind: 'stop', epoch: +0, …(1) } to match object { kind: 'stop', …(1) }
+(1 matching property omitted from actual)
+   ↓ closes its runtime without projecting an unowned run when setup acquisition fails
+   ↓ renews the owned lease during an actual pending writer invocation and still completes
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/graph-delivery-adversarial.test.ts > returns an explicit stop when preparation admission prevents an otherwise retryable branch
+AssertionError: expected { kind: 'stop', epoch: +0, …(1) } to match object { kind: 'stop', …(1) }
+(1 matching property omitted from actual)
+
+- Expected
++ Received
+
+  {
+    "kind": "stop",
+-   "reason": "retry_dispatch_incomplete",
++   "reason": "branch_failure",
+  }
+
+ ❯ src/graph-delivery-adversarial.test.ts:106:27
+    104| it('returns an explicit stop when preparation admission prevents an ot…
+    105|   const f = await fixture('retry-preparation-denied');
+    106|   expect(f.result?.route).toMatchObject({ kind: 'stop', reason: 'retry…
+       |                           ^
+    107|   expect(f.run.status).toBe('failed'); expect(f.joins).toBe(0); expect…
+    108|   expect(f.actions.some(a => a.node_id === 'e0.tests' && a.state === '…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 8 skipped (9)
+   Start at  18:44:49
+   Duration  6.24s (transform 472ms, setup 7ms, collect 811ms, tests 5.24s, environment 0ms, prepare 40ms)
+
+undefined
+/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli:
+[ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL] Command failed with exit code 1: vitest run src/graph-delivery-adversarial.test.ts -t 'preparation admission'

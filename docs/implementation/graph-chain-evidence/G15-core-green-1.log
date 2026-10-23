@@ -1,0 +1,126 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/core
+
+ ❯ src/state/graph-recovery.test.ts (10 tests | 8 failed) 239ms
+   × trusted graph recovery > settles original effect after expiry, persists restart replay and rejects changed proof/outcome 42ms
+     → OUTPUT_CONTRACT_INVALID
+   × trusted graph recovery > retains observed maxima, charges settled maxima, preserves unknown evidence history 22ms
+     → OUTPUT_CONTRACT_INVALID
+   × trusted graph recovery > rejects forged/stale snapshots and rolls back journal, outcome and revision on failure 27ms
+     → expected [Function] to throw error matching /injected/ but got 'OUTPUT_CONTRACT_INVALID'
+   ✓ trusted graph recovery > requires exact scope, program, owner, generation, action generation and action digest 21ms
+   ✓ trusted graph recovery > not_applied only enables later explicit retry, pending cancellation forbids retry/resume 25ms
+   × trusted graph recovery > projects preworker cancellation and seals terminal runs; refuses cancellation with independent unresolved action 18ms
+     → terminal graph run is immutable
+   × trusted graph recovery > keeps confirmed result and capacity blocked for bad usage -1 29ms
+     → OUTPUT_CONTRACT_INVALID
+   × trusted graph recovery > keeps confirmed result and capacity blocked for bad usage NaN 18ms
+     → OUTPUT_CONTRACT_INVALID
+   × trusted graph recovery > keeps confirmed result and capacity blocked for bad usage 1.5 18ms
+     → OUTPUT_CONTRACT_INVALID
+   × trusted graph recovery > keeps confirmed result and capacity blocked for bad usage 9007199254740992 19ms
+     → OUTPUT_CONTRACT_INVALID
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 8 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/state/graph-recovery.test.ts > trusted graph recovery > settles original effect after expiry, persists restart replay and rejects changed proof/outcome
+GraphContractError: OUTPUT_CONTRACT_INVALID
+ ❯ parseContract ../protocol/src/graph.ts:274:30
+ ❯ validateWorkerActionResponse ../protocol/src/graph.ts:302:20
+ ❯ GraphRecoveryStore.settle src/state/graph-recovery.ts:208:7
+    206|         retrySafe: run.status !== "cancel_pending" && action.state !==…
+    207|     if (outcome.state === "confirmed") {
+    208|       validateWorkerActionResponse({ schemaVersion: 1, kind: "worker_a…
+       |       ^
+    209|         scope: run.scope, graphRunId: run.graphRunId, specHash: run.id…
+    210|         nodeId: action.effect.nodeId, effectSlot: action.effect.effect…
+ ❯ sqliteTransaction.<anonymous> src/state/graph-recovery.ts:162:44
+ ❯ sqliteTransaction ../../node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/lib/methods/transaction.js:65:24
+ ❯ GraphRecoveryStore.transaction src/state/graph-recovery.ts:57:36
+ ❯ GraphRecoveryStore.commit src/state/graph-recovery.ts:149:17
+ ❯ src/state/graph-recovery.test.ts:46:77
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/8]⎯
+
+ FAIL  src/state/graph-recovery.test.ts > trusted graph recovery > retains observed maxima, charges settled maxima, preserves unknown evidence history
+GraphContractError: OUTPUT_CONTRACT_INVALID
+ ❯ parseContract ../protocol/src/graph.ts:274:30
+ ❯ validateWorkerActionResponse ../protocol/src/graph.ts:302:20
+ ❯ GraphRecoveryStore.settle src/state/graph-recovery.ts:208:7
+    206|         retrySafe: run.status !== "cancel_pending" && action.state !==…
+    207|     if (outcome.state === "confirmed") {
+    208|       validateWorkerActionResponse({ schemaVersion: 1, kind: "worker_a…
+       |       ^
+    209|         scope: run.scope, graphRunId: run.graphRunId, specHash: run.id…
+    210|         nodeId: action.effect.nodeId, effectSlot: action.effect.effect…
+ ❯ sqliteTransaction.<anonymous> src/state/graph-recovery.ts:162:44
+ ❯ sqliteTransaction ../../node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/lib/methods/transaction.js:65:24
+ ❯ GraphRecoveryStore.transaction src/state/graph-recovery.ts:57:36
+ ❯ GraphRecoveryStore.commit src/state/graph-recovery.ts:149:17
+ ❯ commit src/state/graph-recovery.test.ts:37:92
+ ❯ src/state/graph-recovery.test.ts:59:18
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/8]⎯
+
+ FAIL  src/state/graph-recovery.test.ts > trusted graph recovery > rejects forged/stale snapshots and rolls back journal, outcome and revision on failure
+AssertionError: expected [Function] to throw error matching /injected/ but got 'OUTPUT_CONTRACT_INVALID'
+
+- Expected: 
+/injected/
+
++ Received: 
+"OUTPUT_CONTRACT_INVALID"
+
+ ❯ src/state/graph-recovery.test.ts:72:68
+     70|     const current = snapshot(); const verified = proof(current);
+     71|     db.exec("CREATE TRIGGER fail_revision BEFORE UPDATE OF revision ON…
+     72|     expect(() => recovery.commit(current, applied, verified, 130)).toT…
+       |                                                                    ^
+     73|     expect(db.prepare("SELECT count(*) AS n FROM graph_recovery_decisi…
+     74|     expect(actions.get(fence(), key).action.state).toBe("running");
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/8]⎯
+
+ FAIL  src/state/graph-recovery.test.ts > trusted graph recovery > projects preworker cancellation and seals terminal runs; refuses cancellation with independent unresolved action
+SqliteError: terminal graph run is immutable
+ ❯ sqliteTransaction.<anonymous> src/state/graph-recovery.ts:187:100
+
+ ❯ sqliteTransaction ../../node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/lib/methods/transaction.js:65:24
+ ❯ GraphRecoveryStore.transaction src/state/graph-recovery.ts:57:36
+ ❯ GraphRecoveryStore.commit src/state/graph-recovery.ts:149:17
+ ❯ src/state/graph-recovery.test.ts:95:67
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/8]⎯
+
+ FAIL  src/state/graph-recovery.test.ts > trusted graph recovery > keeps confirmed result and capacity blocked for bad usage -1
+ FAIL  src/state/graph-recovery.test.ts > trusted graph recovery > keeps confirmed result and capacity blocked for bad usage NaN
+ FAIL  src/state/graph-recovery.test.ts > trusted graph recovery > keeps confirmed result and capacity blocked for bad usage 1.5
+ FAIL  src/state/graph-recovery.test.ts > trusted graph recovery > keeps confirmed result and capacity blocked for bad usage 9007199254740992
+GraphContractError: OUTPUT_CONTRACT_INVALID
+ ❯ parseContract ../protocol/src/graph.ts:274:30
+ ❯ validateWorkerActionResponse ../protocol/src/graph.ts:302:20
+ ❯ GraphRecoveryStore.settle src/state/graph-recovery.ts:208:7
+    206|         retrySafe: run.status !== "cancel_pending" && action.state !==…
+    207|     if (outcome.state === "confirmed") {
+    208|       validateWorkerActionResponse({ schemaVersion: 1, kind: "worker_a…
+       |       ^
+    209|         scope: run.scope, graphRunId: run.graphRunId, specHash: run.id…
+    210|         nodeId: action.effect.nodeId, effectSlot: action.effect.effect…
+ ❯ sqliteTransaction.<anonymous> src/state/graph-recovery.ts:162:44
+ ❯ sqliteTransaction ../../node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/lib/methods/transaction.js:65:24
+ ❯ GraphRecoveryStore.transaction src/state/graph-recovery.ts:57:36
+ ❯ GraphRecoveryStore.commit src/state/graph-recovery.ts:149:17
+ ❯ commit src/state/graph-recovery.test.ts:37:92
+ ❯ src/state/graph-recovery.test.ts:101:18
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/8]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  8 failed | 2 passed (10)
+   Start at  07:36:06
+   Duration  708ms (transform 141ms, setup 0ms, collect 223ms, tests 239ms, environment 0ms, prepare 39ms)
+
+undefined
+/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/core:
+[ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL] Command failed with exit code 1: vitest run src/state/graph-recovery.test.ts

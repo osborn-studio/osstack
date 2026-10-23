@@ -1,6 +1,6 @@
 {
   "name": "@osstack/hermes-adapter",
-  "version": "0.17.0",
+  "version": "0.21.0",
   "description": "Hermes Run Adapter Contract implementation — 13 event families, 7 control types, 11 status FSM, Last-Event-ID replay.",
   "license": "MIT",
   "type": "module",
@@ -27,7 +27,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/gilosbornhello/osstack.git",
+    "url": "https://github.com/osborn-studio/osstack.git",
     "directory": "packages/hermes-adapter"
   },
   "engines": {

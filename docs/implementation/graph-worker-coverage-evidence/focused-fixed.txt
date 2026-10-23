@@ -1,0 +1,14 @@
+$ vitest run src/graph-unstarted-recovery.test.ts --maxWorkers=1
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+ ✓ src/graph-unstarted-recovery.test.ts (20 tests) 2370ms
+   ✓ takes over a durable no-child run through G15 and starts one replacement worker  543ms
+   ✓ refuses a launched worker even after its confirmed exit  466ms
+   ✓ recovers repeated real no-child failures after restart and starts exactly one third-generation worker  496ms
+   ✓ does not ignore an empty historical generation: exited  451ms
+
+ Test Files  1 passed (1)
+      Tests  20 passed (20)
+   Start at  05:54:35
+   Duration  4.71s (transform 1.26s, setup 17ms, collect 2.16s, tests 2.37s, environment 0ms, prepare 44ms)

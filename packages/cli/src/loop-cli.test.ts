@@ -1,3 +1,5 @@
+import { healthyAutonomyHealth } from "./test-healthy-autonomy.js";
+import { execFileSync } from "node:child_process";
 import {
   chmod,
   mkdir,
@@ -12,10 +14,10 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { randomUUID } from "node:crypto";
 import { setTimeout as sleep } from "node:timers/promises";
-import { KimiCodeAdapter } from "@osstack/agents";
+import { CodexCliAdapter, KimiCodeAdapter, defaultAdapters } from "@osstack/agents";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { main } from "./bin.js";
-import { startDaemon, type DaemonHandles } from "./daemon.js";
+import { startDaemon as startRealDaemon, type DaemonHandles } from "./daemon.js";
 
 let tmp: string;
 let logs: string[];
@@ -1228,6 +1230,12 @@ echo review ok
 
     const previous = process.env["OSSTACK_DS_REVIEW_BIN"];
     process.env["OSSTACK_DS_REVIEW_BIN"] = fakeReview;
+    process.env["OSSTACK_HOME"] = join(tmp, "reviewer-positive-home");
+    // Capability/availability only: no synthetic health verdict or writer invoke.
+    expect(new CodexCliAdapter().capabilities().some(capability => capability.kind === "code.write")).toBe(true);
+    const probes = defaultAdapters().filter(adapter => adapter.id !== "ds-review").map(adapter =>
+      vi.spyOn(Object.getPrototypeOf(adapter), "isAvailable").mockResolvedValue({ available: adapter instanceof CodexCliAdapter, last_checked_at: 0 }));
+    const builderInvoke = vi.spyOn(CodexCliAdapter.prototype, "invoke").mockImplementation(() => { throw new Error("synthetic availability cannot authorize an actual provider invocation"); });
     try {
       const exitCode = await main([
         "loop",
@@ -1257,11 +1265,52 @@ echo review ok
       }));
       await expect(readFile(join(workspace, "reviews", "ds-review", "latest.md"), "utf-8"))
         .resolves.toContain("+after reviewer");
+      expect(builderInvoke).not.toHaveBeenCalled();
     } finally {
       if (previous === undefined) delete process.env["OSSTACK_DS_REVIEW_BIN"];
       else process.env["OSSTACK_DS_REVIEW_BIN"] = previous;
+      for (const probe of probes) probe.mockRestore();
+      builderInvoke.mockRestore();
     }
   });
+  it.each(["builder-unavailable", "reviewer-unavailable", "reviewer-failure"] as const)("keeps %s from successful reviewed shell execution", async mode => {
+    const workspace = join(tmp, "negative-reviewer-workspace");
+    await mkdir(join(workspace, "tasks"), { recursive: true });
+    await git(workspace, ["init", "-b", "main"]);
+    await writeFile(join(workspace, "app.txt"), "before\n");
+    await git(workspace, ["add", "app.txt"]);
+    await git(workspace, ["-c", "user.name=test", "-c", "user.email=test@example.invalid", "commit", "-m", "initial"]);
+    await writeFile(join(workspace, "tasks", "review.json"), JSON.stringify({ task_id: "negative-reviewer", capability: "code.test", prompt: "Synthetic reviewer admission negative" }));
+    const fakeReview = join(workspace, "ds-review");
+    await writeFile(fakeReview, `#!/usr/bin/env bash\nif [ "\${1:-}" = "--help" ]; then echo help; exit 0; fi\nexit 7\n`);
+    await chmod(fakeReview, 0o755);
+    const previous = process.env["OSSTACK_DS_REVIEW_BIN"];
+    process.env["OSSTACK_DS_REVIEW_BIN"] = fakeReview;
+    process.env["OSSTACK_HOME"] = join(tmp, "reviewer-negative-home");
+    const probes = defaultAdapters().filter(adapter => mode === "reviewer-unavailable" || adapter.id !== "ds-review").map(adapter =>
+      vi.spyOn(Object.getPrototypeOf(adapter), "isAvailable").mockResolvedValue({ available: mode !== "builder-unavailable" && adapter instanceof CodexCliAdapter, last_checked_at: 0 }));
+    const builderInvoke = vi.spyOn(CodexCliAdapter.prototype, "invoke").mockImplementation(() => { throw new Error("synthetic availability cannot authorize an actual provider invocation"); });
+    try {
+      const invocation = main(["loop", "run", "--workspace", workspace, "--source", "task_queue", "--execute", "node -e \"require('fs').writeFileSync('app.txt','shell effect\\n')\"", "--reviewer", "ds-review", "--json"]);
+      if (mode === "builder-unavailable") {
+        await expect(invocation).rejects.toThrow("writes blocked by builder_agents");
+        expect(await readFile(join(workspace, "app.txt"), "utf8")).toBe("before\n");
+      } else {
+        expect(await invocation).toBe(2);
+        const summary = JSON.parse(logs.join("\n")) as { completed_tasks: Array<{ outcome: string }> };
+        expect(summary.completed_tasks).toHaveLength(1);
+        expect(summary.completed_tasks[0]?.outcome).not.toBe("success");
+        expect(await readFile(join(workspace, "app.txt"), "utf8")).toBe("shell effect\n");
+      }
+      expect(builderInvoke).not.toHaveBeenCalled();
+    } finally {
+      if (previous === undefined) delete process.env["OSSTACK_DS_REVIEW_BIN"];
+      else process.env["OSSTACK_DS_REVIEW_BIN"] = previous;
+      for (const probe of probes) probe.mockRestore();
+      builderInvoke.mockRestore();
+    }
+  });
+
 
   it("can run and inspect a loop through the daemon", async () => {
     process.env["OSSTACK_HOME"] = join(tmp, "home");
@@ -1302,13 +1351,14 @@ echo review ok
   it("supports finite multi-cycle loop runs", async () => {
     const workspace = join(tmp, "cycles-workspace");
     await mkdir(join(workspace, "tasks"), { recursive: true });
-    setTimeout(() => {
-      void writeFile(join(workspace, "tasks", "late.json"), JSON.stringify({
-        task_id: "cli-cycle-task",
-        capability: "code.test",
-        prompt: "Exercise CLI cycles",
+    const producer = (async () => {
+      await expect.poll(async () => {
+        try { await readFile(join(workspace, "LOOP-STATE.json")); return true; } catch { return false; }
+      }, { timeout: 3_000, interval: 5 }).toBe(true);
+      await writeFile(join(workspace, "tasks", "late.json"), JSON.stringify({
+        task_id: "cli-cycle-task", capability: "code.test", prompt: "Exercise CLI cycles",
       }));
-    }, 5);
+    })();
 
     const exitCode = await main([
       "loop",
@@ -1325,6 +1375,7 @@ echo review ok
       "25",
     ]);
 
+    await producer;
     expect(exitCode).toBe(0);
     const output = logs.join("\n");
     expect(output).toContain("cycles=2");
@@ -1545,3 +1596,8 @@ async function git(cwd: string, args: string[]): Promise<string> {
     });
   });
 }
+
+const startDaemon = (options: Parameters<typeof startRealDaemon>[0]) => {
+  execFileSync("git", ["init", tmp], { stdio: "ignore" });
+  return startRealDaemon({ autonomyHealth: async () => healthyAutonomyHealth(), ...options });
+};

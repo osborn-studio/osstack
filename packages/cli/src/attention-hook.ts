@@ -1,3 +1,4 @@
+import type { Readable } from "node:stream";
 import { readFile, lstat } from "node:fs/promises";
 export interface ClaudeAttentionBinding {
   harness_version: string;
@@ -52,13 +53,9 @@ export async function handleClaudeAttentionHook(
   ) as ClaudeAttentionBinding;
   if (typeof binding.token !== "string" || binding.token.length !== 64)
     throw new Error("invalid_binding");
-  let raw = input ?? "";
-  if (input === undefined)
-    for await (const chunk of process.stdin) {
-      raw += String(chunk);
-      if (Buffer.byteLength(raw) > 65536)
-        throw new Error("oversized_hook_input");
-    }
+  const raw = input ?? await readClaudeHookInput(process.stdin);
+  if (raw === null) { out("{}"); return 0; }
+  if (Buffer.byteLength(raw) > 65536) throw new Error("oversized_hook_input");
   if (classifyClaudeAttentionHook(JSON.parse(raw), binding) === "ignore") {
     out("{}");
     return 0;
@@ -77,4 +74,27 @@ export async function handleClaudeAttentionHook(
     )
   );
   return 0;
+}
+
+/** Bound a broken producer's lifetime as well as its byte count. */
+export function readClaudeHookInput(stream: Readable, timeoutMs = 1000): Promise<string | null> {
+  return new Promise((resolve, reject) => {
+    const chunks: Buffer[] = [];
+    let size = 0;
+    const cleanup = () => {
+      clearTimeout(timer);
+      stream.off("data", onData); stream.off("end", onEnd); stream.off("error", onError);
+      stream.pause();
+    };
+    const onData = (chunk: Buffer | string) => {
+      const bytes = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+      size += bytes.length;
+      if (size > 65536) { cleanup(); stream.destroy(); reject(new Error("oversized_hook_input")); }
+      else chunks.push(bytes);
+    };
+    const onEnd = () => { cleanup(); resolve(Buffer.concat(chunks).toString("utf8")); };
+    const onError = (error: Error) => { cleanup(); reject(error); };
+    const timer = setTimeout(() => { cleanup(); stream.destroy(); resolve(null); }, timeoutMs);
+    stream.on("data", onData); stream.once("end", onEnd); stream.once("error", onError);
+  });
 }

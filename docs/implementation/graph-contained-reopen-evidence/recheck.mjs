@@ -1,0 +1,7 @@
+import {mkdir,writeFile} from 'node:fs/promises';
+const root='/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation',out='/Volumes/AIMATE_WORK/tmp/g25-reopen';
+process.env.OSSTACK_HOME=out+'/recheck-home';process.env.TMPDIR=out;process.env.OSSTACK_UPDATE_CHECK='0';await mkdir(process.env.OSSTACK_HOME,{recursive:true});
+const {LoopEngine}=await import(root+'/packages/loop/dist/index.js');
+const id='G25-contained-reopen-recheck-1';
+const engine=new LoopEngine({loopId:id,workspacePath:root,sources:[],inputTasks:[{task_id:id,capability:'code.test',source:'manual',priority:100,prompt:'Rerun real contained candidate tests after creating the omitted evidence directory; retain only hash-identical previous successful validation.'}],useWorktree:false,skipCompletedTasks:false,maxIterations:1,commandTimeoutMs:300000,outputLimit:12000,stateFilePath:out+'/recheck-LOOP-STATE.json',markdownPath:out+'/recheck-STATE.md',policyGate:async({workspacePath})=>workspacePath===root?{allow:true}:{allow:false,reason:'scope mismatch'},executeCommand:'node '+out+'/acceptance-command.mjs candidate',verifyCommands:['node '+out+'/acceptance-command.mjs reopen','node '+out+'/retained-evidence.mjs']});
+const result=await engine.runOnce();await writeFile(out+'/recheck-result.json',JSON.stringify(result,null,2));console.log(JSON.stringify(result.completedTasks));process.exitCode=result.executedTaskCount===1&&result.skippedTaskCount===0&&result.completedTasks[0]?.outcome==='success'?0:1;

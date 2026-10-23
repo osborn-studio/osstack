@@ -2,8 +2,8 @@
   "name": "@osstack/monorepo",
   "version": "0.0.0",
   "private": true,
-  "description": "OSBORN stack (osstack) \u2014 Hermes-resident project manager agent for software development lifecycle. TypeScript daemon + Python Hermes skill wrapper.",
-  "repository": "https://github.com/gilosbornhello/osstack",
+  "description": "OSBORN stack (osstack) — Hermes-resident project manager agent for software development lifecycle. TypeScript daemon + Python Hermes skill wrapper.",
+  "repository": "https://github.com/osborn-studio/osstack",
   "license": "MIT",
   "packageManager": "pnpm@11.4.0",
   "engines": {
@@ -68,12 +68,14 @@
     "eval:neat-parity:corpus": "pnpm --filter @osstack/neat-eval build && node packages/neat-eval/dist/cli.js corpus check --lock eval/neat-parity/corpus-lock-v1-v3.json",
     "eval:neat-parity:doctor": "pnpm --filter @osstack/neat-eval build && node packages/neat-eval/dist/cli.js doctor --protocol eval/neat-parity/protocol-v1-v3.json --corpus-lock eval/neat-parity/corpus-lock-v1-v3.json --baseline .osstack/eval-cache/neat-freak-v3-2b4a645",
     "eval:neat-parity:offline": "pnpm --filter @osstack/cli... build && pnpm --filter @osstack/neat-eval build && node scripts/eval-neat-parity-offline.mjs",
-    "eval:kimi-review": "pnpm --filter @osstack/agents build && node scripts/eval-kimi-review.mjs --check"
+    "eval:kimi-review": "pnpm --filter @osstack/agents build && node scripts/eval-kimi-review.mjs --check",
+    "smoke:improvement-providers": "node scripts/smoke-improvement-providers.mjs"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.16",
     "@changesets/cli": "^2.31.0",
     "@vitest/coverage-v8": "3.2.6",
+    "esbuild": "0.28.1",
     "tsup": "^8.3.5",
     "typescript": "^5.6.3",
     "vitest": "3.2.6",

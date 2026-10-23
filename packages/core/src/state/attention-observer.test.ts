@@ -6,7 +6,7 @@ import { openDb } from "./db.js";
 import { AttentionStore } from "./attention-store.js";
 import { AttentionObserver } from "./attention-observer.js";
 const clean: Array<() => void> = [];
-afterEach(() => clean.splice(0).forEach((fn) => fn()));
+afterEach(() => clean.splice(0).forEach((fn) => { fn(); }));
 function setup(n = 1) {
   const root = realpathSync(mkdtempSync(join(tmpdir(), "observer-")));
   const path = join(root, "db");

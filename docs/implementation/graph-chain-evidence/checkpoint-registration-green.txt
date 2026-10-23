@@ -1,0 +1,11 @@
+$ vitest run graph-checkpoint-service.test.ts
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+ ✓ src/graph-checkpoint-service.test.ts (6 tests) 129ms
+
+ Test Files  1 passed (1)
+      Tests  6 passed (6)
+   Start at  07:28:12
+   Duration  598ms (transform 156ms, setup 7ms, collect 253ms, tests 129ms, environment 0ms, prepare 41ms)
+

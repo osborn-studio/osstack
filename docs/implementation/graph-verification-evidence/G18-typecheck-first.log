@@ -1,0 +1,12 @@
+$ tsc --noEmit
+src/nodes/branch.test.ts(10,45): error TS2345: Argument of type '{ scope: { schemaVersion: number; tenantId: string; principalId: string; workspaceId: string; }; graphRunId: string; specHash: string; epoch: number; candidateRevision: string; artifactDigest: string; acceptanceRef: string; }' is not assignable to parameter of type 'VerificationBinding'.
+  The types of 'scope.schemaVersion' are incompatible between these types.
+    Type 'number' is not assignable to type '1'.
+src/nodes/branch.test.ts(14,293): error TS2345: Argument of type '{ scope: { schemaVersion: number; tenantId: string; principalId: string; workspaceId: string; }; graphRunId: string; specHash: string; epoch: number; candidateRevision: string; artifactDigest: string; acceptanceRef: string; }' is not assignable to parameter of type 'VerificationBinding'.
+  The types of 'scope.schemaVersion' are incompatible between these types.
+    Type 'number' is not assignable to type '1'.
+src/registry.test.ts(9,11): error TS2540: Cannot assign to 'registryVersion' because it is a read-only property.
+src/spec-compiler.ts(3,96): error TS6133: 'GraphRegistry' is declared but its value is never read.
+/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/graph:
+[ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL] @osstack/graph@0.1.0 typecheck: `tsc --noEmit`
+Exit status 2

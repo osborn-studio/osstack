@@ -1,0 +1,12 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+ ✓ src/graph-unstarted-recovery.test.ts (15 tests) 953ms
+   ✓ takes over a durable no-child run through G15 and starts one replacement worker  351ms
+   ✓ refuses a launched worker even after its confirmed exit  325ms
+
+ Test Files  1 passed (1)
+      Tests  15 passed (15)
+   Start at  06:04:36
+   Duration  1.95s (transform 518ms, setup 8ms, collect 871ms, tests 953ms, environment 0ms, prepare 35ms)
+

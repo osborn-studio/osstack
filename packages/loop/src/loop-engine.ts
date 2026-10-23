@@ -1,3 +1,4 @@
+import type { LoopLifecycleAdmission } from "./policy-gate.js";
 import { randomUUID } from "node:crypto";
 import { dirname, isAbsolute, join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
@@ -22,7 +23,8 @@ import {
 import { checkBudget, clampTaskIterations, type BudgetUsage, type LoopBudget, type LoopBudgetStatus } from "./budget.js";
 import { createScanner } from "./discover.js";
 import { authorizeTask, type DiscoveryPolicy } from "./discovery-policy.js";
-import { executePlan, runShellCommand, type AgentRun, type CommandResult } from "./executor.js";
+import { executeLegacyImplementation, isImplementationUnconfirmed } from "./candidate-execution.js";
+import { runShellCommand, type AgentRun, type CommandResult } from "./executor.js";
 import { deriveIterationFeedback, issueFingerprint, withIterationFeedback } from "./feedback.js";
 import { evaluateIteration } from "./iterator.js";
 import { writeLessonDraft, type LessonDraftConfig } from "./lesson-draft.js";
@@ -54,6 +56,8 @@ import {
   type Verdict,
 } from "./types.js";
 import { truncateUnicodeSafe } from "./unicode.js";
+import { CandidatePolicy, validateCandidateBatch, openCandidateRecord, freezeCandidate, assertCandidateFrozen, assertCandidateScope, assertCandidateStateDirectory, assertCandidateStateFile } from "./candidate-policy.js";
+import { chmod } from "node:fs/promises";
 
 export interface LoopRunOptions {
   loopId?: string;
@@ -66,6 +70,8 @@ export interface LoopRunOptions {
   inputTasks?: readonly Task[];
   executeCommand?: string;
   verifyCommands?: string[];
+  /** Opt-in local candidate batching. Final preflight is not remote CI or acceptance. */
+  candidatePolicy?: CandidatePolicy;
   goalCommand?: string;
   maxIterations?: number;
   commandTimeoutMs?: number;
@@ -115,6 +121,7 @@ export interface LoopRunOptions {
    * the gate is never allowed to crash the engine.
    */
   policyGate?: PolicyGate;
+  lifecycleLease?: LoopLifecycleAdmission;
 }
 
 /**
@@ -209,11 +216,23 @@ export interface LoopRunCyclesResult {
 
 export class LoopEngine {
   private seq = 0;
+  private implementationUnconfirmed = false;
+  private lifecycleEffectsStarted = false;
   private readonly events: LoopEvent[] = [];
 
-  constructor(private readonly options: LoopRunOptions = {}) {}
+  private readonly candidatePolicy: CandidatePolicy | undefined;
+  private candidateRecheck: ((state: LoopState) => Promise<void>) | undefined;
+  constructor(private readonly options: LoopRunOptions = {}) {
+    this.candidatePolicy = options.candidatePolicy === undefined ? undefined : CandidatePolicy.parse(options.candidatePolicy);
+    if (this.candidatePolicy && options.useWorktree !== true) throw Error("CANDIDATE_WORKTREE_REQUIRED");
+    if (this.candidatePolicy && (options.goalCommand !== undefined || options.selfImprovement !== undefined || options.stateFilePath !== undefined || options.markdownPath !== undefined)) throw Error("CANDIDATE_POST_HOOK_FORBIDDEN");
+  }
 
   async runCycles(options: LoopRunCyclesOptions = {}): Promise<LoopRunCyclesResult> {
+    return this.withLifecycleLease(() => this.runCyclesAdmitted(options));
+  }
+
+  private async runCyclesAdmitted(options: LoopRunCyclesOptions): Promise<LoopRunCyclesResult> {
     const cycles = options.cycles ?? 1;
     const intervalMs = options.intervalMs ?? 0;
     if (!Number.isInteger(cycles) || cycles < 1) {
@@ -222,6 +241,7 @@ export class LoopEngine {
     if (!Number.isInteger(intervalMs) || intervalMs < 0) {
       throw new Error("runCycles.intervalMs must be a non-negative integer");
     }
+    if (this.candidatePolicy && cycles !== 1) throw Error("CANDIDATE_SINGLE_BATCH_RUN");
     // Entry consult (R2.2): a deny refuses before ANY discovery/execution work,
     // mirroring a budget stop — a distinguishable `policy_denied` outcome, not
     // an exception. With no gate injected this is a no-op (byte-identical).
@@ -260,7 +280,7 @@ export class LoopEngine {
         estimated_cost_usd: result.state.key_metrics?.cost_consumed ?? 0,
         no_progress_cycles: noProgressCycles,
       });
-      if (budgetStatus?.exceeded === true) break;
+      if (budgetStatus?.exceeded === true || this.implementationUnconfirmed) break;
       if (result.goal?.pass === true) break;
       if (options.stopWhenIdle === true && result.executedTaskCount === 0) break;
       if (cycle < cycles && intervalMs > 0) await sleep(intervalMs);
@@ -271,6 +291,7 @@ export class LoopEngine {
       throw new Error("runCycles requires at least one cycle");
     }
     const finalState = await this.persistBudgetStatus(last, budgetStatus);
+    if (this.candidateRecheck) await this.candidateRecheck(finalState);
     this.emit(last.loop_id, "loop.stopped", {
       ...(policyReason !== undefined
         ? { reason_code: "policy_denied", reason: policyStopReason(policyReason) }
@@ -293,6 +314,24 @@ export class LoopEngine {
   }
 
   async runOnce(): Promise<LoopRunResult> {
+    return this.withLifecycleLease(() => this.runOnceAdmitted());
+  }
+
+  private async withLifecycleLease<T>(run: () => Promise<T>): Promise<T> {
+    const lease = await this.options.lifecycleLease?.({ workspacePath: this.options.workspacePath ?? process.cwd() });
+    this.lifecycleEffectsStarted = false;
+    let settled = false;
+    try {
+      const result = await run();
+      settled = true;
+      return result;
+    } finally {
+      if (this.implementationUnconfirmed || (!settled && this.lifecycleEffectsStarted)) lease?.retain("execution or external stop unconfirmed");
+      else await lease?.release();
+    }
+  }
+
+  private async runOnceAdmitted(): Promise<LoopRunResult> {
     const eventStartIndex = this.events.length;
     // Entry consult (R2.2): refuse before ANY discovery/execution work. Covers
     // the daemon session scheduler too, which drives each tick via runOnce().
@@ -315,9 +354,11 @@ export class LoopEngine {
         ? { reason_code: "budget_exceeded", reason: `budget exceeded: ${budgetStatus.reason}` }
         : completionStopPayload(result.state, result.executedTaskCount, result.goal)),
     });
+    if (this.candidateRecheck) await this.candidateRecheck(finalState);
     return {
       ...result,
       state: finalState,
+      completedTasks: finalState.completed_tasks.slice(finalState.completed_tasks.length - result.completedTasks.length),
       events: this.events.slice(eventStartIndex),
       ...(budgetStatus !== undefined ? { budget: budgetStatus } : {}),
     };
@@ -349,10 +390,11 @@ export class LoopEngine {
    */
   private async policyDeniedRunResult(reason: string, eventStartIndex: number): Promise<LoopRunResult> {
     const workspacePath = this.options.workspacePath ?? process.cwd();
-    const jsonPath = resolvePath(this.options.stateFilePath ?? "LOOP-STATE.json", workspacePath);
-    const markdownPath = this.options.markdownPath !== undefined
+    const jsonPath = this.candidatePolicy ? join(this.candidatePolicy.stateDirectory, "loop-" + this.candidatePolicy.batchId + ".json") : resolvePath(this.options.stateFilePath ?? "LOOP-STATE.json", workspacePath);
+    const markdownPath = this.candidatePolicy ? join(this.candidatePolicy.stateDirectory, "loop-" + this.candidatePolicy.batchId + ".md") : this.options.markdownPath !== undefined
       ? resolvePath(this.options.markdownPath, workspacePath)
       : join(dirname(jsonPath), "STATE.md");
+    if (this.candidatePolicy) { await assertCandidateStateDirectory(this.candidatePolicy.stateDirectory); await assertCandidateStateFile(jsonPath); await assertCandidateStateFile(markdownPath!); }
     const existingState = await readLoopState(jsonPath);
     const loopId = existingState?.loop_id ?? this.options.loopId ?? `loop_${randomUUID()}`;
     this.emit(loopId, "loop.stopped", { reason: policyStopReason(reason) });
@@ -408,7 +450,9 @@ export class LoopEngine {
       budget_status: budgetStatus,
       decisions,
     });
+    if (this.candidatePolicy) { await assertCandidateStateFile(result.jsonPath); await assertCandidateStateFile(result.markdownPath); }
     const paths = await writeLoopState(result.jsonPath, nextState, { markdownPath: result.markdownPath });
+    if (this.candidatePolicy) { await chmod(paths.jsonPath, 0o600); await chmod(paths.markdownPath, 0o600); }
     this.emit(result.loop_id, "loop.state.written", { jsonPath: paths.jsonPath, markdownPath: paths.markdownPath });
     return nextState;
   }
@@ -437,16 +481,28 @@ export class LoopEngine {
   ): Promise<LoopRunResult> {
     const eventStartIndex = this.events.length;
     const workspacePath = this.options.workspacePath ?? process.cwd();
-    const jsonPath = resolvePath(this.options.stateFilePath ?? "LOOP-STATE.json", workspacePath);
-    const markdownPath = this.options.markdownPath !== undefined
+    if (this.candidatePolicy) await assertCandidateStateDirectory(this.candidatePolicy.stateDirectory);
+    const jsonPath = this.candidatePolicy ? join(this.candidatePolicy.stateDirectory, "loop-" + this.candidatePolicy.batchId + ".json") : resolvePath(this.options.stateFilePath ?? "LOOP-STATE.json", workspacePath);
+    const markdownPath = this.candidatePolicy ? join(this.candidatePolicy.stateDirectory, "loop-" + this.candidatePolicy.batchId + ".md") : this.options.markdownPath !== undefined
       ? resolvePath(this.options.markdownPath, workspacePath)
       : undefined;
     const startedAt = Date.now();
 
+    if (this.candidatePolicy) { await assertCandidateStateDirectory(this.candidatePolicy.stateDirectory); await assertCandidateStateFile(jsonPath); await assertCandidateStateFile(markdownPath!); }
     const existingState = await readLoopState(jsonPath);
     const loopId = existingState?.loop_id ?? this.options.loopId ?? `loop_${randomUUID()}`;
     const state = existingState ?? createInitialLoopState(loopId);
+    this.implementationUnconfirmed ||= state.completed_tasks.some((task) =>
+      task.implementation_unconfirmed === true);
     const decisions = [...(state.decisions ?? [])];
+    if (this.implementationUnconfirmed) {
+      if (lifecycle.emitStopped) this.emit(loopId, "loop.stopped", completionStopPayload(state, 0));
+      return {
+        loop_id: loopId, state, completedTasks: [], events: this.events.slice(eventStartIndex),
+        jsonPath, markdownPath: markdownPath ?? join(dirname(jsonPath), "STATE.md"),
+        discoveredTaskCount: 0, executedTaskCount: 0, skippedTaskCount: 0,
+      };
+    }
 
     if (lifecycle.emitStarted) this.emit(loopId, "loop.started", { workspace_path: workspacePath });
     if (this.options.knowledge !== undefined) {
@@ -464,12 +520,20 @@ export class LoopEngine {
     this.emit(loopId, "loop.cycle.started", { cycle });
     const discoveredTasks = await this.discover(workspacePath);
     const completedIds = new Set(state.completed_tasks.map((task) => task.task_id));
-    const candidateTasks = this.options.skipCompletedTasks === false
+    const candidateTasks = this.candidatePolicy || this.options.skipCompletedTasks === false
       ? discoveredTasks
       : discoveredTasks.filter((task) => !completedIds.has(task.task_id));
     const skippedTaskCount = discoveredTasks.length - candidateTasks.length;
+    if (this.candidatePolicy) validateCandidateBatch(this.candidatePolicy, candidateTasks, workspacePath);
     const governance = this.applyDiscoveryPolicy(loopId, candidateTasks, decisions);
     const tasks = governance.executable;
+    if (this.candidatePolicy && tasks.length !== candidateTasks.length) throw Error("CANDIDATE_BATCH_DEFERRED");
+    const policy = this.candidatePolicy;
+    if (policy) validateCandidateBatch(policy, tasks, workspacePath);
+    const candidateRecord = policy ? await openCandidateRecord(policy, workspacePath, tasks) : undefined;
+    let knownCandidate = policy ? freezeCandidate(workspacePath) : undefined;
+    const batchBase = knownCandidate?.headSha;
+    let finalCandidateFrozen: ReturnType<typeof freezeCandidate> | undefined;
     this.emit(loopId, "loop.discover.done", {
       task_count: tasks.length,
       discovered_task_count: discoveredTasks.length,
@@ -485,10 +549,23 @@ export class LoopEngine {
 
     for (const task of tasks) {
       pending.shift();
-      const taskResult = await this.runTask(loopId, workspacePath, task, completed);
+      this.lifecycleEffectsStarted = true;
+      let taskResult: { completedTask: CompletedTask; decisions: string[] };
+      try { taskResult = await this.runTask(loopId, workspacePath, task, completed); }
+      catch (error) {
+        if (candidateRecord) await candidateRecord.record("final_preflight_failed", { ...knownCandidate!, taskOrdinal: tasks.indexOf(task) });
+        throw error; // Preserve lifecycle containment and the original failure; no ready receipt.
+      }
       completed.push(taskResult.completedTask);
       decisions.push(...taskResult.decisions);
-      if (this.options.archiveCompletedTasks === true) {
+      if (candidateRecord) {
+        const frozenTask = freezeCandidate(workspacePath);
+        knownCandidate = frozenTask;
+        if (frozenTask.branch !== policy!.branch) throw Error("CANDIDATE_BRANCH_MISMATCH");
+        await candidateRecord.record(taskResult.completedTask.outcome === "success" ? "candidate_commit" : "local_validation_failed", { taskOrdinal: tasks.indexOf(task), ...frozenTask });
+      }
+      if (this.implementationUnconfirmed || (policy && taskResult.completedTask.outcome !== "success")) break;
+      if (!policy && this.options.archiveCompletedTasks === true) {
         const archive = await archiveCompletedTaskFile(task, taskResult.completedTask, workspacePath);
         this.emit(loopId, "loop.queue.archived", {
           task_id: task.task_id,
@@ -502,8 +579,53 @@ export class LoopEngine {
         }
       }
     }
+    if (policy && candidateRecord) {
+      const current = completed.slice(previousCompletedCount);
+      let ready = current.length === tasks.length && current.every(t => t.outcome === "success");
+      let frozen = knownCandidate!;
+      finalCandidateFrozen = frozen;
+      try {
+        frozen = freezeCandidate(workspacePath);
+        assertCandidateScope(workspacePath, policy, batchBase!);
+        finalCandidateFrozen = frozen;
+        if (!ready) throw Error("CANDIDATE_LOCAL_VALIDATION_FAILED");
+        await candidateRecord.record("candidate_frozen", frozen);
+        for (const [phase, commands] of [["prepush", policy.profiles.prepush], ["final", [...new Set([...(this.options.verifyCommands ?? []), ...policy.profiles.final])]]] as const) {
+          for (const [index, task] of tasks.entries()) {
+            const run: AgentRun = { run_id: "candidate-preflight", plan_id: "candidate-preflight", task_id: task.task_id, agent_id: "local-command", outcome: "completed", started_at: new Date().toISOString(), completed_at: new Date().toISOString(), duration_ms: 0, command_results: [] };
+            const verdict = await verifyRun(run, {
+              workspacePath, sessionId: loopId, commands: index === 0 ? [...commands] : [],
+              task, verifierAgentIds: this.options.verifierAgentIds ?? [],
+              artifactBaseCommit: batchBase!,
+              ...(this.options.artifactVerification !== undefined ? { artifactVerification: this.options.artifactVerification } : {}),
+              ...(this.options.adapters !== undefined ? { adapters: this.options.adapters } : {}),
+              ...(this.options.commandTimeoutMs !== undefined ? { timeoutMs: this.options.commandTimeoutMs } : {}),
+              ...(this.options.outputLimit !== undefined ? { outputLimit: this.options.outputLimit } : {}),
+            });
+            assertCandidateFrozen(workspacePath, frozen);
+            if (!verdict.pass) throw Error("CANDIDATE_PREFLIGHT_FAILED");
+          }
+          await candidateRecord.record(phase + "_verified", frozen);
+        }
+        await candidateRecord.record("final_preflight_ready", frozen);
+        decisions.push(`candidate ${frozen.headSha}: final local preflight ready; remote CI pending; not acceptance`);
+      } catch {
+        ready = false;
+        await candidateRecord.record("final_preflight_failed", frozen);
+        for (const task of current) if (task.outcome === "success") { task.outcome = "failed"; task.error_summary = "candidate final preflight failed or stale"; }
+      }
+      for (const task of current) task.candidate_evidence = {
+        stage: ready ? "final_preflight_ready" : "final_preflight_failed",
+        headSha: frozen.headSha, treeSha: frozen.treeSha,
+        tupleHash: candidateRecord.tupleHash, policyHash: candidateRecord.policyHash,
+        recordDirectory: candidateRecord.directory, accepted: false, remoteCI: "pending",
+      };
+      // Candidate queue files stay in place: archival could dirty the frozen
+      // tree, and local preflight is not a downstream acceptance receipt.
+      if (ready && this.options.archiveCompletedTasks === true) decisions.push("candidate queue retained; remote CI and acceptance pending");
+    }
 
-    const goal = await this.checkGoal(loopId, workspacePath);
+    const goal = this.implementationUnconfirmed ? undefined : await this.checkGoal(loopId, workspacePath);
     if (goal !== undefined) {
       decisions.push(`goal: ${goal.pass ? "passed" : "not met"} - ${goal.summary}`);
     }
@@ -538,17 +660,36 @@ export class LoopEngine {
       ...(this.options.knowledge !== undefined ? { knowledge: this.options.knowledge } : {}),
     });
 
+    const executedTaskCount = completed.length - previousCompletedCount;
+    if (policy) { await assertCandidateStateFile(jsonPath); await assertCandidateStateFile(markdownPath!); }
     const paths = await writeLoopState(jsonPath, nextState, { ...(markdownPath !== undefined ? { markdownPath } : {}) });
+    if (policy) { await chmod(paths.jsonPath, 0o600); await chmod(paths.markdownPath, 0o600); }
     this.emit(loopId, "loop.state.written", { jsonPath: paths.jsonPath, markdownPath: paths.markdownPath });
     this.emit(loopId, "loop.cycle.completed", {
       cycle,
-      task_count: tasks.length,
+      task_count: executedTaskCount,
       discovered_task_count: discoveredTasks.length,
       skipped_task_count: skippedTaskCount,
       duration_ms: Date.now() - startedAt,
     });
     if (lifecycle.emitStopped) {
-      this.emit(loopId, "loop.stopped", completionStopPayload(nextState, tasks.length, goal));
+      this.emit(loopId, "loop.stopped", completionStopPayload(nextState, executedTaskCount, goal));
+    }
+    if (finalCandidateFrozen && candidateRecord) {
+      const frozen = finalCandidateFrozen;
+      this.candidateRecheck = async (state) => {
+       try { assertCandidateFrozen(workspacePath, frozen); }
+       catch {
+        await candidateRecord.record("final_preflight_failed", frozen);
+        for (const task of state.completed_tasks.slice(previousCompletedCount)) {
+          if (task.outcome === "success") { task.outcome = "failed"; task.error_summary = "candidate changed after final preflight"; }
+          if (task.candidate_evidence) task.candidate_evidence.stage = "final_preflight_failed";
+        }
+        await writeLoopState(jsonPath, state, { ...(markdownPath !== undefined ? { markdownPath } : {}) });
+        await chmod(paths.jsonPath, 0o600); await chmod(paths.markdownPath, 0o600);
+       }
+      };
+      await this.candidateRecheck(nextState);
     }
 
     return {
@@ -559,7 +700,7 @@ export class LoopEngine {
       jsonPath: paths.jsonPath,
       markdownPath: paths.markdownPath,
       discoveredTaskCount: discoveredTasks.length,
-      executedTaskCount: tasks.length,
+      executedTaskCount,
       skippedTaskCount,
       ...(goal !== undefined ? { goal } : {}),
     };
@@ -707,6 +848,7 @@ export class LoopEngine {
       });
       decisions.push(`${task.task_id}: created isolated worktree ${worktree.worktreePath}`);
     }
+    const candidateStartHead = this.candidatePolicy ? freezeCandidate(runWorkspacePath).headSha : undefined;
 
     try {
       for (let iteration = 1; iteration <= maxIterations; iteration++) {
@@ -743,7 +885,7 @@ export class LoopEngine {
         });
         decisions.push(`${task.task_id}: selected ${plan.agent_id} - ${agentSelection.reason}`);
 
-        finalRun = await executePlan(plan, {
+        finalRun = await executeLegacyImplementation(plan, {
           workspacePath: runWorkspacePath,
           sessionId: loopId,
           ...(this.options.adapters !== undefined ? { adapters: this.options.adapters } : {}),
@@ -771,6 +913,26 @@ export class LoopEngine {
           iteration,
         });
 
+        if (isImplementationUnconfirmed(finalRun)) {
+          this.implementationUnconfirmed = true;
+          preserveWorktreeBranch = worktree !== undefined;
+          outcome = "escalated";
+          // Preserve structured stop evidence in the existing summary audit.
+          // This is diagnostic evidence, not a graph ledger or a resume permit.
+          finalRun.summary = `execution_unconfirmed: ${JSON.stringify({
+            failure_code: finalRun.failure_code,
+            cancellation: finalRun.cancellation,
+            command_termination: finalRun.command_results.map((result) => result.termination),
+            summary: finalRun.summary,
+          })}`;
+          decisions.push(`${task.task_id}: ${finalRun.summary}; stopped for reconciliation; workspace retained`);
+          this.emit(loopId, "loop.escalated", {
+            task_id: task.task_id, reason: finalRun.summary, iteration,
+            max_iterations: maxIterations, escalate_to: "hermes", agent_id: finalRun.agent_id,
+          });
+          break;
+        }
+
         const verifierAgentIds = this.options.verifierAgentIds ?? [];
         if (
           this.options.enforceRoleSeparation === true
@@ -790,7 +952,7 @@ export class LoopEngine {
         } else {
           finalVerdict = await verifyRun(finalRun, {
           workspacePath: runWorkspacePath,
-          commands: this.options.verifyCommands ?? [],
+          commands: this.candidatePolicy?.profiles.local ?? this.options.verifyCommands ?? [],
           verifierAgentIds,
           task: effectiveTask,
           ...(this.options.artifactVerification !== undefined
@@ -803,6 +965,7 @@ export class LoopEngine {
           });
         }
         finalEvidence = await collectTaskGitEvidence(runWorkspacePath);
+        if (this.candidatePolicy && finalVerdict.pass) assertCandidateScope(runWorkspacePath, this.candidatePolicy, candidateStartHead!);
         finalReviewArtifacts = redactReviewArtifacts(finalVerdict.review_artifacts);
         const failedEvaluationIds = (finalVerdict.evaluations ?? [])
           .filter((evaluation) => !evaluation.pass)
@@ -903,8 +1066,8 @@ export class LoopEngine {
       }
 
       if (outcome === "success") {
-        publishedAsset = await this.runPublishHook(loopId, task, decisions);
-        lessonDraftPath = await this.runLessonDraftHook(loopId, workspacePath, task, decisions, {
+        if (!this.candidatePolicy) publishedAsset = await this.runPublishHook(loopId, task, decisions);
+        if (!this.candidatePolicy) lessonDraftPath = await this.runLessonDraftHook(loopId, workspacePath, task, decisions, {
           iterations,
           feedback: feedbackHistory,
           finalVerdict,
@@ -934,7 +1097,7 @@ export class LoopEngine {
           : `${task.task_id}: isolated worktree had no git changes to merge`);
       }
     } finally {
-      if (worktree !== undefined) {
+      if (worktree !== undefined && !this.implementationUnconfirmed) {
         await cleanupWorktree(worktree, { removeBranch: !preserveWorktreeBranch });
         this.emit(loopId, "loop.worktree.cleaned", {
           task_id: task.task_id,
@@ -951,6 +1114,7 @@ export class LoopEngine {
         capability: task.capability,
         outcome,
         iterations,
+        ...(this.implementationUnconfirmed ? { implementation_unconfirmed: true } : {}),
         agent_id: finalRun?.agent_id ?? "local-noop",
         duration_ms: Date.now() - started,
         ...(finalRun !== null ? {
@@ -1171,6 +1335,7 @@ export class LoopEngine {
     const command = this.options.goalCommand;
     if (command === undefined || command.trim() === "") return undefined;
 
+    this.lifecycleEffectsStarted = true;
     const result = await runShellCommand(command, {
       cwd: workspacePath,
       timeoutMs: this.options.commandTimeoutMs ?? 120_000,
@@ -1250,6 +1415,9 @@ function completionStopPayload(
   executedTaskCount: number,
   goal?: LoopGoalResult,
 ): Record<string, unknown> {
+  if (state.completed_tasks.some((task) => task.implementation_unconfirmed === true)) {
+    return { reason_code: "execution_unconfirmed", reason: "Implementation stop is unconfirmed; reconciliation required before further execution or workspace cleanup" };
+  }
   if (goal?.pass === true) return { reason_code: "goal_passed", reason: "goal command passed" };
   if (state.wait_reason !== undefined) {
     const waiting = state.wait_reason;

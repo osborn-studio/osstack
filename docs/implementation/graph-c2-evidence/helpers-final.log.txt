@@ -1,0 +1,15 @@
+✔ restart via public calls preserves full tuple, errors, and duplicate write semantics (26.966709ms)
+✔ invalid persisted method and argument shapes are refused before replay (12.8165ms)
+✔ failed persistence does not resurrect an uncommitted request on later append (5.02775ms)
+✔ only an independently confirmed matching result permits replay (1.046917ms)
+✔ receipt for another run, effect or attempt does not authorize replay (0.08675ms)
+✔ malformed result is refused and returned data has no shared references (0.078875ms)
+✔ unresolved effect blocks new effects across the fixture run (0.757625ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 7
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 214.295125

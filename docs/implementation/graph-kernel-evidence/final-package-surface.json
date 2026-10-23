@@ -1,0 +1,42 @@
+{
+  "archive": "osstack-graph-0.1.0.tgz",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./worker": {
+      "types": "./dist/worker-entry.d.ts",
+      "import": "./dist/worker-entry.js"
+    },
+    "./codec": {
+      "types": "./dist/checkpoint-codec.d.ts",
+      "import": "./dist/checkpoint-codec.js"
+    }
+  },
+  "files": [
+    "package/dist/checkpoint-codec.js",
+    "package/dist/index.js",
+    "package/dist/worker-entry.js",
+    "package/package.json",
+    "package/dist/checkpoint-codec.js.map",
+    "package/dist/index.js.map",
+    "package/dist/worker-entry.js.map",
+    "package/dist/checkpoint-codec.d.ts",
+    "package/dist/index.d.ts",
+    "package/dist/worker-entry.d.ts",
+    "package/LICENSE"
+  ],
+  "publishedProtocolDependency": "0.15.0",
+  "selfImportSmoke": {
+    "exports": true,
+    "kernel": {
+      "engine": "langgraph",
+      "version": "1.4.15",
+      "coreVersion": "1.2.11",
+      "checkpointVersion": "1.1.5",
+      "workerEntry": "@osstack/graph/worker"
+    }
+  },
+  "note": "Archive entries/types verified; installed workspace self-import executed. No registry publication or isolated tarball dependency installation claimed."
+}

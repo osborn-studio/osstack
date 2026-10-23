@@ -6,7 +6,7 @@ import { openDb } from "./db.js";
 import { AttentionStore } from "./attention-store.js";
 import { AttentionExperience } from "./attention-experience.js";
 const cleanup: Array<() => void> = [];
-afterEach(() => cleanup.splice(0).forEach((f) => f()));
+afterEach(() => cleanup.splice(0).forEach((f) => { f(); }));
 function setup() {
   const root = mkdtempSync(join(tmpdir(), "experience-"));
   const path = join(root, "db");

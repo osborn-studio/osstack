@@ -1,0 +1,48 @@
+$ vitest run src/graph-delivery.integration.test.ts -t 'cancels actual' --maxWorkers=1
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-quiescence/g21-delivery-UKtuoS/delivery/writer-0'...
+HEAD is now at dfd7b21 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-quiescence/g21-delivery-XB3aVL/delivery/writer-0'...
+HEAD is now at 51a12f4 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-quiescence/g21-delivery-80iHpc/delivery/writer-0'...
+HEAD is now at 2f1814d base
+ ❯ src/graph-delivery.integration.test.ts (11 tests | 1 failed | 8 skipped) 15847ms
+   ↓ actual child delivery succeeds with review finishing last
+   ↓ actual child delivery succeeds with tests finishing last
+   ↓ repairs from immutable complete join through physical child stop and G15 resume
+   ↓ host bounded retry returns only final confirmed task result and fresh independent workspace
+   ↓ finite branch failure stops without a failed task RETURN or poisoned join
+   ↓ negative quality at epoch cap stops
+   ↓ keeps direct in reconciliation when real worker exit journaling failed
+   ↓ keeps repair in reconciliation when real worker exit journaling failed
+   ✓ cancels actual delivery with clean exit and inventory evidence  5291ms
+   ✓ cancels actual delivery with journal-failed exit and inventory evidence  5278ms
+   × cancels actual delivery with missing-admission exit and inventory evidence 5278ms
+     → expected undefined to be defined
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/graph-delivery.integration.test.ts > cancels actual delivery with missing-admission exit and inventory evidence
+AssertionError: expected undefined to be defined
+ ❯ delivery src/graph-delivery.integration.test.ts:71:28
+     69|     const result = await host.run(); await cancellation;
+     70|     if (cancelMode) {
+     71|       expect(cancellation).toBeDefined(); expect(result.route.kind).no…
+       |                            ^
+     72|       expect(host.current().status).toBe(cancelMode === 'clean' ? 'can…
+     73|       const recovery = db.prepare('SELECT proof_json FROM graph_recove…
+ ❯ src/graph-delivery.integration.test.ts:139:3
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 2 passed | 8 skipped (11)
+   Start at  17:26:46
+   Duration  16.84s (transform 526ms, setup 9ms, collect 868ms, tests 15.85s, environment 0ms, prepare 34ms)
+
+/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli:
+[ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL] @osstack/cli@0.19.0 test: `vitest run src/graph-delivery.integration.test.ts -t 'cancels actual' --maxWorkers=1`
+Exit status 1

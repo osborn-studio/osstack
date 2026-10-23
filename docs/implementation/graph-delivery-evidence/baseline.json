@@ -1,0 +1,13 @@
+{
+  "head": "0a86feebabc87a28f8911e2cea332d7926f48716",
+  "original": {
+    "AGENTS.md": "0aeac98453f7b46af92c269528ef81268c5de79ea39a8635bd0bd510b7b9d377",
+    "docs/implementation/2026-09-13-osstack-graph-upgrade.md": "be622667de2d2af612d0d07a84d6ed1963b57477b015d3d8f730fe24f270ea7d",
+    "docs/implementation/2026-09-13-osstack-graph-upgrade.tasks.json": "0aeb1a65cc74a2d8a1cb42365a14e578b73db55ea9d3c6bc589cad55f9686300"
+  },
+  "worktree": {
+    "AGENTS.md": "13470229f38ec22e4cf3dd993ffd1c7a47493c35a6798ec6b24bee629fd7f1c3",
+    "docs/implementation/2026-09-13-osstack-graph-upgrade.md": "be622667de2d2af612d0d07a84d6ed1963b57477b015d3d8f730fe24f270ea7d",
+    "docs/implementation/2026-09-13-osstack-graph-upgrade.tasks.json": "0aeb1a65cc74a2d8a1cb42365a14e578b73db55ea9d3c6bc589cad55f9686300"
+  }
+}

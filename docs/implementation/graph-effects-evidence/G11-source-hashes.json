@@ -1,0 +1,38 @@
+{
+  "node": "v26.5.0",
+  "note": "Shared migrations/index may include concurrent G13 additions; hashes capture verified snapshot, not authorship",
+  "files": [
+    {
+      "path": "packages/core/src/state/graph-actions.ts",
+      "sha256": "2f76ce7f9dc8f68c64e41c3b3716bc0a3e01c26e8e1068f95b808a37d9e471c5"
+    },
+    {
+      "path": "packages/core/src/state/graph-actions.test.ts",
+      "sha256": "faf08b6c722308e40adb049aa5ff8f6430e1a3e4815076eb9b9c106406b37c24"
+    },
+    {
+      "path": "packages/core/src/state/graph-storage.ts",
+      "sha256": "10fd977f8508fbf97e369b86b5bb24151eac4471b11ea71c3adec32fe07f8cd4"
+    },
+    {
+      "path": "packages/core/src/state/graph-runs.ts",
+      "sha256": "8c6e72b5cc2b00974e5bfa8f8117259c43c0acf687cd4f8e69def788e73c1b7b"
+    },
+    {
+      "path": "packages/core/src/state/graph-runs.test.ts",
+      "sha256": "962c97ecb09403a8ce455e87913b0a4921d9d7b8c67fa32a2967dc875aeea514"
+    },
+    {
+      "path": "packages/core/src/state/migrations.ts",
+      "sha256": "62959374006d909154a767d57bd36d137a4d01c6b64e02185ba9cffac3c4d415"
+    },
+    {
+      "path": "packages/core/src/state/db.test.ts",
+      "sha256": "0b498e707534ca12e055eb94570b3e0b1a615e5097223eed3e9709575bec3ff6"
+    },
+    {
+      "path": "packages/core/src/index.ts",
+      "sha256": "d7c1ca54e6c2fcf77ba3d7a88c2a955f581b232251128473488dd8a0049697ff"
+    }
+  ]
+}

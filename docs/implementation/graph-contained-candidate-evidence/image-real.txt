@@ -1,0 +1,19 @@
+{
+  "exitCode": 0,
+  "output": "candidate-checked\n",
+  "cancelled": false,
+  "evidence": "docker-removed:bbeb622d48e109f2ddba5b166d8f1144d7d08b839f49a88d0b982ba3adec8057",
+  "stopReceipt": {
+    "version": 1,
+    "kind": "docker_removed",
+    "launch": {
+      "version": 1,
+      "invocationId": "image-real",
+      "specDigest": "ca3f785251402697a373dd7bb74a6b7e7f218c30650a16bbce5b5d3f56469264",
+      "daemonId": "96300cab-3e55-44ea-be6f-834057ae56cc",
+      "containerId": "9f6a18dd161d33b633d38a79775f7bbf68284e44f8a6244faae3f9e1dbc18b90",
+      "nonce": "a21a5a37-2fc9-4ff9-8dd8-bc2adcac941c"
+    },
+    "confirmedAt": 1789611505176
+  }
+}

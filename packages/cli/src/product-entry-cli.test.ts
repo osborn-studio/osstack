@@ -1093,7 +1093,7 @@ describe("product entry commands", () => {
     };
     expect(result.scope).toBe("@osstack");
     expect(result.package_name).toBe("@osstack/cli");
-    expect(result.repository).toBe("gilosbornhello/osstack");
+    expect(result.repository).toBe("osborn-studio/osstack");
     expect(result.authentication).toBe("trusted-publishing-oidc");
     expect(result.required_secret).toBeNull();
     expect(result.console_checklist.join("\n")).toContain("Create or claim the @osstack organization/scope on npmjs.com.");

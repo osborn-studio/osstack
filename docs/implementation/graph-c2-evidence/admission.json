@@ -1,0 +1,40 @@
+{
+  "id": "C2",
+  "status": "passed",
+  "acceptedCodeCommit": "b230eb5b51d3dd1e81dfe789f46f22d12b50f2cc",
+  "executionModel": "langgraph-functional-v1",
+  "durability": "sync",
+  "kernelIntegrationAllowed": true,
+  "productionReady": false,
+  "stateGraphAdmission": "blocked",
+  "pins": {
+    "langgraph": "1.4.15",
+    "langgraph-checkpoint": "1.1.5",
+    "core": "1.2.11"
+  },
+  "matrix": {
+    "assertions": 56,
+    "experiments": 42,
+    "processes": 96,
+    "actualSigkills": 26,
+    "cleaned": true
+  },
+  "workspaceTestsPassed": 2664,
+  "helperTestsPassed": 7,
+  "graphTestsPassed": 26,
+  "runtimeEvidence": "runtime-final.json",
+  "review": "review-adjudication.md",
+  "requiredIntegrationTasks": [
+    "G08",
+    "G11",
+    "G12",
+    "G13",
+    "G14",
+    "G15",
+    "G17",
+    "G18",
+    "G25",
+    "G27"
+  ],
+  "reason": "Documented Functional task replay passes corresponding failure windows; the StateGraph AND-join counterexample is preserved, not fixed."
+}

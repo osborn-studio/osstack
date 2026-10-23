@@ -1,0 +1,43 @@
+$ vitest run src/graph-delivery.integration.test.ts --maxWorkers=1
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-quiescence/g21-delivery-c6NkBQ/delivery/writer-0'...
+HEAD is now at 5443254 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-quiescence/g21-delivery-irSegZ/delivery/writer-0'...
+HEAD is now at 5e50f1c base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-quiescence/g21-delivery-0c2doP/delivery/writer-0'...
+HEAD is now at 2561b55 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-quiescence/g21-delivery-zOwiEM/delivery/writer-0'...
+HEAD is now at cb6909f base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-quiescence/g21-delivery-EPbm0d/delivery/writer-0'...
+HEAD is now at 46ee7d5 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-quiescence/g21-delivery-PRzwXW/delivery/writer-0'...
+HEAD is now at 34ee39b base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-quiescence/g21-delivery-sFC505/delivery/writer-0'...
+HEAD is now at f29ef49 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-quiescence/g21-delivery-azhHkR/delivery/writer-0'...
+HEAD is now at f66df59 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-quiescence/g21-delivery-gTLzsf/delivery/writer-0'...
+HEAD is now at 3257d43 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-quiescence/g21-delivery-Ov1tZ3/delivery/writer-0'...
+HEAD is now at 490083e base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25-quiescence/g21-delivery-2zciqG/delivery/writer-0'...
+HEAD is now at c3aa965 base
+ ✓ src/graph-delivery.integration.test.ts (11 tests) 86040ms
+   ✓ actual child delivery succeeds with review finishing last  6845ms
+   ✓ actual child delivery succeeds with tests finishing last  6940ms
+   ✓ repairs from immutable complete join through physical child stop and G15 resume  14066ms
+   ✓ host bounded retry returns only final confirmed task result and fresh independent workspace  8737ms
+   ✓ finite branch failure stops without a failed task RETURN or poisoned join  8720ms
+   ✓ negative quality at epoch cap stops  7070ms
+   ✓ keeps direct in reconciliation when real worker exit journaling failed  6613ms
+   ✓ keeps repair in reconciliation when real worker exit journaling failed  6837ms
+   ✓ cancels actual delivery with clean exit and inventory evidence  6780ms
+   ✓ cancels actual delivery with journal-failed exit and inventory evidence  6853ms
+   ✓ cancels actual delivery with missing-admission exit and inventory evidence  6575ms
+
+ Test Files  1 passed (1)
+      Tests  11 passed (11)
+   Start at  17:36:29
+   Duration  86.91s (transform 449ms, setup 7ms, collect 755ms, tests 86.04s, environment 0ms, prepare 27ms)

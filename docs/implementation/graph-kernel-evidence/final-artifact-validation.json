@@ -1,0 +1,18 @@
+{
+  "taskCount": 30,
+  "completed": 8,
+  "pending": 22,
+  "acyclic": true,
+  "completedFilesAndEvidenceExist": true,
+  "sourceFilesVerified": 18,
+  "sourceCommit": "c1f461992a5967bbb9055f78f8e2cb648599d5c9",
+  "localLinksVerified": 27,
+  "evidenceJsonValid": true,
+  "kernelGate": "C2 blocked",
+  "schemaRefs": 128,
+  "documentationHygiene": {
+    "command": "node scripts/graph-test-env.mjs -- pnpm --filter @osstack/governance exec vitest run src/knowledge-hygiene/osstack-config.test.ts",
+    "exitCode": 0,
+    "passedTests": 1
+  }
+}

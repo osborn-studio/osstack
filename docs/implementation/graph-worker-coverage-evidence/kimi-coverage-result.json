@@ -1,0 +1,154 @@
+[
+  {
+    "event_id": "kimi-coverage:0",
+    "seq": 0,
+    "run_id": "kimi-coverage",
+    "session_id": "kimi-coverage",
+    "created_at": 1789736695.425,
+    "terminal": false,
+    "type": "run.started",
+    "payload": {
+      "status": "running",
+      "controls": {
+        "cancel": true,
+        "approval_pending": false,
+        "clarify_pending": false,
+        "queue": false,
+        "goal": false
+      }
+    }
+  },
+  {
+    "event_id": "kimi-coverage:1",
+    "seq": 1,
+    "run_id": "kimi-coverage",
+    "session_id": "kimi-coverage",
+    "created_at": 1789736695.428,
+    "terminal": false,
+    "type": "progress",
+    "payload": {
+      "phase": "kimi.review.start",
+      "detail": "Starting bounded no-tool Kimi review"
+    }
+  },
+  {
+    "event_id": "kimi-coverage:2",
+    "seq": 2,
+    "run_id": "kimi-coverage",
+    "session_id": "kimi-coverage",
+    "created_at": 1789736783.806,
+    "terminal": false,
+    "type": "token.delta",
+    "payload": {
+      "message_id": "kimi-coverage:kimi-review",
+      "delta": "# Review\n\n**Scope of correction since prior approval:** The only change is adding explicit `pid: undefined` to two test `journal.observed` fixture calls (`commit-drift` in `graph-unstarted-recovery.test.ts`, `extra-event` in `graph-worker-exit-proof.test.ts`). The `unconfirmed` schema declares `pid: pid.optional()`, and `GraphProcessJournal.append` canonicalizes via `JSON.parse(JSON.stringify(event))`, which drops `undefined` keys — so the persisted journal bytes are identical to the previously passing test run. This is a type-level-only fix with zero runtime impact. The prior pending-spawn-test warning is resolved: the new exit-proof test exercises a real spawn ENOENT via a missing executable and verifies proof equivalence after SQLite reopen and inside a transaction.\n\n**Criterion assessments:**\n\n- **workers (pass):** `inventory()` now enumerates every `graph_worker_leases` row, requiring `workers.length === run.generation`, contiguity `1..n`, and terminal-owner match, else `RECOVERY_WORKER_INVENTORY_BINDING`. Tests cover gap/extra/owner rejection and digest-drift detection inside a transaction. The sweep's guard re-observes all workers and rejects late drift.\n- **proof (pass):** `verifyJournaledGraphWorkerNotStarted` requires exactly one lease+launch+event row, strict `spawn_failed` schema (`registration|spawn` phase, `worker-not-started:<uuid>` ref), full binding equality (owner/identity/run/generation), and chronology `acquired_at ≤ launched_at ≤ confirmedAt ≤ observed_at ≤ now`. It rejects any per-generation actions/admissions/checkpoint-requests and never infers stop from PID reuse, lease expiry, or DB flags. Eleven negative-evidence modes are tested.\n- **recovery (pass):** `recoverUnstartedGraphWorker` requires run-wide absence across all five scheduling/effect tables, proves *every* inventoried generation, pins the inventory and reasserts it via `assertExecutorInventory` inside the G15 `BEGIN IMMEDIATE` recheck, and re-runs the full verify inside the commit transaction (late event injection changes row count and is rejected). Authority remains reconciler-owned and synchronous; the restart test uses a genuinely reopened DB and fresh broker/checkpoint/runtime, recovering two consecutive real failures and starting exactly one third-generation worker.\n- **scope (pass):** No expansion to launched workers (exited-worker takeover still rejected), no executor/workspace inference (`no-admitted-*` refs only, `verifyOutcome`/`release` throw), sweep remains diagnostic with `recoveryAuthorized: false`. Positive and boundary rejection paths are both exercised.\n\n**Non-blocking observations:**\n1. `verifyJournaledGraphWorkerNotStarted` does not itself check lease expiry despite its doc comment (\"an expired lease ... is never a no-start proof\"); enforcement depends on callers (deadline check in recovery; diagnostic-only sweep). Non-blocking since no caller relies on expiry-as-proof, but the comment overstates the function's own guarantees.\n2. In the sweep, a generation failing both exit and not-started proofs reports only the exit-proof error string, potentially masking the not-started failure reason in diagnostics. Cosmetic.\n3. Full Loop typecheck rerun is still in flight; however the failure cause was exactly the two missing `pid` properties and the fix adds exactly those, so residual risk is negligible.",
+      "content_type": "text"
+    }
+  },
+  {
+    "event_id": "kimi-coverage:3",
+    "seq": 3,
+    "run_id": "kimi-coverage",
+    "session_id": "kimi-coverage",
+    "created_at": 1789736783.809,
+    "terminal": true,
+    "type": "done",
+    "payload": {
+      "status": "completed",
+      "last_seq": 2,
+      "result_summary": "approved: 3 finding(s)",
+      "review": {
+        "schema_version": 1,
+        "verdict": "approved",
+        "risk": "read_only",
+        "markdown": "# Review\n\nFollow-up exact-source review of the G25 bounded worker lifecycle recovery slice. The only correction since prior approval is explicit `pid: undefined` in two test fixture `journal.observed` calls; `pid` is optional in the strict `unconfirmed` schema and journal append canonicalizes via JSON round-trip that drops undefined keys, so persisted bytes are unchanged. No production change. Prior pending-spawn-test warning is resolved: real spawn ENOENT is now exercised and proof equivalence verified across SQLite reopen and inside a transaction (112 focused + 556 matrix passed).\n\nAll four criteria pass: (workers) inventory enumerates every claimed generation with contiguity/owner binding guards and transactional drift assertion; (proof) no-child verifier requires a single authenticated strict-schema spawn_failed event with chronology and binding equality, rejecting actions/admissions/checkpoint evidence per generation with no PID/lease inference; (recovery) repeated no-start takeover requires all-generation proofs plus run-wide absence across all five tables, rechecked with live synchronous authority inside the G15 BEGIN IMMEDIATE recheck, with restart test using fresh DB/services; (scope) no expansion to launched workers/executors/workspaces, sweep remains diagnostic, positive and rejection boundaries tested. Pending Loop typecheck rerun is negligible-risk since the fix exactly matches the two reported errors.",
+        "judgments": [
+          {
+            "id": "workers",
+            "pass": true,
+            "severity": "error",
+            "summary": "Full lease inventory includes empty intermediate generations; contiguity, count, and terminal-owner binding enforced (RECOVERY_WORKER_INVENTORY_BINDING); inventory digest asserted inside the final transaction; sweep guard rejects inconsistent inventory and late worker drift. Tests cover gap/extra/owner rejection and in-transaction lease mutation."
+          },
+          {
+            "id": "proof",
+            "pass": true,
+            "severity": "error",
+            "summary": "verifyJournaledGraphWorkerNotStarted accepts only a single durable spawn_failed row bound to run/generation/owner/identity with strict schema (registration|spawn phase, worker-not-started uuid ref) and full chronology acquired<=launched<=confirmed<=observed<=now; rejects any per-generation actions/admissions/checkpoint-requests and extra/missing/future/conflicting events. No lease, PID, or DB-state inference of physical stop; 11 negative-evidence modes tested."
+          },
+          {
+            "id": "recovery",
+            "pass": true,
+            "severity": "error",
+            "summary": "Repeated no-start G15 takeover requires every inventoried generation proven no-child plus entire-run absence across graph_actions/admissions/checkpoints/writes/requests; inventory pinned and reasserted inside the commit transaction and full verify repeated in the synchronous recheck with live reconciler-owned authority. Restart test closes and reopens SQLite with fresh broker/checkpoint/runtime, recovers two consecutive real registration failures, and starts exactly one third-generation worker."
+          },
+          {
+            "id": "scope",
+            "pass": true,
+            "severity": "error",
+            "summary": "No expansion: launched/exited workers still rejected for takeover, verifyOutcome and release throw, executor/workspace evidence limited to no-admitted-* refs, sweep recoveryAuthorized remains false. Tests exercise positive recovery (single and repeated) and rejection boundaries including intent-only windows, grant revocation, commit-time drift, and competing takeovers."
+          }
+        ],
+        "findings": [
+          {
+            "rule_id": "proof.lease-expiry-doc-overstatement",
+            "severity": "info",
+            "message": "verifyJournaledGraphWorkerNotStarted does not itself check lease expiry even though its doc comment says an expired lease is never a no-start proof; deadline enforcement lives in callers (recovery) and the sweep is diagnostic-only. No caller currently relies on expiry-as-proof, so this is non-blocking, but the comment overstates the function's own guarantees.",
+            "file": "packages/cli/src/graph-worker-exit-proof.ts",
+            "fingerprint": "c7ef0654a2ee228edf7d6fac4097d648431c1ccdd62afc7702b088c54b2bd289"
+          },
+          {
+            "rule_id": "sweep.masked-failure-reason",
+            "severity": "info",
+            "message": "When a generation fails both exit and not-started proofs, the sweep reports only the exit-proof error string as the reason, potentially masking the not-started failure detail in diagnostics. Cosmetic; sweep remains non-authoritative.",
+            "file": "packages/cli/src/graph-quiescence-sweep.ts",
+            "fingerprint": "4a11e181e5dba32db94cbe7fec5442b15c0332913e139a0e908eb0b403eba26c"
+          },
+          {
+            "rule_id": "loop.typecheck-rerun-pending",
+            "severity": "info",
+            "message": "Full Loop typecheck rerun is still in flight for exact-source evidence. The sole prior failure was two test fixture calls missing required pid:number|undefined; the correction adds exactly pid:undefined, which the optional-schema plus JSON round-trip canonicalization renders serialization-identical. Residual risk assessed as negligible.",
+            "fingerprint": "5db541562a4583553fb5ab7db498002555d6c1ecea33acac40579e01c616cee2"
+          }
+        ],
+        "recommended_actions": [],
+        "evidence_refs": [],
+        "runtime_identity": {
+          "adapter_id": "kimi-code",
+          "adapter_version": "0.29.1",
+          "auth_mode": "subprocess/login-reuse",
+          "provider_id": "kimi",
+          "model_id": "kimi-code/k3",
+          "agent_profile": "osstack-reviewer",
+          "evidence_source": "reported",
+          "binary_path_sha256": "7e5d172f83fc7d8ca22387234b5a9a4d9412aa1a27c71ee90be35db29dfa7dd2"
+        }
+      },
+      "evaluation_judgments": [
+        {
+          "id": "workers",
+          "pass": true,
+          "severity": "error",
+          "summary": "Full lease inventory includes empty intermediate generations; contiguity, count, and terminal-owner binding enforced (RECOVERY_WORKER_INVENTORY_BINDING); inventory digest asserted inside the final transaction; sweep guard rejects inconsistent inventory and late worker drift. Tests cover gap/extra/owner rejection and in-transaction lease mutation."
+        },
+        {
+          "id": "proof",
+          "pass": true,
+          "severity": "error",
+          "summary": "verifyJournaledGraphWorkerNotStarted accepts only a single durable spawn_failed row bound to run/generation/owner/identity with strict schema (registration|spawn phase, worker-not-started uuid ref) and full chronology acquired<=launched<=confirmed<=observed<=now; rejects any per-generation actions/admissions/checkpoint-requests and extra/missing/future/conflicting events. No lease, PID, or DB-state inference of physical stop; 11 negative-evidence modes tested."
+        },
+        {
+          "id": "recovery",
+          "pass": true,
+          "severity": "error",
+          "summary": "Repeated no-start G15 takeover requires every inventoried generation proven no-child plus entire-run absence across graph_actions/admissions/checkpoints/writes/requests; inventory pinned and reasserted inside the commit transaction and full verify repeated in the synchronous recheck with live reconciler-owned authority. Restart test closes and reopens SQLite with fresh broker/checkpoint/runtime, recovers two consecutive real registration failures, and starts exactly one third-generation worker."
+        },
+        {
+          "id": "scope",
+          "pass": true,
+          "severity": "error",
+          "summary": "No expansion: launched/exited workers still rejected for takeover, verifyOutcome and release throw, executor/workspace evidence limited to no-admitted-* refs, sweep recoveryAuthorized remains false. Tests exercise positive recovery (single and repeated) and rejection boundaries including intent-only windows, grant revocation, commit-time drift, and competing takeovers."
+        }
+      ]
+    }
+  }
+]

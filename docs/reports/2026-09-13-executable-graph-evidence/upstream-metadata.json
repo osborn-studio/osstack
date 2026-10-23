@@ -1,0 +1,74 @@
+[
+  {
+    "repo": "DEEP-JLU/Awesome-Graph-Engineering",
+    "url": "https://github.com/DEEP-JLU/Awesome-Graph-Engineering",
+    "license": "MIT",
+    "pushed_at": "2026-09-08T22:27:00Z",
+    "sha": "d30a601e5ded64a595985e182b2b962519122ed3",
+    "archived": false
+  },
+  {
+    "repo": "PO-VINCENT/graph-engineering-playbook",
+    "url": "https://github.com/PO-VINCENT/graph-engineering-playbook",
+    "license": "MIT",
+    "pushed_at": "2026-07-27T22:59:12Z",
+    "sha": "692d161587099adda5945982ff3db9213c343ee4",
+    "archived": false
+  },
+  {
+    "repo": "InternScience/GraphGen",
+    "url": "https://github.com/InternScience/GraphGen",
+    "license": "Apache-2.0",
+    "pushed_at": "2026-08-17T03:57:29Z",
+    "sha": "3a3eb097318d34b07f6f31cb60de5b20712d65ce",
+    "archived": false
+  },
+  {
+    "repo": "google/adk-js",
+    "url": "https://github.com/google/adk-js",
+    "license": "Apache-2.0",
+    "pushed_at": "2026-09-10T22:48:14Z",
+    "sha": "fbd7f5aa8133ed25df33ddb46fc37ae65ff69c72",
+    "archived": false
+  },
+  {
+    "repo": "google/adk-python",
+    "url": "https://github.com/google/adk-python",
+    "license": "Apache-2.0",
+    "pushed_at": "2026-09-13T06:36:26Z",
+    "sha": "460715b6c62c8e9ab00931c502381ee0364e39b6",
+    "archived": false
+  },
+  {
+    "repo": "langchain-ai/langgraphjs",
+    "url": "https://github.com/langchain-ai/langgraphjs",
+    "license": "MIT",
+    "pushed_at": "2026-09-12T01:25:23Z",
+    "sha": "592fd0cab0fd9287fab1b7c7fcfd4abc44675700",
+    "archived": false
+  },
+  {
+    "repo": "mastra-ai/mastra",
+    "url": "https://github.com/mastra-ai/mastra",
+    "license": "NOASSERTION",
+    "pushed_at": "2026-09-13T12:27:12Z",
+    "sha": "76cec9be889c0a6ae7f51fbf25356d5a06019351",
+    "archived": false
+  },
+  {
+    "repo": "microsoft/agent-framework",
+    "url": "https://github.com/microsoft/agent-framework",
+    "license": "MIT",
+    "pushed_at": "2026-09-13T12:35:41Z",
+    "sha": "1cd06c5a2058a172eebadf5d9d7c3fa45c519520",
+    "archived": false
+  },
+  {
+    "repo": "temporalio/sdk-typescript",
+    "url": "https://github.com/temporalio/sdk-typescript",
+    "license": "MIT",
+    "pushed_at": "2026-09-11T20:01:38Z",
+    "sha": "e37ed88b7c71dc35c022464d095bca69a9b2dcd3",
+    "archived": false
+  }
+]

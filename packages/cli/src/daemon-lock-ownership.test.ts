@@ -58,8 +58,8 @@ function launch(code: string): { child: ChildProcess; nextLine: () => Promise<st
   child.stderr?.on("data", (chunk: Buffer) => { errors += chunk.toString(); });
   child.stdout?.on("data", (chunk: Buffer) => {
     pending += chunk.toString();
-    let newline: number;
-    while ((newline = pending.indexOf("\n")) >= 0) {
+    while (pending.includes("\n")) {
+      const newline = pending.indexOf("\n");
       const line = pending.slice(0, newline);
       pending = pending.slice(newline + 1);
       const waiter = waiters.shift();

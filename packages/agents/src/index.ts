@@ -50,6 +50,10 @@ export {
   type OpenAICompatibleNoToolsSemanticJudgeOptions,
 } from "./semantic/openai-compatible-no-tools.js";
 export {
+  cleanupGraphWorktree,
+  quarantineGraphWorktree,
+  type GraphWorktreeRetention,
+  type GraphWorktreeRetentionRecord,
   cleanupOrphanedWorktrees,
   cleanupWorktree,
   commitWorktreeChanges,
@@ -89,3 +93,11 @@ export function defaultAdapters(): AgentAdapter[] {
 }
 
 export const AGENTS_VERSION = "0.0.0";
+
+export { createContainedCommandExecutor, createContainedCommandAdapter } from "./contained.js";
+export type { ContainedCommandOptions, ContainedStopReceipt, ContainedCommandExecutor } from "./contained.js";
+
+export { prepareContainedImage } from "./contained.js";
+export type { ContainedImageOptions, ContainedImageReceipt, ContainedCandidateFile, ContainedCommandResult } from "./contained.js";
+
+export { createBoundedMessagesAdapter, type BoundedMessagesOptions } from "./bounded-messages.js";

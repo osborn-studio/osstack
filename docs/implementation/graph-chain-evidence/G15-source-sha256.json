@@ -1,0 +1,6 @@
+{
+  "packages/core/src/state/graph-recovery.ts": "cc667094b931676d130b020eaf2ea953694bbfef1b49548469f123a01b489701",
+  "packages/core/src/state/graph-recovery.test.ts": "22b23387c956e441c436d2c8937916532e82560a9340f30bbe3f27bb19613746",
+  "packages/cli/src/graph-reconciler.ts": "6a93f620bcd643074fc7b0a0ca9b3aaf7201e71d3932cba7d88ec9b288e9d3f2",
+  "packages/cli/src/graph-reconciler.test.ts": "620d6b644bc6017a419bd70186d800d9b88b17ae39fb090c07df6d64ddf5fae9"
+}

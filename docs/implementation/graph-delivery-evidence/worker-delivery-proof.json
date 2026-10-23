@@ -1,0 +1,898 @@
+{
+  "source": "Final accepted-full-tests.txt; mode=ro SQLite observation. Planned worker handoff, not arbitrary daemon crash recovery.",
+  "acceptedCodeCommit": "ab988b32649c9eef084e997bb92d31c0108436fc",
+  "cases": [
+    {
+      "fixtureRoot": "/Volumes/AIMATE_WORK/tmp/g21/g21-delivery-Yj6uGR",
+      "run": {
+        "graph_run_id": "49dcb49b-297c-4517-bcbb-35cd14e12fd6",
+        "status": "ready",
+        "generation": 1,
+        "created_at": 1789486441030,
+        "spec": {
+          "input": {
+            "acceptanceRef": "acceptance",
+            "baseRevision": "072ebd5193ca9fdf959a676d3fa3f0f0932a642a",
+            "repositoryRef": "repo",
+            "taskRef": "task"
+          },
+          "limits": {
+            "deadlineSeconds": 120,
+            "maxActionStarts": 22,
+            "maxBranchAttempts": 2,
+            "maxConcurrentReaders": 2,
+            "maxConcurrentWritersPerRepo": 1,
+            "maxEpochs": 1,
+            "tokenReservationLimit": 200000
+          },
+          "publication": "artifact_only",
+          "schemaVersion": 1,
+          "template": "code-delivery-v1"
+        },
+        "identity": {
+          "checkpointVersion": "1.1.5",
+          "compiledProgramDigest": "77dd29208c2d8c8c56b469b3c00c9693b6d4445d467e2dc066c3ebe534608cbf",
+          "compilerVersion": "code-delivery-functional-v4",
+          "durability": "sync",
+          "engineVersion": "1.4.15",
+          "executionModel": "langgraph-functional-v1",
+          "inputDigest": "3ab9d99069dc53bdf1c5339b718fb788b1faf14b0cd8e51d438b810fec749548",
+          "registryVersion": "code-delivery-registry-v3",
+          "schemaVersion": "code-delivery-schema-v3",
+          "specHash": "e879182c3e3a5f7e37a2c040bc75b66ded66b54214af330777045e4de2915ed3",
+          "templateVersion": "4"
+        }
+      },
+      "actions": [
+        {
+          "epoch": 0,
+          "node_id": "e0.freeze",
+          "effect_slot": "main",
+          "logical_attempt": 1,
+          "state": "confirmed",
+          "reservation_tokens": 0,
+          "actual_tokens": 0,
+          "accounting_blocked": 0
+        },
+        {
+          "epoch": 0,
+          "node_id": "e0.implement",
+          "effect_slot": "main",
+          "logical_attempt": 1,
+          "state": "confirmed",
+          "reservation_tokens": 32768,
+          "actual_tokens": 2,
+          "accounting_blocked": 0
+        },
+        {
+          "epoch": 0,
+          "node_id": "e0.prepare_review",
+          "effect_slot": "main",
+          "logical_attempt": 1,
+          "state": "confirmed",
+          "reservation_tokens": 0,
+          "actual_tokens": 0,
+          "accounting_blocked": 0
+        },
+        {
+          "epoch": 0,
+          "node_id": "e0.prepare_tests",
+          "effect_slot": "main",
+          "logical_attempt": 1,
+          "state": "confirmed",
+          "reservation_tokens": 0,
+          "actual_tokens": 0,
+          "accounting_blocked": 0
+        },
+        {
+          "epoch": 0,
+          "node_id": "e0.review",
+          "effect_slot": "main",
+          "logical_attempt": 1,
+          "state": "confirmed",
+          "reservation_tokens": 16384,
+          "actual_tokens": 2,
+          "accounting_blocked": 0
+        },
+        {
+          "epoch": 0,
+          "node_id": "e0.tests",
+          "effect_slot": "main",
+          "logical_attempt": 1,
+          "state": "confirmed",
+          "reservation_tokens": 0,
+          "actual_tokens": 0,
+          "accounting_blocked": 0
+        },
+        {
+          "epoch": 0,
+          "node_id": "e0.workspace",
+          "effect_slot": "main",
+          "logical_attempt": 1,
+          "state": "confirmed",
+          "reservation_tokens": 0,
+          "actual_tokens": 0,
+          "accounting_blocked": 0
+        }
+      ],
+      "heldAdmissions": 0,
+      "joinCount": 1,
+      "epochs": [
+        {
+          "graph_run_id": "49dcb49b-297c-4517-bcbb-35cd14e12fd6",
+          "epoch": 0,
+          "join_ref": null,
+          "generation": 1,
+          "created_at": 1789486441032
+        }
+      ],
+      "launchGenerations": [
+        1
+      ],
+      "failedReturnCount": 0
+    },
+    {
+      "fixtureRoot": "/Volumes/AIMATE_WORK/tmp/g21/g21-delivery-koSkVN",
+      "run": {
+        "graph_run_id": "cc370b3d-19af-4c82-ad47-799eb0eb1c5f",
+        "status": "ready",
+        "generation": 1,
+        "created_at": 1789486447835,
+        "spec": {
+          "input": {
+            "acceptanceRef": "acceptance",
+            "baseRevision": "2d57f20410c6ccd2dd2209d53a6bc0ed283fe433",
+            "repositoryRef": "repo",
+            "taskRef": "task"
+          },
+          "limits": {
+            "deadlineSeconds": 120,
+            "maxActionStarts": 22,
+            "maxBranchAttempts": 2,
+            "maxConcurrentReaders": 2,
+            "maxConcurrentWritersPerRepo": 1,
+            "maxEpochs": 1,
+            "tokenReservationLimit": 200000
+          },
+          "publication": "artifact_only",
+          "schemaVersion": 1,
+          "template": "code-delivery-v1"
+        },
+        "identity": {
+          "checkpointVersion": "1.1.5",
+          "compiledProgramDigest": "1341a30fb154aa57aef63d25c76e6895b6e2bdc44a5aa1f6241a917cfcdea5b5",
+          "compilerVersion": "code-delivery-functional-v4",
+          "durability": "sync",
+          "engineVersion": "1.4.15",
+          "executionModel": "langgraph-functional-v1",
+          "inputDigest": "5d1d3d4ddafb1407740b7a06ecc7e5a65fe28efab3af1ff52b226631ca17ae29",
+          "registryVersion": "code-delivery-registry-v3",
+          "schemaVersion": "code-delivery-schema-v3",
+          "specHash": "f641d1a0c60454e9ac820a8f7dbbbcb11095ae85e2c248d0ca060176eaa3a8da",
+          "templateVersion": "4"
+        }
+      },
+      "actions": [
+        {
+          "epoch": 0,
+          "node_id": "e0.freeze",
+          "effect_slot": "main",
+          "logical_attempt": 1,
+          "state": "confirmed",
+          "reservation_tokens": 0,
+          "actual_tokens": 0,
+          "accounting_blocked": 0
+        },
+        {
+          "epoch": 0,
+          "node_id": "e0.implement",
+          "effect_slot": "main",
+          "logical_attempt": 1,
+          "state": "confirmed",
+          "reservation_tokens": 32768,
+          "actual_tokens": 2,
+          "accounting_blocked": 0
+        },
+        {
+          "epoch": 0,
+          "node_id": "e0.prepare_review",
+          "effect_slot": "main",
+          "logical_attempt": 1,
+          "state": "confirmed",
+          "reservation_tokens": 0,
+          "actual_tokens": 0,
+          "accounting_blocked": 0
+        },
+        {
+          "epoch": 0,
+          "node_id": "e0.prepare_tests",
+          "effect_slot": "main",
+          "logical_attempt": 1,
+          "state": "confirmed",
+          "reservation_tokens": 0,
+          "actual_tokens": 0,
+          "accounting_blocked": 0
+        },
+        {
+          "epoch": 0,
+          "node_id": "e0.review",
+          "effect_slot": "main",
+          "logical_attempt": 1,
+          "state": "confirmed",
+          "reservation_tokens": 16384,
+          "actual_tokens": 2,
+          "accounting_blocked": 0
+        },
+        {
+          "epoch": 0,
+          "node_id": "e0.tests",
+          "effect_slot": "main",
+          "logical_attempt": 1,
+          "state": "confirmed",
+          "reservation_tokens": 0,
+          "actual_tokens": 0,
+          "accounting_blocked": 0
+        },
+        {
+          "epoch": 0,
+          "node_id": "e0.workspace",
+          "effect_slot": "main",
+          "logical_attempt": 1,
+          "state": "confirmed",
+          "reservation_tokens": 0,
+          "actual_tokens": 0,
+          "accounting_blocked": 0
+        }
+      ],
+      "heldAdmissions": 0,
+      "joinCount": 1,
+      "epochs": [
+        {
+          "graph_run_id": "cc370b3d-19af-4c82-ad47-799eb0eb1c5f",
+          "epoch": 0,
+          "join_ref": null,
+          "generation": 1,
+          "created_at": 1789486447837
+        }
+      ],
+      "launchGenerations": [
+        1
+      ],
+      "failedReturnCount": 0
+    },
+    {
+      "fixtureRoot": "/Volumes/AIMATE_WORK/tmp/g21/g21-delivery-rKJJqJ",
+      "run": {
+        "graph_run_id": "76a05ed8-fe17-476b-936e-c795618d52ad",
+        "status": "ready",
+        "generation": 2,
+        "created_at": 1789486453279,
+        "spec": {
+          "input": {
+            "acceptanceRef": "acceptance",
+            "baseRevision": "5737802c3b104011c10d21d2b3977b6d5182e8bf",
+            "repositoryRef": "repo",
+            "taskRef": "task"
+          },
+          "limits": {
+            "deadlineSeconds": 120,
+            "maxActionStarts": 22,
+            "maxBranchAttempts": 2,
+            "maxConcurrentReaders": 2,
+            "maxConcurrentWritersPerRepo": 1,
+            "maxEpochs": 2,
+            "tokenReservationLimit": 200000
+          },
+          "publication": "artifact_only",
+          "schemaVersion": 1,
+          "template": "code-delivery-v1"
+        },
+        "identity": {
+          "checkpointVersion": "1.1.5",
+          "compiledProgramDigest": "ba54b92bed8c3f4d0f0e824d9e9b8ab86771b6686cb87890be0fac05cfbcba2c",
+          "compilerVersion": "code-delivery-functional-v4",
+          "durability": "sync",
+          "engineVersion": "1.4.15",
+          "executionModel": "langgraph-functional-v1",
+          "inputDigest": "00a08449e268b8e997077672fe19922525600cfa22cde3dcc9d9b365e27e7f97",
+          "registryVersion": "code-delivery-registry-v3",
+          "schemaVersion": "code-delivery-schema-v3",
+          "specHash": "a2e29255628ef2446433ad70730597595c2bee5ae983a4e9dd12940534d604ca",
+          "templateVersion": "4"
+        }
+      },
+      "actions": [
+        {
+          "epoch": 0,
+          "node_id": "e0.freeze",
+          "effect_slot": "main",
+          "logical_attempt": 1,
+          "state": "confirmed",
+          "reservation_tokens": 0,
+          "actual_tokens": 0,
+          "accounting_blocked": 0
+        },
+        {
+          "epoch": 0,
+          "node_id": "e0.implement",
+          "effect_slot": "main",
+          "logical_attempt": 1,
+          "state": "confirmed",
+          "reservation_tokens": 32768,
+          "actual_tokens": 2,
+          "accounting_blocked": 0
+        },
+        {
+          "epoch": 0,
+          "node_id": "e0.prepare_review",
+          "effect_slot": "main",
+          "logical_attempt": 1,
+          "state": "confirmed",
+          "reservation_tokens": 0,
+          "actual_tokens": 0,
+          "accounting_blocked": 0
+        },
+        {
+          "epoch": 0,
+          "node_id": "e0.prepare_tests",
+          "effect_slot": "main",
+          "logical_attempt": 1,
+          "state": "confirmed",
+          "reservation_tokens": 0,
+          "actual_tokens": 0,
+          "accounting_blocked": 0
+        },
+        {
+          "epoch": 0,
+          "node_id": "e0.review",
+          "effect_slot": "main",
+          "logical_attempt": 1,
+          "state": "confirmed",
+          "reservation_tokens": 16384,
+          "actual_tokens": 2,
+          "accounting_blocked": 0
+        },
+        {
+          "epoch": 0,
+          "node_id": "e0.tests",
+          "effect_slot": "main",
+          "logical_attempt": 1,
+          "state": "confirmed",
+          "reservation_tokens": 0,
+          "actual_tokens": 0,
+          "accounting_blocked": 0
+        },
+        {
+          "epoch": 0,
+          "node_id": "e0.workspace",
+          "effect_slot": "main",
+          "logical_attempt": 1,
+          "state": "confirmed",
+          "reservation_tokens": 0,
+          "actual_tokens": 0,
+          "accounting_blocked": 0
+        },
+        {
+          "epoch": 1,
+          "node_id": "e1.freeze",
+          "effect_slot": "main",
+          "logical_attempt": 1,
+          "state": "confirmed",
+          "reservation_tokens": 0,
+          "actual_tokens": 0,
+          "accounting_blocked": 0
+        },
+        {
+          "epoch": 1,
+          "node_id": "e1.prepare_review",
+          "effect_slot": "main",
+          "logical_attempt": 1,
+          "state": "confirmed",
+          "reservation_tokens": 0,
+          "actual_tokens": 0,
+          "accounting_blocked": 0
+        },
+        {
+          "epoch": 1,
+          "node_id": "e1.prepare_tests",
+          "effect_slot": "main",
+          "logical_attempt": 1,
+          "state": "confirmed",
+          "reservation_tokens": 0,
+          "actual_tokens": 0,
+          "accounting_blocked": 0
+        },
+        {
+          "epoch": 1,
+          "node_id": "e1.repair",
+          "effect_slot": "main",
+          "logical_attempt": 1,
+          "state": "confirmed",
+          "reservation_tokens": 32768,
+          "actual_tokens": 2,
+          "accounting_blocked": 0
+        },
+        {
+          "epoch": 1,
+          "node_id": "e1.review",
+          "effect_slot": "main",
+          "logical_attempt": 1,
+          "state": "confirmed",
+          "reservation_tokens": 16384,
+          "actual_tokens": 2,
+          "accounting_blocked": 0
+        },
+        {
+          "epoch": 1,
+          "node_id": "e1.tests",
+          "effect_slot": "main",
+          "logical_attempt": 1,
+          "state": "confirmed",
+          "reservation_tokens": 0,
+          "actual_tokens": 0,
+          "accounting_blocked": 0
+        },
+        {
+          "epoch": 1,
+          "node_id": "e1.workspace",
+          "effect_slot": "main",
+          "logical_attempt": 1,
+          "state": "confirmed",
+          "reservation_tokens": 0,
+          "actual_tokens": 0,
+          "accounting_blocked": 0
+        }
+      ],
+      "heldAdmissions": 0,
+      "joinCount": 2,
+      "epochs": [
+        {
+          "graph_run_id": "76a05ed8-fe17-476b-936e-c795618d52ad",
+          "epoch": 0,
+          "join_ref": null,
+          "generation": 1,
+          "created_at": 1789486453280
+        },
+        {
+          "graph_run_id": "76a05ed8-fe17-476b-936e-c795618d52ad",
+          "epoch": 1,
+          "join_ref": "graph-join:f9d05380f4389b297f9dae4d01e0424377414f426f3480d761c2a4530f72b966",
+          "generation": 2,
+          "created_at": 1789486458734
+        }
+      ],
+      "launchGenerations": [
+        1,
+        2
+      ],
+      "failedReturnCount": 0
+    },
+    {
+      "fixtureRoot": "/Volumes/AIMATE_WORK/tmp/g21/g21-delivery-6eU6dx",
+      "run": {
+        "graph_run_id": "d80e090f-0440-44e8-9e96-34f707aac4cd",
+        "status": "ready",
+        "generation": 1,
+        "created_at": 1789486464173,
+        "spec": {
+          "input": {
+            "acceptanceRef": "acceptance",
+            "baseRevision": "e85dfa89f05e7edfe69087782a85d29974a03553",
+            "repositoryRef": "repo",
+            "taskRef": "task"
+          },
+          "limits": {
+            "deadlineSeconds": 120,
+            "maxActionStarts": 22,
+            "maxBranchAttempts": 2,
+            "maxConcurrentReaders": 2,
+            "maxConcurrentWritersPerRepo": 1,
+            "maxEpochs": 1,
+            "tokenReservationLimit": 200000
+          },
+          "publication": "artifact_only",
+          "schemaVersion": 1,
+          "template": "code-delivery-v1"
+        },
+        "identity": {
+          "checkpointVersion": "1.1.5",
+          "compiledProgramDigest": "811bc78f7274299dd90b10e3b427bc094f2dbcd7a80f04b8d51e6a953c5948de",
+          "compilerVersion": "code-delivery-functional-v4",
+          "durability": "sync",
+          "engineVersion": "1.4.15",
+          "executionModel": "langgraph-functional-v1",
+          "inputDigest": "aa314f3adcf8cbbabf70ed6e056ff7822f8613acfcd005b82209cdaf50d16908",
+          "registryVersion": "code-delivery-registry-v3",
+          "schemaVersion": "code-delivery-schema-v3",
+          "specHash": "b5e2bfe8d63aa8ad85df5caf6cfc65526e524e76fb0a82ca2e6bb42e5af76bc3",
+          "templateVersion": "4"
+        }
+      },
+      "actions": [
+        {
+          "epoch": 0,
+          "node_id": "e0.freeze",
+          "effect_slot": "main",
+          "logical_attempt": 1,
+          "state": "confirmed",
+          "reservation_tokens": 0,
+          "actual_tokens": 0,
+          "accounting_blocked": 0
+        },
+        {
+          "epoch": 0,
+          "node_id": "e0.implement",
+          "effect_slot": "main",
+          "logical_attempt": 1,
+          "state": "confirmed",
+          "reservation_tokens": 32768,
+          "actual_tokens": 2,
+          "accounting_blocked": 0
+        },
+        {
+          "epoch": 0,
+          "node_id": "e0.prepare_review",
+          "effect_slot": "main",
+          "logical_attempt": 1,
+          "state": "confirmed",
+          "reservation_tokens": 0,
+          "actual_tokens": 0,
+          "accounting_blocked": 0
+        },
+        {
+          "epoch": 0,
+          "node_id": "e0.prepare_review",
+          "effect_slot": "retry-2",
+          "logical_attempt": 1,
+          "state": "confirmed",
+          "reservation_tokens": 0,
+          "actual_tokens": 0,
+          "accounting_blocked": 0
+        },
+        {
+          "epoch": 0,
+          "node_id": "e0.prepare_tests",
+          "effect_slot": "main",
+          "logical_attempt": 1,
+          "state": "confirmed",
+          "reservation_tokens": 0,
+          "actual_tokens": 0,
+          "accounting_blocked": 0
+        },
+        {
+          "epoch": 0,
+          "node_id": "e0.review",
+          "effect_slot": "main",
+          "logical_attempt": 1,
+          "state": "failed",
+          "reservation_tokens": 16384,
+          "actual_tokens": 2,
+          "accounting_blocked": 0
+        },
+        {
+          "epoch": 0,
+          "node_id": "e0.review",
+          "effect_slot": "main",
+          "logical_attempt": 2,
+          "state": "confirmed",
+          "reservation_tokens": 16384,
+          "actual_tokens": 2,
+          "accounting_blocked": 0
+        },
+        {
+          "epoch": 0,
+          "node_id": "e0.tests",
+          "effect_slot": "main",
+          "logical_attempt": 1,
+          "state": "confirmed",
+          "reservation_tokens": 0,
+          "actual_tokens": 0,
+          "accounting_blocked": 0
+        },
+        {
+          "epoch": 0,
+          "node_id": "e0.workspace",
+          "effect_slot": "main",
+          "logical_attempt": 1,
+          "state": "confirmed",
+          "reservation_tokens": 0,
+          "actual_tokens": 0,
+          "accounting_blocked": 0
+        }
+      ],
+      "heldAdmissions": 0,
+      "joinCount": 1,
+      "epochs": [
+        {
+          "graph_run_id": "d80e090f-0440-44e8-9e96-34f707aac4cd",
+          "epoch": 0,
+          "join_ref": null,
+          "generation": 1,
+          "created_at": 1789486464174
+        }
+      ],
+      "launchGenerations": [
+        1
+      ],
+      "failedReturnCount": 0
+    },
+    {
+      "fixtureRoot": "/Volumes/AIMATE_WORK/tmp/g21/g21-delivery-qBTYhF",
+      "run": {
+        "graph_run_id": "f90d2c1e-fecf-4554-8928-bdb2b843244b",
+        "status": "failed",
+        "generation": 1,
+        "created_at": 1789486471221,
+        "spec": {
+          "input": {
+            "acceptanceRef": "acceptance",
+            "baseRevision": "39a178587eeffdf4df018ab7dbda030ba111d18c",
+            "repositoryRef": "repo",
+            "taskRef": "task"
+          },
+          "limits": {
+            "deadlineSeconds": 120,
+            "maxActionStarts": 22,
+            "maxBranchAttempts": 2,
+            "maxConcurrentReaders": 2,
+            "maxConcurrentWritersPerRepo": 1,
+            "maxEpochs": 1,
+            "tokenReservationLimit": 200000
+          },
+          "publication": "artifact_only",
+          "schemaVersion": 1,
+          "template": "code-delivery-v1"
+        },
+        "identity": {
+          "checkpointVersion": "1.1.5",
+          "compiledProgramDigest": "d11157bffa8a0db303229cfa436a17261df5dfef72371f6fb35aae42866af50c",
+          "compilerVersion": "code-delivery-functional-v4",
+          "durability": "sync",
+          "engineVersion": "1.4.15",
+          "executionModel": "langgraph-functional-v1",
+          "inputDigest": "adc0a6bc3aa4b11e69a2b087e444f45bb0b61db82ab21ce99b982db3c7b83674",
+          "registryVersion": "code-delivery-registry-v3",
+          "schemaVersion": "code-delivery-schema-v3",
+          "specHash": "08dfafe123e97994d04339e54eba34bf750009947aa93fcf41886868f3b8787a",
+          "templateVersion": "4"
+        }
+      },
+      "actions": [
+        {
+          "epoch": 0,
+          "node_id": "e0.freeze",
+          "effect_slot": "main",
+          "logical_attempt": 1,
+          "state": "confirmed",
+          "reservation_tokens": 0,
+          "actual_tokens": 0,
+          "accounting_blocked": 0
+        },
+        {
+          "epoch": 0,
+          "node_id": "e0.implement",
+          "effect_slot": "main",
+          "logical_attempt": 1,
+          "state": "confirmed",
+          "reservation_tokens": 32768,
+          "actual_tokens": 2,
+          "accounting_blocked": 0
+        },
+        {
+          "epoch": 0,
+          "node_id": "e0.prepare_review",
+          "effect_slot": "main",
+          "logical_attempt": 1,
+          "state": "confirmed",
+          "reservation_tokens": 0,
+          "actual_tokens": 0,
+          "accounting_blocked": 0
+        },
+        {
+          "epoch": 0,
+          "node_id": "e0.prepare_review",
+          "effect_slot": "retry-2",
+          "logical_attempt": 1,
+          "state": "confirmed",
+          "reservation_tokens": 0,
+          "actual_tokens": 0,
+          "accounting_blocked": 0
+        },
+        {
+          "epoch": 0,
+          "node_id": "e0.prepare_tests",
+          "effect_slot": "main",
+          "logical_attempt": 1,
+          "state": "confirmed",
+          "reservation_tokens": 0,
+          "actual_tokens": 0,
+          "accounting_blocked": 0
+        },
+        {
+          "epoch": 0,
+          "node_id": "e0.review",
+          "effect_slot": "main",
+          "logical_attempt": 1,
+          "state": "failed",
+          "reservation_tokens": 16384,
+          "actual_tokens": 2,
+          "accounting_blocked": 0
+        },
+        {
+          "epoch": 0,
+          "node_id": "e0.review",
+          "effect_slot": "main",
+          "logical_attempt": 2,
+          "state": "failed",
+          "reservation_tokens": 16384,
+          "actual_tokens": 2,
+          "accounting_blocked": 0
+        },
+        {
+          "epoch": 0,
+          "node_id": "e0.tests",
+          "effect_slot": "main",
+          "logical_attempt": 1,
+          "state": "confirmed",
+          "reservation_tokens": 0,
+          "actual_tokens": 0,
+          "accounting_blocked": 0
+        },
+        {
+          "epoch": 0,
+          "node_id": "e0.workspace",
+          "effect_slot": "main",
+          "logical_attempt": 1,
+          "state": "confirmed",
+          "reservation_tokens": 0,
+          "actual_tokens": 0,
+          "accounting_blocked": 0
+        }
+      ],
+      "heldAdmissions": 0,
+      "joinCount": 0,
+      "epochs": [
+        {
+          "graph_run_id": "f90d2c1e-fecf-4554-8928-bdb2b843244b",
+          "epoch": 0,
+          "join_ref": null,
+          "generation": 1,
+          "created_at": 1789486471222
+        }
+      ],
+      "launchGenerations": [
+        1
+      ],
+      "failedReturnCount": 0
+    },
+    {
+      "fixtureRoot": "/Volumes/AIMATE_WORK/tmp/g21/g21-delivery-VC7BKP",
+      "run": {
+        "graph_run_id": "e771dbac-02e2-4a4c-9642-b423300206a0",
+        "status": "failed",
+        "generation": 1,
+        "created_at": 1789486478320,
+        "spec": {
+          "input": {
+            "acceptanceRef": "acceptance",
+            "baseRevision": "9d2f769fad225a51bc56b4fc63dd9207be265694",
+            "repositoryRef": "repo",
+            "taskRef": "task"
+          },
+          "limits": {
+            "deadlineSeconds": 120,
+            "maxActionStarts": 22,
+            "maxBranchAttempts": 2,
+            "maxConcurrentReaders": 2,
+            "maxConcurrentWritersPerRepo": 1,
+            "maxEpochs": 1,
+            "tokenReservationLimit": 200000
+          },
+          "publication": "artifact_only",
+          "schemaVersion": 1,
+          "template": "code-delivery-v1"
+        },
+        "identity": {
+          "checkpointVersion": "1.1.5",
+          "compiledProgramDigest": "6e48d878477a23aea360bbc1b81c0e5bf259728c15be4132c18e1f40da7d7c75",
+          "compilerVersion": "code-delivery-functional-v4",
+          "durability": "sync",
+          "engineVersion": "1.4.15",
+          "executionModel": "langgraph-functional-v1",
+          "inputDigest": "02d5add11c1e5b6331e1f38cfbf1385b002e7414c579e20b0717772549d31efa",
+          "registryVersion": "code-delivery-registry-v3",
+          "schemaVersion": "code-delivery-schema-v3",
+          "specHash": "5376462a639a38507cc2a3e095f9be13ffb666fe7e26ef233c0dddd90169333d",
+          "templateVersion": "4"
+        }
+      },
+      "actions": [
+        {
+          "epoch": 0,
+          "node_id": "e0.freeze",
+          "effect_slot": "main",
+          "logical_attempt": 1,
+          "state": "confirmed",
+          "reservation_tokens": 0,
+          "actual_tokens": 0,
+          "accounting_blocked": 0
+        },
+        {
+          "epoch": 0,
+          "node_id": "e0.implement",
+          "effect_slot": "main",
+          "logical_attempt": 1,
+          "state": "confirmed",
+          "reservation_tokens": 32768,
+          "actual_tokens": 2,
+          "accounting_blocked": 0
+        },
+        {
+          "epoch": 0,
+          "node_id": "e0.prepare_review",
+          "effect_slot": "main",
+          "logical_attempt": 1,
+          "state": "confirmed",
+          "reservation_tokens": 0,
+          "actual_tokens": 0,
+          "accounting_blocked": 0
+        },
+        {
+          "epoch": 0,
+          "node_id": "e0.prepare_tests",
+          "effect_slot": "main",
+          "logical_attempt": 1,
+          "state": "confirmed",
+          "reservation_tokens": 0,
+          "actual_tokens": 0,
+          "accounting_blocked": 0
+        },
+        {
+          "epoch": 0,
+          "node_id": "e0.review",
+          "effect_slot": "main",
+          "logical_attempt": 1,
+          "state": "confirmed",
+          "reservation_tokens": 16384,
+          "actual_tokens": 2,
+          "accounting_blocked": 0
+        },
+        {
+          "epoch": 0,
+          "node_id": "e0.tests",
+          "effect_slot": "main",
+          "logical_attempt": 1,
+          "state": "confirmed",
+          "reservation_tokens": 0,
+          "actual_tokens": 0,
+          "accounting_blocked": 0
+        },
+        {
+          "epoch": 0,
+          "node_id": "e0.workspace",
+          "effect_slot": "main",
+          "logical_attempt": 1,
+          "state": "confirmed",
+          "reservation_tokens": 0,
+          "actual_tokens": 0,
+          "accounting_blocked": 0
+        }
+      ],
+      "heldAdmissions": 0,
+      "joinCount": 1,
+      "epochs": [
+        {
+          "graph_run_id": "e771dbac-02e2-4a4c-9642-b423300206a0",
+          "epoch": 0,
+          "join_ref": null,
+          "generation": 1,
+          "created_at": 1789486478322
+        }
+      ],
+      "launchGenerations": [
+        1
+      ],
+      "failedReturnCount": 0
+    }
+  ]
+}

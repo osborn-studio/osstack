@@ -1,0 +1,5 @@
+$ tsc -p .
+src/join.test.ts(40,3): error TS2322: Type '"tampered"' is not assignable to type '"review" | "tests"'.
+/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/graph:
+[ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL] @osstack/graph@0.1.0 build: `tsc -p .`
+Exit status 2

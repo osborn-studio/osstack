@@ -1,0 +1,4 @@
+import { LoopEngine } from '/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/loop/dist/index.js';
+const root = '/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation';
+const result = await new LoopEngine({ workspacePath: root, stateFilePath: '/Volumes/AIMATE_WORK/tmp/g21/actor-loop-state.json', markdownPath: '/Volumes/AIMATE_WORK/tmp/g21/actor-loop-state.md', sources: [], inputTasks: [{ task_id: 'G21-actor-focused-20260915-r4', capability: 'code.write', prompt: 'Execute G21 focused delivery checks', source: 'manual', priority: 100 }], skipCompletedTasks: false, executeCommand: 'pnpm --filter @osstack/graph build', verifyCommands: ['pnpm --filter @osstack/cli exec vitest run src/graph-delivery.integration.test.ts --maxWorkers=1 > /Volumes/AIMATE_WORK/tmp/g21/loop-delivery-verifier.log 2>&1'], commandTimeoutMs: 240000 }).runOnce();
+console.log(JSON.stringify(result));

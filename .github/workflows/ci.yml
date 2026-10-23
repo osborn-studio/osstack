@@ -21,9 +21,19 @@ concurrency:
 
 jobs:
   check:
+    needs: graph-macos-fixtures
+    if: ${{ always() }}
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    # The integrated full suite takes ~14 minutes before the existing package
+    # install / release smokes. Keep their verification, and budget the whole
+    # job separately from unchanged per-test and startup latency limits.
+    timeout-minutes: 35
     steps:
+      - name: Require macOS Graph fixture success
+        env:
+          MACOS_GRAPH_RESULT: ${{ needs.graph-macos-fixtures.result }}
+        run: test "$MACOS_GRAPH_RESULT" = success
+
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
@@ -227,3 +237,62 @@ jobs:
           DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
           OSSTACK_NEAT_DEEPSEEK_MODEL: ${{ vars.OSSTACK_NEAT_DEEPSEEK_MODEL }}
         run: node scripts/smoke-neat-semantic-live.mjs --provider deepseek-no-tools
+
+  graph-macos-fixtures:
+    runs-on: macos-14
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ['22', '24']
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: ${{ matrix.node }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @osstack/cli... build
+      # /tmp is an alias on macOS. Fixtures must canonicalize their roots;
+      # production path-identity guards must continue rejecting substitutions.
+      - name: Graph fixtures through macOS temporary-path alias
+        env:
+          TMPDIR: /tmp
+          OSSTACK_HOME: ${{ runner.temp }}/graph-macos-fixtures-home
+        run: |
+          pnpm --filter @osstack/graph exec vitest run src/functional-entry.test.ts
+          pnpm --filter @osstack/cli exec vitest run src/graph-action-freeze.test.ts src/graph-contained-recovery.test.ts src/graph-delivery-adversarial.test.ts --maxWorkers=1
+
+  graph-runtime-matrix:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ['20.6.0', '22.23.1']
+    steps:
+      - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22.23.1'
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      # pnpm 11 is a build tool requiring recent Node; exercise the runtime
+      # directly under the declared minimum with its matching SQLite ABI.
+      - uses: actions/setup-node@v6
+        with:
+          node-version: ${{ matrix.node }}
+      - run: npm install --prefix "$RUNNER_TEMP/graph-gyp" node-gyp@11.5.0
+      - name: Build SQLite for runtime ABI
+        run: |
+          cd "$(node -p 'require("node:path").dirname(require.resolve("better-sqlite3/package.json", {paths:["./packages/core"]}))')"
+          node "$RUNNER_TEMP/graph-gyp/node_modules/node-gyp/bin/node-gyp.js" rebuild --release
+      - name: Graph worker and durable SQLite runtime
+        env:
+          OSSTACK_HOME: ${{ runner.temp }}/graph-runtime-home
+          TMPDIR: /tmp
+        run: node node_modules/vitest/vitest.mjs run packages/graph/src packages/core/src/state/graph-migration-lineage.test.ts packages/core/src/state/graph-checkpoints.test.ts packages/cli/src/graph-worker-manager.test.ts packages/cli/src/graph-rpc.test.ts packages/cli/src/graph-compatibility.integration.test.ts --maxWorkers=1

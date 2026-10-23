@@ -1,0 +1,21 @@
+import os, json, subprocess, hashlib
+from pathlib import Path
+root=Path('/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation')
+base=Path('/tmp/osstack-graph-c2-current-path.txt').read_text().strip(); base=Path(base)
+old=Path('/tmp/osstack-graph-kernel-current-path.txt').read_text().strip()
+files=sorted([root/'scripts/probe-graph-c2.mjs',*root.glob('scripts/fixtures/graph-c2-*.mjs'),*root.glob('packages/graph/src/*.ts')])
+def hashes():return {str(p.relative_to(root)):hashlib.sha256(p.read_bytes()).hexdigest() for p in files}
+before=hashes(); results=[]
+for label,node in [('node20',old+'/compat/node-v20.20.2-darwin-arm64/bin/node'),('node22','/opt/homebrew/opt/node@22/bin/node'),('node20-floor',old+'/compat/node-v20.6.0-darwin-arm64/bin/node')]:
+ target=base/('final-'+label);target.mkdir(exist_ok=True)
+ env={**os.environ,'OSSTACK_HOME':str(base/'home'),'GRAPH_C2_EVIDENCE':str(target),'PATH':str(Path(node).parent)+':'+os.environ['PATH']}
+ row={'runtime':label,'node':subprocess.check_output([node,'-v'],text=True).strip()}
+ checks=[('probe',[node,'scripts/probe-graph-c2.mjs']),('helpers',[node,'--test',*[str(p.relative_to(root)) for p in root.glob('scripts/fixtures/graph-c2-*.test.mjs')]]),('graph',[node,str(root/'node_modules/vitest/vitest.mjs'),'run'],root/'packages/graph')]
+ for name,args,*cwd in checks:
+  with (target/(name+'.txt')).open('w') as log:r=subprocess.run(args,cwd=cwd[0] if cwd else root,env=env,stdout=log,stderr=subprocess.STDOUT,timeout=180)
+  row[name+'ExitCode']=r.returncode
+  if r.returncode:raise RuntimeError(str(row))
+ row.update(json.loads((target/'summary.json').read_text()));row['sourceStableDuringRun']=hashes()==before;results.append(row)
+ print(json.dumps({k:v for k,v in row.items() if k!='versions'}),flush=True)
+ if not row['sourceStableDuringRun']:raise RuntimeError('source changed during validation')
+(base/'evidence/runtime-final.json').write_text(json.dumps({'sourceBefore':before,'runs':results},indent=2)+'\n')

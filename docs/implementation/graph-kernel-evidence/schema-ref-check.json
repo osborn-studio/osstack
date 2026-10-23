@@ -1,0 +1,6 @@
+{
+  "schema": "packages/protocol/schemas/graph.schema.json",
+  "referenceCount": 128,
+  "allResolved": true,
+  "schemaSha256": "43a0d51c95810dbdf4f0d5b894b6ae01fa08418aafd1030111f729bc18ebeaa0"
+}

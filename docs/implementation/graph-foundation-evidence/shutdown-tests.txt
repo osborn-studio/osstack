@@ -1,0 +1,9 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/loop
+
+ ✓ src/executor.test.ts (112 tests | 108 skipped) 313ms
+
+ Test Files  1 passed (1)
+      Tests  4 passed | 108 skipped (112)
+   Start at  09:04:53
+   Duration  540ms (transform 58ms, setup 0ms, collect 75ms, tests 313ms, environment 0ms, prepare 44ms)

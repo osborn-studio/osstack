@@ -1,0 +1,5 @@
+(node:14333) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+--import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("/Volumes/AIMATE_WORK/tmp/g30-final/import-proof/loader.mjs", pathToFileURL("./"));'
+(Use `node --trace-warnings ...` to show where the warning was created)
+Cloning into '/Volumes/AIMATE_WORK/tmp/g30-final/tmp/g22-rpc-UlpncZ/delivery/d00e5fc9-c3c6-4864-8645-ec0d3ec54f88/writer-0'...
+HEAD is now at e79bb66 base

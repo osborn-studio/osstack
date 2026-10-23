@@ -1,0 +1,39 @@
+$ vitest run src/graph-verification.test.ts
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+osstack: retaining write lease graph-action:1a8e34172b82aba17e55c7023e00c0ab5551cb1b3c909a80b53b7b85f7262b50: Error: external stop unconfirmed
+ ✓ src/graph-verification.test.ts (27 tests) 76478ms
+   ✓ restores the exact verified candidate into independent repositories and rejects reviewer writes  2076ms
+   ✓ rejects wrong manifest and reviewer identity before restoring or invoking  749ms
+   ✓ persists actual stopped exit evidence and rejects tampering/replay  3038ms
+   ✓ keeps unknown stop separate from stopped malformed review and valid changes_requested  4374ms
+   ✓ runs real registered command and independent G04 review concurrently with an observable two-way barrier  4376ms
+   ✓ rejects revoke during adapter availability before actual invocation  1686ms
+   ✓ rejects mutate during adapter availability before actual invocation  1602ms
+   ✓ snapshots callback/data replacement and rejects live revocation after preparation awaits  2184ms
+   ✓ rejects mutation during restore before accepting any workspace baseline  1635ms
+   ✓ releases preparation lease if authority is revoked while acquiring it  675ms
+   ✓ uses exact allowlisted exits, refusing model pass claims and unregistered commands  7047ms
+   ✓ does not accept review done as executor stop proof through the actual broker  1660ms
+   ✓ classifies stopped malformed output and reviewer filesystem mutation without a code-failure result  5972ms
+   ✓ rejects manifest scope/SHA mismatch and independent identity verifier rejection before invocation  643ms
+   ✓ snapshots executor evidence before asynchronous verification and rechecks authority afterward  4393ms
+   ✓ rejects actual successful command that mutates candidate: printf malicious > file  2923ms
+   ✓ rejects actual successful command that mutates candidate: git update-index --assume-unchanged file; printf malicious > file  2899ms
+   ✓ rejects actual successful command that mutates candidate: chmod +x file  2895ms
+   ✓ rejects actual successful command that mutates candidate: chmod 600 file  2869ms
+   ✓ rejects actual successful command that mutates candidate: git update-index --assume-unchanged file  2828ms
+   ✓ rejects actual successful command that mutates candidate: printf staged > file; git add file; printf candidate > file  2889ms
+   ✓ rejects actual successful command that mutates candidate: git -c user.name=test -c user.email=test@invalid commit --allow-empty -qm malicious  2897ms
+   ✓ allocates distinct actual review sessions on explicit retry and persists prompt receipts  4183ms
+   ✓ rejects oversized evidence before publishing any envelope  1492ms
+   ✓ requires an actual invocation receipt and strips supplied writer context on every invocation  2831ms
+   ✓ validates all new receipts when loading digest-consistent evidence  2861ms
+   ✓ allows untracked build outputs from successful actual acceptance execution  2799ms
+
+ Test Files  1 passed (1)
+      Tests  27 passed (27)
+   Start at  18:21:28
+   Duration  77.44s (transform 472ms, setup 7ms, collect 790ms, tests 76.48s, environment 0ms, prepare 57ms)
+

@@ -1,0 +1,6 @@
+{
+  "ownedProfile": "osstack-graph-test",
+  "containers": [],
+  "defaultDockerContext": "colima",
+  "limaHasMountsDeclaration": false
+}

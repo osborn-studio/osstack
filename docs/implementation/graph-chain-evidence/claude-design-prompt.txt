@@ -1,0 +1,1275 @@
+You are Claude Fable 5.1 giving an independent adversarial design review for OSStack G14-G17/C5. Do not use tools or nested skills. Respond Chinese, concise specific P1/P2 blockers with exact counterexample and smallest correction; distinguish implementation bugs from future G18-G29 scope.
+Current C4 accepted. Parent plans G15 recovery store + trusted daemon reconciler, while actual OSStack actors implement G14 worker manager/client and G16 artifact freeze. G14 dedicated framed IPC cap BEFORE JSON parse, bounded requests/logs, live heartbeat lease, exact host registered program/input, only Functional+sync, own AbortController propagated to broker; worker exit alone does not release external producer. G16 full selfcontained git bundle+manifest, verified stopped producers under canonical lease, immutable frozen candidate, persisted worktree retention. Parent will integrate trusted in-process daemon graph-runtime methods only, no public user graph RPC or arbitrary graph compiler yet. Real end-to-end two node registered program+fault windows.
+Proposed G15: new core GraphRecoveryStore, separate from normal GraphActionStore; explicit administrator fence uses same scope/program/generation/owner/revision/time+terminal check but permits expired lease only after supervisor verified exit receipt and independent external stop/workspace quarantine proof. Never change normal stale-generation checks. Persist immutable decision receipt with deterministic interruptId graph-reconcile:<effectKey>, expected original effect generation, idempotency key/payload digest. Applied -> same stable effect confirmed with preserved/max known usage+valid kind/result/receipt; Not applied -> failed with retrySafe only if not cancelled; Unknown -> unknown reserve retained; no blind resend. Trusted CLI reconciler obtains evidence from registered verifier callback (not worker), after awaited verifier rechecks grant/current revision while pinning original owner/generation. Broker retained leases get explicit release-after-reconciliation only with verified stopped+exported/quarantined workspace proof, persist decisions BEFORE release; restart requires actual durable canonical lock ownership verification, never delete a lock by prefix. Preworker/expired cancel and projected waiting/running status via separate evidence-backed admin path; terminal cancelled cannot resume. Current C4 normal GraphRunStore acquires next generation after stop receipt (not itself externally checking effects), parent manager must gate it. First use minimal actual chain, keep scheduler only Functional saver. Challenge smallest complete interface and identify TOCTOU/receipt/retry/identity hazards.
+
+FILE docs/implementation/2026-09-14-graph-effects-next-context.md
+# 下一轮编码上下文：G14–G17 / C5
+
+继续在 `/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation` 的 `codex/graph-runtime-foundation` 工作。C4 验收代码 `36eee05f6bc6ef6aa8148dd9f4e9271e2237d4fc`，G00–G13 完成，14/30。先读 AGENTS.md、[计划](2026-09-13-osstack-graph-upgrade.md)、[任务清单](2026-09-13-osstack-graph-upgrade.tasks.json)、[C4 验收](2026-09-14-graph-effects-completion.md)、[Functional 决策](../design/2026-09-13-graph-functional-runtime.md)。原工作区仍是 graph-readonly-pilot，不覆盖其用户 AGENTS 或源代码。
+
+## 顺序与完成门
+
+1. **G14**：独立 worker-entry 与 manager，真实 IPC client、绑定连接身份、日志隔离、原始帧限长、背压、心跳、取消和单有效代际。启动不能在 daemon 求值 LangGraph 重入口。暂停/取消先停止新动作，等待 worker 和独立 executor 各自证据后才允许接管。
+2. **G15**：可信 unknown/intent/running/result/checkpoint 窗口对账，稳定 interruptId/动作引用；已生效、未生效、仍未知分别处理。不得盲重发。确认取消的终态不能 resume 复活。不要为让测试通过绕开旧代 fencing。
+3. **G16**：可信 freeze 服务与可恢复 candidate 产物，保存 commit/tree/二进制/删除/模式，原 worktree 清理后重建验证。未停旧进程隔离旧目录，未导出产物不能由 finally 删除；迁移编号在最新表后顺延，当前为 27。
+4. **G17 / C5**：通过真实 daemon→worker IPC→broker→一次命令→持久结果跑两节点链。确定性覆盖已确认外部效果→RETURN、最终 checkpoint、恢复再次崩溃、不响应取消。仅实验/测试启用，不能把 MemorySaver 或 C4 存储子进程夹具冒充此链。
+
+G14 依赖 G12/G13；G15 依赖 G14；G16 在已有依赖齐备后可独立设计，但 migrations/daemon 由单负责人串行合入；G17 等 G15/G16。继续用真实 OSStack Loop 执行聚焦卡，配合真实 Claude Fable 5.1 做独立挑战，不以模型评语代替测试。
+
+## 已有接口
+
+- `GraphRunStore` 保存不可变原始 spec、完整 program/input 身份与代际租约。`GraphActionStore` 提供 reserve/get/markRunning/recordOutcome/markUncertain/retry；返回 action、run、budget、created、changed。effectKey 排除 generation，logicalAttempt 仅 ledger 分配，确认结果可重放。unknown/旧代遗留 intent/running 阻止新动作。
+- daemon `await handles.graphActionBroker()` 返回可信进程内 broker；`register(connectionObject, registration)` 固定 scope/run/program/generation/owner/**单一 epoch**/workspace/精确 node-slot-action、执行器与证据映射；`handle(connection, request, {signal})` 执行动作。G14/G18 必须由可信 host 连接/编译注册控制 epoch，不能接受 worker 自行换 epoch。尚无公开 worker RPC。
+- Broker 自己按 `graph-action:${effectKey}` 获取 G10 准入。**不要**在调用外面再取整 run 的 `acquireGraphAdmission`，否则嵌套 writer 死锁。adapter/command 复用 G04 `executeCandidateImplementation`，工作区是可信 handler，freeze 暂拒绝。
+- `GraphCheckpointStore(db, tightenedLimits?).execute(fence, request)` 返回 `{run,response}`。`StartDaemonOptions.graphCheckpointBindings` 为可信 connection→binding；`handles.executeGraphCheckpoint(connection, raw)` 经授权后的同库服务。绑定在 startDaemon 首个 await 前快照；close 拒绝排队未完成请求。
+- `@osstack/graph/checkpointer` 的 `RemoteCheckpointSaver(threadId, transport)` 使用公开 BaseCheckpointSaver 与 G07 codec；`GraphCheckpointTransport` 在 protocol。同 requestId 重试必须同 payload；Saver 不自动重试。每次异步等待后刷新 revision，但固定原 generation/owner/program。schema/codec 有边界，G14 仍需在接收原始帧前限长与背压。
+- `graph-storage.ts` 的 fenced transaction 是 core 内部短同步事务，不公开任意 callback 给 worker。core/daemon 不解码 LangGraph 类；graph 只依赖 protocol + LangGraph，不能反向导入 core/cli/Loop。
+
+## 不可退让的恢复约束
+
+仅 `langgraph-functional-v1` + `durability:sync`。cache 不验证程序/input，host 必须比较完整不可变身份。checkpoint 管调度；ledger 管效果/资源；不增第二套 node FSM。task 函数重入次数、确认外部效果次数、逻辑 join 次数分别验收。
+
+参数错误与已证明未调用可释放；外部状态或证据不确定保留 canonical repo 锁和实际容量，即使有 agent 退出证据，也不能把未导出脏工作区交给新 writer。同执行引用重放及不同引用冲突均转 unknown。当前只允许[C3 离线恢复边界](graph-admission-evidence/recovery-boundary.md)，G15/G16 必须补可信对账与隔离出口。
+
+终端 event、iterator 耗尽、invoke 拒绝、abort、worker/leader 单独退出都不是全部外部效果已停的证明。重新授权在每次新动作、锁后、可用性 await 后执行；authority callback 的非 undefined 值不能充当 grant。broker 同步 authorizer 拒绝 Promise，checkpoint 异步 authorizer 必须 resolve undefined。
+
+pre-worker cancel、expired-worker 管理仍需基于证据的专门路径，不伪造活动 owner 或停机收据。预算从持久原 spec/ledger 计算，重启/新代不得重置。只有可信 host 才能调用 retry，worker 重放不能生成新 attempt；取消和未知不可凭 retrySafe 绕行。
+
+checkpoint quotas 固定上限 1024/32768/32768/64 MiB（checkpoint/write/请求/载荷），只能收紧；读和幂等命中不增长。`octet_length` 在当前 SQLite 3.53.1 验证，G27 对支持矩阵重测；G18 校验模板容量，G28 量事务行扫描/daemon RPC/tick 延迟。WAL NORMAL COMMIT ACK 不作断电保证。false resume 使用 interruptId 映射；单个请求失败不代表后续批次未提交。
+
+## 执行与证据
+
+每次运行开发 CLI/Loop 都显式设置新的隔离 `OSSTACK_HOME` 和短 `TMPDIR`，不能用默认或保留 home。真实 Loop 指定 `sources: []` + `inputTasks`；验收重跑用新 task ID 和 `skipCompletedTasks:false`，避免旧 escalated 记录被跳过后误称成功。最终检查实际 executedTaskCount、completedTasks、outcome、verifier commands，不能只看进程 exit 或 STATE 的旧记录。
+
+C4 证据已归档在 [graph-effects-evidence](graph-effects-evidence/README.md)，临时控制器在该目录有 `.mjs.txt` 副本；重跑必须适配路径。及时保存日志和源摘要，完成后更新卡状态、C5 证据和后续上下文。不要 merge、push、部署或宣称 beta 已可用；G18–G29 保持未完成。
+
+FILE packages/core/src/state/graph-runs.ts
+// Storage contracts only. Status is a projection of checkpoint/broker evidence,
+// never an independent scheduler or node FSM. No engine code is imported here.
+import { createHash, randomUUID } from "node:crypto";
+import type Database from "better-sqlite3";
+import { z } from "zod";
+import { GraphJsonValue, GraphScope, GraphRunState, GraphRequest, StartGraphRequest, computeGraphInputDigest } from "@osstack/protocol";
+import { preflightDiskSpace } from "./db.js";
+
+// biome-ignore lint/suspicious/noControlCharactersInRegex: Reject controls in persisted identity strings.
+const text = z.string().min(1).max(256).refine((s) => s.trim() === s && !/[\u0000-\u001f\u007f-\u009f]/.test(s));
+const counter = z.number().int().min(0).max(Number.MAX_SAFE_INTEGER);
+const digest = z.string().regex(/^[a-f0-9]{64}$/);
+const programSchema = z.object({
+  executionModel: z.literal("langgraph-functional-v1"), durability: z.literal("sync"),
+  engineVersion: text, checkpointVersion: text, templateVersion: text,
+  registryVersion: text, compilerVersion: text, schemaVersion: text, compiledProgramDigest: digest,
+}).strict();
+const identitySchema = programSchema.extend({ specHash: digest, inputDigest: digest });
+export type GraphProgramVersion = z.infer<typeof programSchema>;
+export type GraphProgramIdentity = z.infer<typeof identitySchema>;
+const stoppedSchema = z.object({
+  graphRunId: text, generation: counter.min(1), owner: text, confirmedAt: counter, evidenceRef: text,
+}).strict();
+/** A trusted supervisor's durable exit receipt, NOT a worker claim or an abort result.
+ * Caller must verify the receipt and independently reconcile/stop external actions
+ * and isolate old workspaces before takeover. This store cannot inspect processes. */
+export type GraphStoppedWorkerEvidence = z.infer<typeof stoppedSchema>;
+export const graphRunFenceSchema = z.object({
+  scope: GraphScope, graphRunId: text, expectedGeneration: counter, expectedRevision: counter,
+  expectedOwner: text.nullable(), identity: identitySchema, now: counter,
+}).strict();
+export type GraphRunFence = z.infer<typeof graphRunFenceSchema>;
+export interface GraphLeaseAcquisition extends GraphRunFence {
+  owner: string;
+  leaseExpiresAt: number;
+  stoppedWorker?: GraphStoppedWorkerEvidence;
+}
+export interface GraphLeaseRenewal extends GraphRunFence { leaseExpiresAt: number }
+export interface GraphRunProjection extends GraphRunFence { status: GraphRunState }
+const acquireSchema = graphRunFenceSchema.extend({ owner: text, leaseExpiresAt: counter, stoppedWorker: stoppedSchema.optional() });
+const renewSchema = graphRunFenceSchema.extend({ leaseExpiresAt: counter });
+const projectSchema = graphRunFenceSchema.extend({ status: GraphRunState });
+
+export interface GraphRun {
+  graphRunId: string;
+  scope: GraphScope;
+  source: StartGraphRequest["source"];
+  inputArtifactRef: string;
+  template: StartGraphRequest["spec"]["template"];
+  identity: GraphProgramIdentity;
+  /** Original immutable start spec; null for pre-migration-26 runs. */
+  spec: StartGraphRequest["spec"] | null;
+  status: GraphRunState;
+  generation: number;
+  revision: number;
+  leaseOwner: string | null;
+  leaseExpiresAt: number | null;
+  leaseAcquiredAt: number | null;
+  createdAt: number;
+  updatedAt: number;
+}
+export type GraphRunStorageErrorCode = "RUN_NOT_FOUND" | "IDEMPOTENCY_CONFLICT" | "PROGRAM_IDENTITY_MISMATCH"
+  | "STALE_GENERATION" | "REVISION_CONFLICT" | "OWNER_MISMATCH" | "LEASE_EXPIRED" | "STOPPED_WORKER_REQUIRED"
+  | "STOPPED_WORKER_MISMATCH" | "TERMINAL_RUN" | "INVALID_TIME" | "COUNTER_EXHAUSTED";
+export class GraphRunStorageError extends Error {
+  constructor(public readonly code: GraphRunStorageErrorCode) { super(code); this.name = "GraphRunStorageError"; }
+}
+const fail = (code: GraphRunStorageErrorCode): never => { throw new GraphRunStorageError(code); };
+function canonical(value: unknown): string {
+  if (value === null || typeof value !== "object") return JSON.stringify(value);
+  if (Array.isArray(value)) return `[${value.map(canonical).join(",")}]`;
+  const record = value as Record<string, unknown>;
+  return `{${Object.keys(record).sort().map((k) => `${JSON.stringify(k)}:${canonical(record[k])}`).join(",")}}`;
+}
+function parse<T extends z.ZodTypeAny>(schema: T, value: unknown): z.output<T> {
+  // Bound the decoded object before recursive schema processing, including accessors.
+  return schema.parse(GraphJsonValue.parse(value));
+}
+function increment(value: number): number {
+  if (value === Number.MAX_SAFE_INTEGER) fail("COUNTER_EXHAUSTED");
+  return value + 1;
+}
+interface RunRow {
+  graph_run_id: string; scope_json: string; source_json: string; input_artifact_ref: string; template: GraphRun["template"];
+  spec_json: string | null; identity_json: string; status: GraphRunState; generation: number; revision: number;
+  lease_owner: string | null; lease_expires_at: number | null; lease_acquired_at: number | null; created_at: number; updated_at: number;
+}
+function decode(row: RunRow): GraphRun {
+  return { graphRunId: row.graph_run_id, scope: JSON.parse(row.scope_json) as GraphScope,
+    source: JSON.parse(row.source_json) as StartGraphRequest["source"], inputArtifactRef: row.input_artifact_ref,
+    spec: row.spec_json === null ? null : JSON.parse(row.spec_json) as StartGraphRequest["spec"],
+    template: row.template, identity: JSON.parse(row.identity_json) as GraphProgramIdentity,
+    status: row.status, generation: row.generation, revision: row.revision, leaseOwner: row.lease_owner,
+    leaseExpiresAt: row.lease_expires_at, leaseAcquiredAt: row.lease_acquired_at, createdAt: row.created_at, updatedAt: row.updated_at };
+}
+
+/** Daemon-owned synchronous store. Caller authenticates scope/owner, authorizes every
+ * operation, verifies compiler/artifact identity and supplies trusted epoch-ms time.
+ * Never expose this API directly to worker/request JSON. A matching lease is fencing,
+ * not authorization. G13 must bind checks and checkpoint writes in the SAME transaction. */
+export class GraphRunStore {
+  constructor(private readonly db: Database.Database) {}
+
+  private write<T>(fn: () => T): T {
+    preflightDiskSpace(this.db.name);
+    // Acquire write reservation BEFORE reading: independent connections cannot both
+    // admit the same key or update from the same revision (also avoids WAL upgrades).
+    return this.db.transaction(fn).immediate();
+  }
+
+  get(scopeValue: GraphScope, graphRunId: string): GraphRun | null {
+    const scope = GraphScope.parse(scopeValue);
+    text.parse(graphRunId);
+    const row = this.db.prepare("SELECT * FROM graph_runs WHERE scope_json = ? AND graph_run_id = ?")
+      .get(canonical(scope), graphRunId) as RunRow | undefined;
+    return row ? decode(row) : null;
+  }
+
+  /** Fresh server-generated run ID; one canonical business request per full scope/key.
+   * Metadata is excluded using the protocol digest. Compiler versions/digest are
+   * supplied by trusted compilation; start request/spec digests are computed here. */
+  create(requestValue: StartGraphRequest, versionValue: GraphProgramVersion, nowValue: number): GraphRun {
+    const request = StartGraphRequest.parse(requestValue);
+    const version = parse(programSchema, versionValue);
+    const now = counter.parse(nowValue);
+    const inputDigest = computeGraphInputDigest(request);
+    const identity: GraphProgramIdentity = { ...version, inputDigest,
+      specHash: createHash("sha256").update(`osstack.graph.spec.v1\n${canonical(request.spec)}`).digest("hex") };
+    const scopeJson = canonical(request.scope);
+    return this.write(() => {
+      const prior = this.db.prepare("SELECT graph_run_id, input_digest FROM graph_requests WHERE scope_json = ? AND idempotency_key = ?")
+        .get(scopeJson, request.idempotencyKey) as { graph_run_id: string; input_digest: string } | undefined;
+      if (prior) {
+        if (prior.input_digest !== inputDigest) fail("IDEMPOTENCY_CONFLICT");
+        const run = this.get(request.scope, prior.graph_run_id)!;
+        if (canonical(run.identity) !== canonical(identity)) fail("PROGRAM_IDENTITY_MISMATCH");
+        return run;
+      }
+      const id = randomUUID();
+      this.db.prepare(`INSERT INTO graph_runs (graph_run_id, scope_json, source_json, input_artifact_ref,
+        template, identity_json, spec_json, status, generation, revision, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, 'queued', 0, 0, ?, ?)`)
+        .run(id, scopeJson, canonical(request.source), request.inputArtifactRef, request.spec.template, canonical(identity), canonical(request.spec), now, now);
+      this.db.prepare(`INSERT INTO graph_requests (scope_json, idempotency_key, graph_run_id, input_digest, kind, created_at)
+        VALUES (?, ?, ?, ?, 'start', ?)`).run(scopeJson, request.idempotencyKey, id, inputDigest, now);
+      return this.get(request.scope, id)!;
+    });
+  }
+
+  private checked(input: GraphRunFence, requireLive: boolean): GraphRun {
+    return checkGraphRunFence(this.get(input.scope, input.graphRunId), input, requireLive);
+  }
+
+  acquireLease(value: GraphLeaseAcquisition): GraphRun {
+    const input = parse(acquireSchema, value);
+    return this.write(() => {
+      const run = this.checked(input, false);
+      if (input.leaseExpiresAt <= input.now) fail("INVALID_TIME");
+      if (run.generation > 0) {
+        const stopped = input.stoppedWorker ?? fail("STOPPED_WORKER_REQUIRED");
+        if (stopped.graphRunId !== run.graphRunId || stopped.generation !== run.generation || stopped.owner !== run.leaseOwner
+          || stopped.confirmedAt < run.updatedAt || stopped.confirmedAt > input.now) fail("STOPPED_WORKER_MISMATCH");
+      } else if (input.stoppedWorker) fail("STOPPED_WORKER_MISMATCH");
+      const generation = increment(run.generation);
+      this.db.prepare(`UPDATE graph_runs SET generation = ?, revision = ?, lease_owner = ?, lease_expires_at = ?,
+        lease_acquired_at = ?, updated_at = ? WHERE graph_run_id = ? AND generation = ? AND revision = ?`)
+        .run(generation, increment(run.revision), input.owner, input.leaseExpiresAt, input.now, input.now, run.graphRunId, run.generation, run.revision);
+      this.db.prepare(`INSERT INTO graph_worker_leases (graph_run_id, generation, owner, acquired_at, expires_at, stopped_worker_json)
+        VALUES (?, ?, ?, ?, ?, ?)`).run(run.graphRunId, generation, input.owner, input.now, input.leaseExpiresAt,
+          input.stoppedWorker ? JSON.stringify(input.stoppedWorker) : null);
+      return this.get(input.scope, run.graphRunId)!;
+    });
+  }
+
+  renewLease(value: GraphLeaseRenewal): GraphRun {
+    const input = parse(renewSchema, value);
+    return this.write(() => {
+      const run = this.checked(input, true);
+      if (input.leaseExpiresAt <= input.now || input.leaseExpiresAt < run.leaseExpiresAt!) fail("INVALID_TIME");
+      this.db.prepare(`UPDATE graph_runs SET lease_expires_at = ?, revision = ?, updated_at = ?
+        WHERE graph_run_id = ? AND generation = ? AND revision = ?`)
+        .run(input.leaseExpiresAt, increment(run.revision), input.now, run.graphRunId, run.generation, run.revision);
+      this.db.prepare("UPDATE graph_worker_leases SET expires_at = ? WHERE graph_run_id = ? AND generation = ?")
+        .run(input.leaseExpiresAt, run.graphRunId, run.generation);
+      return this.get(input.scope, run.graphRunId)!;
+    });
+  }
+
+  /** Store an already-authorized resume/cancel decision and its projection together.
+   * Caller verifies interrupt/resume data, cancellation/exit evidence and policy;
+   * this method neither resumes a worker nor sends cancellation. All request kinds
+   * share one scope/key namespace. Replay returns the current run without mutation. */
+  projectRequest(requestValue: Exclude<GraphRequest, StartGraphRequest>, value: GraphRunProjection): GraphRun {
+    const request = GraphRequest.parse(requestValue);
+    const input = parse(projectSchema, value);
+    if (request.kind === "start") throw new Error("Expected resume or cancel request");
+    if (canonical(request.scope) !== canonical(input.scope) || request.graphRunId !== input.graphRunId) fail("RUN_NOT_FOUND");
+    const inputDigest = computeGraphInputDigest(request);
+    const scopeJson = canonical(input.scope);
+    return this.write(() => {
+      const run = this.get(input.scope, input.graphRunId) ?? fail("RUN_NOT_FOUND");
+      // Authenticate/fence before a cache hit, but do not reject a replay just
+      // because its original revision has advanced or the run is now terminal.
+      if (canonical(run.identity) !== canonical(input.identity)) fail("PROGRAM_IDENTITY_MISMATCH");
+      if (run.generation !== input.expectedGeneration) fail("STALE_GENERATION");
+      if (run.leaseOwner !== input.expectedOwner) fail("OWNER_MISMATCH");
+      const prior = this.db.prepare("SELECT graph_run_id, input_digest FROM graph_requests WHERE scope_json = ? AND idempotency_key = ?")
+        .get(scopeJson, request.idempotencyKey) as { graph_run_id: string; input_digest: string } | undefined;
+      if (prior) {
+        if (prior.graph_run_id !== run.graphRunId || prior.input_digest !== inputDigest) fail("IDEMPOTENCY_CONFLICT");
+        return run;
+      }
+      if (request.expectedRevision !== input.expectedRevision) fail("REVISION_CONFLICT");
+      const projected = this.projectInTransaction(input);
+      this.db.prepare(`INSERT INTO graph_requests (scope_json, idempotency_key, graph_run_id, input_digest, kind, created_at)
+        VALUES (?, ?, ?, ?, ?, ?)`).run(scopeJson, request.idempotencyKey, run.graphRunId, inputDigest, request.kind, input.now);
+      return projected;
+    });
+  }
+
+  /** Caller derives status from authoritative execution evidence. There is no
+   * transition map here; only irreversible terminal sealing and transactional CAS. */
+  project(value: GraphRunProjection): GraphRun {
+    const input = parse(projectSchema, value);
+    return this.write(() => this.projectInTransaction(input));
+  }
+
+  private projectInTransaction(input: GraphRunProjection): GraphRun {
+    const run = this.checked(input, true);
+    this.db.prepare(`UPDATE graph_runs SET status = ?, revision = ?, updated_at = ?
+      WHERE graph_run_id = ? AND generation = ? AND revision = ?`)
+      .run(input.status, increment(run.revision), input.now, run.graphRunId, run.generation, run.revision);
+    return this.get(input.scope, run.graphRunId)!;
+  }
+}
+
+/** Internal shared storage check; call only while holding the SQLite write transaction. */
+export function checkGraphRunFence(value: GraphRun | null, input: GraphRunFence, requireLive: boolean): GraphRun {
+  const run = value ?? fail("RUN_NOT_FOUND");
+  if (canonical(run.identity) !== canonical(input.identity)) fail("PROGRAM_IDENTITY_MISMATCH");
+  if (run.generation !== input.expectedGeneration) fail("STALE_GENERATION");
+  if (run.revision !== input.expectedRevision) fail("REVISION_CONFLICT");
+  if (run.leaseOwner !== input.expectedOwner) fail("OWNER_MISMATCH");
+  if (["ready", "failed", "cancelled"].includes(run.status)) fail("TERMINAL_RUN");
+  if (input.now < run.updatedAt) fail("INVALID_TIME");
+  if (requireLive && (run.generation === 0 || run.leaseExpiresAt === null || run.leaseExpiresAt <= input.now)) fail("LEASE_EXPIRED");
+  increment(run.revision);
+  return run;
+}
+
+FILE packages/core/src/state/graph-actions.ts
+// Daemon-owned effect/resource authority, not a node scheduler. Never forward
+// worker JSON to this port: G12 authenticates, authorizes the registry slot and
+// verifies adapter evidence under G10 admission before using these methods.
+import { createHash } from "node:crypto";
+import type Database from "better-sqlite3";
+import { z } from "zod";
+import { GraphEffectIdentity, GraphJsonValue, GraphResult, WorkerActionRequest, computeGraphEffectKey } from "@osstack/protocol";
+import type { GraphRun, GraphRunFence } from "./graph-runs.js";
+import { fencedGraphTransaction } from "./graph-storage.js";
+
+const count = z.number().int().min(0).max(Number.MAX_SAFE_INTEGER);
+// biome-ignore lint/suspicious/noControlCharactersInRegex: Persisted references must reject control characters.
+const ref = z.string().min(1).max(256).refine((v) => v.trim() === v && !/[\u0000-\u001f\u007f-\u009f]/.test(v));
+const keySchema = z.string().regex(/^[a-f0-9]{64}$/);
+const admissionSchema = z.object({ epoch: count.max(2), nodeId: ref, effectSlot: ref,
+  reservationTokens: count, action: z.unknown() }).strict();
+const uncertainSchema = z.object({ state: z.enum(["unknown", "cancel_pending"]), evidenceRef: ref, observedTokens: count }).strict();
+const outcomeSchema = z.discriminatedUnion("state", [
+  z.object({ state: z.literal("confirmed"), evidenceRef: ref, actualTokens: count.nullable(), result: z.unknown() }).strict(),
+  z.object({ state: z.literal("failed"), evidenceRef: ref, actualTokens: count.nullable(), error: z.unknown(), retrySafe: z.boolean() }).strict(),
+]);
+
+/** Host derives epoch/node/slot from the immutable compiled registry and pins its
+ * token cap. This is NOT a worker authorization capability. nodeId identifies the
+ * retry-budget branch: retries of all its slots share maxBranchAttempts per epoch. */
+export interface GraphActionAdmission {
+  epoch: number; nodeId: string; effectSlot: string;
+  action: WorkerActionRequest["action"];
+  reservationTokens: number;
+}
+export type GraphActionOutcomeInput =
+  | { state: "confirmed"; evidenceRef: string; actualTokens: number; result: GraphResult }
+  | { state: "failed"; evidenceRef: string; actualTokens: number; error: GraphJsonValue; retrySafe: boolean };
+export type GraphActionOutcome =
+  | { state: "confirmed"; evidenceRef: string; actualTokens: number | null; result: GraphResult }
+  | { state: "failed"; evidenceRef: string; actualTokens: number | null; error: GraphJsonValue; retrySafe: boolean };
+export type GraphActionUncertainty = z.infer<typeof uncertainSchema>;
+export interface GraphAction {
+  effectKey: string;
+  effect: GraphEffectIdentity;
+  action: WorkerActionRequest["action"];
+  businessDigest: string;
+  generation: number;
+  reservationTokens: number;
+  state: "intent" | "running" | "confirmed" | "failed" | "unknown" | "cancel_pending";
+  executionRef: string | null;
+  outcome: GraphActionOutcome | null;
+  uncertainty: GraphActionUncertainty | null;
+  actualTokens: number | null;
+  observedTokens: number;
+  accountingBlocked: boolean;
+  retrySafe: boolean;
+  createdAt: number;
+  updatedAt: number;
+}
+export interface GraphActionBudget {
+  actionStarts: number;
+  // Exact decimal totals: several independently overrun actions can exceed the
+  // JS safe integer range. Never use SQLite SUM/REAL or round away real usage.
+  reservedTokens: string;
+  chargedTokens: string;
+  accountingBlocked: boolean;
+}
+export interface GraphActionResult {
+  action: GraphAction; run: GraphRun; budget: GraphActionBudget;
+  created: boolean; changed: boolean;
+}
+export type GraphActionStorageErrorCode = "ORIGINAL_BUDGET_MISSING" | "ACTION_NOT_FOUND" | "ACTION_INPUT_CONFLICT"
+  | "UNRESOLVED_ACTION" | "RETRY_NOT_SAFE" | "NOT_CURRENT_ATTEMPT" | "ACTION_GENERATION_MISMATCH"
+  | "INVALID_ACTION_STATE" | "OUTCOME_CONFLICT" | "EXECUTION_CONFLICT" | "EPOCH_BUDGET_EXHAUSTED"
+  | "BRANCH_BUDGET_EXHAUSTED" | "ACTION_BUDGET_EXHAUSTED" | "WALL_CLOCK_BUDGET_EXHAUSTED"
+  | "TOKEN_BUDGET_EXHAUSTED" | "ACCOUNTING_BLOCKED" | "RUN_STOPPING";
+export class GraphActionStorageError extends Error {
+  constructor(public readonly code: GraphActionStorageErrorCode) { super(code); this.name = "GraphActionStorageError"; }
+}
+const fail = (code: GraphActionStorageErrorCode): never => { throw new GraphActionStorageError(code); };
+function canonical(value: unknown): string {
+  if (value === null || typeof value !== "object") return JSON.stringify(value);
+  if (Array.isArray(value)) return `[${value.map(canonical).join(",")}]`;
+  const record = value as Record<string, unknown>;
+  return `{${Object.keys(record).sort().map((k) => `${JSON.stringify(k)}:${canonical(record[k])}`).join(",")}}`;
+}
+interface ActionRow {
+  effect_key: string; effect_json: string; action_json: string; business_digest: string; generation: number;
+  reservation_tokens: number; state: GraphAction["state"]; execution_ref: string | null;
+  outcome_json: string | null; uncertainty_json: string | null; actual_tokens: number | null; observed_tokens: number;
+  accounting_blocked: number; retry_safe: number; created_at: number; updated_at: number;
+}
+function decode(row: ActionRow): GraphAction {
+  return { effectKey: row.effect_key, effect: JSON.parse(row.effect_json) as GraphEffectIdentity,
+    action: JSON.parse(row.action_json) as WorkerActionRequest["action"], businessDigest: row.business_digest,
+    generation: row.generation, reservationTokens: row.reservation_tokens, state: row.state,
+    executionRef: row.execution_ref, outcome: row.outcome_json === null ? null : JSON.parse(row.outcome_json) as GraphActionOutcome,
+    uncertainty: row.uncertainty_json === null ? null : JSON.parse(row.uncertainty_json) as GraphActionUncertainty,
+    actualTokens: row.actual_tokens, observedTokens: row.observed_tokens, accountingBlocked: row.accounting_blocked === 1,
+    retrySafe: row.retry_safe === 1, createdAt: row.created_at, updatedAt: row.updated_at };
+}
+interface Mutation { action: GraphAction; changed: boolean; created: boolean }
+
+export class GraphActionStore {
+  constructor(private readonly db: Database.Database) {}
+
+  private write(fence: GraphRunFence, fn: (run: GraphRun) => Mutation): GraphActionResult {
+    const result = fencedGraphTransaction(this.db, fence, (run) => {
+      if (!run.spec) fail("ORIGINAL_BUDGET_MISSING");
+      const value = fn(run);
+      return { changed: value.changed, value: { ...value, budget: this.budget(run) } };
+    });
+    return { ...result.value, run: result.run };
+  }
+  private find(run: GraphRun, key: string): GraphAction {
+    const row = this.db.prepare("SELECT * FROM graph_actions WHERE graph_run_id = ? AND effect_key = ?")
+      .get(run.graphRunId, key) as ActionRow | undefined;
+    return row ? decode(row) : fail("ACTION_NOT_FOUND");
+  }
+  private current(run: GraphRun, slot: Pick<GraphActionAdmission, "epoch" | "nodeId" | "effectSlot">): GraphAction | null {
+    const row = this.db.prepare(`SELECT * FROM graph_actions WHERE graph_run_id = ? AND epoch = ? AND node_id = ? AND effect_slot = ?
+      ORDER BY logical_attempt DESC LIMIT 1`).get(run.graphRunId, slot.epoch, slot.nodeId, slot.effectSlot) as ActionRow | undefined;
+    return row ? decode(row) : null;
+  }
+  private budget(run: GraphRun): GraphActionBudget {
+    let reserved = 0n; let charged = 0n; let actionStarts = 0; let accountingBlocked = false;
+    // Ledger rows ARE the authoritative budget entries. Derived in the same
+    // transaction, so there is no mutable budget mirror to reset on resume.
+    const rows = this.db.prepare(`SELECT state, reservation_tokens, actual_tokens, observed_tokens, accounting_blocked
+      FROM graph_actions WHERE graph_run_id = ?`).iterate(run.graphRunId) as Iterable<Pick<ActionRow,
+        "state" | "reservation_tokens" | "actual_tokens" | "observed_tokens" | "accounting_blocked">>;
+    for (const row of rows) {
+      actionStarts++;
+      accountingBlocked ||= row.accounting_blocked === 1;
+      if ((row.state === "confirmed" || row.state === "failed") && row.actual_tokens !== null) {
+        // Failed attempts consume their full reservation even if less usage was
+        // reported. Unknown usage never releases capacity.
+        charged += BigInt(row.state === "failed" ? Math.max(row.reservation_tokens, row.actual_tokens) : row.actual_tokens);
+      } else reserved += BigInt(Math.max(row.reservation_tokens, row.observed_tokens));
+    }
+    return { actionStarts, reservedTokens: reserved.toString(), chargedTokens: charged.toString(), accountingBlocked };
+  }
+  private admit(run: GraphRun, slot: GraphActionAdmission, retry: boolean, now: number): void {
+    const limits = run.spec!.limits;
+    if (run.status === "cancel_pending" || run.status === "reconciliation_required") fail("RUN_STOPPING");
+    if (this.db.prepare(`SELECT 1 FROM graph_actions WHERE graph_run_id = ? AND
+      (state IN ('unknown','cancel_pending') OR (state IN ('intent','running') AND generation <> ?)) LIMIT 1`)
+      .get(run.graphRunId, run.generation)) fail("UNRESOLVED_ACTION");
+    const budget = this.budget(run);
+    if (budget.accountingBlocked) fail("ACCOUNTING_BLOCKED");
+    if (slot.epoch >= limits.maxEpochs) fail("EPOCH_BUDGET_EXHAUSTED");
+    if (now - run.createdAt >= limits.deadlineSeconds * 1000) fail("WALL_CLOCK_BUDGET_EXHAUSTED");
+    if (budget.actionStarts >= limits.maxActionStarts) fail("ACTION_BUDGET_EXHAUSTED");
+    if (retry) {
+      const row = this.db.prepare(`SELECT count(*) AS retries FROM graph_actions
+        WHERE graph_run_id = ? AND epoch = ? AND node_id = ? AND logical_attempt > 1`)
+        .get(run.graphRunId, slot.epoch, slot.nodeId) as { retries: number };
+      if (1 + row.retries >= limits.maxBranchAttempts) fail("BRANCH_BUDGET_EXHAUSTED");
+    }
+    if (BigInt(budget.reservedTokens) + BigInt(budget.chargedTokens) + BigInt(slot.reservationTokens) > BigInt(limits.tokenReservationLimit)) {
+      fail("TOKEN_BUDGET_EXHAUSTED");
+    }
+  }
+  private insert(run: GraphRun, input: GraphActionAdmission, businessDigest: string, attempt: number, now: number): Mutation {
+    const effect = GraphEffectIdentity.parse({ schemaVersion: 1, scope: run.scope, graphRunId: run.graphRunId,
+      specHash: run.identity.specHash, epoch: input.epoch, nodeId: input.nodeId, effectSlot: input.effectSlot, logicalAttempt: attempt });
+    const key = computeGraphEffectKey(effect);
+    this.db.prepare(`INSERT INTO graph_actions (effect_key, graph_run_id, epoch, node_id, effect_slot, logical_attempt,
+      effect_json, action_json, business_digest, generation, reservation_tokens, state, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'intent', ?, ?)`).run(key, run.graphRunId, effect.epoch, effect.nodeId,
+        effect.effectSlot, attempt, canonical(effect), canonical(input.action), businessDigest, run.generation, input.reservationTokens, now, now);
+    return { action: this.find(run, key), changed: true, created: true };
+  }
+
+  /** Persist intent/reservation before invocation. Existing slots NEVER allocate
+   * an attempt. Host must markRunning and invoke only when that call changed=true;
+   * a lost response is pending, not permission to invoke again. */
+  reserve(fence: GraphRunFence, value: GraphActionAdmission): GraphActionResult {
+    const parsed = admissionSchema.parse(GraphJsonValue.parse(value));
+    return this.write(fence, (run) => {
+      const action = WorkerActionRequest.parse({ schemaVersion: 1, kind: "worker_action", requestId: "storage",
+        generation: run.generation, scope: run.scope, graphRunId: run.graphRunId, specHash: run.identity.specHash,
+        epoch: parsed.epoch, nodeId: parsed.nodeId, effectSlot: parsed.effectSlot, action: parsed.action }).action;
+      const input = { ...parsed, action };
+      const digest = createHash("sha256").update(`osstack.graph.action.business.v1\n${canonical(action)}`).digest("hex");
+      const prior = this.current(run, input);
+      if (prior) {
+        if (prior.businessDigest !== digest || prior.reservationTokens !== input.reservationTokens) fail("ACTION_INPUT_CONFLICT");
+        return { action: prior, changed: false, created: false };
+      }
+      this.admit(run, input, false, fence.now);
+      return this.insert(run, input, digest, 1, fence.now);
+    });
+  }
+
+  /** Fenced evidence lookup, including historical attempts. No raw public cache. */
+  get(fence: GraphRunFence, effectKey: string): GraphActionResult {
+    keySchema.parse(effectKey);
+    return this.write(fence, (run) => ({ action: this.find(run, effectKey), changed: false, created: false }));
+  }
+
+  /** Explicit trusted retry command, never a worker flag. Proof of retry safety
+   * must already be verified by G12 and recorded on a failed outcome. The old
+   * action supplies ALL key/payload/cap inputs. Unknown is not retryable. */
+  retry(fence: GraphRunFence, effectKey: string): GraphActionResult {
+    keySchema.parse(effectKey);
+    return this.write(fence, (run) => {
+      const prior = this.find(run, effectKey);
+      if (this.current(run, prior.effect)!.effectKey !== effectKey) fail("NOT_CURRENT_ATTEMPT");
+      if (prior.state !== "failed" || !prior.retrySafe) fail("RETRY_NOT_SAFE");
+      const input = { epoch: prior.effect.epoch, nodeId: prior.effect.nodeId, effectSlot: prior.effect.effectSlot,
+        action: prior.action, reservationTokens: prior.reservationTokens };
+      this.admit(run, input, true, fence.now);
+      return this.insert(run, input, prior.businessDigest, prior.effect.logicalAttempt + 1, fence.now);
+    });
+  }
+
+  markRunning(fence: GraphRunFence, effectKey: string, executionRef: string): GraphActionResult {
+    keySchema.parse(effectKey); ref.parse(executionRef);
+    return this.write(fence, (run) => {
+      const prior = this.find(run, effectKey);
+      if (prior.generation !== run.generation) fail("ACTION_GENERATION_MISMATCH");
+      if (prior.state === "running") {
+        if (prior.executionRef !== executionRef) fail("EXECUTION_CONFLICT");
+        return { action: prior, changed: false, created: false };
+      }
+      if (prior.state !== "intent") fail("INVALID_ACTION_STATE");
+      // Recheck stopping, unknown and deadline immediately before the host can
+      // invoke. Capacity was already reserved by intent, so do not reserve twice.
+      if (run.status === "cancel_pending" || run.status === "reconciliation_required") fail("RUN_STOPPING");
+      if (this.db.prepare("SELECT 1 FROM graph_actions WHERE graph_run_id = ? AND state IN ('unknown','cancel_pending') LIMIT 1")
+        .get(run.graphRunId)) fail("UNRESOLVED_ACTION");
+      if (this.budget(run).accountingBlocked) fail("ACCOUNTING_BLOCKED");
+      if (fence.now - run.createdAt >= run.spec!.limits.deadlineSeconds * 1000) fail("WALL_CLOCK_BUDGET_EXHAUSTED");
+      this.db.prepare("UPDATE graph_actions SET state = 'running', execution_ref = ?, updated_at = ? WHERE effect_key = ?")
+        .run(executionRef, fence.now, effectKey);
+      return { action: this.find(run, effectKey), changed: true, created: false };
+    });
+  }
+
+  /** Adapter/supervisor uncertainty only. G11 has no release/reconciliation API:
+   * worker receipts or later 'not applied' claims cannot clear unknown capacity. */
+  markUncertain(fence: GraphRunFence, effectKey: string, value: GraphActionUncertainty): GraphActionResult {
+    keySchema.parse(effectKey);
+    const input = uncertainSchema.parse(GraphJsonValue.parse(value));
+    return this.write(fence, (run) => {
+      const prior = this.find(run, effectKey);
+      if (prior.generation !== run.generation) fail("ACTION_GENERATION_MISMATCH");
+      if (prior.state === "confirmed" || prior.state === "failed") fail("INVALID_ACTION_STATE");
+      if (prior.uncertainty && canonical(prior.uncertainty) === canonical(input)) return { action: prior, changed: false, created: false };
+      this.db.prepare(`UPDATE graph_actions SET state = ?, uncertainty_json = ?, observed_tokens = ?,
+        accounting_blocked = ?, updated_at = ? WHERE effect_key = ?`).run(input.state, canonical(input),
+          Math.max(prior.observedTokens, input.observedTokens), Number(prior.accountingBlocked || input.observedTokens > prior.reservationTokens), fence.now, effectKey);
+      return { action: this.find(run, effectKey), changed: true, created: false };
+    });
+  }
+
+  /** Only trusted adapter outcomes, never worker-provided evidence. Invalid usage
+   * does not discard a real result: persist null usage, retain capacity and stop
+   * new actions. Over-cap actual usage is charged exactly and also stops actions.
+   * Settlement after the wall-clock budget elapsed remains allowed with a live
+   * fence; effects already started must not disappear because their budget ended. */
+  recordOutcome(fence: GraphRunFence, effectKey: string, value: GraphActionOutcomeInput): GraphActionResult {
+    keySchema.parse(effectKey);
+    const usage = count.safeParse(value.actualTokens);
+    const input = outcomeSchema.parse(GraphJsonValue.parse({ ...value, actualTokens: usage.success ? usage.data : null }));
+    const outcome: GraphActionOutcome = input.state === "confirmed"
+      ? { ...input, result: GraphResult.parse(input.result) }
+      : { ...input, error: GraphJsonValue.parse(input.error) };
+    return this.write(fence, (run) => {
+      const prior = this.find(run, effectKey);
+      if (prior.outcome) {
+        if (canonical(prior.outcome) !== canonical(outcome)) fail("OUTCOME_CONFLICT");
+        return { action: prior, changed: false, created: false };
+      }
+      if (prior.generation !== run.generation) fail("ACTION_GENERATION_MISMATCH");
+      if (prior.state === "unknown" || prior.state === "cancel_pending") fail("UNRESOLVED_ACTION");
+      if (prior.state !== "running" && !(prior.state === "intent" && outcome.state === "failed")) fail("INVALID_ACTION_STATE");
+      const blocked = !usage.success || usage.data > prior.reservationTokens;
+      this.db.prepare(`UPDATE graph_actions SET state = ?, outcome_json = ?, actual_tokens = ?, retry_safe = ?,
+        accounting_blocked = ?, updated_at = ? WHERE effect_key = ?`).run(outcome.state, canonical(outcome), outcome.actualTokens,
+          Number(outcome.state === "failed" && outcome.retrySafe), Number(blocked), fence.now, effectKey);
+      return { action: this.find(run, effectKey), changed: true, created: false };
+    });
+  }
+}
+
+FILE packages/cli/src/governed-execution.ts
+import { join } from "node:path";
+import { acquireRepoWriteLock, FifoSemaphore, SemaphoreAcquireAbortedError, type SemaphoreLease, type RepoWriteLock } from '@osstack/autonomy';
+import { resolveRepositoryScope } from '@osstack/core';
+
+export interface ExecutionLease {
+  release(): Promise<void>;
+  /** Keep ownership until a trusted caller has confirmed external exit. */
+  retain(reason: string): void;
+}
+export interface AdmissionInput {
+  kind: 'read' | 'write';
+  runId: string;
+  /** Supplied by the daemon registration, never by an adapter context. */
+  workspacePath?: string;
+  repoId?: string;
+  signal?: AbortSignal;
+  authorize?: () => Promise<void>;
+}
+export class GovernedExecution {
+  private readonly activeRuns = new Set<string>();
+  private readonly quarantinedRepositories = new Set<string>();
+  constructor(private readonly options: {
+    reads: FifoSemaphore;
+    writes: FifoSemaphore;
+    repositories: Map<string, FifoSemaphore>;
+    checkHealth: () => Promise<void>;
+  }) {}
+
+  get hasWriters(): boolean { return this.options.writes.in_use > 0; }
+
+  async acquire(input: AdmissionInput): Promise<ExecutionLease> {
+    const check = async (): Promise<void> => {
+      if (input.signal?.aborted) throw new SemaphoreAcquireAbortedError();
+      if (input.kind === 'write') await this.options.checkHealth();
+      await input.authorize?.();
+    };
+    await check();
+    const scope = input.workspacePath === undefined ? undefined
+      : await resolveRepositoryScope(input.workspacePath, input.repoId === undefined ? {} : { repoId: input.repoId });
+    if (input.kind === 'write' && !scope) throw new Error('trusted repository scope required for writes');
+    if (input.kind === "write" && scope && this.quarantinedRepositories.has(scope.repoId)) throw new Error("repository external stop unconfirmed; reconciliation required");
+    if (this.activeRuns.has(input.runId)) throw new Error("run already admitted or queued");
+    this.activeRuns.add(input.runId);
+    let local: SemaphoreLease | undefined;
+    let global: SemaphoreLease | undefined;
+    let lock: RepoWriteLock | undefined;
+    let queue: FifoSemaphore | undefined;
+    const releasePermits = (): void => {
+      global?.release(); local?.release();
+      this.activeRuns.delete(input.runId);
+      if (scope && queue?.in_use === 0 && queue.pending === 0) this.options.repositories.delete(scope.repoId);
+    };
+    try {
+      if (input.kind === 'write' && scope) {
+        queue = this.options.repositories.get(scope.repoId) ?? new FifoSemaphore(1);
+        this.options.repositories.set(scope.repoId, queue);
+        local = await queue.acquire(input.signal);
+      }
+      global = await (input.kind === 'read' ? this.options.reads : this.options.writes).acquire(input.signal);
+      if (input.kind === 'write' && scope) {
+        lock = await acquireRepoWriteLock({ root_dir: join(scope.commonDir, "osstack", "writer-locks"), recover_stale: false, repo_id: scope.repoId, autonomy_run_id: input.runId });
+      }
+      if (input.kind === "write" && scope && this.quarantinedRepositories.has(scope.repoId)) throw new Error("repository external stop unconfirmed; reconciliation required");
+      await check();
+    } catch (error) {
+      try { await lock?.release(); } finally { releasePermits(); }
+      throw error;
+    }
+    let released = false;
+    let retained = false;
+    // A renewal failure quarantines this repository. Its unknown producer still
+    // consumes write capacity, while unrelated reads remain available.
+    let renewing: Promise<void> = Promise.resolve();
+    const timer = lock === undefined ? undefined : setInterval(() => {
+      renewing = renewing.then(async () => {
+        if (!released) await lock!.renew();
+      }).catch((error: unknown) => {
+        retained = true;
+        if (scope) this.quarantinedRepositories.add(scope.repoId);
+        process.stderr.write(`repository lease renewal failed; retained ${input.runId}: ${String(error)}\n`);
+        if (timer) clearInterval(timer);
+      });
+    }, 20_000);
+    timer?.unref();
+    return {
+      retain: (reason) => { retained = true; if (timer) clearInterval(timer); if (scope) this.quarantinedRepositories.add(scope.repoId); process.stderr.write(`osstack: retaining write lease ${input.runId}: ${reason}\n`); },
+      release: async () => {
+        if (released) return;
+        if (retained) throw new Error("external stop unconfirmed; reconciliation required before release");
+        released = true;
+        if (timer) clearInterval(timer);
+        await renewing;
+        if (retained) { released = false; throw new Error("external stop unconfirmed; reconciliation required before release"); }
+        // Ownership failure must not free the in-process writer authority.
+        try { await lock?.release(); }
+        catch (error) {
+          released = false; retained = true;
+          if (scope) this.quarantinedRepositories.add(scope.repoId);
+          process.stderr.write(`repository lock release failed; retained ${input.runId}: ${String(error)}\n`);
+          throw error;
+        }
+        releasePermits();
+      },
+    };
+  }
+}
+
+FILE packages/cli/src/graph-action-broker.ts
+import { randomUUID } from "node:crypto";
+import { isAbsolute } from "node:path";
+import type Database from "better-sqlite3";
+import { CapabilitySchema, GraphActionStore, GraphRunStore, type GraphRunFence, type GraphProgramIdentity,
+  type GraphAction } from "@osstack/core";
+import { GraphResult, GraphScope, WorkerActionRequest, WorkerActionResponse,
+  type GraphError, type GraphErrorCode } from "@osstack/protocol";
+import { ExecutionPlan, executeCandidateImplementation, runShellCommand,
+  type CandidateExecutionResult, type CommandResult, type RegisteredCandidateWorkspace } from "@osstack/loop";
+import type { AgentAdapter } from "@osstack/agents";
+import type { AdmissionInput, ExecutionLease } from "./governed-execution.js";
+
+type Action = WorkerActionRequest["action"];
+export interface GraphActionEvidence {
+  status: "completed" | "failed";
+  candidate?: CandidateExecutionResult;
+  command?: CommandResult;
+  workspace?: unknown;
+}
+export interface PersistedGraphActionEvidence {
+  evidenceRef: string;
+  result?: GraphResult;
+  actualTokens?: number;
+}
+type RegisteredExecution =
+  | { kind: "adapter"; plan: ExecutionPlan; adapter: AgentAdapter; capabilityId: string }
+  | { kind: "command"; plan: ExecutionPlan; command: string }
+  | { kind: "workspace"; handler: (input: { workspace: RegisteredCandidateWorkspace; signal: AbortSignal }) => Promise<{
+      status: "completed" | "failed"; stopped: true; evidence: unknown;
+    }> };
+export interface GraphRegisteredAction {
+  nodeId: string;
+  effectSlot: string;
+  action: Action;
+  tokenReservation: number;
+  execution: RegisteredExecution;
+  /** Trusted persistence boundary. Worker receipts/checkpoints are never passed here. */
+  persist: (evidence: GraphActionEvidence) => Promise<PersistedGraphActionEvidence>;
+}
+export interface GraphWorkerRegistration {
+  scope: GraphScope;
+  graphRunId: string;
+  identity: GraphProgramIdentity;
+  generation: number;
+  owner: string;
+  epoch: number;
+  workspace: RegisteredCandidateWorkspace;
+  /** Synchronous host revocation check, including immediately before physical effects. */
+  authorize: () => void;
+  actions: readonly GraphRegisteredAction[];
+}
+export interface GraphActionBrokerOptions {
+  acquire: (input: AdmissionInput) => Promise<ExecutionLease>;
+  authorizePolicy?: (workspacePath: string) => Promise<void>;
+  now?: () => number;
+}
+type BoundAction = GraphRegisteredAction & { access: "read" | "write" };
+type Binding = Omit<GraphWorkerRegistration, "actions"> & { actions: ReadonlyMap<string, BoundAction> };
+const slot = (node: string, effect: string) => JSON.stringify([node, effect]);
+const reads = new Set(["code.review", "review.code", "research.code"]);
+const writes = new Set(["code.write", "code.refactor", "code.debug", "code.test"]);
+function snapshot<T>(value: T): T {
+  const copy = structuredClone(value);
+  const freeze = (item: unknown): void => {
+    if (item !== null && typeof item === "object") { Object.values(item).forEach(freeze); Object.freeze(item); }
+  };
+  freeze(copy); return copy;
+}
+function canonical(value: unknown): string {
+  if (value === null || typeof value !== "object") return JSON.stringify(value);
+  if (Array.isArray(value)) return `[${value.map(canonical).join(",")}]`;
+  return `{${Object.keys(value).sort().map(key => `${JSON.stringify(key)}:${canonical((value as Record<string, unknown>)[key])}`).join(",")}}`;
+}
+class Denied extends Error { constructor(readonly code: GraphErrorCode, message: string) { super(message); } }
+function graphError(code: GraphErrorCode, message: string): GraphError {
+  return { schemaVersion: 1, code, message: message.slice(0, 4096) || code, retryable: false,
+    nextAction: code === "ACTION_OUTCOME_UNKNOWN" || code === "CANCEL_UNCONFIRMED" ? "reconcile" : "stop" } as GraphError;
+}
+function errorCode(error: unknown): GraphErrorCode {
+  if (error instanceof Denied) return error.code;
+  const message = String(error);
+  if (/GRANT_EXPIRED/.test(message)) return "GRANT_EXPIRED";
+  if (/STALE_GENERATION|OWNER_MISMATCH|LEASE_EXPIRED/.test(message)) return "STALE_GENERATION";
+  if (/PROGRAM_IDENTITY/.test(message)) return "CHECKPOINT_INCOMPATIBLE";
+  if (/UNRESOLVED|RETRY_NOT_SAFE/.test(message)) return "ACTION_OUTCOME_UNKNOWN";
+  if (/BUDGET|ACCOUNTING/.test(message)) return "BUDGET_EXHAUSTED";
+  if (/REVISION_CONFLICT/.test(message)) return "REVISION_CONFLICT";
+  return "POLICY_DENIED";
+}
+
+/** Trusted in-process action port; no RPC, worker launcher or node scheduler.
+ * Ledger granularity is one adapter invocation, registered command or host workspace
+ * operation. It does not intercept an agent's internal tools. Admission belongs to
+ * each action; callers must NOT hold a whole-run lease around this port. */
+export class GraphActionBroker {
+  private readonly connections = new WeakMap<object, Binding>();
+  private readonly runs: GraphRunStore;
+  private readonly actions: GraphActionStore;
+  constructor(db: Database.Database, private readonly options: GraphActionBrokerOptions) {
+    this.runs = new GraphRunStore(db); this.actions = new GraphActionStore(db);
+  }
+
+  register(connection: object, input: GraphWorkerRegistration): void {
+    if (this.connections.has(connection)) throw new Error("worker connection already registered");
+    const { actions, authorize, ...data } = input;
+    const fixed = snapshot(data);
+    GraphScope.parse(fixed.scope);
+    if (typeof authorize !== "function" || !fixed.owner || !isAbsolute(fixed.workspace.workspace_path)
+      || fixed.workspace.workspace_path.includes("\0") || fixed.workspace.workspace_id !== fixed.scope.workspaceId) throw new Error("invalid trusted worker registration");
+    const registered = new Map<string, BoundAction>();
+    for (const item of actions) {
+      const { execution, persist, ...actionData } = item;
+      const copy = snapshot(actionData);
+      // Reuse the strict wire parser to validate exact compiled action/node/slot data.
+      WorkerActionRequest.parse({ schemaVersion: 1, kind: "worker_action", requestId: "registration", scope: fixed.scope,
+        graphRunId: fixed.graphRunId, specHash: fixed.identity.specHash, generation: fixed.generation, epoch: fixed.epoch,
+        nodeId: copy.nodeId, effectSlot: copy.effectSlot, action: copy.action });
+      if (copy.action.kind === "freeze" || typeof persist !== "function") throw new Error("unsupported graph action");
+      if (!Number.isSafeInteger(copy.tokenReservation) || copy.tokenReservation < 0) throw new Error("invalid token reservation");
+      let selected: RegisteredExecution; let access: "read" | "write" = "write";
+      if (execution.kind === "workspace") {
+        if (!["workspace_create", "workspace_release"].includes(copy.action.kind) || typeof execution.handler !== "function") throw new Error("unsupported workspace handler");
+        selected = Object.freeze({ kind: "workspace", handler: execution.handler });
+      } else {
+        if (!["implement", "repair", "tests", "review"].includes(copy.action.kind)) throw new Error("unsupported candidate action");
+        const plan = snapshot(ExecutionPlan.parse(execution.plan));
+        if (plan.worktree_path !== undefined && plan.worktree_path !== fixed.workspace.workspace_path) throw new Error("workspace mismatch");
+        if (execution.kind === "command") {
+          if (!execution.command?.trim() || execution.command.includes("\0")) throw new Error("invalid registered command");
+          selected = Object.freeze({ kind: "command", plan, command: execution.command });
+        } else if (execution.kind === "adapter") {
+          const adapter = execution.adapter;
+          const capabilities = snapshot(adapter.capabilities().map(cap => CapabilitySchema.parse(cap)));
+          const matches = capabilities.filter(cap => cap.id === execution.capabilityId);
+          const cap = matches[0];
+          if (matches.length !== 1 || !cap || cap.agent_id !== adapter.id || plan.agent_id !== adapter.id
+            || plan.task.capability !== cap.kind || (!reads.has(cap.kind) && !writes.has(cap.kind))) throw new Error("unknown or ambiguous trusted capability");
+          // A multi-capability adapter can internally select a writer. Only entirely
+          // read-only registrations may consume a read permit.
+          if (capabilities.some(capability => !reads.has(capability.kind) && !writes.has(capability.kind))) throw new Error("unknown adapter capability");
+          access = capabilities.every(capability => reads.has(capability.kind)) ? "read" : "write";
+          const bound: AgentAdapter = Object.freeze({ id: adapter.id, display_name: adapter.display_name, cost_tier: adapter.cost_tier,
+            capabilities: () => structuredClone(capabilities), isAvailable: adapter.isAvailable.bind(adapter), invoke: adapter.invoke.bind(adapter),
+            ...(adapter.confirmStopped ? { confirmStopped: adapter.confirmStopped.bind(adapter) } : {}) });
+          selected = Object.freeze({ kind: "adapter", plan, adapter: bound, capabilityId: execution.capabilityId });
+        } else throw new Error("unsupported execution handler");
+      }
+      const key = slot(copy.nodeId, copy.effectSlot);
+      if (registered.has(key)) throw new Error("duplicate compiled action slot");
+      registered.set(key, Object.freeze({ ...copy, execution: selected, persist, access }));
+    }
+    const binding = Object.freeze({ ...fixed, authorize, actions: registered });
+    // Verify full registered identity at installation, then at every ledger access.
+    this.fence(binding);
+    this.connections.set(connection, binding);
+  }
+
+  private authorize(binding: Binding): void {
+    const result: unknown = binding.authorize();
+    if (result !== undefined) {
+      // TypeScript allows async functions in void positions. Never silently
+      // treat a pending/rejected promise as synchronous permission.
+      void Promise.resolve(result).catch(() => {});
+      throw new Denied("POLICY_DENIED", "revocation check must be synchronous");
+    }
+  }
+
+  private fence(binding: Binding): GraphRunFence {
+    const run = this.runs.get(binding.scope, binding.graphRunId);
+    if (!run) throw new Denied("RUN_MISMATCH", "registered run not found");
+    if (run.generation !== binding.generation || run.leaseOwner !== binding.owner) throw new Denied("STALE_GENERATION", "registered worker lease changed");
+    if (canonical(run.identity) !== canonical(binding.identity)) throw new Denied("CHECKPOINT_INCOMPATIBLE", "registered program identity changed");
+    const now = this.options.now?.() ?? Date.now();
+    if (!run.leaseExpiresAt || run.leaseExpiresAt <= now) throw new Denied("STALE_GENERATION", "registered worker lease expired");
+    return { scope: binding.scope, graphRunId: binding.graphRunId, identity: binding.identity,
+      expectedGeneration: binding.generation, expectedOwner: binding.owner, expectedRevision: run.revision, now };
+  }
+
+  async handle(connection: object, value: unknown, options: { signal?: AbortSignal } = {}): Promise<WorkerActionResponse> {
+    let request: WorkerActionRequest;
+    try { request = snapshot(WorkerActionRequest.parse(value)); }
+    catch { return { schemaVersion: 1, kind: "worker_action_rejected", requestId: "invalid-request", error: graphError("INPUT_CONTRACT_INVALID", "invalid worker action request") }; }
+    const binding = this.connections.get(connection);
+    const signal = options.signal ?? new AbortController().signal;
+    let lease: ExecutionLease | undefined; let owned: GraphAction | undefined; let invoked = false; let uncertain = false; let observedTokens = 0; let persistedEvidenceRef: string | undefined;
+    const reject = (error: unknown): WorkerActionResponse => ({ schemaVersion: 1, kind: "worker_action_rejected", requestId: request.requestId,
+      error: graphError(errorCode(error), String(error)) });
+    try {
+      if (!binding) throw new Denied("UNAUTHENTICATED", "unregistered worker connection");
+      if (canonical(request.scope) !== canonical(binding.scope)) throw new Denied("SCOPE_MISMATCH", "scope does not match registered connection");
+      if (request.graphRunId !== binding.graphRunId) throw new Denied("RUN_MISMATCH", "run does not match registered connection");
+      if (request.generation !== binding.generation) throw new Denied("STALE_GENERATION", "generation does not match registered connection");
+      if (request.specHash !== binding.identity.specHash) throw new Denied("SPEC_MISMATCH", "spec does not match registered program");
+      if (request.epoch !== binding.epoch) throw new Denied("EPOCH_MISMATCH", "epoch does not match registered program");
+      const action = binding.actions.get(slot(request.nodeId, request.effectSlot));
+      if (!action) throw new Denied("POLICY_DENIED", "unregistered compiled action slot");
+      if (canonical(action.action) !== canonical(request.action)) throw new Denied("IDEMPOTENCY_CONFLICT", "action differs from immutable compiled registration");
+      const check = (): void => { if (signal.aborted) throw new Denied("POLICY_DENIED", "action cancelled before invocation"); this.authorize(binding); this.fence(binding); };
+      check();
+      const intent = this.actions.reserve(this.fence(binding), { epoch: binding.epoch, nodeId: action.nodeId, effectSlot: action.effectSlot,
+        reservationTokens: action.tokenReservation, action: action.action });
+      if (!intent.created) return this.response(request, intent.action);
+      owned = intent.action;
+      lease = await this.options.acquire({ kind: action.access, runId: `graph-action:${owned.effectKey}`, workspacePath: binding.workspace.workspace_path,
+        signal, authorize: async () => { check(); await this.options.authorizePolicy?.(binding.workspace.workspace_path); check(); } });
+      check();
+      // This synchronous gate runs inside the actual adapter invoke/command/host
+      // handler call, after G04's async authorization and availability windows.
+      const beforeEffect = (): void => {
+        check();
+        let started: ReturnType<GraphActionStore["markRunning"]>;
+        try {
+          started = this.actions.markRunning(this.fence(binding), owned!.effectKey, `graph-execution:${owned!.effectKey}`);
+        } catch (error) {
+          // A different execution reference also proves somebody already started.
+          if (String(error).includes("EXECUTION_CONFLICT")) invoked = true;
+          throw error;
+        }
+        if (!started.changed) {
+          // Another trusted caller already started this effect. We cannot prove
+          // non-execution, so retain admission and require reconciliation.
+          invoked = true;
+          throw new Denied("ACTION_OUTCOME_UNKNOWN", "intent already started");
+        }
+        invoked = true;
+      };
+      const evidence = await this.execute(binding, action, signal, beforeEffect, tokens => { observedTokens = Math.max(observedTokens, tokens); });
+      if (!invoked) throw new Denied("POLICY_DENIED", "execution did not start");
+      const persisted = snapshot(await action.persist(evidence));
+      if (typeof persisted.evidenceRef !== "string" || !persisted.evidenceRef || persisted.evidenceRef.trim() !== persisted.evidenceRef
+        || persisted.evidenceRef.length > 256 || Array.from(persisted.evidenceRef).some(char => {
+          const code = char.charCodeAt(0); return code < 32 || (code >= 127 && code <= 159);
+        })) throw new Error("invalid persisted evidence reference");
+      persistedEvidenceRef = persisted.evidenceRef;
+      if (persisted.actualTokens !== undefined && (!Number.isSafeInteger(persisted.actualTokens) || persisted.actualTokens < 0)) throw new Error("invalid usage");
+      observedTokens = Math.max(observedTokens, persisted.actualTokens ?? 0);
+      const usage = evidence.candidate?.execution;
+      const measured = usage?.tokens_in !== undefined && usage.tokens_out !== undefined ? usage.tokens_in + usage.tokens_out : undefined;
+      if (measured !== undefined && !Number.isSafeInteger(measured)) throw new Error("invalid total token usage");
+      const actualTokens = Math.max(observedTokens, persisted.actualTokens ?? 0, measured ?? Math.max(action.tokenReservation, usage?.tokens_in ?? 0, usage?.tokens_out ?? 0));
+      let result: GraphResult | undefined;
+      if (evidence.status === "completed") {
+        result = GraphResult.parse(persisted.result);
+        const expected = action.action.kind === "implement" || action.action.kind === "repair" ? "implementation_complete"
+          : action.action.kind.startsWith("workspace_") ? "workspace" : action.action.kind;
+        if (result.kind !== expected) throw new Error("invalid result kind for registered operation");
+        if ("workspaceLeaseRef" in result && "workspaceLeaseRef" in action.action && result.workspaceLeaseRef !== action.action.workspaceLeaseRef) throw new Error("persisted workspace mismatch");
+        if ("candidateRevision" in result && "candidateRevision" in action.action && result.candidateRevision !== action.action.candidateRevision) throw new Error("persisted revision mismatch");
+      }
+      const settled = this.actions.recordOutcome(this.fence(binding), owned.effectKey, evidence.status === "completed"
+        ? { state: "confirmed", evidenceRef: persisted.evidenceRef, actualTokens, result: result! }
+        : { state: "failed", evidenceRef: persisted.evidenceRef, actualTokens, retrySafe: false, error: { message: "trusted stopped invocation failed" } });
+      return this.response(request, settled.action);
+    } catch (error) {
+      if (binding && owned) {
+        if (invoked) {
+          uncertain = true; lease?.retain(String(error));
+          try { const unknown = this.actions.markUncertain(this.fence(binding), owned.effectKey, { state: "unknown", evidenceRef: persistedEvidenceRef ?? `unknown:${randomUUID()}`, observedTokens: Math.max(owned.reservationTokens, observedTokens) });
+            return this.response(request, unknown.action); } catch { /* Commit/fence failure preserves the original running reservation. */ }
+          return { schemaVersion: 1, kind: "worker_action_response", requestId: request.requestId, generation: request.generation,
+            effect: owned.effect, outcome: { state: "unknown", error: graphError("ACTION_OUTCOME_UNKNOWN", String(error)), reconciliationRef: owned.effectKey } };
+        }
+        // No physical invocation: resolve this caller's own intent without calling
+        // it unknown. Only a future explicit host retry can use this proof;
+        // cancellations remain sealed and worker replay never allocates attempts.
+        try { this.actions.recordOutcome(this.fence(binding), owned.effectKey, { state: "failed", evidenceRef: `not-started:${randomUUID()}`,
+          actualTokens: 0, retrySafe: !signal.aborted, error: { message: "admission refused before invocation" } }); } catch { /* A stale owner cannot mutate a newer generation. */ }
+      }
+      return reject(error);
+    } finally {
+      if (lease && !uncertain) await lease.release();
+    }
+  }
+
+  private response(request: WorkerActionRequest, action: GraphAction): WorkerActionResponse {
+    const base = { schemaVersion: 1 as const, kind: "worker_action_response" as const, requestId: request.requestId,
+      generation: request.generation, effect: action.effect };
+    if (action.state === "confirmed") return WorkerActionResponse.parse({ ...base, outcome: { state: "confirmed", result: action.outcome?.state === "confirmed" ? action.outcome.result : undefined } });
+    if (action.state === "failed") return WorkerActionResponse.parse({ ...base, outcome: { state: "failed", error: graphError("POLICY_DENIED", "prior invocation failed; no automatic retry") } });
+    return { ...base, outcome: { state: "unknown", error: graphError("ACTION_OUTCOME_UNKNOWN", "existing action requires reconciliation; invocation was not repeated"), reconciliationRef: action.effectKey } };
+  }
+
+  private async execute(binding: Binding, action: BoundAction, signal: AbortSignal, beforeEffect: () => void, observeTokens: (tokens: number) => void): Promise<GraphActionEvidence> {
+    const execution = action.execution;
+    if (execution.kind === "workspace") {
+      await this.options.authorizePolicy?.(binding.workspace.workspace_path);
+      beforeEffect();
+      const result = await execution.handler({ workspace: binding.workspace, signal });
+      if (result?.stopped !== true || !["completed", "failed"].includes(result.status)) throw new Error("workspace outcome unconfirmed");
+      return { status: result.status, workspace: result.evidence };
+    }
+    let threw = false; let command: CommandResult | undefined; let invocationRunId: string | undefined;
+    const original = execution.kind === "adapter" ? execution.adapter : undefined;
+    const capabilities = execution.kind === "adapter" ? execution.adapter.capabilities().filter(cap => cap.id === execution.capabilityId) : [CapabilitySchema.parse({ id: "registered-command.write", kind: "code.write", agent_id: "registered-command", description: "Registered command" })];
+    const policy = this.options.authorizePolicy;
+    const cumulativeUsage: Record<string, number> = { tokens_in: 0, tokens_out: 0 };
+    const wrapper: AgentAdapter = {
+      id: original?.id ?? "registered-command", display_name: "Governed graph action", cost_tier: "low",
+      capabilities: () => capabilities, isAvailable: original?.isAvailable ?? (async () => ({ available: true, last_checked_at: 0 })),
+      invoke: (task, invocationSignal) => {
+        return (async function* () {
+          await policy?.(binding.workspace.workspace_path);
+          if (invocationSignal.aborted) throw new Denied("POLICY_DENIED", "execution cancelled before invocation");
+          beforeEffect(); invocationRunId = task.run_id;
+          try {
+            if (original) {
+              for await (const event of original.invoke(task, invocationSignal)) {
+                const payload: unknown = event.type === "usage.updated" || event.type === "usage.final" ? event.payload
+                  : event.type === "done" && event.payload && typeof event.payload === "object" ? (event.payload as { usage?: unknown }).usage : undefined;
+                if (payload !== undefined) {
+                  if (!payload || typeof payload !== "object" || Array.isArray(payload)) throw new Error("invalid adapter usage payload");
+                  const usage = payload as Record<string, unknown>;
+                  let tokens = 0;
+                  for (const field of ["tokens_in", "tokens_out"]) {
+                    const amount = usage[field];
+                    if (amount !== undefined) {
+                      if (typeof amount !== "number" || !Number.isSafeInteger(amount) || amount < 0) throw new Error("invalid adapter token usage");
+                      cumulativeUsage[field] = Math.max(cumulativeUsage[field]!, amount);
+                    }
+                  }
+                  // Providers may send input/output counters in separate events.
+                  // Retain each cumulative maximum instead of only max(event sum).
+                  tokens = cumulativeUsage["tokens_in"]! + cumulativeUsage["tokens_out"]!;
+                  if (!Number.isSafeInteger(tokens)) throw new Error("invalid adapter total usage");
+                  observeTokens(tokens);
+                  const cost = usage["cost_usd"];
+                  if (cost !== undefined && (typeof cost !== "number" || !Number.isFinite(cost) || cost < 0)) throw new Error("invalid adapter cost usage");
+                }
+                yield event;
+              }
+              return;
+            }
+            if (execution.kind !== "command") throw new Error("invalid execution registration");
+            // runShellCommand starts synchronously before its returned promise; no
+            // untrusted await separates the fence above from the actual spawn.
+            command = await runShellCommand(execution.command, { cwd: binding.workspace.workspace_path, timeoutMs: 120_000,
+              outputLimit: 16_000, ...(invocationSignal ? { signal: invocationSignal } : {}) });
+            yield { event_id: randomUUID(), run_id: task.run_id, session_id: task.session_id, seq: 1, type: "done" as const,
+              created_at: Date.now() / 1000, terminal: true, payload: { status: command.exitCode === 0 ? "completed" : "failed", last_seq: 0 } };
+          } catch (error) { threw = true; throw error; }
+        })();
+      },
+      confirmStopped: async runId => original?.confirmStopped ? original.confirmStopped(runId)
+        : { stopped: command?.termination?.stop_confirmed === true, evidence: command?.termination?.evidence ?? "no trusted stop receipt" },
+    };
+    const candidate = await executeCandidateImplementation({ plan: { ...execution.plan, agent_id: wrapper.id }, workspace: binding.workspace,
+      adapters: [wrapper], signal, cancellationGraceMs: 50,
+      authorize: async () => { this.authorize(binding); this.fence(binding); return { allow: true }; } });
+    if (!invocationRunId) throw new Denied("POLICY_DENIED", candidate.reason ?? "candidate preflight refused");
+    if (threw || candidate.status === "execution_unconfirmed" || candidate.execution?.failure_code) throw new Error("adapter result or execution unconfirmed");
+    let stopTimer: ReturnType<typeof setTimeout> | undefined;
+    const stopped = await Promise.race([wrapper.confirmStopped!(invocationRunId),
+      new Promise<{ stopped: false }>(resolve => { stopTimer = setTimeout(() => resolve({ stopped: false }), 1000); })])
+      .finally(() => { if (stopTimer) clearTimeout(stopTimer); });
+    if (stopped.stopped !== true || !stopped.evidence?.trim()) throw new Error("external stop unconfirmed");
+    const usage = candidate.execution;
+    if ([usage?.tokens_in, usage?.tokens_out].some(value => value !== undefined && (!Number.isSafeInteger(value) || value < 0))) throw new Error("invalid adapter usage");
+    return { status: candidate.status === "implementation_complete" ? "completed" : "failed", candidate, ...(command ? { command } : {}) };
+  }
+}
+
+FILE packages/agents/src/worktree.ts
+import { spawn } from "node:child_process";
+import { mkdir, realpath } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { isAbsolute, join, relative } from "node:path";
+import { randomUUID } from "node:crypto";
+
+export interface WorktreeHandle {
+  repoPath: string;
+  worktreePath: string;
+  branch: string;
+  baseRef: string;
+  rootPath: string;
+}
+
+export interface CreateWorktreeOptions {
+  repoPath: string;
+  runId: string;
+  rootPath?: string;
+  branchPrefix?: string;
+  baseRef?: string;
+}
+
+export interface CommitWorktreeResult {
+  committed: boolean;
+  commit?: string;
+}
+
+export interface CleanupOrphanedWorktreesOptions {
+  rootPath?: string;
+  branchPrefix?: string;
+}
+
+export interface CleanupWorktreeOptions {
+  removeBranch?: boolean;
+}
+
+export interface CleanupOrphanedWorktreesResult {
+  removed: WorktreeHandle[];
+}
+
+const DEFAULT_BRANCH_PREFIX = "osstack/loop";
+const DISABLE_GIT_HOOKS_ARGS = [
+  "-c",
+  "core.hooksPath=/dev/null",
+] as const;
+
+export async function createWorktree(options: CreateWorktreeOptions): Promise<WorktreeHandle> {
+  const repoPath = await gitOutput(options.repoPath, ["rev-parse", "--show-toplevel"]);
+  const rootPath = await resolveRootPath(options.rootPath);
+  await mkdir(rootPath, { recursive: true });
+
+  const branchPrefix = options.branchPrefix ?? DEFAULT_BRANCH_PREFIX;
+  const safeRunId = sanitizePathPart(options.runId);
+  const suffix = randomUUID().slice(0, 8);
+  const branch = `${branchPrefix}/${safeRunId}-${suffix}`;
+  const worktreePath = join(rootPath, `${safeRunId}-${suffix}`);
+  const baseRef = options.baseRef ?? "HEAD";
+
+  await runGit(repoPath, [
+    ...DISABLE_GIT_HOOKS_ARGS,
+    "worktree",
+    "add",
+    "-b",
+    branch,
+    worktreePath,
+    baseRef,
+  ]);
+
+  return {
+    repoPath,
+    worktreePath,
+    branch,
+    baseRef,
+    rootPath,
+  };
+}
+
+export async function commitWorktreeChanges(
+  handle: WorktreeHandle,
+  message: string,
+): Promise<CommitWorktreeResult> {
+  const status = await gitOutput(handle.worktreePath, ["status", "--porcelain"]);
+  if (status.trim() === "") return { committed: false };
+
+  await runGit(handle.worktreePath, ["add", "-A"]);
+  await runGit(handle.worktreePath, [
+    ...DISABLE_GIT_HOOKS_ARGS,
+    "-c",
+    "user.name=osstack-loop",
+    "-c",
+    "user.email=osstack-loop@example.invalid",
+    "commit",
+    "-m",
+    message,
+  ]);
+  const commit = await gitOutput(handle.worktreePath, ["rev-parse", "HEAD"]);
+  return { committed: true, commit };
+}
+
+export async function mergeWorktree(handle: WorktreeHandle): Promise<void> {
+  await runGit(handle.repoPath, [
+    ...DISABLE_GIT_HOOKS_ARGS,
+    "merge",
+    "--ff-only",
+    handle.branch,
+  ]);
+}
+
+export async function cleanupWorktree(
+  handle: WorktreeHandle,
+  options: CleanupWorktreeOptions = {},
+): Promise<void> {
+  await runGit(handle.repoPath, ["worktree", "remove", "--force", handle.worktreePath], { allowFailure: true });
+  if (options.removeBranch !== false) {
+    await runGit(handle.repoPath, ["branch", "-D", handle.branch], { allowFailure: true });
+  }
+}
+
+export async function cleanupOrphanedWorktrees(
+  repoPath: string,
+  options: CleanupOrphanedWorktreesOptions = {},
+): Promise<CleanupOrphanedWorktreesResult> {
+  const normalizedRepo = await gitOutput(repoPath, ["rev-parse", "--show-toplevel"]);
+  const rootPath = await resolveRootPath(options.rootPath);
+  const branchPrefix = options.branchPrefix ?? DEFAULT_BRANCH_PREFIX;
+  const entries = parseWorktreeList(await gitOutput(normalizedRepo, ["worktree", "list", "--porcelain"]));
+  const removed: WorktreeHandle[] = [];
+
+  for (const entry of entries) {
+    if (entry.branch === undefined) continue;
+    if (!entry.branch.startsWith(`${branchPrefix}/`)) continue;
+    if (!isPathInside(entry.worktreePath, rootPath)) continue;
+    const handle: WorktreeHandle = {
+      repoPath: normalizedRepo,
+      worktreePath: entry.worktreePath,
+      branch: entry.branch,
+      baseRef: entry.head ?? "HEAD",
+      rootPath,
+    };
+    await cleanupWorktree(handle);
+    removed.push(handle);
+  }
+
+  return { removed };
+}
+
+interface GitCommandOptions {
+  allowFailure?: boolean;
+}
+
+async function runGit(cwd: string, args: string[], options: GitCommandOptions = {}): Promise<string> {
+  return await new Promise((resolve, reject) => {
+    const child = spawn("git", args, {
+      cwd,
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    let stdout = "";
+    let stderr = "";
+    child.stdout.on("data", (chunk: Buffer) => {
+      stdout += chunk.toString("utf-8");
+    });
+    child.stderr.on("data", (chunk: Buffer) => {
+      stderr += chunk.toString("utf-8");
+    });
+    child.on("error", reject);
+    child.on("close", (code) => {
+      if (code === 0 || options.allowFailure === true) {
+        resolve(stdout.trim());
+        return;
+      }
+      reject(new Error(`git ${args.join(" ")} failed (${code ?? 1}): ${stderr.trim() || stdout.trim()}`));
+    });
+  });
+}
+
+async function gitOutput(cwd: string, args: string[]): Promise<string> {
+  return (await runGit(cwd, args)).trim();
+}
+
+interface ListedWorktree {
+  worktreePath: string;
+  head?: string;
+  branch?: string;
+}
+
+function parseWorktreeList(output: string): ListedWorktree[] {
+  const entries: ListedWorktree[] = [];
+  let current: Partial<ListedWorktree> = {};
+
+  for (const line of output.split("\n")) {
+    if (line.trim() === "") {
+      pushCurrent(entries, current);
+      current = {};
+      continue;
+    }
+    if (line.startsWith("worktree ")) current.worktreePath = line.slice("worktree ".length);
+    else if (line.startsWith("HEAD ")) current.head = line.slice("HEAD ".length);
+    else if (line.startsWith("branch refs/heads/")) current.branch = line.slice("branch refs/heads/".length);
+  }
+  pushCurrent(entries, current);
+  return entries;
+}
+
+function pushCurrent(entries: ListedWorktree[], current: Partial<ListedWorktree>): void {
+  if (current.worktreePath !== undefined) entries.push(current as ListedWorktree);
+}
+
+async function resolveRootPath(rootPath: string | undefined): Promise<string> {
+  const resolved = rootPath === undefined
+    ? join(tmpdir(), "osstack-worktrees")
+    : isAbsolute(rootPath) ? rootPath : join(process.cwd(), rootPath);
+  await mkdir(resolved, { recursive: true });
+  return await realpath(resolved);
+}
+
+function sanitizePathPart(value: string): string {
+  const sanitized = value.replace(/[^a-zA-Z0-9._-]+/g, "-").replace(/^-+|-+$/g, "");
+  return sanitized === "" ? "run" : sanitized.slice(0, 48);
+}
+
+function isPathInside(path: string, rootPath: string): boolean {
+  const rel = relative(rootPath, path);
+  return rel === "" || (!rel.startsWith("..") && !isAbsolute(rel));
+}

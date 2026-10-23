@@ -1,0 +1,111 @@
+{
+  "duration_api_ms": 160616,
+  "stop_reason": "end_turn",
+  "session_id": "e42754b3-f435-4ef4-8897-0835854a5c7d",
+  "total_cost_usd": 1.7263170000000003,
+  "usage": {
+    "input_tokens": 194,
+    "cache_creation_input_tokens": 54821,
+    "cache_read_input_tokens": 203460,
+    "output_tokens": 11515,
+    "output_tokens_details": {
+      "thinking_tokens": 6917
+    },
+    "server_tool_use": {
+      "web_search_requests": 0,
+      "web_fetch_requests": 0
+    },
+    "service_tier": "standard",
+    "cache_creation": {
+      "ephemeral_1h_input_tokens": 54821,
+      "ephemeral_5m_input_tokens": 0
+    },
+    "inference_geo": "not_available",
+    "iterations": [
+      {
+        "input_tokens": 32,
+        "output_tokens": 3329,
+        "cache_read_input_tokens": 48946,
+        "cache_creation_input_tokens": 11471,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 0,
+          "ephemeral_1h_input_tokens": 11471
+        },
+        "type": "message",
+        "model": null
+      }
+    ],
+    "speed": "standard"
+  },
+  "modelUsage": {
+    "claude-haiku-4-5-20251001": {
+      "inputTokens": 1267,
+      "outputTokens": 15,
+      "cacheReadInputTokens": 0,
+      "cacheCreationInputTokens": 0,
+      "webSearchRequests": 0,
+      "costUSD": 0.0013419999999999999,
+      "contextWindow": 200000,
+      "maxOutputTokens": 32000,
+      "thinkingTokens": 0,
+      "canonicalModel": "claude-haiku-4-5",
+      "provider": "firstParty",
+      "costBasis": "list"
+    },
+    "claude-fable-5-1": {
+      "inputTokens": 194,
+      "outputTokens": 11515,
+      "cacheReadInputTokens": 203460,
+      "cacheCreationInputTokens": 54821,
+      "webSearchRequests": 0,
+      "costUSD": 1.7249750000000001,
+      "contextWindow": 1000000,
+      "maxOutputTokens": 64000,
+      "thinkingTokens": 6917,
+      "canonicalModel": "claude-fable-5-1",
+      "provider": "firstParty",
+      "costBasis": "list"
+    }
+  },
+  "permission_denials": [],
+  "terminal_reason": "completed",
+  "fast_mode_state": "off",
+  "fast_mode_disabled_reason": "sdk_opt_in_required",
+  "subagent_stats": {
+    "spawned": 0,
+    "requested": {
+      "background": 0,
+      "foreground": 0,
+      "unset": 0
+    },
+    "started_in_background": 0,
+    "max_depth": 0,
+    "spawned_by_subagents": 0,
+    "completed": 0,
+    "failed": 0,
+    "killed": {
+      "parent": 0,
+      "user": 0,
+      "system": 0
+    },
+    "refused": {
+      "depth_limit": 0,
+      "concurrency_limit": 0,
+      "budget": 0
+    },
+    "by_type": {}
+  },
+  "is_error": false,
+  "num_turns": 18,
+  "subtype": "success",
+  "api_error_status": null,
+  "result": "**Verdict: changes_requested** (narrow; adapter and RPC wiring are sound, the harness overclaims in two places).\n\n**Adapter and provider (accept as-is)**\n\n- Stop receipt handling is correct in every path I traced. Pre-dispatch failures and generator early-return yield a `no-request-dispatched` receipt. Transport abort, timeout, non-JSON body, oversize body, model mismatch, and schema rejection all leave `stopped:false`. A complete provider message followed by cancel, parse failure, or write-authority denial correctly yields `stopped:true` with both digests, since inference did finish. Documented 4xx rejections bind `http-<status>` plus both digests.\n- `finish_reason` handling matches the current DeepSeek enum. Non-`stop` reasons are stopped failures with retained usage, which is the right accounting for a paid but unusable completion. `tool_calls:null` accepted, non-empty rejected, `index` must be 0, exactly one choice.\n- Base URL validation now rejects bare `?`/`#`, userinfo, non-https except loopback http, and control characters. Anthropic still refuses any base URL.\n- Token accounting comment is correct: DeepSeek `prompt_tokens` already includes cache hits and `completion_tokens` includes reasoning tokens.\n- One cosmetic issue: `rejected()` calls `JSON.parse` on the raw body before `safeParse`, so a non-JSON 4xx body surfaces as `BOUNDED_INTERNAL` rather than `BOUNDED_HTTP_ERROR`. The receipt stays unknown either way, so this is a diagnostic label problem only.\n\n**RPC wiring (accept)**\n\n`loadLocalGraphRegistration` derives the credential name from the provider, forces the writer and reviewer identities to match the provider prefix, and spreads `baseUrl` through so the anthropic profile rejects it at load. The candidate path the harness reads matches the driver's `writer-<epoch>` workspace under the service root, and acceptance commands run through a shell (existing tests use `$(...)`), so the single-quoted `node -e` form is fine.\n\n**Harness: assertion honesty (change requested)**\n\n1. **Cancellation check overclaims.** The third check is named \"no freeze or forced release of unknown inference\", but the only assertions are that the final status is one of `cancel_pending`, `cancelled`, or `reconciliation_required` and that no freeze row exists. Accepting `cancelled` alongside the other two means the harness cannot detect a forced release. It records the action rows but never inspects the implement outcome. Tighten it: read the `e0.implement` outcome and assert that if it is not confirmed-stopped, the run status is not `cancelled`. Conversely, if the writer's response landed before the abort and the outcome is confirmed, `cancelled` is legitimate and the freeze-count assertion becomes a race rather than a property. Branch on the outcome instead of accepting all three statuses unconditionally.\n\n2. **First check name lists nodes it never asserts.** \"writer/freeze/reviewer/acceptance/join ready\" is inferred from `status === 'ready'` alone. The `actions` rows are captured but not checked. Either assert confirmed outcomes for `e0.freeze`, the review node, the acceptance node, and the join, or shorten the check name to what is actually proved.\n\n3. **Ready timeout is shorter than the work it waits for.** The ready wait uses the default of 180 seconds. The writer and reviewer each carry a 120 second adapter timeout and run sequentially, with acceptance in between, so a legitimately running paid graph can be killed mid-flight with `PILOT_TIMEOUT` and reported as a pilot failure. Raise it toward the run deadline of 600 seconds.\n\n**Harness: minor**\n\n- The report persists `baseUrl` straight from the environment before any validation. The redactor only strips the API key. Validate through `createBoundedProvider` first, or omit the raw value from the report.\n- The negative-review assertion runs before the review payload is saved, so a wrong verdict leaves no evidence in the report. Save first, then assert.\n- The cancel request uses a revision captured 200ms earlier. A concurrent projection produces a spurious `REVISION_CONFLICT`. Retry once on that error code.\n\nCredential handling in the harness is otherwise correct: the key is never printed, daemon output and the report pass through the redactor, and the report file is mode 0600.\n\n**Recap.** Adapter, provider profile, and RPC wiring are correct on stop receipts, finish reasons, and URL hardening, with one cosmetic error-code label. The live pilot script needs its cancellation and readiness checks to assert what their names claim, and a longer ready timeout, before its report can be cited as acceptance evidence. I did not run the pilot and make no claim about its outcome.",
+  "ttft_ms": 3004,
+  "type": "result",
+  "duration_ms": 160438,
+  "uuid": "8235bcea-9748-41ad-b944-811c97775db7",
+  "ttft_stream_ms": 2683,
+  "time_to_request_ms": 905,
+  "first_content_frame_ms": 2683,
+  "queued_turn_count": 0
+}

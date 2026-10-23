@@ -1,0 +1,42 @@
+#!/usr/bin/env node
+// Bounded TEST ONLY C2 experiments. A passing experiment is not kernel admission.
+import assert from 'node:assert/strict';
+import { createRequire } from 'node:module';
+import { pathToFileURL } from 'node:url';
+const requireGraph = createRequire('/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/graph/package.json');
+const { Annotation, StateGraph, START, END, MemorySaver } = await import(pathToFileURL(requireGraph.resolve('@langchain/langgraph')).href);
+const { ERROR } = await import(pathToFileURL(requireGraph.resolve('@langchain/langgraph-checkpoint')).href);
+const config = { configurable: { thread_id: 'c2' } };
+const versions = Object.fromEntries(['langgraph', 'langgraph-checkpoint', 'core'].map((n) => [n, requireGraph(`@langchain/${n}/package.json`).version]));
+assert.deepEqual(versions, { langgraph: '1.4.15', 'langgraph-checkpoint': '1.1.5', core: '1.2.11' });
+function graph(saver, counts, fail) {
+  const state = Annotation.Root({ results: Annotation({ reducer: (a, b) => a.concat(b), default: () => [] }) });
+  return new StateGraph(state)
+    .addNode('completed', () => { counts.completed++; return { results: ['completed'] }; })
+    .addNode('flaky', async () => { counts.flaky++; if (fail) throw new Error('injected parallel failure'); return { results: ['recovered'] }; }, { retryPolicy: { maxAttempts: 1 } })
+    .addNode('join', (s) => { counts.join++; return { results: ['joined'] }; })
+    .addEdge(START, 'completed').addEdge(START, 'flaky')
+    .addEdge(['completed', 'flaky'], 'join').addEdge('join', END).compile({ checkpointer: saver });
+}
+const observations = [];
+for (const durability of ['sync', 'async', 'exit']) for (const maxConcurrency of [1, 2]) {
+  for (const recovery of ['resume', 'resume-exact']) {
+    const saver = new MemorySaver(); const counts = { completed: 0, flaky: 0, join: 0 };
+    let error;
+    try { await graph(saver, counts, true).invoke({ results: [] }, { ...config, durability, maxConcurrency }); } catch (e) { error = String(e); }
+    const before = await saver.getTuple(config);
+    const partial = before?.pendingWrites?.find((w) => w[1] === 'results');
+    const outputError = !!partial && before.pendingWrites.some((w) => w[0] === partial[0] && w[1] === ERROR);
+    const recover = graph(saver, counts, false); let next = recovery === 'resume-exact' ? before.config : config; let result; let recoveryError;
+    try {
+      if (recovery === 'update-latest') next = await recover.updateState(config, { results: ['completed'] }, 'completed');
+      if (recovery === 'update-empty-latest') next = await recover.updateState(config, {}, 'completed');
+      if (recovery === 'update-exact') next = await recover.updateState(before.config, { results: ['completed'] }, 'completed');
+      if (recovery === 'bulk-exact') next = await recover.bulkUpdateState(before.config, [{ updates: [{ values: { results: ['completed'] }, asNode: 'completed' }] }]);
+      result = await recover.invoke(null, next);
+      if (recovery === 'resume-then-empty') { next = await recover.updateState(config, {}, 'completed'); result = await recover.invoke(null, next); }
+    } catch (e) { recoveryError = String(e); }
+    observations.push({ durability, maxConcurrency, recovery, error, outputError, writes: before.pendingWrites, counts, result, recoveryError });
+  }
+}
+console.log(JSON.stringify({ versions, admitted: false, observations }, null, 2));

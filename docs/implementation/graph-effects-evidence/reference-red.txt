@@ -1,0 +1,68 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+osstack: retaining write lease graph-action:0505d05d0bdc3cf1b8ce2992e07db7f2b1df378c9718b14d7abc1886dd7acda1: Error: invalid result kind for registered operation
+osstack: retaining write lease graph-action:b5ca8c5377b38731ef04c68411762697fc9fa745487a77d371d6be1c543f2f84: [
+  {
+    "code": "custom",
+    "message": "Expected bounded JSON-only graph data",
+    "path": []
+  },
+  {
+    "code": "invalid_union_discriminator",
+    "options": [
+      "implementation_complete",
+      "candidate_ready",
+      "review",
+      "tests",
+      "ready",
+      "workspace"
+    ],
+    "path": [
+      "kind"
+    ],
+    "message": "Invalid discriminator value. Expected 'implementation_complete' | 'candidate_ready' | 'review' | 'tests' | 'ready' | 'workspace'"
+  }
+]
+ ❯ src/graph-action-broker-boundary.test.ts (7 tests | 1 failed) 433ms
+   ✓ rejects a Promise-returning synchronous authorizer instead of silently granting authority 54ms
+   ✓ rechecks repository policy after an asynchronous adapter availability probe 104ms
+   ✓ charges observed adapter usage even when the persistence mapper reports less 59ms
+   ✓ combines independently reported cumulative input and output usage without lowering either component 55ms
+   ✓ marks only a proven pre-invocation policy failure safe for a future explicit host retry 35ms
+   ✓ retains a saved evidence reference and known usage when result validation fails 60ms
+   × does not let malformed persistence references prevent durable uncertainty recording 65ms
+     → expected { state: 'running' } to deeply equal { state: 'unknown' }
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/graph-action-broker-boundary.test.ts > does not let malformed persistence references prevent durable uncertainty recording
+AssertionError: expected { state: 'running' } to deeply equal { state: 'unknown' }
+
+- Expected
++ Received
+
+  {
+-   "state": "unknown",
++   "state": "running",
+  }
+
+ ❯ src/graph-action-broker-boundary.test.ts:128:65
+    126|   f.broker.register(connection, { ...f.registration, actions: f.regist…
+    127|   expect(await f.broker.handle(connection, f.request)).toMatchObject({…
+    128|   expect(f.db.prepare('SELECT state FROM graph_actions').get()).toEqua…
+       |                                                                 ^
+    129| });
+    130| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 6 passed (7)
+   Start at  07:05:35
+   Duration  1.55s (transform 499ms, setup 9ms, collect 889ms, tests 433ms, environment 0ms, prepare 41ms)
+
+undefined
+/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli:
+[ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL] Command failed with exit code 1: vitest run src/graph-action-broker-boundary.test.ts

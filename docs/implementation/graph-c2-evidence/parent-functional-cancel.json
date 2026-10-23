@@ -1,0 +1,8 @@
+{
+  "error": "This operation was aborted",
+  "events": [
+    "body-start",
+    "invoke-rejected",
+    "body-effect-after-delay"
+  ]
+}

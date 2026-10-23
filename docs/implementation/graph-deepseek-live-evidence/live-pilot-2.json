@@ -1,0 +1,65 @@
+{
+  "schemaVersion": 1,
+  "scope": "Live DeepSeek bounded backend pilot; not full G25 fault matrix or G29 internal rollout",
+  "root": "/Volumes/AIMATE_WORK/tmp/g25-deepseek/live-home/pilot-oFgB1J",
+  "home": "/Volumes/AIMATE_WORK/tmp/g25-deepseek/live-home/pilot-oFgB1J/home",
+  "model": "deepseek-v4-pro",
+  "baseUrl": "https://api.deepseek.com",
+  "startedAt": "2026-09-20T15:21:29.909Z",
+  "checks": [],
+  "passed": false,
+  "successRunId": "f648aab2-82d1-48ce-88f8-1011cb830180",
+  "unexpectedStatus": {
+    "schemaVersion": 1,
+    "scope": {
+      "schemaVersion": 1,
+      "tenantId": "local-pilot",
+      "principalId": "owner",
+      "workspaceId": "toy-increment"
+    },
+    "graphRunId": "f648aab2-82d1-48ce-88f8-1011cb830180",
+    "source": {
+      "product": "osstack",
+      "requestId": "live-success"
+    },
+    "status": "reconciliation_required",
+    "revision": 10,
+    "generation": 1,
+    "inputDigest": "6aecbda78c30f87c668c002e140f68b5a78594039ac3ebcbdf0d372d9c499375",
+    "specHash": "9cd668df2253407980b70aff334ec5663926c0dfe430eaf80572b44d2ed67700",
+    "createdAt": 1789917690341,
+    "updatedAt": 1789917691687,
+    "publication": "artifact_only",
+    "phase": "reconciliation_required",
+    "budget": {
+      "limits": {
+        "maxEpochs": 2,
+        "maxBranchAttempts": 1,
+        "maxConcurrentReaders": 2,
+        "maxConcurrentWritersPerRepo": 1,
+        "maxActionStarts": 14,
+        "deadlineSeconds": 600,
+        "tokenReservationLimit": 196608
+      },
+      "actionStarts": 1,
+      "reservedTokens": "0",
+      "chargedTokens": "0",
+      "accountingBlocked": false
+    },
+    "evidenceRefs": [],
+    "delivery": "delivery_unknown",
+    "error": {
+      "schemaVersion": 1,
+      "message": "Physical execution requires reconciliation",
+      "code": "ACTION_OUTCOME_UNKNOWN",
+      "retryable": false,
+      "nextAction": "reconcile"
+    }
+  },
+  "error": "PILOT_NOT_READY",
+  "daemonExit": {
+    "code": 0,
+    "signal": null
+  },
+  "completedAt": "2026-09-20T15:21:32.749Z"
+}

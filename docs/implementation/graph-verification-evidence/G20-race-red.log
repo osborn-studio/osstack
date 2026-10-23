@@ -1,0 +1,15 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+osstack: retaining write lease graph-action:c20a65cbc99856bebe157ef1c717a5bba1f2725979635414a50a5c078a351b07: Error: G20_RELEASE_HELD
+osstack: retaining write lease graph-action:31cf419d167646ab63903398e5eea765d8559434b0047916fb259abbef295593: Error: G20_RELEASE_HELD
+ ✓ src/graph-verification-join.test.ts (16 tests | 13 skipped) 13069ms
+   ✓ rejects revoke changing during the actual durable envelope read  4666ms
+   ✓ rejects fence changing during the actual durable envelope read  4118ms
+   ✓ rejects admission-release changing during the actual durable envelope read  4284ms
+
+ Test Files  1 passed (1)
+      Tests  3 passed | 13 skipped (16)
+   Start at  18:26:40
+   Duration  14.00s (transform 458ms, setup 8ms, collect 761ms, tests 13.07s, environment 0ms, prepare 32ms)
+

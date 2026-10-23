@@ -1,8 +1,8 @@
 import { spawn } from "node:child_process";
-import { mkdir, realpath } from "node:fs/promises";
+import { lstat, mkdir, open, readFile, realpath, rename } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { isAbsolute, join, relative } from "node:path";
-import { randomUUID } from "node:crypto";
+import { isAbsolute, join, relative, resolve } from "node:path";
+import { createHash, randomUUID } from "node:crypto";
 
 export interface WorktreeHandle {
   repoPath: string;
@@ -18,6 +18,8 @@ export interface CreateWorktreeOptions {
   rootPath?: string;
   branchPrefix?: string;
   baseRef?: string;
+  /** Register before exposing this directory to any graph producer. */
+  graphRetention?: GraphWorktreeRetention;
 }
 
 export interface CommitWorktreeResult {
@@ -44,7 +46,8 @@ const DISABLE_GIT_HOOKS_ARGS = [
   "core.hooksPath=/dev/null",
 ] as const;
 
-export async function createWorktree(options: CreateWorktreeOptions): Promise<WorktreeHandle> {
+export async function createWorktree(rawOptions: CreateWorktreeOptions): Promise<WorktreeHandle> {
+  const options = { ...rawOptions, ...(rawOptions.graphRetention === undefined ? {} : { graphRetention: { ...rawOptions.graphRetention } }) };
   const repoPath = await gitOutput(options.repoPath, ["rev-parse", "--show-toplevel"]);
   const rootPath = await resolveRootPath(options.rootPath);
   await mkdir(rootPath, { recursive: true });
@@ -56,6 +59,9 @@ export async function createWorktree(options: CreateWorktreeOptions): Promise<Wo
   const worktreePath = join(rootPath, `${safeRunId}-${suffix}`);
   const baseRef = options.baseRef ?? "HEAD";
 
+  if (options.graphRetention !== undefined) {
+    await persistGraphRetention({ repoPath, worktreePath, branch, baseRef, rootPath }, options.graphRetention);
+  }
   await runGit(repoPath, [
     ...DISABLE_GIT_HOOKS_ARGS,
     "worktree",
@@ -65,6 +71,8 @@ export async function createWorktree(options: CreateWorktreeOptions): Promise<Wo
     worktreePath,
     baseRef,
   ]);
+
+  if (options.graphRetention !== undefined) await runGit(repoPath, ["worktree", "lock", "--reason", "OSStack graph retained", worktreePath]);
 
   return {
     repoPath,
@@ -110,6 +118,7 @@ export async function cleanupWorktree(
   handle: WorktreeHandle,
   options: CleanupWorktreeOptions = {},
 ): Promise<void> {
+  if (await hasGraphRetention(handle)) return;
   await runGit(handle.repoPath, ["worktree", "remove", "--force", handle.worktreePath], { allowFailure: true });
   if (options.removeBranch !== false) {
     await runGit(handle.repoPath, ["branch", "-D", handle.branch], { allowFailure: true });
@@ -137,6 +146,7 @@ export async function cleanupOrphanedWorktrees(
       baseRef: entry.head ?? "HEAD",
       rootPath,
     };
+    if (await hasGraphRetention(handle)) continue;
     await cleanupWorktree(handle);
     removed.push(handle);
   }
@@ -152,6 +162,7 @@ async function runGit(cwd: string, args: string[], options: GitCommandOptions = 
   return await new Promise((resolve, reject) => {
     const child = spawn("git", args, {
       cwd,
+      env: { ...Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith("GIT_"))), GIT_CONFIG_NOSYSTEM: "1", GIT_CONFIG_GLOBAL: "/dev/null", GIT_TERMINAL_PROMPT: "0" },
       stdio: ["ignore", "pipe", "pipe"],
     });
     let stdout = "";
@@ -221,4 +232,83 @@ function sanitizePathPart(value: string): string {
 function isPathInside(path: string, rootPath: string): boolean {
   const rel = relative(rootPath, path);
   return rel === "" || (!rel.startsWith("..") && !isAbsolute(rel));
+}
+
+
+export interface GraphWorktreeRetention {
+  runId: string;
+  scopeKey: string;
+  generation: number;
+  workspaceLeaseRef: string;
+}
+export interface GraphWorktreeRetentionRecord extends GraphWorktreeRetention {
+  version: 1;
+  repoPath: string;
+  commonDir: string;
+  worktreePath: string;
+  branch: string;
+  quarantineReason?: string;
+}
+async function retentionLocation(handle: WorktreeHandle): Promise<{ path: string; commonDir: string; worktreePath: string }> {
+  const commonDir = await realpath(resolve(handle.repoPath, await gitOutput(handle.repoPath, ["rev-parse", "--git-common-dir"])));
+  // Resolve parent aliases even after a failed/removed allocation. Never resolve
+  // the leaf symlink into another directory and then silently delete it.
+  const worktreePath = resolve(handle.worktreePath);
+  if (!isAbsolute(handle.worktreePath) || await realpath(handle.rootPath) !== handle.rootPath || !isPathInside(worktreePath, handle.rootPath) || worktreePath === handle.rootPath) throw new Error("invalid exact graph worktree path");
+  const key = createHash("sha256").update(worktreePath).digest("hex");
+  return { path: join(commonDir, "osstack-graph-retention", `${key}.json`), commonDir, worktreePath };
+}
+async function hasGraphRetention(handle: WorktreeHandle): Promise<boolean> {
+  const { path } = await retentionLocation(handle);
+  try { await lstat(path); return true; } catch (error) { if ((error as NodeJS.ErrnoException).code === "ENOENT") return false; throw error; }
+}
+async function syncRetentionDirectory(path: string): Promise<void> {
+  const directory = await open(path, "r");
+  try { await directory.sync(); } catch (error) { if (!["EINVAL", "ENOTSUP", "EOPNOTSUPP"].includes((error as NodeJS.ErrnoException).code ?? "")) throw error; } finally { await directory.close(); }
+}
+async function saveRetention(path: string, record: GraphWorktreeRetentionRecord, replace = false): Promise<void> {
+  const directory = resolve(path, "..");
+  await mkdir(directory, { recursive: true, mode: 0o700 });
+  const temporary = replace ? `${path}.${randomUUID()}` : path;
+  const file = await open(temporary, "wx", 0o600);
+  try { await file.writeFile(JSON.stringify(record)); await file.sync(); } finally { await file.close(); }
+  if (replace) await rename(temporary, path);
+  await syncRetentionDirectory(directory); await syncRetentionDirectory(resolve(directory, ".."));
+}
+async function persistGraphRetention(handle: WorktreeHandle, raw: GraphWorktreeRetention): Promise<void> {
+  const identity = { ...raw };
+  if (!identity.runId || !identity.scopeKey || !identity.workspaceLeaseRef || !Number.isSafeInteger(identity.generation) || identity.generation < 1) throw new Error("invalid graph retention identity");
+  const location = await retentionLocation(handle);
+  await saveRetention(location.path, { ...identity, version: 1, repoPath: handle.repoPath, commonDir: location.commonDir, worktreePath: location.worktreePath, branch: handle.branch });
+}
+async function readRetention(handle: WorktreeHandle): Promise<{ path: string; record: Readonly<GraphWorktreeRetentionRecord> }> {
+  const location = await retentionLocation(handle);
+  const record = JSON.parse(await readFile(location.path, "utf8")) as GraphWorktreeRetentionRecord;
+  if (record.version !== 1 || record.commonDir !== location.commonDir || record.worktreePath !== location.worktreePath || record.branch !== handle.branch || record.repoPath !== handle.repoPath || !record.runId || !record.scopeKey || !record.workspaceLeaseRef || !Number.isSafeInteger(record.generation) || record.generation < 1) throw new Error("graph retention identity mismatch or corruption");
+  return { path: location.path, record: Object.freeze(record) };
+}
+/** Quarantine records uncertainty; it never kills producers or fabricates stop evidence. */
+export async function quarantineGraphWorktree(handle: WorktreeHandle, reason: string): Promise<void> {
+  if (!reason.trim()) throw new Error("quarantine reason required");
+  const { path, record } = await readRetention(handle);
+  await saveRetention(path, { ...record, quarantineReason: reason }, true);
+}
+/** Explicit trusted host operation under canonical G10 exclusion. verifySafe must
+ * authenticate ALL stopped producers and the exported durable digest for this
+ * exact retention identity. A boolean or a worker receipt is not a grant.
+ * Keep the record even after deletion: generic cleanup never reclaims it. */
+export async function cleanupGraphWorktree(handle: WorktreeHandle, options: {
+  artifactDigest: string;
+  verifySafe: (record: Readonly<GraphWorktreeRetentionRecord>, artifactDigest: string) => void | Promise<void>;
+}): Promise<void> {
+  const frozenHandle = Object.freeze({ ...handle });
+  const { artifactDigest, verifySafe } = options;
+  if (!/^[a-f0-9]{64}$/.test(artifactDigest) || typeof verifySafe !== "function") throw new Error("exported artifact and trusted authority required");
+  const { record } = await readRetention(frozenHandle);
+  if (await verifySafe(record, artifactDigest) !== undefined) throw new Error("nonconforming cleanup authority");
+  const current = await readRetention(frozenHandle);
+  if (JSON.stringify(current.record) !== JSON.stringify(record)) throw new Error("graph retention changed during cleanup");
+  if (await verifySafe(current.record, artifactDigest) !== undefined) throw new Error("nonconforming cleanup authority");
+  await runGit(frozenHandle.repoPath, [...DISABLE_GIT_HOOKS_ARGS, "worktree", "remove", "--force", "--force", frozenHandle.worktreePath]);
+  await runGit(frozenHandle.repoPath, ["branch", "-D", frozenHandle.branch]);
 }

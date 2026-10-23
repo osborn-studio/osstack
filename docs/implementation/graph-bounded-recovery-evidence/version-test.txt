@@ -1,0 +1,14 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+
+  ../../../../../tmp/g25-c2/tmp/g25-bounded-build-X3Zvuu/host.mjs  232.1kb
+
+⚡ Done in 25ms
+ ✓ src/graph-bounded-recovery.test.ts (16 tests | 15 skipped) 2663ms
+   ✓ retains admission when future-template prevents recovery  2661ms
+
+ Test Files  1 passed (1)
+      Tests  1 passed | 15 skipped (16)
+   Start at  08:53:39
+   Duration  5.20s (transform 1.23s, setup 19ms, collect 2.15s, tests 2.66s, environment 0ms, prepare 47ms)

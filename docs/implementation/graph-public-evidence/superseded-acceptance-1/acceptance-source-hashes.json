@@ -1,0 +1,20 @@
+{
+  "packages/cli/src/bin.ts": "aed9bf981e8064448e2b40000d66d66685f8f21c04bacce00acacf819f9e0c4c",
+  "packages/cli/src/daemon.ts": "170ce220661272ee462573e2a2fd7408c9e0029282b8ed619bda0f283ce32633",
+  "packages/cli/src/graph-command.ts": "87399b47e52dc97472a0e9e8e6c161fbe5c3c0865df233c5a1f160430e2642c6",
+  "packages/cli/src/graph-delegation.integration.test.ts": "8538790f9003521e0f56c1f1f57d246611e437f57b13e1d505828c3ea0445e9c",
+  "packages/cli/src/graph-delivery.ts": "6482a006e093e889a472243b8c22c35eaf9ba4ddffdc6fa19d55f9b1789abfff",
+  "packages/cli/src/graph-execution-command.test.ts": "1d9044155d030ef60af77a6c740d0aabcfe706022398b6fd82f01797ff5fbdea",
+  "packages/cli/src/graph-execution-command.ts": "9f562471a12d155b40dabcdfced8cc709a104c815a1e1d7ee31f9ab8b1c80841",
+  "packages/cli/src/graph-host-config.test.ts": "4a344949fb3af61e0584030a20bc66fa96df38b455e9ad9b70c91126abf70c60",
+  "packages/cli/src/graph-rpc.test.ts": "3f2ecb7aa1ac12f1d602a3afbd00b4be4d3d6031c27670784c4c55331111db65",
+  "packages/cli/src/graph-rpc.ts": "aa2d63c23bf066933df76a2bc69ca352596334da3d640e5dbbcd61a54983f82d",
+  "packages/core/src/state/graph-runs.test.ts": "263cdd2669176bc1d021884f7457c036c57c0573bb14068adace3b929e34e9b3",
+  "packages/core/src/state/graph-runs.ts": "74cecc8aeeec533b65e9d98b9664ab0f0f8b3f5fcb47b4711816b9b41663b5d4",
+  "packages/core/src/state/graph-verification.ts": "4091fa24a1d1ed0d91b23761cf24cfa955b917ea1179a8d16b58298e22929595",
+  "packages/core/src/state/migrations.ts": "1e48a0648ee3e7868a2c3fac79a224ee0c3ab35db382c0decf71b3c5a9aa8df9",
+  "packages/protocol/schemas/graph.schema.json": "73a7f53f0bb23eaeabfa5a3d5c13457bec7b66910a0fc38296bf7f466bfd7996",
+  "packages/protocol/src/graph.test.ts": "692b3001b0d673f25c68f175cbde3adf06f3ca35782a458619c49a75b29a2cf7",
+  "packages/protocol/src/graph.ts": "18721066471e176b86587dd04cb96f777c57e5d40370dc0af8ead6eb38f2fe3f",
+  "packages/protocol/src/index.ts": "f3caf6f78ee5e57bc98edaee8c562b1f580d2b3965f8ffd9b7f164dc77ae1095"
+}

@@ -1,0 +1,28 @@
+{
+  "negativeControls": true,
+  "passed": true,
+  "results": [
+    {
+      "scenario": "changed-argument",
+      "bypassedProgramIdentityGate": true,
+      "result": 42,
+      "counts": {
+        "a": 1,
+        "b": 1,
+        "join": 1
+      },
+      "conclusion": "Changed join parameters reused cached old result: engine does not bind args"
+    },
+    {
+      "scenario": "reordered-calls",
+      "bypassedProgramIdentityGate": true,
+      "result": 42,
+      "counts": {
+        "a": 2,
+        "b": 2,
+        "join": 1
+      },
+      "conclusion": "Reordered task calls re-entered completed bodies: ordered program identity must be bound"
+    }
+  ]
+}

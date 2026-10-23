@@ -18,7 +18,18 @@ export * from "./iterator.js";
 export * from "./state-file.js";
 export * from "./report.js";
 export * from "./task-queue.js";
+export * from "./candidate-policy.js";
 export * from "./planner.js";
 export * from "./executor.js";
+export { executeCandidateImplementation } from "./candidate-execution.js";
+export type {
+  RegisteredCandidateWorkspace,
+  CandidateAuthorizationScope,
+  CandidateAuthorizationDecision,
+  CandidateExecutionInput,
+  CandidateExecutionResult,
+} from "./candidate-execution.js";
 export * from "./verifier.js";
 export * from "./loop-engine.js";
+
+export type { LoopLifecycleLease, LoopLifecycleAdmission } from "./policy-gate.js";

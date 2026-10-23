@@ -33,6 +33,10 @@ import {
 } from "@osstack/core";
 import {
   deliverToGitHub,
+  observeCurrentGreenCandidate,
+  CandidateEvidenceContextSchema,
+  type CandidateEvidenceContext,
+  type DeliveryCommandRunner,
   type GitHubDeliveryResult,
 } from "@osstack/github";
 import {
@@ -110,6 +114,13 @@ export interface GuardedGitRuntimeDeps {
   now?: () => Date;
   writeProof(input: GuardedGitProofInput): Promise<ProofReference>;
   deliverGit?: typeof deliverToGitHub;
+  /** Trusted controller injection only; never derived from product/queue/routing JSON. */
+  candidateDeliveryContext?: (input: Readonly<{
+    workspacePath: string;
+    routing: GuardedGitRouting;
+    budget: GuardedDeliveryPolicy["budget"];
+  }>) => Promise<CandidateEvidenceContext | undefined>;
+  candidateDeliveryRunner?: DeliveryCommandRunner;
   assertPolicyUnchanged?: (
     workspacePath: string,
     expectedPolicySha256: string,
@@ -406,8 +417,28 @@ export class GuardedGitRuntime {
             message: routing.git.title,
           });
         },
-        deliverGit: (input) =>
-          (this.deps.deliverGit ?? deliverToGitHub)(input),
+        deliverGit: async (input) => {
+          const deliver = this.deps.deliverGit ?? deliverToGitHub;
+          const sample = this.deps.candidateDeliveryContext;
+          if (sample === undefined) return deliver(input);
+          if (this.deps.assertPolicyUnchanged === undefined) throw new Error("CANDIDATE_CONTEXT_POLICY_GUARD_REQUIRED");
+          const readContext = async () => {
+            try {
+              const value = await sample(structuredClone({ workspacePath: input.workspacePath, routing, budget }));
+              return value === undefined ? undefined : CandidateEvidenceContextSchema.parse(value);
+            } catch { throw new Error("CANDIDATE_CONTEXT_INVALID"); }
+          };
+          await this.assertPolicy(routing, input.workspacePath);
+          const before = await readContext();
+          if (before === undefined) { await this.assertPolicy(routing, input.workspacePath); return deliver(input); }
+          const evidence = await observeCurrentGreenCandidate(input, before, this.deps.candidateDeliveryRunner);
+          await this.assertPolicy(routing, input.workspacePath);
+          const after = await readContext();
+          if (after === undefined) { await this.assertPolicy(routing, input.workspacePath); return deliver(input); }
+          if (JSON.stringify(before) !== JSON.stringify(after)) throw new Error("CANDIDATE_CONTEXT_CHANGED");
+          await this.assertPolicy(routing, input.workspacePath);
+          return evidence === undefined ? deliver(input) : deliver({ ...input, candidateEvidence: evidence, evidenceContext: after });
+        },
         prepareMergedWorkspace: async (input) => {
           await this.assertPolicy(
             routing,

@@ -1,0 +1,111 @@
+{
+  "duration_api_ms": 120987,
+  "stop_reason": "end_turn",
+  "session_id": "82b012d8-d4b8-4fcc-abe7-33cddb8f3290",
+  "total_cost_usd": 1.1207115,
+  "usage": {
+    "input_tokens": 98,
+    "cache_creation_input_tokens": 32700,
+    "cache_read_input_tokens": 68338,
+    "output_tokens": 8945,
+    "output_tokens_details": {
+      "thinking_tokens": 6129
+    },
+    "server_tool_use": {
+      "web_search_requests": 0,
+      "web_fetch_requests": 0
+    },
+    "service_tier": "standard",
+    "cache_creation": {
+      "ephemeral_1h_input_tokens": 32700,
+      "ephemeral_5m_input_tokens": 0
+    },
+    "inference_geo": "not_available",
+    "iterations": [
+      {
+        "input_tokens": 32,
+        "output_tokens": 7506,
+        "cache_read_input_tokens": 34343,
+        "cache_creation_input_tokens": 3953,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 0,
+          "ephemeral_1h_input_tokens": 3953
+        },
+        "type": "message",
+        "model": null
+      }
+    ],
+    "speed": "standard"
+  },
+  "modelUsage": {
+    "claude-haiku-4-5-20251001": {
+      "inputTokens": 1312,
+      "outputTokens": 17,
+      "cacheReadInputTokens": 0,
+      "cacheCreationInputTokens": 0,
+      "webSearchRequests": 0,
+      "costUSD": 0.001397,
+      "contextWindow": 200000,
+      "maxOutputTokens": 32000,
+      "thinkingTokens": 0,
+      "canonicalModel": "claude-haiku-4-5",
+      "provider": "firstParty",
+      "costBasis": "list"
+    },
+    "claude-fable-5-1": {
+      "inputTokens": 98,
+      "outputTokens": 8945,
+      "cacheReadInputTokens": 68338,
+      "cacheCreationInputTokens": 32700,
+      "webSearchRequests": 0,
+      "costUSD": 1.1193145,
+      "contextWindow": 1000000,
+      "maxOutputTokens": 64000,
+      "thinkingTokens": 6129,
+      "canonicalModel": "claude-fable-5-1",
+      "provider": "firstParty",
+      "costBasis": "list"
+    }
+  },
+  "permission_denials": [],
+  "terminal_reason": "completed",
+  "fast_mode_state": "off",
+  "fast_mode_disabled_reason": "sdk_opt_in_required",
+  "subagent_stats": {
+    "spawned": 0,
+    "requested": {
+      "background": 0,
+      "foreground": 0,
+      "unset": 0
+    },
+    "started_in_background": 0,
+    "max_depth": 0,
+    "spawned_by_subagents": 0,
+    "completed": 0,
+    "failed": 0,
+    "killed": {
+      "parent": 0,
+      "user": 0,
+      "system": 0
+    },
+    "refused": {
+      "depth_limit": 0,
+      "concurrency_limit": 0,
+      "budget": 0
+    },
+    "by_type": {}
+  },
+  "is_error": false,
+  "num_turns": 10,
+  "subtype": "success",
+  "api_error_status": null,
+  "result": "**Verdict: accept.** I found no introduced correctness or security defects in the reviewed files. All seven prior fixes are present and covered by colocated tests. I did not run tests.\n\n**Verification of the seven prior fixes**\n\n- **Exact 4xx rejection pairs.** `packages/agents/src/adapters/bounded-messages.ts:164-171` only grants a rejection receipt when the body parses as a documented error envelope and the status/type pair matches the fixed table. Non-JSON bodies, 5xx, and mismatched pairs fall through with no provider ID, so stop stays unknown. Tests at `bounded-messages.test.ts:120-128` cover both the six accepted pairs and the mismatched/5xx cases.\n- **First yield inside try; finally marks no-dispatch stopped.** `run.started` is the first statement inside the try at line 138. The finally at line 212 records the no-request receipt whenever `dispatched` is false, which also handles consumer `return()` after the first event. Covered at test lines 115-119.\n- **Writer limits.** Writer inputs over 4KiB are refused before dispatch at line 147, the writer cap is 32768 tokens at line 148, and the proposal schema at line 31 admits exactly one nullable edit with strict keys. Tests at lines 60-68 and 129-133 cover extra keys, multi-edit arrays, oversize content, and NUL bytes.\n- **Digests and bounded message ID.** The request digest binds run ID, workspace path, and the full request body at line 155. The response digest hashes the raw body at line 163. The message ID is constrained to a 64-char safe charset at line 32 before it can enter a receipt.\n- **Reviewer 8192-byte serialized budget.** Enforced on the re-serialized report at line 198, after schema limits. Test at lines 134-137 uses multibyte text so byte length, not character count, is what trips it.\n- **Safe error code.** Line 207 allows only codes matching the BOUNDED pattern and maps everything else to `BOUNDED_INTERNAL`. Test at lines 76-80 confirms a thrown host secret never reaches the event stream.\n- **Usage retention.** Usage including cache tokens and elapsed duration is captured at lines 176-178 before any output validation. The catch path re-emits it at line 208. Test at lines 138-142 confirms it survives a `max_tokens` truncation.\n\n**Other properties checked**\n\n- **Sequence accounting.** The `last_seq` arithmetic in both the success path and the catch path resolves to the last non-terminal seq whether or not `usage.final` was emitted.\n- **Cancellation semantics.** Cancellation during transport leaves stop unknown. Cancellation after a complete message but before the write records a receipt and skips the write at lines 181-191. Timeout uses the internal controller only, so it reports `failed` rather than `cancelled`.\n- **Atomic replacement.** `replace()` re-reads the source and compares digest, device, inode, and mode, then writes to an exclusive temp file, fchmods, fsyncs, renames, and fsyncs the directory. The temp name starts with a dot so it can never be disclosed as a source.\n- **Owner config.** `packages/cli/src/graph-rpc.ts:299` is strict with only model, files, and acceptance. Identity pairs are pinned at lines 326-327. The env credential is read once at line 329 and never sourced from JSON. The binding digest excludes only `grant`, so any `boundedMessages` change invalidates the grant, confirmed at `graph-host-config.test.ts:65-66`. Config is re-read after the async adapter import at line 333.\n- **Daemon.** `packages/cli/src/daemon.ts:3838` awaits the now-async loader inside the existing cached promise. A load failure stays cached as a rejection, but that behavior predates this slice.\n\n**Conservative choices worth knowing, not defects**\n\n- A complete message whose `model` differs from the configured ID throws before the provider ID is recorded at line 174, so stop stays unknown even though inference finished. This is safe but means a dated-snapshot response to an alias would never be confirmed stopped. Since the option contract requires an exact provider model ID, this is consistent.\n- The in-memory receipt map caps at 4096 invocations and never evicts, so a long-lived daemon eventually refuses new runs until restart. The adapter comment documents this as intentional.\n\n**Scope reminders unchanged**\n\nThe live model pilot remains pending. The graph-level tests in `graph-bounded-messages.test.ts` use a fixture provider response, so they exercise the clone, edit, freeze, review, join, and reconcile path but do not count as G25 completion.",
+  "ttft_ms": 3643,
+  "type": "result",
+  "duration_ms": 120118,
+  "uuid": "3d8ddb42-644f-4432-984e-232243e688e5",
+  "ttft_stream_ms": 3360,
+  "time_to_request_ms": 1022,
+  "first_content_frame_ms": 3361,
+  "queued_turn_count": 0
+}

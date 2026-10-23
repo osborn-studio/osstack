@@ -1,0 +1,12 @@
+{
+  "packages/core/src/state/graph-runs.ts": "8c6e72b5cc2b00974e5bfa8f8117259c43c0acf687cd4f8e69def788e73c1b7b",
+  "packages/core/src/state/graph-storage.ts": "10fd977f8508fbf97e369b86b5bb24151eac4471b11ea71c3adec32fe07f8cd4",
+  "packages/core/src/state/graph-actions.ts": "f59517dcc4d8d2c622786faf9b1a9ef2fa6d59cad3b41b8efeea71948f9a6a81",
+  "packages/core/src/state/graph-checkpoints.ts": "72eccb9562036e864c04ae1f22325c0f26776c874c7d03cf23d02e1dac819655",
+  "packages/cli/src/graph-action-broker.ts": "f4fa522106d619c812d7862ae2644c88d4c319e9a3260352c93b46a77a123d0e",
+  "packages/cli/src/graph-checkpoint-service.ts": "be9d466b98c65aa7eef500af9d81ea01359c0d80c8e12a70f02a2772e82e5a30",
+  "packages/cli/src/governed-execution.ts": "5c49a73a991458b2d7b1d935424447dc8c1bfee3baf65952feae05092dac0d6e",
+  "packages/graph/src/remote-checkpointer.ts": "77f469de63b63a4ba7d56d97a8e1c7b521cb31ee3577b3b70557f544f458652e",
+  "packages/protocol/src/graph-checkpoint.ts": "661688947e1b65367f84754075a20a962e1762f685d8086024ba8571502a1084",
+  "packages/loop/src/candidate-execution.ts": "95006bf5463aead4eb4c8e2203d1821fa8abd5588e4de3206f0a20e49f69badc"
+}

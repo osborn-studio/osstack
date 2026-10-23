@@ -1,0 +1,49 @@
+$ vitest run
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/core
+
+ ✓ src/state/memory.test.ts (8 tests) 289ms
+ ✓ src/state/db.test.ts (22 tests) 1138ms
+ ✓ src/state/improvement-proposals.test.ts (20 tests) 970ms
+ ✓ src/state/autonomy-runs.test.ts (9 tests) 439ms
+ ✓ src/state/lessons.test.ts (6 tests) 347ms
+ ✓ src/kanban/kanban.test.ts (42 tests) 1792ms
+ ✓ src/state/probe-store.test.ts (9 tests) 461ms
+ ✓ src/state/run-store.test.ts (11 tests) 392ms
+ ✓ src/state/session-continuations.test.ts (33 tests) 1663ms
+ ✓ src/policy/profile.test.ts (37 tests) 80ms
+ ✓ src/state/contract-approvals.test.ts (4 tests) 112ms
+ ✓ src/state/knowledge-hygiene-store-v2.test.ts (5 tests) 164ms
+ ✓ src/state/knowledge-hygiene-recurrence.test.ts (5 tests) 181ms
+ ✓ src/state/knowledge-hygiene-store.test.ts (7 tests) 233ms
+ ✓ src/state/graph-checkpoints.test.ts (9 tests) 2142ms
+   ✓ splits pages at transport traversal bounds even when many small pending writes fit the byte cap  1381ms
+ ✓ src/state/probe-outcome-metrics.test.ts (2 tests) 85ms
+ ✓ src/state/evaluator-epochs.test.ts (4 tests) 128ms
+ ✓ src/state/probe-portfolio.test.ts (3 tests) 156ms
+ ✓ src/state/graph-runs.test.ts (31 tests) 2682ms
+   ✓ graph run storage > serializes independent SQLite workers: same-request  727ms
+ ✓ src/state/deploy-freezes.test.ts (3 tests) 212ms
+ ✓ src/state/knowledge-hygiene-history-v2.test.ts (2 tests) 232ms
+ ✓ src/state/sessions.test.ts (7 tests) 263ms
+ ✓ src/state/rollback-drills.test.ts (2 tests) 42ms
+ ✓ src/state/graph-actions.test.ts (31 tests) 2783ms
+   ✓ graph action ledger > serializes independent SQLite workers: same-key  667ms
+ ✓ src/state/knowledge-hygiene-plan-store.test.ts (2 tests) 87ms
+ ✓ src/state/notification-outbox.test.ts (3 tests) 198ms
+ ✓ src/state/dependency-obligation-store.test.ts (2 tests) 50ms
+ ✓ src/orchestrator/router.test.ts (19 tests) 64ms
+ ✓ src/policy/engine.test.ts (8 tests) 4ms
+ ✓ src/policy/agent-scorecard.test.ts (2 tests) 49ms
+ ✓ src/state/feedback-assets.test.ts (2 tests) 47ms
+ ✓ src/privacy/redactor.test.ts (11 tests) 8ms
+ ✓ src/kanban/transition-guard.test.ts (3 tests) 3ms
+ ✓ src/state/protocol-mappers.test.ts (15 tests) 5ms
+ ✓ src/graph/repository-scope.test.ts (6 tests) 6843ms
+   ✓ bounds Git subprocess output and terminates a hung Git process  5688ms
+
+ Test Files  35 passed (35)
+      Tests  385 passed (385)
+   Start at  06:57:52
+   Duration  7.24s (transform 1.32s, setup 0ms, collect 5.15s, tests 24.34s, environment 4ms, prepare 2.05s)
+

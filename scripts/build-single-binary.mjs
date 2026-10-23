@@ -64,6 +64,7 @@ const manifest = {
   platform: targetPlatform,
   arch: targetArch,
   bun_version: bunVersion,
+  graph_runtime: { supported: false, reason: "GRAPH_DISTRIBUTION_UNSUPPORTED", supported_installation: "Node.js workspace/package installation with @osstack/graph worker" },
   generated_at: new Date().toISOString(),
   binary: {
     path: binaryPath,
@@ -96,6 +97,7 @@ const summary = {
   platform: targetPlatform,
   arch: targetArch,
   bun_version: bunVersion,
+  graph_runtime: { supported: false, reason: "GRAPH_DISTRIBUTION_UNSUPPORTED", supported_installation: "Node.js workspace/package installation with @osstack/graph worker" },
   signed: false,
   notarized: false,
 };

@@ -1,0 +1,71 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+Cloning into '/Volumes/AIMATE_WORK/tmp/gc7/g22-rpc-6CeJ59/delivery/e852ec3e-ca66-4f41-846a-501334c9921b/writer-0'...
+HEAD is now at c6b5c01 base
+osstack: retaining write lease graph-action:e34e9b25f8521a7708dd4ce9c1a043c8e3716ca1c60b9681126d14489628efb8: Error: adapter result or execution unconfirmed
+Cloning into '/Volumes/AIMATE_WORK/tmp/gc7/g22-rpc-xRFmuJ/delivery/e0ccdc10-ad08-4f56-a121-f5ea26db0f09/writer-0'...
+HEAD is now at 4a7309d base
+osstack: retaining write lease graph-action:deabea1767350d3dd5d3d6f229da22dd0f974ae073be1a855fe571a1023e80b9: Error: adapter result or execution unconfirmed
+Cloning into '/Volumes/AIMATE_WORK/tmp/gc7/g22-rpc-TfF0ZU/delivery/7ff48f1f-4eb0-4d6b-8905-016da00c2b2f/writer-0'...
+HEAD is now at dc54c2c base
+osstack: retaining write lease graph-action:7b5c7511389da22a735773f66c20e31ce2549f8a7781a1506e837663daa852ba: Error: adapter result or execution unconfirmed
+Cloning into '/Volumes/AIMATE_WORK/tmp/gc7/g22-rpc-JChtcM/direct/writer-0'...
+HEAD is now at f508fd6 policy
+Cloning into '/Volumes/AIMATE_WORK/tmp/gc7/g22-rpc-AY7adN/direct/writer-0'...
+HEAD is now at 88ae989 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/gc7/g22-rpc-tdVhHD/direct/writer-0'...
+HEAD is now at 7dcfae6 base
+ ❯ src/graph-review-findings.test.ts (6 tests | 2 failed) 27152ms
+   × settles stopped review cancellation with revoked execute, holding only unproven stop 2416ms
+     → expected 'unknown' to be 'failed' // Object.is equality
+   × settles stopped tests cancellation with revoked execute, holding only unproven stop 6272ms
+     → expected 'unknown' to be 'failed' // Object.is equality
+   ✓ settles stopped unknown cancellation with revoked execute, holding only unproven stop  2270ms
+   ✓ uses current source policy (revoked) beyond workspace creation and writer availability  1964ms
+   ✓ uses current source policy (untracked) beyond workspace creation and writer availability  7089ms
+   ✓ uses current source policy (newer) beyond workspace creation and writer availability  7139ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/graph-review-findings.test.ts > settles stopped review cancellation with revoked execute, holding only unproven stop
+AssertionError: expected 'unknown' to be 'failed' // Object.is equality
+
+Expected: "failed"
+Received: "unknown"
+
+ ❯ src/graph-review-findings.test.ts:80:23
+     78|     const branch = mode === 'tests' ? 'tests' : 'review';
+     79|     const row = f.db.prepare('SELECT state, outcome_json FROM graph_ac…
+     80|     expect(row.state).toBe(mode === 'unknown' ? 'unknown' : 'failed');
+       |                       ^
+     81|     expect(f.db.prepare('SELECT status FROM graph_runs').get()).toEqua…
+     82|     expect(f.db.prepare('SELECT count(*) n FROM graph_action_admission…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  src/graph-review-findings.test.ts > settles stopped tests cancellation with revoked execute, holding only unproven stop
+AssertionError: expected 'unknown' to be 'failed' // Object.is equality
+
+Expected: "failed"
+Received: "unknown"
+
+ ❯ src/graph-review-findings.test.ts:80:23
+     78|     const branch = mode === 'tests' ? 'tests' : 'review';
+     79|     const row = f.db.prepare('SELECT state, outcome_json FROM graph_ac…
+     80|     expect(row.state).toBe(mode === 'unknown' ? 'unknown' : 'failed');
+       |                       ^
+     81|     expect(f.db.prepare('SELECT status FROM graph_runs').get()).toEqua…
+     82|     expect(f.db.prepare('SELECT count(*) n FROM graph_action_admission…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed | 4 passed (6)
+   Start at  18:41:11
+   Duration  28.08s (transform 476ms, setup 7ms, collect 777ms, tests 27.15s, environment 0ms, prepare 28ms)
+
+undefined
+/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli:
+[ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL] Command failed with exit code 1: vitest run src/graph-review-findings.test.ts

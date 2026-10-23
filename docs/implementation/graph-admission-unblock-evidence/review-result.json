@@ -1,0 +1,111 @@
+{
+  "duration_api_ms": 158078,
+  "stop_reason": "end_turn",
+  "session_id": "55e8a0df-29db-409c-ac9a-6187562ebc43",
+  "total_cost_usd": 1.73494975,
+  "usage": {
+    "input_tokens": 2,
+    "cache_creation_input_tokens": 55466,
+    "cache_read_input_tokens": 3219,
+    "output_tokens": 11710,
+    "output_tokens_details": {
+      "thinking_tokens": 9901
+    },
+    "server_tool_use": {
+      "web_search_requests": 0,
+      "web_fetch_requests": 0
+    },
+    "service_tier": "standard",
+    "cache_creation": {
+      "ephemeral_1h_input_tokens": 55466,
+      "ephemeral_5m_input_tokens": 0
+    },
+    "inference_geo": "not_available",
+    "iterations": [
+      {
+        "input_tokens": 2,
+        "output_tokens": 11710,
+        "cache_read_input_tokens": 3219,
+        "cache_creation_input_tokens": 55466,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 0,
+          "ephemeral_1h_input_tokens": 55466
+        },
+        "type": "message",
+        "model": null
+      }
+    ],
+    "speed": "standard"
+  },
+  "modelUsage": {
+    "claude-haiku-4-5-20251001": {
+      "inputTokens": 39210,
+      "outputTokens": 19,
+      "cacheReadInputTokens": 0,
+      "cacheCreationInputTokens": 0,
+      "webSearchRequests": 0,
+      "costUSD": 0.039305,
+      "contextWindow": 200000,
+      "maxOutputTokens": 32000,
+      "thinkingTokens": 0,
+      "canonicalModel": "claude-haiku-4-5",
+      "provider": "firstParty",
+      "costBasis": "list"
+    },
+    "claude-fable-5-1": {
+      "inputTokens": 2,
+      "outputTokens": 11710,
+      "cacheReadInputTokens": 3219,
+      "cacheCreationInputTokens": 55466,
+      "webSearchRequests": 0,
+      "costUSD": 1.69564475,
+      "contextWindow": 1000000,
+      "maxOutputTokens": 64000,
+      "thinkingTokens": 9901,
+      "canonicalModel": "claude-fable-5-1",
+      "provider": "firstParty",
+      "costBasis": "list"
+    }
+  },
+  "permission_denials": [],
+  "terminal_reason": "completed",
+  "fast_mode_state": "off",
+  "fast_mode_disabled_reason": "sdk_opt_in_required",
+  "subagent_stats": {
+    "spawned": 0,
+    "requested": {
+      "background": 0,
+      "foreground": 0,
+      "unset": 0
+    },
+    "started_in_background": 0,
+    "max_depth": 0,
+    "spawned_by_subagents": 0,
+    "completed": 0,
+    "failed": 0,
+    "killed": {
+      "parent": 0,
+      "user": 0,
+      "system": 0
+    },
+    "refused": {
+      "depth_limit": 0,
+      "concurrency_limit": 0,
+      "budget": 0
+    },
+    "by_type": {}
+  },
+  "is_error": false,
+  "num_turns": 1,
+  "subtype": "success",
+  "api_error_status": null,
+  "result": "Reviewed the diff against the supplied sources for the stated semantics. No tools were used; fixture code was not supplied, so two test assumptions are flagged as unverifiable.\n\n**Correctness and security findings**\n\n- **Admission gate is correctly placed.** `packages/cli/src/graph-rpc.ts:184-193` runs the `admitNewRuns` and `assertGraphDeliverySupported` checks inside the immediate transaction, after `authorize()`, before `runs.create`. A throw rolls back with no `graph_runs`, `graph_requests` or `graph_public_delivery` row. Gating on `!prior` is exact: a prior row means `create` replays rather than reserves, and a mismatched digest still yields `IDEMPOTENCY_CONFLICT`. I found no path that creates a new reservation while skipping the gate.\n- **Fail-closed on non-true values holds.** `admitted !== true` rejects `false`, Promises, and truthy non-booleans, and the stray Promise is settled with a no-op catch. No blocker.\n- **Three defensive layers are consistent.** Service snapshot at `graph-rpc.ts:184-193`, `GraphDelivery` constructor at `graph-delivery.ts:80`, and broker bind at `graph-action-broker.ts:182`. The broker check runs before intent reservation and capacity acquisition, and it also covers the reviewer adapter installed later through `prepareGraphVerificationBranch`.\n- **Existing work is not halted.** Resume, cancel, status, result and the in-run `retryAuthorized` path never consult `admitNewRuns`. The deferred launch and epoch takeover reuse the snapshotted delivery, which was already asserted at reservation.\n- **Config reread is owner-only.** `graph-rpc.ts:298` reads through `trustedConfig`, which enforces mode and uid. The flag is top-level and excluded from `bindingDigest`, so toggling does not invalidate the registration. Omission defaults to enabled as documented.\n- **Wrapper `confirmStopped` change is benign.** `graph-action-broker.ts:543` now returns `{ stopped: false }` instead of falling through to the command branch. Both were fail-closed. After the new assert, the `original.confirmStopped` is always present, so the new fallback is dead code. Not a blocker.\n- **Minor: two independent config reads per new admission.** `authorize()` and `admitNewRuns()` each open the file. An owner racing their own atomic replace can validate the binding against one version and read the flag from the next. Worst case is a reservation that fails at launch with status `failed` at generation 0. Not a security issue. Folding the flag into the `authorize` read would make it one snapshot.\n- **Minor: config errors surface as the wrong public code.** If `trustedConfig` throws inside `admitNewRuns` you get `INTERNAL_ERROR`, and a Zod failure maps to `INPUT_CONTRACT_INVALID` via `graphRpcError`. The CLI then advises `fix_input`. This is fail-closed and identical to the pre-existing `authorize()` behavior, which runs first anyway.\n\n**Test gaps**\n\n- No test for a truthy non-boolean `admitNewRuns` return such as `1` or `\"true\"`. The code handles it, but the async test is the only non-boolean case.\n- No test for an omitted `admissionEnabled` through `loadLocalGraphRegistration`. The reload test only exercises explicit `false` and `true`.\n- No test that the switch flipping to `false` between the reservation transaction and the `setImmediate` launch still launches. The disable test flips after the writer is observed, and the reload test cancels before launch. The code is correct by inspection, but the \"reservation is the cutoff\" claim in the docs is not directly exercised.\n- The first and third admission tests rely on `delete f.writer.confirmStopped` reaching `f.registration.delivery.writer.adapter` by object identity. If `graphRpcFixture` wraps or clones adapters, those tests pass for the wrong reason. Same dependence in the new broker test on `fixture(adapter)` holding the adapter by reference. Verify in the fixture.\n- No test that the CLI keeps `retryable: false` for these codes when the server message is long or empty. Low value.\n\n**Pre-existing limitations, not introduced here**\n\n- Queued runs from a dead host are never relaunched by a replacement host. The fresh-host test documents that they stay `queued` until cancelled.\n- Adapter `confirmStopped` remains self-attested, subject only to the one-second race in `execute`. This slice only requires its presence, as stated.\n- `INTERNAL_ERROR` mapping to `fix_input` in the CLI predates this change.\n\n**Verdict**\n\nAccept as the bounded slice. No blockers were introduced. The gate rejects unsupported writer or reviewer and disabled admission before any durable reservation or effect, false and async results fail closed, replay, read, result, cancel and live resume keep their existing grant checks, and the config is owner-only and reread. The dead fallback branch and the double config read are cleanup candidates, not conditions for merge. The test gaps worth closing before G26 relies on this switch are the truthy non-boolean return, the omitted-flag default, the flip-between-reserve-and-launch case, and confirming the fixture shares adapter objects by reference.",
+  "ttft_ms": 135250,
+  "type": "result",
+  "duration_ms": 159421,
+  "uuid": "e473f710-3efb-40d9-820c-7be187457956",
+  "ttft_stream_ms": 7807,
+  "time_to_request_ms": 4789,
+  "first_content_frame_ms": 7811,
+  "queued_turn_count": 0
+}

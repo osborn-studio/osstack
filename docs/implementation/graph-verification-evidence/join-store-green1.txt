@@ -1,0 +1,43 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/core
+
+ ❯ src/state/graph-verification.test.ts (4 tests | 1 failed) 184ms
+   ✓ captures budget and admissions atomically and refuses a stale snapshot 56ms
+   × requires resolved effects and released admissions before publishing a join 37ms
+     → INVALID_ACTION_STATE
+   ✓ publishes one immutable join and replays an identical result after lost ACK 32ms
+   ✓ requires a fresh synchronous host verifier and rejects a changed publication 57ms
+ ✓ src/state/graph-actions.test.ts (31 tests) 3369ms
+   ✓ graph action ledger > serializes independent SQLite workers: same-key  2075ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/state/graph-verification.test.ts > requires resolved effects and released admissions before publishing a join
+GraphActionStorageError: INVALID_ACTION_STATE
+ ❯ fail src/state/graph-actions.ts:76:68
+     74|   constructor(public readonly code: GraphActionStorageErrorCode) { sup…
+     75| }
+     76| const fail = (code: GraphActionStorageErrorCode): never => { throw new…
+       |                                                                    ^
+     77| function canonical(value: unknown): string {
+     78|   if (value === null || typeof value !== "object") return JSON.stringi…
+ ❯ src/state/graph-actions.ts:281:99
+ ❯ src/state/graph-actions.ts:129:21
+ ❯ sqliteTransaction.<anonymous> src/state/graph-storage.ts:25:20
+ ❯ sqliteTransaction ../../node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/lib/methods/transaction.js:65:24
+ ❯ fencedGraphTransaction src/state/graph-storage.ts:34:6
+ ❯ GraphActionStore.write src/state/graph-actions.ts:127:20
+ ❯ GraphActionStore.recordOutcome src/state/graph-actions.ts:273:17
+ ❯ src/state/graph-verification.test.ts:40:26
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 1 passed (2)
+      Tests  1 failed | 34 passed (35)
+   Start at  18:08:05
+   Duration  3.92s (transform 207ms, setup 0ms, collect 438ms, tests 3.55s, environment 0ms, prepare 117ms)
+
+undefined
+/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/core:
+[ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL] Command failed with exit code 1: vitest run src/state/graph-verification.test.ts src/state/graph-actions.test.ts

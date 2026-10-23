@@ -1,3 +1,11 @@
+import { graphUpgradeHolds } from './graph-upgrade-guard.js';
+import type { GraphRpcService, GraphRpcOptions } from './graph-rpc.js';
+import type { GraphRuntime, GraphRuntimeConfiguration } from "./graph-runtime.js";
+import type { GraphCheckpointResponse } from "@osstack/protocol";
+import type { GraphCheckpointBinding, GraphCheckpointService } from "./graph-checkpoint-service.js";
+import type { GraphActionBroker } from "./graph-action-broker.js";
+import { boundedAdapterEvents, confirmAdapterStopped } from "./adapter-lifecycle.js";
+import { GovernedExecution, type ExecutionLease, type AdmissionInput } from "./governed-execution.js";
 // osstack daemon — Unix socket server.
 //
 // Wire protocol (length-prefixed JSON, see @osstack/hermes-adapter/framing):
@@ -92,24 +100,22 @@ import {
   listResumableAutonomyRuns,
 } from "@osstack/core";
 import {
-  acquireRepoWriteLock,
   DEFAULT_READ_CONCURRENCY,
   DEFAULT_WRITE_CONCURRENCY,
   FifoSemaphore,
   SemaphoreAcquireAbortedError,
   type GuardedDeliveryResult,
-  type RepoWriteLock,
-  type SemaphoreLease,
 } from "@osstack/autonomy";
 import {
   ScopedApprovalDecision,
   SessionDecision,
   type ScopedApprovalDecision as ScopedApprovalDecisionType,
 } from "@osstack/protocol";
+import { makeRepositoryPolicyGate } from "./repository-policy.js";
 import { SessionCollaborator, readContinuationTrust } from "./session-collaborator.js";
 import { describeSessionWait } from "./session-wait.js";
 import { runDailyBrief } from "./daily-command.js";
-import { makePolicyGate } from "./policy-gate.js";
+import { resolveRepositoryScope } from "@osstack/core";
 import { osstackHome, pidFilePath, resolveSocketPath } from "./paths.js";
 import { PROTOCOL_VERSION, VERSION } from "./version.js";
 import { readUpdateCache, startUpdateChecker } from "./update-check.js";
@@ -187,6 +193,8 @@ interface DaemonContext {
   dashboardUrl: string | null;
   /** Active runs by run_id → AbortController for cancellation. */
   activeRuns: Map<string, AbortController>;
+  admission?: GovernedExecution;
+  adapterWorkspaces?: ReadonlyMap<string, string>;
   /** Sessions currently applying a non-duplicate inbound message. */
   activeSessionSends: Map<string,string>;
   /** Daemon-managed polling loop sessions, keyed by loop_session_id. */
@@ -594,8 +602,13 @@ async function handleSessionStart(
   let nativeSessionId: string | undefined;
   let assistantText = "";
   let decision: unknown = null;
+  let lease: ExecutionLease | undefined;
+  let started = false;
+  let settled = false;
   try {
-    for await (const rawEvent of adapter.startSession(task, controller.signal)) {
+    lease = await acquireSessionAdmission(ctx, adapter.id, p.repo_path, runId, controller.signal);
+    started = true;
+    for await (const rawEvent of boundedAdapterEvents(adapter.startSession(task, controller.signal), controller.signal)) {
       const event = AgentSessionEventSchema.parse(rawEvent);
       if (event.type === "native_session.started") {
         if (nativeSessionId !== undefined && nativeSessionId !== event.native_session_id) {
@@ -635,6 +648,7 @@ async function handleSessionStart(
         throw new Error("adapter terminated while starting the session");
       }
     }
+    settled = true;
     if (nativeSessionId === undefined) throw new Error("adapter did not return a native session id");
 
     const confirmedNativeSessionId = nativeSessionId;
@@ -685,6 +699,11 @@ async function handleSessionStart(
     } catch { /* preserve the original bounded failure */ }
     return singleErr(req.id, "agent_failed", "agent failed while starting the session");
   } finally {
+    if (started && (!settled || controller.signal.aborted)) {
+      controller.abort();
+      if (await confirmAdapterStopped(adapter, runId)) await lease?.release();
+      else lease?.retain("session start exit unconfirmed");
+    } else await lease?.release();
     ctx.activeRuns.delete(runId);
   }
 }
@@ -855,7 +874,11 @@ async function executeReservedSessionTurn(
   const controller = options.controller ?? new AbortController();
   const now = Date.now() / 1000;
   ctx.activeRuns.set(session.run_id, controller);
+  let lease: ExecutionLease | undefined;
+  let started = false;
+  let settled = false;
   try {
+    lease = await acquireSessionAdmission(ctx, adapter.id, session.repo_path, session.run_id, controller.signal);
     const failReservedMessage = (
       code: string,
       message: string,
@@ -890,7 +913,8 @@ async function executeReservedSessionTurn(
     let decision: unknown = null;
     let terminalCompleted = false;
     try {
-      for await (const rawEvent of adapter.resumeSession(input, controller.signal)) {
+      started = true;
+      for await (const rawEvent of boundedAdapterEvents(adapter.resumeSession(input, controller.signal), controller.signal)) {
         const event = AgentSessionEventSchema.parse(rawEvent);
         if (event.type === "native_session.started") {
           if (event.native_session_id !== session.native_session_id) {
@@ -942,6 +966,7 @@ async function executeReservedSessionTurn(
           ...(event.continuation === undefined ? {} : { continuation: event.continuation }),
         };
       }
+      settled = true;
       if (!terminalCompleted) {
         return failReservedMessage(
           "agent_failed",
@@ -986,7 +1011,15 @@ async function executeReservedSessionTurn(
       session_version: updatedSession.version,
       events: publicEvents,
     });
+  } catch (error) {
+    ctx.sessions.markMessageFailed(p.message_id);
+    return singleErr(req.id, "admission_denied", error instanceof Error ? error.message : String(error));
   } finally {
+    if (started && (!settled || controller.signal.aborted)) {
+      controller.abort();
+      if (await confirmAdapterStopped(adapter, session.run_id)) await lease?.release();
+      else lease?.retain("session resume exit unconfirmed");
+    } else await lease?.release();
     ctx.activeSessionSends.delete(session.session_id);
     if (ctx.activeRuns.get(session.run_id) === controller) ctx.activeRuns.delete(session.run_id);
   }
@@ -1083,12 +1116,13 @@ async function handleSingle(ctx: DaemonContext, req: DaemonRequest): Promise<Sin
       ctx.draining = true;
       ctx.drainingFromHealth = false;
       const deadline = Date.now() + timeoutMs;
-      while (ctx.activeRuns.size > 0 && Date.now() < deadline) {
+      while ((ctx.activeRuns.size > 0 || graphUpgradeHolds(ctx.db) > 0) && Date.now() < deadline) {
         await new Promise((r) => setTimeout(r, 200));
       }
       return singleOk(req.id, {
         draining: true,
-        drained: ctx.activeRuns.size === 0,
+        drained: ctx.activeRuns.size === 0 && graphUpgradeHolds(ctx.db) === 0,
+        graph_holds: graphUpgradeHolds(ctx.db),
         active_runs: ctx.activeRuns.size,
       });
     }
@@ -1148,7 +1182,7 @@ async function handleSingle(ctx: DaemonContext, req: DaemonRequest): Promise<Sin
     }
 
     case "session.start":
-      return await handleSessionStart(ctx, req);
+          return await handleSessionStart(ctx, req);
 
     case "session.status": {
       const p = (req.params ?? {}) as { session_id?: string };
@@ -1203,7 +1237,7 @@ async function handleSingle(ctx: DaemonContext, req: DaemonRequest): Promise<Sin
     }
 
     case "session.send":
-      return await handleSessionSend(ctx, req);
+          return await handleSessionSend(ctx, req);
 
     case "task.cancel": {
       const p = (req.params ?? {}) as { run_id?: string };
@@ -1311,12 +1345,33 @@ async function handleSingle(ctx: DaemonContext, req: DaemonRequest): Promise<Sin
     case "loop.run": {
       const parsed = parseLoopRunParams(req.params);
       if (parsed instanceof Error) return singleErr(req.id, "bad_request", parsed.message);
-      const engine = new LoopEngine(withLoopAdapters(ctx, parsed.runOptions));
-      if (parsed.cyclesOptions === undefined) {
-        const raw = await engine.runOnce();
-        // Kernel gate (R2.2): the engine consulted the injected policy gate at
-        // entry. A deny (e.g. mode: observe) refuses before any work — surface
-        // it as a `policy_denied` RPC error (A-006 blocked code), no evidence.
+      const ownedOptions = withLoopAdapters(ctx, parsed.runOptions);
+      let held: ExecutionLease | undefined;
+      let confirmed = false;
+      const acquire = ownedOptions.lifecycleLease!;
+      ownedOptions.lifecycleLease = async (context) => {
+        held = await acquire(context);
+        return { release: async () => { confirmed = true; }, retain: (reason) => held!.retain(reason) };
+      };
+      try {
+        const engine = new LoopEngine(ownedOptions);
+        if (parsed.cyclesOptions === undefined) {
+          const raw = await engine.runOnce();
+          // Kernel gate (R2.2): the engine consulted the injected policy gate at
+          // entry. A deny (e.g. mode: observe) refuses before any work — surface
+          // it as a `policy_denied` RPC error (A-006 blocked code), no evidence.
+          if (raw.policy?.denied === true) {
+            return singleErr(req.id, "policy_denied", raw.policy.reason);
+          }
+          const knowledgeHygiene = await finalizeLoopKnowledgeHygiene(
+            parsed.neatFinalize,
+            parsed.runOptions.workspacePath ?? process.cwd(),
+            raw,
+          );
+          const runId = persistLoopRunEvidence(ctx, raw);
+          return singleOk(req.id, loopRunSummary(raw, runId, knowledgeHygiene));
+        }
+        const raw = await engine.runCycles(parsed.cyclesOptions);
         if (raw.policy?.denied === true) {
           return singleErr(req.id, "policy_denied", raw.policy.reason);
         }
@@ -1326,19 +1381,10 @@ async function handleSingle(ctx: DaemonContext, req: DaemonRequest): Promise<Sin
           raw,
         );
         const runId = persistLoopRunEvidence(ctx, raw);
-        return singleOk(req.id, loopRunSummary(raw, runId, knowledgeHygiene));
-      }
-      const raw = await engine.runCycles(parsed.cyclesOptions);
-      if (raw.policy?.denied === true) {
-        return singleErr(req.id, "policy_denied", raw.policy.reason);
-      }
-      const knowledgeHygiene = await finalizeLoopKnowledgeHygiene(
-        parsed.neatFinalize,
-        parsed.runOptions.workspacePath ?? process.cwd(),
-        raw,
-      );
-      const runId = persistLoopRunEvidence(ctx, raw);
-      return singleOk(req.id, loopRunCyclesSummary(raw, runId, knowledgeHygiene));
+        return singleOk(req.id, loopRunCyclesSummary(raw, runId, knowledgeHygiene));
+      } catch (error) {
+        return singleErr(req.id, "admission_denied", error instanceof Error ? error.message : String(error));
+      } finally { if (confirmed) await held?.release(); }
     }
 
     case "loop.start": {
@@ -2006,7 +2052,7 @@ async function runLoopSession(ctx: DaemonContext, session: LoopSession): Promise
       }
 
       const cycleStartedAt = Date.now();
-      const result = await new LoopEngine(withLoopAdapters(ctx, session.runOptions)).runOnce();
+      const result = await new LoopEngine(withLoopAdapters(ctx, session.runOptions, session.abort.signal)).runOnce();
       // Kernel gate (R2.2): the per-tick engine consulted the policy gate at
       // entry (the gate re-reads policy.yaml each consult). A mid-session flip
       // to `mode: observe` denies here — stop the session cleanly with a
@@ -2718,19 +2764,38 @@ function parseLoopRunParams(
   };
 }
 
-function withLoopAdapters(ctx: DaemonContext, runOptions: LoopRunOptions): LoopRunOptions {
+function withLoopAdapters(ctx: DaemonContext, runOptions: LoopRunOptions, signal?: AbortSignal): LoopRunOptions {
   // Kernel policy gate (R2.2): injected fresh on EVERY engine construction. The
   // gate re-reads `.osstack/policy.yaml` per consult (no caching), so a
   // long-lived session honors a mid-flight flip to `mode: observe` on its next
   // tick — the scheduler builds a new engine via this helper each cycle. Never
   // persisted into runOptions (it is a function; see withoutRuntimeAdapters).
-  const policyGate = makePolicyGate(runOptions.workspacePath ?? process.cwd());
+  const freshPolicyGate = makeRepositoryPolicyGate(runOptions.workspacePath ?? process.cwd());
+  let deniedReason: string | undefined;
+  const policyGate: NonNullable<LoopRunOptions["policyGate"]> = async (context) =>
+    deniedReason === undefined ? freshPolicyGate(context) : { allow: false, reason: deniedReason };
+  const lifecycleLease: NonNullable<LoopRunOptions["lifecycleLease"]> = async ({ workspacePath }) => {
+    // Local socket options identify the workspace; adapter context never does.
+    // Policy denial keeps the established engine refusal result and no effects.
+    const decision = await policyGate({ workspacePath });
+    if (!decision.allow) {
+      // A denied admission can never become an unlocked allow if the policy
+      // file changes between this consult and the engine entry consult.
+      deniedReason = decision.reason;
+      return { release: async () => {}, retain: () => {} };
+    }
+    return acquireDaemonRunSlot(ctx, {
+      kind: "write", runId: runOptions.loopId ?? `loop_${randomUUID()}`, workspacePath,
+      ...(signal ? { signal } : {}),
+      authorize: async () => { const fresh = await policyGate({ workspacePath }); if (!fresh.allow) throw new Error(fresh.reason); },
+    });
+  };
   if (
     runOptions.agentId === undefined
     && runOptions.autoAgent !== true
     && (runOptions.verifierAgentIds?.length ?? 0) === 0
   ) {
-    return { ...runOptions, policyGate };
+    return { ...runOptions, policyGate, lifecycleLease };
   }
   return {
     ...runOptions,
@@ -2738,6 +2803,7 @@ function withLoopAdapters(ctx: DaemonContext, runOptions: LoopRunOptions): LoopR
     policyEngine: ctx.policy,
     policyHistory: sqliteHistory(ctx.db),
     policyGate,
+    lifecycleLease,
   };
 }
 
@@ -2749,6 +2815,7 @@ function withoutRuntimeAdapters(runOptions: LoopRunOptions): LoopRunOptions {
   // Never persist the injected gate (a function): it is re-injected per engine
   // construction by withLoopAdapters, and JSON.stringify would drop it anyway.
   delete copy.policyGate;
+  delete copy.lifecycleLease;
   return copy;
 }
 
@@ -2942,9 +3009,7 @@ interface TaskSubmitParams {
   context?: Record<string, unknown>;
 }
 
-interface DaemonRunSlot {
-  release(): Promise<void>;
-}
+type DaemonRunSlot = ExecutionLease;
 
 const READ_ONLY_CAPABILITY_KINDS = new Set([
   "code.review",
@@ -2970,105 +3035,37 @@ function daemonAccessKind(capabilityKind: string): "read" | "write" {
     : "write";
 }
 
-function repoWriteSemaphore(
-  ctx: DaemonContext,
-  repoId: string,
-): FifoSemaphore {
-  const existing = ctx.repoWriteSemaphores.get(repoId);
-  if (existing !== undefined) return existing;
-  const created = new FifoSemaphore(1);
-  ctx.repoWriteSemaphores.set(repoId, created);
-  return created;
+function admissionFor(ctx: DaemonContext): GovernedExecution {
+  if (ctx.admission) return ctx.admission;
+  ctx.admission = new GovernedExecution({
+    reads: ctx.readSemaphore, writes: ctx.writeSemaphore, repositories: ctx.repoWriteSemaphores,
+    checkHealth: async () => {
+      if (ctx.guardedAutonomy && !ctx.lastAutonomyHealth) throw new Error("autonomy writes are blocked until the initial health check completes");
+      const health = await ctx.autonomyHealth();
+      ctx.lastAutonomyHealth = health;
+      if (!health.can_run_local) throw new Error(`autonomy writes are blocked by ${health.write_blockers.join(",")}`);
+    },
+  });
+  return ctx.admission;
 }
 
-async function acquireDaemonRunSlot(
-  ctx: DaemonContext,
-  input: {
-    kind: "read" | "write";
-    run_id: string;
-    repo_id?: string;
-    signal?: AbortSignal;
-  },
-): Promise<DaemonRunSlot> {
-  if (input.kind === "read") {
-    const lease = await ctx.readSemaphore.acquire(input.signal);
-    return {
-      release: async () => {
-        lease.release();
-      },
-    };
-  }
-  if (
-    ctx.guardedAutonomy !== undefined
-    && ctx.lastAutonomyHealth === undefined
-  ) {
-    throw new Error(
-      "autonomy writes are blocked until the initial health check completes",
-    );
-  }
-  if (ctx.lastAutonomyHealth?.can_run_local === false) {
-    throw new Error(
-      `autonomy writes are blocked by ${
-        ctx.lastAutonomyHealth.write_blockers.join(",")
-      }`,
-    );
-  }
+async function acquireDaemonRunSlot(ctx: DaemonContext, input: AdmissionInput): Promise<ExecutionLease> {
+  return admissionFor(ctx).acquire(input);
+}
 
-  let repoSemaphore: FifoSemaphore | undefined;
-  let repoLease: SemaphoreLease | undefined;
-  let writeLease: SemaphoreLease | undefined;
-  let fileLock: RepoWriteLock | undefined;
-  try {
-    if (input.repo_id !== undefined) {
-      repoSemaphore = repoWriteSemaphore(ctx, input.repo_id);
-      repoLease = await repoSemaphore.acquire(input.signal);
-    }
-    writeLease = await ctx.writeSemaphore.acquire(input.signal);
-    if (input.repo_id !== undefined) {
-      fileLock = await acquireRepoWriteLock({
-        root_dir: join(osstackHome(), "locks", "repos"),
-        repo_id: input.repo_id,
-        autonomy_run_id: input.run_id,
-        on_audit: (event) => {
-          process.stderr.write(
-            `osstack: ${JSON.stringify(event)}\n`,
-          );
-        },
-      });
-    }
-  } catch (error) {
-    writeLease?.release();
-    repoLease?.release();
-    if (
-      input.repo_id !== undefined
-      && repoSemaphore?.in_use === 0
-      && repoSemaphore.pending === 0
-    ) {
-      ctx.repoWriteSemaphores.delete(input.repo_id);
-    }
-    throw error;
+async function acquireSessionAdmission(ctx: DaemonContext, agentId: string, workspacePath: string, runId: string, signal: AbortSignal): Promise<ExecutionLease> {
+  const registered = ctx.adapterWorkspaces?.get(agentId);
+  if (registered !== undefined) {
+    const actual = await resolveRepositoryScope(workspacePath);
+    const expected = await resolveRepositoryScope(registered);
+    if (actual.workspacePath !== expected.workspacePath) throw new Error("session workspace does not match host registration");
   }
-
-  let released = false;
-  return {
-    release: async () => {
-      if (released) return;
-      released = true;
-      try {
-        await fileLock?.release();
-      } finally {
-        writeLease?.release();
-        repoLease?.release();
-        if (
-          input.repo_id !== undefined
-          && repoSemaphore?.in_use === 0
-          && repoSemaphore.pending === 0
-        ) {
-          ctx.repoWriteSemaphores.delete(input.repo_id);
-        }
-      }
+  return acquireDaemonRunSlot(ctx, { kind: "write", runId, workspacePath, signal,
+    authorize: async () => {
+      const decision = await makeRepositoryPolicyGate(workspacePath)({ workspacePath });
+      if (!decision.allow) throw new Error(decision.reason);
     },
-  };
+  });
 }
 
 async function resumeGuardedAutonomy(
@@ -3086,17 +3083,25 @@ async function resumeGuardedAutonomy(
   }
   const slot = await acquireDaemonRunSlot(ctx, {
     kind: "write",
-    run_id: autonomyRunId,
-    repo_id: row.repo_id,
+    runId: autonomyRunId,
+    workspacePath: row.workspace_path,
+    authorize: async () => {
+      const decision = await makeRepositoryPolicyGate(row.workspace_path)({ workspacePath: row.workspace_path });
+      if (!decision.allow) throw new Error(decision.reason);
+    },
   });
+  let confirmed = false;
   try {
-    return await ctx.guardedAutonomy.resume(
+    const result = await ctx.guardedAutonomy.resume(
       autonomyRunId,
       decision,
       recoveryKind === undefined ? undefined : { recoveryKind },
     );
+    confirmed = result.status === "completed" || result.status === "needs_approval";
+    return result;
   } finally {
-    await slot.release();
+    if (confirmed) await slot.release();
+    else slot.retain("guarded autonomy blocked or exit unconfirmed");
   }
 }
 
@@ -3309,19 +3314,37 @@ async function handleTaskSubmit(
   let lastUsageTokensIn = 0;
   let lastUsageTokensOut = 0;
   let executionSlot: DaemonRunSlot | undefined;
+  let producerStarted = false;
+  let producerSettled = false;
   try {
     const repoId =
       typeof params.context?.["repo_id"] === "string"
       && params.context["repo_id"].length > 0
         ? params.context["repo_id"]
         : undefined;
+    const accessKind = daemonAccessKind(selectedCapability.kind);
+    const trustedPath = ctx.adapterWorkspaces?.get(agentId);
+    const requestedPath = typeof task.context?.["repo_path"] === "string" ? task.context["repo_path"] : undefined;
+    if (accessKind === "write" && trustedPath !== undefined && requestedPath !== undefined) {
+      const [trusted, requested] = await Promise.all([resolveRepositoryScope(trustedPath), resolveRepositoryScope(requestedPath)]);
+      if (trusted.workspacePath !== requested.workspacePath) throw new Error("requested workspace does not match host registration");
+    }
+    const admissionPath = accessKind === "write" ? trustedPath : requestedPath;
     executionSlot = await acquireDaemonRunSlot(ctx, {
-      kind: daemonAccessKind(selectedCapability.kind),
-      run_id,
-      ...(repoId === undefined ? {} : { repo_id: repoId }),
+      kind: accessKind,
+      runId: run_id,
+      ...(admissionPath === undefined ? {} : { workspacePath: admissionPath }),
+      ...(repoId === undefined ? {} : { repoId }),
+      authorize: async () => {
+        const path = accessKind === "write" ? trustedPath : undefined;
+        if (path) { const decision = await makeRepositoryPolicyGate(path)({ workspacePath: path }); if (!decision.allow) throw new Error(decision.reason); }
+      },
       signal: ac.signal,
     });
-    for await (const ev of adapter.invoke(task, ac.signal)) {
+    const registeredPath = ctx.adapterWorkspaces?.get(agentId);
+    if (accessKind === "write" && registeredPath) task.context = { ...task.context, repo_path: registeredPath };
+    producerStarted = true;
+    for await (const ev of boundedAdapterEvents(adapter.invoke(task, ac.signal), ac.signal)) {
       try {
         appendEvent(ctx.db, ctx.dbPath, ev);
       } catch (err) {
@@ -3332,7 +3355,7 @@ async function handleTaskSubmit(
         lastUsageTokensIn = p.tokens_in ?? 0;
         lastUsageTokensOut = p.tokens_out ?? 0;
       }
-      try { sock.write(encodeFrame(ev)); } catch { break; }
+      try { sock.write(encodeFrame(ev)); } catch { ac.abort(); }
       if (ev.terminal) {
         if (ev.type === "done") {
           const status = (ev.payload as { status?: string }).status;
@@ -3340,9 +3363,9 @@ async function handleTaskSubmit(
         } else if (ev.type === "error") {
           lastOutcome = "failed";
         }
-        break;
       }
     }
+    producerSettled = true;
   } catch (err) {
     try {
       sock.write(encodeFrame({
@@ -3365,7 +3388,11 @@ async function handleTaskSubmit(
         : "failed";
   } finally {
     try {
-      await executionSlot?.release();
+      if (producerStarted && (ac.signal.aborted || !producerSettled)) {
+        ac.abort();
+        if (await confirmAdapterStopped(adapter, run_id)) await executionSlot?.release();
+        else executionSlot?.retain("adapter cancellation exit unconfirmed");
+      } else await executionSlot?.release();
     } catch (error) {
       process.stderr.write(
         `osstack: execution lock release failed for ${run_id}: ${
@@ -3617,12 +3644,28 @@ function buildContext(
 }
 
 export interface DaemonHandles {
+  /** Trusted in-process checkpoint channel; no public worker RPC is exposed yet. */
+  executeGraphCheckpoint: (connection: object, request: unknown) => Promise<GraphCheckpointResponse>;
+  /** Trusted in-process port; await once, then register immutable worker bindings synchronously. */
+  graphActionBroker: () => Promise<GraphActionBroker>;
+  /** Explicit trusted experimental assembly, configured once; no public graph RPC. */
+  graphRuntime: (configuration: GraphRuntimeConfiguration) => Promise<GraphRuntime>;
   close: () => Promise<void>;
   socketPath: string;
   dbPath: string;
+  /** In-process only. Identity must be the registered object, never worker fields. */
+  acquireGraphAdmission: (identity: object, input: { runId: string; repoId?: string; signal?: AbortSignal }) => Promise<ExecutionLease>;
 }
 
 export interface StartDaemonOptions {
+  /** Trusted host registry and actual socket authentication; never RPC fields. */
+  graphRpc?: Pick<GraphRpcOptions, 'registrations' | 'resolveCaller'>;
+  graphCheckpointBindings?: ReadonlyMap<object, GraphCheckpointBinding>;
+  /** Host launch configuration for direct adapter writes. */
+  workspacePath?: string;
+  adapterWorkspaces?: ReadonlyMap<string, string>;
+  graphIdentities?: ReadonlyMap<object, { workspacePath: string; authorize: () => Promise<void> }>;
+
   /** Trusted owner public keys only; absent means read continuation-trust.json. */
   continuationTrustedPublicKeys?: ReadonlyMap<string, string>;
   socketPath?: string;
@@ -3811,6 +3854,17 @@ function collaboratorPaused(ctx: DaemonContext): boolean {
 export async function startDaemon(
   opts: StartDaemonOptions = {},
 ): Promise<DaemonHandles> {
+  let checkpointService: Promise<GraphCheckpointService> | undefined;
+  let checkpointClosed = false;
+  const checkpointBindings = new Map(Array.from(opts.graphCheckpointBindings ?? [], ([key, binding]) => {
+    const { authorize, ...data } = binding;
+    return [key, { ...structuredClone(data), authorize }] as const;
+  }));
+  let graphBroker: Promise<GraphActionBroker> | undefined;
+  let graphRuntime: Promise<GraphRuntime> | undefined;
+  let graphRpc: Promise<GraphRpcService> | undefined;
+  const graphSockets = new WeakSet<object>();
+  const registeredWorkspace = opts.workspacePath === undefined ? undefined : (await resolveRepositoryScope(opts.workspacePath)).workspacePath;
   const socketPath = opts.socketPath ?? resolveSocketPath();
   const continuationTrust = new Map(opts.continuationTrustedPublicKeys
     ?? await readContinuationTrust(join(osstackHome(), "continuation-trust.json")));
@@ -3835,6 +3889,55 @@ export async function startDaemon(
       : { readConcurrency: opts.readConcurrency }),
   });
   failedContext = ctx;
+  const getGraphRpc = (): Promise<GraphRpcService> => {
+    if (checkpointClosed) return Promise.reject(new Error('GRAPH_SERVICE_CLOSED'));
+    graphRpc ??= import('./graph-rpc.js').then(async ({ GraphRpcService, loadLocalGraphRegistration }) => {
+      const configured = opts.graphRpc;
+      const local = configured ? undefined : await loadLocalGraphRegistration(join(osstackHome(), 'graph-host.json'), ctx.adapters);
+      const service = new GraphRpcService({ db: ctx.db, root: join(osstackHome(), 'graph-delivery'),
+        registrations: (configured?.registrations ?? [local!]).map(registration => ({ ...registration,
+          admitNewRuns: () => !ctx.draining && (registration.admitNewRuns ? registration.admitNewRuns() : true),
+        })),
+        resolveCaller: connection => {
+          if (!graphSockets.has(connection)) return null;
+          if (configured) return configured.resolveCaller(connection);
+          const socket = statSync(socketPath);
+          return socket.isSocket() && socket.uid === process.getuid?.() && (socket.mode & 0o077) === 0 ? local!.id : null;
+        },
+        acquire: input => admissionFor(ctx).acquire(input),
+        authorizePolicy: async ({ policyRoot, workspacePath }) => {
+          const source = await makeRepositoryPolicyGate(policyRoot, true)({ workspacePath: policyRoot });
+          if (!source.allow) throw new Error('POLICY_DENIED');
+          if (workspacePath !== policyRoot) {
+            const candidate = await makeRepositoryPolicyGate(workspacePath, false)({ workspacePath });
+            if (!candidate.allow) throw new Error('POLICY_DENIED');
+          }
+        } });
+      if (checkpointClosed) { void service.close(); throw new Error('GRAPH_SERVICE_CLOSED'); }
+      return service;
+    }).catch(error => { graphRpc = undefined; throw error; });
+    return graphRpc;
+  };
+  const getCheckpoints = async (): Promise<GraphCheckpointService> => {
+    if (checkpointClosed) throw new Error("CHECKPOINT_SERVICE_CLOSED");
+    checkpointService ??= Promise.all([import("./graph-checkpoint-service.js"), import("@osstack/core")])
+      .then(([{ GraphCheckpointService }, { GraphRunStore, GraphCheckpointStore }]) =>
+        new GraphCheckpointService({ runs: new GraphRunStore(ctx.db), checkpoints: new GraphCheckpointStore(ctx.db), bindings: checkpointBindings }));
+    const service = await checkpointService;
+    if (checkpointClosed) { service.close(); throw new Error("CHECKPOINT_SERVICE_CLOSED"); }
+    return service;
+  };
+  const getBroker = (): Promise<GraphActionBroker> => {
+    if (checkpointClosed) return Promise.reject(new Error("GRAPH_RUNTIME_CLOSED"));
+    graphBroker ??= import("./graph-action-broker.js").then(({ GraphActionBroker }) => new GraphActionBroker(ctx.db, {
+      acquire: (input) => admissionFor(ctx).acquire(input),
+      authorizePolicy: async (workspacePath) => {
+        const decision = await makeRepositoryPolicyGate(workspacePath, true)({ workspacePath });
+        if (!decision.allow) throw new Error(decision.reason);
+      },
+    }));
+    return graphBroker;
+  };
   if (process.env["OSSTACK_ATTENTION"] === "1") { ctx.supervision = new SupervisionService(ctx.db, ctx.dbPath, process.env["OSSTACK_ATTENTION_NOTIFY"] === "local" ? localAttentionSender(osstackHome()) : undefined); ctx.supervision.start(); }
   ctx.collaborator = new SessionCollaborator({
     repository: ctx.continuations,
@@ -3871,6 +3974,12 @@ export async function startDaemon(
       });
     },
   });
+  if (registeredWorkspace !== undefined || opts.adapterWorkspaces !== undefined) {
+    ctx.adapterWorkspaces = new Map([
+      ...(registeredWorkspace === undefined ? [] : [...ctx.adapters.keys()].map(id => [id, registeredWorkspace] as const)),
+      ...(opts.adapterWorkspaces ?? []),
+    ]);
+  }
   if (opts.autonomyHealth !== undefined) {
     ctx.autonomyHealth = opts.autonomyHealth;
   }
@@ -3885,6 +3994,8 @@ export async function startDaemon(
   let dashboard: DashboardServerHandle | null = null;
 
   const server = createServer((sock: Socket) => {
+    graphSockets.add(sock);
+    sock.once('close', () => graphSockets.delete(sock));
     const decoder = new FrameDecoder();
 
     sock.on("data", (chunk) => {
@@ -3905,13 +4016,26 @@ export async function startDaemon(
           const recordLatency = (): void => {
             ctx.rpcLatency.record(req.method, performance.now() - startedAt);
           };
+          const reportFailure = (error: unknown): void => {
+            try { sock.write(encodeFrame(singleErr(req.id, "execution_failed", error instanceof Error ? error.message : String(error)))); } catch { /* disconnected */ }
+          };
 
+          if (['graph.validate', 'graph.start', 'graph.submit', 'graph.status', 'graph.result', 'graph.cancel', 'graph.reconcile', 'graph.resume'].includes(req.method)) {
+            void getGraphRpc().then(service => service.handle(sock, req.method, req.params)).then(result => {
+              try { sock.write(encodeFrame(singleOk(req.id, result))); } catch { /* disconnected */ }
+            }).catch(async error => {
+              const { graphRpcError } = await import('./graph-rpc.js');
+              const failure = graphRpcError(error);
+              try { sock.write(encodeFrame(singleErr(req.id, failure.code, failure.message))); } catch { /* disconnected */ }
+            }).finally(recordLatency);
+            continue;
+          }
           if (req.method === "task.submit") {
             void traceSpan(
               "osstack.task.submit",
               { "osstack.method": req.method },
               () => handleTaskSubmit(ctx, req, sock),
-            ).finally(recordLatency);
+            ).catch(reportFailure).finally(recordLatency);
             continue;
           }
           if (req.method === "task.observe") {
@@ -3919,7 +4043,7 @@ export async function startDaemon(
               "osstack.task.observe",
               { "osstack.method": req.method },
               async () => handleTaskObserve(ctx, req, sock),
-            ).finally(recordLatency);
+            ).catch(reportFailure).finally(recordLatency);
             continue;
           }
 
@@ -3931,7 +4055,7 @@ export async function startDaemon(
               if (resp === null) return;
               try { sock.write(encodeFrame(resp)); } catch { /* socket gone */ }
             },
-          ).catch(() => {try {sock.write(encodeFrame(singleErr(req.id,"internal","Request failed; inspect persisted receipts before retrying")));} catch {/* disconnected */}}).finally(recordLatency);
+          ).catch(reportFailure).finally(recordLatency);
         }
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
@@ -4006,6 +4130,10 @@ export async function startDaemon(
       healthMonitor?.unref();
       let shutdownPromise: Promise<void> | undefined;
       const shutdown = async (): Promise<void> => {
+        checkpointClosed = true;
+        if (checkpointService) {
+          try { (await checkpointService).close(); } catch { /* Initialization failure created no service. */ }
+        }
         if (shutdownPromise !== undefined) return await shutdownPromise;
         process.off("SIGTERM", onSig);
         process.off("SIGINT", onSig);
@@ -4014,6 +4142,12 @@ export async function startDaemon(
         shutdownPromise = (async () => {
           ctx.draining = true;
           await ctx.supervision?.stop();
+          if (graphRpc) {
+            try { await (await graphRpc).close(); } catch { /* Initialization may have failed. */ }
+          }
+          if (graphRuntime) {
+            try { const runtime = await graphRuntime; await runtime.close(); await runtime.drainDatabaseUsers(); } catch { /* Failed initialization launched no graph worker. */ }
+          }
           const collaboratorStopped = Promise.resolve().then(() => ctx.collaborator?.stop());
           // Abort any active runs so adapters get a chance to clean up.
           for (const ac of ctx.activeRuns.values()) ac.abort();
@@ -4079,7 +4213,34 @@ export async function startDaemon(
         process.stderr.write(`osstack: dashboard server failed: ${(err as Error).message}\n`);
       });
 
-      resolve({ close: shutdown, socketPath, dbPath: ctx.dbPath });
+      resolve({ close: shutdown, socketPath, dbPath: ctx.dbPath,
+        executeGraphCheckpoint: async (connection, request) => (await getCheckpoints()).execute(connection, request),
+        graphActionBroker: getBroker,
+        graphRuntime: (configuration) => {
+          if (checkpointClosed) return Promise.reject(new Error("GRAPH_RUNTIME_CLOSED"));
+          if (graphRuntime) return Promise.reject(new Error("GRAPH_RUNTIME_ALREADY_CONFIGURED"));
+          // Snapshot trusted launch settings before dynamic import. Program bytes are
+          // verified/snapshotted by the manager; the SDK stays in its child process.
+          const fixed = structuredClone(configuration);
+          graphRuntime = Promise.all([import("./graph-runtime.js"), getBroker(), getCheckpoints()])
+            .then(async ([{ GraphRuntime }, broker, checkpoints]) => {
+              const runtime = new GraphRuntime({ ...fixed, db: ctx.db, broker, checkpoints });
+              if (checkpointClosed) { await runtime.close(); throw new Error("GRAPH_RUNTIME_CLOSED"); }
+              return runtime;
+            });
+          return graphRuntime;
+        },
+        acquireGraphAdmission: async (identity, input) => {
+          const trusted = opts.graphIdentities?.get(identity);
+          if (!trusted || typeof trusted.authorize !== "function") throw new Error("trusted graph identity and authorization required");
+          return admissionFor(ctx).acquire({ ...input, kind: "write",
+            workspacePath: trusted.workspacePath, authorize: async () => {
+              const decision = await makeRepositoryPolicyGate(trusted.workspacePath, true)({ workspacePath: trusted.workspacePath });
+              if (!decision.allow) throw new Error(decision.reason);
+              await trusted.authorize();
+            } });
+        },
+      });
       });
     }).catch(reject);
   });

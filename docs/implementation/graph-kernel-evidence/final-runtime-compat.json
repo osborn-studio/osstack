@@ -1,0 +1,50 @@
+[
+  {
+    "runtime": "node20",
+    "kind": "graph-tests",
+    "exitCode": 0,
+    "log": "final-node20-graph-tests.txt"
+  },
+  {
+    "runtime": "node20",
+    "kind": "protocol-tests",
+    "exitCode": 0,
+    "log": "final-node20-protocol-tests.txt"
+  },
+  {
+    "runtime": "node20",
+    "kind": "probe",
+    "exitCode": 0,
+    "log": "final-node20-probe.json",
+    "assertions": 26,
+    "productionReady": false
+  },
+  {
+    "runtime": "node22",
+    "kind": "graph-tests",
+    "exitCode": 0,
+    "log": "final-node22-graph-tests.txt"
+  },
+  {
+    "runtime": "node22",
+    "kind": "protocol-tests",
+    "exitCode": 0,
+    "log": "final-node22-protocol-tests.txt"
+  },
+  {
+    "runtime": "node22",
+    "kind": "probe",
+    "exitCode": 0,
+    "log": "final-node22-probe.json",
+    "assertions": 26,
+    "productionReady": false
+  },
+  {
+    "runtime": "node20floor",
+    "kind": "probe",
+    "exitCode": 0,
+    "log": "final-node20floor-probe.json",
+    "assertions": 26,
+    "productionReady": false
+  }
+]

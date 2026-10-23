@@ -1,0 +1,82 @@
+{
+  "claude-design": {
+    "is_error": false,
+    "modelUsage": {
+      "claude-fable-5-1": {
+        "inputTokens": 2,
+        "outputTokens": 20593,
+        "cacheReadInputTokens": 0,
+        "cacheCreationInputTokens": 45223,
+        "webSearchRequests": 0,
+        "costUSD": 1.93413,
+        "contextWindow": 1000000,
+        "maxOutputTokens": 64000,
+        "thinkingTokens": 17838,
+        "canonicalModel": "claude-fable-5-1",
+        "provider": "firstParty",
+        "costBasis": "list"
+      }
+    },
+    "result": "claude-design.md"
+  },
+  "claude-implementation": {
+    "is_error": false,
+    "modelUsage": {
+      "claude-fable-5-1": {
+        "inputTokens": 2,
+        "outputTokens": 22274,
+        "cacheReadInputTokens": 4504,
+        "cacheCreationInputTokens": 62033,
+        "webSearchRequests": 0,
+        "costUSD": 2.3555059999999997,
+        "contextWindow": 1000000,
+        "maxOutputTokens": 64000,
+        "thinkingTokens": 18427,
+        "canonicalModel": "claude-fable-5-1",
+        "provider": "firstParty",
+        "costBasis": "list"
+      }
+    },
+    "result": "claude-implementation.md"
+  },
+  "claude-final": {
+    "is_error": false,
+    "modelUsage": {
+      "claude-fable-5-1": {
+        "inputTokens": 2,
+        "outputTokens": 22004,
+        "cacheReadInputTokens": 8000,
+        "cacheCreationInputTokens": 56163,
+        "webSearchRequests": 0,
+        "costUSD": 2.22548,
+        "contextWindow": 1000000,
+        "maxOutputTokens": 64000,
+        "thinkingTokens": 19885,
+        "canonicalModel": "claude-fable-5-1",
+        "provider": "firstParty",
+        "costBasis": "list"
+      }
+    },
+    "result": "claude-final.md"
+  },
+  "claude-output": {
+    "is_error": false,
+    "modelUsage": {
+      "claude-fable-5-1": {
+        "inputTokens": 2,
+        "outputTokens": 6250,
+        "cacheReadInputTokens": 8000,
+        "cacheCreationInputTokens": 13919,
+        "webSearchRequests": 0,
+        "costUSD": 0.5929,
+        "contextWindow": 1000000,
+        "maxOutputTokens": 64000,
+        "thinkingTokens": 5210,
+        "canonicalModel": "claude-fable-5-1",
+        "provider": "firstParty",
+        "costBasis": "list"
+      }
+    },
+    "result": "claude-output.md"
+  }
+}

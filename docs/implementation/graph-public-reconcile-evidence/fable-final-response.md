@@ -1,0 +1,19 @@
+**Verdict: accept.** The three required fixes land as described, the new tests pin the behaviors I asked for, and I found no new blocker in the introduced code.
+
+**Fix 1 (durable intent no longer rejected on proof failure)** is correct. The `authorizationFailed` flag is set only inside the grant wrapper, so any throw from the grant callback, including the transaction-only revocation in the commit-revoked test, still surfaces as `GRANT_EXPIRED`. Every other reconciler failure returns the current durable status after a fresh cancel permission check. I traced the competing-key test by hand. The first request runs synchronously through projection, snapshot, history and registration check before its first real suspension in `proof`, so its snapshot is at revision N+1. The second request projects N+2 before the first commits. The first commit fails on the stale snapshot, is swallowed, and reports `cancel_pending`. With a competing `graph.reconcile` the second commit wins and both callers see a terminal or pending status with exactly one decision row. With a competing plain `graph.cancel` the third key settles. That is the counterexample from my prior review, now closed.
+
+**Fix 2 (no post-commit grant recheck)** is correct as written. The final grant check already happens inside the G15 commit transaction through the attestation callback, so removing the trailing check cannot admit an unauthorized decision. One assumption I could not verify without running it: the post-commit expiry test keys its denial on the presence of a decision row. That only passes if the store invokes the attestation callback before inserting the row. You state the suite is self-tested, so I take that as confirmed.
+
+**Fix 3 (help text)** now says no-child evidence and adds `reconcile` to the idempotency line and the command dispatcher. The dispatcher maps a `cancel` request body to the `graph.reconcile` method without letting the body choose the method. Good.
+
+**Removed `concurrentCancellation` and its `bound` call.** This resolves the nit. The catch path now reads the run directly through the store.
+
+**Shutdown fixture.** The throwing `confirmStopped` is safe because the drain projects generation 0 to `cancelled` before `entry.done` resolves, and the deferred launcher returns early on `cancelled`. Nothing reaches the adapter.
+
+**Tests requested last time.** All seven are present: live supervisor, competing keys, plain cancel replay, generation-0 pending intent, generation-change without revision (retained as the unobserved-generation case, which is the store-invariant-respecting form), unauthenticated daemon reconcile, and the lease-expiry assertion under the mocked clock.
+
+**Residual, not blocking.** The generation-0 branch projects `cancelled` synchronously and is not covered by the swallow. Within one process it cannot race, because no await precedes it in the handler. Across two hosts sharing the same database, a second host replaying the same key after the first host has already projected `cancelled` would throw a stale-fence error from `project` and report `REVISION_CONFLICT` for a run that is durably cancelled. This is the same reporting class as finding 1, is limited to generation 0, and requires a topology the launch-owner check already discourages. If you want it closed, wrap that one `project` call in the same status-return fallback. I do not consider it a required follow-up for this slice.
+
+**Diagnostic trade-off, accepted.** Swallowed reconciler codes no longer reach the caller at all. The returned status carries `CANCEL_UNCONFIRMED` with `nextAction: reconcile`, which is the correct public answer, and the decision table remains the audit source. No new metric requested.
+
+Nothing in the patch touches `GraphReconciler`, the recovery store, or the proof authority. Scope remains no-child cancellation. Ship it.

@@ -1,0 +1,33 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+      Running tests with seed "250915"
+
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25/g22-rpc-DP6jI6/delivery/eb4d2204-26f0-4af7-b09b-491642cbbd69/writer-0'...
+HEAD is now at 16af6d6 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25/g22-rpc-mCx5tb/delivery/66e2cbd2-b3d7-4945-bcba-cce38a1f799a/writer-0'...
+HEAD is now at b4e8313 base
+osstack: retaining write lease graph-action:097d504144ea365bd8b5ed00753b426a53e0896a0f63defd738871e132030d82: Error: adapter result or execution unconfirmed
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25/g22-rpc-NwtWtd/direct/writer-0'...
+HEAD is now at 8c252f8 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25/g22-rpc-zaxBqN/delivery/a0349340-d8aa-46bf-a734-dbd815357c23/writer-0'...
+HEAD is now at 4696016 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25/g22-rpc-coy4B0/direct/writer-0'...
+HEAD is now at f7f97fb base
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25/g22-rpc-i0HClZ/direct/writer-0'...
+HEAD is now at dc2cfae policy
+Cloning into '/Volumes/AIMATE_WORK/tmp/g25/g22-rpc-Anrilw/delivery/8836c270-dcb0-47b2-b0fa-4eede5c90741/writer-0'...
+HEAD is now at d3243f5 base
+ ✓ src/graph-review-findings.test.ts (7 tests) 33218ms
+   ✓ settles stopped review cancellation with revoked execute, holding only unproven stop  3744ms
+   ✓ settles stopped tests cancellation with revoked execute, holding only unproven stop  4999ms
+   ✓ settles stopped tests-slow-stop cancellation with revoked execute, holding only unproven stop  4919ms
+   ✓ settles stopped unknown cancellation with revoked execute, holding only unproven stop  2340ms
+   ✓ uses current source policy (revoked) beyond workspace creation and writer availability  1929ms
+   ✓ uses current source policy (untracked) beyond workspace creation and writer availability  7047ms
+   ✓ uses current source policy (newer) beyond workspace creation and writer availability  8238ms
+
+ Test Files  1 passed (1)
+      Tests  7 passed (7)
+   Start at  21:50:41
+   Duration  34.11s (transform 470ms, setup 7ms, collect 773ms, tests 33.22s, environment 0ms, prepare 31ms)
+

@@ -1,0 +1,5155 @@
+{
+  "testOnly": true,
+  "admitted": false,
+  "passed": true,
+  "versions": {
+    "langgraph": "1.4.15",
+    "langgraph-checkpoint": "1.1.5",
+    "core": "1.2.11"
+  },
+  "node": "v26.5.0",
+  "assertions": [
+    {
+      "name": "MemorySaver sync/1 control",
+      "passed": true
+    },
+    {
+      "name": "MemorySaver sync/2 control",
+      "passed": true
+    },
+    {
+      "name": "MemorySaver async/1 control",
+      "passed": true
+    },
+    {
+      "name": "MemorySaver async/2 control",
+      "passed": true
+    },
+    {
+      "name": "MemorySaver exit/1 control",
+      "passed": true
+    },
+    {
+      "name": "MemorySaver exit/2 control",
+      "passed": true
+    },
+    {
+      "name": "StateGraph update-latest outcome",
+      "passed": true
+    },
+    {
+      "name": "StateGraph update-exact outcome",
+      "passed": true
+    },
+    {
+      "name": "StateGraph bulk-exact outcome",
+      "passed": true
+    },
+    {
+      "name": "StateGraph resume-then-empty outcome",
+      "passed": true
+    },
+    {
+      "name": "state-sync-immediate: fresh process recovery",
+      "passed": true
+    },
+    {
+      "name": "state-sync-full-writes-error: fresh process recovery",
+      "passed": true
+    },
+    {
+      "name": "state-sync-repair-before: fresh process recovery",
+      "passed": true
+    },
+    {
+      "name": "state-sync-repair-before: resume interrupted public repair",
+      "passed": true
+    },
+    {
+      "name": "state-sync-repair-after: fresh process recovery",
+      "passed": true
+    },
+    {
+      "name": "state-sync-repair-after: resume interrupted public repair",
+      "passed": true
+    },
+    {
+      "name": "functional-sync-immediate: fresh process recovery",
+      "passed": true
+    },
+    {
+      "name": "functional-sync-full-writes-error: fresh process recovery",
+      "passed": true
+    },
+    {
+      "name": "functional-sync-effect-confirmed-crash: fresh process recovery",
+      "passed": true
+    },
+    {
+      "name": "functional-sync-before-return-write-crash: fresh process recovery",
+      "passed": true
+    },
+    {
+      "name": "functional-sync-after-return-write-crash: fresh process recovery",
+      "passed": true
+    },
+    {
+      "name": "functional-sync-join-return-crash: fresh process recovery",
+      "passed": true
+    },
+    {
+      "name": "functional-sync-join-effect-confirmed-crash: fresh process recovery",
+      "passed": true
+    },
+    {
+      "name": "functional-sync-before-final-checkpoint-crash: fresh process recovery",
+      "passed": true
+    },
+    {
+      "name": "functional-sync-unknown-effect-crash: fresh process recovery",
+      "passed": true
+    },
+    {
+      "name": "functional-sync-cancel: fresh process recovery",
+      "passed": true
+    },
+    {
+      "name": "functional-sync-timeout: fresh process recovery",
+      "passed": true
+    },
+    {
+      "name": "functional-sync-cancel-uncooperative: fresh process recovery",
+      "passed": true
+    },
+    {
+      "name": "functional-sync-cancel-worker-kill: fresh process recovery",
+      "passed": true
+    },
+    {
+      "name": "functional-sync-recovery-second-kill: fresh process recovery",
+      "passed": true
+    },
+    {
+      "name": "functional-sync-recovery-second-kill-ungated: fresh process recovery",
+      "passed": true
+    },
+    {
+      "name": "functional-sync-after-final-checkpoint-crash: fresh process recovery",
+      "passed": true
+    },
+    {
+      "name": "functional-sync-interrupt-false: fresh process recovery",
+      "passed": true
+    },
+    {
+      "name": "state-async-immediate: fresh process recovery",
+      "passed": true
+    },
+    {
+      "name": "state-async-full-writes-error: fresh process recovery",
+      "passed": true
+    },
+    {
+      "name": "state-async-repair-before: fresh process recovery",
+      "passed": true
+    },
+    {
+      "name": "state-async-repair-before: resume interrupted public repair",
+      "passed": true
+    },
+    {
+      "name": "state-async-repair-after: fresh process recovery",
+      "passed": true
+    },
+    {
+      "name": "state-async-repair-after: resume interrupted public repair",
+      "passed": true
+    },
+    {
+      "name": "functional-async-immediate: fresh process recovery",
+      "passed": true
+    },
+    {
+      "name": "functional-async-full-writes-error: fresh process recovery",
+      "passed": true
+    },
+    {
+      "name": "functional-async-effect-confirmed-crash: fresh process recovery",
+      "passed": true
+    },
+    {
+      "name": "functional-async-before-return-write-crash: fresh process recovery",
+      "passed": true
+    },
+    {
+      "name": "functional-async-after-return-write-crash: fresh process recovery",
+      "passed": true
+    },
+    {
+      "name": "functional-async-join-return-crash: fresh process recovery",
+      "passed": true
+    },
+    {
+      "name": "functional-async-join-effect-confirmed-crash: fresh process recovery",
+      "passed": true
+    },
+    {
+      "name": "functional-async-before-final-checkpoint-crash: fresh process recovery",
+      "passed": true
+    },
+    {
+      "name": "functional-async-unknown-effect-crash: fresh process recovery",
+      "passed": true
+    },
+    {
+      "name": "functional-async-cancel: fresh process recovery",
+      "passed": true
+    },
+    {
+      "name": "functional-async-timeout: fresh process recovery",
+      "passed": true
+    },
+    {
+      "name": "functional-async-cancel-uncooperative: fresh process recovery",
+      "passed": true
+    },
+    {
+      "name": "functional-async-cancel-worker-kill: fresh process recovery",
+      "passed": true
+    },
+    {
+      "name": "functional-async-recovery-second-kill: fresh process recovery",
+      "passed": true
+    },
+    {
+      "name": "functional-async-recovery-second-kill-ungated: fresh process recovery",
+      "passed": true
+    },
+    {
+      "name": "functional-async-after-final-checkpoint-crash: fresh process recovery",
+      "passed": true
+    },
+    {
+      "name": "functional-async-interrupt-false: fresh process recovery",
+      "passed": true
+    }
+  ],
+  "memory": [
+    {
+      "kind": "unmodified-MemorySaver",
+      "durability": "sync",
+      "maxConcurrency": 1,
+      "error": null,
+      "initialResult": {
+        "results": []
+      },
+      "initialCounts": {
+        "completed": 1,
+        "flaky": 0,
+        "join": 0
+      },
+      "outputError": false,
+      "notificationMissing": false,
+      "pendingWrites": [
+        [
+          "8a529830-b7a9-5a3d-9ecc-5054229e2091",
+          "results",
+          [
+            "completed"
+          ]
+        ],
+        [
+          "8a529830-b7a9-5a3d-9ecc-5054229e2091",
+          "join:completed+flaky:join",
+          "completed"
+        ]
+      ],
+      "counts": {
+        "completed": 1,
+        "flaky": 1,
+        "join": 1
+      },
+      "result": {
+        "results": [
+          "completed",
+          "recovered",
+          "joined"
+        ]
+      }
+    },
+    {
+      "kind": "unmodified-MemorySaver",
+      "durability": "sync",
+      "maxConcurrency": 2,
+      "error": "Error: injected parallel failure",
+      "initialResult": null,
+      "initialCounts": {
+        "completed": 1,
+        "flaky": 1,
+        "join": 0
+      },
+      "outputError": true,
+      "notificationMissing": true,
+      "pendingWrites": [
+        [
+          "2f630509-399c-5714-ab88-99467f37dd08",
+          "__error__",
+          {
+            "message": "injected parallel failure",
+            "name": "Error"
+          }
+        ],
+        [
+          "d6abea8d-c044-5cda-9fc5-19ea35445d83",
+          "results",
+          [
+            "completed"
+          ]
+        ],
+        [
+          "d6abea8d-c044-5cda-9fc5-19ea35445d83",
+          "__error__",
+          {
+            "message": "This operation was aborted",
+            "name": "AbortError"
+          }
+        ]
+      ],
+      "counts": {
+        "completed": 1,
+        "flaky": 2,
+        "join": 0
+      },
+      "result": {
+        "results": [
+          "completed",
+          "recovered"
+        ]
+      }
+    },
+    {
+      "kind": "unmodified-MemorySaver",
+      "durability": "async",
+      "maxConcurrency": 1,
+      "error": null,
+      "initialResult": {
+        "results": []
+      },
+      "initialCounts": {
+        "completed": 1,
+        "flaky": 0,
+        "join": 0
+      },
+      "outputError": false,
+      "notificationMissing": false,
+      "pendingWrites": [
+        [
+          "1ddaecb0-fabb-53cc-911a-da38ca59398c",
+          "results",
+          [
+            "completed"
+          ]
+        ],
+        [
+          "1ddaecb0-fabb-53cc-911a-da38ca59398c",
+          "join:completed+flaky:join",
+          "completed"
+        ]
+      ],
+      "counts": {
+        "completed": 1,
+        "flaky": 1,
+        "join": 1
+      },
+      "result": {
+        "results": [
+          "completed",
+          "recovered",
+          "joined"
+        ]
+      }
+    },
+    {
+      "kind": "unmodified-MemorySaver",
+      "durability": "async",
+      "maxConcurrency": 2,
+      "error": "Error: injected parallel failure",
+      "initialResult": null,
+      "initialCounts": {
+        "completed": 1,
+        "flaky": 1,
+        "join": 0
+      },
+      "outputError": true,
+      "notificationMissing": true,
+      "pendingWrites": [
+        [
+          "701e9fbc-0380-5bb8-ac13-eae2dc2877d2",
+          "__error__",
+          {
+            "message": "injected parallel failure",
+            "name": "Error"
+          }
+        ],
+        [
+          "8d362aac-acd4-5fe4-bd5d-03b51db1df00",
+          "results",
+          [
+            "completed"
+          ]
+        ],
+        [
+          "8d362aac-acd4-5fe4-bd5d-03b51db1df00",
+          "__error__",
+          {
+            "message": "This operation was aborted",
+            "name": "AbortError"
+          }
+        ]
+      ],
+      "counts": {
+        "completed": 1,
+        "flaky": 2,
+        "join": 0
+      },
+      "result": {
+        "results": [
+          "completed",
+          "recovered"
+        ]
+      }
+    },
+    {
+      "kind": "unmodified-MemorySaver",
+      "durability": "exit",
+      "maxConcurrency": 1,
+      "error": null,
+      "initialResult": {
+        "results": []
+      },
+      "initialCounts": {
+        "completed": 1,
+        "flaky": 0,
+        "join": 0
+      },
+      "outputError": false,
+      "notificationMissing": false,
+      "pendingWrites": [
+        [
+          "a8ce2be7-9682-593f-9081-6a3ce457e3ac",
+          "results",
+          [
+            "completed"
+          ]
+        ],
+        [
+          "a8ce2be7-9682-593f-9081-6a3ce457e3ac",
+          "join:completed+flaky:join",
+          "completed"
+        ]
+      ],
+      "counts": {
+        "completed": 1,
+        "flaky": 1,
+        "join": 1
+      },
+      "result": {
+        "results": [
+          "completed",
+          "recovered",
+          "joined"
+        ]
+      }
+    },
+    {
+      "kind": "unmodified-MemorySaver",
+      "durability": "exit",
+      "maxConcurrency": 2,
+      "error": "Error: injected parallel failure",
+      "initialResult": null,
+      "initialCounts": {
+        "completed": 1,
+        "flaky": 1,
+        "join": 0
+      },
+      "outputError": true,
+      "notificationMissing": true,
+      "pendingWrites": [
+        [
+          "80766e8c-2fbd-5103-b447-d00f0a5a4f65",
+          "__error__",
+          {
+            "message": "injected parallel failure",
+            "name": "Error"
+          }
+        ],
+        [
+          "a50a9081-5f0c-5dc4-84ac-b9fe48870375",
+          "results",
+          [
+            "completed"
+          ]
+        ],
+        [
+          "a50a9081-5f0c-5dc4-84ac-b9fe48870375",
+          "__error__",
+          {
+            "message": "This operation was aborted",
+            "name": "AbortError"
+          }
+        ]
+      ],
+      "counts": {
+        "completed": 1,
+        "flaky": 2,
+        "join": 0
+      },
+      "result": {
+        "results": [
+          "completed",
+          "recovered"
+        ]
+      }
+    },
+    {
+      "kind": "state-repair",
+      "recovery": "update-latest",
+      "counts": {
+        "completed": 1,
+        "flaky": 1,
+        "join": 0
+      },
+      "result": {
+        "results": [
+          "completed",
+          "completed"
+        ]
+      },
+      "originalCheckpoint": {
+        "configurable": {
+          "thread_id": "c2",
+          "checkpoint_id": "1f1aff32-3d52-6143-8000-2e33e610f507",
+          "checkpoint_ns": ""
+        }
+      },
+      "repairCheckpoint": {
+        "configurable": {
+          "thread_id": "c2",
+          "checkpoint_ns": "",
+          "checkpoint_id": "1f1aff32-3d56-6f60-8001-1cdef14077f3"
+        }
+      },
+      "originalErrorsRetained": true,
+      "bulkApiMarkedInternal": false
+    },
+    {
+      "kind": "state-repair",
+      "recovery": "update-exact",
+      "counts": {
+        "completed": 1,
+        "flaky": 1,
+        "join": 0
+      },
+      "result": {
+        "results": [
+          "completed"
+        ]
+      },
+      "originalCheckpoint": {
+        "configurable": {
+          "thread_id": "c2",
+          "checkpoint_id": "1f1aff32-3d56-6f63-8000-a936dbec4ad4",
+          "checkpoint_ns": ""
+        }
+      },
+      "repairCheckpoint": {
+        "configurable": {
+          "thread_id": "c2",
+          "checkpoint_ns": "",
+          "checkpoint_id": "1f1aff32-3d59-6670-8001-28160d5e2107"
+        }
+      },
+      "originalErrorsRetained": true,
+      "bulkApiMarkedInternal": false
+    },
+    {
+      "kind": "state-repair",
+      "recovery": "bulk-exact",
+      "counts": {
+        "completed": 1,
+        "flaky": 1,
+        "join": 0
+      },
+      "result": {
+        "results": [
+          "completed"
+        ]
+      },
+      "originalCheckpoint": {
+        "configurable": {
+          "thread_id": "c2",
+          "checkpoint_id": "1f1aff32-3d59-6673-8000-679ec5e06dd7",
+          "checkpoint_ns": ""
+        }
+      },
+      "repairCheckpoint": {
+        "configurable": {
+          "thread_id": "c2",
+          "checkpoint_ns": "",
+          "checkpoint_id": "1f1aff32-3d5b-6d80-8001-ecf55b429ddd"
+        }
+      },
+      "originalErrorsRetained": true,
+      "bulkApiMarkedInternal": true
+    },
+    {
+      "kind": "state-repair",
+      "recovery": "resume-then-empty",
+      "counts": {
+        "completed": 1,
+        "flaky": 2,
+        "join": 1
+      },
+      "result": {
+        "results": [
+          "completed",
+          "recovered",
+          "joined"
+        ]
+      },
+      "originalCheckpoint": {
+        "configurable": {
+          "thread_id": "c2",
+          "checkpoint_id": "1f1aff32-3d5e-6490-8000-92e6d13aed62",
+          "checkpoint_ns": ""
+        }
+      },
+      "repairCheckpoint": {
+        "configurable": {
+          "thread_id": "c2",
+          "checkpoint_ns": "",
+          "checkpoint_id": "1f1aff32-3d60-6ba0-8002-ee1c32d51868"
+        }
+      },
+      "originalErrorsRetained": true,
+      "bulkApiMarkedInternal": false
+    }
+  ],
+  "experiments": [
+    {
+      "api": "state",
+      "window": "immediate",
+      "durability": "sync",
+      "name": "state-sync-immediate",
+      "processes": [
+        {
+          "phase": "seed",
+          "parentSignaled": false,
+          "exitCode": 0,
+          "signal": null,
+          "error": null,
+          "stderr": "",
+          "report": {
+            "phase": "seed",
+            "pid": 11188,
+            "error": {
+              "name": "Error",
+              "message": "injected parallel failure"
+            },
+            "result": null,
+            "backgroundAfterReject": false,
+            "before": {
+              "outputError": true,
+              "notificationMissing": true,
+              "pendingWrites": [
+                [
+                  "eb4bcec2-d840-5c30-a17d-11255565cccd",
+                  "__error__",
+                  {
+                    "message": "injected parallel failure",
+                    "name": "Error"
+                  }
+                ],
+                [
+                  "06f99b8d-8182-54ab-ab34-22faa75641ac",
+                  "results",
+                  [
+                    "completed"
+                  ]
+                ],
+                [
+                  "06f99b8d-8182-54ab-ab34-22faa75641ac",
+                  "__error__",
+                  {
+                    "message": "This operation was aborted",
+                    "name": "AbortError"
+                  }
+                ]
+              ]
+            },
+            "counts": {
+              "completedBody": 1,
+              "completedWrapper": 1,
+              "flakyAttempts": 1
+            },
+            "passed": true
+          }
+        },
+        {
+          "phase": "recover",
+          "parentSignaled": false,
+          "exitCode": 0,
+          "signal": null,
+          "error": null,
+          "stderr": "",
+          "report": {
+            "phase": "recover",
+            "pid": 11189,
+            "result": {
+              "results": [
+                "completed",
+                "recovered"
+              ]
+            },
+            "counts": {
+              "completedBody": 1,
+              "completedWrapper": 1,
+              "flakyAttempts": 2,
+              "recoveredBody": 1
+            },
+            "next": [],
+            "before": {
+              "outputError": true,
+              "notificationMissing": true,
+              "pendingWrites": [
+                [
+                  "eb4bcec2-d840-5c30-a17d-11255565cccd",
+                  "__error__",
+                  {
+                    "message": "injected parallel failure",
+                    "name": "Error"
+                  }
+                ],
+                [
+                  "06f99b8d-8182-54ab-ab34-22faa75641ac",
+                  "results",
+                  [
+                    "completed"
+                  ]
+                ],
+                [
+                  "06f99b8d-8182-54ab-ab34-22faa75641ac",
+                  "__error__",
+                  {
+                    "message": "This operation was aborted",
+                    "name": "AbortError"
+                  }
+                ]
+              ]
+            },
+            "passed": true
+          }
+        }
+      ],
+      "cleaned": true
+    },
+    {
+      "api": "state",
+      "window": "full-writes-error",
+      "durability": "sync",
+      "name": "state-sync-full-writes-error",
+      "processes": [
+        {
+          "phase": "seed",
+          "parentSignaled": false,
+          "exitCode": 0,
+          "signal": null,
+          "error": null,
+          "stderr": "",
+          "report": {
+            "phase": "seed",
+            "pid": 11202,
+            "error": {
+              "name": "Error",
+              "message": "injected after completed writes"
+            },
+            "result": null,
+            "backgroundAfterReject": false,
+            "before": {
+              "outputError": false,
+              "notificationMissing": false,
+              "pendingWrites": [
+                [
+                  "800a77a7-517c-53b4-a8d6-d0d81a961b54",
+                  "results",
+                  [
+                    "completed"
+                  ]
+                ],
+                [
+                  "800a77a7-517c-53b4-a8d6-d0d81a961b54",
+                  "join:completed+flaky:join",
+                  "completed"
+                ],
+                [
+                  "253c4480-dfce-5840-aa5d-f0ac0df87c85",
+                  "__error__",
+                  {
+                    "message": "injected after completed writes",
+                    "name": "Error"
+                  }
+                ]
+              ]
+            },
+            "counts": {
+              "completedBody": 1,
+              "completedWrapper": 1,
+              "flakyAttempts": 1
+            },
+            "passed": true
+          }
+        },
+        {
+          "phase": "recover",
+          "parentSignaled": false,
+          "exitCode": 0,
+          "signal": null,
+          "error": null,
+          "stderr": "",
+          "report": {
+            "phase": "recover",
+            "pid": 11203,
+            "result": {
+              "results": [
+                "completed",
+                "recovered",
+                "joined"
+              ]
+            },
+            "counts": {
+              "completedBody": 1,
+              "completedWrapper": 1,
+              "flakyAttempts": 2,
+              "joinWrapper": 1,
+              "joinedBody": 1,
+              "recoveredBody": 1
+            },
+            "next": [],
+            "before": {
+              "outputError": false,
+              "notificationMissing": false,
+              "pendingWrites": [
+                [
+                  "800a77a7-517c-53b4-a8d6-d0d81a961b54",
+                  "results",
+                  [
+                    "completed"
+                  ]
+                ],
+                [
+                  "800a77a7-517c-53b4-a8d6-d0d81a961b54",
+                  "join:completed+flaky:join",
+                  "completed"
+                ],
+                [
+                  "253c4480-dfce-5840-aa5d-f0ac0df87c85",
+                  "__error__",
+                  {
+                    "message": "injected after completed writes",
+                    "name": "Error"
+                  }
+                ]
+              ]
+            },
+            "passed": true
+          }
+        }
+      ],
+      "cleaned": true
+    },
+    {
+      "api": "state",
+      "window": "repair-before",
+      "durability": "sync",
+      "name": "state-sync-repair-before",
+      "processes": [
+        {
+          "phase": "seed",
+          "parentSignaled": false,
+          "exitCode": 0,
+          "signal": null,
+          "error": null,
+          "stderr": "",
+          "report": {
+            "phase": "seed",
+            "pid": 11204,
+            "error": {
+              "name": "Error",
+              "message": "injected parallel failure"
+            },
+            "result": null,
+            "backgroundAfterReject": false,
+            "before": {
+              "outputError": true,
+              "notificationMissing": true,
+              "pendingWrites": [
+                [
+                  "6f49dfdd-931a-5bff-9ed9-2e0f63af6f3e",
+                  "__error__",
+                  {
+                    "message": "injected parallel failure",
+                    "name": "Error"
+                  }
+                ],
+                [
+                  "f6e26a96-f3b7-5653-a3f1-a4ef3133c299",
+                  "results",
+                  [
+                    "completed"
+                  ]
+                ],
+                [
+                  "f6e26a96-f3b7-5653-a3f1-a4ef3133c299",
+                  "__error__",
+                  {
+                    "message": "This operation was aborted",
+                    "name": "AbortError"
+                  }
+                ]
+              ]
+            },
+            "counts": {
+              "completedBody": 1,
+              "completedWrapper": 1,
+              "flakyAttempts": 1
+            },
+            "passed": true
+          }
+        },
+        {
+          "phase": "recover",
+          "parentSignaled": false,
+          "exitCode": 0,
+          "signal": null,
+          "error": null,
+          "stderr": "",
+          "report": {
+            "phase": "recover",
+            "pid": 11205,
+            "result": {
+              "results": [
+                "completed",
+                "recovered"
+              ]
+            },
+            "counts": {
+              "completedBody": 1,
+              "completedWrapper": 1,
+              "flakyAttempts": 2,
+              "recoveredBody": 1
+            },
+            "next": [],
+            "before": {
+              "outputError": true,
+              "notificationMissing": true,
+              "pendingWrites": [
+                [
+                  "6f49dfdd-931a-5bff-9ed9-2e0f63af6f3e",
+                  "__error__",
+                  {
+                    "message": "injected parallel failure",
+                    "name": "Error"
+                  }
+                ],
+                [
+                  "f6e26a96-f3b7-5653-a3f1-a4ef3133c299",
+                  "results",
+                  [
+                    "completed"
+                  ]
+                ],
+                [
+                  "f6e26a96-f3b7-5653-a3f1-a4ef3133c299",
+                  "__error__",
+                  {
+                    "message": "This operation was aborted",
+                    "name": "AbortError"
+                  }
+                ]
+              ]
+            },
+            "passed": true
+          }
+        },
+        {
+          "phase": "repair",
+          "parentSignaled": false,
+          "exitCode": null,
+          "signal": "SIGKILL",
+          "error": null,
+          "stderr": "",
+          "report": null,
+          "kill": {
+            "actualSignal": "SIGKILL",
+            "pid": 11206,
+            "window": "repair-before"
+          }
+        },
+        {
+          "phase": "repair-recover",
+          "parentSignaled": false,
+          "exitCode": 0,
+          "signal": null,
+          "error": null,
+          "stderr": "",
+          "report": {
+            "phase": "repair-recover",
+            "pid": 11207,
+            "result": {
+              "results": [
+                "completed",
+                "recovered",
+                "joined"
+              ]
+            },
+            "counts": {
+              "completedBody": 1,
+              "completedWrapper": 1,
+              "flakyAttempts": 2,
+              "joinWrapper": 1,
+              "joinedBody": 1,
+              "recoveredBody": 1
+            },
+            "next": [],
+            "before": {
+              "outputError": false,
+              "notificationMissing": false,
+              "pendingWrites": [
+                [
+                  "221f43b5-b7f0-5b38-99f8-d892cd154516",
+                  "join:completed+flaky:join",
+                  "completed"
+                ]
+              ]
+            },
+            "passed": true
+          }
+        }
+      ],
+      "cleaned": true
+    },
+    {
+      "api": "state",
+      "window": "repair-after",
+      "durability": "sync",
+      "name": "state-sync-repair-after",
+      "processes": [
+        {
+          "phase": "seed",
+          "parentSignaled": false,
+          "exitCode": 0,
+          "signal": null,
+          "error": null,
+          "stderr": "",
+          "report": {
+            "phase": "seed",
+            "pid": 11208,
+            "error": {
+              "name": "Error",
+              "message": "injected parallel failure"
+            },
+            "result": null,
+            "backgroundAfterReject": false,
+            "before": {
+              "outputError": true,
+              "notificationMissing": true,
+              "pendingWrites": [
+                [
+                  "f0911bf3-c6a9-585c-98da-bd889875fdc5",
+                  "__error__",
+                  {
+                    "message": "injected parallel failure",
+                    "name": "Error"
+                  }
+                ],
+                [
+                  "19c6c467-ebde-5e7b-b99e-56b2504c9b29",
+                  "results",
+                  [
+                    "completed"
+                  ]
+                ],
+                [
+                  "19c6c467-ebde-5e7b-b99e-56b2504c9b29",
+                  "__error__",
+                  {
+                    "message": "This operation was aborted",
+                    "name": "AbortError"
+                  }
+                ]
+              ]
+            },
+            "counts": {
+              "completedBody": 1,
+              "completedWrapper": 1,
+              "flakyAttempts": 1
+            },
+            "passed": true
+          }
+        },
+        {
+          "phase": "recover",
+          "parentSignaled": false,
+          "exitCode": 0,
+          "signal": null,
+          "error": null,
+          "stderr": "",
+          "report": {
+            "phase": "recover",
+            "pid": 11209,
+            "result": {
+              "results": [
+                "completed",
+                "recovered"
+              ]
+            },
+            "counts": {
+              "completedBody": 1,
+              "completedWrapper": 1,
+              "flakyAttempts": 2,
+              "recoveredBody": 1
+            },
+            "next": [],
+            "before": {
+              "outputError": true,
+              "notificationMissing": true,
+              "pendingWrites": [
+                [
+                  "f0911bf3-c6a9-585c-98da-bd889875fdc5",
+                  "__error__",
+                  {
+                    "message": "injected parallel failure",
+                    "name": "Error"
+                  }
+                ],
+                [
+                  "19c6c467-ebde-5e7b-b99e-56b2504c9b29",
+                  "results",
+                  [
+                    "completed"
+                  ]
+                ],
+                [
+                  "19c6c467-ebde-5e7b-b99e-56b2504c9b29",
+                  "__error__",
+                  {
+                    "message": "This operation was aborted",
+                    "name": "AbortError"
+                  }
+                ]
+              ]
+            },
+            "passed": true
+          }
+        },
+        {
+          "phase": "repair",
+          "parentSignaled": false,
+          "exitCode": null,
+          "signal": "SIGKILL",
+          "error": null,
+          "stderr": "",
+          "report": null,
+          "kill": {
+            "actualSignal": "SIGKILL",
+            "pid": 11210,
+            "window": "repair-after"
+          }
+        },
+        {
+          "phase": "repair-recover",
+          "parentSignaled": false,
+          "exitCode": 0,
+          "signal": null,
+          "error": null,
+          "stderr": "",
+          "report": {
+            "phase": "repair-recover",
+            "pid": 11211,
+            "result": {
+              "results": [
+                "completed",
+                "recovered",
+                "joined"
+              ]
+            },
+            "counts": {
+              "completedBody": 1,
+              "completedWrapper": 1,
+              "flakyAttempts": 2,
+              "joinWrapper": 1,
+              "joinedBody": 1,
+              "recoveredBody": 1
+            },
+            "next": [],
+            "before": {
+              "outputError": false,
+              "notificationMissing": false,
+              "pendingWrites": []
+            },
+            "passed": true
+          }
+        }
+      ],
+      "cleaned": true
+    },
+    {
+      "api": "functional",
+      "window": "immediate",
+      "durability": "sync",
+      "name": "functional-sync-immediate",
+      "processes": [
+        {
+          "phase": "seed",
+          "parentSignaled": false,
+          "exitCode": 0,
+          "signal": null,
+          "error": null,
+          "stderr": "",
+          "report": {
+            "phase": "seed",
+            "pid": 11212,
+            "error": {
+              "name": "Error",
+              "message": "injected parallel failure"
+            },
+            "result": null,
+            "backgroundAfterReject": false,
+            "before": {
+              "outputError": false,
+              "notificationMissing": false,
+              "pendingWrites": [
+                [
+                  "6bf5dd1a-d9d7-56bc-b2f4-ca7b58d86c65",
+                  "__error__",
+                  {
+                    "message": "injected parallel failure",
+                    "name": "Error"
+                  }
+                ],
+                [
+                  "46ead0cd-3772-5fd6-b10e-21b624a734d7",
+                  "__return__",
+                  {
+                    "results": [
+                      "completed"
+                    ]
+                  }
+                ],
+                [
+                  "b4c4ce7e-af84-535a-bf9d-c1ef1cf044f6",
+                  "__error__",
+                  {
+                    "message": "This operation was aborted",
+                    "name": "AbortError"
+                  }
+                ]
+              ]
+            },
+            "counts": {
+              "completedBody": 1,
+              "completedWrapper": 1,
+              "flakyAttempts": 1
+            },
+            "passed": true
+          }
+        },
+        {
+          "phase": "recover",
+          "parentSignaled": false,
+          "exitCode": 0,
+          "signal": null,
+          "error": null,
+          "stderr": "",
+          "report": {
+            "phase": "recover",
+            "pid": 11214,
+            "result": {
+              "results": [
+                "completed",
+                "recovered",
+                "joined"
+              ]
+            },
+            "counts": {
+              "completedBody": 1,
+              "completedWrapper": 1,
+              "flakyAttempts": 2,
+              "joinWrapper": 1,
+              "joinedBody": 1,
+              "recoveredBody": 1
+            },
+            "next": [],
+            "before": {
+              "outputError": false,
+              "notificationMissing": false,
+              "pendingWrites": [
+                [
+                  "6bf5dd1a-d9d7-56bc-b2f4-ca7b58d86c65",
+                  "__error__",
+                  {
+                    "message": "injected parallel failure",
+                    "name": "Error"
+                  }
+                ],
+                [
+                  "46ead0cd-3772-5fd6-b10e-21b624a734d7",
+                  "__return__",
+                  {
+                    "results": [
+                      "completed"
+                    ]
+                  }
+                ],
+                [
+                  "b4c4ce7e-af84-535a-bf9d-c1ef1cf044f6",
+                  "__error__",
+                  {
+                    "message": "This operation was aborted",
+                    "name": "AbortError"
+                  }
+                ]
+              ]
+            },
+            "passed": true
+          }
+        }
+      ],
+      "cleaned": true
+    },
+    {
+      "api": "functional",
+      "window": "full-writes-error",
+      "durability": "sync",
+      "name": "functional-sync-full-writes-error",
+      "processes": [
+        {
+          "phase": "seed",
+          "parentSignaled": false,
+          "exitCode": 0,
+          "signal": null,
+          "error": null,
+          "stderr": "",
+          "report": {
+            "phase": "seed",
+            "pid": 11215,
+            "error": {
+              "name": "Error",
+              "message": "injected after completed writes"
+            },
+            "result": null,
+            "backgroundAfterReject": false,
+            "before": {
+              "outputError": false,
+              "notificationMissing": false,
+              "pendingWrites": [
+                [
+                  "e56eb68b-7f60-5d10-95f4-f699a35311c6",
+                  "__return__",
+                  {
+                    "results": [
+                      "completed"
+                    ]
+                  }
+                ],
+                [
+                  "7f0b39ad-a626-5c88-8f90-9c382e75177b",
+                  "__error__",
+                  {
+                    "message": "injected after completed writes",
+                    "name": "Error"
+                  }
+                ],
+                [
+                  "e60df10c-d832-5a04-aa00-ea19bdaf8265",
+                  "__error__",
+                  {
+                    "message": "This operation was aborted",
+                    "name": "AbortError"
+                  }
+                ]
+              ]
+            },
+            "counts": {
+              "completedBody": 1,
+              "completedWrapper": 1,
+              "flakyAttempts": 1
+            },
+            "passed": true
+          }
+        },
+        {
+          "phase": "recover",
+          "parentSignaled": false,
+          "exitCode": 0,
+          "signal": null,
+          "error": null,
+          "stderr": "",
+          "report": {
+            "phase": "recover",
+            "pid": 11217,
+            "result": {
+              "results": [
+                "completed",
+                "recovered",
+                "joined"
+              ]
+            },
+            "counts": {
+              "completedBody": 1,
+              "completedWrapper": 1,
+              "flakyAttempts": 2,
+              "joinWrapper": 1,
+              "joinedBody": 1,
+              "recoveredBody": 1
+            },
+            "next": [],
+            "before": {
+              "outputError": false,
+              "notificationMissing": false,
+              "pendingWrites": [
+                [
+                  "e56eb68b-7f60-5d10-95f4-f699a35311c6",
+                  "__return__",
+                  {
+                    "results": [
+                      "completed"
+                    ]
+                  }
+                ],
+                [
+                  "7f0b39ad-a626-5c88-8f90-9c382e75177b",
+                  "__error__",
+                  {
+                    "message": "injected after completed writes",
+                    "name": "Error"
+                  }
+                ],
+                [
+                  "e60df10c-d832-5a04-aa00-ea19bdaf8265",
+                  "__error__",
+                  {
+                    "message": "This operation was aborted",
+                    "name": "AbortError"
+                  }
+                ]
+              ]
+            },
+            "passed": true
+          }
+        }
+      ],
+      "cleaned": true
+    },
+    {
+      "api": "functional",
+      "window": "effect-confirmed-crash",
+      "durability": "sync",
+      "name": "functional-sync-effect-confirmed-crash",
+      "processes": [
+        {
+          "phase": "seed",
+          "parentSignaled": false,
+          "exitCode": null,
+          "signal": "SIGKILL",
+          "error": null,
+          "stderr": "",
+          "report": null,
+          "kill": {
+            "actualSignal": "SIGKILL",
+            "pid": 11218,
+            "window": "effect-confirmed-crash"
+          }
+        },
+        {
+          "phase": "recover",
+          "parentSignaled": false,
+          "exitCode": 0,
+          "signal": null,
+          "error": null,
+          "stderr": "",
+          "report": {
+            "phase": "recover",
+            "pid": 11219,
+            "result": {
+              "results": [
+                "completed",
+                "recovered",
+                "joined"
+              ]
+            },
+            "counts": {
+              "completedBody": 1,
+              "completedWrapper": 2,
+              "flakyAttempts": 1,
+              "joinWrapper": 1,
+              "joinedBody": 1,
+              "recoveredBody": 1
+            },
+            "next": [],
+            "before": {
+              "outputError": false,
+              "notificationMissing": false,
+              "pendingWrites": []
+            },
+            "passed": true
+          }
+        }
+      ],
+      "cleaned": true
+    },
+    {
+      "api": "functional",
+      "window": "before-return-write-crash",
+      "durability": "sync",
+      "name": "functional-sync-before-return-write-crash",
+      "processes": [
+        {
+          "phase": "seed",
+          "parentSignaled": false,
+          "exitCode": null,
+          "signal": "SIGKILL",
+          "error": null,
+          "stderr": "",
+          "report": null,
+          "kill": {
+            "actualSignal": "SIGKILL",
+            "pid": 11232,
+            "window": "before-return-write-crash"
+          }
+        },
+        {
+          "phase": "recover",
+          "parentSignaled": false,
+          "exitCode": 0,
+          "signal": null,
+          "error": null,
+          "stderr": "",
+          "report": {
+            "phase": "recover",
+            "pid": 11267,
+            "result": {
+              "results": [
+                "completed",
+                "recovered",
+                "joined"
+              ]
+            },
+            "counts": {
+              "completedBody": 1,
+              "completedWrapper": 2,
+              "flakyAttempts": 2,
+              "joinWrapper": 1,
+              "joinedBody": 1,
+              "recoveredBody": 1
+            },
+            "next": [],
+            "before": {
+              "outputError": false,
+              "notificationMissing": false,
+              "pendingWrites": []
+            },
+            "passed": true
+          }
+        }
+      ],
+      "cleaned": true
+    },
+    {
+      "api": "functional",
+      "window": "after-return-write-crash",
+      "durability": "sync",
+      "name": "functional-sync-after-return-write-crash",
+      "processes": [
+        {
+          "phase": "seed",
+          "parentSignaled": false,
+          "exitCode": null,
+          "signal": "SIGKILL",
+          "error": null,
+          "stderr": "",
+          "report": null,
+          "kill": {
+            "actualSignal": "SIGKILL",
+            "pid": 11268,
+            "window": "after-return-write-crash"
+          }
+        },
+        {
+          "phase": "recover",
+          "parentSignaled": false,
+          "exitCode": 0,
+          "signal": null,
+          "error": null,
+          "stderr": "",
+          "report": {
+            "phase": "recover",
+            "pid": 11269,
+            "result": {
+              "results": [
+                "completed",
+                "recovered",
+                "joined"
+              ]
+            },
+            "counts": {
+              "completedBody": 1,
+              "completedWrapper": 1,
+              "flakyAttempts": 2,
+              "joinWrapper": 1,
+              "joinedBody": 1,
+              "recoveredBody": 1
+            },
+            "next": [],
+            "before": {
+              "outputError": false,
+              "notificationMissing": false,
+              "pendingWrites": [
+                [
+                  "2464ce7e-97a4-5877-84d9-81cb9ffd025a",
+                  "__return__",
+                  {
+                    "results": [
+                      "completed"
+                    ]
+                  }
+                ]
+              ]
+            },
+            "passed": true
+          }
+        }
+      ],
+      "cleaned": true
+    },
+    {
+      "api": "functional",
+      "window": "join-return-crash",
+      "durability": "sync",
+      "name": "functional-sync-join-return-crash",
+      "processes": [
+        {
+          "phase": "seed",
+          "parentSignaled": false,
+          "exitCode": null,
+          "signal": "SIGKILL",
+          "error": null,
+          "stderr": "",
+          "report": null,
+          "kill": {
+            "actualSignal": "SIGKILL",
+            "pid": 11273,
+            "window": "join-return-crash"
+          }
+        },
+        {
+          "phase": "recover",
+          "parentSignaled": false,
+          "exitCode": 0,
+          "signal": null,
+          "error": null,
+          "stderr": "",
+          "report": {
+            "phase": "recover",
+            "pid": 11274,
+            "result": {
+              "results": [
+                "completed",
+                "recovered",
+                "joined"
+              ]
+            },
+            "counts": {
+              "completedBody": 1,
+              "completedWrapper": 1,
+              "flakyAttempts": 1,
+              "joinWrapper": 1,
+              "joinedBody": 1,
+              "recoveredBody": 1
+            },
+            "next": [],
+            "before": {
+              "outputError": false,
+              "notificationMissing": false,
+              "pendingWrites": [
+                [
+                  "641ad30b-2702-5205-a631-1a725f1760b1",
+                  "__return__",
+                  {
+                    "results": [
+                      "completed"
+                    ]
+                  }
+                ],
+                [
+                  "88644569-a4d7-5269-84bc-d189b483afab",
+                  "__return__",
+                  {
+                    "results": [
+                      "recovered"
+                    ]
+                  }
+                ],
+                [
+                  "e58ef069-3f0a-5be6-8e4d-36456d915cd7",
+                  "__return__",
+                  {
+                    "results": [
+                      "joined"
+                    ]
+                  }
+                ]
+              ]
+            },
+            "passed": true
+          }
+        }
+      ],
+      "cleaned": true
+    },
+    {
+      "api": "functional",
+      "window": "join-effect-confirmed-crash",
+      "durability": "sync",
+      "name": "functional-sync-join-effect-confirmed-crash",
+      "processes": [
+        {
+          "phase": "seed",
+          "parentSignaled": false,
+          "exitCode": null,
+          "signal": "SIGKILL",
+          "error": null,
+          "stderr": "",
+          "report": null,
+          "kill": {
+            "actualSignal": "SIGKILL",
+            "pid": 11275,
+            "window": "join-effect-confirmed-crash"
+          }
+        },
+        {
+          "phase": "recover",
+          "parentSignaled": false,
+          "exitCode": 0,
+          "signal": null,
+          "error": null,
+          "stderr": "",
+          "report": {
+            "phase": "recover",
+            "pid": 11282,
+            "result": {
+              "results": [
+                "completed",
+                "recovered",
+                "joined"
+              ]
+            },
+            "counts": {
+              "completedBody": 1,
+              "completedWrapper": 1,
+              "flakyAttempts": 1,
+              "joinWrapper": 2,
+              "joinedBody": 1,
+              "recoveredBody": 1
+            },
+            "next": [],
+            "before": {
+              "outputError": false,
+              "notificationMissing": false,
+              "pendingWrites": [
+                [
+                  "1bf9cdb8-c7e6-5a88-b26b-a1ccf58bc594",
+                  "__return__",
+                  {
+                    "results": [
+                      "completed"
+                    ]
+                  }
+                ],
+                [
+                  "814adc56-f733-5b7a-b7e9-961c1f2b76f3",
+                  "__return__",
+                  {
+                    "results": [
+                      "recovered"
+                    ]
+                  }
+                ]
+              ]
+            },
+            "passed": true
+          }
+        }
+      ],
+      "cleaned": true
+    },
+    {
+      "api": "functional",
+      "window": "before-final-checkpoint-crash",
+      "durability": "sync",
+      "name": "functional-sync-before-final-checkpoint-crash",
+      "processes": [
+        {
+          "phase": "seed",
+          "parentSignaled": false,
+          "exitCode": null,
+          "signal": "SIGKILL",
+          "error": null,
+          "stderr": "",
+          "report": null,
+          "kill": {
+            "actualSignal": "SIGKILL",
+            "pid": 11284,
+            "window": "before-final-checkpoint-crash"
+          }
+        },
+        {
+          "phase": "recover",
+          "parentSignaled": false,
+          "exitCode": 0,
+          "signal": null,
+          "error": null,
+          "stderr": "",
+          "report": {
+            "phase": "recover",
+            "pid": 11294,
+            "result": {
+              "results": [
+                "completed",
+                "recovered",
+                "joined"
+              ]
+            },
+            "counts": {
+              "completedBody": 1,
+              "completedWrapper": 1,
+              "flakyAttempts": 1,
+              "joinWrapper": 1,
+              "joinedBody": 1,
+              "recoveredBody": 1
+            },
+            "next": [],
+            "before": {
+              "outputError": false,
+              "notificationMissing": false,
+              "pendingWrites": [
+                [
+                  "3a24628c-b2db-5956-adfa-dbeb6312f530",
+                  "__return__",
+                  {
+                    "results": [
+                      "completed"
+                    ]
+                  }
+                ],
+                [
+                  "31f1e115-d824-5e56-b473-670e542b0230",
+                  "__return__",
+                  {
+                    "results": [
+                      "recovered"
+                    ]
+                  }
+                ],
+                [
+                  "5e6bc7ea-e353-505b-9351-b2f80bd2bde3",
+                  "__return__",
+                  {
+                    "results": [
+                      "joined"
+                    ]
+                  }
+                ],
+                [
+                  "aa5b8817-8a7c-5440-8b87-bad48f7555f7",
+                  "__end__",
+                  {
+                    "results": [
+                      "completed",
+                      "recovered",
+                      "joined"
+                    ]
+                  }
+                ],
+                [
+                  "aa5b8817-8a7c-5440-8b87-bad48f7555f7",
+                  "__previous__",
+                  {
+                    "results": [
+                      "completed",
+                      "recovered",
+                      "joined"
+                    ]
+                  }
+                ]
+              ]
+            },
+            "passed": true
+          }
+        }
+      ],
+      "cleaned": true
+    },
+    {
+      "api": "functional",
+      "window": "unknown-effect-crash",
+      "durability": "sync",
+      "name": "functional-sync-unknown-effect-crash",
+      "processes": [
+        {
+          "phase": "seed",
+          "parentSignaled": false,
+          "exitCode": null,
+          "signal": "SIGKILL",
+          "error": null,
+          "stderr": "",
+          "report": null,
+          "kill": {
+            "actualSignal": "SIGKILL",
+            "pid": 11295,
+            "window": "unknown-effect-crash"
+          }
+        },
+        {
+          "phase": "recover",
+          "parentSignaled": false,
+          "exitCode": 0,
+          "signal": null,
+          "error": null,
+          "stderr": "",
+          "report": {
+            "phase": "recover",
+            "pid": 11296,
+            "reconciled": false,
+            "blockedUnknown": true,
+            "reconciliationErrors": [
+              "reconcile: no confirmed effect",
+              "reconcile: run has unresolved effects"
+            ],
+            "counts": {
+              "completedBody": 1,
+              "completedWrapper": 2,
+              "flakyAttempts": 1
+            },
+            "passed": true
+          }
+        }
+      ],
+      "cleaned": true
+    },
+    {
+      "api": "functional",
+      "window": "cancel",
+      "durability": "sync",
+      "name": "functional-sync-cancel",
+      "processes": [
+        {
+          "phase": "seed",
+          "parentSignaled": false,
+          "exitCode": 0,
+          "signal": null,
+          "error": null,
+          "stderr": "",
+          "report": {
+            "phase": "seed",
+            "pid": 11300,
+            "error": {
+              "name": "Error",
+              "message": "injected external cancel"
+            },
+            "result": null,
+            "backgroundAfterReject": false,
+            "before": {
+              "outputError": false,
+              "notificationMissing": false,
+              "pendingWrites": [
+                [
+                  "203e0a86-cc4a-5d71-b73c-fe8c3fb8d853",
+                  "__return__",
+                  {
+                    "results": [
+                      "completed"
+                    ]
+                  }
+                ],
+                [
+                  "5f53c40d-967b-50f8-8d9e-28758c7d7431",
+                  "__error__",
+                  {
+                    "message": "injected external cancel",
+                    "name": "Error"
+                  }
+                ],
+                [
+                  "d44b8f6a-3db7-5848-bb30-b5cdd668cd43",
+                  "__error__",
+                  {
+                    "message": "injected external cancel",
+                    "name": "Error"
+                  }
+                ]
+              ]
+            },
+            "counts": {
+              "completedBody": 1,
+              "completedWrapper": 1,
+              "flakyAttempts": 1
+            },
+            "passed": true
+          }
+        },
+        {
+          "phase": "recover",
+          "parentSignaled": false,
+          "exitCode": 0,
+          "signal": null,
+          "error": null,
+          "stderr": "",
+          "report": {
+            "phase": "recover",
+            "pid": 11304,
+            "result": {
+              "results": [
+                "completed",
+                "recovered",
+                "joined"
+              ]
+            },
+            "counts": {
+              "completedBody": 1,
+              "completedWrapper": 1,
+              "flakyAttempts": 2,
+              "joinWrapper": 1,
+              "joinedBody": 1,
+              "recoveredBody": 1
+            },
+            "next": [],
+            "before": {
+              "outputError": false,
+              "notificationMissing": false,
+              "pendingWrites": [
+                [
+                  "203e0a86-cc4a-5d71-b73c-fe8c3fb8d853",
+                  "__return__",
+                  {
+                    "results": [
+                      "completed"
+                    ]
+                  }
+                ],
+                [
+                  "5f53c40d-967b-50f8-8d9e-28758c7d7431",
+                  "__error__",
+                  {
+                    "message": "injected external cancel",
+                    "name": "Error"
+                  }
+                ],
+                [
+                  "d44b8f6a-3db7-5848-bb30-b5cdd668cd43",
+                  "__error__",
+                  {
+                    "message": "injected external cancel",
+                    "name": "Error"
+                  }
+                ]
+              ]
+            },
+            "passed": true
+          }
+        }
+      ],
+      "cleaned": true
+    },
+    {
+      "api": "functional",
+      "window": "timeout",
+      "durability": "sync",
+      "name": "functional-sync-timeout",
+      "processes": [
+        {
+          "phase": "seed",
+          "parentSignaled": false,
+          "exitCode": 0,
+          "signal": null,
+          "error": null,
+          "stderr": "",
+          "report": {
+            "phase": "seed",
+            "pid": 11305,
+            "error": {
+              "name": "NodeTimeoutError",
+              "message": "Node \"flaky\" exceeded its run timeout of 80ms (elapsed: 81ms)."
+            },
+            "result": null,
+            "backgroundAfterReject": true,
+            "before": {
+              "outputError": false,
+              "notificationMissing": false,
+              "pendingWrites": [
+                [
+                  "2e7a2a49-09d1-538e-9d11-2d7bd50ce57a",
+                  "__return__",
+                  {
+                    "results": [
+                      "completed"
+                    ]
+                  }
+                ],
+                [
+                  "39326d73-1844-5b0a-894f-d4dc05a83111",
+                  "__error__",
+                  {
+                    "message": "Node \"flaky\" exceeded its run timeout of 80ms (elapsed: 81ms).",
+                    "name": "NodeTimeoutError"
+                  }
+                ],
+                [
+                  "2bd689fb-8aef-5b3b-8757-fb89f2ce9a25",
+                  "__error__",
+                  {
+                    "message": "This operation was aborted",
+                    "name": "AbortError"
+                  }
+                ]
+              ]
+            },
+            "counts": {
+              "completedBody": 1,
+              "completedWrapper": 1,
+              "flakyAttempts": 1,
+              "recoveredBody": 1
+            },
+            "passed": true
+          }
+        },
+        {
+          "phase": "recover",
+          "parentSignaled": false,
+          "exitCode": 0,
+          "signal": null,
+          "error": null,
+          "stderr": "",
+          "report": {
+            "phase": "recover",
+            "pid": 11306,
+            "result": {
+              "results": [
+                "completed",
+                "recovered",
+                "joined"
+              ]
+            },
+            "counts": {
+              "completedBody": 1,
+              "completedWrapper": 1,
+              "flakyAttempts": 2,
+              "joinWrapper": 1,
+              "joinedBody": 1,
+              "recoveredBody": 1
+            },
+            "next": [],
+            "before": {
+              "outputError": false,
+              "notificationMissing": false,
+              "pendingWrites": [
+                [
+                  "2e7a2a49-09d1-538e-9d11-2d7bd50ce57a",
+                  "__return__",
+                  {
+                    "results": [
+                      "completed"
+                    ]
+                  }
+                ],
+                [
+                  "39326d73-1844-5b0a-894f-d4dc05a83111",
+                  "__error__",
+                  {
+                    "message": "Node \"flaky\" exceeded its run timeout of 80ms (elapsed: 81ms).",
+                    "name": "NodeTimeoutError"
+                  }
+                ],
+                [
+                  "2bd689fb-8aef-5b3b-8757-fb89f2ce9a25",
+                  "__error__",
+                  {
+                    "message": "This operation was aborted",
+                    "name": "AbortError"
+                  }
+                ]
+              ]
+            },
+            "passed": true
+          }
+        }
+      ],
+      "cleaned": true
+    },
+    {
+      "api": "functional",
+      "window": "cancel-uncooperative",
+      "durability": "sync",
+      "name": "functional-sync-cancel-uncooperative",
+      "processes": [
+        {
+          "phase": "seed",
+          "parentSignaled": false,
+          "exitCode": 0,
+          "signal": null,
+          "error": null,
+          "stderr": "",
+          "report": {
+            "phase": "seed",
+            "pid": 11318,
+            "error": {
+              "name": "Error",
+              "message": "injected external cancel"
+            },
+            "result": null,
+            "backgroundAfterReject": true,
+            "before": {
+              "outputError": false,
+              "notificationMissing": false,
+              "pendingWrites": [
+                [
+                  "2b641577-5f23-5547-aef9-91f56e9eeb2e",
+                  "__return__",
+                  {
+                    "results": [
+                      "completed"
+                    ]
+                  }
+                ],
+                [
+                  "ea68dacd-6737-5c76-8a1f-25cf6e592abf",
+                  "__error__",
+                  {
+                    "message": "injected external cancel",
+                    "name": "Error"
+                  }
+                ],
+                [
+                  "3d31ecec-2394-585c-a8bb-978e425137ab",
+                  "__error__",
+                  {
+                    "message": "injected external cancel",
+                    "name": "Error"
+                  }
+                ]
+              ]
+            },
+            "counts": {
+              "completedBody": 1,
+              "completedWrapper": 1,
+              "flakyAttempts": 1,
+              "recoveredBody": 1
+            },
+            "passed": true
+          }
+        },
+        {
+          "phase": "recover",
+          "parentSignaled": false,
+          "exitCode": 0,
+          "signal": null,
+          "error": null,
+          "stderr": "",
+          "report": {
+            "phase": "recover",
+            "pid": 11319,
+            "result": {
+              "results": [
+                "completed",
+                "recovered",
+                "joined"
+              ]
+            },
+            "counts": {
+              "completedBody": 1,
+              "completedWrapper": 1,
+              "flakyAttempts": 2,
+              "joinWrapper": 1,
+              "joinedBody": 1,
+              "recoveredBody": 1
+            },
+            "next": [],
+            "before": {
+              "outputError": false,
+              "notificationMissing": false,
+              "pendingWrites": [
+                [
+                  "2b641577-5f23-5547-aef9-91f56e9eeb2e",
+                  "__return__",
+                  {
+                    "results": [
+                      "completed"
+                    ]
+                  }
+                ],
+                [
+                  "ea68dacd-6737-5c76-8a1f-25cf6e592abf",
+                  "__error__",
+                  {
+                    "message": "injected external cancel",
+                    "name": "Error"
+                  }
+                ],
+                [
+                  "3d31ecec-2394-585c-a8bb-978e425137ab",
+                  "__error__",
+                  {
+                    "message": "injected external cancel",
+                    "name": "Error"
+                  }
+                ]
+              ]
+            },
+            "passed": true
+          }
+        }
+      ],
+      "cleaned": true
+    },
+    {
+      "api": "functional",
+      "window": "cancel-worker-kill",
+      "durability": "sync",
+      "name": "functional-sync-cancel-worker-kill",
+      "processes": [
+        {
+          "phase": "seed",
+          "parentSignaled": true,
+          "exitCode": null,
+          "signal": "SIGKILL",
+          "error": null,
+          "stderr": "",
+          "report": null,
+          "kill": {
+            "actualSignal": "SIGKILL",
+            "pid": 11320,
+            "window": "cancel-worker-kill"
+          }
+        },
+        {
+          "phase": "recover",
+          "parentSignaled": false,
+          "exitCode": 0,
+          "signal": null,
+          "error": null,
+          "stderr": "",
+          "report": {
+            "phase": "recover",
+            "pid": 11321,
+            "result": {
+              "results": [
+                "completed",
+                "recovered",
+                "joined"
+              ]
+            },
+            "counts": {
+              "completedBody": 1,
+              "completedWrapper": 1,
+              "flakyAttempts": 2,
+              "joinWrapper": 1,
+              "joinedBody": 1,
+              "recoveredBody": 1
+            },
+            "next": [],
+            "before": {
+              "outputError": false,
+              "notificationMissing": false,
+              "pendingWrites": [
+                [
+                  "41533c49-ac22-535b-9710-520fb6c4bcef",
+                  "__return__",
+                  {
+                    "results": [
+                      "completed"
+                    ]
+                  }
+                ]
+              ]
+            },
+            "passed": true
+          }
+        }
+      ],
+      "cleaned": true,
+      "confirmedExitBeforeRecovery": true
+    },
+    {
+      "api": "functional",
+      "window": "recovery-second-kill",
+      "durability": "sync",
+      "name": "functional-sync-recovery-second-kill",
+      "processes": [
+        {
+          "phase": "seed",
+          "parentSignaled": false,
+          "exitCode": 0,
+          "signal": null,
+          "error": null,
+          "stderr": "",
+          "report": {
+            "phase": "seed",
+            "pid": 11322,
+            "error": {
+              "name": "Error",
+              "message": "injected after completed writes"
+            },
+            "result": null,
+            "backgroundAfterReject": false,
+            "before": {
+              "outputError": false,
+              "notificationMissing": false,
+              "pendingWrites": [
+                [
+                  "59604f38-4413-5b83-a0c9-53e40c315e0c",
+                  "__return__",
+                  {
+                    "results": [
+                      "completed"
+                    ]
+                  }
+                ],
+                [
+                  "bc308ad3-ceeb-54e1-ac3c-0972e3b82be1",
+                  "__error__",
+                  {
+                    "message": "injected after completed writes",
+                    "name": "Error"
+                  }
+                ],
+                [
+                  "59b0eed6-9b29-5028-9e1e-ad348b76d2aa",
+                  "__error__",
+                  {
+                    "message": "This operation was aborted",
+                    "name": "AbortError"
+                  }
+                ]
+              ]
+            },
+            "counts": {
+              "completedBody": 1,
+              "completedWrapper": 1,
+              "flakyAttempts": 1
+            },
+            "passed": true
+          }
+        },
+        {
+          "phase": "recover",
+          "parentSignaled": false,
+          "exitCode": null,
+          "signal": "SIGKILL",
+          "error": null,
+          "stderr": "",
+          "report": null,
+          "kill": {
+            "actualSignal": "SIGKILL",
+            "pid": 11323,
+            "window": "recovery-second-kill"
+          }
+        },
+        {
+          "phase": "recover-again",
+          "parentSignaled": false,
+          "exitCode": 0,
+          "signal": null,
+          "error": null,
+          "stderr": "",
+          "report": {
+            "phase": "recover-again",
+            "pid": 11324,
+            "result": {
+              "results": [
+                "completed",
+                "recovered",
+                "joined"
+              ]
+            },
+            "counts": {
+              "completedBody": 1,
+              "completedWrapper": 1,
+              "flakyAttempts": 2,
+              "joinWrapper": 1,
+              "joinedBody": 1,
+              "recoveredBody": 1
+            },
+            "next": [],
+            "before": {
+              "outputError": false,
+              "notificationMissing": false,
+              "pendingWrites": [
+                [
+                  "59604f38-4413-5b83-a0c9-53e40c315e0c",
+                  "__return__",
+                  {
+                    "results": [
+                      "completed"
+                    ]
+                  }
+                ],
+                [
+                  "bc308ad3-ceeb-54e1-ac3c-0972e3b82be1",
+                  "__error__",
+                  {
+                    "message": "injected after completed writes",
+                    "name": "Error"
+                  }
+                ],
+                [
+                  "59b0eed6-9b29-5028-9e1e-ad348b76d2aa",
+                  "__error__",
+                  {
+                    "message": "This operation was aborted",
+                    "name": "AbortError"
+                  }
+                ],
+                [
+                  "bc308ad3-ceeb-54e1-ac3c-0972e3b82be1",
+                  "__return__",
+                  {
+                    "results": [
+                      "recovered"
+                    ]
+                  }
+                ]
+              ]
+            },
+            "passed": true
+          }
+        }
+      ],
+      "cleaned": true
+    },
+    {
+      "api": "functional",
+      "window": "recovery-second-kill-ungated",
+      "durability": "sync",
+      "name": "functional-sync-recovery-second-kill-ungated",
+      "processes": [
+        {
+          "phase": "seed",
+          "parentSignaled": false,
+          "exitCode": 0,
+          "signal": null,
+          "error": null,
+          "stderr": "",
+          "report": {
+            "phase": "seed",
+            "pid": 11325,
+            "error": {
+              "name": "Error",
+              "message": "injected after completed writes"
+            },
+            "result": null,
+            "backgroundAfterReject": false,
+            "before": {
+              "outputError": false,
+              "notificationMissing": false,
+              "pendingWrites": [
+                [
+                  "60dbb508-4eae-5efb-942e-9c949a74c74a",
+                  "__return__",
+                  {
+                    "results": [
+                      "completed"
+                    ]
+                  }
+                ],
+                [
+                  "5795f596-a9f7-5c08-8c46-2b51696f66b3",
+                  "__error__",
+                  {
+                    "message": "injected after completed writes",
+                    "name": "Error"
+                  }
+                ],
+                [
+                  "f9f7a0af-d160-5bd4-9131-6b493d1c254e",
+                  "__error__",
+                  {
+                    "message": "This operation was aborted",
+                    "name": "AbortError"
+                  }
+                ]
+              ]
+            },
+            "counts": {
+              "completedBody": 1,
+              "completedWrapper": 1,
+              "flakyAttempts": 1
+            },
+            "passed": true
+          }
+        },
+        {
+          "phase": "recover",
+          "parentSignaled": false,
+          "exitCode": null,
+          "signal": "SIGKILL",
+          "error": null,
+          "stderr": "",
+          "report": null,
+          "kill": {
+            "actualSignal": "SIGKILL",
+            "pid": 11326,
+            "window": "recovery-second-kill-ungated"
+          }
+        },
+        {
+          "phase": "recover-again",
+          "parentSignaled": false,
+          "exitCode": 0,
+          "signal": null,
+          "error": null,
+          "stderr": "",
+          "report": {
+            "phase": "recover-again",
+            "pid": 11327,
+            "result": {
+              "results": [
+                "completed",
+                "recovered",
+                "joined"
+              ]
+            },
+            "counts": {
+              "completedBody": 1,
+              "completedWrapper": 1,
+              "flakyAttempts": 2,
+              "joinWrapper": 2,
+              "joinedBody": 1,
+              "recoveredBody": 1
+            },
+            "next": [],
+            "before": {
+              "outputError": false,
+              "notificationMissing": false,
+              "pendingWrites": [
+                [
+                  "60dbb508-4eae-5efb-942e-9c949a74c74a",
+                  "__return__",
+                  {
+                    "results": [
+                      "completed"
+                    ]
+                  }
+                ],
+                [
+                  "5795f596-a9f7-5c08-8c46-2b51696f66b3",
+                  "__error__",
+                  {
+                    "message": "injected after completed writes",
+                    "name": "Error"
+                  }
+                ],
+                [
+                  "f9f7a0af-d160-5bd4-9131-6b493d1c254e",
+                  "__error__",
+                  {
+                    "message": "This operation was aborted",
+                    "name": "AbortError"
+                  }
+                ],
+                [
+                  "5795f596-a9f7-5c08-8c46-2b51696f66b3",
+                  "__return__",
+                  {
+                    "results": [
+                      "recovered"
+                    ]
+                  }
+                ]
+              ]
+            },
+            "passed": true
+          }
+        }
+      ],
+      "cleaned": true,
+      "joinEffectConfirmedWithoutReturn": true
+    },
+    {
+      "api": "functional",
+      "window": "after-final-checkpoint-crash",
+      "durability": "sync",
+      "name": "functional-sync-after-final-checkpoint-crash",
+      "processes": [
+        {
+          "phase": "seed",
+          "parentSignaled": false,
+          "exitCode": null,
+          "signal": "SIGKILL",
+          "error": null,
+          "stderr": "",
+          "report": null,
+          "kill": {
+            "actualSignal": "SIGKILL",
+            "pid": 11334,
+            "window": "after-final-checkpoint-crash"
+          }
+        },
+        {
+          "phase": "recover",
+          "parentSignaled": false,
+          "exitCode": 0,
+          "signal": null,
+          "error": null,
+          "stderr": "",
+          "report": {
+            "phase": "recover",
+            "pid": 11335,
+            "result": {
+              "results": [
+                "completed",
+                "recovered",
+                "joined"
+              ]
+            },
+            "counts": {
+              "completedBody": 1,
+              "completedWrapper": 1,
+              "flakyAttempts": 1,
+              "joinWrapper": 1,
+              "joinedBody": 1,
+              "recoveredBody": 1
+            },
+            "next": [],
+            "before": {
+              "outputError": false,
+              "notificationMissing": false,
+              "pendingWrites": []
+            },
+            "passed": true
+          }
+        }
+      ],
+      "cleaned": true
+    },
+    {
+      "api": "functional",
+      "window": "interrupt-false",
+      "durability": "sync",
+      "name": "functional-sync-interrupt-false",
+      "processes": [
+        {
+          "phase": "seed",
+          "parentSignaled": false,
+          "exitCode": 0,
+          "signal": null,
+          "error": null,
+          "stderr": "",
+          "report": {
+            "phase": "seed",
+            "pid": 11336,
+            "error": null,
+            "result": {
+              "__interrupt__": [
+                {
+                  "id": "51cabecd53962f2bd898f7a53fb9b5d2",
+                  "value": {
+                    "question": "continue?",
+                    "choices": [
+                      false,
+                      true
+                    ]
+                  }
+                }
+              ]
+            },
+            "backgroundAfterReject": false,
+            "before": {
+              "outputError": false,
+              "notificationMissing": false,
+              "pendingWrites": [
+                [
+                  "d1965000-1684-5fba-90f8-47824fc7ebdc",
+                  "__return__",
+                  {
+                    "results": [
+                      "completed"
+                    ]
+                  }
+                ],
+                [
+                  "1ef35a65-9548-5606-810c-4201f6d19829",
+                  "__return__",
+                  {
+                    "results": [
+                      "recovered"
+                    ]
+                  }
+                ],
+                [
+                  "90950db1-ce36-5d79-81a3-998a6b974686",
+                  "__interrupt__",
+                  {
+                    "id": "51cabecd53962f2bd898f7a53fb9b5d2",
+                    "value": {
+                      "choices": [
+                        false,
+                        true
+                      ],
+                      "question": "continue?"
+                    }
+                  }
+                ]
+              ]
+            },
+            "counts": {
+              "completedBody": 1,
+              "completedWrapper": 1,
+              "flakyAttempts": 1,
+              "recoveredBody": 1
+            },
+            "passed": true
+          }
+        },
+        {
+          "phase": "recover",
+          "parentSignaled": false,
+          "exitCode": 0,
+          "signal": null,
+          "error": null,
+          "stderr": "",
+          "report": {
+            "phase": "recover",
+            "pid": 11337,
+            "result": {
+              "results": [
+                "completed",
+                "recovered",
+                "joined"
+              ],
+              "approval": false
+            },
+            "counts": {
+              "completedBody": 1,
+              "completedWrapper": 1,
+              "flakyAttempts": 1,
+              "joinWrapper": 1,
+              "joinedBody": 1,
+              "recoveredBody": 1
+            },
+            "next": [],
+            "before": {
+              "outputError": false,
+              "notificationMissing": false,
+              "pendingWrites": [
+                [
+                  "d1965000-1684-5fba-90f8-47824fc7ebdc",
+                  "__return__",
+                  {
+                    "results": [
+                      "completed"
+                    ]
+                  }
+                ],
+                [
+                  "1ef35a65-9548-5606-810c-4201f6d19829",
+                  "__return__",
+                  {
+                    "results": [
+                      "recovered"
+                    ]
+                  }
+                ],
+                [
+                  "90950db1-ce36-5d79-81a3-998a6b974686",
+                  "__interrupt__",
+                  {
+                    "id": "51cabecd53962f2bd898f7a53fb9b5d2",
+                    "value": {
+                      "choices": [
+                        false,
+                        true
+                      ],
+                      "question": "continue?"
+                    }
+                  }
+                ]
+              ]
+            },
+            "passed": true
+          }
+        }
+      ],
+      "cleaned": true
+    },
+    {
+      "api": "state",
+      "window": "immediate",
+      "durability": "async",
+      "name": "state-async-immediate",
+      "processes": [
+        {
+          "phase": "seed",
+          "parentSignaled": false,
+          "exitCode": 0,
+          "signal": null,
+          "error": null,
+          "stderr": "",
+          "report": {
+            "phase": "seed",
+            "pid": 11338,
+            "error": {
+              "name": "Error",
+              "message": "injected parallel failure"
+            },
+            "result": null,
+            "backgroundAfterReject": false,
+            "before": {
+              "outputError": true,
+              "notificationMissing": true,
+              "pendingWrites": [
+                [
+                  "39b3dead-982e-52e7-8673-671cc455a6fa",
+                  "__error__",
+                  {
+                    "message": "injected parallel failure",
+                    "name": "Error"
+                  }
+                ],
+                [
+                  "c0553155-e27e-5cdc-8809-64107a5f1b3b",
+                  "results",
+                  [
+                    "completed"
+                  ]
+                ],
+                [
+                  "c0553155-e27e-5cdc-8809-64107a5f1b3b",
+                  "__error__",
+                  {
+                    "message": "This operation was aborted",
+                    "name": "AbortError"
+                  }
+                ]
+              ]
+            },
+            "counts": {
+              "completedBody": 1,
+              "completedWrapper": 1,
+              "flakyAttempts": 1
+            },
+            "passed": true
+          }
+        },
+        {
+          "phase": "recover",
+          "parentSignaled": false,
+          "exitCode": 0,
+          "signal": null,
+          "error": null,
+          "stderr": "",
+          "report": {
+            "phase": "recover",
+            "pid": 11339,
+            "result": {
+              "results": [
+                "completed",
+                "recovered"
+              ]
+            },
+            "counts": {
+              "completedBody": 1,
+              "completedWrapper": 1,
+              "flakyAttempts": 2,
+              "recoveredBody": 1
+            },
+            "next": [],
+            "before": {
+              "outputError": true,
+              "notificationMissing": true,
+              "pendingWrites": [
+                [
+                  "39b3dead-982e-52e7-8673-671cc455a6fa",
+                  "__error__",
+                  {
+                    "message": "injected parallel failure",
+                    "name": "Error"
+                  }
+                ],
+                [
+                  "c0553155-e27e-5cdc-8809-64107a5f1b3b",
+                  "results",
+                  [
+                    "completed"
+                  ]
+                ],
+                [
+                  "c0553155-e27e-5cdc-8809-64107a5f1b3b",
+                  "__error__",
+                  {
+                    "message": "This operation was aborted",
+                    "name": "AbortError"
+                  }
+                ]
+              ]
+            },
+            "passed": true
+          }
+        }
+      ],
+      "cleaned": true
+    },
+    {
+      "api": "state",
+      "window": "full-writes-error",
+      "durability": "async",
+      "name": "state-async-full-writes-error",
+      "processes": [
+        {
+          "phase": "seed",
+          "parentSignaled": false,
+          "exitCode": 0,
+          "signal": null,
+          "error": null,
+          "stderr": "",
+          "report": {
+            "phase": "seed",
+            "pid": 11340,
+            "error": {
+              "name": "Error",
+              "message": "injected after completed writes"
+            },
+            "result": null,
+            "backgroundAfterReject": false,
+            "before": {
+              "outputError": false,
+              "notificationMissing": false,
+              "pendingWrites": [
+                [
+                  "687995b0-3671-57af-b5a3-c828d7f48088",
+                  "results",
+                  [
+                    "completed"
+                  ]
+                ],
+                [
+                  "687995b0-3671-57af-b5a3-c828d7f48088",
+                  "join:completed+flaky:join",
+                  "completed"
+                ],
+                [
+                  "28429555-edd9-5e49-ab5d-5700e711aeda",
+                  "__error__",
+                  {
+                    "message": "injected after completed writes",
+                    "name": "Error"
+                  }
+                ]
+              ]
+            },
+            "counts": {
+              "completedBody": 1,
+              "completedWrapper": 1,
+              "flakyAttempts": 1
+            },
+            "passed": true
+          }
+        },
+        {
+          "phase": "recover",
+          "parentSignaled": false,
+          "exitCode": 0,
+          "signal": null,
+          "error": null,
+          "stderr": "",
+          "report": {
+            "phase": "recover",
+            "pid": 11341,
+            "result": {
+              "results": [
+                "completed",
+                "recovered",
+                "joined"
+              ]
+            },
+            "counts": {
+              "completedBody": 1,
+              "completedWrapper": 1,
+              "flakyAttempts": 2,
+              "joinWrapper": 1,
+              "joinedBody": 1,
+              "recoveredBody": 1
+            },
+            "next": [],
+            "before": {
+              "outputError": false,
+              "notificationMissing": false,
+              "pendingWrites": [
+                [
+                  "687995b0-3671-57af-b5a3-c828d7f48088",
+                  "results",
+                  [
+                    "completed"
+                  ]
+                ],
+                [
+                  "687995b0-3671-57af-b5a3-c828d7f48088",
+                  "join:completed+flaky:join",
+                  "completed"
+                ],
+                [
+                  "28429555-edd9-5e49-ab5d-5700e711aeda",
+                  "__error__",
+                  {
+                    "message": "injected after completed writes",
+                    "name": "Error"
+                  }
+                ]
+              ]
+            },
+            "passed": true
+          }
+        }
+      ],
+      "cleaned": true
+    },
+    {
+      "api": "state",
+      "window": "repair-before",
+      "durability": "async",
+      "name": "state-async-repair-before",
+      "processes": [
+        {
+          "phase": "seed",
+          "parentSignaled": false,
+          "exitCode": 0,
+          "signal": null,
+          "error": null,
+          "stderr": "",
+          "report": {
+            "phase": "seed",
+            "pid": 11342,
+            "error": {
+              "name": "Error",
+              "message": "injected parallel failure"
+            },
+            "result": null,
+            "backgroundAfterReject": false,
+            "before": {
+              "outputError": true,
+              "notificationMissing": true,
+              "pendingWrites": [
+                [
+                  "3ad800ef-fbb7-5196-88e1-0e5d9b7069b8",
+                  "__error__",
+                  {
+                    "message": "injected parallel failure",
+                    "name": "Error"
+                  }
+                ],
+                [
+                  "b2b7dedc-9e03-53f9-b4fd-22224e3a120d",
+                  "results",
+                  [
+                    "completed"
+                  ]
+                ],
+                [
+                  "b2b7dedc-9e03-53f9-b4fd-22224e3a120d",
+                  "__error__",
+                  {
+                    "message": "This operation was aborted",
+                    "name": "AbortError"
+                  }
+                ]
+              ]
+            },
+            "counts": {
+              "completedBody": 1,
+              "completedWrapper": 1,
+              "flakyAttempts": 1
+            },
+            "passed": true
+          }
+        },
+        {
+          "phase": "recover",
+          "parentSignaled": false,
+          "exitCode": 0,
+          "signal": null,
+          "error": null,
+          "stderr": "",
+          "report": {
+            "phase": "recover",
+            "pid": 11343,
+            "result": {
+              "results": [
+                "completed",
+                "recovered"
+              ]
+            },
+            "counts": {
+              "completedBody": 1,
+              "completedWrapper": 1,
+              "flakyAttempts": 2,
+              "recoveredBody": 1
+            },
+            "next": [],
+            "before": {
+              "outputError": true,
+              "notificationMissing": true,
+              "pendingWrites": [
+                [
+                  "3ad800ef-fbb7-5196-88e1-0e5d9b7069b8",
+                  "__error__",
+                  {
+                    "message": "injected parallel failure",
+                    "name": "Error"
+                  }
+                ],
+                [
+                  "b2b7dedc-9e03-53f9-b4fd-22224e3a120d",
+                  "results",
+                  [
+                    "completed"
+                  ]
+                ],
+                [
+                  "b2b7dedc-9e03-53f9-b4fd-22224e3a120d",
+                  "__error__",
+                  {
+                    "message": "This operation was aborted",
+                    "name": "AbortError"
+                  }
+                ]
+              ]
+            },
+            "passed": true
+          }
+        },
+        {
+          "phase": "repair",
+          "parentSignaled": false,
+          "exitCode": null,
+          "signal": "SIGKILL",
+          "error": null,
+          "stderr": "",
+          "report": null,
+          "kill": {
+            "actualSignal": "SIGKILL",
+            "pid": 11344,
+            "window": "repair-before"
+          }
+        },
+        {
+          "phase": "repair-recover",
+          "parentSignaled": false,
+          "exitCode": 0,
+          "signal": null,
+          "error": null,
+          "stderr": "",
+          "report": {
+            "phase": "repair-recover",
+            "pid": 11345,
+            "result": {
+              "results": [
+                "completed",
+                "recovered",
+                "joined"
+              ]
+            },
+            "counts": {
+              "completedBody": 1,
+              "completedWrapper": 1,
+              "flakyAttempts": 2,
+              "joinWrapper": 1,
+              "joinedBody": 1,
+              "recoveredBody": 1
+            },
+            "next": [],
+            "before": {
+              "outputError": false,
+              "notificationMissing": false,
+              "pendingWrites": [
+                [
+                  "f41870ea-bd3f-5ed9-8a6a-7dc4efa544e2",
+                  "join:completed+flaky:join",
+                  "completed"
+                ]
+              ]
+            },
+            "passed": true
+          }
+        }
+      ],
+      "cleaned": true
+    },
+    {
+      "api": "state",
+      "window": "repair-after",
+      "durability": "async",
+      "name": "state-async-repair-after",
+      "processes": [
+        {
+          "phase": "seed",
+          "parentSignaled": false,
+          "exitCode": 0,
+          "signal": null,
+          "error": null,
+          "stderr": "",
+          "report": {
+            "phase": "seed",
+            "pid": 11346,
+            "error": {
+              "name": "Error",
+              "message": "injected parallel failure"
+            },
+            "result": null,
+            "backgroundAfterReject": false,
+            "before": {
+              "outputError": true,
+              "notificationMissing": true,
+              "pendingWrites": [
+                [
+                  "29abcb1a-8ae7-5d55-bce4-60abbfc8ac2b",
+                  "__error__",
+                  {
+                    "message": "injected parallel failure",
+                    "name": "Error"
+                  }
+                ],
+                [
+                  "a2c1d66a-f132-51c5-8592-ce83cf8ed66b",
+                  "results",
+                  [
+                    "completed"
+                  ]
+                ],
+                [
+                  "a2c1d66a-f132-51c5-8592-ce83cf8ed66b",
+                  "__error__",
+                  {
+                    "message": "This operation was aborted",
+                    "name": "AbortError"
+                  }
+                ]
+              ]
+            },
+            "counts": {
+              "completedBody": 1,
+              "completedWrapper": 1,
+              "flakyAttempts": 1
+            },
+            "passed": true
+          }
+        },
+        {
+          "phase": "recover",
+          "parentSignaled": false,
+          "exitCode": 0,
+          "signal": null,
+          "error": null,
+          "stderr": "",
+          "report": {
+            "phase": "recover",
+            "pid": 11347,
+            "result": {
+              "results": [
+                "completed",
+                "recovered"
+              ]
+            },
+            "counts": {
+              "completedBody": 1,
+              "completedWrapper": 1,
+              "flakyAttempts": 2,
+              "recoveredBody": 1
+            },
+            "next": [],
+            "before": {
+              "outputError": true,
+              "notificationMissing": true,
+              "pendingWrites": [
+                [
+                  "29abcb1a-8ae7-5d55-bce4-60abbfc8ac2b",
+                  "__error__",
+                  {
+                    "message": "injected parallel failure",
+                    "name": "Error"
+                  }
+                ],
+                [
+                  "a2c1d66a-f132-51c5-8592-ce83cf8ed66b",
+                  "results",
+                  [
+                    "completed"
+                  ]
+                ],
+                [
+                  "a2c1d66a-f132-51c5-8592-ce83cf8ed66b",
+                  "__error__",
+                  {
+                    "message": "This operation was aborted",
+                    "name": "AbortError"
+                  }
+                ]
+              ]
+            },
+            "passed": true
+          }
+        },
+        {
+          "phase": "repair",
+          "parentSignaled": false,
+          "exitCode": null,
+          "signal": "SIGKILL",
+          "error": null,
+          "stderr": "",
+          "report": null,
+          "kill": {
+            "actualSignal": "SIGKILL",
+            "pid": 11349,
+            "window": "repair-after"
+          }
+        },
+        {
+          "phase": "repair-recover",
+          "parentSignaled": false,
+          "exitCode": 0,
+          "signal": null,
+          "error": null,
+          "stderr": "",
+          "report": {
+            "phase": "repair-recover",
+            "pid": 11350,
+            "result": {
+              "results": [
+                "completed",
+                "recovered",
+                "joined"
+              ]
+            },
+            "counts": {
+              "completedBody": 1,
+              "completedWrapper": 1,
+              "flakyAttempts": 2,
+              "joinWrapper": 1,
+              "joinedBody": 1,
+              "recoveredBody": 1
+            },
+            "next": [],
+            "before": {
+              "outputError": false,
+              "notificationMissing": false,
+              "pendingWrites": []
+            },
+            "passed": true
+          }
+        }
+      ],
+      "cleaned": true
+    },
+    {
+      "api": "functional",
+      "window": "immediate",
+      "durability": "async",
+      "name": "functional-async-immediate",
+      "processes": [
+        {
+          "phase": "seed",
+          "parentSignaled": false,
+          "exitCode": 0,
+          "signal": null,
+          "error": null,
+          "stderr": "",
+          "report": {
+            "phase": "seed",
+            "pid": 11351,
+            "error": {
+              "name": "Error",
+              "message": "injected parallel failure"
+            },
+            "result": null,
+            "backgroundAfterReject": false,
+            "before": {
+              "outputError": false,
+              "notificationMissing": false,
+              "pendingWrites": [
+                [
+                  "e9fcc461-66cb-502f-b17f-3511c5277a03",
+                  "__error__",
+                  {
+                    "message": "injected parallel failure",
+                    "name": "Error"
+                  }
+                ],
+                [
+                  "68076a67-1bd4-5f4f-8c77-47d4f2600db8",
+                  "__return__",
+                  {
+                    "results": [
+                      "completed"
+                    ]
+                  }
+                ],
+                [
+                  "9def7fba-de3d-5771-a128-61e43e84bbfb",
+                  "__error__",
+                  {
+                    "message": "This operation was aborted",
+                    "name": "AbortError"
+                  }
+                ]
+              ]
+            },
+            "counts": {
+              "completedBody": 1,
+              "completedWrapper": 1,
+              "flakyAttempts": 1
+            },
+            "passed": true
+          }
+        },
+        {
+          "phase": "recover",
+          "parentSignaled": false,
+          "exitCode": 0,
+          "signal": null,
+          "error": null,
+          "stderr": "",
+          "report": {
+            "phase": "recover",
+            "pid": 11354,
+            "result": {
+              "results": [
+                "completed",
+                "recovered",
+                "joined"
+              ]
+            },
+            "counts": {
+              "completedBody": 1,
+              "completedWrapper": 1,
+              "flakyAttempts": 2,
+              "joinWrapper": 1,
+              "joinedBody": 1,
+              "recoveredBody": 1
+            },
+            "next": [],
+            "before": {
+              "outputError": false,
+              "notificationMissing": false,
+              "pendingWrites": [
+                [
+                  "e9fcc461-66cb-502f-b17f-3511c5277a03",
+                  "__error__",
+                  {
+                    "message": "injected parallel failure",
+                    "name": "Error"
+                  }
+                ],
+                [
+                  "68076a67-1bd4-5f4f-8c77-47d4f2600db8",
+                  "__return__",
+                  {
+                    "results": [
+                      "completed"
+                    ]
+                  }
+                ],
+                [
+                  "9def7fba-de3d-5771-a128-61e43e84bbfb",
+                  "__error__",
+                  {
+                    "message": "This operation was aborted",
+                    "name": "AbortError"
+                  }
+                ]
+              ]
+            },
+            "passed": true
+          }
+        }
+      ],
+      "cleaned": true
+    },
+    {
+      "api": "functional",
+      "window": "full-writes-error",
+      "durability": "async",
+      "name": "functional-async-full-writes-error",
+      "processes": [
+        {
+          "phase": "seed",
+          "parentSignaled": false,
+          "exitCode": 0,
+          "signal": null,
+          "error": null,
+          "stderr": "",
+          "report": {
+            "phase": "seed",
+            "pid": 11360,
+            "error": {
+              "name": "Error",
+              "message": "injected after completed writes"
+            },
+            "result": null,
+            "backgroundAfterReject": false,
+            "before": {
+              "outputError": false,
+              "notificationMissing": false,
+              "pendingWrites": [
+                [
+                  "eec3d15e-8df4-539c-a38c-0f52c3167c68",
+                  "__return__",
+                  {
+                    "results": [
+                      "completed"
+                    ]
+                  }
+                ],
+                [
+                  "26cf29a4-7031-59a4-a0c5-c52c5c1aabd7",
+                  "__error__",
+                  {
+                    "message": "injected after completed writes",
+                    "name": "Error"
+                  }
+                ],
+                [
+                  "e5b94388-5519-5f99-b816-cb42ad373c75",
+                  "__error__",
+                  {
+                    "message": "This operation was aborted",
+                    "name": "AbortError"
+                  }
+                ]
+              ]
+            },
+            "counts": {
+              "completedBody": 1,
+              "completedWrapper": 1,
+              "flakyAttempts": 1
+            },
+            "passed": true
+          }
+        },
+        {
+          "phase": "recover",
+          "parentSignaled": false,
+          "exitCode": 0,
+          "signal": null,
+          "error": null,
+          "stderr": "",
+          "report": {
+            "phase": "recover",
+            "pid": 11361,
+            "result": {
+              "results": [
+                "completed",
+                "recovered",
+                "joined"
+              ]
+            },
+            "counts": {
+              "completedBody": 1,
+              "completedWrapper": 1,
+              "flakyAttempts": 2,
+              "joinWrapper": 1,
+              "joinedBody": 1,
+              "recoveredBody": 1
+            },
+            "next": [],
+            "before": {
+              "outputError": false,
+              "notificationMissing": false,
+              "pendingWrites": [
+                [
+                  "eec3d15e-8df4-539c-a38c-0f52c3167c68",
+                  "__return__",
+                  {
+                    "results": [
+                      "completed"
+                    ]
+                  }
+                ],
+                [
+                  "26cf29a4-7031-59a4-a0c5-c52c5c1aabd7",
+                  "__error__",
+                  {
+                    "message": "injected after completed writes",
+                    "name": "Error"
+                  }
+                ],
+                [
+                  "e5b94388-5519-5f99-b816-cb42ad373c75",
+                  "__error__",
+                  {
+                    "message": "This operation was aborted",
+                    "name": "AbortError"
+                  }
+                ]
+              ]
+            },
+            "passed": true
+          }
+        }
+      ],
+      "cleaned": true
+    },
+    {
+      "api": "functional",
+      "window": "effect-confirmed-crash",
+      "durability": "async",
+      "name": "functional-async-effect-confirmed-crash",
+      "processes": [
+        {
+          "phase": "seed",
+          "parentSignaled": false,
+          "exitCode": null,
+          "signal": "SIGKILL",
+          "error": null,
+          "stderr": "",
+          "report": null,
+          "kill": {
+            "actualSignal": "SIGKILL",
+            "pid": 11363,
+            "window": "effect-confirmed-crash"
+          }
+        },
+        {
+          "phase": "recover",
+          "parentSignaled": false,
+          "exitCode": 0,
+          "signal": null,
+          "error": null,
+          "stderr": "",
+          "report": {
+            "phase": "recover",
+            "pid": 11364,
+            "result": {
+              "results": [
+                "completed",
+                "recovered",
+                "joined"
+              ]
+            },
+            "counts": {
+              "completedBody": 1,
+              "completedWrapper": 2,
+              "flakyAttempts": 1,
+              "joinWrapper": 1,
+              "joinedBody": 1,
+              "recoveredBody": 1
+            },
+            "next": [],
+            "before": {
+              "outputError": false,
+              "notificationMissing": false,
+              "pendingWrites": []
+            },
+            "passed": true
+          }
+        }
+      ],
+      "cleaned": true
+    },
+    {
+      "api": "functional",
+      "window": "before-return-write-crash",
+      "durability": "async",
+      "name": "functional-async-before-return-write-crash",
+      "processes": [
+        {
+          "phase": "seed",
+          "parentSignaled": false,
+          "exitCode": null,
+          "signal": "SIGKILL",
+          "error": null,
+          "stderr": "",
+          "report": null,
+          "kill": {
+            "actualSignal": "SIGKILL",
+            "pid": 11372,
+            "window": "before-return-write-crash"
+          }
+        },
+        {
+          "phase": "recover",
+          "parentSignaled": false,
+          "exitCode": 0,
+          "signal": null,
+          "error": null,
+          "stderr": "",
+          "report": {
+            "phase": "recover",
+            "pid": 11375,
+            "result": {
+              "results": [
+                "completed",
+                "recovered",
+                "joined"
+              ]
+            },
+            "counts": {
+              "completedBody": 1,
+              "completedWrapper": 2,
+              "flakyAttempts": 2,
+              "joinWrapper": 1,
+              "joinedBody": 1,
+              "recoveredBody": 1
+            },
+            "next": [],
+            "before": {
+              "outputError": false,
+              "notificationMissing": false,
+              "pendingWrites": []
+            },
+            "passed": true
+          }
+        }
+      ],
+      "cleaned": true
+    },
+    {
+      "api": "functional",
+      "window": "after-return-write-crash",
+      "durability": "async",
+      "name": "functional-async-after-return-write-crash",
+      "processes": [
+        {
+          "phase": "seed",
+          "parentSignaled": false,
+          "exitCode": null,
+          "signal": "SIGKILL",
+          "error": null,
+          "stderr": "",
+          "report": null,
+          "kill": {
+            "actualSignal": "SIGKILL",
+            "pid": 11376,
+            "window": "after-return-write-crash"
+          }
+        },
+        {
+          "phase": "recover",
+          "parentSignaled": false,
+          "exitCode": 0,
+          "signal": null,
+          "error": null,
+          "stderr": "",
+          "report": {
+            "phase": "recover",
+            "pid": 11378,
+            "result": {
+              "results": [
+                "completed",
+                "recovered",
+                "joined"
+              ]
+            },
+            "counts": {
+              "completedBody": 1,
+              "completedWrapper": 1,
+              "flakyAttempts": 2,
+              "joinWrapper": 1,
+              "joinedBody": 1,
+              "recoveredBody": 1
+            },
+            "next": [],
+            "before": {
+              "outputError": false,
+              "notificationMissing": false,
+              "pendingWrites": [
+                [
+                  "039352bb-1c2e-5c8c-9f53-d57c86af08a2",
+                  "__return__",
+                  {
+                    "results": [
+                      "completed"
+                    ]
+                  }
+                ]
+              ]
+            },
+            "passed": true
+          }
+        }
+      ],
+      "cleaned": true
+    },
+    {
+      "api": "functional",
+      "window": "join-return-crash",
+      "durability": "async",
+      "name": "functional-async-join-return-crash",
+      "processes": [
+        {
+          "phase": "seed",
+          "parentSignaled": false,
+          "exitCode": null,
+          "signal": "SIGKILL",
+          "error": null,
+          "stderr": "",
+          "report": null,
+          "kill": {
+            "actualSignal": "SIGKILL",
+            "pid": 11379,
+            "window": "join-return-crash"
+          }
+        },
+        {
+          "phase": "recover",
+          "parentSignaled": false,
+          "exitCode": 0,
+          "signal": null,
+          "error": null,
+          "stderr": "",
+          "report": {
+            "phase": "recover",
+            "pid": 11380,
+            "result": {
+              "results": [
+                "completed",
+                "recovered",
+                "joined"
+              ]
+            },
+            "counts": {
+              "completedBody": 1,
+              "completedWrapper": 1,
+              "flakyAttempts": 1,
+              "joinWrapper": 1,
+              "joinedBody": 1,
+              "recoveredBody": 1
+            },
+            "next": [],
+            "before": {
+              "outputError": false,
+              "notificationMissing": false,
+              "pendingWrites": [
+                [
+                  "296d4df6-f9e1-581e-b33a-9c686fead72c",
+                  "__return__",
+                  {
+                    "results": [
+                      "completed"
+                    ]
+                  }
+                ],
+                [
+                  "b994afc8-5b3d-5480-86d9-cff5b85d9fc9",
+                  "__return__",
+                  {
+                    "results": [
+                      "recovered"
+                    ]
+                  }
+                ],
+                [
+                  "7a580afb-ea5e-5b67-af44-31342d96bebb",
+                  "__return__",
+                  {
+                    "results": [
+                      "joined"
+                    ]
+                  }
+                ]
+              ]
+            },
+            "passed": true
+          }
+        }
+      ],
+      "cleaned": true
+    },
+    {
+      "api": "functional",
+      "window": "join-effect-confirmed-crash",
+      "durability": "async",
+      "name": "functional-async-join-effect-confirmed-crash",
+      "processes": [
+        {
+          "phase": "seed",
+          "parentSignaled": false,
+          "exitCode": null,
+          "signal": "SIGKILL",
+          "error": null,
+          "stderr": "",
+          "report": null,
+          "kill": {
+            "actualSignal": "SIGKILL",
+            "pid": 11381,
+            "window": "join-effect-confirmed-crash"
+          }
+        },
+        {
+          "phase": "recover",
+          "parentSignaled": false,
+          "exitCode": 0,
+          "signal": null,
+          "error": null,
+          "stderr": "",
+          "report": {
+            "phase": "recover",
+            "pid": 11382,
+            "result": {
+              "results": [
+                "completed",
+                "recovered",
+                "joined"
+              ]
+            },
+            "counts": {
+              "completedBody": 1,
+              "completedWrapper": 1,
+              "flakyAttempts": 1,
+              "joinWrapper": 2,
+              "joinedBody": 1,
+              "recoveredBody": 1
+            },
+            "next": [],
+            "before": {
+              "outputError": false,
+              "notificationMissing": false,
+              "pendingWrites": [
+                [
+                  "ab0b8dac-e6bd-5cd0-a06e-2d08b6e5a1fb",
+                  "__return__",
+                  {
+                    "results": [
+                      "completed"
+                    ]
+                  }
+                ],
+                [
+                  "d428d1be-eb7d-54a4-aae9-c452a9ed7c4a",
+                  "__return__",
+                  {
+                    "results": [
+                      "recovered"
+                    ]
+                  }
+                ]
+              ]
+            },
+            "passed": true
+          }
+        }
+      ],
+      "cleaned": true
+    },
+    {
+      "api": "functional",
+      "window": "before-final-checkpoint-crash",
+      "durability": "async",
+      "name": "functional-async-before-final-checkpoint-crash",
+      "processes": [
+        {
+          "phase": "seed",
+          "parentSignaled": false,
+          "exitCode": null,
+          "signal": "SIGKILL",
+          "error": null,
+          "stderr": "",
+          "report": null,
+          "kill": {
+            "actualSignal": "SIGKILL",
+            "pid": 11383,
+            "window": "before-final-checkpoint-crash"
+          }
+        },
+        {
+          "phase": "recover",
+          "parentSignaled": false,
+          "exitCode": 0,
+          "signal": null,
+          "error": null,
+          "stderr": "",
+          "report": {
+            "phase": "recover",
+            "pid": 11384,
+            "result": {
+              "results": [
+                "completed",
+                "recovered",
+                "joined"
+              ]
+            },
+            "counts": {
+              "completedBody": 1,
+              "completedWrapper": 1,
+              "flakyAttempts": 1,
+              "joinWrapper": 1,
+              "joinedBody": 1,
+              "recoveredBody": 1
+            },
+            "next": [],
+            "before": {
+              "outputError": false,
+              "notificationMissing": false,
+              "pendingWrites": [
+                [
+                  "bf3337b3-e8ab-50ad-b88c-cf51dcf91afd",
+                  "__return__",
+                  {
+                    "results": [
+                      "completed"
+                    ]
+                  }
+                ],
+                [
+                  "dbea021a-fbd6-504d-87bc-51143eea3843",
+                  "__return__",
+                  {
+                    "results": [
+                      "recovered"
+                    ]
+                  }
+                ],
+                [
+                  "c314bbaa-aa06-51c8-a999-978650cd0822",
+                  "__return__",
+                  {
+                    "results": [
+                      "joined"
+                    ]
+                  }
+                ],
+                [
+                  "d2d8012a-b7af-50a1-8892-6e831fa15a9a",
+                  "__end__",
+                  {
+                    "results": [
+                      "completed",
+                      "recovered",
+                      "joined"
+                    ]
+                  }
+                ],
+                [
+                  "d2d8012a-b7af-50a1-8892-6e831fa15a9a",
+                  "__previous__",
+                  {
+                    "results": [
+                      "completed",
+                      "recovered",
+                      "joined"
+                    ]
+                  }
+                ]
+              ]
+            },
+            "passed": true
+          }
+        }
+      ],
+      "cleaned": true
+    },
+    {
+      "api": "functional",
+      "window": "unknown-effect-crash",
+      "durability": "async",
+      "name": "functional-async-unknown-effect-crash",
+      "processes": [
+        {
+          "phase": "seed",
+          "parentSignaled": false,
+          "exitCode": null,
+          "signal": "SIGKILL",
+          "error": null,
+          "stderr": "",
+          "report": null,
+          "kill": {
+            "actualSignal": "SIGKILL",
+            "pid": 11386,
+            "window": "unknown-effect-crash"
+          }
+        },
+        {
+          "phase": "recover",
+          "parentSignaled": false,
+          "exitCode": 0,
+          "signal": null,
+          "error": null,
+          "stderr": "",
+          "report": {
+            "phase": "recover",
+            "pid": 11395,
+            "reconciled": false,
+            "blockedUnknown": true,
+            "reconciliationErrors": [
+              "reconcile: no confirmed effect",
+              "reconcile: run has unresolved effects"
+            ],
+            "counts": {
+              "completedBody": 1,
+              "completedWrapper": 2,
+              "flakyAttempts": 1
+            },
+            "passed": true
+          }
+        }
+      ],
+      "cleaned": true
+    },
+    {
+      "api": "functional",
+      "window": "cancel",
+      "durability": "async",
+      "name": "functional-async-cancel",
+      "processes": [
+        {
+          "phase": "seed",
+          "parentSignaled": false,
+          "exitCode": 0,
+          "signal": null,
+          "error": null,
+          "stderr": "",
+          "report": {
+            "phase": "seed",
+            "pid": 11396,
+            "error": {
+              "name": "Error",
+              "message": "injected external cancel"
+            },
+            "result": null,
+            "backgroundAfterReject": false,
+            "before": {
+              "outputError": false,
+              "notificationMissing": false,
+              "pendingWrites": [
+                [
+                  "0b48e895-4c65-54bd-8857-303abbbc721d",
+                  "__return__",
+                  {
+                    "results": [
+                      "completed"
+                    ]
+                  }
+                ],
+                [
+                  "3373fd74-fdef-5a69-b5cd-b7e1490061a5",
+                  "__error__",
+                  {
+                    "message": "injected external cancel",
+                    "name": "Error"
+                  }
+                ],
+                [
+                  "9a6c103c-3f9e-5765-9ccd-7c4875a595ba",
+                  "__error__",
+                  {
+                    "message": "injected external cancel",
+                    "name": "Error"
+                  }
+                ]
+              ]
+            },
+            "counts": {
+              "completedBody": 1,
+              "completedWrapper": 1,
+              "flakyAttempts": 1
+            },
+            "passed": true
+          }
+        },
+        {
+          "phase": "recover",
+          "parentSignaled": false,
+          "exitCode": 0,
+          "signal": null,
+          "error": null,
+          "stderr": "",
+          "report": {
+            "phase": "recover",
+            "pid": 11398,
+            "result": {
+              "results": [
+                "completed",
+                "recovered",
+                "joined"
+              ]
+            },
+            "counts": {
+              "completedBody": 1,
+              "completedWrapper": 1,
+              "flakyAttempts": 2,
+              "joinWrapper": 1,
+              "joinedBody": 1,
+              "recoveredBody": 1
+            },
+            "next": [],
+            "before": {
+              "outputError": false,
+              "notificationMissing": false,
+              "pendingWrites": [
+                [
+                  "0b48e895-4c65-54bd-8857-303abbbc721d",
+                  "__return__",
+                  {
+                    "results": [
+                      "completed"
+                    ]
+                  }
+                ],
+                [
+                  "3373fd74-fdef-5a69-b5cd-b7e1490061a5",
+                  "__error__",
+                  {
+                    "message": "injected external cancel",
+                    "name": "Error"
+                  }
+                ],
+                [
+                  "9a6c103c-3f9e-5765-9ccd-7c4875a595ba",
+                  "__error__",
+                  {
+                    "message": "injected external cancel",
+                    "name": "Error"
+                  }
+                ]
+              ]
+            },
+            "passed": true
+          }
+        }
+      ],
+      "cleaned": true
+    },
+    {
+      "api": "functional",
+      "window": "timeout",
+      "durability": "async",
+      "name": "functional-async-timeout",
+      "processes": [
+        {
+          "phase": "seed",
+          "parentSignaled": false,
+          "exitCode": 0,
+          "signal": null,
+          "error": null,
+          "stderr": "",
+          "report": {
+            "phase": "seed",
+            "pid": 11400,
+            "error": {
+              "name": "NodeTimeoutError",
+              "message": "Node \"flaky\" exceeded its run timeout of 80ms (elapsed: 81ms)."
+            },
+            "result": null,
+            "backgroundAfterReject": true,
+            "before": {
+              "outputError": false,
+              "notificationMissing": false,
+              "pendingWrites": [
+                [
+                  "6e4e636d-97c6-57b4-9fd8-20162380d648",
+                  "__return__",
+                  {
+                    "results": [
+                      "completed"
+                    ]
+                  }
+                ],
+                [
+                  "e57299ab-b2b0-5e34-b393-2bcf58747ba5",
+                  "__error__",
+                  {
+                    "message": "Node \"flaky\" exceeded its run timeout of 80ms (elapsed: 81ms).",
+                    "name": "NodeTimeoutError"
+                  }
+                ],
+                [
+                  "f16c3bca-2be8-50af-913f-a3ecb3a0f915",
+                  "__error__",
+                  {
+                    "message": "This operation was aborted",
+                    "name": "AbortError"
+                  }
+                ]
+              ]
+            },
+            "counts": {
+              "completedBody": 1,
+              "completedWrapper": 1,
+              "flakyAttempts": 1,
+              "recoveredBody": 1
+            },
+            "passed": true
+          }
+        },
+        {
+          "phase": "recover",
+          "parentSignaled": false,
+          "exitCode": 0,
+          "signal": null,
+          "error": null,
+          "stderr": "",
+          "report": {
+            "phase": "recover",
+            "pid": 11402,
+            "result": {
+              "results": [
+                "completed",
+                "recovered",
+                "joined"
+              ]
+            },
+            "counts": {
+              "completedBody": 1,
+              "completedWrapper": 1,
+              "flakyAttempts": 2,
+              "joinWrapper": 1,
+              "joinedBody": 1,
+              "recoveredBody": 1
+            },
+            "next": [],
+            "before": {
+              "outputError": false,
+              "notificationMissing": false,
+              "pendingWrites": [
+                [
+                  "6e4e636d-97c6-57b4-9fd8-20162380d648",
+                  "__return__",
+                  {
+                    "results": [
+                      "completed"
+                    ]
+                  }
+                ],
+                [
+                  "e57299ab-b2b0-5e34-b393-2bcf58747ba5",
+                  "__error__",
+                  {
+                    "message": "Node \"flaky\" exceeded its run timeout of 80ms (elapsed: 81ms).",
+                    "name": "NodeTimeoutError"
+                  }
+                ],
+                [
+                  "f16c3bca-2be8-50af-913f-a3ecb3a0f915",
+                  "__error__",
+                  {
+                    "message": "This operation was aborted",
+                    "name": "AbortError"
+                  }
+                ]
+              ]
+            },
+            "passed": true
+          }
+        }
+      ],
+      "cleaned": true
+    },
+    {
+      "api": "functional",
+      "window": "cancel-uncooperative",
+      "durability": "async",
+      "name": "functional-async-cancel-uncooperative",
+      "processes": [
+        {
+          "phase": "seed",
+          "parentSignaled": false,
+          "exitCode": 0,
+          "signal": null,
+          "error": null,
+          "stderr": "",
+          "report": {
+            "phase": "seed",
+            "pid": 11407,
+            "error": {
+              "name": "Error",
+              "message": "injected external cancel"
+            },
+            "result": null,
+            "backgroundAfterReject": true,
+            "before": {
+              "outputError": false,
+              "notificationMissing": false,
+              "pendingWrites": [
+                [
+                  "47d77eb2-d30a-581e-b189-6dd8ac6a9d5f",
+                  "__return__",
+                  {
+                    "results": [
+                      "completed"
+                    ]
+                  }
+                ],
+                [
+                  "62fbbe6d-a1b9-50b3-a17b-c9164b2a436e",
+                  "__error__",
+                  {
+                    "message": "injected external cancel",
+                    "name": "Error"
+                  }
+                ],
+                [
+                  "4017730c-14e4-5860-a148-71639a2a38a9",
+                  "__error__",
+                  {
+                    "message": "injected external cancel",
+                    "name": "Error"
+                  }
+                ]
+              ]
+            },
+            "counts": {
+              "completedBody": 1,
+              "completedWrapper": 1,
+              "flakyAttempts": 1,
+              "recoveredBody": 1
+            },
+            "passed": true
+          }
+        },
+        {
+          "phase": "recover",
+          "parentSignaled": false,
+          "exitCode": 0,
+          "signal": null,
+          "error": null,
+          "stderr": "",
+          "report": {
+            "phase": "recover",
+            "pid": 11410,
+            "result": {
+              "results": [
+                "completed",
+                "recovered",
+                "joined"
+              ]
+            },
+            "counts": {
+              "completedBody": 1,
+              "completedWrapper": 1,
+              "flakyAttempts": 2,
+              "joinWrapper": 1,
+              "joinedBody": 1,
+              "recoveredBody": 1
+            },
+            "next": [],
+            "before": {
+              "outputError": false,
+              "notificationMissing": false,
+              "pendingWrites": [
+                [
+                  "47d77eb2-d30a-581e-b189-6dd8ac6a9d5f",
+                  "__return__",
+                  {
+                    "results": [
+                      "completed"
+                    ]
+                  }
+                ],
+                [
+                  "62fbbe6d-a1b9-50b3-a17b-c9164b2a436e",
+                  "__error__",
+                  {
+                    "message": "injected external cancel",
+                    "name": "Error"
+                  }
+                ],
+                [
+                  "4017730c-14e4-5860-a148-71639a2a38a9",
+                  "__error__",
+                  {
+                    "message": "injected external cancel",
+                    "name": "Error"
+                  }
+                ]
+              ]
+            },
+            "passed": true
+          }
+        }
+      ],
+      "cleaned": true
+    },
+    {
+      "api": "functional",
+      "window": "cancel-worker-kill",
+      "durability": "async",
+      "name": "functional-async-cancel-worker-kill",
+      "processes": [
+        {
+          "phase": "seed",
+          "parentSignaled": true,
+          "exitCode": null,
+          "signal": "SIGKILL",
+          "error": null,
+          "stderr": "",
+          "report": null,
+          "kill": {
+            "actualSignal": "SIGKILL",
+            "pid": 11411,
+            "window": "cancel-worker-kill"
+          }
+        },
+        {
+          "phase": "recover",
+          "parentSignaled": false,
+          "exitCode": 0,
+          "signal": null,
+          "error": null,
+          "stderr": "",
+          "report": {
+            "phase": "recover",
+            "pid": 11412,
+            "result": {
+              "results": [
+                "completed",
+                "recovered",
+                "joined"
+              ]
+            },
+            "counts": {
+              "completedBody": 1,
+              "completedWrapper": 1,
+              "flakyAttempts": 2,
+              "joinWrapper": 1,
+              "joinedBody": 1,
+              "recoveredBody": 1
+            },
+            "next": [],
+            "before": {
+              "outputError": false,
+              "notificationMissing": false,
+              "pendingWrites": [
+                [
+                  "2dc56554-e0ba-5e4f-8483-3fd04677c9fd",
+                  "__return__",
+                  {
+                    "results": [
+                      "completed"
+                    ]
+                  }
+                ]
+              ]
+            },
+            "passed": true
+          }
+        }
+      ],
+      "cleaned": true,
+      "confirmedExitBeforeRecovery": true
+    },
+    {
+      "api": "functional",
+      "window": "recovery-second-kill",
+      "durability": "async",
+      "name": "functional-async-recovery-second-kill",
+      "processes": [
+        {
+          "phase": "seed",
+          "parentSignaled": false,
+          "exitCode": 0,
+          "signal": null,
+          "error": null,
+          "stderr": "",
+          "report": {
+            "phase": "seed",
+            "pid": 11413,
+            "error": {
+              "name": "Error",
+              "message": "injected after completed writes"
+            },
+            "result": null,
+            "backgroundAfterReject": false,
+            "before": {
+              "outputError": false,
+              "notificationMissing": false,
+              "pendingWrites": [
+                [
+                  "1d905420-8cb0-5c0a-bbd2-3660c46fed45",
+                  "__return__",
+                  {
+                    "results": [
+                      "completed"
+                    ]
+                  }
+                ],
+                [
+                  "bc934bda-a0e2-53a0-9d56-a6f519b7824c",
+                  "__error__",
+                  {
+                    "message": "injected after completed writes",
+                    "name": "Error"
+                  }
+                ],
+                [
+                  "df91ab47-bfe3-5b88-b935-8a6d151e2aef",
+                  "__error__",
+                  {
+                    "message": "This operation was aborted",
+                    "name": "AbortError"
+                  }
+                ]
+              ]
+            },
+            "counts": {
+              "completedBody": 1,
+              "completedWrapper": 1,
+              "flakyAttempts": 1
+            },
+            "passed": true
+          }
+        },
+        {
+          "phase": "recover",
+          "parentSignaled": false,
+          "exitCode": null,
+          "signal": "SIGKILL",
+          "error": null,
+          "stderr": "",
+          "report": null,
+          "kill": {
+            "actualSignal": "SIGKILL",
+            "pid": 11414,
+            "window": "recovery-second-kill"
+          }
+        },
+        {
+          "phase": "recover-again",
+          "parentSignaled": false,
+          "exitCode": 0,
+          "signal": null,
+          "error": null,
+          "stderr": "",
+          "report": {
+            "phase": "recover-again",
+            "pid": 11415,
+            "result": {
+              "results": [
+                "completed",
+                "recovered",
+                "joined"
+              ]
+            },
+            "counts": {
+              "completedBody": 1,
+              "completedWrapper": 1,
+              "flakyAttempts": 2,
+              "joinWrapper": 1,
+              "joinedBody": 1,
+              "recoveredBody": 1
+            },
+            "next": [],
+            "before": {
+              "outputError": false,
+              "notificationMissing": false,
+              "pendingWrites": [
+                [
+                  "1d905420-8cb0-5c0a-bbd2-3660c46fed45",
+                  "__return__",
+                  {
+                    "results": [
+                      "completed"
+                    ]
+                  }
+                ],
+                [
+                  "bc934bda-a0e2-53a0-9d56-a6f519b7824c",
+                  "__error__",
+                  {
+                    "message": "injected after completed writes",
+                    "name": "Error"
+                  }
+                ],
+                [
+                  "df91ab47-bfe3-5b88-b935-8a6d151e2aef",
+                  "__error__",
+                  {
+                    "message": "This operation was aborted",
+                    "name": "AbortError"
+                  }
+                ],
+                [
+                  "bc934bda-a0e2-53a0-9d56-a6f519b7824c",
+                  "__return__",
+                  {
+                    "results": [
+                      "recovered"
+                    ]
+                  }
+                ]
+              ]
+            },
+            "passed": true
+          }
+        }
+      ],
+      "cleaned": true
+    },
+    {
+      "api": "functional",
+      "window": "recovery-second-kill-ungated",
+      "durability": "async",
+      "name": "functional-async-recovery-second-kill-ungated",
+      "processes": [
+        {
+          "phase": "seed",
+          "parentSignaled": false,
+          "exitCode": 0,
+          "signal": null,
+          "error": null,
+          "stderr": "",
+          "report": {
+            "phase": "seed",
+            "pid": 11428,
+            "error": {
+              "name": "Error",
+              "message": "injected after completed writes"
+            },
+            "result": null,
+            "backgroundAfterReject": false,
+            "before": {
+              "outputError": false,
+              "notificationMissing": false,
+              "pendingWrites": [
+                [
+                  "abcb968a-d25e-58dd-9fcc-2d4579818bb8",
+                  "__return__",
+                  {
+                    "results": [
+                      "completed"
+                    ]
+                  }
+                ],
+                [
+                  "bcbd518d-60a3-5507-b3c6-8836613957c6",
+                  "__error__",
+                  {
+                    "message": "injected after completed writes",
+                    "name": "Error"
+                  }
+                ],
+                [
+                  "1a8eca97-6733-5962-af03-eca6e1308646",
+                  "__error__",
+                  {
+                    "message": "This operation was aborted",
+                    "name": "AbortError"
+                  }
+                ]
+              ]
+            },
+            "counts": {
+              "completedBody": 1,
+              "completedWrapper": 1,
+              "flakyAttempts": 1
+            },
+            "passed": true
+          }
+        },
+        {
+          "phase": "recover",
+          "parentSignaled": false,
+          "exitCode": null,
+          "signal": "SIGKILL",
+          "error": null,
+          "stderr": "",
+          "report": null,
+          "kill": {
+            "actualSignal": "SIGKILL",
+            "pid": 11429,
+            "window": "recovery-second-kill-ungated"
+          }
+        },
+        {
+          "phase": "recover-again",
+          "parentSignaled": false,
+          "exitCode": 0,
+          "signal": null,
+          "error": null,
+          "stderr": "",
+          "report": {
+            "phase": "recover-again",
+            "pid": 11430,
+            "result": {
+              "results": [
+                "completed",
+                "recovered",
+                "joined"
+              ]
+            },
+            "counts": {
+              "completedBody": 1,
+              "completedWrapper": 1,
+              "flakyAttempts": 2,
+              "joinWrapper": 2,
+              "joinedBody": 1,
+              "recoveredBody": 1
+            },
+            "next": [],
+            "before": {
+              "outputError": false,
+              "notificationMissing": false,
+              "pendingWrites": [
+                [
+                  "abcb968a-d25e-58dd-9fcc-2d4579818bb8",
+                  "__return__",
+                  {
+                    "results": [
+                      "completed"
+                    ]
+                  }
+                ],
+                [
+                  "bcbd518d-60a3-5507-b3c6-8836613957c6",
+                  "__error__",
+                  {
+                    "message": "injected after completed writes",
+                    "name": "Error"
+                  }
+                ],
+                [
+                  "1a8eca97-6733-5962-af03-eca6e1308646",
+                  "__error__",
+                  {
+                    "message": "This operation was aborted",
+                    "name": "AbortError"
+                  }
+                ],
+                [
+                  "bcbd518d-60a3-5507-b3c6-8836613957c6",
+                  "__return__",
+                  {
+                    "results": [
+                      "recovered"
+                    ]
+                  }
+                ]
+              ]
+            },
+            "passed": true
+          }
+        }
+      ],
+      "cleaned": true,
+      "joinEffectConfirmedWithoutReturn": true
+    },
+    {
+      "api": "functional",
+      "window": "after-final-checkpoint-crash",
+      "durability": "async",
+      "name": "functional-async-after-final-checkpoint-crash",
+      "processes": [
+        {
+          "phase": "seed",
+          "parentSignaled": false,
+          "exitCode": null,
+          "signal": "SIGKILL",
+          "error": null,
+          "stderr": "",
+          "report": null,
+          "kill": {
+            "actualSignal": "SIGKILL",
+            "pid": 11431,
+            "window": "after-final-checkpoint-crash"
+          }
+        },
+        {
+          "phase": "recover",
+          "parentSignaled": false,
+          "exitCode": 0,
+          "signal": null,
+          "error": null,
+          "stderr": "",
+          "report": {
+            "phase": "recover",
+            "pid": 11432,
+            "result": {
+              "results": [
+                "completed",
+                "recovered",
+                "joined"
+              ]
+            },
+            "counts": {
+              "completedBody": 1,
+              "completedWrapper": 1,
+              "flakyAttempts": 1,
+              "joinWrapper": 1,
+              "joinedBody": 1,
+              "recoveredBody": 1
+            },
+            "next": [],
+            "before": {
+              "outputError": false,
+              "notificationMissing": false,
+              "pendingWrites": []
+            },
+            "passed": true
+          }
+        }
+      ],
+      "cleaned": true
+    },
+    {
+      "api": "functional",
+      "window": "interrupt-false",
+      "durability": "async",
+      "name": "functional-async-interrupt-false",
+      "processes": [
+        {
+          "phase": "seed",
+          "parentSignaled": false,
+          "exitCode": 0,
+          "signal": null,
+          "error": null,
+          "stderr": "",
+          "report": {
+            "phase": "seed",
+            "pid": 11434,
+            "error": null,
+            "result": {
+              "__interrupt__": [
+                {
+                  "id": "389ffbdc7e6f2fdf6fa263cf083508b1",
+                  "value": {
+                    "question": "continue?",
+                    "choices": [
+                      false,
+                      true
+                    ]
+                  }
+                }
+              ]
+            },
+            "backgroundAfterReject": false,
+            "before": {
+              "outputError": false,
+              "notificationMissing": false,
+              "pendingWrites": [
+                [
+                  "f50ed4a1-b9b5-522c-bf5f-a91de84b3d22",
+                  "__return__",
+                  {
+                    "results": [
+                      "completed"
+                    ]
+                  }
+                ],
+                [
+                  "be7dbf83-b572-5a2b-8741-64fc72bcc50f",
+                  "__return__",
+                  {
+                    "results": [
+                      "recovered"
+                    ]
+                  }
+                ],
+                [
+                  "836f35ed-d1ba-5fa6-ace2-3977fada5295",
+                  "__interrupt__",
+                  {
+                    "id": "389ffbdc7e6f2fdf6fa263cf083508b1",
+                    "value": {
+                      "choices": [
+                        false,
+                        true
+                      ],
+                      "question": "continue?"
+                    }
+                  }
+                ]
+              ]
+            },
+            "counts": {
+              "completedBody": 1,
+              "completedWrapper": 1,
+              "flakyAttempts": 1,
+              "recoveredBody": 1
+            },
+            "passed": true
+          }
+        },
+        {
+          "phase": "recover",
+          "parentSignaled": false,
+          "exitCode": 0,
+          "signal": null,
+          "error": null,
+          "stderr": "",
+          "report": {
+            "phase": "recover",
+            "pid": 11435,
+            "result": {
+              "results": [
+                "completed",
+                "recovered",
+                "joined"
+              ],
+              "approval": false
+            },
+            "counts": {
+              "completedBody": 1,
+              "completedWrapper": 1,
+              "flakyAttempts": 1,
+              "joinWrapper": 1,
+              "joinedBody": 1,
+              "recoveredBody": 1
+            },
+            "next": [],
+            "before": {
+              "outputError": false,
+              "notificationMissing": false,
+              "pendingWrites": [
+                [
+                  "f50ed4a1-b9b5-522c-bf5f-a91de84b3d22",
+                  "__return__",
+                  {
+                    "results": [
+                      "completed"
+                    ]
+                  }
+                ],
+                [
+                  "be7dbf83-b572-5a2b-8741-64fc72bcc50f",
+                  "__return__",
+                  {
+                    "results": [
+                      "recovered"
+                    ]
+                  }
+                ],
+                [
+                  "836f35ed-d1ba-5fa6-ace2-3977fada5295",
+                  "__interrupt__",
+                  {
+                    "id": "389ffbdc7e6f2fdf6fa263cf083508b1",
+                    "value": {
+                      "choices": [
+                        false,
+                        true
+                      ],
+                      "question": "continue?"
+                    }
+                  }
+                ]
+              ]
+            },
+            "passed": true
+          }
+        }
+      ],
+      "cleaned": true
+    }
+  ],
+  "limitations": [
+    "No production identity, atomic effect store, worker fencing, repair pointer or power-loss proof.",
+    "The public-call journal is a bounded single-writer test fixture; MemorySaver itself is not persistent.",
+    "Uncooperative task cancellation is explicitly a negative control, not safe automatic cancellation."
+  ]
+}

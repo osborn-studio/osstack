@@ -1,0 +1,51 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli
+
+ ✓ src/graph-process-journal.test.ts (9 tests) 1060ms
+   ✓ retains launch and true exit, rejects changed identity and protects immutable observations  331ms
+   ✓ persists timeout separately from actual late exit and keeps DB drainage pending  357ms
+ ❯ src/graph-unstarted-recovery.test.ts (15 tests | 1 failed) 838ms
+   ✓ takes over a durable no-child run through G15 and starts one replacement worker  314ms
+   ✓ refuses an intent-only launch window even after lease expiry 18ms
+   × refuses a launched worker even after its confirmed exit 288ms
+     → expected [Function] to throw error including 'GRAPH_NO_CHILD_PROOF_REQUIRED' but got 'REVISION_CONFLICT'
+   ✓ refuses persisted scheduling evidence in graph_checkpoints 20ms
+   ✓ refuses persisted scheduling evidence in graph_checkpoint_writes 19ms
+   ✓ refuses persisted scheduling evidence in graph_checkpoint_requests 18ms
+   ✓ requires synchronous current authority including the final transaction: revoked 17ms
+   ✓ requires synchronous current authority including the final transaction: async 17ms
+   ✓ requires synchronous current authority including the final transaction: commit-revoked 19ms
+   ✓ rechecks executor absence inside the commit transaction 17ms
+   ✓ allows one competing takeover while the failed original host remains alive 20ms
+   ✓ rejects changed recovery premise: owner 16ms
+   ✓ rejects changed recovery premise: program 18ms
+   ✓ rejects changed recovery premise: deadline 17ms
+   ✓ refuses recovery if any executor action was admitted 19ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/graph-unstarted-recovery.test.ts > refuses a launched worker even after its confirmed exit
+AssertionError: expected [Function] to throw error including 'GRAPH_NO_CHILD_PROOF_REQUIRED' but got 'REVISION_CONFLICT'
+
+Expected: "GRAPH_NO_CHILD_PROOF_REQUIRED"
+Received: "REVISION_CONFLICT"
+
+ ❯ src/graph-unstarted-recovery.test.ts:46:3
+     44| it('refuses a launched worker even after its confirmed exit', async ()…
+     45|   const f = fixture(); await f.runtime.start(f.start).finalExit;
+     46|   await expect(f.runtime.recoverUnstartedWorker(f.request(), () => {})…
+       |   ^
+     47| });
+     48| it.each(['graph_checkpoints', 'graph_checkpoint_writes', 'graph_checkp…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 1 passed (2)
+      Tests  1 failed | 23 passed (24)
+   Start at  06:03:43
+   Duration  3.26s (transform 519ms, setup 10ms, collect 1.12s, tests 1.90s, environment 0ms, prepare 59ms)
+
+undefined
+/Volumes/AIMATE_WORK/Developer/CodeX/osstack-graph-runtime-foundation/packages/cli:
+[ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL] Command failed with exit code 1: vitest run src/graph-unstarted-recovery.test.ts src/graph-process-journal.test.ts '--maxWorkers=1'

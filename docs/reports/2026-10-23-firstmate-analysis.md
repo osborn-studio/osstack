@@ -158,7 +158,7 @@ stow区分pinned、aging、perishable；独立证据才能刷新知识日期，�
 
 对已有worktree和pidfile风险的判断来自源码，未在真实daemon上复现。它们作为将来自动接管的前置门禁记录，不在本次研究任务中擅自修复。
 
-另读了[成本控制状态索引](2026-10-08-cost-reduction-status.md)指向的persistent candidate controller v3提案；该提案强调固定任务批次、有限权限和未知副作用保留。与本方案相容的整合方向是只消费其receipt/status，不接管它的执行。该外部工作目录和本checkout基线不同，实施前必须重新绑定当前源码，不宣称已合并。
+另读了本地未提交的成本控制状态索引（`2026-10-08-cost-reduction-status.md`，不作为本 PR 的可用文档依赖）指向的persistent candidate controller v3提案；该提案强调固定任务批次、有限权限和未知副作用保留。与本方案相容的整合方向是只消费其receipt/status，不接管它的执行。该外部工作目录和本checkout基线不同，实施前必须重新绑定当前源码，不宣称已合并。
 
 ## 7. 本次实际验证
 

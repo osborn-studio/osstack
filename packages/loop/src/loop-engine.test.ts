@@ -134,7 +134,7 @@ describe("LoopEngine", () => {
       }),
     }));
     await expect(readFile(join(workspace, "review-output.txt"), "utf-8"))
-      .resolves.toContain("reviewed run_plan_");
+      .resolves.toBe(`reviewed ${result.completedTasks[0]?.run_id}\n`);
   });
 
   it("emits the frozen profile and role identities at plan and verify boundaries", async () => {
