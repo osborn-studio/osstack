@@ -21,7 +21,7 @@ import { GovernedExecution, type ExecutionLease, type AdmissionInput } from "./g
 import { createServer, type Socket } from "node:net";
 import { existsSync, unlinkSync, statSync, chmodSync, mkdirSync } from "node:fs";
 import { readFile, rename, writeFile } from "node:fs/promises";
-import { basename, dirname, isAbsolute, join, resolve } from "node:path";
+import { basename, dirname, isAbsolute, join, resolve, resolve as resolveWorkspacePath } from "node:path";
 import { createHash, randomUUID } from "node:crypto";
 import { performance } from "node:perf_hooks";
 import { setTimeout as sleep } from "node:timers/promises";
@@ -4258,7 +4258,7 @@ export async function startDaemon(
       void startDashboardServer(
         (params) => createDashboardSnapshot({
           attentionService: ctx.draining ? "unavailable" : ctx.supervision ? "running" : "disabled",
-          ...(params?.workspacePath === undefined ? {} : {workspacePath: resolve(params.workspacePath)}),
+          ...(params?.workspacePath === undefined ? {} : {workspacePath: resolveWorkspacePath(params.workspacePath)}),
           ...(params?.attentionAfter === undefined ? {} : {attentionAfter: params.attentionAfter}),
           ...(params?.attentionLimit === undefined ? {} : {attentionLimit: params.attentionLimit}),
           db: ctx.db,

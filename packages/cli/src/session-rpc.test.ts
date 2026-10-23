@@ -838,6 +838,11 @@ it("updates watched decisions from durable session changes without inbox refresh
     expect(await rpc("dashboard.snapshot", params)).toMatchObject({ok:false,error:{code:"bad_request"}});
   }
   expect(await rpc("dashboard.snapshot", {workspacePath:repo,attentionLimit:1})).toMatchObject({ok:true,result:{attention:{returned:1}}});
+  const endpoint = (await rpc("dashboard.url")).result!["url"] as string;
+  const response = await fetch(`${endpoint.replace("/dashboard", "/api/dashboard")}?workspace=${encodeURIComponent(repo)}&attention_limit=1`);
+  expect(response.status).toBe(200);
+  expect(await response.json()).toMatchObject({attention:{workspace_path:realpathSync(repo),returned:1,totals:{scopes:1,open_items:1}}});
+
   expect(await rpc("dashboard.snapshot", {workspacePath:home})).toMatchObject({ok:true,result:{attention:{scope_filter:"workspace",workspace_path:realpathSync(home)}}});
 });
 
