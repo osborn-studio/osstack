@@ -1828,6 +1828,20 @@ export const MIGRATIONS: readonly Migration[] = [
       ALTER TABLE attention_handoffs ADD COLUMN valid_until INTEGER NOT NULL DEFAULT 0;
     `,
   },
+  {
+    id: 42,
+    name: "attention_run_event_cursors",
+    sql: `
+      CREATE TABLE attention_run_cursors (
+        scope_id TEXT NOT NULL, run_id TEXT NOT NULL, binding_hash TEXT NOT NULL,
+        last_seq INTEGER NOT NULL DEFAULT -1 CHECK(last_seq>=-1),
+        through_seq INTEGER NOT NULL DEFAULT -1 CHECK(through_seq>=-1),
+        last_event_hash TEXT, gap TEXT, facts_json TEXT NOT NULL DEFAULT '{}',
+        generation INTEGER NOT NULL CHECK(generation>0), updated_at INTEGER NOT NULL,
+        PRIMARY KEY(scope_id,run_id)
+      );
+    `,
+  },
 ];
 
 export const CURRENT_SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1]!.id;
