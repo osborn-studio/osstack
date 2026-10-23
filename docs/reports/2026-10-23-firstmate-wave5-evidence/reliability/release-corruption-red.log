@@ -1,0 +1,61 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-cockpit/packages/core
+
+ ❯ src/state/attention-observer.test.ts (21 tests | 2 failed | 19 skipped) 59ms
+   ↓ discovers beyond 200 with bounded admission and never claims complete capacity
+   ↓ projects historical turns atomically and discloses missing ordinal gaps
+   ↓ fences old generations, retains missing source, and expires coverage independently of business state
+   ↓ isolates a poison decision to its subject instead of blinding a healthy session
+   ↓ issues only observation handoff receipts and rejects gaps and stale foreground generations
+   ↓ keeps gaps sticky across transient invalid observations and continues after corrupt turns
+   ↓ allows a once-only expired foreground reminder but never silently renews a handoff receipt
+   ↓ isolates discovery filesystem errors and permits explicit slot release without silent eviction
+   ↓ rolls back a subject cursor when a late projection failure would otherwise erase a newly found gap
+   ↓ reuses explicitly released capacity without silently evicting or readmitting its old owner
+   ↓ degrades coverage when a previously admitted standalone run disappears
+   ↓ replays an expired handoff as historical evidence without renewing it
+   ↓ slices only admitted subjects fairly while preserving per-source event cursors
+   ↓ does not revive an admitted subject released between slices
+   ↓ keeps capacity overflow explicit and advances the existing discovery cursor across passes
+   ↓ does not call an unknown observation healthy when its reason field is absent
+   ↓ fences an interrupted slice after owner replacement
+   ↓ does not publish full coverage while newly admitted subjects still await sampling
+   ↓ retains explicit release when a scope disappears and later returns
+   × does not infer readmission when released metadata becomes { 36ms
+     → expected { admitted: 1 } to deeply equal { admitted: +0 }
+   × does not infer readmission when released metadata becomes {} 23ms
+     → expected { admitted: 1 } to deeply equal { admitted: +0 }
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/state/attention-observer.test.ts > does not infer readmission when released metadata becomes {
+ FAIL  src/state/attention-observer.test.ts > does not infer readmission when released metadata becomes {}
+AssertionError: expected { admitted: 1 } to deeply equal { admitted: +0 }
+
+- Expected
++ Received
+
+  {
+-   "admitted": 0,
++   "admitted": 1,
+  }
+
+ ❯ src/state/attention-observer.test.ts:367:96
+    365|   db.prepare("UPDATE attention_subjects SET payload_json=? WHERE kind=…
+    366|   observer.tick(2000);
+    367|   expect(db.prepare("SELECT admitted FROM attention_subjects WHERE sub…
+       |                                                                                                ^
+    368| });
+    369| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed | 19 skipped (21)
+   Start at  13:24:47
+   Duration  571ms (transform 161ms, setup 0ms, collect 231ms, tests 59ms, environment 0ms, prepare 48ms)
+
+undefined
+/Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-cockpit/packages/core:
+[ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL] Command failed with exit code 1: vitest run src/state/attention-observer.test.ts -t 'does not infer readmission'

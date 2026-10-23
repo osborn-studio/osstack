@@ -22,3 +22,7 @@ Follow-up 使用 daemon 原有 DB/write 权限和同步事务，独立于 Attent
 ## 完整验收
 
 当前最终源码完整 build/typecheck/test/lint/schema/inventory/startup 已进入 OSStack 原生资格任务；结果完成后补入，不把定向测试当全套通过。最终 PR、CI 和独立人工批准分别记录。
+
+## Final full qualification
+
+On source `580bd9df`, all eight stages passed with 5064 tests passed and 3 intentionally skipped across 22 packages. Native task `firstmate-wave4-final-source-qualification` completed with zero verifier issues. [PR #241 full evidence](2026-10-23-firstmate-pr241-final-qualification/) includes the initial failed fixture run and its 133-test repair validation. This supersedes earlier pending validation; actual provider/network qualification and exact-head remote CI are separate.

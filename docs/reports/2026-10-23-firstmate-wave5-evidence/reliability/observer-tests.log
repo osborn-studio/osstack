@@ -1,0 +1,11 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-cockpit/packages/core
+
+ ✓ src/state/attention-observer.test.ts (16 tests) 720ms
+ ✓ src/state/attention-run-projection.test.ts (37 tests) 945ms
+
+ Test Files  2 passed (2)
+      Tests  53 passed (53)
+   Start at  13:11:40
+   Duration  1.29s (transform 109ms, setup 0ms, collect 240ms, tests 1.67s, environment 0ms, prepare 85ms)
+

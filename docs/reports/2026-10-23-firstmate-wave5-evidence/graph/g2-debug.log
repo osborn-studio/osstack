@@ -1,0 +1,66 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-supervision-next/packages/cli
+
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/smoke/pr237-integration/delivery-contract/graph-next/tmp/g22-rpc-tIbOhV/delivery/91e78da5-9cb7-48ac-a58b-85b5cc116532/writer-0'...
+HEAD is now at 5d9fcf0 base
+stderr | src/graph-contract-integration.test.ts > binds the durable host contract before the real Graph launch and never changes source HEAD/refs/index/files
+graph-test-stop Error: Graph storage requires its own BEGIN IMMEDIATE transaction
+
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/smoke/pr237-integration/delivery-contract/graph-next/tmp/g22-rpc-1JJQem/delivery/f2342468-7783-40e7-847c-df1eb5400d06/writer-0'...
+HEAD is now at dba8453 base
+stderr | src/graph-contract-integration.test.ts > binds actual writer and rebuilt reviewer prompts to two-phase context receipts before ready
+graph-test-stop Error: Error: TypeError: 'get' on proxy: property 'confirmStopped' is a read-only and non-configurable data property on the proxy target but the proxy did not return its actual value (expected 'function () { [native code] }' but got 'function () { [native code] }')
+
+ ❯ src/graph-contract-integration.test.ts (6 tests | 2 failed | 4 skipped) 6514ms
+   × binds the durable host contract before the real Graph launch and never changes source HEAD/refs/index/files 5119ms
+     → expected 'failed' to be 'ready' // Object.is equality
+   × binds actual writer and rebuilt reviewer prompts to two-phase context receipts before ready 1395ms
+     → expected 'failed' to be 'ready' // Object.is equality
+   ↓ does not transfer a prior epoch context/check/review receipt to a repaired candidate
+   ↓ requires a trusted policy resolver in local registration and rechecks its live authority
+   ↓ rejects a changed contract under an existing idempotency key before a second launch
+   ↓ rejects a path outside contract before verification or ready publication
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/graph-contract-integration.test.ts > binds the durable host contract before the real Graph launch and never changes source HEAD/refs/index/files
+AssertionError: expected 'failed' to be 'ready' // Object.is equality
+
+Expected: "ready"
+Received: "failed"
+
+ ❯ src/graph-contract-integration.test.ts:71:69
+     69|     expect(descriptor.contractEnvelope.frozen.digest).toBe(f.registrat…
+     70|     expect(descriptor.request.inputArtifactRef).toMatch(/^graph-contra…
+     71|     const ready = await f.until(a.graphRunId); expect(ready.status).to…
+       |                                                                     ^
+     72|     expect(ready.evidenceRefs.some(ref => ref.startsWith('graph-contra…
+     73|     const receipt = GraphContractCompletionReceipt.parse(await f.servi…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  src/graph-contract-integration.test.ts > binds actual writer and rebuilt reviewer prompts to two-phase context receipts before ready
+AssertionError: expected 'failed' to be 'ready' // Object.is equality
+
+Expected: "ready"
+Received: "failed"
+
+ ❯ src/graph-contract-integration.test.ts:84:104
+     82|   const f = await fixture('success', true);
+     83|   try {
+     84|     const start = await f.start(); const ready = await f.until(start.g…
+       |                                                                                                        ^
+     85|     const receipt = GraphContractCompletionReceipt.parse(await f.servi…
+     86|     expect(receipt.contextDigest).toBe(f.executionContext.configDigest…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed | 4 skipped (6)
+   Start at  13:13:56
+   Duration  7.47s (transform 478ms, setup 8ms, collect 787ms, tests 6.51s, environment 0ms, prepare 25ms)
+
+undefined
+/Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-supervision-next/packages/cli:
+[ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL] Command failed with exit code 1: vitest run src/graph-contract-integration.test.ts -t 'durable host|actual writer'

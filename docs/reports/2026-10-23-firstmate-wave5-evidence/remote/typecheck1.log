@@ -1,0 +1,120 @@
+$ tsc --noEmit
+src/bin.ts(9651,5): error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'string'.
+src/bin.ts(9662,14): error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'string'.
+src/bin.ts(9677,26): error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'string'.
+src/deliver-cli.test.ts(21,3): error TS2305: Module '"@osstack/core"' has no exported member 'deliveryCheckReference'.
+src/deliver-command.ts(1,10): error TS2305: Module '"@osstack/core"' has no exported member 'assertDeliveryContractAdmission'.
+src/deliver-command.ts(1,43): error TS2305: Module '"@osstack/core"' has no exported member 'assertDeliveryContractPaths'.
+src/deliver-command.ts(1,72): error TS2305: Module '"@osstack/core"' has no exported member 'freezeDeliveryContract'.
+src/deliver-command.ts(2,15): error TS2305: Module '"@osstack/protocol"' has no exported member 'FrozenDeliveryContractV2'.
+src/deliver-command.ts(2,41): error TS2305: Module '"@osstack/protocol"' has no exported member 'DeliveryReceiptReferenceV2'.
+src/deliver-command.ts(554,177): error TS2353: Object literal may only specify known properties, and 'hardened' does not exist in type 'StageCandidateInput'.
+src/delivery-contract-host.test.ts(4,28): error TS2305: Module '"@osstack/core"' has no exported member 'deliveryCheckReference'.
+src/delivery-contract-host.test.ts(4,52): error TS2305: Module '"@osstack/core"' has no exported member 'freezeDeliveryContract'.
+src/delivery-contract-host.ts(7,10): error TS2305: Module '"@osstack/core"' has no exported member 'assertDeliveryContractPaths'.
+src/delivery-contract-host.ts(7,39): error TS2305: Module '"@osstack/core"' has no exported member 'assertFrozenDeliveryContract'.
+src/delivery-contract-host.ts(7,69): error TS2305: Module '"@osstack/core"' has no exported member 'deliveryCheckReference'.
+src/delivery-contract-host.ts(7,93): error TS2305: Module '"@osstack/core"' has no exported member 'deliveryContractDigest'.
+src/delivery-contract-host.ts(7,117): error TS2305: Module '"@osstack/core"' has no exported member 'verifyDeliveryContractReceipt'.
+src/delivery-contract-host.ts(8,10): error TS2305: Module '"@osstack/protocol"' has no exported member 'DeliveryVerificationReceiptV2'.
+src/delivery-contract-host.ts(8,46): error TS2305: Module '"@osstack/protocol"' has no exported member 'DeliveryCandidateIdentityV2'.
+src/delivery-contract-host.ts(8,80): error TS2305: Module '"@osstack/protocol"' has no exported member 'DeliveryReceiptReferenceV2'.
+src/delivery-contract-host.ts(8,113): error TS2305: Module '"@osstack/protocol"' has no exported member 'FrozenDeliveryContractV2'.
+src/delivery-contract-host.ts(69,49): error TS7006: Parameter 'check' implicitly has an 'any' type.
+src/execution-context.test.ts(6,10): error TS2305: Module '"@osstack/knowledge"' has no exported member 'executionContextDigest'.
+src/execution-context.test.ts(6,39): error TS2305: Module '"@osstack/knowledge"' has no exported member 'ExecutionContextEntry'.
+src/execution-context.ts(6,10): error TS2305: Module '"@osstack/knowledge"' has no exported member 'assembleExecutionContext'.
+src/execution-context.ts(6,36): error TS2305: Module '"@osstack/knowledge"' has no exported member 'executionContextDigest'.
+src/execution-context.ts(7,8): error TS2305: Module '"@osstack/knowledge"' has no exported member 'ExecutionContextAssembly'.
+src/execution-context.ts(7,39): error TS2305: Module '"@osstack/knowledge"' has no exported member 'ExecutionContextEntry'.
+src/execution-context.ts(7,67): error TS2305: Module '"@osstack/knowledge"' has no exported member 'ExecutionContextSource'.
+src/guarded-git-runtime.test.ts(21,3): error TS2305: Module '"@osstack/core"' has no exported member 'freezeDeliveryContract'.
+src/guarded-git-runtime.test.ts(22,3): error TS2305: Module '"@osstack/core"' has no exported member 'deliveryCheckReference'.
+src/guarded-git-runtime.test.ts(595,5): error TS18046: 'value.routing.git' is of type 'unknown'.
+src/guarded-git-runtime.test.ts(645,56): error TS18046: 'value.routing.git' is of type 'unknown'.
+src/guarded-git-runtime.test.ts(645,87): error TS18046: 'observed.original.routing.git' is of type 'unknown'.
+src/guarded-git-runtime.test.ts(646,34): error TS18046: 'observed.original.routing.git' is of type 'unknown'.
+src/guarded-git-runtime.test.ts(683,205): error TS18046: 'observed.original.routing.git' is of type 'unknown'.
+src/guarded-git-runtime.test.ts(697,77): error TS18046: 'start.routing.verify_commands' is of type 'unknown'.
+src/guarded-git-runtime.test.ts(731,33): error TS2339: Property 'achieved_completion' does not exist on type '{ commit?: { commit: string; } | undefined; budget?: { max_builder_iterations: number; max_review_rounds: number; max_wall_time_ms: number; max_no_progress_rounds: number; } | undefined; ... 22 more ...; failure?: { ...; } | undefined; }'.
+src/guarded-git-runtime.test.ts(737,68): error TS2339: Property 'delivery_receipt' does not exist on type '{ commit?: { commit: string; } | undefined; budget?: { max_builder_iterations: number; max_review_rounds: number; max_wall_time_ms: number; max_no_progress_rounds: number; } | undefined; ... 22 more ...; failure?: { ...; } | undefined; }'.
+src/guarded-git-runtime.test.ts(742,33): error TS2339: Property 'delivery_completion_receipt' does not exist on type '{ commit?: { commit: string; } | undefined; budget?: { max_builder_iterations: number; max_review_rounds: number; max_wall_time_ms: number; max_no_progress_rounds: number; } | undefined; ... 22 more ...; failure?: { ...; } | undefined; }'.
+src/guarded-git-runtime.ts(33,3): error TS2305: Module '"@osstack/core"' has no exported member 'assertFrozenDeliveryContract'.
+src/guarded-git-runtime.ts(34,3): error TS2305: Module '"@osstack/core"' has no exported member 'assertDeliveryContractAdmission'.
+src/guarded-git-runtime.ts(35,3): error TS2305: Module '"@osstack/core"' has no exported member 'assertDeliveryContractPaths'.
+src/guarded-git-runtime.ts(41,3): error TS2305: Module '"@osstack/github"' has no exported member 'openPullRequestToGitHub'.
+src/guarded-git-runtime.ts(57,3): error TS2305: Module '"@osstack/protocol"' has no exported member 'FrozenDeliveryContractV2'.
+src/guarded-git-runtime.ts(58,8): error TS2305: Module '"@osstack/protocol"' has no exported member 'DeliveryReceiptReferenceV2'.
+src/guarded-git-runtime.ts(273,5): error TS2322: Type 'unknown' is not assignable to type 'string'.
+src/guarded-git-runtime.ts(274,5): error TS2322: Type 'unknown' is not assignable to type '"R1" | "R2"'.
+src/guarded-git-runtime.ts(275,5): error TS2322: Type 'unknown' is not assignable to type 'readonly string[]'.
+src/guarded-git-runtime.ts(278,5): error TS2322: Type 'unknown' is not assignable to type 'number'.
+src/guarded-git-runtime.ts(288,5): error TS2322: Type 'unknown' is not assignable to type '{ remote: string; base: string; branch: string; title: string; body_file: string; ci_timeout_ms: number; }'.
+src/guarded-git-runtime.ts(311,115): error TS18046: 'routing.profile' is of type 'unknown'.
+src/guarded-git-runtime.ts(314,54): error TS18046: 'routing.task' is of type 'unknown'.
+src/guarded-git-runtime.ts(314,96): error TS18046: 'routing.task' is of type 'unknown'.
+src/guarded-git-runtime.ts(319,35): error TS18046: 'routing.git' is of type 'unknown'.
+src/guarded-git-runtime.ts(319,82): error TS18046: 'routing.git' is of type 'unknown'.
+src/guarded-git-runtime.ts(319,127): error TS18046: 'routing.git' is of type 'unknown'.
+src/guarded-git-runtime.ts(324,15): error TS18046: 'routing.git' is of type 'unknown'.
+src/guarded-git-runtime.ts(325,13): error TS18046: 'routing.git' is of type 'unknown'.
+src/guarded-git-runtime.ts(404,37): error TS2339: Property 'runId' does not exist on type '{ workspacePath: string; routing: unknown; budget: { max_builder_iterations: number; max_review_rounds: number; max_wall_time_ms: number; max_no_progress_rounds: number; }; }'.
+src/guarded-git-runtime.ts(406,9): error TS2353: Object literal may only specify known properties, and 'verifyContractReceipt' does not exist in type 'GuardedDeliveryPorts'.
+src/guarded-git-runtime.ts(406,41): error TS7031: Binding element 'contract' implicitly has an 'any' type.
+src/guarded-git-runtime.ts(406,51): error TS7031: Binding element 'ref' implicitly has an 'any' type.
+src/guarded-git-runtime.ts(406,56): error TS7031: Binding element 'runId' implicitly has an 'any' type.
+src/guarded-git-runtime.ts(406,63): error TS7031: Binding element 'workspacePath' implicitly has an 'any' type.
+src/guarded-git-runtime.ts(406,78): error TS7031: Binding element 'expectedHeads' implicitly has an 'any' type.
+src/guarded-git-runtime.ts(408,61): error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'string'.
+src/guarded-git-runtime.ts(411,48): error TS7006: Parameter 'input' implicitly has an 'any' type.
+src/guarded-git-runtime.ts(411,89): error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'string'.
+src/guarded-git-runtime.ts(414,33): error TS7006: Parameter 'input' implicitly has an 'any' type.
+src/guarded-git-runtime.ts(414,40): error TS7006: Parameter 'scope' implicitly has an 'any' type.
+src/guarded-git-runtime.ts(415,60): error TS2339: Property 'contract' does not exist on type '{}'.
+src/guarded-git-runtime.ts(430,13): error TS18046: 'routing.git' is of type 'unknown'.
+src/guarded-git-runtime.ts(462,22): error TS18046: 'routing.git' is of type 'unknown'.
+src/guarded-git-runtime.ts(525,7): error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'string'.
+src/guarded-git-runtime.ts(536,7): error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'string'.
+src/guarded-git-runtime.ts(539,17): error TS2769: No overload matches this call.
+  Overload 1 of 3, '(path: PathLike, options: MakeDirectoryOptions & { recursive: true; }): Promise<string | undefined>', gave the following error.
+    Argument of type 'unknown' is not assignable to parameter of type 'PathLike'.
+  Overload 2 of 3, '(path: PathLike, options?: Mode | (MakeDirectoryOptions & { recursive?: false | undefined; }) | null | undefined): Promise<void>', gave the following error.
+    Argument of type 'unknown' is not assignable to parameter of type 'PathLike'.
+  Overload 3 of 3, '(path: PathLike, options?: MakeDirectoryOptions | Mode | null | undefined): Promise<string | undefined>', gave the following error.
+    Argument of type 'unknown' is not assignable to parameter of type 'PathLike'.
+src/guarded-git-runtime.ts(541,7): error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'string'.
+src/guarded-git-runtime.ts(550,83): error TS2322: Type '{}' is not assignable to type 'string'.
+src/guarded-git-runtime.ts(551,51): error TS2339: Property 'digest' does not exist on type '{}'.
+src/guarded-git-runtime.ts(551,83): error TS2339: Property 'brief' does not exist on type '{}'.
+src/guarded-git-runtime.ts(554,23): error TS18046: 'routing.task' is of type 'unknown'.
+src/guarded-git-runtime.ts(559,45): error TS2698: Spread types may only be created from object types.
+src/guarded-git-runtime.ts(559,73): error TS18046: 'routing.task' is of type 'unknown'.
+src/guarded-git-runtime.ts(559,108): error TS2339: Property 'brief' does not exist on type '{}'.
+src/guarded-git-runtime.ts(561,16): error TS18046: 'routing.profile' is of type 'unknown'.
+src/guarded-git-runtime.ts(563,26): error TS18046: 'routing.profile' is of type 'unknown'.
+src/guarded-git-runtime.ts(566,23): error TS18046: 'routing.profile' is of type 'unknown'.
+src/guarded-git-runtime.ts(567,17): error TS18046: 'routing.profile' is of type 'unknown'.
+src/guarded-git-runtime.ts(568,27): error TS18046: 'routing.profile' is of type 'unknown'.
+src/guarded-git-runtime.ts(569,29): error TS18046: 'routing.profile' is of type 'unknown'.
+src/guarded-git-runtime.ts(570,27): error TS18046: 'routing.profile' is of type 'unknown'.
+src/guarded-git-runtime.ts(571,29): error TS18046: 'routing.profile' is of type 'unknown'.
+src/guarded-git-runtime.ts(572,22): error TS18046: 'routing.profile' is of type 'unknown'.
+src/guarded-git-runtime.ts(573,30): error TS18046: 'routing.profile' is of type 'unknown'.
+src/guarded-git-runtime.ts(574,13): error TS18046: 'routing.profile' is of type 'unknown'.
+src/guarded-git-runtime.ts(578,17): error TS18046: 'routing.profile' is of type 'unknown'.
+src/guarded-git-runtime.ts(580,13): error TS18046: 'routing.profile' is of type 'unknown'.
+src/guarded-git-runtime.ts(584,17): error TS18046: 'routing.profile' is of type 'unknown'.
+src/guarded-git-runtime.ts(587,7): error TS2322: Type 'unknown' is not assignable to type 'string[] | undefined'.
+src/guarded-git-runtime.ts(589,7): error TS2322: Type 'unknown' is not assignable to type 'number | undefined'.
+src/guarded-git-runtime.ts(602,12): error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'string'.
+src/guarded-git-runtime.ts(609,7): error TS2322: Type 'unknown' is not assignable to type 'string'.
+src/guarded-git-runtime.ts(610,7): error TS2322: Type 'unknown' is not assignable to type 'string[]'.
+src/guarded-git-runtime.ts(628,80): error TS2339: Property 'contract' does not exist on type '{}'.
+src/guarded-git-runtime.ts(631,62): error TS18046: 'routing.profile' is of type 'unknown'.
+src/guarded-git-runtime.ts(633,54): error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'string'.
+src/guarded-git-runtime.ts(634,57): error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'string'.
+src/guarded-git-runtime.ts(682,9): error TS18046: 'routing.profile' is of type 'unknown'.
+src/guarded-git-runtime.ts(685,9): error TS18046: 'routing.profile' is of type 'unknown'.
+/Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-routing-next/packages/cli:
+[ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL] @osstack/cli@0.21.0 typecheck: `tsc --noEmit`
+Exit status 2

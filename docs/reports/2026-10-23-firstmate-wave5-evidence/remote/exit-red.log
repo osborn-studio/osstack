@@ -1,0 +1,62 @@
+$ vitest run src/remote-home-integration.test.ts -t 'exits after'
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-routing-next/packages/cli
+
+ ❯ src/remote-home-integration.test.ts (30 tests | 1 failed | 29 skipped) 452ms
+   ↓ reads real source rows over an isolated child exporter without text, native IDs, paths or DB writes
+   ↓ CLI command performs the real child exchange and reports incomplete first pages
+   ↓ an empty complete page does not claim healthy or live execution
+   ↓ rejects or marks unknown the home boundary
+   ↓ rejects or marks unknown the generation boundary
+   ↓ rejects or marks unknown the scope boundary
+   ↓ rejects or marks unknown the scope_digest boundary
+   ↓ rejects or marks unknown the count boundary
+   ↓ rejects or marks unknown the future_clock boundary
+   ↓ wrong request pins and scope fail before worker reads and never fall back
+   ↓ read-only grant cannot authorize start/send/cancel, token substitution or replay
+   ↓ rejects registry tampering, public permissions, symlinks and special files
+   ↓ real running daemon identity and worker RPC support child exporter, without opening the child's OSSTACK_HOME
+   ↓ invalid CLI flags fail without spawning
+   ↓ client fails closed on an actual hostile child: nonce
+   ↓ client fails closed on an actual hostile child: protocol
+   ↓ client fails closed on an actual hostile child: registry
+   ↓ client fails closed on an actual hostile child: scope
+   ↓ client fails closed on an actual hostile child: methods
+   ↓ client fails closed on an actual hostile child: generation
+   ↓ client fails closed on an actual hostile child: replay
+   ↓ client fails closed on an actual hostile child: home
+   ↓ client fails closed on an actual hostile child: private_path
+   ↓ client fails closed on an actual hostile child: digest
+   ↓ client fails closed on an actual hostile child: disconnect
+   ↓ client fails closed on an actual hostile child: hang
+   ↓ client fails closed on an actual hostile child: stderr
+   ↓ private identity permissions fail closed before starting any SSH process
+   ↓ exporter rejects environment absence, extra arguments and a socket symlink
+   × exporter process exits after its one-page response even if the reader leaves stdin open 442ms
+     → expected 'still_running' to be +0 // Object.is equality
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/remote-home-integration.test.ts > exporter process exits after its one-page response even if the reader leaves stdin open
+AssertionError: expected 'still_running' to be +0 // Object.is equality
+
+- Expected: 
+0
+
++ Received: 
+"still_running"
+
+ ❯ src/remote-home-integration.test.ts:152:134
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 29 skipped (30)
+   Start at  13:13:58
+   Duration  1.51s (transform 538ms, setup 8ms, collect 903ms, tests 452ms, environment 0ms, prepare 27ms)
+
+/Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-routing-next/packages/cli:
+[ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL] @osstack/cli@0.21.0 test: `vitest run src/remote-home-integration.test.ts -t 'exits after'`
+Exit status 1

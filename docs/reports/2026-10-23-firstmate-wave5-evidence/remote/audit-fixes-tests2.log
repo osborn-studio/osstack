@@ -1,0 +1,14 @@
+$ vitest run src/remote-home.test.ts src/remote-home-integration.test.ts
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-routing-next/packages/cli
+
+Warning: Identity file /private/key not accessible: No such file or directory.
+ ✓ src/remote-home.test.ts (10 tests) 20ms
+ ✓ src/remote-home-integration.test.ts (33 tests) 3388ms
+   ✓ wrong request pins and scope fail before worker reads and never fall back  468ms
+
+ Test Files  2 passed (2)
+      Tests  43 passed (43)
+   Start at  13:17:54
+   Duration  4.54s (transform 597ms, setup 17ms, collect 1.04s, tests 3.41s, environment 0ms, prepare 61ms)
+
