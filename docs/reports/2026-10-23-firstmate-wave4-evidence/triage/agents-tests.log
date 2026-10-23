@@ -1,0 +1,16 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-cockpit/packages/agents
+
+ ✓ src/controlled-triage.test.ts (8 tests) 2361ms
+   ✓ quarantines its own provider when a live child never confirms termination  1172ms
+ ✓ src/controlled-session.test.ts (22 tests) 4352ms
+   ✓ controlled no-tools sessions > launches and resumes with the same private settings and strips ambient authority  449ms
+   ✓ controlled no-tools sessions > rejects tools and aborts the provider  303ms
+   ✓ controlled no-tools sessions > requires initialization and a successful result  318ms
+   ✓ controlled no-tools sessions > rejects unknown native sessions and persists its own binding across adapter restart  483ms
+
+ Test Files  2 passed (2)
+      Tests  30 passed (30)
+   Start at  12:52:47
+   Duration  4.67s (transform 106ms, setup 0ms, collect 231ms, tests 6.71s, environment 0ms, prepare 69ms)
+

@@ -1,0 +1,30 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-cockpit/packages/core
+
+
+⎯⎯⎯⎯⎯⎯ Failed Suites 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/state/attention-triage.test.ts [ src/state/attention-triage.test.ts ]
+Error: Cannot find module './attention-triage.js' imported from '/Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-cockpit/packages/core/src/state/attention-triage.test.ts'
+ ❯ src/state/attention-triage.test.ts:7:1
+      5| import { openDb } from "./db.js";
+      6| import { AttentionStore } from "./attention-store.js";
+      7| import { AttentionTriageLedger } from "./attention-triage.js";
+       | ^
+      8| const cleanups: Array<() => void> = [];
+      9| afterEach(() => cleanups.splice(0).forEach(fn => fn()));
+
+Caused by: Error: Failed to load url ./attention-triage.js (resolved id: ./attention-triage.js) in /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-cockpit/packages/core/src/state/attention-triage.test.ts. Does the file exist?
+ ❯ loadAndTransform ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:35835:17
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  no tests
+   Start at  12:34:46
+   Duration  495ms (transform 132ms, setup 0ms, collect 0ms, tests 0ms, environment 0ms, prepare 45ms)
+
+undefined
+/Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-cockpit/packages/core:
+[ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL] Command failed with exit code 1: vitest run src/state/attention-triage.test.ts

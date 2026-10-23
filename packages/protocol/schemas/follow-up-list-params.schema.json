@@ -1,0 +1,42 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OSStack FollowUpListParams",
+  "$comment": "Local ledger only; parsing does not authorize remote delivery. Runtime validates canonical repository, source binding, revisions and response byte budget.",
+  "type": "object",
+  "properties": {
+    "repo_path": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4096
+    },
+    "default_tenant": {
+      "type": "boolean",
+      "const": true
+    },
+    "limit": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 50,
+      "default": 20
+    },
+    "cursor": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1024
+    },
+    "state": {
+      "type": "string",
+      "enum": [
+        "open",
+        "drafted",
+        "fulfilled_local",
+        "waived"
+      ]
+    }
+  },
+  "required": [
+    "repo_path",
+    "default_tenant"
+  ],
+  "additionalProperties": false
+}

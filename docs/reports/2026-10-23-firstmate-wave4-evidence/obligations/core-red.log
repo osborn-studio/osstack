@@ -1,0 +1,30 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-routing-next/packages/core
+
+
+⎯⎯⎯⎯⎯⎯ Failed Suites 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/state/follow-up-obligations.test.ts [ src/state/follow-up-obligations.test.ts ]
+Error: Cannot find module './follow-up-obligations.js' imported from '/Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-routing-next/packages/core/src/state/follow-up-obligations.test.ts'
+ ❯ src/state/follow-up-obligations.test.ts:8:1
+      6| import { insertRun, insertTask } from "./run-store.js";
+      7| import { FOLLOW_UP_OBLIGATIONS_DDL } from "./follow-up-obligations-ddl…
+      8| import { FollowUpObligationService } from "./follow-up-obligations.js";
+       | ^
+      9| const cleanup: Array<() => void> = [];
+     10| afterEach(() => { for (const fn of cleanup.splice(0).reverse()) fn(); …
+
+Caused by: Error: Failed to load url ./follow-up-obligations.js (resolved id: ./follow-up-obligations.js) in /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-routing-next/packages/core/src/state/follow-up-obligations.test.ts. Does the file exist?
+ ❯ loadAndTransform ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:35835:17
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  no tests
+   Start at  12:41:38
+   Duration  288ms (transform 60ms, setup 0ms, collect 0ms, tests 0ms, environment 0ms, prepare 39ms)
+
+undefined
+/Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-routing-next/packages/core:
+[ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL] Command failed with exit code 1: vitest run src/state/follow-up-obligations.test.ts

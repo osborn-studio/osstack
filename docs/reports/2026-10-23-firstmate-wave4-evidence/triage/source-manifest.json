@@ -1,0 +1,26 @@
+{
+  "base": "ae1589d99d4798098ea1ef7ab62af057547ae2b2",
+  "source_sha256": {
+    "packages/core/src/state/attention-triage.ts": "5dbc1f2aafab37371ed1aa560253dfa3bc7494dbc7a4b3a20fb5847cf0c79e96",
+    "packages/core/src/state/attention-triage.test.ts": "88c7f52bcb547401fa52e555c3cc7893294d15484e820d60e42d7ea04a2070f9",
+    "packages/agents/src/controlled-triage.ts": "1f161bc828c6465b56fb32dc6fc427b9c36ee52a2e6d3bae2965769d62578a8f",
+    "packages/agents/src/controlled-triage.test.ts": "2f38372b55cedd32b23faa792d959afde28bf20615d3f9f0c92efa612e7036d7",
+    "packages/agents/src/controlled-session.ts": "8e3acb2b783ba4126edaeddecc7e5c134f9848b013efd1cf03bccb0c1c1cbde2",
+    "packages/agents/src/index.ts": "69c9ccf925e8829a7f415c18c3d93e0827b47e0dd256e95dc4c2ddba01c31028",
+    "packages/cli/src/attention-triage.ts": "95388cec6bd08f41759f7057ea47477379e6d575e2dfdd7af61c67ac94e6495b",
+    "packages/cli/src/attention-triage.test.ts": "078683eccd04bfa6045bf4a4fd34368c8ddb631cf188765f603aa5a64a091cbe",
+    "docs/guides/attention-triage.md": "f320cffb91d0675d67789a9182c1ebba3aaf317107afd2fb2be317105cf15b1c"
+  },
+  "scope": "C explicit no-tools triage, host wiring pending parent",
+  "real_provider": "unavailable: not_authenticated; fixture qualification only",
+  "test_results": {
+    "ledger": 13,
+    "cli": 15,
+    "provider_and_controlled_session": 31
+  },
+  "historical_regression": {
+    "db": 24,
+    "graph_lineage": 30
+  },
+  "build": "core and agents passed; agents and CLI typecheck passed; scoped Biome passed"
+}

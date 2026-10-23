@@ -22,7 +22,7 @@ it("reports the serving home identity through the actual CLI and preserves ID ac
   const socket = join(home, "d.sock");
   daemon = await startDaemon({ socketPath: socket, adapters: [] });
   const first = DeploymentIdentitySchema.parse(await readHomeIdentity(socket));
-  expect(first.database_schema).toBe(42);
+  expect(first.database_schema).toBe(44);
   const saved = JSON.parse(
     await readFile(join(home, "deployment-identity.json"), "utf8"),
   );

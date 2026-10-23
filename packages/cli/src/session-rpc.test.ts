@@ -916,6 +916,28 @@ it("evidence lesson uses actual watched run RPC and preserves a reviewed investi
 });
 
 
+it("follow-up uses actual RPC and CLI, preserves unsent drafts, and fences stale or foreign updates", async () => {
+  const id="follow-up-entrypoint";seedSession(id);const repo=realpathSync(sessionRepo(id));
+  const db=openDb({path:handle.dbPath}); db.prepare("UPDATE agent_sessions SET repo_path=? WHERE session_id=?").run(repo,id);
+  const executions=adapter.started.length+adapter.resumed.length;
+  const scope={repo_path:repo,default_tenant:true};
+  const input={...scope,source_session_id:id,expected_source_version:2,idempotency_key:"create-once",actor:"operator",promise:"Review actual result",destination_ref:"local_operator",resolution_condition:"session_completed",due_at:null};
+  const created=await rpc("follow-up.create",input);expect(created).toMatchObject({ok:true,result:{obligation:{state:"open",revision:1,external_delivery:"unsupported"}}});
+  const row=created.result!["obligation"] as {obligation_id:string};
+  expect(await rpc("follow-up.create",input)).toMatchObject({ok:true,result:{duplicate:true,obligation:{obligation_id:row.obligation_id}}});
+  const request={...scope,obligation_id:row.obligation_id,expected_revision:1,actor:"operator"};
+  expect(await rpc("follow-up.draft",request)).toMatchObject({ok:true,result:{obligation:{state:"drafted",revision:2,draft:{delivery_state:"unsent"}}}});
+  expect(await rpc("follow-up.draft",request)).toMatchObject({ok:false,error:{code:"follow_up_revision_conflict"}});
+  expect(await rpc("follow-up.resolve",{...request,expected_revision:2,mode:"condition",reason:"Check"})).toMatchObject({ok:false,error:{code:"follow_up_condition_not_met"}});
+  expect(await rpc("follow-up.list",{...scope,repo_path:realpathSync(home)})).toMatchObject({ok:true,result:{obligations:[]}});
+  const output=vi.spyOn(process.stdout,"write").mockImplementation(()=>true);
+  try {expect(await main(["follow-up","list","--repo",repo,"--default-tenant","--json"])).toBe(0);const printed=output.mock.calls.map(call=>String(call[0])).join("");expect(JSON.parse(printed)).toMatchObject({obligations:[{obligation_id:row.obligation_id,state:"drafted",has_draft:true}]});expect(printed).not.toContain("native-secret");}finally{output.mockRestore();}
+  db.prepare("UPDATE agent_sessions SET state='completed',version=3,updated_at=3 WHERE session_id=?").run(id);
+  expect(await rpc("follow-up.resolve",{...request,expected_revision:2,mode:"condition",reason:"Verified local source"})).toMatchObject({ok:true,result:{obligation:{state:"fulfilled_local",external_delivery:"unsupported",draft:null}}});
+  expect(db.prepare("SELECT COUNT(*) n FROM follow_up_obligation_events WHERE obligation_id=?").get(row.obligation_id)).toEqual({n:3});db.close();
+  expect(adapter.started.length+adapter.resumed.length).toBe(executions);
+});
+
 it("waits for supervision stop before closing the daemon database", async () => {
   const { SupervisionService } = await import("./supervision-service.js");
   const stop = SupervisionService.prototype.stop;

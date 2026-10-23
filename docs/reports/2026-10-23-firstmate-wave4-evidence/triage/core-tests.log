@@ -1,0 +1,12 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-cockpit/packages/core
+
+ ✓ src/state/attention-triage.test.ts (12 tests) 345ms
+ ✓ src/state/graph-migration-lineage.test.ts (30 tests) 546ms
+ ✓ src/state/db.test.ts (24 tests) 855ms
+
+ Test Files  3 passed (3)
+      Tests  66 passed (66)
+   Start at  12:52:45
+   Duration  1.15s (transform 185ms, setup 0ms, collect 299ms, tests 1.75s, environment 0ms, prepare 118ms)
+

@@ -174,6 +174,9 @@ interface SingleResponse {
 
 interface DaemonContext {
   deploymentIdentity?: import("./home-inventory.js").DeploymentIdentity;
+  followUps?: import("@osstack/core").FollowUpObligationService;
+  attentionTriage?: Promise<import("./attention-triage.js").AttentionTriageService>;
+  attentionTriageProviderFactory?: () => Promise<import("./attention-triage.js").AttentionTriageProvider>;
   dbPath: string;
   loopSessionsPath: string;
   dailySessionsPath: string;
@@ -1079,7 +1082,45 @@ function requestSupervisionScan(ctx: DaemonContext, reason: string): void {
 // Single-shot methods
 // ──────────────────────────────────────────────────────────────────────
 
+async function getAttentionTriage(ctx: DaemonContext) {
+  if (!ctx.supervision || ctx.draining) throw new Error("attention_unavailable");
+  ctx.attentionTriage ??= (async () => {
+    const {createAttentionTriageService} = await import("./attention-triage.js");
+    const {AttentionTriageLedger} = await import("@osstack/core");
+    if (!ctx.supervision || ctx.draining) throw new Error("attention_unavailable");
+    const enabled = process.env["OSSTACK_ATTENTION_TRIAGE_ENABLED"] === "1";
+    const model = enabled ? process.env["OSSTACK_ATTENTION_TRIAGE_MODEL"] ?? "" : "disabled";
+    const maxCost = enabled ? Number(process.env["OSSTACK_ATTENTION_TRIAGE_MAX_COST_USD"] ?? 0.05) : 0.05;
+    if (!Number.isFinite(maxCost) || maxCost <= 0 || maxCost > 0.25) throw new Error("invalid_triage_configuration");
+    try {
+    const service = createAttentionTriageService({
+      ledger:new AttentionTriageLedger(ctx.supervision.store,ctx.supervision.observer.owner),
+      config:{enabled,model_id:model,calls_per_hour:enabled ? Number(process.env["OSSTACK_ATTENTION_TRIAGE_CALLS_PER_HOUR"] ?? 5) : 5,
+        timeout_ms:enabled ? Number(process.env["OSSTACK_ATTENTION_TRIAGE_TIMEOUT_MS"] ?? 20000) : 20000},
+      providerFactory:ctx.attentionTriageProviderFactory ?? (async () => {
+        const {createControlledTriageProvider} = await import("@osstack/agents");
+        const {createScratchDir} = await import("@osstack/core");
+        return createControlledTriageProvider({state_directory:await createScratchDir("runtime","attention-triage"),model_id:model,max_cost_usd:maxCost});
+      }),
+    });
+    return service;
+    } catch { throw new Error("invalid_triage_configuration"); }
+  })();
+  return ctx.attentionTriage;
+}
+
 async function handleSingle(ctx: DaemonContext, req: DaemonRequest): Promise<SingleResponse | null> {
+  if (["follow-up.create", "follow-up.list", "follow-up.draft", "follow-up.resolve"].includes(req.method)) {
+    if (ctx.draining) return singleErr(req.id, "draining", "Daemon is draining");
+    const {FollowUpObligationService, FollowUpError} = await import("@osstack/core");
+    if (ctx.draining) return singleErr(req.id, "draining", "Daemon is draining");
+    ctx.followUps ??= new FollowUpObligationService(ctx.db, ctx.dbPath);
+    try { return singleOk(req.id, ctx.followUps.handle(req.method, req.params)); }
+    catch (error) {
+      return error instanceof FollowUpError ? singleErr(req.id,error.code,"Local follow-up request failed")
+        : singleErr(req.id,"follow_up_request_failed","Local follow-up unavailable");
+    }
+  }
   if (req.method === "worker.list" || req.method === "worker.inspect") {
     if (ctx.draining) return singleErr(req.id, "draining", "Daemon is draining");
     try {
@@ -1100,6 +1141,15 @@ async function handleSingle(ctx: DaemonContext, req: DaemonRequest): Promise<Sin
     if (!ctx.supervision) return singleErr(req.id,"attention_disabled","Start daemon with OSSTACK_ATTENTION=1 to opt in");
     if (ctx.draining) return singleErr(req.id,"draining","Daemon is draining");
     try {
+      if (req.method === "attention.triage" || req.method === "attention.triage-status") {
+        const p = req.params as Record<string,unknown> | undefined;
+        const status = req.method === "attention.triage-status";
+        const keys = status ? ["scope_id"] : ["scope_id","item_id","model_id"];
+        if (!p || Array.isArray(p) || Object.keys(p).some(key => !keys.includes(key)) || typeof p["scope_id"] !== "string" || !/^[a-f0-9]{64}$/.test(p["scope_id"]) || (!status && (typeof p["item_id"] !== "string" || !/^[a-f0-9]{64}$/.test(p["item_id"]) || typeof p["model_id"] !== "string" || !/^[a-zA-Z0-9._:-]{1,128}$/.test(p["model_id"])))) throw new Error("invalid_triage_request");
+        const service = await getAttentionTriage(ctx);
+        if (ctx.draining) throw new Error("draining");
+        return singleOk(req.id,status ? service.diagnostics(p["scope_id"]) : await service.run({scope_id:p["scope_id"],item_id:p["item_id"] as string,model_id:p["model_id"] as string}));
+      }
       if (req.method === "attention.lesson-evidence") {
         const p = req.params as Record<string, unknown> | undefined;
         if (!p || Array.isArray(p) || Object.keys(p).some(key => !["runId", "repoPath", "default_tenant"].includes(key)) || typeof p["runId"] !== "string" || typeof p["repoPath"] !== "string" || p["default_tenant"] !== true) throw new Error("invalid_lesson_request");
@@ -3765,6 +3815,8 @@ export interface DaemonHandles {
 }
 
 export interface StartDaemonOptions {
+  /** Trusted host injection for local qualification; never RPC-configurable. */
+  attentionTriageProviderFactory?: () => Promise<import("./attention-triage.js").AttentionTriageProvider>;
   /** Trusted host registry and actual socket authentication; never RPC fields. */
   graphRpc?: Pick<GraphRpcOptions, 'registrations' | 'resolveCaller'>;
   graphCheckpointBindings?: ReadonlyMap<object, GraphCheckpointBinding>;
@@ -3996,6 +4048,7 @@ export async function startDaemon(
       : { readConcurrency: opts.readConcurrency }),
   });
   failedContext = ctx;
+  if (opts.attentionTriageProviderFactory) ctx.attentionTriageProviderFactory = opts.attentionTriageProviderFactory;
   // Initialize only after the authorized home/database startup. Read-only
   // inventory never creates an identity and malformed records are not repaired.
   const {ensureDeploymentHomeId} = await import("./home-inventory.js");
@@ -4265,6 +4318,7 @@ export async function startDaemon(
         if (healthMonitor !== undefined) clearInterval(healthMonitor);
         shutdownPromise = (async () => {
           ctx.draining = true;
+          await ctx.attentionTriage?.then(service => service.stop()).catch(() => undefined);
           await ctx.supervision?.stop();
           if (graphRpc) {
             try { await (await graphRpc).close(); } catch { /* Initialization may have failed. */ }

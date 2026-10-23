@@ -1,0 +1,49 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-routing-next/packages/core
+
+ ❯ src/state/follow-up-obligations.test.ts (13 tests | 1 failed) 253ms
+   ✓ persists create/event atomically and replays idempotence after source cleanup 26ms
+   ✓ draft is unsent, captures facts, and never resolves a completed source 18ms
+   ✓ only verifies an explicitly selected local completed-session condition 19ms
+   ✓ waives missing sources explicitly without deleting the original promise 19ms
+   ✓ rejects foreign or inconsistent task_tenant sources 18ms
+   ✓ rejects foreign or inconsistent run_tenant sources 18ms
+   ✓ rejects foreign or inconsistent run_binding sources 18ms
+   ✓ rejects foreign or inconsistent repo sources 18ms
+   ✓ requires a fresh source revision and exact explicit scope on every operation 19ms
+   ✓ rolls back row mutation when the append-only event cannot be written 19ms
+   ✓ paginates within scope and never mutates on list 20ms
+   × does not attach a recreated source to the old obligation 21ms
+     → expected false to be true // Object.is equality
+   ✓ rejects a second connection's stale revision and retains both audit events 20ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/state/follow-up-obligations.test.ts > does not attach a recreated source to the old obligation
+AssertionError: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ src/state/follow-up-obligations.test.ts:94:66
+     92|   const f = fixture(); const row = f.service.create(f.input).obligatio…
+     93|   f.db.prepare("UPDATE agent_sessions SET request_sha256=?,state='comp…
+     94|   expect(f.service.list(f.scope).obligations[0]!.source_missing).toBe(…
+       |                                                                  ^
+     95|   expect(() => f.service.resolve({ ...f.scope, obligation_id: row.obli…
+     96| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 12 passed (13)
+   Start at  12:43:33
+   Duration  598ms (transform 87ms, setup 0ms, collect 120ms, tests 253ms, environment 0ms, prepare 44ms)
+
+undefined
+/Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-routing-next/packages/core:
+[ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL] Command failed with exit code 1: vitest run src/state/follow-up-obligations.test.ts
