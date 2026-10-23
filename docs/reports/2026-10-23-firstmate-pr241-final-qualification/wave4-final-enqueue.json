@@ -1,0 +1,10 @@
+{
+  "task": {
+    "task_id": "firstmate-wave4-final-source-qualification",
+    "capability": "code.test",
+    "prompt": "Qualify source 580bd9dfe46423c492846abcb364bd7219f66d66: ledger/triage plus final Wave3 source fence, repaired child migration DDL fixture and lint annotation. All8 checks. Prior 18 process fixture failures and lint fail preserved, 133 focused retry passed. No send, merge, deployment.",
+    "priority": 50,
+    "source": "task_queue"
+  },
+  "path": "/Volumes/AIMATE_WORK/tmp/osstack/smoke/pr237-integration/wave4-final-loop/tasks/firstmate-wave4-final-source-qualification.json"
+}
