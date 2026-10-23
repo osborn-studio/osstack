@@ -1,0 +1,29 @@
+{
+  "$reason": "A one-shot snapshot cannot claim persistent monitoring coverage.",
+  "value": {
+    "schema_version": 1,
+    "mode": "snapshot_only",
+    "scope": {
+      "scope_id": "s",
+      "task_id": "t",
+      "tenant_id": null,
+      "repo_path": "/repo"
+    },
+    "sampled_at_ms": 1,
+    "coverage": {
+      "state": "covered"
+    },
+    "runs": [],
+    "sessions": [],
+    "completeness": {
+      "latest_turn_only": true,
+      "truncated": false,
+      "omitted_binding_unknown": 0,
+      "next_after": {
+        "run": null,
+        "session": null
+      }
+    },
+    "limitations": []
+  }
+}

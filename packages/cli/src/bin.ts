@@ -223,6 +223,7 @@ function renderChineseMainHelp(): string {
   stats               查看 agent 与 loop 指标
 
 项目命令：
+  attention status    只读查看任务状态与最新决策（未后台接管）
   graph explain       只读联查指定任务的 Loop、看板关系与运行记录（实验）
   doctor              检查 workspace、loop、agent 与下一步建议
   examples            输出可直接运行的工作流示例
@@ -417,6 +418,7 @@ Self-update:
                       and roll back automatically on failure.
 
 Project commands:
+  attention status    Read-only task/session attention snapshot
   graph explain       Read-only task/Loop/card relation view (experimental; graph --help)
   doctor [--workspace P] [--daemon] [--json]
                       Product readiness check: loop + agents + next steps
@@ -776,6 +778,11 @@ See docs/V2_REFACTOR_PLAN.md for the full roadmap.
       submit: streamTaskSubmit,
       observe: streamTaskObserve,
     });
+  }
+
+  if (cmd === "attention") {
+    const { handleAttentionCommand } = await import("./attention-command.js");
+    return await handleAttentionCommand(args.slice(1));
   }
 
   if (cmd === "graph") {

@@ -62,3 +62,5 @@ export {
   parseInboundAgentCommand,
   parseInboundAgentCommandResult,
 } from "./envelope.js";
+
+export { AttentionStatus, AttentionSessionFact, AttentionWait } from "./attention.js";

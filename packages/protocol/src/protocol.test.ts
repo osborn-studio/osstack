@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import type { z } from "zod";
 import {
+  AttentionStatus,
   AgentCommand,
   AgentCommandResult,
   ApprovalDecision,
@@ -25,6 +26,7 @@ const INVALID_DIR = fileURLToPath(new URL("../fixtures/invalid", import.meta.url
 /** Maps a fixture's schema key to the strict schema that must validate it. */
 const SCHEMA_BY_KEY: Record<string, z.ZodTypeAny> = {
   task: Task,
+  "attention-status": AttentionStatus,
   "run-summary": RunSummary,
   "event-envelope": EventEnvelope,
   "evidence-ref": EvidenceRef,
@@ -61,6 +63,7 @@ const invalidFiles = readdirSync(INVALID_DIR).filter((f) => f.endsWith(".invalid
 // all later minors, forever. Never delete or mutate an entry; a breaking change
 // is a new MAJOR with a new fixture directory. Adding a row is allowed.
 const FROZEN_V1_FIXTURES = [
+  "attention-status.valid.json",
   "agent-command-result.valid.json",
   "agent-command-result__blocked.valid.json",
   "agent-command-result__error.valid.json",

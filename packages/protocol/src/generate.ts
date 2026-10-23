@@ -10,6 +10,7 @@
 // documents the object SHAPE only; the conditional rules live in the superRefine
 // and the tests. This is a known, documented limitation, not a gap.
 
+import { AttentionStatus } from "./attention.js";
 import type { ZodTypeAny } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 import {
@@ -44,6 +45,7 @@ interface SchemaEntry {
 
 /** Public protocol contracts emitted as JSON Schema. Order is stable. */
 export const SCHEMA_MANIFEST: readonly SchemaEntry[] = [
+  { key: "attention-status", title: "OSStack Attention Snapshot", schema: AttentionStatus },
   { key: "task", title: "Osstack Protocol Task", schema: Task },
   { key: "run-summary", title: "Osstack Protocol Run Summary", schema: RunSummary },
   { key: "event-envelope", title: "Osstack Protocol Event Envelope", schema: EventEnvelope },
