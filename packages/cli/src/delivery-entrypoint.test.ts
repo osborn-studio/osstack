@@ -40,7 +40,7 @@ afterEach(async () => {
 });
 const hash = (value: string | Buffer) =>
   createHash("sha256").update(value).digest("hex");
-it("runs the real CLI, committed policy and private context receipt factories through an isolated V2 delivery", async () => {
+it.each([false,true])("runs the real V2 delivery and rejects source mutation: %s", async (mutateSource) => {
   root = realpathSync(await createScratchDir("tests", "delivery-entrypoint"));
   repo = join(root, "repo");
   await cp(
@@ -203,6 +203,7 @@ it("runs the real CLI, committed policy and private context receipt factories th
       prompts.set(task.run_id, task.prompt);
       if (id === "claude-code") {
         candidate = String(task.context?.["repo_path"]);
+        if (mutateSource) await writeFile(join(repo!, "src/greeting.ts"), "\n// escaped candidate\n", {flag:"a"});
         await writeFile(
           join(candidate, "src/greeting.ts"),
           "\nexport const isolated = true;\n",
@@ -262,6 +263,12 @@ it("runs the real CLI, committed policy and private context receipt factories th
     context,
     "--json",
   ]);
+  if (mutateSource) {
+    expect(code).not.toBe(0);
+    expect(logs.join("\n") + errors.join("\n")).toContain("delivery_source_changed");
+    expect(await readFile(join(repo, "src/greeting.ts"), "utf8")).not.toBe(source);
+    return;
+  }
   expect(code, logs.join("\n") + errors.join("\n")).toBe(0);
   const result = JSON.parse(logs.join("\n"));
   expect(result.delivery_contract.achieved_completion).toBe("local_verified");

@@ -1,0 +1,3584 @@
+Final scoped delta static audit, no tools. Prior findings below. Source mutation P1-A now detected: before/after original HEAD+index+tracked/untracked bytes+ignored names snapshots, checked before receipt and after Loop. Adversarial real CLI fake-adapter test red0 then greenblocked; never auto-reverts source. Existing ignored contents/transient restored writes/arbitrary other paths not a sandbox and documentation now explicit. 27 focused tests passed. Legacy --action existed as risk-classification intent (no V2 allowlist guarantee); unchanged old behavior disclosed in guide and backlog, not silently promoted to V2 contract semantics. V2 requested_actions enforced all risk levels, signed scope exact; assess this changed surface, classify any remaining legacy issue separately. Full whole workspace retry still running but source freeze superseded; final qualification will rerun on new final source. Do not issue blanket production guarantee; identify actual confirmed regressions/remaining blocking contract defects.
+## Static audit: Wave3 delivery contract, round 4
+
+No tools or tests were run. Every finding below comes from reading the supplied bundle. I found no confirmed P0. Most prior P1s are resolved for contract runs. Two P1s remain open.
+
+## Open P1
+
+**P1-A. Guarded-local does not enforce isolation from the source checkout.**
+- `deliver-command.ts` fences, stages and verifies only `input.workspacePath`, which is the worktree. `verifyPersistedDeliveryReceipt` also receives only the worktree.
+- Nothing samples the source checkout's HEAD or status before and after the builder and reviewers run. The builder adapter gets `repo_path` set to the worktree, but the host does not confine filesystem writes.
+- The docs say guarded-local leaves "the source checkout clean" and the original workspace "is not merged or changed". The host writes are clean, but the code does not prove that for builder writes. The only test uses a fake adapter that writes to the candidate only.
+- Severity depends on adapter behavior, so this is a confirmed boundary gap rather than a demonstrated breach.
+- Fix: snapshot the source HEAD and `git status --porcelain=v1 -z --ignored` before and after the loop, fail closed on any change, and add a test where a fake builder writes into the source path.
+
+**P1-B. Legacy guarded-git/local ignores `--action` for R0–R2.**
+- `assertPostDiffActionAuthorized` returns early for non-contract runs below R3. `--action` only feeds the legacy intent and hash, so commit, push, and merge run regardless of the requested list.
+- The contract path is fixed. If `--action` is meant as a constraint on the legacy surface, this is a P1 that needs the same per-step assertion.
+
+## Retractions of prior conditional or P1 claims (contract path)
+
+- **P1-1 (R3 `pr_opened` cannot publish): retracted.** `approvalActionScope` intersects with `requested_actions` and includes `open_pr` for `pr_opened`. `deliverGitAndFinalize` asserts `open_pr` against the signed scope. The "signs only PR effects" test covers this. Not run.
+- **P1-2 (approved R3 policy unreachable after commit): retracted for contracts.** `verifyContract` pins `assertPolicyUnchanged` to `contract.base_head`. Legacy runs have no post-commit policy check, so nothing blocks them there. The private overlay is still live, which is intentional.
+- **P1-3 (R0–R2 `requested_actions` not enforced): retracted for contracts.** The schema requires commit, push, and `open_pr` for `pr_opened`, merge for `merged`, and a deploy action for `deployed`. Every publish step asserts the contract list before acting.
+- **P1-4 (evidence written into source checkout): retracted for contracts.** State, tasks, and receipts go to `osstackHome()/delivery-contracts/<digest>/<uuid>`. The test asserts a clean source.
+- **P1-5 (mandatory context not verified before dispatch): retracted.** `assembleExecutionContext` throws `mandatory_budget_exceeded` before any receipt or invoke. Instruction and safety must appear exactly once, and contract is required when a digest is set. `required_omitted` is always empty, which is harmless.
+- **Missing-evidence items now resolved:** `LoopEngine` does not merge in `artifact_only` mode (`loop-engine.ts` ~1104–1134), so the candidate survives. `stageGuardedCandidate` only records `commands`; it does not execute them. Guarded-local's per-invocation directory addresses `skipCompletedTasks` and run-id reuse.
+
+## Remaining P2 (confirmed by reading)
+
+- **Receipt refs are unfiltered.** `receiptRefs()` is called with no filter in both `deliver-command.ts` and `guarded-git-runtime.ts`. Refs are per-invocation, so the impact is limited, but they should be filtered by run.
+- **Reviewer identity comes from the artifact.** `buildDeliveryVerificationReceipt` uses `review.runtime_identity`, not the routed `evaluator_identity`. The two can disagree.
+- **PR target check is tautological.** `openPullRequest` in `guarded-git-runtime.ts` compares `contractScope.repository` with `scope.repository`. The engine sets the latter from the same contract field. The real repository check is only at start, so the PR target is not verified at call time.
+- **Guarded-git timeouts are not clamped.** `commandTimeoutMs: effectiveCommandTimeoutMs!` ignores `max_wall_time_ms`.
+- **Canonicalisation mismatch.** `deliveryContractDigest` uses `localeCompare`; `canonicalGuardedJson` uses code-unit order. Canonically equivalent keys can produce different digests.
+- **Execution-context config is re-read on resume.** Pack pins hold, but the config file and pack set are not pinned, so they can change between start and resume.
+- **Context receipt refs are not reopened** by the verifier. This is the known P2. The receipt also overstates: `adapter_observed` repeats the prepared prompt hash and only shows the adapter yielded output after invoke.
+- **Unreconciled PR publication retries automatically.** The `blocked_delivery` message says to reconcile before retry, but `resume` moves `pushing` straight into `openPullRequest` again. Whether `openPullRequestToGitHub` is idempotent is missing evidence.
+- **Policy source is HEAD in `deliver-command`.** `deliveryContractPolicy(realpathSync(workspacePath))` passes no base revision. Admission's `baseHead === HEAD` check makes this equivalent today, but the base should be passed explicitly.
+- **Operability.** `snapshotDeliveryWorkspace` enumerates every ignored path, including dependency trees, and runs at least four times per candidate. On repos with large `node_modules`, it can trip `delivery_candidate_too_many_files` (fail closed) or be slow. Not measured.
+- **Guarded-local takes no lease.** `deliver-command.ts` acquires none, while guarded-git uses `acquireLocalExecution`.
+- **Approval nonce consumption.** `consume_approval_nonce` only reads and never records. Whether `approval.ts` records consumption is missing evidence. Nonces are deterministic per run, phase, and scope, so cross-run replay is not reachable from this bundle.
+- **Stale receipt in context.** A later failed iteration does not clear `delivery_receipt`. Completion uses only the last passing result, so this is hygiene.
+
+## Missing evidence
+
+- `approval.ts` nonce consumption and whether `verifyScopedApprovalDecision` expects consumption to be recorded.
+- `parseStagedPorcelainV1ZPaths` handling of renames, which determines whether both rename sides are checked.
+- Whether the state machine permits `candidate_proof → final_proof` and `opening_pr → final_proof`.
+- `openPullRequestToGitHub` retry and reuse behavior.
+- `startGuardedGitDelivery` budget wiring; the bundle truncates that section.
+- Whether `LoopEngine` overwrites reviewer `runtime_identity`.
+
+## Scope
+
+Claims limited to local-only receipts are preserved. Reported identities are not cryptographic attestations. A local receipt is not Graph qualification or evidence of merged or deployed state. The full suite result is still pending, and nothing above has been executed.
+
+FILE packages/cli/src/delivery-contract-host.ts
+import { createHash } from "node:crypto";
+import { execFile } from "node:child_process";
+import { constants } from "node:fs";
+import { lstat, mkdir, open, readlink, realpath, writeFile } from "node:fs/promises";
+import { isAbsolute, join, relative } from "node:path";
+import { promisify } from "node:util";
+import { assertDeliveryContractPaths, assertFrozenDeliveryContract, deliveryCheckReference, deliveryContractDigest, verifyDeliveryContractReceipt } from "@osstack/core";
+import { DeliveryVerificationReceiptV2, type DeliveryCandidateIdentityV2, type DeliveryReceiptReferenceV2, type FrozenDeliveryContractV2 } from "@osstack/protocol";
+import type { CommandAudit, ReviewArtifact } from "@osstack/loop";
+
+const exec = promisify(execFile);
+export const deliveryBytesDigest = (bytes: string | Buffer) => createHash("sha256").update(bytes).digest("hex");
+export async function deliveryGit(workspace: string, args: string[]): Promise<string> {
+  const safeArgs = args[0] === "diff" ? ["diff", "--no-ext-diff", "--no-textconv", ...args.slice(1)] : args;
+  return (await exec("git", ["-c", "core.hooksPath=/dev/null", "-c", "core.fsmonitor=false", ...safeArgs], {
+    cwd: workspace, encoding: "utf8", timeout: 30000, maxBuffer: 64 * 1024 * 1024,
+    env: { ...process.env, GIT_CONFIG_NOSYSTEM: "1", GIT_CONFIG_GLOBAL: "/dev/null", GIT_TERMINAL_PROMPT: "0" },
+  })).stdout;
+}
+export async function captureDeliveryCandidate(workspace: string, baseHead: string): Promise<DeliveryCandidateIdentityV2> {
+  const head = (await deliveryGit(workspace, ["rev-parse", "HEAD"])).trim();
+  const tree = (await deliveryGit(workspace, ["write-tree"])).trim();
+  const diff = await deliveryGit(workspace, ["diff", "--cached", "--binary", baseHead, "--"]);
+  return { base_head: baseHead, head, tree_id: tree, diff_digest: deliveryBytesDigest(diff) };
+}
+export async function persistDeliveryHostRecord(root: string, value: unknown): Promise<DeliveryReceiptReferenceV2> {
+  await mkdir(root, { recursive: true, mode: 0o700 });
+  const canonicalRoot = await realpath(root);
+  const body = `${JSON.stringify(value)}\n`;
+  const digest = deliveryBytesDigest(body);
+  const path = join(canonicalRoot, `${digest}.json`);
+  try { await writeFile(path, body, { flag: "wx", mode: 0o600 }); }
+  catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
+    await readDeliveryHostRecord(canonicalRoot, { path, digest });
+  }
+  return { path, digest };
+}
+export async function readDeliveryHostRecord(root: string, ref: DeliveryReceiptReferenceV2): Promise<unknown> {
+  const canonicalRoot = await realpath(root);
+  if (!isAbsolute(ref.path) || (await lstat(ref.path)).isSymbolicLink()) throw new Error("delivery_receipt_path_invalid");
+  const canonicalPath = await realpath(ref.path);
+  const local = relative(canonicalRoot, canonicalPath);
+  if (local.startsWith("..") || isAbsolute(local) || !/^[a-f0-9]{64}\.json$/.test(local)
+    || local !== `${ref.digest}.json`) throw new Error("delivery_receipt_path_invalid");
+  const handle = await open(canonicalPath, constants.O_RDONLY | constants.O_NOFOLLOW);
+  try {
+    const info = await handle.stat();
+    if (!info.isFile() || info.size > 1024 * 1024) throw new Error("delivery_receipt_size_invalid");
+    const body = Buffer.alloc(info.size + 1);
+    const { bytesRead } = await handle.read(body, 0, body.length, 0);
+    if (bytesRead !== info.size) throw new Error("delivery_receipt_size_changed");
+    const actual = body.subarray(0, bytesRead);
+    if (deliveryBytesDigest(actual) !== ref.digest) throw new Error("delivery_receipt_digest_mismatch");
+    return JSON.parse(actual.toString("utf8")) as unknown;
+  } finally { await handle.close(); }
+}
+export function buildDeliveryVerificationReceipt(input: {
+  frozen: FrozenDeliveryContractV2; runId: string; runKind: "guarded-local" | "guarded-git";
+  candidate: DeliveryCandidateIdentityV2; commands: readonly CommandAudit[]; reviews: readonly ReviewArtifact[];
+  builderAgentId: string; builderIdentity: Record<string, unknown>; workspaceStateDigest: string; contextReceiptRefs?: readonly DeliveryReceiptReferenceV2[];
+}) {
+  const { contract, digest } = assertFrozenDeliveryContract(input.frozen);
+  const review = input.reviews[0];
+  if (!review || input.reviews.some((item) => item.verdict !== "approved") || input.builderIdentity.evidence_source !== "reported"
+    || review.runtime_identity.evidence_source !== "reported") throw new Error("delivery_reported_review_missing");
+  const checks = input.commands.map((command, index) => {
+    const registryRef = deliveryCheckReference(command.command);
+    return { id: contract.required_checks.find((check) => check.registry_ref === registryRef)?.id ?? `host:${index}`,
+      registry_ref: registryRef, command_digest: registryRef.slice(7), exit_code: command.exit_code, duration_ms: command.duration_ms };
+  });
+  return DeliveryVerificationReceiptV2.parse({ schema_version: 2, source: "osstack_loop_host", run_id: input.runId,
+    task_id: contract.task_id, run_kind: input.runKind, contract_digest: digest, policy_digest: contract.policy_digest,
+    candidate: input.candidate, workspace_state_digest: input.workspaceStateDigest, checks, review: { policy_ref: contract.review_policy_ref, verdict: review.verdict,
+      builder_agent_id: input.builderAgentId, reviewer_agent_id: review.reviewer_agent_id,
+      builder_provider: input.builderIdentity.provider_id, builder_model: input.builderIdentity.model_id,
+      reviewer_provider: review.runtime_identity.provider_id, reviewer_model: review.runtime_identity.model_id,
+      identity_source: "reported", artifact_digest: deliveryContractDigest(input.reviews) },
+    observed_at: new Date().toISOString(), context_receipt_refs: input.contextReceiptRefs ?? [] });
+}
+/** Trusted host port: load its own immutable record and re-sample actual Git state.
+ * A committed candidate may change HEAD, but its verified tree and base-relative diff must not change. */
+export async function verifyPersistedDeliveryReceipt(input: {
+  root: string; ref: DeliveryReceiptReferenceV2; frozen: FrozenDeliveryContractV2; runId: string; workspace: string; expectedHeads?: readonly string[];
+}) {
+  const raw = await readDeliveryHostRecord(input.root, input.ref);
+  const receipt = DeliveryVerificationReceiptV2.parse(raw);
+  const current = await captureDeliveryCandidate(input.workspace, input.frozen.contract.base_head);
+  if (receipt.candidate.head !== input.frozen.contract.base_head
+    || !(input.expectedHeads ?? [input.frozen.contract.base_head]).includes(current.head)) throw new Error("delivery_candidate_head_mismatch");
+  if (current.tree_id !== receipt.candidate.tree_id || current.diff_digest !== receipt.candidate.diff_digest)
+    throw new Error("delivery_candidate_changed_after_verification");
+  if ((await snapshotDeliveryWorkspace(input.workspace, input.frozen.contract.base_head)).digest !== receipt.workspace_state_digest)
+    throw new Error("delivery_workspace_changed_after_verification");
+  // Unstaged/untracked edits were never part of the reviewed tree.
+  if ((await deliveryGit(input.workspace, ["diff", "--name-only"])).trim()
+    || (await deliveryGit(input.workspace, ["ls-files", "--others", "--exclude-standard"])).trim())
+    throw new Error("delivery_candidate_has_unverified_changes");
+  verifyDeliveryContractReceipt(input.frozen, raw, { runId: input.runId, candidate: { ...current, head: receipt.candidate.head },
+    policyDigest: input.frozen.contract.policy_digest });
+  return { receipt, current };
+}
+
+async function deliveryConfig(workspace: string): Promise<string> {
+  const config = await deliveryGit(workspace, ["config", "--local", "--null", "--list"]);
+  if (config.split("\0").some(entry => /^filter\..*\.(?:clean|smudge|process)\n/i.test(entry)))
+    throw new Error("delivery_git_filter_unsupported");
+  return config;
+}
+async function snapshotDeliveryWorkspace(workspace: string, baseHead: string) {
+  await deliveryConfig(workspace);
+  const flags = (await deliveryGit(workspace, ["ls-files", "-v", "-z"])).split("\0").filter(Boolean);
+  if (flags.some(entry => /^[a-zS]/.test(entry))) throw new Error("delivery_hidden_index_flags");
+  const tracked = (await deliveryGit(workspace, ["diff", "--no-renames", "--name-only", "-z", baseHead, "--"])).split("\0").filter(Boolean);
+  const untracked = (await deliveryGit(workspace, ["ls-files", "--others", "--exclude-standard", "-z"])).split("\0").filter(Boolean);
+  const ignored = (await deliveryGit(workspace, ["ls-files", "--others", "--ignored", "--exclude-standard", "-z"])).split("\0").filter(Boolean).sort();
+  const paths = [...new Set([...tracked, ...untracked])].sort();
+  const allFiles = [...new Set([...flags.map(entry => entry.slice(2)), ...paths])].sort();
+  if (allFiles.length + ignored.length > 100000) throw new Error("delivery_candidate_too_many_files");
+  const changes: Array<{ path: string; digest: string | null; mode: number | null }> = [];
+  let bytes = 0;
+  for (const path of allFiles) {
+    const absolute = join(workspace, path);
+    const info = await lstat(absolute).catch(error => { if ((error as NodeJS.ErrnoException).code === "ENOENT") return undefined; throw error; });
+    if (!info) { changes.push({ path, digest: null, mode: null }); continue; }
+    if (!info.isFile() && !info.isSymbolicLink()) throw new Error("delivery_candidate_file_invalid");
+    bytes += info.size;
+    if (bytes > 64 * 1024 * 1024) throw new Error("delivery_candidate_too_large");
+    let body: string | Buffer;
+    if (info.isSymbolicLink()) body = await readlink(absolute);
+    else {
+      const file = await open(absolute, constants.O_RDONLY | constants.O_NOFOLLOW);
+      try {
+        const opened = await file.stat();
+        if (!opened.isFile() || opened.size !== info.size) throw new Error("delivery_candidate_file_changed");
+        body = Buffer.alloc(info.size + 1);
+        const { bytesRead } = await file.read(body, 0, body.length, 0);
+        if (bytesRead !== info.size) throw new Error("delivery_candidate_file_changed");
+        body = body.subarray(0, bytesRead);
+      } finally { await file.close(); }
+    }
+    changes.push({ path, digest: deliveryBytesDigest(body), mode: info.isSymbolicLink() ? 0o120000 : info.mode & 0o111 ? 0o100755 : 0o100644 });
+  }
+  return { digest: deliveryContractDigest({ baseHead, changes, ignored }), paths, ignored };
+}
+/** One invocation owns its pre-build baseline and exact check/review snapshot.
+ * The same snapshot must survive staging and receipt capture; it is not re-baselined. */
+export function createDeliveryVerificationFence(frozen: FrozenDeliveryContractV2) {
+  const baselines = new Map<string, { ignored: Set<string>; config: string }>();
+  const verified = new Map<string, string>();
+  const sample = async (workspace: string) => {
+    const baseline = baselines.get(workspace);
+    if (!baseline) throw new Error("delivery_verification_baseline_missing");
+    if ((await deliveryGit(workspace, ["rev-parse", "HEAD"])).trim() !== frozen.contract.base_head)
+      throw new Error("delivery_candidate_base_changed");
+    if (await deliveryConfig(workspace) !== baseline.config) throw new Error("delivery_git_config_changed");
+    const snapshot = await snapshotDeliveryWorkspace(workspace, frozen.contract.base_head);
+    if (snapshot.ignored.some(path => !baseline.ignored.has(path))) throw new Error("delivery_new_ignored_file");
+    assertDeliveryContractPaths(frozen, snapshot.paths);
+    return snapshot.digest;
+  };
+  const fence = async (workspace: string): Promise<() => Promise<void>> => {
+    verified.delete(workspace);
+    const before = await sample(workspace);
+    return async () => {
+      if (await sample(workspace) !== before) throw new Error("delivery_candidate_changed_during_verification");
+      verified.set(workspace, before);
+    };
+  };
+  return Object.assign(fence, {
+    prepare: async (workspace: string) => {
+      const snapshot = await snapshotDeliveryWorkspace(workspace, frozen.contract.base_head);
+      baselines.set(workspace, { ignored: new Set(snapshot.ignored), config: await deliveryConfig(workspace) });
+      verified.delete(workspace);
+    },
+    assertVerified: async (workspace: string) => {
+      const digest = verified.get(workspace);
+      if (!digest || await sample(workspace) !== digest) throw new Error("delivery_reviewed_candidate_changed");
+      return digest;
+    },
+  });
+}
+
+/** Detect changes to the original checkout; this is not a filesystem sandbox.
+ * Existing ignored file contents and arbitrary paths outside the checkout are not sampled.
+ */
+export async function createDeliverySourceFence(workspace: string, baseHead: string): Promise<() => Promise<void>> {
+  const sample = async () => {
+    const [head, index, snapshot] = await Promise.all([
+      deliveryGit(workspace, ["rev-parse", "HEAD"]),
+      deliveryGit(workspace, ["ls-files", "--stage", "-z"]),
+      snapshotDeliveryWorkspace(workspace, baseHead),
+    ]);
+    return deliveryContractDigest({ head, index, snapshot: snapshot.digest });
+  };
+  const baseline = await sample();
+  return async () => { if (await sample() !== baseline) throw new Error("delivery_source_changed"); };
+}
+
+
+FILE packages/cli/src/deliver-command.ts
+import { assertDeliveryContractAdmission, assertDeliveryContractPaths, freezeDeliveryContract } from "@osstack/core";
+import type { FrozenDeliveryContractV2, DeliveryReceiptReferenceV2 } from "@osstack/protocol";
+import { createDeliveryVerificationFence, createDeliverySourceFence, buildDeliveryVerificationReceipt, captureDeliveryCandidate, deliveryGit, persistDeliveryHostRecord, verifyPersistedDeliveryReceipt } from "./delivery-contract-host.js";
+import { execFile } from "node:child_process";
+import { randomUUID } from "node:crypto";
+import { realpathSync } from "node:fs";
+import { readFile, stat } from "node:fs/promises";
+import { isAbsolute, join } from "node:path";
+import { promisify } from "node:util";
+import {
+  defaultAdapters,
+  type AgentAdapter,
+} from "@osstack/agents";
+import type { GovernanceFinding } from "@osstack/governance";
+import type { GuardedDeliveryPolicy, GuardedDeliveryResult } from "@osstack/autonomy";
+import {
+  enqueueTask,
+  LoopEngine,
+  type LoopEvent,
+  type LoopState,
+} from "@osstack/loop";
+import { z } from "zod";
+import {
+  resolveLoopProfileRouting,
+  type LoopProfileRoutingResult,
+} from "./loop-profile-routing.js";
+import { makePolicyGate } from "./policy-gate.js";
+
+const execFileAsync = promisify(execFile);
+const GUARDED_LOCAL_COMMAND_TIMEOUT_MS = 600_000;
+
+export const DeliverAutonomyMode = z.enum([
+  "legacy",
+  "guarded-local",
+  "guarded-git",
+  "guarded-deploy",
+]);
+export type DeliverAutonomyMode = z.infer<typeof DeliverAutonomyMode>;
+
+type DeliverGovernanceProofEvidence =
+  | {
+    status: "pass" | "fail";
+    ok: boolean;
+    scanned_files: number;
+    findings: GovernanceFinding[];
+  }
+  | {
+    status: "unknown";
+    ok: false;
+    scanned_files: 0;
+    reason: string;
+    findings: GovernanceFinding[];
+  };
+
+export type DeliverGovernanceMode = "warn" | "strict";
+export type DeliverGovernanceScope = "workspace" | "changed" | "baseline";
+
+export interface DeliverGovernanceBaselineSnapshot {
+  evidence?: DeliverGovernanceProofEvidence;
+  revision?: string;
+}
+
+type DeliverGovernanceScanEvidence =
+  DeliverGovernanceProofEvidence & {
+    error_findings: number;
+  };
+
+export type DeliverGovernanceEvidence =
+  DeliverGovernanceScanEvidence & {
+    mode: DeliverGovernanceMode;
+    scope: DeliverGovernanceScope;
+    blocking: boolean;
+    baseline_evidence?: DeliverGovernanceScanEvidence & {
+      mode: "warn";
+      scope: "workspace";
+      blocking: false;
+    };
+    changed_evidence?: DeliverGovernanceScanEvidence & {
+      scope: "changed";
+    };
+    baseline_revision?: string;
+    baseline_suppressed_findings?: number;
+  };
+
+export interface DeliverEvidenceArtifacts {
+  report?: string;
+  scorecard_markdown?: string;
+  scorecard_html?: string;
+  proof_dir?: string;
+  proof_zip?: string;
+  proof_manifest?: string;
+}
+
+export interface DeliverCommandDeps {
+  enforceObservePolicyGate: (
+    workspacePath: string,
+  ) => Promise<number | undefined>;
+  createShadowCheckpoint: (
+    workspacePath: string,
+  ) => Promise<unknown>;
+  createLoopGovernanceEvidence: (
+    mode: DeliverGovernanceMode,
+    workspacePath: string,
+    scope: DeliverGovernanceScope,
+    baselineSnapshot?: DeliverGovernanceBaselineSnapshot,
+  ) => Promise<DeliverGovernanceEvidence>;
+  captureLoopGovernanceBaseline?: (
+    workspacePath: string,
+    includeEvidence: boolean,
+  ) => Promise<DeliverGovernanceBaselineSnapshot>;
+  appendGovernanceVerifyEvent: (
+    events: LoopEvent[],
+    loopId: string,
+    governance: DeliverGovernanceEvidence,
+  ) => LoopEvent[];
+  observeLoopProbeEvents: (
+    workspacePath: string,
+    events: readonly unknown[],
+  ) => Promise<unknown>;
+  writeRequestedLoopArtifacts: (
+    state: LoopState,
+    workspacePath: string,
+    args: string[],
+    events: LoopEvent[],
+    governance?: DeliverGovernanceEvidence,
+    outputDirectory?: string,
+  ) => Promise<DeliverEvidenceArtifacts | undefined>;
+  learnLessonsFromLoopState: (
+    state: LoopState,
+  ) => Promise<unknown>;
+  adapters?: () => AgentAdapter[];
+  createDeliveryStateDirectory?: (contractDigest: string) => Promise<string>;
+  deliveryContractPolicy?: (workspacePath: string, baseRevision?: string) => Promise<{ policyDigest: string; verifyCommands: string[]; budgetRef: string; budget: GuardedDeliveryPolicy["budget"] }>;
+  createExecutionContext?: (input: { adapters: readonly AgentAdapter[]; workspacePath: string; configPath: string;
+    contractDigest?: string; contractBrief?: string }) => Promise<{ adapters: readonly AgentAdapter[]; receiptRefs(): readonly DeliveryReceiptReferenceV2[] }>;
+  startGuardedGit?: (input: {
+    prompt: string;
+    workspacePath: string;
+    taskId: string;
+    capability: string;
+    expectedPaths: string[];
+    requestedActions: string[];
+    verifyCommands: string[];
+    commandTimeoutMs: number;
+    deployPolicy?: "project";
+    profileRouting: LoopProfileRoutingResult;
+    frozenContract?: FrozenDeliveryContractV2;
+    executionContextPath?: string;
+  }) => Promise<GuardedDeliveryResult>;
+  remotePorts?: {
+    push: () => Promise<unknown>;
+    createPullRequest: () => Promise<unknown>;
+    merge: () => Promise<unknown>;
+    deploy: () => Promise<unknown>;
+  };
+}
+
+export async function handleDeliverCommand(
+  args: string[],
+  deps: DeliverCommandDeps,
+): Promise<number> {
+  if (args[0] === "help" || args.includes("--help") || args.includes("-h")) {
+    console.log(`osstack deliver — product entry from one intent to proof
+
+  osstack deliver "Add billing dashboard" [--workspace P] [--execute CMD] [--verify CMD] [--auto-agent] [--worktree] [--checkpoint] [--govern [warn|strict]] [--govern-scope workspace|changed|baseline] [--autonomy legacy|guarded-local|guarded-git|guarded-deploy] [--contract FILE] [--execution-context FILE] [--deploy-policy project] [--profile NAME] [--expected-path P] [--action A] [--command-timeout-ms N] [--json]
+
+Stages:
+  intake -> plan -> execute-loop -> verify-review -> proof
+
+guarded-git additionally performs:
+  preflight risk -> local verification/review -> post-diff risk -> candidate proof -> commit -> PR/CI/merge -> final proof
+
+guarded-deploy adds after merge:
+  project allowlist -> staging verify/health -> production verify/health -> rollback/freeze -> final proof
+`);
+    return 0;
+  }
+
+  let prompt = firstPositionalValue(args, new Set([
+    "--workspace",
+    "--contract",
+    "--execution-context",
+    "--state",
+    "--execute",
+    "--verify",
+    "--agent",
+    "--capability",
+    "--priority",
+    "--max-iter",
+    "--command-timeout-ms",
+    "--worktree-root",
+    "--govern",
+    "--govern-scope",
+    "--autonomy",
+    "--deploy-policy",
+    "--profile",
+    "--role",
+    "--reviewer",
+    "--checker",
+    "--expected-path",
+    "--action",
+  ]));
+  let frozenContract: FrozenDeliveryContractV2 | undefined;
+  const contractPath = flagValue(args, "--contract");
+  try {
+    if (contractPath !== undefined) {
+      if ((await stat(contractPath)).size > 128 * 1024) throw new Error("delivery_contract_too_large");
+      frozenContract = freezeDeliveryContract(JSON.parse(await readFile(contractPath, "utf8")));
+      prompt ??= frozenContract.contract.goal;
+    }
+  } catch (error) { return deliverBlocked(args, "invalid_delivery_contract", error instanceof Error ? error.message : String(error)); }
+  if (prompt === undefined) {
+    console.error("osstack: deliver requires a prompt");
+    return 1;
+  }
+  const workspacePath = flagValue(args, "--workspace") ?? process.cwd();
+  const policyGate = await deps.enforceObservePolicyGate(workspacePath);
+  if (policyGate !== undefined) return policyGate;
+  const autonomyResult = DeliverAutonomyMode.safeParse(
+    flagValue(args, "--autonomy") ?? "legacy",
+  );
+  if (!autonomyResult.success) {
+    console.error(
+      "osstack: --autonomy must be legacy, guarded-local, guarded-git, or guarded-deploy",
+    );
+    return 1;
+  }
+  const autonomy = autonomyResult.data;
+  const guardedLocal = autonomy === "guarded-local";
+  const guardedDeploy = autonomy === "guarded-deploy";
+  const guardedGit = autonomy === "guarded-git" || guardedDeploy;
+  const guarded = guardedLocal || guardedGit;
+  if (frozenContract && (!guarded || frozenContract.contract.mode === "scout" || flagValue(args, "--execute") !== undefined))
+    return deliverBlocked(args, "delivery_contract_runtime_unsupported", "V2 requires a guarded implement adapter; scout lacks a proven tool-free executor");
+  if (frozenContract && guardedLocal && frozenContract.contract.requested_completion !== "local_verified")
+    return deliverBlocked(args, "delivery_contract_completion_conflict", "guarded-local only produces a local candidate proof");
+  const deployPolicy = flagValue(args, "--deploy-policy");
+  if (
+    guardedDeploy
+    && deployPolicy !== "project"
+  ) {
+    return deliverBlocked(
+      args,
+      "deploy_policy_required",
+      "guarded-deploy requires --deploy-policy project",
+    );
+  }
+  if (
+    deployPolicy !== undefined
+    && (deployPolicy !== "project" || !guardedDeploy)
+  ) {
+    return deliverBlocked(
+      args,
+      "deploy_policy_invalid",
+      "--deploy-policy project is valid only with --autonomy guarded-deploy",
+    );
+  }
+  let stateFilePath = flagValue(args, "--state") ?? "LOOP-STATE.json";
+  const executeCommand = flagValue(args, "--execute");
+  let agentId = flagValue(args, "--agent");
+  let verifierAgentIds = [
+    ...flagValues(args, "--reviewer"),
+    ...flagValues(args, "--checker"),
+  ];
+  const capability = flagValue(args, "--capability") ?? "code.write";
+  const priority = parsePositiveIntegerFlag(
+    flagValue(args, "--priority"),
+    "--priority",
+  );
+  if (priority instanceof Error) {
+    console.error(`osstack: ${priority.message}`);
+    return 1;
+  }
+  const maxIterations = parsePositiveIntegerFlag(
+    flagValue(args, "--max-iter"),
+    "--max-iter",
+  );
+  if (maxIterations instanceof Error) {
+    console.error(`osstack: ${maxIterations.message}`);
+    return 1;
+  }
+  const commandTimeoutMs = parsePositiveIntegerFlag(
+    flagValue(args, "--command-timeout-ms"),
+    "--command-timeout-ms",
+  );
+  if (commandTimeoutMs instanceof Error) {
+    console.error(`osstack: ${commandTimeoutMs.message}`);
+    return 1;
+  }
+  const effectiveCommandTimeoutMs = commandTimeoutMs
+    ?? (guarded ? GUARDED_LOCAL_COMMAND_TIMEOUT_MS : undefined);
+  const explicitVerifyCommands = flagValues(args, "--verify");
+  const suggestedVerify = await suggestVerifyCommand(
+    workspacePath,
+    { includeYarn: guarded },
+  );
+  let verifyCommands = guarded
+    && explicitVerifyCommands.length === 0
+    && suggestedVerify !== undefined
+    ? [suggestedVerify]
+    : explicitVerifyCommands;
+  let contractPolicy: Awaited<ReturnType<NonNullable<DeliverCommandDeps["deliveryContractPolicy"]>>> | undefined;
+  if (frozenContract) {
+    if (!deps.deliveryContractPolicy) return deliverBlocked(args, "delivery_contract_policy_unavailable", "host policy binding is required");
+    try {
+      contractPolicy = await deps.deliveryContractPolicy(realpathSync(workspacePath));
+      if (!contractPolicy.budget || [contractPolicy.budget.max_builder_iterations, contractPolicy.budget.max_review_rounds, contractPolicy.budget.max_wall_time_ms, contractPolicy.budget.max_no_progress_rounds].some(value => !Number.isSafeInteger(value) || value <= 0)) throw new Error("delivery_contract_budget_invalid");
+      if (explicitVerifyCommands.some(command => !contractPolicy!.verifyCommands.includes(command))) throw new Error("delivery_check_not_registered");
+      verifyCommands = [...new Set(contractPolicy.verifyCommands)];
+      if (contractPolicy.budgetRef !== frozenContract.contract.budget_ref) throw new Error("delivery_contract_budget_ref_mismatch");
+      for (const [flag, allowed] of [["--expected-path", frozenContract.contract.allowed_paths], ["--action", frozenContract.contract.requested_actions]] as const) {
+        const explicit = flagValues(args, flag);
+        if (explicit.length && JSON.stringify([...new Set(explicit)].sort()) !== JSON.stringify([...allowed].sort())) throw new Error(`delivery_contract_cli_conflict:${flag}`);
+      }
+    } catch (error) { return deliverBlocked(args, "delivery_contract_policy_failed", error instanceof Error ? error.message : String(error)); }
+  }
+  if (guarded && verifyCommands.length === 0) {
+    return deliverBlocked(
+      args,
+      "verify_profile_missing",
+      `${autonomy} requires --verify or a detected project test command`,
+    );
+  }
+  if (guarded && !await isGitWorktree(workspacePath)) {
+    return deliverBlocked(
+      args,
+      "git_worktree_required",
+      `${autonomy} requires a Git worktree`,
+    );
+  }
+  const requestedGovernanceMode = parseDeliverGovernanceMode(args);
+  if (requestedGovernanceMode instanceof Error) {
+    console.error(`osstack: ${requestedGovernanceMode.message}`);
+    return 1;
+  }
+  const governanceMode = guarded
+    ? "strict"
+    : requestedGovernanceMode;
+  const governanceScope = parseDeliverGovernanceScope(
+    args,
+    governanceMode,
+  );
+  if (governanceScope instanceof Error) {
+    console.error(`osstack: ${governanceScope.message}`);
+    return 1;
+  }
+  if (
+    governanceScope !== undefined
+    && governanceScope !== "workspace"
+    && deps.captureLoopGovernanceBaseline === undefined
+  ) {
+    console.error(
+      "osstack: changed and baseline governance scopes are unavailable",
+    );
+    return 1;
+  }
+  const governanceBaseline =
+    governanceScope === "baseline" || governanceScope === "changed"
+      ? await deps.captureLoopGovernanceBaseline!(
+          workspacePath,
+          governanceScope === "baseline",
+        )
+      : undefined;
+  const autoAgent = args.includes("--auto-agent");
+  const useWorktree = guardedLocal || args.includes("--worktree");
+  const checkpoint = args.includes("--checkpoint") && !useWorktree
+    ? await deps.createShadowCheckpoint(realpathSync(workspacePath))
+    : undefined;
+  const adapters = guarded || agentId !== undefined || autoAgent
+    ? deps.adapters?.() ?? defaultAdapters()
+    : undefined;
+  const profileRouting = guarded
+    ? await resolveGuardedProfileRouting(
+      args,
+      agentId,
+      verifierAgentIds,
+      adapters!,
+    )
+    : undefined;
+  if (profileRouting instanceof Error) {
+    return deliverBlocked(
+      args,
+      "profile_routing_failed",
+      profileRouting.message,
+    );
+  }
+  if (profileRouting !== undefined) {
+    agentId = profileRouting.agentId;
+    verifierAgentIds = profileRouting.verifierAgentIds;
+  }
+  if (frozenContract) {
+    try { assertDeliveryContractAdmission(frozenContract, { canonicalRepo: realpathSync(workspacePath),
+      baseHead: (await deliveryGit(workspacePath, ["rev-parse", "HEAD"])).trim(), taskId: frozenContract.contract.task_id,
+      goal: prompt, policyDigest: contractPolicy!.policyDigest, reviewPolicyRef: `profile:${profileRouting!.summary.profile_name}`, acceptedCommands: verifyCommands }); }
+    catch (error) { return deliverBlocked(args, "delivery_contract_admission_failed", error instanceof Error ? error.message : String(error)); }
+  }
+  if (guardedGit) {
+    if (deps.startGuardedGit === undefined || profileRouting === undefined) {
+      return deliverBlocked(
+        args,
+        "guarded_git_unavailable",
+        "guarded-git runtime is not configured",
+      );
+    }
+    const taskId = frozenContract?.contract.task_id ?? `task_${randomUUID().slice(0, 8)}`;
+    let guardedResult: GuardedDeliveryResult;
+    try {
+      guardedResult = await deps.startGuardedGit({
+        prompt,
+        workspacePath: realpathSync(workspacePath),
+        taskId,
+        capability,
+        expectedPaths: frozenContract?.contract.allowed_paths ?? flagValues(args, "--expected-path"),
+        requestedActions: frozenContract?.contract.requested_actions ?? (
+          flagValues(args, "--action").length === 0
+            ? [
+                "build",
+                "commit",
+                ...(guardedDeploy
+                  ? ["deploy:production", "deploy:staging"]
+                  : []),
+                "merge",
+                "push",
+                "verify",
+              ]
+            : flagValues(args, "--action")),
+        verifyCommands,
+        commandTimeoutMs: effectiveCommandTimeoutMs!,
+        ...(guardedDeploy
+          ? { deployPolicy: "project" as const }
+          : {}),
+        profileRouting,
+        ...(frozenContract ? { frozenContract } : {}),
+        ...(flagValue(args, "--execution-context") ? { executionContextPath: flagValue(args, "--execution-context")! } : {}),
+      });
+    } catch (error) {
+      return deliverBlocked(
+        args,
+        "guarded_git_failed",
+        error instanceof Error ? error.message : String(error),
+      );
+    }
+    const summary = {
+      autonomy,
+      autonomy_run_id: guardedResult.run.autonomy_run_id,
+      state: guardedResult.run.state,
+      status: guardedResult.status,
+      profile: profileRouting.summary,
+      ...(guardedResult.approval_request === undefined
+        ? {}
+        : { approval_request: guardedResult.approval_request }),
+      ...(guardedResult.reason === undefined
+        ? {}
+        : { reason: guardedResult.reason }),
+      candidate_proof:
+        guardedResult.run.context.candidate_proof ?? null,
+      git_delivery:
+        guardedResult.run.context.git_delivery ?? null,
+      deploy_eligibility:
+        guardedResult.run.context.deploy_eligibility ?? null,
+      deploy_outcome:
+        guardedResult.run.context.deploy_outcome ?? null,
+      deploy_staging:
+        guardedResult.run.context.deploy_staging ?? null,
+      deploy_production:
+        guardedResult.run.context.deploy_production ?? null,
+      production_freeze:
+        guardedResult.run.context.production_freeze ?? null,
+      final_proof: guardedResult.run.context.final_proof ?? null,
+    };
+    if (args.includes("--json")) {
+      console.log(JSON.stringify(summary, null, 2));
+    } else {
+      console.log(`autonomy_run_id=${summary.autonomy_run_id}`);
+      console.log(`state=${summary.state}`);
+      console.log(`status=${summary.status}`);
+    }
+    return guardedResult.status === "completed" ? 0 : 2;
+  }
+  const stages = [
+    "intake",
+    "plan",
+    "execute-loop",
+    "verify-review",
+    "proof",
+  ];
+  let deliveryStateDirectory: string | undefined;
+  if (frozenContract) {
+    if (!deps.createDeliveryStateDirectory) return deliverBlocked(args, "delivery_state_unavailable", "V2 requires private host delivery state");
+    deliveryStateDirectory = await deps.createDeliveryStateDirectory(frozenContract.digest);
+    if (!isAbsolute(deliveryStateDirectory)) throw new Error("delivery_state_absolute_path_required");
+    if (flagValue(args, "--state") === undefined) stateFilePath = join(deliveryStateDirectory, "LOOP-STATE.json");
+  }
+  const task = await enqueueTask({
+    workspacePath: deliveryStateDirectory ?? workspacePath,
+    prompt,
+    capability,
+    ...(frozenContract ? { taskId: frozenContract.contract.task_id } : {}),
+    ...(priority !== undefined ? { priority } : {}),
+    context: {
+      deliver_pipeline: {
+        stages,
+        ...(frozenContract ? { delivery_contract: frozenContract } : {}),
+        suggested_verify: suggestedVerify,
+        verify_commands: verifyCommands,
+        ...(effectiveCommandTimeoutMs !== undefined
+          ? { command_timeout_ms: effectiveCommandTimeoutMs }
+          : {}),
+        auto_agent: autoAgent,
+        ...(guarded
+          ? {
+              autonomy_mode: autonomy,
+              profile_routing: profileRouting?.summary,
+            }
+          : {}),
+      },
+    },
+  });
+  const worktreeRoot = flagValue(args, "--worktree-root");
+  let receiptRef: DeliveryReceiptReferenceV2 | undefined;
+  let candidateWorkspace: string | undefined;
+  let candidateGovernance: DeliverGovernanceEvidence | undefined;
+  const evidenceRoot = deliveryStateDirectory ? join(deliveryStateDirectory, "receipts") : join(workspacePath, ".osstack", "delivery-contracts", "legacy");
+  const contextPath = flagValue(args, "--execution-context");
+  let executionContext: Awaited<ReturnType<NonNullable<DeliverCommandDeps["createExecutionContext"]>>> | undefined;
+  if (contextPath) {
+    if (!deps.createExecutionContext || !adapters) return deliverBlocked(args, "execution_context_unavailable", "host execution context is not configured");
+    executionContext = await deps.createExecutionContext({ adapters, workspacePath: realpathSync(workspacePath), configPath: contextPath,
+      ...(frozenContract ? { contractDigest: frozenContract.digest, contractBrief: frozenContract.brief } : {}) });
+  }
+  const localContract = frozenContract;
+  const verificationFence = localContract ? createDeliveryVerificationFence(localContract) : undefined;
+  const assertSourceUnchanged = localContract ? await createDeliverySourceFence(workspacePath, localContract.contract.base_head) : undefined;
+  const engine = new LoopEngine({
+    workspacePath,
+    stateFilePath,
+    ...(executeCommand !== undefined ? { executeCommand } : {}),
+    ...(agentId !== undefined ? { agentId } : {}),
+    ...(autoAgent ? { autoAgent } : {}),
+    ...(adapters !== undefined ? { adapters: executionContext?.adapters ?? adapters } : {}),
+    ...(verifyCommands.length > 0 ? { verifyCommands } : {}),
+    ...(guardedLocal
+      ? {
+          verifierAgentIds,
+          enforceRoleSeparation: true,
+          ...(profileRouting !== undefined
+            ? { profileRouting: profileRouting.summary }
+            : {}),
+          artifactVerification: { requireGitDiff: true },
+        }
+      : {}),
+    sources: localContract ? [] : ["task_queue"],
+    ...(localContract ? { prepareVerification: verificationFence!.prepare, verificationFence: verificationFence!, inputTasks: [{ ...task.task, prompt: executionContext ? prompt : `${prompt}\n\n${localContract.brief}` }],
+      guardedLocalCandidate: { mode: "artifact_only" as const, inspect: async (input: { workspacePath: string; run: { run_id: string; agent_id: string };
+        verdict: { verify_commands?: import("@osstack/loop").CommandAudit[] | undefined }; reviews: readonly import("@osstack/loop").ReviewArtifact[] }) => {
+        await assertSourceUnchanged!();
+        const currentPolicy = await deps.deliveryContractPolicy!(realpathSync(workspacePath), localContract.contract.base_head);
+        if (currentPolicy.policyDigest !== localContract.contract.policy_digest || currentPolicy.budgetRef !== localContract.contract.budget_ref)
+          throw new Error("delivery_contract_policy_changed");
+        await verificationFence!.assertVerified(input.workspacePath);
+        candidateGovernance = await deps.createLoopGovernanceEvidence("strict", input.workspacePath, governanceScope ?? "workspace", governanceBaseline);
+        if (candidateGovernance.blocking) throw new Error("delivery_candidate_governance_blocked");
+        await verificationFence!.assertVerified(input.workspacePath);
+        const { stageGuardedCandidate } = await import("@osstack/autonomy");
+        const staged = await stageGuardedCandidate({ workspace_path: input.workspacePath, expected_base_commit_sha: localContract.contract.base_head, commands: verifyCommands, hardened: true });
+        assertDeliveryContractPaths(localContract, staged.changed_paths);
+        const candidate = await captureDeliveryCandidate(input.workspacePath, localContract.contract.base_head);
+        const receipt = buildDeliveryVerificationReceipt({ frozen: localContract, runId: input.run.run_id, runKind: "guarded-local", candidate,
+          workspaceStateDigest: await verificationFence!.assertVerified(input.workspacePath), commands: input.verdict.verify_commands ?? [], reviews: input.reviews, builderAgentId: input.run.agent_id,
+          builderIdentity: { ...profileRouting!.summary.builder_identity }, contextReceiptRefs: executionContext?.receiptRefs() ?? [] });
+        const ref = await persistDeliveryHostRecord(evidenceRoot, receipt);
+        await verifyPersistedDeliveryReceipt({ root: evidenceRoot, ref, frozen: localContract, runId: input.run.run_id, workspace: input.workspacePath });
+        await assertSourceUnchanged!();
+        receiptRef = ref; candidateWorkspace = input.workspacePath;
+      } }, lessonDrafts: { enabled: false } } : {}),
+    ...(maxIterations !== undefined ? { maxIterations } : {}),
+    ...(effectiveCommandTimeoutMs !== undefined
+      ? { commandTimeoutMs: effectiveCommandTimeoutMs }
+      : {}),
+    ...(localContract ? { budget: {
+      max_task_iterations: Math.min(contractPolicy!.budget.max_builder_iterations, contractPolicy!.budget.max_review_rounds),
+      max_runtime_ms: contractPolicy!.budget.max_wall_time_ms, no_progress_limit: contractPolicy!.budget.max_no_progress_rounds,
+    }, maxIterations: Math.min(maxIterations ?? 1, contractPolicy!.budget.max_builder_iterations, contractPolicy!.budget.max_review_rounds),
+    commandTimeoutMs: Math.min(effectiveCommandTimeoutMs ?? GUARDED_LOCAL_COMMAND_TIMEOUT_MS, contractPolicy!.budget.max_wall_time_ms) } : {}),
+    ...(useWorktree ? { useWorktree: true } : {}),
+    ...(worktreeRoot !== undefined ? { worktreeRoot } : {}),
+    policyGate: makePolicyGate(workspacePath),
+  });
+  const result = await engine.runOnce();
+  try { await assertSourceUnchanged?.(); } catch {
+    return deliverBlocked(args, "delivery_source_changed", "Original checkout changed during candidate execution; preserve both locations for inspection. No successful completion is claimed.");
+  }
+  const artifactArgs = ensureFlags(
+    args,
+    ["--report", "--scorecard", "--proof"],
+  );
+  const governance = candidateGovernance ?? (governanceMode === undefined
+    ? undefined
+    : await deps.createLoopGovernanceEvidence(
+      governanceMode,
+      workspacePath,
+      governanceScope ?? "workspace",
+      governanceBaseline,
+    ));
+  const events = governance === undefined
+    ? result.events
+    : deps.appendGovernanceVerifyEvent(
+      result.events,
+      result.loop_id,
+      governance,
+    );
+  const probeObservation = await deps.observeLoopProbeEvents(
+    workspacePath,
+    events,
+  );
+  const artifacts = await deps.writeRequestedLoopArtifacts(
+    result.state,
+    workspacePath,
+    artifactArgs,
+    events,
+    governance,
+    deliveryStateDirectory,
+  );
+  const learnedLessons = await deps.learnLessonsFromLoopState(result.state);
+  const contractSucceeded = receiptRef !== undefined && result.state.completed_tasks.length === 1
+    && result.state.completed_tasks.every(completed => completed.outcome === "success") && governance?.blocking !== true && result.budget?.exceeded !== true;
+  const summary = {
+    ...(localContract ? { delivery_contract: { digest: localContract.digest, brief: localContract.brief,
+      achieved_completion: contractSucceeded ? "local_verified" : null, verification_receipt: receiptRef ?? null,
+      candidate_workspace: candidateWorkspace ?? result.completedTasks.find(completed => completed.worktree_path)?.worktree_path ?? null, qualification: "local_host_receipt_only" } } : {}),
+    prompt,
+    stages,
+    suggested_verify: suggestedVerify,
+    verify_commands: verifyCommands,
+    task: task.task,
+    task_path: task.path,
+    loop_id: result.loop_id,
+    json_path: result.jsonPath,
+    markdown_path: result.markdownPath,
+    completed_tasks: result.state.completed_tasks,
+    events,
+    ...(guardedLocal
+      ? {
+          autonomy,
+          profile: profileRouting?.summary,
+        }
+      : {}),
+    ...(probeObservation === undefined
+      ? {}
+      : { probe_observation: probeObservation }),
+    ...(checkpoint !== undefined ? { checkpoint } : {}),
+    ...(artifacts !== undefined ? { artifacts } : {}),
+    ...(governance !== undefined ? { governance } : {}),
+    ...(learnedLessons !== undefined
+      ? { learned_lessons: learnedLessons }
+      : {}),
+    ...(result.state.key_metrics !== undefined
+      ? { metrics: result.state.key_metrics }
+      : {}),
+  };
+  if (args.includes("--json")) {
+    console.log(JSON.stringify(summary, null, 2));
+  } else {
+    console.log(`deliver=${result.loop_id}`);
+    console.log(`task=${task.path}`);
+    if (suggestedVerify !== undefined) {
+      console.log(`suggested_verify=${suggestedVerify}`);
+    }
+    if (governance !== undefined) {
+      console.log(
+        `governance=${governance.status} mode=${governance.mode} blocking=${governance.blocking ? "yes" : "no"}`,
+      );
+    }
+    if (artifacts?.report !== undefined) {
+      console.log(`report=${artifacts.report}`);
+    }
+    if (artifacts?.proof_dir !== undefined) {
+      console.log(`proof=${artifacts.proof_dir}`);
+    }
+  }
+  return (localContract !== undefined && !contractSucceeded) || result.state.completed_tasks.some(
+    (completed) => completed.outcome !== "success",
+  ) || governance?.blocking === true
+    ? 2
+    : 0;
+}
+
+function ensureFlags(args: string[], flags: string[]): string[] {
+  const next = [...args];
+  for (const flag of flags) {
+    if (!next.includes(flag)) next.push(flag);
+  }
+  return next;
+}
+
+export async function suggestVerifyCommand(
+  workspacePath: string,
+  options: { includeYarn?: boolean } = {},
+): Promise<string | undefined> {
+  if (await fileExists(join(workspacePath, "pnpm-lock.yaml"))) {
+    return "pnpm test";
+  }
+  if (
+    await fileExists(join(workspacePath, "bun.lockb"))
+    || await fileExists(join(workspacePath, "bun.lock"))
+  ) {
+    return "bun test";
+  }
+  if (await fileExists(join(workspacePath, "package-lock.json"))) {
+    return "npm test";
+  }
+  if (
+    options.includeYarn === true
+    && await fileExists(join(workspacePath, "yarn.lock"))
+  ) {
+    return "yarn test";
+  }
+  try {
+    const packageJson = JSON.parse(
+      await readFile(join(workspacePath, "package.json"), "utf-8"),
+    ) as unknown;
+    if (
+      isRecord(packageJson)
+      && isRecord(packageJson["scripts"])
+      && typeof packageJson["scripts"]["test"] === "string"
+    ) {
+      return "npm test";
+    }
+  } catch {
+    // No package.json or unreadable package metadata.
+  }
+  return undefined;
+}
+
+async function resolveGuardedProfileRouting(
+  args: string[],
+  agentId: string | undefined,
+  verifierAgentIds: readonly string[],
+  adapters: AgentAdapter[],
+): Promise<LoopProfileRoutingResult | Error> {
+  const resolution = await resolveLoopProfileRouting(
+    args,
+    agentId,
+    verifierAgentIds,
+    { adapters: () => adapters },
+  );
+  return resolution
+    ?? new Error("guarded-local did not resolve an execution profile");
+}
+
+function deliverBlocked(
+  args: string[],
+  code: string,
+  message: string,
+): 2 {
+  if (args.includes("--json")) {
+    console.log(JSON.stringify({
+      error: {
+        code,
+        message,
+      },
+    }, null, 2));
+  } else {
+    console.error(`osstack: [${code}] ${message}`);
+  }
+  return 2;
+}
+
+async function isGitWorktree(workspacePath: string): Promise<boolean> {
+  try {
+    const { stdout } = await execFileAsync(
+      "git",
+      ["-C", workspacePath, "rev-parse", "--is-inside-work-tree"],
+      { timeout: 10_000 },
+    );
+    return stdout.trim() === "true";
+  } catch {
+    return false;
+  }
+}
+
+function parseDeliverGovernanceMode(
+  args: string[],
+): DeliverGovernanceMode | undefined | Error {
+  const index = args.indexOf("--govern");
+  if (index < 0) return undefined;
+  const value = args[index + 1];
+  if (value === undefined || value.startsWith("--")) return "warn";
+  if (value === "warn" || value === "strict") return value;
+  return new Error("--govern must be warn or strict");
+}
+
+function parseDeliverGovernanceScope(
+  args: string[],
+  mode: DeliverGovernanceMode | undefined,
+): DeliverGovernanceScope | undefined | Error {
+  const index = args.indexOf("--govern-scope");
+  if (index < 0) return mode === undefined ? undefined : "workspace";
+  if (mode === undefined) {
+    return new Error("--govern-scope requires --govern");
+  }
+  const value = args[index + 1];
+  if (
+    value === "workspace"
+    || value === "changed"
+    || value === "baseline"
+  ) {
+    return value;
+  }
+  return new Error(
+    "--govern-scope must be workspace, changed, or baseline",
+  );
+}
+
+function parsePositiveIntegerFlag(
+  value: string | undefined,
+  name: string,
+): number | undefined | Error {
+  if (value === undefined) return undefined;
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed < 1) {
+    return new Error(`${name} must be a positive integer`);
+  }
+  return parsed;
+}
+
+function firstPositionalValue(
+  args: string[],
+  flagsWithValues: Set<string>,
+): string | undefined {
+  return positionalValues(args, flagsWithValues)[0];
+}
+
+function positionalValues(
+  args: string[],
+  flagsWithValues: Set<string>,
+): string[] {
+  const values: string[] = [];
+  for (let i = 0; i < args.length; i++) {
+    const arg = args[i]!;
+    if (flagsWithValues.has(arg)) {
+      i++;
+      continue;
+    }
+    if (arg.startsWith("--")) continue;
+    values.push(arg);
+  }
+  return values;
+}
+
+function flagValue(args: string[], name: string): string | undefined {
+  const index = args.indexOf(name);
+  return index >= 0 && index + 1 < args.length
+    ? args[index + 1]
+    : undefined;
+}
+
+function flagValues(args: string[], name: string): string[] {
+  const values: string[] = [];
+  for (let i = 0; i < args.length; i++) {
+    if (args[i] === name && i + 1 < args.length) {
+      values.push(args[i + 1]!);
+      i++;
+    }
+  }
+  return values;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object"
+    && value !== null
+    && !Array.isArray(value);
+}
+
+async function fileExists(path: string): Promise<boolean> {
+  try {
+    await stat(path);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+
+FILE packages/cli/src/delivery-entrypoint.test.ts
+import { execFileSync } from "node:child_process";
+import { createHash } from "node:crypto";
+import { cp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { realpathSync } from "node:fs";
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+import type { AgentAdapter, AgentTask } from "@osstack/agents";
+import {
+  CapabilitySchema,
+  createScratchDir,
+  deliveryCheckReference,
+} from "@osstack/core";
+import type { HermesEvent } from "@osstack/hermes-adapter";
+import { afterEach, expect, it, vi } from "vitest";
+const ports = vi.hoisted(() => ({ adapters: [] as AgentAdapter[] }));
+vi.mock("@osstack/agents", async (original) => ({
+  ...(await original<typeof import("@osstack/agents")>()),
+  defaultAdapters: () => ports.adapters,
+}));
+import { createDeliverCommandDeps, main } from "./bin.js";
+let root: string | undefined;
+let candidate: string | undefined;
+let repo: string | undefined;
+afterEach(async () => {
+  vi.restoreAllMocks();
+  vi.unstubAllEnvs();
+  if (candidate && repo)
+    execFileSync("git", [
+      "-C",
+      repo,
+      "worktree",
+      "remove",
+      "--force",
+      candidate,
+    ]);
+  if (root) await rm(root, { recursive: true, force: true });
+  candidate = undefined;
+  repo = undefined;
+  root = undefined;
+});
+const hash = (value: string | Buffer) =>
+  createHash("sha256").update(value).digest("hex");
+it.each([false,true])("runs the real V2 delivery and rejects source mutation: %s", async (mutateSource) => {
+  root = realpathSync(await createScratchDir("tests", "delivery-entrypoint"));
+  repo = join(root, "repo");
+  await cp(
+    resolve(
+      dirname(fileURLToPath(import.meta.url)),
+      "../../../fixtures/guarded-local",
+    ),
+    repo,
+    { recursive: true },
+  );
+  const home = join(root, "home");
+  await mkdir(home);
+  vi.stubEnv("OSSTACK_HOME", home);
+  vi.stubEnv("OSSTACK_CONFIG", join(home, "absent.yaml"));
+  const git = (...args: string[]) =>
+    execFileSync("git", ["-C", repo!, ...args], {
+      encoding: "utf8",
+      stdio: "pipe",
+    }).trim();
+  git("init", "-b", "main");
+  await mkdir(join(repo, ".osstack"), { recursive: true });
+  await writeFile(
+    join(repo, ".osstack/repo.yaml"),
+    JSON.stringify({
+      schema_version: 2,
+      product: "entrypoint",
+      role: "core_product",
+      default_branch: "main",
+      verify_command: "pnpm test",
+      autonomy: {
+        max_auto_risk: "R2",
+        require_independent_evaluator: true,
+        max_builder_iterations: 1,
+        max_review_rounds: 1,
+        max_wall_time_minutes: 2,
+        max_no_progress_rounds: 1,
+      },
+      git: {
+        remote: "origin",
+        branch_prefix: "codex",
+        merge_strategy: "squash",
+        auto_merge: false,
+        protected_branches: ["main"],
+      },
+      verification: {
+        quick: ["pnpm test"],
+        standard: ["pnpm test"],
+        release: ["pnpm test"],
+      },
+    }),
+  );
+  await writeFile(
+    join(repo, ".osstack/policy.yaml"),
+    JSON.stringify({
+      schema_version: 1,
+      mode: "execute",
+      auto_apply: true,
+      allowed_auto_changes: ["docs", "tests"],
+      requires_approval: ["source"],
+      forbidden: ["secrets"],
+      budgets: { max_iterations: 5, max_runtime_minutes: 45, max_cost_usd: 20 },
+    }),
+  );
+  const pack = JSON.stringify({
+    id: "local/cache",
+    version: "1",
+    name: "Cache",
+    license: "MIT",
+    source_kind: "internal",
+    quality_score: 90,
+    scope: "project",
+    chunks: [
+      { chunk_id: "cache", title: "Cache", body: "Cache isolation reference" },
+    ],
+  });
+  await writeFile(join(repo, "pack.json"), pack);
+  const context = join(repo, "context.json");
+  await writeFile(
+    context,
+    JSON.stringify({
+      schema_version: 1,
+      mode: "local",
+      repo_path: repo,
+      default_tenant: true,
+      packs: [
+        {
+          path: "pack.json",
+          pack_id: "local/cache",
+          version: "1",
+          sha256: hash(pack),
+          scope: "project",
+          verified_at_ms: Date.now() - 1000,
+          expires_at_ms: Date.now() + 120000,
+        },
+      ],
+    }),
+  );
+  git("add", ".");
+  git(
+    "-c",
+    "user.name=Test",
+    "-c",
+    "user.email=test@example.invalid",
+    "commit",
+    "-m",
+    "fixture",
+  );
+  const base = git("rev-parse", "HEAD");
+  const source = await readFile(join(repo, "src/greeting.ts"), "utf8");
+  const policy = await createDeliverCommandDeps().deliveryContractPolicy!(repo);
+  const contract = join(root, "contract.json");
+  await writeFile(
+    contract,
+    JSON.stringify({
+      schema_version: 2,
+      contract_id: "entrypoint",
+      task_id: "entrypoint-task",
+      canonical_repo: repo,
+      mode: "implement",
+      base_head: base,
+      goal: "Improve cache isolation",
+      required_checks: [
+        { id: "tests", registry_ref: deliveryCheckReference("pnpm test") },
+      ],
+      review_policy_ref: "profile:mac-mini",
+      requested_completion: "local_verified",
+      allowed_paths: ["src"],
+      requested_actions: ["build", "verify"],
+      budget_ref: policy.budgetRef,
+      policy_digest: policy.policyDigest,
+      publication_scope: { mode: "none" },
+      merge_authority: { mode: "none" },
+    }),
+  );
+  const prompts = new Map<string, string>();
+  const identity = (id: string) => ({
+    adapter_id: id,
+    adapter_version: "1.0.0",
+    auth_mode: "test",
+    provider_id: id === "claude-code" ? "anthropic" : "kimi",
+    model_id: id === "claude-code" ? "claude-current" : "kimi-code/k3",
+    evidence_source: "reported" as const,
+  });
+  ports.adapters = ["claude-code", "kimi-code"].map((id) => ({
+    id,
+    display_name: id,
+    cost_tier: "mid" as const,
+    capabilities: () => [
+      CapabilitySchema.parse({
+        id: id + ".test",
+        agent_id: id,
+        kind: id === "claude-code" ? "code.write" : "code.review",
+        description: id,
+        cost_tier: "mid",
+      }),
+    ],
+    isAvailable: async () => ({ available: true, last_checked_at: 1 }),
+    runtimeIdentity: async () => identity(id),
+    async *invoke(task: AgentTask): AsyncIterable<HermesEvent> {
+      prompts.set(task.run_id, task.prompt);
+      if (id === "claude-code") {
+        candidate = String(task.context?.["repo_path"]);
+        if (mutateSource) await writeFile(join(repo!, "src/greeting.ts"), "\n// escaped candidate\n", {flag:"a"});
+        await writeFile(
+          join(candidate, "src/greeting.ts"),
+          "\nexport const isolated = true;\n",
+          { flag: "a" },
+        );
+      }
+      yield {
+        event_id: task.run_id + ":1",
+        seq: 1,
+        run_id: task.run_id,
+        session_id: task.session_id,
+        created_at: Date.now() / 1000,
+        terminal: true,
+        type: "done",
+        payload: {
+          status: "completed",
+          last_seq: 0,
+          result_summary: "complete",
+          ...(id === "kimi-code"
+            ? {
+                review: {
+                  schema_version: 1,
+                  verdict: "approved",
+                  risk: "read_only",
+                  markdown: "Approved",
+                  judgments: [],
+                  findings: [],
+                  recommended_actions: [],
+                  evidence_refs: [],
+                  runtime_identity: identity(id),
+                },
+              }
+            : {}),
+        },
+      };
+    },
+  }));
+  const logs: string[] = [];
+  const errors: string[] = [];
+  vi.spyOn(console, "log").mockImplementation((...args) => {
+    logs.push(args.map(String).join(" "));
+  });
+  vi.spyOn(console, "error").mockImplementation((...args) => {
+    errors.push(args.map(String).join(" "));
+  });
+  const code = await main([
+    "deliver",
+    "--workspace",
+    repo,
+    "--profile",
+    "mac-mini",
+    "--autonomy",
+    "guarded-local",
+    "--contract",
+    contract,
+    "--execution-context",
+    context,
+    "--json",
+  ]);
+  if (mutateSource) {
+    expect(code).not.toBe(0);
+    expect(logs.join("\n") + errors.join("\n")).toContain("delivery_source_changed");
+    expect(await readFile(join(repo, "src/greeting.ts"), "utf8")).not.toBe(source);
+    return;
+  }
+  expect(code, logs.join("\n") + errors.join("\n")).toBe(0);
+  const result = JSON.parse(logs.join("\n"));
+  expect(result.delivery_contract.achieved_completion).toBe("local_verified");
+  expect(git("rev-parse", "HEAD")).toBe(base);
+  expect(await readFile(join(repo, "src/greeting.ts"), "utf8")).toBe(source);
+  expect(git("status", "--porcelain")).toBe("");
+  expect(result.json_path.startsWith(join(home, "delivery-contracts"))).toBe(true);
+  expect(result.task_path.startsWith(join(home, "delivery-contracts"))).toBe(true);
+  const receipt = JSON.parse(
+    await readFile(result.delivery_contract.verification_receipt.path, "utf8"),
+  );
+  expect(receipt.context_receipt_refs.length).toBeGreaterThanOrEqual(4);
+  for (const ref of receipt.context_receipt_refs) {
+    const bytes = await readFile(ref.path);
+    expect(hash(bytes)).toBe(ref.digest);
+    expect(ref.path.startsWith(join(home, "execution-context-receipts"))).toBe(
+      true,
+    );
+    const recorded = JSON.parse(bytes.toString());
+    expect(recorded.prompt_sha256).toBe(hash(prompts.get(recorded.run_id)!));
+    expect(recorded.contract_digest).toBe(result.delivery_contract.digest);
+  }
+  expect(
+    [...prompts.values()].some((prompt) =>
+      prompt.includes("Cache isolation reference"),
+    ),
+  ).toBe(true);
+}, 60000);
+
+
+FILE packages/autonomy/src/engine.ts
+import { createHash } from "node:crypto";
+import {
+  AUTONOMY_EMPTY_DIFF_SHA256,
+  FrozenDeliveryContractV2,
+  DeliveryReceiptReferenceV2,
+  AutonomyRiskDecision,
+  type AutonomyRiskPhase,
+  type AutonomyRiskSignal,
+  type AutonomyRunState,
+  ScopedApprovalDecision,
+  ScopedApprovalRequest,
+  validateScopedApprovalDecisionForRequest,
+} from "@osstack/protocol";
+import type {
+  GitHubDeliveryInput,
+  GitHubDeliveryResult,
+} from "@osstack/github";
+import {
+  DeployTargetPolicy as DeployTargetPolicySchema,
+  assertFrozenDeliveryContract,
+  type DeployTargetPolicy,
+} from "@osstack/core";
+import { z } from "zod";
+import {
+  createScopedApprovalRequest,
+  scopedApprovalDigest,
+  verifyScopedApprovalDecision,
+} from "./approval.js";
+import {
+  AttemptProgressSchema,
+  evaluateProgressBudget,
+} from "./progress-budget.js";
+import {
+  classifyPostDiffRisk,
+  classifyPreflightRisk,
+} from "./risk.js";
+import {
+  DeployEligibilityDecisionSchema,
+  RollbackDrillEvidenceSchema,
+  type DeployEligibilityDecision,
+  type DeployEligibilityInput,
+  type RollbackDrillEvidence,
+} from "./deploy-policy.js";
+import {
+  DeployScriptAuthoritySchema,
+  ProjectDeployResultSchema,
+  type DeployScriptAuthority,
+  type ProjectDeployInput,
+  type ProjectDeployResult,
+  type ProjectDeployPhase,
+} from "./deploy-runner.js";
+import {
+  assertAutonomyTransition,
+  type AutonomyTransitionInput,
+} from "./state-machine.js";
+import {
+  AutonomyTaskIntent,
+  DeliveryBudget,
+  PostDiffInput,
+  type AutonomyTaskIntent as AutonomyTaskIntentType,
+  type DeliveryBudget as DeliveryBudgetType,
+  type PostDiffInput as PostDiffInputType,
+} from "./types.js";
+
+const Sha256 = z.string().regex(/^[a-f0-9]{64}$/);
+const GitCommitSha = z.string().regex(/^(?:[a-f0-9]{40}|[a-f0-9]{64})$/);
+export const GitHubDeliveryEvidence = z
+  .object({
+    pushedCommit: GitCommitSha,
+    pr: z
+      .object({
+        number: z.number().int().positive(),
+        url: z.string().url(),
+        reused: z.boolean(),
+      })
+      .strict(),
+    mergeCommit: GitCommitSha,
+    mergedAt: z.string().datetime(),
+  })
+  .strict();
+
+const RuntimeIdentity = z
+  .object({
+    provider_id: z.string().min(1),
+    model_id: z.string().min(1),
+    evidence_source: z.enum(["reported", "configured"]),
+  })
+  .strict();
+export type RuntimeIdentity = z.infer<typeof RuntimeIdentity>;
+
+export const ContractPullRequestEvidence = z.object({ pushedCommit: GitCommitSha,
+  pr: z.object({ number: z.number().int().positive(), url: z.string().url(), reused: z.boolean() }).strict() }).strict();
+export type ContractPullRequestEvidence = z.infer<typeof ContractPullRequestEvidence>;
+
+export const LocalDeliveryResult = z
+  .object({
+    delivery_receipt: DeliveryReceiptReferenceV2.optional(),
+    verification_passed: z.boolean(),
+    review_passed: z.boolean(),
+    post_diff: PostDiffInput,
+    progress: AttemptProgressSchema,
+    telemetry: z
+      .object({
+        reviewer_mutation_count: z.number().int().nonnegative(),
+        unauthorized_action_count: z.number().int().nonnegative(),
+        adapter_unavailable_count: z.number().int().nonnegative(),
+      })
+      .strict()
+      .optional(),
+    builder_identity: RuntimeIdentity,
+    evaluator_identity: RuntimeIdentity,
+  })
+  .strict();
+export type LocalDeliveryResult = z.infer<typeof LocalDeliveryResult>;
+
+export const ProofReference = z
+  .object({
+    manifest_path: z.string().min(1),
+    manifest_sha256: Sha256,
+  })
+  .strict();
+export type ProofReference = z.infer<typeof ProofReference>;
+
+export interface CandidateProofInput {
+  autonomy_run_id: string;
+  intent: AutonomyTaskIntentType;
+  preflight_risk: AutonomyRiskDecision;
+  post_diff_risk: AutonomyRiskDecision;
+  local_result: LocalDeliveryResult;
+  delivery_contract?: FrozenDeliveryContractV2;
+  delivery_receipt?: DeliveryReceiptReferenceV2;
+  approval_request?: ScopedApprovalRequest;
+  approval_decision?: ScopedApprovalDecision;
+}
+
+export interface FinalProofInput extends CandidateProofInput {
+  candidate_proof: ProofReference;
+  git_delivery: GitHubDeliveryResult;
+  deploy_eligibility?: {
+    staging?: DeployEligibilityDecision | undefined;
+    production?: DeployEligibilityDecision | undefined;
+  };
+  deploy_script_authority?: {
+    staging?: DeployScriptAuthority | undefined;
+    production?: DeployScriptAuthority | undefined;
+  };
+  deploy_staging?: ProjectDeployResult | undefined;
+  deploy_production?: ProjectDeployResult | undefined;
+  production_freeze?: ProductionFreezeEvidence | undefined;
+  deploy_outcome?: GuardedDeployOutcome | undefined;
+}
+
+export interface CommitInput {
+  autonomy_run_id: string;
+  workspace_path: string;
+  diff_sha256: string;
+  idempotency_key: string;
+}
+
+export const GuardedDeployPolicySchema = z
+  .object({
+    base_branch: z.string().min(1),
+    staging: DeployTargetPolicySchema.optional(),
+    production: DeployTargetPolicySchema.optional(),
+    rollback_drill: RollbackDrillEvidenceSchema.optional(),
+  })
+  .strict()
+  .superRefine((deploy, context) => {
+    if (
+      deploy.production?.enabled === true
+      && deploy.staging?.enabled !== true
+    ) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["production"],
+        message: "enabled production deployment requires enabled staging",
+      });
+    }
+  });
+export type GuardedDeployPolicy = z.infer<
+  typeof GuardedDeployPolicySchema
+>;
+
+export const ProductionFreezeEvidenceSchema = z
+  .object({
+    repo_id: z.string().min(1),
+    reason: z.string().min(1),
+    source_run_id: z.string().min(1),
+    frozen_at: z.number().finite(),
+  })
+  .strict();
+export type ProductionFreezeEvidence = z.infer<
+  typeof ProductionFreezeEvidenceSchema
+>;
+
+export const GuardedDeployOutcomeSchema = z.enum([
+  "staging_skipped",
+  "staging_healthy",
+  "staging_failed",
+  "production_skipped",
+  "production_healthy",
+  "production_rolled_back",
+  "rollback_failed",
+]);
+export type GuardedDeployOutcome = z.infer<
+  typeof GuardedDeployOutcomeSchema
+>;
+
+const DeployEligibilityEvidenceSchema = z
+  .object({
+    staging: DeployEligibilityDecisionSchema.optional(),
+    production: DeployEligibilityDecisionSchema.optional(),
+  })
+  .strict();
+
+const DeployScriptAuthorityEvidenceSchema = z
+  .object({
+    staging: DeployScriptAuthoritySchema.optional(),
+    production: DeployScriptAuthoritySchema.optional(),
+  })
+  .strict();
+
+export const GuardedDeliveryContextSchema = z
+  .object({
+    delivery_contract: FrozenDeliveryContractV2.optional(),
+    delivery_receipt: DeliveryReceiptReferenceV2.optional(),
+    delivery_completion_receipt: DeliveryReceiptReferenceV2.optional(),
+    achieved_completion: z.enum(["local_verified", "pr_opened", "merged", "deployed"]).optional(),
+    pr_delivery: ContractPullRequestEvidence.optional(),
+    intent: AutonomyTaskIntent.optional(),
+    started_at: z.string().datetime().optional(),
+    routing: z.unknown().optional(),
+    budget: DeliveryBudget.optional(),
+    preflight_risk: AutonomyRiskDecision.optional(),
+    post_diff_risk: AutonomyRiskDecision.optional(),
+    pending_approval_phase: z.enum(["preflight", "post_diff"]).optional(),
+    approval_request: ScopedApprovalRequest.optional(),
+    approval_decision: ScopedApprovalDecision.optional(),
+    local_result: LocalDeliveryResult.optional(),
+    builder_iterations: z.number().int().nonnegative().optional(),
+    review_rounds: z.number().int().nonnegative().optional(),
+    no_progress_rounds: z.number().int().nonnegative().optional(),
+    candidate_proof: ProofReference.optional(),
+    commit: z.object({ commit: GitCommitSha }).strict().optional(),
+    git_delivery: GitHubDeliveryEvidence.optional(),
+    deploy_eligibility: DeployEligibilityEvidenceSchema.optional(),
+    deploy_script_authority:
+      DeployScriptAuthorityEvidenceSchema.optional(),
+    deploy_staging: ProjectDeployResultSchema.optional(),
+    deploy_production: ProjectDeployResultSchema.optional(),
+    production_freeze: ProductionFreezeEvidenceSchema.optional(),
+    deploy_outcome: GuardedDeployOutcomeSchema.optional(),
+    final_proof: ProofReference.optional(),
+    blocked_delivery_resume_state: z.literal("pushing").optional(),
+    failure: z
+      .object({
+        operation: z.string().min(1),
+        message: z.string().min(1),
+      })
+      .strict()
+      .optional(),
+  })
+  .strict();
+export type GuardedDeliveryContext = z.infer<
+  typeof GuardedDeliveryContextSchema
+>;
+
+export interface AutonomyRunProjection {
+  autonomy_run_id: string;
+  state: AutonomyRunState;
+  revision: number;
+  context: GuardedDeliveryContext;
+}
+
+export interface GuardedDeliveryTransitionInput
+  extends AutonomyTransitionInput {
+  context_patch?: Partial<GuardedDeliveryContext>;
+  recovery?: {
+    kind: "restart";
+  };
+}
+
+export interface GuardedDeliveryPorts {
+  now(): Date;
+  load(
+    autonomyRunId: string,
+  ): Promise<AutonomyRunProjection | undefined>;
+  persist(
+    event: GuardedDeliveryTransitionInput,
+  ): Promise<AutonomyRunProjection>;
+  runLocal(input: {
+    workspacePath: string;
+    runId?: string;
+    contract?: FrozenDeliveryContractV2;
+    routing: unknown;
+    budget: DeliveryBudgetType;
+  }): Promise<LocalDeliveryResult>;
+  verifyContractReceipt?: (input: { contract: FrozenDeliveryContractV2; ref: DeliveryReceiptReferenceV2; runId: string; workspacePath: string; expectedHeads: string[] }) => Promise<void>;
+  openPullRequest?: (input: GitHubDeliveryInput, scope: { repository: string; headCommit: string; draft: boolean }) => Promise<ContractPullRequestEvidence>;
+  writeContractCompletionReceipt?: (input: { runId: string; contract: FrozenDeliveryContractV2; verificationReceipt: DeliveryReceiptReferenceV2;
+    candidateProof: ProofReference; achievedCompletion: "local_verified" | "pr_opened"; publication?: ContractPullRequestEvidence }) => Promise<DeliveryReceiptReferenceV2>;
+  writeCandidateProof(input: CandidateProofInput): Promise<ProofReference>;
+  writeFinalProof(input: FinalProofInput): Promise<ProofReference>;
+  commit(input: CommitInput): Promise<{ commit: string }>;
+  deliverGit(input: GitHubDeliveryInput): Promise<GitHubDeliveryResult>;
+  prepareMergedWorkspace?: (input: {
+    workspace_path: string;
+    remote: string;
+    base: string;
+    expected_merge_commit_sha: string;
+  }) => Promise<void>;
+  resolveDeployScriptAuthority?: (input: {
+    workspace_path: string;
+    policy: DeployTargetPolicy;
+  }) => Promise<DeployScriptAuthority>;
+  evaluateDeploy?: (
+    policy: DeployTargetPolicy,
+    input: DeployEligibilityInput,
+  ) => DeployEligibilityDecision;
+  deploy?: (input: ProjectDeployInput) => Promise<ProjectDeployResult>;
+  isProductionFrozen?: (repoId: string) => Promise<boolean>;
+  freezeProduction?: (input: {
+    repo_id: string;
+    reason: string;
+    source_run_id: string;
+    frozen_at: number;
+  }) => Promise<ProductionFreezeEvidence>;
+}
+
+export interface GuardedDeliveryPolicy {
+  delivery_contract?: FrozenDeliveryContractV2;
+  policy_sha256: string;
+  max_auto_risk?: "R1" | "R2";
+  protected_policy_paths: readonly string[];
+  routing: unknown;
+  budget: DeliveryBudgetType;
+  approval_ttl_ms: number;
+  trusted_approval_public_keys: ReadonlyMap<string, string>;
+  consume_approval_nonce(nonce: string): boolean;
+  deploy?: GuardedDeployPolicy;
+  git: {
+    remote: string;
+    base: string;
+    branch: string;
+    title: string;
+    body_file: string;
+    ci_timeout_ms: number;
+  };
+}
+
+export interface GuardedDeliveryResult {
+  status: "completed" | "needs_approval" | "blocked";
+  run: AutonomyRunProjection;
+  approval_request?: ScopedApprovalRequest;
+  reason?: string;
+}
+
+interface AttemptState {
+  builderIterations: number;
+  reviewRounds: number;
+  noProgressRounds: number;
+  previous?: LocalDeliveryResult["progress"];
+}
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+function stagedDiffSha256(postDiff: PostDiffInputType): string {
+  return createHash("sha256")
+    .update(postDiff.staged_diff_binary)
+    .digest("hex");
+}
+
+function approvalNonce(
+  autonomyRunId: string,
+  phase: AutonomyRiskPhase,
+  scopeSha256: string,
+): string {
+  return createHash("sha256")
+    .update(`${autonomyRunId}\0${phase}\0${scopeSha256}`)
+    .digest("base64url");
+}
+
+function hasIndependentReportedEvaluator(
+  result: LocalDeliveryResult,
+): boolean {
+  const builder = result.builder_identity;
+  const evaluator = result.evaluator_identity;
+  return (
+    builder.evidence_source === "reported"
+    && evaluator.evidence_source === "reported"
+    && (
+      builder.provider_id !== evaluator.provider_id
+      || builder.model_id !== evaluator.model_id
+    )
+  );
+}
+
+function requiresIndependentEvaluator(
+  ...decisions: Array<AutonomyRiskDecision | undefined>
+): boolean {
+  return decisions.some(
+    (decision) =>
+      decision?.level === "R2"
+      || decision?.level === "R3",
+  );
+}
+
+function riskSignalKey(signal: AutonomyRiskSignal): string {
+  return [
+    signal.rule_id,
+    signal.path ?? "",
+    signal.command ?? "",
+    signal.level,
+    signal.message,
+  ].join("\u0000");
+}
+
+function carryPreflightR3IntoPostDiff(
+  preflight: AutonomyRiskDecision,
+  postDiff: AutonomyRiskDecision,
+): AutonomyRiskDecision {
+  if (
+    preflight.level !== "R3"
+    || postDiff.level === "R3"
+    || postDiff.level === "R4"
+  ) {
+    return postDiff;
+  }
+  const carrySignal: AutonomyRiskSignal = {
+    rule_id: "risk.preflight-r3-carry-forward",
+    level: "R3",
+    message:
+      "preflight R3 authority requires a diff-bound post-diff approval",
+  };
+  return AutonomyRiskDecision.parse({
+    ...postDiff,
+    level: "R3",
+    signals: [...postDiff.signals, carrySignal].sort((left, right) => {
+      const leftKey = riskSignalKey(left);
+      const rightKey = riskSignalKey(right);
+      return leftKey < rightKey ? -1 : leftKey > rightKey ? 1 : 0;
+    }),
+  });
+}
+
+export class GuardedDeliveryEngine {
+  private readonly policy: GuardedDeliveryPolicy;
+  private readonly ports: GuardedDeliveryPorts;
+
+  constructor(
+    policy: GuardedDeliveryPolicy,
+    ports: GuardedDeliveryPorts,
+  ) {
+    this.policy = {
+      ...policy,
+      policy_sha256: Sha256.parse(policy.policy_sha256),
+      max_auto_risk: policy.max_auto_risk ?? "R2",
+      budget: DeliveryBudget.parse(policy.budget),
+      ...(policy.deploy === undefined
+        ? {}
+        : { deploy: GuardedDeployPolicySchema.parse(policy.deploy) }),
+    };
+    if (
+      !Number.isInteger(policy.approval_ttl_ms)
+      || policy.approval_ttl_ms < 1_000
+      || policy.approval_ttl_ms > 86_400_000
+    ) {
+      throw new Error("approval_ttl_ms must be between 1000 and 86400000");
+    }
+    if (
+      policy.deploy !== undefined
+      && policy.deploy.base_branch !== policy.git.base
+    ) {
+      throw new Error(
+        "deploy base_branch must match the guarded Git merge base",
+      );
+    }
+    this.ports = ports;
+  }
+
+  async start(intentValue: AutonomyTaskIntentType): Promise<GuardedDeliveryResult> {
+    const intent = AutonomyTaskIntent.parse(intentValue);
+    const contract = this.policy.delivery_contract === undefined ? undefined : assertFrozenDeliveryContract(this.policy.delivery_contract);
+    if (contract && (contract.digest !== intent.contract_sha256 || contract.contract.policy_digest !== this.policy.policy_sha256
+      || contract.contract.canonical_repo !== intent.workspace_path || contract.contract.task_id !== intent.task_id || contract.contract.goal !== intent.goal
+      || contract.contract.mode !== "implement" || contract.contract.requested_completion === "deployed" && this.policy.deploy === undefined))
+      throw new Error("delivery_contract_intent_mismatch");
+    const startedAt = this.ports.now().toISOString();
+    let run: AutonomyRunProjection = {
+      autonomy_run_id: intent.autonomy_run_id,
+      state: "queued",
+      revision: 0,
+      context: {
+        intent,
+        ...(contract ? { delivery_contract: contract } : {}),
+        started_at: startedAt,
+        routing: this.policy.routing,
+        budget: this.policy.budget,
+        builder_iterations: 0,
+        review_rounds: 0,
+        no_progress_rounds: 0,
+      },
+    };
+    run = await this.transition(run, "classifying", {
+      context_patch: run.context,
+    });
+
+    const risk = classifyPreflightRisk(intent, {
+      policy_sha256: this.policy.policy_sha256,
+      now: () => this.ports.now().toISOString(),
+      repo_id: intent.repo_id,
+      protected_policy_paths: this.policy.protected_policy_paths,
+    });
+    if (risk.level === "R0" && !contract) {
+      run = await this.transition(run, "completed", {
+        risk_level: risk.level,
+        risk_phase: "preflight",
+        context_patch: { preflight_risk: risk },
+      });
+      return { status: "completed", run };
+    }
+    if (risk.level === "R4") {
+      run = await this.transition(run, "blocked", {
+        risk_level: risk.level,
+        risk_phase: "preflight",
+        context_patch: { preflight_risk: risk },
+      });
+      return {
+        status: "blocked",
+        run,
+        reason: "R4 policy denial is permanent and cannot be approved",
+      };
+    }
+    if (risk.level === "R3") {
+      return await this.waitForApproval(run, risk, "preflight");
+    }
+    if (
+      risk.level === "R2"
+      && this.policy.max_auto_risk === "R1"
+    ) {
+      return await this.escalate(
+        run,
+        "R2 exceeds repository max_auto_risk R1",
+        { preflight_risk: risk },
+      );
+    }
+
+    run = await this.transition(run, "preparing", {
+      risk_level: risk.level,
+      risk_phase: "preflight",
+      context_patch: { preflight_risk: risk },
+    });
+    return await this.runLocalAndClassify(run);
+  }
+
+  async resume(
+    autonomyRunId: string,
+    decision?: ScopedApprovalDecision,
+  ): Promise<GuardedDeliveryResult> {
+    const loaded = await this.ports.load(autonomyRunId);
+    if (loaded === undefined) {
+      throw new Error(`autonomy run ${autonomyRunId} was not found`);
+    }
+    if (Boolean(loaded.context.delivery_contract) !== Boolean(this.policy.delivery_contract)) throw new Error("delivery_contract_resume_mismatch");
+    if (loaded.context.delivery_contract) {
+      const contract = assertFrozenDeliveryContract(loaded.context.delivery_contract);
+      if (contract.digest !== loaded.context.intent?.contract_sha256 || contract.contract.policy_digest !== this.policy.policy_sha256
+        || !this.policy.delivery_contract || assertFrozenDeliveryContract(this.policy.delivery_contract).digest !== contract.digest)
+        throw new Error("delivery_contract_resume_mismatch");
+    }
+    if (loaded.state === "completed") {
+      return { status: "completed", run: loaded };
+    }
+    if (loaded.state === "awaiting_approval") {
+      if (decision === undefined) {
+        return {
+          status: "needs_approval",
+          run: loaded,
+          ...(loaded.context.approval_request === undefined
+            ? {}
+            : { approval_request: loaded.context.approval_request }),
+        };
+      }
+      return await this.resumeApproval(loaded, decision);
+    }
+    if (loaded.state === "blocked_delivery") {
+      if (loaded.context.blocked_delivery_resume_state !== "pushing") {
+        return await this.escalate(
+          loaded,
+          "blocked delivery is missing its persisted resume state",
+        );
+      }
+      const run = await this.transition(loaded, "pushing", {
+        blocked_delivery_resume_state: "pushing",
+      });
+      return await this.deliverGitAndFinalize(run);
+    }
+    if (loaded.state === "final_proof" && loaded.context.delivery_contract
+      && ["local_verified", "pr_opened"].includes(loaded.context.delivery_contract.contract.requested_completion)) return await this.completeLimitedContract(loaded);
+    if (loaded.state === "opening_pr" && loaded.context.pr_delivery) return await this.completeLimitedContract(loaded);
+    if (loaded.state === "candidate_proof") {
+      return await this.writeCandidateAndDeliver(loaded);
+    }
+    if (loaded.state === "committing") {
+      return await this.commitAndDeliver(loaded);
+    }
+    if (loaded.state === "pushing") {
+      return await this.deliverGitAndFinalize(loaded);
+    }
+    if (
+      loaded.state === "opening_pr"
+      || loaded.state === "waiting_ci"
+      || loaded.state === "merging"
+    ) {
+      return await this.continuePersistedGitDelivery(loaded);
+    }
+    if (
+      loaded.state === "deploying_staging"
+      || loaded.state === "verifying_staging"
+      || loaded.state === "deploying_production"
+      || loaded.state === "health_checking"
+      || loaded.state === "rolling_back"
+    ) {
+      return await this.recoverDeployState(loaded);
+    }
+    if (loaded.state === "deploy_frozen") {
+      const finalProof = await this.transition(loaded, "final_proof");
+      return await this.writeFinalAndComplete(finalProof);
+    }
+    if (loaded.state === "final_proof") {
+      return await this.writeFinalAndComplete(loaded);
+    }
+    if (loaded.state === "preparing") {
+      return await this.runLocalAndClassify(loaded);
+    }
+    if (
+      loaded.state === "blocked"
+      || loaded.state === "delivery_evidence_failed"
+      || loaded.state === "escalated"
+      || loaded.state === "cancelled"
+    ) {
+      return {
+        status: "blocked",
+        run: loaded,
+        reason: `autonomy run is terminal in ${loaded.state}`,
+      };
+    }
+    return await this.escalateRecoveredState(loaded);
+  }
+
+  private async resumeApproval(
+    run: AutonomyRunProjection,
+    decision: ScopedApprovalDecision,
+  ): Promise<GuardedDeliveryResult> {
+    const request = run.context.approval_request;
+    const intent = this.requireIntent(run);
+    if (request === undefined) {
+      return await this.escalate(
+        run,
+        "awaiting_approval has no persisted approval request",
+      );
+    }
+    const localResult = run.context.local_result;
+    const currentDiffSha256 =
+      request.phase === "preflight"
+        ? AUTONOMY_EMPTY_DIFF_SHA256
+        : localResult === undefined
+          ? undefined
+          : stagedDiffSha256(localResult.post_diff);
+    if (currentDiffSha256 === undefined) {
+      return await this.escalate(
+        run,
+        "post-diff approval has no authoritative staged diff",
+      );
+    }
+    const verified = verifyScopedApprovalDecision(request, decision, {
+      expected: {
+        autonomy_run_id: run.autonomy_run_id,
+        phase: request.phase,
+        contract_sha256: intent.contract_sha256,
+        diff_sha256: currentDiffSha256,
+        action_scope: this.approvalActionScope(request.phase, run),
+      },
+      trusted_public_keys: this.policy.trusted_approval_public_keys,
+      now: () => this.ports.now().toISOString(),
+      consume_nonce: this.policy.consume_approval_nonce,
+    });
+    if (verified.decision.payload.decision === "reject") {
+      const cancelled = await this.transition(run, "cancelled", {
+        context_patch: { approval_decision: decision },
+      });
+      return {
+        status: "blocked",
+        run: cancelled,
+        reason: "Owner rejected the scoped approval request",
+      };
+    }
+
+    const destination =
+      request.phase === "preflight" ? "preparing" : "candidate_proof";
+    const resumed = await this.transition(run, destination, {
+      verified_approval: verified,
+      pending_approval_phase: request.phase,
+      context_patch: {
+        approval_decision: decision,
+        pending_approval_phase: request.phase,
+      },
+    });
+    return request.phase === "preflight"
+      ? await this.runLocalAndClassify(resumed)
+      : await this.writeCandidateAndDeliver(resumed);
+  }
+
+  private async runLocalAndClassify(
+    initial: AutonomyRunProjection,
+  ): Promise<GuardedDeliveryResult> {
+    const intent = this.requireIntent(initial);
+    const preflightRisk = this.requirePreflightRisk(initial);
+    const budget = DeliveryBudget.parse(
+      initial.context.budget ?? this.policy.budget,
+    );
+    const attempts: AttemptState = {
+      builderIterations: initial.context.builder_iterations ?? 0,
+      reviewRounds: initial.context.review_rounds ?? 0,
+      noProgressRounds: initial.context.no_progress_rounds ?? 0,
+      ...(initial.context.local_result === undefined
+        ? {}
+        : { previous: initial.context.local_result.progress }),
+    };
+    let run = initial;
+
+    while (true) {
+      if (run.state === "preparing" || run.state === "repairing") {
+        run = await this.transition(run, "building");
+      }
+      if (run.state !== "building") {
+        return await this.escalate(
+          run,
+          `cannot invoke local delivery from recovered state ${run.state}`,
+        );
+      }
+
+      let localResult: LocalDeliveryResult;
+      try {
+        localResult = LocalDeliveryResult.parse(
+          await this.ports.runLocal({
+            workspacePath: intent.workspace_path,
+            ...(run.context.delivery_contract ? { runId: run.autonomy_run_id, contract: run.context.delivery_contract } : {}),
+            routing: run.context.routing ?? this.policy.routing,
+            budget,
+          }),
+        );
+      } catch (error) {
+        return await this.escalate(
+          run,
+          `local delivery port failed: ${errorMessage(error)}`,
+        );
+      }
+      if (run.context.delivery_contract && localResult.verification_passed && localResult.review_passed) {
+        try { await this.verifyContract(run, localResult.delivery_receipt); }
+        catch (error) { return await this.escalate(run, `contract receipt rejected: ${errorMessage(error)}`); }
+      }
+      attempts.builderIterations += 1;
+      run = await this.transition(run, "verifying", {
+        context_patch: {
+          local_result: localResult,
+          ...(localResult.delivery_receipt ? { delivery_receipt: localResult.delivery_receipt } : {}),
+          builder_iterations: attempts.builderIterations,
+        },
+      });
+
+      if (!localResult.verification_passed) {
+        run = await this.transition(run, "repairing");
+      } else {
+        attempts.reviewRounds += 1;
+        run = await this.transition(run, "reviewing", {
+          context_patch: { review_rounds: attempts.reviewRounds },
+        });
+        if (
+          requiresIndependentEvaluator(preflightRisk)
+          && !hasIndependentReportedEvaluator(localResult)
+        ) {
+          return await this.escalate(
+            run,
+            "R2/R3 requires an independent evaluator with reported provider-or-model evidence",
+          );
+        }
+        if (localResult.review_passed) {
+          return await this.postClassify(run, localResult);
+        }
+        run = await this.transition(run, "repairing");
+      }
+
+      const elapsed = Math.max(
+        0,
+        this.ports.now().getTime()
+          - Date.parse(run.context.started_at ?? this.ports.now().toISOString()),
+      );
+      const progress = evaluateProgressBudget({
+        budget,
+        builder_iterations: attempts.builderIterations,
+        review_rounds: attempts.reviewRounds,
+        elapsed_ms: elapsed,
+        prior_no_progress_rounds: attempts.noProgressRounds,
+        ...(attempts.previous === undefined
+          ? {}
+          : { previous: attempts.previous }),
+        current: localResult.progress,
+      });
+      attempts.noProgressRounds = progress.no_progress_rounds;
+      attempts.previous = localResult.progress;
+      if (progress.exhausted) {
+        return await this.escalate(
+          run,
+          progress.reasons.join("; "),
+          { no_progress_rounds: attempts.noProgressRounds },
+        );
+      }
+      run = await this.transition(run, "building", {
+        context_patch: {
+          no_progress_rounds: attempts.noProgressRounds,
+        },
+      });
+    }
+  }
+
+  private async postClassify(
+    reviewing: AutonomyRunProjection,
+    localResult: LocalDeliveryResult,
+  ): Promise<GuardedDeliveryResult> {
+    const intent = this.requireIntent(reviewing);
+    let run = await this.transition(reviewing, "post_classifying");
+    const risk = carryPreflightR3IntoPostDiff(
+      this.requirePreflightRisk(reviewing),
+      classifyPostDiffRisk(localResult.post_diff, {
+        policy_sha256: this.policy.policy_sha256,
+        now: () => this.ports.now().toISOString(),
+        repo_id: intent.repo_id,
+        protected_policy_paths: this.policy.protected_policy_paths,
+      }),
+    );
+    if (
+      requiresIndependentEvaluator(risk)
+      && !hasIndependentReportedEvaluator(localResult)
+    ) {
+      return await this.escalate(
+        run,
+        "post-diff R2/R3 requires an independent evaluator with reported provider-or-model evidence",
+        { post_diff_risk: risk },
+      );
+    }
+    if (risk.level === "R4") {
+      run = await this.transition(run, "blocked", {
+        risk_level: risk.level,
+        risk_phase: "post_diff",
+        context_patch: { post_diff_risk: risk },
+      });
+      return {
+        status: "blocked",
+        run,
+        reason: "post-diff R4 policy denial is permanent",
+      };
+    }
+    if (risk.level === "R3") {
+      return await this.waitForApproval(run, risk, "post_diff");
+    }
+    if (
+      risk.level === "R2"
+      && this.policy.max_auto_risk === "R1"
+    ) {
+      return await this.escalate(
+        run,
+        "post-diff R2 exceeds repository max_auto_risk R1",
+        { post_diff_risk: risk },
+      );
+    }
+    run = await this.transition(run, "candidate_proof", {
+      risk_level: risk.level,
+      risk_phase: "post_diff",
+      context_patch: { post_diff_risk: risk },
+    });
+    return await this.writeCandidateAndDeliver(run);
+  }
+
+  private async waitForApproval(
+    run: AutonomyRunProjection,
+    risk: AutonomyRiskDecision,
+    phase: AutonomyRiskPhase,
+  ): Promise<GuardedDeliveryResult> {
+    const intent = this.requireIntent(run);
+    const now = this.ports.now();
+    const diffSha256 =
+      phase === "preflight"
+        ? AUTONOMY_EMPTY_DIFF_SHA256
+        : stagedDiffSha256(this.requireLocalResult(run).post_diff);
+    const actionScope = this.approvalActionScope(phase, run);
+    const request = createScopedApprovalRequest({
+      approval_id: `approval:${run.autonomy_run_id}:${phase}:${risk.input_sha256.slice(0, 16)}`,
+      autonomy_run_id: run.autonomy_run_id,
+      phase,
+      contract_sha256: intent.contract_sha256,
+      diff_sha256: diffSha256,
+      action_scope: actionScope,
+      risk: "R3",
+      nonce: approvalNonce(run.autonomy_run_id, phase, diffSha256),
+      requested_at: now.toISOString(),
+      expires_at: new Date(
+        now.getTime() + this.policy.approval_ttl_ms,
+      ).toISOString(),
+    });
+    const waiting = await this.transition(run, "awaiting_approval", {
+      risk_level: risk.level,
+      risk_phase: phase,
+      context_patch: {
+        ...(phase === "preflight"
+          ? { preflight_risk: risk }
+          : { post_diff_risk: risk }),
+        pending_approval_phase: phase,
+        approval_request: request,
+      },
+    });
+    return {
+      status: "needs_approval",
+      run: waiting,
+      approval_request: request,
+    };
+  }
+
+  private async writeCandidateAndDeliver(
+    run: AutonomyRunProjection,
+  ): Promise<GuardedDeliveryResult> {
+    let candidate: ProofReference;
+    try {
+      await this.verifyContract(run, run.context.delivery_receipt);
+      candidate = ProofReference.parse(
+        await this.ports.writeCandidateProof(
+          this.candidateProofInput(run),
+        ),
+      );
+    } catch (error) {
+      const failed = await this.transition(
+        run,
+        "delivery_evidence_failed",
+        {
+          context_patch: {
+            failure: {
+              operation: "candidate_proof",
+              message: errorMessage(error),
+            },
+          },
+        },
+      );
+      return {
+        status: "blocked",
+        run: failed,
+        reason: "candidate proof failed; commit and Git delivery were not invoked",
+      };
+    }
+    if (run.context.delivery_contract?.contract.requested_completion === "local_verified") {
+      const final = await this.transition(run, "final_proof", { context_patch: { candidate_proof: candidate } });
+      return await this.completeLimitedContract(final);
+    }
+    const committing = await this.transition(run, "committing", {
+      context_patch: { candidate_proof: candidate },
+    });
+    return await this.commitAndDeliver(committing);
+  }
+
+  private async commitAndDeliver(
+    run: AutonomyRunProjection,
+  ): Promise<GuardedDeliveryResult> {
+    const intent = this.requireIntent(run);
+    const localResult = this.requireLocalResult(run);
+    const diffSha256 = stagedDiffSha256(localResult.post_diff);
+    let commit: { commit: string };
+    try {
+      await this.verifyContract(run, run.context.delivery_receipt);
+      this.assertPostDiffActionAuthorized(run, "commit");
+      commit = await this.ports.commit({
+        autonomy_run_id: run.autonomy_run_id,
+        workspace_path: intent.workspace_path,
+        diff_sha256: diffSha256,
+        idempotency_key:
+          `${run.autonomy_run_id}:commit:${diffSha256}`,
+      });
+      GitCommitSha.parse(commit.commit);
+    } catch (error) {
+      return await this.escalate(
+        run,
+        `commit failed: ${errorMessage(error)}`,
+      );
+    }
+    const pushing = await this.transition(run, "pushing", {
+      context_patch: { commit },
+    });
+    return await this.deliverGitAndFinalize(pushing);
+  }
+
+  private async deliverGitAndFinalize(
+    run: AutonomyRunProjection,
+  ): Promise<GuardedDeliveryResult> {
+    const intent = this.requireIntent(run);
+    const commit = run.context.commit;
+    if (commit === undefined) {
+      return await this.escalate(
+        run,
+        "Git delivery has no persisted candidate commit",
+      );
+    }
+    try {
+      await this.verifyContract(run, run.context.delivery_receipt);
+      this.assertPostDiffActionAuthorized(run, "push");
+      if (run.context.delivery_contract) this.assertPostDiffActionAuthorized(run, "open_pr");
+      if (run.context.delivery_contract?.contract.requested_completion !== "pr_opened") this.assertPostDiffActionAuthorized(run, "merge");
+    } catch (error) {
+      return await this.escalate(
+        run,
+        `Git delivery scope check failed: ${errorMessage(error)}`,
+      );
+    }
+    if (run.context.delivery_contract?.contract.requested_completion === "pr_opened") {
+      const contract = run.context.delivery_contract;
+      const scope = contract.contract.publication_scope;
+      try {
+        if (!this.ports.openPullRequest || scope.mode === "none" || scope.mode === "push") throw new Error("contract_pr_port_unavailable");
+        this.assertPostDiffActionAuthorized(run, "open_pr");
+        const publication = ContractPullRequestEvidence.parse(await this.ports.openPullRequest({
+          workspacePath: intent.workspace_path, remote: this.policy.git.remote, base: this.policy.git.base,
+          branch: this.policy.git.branch, title: this.policy.git.title, bodyFile: this.policy.git.body_file,
+          mergeStrategy: "squash", ciTimeoutMs: this.policy.git.ci_timeout_ms,
+        }, { repository: scope.repository, headCommit: commit.commit, draft: scope.mode === "draft_pr" }));
+        if (publication.pushedCommit !== commit.commit) throw new Error("contract_publication_head_mismatch");
+        const opened = await this.transition(run, "opening_pr", { context_patch: { pr_delivery: publication } });
+        return await this.completeLimitedContract(opened);
+      } catch (error) {
+        const blocked = await this.transition(run, "blocked_delivery", { context_patch: { blocked_delivery_resume_state: "pushing",
+          failure: { operation: "contract_pr_publication", message: errorMessage(error) } } });
+        return { status: "blocked", run: blocked, reason: "PR publication unconfirmed; reconcile this persisted run before retry" };
+      }
+    }
+    let gitDelivery: GitHubDeliveryResult;
+    try {
+      gitDelivery = GitHubDeliveryEvidence.parse(
+        await this.ports.deliverGit({
+          workspacePath: intent.workspace_path,
+          remote: this.policy.git.remote,
+          base: this.policy.git.base,
+          branch: this.policy.git.branch,
+          title: this.policy.git.title,
+          bodyFile: this.policy.git.body_file,
+          mergeStrategy: "squash",
+          ciTimeoutMs: this.policy.git.ci_timeout_ms,
+        }),
+      );
+    } catch (error) {
+      const blocked = await this.transition(run, "blocked_delivery", {
+        context_patch: {
+          blocked_delivery_resume_state: "pushing",
+          failure: {
+            operation: "git_delivery",
+            message: errorMessage(error),
+          },
+        },
+      });
+      return {
+        status: "blocked",
+        run: blocked,
+        reason: "Git delivery is retryable from the persisted pushing state",
+      };
+    }
+
+    let next = await this.transition(run, "opening_pr", {
+      context_patch: { git_delivery: gitDelivery },
+    });
+    next = await this.transition(next, "waiting_ci");
+    next = await this.transition(next, "merging");
+    return await this.deployAfterMerge(next);
+  }
+
+  private async continuePersistedGitDelivery(
+    initial: AutonomyRunProjection,
+  ): Promise<GuardedDeliveryResult> {
+    if (initial.context.git_delivery === undefined) {
+      return await this.escalate(
+        initial,
+        `recovered ${initial.state} state has no persisted Git delivery evidence`,
+      );
+    }
+    GitHubDeliveryEvidence.parse(initial.context.git_delivery);
+    let run = initial;
+    if (run.state === "opening_pr") {
+      run = await this.transition(run, "waiting_ci");
+    }
+    if (run.state === "waiting_ci") {
+      run = await this.transition(run, "merging");
+    }
+    if (run.state === "merging") {
+      return await this.deployAfterMerge(run);
+    }
+    return await this.writeFinalAndComplete(run);
+  }
+
+  private async deployAfterMerge(
+    run: AutonomyRunProjection,
+  ): Promise<GuardedDeliveryResult> {
+    if (run.context.delivery_contract?.contract.requested_completion === "merged") {
+      const final = await this.transition(run, "final_proof");
+      return await this.writeFinalAndComplete(final);
+    }
+    const stagingPolicy = this.policy.deploy?.staging;
+    if (stagingPolicy === undefined) {
+      const finalProof = await this.transition(run, "final_proof");
+      return await this.writeFinalAndComplete(finalProof);
+    }
+    const intent = this.requireIntent(run);
+    const gitDelivery = run.context.git_delivery;
+    if (
+      gitDelivery === undefined
+      || this.ports.prepareMergedWorkspace === undefined
+    ) {
+      return await this.finalizeSkippedDeploy(
+        run,
+        "staging",
+        "post-merge workspace verification is not configured",
+      );
+    }
+    try {
+      await this.ports.prepareMergedWorkspace({
+        workspace_path: intent.workspace_path,
+        remote: this.policy.git.remote,
+        base: this.policy.git.base,
+        expected_merge_commit_sha: gitDelivery.mergeCommit,
+      });
+    } catch (error) {
+      return await this.finalizeSkippedDeploy(
+        run,
+        "staging",
+        `post-merge workspace verification failed: ${errorMessage(error)}`,
+      );
+    }
+
+    let prepared: {
+      authority: DeployScriptAuthority;
+      decision: DeployEligibilityDecision;
+    };
+    try {
+      prepared = await this.prepareDeployTarget(
+        run,
+        "staging",
+        stagingPolicy,
+      );
+    } catch (error) {
+      return await this.finalizeSkippedDeploy(
+        run,
+        "staging",
+        `staging deploy eligibility failed: ${errorMessage(error)}`,
+      );
+    }
+    const contextPatch: Partial<GuardedDeliveryContext> = {
+      deploy_eligibility: {
+        ...(run.context.deploy_eligibility ?? {}),
+        staging: prepared.decision,
+      },
+      deploy_script_authority: {
+        ...(run.context.deploy_script_authority ?? {}),
+        staging: prepared.authority,
+      },
+    };
+    if (!prepared.decision.allowed) {
+      const finalProof = await this.transition(run, "final_proof", {
+        context_patch: {
+          ...contextPatch,
+          deploy_outcome: "staging_skipped",
+        },
+      });
+      return await this.writeFinalAndComplete(finalProof);
+    }
+
+    let current = await this.transition(run, "deploying_staging", {
+      context_patch: contextPatch,
+    });
+    let result: ProjectDeployResult;
+    try {
+      result = ProjectDeployResultSchema.parse(
+        await this.requireDeployPort()({
+          target: "staging",
+          workspace_path: this.requireIntent(current).workspace_path,
+          policy: stagingPolicy,
+          expected_script_digest_sha256:
+            prepared.authority.digest_sha256,
+          before_phase: async (phase) => {
+            if (
+              phase === "verify"
+              && current.state === "deploying_staging"
+            ) {
+              current = await this.transition(
+                current,
+                "verifying_staging",
+              );
+            }
+          },
+        }),
+      );
+      this.assertDeployResultTarget(result, "staging");
+    } catch (error) {
+      const finalProof = await this.transition(
+        current,
+        "final_proof",
+        {
+          context_patch: {
+            deploy_outcome: "staging_failed",
+            failure: {
+              operation: "staging_deploy",
+              message: errorMessage(error),
+            },
+          },
+        },
+      );
+      return await this.writeFinalAndComplete(finalProof);
+    }
+    if (result.outcome !== "healthy") {
+      const finalProof = await this.transition(current, "final_proof", {
+        context_patch: {
+          deploy_staging: result,
+          deploy_outcome: "staging_failed",
+        },
+      });
+      return await this.writeFinalAndComplete(finalProof);
+    }
+    if (current.state === "deploying_staging") {
+      current = await this.transition(current, "verifying_staging", {
+        context_patch: { deploy_staging: result },
+      });
+    }
+    return await this.continueProductionAfterStaging(current, result);
+  }
+
+  private async continueProductionAfterStaging(
+    run: AutonomyRunProjection,
+    stagingResult: ProjectDeployResult,
+  ): Promise<GuardedDeliveryResult> {
+    const productionPolicy = this.policy.deploy?.production;
+    if (productionPolicy === undefined) {
+      const finalProof = await this.transition(run, "final_proof", {
+        context_patch: {
+          deploy_staging: stagingResult,
+          deploy_outcome: "staging_healthy",
+        },
+      });
+      return await this.writeFinalAndComplete(finalProof);
+    }
+
+    let prepared: {
+      authority: DeployScriptAuthority;
+      decision: DeployEligibilityDecision;
+    };
+    try {
+      prepared = await this.prepareDeployTarget(
+        run,
+        "production",
+        productionPolicy,
+      );
+    } catch (error) {
+      return await this.finalizeSkippedDeploy(
+        run,
+        "production",
+        `production deploy eligibility failed: ${errorMessage(error)}`,
+        { deploy_staging: stagingResult },
+      );
+    }
+    const contextPatch: Partial<GuardedDeliveryContext> = {
+      deploy_staging: stagingResult,
+      deploy_eligibility: {
+        ...(run.context.deploy_eligibility ?? {}),
+        production: prepared.decision,
+      },
+      deploy_script_authority: {
+        ...(run.context.deploy_script_authority ?? {}),
+        production: prepared.authority,
+      },
+    };
+    if (!prepared.decision.allowed) {
+      const finalProof = await this.transition(run, "final_proof", {
+        context_patch: {
+          ...contextPatch,
+          deploy_outcome: "production_skipped",
+        },
+      });
+      return await this.writeFinalAndComplete(finalProof);
+    }
+
+    let current = await this.transition(
+      run,
+      "deploying_production",
+      { context_patch: contextPatch },
+    );
+    let result: ProjectDeployResult;
+    try {
+      result = ProjectDeployResultSchema.parse(
+        await this.requireDeployPort()({
+          target: "production",
+          workspace_path: this.requireIntent(current).workspace_path,
+          policy: productionPolicy,
+          expected_script_digest_sha256:
+            prepared.authority.digest_sha256,
+          before_phase: async (phase) => {
+            current = await this.persistProductionPhase(
+              current,
+              phase,
+            );
+          },
+        }),
+      );
+      this.assertDeployResultTarget(result, "production");
+    } catch (error) {
+      return await this.freezeFailedProduction(
+        current,
+        `production deploy port failed: ${errorMessage(error)}`,
+      );
+    }
+
+    if (result.outcome === "healthy") {
+      if (current.state === "deploying_production") {
+        current = await this.transition(current, "health_checking");
+      }
+      const finalProof = await this.transition(
+        current,
+        "final_proof",
+        {
+          context_patch: {
+            deploy_production: result,
+            deploy_outcome: "production_healthy",
+          },
+        },
+      );
+      return await this.writeFinalAndComplete(finalProof);
+    }
+
+    if (current.state !== "rolling_back") {
+      current = await this.transition(current, "rolling_back", {
+        context_patch: { deploy_production: result },
+      });
+    }
+    const outcome: GuardedDeployOutcome =
+      result.outcome === "rollback_failed"
+        ? "rollback_failed"
+        : "production_rolled_back";
+    let freeze: ProductionFreezeEvidence;
+    try {
+      freeze = ProductionFreezeEvidenceSchema.parse(
+        await this.requireFreezePort()({
+          repo_id: this.requireIntent(current).repo_id,
+          reason: `automatic production freeze after ${result.outcome}`,
+          source_run_id: current.autonomy_run_id,
+          frozen_at: this.ports.now().getTime() / 1_000,
+        }),
+      );
+    } catch (error) {
+      return await this.escalate(
+        current,
+        `production freeze failed: ${errorMessage(error)}`,
+        { deploy_production: result, deploy_outcome: outcome },
+      );
+    }
+    const frozen = await this.transition(current, "deploy_frozen", {
+      context_patch: {
+        deploy_production: result,
+        production_freeze: freeze,
+        deploy_outcome: outcome,
+      },
+    });
+    const finalProof = await this.transition(frozen, "final_proof");
+    return await this.writeFinalAndComplete(finalProof);
+  }
+
+  private async prepareDeployTarget(
+    run: AutonomyRunProjection,
+    target: "staging" | "production",
+    policy: DeployTargetPolicy,
+  ): Promise<{
+    authority: DeployScriptAuthority;
+    decision: DeployEligibilityDecision;
+  }> {
+    const intent = this.requireIntent(run);
+    const local = this.requireLocalResult(run);
+    const candidate = run.context.candidate_proof;
+    if (candidate === undefined) {
+      throw new Error("deploy eligibility requires candidate proof");
+    }
+    const resolveAuthority =
+      this.ports.resolveDeployScriptAuthority;
+    const evaluate = this.ports.evaluateDeploy;
+    if (resolveAuthority === undefined || evaluate === undefined) {
+      throw new Error("deploy eligibility ports are not configured");
+    }
+    const authority = DeployScriptAuthoritySchema.parse(
+      await resolveAuthority({
+        workspace_path: intent.workspace_path,
+        policy,
+      }),
+    );
+    let actionApproved = false;
+    this.assertPostDiffActionAuthorized(run, `deploy:${target}`);
+    if (
+      this.requirePreflightRisk(run).level === "R3"
+      || this.requirePostDiffRisk(run).level === "R3"
+    ) {
+      actionApproved = true;
+    }
+    let productionFrozen = false;
+    if (target === "production") {
+      if (this.ports.isProductionFrozen === undefined) {
+        throw new Error("production freeze status port is not configured");
+      }
+      productionFrozen = await this.ports.isProductionFrozen(
+        intent.repo_id,
+      );
+    }
+    const decision = DeployEligibilityDecisionSchema.parse(
+      evaluate(policy, {
+        target,
+        base_branch:
+          this.policy.deploy?.base_branch ?? this.policy.git.base,
+        changed_paths: [...local.post_diff.changed_paths],
+        diff_stats: this.deployDiffStats(local.post_diff),
+        final_risk: this.requirePostDiffRisk(run).level,
+        deterministic_pass: local.verification_passed,
+        kimi_pass: local.review_passed,
+        governance_pass: local.verification_passed,
+        ci_pass: true,
+        candidate_proof_sha256: candidate.manifest_sha256,
+        deploy_script_digest_sha256: authority.digest_sha256,
+        production_frozen: productionFrozen,
+        deploy_action_approved: actionApproved,
+        ...(target === "production"
+          && this.policy.deploy?.rollback_drill !== undefined
+          ? {
+              rollback_drill:
+                this.policy.deploy.rollback_drill as RollbackDrillEvidence,
+            }
+          : {}),
+        now: this.ports.now(),
+      }),
+    );
+    return { authority, decision };
+  }
+
+  private deployDiffStats(
+    postDiff: PostDiffInputType,
+  ): DeployEligibilityInput["diff_stats"] {
+    let additions = 0;
+    let deletions = 0;
+    for (const line of postDiff.staged_diff_binary.split("\n")) {
+      if (line.startsWith("+") && !line.startsWith("+++")) {
+        additions += 1;
+      } else if (
+        line.startsWith("-")
+        && !line.startsWith("---")
+      ) {
+        deletions += 1;
+      }
+    }
+    return {
+      additions,
+      deletions,
+      files_changed: postDiff.changed_paths.length,
+    };
+  }
+
+  private async persistProductionPhase(
+    run: AutonomyRunProjection,
+    phase: ProjectDeployPhase,
+  ): Promise<AutonomyRunProjection> {
+    if (
+      phase === "health"
+      && run.state === "deploying_production"
+    ) {
+      return await this.transition(run, "health_checking");
+    }
+    if (
+      phase === "rollback"
+      && (
+        run.state === "deploying_production"
+        || run.state === "health_checking"
+      )
+    ) {
+      return await this.transition(run, "rolling_back");
+    }
+    return run;
+  }
+
+  private async finalizeSkippedDeploy(
+    run: AutonomyRunProjection,
+    target: "staging" | "production",
+    reason: string,
+    contextPatch: Partial<GuardedDeliveryContext> = {},
+  ): Promise<GuardedDeliveryResult> {
+    const decision: DeployEligibilityDecision = {
+      allowed: false,
+      reasons: ["deploy_eligibility_unavailable"],
+      requires_approval: false,
+      change_types: [],
+      unknown_paths: [],
+    };
+    const finalProof = await this.transition(run, "final_proof", {
+      context_patch: {
+        ...contextPatch,
+        deploy_eligibility: {
+          ...(run.context.deploy_eligibility ?? {}),
+          [target]: decision,
+        },
+        deploy_outcome:
+          target === "staging"
+            ? "staging_skipped"
+            : "production_skipped",
+        failure: {
+          operation: `${target}_deploy_eligibility`,
+          message: reason,
+        },
+      },
+    });
+    return await this.writeFinalAndComplete(finalProof);
+  }
+
+  private async recoverDeployState(
+    run: AutonomyRunProjection,
+  ): Promise<GuardedDeliveryResult> {
+    if (
+      run.state === "deploying_staging"
+      || run.state === "verifying_staging"
+    ) {
+      const result = run.context.deploy_staging;
+      if (result === undefined) {
+        return await this.escalate(
+          run,
+          "recovered staging deployment has no durable result; refusing replay",
+        );
+      }
+      let current = run;
+      if (
+        result.outcome === "healthy"
+        && current.state === "deploying_staging"
+      ) {
+        current = await this.transition(
+          current,
+          "verifying_staging",
+        );
+      }
+      if (result.outcome === "healthy") {
+        return await this.continueProductionAfterStaging(
+          current,
+          result,
+        );
+      }
+      const finalProof = await this.transition(
+        current,
+        "final_proof",
+        {
+          context_patch: { deploy_outcome: "staging_failed" },
+        },
+      );
+      return await this.writeFinalAndComplete(finalProof);
+    }
+
+    const result = run.context.deploy_production;
+    if (result === undefined) {
+      return await this.freezeFailedProduction(
+        run,
+        "recovered production deployment has no durable result; freezing and refusing replay",
+      );
+    }
+    let current = run;
+    if (result.outcome === "healthy") {
+      if (current.state === "deploying_production") {
+        current = await this.transition(current, "health_checking");
+      }
+      const finalProof = await this.transition(
+        current,
+        "final_proof",
+        {
+          context_patch: { deploy_outcome: "production_healthy" },
+        },
+      );
+      return await this.writeFinalAndComplete(finalProof);
+    }
+    return await this.escalate(
+      current,
+      "recovered unhealthy production deployment requires operator review",
+    );
+  }
+
+  private async freezeFailedProduction(
+    run: AutonomyRunProjection,
+    reason: string,
+  ): Promise<GuardedDeliveryResult> {
+    let current = run;
+    if (
+      current.state === "deploying_production"
+      || current.state === "health_checking"
+    ) {
+      current = await this.transition(current, "rolling_back", {
+        context_patch: {
+          deploy_outcome: "rollback_failed",
+          failure: {
+            operation: "production_deploy",
+            message: reason,
+          },
+        },
+      });
+    }
+    let freeze: ProductionFreezeEvidence;
+    try {
+      freeze = ProductionFreezeEvidenceSchema.parse(
+        await this.requireFreezePort()({
+          repo_id: this.requireIntent(current).repo_id,
+          reason: "automatic production freeze after deploy execution error",
+          source_run_id: current.autonomy_run_id,
+          frozen_at: this.ports.now().getTime() / 1_000,
+        }),
+      );
+    } catch (error) {
+      return await this.escalate(
+        current,
+        `production freeze failed after deploy error: ${errorMessage(error)}`,
+        {
+          deploy_outcome: "rollback_failed",
+          failure: {
+            operation: "production_deploy",
+            message: reason,
+          },
+        },
+      );
+    }
+    const frozen = await this.transition(current, "deploy_frozen", {
+      context_patch: {
+        deploy_outcome: "rollback_failed",
+        production_freeze: freeze,
+        failure: {
+          operation: "production_deploy",
+          message: reason,
+        },
+      },
+    });
+    const finalProof = await this.transition(frozen, "final_proof");
+    return await this.writeFinalAndComplete(finalProof);
+  }
+
+  private requireDeployPort(): (
+    input: ProjectDeployInput,
+  ) => Promise<ProjectDeployResult> {
+    if (this.ports.deploy === undefined) {
+      throw new Error("deploy execution port is not configured");
+    }
+    return this.ports.deploy;
+  }
+
+  private requireFreezePort(): NonNullable<
+    GuardedDeliveryPorts["freezeProduction"]
+  > {
+    if (this.ports.freezeProduction === undefined) {
+      throw new Error("production freeze port is not configured");
+    }
+    return this.ports.freezeProduction;
+  }
+
+  private assertDeployResultTarget(
+    result: ProjectDeployResult,
+    target: "staging" | "production",
+  ): void {
+    if (result.target !== target) {
+      throw new Error(
+        `deploy port returned ${result.target} evidence for ${target}`,
+      );
+    }
+  }
+
+  private async writeFinalAndComplete(
+    run: AutonomyRunProjection,
+  ): Promise<GuardedDeliveryResult> {
+    const candidate = run.context.candidate_proof;
+    const gitDelivery = run.context.git_delivery;
+    if (candidate === undefined || gitDelivery === undefined) {
+      return await this.failFinalEvidence(
+        run,
+        "final proof inputs are missing candidate or Git delivery evidence",
+      );
+    }
+    let finalProof: ProofReference;
+    try {
+      await this.verifyContract(run, run.context.delivery_receipt);
+      if (run.context.delivery_contract?.contract.requested_completion === "deployed"
+        && !["staging_healthy", "production_healthy"].includes(run.context.deploy_outcome ?? "")) throw new Error("delivery_requested_deployment_not_achieved");
+      finalProof = ProofReference.parse(
+        await this.ports.writeFinalProof({
+          ...this.candidateProofInput(run),
+          candidate_proof: candidate,
+          git_delivery: gitDelivery,
+          ...(run.context.deploy_eligibility === undefined
+            ? {}
+            : {
+                deploy_eligibility:
+                  run.context.deploy_eligibility,
+              }),
+          ...(run.context.deploy_script_authority === undefined
+            ? {}
+            : {
+                deploy_script_authority:
+                  run.context.deploy_script_authority,
+              }),
+          ...(run.context.deploy_staging === undefined
+            ? {}
+            : { deploy_staging: run.context.deploy_staging }),
+          ...(run.context.deploy_production === undefined
+            ? {}
+            : {
+                deploy_production:
+                  run.context.deploy_production,
+              }),
+          ...(run.context.production_freeze === undefined
+            ? {}
+            : {
+                production_freeze:
+                  run.context.production_freeze,
+              }),
+          ...(run.context.deploy_outcome === undefined
+            ? {}
+            : { deploy_outcome: run.context.deploy_outcome }),
+        }),
+      );
+    } catch (error) {
+      return await this.failFinalEvidence(run, errorMessage(error));
+    }
+    if (
+      run.context.deploy_outcome === "staging_failed"
+      || run.context.deploy_outcome === "rollback_failed"
+      || run.context.failure?.operation ===
+        "staging_deploy_eligibility"
+      || run.context.failure?.operation ===
+        "production_deploy_eligibility"
+    ) {
+      return await this.escalate(
+        run,
+        run.context.failure?.message
+          ?? `deployment ended in ${run.context.deploy_outcome}`,
+        { final_proof: finalProof },
+      );
+    }
+    const completed = await this.transition(run, "completed", {
+      context_patch: { final_proof: finalProof, ...(run.context.delivery_contract ? {
+        achieved_completion: run.context.delivery_contract.contract.requested_completion,
+      } : {}) },
+    });
+    return { status: "completed", run: completed };
+  }
+
+  private async failFinalEvidence(
+    run: AutonomyRunProjection,
+    message: string,
+  ): Promise<GuardedDeliveryResult> {
+    const failed = await this.transition(run, "delivery_evidence_failed", {
+      context_patch: {
+        failure: { operation: "final_proof", message },
+      },
+    });
+    return {
+      status: "blocked",
+      run: failed,
+      reason: run.context.delivery_contract ? "Contract completion evidence could not be verified" : "Git merged but final delivery evidence could not be written",
+    };
+  }
+
+  private async verifyContract(run: AutonomyRunProjection, ref: DeliveryReceiptReferenceV2 | undefined): Promise<void> {
+    const contract = run.context.delivery_contract;
+    if (!contract) return;
+    if (!ref || !this.ports.verifyContractReceipt) throw new Error("delivery_contract_host_receipt_required");
+    const frozen = assertFrozenDeliveryContract(contract);
+    await this.ports.verifyContractReceipt({ contract: frozen, ref, runId: run.autonomy_run_id, workspacePath: this.requireIntent(run).workspace_path,
+      expectedHeads: run.context.commit ? [run.context.commit.commit, ...(run.context.git_delivery ? [run.context.git_delivery.mergeCommit] : [])] : [frozen.contract.base_head] });
+  }
+
+  private async completeLimitedContract(initial: AutonomyRunProjection): Promise<GuardedDeliveryResult> {
+    let run = initial;
+    if (run.state === "opening_pr") run = await this.transition(run, "final_proof");
+    try {
+      await this.verifyContract(run, run.context.delivery_receipt);
+      const contract = run.context.delivery_contract;
+      const achieved = contract?.contract.requested_completion;
+      if (!contract || !["local_verified", "pr_opened"].includes(achieved ?? "") || !run.context.candidate_proof
+        || !run.context.delivery_receipt || !this.ports.writeContractCompletionReceipt
+        || achieved === "pr_opened" && !run.context.pr_delivery) throw new Error("delivery_contract_completion_evidence_missing");
+      const completion = DeliveryReceiptReferenceV2.parse(await this.ports.writeContractCompletionReceipt({ runId: run.autonomy_run_id,
+        contract, verificationReceipt: run.context.delivery_receipt, candidateProof: run.context.candidate_proof,
+        achievedCompletion: achieved as "local_verified" | "pr_opened", ...(run.context.pr_delivery ? { publication: run.context.pr_delivery } : {}) }));
+      const completed = await this.transition(run, "completed", { context_patch: { delivery_completion_receipt: completion,
+        achieved_completion: achieved, final_proof: run.context.candidate_proof } });
+      return { status: "completed", run: completed };
+    } catch (error) { return await this.failFinalEvidence(run, errorMessage(error)); }
+  }
+
+  private candidateProofInput(
+    run: AutonomyRunProjection,
+  ): CandidateProofInput {
+    const context = run.context;
+    return {
+      autonomy_run_id: run.autonomy_run_id,
+      intent: this.requireIntent(run),
+      preflight_risk: this.requirePreflightRisk(run),
+      post_diff_risk: this.requirePostDiffRisk(run),
+      local_result: this.requireLocalResult(run),
+      ...(context.delivery_contract ? { delivery_contract: context.delivery_contract } : {}),
+      ...(context.delivery_receipt ? { delivery_receipt: context.delivery_receipt } : {}),
+      ...(context.approval_request === undefined
+        ? {}
+        : { approval_request: context.approval_request }),
+      ...(context.approval_decision === undefined
+        ? {}
+        : { approval_decision: context.approval_decision }),
+    };
+  }
+
+  private async transition(
+    current: AutonomyRunProjection,
+    toState: AutonomyRunState,
+    options: Omit<
+      GuardedDeliveryTransitionInput,
+      "autonomy_run_id" | "from_state" | "to_state"
+    > = {},
+  ): Promise<AutonomyRunProjection> {
+    const transition: GuardedDeliveryTransitionInput = {
+      autonomy_run_id: current.autonomy_run_id,
+      from_state: current.state,
+      to_state: toState,
+      ...options,
+    };
+    assertAutonomyTransition(transition);
+    const persisted = await this.ports.persist(transition);
+    if (
+      persisted.autonomy_run_id !== current.autonomy_run_id
+      || persisted.state !== toState
+      || persisted.revision <= current.revision
+    ) {
+      throw new Error(
+        `persist port did not confirm ${current.state} -> ${toState}`,
+      );
+    }
+    return persisted;
+  }
+
+  private async escalate(
+    run: AutonomyRunProjection,
+    reason: string,
+    contextPatch: Partial<GuardedDeliveryContext> = {},
+  ): Promise<GuardedDeliveryResult> {
+    const escalated = await this.transition(run, "escalated", {
+      context_patch: {
+        ...contextPatch,
+        failure: { operation: run.state, message: reason },
+      },
+    });
+    return { status: "blocked", run: escalated, reason };
+  }
+
+  private async escalateRecoveredState(
+    run: AutonomyRunProjection,
+  ): Promise<GuardedDeliveryResult> {
+    const legalEscalationStates: AutonomyRunState[] = [
+      "classifying",
+      "building",
+      "verifying",
+      "repairing",
+      "reviewing",
+      "post_classifying",
+    ];
+    if (legalEscalationStates.includes(run.state)) {
+      return await this.escalate(
+        run,
+        `recovered state ${run.state} lacks a safe deterministic continuation`,
+      );
+    }
+    const cancelled = await this.transition(run, "cancelled", {
+      context_patch: {
+        failure: {
+          operation: "recovery",
+          message: `recovered state ${run.state} cannot be resumed`,
+        },
+      },
+    });
+    return {
+      status: "blocked",
+      run: cancelled,
+      reason: `recovered state ${run.state} cannot be resumed`,
+    };
+  }
+
+  private requireIntent(run: AutonomyRunProjection): AutonomyTaskIntentType {
+    return AutonomyTaskIntent.parse(run.context.intent);
+  }
+
+  private requireLocalResult(run: AutonomyRunProjection): LocalDeliveryResult {
+    return LocalDeliveryResult.parse(run.context.local_result);
+  }
+
+  private requirePreflightRisk(
+    run: AutonomyRunProjection,
+  ): AutonomyRiskDecision {
+    const risk = run.context.preflight_risk;
+    if (risk === undefined) {
+      throw new Error("autonomy run is missing preflight risk evidence");
+    }
+    return risk;
+  }
+
+  private requirePostDiffRisk(
+    run: AutonomyRunProjection,
+  ): AutonomyRiskDecision {
+    const risk = run.context.post_diff_risk;
+    if (risk === undefined) {
+      throw new Error("autonomy run is missing post-diff risk evidence");
+    }
+    return risk;
+  }
+
+  private assertPostDiffActionAuthorized(
+    run: AutonomyRunProjection,
+    action: string,
+  ): void {
+    const contract = run.context.delivery_contract;
+    if (contract && !contract.contract.requested_actions.some(requested => requested === action)) {
+      throw new Error(`${action} is absent from the frozen delivery contract`);
+    }
+    const preflight = this.requirePreflightRisk(run);
+    const postDiff = this.requirePostDiffRisk(run);
+    if (preflight.level !== "R3" && postDiff.level !== "R3") return;
+
+    const request = ScopedApprovalRequest.parse(
+      run.context.approval_request,
+    );
+    const decision = ScopedApprovalDecision.parse(
+      run.context.approval_decision,
+    );
+    if (request.phase !== "post_diff") {
+      throw new Error(`${action} requires a post-diff approval scope`);
+    }
+    if (
+      !request.action_scope.includes(action)
+      || !decision.payload.action_scope.includes(action)
+    ) {
+      throw new Error(
+        `${action} is absent from the signed post-diff approval scope`,
+      );
+    }
+    if (decision.payload.decision !== "approve") {
+      throw new Error(`${action} requires an approved decision`);
+    }
+    const requestDigest = scopedApprovalDigest({
+      autonomy_run_id: request.autonomy_run_id,
+      contract_sha256: request.contract_sha256,
+      diff_sha256: request.diff_sha256,
+      action_scope: request.action_scope,
+    });
+    if (request.request_sha256 !== requestDigest) {
+      throw new Error(
+        `${action} approval request digest no longer matches its scope`,
+      );
+    }
+    validateScopedApprovalDecisionForRequest(request, decision);
+  }
+
+  private approvalActionScope(
+    phase: AutonomyRiskPhase,
+    run: AutonomyRunProjection,
+  ): string[] {
+    if (phase === "preflight") return ["build", "verify"];
+    const contract = run.context.delivery_contract?.contract;
+    if (contract) {
+      // Bind only the effects needed by this completion, never broaden an older signed scope.
+      if (contract.requested_completion === "local_verified") return ["verify"];
+      const actions = new Set(["commit", "open_pr", "push"]);
+      if (["merged", "deployed"].includes(contract.requested_completion)) actions.add("merge");
+      if (contract.requested_completion === "deployed") {
+        for (const target of ["staging", "production"] as const) {
+          const action = `deploy:${target}`;
+          if (this.policy.deploy?.[target] && contract.requested_actions.some(requested => requested === action)) actions.add(action);
+        }
+      }
+      return [...actions].filter(action => contract.requested_actions.some(requested => requested === action)).sort();
+    }
+    const actions = new Set(["commit", "merge", "push"]);
+    if (this.policy.deploy?.staging !== undefined) {
+      actions.add("deploy:staging");
+    }
+    if (this.policy.deploy?.production !== undefined) {
+      actions.add("deploy:production");
+    }
+    return [...actions].sort();
+  }
+}
+
+
+FILE packages/protocol/src/delivery-contract.ts
+import { z } from "zod";
+
+const Digest = z.string().regex(/^[a-f0-9]{64}$/);
+const Commit = z.string().regex(/^(?:[a-f0-9]{40}|[a-f0-9]{64})$/);
+const Id = z.string().min(1).max(256);
+const hasControlCharacter = (value: string) => [...value].some(char => char.charCodeAt(0) < 32 || char.charCodeAt(0) === 127);
+const Ref = z.string().min(1).max(255).refine((value) =>
+  !value.startsWith("-") && !/\s/.test(value) && !hasControlCharacter(value), "unsafe ref");
+const RelativePath = z.string().min(1).max(4096).refine((value) =>
+  !value.startsWith("/") && !value.split(/[\\/]/).includes("..") && !hasControlCharacter(value), "unsafe relative path");
+
+export const DeliveryCompletionV2 = z.enum(["local_verified", "pr_opened", "merged", "deployed"]);
+export const DeliveryPublicationScopeV2 = z.discriminatedUnion("mode", [
+  z.object({ mode: z.literal("none") }).strict(),
+  z.object({
+    mode: z.enum(["push", "draft_pr", "review_pr"]),
+    hostname: z.literal("github.com"),
+    repository: z.string().regex(/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/),
+    remote: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/),
+    base_ref: Ref,
+    head_ref: Ref,
+  }).strict(),
+]);
+/** Scope and authority references constrain existing host authorization. Neither grants it. */
+export const DeliveryContractV2 = z.object({
+  schema_version: z.literal(2),
+  contract_id: Id,
+  parent_contract_id: Id.optional(),
+  task_id: Id,
+  canonical_repo: z.string().min(1).max(4096).refine((value) => value.startsWith("/") && !hasControlCharacter(value), "absolute repo required"),
+  mode: z.enum(["scout", "implement"]),
+  base_head: Commit,
+  goal: z.string().min(1).max(16000),
+  required_checks: z.array(z.object({ id: Id, registry_ref: z.string().regex(/^sha256:[a-f0-9]{64}$/) }).strict()).min(1).max(100),
+  review_policy_ref: Id,
+  requested_completion: DeliveryCompletionV2,
+  allowed_paths: z.array(RelativePath).min(1).max(1000),
+  requested_actions: z.array(z.enum(["build", "verify", "commit", "push", "open_pr", "merge", "deploy:staging", "deploy:production"])).min(1).max(8),
+  budget_ref: Id,
+  policy_digest: Digest,
+  publication_scope: DeliveryPublicationScopeV2,
+  merge_authority: z.discriminatedUnion("mode", [
+    z.object({ mode: z.literal("none") }).strict(),
+    z.object({ mode: z.literal("existing_guarded_policy"), policy_ref: z.string().regex(/^sha256:[a-f0-9]{64}$/) }).strict(),
+  ]),
+}).strict().superRefine((value, context) => {
+  const error = (message: string) => context.addIssue({ code: z.ZodIssueCode.custom, message });
+  if (new Set(value.required_checks.map((check) => check.id)).size !== value.required_checks.length) error("duplicate check ID");
+  if (new Set(value.required_checks.map((check) => check.registry_ref)).size !== value.required_checks.length) error("duplicate check reference");
+  if (value.mode === "implement" && (!["build", "verify"].every(action => value.requested_actions.includes(action as "build" | "verify")))) error("implement requires build and verify actions");
+  if (["pr_opened", "merged", "deployed"].includes(value.requested_completion)
+    && !["commit", "push", "open_pr"].every(action => value.requested_actions.some(requested => requested === action))) error("published completion requires commit, push and open_pr actions");
+  if (["merged", "deployed"].includes(value.requested_completion) && !value.requested_actions.includes("merge")) error("merged completion requires merge action");
+  if (value.requested_completion === "deployed" && !value.requested_actions.some(action => action.startsWith("deploy:"))) error("deployed completion requires an explicit deployment target action");
+  if (value.parent_contract_id === value.contract_id) error("contract cannot parent itself");
+  if (value.mode === "scout" && (value.requested_completion !== "local_verified" || value.publication_scope.mode !== "none"
+    || value.merge_authority.mode !== "none" || value.requested_actions.some((action) => action !== "verify"))) error("scout must remain read-only and local");
+  if (value.requested_completion === "local_verified" && (value.publication_scope.mode !== "none"
+    || value.requested_actions.some((action) => !["build", "verify"].includes(action)))) error("local completion forbids publication and commit");
+  if (value.requested_completion === "merged" && value.requested_actions.some((action) => action.startsWith("deploy:"))) error("merge completion forbids deployment");
+  if (value.requested_completion === "pr_opened" && !["draft_pr", "review_pr"].includes(value.publication_scope.mode)) error("PR completion requires PR scope");
+  if (["local_verified", "pr_opened"].includes(value.requested_completion)
+    && (value.merge_authority.mode !== "none" || value.requested_actions.some((action) => action === "merge" || action.startsWith("deploy:")))) error("requested completion forbids merge/deploy authority");
+  if (["merged", "deployed"].includes(value.requested_completion)
+    && (value.publication_scope.mode !== "review_pr" || value.merge_authority.mode !== "existing_guarded_policy")) error("merge requires an existing guarded policy reference");
+  if (value.merge_authority.mode === "existing_guarded_policy" && value.merge_authority.policy_ref !== `sha256:${value.policy_digest}`) error("merge policy reference mismatch");
+  if (value.publication_scope.mode !== "none" && value.publication_scope.base_ref === value.publication_scope.head_ref) error("publication base and head must differ");
+});
+export type DeliveryContractV2 = z.infer<typeof DeliveryContractV2>;
+export const FrozenDeliveryContractV2 = z.object({ contract: DeliveryContractV2, digest: Digest, brief: z.string().min(1).max(32000) }).strict();
+export type FrozenDeliveryContractV2 = z.infer<typeof FrozenDeliveryContractV2>;
+export const DeliveryCandidateIdentityV2 = z.object({ base_head: Commit, head: Commit, tree_id: Commit, diff_digest: Digest }).strict();
+export type DeliveryCandidateIdentityV2 = z.infer<typeof DeliveryCandidateIdentityV2>;
+/** Host-generated receipt. Parsing validates structure, never establishes provenance. */
+export const DeliveryVerificationReceiptV2 = z.object({
+  schema_version: z.literal(2),
+  source: z.literal("osstack_loop_host"),
+  run_id: Id,
+  task_id: Id,
+  run_kind: z.enum(["guarded-local", "guarded-git"]),
+  contract_digest: Digest,
+  policy_digest: Digest,
+  candidate: DeliveryCandidateIdentityV2,
+  workspace_state_digest: Digest,
+  checks: z.array(z.object({ id: Id, registry_ref: z.string().regex(/^sha256:[a-f0-9]{64}$/), command_digest: Digest,
+    exit_code: z.number().int(), duration_ms: z.number().finite().nonnegative() }).strict()).min(1).max(200),
+  review: z.object({
+    policy_ref: Id,
+    verdict: z.enum(["approved", "changes_requested", "blocked", "inconclusive"]),
+    builder_agent_id: Id,
+    reviewer_agent_id: Id,
+    builder_provider: Id,
+    builder_model: Id,
+    reviewer_provider: Id,
+    reviewer_model: Id,
+    identity_source: z.literal("reported"),
+    artifact_digest: Digest,
+  }).strict(),
+  observed_at: z.string().datetime(),
+  context_receipt_refs: z.array(z.object({ path: z.string().min(1), digest: Digest }).strict()).max(100).default([]),
+}).strict();
+export type DeliveryVerificationReceiptV2 = z.infer<typeof DeliveryVerificationReceiptV2>;
+export const DeliveryReceiptReferenceV2 = z.object({ path: z.string().min(1).max(4096), digest: Digest }).strict();
+export type DeliveryReceiptReferenceV2 = z.infer<typeof DeliveryReceiptReferenceV2>;
+
+
+FILE docs/guides/delivery-contract-v2.md
+# Delivery Contract V2: guarded host execution
+
+V2 freezes an explicit task and completion ceiling before guarded execution. It constrains existing host policy; a contract file, a parsed schema, or a reference to a policy does not grant permission to execute, publish, merge or deploy. V1 planning artifacts remain offline material and are rejected by this runtime.
+
+Use `osstack deliver --workspace <repo> --profile <profile> --autonomy guarded-local --contract <file> --json`. The host must supply a policy snapshot, its registered verification commands and budget. Guarded Git uses the same `--contract` option with `--autonomy guarded-git`. A `--execution-context <config>` option selects the separately documented pinned local context flow. Existing invocations without a contract retain their original behavior.
+
+The strict JSON contract declares schema version 2, contract/task IDs, canonical repository, full base commit, goal, allowed relative path prefixes, required check IDs with `sha256:<command digest>` registry references, profile review reference, `policy:<policy digest>` budget reference, policy digest, actions, publication scope and requested completion. Required commands must already be registered in the host policy. An explicit unregistered `--verify` is rejected; contract content never becomes an executable command. Implement mode requires build and verify actions. Scout execution is rejected until a host can guarantee a tool-free executor; the pure promotion helper creates a new contract and carries no prior receipt or approval.
+
+| Requested completion | Runtime boundary |
+| --- | --- |
+| `local_verified` | Host checks, independent reported review, policy and governance checks; no host commit, push or merge. Guarded-local retains its isolated candidate worktree. |
+| `pr_opened` | Existing authorized commit/push/PR code; exact candidate SHA, remote/repository/ref and draft state checks; returns before CI waiting or merge. |
+| `merged` | Existing guarded merge authorization and proof flow; configured deployment is not invoked. |
+| `deployed` | Existing guarded deployment policy and action checks; skipped or unhealthy deployment cannot satisfy the contract. |
+
+Local execution snapshots all tracked worktree bytes, untracked candidate files and the ignored-path set before checks and review, then carries that exact snapshot through receipt capture. Hidden index flags and new ignored files fail closed. Existing ignored dependency contents are not a hermetic environment qualification. The opt-in snapshot is bounded to 100,000 paths and 64 MiB of candidate/worktree file bytes. Rename sources and destinations are both checked against allowed paths. Scope, governance or verification rejection leaves the isolated candidate available for inspection; the original workspace is not merged. JSON output includes its candidate path. A successful local receipt is not a remote CI result, provider attestation or production acceptance.
+
+The local host maps policy builder/review limits to iteration limits and applies the existing cooperative Loop runtime/no-progress budget. CLI iteration and command timeout values can only tighten those limits. This is not a hard wall-clock cancellation SLA. Git execution retains its existing guarded budget and approval controls.
+
+Host receipts record the frozen contract digest, policy digest, base/candidate tree and diff identity, actual command results, reported independent review identity and context receipt references. Different adapter IDs plus different provider or model follows the existing profile independence rule; metadata is reported, not independently provider-attested. Content-addressed receipts reject changed bytes, symlinks, paths outside their host evidence directory and oversized records. Before side effects, the host reloads its persisted receipt and checks the actual candidate against the known base, recorded commit or recorded merge HEAD and the verified tree/diff.
+
+Guarded Git persists the frozen contract and receipt references in its existing autonomy context. Resume requires the same persisted contract and policy; it does not reread a replacement CLI contract file. Limited completion writes a separate host completion record alongside the candidate proof. Reference validation alone must never be used to promote arbitrary external JSON into trusted evidence.
+
+Context receipts distinguish prepared prompts from prompts observed at the adapter boundary, and record original knowledge-source repository separately from the candidate execution repository. These hashes describe `AgentTask.prompt`, not provider wire bytes or a qualified token window.
+
+Validation for this slice covers real local Git, Loop execution, SQLite persistence and restart boundaries with fake adapters and simulated GitHub command responses. It does not qualify live external publishing, deployment, retention history, Graph integration or tool sandboxing. Those qualifications remain separate work.
+
+V2 guarded-local stores its default queue, state, verification receipts, reports and proof artifacts in a unique directory under the explicit OSStack home, so host bookkeeping does not write into the source checkout. An explicit `--state` still selects the operator-requested location. Candidate worktree Git metadata remains intentionally registered for inspection. For guarded Git, the contract pins the committed base policy; after an approved candidate edits policy files, the original base policy plus the current private overlay remains the authority for that run. Candidate integrity and scoped approvals still gate every effect; new policy is not silently self-authorized.
+
+The V2 local host also compares original checkout HEAD, index entries, all tracked/untracked file bytes and the ignored-path set before execution and at final verification. A change fails completion and is left in place for inspection; OSStack does not silently revert it. This is detection, not confinement: adapters can still access other paths, existing ignored dependency contents are not hashed, and transient writes restored before sampling cannot be proven absent. Keep explicit state/output locations outside the source checkout when using this check. Legacy `--action` is an intent/risk-classification input; only V2 `requested_actions` is the enforced per-effect allowlist in this slice.

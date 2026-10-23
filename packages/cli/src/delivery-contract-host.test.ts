@@ -3,7 +3,7 @@ import { chmod, mkdir, readFile, rm, stat, symlink, writeFile } from "node:fs/pr
 import { join } from "node:path";
 import { createScratchDir, deliveryCheckReference, freezeDeliveryContract } from "@osstack/core";
 import { afterEach, beforeEach, expect, it } from "vitest";
-import { deliveryGit, createDeliveryVerificationFence, persistDeliveryHostRecord, readDeliveryHostRecord } from "./delivery-contract-host.js";
+import { deliveryGit, createDeliverySourceFence, createDeliveryVerificationFence, persistDeliveryHostRecord, readDeliveryHostRecord } from "./delivery-contract-host.js";
 
 let root: string;
 beforeEach(async () => { root = await createScratchDir("tests", "contract-host"); });
@@ -56,4 +56,16 @@ it("fences tracked and new files without altering the candidate index", async ()
   await expect(newFence()).rejects.toThrow("changed_during_verification");
   git(["mv", "private.txt", "src/private.txt"]);
   await expect(verifier(workspace)).rejects.toThrow("path_outside_scope");
+});
+
+it("samples ignored source directories as roots and refuses intermediate symlink escapes", async () => {
+  const workspace=join(root,"source");await mkdir(workspace);const git=(...args:string[])=>execFileSync("git",args,{cwd:workspace,encoding:"utf8"}).trim();
+  git("init","-b","main");await mkdir(join(workspace,"src"));await writeFile(join(workspace,"src/a"),"original");await writeFile(join(workspace,".gitignore"),"node_modules/\nignored/\n");
+  git("add",".");git("-c","user.name=test","-c","user.email=test@example.invalid","commit","-m","seed");const base=git("rev-parse","HEAD");
+  await mkdir(join(workspace,"node_modules"));await writeFile(join(workspace,"node_modules/dependency"),"one");
+  const fence=await createDeliverySourceFence(workspace,base);
+  await writeFile(join(workspace,"node_modules/another"),"unqualified dependency contents");await expect(fence()).resolves.toBeUndefined();
+  await mkdir(join(workspace,"ignored"));await writeFile(join(workspace,"ignored/new"),"new ignored root");await expect(fence()).rejects.toThrow("delivery_source_changed");
+  await rm(join(workspace,"src"),{recursive:true});const outside=join(root,"outside");await mkdir(outside);await writeFile(join(outside,"a"),"secret");await symlink(outside,join(workspace,"src"));
+  await expect(createDeliverySourceFence(workspace,base)).rejects.toThrow("parent_escape");
 });
