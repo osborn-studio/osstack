@@ -287,11 +287,20 @@ export function readRunEventPage(db: Database.Database, input: {
     if (!Number.isSafeInteger(max) || max < -1 || (first && (!Number.isSafeInteger(first.seq) || first.seq < 0)))
       throw new Error("invalid_event_sequence");
     const high = input.throughSeq ?? max;
-    const rows = db.prepare(`SELECT substr(event_id,1,4097) event_id,run_id,substr(session_id,1,4097) session_id,
-      seq,substr(type,1,257) type,created_at,terminal,length(CAST(payload_json AS BLOB)) payload_bytes,
-      CASE WHEN length(CAST(payload_json AS BLOB))<=65536 THEN payload_json ELSE NULL END payload_json
-      FROM events WHERE run_id=? AND seq>? AND seq<=? ORDER BY seq LIMIT ?`)
-      .all(input.runId, input.afterSeq, high, input.limit) as BoundedRunEvent[];
+    // First select bounded metadata, then fetch payloads only for a 64KiB
+    // aggregate page. Oversized records retain null payload evidence and stop
+    // the reducer; small records still advance up to the 200-event limit.
+    const rows = db.prepare(`WITH metadata AS (
+      SELECT seq,length(CAST(payload_json AS BLOB)) payload_bytes FROM events
+      WHERE run_id=? AND seq>? AND seq<=? ORDER BY seq LIMIT ?
+    ), budgeted AS (
+      SELECT seq,payload_bytes,SUM(CASE WHEN payload_bytes<=65536 THEN payload_bytes ELSE 0 END) OVER (ORDER BY seq) total_bytes FROM metadata
+    ) SELECT substr(e.event_id,1,4097) event_id,e.run_id,substr(e.session_id,1,4097) session_id,
+      e.seq,substr(e.type,1,257) type,e.created_at,e.terminal,b.payload_bytes,
+      CASE WHEN b.payload_bytes<=65536 THEN e.payload_json ELSE NULL END payload_json
+      FROM budgeted b JOIN events e ON e.run_id=? AND e.seq=b.seq
+      WHERE b.total_bytes<=65536 ORDER BY e.seq`)
+      .all(input.runId, input.afterSeq, high, input.limit, input.runId) as BoundedRunEvent[];
     const events = rows;
     const nextAfter = events.at(-1)?.seq ?? input.afterSeq;
     const hasMore = db.prepare("SELECT 1 FROM events WHERE run_id=? AND seq>? AND seq<=? LIMIT 1")

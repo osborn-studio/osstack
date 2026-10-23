@@ -160,6 +160,13 @@ describe("worker read-only state views", () => {
     f.db.exec("UPDATE tasks SET tenant_id='elsewhere'");
     expect(() => f.service.inspect({ ...f.params, view_id: view })).toThrow("source_not_found");
   });
+  it("honors explicit unknown-receipt reconciliation without erasing delivery history", () => {
+    const f=fixture();
+    f.db.exec("INSERT INTO session_messages(message_id,session_id,turn_id,direction,kind,payload_json,state,created_at) VALUES('m','s0','turn0','inbound','instruction.send','PRIVATE','failed',1)");
+    expect(f.service.list(f.params).views[1]).toMatchObject({wait_reason:"delivery_unknown",uncertain_delivery_recorded:true});
+    f.db.prepare("INSERT INTO attention_receipt_resolutions VALUES(?,?,?,'abandoned_unknown',?,?,?)").run('m','s0',1,'operator reconciliation','a'.repeat(64),2);
+    expect(f.service.list(f.params).views[1]).toMatchObject({wait_reason:"decision_record_present",uncertain_delivery_recorded:true});
+  });
   it("supports an injected readonly DB and constructor performs no DB access", () => {
     const f = fixture();
     const readonly = new Database(f.dbPath, { readonly: true });
