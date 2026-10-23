@@ -10,6 +10,7 @@
 // documents the object SHAPE only; the conditional rules live in the superRefine
 // and the tests. This is a known, documented limitation, not a gap.
 
+import { DeliveryContractV2, FrozenDeliveryContractV2, DeliveryVerificationReceiptV2 } from "./delivery-contract.js";
 import { AttentionInbox, AttentionStatus } from "./attention.js";
 import { GraphWorkerMessage } from "./graph-worker.js";
 import { GraphCheckpointRequest, GraphCheckpointResponse } from "./graph-checkpoint.js";
@@ -49,6 +50,12 @@ interface SchemaEntry {
 
 /** Public protocol contracts emitted as JSON Schema. Order is stable. */
 export const SCHEMA_MANIFEST: readonly SchemaEntry[] = [
+  {key:"delivery-contract-v2",title:"OSStack Delivery Contract v2",schema:DeliveryContractV2,
+    comment:"Shape only. Zod additionally enforces completion/action/publication constraints, unique checks, canonical references and scout restrictions. Contract fields constrain existing host authorization; they never grant it."},
+  {key:"frozen-delivery-contract-v2",title:"OSStack Frozen Delivery Contract v2",schema:FrozenDeliveryContractV2,
+    comment:"Shape only. The host must recompute the canonical contract digest and bind it to the actual repository and accepted policy."},
+  {key:"delivery-verification-receipt-v2",title:"OSStack Host Delivery Verification Receipt v2",schema:DeliveryVerificationReceiptV2,
+    comment:"Parsing does not authenticate provenance. Verify host-owned receipt, run/task/candidate/contract/policy binding, actual command results and independent review before deriving completion."},
   { key: "attention-inbox", title: "OSStack Attention Inbox", schema: AttentionInbox },
   { key: "attention-status", title: "OSStack Attention Snapshot", schema: AttentionStatus },
   { key: "graph-worker", title: "Graph Worker IPC", schema: GraphWorkerMessage, references: "root", comment: "Dedicated length-prefixed fd3 transport; cap raw bytes before allocation and JSON.parse. Host registration supplies authority. done is not process exit evidence." },

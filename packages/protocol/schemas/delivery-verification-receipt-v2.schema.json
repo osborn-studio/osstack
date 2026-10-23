@@ -1,0 +1,218 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OSStack Host Delivery Verification Receipt v2",
+  "$comment": "Parsing does not authenticate provenance. Verify host-owned receipt, run/task/candidate/contract/policy binding, actual command results and independent review before deriving completion.",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "type": "number",
+      "const": 2
+    },
+    "source": {
+      "type": "string",
+      "const": "osstack_loop_host"
+    },
+    "run_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "task_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "run_kind": {
+      "type": "string",
+      "enum": [
+        "guarded-local",
+        "guarded-git"
+      ]
+    },
+    "contract_digest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "policy_digest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "candidate": {
+      "type": "object",
+      "properties": {
+        "base_head": {
+          "type": "string",
+          "pattern": "^(?:[a-f0-9]{40}|[a-f0-9]{64})$"
+        },
+        "head": {
+          "type": "string",
+          "pattern": "^(?:[a-f0-9]{40}|[a-f0-9]{64})$"
+        },
+        "tree_id": {
+          "type": "string",
+          "pattern": "^(?:[a-f0-9]{40}|[a-f0-9]{64})$"
+        },
+        "diff_digest": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      },
+      "required": [
+        "base_head",
+        "head",
+        "tree_id",
+        "diff_digest"
+      ],
+      "additionalProperties": false
+    },
+    "checks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          },
+          "registry_ref": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          },
+          "command_digest": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "exit_code": {
+            "type": "integer"
+          },
+          "duration_ms": {
+            "type": "number",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "id",
+          "registry_ref",
+          "command_digest",
+          "exit_code",
+          "duration_ms"
+        ],
+        "additionalProperties": false
+      },
+      "minItems": 1,
+      "maxItems": 200
+    },
+    "review": {
+      "type": "object",
+      "properties": {
+        "policy_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "verdict": {
+          "type": "string",
+          "enum": [
+            "approved",
+            "changes_requested",
+            "blocked",
+            "inconclusive"
+          ]
+        },
+        "builder_agent_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "reviewer_agent_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "builder_provider": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "builder_model": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "reviewer_provider": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "reviewer_model": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "identity_source": {
+          "type": "string",
+          "const": "reported"
+        },
+        "artifact_digest": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      },
+      "required": [
+        "policy_ref",
+        "verdict",
+        "builder_agent_id",
+        "reviewer_agent_id",
+        "builder_provider",
+        "builder_model",
+        "reviewer_provider",
+        "reviewer_model",
+        "identity_source",
+        "artifact_digest"
+      ],
+      "additionalProperties": false
+    },
+    "observed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "context_receipt_refs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "minLength": 1
+          },
+          "digest": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          }
+        },
+        "required": [
+          "path",
+          "digest"
+        ],
+        "additionalProperties": false
+      },
+      "maxItems": 100,
+      "default": []
+    }
+  },
+  "required": [
+    "schema_version",
+    "source",
+    "run_id",
+    "task_id",
+    "run_kind",
+    "contract_digest",
+    "policy_digest",
+    "candidate",
+    "checks",
+    "review",
+    "observed_at"
+  ],
+  "additionalProperties": false
+}
