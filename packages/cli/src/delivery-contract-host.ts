@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { execFile } from "node:child_process";
 import { constants } from "node:fs";
 import { lstat, mkdir, open, readlink, realpath, writeFile } from "node:fs/promises";
-import { isAbsolute, join, relative } from "node:path";
+import { dirname, isAbsolute, join, relative } from "node:path";
 import { promisify } from "node:util";
 import { assertDeliveryContractPaths, assertFrozenDeliveryContract, deliveryCheckReference, deliveryContractDigest, verifyDeliveryContractReceipt } from "@osstack/core";
 import { DeliveryVerificationReceiptV2, type DeliveryCandidateIdentityV2, type DeliveryReceiptReferenceV2, type FrozenDeliveryContractV2 } from "@osstack/protocol";
@@ -107,13 +107,14 @@ async function deliveryConfig(workspace: string): Promise<string> {
     throw new Error("delivery_git_filter_unsupported");
   return config;
 }
-async function snapshotDeliveryWorkspace(workspace: string, baseHead: string) {
+async function snapshotDeliveryWorkspace(workspace: string, baseHead: string, ignoredDirectories = false) {
+  const canonicalWorkspace = await realpath(workspace);
   await deliveryConfig(workspace);
   const flags = (await deliveryGit(workspace, ["ls-files", "-v", "-z"])).split("\0").filter(Boolean);
   if (flags.some(entry => /^[a-zS]/.test(entry))) throw new Error("delivery_hidden_index_flags");
   const tracked = (await deliveryGit(workspace, ["diff", "--no-renames", "--name-only", "-z", baseHead, "--"])).split("\0").filter(Boolean);
   const untracked = (await deliveryGit(workspace, ["ls-files", "--others", "--exclude-standard", "-z"])).split("\0").filter(Boolean);
-  const ignored = (await deliveryGit(workspace, ["ls-files", "--others", "--ignored", "--exclude-standard", "-z"])).split("\0").filter(Boolean).sort();
+  const ignored = (await deliveryGit(workspace, ["ls-files", "--others", "--ignored", "--exclude-standard", ...(ignoredDirectories ? ["--directory", "--no-empty-directory"] : []), "-z"])).split("\0").filter(Boolean).sort();
   const paths = [...new Set([...tracked, ...untracked])].sort();
   const allFiles = [...new Set([...flags.map(entry => entry.slice(2)), ...paths])].sort();
   if (allFiles.length + ignored.length > 100000) throw new Error("delivery_candidate_too_many_files");
@@ -121,6 +122,8 @@ async function snapshotDeliveryWorkspace(workspace: string, baseHead: string) {
   let bytes = 0;
   for (const path of allFiles) {
     const absolute = join(workspace, path);
+    const parent = await realpath(dirname(absolute)).catch(error => { if ((error as NodeJS.ErrnoException).code === "ENOENT") return undefined; throw error; });
+    if (parent !== undefined) { const rel = relative(canonicalWorkspace, parent); if (rel === ".." || rel.startsWith("../") || isAbsolute(rel)) throw new Error("delivery_candidate_parent_escape"); }
     const info = await lstat(absolute).catch(error => { if ((error as NodeJS.ErrnoException).code === "ENOENT") return undefined; throw error; });
     if (!info) { changes.push({ path, digest: null, mode: null }); continue; }
     if (!info.isFile() && !info.isSymbolicLink()) throw new Error("delivery_candidate_file_invalid");
@@ -179,4 +182,20 @@ export function createDeliveryVerificationFence(frozen: FrozenDeliveryContractV2
       return digest;
     },
   });
+}
+
+/** Detect changes to the original checkout; this is not a filesystem sandbox.
+ * Existing ignored file contents and arbitrary paths outside the checkout are not sampled.
+ */
+export async function createDeliverySourceFence(workspace: string, baseHead: string): Promise<() => Promise<void>> {
+  const sample = async () => {
+    const [head, index, snapshot] = await Promise.all([
+      deliveryGit(workspace, ["rev-parse", "HEAD"]),
+      deliveryGit(workspace, ["ls-files", "--stage", "-z"]),
+      snapshotDeliveryWorkspace(workspace, baseHead, true),
+    ]);
+    return deliveryContractDigest({ head, index, snapshot: snapshot.digest });
+  };
+  const baseline = await sample();
+  return async () => { if (await sample() !== baseline) throw new Error("delivery_source_changed"); };
 }
