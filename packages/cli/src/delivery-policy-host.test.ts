@@ -67,6 +67,7 @@ it("binds V2 checks and budget to committed host policy without enabling auto-me
   git("add", ".osstack");
   git("commit", "-m", "policy");
   const deps = createDeliverCommandDeps();
+  const base = git("rev-parse", "HEAD").toString().trim();
   const first = await deps.deliveryContractPolicy!(root);
   expect(first).toMatchObject({
     verifyCommands: ["node --version"],
@@ -91,6 +92,8 @@ it("binds V2 checks and budget to committed host policy without enabling auto-me
   expect(await deps.deliveryContractPolicy!(root)).toEqual(first);
   git("add", ".osstack/repo.yaml");
   git("commit", "-m", "updated policy");
+  expect(await deps.deliveryContractPolicy!(root, base)).toEqual(first);
+  await expect(deps.deliveryContractPolicy!(root, "HEAD:untrusted")).rejects.toThrow("invalid_policy_revision");
   expect((await deps.deliveryContractPolicy!(root)).policyDigest).not.toBe(
     first.policyDigest,
   );

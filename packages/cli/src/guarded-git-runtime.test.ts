@@ -721,13 +721,15 @@ describe("V2 guarded runtime host receipts", () => {
       }
       throw new Error(`unexpected remote action ${args.join(" ")}`);
     } };
-    const { runtime, close } = await testRuntime({ workspace, evidenceRoot, proofs, deliverGit, candidateDeliveryRunner: runner,
+    const policyGuard = vi.fn(async () => {});
+    const { runtime, close } = await testRuntime({ workspace, evidenceRoot, proofs, deliverGit, candidateDeliveryRunner: runner, assertPolicyUnchanged: policyGuard,
       builderInvoke: async function* (task) { await writeFile(join(String(task.context?.["repo_path"]), "docs/readme.md"), "verified candidate");
         yield doneEvent(task, { status: "completed", last_seq: 0, result_summary: "built" }); } });
     try {
       const result = await runtime.start({ ...start, contract_sha256: frozen.digest, requested_actions: frozen.contract.requested_actions,
         routing: { ...start.routing, delivery_contract: frozen } });
       expect(result.status, JSON.stringify(result)).toBe("completed");
+      expect(policyGuard).toHaveBeenCalledWith(realpathSync(workspace), SHA_A, frozen.contract.base_head);
       expect(result.run.context.achieved_completion).toBe(completion);
       expect(git(workspace, ["rev-list", "--count", "HEAD"])).toBe(completion === "local_verified" ? "1" : "2");
       expect(externalCalls.some(call => call.includes("pr merge") || call.includes("pr checks"))).toBe(false);

@@ -267,6 +267,9 @@ it("runs the real CLI, committed policy and private context receipt factories th
   expect(result.delivery_contract.achieved_completion).toBe("local_verified");
   expect(git("rev-parse", "HEAD")).toBe(base);
   expect(await readFile(join(repo, "src/greeting.ts"), "utf8")).toBe(source);
+  expect(git("status", "--porcelain")).toBe("");
+  expect(result.json_path.startsWith(join(home, "delivery-contracts"))).toBe(true);
+  expect(result.task_path.startsWith(join(home, "delivery-contracts"))).toBe(true);
   const receipt = JSON.parse(
     await readFile(result.delivery_contract.verification_receipt.path, "utf8"),
   );

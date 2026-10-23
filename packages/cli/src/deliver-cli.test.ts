@@ -40,6 +40,7 @@ let errors: string[];
 
 beforeEach(() => {
   tmp = mkdtempSync(join(tmpdir(), "osstack-deliver-cli-"));
+  vi.stubEnv("OSSTACK_HOME", join(tmp, "home"));
   logs = [];
   errors = [];
   vi.spyOn(console, "log").mockImplementation((...args) => {
@@ -52,6 +53,7 @@ beforeEach(() => {
 
 afterEach(async () => {
   vi.restoreAllMocks();
+  vi.unstubAllEnvs();
   await rm(tmp, { recursive: true, force: true });
 });
 

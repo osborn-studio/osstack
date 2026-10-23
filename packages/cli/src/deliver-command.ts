@@ -5,7 +5,7 @@ import { execFile } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { realpathSync } from "node:fs";
 import { readFile, stat } from "node:fs/promises";
-import { join } from "node:path";
+import { isAbsolute, join } from "node:path";
 import { promisify } from "node:util";
 import {
   defaultAdapters,
@@ -123,12 +123,14 @@ export interface DeliverCommandDeps {
     args: string[],
     events: LoopEvent[],
     governance?: DeliverGovernanceEvidence,
+    outputDirectory?: string,
   ) => Promise<DeliverEvidenceArtifacts | undefined>;
   learnLessonsFromLoopState: (
     state: LoopState,
   ) => Promise<unknown>;
   adapters?: () => AgentAdapter[];
-  deliveryContractPolicy?: (workspacePath: string) => Promise<{ policyDigest: string; verifyCommands: string[]; budgetRef: string; budget: GuardedDeliveryPolicy["budget"] }>;
+  createDeliveryStateDirectory?: (contractDigest: string) => Promise<string>;
+  deliveryContractPolicy?: (workspacePath: string, baseRevision?: string) => Promise<{ policyDigest: string; verifyCommands: string[]; budgetRef: string; budget: GuardedDeliveryPolicy["budget"] }>;
   createExecutionContext?: (input: { adapters: readonly AgentAdapter[]; workspacePath: string; configPath: string;
     contractDigest?: string; contractBrief?: string }) => Promise<{ adapters: readonly AgentAdapter[]; receiptRefs(): readonly DeliveryReceiptReferenceV2[] }>;
   startGuardedGit?: (input: {
@@ -253,7 +255,7 @@ guarded-deploy adds after merge:
       "--deploy-policy project is valid only with --autonomy guarded-deploy",
     );
   }
-  const stateFilePath = flagValue(args, "--state") ?? "LOOP-STATE.json";
+  let stateFilePath = flagValue(args, "--state") ?? "LOOP-STATE.json";
   const executeCommand = flagValue(args, "--execute");
   let agentId = flagValue(args, "--agent");
   let verifierAgentIds = [
@@ -482,8 +484,15 @@ guarded-deploy adds after merge:
     "verify-review",
     "proof",
   ];
+  let deliveryStateDirectory: string | undefined;
+  if (frozenContract) {
+    if (!deps.createDeliveryStateDirectory) return deliverBlocked(args, "delivery_state_unavailable", "V2 requires private host delivery state");
+    deliveryStateDirectory = await deps.createDeliveryStateDirectory(frozenContract.digest);
+    if (!isAbsolute(deliveryStateDirectory)) throw new Error("delivery_state_absolute_path_required");
+    if (flagValue(args, "--state") === undefined) stateFilePath = join(deliveryStateDirectory, "LOOP-STATE.json");
+  }
   const task = await enqueueTask({
-    workspacePath,
+    workspacePath: deliveryStateDirectory ?? workspacePath,
     prompt,
     capability,
     ...(frozenContract ? { taskId: frozenContract.contract.task_id } : {}),
@@ -511,7 +520,7 @@ guarded-deploy adds after merge:
   let receiptRef: DeliveryReceiptReferenceV2 | undefined;
   let candidateWorkspace: string | undefined;
   let candidateGovernance: DeliverGovernanceEvidence | undefined;
-  const evidenceRoot = join(workspacePath, ".osstack", "delivery-contracts", frozenContract?.digest ?? "legacy");
+  const evidenceRoot = deliveryStateDirectory ? join(deliveryStateDirectory, "receipts") : join(workspacePath, ".osstack", "delivery-contracts", "legacy");
   const contextPath = flagValue(args, "--execution-context");
   let executionContext: Awaited<ReturnType<NonNullable<DeliverCommandDeps["createExecutionContext"]>>> | undefined;
   if (contextPath) {
@@ -604,6 +613,7 @@ guarded-deploy adds after merge:
     artifactArgs,
     events,
     governance,
+    deliveryStateDirectory,
   );
   const learnedLessons = await deps.learnLessonsFromLoopState(result.state);
   const contractSucceeded = receiptRef !== undefined && result.state.completed_tasks.length === 1

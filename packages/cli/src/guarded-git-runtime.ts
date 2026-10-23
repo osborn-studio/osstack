@@ -136,6 +136,7 @@ export interface GuardedGitRuntimeDeps {
   assertPolicyUnchanged?: (
     workspacePath: string,
     expectedPolicySha256: string,
+    baseRevision?: string,
   ) => Promise<void>;
   evaluateGovernance?: (
     workspacePath: string,
@@ -523,6 +524,7 @@ export class GuardedGitRuntime {
     await this.deps.assertPolicyUnchanged?.(
       workspacePath,
       routing.policy_sha256,
+      ...(routing.delivery_contract ? [routing.delivery_contract.contract.base_head] : []),
     );
   }
 

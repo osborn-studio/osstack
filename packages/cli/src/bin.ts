@@ -7729,6 +7729,7 @@ async function writeRequestedLoopArtifacts(
   args: string[],
   events: LoopEvent[] = [],
   governanceOverride?: GovernanceProofEvidence,
+  outputDirectory?: string,
 ): Promise<LoopEvidenceArtifacts | undefined> {
   const { createLoopStateScorecardFromState, renderLoopStateScorecardHtml, renderLoopStateScorecardMarkdown } = await loadLoop();
   if (!hasRequestedLoopArtifacts(args)) return undefined;
@@ -7737,7 +7738,7 @@ async function writeRequestedLoopArtifacts(
   const loopId = safeFileSegment(state.loop_id);
 
   if (args.includes("--report")) {
-    const reportDir = join(workspacePath, "reports");
+    const reportDir = join(outputDirectory ?? workspacePath, "reports");
     const reportPath = join(reportDir, `osstack-report-${loopId}.md`);
     await mkdir(reportDir, { recursive: true });
     await writeFile(reportPath, await renderReportMarkdownForArtifacts(state, events), "utf-8");
@@ -7745,7 +7746,7 @@ async function writeRequestedLoopArtifacts(
   }
 
   if (args.includes("--scorecard")) {
-    const releaseDir = join(workspacePath, "release");
+    const releaseDir = join(outputDirectory ?? workspacePath, "release");
     const scorecard = createLoopStateScorecardFromState(state);
     const markdownPath = join(releaseDir, `osstack-scorecard-${loopId}.md`);
     const htmlPath = join(releaseDir, `osstack-scorecard-${loopId}.html`);
@@ -7760,7 +7761,7 @@ async function writeRequestedLoopArtifacts(
   if (args.includes("--proof")) {
     const governance = governanceOverride ?? await scanWorkspaceGovernance(workspacePath);
     const knowledge = await createKnowledgeProofEvidence(args, state.loop_id, state.knowledge);
-    const proof = await writeProofPack(state, join(workspacePath, "release"), events, state.loop_id, governance, knowledge, [], workspacePath);
+    const proof = await writeProofPack(state, join(outputDirectory ?? workspacePath, "release"), events, state.loop_id, governance, knowledge, [], workspacePath);
     artifacts.proof_dir = proof.proof_dir;
     artifacts.proof_zip = proof.proof_zip;
     artifacts.proof_manifest = proof.proof_manifest;
@@ -9259,9 +9260,16 @@ export function createDeliverCommandDeps(): DeliverCommandDeps {
     observeLoopProbeEvents,
     writeRequestedLoopArtifacts,
     learnLessonsFromLoopState,
-    deliveryContractPolicy: async (workspacePath) => {
+    createDeliveryStateDirectory: async (digest) => {
+      if (!/^[a-f0-9]{64}$/.test(digest)) throw new Error("invalid_delivery_contract_digest");
+      const directory = join(osstackHome(), "delivery-contracts", digest, randomUUID());
+      await mkdir(directory, { recursive: true, mode: 0o700 });
+      return directory;
+    },
+    deliveryContractPolicy: async (workspacePath, baseRevision) => {
       const policy = await guardedPolicySnapshot(workspacePath, {
         requireAutoMerge: false,
+        ...(baseRevision ? {revision:baseRevision} : {}),
       });
       return {
         policyDigest: policy.policySha256,
@@ -9397,7 +9405,7 @@ function guardedProtectedPolicyPaths(
 
 async function guardedPolicySnapshot(
   workspacePath: string,
-  options: { requireAutoMerge?: boolean } = {},
+  options: { requireAutoMerge?: boolean; revision?: string } = {},
 ): Promise<{
   repoConfig: Exclude<Awaited<ReturnType<typeof loadRepoConfig>>, undefined> & {
     schema_version: 2;
@@ -9405,9 +9413,11 @@ async function guardedPolicySnapshot(
   policySha256: string;
   protectedPolicyPaths: string[];
 }> {
+  const revision = options.revision ?? "HEAD";
+  if (revision !== "HEAD" && !/^(?:[a-f0-9]{40}|[a-f0-9]{64})$/.test(revision)) throw new Error("invalid_policy_revision");
   const [repoRaw, policyRaw] = await Promise.all([
-    guardedGitText(workspacePath, ["show", "HEAD:.osstack/repo.yaml"]),
-    guardedGitText(workspacePath, ["show", "HEAD:.osstack/policy.yaml"]),
+    guardedGitText(workspacePath, ["show", `${revision}:.osstack/repo.yaml`]),
+    guardedGitText(workspacePath, ["show", `${revision}:.osstack/policy.yaml`]),
   ]);
   let repoValue: unknown;
   let policyValue: unknown;
@@ -9791,9 +9801,10 @@ async function createGuardedGitRuntimeForDb(
     trustedApprovalPublicKeys,
     writeProof: writeGuardedGitProof,
     createExecutionContext: createDeliveryExecutionContext,
-    assertPolicyUnchanged: async (workspacePath, expected) => {
+    assertPolicyUnchanged: async (workspacePath, expected, baseRevision) => {
       const current = await guardedPolicySnapshot(workspacePath, {
         requireAutoMerge: false,
+        ...(baseRevision ? {revision:baseRevision} : {}),
       });
       if (current.policySha256 !== expected) {
         throw new Error(
