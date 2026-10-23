@@ -237,7 +237,7 @@ describe("dashboard/cockpit CLI", () => {
     expect(output).toContain("OSSTACK COCKPIT");
     expect(output).toContain("Workspace:");
     expect(output).toContain("Daemon:");
-    expect(output).toContain("> Overview");
+    expect(output).toContain("> Attention");
     expect(output).toContain("Actions");
     expect(output).toContain("3. [ready] Loop Engineering");
   });
@@ -259,6 +259,7 @@ describe("dashboard/cockpit CLI", () => {
     expect(summary.mode).toBe("terminal-cockpit");
     expect(summary.workspace).toBe(workspace);
     expect(summary.sections.map((section) => section.title)).toEqual([
+      "Attention",
       "Overview",
       "Kanban",
       "Evidence",

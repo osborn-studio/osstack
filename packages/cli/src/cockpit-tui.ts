@@ -272,7 +272,11 @@ export function renderCockpitFullscreen(
     frameLine("Keys: up/down move | enter select | q quit", width),
     `+${rule}+`,
   ];
-  const clipped = lines.slice(0, height);
+  // Reserve the action and key footer when observation details grow. Clipping
+  // the tail hid actionable rows after adding the Attention section.
+  const footerStart = lines.indexOf(frameLine("Actions", width)) - 1;
+  const footer = lines.slice(footerStart);
+  const clipped = [...lines.slice(0, Math.min(footerStart, height - footer.length)), ...footer];
   while (clipped.length < height) {
     clipped.splice(clipped.length - 1, 0, frameLine("", width));
   }
