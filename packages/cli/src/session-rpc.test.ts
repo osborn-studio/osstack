@@ -750,3 +750,77 @@ it("keeps the reserved answer uncertain when both completion and failure persist
     expect(adapter.resumed.length - before).toBe(1);
   } finally { complete.mockRestore(); fail.mockRestore(); }
 });
+
+it("does not reserve manual instructions or answers when execution admission is denied", async () => {
+  const { GovernedExecution } = await import("./governed-execution.js");
+  for (const attention of [false, true]) {
+    const id = attention ? "admission-answer" : "admission-send";
+    seedSession(id);
+    const db = openDb({ path: handle.dbPath });
+    const source = db.prepare("SELECT repo_path,version FROM agent_sessions WHERE session_id=?").get(id) as { repo_path: string; version: number };
+    let method = "session.send";
+    let params: Record<string, unknown> = { session_id: id, runtime_id: adapter.id, turn_id: `turn_${id}`, message_id: `message-${id}`, expected_version: source.version, text: "continue" };
+    if (attention) {
+      db.prepare("UPDATE agent_sessions SET state='awaiting_decision' WHERE session_id=?").run(id);
+      db.prepare("UPDATE session_turns SET decision_json=? WHERE session_id=?").run(JSON.stringify(structuredDecision), id);
+      const watch = await rpc("attention.watch", { task_id: `task_${id}`, repo_path: source.repo_path, default_tenant: true });
+      const scope = (watch.result!["scope"] as { scope_id: string }).scope_id;
+      const inbox = await rpc("attention.inbox", { scope_id: scope });
+      const item = (inbox.result!["items"] as Array<Record<string, unknown>>)[0]!;
+      method = "attention.answer";
+      params = { scope_id: scope, item_id: item["item_id"], action_id: `answer-${id}`, revision: item["revision"], content_hash: item["content_hash"], text: "continue", takeover: false };
+    }
+    const before = adapter.resumed.length;
+    const admission = vi.spyOn(GovernedExecution.prototype, "acquire").mockRejectedValueOnce(new Error("repository writer busy"));
+    try {
+      expect(await rpc(method, params)).toMatchObject({ ok: false, error: { code: "admission_denied" } });
+      expect(adapter.resumed.length).toBe(before);
+      expect(db.prepare("SELECT version FROM agent_sessions WHERE session_id=?").get(id)).toEqual({ version: source.version });
+      expect(db.prepare("SELECT 1 FROM session_messages WHERE session_id=? AND direction='inbound'").get(id)).toBeUndefined();
+      if (attention) expect(db.prepare("SELECT 1 FROM attention_actions WHERE action_id=?").get(`answer-${id}`)).toBeUndefined();
+    } finally { admission.mockRestore(); db.close(); }
+    expect(await rpc(method, params)).toMatchObject({ ok: true, result: { state: "applied" } });
+    expect(adapter.resumed.length - before).toBe(1);
+  }
+});
+
+it("cancels admission queued for either manual route without reserving a receipt", async () => {
+  const { GovernedExecution } = await import("./governed-execution.js");
+  for (const attention of [false, true]) {
+    const id = attention ? "queued-answer" : "queued-send";
+    seedSession(id);
+    const db = openDb({ path: handle.dbPath });
+    const source = db.prepare("SELECT repo_path,version FROM agent_sessions WHERE session_id=?").get(id) as { repo_path: string; version: number };
+    let method = "session.send";
+    let params: Record<string, unknown> = { session_id: id, runtime_id: adapter.id, turn_id: `turn_${id}`, message_id: `message-${id}`, expected_version: source.version, text: "continue" };
+    if (attention) {
+      db.prepare("UPDATE agent_sessions SET state='awaiting_decision' WHERE session_id=?").run(id);
+      db.prepare("UPDATE session_turns SET decision_json=? WHERE session_id=?").run(JSON.stringify(structuredDecision), id);
+      const watch = await rpc("attention.watch", { task_id: `task_${id}`, repo_path: source.repo_path, default_tenant: true });
+      const scope = (watch.result!["scope"] as { scope_id: string }).scope_id;
+      const inbox = await rpc("attention.inbox", { scope_id: scope });
+      const item = (inbox.result!["items"] as Array<Record<string, unknown>>)[0]!;
+      method = "attention.answer";
+      params = { scope_id: scope, item_id: item["item_id"], action_id: `answer-${id}`, revision: item["revision"], content_hash: item["content_hash"], text: "continue", takeover: false };
+    }
+    let queued = false;
+    const admission = vi.spyOn(GovernedExecution.prototype, "acquire").mockImplementationOnce(input => new Promise((_resolve, reject) => {
+      queued = true;
+      if (input.signal?.aborted) reject(new Error("cancelled"));
+      else input.signal?.addEventListener("abort", () => reject(new Error("cancelled")), { once: true });
+    }));
+    try {
+      const sending = rpc(method, params);
+      await vi.waitFor(() => expect(queued).toBe(true));
+      expect(await rpc("run.status", { run_id: `run_${id}` })).toMatchObject({ ok: true, result: { active: true } });
+      expect(await rpc(method, params)).toMatchObject({ ok: false, error: { code: "session_busy" } });
+      expect(await rpc("task.cancel", { run_id: `run_${id}` })).toMatchObject({ ok: true });
+      expect(await sending).toMatchObject({ ok: false, error: { code: "admission_denied" } });
+      expect(await rpc("run.status", { run_id: `run_${id}` })).toMatchObject({ ok: true, result: { active: false } });
+      expect(adapter.resumed.some(input => input.session_id === id)).toBe(false);
+      expect(db.prepare("SELECT version FROM agent_sessions WHERE session_id=?").get(id)).toEqual({ version: source.version });
+      expect(db.prepare("SELECT 1 FROM session_messages WHERE session_id=? AND direction='inbound'").get(id)).toBeUndefined();
+    } finally { admission.mockRestore(); db.close(); }
+    expect(await rpc(method, params)).toMatchObject({ ok: true, result: { state: "applied" } });
+  }
+});

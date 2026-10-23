@@ -1,0 +1,32 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/pr237-main/packages/cli
+
+(node:15999) ExperimentalWarning: stripTypeScriptTypes is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:15999) ExperimentalWarning: vm.USE_MAIN_CONTEXT_DEFAULT_LOADER is an experimental feature and might change at any time
+ ✓ src/loop-candidate-cli.test.ts (36 tests) 40339ms
+   ✓ actual enqueue -> queue -> native worktree batch runs all stages and native verifier union  3841ms
+   ✓ actual mandatory native verify failure is not replaced by green policy stages  1463ms
+   ✓ actual queued wrong batch binding cannot execute shell or obtain readiness  336ms
+   ✓ actual final stage failure marks candidate failed and retains private one-shot claim  2620ms
+   ✓ actual required Task evaluation remains gating in candidate local stage  1981ms
+   ✓ actual non-optin legacy goal/capability values named candidate-policy retain native parsing  772ms
+   ✓ source mutant removing native stage union causes real unverified local merge after full positive baseline  6096ms
+   ✓ actual nonoptin legacy knowledge-mode consumes candidate token without loading a policy  389ms
+   ✓ actual candidate ignores unavailable implicit knowledge context without config reads/search despite synthetic cloud config/env  2230ms
+   ✓ actual candidate green reviewer runs every stage and no postfreeze hooks mutate evidence  2266ms
+   ✓ actual candidate final-fail reviewer runs every stage and no postfreeze hooks mutate evidence  2320ms
+   ✓ actual candidate recover reviewer runs every stage and no postfreeze hooks mutate evidence  2422ms
+   ✓ actual candidate artifact gate forbidden-local prevents readiness with base-range evidence  1516ms
+   ✓ actual candidate artifact gate target-miss prevents readiness with base-range evidence  1480ms
+   ✓ actual candidate unconfirmed synthetic producer retains lease/claim/worktree and never retries  2363ms
+   ✓ actual artifact checks reject a previously valid second task against complete frozen batch range  3118ms
+   ✓ actual candidate profile/role resolver derives separate builder/reviewer and preserves all stages  2313ms
+ ✓ src/session-rpc.test.ts (24 tests) 4606ms
+ ✓ src/attention-hook.test.ts (4 tests) 233ms
+
+ Test Files  3 passed (3)
+      Tests  64 passed (64)
+   Start at  10:47:29
+   Duration  49.29s (transform 1.84s, setup 23ms, collect 3.39s, tests 45.18s, environment 0ms, prepare 153ms)
+

@@ -1,0 +1,2507 @@
+Final follow-up to round5 audit, original review below. Independently verify concrete claims. Distinguish confirmed release blockers from inherited deliberately fail-closed tradeoffs. Main GovernedExecution code is unchanged by PR237: pre-admission cleanup failure quarantines repository until controlled recovery/restart; no producer was started. Global permits may serve OTHER repositories; same canonical repo stays quarantined and filesystem lock remains. Existing test explicitly proves quarantine after replaced pre-admission lock. Automatic unlock is forbidden. This is a known recovery UX limitation, not new unsafe write authority. Pending indefinite admission is cancellable by task.cancel/shutdown; future timeout is qualification backlog (P2). Latent native-session null guard now inside finally ownership path; not reachable via existing checks, hardened anyway. Finally tracking cleanup now guaranteed if lease.release throws. Please evaluate actual manual routes from actions/sessions now included. No unrelated changes to main admission. All prior actual P1s fixed (bounded stdin/loop source/descriptor binding/double DB failure/pre-admission receipts). Return explicit final P0/P1 count with reproducible trigger if any, separate P2 limitations. Do not claim test execution.
+
+## Verdict
+
+I found no confirmed P0 in the admission-before-receipt change. The pre-admission wedge from the prior review is resolved for both manual routes, as far as the supplied code shows. I did find two confirmed lifecycle defects in the admission and executor paths that the 26-case suite does not exercise, plus one latent defect that is unreachable under current invariants. These are code-reading findings. I did not reproduce them by running code.
+
+## Verified by reading
+
+- **Pre-admission wedge resolved.** In `handleSessionSend` and in `attention.answer`, `reserveSessionInstruction` / `actions.reserve` run only after `acquireManualSessionAdmission` resolves. A queued request holds only the `activeSessionSends` marker and the `activeRuns` controller, with no accepted receipt. A failed or cancelled admission is cleaned up by `clear()` in the rejection path and by `admission.release()` when `handedOff` is false.
+- **No duplicate execution from this change.** The pre-check `activeSessionSends.has` and the `set` in `acquireManualSessionAdmission` run in the same synchronous turn, with no `await` between them, so two requests cannot both pass the check. A concurrent retry of the same `message_id` during admission gets `session_busy` (not a second adapter call), and the `reserveSessionInstruction` duplicate branch is still covered by the existing `outcome === "duplicate"` path.
+- **Cancellation transfer.** `executeReservedSessionTurn` receives the same `AbortController` that is registered in `activeRuns`. `task.cancel` and shutdown abort queued admissions as well as running turns.
+- **Shutdown** iterates `activeRuns` and aborts queued manual work, so queued manual sends are cancelled during shutdown.
+
+## Confirmed defects
+
+**1. Permanent in-process quarantine after a failed lock release during admission rejection (P1, availability, low likelihood).**
+In `GovernedExecution.acquireOwned`, the catch block calls `this.quarantine(scope.repoId, input.runId)` when `lock.release()` throws, then rethrows an `AggregateError`. The `finally` still runs `releasePermits()`. Nothing clears the quarantine on this path. The acquisition never returned a lease, so no `releaseAfterReconciliation` handle exists. The top-of-function check `quarantinedRepositories.has(scope.repoId)` then rejects every later write to that repository until the daemon restarts. The comment in the same file says "Ownership failure must not free the in-process writer authority," which contradicts the permits being freed here.
+
+**2. Early return in `executeReservedSessionTurn` leaks the admitted lease and the reserved message (latent P1).**
+The line `if (session.native_session_id === null) return singleErr(...)` runs before the `try`/`finally`. When the caller supplies `admittedLease` (both manual routes do), that return skips `lease.release()`, skips `activeSessionSends.delete`, and skips `activeRuns` cleanup. The caller has already reserved the message, so it stays `accepted`. The result is a session wedge until restart. Current code makes this unreachable: the manual path checks `native_session_id` before admission, and no repository method sets it back to null. It is still a real defect in the code shape. Fix: move the guard inside the `try`, or perform it before the lease is handed over, and route it through the same failed-receipt and release logic.
+
+**3. Queued admission has no bound when a holder is retained (P2, liveness).**
+`retain()` sets `retained`, clears the timer, and quarantines the repository. It does not call `releasePermits()`, so the global and per-repository FIFO permits stay held. A manual request already waiting in `queue.acquire(signal)` or `writes.acquire(signal)` waits without a timeout. The quarantine check runs only after acquisition, and the early check runs only at call time, so it never fires for a waiter. The waiter ends only on `task.cancel` or shutdown. The RPC socket stays open, the session reports `session_busy`, and `run.status` reports `active: true`. This is much better than the prior receipt wedge, but it is still an unbounded hang. The suite does not cover it.
+
+## Qualifications (not confirmed defects)
+
+- `daemon.drain` does not cancel queued manual admissions. Because they are registered in `activeRuns`, drain waits on them until its timeout. They are denied only after they acquire. This is safe but extends drain time.
+- `publicSessionWait` uses `ctx.activeSessionSends.has(sessionId)` to set `applying`. During the queued phase, no instruction has been reserved yet, so `applying: true` can misdescribe the state.
+- The synthetic `pending:${action_id}` value is passed into `actions.replay` as the in-flight identifier. Confirm that `AttentionActions` only uses it for busy classification and never persists or returns it.
+- The attention branch checks `ctx.draining` before replay, so even a completed answer replay is refused during drain. `session.send` allows completed replays during drain. The inconsistency is conservative but should be intentional.
+- Turn, terminal-state, and `resume_supported` checks run before admission and are not rechecked afterward. Safety depends on `reserveSessionInstruction` and `actions.reserve` rejecting stale versions and revisions. That code is outside the supplied files, so I could not verify it. Terminal transitions go through `setState` and `completeInboundTurn`, which bump the version, which supports the version guard.
+
+## Not verified
+
+- The body of `AttentionActions` (`replay`, `reserve`, `reconcile`) and `reserveSessionInstruction`.
+- `FifoSemaphore` internals and `acquireRepoWriteLock` behavior on release failure.
+- The full monorepo suite. The 26-case pass says nothing about the three defects above, which have no test coverage.
+
+FILE packages/cli/src/daemon.ts
+
+async function handleSessionSend(
+  ctx: DaemonContext,
+  req: DaemonRequest,
+): Promise<SingleResponse> {
+  const p = parseSessionSendParams(req.params);
+  if (p instanceof Error) return singleErr(req.id, "bad_request", p.message);
+  // Completed receipt replay remains read-only while drained; no new/retried
+  // instruction may reserve a message or invoke an adapter during an upgrade.
+  if (ctx.draining && ctx.sessions.getMessage(p.message_id)?.state !== "applied") {
+    return singleErr(req.id, "draining", "daemon is not accepting session instructions");
+  }
+
+  const session = ctx.sessions.getSession(p.session_id);
+  if (session === undefined) return singleErr(req.id, "not_found", "session not found");
+  if (p.runtime_id !== session.agent_id) {
+    return singleErr(req.id, "runtime_mismatch", "session belongs to another runtime");
+  }
+  // Idempotency wins over moving state: a retry may arrive after the first
+  // delivery already appended a newer turn or completed the conversation.
+  // Let the repository compare the complete canonical envelope before any
+  // current-turn/current-state guards reject it.
+  const existingMessage = ctx.sessions.getMessage(p.message_id);
+  if (existingMessage !== undefined) {
+    try {
+      const replay = ctx.sessions.applyInbound({
+        message_id: p.message_id,
+        session_id: p.session_id,
+        turn_id: p.turn_id,
+        direction: "inbound",
+        kind: "instruction.send",
+        payload: { text: p.text, ...(p.requested_by === undefined ? {} : { requested_by: p.requested_by }) },
+        state: "accepted",
+        created_at: Date.now() / 1000,
+      }, p.expected_version, Date.now() / 1000);
+      if (existingMessage.state === "applied") {
+        return singleOk(req.id, { state: replay.outcome, session_version: replay.session_version });
+      }
+      if (replay.session_version !== p.expected_version + 1) {
+        return singleErr(req.id, "version_conflict", "accepted message cannot be recovered safely");
+      }
+      if (existingMessage.state === "accepted") {
+        return ctx.activeSessionSends.has(session.session_id)
+          ? singleErr(req.id, "session_busy", "session is already applying another instruction")
+          : singleErr(
+              req.id,
+              "delivery_uncertain",
+              "the previous delivery may have reached the agent; inspect the session before using a new message_id",
+            );
+      }
+      if (existingMessage.state !== "failed") {
+        return singleErr(req.id, "version_conflict", "reserved message is not retryable");
+      }
+      return singleErr(req.id, "delivery_uncertain", "Failed execution may have had side effects; reconcile the existing receipt before retrying");
+    } catch (err) {
+      if (err instanceof SessionMessageIdConflict) {
+        return singleErr(req.id, "message_id_conflict", "message_id was already used for different content");
+      }
+      throw err;
+    }
+  }
+  if (TERMINAL_SESSION_STATES.has(session.state)) {
+    return singleErr(req.id, "session_terminal", `session state=${session.state}`);
+  }
+  if (!session.resume_supported || session.native_session_id === null) {
+    return singleErr(req.id, "resume_unsupported", "session cannot be resumed");
+  }
+  const snapshot = ctx.sessions.latestSnapshot(p.session_id);
+  if (snapshot.turn_id !== p.turn_id) {
+    return singleErr(req.id, "turn_conflict", "message does not target the current turn");
+  }
+  const adapter = ctx.adapters.get(session.agent_id);
+  if (adapter === undefined || !isSessionCapableAdapter(adapter) || !adapter.sessionCapabilities().resume) {
+    return singleErr(req.id, "resume_unsupported", "agent does not support resume");
+  }
+  if (ctx.activeSessionSends.has(session.session_id)) {
+    return singleErr(req.id, "session_busy", "session is already applying another instruction");
+  }
+
+  // Refuse busy/denied admission before minting an instruction receipt.
+  let admission: Awaited<ReturnType<typeof acquireManualSessionAdmission>>;
+  try { admission = await acquireManualSessionAdmission(ctx, session, p.message_id); }
+  catch { return singleErr(req.id, "admission_denied", "Session execution admission was denied; no instruction was reserved"); }
+  let handedOff = false;
+  try {
+    if (ctx.draining || admission.controller.signal.aborted) return singleErr(req.id, "admission_denied", "Session execution was cancelled; no instruction was reserved");
+    let applied: { outcome: "applied" | "duplicate"; session_version: number };
+    const now = Date.now() / 1000;
+    try {
+      applied = reserveSessionInstruction(ctx.db, ctx.dbPath, {
+        message_id: p.message_id,
+        session_id: p.session_id,
+        turn_id: p.turn_id,
+        direction: "inbound",
+        kind: "instruction.send",
+        payload: { text: p.text, ...(p.requested_by === undefined ? {} : { requested_by: p.requested_by }) },
+        state: "accepted",
+        created_at: now,
+      }, p.expected_version, now);
+    } catch (err) {
+      if (err instanceof SessionVersionConflict) {
+        return singleErr(req.id, "version_conflict", "session version changed; refresh before retrying");
+      }
+      if (err instanceof SessionMessageIdConflict) {
+        return singleErr(req.id, "message_id_conflict", "message_id was already used for different content");
+      }
+      if (err instanceof Error && ["delivery_uncertain", "continuation_in_flight", "grant_owned", "signed_approval_required", "invalid_decision"].includes(err.message)) return singleErr(req.id, err.message, "Refresh the decision and use its authorized owner route");
+      throw err;
+    }
+    if (applied.outcome === "duplicate") {
+      return ctx.sessions.getMessage(p.message_id)?.state === "applied"
+        ? singleOk(req.id, { state: "duplicate", session_version: applied.session_version })
+        : singleErr(req.id, "delivery_uncertain", "A receipt appeared during admission; inspect it before retrying");
+    }
+
+    handedOff = true;
+    return await executeReservedSessionTurn(ctx, req, p, session, adapter, applied.session_version, { admittedLease: admission.lease, controller: admission.controller });
+  } finally { if (!handedOff) await admission.release(); }
+
+}
+
+/** Track queued manual work before awaiting admission so drain/cancel can stop it.
+ * No durable receipt exists until admission succeeds; callers transfer both
+ * ownership and the same cancellation signal to the reserved-turn executor.
+ */
+async function acquireManualSessionAdmission(
+  ctx: DaemonContext,
+  session: NonNullable<ReturnType<SessionRepository["getSession"]>>,
+  pendingMessageId: string,
+) {
+  const controller = new AbortController();
+  ctx.activeSessionSends.set(session.session_id, pendingMessageId);
+  ctx.activeRuns.set(session.run_id, controller);
+  const clear = () => {
+    if (ctx.activeSessionSends.get(session.session_id) === pendingMessageId) ctx.activeSessionSends.delete(session.session_id);
+    if (ctx.activeRuns.get(session.run_id) === controller) ctx.activeRuns.delete(session.run_id);
+  };
+  try {
+    const lease = await acquireSessionAdmission(ctx, session.agent_id, session.repo_path, session.run_id, controller.signal);
+    return { lease, controller, release: async () => { try { await lease.release(); } finally { clear(); } } };
+  } catch (error) {
+    clear();
+    throw error;
+  }
+}
+
+/** Private port: only an already persisted reservation may invoke the runtime. */
+async function executeReservedSessionTurn(
+  ctx: DaemonContext,
+  req: DaemonRequest,
+  p: SessionSendParams,
+  session: NonNullable<ReturnType<SessionRepository["getSession"]>>,
+  adapter: SessionCapableAdapter,
+  reservationVersion: number,
+  options: {
+    admittedLease?: ExecutionLease;
+    controller?: AbortController;
+    completed?: (turnId: string, version: number, now: number) => void;
+  } = {},
+): Promise<SingleResponse> {
+  const applied = { session_version: reservationVersion };
+  ctx.activeSessionSends.set(session.session_id,p.message_id);
+  const controller = options.controller ?? new AbortController();
+  const now = Date.now() / 1000;
+  ctx.activeRuns.set(session.run_id, controller);
+  let lease: ExecutionLease | undefined;
+  let started = false;
+  let settled = false;
+  try {
+    lease = options.admittedLease ?? await acquireSessionAdmission(ctx, adapter.id, session.repo_path, session.run_id, controller.signal);
+    const failReservedMessage = (
+      code: string,
+      message: string,
+    ): SingleResponse => {
+      try {
+        ctx.sessions.markMessageFailed(p.message_id);
+      } catch {
+        return singleErr(
+          req.id,
+          "delivery_uncertain",
+          "the agent failed and the reservation could not be finalized; inspect the session before retrying",
+        );
+      }
+      return singleErr(req.id, code, message);
+    };
+    if (session.native_session_id === null) return failReservedMessage("resume_unsupported", "session cannot resume");
+    const context: Record<string, unknown> = {};
+    if (session.repo_path !== "") context["repo_path"] = session.repo_path;
+    if (p.requested_by !== undefined) context["requested_by"] = p.requested_by;
+    const input: AgentSessionInput = {
+      session_id: session.session_id,
+      task_id: session.task_id,
+      run_id: session.run_id,
+      turn_id: p.turn_id,
+      native_session_id: session.native_session_id,
+      expected_version: applied.session_version,
+      message_id: p.message_id,
+      prompt: p.text,
+      ...(Object.keys(context).length === 0 ? {} : { context }),
+    };
+    const publicEvents: AgentSessionEvent[] = [];
+    let assistantText = "";
+    let decision: unknown = null;
+    let terminalCompleted = false;
+    try {
+      started = true;
+      for await (const rawEvent of boundedAdapterEvents(adapter.resumeSession(input, controller.signal), controller.signal)) {
+        const event = AgentSessionEventSchema.parse(rawEvent);
+        if (event.type === "native_session.started") {
+          if (event.native_session_id !== session.native_session_id) {
+            return failReservedMessage(
+              "adapter_protocol",
+              "agent resumed an unexpected native session",
+            );
+          }
+          continue;
+        }
+        if (JSON.stringify(event).includes(session.native_session_id)) {
+          return failReservedMessage(
+            "adapter_protocol",
+            "agent output contained protected session metadata",
+          );
+        }
+        if (event.type === "session.terminal") {
+          if (event.state !== "completed") {
+            const rawCode = event.error_code ?? "unknown";
+            const safeCode = /^[a-z0-9_]{1,64}$/.test(rawCode) ? rawCode : "unknown";
+            return failReservedMessage(
+              "agent_failed",
+              `agent failed while applying the instruction (${safeCode})`,
+            );
+          }
+          terminalCompleted = true;
+        }
+        if (event.type === "assistant.message") {
+          // Controlled results are opaque data; their adapter emits decisions separately.
+          const directive = isControlledSessionAdapter(adapter) ? undefined : parseDecisionDirective(event.text);
+          if (directive !== undefined) {
+            publicEvents.push(directive);
+            decision = {
+              decision_id: directive.decision_id,
+              question: directive.question,
+              choices: directive.choices,
+              ...(directive.continuation === undefined ? {} : { continuation: directive.continuation }),
+            };
+            assistantText = directive.question;
+            continue;
+          }
+          assistantText += event.text;
+        }
+        publicEvents.push(event);
+        if (event.type === "decision.requested") decision = {
+          decision_id: event.decision_id,
+          question: event.question,
+          choices: event.choices,
+          ...(event.continuation === undefined ? {} : { continuation: event.continuation }),
+        };
+      }
+      settled = true;
+      if (!terminalCompleted) {
+        return failReservedMessage(
+          "agent_failed",
+          "agent ended without completing the instruction",
+        );
+      }
+    } catch {
+      return failReservedMessage(
+        "agent_failed",
+        "agent failed while applying the instruction",
+      );
+    }
+
+    const finalState = publicEvents.some((event) => event.type === "decision.requested")
+      ? "awaiting_decision"
+      : "idle";
+    const completedAt = Date.now() / 1000;
+    const turnId = `turn_${randomUUID()}`;
+    const updatedSession = ctx.db.transaction(() => {
+      const updated = ctx.sessions.completeInboundTurn({
+        turn: {
+          turn_id: turnId,
+          session_id: session.session_id,
+          ordinal: (ctx.db.prepare(
+            "SELECT COALESCE(MAX(ordinal), 0) + 1 AS ordinal FROM session_turns WHERE session_id = ?",
+          ).get(session.session_id) as { ordinal: number }).ordinal,
+          state: finalState,
+          assistant_text: assistantText,
+          decision,
+          created_at: now,
+          updated_at: completedAt,
+        },
+        message_id: p.message_id,
+        expected_version: applied.session_version,
+        applied_at: completedAt,
+      });
+      options.completed?.(turnId, updated.version, completedAt);
+      return updated;
+    })();
+    return singleOk(req.id, {
+      state: "applied",
+      session_version: updatedSession.version,
+      events: publicEvents,
+    });
+  } catch {
+    try { ctx.sessions.markMessageFailed(p.message_id); }
+    catch {
+      return singleErr(req.id, "delivery_uncertain", "Execution receipt could not be finalized; inspect persisted state before retrying");
+    }
+    return singleErr(req.id, started ? "delivery_uncertain" : "admission_denied", "Session execution could not be confirmed; inspect persisted state before retrying");
+  } finally {
+    try {
+      if (started && (!settled || controller.signal.aborted)) {
+        controller.abort();
+        if (await confirmAdapterStopped(adapter, session.run_id)) await lease?.release();
+        else lease?.retain("session resume exit unconfirmed");
+      } else await lease?.release();
+    } finally {
+      ctx.activeSessionSends.delete(session.session_id);
+      if (ctx.activeRuns.get(session.run_id) === controller) ctx.activeRuns.delete(session.run_id);
+    }
+  }
+}
+
+async function handleSingle(ctx: DaemonContext, req: DaemonRequest): Promise<SingleResponse | null> {
+  if (req.method.startsWith("attention.")) {
+    if (!ctx.supervision) return singleErr(req.id,"attention_disabled","Start daemon with OSSTACK_ATTENTION=1 to opt in");
+    if (ctx.draining) return singleErr(req.id,"draining","Daemon is draining");
+    try {
+      if(req.method==="attention.abandon-receipt") {
+        const p=req.params as {scope_id:string;session_id:string;message_id:string;expected_version:number;reason:string;evidence_sha256:string;acknowledge_unknown_effects:boolean};
+        if(!p||p.acknowledge_unknown_effects!==true)throw new Error("explicit_unknown_effects_ack_required");
+        if(ctx.activeSessionSends.has(p.session_id))throw new Error("delivery_in_flight");
+        return singleOk(req.id,new AttentionActions(ctx.supervision.store,ctx.supervision.observer.owner).abandon(p));
+      }
+      if (req.method === "attention.answer") {
+        const p=req.params as {scope_id:string;item_id:string;action_id:string;revision:number;content_hash:string;text:string;takeover:boolean};
+        if (!p || typeof p.takeover!=="boolean" || typeof p.text!=="string")throw new Error("bad_request");
+        const item=ctx.supervision.store.getItem(p.scope_id,p.item_id);if(!item)throw new Error("not_found");
+        const actions=new AttentionActions(ctx.supervision.store,ctx.supervision.observer.owner);
+        const replay=actions.replay(p,ctx.activeSessionSends.get(item.session_id));if(replay)return singleOk(req.id,replay);
+        const session=ctx.sessions.getSession(item.session_id);if(!session)throw new Error("source_missing");
+        const adapter=ctx.adapters.get(session.agent_id);
+        if(!session.resume_supported||!session.native_session_id||!adapter||!isSessionCapableAdapter(adapter)||!adapter.sessionCapabilities().resume)throw new Error("resume_unsupported");
+        if(ctx.activeSessionSends.has(session.session_id))throw new Error("session_busy");
+        let admission: Awaited<ReturnType<typeof acquireManualSessionAdmission>>;
+        try { admission = await acquireManualSessionAdmission(ctx, session, `pending:${p.action_id}`); }
+        catch { return singleErr(req.id, "admission_denied", "Session execution admission was denied; no answer was reserved"); }
+        let handedOff = false;
+        try {
+        if (ctx.draining || admission.controller.signal.aborted) return singleErr(req.id, "admission_denied", "Session execution was cancelled; no answer was reserved");
+        const action=actions.reserve(p);
+        if(action.replay)return singleOk(req.id,action);
+        handedOff = true;
+        const execution=await executeReservedSessionTurn(ctx,req,{session_id:session.session_id,runtime_id:session.agent_id,turn_id:item.turn_id,message_id:action.message_id,expected_version:action.reservation_version-1,text:p.text},session,adapter,action.reservation_version,{admittedLease:admission.lease,controller:admission.controller});
+        return singleOk(req.id,{...actions.reconcile(action),execution_error:execution.error?.code??null});
+        } finally { if (!handedOff) await admission.release(); }
+      }
+      return singleOk(req.id,await ctx.supervision.handle(req.method,req.params));
+    } catch(error) {return singleErr(req.id,error instanceof Error?error.message:"attention_error","Attention request failed; refresh source facts before retrying");}
+  }
+function admissionFor(ctx: DaemonContext): GovernedExecution {
+  if (ctx.admission) return ctx.admission;
+  ctx.admission = new GovernedExecution({
+    reads: ctx.readSemaphore, writes: ctx.writeSemaphore, repositories: ctx.repoWriteSemaphores,
+    checkHealth: async () => {
+      if (ctx.guardedAutonomy && !ctx.lastAutonomyHealth) throw new Error("autonomy writes are blocked until the initial health check completes");
+      const health = await ctx.autonomyHealth();
+      ctx.lastAutonomyHealth = health;
+      if (!health.can_run_local) throw new Error(`autonomy writes are blocked by ${health.write_blockers.join(",")}`);
+    },
+  });
+  return ctx.admission;
+}
+
+async function acquireDaemonRunSlot(ctx: DaemonContext, input: AdmissionInput): Promise<ExecutionLease> {
+  return admissionFor(ctx).acquire(input);
+}
+
+async function acquireSessionAdmission(ctx: DaemonContext, agentId: string, workspacePath: string, runId: string, signal: AbortSignal): Promise<ExecutionLease> {
+  const registered = ctx.adapterWorkspaces?.get(agentId);
+  if (registered !== undefined) {
+    const actual = await resolveRepositoryScope(workspacePath);
+    const expected = await resolveRepositoryScope(registered);
+    if (actual.workspacePath !== expected.workspacePath) throw new Error("session workspace does not match host registration");
+  }
+  return acquireDaemonRunSlot(ctx, { kind: "write", runId, workspacePath, signal,
+    authorize: async () => {
+      const decision = await makeRepositoryPolicyGate(workspacePath)({ workspacePath });
+      if (!decision.allow) throw new Error(decision.reason);
+    },
+  });
+}
+
+
+
+FILE packages/cli/src/session-rpc.test.ts
+
+import { mkdtempSync, rmSync, realpathSync, writeFileSync } from "node:fs";
+import { healthyAutonomyHealth } from "./test-healthy-autonomy.js";
+import { execFileSync } from "node:child_process";
+import { connect } from "node:net";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import { openDb, SessionRepository, insertRun, insertTask } from "@osstack/core";
+import type {
+  AgentSessionEvent,
+  AgentSessionInput,
+  SessionCapableAdapter,
+} from "@osstack/agents";
+import { encodeFrame, FrameDecoder, type HermesEvent } from "@osstack/hermes-adapter";
+import { startDaemon, type DaemonHandles } from "./daemon.js";
+import { main } from "./bin.js";
+
+type RpcResponse = {
+  ok: boolean;
+  result?: Record<string, unknown>;
+  error?: { code: string; message: string };
+};
+
+class FakeSessionAdapter implements SessionCapableAdapter {
+  // This fixture has no owned processes or remote effects after iterator exit.
+  async confirmStopped() { return { stopped: true as const, evidence: "fixture has no external producer" }; }
+  readonly id = "fake-session";
+  readonly display_name = "Fake Session";
+  readonly cost_tier = "low" as const;
+  readonly resumed: AgentSessionInput[] = [];
+  readonly started: string[] = [];
+  readonly failedOnce = new Set<string>();
+
+  capabilities() { return []; }
+  async isAvailable() {
+    return { available: true, status: "available" as const, last_checked_at: Date.now() / 1000 };
+  }
+  async *invoke(): AsyncIterable<HermesEvent> { yield* []; }
+  sessionCapabilities() { return { resume: true, snapshot: true }; }
+  async *startSession(task: { prompt: string }): AsyncIterable<AgentSessionEvent> {
+    this.started.push(task.prompt);
+    yield { type: "native_session.started", native_session_id: "native-secret-started" };
+    yield task.prompt === "structured-start-event" ? { type: "decision.requested", ...structuredDecision } : {
+      type: "assistant.message", message_id: "reply_started",
+      text: task.prompt === "structured-start" ? JSON.stringify({ ostag_decision: structuredDecision }) : "CANARY_READY",
+    };
+    yield { type: "session.terminal", state: "completed" };
+  }
+  async *resumeSession(input: AgentSessionInput, signal: AbortSignal): AsyncIterable<AgentSessionEvent> {
+    this.resumed.push(input);
+    yield { type: "native_session.started", native_session_id: input.native_session_id };
+    yield { type: "session.state", state: "running" };
+    if (input.prompt === "wait-for-cancel") {
+      await new Promise<void>((resolve) => signal.addEventListener("abort", () => resolve(), { once: true }));
+      yield { type: "session.terminal", state: "cancelled" };
+      return;
+    }
+    if (input.prompt === "structured-event" || input.prompt === "structured-directive") {
+      yield input.prompt === "structured-event"
+        ? { type: "decision.requested", ...structuredDecision }
+        : { type: "assistant.message", message_id: "structured_reply", text: JSON.stringify({ ostag_decision: structuredDecision }) };
+      yield { type: "session.terminal", state: "completed" };
+      return;
+    }
+    if (input.prompt === "leak") {
+      yield { type: "assistant.message", message_id: `reply_${input.message_id}`, text: input.native_session_id };
+      return;
+    }
+    if (input.prompt === "fail-once" && !this.failedOnce.has(input.session_id)) {
+      this.failedOnce.add(input.session_id);
+      yield {
+        type: "session.terminal",
+        state: "failed",
+        error_code: "auth_unavailable",
+        summary: "agent authentication is unavailable",
+      };
+      return;
+    }
+    if (input.prompt === "decision") {
+      yield {
+        type: "assistant.message",
+        message_id: `reply_${input.message_id}`,
+        text: JSON.stringify({
+          ostag_decision: {
+            decision_id: "decision_canary",
+            question: "请选择灰度方向",
+            choices: [
+              { choice_id: "a", label: "方案 A" },
+              { choice_id: "b", label: "方案 B" },
+            ],
+          },
+        }),
+      };
+      yield { type: "session.terminal", state: "completed" };
+      return;
+    }
+    yield { type: "assistant.message", message_id: `reply_${input.message_id}`, text: `收到：${input.prompt}` };
+    yield { type: "session.terminal", state: "completed" };
+  }
+}
+
+let home: string;
+let socketPath: string;
+let handle: DaemonHandles;
+let adapter: FakeSessionAdapter;
+
+const structuredDecision = {
+  decision_id: "phase_boundary",
+  question: "Verification finished. Continue?",
+  choices: [{ choice_id: "continue", label: "Continue" }],
+  continuation: {
+    version: 1 as const,
+    gate_kind: "phase_continue" as const,
+    phase: "verify",
+    next_action: "Continue to the next authorized phase",
+    evidence_refs: [{ evidence_id: "verification_1", sha256: "a".repeat(64) }],
+  },
+};
+
+function rpc(method: string, params?: unknown, timeoutMs = 5_000): Promise<RpcResponse> {
+  return new Promise((resolve, reject) => {
+    const sock = connect(socketPath);
+    const decoder = new FrameDecoder();
+    const timer = setTimeout(() => { sock.destroy(); reject(new Error("rpc timeout")); }, timeoutMs);
+    sock.on("connect", () => sock.write(encodeFrame({ id: 1, method, params })));
+    sock.on("data", (chunk) => {
+      const frames = decoder.push(chunk);
+      if (frames.length === 0) return;
+      clearTimeout(timer);
+      sock.end();
+      resolve(frames[0] as RpcResponse);
+    });
+    sock.on("error", (err) => { clearTimeout(timer); reject(err); });
+  });
+}
+
+function seedSession(
+  id: string,
+  state: "idle" | "completed" = "idle",
+  resumeSupported = true,
+): void {
+  const db = openDb({ path: handle.dbPath });
+  try {
+    const taskId = `task_${id}`;
+    const runId = `run_${id}`;
+    insertTask(db, handle.dbPath, { task_id: taskId, title: `Relay ${id}`, created_at: 1 });
+    insertRun(db, handle.dbPath, {
+      run_id: runId,
+      task_id: taskId,
+      session_id: id,
+      agent_id: adapter.id,
+      capability_id: "fake.resume",
+      phase: "code",
+      started_at: 1,
+    });
+    const repo = new SessionRepository(db, handle.dbPath);
+    repo.createSession({
+      session_id: id,
+      task_id: taskId,
+      run_id: runId,
+      agent_id: adapter.id,
+      request_sha256: "a".repeat(64),
+      native_session_id: `native-secret-${id}`,
+      repo_path: sessionRepo(id),
+      state,
+      resume_supported: resumeSupported,
+      version: 2,
+      updated_at: 2,
+    });
+    repo.appendTurn({
+      turn_id: `turn_${id}`,
+      session_id: id,
+      ordinal: 1,
+      state: "awaiting_decision",
+      assistant_text: "请选择方向",
+      decision: { choices: ["A", "B"] },
+      created_at: 2,
+      updated_at: 2,
+    });
+  } finally {
+    db.close();
+  }
+}
+
+beforeAll(async () => {
+  home = mkdtempSync(join(tmpdir(), "osstack-session-rpc-"));
+  execFileSync("git", ["init", home], { stdio: "ignore" });
+  socketPath = join(home, "d.sock");
+  process.env["OSSTACK_HOME"] = home;
+  process.env["OSSTACK_SOCKET"] = socketPath;
+  process.env["OSSTACK_UPDATE_CHECK"] = "0";
+  process.env["OSSTACK_ATTENTION"] = "1";
+  adapter = new FakeSessionAdapter();
+  handle = await startDaemon({ socketPath, adapters: [adapter], autonomyHealth: async () => healthyAutonomyHealth() });
+});
+
+afterAll(async () => {
+  await handle.close();
+  rmSync(home, { recursive: true, force: true });
+  delete process.env["OSSTACK_HOME"];
+  delete process.env["OSSTACK_SOCKET"];
+  delete process.env["OSSTACK_UPDATE_CHECK"];
+  delete process.env["OSSTACK_ATTENTION"];
+});
+
+describe("governed session RPC", () => {
+  it.each(["structured-event", "structured-directive"])("persists %s without treating it as approval", async (text) => {
+    const sessionId = `sess_${text}`;
+    seedSession(sessionId);
+    expect(await rpc("session.send", {
+      session_id: sessionId, runtime_id: adapter.id, turn_id: `turn_${sessionId}`,
+      message_id: `msg_${text}`, expected_version: 2, text,
+    })).toMatchObject({ ok: true });
+    const expectedWait = {
+      reason: "phase_continue", request_source: "agent_reported", automatic_continuation: false,
+      continuation: structuredDecision.continuation,
+    };
+    expect(await rpc("session.status", { session_id: sessionId })).toMatchObject({
+      ok: true, result: { state: "awaiting_decision", wait: expectedWait },
+    });
+    expect(await rpc("session.snapshot", { session_id: sessionId })).toMatchObject({
+      ok: true, result: { decision: structuredDecision, wait: expectedWait },
+    });
+    // The state, including the request evidence, survives reopening the store.
+    const db = openDb({ path: handle.dbPath });
+    try {
+      expect(new SessionRepository(db, handle.dbPath).latestSnapshot(sessionId).decision).toEqual(structuredDecision);
+    } finally { db.close(); }
+    expect(adapter.resumed.filter((input) => input.session_id === sessionId)).toHaveLength(1);
+  });
+
+  it.each(["structured-start", "structured-start-event"])("preserves %s on the first session turn", async (prompt) => {
+    const response = await rpc("session.start", {
+      request_id: prompt, agent_id: adapter.id, repo_path: home,
+      title: "Structured handoff", prompt,
+    });
+    expect(response).toMatchObject({ ok: true, result: { decision: structuredDecision } });
+    expect(await rpc("session.snapshot", { session_id: response.result?.["session_id"] })).toMatchObject({
+      ok: true, result: { wait: { reason: "phase_continue", automatic_continuation: false } },
+    });
+  });
+
+  it("tracks a resumed turn for drain and cancellation", async () => {
+    seedSession("sess_cancel");
+    const sending = rpc("session.send", {
+      session_id: "sess_cancel", runtime_id: adapter.id, turn_id: "turn_sess_cancel",
+      message_id: "msg_cancel", expected_version: 2, text: "wait-for-cancel",
+    });
+    await vi.waitFor(() => expect(adapter.resumed.some((input) => input.session_id === "sess_cancel")).toBe(true));
+    expect(await rpc("run.status", { run_id: "run_sess_cancel" })).toMatchObject({ ok: true, result: { active: true } });
+    expect(await rpc("session.snapshot", { session_id: "sess_cancel" })).toMatchObject({ ok: true, result: { wait: null } });
+    expect(await rpc("task.cancel", { run_id: "run_sess_cancel" })).toMatchObject({ ok: true });
+    expect(await sending).toMatchObject({ ok: false, error: { code: "agent_failed" } });
+    expect(await rpc("session.snapshot", { session_id: "sess_cancel" })).toMatchObject({
+      ok: true, result: { wait: { reason: "delivery_failed", message_id: "msg_cancel" } },
+    });
+  });
+
+  it("refuses a new instruction while the daemon is drained", async () => {
+    seedSession("sess_drained");
+    await rpc("daemon.drain", { timeout_ms: 0 });
+    try {
+      expect(await rpc("session.send", {
+        session_id: "sess_drained", runtime_id: adapter.id, turn_id: "turn_sess_drained",
+        message_id: "msg_drained", expected_version: 2, text: "go",
+      })).toMatchObject({ ok: false, error: { code: "draining" } });
+      expect(adapter.resumed.some((input) => input.session_id === "sess_drained")).toBe(false);
+    } finally { await rpc("daemon.resume"); }
+  });
+
+  it("starts and persists a real resumable session without exposing its native id", async () => {
+    const started = await rpc("session.start", {
+      request_id: "request_rpc_start",
+      prompt: "只回复 CANARY_READY",
+      title: "Relay canary",
+      agent_id: adapter.id,
+      repo_path: home,
+    });
+
+    expect(started).toMatchObject({
+      ok: true,
+      result: {
+        runtime_id: adapter.id,
+        state: "idle",
+        version: 3,
+        resume_supported: true,
+        resume_ready: true,
+        assistant_text: "CANARY_READY",
+      },
+    });
+    expect(adapter.started).toContain("只回复 CANARY_READY");
+    expect(JSON.stringify(started)).not.toContain("native-secret-started");
+    const sessionId = String(started.result?.["session_id"]);
+    expect(await rpc("session.snapshot", { session_id: sessionId })).toMatchObject({
+      ok: true,
+      result: { runtime_id: adapter.id, assistant_text: "CANARY_READY" },
+    });
+    expect(await rpc("session.start", {
+      request_id: "request_rpc_start",
+      prompt: "只回复 CANARY_READY",
+      title: "Relay canary",
+      agent_id: adapter.id,
+      repo_path: home,
+    })).toMatchObject({
+      ok: true,
+      result: { session_id: sessionId, assistant_text: "CANARY_READY", version: 3 },
+    });
+    expect(adapter.started.filter((prompt) => prompt === "只回复 CANARY_READY")).toHaveLength(1);
+    expect(await rpc("session.start", {
+      request_id: "request_rpc_start",
+      prompt: "不同的请求内容",
+      title: "Relay canary",
+      agent_id: adapter.id,
+      repo_path: home,
+    })).toMatchObject({
+      ok: false,
+      error: { code: "request_id_conflict" },
+    });
+    expect(adapter.started.filter((prompt) => prompt === "只回复 CANARY_READY")).toHaveLength(1);
+  });
+
+  it("lists and snapshots sessions without exposing native ids", async () => {
+    seedSession("sess_list");
+    const listed = await rpc("session.list");
+    const snapshot = await rpc("session.snapshot", { session_id: "sess_list" });
+
+    expect(listed.ok).toBe(true);
+    expect(listed.result?.["sessions"]).toEqual(expect.arrayContaining([
+      expect.objectContaining({ session_id: "sess_list", runtime_id: adapter.id }),
+    ]));
+    expect(JSON.stringify(listed)).not.toContain("native-secret");
+    expect(snapshot).toMatchObject({
+      ok: true,
+      result: {
+        session_id: "sess_list",
+        runtime_id: adapter.id,
+        turn_id: "turn_sess_list",
+        assistant_text: "请选择方向",
+      },
+    });
+    expect(JSON.stringify(snapshot)).not.toContain("native-secret");
+    expect(await rpc("session.list", { limit: 201 })).toMatchObject({
+      ok: false, error: { code: "bad_request" },
+    });
+  });
+
+  it("applies an instruction once and reports an identical replay as duplicate", async () => {
+    seedSession("sess_apply");
+    const params = {
+      session_id: "sess_apply",
+      runtime_id: adapter.id,
+      turn_id: "turn_sess_apply",
+      message_id: "msg_apply",
+      expected_version: 2,
+      text: "采用方案 B",
+      requested_by: "owner",
+    };
+
+    const first = await rpc("session.send", params);
+    const replay = await rpc("session.send", params);
+    const snapshot = await rpc("session.snapshot", { session_id: "sess_apply" });
+
+    expect(first).toMatchObject({ ok: true, result: { state: "applied", session_version: 4 } });
+    expect(replay).toMatchObject({ ok: true, result: { state: "duplicate", session_version: 4 } });
+    expect(snapshot).toMatchObject({
+      ok: true,
+      result: { state: "idle", version: 4, assistant_text: "收到：采用方案 B" },
+    });
+    const db = openDb({ path: handle.dbPath });
+    try {
+      expect(new SessionRepository(db, handle.dbPath).getMessage("msg_apply")).toMatchObject({
+        state: "applied",
+      });
+    } finally {
+      db.close();
+    }
+    expect(adapter.resumed.filter((input) => input.session_id === "sess_apply")).toHaveLength(1);
+    expect(adapter.resumed.find((input) => input.session_id === "sess_apply")?.context).toMatchObject({
+      repo_path: sessionRepo("sess_apply"),
+      requested_by: "owner",
+    });
+    expect(JSON.stringify(first)).not.toContain("native-secret");
+  });
+
+  it("retains failed delivery as uncertain instead of automatically replaying side effects", async () => {
+    seedSession("sess_retry");
+    const params = {
+      session_id: "sess_retry",
+      runtime_id: adapter.id,
+      turn_id: "turn_sess_retry",
+      message_id: "msg_retry",
+      expected_version: 2,
+      text: "fail-once",
+    };
+
+    const failed = await rpc("session.send", params);
+    const afterFailure = await rpc("session.snapshot", { session_id: "sess_retry" });
+    const retried = await rpc("session.send", params);
+
+    expect(failed).toMatchObject({
+      ok: false,
+      error: {
+        code: "agent_failed",
+        message: "agent failed while applying the instruction (auth_unavailable)",
+      },
+    });
+    expect(afterFailure).toMatchObject({
+      ok: true,
+      result: {
+        state: "idle",
+        version: 3,
+        turn_id: "turn_sess_retry",
+        assistant_text: "请选择方向",
+      },
+    });
+    expect(retried).toMatchObject({ ok: false, error: { code: "delivery_uncertain" } });
+    const db = openDb({ path: handle.dbPath });
+    try {
+      expect(new SessionRepository(db, handle.dbPath).getMessage("msg_retry")).toMatchObject({
+        state: "failed",
+      });
+    } finally {
+      db.close();
+    }
+  });
+
+  it("turns an exact bounded OStag decision directive into awaiting_decision", async () => {
+    seedSession("sess_decision");
+    const response = await rpc("session.send", {
+      session_id: "sess_decision",
+      runtime_id: adapter.id,
+      turn_id: "turn_sess_decision",
+      message_id: "msg_decision",
+      expected_version: 2,
+      text: "decision",
+    });
+
+    expect(response).toMatchObject({
+      ok: true,
+      result: {
+        state: "applied",
+        events: [{
+          type: "session.state",
+          state: "running",
+        }, {
+          type: "decision.requested",
+          decision_id: "decision_canary",
+          question: "请选择灰度方向",
+          choices: [
+            { choice_id: "a", label: "方案 A" },
+            { choice_id: "b", label: "方案 B" },
+          ],
+        }, {
+          type: "session.terminal",
+          state: "completed",
+        }],
+      },
+    });
+    expect(await rpc("session.snapshot", { session_id: "sess_decision" })).toMatchObject({
+      ok: true,
+      result: {
+        state: "awaiting_decision",
+        assistant_text: "请选择灰度方向",
+        decision: { decision_id: "decision_canary" },
+      },
+    });
+  });
+
+  it("rejects stale versions, wrong turns, terminal sessions and oversized messages", async () => {
+    seedSession("sess_guards");
+    seedSession("sess_terminal", "completed");
+    seedSession("sess_unsupported", "idle", false);
+    const base = {
+      session_id: "sess_guards",
+      runtime_id: adapter.id,
+      turn_id: "turn_sess_guards",
+      message_id: "msg_guard",
+      expected_version: 2,
+      text: "继续",
+    };
+
+    expect(await rpc("session.send", { ...base, expected_version: 1 })).toMatchObject({
+      ok: false, error: { code: "version_conflict" },
+    });
+    expect(await rpc("session.send", { ...base, turn_id: "turn_wrong" })).toMatchObject({
+      ok: false, error: { code: "turn_conflict" },
+    });
+    expect(await rpc("session.send", {
+      ...base,
+      session_id: "sess_terminal",
+      turn_id: "turn_sess_terminal",
+    })).toMatchObject({ ok: false, error: { code: "session_terminal" } });
+    expect(await rpc("session.send", { ...base, text: "x".repeat(16_001) })).toMatchObject({
+      ok: false, error: { code: "bad_request" },
+    });
+    expect(await rpc("session.send", {
+      ...base,
+      session_id: "sess_unsupported",
+      turn_id: "turn_sess_unsupported",
+    })).toMatchObject({ ok: false, error: { code: "resume_unsupported" } });
+    expect(await rpc("session.status", { session_id: "sess_missing" })).toMatchObject({
+      ok: false, error: { code: "not_found" },
+    });
+  });
+
+  it("collapses concurrent duplicate delivery into one adapter resume", async () => {
+    seedSession("sess_concurrent");
+    const params = {
+      session_id: "sess_concurrent",
+      runtime_id: adapter.id,
+      turn_id: "turn_sess_concurrent",
+      message_id: "msg_concurrent",
+      expected_version: 2,
+      text: "继续执行",
+    };
+    const responses = await Promise.all([
+      rpc("session.send", params),
+      rpc("session.send", params),
+    ]);
+
+    expect(responses.filter(item => item.result?.["state"] === "applied")).toHaveLength(1);
+    const replay = responses.find(item => item.result?.["state"] !== "applied")!;
+    if (!replay.ok) expect(replay.error?.code).toBe("session_busy");
+    else expect(replay.result?.["state"]).toBe("duplicate");
+    expect((await rpc("session.send", params)).result?.["state"]).toBe("duplicate");
+    expect(adapter.resumed.filter((input) => input.session_id === "sess_concurrent")).toHaveLength(1);
+  });
+
+  it("fails closed on an accepted reservation left by daemon interruption", async () => {
+    seedSession("sess_recover");
+    const db = openDb({ path: handle.dbPath });
+    try {
+      new SessionRepository(db, handle.dbPath).applyInbound({
+        message_id: "msg_recover",
+        session_id: "sess_recover",
+        turn_id: "turn_sess_recover",
+        direction: "inbound",
+        kind: "instruction.send",
+        payload: { text: "恢复后继续" },
+        state: "accepted",
+        created_at: 3,
+      }, 2, 3);
+    } finally {
+      db.close();
+    }
+
+    const response = await rpc("session.send", {
+      session_id: "sess_recover",
+      runtime_id: adapter.id,
+      turn_id: "turn_sess_recover",
+      message_id: "msg_recover",
+      expected_version: 2,
+      text: "恢复后继续",
+    });
+
+    expect(response).toMatchObject({
+      ok: false,
+      error: { code: "delivery_uncertain" },
+    });
+    expect(adapter.resumed.filter((input) => input.session_id === "sess_recover")).toHaveLength(0);
+    expect(await rpc("session.snapshot", { session_id: "sess_recover" })).toMatchObject({
+      ok: true, result: { wait: { reason: "delivery_uncertain", message_id: "msg_recover", automatic_continuation: false } },
+    });
+  });
+
+  it("keeps an uncertain delivery visible when a newer message fails", async () => {
+    seedSession("sess_shadow");
+    const db = openDb({ path: handle.dbPath });
+    try {
+      const repo = new SessionRepository(db, handle.dbPath);
+      for (const [messageId, version, createdAt] of [
+        ["msg_uncertain", 2, 3], ["msg_newer_failed", 3, 4],
+      ] as const) {
+        repo.applyInbound({
+          message_id: messageId, session_id: "sess_shadow", turn_id: "turn_sess_shadow",
+          direction: "inbound", kind: "instruction.send", payload: { text: "go" },
+          state: "accepted", created_at: createdAt,
+        }, version, createdAt);
+      }
+      repo.markMessageFailed("msg_newer_failed");
+    } finally { db.close(); }
+    expect(await rpc("session.snapshot", { session_id: "sess_shadow" })).toMatchObject({
+      ok: true, result: { wait: { reason: "delivery_uncertain", message_id: "msg_uncertain", automatic_continuation: false } },
+    });
+  });
+
+  it("exposes list, status, snapshot and send through the CLI", async () => {
+    seedSession("sess_cli");
+    const log = vi.spyOn(console, "log").mockImplementation(() => undefined);
+    try {
+      expect(await main(["session", "list", "--json"])).toBe(0);
+      expect(await main(["session", "status", "sess_cli", "--json"])).toBe(0);
+      expect(await main(["session", "snapshot", "sess_cli", "--json"])).toBe(0);
+      expect(await main([
+        "session", "send", "sess_cli",
+        "--runtime", adapter.id,
+        "--turn", "turn_sess_cli",
+        "--message-id", "msg_cli",
+        "--expected-version", "2",
+        "--text", "按批准方案继续",
+        "--json",
+      ])).toBe(0);
+      expect(log.mock.calls.map((call) => String(call[0])).join("\n")).not.toContain("native-secret");
+    } finally {
+      log.mockRestore();
+    }
+  });
+
+  it("starts a resumable session through the CLI without exposing its native id", async () => {
+    const log = vi.spyOn(console, "log").mockImplementation(() => undefined);
+    try {
+      expect(await main([
+        "session", "start",
+        "--request-id", "request_cli_start",
+        "--agent", adapter.id,
+        "--repo", home,
+        "--title", "CLI relay canary",
+        "--text", "只回复 CANARY_READY",
+        "--json",
+      ])).toBe(0);
+      const output = log.mock.calls.map((call) => String(call[0])).join("\n");
+      expect(output).toContain("CANARY_READY");
+      expect(output).not.toContain("native-secret-started");
+    } finally {
+      log.mockRestore();
+    }
+  });
+
+  it("fails closed when an adapter tries to expose protected native metadata", async () => {
+    seedSession("sess_leak");
+    const response = await rpc("session.send", {
+      session_id: "sess_leak",
+      runtime_id: adapter.id,
+      turn_id: "turn_sess_leak",
+      message_id: "msg_leak",
+      expected_version: 2,
+      text: "leak",
+    });
+
+    expect(response).toMatchObject({ ok: false, error: { code: "adapter_protocol" } });
+    expect(JSON.stringify(response)).not.toContain("native-secret");
+  });
+
+  it("rejects instructions addressed to a different runtime before invoking the adapter", async () => {
+    seedSession("sess_runtime_guard");
+    const resumesBefore = adapter.resumed.length;
+
+    const response = await rpc("session.send", {
+      session_id: "sess_runtime_guard",
+      runtime_id: "another-runtime",
+      turn_id: "turn_sess_runtime_guard",
+      message_id: "msg_runtime_guard",
+      expected_version: 2,
+      text: "继续",
+    });
+
+    expect(response).toMatchObject({ ok: false, error: { code: "runtime_mismatch" } });
+    expect(adapter.resumed).toHaveLength(resumesBefore);
+  });
+});
+
+it("attention watch/inbox/answer shares the exact governed session receipt", async () => {
+  seedSession("attention");const db=openDb({path:handle.dbPath});
+  db.prepare("UPDATE agent_sessions SET repo_path=?,state='awaiting_decision' WHERE session_id='attention'").run(realpathSync(home));
+  db.prepare("UPDATE session_turns SET decision_json=? WHERE session_id='attention'").run(JSON.stringify(structuredDecision));db.close();
+  const watched=await rpc("attention.watch",{task_id:"task_attention",repo_path:home,default_tenant:true});
+  expect(watched.ok).toBe(true);const scope=(watched.result!["scope"] as {scope_id:string}).scope_id;
+  const inbox=await rpc("attention.inbox",{scope_id:scope});const item=(inbox.result!["items"] as Array<Record<string,unknown>>)[0]!;
+  expect(item["state"]).toBe("open");const params={scope_id:scope,item_id:item["item_id"],action_id:"answer-once",revision:item["revision"],content_hash:item["content_hash"],text:"continue",takeover:false};
+  const before=adapter.resumed.length;expect(await rpc("attention.answer",params)).toMatchObject({ok:true,result:{state:"applied"}});
+  expect(await rpc("attention.answer",params)).toMatchObject({ok:true,result:{state:"applied",replay:true}});
+  expect(adapter.resumed.length-before).toBe(1);
+  expect(await rpc("attention.brief",{scope_id:scope,actor:"owner"})).toMatchObject({ok:true,result:{total:1}});
+});
+
+it("never resumes an abandoned receipt when its original direct message ID is replayed",async()=>{
+  const id="abandoned-rpc";seedSession(id);const db=openDb({path:handle.dbPath});
+  db.prepare("UPDATE agent_sessions SET repo_path=? WHERE session_id=?").run(realpathSync(home),id);
+  const sessions=new SessionRepository(db,handle.dbPath);
+  sessions.applyInbound({message_id:"old-abandoned",session_id:id,turn_id:"turn_"+id,direction:"inbound",kind:"instruction.send",payload:{text:"original"},state:"accepted",created_at:3},2,3);db.close();
+  const watch=await rpc("attention.watch",{task_id:"task_"+id,repo_path:home,default_tenant:true});const scope=(watch.result!["scope"] as {scope_id:string}).scope_id;
+  const before=adapter.resumed.length;
+  expect(await rpc("attention.abandon-receipt",{scope_id:scope,session_id:id,message_id:"old-abandoned",expected_version:3,reason:"Owner inspected effects; abandon original instruction",evidence_sha256:"a".repeat(64),acknowledge_unknown_effects:true})).toMatchObject({ok:true,result:{disposition:"abandoned_unknown",replayed:false}});
+  expect(await rpc("session.send",{session_id:id,runtime_id:adapter.id,turn_id:"turn_"+id,message_id:"old-abandoned",expected_version:2,text:"original"})).toMatchObject({ok:false,error:{code:"delivery_uncertain"}});
+  expect(adapter.resumed.length).toBe(before);
+  expect(await rpc("session.send",{session_id:id,runtime_id:adapter.id,turn_id:"turn_"+id,message_id:"new-owner-instruction",expected_version:3,text:"Inspect current state"})).toMatchObject({ok:true,result:{state:"applied"}});
+  expect(adapter.resumed.length).toBe(before+1);
+});
+it("readmits capacity-limited Loop snapshots but preserves an explicit release",async()=>{
+  const id="loop-admission-rpc";seedSession(id);const db=openDb({path:handle.dbPath});
+  db.prepare("UPDATE agent_sessions SET repo_path=? WHERE session_id=?").run(realpathSync(home),id);
+  const watch=await rpc("attention.watch",{task_id:"task_"+id,repo_path:home,default_tenant:true});const scope=(watch.result!["scope"] as {scope_id:string}).scope_id;
+  const path=join(home,"attention-loop.json");writeFileSync(path,JSON.stringify({loop_id:id,started_at:new Date().toISOString(),updated_at:new Date().toISOString(),completed_tasks:[],pending:[],in_progress:[],decisions:[]}));
+  const params={scope_id:scope,loop_id:id,state_path:path};expect((await rpc("attention.loop",params)).ok).toBe(true);
+  db.prepare("UPDATE attention_subjects SET admitted=0 WHERE kind='loop' AND subject_id=?").run(id);
+  expect((await rpc("attention.loop",params)).ok).toBe(true);
+  expect(db.prepare("SELECT admitted FROM attention_subjects WHERE kind='loop' AND subject_id=?").get(id)).toEqual({admitted:1});
+  expect((await rpc("attention.release",{scope_id:scope,kind:"loop",subject_id:id,expected_version:0})).ok).toBe(true);
+  expect((await rpc("attention.loop",params)).ok).toBe(true);
+  const row=db.prepare("SELECT admitted,payload_json FROM attention_subjects WHERE kind='loop' AND subject_id=?").get(id) as {admitted:number;payload_json:string};
+  expect(row.admitted).toBe(0);expect(JSON.parse(row.payload_json).reason).toBe("owner_released");db.close();
+});
+function sessionRepo(id: string): string {
+  const path = join(home, id);
+  execFileSync("git", ["init", path], { stdio: "ignore" });
+  return path;
+}
+
+it("keeps an Attention answer uncertain after adapter failure and never replays it", async () => {
+  const id = "attention-failed";
+  seedSession(id);
+  const db = openDb({ path: handle.dbPath });
+  db.prepare("UPDATE agent_sessions SET state='awaiting_decision' WHERE session_id=?").run(id);
+  db.prepare("UPDATE session_turns SET decision_json=? WHERE session_id=?").run(JSON.stringify(structuredDecision), id);
+  const repo = (db.prepare("SELECT repo_path FROM agent_sessions WHERE session_id=?").get(id) as { repo_path: string }).repo_path;
+  db.close();
+  const watch = await rpc("attention.watch", { task_id: `task_${id}`, repo_path: repo, default_tenant: true });
+  expect(watch.ok).toBe(true);
+  const scope = (watch.result!["scope"] as { scope_id: string }).scope_id;
+  const inbox = await rpc("attention.inbox", { scope_id: scope });
+  const item = (inbox.result!["items"] as Array<Record<string, unknown>>)[0]!;
+  const params = { scope_id: scope, item_id: item["item_id"], action_id: "answer-failed-once", revision: item["revision"], content_hash: item["content_hash"], text: "fail-once", takeover: false };
+  const before = adapter.resumed.length;
+  expect(await rpc("attention.answer", params)).toMatchObject({ ok: true, result: { state: "uncertain", execution_error: "agent_failed" } });
+  expect(await rpc("attention.answer", params)).toMatchObject({ ok: true, result: { state: "uncertain", replay: true } });
+  expect(adapter.resumed.length - before).toBe(1);
+});
+
+it("keeps the reserved answer uncertain when both completion and failure persistence throw", async () => {
+  const id = "attention-persistence-failed";
+  seedSession(id);
+  const db = openDb({ path: handle.dbPath });
+  db.prepare("UPDATE agent_sessions SET state='awaiting_decision' WHERE session_id=?").run(id);
+  db.prepare("UPDATE session_turns SET decision_json=? WHERE session_id=?").run(JSON.stringify(structuredDecision), id);
+  const repo = (db.prepare("SELECT repo_path FROM agent_sessions WHERE session_id=?").get(id) as { repo_path: string }).repo_path;
+  db.close();
+  const watch = await rpc("attention.watch", { task_id: `task_${id}`, repo_path: repo, default_tenant: true });
+  expect(watch.ok).toBe(true);
+  const scope = (watch.result!["scope"] as { scope_id: string }).scope_id;
+  const inbox = await rpc("attention.inbox", { scope_id: scope });
+  const item = (inbox.result!["items"] as Array<Record<string, unknown>>)[0]!;
+  const params = { scope_id: scope, item_id: item["item_id"], action_id: "answer-persistence-failed", revision: item["revision"], content_hash: item["content_hash"], text: "continue", takeover: false };
+  const before = adapter.resumed.length;
+  const complete = vi.spyOn(SessionRepository.prototype, "completeInboundTurn").mockImplementation(() => { throw new Error("injected completion persistence failure"); });
+  const fail = vi.spyOn(SessionRepository.prototype, "markMessageFailed").mockImplementation(() => { throw new Error("injected failure persistence failure"); });
+  try {
+    const response = await rpc("attention.answer", params);
+    expect(response, JSON.stringify(response)).toMatchObject({ ok: true, result: { state: "uncertain", execution_error: "delivery_uncertain" } });
+    expect(await rpc("attention.answer", params)).toMatchObject({ ok: true, result: { state: "uncertain", replay: true } });
+    expect(adapter.resumed.length - before).toBe(1);
+  } finally { complete.mockRestore(); fail.mockRestore(); }
+});
+
+it("does not reserve manual instructions or answers when execution admission is denied", async () => {
+  const { GovernedExecution } = await import("./governed-execution.js");
+  for (const attention of [false, true]) {
+    const id = attention ? "admission-answer" : "admission-send";
+    seedSession(id);
+    const db = openDb({ path: handle.dbPath });
+    const source = db.prepare("SELECT repo_path,version FROM agent_sessions WHERE session_id=?").get(id) as { repo_path: string; version: number };
+    let method = "session.send";
+    let params: Record<string, unknown> = { session_id: id, runtime_id: adapter.id, turn_id: `turn_${id}`, message_id: `message-${id}`, expected_version: source.version, text: "continue" };
+    if (attention) {
+      db.prepare("UPDATE agent_sessions SET state='awaiting_decision' WHERE session_id=?").run(id);
+      db.prepare("UPDATE session_turns SET decision_json=? WHERE session_id=?").run(JSON.stringify(structuredDecision), id);
+      const watch = await rpc("attention.watch", { task_id: `task_${id}`, repo_path: source.repo_path, default_tenant: true });
+      const scope = (watch.result!["scope"] as { scope_id: string }).scope_id;
+      const inbox = await rpc("attention.inbox", { scope_id: scope });
+      const item = (inbox.result!["items"] as Array<Record<string, unknown>>)[0]!;
+      method = "attention.answer";
+      params = { scope_id: scope, item_id: item["item_id"], action_id: `answer-${id}`, revision: item["revision"], content_hash: item["content_hash"], text: "continue", takeover: false };
+    }
+    const before = adapter.resumed.length;
+    const admission = vi.spyOn(GovernedExecution.prototype, "acquire").mockRejectedValueOnce(new Error("repository writer busy"));
+    try {
+      expect(await rpc(method, params)).toMatchObject({ ok: false, error: { code: "admission_denied" } });
+      expect(adapter.resumed.length).toBe(before);
+      expect(db.prepare("SELECT version FROM agent_sessions WHERE session_id=?").get(id)).toEqual({ version: source.version });
+      expect(db.prepare("SELECT 1 FROM session_messages WHERE session_id=? AND direction='inbound'").get(id)).toBeUndefined();
+      if (attention) expect(db.prepare("SELECT 1 FROM attention_actions WHERE action_id=?").get(`answer-${id}`)).toBeUndefined();
+    } finally { admission.mockRestore(); db.close(); }
+    expect(await rpc(method, params)).toMatchObject({ ok: true, result: { state: "applied" } });
+    expect(adapter.resumed.length - before).toBe(1);
+  }
+});
+
+it("cancels admission queued for either manual route without reserving a receipt", async () => {
+  const { GovernedExecution } = await import("./governed-execution.js");
+  for (const attention of [false, true]) {
+    const id = attention ? "queued-answer" : "queued-send";
+    seedSession(id);
+    const db = openDb({ path: handle.dbPath });
+    const source = db.prepare("SELECT repo_path,version FROM agent_sessions WHERE session_id=?").get(id) as { repo_path: string; version: number };
+    let method = "session.send";
+    let params: Record<string, unknown> = { session_id: id, runtime_id: adapter.id, turn_id: `turn_${id}`, message_id: `message-${id}`, expected_version: source.version, text: "continue" };
+    if (attention) {
+      db.prepare("UPDATE agent_sessions SET state='awaiting_decision' WHERE session_id=?").run(id);
+      db.prepare("UPDATE session_turns SET decision_json=? WHERE session_id=?").run(JSON.stringify(structuredDecision), id);
+      const watch = await rpc("attention.watch", { task_id: `task_${id}`, repo_path: source.repo_path, default_tenant: true });
+      const scope = (watch.result!["scope"] as { scope_id: string }).scope_id;
+      const inbox = await rpc("attention.inbox", { scope_id: scope });
+      const item = (inbox.result!["items"] as Array<Record<string, unknown>>)[0]!;
+      method = "attention.answer";
+      params = { scope_id: scope, item_id: item["item_id"], action_id: `answer-${id}`, revision: item["revision"], content_hash: item["content_hash"], text: "continue", takeover: false };
+    }
+    let queued = false;
+    const admission = vi.spyOn(GovernedExecution.prototype, "acquire").mockImplementationOnce(input => new Promise((_resolve, reject) => {
+      queued = true;
+      if (input.signal?.aborted) reject(new Error("cancelled"));
+      else input.signal?.addEventListener("abort", () => reject(new Error("cancelled")), { once: true });
+    }));
+    try {
+      const sending = rpc(method, params);
+      await vi.waitFor(() => expect(queued).toBe(true));
+      expect(await rpc("run.status", { run_id: `run_${id}` })).toMatchObject({ ok: true, result: { active: true } });
+      expect(await rpc(method, params)).toMatchObject({ ok: false, error: { code: "session_busy" } });
+      expect(await rpc("task.cancel", { run_id: `run_${id}` })).toMatchObject({ ok: true });
+      expect(await sending).toMatchObject({ ok: false, error: { code: "admission_denied" } });
+      expect(await rpc("run.status", { run_id: `run_${id}` })).toMatchObject({ ok: true, result: { active: false } });
+      expect(adapter.resumed.some(input => input.session_id === id)).toBe(false);
+      expect(db.prepare("SELECT version FROM agent_sessions WHERE session_id=?").get(id)).toEqual({ version: source.version });
+      expect(db.prepare("SELECT 1 FROM session_messages WHERE session_id=? AND direction='inbound'").get(id)).toBeUndefined();
+    } finally { admission.mockRestore(); db.close(); }
+    expect(await rpc(method, params)).toMatchObject({ ok: true, result: { state: "applied" } });
+  }
+});
+
+
+FILE packages/cli/src/governed-execution.ts
+
+import { join } from "node:path";
+import { acquireRepoWriteLock, FifoSemaphore, SemaphoreAcquireAbortedError, type SemaphoreLease, type RepoWriteLock } from '@osstack/autonomy';
+import { resolveRepositoryScope } from '@osstack/core';
+
+export interface ExecutionLease {
+  release(): Promise<void>;
+  /** Keep ownership until a trusted caller has confirmed external exit. */
+  retain(reason: string): void;
+  /** Trusted host only; never accept a worker-provided proof callback. */
+  releaseAfterReconciliation?(verify: () => Promise<void>): Promise<void>;
+  /** Assert this exact canonical writer lease is still live. */
+  assertActive?(): Promise<void>;
+  /** Scoped synchronous file operations under the canonical writer lock. This
+   * capability is absent on read leases. Failures retain admission until recovery. */
+  withWriteGuard?<T>(workspacePath: string, operation: (assertActive: () => void) => T): Promise<T>;
+}
+export interface AdmissionInput {
+  kind: 'read' | 'write';
+  runId: string;
+  /** Supplied by the daemon registration, never by an adapter context. */
+  workspacePath?: string;
+  repoId?: string;
+  signal?: AbortSignal;
+  authorize?: () => Promise<void>;
+  /** Host-only synchronous proof: acquisition rejected with no lease or cleanup obligation. */
+  onNotAcquired?: () => void;
+}
+export class GovernedExecution {
+  private readonly activeRuns = new Set<string>();
+  private readonly quarantinedRepositories = new Map<string, Set<string>>();
+  private quarantine(repoId: string, runId: string): void {
+    const owners = this.quarantinedRepositories.get(repoId) ?? new Set<string>();
+    owners.add(runId); this.quarantinedRepositories.set(repoId, owners);
+  }
+  constructor(private readonly options: {
+    reads: FifoSemaphore;
+    writes: FifoSemaphore;
+    repositories: Map<string, FifoSemaphore>;
+    checkHealth: () => Promise<void>;
+  }) {}
+
+  get hasWriters(): boolean { return this.options.writes.in_use > 0; }
+
+  async acquire(input: AdmissionInput): Promise<ExecutionLease> {
+    const cleanup = { confirmed: true };
+    try { return await this.acquireOwned(input, cleanup); }
+    catch (error) {
+      if (cleanup.confirmed && !this.activeRuns.has(input.runId)) input.onNotAcquired?.();
+      throw error;
+    }
+  }
+
+  private async acquireOwned(input: AdmissionInput, cleanup: { confirmed: boolean }): Promise<ExecutionLease> {
+    const check = async (): Promise<void> => {
+      if (input.signal?.aborted) throw new SemaphoreAcquireAbortedError();
+      if (input.kind === 'write') await this.options.checkHealth();
+      await input.authorize?.();
+    };
+    await check();
+    const scope = input.workspacePath === undefined ? undefined
+      : await resolveRepositoryScope(input.workspacePath, input.repoId === undefined ? {} : { repoId: input.repoId });
+    if (input.kind === 'write' && !scope) throw new Error('trusted repository scope required for writes');
+    if (input.kind === "write" && scope && this.quarantinedRepositories.has(scope.repoId)) throw new Error("repository external stop unconfirmed; reconciliation required");
+    if (this.activeRuns.has(input.runId)) {
+      cleanup.confirmed = false;
+      throw new Error("run already admitted or queued");
+    }
+    this.activeRuns.add(input.runId);
+    let local: SemaphoreLease | undefined;
+    let global: SemaphoreLease | undefined;
+    let lock: RepoWriteLock | undefined;
+    let queue: FifoSemaphore | undefined;
+    const releasePermits = (): void => {
+      global?.release(); local?.release();
+      this.activeRuns.delete(input.runId);
+      if (scope && queue?.in_use === 0 && queue.pending === 0) this.options.repositories.delete(scope.repoId);
+    };
+    let released = false;
+    let retained = false;
+    let writeGuardActive = false;
+    // Start as soon as the filesystem lock exists, including the final policy
+    // wait. Once admitted, a renewal failure retains the unknown producer.
+    let renewing: Promise<void> = Promise.resolve();
+    let timer: ReturnType<typeof setInterval> | undefined;
+    const startRenewal = () => {
+      timer = setInterval(() => {
+        if (writeGuardActive) return;
+        renewing = renewing.then(async () => {
+          if (!released && !writeGuardActive) await lock!.renew();
+        }).catch((error: unknown) => {
+          retained = true;
+          if (scope) this.quarantine(scope.repoId, input.runId);
+          process.stderr.write(`repository lease renewal failed; retained ${input.runId}: ${String(error)}\n`);
+          if (timer) clearInterval(timer);
+        });
+      }, 20_000);
+      timer.unref();
+    };
+    try {
+      if (input.kind === 'write' && scope) {
+        queue = this.options.repositories.get(scope.repoId) ?? new FifoSemaphore(1);
+        this.options.repositories.set(scope.repoId, queue);
+        local = await queue.acquire(input.signal);
+      }
+      global = await (input.kind === 'read' ? this.options.reads : this.options.writes).acquire(input.signal);
+      if (input.kind === 'write' && scope) {
+        // A failed filesystem acquisition may have left an ownership obligation.
+        cleanup.confirmed = false;
+        lock = await acquireRepoWriteLock({ root_dir: join(scope.commonDir, "osstack", "writer-locks"), recover_stale: false, repo_id: scope.repoId, autonomy_run_id: input.runId });
+        // Authorization may wait behind another branch's synchronous work.
+        // Start ownership renewal before that wait, not after publishing admission.
+        startRenewal();
+      }
+      if (input.kind === "write" && scope && this.quarantinedRepositories.has(scope.repoId)) throw new Error("repository external stop unconfirmed; reconciliation required");
+      await check();
+      await renewing;
+      if (retained) throw new Error("repository lease renewal failed during admission");
+      await lock?.assertActive();
+      if (retained) throw new Error("repository lease renewal failed during admission");
+      if (input.signal?.aborted) throw new SemaphoreAcquireAbortedError();
+    } catch (error) {
+      if (timer) clearInterval(timer);
+      await renewing;
+      try {
+        await lock?.release();
+        if (lock) cleanup.confirmed = true;
+        // No executor was admitted. Remove only this rejected acquisition's quarantine.
+        if (scope) {
+          const owners = this.quarantinedRepositories.get(scope.repoId);
+          owners?.delete(input.runId);
+          if (owners?.size === 0) this.quarantinedRepositories.delete(scope.repoId);
+        }
+      } catch (releaseError) {
+        if (scope) this.quarantine(scope.repoId, input.runId);
+        throw new AggregateError([error, releaseError], 'admission rejected and ownership cleanup failed');
+      } finally { releasePermits(); }
+      throw error;
+    }
+    let reconciled: Promise<void> | undefined;
+    return {
+      ...(lock && scope ? { withWriteGuard: async <T>(workspacePath: string, operation: (assertActive: () => void) => T): Promise<T> => {
+        if (workspacePath !== scope.workspacePath) throw new Error('write guard workspace mismatch');
+        if (released || retained || writeGuardActive || reconciled) throw new Error('execution lease unavailable');
+        writeGuardActive = true;
+        try {
+          await renewing;
+          if (released || retained) throw new Error('execution lease unavailable');
+          // Do not let the timer contend with our metadata guard. Renew on both
+          // sides while still excluding release; renewal never revives expiry.
+          await lock!.renew();
+          const value = await lock!.withActiveGuard(check => {
+            const assertActive = () => {
+              if (released || retained) throw new Error('execution lease unavailable');
+              check();
+            };
+            assertActive(); const result = operation(assertActive);
+            if (result !== null && (typeof result === 'object' || typeof result === 'function') && 'then' in result) {
+              void Promise.resolve(result).catch(() => {});
+              throw new Error('write guard operation must be synchronous');
+            }
+            assertActive(); return result;
+          });
+          await lock!.renew();
+          return value;
+        } catch (error) {
+          retained = true; if (timer) clearInterval(timer);
+          this.quarantine(scope.repoId, input.runId);
+          throw error;
+        } finally { writeGuardActive = false; }
+      } } : {}),
+      assertActive: async () => {
+        if (released || retained) throw new Error("execution lease unavailable");
+        await lock?.assertActive();
+        if (released || retained) throw new Error("execution lease unavailable");
+      },
+      releaseAfterReconciliation: (verify) => {
+        if (writeGuardActive) return Promise.reject(new Error('write guard in progress'));
+        if (released) return Promise.resolve();
+        if (reconciled) return reconciled;
+        if (typeof verify !== 'function') return Promise.reject(new Error('trusted reconciliation verifier required'));
+        reconciled = (async () => {
+          // Stop renewal first. No authority is freed until the verifier succeeds
+          // and the canonical token is released under its filesystem guard.
+          if (timer) clearInterval(timer);
+          await renewing;
+          const result: unknown = await verify();
+          if (result !== undefined) throw new Error('invalid reconciliation authority');
+          await lock?.release();
+          released = true; retained = false;
+          if (scope) {
+            const owners = this.quarantinedRepositories.get(scope.repoId);
+            owners?.delete(input.runId);
+            if (owners?.size === 0) this.quarantinedRepositories.delete(scope.repoId);
+          }
+          releasePermits();
+        })().catch((error: unknown) => {
+          retained = true;
+          if (scope) this.quarantine(scope.repoId, input.runId);
+          throw error;
+        }).finally(() => { reconciled = undefined; });
+        return reconciled;
+      },
+      retain: (reason) => { retained = true; if (timer) clearInterval(timer); if (scope) this.quarantine(scope.repoId, input.runId); process.stderr.write(`osstack: retaining write lease ${input.runId}: ${reason}\n`); },
+      release: async () => {
+        if (writeGuardActive) throw new Error('write guard in progress');
+        if (released) return;
+        if (retained) throw new Error("external stop unconfirmed; reconciliation required before release");
+        released = true;
+        if (timer) clearInterval(timer);
+        await renewing;
+        if (retained) { released = false; throw new Error("external stop unconfirmed; reconciliation required before release"); }
+        // Ownership failure must not free the in-process writer authority.
+        try { await lock?.release(); }
+        catch (error) {
+          released = false; retained = true;
+          if (scope) this.quarantine(scope.repoId, input.runId);
+          process.stderr.write(`repository lock release failed; retained ${input.runId}: ${String(error)}\n`);
+          throw error;
+        }
+        releasePermits();
+      },
+    };
+  }
+}
+
+
+FILE packages/cli/src/governed-execution.test.ts
+
+import { randomUUID } from 'node:crypto';
+import { writeFileSync } from 'node:fs';
+import { mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { execFileSync } from 'node:child_process';
+import { afterEach, expect, it, vi } from 'vitest';
+import { FifoSemaphore, inspectRepoWriteLock, repoLockPath } from '@osstack/autonomy';
+import { resolveRepositoryScope } from '@osstack/core';
+import { GovernedExecution } from './governed-execution.js';
+const roots: string[] = [];
+async function fixture() {
+  const root = await mkdtemp(join(tmpdir(), 'g10-')); roots.push(root);
+  const repo = join(root, 'repo'); execFileSync('git', ['init', repo]);
+  execFileSync('git', ['-C', repo, '-c', 'user.name=Test', '-c', 'user.email=test@example.com', 'commit', '--allow-empty', '-m', 'init']);
+  const other = join(root, 'other'); execFileSync('git', ['-C', repo, 'worktree', 'add', other]);
+  const writes = new FifoSemaphore(2);
+  const repositories = new Map<string, FifoSemaphore>();
+  let allowed = true;
+  const admission = new GovernedExecution({ reads: new FifoSemaphore(2), writes,
+    repositories, checkHealth: async () => { if (!allowed) throw new Error('health revoked'); } });
+  return { admission, repo, other, writes, repositories, revoke: () => { allowed = false; } };
+}
+afterEach(async () => { vi.useRealTimers(); vi.restoreAllMocks(); await Promise.all(roots.splice(0).map(root => rm(root, { recursive: true, force: true }))); });
+it('canonicalizes worktrees and rechecks health after queueing without leaking permits', async () => {
+  const f = await fixture();
+  const lease = await f.admission.acquire({ kind: 'write', runId: 'one', workspacePath: f.repo });
+  const queued = f.admission.acquire({ kind: 'write', runId: 'two', workspacePath: f.other });
+  const rejected = expect(queued).rejects.toThrow('health revoked');
+  await expect.poll(() => [...f.repositories.values()][0]?.pending).toBe(1);
+  f.revoke(); await lease.release(); await rejected;
+  expect(f.writes.in_use).toBe(0);
+});
+it('rejects forged hints and managed missing scope', async () => {
+  const f = await fixture();
+  await expect(f.admission.acquire({ kind: 'write', runId: 'x', workspacePath: f.repo, repoId: 'forged' })).rejects.toThrow();
+  await expect(f.admission.acquire({ kind: 'write', runId: 'x' })).rejects.toThrow('scope');
+  expect(f.writes.in_use).toBe(0);
+});
+it('aborts a queued writer and retains an unconfirmed producer lease', async () => {
+  const f = await fixture();
+  const lease = await f.admission.acquire({ kind: 'write', runId: 'one', workspacePath: f.repo });
+  const abort = new AbortController();
+  const queued = f.admission.acquire({ kind: 'write', runId: 'two', workspacePath: f.other, signal: abort.signal });
+  const rejected = expect(queued).rejects.toThrow();
+  await expect.poll(() => [...f.repositories.values()][0]?.pending).toBe(1);
+  abort.abort(); await rejected;
+  lease.retain("external stop unconfirmed");
+  await expect(f.admission.acquire({ kind: "write", runId: "follow-up", workspacePath: f.repo })).rejects.toThrow("unconfirmed");
+  expect(f.writes.in_use).toBe(1);
+  await expect(lease.release()).rejects.toThrow("unconfirmed"); expect(f.writes.in_use).toBe(1);
+});
+it('rechecks authorization after the queue', async () => {
+  const f = await fixture(); let allow = true;
+  const first = await f.admission.acquire({ kind: 'write', runId: 'one', workspacePath: f.repo });
+  const queued = f.admission.acquire({ kind: 'write', runId: 'two', workspacePath: f.other,
+    authorize: async () => { if (!allow) throw new Error('grant revoked'); } });
+  const rejected = expect(queued).rejects.toThrow('grant revoked');
+  await expect.poll(() => [...f.repositories.values()][0]?.pending).toBe(1);
+  allow = false;
+  await first.release(); await rejected; expect(f.writes.in_use).toBe(0);
+});
+it('rejects same-run reentry promptly and shares canonical lock across independent homes', async () => {
+  const f = await fixture();
+  const lease = await f.admission.acquire({ kind: 'write', runId: 'same', workspacePath: f.repo });
+  await expect(f.admission.acquire({ kind: 'write', runId: 'same', workspacePath: f.other })).rejects.toThrow('already admitted');
+  const independent = new GovernedExecution({ reads: new FifoSemaphore(1), writes: new FifoSemaphore(1), repositories: new Map(), checkHealth: async () => {} });
+  await expect(independent.acquire({ kind: 'write', runId: 'other-home', workspacePath: f.other })).rejects.toThrow('locked');
+  await lease.release();
+  const next = await independent.acquire({ kind: 'write', runId: 'after', workspacePath: f.other });
+  await next.release();
+});
+it('releases retained admission only after an explicit reverified reconciliation', async () => {
+  const f = await fixture(); const lease = await f.admission.acquire({ kind: 'write', runId: 'retained', workspacePath: f.repo });
+  lease.retain('unknown');
+  await expect(lease.releaseAfterReconciliation!(async () => { throw new Error('producer alive'); })).rejects.toThrow('producer alive');
+  expect(f.writes.in_use).toBe(1);
+  await expect(lease.releaseAfterReconciliation!(async () => false as unknown as undefined)).rejects.toThrow('reconciliation');
+  expect(f.writes.in_use).toBe(1);
+  await lease.releaseAfterReconciliation!(async () => {});
+  expect(f.writes.in_use).toBe(0);
+  const next = await f.admission.acquire({ kind: 'write', runId: 'next', workspacePath: f.repo });
+  await next.release();
+});
+it('keeps a repository quarantined until every retained reader is reconciled', async () => {
+  const f = await fixture();
+  const first = await f.admission.acquire({ kind: 'read', runId: 'read1', workspacePath: f.repo });
+  const second = await f.admission.acquire({ kind: 'read', runId: 'read2', workspacePath: f.repo });
+  first.retain('uncertain read executor'); second.retain('other executor');
+  await first.releaseAfterReconciliation!(async () => {});
+  await expect(f.admission.acquire({ kind: 'write', runId: 'early', workspacePath: f.repo })).rejects.toThrow('unconfirmed');
+  await second.releaseAfterReconciliation!(async () => {});
+  const next = await f.admission.acquire({ kind: 'write', runId: 'after', workspacePath: f.repo }); await next.release();
+});
+
+it('attests rejected acquisition cleanup but never attests an existing run is absent', async () => {
+  const f = await fixture(); const lease = await f.admission.acquire({ kind: 'write', runId: 'one', workspacePath: f.repo });
+  let proof = false;
+  await expect(f.admission.acquire({ kind: 'write', runId: 'one', workspacePath: f.repo, onNotAcquired: () => { proof = true; } })).rejects.toThrow('already admitted');
+  expect(proof).toBe(false);
+  const abort = new AbortController(); abort.abort();
+  await expect(f.admission.acquire({ kind: 'write', runId: 'one', workspacePath: f.repo, signal: abort.signal,
+    onNotAcquired: () => { proof = true; } })).rejects.toThrow();
+  expect(proof).toBe(false); await lease.release();
+  f.revoke();
+  await expect(f.admission.acquire({ kind: 'write', runId: 'two', workspacePath: f.repo, onNotAcquired: () => { proof = true; } })).rejects.toThrow('health revoked');
+  expect(proof).toBe(true); expect(f.writes.in_use).toBe(0);
+});
+
+it('renews the real repository lock during slow post-acquisition authorization', async () => {
+  const f = await fixture(); const scope = await resolveRepositoryScope(f.repo);
+  const lockRoot = join(scope.commonDir, 'osstack', 'writer-locks');
+  vi.useFakeTimers({ toFake: ['Date'] });
+  const initial = Date.now(); let tick: (() => void) | undefined;
+  const interval = globalThis.setInterval;
+  vi.spyOn(globalThis, 'setInterval').mockImplementation((callback, timeout, ...args) => {
+    if (timeout === 20_000) tick = callback as () => void;
+    return interval(callback, timeout, ...args);
+  });
+  let checks = 0;
+  const lease = await f.admission.acquire({ kind: 'write', runId: 'slow-authority', workspacePath: f.repo,
+    authorize: async () => {
+      if (++checks !== 2) return;
+      const before = await inspectRepoWriteLock(lockRoot, scope.repoId);
+      expect(before).not.toBeNull();
+      vi.setSystemTime(initial + 41_000);
+      expect(tick, 'renewal must already be running while authorization waits').toBeTypeOf('function');
+      tick!();
+      await expect.poll(async () => (await inspectRepoWriteLock(lockRoot, scope.repoId))?.expires_at).not.toBe(before!.expires_at);
+    } });
+  try {
+    vi.setSystemTime(initial + 65_000);
+    await expect(lease.assertActive!()).resolves.toBeUndefined();
+  } finally { await lease.release(); }
+  expect(f.writes.in_use).toBe(0);
+});
+
+
+it.each(['revoked', 'expired', 'aborted'] as const)('does not publish admission after slow authority is %s', async mode => {
+  const f = await fixture(); const scope = await resolveRepositoryScope(f.repo);
+  const lockRoot = join(scope.commonDir, 'osstack', 'writer-locks');
+  const clear = vi.spyOn(globalThis, 'clearInterval');
+  vi.useFakeTimers({ toFake: ['Date'] });
+  const initial = Date.now(); const abort = new AbortController(); let checks = 0, notAcquired = false;
+  await expect(f.admission.acquire({ kind: 'write', runId: 'rejected', workspacePath: f.repo, signal: abort.signal,
+    onNotAcquired: () => { notAcquired = true; }, authorize: async () => {
+      if (++checks !== 2) return;
+      expect(await inspectRepoWriteLock(lockRoot, scope.repoId)).not.toBeNull();
+      vi.setSystemTime(initial + (mode === 'expired' ? 61_000 : 41_000));
+      if (mode === 'revoked') throw Error('grant revoked');
+      if (mode === 'aborted') abort.abort();
+    } })).rejects.toThrow();
+  expect(notAcquired).toBe(true); expect(clear).toHaveBeenCalled();
+  expect(f.writes.in_use).toBe(0); expect(await inspectRepoWriteLock(lockRoot, scope.repoId)).toBeNull();
+  const next = await f.admission.acquire({ kind: 'write', runId: 'after', workspacePath: f.repo });
+  await next.release();
+});
+
+
+it('preserves both admission and cleanup errors and quarantines a replaced pre-admission lock', async () => {
+  const f = await fixture(); const scope = await resolveRepositoryScope(f.repo);
+  const root = join(scope.commonDir, 'osstack', 'writer-locks'); let checks = 0, notAcquired = false;
+  const token = randomUUID();
+  const attempt = f.admission.acquire({ kind: 'write', runId: 'replaced', workspacePath: f.repo,
+    onNotAcquired: () => { notAcquired = true; }, authorize: async () => {
+      if (++checks !== 2) return;
+      const owner = await inspectRepoWriteLock(root, scope.repoId);
+      writeFileSync(repoLockPath(root, scope.repoId), JSON.stringify({ ...owner, token }));
+      throw Error('grant revoked');
+    } });
+  await expect(attempt).rejects.toMatchObject({ name: 'AggregateError', errors: [expect.objectContaining({ message: 'grant revoked' }), expect.any(Error)] });
+  expect(notAcquired).toBe(false); expect(f.writes.in_use).toBe(0);
+  expect((await inspectRepoWriteLock(root, scope.repoId))?.token).toBe(token);
+  await expect(f.admission.acquire({ kind: 'write', runId: 'next', workspacePath: f.repo })).rejects.toThrow('reconciliation required');
+});
+
+it('provides writer-only scoped proof without releasing capacity after synchronous work', async () => {
+  const f = await fixture(); const lease = await f.admission.acquire({ kind: 'write', runId: 'guard', workspacePath: f.repo });
+  const scope = await resolveRepositoryScope(f.repo); let escaped: (() => void) | undefined;
+  expect(await lease.withWriteGuard!(scope.workspacePath, check => { check(); escaped = check; return 42; })).toBe(42);
+  expect(() => escaped!()).toThrow('guard'); expect(f.writes.in_use).toBe(1);
+  await expect(lease.withWriteGuard!(f.other, () => 1)).rejects.toThrow('workspace mismatch');
+  await lease.release(); expect(f.writes.in_use).toBe(0);
+  const read = await f.admission.acquire({ kind: 'read', runId: 'read', workspacePath: f.repo });
+  expect(read.withWriteGuard).toBeUndefined(); await read.release();
+});
+it('retains physical capacity and blocks subsequent work after guarded failure', async () => {
+  const f = await fixture(); const lease = await f.admission.acquire({ kind: 'write', runId: 'guard-failure', workspacePath: f.repo });
+  const scope = await resolveRepositoryScope(f.repo);
+  await expect(lease.withWriteGuard!(scope.workspacePath, () => { throw Error('partial'); })).rejects.toThrow('partial');
+  await expect(lease.release()).rejects.toThrow('unconfirmed'); expect(f.writes.in_use).toBe(1);
+  await expect(lease.withWriteGuard!(scope.workspacePath, () => 1)).rejects.toThrow('unavailable');
+  await lease.releaseAfterReconciliation!(async () => undefined); expect(f.writes.in_use).toBe(0);
+});
+it('rejects release and reconciliation while synchronous guarded work is in flight', async () => {
+  const f = await fixture(); const lease = await f.admission.acquire({ kind: 'write', runId: 'guard-release', workspacePath: f.repo });
+  const scope = await resolveRepositoryScope(f.repo); const pending: Promise<unknown>[] = [];
+  await lease.withWriteGuard!(scope.workspacePath, check => {
+    pending.push(expect(lease.release()).rejects.toThrow('guard in progress'));
+    pending.push(expect(lease.releaseAfterReconciliation!(async () => undefined)).rejects.toThrow('guard in progress'));
+    check();
+  });
+  await Promise.all(pending); expect(f.writes.in_use).toBe(1); await lease.release();
+});
+it('retains a mistaken asynchronous guarded callback and contains its rejection', async () => {
+  const f = await fixture(); const lease = await f.admission.acquire({ kind: 'write', runId: 'guard-async', workspacePath: f.repo });
+  const scope = await resolveRepositoryScope(f.repo);
+  await expect(lease.withWriteGuard!(scope.workspacePath, () => Promise.reject(Error('late')))).rejects.toThrow('synchronous');
+  await expect(lease.release()).rejects.toThrow('unconfirmed');
+  await lease.releaseAfterReconciliation!(async () => undefined);
+});
+
+it('rejects a new guard while reconciliation verification is already pending', async () => {
+  const f = await fixture(); const lease = await f.admission.acquire({ kind: 'write', runId: 'guard-recon', workspacePath: f.repo });
+  const scope = await resolveRepositoryScope(f.repo);
+  let finish!: () => void; const barrier = new Promise<void>(resolve => { finish = resolve; });
+  const release = lease.releaseAfterReconciliation!(() => barrier);
+  await expect(lease.withWriteGuard!(scope.workspacePath, () => 1)).rejects.toThrow('unavailable');
+  finish(); await release; expect(f.writes.in_use).toBe(0);
+});
+it('defers renewal ticks during guarded work and renews before releasing the guard state', async () => {
+  const f = await fixture(); vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] });
+  const lease = await f.admission.acquire({ kind: 'write', runId: 'guard-renew', workspacePath: f.repo });
+  const scope = await resolveRepositoryScope(f.repo);
+  try {
+    await lease.withWriteGuard!(scope.workspacePath, check => { vi.advanceTimersByTime(40000); check(); });
+    await lease.assertActive!(); expect(f.writes.in_use).toBe(1);
+  } finally { await lease.release(); }
+  expect(f.writes.in_use).toBe(0);
+});
+
+
+FILE packages/core/src/state/attention-actions.ts
+
+import { realpathSync } from "node:fs";
+import { randomUUID } from "node:crypto";
+import type Database from "better-sqlite3";
+import { SessionDecision } from "@osstack/protocol";
+import { withWrite } from "./db.js";
+import { SessionRepository, type SessionMessageInput } from "./sessions.js";
+import {
+  AttentionStore,
+  attentionDigest,
+  type AttentionOwner,
+} from "./attention-store.js";
+/** Common human reservation, serialized with collaborator writes in the same DB. */
+export function reserveSessionInstruction(
+  db: Database.Database,
+  path: string,
+  message: SessionMessageInput,
+  version: number,
+  now: number,
+  takeover = false,
+  takeoverGrantId?: string
+) {
+  return withWrite(db, path, () => {
+    const sessions = new SessionRepository(db, path);
+    if (sessions.getMessage(message.message_id))
+      return sessions.applyInbound(message, version, now);
+    if (
+      db
+        .prepare(
+          "SELECT 1 FROM session_messages WHERE session_id=? AND direction='inbound' AND state IN ('accepted','failed') AND message_id NOT IN (SELECT message_id FROM attention_receipt_resolutions) LIMIT 1"
+        )
+        .get(message.session_id)
+    )
+      throw new Error("delivery_uncertain");
+    if (
+      db
+        .prepare(
+          "SELECT 1 FROM session_continuation_attempts a JOIN session_continuation_grants g ON a.grant_id=g.grant_id WHERE g.session_id=? AND a.status IN ('checking','reserved') LIMIT 1"
+        )
+        .get(message.session_id)
+    )
+      throw new Error("continuation_in_flight");
+    const grant = db
+      .prepare(
+        "SELECT grant_id FROM session_continuation_grants WHERE session_id=? AND status='active'"
+      )
+      .get(message.session_id) as { grant_id: string } | undefined;
+    if (grant && takeover && takeoverGrantId !== grant.grant_id)
+      throw new Error("takeover_grant_changed");
+    if (grant && !takeover) throw new Error("grant_owned");
+    const snapshot = sessions.latestSnapshot(message.session_id);
+    if (snapshot.state === "awaiting_decision" && snapshot.decision === null)
+      throw new Error("invalid_decision");
+    const decision = SessionDecision.safeParse(snapshot.decision);
+    const raw = snapshot.decision as Record<string, unknown> | null;
+    const legacy =
+      raw !== null &&
+      typeof raw === "object" &&
+      !Array.isArray(raw) &&
+      Object.keys(raw).every((k) => ["question", "choices"].includes(k)) &&
+      Array.isArray(raw["choices"]) &&
+      raw["choices"].every((v) => typeof v === "string") &&
+      (raw["question"] === undefined || typeof raw["question"] === "string");
+    if (snapshot.decision !== null && !decision.success && !legacy)
+      throw new Error("invalid_decision");
+
+    if (
+      decision.success &&
+      ["risk_approval", "task_authorization"].includes(
+        decision.data.continuation?.gate_kind ?? ""
+      )
+    )
+      throw new Error("signed_approval_required");
+    if (grant)
+      db.prepare(
+        "UPDATE session_continuation_grants SET status='blocked',reason='human_takeover',updated_at=? WHERE grant_id=?"
+      ).run(now, grant.grant_id);
+    return sessions.applyInbound(message, version, now);
+  });
+}
+export interface AttentionAnswer {
+  scope_id: string;
+  item_id: string;
+  action_id: string;
+  revision: number;
+  content_hash: string;
+  text: string;
+  takeover: boolean;
+  takeover_grant_id?: string;
+}
+interface Action {
+  action_id: string;
+  scope_id: string;
+  item_id: string;
+  payload_hash: string;
+  message_id: string;
+  state: string;
+  created_at: number;
+  updated_at: number;
+}
+export class AttentionActions {
+  constructor(readonly store: AttentionStore, readonly owner: AttentionOwner) {}
+  reserve(input: AttentionAnswer, now = Date.now()) {
+    if (
+      !input.action_id ||
+      input.action_id.length > 256 ||
+      !input.text.trim() ||
+      input.text.length > 16000
+    )
+      throw new Error("invalid_answer");
+    return this.store.write(this.owner, () => {
+      const db = this.store.db;
+      const digest = attentionDigest(input);
+      const prior = db
+        .prepare("SELECT * FROM attention_actions WHERE action_id=?")
+        .get(input.action_id) as Action | undefined;
+      if (prior) {
+        if (prior.payload_hash !== digest)
+          throw new Error("action_id_conflict");
+        return {
+          ...this.reconcile(prior, now),
+          replay: true,
+          reservation_version: 0,
+        };
+      }
+      const item = this.store.getItem(input.scope_id, input.item_id);
+      const scope = this.store.getScope(input.scope_id);
+      if (!item || !scope) throw new Error("not_found");
+      if (
+        item.state !== "open" ||
+        item.revision !== input.revision ||
+        item.content_hash !== input.content_hash
+      )
+        throw new Error("stale_item");
+      if (
+        db
+          .prepare("SELECT 1 FROM attention_actions WHERE item_id=?")
+          .get(item.item_id)
+      )
+        throw new Error("action_already_reserved");
+      const repo = new SessionRepository(db, this.store.path);
+      const source = repo.getSession(item.session_id);
+      const latest = repo.latestSnapshot(item.session_id);
+      if (source && source.state !== "awaiting_decision")
+        throw new Error("session_not_awaiting_decision");
+      if (
+        !source ||
+        source.task_id !== scope.task_id ||
+        realpathSync(source.repo_path) !== scope.repo_path ||
+        latest.turn_id !== item.turn_id ||
+        source.version !== item.source_version ||
+        attentionDigest(SessionDecision.parse(latest.decision)) !==
+          item.content_hash
+      )
+        throw new Error("source_changed");
+      if (
+        !db
+          .prepare(
+            "SELECT 1 FROM tasks t JOIN runs r ON r.task_id=t.task_id WHERE t.task_id=? AND r.run_id=? AND t.tenant_id IS NULL AND r.tenant_id IS NULL"
+          )
+          .get(scope.task_id, source.run_id)
+      )
+        throw new Error("source_changed");
+      const messageId = `attention-${randomUUID()}`;
+      const reservation = reserveSessionInstruction(
+        db,
+        this.store.path,
+        {
+          message_id: messageId,
+          session_id: item.session_id,
+          turn_id: item.turn_id,
+          direction: "inbound",
+          kind: "instruction.send",
+          payload: { text: input.text },
+          state: "accepted",
+          created_at: now / 1000,
+        },
+        source.version,
+        now / 1000,
+        input.takeover,
+        input.takeover_grant_id
+      );
+      db.prepare(
+        "INSERT INTO attention_actions VALUES(?,?,?,?,?,'reserved',?,?)"
+      ).run(
+        input.action_id,
+        input.scope_id,
+        input.item_id,
+        digest,
+        messageId,
+        now,
+        now
+      );
+      db.prepare(
+        "UPDATE attention_items SET state='answer_reserved',revision=revision+1,updated_at=? WHERE item_id=?"
+      ).run(now, item.item_id);
+      return {
+        action_id: input.action_id,
+        scope_id: input.scope_id,
+        item_id: input.item_id,
+        payload_hash: digest,
+        message_id: messageId,
+        state: "reserved",
+        created_at: now,
+        updated_at: now,
+        replay: false,
+        reservation_version: reservation.session_version,
+      };
+    });
+  }
+  replay(input: AttentionAnswer, applyingMessageId?: string) {
+    const prior = this.store.db
+      .prepare("SELECT * FROM attention_actions WHERE action_id=?")
+      .get(input.action_id) as Action | undefined;
+    if (!prior) return undefined;
+    if (prior.payload_hash !== attentionDigest(input))
+      throw new Error("action_id_conflict");
+    if (prior.message_id === applyingMessageId)
+      return { ...prior, state: "in_flight", replay: true };
+    return { ...this.reconcile(prior), replay: true };
+  }
+  abandon(
+    input: {
+      scope_id: string;
+      session_id: string;
+      message_id: string;
+      expected_version: number;
+      reason: string;
+      evidence_sha256: string;
+    },
+    now = Date.now()
+  ) {
+    if (
+      !input.reason ||
+      input.reason.length > 1000 ||
+      !/^[a-f0-9]{64}$/.test(input.evidence_sha256)
+    )
+      throw new Error("resolution_evidence_required");
+    return this.store.write(this.owner, () => {
+      const db = this.store.db;
+      const session = new SessionRepository(db, this.store.path).getSession(
+        input.session_id
+      );
+      if (!session || session.version !== input.expected_version)
+        throw new Error("version_conflict");
+      const scope = this.store.getScope(input.scope_id);
+      if (
+        !scope ||
+        scope.task_id !== session.task_id ||
+        scope.repo_path !== realpathSync(session.repo_path)
+      )
+        throw new Error("scope_mismatch");
+      const message = db
+        .prepare(
+          "SELECT state FROM session_messages WHERE message_id=? AND session_id=? AND direction='inbound'"
+        )
+        .get(input.message_id, input.session_id) as
+        | { state: string }
+        | undefined;
+      if (!message || !["accepted", "failed"].includes(message.state))
+        throw new Error("receipt_not_uncertain");
+      if (
+        db
+          .prepare(
+            "SELECT 1 FROM session_continuation_attempts a JOIN session_continuation_grants g ON a.grant_id=g.grant_id WHERE g.session_id=? AND a.status IN ('checking','reserved')"
+          )
+          .get(input.session_id)
+      )
+        throw new Error("continuation_in_flight");
+      const prior = db
+        .prepare(
+          "SELECT * FROM attention_receipt_resolutions WHERE message_id=?"
+        )
+        .get(input.message_id) as
+        | { reason: string; evidence_sha256: string }
+        | undefined;
+      if (
+        prior &&
+        (prior.reason !== input.reason ||
+          prior.evidence_sha256 !== input.evidence_sha256)
+      )
+        throw new Error("resolution_conflict");
+      db.prepare(
+        "INSERT OR IGNORE INTO attention_receipt_resolutions VALUES(?,?,?,'abandoned_unknown',?,?,?)"
+      ).run(
+        input.message_id,
+        input.session_id,
+        input.expected_version,
+        input.reason,
+        input.evidence_sha256,
+        now
+      );
+      db.prepare(
+        "UPDATE attention_actions SET state='abandoned_unknown',updated_at=? WHERE message_id=?"
+      ).run(now, input.message_id);
+      db.prepare(
+        "UPDATE attention_items SET state='answer_abandoned',revision=revision+1,updated_at=? WHERE item_id IN (SELECT item_id FROM attention_actions WHERE message_id=?) AND state<>'answer_abandoned'"
+      ).run(now, input.message_id);
+      return {
+        disposition: "abandoned_unknown",
+        message_id: input.message_id,
+        replayed: false,
+        execution_outcome: "unknown",
+        next_action:
+          "New manual instruction only; original message is never resent",
+      };
+    });
+  }
+  recover(): void {
+    const rows = this.store.db
+      .prepare(
+        "SELECT * FROM attention_actions WHERE state IN ('reserved','uncertain')"
+      )
+      .all() as Action[];
+    for (const row of rows) this.reconcile(row);
+  }
+  reconcile(action: Action, now = Date.now()): Action {
+    return this.store.write(this.owner, () => {
+      if (
+        this.store.db
+          .prepare(
+            "SELECT 1 FROM attention_receipt_resolutions WHERE message_id=?"
+          )
+          .get(action.message_id)
+      )
+        return { ...action, state: "abandoned_unknown" };
+      const receipt = this.store.db
+        .prepare("SELECT state FROM session_messages WHERE message_id=?")
+        .get(action.message_id) as { state: string } | undefined;
+      const state =
+        receipt?.state === "applied"
+          ? "applied"
+          : receipt?.state === "failed"
+          ? "uncertain"
+          : "uncertain";
+      this.store.db
+        .prepare(
+          "UPDATE attention_actions SET state=?,updated_at=? WHERE action_id=?"
+        )
+        .run(state, now, action.action_id);
+      this.store.db
+        .prepare(
+          "UPDATE attention_items SET state=?,revision=revision+1,updated_at=? WHERE item_id=? AND state<>?"
+        )
+        .run(
+          state === "applied" ? "answer_applied" : "answer_uncertain",
+          now,
+          action.item_id,
+          state === "applied" ? "answer_applied" : "answer_uncertain"
+        );
+      return { ...action, state, updated_at: now };
+    });
+  }
+}
+
+
+FILE packages/core/src/state/sessions.ts
+
+import type Database from "better-sqlite3";
+import { withWrite } from "./db.js";
+import {
+  AgentSessionRow,
+  AgentSessionState,
+  SessionMessageRow,
+  SessionTurnRow,
+  type AgentSessionRow as AgentSessionRowType,
+  type AgentSessionState as AgentSessionStateType,
+  type SessionMessageRow as SessionMessageRowType,
+  type SessionTurnRow as SessionTurnRowType,
+} from "./schema.js";
+
+type RawSessionRow = Omit<AgentSessionRowType, "resume_supported"> & { resume_supported: number };
+
+export interface SessionTurnInput extends Omit<SessionTurnRowType, "decision_json"> {
+  decision: unknown | null;
+}
+
+export interface SessionMessageInput extends Omit<SessionMessageRowType, "payload_json" | "applied_at"> {
+  payload: unknown;
+  applied_at?: number | null;
+}
+
+export interface SessionFilter {
+  agent_id?: string;
+  state?: AgentSessionStateType;
+  task_id?: string;
+  limit?: number;
+}
+
+export interface ApplyMessageResult {
+  outcome: "applied" | "duplicate";
+  session_version: number;
+}
+
+export interface CompleteInboundTurnInput {
+  turn: SessionTurnInput;
+  message_id: string;
+  expected_version: number;
+  applied_at: number;
+}
+
+export interface SessionSnapshot {
+  session_id: string;
+  task_id: string;
+  run_id: string;
+  agent_id: string;
+  runtime_id: string;
+  state: AgentSessionStateType;
+  version: number;
+  turn_id: string | null;
+  assistant_text: string;
+  decision: unknown | null;
+  updated_at: number;
+}
+
+export class SessionVersionConflict extends Error {
+  constructor(
+    readonly session_id: string,
+    readonly expected_version: number,
+    readonly actual_version: number | null,
+  ) {
+    super(
+      `session ${session_id} version conflict: expected ${expected_version}, `
+      + `actual ${actual_version ?? "missing"}`,
+    );
+    this.name = "SessionVersionConflict";
+  }
+}
+
+export class SessionMessageIdConflict extends Error {
+  constructor(readonly message_id: string) {
+    super(`message_id collision for ${message_id}`);
+    this.name = "SessionMessageIdConflict";
+  }
+}
+
+function parseSession(row: RawSessionRow): AgentSessionRowType {
+  return AgentSessionRow.parse({ ...row, resume_supported: row.resume_supported === 1 });
+}
+
+function canonicalJson(value: unknown): string {
+  if (value === null || typeof value !== "object") return JSON.stringify(value);
+  if (Array.isArray(value)) return `[${value.map(canonicalJson).join(",")}]`;
+  const entries = Object.entries(value as Record<string, unknown>)
+    .sort(([left], [right]) => left.localeCompare(right));
+  return `{${entries.map(([key, item]) => `${JSON.stringify(key)}:${canonicalJson(item)}`).join(",")}}`;
+}
+
+export class SessionRepository {
+  constructor(
+    private readonly db: Database.Database,
+    private readonly path: string,
+  ) {}
+
+  createSession(row: AgentSessionRowType): void {
+    const parsed = AgentSessionRow.parse(row);
+    withWrite(this.db, this.path, (db) => {
+      db.prepare(`
+        INSERT INTO agent_sessions(
+          session_id,task_id,run_id,agent_id,request_sha256,native_session_id,
+          repo_path,state,resume_supported,version,updated_at
+        ) VALUES (?,?,?,?,?,?,?,?,?,?,?)
+      `).run(
+        parsed.session_id, parsed.task_id, parsed.run_id, parsed.agent_id,
+        parsed.request_sha256, parsed.native_session_id, parsed.repo_path, parsed.state,
+        parsed.resume_supported ? 1 : 0, parsed.version, parsed.updated_at,
+      );
+    });
+  }
+
+  getSession(sessionId: string): AgentSessionRowType | undefined {
+    const row = this.db.prepare("SELECT * FROM agent_sessions WHERE session_id = ?")
+      .get(sessionId) as RawSessionRow | undefined;
+    return row ? parseSession(row) : undefined;
+  }
+
+  recordNativeSession(
+    sessionId: string,
+    nativeSessionId: string,
+    expectedVersion: number,
+    updatedAt: number,
+  ): AgentSessionRowType {
+    return this.updateSession(
+      sessionId,
+      expectedVersion,
+      updatedAt,
+      "native_session_id = ?, state = 'idle'",
+      [nativeSessionId],
+    );
+  }
+
+  setState(
+    sessionId: string,
+    state: AgentSessionStateType,
+    expectedVersion: number,
+    updatedAt: number,
+  ): AgentSessionRowType {
+    AgentSessionState.parse(state);
+    return this.updateSession(sessionId, expectedVersion, updatedAt, "state = ?", [state]);
+  }
+
+  appendTurn(input: SessionTurnInput): void {
+    const { decision, ...stored } = input;
+    const row = SessionTurnRow.parse({
+      ...stored,
+      decision_json: decision === null ? null : canonicalJson(decision),
+    });
+    withWrite(this.db, this.path, (db) => {
+      db.prepare(`
+        INSERT INTO session_turns(
+          turn_id,session_id,ordinal,state,assistant_text,decision_json,created_at,updated_at
+        ) VALUES (?,?,?,?,?,?,?,?)
+      `).run(
+        row.turn_id, row.session_id, row.ordinal, row.state, row.assistant_text,
+        row.decision_json, row.created_at, row.updated_at,
+      );
+    });
+  }
+
+  applyInbound(
+    input: SessionMessageInput,
+    expectedVersion: number,
+    appliedAt: number,
+  ): ApplyMessageResult {
+    const { payload, ...stored } = input;
+    const payloadJson = canonicalJson(payload);
+    const row = SessionMessageRow.parse({
+      ...stored,
+      payload_json: payloadJson,
+      applied_at: input.applied_at ?? null,
+    });
+
+    return withWrite(this.db, this.path, (db) => {
+      const existing = db.prepare("SELECT * FROM session_messages WHERE message_id = ?")
+        .get(row.message_id) as SessionMessageRowType | undefined;
+      if (existing) {
+        if (
+          existing.session_id !== row.session_id
+          || existing.turn_id !== row.turn_id
+          || existing.kind !== row.kind
+          || existing.payload_json !== payloadJson
+        ) {
+          throw new SessionMessageIdConflict(row.message_id);
+        }
+        const session = this.readSession(db, row.session_id);
+        return { outcome: "duplicate", session_version: session.version };
+      }
+
+      const result = db.prepare(`
+        UPDATE agent_sessions
+        SET version = version + 1, updated_at = ?
+        WHERE session_id = ? AND version = ?
+      `).run(appliedAt, row.session_id, expectedVersion);
+      if (result.changes !== 1) {
+        const actual = db.prepare("SELECT version FROM agent_sessions WHERE session_id = ?")
+          .get(row.session_id) as { version: number } | undefined;
+        throw new SessionVersionConflict(row.session_id, expectedVersion, actual?.version ?? null);
+      }
+
+      db.prepare(`
+        INSERT INTO session_messages(
+          message_id,session_id,turn_id,direction,kind,payload_json,state,created_at,applied_at
+        ) VALUES (?,?,?,?,?,?,?,?,?)
+      `).run(
+        row.message_id, row.session_id, row.turn_id, row.direction, row.kind,
+        payloadJson, row.state, row.created_at, row.applied_at,
+      );
+      return { outcome: "applied", session_version: expectedVersion + 1 };
+    });
+  }
+
+  markMessageApplied(messageId: string, appliedAt: number): void {
+    withWrite(this.db, this.path, (db) => {
+      const result = db.prepare(`
+        UPDATE session_messages
+        SET state = 'applied', applied_at = ?
+        WHERE message_id = ? AND state = 'accepted'
+      `).run(appliedAt, messageId);
+      if (result.changes !== 1) {
+        throw new Error(`message ${messageId} is missing or is not accepted`);
+      }
+    });
+  }
+
+  markMessageFailed(messageId: string): void {
+    withWrite(this.db, this.path, (db) => {
+      const result = db.prepare(`
+        UPDATE session_messages
+        SET state = 'failed', applied_at = NULL
+        WHERE message_id = ? AND state = 'accepted'
+      `).run(messageId);
+      if (result.changes !== 1) {
+        throw new Error(`message ${messageId} is missing or is not accepted`);
+      }
+    });
+  }
+
+  retryFailedMessage(messageId: string): void {
+    withWrite(this.db, this.path, (db) => {
+      const result = db.prepare(`
+        UPDATE session_messages
+        SET state = 'accepted', applied_at = NULL
+        WHERE message_id = ? AND state = 'failed'
+      `).run(messageId);
+      if (result.changes !== 1) {
+        throw new Error(`message ${messageId} is missing or is not failed`);
+      }
+    });
+  }
+
+  completeInboundTurn(input: CompleteInboundTurnInput): AgentSessionRowType {
+    AgentSessionState.parse(input.turn.state);
+    const { decision, ...storedTurn } = input.turn;
+    const turn = SessionTurnRow.parse({
+      ...storedTurn,
+      decision_json: decision === null ? null : canonicalJson(decision),
+    });
+
+    return withWrite(this.db, this.path, (db) => {
+      const message = db.prepare(`
+        SELECT session_id, state FROM session_messages WHERE message_id = ?
+      `).get(input.message_id) as {
+        session_id: string;
+        state: SessionMessageRowType["state"];
+      } | undefined;
+      if (
+        message === undefined
+        || message.session_id !== turn.session_id
+        || message.state !== "accepted"
+      ) {
+        throw new Error(
+          `message ${input.message_id} is missing, belongs to another session, or is not accepted`,
+        );
+      }
+
+      const updated = db.prepare(`
+        UPDATE agent_sessions
+        SET state = ?, version = version + 1, updated_at = ?
+        WHERE session_id = ? AND version = ?
+      `).run(
+        turn.state,
+        input.applied_at,
+        turn.session_id,
+        input.expected_version,
+      );
+      if (updated.changes !== 1) {
+        const actual = db.prepare("SELECT version FROM agent_sessions WHERE session_id = ?")
+          .get(turn.session_id) as { version: number } | undefined;
+        throw new SessionVersionConflict(
+          turn.session_id,
+          input.expected_version,
+          actual?.version ?? null,
+        );
+      }
+
+      db.prepare(`
+        INSERT INTO session_turns(
+          turn_id,session_id,ordinal,state,assistant_text,decision_json,created_at,updated_at
+        ) VALUES (?,?,?,?,?,?,?,?)
+      `).run(
+        turn.turn_id,
+        turn.session_id,
+        turn.ordinal,
+        turn.state,
+        turn.assistant_text,
+        turn.decision_json,
+        turn.created_at,
+        turn.updated_at,
+      );
+
+      const applied = db.prepare(`
+        UPDATE session_messages
+        SET state = 'applied', applied_at = ?
+        WHERE message_id = ? AND state = 'accepted'
+      `).run(input.applied_at, input.message_id);
+      if (applied.changes !== 1) {
+        throw new Error(`message ${input.message_id} could not be marked applied`);
+      }
+      return this.readSession(db, turn.session_id);
+    });
+  }
+
+  getMessage(messageId: string): SessionMessageRowType | undefined {
+    const row = this.db.prepare("SELECT * FROM session_messages WHERE message_id = ?")
+      .get(messageId) as SessionMessageRowType | undefined;
+    return row ? SessionMessageRow.parse(row) : undefined;
+  }
+
+  latestSnapshot(sessionId: string): SessionSnapshot {
+    const session = this.readSession(this.db, sessionId);
+    const turn = this.db.prepare(`
+      SELECT * FROM session_turns WHERE session_id = ? ORDER BY ordinal DESC LIMIT 1
+    `).get(sessionId) as SessionTurnRowType | undefined;
+    const parsedTurn = turn ? SessionTurnRow.parse(turn) : undefined;
+    return {
+      session_id: session.session_id,
+      task_id: session.task_id,
+      run_id: session.run_id,
+      agent_id: session.agent_id,
+      runtime_id: session.agent_id,
+      state: session.state,
+      version: session.version,
+      turn_id: parsedTurn?.turn_id ?? null,
+      assistant_text: parsedTurn?.assistant_text ?? "",
+      decision: parsedTurn?.decision_json ? JSON.parse(parsedTurn.decision_json) : null,
+      updated_at: session.updated_at,
+    };
+  }
+
+  listSessions(filter: SessionFilter = {}): AgentSessionRowType[] {
+    const where: string[] = [];
+    const values: Array<string | number> = [];
+    if (filter.agent_id !== undefined) {
+      where.push("agent_id = ?");
+      values.push(filter.agent_id);
+    }
+    if (filter.state !== undefined) {
+      AgentSessionState.parse(filter.state);
+      where.push("state = ?");
+      values.push(filter.state);
+    }
+    if (filter.task_id !== undefined) {
+      where.push("task_id = ?");
+      values.push(filter.task_id);
+    }
+    const limit = filter.limit ?? 200;
+    if (!Number.isInteger(limit) || limit < 1 || limit > 200) {
+      throw new Error("session list limit must be an integer between 1 and 200");
+    }
+    values.push(limit);
+    const sql = `SELECT * FROM agent_sessions${where.length > 0 ? ` WHERE ${where.join(" AND ")}` : ""} ORDER BY updated_at DESC, session_id LIMIT ?`;
+    return (this.db.prepare(sql).all(...values) as RawSessionRow[]).map(parseSession);
+  }
+
+  private updateSession(
+    sessionId: string,
+    expectedVersion: number,
+    updatedAt: number,
+    assignment: string,
+    values: unknown[],
+  ): AgentSessionRowType {
+    return withWrite(this.db, this.path, (db) => {
+      const result = db.prepare(`
+        UPDATE agent_sessions
+        SET ${assignment}, version = version + 1, updated_at = ?
+        WHERE session_id = ? AND version = ?
+      `).run(...values, updatedAt, sessionId, expectedVersion);
+      if (result.changes !== 1) {
+        const actual = db.prepare("SELECT version FROM agent_sessions WHERE session_id = ?")
+          .get(sessionId) as { version: number } | undefined;
+        throw new SessionVersionConflict(sessionId, expectedVersion, actual?.version ?? null);
+      }
+      return this.readSession(db, sessionId);
+    });
+  }
+
+  private readSession(db: Database.Database, sessionId: string): AgentSessionRowType {
+    const row = db.prepare("SELECT * FROM agent_sessions WHERE session_id = ?")
+      .get(sessionId) as RawSessionRow | undefined;
+    if (!row) throw new SessionVersionConflict(sessionId, 0, null);
+    return parseSession(row);
+  }
+}
+
+
+Recent tests before final unreachable guard cleanup hardening (new test run underway):
+
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/pr237-main/packages/cli
+
+ ✓ src/session-rpc.test.ts (26 tests) 5704ms
+   ✓ governed session RPC > tracks a resumed turn for drain and cancellation  316ms
+   ✓ does not reserve manual instructions or answers when execution admission is denied  480ms
+   ✓ cancels admission queued for either manual route without reserving a receipt  480ms
+
+ Test Files  1 passed (1)
+      Tests  26 passed (26)
+   Start at  11:00:53
+   Duration  9.46s (transform 2.18s, setup 32ms, collect 3.45s, tests 5.70s, environment 0ms, prepare 53ms)
+

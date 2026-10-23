@@ -764,7 +764,6 @@ async function handleSessionSend(
   // Let the repository compare the complete canonical envelope before any
   // current-turn/current-state guards reject it.
   const existingMessage = ctx.sessions.getMessage(p.message_id);
-  let recoveredReservationVersion: number | undefined;
   if (existingMessage !== undefined) {
     try {
       const replay = ctx.sessions.applyInbound({
@@ -803,14 +802,14 @@ async function handleSessionSend(
       throw err;
     }
   }
-  if (recoveredReservationVersion === undefined && TERMINAL_SESSION_STATES.has(session.state)) {
+  if (TERMINAL_SESSION_STATES.has(session.state)) {
     return singleErr(req.id, "session_terminal", `session state=${session.state}`);
   }
   if (!session.resume_supported || session.native_session_id === null) {
     return singleErr(req.id, "resume_unsupported", "session cannot be resumed");
   }
   const snapshot = ctx.sessions.latestSnapshot(p.session_id);
-  if (recoveredReservationVersion === undefined && snapshot.turn_id !== p.turn_id) {
+  if (snapshot.turn_id !== p.turn_id) {
     return singleErr(req.id, "turn_conflict", "message does not target the current turn");
   }
   const adapter = ctx.adapters.get(session.agent_id);
@@ -821,11 +820,15 @@ async function handleSessionSend(
     return singleErr(req.id, "session_busy", "session is already applying another instruction");
   }
 
-  let applied: { outcome: "applied" | "duplicate"; session_version: number };
-  const now = Date.now() / 1000;
-  if (recoveredReservationVersion !== undefined) {
-    applied = { outcome: "applied", session_version: recoveredReservationVersion };
-  } else {
+  // Refuse busy/denied admission before minting an instruction receipt.
+  let admission: Awaited<ReturnType<typeof acquireManualSessionAdmission>>;
+  try { admission = await acquireManualSessionAdmission(ctx, session, p.message_id); }
+  catch { return singleErr(req.id, "admission_denied", "Session execution admission was denied; no instruction was reserved"); }
+  let handedOff = false;
+  try {
+    if (ctx.draining || admission.controller.signal.aborted) return singleErr(req.id, "admission_denied", "Session execution was cancelled; no instruction was reserved");
+    let applied: { outcome: "applied" | "duplicate"; session_version: number };
+    const now = Date.now() / 1000;
     try {
       applied = reserveSessionInstruction(ctx.db, ctx.dbPath, {
         message_id: p.message_id,
@@ -847,12 +850,41 @@ async function handleSessionSend(
       if (err instanceof Error && ["delivery_uncertain", "continuation_in_flight", "grant_owned", "signed_approval_required", "invalid_decision"].includes(err.message)) return singleErr(req.id, err.message, "Refresh the decision and use its authorized owner route");
       throw err;
     }
-  }
-  if (applied.outcome === "duplicate") {
-    return singleOk(req.id, { state: "duplicate", session_version: applied.session_version });
-  }
+    if (applied.outcome === "duplicate") {
+      return ctx.sessions.getMessage(p.message_id)?.state === "applied"
+        ? singleOk(req.id, { state: "duplicate", session_version: applied.session_version })
+        : singleErr(req.id, "delivery_uncertain", "A receipt appeared during admission; inspect it before retrying");
+    }
 
-  return await executeReservedSessionTurn(ctx, req, p, session, adapter, applied.session_version);
+    handedOff = true;
+    return await executeReservedSessionTurn(ctx, req, p, session, adapter, applied.session_version, { admittedLease: admission.lease, controller: admission.controller });
+  } finally { if (!handedOff) await admission.release(); }
+
+}
+
+/** Track queued manual work before awaiting admission so drain/cancel can stop it.
+ * No durable receipt exists until admission succeeds; callers transfer both
+ * ownership and the same cancellation signal to the reserved-turn executor.
+ */
+async function acquireManualSessionAdmission(
+  ctx: DaemonContext,
+  session: NonNullable<ReturnType<SessionRepository["getSession"]>>,
+  pendingMessageId: string,
+) {
+  const controller = new AbortController();
+  ctx.activeSessionSends.set(session.session_id, pendingMessageId);
+  ctx.activeRuns.set(session.run_id, controller);
+  const clear = () => {
+    if (ctx.activeSessionSends.get(session.session_id) === pendingMessageId) ctx.activeSessionSends.delete(session.session_id);
+    if (ctx.activeRuns.get(session.run_id) === controller) ctx.activeRuns.delete(session.run_id);
+  };
+  try {
+    const lease = await acquireSessionAdmission(ctx, session.agent_id, session.repo_path, session.run_id, controller.signal);
+    return { lease, controller, release: async () => { try { await lease.release(); } finally { clear(); } } };
+  } catch (error) {
+    clear();
+    throw error;
+  }
 }
 
 /** Private port: only an already persisted reservation may invoke the runtime. */
@@ -864,11 +896,11 @@ async function executeReservedSessionTurn(
   adapter: SessionCapableAdapter,
   reservationVersion: number,
   options: {
+    admittedLease?: ExecutionLease;
     controller?: AbortController;
     completed?: (turnId: string, version: number, now: number) => void;
   } = {},
 ): Promise<SingleResponse> {
-  if (session.native_session_id === null) return singleErr(req.id, "resume_unsupported", "session cannot resume");
   const applied = { session_version: reservationVersion };
   ctx.activeSessionSends.set(session.session_id,p.message_id);
   const controller = options.controller ?? new AbortController();
@@ -878,7 +910,7 @@ async function executeReservedSessionTurn(
   let started = false;
   let settled = false;
   try {
-    lease = await acquireSessionAdmission(ctx, adapter.id, session.repo_path, session.run_id, controller.signal);
+    lease = options.admittedLease ?? await acquireSessionAdmission(ctx, adapter.id, session.repo_path, session.run_id, controller.signal);
     const failReservedMessage = (
       code: string,
       message: string,
@@ -894,6 +926,7 @@ async function executeReservedSessionTurn(
       }
       return singleErr(req.id, code, message);
     };
+    if (session.native_session_id === null) return failReservedMessage("resume_unsupported", "session cannot resume");
     const context: Record<string, unknown> = {};
     if (session.repo_path !== "") context["repo_path"] = session.repo_path;
     if (p.requested_by !== undefined) context["requested_by"] = p.requested_by;
@@ -1018,13 +1051,16 @@ async function executeReservedSessionTurn(
     }
     return singleErr(req.id, started ? "delivery_uncertain" : "admission_denied", "Session execution could not be confirmed; inspect persisted state before retrying");
   } finally {
-    if (started && (!settled || controller.signal.aborted)) {
-      controller.abort();
-      if (await confirmAdapterStopped(adapter, session.run_id)) await lease?.release();
-      else lease?.retain("session resume exit unconfirmed");
-    } else await lease?.release();
-    ctx.activeSessionSends.delete(session.session_id);
-    if (ctx.activeRuns.get(session.run_id) === controller) ctx.activeRuns.delete(session.run_id);
+    try {
+      if (started && (!settled || controller.signal.aborted)) {
+        controller.abort();
+        if (await confirmAdapterStopped(adapter, session.run_id)) await lease?.release();
+        else lease?.retain("session resume exit unconfirmed");
+      } else await lease?.release();
+    } finally {
+      ctx.activeSessionSends.delete(session.session_id);
+      if (ctx.activeRuns.get(session.run_id) === controller) ctx.activeRuns.delete(session.run_id);
+    }
   }
 }
 
@@ -1053,10 +1089,18 @@ async function handleSingle(ctx: DaemonContext, req: DaemonRequest): Promise<Sin
         const adapter=ctx.adapters.get(session.agent_id);
         if(!session.resume_supported||!session.native_session_id||!adapter||!isSessionCapableAdapter(adapter)||!adapter.sessionCapabilities().resume)throw new Error("resume_unsupported");
         if(ctx.activeSessionSends.has(session.session_id))throw new Error("session_busy");
+        let admission: Awaited<ReturnType<typeof acquireManualSessionAdmission>>;
+        try { admission = await acquireManualSessionAdmission(ctx, session, `pending:${p.action_id}`); }
+        catch { return singleErr(req.id, "admission_denied", "Session execution admission was denied; no answer was reserved"); }
+        let handedOff = false;
+        try {
+        if (ctx.draining || admission.controller.signal.aborted) return singleErr(req.id, "admission_denied", "Session execution was cancelled; no answer was reserved");
         const action=actions.reserve(p);
         if(action.replay)return singleOk(req.id,action);
-        const execution=await executeReservedSessionTurn(ctx,req,{session_id:session.session_id,runtime_id:session.agent_id,turn_id:item.turn_id,message_id:action.message_id,expected_version:action.reservation_version-1,text:p.text},session,adapter,action.reservation_version);
+        handedOff = true;
+        const execution=await executeReservedSessionTurn(ctx,req,{session_id:session.session_id,runtime_id:session.agent_id,turn_id:item.turn_id,message_id:action.message_id,expected_version:action.reservation_version-1,text:p.text},session,adapter,action.reservation_version,{admittedLease:admission.lease,controller:admission.controller});
         return singleOk(req.id,{...actions.reconcile(action),execution_error:execution.error?.code??null});
+        } finally { if (!handedOff) await admission.release(); }
       }
       return singleOk(req.id,await ctx.supervision.handle(req.method,req.params));
     } catch(error) {return singleErr(req.id,error instanceof Error?error.message:"attention_error","Attention request failed; refresh source facts before retrying");}

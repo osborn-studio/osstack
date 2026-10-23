@@ -229,7 +229,7 @@ it("rejects a clean foreign main commit in the post-merge window; deleting the f
       expect(result.completedTasks[0]?.candidate_evidence?.stage).toBe(omitFinalGate ? "final_preflight_ready" : "final_preflight_failed");
     } finally { scopeSpy.mockRestore(); freezeSpy.mockRestore(); }
   }
-});
+}, 20_000); // Three complete real-Git candidate pipelines, including the mutation control.
 
 it("never truncates the committed artifact file list even with a tiny log limit", async () => {
   const f = fixture(1), base = f.git("rev-parse", "HEAD");

@@ -1,0 +1,110 @@
+{
+  "haiku-round4-stderr.txt": {
+    "bytes": 83,
+    "sha256": "61b1ec1babd05607d61c3c37883d25b807fc94e69c2090164e10676c0b2af903"
+  },
+  "haiku-round2-result.json": {
+    "bytes": 5206,
+    "sha256": "d28e3dd79e461da0443b2a6fdc8636796cdbdd7e6a3528d6b71b9e3bfaa948a5"
+  },
+  "haiku-round5-context.txt": {
+    "bytes": 247213,
+    "sha256": "af58d5b397e64d539e7c5cc3a566d76840fc6789e150fa26a7e3ac4b0af41a30"
+  },
+  "admission-final.log": {
+    "bytes": 1763,
+    "sha256": "75058006ef1deb6785b99862ac76ee10c8928c9ac44d47454591f20c6cfa83cf"
+  },
+  "full-checks-round1.json": {
+    "bytes": 1121,
+    "sha256": "e8f7b6adedb0281f4a495815425513cfe2c7a8119907a781ab9f2129f67d3b42"
+  },
+  "haiku-round6-context.txt": {
+    "bytes": 118791,
+    "sha256": "6438e5b0ce6861560e95ecd923c39b73a3baea286c276dd6230df780d6bffcdf"
+  },
+  "haiku-round3-stderr.txt": {
+    "bytes": 83,
+    "sha256": "61b1ec1babd05607d61c3c37883d25b807fc94e69c2090164e10676c0b2af903"
+  },
+  "loop-final-regression.log": {
+    "bytes": 3840,
+    "sha256": "1610848259fe3355cf208a80fec1b0b574f3b89b4a8278897b99f669dc5eaab2"
+  },
+  "haiku-round4-result.json": {
+    "bytes": 8059,
+    "sha256": "50bd4007e7033892ec3908028b844ebf6825f4328a42d3c86ac52aeaf94b4551"
+  },
+  "haiku-round3-context.txt": {
+    "bytes": 60192,
+    "sha256": "28eeaee2a02fd3fbe621a115055e4e5242e196739430f04fe3d18d614cfd35b9"
+  },
+  "haiku-integration-context.txt": {
+    "bytes": 516513,
+    "sha256": "44f4e33e92ca59dae81017e078066c6a02017464daf4d7818d0ba2a221c71381"
+  },
+  "haiku-round6-stderr.txt": {
+    "bytes": 83,
+    "sha256": "61b1ec1babd05607d61c3c37883d25b807fc94e69c2090164e10676c0b2af903"
+  },
+  "scratch-import-cost.json": {
+    "bytes": 73,
+    "sha256": "3a78d018ccc4936dd4d12cfa0c12d92bc77bc67ed737a8c24794bee0044ce1c6"
+  },
+  "audit-fix-regressions.log": {
+    "bytes": 2550,
+    "sha256": "c157c459753d0917f06dd8c28c88de8087fd931c8eeaf01143708f90b9e69d97"
+  },
+  "haiku-round5-stderr.txt": {
+    "bytes": 83,
+    "sha256": "61b1ec1babd05607d61c3c37883d25b807fc94e69c2090164e10676c0b2af903"
+  },
+  "README.md": {
+    "bytes": 767,
+    "sha256": "77fc941be2411d938025939bb47fb63194046828f776dd13672de9ba4318c488"
+  },
+  "haiku-integration-result.json": {
+    "bytes": 15369,
+    "sha256": "316810f162e3af460fdaecb7bda548f21cf4c31bc4f150dfbf987b604f5e36dc"
+  },
+  "haiku-round4-context.txt": {
+    "bytes": 138405,
+    "sha256": "80daf99b21dca457b4362fe9461a57133315e1a942ce044bbcd0bed473d83a23"
+  },
+  "haiku-round3-result.json": {
+    "bytes": 7782,
+    "sha256": "acaff77473788ec0bbab2cf90816af81b052042ba865d8aca30400ba73cd0cd0"
+  },
+  "full-checks-round2.json": {
+    "bytes": 1122,
+    "sha256": "2755ce31e87d559a5a89af517df4fe0c6a19d55446706e297fb8eac72413b087"
+  },
+  "haiku-round6-result.json": {
+    "bytes": 7924,
+    "sha256": "e5180dad1788753128ad4dace580b3bc3837b8396fc716046eea7d1a5644cc88"
+  },
+  "migration-prefix-proof.json": {
+    "bytes": 151,
+    "sha256": "b4a5938b4d363d887c0f17286d6d57041ba2220db68f0738b9cba8c4f26b576c"
+  },
+  "haiku-integration-stderr.txt": {
+    "bytes": 83,
+    "sha256": "61b1ec1babd05607d61c3c37883d25b807fc94e69c2090164e10676c0b2af903"
+  },
+  "haiku-round2-context.txt": {
+    "bytes": 185207,
+    "sha256": "75ac55d04a925fd4e616e18a86c984a6697471720e3ed94133bf89b90fc48506"
+  },
+  "haiku-round5-result.json": {
+    "bytes": 7623,
+    "sha256": "bdfa8f3aac54406a58727df4692ca43823d65242b9f66c892170b71fbc44da85"
+  },
+  "python.log": {
+    "bytes": 745,
+    "sha256": "c252c8c54b41bebc93bec39b864c88b7bde4a30dd178b41a71477f1ae16ed046"
+  },
+  "haiku-round2-stderr.txt": {
+    "bytes": 83,
+    "sha256": "61b1ec1babd05607d61c3c37883d25b807fc94e69c2090164e10676c0b2af903"
+  }
+}

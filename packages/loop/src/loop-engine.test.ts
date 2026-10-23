@@ -829,7 +829,7 @@ describe("LoopEngine", () => {
   it("retains loop-scoped worktrees whose ownership is unproven", async () => {
     const workspace = await makeGitQueuedWorkspace("base\n");
     const loopId = "loop-orphan-cycle";
-    const worktreeRoot = join(workspace, "..", "orphan-cycle-worktrees");
+    const worktreeRoot = join(workspace, ".git", "orphan-cycle-worktrees");
     const orphanPath = join(worktreeRoot, "manual-orphan");
     const command = [
       "const fs=require('fs')",
@@ -848,6 +848,7 @@ describe("LoopEngine", () => {
       worktreeRoot,
     }).runOnce();
 
+    expect(result.completedTasks[0]?.outcome).toBe("success");
     expect(result.events.some((event) => event.type === "loop.worktree.orphans_cleaned")).toBe(false);
     expect(await git(workspace, ["worktree", "list", "--porcelain"])).toContain("osstack/loop/loop-orphan-cycle/manual-orphan");
     await expect(git(workspace, ["rev-parse", "--verify", "osstack/loop/loop-orphan-cycle/manual-orphan"])).resolves.toBeTruthy();

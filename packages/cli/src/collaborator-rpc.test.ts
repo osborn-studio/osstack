@@ -160,7 +160,7 @@ describe("signed collaborator through daemon RPC", () => {
   it("revokes an in-flight turn and stops before the next instruction", async () => {
     const signed = await grant("hold");
     await rpc("collaborator.install", signed);
-    await vi.waitFor(() => expect(resumed).toEqual(["review frozen"]));
+    await vi.waitFor(() => expect(resumed).toEqual(["review frozen"]), { timeout: 5_000, interval: 20 });
     expect((await rpc("collaborator.revoke", { grant_id: signed.body.grant_id })).ok).toBe(true);
     await until(signed.body.grant_id, "revoked");
     await handle!.close(); handle = undefined;
