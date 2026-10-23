@@ -15,7 +15,7 @@ import { GraphReconciler } from './graph-reconciler.js';
 import { cancelUnstartedGraphWorker } from './graph-unstarted-recovery.js';
 import { cancelJournaledBoundedWriter } from './graph-bounded-recovery.js';
 import { cancelUnstartedGraphPreparation } from './graph-preparation-recovery.js';
-import { bindGraphDeliveryContract, parseGraphContractRegistration, type GraphContractHostEnvelope, type GraphContractHostPolicy } from './graph-delivery-contract.js';
+import { bindGraphDeliveryContract, graphContractInputRef, parseGraphContractRegistration, type GraphContractHostEnvelope, type GraphContractHostPolicy } from './graph-delivery-contract.js';
 import { loadGraphContractCompletion } from './graph-contract-receipt.js';
 import { snapshotGraphExecutionContext, type GraphExecutionContextRegistration } from './graph-execution-context.js';
 
@@ -112,7 +112,10 @@ export class GraphRpcService {
     if (!same(scope, registration.scope)) throw new GraphContractError('SCOPE_MISMATCH');
     const run = this.runs.get(scope, id);
     if (!run || run.source.product !== registration.product) throw new GraphContractError('RUN_MISMATCH');
-    if ((JSON.parse(this.row(id).descriptor_json) as Descriptor).registrationId !== registration.id) throw new GraphContractError('RUN_MISMATCH');
+    const descriptor = JSON.parse(this.row(id).descriptor_json) as Descriptor;
+    if (descriptor.registrationId !== registration.id) throw new GraphContractError('RUN_MISMATCH');
+    if (descriptor.contractEnvelope && (graphContractInputRef(descriptor.contractEnvelope) !== descriptor.request.inputArtifactRef
+      || computeGraphInputDigest(descriptor.request) !== run.identity.inputDigest)) throw new GraphContractError('CHECKPOINT_INCOMPATIBLE');
     return run;
   }
   private status(run: GraphRun, registration: GraphHostRegistration) {
