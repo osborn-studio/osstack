@@ -274,3 +274,14 @@ it("an explicit operator repair can resume reads but never clears the retained c
   expect(cursor()).toMatchObject({ last_seq: 1, gap: "invalid_cursor_facts" });
   expect(facts().event_replay).toMatchObject({ complete: false, caught_up: false });
 });
+
+it("bounds a replay page by aggregate payload bytes without inventing a sequence gap", () => {
+  const {db,event}=setup();
+  for(let seq=0;seq<200;seq++) event(seq,"token.delta",{delta:"x".repeat(40000)});
+  const first=readRunEventPage(db,{taskId:"t",runId:"r",afterSeq:-1,limit:200});
+  expect(first.events).toHaveLength(1);
+  expect(first).toMatchObject({nextAfter:0,hasMore:true,sequenceGap:false,highWatermark:199});
+  expect(first.events.reduce((total,row)=>total+Buffer.byteLength(row.payload_json??""),0)).toBeLessThanOrEqual(65536);
+  const next=readRunEventPage(db,{taskId:"t",runId:"r",afterSeq:first.nextAfter,throughSeq:first.highWatermark,limit:200});
+  expect(next).toMatchObject({nextAfter:1,hasMore:true,sequenceGap:false});
+});

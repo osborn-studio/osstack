@@ -68,7 +68,7 @@ const RowSchema = z.object({
   kind: z.enum(["run", "session"]), id: sourceIdentity,
   state: StateSchema, revision: z.number().int().safe().positive().nullable(),
   updated: z.number().nullable(), ordinal: z.number().int().safe().positive().nullable(),
-  turn_state: StateSchema.nullable(), decision_present: z.number(), uncertain_delivery: z.number(),
+  turn_state: StateSchema.nullable(), decision_present: z.number(), uncertain_delivery: z.number(), unresolved_delivery: z.number(),
 });
 type Row = z.infer<typeof RowSchema>;
 
@@ -89,10 +89,13 @@ const RELATION = `WITH bound AS (
       WHEN outcome IS NULL THEN 'outcome_pending' ELSE 'unknown' END,
     NULL, coalesce(completed_at, started_at) FROM bound
 )`;
-const PROJECTION = `SELECT p.kind, substr(p.id,1,257) AS id, p.state, p.revision, p.updated,
+const projection = (version: number) => `SELECT p.kind, substr(p.id,1,257) AS id, p.state, p.revision, p.updated,
   turn.ordinal, turn.state AS turn_state, (turn.decision_json IS NOT NULL) AS decision_present,
   EXISTS(SELECT 1 FROM session_messages m WHERE m.session_id=p.session_id
-    AND m.direction='inbound' AND m.state IN ('pending','accepted','failed')) AS uncertain_delivery
+    AND m.direction='inbound' AND m.state IN ('pending','accepted','failed')) AS uncertain_delivery,
+  EXISTS(SELECT 1 FROM session_messages m WHERE m.session_id=p.session_id
+    AND m.direction='inbound' AND m.state IN ('pending','accepted','failed')
+    ${version >= 41 ? "AND NOT EXISTS(SELECT 1 FROM attention_receipt_resolutions r WHERE r.message_id=m.message_id AND r.session_id=m.session_id)" : ""}) AS unresolved_delivery
   FROM sources p LEFT JOIN session_turns turn ON turn.session_id=p.session_id
     AND turn.ordinal=(SELECT max(ordinal) FROM session_turns WHERE session_id=p.session_id)`;
 
@@ -124,11 +127,11 @@ export class WorkerViewService {
     const common = this.context(params.repo_path);
     const previous = params.cursor ? this.decode(params.cursor, "cursor", common.scope.scope_id, common.sampled_at_ms) : null;
     const cursorContext = { ...common, sampled_at_ms: previous?.issued ?? common.sampled_at_ms };
-    return this.read(() => {
+    return this.read(version => {
       const query = { repo: common.scope.repo_path };
       const total = (this.db.prepare(`${RELATION} SELECT count(*) AS n FROM sources`).get(query) as { n: number }).n;
       const limit = params.limit ?? 25;
-      const rows = this.db.prepare(`${RELATION} ${PROJECTION}
+      const rows = this.db.prepare(`${RELATION} ${projection(version)}
         WHERE (@kind='' OR p.kind>@kind OR (p.kind=@kind AND p.id>@id))
         ORDER BY p.kind,p.id LIMIT @limit`).all({ ...query, kind: previous?.source ?? "", id: previous?.id ?? "", limit: limit + 1 });
       const result: WorkerViewListResult = { ...common, total, views: [], next_cursor: null, truncated: false };
@@ -157,8 +160,8 @@ export class WorkerViewService {
     if (!parsed.success) throw new WorkerViewError("invalid_request");
     const common = this.context(parsed.data.repo_path);
     const token = this.decode(parsed.data.view_id, "view", common.scope.scope_id, common.sampled_at_ms);
-    return this.read(() => {
-      const rawRow = this.db.prepare(`${RELATION} ${PROJECTION} WHERE p.kind=@kind AND p.id=@id`)
+    return this.read(version => {
+      const rawRow = this.db.prepare(`${RELATION} ${projection(version)} WHERE p.kind=@kind AND p.id=@id`)
         .get({ repo: common.scope.repo_path, kind: token.source, id: token.id });
       if (!rawRow) throw new WorkerViewError("source_not_found");
       const result = { ...common, view: this.view(RowSchema.parse(rawRow), common) };
@@ -197,7 +200,7 @@ export class WorkerViewService {
       last_updated_at_ms: updated, freshness: age < 0 ? "unknown" : age <= 60000 ? "recent" : "stale",
       process_liveness: "unknown", controls: "unsupported",
       uncertain_delivery_recorded: row.uncertain_delivery === 1,
-      wait_reason: terminal ? "none" : row.uncertain_delivery ? "delivery_unknown" : row.state === "awaiting_decision" ? (row.decision_present ? "decision_record_present" : "unknown") : row.state === "idle" ? "awaiting_instruction" : "none",
+      wait_reason: terminal ? "none" : row.unresolved_delivery ? "delivery_unknown" : row.state === "awaiting_decision" ? (row.decision_present ? "decision_record_present" : "unknown") : row.state === "idle" ? "awaiting_instruction" : "none",
     };
   }
 
@@ -222,12 +225,12 @@ export class WorkerViewService {
     } catch { throw new WorkerViewError(kind === "cursor" ? "invalid_cursor" : "invalid_view"); }
   }
 
-  private read<T>(fn: () => T): T {
+  private read<T>(fn: (version: number) => T): T {
     try {
       return this.db.transaction(() => {
         const version = this.db.pragma("user_version", { simple: true });
         if (typeof version !== "number" || version < 24 || version > CURRENT_SCHEMA_VERSION) throw new WorkerViewError("unsupported_schema");
-        return fn();
+        return fn(version);
       })();
     } catch (error) {
       if (error instanceof WorkerViewError) throw error;
