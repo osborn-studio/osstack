@@ -137,7 +137,10 @@ export class SupervisionService {
       } catch { /* source errors never suppress other readers */ }
     }));
     if (this.stopped) return;
-    for (const scope of this.store.listScopes()) this.experience.enqueue(scope.scope_id);
+    for (const scope of this.store.listScopes()) {
+      try { this.experience.enqueue(scope.scope_id); }
+      catch { /* Keep observed items; one unavailable scope must not block other notices. */ }
+    }
     if (this.sender && !this.delivering) {
       // Only this service owns the local idempotent sender. A failed receipt
       // write leaves `sending`; reconcile it before the next bounded batch.
@@ -146,7 +149,7 @@ export class SupervisionService {
         this.deliveryRecoveryNeeded = false;
       }
       this.delivering = true;
-      this.deliveryDone = this.experience.drainBatch(this.sender, { signal: this.deliveryAbort.signal })
+      this.deliveryDone = Promise.resolve().then(() => this.experience.drainBatch(this.sender!, { signal: this.deliveryAbort.signal }))
         .then(() => {})
         .catch(() => { this.deliveryRecoveryNeeded = true; })
         .finally(() => { this.delivering = false; });

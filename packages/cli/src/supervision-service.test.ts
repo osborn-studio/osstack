@@ -272,13 +272,17 @@ it("recovers a failed local delivery receipt on the next scan without restart", 
   let calls = 0;
   Object.defineProperty(service, "sender", { value: async (message: {delivery_id:string}) => { calls++; sent.add(message.delivery_id); } });
   service.store.projectDecision(service.observer.owner, {scopeId:scope.scope_id,sessionId:"s",turnId:"turn",sourceVersion:1,decision:{decision_id:"d",question:"Choose",choices:[]},now:1});
-  db.exec("CREATE TRIGGER fail_receipt BEFORE UPDATE ON attention_deliveries WHEN NEW.state='delivered' BEGIN SELECT RAISE(ABORT,'receipt disk failure'); END");
+  let receiptFailed = false;
+  db.function("mark_receipt_failure", () => { receiptFailed = true; return 1; });
+  db.exec("CREATE TRIGGER fail_receipt BEFORE UPDATE ON attention_deliveries WHEN NEW.state='delivered' BEGIN SELECT mark_receipt_failure(); SELECT RAISE(ABORT,'receipt disk failure'); END");
   await service.requestScan();
-  await vi.waitFor(() => expect(calls).toBe(1));
+  await vi.waitFor(() => expect(receiptFailed).toBe(true));
   expect(db.prepare("SELECT state FROM attention_deliveries").get()).toEqual({state:"sending"});
   db.exec("DROP TRIGGER fail_receipt");
-  await service.requestScan();
-  await vi.waitFor(() => expect(db.prepare("SELECT state FROM attention_deliveries").get()).toEqual({state:"delivered"}));
+  await vi.waitFor(async () => {
+    await service.requestScan();
+    expect(db.prepare("SELECT state FROM attention_deliveries").get()).toEqual({state:"delivered"});
+  });
   expect(calls).toBe(2);
   expect(sent.size).toBe(1);
 });
@@ -300,4 +304,18 @@ it("aborts and joins a real hung notification batch before database close", asyn
   late.resolve();
   await Promise.resolve(); await Promise.resolve();
   expect(prepare).not.toHaveBeenCalled();
+});
+
+it("isolates a scope enqueue failure and preserves delivery to another scope", async () => {
+  const {service,scope,db,root}=setup();
+  db.exec("INSERT INTO tasks(task_id,title,status,created_at,updated_at) VALUES('other','Other','running',1,1)");
+  const other=service.store.registerScope(service.observer.owner,"other",root);
+  for (const scopeId of [scope.scope_id,other.scope_id]) service.store.projectDecision(service.observer.owner,{scopeId,sessionId:scopeId,turnId:"turn",sourceVersion:1,decision:{decision_id:"d",question:"Choose",choices:[]},now:1});
+  const sent:string[]=[];
+  Object.defineProperty(service,"sender",{value:async (message:{scope_id:string})=>{sent.push(message.scope_id);}});
+  const enqueue=service.experience.enqueue.bind(service.experience);
+  vi.spyOn(service.experience,"enqueue").mockImplementation(id=>{if(id===scope.scope_id)throw new Error("scope temporarily unavailable");enqueue(id);});
+  await service.requestScan();
+  await vi.waitFor(()=>expect(sent).toEqual([other.scope_id]));
+  expect(service.store.getItem(scope.scope_id,service.store.db.prepare("SELECT item_id FROM attention_items WHERE scope_id=?").pluck().get(scope.scope_id) as string)).toBeDefined();
 });
