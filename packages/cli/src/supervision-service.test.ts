@@ -237,3 +237,31 @@ it("uses a one-second default logical deadline", async () => {
   await vi.advanceTimersByTimeAsync(1);
   expect(await read).toMatchObject({ reason: "timeout" });
 });
+it("does not start IO for admission overflow and reads it after capacity is released", async () => {
+  const reader = vi.fn<NonNullable<SupervisionOptions["loopReader"]>>(async (input) => snapshot(input));
+  const { service, seed, params } = setup({ loopReader: reader });
+  for (let i = 0; i < 100; i++) seed(`held${i}`);
+  expect(await service.handle("attention.loop", params("overflow"))).toMatchObject({ reason: "read_capacity_exceeded" });
+  expect(reader).not.toHaveBeenCalled();
+  await service.handle("attention.release", { scope_id: params().scope_id, kind: "loop", subject_id: "held0", expected_version: 0 });
+  expect(await service.handle("attention.loop", params("overflow"))).toMatchObject({ state: "snapshot_available" });
+  expect(reader).toHaveBeenCalledTimes(1);
+});
+it("a failed metadata repair does not suppress another source or notification enqueue", async () => {
+  const { service, seed, db } = setup({ loopReader: async (input) => snapshot(input) });
+  seed("bad"); seed("good");
+  db.prepare("UPDATE attention_subjects SET payload_json='{' WHERE subject_id='bad'").run();
+  db.exec("CREATE TRIGGER fail_repair BEFORE UPDATE ON attention_subjects WHEN NEW.subject_id='bad' BEGIN SELECT RAISE(ABORT,'fault injected'); END;");
+  const enqueue = vi.spyOn(service.experience, "enqueue");
+  await service.requestScan();
+  expect(enqueue).toHaveBeenCalledTimes(1);
+  expect(JSON.stringify(db.prepare("SELECT payload_json FROM attention_subjects WHERE subject_id='good'").get())).toContain("snapshot_available");
+});
+it("reports malformed persisted metadata through the direct RPC without IO", async () => {
+  const reader = vi.fn<NonNullable<SupervisionOptions["loopReader"]>>(async (input) => snapshot(input));
+  const { service, seed, db, params } = setup({ loopReader: reader });
+  seed();
+  db.prepare("UPDATE attention_subjects SET payload_json='{' WHERE subject_id='loop'").run();
+  expect(await service.handle("attention.loop", params())).toMatchObject({ state: "unknown", reason: "invalid_payload" });
+  expect(reader).not.toHaveBeenCalled();
+});

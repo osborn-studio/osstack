@@ -26,6 +26,13 @@ interface LoopBinding {
   generation: number;
   payload_json: string;
 }
+function loopPayload(json: string): Record<string, unknown> | null {
+  try {
+    const value: unknown = JSON.parse(json);
+    return value && typeof value === "object" && !Array.isArray(value)
+      ? value as Record<string, unknown> : null;
+  } catch { return null; }
+}
 function validLoopFacts(value: unknown, id: string): value is LoopFacts {
   if (!value || typeof value !== "object") return false;
   const v = value as Record<string, unknown>;
@@ -109,7 +116,7 @@ export class SupervisionService {
     const loops = this.store.db.prepare(
       "SELECT scope_id,subject_id,payload_json FROM attention_subjects WHERE kind='loop' AND admitted=1"
     ).all() as { scope_id: string; subject_id: string; payload_json: string }[];
-    await Promise.all(loops.map(async (row) => {
+    await Promise.allSettled(loops.map(async (row) => {
       let path: unknown;
       try { path = (JSON.parse(row.payload_json) as Record<string, unknown>).state_path; } catch { /* below */ }
       if (typeof path !== "string" || !path || path.length > 4096) {
@@ -164,8 +171,8 @@ export class SupervisionService {
       const old = this.loopBinding(scopeId, id);
       if (old && old.binding_hash !== binding) throw new Error("loop_binding_conflict");
       if (old) {
-        const payload = JSON.parse(old.payload_json) as Record<string, unknown>;
-        if (payload.reason === "owner_released") return;
+        const payload = loopPayload(old.payload_json);
+        if (!payload || payload.reason === "owner_released") return;
         const count = (this.store.db.prepare("SELECT COUNT(*) n FROM attention_subjects WHERE admitted=1").get() as { n: number }).n;
         if (old.generation !== this.observer.owner.generation || (!old.admitted && count < 100))
           this.store.db.prepare("UPDATE attention_subjects SET admitted=?,generation=?,sampled_at=0,payload_json=? WHERE scope_id=? AND kind='loop' AND subject_id=?")
@@ -180,19 +187,22 @@ export class SupervisionService {
         JSON.stringify({ state_path: path, state: "unknown", reason: count < 100 ? "read_pending" : "capacity_exceeded" }));
     });
     const old = this.loopBinding(scopeId, id)!;
-    if (JSON.parse(old.payload_json).reason === "owner_released")
+    const failure = (reason: ReadFailure): LoopFacts => ({ loop_id: id, path, state: "unknown",
+      process_liveness: "unknown", coverage: "uncovered", gap: "snapshot_unavailable", reason });
+    const payload = loopPayload(old.payload_json);
+    if (!payload) return Promise.resolve(failure("invalid_payload"));
+    if (payload.reason === "owner_released")
       return Promise.resolve({ state: "unknown", reason: "owner_released" });
     const existing = this.readers.get(key);
     if (existing) return existing.logical;
-    const failure = (reason: ReadFailure): LoopFacts => ({ loop_id: id, path, state: "unknown",
-      process_liveness: "unknown", coverage: "uncovered", gap: "snapshot_unavailable", reason });
     const commit = (facts: LoopFacts): LoopFacts => {
       // No await from the lifecycle check through the owner-fenced commit.
       if (this.stopped || epoch !== this.epoch) return facts;
       this.store.write(this.observer.owner, () => {
         const current = this.loopBinding(scopeId, id);
+        const currentPayload = current ? loopPayload(current.payload_json) : null;
         if (!current || current.binding_hash !== binding || current.generation !== this.observer.owner.generation
-          || current.admitted !== old.admitted || JSON.parse(current.payload_json).reason === "owner_released") return;
+          || current.admitted !== old.admitted || !currentPayload || currentPayload.reason === "owner_released") return;
         this.store.db.prepare(
           "UPDATE attention_subjects SET sampled_at=?,payload_json=? WHERE scope_id=? AND kind='loop' AND subject_id=?"
         ).run(Date.now(), JSON.stringify({ ...facts, state_path: path,
@@ -201,7 +211,8 @@ export class SupervisionService {
       });
       return facts;
     };
-    if (this.readers.size >= 100) return Promise.resolve(commit(failure("read_capacity_exceeded")));
+    if (!old.admitted || this.readers.size >= 100)
+      return Promise.resolve(commit(failure("read_capacity_exceeded")));
     const controller = new AbortController();
     let reason: ReadFailure = "aborted";
     let timer: ReturnType<typeof setTimeout> | undefined;
