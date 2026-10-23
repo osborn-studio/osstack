@@ -1,0 +1,15 @@
+$ vitest run src/remote-home.test.ts src/remote-home-integration.test.ts src/worker-view-service.test.ts src/worker-view-command.test.ts
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-routing-next/packages/cli
+
+ ✓ src/worker-view-service.test.ts (32 tests) 616ms
+ ✓ src/worker-view-command.test.ts (14 tests) 29ms
+ ✓ src/remote-home.test.ts (5 tests) 12ms
+ ✓ src/remote-home-integration.test.ts (29 tests) 2925ms
+   ✓ wrong request pins and scope fail before worker reads and never fall back  451ms
+
+ Test Files  4 passed (4)
+      Tests  80 passed (80)
+   Start at  13:13:05
+   Duration  4.00s (transform 581ms, setup 23ms, collect 1.32s, tests 3.58s, environment 0ms, prepare 110ms)
+

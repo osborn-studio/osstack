@@ -1,0 +1,66 @@
+Static delta review ONLY, no tools. Previous round3 approved blanket reviewer-once guard, but real legacy tests proved it broke existing authorized retries. Fix now scopes non-context guard to opt-in V2 contract AND trusted effectKey (full logicalAttempt), preserving legacy behavior. New test asserts same-effect rejects while a new trusted attempt runs. Check this correction for concrete P0/P1/P2 regression, concise. Context wrapper guard unchanged and still per factory attempt. Full arbitrary checkpoint resume excluded.
+
+      });
+    };
+    // G04 reuses plan-derived session IDs on retry. Allocate the real session at invocation,
+    // rebuilding task/context from trusted fields so caller history/resume hints cannot pass through.
+    const plan = snapshot(ExecutionPlan.parse({ plan_id: `verification:${randomUUID()}`, agent_id: kind === 'review' ? reviewer.id : 'registered-command', max_iterations: 1,
+      task: { task_id: `verification:${kind}:${randomUUID()}`, capability: kind === 'review' ? matches[0]!.kind : 'code.test', source: 'manual',
+        prompt: kind === 'review' ? `Independently review frozen candidate ${binding.candidateRevision} against acceptance ${binding.acceptanceRef}. Return only JSON {"schemaVersion":1,"verdict":"accept"|"changes_requested","summary":string,"findings":string[]}. Do not modify files.${options.deliveryContract && !options.executionContext ? `\n\n${options.deliveryContract.brief}` : ''}` : `Run registered acceptance ${binding.acceptanceRef}.` },
+      stop_condition: { type: kind === 'review' ? 'review_approved' : 'tests_pass' } }));
+    const observeActual = (actual: AgentTask) => {
+      check(); candidateCheck();
+      if (actual.task_id !== plan.task.task_id || actual.capability_id !== data.capabilityId || actual.context?.repo_path !== workspace.workspace_path
+        || invocations.has(actual.run_id)) throw Error('invalid or repeated reviewer invocation');
+      const effect = validateVerificationEffect(effectIdentity(kind), binding, slot.nodeId, slot.effectSlot);
+      invocations.set(actual.run_id, snapshot({ runId: actual.run_id, taskId: actual.task_id, sessionId: actual.session_id, adapterId: reviewer.id, capabilityId: actual.capability_id,
+        promptDigest: createHash('sha256').update(actual.prompt).digest('hex'), contextDigest: createHash('sha256').update(verificationCanonical(actual.context)).digest('hex'),
+        historyPassed: false, effectKey: effect.effectKey }));
+    };
+    if (options.executionContext && (!options.deliveryContract || !options.contextRepositoryPath || !options.recordContextEvidence)) throw Error('GRAPH_CONTEXT_CONTRACT_REQUIRED');
+    const executionContext = kind === 'review' && options.executionContext ? await prepareGraphExecutionContext({ registration: options.executionContext,
+      adapter: reviewer, workspacePath: options.contextRepositoryPath!, frozen: options.deliveryContract!, authorize: check, observe: observeActual }) : undefined;
+    const reviewerEffectsStarted = new Set<string>();
+    const invocationReviewer: AgentAdapter = Object.freeze({ ...reviewer,
+      invoke: (task: AgentTask, signal: AbortSignal) => (async function* () {
+        if (options.deliveryContract) {
+          const effect = validateVerificationEffect(effectIdentity(kind), binding, slot.nodeId, slot.effectSlot);
+          if (reviewerEffectsStarted.has(effect.effectKey)) throw Error('invalid or repeated reviewer invocation');
+          reviewerEffectsStarted.add(effect.effectKey);
+        }
+        const runId = task.run_id; const taskId = task.task_id;
+        await independent(); candidateCheck();
+        await authorizePolicy?.(workspace.workspace_path); check();
+        if (signal.aborted) throw new Error('review invocation cancelled');
+        if (taskId !== plan.task.task_id || invocations.has(runId)) throw new Error('invalid or repeated reviewer invocation');
+        const actual: AgentTask = snapshot({ run_id: runId, task_id: taskId, session_id: randomUUID(), capability_id: data.capabilityId,
+          prompt: plan.task.prompt, context: { repo_path: workspace.workspace_path } });
+        check();
+        if (executionContext) yield* executionContext.adapter.invoke(actual, signal);
+        else { observeActual(actual); yield* reviewer.invoke(actual, signal); }
+      })(),
+    });
+    const action: GraphRegisteredAction = { nodeId: slot.nodeId, effectSlot: slot.effectSlot, action: snapshot(request.action), tokenReservation: slot.tokenReservation,
+      workspace, verifyWorkspace, persist, execution: kind === 'review' ? { kind: 'adapter', plan, adapter: invocationReviewer, capabilityId: data.capabilityId } : contained ? { kind: 'contained', plan, ...contained.registration } : { kind: 'command', plan, command: acceptance.command } };
+    Object.freeze(action.execution); return Object.freeze(action);
+  }));
+  return Object.freeze({ binding, workspaces: Object.freeze(workspaces), actions: Object.freeze(actions) });
+}
+ a second reviewer invocation for the same effect but permits a newly authorized logical attempt', async () => {
+  const f = await fixture(); const seen: AgentTask[] = [];
+  f.options.deliveryContract = freezeDeliveryContract({ schema_version: 2, contract_id: 'review-contract', task_id: 'task',
+    canonical_repo: f.options.sourceWorkspace.workspace_path, mode: 'implement', base_head: f.binding.candidateRevision, goal: 'review',
+    required_checks: [{ id: 'test', registry_ref: deliveryCheckReference('exit 1') }], review_policy_ref: 'host-review',
+    requested_completion: 'local_verified', allowed_paths: ['file'], requested_actions: ['build', 'verify'],
+    budget_ref: `policy:${'b'.repeat(64)}`, policy_digest: 'b'.repeat(64), publication_scope: { mode: 'none' }, merge_authority: { mode: 'none' } });
+  let attempt = 1; const original = f.options.effectIdentity;
+  f.options.effectIdentity = kind => { const effect = { ...original(kind).effect, logicalAttempt: attempt }; return { effect, effectKey: computeGraphEffectKey(effect) }; };
+  f.options.reviewer.adapter.invoke = async function* (task, signal) { seen.push(structuredClone(task)); yield* reviewAdapter(() => 'bad')(task, signal); };
+  const p = await prepareGraphVerification(f.options); const action = p.actions[0]!;
+  await invokeReview(action);
+  if (action.execution.kind !== 'adapter') throw Error('expected review adapter');
+  const repeated = action.execution.adapter.invoke({ ...seen[0]!, run_id: 'second-run' }, new AbortController().signal)[Symbol.asyncIterator]();
+  await expect(repeated.next()).rejects.toThrow('repeated reviewer invocation'); expect(seen).toHaveLength(1);
+  attempt = 2; await invokeReview(action); expect(seen).toHaveLength(2);
+  expect(seen[0]!.session_id).not.toBe(seen[1]!.session_id);
+}, 15000);

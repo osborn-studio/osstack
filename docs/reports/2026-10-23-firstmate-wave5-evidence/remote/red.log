@@ -1,0 +1,30 @@
+$ vitest run src/remote-home.test.ts
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-routing-next/packages/cli
+
+
+⎯⎯⎯⎯⎯⎯ Failed Suites 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/remote-home.test.ts [ src/remote-home.test.ts ]
+Error: Cannot find module './remote-home-protocol.js' imported from '/Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-routing-next/packages/cli/src/remote-home.test.ts'
+ ❯ src/remote-home.test.ts:2:1
+      1| import { expect, it } from "vitest";
+      2| import { RemoteClientRegistry, RemoteServerRegistry, encodeRemoteFrame…
+       | ^
+      3| import { buildRemoteSshArgs } from "./remote-home-reader.js";
+      4| const key = Buffer.concat([Buffer.from([0,0,0,11]),Buffer.from("ssh-ed…
+
+Caused by: Error: Failed to load url ./remote-home-protocol.js (resolved id: ./remote-home-protocol.js) in /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-routing-next/packages/cli/src/remote-home.test.ts. Does the file exist?
+ ❯ loadAndTransform ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:35835:17
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  no tests
+   Start at  13:05:40
+   Duration  172ms (transform 20ms, setup 10ms, collect 0ms, tests 0ms, environment 0ms, prepare 32ms)
+
+/Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-routing-next/packages/cli:
+[ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL] @osstack/cli@0.21.0 test: `vitest run src/remote-home.test.ts`
+Exit status 1

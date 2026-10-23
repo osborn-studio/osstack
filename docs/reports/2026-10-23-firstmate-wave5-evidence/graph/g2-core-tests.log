@@ -1,0 +1,10 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-supervision-next/packages/core
+
+ ✓ src/state/graph-verification.test.ts (6 tests) 136ms
+
+ Test Files  1 passed (1)
+      Tests  6 passed (6)
+   Start at  13:16:26
+   Duration  464ms (transform 94ms, setup 0ms, collect 128ms, tests 136ms, environment 0ms, prepare 27ms)
+

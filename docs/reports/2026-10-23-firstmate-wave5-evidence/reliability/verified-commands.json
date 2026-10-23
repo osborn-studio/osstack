@@ -1,0 +1,52 @@
+[
+  {
+    "label": "verified-tests",
+    "command": [
+      "pnpm",
+      "--filter",
+      "@osstack/core",
+      "exec",
+      "vitest",
+      "run",
+      "src/state/attention-observer.test.ts",
+      "src/state/attention-run-projection.test.ts",
+      "src/state/attention-recovery-view.test.ts",
+      "src/state/attention-experience.test.ts"
+    ],
+    "exit_code": 0
+  },
+  {
+    "label": "verified-build",
+    "command": [
+      "pnpm",
+      "--filter",
+      "@osstack/core",
+      "build"
+    ],
+    "exit_code": 0
+  },
+  {
+    "label": "verified-biome",
+    "command": [
+      "pnpm",
+      "exec",
+      "biome",
+      "check",
+      "packages/core/src/state/attention-observer.ts",
+      "packages/core/src/state/attention-observer.test.ts",
+      "packages/core/src/state/attention-run-projection.ts",
+      "packages/core/src/state/attention-run-projection.test.ts",
+      "packages/core/src/state/attention-recovery-view.ts",
+      "packages/core/src/state/attention-recovery-view.test.ts"
+    ],
+    "exit_code": 0
+  },
+  {
+    "label": "benchmark-verified",
+    "command": [
+      "node",
+      "scripts/bench-attention.mjs"
+    ],
+    "exit_code": 0
+  }
+]

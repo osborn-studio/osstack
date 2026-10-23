@@ -1,0 +1,16 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-supervision-next/packages/cli
+
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/smoke/pr237-integration/delivery-contract/graph-next/tmp/g22-rpc-lgs86e/delivery/7496eab6-e1f7-48ac-8d55-73ce1d684ba7/writer-0'...
+HEAD is now at 4de8b05 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/smoke/pr237-integration/delivery-contract/graph-next/tmp/g22-rpc-ep4tk7/delivery/f048d701-9671-4597-ab43-fda7384d792f/writer-0'...
+HEAD is now at 55357da base
+ ✓ src/graph-contract-integration.test.ts (10 tests | 7 skipped) 19756ms
+   ✓ binds actual writer and rebuilt reviewer prompts to two-phase context receipts before ready  6938ms
+   ✓ does not transfer a prior epoch context/check/review receipt to a repaired candidate  12704ms
+
+ Test Files  1 passed (1)
+      Tests  3 passed | 7 skipped (10)
+   Start at  13:27:16
+   Duration  21.79s (transform 1.07s, setup 16ms, collect 1.80s, tests 19.76s, environment 0ms, prepare 40ms)
+

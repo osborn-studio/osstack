@@ -1,0 +1,807 @@
+Final adversarial delta audit of R1 remote readonly projection, requested claude-haiku-5-5, no tools/hooks/MCP. Return JSON findings [{severity,file,line,scenario,fix}], no_new_p0_or_p1_confirmed. Keep concise; focus exploitable correctness/security, not style. Prior audit found only P2 (included below). Fixes: full serialized SQLite DB page-image hashes (WAL/shared-memory lock bytes are not stable read-only evidence); source DB positive controls contain secrets, upstream worker response intentionally NEVER contains secrets so prior suggestion to assert raw worker secrets rejected, now validates upstream private repo/view IDs actually exist and disappear; positive snapshot and hostile-peer controls; fresh-connection token replay; canonical sorted-key evidence hashing; native /usr/bin/ssh -G acceptance test; SSH whitespace/%/quotes/backslash path disallow; retained late-error sink + stderr error handler; internal invalid caller params intentionally throw documented, CLI catches while runtime transport failures return unknown; local RPC 64KiB+1024 envelope budget while wire exactly64KiB; two-tenant/two-repo isolation actual upstream pipeline. Independently discovered exporter process did not exit while client stdin stayed open: reproduced red, fixed production input.pause() in finally, tested actualchild exit.
+Scope still one page at most50; incomplete explicit; no sends/starts/cancels/remote actions; no generic RPC or DB opening, no daemon start, no external host configured. Trusted owner daemon enforces row scope, exporter verifies echo/identity, same-owner filesystem races out of threat model. Root bin wiring not owned here; interfaces ready for lazy integration.
+PREVIOUS AUDIT
+```json
+{
+  "findings": [
+    {
+      "severity": "P2",
+      "status": "verified (test gap)",
+      "file": "packages/cli/src/remote-home-integration.test.ts",
+      "line": "55, 60, 111-113",
+      "scenario": "`total_changes()` is per-connection. The assertions read it through `f.db`, which the child exporter never touches, so the check cannot fail on child writes. The real-daemon test counts rows through a read-only connection, which misses in-place updates and other mutations. The 'no DB writes' claim is therefore not substantiated.",
+      "fix": "Hash the state DB file (plus -wal/-shm if present) before and after the exchange and assert equality, for both the fixture DB and the real daemon DB."
+    },
+    {
+      "severity": "P2",
+      "status": "verified (test gap)",
+      "file": "packages/cli/src/remote-home-integration.test.ts",
+      "line": "58-59",
+      "scenario": "The 'without text, native IDs, paths' negative regex has no positive control. If WorkerViewService never emits the SECRET_PROMPT title or SECRET_NATIVE value for this fixture, the test passes vacuously.",
+      "fix": "Assert that the raw worker.list payload from the fixture contains the secret strings, and that the child output does not."
+    },
+    {
+      "severity": "P2",
+      "status": "verified (test gap)",
+      "file": "packages/cli/src/remote-home-integration.test.ts",
+      "line": "89-96",
+      "scenario": "Each rejected mutation only asserts `server` returns 1. It cannot distinguish a rejection caused by the mutated field from any other failure. There is no unpatched control that succeeds on the same wiring. Replay of a token on a new connection is not tested; only a random substituted token is.",
+      "fix": "Add a positive control with the unmodified snapshot request, assert a specific error reason per mutation, and add a cross-connection token replay case."
+    },
+    {
+      "severity": "P2",
+      "status": "verified",
+      "file": "packages/cli/src/remote-home-protocol.ts",
+      "line": "52 (also remote-home-exporter.ts 58-65, remote-home-reader.ts 56)",
+      "scenario": "Evidence hashing uses JSON.stringify on insertion-ordered objects. Exporter and reader match only because both build keys in the same order as the zod schema. Any reordering or differently ordered producer makes equal logical snapshots hash differently. This is integrity only, not an authentication bypass.",
+      "fix": "Hash a canonical serialization with sorted keys (or a fixed field-order encoder) in snapshotHash, and test that key order does not change the digest."
+    },
+    {
+      "severity": "P2",
+      "status": "unverified (needs ssh -G or manual check)",
+      "file": "packages/cli/src/remote-home-reader.ts",
+      "line": "13, 17",
+      "scenario": "OpenSSH tokenizes -o values and expands % tokens in IdentityFile and UserKnownHostsFile. A scratch path or identity_file containing whitespace or % may be split or expanded, so ssh may read the wrong known_hosts or key. Failure is most likely closed (auth or host-key failure), but this contradicts the 'exact argv' claim.",
+      "fix": "Reject whitespace, quotes, and % in identity_file and the known_hosts path before spawning, or verify behavior against the target OpenSSH version."
+    },
+    {
+      "severity": "P2",
+      "status": "verified (test gap)",
+      "file": "packages/cli/src/remote-home.test.ts",
+      "line": "11-16",
+      "scenario": "The SSH argv test checks that option strings appear in the array. It does not prove OpenSSH accepts them or resolves them as intended. No test runs the real ssh parser, and the integration tests replace ssh entirely with a local child.",
+      "fix": "Add a local test that runs /usr/bin/ssh -G with the same args and asserts the effective values (proxycommand none, identityagent none, userknownhostsfile, stricthostkeychecking yes, identitiesonly yes). This needs no remote host."
+    },
+    {
+      "severity": "P2",
+      "status": "unverified (listeners detached before stream destruction)",
+      "file": "packages/cli/src/remote-home-protocol.ts",
+      "line": "107 (also remote-home-reader.ts 44, 61-62; remote-home-exporter.ts 27)",
+      "scenario": "close() removes the error listeners from input and output before the streams are destroyed. A late 'error' emitted after close (for example on child.stdin, or on a socket with a pending write) has no listener and would surface as an uncaught exception. child.stderr has no error listener at all.",
+      "fix": "Keep a no-op error sink attached after close(), and attach an error handler to child.stderr."
+    },
+    {
+      "severity": "P2",
+      "status": "verified (contract mismatch)",
+      "file": "packages/cli/src/remote-home-reader.ts",
+      "line": "30-31",
+      "scenario": "RemoteHomeEntry.parse and the limit check run outside the try block, so readRemoteHome rejects instead of returning the documented allowlisted unknown result. handleRemoteHomeCommand catches this, but any other caller will see a raw ZodError or invalid_request.",
+      "fix": "Move validation inside the try so every failure path returns the unknown result, or document the throw and make it explicit in the signature."
+    },
+    {
+      "severity": "P2",
+      "status": "unverified (depends on daemon row size)",
+      "file": "packages/cli/src/remote-home-exporter.ts",
+      "line": "23-26, 55 (protocol 74)",
+      "scenario": "The local worker.list response is read through the same 64 KiB RemoteChannel budget. If daemon rows carry large text, every inspect fails closed with invalid_frame even at limit 1-50. This is an availability issue, not a security bypass.",
+      "fix": "Give the local channel a separate, documented budget, or bound the row size in the daemon projection and test it with large fixture titles."
+    },
+    {
+      "severity": "P2",
+      "status": "defense in depth (trusted-owner daemon)",
+      "file": "packages/cli/src/remote-home-exporter.ts",
+      "line": "57",
+      "scenario": "The exporter checks only the scope echo returned by the daemon, not that each row and the total belong to the scope. A daemon filter bug would leak other tenants' counts and state metadata. The coverage claim depends entirely on the daemon filter.",
+      "fix": "Add a test with two tenants in the daemon fixture that asserts only the scoped rows and total are returned, and state the trust dependency in the guide."
+    }
+  ],
+  "excluded": [
+    "Same-UID socket inode race between endpoint() and connect() (remote-home-exporter.ts 12-27): same-UID trusted owner, bracketed by before/after endpoint checks that fail with endpoint_changed.",
+    "Registry and identity_file replacement races (remote-home-protocol.ts 111-129): same-UID owner; the registry is also digest-pinned on the command line.",
+    "Daemon or socket impersonation by a same-UID process: trusted owner per the guide.",
+    "Forced-command account policy, port forwarding, and shell restriction on the remote host: operator-provided, documented as pending.",
+    "Real remote host, host-key rotation, network failure, and OpenSSH version compatibility: pending qualification, status remote_host_pending.",
+    "Generation not pinned by the client: intentional, since generation changes on daemon restart; grant and snapshot generations are checked for equality.",
+    "IPv6 literals, custom SSH options, and continuation cursors: explicit scope exclusions."
+  ],
+  "test_assessment": "Substantiated: strict registry rejection, frame fragmentation and oversize/banner/invalid-UTF-8/multi-frame rejection, timeouts and disconnects, hostile child peers (nonce, protocol, registry, scope, methods, generation, replay, home, digest, hang, stderr), scope and pin mismatches before any worker read, the real child exporter exchange, and a real daemon identity/worker exchange. Not substantiated: DB no-write (vacuous total_changes check), no-text (no positive control), read-only grant rejection reasons, cross-connection replay, and any real OpenSSH acceptance of the argv.",
+  "no_new_p0_or_p1_confirmed": true
+}
+```
+FILE packages/cli/src/remote-home.test.ts
+1: import { expect, it } from "vitest";
+2: import { RemoteClientRegistry, RemoteServerRegistry, encodeRemoteFrame } from "./remote-home-protocol.js";
+3: import { buildRemoteSshArgs } from "./remote-home-reader.js";
+4: const key = Buffer.concat([Buffer.from([0,0,0,11]),Buffer.from("ssh-ed25519"),Buffer.from([0,0,0,32]),Buffer.alloc(32,7)]).toString("base64");
+5: const entry = { alias:"dev", host:"example.test",port:22,user:"reader",host_key:`ssh-ed25519 ${key}`,identity_file:"/private/key",home_id:`home_${"a".repeat(32)}`,daemon_protocol:1,registry_sha256:"a".repeat(64),scope:"project" };
+6: it("accepts explicit pins, rejects shell options and implicit credentials", () => {
+7:  expect(RemoteClientRegistry.parse({version:1,homes:[entry]}).homes).toHaveLength(1);
+8:  for(const patch of [{host:"-oProxyCommand=evil"},{user:"a;id"},{host:"a b"},{port:0},{identity_file:undefined},{scope:"../x"},{host_key:"ssh-ed25519 bad"}]) expect(RemoteClientRegistry.safeParse({version:1,homes:[{...entry,...patch}]}).success).toBe(false);
+9:  expect(RemoteServerRegistry.safeParse({version:1,home_id:entry.home_id,daemon_protocol:1,socket:"/socket",scopes:[{alias:"project",repo_path:"/repo",default_tenant:true}]}).success).toBe(true);
+10: });
+11: it("builds fixed shell-free local argv with explicit host-key and credential restrictions", () => {
+12:  const args=buildRemoteSshArgs(entry,"/known_hosts");
+13:  expect(args.slice(-2)).toEqual(["example.test","osstack remote-export --stdio"]);
+14:  for(const option of ["BatchMode=yes","StrictHostKeyChecking=yes","IdentityAgent=none","ForwardAgent=no","ProxyCommand=none","ControlMaster=no","GlobalKnownHostsFile=/dev/null","UserKnownHostsFile=/known_hosts","HostKeyAlgorithms=ssh-ed25519"]) expect(args).toContain(option);
+15:  expect(args).toContain("/private/key"); expect(args.slice(0,2)).toEqual(["-F","/dev/null"]);
+16: });
+17: it("bounds complete wire bytes",()=>{ expect(()=>encodeRemoteFrame({a:"x".repeat(65536)})).toThrow(); });
+18: 
+19: import { PassThrough } from "node:stream";
+20: import { RemoteChannel } from "./remote-home-protocol.js";
+21: it("accepts fragmented frames and rejects banners, invalid UTF8, overflow and multiple frames",async()=>{
+22:  const input=new PassThrough(),output=new PassThrough();let channel=new RemoteChannel(input,output);
+23:  const frame=encodeRemoteFrame({hello:"ok"});const pending=channel.receive();for(const byte of frame)input.write(Buffer.from([byte]));expect(await pending).toEqual({hello:"ok"});channel.close();
+24:  for(const bytes of [Buffer.from("shell banner"),Buffer.from([0,1,0,0]),Buffer.concat([frame,frame]),Buffer.from([0,0,0,1,255])]){
+25:  const a=new PassThrough(),b=new PassThrough();channel=new RemoteChannel(a,b);const read=channel.receive();a.write(bytes);await expect(read).rejects.toThrow("invalid_frame");channel.close();
+26:  }
+27: });
+28: it("times out or disconnects with unknown transport state",async()=>{
+29:  const input=new PassThrough(),output=new PassThrough(),channel=new RemoteChannel(input,output);await expect(channel.receive(5)).rejects.toThrow("transport_timeout");channel.close();
+30:  const a=new PassThrough(),b=new PassThrough(),c=new RemoteChannel(a,b);const read=c.receive();a.end();await expect(read).rejects.toThrow("transport_closed");c.close();
+31: });
+32: 
+33: import { execFileSync } from "node:child_process";
+34: import { snapshotHash, type RemoteSnapshot } from "./remote-home-protocol.js";
+35: it("canonical evidence is independent of object key insertion order",()=>{
+36:  const a={scope:"project",total:0,views:[]} as unknown as Omit<RemoteSnapshot,"evidence_sha256">;
+37:  const b={views:[],total:0,scope:"project"} as unknown as Omit<RemoteSnapshot,"evidence_sha256">;
+38:  expect(snapshotHash(a)).toBe(snapshotHash(b));
+39: });
+40: it("OpenSSH's actual local parser accepts the argv and preserves restrictive effective settings",()=>{
+41:  const config=execFileSync("/usr/bin/ssh",["-G",...buildRemoteSshArgs({...entry,identity_file:"/dev/null"},"/known_hosts")],{encoding:"utf8",timeout:3000});
+42:  for(const line of ["batchmode yes","identityagent none","identitiesonly yes","stricthostkeychecking true","controlmaster false","forwardagent no","userknownhostsfile /known_hosts","globalknownhostsfile /dev/null","preferredauthentications publickey"])expect(config.split("\n")).toContain(line);
+43:  expect(config).not.toMatch(/^proxy(?:command|jump) (?!none)/m);
+44: });
+45: it("rejects OpenSSH percent expansion, quoting, whitespace and backslash path ambiguity",()=>{
+46:  for(const path of ["/a b","/a%h","/a'b",'/a"b',"/a\\b"]){expect(()=>buildRemoteSshArgs({...entry,identity_file:path},"/safe")).toThrow();expect(()=>buildRemoteSshArgs(entry,path)).toThrow();}
+47: });
+48: it("late stream errors after close do not escape as uncaught exceptions",()=>{
+49:  const input=new PassThrough(),output=new PassThrough(),channel=new RemoteChannel(input,output);channel.close();expect(()=>input.emit("error",new Error("late"))).not.toThrow();expect(()=>output.emit("error",new Error("late"))).not.toThrow();
+50: });
+51: it("local daemon framing allows a bounded RPC envelope around a 64KiB projection, while the remote wire does not",async()=>{
+52:  const body=Buffer.from(JSON.stringify({id:1,ok:true,result:{value:"x".repeat(65510)}})),h=Buffer.alloc(4);h.writeUInt32BE(body.length);const frame=Buffer.concat([h,body]);expect(frame.length).toBeGreaterThan(65536);
+53:  for(const limit of [65536,66560]){const a=new PassThrough(),b=new PassThrough(),c=new RemoteChannel(a,b,limit),read=c.receive();a.write(frame);if(limit===65536)await expect(read).rejects.toThrow("invalid_frame");else expect(await read).toHaveProperty("result");c.close();}
+54: });
+
+FILE packages/cli/src/remote-home-protocol.ts
+1: import { createHash } from "node:crypto";
+2: import { constants } from "node:fs";
+3: import { lstat, open, realpath } from "node:fs/promises";
+4: import { isAbsolute } from "node:path";
+5: import type { Readable, Writable } from "node:stream";
+6: import { z } from "zod";
+7: 
+8: export const REMOTE_MAX_BYTES = 65536;
+9: export const REMOTE_PROTOCOL = 1;
+10: const digest = z.string().regex(/^[a-f0-9]{64}$/);
+11: const alias = z.string().regex(/^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$/);
+12: const path = z.string().min(1).max(4096).refine(isAbsolute).refine(s => !/[\p{C}]/u.test(s));
+13: const home = z.string().regex(/^home_[a-f0-9]{32}$/);
+14: const generation = z.string().regex(/^instance_[a-f0-9]{32}$/);
+15: const epoch = z.number().int().safe().nonnegative();
+16: const nonce = z.string().regex(/^[a-f0-9]{64}$/);
+17: const hostKey = z.string().max(128).refine(s => {
+18:   if (!/^ssh-ed25519 [A-Za-z0-9+/]+={0,2}$/.test(s)) return false;
+19:   const encoded = s.slice(12), bytes = Buffer.from(encoded, "base64");
+20:   return bytes.toString("base64") === encoded && bytes.length === 51 && bytes.readUInt32BE(0) === 11 && bytes.subarray(4,15).toString() === "ssh-ed25519" && bytes.readUInt32BE(15) === 32;
+21: });
+22: export const RemoteHomeEntry = z.object({
+23:   alias, host: z.string().max(253).regex(/^[a-zA-Z0-9](?:[a-zA-Z0-9.-]*[a-zA-Z0-9])?$/),
+24:   port: z.number().int().min(1).max(65535), user: z.string().regex(/^[a-zA-Z_][a-zA-Z0-9_-]{0,63}$/),
+25:   host_key: hostKey, identity_file: path.refine(s => !/[\s%'"\\]/u.test(s)), home_id: home, daemon_protocol: z.number().int().positive(), registry_sha256: digest, scope: alias,
+26: }).strict();
+27: export type RemoteHomeEntry = z.infer<typeof RemoteHomeEntry>;
+28: export const RemoteClientRegistry = z.object({version:z.literal(1),homes:z.array(RemoteHomeEntry).min(1).max(32)}).strict()
+29:   .refine(r => new Set(r.homes.map(h=>h.alias)).size===r.homes.length);
+30: export const RemoteServerRegistry = z.object({version:z.literal(1),home_id:home,daemon_protocol:z.number().int().positive(),socket:path,
+31:   scopes:z.array(z.object({alias,repo_path:path,default_tenant:z.literal(true)}).strict()).min(1).max(16),
+32: }).strict().refine(r=>new Set(r.scopes.map(s=>s.alias)).size===r.scopes.length);
+33: export type RemoteServerRegistry = z.infer<typeof RemoteServerRegistry>;
+34: export const RemoteHello = z.object({type:z.literal("hello"),protocol:z.literal(1),nonce,home_id:home,daemon_protocol:z.number().int().positive(),registry_sha256:digest,scope:alias}).strict();
+35: export const RemoteRead = z.object({type:z.literal("snapshot"),token:nonce,sequence:z.literal(1),limit:z.number().int().min(1).max(50)}).strict();
+36: const binding = {protocol:z.literal(1),nonce,home_id:home,generation,daemon_protocol:z.number().int().positive(),registry_sha256:digest,scope:alias};
+37: export const RemoteGrant = z.object({...binding,type:z.literal("grant"),token:nonce,methods:z.tuple([z.literal("snapshot")]),max_page:z.literal(50)}).strict();
+38: const state = z.enum(["starting","running","awaiting_decision","idle","completed","failed","cancelled","expired","outcome_pending","unknown"]);
+39: export const RemoteView = z.object({observation_ref:z.string().regex(/^view_[0-9]{1,2}$/),source_kind:z.enum(["run","session"]),state,
+40:   revision:z.number().int().safe().positive().nullable(),last_updated_at_ms:epoch.nullable(),
+41:   source_freshness:z.enum(["recent","stale","unknown"]),process_liveness:z.literal("unknown"),
+42:   wait_reason:z.enum(["decision_record_present","delivery_unknown","awaiting_instruction","none","unknown"]),
+43:   decision_present:z.boolean(),uncertain_delivery_recorded:z.boolean(),controls:z.literal("unsupported"),
+44: }).strict();
+45: export const RemoteSnapshot = z.object({...binding,type:z.literal("snapshot"),sequence:z.literal(1),sampled_at_ms:epoch,
+46:   total:z.number().int().safe().nonnegative(),views:z.array(RemoteView).max(50),has_more:z.boolean(),complete:z.boolean(),
+47:   coverage:z.literal("default_tenant_bound_session_run_only"),evidence_sha256:digest,
+48: }).strict().refine(s=>s.complete===!s.has_more && s.total>=s.views.length && (s.has_more || s.total===s.views.length))
+49:   .refine(s=>s.views.every((v,i)=>v.observation_ref===`view_${i+1}`));
+50: export type RemoteSnapshot = z.infer<typeof RemoteSnapshot>;
+51: export const remoteHash = (value: string | Buffer): string => createHash("sha256").update(value).digest("hex");
+52: function canonical(value:unknown):string {
+53:   if(Array.isArray(value))return `[${value.map(canonical).join(",")}]`;
+54:   if(value!==null&&typeof value==="object")return `{${Object.keys(value).sort().map(key=>`${JSON.stringify(key)}:${canonical((value as Record<string,unknown>)[key])}`).join(",")}}`;
+55:   const encoded=JSON.stringify(value);if(encoded===undefined)throw new Error("invalid_snapshot");return encoded;
+56: }
+57: export function snapshotHash(value: Omit<RemoteSnapshot,"evidence_sha256">): string { return remoteHash(canonical(value)); }
+58: export function encodeRemoteFrame(value: unknown): Buffer {
+59:   const body = Buffer.from(JSON.stringify(value));
+60:   if(body.length>REMOTE_MAX_BYTES-4) throw new Error("invalid_frame");
+61:   const header=Buffer.alloc(4);header.writeUInt32BE(body.length);return Buffer.concat([header,body]);
+62: }
+63: 
+64: const ignoreLateStreamError=()=>{};
+65: 
+66: /** Bounded channel: two sequential messages per direction, no generic RPC or buffering backlog. */
+67: export class RemoteChannel {
+68:   private bytes=Buffer.alloc(0);
+69:   private queue: unknown[]=[];
+70:   private failure: Error | null=null;
+71:   private count=0;
+72:   private sent=0;
+73:   private closed=false;
+74:   private pending: {resolve:(value:unknown)=>void;reject:(error:Error)=>void;timer:NodeJS.Timeout} | null=null;
+75:   constructor(private readonly input:Readable,private readonly output:Writable,private readonly inputLimit=REMOTE_MAX_BYTES) {
+76:     if(!Number.isInteger(inputLimit)||inputLimit<REMOTE_MAX_BYTES||inputLimit>REMOTE_MAX_BYTES+1024)throw new Error("invalid_frame");
+77:     input.on("data",this.data);input.on("end",this.end);input.on("error",this.error);output.on("error",this.error);
+78:   }
+79:   private error=()=>this.fail("transport_unavailable");
+80:   private end=()=>this.fail("transport_closed");
+81:   private data=(chunk:Buffer)=>{
+82:     if(this.failure)return;
+83:     if(this.bytes.length+chunk.length>this.inputLimit){this.fail("invalid_frame");return;}
+84:     this.bytes=Buffer.concat([this.bytes,chunk]);
+85:     if(this.bytes.length<4)return;
+86:     const length=this.bytes.readUInt32BE();
+87:     if(length===0||length>this.inputLimit-4){this.fail("invalid_frame");return;}
+88:     if(this.bytes.length<length+4)return;
+89:     if(this.bytes.length!==length+4||++this.count>2){this.fail("invalid_frame");return;}
+90:     let parsed:unknown;
+91:     try {parsed=JSON.parse(new TextDecoder("utf-8",{fatal:true}).decode(this.bytes.subarray(4)));}
+92:     catch {this.fail("invalid_frame");return;}
+93:     this.bytes=Buffer.alloc(0);
+94:     if(this.pending){const p=this.pending;this.pending=null;clearTimeout(p.timer);p.resolve(parsed);}
+95:     else if(this.queue.length===0)this.queue.push(parsed);else this.fail("invalid_frame");
+96:   };
+97:   private fail(reason:string){
+98:     if(this.failure)return;this.failure=new Error(reason);
+99:     if(this.pending){clearTimeout(this.pending.timer);this.pending.reject(this.failure);this.pending=null;}
+100:   }
+101:   async receive(timeoutMs=3000):Promise<unknown>{
+102:     if(this.failure)throw this.failure;
+103:     if(this.queue.length)return this.queue.shift();
+104:     if(this.pending)throw new Error("invalid_frame");
+105:     return new Promise((resolve,reject)=>{const timer=setTimeout(()=>this.fail("transport_timeout"),Math.max(1,Math.min(10000,timeoutMs)));this.pending={resolve,reject,timer};});
+106:   }
+107:   async send(value:unknown):Promise<void>{
+108:     if(this.failure)throw this.failure;
+109:     if(++this.sent>2)throw new Error("invalid_frame");
+110:     const frame=encodeRemoteFrame(value);
+111:     await new Promise<void>((resolve,reject)=>{
+112:       const timer=setTimeout(()=>{this.fail("transport_timeout");reject(new Error("transport_timeout"));},3000);
+113:       this.output.write(frame,error=>{clearTimeout(timer);error?reject(new Error("transport_unavailable")):resolve();});
+114:     });
+115:   }
+116:   close(){if(this.closed)return;this.closed=true;this.fail("transport_closed");this.input.off("data",this.data);this.input.off("end",this.end);this.input.off("error",this.error);this.output.off("error",this.error);this.input.on("error",ignoreLateStreamError);if((this.output as object)!==(this.input as object))this.output.on("error",ignoreLateStreamError);}
+117: }
+118: 
+119: /** Owner-controlled local config; no symlinks, special files, unbounded reads or raw error text. */
+120: export async function readPinnedRemoteRegistry(filePath:string,expectedDigest:string):Promise<unknown>{
+121:   try {
+122:     if(!path.safeParse(filePath).success||!digest.safeParse(expectedDigest).success)throw new Error();
+123:     await assertPrivateRemoteFile(filePath);
+124:     const file=await open(filePath,constants.O_RDONLY|constants.O_NONBLOCK|constants.O_NOFOLLOW);
+125:     try {
+126:       const info=await file.stat();
+127:       if(!info.isFile()||(process.getuid&&info.uid!==process.getuid())||(info.mode&0o077)!==0||info.size>16384)throw new Error();
+128:       const buffer=Buffer.alloc(16385);let n=0;
+129:       while(n<buffer.length){const read=await file.read(buffer,n,buffer.length-n,n);if(!read.bytesRead)break;n+=read.bytesRead;}
+130:       const body=buffer.subarray(0,n);if(n>16384||remoteHash(body)!==expectedDigest)throw new Error();
+131:       return JSON.parse(new TextDecoder("utf-8",{fatal:true}).decode(body));
+132:     }finally{await file.close();}
+133:   }catch{throw new Error("invalid_registry");}
+134: }
+135: export async function assertPrivateRemoteFile(filePath:string):Promise<void>{
+136:   if(!path.safeParse(filePath).success||await realpath(filePath)!==filePath)throw new Error("unsafe_file");
+137:   const info=await lstat(filePath);
+138:   if(!info.isFile()||(process.getuid&&info.uid!==process.getuid())||(info.mode&0o077)!==0)throw new Error("unsafe_file");
+139: }
+
+FILE packages/cli/src/remote-home-exporter.ts
+1: import { randomBytes } from "node:crypto";
+2: import { access, lstat, realpath, stat } from "node:fs/promises";
+3: import { constants } from "node:fs";
+4: import { connect } from "node:net";
+5: import type { Readable, Writable } from "node:stream";
+6: import { z } from "zod";
+7: import { DeploymentIdentitySchema, type DeploymentIdentity } from "./home-inventory.js";
+8: import { WorkerListResultSchema } from "./worker-view-service.js";
+9: import { RemoteChannel, RemoteHello, RemoteRead, RemoteServerRegistry, RemoteSnapshot,
+10:   readPinnedRemoteRegistry, remoteHash, snapshotHash } from "./remote-home-protocol.js";
+11: 
+12: async function endpoint(socketPath:string):Promise<string>{
+13:   if(await realpath(socketPath)!==socketPath)throw new Error("unsafe_endpoint");
+14:   const info=await lstat(socketPath);
+15:   if(!info.isSocket()||(process.getuid&&info.uid!==process.getuid())||(info.mode&0o022)!==0)throw new Error("unsafe_endpoint");
+16:   return `${info.dev}:${info.ino}`;
+17: }
+18: /** Deliberately private, and the method union is not an externally supplied RPC name. */
+19: async function localRead(socketPath:string,method:"deployment.identity"|"worker.list",params?:unknown):Promise<unknown>{
+20:   const before=await endpoint(socketPath);
+21:   const socket=connect(socketPath);const channel=new RemoteChannel(socket,socket,65536+1024);
+22:   try {
+23:     await channel.send({id:1,method,...(params===undefined?{}:{params})});
+24:     const raw=await channel.receive();
+25:     if(await endpoint(socketPath)!==before)throw new Error("endpoint_changed");
+26:     return z.object({id:z.literal(1),ok:z.literal(true),result:z.unknown()}).strict().parse(raw).result;
+27:   }finally{channel.close();socket.destroy();}
+28: }
+29: function sameIdentity(actual:DeploymentIdentity,registry:RemoteServerRegistry,generation?:string):void{
+30:   if(actual.home_id!==registry.home_id||actual.protocol_version!==registry.daemon_protocol||(generation!==undefined&&generation!==actual.generation))throw new Error("identity_mismatch");
+31: }
+32: export interface RemoteExporterDependencies {input?:Readable;output?:Writable;env?:NodeJS.ProcessEnv;}
+33: /** Call only from the dedicated stdio CLI branch. No DB imports/open, starts, or generic dispatch. */
+34: export async function handleRemoteExportCommand(args:string[],deps:RemoteExporterDependencies={}):Promise<number>{
+35:   if(args.length!==1||args[0]!=="--stdio")return 1;
+36:   const input=deps.input??process.stdin,output=deps.output??process.stdout,env=deps.env??process.env;
+37:   let registry:RemoteServerRegistry;let registryHash:string;
+38:   try {
+39:     registryHash=env["OSSTACK_REMOTE_EXPORT_SHA256"]??"";
+40:     registry=RemoteServerRegistry.parse(await readPinnedRemoteRegistry(env["OSSTACK_REMOTE_EXPORT_REGISTRY"]??"",registryHash));
+41:   }catch{return 1;}
+42:   const channel=new RemoteChannel(input,output);
+43:   try {
+44:     const hello=RemoteHello.parse(await channel.receive());
+45:     if(hello.home_id!==registry.home_id||hello.daemon_protocol!==registry.daemon_protocol||hello.registry_sha256!==registryHash)throw new Error("identity_mismatch");
+46:     const scope=registry.scopes.find(s=>s.alias===hello.scope);if(!scope)throw new Error("scope_mismatch");
+47:     if(await realpath(scope.repo_path)!==scope.repo_path||!(await stat(scope.repo_path)).isDirectory())throw new Error("scope_unavailable");
+48:     await access(scope.repo_path,constants.R_OK|constants.X_OK);
+49:     const identity=DeploymentIdentitySchema.parse(await localRead(registry.socket,"deployment.identity"));sameIdentity(identity,registry);
+50:     const binding={protocol:1 as const,nonce:hello.nonce,home_id:identity.home_id,generation:identity.generation,daemon_protocol:identity.protocol_version,registry_sha256:registryHash,scope:scope.alias};
+51:     const token=randomBytes(32).toString("hex");
+52:     await channel.send({...binding,type:"grant",token,methods:["snapshot"],max_page:50});
+53:     const request=RemoteRead.parse(await channel.receive());if(request.token!==token)throw new Error("invalid_token");
+54:     const before=DeploymentIdentitySchema.parse(await localRead(registry.socket,"deployment.identity"));sameIdentity(before,registry,identity.generation);
+55:     const result=WorkerListResultSchema.parse(await localRead(registry.socket,"worker.list",{repo_path:scope.repo_path,default_tenant:true,limit:request.limit}));
+56:     const after=DeploymentIdentitySchema.parse(await localRead(registry.socket,"deployment.identity"));sameIdentity(after,registry,identity.generation);
+57:     if(result.scope.repo_path!==scope.repo_path||result.scope.scope_id!==remoteHash(`default\0${scope.repo_path}`)||result.views.length>request.limit||result.truncated!==(result.next_cursor!==null))throw new Error("scope_mismatch");
+58:     const snapshot={...binding,type:"snapshot" as const,sequence:1 as const,sampled_at_ms:result.sampled_at_ms,total:result.total,
+59:       views:result.views.map((v,i)=>({observation_ref:`view_${i+1}`,source_kind:v.source_kind,state:v.state,revision:v.revision,
+60:         last_updated_at_ms:v.last_updated_at_ms===null||!Number.isSafeInteger(v.last_updated_at_ms)?null:v.last_updated_at_ms,
+61:         source_freshness:v.last_updated_at_ms!==null&&v.last_updated_at_ms>result.sampled_at_ms?"unknown" as const:v.freshness,
+62:         process_liveness:v.process_liveness,wait_reason:v.wait_reason,decision_present:v.latest_turn?.decision_present??false,
+63:         uncertain_delivery_recorded:v.uncertain_delivery_recorded,controls:v.controls})),
+64:       has_more:result.truncated,complete:!result.truncated,coverage:"default_tenant_bound_session_run_only" as const};
+65:     await channel.send(RemoteSnapshot.parse({...snapshot,evidence_sha256:snapshotHash(snapshot)}));
+66:     return 0;
+67:   }catch{return 1;}finally{channel.close();input.pause();}
+68: }
+
+FILE packages/cli/src/remote-home-integration.test.ts
+1: import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
+2: import { chmod, mkdir, readFile, realpath, rm, symlink, writeFile } from "node:fs/promises";
+3: import { join, resolve } from "node:path";
+4: import { PassThrough } from "node:stream";
+5: import { createServer, type Socket } from "node:net";
+6: import { build } from "esbuild";
+7: import Database from "better-sqlite3";
+8: import { createScratchDir, openDb } from "@osstack/core";
+9: import { afterEach, beforeAll, afterAll, expect, it, vi } from "vitest";
+10: import { RemoteChannel, remoteHash, readPinnedRemoteRegistry } from "./remote-home-protocol.js";
+11: import { readRemoteHome } from "./remote-home-reader.js";
+12: import { handleRemoteHomeCommand } from "./remote-home-command.js";
+13: import { handleRemoteExportCommand } from "./remote-home-exporter.js";
+14: import { WorkerViewService } from "./worker-view-service.js";
+15: import { startDaemon, type DaemonHandles } from "./daemon.js";
+16: import { readHomeIdentity, DeploymentIdentitySchema } from "./home-inventory.js";
+17: 
+18: const key=Buffer.concat([Buffer.from([0,0,0,11]),Buffer.from("ssh-ed25519"),Buffer.from([0,0,0,32]),Buffer.alloc(32,7)]).toString("base64");
+19: const homeId=`home_${"a".repeat(32)}`, generation=`instance_${"b".repeat(32)}`;
+20: const identity={schema_version:1,home_id:homeId,generation,version:"0.21.0",protocol_version:1,database_schema:44,started_at_ms:1,deployment_kind:"unknown",build_digest:null,build_evidence:"unavailable"};
+21: const cleanup:Array<()=>Promise<unknown>>=[];
+22: let compiled:string,bundleRoot:string;
+23: beforeAll(async()=>{
+24:  bundleRoot=await realpath(await createScratchDir("tests","remote-bundle"));compiled=join(bundleRoot,"exporter.mjs");
+25:  await symlink(resolve("node_modules"),join(bundleRoot,"node_modules"));
+26:  await build({stdin:{contents:'import {handleRemoteExportCommand} from "./remote-home-exporter.js"; process.exitCode=await handleRemoteExportCommand(process.argv.slice(2));',resolveDir:resolve("src"),sourcefile:"remote-runner.ts",loader:"ts"},bundle:true,platform:"node",target:"node22",format:"esm",packages:"external",outfile:compiled,logLevel:"silent"});
+27: });
+28: afterAll(async()=>{await rm(bundleRoot,{recursive:true,force:true});});
+29: afterEach(async()=>{for(const fn of cleanup.splice(0).reverse())await fn();vi.unstubAllEnvs();});
+30: async function fixture(count=1){
+31:  const root=await realpath(await createScratchDir("tests","remote-home"));cleanup.push(()=>rm(root,{recursive:true,force:true}));
+32:  const repo=join(root,"private-repo");await mkdir(repo);
+33:  const db=openDb({path:join(root,"state.db")});cleanup.push(async()=>db.close());
+34:  for(let i=0;i<count;i++){
+35:  db.prepare("INSERT INTO tasks(task_id,title,status,created_at,updated_at) VALUES(?, 'SECRET_PROMPT', 'running', 1, 1)").run(`t${i}`);
+36:  db.prepare("INSERT INTO runs(run_id,task_id,session_id,agent_id,capability_id,phase,started_at) VALUES(?,?,?,'codex-cli','code','execute',1)").run(`r${i}`,`t${i}`,`s${i}`);
+37:  db.prepare("INSERT INTO agent_sessions(session_id,task_id,run_id,agent_id,request_sha256,native_session_id,repo_path,state,resume_supported,version,updated_at) VALUES(?,?,?,'codex-cli',?,'SECRET_NATIVE',?,'idle',1,1,1)").run(`s${i}`,`t${i}`,`r${i}`,"a".repeat(64),repo);
+38:  }
+39:  const service=new WorkerViewService(db);
+40:  let identityCalls=0;const methods:string[]=[];let mutation:(value:unknown,method:string)=>unknown=v=>v;
+41:  const sockets=new Set<Socket>();
+42:  const socket=join(root,"d.sock");const server=createServer(s=>{sockets.add(s);s.on("close",()=>sockets.delete(s));const c=new RemoteChannel(s,s);void(async()=>{try{const request=await c.receive() as {method:string;params?:unknown};methods.push(request.method);let result:unknown;if(request.method==="deployment.identity"){identityCalls++;result=identity;}else if(request.method==="worker.list")result=service.list(request.params);else throw Error();await c.send({id:1,ok:true,result:mutation(result,request.method)});}catch{}finally{c.close();s.end();}})();});
+43:  await new Promise<void>(r=>server.listen(socket,r));await chmod(socket,0o600);
+44:  cleanup.push(async()=>{for(const s of sockets)s.destroy();await new Promise<void>(r=>server.close(()=>r()));});
+45:  const config={version:1,home_id:homeId,daemon_protocol:1,socket,scopes:[{alias:"project",repo_path:repo,default_tenant:true}]};
+46:  const registry=join(root,"export.json");const body=JSON.stringify(config);await writeFile(registry,body,{mode:0o600});
+47:  const keyFile=join(root,"identity");await writeFile(keyFile,"FAKE_TEST_PRIVATE_IDENTITY_NOT_USED_FOR_SSH",{mode:0o600});
+48:  const entry={alias:"dev",host:"example.test",port:22,user:"reader",host_key:`ssh-ed25519 ${key}`,identity_file:keyFile,home_id:homeId,daemon_protocol:1,registry_sha256:remoteHash(body),scope:"project"};
+49:  const exporterEnv={OSSTACK_REMOTE_EXPORT_REGISTRY:registry,OSSTACK_REMOTE_EXPORT_SHA256:entry.registry_sha256};
+50:  const children:ChildProcessWithoutNullStreams[]=[];cleanup.push(async()=>{for(const c of children){if(c.exitCode===null)c.kill("SIGKILL");}});
+51:  const spawnLocal=((_binary:string,_args:readonly string[],_options:unknown)=>{const child=spawn(process.execPath,[compiled,"--stdio"],{stdio:["pipe","pipe","pipe"],env:{...process.env,...exporterEnv,OSSTACK_HOME:join(root,"never-open")}});children.push(child);return child;}) as typeof spawn;
+52:  return {root,repo,db,service,methods,registry,body,entry,exporterEnv,spawnLocal,get identityCalls(){return identityCalls;},mutate:(fn:typeof mutation)=>{mutation=fn;},server};
+53: }
+54: it("reads real source rows over an isolated child exporter without text, native IDs, paths or DB writes",async()=>{
+55:  const f=await fixture();const before=remoteHash(f.db.serialize());
+56:  expect(f.db.prepare("SELECT title FROM tasks LIMIT 1").get()).toEqual({title:"SECRET_PROMPT"});
+57:  expect(f.db.prepare("SELECT native_session_id FROM agent_sessions LIMIT 1").get()).toEqual({native_session_id:"SECRET_NATIVE"});
+58:  const raw=f.service.list({repo_path:f.repo,default_tenant:true});expect(raw.scope.repo_path).toBe(f.repo);expect(raw.views[0]?.view_id).toBeTruthy();
+59:  const result=await readRemoteHome(f.entry,50,{spawn:f.spawnLocal});
+60:  expect(result.status).toBe("observed");if(result.status!=="observed")throw Error(JSON.stringify(result));
+61:  expect(result.snapshot).toMatchObject({complete:true,total:2,coverage:"default_tenant_bound_session_run_only",views:[{source_kind:"run",process_liveness:"unknown",controls:"unsupported"},{source_kind:"session",state:"idle"}]});
+62:  expect(JSON.stringify(result)).not.toMatch(/SECRET_|private-repo|repo_path|view_id|token|cursor|native_session/);
+63:  expect(remoteHash(f.db.serialize())).toBe(before);
+64:  expect(f.methods).toEqual(["deployment.identity","deployment.identity","worker.list","deployment.identity"]);
+65:  expect(await readFile(f.registry,"utf8")).toBe(f.body);
+66: });
+67: it("CLI command performs the real child exchange and reports incomplete first pages",async()=>{
+68:  const f=await fixture(26);const client=join(f.root,"client.json"),body=JSON.stringify({version:1,homes:[f.entry]});await writeFile(client,body,{mode:0o600});
+69:  let output="";const status=await handleRemoteHomeCommand(["inspect","--registry",client,"--sha256",remoteHash(body),"--alias","dev","--limit","50"],{spawn:f.spawnLocal,stdout:text=>{output+=text;}});
+70:  expect(status).toBe(1);const result=JSON.parse(output);expect(result).toMatchObject({status:"observed",snapshot:{complete:false,has_more:true,total:52}});expect(result.snapshot.views).toHaveLength(50);expect(Buffer.byteLength(output)).toBeLessThan(65536);
+71: });
+72: it("an empty complete page does not claim healthy or live execution",async()=>{
+73:  const f=await fixture(0);const result=await readRemoteHome(f.entry,25,{spawn:f.spawnLocal});expect(result).toMatchObject({status:"observed",freshness:"point_in_time_unverified_clock",snapshot:{complete:true,total:0,views:[]}});expect(JSON.stringify(result)).not.toMatch(/healthy|live_execution/);
+74: });
+75: it.each(["home","generation","scope","scope_digest","count","future_clock"])("rejects or marks unknown the %s boundary",async(kind)=>{
+76:  const f=await fixture();f.mutate((raw,method)=>{const v=structuredClone(raw) as Record<string,unknown>;
+77:  if(method==="deployment.identity"&&kind==="home")v.home_id=`home_${"c".repeat(32)}`;
+78:  if(method==="deployment.identity"&&kind==="generation"&&f.identityCalls>=3)v.generation=`instance_${"c".repeat(32)}`;
+79:  if(method==="worker.list"){
+80:  if(kind==="scope")v.scope={...(v.scope as object),repo_path:"/other"};
+81:  if(kind==="scope_digest")v.scope={...(v.scope as object),scope_id:"c".repeat(64)};
+82:  if(kind==="count")v.total=0;
+83:  if(kind==="future_clock")v.sampled_at_ms=Date.now()+999999999;
+84:  }return v;});
+85:  const result=await readRemoteHome(f.entry,25,{spawn:f.spawnLocal});
+86:  if(kind==="future_clock")expect(result).toMatchObject({status:"observed",remote_clock:"skew_or_unknown",freshness:"point_in_time_unverified_clock"});else expect(result.status).toBe("unknown");
+87: });
+88: it("wrong request pins and scope fail before worker reads and never fall back",async()=>{
+89:  const f=await fixture();for(const patch of [{home_id:`home_${"c".repeat(32)}`},{registry_sha256:"c".repeat(64)},{daemon_protocol:99},{scope:"other"}])expect((await readRemoteHome({...f.entry,...patch},25,{spawn:f.spawnLocal})).status).toBe("unknown");
+90:  expect(f.methods).toEqual([]);
+91: });
+92: it("read-only grant cannot authorize start/send/cancel, token substitution or replay",async()=>{
+93:  const f=await fixture();for(const patch of [{},{type:"start"},{type:"send"},{type:"cancel"},{token:"d".repeat(64)},{sequence:2},{socket:"/other"}]){
+94:  const input=new PassThrough(),output=new PassThrough();const server=handleRemoteExportCommand(["--stdio"],{input,output,env:f.exporterEnv});const client=new RemoteChannel(output,input);
+95:  await client.send({type:"hello",protocol:1,nonce:"e".repeat(64),home_id:f.entry.home_id,daemon_protocol:1,registry_sha256:f.entry.registry_sha256,scope:"project"});const grant=await client.receive() as {token:string};
+96:  await client.send({type:"snapshot",token:grant.token,sequence:1,limit:1,...patch});expect(await server).toBe(Object.keys(patch).length===0?0:1);if(Object.keys(patch).length===0)expect(await client.receive()).toMatchObject({type:"snapshot"});client.close();input.destroy();output.destroy();
+97:  }
+98:  expect(f.methods.filter(m=>m==="worker.list")).toHaveLength(1);
+99: });
+100: it("rejects registry tampering, public permissions, symlinks and special files",async()=>{
+101:  const f=await fixture();expect(await readPinnedRemoteRegistry(f.registry,remoteHash(f.body))).toBeTruthy();
+102:  await expect(readPinnedRemoteRegistry(f.registry,"f".repeat(64))).rejects.toThrow("invalid_registry");
+103:  await chmod(f.registry,0o644);await expect(readPinnedRemoteRegistry(f.registry,remoteHash(f.body))).rejects.toThrow("invalid_registry");await chmod(f.registry,0o600);
+104:  const link=join(f.root,"link");await symlink(f.registry,link);await expect(readPinnedRemoteRegistry(link,remoteHash(f.body))).rejects.toThrow("invalid_registry");
+105:  await expect(readPinnedRemoteRegistry(f.repo,remoteHash(f.body))).rejects.toThrow("invalid_registry");
+106: });
+107: it("real running daemon identity and worker RPC support child exporter, without opening the child's OSSTACK_HOME",async()=>{
+108:  const f=await fixture(0);vi.stubEnv("OSSTACK_HOME",join(f.root,"daemon-home"));
+109:  let daemon:DaemonHandles|undefined;try{
+110:  daemon=await startDaemon({socketPath:join(f.root,"actual.sock"),adapters:[]});
+111:  const id=DeploymentIdentitySchema.parse(await readHomeIdentity(daemon.socketPath));
+112:  const body=JSON.stringify({version:1,home_id:id.home_id,daemon_protocol:id.protocol_version,socket:daemon.socketPath,scopes:[{alias:"project",repo_path:f.repo,default_tenant:true}]});await writeFile(f.registry,body,{mode:0o600});
+113:  f.exporterEnv.OSSTACK_REMOTE_EXPORT_SHA256=remoteHash(body);
+114:  const observer=new Database(daemon.dbPath,{readonly:true});const before=remoteHash(observer.serialize());
+115:  try{expect(await readRemoteHome({...f.entry,home_id:id.home_id,daemon_protocol:id.protocol_version,registry_sha256:remoteHash(body)},25,{spawn:f.spawnLocal})).toMatchObject({status:"observed",snapshot:{home_id:id.home_id,generation:id.generation,total:0}});expect(remoteHash(observer.serialize())).toBe(before);}
+116:  finally{observer.close();}
+117:  await expect(readFile(join(f.root,"never-open","state.db"))).rejects.toThrow();
+118:  }finally{await daemon?.close();}
+119: });
+120: it("invalid CLI flags fail without spawning",async()=>{
+121:  const call=vi.fn();for(const args of [["inspect","--limit","0"],["inspect","--send","x"],["inspect","--registry","x","--registry","y"]])expect(await handleRemoteHomeCommand(args,{spawn:call as typeof spawn,stderr:()=>{}})).toBe(1);expect(call).not.toHaveBeenCalled();
+122: });
+123: 
+124: const hostilePeer=`
+125: import {createHash} from 'node:crypto';
+126: const mode=process.argv[1];let buffer=Buffer.alloc(0),step=0,hello;
+127: const send=value=>{const b=Buffer.from(JSON.stringify(value));const h=Buffer.alloc(4);h.writeUInt32BE(b.length);process.stdout.write(Buffer.concat([h,b]));};
+128: process.stdin.on('data',chunk=>{buffer=Buffer.concat([buffer,chunk]);if(buffer.length<4||buffer.length<4+buffer.readUInt32BE())return;const v=JSON.parse(buffer.subarray(4).toString());buffer=Buffer.alloc(0);
+129: if(step++===0){hello=v;if(mode==='disconnect'){process.exit(1);}if(mode==='hang')return;if(mode==='stderr'){process.stderr.write('PRIVATE_KEY_SHOULD_NOT_SURFACE'.repeat(1000));return;}
+130: const grant={protocol:1,nonce:v.nonce,home_id:v.home_id,generation:'instance_'+ 'b'.repeat(32),daemon_protocol:v.daemon_protocol,registry_sha256:v.registry_sha256,scope:v.scope,type:'grant',token:'f'.repeat(64),methods:['snapshot'],max_page:50};
+131: if(mode==='nonce')grant.nonce='a'.repeat(64);if(mode==='protocol')grant.protocol=2;if(mode==='registry')grant.registry_sha256='b'.repeat(64);if(mode==='scope')grant.scope='wrong';if(mode==='methods')grant.methods=['send'];send(grant);return;}
+132: const s={protocol:1,nonce:hello.nonce,home_id:hello.home_id,generation:'instance_'+ 'b'.repeat(32),daemon_protocol:hello.daemon_protocol,registry_sha256:hello.registry_sha256,scope:hello.scope,type:'snapshot',sequence:1,sampled_at_ms:Date.now(),total:0,views:[],has_more:false,complete:true,coverage:'default_tenant_bound_session_run_only'};
+133: if(mode==='generation')s.generation='instance_'+ 'c'.repeat(32);if(mode==='replay')s.sequence=0;if(mode==='home')s.home_id='home_'+ 'c'.repeat(32);if(mode==='private_path')s.repo_path='/private/secret';
+134: const canonical=v=>Array.isArray(v)?'['+v.map(canonical).join(',')+']':v!==null&&typeof v==='object'?'{'+Object.keys(v).sort().map(k=>JSON.stringify(k)+':'+canonical(v[k])).join(',')+'}':JSON.stringify(v);
+135: s.evidence_sha256=createHash('sha256').update(canonical(s)).digest('hex');if(mode==='digest')s.evidence_sha256='a'.repeat(64);send(s);
+136: });
+137: `;
+138: it.each(["nonce","protocol","registry","scope","methods","generation","replay","home","private_path","digest","disconnect","hang","stderr"])("client fails closed on an actual hostile child: %s",async(mode)=>{
+139:  const f=await fixture();const spawnPeer=((_binary:string,_args:readonly string[],_options:unknown)=>spawn(process.execPath,["--input-type=module","-e",hostilePeer,mode],{stdio:["pipe","pipe","pipe"]})) as typeof spawn;
+140:  const result=await readRemoteHome(f.entry,25,{spawn:spawnPeer,timeoutMs:mode==="hang"?100:2000});
+141:  expect(result).toEqual({schema_version:1,mode:"remote_readonly_snapshot",alias:"dev",status:"unknown",reason:"remote_observation_unavailable",qualification:"remote_host_pending"});expect(f.methods).toEqual([]);
+142: });
+143: it("private identity permissions fail closed before starting any SSH process",async()=>{
+144:  const f=await fixture();await chmod(f.entry.identity_file,0o644);const start=vi.fn();expect((await readRemoteHome(f.entry,25,{spawn:start as typeof spawn})).status).toBe("unknown");expect(start).not.toHaveBeenCalled();
+145: });
+146: it("exporter rejects environment absence, extra arguments and a socket symlink",async()=>{
+147:  const f=await fixture();expect(await handleRemoteExportCommand(["--stdio"],{env:{}})).toBe(1);expect(await handleRemoteExportCommand(["--stdio","--socket","/untrusted"],{env:f.exporterEnv})).toBe(1);
+148:  const raw=JSON.parse(f.body);const link=join(f.root,"linked.sock");await symlink(raw.socket,link);raw.socket=link;const body=JSON.stringify(raw);await writeFile(f.registry,body,{mode:0o600});f.exporterEnv.OSSTACK_REMOTE_EXPORT_SHA256=remoteHash(body);
+149:  expect((await readRemoteHome({...f.entry,registry_sha256:remoteHash(body)},25,{spawn:f.spawnLocal})).status).toBe("unknown");expect(f.methods).toEqual([]);
+150: });
+151: 
+152: it("exporter process exits after its one-page response even if the reader leaves stdin open",async()=>{
+153:  const f=await fixture();const child=f.spawnLocal("ignored",[],{}) as ChildProcessWithoutNullStreams;const c=new RemoteChannel(child.stdout,child.stdin);
+154:  try{await c.send({type:"hello",protocol:1,nonce:"e".repeat(64),home_id:f.entry.home_id,daemon_protocol:1,registry_sha256:f.entry.registry_sha256,scope:"project"});const grant=await c.receive() as {token:string};
+155:  const exited=new Promise<number|null>(resolve=>child.once("close",resolve));await c.send({type:"snapshot",token:grant.token,sequence:1,limit:1});await c.receive();
+156:  const result=await Promise.race([exited,new Promise<string>(resolve=>setTimeout(()=>resolve("still_running"),1000))]);expect(result).toBe(0);
+157:  }finally{c.close();if(child.exitCode===null)child.kill("SIGKILL");}
+158: });
+159: 
+160: it("a previous connection's read token is rejected by a fresh exporter instance",async()=>{
+161:  const f=await fixture();let prior="";
+162:  for(let i=0;i<2;i++){
+163:  const input=new PassThrough(),output=new PassThrough(),server=handleRemoteExportCommand(["--stdio"],{input,output,env:f.exporterEnv}),c=new RemoteChannel(output,input);
+164:  await c.send({type:"hello",protocol:1,nonce:"e".repeat(64),home_id:f.entry.home_id,daemon_protocol:1,registry_sha256:f.entry.registry_sha256,scope:"project"});const grant=await c.receive() as {token:string};
+165:  if(i===0){prior=grant.token;input.end();}else{expect(grant.token).not.toBe(prior);await c.send({type:"snapshot",token:prior,sequence:1,limit:1});}
+166:  expect(await server).toBe(1);c.close();input.destroy();output.destroy();
+167:  }expect(f.methods.filter(m=>m==="worker.list")).toHaveLength(0);
+168: });
+169: it("upstream bound scope filters other tenants and repositories through the real exporter",async()=>{
+170:  const f=await fixture(3);f.db.exec("UPDATE tasks SET tenant_id='another-tenant' WHERE task_id='t1'");f.db.prepare("UPDATE agent_sessions SET repo_path=? WHERE session_id='s2'").run(f.root);
+171:  expect(await readRemoteHome(f.entry,50,{spawn:f.spawnLocal})).toMatchObject({status:"observed",snapshot:{total:2,complete:true}});
+172: });
+173: it("the hostile peer test harness has a successful unmodified control",async()=>{
+174:  const f=await fixture();const spawnPeer=((_binary:string,_args:readonly string[],_options:unknown)=>spawn(process.execPath,["--input-type=module","-e",hostilePeer,"valid"],{stdio:["pipe","pipe","pipe"]})) as typeof spawn;
+175:  expect((await readRemoteHome(f.entry,25,{spawn:spawnPeer})).status).toBe("observed");
+176: });
+
+FILE packages/cli/src/remote-home-reader.ts
+1: import { randomBytes } from "node:crypto";
+2: import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
+3: import { rm, writeFile } from "node:fs/promises";
+4: import { join } from "node:path";
+5: import { RemoteChannel, RemoteGrant, RemoteHomeEntry, RemoteSnapshot, assertPrivateRemoteFile, snapshotHash } from "./remote-home-protocol.js";
+6: 
+7: /** The remote shell sees only this literal command; all variable fields are local SSH argv. */
+8: export function buildRemoteSshArgs(raw:RemoteHomeEntry,knownHostsPath:string):string[]{
+9:   const entry=RemoteHomeEntry.parse(raw);
+10:   if(!knownHostsPath.startsWith("/")||/[\s%'"\\\p{C}]/u.test(knownHostsPath))throw new Error("unsafe_file");
+11:   return ["-F","/dev/null","-T","-o","BatchMode=yes","-o","StrictHostKeyChecking=yes","-o","IdentitiesOnly=yes",
+12:     "-o","IdentityAgent=none","-o","PreferredAuthentications=publickey","-o","PasswordAuthentication=no","-o","KbdInteractiveAuthentication=no","-o","GSSAPIAuthentication=no","-o","ForwardAgent=no","-o","ForwardX11=no","-o","ClearAllForwardings=yes",
+13:     "-o","ProxyCommand=none","-o","ProxyJump=none","-o","ControlMaster=no","-o","ControlPath=none",
+14:     "-o","PermitLocalCommand=no","-o","GlobalKnownHostsFile=/dev/null","-o",`UserKnownHostsFile=${knownHostsPath}`,
+15:     "-o","HostKeyAlgorithms=ssh-ed25519","-o","UpdateHostKeys=no","-o","VerifyHostKeyDNS=no",
+16:     "-o","CanonicalizeHostname=no","-o","ConnectionAttempts=1","-o","ConnectTimeout=5",
+17:     "-o","ServerAliveInterval=5","-o","ServerAliveCountMax=1","-o","LogLevel=ERROR",
+18:     "-i",entry.identity_file,"-p",String(entry.port),"-l",entry.user,"--",entry.host,"osstack remote-export --stdio"];
+19: }
+20: export interface RemoteReadDependencies {
+21:   /** Host/test composition only, never loaded from a registry or remote request. */
+22:   spawn?:typeof spawn;
+23:   timeoutMs?:number;
+24: }
+25: export type RemoteReadResult = {
+26:   schema_version:1;mode:"remote_readonly_snapshot";alias:string;status:"observed";snapshot:RemoteSnapshot;
+27:   received_at_ms:number;round_trip_ms:number;freshness:"point_in_time_unverified_clock";remote_clock:"within_local_60s"|"skew_or_unknown";
+28:   qualification:"remote_host_pending";
+29: }|{schema_version:1;mode:"remote_readonly_snapshot";alias:string;status:"unknown";reason:"remote_observation_unavailable";qualification:"remote_host_pending";};
+30: /** Invalid caller input throws before transport; runtime/remote failures return an allowlisted unknown result. */
+31: export async function readRemoteHome(raw:RemoteHomeEntry,limit=25,deps:RemoteReadDependencies={}):Promise<RemoteReadResult>{
+32:   const entry=RemoteHomeEntry.parse(raw);
+33:   if(!Number.isInteger(limit)||limit<1||limit>50)throw new Error("invalid_request");
+34:   const unknown:RemoteReadResult={schema_version:1,mode:"remote_readonly_snapshot",alias:entry.alias,status:"unknown",reason:"remote_observation_unavailable",qualification:"remote_host_pending"};
+35:   let child:ChildProcessWithoutNullStreams|undefined,channel:RemoteChannel|undefined,dir:string|undefined,timer:NodeJS.Timeout|undefined;
+36:   const started=performance.now();
+37:   try {
+38:     await assertPrivateRemoteFile(entry.identity_file);
+39:     const { createScratchDir }=await import("@osstack/core");
+40:     dir=await createScratchDir("runtime","remote-read");
+41:     const known=join(dir,"known_hosts");const name=entry.port===22?entry.host:`[${entry.host}]:${entry.port}`;
+42:     await writeFile(known,`${name} ${entry.host_key}\n`,{mode:0o600,flag:"wx"});
+43:     const childEnv:NodeJS.ProcessEnv={PATH:"/usr/bin:/bin",LANG:"C",LC_ALL:"C"};
+44:     child=(deps.spawn??spawn)("/usr/bin/ssh",buildRemoteSshArgs(entry,known),{stdio:["pipe","pipe","pipe"],shell:false,env:childEnv}) as ChildProcessWithoutNullStreams;
+45:     channel=new RemoteChannel(child.stdout,child.stdin);
+46:     child.stderr.on("error",()=>{child?.stdout.destroy();child?.stdin.destroy();});
+47:     let stderrBytes=0;child.stderr.on("data",(chunk:Buffer)=>{stderrBytes+=chunk.length;if(stderrBytes>8192)child?.kill("SIGKILL");});
+48:     child.on("error",()=>{child?.stdout.destroy();child?.stdin.destroy();});
+49:     const timeoutMs=Math.max(1,Math.min(10000,deps.timeoutMs??10000));
+50:     const active=channel;
+51:     const exchange=async()=>{
+52:       const nonce=randomBytes(32).toString("hex");
+53:       const hello={type:"hello",protocol:1,nonce,home_id:entry.home_id,daemon_protocol:entry.daemon_protocol,registry_sha256:entry.registry_sha256,scope:entry.scope};
+54:       await active.send(hello);const grant=RemoteGrant.parse(await active.receive(timeoutMs));
+55:       if(grant.nonce!==nonce||grant.home_id!==entry.home_id||grant.daemon_protocol!==entry.daemon_protocol||grant.registry_sha256!==entry.registry_sha256||grant.scope!==entry.scope)throw new Error("binding_mismatch");
+56:       await active.send({type:"snapshot",token:grant.token,sequence:1,limit});
+57:       const snapshot=RemoteSnapshot.parse(await active.receive(timeoutMs));
+58:       if(snapshot.nonce!==nonce||snapshot.home_id!==entry.home_id||snapshot.generation!==grant.generation||snapshot.daemon_protocol!==entry.daemon_protocol||snapshot.registry_sha256!==entry.registry_sha256||snapshot.scope!==entry.scope||snapshot.views.length>limit)throw new Error("binding_mismatch");
+59:       const {evidence_sha256,...payload}=snapshot;if(snapshotHash(payload)!==evidence_sha256)throw new Error("evidence_mismatch");
+60:       const now=Date.now();return {schema_version:1 as const,mode:"remote_readonly_snapshot" as const,alias:entry.alias,status:"observed" as const,snapshot,received_at_ms:now,round_trip_ms:Math.round(performance.now()-started),freshness:"point_in_time_unverified_clock" as const,remote_clock:Math.abs(now-snapshot.sampled_at_ms)<=60000?"within_local_60s" as const:"skew_or_unknown" as const,qualification:"remote_host_pending" as const};
+61:     };
+62:     return await Promise.race([exchange(),new Promise<never>((_,reject)=>{timer=setTimeout(()=>reject(new Error("transport_timeout")),timeoutMs);})]);
+63:   }catch{return unknown;}finally{
+64:     if(timer)clearTimeout(timer);channel?.close();
+65:     if(child){child.stdin.destroy();child.stdout.destroy();child.stderr.destroy();if(child.exitCode===null)child.kill("SIGKILL");}
+66:     if(dir)await rm(dir,{recursive:true,force:true}).catch(()=>{});
+67:   }
+68: }
+
+FILE packages/cli/src/remote-home-command.ts
+1: import { RemoteClientRegistry, readPinnedRemoteRegistry, REMOTE_MAX_BYTES } from "./remote-home-protocol.js";
+2: import { readRemoteHome, type RemoteReadDependencies } from "./remote-home-reader.js";
+3: export const REMOTE_HOME_HELP=`remote-home inspect --registry FILE --sha256 HASH --alias NAME [--limit 1..50]\nRead a pinned remote home through fixed SSH stdio; partial pages and transport failures remain explicit.\n`;
+4: export async function handleRemoteHomeCommand(args:string[],deps:RemoteReadDependencies&{stdout?:(text:string)=>void;stderr?:(text:string)=>void}={}):Promise<number>{
+5:   const out=deps.stdout??(text=>{process.stdout.write(text);}),err=deps.stderr??(text=>{process.stderr.write(text);});
+6:   if(args.length===1&&args[0]==="--help"){out(REMOTE_HOME_HELP);return 0;}
+7:   try {
+8:     if(args[0]!=="inspect"||args.length>9||args.some(a=>a.length>4096))throw new Error();
+9:     const flags=new Map<string,string>();
+10:     for(let i=1;i<args.length;i+=2){const key=args[i]!,value=args[i+1];if(!["--registry","--sha256","--alias","--limit"].includes(key)||flags.has(key)||!value)throw new Error();flags.set(key,value);}
+11:     const limit=flags.get("--limit")??"25";if(!/^[1-9][0-9]?$/.test(limit)||Number(limit)>50)throw new Error();
+12:     const registry=RemoteClientRegistry.parse(await readPinnedRemoteRegistry(flags.get("--registry")??"",flags.get("--sha256")??""));
+13:     const entry=registry.homes.find(h=>h.alias===flags.get("--alias"));if(!entry)throw new Error();
+14:     const result=await readRemoteHome(entry,Number(limit),deps);const text=JSON.stringify(result)+"\n";
+15:     if(Buffer.byteLength(text)>REMOTE_MAX_BYTES)throw new Error();out(text);
+16:     return result.status==="observed"&&result.snapshot.complete?0:1;
+17:   }catch{err("invalid_remote_request\n");return 1;}
+18: }
+
+FILE docs/plans/2026-10-23-remote-home-readonly.md
+1: # R1 remote home read-only projection
+2: 
+3: ## Delivery and ownership
+4: 
+5: This increment implements an explicit, pinned SSH stdio reader of an already running OSStack home. It does not start a daemon, open a database, execute agents, forward arbitrary RPC, or claim remote-host qualification. The root integration owns lazy CLI routing; these modules own protocol, exporter, client, and focused tests.
+6: 
+7: `remote-home inspect --registry FILE --sha256 HASH --alias NAME [--limit 1..50]` loads a bounded owner-only regular canonical registry file. Each entry pins hostname/port/user, an Ed25519 host public key, an explicit private identity file, home ID, daemon protocol, exporter registry digest, and scope alias. The local registry digest is also pinned by the operator. Registry changes require explicit repinning.
+8: 
+9: `remote-export --stdio` reads only host-provided `OSSTACK_REMOTE_EXPORT_REGISTRY` and `OSSTACK_REMOTE_EXPORT_SHA256`. Its registry pins home ID, daemon protocol, explicit canonical same-UID socket, and canonical repository scopes with explicit default tenant. Requests cannot replace these paths. SSH invokes exactly the literal `osstack remote-export --stdio`; deploy it with a restricted SSH account/forced-command wrapper that sets the registry environment and does not permit port forwarding. The client does not install or modify SSH configuration.
+10: 
+11: ## Wire and authorization
+12: 
+13: Version 1 uses UTF-8 JSON behind a four-byte big-endian length prefix, at most 65,536 bytes including header. A connection has exactly two sequential exchanges: hello (nonce, protocol, home, server-registry digest, scope), then snapshot (channel token, sequence 1, limit). The exporter grants a random connection-local read-only token only after matching the registry and current daemon identity. Strict schemas reject every other method and unknown field. Tokens do not authorize generic local RPC and are never stored or printed.
+14: 
+15: The local socket decoder permits an additional 1,024 bytes around the existing 64 KiB worker projection for the RPC envelope; remote frames remain capped at 64 KiB. The exporter sends only fixed local `deployment.identity` and `worker.list` RPCs. Identity is checked before the grant and both before/after the snapshot; home/protocol/generation changes fail closed. Socket ownership/canonical path/inode are checked around reads. The worker response must match the canonical scope and expected scope digest. Projection removes repository paths, opaque local view IDs/cursors, prompts, logs, provider IDs and credentials. Per-row references are snapshot-local; they cannot be used as stable worker identities or cancellation targets.
+16: 
+17: Each wire response binds nonce, home, instance generation, registry digest, scope, protocol and sequence. Snapshot payload is SHA-256 hashed as evidence of the bytes/fields observed, not independent proof that the server's assertions are true. SSH host authentication and server authorization remain the deployment trust boundary. A home ID/nonce/hash is not standalone authentication.
+18: 
+19: ## Limits, uncertainty and freshness
+20: 
+21: At most one in-flight request, one page of at most 50 source views, two frames per direction, and bounded stderr; no reconnect, replay, action retry or local fallback. A truncated page explicitly reports incomplete and `has_more`; no cursor is exposed in this first increment. A complete empty page proves only that this query returned no eligible source views, never that the home is healthy. Session/run rows can describe the same worker; Graph and unbound runs remain excluded.
+22: 
+23: The client reports local monotonic round-trip duration and local receipt time. Remote timestamps and source freshness are untrusted observations and never prove liveness. Negative/future source clock relationships are reported as unknown. The view is a point-in-time observation, not a durable cache or live stream. Timeouts, disconnects, framing/protocol/identity errors produce an allowlisted unknown result without reusing stale observations.
+24: 
+25: ## Tests and release qualification
+26: 
+27: Start with failing tests for strict registry validation, fixed SSH argv, private-path removal and binding failure. Test frame fragmentation, oversized/banner/extra frames, token/method replay, host/home/protocol/nonce/registry mismatch, generation changes, future timestamps, scope substitution, empty/truncated results, timeouts and disconnects. Run an actual child exporter through pipes against an isolated already-running daemon; compare serialized complete database page images before and after reads and verify no start/send/cancel calls are possible. Test the command parser using the same real client exchange over an injected local child process; this qualifies stdio behavior, not SSH host trust.
+28: 
+29: Run targeted build/typecheck/tests and independent Claude Code Haiku 5.5 audit. Record exact source hashes and raw audit output. Real two-host SSH authentication, host-key rotation, constrained-account policy, networking failure and platform OpenSSH compatibility require an operator-provided remote host and remain pending. Removing the explicit CLI/registry configuration disables this optional feature; no migration or persistent runtime state is introduced.
+
+FILE docs/guides/remote-home-readonly.md
+1: # Read a remote home without remote control
+2: 
+3: This optional command projects a single bounded page of Session and bound-run status from an already running remote OSStack daemon. It does not send messages, start/cancel/resume workers, open a remote database, install a daemon, or register a general RPC relay. Graph, unbound runs, logs and incremental events are not supported.
+4: 
+5: The deployment operator must provision an SSH account/key with a forced command or equivalent restrictions. That wrapper executes the fixed literal `osstack remote-export --stdio` with `OSSTACK_REMOTE_EXPORT_REGISTRY` and `OSSTACK_REMOTE_EXPORT_SHA256` already set. It must disable forwarding and interactive shell access. The exporter cannot enforce the SSH account's other authorized commands; its read-only channel token grants only one snapshot. No account or remote host is automatically provisioned.
+6: 
+7: Create an owner-only (`0600`) regular registry at an absolute canonical path on the exporter host. All configured paths must be canonical and cannot be symlinks. Example (replace every placeholder before use):
+8: 
+9: ```json
+10: {
+11:   "version": 1,
+12:   "home_id": "home_0123456789abcdef0123456789abcdef",
+13:   "daemon_protocol": 1,
+14:   "socket": "/absolute/serving-home/daemon.sock",
+15:   "scopes": [{"alias":"project","repo_path":"/absolute/project","default_tenant":true}]
+16: }
+17: ```
+18: 
+19: The home ID and daemon protocol come from the running home's `deployment.identity`, not from repository names or a guessed home path. Compute the SHA-256 of the exact registry file bytes and pin it in the wrapper environment. The exporter verifies that its configured socket is canonical and owned by the same OS user, and that the daemon identifies the pinned home. This local socket trust is not independent peer-credential attestation. Owners who can replace their own binaries/configuration or daemon remain trusted.
+20: 
+21: On the reader machine, create another `0600` canonical regular registry:
+22: 
+23: ```json
+24: {
+25:   "version":1,
+26:   "homes":[{
+27:     "alias":"dev",
+28:     "host":"example.test",
+29:     "port":22,
+30:     "user":"reader",
+31:     "host_key":"ssh-ed25519 BASE64_PUBLIC_HOST_KEY",
+32:     "identity_file":"/absolute/private/readonly_identity",
+33:     "home_id":"home_0123456789abcdef0123456789abcdef",
+34:     "daemon_protocol":1,
+35:     "registry_sha256":"EXPORTER_REGISTRY_SHA256",
+36:     "scope":"project"
+37:   }]
+38: }
+39: ```
+40: 
+41: The host public key is a full Ed25519 public key, verified independently with the host operator. A key retrieved on the same untrusted connection is not a trustworthy pin. The private identity file must also be an owner-only canonical regular file; it is passed directly to OpenSSH and never printed or read into an application payload. Identity-file and scratch paths cannot contain whitespace, quotes, percent signs or backslashes; this avoids OpenSSH path expansion/tokenization ambiguity. Only DNS names/IPv4-style host strings are accepted in this first version; IPv6 literals and custom SSH options are not supported. SSH must be available at `/usr/bin/ssh`.
+42: 
+43: Run `osstack remote-home inspect --registry /absolute/client.json --sha256 CLIENT_REGISTRY_SHA256 --alias dev --limit 50`. The reader ignores user SSH config and agents, creates a restrictive temporary known-hosts file containing only the pinned host key, and disables proxying, forwarding and connection multiplexing. The remote command is constant; registry fields are never interpolated into a shell command. Configuration/key changes require explicit digest/key repinning. The home pin and exporter registry digest are independently checked after SSH transport authentication.
+44: 
+45: Output is JSON, at most 64 KiB. `status: observed` means the bound response was received; it does not mean the home is healthy. `snapshot.complete: false` and `has_more: true` mean only the first page was observed. Exit status is nonzero for incomplete or unavailable observations. No continuation cursor is exposed yet. Empty results still describe only this scope's eligible source views. Session and run rows may describe the same worker.
+46: 
+47: Rows contain metadata and snapshot-local `observation_ref` values. These references are not stable worker IDs or action handles. Scope filtering is enforced by the trusted daemon worker projection; the exporter validates the pinned scope echo and does not independently query database rows. Tests include other tenants and repositories. The output omits private repository paths, local opaque worker IDs/cursors, prompt/log/decision text and provider-native IDs. A source's completed status is an observed stored fact, not proof that a provider process has stopped. `process_liveness` remains unknown.
+48: 
+49: `received_at_ms` is the reader's local receipt time; `round_trip_ms` uses a local monotonic clock. Remote timestamps and source freshness remain unverified. `remote_clock` merely compares the remote sample time with the local clock; it does not synchronize clocks or establish freshness. Re-read explicitly for a new observation. A timeout, disconnection or binding error returns `status: unknown` and no stale snapshot. It never falls back to the local home or retries an action.
+50: 
+51: The evidence digest hashes the recursively key-sorted JSON of parsed snapshot fields (excluding the digest itself; array order is preserved), binding nonce, generation, scope, registry and row metadata. It detects accidental/tampered binding within the authenticated channel; it does not independently attest server truth. The channel token is random, connection-local and never printed. It is not a general OSStack credential.
+52: 
+53: Local isolated child-process tests and a real running local daemon qualify the wire and socket implementation. A real remote host has not been supplied: two-host SSH authentication, account restrictions, network failure behavior and key rotation are **pending qualification**. Every result preserves `qualification: remote_host_pending`. No general remote-action or plugin ecosystem qualification is implied.
+
+EVIDENCE final-tests2.log
+$ vitest run src/remote-home.test.ts src/remote-home-integration.test.ts src/worker-view-service.test.ts src/worker-view-command.test.ts
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-routing-next/packages/cli
+
+ ✓ src/worker-view-service.test.ts (32 tests) 637ms
+ ✓ src/worker-view-command.test.ts (14 tests) 30ms
+ ✓ src/remote-home.test.ts (10 tests) 20ms
+ ✓ src/remote-home-integration.test.ts (33 tests) 3546ms
+   ✓ wrong request pins and scope fail before worker reads and never fall back  472ms
+
+ Test Files  4 passed (4)
+      Tests  89 passed (89)
+   Start at  13:18:41
+   Duration  4.86s (transform 712ms, setup 27ms, collect 1.62s, tests 4.23s, environment 0ms, prepare 110ms)
+
+
+EVIDENCE final-typecheck2.log
+$ tsc --noEmit
+
+EVIDENCE final-biome2.log
+Checked 6 files in 23ms. No fixes applied.
+
+EVIDENCE exit-red.log
+$ vitest run src/remote-home-integration.test.ts -t 'exits after'
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-routing-next/packages/cli
+
+ ❯ src/remote-home-integration.test.ts (30 tests | 1 failed | 29 skipped) 452ms
+   ↓ reads real source rows over an isolated child exporter without text, native IDs, paths or DB writes
+   ↓ CLI command performs the real child exchange and reports incomplete first pages
+   ↓ an empty complete page does not claim healthy or live execution
+   ↓ rejects or marks unknown the home boundary
+   ↓ rejects or marks unknown the generation boundary
+   ↓ rejects or marks unknown the scope boundary
+   ↓ rejects or marks unknown the scope_digest boundary
+   ↓ rejects or marks unknown the count boundary
+   ↓ rejects or marks unknown the future_clock boundary
+   ↓ wrong request pins and scope fail before worker reads and never fall back
+   ↓ read-only grant cannot authorize start/send/cancel, token substitution or replay
+   ↓ rejects registry tampering, public permissions, symlinks and special files
+   ↓ real running daemon identity and worker RPC support child exporter, without opening the child's OSSTACK_HOME
+   ↓ invalid CLI flags fail without spawning
+   ↓ client fails closed on an actual hostile child: nonce
+   ↓ client fails closed on an actual hostile child: protocol
+   ↓ client fails closed on an actual hostile child: registry
+   ↓ client fails closed on an actual hostile child: scope
+   ↓ client fails closed on an actual hostile child: methods
+   ↓ client fails closed on an actual hostile child: generation
+   ↓ client fails closed on an actual hostile child: replay
+   ↓ client fails closed on an actual hostile child: home
+   ↓ client fails closed on an actual hostile child: private_path
+   ↓ client fails closed on an actual hostile child: digest
+   ↓ client fails closed on an actual hostile child: disconnect
+   ↓ client fails closed on an actual hostile child: hang
+   ↓ client fails closed on an actual hostile child: stderr
+   ↓ private identity permissions fail closed before starting any SSH process
+   ↓ exporter rejects environment absence, extra arguments and a socket symlink
+   × exporter process exits after its one-page response even if the reader leaves stdin open 442ms
+     → expected 'still_running' to be +0 // Object.is equality
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/remote-home-integration.test.ts > exporter process exits after its one-page response even if the reader leaves stdin open
+AssertionError: expected 'still_running' to be +0 // Object.is equality
+
+- Expected: 
+0
+
++ Received: 
+"still_running"
+
+ ❯ src/remote-home-integration.test.ts:152:134
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 29 skipped (30)
+   Start at  13:13:58
+   Duration  1.51s (transform 538ms, setup 8ms, collect 903ms, tests 452ms, environment 0ms, prepare 27ms)
+
+/Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-routing-next/packages/cli:
+[ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL] @osstack/cli@0.21.0 test: `vitest run src/remote-home-integration.test.ts -t 'exits after'`
+Exit status 1

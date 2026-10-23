@@ -1,0 +1,13 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-supervision-next/packages/cli
+
+ ✓ src/graph-verification.test.ts (41 tests | 38 skipped) 7314ms
+   ✓ keeps unknown stop separate from stopped malformed review and valid changes_requested  2801ms
+   ✓ allocates distinct actual review sessions on explicit retry and persists prompt receipts  3067ms
+   ✓ V2 rejects a second reviewer invocation for the same effect but permits a newly authorized logical attempt  1445ms
+
+ Test Files  1 passed (1)
+      Tests  3 passed | 38 skipped (41)
+   Start at  13:29:15
+   Duration  8.74s (transform 739ms, setup 9ms, collect 1.26s, tests 7.31s, environment 0ms, prepare 31ms)
+
