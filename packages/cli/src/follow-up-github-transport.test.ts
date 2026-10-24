@@ -158,7 +158,7 @@ it.each([
     }
     if (mode === "oversized") {
       res.statusCode = 201;
-      res.end("x".repeat(1_048_577));
+      res.end("x".repeat(4_194_305));
     }
     return true;
   });
@@ -187,7 +187,7 @@ it("bounded enumeration fails closed if pages remain; ignores untrusted next URL
     return true;
   });
   await expect(f.transport.lookup(f.e, AbortSignal.timeout(3000))).rejects.toThrow("incomplete");
-  expect(pages).toBe(5);
+  expect(pages).toBe(20);
   expect(f.posts()).toBe(0);
 });
 it("never exposes a network fixture under production qualification", () => {
@@ -332,4 +332,52 @@ it("credential rotation between identity preflight and POST prevents admission",
   });
   await expect(transport.sendOnce(f.e, AbortSignal.timeout(3000))).rejects.toThrow("registration_changed");
   expect(f.posts()).toBe(0);
+});
+it("a foreign author copying the public marker cannot veto the real receipt", async () => {
+  const f = await fixture();
+  const sent = await f.transport.sendOnce(f.e, AbortSignal.timeout(3000));
+  f.comments.unshift({
+    id: 999,
+    body: githubDeliveryBody(f.e),
+    user: { node_id: "FOREIGN" },
+    issue_url: "https://api.github.com/repos/owner/repo/issues/1",
+  });
+  expect(await f.transport.lookup(f.e, AbortSignal.timeout(3000))).toEqual(sent);
+});
+it("uses durable creation context so 600 historical comments cannot hide the new receipt", async () => {
+  const createdAtMs = Date.now();
+  let observedSince: string | null = null;
+  const f = await fixture((req, res) => {
+    if (!req.url?.includes("per_page")) return false;
+    const url = new URL(req.url, "http://fixture.invalid");
+    observedSince = url.searchParams.get("since");
+    const historical = Array.from({ length: 600 }, (_, id) => ({
+      id: id + 1,
+      body: "old",
+      user: { node_id: "ACTOR" },
+      issue_url: "https://api.github.com/repos/owner/repo/issues/1",
+    }));
+    const filtered = observedSince ? f.comments : historical;
+    const page = Number(url.searchParams.get("page"));
+    const items = filtered.slice((page - 1) * 10, page * 10);
+    if (page * 10 < filtered.length) res.setHeader("link", '<https://api.github.com>; rel="next"');
+    res.end(JSON.stringify(items));
+    return true;
+  });
+  const sent = await f.transport.sendOnce(f.e, AbortSignal.timeout(3000));
+  expect(await f.transport.lookup(f.e, AbortSignal.timeout(3000), { createdAtMs })).toEqual(sent);
+  expect(observedSince).toBe(new Date(createdAtMs - 300000).toISOString());
+  expect(f.posts()).toBe(1);
+});
+it("allows a page of ten large legitimate neighboring comments within a finite response cap", async () => {
+  const f = await fixture();
+  const sent = await f.transport.sendOnce(f.e, AbortSignal.timeout(3000));
+  for (let i = 0; i < 8; i++)
+    f.comments.unshift({
+      id: 100 + i,
+      body: "🙂".repeat(65536),
+      user: { node_id: "ACTOR" },
+      issue_url: "https://api.github.com/repos/owner/repo/issues/1",
+    });
+  expect(await f.transport.lookup(f.e, AbortSignal.timeout(3000))).toEqual(sent);
 });

@@ -64,7 +64,7 @@ osstack follow-up-delivery authorize ATTEMPT_ID --repo /absolute/canonical/repos
 osstack follow-up-delivery dispatch ATTEMPT_ID --repo /absolute/canonical/repository --default-tenant --revision AUTHORIZED_REVISION
 ```
 
-Use the revisions returned by each command. The existing service verifies the host-trusted signature and expiry, atomically consumes a one-call grant and records durable `started`, then invokes exactly one POST. The HTTP adapter has no redirect following, automatic retry, shell execution or SDK retry layer. It uses fixed github.com API paths and verifies successful response status, request ID, comment ID, exact body, issue URL and author node ID. An error response body is never surfaced with credentials.
+Use the revisions returned by each command. The existing service verifies the host-trusted signature and expiry, atomically consumes a one-call grant and records durable `started`, performs a bounded read-only actor/target preflight before consumption, rechecks the grant/revision at consumption, then invokes exactly one POST. An initial readiness failure or timeout leaves the prepared grant active because no send boundary was entered. A failure racing after durable `started` remains conservative unknown. The HTTP adapter has no redirect following, automatic retry, shell execution or SDK retry layer. It uses fixed github.com API paths and verifies successful response status, request ID, comment ID, exact body, issue URL and author node ID. An error response body is never surfaced with credentials.
 
 ## Unknown means reconcile, not resend
 
@@ -74,9 +74,9 @@ A timeout, truncated body, disconnected response, failed identity check, ambiguo
 osstack follow-up-delivery reconcile ATTEMPT_ID --repo /absolute/canonical/repository --default-tenant --revision CURRENT_REVISION
 ```
 
-Reconciliation uses only GETs. It checks authenticated actor and target again, reads at most five pages of at most 100 comments, and rejects incomplete enumeration, duplicate correlation, altered content, foreign author or foreign target. No match is unknown; it is never evidence that resending is safe. Very large threads may need an operator's external evidence investigation because the bounded adapter intentionally does not enumerate indefinitely. `revoke` records cancellation but cannot recall an already posted message. Public delivery and the local promise's resolution remain independent.
+Reconciliation uses only GETs. It checks authenticated actor and target again, uses the trusted attempt creation time minus a five-minute clock-skew margin as GitHub `since`, then reads at most twenty pages of at most ten comments, and rejects incomplete enumeration, duplicate actor-owned correlation or altered actor-owned content. Foreign authors/targets are ignored before matching, so a third party copying a public marker cannot veto a genuine receipt. No match is unknown; it is never evidence that resending is safe. Historical large threads are filtered by `since`; a recent flood, edits to old comments, or clock skew beyond the margin may still need an operator's external evidence investigation because the bounded adapter intentionally does not enumerate indefinitely. `revoke` records cancellation but cannot recall an already posted message. Public delivery and the local promise's resolution remain independent.
 
-Each response is at most 1 MiB; stream reads are bounded, service calls have an abort deadline, redirects are rejected and provider-controlled pagination URLs are ignored. An HTTP fixture endpoint is accepted only through the trusted test constructor under `test_only`, never through host JSON or RPC.
+Each response is at most 4 MiB; stream reads are bounded, service calls have an abort deadline, redirects are rejected and provider-controlled pagination URLs are ignored. An HTTP fixture endpoint is accepted only through the trusted test constructor under `test_only`, never through host JSON or RPC.
 
 ## Local evidence and live qualification still required
 

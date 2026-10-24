@@ -74,9 +74,11 @@ export interface FollowUpTransport {
   /** The adapter must disable SDK retries; declaration is not provider qualification. */
   automatic_retries: boolean;
   lookup_receipt: boolean;
+  /** Effect-free readiness checks, before consuming a grant. Implementations MUST NOT POST here. */
+  preflight?(envelope: Readonly<FollowUpDeliveryEnvelope>, signal: AbortSignal): Promise<void>;
   sendOnce(envelope: Readonly<FollowUpDeliveryEnvelope>, signal: AbortSignal): Promise<unknown>;
   /** Trusted provider lookup; caller-supplied receipt objects never enter this port. */
-  lookup(envelope: Readonly<FollowUpDeliveryEnvelope>, signal: AbortSignal): Promise<unknown>;
+  lookup(envelope: Readonly<FollowUpDeliveryEnvelope>, signal: AbortSignal, context?: { createdAtMs: number }): Promise<unknown>;
 }
 export interface FollowUpDeliveryOptions {
   targets?: ReadonlyMap<string, FollowUpDeliveryTarget>;
@@ -362,6 +364,24 @@ export class FollowUpDeliveryService {
   async dispatch(input: unknown): Promise<FollowUpDeliveryResult> {
     const p = parsed(FollowUpDeliveryActionParams, input),
       repo = repoPath(p.repo_path);
+    // A transient read-only provider preflight does not consume or wedge a still-prepared attempt.
+    const admission = this.safe(() => this.durableWrite(() => {
+      const row = this.row(repo, p.attempt_id);
+      this.revision(row, p.expected_revision);
+      if (row.state !== "prepared") return undefined;
+      const envelope = this.envelope(row), transport = this.transport(envelope);
+      if (!transport?.preflight) return undefined;
+      const grant = this.grant(row.attempt_id);
+      if (!grant) throw new FollowUpDeliveryError("delivery_authorization_required");
+      if (grant.state !== "active") throw new FollowUpDeliveryError("delivery_authorization_revoked");
+      this.options.assertHostConfiguration?.();
+      this.verifyGrant(row, SignedFollowUpDeliveryGrant.parse(JSON.parse(grant.signed_json)), this.clock(row.updated_at_ms));
+      return {envelope: frozen(envelope), transport};
+    }));
+    if (admission) {
+      const readiness = await this.boundedCall(signal => admission.transport.preflight!(admission.envelope, signal));
+      if (!readiness.ok) throw new FollowUpDeliveryError("delivery_destination_unavailable");
+    }
     const claim = this.safe(() =>
       this.durableWrite(() => {
         const row = this.row(repo, p.attempt_id);
@@ -462,7 +482,7 @@ export class FollowUpDeliveryService {
       }),
     );
     if ("result" in claim) return claim.result;
-    const outcome = await this.boundedCall((signal) => claim.transport.lookup(claim.envelope, signal));
+    const outcome = await this.boundedCall((signal) => claim.transport.lookup(claim.envelope, signal, {createdAtMs: claim.row.created_at_ms}));
     return this.safe(() =>
       this.durableWrite(() => {
         const row = this.row(repo, p.attempt_id);

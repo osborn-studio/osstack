@@ -844,3 +844,32 @@ it("an existing writer prevents claim before any consuming read or network call"
     authorization_status: "active",
   });
 });
+it("effect-free provider readiness failure leaves a prepared active grant reusable without POST", async () => {
+  const f = fixture();
+  const prepared = f.prepare().attempt;
+  const authorized = f.authorize(prepared).attempt;
+  f.transport.preflight = async () => { throw Error("temporary read-only outage"); };
+  await expect(f.service.dispatch({...f.scope, attempt_id:prepared.attempt_id, expected_revision:authorized.revision})).rejects.toThrow("delivery_destination_unavailable");
+  expect(f.sends).not.toHaveBeenCalled();
+  const current=f.service.inspect({...f.scope,attempt_id:prepared.attempt_id}).attempt;
+  expect(current.state).toBe("prepared");expect(current.authorization_status).toBe("active");expect(current.revision).toBe(authorized.revision);
+  f.transport.preflight = async () => {};
+  const sent=await f.service.dispatch({...f.scope, attempt_id:prepared.attempt_id, expected_revision:authorized.revision});
+  expect(sent.attempt.state).toBe("delivered");expect(f.sends).toHaveBeenCalledTimes(1);
+});
+it("revocation while read-only preflight runs prevents later consumption and POST", async () => {
+  const f=fixture(),prepared=f.prepare().attempt,authorized=f.authorize(prepared).attempt;
+  let release!:()=>void; f.transport.preflight=()=>new Promise<void>(resolve=>{release=resolve;});
+  const dispatch=f.service.dispatch({...f.scope,attempt_id:prepared.attempt_id,expected_revision:authorized.revision});
+  await Promise.resolve();
+  f.service.revoke({...f.scope,attempt_id:prepared.attempt_id,expected_revision:authorized.revision,reason:"cancel during readiness"});release();
+  await expect(dispatch).rejects.toThrow("delivery_revision_conflict");expect(f.sends).not.toHaveBeenCalled();
+  expect(f.service.inspect({...f.scope,attempt_id:prepared.attempt_id}).attempt.authorization_status).toBe("revoked");
+});
+it("read-only preflight timeout leaves authority active rather than recording send_started", async () => {
+  const f=fixture(),prepared=f.prepare().attempt,authorized=f.authorize(prepared).attempt;
+  f.transport.preflight=()=>new Promise<void>(()=>{});
+  await expect(f.service.dispatch({...f.scope,attempt_id:prepared.attempt_id,expected_revision:authorized.revision})).rejects.toThrow("delivery_destination_unavailable");
+  const current=f.service.inspect({...f.scope,attempt_id:prepared.attempt_id}).attempt;
+  expect(current.state).toBe("prepared");expect(current.authorization_status).toBe("active");expect(f.sends).not.toHaveBeenCalled();
+});

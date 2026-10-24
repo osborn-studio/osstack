@@ -69,7 +69,7 @@ export function createGithubDeliveryTransport(options: GithubDeliveryTransportOp
           let bytes = 0;
           response.on("data", (chunk: Buffer) => {
             bytes += chunk.length;
-            if (bytes > 1_048_576) {
+            if (bytes > 4_194_304) {
               response.destroy();
               request.destroy();
               fail();
@@ -151,11 +151,15 @@ export function createGithubDeliveryTransport(options: GithubDeliveryTransportOp
     qualification: options.qualification,
     automatic_retries: false,
     lookup_receipt: true,
+    async preflight(e, signal) {
+      await preflight(e, signal);
+    },
     async sendOnce(e, signal) {
       const token = await preflight(e, signal);
       // Revocation or credential rotation during preflight closes admission before the sole POST.
       if ((await options.credential(e)) !== token || signal.aborted)
         throw Error("github_delivery_registration_changed");
+      // Once durably started, all exceptions remain unknown; never infer non-delivery from HTTP errors.
       const response = await api(
         `${targetPath(e)}/comments`,
         token,
@@ -164,23 +168,41 @@ export function createGithubDeliveryTransport(options: GithubDeliveryTransportOp
       );
       return receipt(e, response.value, response.requestId);
     },
-    async lookup(e, signal) {
+    async lookup(e, signal, context) {
       const token = await preflight(e, signal);
       let found: FollowUpDeliveryReceipt | undefined;
+      // Old busy threads do not hide a new attempt behind historical pages. Context comes from the durable ledger.
+      const since =
+        context && Number.isSafeInteger(context.createdAtMs) && context.createdAtMs >= 0
+          ? `&since=${encodeURIComponent(new Date(Math.max(0, context.createdAtMs - 300000)).toISOString())}`
+          : "";
       // Fixed bounded pages, never follow a provider-supplied URL. Incomplete enumeration remains unknown.
-      for (let page = 1; page <= 5; page++) {
-        const response = await api(`${targetPath(e)}/comments?per_page=100&page=${page}`, token, signal);
-        if (!Array.isArray(response.value) || response.value.length > 100)
+      for (let page = 1; page <= 20; page++) {
+        const response = await api(
+          `${targetPath(e)}/comments?per_page=10&page=${page}${since}`,
+          token,
+          signal,
+        );
+        if (!Array.isArray(response.value) || response.value.length > 10)
           throw Error("github_delivery_invalid_list");
         for (const raw of response.value) {
           const comment = record(raw);
+          // A public marker copied by another author is not a candidate receipt and cannot veto one.
+          if (
+            !comment.user ||
+            typeof comment.user !== "object" ||
+            Array.isArray(comment.user) ||
+            (comment.user as Record<string, unknown>).node_id !== e.destination.actor_node_id ||
+            comment.issue_url !== targetUrl(e)
+          )
+            continue;
           if (typeof comment.body !== "string" || !comment.body.includes(`osstack-delivery:${e.attempt_id}:`))
             continue;
           const match = receipt(e, raw, response.requestId);
           if (found) throw Error("github_delivery_duplicate_correlation");
           found = match;
         }
-        if (!response.hasNext && response.value.length < 100) {
+        if (!response.hasNext && response.value.length < 10) {
           if ((await options.credential(e)) !== token || signal.aborted)
             throw Error("github_delivery_registration_changed");
           return found ?? null;
