@@ -10,6 +10,7 @@ import { CURRENT_SCHEMA_VERSION, GraphRunStore } from '@osstack/core';
 import { workerCanonical } from '@osstack/protocol';
 import { assertDbAccessAllowed } from './control-plane-guard.js';
 import { assertManagedHomeMarker } from './managed-home-guard.js';
+import { assertSingleSqliteFiles } from './sqlite-file-guard.js';
 import { VERSION, PROTOCOL_VERSION } from './version.js';
 import { loadLocalGraphRegistration, GraphRpcService } from './graph-rpc.js';
 import { cancelUnstartedGraphPreparation } from './graph-preparation-recovery.js';
@@ -22,12 +23,15 @@ const schema = (db: Database.Database) => digest(db.prepare('SELECT type,name,tb
 function owned(path: string, directory: boolean) {
   const stat = lstatSync(path);
   if ((directory ? !stat.isDirectory() : !stat.isFile()) || realpathSync(path) !== path
-    || stat.uid !== process.getuid?.() || (stat.mode & 0o022) !== 0) throw Error('MAINTENANCE_OWNER_REQUIRED');
+    || (!directory && stat.nlink !== 1) || stat.uid !== process.getuid?.() || (stat.mode & 0o022) !== 0) throw Error('MAINTENANCE_OWNER_REQUIRED');
 }
 
 /** Run once after independent approval, from the installed release directory.
  * Without apply this is a read-only guard/schema/registration check. The role
- * declaration must already allow the home; this entry cannot provision one.
+ * A standalone maintenance entry is not authorized for a managed-marker home:
+ * it fails the managed serving-entry gate. Managed invocation must come through
+ * the declared serving entry; no standalone managed maintenance CLI is provided.
+ * The role declaration must already allow the home; this entry cannot provision one.
  * apply requires a new consistent backup and invokes only the exact-v4 proof.
  * An error is a stop condition, never permission to retry or force settlement. */
 interface MaintenanceOptions {
@@ -50,7 +54,7 @@ async function runMaintenance(options: MaintenanceOptions, kind: 'preparation' |
   if (kind === 'verification' && options.apply === true && existsSync(join(home, 'daemon.sock'))) throw Error('MAINTENANCE_DAEMON_MUST_STOP');
   const guard = assertDbAccessAllowed({ checkoutRoot: dirname(realpathSync(fileURLToPath(import.meta.url))), osstackHome: home });
   assertManagedHomeMarker(home, process.argv[1], {version:VERSION,protocol_version:PROTOCOL_VERSION,database_schema:CURRENT_SCHEMA_VERSION});
-  owned(home, true); const path = join(home, 'state.db'); owned(path, false);
+  owned(home, true); const path = join(home, 'state.db'); owned(path, false); assertSingleSqliteFiles(path);
   const db = new Database(path, { readonly: options.apply !== true, fileMustExist: true });
   let initialSchema: string | undefined;
   let service: GraphRpcService | undefined;

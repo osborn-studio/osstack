@@ -109,6 +109,7 @@ describe('managed native upgrade actual filesystem/process boundaries',()=>{
     for(const c of consumers)expect(existsSync(join(c.home,'managed-consumer.json'))).toBe(false);
     await rm(join(root,'releases'));
     await writeFile(join(root,'consumers','.publish-'+ 'b'.repeat(32)),'',{mode:0o600});
+    await symlink(join(root,'releases',f.next.target.build_digest),join(root,'.current-'+ 'c'.repeat(32)));
     const result=await provisionManagedInstallation(input,AbortSignal.timeout(30000));expect(result.state).toBe('provisioned_not_started');expect(f.starts()).toBe(2);expect(loadInstallation(result.registry,result.registry_sha256).root).toBe(root);expect(verifyRelease(root,f.next.target.build_digest).target.version).toBe('2.0.0');
     await rm(join(root,'installation.json'));await rm(join(root,'current'));expect((await provisionManagedInstallation(input,AbortSignal.timeout(30000))).state).toBe('provisioned_not_started');
   },30000);

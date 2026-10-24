@@ -10,7 +10,7 @@ export async function readAttentionLoop(input: {
   signal?: AbortSignal;
 }) {
   input.signal?.throwIfAborted();
-  if (!isAbsolute(input.path) || !isAbsolute(input.repo) || !input.loop_id)
+  if (!isAbsolute(input.path) || !isAbsolute(input.repo) || !input.loop_id || input.loop_id.length>256 || input.path.length>4096)
     throw new Error("explicit_loop_binding_required");
   const repo = await realpath(input.repo);
   input.signal?.throwIfAborted();
@@ -44,7 +44,9 @@ export async function readAttentionLoop(input: {
     );
     if (state.loop_id !== input.loop_id)
       throw new Error("loop_identity_conflict");
-    return {
+    const tasks=[...(state.pending??[]),...(state.in_progress??[])];
+    if((state.pending?.length??0)>16||(state.in_progress?.length??0)>16||state.updated_at.length>64||tasks.some(task=>task.task_id.length>128||task.capability.length>64))throw Error("oversized_loop_source");
+    const facts = {
       loop_id: input.loop_id,
       path,
       state: "snapshot_available",
@@ -58,6 +60,8 @@ export async function readAttentionLoop(input: {
       gap: "best_effort_snapshot_no_event_replay",
       recovery_required: (state.in_progress ?? []).length > 0,
     };
+    if(Buffer.byteLength(JSON.stringify(facts))>8192)throw Error("oversized_loop_source");
+    return facts;
   } catch (error) {
     input.signal?.throwIfAborted();
     if ((error as NodeJS.ErrnoException).code === "ENOENT")

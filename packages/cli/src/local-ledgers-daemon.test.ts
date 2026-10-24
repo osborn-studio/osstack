@@ -1,5 +1,7 @@
 import { existsSync, realpathSync } from "node:fs";
 import { mkdir, rm } from "node:fs/promises";
+import * as sourceFs from "node:fs/promises";
+vi.mock("node:fs/promises",async importOriginal=>{const actual=await importOriginal<typeof import("node:fs/promises")>();return {...actual,open:vi.fn(actual.open)};});
 import { connect } from "node:net";
 import { join } from "node:path";
 import { createScratchDir, openDb, insertRun, insertTask } from "@osstack/core";
@@ -1010,4 +1012,28 @@ it("bounds worker log responses and retains occupied slots until file reads sett
     for(const response of await Promise.all(requests))expect(response).toMatchObject({ok:false,error:{code:"worker_log_unavailable"}});
     expect(await rpc("worker.logs",f.scope)).toMatchObject({ok:false,error:{code:"worker_log_busy"}});
   }finally{release();}
+});
+
+it("keeps the real source ledger unchanged when concurrent RPC observation is refused as busy", async()=>{
+ const {repo,scope}=await fixture(false,false);const {writeFile}=await import('node:fs/promises');const {createHash}=await import('node:crypto');const {localSourceManifestDigest}=await import('./local-data-source-registry.js');
+ const data=join(root!,'source-busy');await mkdir(data);const sourcePath=join(data,'snapshot.json');const raw=JSON.stringify({schema_version:1,source_id:'notes',version:'1',revision:1,entries:[{id:'one',text:'local'}]});await writeFile(sourcePath,raw);
+ const now=Date.now();const manifest={schema_version:1 as const,id:'notes',version:'1',protocol:'local_json_snapshot_v1' as const,repo_path:repo,default_tenant:true as const,capabilities:['snapshot.read'] as ['snapshot.read'],file:'snapshot.json',max_bytes:65536,max_items:20,read_timeout_ms:1000,verified_at_ms:now,expires_at_ms:now+60000,fresh_for_ms:60000};
+ await writeFile(join(root!,'source-registry.json'),JSON.stringify({schema_version:1,registrations:[{source_root:data,manifest,manifest_digest:localSourceManifestDigest(manifest),content_digest:createHash('sha256').update(raw).digest('hex')}]}),{mode:0o600});
+ const params={...scope,source_id:'notes'};expect(await rpc('source.observe',params)).toMatchObject({ok:true});const before=await rpc('source.events',params);
+ const actual=(await vi.importActual<typeof import('node:fs/promises')>('node:fs/promises')).open;let blocked=0;let release!:()=>void;const held=new Promise<void>(resolve=>release=resolve);
+ vi.mocked(sourceFs.open).mockImplementation(async(path,flags,mode)=>{const handle=await actual(path,flags,mode);if(path===sourcePath){blocked++;await held;}return handle;});
+ const first=rpc('source.observe',params),second=rpc('source.observe',params);
+ try{await vi.waitFor(()=>expect(blocked).toBe(2));expect(await rpc('source.observe',params)).toMatchObject({ok:false,error:{code:'source_unavailable'}});
+  const during=await rpc('source.events',params);expect(during.result?.observation).toEqual(before.result?.observation);expect(during.result?.events).toEqual(before.result?.events);
+ }finally{vi.mocked(sourceFs.open).mockImplementation(actual);release();await Promise.allSettled([first,second]);}
+ const after=await rpc('source.events',params);expect(after.result?.observation).toEqual(before.result?.observation);expect(after.result?.events).toEqual(before.result?.events);
+});
+it('tracks source.inspect for cancellation and bounded shutdown',async()=>{
+ const f=await fixture(false,false);const sources=await import('./local-data-source-registry.js');let signal:AbortSignal|undefined;
+ const inspect=vi.fn((_input:unknown,incoming?:AbortSignal)=>{signal=incoming;return new Promise<never>(()=>{});});
+ vi.spyOn(sources,'createHostLocalDataSourceService').mockReturnValue({inspect});const response=rpc('source.inspect',{...f.scope,source_id:'notes'});
+ await vi.waitFor(()=>expect(inspect).toHaveBeenCalledTimes(1));await daemon!.close();daemon=undefined;expect(signal?.aborted).toBe(true);expect(await response).toMatchObject({ok:false,error:{code:'source_unavailable'}});
+});
+it.each(['source.inspect','source.observe','source.events','source.acknowledge'])('maps invalid %s input to invalid_request',async method=>{
+ await fixture(false,false);expect(await rpc(method,{})).toMatchObject({ok:false,error:{code:'invalid_request'}});
 });

@@ -410,7 +410,7 @@ it("expired write authorization is rejected before daemon access; historical sig
   await f.setGrant(f.grantFor({ issued_at_ms: Date.now() - 20000, expires_at_ms: Date.now() - 10000 }));
   expect(await f.invoke()).toMatchObject({ code: 1 });
   expect(f.methods).toEqual([]);
-  expect(await f.invoke("query")).toMatchObject({ value: { outcome: "not_found" } });
+  expect(await f.invoke("query")).toMatchObject({ value: { outcome: "delivery_unknown", receipt: { outcome: "not_found" } } });
   expect(f.methods).toEqual([]);
 });
 it("tampered or wrong-scope signed payload never reaches daemon", async () => {
@@ -528,7 +528,7 @@ it("timeout records unknown once and subsequent cancel changes to query", async 
     }),
   ).toBe(1);
   expect(JSON.parse(output).outcome).toBe("delivery_unknown");
-  expect(await f.invoke()).toMatchObject({ value: { outcome: "not_found" } });
+  expect(await f.invoke()).toMatchObject({ value: { outcome: "delivery_unknown", receipt: { outcome: "not_found" } } });
   expect(f.methods).toEqual([]);
 });
 it("missing issuer configuration, noninteractive confirmation, or duplicate output cannot self-authorize", async () => {
@@ -731,4 +731,19 @@ it("unsafe socket ancestors cannot substitute an authenticated private daemon en
   expect(await f.invoke()).toMatchObject({ code: 1, value: { outcome: "delivery_unknown" } });
   expect(f.methods).toEqual([]);
   await chmod(f.socketDirectory, 0o700);
+});
+
+it("prints validated remote receipt even when local observation persistence fails", async () => {
+  const f = await fixture();
+  const protocol = await import("./remote-cancel-protocol.js");
+  const original = protocol.writeRemoteJournal;
+  const spy = vi.spyOn(protocol, "writeRemoteJournal").mockImplementation(async (path, value) => {
+    if (path.includes(".observed-")) throw Error("synthetic local observation write failure");
+    return original(path, value);
+  });
+  try {
+    expect(await f.invoke()).toMatchObject({ code: 0, value: { outcome: "stop_requested", observation_persisted: false } });
+    expect(await f.invoke()).toMatchObject({ code: 0, value: { outcome: "stop_requested", observation_persisted: false } });
+    expect(f.methods.filter(method => method === "graph.cancel")).toHaveLength(1);
+  } finally { spy.mockRestore(); }
 });

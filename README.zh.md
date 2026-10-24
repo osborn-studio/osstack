@@ -25,6 +25,26 @@ DeepSeek 检查器以及你自己的脚本，组织成一套可路由、可循�
 - [当前能力范围](#当前能力范围) · [安装](#安装) · [主要命令](#主要命令)。
 - [按任务选命令及常用参数](docs/guides/command-reference.md) · [完整顶层命令清单](docs/inventory/CLI_COMMANDS.md)。
 
+## Firstmate 能力与命令
+
+当前开发分支已为 Firstmate 的 24 项能力建立实现或复用路径，主要入口如下。**这不是 24/24 已上线声明：PR #244 与前序依赖的审计、CI、合并及真实环境资格是独立条件。**
+
+| 用途 | 命令入口 |
+|---|---|
+| 监督与决策 | `attention status/watch/inbox/get/answer/recovery` |
+| 简报与低打扰 | `attention brief/cockpit/posture/seen/foreground` · `daily` · `cockpit` |
+| 回合与监督登记 | `attention handoff/turn-end/claude-hook/loop/ci` |
+| 调查转交付 | `scout inspect/promote` · `deliver` · `start` · `control` |
+| 验证与保全 | `graph validate/run/status/cancel/resume` · `loop enqueue/run/status` |
+| 工作进程视图 | `worker list/inspect/watch/open/logs` |
+| 来源与连续性 | `sources inspect/observe/events/acknowledge` |
+| 远程 home | `remote-home inspect/issue-cancel-grant/cancel/query` · `remote-export --stdio` · `remote-control --stdio` |
+| 上下文、记忆与路由 | `attention context/lesson/triage/routing-eval` · `deliver --execution-context FILE` |
+| 对外承诺 | `follow-up-delivery prepare/list/inspect/issue-grant/authorize/revoke/dispatch/reconcile` |
+| 多 home 升级 | `homes inspect/plan-upgrade/upgrade-status/prepare-managed-installation/apply-upgrade/reconcile-upgrade` |
+
+查看[完整中文命令手册](docs/guides/firstmate-commands.md)与[English guide](docs/guides/firstmate-commands.en.md)，包含参数示例、只读/写操作边界、授权前提和未完成的真实环境资格。文档通过 `osstack neat check` 检查；该检查不代表部署或功能验收。
+
 ## 当前状态
 
 | 领域 | 状态 |
@@ -37,11 +57,11 @@ DeepSeek 检查器以及你自己的脚本，组织成一套可路由、可循�
 | License | MIT |
 | Monorepo | 22 个 workspace package |
 
-**版本边界：** 当前源码目标为 0.20.0。2026-09-21 发布前核验时，npm latest 仍为 CLI 0.19.0，Graph 包尚未发布。版本提交不等于发布成功，须核对 npm 与 GitHub Release 后再使用公共 0.20.0。即使 npm 发布完成，Graph 仍保留下文的内部 beta 执行范围。
+**版本边界：** 当前源码的 CLI 包版本为 0.21.0；源码版本不等于公共发布或本机已安装版本。请用 `osstack --version` 与 `npm view @osstack/cli version` 分别核对；Firstmate 本轮能力以分支及 PR 交付状态为准。
 
 ## 当前能力范围
 
-当前 `main` 已经不只是一个 loop runner，而是一个本地优先的研发控制平面：
+当前源码已经不只是一个 loop runner，而是一个本地优先的研发控制平面：
 
 | 能力 | 当前实现 | 主要命令 / package |
 |---|---|---|

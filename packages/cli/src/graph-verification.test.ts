@@ -347,7 +347,7 @@ it('settles an oversized structured review as a bounded contract failure instead
 // By default these use a deterministic Engine API fixture. The exact same tests
 // can target the dedicated Linux daemon via an explicit host-owned config file.
 async function containedFixture(exitCode: number) {
-  const f = await fixture(); let actualExit = exitCode; let onStart = () => {}; let loseDelete = false;
+  const f = await fixture(); let actualExit = exitCode; let onStart = () => {}; let loseDelete = false; let removedReadDelayMs = 0; let removedReads = 0;
   const journalRoot = join(f.root, 'contained-journal'); await mkdir(journalRoot);
   const configPath = process.env['G25_CONTAINED_CONFIG'];
   let config: { socketPath: string; daemonId: string; baseImageId: string };
@@ -371,7 +371,7 @@ async function containedFixture(exitCode: number) {
         res.writeHead(201).end(JSON.stringify({ Id: 'c'.repeat(64) })); return;
       }
       if (req.method === 'DELETE') { removed = true; res.writeHead(loseDelete ? 500 : 204).end(); return; }
-      if (removed) { res.writeHead(404).end(); return; }
+      if (removed) { removedReads++; if (removedReadDelayMs) await new Promise(resolve => setTimeout(resolve, removedReadDelayMs)); res.writeHead(404).end(); return; }
       if (path.endsWith('/start')) { started = true; onStart(); res.writeHead(204).end(); return; }
       if (path.endsWith('/logs')) { res.end(); return; }
       res.end(JSON.stringify({ Id: 'c'.repeat(64), Image: 'sha256:' + 'b'.repeat(64), Config: containerConfig!, HostConfig: { ...(containerConfig!['HostConfig'] as object), CapAdd: null }, Mounts: [],
@@ -381,7 +381,7 @@ async function containedFixture(exitCode: number) {
   }
   f.options.containedTests = { ...config, journalRoot, authorizeStop: () => {}, authorizeRead: () => {} };
   f.options.acceptanceRegistry = [{ ref: 'acceptance', command: `test "$(cat file)" = candidate || exit 98; test "$(pwd)" != /tmp || exit 99; exit ${exitCode}`, passExitCodes: [0, 42], failExitCodes: [1] }];
-  return { ...f, setExit: (value: number) => { actualExit = value; }, onStart: (fn: () => void) => { onStart = fn; }, loseDelete: () => { loseDelete = true; } };
+  return { ...f, setExit: (value: number) => { actualExit = value; }, onStart: (fn: () => void) => { onStart = fn; }, loseDelete: () => { loseDelete = true; }, delayRemovedRead: (ms: number) => { removedReadDelayMs = ms; }, removedReads: () => removedReads };
 }
 it.each([0, 1, 42, 7])('binds actual contained tests exit %i to candidate/image/ledger without POSIX evidence', async code => {
   const f = await containedFixture(code); const b = await brokerFixture(f); const response = await b.invoke('tests');
@@ -505,6 +505,15 @@ it('persists actual native suite exits and refuses missing or substituted later 
   await expect(publishGraphVerificationEvidence(f.options.root, uncertain, () => {})).rejects.toThrow();
 }, 15000);
 
+it.skipIf(Boolean(process.env['G25_CONTAINED_CONFIG']))('waits for fresh contained stop proof when a valid Engine read exceeds one second', async () => {
+  const f = await containedFixture(0); f.delayRemovedRead(1100);
+  const b = await brokerFixture(f);
+  expect(await b.invoke('tests')).toMatchObject({ outcome: { state: 'confirmed', result: { passed: true } } });
+  // Each confirmation still uses the real executor journal and Engine identity /
+  // absence checks. The fixture delays the 404 response, never invents a proof.
+  expect(f.removedReads()).toBeGreaterThanOrEqual(2);
+}, 30000);
+
 it('keeps sixteen contained stop proofs within the bounded local suite evidence', async () => {
   const f = await containedFixture(0); bindMultipleChecks(f);
   f.options.acceptanceRegistry=Array.from({length:16},(_,index)=>({ref:index===0?'acceptance':`check-${index}`,command:`exit 0 # ${index} ${'\t'.repeat(1000)}`,passExitCodes:[0],failExitCodes:[1]}));
@@ -536,6 +545,8 @@ it.skipIf(!process.env['OSSTACK_REVIEW_INVENTORY_REPORT'])('measures byte-heavy 
   const reports = [];
   for (const scenario of [{ name: '31MiB', bytes: 31 * 1024 * 1024, files: 0, objects: 0 }, { name: 'many-files-and-objects', bytes: 0, files: 1500, objects: 1500 }]) {
     const f = await fixture(scenario.bytes, scenario.files); let observations = 0;
+    const phases: Record<string, number[]> = {};
+    f.options.onPreparationPhase = (phase, durationMs) => { phases[phase] ??= []; phases[phase].push(durationMs); };
     f.options.onCandidateObservation = () => { observations++; };
     f.options.reviewer.adapter.invoke = reviewAdapter(() => JSON.stringify({ schemaVersion: 1, verdict: 'accept', summary: 'fixture', findings: [] }));
     const started = performance.now(); const prepared = await prepareGraphVerificationBranch(f.options, 'review');
@@ -558,7 +569,8 @@ it.skipIf(!process.env['OSSTACK_REVIEW_INVENTORY_REPORT'])('measures byte-heavy 
       expect(verifyObservations).toBe(1); expect(persistObservations).toBe(4);
       samples.push({ verifyMs, invokeMs, persistMs, verifyObservations, invokeObservations, persistObservations });
     }
-    reports.push({ ...scenario, preparationMs, samples });
+    reports.push({ ...scenario, preparationMs, phases,
+      phaseNotes: 'restore includes one internal artifact verification, batch Git blob extraction, per-file durable write/fsync and recaptured tree verification. verifyArtifact records the two additional whole-bundle validations; exact phase includes the actual preparation raw-file check.', samples });
   }
   await writeFile(process.env['OSSTACK_REVIEW_INVENTORY_REPORT']!, JSON.stringify({ node: process.version, platform: process.platform,
     limits: verificationInventoryLimits, reports,

@@ -2,6 +2,7 @@ import { execFileSync } from "node:child_process";
 import { mkdtempSync, realpathSync } from "node:fs";
 import {
   cp,
+  mkdir,
   readFile,
   readdir,
   rm,
@@ -1003,4 +1004,18 @@ it("rejects none-scope push and merge contracts before guarded-git dispatch", as
   expect(code).toBe(2);
   expect(logs.join("\n")).toContain("invalid_delivery_contract");
   expect(startGuardedGit).not.toHaveBeenCalled();
+});
+
+it("escapes policy loader terminal errors used by scout promotion", async () => {
+  const workspace = join(tmp, "policy-\u202e\u009b\u001b");
+  await mkdir(join(workspace, ".osstack"), { recursive: true });
+  await writeFile(join(workspace, ".osstack", "policy.yaml"), "mode: [\n");
+  expect(await createDeliverCommandDeps().enforceObservePolicyGate(workspace)).toBe(1);
+  const output = errors.join("\n");
+  expect(output).not.toContain("\u202e");
+  expect(output).not.toContain("\u009b");
+  expect(output).toContain("\\u202e");
+  expect(output).toContain("\\u009b");
+  expect(output).not.toContain("\u001b");
+  expect(output).toContain("\\u001b");
 });

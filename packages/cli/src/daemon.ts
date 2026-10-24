@@ -1129,7 +1129,7 @@ async function drainCancelledReads(reads: Promise<unknown>[]): Promise<void> {
 }
 
 async function handleSingle(ctx: DaemonContext, req: DaemonRequest): Promise<SingleResponse | null> {
-  if (["source.observe", "source.events", "source.acknowledge"].includes(req.method)) {
+  if (["source.inspect", "source.observe", "source.events", "source.acknowledge"].includes(req.method)) {
     if (ctx.draining) return singleErr(req.id, "draining", "Daemon is draining");
     ctx.sourceObservationPending ??= new Map();
     if (ctx.sourceObservationPending.size >= 4) return singleErr(req.id, "source_busy", "Source request limit reached");
@@ -1144,6 +1144,12 @@ async function handleSingle(ctx: DaemonContext, req: DaemonRequest): Promise<Sin
       const { createHostSourceObservationService } = await import("./source-observation-host.js");
       const { handleSourceObservationRpc } = await import("./source-observation-command.js");
       if (ctx.draining || controller.signal.aborted) throw Error("source_unavailable");
+      if (req.method === "source.inspect") {
+        const {createHostLocalDataSourceService} = await import("./local-data-source-registry.js");
+        if (ctx.draining || controller.signal.aborted) throw Error("source_unavailable");
+        ctx.localSources ??= createHostLocalDataSourceService({configPath:join(dirname(ctx.dbPath),"source-registry.json")});
+        return ctx.localSources.inspect(req.params, controller.signal);
+      }
       ctx.sourceObservations ??= createHostSourceObservationService(dirname(ctx.dbPath));
       return handleSourceObservationRpc(req.method as "source.observe" | "source.events" | "source.acknowledge",
         req.params, ctx.sourceObservations, controller.signal);
@@ -1154,20 +1160,11 @@ async function handleSingle(ctx: DaemonContext, req: DaemonRequest): Promise<Sin
     const settled = () => { ctx.sourceObservationPending?.delete(controller); };
     void pending.then(settled, settled);
     try { return singleOk(req.id, await Promise.race([pending, aborted])); }
-    catch { return singleErr(req.id, "source_unavailable", "Source observation unavailable"); }
+    catch (error) { return singleErr(req.id, error instanceof Error && error.message === "invalid_request" ? "invalid_request" : "source_unavailable", "Source observation unavailable"); }
     finally {
       clearTimeout(timer);
       controller.signal.removeEventListener("abort", abortResponse);
     }
-  }
-  if (req.method === "source.inspect") {
-    if (ctx.draining) return singleErr(req.id,"draining","Daemon is draining");
-    try {
-      const {createHostLocalDataSourceService} = await import("./local-data-source-registry.js");
-      if (ctx.draining) return singleErr(req.id,"draining","Daemon is draining");
-      ctx.localSources ??= createHostLocalDataSourceService({configPath:join(dirname(ctx.dbPath),"source-registry.json")});
-      return singleOk(req.id,await ctx.localSources.inspect(req.params));
-    } catch(error) {return singleErr(req.id,error instanceof Error && error.message === "invalid_request" ? "invalid_request" : "source_unavailable","Local source unavailable");}
   }
   if (["prepare","list","inspect","authorize","revoke","dispatch","reconcile"].some(action => req.method === "follow-up-delivery."+action)) {
     if (ctx.draining) return singleErr(req.id,"draining","Daemon is draining");

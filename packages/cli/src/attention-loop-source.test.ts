@@ -87,6 +87,14 @@ it("projects task identity only and never exposes prompts, context or evaluator 
     const facts=await readAttentionLoop({repo:root,path,loop_id:"l"});
     expect(facts).toMatchObject({pending:[{task_id:"task",capability:"code.write"}],in_progress:[{task_id:"task",capability:"code.write"}]});
     expect(JSON.stringify(facts)).not.toContain("PRIVATE_");
-    expect(facts.pending?.[0]).not.toHaveProperty("evaluation");
+    expect("pending" in facts ? facts.pending[0] : undefined).not.toHaveProperty("evaluation");
   }finally{await rm(root,{recursive:true,force:true});}
+});
+
+it.each(["count","id","capability"])("rejects oversized loop task metadata (%s)",async kind=>{
+ const root=await mkdtemp(join(tmpdir(),"loop-bounds-"));try{
+  const path=join(root,"state.json"),task={task_id:kind==="id"?"x".repeat(129):"task",capability:kind==="capability"?"x".repeat(65):"code",prompt:"ignored",source:"manual"};
+  await writeFile(path,JSON.stringify({loop_id:"l",started_at:"now",updated_at:"now",pending:Array.from({length:kind==="count"?17:1},()=>task),completed_tasks:[]}));
+  await expect(readAttentionLoop({repo:root,path,loop_id:"l"})).rejects.toThrow("oversized_loop_source");
+ }finally{await rm(root,{recursive:true,force:true});}
 });

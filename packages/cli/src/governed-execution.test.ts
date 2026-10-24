@@ -217,7 +217,10 @@ it('rejects a new guard while reconciliation verification is already pending', a
   let finish!: () => void; const barrier = new Promise<void>(resolve => { finish = resolve; });
   const release = lease.releaseAfterReconciliation!(() => barrier);
   await expect(lease.withWriteGuard!(scope.workspacePath, () => 1)).rejects.toThrow('unavailable');
-  finish(); await release; expect(f.writes.in_use).toBe(0);
+  await expect(lease.releaseAfterReconciliation!(async () => { throw Error('second verifier denied'); })).rejects.toThrow('second verifier denied');
+  const normalRelease = lease.release();
+  finish(); await Promise.all([release, normalRelease]); expect(f.writes.in_use).toBe(0);
+  await expect(lease.releaseAfterReconciliation!(async () => { throw Error('released verifier denied'); })).rejects.toThrow('released verifier denied');
 });
 it('defers renewal ticks during guarded work and renews before releasing the guard state', async () => {
   const f = await fixture(); vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] });
@@ -242,10 +245,11 @@ it('coalesces normal release and reconciliation until the physical repository lo
   });
   const f = await fixture(); const lease = await f.admission.acquire({ kind: 'write', runId: 'release-race', workspacePath: f.repo });
   const pending = lease.release(); await started;
-  let recovered = false; const recovery = lease.releaseAfterReconciliation!(async () => {}).then(() => { recovered = true; });
+  await expect(lease.releaseAfterReconciliation!(async () => { throw Error('recovery grant revoked'); })).rejects.toThrow('recovery grant revoked');
+  let verifications = 0; let recovered = false; const recovery = lease.releaseAfterReconciliation!(async () => { verifications++; }).then(() => { recovered = true; });
   const second = lease.release(); await Promise.resolve(); await Promise.resolve();
   expect(recovered).toBe(false); expect(f.writes.in_use).toBe(1); expect(physicalCalls).toBe(1);
   await expect(lease.assertActive!()).rejects.toThrow('unavailable');
   releasePhysical(); await Promise.all([pending, second, recovery]);
-  expect(recovered).toBe(true); expect(f.writes.in_use).toBe(0); expect(physicalCalls).toBe(1);
+  expect(recovered).toBe(true); expect(verifications).toBe(1); expect(f.writes.in_use).toBe(0); expect(physicalCalls).toBe(1);
 });

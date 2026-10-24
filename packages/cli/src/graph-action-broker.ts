@@ -618,9 +618,13 @@ export class GraphActionBroker {
       authorize: async () => { this.authorize(binding); this.fence(binding); await policy?.(action.workspace.workspace_path); this.authorize(binding); this.fence(binding); return { allow: true }; } });
     if (!invocationRunId) throw new Denied("POLICY_DENIED", candidate.reason ?? "candidate preflight refused");
     if (threw || candidate.status === "execution_unconfirmed" || candidate.execution?.failure_code) throw new Error("adapter result or execution unconfirmed");
+    // Contained proof reads the daemon identity twice and container absence once;
+    // each Engine request has a five-second budget. Use the same bounded grace
+    // as contained cancellation, still requiring the fresh physical stop proof.
+    const stopProofGraceMs = execution.kind === "contained" || execution.kind === "contained-suite" ? 30000 : 1000;
     let stopTimer: ReturnType<typeof setTimeout> | undefined;
     const stopped = await Promise.race([wrapper.confirmStopped!(invocationRunId),
-      new Promise<{ stopped: false }>(resolve => { stopTimer = setTimeout(() => resolve({ stopped: false }), 1000); })])
+      new Promise<{ stopped: false }>(resolve => { stopTimer = setTimeout(() => resolve({ stopped: false }), stopProofGraceMs); })])
       .finally(() => { if (stopTimer) clearTimeout(stopTimer); });
     if (stopped.stopped !== true || !stopped.evidence?.trim()) throw new Error("external stop unconfirmed");
     const usage = candidate.execution;

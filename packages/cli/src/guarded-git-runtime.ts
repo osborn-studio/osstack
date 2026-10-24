@@ -1,8 +1,8 @@
-import { realpath } from "node:fs/promises";
+import { realpath, lstat } from "node:fs/promises";
 import { createDeliveryVerificationFence, buildDeliveryVerificationReceipt, captureDeliveryCandidate, persistDeliveryHostRecord, verifyPersistedDeliveryReceipt, deliveryGit } from "./delivery-contract-host.js";
 import { createHash } from "node:crypto";
 import { mkdir, writeFile } from "node:fs/promises";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import {
   assertGuardedCandidateBase,
   assertGuardedCandidateHead,
@@ -76,6 +76,7 @@ export const GuardedGitRouting = z
   .object({
     delivery_contract: FrozenDeliveryContractV2.optional(),
     execution_context_path: z.string().min(1).optional(),
+    execution_context_pin: z.object({ path: AbsolutePath, dev: z.string(), ino: z.string(), config_sha256: Sha256 }).strict().optional(),
     schema_version: z.literal(1),
     task: Task,
     profile: RuntimeProfile,
@@ -290,6 +291,26 @@ function policyFromRouting(
   };
 }
 
+/** Pin configuration semantics and file identity, never dynamic source/host authority. */
+async function executionContextPin(workspacePath: string, configPath: string) {
+  const { loadExecutionContextConfig } = await import("./execution-context.js");
+  const path = await realpath(resolve(workspacePath, configPath));
+  const before = await lstat(path);
+  const config = await loadExecutionContextConfig(configPath, workspacePath);
+  const after = await lstat(path);
+  if (!before.isFile() || before.dev !== after.dev || before.ino !== after.ino
+    || before.size !== after.size || before.mtimeMs !== after.mtimeMs || before.ctimeMs !== after.ctimeMs)
+    throw Error("execution_context_configuration_changed");
+  return { path, dev: String(after.dev), ino: String(after.ino), config_sha256: sha256(JSON.stringify(config)) };
+}
+async function assertExecutionContextPin(workspacePath: string, routing: GuardedGitRouting) {
+  if (!routing.execution_context_path) return;
+  if (!routing.execution_context_pin) throw Error("execution_context_initial_pin_required");
+  const current = await executionContextPin(workspacePath, routing.execution_context_path);
+  if (JSON.stringify(current) !== JSON.stringify(routing.execution_context_pin))
+    throw Error("execution_context_configuration_changed");
+}
+
 export class GuardedGitRuntime {
   private readonly deps: GuardedGitRuntimeDeps;
   private readonly store: SqliteGuardedDeliveryStore;
@@ -331,6 +352,8 @@ export class GuardedGitRuntime {
       );
     }
     await this.assertPolicy(routing, input.workspace_path);
+    if (routing.execution_context_path)
+      routing.execution_context_pin = await executionContextPin(input.workspace_path, routing.execution_context_path);
     return await this.engine(routing, input.budget).start({
       autonomy_run_id: input.autonomy_run_id,
       task_id: input.task_id,
@@ -549,8 +572,10 @@ export class GuardedGitRuntime {
     let context: Awaited<ReturnType<NonNullable<GuardedGitRuntimeDeps["createExecutionContext"]>>> | undefined;
     if (routing.execution_context_path) {
       if (!this.deps.createExecutionContext) throw new Error("execution_context_unavailable");
+      await assertExecutionContextPin(workspacePath, routing);
       context = await this.deps.createExecutionContext({ adapters, workspacePath, configPath: routing.execution_context_path,
         ...(contract ? { contractDigest: contract.digest, contractBrief: contract.brief } : {}) });
+      await assertExecutionContextPin(workspacePath, routing);
     }
     const engine = new LoopEngine({
       loopId: `loop_${routing.task.task_id}`,

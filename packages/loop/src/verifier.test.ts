@@ -15,6 +15,8 @@ let workspace: string;
 
 beforeEach(() => {
   workspace = mkdtempSync(join(tmpdir(), "osstack-verifier-"));
+  execFileSync("git", ["init", "-b", "main"], { cwd: workspace, stdio: "ignore" });
+  execFileSync("git", ["-c", "user.name=test", "-c", "user.email=test@invalid", "commit", "--allow-empty", "-m", "baseline"], { cwd: workspace, stdio: "ignore" });
 });
 
 afterEach(async () => {
@@ -795,6 +797,7 @@ it("bounds verifier availability without starting invocation", async () => {
   expect(verdict.issues).toContainEqual(expect.objectContaining({rule:"verify.adapter_failed",message:expect.stringContaining("availability timed out")}));
 });
 it("bounds a verifier that ignores abort and never settles next or return", async () => {
+  await stableSnapshotForTimingTest();
   let signal: AbortSignal | undefined;
   let returned = false;
   const adapter = mockAdapter({invoke(_task, incoming) {
@@ -825,8 +828,11 @@ it("bounds a stuck post-review snapshot and never accepts its preceding approval
   await initGitWorkspace();
   await writeFile(join(workspace,"src/app.ts"),"export const candidate = true;\n");
   const isolation=await import("./reviewer-isolation.js");
-  const actual=isolation.snapshotReviewerWorkspace;
-  vi.spyOn(isolation,"snapshotReviewerWorkspace").mockImplementationOnce(actual).mockImplementationOnce(()=>new Promise<never>(()=>{}));
+  const before = await isolation.snapshotReviewerWorkspace(workspace);
+  vi.spyOn(isolation,"snapshotReviewerWorkspace").mockResolvedValueOnce(before).mockImplementationOnce(()=>new Promise<never>(()=>{}));
+  const boundary = await import("./review-boundary.js");
+  const collected = await boundary.collectReviewBoundary(workspace, {}, undefined);
+  vi.spyOn(boundary,"collectReviewBoundary").mockResolvedValue(collected);
   let invoked=false;
   const adapter=kimiAdapter(async function*(task){invoked=true;yield structuredReviewDoneEvent(task,"approved",[structuredJudgment("correctness",true)]);});
   const verdict=await verifyRun(run(),{workspacePath:workspace,verifierAgentIds:[adapter.id],adapters:[adapter],task:reviewTask("correctness"),timeoutMs:1000});
@@ -835,6 +841,7 @@ it("bounds a stuck post-review snapshot and never accepts its preceding approval
 });
 
 it("shares one deadline between availability and invocation", async () => {
+  await stableSnapshotForTimingTest();
   vi.useFakeTimers();
   try {
     let invokedAt=0;let abortedAt=0;
@@ -847,4 +854,30 @@ it("shares one deadline between availability and invocation", async () => {
     expect((await pending).pass).toBe(false);
     expect(abortedAt-invokedAt).toBe(20);
   }finally{vi.useRealTimers();}
+});
+
+async function stableSnapshotForTimingTest(): Promise<void> {
+  const isolation = await import("./reviewer-isolation.js");
+  const before = await isolation.snapshotReviewerWorkspace(workspace);
+  vi.spyOn(isolation, "snapshotReviewerWorkspace").mockResolvedValue(before);
+}
+
+it.each(["tracked", "untracked", "metadata"] as const)("rejects a generic verifier that changes %s state after approval", async kind => {
+  await initGitWorkspace();
+  const adapter = mockAdapter({ id: "generic-provider", async *invoke(task) {
+    const path = kind === "tracked" ? "src/app.ts" : kind === "untracked" ? "review-output.txt" : ".git/hooks/pre-commit";
+    await writeFile(join(workspace, path), "reviewer mutation");
+    yield doneEvent(task.run_id, task.session_id, "completed", "approved");
+  }});
+  const verdict = await verifyRun(run(), { workspacePath: workspace, verifierAgentIds: [adapter.id], adapters: [adapter] });
+  expect(verdict.pass).toBe(false);
+  expect(verdict.issues).toContainEqual(expect.objectContaining({ rule: "verify.reviewer_mutation" }));
+});
+
+it("does not invoke a generic verifier when its workspace cannot be snapshotted", async () => {
+  await rm(join(workspace, ".git"), { recursive: true }); let invoked = false;
+  const adapter = mockAdapter({ async *invoke(task) { invoked = true; yield doneEvent(task.run_id, task.session_id, "completed", "approved"); } });
+  const verdict = await verifyRun(run(), { workspacePath: workspace, verifierAgentIds: [adapter.id], adapters: [adapter] });
+  expect(invoked).toBe(false); expect(verdict.pass).toBe(false);
+  expect(verdict.issues).toContainEqual(expect.objectContaining({ rule: "verify.reviewer_snapshot_failed" }));
 });

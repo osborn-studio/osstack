@@ -27,6 +27,26 @@ surface that makes AI coding work visible and auditable.
 - [Capability map](#current-capability-map) · [Install](#install) · [Main commands](#main-commands).
 - [Task-oriented command reference](docs/guides/command-reference.en.md) · [Top-level command inventory](docs/inventory/CLI_COMMANDS.md).
 
+## Firstmate capabilities and commands
+
+The development branch maps Firstmate’s 24 capabilities to implementations or existing OSStack mechanisms. Main entry points are below. **This is not a claim that 24/24 are live: audit, CI, merging PR #244 and its prerequisites, and live-environment qualification are separate conditions.**
+
+| Purpose | Command entry points |
+|---|---|
+| Supervision and decisions | `attention status/watch/inbox/get/answer/recovery` |
+| Briefs and quiet operation | `attention brief/cockpit/posture/seen/foreground` · `daily` · `cockpit` |
+| Turn and supervision registration | `attention handoff/turn-end/claude-hook/loop/ci` |
+| Investigation to delivery | `scout inspect/promote` · `deliver` · `start` · `control` |
+| Verification and retention | `graph validate/run/status/cancel/resume` · `loop enqueue/run/status` |
+| Worker views | `worker list/inspect/watch/open/logs` |
+| Sources and continuity | `sources inspect/observe/events/acknowledge` |
+| Remote homes | `remote-home inspect/issue-cancel-grant/cancel/query` · `remote-export --stdio` · `remote-control --stdio` |
+| Context, memory and routing | `attention context/lesson/triage/routing-eval` · `deliver --execution-context FILE` |
+| External commitments | `follow-up-delivery prepare/list/inspect/issue-grant/authorize/revoke/dispatch/reconcile` |
+| Multi-home upgrades | `homes inspect/plan-upgrade/upgrade-status/prepare-managed-installation/apply-upgrade/reconcile-upgrade` |
+
+See the [full English command guide](docs/guides/firstmate-commands.en.md) and [中文手册](docs/guides/firstmate-commands.md) for examples, read/write boundaries, authorization requirements and outstanding live qualification. Documents are checked with `osstack neat check`; that check is not deployment or functional acceptance.
+
 ## Current Status
 
 | Area | Status |
@@ -39,11 +59,11 @@ surface that makes AI coding work visible and auditable.
 | License | MIT |
 | Monorepo | 22 workspace packages |
 
-**Release boundary:** This tree targets 0.20.0. At the 2026-09-21 pre-publication check, npm latest was CLI 0.19.0 and the graph package was absent. A version commit is not publication: verify the registry and GitHub release before treating 0.20.0 as available. Graph remains an internal beta with the execution limits below, even after npm publication.
+**Release boundary:** The CLI package in this source tree is version 0.21.0. A source version is not proof of public release or local installation. Check `osstack --version` and `npm view @osstack/cli version` separately; the Firstmate additions follow their branch and PR delivery status.
 
 ## Current Capability Map
 
-The current `main` branch is no longer just a loop runner. It is a local-first
+This source tree is more than a loop runner. It is a local-first
 control plane with these implemented surfaces (distribution limits noted below):
 
 | Capability | Current implementation | Main commands / package |

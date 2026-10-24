@@ -43,6 +43,8 @@ export interface GraphVerificationOptions {
   effectIdentity: (kind: Kind) => VerificationEffect;
   /** Trusted diagnostics only; called once per complete candidate observation. */
   onCandidateObservation?: (kind: Kind) => void;
+  /** Trusted preparation diagnostics; restore includes its internal artifact verification. */
+  onPreparationPhase?: (phase: 'verifyArtifact' | 'restore' | 'assertExactCandidateFiles', durationMs: number) => void;
   /** Host ledger preparation owns this exact source lease. No nested acquisition. */
   preparationLease?: ExecutionLease;
   slots?: Partial<Record<Kind, { nodeId: string; effectSlot: string; workspaceLeaseRef: string; tokenReservation: number }>>;
@@ -149,7 +151,7 @@ export async function prepareGraphVerificationBranch(options: GraphVerificationO
 }
 async function prepareSelection(options: GraphVerificationOptions, kinds: readonly Kind[]) {
   // Capture ALL callbacks and values before the first await.
-  const { authorize, authorizeCancel, authorizePolicy, acquire, effectIdentity, verifyReviewer, preparationLease, onCandidateObservation } = options;
+  const { authorize, authorizeCancel, authorizePolicy, acquire, effectIdentity, verifyReviewer, preparationLease, onCandidateObservation, onPreparationPhase } = options;
   const containedOptions = options.containedTests ? Object.freeze({ ...options.containedTests }) : undefined;
   const check = checkedAuthority(authorize); check();
   const data = snapshot({ root: options.root, binding: parseVerificationBinding(options.binding), candidate: GraphResult.parse(options.candidate), source: options.sourceWorkspace,
@@ -162,6 +164,14 @@ async function prepareSelection(options: GraphVerificationOptions, kinds: readon
     capabilities: () => structuredClone(capabilities), isAvailable: adapter.isAvailable.bind(adapter), invoke: adapter.invoke.bind(adapter),
     ...(adapter.confirmStopped ? { confirmStopped: adapter.confirmStopped.bind(adapter) } : {}) });
   const verifyArtifact = options.artifacts.verify.bind(options.artifacts); const restore = options.artifacts.restore.bind(options.artifacts);
+  const timedPreparation = async <T>(phase: 'verifyArtifact' | 'restore', operation: () => Promise<T>): Promise<T> => {
+    const started = performance.now(); try { return await operation(); }
+    finally { onPreparationPhase?.(phase, performance.now() - started); }
+  };
+  const exactCandidate = (path: string) => {
+    const started = performance.now(); try { assertExactCandidateFiles(path, binding.candidateRevision); }
+    finally { onPreparationPhase?.('assertExactCandidateFiles', performance.now() - started); }
+  };
   const { binding } = data;
   check();
   if (!isAbsolute(data.root) || data.root.includes('\0') || !isAbsolute(data.source.workspace_path) || data.source.workspace_id !== binding.scope.workspaceId) throw new Error('invalid host workspace/root');
@@ -191,26 +201,26 @@ async function prepareSelection(options: GraphVerificationOptions, kinds: readon
       if (value.candidateRevision !== binding.candidateRevision || verificationCanonical(value.input.scope) !== verificationCanonical(binding.scope)
         || value.input.runId !== binding.graphRunId || value.input.worktreePath !== data.source.workspace_path) throw new Error('artifact manifest binding mismatch');
     };
-    manifest = snapshot(await checked(() => verifyArtifact(binding.artifactDigest))); validateManifest(manifest);
+    manifest = snapshot(await checked(() => timedPreparation('verifyArtifact', () => verifyArtifact(binding.artifactDigest)))); validateManifest(manifest);
     await checked(() => realpath(dirname(data.root)));
     await checked(() => mkdir(data.root, { mode: 0o700, recursive: true }));
     if (await checked(() => realpath(data.root)) !== data.root || data.root === data.source.workspace_path || data.root.startsWith(`${data.source.workspace_path}/`)) throw new Error('host root must be canonical and outside source workspace');
     const paths: string[] = [];
     for (const kind of data.kinds) {
       await preparedCheck();
-      const restored = await checked(() => restore(binding.artifactDigest, { rootPath: data.root, directoryName: `${kind}-${randomUUID()}` }));
+      const restored = await checked(() => timedPreparation('restore', () => restore(binding.artifactDigest, { rootPath: data.root, directoryName: `${kind}-${randomUUID()}` })));
       if (restored.candidateRevision !== binding.candidateRevision || restored.tree !== manifest.tree || dirname(restored.worktreePath) !== data.root) throw new Error('restored candidate mismatch');
       if (options.deliveryContract) assertGraphContractPaths(options.deliveryContract, restored.worktreePath, binding.candidateRevision);
       if (kind === 'tests' && containedOptions) {
-        assertExactCandidateFiles(restored.worktreePath, binding.candidateRevision);
+        exactCandidate(restored.worktreePath);
         containedImage = snapshot(await checked(() => prepareGraphContainedImage(containedOptions, restored.worktreePath, binding.candidateRevision, check)));
-        assertExactCandidateFiles(restored.worktreePath, binding.candidateRevision);
+        exactCandidate(restored.worktreePath);
       }
       paths.push(restored.worktreePath);
       await preparedCheck();
     }
     reviewPath = paths[data.kinds.indexOf('review')]!; testsPath = paths[data.kinds.indexOf('tests')]!;
-    const final = await checked(() => verifyArtifact(binding.artifactDigest)); validateManifest(final);
+    const final = await checked(() => timedPreparation('verifyArtifact', () => verifyArtifact(binding.artifactDigest))); validateManifest(final);
     if (verificationCanonical(final) !== verificationCanonical(manifest)) throw new Error('artifact changed during preparation');
     await preparedCheck();
   } catch (error) { preparationFailure = { error }; }
@@ -224,7 +234,7 @@ async function prepareSelection(options: GraphVerificationOptions, kinds: readon
   if (testsPath) workspaces.tests = snapshot({ workspace_id: binding.scope.workspaceId, workspace_path: testsPath });
   const actions = await Promise.all(data.kinds.map(async kind => {
     const workspace = workspaces[kind]!;
-    assertExactCandidateFiles(workspace.workspace_path, binding.candidateRevision);
+    exactCandidate(workspace.workspace_path);
     // Paths come from the frozen tree, never from a potentially altered index.
     const trackedPaths = gitRaw(workspace.workspace_path, 'ls-tree', '-rz', '--name-only', binding.candidateRevision).split('\0').filter(Boolean);
     const trackedFingerprint = () => {

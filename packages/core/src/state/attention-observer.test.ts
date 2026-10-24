@@ -379,3 +379,12 @@ it("rolls back a failed sampling slice and retries every uncommitted subject", (
   expect(store.listItems(scope.scope_id).map(item => item.session_id).sort()).toEqual(["s0000", "s0001"]);
   expect(db.prepare("SELECT COUNT(*) n FROM attention_subjects WHERE kind='session' AND ordinal_cursor=1").get()).toEqual({ n: 2 });
 });
+
+it("bounds inventory response bytes and resumes after the final emitted subject",()=>{
+ const {db,observer,scope}=setup(12);observer.tick(1000);observer.tick(2000);
+ db.prepare("UPDATE attention_subjects SET payload_json=? WHERE scope_id=?").run(JSON.stringify({state:"unknown",padding:"x".repeat(30000)}),scope.scope_id);
+ const page=observer.inventory(scope.scope_id,2000);expect(Buffer.byteLength(JSON.stringify(page))).toBeLessThanOrEqual(262144);
+ expect(page.truncated).toBe(true);expect(page.returned).toBe(page.subjects.length);expect(page.next_after).toBeTruthy();
+ const next=observer.inventory(scope.scope_id,2000,page.next_after!);expect(next.subjects.length).toBeGreaterThan(0);
+ expect(next.subjects.some(item=>page.subjects.some(prior=>prior.subject_id===item.subject_id&&prior.kind===item.kind))).toBe(false);
+});

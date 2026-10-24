@@ -110,7 +110,7 @@ describe("LoopEngine", () => {
   });
 
   it("runs reviewer adapters after execution and treats them as verification gates", async () => {
-    const workspace = await makeQueuedWorkspace();
+    const workspace = await makeGitQueuedWorkspace("baseline\n");
     const reviewer = new FakeReviewAdapter();
     const result = await new LoopEngine({
       loopId: "loop-reviewer",
@@ -134,11 +134,11 @@ describe("LoopEngine", () => {
       }),
     }));
     await expect(readFile(join(workspace, "review-output.txt"), "utf-8"))
-      .resolves.toBe(`reviewed ${result.completedTasks[0]?.run_id}\n`);
+      .rejects.toThrow();
   });
 
   it("emits the frozen profile and role identities at plan and verify boundaries", async () => {
-    const workspace = await makeQueuedWorkspace();
+    const workspace = await makeGitQueuedWorkspace("baseline\n");
     const builder = new FakeLoopAdapter({
       id: "claude-code",
       outputFile: "profile-output.txt",
@@ -191,6 +191,9 @@ describe("LoopEngine", () => {
       "-m",
       "use TypeScript fixture",
     ]);
+    const verifier = await import("./verifier.js"); const actualVerify = verifier.verifyRun;
+    const seenIssues: unknown[] = [];
+    const spy = vi.spyOn(verifier, "verifyRun").mockImplementation(async (...args) => { const result = await actualVerify(...args); seenIssues.push(...result.issues); return result; });
     const reviewer = new FakeKimiReviewAdapter();
     const result = await new LoopEngine({
       loopId: "loop-kimi-review",
@@ -201,6 +204,7 @@ describe("LoopEngine", () => {
       adapters: [reviewer],
     }).runOnce();
 
+    spy.mockRestore(); expect(seenIssues).toEqual([]);
     const expectedReview = expect.objectContaining({
       schema_version: 1,
       reviewer_agent_id: "kimi-code",
@@ -223,7 +227,7 @@ describe("LoopEngine", () => {
   });
 
   it("emits a dedicated event only for a verifier's structured implementation deviation", async () => {
-    const workspace = await makeQueuedWorkspace();
+    const workspace = await makeGitQueuedWorkspace("baseline\n");
     await writeFile(join(workspace, "tasks", "task.json"), JSON.stringify({
       task_id: "task-1",
       capability: "code.test",
@@ -1121,7 +1125,6 @@ class FakeReviewAdapter implements AgentAdapter {
 
   async *invoke(task: AgentTask): AsyncIterable<HermesEvent> {
     const repoPath = typeof task.context?.["repo_path"] === "string" ? task.context["repo_path"] : undefined;
-    const subjectRunId = typeof task.context?.["subject_run_id"] === "string" ? task.context["subject_run_id"] : "missing";
     if (repoPath === undefined) {
       yield fakeEvent(task, 1, "error", {
         code: "missing_repo_path",
@@ -1131,7 +1134,6 @@ class FakeReviewAdapter implements AgentAdapter {
       return;
     }
 
-    await writeFile(join(repoPath, "review-output.txt"), `reviewed ${subjectRunId}\n`);
     yield fakeEvent(task, 1, "done", {
       status: "completed",
       last_seq: 0,
@@ -1250,7 +1252,7 @@ function profileRoutingFixture() {
 }
 
 it("retains uncertain verifier execution and never retries it after timeout or restart", async () => {
-  const workspace=await makeQueuedWorkspace();const reviewer=new FakeReviewAdapter();let invocations=0;
+  const workspace=await makeGitQueuedWorkspace("base\n");const reviewer=new FakeReviewAdapter();let invocations=0;
   vi.spyOn(reviewer,"invoke").mockImplementation(()=>{
     invocations++;
     const iterator: AsyncIterableIterator<HermesEvent>={next:()=>new Promise(()=>{}),return:()=>new Promise(()=>{}),[Symbol.asyncIterator](){return this;}};
@@ -1264,4 +1266,58 @@ it("retains uncertain verifier execution and never retries it after timeout or r
   await new LoopEngine(options).runOnce();
   expect(invocations).toBe(1);
   expect(await readFile(join(workspace,"execution-count.txt"),"utf8")).toBe("x");
+});
+
+it("keeps prearmed containment when state persistence fails after unknown verifier stop", async () => {
+  const workspace = await makeGitQueuedWorkspace("base\n");
+  const stateFile = await import("./state-file.js");
+  const reviewer = new FakeReviewAdapter();
+  let invocations = 0;
+  vi.spyOn(reviewer, "invoke").mockImplementation(() => {
+    invocations++;
+    return { next: () => new Promise(() => {}), return: () => new Promise(() => {}),
+      [Symbol.asyncIterator]() { return this; } } as AsyncIterableIterator<HermesEvent>;
+  });
+  const options = { workspacePath: workspace, sources: ["task_queue" as const],
+    executeCommand: "node -e \"require('fs').appendFileSync('execution-count.txt','x')\"",
+    verifierAgentIds: [reviewer.id], adapters: [reviewer], commandTimeoutMs: 1000 };
+  const failure = vi.spyOn(stateFile, "writeLoopState").mockRejectedValueOnce(new Error("ENOSPC after unknown stop"));
+  try { await expect(new LoopEngine(options).runOnce()).rejects.toThrow("ENOSPC"); }
+  finally { failure.mockRestore(); }
+  await expect(readFile(join(workspace, "LOOP-STATE.json"))).rejects.toMatchObject({ code: "ENOENT" });
+  expect(await readFile(join(workspace, "LOOP-STATE.json.stop-unconfirmed.json"), "utf8")).toContain("containment_pending");
+  const restarted = await new LoopEngine(options).runOnce();
+  expect(restarted.executedTaskCount).toBe(0);
+  expect(invocations).toBe(1);
+  expect(await readFile(join(workspace, "execution-count.txt"), "utf8")).toBe("x");
+});
+
+it("blocks restart with an interrupted prearmed record even without any state file", async () => {
+  const workspace = await makeQueuedWorkspace();
+  const { armLoopContainment } = await import("./loop-containment.js");
+  armLoopContainment(join(workspace, "LOOP-STATE.json.stop-unconfirmed.json"));
+  const result = await new LoopEngine({ workspacePath: workspace, sources: ["task_queue"],
+    executeCommand: "node -e \"require('fs').writeFileSync('must-not-run','x')\"" }).runOnce();
+  expect(result.executedTaskCount).toBe(0);
+  await expect(readFile(join(workspace, "must-not-run"))).rejects.toMatchObject({ code: "ENOENT" });
+});
+
+it("never retries or commits candidate mutations from a generic verifier", async () => {
+  const workspace = await makeGitQueuedWorkspace("baseline\n");
+  const before = await git(workspace, ["rev-parse", "HEAD"]); let invocations = 0;
+  const reviewer = new FakeReviewAdapter();
+  reviewer.invoke = async function* (task) {
+    invocations++;
+    const repo = task.context?.["repo_path"]; if (typeof repo !== "string") throw Error("missing repository");
+    if (invocations === 1) await writeFile(join(repo, "review-output.txt"), "foreign verifier edit");
+    yield fakeEvent(task, 1, "done", { status: "completed", last_seq: 0, result_summary: "approved" }, true);
+  };
+  const options = { loopId: "verifier-mutation", workspacePath: workspace, sources: ["task_queue" as const], maxIterations: 3,
+    executeCommand: "node -e \"require('fs').writeFileSync('app.txt','builder')\"", verifierAgentIds: [reviewer.id], adapters: [reviewer] };
+  const result = await new LoopEngine(options).runOnce();
+  expect(invocations).toBe(1); expect(result.completedTasks[0]?.outcome).toBe("escalated");
+  expect(result.completedTasks[0]?.implementation_unconfirmed).not.toBe(true);
+  expect(await git(workspace, ["rev-parse", "HEAD"])).toBe(before);
+  expect((await new LoopEngine(options).runOnce()).executedTaskCount).toBe(0);
+  expect(invocations).toBe(1);
 });

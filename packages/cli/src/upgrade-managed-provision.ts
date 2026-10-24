@@ -1,6 +1,6 @@
-import { existsSync, lstatSync, readdirSync } from 'node:fs';
+import { existsSync, lstatSync, readdirSync, readlinkSync } from 'node:fs';
 import { mkdir, unlink } from 'node:fs/promises';
-import { join } from 'node:path';
+import { basename, dirname, join, resolve } from 'node:path';
 import { acquireDaemonLock } from './daemon-lock.js';
 import { upgradeCanonical } from './upgrade-plan.js';
 import { ManagedInstallationSchema, finishPrivatePublication, loadBundle, privateDirectory, publishPrivate, publishPrivateBytes, readPrivate, sha256, stageRelease, switchRelease, syncDirectory } from './upgrade-native-files.js';
@@ -13,12 +13,20 @@ export async function provisionManagedInstallation(input: { request: string; app
   const names=readdirSync(config.root);const resumed=existsSync(join(config.root,'provisioning.json'));
   if(names.length&&(!resumed||upgradeCanonical(JSON.parse(readPrivate(join(config.root,'provisioning.json')).toString()))!==upgradeCanonical(claim)))throw Error('upgrade_installation_not_empty');
   const allowed=new Set(['provisioning.json','provision-owner.pid','provision-owner.pid.lock.db','consumers','services','releases','current','installation.json']);
-  if(resumed&&names.some(name=>!allowed.has(name)&&!/^\.publish-[a-f0-9]{32}$/.test(name)))throw Error('upgrade_provision_unknown_file');
+  if(resumed&&names.some(name=>!allowed.has(name)&&!/^\.(?:publish|current)-[a-f0-9]{32}$/.test(name)))throw Error('upgrade_provision_unknown_file');
   const homeLocks:Array<()=>void>=[];
   const publishSame=async(path:string,value:unknown)=>{try{await publishPrivate(path,value);}catch(error){if((error as NodeJS.ErrnoException).code!=='EEXIST'||upgradeCanonical(JSON.parse(readPrivate(path).toString()))!==upgradeCanonical(value))throw error;}await finishPrivatePublication(path);};
   await publishSame(join(config.root,'provisioning.json'),claim);
   const releaseOwner=acquireDaemonLock(join(config.root,'provision-owner.pid'));
   try{
+    // switchRelease may die after creating its temporary symlink, before rename.
+    // Only remove that exact namespace and a link into this installation's releases.
+    for(const name of readdirSync(config.root).filter(name=>/^\.current-[a-f0-9]{32}$/.test(name))){
+      const path=join(config.root,name);if(!lstatSync(path).isSymbolicLink())throw Error('upgrade_provision_unknown_file');
+      const target=resolve(config.root,readlinkSync(path));if(dirname(target)!==join(config.root,'releases')||!/^[a-f0-9]{64}$/.test(basename(target)))throw Error('upgrade_provision_unknown_file');
+      await unlink(path);
+    }
+    await syncDirectory(config.root);
     const bundle = loadBundle(input.artifact,input.artifactDigest);if(!bundle.files.some(f=>f.path===config.entry))throw Error('upgrade_missing_entry');
     for(const c of config.consumers){privateDirectory(c.home);const identity=JSON.parse(readPrivate(join(c.home,'deployment-identity.json'),512).toString());if(identity.home_id!==c.home_id||identity.schema_version!==1)throw Error('upgrade_home_identity_changed');homeLocks.push(acquireDaemonLock(join(c.home,'daemon.pid')));await removeAbandonedUpgradeSocket(c.socket,signal);}
     await publishSame(join(config.root,'provisioning.json'),claim);

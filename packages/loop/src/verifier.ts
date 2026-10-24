@@ -698,19 +698,20 @@ async function invokeVerifierAdapter(
         })),
       };
     }
-    try {
-      beforeSnapshot = await verifierReadDeadline(snapshotReviewerWorkspace(options.workspacePath), remaining());
-    } catch (error) {
-      return {
-        agentId: adapter.id,
-        eventCount: 0,
-        issues: [adapterIssue(
-          adapter.id,
-          "verify.reviewer_snapshot_failed",
-          error instanceof Error ? error.message : String(error),
-        )],
-      };
-    }
+  }
+  // Every verifier is read-only, regardless of its output protocol or provider.
+  try {
+    beforeSnapshot = await verifierReadDeadline(snapshotReviewerWorkspace(options.workspacePath), remaining());
+  } catch (error) {
+    return {
+      agentId: adapter.id,
+      eventCount: 0,
+      issues: [adapterIssue(
+        adapter.id,
+        "verify.reviewer_snapshot_failed",
+        error instanceof Error ? error.message : String(error),
+      )],
+    };
   }
 
   const controller = new AbortController();
@@ -822,6 +823,7 @@ async function invokeVerifierAdapter(
     issues.push(adapterIssue(adapter.id,"verify.adapter_stop_unconfirmed","Verifier invocation timed out without physical stop evidence; reconciliation required"));
   }
   if (snapshotError !== undefined) {
+    issues.push(adapterIssue(adapter.id, "verify.reviewer_integrity_unconfirmed", "Post-invocation workspace integrity could not be verified; do not retry this candidate"));
     issues.push(adapterIssue(
       adapter.id,
       "verify.reviewer_snapshot_failed",

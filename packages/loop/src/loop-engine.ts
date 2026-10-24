@@ -1,3 +1,4 @@
+import { armLoopContainment, hasLoopContainment, releaseLoopContainment } from "./loop-containment.js";
 import type { LoopLifecycleAdmission } from "./policy-gate.js";
 import { randomUUID } from "node:crypto";
 import { dirname, isAbsolute, join } from "node:path";
@@ -229,6 +230,8 @@ export interface LoopRunCyclesResult {
 export class LoopEngine {
   private seq = 0;
   private implementationUnconfirmed = false;
+  private containmentPending = false;
+  private candidateContaminated = false;
   private lifecycleEffectsStarted = false;
   private readonly events: LoopEvent[] = [];
 
@@ -294,7 +297,7 @@ export class LoopEngine {
         estimated_cost_usd: result.state.key_metrics?.cost_consumed ?? 0,
         no_progress_cycles: noProgressCycles,
       });
-      if (budgetStatus?.exceeded === true || this.implementationUnconfirmed) break;
+      if (budgetStatus?.exceeded === true || this.implementationUnconfirmed || this.containmentPending || this.candidateContaminated) break;
       if (result.goal?.pass === true) break;
       if (options.stopWhenIdle === true && result.executedTaskCount === 0) break;
       if (cycle < cycles && intervalMs > 0) await sleep(intervalMs);
@@ -340,7 +343,9 @@ export class LoopEngine {
       settled = true;
       return result;
     } finally {
-      if (this.implementationUnconfirmed || (!settled && this.lifecycleEffectsStarted)) lease?.retain("execution or external stop unconfirmed");
+      if (this.containmentPending) lease?.retain("persisted execution containment requires reconciliation");
+      else if (this.candidateContaminated) lease?.retain("verifier candidate integrity requires reconciliation");
+      else if (this.implementationUnconfirmed || (!settled && this.lifecycleEffectsStarted)) lease?.retain("execution or external stop unconfirmed");
       else await lease?.release();
     }
   }
@@ -506,10 +511,12 @@ export class LoopEngine {
     const existingState = await readLoopState(jsonPath);
     const loopId = existingState?.loop_id ?? this.options.loopId ?? `loop_${randomUUID()}`;
     const state = existingState ?? createInitialLoopState(loopId);
+    const containmentPath = jsonPath + ".stop-unconfirmed.json";
+    this.containmentPending ||= hasLoopContainment(containmentPath);
     this.implementationUnconfirmed ||= state.completed_tasks.some((task) =>
       task.implementation_unconfirmed === true);
     const decisions = [...(state.decisions ?? [])];
-    if (this.implementationUnconfirmed) {
+    if (this.implementationUnconfirmed || this.containmentPending) {
       if (lifecycle.emitStopped) this.emit(loopId, "loop.stopped", completionStopPayload(state, 0));
       return {
         loop_id: loopId, state, completedTasks: [], events: this.events.slice(eventStartIndex),
@@ -561,6 +568,9 @@ export class LoopEngine {
     const completed: CompletedTask[] = [...state.completed_tasks];
     const pending = [...tasks];
 
+    const containmentArmed = tasks.length > 0 || Boolean(this.options.goalCommand?.trim());
+    if (containmentArmed) armLoopContainment(containmentPath);
+
     for (const task of tasks) {
       pending.shift();
       this.lifecycleEffectsStarted = true;
@@ -578,7 +588,7 @@ export class LoopEngine {
         if (frozenTask.branch !== policy!.branch) throw Error("CANDIDATE_BRANCH_MISMATCH");
         await candidateRecord.record(taskResult.completedTask.outcome === "success" ? "candidate_commit" : "local_validation_failed", { taskOrdinal: tasks.indexOf(task), ...frozenTask });
       }
-      if (this.implementationUnconfirmed || (policy && taskResult.completedTask.outcome !== "success")) break;
+      if (this.implementationUnconfirmed || this.candidateContaminated || (policy && taskResult.completedTask.outcome !== "success")) break;
       if (!policy && this.options.archiveCompletedTasks === true) {
         const archive = await archiveCompletedTaskFile(task, taskResult.completedTask, workspacePath);
         this.emit(loopId, "loop.queue.archived", {
@@ -620,6 +630,7 @@ export class LoopEngine {
               this.implementationUnconfirmed = true;
               for (const completed of current) completed.implementation_unconfirmed = true;
             }
+            if (verdict.issues.some(issue => issue.rule === "verify.reviewer_mutation" || issue.rule === "verify.reviewer_integrity_unconfirmed")) this.candidateContaminated = true;
             assertCandidateFrozen(workspacePath, frozen);
             if (!verdict.pass) throw Error("CANDIDATE_PREFLIGHT_FAILED");
           }
@@ -643,7 +654,7 @@ export class LoopEngine {
       if (ready && this.options.archiveCompletedTasks === true) decisions.push("candidate queue retained; remote CI and acceptance pending");
     }
 
-    const goal = this.implementationUnconfirmed ? undefined : await this.checkGoal(loopId, workspacePath);
+    const goal = this.implementationUnconfirmed || this.candidateContaminated ? undefined : await this.checkGoal(loopId, workspacePath);
     if (goal !== undefined) {
       decisions.push(`goal: ${goal.pass ? "passed" : "not met"} - ${goal.summary}`);
     }
@@ -682,6 +693,7 @@ export class LoopEngine {
     if (policy) { await assertCandidateStateFile(jsonPath); await assertCandidateStateFile(markdownPath!); }
     const paths = await writeLoopState(jsonPath, nextState, { ...(markdownPath !== undefined ? { markdownPath } : {}) });
     if (policy) { await chmod(paths.jsonPath, 0o600); await chmod(paths.markdownPath, 0o600); }
+    if (containmentArmed && !this.implementationUnconfirmed && !this.candidateContaminated) releaseLoopContainment(containmentPath);
     this.emit(loopId, "loop.state.written", { jsonPath: paths.jsonPath, markdownPath: paths.markdownPath });
     this.emit(loopId, "loop.cycle.completed", {
       cycle,
@@ -1008,6 +1020,16 @@ export class LoopEngine {
           decisions.push(`${task.task_id}: ${reason}`);
           break;
         }
+        if (finalVerdict.issues.some(issue => issue.rule === "verify.reviewer_mutation" || issue.rule === "verify.reviewer_integrity_unconfirmed")) {
+          this.candidateContaminated = true;
+          preserveWorktreeBranch = worktree !== undefined;
+          outcome = "escalated";
+          const reason = "Verifier changed candidate integrity or could not prove it unchanged; reconciliation required before retry";
+          this.emit(loopId, "loop.verify.done", { task_id: task.task_id, pass: false, score: 0, issue_count: finalVerdict.issues.length, reviewer_agent_id: finalVerdict.reviewer_agent_id, summary: reason, iteration });
+          this.emit(loopId, "loop.escalated", { task_id: task.task_id, reason, iteration, max_iterations: maxIterations, escalate_to: "hermes", agent_id: finalRun.agent_id });
+          decisions.push(`${task.task_id}: ${reason}`);
+          break;
+        }
         if (verifyFence) {
           try { await verifyFence(); }
           catch (error) {
@@ -1178,7 +1200,7 @@ export class LoopEngine {
           : `${task.task_id}: isolated worktree had no git changes to merge`);
       }
     } finally {
-      if (worktree !== undefined && !this.implementationUnconfirmed && !preserveCandidateWorktree) {
+      if (worktree !== undefined && !this.implementationUnconfirmed && !this.candidateContaminated && !preserveCandidateWorktree) {
         await cleanupWorktree(worktree, { removeBranch: !preserveWorktreeBranch });
         this.emit(loopId, "loop.worktree.cleaned", {
           task_id: task.task_id,
@@ -1241,7 +1263,7 @@ export class LoopEngine {
       });
 
     return {
-      completedTask: await this.applySelfImprovement(loopId, completedTask, decisions),
+      completedTask: this.implementationUnconfirmed || this.candidateContaminated ? completedTask : await this.applySelfImprovement(loopId, completedTask, decisions),
       decisions,
     };
   }

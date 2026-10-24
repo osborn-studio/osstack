@@ -12,8 +12,11 @@ export class VerificationInventoryBudget {
   constructor(private readonly maxBytes: number = verificationInventoryLimits.candidateBytes,
     private readonly maxEntries: number = verificationInventoryLimits.candidateEntries) {}
   entry(bytes = 0): void {
-    if (!Number.isSafeInteger(bytes) || bytes < 0 || ++this.entries > this.maxEntries
-      || (this.bytes += bytes) > this.maxBytes) throw Error('verification inventory budget exceeded');
+    if (!Number.isSafeInteger(bytes) || bytes < 0) throw Error('verification inventory budget exceeded');
+    this.entries++;
+    if (this.entries > this.maxEntries) throw Error('verification inventory budget exceeded');
+    this.bytes += bytes;
+    if (this.bytes > this.maxBytes) throw Error('verification inventory budget exceeded');
   }
 }
 /** Cap allocation and reads on the opened inode, not a potentially stale pathname

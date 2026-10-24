@@ -49,13 +49,13 @@
 
 OSStack原生队列包含12个能力收口任务、独立代码QA任务，以及7个尚未执行的认证/环境资格任务。最终审计或外部资格未通过前，原能力任务不凭子代理报告自动标完成。详见[任务与验证证据](2026-10-24-firstmate-completion-integration-evidence/README.md)。
 
-## 审计与交付状态
+## 历史完整测试基线（不是当前修复后的最终验收）
 
-生产源码快照为 `af312fd7623fa27668e91a6bf8965e0dc043be1a`。最终完整运行覆盖22个包：**5,585项通过、0项失败、4项条件跳过**；构建、inventory生成、严格类型检查、完整测试、lint、协议schema、inventory新鲜度、启动预算共8个检查全部通过。OSStack任务 `firstmate-final-r2-codeqa` 的实际执行与独立verifier均为success，原始回执及每包计数见[整合证据](2026-10-24-firstmate-completion-integration-evidence/README.md)。
+当时生产源码快照为 `af312fd7623fa27668e91a6bf8965e0dc043be1a`。最终完整运行覆盖22个包：**5,585项通过、0项失败、4项条件跳过**；构建、inventory生成、严格类型检查、完整测试、lint、协议schema、inventory新鲜度、启动预算共8个检查全部通过。OSStack任务 `firstmate-final-r2-codeqa` 的实际执行与独立verifier均为success，原始回执及每包计数见[整合证据](2026-10-24-firstmate-completion-integration-evidence/README.md)。
 
 前一轮完整运行的7项失败均保留：6项来自只读状态入口未支持新增schema46，1项来自进程收尾fixture未等待子进程启动。已修复并重新跑过整个22包套件；没有放宽生产停止期限或断言。4项跳过分别为provider-live、native-cold、Graph性能与活跃监督资格开关。完整套件之后，native-cold两个全新checkout安装与Graph性能均单独通过；活跃监督已有单独三轮通过记录。只有provider-live仍未执行，不能把这些额外检查冒充完整套件内的通过数。
 
-交付为[PR #244](https://github.com/osborn-studio/osstack/pull/244)，依赖#243及前序PR栈。当前保留草稿：最终Claude Code CLI Haiku5.5尝试返回OAuth过期、`is_error:true`、0 token；最新兼容修复也尚未获得最终模型审计。已保留组件审计与独立代码复核，但它们不替代最终审计。CI以该PR当前HEAD的检查结果为准，本地通过不冒充CI通过。
+交付为[PR #244](https://github.com/osborn-studio/osstack/pull/244)，依赖#243及前序PR栈。早期因 Claude OAuth 过期保留草稿；该次 `is_error:true`、0 token 的尝试不计为审计通过。之后已恢复实际调用并完成多轮修复及分范围复审；当前交付结论以最新最终审计报告为准。CI以该PR当前HEAD的检查结果为准，本地通过不冒充CI通过。
 
 12个能力收口任务的代码路径已逐项核对，最终审计条件仍待完成；7类认证/真实环境资格任务保持独立排队、未执行状态。尚未合并或部署，不宣称24/24已在真实环境上线。
 
@@ -76,3 +76,9 @@ OSStack原生队列包含12个能力收口任务、独立代码QA任务，以及
 - 验证适配器的可用性、边界收集、前后快照和调用共用一个总期限，另有至多100ms迭代器清理等待；底层同步代码无法抢占。调用超时且停止未证实时阻止Loop继续、重启重试与工作树清理。done事件后流不结束视为未完成；未请求的judgment（包括零spec任务）保持fail-closed。
 - Graph候选原始内容每次观察上限128MiB/10,000 entries；Git metadata遍历上限256MiB（stat计量）/20,000 entries。超限拒绝验证。性能测量只代表给定仓库形状，不承诺任意大小仓库都满足交互延迟。
 - managed升级恢复需要保留精确原plan、registry、artifact和历史证据；缺失时不承诺自动恢复。运行包须自包含，主机目录、Node、依赖与密钥由受信任操作者控制。直接DB命令的managed环境必须与注册一致；serve配置拒绝返回78，其他主入口错误由轻量entry统一打印消息并返回1，不输出调用栈。
+
+交付的显式provider拒绝（HTTP非成功、GraphQL errors、clientMutationId不匹配）同样保守落为delivery_unknown，不能据此绕过精确receipt条件重发。孤立started对应的in_flight响应仅表示曾记录启动，重启后须reconcile，不证明当前transport存活。远程客户端的残缺/损坏.local.json会fail-closed为invalid_remote_cancel_request（可能没有outcome字段）；若已校验远端回执但本地observed日志落盘失败，仍显示该回执并明确observation_persisted=false，已有本地reserve仍禁止重发。已有本地reserve时，远端not_found仅表示查询当时未找到journal，客户端总体保持delivery_unknown，避免把并发reserve前查询当作无副作用证明。grant文件是精确单attempt绑定的bearer能力，不宣称持有文件的进程仍会被交互确认再次隔离。
+
+Guarded交付另固定首次execution-context配置的语义摘要、规范路径与文件身份，并存入持久routing；repair每次重新建立host context前后均核对该pin，拒绝builder改写Git忽略配置后重新固定新内容。动态来源、权限与policy仍照常重新校验，不缓存授权。旧持久run若有context路径却没有初始pin，后续本地执行保守拒绝，不推断新配置获批。
+
+该execution-context pin约束每次host context的建立，没有完成时再核对文件的检查；完成回执不证明该配置文件从建立context到完成期间始终未变化。

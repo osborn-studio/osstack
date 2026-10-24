@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { mkdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import { linkSync, mkdirSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { afterEach, expect, it, vi } from 'vitest';
 import * as asyncFs from 'node:fs/promises';
@@ -86,4 +86,44 @@ it('does not mutate source continuity when a concurrent inspection is refused as
   expect(f.service.status(f.scope)).toEqual(before);expect(f.service.events(f.scope).events).toEqual(events);
  }finally{spy.mockImplementation(actualOpen);release();await Promise.allSettled([first,second]);}
  expect(f.service.status(f.scope)).toEqual(before);
+});
+
+it('requires a canonical host home for source-context private policy paths',async()=>{
+ const f=fixture();f.enable();const alias=join(f.root,'home-alias');symlinkSync(f.home,alias,'dir');
+ const sources=createHostSourceContext(alias);await expect(sources.load(f.task,{workspacePath:f.repo,signal:new AbortController().signal})).rejects.toThrow('source_policy_unavailable');
+ expect(f.service.status(f.scope)).toBeNull();
+});
+
+it.each(['symlink','hardlink'])('refuses a %s source ledger before changing target continuity',async(kind)=>{
+ const f=fixture();await f.service.observe(f.scope);const before=f.service.events(f.scope);
+ const original=join(f.home,'state.db'),target=join(f.root,'target.db');
+ const {renameSync}=await import('node:fs');renameSync(original,target);
+ if(kind==='symlink')symlinkSync(target,original);else linkSync(target,original);
+ await expect(f.service.observe(f.scope)).rejects.toThrow('db_path_not_single_file');
+ rmSync(original);renameSync(target,original);const after=f.service.events(f.scope);expect(after.events).toEqual(before.events);expect(after.clock.high_water_ms).toBe(before.clock.high_water_ms);
+});
+
+it('refuses a symlinked source ledger sidecar without changing the external file',async()=>{
+ const f=fixture();const target=join(f.root,'external');writeFileSync(target,'preserved');symlinkSync(target,join(f.home,'state.db-journal'));
+ await expect(f.service.observe(f.scope)).rejects.toThrow('db_path_not_single_file');expect(readFileSync(target,'utf8')).toBe('preserved');
+});
+
+it('does not change continuity on an already-cancelled observation request',async()=>{
+ const f=fixture();await f.service.observe(f.scope);const before=f.service.status(f.scope),events=f.service.events(f.scope).events;
+ const controller=new AbortController();controller.abort();await expect(f.service.observe(f.scope,controller.signal)).rejects.toThrow('source_cancelled');
+ expect(f.service.status(f.scope)).toEqual(before);expect(f.service.events(f.scope).events).toEqual(events);
+});
+it('quarantines revoked host registration once and does not auto-clear when the same pin returns',async()=>{
+ const f=fixture();await f.service.observe(f.scope);const before=f.service.status(f.scope)!;const config=join(f.home,'source-registry.json'),raw=readFileSync(config);
+ rmSync(config);await f.service.observe(f.scope);const unavailable=f.service.status(f.scope)!;expect(unavailable).toMatchObject({state:'unknown',reason:'config_missing',record_revision:before.record_revision+1});
+ await f.service.observe(f.scope);expect(f.service.status(f.scope)).toEqual(unavailable);
+ writeFileSync(config,raw,{mode:0o600});expect((await f.service.observe(f.scope)).snapshot.state).toBe('ready');expect(f.service.status(f.scope)).toEqual(unavailable);
+});
+it('does not write a continuity gap when an in-flight source observation is cancelled',async()=>{
+ const f=fixture();await f.service.observe(f.scope);const before=f.service.status(f.scope),events=f.service.events(f.scope).events;
+ const actual=(await vi.importActual<typeof import('node:fs/promises')>('node:fs/promises')).open;let blocked=false;let release!:()=>void;const held=new Promise<void>(resolve=>release=resolve);
+ vi.mocked(asyncFs.open).mockImplementation(async(path,flags,mode)=>{const handle=await actual(path,flags,mode);if(path===join(f.source,'snapshot.json')){blocked=true;await held;}return handle;});
+ const controller=new AbortController();const pending=f.service.observe(f.scope,controller.signal);const rejected=expect(pending).rejects.toThrow('source_cancelled');
+ try{await vi.waitFor(()=>expect(blocked).toBe(true));controller.abort();await rejected;expect(f.service.status(f.scope)).toEqual(before);expect(f.service.events(f.scope).events).toEqual(events);}
+ finally{vi.mocked(asyncFs.open).mockImplementation(actual);release();await pending.catch(()=>{});}
 });

@@ -587,7 +587,7 @@ export class AttentionObserver {
           faulty
         ? "degraded"
         : "covered";
-    return {
+    const result = {
       scope,
       coverage,
       subject_total: counts.total,
@@ -612,5 +612,12 @@ export class AttentionObserver {
         "Coverage is observation, not execution ownership",
       ],
     };
+    // Bound the serialized page, preserving a cursor to every omitted subject.
+    while(Buffer.byteLength(JSON.stringify(result))>262144&&result.subjects.length>1){
+      result.subjects.pop();result.returned=result.subjects.length;result.truncated=true;
+      const last=result.subjects.at(-1)!;result.next_after=`${last.kind}:${last.subject_id}`;
+    }
+    if(Buffer.byteLength(JSON.stringify(result))>262144)throw Error("attention_inventory_too_large");
+    return result;
   }
 }

@@ -177,11 +177,16 @@ export class GovernedExecution {
         if (released || retained || releasing) throw new Error("execution lease unavailable");
       },
       releaseAfterReconciliation: (verify) => {
-        if (releasing) return releasing;
-        if (writeGuardActive) return Promise.reject(new Error('write guard in progress'));
-        if (released) return Promise.resolve();
-        if (reconciled) return reconciled;
         if (typeof verify !== 'function') return Promise.reject(new Error('trusted reconciliation verifier required'));
+        if (releasing || released || reconciled) {
+          const pending = releasing ?? reconciled;
+          return (async () => {
+            const result: unknown = await verify();
+            if (result !== undefined) throw new Error('invalid reconciliation authority');
+            await pending;
+          })();
+        }
+        if (writeGuardActive) return Promise.reject(new Error('write guard in progress'));
         reconciled = (async () => {
           // Stop renewal first. No authority is freed until the verifier succeeds
           // and the canonical token is released under its filesystem guard.

@@ -687,9 +687,9 @@ See docs/V2_REFACTOR_PLAN.md for the full roadmap.
       // npm prefixes alike, and matches where serve --install provisions it).
       let checkoutRoot = dirname(fileURLToPath(import.meta.url));
       try { checkoutRoot = dirname(realpathSync(fileURLToPath(import.meta.url))); } catch { /* keep lexical */ }
-      const guardHome = process.env.OSSTACK_HOME ?? defaultOsstackHome();
+      const guardHome = osstackHome();
       try {
-        await assertManagedCliHome(osstackHome(), process.argv[1]);
+        await assertManagedCliHome(guardHome, process.argv[1]);
         const verdict = assertServeAllowed({ checkoutRoot, osstackHome: guardHome });
         console.log(`control-plane guard: role=${verdict.role} home=${verdict.homeCategory}${verdict.schema ? ` schema=[${verdict.schema.min},${verdict.schema.max}]` : ""}`);
       } catch (err) {
@@ -9397,7 +9397,10 @@ function parseContextJson(value: string | undefined): Record<string, unknown> | 
 async function enforceObservePolicyGate(workspacePath: string): Promise<number | undefined> {
   const decision = await evaluatePolicyGate(workspacePath);
   if (decision.allow) return undefined;
-  console.error(`osstack: ${decision.reason}`);
+  // biome-ignore lint/suspicious/noControlCharactersInRegex: Escape terminal controls in untrusted policy diagnostics.
+  const terminalReason = decision.reason.replace(/[\u0000-\u001f\u007f-\u009f\u2028\u2029\p{Cf}]/gu, character =>
+    character.split("").map(unit => `\\u${unit.charCodeAt(0).toString(16).padStart(4, "0")}`).join(""));
+  console.error(`osstack: ${terminalReason}`);
   // Observe-mode refusal is exit 2; a fail-closed invalid/unreadable file is
   // exit 1 (its reason is the raw loader error, not the observe wording).
   return decision.reason === OBSERVE_POLICY_DENIED_REASON ? 2 : 1;

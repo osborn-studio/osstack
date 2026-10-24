@@ -102,6 +102,8 @@ export async function handleRemoteCancelCommand(
     const previous = await readRemoteJournal(recordPath);
     if (previous && deliveryCanonical(previous) !== deliveryCanonical(record)) throw Error();
     let action = args[0] as "cancel" | "query";
+    let locallyReserved = previous !== null;
+    let observationPersisted = false;
     unknown = {
       schema_version: 1,
       mode: "remote_graph_cancel",
@@ -126,6 +128,7 @@ export async function handleRemoteCancelCommand(
     // every failure remains unknown, including an uncertain journal write or spawn.
     unknown.outcome = "delivery_unknown";
     if (action === "cancel") {
+      locallyReserved = true;
       if (previous) action = "query";
       else if (!(await writeRemoteJournal(recordPath, record))) {
         if (deliveryCanonical(await readRemoteJournal(recordPath)) !== deliveryCanonical(record))
@@ -184,10 +187,15 @@ export async function handleRemoteCancelCommand(
           (receipt.observed_revision === null || receipt.observed_revision <= b.expected_revision))
       )
         throw Error();
-      await writeRemoteJournal(
-        join(journal, `${b.request_id}.observed-${remoteCancelDigest({ ...receipt, nonce: "" })}.json`),
-        receipt,
-      );
+      try {
+        observationPersisted = await writeRemoteJournal(
+          join(journal, `${b.request_id}.observed-${remoteCancelDigest({ ...receipt, nonce: "" })}.json`),
+          receipt,
+        );
+      } catch {
+        // The validated remote receipt is still evidence. Local observation
+        // persistence is diagnostic; the pre-transport reservation still prevents replay.
+      }
       return receipt;
     };
     const receipt = await Promise.race([
@@ -196,8 +204,9 @@ export async function handleRemoteCancelCommand(
         timer = setTimeout(() => reject(Error("remote_cancel_timeout")), timeout);
       }),
     ]);
-    out(`${JSON.stringify({ ...unknown, outcome: receipt.outcome, receipt })}\n`);
-    return receipt.outcome === "stop_requested" ? 0 : 1;
+    const outcome = locallyReserved && receipt.outcome === "not_found" ? "delivery_unknown" : receipt.outcome;
+    out(`${JSON.stringify({ ...unknown, outcome, receipt, observation_persisted: observationPersisted })}\n`);
+    return outcome === "stop_requested" ? 0 : 1;
   } catch {
     if (unknown) out(`${JSON.stringify(unknown)}\n`);
     else err("invalid_remote_cancel_request\n");

@@ -5,6 +5,8 @@ import { dirname, isAbsolute, join, relative, sep } from 'node:path';
 import { readSourceContextFile } from './source-context-fence.js';
 import { assertDbAccessAllowed } from './control-plane-guard.js';
 import { assertManagedHomeMarker } from './managed-home-guard.js';
+import { assertSingleSqliteFiles } from './sqlite-file-guard.js';
+import { VERSION, PROTOCOL_VERSION } from './version.js';
 import Database from 'better-sqlite3';
 import { CURRENT_SCHEMA_VERSION, SourceObservationLedger, SourceObservationScopeSchema, type SourceObservationScope, type SourceSnapshotEvidence } from '@osstack/core';
 import { z } from 'zod';
@@ -20,12 +22,13 @@ const GrantSchema=z.object({id:z.string().regex(/^[a-zA-Z0-9_-]{1,64}$/),scope:S
 const GrantsSchema=z.object({schema_version:z.literal(1),grants:z.array(GrantSchema).max(32)}).strict().refine(v=>new Set(v.grants.map(g=>g.id)).size===v.grants.length);
 /** Short-lived existing-DB connections. Construction never opens or migrates a database. */
 export function createHostSourceObservationService(home:string,options:{nowMs?:()=>number}={}){
- const now=options.nowMs??Date.now;const inspector=createHostLocalDataSourceService({configPath:join(home,'source-registry.json'),nowMs:now});const path=join(home,'state.db');
- function ledger<T>(fn:(store:SourceObservationLedger)=>T,readonly=false):T{if(!isAbsolute(home))throw Error('source_home_required');assertDbAccessAllowed({checkoutRoot:dirname(realpathSync(fileURLToPath(import.meta.url))),osstackHome:home});assertManagedHomeMarker(home);const db=new Database(path,{fileMustExist:true,readonly,timeout:readonly?0:1000});try{const schema=db.pragma('user_version',{simple:true}) as number;if(schema<46||schema>CURRENT_SCHEMA_VERSION)throw Error('source_ledger_migration_required');db.pragma('foreign_keys=ON');return fn(new SourceObservationLedger(db,path,now));}finally{db.close();}}
+ const now=options.nowMs??Date.now;const inspector=createHostLocalDataSourceService({configPath:join(home,'source-registry.json'),nowMs:now});
+ function ledger<T>(fn:(store:SourceObservationLedger)=>T,readonly=false):T{if(!isAbsolute(home))throw Error('source_home_required');const canonicalPath=join(realpathSync(home),'state.db');assertSingleSqliteFiles(canonicalPath);assertDbAccessAllowed({checkoutRoot:dirname(realpathSync(fileURLToPath(import.meta.url))),osstackHome:home});assertManagedHomeMarker(home,process.argv[1],{version:VERSION,protocol_version:PROTOCOL_VERSION,database_schema:CURRENT_SCHEMA_VERSION});const db=new Database(canonicalPath,{fileMustExist:true,readonly,timeout:readonly?0:1000});try{const schema=db.pragma('user_version',{simple:true}) as number;if(schema<46||schema>CURRENT_SCHEMA_VERSION)throw Error('source_ledger_migration_required');db.pragma('foreign_keys=ON');return fn(new SourceObservationLedger(db,canonicalPath,now));}finally{db.close();}}
  async function fresh(input:unknown,signal?:AbortSignal){const scope=hostScope(home,input);const snapshot=await inspector.inspect(scope,signal);if(signal?.aborted)throw Error('source_cancelled');return {scope,snapshot};}
  return {
   inspect:inspector.inspect,
   assertClockFresh(){ledger(store=>store.assertClockFresh(),true);},
+  // Only admission refusal is ephemeral; lost freshness/authority quarantines accepted continuity until an exact acknowledgement.
   async observe(input:unknown,signal?:AbortSignal){const {scope,snapshot}=await fresh(input,signal);if(snapshot.reason==='busy'||snapshot.reason==='cancelled')throw Error('source_observation_not_admitted');const observation=ledger(store=>snapshot.state==='ready'?store.observe(scope,sourceSnapshotEvidence(snapshot)):store.unavailable(scope,snapshot.reason??'source_unavailable'));return {snapshot,observation};},
   status(input:unknown){const scope=hostScope(home,input);return ledger(store=>store.status(scope),true);},
   events(input:unknown,after=0,limit=100){const scope=hostScope(home,input);return ledger(store=>({...store.events(scope,after,limit),clock:store.clockStatus()}),true);},
