@@ -38,6 +38,7 @@ describe("worker read-only state views", () => {
     expect(JSON.stringify(result)).not.toMatch(/PRIVATE_|assistant_text|native_session_id|payload_json|task_id|source_id/);
     const inspected = f.service.inspect({ ...f.params, view_id: result.views[1]!.view_id });
     expect(inspected.view.state).toBe("awaiting_decision");
+    expect(inspected.view.view_id).toBe(result.views[1]!.view_id);
     expect(f.db.prepare("SELECT total_changes() AS n").get()).toEqual(before);
   });
   it.each(["UPDATE tasks SET tenant_id='other'", "UPDATE runs SET tenant_id='other'", "UPDATE runs SET session_id='other'", "UPDATE runs SET agent_id='other'", "UPDATE agent_sessions SET repo_path=''", "UPDATE runs SET task_id='other'"])("excludes uncertain scope binding: %s", sql => {

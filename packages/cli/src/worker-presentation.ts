@@ -70,7 +70,7 @@ export function createTerminalPresentationBackend(deps: { inspect: (reference: W
             try {raw=await readSnapshot(signal=>inspect(request,signal),controller.signal);}catch(error){
               if(controller.signal.aborted)break;
               const message=error instanceof Error?error.message:"";const detail=(message==="worker_read_timeout"||(WORKER_VIEW_ERROR_CODES as readonly string[]).includes(message))?message:"worker_request_failed";
-              await writePresentationText(output,`Worker observation unknown: ${detail}. Viewer closed; worker unchanged.\n`,controller.signal);return {reason:"unknown",detail};
+              await writePresentationText(output,`Worker observation unknown: ${detail}. Viewer closed; worker state not verified.\n`,controller.signal);return {reason:"unknown",detail};
             }
             if(Buffer.byteLength(serializeWorkerView(raw))>WORKER_VIEW_MAX_BYTES)throw Error("invalid_worker_response");
             const response=WorkerInspectResultSchema.parse(raw);
@@ -89,7 +89,7 @@ export function createTerminalPresentationBackend(deps: { inspect: (reference: W
           if(controller.signal.aborted)return {reason:controller.signal.reason as "closed"|"duration_elapsed"|"interrupted"};
           if(error instanceof Error&&error.message==="output_closed")return {reason:"output_closed"};
           const detail=error instanceof Error&&error.message==="worker_binding_changed"?"worker_binding_changed":"invalid_worker_response";
-          try {await writePresentationText(output,`Worker observation unknown: ${detail}. Viewer closed; worker unchanged.\n`,controller.signal);}catch{
+          try {await writePresentationText(output,`Worker observation unknown: ${detail}. Viewer closed; worker state not verified.\n`,controller.signal);}catch{
             if(controller.signal.aborted)return {reason:controller.signal.reason as "closed"|"duration_elapsed"|"interrupted"};
             return {reason:"output_closed"};
           }

@@ -20,7 +20,7 @@ import { GovernedExecution, type ExecutionLease, type AdmissionInput } from "./g
 
 import { createServer, type Socket } from "node:net";
 import { existsSync, unlinkSync, statSync, chmodSync, mkdirSync } from "node:fs";
-import { readFile, rename, writeFile } from "node:fs/promises";
+import { readFile, realpath, rename, writeFile } from "node:fs/promises";
 import { basename, dirname, isAbsolute, join, resolve, resolve as resolveWorkspacePath } from "node:path";
 import { createHash, randomUUID } from "node:crypto";
 import { performance } from "node:perf_hooks";
@@ -197,6 +197,7 @@ interface DaemonContext {
   continuations: SessionContinuationRepository;
   collaborator: SessionCollaborator | undefined;
   supervision?: SupervisionService;
+  workerLogReads?: Set<Promise<unknown>>;
   workerViews?: import("./worker-view-service.js").WorkerViewService;
   /** Local browser dashboard, returned to chat bridges as a shareable URL. */
   dashboardUrl: string | null;
@@ -1144,6 +1145,18 @@ async function handleSingle(ctx: DaemonContext, req: DaemonRequest): Promise<Sin
       return error instanceof FollowUpError ? singleErr(req.id,error.code,"Local follow-up request failed")
         : singleErr(req.id,"follow_up_request_failed","Local follow-up unavailable");
     }
+  }
+  if (req.method === "worker.logs") {
+    if(ctx.draining)return singleErr(req.id,"draining","Daemon is draining");
+    try {
+      const {inspectWorkerLogs}=await import("./worker-log-view.js");
+      if(ctx.draining)return singleErr(req.id,"draining","Daemon is draining");
+      ctx.workerLogReads ??= new Set();
+      if(ctx.workerLogReads.size>=4)return singleErr(req.id,"worker_log_busy","Worker output reader busy");
+      const pending=realpath(dirname(ctx.dbPath)).then(home=>inspectWorkerLogs(ctx.db,home,req.params));
+      ctx.workerLogReads.add(pending);
+      try{return singleOk(req.id,await pending);}finally{ctx.workerLogReads.delete(pending);}
+    }catch{return singleErr(req.id,"worker_log_unavailable","Worker output unavailable");}
   }
   if (req.method === "worker.list" || req.method === "worker.inspect") {
     if (ctx.draining) return singleErr(req.id, "draining", "Daemon is draining");
@@ -4055,6 +4068,8 @@ export async function startDaemon(
     ?? await readContinuationTrust(join(osstackHome(), "continuation-trust.json")));
   // Refuse to start when another daemon already owns the pidfile — two
   // daemons would race for the socket and share the SQLite writer.
+  const {managedStartupIdentity,verifyManagedRuntime} = await import("./upgrade-native-backend.js");
+  const managedIdentity = managedStartupIdentity(osstackHome(), process.argv[1]);
   const releaseLock = acquireDaemonLock(pidFilePath());
   let failedContext: DaemonContext | undefined;
   let stopUpdates: (() => void) | undefined;
@@ -4076,6 +4091,10 @@ export async function startDaemon(
   failedContext = ctx;
   if (opts.attentionTriageProviderFactory) ctx.attentionTriageProviderFactory = opts.attentionTriageProviderFactory;
   if (opts.followUpDeliveryOptions) ctx.followUpDeliveryOptions = opts.followUpDeliveryOptions;
+  else {
+    const {loadHostFollowUpDelivery} = await import("./follow-up-delivery-host.js");
+    ctx.followUpDeliveryOptions = (await loadHostFollowUpDelivery(join(await realpath(osstackHome()), "follow-up-delivery.json"))).options;
+  }
   // Initialize only after the authorized home/database startup. Read-only
   // inventory never creates an identity and malformed records are not repaired.
   const {ensureDeploymentHomeId} = await import("./home-inventory.js");
@@ -4091,6 +4110,11 @@ export async function startDaemon(
   } catch (error) {
     if (!(error instanceof Error) || error.message !== "identity_unavailable") throw error;
     console.warn("Deployment identity unavailable; explicit home inventory will report unknown.");
+  }
+
+  if (managedIdentity) {
+    if (!ctx.deploymentIdentity) throw Error("upgrade_running_build_mismatch");
+    Object.assign(ctx.deploymentIdentity,verifyManagedRuntime(managedIdentity,ctx.deploymentIdentity));
   }
 
   const getGraphRpc = (): Promise<GraphRpcService> => {

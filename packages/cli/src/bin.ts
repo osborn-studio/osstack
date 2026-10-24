@@ -229,7 +229,7 @@ function renderChineseMainHelp(): string {
   sources inspect      查看宿主登记且固定摘要的本地数据源
   follow-up-delivery   授权交付账本（默认无外部传输）
   follow-up           本地承诺账本（不对外发送）
-  worker list|inspect|watch --repo <path> --default-tenant  只读查看已绑定执行器
+  worker list|inspect|watch|open --repo <path> --default-tenant  只读查看已绑定执行器
   attention status    只读查看任务状态与最新决策（未后台接管）
   attention routing-eval --input <path> --mode router_golden  验证真实确定性路由
   graph               图执行 validate/run/status/cancel/resume；explain 只读关系诊断
@@ -449,7 +449,7 @@ Project commands:
   sources inspect      Inspect a host-registered pinned local source
   follow-up-delivery   Manage authorized delivery attempts (no transport by default)
   follow-up           Manage local obligations and unsent drafts
-  worker list|inspect|watch --repo <path> --default-tenant  Inspect bound workers read-only
+  worker list|inspect|watch|open --repo <path> --default-tenant  Inspect bound workers read-only
   attention status    Read-only task/session attention snapshot
   attention routing-eval --input <path> --mode router_golden  Validate real deterministic routing
   graph               Executable delivery graphs and read-only explain (graph --help)
@@ -658,6 +658,8 @@ See docs/V2_REFACTOR_PLAN.md for the full roadmap.
       try { checkoutRoot = dirname(realpathSync(fileURLToPath(import.meta.url))); } catch { /* keep lexical */ }
       const guardHome = process.env.OSSTACK_HOME ?? defaultOsstackHome();
       try {
+        const {assertManagedHomeEntry} = await import("./upgrade-native-backend.js");
+        assertManagedHomeEntry(osstackHome(), process.argv[1]);
         const verdict = assertServeAllowed({ checkoutRoot, osstackHome: guardHome });
         console.log(`control-plane guard: role=${verdict.role} home=${verdict.homeCategory}${verdict.schema ? ` schema=[${verdict.schema.min},${verdict.schema.max}]` : ""}`);
       } catch (err) {
@@ -843,6 +845,14 @@ See docs/V2_REFACTOR_PLAN.md for the full roadmap.
     return await handleLoopCommand(args.slice(1));
   }
 
+  if (cmd === "scout") {
+    const {handleScoutCommand} = await import("./scout-command.js");
+    const {handleDeliverCommand} = await import("./deliver-command.js");
+    const deps = createDeliverCommandDeps();
+    return handleScoutCommand(args.slice(1), {home: osstackHome(), policy: deps.deliveryContractPolicy!,
+      deliver: (input, emitJson) => handleDeliverCommand(input, {...deps, emitJson})});
+  }
+
   if (cmd === "deliver") {
     const { handleDeliverCommand } = await import("./deliver-command.js");
     return await handleDeliverCommand(
@@ -1003,9 +1013,16 @@ See docs/V2_REFACTOR_PLAN.md for the full roadmap.
     }});
   }
   if (cmd === "follow-up-delivery") {
+    if (args[1] === "issue-grant") {
+      const {handleFollowUpDeliveryIssuerCommand} = await import("./follow-up-delivery-issuer.js");
+      return handleFollowUpDeliveryIssuerCommand(args.slice(1), {home: osstackHome(), rpc: async(method,params)=>{
+        const response = await rpc(method,params,65000) as {ok?:boolean;result?:unknown;error?:{code?:string}};
+        if (!response.ok) throw Error(response.error?.code ?? "delivery_unavailable"); return response.result;
+      }});
+    }
     const {handleFollowUpDeliveryCommand} = await import("./follow-up-delivery-command.js");
     return await handleFollowUpDeliveryCommand(args.slice(1), {rpc: async (method, params) => {
-      const response = await rpc(method,params,35000) as {ok?:boolean;result?:unknown;error?:{code?:string}};
+      const response = await rpc(method,params,65000) as {ok?:boolean;result?:unknown;error?:{code?:string}};
       if (!response.ok) throw Error(response.error?.code ?? "delivery_unavailable");return response.result;
     }});
   }
@@ -1018,6 +1035,10 @@ See docs/V2_REFACTOR_PLAN.md for the full roadmap.
     }});
   }
   if (cmd === "homes") {
+    if (["prepare-managed-installation", "apply-upgrade", "reconcile-upgrade"].includes(args[1] ?? "")) {
+      const {handleNativeUpgradeCommand} = await import("./upgrade-native-command.js");
+      return handleNativeUpgradeCommand(args.slice(1));
+    }
     if (["plan-upgrade", "upgrade-status"].includes(args[1] ?? "")) {
       const {handleUpgradePlanCommand} = await import("./upgrade-plan-command.js");
       return await handleUpgradePlanCommand(args.slice(1));
@@ -1027,6 +1048,28 @@ See docs/V2_REFACTOR_PLAN.md for the full roadmap.
   }
 
   if (cmd === "worker") {
+    if (args[1] === "logs") {
+      const {handleWorkerLogCommand} = await import("./worker-log-view.js");
+      return handleWorkerLogCommand(args.slice(1), {rpc:async params=>{
+        const response=await rpc("worker.logs",params,2000) as {ok?:boolean;result?:unknown};
+        if(!response.ok)throw Error("worker_log_unavailable");return response.result;
+      }});
+    }
+    if (args[1] === "watch-handoff") {
+      if (args.length !== 3) return 1;
+      const {consumeViewerHandoff} = await import("./worker-viewer-launch.js");
+      const {handleWorkerViewerCommand} = await import("./worker-viewer-command.js");
+      const {inspectWorkerForViewer} = await import("./worker-viewer-rpc.js");
+      try { return await handleWorkerViewerCommand(await consumeViewerHandoff(osstackHome(), args[2]!), {
+        rpc: (_method, params, _timeout, signal) => inspectWorkerForViewer(socketPath(), params, signal),
+      }); } catch { console.error("viewer_handoff_invalid"); return 1; }
+    }
+
+    if (args[1] === "open") {
+      const {handleWorkerViewerLaunchCommand} = await import("./worker-viewer-launch.js");
+      const {inspectWorkerForViewer} = await import("./worker-viewer-rpc.js");
+      return await handleWorkerViewerLaunchCommand(args.slice(1), {home: osstackHome(), inspect: (params, signal) => inspectWorkerForViewer(socketPath(), params, signal)});
+    }
     if (args[1] === "watch") {
       const {handleWorkerViewerCommand} = await import("./worker-viewer-command.js");
       const {inspectWorkerForViewer} = await import("./worker-viewer-rpc.js");
@@ -6230,6 +6273,8 @@ async function ensureLocalStateDbPath(): Promise<string> {
   {
     let checkoutRoot = dirname(fileURLToPath(import.meta.url));
     try { checkoutRoot = dirname(realpathSync(fileURLToPath(import.meta.url))); } catch { /* lexical */ }
+    const {assertManagedHomeEntry} = await import("./upgrade-native-backend.js");
+    assertManagedHomeEntry(home, process.argv[1]);
     assertDbAccessAllowed({ checkoutRoot, osstackHome: home });
   }
   await mkdir(home, { recursive: true });
@@ -7217,6 +7262,8 @@ Options:
           if (loadRoleFile(checkoutRoot)?.role !== "stable-serving") {
             throw new Error("development dist is not stable-serving");
           }
+          const {assertManagedHomeEntry} = await import("./upgrade-native-backend.js");
+          assertManagedHomeEntry(osstackHome(), binPath);
           assertServeAllowed({
             checkoutRoot,
             osstackHome: process.env.OSSTACK_HOME ?? defaultOsstackHome(),

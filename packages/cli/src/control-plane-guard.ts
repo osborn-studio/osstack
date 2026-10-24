@@ -13,6 +13,7 @@
 // never raw values beyond what the operator already passed on the command line.
 
 import { existsSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
+import { assertManagedHomeMarker } from "./managed-home-guard.js";
 import { homedir } from "node:os";
 import { basename, dirname, resolve } from "node:path";
 
@@ -115,6 +116,7 @@ export function assertServeAllowed(opts: {
 }): GuardVerdict {
   const defaultHome = expand(opts.defaultHome ?? defaultOsstackHome());
   const home = expand(opts.osstackHome);
+  assertManagedHomeMarker(home);
   const declared = loadRoleFile(opts.checkoutRoot);
 
   if (declared === null) {

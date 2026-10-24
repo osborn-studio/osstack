@@ -843,3 +843,36 @@ it("waits for bounded delivery finalization before closing the DB and never acce
     db.close();
   }
 });
+
+it("reads separately authorized output through the real CLI/socket and rejects live revocation", async()=>{
+  const f=await fixture(false,false); const {writeFile,chmod}=await import("node:fs/promises");
+  const {createHash}=await import("node:crypto"); const home=realpathSync(root!); await chmod(home,0o700);
+  const token="x".repeat(43);const now=Date.now(); const file=join(home,"worker-log-grants.json");
+  await writeFile(file,JSON.stringify({schema_version:1,grants:[{repo_path:f.repo,session_id:"session",capability_sha256:createHash("sha256").update(token).digest("hex"),issued_at_ms:now,expires_at_ms:now+60000,content:"persisted_assistant_text"}]}),{mode:0o600});
+  const grant=join(home,"log-reader.json");await writeFile(grant,JSON.stringify({...f.scope,capability:token}),{mode:0o600});
+  const db=openDb({path:daemon!.dbPath});db.prepare("UPDATE session_turns SET assistant_text='visible authorized transcript'").run();db.close();
+  const out=vi.spyOn(console,"log").mockImplementation(()=>{});
+  expect(await main(["worker","logs","--grant-file",grant])).toBe(0);
+  expect(JSON.parse(String(out.mock.calls.at(-1)?.[0]))).toMatchObject({content:"persisted_assistant_text",entries:[{text:"visible authorized transcript"}]});
+  await writeFile(file,JSON.stringify({schema_version:1,grants:[]}));
+  expect(await main(["worker","logs","--grant-file",grant])).toBe(1);
+  expect(String(out.mock.calls.at(-1)?.[0])).not.toContain("visible authorized transcript");
+});
+
+it("routes pinned viewer launch to the real inspection service and consumes its handoff once",async()=>{
+  const f=await fixture(false,false);const {writeFile,readFile,readdir,chmod}=await import("node:fs/promises");const {createHash}=await import("node:crypto");
+  const home=realpathSync(root!);await chmod(home,0o700);const backend=join(home,"backend.cjs");
+  const source=`#!${process.execPath}\nif(process.argv[2]==='-V')console.log('fixture-backend');else console.log('%3');\n`;
+  await writeFile(backend,source,{mode:0o700});const pin={path:backend,sha256:createHash("sha256").update(source).digest("hex")};
+  await writeFile(join(home,"viewer-backends.json"),JSON.stringify({schema_version:1,home,node:pin,cli:pin,backends:[{kind:"tmux",executable:pin,version_output:"fixture-backend",socket:realpathSync(socket),target:"$1",shell:"posix"}]}),{mode:0o600});
+  const page=await rpc("worker.list",f.scope);const view=(page.result!["views"] as {view_id:string}[])[0]!.view_id;
+  const out=vi.spyOn(console,"log").mockImplementation(()=>{});
+  expect(await main(["worker","open",view,"--backend","tmux","--repo",f.repo,"--default-tenant","--duration-ms","1000"])).toBe(0);
+  expect(JSON.parse(String(out.mock.calls.at(-1)?.[0]))).toMatchObject({state:"launch_requested",qualification:"backend_runtime_pending"});
+  const handoff=join(home,(await readdir(home)).find(n=>n.startsWith("viewer-handoff-"))!);
+  expect(JSON.parse(await readFile(handoff,"utf8")).reference.view_id).toBe(view);
+  vi.spyOn(process.stdout,"write").mockImplementation(((...args:unknown[])=>{const callback=args.find(a=>typeof a==="function") as (()=>void)|undefined;queueMicrotask(()=>callback?.());return true;}) as typeof process.stdout.write);
+  expect(await main(["worker","watch-handoff",handoff])).toBe(0);
+  vi.spyOn(console,"error").mockImplementation(()=>{});
+  expect(await main(["worker","watch-handoff",handoff])).toBe(1);
+});

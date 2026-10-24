@@ -81,3 +81,25 @@ it("rejects delayed SDK process creation after cancellation", async () => {
   await expect(provider.invoke("question", controller.signal)).rejects.toThrow("cancelled");
   expect(spawn).not.toHaveBeenCalled();
 });
+
+it("detailed receipts bind API message identity, cache usage and confirmed child exit", async () => {
+  const child = fakeChild(true); vi.spyOn(childProcesses, "spawn").mockReturnValue(child as unknown as ReturnType<typeof childProcesses.spawn>);
+  const path = await mkdtemp(join(tmpdir(), "triage-detailed-")); roots.push(path);
+  const provider = createControlledTriageProvider({ state_directory: path, model_id: "exact-model", max_cost_usd: 0.01, detailed_receipt: true,
+    environment: { ANTHROPIC_API_KEY: "test" }, query: ({ options }) => (async function* () {
+      options.spawnClaudeCodeProcess!({ command: options.pathToClaudeCodeExecutable!, args: [], cwd: options.cwd!, env: {}, signal: new AbortController().signal });
+      yield init(options.cwd!); yield { type: "assistant", message: { model: "exact-model", content: [{ type: "text", text: "{}" }] } };
+      yield { type: "result", subtype: "success", usage: { input_tokens: 1, output_tokens: 2, cache_creation_input_tokens: 3, cache_read_input_tokens: 4 } };
+    })() });
+  expect(await provider.invoke("question", new AbortController().signal)).toMatchObject({ api_reported_model: "exact-model", process_exit_confirmed: true,
+    usage: { input_tokens: 1, output_tokens: 2, cache_creation_input_tokens: 3, cache_read_input_tokens: 4 } });
+});
+
+it("rejects API model substitution even when init echoes requested model", async () => {
+  const path = await mkdtemp(join(tmpdir(), "triage-substitution-")); roots.push(path);
+  const provider = createControlledTriageProvider({ state_directory: path, model_id: "exact-model", max_cost_usd: 0.01, detailed_receipt: true,
+    environment: { ANTHROPIC_API_KEY: "test" }, query: ({ options }) => (async function* () {
+      yield init(options.cwd!); yield { type: "assistant", message: { model: "substitute", content: [{ type: "text", text: "{}" }] } };
+    })() });
+  await expect(provider.invoke("question", new AbortController().signal)).rejects.toThrow("model_identity_mismatch");
+});
