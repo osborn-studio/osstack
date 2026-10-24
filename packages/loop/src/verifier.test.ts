@@ -960,3 +960,20 @@ it.each([true, false])("rejects mutations by availability probe even when availa
   expect(invoked).toBe(0); expect(verdict.pass).toBe(false);
   expect(verdict.issues).toContainEqual(expect.objectContaining({ rule: "verify.reviewer_mutation" }));
 });
+
+it("stops later reviewers when invoke spawns an owned child and throws synchronously", async () => {
+  let child: ReturnType<typeof spawn> | undefined;
+  let later = 0;
+  const first = mockAdapter({ id: "throwing-invoke", invoke() {
+    child = spawn(process.execPath, ["-e", "setInterval(()=>{},1000)"], { stdio: "ignore" });
+    throw Error("invoke failed after child launch");
+  } });
+  const second = mockAdapter({ id: "later-reviewer", async *invoke(task) { later++; yield doneEvent(task.run_id, task.session_id, "completed", "approved"); } });
+  try {
+    const verdict = await verifyRun(run(), { workspacePath: workspace, verifierAgentIds: [first.id, second.id], adapters: [first, second] });
+    expect(child?.exitCode).toBeNull(); expect(later).toBe(0); expect(verdict.pass).toBe(false);
+    expect(verdict.issues).toContainEqual(expect.objectContaining({ rule: "verify.adapter_stop_unconfirmed" }));
+  } finally {
+    if (child) { const owned = child; const closed = new Promise<void>(resolve => owned.once("close", () => resolve())); owned.kill("SIGKILL"); await closed; }
+  }
+});

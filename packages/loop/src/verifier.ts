@@ -755,6 +755,7 @@ async function invokeVerifierAdapter(
   let snapshotError: string | undefined;
   let workspaceMutated = false;
   let iterator: AsyncIterator<HermesEvent> | undefined;
+  let invocationAttempted = false;
   let iteratorFinished = false;
   const nextOrAbort = async () => {
     let abort!: () => void;
@@ -777,6 +778,7 @@ async function invokeVerifierAdapter(
       verificationResults,
     );
     if (remaining() <= 0) throw Error("verifier deadline exhausted before invocation");
+    invocationAttempted = true;
     iterator = adapter.invoke(agentTask, controller.signal)[Symbol.asyncIterator]();
     while (true) {
       const next = await nextOrAbort();
@@ -843,7 +845,7 @@ async function invokeVerifierAdapter(
   }
 
   const issues: Issue[] = [];
-  if (iterator !== undefined && !iteratorFinished) {
+  if (invocationAttempted && !iteratorFinished) {
     issues.push(adapterIssue(adapter.id,"verify.adapter_stop_unconfirmed","Verifier stream ended abnormally without physical stop evidence; reconciliation required"));
   }
   if (snapshotError !== undefined) {

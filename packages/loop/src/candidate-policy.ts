@@ -35,8 +35,11 @@ function gitRaw(workspace: string, args: string[]): string {
   return execFileSync("git", ["-C", workspace, ...REVIEWER_GIT_ARGS, ...args], { env: reviewerGitEnvironment(workspace), encoding: "utf8", timeout: 10_000, maxBuffer: 1_048_576 });
 }
 const git = (workspace: string, args: string[]) => gitRaw(workspace, args).trim();
-export function freezeCandidate(workspace: string) {
+export function assertCandidateIndexVisible(workspace: string): void {
   if (gitRaw(workspace, ["ls-files", "-v", "-z"]).split("\0").some(entry => /^[a-zS] /.test(entry))) throw Error("CANDIDATE_HIDDEN_INDEX_ENTRY");
+}
+export function freezeCandidate(workspace: string) {
+  assertCandidateIndexVisible(workspace);
   if (git(workspace, ["status", "--porcelain", "--untracked-files=all"]) !== "") throw Error("CANDIDATE_DIRTY");
   const headSha = git(workspace, ["rev-parse", "HEAD"]), treeSha = git(workspace, ["rev-parse", "HEAD^{tree}"]), branch = git(workspace, ["branch", "--show-current"]);
   if (!/^(?:[a-f0-9]{40}|[a-f0-9]{64})$/.test(headSha) || !/^(?:[a-f0-9]{40}|[a-f0-9]{64})$/.test(treeSha) || !branch) throw Error("CANDIDATE_GIT_IDENTITY_INVALID");

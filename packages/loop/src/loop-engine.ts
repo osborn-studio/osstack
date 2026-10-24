@@ -58,7 +58,7 @@ import {
   type Verdict,
 } from "./types.js";
 import { truncateUnicodeSafe } from "./unicode.js";
-import { CandidatePolicy, validateCandidateBatch, openCandidateRecord, freezeCandidate, assertCandidateFrozen, assertCandidateScope, assertCandidateStateDirectory, assertCandidateStateFile } from "./candidate-policy.js";
+import { CandidatePolicy, validateCandidateBatch, openCandidateRecord, freezeCandidate, assertCandidateFrozen, assertCandidateScope, assertCandidateStateDirectory, assertCandidateStateFile, assertCandidateIndexVisible } from "./candidate-policy.js";
 import { chmod } from "node:fs/promises";
 
 export interface LoopRunOptions {
@@ -745,14 +745,19 @@ export class LoopEngine {
     task: Task,
     historyTasks: readonly CompletedTask[],
   ): Promise<AgentSelection> {
+    const verifierIds = new Set(this.options.verifierAgentIds ?? []);
     if (this.options.agentId !== undefined) {
+      if (verifierIds.has(this.options.agentId)) throw new Error("VERIFIER_EXECUTION_ROLE_CONFLICT");
       return { agentId: this.options.agentId, reason: "agent_id override" };
     }
     if (this.options.executeCommand !== undefined) {
       return { agentId: "local-command", reason: "local execute command" };
     }
 
-    const adapters = this.options.adapters ?? [];
+    // Reviewer availability probes belong only inside the verifier integrity boundary.
+    const configuredAdapters = this.options.adapters ?? [];
+    const adapters = configuredAdapters.filter(adapter => !verifierIds.has(adapter.id));
+    if (adapters.length === 0 && configuredAdapters.length > 0) throw new Error("NO_EXECUTION_ADAPTER_OUTSIDE_VERIFIER_ROLE");
     if (adapters.length === 0) {
       return { agentId: "local-noop", reason: "no execute command or adapters configured" };
     }
@@ -762,6 +767,7 @@ export class LoopEngine {
       adapters as readonly RoutableAdapter[],
     );
     if (routerPick === null) {
+      if (adapters.length !== configuredAdapters.length) throw new Error("NO_EXECUTION_ADAPTER_OUTSIDE_VERIFIER_ROLE");
       return { agentId: "local-noop", reason: `no available adapter for capability ${task.capability}` };
     }
 
@@ -1154,6 +1160,21 @@ export class LoopEngine {
         outcome = "failed";
       }
 
+      if (outcome === "success" && worktree !== undefined) {
+        try { assertCandidateIndexVisible(runWorkspacePath); }
+        catch (error) {
+          // Hidden edits cannot be treated as an empty successful commit or discarded.
+          this.candidateContaminated = true;
+          outcome = "escalated";
+          const reason = error instanceof Error ? error.message : String(error);
+          if (finalVerdict !== null) finalVerdict = { ...finalVerdict, pass: false, score: 0,
+            summary: "Candidate index visibility requires reconciliation",
+            issues: [...finalVerdict.issues, { severity: "error", rule: "verify.candidate_index_unconfirmed", message: reason }] };
+          this.emit(loopId, "loop.escalated", { task_id: task.task_id, reason, iteration: iterations,
+            max_iterations: maxIterations, escalate_to: "hermes", agent_id: finalRun?.agent_id ?? "unknown" });
+          decisions.push(`${task.task_id}: candidate index rejected before publication or commit: ${reason}`);
+        }
+      }
       if (this.options.guardedLocalCandidate !== undefined) {
         preserveCandidateWorktree = worktree !== undefined;
         preserveWorktreeBranch = preserveCandidateWorktree;

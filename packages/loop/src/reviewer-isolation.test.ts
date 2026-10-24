@@ -9,7 +9,7 @@ import {
 } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   GIT_HOOKS_DISABLED_ARGS,
   reviewerWorkspaceMutated,
@@ -203,4 +203,19 @@ it("keeps raw snapshots on the authorized workspace despite repo-local core.work
   const after = await snapshotReviewerWorkspace(workspace);
   expect(after.untracked_sha256).not.toBe(before.untracked_sha256);
   expect(reviewerWorkspaceMutated(before, after)).toBe(true);
+});
+
+it("ignores global and system exclude configuration by policy", async () => {
+  const excludes = join(root, "external-excludes");
+  const config = join(root, "external-git-config");
+  await writeFile(excludes, "global-hidden.txt\n");
+  await writeFile(config, `[core]\n  excludesFile = ${excludes}\n`);
+  vi.stubEnv("GIT_CONFIG_GLOBAL", config); vi.stubEnv("GIT_CONFIG_SYSTEM", config);
+  try {
+    const before = await snapshotReviewerWorkspace(workspace);
+    await writeFile(join(workspace, "global-hidden.txt"), "must be observed");
+    const after = await snapshotReviewerWorkspace(workspace);
+    expect(after.untracked_sha256).not.toBe(before.untracked_sha256);
+    expect(after.ignored_sha256).toBe(before.ignored_sha256);
+  } finally { vi.unstubAllEnvs(); }
 });

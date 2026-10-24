@@ -2,7 +2,7 @@ import { loopContainmentPath } from "./loop-containment.js";
 import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { mkdtempSync } from "node:fs";
+import { mkdtempSync, realpathSync } from "node:fs";
 import { CapabilitySchema, type Capability, type CostTier } from "@osstack/core";
 import type { AgentAdapter, AgentAvailability, AgentTask } from "@osstack/agents";
 import type { HermesEvent } from "@osstack/hermes-adapter";
@@ -276,27 +276,13 @@ describe("LoopEngine", () => {
     await expect(readFile(join(workspace, "STATE.md"), "utf-8")).resolves.toContain("Changed files: app.txt");
   });
 
-  it("fails verification when builder and evaluator are the same enforced agent", async () => {
+  it("refuses an explicit verifier execution role before launching the builder", async () => {
     const workspace = await makeQueuedWorkspace();
     const adapter = new FakeLoopAdapter({ id: "same-agent" });
-    const result = await new LoopEngine({
-      loopId: "loop-role-separation",
-      workspacePath: workspace,
-      sources: ["task_queue"],
-      agentId: adapter.id,
-      verifierAgentIds: [adapter.id],
-      enforceRoleSeparation: true,
-      adapters: [adapter],
-      maxIterations: 1,
-    }).runOnce();
-
-    expect(result.state.completed_tasks[0]).toMatchObject({
-      task_id: "task-1",
-      outcome: "escalated",
-      agent_id: "same-agent",
-      verifier_agent_id: "same-agent",
-      verify_issues: [expect.objectContaining({ rule: "verify.role_separation" })],
-    });
+    const invoke = vi.spyOn(adapter, "invoke");
+    await expect(new LoopEngine({ workspacePath: workspace, sources: ["task_queue"],
+      agentId: adapter.id, verifierAgentIds: [adapter.id], adapters: [adapter], maxIterations: 1 }).runOnce()).rejects.toThrow("VERIFIER_EXECUTION_ROLE_CONFLICT");
+    expect(invoke).not.toHaveBeenCalled();
   });
 
   it("escalates after repeated failed verification", async () => {
@@ -1472,4 +1458,110 @@ it("pins post-review Git evidence and disables repository fsmonitor commands", a
     await expect(readFile(sentinel)).rejects.toMatchObject({ code: "ENOENT" });
     expect(await readFile(join(foreign, "app.txt"), "utf8")).toBe("foreign\n");
   } finally { vi.unstubAllEnvs(); }
+});
+
+
+it.each(["code.test", "dual-reviewer.code.test"])("does not probe a verifier during execution routing for %s", async capability => {
+  const workspace = await makeGitQueuedWorkspace("base\n");
+  const reviewer = new FakeLoopAdapter({ id: "dual-reviewer" });
+  const probe = vi.spyOn(reviewer, "isAvailable").mockImplementation(async () => {
+    await writeFile(join(workspace, "app.txt"), "selection probe contamination");
+    return { available: true, last_checked_at: 0 };
+  });
+  const invoke = vi.spyOn(reviewer, "invoke");
+  await expect(new LoopEngine({ workspacePath: workspace,
+    inputTasks: [{ task_id: "dual", capability, prompt: "test", priority: 1, source: "manual" }],
+    adapters: [reviewer], verifierAgentIds: [reviewer.id], maxIterations: 1 }).runOnce()).rejects.toThrow("NO_EXECUTION_ADAPTER_OUTSIDE_VERIFIER_ROLE");
+  expect(probe).not.toHaveBeenCalled();
+  expect(invoke).not.toHaveBeenCalled();
+  expect(await readFile(join(workspace, "app.txt"), "utf8")).toBe("base\n");
+});
+
+it.each(["prepush", "final"] as const)("retains containment after a reviewer mutates the %s candidate", async phase => {
+  const { CandidatePolicy, candidateBinding } = await import("./candidate-policy.js");
+  const workspace = await makeGitQueuedWorkspace("base\n");
+  await git(workspace, ["config", "user.name", "test"]);
+  await git(workspace, ["config", "user.email", "test@example.invalid"]);
+  await writeFile(join(workspace, ".gitignore"), "LOOP-STATE.json\nSTATE.md\n");
+  await git(workspace, ["add", "."]);
+  await git(workspace, ["commit", "-m", "fixture"]);
+  const state = realpathSync(mkdtempSync(join(tmpdir(), "candidate-record-")));
+  const command = "node -e 'process.exit(0)'";
+  const policy = CandidatePolicy.parse({ batchId: "mutation", scopeId: "app", branch: "main",
+    policyFingerprint: "a".repeat(64), environmentFingerprint: "b".repeat(64), testsFingerprint: "c".repeat(64),
+    maxTasks: 1, scopePaths: ["app.txt"], stateDirectory: state,
+    profiles: { local: [command], prepush: [command], final: [command] } });
+  const reviewer = new FakeReviewAdapter();
+  const originalInvoke = reviewer.invoke.bind(reviewer);
+  let calls = 0;
+  const mutateAt = phase === "prepush" ? 2 : 3;
+  reviewer.invoke = async function* (task) {
+    calls++;
+    if (calls === mutateAt) {
+      expect(task.context?.["repo_path"]).toBe(workspace);
+      await writeFile(join(workspace, "app.txt"), "reviewer contamination");
+    }
+    yield* originalInvoke(task);
+  };
+  const options = { workspacePath: workspace, sources: [], inputTasks: [{ task_id: "candidate", capability: "code.test",
+    prompt: "edit", priority: 1, source: "manual" as const, candidateBatch: candidateBinding(policy) }],
+    executeCommand: "node -e \"require('fs').writeFileSync('app.txt','builder')\"",
+    useWorktree: true, candidatePolicy: policy, maxIterations: 3,
+    verifierAgentIds: [reviewer.id], adapters: [reviewer], lessonDrafts: { enabled: false } };
+  const result = await new LoopEngine(options).runOnce();
+  expect(calls).toBe(mutateAt);
+  expect(result.completedTasks[0]?.outcome).toBe("failed");
+  expect(result.completedTasks[0]?.candidate_evidence?.stage).toBe("final_preflight_failed");
+  expect(await readFile(join(workspace, "app.txt"), "utf8")).toBe("reviewer contamination");
+  expect(await git(workspace, ["show", "HEAD:app.txt"])).toBe("builder");
+  await expect(readFile(loopContainmentPath(workspace), "utf8")).resolves.toContain("containment_pending");
+  expect((await new LoopEngine(options).runOnce()).executedTaskCount).toBe(0);
+  expect(calls).toBe(mutateAt);
+});
+
+it("defers dual-role availability probes until after execution selection and inside verification", async () => {
+  const workspace = await makeGitQueuedWorkspace("base\n");
+  const builder = new FakeLoopAdapter();
+  const backup = new FakeLoopAdapter({ id: "backup", costTier: "high" });
+  const reviewer = new FakeLoopAdapter({ id: "dual-reviewer" });
+  const builderInvoke = vi.spyOn(builder, "invoke");
+  const probe = vi.spyOn(reviewer, "isAvailable").mockImplementation(async () => {
+    // A selection-time probe would run before this file exists.
+    expect(await readFile(join(workspace, "agent-output.txt"), "utf8")).toBeTruthy();
+    await writeFile(join(workspace, "app.txt"), "probe contamination");
+    return { available: true, last_checked_at: 0 };
+  });
+  const invoke = vi.spyOn(reviewer, "invoke");
+  const result = await new LoopEngine({ workspacePath: workspace, sources: ["task_queue"],
+    adapters: [reviewer, builder, backup], verifierAgentIds: [reviewer.id], maxIterations: 3 }).runOnce();
+  expect(builderInvoke).toHaveBeenCalledTimes(1);
+  expect(probe).toHaveBeenCalledTimes(1);
+  expect(invoke).not.toHaveBeenCalled();
+  expect(result.completedTasks[0]?.verify_issues).toEqual(expect.arrayContaining([
+    expect.objectContaining({ rule: "verify.reviewer_mutation" }),
+  ]));
+  expect(result.completedTasks[0]?.outcome).not.toBe("success");
+});
+
+it.each(["--assume-unchanged", "--skip-worktree"])("preserves a legacy candidate containing %s hidden builder edits", async flag => {
+  const workspace = await makeGitQueuedWorkspace("base\n");
+  const reviewer = new FakeReviewAdapter();
+  const options = { workspacePath: workspace, sources: ["task_queue" as const], useWorktree: true,
+    executeCommand: `node -e "require('fs').writeFileSync('app.txt','hidden builder edit')" && git update-index ${flag} app.txt`,
+    verifierAgentIds: [reviewer.id], adapters: [reviewer], maxIterations: 3 };
+  const engine = new LoopEngine(options);
+  const result = await engine.runOnce();
+  expect(result.completedTasks[0]?.outcome).toBe("escalated");
+  expect(result.completedTasks[0]?.verify_issues).toEqual(expect.arrayContaining([
+    expect.objectContaining({ rule: "verify.candidate_index_unconfirmed", message: "CANDIDATE_HIDDEN_INDEX_ENTRY" }),
+  ]));
+  const created = result.events.find(event => event.type === "loop.worktree.created");
+  const candidate = created?.payload?.["worktree_path"];
+  expect(typeof candidate).toBe("string");
+  expect(await readFile(join(candidate as string, "app.txt"), "utf8")).toBe("hidden builder edit");
+  expect(await readFile(join(workspace, "app.txt"), "utf8")).toBe("base\n");
+  expect(result.events.some(event => event.type === "loop.worktree.cleaned" || event.type === "loop.worktree.merged")).toBe(false);
+  await expect(readFile(loopContainmentPath(workspace), "utf8")).resolves.toContain("containment_pending");
+  expect((await engine.runOnce()).executedTaskCount).toBe(0);
+  expect((await new LoopEngine(options).runOnce()).executedTaskCount).toBe(0);
 });

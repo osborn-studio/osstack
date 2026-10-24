@@ -267,3 +267,11 @@ it.each(["--assume-unchanged", "--skip-worktree"])("refuses freezing hidden buil
   expect(f.git("status", "--porcelain")).toBe("");
   expect(() => freezeCandidate(f.repo)).toThrow("CANDIDATE_HIDDEN_INDEX_ENTRY");
 });
+
+it("refuses candidate freeze for a sparse checkout with omitted tracked entries", () => {
+  const f = fixture(1);
+  mkdirSync(join(f.repo, "nested")); writeFileSync(join(f.repo, "nested", "app.ts"), "tracked");
+  f.git("add", "."); f.git("commit", "-m", "nested baseline");
+  f.git("sparse-checkout", "init", "--cone"); f.git("sparse-checkout", "set", "other-directory");
+  expect(() => freezeCandidate(f.repo)).toThrow("CANDIDATE_HIDDEN_INDEX_ENTRY");
+});
