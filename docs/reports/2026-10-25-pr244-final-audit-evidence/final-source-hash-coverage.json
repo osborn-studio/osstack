@@ -1,5 +1,5 @@
 {
-  "head": "97c68e4396248664eda5df4b803745b668615dbd",
+  "head": "6be1d1b0c2d989838caf68366631dd2f27233d9e",
   "note": "Matching hashes establish input evidence coverage only. Scoped verdict acceptance is tracked separately; validation-only entries are not independent reviews.",
   "files": [
     {

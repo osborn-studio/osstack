@@ -30,7 +30,9 @@
 | 默认报告输出 | [输出路径复审](2026-10-25-pr244-final-audit-evidence/cli-default-output-r2-reaudit-result.json) | PASS_SCOPED；失败报告路径展示等建议不是当前阻断。 |
 | 启动与安装 home | [文档及 guard 修订](2026-10-25-pr244-final-audit-evidence/readme-haiku-r5-result.json) | 两个 guard 使用相同 home，tilde 由已有逻辑展开。 |
 
-验证器 F3 的代码问题由 [r9](2026-10-25-pr244-final-audit-evidence/reaudit-F3-r9-result.json) 关闭；剩余证据由 [r10](2026-10-25-pr244-final-audit-evidence/reaudit-F3-r10-result.json) 复审为 PASS_SCOPED。最终源码为 `97c68e4396248664eda5df4b803745b668615dbd`。定向回归包括 80 项验证器测试、9 项真实提交路径测试、61 项引擎与隔离测试，以及 124 项 CLI/daemon 测试；各组范围与版本绑定见对应 manifest。最终全量测试和当前 HEAD 的 CI 是独立条件；最新结果、源码提交和计数由 [PR 正文及检查页](https://github.com/osborn-studio/osstack/pull/244) 记录。旧失败与历史通过记录都保留，不计作最新版本通过。
+验证器 F3 的代码问题由 [r9](2026-10-25-pr244-final-audit-evidence/reaudit-F3-r9-result.json) 关闭；剩余证据由 [r10](2026-10-25-pr244-final-audit-evidence/reaudit-F3-r10-result.json) 复审为 PASS_SCOPED。最终生产源码为 `97c68e4396248664eda5df4b803745b668615dbd`；后续 `49fee8e3` 只修复测试中的随机篡改构造，未改生产代码。定向回归包括 80 项验证器测试、9 项真实提交路径测试、61 项引擎与隔离测试，以及 124 项 CLI/daemon 测试；各组范围与版本绑定见对应 manifest。最终全量测试和当前 HEAD 的 CI 是独立条件；最新结果、源码提交和计数由 [PR 正文及检查页](https://github.com/osborn-studio/osstack/pull/244) 记录。旧失败与历史通过记录都保留，不计作最新版本通过。
+
+完整验收曾发现 worker cursor 测试随机失败：把首字符改为 `x` 有 1/64 概率没有改变令牌。测试现翻转认证标签的一位，并断言令牌确实变化。32 项测试连续三轮通过，[独立复审](2026-10-25-pr244-final-audit-evidence/worker-cursor-fix-reaudit-result.json) 为 PASS_SCOPED。原始失败未保存令牌值；旧表达式允许不变的缺陷由代码证明，不能还原该次令牌。没有修改生产鉴权或放宽断言。
 
 原始审计结果、调用记录和源码摘要见[证据清单](2026-10-25-pr244-final-audit-evidence/manifest.json)。完整源码输入保存在本次工作 scratch 中，清单保存输入摘要。
 

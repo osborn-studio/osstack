@@ -1,0 +1,16 @@
+{
+  "files": [
+    {
+      "path": "packages/cli/src/worker-view-service.ts",
+      "sha256": "6856007b372dfa75e4d083c3af631c84ab7c3a915fe697aa58f95a52f7e7861b",
+      "coverage": "full"
+    },
+    {
+      "path": "packages/cli/src/worker-view-service.test.ts",
+      "sha256": "2dc2fb5fb4b6eb183e01db76c7b053b04ab170d5819655835ee3400ce574dc81",
+      "coverage": "full"
+    }
+  ],
+  "prompt_sha256": "b4d02832af9c39855f42e64117609558502c310d5df0517632a4b8d1caabbb8a",
+  "prompt_bytes": 31089
+}
