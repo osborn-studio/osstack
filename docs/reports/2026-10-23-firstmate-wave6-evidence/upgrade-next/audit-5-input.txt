@@ -1,0 +1,46 @@
+Review ONLY this final delta fixing your prior P1: post-publication status failure/records mismatch skipped fresh-token cleanup. Now publication, second status read, already-verified release, and records comparison all live in the SAME try/catch before returning writer. Catch unlinks only byte-equal newly attempted token claims and fsyncs; foreign locks never removed; unknown cleanup retains recovery-required. assertClaim normalizes missing/parse errors. Tests inject a failure at second status and verify no own claims remain. No native effect can run before a writer returns. No tools. Reply <=200 words: does this close the identified post-publish cleanup gap; any concrete new P0/P1? Do not expand to already-disabled native reconciliation or apply.
+  async claim(digest: string, groupId: string): Promise<UpgradeJournalWriter> {
+    const state = await this.status(digest, groupId); const group = state.plan.plan.groups.find(g => g.group_id === groupId)!;
+    if (state.completed) throw Error('upgrade_already_verified');
+    if (state.phase === 'recovery_required' || state.records.some(record => record.phase !== 'qualification_pending')) throw Error('upgrade_recovery_required');
+    const claim = { plan_digest: digest, group_id: groupId, token: randomBytes(32).toString('hex') };
+    const names = [`claim-${upgradeDigest(group.installation_id)}.json`, ...group.homes.map(home => `home-claim-${upgradeDigest(home.home_id)}.json`).sort()];
+    const attempted: string[] = [];
+    const assertClaim = async () => {
+      try {
+        for (const name of names) if (upgradeCanonical(await readJson(join(this.root, name), 4096)) !== upgradeCanonical(claim)) throw Error('upgrade_claim_changed');
+      } catch { throw Error('upgrade_claim_changed'); }
+    };
+    const release = async () => { await assertClaim(); for (const name of names) await unlink(join(this.root, name)); await syncDirectory(this.root); };
+    try {
+      for (const name of names) { attempted.push(name); await publish(this.root, name, claim); }
+      const current = await this.status(digest, groupId);
+      if (current.completed) { await release(); throw Error('upgrade_already_verified'); }
+      if (upgradeCanonical(current.records) !== upgradeCanonical(state.records)) throw Error('upgrade_recovery_required');
+    } catch (error) {
+      // Covers every failure before returning a writer, including the post-publication re-read.
+      // No native effect can have started. Remove only this fresh token's claims, never foreign or attempted-effect claims.
+      let cleanupUnknown = false;
+      for (const name of attempted) {
+        try {
+          const value = await readJson(join(this.root, name), 4096).catch(failure => { if ((failure as NodeJS.ErrnoException).code !== 'ENOENT') throw failure; return null; });
+          if (value && upgradeCanonical(value) === upgradeCanonical(claim)) await unlink(join(this.root, name));
+        } catch { cleanupUnknown = true; }
+      }
+      try { await syncDirectory(this.root); } catch { cleanupUnknown = true; }
+      if (cleanupUnknown || (error as NodeJS.ErrnoException).code === 'EEXIST') throw Error('upgrade_recovery_required'); throw error;
+    }
+
+REGRESSION
+ if the post-publication journal re-read fails', async () => {
+  const f = await fixture(); const status = f.journal.status.bind(f.journal); let reads = 0;
+  f.journal.status = async (...args) => { if (++reads === 2) throw Error('upgrade_injected_read_failure'); return status(...args); };
+  await expect(f.journal.claim(f.plan.digest, 'group')).rejects.toThrow('upgrade_injected_read_failure');
+  expect((await readdir(f.root)).filter(name => name.includes('claim-'))).toEqual([]);
+  expect((await new UpgradeJournal(f.root).status(f.plan.digest, 'group')).phase).toBe('qualification_pending');
+});
+it('maps missing claim files to the stable claim-changed error', async () => {
+  const f = await fixture(); const writer = await f.journal.claim(f.plan.digest, 'group');
+  await rm(join(f.root, `claim-${upgradeDigest('shared-npm-global')}.json`));
+  await expect(writer.append(record)).rejects.toThrow('upgrade_claim_changed');
+});

@@ -148,6 +148,8 @@ export { GraphCheckpointStore } from './state/graph-checkpoints.js';
 export * from "./scratch.js";
 export { deliveryContractDigest, deliveryCheckReference, freezeDeliveryContract,
 export { FollowUpObligationService, FollowUpError, FOLLOW_UP_ERROR_CODES, FOLLOW_UP_MAX_BYTES, serializeFollowUp } from "./state/follow-up-obligations.js";
+export { FollowUpDeliveryService, FollowUpDeliveryError, FOLLOW_UP_DELIVERY_ERRORS, deliveryCanonical, serializeFollowUpDelivery } from "./state/follow-up-delivery.js";
+export type { FollowUpDeliveryTrust, FollowUpTransport, FollowUpDeliveryOptions } from "./state/follow-up-delivery.js";
 ```
 
 ## `@osstack/github`
@@ -271,6 +273,7 @@ export type { GraphCheckpointTransport } from './graph-checkpoint.js';
 export {
 export { DeliveryContractV2, FrozenDeliveryContractV2, DeliveryVerificationReceiptV2,
 export { FollowUpState, FollowUpCreateParams, FollowUpListParams, FollowUpDraftParams,
+export { FollowUpDeliveryTarget, FollowUpDeliverySubject, FollowUpDeliveryGrantBody, SignedFollowUpDeliveryGrant,
 ```
 
 ## `@osstack/runtime`

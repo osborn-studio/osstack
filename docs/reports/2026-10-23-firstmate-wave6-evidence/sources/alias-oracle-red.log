@@ -1,0 +1,52 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-cockpit/packages/cli
+
+ ❯ src/local-data-source-registry.test.ts (14 tests | 1 failed) 172ms
+   ✓ reads an explicitly pinned local snapshot without altering it 6ms
+   ✓ defaults missing host config to disabled but malformed or public config to unknown 1ms
+   ✓ reloads revocation on every inspection and never crosses repo scope 2ms
+   ✓ fails closed on content and manifest pin changes, stale and future verification 2ms
+   ✓ rejects symlink escapes, oversize and injected or duplicate snapshot fields 2ms
+   ✓ uses the real service through inspect handler and escapes untrusted text 2ms
+   ✓ rejects nondefault tenant and extra capabilities without opening a source 1ms
+   ✓ rejects a private config owned by a different user 1ms
+   ✓ rechecks config revocation after an in-flight content read 53ms
+   ✓ retains both actual-read slots after timeout until late filesystem work settles 82ms
+   ✓ rejects revoked expiry, wall clock rollback, config symlink and pre-aborted inspection 3ms
+   ✓ bounds host configuration and serialized output and requires valid snapshot identity 8ms
+   ✓ reports a noncanonical pinned repository as invalid configuration 2ms
+   × does not reveal another repository registration through its invalid alias 7ms
+     → expected { schema_version: 1, …(9) } to match object { state: 'not_registered', …(2) }
+(9 matching properties omitted from actual)
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/local-data-source-registry.test.ts > does not reveal another repository registration through its invalid alias
+AssertionError: expected { schema_version: 1, …(9) } to match object { state: 'not_registered', …(2) }
+(9 matching properties omitted from actual)
+
+- Expected
++ Received
+
+  {
+    "entries": [],
+-   "reason": "not_registered",
+-   "state": "not_registered",
++   "reason": "config_invalid",
++   "state": "unknown",
+  }
+
+ ❯ src/local-data-source-registry.test.ts:110:132
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 13 passed (14)
+   Start at  13:57:54
+   Duration  599ms (transform 178ms, setup 8ms, collect 278ms, tests 172ms, environment 0ms, prepare 26ms)
+
+undefined
+/Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-cockpit/packages/cli:
+[ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL] Command failed with exit code 1: vitest run src/local-data-source-registry.test.ts

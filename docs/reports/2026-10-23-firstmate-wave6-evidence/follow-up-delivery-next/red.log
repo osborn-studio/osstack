@@ -1,0 +1,31 @@
+$ vitest run src/state/follow-up-delivery.test.ts
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-routing-next/packages/core
+
+
+⎯⎯⎯⎯⎯⎯ Failed Suites 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/state/follow-up-delivery.test.ts [ src/state/follow-up-delivery.test.ts ]
+Error: Cannot find module './follow-up-delivery.js' imported from '/Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-routing-next/packages/core/src/state/follow-up-delivery.test.ts'
+ ❯ src/state/follow-up-delivery.test.ts:8:1
+      6| import { openDb } from "./db.js";
+      7| import { FollowUpObligationService } from "./follow-up-obligations.js";
+      8| import { FollowUpDeliveryService, deliveryCanonical, type FollowUpTran…
+       | ^
+      9| const cleanup:(()=>void)[]=[];afterEach(()=>{for(const f of cleanup.sp…
+     10| function fixture(){
+
+Caused by: Error: Failed to load url ./follow-up-delivery.js (resolved id: ./follow-up-delivery.js) in /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-routing-next/packages/core/src/state/follow-up-delivery.test.ts. Does the file exist?
+ ❯ loadAndTransform ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:35835:17
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  no tests
+   Start at  13:27:32
+   Duration  659ms (transform 167ms, setup 0ms, collect 0ms, tests 0ms, environment 0ms, prepare 47ms)
+
+/Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-routing-next/packages/core:
+[ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL] @osstack/core@0.21.0 test: `vitest run src/state/follow-up-delivery.test.ts`
+Exit status 1

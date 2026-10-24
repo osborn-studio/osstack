@@ -1,0 +1,10 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-extension-integration/packages/cli
+
+ ✓ src/local-ledgers-daemon.test.ts (13 tests | 12 skipped) 82ms
+
+ Test Files  1 passed (1)
+      Tests  1 passed | 12 skipped (13)
+   Start at  14:09:25
+   Duration  3.40s (transform 1.85s, setup 19ms, collect 2.97s, tests 82ms, environment 0ms, prepare 77ms)
+

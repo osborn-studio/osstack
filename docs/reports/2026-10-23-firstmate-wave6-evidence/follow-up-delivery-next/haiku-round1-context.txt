@@ -1,0 +1,2040 @@
+Perform an adversarial code/security/reliability review of this OSStack O2a local public-delivery ledger. You have no tools/hooks/MCP. Review only supplied sources; do not claim you ran anything. Output JSON object {findings:[{priority:P0|P1|P2|P3,file,line,title,reason,fix}], verdict, limits}. Report concrete exploitable defects or correctness issues, not hypothetical new features. Host composition (registries/public keys/adapter implementations) is trusted. Default no provider; fake tests never prove production qualification. Same-user arbitrary DB writes are outside threat boundary. Parent integrates daemon RPC authentication/bin separately, do not report missing wiring in this isolated component as a bug. Critical invariants: signed exact scope/body/target single-attempt grants; verification+consumption in immediate write transaction before network; no caller-issued authority/receipts; actual registered transport only; unknown prevents replacement; no retries; bounded output and durable crash recovery. Read code closely, especially race/revocation/expiry/transport qualification. Authorize requires externally signed grants; no signer/provider is bundled deliberately. Existing withWrite uses db.transaction(fn).immediate with DB lease.
+
+FILE packages/protocol/src/follow-up-delivery.ts
+1: import { z } from "zod";
+2: const text = (n: number) =>
+3:   z
+4:     .string()
+5:     .min(1)
+6:     .max(n)
+7:     .refine((s) => /[^\p{White_Space}\p{C}]/u.test(s) && new TextEncoder().encode(s).length <= n);
+8: const id = z.string().uuid(),
+9:   digest = z.string().regex(/^[a-f0-9]{64}$/),
+10:   epoch = z.number().int().nonnegative().max(8_640_000_000_000_000),
+11:   revision = z
+12:     .number()
+13:     .int()
+14:     .positive()
+15:     .max(Number.MAX_SAFE_INTEGER - 1);
+16: const ref = z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$/);
+17: const scope = { repo_path: text(4096), default_tenant: z.literal(true) };
+18: export const FollowUpDeliveryTarget = z
+19:   .object({
+20:     destination_ref: ref,
+21:     repo_path: text(4096),
+22:     provider_id: z.literal("github_comment"),
+23:     account_id: ref,
+24:     host: z.literal("github.com"),
+25:     owner: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9-]{0,99}$/),
+26:     repository: z.string().regex(/^[A-Za-z0-9_][A-Za-z0-9_.-]{0,99}$/),
+27:     issue_number: z.number().int().safe().positive(),
+28:     target_node_id: text(256),
+29:   })
+30:   .strict();
+31: export type FollowUpDeliveryTarget = z.infer<typeof FollowUpDeliveryTarget>;
+32: export const FollowUpDeliverySubject = z
+33:   .object({
+34:     domain: z.literal("osstack.follow-up-delivery.v1"),
+35:     ...scope,
+36:     attempt_id: id,
+37:     provider_id: z.literal("github_comment"),
+38:     account_id: ref,
+39:     destination_digest: digest,
+40:     body_sha256: digest,
+41:     envelope_digest: digest,
+42:   })
+43:   .strict();
+44: export const FollowUpDeliveryGrantBody = FollowUpDeliverySubject.extend({
+45:   grant_id: id,
+46:   issued_at_ms: epoch,
+47:   expires_at_ms: epoch,
+48:   max_calls: z.literal(1),
+49: })
+50:   .strict()
+51:   .refine((g) => g.expires_at_ms > g.issued_at_ms);
+52: export const SignedFollowUpDeliveryGrant = z
+53:   .object({
+54:     body: FollowUpDeliveryGrantBody,
+55:     key_id: ref,
+56:     signature: z.string().regex(/^[A-Za-z0-9+/]{85}[AQgw]==$/),
+57:   })
+58:   .strict();
+59: export type SignedFollowUpDeliveryGrant = z.infer<typeof SignedFollowUpDeliveryGrant>;
+60: export const FollowUpDeliveryEnvelope = z
+61:   .object({
+62:     ...scope,
+63:     attempt_id: id,
+64:     obligation_id: id,
+65:     obligation_revision: revision,
+66:     destination: FollowUpDeliveryTarget,
+67:     destination_digest: digest,
+68:     body: text(16000),
+69:     body_sha256: digest,
+70:     envelope_digest: digest,
+71:   })
+72:   .strict();
+73: export type FollowUpDeliveryEnvelope = z.infer<typeof FollowUpDeliveryEnvelope>;
+74: export const FollowUpDeliveryReceipt = z
+75:   .object({
+76:     provider_id: z.literal("github_comment"),
+77:     account_id: ref,
+78:     target_node_id: text(256),
+79:     destination_digest: digest,
+80:     body_sha256: digest,
+81:     attempt_id: id,
+82:     provider_message_id: text(256),
+83:     provider_request_id: text(256),
+84:   })
+85:   .strict();
+86: export type FollowUpDeliveryReceipt = z.infer<typeof FollowUpDeliveryReceipt>;
+87: export const FollowUpDeliveryState = z.enum([
+88:   "prepared",
+89:   "started",
+90:   "delivered",
+91:   "delivery_unknown",
+92:   "definitely_not_sent",
+93: ]);
+94: const action = { ...scope, attempt_id: id, expected_revision: revision };
+95: export const FollowUpDeliveryPrepareParams = z
+96:   .object({
+97:     ...scope,
+98:     obligation_id: id,
+99:     expected_obligation_revision: revision,
+100:     destination_ref: ref,
+101:     body: text(16000),
+102:     idempotency_key: text(128),
+103:   })
+104:   .strict();
+105: export const FollowUpDeliveryActionParams = z.object(action).strict();
+106: export const FollowUpDeliveryAuthorizeParams = z
+107:   .object({ ...action, grant: SignedFollowUpDeliveryGrant })
+108:   .strict();
+109: export const FollowUpDeliveryRevokeParams = z.object({ ...action, reason: text(1024) }).strict();
+110: export const FollowUpDeliveryInspectParams = z.object({ ...scope, attempt_id: id }).strict();
+111: export const FollowUpDeliveryListParams = z
+112:   .object({ ...scope, limit: z.number().int().min(1).max(50).default(20), after_id: id.optional() })
+113:   .strict();
+114: export const FollowUpDeliveryAttempt = z
+115:   .object({
+116:     attempt_id: id,
+117:     repo_path: text(4096),
+118:     default_tenant: z.literal(true),
+119:     obligation_id: id,
+120:     obligation_revision: revision,
+121:     state: FollowUpDeliveryState,
+122:     revision,
+123:     created_at_ms: epoch,
+124:     updated_at_ms: epoch,
+125:     envelope: FollowUpDeliveryEnvelope,
+126:     authorization_subject: FollowUpDeliverySubject,
+127:     authorization_status: z.enum(["missing", "active", "consumed", "revoked"]),
+128:     qualification: z.enum([
+129:       "qualification_pending",
+130:       "test_only",
+131:       "sandbox_qualified",
+132:       "production_qualified",
+133:     ]),
+134:     receipt: FollowUpDeliveryReceipt.nullable(),
+135:     receipt_sha256: digest.nullable(),
+136:     reason: ref.nullable(),
+137:     delivery_uncertain: z.boolean(),
+138:     promise_fulfillment: z.literal("independent_local_obligation"),
+139:   })
+140:   .strict();
+141: export type FollowUpDeliveryAttempt = z.infer<typeof FollowUpDeliveryAttempt>;
+142: export const FollowUpDeliveryResult = z
+143:   .object({
+144:     schema_version: z.literal(1),
+145:     outcome: z.enum([
+146:       "prepared",
+147:       "authorized",
+148:       "revoked",
+149:       "delivered",
+150:       "delivery_unknown",
+151:       "in_flight",
+152:       "qualification_pending",
+153:       "unchanged",
+154:     ]),
+155:     attempt: FollowUpDeliveryAttempt,
+156:     duplicate: z.boolean(),
+157:   })
+158:   .strict();
+159: export type FollowUpDeliveryResult = z.infer<typeof FollowUpDeliveryResult>;
+160: export const FollowUpDeliveryListItem = FollowUpDeliveryAttempt.omit({
+161:   envelope: true,
+162:   authorization_subject: true,
+163:   receipt: true,
+164: }).extend({ destination_ref: ref, body_sha256: digest });
+165: export const FollowUpDeliveryListResult = z
+166:   .object({
+167:     schema_version: z.literal(1),
+168:     scope: z.object(scope).strict(),
+169:     attempts: z.array(FollowUpDeliveryListItem).max(50),
+170:     next_after_id: id.nullable(),
+171:   })
+172:   .strict();
+173: export type FollowUpDeliveryListResult = z.infer<typeof FollowUpDeliveryListResult>;
+
+FILE packages/core/src/state/follow-up-delivery.ts
+1: import { createHash, randomUUID, verify, type KeyObject } from "node:crypto";
+2: import { accessSync, constants, realpathSync, statSync } from "node:fs";
+3: import { isAbsolute } from "node:path";
+4: import type Database from "better-sqlite3";
+5: import type { z } from "zod";
+6: import {
+7:   FollowUpDeliveryTarget,
+8:   FollowUpDeliverySubject,
+9:   FollowUpDeliveryEnvelope,
+10:   FollowUpDeliveryReceipt,
+11:   SignedFollowUpDeliveryGrant,
+12:   FollowUpDeliveryPrepareParams,
+13:   FollowUpDeliveryActionParams,
+14:   FollowUpDeliveryAuthorizeParams,
+15:   FollowUpDeliveryRevokeParams,
+16:   FollowUpDeliveryInspectParams,
+17:   FollowUpDeliveryListParams,
+18:   FollowUpDeliveryAttempt,
+19:   FollowUpDeliveryResult,
+20:   FollowUpDeliveryListItem,
+21:   FollowUpDeliveryListResult,
+22: } from "@osstack/protocol";
+23: import { withWrite } from "./db.js";
+24: 
+25: export function deliveryCanonical(value: unknown): string {
+26:   if (Array.isArray(value)) return `[${value.map(deliveryCanonical).join(",")}]`;
+27:   if (value !== null && typeof value === "object")
+28:     return `{${Object.keys(value)
+29:       .sort()
+30:       .map((k) => `${JSON.stringify(k)}:${deliveryCanonical((value as Record<string, unknown>)[k])}`)
+31:       .join(",")}}`;
+32:   const encoded = JSON.stringify(value);
+33:   if (encoded === undefined) throw new Error("invalid_delivery_value");
+34:   return encoded;
+35: }
+36: const hash = (value: unknown) => createHash("sha256").update(deliveryCanonical(value)).digest("hex");
+37: const bodyHash = (body: string) => createHash("sha256").update(body).digest("hex");
+38: export const FOLLOW_UP_DELIVERY_ERRORS = [
+39:   "invalid_delivery_request",
+40:   "delivery_repository_unavailable",
+41:   "delivery_not_found",
+42:   "delivery_revision_conflict",
+43:   "delivery_obligation_changed",
+44:   "delivery_destination_unavailable",
+45:   "delivery_idempotency_conflict",
+46:   "delivery_unresolved_attempt",
+47:   "delivery_authorization_required",
+48:   "delivery_invalid_authorization",
+49:   "delivery_authorization_revoked",
+50:   "delivery_authorization_expired",
+51:   "delivery_terminal",
+52:   "delivery_invalid_clock",
+53:   "delivery_database_unavailable",
+54:   "delivery_response_too_large",
+55:   "delivery_unsupported_method",
+56: ] as const;
+57: export class FollowUpDeliveryError extends Error {
+58:   constructor(readonly code: (typeof FOLLOW_UP_DELIVERY_ERRORS)[number]) {
+59:     super(code);
+60:     this.name = "FollowUpDeliveryError";
+61:   }
+62: }
+63: export interface FollowUpDeliveryTrust {
+64:   publicKey: KeyObject;
+65:   purpose: "follow_up_delivery";
+66:   repo_path: string;
+67:   provider_id: "github_comment";
+68:   destination_refs: readonly string[];
+69:   max_validity_ms: number;
+70: }
+71: export interface FollowUpTransport {
+72:   qualification: "test_only" | "sandbox_qualified" | "production_qualified";
+73:   /** The adapter must disable SDK retries; declaration is not provider qualification. */
+74:   automatic_retries: boolean;
+75:   lookup_receipt: boolean;
+76:   sendOnce(envelope: Readonly<FollowUpDeliveryEnvelope>, signal: AbortSignal): Promise<unknown>;
+77:   /** Trusted provider lookup; caller-supplied receipt objects never enter this port. */
+78:   lookup(envelope: Readonly<FollowUpDeliveryEnvelope>, signal: AbortSignal): Promise<unknown>;
+79: }
+80: export interface FollowUpDeliveryOptions {
+81:   targets?: ReadonlyMap<string, FollowUpDeliveryTarget>;
+82:   trustedKeys?: ReadonlyMap<string, FollowUpDeliveryTrust>;
+83:   transports?: ReadonlyMap<string, FollowUpTransport>;
+84:   allowTestTransports?: boolean;
+85:   nowMs?: () => number;
+86:   timeoutMs?: number;
+87: }
+88: interface Row {
+89:   attempt_id: string;
+90:   repo_path: string;
+91:   obligation_id: string;
+92:   obligation_revision: number;
+93:   idempotency_key: string;
+94:   create_digest: string;
+95:   envelope_json: string;
+96:   state: FollowUpDeliveryAttempt["state"];
+97:   revision: number;
+98:   created_at_ms: number;
+99:   updated_at_ms: number;
+100:   qualification: FollowUpDeliveryAttempt["qualification"];
+101:   receipt_json: string | null;
+102:   receipt_sha256: string | null;
+103:   reason: string | null;
+104: }
+105: interface GrantRow {
+106:   grant_id: string;
+107:   key_id: string;
+108:   signed_json: string;
+109:   state: "active" | "consumed" | "revoked";
+110: }
+111: export function serializeFollowUpDelivery(value: unknown): string {
+112:   return JSON.stringify(value).replace(/[\u007f-\u009f\u2028\u2029\p{Cf}]/gu, (c) =>
+113:     c
+114:       .split("")
+115:       .map((u) => `\\u${u.charCodeAt(0).toString(16).padStart(4, "0")}`)
+116:       .join(""),
+117:   );
+118: }
+119: function bounded<T>(value: T): T {
+120:   if (Buffer.byteLength(serializeFollowUpDelivery(value)) + 1 > 65536)
+121:     throw new FollowUpDeliveryError("delivery_response_too_large");
+122:   return value;
+123: }
+124: function parsed<T extends z.ZodTypeAny>(schema: T, value: unknown): z.infer<T> {
+125:   const result = schema.safeParse(value);
+126:   if (!result.success) throw new FollowUpDeliveryError("invalid_delivery_request");
+127:   return result.data;
+128: }
+129: function repoPath(path: string): string {
+130:   try {
+131:     if (!isAbsolute(path) || /[\p{C}]/u.test(path)) throw Error();
+132:     const repo = realpathSync(path);
+133:     if (!statSync(repo).isDirectory() || Buffer.byteLength(repo) > 4096) throw Error();
+134:     accessSync(repo, constants.R_OK | constants.X_OK);
+135:     return repo;
+136:   } catch {
+137:     throw new FollowUpDeliveryError("delivery_repository_unavailable");
+138:   }
+139: }
+140: function frozen<T>(value: T): T {
+141:   if (value !== null && typeof value === "object") {
+142:     Object.freeze(value);
+143:     for (const child of Object.values(value)) frozen(child);
+144:   }
+145:   return value;
+146: }
+147: 
+148: /** Host registries/keys are trusted composition, never RPC input. Construction performs no I/O. */
+149: export class FollowUpDeliveryService {
+150:   constructor(
+151:     private readonly db: Database.Database,
+152:     private readonly dbPath: string,
+153:     private readonly options: FollowUpDeliveryOptions = {},
+154:   ) {}
+155:   async handle(method: string, input: unknown): Promise<FollowUpDeliveryResult | FollowUpDeliveryListResult> {
+156:     switch (method) {
+157:       case "follow-up-delivery.prepare":
+158:         return this.prepare(input);
+159:       case "follow-up-delivery.list":
+160:         return this.list(input);
+161:       case "follow-up-delivery.inspect":
+162:         return this.inspect(input);
+163:       case "follow-up-delivery.authorize":
+164:         return this.authorize(input);
+165:       case "follow-up-delivery.revoke":
+166:         return this.revoke(input);
+167:       case "follow-up-delivery.dispatch":
+168:         return this.dispatch(input);
+169:       case "follow-up-delivery.reconcile":
+170:         return this.reconcile(input);
+171:       default:
+172:         throw new FollowUpDeliveryError("delivery_unsupported_method");
+173:     }
+174:   }
+175:   prepare(input: unknown): FollowUpDeliveryResult {
+176:     const p = parsed(FollowUpDeliveryPrepareParams, input),
+177:       repo = repoPath(p.repo_path),
+178:       createDigest = hash({ ...p, repo_path: repo });
+179:     return this.safe(() =>
+180:       withWrite(this.db, this.dbPath, () => {
+181:         const existing = this.db
+182:           .prepare(
+183:             "SELECT * FROM follow_up_delivery_attempts WHERE repo_path=? AND tenant='default' AND idempotency_key=?",
+184:           )
+185:           .get(repo, p.idempotency_key) as Row | undefined;
+186:         if (existing) {
+187:           if (existing.create_digest !== createDigest)
+188:             throw new FollowUpDeliveryError("delivery_idempotency_conflict");
+189:           return this.result(existing, "unchanged", true);
+190:         }
+191:         this.obligation(repo, p.obligation_id, p.expected_obligation_revision);
+192:         if (
+193:           this.db
+194:             .prepare(
+195:               "SELECT 1 FROM follow_up_delivery_attempts WHERE repo_path=? AND tenant='default' AND obligation_id=? AND state IN ('prepared','started','delivery_unknown')",
+196:             )
+197:             .get(repo, p.obligation_id)
+198:         )
+199:           throw new FollowUpDeliveryError("delivery_unresolved_attempt");
+200:         const target = this.target(repo, p.destination_ref),
+201:           now = this.clock(),
+202:           attemptId = randomUUID();
+203:         const payload = {
+204:           repo_path: repo,
+205:           default_tenant: true as const,
+206:           attempt_id: attemptId,
+207:           obligation_id: p.obligation_id,
+208:           obligation_revision: p.expected_obligation_revision,
+209:           destination: target,
+210:           destination_digest: hash(target),
+211:           body: p.body,
+212:           body_sha256: bodyHash(p.body),
+213:         };
+214:         const envelope = FollowUpDeliveryEnvelope.parse({ ...payload, envelope_digest: hash(payload) });
+215:         if (Buffer.byteLength(JSON.stringify(envelope)) > 49152)
+216:           throw new FollowUpDeliveryError("delivery_response_too_large");
+217:         this.db
+218:           .prepare(
+219:             "INSERT INTO follow_up_delivery_attempts(attempt_id,repo_path,tenant,obligation_id,obligation_revision,idempotency_key,create_digest,envelope_json,state,revision,created_at_ms,updated_at_ms,qualification) VALUES(?,?,'default',?,?,?,?,?,'prepared',1,?,?,'qualification_pending')",
+220:           )
+221:           .run(
+222:             attemptId,
+223:             repo,
+224:             p.obligation_id,
+225:             p.expected_obligation_revision,
+226:             p.idempotency_key,
+227:             createDigest,
+228:             JSON.stringify(envelope),
+229:             now,
+230:             now,
+231:           );
+232:         const row = this.row(repo, attemptId);
+233:         this.reserveReceiptSpace(row);
+234:         this.event(attemptId, 1, "prepared", { envelope_digest: envelope.envelope_digest }, now);
+235:         return this.result(row, "prepared");
+236:       }),
+237:     );
+238:   }
+239:   inspect(input: unknown): FollowUpDeliveryResult {
+240:     const p = parsed(FollowUpDeliveryInspectParams, input),
+241:       repo = repoPath(p.repo_path);
+242:     return this.safe(() => this.result(this.row(repo, p.attempt_id), "unchanged"));
+243:   }
+244:   list(input: unknown): FollowUpDeliveryListResult {
+245:     const p = parsed(FollowUpDeliveryListParams, input),
+246:       repo = repoPath(p.repo_path);
+247:     return this.safe(() => {
+248:       const rows = this.db
+249:         .prepare(
+250:           "SELECT * FROM follow_up_delivery_attempts WHERE repo_path=? AND tenant='default' AND attempt_id>? ORDER BY attempt_id LIMIT ?",
+251:         )
+252:         .all(repo, p.after_id ?? "", p.limit + 1) as Row[];
+253:       const items: z.infer<typeof FollowUpDeliveryListItem>[] = [];
+254:       let after: string | null = null;
+255:       for (let i = 0; i < Math.min(rows.length, p.limit); i++) {
+256:         const row = rows[i]!,
+257:           view = this.view(row),
+258:           { envelope, authorization_subject: _subject, receipt: _receipt, ...rest } = view;
+259:         const item = FollowUpDeliveryListItem.parse({
+260:           ...rest,
+261:           destination_ref: envelope.destination.destination_ref,
+262:           body_sha256: envelope.body_sha256,
+263:         });
+264:         const more = i + 1 < rows.length,
+265:           candidate = {
+266:             schema_version: 1 as const,
+267:             scope: { repo_path: repo, default_tenant: true as const },
+268:             attempts: [...items, item],
+269:             next_after_id: more ? row.attempt_id : null,
+270:           };
+271:         if (Buffer.byteLength(serializeFollowUpDelivery(candidate)) + 1 > 65536) {
+272:           if (!items.length) throw new FollowUpDeliveryError("delivery_response_too_large");
+273:           after = items[items.length - 1]!.attempt_id;
+274:           break;
+275:         }
+276:         items.push(item);
+277:         after = candidate.next_after_id;
+278:       }
+279:       return bounded(
+280:         FollowUpDeliveryListResult.parse({
+281:           schema_version: 1,
+282:           scope: { repo_path: repo, default_tenant: true },
+283:           attempts: items,
+284:           next_after_id: after,
+285:         }),
+286:       );
+287:     });
+288:   }
+289:   authorize(input: unknown): FollowUpDeliveryResult {
+290:     const p = parsed(FollowUpDeliveryAuthorizeParams, input),
+291:       repo = repoPath(p.repo_path);
+292:     return this.safe(() =>
+293:       withWrite(this.db, this.dbPath, () => {
+294:         const row = this.row(repo, p.attempt_id),
+295:           existing = this.grant(row.attempt_id);
+296:         if (existing && deliveryCanonical(JSON.parse(existing.signed_json)) === deliveryCanonical(p.grant))
+297:           return this.result(row, "unchanged", true);
+298:         this.revision(row, p.expected_revision);
+299:         if (row.state !== "prepared") throw new FollowUpDeliveryError("delivery_terminal");
+300:         if (existing) throw new FollowUpDeliveryError("delivery_invalid_authorization");
+301:         const now = this.clock(row.updated_at_ms);
+302:         this.verifyGrant(row, p.grant, now);
+303:         if (
+304:           this.db
+305:             .prepare("SELECT 1 FROM follow_up_delivery_grants WHERE grant_id=?")
+306:             .get(p.grant.body.grant_id)
+307:         )
+308:           throw new FollowUpDeliveryError("delivery_invalid_authorization");
+309:         this.db
+310:           .prepare(
+311:             "INSERT INTO follow_up_delivery_grants(grant_id,attempt_id,key_id,signed_json,state,created_at_ms,updated_at_ms) VALUES(?,?,?,?,'active',?,?)",
+312:           )
+313:           .run(p.grant.body.grant_id, row.attempt_id, p.grant.key_id, JSON.stringify(p.grant), now, now);
+314:         return this.result(
+315:           this.bump(row, "prepared", "authorized", now, {
+316:             grant_id: p.grant.body.grant_id,
+317:             key_id: p.grant.key_id,
+318:           }),
+319:           "authorized",
+320:         );
+321:       }),
+322:     );
+323:   }
+324:   revoke(input: unknown): FollowUpDeliveryResult {
+325:     const p = parsed(FollowUpDeliveryRevokeParams, input),
+326:       repo = repoPath(p.repo_path);
+327:     return this.safe(() =>
+328:       withWrite(this.db, this.dbPath, () => {
+329:         const row = this.row(repo, p.attempt_id);
+330:         this.revision(row, p.expected_revision);
+331:         if (["delivered", "definitely_not_sent"].includes(row.state))
+332:           return this.result(row, "unchanged", true);
+333:         const now = this.clock(row.updated_at_ms);
+334:         this.db
+335:           .prepare("UPDATE follow_up_delivery_grants SET state='revoked',updated_at_ms=? WHERE attempt_id=?")
+336:           .run(now, row.attempt_id);
+337:         return this.result(
+338:           this.bump(
+339:             row,
+340:             row.state === "prepared" ? "definitely_not_sent" : "delivery_unknown",
+341:             row.state === "prepared" ? "revoked_before_send" : "revoked_after_start",
+342:             now,
+343:             { reason: p.reason },
+344:           ),
+345:           "revoked",
+346:         );
+347:       }),
+348:     );
+349:   }
+350:   async dispatch(input: unknown): Promise<FollowUpDeliveryResult> {
+351:     const p = parsed(FollowUpDeliveryActionParams, input),
+352:       repo = repoPath(p.repo_path);
+353:     const claim = this.safe(() =>
+354:       withWrite(this.db, this.dbPath, () => {
+355:         const row = this.row(repo, p.attempt_id);
+356:         this.revision(row, p.expected_revision);
+357:         if (row.state !== "prepared")
+358:           return {
+359:             result: this.result(
+360:               row,
+361:               row.state === "started"
+362:                 ? "in_flight"
+363:                 : row.state === "delivery_unknown"
+364:                   ? "delivery_unknown"
+365:                   : "unchanged",
+366:               true,
+367:             ),
+368:           };
+369:         const envelope = this.envelope(row),
+370:           transport = this.transport(envelope);
+371:         if (!transport) return { result: this.result(row, "qualification_pending") };
+372:         const grant = this.grant(row.attempt_id);
+373:         if (!grant) throw new FollowUpDeliveryError("delivery_authorization_required");
+374:         if (grant.state !== "active") throw new FollowUpDeliveryError("delivery_authorization_revoked");
+375:         const now = this.clock(row.updated_at_ms);
+376:         // Verify current key, exact target, immutable content and time INSIDE the consuming transaction.
+377:         this.verifyGrant(row, SignedFollowUpDeliveryGrant.parse(JSON.parse(grant.signed_json)), now);
+378:         this.obligation(repo, row.obligation_id, row.obligation_revision);
+379:         this.db
+380:           .prepare(
+381:             "UPDATE follow_up_delivery_grants SET state='consumed',updated_at_ms=? WHERE attempt_id=? AND state='active'",
+382:           )
+383:           .run(now, row.attempt_id);
+384:         const started = this.bump(
+385:           row,
+386:           "started",
+387:           "send_started",
+388:           now,
+389:           { grant_id: grant.grant_id },
+390:           transport.qualification,
+391:         );
+392:         return { row: started, envelope: frozen(envelope), transport };
+393:       }),
+394:     );
+395:     if ("result" in claim) return claim.result;
+396:     // No retry or fallback exists here. A throw after this call cannot prove non-delivery.
+397:     const outcome = await this.boundedCall((signal) => claim.transport.sendOnce(claim.envelope, signal));
+398:     return this.safe(() =>
+399:       withWrite(this.db, this.dbPath, () => {
+400:         const current = this.row(repo, p.attempt_id);
+401:         if (current.state !== "started" || current.revision !== claim.row.revision)
+402:           return this.result(current, "unchanged", true);
+403:         const now = this.clock(current.updated_at_ms),
+404:           receipt = outcome.ok ? this.receipt(claim.envelope, outcome.value) : null;
+405:         if (!receipt)
+406:           return this.result(
+407:             this.bump(
+408:               current,
+409:               "delivery_unknown",
+410:               outcome.ok ? "receipt_unconfirmed" : "send_outcome_unknown",
+411:               now,
+412:               {},
+413:             ),
+414:             "delivery_unknown",
+415:           );
+416:         return this.result(
+417:           this.bump(
+418:             current,
+419:             "delivered",
+420:             "provider_receipt",
+421:             now,
+422:             { receipt_sha256: hash(receipt) },
+423:             current.qualification,
+424:             receipt,
+425:           ),
+426:           "delivered",
+427:         );
+428:       }),
+429:     );
+430:   }
+431:   async reconcile(input: unknown): Promise<FollowUpDeliveryResult> {
+432:     const p = parsed(FollowUpDeliveryActionParams, input),
+433:       repo = repoPath(p.repo_path);
+434:     const claim = this.safe(() =>
+435:       withWrite(this.db, this.dbPath, () => {
+436:         let row = this.row(repo, p.attempt_id);
+437:         this.revision(row, p.expected_revision);
+438:         if (row.state === "prepared") throw new FollowUpDeliveryError("delivery_authorization_required");
+439:         if (["delivered", "definitely_not_sent"].includes(row.state))
+440:           return { result: this.result(row, "unchanged", true) };
+441:         const envelope = this.envelope(row),
+442:           transport = this.transport(envelope);
+443:         if (!transport?.lookup_receipt || transport.qualification !== row.qualification)
+444:           return { result: this.result(row, "qualification_pending") };
+445:         const now = this.clock(row.updated_at_ms);
+446:         if (row.state === "started") row = this.bump(row, "delivery_unknown", "started_unconfirmed", now, {});
+447:         return { row, envelope: frozen(envelope), transport };
+448:       }),
+449:     );
+450:     if ("result" in claim) return claim.result;
+451:     const outcome = await this.boundedCall((signal) => claim.transport.lookup(claim.envelope, signal));
+452:     return this.safe(() =>
+453:       withWrite(this.db, this.dbPath, () => {
+454:         const row = this.row(repo, p.attempt_id);
+455:         if (row.state !== "delivery_unknown" || row.revision !== claim.row.revision)
+456:           return this.result(row, "unchanged", true);
+457:         const now = this.clock(row.updated_at_ms),
+458:           receipt = outcome.ok ? this.receipt(claim.envelope, outcome.value) : null;
+459:         if (!receipt)
+460:           return this.result(
+461:             this.bump(row, "delivery_unknown", "lookup_unconfirmed", now, {}),
+462:             "delivery_unknown",
+463:           );
+464:         return this.result(
+465:           this.bump(
+466:             row,
+467:             "delivered",
+468:             "provider_lookup_receipt",
+469:             now,
+470:             { receipt_sha256: hash(receipt) },
+471:             row.qualification,
+472:             receipt,
+473:           ),
+474:           "delivered",
+475:         );
+476:       }),
+477:     );
+478:   }
+479:   private async boundedCall(
+480:     call: (signal: AbortSignal) => Promise<unknown>,
+481:   ): Promise<{ ok: true; value: unknown } | { ok: false }> {
+482:     const controller = new AbortController();
+483:     let timer: NodeJS.Timeout | undefined;
+484:     try {
+485:       return await Promise.race([
+486:         Promise.resolve()
+487:           .then(() => call(controller.signal))
+488:           .then(
+489:             (value) => ({ ok: true as const, value }),
+490:             () => ({ ok: false as const }),
+491:           ),
+492:         new Promise<{ ok: false }>((resolve) => {
+493:           timer = setTimeout(
+494:             () => {
+495:               controller.abort();
+496:               resolve({ ok: false });
+497:             },
+498:             Math.max(1, Math.min(30000, this.options.timeoutMs ?? 5000)),
+499:           );
+500:         }),
+501:       ]);
+502:     } finally {
+503:       if (timer) clearTimeout(timer);
+504:       controller.abort();
+505:     }
+506:   }
+507:   private target(repo: string, ref: string): FollowUpDeliveryTarget {
+508:     const result = FollowUpDeliveryTarget.safeParse(this.options.targets?.get(ref));
+509:     if (!result.success || result.data.destination_ref !== ref || result.data.repo_path !== repo)
+510:       throw new FollowUpDeliveryError("delivery_destination_unavailable");
+511:     return result.data;
+512:   }
+513:   private transport(envelope: FollowUpDeliveryEnvelope): FollowUpTransport | undefined {
+514:     const current = this.target(envelope.repo_path, envelope.destination.destination_ref);
+515:     if (hash(current) !== envelope.destination_digest)
+516:       throw new FollowUpDeliveryError("delivery_destination_unavailable");
+517:     const t = this.options.transports?.get(current.provider_id);
+518:     if (
+519:       !t ||
+520:       t.automatic_retries ||
+521:       !(["test_only", "sandbox_qualified", "production_qualified"] as string[]).includes(t.qualification) ||
+522:       (t.qualification === "test_only" && !this.options.allowTestTransports)
+523:     )
+524:       return undefined;
+525:     return t;
+526:   }
+527:   private subject(envelope: FollowUpDeliveryEnvelope) {
+528:     return FollowUpDeliverySubject.parse({
+529:       domain: "osstack.follow-up-delivery.v1",
+530:       repo_path: envelope.repo_path,
+531:       default_tenant: true,
+532:       attempt_id: envelope.attempt_id,
+533:       provider_id: envelope.destination.provider_id,
+534:       account_id: envelope.destination.account_id,
+535:       destination_digest: envelope.destination_digest,
+536:       body_sha256: envelope.body_sha256,
+537:       envelope_digest: envelope.envelope_digest,
+538:     });
+539:   }
+540:   private verifyGrant(row: Row, grant: SignedFollowUpDeliveryGrant, now: number): void {
+541:     const envelope = this.envelope(row),
+542:       body = grant.body,
+543:       { grant_id: _id, issued_at_ms, expires_at_ms, max_calls: _calls, ...subject } = body,
+544:       key = this.options.trustedKeys?.get(grant.key_id);
+545:     if (
+546:       key?.purpose !== "follow_up_delivery" ||
+547:       key.publicKey.type !== "public" ||
+548:       key.publicKey.asymmetricKeyType !== "ed25519" ||
+549:       key.repo_path !== row.repo_path ||
+550:       key.provider_id !== envelope.destination.provider_id ||
+551:       !key.destination_refs.includes(envelope.destination.destination_ref) ||
+552:       !Number.isSafeInteger(key.max_validity_ms) ||
+553:       key.max_validity_ms < 1 ||
+554:       expires_at_ms - issued_at_ms > key.max_validity_ms ||
+555:       deliveryCanonical(subject) !== deliveryCanonical(this.subject(envelope))
+556:     )
+557:       throw new FollowUpDeliveryError("delivery_invalid_authorization");
+558:     if (now < issued_at_ms || now >= expires_at_ms)
+559:       throw new FollowUpDeliveryError("delivery_authorization_expired");
+560:     if (
+561:       hash(this.target(row.repo_path, envelope.destination.destination_ref)) !== envelope.destination_digest
+562:     )
+563:       throw new FollowUpDeliveryError("delivery_destination_unavailable");
+564:     if (
+565:       !verify(
+566:         null,
+567:         Buffer.from(deliveryCanonical(body)),
+568:         key.publicKey,
+569:         Buffer.from(grant.signature, "base64"),
+570:       )
+571:     )
+572:       throw new FollowUpDeliveryError("delivery_invalid_authorization");
+573:   }
+574:   private receipt(envelope: FollowUpDeliveryEnvelope, raw: unknown): FollowUpDeliveryReceipt | null {
+575:     const result = FollowUpDeliveryReceipt.safeParse(raw);
+576:     if (!result.success) return null;
+577:     const r = result.data;
+578:     return r.provider_id === envelope.destination.provider_id &&
+579:       r.account_id === envelope.destination.account_id &&
+580:       r.target_node_id === envelope.destination.target_node_id &&
+581:       r.destination_digest === envelope.destination_digest &&
+582:       r.body_sha256 === envelope.body_sha256 &&
+583:       r.attempt_id === envelope.attempt_id
+584:       ? r
+585:       : null;
+586:   }
+587:   private envelope(row: Row): FollowUpDeliveryEnvelope {
+588:     const e = FollowUpDeliveryEnvelope.parse(JSON.parse(row.envelope_json)),
+589:       { envelope_digest, ...payload } = e;
+590:     if (
+591:       e.attempt_id !== row.attempt_id ||
+592:       e.repo_path !== row.repo_path ||
+593:       e.obligation_id !== row.obligation_id ||
+594:       e.obligation_revision !== row.obligation_revision ||
+595:       e.body_sha256 !== bodyHash(e.body) ||
+596:       e.destination_digest !== hash(e.destination) ||
+597:       envelope_digest !== hash(payload)
+598:     )
+599:       throw new FollowUpDeliveryError("delivery_database_unavailable");
+600:     return e;
+601:   }
+602:   private grant(id: string): GrantRow | undefined {
+603:     return this.db.prepare("SELECT * FROM follow_up_delivery_grants WHERE attempt_id=?").get(id) as
+604:       | GrantRow
+605:       | undefined;
+606:   }
+607:   private row(repo: string, id: string): Row {
+608:     const r = this.db
+609:       .prepare(
+610:         "SELECT * FROM follow_up_delivery_attempts WHERE repo_path=? AND tenant='default' AND attempt_id=?",
+611:       )
+612:       .get(repo, id) as Row | undefined;
+613:     if (!r) throw new FollowUpDeliveryError("delivery_not_found");
+614:     return r;
+615:   }
+616:   private revision(row: Row, expected: number) {
+617:     if (row.revision !== expected) throw new FollowUpDeliveryError("delivery_revision_conflict");
+618:   }
+619:   private obligation(repo: string, id: string, revision: number) {
+620:     const row = this.db
+621:       .prepare(
+622:         "SELECT revision FROM follow_up_obligations WHERE repo_path=? AND tenant='default' AND obligation_id=?",
+623:       )
+624:       .get(repo, id) as { revision: number } | undefined;
+625:     if (!row || row.revision !== revision) throw new FollowUpDeliveryError("delivery_obligation_changed");
+626:   }
+627:   private clock(minimum = 0): number {
+628:     const now = (this.options.nowMs ?? Date.now)();
+629:     if (!Number.isSafeInteger(now) || now < minimum || now > 8_640_000_000_000_000)
+630:       throw new FollowUpDeliveryError("delivery_invalid_clock");
+631:     return now;
+632:   }
+633:   private safe<T>(call: () => T): T {
+634:     try {
+635:       return call();
+636:     } catch (error) {
+637:       if (error instanceof FollowUpDeliveryError) throw error;
+638:       throw new FollowUpDeliveryError("delivery_database_unavailable");
+639:     }
+640:   }
+641:   private bump(
+642:     row: Row,
+643:     state: Row["state"],
+644:     reason: string,
+645:     now: number,
+646:     evidence: unknown,
+647:     qualification = row.qualification,
+648:     receipt: FollowUpDeliveryReceipt | null = null,
+649:   ): Row {
+650:     if (row.revision >= Number.MAX_SAFE_INTEGER - 1)
+651:       throw new FollowUpDeliveryError("delivery_revision_conflict");
+652:     const result = this.db
+653:       .prepare(
+654:         "UPDATE follow_up_delivery_attempts SET state=?,revision=revision+1,updated_at_ms=?,qualification=?,receipt_json=?,receipt_sha256=?,reason=? WHERE attempt_id=? AND revision=?",
+655:       )
+656:       .run(
+657:         state,
+658:         now,
+659:         qualification,
+660:         receipt ? JSON.stringify(receipt) : null,
+661:         receipt ? hash(receipt) : null,
+662:         reason,
+663:         row.attempt_id,
+664:         row.revision,
+665:       );
+666:     if (result.changes !== 1) throw new FollowUpDeliveryError("delivery_revision_conflict");
+667:     this.event(row.attempt_id, row.revision + 1, reason, evidence, now);
+668:     return this.row(row.repo_path, row.attempt_id);
+669:   }
+670:   private event(id: string, revision: number, transition: string, evidence: unknown, now: number) {
+671:     this.db
+672:       .prepare(
+673:         "INSERT INTO follow_up_delivery_events(attempt_id,revision,transition,evidence_json,created_at_ms) VALUES(?,?,?,?,?)",
+674:       )
+675:       .run(id, revision, transition, JSON.stringify(evidence), now);
+676:   }
+677:   private view(row: Row): FollowUpDeliveryAttempt {
+678:     const envelope = this.envelope(row);
+679:     return FollowUpDeliveryAttempt.parse({
+680:       attempt_id: row.attempt_id,
+681:       repo_path: row.repo_path,
+682:       default_tenant: true,
+683:       obligation_id: row.obligation_id,
+684:       obligation_revision: row.obligation_revision,
+685:       state: row.state,
+686:       revision: row.revision,
+687:       created_at_ms: row.created_at_ms,
+688:       updated_at_ms: row.updated_at_ms,
+689:       envelope,
+690:       authorization_subject: this.subject(envelope),
+691:       authorization_status: this.grant(row.attempt_id)?.state ?? "missing",
+692:       qualification: row.qualification,
+693:       receipt: row.receipt_json === null ? null : JSON.parse(row.receipt_json),
+694:       receipt_sha256: row.receipt_sha256,
+695:       reason: row.reason,
+696:       delivery_uncertain: row.state === "started" || row.state === "delivery_unknown",
+697:       promise_fulfillment: "independent_local_obligation",
+698:     });
+699:   }
+700:   /** Reserve the largest valid receipt before an irreversible transport call is possible. */
+701:   private reserveReceiptSpace(row: Row): void {
+702:     const view = this.view(row),
+703:       e = view.envelope;
+704:     const receipt: FollowUpDeliveryReceipt = {
+705:       provider_id: e.destination.provider_id,
+706:       account_id: e.destination.account_id,
+707:       target_node_id: e.destination.target_node_id,
+708:       destination_digest: e.destination_digest,
+709:       body_sha256: e.body_sha256,
+710:       attempt_id: e.attempt_id,
+711:       provider_message_id: "x" + "\0".repeat(255),
+712:       provider_request_id: "x" + "\0".repeat(255),
+713:     };
+714:     bounded({
+715:       schema_version: 1,
+716:       outcome: "delivery_unknown",
+717:       attempt: {
+718:         ...view,
+719:         state: "delivery_unknown",
+720:         revision: Number.MAX_SAFE_INTEGER - 1,
+721:         updated_at_ms: 8_640_000_000_000_000,
+722:         qualification: "production_qualified",
+723:         authorization_status: "consumed",
+724:         receipt,
+725:         receipt_sha256: "f".repeat(64),
+726:         reason: "x".repeat(128),
+727:         delivery_uncertain: true,
+728:       },
+729:       duplicate: false,
+730:     });
+731:   }
+732:   private result(
+733:     row: Row,
+734:     outcome: FollowUpDeliveryResult["outcome"],
+735:     duplicate = false,
+736:   ): FollowUpDeliveryResult {
+737:     return bounded(
+738:       FollowUpDeliveryResult.parse({ schema_version: 1, outcome, attempt: this.view(row), duplicate }),
+739:     );
+740:   }
+741: }
+
+FILE packages/core/src/state/follow-up-delivery-ddl.ts
+1: /** Migration 45. Services never run schema creation themselves. */
+2: export const FOLLOW_UP_DELIVERY_DDL = `
+3: CREATE TABLE follow_up_delivery_attempts (
+4:  attempt_id TEXT PRIMARY KEY NOT NULL,repo_path TEXT NOT NULL,tenant TEXT NOT NULL CHECK(tenant='default'),
+5:  obligation_id TEXT NOT NULL REFERENCES follow_up_obligations(obligation_id),obligation_revision INTEGER NOT NULL CHECK(obligation_revision>0),
+6:  idempotency_key TEXT NOT NULL,create_digest TEXT NOT NULL,envelope_json TEXT NOT NULL CHECK(json_valid(envelope_json) AND length(CAST(envelope_json AS BLOB))<=49152),
+7:  state TEXT NOT NULL CHECK(state IN ('prepared','started','delivered','delivery_unknown','definitely_not_sent')),
+8:  revision INTEGER NOT NULL CHECK(revision BETWEEN 1 AND 9007199254740990),created_at_ms INTEGER NOT NULL CHECK(created_at_ms>=0),updated_at_ms INTEGER NOT NULL CHECK(updated_at_ms>=created_at_ms),
+9:  qualification TEXT NOT NULL CHECK(qualification IN ('qualification_pending','test_only','sandbox_qualified','production_qualified')),
+10:  receipt_json TEXT CHECK(receipt_json IS NULL OR (json_valid(receipt_json) AND length(CAST(receipt_json AS BLOB))<=8192)),receipt_sha256 TEXT,reason TEXT,
+11:  UNIQUE(repo_path,tenant,idempotency_key),CHECK((state='delivered')=(receipt_json IS NOT NULL)),CHECK((receipt_json IS NULL)=(receipt_sha256 IS NULL))
+12: );
+13: CREATE UNIQUE INDEX follow_up_delivery_active_obligation ON follow_up_delivery_attempts(repo_path,tenant,obligation_id) WHERE state IN ('prepared','started','delivery_unknown');
+14: CREATE INDEX follow_up_delivery_scope_page ON follow_up_delivery_attempts(repo_path,tenant,attempt_id);
+15: CREATE TABLE follow_up_delivery_grants (
+16:  grant_id TEXT PRIMARY KEY NOT NULL,attempt_id TEXT NOT NULL UNIQUE REFERENCES follow_up_delivery_attempts(attempt_id),
+17:  key_id TEXT NOT NULL,signed_json TEXT NOT NULL CHECK(json_valid(signed_json) AND length(CAST(signed_json AS BLOB))<=16384),
+18:  state TEXT NOT NULL CHECK(state IN ('active','consumed','revoked')),created_at_ms INTEGER NOT NULL,updated_at_ms INTEGER NOT NULL CHECK(updated_at_ms>=created_at_ms)
+19: );
+20: CREATE TABLE follow_up_delivery_events (
+21:  attempt_id TEXT NOT NULL REFERENCES follow_up_delivery_attempts(attempt_id),revision INTEGER NOT NULL,transition TEXT NOT NULL,
+22:  evidence_json TEXT NOT NULL CHECK(json_valid(evidence_json) AND length(CAST(evidence_json AS BLOB))<=16384),created_at_ms INTEGER NOT NULL,
+23:  PRIMARY KEY(attempt_id,revision)
+24: );
+25: CREATE TRIGGER follow_up_delivery_identity_immutable BEFORE UPDATE OF attempt_id,repo_path,tenant,obligation_id,obligation_revision,idempotency_key,create_digest,envelope_json,created_at_ms ON follow_up_delivery_attempts BEGIN SELECT RAISE(ABORT,'delivery identity immutable'); END;
+26: CREATE TRIGGER follow_up_delivery_terminal_immutable BEFORE UPDATE ON follow_up_delivery_attempts WHEN OLD.state IN ('delivered','definitely_not_sent') BEGIN SELECT RAISE(ABORT,'delivery terminal immutable'); END;
+27: CREATE TRIGGER follow_up_delivery_state_forward BEFORE UPDATE OF state ON follow_up_delivery_attempts WHEN
+28:  (OLD.state='prepared' AND NEW.state NOT IN ('prepared','started','definitely_not_sent')) OR
+29:  (OLD.state='started' AND NEW.state NOT IN ('delivered','delivery_unknown')) OR
+30:  (OLD.state='delivery_unknown' AND NEW.state NOT IN ('delivered','delivery_unknown'))
+31:  BEGIN SELECT RAISE(ABORT,'delivery state cannot rewind'); END;
+32: CREATE TRIGGER follow_up_delivery_grant_no_rearm BEFORE UPDATE OF state ON follow_up_delivery_grants WHEN
+33:  (OLD.state='consumed' AND NEW.state='active') OR (OLD.state='revoked' AND NEW.state!='revoked')
+34:  BEGIN SELECT RAISE(ABORT,'delivery grant cannot rearm'); END;
+35: CREATE TRIGGER follow_up_delivery_attempts_no_delete BEFORE DELETE ON follow_up_delivery_attempts BEGIN SELECT RAISE(ABORT,'delivery history immutable'); END;
+36: CREATE TRIGGER follow_up_delivery_grants_identity_immutable BEFORE UPDATE OF grant_id,attempt_id,key_id,signed_json,created_at_ms ON follow_up_delivery_grants BEGIN SELECT RAISE(ABORT,'delivery grant immutable'); END;
+37: CREATE TRIGGER follow_up_delivery_grants_no_delete BEFORE DELETE ON follow_up_delivery_grants BEGIN SELECT RAISE(ABORT,'delivery history immutable'); END;
+38: CREATE TRIGGER follow_up_delivery_events_no_update BEFORE UPDATE ON follow_up_delivery_events BEGIN SELECT RAISE(ABORT,'delivery history immutable'); END;
+39: CREATE TRIGGER follow_up_delivery_events_no_delete BEFORE DELETE ON follow_up_delivery_events BEGIN SELECT RAISE(ABORT,'delivery history immutable'); END;
+40: `;
+
+FILE packages/core/src/state/follow-up-delivery.test.ts
+1: import type { FollowUpDeliveryEnvelope } from "@osstack/protocol";
+2: import { createHash, generateKeyPairSync, sign } from "node:crypto";
+3: import { mkdirSync, realpathSync, rmSync, writeFileSync, symlinkSync, readFileSync } from "node:fs";
+4: import { fileURLToPath } from "node:url";
+5: import { spawnSync } from "node:child_process";
+6: import { buildSync } from "esbuild";
+7: import Database from "better-sqlite3";
+8: import { CURRENT_SCHEMA_VERSION, MIGRATIONS } from "./migrations.js";
+9: import { join } from "node:path";
+10: import { afterEach, expect, it, vi } from "vitest";
+11: import { createScratchDirSync } from "../scratch.js";
+12: import { openDb } from "./db.js";
+13: import { FollowUpObligationService } from "./follow-up-obligations.js";
+14: import { FollowUpDeliveryService, deliveryCanonical, type FollowUpTransport } from "./follow-up-delivery.js";
+15: const cleanup: (() => void)[] = [];
+16: afterEach(() => {
+17:   for (const f of cleanup.splice(0).reverse()) f();
+18: });
+19: function fixture() {
+20:   const root = realpathSync(createScratchDirSync("tests", "follow-delivery"));
+21:   cleanup.push(() => rmSync(root, { recursive: true, force: true }));
+22:   const repo = join(root, "repo");
+23:   mkdirSync(repo);
+24:   const dbPath = join(root, "state.db"),
+25:     db = openDb({ path: dbPath });
+26:   cleanup.push(() => db.close());
+27:   db.exec(
+28:     "INSERT INTO tasks(task_id,title,status,created_at,updated_at) VALUES('t','task','running',1,1); INSERT INTO runs(run_id,task_id,session_id,agent_id,capability_id,phase,started_at) VALUES('r','t','s','codex-cli','code','execute',1)",
+29:   );
+30:   db.prepare(
+31:     "INSERT INTO agent_sessions(session_id,task_id,run_id,agent_id,request_sha256,repo_path,state,resume_supported,version,updated_at) VALUES('s','t','r','codex-cli',?,?,'idle',1,1,1)",
+32:   ).run("a".repeat(64), repo);
+33:   const scope = { repo_path: repo, default_tenant: true as const };
+34:   let now = 10000;
+35:   const obligation = new FollowUpObligationService(db, dbPath, { nowMs: () => now }).create({
+36:     ...scope,
+37:     source_session_id: "s",
+38:     expected_source_version: 1,
+39:     idempotency_key: "first",
+40:     actor: "test",
+41:     promise: "Reply publicly",
+42:     destination_ref: "local_operator",
+43:     resolution_condition: "manual",
+44:   }).obligation;
+45:   const target = {
+46:     destination_ref: "project-thread",
+47:     repo_path: repo,
+48:     provider_id: "github_comment" as const,
+49:     account_id: "bot-1",
+50:     host: "github.com" as const,
+51:     owner: "owner",
+52:     repository: "repo",
+53:     issue_number: 123,
+54:     target_node_id: "thread-node",
+55:   };
+56:   const { publicKey, privateKey } = generateKeyPairSync("ed25519");
+57:   const trustedKeys = new Map([
+58:     [
+59:       "test-key",
+60:       {
+61:         publicKey,
+62:         purpose: "follow_up_delivery" as const,
+63:         repo_path: repo,
+64:         provider_id: "github_comment" as const,
+65:         destination_refs: [target.destination_ref],
+66:         max_validity_ms: 60000,
+67:       },
+68:     ],
+69:   ]);
+70:   const sends = vi.fn(async (envelope: FollowUpDeliveryEnvelope) => ({
+71:     provider_id: target.provider_id,
+72:     account_id: target.account_id,
+73:     target_node_id: target.target_node_id,
+74:     destination_digest: envelope.destination_digest,
+75:     body_sha256: envelope.body_sha256,
+76:     attempt_id: envelope.attempt_id,
+77:     provider_message_id: "message-1",
+78:     provider_request_id: "request-1",
+79:   }));
+80:   const transport: FollowUpTransport = {
+81:     qualification: "test_only",
+82:     automatic_retries: false,
+83:     lookup_receipt: true,
+84:     sendOnce: sends,
+85:     lookup: async () => null,
+86:   };
+87:   const options = {
+88:     targets: new Map([[target.destination_ref, target]]),
+89:     trustedKeys,
+90:     transports: new Map([[target.provider_id, transport]]),
+91:     allowTestTransports: true,
+92:     nowMs: () => now,
+93:     timeoutMs: 30,
+94:   };
+95:   const service = new FollowUpDeliveryService(db, dbPath, options);
+96:   const prepare = () =>
+97:     service.prepare({
+98:       ...scope,
+99:       obligation_id: obligation.obligation_id,
+100:       expected_obligation_revision: 1,
+101:       destination_ref: target.destination_ref,
+102:       body: "Exact public reply",
+103:       idempotency_key: "attempt-one",
+104:     });
+105:   const grantFor = (attempt: ReturnType<typeof prepare>["attempt"], patch: Record<string, unknown> = {}) => {
+106:     const body = {
+107:       ...attempt.authorization_subject,
+108:       grant_id: "11111111-1111-4111-8111-111111111111",
+109:       issued_at_ms: now,
+110:       expires_at_ms: now + 60000,
+111:       max_calls: 1 as const,
+112:       ...patch,
+113:     };
+114:     return {
+115:       body,
+116:       key_id: "test-key",
+117:       signature: sign(null, Buffer.from(deliveryCanonical(body)), privateKey).toString("base64"),
+118:     };
+119:   };
+120:   const authorize = (attempt: ReturnType<typeof prepare>["attempt"]) =>
+121:     service.authorize({
+122:       ...scope,
+123:       attempt_id: attempt.attempt_id,
+124:       expected_revision: attempt.revision,
+125:       grant: grantFor(attempt),
+126:     });
+127:   return {
+128:     root,
+129:     repo,
+130:     db,
+131:     dbPath,
+132:     scope,
+133:     obligation,
+134:     target,
+135:     transport,
+136:     options,
+137:     service,
+138:     sends,
+139:     prepare,
+140:     authorize,
+141:     grantFor,
+142:     privateKey,
+143:     now: (value: number) => {
+144:       now = value;
+145:     },
+146:   };
+147: }
+148: it("prepares exact reviewable data but a caller cannot grant authority by actor or receipt fields", async () => {
+149:   const f = fixture();
+150:   const a = f.prepare().attempt;
+151:   expect(a.envelope.body).toBe("Exact public reply");
+152:   expect(a.state).toBe("prepared");
+153:   await expect(
+154:     f.service.dispatch({ ...f.scope, attempt_id: a.attempt_id, expected_revision: a.revision }),
+155:   ).rejects.toThrow("delivery_authorization_required");
+156:   expect(f.sends).not.toHaveBeenCalled();
+157:   expect(() =>
+158:     f.service.authorize({
+159:       ...f.scope,
+160:       attempt_id: a.attempt_id,
+161:       expected_revision: a.revision,
+162:       approved: true,
+163:       actor: "human",
+164:     }),
+165:   ).toThrow("invalid_delivery_request");
+166: });
+167: it("signed single-attempt dispatch does not fulfill the local obligation and cannot send twice", async () => {
+168:   const f = fixture();
+169:   const a = f.authorize(f.prepare().attempt).attempt;
+170:   const result = await f.service.dispatch({
+171:     ...f.scope,
+172:     attempt_id: a.attempt_id,
+173:     expected_revision: a.revision,
+174:   });
+175:   expect(result.attempt).toMatchObject({ state: "delivered", qualification: "test_only" });
+176:   expect(f.sends).toHaveBeenCalledTimes(1);
+177:   await f.service.dispatch({
+178:     ...f.scope,
+179:     attempt_id: a.attempt_id,
+180:     expected_revision: result.attempt.revision,
+181:   });
+182:   expect(f.sends).toHaveBeenCalledTimes(1);
+183:   expect(f.db.prepare("SELECT state FROM follow_up_obligations").get()).toEqual({ state: "open" });
+184: });
+185: it("unregistered provider leaves authorization unconsumed and never records started", async () => {
+186:   const f = fixture();
+187:   const a = f.authorize(f.prepare().attempt).attempt;
+188:   f.options.transports.clear();
+189:   const result = await f.service.dispatch({
+190:     ...f.scope,
+191:     attempt_id: a.attempt_id,
+192:     expected_revision: a.revision,
+193:   });
+194:   expect(result).toMatchObject({
+195:     outcome: "qualification_pending",
+196:     attempt: { state: "prepared", authorization_status: "active" },
+197:   });
+198:   expect(f.sends).not.toHaveBeenCalled();
+199: });
+200: 
+201: it.each([
+202:   { domain: "osstack.session-continuation.v1" },
+203:   { attempt_id: "22222222-2222-4222-8222-222222222222" },
+204:   { body_sha256: "c".repeat(64) },
+205:   { destination_digest: "c".repeat(64) },
+206:   { account_id: "other" },
+207:   { provider_id: "email" },
+208:   { max_calls: 2 },
+209:   { repo_path: "/other" },
+210:   { default_tenant: false },
+211: ])("rejects a signed grant with a changed binding %j", (patch) => {
+212:   const f = fixture(),
+213:     a = f.prepare().attempt;
+214:   expect(() =>
+215:     f.service.authorize({
+216:       ...f.scope,
+217:       attempt_id: a.attempt_id,
+218:       expected_revision: a.revision,
+219:       grant: f.grantFor(a, patch),
+220:     }),
+221:   ).toThrow();
+222:   expect(f.sends).not.toHaveBeenCalled();
+223:   expect(f.service.inspect({ ...f.scope, attempt_id: a.attempt_id }).attempt.authorization_status).toBe(
+224:     "missing",
+225:   );
+226: });
+227: it("rechecks expiration, key scope and revocation immediately before consumption", async () => {
+228:   const f = fixture();
+229:   let a = f.authorize(f.prepare().attempt).attempt;
+230:   f.now(70000);
+231:   await expect(
+232:     f.service.dispatch({ ...f.scope, attempt_id: a.attempt_id, expected_revision: a.revision }),
+233:   ).rejects.toThrow("delivery_authorization_expired");
+234:   f.now(10000);
+235:   f.options.trustedKeys.clear();
+236:   await expect(
+237:     f.service.dispatch({ ...f.scope, attempt_id: a.attempt_id, expected_revision: a.revision }),
+238:   ).rejects.toThrow("delivery_invalid_authorization");
+239:   a = f.service.revoke({
+240:     ...f.scope,
+241:     attempt_id: a.attempt_id,
+242:     expected_revision: a.revision,
+243:     reason: "Operator revoked exact message",
+244:   }).attempt;
+245:   expect(a).toMatchObject({ state: "definitely_not_sent", authorization_status: "revoked" });
+246:   expect(
+247:     (await f.service.dispatch({ ...f.scope, attempt_id: a.attempt_id, expected_revision: a.revision }))
+248:       .attempt.state,
+249:   ).toBe("definitely_not_sent");
+250:   expect(f.sends).not.toHaveBeenCalled();
+251: });
+252: it("rejects a future grant and a signature made by an untrusted key", () => {
+253:   const f = fixture(),
+254:     a = f.prepare().attempt;
+255:   expect(() =>
+256:     f.service.authorize({
+257:       ...f.scope,
+258:       attempt_id: a.attempt_id,
+259:       expected_revision: a.revision,
+260:       grant: f.grantFor(a, { issued_at_ms: 11000, expires_at_ms: 12000 }),
+261:     }),
+262:   ).toThrow("delivery_authorization_expired");
+263:   const grant = f.grantFor(a),
+264:     other = generateKeyPairSync("ed25519");
+265:   grant.signature = sign(null, Buffer.from(deliveryCanonical(grant.body)), other.privateKey).toString(
+266:     "base64",
+267:   );
+268:   expect(() =>
+269:     f.service.authorize({ ...f.scope, attempt_id: a.attempt_id, expected_revision: a.revision, grant }),
+270:   ).toThrow("delivery_invalid_authorization");
+271: });
+272: it("two SQLite connections cannot dispatch the same attempt twice", async () => {
+273:   const f = fixture(),
+274:     a = f.authorize(f.prepare().attempt).attempt;
+275:   const otherDb = openDb({ path: f.dbPath });
+276:   cleanup.push(() => otherDb.close());
+277:   const other = new FollowUpDeliveryService(otherDb, f.dbPath, f.options);
+278:   const calls = await Promise.allSettled([
+279:     f.service.dispatch({ ...f.scope, attempt_id: a.attempt_id, expected_revision: a.revision }),
+280:     other.dispatch({ ...f.scope, attempt_id: a.attempt_id, expected_revision: a.revision }),
+281:   ]);
+282:   expect(calls.filter((c) => c.status === "fulfilled")).toHaveLength(1);
+283:   expect(calls.filter((c) => c.status === "rejected")).toHaveLength(1);
+284:   expect(f.sends).toHaveBeenCalledTimes(1);
+285: });
+286: it("lost response is unknown and blocks re-sending or replacement with a new idempotency key", async () => {
+287:   const f = fixture(),
+288:     a = f.authorize(f.prepare().attempt).attempt;
+289:   f.sends.mockRejectedValueOnce(new Error("provider accepted; response lost; PRIVATE_TOKEN"));
+290:   const result = await f.service.dispatch({
+291:     ...f.scope,
+292:     attempt_id: a.attempt_id,
+293:     expected_revision: a.revision,
+294:   });
+295:   expect(result.attempt).toMatchObject({
+296:     state: "delivery_unknown",
+297:     authorization_status: "consumed",
+298:     delivery_uncertain: true,
+299:   });
+300:   expect(JSON.stringify(result)).not.toContain("PRIVATE_TOKEN");
+301:   const restarted = new FollowUpDeliveryService(f.db, f.dbPath, f.options);
+302:   await restarted.dispatch({
+303:     ...f.scope,
+304:     attempt_id: a.attempt_id,
+305:     expected_revision: result.attempt.revision,
+306:   });
+307:   expect(() =>
+308:     restarted.prepare({
+309:       ...f.scope,
+310:       obligation_id: f.obligation.obligation_id,
+311:       expected_obligation_revision: 1,
+312:       destination_ref: f.target.destination_ref,
+313:       body: "Different text still cannot bypass uncertainty",
+314:       idempotency_key: "different",
+315:     }),
+316:   ).toThrow("delivery_unresolved_attempt");
+317:   expect(f.sends).toHaveBeenCalledTimes(1);
+318: });
+319: it("timeout persists unknown; late response cannot silently overwrite it", async () => {
+320:   const f = fixture(),
+321:     a = f.authorize(f.prepare().attempt).attempt;
+322:   let release: (value: unknown) => void = () => {};
+323:   f.transport.sendOnce = () =>
+324:     new Promise((resolve) => {
+325:       release = resolve;
+326:     });
+327:   const result = await f.service.dispatch({
+328:     ...f.scope,
+329:     attempt_id: a.attempt_id,
+330:     expected_revision: a.revision,
+331:   });
+332:   expect(result.attempt.state).toBe("delivery_unknown");
+333:   release({
+334:     provider_id: f.target.provider_id,
+335:     account_id: f.target.account_id,
+336:     target_node_id: f.target.target_node_id,
+337:     destination_digest: a.envelope.destination_digest,
+338:     body_sha256: a.envelope.body_sha256,
+339:     attempt_id: a.attempt_id,
+340:     provider_message_id: "m",
+341:     provider_request_id: "r",
+342:   });
+343:   await new Promise((r) => setImmediate(r));
+344:   expect(f.service.inspect({ ...f.scope, attempt_id: a.attempt_id }).attempt).toMatchObject({
+345:     state: "delivery_unknown",
+346:     revision: result.attempt.revision,
+347:   });
+348: });
+349: it.each([
+350:   "target_node_id",
+351:   "account_id",
+352:   "destination_digest",
+353:   "body_sha256",
+354:   "attempt_id",
+355: ])("rejects a provider receipt with wrong %s", async (field) => {
+356:   const f = fixture(),
+357:     a = f.authorize(f.prepare().attempt).attempt;
+358:   const good = f.sends.getMockImplementation()!;
+359:   f.sends.mockImplementation(async (e) => ({
+360:     ...(await good(e)),
+361:     [field]:
+362:       field.endsWith("digest") || field === "body_sha256"
+363:         ? "c".repeat(64)
+364:         : field === "attempt_id"
+365:           ? "22222222-2222-4222-8222-222222222222"
+366:           : "other",
+367:   }));
+368:   expect(
+369:     (await f.service.dispatch({ ...f.scope, attempt_id: a.attempt_id, expected_revision: a.revision }))
+370:       .attempt.state,
+371:   ).toBe("delivery_unknown");
+372: });
+373: it("reconciliation uses only the trusted lookup port; user receipt assertions and not-found never prove delivery", async () => {
+374:   const f = fixture(),
+375:     a = f.authorize(f.prepare().attempt).attempt;
+376:   const receipt = await f.sends.getMockImplementation()!(a.envelope);
+377:   f.sends.mockRejectedValueOnce(Error("lost"));
+378:   let current = (
+379:     await f.service.dispatch({ ...f.scope, attempt_id: a.attempt_id, expected_revision: a.revision })
+380:   ).attempt;
+381:   await expect(
+382:     f.service.reconcile({
+383:       ...f.scope,
+384:       attempt_id: a.attempt_id,
+385:       expected_revision: current.revision,
+386:       delivered: true,
+387:       receipt,
+388:     }),
+389:   ).rejects.toThrow("invalid_delivery_request");
+390:   current = (
+391:     await f.service.reconcile({ ...f.scope, attempt_id: a.attempt_id, expected_revision: current.revision })
+392:   ).attempt;
+393:   expect(current.state).toBe("delivery_unknown");
+394:   f.transport.lookup = async () => receipt;
+395:   current = (
+396:     await f.service.reconcile({ ...f.scope, attempt_id: a.attempt_id, expected_revision: current.revision })
+397:   ).attempt;
+398:   expect(current).toMatchObject({ state: "delivered", qualification: "test_only" });
+399:   expect(f.sends).toHaveBeenCalledTimes(1);
+400: });
+401: it("automatic-retry or unqualified fake transports cannot consume an authorization", async () => {
+402:   const f = fixture(),
+403:     a = f.authorize(f.prepare().attempt).attempt;
+404:   f.transport.automatic_retries = true;
+405:   expect(
+406:     (await f.service.dispatch({ ...f.scope, attempt_id: a.attempt_id, expected_revision: a.revision }))
+407:       .outcome,
+408:   ).toBe("qualification_pending");
+409:   f.transport.automatic_retries = false;
+410:   const production = new FollowUpDeliveryService(f.db, f.dbPath, {
+411:     ...f.options,
+412:     allowTestTransports: false,
+413:   });
+414:   expect(
+415:     (await production.dispatch({ ...f.scope, attempt_id: a.attempt_id, expected_revision: a.revision }))
+416:       .outcome,
+417:   ).toBe("qualification_pending");
+418:   expect(f.sends).not.toHaveBeenCalled();
+419: });
+420: it("target or obligation changes after approval fail before send", async () => {
+421:   const f = fixture(),
+422:     a = f.authorize(f.prepare().attempt).attempt;
+423:   f.options.targets.set(f.target.destination_ref, { ...f.target, issue_number: 456 });
+424:   await expect(
+425:     f.service.dispatch({ ...f.scope, attempt_id: a.attempt_id, expected_revision: a.revision }),
+426:   ).rejects.toThrow("delivery_destination_unavailable");
+427:   f.options.targets.set(f.target.destination_ref, f.target);
+428:   new FollowUpObligationService(f.db, f.dbPath, { nowMs: () => 10000 }).draft({
+429:     ...f.scope,
+430:     obligation_id: f.obligation.obligation_id,
+431:     expected_revision: 1,
+432:     actor: "test",
+433:   });
+434:   await expect(
+435:     f.service.dispatch({ ...f.scope, attempt_id: a.attempt_id, expected_revision: a.revision }),
+436:   ).rejects.toThrow("delivery_obligation_changed");
+437:   expect(f.sends).not.toHaveBeenCalled();
+438: });
+439: it("scope, idempotency and append-only history remain durable", () => {
+440:   const f = fixture(),
+441:     a = f.prepare().attempt;
+442:   expect(f.prepare()).toMatchObject({ duplicate: true, attempt: { attempt_id: a.attempt_id } });
+443:   expect(() =>
+444:     f.service.prepare({
+445:       ...f.scope,
+446:       obligation_id: f.obligation.obligation_id,
+447:       expected_obligation_revision: 1,
+448:       destination_ref: f.target.destination_ref,
+449:       body: "changed",
+450:       idempotency_key: "attempt-one",
+451:     }),
+452:   ).toThrow("delivery_idempotency_conflict");
+453:   expect(() =>
+454:     f.service.inspect({ repo_path: f.root, default_tenant: true, attempt_id: a.attempt_id }),
+455:   ).toThrow("delivery_not_found");
+456:   expect(() => f.db.prepare("UPDATE follow_up_delivery_attempts SET envelope_json='{}'").run()).toThrow(
+457:     /identity immutable/,
+458:   );
+459:   expect(() => f.db.prepare("DELETE FROM follow_up_delivery_events").run()).toThrow(/history immutable/);
+460:   const before = Buffer.from(f.db.serialize());
+461:   f.service.list(f.scope);
+462:   expect(f.db.serialize().equals(before)).toBe(true);
+463: });
+464: it("survives SIGKILL after durable consumption with no resend on restart", async () => {
+465:   const f = fixture(),
+466:     a = f.authorize(f.prepare().attempt).attempt;
+467:   const config = join(f.root, "child-input.json"),
+468:     entry = join(f.root, "child.mjs"),
+469:     marker = join(f.root, "called");
+470:   writeFileSync(
+471:     config,
+472:     JSON.stringify({
+473:       dbPath: f.dbPath,
+474:       repo: f.repo,
+475:       target: f.target,
+476:       publicKey: f.options.trustedKeys.get("test-key")!.publicKey.export({ format: "pem", type: "spki" }),
+477:       action: { ...f.scope, attempt_id: a.attempt_id, expected_revision: a.revision },
+478:       marker,
+479:     }),
+480:   );
+481:   symlinkSync(
+482:     fileURLToPath(new URL("../../node_modules", import.meta.url)),
+483:     join(f.root, "node_modules"),
+484:     "dir",
+485:   );
+486:   buildSync({
+487:     stdin: {
+488:       contents: `import {readFileSync,writeFileSync} from 'node:fs';import {createPublicKey} from 'node:crypto';import {openDb} from ${JSON.stringify(fileURLToPath(new URL("./db.ts", import.meta.url)))};import {FollowUpDeliveryService} from ${JSON.stringify(fileURLToPath(new URL("./follow-up-delivery.ts", import.meta.url)))};
+489:  const c=JSON.parse(readFileSync(process.argv[2],'utf8'));const db=openDb({path:c.dbPath});const service=new FollowUpDeliveryService(db,c.dbPath,{targets:new Map([[c.target.destination_ref,c.target]]),trustedKeys:new Map([['test-key',{publicKey:createPublicKey(c.publicKey),purpose:'follow_up_delivery',repo_path:c.repo,provider_id:'github_comment',destination_refs:[c.target.destination_ref],max_validity_ms:60000}]]),transports:new Map([['github_comment',{qualification:'test_only',automatic_retries:false,lookup_receipt:true,sendOnce:async()=>{writeFileSync(c.marker,'once');process.kill(process.pid,'SIGKILL');},lookup:async()=>null}]]),allowTestTransports:true,nowMs:()=>10000});await service.dispatch(c.action);`,
+490:       resolveDir: process.cwd(),
+491:       loader: "ts",
+492:     },
+493:     bundle: true,
+494:     platform: "node",
+495:     format: "esm",
+496:     packages: "external",
+497:     outfile: entry,
+498:     logLevel: "silent",
+499:   });
+500:   const child = spawnSync(process.execPath, [entry, config], {
+501:     encoding: "utf8",
+502:     timeout: 10000,
+503:     env: { ...process.env, OSSTACK_HOME: join(f.root, "child-home") },
+504:   });
+505:   expect(child.stderr).toBe("");
+506:   expect(child.signal).toBe("SIGKILL");
+507:   expect(readFileSync(marker, "utf8")).toBe("once");
+508:   const restarted = new FollowUpDeliveryService(f.db, f.dbPath, f.options);
+509:   let current = restarted.inspect({ ...f.scope, attempt_id: a.attempt_id }).attempt;
+510:   expect(current).toMatchObject({
+511:     state: "started",
+512:     authorization_status: "consumed",
+513:     delivery_uncertain: true,
+514:   });
+515:   expect(
+516:     (await restarted.dispatch({ ...f.scope, attempt_id: a.attempt_id, expected_revision: current.revision }))
+517:       .outcome,
+518:   ).toBe("in_flight");
+519:   expect(f.sends).not.toHaveBeenCalled();
+520:   current = (
+521:     await restarted.reconcile({ ...f.scope, attempt_id: a.attempt_id, expected_revision: current.revision })
+522:   ).attempt;
+523:   expect(current.state).toBe("delivery_unknown");
+524:   expect(f.sends).not.toHaveBeenCalled();
+525: });
+526: it("upgrades a real schema 44 database, preserving source rows and immutable 44 lineage", () => {
+527:   const f = fixture(),
+528:     path = join(f.root, "old.db"),
+529:     old = new Database(path);
+530:   for (const migration of MIGRATIONS.filter((m) => m.id <= 44)) old.exec(migration.sql);
+531:   old.pragma("user_version=44");
+532:   old.exec(
+533:     "INSERT INTO tasks(task_id,title,status,created_at,updated_at) VALUES('old','preserved','running',1,1)",
+534:   );
+535:   old.close();
+536:   const upgraded = openDb({ path });
+537:   cleanup.push(() => upgraded.close());
+538:   expect(upgraded.pragma("user_version", { simple: true })).toBe(CURRENT_SCHEMA_VERSION);
+539:   expect(upgraded.prepare("SELECT title FROM tasks WHERE task_id='old'").get()).toEqual({
+540:     title: "preserved",
+541:   });
+542:   expect(upgraded.prepare("SELECT count(*) AS n FROM follow_up_delivery_attempts").get()).toEqual({ n: 0 });
+543:   expect(
+544:     createHash("sha256")
+545:       .update(MIGRATIONS.find((m) => m.id === 44)!.sql)
+546:       .digest("hex"),
+547:   ).toBe("4c40310b23a7f7348985d4aecf2042e69843e06361d74a0c5b8792de39897aa6");
+548: });
+549: it("rejects oversized escaped content before preparing and preserves exact accepted body", async () => {
+550:   const f = fixture();
+551:   const input = {
+552:     ...f.scope,
+553:     obligation_id: f.obligation.obligation_id,
+554:     expected_obligation_revision: 1,
+555:     destination_ref: f.target.destination_ref,
+556:     idempotency_key: "big",
+557:     body: "body" + "\0".repeat(15900),
+558:   };
+559:   expect(() => f.service.prepare(input)).toThrow("delivery_response_too_large");
+560:   expect(f.db.prepare("SELECT count(*) AS n FROM follow_up_delivery_attempts").get()).toEqual({ n: 0 });
+561:   expect(f.sends).not.toHaveBeenCalled();
+562:   const body = "body" + "\0".repeat(7000);
+563:   let a = f.service.prepare({ ...input, body }).attempt;
+564:   a = f.authorize(a).attempt;
+565:   f.transport.sendOnce = async (envelope) => ({
+566:     provider_id: f.target.provider_id,
+567:     account_id: f.target.account_id,
+568:     target_node_id: f.target.target_node_id,
+569:     destination_digest: envelope.destination_digest,
+570:     body_sha256: envelope.body_sha256,
+571:     attempt_id: envelope.attempt_id,
+572:     provider_message_id: "m" + "\0".repeat(255),
+573:     provider_request_id: "r" + "\0".repeat(255),
+574:   });
+575:   const result = await f.service.dispatch({
+576:     ...f.scope,
+577:     attempt_id: a.attempt_id,
+578:     expected_revision: a.revision,
+579:   });
+580:   expect(result.attempt.state).toBe("delivered");
+581:   expect(result.attempt.envelope.body).toBe(body);
+582:   expect(Buffer.byteLength(JSON.stringify(result))).toBeLessThan(65536);
+583: });
+
+FILE packages/cli/src/follow-up-delivery-command.ts
+1: import { constants } from "node:fs";
+2: import { open } from "node:fs/promises";
+3: import {
+4:   FollowUpDeliveryPrepareParams,
+5:   FollowUpDeliveryListParams,
+6:   FollowUpDeliveryInspectParams,
+7:   FollowUpDeliveryActionParams,
+8:   FollowUpDeliveryAuthorizeParams,
+9:   FollowUpDeliveryRevokeParams,
+10:   SignedFollowUpDeliveryGrant,
+11:   FollowUpDeliveryResult,
+12:   FollowUpDeliveryListResult,
+13: } from "@osstack/protocol";
+14: import { FOLLOW_UP_DELIVERY_ERRORS, serializeFollowUpDelivery } from "@osstack/core";
+15: export const FOLLOW_UP_DELIVERY_HELP = `follow-up-delivery prepare --repo PATH --default-tenant --input FILE [--json]
+16: follow-up-delivery list --repo PATH --default-tenant [--limit 1..50] [--after ID] [--json]
+17: follow-up-delivery inspect ID --repo PATH --default-tenant [--json]
+18: follow-up-delivery authorize ID --repo PATH --default-tenant --revision N --grant FILE [--json]
+19: follow-up-delivery revoke ID --repo PATH --default-tenant --revision N --reason TEXT [--json]
+20: follow-up-delivery dispatch|reconcile ID --repo PATH --default-tenant --revision N [--json]
+21: No production provider is bundled: qualification_pending never consumes authorization.
+22: Authorize imports a signed, host-trusted, exact-target/body/scope/single-attempt grant; this CLI cannot create authority.
+23: Prepare input excludes repo_path/default_tenant. Unknown delivery never retries; reconcile only queries a registered provider.
+24: JSON output preserves exact reviewable content. Dispatch/reconcile exit 0 only for production-qualified delivered evidence; fake and sandbox evidence exit 1.
+25: Delivery does not resolve the independent local obligation.\n`;
+26: export interface FollowUpDeliveryCommandDependencies {
+27:   rpc(method: string, params: unknown): Promise<unknown>;
+28:   stdout?: (text: string) => void;
+29:   stderr?: (text: string) => void;
+30: }
+31: export async function handleFollowUpDeliveryCommand(
+32:   args: string[],
+33:   deps: FollowUpDeliveryCommandDependencies,
+34: ): Promise<number> {
+35:   const out =
+36:       deps.stdout ??
+37:       ((text) => {
+38:         process.stdout.write(text);
+39:       }),
+40:     err =
+41:       deps.stderr ??
+42:       ((text) => {
+43:         process.stderr.write(text);
+44:       });
+45:   if (!args.length || (args.length === 1 && ["help", "--help"].includes(args[0]!))) {
+46:     out(FOLLOW_UP_DELIVERY_HELP);
+47:     return 0;
+48:   }
+49:   const action = args[0];
+50:   let params: unknown;
+51:   try {
+52:     if (
+53:       args.length > 20 ||
+54:       args.some((a) => Buffer.byteLength(a) > 4096) ||
+55:       !["prepare", "list", "inspect", "authorize", "revoke", "dispatch", "reconcile"].includes(action!)
+56:     )
+57:       throw Error();
+58:     const identity = action !== "prepare" && action !== "list",
+59:       id = identity ? args[1] : undefined;
+60:     const allowed = [
+61:       "--repo",
+62:       "--default-tenant",
+63:       "--json",
+64:       ...(action === "prepare"
+65:         ? ["--input"]
+66:         : action === "list"
+67:           ? ["--limit", "--after"]
+68:           : action === "inspect"
+69:             ? []
+70:             : action === "authorize"
+71:               ? ["--revision", "--grant"]
+72:               : action === "revoke"
+73:                 ? ["--revision", "--reason"]
+74:                 : ["--revision"]),
+75:     ];
+76:     const flags = new Map<string, string | true>();
+77:     for (let i = identity ? 2 : 1; i < args.length; i++) {
+78:       const key = args[i]!;
+79:       if (!allowed.includes(key) || flags.has(key)) throw Error();
+80:       if (key === "--default-tenant" || key === "--json") flags.set(key, true);
+81:       else {
+82:         const value = args[++i];
+83:         if (!value || value.startsWith("--")) throw Error();
+84:         flags.set(key, value);
+85:       }
+86:     }
+87:     const scope = { repo_path: flags.get("--repo"), default_tenant: flags.get("--default-tenant") };
+88:     const number = (key: string) => {
+89:       const value = flags.get(key);
+90:       if (typeof value !== "string" || !/^[1-9][0-9]*$/.test(value)) throw Error();
+91:       return Number(value);
+92:     };
+93:     const file = async (key: string) => {
+94:       const path = flags.get(key);
+95:       if (typeof path !== "string") throw Error();
+96:       return readInput(path);
+97:     };
+98:     if (action === "prepare") {
+99:       const body = FollowUpDeliveryPrepareParams.omit({ repo_path: true, default_tenant: true }).parse(
+100:         await file("--input"),
+101:       );
+102:       params = FollowUpDeliveryPrepareParams.parse({ ...body, ...scope });
+103:     } else if (action === "list")
+104:       params = FollowUpDeliveryListParams.parse({
+105:         ...scope,
+106:         ...(flags.has("--limit") ? { limit: number("--limit") } : {}),
+107:         ...(flags.has("--after") ? { after_id: flags.get("--after") } : {}),
+108:       });
+109:     else if (action === "inspect") params = FollowUpDeliveryInspectParams.parse({ ...scope, attempt_id: id });
+110:     else {
+111:       const base = { ...scope, attempt_id: id, expected_revision: number("--revision") };
+112:       params =
+113:         action === "authorize"
+114:           ? FollowUpDeliveryAuthorizeParams.parse({
+115:               ...base,
+116:               grant: SignedFollowUpDeliveryGrant.parse(await file("--grant")),
+117:             })
+118:           : action === "revoke"
+119:             ? FollowUpDeliveryRevokeParams.parse({ ...base, reason: flags.get("--reason") })
+120:             : FollowUpDeliveryActionParams.parse(base);
+121:     }
+122:   } catch {
+123:     err("invalid_delivery_request\n");
+124:     return 1;
+125:   }
+126:   let raw: unknown;
+127:   try {
+128:     raw = await deps.rpc(`follow-up-delivery.${action}`, params);
+129:   } catch (error) {
+130:     const code = error instanceof Error ? error.message : "";
+131:     err(
+132:       `${(FOLLOW_UP_DELIVERY_ERRORS as readonly string[]).includes(code) ? code : "delivery_request_failed"}\n`,
+133:     );
+134:     return 1;
+135:   }
+136:   try {
+137:     if (Buffer.byteLength(serializeFollowUpDelivery(raw)) + 1 > 65536) throw Error();
+138:     const result =
+139:       action === "list" ? FollowUpDeliveryListResult.parse(raw) : FollowUpDeliveryResult.parse(raw);
+140:     const text = `${serializeFollowUpDelivery(result)}\n`;
+141:     if (Buffer.byteLength(text) > 65536) throw Error();
+142:     out(text);
+143:     return action === "dispatch" || action === "reconcile"
+144:       ? "attempt" in result &&
+145:         result.attempt.state === "delivered" &&
+146:         result.attempt.qualification === "production_qualified"
+147:         ? 0
+148:         : 1
+149:       : 0;
+150:   } catch {
+151:     err("invalid_delivery_response\n");
+152:     return 1;
+153:   }
+154: }
+155: async function readInput(path: string): Promise<unknown> {
+156:   const file = await open(path, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
+157:   try {
+158:     const stat = await file.stat();
+159:     if (!stat.isFile() || stat.size > 65536) throw Error();
+160:     const bytes = Buffer.alloc(65537);
+161:     let length = 0;
+162:     while (length < bytes.length) {
+163:       const read = await file.read(bytes, length, bytes.length - length, null);
+164:       if (!read.bytesRead) break;
+165:       length += read.bytesRead;
+166:     }
+167:     if (length > 65536) throw Error();
+168:     return JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes.subarray(0, length)));
+169:   } finally {
+170:     await file.close();
+171:   }
+172: }
+
+FILE packages/cli/src/follow-up-delivery-command.test.ts
+1: import { expect, it, vi } from "vitest";
+2: import { handleFollowUpDeliveryCommand } from "./follow-up-delivery-command.js";
+3: const id = "11111111-1111-4111-8111-111111111111";
+4: it.each(
+5:   [[], ["help"], ["--help"]].map((args) => ({ args })),
+6: )("documents explicit scope and qualification %j", async ({ args }) => {
+7:   const out = vi.fn(),
+8:     rpc = vi.fn();
+9:   expect(await handleFollowUpDeliveryCommand(args, { rpc, stdout: out })).toBe(0);
+10:   expect(out.mock.calls[0]![0]).toContain("qualification_pending");
+11:   expect(rpc).not.toHaveBeenCalled();
+12: });
+13: it.each(
+14:   [
+15:     ["dispatch", id, "--repo", "/repo", "--revision", "1"],
+16:     ["dispatch", id, "--repo", "/repo", "--default-tenant", "--revision", "1", "--approved"],
+17:     ["authorize", id, "--repo", "/repo", "--default-tenant", "--revision", "1", "--actor", "human"],
+18:     ["list", "--repo", "/repo", "--default-tenant", "--limit", "51"],
+19:     ["list", "--repo", "/repo", "--default-tenant", "--repo", "/another"],
+20:     ["inspect", id, "--repo", "/repo", "--default-tenant", "--receipt", "fake"],
+21:   ].map((args) => ({ args })),
+22: )("rejects invalid or invented authority arguments %j", async ({ args }) => {
+23:   const rpc = vi.fn(),
+24:     stderr = vi.fn();
+25:   expect(await handleFollowUpDeliveryCommand(args, { rpc, stderr })).toBe(1);
+26:   expect(rpc).not.toHaveBeenCalled();
+27:   expect(stderr).toHaveBeenCalledWith("invalid_delivery_request\n");
+28: });
+29: it("sends strict scope to the RPC and suppresses internal errors", async () => {
+30:   const rpc = vi.fn().mockRejectedValue(Error("SECRET_TOKEN")),
+31:     stderr = vi.fn();
+32:   expect(
+33:     await handleFollowUpDeliveryCommand(["inspect", id, "--repo", "/repo", "--default-tenant"], {
+34:       rpc,
+35:       stderr,
+36:     }),
+37:   ).toBe(1);
+38:   expect(rpc).toHaveBeenCalledWith("follow-up-delivery.inspect", {
+39:     repo_path: "/repo",
+40:     default_tenant: true,
+41:     attempt_id: id,
+42:   });
+43:   expect(stderr).toHaveBeenCalledWith("delivery_request_failed\n");
+44: });
+45: it("rejects invalid and oversized RPC replies", async () => {
+46:   for (const raw of [{ ok: true, delivered: true }, "x".repeat(65536)]) {
+47:     const stderr = vi.fn();
+48:     expect(
+49:       await handleFollowUpDeliveryCommand(["list", "--repo", "/repo", "--default-tenant"], {
+50:         rpc: async () => raw,
+51:         stderr,
+52:       }),
+53:     ).toBe(1);
+54:     expect(stderr).toHaveBeenCalledWith("invalid_delivery_response\n");
+55:   }
+56: });
+57: it("lists bounded JSON with explicit keyset continuation", async () => {
+58:   const stdout = vi.fn();
+59:   const raw = {
+60:     schema_version: 1,
+61:     scope: { repo_path: "/repo", default_tenant: true },
+62:     attempts: [],
+63:     next_after_id: null,
+64:   };
+65:   expect(
+66:     await handleFollowUpDeliveryCommand(["list", "--repo", "/repo", "--default-tenant", "--json"], {
+67:       rpc: async () => raw,
+68:       stdout,
+69:     }),
+70:   ).toBe(0);
+71:   expect(JSON.parse(stdout.mock.calls[0]![0])).toEqual(raw);
+72: });
+73: 
+74: it("runs the real CLI→service ledger chain with a registered fake, never claiming production delivery", async () => {
+75:   const { generateKeyPairSync, sign } = await import("node:crypto"),
+76:     fs = await import("node:fs"),
+77:     { join } = await import("node:path");
+78:   const {
+79:     createScratchDirSync,
+80:     openDb,
+81:     FollowUpObligationService,
+82:     FollowUpDeliveryService,
+83:     deliveryCanonical,
+84:   } = await import("@osstack/core");
+85:   const root = fs.realpathSync(createScratchDirSync("tests", "delivery-cli")),
+86:     repo = join(root, "repo");
+87:   fs.mkdirSync(repo);
+88:   const path = join(root, "state.db"),
+89:     db = openDb({ path });
+90:   try {
+91:     db.exec(
+92:       "INSERT INTO tasks(task_id,title,status,created_at,updated_at) VALUES('t','test','running',1,1); INSERT INTO runs(run_id,task_id,session_id,agent_id,capability_id,phase,started_at) VALUES('r','t','s','codex-cli','code','execute',1)",
+93:     );
+94:     db.prepare(
+95:       "INSERT INTO agent_sessions(session_id,task_id,run_id,agent_id,request_sha256,repo_path,state,resume_supported,version,updated_at) VALUES('s','t','r','codex-cli',?,?,'idle',1,1,1)",
+96:     ).run("a".repeat(64), repo);
+97:     const scope = { repo_path: repo, default_tenant: true },
+98:       obligation = new FollowUpObligationService(db, path, { nowMs: () => 10000 }).create({
+99:         ...scope,
+100:         source_session_id: "s",
+101:         expected_source_version: 1,
+102:         idempotency_key: "ob",
+103:         actor: "test",
+104:         promise: "Reply",
+105:         destination_ref: "local_operator",
+106:         resolution_condition: "manual",
+107:       }).obligation;
+108:     const target = {
+109:       destination_ref: "thread",
+110:       repo_path: repo,
+111:       provider_id: "github_comment" as const,
+112:       account_id: "bot",
+113:       host: "github.com" as const,
+114:       owner: "owner",
+115:       repository: "repo",
+116:       issue_number: 1,
+117:       target_node_id: "node",
+118:     };
+119:     const { publicKey, privateKey } = generateKeyPairSync("ed25519"),
+120:       sends = vi.fn();
+121:     const service = new FollowUpDeliveryService(db, path, {
+122:       targets: new Map([["thread", target]]),
+123:       trustedKeys: new Map([
+124:         [
+125:           "key",
+126:           {
+127:             publicKey,
+128:             purpose: "follow_up_delivery",
+129:             repo_path: repo,
+130:             provider_id: "github_comment",
+131:             destination_refs: ["thread"],
+132:             max_validity_ms: 60000,
+133:           },
+134:         ],
+135:       ]),
+136:       transports: new Map([
+137:         [
+138:           "github_comment",
+139:           {
+140:             qualification: "test_only",
+141:             automatic_retries: false,
+142:             lookup_receipt: true,
+143:             sendOnce: async (e) => {
+144:               sends();
+145:               return {
+146:                 provider_id: "github_comment",
+147:                 account_id: "bot",
+148:                 target_node_id: "node",
+149:                 destination_digest: e.destination_digest,
+150:                 body_sha256: e.body_sha256,
+151:                 attempt_id: e.attempt_id,
+152:                 provider_message_id: "msg",
+153:                 provider_request_id: "req",
+154:               };
+155:             },
+156:             lookup: async () => null,
+157:           },
+158:         ],
+159:       ]),
+160:       allowTestTransports: true,
+161:       nowMs: () => 10000,
+162:     });
+163:     const rpc = vi.fn((method: string, params: unknown) => service.handle(method, params)),
+164:       stdout = vi.fn(),
+165:       stderr = vi.fn(),
+166:       flags = ["--repo", repo, "--default-tenant"];
+167:     const file = join(root, "prepare.json");
+168:     fs.writeFileSync(
+169:       file,
+170:       JSON.stringify({
+171:         obligation_id: obligation.obligation_id,
+172:         expected_obligation_revision: 1,
+173:         destination_ref: "thread",
+174:         body: "literal body \u009b31m",
+175:         idempotency_key: "send",
+176:       }),
+177:     );
+178:     expect(
+179:       await handleFollowUpDeliveryCommand(["prepare", ...flags, "--input", file], { rpc, stdout, stderr }),
+180:     ).toBe(0);
+181:     let attempt = JSON.parse(stdout.mock.calls.at(-1)![0]).attempt;
+182:     const body = {
+183:       ...attempt.authorization_subject,
+184:       grant_id: id,
+185:       issued_at_ms: 10000,
+186:       expires_at_ms: 20000,
+187:       max_calls: 1,
+188:     };
+189:     const grant = join(root, "grant.json");
+190:     fs.writeFileSync(
+191:       grant,
+192:       JSON.stringify({
+193:         body,
+194:         key_id: "key",
+195:         signature: sign(null, Buffer.from(deliveryCanonical(body)), privateKey).toString("base64"),
+196:       }),
+197:     );
+198:     expect(
+199:       await handleFollowUpDeliveryCommand(
+200:         ["authorize", attempt.attempt_id, ...flags, "--revision", "1", "--grant", grant],
+201:         { rpc, stdout, stderr },
+202:       ),
+203:     ).toBe(0);
+204:     attempt = JSON.parse(stdout.mock.calls.at(-1)![0]).attempt;
+205:     expect(
+206:       await handleFollowUpDeliveryCommand(
+207:         ["dispatch", attempt.attempt_id, ...flags, "--revision", String(attempt.revision)],
+208:         { rpc, stdout, stderr },
+209:       ),
+210:     ).toBe(1);
+211:     attempt = JSON.parse(stdout.mock.calls.at(-1)![0]).attempt;
+212:     expect(attempt).toMatchObject({
+213:       state: "delivered",
+214:       qualification: "test_only",
+215:       promise_fulfillment: "independent_local_obligation",
+216:     });
+217:     expect(sends).toHaveBeenCalledTimes(1);
+218:     expect(stdout.mock.calls.at(-1)![0]).toContain("\\u009b");
+219:     expect(stderr).not.toHaveBeenCalled();
+220:     expect(
+221:       await handleFollowUpDeliveryCommand(
+222:         ["dispatch", attempt.attempt_id, ...flags, "--revision", String(attempt.revision)],
+223:         { rpc, stdout, stderr },
+224:       ),
+225:     ).toBe(1);
+226:     expect(sends).toHaveBeenCalledTimes(1);
+227:     expect(db.prepare("SELECT state FROM follow_up_obligations").get()).toEqual({ state: "open" });
+228:     fs.symlinkSync(file, join(root, "link"));
+229:     const calls = rpc.mock.calls.length;
+230:     expect(
+231:       await handleFollowUpDeliveryCommand(["prepare", ...flags, "--input", join(root, "link")], {
+232:         rpc,
+233:         stdout,
+234:         stderr,
+235:       }),
+236:     ).toBe(1);
+237:     expect(rpc).toHaveBeenCalledTimes(calls);
+238:   } finally {
+239:     db.close();
+240:     fs.rmSync(root, { recursive: true, force: true });
+241:   }
+242: });
+
+FILE docs/plans/2026-10-23-public-follow-up-delivery.md
+1: # O2a public follow-up delivery — implementation contract
+2: 
+3: This increment implements the local durable state machine, strict CLI/RPC boundary and host-injected transport contract. It does not bundle a production provider, signing UI or authority issuer; public delivery qualification remains pending.
+4: 
+5: ## Authority
+6: 
+7: O1 obligations remain unchanged: destination_ref local_operator and fulfilled_local never assert public delivery. O2 attempts reference an exact O1 obligation/revision and canonical default-tenant repo, plus an immutable prepared envelope.
+8: 
+9: Envelope preparation resolves a destination_ref from a HOST-OWNED registry. Requests cannot supply arbitrary URLs, recipient IDs, provider IDs, credentials, or transport implementations. The registry pins provider identity and exact target identity. Prepared output shows exact body, target label/thread, body digest, destination digest, envelope digest, attempt ID, and parent obligation/version. Text is data, not authority.
+10: 
+11: Authorization uses a new domain-separated Ed25519 SignedFollowUpDeliveryGrant. It binds grant_id, attempt_id, canonical repo/default tenant, provider ID, destination digest, body digest, envelope digest, issued_at_ms, expires_at_ms and max_calls=1. Host-owned trusted key registrations are purpose-specific and constrained to repo/provider/destination refs/max validity. Unknown/revoked/mis-scoped keys, future/expired grants, modified content/target and replay fail closed. No signing key is generated/loaded by the CLI; authorize accepts a previously reviewed externally signed grant. Actor fields are audit labels only. Existing broad contract approvals and continuation grants cannot grant this capability.
+12: 
+13: Revocation only removes authority. A host-authenticated scoped revoke call persists revocation. Before dispatch, verify signature, current trusted key/scope, time validity and revocation again, then atomically consume the one-attempt authorization with the started CAS. Changes after consumption cannot undo an already dispatched message; they never authorize a retry.
+14: 
+15: ## State and dispatch
+16: 
+17: Migration 45 (root reserved) adds immutable-envelope attempt rows, grant consumption/revocation state, and append-only transition events; all writes use withWrite and explicit scope. Parent O1 data is not mutated by a send.
+18: 
+19: Attempt states: prepared, started, delivered, definitely_not_sent, delivery_unknown. Authorization is separately attached/revoked, not inferred from task state. prepared -> started is a durable compare-and-swap BEFORE calling transport.sendOnce. At most one sendOnce invocation for an attempt, even with two service instances/processes. A started attempt is never resumed by invoking send again after a crash. Timeout/disconnect/throw after start => delivery_unknown. Unknown and orphaned started attempts block replacement attempts for that obligation, not just the same idempotency key. Content edits require a new explicit prepared envelope and grant after the previous outcome is safely resolved.
+20: 
+21: The provider port is host-registered, with retry policy none. Declared capabilities are not qualification. No provider is registered by default; dispatch reports qualification_pending/unsupported and remains unsent. Fake transport exists only in isolated tests. O2b must add one actual provider, prove SDK automatic retries disabled, and pass explicit sandbox qualification before shipping real sends.
+22: 
+23: A pre-dispatch validation failure can be definitely_not_sent because no transport invocation occurred. A provider throw/timeout or bare boolean cannot prove not_sent. Any provider-specific not-sent proof must be structurally strong and part of the later qualified adapter; safest O2a treats every post-invoke uncertainty as unknown.
+24: 
+25: Late transport promises never silently revise an already returned timeout outcome. Keep a bounded wait, record unknown, ignore late results, and reconcile explicitly through a registered provider lookup. A stale dispatcher cannot overwrite a newer revision/outcome. Lookup failure/not-found/target-deleted is not evidence of non-delivery and never permits resend.
+26: 
+27: ## Receipt authenticity
+28: 
+29: CLI/RPC reconcile accepts only attempt identity and expected revision; it never accepts delivered=true, caller-authored receipt bodies or URLs as proof. The service calls the registered provider's lookup for the immutable attempt identity. Returned receipts must bind exact provider/account, immutable target identity, body digest, attempt correlation and provider message/request IDs. Same-body messages by another author or in another thread are rejected. Provider response claims are only meaningful within a trusted qualified adapter; no fake result is production qualification.
+30: 
+31: The attempt persists receipt evidence/provenance and qualification level. Successful send is independent from the O1 promise condition. O2 must not set fulfilled_local or treat delivery as fulfillment.
+32: 
+33: ## Interfaces / root wiring proposal
+34: 
+35: Core FollowUpDeliveryService(db, dbPath, {targets?, trustedKeys?, transports?, allowTestTransports?, nowMs?, timeoutMs?}) has prepare/list/inspect/authorize/revoke/dispatch/reconcile methods; handle(method, params) routes fixed methods only. Constructor has no DB writes or migrations. RPC params always canonical repo/default tenant and CAS where mutating. Root daemon injects trusted registries, identities and actual authorization boundary; default empty maps fail closed. No graph/auth bypass.
+36: 
+37: CLI dedicated follow-up-delivery prepare/list/inspect/authorize/revoke/dispatch/reconcile uses existing daemon RPC, no direct DB/provider fallback. Files and results bounded, exact raw body hash, safe terminal rendering. Root owns bin/daemon/schema generation; our new core service/DDL/tests, protocol schemas/tests, command/tests, guide/plan; migration45 explicitly permitted.
+38: 
+39: ## Qualification tests
+40: 
+41: Actual signed keypairs in isolated tests; wrong-purpose/mis-scoped keys, fake actor, expired/future/revoked grants, tampered bodies/targets; duplicate idempotency keys/CAS; two SQLite connections dispatch same attempt concurrently; send success response lost; timeout/late response; crash after started before receipt; non-idempotent SDK policy rejection; no registered provider; fake delivery through real RPC chain at root; wrong author/thread/body/provider/attempt receipt; target deletion; cross-scope reads; source cleanup and O1 independence. Assert actual fake sendOnce call count <=1 per attempt. Real public provider qualification remains pending, and development sends no external message.
+
+FILE docs/guides/follow-up-delivery.md
+1: # Public follow-up delivery ledger (O2a)
+2: 
+3: This increment implements local preparation, signed authorization, single-attempt dispatch, revocation and explicit reconciliation. No production transport, external target registry or authorization issuer is configured by default. Real public delivery remains **qualification_pending**. The built-in code never generates a signing key or treats a caller's actor name, approval boolean, receipt JSON, or task success as permission to send.
+4: 
+5: ## Review and authority
+6: 
+7: `follow-up-delivery prepare --repo /canonical/repo --default-tenant --input prepare.json` accepts a file containing `obligation_id`, `expected_obligation_revision`, `destination_ref`, `body`, and `idempotency_key`. The body is exact UTF-8 data, not instructions. The destination reference must resolve in a host-owned registry to a fixed GitHub account, repository, issue number and immutable target node ID. Arbitrary URL/recipient/provider fields in the request are rejected. Output contains the complete frozen envelope and digests for review.
+8: 
+9: Preparation is not authorization. An external trusted authority must review and sign `authorization_subject` plus a unique `grant_id`, `issued_at_ms`, `expires_at_ms`, and `max_calls: 1` using Ed25519 over `deliveryCanonical(body)`. Host trust registration restricts the public key's purpose, canonical repository, provider, destination references and maximum validity. No issuer or private-key handling is included in this increment. A signature made with a caller-generated unregistered key has no authority.
+10: 
+11: `follow-up-delivery authorize ID --repo /canonical/repo --default-tenant --revision N --grant grant.json` imports `{ body, key_id, signature }`. Grant fields bind the exact attempt, scope, provider/account, target digest, body digest and envelope digest. Dispatch rechecks signature, key registration, exact target, expiry and O1 obligation revision **inside the transaction that consumes authorization and records started**, immediately before the transport call. Host key removal or scoped revoke before this transaction prevents sending. Revocation after it cannot undo a call already in progress.
+12: 
+13: The CLI uses the existing daemon's authenticated local RPC. Root wiring must inject host registries; requests never select a transport or public key. Constructor `FollowUpDeliveryService(db, dbPath, options)` performs no I/O/migration. Methods are `follow-up-delivery.prepare|list|inspect|authorize|revoke|dispatch|reconcile`; all require an explicit canonical repository/default tenant. Writes use the existing DB lease. Same-user database/host-registry compromise is outside this boundary.
+14: 
+15: ## Results and recovery
+16: 
+17: `dispatch ID ... --revision N` performs at most one `sendOnce` call for that attempt. Missing transport, test transports without the host's explicit test flag, and adapters declaring automatic SDK retries yield `qualification_pending` without consuming the grant or creating started. Transport qualification labels are host configuration, not self-proving attestations; deployment must establish qualification separately.
+18: 
+19: A durable started row is written before the call. Disconnect, timeout, invalid receipt, process death or lost response leave started/`delivery_unknown` with consumed authority. Neither duplicate dispatch nor a new idempotency key for the same unresolved obligation can resend. A timeout's late response never silently overwrites the returned outcome. Abort is best effort and is not proof that the provider stopped.
+20: 
+21: `reconcile ID ... --revision N` calls only the registered provider's receipt lookup. The CLI cannot submit delivered=true or receipt data. A valid receipt must match provider, account, immutable target, body digest and attempt correlation; it stores bounded provider message/request IDs and its digest. Lookup failure or absence is still unknown. A future real provider must verify author, target and content from its authoritative response; this generic service cannot independently authenticate arbitrary adapter claims.
+22: 
+23: `revoke ID ... --revision N --reason TEXT` makes an unsent prepared attempt definitely_not_sent. If sending already started, it remains unknown. `inspect ID` and `list [--limit 1..50] [--after ID]` read scoped state. List uses UUID keyset order with explicit continuation, not a snapshot; concurrent inserts before the marker require a new scan. History is append-only. O1 `fulfilled_local` and external sending remain independent: delivery never resolves the promise.
+24: 
+25: Output is JSON, bounded to 64 KiB with terminal controls escaped and exact body preserved on parse. Prepare reserves room for the largest valid receipt before any send. Files must be regular, bounded, valid UTF-8, and not symlinks. `dispatch`/`reconcile` exit 0 only with `delivered` and `production_qualified`; test/sandbox evidence and uncertain/pending results exit 1, with the actual evidence still printed.
+26: 
+27: ## Qualification and rollback
+28: 
+29: Local tests exercise actual SQLite transactions and signatures, two connections, CLI-to-service invocation, a SIGKILL child immediately after committed consumption, response loss, timeouts and late completion, target/author/body mismatch, key removal, revocation, scope, stale revisions and bounded outputs. Fake send counts prove local invocation behavior only; no real message is sent and no real provider delivery guarantee is claimed.
+30: 
+31: O2b must separately supply a reviewed provider adapter, explicit human target/body approval issuer, pinned credentials/account, disabled SDK retries, real sandbox receipt lookups and controlled disconnect/crash qualification. Until then retain empty production registries. To roll back, disable the command/provider registration and retain migration 45's ledger. Do not drop unknown attempts, reset grants or down-migrate a serving DB to enable retries. Outstanding uncertainty requires reconciliation or operator investigation outside automatic sending.

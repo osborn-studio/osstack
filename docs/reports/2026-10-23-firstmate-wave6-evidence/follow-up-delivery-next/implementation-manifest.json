@@ -1,0 +1,19 @@
+{
+  "commit": "02f980ba86999570457af52bc86dee497d01521e",
+  "files": {
+    "docs/guides/follow-up-delivery.md": "76209388f82d7b069670c81777201168d63fa22c5b18f6298fa5508ec1509831",
+    "docs/plans/2026-10-23-public-follow-up-delivery.md": "2a335e3a5399edd6c6a6863fc82d45122c26fc04c3d1431616e61d7c8180f912",
+    "docs/reports/2026-10-23-follow-up-delivery-audit.md": "f4d976c870efa5e50704d3b65cb8abbbcb373f527c4089bb66064dd6000cdb44",
+    "packages/cli/src/follow-up-delivery-command.test.ts": "7a6f60b46f1d1508ac643bfffbd7f92faa67a9a636d7cc79d9a6bceb99e30853",
+    "packages/cli/src/follow-up-delivery-command.ts": "687b6f1b8f682ae909fda048fbc0d31b4f61bc7151afe57820812ec388ba8a57",
+    "packages/core/src/index.ts": "b2de2bcafb63776786efa877d70cc4cd6dd5211c64f768a12e6f670dff0e1b16",
+    "packages/core/src/state/follow-up-delivery-ddl.ts": "6283fdd46e111d2fb4f7374ed44b93f03df88b384f39a4ce5016abe06ec6c900",
+    "packages/core/src/state/follow-up-delivery.test.ts": "dca0ef0a9fb9ab7ead3708e9dc7e442d4f7c40fa0a7c3b182fbe83bc191f052c",
+    "packages/core/src/state/follow-up-delivery.ts": "d27e921451215fb758b986ba91ae50df39fd7a83aaff3c1c225398200b3d21a4",
+    "packages/core/src/state/follow-up-obligations.test.ts": "b61c3a668e22f9397bdaf02d64c000605606ecd7de2d0b2ad0e740d1406dc30c",
+    "packages/core/src/state/migrations.ts": "d75747f6bb9b7e5d43d4affa0c41dd318bdee0a8de9beb7131208b86d780a567",
+    "packages/protocol/src/follow-up-delivery.test.ts": "4f3898c54fefcb29a0fe894b38a18c022f995a19151544cda6ef6ea00564d586",
+    "packages/protocol/src/follow-up-delivery.ts": "7a044ee666c39901f324b659d37bdfbfd4fcdeec90d0b57d12514dd009a253a9",
+    "packages/protocol/src/index.ts": "d617c2429c5bbc054b97cf4bcdc8f82bc0ac278743e8c83d56468e40834b2ee1"
+  }
+}

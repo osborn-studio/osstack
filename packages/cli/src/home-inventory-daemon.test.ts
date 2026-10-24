@@ -8,6 +8,7 @@ import {
   readHomeIdentity,
 } from "./home-inventory.js";
 import { main } from "./bin.js";
+import { CURRENT_SCHEMA_VERSION } from "@osstack/core";
 let daemon: DaemonHandles | undefined;
 afterEach(async () => {
   await daemon?.close();
@@ -22,7 +23,7 @@ it("reports the serving home identity through the actual CLI and preserves ID ac
   const socket = join(home, "d.sock");
   daemon = await startDaemon({ socketPath: socket, adapters: [] });
   const first = DeploymentIdentitySchema.parse(await readHomeIdentity(socket));
-  expect(first.database_schema).toBe(44);
+  expect(first.database_schema).toBe(CURRENT_SCHEMA_VERSION);
   const saved = JSON.parse(
     await readFile(join(home, "deployment-identity.json"), "utf8"),
   );

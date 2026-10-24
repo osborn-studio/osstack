@@ -1,0 +1,562 @@
+Final narrow static delta audit. No tools. Prior round2 demonstrated P1 partial claims hidden by status and P1 direct journal.claim replay after manual claim deletion; P2 verified marker overwritten after expiry/cancel and noncanonical bytes. Current code fixes these specifically: status reads own install+home claims even with no phase, exposes partial counts and recovery phase; claim rejects prior phase records even with no claims; completed record no post-write clockCheck; strict raw-canonical equality. Review these fixes for concrete remaining P0/P1/P2 ONLY. No production apply or native adapter is enabled. Explicit unresolved qualification is native authorized reconciliation/claim cleanup, not permission to steal/erase failure locks. Additional defensive changes: bounded plan bytes; DB schema downgrade unqualified; hardlink recheck rejects 3 links; restart fence per home. Existing invalid build_evidence enum is rejected by DeploymentIdentitySchema before planning (prior round2 P2 #5 assumed nonexistent enum). Future native effects/FS power loss outside tested qualification. Be concise.
+
+=== packages/cli/src/upgrade-journal.ts ===
+import { randomBytes } from 'node:crypto';
+import { constants } from 'node:fs';
+import { link, mkdir, open, readdir, realpath, stat, lstat, unlink } from 'node:fs/promises';
+import { dirname, join, resolve } from 'node:path';
+import { z } from 'zod';
+import { UpgradeDigest, UpgradeId, freezeUpgradePlan, upgradeCanonical, upgradeDigest, type FrozenUpgradePlan } from './upgrade-plan.js';
+
+export const UpgradePhaseSchema = z.enum(['planned', 'qualification_pending', 'preflight', 'draining', 'quiescent', 'snapshotting',
+  'installing', 'installed', 'restarting', 'verifying', 'verified', 'aborted_before_install', 'restart_failed', 'version_mismatch', 'recovery_required']);
+export type UpgradePhase = z.infer<typeof UpgradePhaseSchema>;
+const RecordSchema = z.object({ schema_version: z.literal(1), plan_digest: UpgradeDigest, group_id: UpgradeId,
+  sequence: z.number().int().min(0).max(2048), previous: UpgradeDigest.nullable(), at_ms: z.number().int().nonnegative().safe(),
+  phase: UpgradePhaseSchema, status: z.enum(['started', 'confirmed', 'failed']),
+  home_id: z.string().regex(/^home_[a-f0-9]{32}$/).nullable(), evidence_digest: UpgradeDigest.nullable(), evidence_ref: z.string().min(1).max(512).nullable(),
+  reason: z.string().regex(/^[a-z0-9_]{1,128}$/).nullable(),
+}).strict();
+export type UpgradeJournalRecord = z.infer<typeof RecordSchema>;
+export interface UpgradeJournalStatus { plan: FrozenUpgradePlan; group_id: string; records: UpgradeJournalRecord[];
+  phase: UpgradePhase; completed: boolean; resume_allowed: false;
+  recovery: { claim_cleanup_pending: boolean; claims_held: number; claims_expected: number; partial_claim: boolean; historically_stopped_home_ids: string[]; last_started_phase: UpgradePhase | null; last_started_home_id: string | null } }
+
+async function directory(path: string, create = false): Promise<void> {
+  if (create) await mkdir(path, { mode: 0o700 }).catch(error => { if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error; });
+  const info = await stat(path);
+  if (await realpath(path) !== resolve(path) || !info.isDirectory() || (info.mode & 0o077) !== 0
+    || process.getuid && info.uid !== process.getuid()) throw Error('upgrade_journal_unsafe_directory');
+}
+async function syncDirectory(path: string): Promise<void> {
+  const handle = await open(path, constants.O_RDONLY | constants.O_NOFOLLOW);
+  try { await handle.sync(); } finally { await handle.close(); }
+}
+async function readJson(path: string, maxBytes = 262144): Promise<unknown> {
+  const file = await open(path, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
+  try {
+    const info = await file.stat();
+    if (!info.isFile() || (info.nlink !== 1 && info.nlink !== 2) || (info.mode & 0o077) !== 0 || info.size > maxBytes || process.getuid && info.uid !== process.getuid()) throw Error('upgrade_journal_unsafe_file');
+    if (info.nlink === 2) {
+      // A process can die after publishing its link but before removing its private temporary.
+      // Accept only that exact second inode link inside the same private directory; never unlink while reading.
+      const parent = dirname(path); await directory(parent); const names = await readdir(parent);
+      if (names.length > 2200) throw Error('upgrade_journal_record_limit'); let matches = 0;
+      for (const name of names.filter(name => /^\.tmp-[a-f0-9]{32}$/.test(name))) {
+        const other = await lstat(join(parent, name)).catch(error => { if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error; return null; });
+        if (other?.isFile() && other.ino === info.ino && other.dev === info.dev) matches += 1;
+      }
+      const links = (await file.stat()).nlink;
+      if (links !== 1 && (links !== 2 || matches !== 1)) throw Error('upgrade_journal_unsafe_file');
+    }
+    const buffer = Buffer.alloc(maxBytes + 1); let length = 0;
+    while (length < buffer.length) { const chunk = await file.read(buffer, length, buffer.length - length, length); if (!chunk.bytesRead) break; length += chunk.bytesRead; }
+    if (length > maxBytes) throw Error('upgrade_journal_oversized');
+    const raw = buffer.subarray(0, length).toString('utf8'); const value: unknown = JSON.parse(raw);
+    if (upgradeCanonical(value) !== raw) throw Error('upgrade_journal_non_canonical'); return value;
+  } finally { await file.close(); }
+}
+/** Complete-file link publication, then directory fsync. Never overwrite a record. */
+async function publish(directoryPath: string, name: string, value: unknown): Promise<void> {
+  await directory(directoryPath); const temporary = join(directoryPath, `.tmp-${randomBytes(16).toString('hex')}`);
+  const file = await open(temporary, constants.O_CREAT | constants.O_EXCL | constants.O_WRONLY | constants.O_NOFOLLOW, 0o600);
+  try { await file.writeFile(upgradeCanonical(value)); await file.sync(); } finally { await file.close(); }
+  try { await link(temporary, join(directoryPath, name)); } finally { await unlink(temporary); }
+  await syncDirectory(directoryPath);
+}
+
+/** The caller supplies an existing private root. Hashes detect corruption; they are not signatures. */
+export class UpgradeJournal {
+  constructor(readonly root: string) {}
+  async create(input: FrozenUpgradePlan): Promise<void> {
+    const frozen = freezeUpgradePlan(input.plan); if (frozen.digest !== input.digest) throw Error('upgrade_plan_digest_mismatch');
+    await directory(this.root); const path = join(this.root, frozen.digest); await directory(path, true); await syncDirectory(this.root);
+    try { await publish(path, 'plan.json', frozen.plan); } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error;
+      if (upgradeCanonical(await readJson(join(path, 'plan.json'))) !== upgradeCanonical(frozen.plan)) throw Error('upgrade_plan_conflict');
+    }
+  }
+  async plan(digest: string): Promise<FrozenUpgradePlan> {
+    UpgradeDigest.parse(digest); await directory(this.root); await directory(join(this.root, digest));
+    const frozen = freezeUpgradePlan(await readJson(join(this.root, digest, 'plan.json')));
+    if (frozen.digest !== digest) throw Error('upgrade_plan_digest_mismatch'); return frozen;
+  }
+  async status(digest: string, groupId: string): Promise<UpgradeJournalStatus> {
+    UpgradeId.parse(groupId); const plan = await this.plan(digest);
+    if (!plan.plan.groups.some(g => g.group_id === groupId)) throw Error('upgrade_group_missing');
+    const path = join(this.root, digest); const names = await readdir(path);
+    if (names.length > 2200) throw Error('upgrade_journal_record_limit');
+    const records: UpgradeJournalRecord[] = []; let previous: string | null = null;
+    const prefix = `${upgradeDigest(groupId)}.`;
+    for (const name of names.filter(name => name.startsWith(prefix)).sort()) {
+      if (!/^[a-f0-9]{64}\.[0-9]{4}\.json$/.test(name)) throw Error('upgrade_journal_invalid_name');
+      const record = RecordSchema.parse(await readJson(join(path, name), 8192));
+      if (record.plan_digest !== digest || record.group_id !== groupId || record.sequence !== records.length || record.previous !== previous
+        || name !== `${upgradeDigest(groupId)}.${String(record.sequence).padStart(4, '0')}.json`) throw Error('upgrade_journal_chain_broken');
+      previous = upgradeDigest(record); records.push(record);
+    }
+    const recordedPhase = records.at(-1)?.phase ?? 'qualification_pending';
+    const lastStarted = [...records].reverse().find(record => record.status === 'started');
+    const completed = recordedPhase === 'verified' && records.at(-1)?.status === 'confirmed';
+    const group = plan.plan.groups.find(g => g.group_id === groupId)!;
+    const claimNames = [`claim-${upgradeDigest(group.installation_id)}.json`, ...group.homes.map(home => `home-claim-${upgradeDigest(home.home_id)}.json`)];
+    let claimsHeld = 0;
+    for (const name of claimNames) {
+      const value = await readJson(join(this.root, name), 4096).catch(error => { if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error; return null; });
+      if (value && typeof value === 'object' && 'plan_digest' in value && value.plan_digest === digest) claimsHeld += 1;
+    }
+    const phase = recordedPhase === 'qualification_pending' && claimsHeld ? 'recovery_required' : recordedPhase;
+
+    return { plan, group_id: groupId, records, phase, completed, resume_allowed: false,
+      recovery: { claim_cleanup_pending: completed && claimsHeld > 0, claims_held: claimsHeld, claims_expected: claimNames.length, partial_claim: claimsHeld > 0 && claimsHeld < claimNames.length, historically_stopped_home_ids: [...new Set(records.filter(record => record.phase === 'draining' && record.status === 'confirmed' && record.home_id).map(record => record.home_id!))],
+        last_started_phase: lastStarted?.phase ?? null, last_started_home_id: lastStarted?.home_id ?? null } };
+  }
+  /** Locks are keyed by shared installation, across plans. Never stale-steal by PID or timeout. */
+  async claim(digest: string, groupId: string): Promise<UpgradeJournalWriter> {
+    const state = await this.status(digest, groupId); const group = state.plan.plan.groups.find(g => g.group_id === groupId)!;
+    if (state.completed) throw Error('upgrade_already_verified');
+    if (state.phase === 'recovery_required' || state.records.some(record => record.phase !== 'qualification_pending')) throw Error('upgrade_recovery_required');
+    const claim = { plan_digest: digest, group_id: groupId, token: randomBytes(32).toString('hex') };
+    const names = [`claim-${upgradeDigest(group.installation_id)}.json`, ...group.homes.map(home => `home-claim-${upgradeDigest(home.home_id)}.json`).sort()];
+    for (const name of names) {
+      try { await publish(this.root, name, claim); } catch (error) {
+        if ((error as NodeJS.ErrnoException).code === 'EEXIST') throw Error('upgrade_recovery_required'); throw error;
+      }
+    }
+    const assertClaim = async () => {
+      for (const name of names) if (upgradeCanonical(await readJson(join(this.root, name), 4096)) !== upgradeCanonical(claim)) throw Error('upgrade_claim_changed');
+    };
+    const release = async () => { await assertClaim(); for (const name of names) await unlink(join(this.root, name)); await syncDirectory(this.root); };
+    const current = await this.status(digest, groupId);
+    if (current.completed) { await release(); throw Error('upgrade_already_verified'); }
+    if (upgradeCanonical(current.records) !== upgradeCanonical(state.records)) throw Error('upgrade_recovery_required');
+    let sequence = state.records.length; let previous = state.records.length ? upgradeDigest(state.records.at(-1)) : null; let writing = false;
+    return {
+      append: async value => {
+        if (writing) throw Error('upgrade_journal_concurrent_write'); writing = true;
+        try {
+          await assertClaim(); const record = RecordSchema.parse({ ...value, schema_version: 1, plan_digest: digest, group_id: groupId, sequence, previous });
+          await publish(join(this.root, digest), `${upgradeDigest(groupId)}.${String(sequence).padStart(4, '0')}.json`, record);
+          await assertClaim(); previous = upgradeDigest(record); sequence += 1; return record;
+        } finally { writing = false; }
+      },
+      releaseVerified: async () => {
+        await assertClaim(); const current = await this.status(digest, groupId);
+        if (!current.completed || writing) throw Error('upgrade_release_requires_verified');
+        await release();
+      },
+    };
+  }
+}
+export interface UpgradeJournalWriter {
+  append(value: Pick<UpgradeJournalRecord, 'at_ms' | 'phase' | 'status' | 'home_id' | 'evidence_digest' | 'evidence_ref' | 'reason'>): Promise<UpgradeJournalRecord>;
+  releaseVerified(): Promise<void>;
+}
+
+=== packages/cli/src/upgrade-journal.test.ts ===
+import { chmod, link, mkdir, readFile, readdir, rm, symlink, writeFile } from 'node:fs/promises';
+import { join } from 'node:path';
+import { afterEach, expect, it } from 'vitest';
+import { createScratchDir } from '@osstack/core';
+import { createUpgradePlan, upgradeCanonical } from './upgrade-plan.js';
+import { UpgradeJournal } from './upgrade-journal.js';
+import { upgradeFixture } from './upgrade-test-fixture.js';
+
+const roots: string[] = []; afterEach(async () => { for (const root of roots.splice(0)) await rm(root, { recursive: true, force: true }); });
+async function fixture() {
+  const root = await createScratchDir('tests', 'upgrade-journal'); roots.push(root); await chmod(root, 0o700);
+  const f = upgradeFixture(); const plan = createUpgradePlan(f.request, f.observations, f.now); const journal = new UpgradeJournal(root); await journal.create(plan);
+  return { ...f, root, plan, journal };
+}
+const record = { at_ms: 100000, phase: 'planned' as const, status: 'confirmed' as const, home_id: null, evidence_digest: null, evidence_ref: null, reason: null };
+it('persists a read-only reopenable plan and chained phases without opening a database', async () => {
+  const f = await fixture(); const writer = await f.journal.claim(f.plan.digest, 'group');
+  await writer.append(record); await writer.append({ ...record, phase: 'draining', status: 'started' });
+  const result = await new UpgradeJournal(f.root).status(f.plan.digest, 'group');
+  expect(result.phase).toBe('draining'); expect(result.resume_allowed).toBe(false); expect(result.records[1]!.previous).toMatch(/^[a-f0-9]{64}$/);
+  await expect(new UpgradeJournal(f.root).claim(f.plan.digest, 'group')).rejects.toThrow('recovery_required');
+  await expect(writer.releaseVerified()).rejects.toThrow('requires_verified');
+});
+it('serializes competing operators across different plans for one shared installation', async () => {
+  const f = await fixture(); const next = createUpgradePlan({ ...f.request, expires_at_ms: f.request.expires_at_ms + 1 }, f.observations, f.now);
+  await f.journal.create(next);
+  const results = await Promise.allSettled([f.journal.claim(f.plan.digest, 'group'), new UpgradeJournal(f.root).claim(next.digest, 'group')]);
+  expect(results.filter(v => v.status === 'fulfilled')).toHaveLength(1); expect(results.filter(v => v.status === 'rejected')).toHaveLength(1);
+});
+it('detects hash-chain corruption and does not accept a copied plan under a new digest', async () => {
+  const f = await fixture(); const writer = await f.journal.claim(f.plan.digest, 'group'); await writer.append(record); await writer.append({ ...record, phase: 'draining' });
+  const path = join(f.root, f.plan.digest); const first = (await readdir(path)).filter(p => p.endsWith('.0000.json'))[0]!;
+  const raw = JSON.parse(await readFile(join(path, first), 'utf8')); raw.phase = 'installing'; await writeFile(join(path, first), JSON.stringify(raw));
+  await expect(f.journal.status(f.plan.digest, 'group')).rejects.toThrow('chain_broken');
+  const fake = 'e'.repeat(64); await mkdir(join(f.root, fake), { mode: 0o700 }); await writeFile(join(f.root, fake, 'plan.json'), upgradeCanonical(f.plan.plan), { mode: 0o600 });
+  await expect(f.journal.plan(fake)).rejects.toThrow('digest_mismatch');
+});
+it('rejects symlink and shared-permission roots and leaves the original record intact', async () => {
+  const f = await fixture(); const alias = join(f.root, 'alias'); await symlink(join(f.root, f.plan.digest), alias);
+  await expect(new UpgradeJournal(alias).create(f.plan)).rejects.toThrow('unsafe_directory');
+  await chmod(f.root, 0o755); await expect(f.journal.plan(f.plan.digest)).rejects.toThrow('unsafe_directory'); await chmod(f.root, 0o700);
+  expect((await f.journal.plan(f.plan.digest)).digest).toBe(f.plan.digest);
+});
+
+it('does not turn an unconfirmed verified phase into completion', async () => {
+  const f = await fixture(); const writer = await f.journal.claim(f.plan.digest, 'group');
+  await writer.append({ ...record, phase: 'verified', status: 'started' });
+  expect((await f.journal.status(f.plan.digest, 'group')).completed).toBe(false);
+  await expect(writer.releaseVerified()).rejects.toThrow('requires_verified');
+});
+
+it('reads crash-after-link records only when the second hard link is its private temporary', async () => {
+  const f = await fixture(); const writer = await f.journal.claim(f.plan.digest, 'group'); await writer.append(record);
+  const path = join(f.root, f.plan.digest); const name = (await readdir(path)).find(p => p.endsWith('.0000.json'))!;
+  const temp = join(path, `.tmp-${'a'.repeat(32)}`); await link(join(path, name), temp);
+  expect((await new UpgradeJournal(f.root).status(f.plan.digest, 'group')).records).toHaveLength(1);
+  expect(await readFile(temp, 'utf8')).toEqual(await readFile(join(path, name), 'utf8'));
+  await rm(temp); await link(join(path, name), join(f.root, 'foreign-link'));
+  await expect(f.journal.status(f.plan.digest, 'group')).rejects.toThrow('unsafe_file');
+});
+it('claims individual homes as well as installations across different plans', async () => {
+  const f = await fixture(); await f.journal.claim(f.plan.digest, 'group');
+  const next = createUpgradePlan({ ...f.request, groups: [{ ...f.request.groups[0]!, installation_id: 'different-alias' }] }, f.observations, f.now);
+  await f.journal.create(next); await expect(f.journal.claim(next.digest, 'group')).rejects.toThrow('recovery_required');
+  const status = await f.journal.status(next.digest, 'group'); expect(status.phase).toBe('recovery_required'); expect(status.recovery.partial_claim).toBe(true);
+});
+
+it('rejects direct replay of a started journal even if claim files were manually removed', async () => {
+  const f = await fixture(); const writer = await f.journal.claim(f.plan.digest, 'group'); await writer.append({ ...record, phase: 'draining', status: 'started' });
+  for (const name of (await readdir(f.root)).filter(name => name.includes('claim-'))) await rm(join(f.root, name));
+  await expect(new UpgradeJournal(f.root).claim(f.plan.digest, 'group')).rejects.toThrow('recovery_required');
+});
+it('rejects noncanonical record bytes instead of silently normalizing an immutable journal', async () => {
+  const f = await fixture(); const writer = await f.journal.claim(f.plan.digest, 'group'); await writer.append(record);
+  const path = join(f.root, f.plan.digest); const name = (await readdir(path)).find(name => name.endsWith('.0000.json'))!;
+  const value = JSON.parse(await readFile(join(path, name), 'utf8')); await writeFile(join(path, name), JSON.stringify(value, null, 2));
+  await expect(f.journal.status(f.plan.digest, 'group')).rejects.toThrow('non_canonical');
+});
+
+=== packages/cli/src/upgrade-coordinator.ts ===
+import { z } from 'zod';
+import { DeploymentIdentitySchema, type DeploymentIdentity } from './home-inventory.js';
+import { UpgradeDigest, UpgradeId, freezeUpgradePlan, upgradeCanonical, upgradeDigest, type FrozenUpgradePlan, type UpgradePlanGroup, type UpgradePlanHome } from './upgrade-plan.js';
+import type { UpgradeJournal, UpgradeJournalWriter, UpgradePhase } from './upgrade-journal.js';
+
+const ref = z.string().min(1).max(512);
+const AuthoritySchema = z.object({ plan_digest: UpgradeDigest, group_id: UpgradeId, installation_id: UpgradeId,
+  consumer_home_ids: z.array(z.string()).min(1).max(32), expires_at_ms: z.number().int().nonnegative().safe(),
+  completeness_evidence_ref: ref, qualification_ref: ref, authorization_ref: ref }).strict();
+export type UpgradeAuthority = z.infer<typeof AuthoritySchema> & { assertCurrent: () => void };
+const StoppedSchema = z.object({ home_id: z.string(), generation: z.string(), stopped: z.literal(true),
+  graph_holds: z.literal(0), unknown_actions: z.literal(0), receipt_ref: ref }).strict();
+export type UpgradeStopLease = { receipt: z.infer<typeof StoppedSchema>; assertHeld: () => void };
+const ReceiptSchema = z.object({ home_id: z.string(), source_generation: z.string(), receipt_ref: ref }).strict();
+const InstallSchema = z.object({ plan_digest: UpgradeDigest, installation_id: UpgradeId, version: z.string(), build_digest: UpgradeDigest, receipt_ref: ref }).strict();
+
+/** Trusted host injection only. No production implementation or apply CLI is registered in U2a.
+ * The future adapter must delegate to the native updater; it must never infer all consumers from inventory. */
+export interface NativeUpgradePort {
+  resolveAuthority(plan: FrozenUpgradePlan, group: UpgradePlanGroup, signal: AbortSignal): Promise<UpgradeAuthority | null>;
+  observe(home: UpgradePlanHome, signal: AbortSignal): Promise<{ identity: DeploymentIdentity; healthy: boolean; receipt_ref: string }>;
+  drain(home: UpgradePlanHome, signal: AbortSignal): Promise<UpgradeStopLease>;
+  snapshot(home: UpgradePlanHome, signal: AbortSignal): Promise<z.infer<typeof ReceiptSchema>>;
+  install(plan: FrozenUpgradePlan, group: UpgradePlanGroup, signal: AbortSignal): Promise<z.infer<typeof InstallSchema>>;
+  restart(home: UpgradePlanHome, signal: AbortSignal): Promise<z.infer<typeof ReceiptSchema>>;
+}
+export interface UpgradeExecutionResult { state: UpgradePhase; plan_digest: string; group_id: string; reason: string | null }
+function synchronous(call: () => void): void {
+  const value: unknown = call(); if (value !== undefined) { void Promise.resolve(value).catch(() => {}); throw Error('upgrade_async_authority'); }
+}
+
+/** Runs only with an explicit trusted port. A persisted plan never grants permission.
+ * Every side effect has a durable started record; incomplete prior attempts are never replayed. */
+export async function coordinateUpgrade(input: {
+  journal: UpgradeJournal; plan: FrozenUpgradePlan; groupId: string; port?: NativeUpgradePort;
+  nowMs?: () => number; monotonicMs?: () => number; signal?: AbortSignal;
+}): Promise<UpgradeExecutionResult> {
+  const plan = freezeUpgradePlan(input.plan.plan); if (plan.digest !== input.plan.digest) throw Error('upgrade_plan_digest_mismatch');
+  const group = plan.plan.groups.find(g => g.group_id === input.groupId); if (!group) throw Error('upgrade_group_missing');
+  const result = (state: UpgradePhase, reason: string | null = null): UpgradeExecutionResult => ({ state, plan_digest: plan.digest, group_id: group.group_id, reason });
+  await input.journal.create(plan); const prior = await input.journal.status(plan.digest, group.group_id);
+  if (prior.completed) return result('verified');
+  if (prior.phase === 'recovery_required' || prior.records.some(r => r.phase !== 'qualification_pending')) return result('recovery_required', 'prior_attempt_requires_reconciliation');
+  if (!input.port) return result('qualification_pending', 'native_updater_not_qualified');
+  const unqualifiedIdentity = group.homes.some(home => !home.identity || home.identity.home_id !== home.home_id
+    || home.identity.deployment_kind !== 'npm' || home.identity.build_digest === null || home.identity.build_evidence !== 'host_manifest'
+    || home.identity.database_schema > plan.plan.target.database_schema
+    || home.identity.database_schema < plan.plan.target.readable_schema_min || home.identity.database_schema > plan.plan.target.readable_schema_max
+    || home.observed_at_ms > plan.plan.created_at_ms || plan.plan.created_at_ms - home.observed_at_ms > 30000);
+  if (plan.plan.budget.max_steps < 5 * group.homes.length + 2 || group.deployment_kind !== 'npm' || unqualifiedIdentity || group.reasons.some(reason => !['shared_consumers_not_attested', 'native_updater_not_qualified'].includes(reason)))
+    return result('qualification_pending', 'plan_has_unqualified_consumers');
+  const port = input.port; const now = input.nowMs ?? Date.now; const mono = input.monotonicMs ?? (() => performance.now());
+  const startedAt = mono(); let steps = 0; let authority: UpgradeAuthority | undefined; let writer: UpgradeJournalWriter | undefined;
+  let phase: UpgradePhase = 'preflight'; let installStarted = false; let sideEffectStarted = false; let closed = false;
+  const stops: UpgradeStopLease[] = [];
+  const clockCheck = () => {
+    if (closed || input.signal?.aborted) throw Error('upgrade_cancelled');
+    if (now() < plan.plan.created_at_ms || now() >= plan.plan.expires_at_ms) throw Error('upgrade_plan_expired');
+    if (mono() - startedAt >= plan.plan.budget.max_total_ms) throw Error('upgrade_budget_exhausted');
+    if (authority) {
+      if (now() >= authority.expires_at_ms) throw Error('upgrade_authority_expired'); synchronous(authority.assertCurrent);
+    }
+  };
+  const append = async (status: 'started' | 'confirmed' | 'failed', home: UpgradePlanHome | null, evidence?: unknown, evidenceRef?: string, reason?: string) => {
+    if (!writer) return;
+    await writer.append({ phase, status, at_ms: now(), home_id: home?.home_id ?? null, evidence_digest: evidence === undefined ? null : upgradeDigest(evidence),
+      evidence_ref: evidenceRef ?? null, reason: reason ?? null });
+  };
+  const call = async <T>(operation: (signal: AbortSignal) => Promise<T>): Promise<T> => {
+    clockCheck(); if (steps >= plan.plan.budget.max_steps) throw Error('upgrade_budget_exhausted'); steps += 1;
+    const controller = new AbortController(); let rejectAbort!: (error: Error) => void;
+    const cancelled = new Promise<never>((_, reject) => { rejectAbort = reject; });
+    const abort = () => { controller.abort(); rejectAbort(Error('upgrade_cancelled')); };
+    input.signal?.addEventListener('abort', abort, { once: true }); if (input.signal?.aborted) abort();
+    const remaining = plan.plan.budget.max_total_ms - (mono() - startedAt);
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    try {
+      const deadline = new Promise<never>((_, reject) => { timer = setTimeout(() => { controller.abort(); reject(Error('upgrade_operation_unknown')); }, Math.max(1, Math.min(remaining, plan.plan.budget.max_step_ms))); });
+      // After timeout, the late operation cannot append or advance phases. Its physical effects remain unknown.
+      const value = await Promise.race([Promise.resolve().then(() => { clockCheck(); return operation(controller.signal); }), deadline, cancelled]);
+      clockCheck(); return value;
+    } finally { if (timer) clearTimeout(timer); input.signal?.removeEventListener('abort', abort); }
+  };
+  try {
+    const resolved = await call(signal => port.resolveAuthority(plan, group, signal));
+    if (!resolved) return result('qualification_pending', 'shared_consumers_not_attested');
+    const { assertCurrent, ...raw } = resolved; const parsed = AuthoritySchema.parse(raw);
+    if (typeof assertCurrent !== 'function' || parsed.plan_digest !== plan.digest || parsed.group_id !== group.group_id || parsed.installation_id !== group.installation_id
+      || upgradeCanonical([...parsed.consumer_home_ids].sort()) !== upgradeCanonical(group.homes.map(h => h.home_id).sort())) throw Error('upgrade_authority_binding');
+    authority = { ...parsed, assertCurrent: assertCurrent.bind(resolved) }; clockCheck();
+    writer = await input.journal.claim(plan.digest, group.group_id); clockCheck(); await append('started', null);
+    for (const home of group.homes) {
+      const observation = await call(signal => port.observe(home, signal));
+      const identity = DeploymentIdentitySchema.parse(observation.identity);
+      if (observation.healthy !== true || upgradeCanonical(identity) !== upgradeCanonical(home.identity)) throw Error('upgrade_identity_changed');
+      ref.parse(observation.receipt_ref); await append('confirmed', home, identity, observation.receipt_ref); clockCheck();
+    }
+    phase = 'draining';
+    for (const home of group.homes) {
+      await append('started', home); clockCheck(); sideEffectStarted = true;
+      const lease = await call(signal => port.drain(home, signal)); const receipt = StoppedSchema.parse(lease.receipt);
+      if (receipt.home_id !== home.home_id || receipt.generation !== home.identity?.generation || typeof lease.assertHeld !== 'function') throw Error('upgrade_stop_binding');
+      const frozenLease = { receipt, assertHeld: lease.assertHeld.bind(lease) }; synchronous(frozenLease.assertHeld); stops.push(frozenLease);
+      await append('confirmed', home, receipt, receipt.receipt_ref); clockCheck();
+    }
+    const quiescent = () => { clockCheck(); for (const stop of stops) synchronous(stop.assertHeld); if (stops.length !== group.homes.length) throw Error('upgrade_all_consumers_required'); };
+    quiescent(); phase = 'quiescent'; await append('confirmed', null, stops.map(s => s.receipt)); quiescent(); phase = 'snapshotting';
+    for (const home of group.homes) {
+      await append('started', home); quiescent(); const receipt = ReceiptSchema.parse(await call(signal => port.snapshot(home, signal)));
+      quiescent(); if (receipt.home_id !== home.home_id || receipt.source_generation !== home.identity?.generation) throw Error('upgrade_snapshot_binding');
+      await append('confirmed', home, receipt, receipt.receipt_ref); quiescent();
+    }
+    phase = 'installing'; await append('started', null); quiescent(); installStarted = true;
+    const installed = InstallSchema.parse(await call(signal => port.install(plan, group, signal))); quiescent();
+    if (installed.plan_digest !== plan.digest || installed.installation_id !== group.installation_id || installed.version !== plan.plan.target.version || installed.build_digest !== plan.plan.target.build_digest) throw Error('upgrade_install_mismatch');
+    phase = 'installed'; await append('confirmed', null, installed, installed.receipt_ref); clockCheck(); phase = 'restarting';
+    for (const home of group.homes) {
+      await append('started', home); clockCheck(); synchronous(stops[group.homes.indexOf(home)]!.assertHeld);
+      const receipt = ReceiptSchema.parse(await call(signal => port.restart(home, signal)));
+      if (receipt.home_id !== home.home_id || receipt.source_generation !== home.identity?.generation) throw Error('upgrade_restart_binding');
+      await append('confirmed', home, receipt, receipt.receipt_ref); clockCheck();
+    }
+    phase = 'verifying';
+    for (const home of group.homes) {
+      await append('started', home); clockCheck(); const observed = await call(signal => port.observe(home, signal)); const identity = DeploymentIdentitySchema.parse(observed.identity);
+      if (observed.healthy !== true || identity.home_id !== home.home_id || identity.generation === home.identity?.generation || identity.deployment_kind !== 'npm'
+        || identity.version !== plan.plan.target.version || identity.build_digest !== plan.plan.target.build_digest || identity.build_evidence !== 'host_manifest'
+        || identity.protocol_version !== plan.plan.target.protocol_version || identity.database_schema !== plan.plan.target.database_schema) throw Error('upgrade_version_mismatch');
+      ref.parse(observed.receipt_ref); await append('confirmed', home, identity, observed.receipt_ref); clockCheck();
+    }
+    phase = 'verified'; clockCheck(); await append('confirmed', null);
+    try { await writer.releaseVerified(); } catch { closed = true; return result('verified', 'claim_release_requires_reconciliation'); }
+    closed = true; return result('verified');
+  } catch (error) {
+    if (error instanceof Error && error.message === 'upgrade_already_verified') return result('verified');
+    const message = error instanceof Error && /^upgrade_[a-z_]+$/.test(error.message) ? error.message : 'upgrade_port_failure';
+    if (!writer && message !== 'upgrade_recovery_required') {
+      const status = await input.journal.status(plan.digest, group.group_id).catch(() => null);
+      return result(!status || status.phase === 'recovery_required' ? 'recovery_required' : 'qualification_pending', message);
+    }
+    const state: UpgradePhase = message === 'upgrade_recovery_required' || sideEffectStarted && !installStarted ? 'recovery_required'
+      : !installStarted ? 'aborted_before_install' : message === 'upgrade_version_mismatch' ? 'version_mismatch' : phase === 'restarting' && message !== 'upgrade_operation_unknown' ? 'restart_failed' : 'recovery_required';
+    phase = state; closed = true;
+    // A failed journal write leaves its previous started record. Never undo an external fact or steal the claim.
+    try { await append('failed', null, undefined, undefined, message); } catch { /* Caller must inspect the retained claim and previous record. */ }
+    return result(state, message);
+  }
+}
+
+=== packages/cli/src/upgrade-coordinator.test.ts ===
+import { chmod, readdir, rm } from 'node:fs/promises';
+import { afterEach, expect, it } from 'vitest';
+import { createScratchDir } from '@osstack/core';
+import { createUpgradePlan, freezeUpgradePlan } from './upgrade-plan.js';
+import { UpgradeJournal } from './upgrade-journal.js';
+import { coordinateUpgrade, type NativeUpgradePort } from './upgrade-coordinator.js';
+import { upgradeFixture } from './upgrade-test-fixture.js';
+
+const roots: string[] = []; afterEach(async () => { for (const root of roots.splice(0)) await rm(root, { recursive: true, force: true }); });
+async function fixture() {
+  const f = upgradeFixture(); const root = await createScratchDir('tests', 'upgrade-coordinator'); await chmod(root, 0o700); roots.push(root);
+  const plan = createUpgradePlan(f.request, f.observations, f.now); const journal = new UpgradeJournal(root);
+  const calls: string[] = []; const restarted = new Set<string>(); let revoked = false;
+  const port: NativeUpgradePort = {
+    resolveAuthority: async (p, group) => ({ plan_digest: p.digest, group_id: group.group_id, installation_id: group.installation_id,
+      consumer_home_ids: group.homes.map(h => h.home_id), expires_at_ms: p.plan.expires_at_ms,
+      completeness_evidence_ref: 'fake-exclusive-installation-registration', qualification_ref: 'fake-updater-qualification', authorization_ref: 'fake-exact-plan-approval',
+      assertCurrent: () => { if (revoked) throw Error('upgrade_revoked'); } }),
+    observe: async home => { calls.push(`observe:${home.home_id}`); return { receipt_ref: `fake-observed:${home.home_id}`, healthy: true,
+      identity: restarted.has(home.home_id) ? { ...home.identity!, generation: `instance_${'9'.repeat(32)}`, version: plan.plan.target.version,
+        protocol_version: plan.plan.target.protocol_version, database_schema: plan.plan.target.database_schema, build_digest: plan.plan.target.build_digest,
+        started_at_ms: f.now } : home.identity! }; },
+    drain: async home => { calls.push(`drain:${home.home_id}`); return { receipt: { home_id: home.home_id, generation: home.identity!.generation,
+      stopped: true, graph_holds: 0, unknown_actions: 0, receipt_ref: `fake-stopped:${home.home_id}` }, assertHeld: () => {} }; },
+    snapshot: async home => { calls.push(`snapshot:${home.home_id}`); return { home_id: home.home_id, source_generation: home.identity!.generation, receipt_ref: `fake-consistent-snapshot:${home.home_id}` }; },
+    install: async (_plan, group) => { calls.push('install'); return { plan_digest: _plan.digest, installation_id: group.installation_id, version: plan.plan.target.version, build_digest: plan.plan.target.build_digest, receipt_ref: 'fake-install' }; },
+    restart: async home => { calls.push(`restart:${home.home_id}`); restarted.add(home.home_id); return { home_id: home.home_id, source_generation: home.identity!.generation, receipt_ref: `fake-restart:${home.home_id}` }; },
+  };
+  const run = (selectedPort: NativeUpgradePort | undefined = port) => coordinateUpgrade({ journal, plan, groupId: 'group', nowMs: () => f.now,
+    ...(selectedPort ? { port: selectedPort } : {}) });
+  return { ...f, root, plan, journal, calls, port, run, revoke: () => { revoked = true; } };
+}
+it('without a qualified host port persists only a plan and never installs, drains or restarts', async () => {
+  const f = await fixture(); const result = await coordinateUpgrade({ journal: f.journal, plan: f.plan, groupId: 'group' });
+  expect(result.state).toBe('qualification_pending'); expect(f.calls).toEqual([]);
+  expect((await new UpgradeJournal(f.root).status(f.plan.digest, 'group')).phase).toBe('qualification_pending');
+});
+it('requires the exact complete consumer set from trusted authority, not registry completeness', async () => {
+  const f = await fixture(); const resolve = f.port.resolveAuthority;
+  f.port.resolveAuthority = async (...args) => ({ ...(await resolve(...args))!, consumer_home_ids: [f.observations[0]!.desired.home_id] });
+  expect((await f.run()).state).toBe('qualification_pending'); expect(f.calls).toEqual([]);
+});
+it('stops every shared consumer before any snapshot/install and records exact verified identities', async () => {
+  const f = await fixture(); expect((await f.run()).state).toBe('verified');
+  expect(f.calls.map(c => c.split(':')[0])).toEqual(['observe', 'observe', 'drain', 'drain', 'snapshot', 'snapshot', 'install', 'restart', 'restart', 'observe', 'observe']);
+  const status = await new UpgradeJournal(f.root).status(f.plan.digest, 'group'); expect(status.completed).toBe(true);
+  expect(status.records.filter(r => r.phase === 'installing' && r.status === 'started')).toHaveLength(1);
+  const count = f.calls.length; expect((await f.run()).state).toBe('verified'); expect(f.calls).toHaveLength(count);
+  expect((await readdir(f.root)).filter(name => name.startsWith('claim-'))).toHaveLength(0);
+});
+it.each(['second_drain', 'graph_hold', 'unknown_action', 'lease_lost'] as const)('never installs with %s', async failure => {
+  const f = await fixture(); const drain = f.port.drain; let drained = 0;
+  f.port.drain = async (...args) => {
+    const lease = await drain(...args); drained += 1;
+    if (failure === 'second_drain' && drained === 2) throw Error('upgrade_stop_unknown');
+    if (failure === 'graph_hold') return { ...lease, receipt: { ...lease.receipt, graph_holds: 1 } } as unknown as Awaited<ReturnType<NativeUpgradePort['drain']>>;
+    if (failure === 'unknown_action') return { ...lease, receipt: { ...lease.receipt, unknown_actions: 1 } } as unknown as Awaited<ReturnType<NativeUpgradePort['drain']>>;
+    return failure === 'lease_lost' ? { ...lease, assertHeld: () => { if (drained === 2) throw Error('upgrade_stop_lease_lost'); } } : lease;
+  };
+  expect((await f.run()).state).toBe('recovery_required'); expect(f.calls).not.toContain('install');
+  expect(f.calls.some(c => c.startsWith('restart:'))).toBe(false);
+});
+it.each(['observe', 'drain', 'snapshot', 'install', 'restart'] as const)('retains a journal and never blindly replays %s after a fault', async method => {
+  const f = await fixture(); let attempted = 0;
+  f.port[method] = (async () => { attempted += 1; throw Error('simulated lost receipt'); }) as never;
+  const first = await f.run(); expect(first.state).not.toBe('verified'); expect(attempted).toBe(1);
+  const second = await coordinateUpgrade({ journal: new UpgradeJournal(f.root), plan: f.plan, groupId: 'group', port: f.port, nowMs: () => f.now });
+  expect(second.state).toBe('recovery_required'); expect(attempted).toBe(1);
+});
+it('treats an install timeout and late successful receipt as unknown without another install', async () => {
+  const f = await fixture(); const request = { ...f.request, budget: { ...f.request.budget, max_step_ms: 20 } };
+  const plan = createUpgradePlan(request, f.observations, f.now); let finish!: (value: Awaited<ReturnType<NativeUpgradePort['install']>>) => void; let calls = 0;
+  f.port.install = async () => { calls += 1; return new Promise(resolve => { finish = resolve; }); };
+  const run = () => coordinateUpgrade({ journal: f.journal, plan, groupId: 'group', port: f.port, nowMs: () => f.now });
+  expect((await run()).state).toBe('recovery_required');
+  const before = await f.journal.status(plan.digest, 'group');
+  finish({ plan_digest: plan.digest, installation_id: 'shared-npm-global', version: plan.plan.target.version, build_digest: plan.plan.target.build_digest, receipt_ref: 'late' });
+  await Promise.resolve(); expect(await f.journal.status(plan.digest, 'group')).toEqual(before);
+  expect((await run()).state).toBe('recovery_required'); expect(calls).toBe(1);
+});
+it.each(['home', 'generation', 'version', 'build', 'schema', 'health'] as const)('rejects wrong post-restart %s even if software reports target version', async changed => {
+  const f = await fixture(); const observe = f.port.observe; let count = 0;
+  f.port.observe = async (...args) => {
+    const value = await observe(...args); if (++count <= 2) return value;
+    if (changed === 'home') value.identity.home_id = `home_${'f'.repeat(32)}`;
+    if (changed === 'generation') value.identity.generation = args[0].identity!.generation;
+    if (changed === 'version') value.identity.version = '1.0.0';
+    if (changed === 'build') value.identity.build_digest = 'c'.repeat(64);
+    if (changed === 'schema') value.identity.database_schema = 42;
+    if (changed === 'health') value.healthy = false;
+    return value;
+  };
+  expect((await f.run()).state).toBe('version_mismatch'); expect(f.calls.filter(c => c === 'install')).toHaveLength(1);
+  expect((await f.run()).state).toBe('recovery_required');
+});
+it('does not race two operators into a shared install', async () => {
+  const f = await fixture(); const results = await Promise.all([f.run(), f.run()]);
+  expect(results.map(r => r.state).sort()).toEqual(['recovery_required', 'verified']); expect(f.calls.filter(c => c === 'install')).toHaveLength(1);
+});
+it('checks revocation after drain await before any snapshot or install', async () => {
+  const f = await fixture(); const drain = f.port.drain;
+  f.port.drain = async (...args) => { const value = await drain(...args); f.revoke(); return value; };
+  expect((await f.run()).state).toBe('recovery_required'); expect(f.calls.some(c => c.startsWith('snapshot:'))).toBe(false); expect(f.calls).not.toContain('install');
+});
+it('enforces step budget and refuses a changed generation before drain', async () => {
+  const f = await fixture(); const observe = f.port.observe;
+  f.port.observe = async (...args) => { const value = await observe(...args); return { ...value, identity: { ...value.identity, generation: `instance_${'f'.repeat(32)}` } }; };
+  expect((await f.run()).state).toBe('aborted_before_install'); expect(f.calls.some(c => c.startsWith('drain:'))).toBe(false);
+  const g = await fixture(); const plan = createUpgradePlan({ ...g.request, budget: { ...g.request.budget, max_steps: 1 } }, g.observations, g.now);
+  expect((await coordinateUpgrade({ journal: g.journal, plan, groupId: 'group', port: g.port, nowMs: () => g.now })).state).toBe('qualification_pending');
+  expect(g.calls).toEqual([]);
+});
+
+it.each(['preflight', 'draining', 'quiescent', 'snapshotting', 'installing', 'installed', 'restarting', 'verifying'] as const)(
+  'reopens an abrupt process-loss journal at %s for reconciliation without invoking any updater port', async phase => {
+    const f = await fixture(); await f.journal.create(f.plan); const writer = await f.journal.claim(f.plan.digest, 'group');
+    await writer.append({ at_ms: f.now, phase, status: 'started', home_id: null, evidence_digest: null, evidence_ref: null, reason: null });
+    expect((await coordinateUpgrade({ journal: new UpgradeJournal(f.root), plan: f.plan, groupId: 'group', port: f.port, nowMs: () => f.now })).state).toBe('recovery_required');
+    expect(f.calls).toEqual([]);
+  });
+
+it.each(['snapshot', 'restart', 'install'] as const)('rejects a foreign %s receipt without replaying a native action', async method => {
+  const f = await fixture();
+  if (method === 'install') { const original = f.port.install; f.port.install = async (...args) => ({ ...await original(...args), plan_digest: 'e'.repeat(64) }); }
+  else { const original = f.port[method]; f.port[method] = async (...args) => ({ ...await original(...args), home_id: `home_${'e'.repeat(32)}` }); }
+  expect((await f.run()).state).not.toBe('verified');
+  if (method === 'snapshot') expect(f.calls).not.toContain('install');
+  const count = f.calls.length; expect((await f.run()).state).toBe('recovery_required'); expect(f.calls).toHaveLength(count);
+});
+it('keeps missing shared-consumer proof pending even with an injected updater', async () => {
+  const f = await fixture(); f.port.resolveAuthority = async () => null;
+  expect((await f.run()).state).toBe('qualification_pending'); expect(f.calls).toEqual([]);
+});
+
+it('rechecks the remaining home maintenance fence before each restart', async () => {
+  const f = await fixture(); let firstRestarted = false; const drain = f.port.drain; const restart = f.port.restart;
+  f.port.drain = async (...args) => { const lease = await drain(...args); return { ...lease, assertHeld: () => {
+    if (firstRestarted && args[0].home_id === f.observations[1]!.desired.home_id) throw Error('upgrade_stop_lease_lost');
+  } }; };
+  f.port.restart = async (...args) => { const receipt = await restart(...args); firstRestarted = true; return receipt; };
+  expect((await f.run()).state).not.toBe('verified'); expect(f.calls.filter(c => c.startsWith('restart:'))).toHaveLength(1);
+});
+
+it('does not trust caller-edited qualification reasons to bypass checkout or schema constraints', async () => {
+  const f = await fixture(); const raw = structuredClone(f.plan.plan); raw.groups[0]!.homes[0]!.identity!.deployment_kind = 'checkout';
+  const plan = freezeUpgradePlan(raw);
+  expect((await coordinateUpgrade({ journal: f.journal, plan, groupId: 'group', port: f.port, nowMs: () => f.now })).state).toBe('qualification_pending');
+  expect(f.calls).toEqual([]);
+});
+
+it('cancels a physically pending install without waiting for its full step timeout or accepting a late receipt', async () => {
+  const f = await fixture(); const controller = new AbortController(); let began!: () => void; const started = new Promise<void>(resolve => { began = resolve; });
+  f.port.install = async () => { began(); return new Promise(() => {}); };
+  const pending = coordinateUpgrade({ journal: f.journal, plan: f.plan, groupId: 'group', port: f.port, nowMs: () => f.now, signal: controller.signal });
+  await started; controller.abort(); const result = await pending;
+  expect(result.state).toBe('recovery_required'); expect(result.reason).toBe('upgrade_cancelled');
+  expect(f.calls.filter(c => c.startsWith('restart:'))).toHaveLength(0);
+});
+
+it('preserves verified facts and exposes a claim cleanup failure for manual reconciliation', async () => {
+  const f = await fixture(); const claim = f.journal.claim.bind(f.journal);
+  f.journal.claim = async (...args) => { const writer = await claim(...args); return { ...writer, releaseVerified: async () => { throw Error('simulated fs failure'); } }; };
+  expect(await f.run()).toMatchObject({ state: 'verified', reason: 'claim_release_requires_reconciliation' });
+  const status = await new UpgradeJournal(f.root).status(f.plan.digest, 'group'); expect(status.completed).toBe(true);
+  expect(status.recovery.claim_cleanup_pending).toBe(true);
+  const count = f.calls.length; expect((await f.run()).state).toBe('verified'); expect(f.calls).toHaveLength(count);
+});
+
+it('does not erase already-confirmed verification when cancellation arrives during its journal write', async () => {
+  const f = await fixture(); const controller = new AbortController(); const claim = f.journal.claim.bind(f.journal);
+  f.journal.claim = async (...args) => { const writer = await claim(...args); return { ...writer, append: async value => {
+    const record = await writer.append(value); if (value.phase === 'verified' && value.status === 'confirmed') controller.abort(); return record;
+  } }; };
+  expect((await coordinateUpgrade({ journal: f.journal, plan: f.plan, groupId: 'group', port: f.port, nowMs: () => f.now, signal: controller.signal })).state).toBe('verified');
+  const status = await f.journal.status(f.plan.digest, 'group'); expect(status.completed).toBe(true); expect(status.records.at(-1)!.status).toBe('confirmed');
+});

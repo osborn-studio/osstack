@@ -1,0 +1,17 @@
+{
+  "checks": {
+    "active_ten_minutes": true,
+    "rpc_zero_errors": true,
+    "no_network_attempts": true,
+    "all_50_run_cursors_caught_up": true,
+    "all_30_session_versions_caught_up": true,
+    "all_20_final_loop_snapshots_match": true,
+    "no_projection_gaps": true,
+    "socket_roundtrip_p95_under_10ms": true,
+    "all_recent_internal_read_rpc_p95_under_10ms": true
+  },
+  "slice_pass": true,
+  "full_capacity_qualification": false,
+  "original_plan_complete": false,
+  "raw_harness_summary": "/Volumes/AIMATE_WORK/tmp/osstack/smoke/pr237-integration/qualification-soak/full/summary.json"
+}

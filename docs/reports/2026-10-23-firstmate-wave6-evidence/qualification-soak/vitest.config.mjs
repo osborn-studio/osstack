@@ -1,0 +1,1 @@
+export default {"root": "/Volumes/AIMATE_WORK/tmp/osstack/smoke/pr237-integration/qualification-soak", "test": {"include": ["soak.test.ts"], "pool": "forks", "maxWorkers": 1, "testTimeout": 900000, "hookTimeout": 30000}};

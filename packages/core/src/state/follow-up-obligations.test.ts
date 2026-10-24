@@ -6,7 +6,7 @@ import { createScratchDirSync } from "../scratch.js";
 import { openDb } from "./db.js";
 import { insertRun, insertTask } from "./run-store.js";
 import Database from "better-sqlite3";
-import { MIGRATIONS } from "./migrations.js";
+import { CURRENT_SCHEMA_VERSION, MIGRATIONS } from "./migrations.js";
 import { FollowUpObligationService } from "./follow-up-obligations.js";
 const cleanup: Array<() => void> = [];
 afterEach(() => { for (const fn of cleanup.splice(0).reverse()) fn(); });
@@ -105,13 +105,13 @@ it("rejects a second connection's stale revision and retains both audit events",
   expect(() => new FollowUpObligationService(second, f.path).draft(request)).toThrow("follow_up_revision_conflict");
   expect(f.db.prepare("SELECT COUNT(*) AS n FROM follow_up_obligation_events").get()).toEqual({ n: 2 });
 });
-it("migrates an actual schema 43 database to 44 without rewriting existing source rows", () => {
+it("migrates an actual schema 43 database through 44 to current without rewriting existing source rows", () => {
   const root = realpathSync(createScratchDirSync("tests", "follow-up-upgrade")); cleanup.push(() => rmSync(root, { recursive: true, force: true }));
   const path = join(root, "state.db"); const old = new Database(path);
   for (const migration of MIGRATIONS.filter(row => row.id <= 43)) old.exec(migration.sql);
   old.pragma("user_version=43"); old.prepare("INSERT INTO tasks(task_id,title,status,created_at,updated_at) VALUES('existing','Preserved','running',1,1)").run(); old.close();
   const upgraded = openDb({ path }); cleanup.push(() => upgraded.close());
-  expect(upgraded.pragma("user_version", { simple: true })).toBe(44);
+  expect(upgraded.pragma("user_version", { simple: true })).toBe(CURRENT_SCHEMA_VERSION);
   expect(upgraded.prepare("SELECT title,status FROM tasks WHERE task_id='existing'").get()).toEqual({ title: "Preserved", status: "running" });
   expect(upgraded.prepare("SELECT count(*) AS n FROM follow_up_obligations").get()).toEqual({ n: 0 });
   const readOnly = openDb({ path, readwrite: false }); readOnly.close();

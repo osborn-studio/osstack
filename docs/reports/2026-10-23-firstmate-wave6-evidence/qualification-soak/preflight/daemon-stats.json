@@ -1,0 +1,112 @@
+{
+  "total_runs": 50,
+  "total_events": 84,
+  "per_agent": [
+    {
+      "agent_id": "synthetic",
+      "capability_id": "code",
+      "runs": 50,
+      "completed": 0,
+      "failed": 0,
+      "cancelled": 0,
+      "in_flight": 50,
+      "avg_duration_ms": null,
+      "total_tokens_in": 0,
+      "total_tokens_out": 0,
+      "total_pii_redacted": 0
+    }
+  ],
+  "loops": {
+    "total_sessions": 0,
+    "running": 0,
+    "stopping": 0,
+    "stopped": 0,
+    "failed": 0,
+    "total_cycles": 0,
+    "total_discovered": 0,
+    "total_executed": 0,
+    "total_skipped": 0,
+    "total_successful": 0,
+    "total_failed": 0,
+    "total_escalated": 0,
+    "total_tokens_consumed": 0,
+    "total_cycle_duration_ms": 0,
+    "avg_cycle_duration_ms": null,
+    "per_loop": []
+  },
+  "rpc": [
+    {
+      "method": "attention.watch",
+      "count": 20,
+      "window": 20,
+      "p50_ms": 26.481083000000126,
+      "p95_ms": 31.61949999999979,
+      "max_ms": 32.94145899999967
+    },
+    {
+      "method": "graph.start",
+      "count": 2,
+      "window": 2,
+      "p50_ms": 10.100999999999658,
+      "p95_ms": 17.336166999999932,
+      "max_ms": 17.336166999999932
+    },
+    {
+      "method": "attention.loop",
+      "count": 20,
+      "window": 20,
+      "p50_ms": 0.4847090000000662,
+      "p95_ms": 1.6136670000000777,
+      "max_ms": 4.537249999999858
+    },
+    {
+      "method": "attention.recovery",
+      "count": 7,
+      "window": 7,
+      "p50_ms": 0.7097499999999854,
+      "p95_ms": 0.9632919999985461,
+      "max_ms": 0.9632919999985461
+    },
+    {
+      "method": "run.status",
+      "count": 7,
+      "window": 7,
+      "p50_ms": 0.11870799999996962,
+      "p95_ms": 0.7509580000005371,
+      "max_ms": 0.7509580000005371
+    },
+    {
+      "method": "graph.status",
+      "count": 246,
+      "window": 246,
+      "p50_ms": 0.2956250000002001,
+      "p95_ms": 0.5028749999996762,
+      "max_ms": 0.7127500000001419
+    },
+    {
+      "method": "session.status",
+      "count": 7,
+      "window": 7,
+      "p50_ms": 0.27224999999998545,
+      "p95_ms": 0.4946249999993597,
+      "max_ms": 0.4946249999993597
+    },
+    {
+      "method": "attention.inbox",
+      "count": 6,
+      "window": 6,
+      "p50_ms": 0.40304199999991397,
+      "p95_ms": 0.4862920000014128,
+      "max_ms": 0.4862920000014128
+    },
+    {
+      "method": "graph.result",
+      "count": 6,
+      "window": 6,
+      "p50_ms": 0.3377090000012686,
+      "p95_ms": 0.414042000000336,
+      "max_ms": 0.414042000000336
+    }
+  ],
+  "generated_at": 1792789860.197
+}

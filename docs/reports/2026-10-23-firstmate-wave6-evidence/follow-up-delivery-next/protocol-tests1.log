@@ -1,0 +1,10 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-routing-next/packages/protocol
+
+ ✓ src/follow-up-delivery.test.ts (7 tests) 6ms
+
+ Test Files  1 passed (1)
+      Tests  7 passed (7)
+   Start at  13:43:33
+   Duration  306ms (transform 28ms, setup 0ms, collect 33ms, tests 6ms, environment 0ms, prepare 45ms)
+
