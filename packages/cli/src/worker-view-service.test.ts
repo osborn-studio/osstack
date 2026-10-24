@@ -93,7 +93,13 @@ describe("worker read-only state views", () => {
     const page = f.service.list({ ...f.params, limit: 1 });
     const viewId = page.views[0]!.view_id;
     const cursor = page.next_cursor!;
-    expect(() => f.service.list({ ...f.params, cursor: "x" + cursor.slice(1) })).toThrow("invalid_cursor");
+    const tamperedBytes = Buffer.from(cursor, "base64url");
+    // Tokens start with a 12-byte IV. Flip one authentication-tag bit so the
+    // test always changes authenticated bytes, regardless of the random IV.
+    tamperedBytes[12] = tamperedBytes[12]! ^ 1;
+    const tamperedCursor = tamperedBytes.toString("base64url");
+    expect(tamperedCursor).not.toBe(cursor);
+    expect(() => f.service.list({ ...f.params, cursor: tamperedCursor })).toThrow("invalid_cursor");
     expect(() => f.service.list({ ...f.params, cursor: viewId })).toThrow("invalid_cursor");
     expect(() => f.service.inspect({ ...f.params, view_id: cursor })).toThrow("invalid_view");
     const other = join(f.root, "other"); mkdirSync(other);
