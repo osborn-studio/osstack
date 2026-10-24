@@ -14,8 +14,8 @@ export type UpgradeStopLease = { receipt: z.infer<typeof StoppedSchema>; assertH
 const ReceiptSchema = z.object({ home_id: z.string(), source_generation: z.string(), receipt_ref: ref }).strict();
 const InstallSchema = z.object({ plan_digest: UpgradeDigest, installation_id: UpgradeId, version: z.string(), build_digest: UpgradeDigest, receipt_ref: ref }).strict();
 
-/** Trusted host injection only. No production implementation or apply CLI is registered in U2a.
- * The future adapter must delegate to the native updater; it must never infer all consumers from inventory. */
+/** Trusted host boundary. ManagedNativeUpgradePort implements the opt-in pinned launchd backend.
+ * Implementations must prove the complete controlled consumer set independently of inventory. */
 export interface NativeUpgradePort {
   resolveAuthority(plan: FrozenUpgradePlan, group: UpgradePlanGroup, signal: AbortSignal): Promise<UpgradeAuthority | null>;
   observe(home: UpgradePlanHome, signal: AbortSignal): Promise<{ identity: DeploymentIdentity; healthy: boolean; receipt_ref: string }>;

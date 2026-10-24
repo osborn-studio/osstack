@@ -1,0 +1,16 @@
+import { closeSync, constants, existsSync, fstatSync, lstatSync, openSync, readSync, realpathSync } from 'node:fs';
+import { isAbsolute, join, resolve } from 'node:path';
+/** Small synchronous pre-DB guard. Full release/runtime evidence is verified lazily by daemon startup. */
+function privateJson(path:string,limit:number):Record<string,unknown>{
+  const fd=openSync(path,constants.O_RDONLY|constants.O_NOFOLLOW|constants.O_NONBLOCK);
+  try{const st=fstatSync(fd);if(!st.isFile()||st.nlink!==1||st.size>limit||(st.mode&0o077)||process.getuid&&st.uid!==process.getuid())throw Error('upgrade_managed_marker_invalid');const bytes=Buffer.alloc(st.size+1);let length=0;while(length<bytes.length){const n=readSync(fd,bytes,length,bytes.length-length,length);if(!n)break;length+=n;}const after=fstatSync(fd);if(length!==st.size||st.mtimeMs!==after.mtimeMs||st.ctimeMs!==after.ctimeMs)throw Error('upgrade_managed_marker_changed');const value:unknown=JSON.parse(bytes.subarray(0,length).toString());if(!value||typeof value!=='object'||Array.isArray(value))throw Error('upgrade_managed_marker_invalid');return value as Record<string,unknown>;}finally{closeSync(fd);}
+}
+export function assertManagedHomeMarker(home:string,entry:string|undefined=process.argv[1]):void{
+  const markerPath=join(home,'managed-consumer.json');if(!existsSync(markerPath))return;
+  const marker=privateJson(markerPath,8192);if(marker['schema_version']!==1||typeof marker['root']!=='string'||!isAbsolute(marker['root'])||typeof marker['home_id']!=='string'||!/^home_[a-f0-9]{32}$/.test(marker['home_id']))throw Error('upgrade_managed_marker_invalid');
+  const root=marker['root'];const directory=lstatSync(root);if(!directory.isDirectory()||realpathSync(root)!==resolve(root)||(directory.mode&0o077)||process.getuid&&directory.uid!==process.getuid())throw Error('upgrade_managed_root_invalid');
+  const config=privateJson(join(root,'installation.json'),262144);const relative=config['entry'];if(config['root']!==root||typeof relative!=='string'||relative.startsWith('/')||relative.split('/').some(p=>!p||p==='.'||p==='..')||!Array.isArray(config['consumers']))throw Error('upgrade_managed_registry_invalid');
+  const consumer=(config['consumers'] as Array<Record<string,unknown>>).find(c=>c&&c['home_id']===marker['home_id']&&c['home']===realpathSync(home));if(!consumer||!entry||realpathSync(entry)!==realpathSync(join(root,'current',relative)))throw Error('upgrade_managed_entry_required');
+  const current=realpathSync(join(root,'current'));if(!/^[a-f0-9]{64}$/.test(current.slice((join(root,'releases')+'/').length))||!current.startsWith(join(root,'releases')+'/'))throw Error('upgrade_managed_release_invalid');
+  if(existsSync(join(root,'upgrade-operation.json'))){const operation=privateJson(join(root,'upgrade-operation.json'),8192),permit=privateJson(join(root,'restart-permit.json'),8192);if(typeof operation['plan_digest']!=='string'||permit['plan_digest']!==operation['plan_digest']||permit['build_digest']!==current.split('/').at(-1))throw Error('upgrade_start_blocked');}
+}

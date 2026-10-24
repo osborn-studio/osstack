@@ -98,7 +98,7 @@ describe('managed native upgrade actual filesystem/process boundaries',()=>{
     const root=realpathSync(await createScratchDir('tests','provision'));roots.push(root);await chmod(root,0o700);const consumers=[];for(const previous of f.config.consumers){const home=realpathSync(await createScratchDir('tests','provision-home'));roots.push(home);await chmod(home,0o700);await publishPrivate(join(home,'deployment-identity.json'),{schema_version:1,home_id:previous.home_id});consumers.push({...previous,home,socket:join(home,'s')});}const config={...f.config,root,consumers};
     const request=join(f.root,'request.json');await publishPrivate(request,config);const input={request,approvedRegistryDigest:sha256(readFileSync(request)),artifact:f.input.artifact,artifactDigest:f.input.artifactDigest};
     const result=await provisionManagedInstallation(input,AbortSignal.timeout(30000));expect(result.state).toBe('provisioned_not_started');expect(f.starts()).toBe(2);expect(loadInstallation(result.registry,result.registry_sha256).root).toBe(root);expect(verifyRelease(root,f.next.target.build_digest).target.version).toBe('2.0.0');
-    await expect(provisionManagedInstallation(input,AbortSignal.timeout(30000))).rejects.toThrow('upgrade_installation_not_empty');
+    await rm(join(root,'installation.json'));await rm(join(root,'current'));expect((await provisionManagedInstallation(input,AbortSignal.timeout(30000))).state).toBe('provisioned_not_started');
   },30000);
   it('recovers forward after SIGKILL while a real stopped home and database are kernel-locked',async()=>{
     const f=await fixture();const runner=join(f.root,'crash-runner.ts');const executable=join(f.root,'crash-runner.cjs');
@@ -122,6 +122,11 @@ const backend={async assertConsumers(){},async service(label){const c=config.con
     const f=await fixture();let unblock!:()=>void;let arrived!:()=>void;const pending=new Promise<void>(r=>unblock=r);const started=new Promise<void>(r=>arrived=r);
     const port=new ManagedNativeUpgradePort(f.input,{...f.backend,stop:async(l,s)=>{await f.backend.stop(l,s);arrived();await pending;}});
     await port.resolveAuthority(f.plan,f.plan.plan.groups[0]!,new AbortController().signal);const stopped=port.drain(f.plan.plan.groups[0]!.homes[0]!,AbortSignal.timeout(30000));await started;let closed=false;const closing=port.close().then(()=>{closed=true;});await new Promise(r=>setTimeout(r,20));expect(closed).toBe(false);unblock();await expect(stopped).rejects.toThrow('upgrade_port_closed');await closing;expect(existsSync(join(f.root,'upgrade-operation.json'))).toBe(true);
+  },30000);
+  it('recovers a SIGKILL stale socket only after native ownership and connection refusal prove it is abandoned',async()=>{
+    const f=await fixture();const port=new ManagedNativeUpgradePort(f.input,f.backend);await port.resolveAuthority(f.plan,f.plan.plan.groups[0]!,new AbortController().signal);await port.close();
+    const consumer=f.config.consumers[0]!;const health=await upgradeRpc(consumer.socket,'health',new AbortController().signal) as {pid:number};const child=children.find(p=>p.pid===health.pid)!;await new Promise<void>(r=>{child.once('exit',()=>r());child.kill('SIGKILL');});expect(existsSync(consumer.socket)).toBe(true);
+    const recovery=new ManagedNativeUpgradePort(f.input,f.backend);try{const status=await f.journal.status(f.plan.digest,'first');expect((await recovery.reconcileForward(f.plan,f.plan.plan.groups[0]!,f.journal,upgradeDigest(status.records),AbortSignal.timeout(30000))).state).toBe('verified');expect(f.starts()).toBe(4);}finally{await recovery.close();}
   },30000);
   it('mutually excludes different journals sharing one physical installation',async()=>{
     const f=await fixture();const port=new ManagedNativeUpgradePort(f.input,f.backend);await port.resolveAuthority(f.plan,f.plan.plan.groups[0]!,new AbortController().signal);

@@ -2,16 +2,15 @@ import { constants, existsSync, readdirSync, realpathSync } from 'node:fs';
 import { copyFile, mkdir, open, unlink } from 'node:fs/promises';
 import { join } from 'node:path';
 import { z } from 'zod';
-import { acquireDaemonLock } from './daemon-lock.js';
+import { acquireDaemonLock, DaemonAlreadyRunningError } from './daemon-lock.js';
 import { graphUpgradeHolds } from './graph-upgrade-guard.js';
 import { DeploymentIdentitySchema } from './home-inventory.js';
 import type { UpgradeJournal } from './upgrade-journal.js';
 import type { NativeUpgradePort, UpgradeAuthority, UpgradeStopLease } from './upgrade-coordinator.js';
 import { upgradeCanonical, upgradeDigest, type FrozenUpgradePlan, type UpgradePlanGroup, type UpgradePlanHome } from './upgrade-plan.js';
 import { loadBundle, loadInstallation, privateDirectory, publishPrivate, readPrivate, sha256, stageRelease, switchRelease, syncDirectory, type ManagedInstallation, type ReleaseBundle } from './upgrade-native-files.js';
-import { launchdUpgradeBackend, managedPlist, upgradeRpc, verifyRelease, type UpgradeBackend } from './upgrade-native-backend.js';
+import { launchdUpgradeBackend, managedPlist, removeAbandonedUpgradeSocket, upgradeRpc, verifyRelease, type UpgradeBackend } from './upgrade-native-backend.js';
 export interface NativeUpgradeInput { registry: string; registryDigest: string; artifact: string; artifactDigest: string; approvedPlanDigest: string }
-const pidAlive = (pid: number) => { try { process.kill(pid,0); return true; } catch (e) { if ((e as NodeJS.ErrnoException).code === 'ESRCH') return false; throw Error('upgrade_process_unknown'); } };
 const pause = (signal: AbortSignal) => new Promise<void>((resolve,reject) => { signal.throwIfAborted(); const timer = setTimeout(() => { signal.removeEventListener('abort', abort); resolve(); },50); const abort = () => { clearTimeout(timer); reject(Error('upgrade_cancelled')); }; signal.addEventListener('abort',abort,{once:true}); });
 /** Concrete opt-in managed launchd installation. Does not call npm, evaluate scripts or restore databases. */
 export class ManagedNativeUpgradePort implements NativeUpgradePort {
@@ -25,7 +24,7 @@ export class ManagedNativeUpgradePort implements NativeUpgradePort {
   private closed=false;
   private readonly pending=new Set<Promise<unknown>>();
   private track<T>(work:()=>Promise<T>):Promise<T>{if(this.closed)return Promise.reject(Error('upgrade_port_closed'));const task=work();this.pending.add(task);void task.finally(()=>this.pending.delete(task)).catch(()=>{});return task;}
-  private readonly stoppedPids = new Map<string,number>();
+
   constructor(readonly input: NativeUpgradeInput, backend?: UpgradeBackend) {
     this.config = loadInstallation(input.registry,input.registryDigest); this.bundle = loadBundle(input.artifact,input.artifactDigest);
     if (!this.bundle.files.some(f => f.path === this.config.entry)) throw Error('upgrade_missing_entry');
@@ -51,13 +50,17 @@ export class ManagedNativeUpgradePort implements NativeUpgradePort {
     if(this.closed)throw Error('upgrade_port_closed'); this.assertPins(); const value = JSON.parse(readPrivate(join(this.config.root,'upgrade-operation.json')).toString());
     if (!this.plan || value.plan_digest !== this.plan.digest || value.group_id !== this.group?.group_id || value.registry_digest !== this.input.registryDigest || value.artifact_digest !== this.input.artifactDigest) throw Error('upgrade_operation_binding');
   }
-  async resolveAuthority(plan: FrozenUpgradePlan, group: UpgradePlanGroup, signal: AbortSignal): Promise<UpgradeAuthority> {
+  resolveAuthority(plan: FrozenUpgradePlan, group: UpgradePlanGroup, signal: AbortSignal):Promise<UpgradeAuthority>{return this.track(()=>this.doResolveAuthority(plan,group,signal));}
+  private async doResolveAuthority(plan: FrozenUpgradePlan, group: UpgradePlanGroup, signal: AbortSignal): Promise<UpgradeAuthority> {
     signal.throwIfAborted(); this.assertPins();
     if (plan.digest !== this.input.approvedPlanDigest || this.config.installation_id !== group.installation_id
       || upgradeCanonical(plan.plan.target) !== upgradeCanonical(this.bundle.target)
       || upgradeCanonical(group.homes.map(h => h.home_id).sort()) !== upgradeCanonical(this.config.consumers.map(c => c.home_id).sort())) throw Error('upgrade_approval_binding');
     this.plan = plan; this.group = group;
     this.ownerRelease = acquireDaemonLock(join(this.config.root,'upgrade-owner.pid'));
+    const staged=join(this.config.root,'releases',plan.plan.target.build_digest);if(!existsSync(staged))await stageRelease(this.config.root,this.bundle,signal);
+    if(upgradeCanonical(verifyRelease(this.config.root,plan.plan.target.build_digest).target)!==upgradeCanonical(plan.plan.target))throw Error('upgrade_release_metadata_changed');
+    signal.throwIfAborted();if(this.closed)throw Error('upgrade_port_closed');
     const pids:number[]=[];for(const c of this.config.consumers){const health=z.object({pid:z.number().int().positive()}).passthrough().parse(await upgradeRpc(c.socket,'health',signal));pids.push(health.pid);}
     await this.backend.assertConsumers(this.config,pids,signal);
     await publishPrivate(join(this.config.root,'upgrade-operation.json'), { plan_digest: plan.digest, group_id: group.group_id, registry_digest: this.input.registryDigest, artifact_digest: this.input.artifactDigest });
@@ -79,18 +82,22 @@ export class ManagedNativeUpgradePort implements NativeUpgradePort {
     this.assertOperation(); const c = this.consumer(home);
     const identity = DeploymentIdentitySchema.parse(await upgradeRpc(c.socket,'deployment.identity',signal));
     if (upgradeCanonical(identity) !== upgradeCanonical(home.identity)) throw Error('upgrade_identity_changed');
-    const health = z.object({ pid: z.number().int().positive() }).passthrough().parse(await upgradeRpc(c.socket,'health',signal));
+    z.object({ pid: z.number().int().positive() }).passthrough().parse(await upgradeRpc(c.socket,'health',signal));
     const drain = z.object({ drained: z.literal(true), graph_holds: z.literal(0), active_runs: z.literal(0) }).passthrough().parse(await upgradeRpc(c.socket,'daemon.drain',signal));
     if (!drain.drained) throw Error('upgrade_not_drained'); this.assertOperation();
     await this.backend.stop(c.label,signal);
-    while (pidAlive(health.pid) || existsSync(c.socket)) { this.assertOperation(); await pause(signal); }
     if (await this.backend.service(c.label,signal) !== 'absent') throw Error('upgrade_stop_unknown');
     signal.throwIfAborted(); this.assertOperation();
-    this.stoppedPids.set(c.home_id,health.pid); this.stopLocks.set(c.home_id,acquireDaemonLock(join(c.home,'daemon.pid')));
-    await this.lockHomeDatabase(c.home,c.home_id);
-    const assertHeld = () => { this.assertOperation(); if (!this.stopLocks.has(c.home_id) || pidAlive(health.pid) || existsSync(c.socket)) throw Error('upgrade_stop_lost'); };
+    await this.holdStoppedHome(c.home,c.home_id,c.socket,signal);
+    const assertHeld = () => { this.assertOperation(); if (!this.stopLocks.has(c.home_id) || existsSync(c.socket)) throw Error('upgrade_stop_lost'); };
     assertHeld(); return { receipt: { home_id: c.home_id, generation: identity.generation, stopped:true, graph_holds:0, unknown_actions:0, receipt_ref: `stopped:${identity.generation}` }, assertHeld };
   }
+  private async holdStoppedHome(home:string,id:string,socketPath:string,signal:AbortSignal):Promise<void>{
+    while(true){signal.throwIfAborted();this.assertOperation();try{this.stopLocks.set(id,acquireDaemonLock(join(home,'daemon.pid')));break;}catch(error){if(!(error instanceof DaemonAlreadyRunningError))throw error;await pause(signal);}}
+    await this.lockHomeDatabase(home,id);this.assertOperation();signal.throwIfAborted();
+    await removeAbandonedUpgradeSocket(socketPath,signal);this.assertOperation();
+  }
+
   private async lockHomeDatabase(home: string, homeId:string): Promise<void> {
     const path = join(home,'state.db'); if (!existsSync(path)) throw Error('upgrade_database_missing');
     const { default: Database } = await import('better-sqlite3'); this.assertOperation();
@@ -129,7 +136,7 @@ export class ManagedNativeUpgradePort implements NativeUpgradePort {
     this.assertOperation(); if (this.stopLocks.size !== group.homes.length) throw Error('upgrade_all_consumers_required');
     for (const c of this.config.consumers) if (await this.backend.service(c.label,signal) !== 'absent') throw Error('upgrade_stop_lost');
     await this.backend.assertConsumers(this.config,[],signal);
-    const release = await stageRelease(this.config.root,this.bundle,signal); this.assertOperation();
+    const release = join(this.config.root,'releases',plan.plan.target.build_digest); this.assertOperation();
     if(upgradeCanonical(verifyRelease(this.config.root,plan.plan.target.build_digest).target)!==upgradeCanonical(plan.plan.target))throw Error('upgrade_release_metadata_changed'); await switchRelease(this.config.root,release,signal); this.assertOperation();
     return {plan_digest:plan.digest,installation_id:group.installation_id,version:plan.plan.target.version,build_digest:plan.plan.target.build_digest,receipt_ref:`release:${plan.plan.target.build_digest}`};
   }
@@ -146,7 +153,8 @@ export class ManagedNativeUpgradePort implements NativeUpgradePort {
   }
   /** Fresh explicit approval performs forward repair from observed facts, never a blind rerun.
    * A successful target is kept; absent services alone may be bootstrapped. Unknown observations stop. */
-  async reconcileForward(plan: FrozenUpgradePlan, group: UpgradePlanGroup, journal: UpgradeJournal, expectedHistory: string, signal: AbortSignal) {
+  reconcileForward(plan: FrozenUpgradePlan, group: UpgradePlanGroup, journal: UpgradeJournal, expectedHistory: string, signal: AbortSignal){return this.track(()=>this.doReconcileForward(plan,group,journal,expectedHistory,signal));}
+  private async doReconcileForward(plan: FrozenUpgradePlan, group: UpgradePlanGroup, journal: UpgradeJournal, expectedHistory: string, signal: AbortSignal) {
     this.plan = plan; this.group = group;
     if (this.input.approvedPlanDigest !== plan.digest || this.config.installation_id !== group.installation_id
       || upgradeCanonical(this.bundle.target) !== upgradeCanonical(plan.plan.target)
@@ -158,7 +166,9 @@ export class ManagedNativeUpgradePort implements NativeUpgradePort {
     try {
       const current = realpathSync(join(this.config.root,'current'));
       const target = join(this.config.root,'releases',plan.plan.target.build_digest);
-      const targetActive = current === target;
+      if(!existsSync(target))await stageRelease(this.config.root,this.bundle,signal);
+      if(upgradeCanonical(verifyRelease(this.config.root,plan.plan.target.build_digest).target)!==upgradeCanonical(plan.plan.target))throw Error('upgrade_release_metadata_changed');
+      signal.throwIfAborted();this.assertOperation();const targetActive = current === target;
       const toStart: UpgradePlanHome[] = [];
       for (const home of group.homes) {
         signal.throwIfAborted(); this.assertOperation(); const c = this.consumer(home);
@@ -169,9 +179,7 @@ export class ManagedNativeUpgradePort implements NativeUpgradePort {
           if (targetActive) throw Error('upgrade_reconciliation_running_wrong_build');
           await this.drain(home,signal);
         } else {
-          if (existsSync(c.socket)) throw Error('upgrade_reconciliation_stale_socket');
-          this.stopLocks.set(c.home_id,acquireDaemonLock(join(c.home,'daemon.pid')));
-          await this.lockHomeDatabase(c.home,c.home_id);
+          await this.holdStoppedHome(c.home,c.home_id,c.socket,signal);
         }
         toStart.push(home);
       }
@@ -203,7 +211,8 @@ export class ManagedNativeUpgradePort implements NativeUpgradePort {
   }
   /** Kernel locks may be released; the persistent operation fence survives every failure. */
   async close(): Promise<void> { this.closed=true;await Promise.allSettled([...this.pending]);for (const release of this.stopLocks.values()) release(); this.stopLocks.clear(); this.ownerRelease?.(); this.ownerRelease=undefined; }
-  async complete(): Promise<void> {
-    this.assertOperation(); await unlink(join(this.config.root,'restart-permit.json')).catch(e=>{if(e.code!=='ENOENT')throw e;}); await unlink(join(this.config.root,'upgrade-operation.json')); await syncDirectory(this.config.root); await this.close();
+  complete():Promise<void>{return this.track(()=>this.doComplete());}
+  private async doComplete(): Promise<void> {
+    this.assertOperation(); await unlink(join(this.config.root,'restart-permit.json')).catch(e=>{if(e.code!=='ENOENT')throw e;}); await unlink(join(this.config.root,'upgrade-operation.json')); await syncDirectory(this.config.root);
   }
 }

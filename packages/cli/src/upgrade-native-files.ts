@@ -48,10 +48,11 @@ export function readPrivate(path: string, limit = 262144): Buffer {
 export async function syncDirectory(path: string): Promise<void> {
   const fd = await open(path, constants.O_RDONLY | constants.O_NOFOLLOW); try { await fd.sync(); } finally { await fd.close(); }
 }
-export async function publishPrivate(path: string, value: unknown): Promise<void> {
+export async function publishPrivate(path: string, value: unknown): Promise<void> {return publishPrivateBytes(path,Buffer.from(upgradeCanonical(value)));}
+export async function publishPrivateBytes(path:string,bytes:Buffer):Promise<void>{
   privateDirectory(dirname(path)); const temp=join(dirname(path),`.publish-${randomBytes(16).toString('hex')}`);
   const fd = await open(temp, constants.O_CREAT | constants.O_EXCL | constants.O_WRONLY | constants.O_NOFOLLOW, 0o600);
-  try { await fd.writeFile(upgradeCanonical(value)); await fd.sync(); } finally { await fd.close(); }
+  try { await fd.writeFile(bytes); await fd.sync(); } finally { await fd.close(); }
   try { await link(temp,path); } finally { await unlink(temp); }
   await syncDirectory(dirname(path));
 }
@@ -96,3 +97,6 @@ export async function switchRelease(root: string, release: string, signal: Abort
   const temp = join(root, `.current-${randomBytes(16).toString('hex')}`); await symlink(release, temp);
   try { signal.throwIfAborted(); await rename(temp, join(root, 'current')); await syncDirectory(root); } finally { await unlink(temp).catch(() => {}); }
 }
+
+/** On explicit provision resume, finish only this exact published inode's temporary link. */
+export async function finishPrivatePublication(path:string):Promise<void>{const target=lstatSync(path);for(const name of readdirSync(dirname(path)).filter(name=>/^\.publish-[a-f0-9]{32}$/.test(name))){const other=lstatSync(join(dirname(path),name));if(other.isFile()&&other.ino===target.ino&&other.dev===target.dev)await unlink(join(dirname(path),name));}await syncDirectory(dirname(path));}

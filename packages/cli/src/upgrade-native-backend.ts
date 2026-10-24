@@ -1,9 +1,10 @@
 import { execFile } from 'node:child_process';
 import { existsSync, lstatSync, readFileSync, readdirSync, realpathSync } from 'node:fs';
+import { unlink } from 'node:fs/promises';
 import { connect } from 'node:net';
 import { dirname, join } from 'node:path';
 import { z } from 'zod';
-import { privateDirectory, readPrivate, sha256, type ManagedInstallation } from './upgrade-native-files.js';
+import { privateDirectory, readPrivate, sha256, syncDirectory, type ManagedInstallation } from './upgrade-native-files.js';
 import { UpgradeTargetSchema, upgradeCanonical } from './upgrade-plan.js';
 export interface UpgradeBackend {
   assertConsumers(config: ManagedInstallation, allowedPids: readonly number[], signal: AbortSignal): Promise<void>;
@@ -90,7 +91,7 @@ export function managedPlist(config: ManagedInstallation, consumer: ManagedInsta
 export function managedStartupIdentity(home: string, entry: string | undefined): { deployment_kind: 'npm'; build_digest: string; build_evidence: 'host_manifest'; version: string; protocol_version: number; database_schema: number } | null {
   const markerPath=join(home,'managed-consumer.json');
   const marker=existsSync(markerPath)?z.object({schema_version:z.literal(1),root:z.string(),home_id:z.string()}).strict().parse(JSON.parse(readPrivate(markerPath,8192).toString())):null;
-  if (!entry) { if(marker)throw Error('upgrade_managed_entry_required');return null; } let probe = dirname(realpathSync(entry)); let release: string | undefined;
+  if (!entry) { if(marker||process.env['OSSTACK_MANAGED_INSTALLATION'])throw Error('upgrade_managed_entry_required');return null; } let canonicalEntry:string;try{canonicalEntry=realpathSync(entry);}catch(error){if(!marker&&!process.env['OSSTACK_MANAGED_INSTALLATION']&&(error as NodeJS.ErrnoException).code==='ENOENT')return null;throw error;}let probe = dirname(canonicalEntry); let release: string | undefined;
   for (let depth = 0; depth < 16; depth++) { if (existsSync(join(probe, '.osstack-release.json'))) { release = probe; break; } const parent = dirname(probe); if (parent === probe) break; probe = parent; }
   if (!release) { if (marker || process.env['OSSTACK_MANAGED_INSTALLATION']) throw Error('upgrade_unmanaged_entry'); return null; }
   const root = dirname(dirname(release)); if(marker && marker.root!==root)throw Error('upgrade_managed_entry_required'); if (dirname(release) !== join(root,'releases')) throw Error('upgrade_release_location');
@@ -125,3 +126,11 @@ export function verifyManagedRuntime(expected: NonNullable<ReturnType<typeof man
 }
 
 export function assertManagedHomeEntry(home:string,entry:string|undefined):void { managedStartupIdentity(home,entry); }
+
+/** Only call while holding the same home daemon mutex; a live or changed socket is never removed. */
+export async function removeAbandonedUpgradeSocket(socketPath:string,signal:AbortSignal):Promise<void>{
+    if(!existsSync(socketPath))return;const before=lstatSync(socketPath);
+    if(!before.isSocket()||realpathSync(socketPath)!==socketPath||process.getuid&&before.uid!==process.getuid())throw Error('upgrade_unsafe_socket');
+    await new Promise<void>((resolve,reject)=>{const socket=connect(socketPath);let settled=false;const finish=(error?:Error)=>{if(settled)return;settled=true;clearTimeout(timer);signal.removeEventListener('abort',abort);socket.destroy();error?reject(error):resolve();};const abort=()=>finish(Error('upgrade_cancelled'));const timer=setTimeout(()=>finish(Error('upgrade_socket_unknown')),1000);signal.addEventListener('abort',abort,{once:true});if(signal.aborted)abort();socket.on('connect',()=>finish(Error('upgrade_socket_still_live')));socket.on('error',error=>finish((error as NodeJS.ErrnoException).code==='ECONNREFUSED'?undefined:Error('upgrade_socket_unknown')));});
+    signal.throwIfAborted();const after=lstatSync(socketPath);if(!after.isSocket()||after.ino!==before.ino||after.dev!==before.dev)throw Error('upgrade_socket_changed');await unlink(socketPath);await syncDirectory(dirname(socketPath));
+  }
