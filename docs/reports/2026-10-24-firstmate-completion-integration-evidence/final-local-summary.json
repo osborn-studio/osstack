@@ -104,5 +104,13 @@
   "pr": "https://github.com/osborn-studio/osstack/pull/244",
   "final_claude_audit": "blocked_authentication",
   "pr_state_at_publication": "draft",
-  "ci": "See current PR check status; local evidence does not assert CI success."
+  "ci": "See current PR check status; local evidence does not assert CI success.",
+  "supplemental_checks": {
+    "source_head": "bfa666cfb917b8db0a93653835018e1a7cac43c9",
+    "production_same_as_full_run": true,
+    "graph_performance": "passed",
+    "native_cold_two_checkouts": "passed",
+    "active_supervision": "three separate isolated passes",
+    "provider_live": "not_run_missing_qualification"
+  }
 }

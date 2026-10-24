@@ -1,0 +1,14 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-final/packages/cli
+
+stdout | src/improvement-native-cold.test.ts > prepares two cold OSStack checkouts and loads native SQLite plus esbuild
+Native cold-install artifacts: /tmp/osstack-w-f075d04f/osstack-native-cold-rZSY9G
+
+ ✓ src/improvement-native-cold.test.ts (1 test) 68756ms
+   ✓ prepares two cold OSStack checkouts and loads native SQLite plus esbuild  62832ms
+
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+   Start at  18:26:35
+   Duration  69.48s (transform 321ms, setup 19ms, collect 562ms, tests 68.76s, environment 0ms, prepare 26ms)
+

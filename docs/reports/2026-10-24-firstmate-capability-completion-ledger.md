@@ -53,7 +53,7 @@ OSStack原生队列包含12个能力收口任务、独立代码QA任务，以及
 
 生产源码快照为 `af312fd7623fa27668e91a6bf8965e0dc043be1a`。最终完整运行覆盖22个包：**5,585项通过、0项失败、4项条件跳过**；构建、inventory生成、严格类型检查、完整测试、lint、协议schema、inventory新鲜度、启动预算共8个检查全部通过。OSStack任务 `firstmate-final-r2-codeqa` 的实际执行与独立verifier均为success，原始回执及每包计数见[整合证据](2026-10-24-firstmate-completion-integration-evidence/README.md)。
 
-前一轮完整运行的7项失败均保留：6项来自只读状态入口未支持新增schema46，1项来自进程收尾fixture未等待子进程启动。已修复并重新跑过整个22包套件；没有放宽生产停止期限或断言。4项跳过分别为provider-live、native-cold、Graph性能与活跃监督资格开关；活跃监督已有单独三轮通过记录，其余不计为已验证。
+前一轮完整运行的7项失败均保留：6项来自只读状态入口未支持新增schema46，1项来自进程收尾fixture未等待子进程启动。已修复并重新跑过整个22包套件；没有放宽生产停止期限或断言。4项跳过分别为provider-live、native-cold、Graph性能与活跃监督资格开关。完整套件之后，native-cold两个全新checkout安装与Graph性能均单独通过；活跃监督已有单独三轮通过记录。只有provider-live仍未执行，不能把这些额外检查冒充完整套件内的通过数。
 
 交付为[PR #244](https://github.com/osborn-studio/osstack/pull/244)，依赖#243及前序PR栈。当前保留草稿：最终Claude Code CLI Haiku5.5尝试返回OAuth过期、`is_error:true`、0 token；最新兼容修复也尚未获得最终模型审计。已保留组件审计与独立代码复核，但它们不替代最终审计。CI以该PR当前HEAD的检查结果为准，本地通过不冒充CI通过。
 
