@@ -1,0 +1,15 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-final/packages/cli
+
+ ✓ src/remote-cancel-main.test.ts (5 tests) 9097ms
+   ✓ actual main advertises remote/source/native-upgrade/scout/log entrypoints in both languages  904ms
+   ✓ remote-home aggregate help and every natural subcommand help routes without setup  3180ms
+   ✓ actual main dispatches invalid write commands to their fail-closed handlers  2114ms
+   ✓ source main keeps inspect help and exposes persistent observation actions without daemon access  2225ms
+   ✓ actual main remote-control speaks only bounded stdio and queries signed receipts without opening a DB  536ms
+
+ Test Files  1 passed (1)
+      Tests  5 passed (5)
+   Start at  17:37:37
+   Duration  10.52s (transform 683ms, setup 41ms, collect 1.09s, tests 9.10s, environment 0ms, prepare 47ms)
+
