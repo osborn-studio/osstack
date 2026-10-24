@@ -35,3 +35,18 @@ The daemon schedules a stricter 2ms slice because one socket round trip crosses 
 
 
 Independent read-only review by the completion-upgrade agent found no new reproducible P0/P1 in this correction. It checked nested savepoint isolation, rollback cursor restoration, owner fences and SQLite writer exclusion. It correctly noted that 2ms is a soft check before starting each subject, not an absolute limit on discovery, one subject, or commit. This independent code review is not a Claude audit. The reviewer did not claim to rerun the tests. Service lifecycle tests passed 24/24; strict CLI typecheck and four-file Biome check also passed (raw logs included).
+
+
+## Final integrated qualification — three consecutive isolated passes
+
+Root stopped its full QA and all test/build/typecheck work before this serial run. Initial integrated source was `f3b7f2868a2e60edf8a0e68d638219c8f1cf776e`, with freshly built package outputs. A docs-only QA archive commit moved HEAD during measurement; the beginning/end `packages` tree hashes match, recorded in `active-isolated-final-metadata.json`. This is a quiet development-test window, not a claim that all operating-system background processes were stopped.
+
+| Round | Socket samples | RPC p95 ms | Loop wall overhead | Functional checks | Budget |
+| --- | ---: | ---: | ---: | --- | --- |
+| 1 | 1186 | 6.228 | 0.671% | pass | pass |
+| 2 | 1310 | 6.787 | 0.543% | pass | pass |
+| 3 | 1370 | 6.775 | 0.330% | pass | pass |
+
+All three rounds retain original 100ms dirty signals, 60 synthetic retained sessions, two actual Graph runs/local adapter children, six actual Loop cycles, real framed socket RPC and actual cancellation/stop proof. Each verifies durable cancellation after Graph service restart and rejects stale supervisor generation access/late file-read results. No RPC/Loop threshold was raised. Maximum observed individual socket latency remained about 561–615ms during broader Graph lifecycle work; this qualifies the specified **p95** budget, not a maximum-latency guarantee. Reports and stdout are archived verbatim. Live provider/model, real Docker daemon, remote host, notification transport and cross-platform qualification remain separate.
+
+The production correction has independent source review and executable local qualification. Final Claude audit remains pending authentication recovery; successful local tests must not be described as that external model's approval.

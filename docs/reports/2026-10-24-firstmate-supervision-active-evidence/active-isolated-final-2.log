@@ -1,0 +1,16 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-final/packages/cli
+
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/tests/g22-rpc-DRC1Fa/delivery/d1e33785-ff8a-455c-a5cf-0a5482e13390/writer-0'...
+HEAD is now at 80006f6 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/tests/g22-rpc-DRC1Fa/delivery/f3836a14-06cf-4772-90a7-482debbd17f0/writer-0'...
+HEAD is now at 80006f6 base
+ ✓ src/supervision-active-qualification.test.ts (1 test) 16842ms
+   ✓ qualifies active child execution, observer restart, cancellation, socket latency and Loop overhead together  16841ms
+
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+   Start at  17:42:42
+   Duration  20.21s (transform 2.00s, setup 44ms, collect 3.07s, tests 16.84s, environment 0ms, prepare 50ms)
+
+{"output":"/Volumes/AIMATE_WORK/tmp/osstack/smoke/firstmate-completion-20261024/scout/active-isolated-final-2.json","passed":true}
