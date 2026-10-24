@@ -9,7 +9,7 @@ import type { AgentAdapter, AgentTask } from '@osstack/agents';
 import type { GraphArtifactStore, GraphArtifactManifest } from '@osstack/core/graph-artifacts';
 import { GraphResult } from '@osstack/protocol';
 import type { FrozenDeliveryContractV2 } from '@osstack/protocol';
-import { assertGraphContractPaths } from './graph-delivery-contract.js';
+import { assertGraphContractPaths, resolveGraphContractChecks } from './graph-delivery-contract.js';
 import { prepareGraphExecutionContext, type GraphExecutionContextRegistration, type GraphContextEvidence } from './graph-execution-context.js';
 import { ExecutionPlan, type RegisteredCandidateWorkspace } from '@osstack/loop';
 import { parseVerificationBinding, verificationCanonical, type VerificationBinding } from '@osstack/graph/nodes/branch';
@@ -167,6 +167,8 @@ async function prepareSelection(options: GraphVerificationOptions, kinds: readon
   const acceptanceMatches = data.registry.filter(spec => spec.ref === binding.acceptanceRef);
   if (acceptanceMatches.length !== 1) throw new Error('acceptance must resolve unique trusted command');
   const acceptance = acceptanceMatches[0]!;
+  const acceptanceSuite = options.deliveryContract ? resolveGraphContractChecks(options.deliveryContract,data.registry,binding.acceptanceRef) : [acceptance];
+
   const identities = snapshot({ writerIdentity: data.writerIdentity, reviewerIdentity: data.reviewerIdentity, adapterId: reviewer.id, capabilityId: data.capabilityId });
   const checked = async <T>(operation: () => Promise<T>): Promise<T> => { check(); const value = await operation(); check(); return value; };
   const independent = async () => { const result: unknown = await checked(() => verifyReviewer(identities)); if (result !== undefined) throw new Error('independent verifier must return void'); check(); };
@@ -256,7 +258,8 @@ async function prepareSelection(options: GraphVerificationOptions, kinds: readon
       check();
     };
     candidateCheck();
-    const contained = kind === 'tests' && containedOptions && containedImage ? registerContainedTests(containedOptions, containedImage, binding, acceptance.command) : undefined;
+    const containedChecks = kind === 'tests' && containedOptions && containedImage ? acceptanceSuite.map(spec=>registerContainedTests(containedOptions, containedImage!, binding, spec.command)) : undefined;
+    const contained=containedChecks?.[0];
     const invocations = new Map<string, ReviewerInvocation>();
     const slot = data.slots[kind] ?? { nodeId: kind, effectSlot: 'invoke', workspaceLeaseRef: `verification:${randomUUID()}`, tokenReservation: 0 };
     if (!Number.isSafeInteger(slot.tokenReservation) || slot.tokenReservation < 0) throw new Error('invalid token reservation');
@@ -279,7 +282,7 @@ async function prepareSelection(options: GraphVerificationOptions, kinds: readon
       settlementCheck();
       if (verificationCanonical(validateVerificationEffect(effectIdentity(kind), binding, slot.nodeId, slot.effectSlot)) !== verificationCanonical(effect)) throw new Error('ledger effect changed during verification');
       const envelope: GraphVerificationEnvelope = { schemaVersion: 1, binding, kind, nodeId: slot.nodeId, effectSlot: slot.effectSlot, ...effect,
-        workspace, workspaceLeaseRef: slot.workspaceLeaseRef, candidateIdentity: { before, after: observe() }, acceptance, writerIdentity: data.writerIdentity, reviewerIdentity: data.reviewerIdentity, evidence };
+        workspace, workspaceLeaseRef: slot.workspaceLeaseRef, candidateIdentity: { before, after: observe() }, acceptance, ...(acceptanceSuite.length>1?{acceptanceSuite}:{}), writerIdentity: data.writerIdentity, reviewerIdentity: data.reviewerIdentity, evidence };
       if (context?.signal.aborted) envelope.verificationFailure = { code: 'INTERNAL_ERROR', message: 'Verification cancelled after confirmed executor stop', retrySafe: false };
       if (verificationCanonical(envelope.candidateIdentity.after) !== verificationCanonical(before)) envelope.verificationFailure = { code: 'INTERNAL_ERROR', message: 'Candidate workspace mutation detected after execution', retrySafe: false };
       if (kind === 'review') {
@@ -298,12 +301,27 @@ async function prepareSelection(options: GraphVerificationOptions, kinds: readon
           }
         }
       } else if (contained) {
-        if (!evidence.contained || evidence.command) throw Error('missing actual contained command evidence');
+        if (!evidence.contained || evidence.command || evidence.commandSuite) throw Error('missing actual contained command evidence');
+        if(acceptanceSuite.length>1){
+          const results=evidence.containedSuite;if(!results||results.length===0||results.length>acceptanceSuite.length||verificationCanonical(results[0])!==verificationCanonical(evidence.contained))throw Error('missing actual contained suite');
+          for(let index=0;index<results.length;index++){
+            containedChecks![index]!.verify(results[index]!);
+            const actual=validateContainedTestEvidence(results[index]!,binding,effect.effectKey,acceptanceSuite[index]!.command,before.containedContentDigest);
+            if(actual.identity.invocationId!==(index===0?evidence.candidate?.execution?.run_id:`${evidence.candidate?.execution?.run_id}:${index}`))throw Error('contained suite invocation mismatch');
+            if(actual.result.cancelled||![...acceptanceSuite[index]!.passExitCodes,...acceptanceSuite[index]!.failExitCodes].includes(actual.result.exitCode))envelope.verificationFailure={code:'INTERNAL_ERROR',message:'Contained suite infrastructure outcome',retrySafe:false};
+          }
+          if(results.length!==acceptanceSuite.length)envelope.verificationFailure={code:'INTERNAL_ERROR',message:'Contained suite incomplete',retrySafe:false};
+        }else if(evidence.containedSuite)throw Error('unexpected contained suite');
         contained.verify(evidence.contained);
         const receipt = validateContainedTestEvidence(evidence.contained, binding, effect.effectKey, acceptance.command, before.containedContentDigest);
         if (!envelope.verificationFailure && (receipt.result.cancelled || ![...acceptance.passExitCodes, ...acceptance.failExitCodes].includes(receipt.result.exitCode))) envelope.verificationFailure = { code: 'INTERNAL_ERROR', message: 'Contained command cancelled or returned unregistered exit code', retrySafe: false };
       } else {
         if (evidence.contained) throw Error('unexpected contained evidence');
+        if(acceptanceSuite.length>1){
+          const results=evidence.commandSuite;
+          if(!results||results.length===0||verificationCanonical(results[0])!==verificationCanonical(evidence.command))throw Error('missing actual command suite');
+          if(results.length!==acceptanceSuite.length||results.some((result,index)=>result.command!==acceptanceSuite[index]?.command||result.failure_code||result.cancellation||result.termination?.scope!=='posix_process_group'||result.termination.trigger!=='exit'||result.termination.stop_confirmed!==true||result.termination.leader_exit_code!==result.exitCode||![...acceptanceSuite[index]!.passExitCodes,...acceptanceSuite[index]!.failExitCodes].includes(result.exitCode)))envelope.verificationFailure={code:'INTERNAL_ERROR',message:'Registered command suite incomplete or infrastructure outcome unconfirmed',retrySafe:false};
+        }else if(evidence.commandSuite)throw Error('unexpected command suite');
         const command = evidence.command;
         if (!command || command.command !== acceptance.command || command.termination?.stop_confirmed !== true) throw new Error('missing actual registered command stop evidence');
         if (!envelope.verificationFailure && (command.failure_code || command.cancellation || command.termination.scope !== 'posix_process_group' || command.termination.trigger !== 'exit' || command.termination.leader_exit_code !== command.exitCode
@@ -354,7 +372,7 @@ async function prepareSelection(options: GraphVerificationOptions, kinds: readon
       })(),
     });
     const action: GraphRegisteredAction = { nodeId: slot.nodeId, effectSlot: slot.effectSlot, action: snapshot(request.action), tokenReservation: slot.tokenReservation,
-      workspace, verifyWorkspace, persist, execution: kind === 'review' ? { kind: 'adapter', plan, adapter: invocationReviewer, capabilityId: data.capabilityId } : contained ? { kind: 'contained', plan, ...contained.registration } : { kind: 'command', plan, command: acceptance.command } };
+      workspace, verifyWorkspace, persist, execution: kind === 'review' ? { kind: 'adapter', plan, adapter: invocationReviewer, capabilityId: data.capabilityId } : contained ? (containedChecks!.length>1?{kind:'contained-suite',plan,checks:containedChecks!.map(item=>item.registration)}:{ kind: 'contained', plan, ...contained.registration }) : acceptanceSuite.length>1 ? {kind:'commands',plan,commands:acceptanceSuite.map(spec=>spec.command)} : { kind: 'command', plan, command: acceptance.command } };
     Object.freeze(action.execution); return Object.freeze(action);
   }));
   return Object.freeze({ binding, workspaces: Object.freeze(workspaces), actions: Object.freeze(actions) });

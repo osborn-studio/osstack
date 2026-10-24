@@ -56,3 +56,9 @@ it('keeps the initial local knowledge path in default tenant and hashes its exac
   const changed = bindGraphDeliveryContract(f.request, { ...registration, executionContext: { configDigest: 'e'.repeat(64) } });
   expect(first.envelope.contextDigest).toBe('d'.repeat(64)); expect(first.request.inputArtifactRef).not.toBe(changed.request.inputArtifactRef);
 });
+it('binds all independently registered required checks into the host envelope',()=>{
+ const f=fixture();f.registration.acceptanceRegistry.push({ref:'second',command:'test -s answer',passExitCodes:[0],failExitCodes:[1]});
+ f.registration.deliveryContract.frozen=freezeDeliveryContract({...f.registration.deliveryContract.frozen.contract,required_checks:[...f.registration.deliveryContract.frozen.contract.required_checks,{id:'second',registry_ref:deliveryCheckReference('test -s answer')}]});
+ const result=bindGraphDeliveryContract(f.request,f.registration);expect(result.envelope.acceptances).toHaveLength(2);
+ expect(result.envelope.acceptances?.map(check=>check.command)).toEqual(['test -f answer','test -s answer']);
+});

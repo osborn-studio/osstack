@@ -361,6 +361,7 @@ async function containedFixture(exitCode: number) {
       }
       if (path.includes('/images/')) { const base = path.includes(config.baseImageId); res.end(JSON.stringify({ Id: base ? config.baseImageId : 'sha256:' + 'b'.repeat(64), Config: { WorkingDir: directory, Labels: labels } })); return; }
       if (path.endsWith('/create')) {
+        removed = false; started = false;
         let body = ''; for await (const chunk of req) body += chunk; containerConfig = JSON.parse(body) as typeof containerConfig;
         res.writeHead(201).end(JSON.stringify({ Id: 'c'.repeat(64) })); return;
       }
@@ -451,3 +452,62 @@ it('V2 rejects a second reviewer invocation for the same effect but permits a ne
   attempt = 2; await invokeReview(action); expect(seen).toHaveLength(2);
   expect(seen[0]!.session_id).not.toBe(seen[1]!.session_id);
 }, 15000);
+
+function bindMultipleChecks(f: Awaited<ReturnType<typeof fixture>>) {
+  f.options.acceptanceRegistry = [
+    { ref: 'acceptance', command: 'exit 0', passExitCodes: [0], failExitCodes: [1] },
+    { ref: 'second', command: 'test -f file', passExitCodes: [0], failExitCodes: [1] },
+  ];
+  f.options.deliveryContract = freezeDeliveryContract({ schema_version: 2, contract_id: 'suite-contract', task_id: 'task',
+    canonical_repo: f.options.sourceWorkspace.workspace_path, mode: 'implement', base_head: f.binding.candidateRevision, goal: 'review',
+    required_checks: f.options.acceptanceRegistry.map((item,index)=>({id:`check-${index}`, registry_ref:deliveryCheckReference(item.command)})), review_policy_ref: 'host-review',
+    requested_completion: 'local_verified', allowed_paths: ['file'], requested_actions: ['build', 'verify'],
+    budget_ref: `policy:${'b'.repeat(64)}`, policy_digest: 'b'.repeat(64), publication_scope: { mode: 'none' }, merge_authority: { mode: 'none' } });
+}
+it.each([0,1])('executes and validates every contained registered check with later exit %i', async laterExit => {
+  const f = await containedFixture(0); bindMultipleChecks(f);
+  if(laterExit===1){f.options.acceptanceRegistry[1]!.command='exit 1'; f.options.deliveryContract=freezeDeliveryContract({...f.options.deliveryContract!.contract,required_checks:f.options.acceptanceRegistry.map((item,index)=>({id:`check-${index}`,registry_ref:deliveryCheckReference(item.command)}))});}
+  let starts=0; f.onStart(()=>{starts++;f.setExit(starts===2?laterExit:0);});
+  const b=await brokerFixture(f); expect(await b.invoke('tests')).toMatchObject({outcome:{state:'confirmed',result:{kind:'tests',passed:laterExit===0}}});
+  const row=f.db.prepare("SELECT json_extract(outcome_json, '$.evidenceRef') AS evidence_ref FROM graph_actions WHERE node_id=?").get('tests') as {evidence_ref:string};
+  const envelope=await loadGraphVerificationEvidence(f.options.root,row.evidence_ref,f.binding);
+  expect(envelope.evidence.containedSuite?.map(item=>item.result.exitCode)).toEqual([0,laterExit]);
+  expect(new Set(envelope.evidence.containedSuite?.map(item=>item.identity.invocationId)).size).toBe(2);
+  expect(await readdir(f.options.containedTests!.journalRoot)).toHaveLength(2);
+  const {publishGraphVerificationEvidence}=await import('./graph-verification-store.js');
+  const missing=structuredClone(envelope);missing.evidence.containedSuite!.pop();await expect(publishGraphVerificationEvidence(f.options.root,missing,()=>{})).rejects.toThrow();
+  const substituted=structuredClone(envelope);substituted.evidence.containedSuite![1]=structuredClone(substituted.evidence.containedSuite![0]!);await expect(publishGraphVerificationEvidence(f.options.root,substituted,()=>{})).rejects.toThrow();
+},30000);
+it.runIf(!process.env['G25_CONTAINED_CONFIG'])('does not launch another suite check after unknown container removal',async()=>{
+ const f=await containedFixture(0);bindMultipleChecks(f);f.loseDelete();let starts=0;f.onStart(()=>starts++);
+ const b=await brokerFixture(f);expect(await b.invoke('tests')).toMatchObject({outcome:{state:'unknown'}});expect(starts).toBe(1);
+ expect(await b.invoke('tests')).toMatchObject({outcome:{state:'unknown'}});expect(starts).toBe(1);
+},30000);
+it('persists actual native suite exits and refuses missing or substituted later checks', async () => {
+  const f = await fixture(); bindMultipleChecks(f);
+  const b = await brokerFixture(f);
+  expect(await b.invoke('tests')).toMatchObject({ outcome: { state: 'confirmed', result: { passed: true } } });
+  const row = f.db.prepare("SELECT json_extract(outcome_json, '$.evidenceRef') AS evidence_ref FROM graph_actions WHERE node_id=?").get('tests') as { evidence_ref: string };
+  const envelope = await loadGraphVerificationEvidence(f.options.root, row.evidence_ref, f.binding);
+  expect(envelope.evidence.commandSuite?.map(item => item.command)).toEqual(['exit 0', 'test -f file']);
+  const { publishGraphVerificationEvidence } = await import('./graph-verification-store.js');
+  const missing = structuredClone(envelope); missing.evidence.commandSuite!.pop();
+  await expect(publishGraphVerificationEvidence(f.options.root, missing, () => {})).rejects.toThrow();
+  const substituted = structuredClone(envelope); substituted.evidence.commandSuite![1] = structuredClone(substituted.evidence.commandSuite![0]!);
+  await expect(publishGraphVerificationEvidence(f.options.root, substituted, () => {})).rejects.toThrow();
+  const uncertain = structuredClone(envelope); uncertain.evidence.commandSuite![1]!.failure_code='surviving_descendants';
+  uncertain.verificationFailure={code:'INTERNAL_ERROR',message:'stop uncertain',retrySafe:false};
+  await expect(publishGraphVerificationEvidence(f.options.root, uncertain, () => {})).rejects.toThrow();
+}, 15000);
+
+it('keeps sixteen contained stop proofs within the bounded local suite evidence', async () => {
+  const f = await containedFixture(0); bindMultipleChecks(f);
+  f.options.acceptanceRegistry=Array.from({length:16},(_,index)=>({ref:index===0?'acceptance':`check-${index}`,command:`exit 0 # ${index} ${'\t'.repeat(1000)}`,passExitCodes:[0],failExitCodes:[1]}));
+  f.options.deliveryContract=freezeDeliveryContract({...f.options.deliveryContract!.contract,required_checks:f.options.acceptanceRegistry.map((item,index)=>({id:`check-${index}`,registry_ref:deliveryCheckReference(item.command)}))});
+  const b=await brokerFixture(f);expect(await b.invoke('tests')).toMatchObject({outcome:{state:'confirmed',result:{passed:true}}});
+  const row=f.db.prepare("SELECT json_extract(outcome_json, '$.evidenceRef') AS evidence_ref FROM graph_actions WHERE node_id=?").get('tests') as {evidence_ref:string};
+  const envelope=await loadGraphVerificationEvidence(f.options.root,row.evidence_ref,f.binding);
+  expect(envelope.evidence.containedSuite).toHaveLength(16);
+  expect(Buffer.byteLength(JSON.stringify(envelope))).toBeGreaterThan(65536);
+  expect(Buffer.byteLength(JSON.stringify(envelope))).toBeLessThan(262144);
+},30000);

@@ -26,6 +26,7 @@ export const GraphContractCompletionReceipt = z.object({
   contractDigest: digest, policyDigest: digest, baseHead: commit,
   candidate: z.object({ revision: commit, tree: commit, artifactDigest: digest }).strict(),
   joinRef: reference, check: evidence.extend({ id: reference, registryRef: reference, commandDigest: digest, exitCode: z.literal(0) }),
+  checks: z.array(evidence.extend({id:reference,registryRef:reference,commandDigest:digest,exitCode:z.literal(0),suiteIndex:z.number().int().nonnegative()})).min(2).max(16).optional(),
   review: evidence.extend({ verdict: z.literal('accept'), writerIdentity: reference, reviewerIdentity: reference,
     authority: z.literal('registered_host_reviewer'), promptDigest: digest }),
   achievedCompletion: z.literal('local_verified'), publication: z.literal('artifact_only'),
@@ -54,7 +55,7 @@ export async function publishGraphContractCompletion(input: {
     if (branch?.state !== 'confirmed' || !action || action.state !== 'confirmed' || action.outcome?.state !== 'confirmed') throw Error('GRAPH_CONTRACT_EFFECT_REQUIRED');
     const receipt = await loadGraphVerificationEvidence(join(input.root, 'verification'), action.outcome.evidenceRef, binding,
       { effect: action.effect, effectKey: action.effectKey }); check();
-    if (receipt.kind !== kind || receipt.verificationFailure || workerCanonical(receipt.acceptance) !== workerCanonical(envelope.acceptance)) throw Error('GRAPH_CONTRACT_VERIFICATION_MISMATCH');
+    if (receipt.kind !== kind || receipt.verificationFailure || workerCanonical(receipt.acceptance) !== workerCanonical(envelope.acceptance) || workerCanonical(receipt.acceptanceSuite??[receipt.acceptance]) !== workerCanonical(envelope.acceptances??[envelope.acceptance])) throw Error('GRAPH_CONTRACT_VERIFICATION_MISMATCH');
     verified[kind] = { envelope: receipt, ref: action.outcome.evidenceRef, effectKey: action.effectKey, logicalAttempt: action.effect.logicalAttempt };
   }
   const tests = verified.tests; const review = verified.review;
@@ -63,9 +64,16 @@ export async function publishGraphContractCompletion(input: {
   if (exitCode !== 0 || review.envelope.report?.verdict !== 'accept' || !reviewReceipt
     || review.envelope.writerIdentity === review.envelope.reviewerIdentity || reviewReceipt.adapterId !== review.envelope.reviewerIdentity
     || reviewReceipt.effectKey !== review.effectKey) throw Error('GRAPH_CONTRACT_VERIFICATION_FAILED');
-  const required = envelope.frozen.contract.required_checks[0]!;
-  const commandRef = deliveryCheckReference(tests.envelope.acceptance.command);
-  if (envelope.frozen.contract.required_checks.length !== 1 || commandRef !== required.registry_ref) throw Error('GRAPH_CONTRACT_REGISTRY_MISMATCH');
+  const checks=(envelope.acceptances??[envelope.acceptance]).map((acceptance,index)=>{
+    const commandRef=deliveryCheckReference(acceptance.command);
+    const required=envelope.frozen.contract.required_checks.find(check=>check.registry_ref===commandRef);
+    const result=tests.envelope.evidence.commandSuite?.[index]??(index===0?tests.envelope.evidence.command:undefined);
+    const observed=tests.envelope.evidence.containedSuite?.[index]?.result??(index===0?tests.envelope.evidence.contained?.result:undefined);
+    if(!required||(result?.exitCode??observed?.exitCode)!==0)throw Error('GRAPH_CONTRACT_REGISTRY_MISMATCH');
+    return {id:required.id,registryRef:required.registry_ref,commandDigest:commandRef.slice(7),exitCode:0 as const,effectKey:tests.effectKey,evidenceRef:tests.ref,logicalAttempt:tests.logicalAttempt,suiteIndex:index};
+  });
+  if(checks.length!==envelope.frozen.contract.required_checks.length)throw Error('GRAPH_CONTRACT_REQUIRED_CHECK_MISSING');
+  const firstCheck=checks[0]!;const {suiteIndex:_suiteIndex,...legacyCheck}=firstCheck;
   const selectedContext: GraphContextEvidence[] = [];
   const writer = decision.snapshot.actions.find(action => action.effect.epoch === binding.epoch
     && action.effect.nodeId === `e${binding.epoch}.${binding.epoch ? 'repair' : 'implement'}` && action.state === 'confirmed');
@@ -100,8 +108,7 @@ export async function publishGraphContractCompletion(input: {
     graphRunId: run.graphRunId, scope: run.scope, inputDigest: run.identity.inputDigest, specHash: run.identity.specHash, generation: run.generation, epoch: binding.epoch,
     contractDigest: envelope.frozen.digest, policyDigest: envelope.policy.policyDigest, baseHead: envelope.frozen.contract.base_head,
     candidate: { revision: binding.candidateRevision, tree: manifest.tree, artifactDigest: binding.artifactDigest }, joinRef: decision.publication.record.receiptRef,
-    check: { id: required.id, registryRef: required.registry_ref, commandDigest: commandRef.slice(7), exitCode: 0,
-      effectKey: tests.effectKey, evidenceRef: tests.ref, logicalAttempt: tests.logicalAttempt },
+    check: legacyCheck, ...(checks.length>1?{checks}:{}),
     review: { verdict: 'accept', writerIdentity: review.envelope.writerIdentity, reviewerIdentity: review.envelope.reviewerIdentity,
       authority: 'registered_host_reviewer', promptDigest: reviewReceipt.promptDigest, effectKey: review.effectKey, evidenceRef: review.ref, logicalAttempt: review.logicalAttempt },
     achievedCompletion: 'local_verified', publication: 'artifact_only', contextEvidence: selectedContext,
@@ -132,5 +139,11 @@ export async function loadGraphContractCompletion(root: string, ref: string, exp
     || receipt.contextDigest !== expected.envelope.contextDigest || receipt.contextEvidence.length !== (expected.envelope.contextDigest ? 2 : 0)
     || receipt.joinRef !== expected.joinRef || receipt.candidate.revision !== expected.candidateRevision || receipt.candidate.artifactDigest !== expected.artifactDigest)
     throw Error('GRAPH_CONTRACT_RECEIPT_BINDING');
+  const checks=receipt.checks??[receipt.check];
+  if(receipt.checks){
+    const {suiteIndex:_index,...primary}=receipt.checks[0]!;
+    if(workerCanonical(primary)!==workerCanonical(receipt.check)||receipt.checks.some((item,index)=>item.suiteIndex!==index||item.effectKey!==receipt.check.effectKey||item.evidenceRef!==receipt.check.evidenceRef||item.logicalAttempt!==receipt.check.logicalAttempt))throw Error('GRAPH_CONTRACT_RECEIPT_SUITE_BINDING');
+  }
+  if(checks.length!==expected.envelope.frozen.contract.required_checks.length||expected.envelope.frozen.contract.required_checks.some(required=>checks.filter(check=>check.id===required.id&&check.registryRef===required.registry_ref&&`sha256:${check.commandDigest}`===required.registry_ref).length!==1))throw Error('GRAPH_CONTRACT_RECEIPT_CHECK_BINDING');
   return freezeWorkerData(receipt);
 }
