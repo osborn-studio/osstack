@@ -24,7 +24,9 @@ const WORKTREE_METADATA_FILES = [
   "logs/HEAD",
 ] as const;
 
-export const REVIEWER_GIT_ARGS = ["-c", "core.hooksPath=/dev/null", "-c", "core.fsmonitor=false", "-c", "core.bare=false"] as const;
+export const GIT_HOOKS_DISABLED_ARGS = ["-c", "core.hooksPath=/dev/null"] as const;
+
+export const REVIEWER_GIT_ARGS = [...GIT_HOOKS_DISABLED_ARGS, "-c", "core.fsmonitor=false", "-c", "core.bare=false"] as const;
 
 export function reviewerGitEnvironment(workspace?: string): NodeJS.ProcessEnv {
   return {
