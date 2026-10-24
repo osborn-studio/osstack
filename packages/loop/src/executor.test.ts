@@ -989,9 +989,14 @@ describe("reviewed lifecycle compatibility", () => {
   });
 
   it("lets finishing descendants drain within a bounded window", async () => {
+    // Starting Node is not part of the descendant's short finishing window.
+    // The child starts its remaining work only after the ready leader exits.
     await withProcessFixture(`const {spawn} = require('node:child_process');
-      const child = spawn(process.execPath, ['-e', 'setTimeout(() => {}, 10)'], {stdio: 'ignore'});
-      fs.writeFileSync('child.pid', String(child.pid)); process.exit(0);`, async (fixture) => {
+      const child = spawn(process.execPath, ['-e', "process.on('disconnect', () => setTimeout(() => {}, 10)); process.send('ready');"],
+        {stdio: ['ignore', 'ignore', 'ignore', 'ipc']});
+      child.once('message', message => {
+        if (message === 'ready') { fs.writeFileSync('child.pid', String(child.pid)); process.exit(0); }
+      });`, async (fixture) => {
       const result = await runShellCommand(fixture.command, { cwd: workspace, timeoutMs: 2000, outputLimit: 1000 });
       expect(result).toMatchObject({ exitCode: 0, termination: { trigger: "exit", stop_confirmed: true, signals: [] } });
       fixture.assertStopped();
