@@ -848,36 +848,115 @@ it("effect-free provider readiness failure leaves a prepared active grant reusab
   const f = fixture();
   const prepared = f.prepare().attempt;
   const authorized = f.authorize(prepared).attempt;
-  f.transport.preflight = async () => { throw Error("temporary read-only outage"); };
-  await expect(f.service.dispatch({...f.scope, attempt_id:prepared.attempt_id, expected_revision:authorized.revision})).rejects.toThrow("delivery_destination_unavailable");
+  f.transport.preflight = async () => {
+    throw Error("temporary read-only outage");
+  };
+  await expect(
+    f.service.dispatch({
+      ...f.scope,
+      attempt_id: prepared.attempt_id,
+      expected_revision: authorized.revision,
+    }),
+  ).rejects.toThrow("delivery_destination_unavailable");
   expect(f.sends).not.toHaveBeenCalled();
-  const current=f.service.inspect({...f.scope,attempt_id:prepared.attempt_id}).attempt;
-  expect(current.state).toBe("prepared");expect(current.authorization_status).toBe("active");expect(current.revision).toBe(authorized.revision);
+  const current = f.service.inspect({ ...f.scope, attempt_id: prepared.attempt_id }).attempt;
+  expect(current.state).toBe("prepared");
+  expect(current.authorization_status).toBe("active");
+  expect(current.revision).toBe(authorized.revision);
   f.transport.preflight = async () => {};
-  const sent=await f.service.dispatch({...f.scope, attempt_id:prepared.attempt_id, expected_revision:authorized.revision});
-  expect(sent.attempt.state).toBe("delivered");expect(f.sends).toHaveBeenCalledTimes(1);
+  const sent = await f.service.dispatch({
+    ...f.scope,
+    attempt_id: prepared.attempt_id,
+    expected_revision: authorized.revision,
+  });
+  expect(sent.attempt.state).toBe("delivered");
+  expect(f.sends).toHaveBeenCalledTimes(1);
 });
 it("revocation while read-only preflight runs prevents later consumption and POST", async () => {
-  const f=fixture(),prepared=f.prepare().attempt,authorized=f.authorize(prepared).attempt;
-  let release!:()=>void; f.transport.preflight=()=>new Promise<void>(resolve=>{release=resolve;});
-  const dispatch=f.service.dispatch({...f.scope,attempt_id:prepared.attempt_id,expected_revision:authorized.revision});
+  const f = fixture(),
+    prepared = f.prepare().attempt,
+    authorized = f.authorize(prepared).attempt;
+  let release!: () => void;
+  f.transport.preflight = () =>
+    new Promise<void>((resolve) => {
+      release = resolve;
+    });
+  const dispatch = f.service.dispatch({
+    ...f.scope,
+    attempt_id: prepared.attempt_id,
+    expected_revision: authorized.revision,
+  });
   await Promise.resolve();
-  f.service.revoke({...f.scope,attempt_id:prepared.attempt_id,expected_revision:authorized.revision,reason:"cancel during readiness"});release();
-  await expect(dispatch).rejects.toThrow("delivery_revision_conflict");expect(f.sends).not.toHaveBeenCalled();
-  expect(f.service.inspect({...f.scope,attempt_id:prepared.attempt_id}).attempt.authorization_status).toBe("revoked");
+  f.service.revoke({
+    ...f.scope,
+    attempt_id: prepared.attempt_id,
+    expected_revision: authorized.revision,
+    reason: "cancel during readiness",
+  });
+  release();
+  await expect(dispatch).rejects.toThrow("delivery_revision_conflict");
+  expect(f.sends).not.toHaveBeenCalled();
+  expect(
+    f.service.inspect({ ...f.scope, attempt_id: prepared.attempt_id }).attempt.authorization_status,
+  ).toBe("revoked");
 });
 it("read-only preflight timeout leaves authority active rather than recording send_started", async () => {
-  const f=fixture(),prepared=f.prepare().attempt,authorized=f.authorize(prepared).attempt;
-  f.transport.preflight=()=>new Promise<void>(()=>{});
-  await expect(f.service.dispatch({...f.scope,attempt_id:prepared.attempt_id,expected_revision:authorized.revision})).rejects.toThrow("delivery_destination_unavailable");
-  const current=f.service.inspect({...f.scope,attempt_id:prepared.attempt_id}).attempt;
-  expect(current.state).toBe("prepared");expect(current.authorization_status).toBe("active");expect(f.sends).not.toHaveBeenCalled();
+  const f = fixture(),
+    prepared = f.prepare().attempt,
+    authorized = f.authorize(prepared).attempt;
+  f.transport.preflight = () => new Promise<void>(() => {});
+  await expect(
+    f.service.dispatch({
+      ...f.scope,
+      attempt_id: prepared.attempt_id,
+      expected_revision: authorized.revision,
+    }),
+  ).rejects.toThrow("delivery_destination_unavailable");
+  const current = f.service.inspect({ ...f.scope, attempt_id: prepared.attempt_id }).attempt;
+  expect(current.state).toBe("prepared");
+  expect(current.authorization_status).toBe("active");
+  expect(f.sends).not.toHaveBeenCalled();
 });
-it("lookup window is anchored to durable send_started, not an old prepared draft",async()=>{
-  const f=fixture(),prepared=f.prepare().attempt;f.now(1_000_000);
-  const authorized=f.authorize(prepared).attempt;f.transport.sendOnce=async()=>{throw Error("lost response");};
-  const failed=await f.service.dispatch({...f.scope,attempt_id:prepared.attempt_id,expected_revision:authorized.revision});
-  const lookup=vi.fn(async()=>null);f.transport.lookup=lookup;
-  f.now(1_001_000);await f.service.reconcile({...f.scope,attempt_id:prepared.attempt_id,expected_revision:failed.attempt.revision});
-  expect(lookup).toHaveBeenCalledWith(expect.anything(),expect.any(AbortSignal),{createdAtMs:1_000_000});
+it("lookup window is anchored to durable send_started, not an old prepared draft", async () => {
+  const f = fixture(),
+    prepared = f.prepare().attempt;
+  f.now(1_000_000);
+  const authorized = f.authorize(prepared).attempt;
+  f.transport.sendOnce = async () => {
+    throw Error("lost response");
+  };
+  const failed = await f.service.dispatch({
+    ...f.scope,
+    attempt_id: prepared.attempt_id,
+    expected_revision: authorized.revision,
+  });
+  const lookup = vi.fn(async () => null);
+  f.transport.lookup = lookup;
+  f.now(1_001_000);
+  await f.service.reconcile({
+    ...f.scope,
+    attempt_id: prepared.attempt_id,
+    expected_revision: failed.attempt.revision,
+  });
+  expect(lookup).toHaveBeenCalledWith(expect.anything(), expect.any(AbortSignal), { createdAtMs: 1_000_000 });
+});
+it("claim-time ticket or credential fence failure leaves grant unconsumed", async () => {
+  const f = fixture(),
+    prepared = f.prepare().attempt,
+    authorized = f.authorize(prepared).attempt;
+  f.transport.preflight = async () => {};
+  f.transport.assertReady = () => {
+    throw Error("expired ticket or rotated credential");
+  };
+  await expect(
+    f.service.dispatch({
+      ...f.scope,
+      attempt_id: prepared.attempt_id,
+      expected_revision: authorized.revision,
+    }),
+  ).rejects.toThrow();
+  const current = f.service.inspect({ ...f.scope, attempt_id: prepared.attempt_id }).attempt;
+  expect(current.state).toBe("prepared");
+  expect(current.authorization_status).toBe("active");
+  expect(f.sends).not.toHaveBeenCalled();
 });

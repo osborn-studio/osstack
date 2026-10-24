@@ -76,9 +76,15 @@ export interface FollowUpTransport {
   lookup_receipt: boolean;
   /** Effect-free readiness checks, before consuming a grant. Implementations MUST NOT POST here. */
   preflight?(envelope: Readonly<FollowUpDeliveryEnvelope>, signal: AbortSignal): Promise<void>;
+  /** Synchronous readiness/credential fence, called inside the consuming transaction. */
+  assertReady?(envelope: Readonly<FollowUpDeliveryEnvelope>): void;
   sendOnce(envelope: Readonly<FollowUpDeliveryEnvelope>, signal: AbortSignal): Promise<unknown>;
   /** Trusted provider lookup; caller-supplied receipt objects never enter this port. */
-  lookup(envelope: Readonly<FollowUpDeliveryEnvelope>, signal: AbortSignal, context?: { createdAtMs: number }): Promise<unknown>;
+  lookup(
+    envelope: Readonly<FollowUpDeliveryEnvelope>,
+    signal: AbortSignal,
+    context?: { createdAtMs: number },
+  ): Promise<unknown>;
 }
 export interface FollowUpDeliveryOptions {
   targets?: ReadonlyMap<string, FollowUpDeliveryTarget>;
@@ -365,21 +371,30 @@ export class FollowUpDeliveryService {
     const p = parsed(FollowUpDeliveryActionParams, input),
       repo = repoPath(p.repo_path);
     // A transient read-only provider preflight does not consume or wedge a still-prepared attempt.
-    const admission = this.safe(() => this.durableWrite(() => {
-      const row = this.row(repo, p.attempt_id);
-      this.revision(row, p.expected_revision);
-      if (row.state !== "prepared") return undefined;
-      const envelope = this.envelope(row), transport = this.transport(envelope);
-      if (!transport?.preflight) return undefined;
-      const grant = this.grant(row.attempt_id);
-      if (!grant) throw new FollowUpDeliveryError("delivery_authorization_required");
-      if (grant.state !== "active") throw new FollowUpDeliveryError("delivery_authorization_revoked");
-      this.options.assertHostConfiguration?.();
-      this.verifyGrant(row, SignedFollowUpDeliveryGrant.parse(JSON.parse(grant.signed_json)), this.clock(row.updated_at_ms));
-      return {envelope: frozen(envelope), transport};
-    }));
+    const admission = this.safe(() =>
+      this.durableWrite(() => {
+        const row = this.row(repo, p.attempt_id);
+        this.revision(row, p.expected_revision);
+        if (row.state !== "prepared") return undefined;
+        const envelope = this.envelope(row),
+          transport = this.transport(envelope);
+        if (!transport?.preflight) return undefined;
+        const grant = this.grant(row.attempt_id);
+        if (!grant) throw new FollowUpDeliveryError("delivery_authorization_required");
+        if (grant.state !== "active") throw new FollowUpDeliveryError("delivery_authorization_revoked");
+        this.options.assertHostConfiguration?.();
+        this.verifyGrant(
+          row,
+          SignedFollowUpDeliveryGrant.parse(JSON.parse(grant.signed_json)),
+          this.clock(row.updated_at_ms),
+        );
+        return { envelope: frozen(envelope), transport };
+      }),
+    );
     if (admission) {
-      const readiness = await this.boundedCall(signal => admission.transport.preflight!(admission.envelope, signal));
+      const readiness = await this.boundedCall((signal) =>
+        admission.transport.preflight!(admission.envelope, signal),
+      );
       if (!readiness.ok) throw new FollowUpDeliveryError("delivery_destination_unavailable");
     }
     const claim = this.safe(() =>
@@ -409,6 +424,7 @@ export class FollowUpDeliveryService {
         // Verify current key, exact target, immutable content and time INSIDE the consuming transaction.
         this.verifyGrant(row, SignedFollowUpDeliveryGrant.parse(JSON.parse(grant.signed_json)), now);
         this.obligation(repo, row.obligation_id, row.obligation_revision);
+        transport.assertReady?.(envelope);
         const consumed = this.db
           .prepare(
             "UPDATE follow_up_delivery_grants SET state='consumed',updated_at_ms=? WHERE attempt_id=? AND state='active'",
@@ -478,12 +494,23 @@ export class FollowUpDeliveryService {
           return { result: this.result(row, "qualification_pending") };
         const now = this.evidenceClock(row.updated_at_ms);
         if (row.state === "started") row = this.bump(row, "delivery_unknown", "started_unconfirmed", now, {});
-        const started = this.db.prepare("SELECT created_at_ms FROM follow_up_delivery_events WHERE attempt_id=? AND transition='send_started' ORDER BY revision LIMIT 1").get(row.attempt_id) as {created_at_ms:number}|undefined;
-        return { row, envelope: frozen(envelope), transport, lookupSinceMs: started?.created_at_ms ?? row.created_at_ms };
+        const started = this.db
+          .prepare(
+            "SELECT created_at_ms FROM follow_up_delivery_events WHERE attempt_id=? AND transition='send_started' ORDER BY revision LIMIT 1",
+          )
+          .get(row.attempt_id) as { created_at_ms: number } | undefined;
+        return {
+          row,
+          envelope: frozen(envelope),
+          transport,
+          lookupSinceMs: started?.created_at_ms ?? row.created_at_ms,
+        };
       }),
     );
     if ("result" in claim) return claim.result;
-    const outcome = await this.boundedCall((signal) => claim.transport.lookup(claim.envelope, signal, {createdAtMs: claim.lookupSinceMs}));
+    const outcome = await this.boundedCall((signal) =>
+      claim.transport.lookup(claim.envelope, signal, { createdAtMs: claim.lookupSinceMs }),
+    );
     return this.safe(() =>
       this.durableWrite(() => {
         const row = this.row(repo, p.attempt_id);

@@ -357,10 +357,17 @@ it("credential rotation between identity preflight and POST prevents admission",
   const transport = createGithubDeliveryTransport({
     qualification: "test_only",
     fixtureBaseUrl: `http://127.0.0.1:${address.port}`,
-    credential: async () => (++calls === 1 ? "first-token" : "rotated-token"),
+    credential: async () => {
+      calls++;
+      return "first-token";
+    },
+    assertCredential: () => {
+      throw Error("registration_changed");
+    },
   });
   await transport.preflight!(f.e, AbortSignal.timeout(3000));
-  await expect(transport.sendOnce(f.e, AbortSignal.timeout(3000))).rejects.toThrow("registration_changed");
+  expect(() => transport.assertReady!(f.e)).toThrow("registration_changed");
+  expect(calls).toBe(1);
   expect(f.posts()).toBe(0);
 });
 it("a foreign author copying the public marker cannot veto the real receipt", async () => {
@@ -452,5 +459,25 @@ it("GraphQL partial errors never become a delivered receipt", async () => {
     return true;
   });
   await expect(send(f)).rejects.toThrow("graphql_error");
+  expect(f.posts()).toBe(1);
+});
+
+it("send never rereads credentials after the synchronous readiness fence", async () => {
+  const f = await fixture();
+  const address = servers[servers.length - 1]!.address();
+  if (!address || typeof address === "string") throw Error();
+  let calls = 0;
+  const transport = createGithubDeliveryTransport({
+    qualification: "test_only",
+    fixtureBaseUrl: `http://127.0.0.1:${address.port}`,
+    credential: async () => {
+      if (++calls > 1) throw Error("transient local read");
+      return "fixture-token";
+    },
+  });
+  await transport.preflight!(f.e, AbortSignal.timeout(3000));
+  transport.assertReady!(f.e);
+  await transport.sendOnce(f.e, AbortSignal.timeout(3000));
+  expect(calls).toBe(1);
   expect(f.posts()).toBe(1);
 });

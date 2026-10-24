@@ -13,6 +13,8 @@ export interface GithubDeliveryTransportOptions {
   qualification: FollowUpTransport["qualification"];
   /** Host-owned resolver rechecks current registration and reads a private credential for each operation. */
   credential(envelope: FollowUpDeliveryEnvelope): Promise<string>;
+  /** Host synchronous private credential fence; no I/O awaits after grant consumption. */
+  assertCredential?(envelope: FollowUpDeliveryEnvelope, token: string): void;
   /** Only local HTTP fixtures are accepted, and only under test_only qualification. */
   fixtureBaseUrl?: string;
 }
@@ -106,7 +108,11 @@ export function createGithubDeliveryTransport(options: GithubDeliveryTransportOp
   const targetPath = (e: FollowUpDeliveryEnvelope) =>
     `/repos/${encodeURIComponent(e.destination.owner)}/${encodeURIComponent(e.destination.repository)}/issues/${e.destination.issue_number}`;
   const targetUrl = (e: FollowUpDeliveryEnvelope) => `https://api.github.com${targetPath(e)}`;
-  async function preflight(e: FollowUpDeliveryEnvelope, signal: AbortSignal): Promise<string> {
+  async function preflight(
+    e: FollowUpDeliveryEnvelope,
+    signal: AbortSignal,
+    forSend = true,
+  ): Promise<string> {
     if (
       e.destination.host !== "github.com" ||
       e.destination.provider_id !== "github_comment" ||
@@ -121,7 +127,7 @@ export function createGithubDeliveryTransport(options: GithubDeliveryTransportOp
       issue.node_id !== e.destination.target_node_id ||
       issue.url !== targetUrl(e) ||
       issue.number !== e.destination.issue_number ||
-      issue.locked === true
+      (forSend && issue.locked === true)
     )
       throw Error("github_delivery_target_mismatch");
     return token;
@@ -168,14 +174,21 @@ export function createGithubDeliveryTransport(options: GithubDeliveryTransportOp
         preflights--;
       }
     },
+    assertReady(e) {
+      const ticket = tickets.get(ticketKey(e));
+      if (!ticket || ticket.expiresAt <= performance.now()) {
+        tickets.delete(ticketKey(e));
+        throw Error("github_delivery_preflight_required");
+      }
+      options.assertCredential?.(e, ticket.token);
+    },
     async sendOnce(e, signal) {
       const ticket = tickets.get(ticketKey(e));
       tickets.delete(ticketKey(e));
-      if (!ticket || ticket.expiresAt <= performance.now()) throw Error("github_delivery_preflight_required");
+      if (!ticket) throw Error("github_delivery_preflight_required");
       const token = ticket.token;
-      // No network readiness calls after consume: only local credential/config fence, then the sole POST.
-      if ((await options.credential(e)) !== token || signal.aborted)
-        throw Error("github_delivery_registration_changed");
+      // Readiness, credential and configuration fences ran synchronously before consume.
+      // No awaited work precedes the sole POST.
       // Once durably started, all exceptions remain unknown; never infer non-delivery from HTTP errors.
       const response = await api(
         "/graphql",
@@ -210,7 +223,7 @@ export function createGithubDeliveryTransport(options: GithubDeliveryTransportOp
       );
     },
     async lookup(e, signal, context) {
-      const token = await preflight(e, signal);
+      const token = await preflight(e, signal, false);
       let found: FollowUpDeliveryReceipt | undefined;
       // Old busy threads do not hide a new attempt behind historical pages. Context comes from the durable ledger.
       const since =

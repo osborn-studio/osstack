@@ -224,8 +224,15 @@ export async function loadHostFollowUpDelivery(configPath: string): Promise<Host
         },
       ]),
     );
+    const credentialFingerprints = new Map<string, { path: string; fingerprint: string; token: string }>();
     const transport = createGithubDeliveryTransport({
       qualification: config.qualification,
+      assertCredential: (envelope, token) => {
+        assertRegistryFingerprint(configPath, loaded.fingerprint);
+        const entry = credentialFingerprints.get(envelope.destination.account_id);
+        if (!entry || entry.token !== token) throw Error("delivery_host_account_unavailable");
+        assertRegistryFingerprint(entry.path, entry.fingerprint);
+      },
       credential: async (envelope) => {
         const current = await readHostDeliveryConfig(configPath);
         if (
@@ -240,6 +247,11 @@ export async function loadHostFollowUpDelivery(configPath: string): Promise<Host
         const raw = await readPrivateDeliveryFile(join(dirname(configPath), account.token_file), 4097);
         const token = new TextDecoder("utf-8", { fatal: true }).decode(raw).trim();
         if (!/^[\x21-\x7e]{1,4096}$/.test(token)) throw Error("delivery_host_account_unavailable");
+        credentialFingerprints.set(account.account_id, {
+          path: join(dirname(configPath), account.token_file),
+          fingerprint: hash(raw),
+          token,
+        });
         return token;
       },
     });
