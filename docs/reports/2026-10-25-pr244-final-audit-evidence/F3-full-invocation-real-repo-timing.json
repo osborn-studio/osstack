@@ -1,0 +1,17 @@
+{
+  "workspace": "/Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/pr244-final-audit",
+  "counts": {
+    "tracked": 5380,
+    "ignored": 23710,
+    "untracked": 227
+  },
+  "loadavg": [
+    13.80078125,
+    30.44287109375,
+    34.646484375
+  ],
+  "durationMs": 5253.45125,
+  "pass": true,
+  "issues": [],
+  "scope": "One local no-op adapter invocation. Includes three raw snapshots. Concurrent QA load may affect timing. Not a provider latency or performance budget qualification."
+}

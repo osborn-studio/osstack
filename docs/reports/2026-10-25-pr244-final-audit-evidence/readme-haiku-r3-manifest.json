@@ -1,0 +1,68 @@
+{
+  "files": [
+    {
+      "path": "docs/guides/firstmate-commands.md",
+      "sha256": "ddff67a8e23abcd42d8733f3fef556c8865875f76d998d180a1a40d7a2fac37b"
+    },
+    {
+      "path": "docs/guides/firstmate-commands.en.md",
+      "sha256": "fa55f9670b89feae12219ade483753f46cfc0b66c746db06ca6429c0045b8cd2"
+    },
+    {
+      "path": ".osstack/neat.yaml",
+      "sha256": "0fa0c04dcda29ed18275b6e3ebf5002889b84376b31e4d9c4958f07b0b079149"
+    },
+    {
+      "path": "README.md",
+      "sha256": "12c6ebaed2e19f98491b79c895bc0854603662c0368bba1b6837bd73f94ab3e8",
+      "selection": "first 90 lines"
+    },
+    {
+      "path": "README.zh.md",
+      "sha256": "bf409c0f89e7df78ff4a36edbc2b71767d3bfb588c5a6b6436645b4c40f31074",
+      "selection": "first 90 lines"
+    },
+    {
+      "path": "packages/cli/src/control-plane-guard.ts",
+      "sha256": "0301f5dc1cfeb99a0d439bd47447403b4d53067bfaada2fd9a88d0a0cddf735f"
+    },
+    {
+      "path": "packages/cli/src/neat-fix-command.ts",
+      "sha256": "8f09e23e6040b87095e673f91fca520356b973ca05ad74196392b47771884500"
+    },
+    {
+      "path": "docs/reports/2026-10-24-firstmate-capability-completion-ledger.md",
+      "sha256": "237da4e11be19edf851aa4f8145f834b43c03a3ba97676f8ec79491f8f094328"
+    },
+    {
+      "path": "packages/cli/src/worker-viewer-command.ts",
+      "sha256": "1499540823474e42ee47dbc272a0da5f36b81526947d49b2fd551bfde342702d"
+    },
+    {
+      "path": "packages/cli/src/paths.ts",
+      "sha256": "049a654d0fb9ea3ed870310ed6fbad429437ba475097ac29cb5218306dd63605"
+    },
+    {
+      "path": "packages/cli/src/remote-cancel-exporter.ts",
+      "sha256": "3a008c7400a7a7b5a203021bf4d792a065ea333c20045cc73fccd60ac799b0dd"
+    },
+    {
+      "path": "packages/cli/src/remote-home-exporter.ts",
+      "sha256": "e802f6a178585d6dc5d86d998b53666f0ed589ec0d507561102cb8a72c5fc7d2"
+    },
+    {
+      "path": "packages/cli/src/scout-command.ts",
+      "sha256": "dacfbb91c610361cea38fd682536eec34a4f2cf67e4d92990e6b33da2fe4fda8"
+    },
+    {
+      "path": "packages/cli/src/upgrade-native-command.ts",
+      "sha256": "5f6b07be2a4e12af05858f5d48b604aa8f9590d034adbadd73f88f168f6389d7"
+    },
+    {
+      "path": "packages/cli/src/bin.ts",
+      "sha256": "b0c75e97823b59330bd8519487373e06be6c0e5fb0a28a350039381f1622d4c7",
+      "selection": "serve guard and policy stderr"
+    }
+  ],
+  "prompt_sha256": "4692c0225d4b5fc3eacdf8570912330083946c9e17cccb44a55e74d3d148073b"
+}

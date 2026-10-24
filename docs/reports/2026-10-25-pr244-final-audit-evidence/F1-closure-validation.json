@@ -1,0 +1,62 @@
+{
+  "workspace": "/Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/pr244-final-audit",
+  "head": "ece06749b74b6ecb827892ab2194400c9bb1f9d4",
+  "source_sha256_before": {
+    "packages/loop/src/loop-engine.ts": "19e0e9dc160b4fd4c195215b9979b1f58c81522d82c5199e41f69d536c43ca80",
+    "packages/loop/src/loop-engine.test.ts": "7ed1cefa8ded91935089d40a76f812945893fd1164a4ee40d40bfe44ce7192c0",
+    "packages/loop/src/loop-containment.ts": "9b9e50dffb2051c0b20899285c3fe3583a3a4393f732eb7a487e525fb4e5a755",
+    "packages/loop/src/loop-containment.test.ts": "35187b6f9d03488ba36c470da5a17330bf275992a403c6c0f726cc29715aaaa3",
+    "scripts/vitest-setup-scratch.ts": "166bcdcf86efa619c1d30c14b3fe383781b17e56b984ef058b1c194b64c7b1de"
+  },
+  "source_sha256_after": {
+    "packages/loop/src/loop-engine.ts": "19e0e9dc160b4fd4c195215b9979b1f58c81522d82c5199e41f69d536c43ca80",
+    "packages/loop/src/loop-engine.test.ts": "7ed1cefa8ded91935089d40a76f812945893fd1164a4ee40d40bfe44ce7192c0",
+    "packages/loop/src/loop-containment.ts": "9b9e50dffb2051c0b20899285c3fe3583a3a4393f732eb7a487e525fb4e5a755",
+    "packages/loop/src/loop-containment.test.ts": "35187b6f9d03488ba36c470da5a17330bf275992a403c6c0f726cc29715aaaa3",
+    "scripts/vitest-setup-scratch.ts": "166bcdcf86efa619c1d30c14b3fe383781b17e56b984ef058b1c194b64c7b1de"
+  },
+  "checks": [
+    {
+      "command": [
+        "pnpm",
+        "--filter",
+        "@osstack/loop",
+        "exec",
+        "vitest",
+        "run",
+        "src/loop-engine.test.ts",
+        "src/loop-containment.test.ts"
+      ],
+      "exit_code": 0,
+      "log": "F1-closure-tests.log",
+      "log_sha256": "497d78c991efb855ba0095d003e7e1838f533d4c1069e6a44070b2cfc3092352"
+    },
+    {
+      "command": [
+        "pnpm",
+        "--filter",
+        "@osstack/loop",
+        "typecheck"
+      ],
+      "exit_code": 0,
+      "log": "F1-closure-typecheck.log",
+      "log_sha256": "8366207267355d3e3d5bf3bf6e8c94c5f93f6078c34f08973fa2b38cdda6cc92"
+    },
+    {
+      "command": [
+        "pnpm",
+        "exec",
+        "biome",
+        "check",
+        "packages/loop/src/loop-engine.ts",
+        "packages/loop/src/loop-engine.test.ts",
+        "packages/loop/src/loop-containment.ts",
+        "packages/loop/src/loop-containment.test.ts"
+      ],
+      "exit_code": 0,
+      "log": "F1-closure-biome.log",
+      "log_sha256": "3989cd67d8ac3cbe363de83c529a71d77ca7282048fcef028e242e3c62660c4c"
+    }
+  ],
+  "setup_biome": "F1-setup-biome-explicit.json (identical file copy with repository lint rules)"
+}

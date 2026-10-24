@@ -1,0 +1,28 @@
+{
+  "files": [
+    {
+      "path": "packages/cli/src/source-observation-host.ts",
+      "sha256": "154dcde431f8970317fe79d132d5772ae07e8b5348ee9c0a506d32f4d579afd6",
+      "coverage": "full"
+    },
+    {
+      "path": "docs/reports/2026-10-24-source-continuity-boundaries.md",
+      "sha256": "06acf605ba4374ab5c5bb6032b84546f7ee5a6cfb89a075c3218b08c2f055c32",
+      "coverage": "full"
+    },
+    {
+      "path": "packages/cli/src/daemon.ts",
+      "sha256": "8aa53df69d425073d05a3b38378283600230300baccc6b05268bf36c345bb99a",
+      "coverage": "1130-1180",
+      "excerpt_sha256": "53eb556fe13298878e3db1b483f18a15c68759f78870847b27083eb6beae72cc"
+    },
+    {
+      "path": "packages/cli/src/local-ledgers-daemon.test.ts",
+      "sha256": "c8088fdfdb3c1560ac3f6ef02574dbc6fc77a5ffd19e831504dc3170cfd0eaed",
+      "coverage": "1008-1062",
+      "excerpt_sha256": "2bb29ce84b3684996d4bd60016afd04aed76f850dc049006b9294bf29ec99cd8"
+    }
+  ],
+  "prompt_sha256": "b01bd31f7c86b5e467e3ffa0037c020ec421479985135ed6e3b826e01f9c3c8d",
+  "prompt_bytes": 27897
+}

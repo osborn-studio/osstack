@@ -17,8 +17,9 @@ This comparison uses the PR base branch, `codex/firstmate-extension-integration`
 | New grant command | `follow-up-delivery issue-grant ID --repo PATH --default-tenant --revision N --key KEY --output FILE` | Create a grant file. This step does not publish content. |
 | New upgrade commands | `homes prepare-managed-installation`, `apply-upgrade`, `reconcile-upgrade` | Prepare a managed installation, apply an approved upgrade, or check its result. Exact artifact, registry, and plan digests are required. |
 | New parameter value | `attention routing-eval --input FILE --mode paired_holdout` | Compare routing with paired holdout data. This is separate from `router_golden`. |
-| New parameter | `deliver --execution-context FILE` | Use execution context bound to host configuration. The file does not grant arbitrary permissions. |
 | Internal changes | Graph verification, source continuity, Loop containment records, verifier checks, and upgrade guards | Existing commands use these mechanisms. Each mechanism does not need a separate command. |
+
+`deliver --execution-context FILE` already exists in the base branch. It remains the execution-context entry point. The parameter is not new in #244.
 
 This table is an interface index. It is not a complete execution configuration. Write operations require host registration, authorization, and a matching target state. Read the command help before an operation.
 

@@ -1,0 +1,3 @@
+git diff 742ac8e0 -- packages/agents/src/worktree.ts
+
+exit=0; empty diff means no R8/R9 change to this source. Production hook tests run source directly. Parent native QA builds all packages before its tests.

@@ -17,8 +17,9 @@
 | 新授权入口 | `follow-up-delivery issue-grant ID --repo PATH --default-tenant --revision N --key KEY --output FILE` | 生成授权文件。此步骤不发布内容。 |
 | 新升级入口 | `homes prepare-managed-installation`、`apply-upgrade`、`reconcile-upgrade` | 准备受管安装、执行已批准的升级、核对升级结果。需要制品、注册表及计划的精确摘要。 |
 | 扩展参数 | `attention routing-eval --input FILE --mode paired_holdout` | 使用配对留出数据比较路由；与原有 `router_golden` 模式分开。 |
-| 扩展参数 | `deliver --execution-context FILE` | 使用宿主配置绑定的执行上下文。文件不是任意权限入口。 |
 | 内部机制增强 | Graph 验证、来源连续性检查、Loop 隔离记录、验证器检查、升级守卫 | 通过现有命令触发。没有为每个内部机制增加一个命令。 |
+
+`deliver --execution-context FILE` 是前序分支已有参数。它继续提供执行上下文入口，不能重复计为新增参数。
 
 参数表是入口索引，不是完整执行配置。写操作还需要宿主登记、授权和目标状态。查看对应 `--help` 和下方依据，不能仅复制参数表就执行生产升级。
 

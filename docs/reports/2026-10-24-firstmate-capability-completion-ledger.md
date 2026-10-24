@@ -34,7 +34,7 @@
 ## 外部资格单列
 
 1. 真实模型：受支持API凭据、经独立复核的holdout数据、实际usage/计费核对、真实provider终止行为；没有这些就不宣称模型更准或更便宜。
-2. 指定静态审计：重新登录后，Claude Code CLI 已实际执行 Haiku5.5 四组审计并返回非零 usage；正在逐项修复和复审。历史 OAuth 失败记录保留，不计为通过。模型字符串与 `unrecognized_model` 诊断均保留，不声称权重证明。
+2. 指定静态审计：重新登录后，Claude Code CLI 已实际执行 Haiku5.5 分范围审计并返回非零 usage；问题已修复，各范围复审通过。最终验证器代码与证据由 r9/r10 收口，详见[最终审计报告](2026-10-25-firstmate-final-audit.md)。历史 OAuth 失败记录保留，不计为通过。模型字符串与 `unrecognized_model` 诊断均保留，不声称权重证明。
 3. 真实公共GitHub：专用sandbox目标、固定actor/node身份、真实send/lookup、网络中断和权限变更；本次未发送真实公开消息。
 4. 真实SSH：远端安装/forced command、host key变更、双机generation与断网恢复；本地child/socket/SSH配置解析不替代跨机测试。
 5. 真实tmux/cmux：本机未安装，需固定版本窗口/socket/关闭行为；launch_requested不是已看到窗口。
@@ -47,7 +47,7 @@
 
 活跃Graph监督的连续三轮隔离测量均满足原预算：RPC p95为6.228/6.787/6.775ms（目标<10ms）；Loop开销0.671%/0.543%/0.330%（目标<1%）。实际Graph完成、独立取消子进程的停止证明、重启恢复和旧代迟到隔离均通过。最大延迟仍有561–615ms尾部，2ms调度是软时间片，不能外推为所有请求延迟保证。详见[完整性能证据](2026-10-24-firstmate-supervision-active-evidence/README.md)。
 
-OSStack原生队列包含12个能力收口任务、独立代码QA任务，以及7个尚未执行的认证/环境资格任务。最终审计或外部资格未通过前，原能力任务不凭子代理报告自动标完成。详见[任务与验证证据](2026-10-24-firstmate-completion-integration-evidence/README.md)。
+OSStack原生队列包含12个能力收口任务、独立代码QA任务，以及7个尚未执行的认证/环境资格任务。原能力任务不凭子代理报告自动标完成；审计、完整验收与外部资格分别记录。详见[任务与验证证据](2026-10-24-firstmate-completion-integration-evidence/README.md)。
 
 ## 历史完整测试基线（不是当前修复后的最终验收）
 
@@ -57,7 +57,7 @@ OSStack原生队列包含12个能力收口任务、独立代码QA任务，以及
 
 交付为[PR #244](https://github.com/osborn-studio/osstack/pull/244)，依赖#243及前序PR栈。早期因 Claude OAuth 过期保留草稿；该次 `is_error:true`、0 token 的尝试不计为审计通过。之后已恢复实际调用并完成多轮修复及分范围复审；当前交付结论以最新最终审计报告为准。CI以该PR当前HEAD的检查结果为准，本地通过不冒充CI通过。
 
-12个能力收口任务的代码路径已逐项核对，最终审计条件仍待完成；7类认证/真实环境资格任务保持独立排队、未执行状态。尚未合并或部署，不宣称24/24已在真实环境上线。
+12个能力收口任务的代码路径已逐项核对，分范围最终审计已通过；完整本地验收与当前 CI 的结果以 PR #244 正文及检查页为准。7类认证/真实环境资格任务保持独立排队、未执行状态。尚未合并或部署，不宣称24/24已在真实环境上线。
 
 ## 最终审计的授权边界与恢复范围
 
@@ -83,6 +83,6 @@ Guarded交付另固定首次execution-context配置的语义摘要、规范路�
 
 该execution-context pin约束每次host context的建立，没有完成时再核对文件的检查；完成回执不证明该配置文件从建立context到完成期间始终未变化。
 
-Loop 的宿主 containment 记录是执行前同步持久化的待核对保护记录，不是物理停止证明。未知停止、崩溃、异常或状态写入失败都会保留记录；使用同一 canonical workspace 和宿主 containment root 重启时，在任务发现/执行前拒绝继续。即使进程已经停止，状态写入失败也可能保守阻断；目前无自动 reset，必须调查原执行并保留证据，同 workspace 换 state 路径仍会阻断；不可通过换 workspace、宿主 root 或手删记录推断安全重试。目录 fsync 失败会拒绝启动；同 uid 恶意修改不在该保护的隔离保证内。所有验证适配器都检查候选工作树的前后完整性；检测到修改或调用后无法确认完整性时，不继续重试、提交、自动清理或提取经验。验证器时间预算按单适配器计量，不代表整组验证的总时限。
+Loop 的宿主 containment 记录是执行前同步持久化的待核对保护记录，不是物理停止证明。未知停止、崩溃、异常或状态写入失败都会保留记录；使用同一 canonical workspace 和宿主 containment root 重启时，在任务发现/执行前拒绝继续。即使进程已经停止，状态写入失败也可能保守阻断；任务中缺少 `implementation_unconfirmed` 字段不授权删除宿主隔离记录。目前无自动 reset，必须调查原执行并保留证据，同 workspace 换 state 路径仍会阻断；不可通过换 workspace、宿主 root 或手删记录推断安全重试。目录 fsync 失败会拒绝启动；同 uid 恶意修改不在该保护的隔离保证内。所有验证适配器都检查候选工作树的前后完整性；检测到修改或调用后无法确认完整性时，不继续重试、提交、自动清理或提取经验。验证器时间预算按单适配器计量，不代表整组验证的总时限。
 
 宿主隔离目录按 `OSSTACK_LOOP_CONTAINMENT_ROOT`（绝对路径）、`OSSTACK_HOME/loop-containment`、`~/.osstack/loop-containment` 顺序选择，须位于候选工作区之外。Git 初始化不会改变 workspace 身份或存储位置。fsync 成功是 OS 层持久性证据，不替代物理断电资格；同 uid 修改和不同宿主 root 之间不构成安全隔离。既有 publisher 成功回调没有 descendant-stop 证明，该限制不被本轮静态审计扩展为保证。

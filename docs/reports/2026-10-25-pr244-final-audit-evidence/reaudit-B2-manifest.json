@@ -1,0 +1,111 @@
+{
+  "baseHead": "e508156efee7649dc4d2f374fe9a4947d8cc38fb",
+  "sources": [
+    {
+      "path": "packages/cli/src/delivery-contract-host.ts",
+      "sha256": "99351ba224b3d6d7667eec217d2a8d62c996951ce688239c4d4616afa5222363",
+      "bytes": 14661
+    },
+    {
+      "path": "packages/cli/src/delivery-contract-host.test.ts",
+      "sha256": "7d3fb072cbb613485126f29e7a34ecbebcccabf6ad8553ce23339bb7b2b0db43",
+      "bytes": 9125
+    },
+    {
+      "path": "packages/cli/src/graph-action-broker.ts",
+      "sha256": "7621c2797c82eccfbf77aabb5209b607d9af130031437bb7c1bce05e325b8f40",
+      "bytes": 49440
+    },
+    {
+      "path": "packages/cli/src/graph-action-broker.test.ts",
+      "sha256": "f6c1473854c9a0ea2ef682969ecfed0baef1172fce7981a4df9c21ae74ab364e",
+      "bytes": 27243
+    },
+    {
+      "path": "packages/cli/src/graph-action-broker-boundary.test.ts",
+      "sha256": "b060f65817106d5dbdb06db1b4f3ab4ffc81663fb1db5d31c472c311bf2b4e41",
+      "bytes": 19648
+    },
+    {
+      "path": "packages/cli/src/graph-branch-broker.test.ts",
+      "sha256": "0ec10a9e62b86ffe8d1e64210d6e5b005250f8cfa6304ac077fbaa349300d44b",
+      "bytes": 14344
+    },
+    {
+      "path": "packages/cli/src/graph-verification.ts",
+      "sha256": "d21334ac4222531587e678a499507f2039cc97b7034732ba27b517a96f31f213",
+      "bytes": 34282
+    },
+    {
+      "path": "packages/cli/src/graph-verification.test.ts",
+      "sha256": "46216dbb61b0093a4260e8037edfaba82ff9ca3f48cb07603721afd4a1efc0fd",
+      "bytes": 51873
+    },
+    {
+      "path": "packages/cli/src/graph-verification-store.ts",
+      "sha256": "76ceb7cbb9d01b0c5abb05d86096024821511873a42671dc303ee285131f149f",
+      "bytes": 26905
+    },
+    {
+      "path": "packages/cli/src/governed-execution.ts",
+      "sha256": "ddf1a8a09d0ae08b82d170d01f78390fdb31ec942e435fa25eaac492c9d01cbb",
+      "bytes": 11310
+    },
+    {
+      "path": "packages/cli/src/graph-delivery.ts",
+      "sha256": "f5ffb3f42985638afb47bca2e1f4382d99c9132fdb6db1bd0eb940594f8d7e99",
+      "bytes": 43094
+    },
+    {
+      "path": "packages/cli/src/graph-delivery.integration.test.ts",
+      "sha256": "163ce7cd068d49e717978177ed4303d72eb22d4a4585e5bdba56412aef5af994",
+      "bytes": 14283
+    },
+    {
+      "path": "packages/core/src/state/graph-actions.ts",
+      "sha256": "d634025139efd10094eef8f3d559ba654c155f547f22cf701cc43f48a76f6d8d",
+      "bytes": 36446
+    },
+    {
+      "path": "packages/core/src/state/graph-recovery.ts",
+      "sha256": "f1ef674dbe731f0de3d2d7ec401cb879596749af29987c41b054e2167e59addb",
+      "bytes": 31475
+    }
+  ],
+  "evidence": [
+    {
+      "path": "B2-git-red.log",
+      "sha256": "fd9f040dc971024cdcaed9068ad4d076a3db0a4c1090ba09a85255d98bf96964"
+    },
+    {
+      "path": "B2-retry-red.log",
+      "sha256": "2c3f7518a9c1f8f41b7e09bc801898b3bd1cade57ef5317fb35efa20cb4f2358"
+    },
+    {
+      "path": "B2-green.log",
+      "sha256": "7801876a839a78ed0fccb352f58552fb14d0c2c3cd63be5b5b1a152e5d4c7066"
+    },
+    {
+      "path": "B2-storage-failure.log",
+      "sha256": "b4ac87c94f3508dbbd42966c74730e77d12a8615d6bbe27f3eaf1d4e1c012db2"
+    },
+    {
+      "path": "B2-delivery-integration.log",
+      "sha256": "cd35d06149a6f595398950c3b4e5b6aeafb47fd8a1330dca87fe9840fd4d0958"
+    },
+    {
+      "path": "B2-review-inventory.json",
+      "sha256": "1e006dc3bc002443fcbfaa49eb225e5621c2d22edf6d2a94c8322cd20b96d7da"
+    },
+    {
+      "path": "B2-typecheck.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "B2-cancellation-green.log",
+      "sha256": "2e80b8bcfd0cd29321bfdee40ead18579dde018a2fcba827d931f69206c5ddbf"
+    }
+  ],
+  "promptSha256": "93a6883bc3b8387c09d57e9236d0df5116f19a79cd08d334866aedf39efac730",
+  "promptBytes": 445189
+}

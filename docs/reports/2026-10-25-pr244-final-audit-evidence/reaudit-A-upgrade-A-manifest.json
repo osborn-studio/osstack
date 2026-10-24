@@ -1,0 +1,134 @@
+{
+  "head": "30fe5eb0c3ed3ac430dfd6e61bbd1d088fce1fca",
+  "working_tree_snapshot": true,
+  "files": [
+    {
+      "path": "packages/cli/src/execution-context.ts",
+      "sha256": "aa5298f4ccef92779fd012ec6fed61adef96a805282a19ded76f6a0093afb7f6",
+      "coverage": "full"
+    },
+    {
+      "path": "packages/cli/src/execution-context.test.ts",
+      "sha256": "d24f2f237cac6265dbf2a4ac0828d5c8259b4ec650a2a099091936f62ffaeff3",
+      "coverage": "full"
+    },
+    {
+      "path": "packages/cli/src/execution-context-host.ts",
+      "sha256": "149ac22d6d8190e5ca24208e431f74945881d7b8116f097df3985ed2835ef314",
+      "coverage": "full"
+    },
+    {
+      "path": "packages/cli/src/source-context.ts",
+      "sha256": "a86db5921f95be730c0b896ef38ac3360502e9081aadd1c3216e2efba1f34ece",
+      "coverage": "full"
+    },
+    {
+      "path": "packages/cli/src/source-context-fence.ts",
+      "sha256": "8efd8b99b7881515772180931044fef58bde9d9fe0c58e16763dfcb180705b81",
+      "coverage": "full"
+    },
+    {
+      "path": "packages/cli/src/source-context.test.ts",
+      "sha256": "c90c911ccdcdde755e7776b58580623de624f4869f38a2b7c083f1bb38c0b62e",
+      "coverage": "full"
+    },
+    {
+      "path": "packages/cli/src/source-observation-host.ts",
+      "sha256": "b2ca86601c4c9034bbe8a46a4ef05eb1cb721a3a8a558d191a4a30a1dacc3acb",
+      "coverage": "full"
+    },
+    {
+      "path": "packages/core/src/state/source-observations.ts",
+      "sha256": "e3fd68480c403a6baf52b1f189faf1e584578b271e9735a1da3ff26dc229bee4",
+      "coverage": "full"
+    },
+    {
+      "path": "packages/core/src/state/source-observations.test.ts",
+      "sha256": "c4cee75df64c14659404b3b13c9608292f7bf7921e7c3eb2f4d389d72ce067ac",
+      "coverage": "full"
+    },
+    {
+      "path": "packages/loop/src/candidate-execution.ts",
+      "sha256": "95006bf5463aead4eb4c8e2203d1821fa8abd5588e4de3206f0a20e49f69badc",
+      "coverage": "full"
+    },
+    {
+      "path": "packages/cli/src/graph-execution-context.ts",
+      "sha256": "1a96a939552a41908c47c7c6c50bb4338d65643c7faebdd095fabf8243518173",
+      "coverage": "full"
+    },
+    {
+      "path": "packages/cli/src/graph-contract-host.ts",
+      "sha256": "27f50eb26a2271162255df9b82dcdc22ab3a95b6e070af953679b994d644510c",
+      "coverage": "full"
+    },
+    {
+      "path": "packages/cli/src/attention-loop-source.ts",
+      "sha256": "86239fb7527ca5f33dd203be4f08462c4adfe903b46bd2a42eaf816d157e5201",
+      "coverage": "full"
+    },
+    {
+      "path": "packages/cli/src/attention-loop-source.test.ts",
+      "sha256": "69aea5e572c0bd78ba51a13a21728d7d6580f9d8fec19e63255c2066272aa4d8",
+      "coverage": "full"
+    },
+    {
+      "path": "packages/cli/src/local-data-source-registry.ts",
+      "sha256": "dffd57cfbfcb5d0a5722b8baa61246e688e4dbda9199fbf64f770ee133dd7d90",
+      "coverage": "full"
+    },
+    {
+      "path": "packages/cli/src/managed-home-guard.ts",
+      "sha256": "456b37ae898913bc87565db507256ad618be96481315d07bd2f6419339f09431",
+      "coverage": "full"
+    },
+    {
+      "path": "packages/cli/src/upgrade-native-backend.ts",
+      "sha256": "2476bcd4a9e143b92344660e09d77db386ca107432a983d305b6e646c90409a3",
+      "coverage": "full"
+    },
+    {
+      "path": "packages/cli/src/control-plane-guard.ts",
+      "sha256": "0301f5dc1cfeb99a0d439bd47447403b4d53067bfaada2fd9a88d0a0cddf735f",
+      "coverage": "full"
+    },
+    {
+      "path": "packages/loop/src/executor.ts",
+      "sha256": "fbf9d07b64bc4fe4f230ecffe52a757ebde03192f196f6710c2395c3ee1edfe7",
+      "coverage": "lines 80-450",
+      "excerpt_sha256": "53f9e3ba47556820a0de52ee67ab1f462dfa44baefbbe0323733843fabaa1a4f"
+    },
+    {
+      "path": "packages/loop/src/candidate-execution.test.ts",
+      "sha256": "d5219e39d59830f75367e512b11207ddfe9a3abd99ff039be8838addf4669497",
+      "coverage": "lines 225-280",
+      "excerpt_sha256": "e59d9c70fc1e498f71b16865e190b9cc7617bdc48f91b3f349126eddf5d91776"
+    },
+    {
+      "path": "packages/cli/src/graph-action-broker.ts",
+      "sha256": "7621c2797c82eccfbf77aabb5209b607d9af130031437bb7c1bce05e325b8f40",
+      "coverage": "lines 305-660",
+      "excerpt_sha256": "d1888924396348b7e3af5755a2119570fa78c7dcbe3d742d3ba82cb5a869acf6"
+    },
+    {
+      "path": "packages/cli/src/deliver-command.ts",
+      "sha256": "bfc9d583b6c9e35f9019a510df104401ebc79c3373e89097162d705cff0cf006",
+      "coverage": "lines 500-600",
+      "excerpt_sha256": "214508f384b97e6851edb0c181f37736d67ec3b710ddf2170aa4ec2b8c1e8c87"
+    },
+    {
+      "path": "packages/cli/src/guarded-git-runtime.ts",
+      "sha256": "3c23e4e766c6af0926d1a3b9fc905acf2c7fd7b672cf7b9c165b47a5a2b9e2e8",
+      "coverage": "lines 510-650",
+      "excerpt_sha256": "3f3b67090a8d9bbd28e08411b862318590961f95754bc41bcf2c86d4ace7d5ad"
+    },
+    {
+      "path": "packages/cli/src/bin.ts",
+      "sha256": "5eb5b02135fd67abd2821091af7e22897d272c38173058d9ff74ef511471834a",
+      "coverage": "lines 1010-1100",
+      "excerpt_sha256": "85e56bf8e52322af91ea625a7a76b225c4cd4ab21053d001780cfbf2b45a4fb9"
+    }
+  ],
+  "prompt_sha256": "8125cf88c9a8caefc5cf4839f54fd2307ef51d81080e2c851f3bfd502315293f",
+  "prompt_bytes": 246607
+}

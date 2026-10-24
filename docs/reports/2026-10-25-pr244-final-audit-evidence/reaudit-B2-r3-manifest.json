@@ -1,0 +1,107 @@
+{
+  "baseHead": "869afb089d61edd708818f48bcf6956bb313ece7",
+  "sources": [
+    {
+      "path": "packages/cli/src/graph-verification-inventory.ts",
+      "sha256": "bd192b1558dbd45b4c24145ae4528990002958298744dbf7a9711da50217c131",
+      "bytes": 2661
+    },
+    {
+      "path": "packages/cli/src/graph-verification-inventory.test.ts",
+      "sha256": "26bb90e6d0e57395b27bcf649dec7c2d927c2ffdbbb306040e1e2582cd9477dc",
+      "bytes": 1606
+    },
+    {
+      "path": "packages/cli/src/graph-verification.ts",
+      "sha256": "7d7e46f6000483f27e463b3e30229013eecba19ee6c1b5d3bd3d64d892be4418",
+      "bytes": 35378
+    },
+    {
+      "path": "packages/cli/src/graph-verification.test.ts",
+      "sha256": "630ce73001ff9658450d1f3c0c85fdb80196c2b10967dbae234b8c3113aa8c3e",
+      "bytes": 55038
+    },
+    {
+      "path": "packages/cli/src/graph-verification-store.ts",
+      "sha256": "5f11a70120906b2e65cae5f00aec2303bf6eca8b81e8ea165e35419f0b571300",
+      "bytes": 27173
+    },
+    {
+      "path": "packages/cli/src/governed-execution.ts",
+      "sha256": "45ed3a7700ce7799f0e7366c9332c7ee2414698265467ec4e0aaeccd8defcfee",
+      "bytes": 11782
+    },
+    {
+      "path": "packages/cli/src/governed-execution.test.ts",
+      "sha256": "4bdc5a50a999d01be1b490c3f600775d408cee08fc15ea33385ad02f428f65d7",
+      "bytes": 16571
+    },
+    {
+      "path": "packages/cli/src/graph-action-broker.ts",
+      "sha256": "7621c2797c82eccfbf77aabb5209b607d9af130031437bb7c1bce05e325b8f40",
+      "bytes": 49440
+    },
+    {
+      "path": "packages/cli/src/graph-contained-tests.ts",
+      "sha256": "3fc9d95ee09c13fbab683e0cbcdb090c61004fecc57ffc335e619adcafffdf98",
+      "bytes": 10138
+    },
+    {
+      "path": "packages/cli/src/graph-reconciler.ts",
+      "sha256": "af7e5b624d72f9b28a6d31aa234600afe313f61b4dff7da74dfb2f5b26d1e7e3",
+      "bytes": 12145
+    },
+    {
+      "path": "packages/cli/src/graph-unstarted-recovery.ts",
+      "sha256": "9de4b1a2bc68429c0b10f4842a65ee90677c4a7c605c4ed2890c37af6394775b",
+      "bytes": 4375
+    },
+    {
+      "path": "packages/cli/src/graph-delivery.ts",
+      "sha256": "f5ffb3f42985638afb47bca2e1f4382d99c9132fdb6db1bd0eb940594f8d7e99",
+      "bytes": 43094
+    },
+    {
+      "path": "packages/core/src/state/graph-actions.ts",
+      "sha256": "d634025139efd10094eef8f3d559ba654c155f547f22cf701cc43f48a76f6d8d",
+      "bytes": 36446
+    },
+    {
+      "path": "packages/core/src/state/graph-recovery.ts",
+      "sha256": "f1ef674dbe731f0de3d2d7ec401cb879596749af29987c41b054e2167e59addb",
+      "bytes": 31475
+    }
+  ],
+  "evidence": [
+    {
+      "path": "B2-r3-boundaries.log",
+      "sha256": "e523fe83ab839d2437ace963924432215eeaadf0ed65cb08a79f4a021b9408cb"
+    },
+    {
+      "path": "B2-r3-inventory-final.log",
+      "sha256": "dae342bbb2bc366b6eb6eff00aea7f09491b38fba188cdf3c8704e73fc8d15f0"
+    },
+    {
+      "path": "B2-r3-verification.log",
+      "sha256": "0127edcde66e7342c233671b621dcb7aa6a00863ad807c00445d8b10e6227f00"
+    },
+    {
+      "path": "B2-r3-review-inventory.json",
+      "sha256": "2e8fc7db950ccb6948735f8d7a058198b4393351aa1797829734dc51a6601581"
+    },
+    {
+      "path": "B2-r3-typecheck.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "B2-r3-typecheck-result.json",
+      "sha256": "c136db04746b93d509d33ae48fe1ec833a46ea8277a007e335b7ba15b57b4e2f"
+    },
+    {
+      "path": "B2-r3-suite16-rerun.log",
+      "sha256": "ac58014decd5b00a72fe18d056e03176416870b28129d905d3fec874510be569"
+    }
+  ],
+  "promptSha256": "614c01f0e6ba79014efba4c0ed6b7ee61a4f447750465220653c100ceff9ae6a",
+  "promptBytes": 413410
+}

@@ -16,3 +16,5 @@ The first fix-preview attempts were rejected because default V2 reports are not 
 Neat checks links, configured documentation contracts and instruction surfaces. It does not translate or author arbitrary README content, prove CLI behavior, or execute the external qualification matrix. Content was authored from source/help and independently reviewed with Claude Code; implementation audit and CI are tracked separately in the final PR report.
 
 [中文命令手册](../guides/firstmate-commands.md) · [English command guide](../guides/firstmate-commands.en.md)
+
+The final command-delta review corrected `deliver --execution-context`: it is an existing base-branch flag, not a new #244 parameter. The bilingual guide now separates new subcommands, the new `paired_holdout` mode, and existing mechanisms. The new [prompt language policy](../guides/prompt-language.md) applies ASD-STE100-inspired writing principles without claiming full compliance or runtime rewriting. After adding this policy to AGENTS.md, a complete neat scan again returned 0 errors, 0 warnings, and the same 23 configured suppressions (`neat-readme-language.json`).

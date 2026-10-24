@@ -1,0 +1,145 @@
+{
+  "files": [
+    {
+      "path": "packages/loop/src/verifier.ts",
+      "sha256": "e09fdf06a9cfd6695e8360128e53b3b3882dd0f0ff47be5340ce4cfe628e04f8",
+      "selection": "full"
+    },
+    {
+      "path": "packages/loop/src/verifier.test.ts",
+      "sha256": "a909811f64f575616ca26e04748e3640fb7bd4970aa19ce15b5c2d2a9b6da3ec",
+      "selection": "full"
+    },
+    {
+      "path": "packages/loop/src/loop-engine.ts",
+      "sha256": "c523808a4f6bf4cc3a615831b08aec7c622049b20b392c24c3bd0ae4a45eed0d",
+      "selection": "full"
+    },
+    {
+      "path": "packages/loop/src/loop-engine.test.ts",
+      "sha256": "9d28f25b6b871f2d17bec9ff34e9ea549aaa99bc92e14d380a3bb723e2715055",
+      "selection": "full"
+    },
+    {
+      "path": "packages/loop/src/executor.ts",
+      "sha256": "fbf9d07b64bc4fe4f230ecffe52a757ebde03192f196f6710c2395c3ee1edfe7",
+      "selection": "full"
+    },
+    {
+      "path": "packages/loop/src/executor.test.ts",
+      "sha256": "23e9494af17ca1a0befbe00c81c414f4235f56aa0bce36a6273b6cd5947b3b91",
+      "selection": "full"
+    },
+    {
+      "path": "packages/loop/src/review-boundary.ts",
+      "sha256": "7237810066d67879b09a10ba86a8fa19181e3804f5cdf2958ba68e50a94abb50",
+      "selection": "full"
+    },
+    {
+      "path": "packages/loop/src/reviewer-isolation.ts",
+      "sha256": "0688f11cdb30d70306e06f7a11f62ff3d55bba053bc6ecd48d6bc2ce29297da0",
+      "selection": "full"
+    },
+    {
+      "path": "packages/cli/src/source-observation-host.ts",
+      "sha256": "e8c2802793296bf5f7804b645a795301a08fc99a20f29c6e721a20908fe4da3b",
+      "selection": "full"
+    },
+    {
+      "path": "packages/cli/src/source-observation-command.ts",
+      "sha256": "d8c8bac855ef0836dd8e15b83e7a89c90d2e677c6b7c77df23f8b253730f2ae9",
+      "selection": "full"
+    },
+    {
+      "path": "packages/cli/src/local-data-source-registry.ts",
+      "sha256": "0018837f6f43ff1029fad3a444a9d163d5b112fdf0e94866c878f3014bcb80a1",
+      "selection": "full"
+    },
+    {
+      "path": "packages/cli/src/worker-log-view.ts",
+      "sha256": "786c38a54eb3bf6ef6df1335cd3f27426f16bdc09a1b237d4d1ea89ed4db5795",
+      "selection": "full"
+    },
+    {
+      "path": "packages/cli/src/worker-log-view.test.ts",
+      "sha256": "b370fa0033d5ad667e2c4c7a9f0f07b274dea8fb232f10730a094aa6df4a5401",
+      "selection": "full"
+    },
+    {
+      "path": "packages/cli/src/local-ledgers-daemon.test.ts",
+      "sha256": "b4c34cc4d193cfb9f5476180c34af1c194b398d494a5544de1bd942c0d8ecd25",
+      "selection": "full"
+    },
+    {
+      "path": "packages/cli/src/paths.ts",
+      "sha256": "049a654d0fb9ea3ed870310ed6fbad429437ba475097ac29cb5218306dd63605",
+      "selection": "full"
+    },
+    {
+      "path": "packages/cli/src/cli-entry.ts",
+      "sha256": "d3434f41f3e8f3b31b9e014440e6ae6fa63f3095190c1b9a23fd6a2da8ba587e",
+      "selection": "full"
+    },
+    {
+      "path": "packages/cli/src/control-plane-guard.ts",
+      "sha256": "0301f5dc1cfeb99a0d439bd47447403b4d53067bfaada2fd9a88d0a0cddf735f",
+      "selection": "full"
+    },
+    {
+      "path": "packages/cli/src/guarded-open-db.ts",
+      "sha256": "9c0f5a3fd6ef6b8105e0e2a7c423784e0be7a2227721d6e04fa2ad51dd58633b",
+      "selection": "full"
+    },
+    {
+      "path": "packages/core/src/state/follow-up-delivery.ts",
+      "sha256": "5a6ffa6094e200189c5f323b1403857c56a511f76cfead0ba372026d9008f887",
+      "selection": "full"
+    },
+    {
+      "path": "docs/reports/2026-10-24-firstmate-capability-completion-ledger.md",
+      "sha256": "ead62aae21898dba90d6d8714e1a48bbacc8f3cdc1f622483838db5791ac692e",
+      "selection": "full"
+    },
+    {
+      "path": "packages/cli/src/daemon.ts",
+      "sha256": "5d8aabd241d033d78130ef5e147d08a77041f3e25a5b763e06a75eed29ab524d",
+      "selection": [
+        [
+          1121,
+          1285
+        ],
+        [
+          4128,
+          4217
+        ],
+        [
+          4422,
+          4536
+        ]
+      ]
+    },
+    {
+      "path": "packages/cli/src/bin.ts",
+      "sha256": "a95059100340083d2c90a5752a39e15d281208f3398b3166db1314f060016a0b",
+      "selection": [
+        [
+          678,
+          719
+        ],
+        [
+          876,
+          890
+        ],
+        [
+          6314,
+          6348
+        ],
+        [
+          7313,
+          7344
+        ]
+      ]
+    }
+  ],
+  "prompt_sha256": "8d50219c4565b03dd49ed9b63c457c109d94aeb2de216eb9db4ac311bb04d3c1"
+}

@@ -1,0 +1,238 @@
+{
+  "sources": [
+    {
+      "path": "packages/cli/src/remote-cancel-client.ts",
+      "sha256": "0815157e3db5216862612c52b069ce32b32662a026af4a5c2b721535d9c59bbc",
+      "ranges": "full"
+    },
+    {
+      "path": "packages/cli/src/remote-cancel.test.ts",
+      "sha256": "2f6012d8cdf265c4d1984b35a85263e10c901c600f757b3a5139834548d8c7f1",
+      "ranges": "full"
+    },
+    {
+      "path": "packages/cli/src/remote-cancel-exporter.ts",
+      "sha256": "3a008c7400a7a7b5a203021bf4d792a065ea333c20045cc73fccd60ac799b0dd",
+      "ranges": "full"
+    },
+    {
+      "path": "packages/cli/src/remote-cancel-protocol.ts",
+      "sha256": "c60e9bba9412071f7410c739cc71c36ed4faa4917a650c46aff8cb39f3c53767",
+      "ranges": "full"
+    },
+    {
+      "path": "docs/reports/2026-10-24-firstmate-capability-completion-ledger.md",
+      "sha256": "d041d55ac39fcf3d56b3f0f54dd56ba8ac0bf9b9692b488afd3cae6622430679",
+      "ranges": "full"
+    },
+    {
+      "path": "packages/cli/src/bin.ts",
+      "sha256": "78398cb4e47b9a76ddb46dce4cb8224703a804bf1891a981df60bae1fcd489c2",
+      "ranges": [
+        [
+          9380,
+          9460
+        ]
+      ]
+    },
+    {
+      "path": "packages/cli/src/deliver-cli.test.ts",
+      "sha256": "591320d8746048632f26dc7f1281cdcbc8c6c625121adb44fe58ff5443f4e8c3",
+      "ranges": [
+        [
+          990,
+          1080
+        ]
+      ]
+    }
+  ],
+  "prior_coverage_comparison": [
+    {
+      "path": "packages/core/src/state/follow-up-delivery.ts",
+      "prior_sha256": "5a6ffa6094e200189c5f323b1403857c56a511f76cfead0ba372026d9008f887",
+      "current_sha256": "5a6ffa6094e200189c5f323b1403857c56a511f76cfead0ba372026d9008f887",
+      "identical": true
+    },
+    {
+      "path": "packages/core/src/state/follow-up-delivery.test.ts",
+      "prior_sha256": "c8e5887dc608062a92aa2760b998c7c88f1870294af9809ac8c7e475420aa727",
+      "current_sha256": "c8e5887dc608062a92aa2760b998c7c88f1870294af9809ac8c7e475420aa727",
+      "identical": true
+    },
+    {
+      "path": "packages/cli/src/scout-command.ts",
+      "prior_sha256": "dacfbb91c610361cea38fd682536eec34a4f2cf67e4d92990e6b33da2fe4fda8",
+      "current_sha256": "dacfbb91c610361cea38fd682536eec34a4f2cf67e4d92990e6b33da2fe4fda8",
+      "identical": true
+    },
+    {
+      "path": "packages/cli/src/scout-command.test.ts",
+      "prior_sha256": "b25c3688bfdb83c554607c3f31a3b364a38926e13497c8e3a564eaf5be80fb3a",
+      "current_sha256": "b25c3688bfdb83c554607c3f31a3b364a38926e13497c8e3a564eaf5be80fb3a",
+      "identical": true
+    },
+    {
+      "path": "packages/cli/src/remote-cancel-client.ts",
+      "prior_sha256": "a370e48ca062ba5c04a53e8549944286ef708fa0e9d78bb2b40dbd2215f53212",
+      "current_sha256": "0815157e3db5216862612c52b069ce32b32662a026af4a5c2b721535d9c59bbc",
+      "identical": false
+    },
+    {
+      "path": "packages/cli/src/remote-cancel.test.ts",
+      "prior_sha256": "96221ccfa4b07ac5e64777e53a98517ff29327e34b2a4eaf06493ac7f3807997",
+      "current_sha256": "2f6012d8cdf265c4d1984b35a85263e10c901c600f757b3a5139834548d8c7f1",
+      "identical": false
+    },
+    {
+      "path": "packages/cli/src/remote-cancel-exporter.ts",
+      "prior_sha256": "3a008c7400a7a7b5a203021bf4d792a065ea333c20045cc73fccd60ac799b0dd",
+      "current_sha256": "3a008c7400a7a7b5a203021bf4d792a065ea333c20045cc73fccd60ac799b0dd",
+      "identical": true
+    },
+    {
+      "path": "packages/cli/src/remote-cancel-protocol.ts",
+      "prior_sha256": "c60e9bba9412071f7410c739cc71c36ed4faa4917a650c46aff8cb39f3c53767",
+      "current_sha256": "c60e9bba9412071f7410c739cc71c36ed4faa4917a650c46aff8cb39f3c53767",
+      "identical": true
+    },
+    {
+      "path": "packages/cli/src/remote-cancel-main.test.ts",
+      "prior_sha256": "816e7e3f47bdac739de824dfadee69ea569ec44b2e72c210038a2d85af9eb2a6",
+      "current_sha256": "816e7e3f47bdac739de824dfadee69ea569ec44b2e72c210038a2d85af9eb2a6",
+      "identical": true
+    },
+    {
+      "path": "packages/protocol/src/delivery-contract.ts",
+      "prior_sha256": "b4ae1d5ef1a5d4497ccbc74a05559f03b35f2db69786e10748594af04ac94ed1",
+      "current_sha256": "b4ae1d5ef1a5d4497ccbc74a05559f03b35f2db69786e10748594af04ac94ed1",
+      "identical": true
+    },
+    {
+      "path": "packages/protocol/src/delivery-contract.test.ts",
+      "prior_sha256": "e4e30c7f62f8372ee28d587a9aa750bb3ee034d15afe693cd729098bcc75f54a",
+      "current_sha256": "e4e30c7f62f8372ee28d587a9aa750bb3ee034d15afe693cd729098bcc75f54a",
+      "identical": true
+    },
+    {
+      "path": "packages/core/src/delivery-contract.ts",
+      "prior_sha256": "fca14f4dc312e8021f0a3049c3ac8be4981569512fce42a122ec781d11984ce3",
+      "current_sha256": "fca14f4dc312e8021f0a3049c3ac8be4981569512fce42a122ec781d11984ce3",
+      "identical": true
+    },
+    {
+      "path": "packages/cli/src/deliver-command.ts",
+      "prior_sha256": "bfc9d583b6c9e35f9019a510df104401ebc79c3373e89097162d705cff0cf006",
+      "current_sha256": "bfc9d583b6c9e35f9019a510df104401ebc79c3373e89097162d705cff0cf006",
+      "identical": true
+    },
+    {
+      "path": "packages/cli/src/guarded-git-runtime.ts",
+      "prior_sha256": "489302b4becdb1d0297ad13639a1caa36dba8b7e59baf85cf87bc8ccdc2fd416",
+      "current_sha256": "489302b4becdb1d0297ad13639a1caa36dba8b7e59baf85cf87bc8ccdc2fd416",
+      "identical": true
+    },
+    {
+      "path": "packages/cli/src/guarded-git-runtime.test.ts",
+      "prior_sha256": "106fddbb2bf1a050e5163da6de9c7520330f682dd8d2b6e18929615d46538cbf",
+      "current_sha256": "106fddbb2bf1a050e5163da6de9c7520330f682dd8d2b6e18929615d46538cbf",
+      "identical": true
+    },
+    {
+      "path": "packages/cli/src/follow-up-delivery-issuer.ts",
+      "prior_sha256": "6df55acefaeb375fd0d86f9fac19ac9495924f935eb4b76bd42e3fab0c9ab0dc",
+      "current_sha256": "6df55acefaeb375fd0d86f9fac19ac9495924f935eb4b76bd42e3fab0c9ab0dc",
+      "identical": true
+    },
+    {
+      "path": "packages/cli/src/follow-up-delivery-host.ts",
+      "prior_sha256": "6e39e975b954189214daa42a1dd4b8014f9673f4dd34d395b2d8bcfe2c1361b8",
+      "current_sha256": "6e39e975b954189214daa42a1dd4b8014f9673f4dd34d395b2d8bcfe2c1361b8",
+      "identical": true
+    },
+    {
+      "path": "packages/cli/src/follow-up-github-transport.ts",
+      "prior_sha256": "39ffa2092c275000368f37847a928e9319e9f35b608022c7364fb7140c3ee122",
+      "current_sha256": "39ffa2092c275000368f37847a928e9319e9f35b608022c7364fb7140c3ee122",
+      "identical": true
+    },
+    {
+      "path": "packages/cli/src/execution-context-host.ts",
+      "prior_sha256": "149ac22d6d8190e5ca24208e431f74945881d7b8116f097df3985ed2835ef314",
+      "current_sha256": "149ac22d6d8190e5ca24208e431f74945881d7b8116f097df3985ed2835ef314",
+      "identical": true
+    },
+    {
+      "path": "packages/cli/src/bin.ts",
+      "prior_sha256": "ecf0a008234b8c364a540278da0cda9f695a4f3aaaf61f08287400cdb1c73027",
+      "current_sha256": "78398cb4e47b9a76ddb46dce4cb8224703a804bf1891a981df60bae1fcd489c2",
+      "identical": false
+    },
+    {
+      "path": "packages/autonomy/src/engine.ts",
+      "prior_sha256": "715dea47de8ca0b56705c8710a991a4f2589248d4a822ea8162293fa02fc85e8",
+      "current_sha256": "715dea47de8ca0b56705c8710a991a4f2589248d4a822ea8162293fa02fc85e8",
+      "identical": true
+    },
+    {
+      "path": "packages/autonomy/src/engine.test.ts",
+      "prior_sha256": "b1ec4c15564fc7e715351b93b78cfedc25fc0c47738aa41f289372eb9a60f657",
+      "current_sha256": "b1ec4c15564fc7e715351b93b78cfedc25fc0c47738aa41f289372eb9a60f657",
+      "identical": true
+    },
+    {
+      "path": "packages/cli/src/daemon.ts",
+      "prior_sha256": "5d8aabd241d033d78130ef5e147d08a77041f3e25a5b763e06a75eed29ab524d",
+      "current_sha256": "5d8aabd241d033d78130ef5e147d08a77041f3e25a5b763e06a75eed29ab524d",
+      "identical": true
+    },
+    {
+      "path": "packages/cli/src/follow-up-delivery-command.ts",
+      "prior_sha256": "9e436ed7517d63c906a03a6b9013dd2b35ae74148c798b5f91e0f6ed0d9739e9",
+      "current_sha256": "9e436ed7517d63c906a03a6b9013dd2b35ae74148c798b5f91e0f6ed0d9739e9",
+      "identical": true
+    },
+    {
+      "path": "packages/cli/src/policy-gate.ts",
+      "prior_sha256": "bc79e1f4480f5241acbc6bb22f25e163009fb9aa26cd85aaa631bf9eaa457786",
+      "current_sha256": "bc79e1f4480f5241acbc6bb22f25e163009fb9aa26cd85aaa631bf9eaa457786",
+      "identical": true
+    },
+    {
+      "path": "packages/core/src/policy/profile.ts",
+      "prior_sha256": "9114610891310ee3fb1d4ce967b76066da16224f7095bb9a45784fe84a68aa33",
+      "current_sha256": "9114610891310ee3fb1d4ce967b76066da16224f7095bb9a45784fe84a68aa33",
+      "identical": true
+    },
+    {
+      "path": "packages/cli/src/remote-home-protocol.ts",
+      "prior_sha256": "4fe5967e8c3e9d02d2ec2c72a7d9d3fc71162782add9f20026e1c2e55c54cb6c",
+      "current_sha256": "4fe5967e8c3e9d02d2ec2c72a7d9d3fc71162782add9f20026e1c2e55c54cb6c",
+      "identical": true
+    },
+    {
+      "path": "packages/core/src/state/follow-up-delivery-ddl.ts",
+      "prior_sha256": "6283fdd46e111d2fb4f7374ed44b93f03df88b384f39a4ce5016abe06ec6c900",
+      "current_sha256": "6283fdd46e111d2fb4f7374ed44b93f03df88b384f39a4ce5016abe06ec6c900",
+      "identical": true
+    },
+    {
+      "path": "packages/cli/src/execution-context.ts",
+      "prior_sha256": "aa5298f4ccef92779fd012ec6fed61adef96a805282a19ded76f6a0093afb7f6",
+      "current_sha256": "aa5298f4ccef92779fd012ec6fed61adef96a805282a19ded76f6a0093afb7f6",
+      "identical": true
+    },
+    {
+      "path": "packages/cli/src/deliver-cli.test.ts",
+      "prior_sha256": "21188ae4f03710c136f02495c23ea3f4f57e3db81fead4d74e741aad30f2a044",
+      "current_sha256": "591320d8746048632f26dc7f1281cdcbc8c6c625121adb44fe58ff5443f4e8c3",
+      "identical": false
+    },
+    {
+      "path": "docs/reports/2026-10-24-firstmate-capability-completion-ledger.md",
+      "prior_sha256": "a4ed28ea970031dfce990babc405201251aa1ebf136a97b1edc0c4f61cd100a7",
+      "current_sha256": "d041d55ac39fcf3d56b3f0f54dd56ba8ac0bf9b9692b488afd3cae6622430679",
+      "identical": false
+    }
+  ],
+  "prompt_sha256": "5fa369d971bad249fbdaa42fc005ac75a2e6de1bdbfc547e81fa384f37cb3146"
+}

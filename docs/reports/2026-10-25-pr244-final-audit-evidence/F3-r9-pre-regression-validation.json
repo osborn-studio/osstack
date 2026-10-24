@@ -1,0 +1,117 @@
+{
+  "before": {
+    "packages/loop/src/verifier.ts": "03a66860e36dd8bbc4bf21dcdc5e22ca2170d273881fba5c61c340a60878d2f8",
+    "packages/loop/src/verifier.test.ts": "fe484ffda2696245bcf85b9440a9d14c8bcb3cedce01a3c78be9db1a3dd61bbe",
+    "packages/loop/src/evaluation-spec.test.ts": "b43544825afe819a2dec2b47df37a29fa0ba96394170f1bb06b1f0f85011f859",
+    "packages/loop/src/reviewer-isolation.ts": "7fede405c975abf0e014939d6be46032d3a7afcf81201d3cf01fd91d027755e1",
+    "packages/loop/src/reviewer-isolation.test.ts": "3ced80689c1cdc7f0436826c2c2e41c1533e93033e0718b0bd0e0fa45f4ed5fc",
+    "packages/loop/src/loop-engine.ts": "84b4047a54afdaa5257a59373fdfad015a0f2d2feda2e9d43265be1b6f1f87ea",
+    "packages/loop/src/loop-engine.test.ts": "9e4747b43bdcb1ed36903da92ff8ec46b0ef02c6e0ff7cdb4b3028ee68a90d26",
+    "packages/loop/src/loop-containment.ts": "9b9e50dffb2051c0b20899285c3fe3583a3a4393f732eb7a487e525fb4e5a755",
+    "packages/loop/src/loop-containment.test.ts": "55cbd58785defe7de5724f435fdaaa95eb2e7689b2934f618abf70b2db3995aa",
+    "packages/loop/src/candidate-policy.ts": "36671abb76be65405ff30eec37187a92225cc9d6bd902c406370fdf07501153f",
+    "packages/loop/src/review-boundary.ts": "25a0dd541215a3f5ec9c7f45437dbd2a3e3d62b1937584e14c67b29b768e7953",
+    "packages/agents/src/worktree.ts": "e67c80cc564f449488ff8bd889c1639e679936cb300ba570b75d90a928938d92",
+    "packages/agents/src/worktree.test.ts": "e9ffbce9bd8d248d8b78ea98b747af033140b29b76fd878f79889c28b7dd9ca6"
+  },
+  "checks": [
+    {
+      "label": "build",
+      "command": [
+        "pnpm",
+        "--filter",
+        "@osstack/loop",
+        "build"
+      ],
+      "exitCode": 0,
+      "seconds": 2.379518985748291,
+      "log": "F3-r9-final-build.log",
+      "logSha256": "d50f975ecee497aae09d11b9d3d273d12aa0960656bb5a2c61ab3f8f6fe4e29a"
+    },
+    {
+      "label": "tests",
+      "command": [
+        "pnpm",
+        "--filter",
+        "@osstack/loop",
+        "exec",
+        "vitest",
+        "run",
+        "src/verifier.test.ts",
+        "src/reviewer-isolation.test.ts",
+        "src/evaluation-spec.test.ts",
+        "--maxWorkers=2",
+        "--testTimeout=20000"
+      ],
+      "exitCode": 0,
+      "seconds": 21.028680086135864,
+      "log": "F3-r9-final-tests.log",
+      "logSha256": "b54798a8b072c3bd12412a0e889eda3274e1bf99fb4ad222f27c96a5fcf1cda7"
+    },
+    {
+      "label": "production-hooks",
+      "command": [
+        "pnpm",
+        "--filter",
+        "@osstack/agents",
+        "exec",
+        "vitest",
+        "run",
+        "src/worktree.test.ts",
+        "--maxWorkers=2",
+        "--testTimeout=20000"
+      ],
+      "exitCode": 0,
+      "seconds": 6.166148900985718,
+      "log": "F3-r9-final-production-hooks.log",
+      "logSha256": "0593123e42f2e2952e8e75b0b7d52661a7673e3df96a9bd97712d7d662bf48de"
+    },
+    {
+      "label": "typecheck",
+      "command": [
+        "pnpm",
+        "--filter",
+        "@osstack/loop",
+        "typecheck"
+      ],
+      "exitCode": 0,
+      "seconds": 3.1674649715423584,
+      "log": "F3-r9-final-typecheck.log",
+      "logSha256": "99c93833b5b3859f5e2fb423076088013a9d4cc1da6afecba110ff2dc8b6685a"
+    },
+    {
+      "label": "lint",
+      "command": [
+        "pnpm",
+        "exec",
+        "biome",
+        "check",
+        "packages/loop/src/verifier.ts",
+        "packages/loop/src/verifier.test.ts",
+        "packages/loop/src/reviewer-isolation.ts",
+        "packages/loop/src/reviewer-isolation.test.ts"
+      ],
+      "exitCode": 0,
+      "seconds": 0.6101231575012207,
+      "log": "F3-r9-final-lint.log",
+      "logSha256": "772ce8567da35b3bf97b30b9ef3c73e3d92c05631f8a5ee71f0a1e1d94adf0dc"
+    }
+  ],
+  "after": {
+    "packages/loop/src/verifier.ts": "03a66860e36dd8bbc4bf21dcdc5e22ca2170d273881fba5c61c340a60878d2f8",
+    "packages/loop/src/verifier.test.ts": "99911bf5e67aa4e77c7dff2d4b12533dc09fdda72f30c0f595b4363b63e33d4e",
+    "packages/loop/src/evaluation-spec.test.ts": "b43544825afe819a2dec2b47df37a29fa0ba96394170f1bb06b1f0f85011f859",
+    "packages/loop/src/reviewer-isolation.ts": "7fede405c975abf0e014939d6be46032d3a7afcf81201d3cf01fd91d027755e1",
+    "packages/loop/src/reviewer-isolation.test.ts": "3ced80689c1cdc7f0436826c2c2e41c1533e93033e0718b0bd0e0fa45f4ed5fc",
+    "packages/loop/src/loop-engine.ts": "84b4047a54afdaa5257a59373fdfad015a0f2d2feda2e9d43265be1b6f1f87ea",
+    "packages/loop/src/loop-engine.test.ts": "9e4747b43bdcb1ed36903da92ff8ec46b0ef02c6e0ff7cdb4b3028ee68a90d26",
+    "packages/loop/src/loop-containment.ts": "9b9e50dffb2051c0b20899285c3fe3583a3a4393f732eb7a487e525fb4e5a755",
+    "packages/loop/src/loop-containment.test.ts": "55cbd58785defe7de5724f435fdaaa95eb2e7689b2934f618abf70b2db3995aa",
+    "packages/loop/src/candidate-policy.ts": "36671abb76be65405ff30eec37187a92225cc9d6bd902c406370fdf07501153f",
+    "packages/loop/src/review-boundary.ts": "25a0dd541215a3f5ec9c7f45437dbd2a3e3d62b1937584e14c67b29b768e7953",
+    "packages/agents/src/worktree.ts": "e67c80cc564f449488ff8bd889c1639e679936cb300ba570b75d90a928938d92",
+    "packages/agents/src/worktree.test.ts": "e9ffbce9bd8d248d8b78ea98b747af033140b29b76fd878f79889c28b7dd9ca6"
+  },
+  "stable": false,
+  "head": "fdddee855845e245cbca079da5958f473abc1e58"
+}
