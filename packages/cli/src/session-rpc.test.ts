@@ -824,3 +824,47 @@ it("cancels admission queued for either manual route without reserving a receipt
     expect(await rpc(method, params)).toMatchObject({ ok: true, result: { state: "applied" } });
   }
 });
+
+it("updates watched decisions from durable session changes without inbox refresh", async () => {
+  const id = "dirty-decision";
+  seedSession(id);
+  const repo = sessionRepo(id);
+  expect(await rpc("attention.watch", {task_id: `task_${id}`, repo_path: repo, default_tenant: true})).toMatchObject({ok: true});
+  expect(await rpc("session.send", {session_id:id,runtime_id:adapter.id,turn_id:`turn_${id}`,message_id:`msg_${id}`,expected_version:2,text:"structured-event"})).toMatchObject({ok:true});
+  await vi.waitFor(async () => {
+    expect(await rpc("dashboard.snapshot", {workspacePath:repo})).toMatchObject({ok:true,result:{attention:{scope_filter:"workspace",totals:{scopes:1,open_items:1}}}});
+  }, {timeout:2000});
+  for (const params of [{attentionLimit:0},{attentionLimit:101},{attentionLimit:"2"},{attentionAfter:"invalid"}]) {
+    expect(await rpc("dashboard.snapshot", params)).toMatchObject({ok:false,error:{code:"bad_request"}});
+  }
+  expect(await rpc("dashboard.snapshot", {workspacePath:repo,attentionLimit:1})).toMatchObject({ok:true,result:{attention:{returned:1}}});
+  const endpoint = (await rpc("dashboard.url")).result!["url"] as string;
+  const response = await fetch(`${endpoint.replace("/dashboard", "/api/dashboard")}?workspace=${encodeURIComponent(repo)}&attention_limit=1`);
+  expect(response.status).toBe(200);
+  expect(await response.json()).toMatchObject({attention:{workspace_path:realpathSync(repo),returned:1,totals:{scopes:1,open_items:1}}});
+
+  expect(await rpc("dashboard.snapshot", {workspacePath:home})).toMatchObject({ok:true,result:{attention:{scope_filter:"workspace",workspace_path:realpathSync(home)}}});
+});
+
+it("waits for supervision stop before closing the daemon database", async () => {
+  const { SupervisionService } = await import("./supervision-service.js");
+  const stop = SupervisionService.prototype.stop;
+  let release!: () => void;
+  let reached!: () => void;
+  const waiting = new Promise<void>(resolve => { reached = resolve; });
+  const gate = new Promise<void>(resolve => { release = resolve; });
+  let openDuringStop = false;
+  const spy = vi.spyOn(SupervisionService.prototype, "stop").mockImplementation(async function(this: InstanceType<typeof SupervisionService>) {
+    await stop.call(this);
+    reached();
+    await gate;
+    openDuringStop = this.store.db.open;
+  });
+  try {
+    const closing = handle.close();
+    await waiting;
+    release();
+    await closing;
+    expect(openDuringStop).toBe(true);
+  } finally { release(); spy.mockRestore(); }
+});

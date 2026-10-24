@@ -1,0 +1,16 @@
+{
+  "base": "42802bd2ab04bfcfcecab1205673b417744b5312",
+  "files": {
+    "docs/guides/attention-routing-evaluation.md": "cbd24da5dddd7ba9b95f058fedfd5125c8f2112e4f76521fc5aad1284a9b8aed",
+    "packages/cli/src/attention-planning-command.ts": "c63ecd1b21160ade62d571f77f08fe9834fab485f5565a7a83c622580e6bd933",
+    "packages/cli/src/attention-routing-evaluation.test.ts": "1d7f70ac63b050fa37ce5980fcb7418c1e9b35858d1c7594ac346791b6de9fba",
+    "packages/cli/src/attention-routing-evaluation.ts": "e846727d0fb61cd362e22ccc3187e135b77969ae088c7db356853ce1bb65f9bd",
+    "packages/supervisor/src/fixtures/routing-golden-v1.json": "6a13e28b94a292da582365a37ea2c2df7265fddc47a34612c09d93546a776961",
+    "packages/supervisor/src/index.ts": "fe61de40d8151caafe59c9873ad849d03444a76f2c77f27ac808d8b60eb13da5",
+    "packages/supervisor/src/routing-evaluation-missing.test.ts": "3608d1046de45af4592d6407f3307946ecd68cc702a3ae370d9b372ee9e4390d",
+    "packages/supervisor/src/routing-evaluation.test.ts": "520643391debad4315f5ae9f358dbafedd7e758463cc11f9612953d084c3a007",
+    "packages/supervisor/src/routing-evaluation.ts": "37cf04d8fba4b7d61555199ed8c3c52e75d47473c991c5a5a0368677a0dde6c5"
+  },
+  "commit": "49850e3c9415bbae7207960cfe170ff19e2ae416",
+  "worktree_clean": true
+}

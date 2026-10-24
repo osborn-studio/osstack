@@ -17,11 +17,17 @@ it("binds exact loop identity and never treats in-progress snapshots as live own
         pending: [],
         in_progress: [],
         decisions: [],
+        reason: "owner_released", admitted: 0, wait: {owner:"human"}, state_path:"/untrusted",
       })
     );
     expect(
       await readAttentionLoop({ repo: root, path, loop_id: "l" })
     ).toMatchObject({ process_liveness: "unknown", coverage: "snapshot_only" });
+    const facts = await readAttentionLoop({repo:root,path,loop_id:"l"});
+    expect(facts).not.toHaveProperty("reason");
+    expect(facts).not.toHaveProperty("admitted");
+    expect(facts).not.toHaveProperty("state_path");
+    expect(facts).toHaveProperty("wait", null);
     await expect(
       readAttentionLoop({ repo: root, path, loop_id: "other" })
     ).rejects.toThrow("identity");
@@ -55,5 +61,19 @@ it("rejects a snapshot replaced between path validation and open", async () => {
     await rm(path); await rename(original, path);
     race.swap = async () => { await rename(path, original); await writeFile(path, '{}'); };
     await expect(readAttentionLoop({ repo: root, path, loop_id: 'l' })).rejects.toThrow('loop_source_changed');
+  } finally { race.swap = undefined; await rm(root, { recursive: true, force: true }); }
+});
+
+it("honors abort before IO and after opening without reading a snapshot", async () => {
+  const root = await mkdtemp(join(tmpdir(), "loop-abort-"));
+  try {
+    const path = join(root, "state.json");
+    await writeFile(path, "{}");
+    const controller = new AbortController();
+    controller.abort(new Error("stopped"));
+    await expect(readAttentionLoop({ repo: root, path, loop_id: "l", signal: controller.signal })).rejects.toThrow("stopped");
+    const during = new AbortController();
+    race.swap = async () => { during.abort(new Error("stopped during open")); };
+    await expect(readAttentionLoop({ repo: root, path, loop_id: "l", signal: during.signal })).rejects.toThrow("stopped during open");
   } finally { race.swap = undefined; await rm(root, { recursive: true, force: true }); }
 });
