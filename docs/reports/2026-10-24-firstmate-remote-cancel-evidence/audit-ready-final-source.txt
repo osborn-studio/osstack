@@ -1,0 +1,1803 @@
+Read-only static independent audit of final remote Graph cancellation implementation. No tools/edits/execution. Previous attempt failed OAuth before inference; do not claim it reviewed anything. Find confirmed P0/P1 security/correctness errors, preserve unknown-on-crash/no-retry semantics, distinguish physical stop from stop_requested, and audit host-only signing, generation/revision binding, persistent exact receipts, revoked configuration, corrupt and bounded channels. No actual remote qualification performed. Root owns lazy central CLI wiring.
+
+--- packages/cli/src/remote-cancel-protocol.ts ---
+import { createHash, createPublicKey, verify } from "node:crypto";
+import { constants } from "node:fs";
+import { lstat, mkdir, open, opendir, realpath } from "node:fs/promises";
+import { dirname, join, isAbsolute, resolve } from "node:path";
+import { z } from "zod";
+import { GraphScope } from "@osstack/protocol";
+import { deliveryCanonical } from "@osstack/core";
+import { readPrivateDeliveryFile } from "./follow-up-delivery-host.js";
+const digest = z.string().regex(/^[a-f0-9]{64}$/),
+  id = z.string().uuid(),
+  ref = z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$/);
+export const RemoteCancelGrantBody = z
+  .object({
+    domain: z.literal("osstack.remote-graph-cancel.v1"),
+    grant_id: id,
+    request_id: id,
+    actor_id: ref,
+    home_id: z.string().regex(/^home_[a-f0-9]{32}$/),
+    daemon_generation: z.string().regex(/^instance_[a-f0-9]{32}$/),
+    server_registry_sha256: digest,
+    scope_alias: ref,
+    repo_path: z.string().min(1).max(4096),
+    graph_scope: GraphScope,
+    action: z.literal("graph.cancel"),
+    graph_run_id: ref,
+    graph_generation: z.number().int().safe().nonnegative(),
+    expected_revision: z.number().int().safe().nonnegative(),
+    nonce: digest,
+    issued_at_ms: z.number().int().safe().nonnegative(),
+    expires_at_ms: z.number().int().safe().nonnegative(),
+    max_calls: z.literal(1),
+  })
+  .strict()
+  .refine((v) => v.expires_at_ms > v.issued_at_ms && v.expires_at_ms - v.issued_at_ms <= 300000);
+export const SignedRemoteCancelGrant = z
+  .object({
+    body: RemoteCancelGrantBody,
+    key_id: ref,
+    signature: z.string().regex(/^[A-Za-z0-9+/]{85}[AQgw]==$/),
+  })
+  .strict();
+export type SignedRemoteCancelGrant = z.infer<typeof SignedRemoteCancelGrant>;
+export const RemoteCancelServerRegistry = z
+  .object({
+    version: z.literal(1),
+    home_id: z.string().regex(/^home_[a-f0-9]{32}$/),
+    daemon_protocol: z.number().int().positive(),
+    socket: z.string().max(4096),
+    journal_dir: z.string().max(4096),
+    scopes: z
+      .array(z.object({ alias: ref, repo_path: z.string().max(4096), graph_scope: GraphScope }).strict())
+      .min(1)
+      .max(16),
+    keys: z
+      .array(
+        z
+          .object({
+            key_id: ref,
+            public_key_pem: z.string().max(4096),
+            actor_id: ref,
+            scope_aliases: z.array(ref).min(1).max(16),
+            max_validity_ms: z.number().int().min(1000).max(300000),
+          })
+          .strict(),
+      )
+      .min(1)
+      .max(16),
+  })
+  .strict()
+  .refine(
+    (v) =>
+      new Set(v.scopes.map((s) => s.alias)).size === v.scopes.length &&
+      new Set(v.keys.map((k) => k.key_id)).size === v.keys.length,
+  );
+export type RemoteCancelServerRegistry = z.infer<typeof RemoteCancelServerRegistry>;
+export const RemoteCancelHello = z
+  .object({
+    type: z.literal("control_hello"),
+    protocol: z.literal(1),
+    nonce: digest,
+    home_id: z.string(),
+    registry_sha256: digest,
+  })
+  .strict();
+export const RemoteCancelHandshake = z
+  .object({
+    type: z.literal("control_grant"),
+    protocol: z.literal(1),
+    nonce: digest,
+    home_id: z.string(),
+    daemon_generation: z.string(),
+    registry_sha256: digest,
+    token: digest,
+    methods: z.tuple([z.literal("cancel"), z.literal("query")]),
+  })
+  .strict();
+export const RemoteCancelRequest = z
+  .object({ type: z.enum(["cancel", "query"]), token: digest, grant: SignedRemoteCancelGrant })
+  .strict();
+export const RemoteCancelReceipt = z
+  .object({
+    type: z.literal("control_receipt"),
+    protocol: z.literal(1),
+    nonce: digest,
+    home_id: z.string(),
+    request_id: id,
+    request_sha256: digest,
+    daemon_generation: z.string(),
+    graph_generation: z.number().int().safe().nonnegative(),
+    graph_run_id: ref,
+    outcome: z.enum(["not_found", "delivery_unknown", "stop_requested"]),
+    physical_stop: z.literal("not_attested"),
+    observed_revision: z.number().int().safe().nonnegative().nullable(),
+  })
+  .strict()
+  .refine((v) => (v.outcome === "stop_requested") === (v.observed_revision !== null));
+export type RemoteCancelReceipt = z.infer<typeof RemoteCancelReceipt>;
+export const remoteCancelDigest = (value: unknown) =>
+  createHash("sha256").update(deliveryCanonical(value)).digest("hex");
+export function verifyRemoteCancelGrant(
+  grant: SignedRemoteCancelGrant,
+  registry: RemoteCancelServerRegistry,
+  registryDigest: string,
+  forWrite: boolean,
+  now = Date.now(),
+): void {
+  const b = grant.body,
+    key = registry.keys.find((k) => k.key_id === grant.key_id),
+    scope = registry.scopes.find((s) => s.alias === b.scope_alias);
+  if (
+    !key ||
+    !scope ||
+    b.home_id !== registry.home_id ||
+    b.server_registry_sha256 !== registryDigest ||
+    b.actor_id !== key.actor_id ||
+    !key.scope_aliases.includes(b.scope_alias) ||
+    scope.repo_path !== b.repo_path ||
+    deliveryCanonical(scope.graph_scope) !== deliveryCanonical(b.graph_scope) ||
+    b.expires_at_ms - b.issued_at_ms > key.max_validity_ms ||
+    !key.public_key_pem.startsWith("-----BEGIN PUBLIC KEY-----")
+  )
+    throw Error("remote_cancel_authorization_refused");
+  const publicKey = createPublicKey(key.public_key_pem);
+  if (
+    publicKey.asymmetricKeyType !== "ed25519" ||
+    !verify(null, Buffer.from(deliveryCanonical(b)), publicKey, Buffer.from(grant.signature, "base64"))
+  )
+    throw Error("remote_cancel_authorization_refused");
+  // Exact historical receipt query remains possible after expiry; it never replays an effect.
+  if (forWrite && (!Number.isSafeInteger(now) || now < b.issued_at_ms || now >= b.expires_at_ms))
+    throw Error("remote_cancel_grant_expired");
+}
+export async function assertRemoteJournal(path: string): Promise<void> {
+  if (!isAbsolute(path) || resolve(path) !== path || (await realpath(path)) !== path)
+    throw Error("remote_cancel_journal_unavailable");
+  const info = await lstat(path);
+  if (!info.isDirectory() || info.uid !== process.getuid?.() || (info.mode & 0o077) !== 0)
+    throw Error("remote_cancel_journal_unavailable");
+  for (let p = dirname(path); ; p = dirname(p)) {
+    const st = await lstat(p);
+    if (
+      !st.isDirectory() ||
+      st.isSymbolicLink() ||
+      (st.uid !== 0 && st.uid !== process.getuid?.()) ||
+      ((st.mode & 0o022) !== 0 && !(st.uid === 0 && (st.mode & 0o1000) !== 0))
+    )
+      throw Error("remote_cancel_journal_unavailable");
+    if (dirname(p) === p) break;
+  }
+}
+export async function initializeRemoteJournal(home: string): Promise<string> {
+  const dir = join(home, "remote-actions");
+  await mkdir(dir, { mode: 0o700 }).catch((e) => {
+    if ((e as NodeJS.ErrnoException).code !== "EEXIST") throw e;
+  });
+  await assertRemoteJournal(dir);
+  return dir;
+}
+/** Create-only, file + directory fsync; a partial/crashed record is never overwritten or rearmed. */
+export async function writeRemoteJournal(path: string, value: unknown): Promise<boolean> {
+  await assertRemoteJournal(dirname(path));
+  const entries = await opendir(dirname(path));
+  let count = 0;
+  try {
+    for await (const _ of entries) {
+      if (++count > 2048) throw Error("remote_cancel_journal_full");
+    }
+  } finally {
+    await entries.close().catch(() => {});
+  }
+  const bytes = Buffer.from(JSON.stringify(value));
+  if (bytes.length > 32768) throw Error("remote_cancel_journal_too_large");
+  let file: Awaited<ReturnType<typeof open>>;
+  try {
+    file = await open(
+      path,
+      constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | constants.O_NOFOLLOW,
+      0o600,
+    );
+  } catch (e) {
+    if ((e as NodeJS.ErrnoException).code === "EEXIST") return false;
+    throw e;
+  }
+  try {
+    await file.writeFile(bytes);
+    await file.sync();
+  } finally {
+    await file.close();
+  }
+  const directory = await open(dirname(path), constants.O_RDONLY);
+  try {
+    await directory.sync();
+  } finally {
+    await directory.close();
+  }
+  return true;
+}
+export async function readRemoteJournal(path: string): Promise<unknown | null> {
+  try {
+    return JSON.parse(
+      new TextDecoder("utf-8", { fatal: true }).decode(await readPrivateDeliveryFile(path, 32768)),
+    );
+  } catch (e) {
+    if ((e as NodeJS.ErrnoException).code === "ENOENT") return null;
+    throw Error("remote_cancel_journal_unavailable");
+  }
+}
+
+--- packages/cli/src/remote-cancel-exporter.ts ---
+import { randomBytes } from "node:crypto";
+import { lstat, realpath } from "node:fs/promises";
+import { connect } from "node:net";
+import { join, relative, isAbsolute, sep } from "node:path";
+import type { Readable, Writable } from "node:stream";
+import { z } from "zod";
+import { GraphDelegationStatus } from "@osstack/protocol";
+import { deliveryCanonical } from "@osstack/core";
+import { DeploymentIdentitySchema } from "./home-inventory.js";
+import { readPrivateDeliveryFile } from "./follow-up-delivery-host.js";
+import { RemoteChannel, remoteHash } from "./remote-home-protocol.js";
+import {
+  RemoteCancelServerRegistry,
+  RemoteCancelHello,
+  RemoteCancelRequest,
+  RemoteCancelReceipt,
+  verifyRemoteCancelGrant,
+  remoteCancelDigest,
+  assertRemoteJournal,
+  writeRemoteJournal,
+  readRemoteJournal,
+} from "./remote-cancel-protocol.js";
+
+async function registry(path: string, digest: string): Promise<RemoteCancelServerRegistry> {
+  if (!/^[a-f0-9]{64}$/.test(digest)) throw Error("remote_cancel_registry_invalid");
+  const raw = await readPrivateDeliveryFile(path, 32768);
+  if (remoteHash(raw) !== digest) throw Error("remote_cancel_registry_changed");
+  const value = RemoteCancelServerRegistry.parse(JSON.parse(raw.toString("utf8")));
+  await assertRemoteJournal(value.journal_dir);
+  for (const scope of value.scopes) {
+    for (const protectedPath of [path, value.journal_dir, value.socket]) {
+      const rel = relative(scope.repo_path, protectedPath);
+      if (rel === "" || (!isAbsolute(rel) && rel !== ".." && !rel.startsWith(`..${sep}`)))
+        throw Error("remote_cancel_registry_in_repository");
+    }
+    if (
+      (await realpath(scope.repo_path)) !== scope.repo_path ||
+      (await lstat(scope.repo_path)).isDirectory() !== true
+    )
+      throw Error("remote_cancel_scope_unavailable");
+  }
+  return value;
+}
+/** One connected existing daemon: all identity/status/cancel frames stay bound to that same process. */
+async function graphConnection(socketPath: string) {
+  if ((await realpath(socketPath)) !== socketPath) throw Error("remote_cancel_endpoint_invalid");
+  const before = await lstat(socketPath);
+  if (!before.isSocket() || before.uid !== process.getuid?.() || (before.mode & 0o077) !== 0)
+    throw Error("remote_cancel_endpoint_invalid");
+  const socket = connect(socketPath),
+    channel = new RemoteChannel(socket, socket, 65536 + 1024, 8);
+  let id = 0;
+  return {
+    async call(
+      method: "deployment.identity" | "graph.status" | "graph.cancel",
+      params?: unknown,
+    ): Promise<unknown> {
+      const requestId = ++id;
+      await channel.send({ id: requestId, method, ...(params === undefined ? {} : { params }) });
+      const raw = await channel.receive();
+      const current = await lstat(socketPath);
+      if (current.ino !== before.ino || current.dev !== before.dev)
+        throw Error("remote_cancel_endpoint_changed");
+      return z
+        .object({ id: z.literal(requestId), ok: z.literal(true), result: z.unknown() })
+        .strict()
+        .parse(raw).result;
+    },
+    close() {
+      channel.close();
+      socket.destroy();
+    },
+  };
+}
+export async function handleRemoteControlExportCommand(
+  args: string[],
+  deps: { input?: Readable; output?: Writable; env?: NodeJS.ProcessEnv } = {},
+): Promise<number> {
+  if (args.length === 1 && args[0] === "--help") {
+    (deps.output ?? process.stdout).write(
+      "remote-control --stdio\nDedicated signed Graph cancellation/receipt exporter. Requires host-private OSSTACK_REMOTE_CONTROL_REGISTRY and SHA256 configuration. No generic RPC or automatic daemon startup.\n",
+    );
+    return 0;
+  }
+  if (args.length !== 1 || args[0] !== "--stdio") return 1;
+  const env = deps.env ?? process.env,
+    input = deps.input ?? process.stdin,
+    output = deps.output ?? process.stdout;
+  const path = env["OSSTACK_REMOTE_CONTROL_REGISTRY"] ?? "",
+    pin = env["OSSTACK_REMOTE_CONTROL_SHA256"] ?? "";
+  let rpc: Awaited<ReturnType<typeof graphConnection>> | undefined;
+  let channel: RemoteChannel | undefined;
+  let expired = false;
+  const timer = setTimeout(() => {
+    expired = true;
+    rpc?.close();
+    channel?.close();
+    input.pause();
+  }, 10000);
+  const active = () => {
+    if (expired) throw Error("remote_cancel_timeout");
+  };
+  try {
+    const config = await registry(path, pin);
+    channel = new RemoteChannel(input, output);
+    const hello = RemoteCancelHello.parse(await channel.receive());
+    if (hello.home_id !== config.home_id || hello.registry_sha256 !== pin)
+      throw Error("remote_cancel_identity_mismatch");
+    const token = randomBytes(32).toString("hex");
+    await channel.send({
+      type: "control_grant",
+      protocol: 1,
+      nonce: hello.nonce,
+      home_id: config.home_id,
+      daemon_generation: "unobserved",
+      registry_sha256: pin,
+      token,
+      methods: ["cancel", "query"],
+    });
+    const request = RemoteCancelRequest.parse(await channel.receive());
+    if (request.token !== token) throw Error("remote_cancel_token_invalid");
+    const grant = request.grant,
+      b = grant.body,
+      hash = remoteCancelDigest(grant);
+    verifyRemoteCancelGrant(grant, config, pin, false);
+    const startedPath = join(config.journal_dir, `${b.request_id}.started.json`),
+      resultPath = join(config.journal_dir, `${b.request_id}.result.json`);
+    const base = {
+      type: "control_receipt" as const,
+      protocol: 1 as const,
+      nonce: hello.nonce,
+      home_id: config.home_id,
+      request_id: b.request_id,
+      request_sha256: hash,
+      daemon_generation: b.daemon_generation,
+      graph_generation: b.graph_generation,
+      graph_run_id: b.graph_run_id,
+      physical_stop: "not_attested" as const,
+      observed_revision: null,
+    };
+    const existing = await readRemoteJournal(startedPath);
+    if (existing && deliveryCanonical(existing) !== deliveryCanonical({ request_sha256: hash, grant }))
+      throw Error("remote_cancel_idempotency_conflict");
+    const prior = await readRemoteJournal(resultPath);
+    if (prior) {
+      const receipt = RemoteCancelReceipt.parse(prior);
+      if (
+        !existing ||
+        receipt.request_sha256 !== hash ||
+        receipt.home_id !== b.home_id ||
+        receipt.request_id !== b.request_id ||
+        receipt.daemon_generation !== b.daemon_generation ||
+        receipt.graph_generation !== b.graph_generation ||
+        receipt.graph_run_id !== b.graph_run_id ||
+        (receipt.outcome === "stop_requested" &&
+          (receipt.observed_revision === null || receipt.observed_revision <= b.expected_revision))
+      )
+        throw Error("remote_cancel_receipt_invalid");
+      await channel.send({ ...receipt, nonce: hello.nonce });
+      return 0;
+    }
+    if (request.type === "query" || existing) {
+      await channel.send({ ...base, outcome: existing ? "delivery_unknown" : "not_found" });
+      return 0;
+    }
+    verifyRemoteCancelGrant(grant, config, pin, true);
+    active();
+    rpc = await graphConnection(config.socket);
+    active();
+    const identity = DeploymentIdentitySchema.parse(await rpc.call("deployment.identity"));
+    if (
+      identity.home_id !== b.home_id ||
+      identity.generation !== b.daemon_generation ||
+      identity.protocol_version !== config.daemon_protocol
+    )
+      throw Error("remote_cancel_identity_mismatch");
+    const status = GraphDelegationStatus.parse(
+      await rpc.call("graph.status", { schemaVersion: 1, scope: b.graph_scope, graphRunId: b.graph_run_id }),
+    );
+    if (
+      status.graphRunId !== b.graph_run_id ||
+      deliveryCanonical(status.scope) !== deliveryCanonical(b.graph_scope) ||
+      status.generation !== b.graph_generation ||
+      status.revision !== b.expected_revision
+    )
+      throw Error("remote_cancel_generation_mismatch");
+    // Registry revocation and grant time are rechecked immediately before durable reserve.
+    await registry(path, pin);
+    verifyRemoteCancelGrant(grant, config, pin, true);
+    active();
+    if (!(await writeRemoteJournal(startedPath, { request_sha256: hash, grant }))) {
+      const other = await readRemoteJournal(startedPath);
+      if (deliveryCanonical(other) !== deliveryCanonical({ request_sha256: hash, grant }))
+        throw Error("remote_cancel_idempotency_conflict");
+      await channel.send({ ...base, outcome: "delivery_unknown" });
+      return 0;
+    }
+    let receipt: RemoteCancelReceipt = { ...base, outcome: "delivery_unknown" };
+    try {
+      await registry(path, pin);
+      verifyRemoteCancelGrant(grant, config, pin, true);
+      active();
+      const result = GraphDelegationStatus.parse(
+        await rpc.call("graph.cancel", {
+          schemaVersion: 1,
+          kind: "cancel",
+          scope: b.graph_scope,
+          graphRunId: b.graph_run_id,
+          expectedRevision: b.expected_revision,
+          idempotencyKey: `remote-cancel:${b.request_id}`,
+        }),
+      );
+      if (
+        result.graphRunId !== b.graph_run_id ||
+        deliveryCanonical(result.scope) !== deliveryCanonical(b.graph_scope) ||
+        result.generation !== b.graph_generation ||
+        result.revision <= b.expected_revision ||
+        !["cancel_pending", "cancelled"].includes(result.status)
+      )
+        throw Error("remote_cancel_receipt_invalid");
+      receipt = { ...base, outcome: "stop_requested", observed_revision: result.revision };
+    } catch {
+      /* The durable reserve never re-arms, including a crash or lost daemon response. */
+    }
+    await writeRemoteJournal(resultPath, receipt);
+    await channel.send(receipt);
+    return 0;
+  } catch {
+    return 1;
+  } finally {
+    clearTimeout(timer);
+    rpc?.close();
+    channel?.close();
+    input.pause();
+  }
+}
+
+--- packages/cli/src/remote-cancel-client.ts ---
+import { randomBytes } from "node:crypto";
+import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
+import { rm, writeFile } from "node:fs/promises";
+import { join } from "node:path";
+import { deliveryCanonical } from "@osstack/core";
+import {
+  RemoteChannel,
+  type RemoteHomeEntry,
+  RemoteClientRegistry,
+  assertPrivateRemoteFile,
+  readPinnedRemoteRegistry,
+} from "./remote-home-protocol.js";
+import { buildRemoteSshArgs } from "./remote-home-reader.js";
+import { readPrivateDeliveryFile } from "./follow-up-delivery-host.js";
+import {
+  SignedRemoteCancelGrant,
+  RemoteCancelHandshake,
+  RemoteCancelReceipt,
+  remoteCancelDigest,
+  initializeRemoteJournal,
+  writeRemoteJournal,
+  readRemoteJournal,
+} from "./remote-cancel-protocol.js";
+export function buildRemoteControlSshArgs(entry: RemoteHomeEntry, known: string): string[] {
+  const args = buildRemoteSshArgs(entry, known);
+  args[args.length - 1] = "osstack remote-control --stdio";
+  return args;
+}
+export interface RemoteCancelClientDependencies {
+  home: string;
+  spawn?: typeof spawn;
+  timeoutMs?: number;
+  stdout?: (text: string) => void;
+  stderr?: (text: string) => void;
+}
+export const REMOTE_CANCEL_HELP = `remote-home cancel|query --registry FILE --sha256 HASH --alias NAME --grant FILE\nSigned exact Graph cancellation only. Local durable attempt precedes transport; repeat cancel becomes query, never resend.\nRemote stop_requested is not physical stopped proof. Missing/offline receipts remain unknown.\n`;
+export async function handleRemoteCancelCommand(
+  args: string[],
+  deps: RemoteCancelClientDependencies,
+): Promise<number> {
+  const out =
+      deps.stdout ??
+      ((text) => {
+        process.stdout.write(text);
+      }),
+    err =
+      deps.stderr ??
+      ((text) => {
+        process.stderr.write(text);
+      });
+  if (
+    (args.length === 1 && args[0] === "--help") ||
+    (args.length === 2 && ["cancel", "query"].includes(args[0]!) && args[1] === "--help")
+  ) {
+    out(REMOTE_CANCEL_HELP);
+    return 0;
+  }
+  let child: ChildProcessWithoutNullStreams | undefined,
+    channel: RemoteChannel | undefined,
+    dir: string | undefined,
+    timer: NodeJS.Timeout | undefined;
+  let unknown: Record<string, unknown> | undefined;
+  try {
+    if (
+      !["cancel", "query"].includes(args[0]!) ||
+      args.length !== 9 ||
+      args.some((a) => Buffer.byteLength(a) > 4096)
+    )
+      throw Error();
+    const flags = new Map<string, string>();
+    for (let i = 1; i < args.length; i += 2) {
+      const key = args[i]!,
+        value = args[i + 1];
+      if (!["--registry", "--sha256", "--alias", "--grant"].includes(key) || flags.has(key) || !value)
+        throw Error();
+      flags.set(key, value);
+    }
+    const registry = RemoteClientRegistry.parse(
+      await readPinnedRemoteRegistry(flags.get("--registry") ?? "", flags.get("--sha256") ?? ""),
+    );
+    const entry = registry.homes.find((e) => e.alias === flags.get("--alias"));
+    if (!entry) throw Error();
+    const grant = SignedRemoteCancelGrant.parse(
+        JSON.parse((await readPrivateDeliveryFile(flags.get("--grant") ?? "", 32768)).toString("utf8")),
+      ),
+      b = grant.body,
+      digest = remoteCancelDigest(grant);
+    if (
+      b.home_id !== entry.home_id ||
+      b.server_registry_sha256 !== entry.registry_sha256 ||
+      b.scope_alias !== entry.scope
+    )
+      throw Error();
+    const journal = await initializeRemoteJournal(deps.home),
+      recordPath = join(journal, `${b.request_id}.local.json`);
+    const record = {
+      alias: entry.alias,
+      endpoint_sha256: remoteCancelDigest(entry),
+      request_sha256: digest,
+      grant,
+    };
+    const previous = await readRemoteJournal(recordPath);
+    if (previous && deliveryCanonical(previous) !== deliveryCanonical(record)) throw Error();
+    let action = args[0] as "cancel" | "query";
+    if (action === "cancel") {
+      if (previous) action = "query";
+      else if (!(await writeRemoteJournal(recordPath, record))) {
+        if (deliveryCanonical(await readRemoteJournal(recordPath)) !== deliveryCanonical(record))
+          throw Error();
+        action = "query";
+      }
+    }
+    unknown = {
+      schema_version: 1,
+      mode: "remote_graph_cancel",
+      alias: entry.alias,
+      request_id: b.request_id,
+      request_sha256: digest,
+      outcome: "delivery_unknown",
+      physical_stop: "not_attested",
+      qualification: "remote_host_pending",
+    };
+    await assertPrivateRemoteFile(entry.identity_file);
+    const { createScratchDir } = await import("@osstack/core");
+    dir = await createScratchDir("runtime", "remote-cancel");
+    const known = join(dir, "known_hosts");
+    await writeFile(
+      known,
+      `${entry.port === 22 ? entry.host : `[${entry.host}]:${entry.port}`} ${entry.host_key}\n`,
+      { mode: 0o600, flag: "wx" },
+    );
+    child = (deps.spawn ?? spawn)("/usr/bin/ssh", buildRemoteControlSshArgs(entry, known), {
+      stdio: ["pipe", "pipe", "pipe"],
+      shell: false,
+      env: { PATH: "/usr/bin:/bin", LANG: "C", LC_ALL: "C" },
+    }) as ChildProcessWithoutNullStreams;
+    channel = new RemoteChannel(child.stdout, child.stdin);
+    let stderrBytes = 0;
+    child.stderr.on("error", () => {
+      child?.stdin.destroy();
+      child?.stdout.destroy();
+    });
+    child.stderr.on("data", (chunk: Buffer) => {
+      stderrBytes += chunk.length;
+      if (stderrBytes > 8192) child?.kill("SIGKILL");
+    });
+    child.on("error", () => {
+      child?.stdin.destroy();
+      child?.stdout.destroy();
+    });
+    const active = channel,
+      nonce = randomBytes(32).toString("hex"),
+      timeout = Math.max(1, Math.min(10000, deps.timeoutMs ?? 10000));
+    const exchange = async () => {
+      await active.send({
+        type: "control_hello",
+        protocol: 1,
+        nonce,
+        home_id: entry.home_id,
+        registry_sha256: entry.registry_sha256,
+      });
+      const handshake = RemoteCancelHandshake.parse(await active.receive(timeout));
+      if (
+        handshake.nonce !== nonce ||
+        handshake.home_id !== entry.home_id ||
+        handshake.registry_sha256 !== entry.registry_sha256
+      )
+        throw Error();
+      await active.send({ type: action, token: handshake.token, grant });
+      const receipt = RemoteCancelReceipt.parse(await active.receive(timeout));
+      if (
+        receipt.nonce !== nonce ||
+        receipt.home_id !== b.home_id ||
+        receipt.request_id !== b.request_id ||
+        receipt.request_sha256 !== digest ||
+        receipt.daemon_generation !== b.daemon_generation ||
+        receipt.graph_generation !== b.graph_generation ||
+        receipt.graph_run_id !== b.graph_run_id ||
+        (receipt.outcome === "stop_requested" &&
+          (receipt.observed_revision === null || receipt.observed_revision <= b.expected_revision))
+      )
+        throw Error();
+      await writeRemoteJournal(
+        join(journal, `${b.request_id}.observed-${remoteCancelDigest({ ...receipt, nonce: "" })}.json`),
+        receipt,
+      );
+      return receipt;
+    };
+    const receipt = await Promise.race([
+      exchange(),
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(() => reject(Error("remote_cancel_timeout")), timeout);
+      }),
+    ]);
+    out(`${JSON.stringify({ ...unknown, outcome: receipt.outcome, receipt })}\n`);
+    return receipt.outcome === "stop_requested" ? 0 : 1;
+  } catch {
+    if (unknown) out(`${JSON.stringify(unknown)}\n`);
+    else err("invalid_remote_cancel_request\n");
+    return 1;
+  } finally {
+    if (timer) clearTimeout(timer);
+    channel?.close();
+    if (child) {
+      child.stdin.destroy();
+      child.stdout.destroy();
+      child.stderr.destroy();
+      if (child.exitCode === null) child.kill("SIGKILL");
+    }
+    if (dir) await rm(dir, { recursive: true, force: true }).catch(() => {});
+  }
+}
+
+--- packages/cli/src/remote-cancel-issuer.ts ---
+import { createPrivateKey, createPublicKey, randomBytes, randomUUID, sign } from "node:crypto";
+import { join, dirname, isAbsolute, relative, sep } from "node:path";
+import { createInterface } from "node:readline/promises";
+import { z } from "zod";
+import { GraphScope } from "@osstack/protocol";
+import { deliveryCanonical } from "@osstack/core";
+import { readPrivateDeliveryFile } from "./follow-up-delivery-host.js";
+import {
+  RemoteCancelGrantBody,
+  SignedRemoteCancelGrant,
+  remoteCancelDigest,
+  writeRemoteJournal,
+  assertRemoteJournal,
+} from "./remote-cancel-protocol.js";
+const ref = z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$/);
+export const RemoteCancelIssuerConfig = z
+  .object({
+    version: z.literal(1),
+    enabled: z.literal(true),
+    actor_id: ref,
+    key_id: ref,
+    public_key_pem: z.string().max(4096),
+    max_validity_ms: z.number().int().min(1000).max(300000),
+    targets: z
+      .array(
+        z
+          .object({
+            name: ref,
+            home_id: z.string().regex(/^home_[a-f0-9]{32}$/),
+            server_registry_sha256: z.string().regex(/^[a-f0-9]{64}$/),
+            scope_alias: ref,
+            repo_path: z.string().min(1).max(4096),
+            graph_scope: GraphScope,
+          })
+          .strict(),
+      )
+      .min(1)
+      .max(16),
+  })
+  .strict()
+  .refine((v) => new Set(v.targets.map((t) => t.name)).size === v.targets.length);
+export interface RemoteCancelIssuerDependencies {
+  home: string;
+  confirm?: (preview: string, phrase: string) => Promise<boolean>;
+  stdout?: (text: string) => void;
+  stderr?: (text: string) => void;
+}
+async function terminalConfirm(preview: string, phrase: string): Promise<boolean> {
+  if (!process.stdin.isTTY || !process.stderr.isTTY) throw Error("remote_cancel_terminal_required");
+  process.stderr.write(preview);
+  const rl = createInterface({ input: process.stdin, output: process.stderr, terminal: true });
+  try {
+    return (
+      (await rl.question(`Type exactly ${phrase}\n> `, { signal: AbortSignal.timeout(60000) })) === phrase
+    );
+  } finally {
+    rl.close();
+  }
+}
+export const REMOTE_CANCEL_ISSUER_HELP = `remote-home issue-cancel-grant --target NAME --daemon-generation INSTANCE --graph-run ID --graph-generation N --revision N --output FILE
+Requires host-private remote-cancel-issuer.json, issuer-KEY.pem, local interactive TTY and exact preview digest approval.
+Creates only one bounded generation/revision-specific cancellation grant. Does not connect or cancel. No --yes or RPC signer.
+`;
+export async function handleRemoteCancelIssuerCommand(
+  args: string[],
+  deps: RemoteCancelIssuerDependencies,
+): Promise<number> {
+  const out =
+      deps.stdout ??
+      ((s) => {
+        process.stdout.write(s);
+      }),
+    err =
+      deps.stderr ??
+      ((s) => {
+        process.stderr.write(s);
+      });
+  if (
+    (args.length === 1 && args[0] === "--help") ||
+    (args.length === 2 && args[0] === "issue-cancel-grant" && args[1] === "--help")
+  ) {
+    out(REMOTE_CANCEL_ISSUER_HELP);
+    return 0;
+  }
+  try {
+    if (
+      args[0] !== "issue-cancel-grant" ||
+      args.length !== 13 ||
+      args.some((a) => Buffer.byteLength(a) > 4096)
+    )
+      throw Error();
+    const flags = new Map<string, string>();
+    for (let i = 1; i < args.length; i += 2) {
+      const k = args[i]!,
+        v = args[i + 1];
+      if (
+        ![
+          "--target",
+          "--daemon-generation",
+          "--graph-run",
+          "--graph-generation",
+          "--revision",
+          "--output",
+        ].includes(k) ||
+        !v ||
+        flags.has(k)
+      )
+        throw Error();
+      flags.set(k, v);
+    }
+    const configPath = join(deps.home, "remote-cancel-issuer.json"),
+      raw = await readPrivateDeliveryFile(configPath, 32768),
+      config = RemoteCancelIssuerConfig.parse(JSON.parse(raw.toString("utf8")));
+    const target = config.targets.find((t) => t.name === flags.get("--target")),
+      output = flags.get("--output");
+    if (!target || !output || !isAbsolute(output)) throw Error();
+    const rel = relative(target.repo_path, configPath);
+    if (rel === "" || (!isAbsolute(rel) && rel !== ".." && !rel.startsWith(`..${sep}`)))
+      throw Error("remote_cancel_issuer_in_repository");
+    await assertRemoteJournal(dirname(output));
+    const numeric = (key: string) => {
+      const v = flags.get(key) ?? "";
+      if (!/^(0|[1-9][0-9]*)$/.test(v)) throw Error();
+      return Number(v);
+    };
+    const issued = Date.now();
+    const body = RemoteCancelGrantBody.parse({
+      domain: "osstack.remote-graph-cancel.v1",
+      grant_id: randomUUID(),
+      request_id: randomUUID(),
+      actor_id: config.actor_id,
+      home_id: target.home_id,
+      daemon_generation: flags.get("--daemon-generation"),
+      server_registry_sha256: target.server_registry_sha256,
+      scope_alias: target.scope_alias,
+      repo_path: target.repo_path,
+      graph_scope: target.graph_scope,
+      action: "graph.cancel",
+      graph_run_id: flags.get("--graph-run"),
+      graph_generation: numeric("--graph-generation"),
+      expected_revision: numeric("--revision"),
+      nonce: randomBytes(32).toString("hex"),
+      issued_at_ms: issued,
+      expires_at_ms: issued + config.max_validity_ms,
+      max_calls: 1,
+    });
+    const preview = {
+        action: "remote Graph cancellation",
+        target: target.name,
+        key_id: config.key_id,
+        grant: body,
+        physical_stop: "not_attested",
+        retry: "never; query same request after uncertainty",
+      },
+      digest = remoteCancelDigest(preview);
+    if (
+      !(await (deps.confirm ?? terminalConfirm)(`${JSON.stringify(preview, null, 2)}\n`, `APPROVE ${digest}`))
+    )
+      throw Error();
+    if (
+      !raw.equals(await readPrivateDeliveryFile(configPath, 32768)) ||
+      Date.now() >= body.expires_at_ms ||
+      Date.now() < body.issued_at_ms
+    )
+      throw Error();
+    const key = createPrivateKey(
+      await readPrivateDeliveryFile(join(deps.home, `issuer-${config.key_id}.pem`), 4096),
+    );
+    if (!config.public_key_pem.startsWith("-----BEGIN PUBLIC KEY-----")) throw Error();
+    const expected = createPublicKey(config.public_key_pem);
+    if (
+      key.asymmetricKeyType !== "ed25519" ||
+      expected.asymmetricKeyType !== "ed25519" ||
+      !createPublicKey(key)
+        .export({ format: "der", type: "spki" })
+        .equals(expected.export({ format: "der", type: "spki" }))
+    )
+      throw Error();
+    if (!raw.equals(await readPrivateDeliveryFile(configPath, 32768))) throw Error();
+    const grant = SignedRemoteCancelGrant.parse({
+      body,
+      key_id: config.key_id,
+      signature: sign(null, Buffer.from(deliveryCanonical(body)), key).toString("base64"),
+    });
+    if (!(await writeRemoteJournal(output, grant))) throw Error();
+    out(
+      `${JSON.stringify({ schema_version: 1, status: "grant_created", request_id: body.request_id, preview_sha256: digest, output })}\n`,
+    );
+    return 0;
+  } catch {
+    err("remote_cancel_issuer_refused\n");
+    return 1;
+  }
+}
+
+--- packages/cli/src/remote-cancel.test.ts ---
+import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
+import { generateKeyPairSync, randomUUID, sign } from "node:crypto";
+import { chmod, mkdir, readFile, realpath, rm, symlink, writeFile } from "node:fs/promises";
+import { join, resolve } from "node:path";
+import { PassThrough } from "node:stream";
+import { createServer, type Socket } from "node:net";
+import { build } from "esbuild";
+import { createScratchDir, deliveryCanonical } from "@osstack/core";
+import { afterAll, afterEach, beforeAll, expect, it, vi } from "vitest";
+import { RemoteChannel, remoteHash } from "./remote-home-protocol.js";
+import { handleRemoteCancelCommand, buildRemoteControlSshArgs } from "./remote-cancel-client.js";
+import { handleRemoteCancelIssuerCommand } from "./remote-cancel-issuer.js";
+import { handleRemoteControlExportCommand } from "./remote-cancel-exporter.js";
+import { graphRpcFixture } from "./graph-test-fixture.js";
+import {
+  SignedRemoteCancelGrant,
+  remoteCancelDigest,
+  writeRemoteJournal,
+  readRemoteJournal,
+} from "./remote-cancel-protocol.js";
+const homeId = `home_${"a".repeat(32)}`,
+  generation = `instance_${"b".repeat(32)}`;
+const scope = {
+  schemaVersion: 1 as const,
+  tenantId: "local",
+  principalId: "owner",
+  workspaceId: "workspace",
+};
+const identity = {
+  schema_version: 1,
+  home_id: homeId,
+  generation,
+  version: "0.21.0",
+  protocol_version: 1,
+  database_schema: 45,
+  started_at_ms: 1,
+  deployment_kind: "unknown",
+  build_digest: null,
+  build_evidence: "unavailable",
+};
+const status = {
+  schemaVersion: 1,
+  scope,
+  graphRunId: "run-one",
+  source: { product: "osstack", requestId: "request" },
+  status: "running",
+  revision: 4,
+  generation: 2,
+  inputDigest: "a".repeat(64),
+  specHash: "b".repeat(64),
+  createdAt: 1,
+  updatedAt: 1,
+  publication: "artifact_only",
+  phase: "running",
+  budget: {
+    limits: {
+      maxEpochs: 3,
+      maxBranchAttempts: 2,
+      maxConcurrentReaders: 2,
+      maxConcurrentWritersPerRepo: 1,
+      maxActionStarts: 64,
+      deadlineSeconds: 3600,
+      tokenReservationLimit: 100000,
+    },
+    actionStarts: 1,
+    reservedTokens: "1",
+    chargedTokens: "0",
+    accountingBlocked: false,
+  },
+  delivery: "pending",
+  evidenceRefs: [],
+};
+const hostKey = Buffer.concat([
+  Buffer.from([0, 0, 0, 11]),
+  Buffer.from("ssh-ed25519"),
+  Buffer.from([0, 0, 0, 32]),
+  Buffer.alloc(32, 7),
+]).toString("base64");
+const cleanup: Array<() => Promise<unknown>> = [];
+let bundleRoot: string, compiled: string;
+beforeAll(async () => {
+  bundleRoot = await realpath(await createScratchDir("tests", "remote-cancel-bundle"));
+  compiled = join(bundleRoot, "exporter.mjs");
+  await symlink(resolve("node_modules"), join(bundleRoot, "node_modules"));
+  await build({
+    stdin: {
+      contents: `import {handleRemoteControlExportCommand} from './remote-cancel-exporter.js';import {Writable} from 'node:stream';let count=0;const output=process.env.DROP_ACK==='1'?new Writable({write(chunk,_enc,callback){if(++count===2){process.kill(process.pid,'SIGKILL');return;}process.stdout.write(chunk,callback);}}):process.stdout;process.exitCode=await handleRemoteControlExportCommand(['--stdio'],{output});`,
+      resolveDir: resolve("src"),
+      sourcefile: "cancel-runner.ts",
+      loader: "ts",
+    },
+    bundle: true,
+    platform: "node",
+    target: "node22",
+    format: "esm",
+    packages: "external",
+    outfile: compiled,
+    logLevel: "silent",
+  });
+});
+afterAll(async () => {
+  await rm(bundleRoot, { recursive: true, force: true });
+});
+afterEach(async () => {
+  for (const fn of cleanup.splice(0).reverse()) await fn();
+});
+async function fixture(graph?: { scope: typeof scope; repo: string }) {
+  const root = await realpath(await createScratchDir("tests", "remote-cancel"));
+  cleanup.push(() => rm(root, { recursive: true, force: true }));
+  await chmod(root, 0o700);
+  const repo = graph?.repo ?? join(root, "repo"),
+    boundScope = graph?.scope ?? scope,
+    journal = join(root, "remote-journal");
+  if (!graph) await mkdir(repo, { mode: 0o700 });
+  await mkdir(journal, { mode: 0o700 });
+  const { publicKey, privateKey } = generateKeyPairSync("ed25519"),
+    pub = publicKey.export({ format: "pem", type: "spki" }).toString();
+  const methods: string[] = [],
+    sockets = new Set<Socket>();
+  let mutate: (v: unknown, m: string, params: unknown) => unknown | Promise<unknown> = (v) => v;
+  const children: ChildProcessWithoutNullStreams[] = [];
+  const socket = join(root, "d.sock"),
+    server = createServer((s) => {
+      sockets.add(s);
+      s.on("close", () => sockets.delete(s));
+      const c = new RemoteChannel(s, s, 65536 + 1024, 8);
+      void (async () => {
+        try {
+          for (let i = 0; i < 3; i++) {
+            const request = (await c.receive()) as { id: number; method: string; params: unknown };
+            methods.push(request.method);
+            const result =
+              request.method === "deployment.identity"
+                ? identity
+                : request.method === "graph.status"
+                  ? status
+                  : { ...status, status: "cancel_pending", delivery: "delivery_unknown", revision: 5 };
+            await c.send({
+              id: request.id,
+              ok: true,
+              result: await mutate(result, request.method, request.params),
+            });
+          }
+        } catch {
+        } finally {
+          c.close();
+          s.end();
+        }
+      })();
+    });
+  await new Promise<void>((r) => server.listen(socket, r));
+  await chmod(socket, 0o600);
+  cleanup.push(async () => {
+    for (const c of children) if (c.exitCode === null) c.kill("SIGKILL");
+    for (const s of sockets) s.destroy();
+    await new Promise<void>((r) => server.close(() => r()));
+  });
+  const config = {
+    version: 1,
+    home_id: homeId,
+    daemon_protocol: 1,
+    socket,
+    journal_dir: journal,
+    scopes: [{ alias: "project", repo_path: repo, graph_scope: boundScope }],
+    keys: [
+      {
+        key_id: "cancel-key",
+        public_key_pem: pub,
+        actor_id: "operator",
+        scope_aliases: ["project"],
+        max_validity_ms: 300000,
+      },
+    ],
+  };
+  const registry = join(root, "server.json"),
+    raw = JSON.stringify(config);
+  await writeFile(registry, raw, { mode: 0o600 });
+  const pin = remoteHash(raw),
+    env = { OSSTACK_REMOTE_CONTROL_REGISTRY: registry, OSSTACK_REMOTE_CONTROL_SHA256: pin };
+  const identityFile = join(root, "identity");
+  await writeFile(identityFile, "FIXTURE_NOT_REAL_SSH_KEY", { mode: 0o600 });
+  const entry = {
+    alias: "dev",
+    host: "example.test",
+    port: 22,
+    user: "operator",
+    host_key: `ssh-ed25519 ${hostKey}`,
+    identity_file: identityFile,
+    home_id: homeId,
+    daemon_protocol: 1,
+    registry_sha256: pin,
+    scope: "project",
+  };
+  const clientFile = join(root, "client.json"),
+    clientRaw = JSON.stringify({ version: 1, homes: [entry] });
+  await writeFile(clientFile, clientRaw, { mode: 0o600 });
+  const grantPath = join(root, "grant.json");
+  const grantFor = (patch: Record<string, unknown> = {}) => {
+    const now = Date.now(),
+      body = {
+        domain: "osstack.remote-graph-cancel.v1",
+        grant_id: randomUUID(),
+        request_id: randomUUID(),
+        actor_id: "operator",
+        home_id: homeId,
+        daemon_generation: generation,
+        server_registry_sha256: pin,
+        scope_alias: "project",
+        repo_path: repo,
+        graph_scope: boundScope,
+        action: "graph.cancel",
+        graph_run_id: "run-one",
+        graph_generation: 2,
+        expected_revision: 4,
+        nonce: "c".repeat(64),
+        issued_at_ms: now - 1000,
+        expires_at_ms: now + 60000,
+        max_calls: 1,
+        ...patch,
+      };
+    return SignedRemoteCancelGrant.parse({
+      body,
+      key_id: "cancel-key",
+      signature: sign(null, Buffer.from(deliveryCanonical(body)), privateKey).toString("base64"),
+    });
+  };
+  let grant = grantFor();
+  await writeFile(grantPath, JSON.stringify(grant), { mode: 0o600 });
+  const spawnLocal = ((_bin: string, _args: readonly string[], _opts: unknown) => {
+    const child = spawn(process.execPath, [compiled], {
+      stdio: ["pipe", "pipe", "pipe"],
+      env: { ...process.env, ...env, OSSTACK_HOME: join(root, "never-open") },
+    });
+    children.push(child);
+    return child;
+  }) as typeof spawn;
+  const args = (action = "cancel") => [
+    action,
+    "--registry",
+    clientFile,
+    "--sha256",
+    remoteHash(clientRaw),
+    "--alias",
+    "dev",
+    "--grant",
+    grantPath,
+  ];
+  const invoke = async (action = "cancel", start = spawnLocal) => {
+    let output = "",
+      error = "";
+    const code = await handleRemoteCancelCommand(args(action), {
+      home: root,
+      spawn: start,
+      timeoutMs: 3000,
+      stdout: (s) => {
+        output += s;
+      },
+      stderr: (s) => {
+        error += s;
+      },
+    });
+    return { code, value: output ? JSON.parse(output) : null, error };
+  };
+  return {
+    root,
+    repo,
+    journal,
+    registry,
+    config,
+    pin,
+    env,
+    entry,
+    grantPath,
+    grantFor,
+    get grant() {
+      return grant;
+    },
+    setGrant: async (g: SignedRemoteCancelGrant) => {
+      grant = g;
+      await writeFile(grantPath, JSON.stringify(g), { mode: 0o600 });
+    },
+    methods,
+    children,
+    spawnLocal,
+    invoke,
+    args,
+    privateKey,
+    pub,
+    mutate: (f: typeof mutate) => {
+      mutate = f;
+    },
+  };
+}
+it("actual issuer -> client -> child exporter -> existing daemon boundary returns durable receipt without claiming physical stop", async () => {
+  const f = await fixture();
+  const issuer = {
+    version: 1,
+    enabled: true,
+    actor_id: "operator",
+    key_id: "cancel-key",
+    public_key_pem: f.pub,
+    max_validity_ms: 300000,
+    targets: [
+      {
+        name: "dev",
+        home_id: homeId,
+        server_registry_sha256: f.pin,
+        scope_alias: "project",
+        repo_path: f.repo,
+        graph_scope: scope,
+      },
+    ],
+  };
+  await writeFile(join(f.root, "remote-cancel-issuer.json"), JSON.stringify(issuer), { mode: 0o600 });
+  await writeFile(
+    join(f.root, "issuer-cancel-key.pem"),
+    f.privateKey.export({ format: "pem", type: "pkcs8" }),
+    { mode: 0o600 },
+  );
+  const output = join(f.root, "issued.json");
+  let preview = "";
+  expect(
+    await handleRemoteCancelIssuerCommand(
+      [
+        "issue-cancel-grant",
+        "--target",
+        "dev",
+        "--daemon-generation",
+        generation,
+        "--graph-run",
+        "run-one",
+        "--graph-generation",
+        "2",
+        "--revision",
+        "4",
+        "--output",
+        output,
+      ],
+      {
+        home: f.root,
+        stdout: () => {},
+        confirm: async (p, phrase) => {
+          preview = p;
+          expect(phrase).toMatch(/^APPROVE [a-f0-9]{64}$/);
+          return true;
+        },
+      },
+    ),
+  ).toBe(0);
+  expect(preview).toContain("not_attested");
+  await f.setGrant(JSON.parse(await readFile(output, "utf8")));
+  expect(await f.invoke()).toMatchObject({
+    code: 0,
+    value: { outcome: "stop_requested", physical_stop: "not_attested", receipt: { observed_revision: 5 } },
+  });
+  expect(f.methods).toEqual(["deployment.identity", "graph.status", "graph.cancel"]);
+  expect(await f.invoke()).toMatchObject({ code: 0, value: { outcome: "stop_requested" } });
+  expect(f.methods.filter((m) => m === "graph.cancel")).toHaveLength(1);
+  await expect(readFile(join(f.root, "never-open", "state.db"))).rejects.toThrow();
+});
+it("lost remote ACK after fsync is recovered by query without replay", async () => {
+  const f = await fixture();
+  f.env["DROP_ACK" as keyof typeof f.env] = "1";
+  expect(await f.invoke()).toMatchObject({ code: 1, value: { outcome: "delivery_unknown" } });
+  delete (f.env as Record<string, string>)["DROP_ACK"];
+  expect(await f.invoke()).toMatchObject({ code: 0, value: { outcome: "stop_requested" } });
+  expect(f.methods.filter((m) => m === "graph.cancel")).toHaveLength(1);
+});
+it("process killed after reserve and cancellation invocation stays unknown and never replays", async () => {
+  const f = await fixture();
+  f.mutate((v, m) => {
+    if (m === "graph.cancel") f.children.at(-1)!.kill("SIGKILL");
+    return v;
+  });
+  expect(await f.invoke()).toMatchObject({ code: 1, value: { outcome: "delivery_unknown" } });
+  expect(await f.invoke()).toMatchObject({ code: 1, value: { outcome: "delivery_unknown" } });
+  expect(f.methods.filter((m) => m === "graph.cancel")).toHaveLength(1);
+});
+it.each(["daemon", "graph", "revision", "scope"])("stale %s binding denies cancel", async (kind) => {
+  const f = await fixture();
+  f.mutate((raw, m) => {
+    const v = structuredClone(raw) as Record<string, unknown>;
+    if (kind === "daemon" && m === "deployment.identity") v.generation = `instance_${"d".repeat(32)}`;
+    if (m === "graph.status") {
+      if (kind === "graph") v.generation = 3;
+      if (kind === "revision") v.revision = 5;
+      if (kind === "scope") v.scope = { ...scope, principalId: "other" };
+    }
+    return v;
+  });
+  expect(await f.invoke()).toMatchObject({ code: 1, value: { outcome: "delivery_unknown" } });
+  expect(f.methods).not.toContain("graph.cancel");
+});
+it("expired write authorization is rejected before daemon access; historical signed query stays available", async () => {
+  const f = await fixture();
+  await f.setGrant(f.grantFor({ issued_at_ms: Date.now() - 20000, expires_at_ms: Date.now() - 10000 }));
+  expect(await f.invoke()).toMatchObject({ code: 1 });
+  expect(f.methods).toEqual([]);
+  expect(await f.invoke("query")).toMatchObject({ value: { outcome: "not_found" } });
+  expect(f.methods).toEqual([]);
+});
+it("tampered or wrong-scope signed payload never reaches daemon", async () => {
+  const f = await fixture();
+  await f.setGrant({ ...f.grant, body: { ...f.grant.body, expected_revision: 99 } });
+  expect(await f.invoke()).toMatchObject({ code: 1 });
+  expect(f.methods).toEqual([]);
+});
+it("registry revocation during readiness prevents any cancel call", async () => {
+  const f = await fixture();
+  f.mutate(async (v, m) => {
+    if (m === "graph.status")
+      await writeFile(f.registry, JSON.stringify({ ...f.config, keys: [] }), { mode: 0o600 });
+    return v;
+  });
+  expect(await f.invoke()).toMatchObject({ code: 1 });
+  expect(f.methods).not.toContain("graph.cancel");
+});
+it("reserved but uninvoked crash journal never arms on a repeated cancel", async () => {
+  const f = await fixture();
+  await writeRemoteJournal(join(f.journal, `${f.grant.body.request_id}.started.json`), {
+    request_sha256: remoteCancelDigest(f.grant),
+    grant: f.grant,
+  });
+  expect(await f.invoke()).toMatchObject({ value: { outcome: "delivery_unknown" } });
+  expect(f.methods).toEqual([]);
+});
+it("corrupted persisted receipt fails closed without RPC or effect replay", async () => {
+  const f = await fixture();
+  expect((await f.invoke()).code).toBe(0);
+  await writeFile(join(f.journal, `${f.grant.body.request_id}.result.json`), '{"outcome":"stop_requested"}', {
+    mode: 0o600,
+  });
+  expect(await f.invoke()).toMatchObject({ value: { outcome: "delivery_unknown" } });
+  expect(f.methods.filter((m) => m === "graph.cancel")).toHaveLength(1);
+});
+it("request ID collision with changed exact signed grant cannot reuse an earlier receipt", async () => {
+  const f = await fixture();
+  expect((await f.invoke()).code).toBe(0);
+  await f.setGrant(f.grantFor({ request_id: f.grant.body.request_id, expected_revision: 5 }));
+  expect(await f.invoke()).toMatchObject({ code: 1, error: "invalid_remote_cancel_request\n" });
+  expect(f.methods.filter((m) => m === "graph.cancel")).toHaveLength(1);
+});
+it("querying absent request has no mutation or local intent reservation", async () => {
+  const f = await fixture();
+  expect(await f.invoke("query")).toMatchObject({ value: { outcome: "not_found" } });
+  expect(f.methods).toEqual([]);
+  expect(
+    await readRemoteJournal(join(f.root, "remote-actions", `${f.grant.body.request_id}.local.json`)),
+  ).toBeNull();
+});
+it("private journal ancestors and create-only records prevent unsafe replacement", async () => {
+  const f = await fixture();
+  await chmod(f.root, 0o777);
+  await expect(writeRemoteJournal(join(f.journal, "x.json"), {})).rejects.toThrow();
+  await chmod(f.root, 0o700);
+  expect(await writeRemoteJournal(join(f.journal, "x.json"), { x: 1 })).toBe(true);
+  expect(await writeRemoteJournal(join(f.journal, "x.json"), { x: 2 })).toBe(false);
+  expect(await readRemoteJournal(join(f.journal, "x.json"))).toEqual({ x: 1 });
+});
+it("read-only token shape, substituted token and unregistered grant are refused", async () => {
+  const f = await fixture();
+  for (const kind of ["read", "token", "grant"]) {
+    const input = new PassThrough(),
+      output = new PassThrough(),
+      server = handleRemoteControlExportCommand(["--stdio"], { input, output, env: f.env }),
+      c = new RemoteChannel(output, input);
+    await c.send({
+      type: "control_hello",
+      protocol: 1,
+      nonce: "e".repeat(64),
+      home_id: homeId,
+      registry_sha256: f.pin,
+    });
+    const hello = (await c.receive()) as { token: string };
+    await c.send(
+      kind === "read"
+        ? { type: "snapshot", token: hello.token, sequence: 1, limit: 1 }
+        : {
+            type: "cancel",
+            token: kind === "token" ? "f".repeat(64) : hello.token,
+            grant: kind === "grant" ? { ...f.grant, key_id: "unregistered" } : f.grant,
+          },
+    );
+    expect(await server).toBe(1);
+    c.close();
+    input.destroy();
+    output.destroy();
+  }
+  expect(f.methods).toEqual([]);
+});
+it("SSH remains pinned, explicit, bounded and uses only the dedicated control command", async () => {
+  const f = await fixture();
+  const argv = buildRemoteControlSshArgs(f.entry, "/private/known_hosts");
+  expect(argv.at(-1)).toBe("osstack remote-control --stdio");
+  expect(argv.join(" ")).toContain("StrictHostKeyChecking=yes");
+  expect(argv.join(" ")).toContain("IdentitiesOnly=yes");
+  expect(argv.join(" ")).toContain("ForwardAgent=no");
+});
+it("timeout records unknown once and subsequent cancel changes to query", async () => {
+  const f = await fixture();
+  const start = ((_b: string, _a: readonly string[], _o: unknown) =>
+    spawn(process.execPath, ["-e", "process.stdin.resume();setInterval(()=>{},1000)"], {
+      stdio: ["pipe", "pipe", "pipe"],
+    })) as typeof spawn;
+  let output = "";
+  expect(
+    await handleRemoteCancelCommand(f.args(), {
+      home: f.root,
+      spawn: start,
+      timeoutMs: 20,
+      stdout: (s) => {
+        output += s;
+      },
+    }),
+  ).toBe(1);
+  expect(JSON.parse(output).outcome).toBe("delivery_unknown");
+  expect(await f.invoke()).toMatchObject({ value: { outcome: "not_found" } });
+  expect(f.methods).toEqual([]);
+});
+it("missing issuer configuration, noninteractive confirmation, or duplicate output cannot self-authorize", async () => {
+  const f = await fixture();
+  const confirm = vi.fn();
+  expect(
+    await handleRemoteCancelIssuerCommand(["issue-cancel-grant", "--yes"], {
+      home: f.root,
+      confirm,
+      stderr: () => {},
+    }),
+  ).toBe(1);
+  expect(confirm).not.toHaveBeenCalled();
+  expect(await handleRemoteControlExportCommand(["--stdio"], { env: {} })).toBe(1);
+});
+
+it("signed remote cancellation drives the actual GraphRpcService worker abort and retains local stop proof separation", async () => {
+  const g = await graphRpcFixture("cancel");
+  try {
+    const run = await g.start();
+    await g.until(run.graphRunId, () => g.writes() === 1);
+    const before = await g.status(run.graphRunId);
+    const f = await fixture({ scope: g.request.scope, repo: join(g.root, "source") });
+    f.mutate((v, m, params) => (m.startsWith("graph.") ? g.service.handle(g.connection, m, params) : v));
+    await f.setGrant(
+      f.grantFor({
+        graph_run_id: run.graphRunId,
+        graph_generation: before.generation,
+        expected_revision: before.revision,
+      }),
+    );
+    expect(await f.invoke()).toMatchObject({
+      code: 0,
+      value: { outcome: "stop_requested", physical_stop: "not_attested" },
+    });
+    await g.until(run.graphRunId, (s) => s.status === "cancelled");
+    expect(g.abortObserved()).toBe(true);
+    expect(g.db.prepare("SELECT count(*) n FROM graph_requests WHERE kind='cancel'").get()).toEqual({ n: 1 });
+    expect(await f.invoke()).toMatchObject({ code: 0 });
+    expect(g.db.prepare("SELECT count(*) n FROM graph_requests WHERE kind='cancel'").get()).toEqual({ n: 1 });
+  } finally {
+    await g.close();
+    await rm(g.root, { recursive: true, force: true });
+  }
+}, 30000);
+
+it("simultaneous clients sharing request UUID invoke at most one Graph cancel", async () => {
+  const f = await fixture();
+  const results = await Promise.all([f.invoke(), f.invoke()]);
+  expect(results.some((r) => r.code === 0)).toBe(true);
+  expect(f.methods.filter((m) => m === "graph.cancel")).toHaveLength(1);
+  expect(await f.invoke("query")).toMatchObject({ code: 0, value: { outcome: "stop_requested" } });
+});
+it.each([
+  "oversize",
+  "invalid",
+  "stderr",
+])("untrusted actual peer %s output is bounded and cannot report a confirmed receipt", async (mode) => {
+  const f = await fixture();
+  const code =
+    mode === "oversize"
+      ? "process.stdout.write(Buffer.alloc(70000));"
+      : mode === "invalid"
+        ? "process.stdout.write(Buffer.from([0,0,0,1,123]));"
+        : "process.stderr.write('PRIVATE_SHOULD_NOT_SURFACE'.repeat(1000));";
+  const start = ((_b: string, _a: readonly string[], _o: unknown) =>
+    spawn(process.execPath, ["-e", code + "process.stdin.resume();setInterval(()=>{},1000)"], {
+      stdio: ["pipe", "pipe", "pipe"],
+    })) as typeof spawn;
+  let output = "";
+  expect(
+    await handleRemoteCancelCommand(f.args(), {
+      home: f.root,
+      spawn: start,
+      timeoutMs: 200,
+      stdout: (s) => {
+        output += s;
+      },
+    }),
+  ).toBe(1);
+  expect(JSON.parse(output).outcome).toBe("delivery_unknown");
+  expect(output).not.toContain("PRIVATE_SHOULD");
+  expect(f.methods).toEqual([]);
+});
+it("issuer rechecks trusted configuration after human approval and refuses an altered target", async () => {
+  const f = await fixture(),
+    configPath = join(f.root, "remote-cancel-issuer.json"),
+    output = join(f.root, "new-grant.json");
+  const config = {
+    version: 1,
+    enabled: true,
+    actor_id: "operator",
+    key_id: "cancel-key",
+    public_key_pem: f.pub,
+    max_validity_ms: 300000,
+    targets: [
+      {
+        name: "dev",
+        home_id: homeId,
+        server_registry_sha256: f.pin,
+        scope_alias: "project",
+        repo_path: f.repo,
+        graph_scope: scope,
+      },
+    ],
+  };
+  await writeFile(configPath, JSON.stringify(config), { mode: 0o600 });
+  await writeFile(
+    join(f.root, "issuer-cancel-key.pem"),
+    f.privateKey.export({ format: "pem", type: "pkcs8" }),
+    { mode: 0o600 },
+  );
+  const args = [
+    "issue-cancel-grant",
+    "--target",
+    "dev",
+    "--daemon-generation",
+    generation,
+    "--graph-run",
+    "run-one",
+    "--graph-generation",
+    "2",
+    "--revision",
+    "4",
+    "--output",
+    output,
+  ];
+  expect(
+    await handleRemoteCancelIssuerCommand(args, {
+      home: f.root,
+      stderr: () => {},
+      confirm: async () => {
+        await writeFile(configPath, JSON.stringify({ ...config, enabled: false }), { mode: 0o600 });
+        return true;
+      },
+    }),
+  ).toBe(1);
+  await expect(readFile(output)).rejects.toThrow();
+  await writeFile(configPath, JSON.stringify(config), { mode: 0o600 });
+  expect(await handleRemoteCancelIssuerCommand(args, { home: f.root, stderr: () => {} })).toBe(1);
+  await expect(readFile(output)).rejects.toThrow();
+});
+it("valid-shape persisted receipt with wrong generation is refused", async () => {
+  const f = await fixture();
+  expect((await f.invoke()).code).toBe(0);
+  const path = join(f.journal, `${f.grant.body.request_id}.result.json`),
+    receipt = JSON.parse(await readFile(path, "utf8"));
+  await writeFile(path, JSON.stringify({ ...receipt, graph_generation: 999 }), { mode: 0o600 });
+  expect(await f.invoke()).toMatchObject({ code: 1, value: { outcome: "delivery_unknown" } });
+  expect(f.methods.filter((m) => m === "graph.cancel")).toHaveLength(1);
+});
+
+it("natural subcommand help is available without configuration, DB, or child processes", async () => {
+  const start = vi.fn();
+  for (const action of ["cancel", "query"]) {
+    let out = "";
+    expect(
+      await handleRemoteCancelCommand([action, "--help"], {
+        home: "/not-provisioned",
+        spawn: start as typeof spawn,
+        stdout: (s) => {
+          out += s;
+        },
+      }),
+    ).toBe(0);
+    expect(out).toContain("--grant");
+  }
+  let issuer = "";
+  expect(
+    await handleRemoteCancelIssuerCommand(["issue-cancel-grant", "--help"], {
+      home: "/not-provisioned",
+      stdout: (s) => {
+        issuer += s;
+      },
+    }),
+  ).toBe(0);
+  expect(issuer).toContain("interactive");
+  const output = new PassThrough();
+  let exported = "";
+  output.on("data", (chunk) => {
+    exported += chunk.toString();
+  });
+  expect(await handleRemoteControlExportCommand(["--help"], { output, env: {} })).toBe(0);
+  expect(exported).toContain("remote-control --stdio");
+  output.destroy();
+  expect(start).not.toHaveBeenCalled();
+});
+
+it("an unrelated running status reply cannot be accepted as cancellation acknowledgement", async () => {
+  const f = await fixture();
+  f.mutate((v, m) => (m === "graph.cancel" ? { ...status, revision: 5 } : v));
+  expect(await f.invoke()).toMatchObject({ code: 1, value: { outcome: "delivery_unknown" } });
+  expect(await f.invoke()).toMatchObject({ code: 1, value: { outcome: "delivery_unknown" } });
+  expect(f.methods.filter((m) => m === "graph.cancel")).toHaveLength(1);
+});
+
+--- packages/cli/src/remote-home-protocol.ts ---
+import { createHash } from "node:crypto";
+import { constants } from "node:fs";
+import { lstat, open, realpath } from "node:fs/promises";
+import { isAbsolute } from "node:path";
+import type { Readable, Writable } from "node:stream";
+import { z } from "zod";
+
+export const REMOTE_MAX_BYTES = 65536;
+export const REMOTE_PROTOCOL = 1;
+const digest = z.string().regex(/^[a-f0-9]{64}$/);
+const alias = z.string().regex(/^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$/);
+const path = z.string().min(1).max(4096).refine(isAbsolute).refine(s => !/[\p{C}]/u.test(s));
+const home = z.string().regex(/^home_[a-f0-9]{32}$/);
+const generation = z.string().regex(/^instance_[a-f0-9]{32}$/);
+const epoch = z.number().int().safe().nonnegative();
+const nonce = z.string().regex(/^[a-f0-9]{64}$/);
+const hostKey = z.string().max(128).refine(s => {
+  if (!/^ssh-ed25519 [A-Za-z0-9+/]+={0,2}$/.test(s)) return false;
+  const encoded = s.slice(12), bytes = Buffer.from(encoded, "base64");
+  return bytes.toString("base64") === encoded && bytes.length === 51 && bytes.readUInt32BE(0) === 11 && bytes.subarray(4,15).toString() === "ssh-ed25519" && bytes.readUInt32BE(15) === 32;
+});
+export const RemoteHomeEntry = z.object({
+  alias, host: z.string().max(253).regex(/^[a-zA-Z0-9](?:[a-zA-Z0-9.-]*[a-zA-Z0-9])?$/),
+  port: z.number().int().min(1).max(65535), user: z.string().regex(/^[a-zA-Z_][a-zA-Z0-9_-]{0,63}$/),
+  host_key: hostKey, identity_file: path.refine(s => !/[\s%'"\\]/u.test(s)), home_id: home, daemon_protocol: z.number().int().positive(), registry_sha256: digest, scope: alias,
+}).strict();
+export type RemoteHomeEntry = z.infer<typeof RemoteHomeEntry>;
+export const RemoteClientRegistry = z.object({version:z.literal(1),homes:z.array(RemoteHomeEntry).min(1).max(32)}).strict()
+  .refine(r => new Set(r.homes.map(h=>h.alias)).size===r.homes.length);
+export const RemoteServerRegistry = z.object({version:z.literal(1),home_id:home,daemon_protocol:z.number().int().positive(),socket:path,
+  scopes:z.array(z.object({alias,repo_path:path,default_tenant:z.literal(true)}).strict()).min(1).max(16),
+}).strict().refine(r=>new Set(r.scopes.map(s=>s.alias)).size===r.scopes.length);
+export type RemoteServerRegistry = z.infer<typeof RemoteServerRegistry>;
+export const RemoteHello = z.object({type:z.literal("hello"),protocol:z.literal(1),nonce,home_id:home,daemon_protocol:z.number().int().positive(),registry_sha256:digest,scope:alias}).strict();
+export const RemoteRead = z.object({type:z.literal("snapshot"),token:nonce,sequence:z.literal(1),limit:z.number().int().min(1).max(50)}).strict();
+const binding = {protocol:z.literal(1),nonce,home_id:home,generation,daemon_protocol:z.number().int().positive(),registry_sha256:digest,scope:alias};
+export const RemoteGrant = z.object({...binding,type:z.literal("grant"),token:nonce,methods:z.tuple([z.literal("snapshot")]),max_page:z.literal(50)}).strict();
+const state = z.enum(["starting","running","awaiting_decision","idle","completed","failed","cancelled","expired","outcome_pending","unknown"]);
+export const RemoteView = z.object({observation_ref:z.string().regex(/^view_[0-9]{1,2}$/),source_kind:z.enum(["run","session"]),state,
+  revision:z.number().int().safe().positive().nullable(),last_updated_at_ms:epoch.nullable(),
+  source_freshness:z.enum(["recent","stale","unknown"]),process_liveness:z.literal("unknown"),
+  wait_reason:z.enum(["decision_record_present","delivery_unknown","awaiting_instruction","none","unknown"]),
+  decision_present:z.boolean(),uncertain_delivery_recorded:z.boolean(),controls:z.literal("unsupported"),
+}).strict();
+export const RemoteSnapshot = z.object({...binding,type:z.literal("snapshot"),sequence:z.literal(1),sampled_at_ms:epoch,
+  total:z.number().int().safe().nonnegative(),views:z.array(RemoteView).max(50),has_more:z.boolean(),complete:z.boolean(),
+  coverage:z.literal("default_tenant_bound_session_run_only"),evidence_sha256:digest,
+}).strict().refine(s=>s.complete===!s.has_more && s.total>=s.views.length && (s.has_more || s.total===s.views.length))
+  .refine(s=>s.views.every((v,i)=>v.observation_ref===`view_${i+1}`));
+export type RemoteSnapshot = z.infer<typeof RemoteSnapshot>;
+export const remoteHash = (value: string | Buffer): string => createHash("sha256").update(value).digest("hex");
+function canonical(value:unknown):string {
+  if(Array.isArray(value))return `[${value.map(canonical).join(",")}]`;
+  if(value!==null&&typeof value==="object")return `{${Object.keys(value).sort().map(key=>`${JSON.stringify(key)}:${canonical((value as Record<string,unknown>)[key])}`).join(",")}}`;
+  const encoded=JSON.stringify(value);if(encoded===undefined)throw new Error("invalid_snapshot");return encoded;
+}
+export function snapshotHash(value: Omit<RemoteSnapshot,"evidence_sha256">): string { return remoteHash(canonical(value)); }
+export function encodeRemoteFrame(value: unknown): Buffer {
+  const body = Buffer.from(JSON.stringify(value));
+  if(body.length>REMOTE_MAX_BYTES-4) throw new Error("invalid_frame");
+  const header=Buffer.alloc(4);header.writeUInt32BE(body.length);return Buffer.concat([header,body]);
+}
+
+const ignoreLateStreamError=()=>{};
+
+/** Bounded channel: two sequential messages per direction, no generic RPC or buffering backlog. */
+export class RemoteChannel {
+  private bytes=Buffer.alloc(0);
+  private queue: unknown[]=[];
+  private failure: Error | null=null;
+  private count=0;
+  private sent=0;
+  private closed=false;
+  private pending: {resolve:(value:unknown)=>void;reject:(error:Error)=>void;timer:NodeJS.Timeout} | null=null;
+  constructor(private readonly input:Readable,private readonly output:Writable,private readonly inputLimit=REMOTE_MAX_BYTES,private readonly maxFrames=2) {
+    if(!Number.isInteger(maxFrames)||maxFrames<2||maxFrames>8)throw new Error("invalid_frame");
+    if(!Number.isInteger(inputLimit)||inputLimit<REMOTE_MAX_BYTES||inputLimit>REMOTE_MAX_BYTES+1024)throw new Error("invalid_frame");
+    input.on("data",this.data);input.on("end",this.end);input.on("error",this.error);output.on("error",this.error);
+  }
+  private error=()=>this.fail("transport_unavailable");
+  private end=()=>this.fail("transport_closed");
+  private data=(chunk:Buffer)=>{
+    if(this.failure)return;
+    if(this.bytes.length+chunk.length>this.inputLimit){this.fail("invalid_frame");return;}
+    this.bytes=Buffer.concat([this.bytes,chunk]);
+    if(this.bytes.length<4)return;
+    const length=this.bytes.readUInt32BE();
+    if(length===0||length>this.inputLimit-4){this.fail("invalid_frame");return;}
+    if(this.bytes.length<length+4)return;
+    if(this.bytes.length!==length+4||++this.count>this.maxFrames){this.fail("invalid_frame");return;}
+    let parsed:unknown;
+    try {parsed=JSON.parse(new TextDecoder("utf-8",{fatal:true}).decode(this.bytes.subarray(4)));}
+    catch {this.fail("invalid_frame");return;}
+    this.bytes=Buffer.alloc(0);
+    if(this.pending){const p=this.pending;this.pending=null;clearTimeout(p.timer);p.resolve(parsed);}
+    else if(this.queue.length===0)this.queue.push(parsed);else this.fail("invalid_frame");
+  };
+  private fail(reason:string){
+    if(this.failure)return;this.failure=new Error(reason);
+    if(this.pending){clearTimeout(this.pending.timer);this.pending.reject(this.failure);this.pending=null;}
+  }
+  async receive(timeoutMs=3000):Promise<unknown>{
+    if(this.failure)throw this.failure;
+    if(this.queue.length)return this.queue.shift();
+    if(this.pending)throw new Error("invalid_frame");
+    return new Promise((resolve,reject)=>{const timer=setTimeout(()=>this.fail("transport_timeout"),Math.max(1,Math.min(10000,timeoutMs)));this.pending={resolve,reject,timer};});
+  }
+  async send(value:unknown):Promise<void>{
+    if(this.failure)throw this.failure;
+    if(++this.sent>this.maxFrames)throw new Error("invalid_frame");
+    const frame=encodeRemoteFrame(value);
+    await new Promise<void>((resolve,reject)=>{
+      const timer=setTimeout(()=>{this.fail("transport_timeout");reject(new Error("transport_timeout"));},3000);
+      this.output.write(frame,error=>{clearTimeout(timer);error?reject(new Error("transport_unavailable")):resolve();});
+    });
+  }
+  close(){if(this.closed)return;this.closed=true;this.fail("transport_closed");this.input.off("data",this.data);this.input.off("end",this.end);this.input.off("error",this.error);this.output.off("error",this.error);this.input.on("error",ignoreLateStreamError);if((this.output as object)!==(this.input as object))this.output.on("error",ignoreLateStreamError);}
+}
+
+/** Owner-controlled local config; no symlinks, special files, unbounded reads or raw error text. */
+export async function readPinnedRemoteRegistry(filePath:string,expectedDigest:string):Promise<unknown>{
+  try {
+    if(!path.safeParse(filePath).success||!digest.safeParse(expectedDigest).success)throw new Error();
+    await assertPrivateRemoteFile(filePath);
+    const file=await open(filePath,constants.O_RDONLY|constants.O_NONBLOCK|constants.O_NOFOLLOW);
+    try {
+      const info=await file.stat();
+      if(!info.isFile()||(process.getuid&&info.uid!==process.getuid())||(info.mode&0o077)!==0||info.size>16384)throw new Error();
+      const buffer=Buffer.alloc(16385);let n=0;
+      while(n<buffer.length){const read=await file.read(buffer,n,buffer.length-n,n);if(!read.bytesRead)break;n+=read.bytesRead;}
+      const body=buffer.subarray(0,n);if(n>16384||remoteHash(body)!==expectedDigest)throw new Error();
+      return JSON.parse(new TextDecoder("utf-8",{fatal:true}).decode(body));
+    }finally{await file.close();}
+  }catch{throw new Error("invalid_registry");}
+}
+export async function assertPrivateRemoteFile(filePath:string):Promise<void>{
+  if(!path.safeParse(filePath).success||await realpath(filePath)!==filePath)throw new Error("unsafe_file");
+  const info=await lstat(filePath);
+  if(!info.isFile()||(process.getuid&&info.uid!==process.getuid())||(info.mode&0o077)!==0)throw new Error("unsafe_file");
+}
+
+--- packages/cli/src/graph-test-fixture.ts ---
+import type Database from 'better-sqlite3';
+import { execFileSync } from 'node:child_process';
+import { mkdir, writeFile, readFile, realpath } from 'node:fs/promises';
+import { join } from 'node:path';
+import { openDb, CapabilitySchema, createScratchDir } from '@osstack/core';
+import { GraphDelegationStatus, type StartGraphRequest } from '@osstack/protocol';
+import { FifoSemaphore } from '@osstack/autonomy';
+import { GraphRpcService, type GraphHostRegistration, type GraphRpcOptions } from './graph-rpc.js';
+import { GovernedExecution } from './governed-execution.js';
+import type { AgentAdapter } from '@osstack/agents';
+const git = (cwd: string, ...args: string[]) => execFileSync('git', args, { cwd, encoding: 'utf8' }).trim();
+interface GraphRpcFixture {
+  root: string; db: Database.Database; request: StartGraphRequest; registration: GraphHostRegistration;
+  connection: object; service: GraphRpcService; options: GraphRpcOptions; writer: AgentAdapter; reviewer: AgentAdapter;
+  start: () => Promise<GraphDelegationStatus>;
+  status: (id: string, host?: GraphRpcService) => Promise<GraphDelegationStatus>;
+  until: (id: string, predicate: (status: GraphDelegationStatus) => boolean) => Promise<GraphDelegationStatus>;
+  writes: () => number; abortObserved: () => boolean; grant: (value: boolean) => void; close: () => Promise<void>;
+}
+export async function graphRpcFixture(mode: 'success' | 'repair' | 'cancel' | 'unknown' = 'success'): Promise<GraphRpcFixture> {
+  const root = await realpath(await createScratchDir('tests', 'g22-rpc')); const repo = join(root, 'source'); await mkdir(repo);
+  git(repo, 'init', '-q'); await writeFile(join(repo, 'answer'), '0\n'); git(repo, 'add', '.'); git(repo, '-c', 'user.name=G22', '-c', 'user.email=g22@invalid', 'commit', '-qm', 'base');
+  const db: Database.Database = openDb({ path: join(root, 'control.sqlite') }); let writes = 0; let granted = true; let abortObserved = false;
+  const stopped = new Set<string>();
+  const writer: AgentAdapter = { id: 'writer', display_name: 'writer', cost_tier: 'low',
+    capabilities: () => [CapabilitySchema.parse({ id: 'write', agent_id: 'writer', kind: 'code.write', description: 'write' })],
+    isAvailable: async () => ({ available: true, last_checked_at: 0 }),
+    invoke: async function* (task, options) {
+      writes++;
+      if (mode === 'cancel') {
+        await new Promise<void>(resolve => { if (options?.aborted) resolve(); else options?.addEventListener('abort', () => resolve(), { once: true }); });
+        abortObserved = true;
+      } else await writeFile(join(String(task.context?.['repo_path']), 'answer'), mode === 'repair' && writes === 1 ? '0\n' : '1\n');
+      if (mode !== 'unknown') stopped.add(task.run_id);
+      yield { event_id: task.run_id, run_id: task.run_id, session_id: task.session_id, seq: 1, created_at: Date.now() / 1000, type: 'done', terminal: true,
+        payload: { status: mode === 'cancel' ? 'failed' : 'completed', last_seq: 0, result_summary: 'implemented', usage: { tokens_in: 1, tokens_out: 1, duration_ms: 1 } } };
+    }, confirmStopped: async id => ({ stopped: stopped.has(id), evidence: `finite:${id}` }) };
+  const reviewer: AgentAdapter = { ...writer, id: 'reviewer', capabilities: () => [CapabilitySchema.parse({ id: 'review', agent_id: 'reviewer', kind: 'review.code', description: 'review' })],
+    invoke: async function* (task) {
+      const good = (await readFile(join(String(task.context?.['repo_path']), 'answer'), 'utf8')).trim() === '1'; stopped.add(task.run_id);
+      yield { event_id: task.run_id, run_id: task.run_id, session_id: task.session_id, seq: 1, created_at: Date.now() / 1000, type: 'done', terminal: true,
+        payload: { status: 'completed', last_seq: 0, result_summary: JSON.stringify({ schemaVersion: 1, verdict: good ? 'accept' : 'changes_requested', summary: 'actual candidate', findings: good ? [] : ['answer must be 1'] }), usage: { tokens_in: 1, tokens_out: 1, duration_ms: 1 } } };
+    } };
+  const request: StartGraphRequest = { schemaVersion: 1, kind: 'start', scope: { schemaVersion: 1, tenantId: 't', principalId: 'p', workspaceId: 'w' },
+    idempotencyKey: 'public-key', inputArtifactRef: 'input', source: { product: 'osstack', requestId: 'request', parentRunId: 'parent' },
+    spec: { schemaVersion: 1, template: 'code-delivery-v1', publication: 'artifact_only', input: { taskRef: 'task', repositoryRef: 'repo', baseRevision: git(repo, 'rev-parse', 'HEAD'), acceptanceRef: 'acceptance' },
+      limits: { maxEpochs: 2, maxBranchAttempts: 1, maxConcurrentReaders: 2, maxConcurrentWritersPerRepo: 1, maxActionStarts: 14, tokenReservationLimit: 200000, deadlineSeconds: 120 } } };
+  const registration: GraphHostRegistration = { id: 'local', scope: request.scope, product: 'osstack', repositoryRef: 'repo', taskRef: 'task', inputArtifactRef: 'input',
+    authorize: operation => { if (!granted && operation !== 'read' && operation !== 'cancel') throw Error('GRANT_EXPIRED'); },
+    delivery: { repositoryPath: repo, task: 'Set answer to 1', writer: { identity: 'writer', adapter: writer, capabilityId: 'write' }, reviewer: { identity: 'reviewer', adapter: reviewer, capabilityId: 'review' },
+      verifyReviewer: async proof => { if (proof.writerIdentity === proof.reviewerIdentity) throw Error('independence'); },
+      acceptanceRegistry: [{ ref: 'acceptance', command: 'test "$(cat answer)" = 1', passExitCodes: [0], failExitCodes: [1] }] } };
+  const connection = {};
+  const admission = new GovernedExecution({ reads: new FifoSemaphore(2), writes: new FifoSemaphore(2), repositories: new Map(), checkHealth: async () => {} });
+  const options = { db, root: join(root, 'delivery'), registrations: [registration], resolveCaller: (key: object) => key === connection ? 'local' : null, acquire: admission.acquire.bind(admission) };
+  const service = new GraphRpcService(options);
+  const start = async () => GraphDelegationStatus.parse(await service.handle(connection, 'graph.start', request));
+  const status = async (id: string, host = service) => GraphDelegationStatus.parse(await host.handle(connection, 'graph.status', { schemaVersion: 1, scope: request.scope, graphRunId: id }));
+  const until = async (id: string, predicate: (s: ReturnType<typeof GraphDelegationStatus.parse>) => boolean) => {
+    const deadline = Date.now() + 20000;
+    for (;;) { const value = await status(id); if (predicate(value)) return value;
+      if (Date.now() > deadline) throw Error(`TIMEOUT: ${JSON.stringify(value)}`); await new Promise(resolve => setTimeout(resolve, 15)); }
+  };
+  return { root, db, request, registration, connection, service, start, status, until, options, writer, reviewer,
+    writes: () => writes, abortObserved: () => abortObserved, grant: (value: boolean) => { granted = value; },
+    close: async () => { await service.close(); db.close(); } };
+}
