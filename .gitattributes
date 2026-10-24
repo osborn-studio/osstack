@@ -23,5 +23,8 @@ docs/reports/2026-10-23-firstmate-pr239-final-qualification/*.log -whitespace
 
 docs/reports/2026-10-23-firstmate-wave3-evidence/contracts/*.log -whitespace
 docs/reports/2026-10-23-firstmate-wave3-evidence/contracts/*.stderr -whitespace
+/docs/reports/2026-10-23-firstmate-wave5-evidence/** -whitespace
 /docs/reports/2026-10-23-firstmate-pr241-final-qualification/** -whitespace
 /docs/reports/2026-10-23-firstmate-pr240-final-qualification/** -whitespace
+
+docs/reports/2026-10-23-firstmate-pr242-final-qualification/** -whitespace

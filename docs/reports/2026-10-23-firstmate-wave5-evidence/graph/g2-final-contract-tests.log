@@ -1,0 +1,35 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-supervision-next/packages/cli
+
+ ✓ src/graph-delivery-contract.test.ts (20 tests) 33ms
+ ✓ src/graph-execution-context.test.ts (8 tests) 59ms
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/smoke/pr237-integration/delivery-contract/graph-next/tmp/g22-rpc-y1iBDo/delivery/36fbd470-75c0-4e18-a971-4cfe2bea2a41/writer-0'...
+HEAD is now at 831fa53 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/smoke/pr237-integration/delivery-contract/graph-next/tmp/g22-rpc-GnSMBR/delivery/2dbecb2c-7ca9-48e6-878a-22dd51edaa60/writer-0'...
+HEAD is now at feb74c1 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/smoke/pr237-integration/delivery-contract/graph-next/tmp/g22-rpc-5lqRcW/delivery/9633b583-6c42-45d4-9642-c1e9c6577686/writer-0'...
+HEAD is now at edec398 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/smoke/pr237-integration/delivery-contract/graph-next/tmp/g22-rpc-who5qm/delivery/34adb018-bfd5-4dd8-a5b2-b44ad829a1d6/writer-0'...
+HEAD is now at 9d658d8 base
+osstack: retaining write lease graph-action:a904c9bd4c058c319b4ff8a8943108a76b8dd3f29903aa0ecf5b5f5545b6b81e: Error: external stop unconfirmed
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/smoke/pr237-integration/delivery-contract/graph-next/tmp/g22-rpc-Xbgc3f/delivery/a94ac3fb-1853-4fd8-9142-8ca3d0ddf2bf/writer-0'...
+HEAD is now at 48f836c base
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/smoke/pr237-integration/delivery-contract/graph-next/tmp/g22-rpc-IpugDt/delivery/6ae224cb-7327-43bd-b287-99698818b8db/writer-0'...
+HEAD is now at a9894f3 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/smoke/pr237-integration/delivery-contract/graph-next/tmp/g22-rpc-ELku00/delivery/36a0c660-ab26-44ab-a495-33409d7cf589/writer-0'...
+HEAD is now at b515d97 base
+osstack: retaining write lease graph-action:0e2d5050bf9f9c82aed882ac52f0539c16b212b65d77e34ce6fb0a9853637631: Error: delivery_contract_path_outside_scope
+ ✓ src/graph-contract-integration.test.ts (9 tests) 36521ms
+   ✓ binds the durable host contract before the real Graph launch and never changes source HEAD/refs/index/files  5770ms
+   ✓ does not publish a durable completion file after grant changes during the last await  5599ms
+   ✓ does not publish a durable completion file after revision changes during the last await  5593ms
+   ✓ never exposes a contract completion when executor stop remains unknown  1484ms
+   ✓ binds actual writer and rebuilt reviewer prompts to two-phase context receipts before ready  5601ms
+   ✓ does not transfer a prior epoch context/check/review receipt to a repaired candidate  10782ms
+   ✓ rejects a path outside contract before verification or ready publication  1542ms
+
+ Test Files  3 passed (3)
+      Tests  37 passed (37)
+   Start at  13:22:01
+   Duration  38.35s (transform 1.02s, setup 29ms, collect 2.38s, tests 36.61s, environment 0ms, prepare 124ms)
+

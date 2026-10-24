@@ -1374,6 +1374,30 @@
             "updatedAt": {
               "$ref": "#/properties/request/anyOf/1/properties/expectedRevision"
             },
+            "admissionBinding": {
+              "type": "object",
+              "properties": {
+                "requestInputDigest": {
+                  "$ref": "#/properties/result/anyOf/1/properties/artifactDigest"
+                },
+                "hostInputDigest": {
+                  "$ref": "#/properties/result/anyOf/1/properties/artifactDigest"
+                },
+                "contractDigest": {
+                  "$ref": "#/properties/result/anyOf/1/properties/artifactDigest"
+                },
+                "policyDigest": {
+                  "$ref": "#/properties/result/anyOf/1/properties/artifactDigest"
+                }
+              },
+              "required": [
+                "requestInputDigest",
+                "hostInputDigest",
+                "contractDigest",
+                "policyDigest"
+              ],
+              "additionalProperties": false
+            },
             "publication": {
               "type": "string",
               "const": "artifact_only"
@@ -1552,6 +1576,9 @@
             "updatedAt": {
               "$ref": "#/properties/request/anyOf/1/properties/expectedRevision"
             },
+            "admissionBinding": {
+              "$ref": "#/properties/delegationStatus/anyOf/0/properties/admissionBinding"
+            },
             "publication": {
               "$ref": "#/properties/delegationStatus/anyOf/0/properties/publication"
             },
@@ -1650,6 +1677,9 @@
             },
             "updatedAt": {
               "$ref": "#/properties/request/anyOf/1/properties/expectedRevision"
+            },
+            "admissionBinding": {
+              "$ref": "#/properties/delegationStatus/anyOf/0/properties/admissionBinding"
             },
             "publication": {
               "$ref": "#/properties/delegationStatus/anyOf/0/properties/publication"

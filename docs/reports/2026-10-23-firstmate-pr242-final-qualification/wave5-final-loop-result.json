@@ -1,0 +1,276 @@
+{
+  "loop_id": "loop_96b883cd-91d5-47fa-b83b-f7bbf6c0ef77",
+  "state": {
+    "loop_id": "loop_96b883cd-91d5-47fa-b83b-f7bbf6c0ef77",
+    "started_at": "2026-10-23T20:49:17.708Z",
+    "updated_at": "2026-10-23T20:57:53.918Z",
+    "completed_tasks": [
+      {
+        "task_id": "firstmate-wave5-final-source-qualification",
+        "capability": "code.test",
+        "outcome": "success",
+        "iterations": 1,
+        "agent_id": "local-command",
+        "duration_ms": 516208,
+        "run_id": "run_b45c5edd-af88-43be-a51a-313a0b349259",
+        "started_at": "2026-10-23T20:49:17.710Z",
+        "completed_at": "2026-10-23T20:57:53.847Z",
+        "execution_summary": "Process group 97597 gone (kill(-pgid, 0): ESRCH); leader exit observed",
+        "execution_commands": [
+          {
+            "command": "python3 /Volumes/AIMATE_WORK/tmp/osstack/smoke/pr237-integration/run-wave5-final-checks.py",
+            "exit_code": 0,
+            "duration_ms": 516137,
+            "summary": "build 0 inventory-generate 0 typecheck 0 test 0 lint 0 schemas 0 inventory 0 startup 0"
+          }
+        ],
+        "verifier_agent_id": "local-verifier",
+        "verify_summary": "1 verifier command and 0 verifier adapters passed. 1 evaluation passed.",
+        "verify_issue_count": 0,
+        "verify_commands": [
+          {
+            "command": "python3 /Volumes/AIMATE_WORK/tmp/osstack/smoke/pr237-integration/verify-wave5-final-checks.py",
+            "exit_code": 0,
+            "duration_ms": 22,
+            "summary": "All eight local qualification stages passed; remote CI and independent approval remain separate."
+          }
+        ],
+        "evaluations": [
+          {
+            "spec_id": "verify-command-1",
+            "mode": "command",
+            "description": "Shell verifier: python3 /Volumes/AIMATE_WORK/tmp/osstack/smoke/pr237-integration/verify-wave5-final-checks.py",
+            "required": true,
+            "weight": 1,
+            "pass": true,
+            "summary": "command passed (22 ms)",
+            "implicit": true
+          }
+        ],
+        "changed_files": [
+          "docs/inventory/PUBLIC_EXPORTS.md",
+          "packages/knowledge/dist/index.d.ts",
+          "packages/knowledge/dist/index.d.ts.map",
+          "packages/knowledge/dist/index.js",
+          "packages/knowledge/dist/index.js.map"
+        ],
+        "diff_summary": "docs/inventory/PUBLIC_EXPORTS.md | 1 + packages/knowledge/dist/index.d.ts | 1 + packages/knowledge/dist/index.d.ts.map | 2 +- packages/knowledge/dist/index.js | 1 + packages/knowledge/dist/index.js.map | 2 +- 5 files changed, 5 insertions(+",
+        "commit_hash": "7e5a84d7"
+      }
+    ],
+    "in_progress": [],
+    "pending": [],
+    "deferred_tasks": [],
+    "key_metrics": {
+      "total_cycles": 1,
+      "avg_duration_ms": 516208,
+      "success_rate": 1,
+      "tokens_consumed": 0,
+      "cost_consumed": 0
+    },
+    "decisions": [
+      "firstmate-wave5-final-source-qualification: selected local-command - local execute command",
+      "firstmate-wave5-final-source-qualification: stop after iteration 1 - Verifier passed with score 1.00."
+    ]
+  },
+  "completedTasks": [
+    {
+      "task_id": "firstmate-wave5-final-source-qualification",
+      "capability": "code.test",
+      "outcome": "success",
+      "iterations": 1,
+      "agent_id": "local-command",
+      "duration_ms": 516208,
+      "run_id": "run_b45c5edd-af88-43be-a51a-313a0b349259",
+      "started_at": "2026-10-23T20:49:17.710Z",
+      "completed_at": "2026-10-23T20:57:53.847Z",
+      "execution_summary": "Process group 97597 gone (kill(-pgid, 0): ESRCH); leader exit observed",
+      "execution_commands": [
+        {
+          "command": "python3 /Volumes/AIMATE_WORK/tmp/osstack/smoke/pr237-integration/run-wave5-final-checks.py",
+          "exit_code": 0,
+          "duration_ms": 516137,
+          "summary": "build 0 inventory-generate 0 typecheck 0 test 0 lint 0 schemas 0 inventory 0 startup 0"
+        }
+      ],
+      "verifier_agent_id": "local-verifier",
+      "verify_summary": "1 verifier command and 0 verifier adapters passed. 1 evaluation passed.",
+      "verify_issue_count": 0,
+      "verify_commands": [
+        {
+          "command": "python3 /Volumes/AIMATE_WORK/tmp/osstack/smoke/pr237-integration/verify-wave5-final-checks.py",
+          "exit_code": 0,
+          "duration_ms": 22,
+          "summary": "All eight local qualification stages passed; remote CI and independent approval remain separate."
+        }
+      ],
+      "evaluations": [
+        {
+          "spec_id": "verify-command-1",
+          "mode": "command",
+          "description": "Shell verifier: python3 /Volumes/AIMATE_WORK/tmp/osstack/smoke/pr237-integration/verify-wave5-final-checks.py",
+          "required": true,
+          "weight": 1,
+          "pass": true,
+          "summary": "command passed (22 ms)",
+          "implicit": true
+        }
+      ],
+      "changed_files": [
+        "docs/inventory/PUBLIC_EXPORTS.md",
+        "packages/knowledge/dist/index.d.ts",
+        "packages/knowledge/dist/index.d.ts.map",
+        "packages/knowledge/dist/index.js",
+        "packages/knowledge/dist/index.js.map"
+      ],
+      "diff_summary": "docs/inventory/PUBLIC_EXPORTS.md | 1 + packages/knowledge/dist/index.d.ts | 1 + packages/knowledge/dist/index.d.ts.map | 2 +- packages/knowledge/dist/index.js | 1 + packages/knowledge/dist/index.js.map | 2 +- 5 files changed, 5 insertions(+",
+      "commit_hash": "7e5a84d7"
+    }
+  ],
+  "events": [
+    {
+      "event_id": "evt_f258d54e-fcfb-4337-bdf4-e0dd329acc26",
+      "loop_id": "loop_96b883cd-91d5-47fa-b83b-f7bbf6c0ef77",
+      "type": "loop.started",
+      "seq": 1,
+      "created_at": 1792788557710,
+      "payload": {
+        "workspace_path": "/Users/osborn/Developer/CodeX/.worktrees/osstack/firstmate-graph-recovery"
+      }
+    },
+    {
+      "event_id": "evt_d71f33da-2460-4457-9fd8-e9931a538119",
+      "loop_id": "loop_96b883cd-91d5-47fa-b83b-f7bbf6c0ef77",
+      "type": "loop.cycle.started",
+      "seq": 2,
+      "created_at": 1792788557710,
+      "payload": {
+        "cycle": 1
+      }
+    },
+    {
+      "event_id": "evt_4db5bf40-1d86-49e0-b967-5936fabfd7e1",
+      "loop_id": "loop_96b883cd-91d5-47fa-b83b-f7bbf6c0ef77",
+      "type": "loop.discover.done",
+      "seq": 3,
+      "created_at": 1792788557710,
+      "payload": {
+        "task_count": 1,
+        "discovered_task_count": 1,
+        "skipped_task_count": 0
+      }
+    },
+    {
+      "event_id": "evt_e1cebe77-412c-4470-b8fc-9fb353e242b6",
+      "loop_id": "loop_96b883cd-91d5-47fa-b83b-f7bbf6c0ef77",
+      "type": "loop.plan.done",
+      "seq": 4,
+      "created_at": 1792788557710,
+      "payload": {
+        "task_id": "firstmate-wave5-final-source-qualification",
+        "plan_id": "plan_478e7ecf-3fb4-4861-a086-e9c62876f15e",
+        "agent_id": "local-command",
+        "routing_reason": "local execute command",
+        "iteration": 1
+      }
+    },
+    {
+      "event_id": "evt_18c8e0ca-5ec7-445b-aa73-37b1d77ccd13",
+      "loop_id": "loop_96b883cd-91d5-47fa-b83b-f7bbf6c0ef77",
+      "type": "loop.execute.done",
+      "seq": 5,
+      "created_at": 1792789073848,
+      "payload": {
+        "task_id": "firstmate-wave5-final-source-qualification",
+        "run_id": "run_b45c5edd-af88-43be-a51a-313a0b349259",
+        "outcome": "completed",
+        "agent_id": "local-command",
+        "summary": "Process group 97597 gone (kill(-pgid, 0): ESRCH); leader exit observed",
+        "iteration": 1
+      }
+    },
+    {
+      "event_id": "evt_5e8fda1b-b131-481e-aa5a-5311456b97f5",
+      "loop_id": "loop_96b883cd-91d5-47fa-b83b-f7bbf6c0ef77",
+      "type": "loop.verify.done",
+      "seq": 6,
+      "created_at": 1792789073918,
+      "payload": {
+        "task_id": "firstmate-wave5-final-source-qualification",
+        "pass": true,
+        "score": 1,
+        "issue_count": 0,
+        "evaluation_count": 1,
+        "failed_evaluation_ids": [],
+        "reviewer_agent_id": "local-verifier",
+        "summary": "1 verifier command and 0 verifier adapters passed. 1 evaluation passed.",
+        "changed_files": [
+          "docs/inventory/PUBLIC_EXPORTS.md",
+          "packages/knowledge/dist/index.d.ts",
+          "packages/knowledge/dist/index.d.ts.map",
+          "packages/knowledge/dist/index.js",
+          "packages/knowledge/dist/index.js.map"
+        ],
+        "diff_summary": "docs/inventory/PUBLIC_EXPORTS.md | 1 + packages/knowledge/dist/index.d.ts | 1 + packages/knowledge/dist/index.d.ts.map | 2 +- packages/knowledge/dist/index.js | 1 + packages/knowledge/dist/index.js.map | 2 +- 5 files changed, 5 insertions(+",
+        "commit_hash": "7e5a84d7",
+        "iteration": 1
+      }
+    },
+    {
+      "event_id": "evt_13c3a853-c2a8-42f9-b321-070024f83710",
+      "loop_id": "loop_96b883cd-91d5-47fa-b83b-f7bbf6c0ef77",
+      "type": "loop.iterate.done",
+      "seq": 7,
+      "created_at": 1792789073918,
+      "payload": {
+        "task_id": "firstmate-wave5-final-source-qualification",
+        "action": "stop",
+        "reason": "Verifier passed with score 1.00.",
+        "iteration": 1,
+        "issue_count": 0,
+        "failed_evaluation_ids": []
+      }
+    },
+    {
+      "event_id": "evt_65d0a4f0-2f32-43ba-814d-6a1bc22e21d6",
+      "loop_id": "loop_96b883cd-91d5-47fa-b83b-f7bbf6c0ef77",
+      "type": "loop.state.written",
+      "seq": 8,
+      "created_at": 1792789073919,
+      "payload": {
+        "jsonPath": "/Volumes/AIMATE_WORK/tmp/osstack/smoke/pr237-integration/wave5-final-loop/LOOP-STATE.json",
+        "markdownPath": "/Volumes/AIMATE_WORK/tmp/osstack/smoke/pr237-integration/wave5-final-loop/STATE.md"
+      }
+    },
+    {
+      "event_id": "evt_1c5d5374-d811-49bd-ad6b-9a67e2e357bd",
+      "loop_id": "loop_96b883cd-91d5-47fa-b83b-f7bbf6c0ef77",
+      "type": "loop.cycle.completed",
+      "seq": 9,
+      "created_at": 1792789073919,
+      "payload": {
+        "cycle": 1,
+        "task_count": 1,
+        "discovered_task_count": 1,
+        "skipped_task_count": 0,
+        "duration_ms": 516211
+      }
+    },
+    {
+      "event_id": "evt_51609aa3-5b0f-42a6-b44a-929424f21849",
+      "loop_id": "loop_96b883cd-91d5-47fa-b83b-f7bbf6c0ef77",
+      "type": "loop.stopped",
+      "seq": 10,
+      "created_at": 1792789073919,
+      "payload": {
+        "reason_code": "completed",
+        "reason": "manual run completed"
+      }
+    }
+  ],
+  "jsonPath": "/Volumes/AIMATE_WORK/tmp/osstack/smoke/pr237-integration/wave5-final-loop/LOOP-STATE.json",
+  "markdownPath": "/Volumes/AIMATE_WORK/tmp/osstack/smoke/pr237-integration/wave5-final-loop/STATE.md",
+  "discoveredTaskCount": 1,
+  "executedTaskCount": 1,
+  "skippedTaskCount": 0
+}

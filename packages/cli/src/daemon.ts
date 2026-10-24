@@ -4070,7 +4070,8 @@ export async function startDaemon(
     if (checkpointClosed) return Promise.reject(new Error('GRAPH_SERVICE_CLOSED'));
     graphRpc ??= import('./graph-rpc.js').then(async ({ GraphRpcService, loadLocalGraphRegistration }) => {
       const configured = opts.graphRpc;
-      const local = configured ? undefined : await loadLocalGraphRegistration(join(osstackHome(), 'graph-host.json'), ctx.adapters);
+      const resolvers = configured ? undefined : (await import('./graph-contract-host.js')).createGraphContractHostResolvers(osstackHome());
+      const local = configured ? undefined : await loadLocalGraphRegistration(join(osstackHome(), 'graph-host.json'), ctx.adapters, resolvers);
       const service = new GraphRpcService({ db: ctx.db, root: join(osstackHome(), 'graph-delivery'),
         registrations: (configured?.registrations ?? [local!]).map(registration => ({ ...registration,
           admitNewRuns: () => !ctx.draining && (registration.admitNewRuns ? registration.admitNewRuns() : true),
@@ -4197,7 +4198,7 @@ export async function startDaemon(
             try { sock.write(encodeFrame(singleErr(req.id, "execution_failed", error instanceof Error ? error.message : String(error)))); } catch { /* disconnected */ }
           };
 
-          if (['graph.validate', 'graph.start', 'graph.submit', 'graph.status', 'graph.result', 'graph.cancel', 'graph.reconcile', 'graph.resume'].includes(req.method)) {
+          if (['graph.validate', 'graph.start', 'graph.submit', 'graph.status', 'graph.result', 'graph.contract', 'graph.cancel', 'graph.reconcile', 'graph.resume'].includes(req.method)) {
             void getGraphRpc().then(service => service.handle(sock, req.method, req.params)).then(result => {
               try { sock.write(encodeFrame(singleOk(req.id, result))); } catch { /* disconnected */ }
             }).catch(async error => {

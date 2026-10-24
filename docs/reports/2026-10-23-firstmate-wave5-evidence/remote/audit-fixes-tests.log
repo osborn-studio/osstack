@@ -1,0 +1,31 @@
+$ vitest run src/remote-home.test.ts src/remote-home-integration.test.ts
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-routing-next/packages/cli
+
+
+⎯⎯⎯⎯⎯⎯ Failed Suites 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/remote-home-integration.test.ts [ src/remote-home-integration.test.ts ]
+ FAIL  src/remote-home.test.ts [ src/remote-home.test.ts ]
+SyntaxError: Invalid regular expression: /[\s%\'"\\]/u: Invalid escape
+ ❯ literalRegExp ../../node_modules/.pnpm/rollup@4.60.4/node_modules/rollup/dist/es/shared/parseAst.js:1758:20
+ ❯ convertNode ../../node_modules/.pnpm/rollup@4.60.4/node_modules/rollup/dist/es/shared/parseAst.js:2086:12
+ ❯ memberExpression ../../node_modules/.pnpm/rollup@4.60.4/node_modules/rollup/dist/es/shared/parseAst.js:1789:21
+ ❯ convertNode ../../node_modules/.pnpm/rollup@4.60.4/node_modules/rollup/dist/es/shared/parseAst.js:2086:12
+ ❯ callExpression ../../node_modules/.pnpm/rollup@4.60.4/node_modules/rollup/dist/es/shared/parseAst.js:1252:21
+ ❯ convertNode ../../node_modules/.pnpm/rollup@4.60.4/node_modules/rollup/dist/es/shared/parseAst.js:2086:12
+ ❯ unaryExpression ../../node_modules/.pnpm/rollup@4.60.4/node_modules/rollup/dist/es/shared/parseAst.js:2023:23
+ ❯ convertNode ../../node_modules/.pnpm/rollup@4.60.4/node_modules/rollup/dist/es/shared/parseAst.js:2086:12
+ ❯ arrowFunctionExpression ../../node_modules/.pnpm/rollup@4.60.4/node_modules/rollup/dist/es/shared/parseAst.js:1185:19
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+
+ Test Files  2 failed (2)
+      Tests  no tests
+   Start at  13:17:38
+   Duration  489ms (transform 202ms, setup 20ms, collect 0ms, tests 0ms, environment 0ms, prepare 59ms)
+
+/Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-routing-next/packages/cli:
+[ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL] @osstack/cli@0.21.0 test: `vitest run src/remote-home.test.ts src/remote-home-integration.test.ts`
+Exit status 1

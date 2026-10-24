@@ -8,6 +8,9 @@ import { dirname, isAbsolute, join, resolve } from 'node:path';
 import type { AgentAdapter, AgentTask } from '@osstack/agents';
 import type { GraphArtifactStore, GraphArtifactManifest } from '@osstack/core/graph-artifacts';
 import { GraphResult } from '@osstack/protocol';
+import type { FrozenDeliveryContractV2 } from '@osstack/protocol';
+import { assertGraphContractPaths } from './graph-delivery-contract.js';
+import { prepareGraphExecutionContext, type GraphExecutionContextRegistration, type GraphContextEvidence } from './graph-execution-context.js';
 import { ExecutionPlan, type RegisteredCandidateWorkspace } from '@osstack/loop';
 import { parseVerificationBinding, verificationCanonical, type VerificationBinding } from '@osstack/graph/nodes/branch';
 import { createReviewRequest, parseReviewReport } from '@osstack/graph/nodes/review';
@@ -28,6 +31,10 @@ export interface GraphVerificationOptions {
   /** Opt-in immutable-image tests; default registered shell behavior is unchanged. */
   containedTests?: GraphContainedTestOptions;
   acceptanceRegistry: readonly AcceptanceCommandSpec[]; writerIdentity: string;
+  deliveryContract?: FrozenDeliveryContractV2;
+  executionContext?: GraphExecutionContextRegistration;
+  contextRepositoryPath?: string;
+  recordContextEvidence?: (value: GraphContextEvidence) => void;
   reviewer: { identity: string; adapter: AgentAdapter; capabilityId: string };
   /** Independent host identity/credential check; never derived from review/model output. */
   verifyReviewer: (identities: Readonly<ReviewerIdentity>) => Promise<void>;
@@ -186,6 +193,7 @@ async function prepareSelection(options: GraphVerificationOptions, kinds: readon
       await preparedCheck();
       const restored = await checked(() => restore(binding.artifactDigest, { rootPath: data.root, directoryName: `${kind}-${randomUUID()}` }));
       if (restored.candidateRevision !== binding.candidateRevision || restored.tree !== manifest.tree || dirname(restored.worktreePath) !== data.root) throw new Error('restored candidate mismatch');
+      if (options.deliveryContract) assertGraphContractPaths(options.deliveryContract, restored.worktreePath, binding.candidateRevision);
       if (kind === 'tests' && containedOptions) {
         assertExactCandidateFiles(restored.worktreePath, binding.candidateRevision);
         containedImage = snapshot(await checked(() => prepareGraphContainedImage(containedOptions, restored.worktreePath, binding.candidateRevision, check)));
@@ -207,7 +215,7 @@ async function prepareSelection(options: GraphVerificationOptions, kinds: readon
   const workspaces: Partial<Record<Kind, RegisteredCandidateWorkspace>> = {};
   if (reviewPath) workspaces.review = snapshot({ workspace_id: binding.scope.workspaceId, workspace_path: reviewPath });
   if (testsPath) workspaces.tests = snapshot({ workspace_id: binding.scope.workspaceId, workspace_path: testsPath });
-  const actions = data.kinds.map(kind => {
+  const actions = await Promise.all(data.kinds.map(async kind => {
     const workspace = workspaces[kind]!;
     assertExactCandidateFiles(workspace.workspace_path, binding.candidateRevision);
     // Paths come from the frozen tree, never from a potentially altered index.
@@ -278,6 +286,10 @@ async function prepareSelection(options: GraphVerificationOptions, kinds: readon
         const receipt = invocations.get(evidence.candidate?.execution?.run_id ?? '');
         if (!receipt || receipt.effectKey !== effect.effectKey) throw new Error('missing actual reviewer invocation receipt');
         envelope.reviewerInvocation = receipt;
+        if (executionContext && evidence.status === 'completed' && evidence.stopped) {
+          const contextReceipt = await executionContext.evidence(receipt.runId, effect);
+          settlementCheck(); options.recordContextEvidence!(contextReceipt);
+        }
         if (!envelope.verificationFailure) {
           if (evidence.status !== 'completed' || evidence.candidate?.execution?.failure_code || evidence.candidate?.status !== 'implementation_complete') envelope.verificationFailure = { code: 'INTERNAL_ERROR', message: 'Review executor failed after stopping', retrySafe: true };
           else {
@@ -307,10 +319,28 @@ async function prepareSelection(options: GraphVerificationOptions, kinds: readon
     // rebuilding task/context from trusted fields so caller history/resume hints cannot pass through.
     const plan = snapshot(ExecutionPlan.parse({ plan_id: `verification:${randomUUID()}`, agent_id: kind === 'review' ? reviewer.id : 'registered-command', max_iterations: 1,
       task: { task_id: `verification:${kind}:${randomUUID()}`, capability: kind === 'review' ? matches[0]!.kind : 'code.test', source: 'manual',
-        prompt: kind === 'review' ? `Independently review frozen candidate ${binding.candidateRevision} against acceptance ${binding.acceptanceRef}. Return only JSON {"schemaVersion":1,"verdict":"accept"|"changes_requested","summary":string,"findings":string[]}. Do not modify files.` : `Run registered acceptance ${binding.acceptanceRef}.` },
+        prompt: kind === 'review' ? `Independently review frozen candidate ${binding.candidateRevision} against acceptance ${binding.acceptanceRef}. Return only JSON {"schemaVersion":1,"verdict":"accept"|"changes_requested","summary":string,"findings":string[]}. Do not modify files.${options.deliveryContract && !options.executionContext ? `\n\n${options.deliveryContract.brief}` : ''}` : `Run registered acceptance ${binding.acceptanceRef}.` },
       stop_condition: { type: kind === 'review' ? 'review_approved' : 'tests_pass' } }));
+    const observeActual = (actual: AgentTask) => {
+      check(); candidateCheck();
+      if (actual.task_id !== plan.task.task_id || actual.capability_id !== data.capabilityId || actual.context?.repo_path !== workspace.workspace_path
+        || invocations.has(actual.run_id)) throw Error('invalid or repeated reviewer invocation');
+      const effect = validateVerificationEffect(effectIdentity(kind), binding, slot.nodeId, slot.effectSlot);
+      invocations.set(actual.run_id, snapshot({ runId: actual.run_id, taskId: actual.task_id, sessionId: actual.session_id, adapterId: reviewer.id, capabilityId: actual.capability_id,
+        promptDigest: createHash('sha256').update(actual.prompt).digest('hex'), contextDigest: createHash('sha256').update(verificationCanonical(actual.context)).digest('hex'),
+        historyPassed: false, effectKey: effect.effectKey }));
+    };
+    if (options.executionContext && (!options.deliveryContract || !options.contextRepositoryPath || !options.recordContextEvidence)) throw Error('GRAPH_CONTEXT_CONTRACT_REQUIRED');
+    const executionContext = kind === 'review' && options.executionContext ? await prepareGraphExecutionContext({ registration: options.executionContext,
+      adapter: reviewer, workspacePath: options.contextRepositoryPath!, frozen: options.deliveryContract!, authorize: check, observe: observeActual }) : undefined;
+    const reviewerEffectsStarted = new Set<string>();
     const invocationReviewer: AgentAdapter = Object.freeze({ ...reviewer,
       invoke: (task: AgentTask, signal: AbortSignal) => (async function* () {
+        if (options.deliveryContract) {
+          const effect = validateVerificationEffect(effectIdentity(kind), binding, slot.nodeId, slot.effectSlot);
+          if (reviewerEffectsStarted.has(effect.effectKey)) throw Error('invalid or repeated reviewer invocation');
+          reviewerEffectsStarted.add(effect.effectKey);
+        }
         const runId = task.run_id; const taskId = task.task_id;
         await independent(); candidateCheck();
         await authorizePolicy?.(workspace.workspace_path); check();
@@ -318,17 +348,14 @@ async function prepareSelection(options: GraphVerificationOptions, kinds: readon
         if (taskId !== plan.task.task_id || invocations.has(runId)) throw new Error('invalid or repeated reviewer invocation');
         const actual: AgentTask = snapshot({ run_id: runId, task_id: taskId, session_id: randomUUID(), capability_id: data.capabilityId,
           prompt: plan.task.prompt, context: { repo_path: workspace.workspace_path } });
-        const effect = validateVerificationEffect(effectIdentity(kind), binding, slot.nodeId, slot.effectSlot);
-        invocations.set(runId, snapshot({ runId, taskId, sessionId: actual.session_id, adapterId: reviewer.id, capabilityId: actual.capability_id,
-          promptDigest: createHash('sha256').update(actual.prompt).digest('hex'), contextDigest: createHash('sha256').update(verificationCanonical(actual.context)).digest('hex'),
-          historyPassed: false, effectKey: effect.effectKey }));
         check();
-        yield* reviewer.invoke(actual, signal);
+        if (executionContext) yield* executionContext.adapter.invoke(actual, signal);
+        else { observeActual(actual); yield* reviewer.invoke(actual, signal); }
       })(),
     });
     const action: GraphRegisteredAction = { nodeId: slot.nodeId, effectSlot: slot.effectSlot, action: snapshot(request.action), tokenReservation: slot.tokenReservation,
       workspace, verifyWorkspace, persist, execution: kind === 'review' ? { kind: 'adapter', plan, adapter: invocationReviewer, capabilityId: data.capabilityId } : contained ? { kind: 'contained', plan, ...contained.registration } : { kind: 'command', plan, command: acceptance.command } };
     Object.freeze(action.execution); return Object.freeze(action);
-  });
+  }));
   return Object.freeze({ binding, workspaces: Object.freeze(workspaces), actions: Object.freeze(actions) });
 }

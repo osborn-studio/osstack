@@ -101,3 +101,36 @@ it('reconcile sends the strict cancellation contract and preserves its exact ret
   expect(await handleGraphCommand(['reconcile', '--request', f.save('forged.json', { ...request, evidenceRefs: ['trust-me'], outcome: 'stopped' }), '--json'], f.deps)).toBe(1);
   expect(f.deps.rpc).not.toHaveBeenCalled();
 });
+
+it('requires both original and durable digests for host-bound contract acknowledgements', async () => {
+  const f = fixture(); const hostInputDigest = 'e'.repeat(64);
+  const admissionBinding = { requestInputDigest: computeGraphInputDigest(f.request), hostInputDigest, contractDigest: 'a'.repeat(64), policyDigest: 'b'.repeat(64) };
+  f.deps.rpc.mockResolvedValue({ ok: true, result: { ...f.status, inputDigest: hostInputDigest, admissionBinding } });
+  expect(await handleGraphCommand(['run', '--request', f.file, '--json'], f.deps)).toBe(0);
+  for (const invalid of [{ ...admissionBinding, requestInputDigest: 'c'.repeat(64) }, { ...admissionBinding, hostInputDigest: 'd'.repeat(64) }]) {
+    f.deps.rpc.mockResolvedValue({ ok: true, result: { ...f.status, inputDigest: hostInputDigest, admissionBinding: invalid } });
+    expect(await handleGraphCommand(['run', '--request', f.file, '--json'], f.deps)).toBe(2);
+  }
+});
+it('reads only a complete scoped host contract receipt and rejects substituted identities', async () => {
+  const f = fixture(); const digest = 'a'.repeat(64); const effect = { effectKey: digest, evidenceRef: 'evidence', logicalAttempt: 1 };
+  const receipt = { schemaVersion: 1, source: 'osstack_graph_host', graphRunId: 'graph-1', scope: f.request.scope,
+    inputDigest: digest, specHash: digest, generation: 1, epoch: 0, contractDigest: digest, policyDigest: digest, baseHead: 'a'.repeat(40),
+    candidate: { revision: 'b'.repeat(40), tree: 'c'.repeat(40), artifactDigest: digest }, joinRef: 'join',
+    check: { ...effect, id: 'test', registryRef: 'sha256:'+digest, commandDigest: digest, exitCode: 0 },
+    review: { ...effect, verdict: 'accept', writerIdentity: 'writer', reviewerIdentity: 'reviewer', authority: 'registered_host_reviewer', promptDigest: digest },
+    achievedCompletion: 'local_verified', publication: 'artifact_only', contextEvidence: [] };
+  const args = ['contract', '--run', 'graph-1', '--scope', f.scopeFile, '--json'];
+  f.deps.rpc.mockResolvedValue({ ok: true, result: receipt });
+  expect(await handleGraphCommand(args, f.deps)).toBe(0);
+  expect(f.deps.rpc.mock.calls.at(-1)?.[0]).toBe('graph.contract');
+  for (const value of [{...receipt,graphRunId:'other'}, {...receipt,scope:{...f.request.scope,principalId:'other'}}, {...receipt,check:{...receipt.check,exitCode:1}}]) {
+    f.deps.rpc.mockResolvedValue({ok:true,result:value}); expect(await handleGraphCommand(args,f.deps)).toBe(1);
+  }
+});
+
+it.each(['ACTION_OUTCOME_UNKNOWN','CANCEL_UNCONFIRMED'])('keeps %s distinct from definite non-execution',async code=>{
+  const f=fixture();f.deps.rpc.mockResolvedValue({ok:false,error:{code,message:code}});
+  expect(await handleGraphCommand(['run','--request',f.file,'--json'],f.deps)).toBe(2);
+  expect(f.output()).toMatchObject({kind:'graph_error',error:{code,nextAction:'reconcile'}});
+});

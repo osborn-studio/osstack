@@ -1,0 +1,94 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-supervision-next/packages/cli
+
+ ✓ src/graph-execution-context.test.ts (8 tests) 60ms
+osstack: retaining write lease graph-action:dd1da3093fe383746b0060cadda446a553fbc13102b20c07007a36741bf34f8e: Error: external stop unconfirmed
+osstack: retaining write lease graph-action:ed33ab59fb8492e2648ded0da7cefd37abb7e805e3fdae9ca8ffc5eaa8f1245a: Error: adapter result or execution unconfirmed
+osstack: retaining write lease graph-action:ebdee4a2bb60edf9a667be5b4f7f862e04476933ee2885da21b075ca23225f58: Error: adapter result or execution unconfirmed
+ ❯ src/graph-verification.test.ts (40 tests | 2 failed) 95683ms
+   ✓ restores the exact verified candidate into independent repositories and rejects reviewer writes  1493ms
+   ✓ rejects wrong manifest and reviewer identity before restoring or invoking  552ms
+   ✓ persists actual stopped exit evidence and rejects tampering/replay  2396ms
+   × keeps unknown stop separate from stopped malformed review and valid changes_requested 2293ms
+     → missing actual reviewer invocation receipt
+   ✓ runs real registered command and independent G04 review concurrently with an observable two-way barrier  3623ms
+   ✓ rejects revoke during adapter availability before actual invocation  1252ms
+   ✓ rejects mutate during adapter availability before actual invocation  1722ms
+   ✓ snapshots callback/data replacement and rejects live revocation after preparation awaits  2530ms
+   ✓ rejects mutation during restore before accepting any workspace baseline  1493ms
+   ✓ releases preparation lease if authority is revoked while acquiring it  765ms
+   ✓ uses exact allowlisted exit 7 instead of model pass claims  2991ms
+   ✓ uses exact allowlisted exit 1 instead of model pass claims  2935ms
+   ✓ uses exact allowlisted exit 2 instead of model pass claims  3278ms
+   ✓ refuses surviving descendants, unregistered commands and cross-attempt replay  2943ms
+   ✓ does not accept review done as executor stop proof through the actual broker  1974ms
+   ✓ classifies stopped malformed output with reviewer mutation=false without a code-failure result  2930ms
+   ✓ classifies stopped malformed output with reviewer mutation=true without a code-failure result  2876ms
+   ✓ rejects manifest scope/SHA mismatch and independent identity verifier rejection before invocation  748ms
+   ✓ snapshots executor evidence before asynchronous verification and rechecks authority afterward  4786ms
+   ✓ rejects actual successful command that mutates candidate: printf malicious > file  2890ms
+   ✓ rejects actual successful command that mutates candidate: git update-index --assume-unchanged file; printf malicious > file  2708ms
+   ✓ rejects actual successful command that mutates candidate: chmod +x file  2718ms
+   ✓ rejects actual successful command that mutates candidate: chmod 600 file  2678ms
+   ✓ rejects actual successful command that mutates candidate: git update-index --assume-unchanged file  3022ms
+   ✓ rejects actual successful command that mutates candidate: printf staged > file; git add file; printf candidate > file  2688ms
+   ✓ rejects actual successful command that mutates candidate: git -c user.name=test -c user.email=test@invalid commit --allow-empty -qm malicious  2693ms
+   × allocates distinct actual review sessions on explicit retry and persists prompt receipts 2958ms
+     → expected [ { …(6) } ] to have a length of 2 but got 1
+   ✓ rejects an oversized envelope at the storage boundary before publishing any file  2756ms
+   ✓ requires an actual invocation receipt and strips supplied writer context on every invocation  2863ms
+   ✓ validates all new receipts when loading digest-consistent evidence  2981ms
+   ✓ allows untracked build outputs from successful actual acceptance execution  2486ms
+   ✓ confirms ordinary failing tests with escape-heavy and multibyte captured output  2248ms
+   ✓ settles an oversized structured review as a bounded contract failure instead of unknown  2294ms
+   ✓ binds actual contained tests exit 0 to candidate/image/ledger without POSIX evidence  2085ms
+   ✓ binds actual contained tests exit 1 to candidate/image/ledger without POSIX evidence  2091ms
+   ✓ binds actual contained tests exit 42 to candidate/image/ledger without POSIX evidence  2157ms
+   ✓ binds actual contained tests exit 7 to candidate/image/ledger without POSIX evidence  2121ms
+   ✓ rejects cross-candidate, image, generation, invocation and container receipt substitution  2088ms
+   ✓ retains admission and seals replay after contained DELETE acknowledgement loss  1522ms
+   ✓ settles contained cancellation only after durable removal and prevents replay  2054ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/graph-verification.test.ts > keeps unknown stop separate from stopped malformed review and valid changes_requested
+Error: missing actual reviewer invocation receipt
+ ❯ Object.persist src/graph-verification.ts:287:71
+    285|       if (kind === 'review') {
+    286|         const receipt = invocations.get(evidence.candidate?.execution?…
+    287|         if (!receipt || receipt.effectKey !== effect.effectKey) throw …
+       |                                                                       ^
+    288|         envelope.reviewerInvocation = receipt;
+    289|         if (executionContext && evidence.status === 'completed' && evi…
+ ❯ src/graph-verification.test.ts:87:17
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  src/graph-verification.test.ts > allocates distinct actual review sessions on explicit retry and persists prompt receipts
+AssertionError: expected [ { …(6) } ] to have a length of 2 but got 1
+
+- Expected
++ Received
+
+- 2
++ 1
+
+ ❯ src/graph-verification.test.ts:262:16
+    260|   const first = f.db.prepare("SELECT effect_key FROM graph_actions WHE…
+    261|   await b.broker.retryAuthorized(b.connection, first.effect_key, () =>…
+    262|   expect(seen).toHaveLength(2);
+       |                ^
+    263|   expect(seen[0]!.session_id).not.toBe(seen[1]!.session_id);
+    264|   for (const task of seen) {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed | 1 passed (2)
+      Tests  2 failed | 46 passed (48)
+   Start at  13:26:48
+   Duration  97.24s (transform 864ms, setup 23ms, collect 1.93s, tests 95.74s, environment 0ms, prepare 84ms)
+
+undefined
+/Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-supervision-next/packages/cli:
+[ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL] Command failed with exit code 1: vitest run src/graph-execution-context.test.ts src/graph-verification.test.ts

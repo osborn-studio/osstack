@@ -1,0 +1,51 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-routing-next/packages/cli
+
+warning: in the working copy of 'dir/file', CRLF will be replaced by LF the next time Git touches it
+ ✓ src/graph-workspace-paths.test.ts (10 tests) 3012ms
+   ✓ compares clean, binary, deleted, ignored and staged paths without changing the index  654ms
+   ✓ uses raw executable modes even when core.filemode disables Git detection  422ms
+   ✓ hashes symlink targets without reading their contents  413ms
+   ✓ rejects submodule index entries and special files  334ms
+Cloning into '/private/var/folders/97/wmwg4qzx02j74c3n73nh438w0000gn/T/g22-rpc-ygOVI9/delivery/fff51126-421b-4c52-a5de-1b80f5dad140/writer-0'...
+HEAD is now at c218bdf base
+Cloning into '/private/var/folders/97/wmwg4qzx02j74c3n73nh438w0000gn/T/g22-rpc-JLLzGP/delivery/6a6fbcab-fcb0-48e5-a4fd-3a005a65f9ad/writer-0'...
+HEAD is now at a095828 base
+Cloning into '/private/var/folders/97/wmwg4qzx02j74c3n73nh438w0000gn/T/g22-rpc-A2YCk0/delivery/c4c69b8b-5913-4e43-9436-8d7fc978174f/writer-0'...
+HEAD is now at 3fd7add base
+Cloning into '/private/var/folders/97/wmwg4qzx02j74c3n73nh438w0000gn/T/g22-rpc-gUJpdD/delivery/d2ec5226-f711-49ef-a360-68b5983fea54/writer-0'...
+HEAD is now at 9a3ff3f base
+osstack: retaining write lease graph-action:0d34d59ce9ef2269ddb4501c19576a7ee9326023bc3c928d1bd538d437ed5f0d: Error: external stop unconfirmed
+Cloning into '/private/var/folders/97/wmwg4qzx02j74c3n73nh438w0000gn/T/g22-rpc-9FEnsk/delivery/a1e8a789-6da5-48f5-9724-cd6ecc8946e1/writer-0'...
+HEAD is now at a38e6fc base
+Cloning into '/private/var/folders/97/wmwg4qzx02j74c3n73nh438w0000gn/T/g22-rpc-Tg804a/delivery/619955af-d38c-40c0-a956-00e4566012a7/writer-0'...
+HEAD is now at 547fe01 base
+Cloning into '/private/var/folders/97/wmwg4qzx02j74c3n73nh438w0000gn/T/g22-rpc-UflSb9/delivery/48054e91-65fb-4a2d-bdb4-edb922a7a7b8/writer-0'...
+HEAD is now at 2534c7f base
+osstack: retaining write lease graph-action:e9f21f768f0185a34f5c4756595ac5352fafdd562dbf92c14e069e10941af3d9: Error: delivery_contract_path_outside_scope
+Cloning into '/private/var/folders/97/wmwg4qzx02j74c3n73nh438w0000gn/T/g22-rpc-fwdiHJ/delivery/01365b76-568e-4f95-9b37-d5b00f1aea61/writer-0'...
+HEAD is now at 484254f base
+osstack: retaining write lease graph-action:fb416c8f474a5e3da88668748416782f5a5166215478dbcff2520dcc30b3d3b0: Error: GRAPH_CONTRACT_HIDDEN_INDEX_FLAGS
+Cloning into '/private/var/folders/97/wmwg4qzx02j74c3n73nh438w0000gn/T/g22-rpc-zdeYaz/delivery/79c3679a-3e5a-4bc4-95a4-30b0c39839af/writer-0'...
+HEAD is now at 14fe02d base
+osstack: retaining write lease graph-action:301a8e17b5774a3f31ad9f9677d32c7c3ed6fcc544a44fd18e4f060c1ebf93e4: Error: GRAPH_CONTRACT_HIDDEN_INDEX_FLAGS
+Cloning into '/private/var/folders/97/wmwg4qzx02j74c3n73nh438w0000gn/T/g22-rpc-2LsSPt/delivery/9e0454ab-d6a9-4991-8059-462e5ce1b6da/writer-0'...
+HEAD is now at a4d7e7d base
+osstack: retaining write lease graph-action:a009faa8226f30a77999990af78ba97134b76c1fc2e73497e07cbf6706138b88: Error: delivery_contract_path_outside_scope
+ ✓ src/graph-contract-integration.test.ts (17 tests) 55142ms
+   ✓ binds the durable host contract before the real Graph launch and never changes source HEAD/refs/index/files  11047ms
+   ✓ does not publish a durable completion file after grant changes during the last await  13756ms
+   ✓ does not publish a durable completion file after revision changes during the last await  5814ms
+   ✓ never exposes a contract completion when executor stop remains unknown  1430ms
+   ✓ binds actual writer and rebuilt reviewer prompts to two-phase context receipts before ready  5262ms
+   ✓ does not transfer a prior epoch context/check/review receipt to a repaired candidate  11009ms
+   ✓ rejects a path outside contract before verification or ready publication  1518ms
+   ✓ rejects writer --assume-unchanged flags before freezing an out-of-scope candidate  1500ms
+   ✓ rejects writer --skip-worktree flags before freezing an out-of-scope candidate  1476ms
+   ✓ rejects a writer stat-cache bypass before freezing or starting review  1682ms
+
+ Test Files  2 passed (2)
+      Tests  27 passed (27)
+   Start at  14:09:29
+   Duration  59.22s (transform 2.17s, setup 19ms, collect 3.53s, tests 58.15s, environment 0ms, prepare 215ms)
+

@@ -1,0 +1,15 @@
+{
+  "base": "605799c2",
+  "runtime_unchanged_after_final_audit": true,
+  "requested_model": "claude-haiku-5-5",
+  "files": {
+    "packages/cli/src/remote-home-command.ts": "5a59c9ab1be6aac0c9d450d55f8af96f443ca46b820ec877b8779cf16e2b1e79",
+    "packages/cli/src/remote-home-exporter.ts": "e802f6a178585d6dc5d86d998b53666f0ed589ec0d507561102cb8a72c5fc7d2",
+    "packages/cli/src/remote-home-integration.test.ts": "ff694af51c3b8aea7c715ed0b0d7ba85c7781420e678343d3b0ffcc366869c5a",
+    "packages/cli/src/remote-home-protocol.ts": "4f189de0cc706f03a15fd9d83b4c1a59d14b8bc85dec055d0d5c8ed338b1a8be",
+    "packages/cli/src/remote-home-reader.ts": "bf5aec214e56ffa80af9ff50f053b0958cb0a98298089dc265d2dbd6cab297c6",
+    "packages/cli/src/remote-home.test.ts": "c1a4281fc78c9799af68a97b8837948a283c302a459460c14759d0d8d3533e2f",
+    "docs/plans/2026-10-23-remote-home-readonly.md": "ff138a947579c591405930ccc71236eeeb32d0b7ae285f607eb6a4055a93aa19",
+    "docs/guides/remote-home-readonly.md": "d6df754ab4d40f489735d7e31545db6806f4743f8f97c13b5fe1323c24ea5473"
+  }
+}

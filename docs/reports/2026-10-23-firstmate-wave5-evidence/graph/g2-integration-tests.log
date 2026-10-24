@@ -1,0 +1,33 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-supervision-next/packages/cli
+
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/smoke/pr237-integration/delivery-contract/graph-next/tmp/g22-rpc-mYChyi/delivery/4efa1064-afa5-4db1-8cc5-37a3e5c494ec/writer-0'...
+HEAD is now at 6b53753 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/smoke/pr237-integration/delivery-contract/graph-next/tmp/g22-rpc-q3ibp6/delivery/632afe66-f6a6-40c1-8bf2-72544e3793bc/writer-0'...
+HEAD is now at 498a24f base
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/smoke/pr237-integration/delivery-contract/graph-next/tmp/g22-rpc-lT85Zc/delivery/0899960f-c05a-4ff6-b83b-525c7910ad46/writer-0'...
+HEAD is now at 5d04ece base
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/smoke/pr237-integration/delivery-contract/graph-next/tmp/g22-rpc-98NQWu/delivery/477c447d-5594-4f20-97c5-75640321ed2c/writer-0'...
+HEAD is now at 5521773 base
+osstack: retaining write lease graph-action:14142d87fe7b8bf78867c53db41a6db3f93655154529c8e86891394e146d1b7e: Error: external stop unconfirmed
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/smoke/pr237-integration/delivery-contract/graph-next/tmp/g22-rpc-HeoexL/delivery/c28d5443-b414-49aa-b555-948cc92e365e/writer-0'...
+HEAD is now at 4864f7b base
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/smoke/pr237-integration/delivery-contract/graph-next/tmp/g22-rpc-a4JjWO/delivery/a1e2e3b6-48b6-4618-9bd4-bc7943407db9/writer-0'...
+HEAD is now at 646cb0d base
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/smoke/pr237-integration/delivery-contract/graph-next/tmp/g22-rpc-anfCpy/delivery/3df42053-f450-472c-8502-2743be22048f/writer-0'...
+HEAD is now at 7423bf1 base
+osstack: retaining write lease graph-action:8459e1d82608fe40d568fa8234abfd423ab33d8f2baeb494760a0e0325cdf985: Error: delivery_contract_path_outside_scope
+ ✓ src/graph-contract-integration.test.ts (9 tests) 26968ms
+   ✓ binds the durable host contract before the real Graph launch and never changes source HEAD/refs/index/files  3913ms
+   ✓ does not publish a durable completion file after grant changes during the last await  3795ms
+   ✓ does not publish a durable completion file after revision changes during the last await  3823ms
+   ✓ never exposes a contract completion when executor stop remains unknown  1404ms
+   ✓ binds actual writer and rebuilt reviewer prompts to two-phase context receipts before ready  3832ms
+   ✓ does not transfer a prior epoch context/check/review receipt to a repaired candidate  8602ms
+   ✓ rejects a path outside contract before verification or ready publication  1457ms
+
+ Test Files  1 passed (1)
+      Tests  9 passed (9)
+   Start at  13:16:27
+   Duration  27.89s (transform 471ms, setup 8ms, collect 779ms, tests 26.97s, environment 0ms, prepare 25ms)
+

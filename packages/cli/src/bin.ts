@@ -223,6 +223,7 @@ function renderChineseMainHelp(): string {
   stats               查看 agent 与 loop 指标
 
 项目命令：
+  remote-home inspect  Read a pinned remote home snapshot over fixed SSH export
   homes inspect --manifest <file>  只读盘点显式登记的本地实例
   follow-up           本地承诺账本（不对外发送）
   worker list|inspect --repo <path> --default-tenant  只读查看已绑定执行器
@@ -384,6 +385,16 @@ export async function main(args = process.argv.slice(2)): Promise<number> {
   if (cmd === "--version" || cmd === "-v" || cmd === "version") {
     console.log(`osstack ${VERSION}`);
     return 0;
+  }
+
+  // The remote stdio protocol must run before deployment defaults or any UI output.
+  if (cmd === "remote-export") {
+    const {handleRemoteExportCommand} = await import("./remote-home-exporter.js");
+    return handleRemoteExportCommand(args.slice(1));
+  }
+  if (cmd === "remote-home") {
+    const {handleRemoteHomeCommand} = await import("./remote-home-command.js");
+    return handleRemoteHomeCommand(args.slice(1));
   }
 
   // Talk to the daemon that is actually deployed. Without this, a plain shell

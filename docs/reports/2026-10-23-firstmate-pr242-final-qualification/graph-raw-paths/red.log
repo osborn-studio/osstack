@@ -1,0 +1,85 @@
+$ vitest run -- src/graph-contract-integration.test.ts -t 'same-size|stat-cache'
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-routing-next/packages/cli
+
+Sourcemap for "/Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-routing-next/packages/protocol/dist/follow-up-delivery.js" points to missing source files
+Sourcemap for "/Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-routing-next/packages/core/dist/state/follow-up-delivery-ddl.js" points to missing source files
+Sourcemap for "/Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-routing-next/packages/core/dist/state/follow-up-delivery.js" points to missing source files
+ ✓ src/proof-cli.test.ts (44 tests) 2773ms
+   ✓ proof CLI > writes a proof pack with manifest checksums  520ms
+ ✓ src/product-entry-cli.test.ts (46 tests) 4014ms
+   ✓ product entry commands > runs a top-level product doctor across loop readiness and agent availability  2516ms
+   ✓ product entry commands > blocks Trusted Publishing when a public workspace package has not been bootstrapped  1040ms
+osstack: clock jump detected drift_ms=9980; re-running external health and recovery probes
+osstack: retaining write lease run-offline-production-recovery: guarded autonomy blocked or exit unconfirmed
+ ✓ src/loop-cli.test.ts (42 tests) 7505ms
+   ✓ loop CLI > keeps legacy full-scan findings as warn evidence while strict baseline scope passes clean changes  308ms
+   ✓ loop CLI > blocks new changed-file errors in strict baseline scope  303ms
+   ✓ loop CLI > gates findings committed by an isolated worktree against the pre-run revision  480ms
+   ✓ loop CLI > passes --worktree through local loop runs  610ms
+   ✓ loop CLI > runs ds-review as a post-execution reviewer verifier  728ms
+   ✓ loop CLI > keeps builder-unavailable from successful reviewed shell execution  316ms
+   ✓ loop CLI > keeps reviewer-unavailable from successful reviewed shell execution  363ms
+   ✓ loop CLI > keeps reviewer-failure from successful reviewed shell execution  629ms
+   ✓ loop CLI > can run and inspect a loop through the daemon  442ms
+   ✓ loop CLI > can manage a daemon background polling loop  332ms
+   ✓ loop CLI > treats loop start --once as a single daemon-managed cycle  300ms
+ ✓ src/daemon-loop.test.ts (25 tests) 7122ms
+   ✓ daemon loop RPC > persists deferred-work reasons across daemon restart instead of reporting idle  349ms
+   ✓ daemon loop RPC > limits guarded autonomy writers to two after persisting their queued runs  300ms
+   ✓ daemon loop RPC > runs and reports a local loop cycle through the daemon socket  462ms
+   ✓ daemon loop RPC > attaches neat evidence to a successful daemon loop without gating it  431ms
+   ✓ daemon loop RPC > runs finite multi-cycle loops through daemon RPC  507ms
+   ✓ daemon loop RPC > runs reviewer adapters through daemon loop.run  624ms
+   ✓ daemon loop RPC > starts, reports, and stops a background polling loop  419ms
+   ✓ daemon loop RPC > stops a polling loop session when its budget is exceeded and persists the reason  425ms
+   ✓ daemon loop RPC > starts a cron-scheduled background loop  351ms
+   ✓ daemon loop RPC > includes background loop metrics in daemon stats  328ms
+   ✓ daemon loop RPC > creates a blocked kanban card when a background loop escalates  364ms
+   ✓ daemon loop RPC > creates a blocked kanban card after three same-capability loop failures  449ms
+   ✓ daemon loop RPC > stops a background polling loop when its goal command passes  317ms
+ ❯ src/session-rpc.test.ts (32 tests | 7 failed) 4208ms
+   ✓ governed session RPC > persists structured-event without treating it as approval 103ms
+   ✓ governed session RPC > persists structured-directive without treating it as approval 105ms
+   ✓ governed session RPC > preserves structured-start on the first session turn 87ms
+   ✓ governed session RPC > preserves structured-start-event on the first session turn 88ms
+   ✓ governed session RPC > tracks a resumed turn for drain and cancellation 120ms
+   ✓ governed session RPC > refuses a new instruction while the daemon is drained 21ms
+   ✓ governed session RPC > starts and persists a real resumable session without exposing its native id 88ms
+   ✓ governed session RPC > lists and snapshots sessions without exposing native ids 18ms
+   ✓ governed session RPC > applies an instruction once and reports an identical replay as duplicate 120ms
+   ✓ governed session RPC > retains failed delivery as uncertain instead of automatically replaying side effects 105ms
+   ✓ governed session RPC > turns an exact bounded OStag decision directive into awaiting_decision 97ms
+   ✓ governed session RPC > rejects stale versions, wrong turns, terminal sessions and oversized messages 110ms
+   ✓ governed session RPC > collapses concurrent duplicate delivery into one adapter resume 92ms
+   ✓ governed session RPC > fails closed on an accepted reservation left by daemon interruption 15ms
+   ✓ governed session RPC > keeps an uncertain delivery visible when a newer message fails 18ms
+   ✓ governed session RPC > exposes list, status, snapshot and send through the CLI 86ms
+   ✓ governed session RPC > starts a resumable session through the CLI without exposing its native id 72ms
+   ✓ governed session RPC > fails closed when an adapter tries to expose protected native metadata 84ms
+   ✓ governed session RPC > rejects instructions addressed to a different runtime before invoking the adapter 14ms
+   × attention watch/inbox/answer shares the exact governed session receipt 18ms
+     → Cannot read properties of undefined (reading 'state')
+   ✓ never resumes an abandoned receipt when its original direct message ID is replayed 83ms
+   ✓ readmits capacity-limited Loop snapshots but preserves an explicit release 19ms
+   × keeps an Attention answer uncertain after adapter failure and never replays it 14ms
+     → Cannot read properties of undefined (reading 'item_id')
+   × keeps the reserved answer uncertain when both completion and failure persistence throw 15ms
+     → Cannot read properties of undefined (reading 'item_id')
+   × does not reserve manual instructions or answers when execution admission is denied 101ms
+     → Cannot read properties of undefined (reading 'item_id')
+   × cancels admission queued for either manual route without reserving a receipt 155ms
+     → Cannot read properties of undefined (reading 'item_id')
+   × updates watched decisions from durable session changes without inbox refresh 2097ms
+     → expected { id: 1, ok: true, result: { …(12) } } to match object { ok: true, result: { …(1) } }
+(70 matching properties omitted from actual)
+   ✓ exposes scoped worker views through the real RPC and CLI without execution 39ms
+   ✓ manual daily reads watched repository state through the daemon without marking it seen 54ms
+   × evidence lesson uses actual watched run RPC and preserves a reviewed investigation draft 32ms
+     → expected { id: 1, ok: true, result: { …(2) } } to match object { ok: true, result: { …(2) } }
+(2 matching properties omitted from actual)
+   ✓ follow-up uses actual RPC and CLI, preserves unsent drafts, and fences stale or foreign updates 33ms
+   ✓ waits for supervision stop before closing the daemon database 2ms
+/Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-routing-next/packages/cli:
+[ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL] @osstack/cli@0.21.0 test: `vitest run -- src/graph-contract-integration.test.ts -t 'same-size|stat-cache'`
+Exit status 130
