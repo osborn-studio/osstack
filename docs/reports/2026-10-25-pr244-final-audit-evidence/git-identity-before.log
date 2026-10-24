@@ -1,0 +1,11 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/pr244-final-audit/packages/loop
+
+ ✓ src/verifier.test.ts (45 tests | 44 skipped) 793ms
+   ✓ enforces the combined base-review path budget before accepting either complete listing  791ms
+
+ Test Files  1 passed (1)
+      Tests  1 passed | 44 skipped (45)
+   Start at  11:24:44
+   Duration  1.58s (transform 359ms, setup 36ms, collect 541ms, tests 793ms, environment 0ms, prepare 31ms)
+

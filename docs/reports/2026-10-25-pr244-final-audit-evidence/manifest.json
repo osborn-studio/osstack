@@ -492,6 +492,16 @@
       "bytes": 2238
     },
     {
+      "file": "delivery-qa-results.json",
+      "sha256": "28348c1e8769030137e447827ba9201fe6b7ab1e949fcafd35e68a29125de283",
+      "bytes": 1617
+    },
+    {
+      "file": "delivery-qa-validation.json",
+      "sha256": "3f128b0750e3575731f43f2a818b9a2350e3a2c43c68b25299bade42291afd3a",
+      "bytes": 3802
+    },
+    {
       "file": "final-audit-qa-loop-result.json",
       "sha256": "20736becf73d70a8d1493e0d8f27325fa8320c2720bff90256c07b74a13ac030",
       "bytes": 22710
@@ -500,6 +510,51 @@
       "file": "final-source-hash-coverage.json",
       "sha256": "47e66747b7325f607229e9a0b9c274db930b597a39a079d78a67dde6cce45c5b",
       "bytes": 34428
+    },
+    {
+      "file": "git-identity-before.log",
+      "sha256": "b7d1e8fb5d687c76975a876a620ad79db505ed2955550e07f8ba1c05b46b6580",
+      "bytes": 458
+    },
+    {
+      "file": "git-identity-fix-disposition.md",
+      "sha256": "9344fc430066a6080378c0f01ba2cd6495d3192761a02ade4cbd407e217d1eb0",
+      "bytes": 1423
+    },
+    {
+      "file": "git-identity-fix-reaudit-attempt.json",
+      "sha256": "1c20915d4e6cd49d96a753a9d7a8a245836a54373d49a02429f16806bd1de377",
+      "bytes": 49
+    },
+    {
+      "file": "git-identity-fix-reaudit-manifest.json",
+      "sha256": "536406cd889ff4690fdcb3d3edb520559a4f8d1d24102b9542117ad881e32797",
+      "bytes": 988
+    },
+    {
+      "file": "git-identity-fix-reaudit-result.json",
+      "sha256": "3ce23d8bbb4c7f4222069e824057809a12146eb3fbb1926d0fd4fe078e62e1bf",
+      "bytes": 3315
+    },
+    {
+      "file": "git-identity-fix-reaudit-stderr.log",
+      "sha256": "61b1ec1babd05607d61c3c37883d25b807fc94e69c2090164e10676c0b2af903",
+      "bytes": 83
+    },
+    {
+      "file": "git-identity-fix-source-proof.json",
+      "sha256": "1d0f88e666f869be32b34c6fba30031c25b28891a54477d4b2f6e61874a4cbbf",
+      "bytes": 472
+    },
+    {
+      "file": "git-identity-strict-after.log",
+      "sha256": "cbff6b26bea1e0edb5c8bc1d705686cc8c9ab5c017152dfb9e31313434431648",
+      "bytes": 458
+    },
+    {
+      "file": "git-identity-strict-before.log",
+      "sha256": "2d1cb17e1dcc9754b97783361715950b7ae3d801cbad7995fdbd7fdb9fe3b0b5",
+      "bytes": 5186
     },
     {
       "file": "migration-registration-reaudit-attempt.json",
