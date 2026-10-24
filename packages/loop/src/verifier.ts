@@ -395,19 +395,21 @@ async function verifyArtifacts(
   const base = options.artifactBaseCommit;
   if (base !== undefined && !/^(?:[a-f0-9]{40}|[a-f0-9]{64})$/.test(base)) throw Error("INVALID_ARTIFACT_BASE_COMMIT");
   let diffResult: CommandResult;
-  if (base === undefined) {
-    diffResult = await runShellCommand("git -c core.fsmonitor=false -c core.hooksPath=/dev/null diff --no-ext-diff --no-textconv --name-only -- . && git -c core.fsmonitor=false -c core.hooksPath=/dev/null ls-files --others --exclude-standard", {
-      cwd: options.workspacePath, inheritEnv: false, env: reviewerGitEnvironment(options.workspacePath), timeoutMs: options.timeoutMs ?? 120_000, outputLimit: options.outputLimit ?? 16_000,
-    });
-  } else {
-    const git = (args: string[]) => execFileSync("git", [...REVIEWER_GIT_ARGS, ...args], { env: reviewerGitEnvironment(options.workspacePath), cwd: options.workspacePath, encoding: "utf8", timeout: options.timeoutMs ?? 120_000, maxBuffer: 1_048_576 });
-    git(["merge-base", "--is-ancestor", base, "HEAD"]);
+  const git = (args: string[]) => execFileSync("git", [...REVIEWER_GIT_ARGS, ...args], { env: reviewerGitEnvironment(options.workspacePath), cwd: options.workspacePath, encoding: "utf8", timeout: options.timeoutMs ?? 120_000, maxBuffer: 1_048_576 });
+  try {
+    if (base !== undefined) git(["merge-base", "--is-ancestor", base, "HEAD"]);
     // Machine-readable paths must never pass through the executor's tail-truncated log buffer.
-    const stdout = git(["diff", "--no-ext-diff", "--no-textconv", base, "--no-renames", "--name-only", "-z", "--", "."]) + git(["ls-files", "--others", "--exclude-standard", "-z"]);
+    const stdout = git(["diff", "--no-ext-diff", "--no-textconv", ...(base === undefined ? [] : [base]), "--no-renames", "--name-only", "-z", "--", "."])
+      + git(["ls-files", "--others", "--exclude-standard", "-z"]);
     if (Buffer.byteLength(stdout) > 1_048_576) throw Error("CANDIDATE_ARTIFACT_RANGE_TOO_LARGE");
-    diffResult = { command: "git candidate range paths", exitCode: 0, stdout, stderr: "", durationMs: 0 };
+    diffResult = { command: "git complete artifact paths", exitCode: 0, stdout, stderr: "", durationMs: 0 };
+  } catch (error) {
+    const failure = error as { status?: number | null; signal?: string | null };
+    if (typeof failure.status !== "number" || failure.signal) {
+      return { issues: unconfirmedVerifierStop("Artifact path observation did not complete; candidate reconciliation required").issues, evaluations: [] };
+    }
+    diffResult = { command: "git complete artifact paths", exitCode: failure.status === 0 ? 1 : failure.status, stdout: "", stderr: error instanceof Error ? error.message : String(error), durationMs: 0 };
   }
-  if (base === undefined && diffResult.termination?.stop_confirmed !== true) return { issues: unconfirmedVerifierStop("Artifact command stop is unconfirmed").issues, evaluations: [] };
   if (diffResult.exitCode !== 0) {
     const issue = commandIssue("verify.artifact_git_diff_failed", diffResult);
     const failAll = (spec: EvaluationSpec, implicit: boolean): EvaluationResult => ({
@@ -430,8 +432,7 @@ async function verifyArtifacts(
   }
 
   const changedFiles = [...new Set(diffResult.stdout
-    .split(base === undefined ? /\r?\n/ : /\0/)
-    .map((line) => base === undefined ? line.trim() : line)
+    .split("\0")
     .filter((line) => line.length > 0))];
 
   const issues: Issue[] = [];

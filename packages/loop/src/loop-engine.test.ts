@@ -1600,6 +1600,40 @@ it("retains protection for a routing miss after an effectful non-verifier availa
   expect(probe).toHaveBeenCalled();
   expect(await readFile(join(workspace, "probe-effect.txt"), "utf8")).toBe("external probe started");
   expect(release).not.toHaveBeenCalled();
-  expect(retain).toHaveBeenCalledWith("execution or external stop unconfirmed");
+  expect(retain).toHaveBeenCalledWith("execution, probe or verification did not settle safely; preflight refusal is possible; reconciliation required");
   await expect(readFile(loopContainmentPath(workspace), "utf8")).resolves.toContain("containment_pending");
+});
+
+
+it("retains the real worktree and branch after a writing selection probe refuses execution", async () => {
+  const workspace = await makeGitQueuedWorkspace("base\n");
+  const builder = new FakeLoopAdapter();
+  const reviewer = new FakeReviewAdapter();
+  let candidatePath = "";
+  const probe = vi.spyOn(builder, "isAvailable").mockImplementation(async () => {
+    expect(candidatePath).not.toBe("");
+    await writeFile(join(candidatePath, "app.txt"), "selection probe evidence");
+    return { available: false, last_checked_at: 0 };
+  });
+  const invoke = vi.spyOn(builder, "invoke");
+  const release = vi.fn(async () => {}), retain = vi.fn();
+  const options = { workspacePath: workspace, sources: ["task_queue" as const], useWorktree: true,
+    adapters: [builder, reviewer], verifierAgentIds: [reviewer.id],
+    prepareVerification: async (path: string) => { candidatePath = path; },
+    lifecycleLease: async () => ({ release, retain }) };
+  const engine = new LoopEngine(options);
+  await expect(engine.runOnce()).rejects.toThrow("NO_AVAILABLE_EXECUTION_ADAPTER_AFTER_ROUTING_PROBES");
+  expect(probe).toHaveBeenCalled();
+  expect(invoke).not.toHaveBeenCalled();
+  expect(await readFile(join(candidatePath, "app.txt"), "utf8")).toBe("selection probe evidence");
+  const listings = await git(workspace, ["worktree", "list", "--porcelain"]);
+  expect(listings).toContain(candidatePath);
+  const branch = (await git(candidatePath, ["symbolic-ref", "--short", "HEAD"])).trim();
+  expect(await git(workspace, ["branch", "--list", branch])).toContain(branch);
+  expect(release).not.toHaveBeenCalled();
+  expect(retain).toHaveBeenCalledWith(expect.stringContaining("preflight refusal is possible"));
+  await expect(readFile(loopContainmentPath(workspace), "utf8")).resolves.toContain("containment_pending");
+  expect((await engine.runOnce()).executedTaskCount).toBe(0);
+  expect((await new LoopEngine({ ...options, stateFilePath: "new-state.json" }).runOnce()).executedTaskCount).toBe(0);
+  expect(await readFile(join(workspace, "app.txt"), "utf8")).toBe("base\n");
 });

@@ -347,7 +347,7 @@ export class LoopEngine {
     } finally {
       if (this.containmentPending) lease?.retain("persisted execution containment requires reconciliation");
       else if (this.candidateContaminated) lease?.retain("verifier candidate integrity requires reconciliation");
-      else if (this.implementationUnconfirmed || (!settled && this.lifecycleEffectsStarted)) lease?.retain("execution or external stop unconfirmed");
+      else if (this.implementationUnconfirmed || (!settled && this.lifecycleEffectsStarted)) lease?.retain("execution, probe or verification did not settle safely; preflight refusal is possible; reconciliation required");
       else await lease?.release();
     }
   }
@@ -913,7 +913,7 @@ export class LoopEngine {
         const effectiveTask: Task = latestFeedback === undefined
           ? task
           : { ...task, context: withIterationFeedback(task.context, latestFeedback) };
-        const agentSelection = await this.selectExecutionAgent(effectiveTask, historyTasks);
+        const agentSelection = await this.awaitStopSensitive(() => this.selectExecutionAgent(effectiveTask, historyTasks));
         const plan = planTask(effectiveTask, {
           maxIterations,
           agentId: agentSelection.agentId,
@@ -1474,11 +1474,13 @@ export class LoopEngine {
 
   private stopPayload(state: LoopState, count: number, goal?: LoopGoalResult): Record<string, unknown> {
     if (this.containmentPending || this.candidateContaminated || this.implementationUnconfirmed) {
-      return { reason_code: "execution_containment_pending", reason: "Execution reconciliation required; automatic retry is blocked" };
+      return { reason_code: "execution_containment_pending", reason: "Execution or validation requires reconciliation (including possible preflight refusal); automatic retry is blocked" };
     }
     return completionStopPayload(state, count, goal);
   }
 
+  // A rejection does not distinguish preflight refusal from launched effects.
+  // Retention is conservative and is not evidence that a process remains alive.
   private async awaitStopSensitive<T>(invoke: () => Promise<T>): Promise<T> {
     try { return await invoke(); }
     catch (error) { this.implementationUnconfirmed = true; throw error; }
@@ -1569,6 +1571,8 @@ function completionStopPayload(
   executedTaskCount: number,
   goal?: LoopGoalResult,
 ): Record<string, unknown> {
+  // Historical serialized reason retained for compatibility; current engine stopPayload
+  // intercepts this persisted state with execution_containment_pending first.
   if (state.completed_tasks.some((task) => task.implementation_unconfirmed === true)) {
     return { reason_code: "execution_unconfirmed", reason: "Implementation stop is unconfirmed; reconciliation required before further execution or workspace cleanup" };
   }

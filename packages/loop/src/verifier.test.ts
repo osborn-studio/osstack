@@ -977,3 +977,19 @@ it("stops later reviewers when invoke spawns an owned child and throws synchrono
     if (child) { const owned = child; const closed = new Promise<void>(resolve => owned.once("close", () => resolve())); owned.kill("SIGKILL"); await closed; }
   }
 });
+
+it("checks every legacy artifact path even when the log limit would drop an early forbidden path", async () => {
+  await initGitWorkspace();
+  await mkdir(join(workspace, "dist")); await mkdir(join(workspace, "z-many"));
+  await writeFile(join(workspace, "dist", "forbidden.ts"), "must reject");
+  for (let i = 0; i < 150; i++) await writeFile(join(workspace, "z-many", `file-${String(i).padStart(3, "0")}.ts`), "later");
+  const verdict = await verifyRun(run(), { workspacePath: workspace, outputLimit: 32, artifactVerification: { requireGitDiff: true } });
+  expect(verdict.pass).toBe(false);
+  expect(verdict.issues).toContainEqual(expect.objectContaining({ rule: "verify.artifact_forbidden_path", file: "dist/forbidden.ts" }));
+});
+it("preserves NUL-delimited legacy artifact paths that contain newlines", async () => {
+  await initGitWorkspace(); await mkdir(join(workspace, "dist"));
+  await writeFile(join(workspace, "dist", "first\nsecond.ts"), "must reject");
+  const verdict = await verifyRun(run(), { workspacePath: workspace, artifactVerification: { requireGitDiff: true } });
+  expect(verdict.issues).toContainEqual(expect.objectContaining({ rule: "verify.artifact_forbidden_path", file: "dist/first\nsecond.ts" }));
+});
