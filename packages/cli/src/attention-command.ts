@@ -20,6 +20,8 @@ Opt-in daemon: OSSTACK_ATTENTION=1 osstack serve
   attention ci --scope ID --github-repo OWNER/REPO --pr N --head SHA --required JSON
   attention claude-hook --binding-file PATH
   attention lesson --from-run ID --repo PATH --default-tenant [--dry-run] [--json]
+  attention triage --scope ID --item ID --model EXACT [--json]
+  attention triage --status --scope ID [--json]
   attention contract|routing-eval|triage|context|lesson --input PATH [--json]
 Legacy --input planning uses supplied data only; it does not verify execution. Runtime V2: deliver --contract FILE.
 See docs/guides/attention.md for planning flags and verified hook setup.
@@ -43,6 +45,11 @@ export async function handleAttentionCommand(
     return 0;
   }
   try {
+    if (args[0] === "triage" && !args.includes("--input")) {
+      const {handleAttentionTriageCommand} = await import("./attention-triage.js");
+      if (!io.rpc) throw new Error("daemon_connection_required");
+      return await handleAttentionTriageCommand(args,{...io,rpc:io.rpc});
+    }
     if (args[0] === "lesson" && args.includes("--from-run")) {
       const { handleEvidenceLessonCommand } = await import(
         "./attention-lesson.js"

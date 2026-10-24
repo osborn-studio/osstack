@@ -111,3 +111,6 @@ export {
 export { DeliveryContractV2, FrozenDeliveryContractV2, DeliveryVerificationReceiptV2,
   DeliveryCandidateIdentityV2, DeliveryReceiptReferenceV2, DeliveryCompletionV2,
   DeliveryPublicationScopeV2 } from "./delivery-contract.js";
+export { FollowUpState, FollowUpCreateParams, FollowUpListParams, FollowUpDraftParams,
+  FollowUpResolveParams, FollowUpSourceSnapshot, FollowUpObligation,
+  FollowUpMutationResult, FollowUpListItem, FollowUpListResult } from "./follow-up.js";

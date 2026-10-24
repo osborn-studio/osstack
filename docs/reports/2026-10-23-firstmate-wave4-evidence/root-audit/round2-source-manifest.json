@@ -1,0 +1,20 @@
+{
+  "packages/agents/src/controlled-triage.ts": "1f161bc828c6465b56fb32dc6fc427b9c36ee52a2e6d3bae2965769d62578a8f",
+  "packages/agents/src/controlled-triage.test.ts": "2f38372b55cedd32b23faa792d959afde28bf20615d3f9f0c92efa612e7036d7",
+  "packages/agents/src/controlled-session.ts": "8e3acb2b783ba4126edaeddecc7e5c134f9848b013efd1cf03bccb0c1c1cbde2",
+  "packages/cli/src/attention-triage.ts": "65db25e95225e3f8077f3db17fea2fd4b49a532d8bdb1a774cac31cdacc7e0c0",
+  "packages/cli/src/attention-triage.test.ts": "ae892d3c1c3f9818e4b84bae85f015bfa305b77b894d2f23000d4e4a43a76886",
+  "packages/core/src/state/attention-triage.ts": "5dbc1f2aafab37371ed1aa560253dfa3bc7494dbc7a4b3a20fb5847cf0c79e96",
+  "packages/core/src/state/attention-triage.test.ts": "88c7f52bcb547401fa52e555c3cc7893294d15484e820d60e42d7ea04a2070f9",
+  "packages/core/src/state/follow-up-obligations.ts": "29c9f82a600b31cf4a804b398bf01fadbd5cd50501000482fe014c0ae67ff18b",
+  "packages/core/src/state/follow-up-obligations-ddl.ts": "ebf085ca816e724835e1f265ac916d79bbdbeca3fde6f76cc5880f1c60b3abb1",
+  "packages/core/src/state/follow-up-obligations.test.ts": "031832b01a90c947d4e1ee74fadf3c022eb799b0065e0d6897e636482eb0e86c",
+  "packages/protocol/src/follow-up.ts": "200df29af446aa659238846c7f700789c28bb13afef8cff7b878510160399ce5",
+  "packages/cli/src/follow-up-command.ts": "26e474eab2805a23ef97d410ca1fbee5ddc764e1f3d06961ec099b8b14f2c4c6",
+  "packages/cli/src/local-ledgers-daemon.test.ts": "1e03bfcc57674ebcbbe535e6b47a64cb24ceb74a50fd99e3f84bf6a6532a2220",
+  "docs/guides/attention-triage.md": "f320cffb91d0675d67789a9182c1ebba3aaf317107afd2fb2be317105cf15b1c",
+  "docs/guides/local-follow-up-obligations.md": "59102402fb01473ffe6b3e5f279a48db8063ca0cac6887801a0d4bd888694e0f",
+  "packages/agents/src/index.ts": "69c9ccf925e8829a7f415c18c3d93e0827b47e0dd256e95dc4c2ddba01c31028",
+  "packages/core/src/state/db.ts": "72057b005cdec61b08d27459d4fcf58b9bfea672056537038cdefe9b1b74f2c2",
+  "packages/core/src/state/migrations.ts": "85b91ff10b8c04679e6ba707336ff77cd9f0722d6e729019806fcba3ca1c1a53"
+}

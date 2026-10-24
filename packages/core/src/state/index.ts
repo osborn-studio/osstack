@@ -25,3 +25,6 @@ export * from "./sessions.js";
 export * from "./session-continuations.js";
 
 export * from "./improvement-pr-deliveries.js";
+
+export { AttentionTriageLedger, AttentionTriageResult } from "./attention-triage.js";
+export type { AttentionTriageSnapshot, AttentionTriageReservation, AttentionTriageAdmission, AttentionTriageCompletion } from "./attention-triage.js";

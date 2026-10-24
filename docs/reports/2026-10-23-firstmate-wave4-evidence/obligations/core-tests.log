@@ -1,0 +1,12 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-routing-next/packages/core
+
+ ✓ src/state/attention-triage.test.ts (6 tests) 230ms
+ ✓ src/state/follow-up-obligations.test.ts (23 tests) 686ms
+ ✓ src/state/db.test.ts (24 tests) 901ms
+
+ Test Files  3 passed (3)
+      Tests  53 passed (53)
+   Start at  12:56:01
+   Duration  1.49s (transform 274ms, setup 0ms, collect 764ms, tests 1.82s, environment 0ms, prepare 284ms)
+

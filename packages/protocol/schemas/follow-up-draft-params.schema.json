@@ -1,0 +1,39 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OSStack FollowUpDraftParams",
+  "$comment": "Local ledger only; parsing does not authorize remote delivery. Runtime validates canonical repository, source binding, revisions and response byte budget.",
+  "type": "object",
+  "properties": {
+    "repo_path": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4096
+    },
+    "default_tenant": {
+      "type": "boolean",
+      "const": true
+    },
+    "obligation_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "expected_revision": {
+      "type": "integer",
+      "exclusiveMinimum": 0,
+      "maximum": 9007199254740990
+    },
+    "actor": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    }
+  },
+  "required": [
+    "repo_path",
+    "default_tenant",
+    "obligation_id",
+    "expected_revision",
+    "actor"
+  ],
+  "additionalProperties": false
+}

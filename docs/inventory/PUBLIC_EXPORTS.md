@@ -37,6 +37,8 @@ export type { ContainedCommandOptions, ContainedStopReceipt, ContainedCommandExe
 export { prepareContainedImage } from "./contained.js";
 export type { ContainedImageOptions, ContainedImageReceipt, ContainedCandidateFile, ContainedCommandResult } from "./contained.js";
 export { createBoundedMessagesAdapter, type BoundedMessagesOptions } from "./bounded-messages.js";
+export { createControlledTriageProvider } from "./controlled-triage.js";
+export type { ControlledTriageProvider, ControlledTriageOptions } from "./controlled-triage.js";
 ```
 
 ## `@osstack/autonomy`
@@ -144,6 +146,7 @@ export type { RepositoryScope } from "./graph/repository-scope.js";
 export { GraphCheckpointStore } from './state/graph-checkpoints.js';
 export * from "./scratch.js";
 export { deliveryContractDigest, deliveryCheckReference, freezeDeliveryContract,
+export { FollowUpObligationService, FollowUpError, FOLLOW_UP_ERROR_CODES, FOLLOW_UP_MAX_BYTES, serializeFollowUp } from "./state/follow-up-obligations.js";
 ```
 
 ## `@osstack/github`
@@ -266,6 +269,7 @@ export {
 export type { GraphCheckpointTransport } from './graph-checkpoint.js';
 export {
 export { DeliveryContractV2, FrozenDeliveryContractV2, DeliveryVerificationReceiptV2,
+export { FollowUpState, FollowUpCreateParams, FollowUpListParams, FollowUpDraftParams,
 ```
 
 ## `@osstack/runtime`

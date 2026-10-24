@@ -101,3 +101,6 @@ export { prepareContainedImage } from "./contained.js";
 export type { ContainedImageOptions, ContainedImageReceipt, ContainedCandidateFile, ContainedCommandResult } from "./contained.js";
 
 export { createBoundedMessagesAdapter, type BoundedMessagesOptions } from "./bounded-messages.js";
+
+export { createControlledTriageProvider } from "./controlled-triage.js";
+export type { ControlledTriageProvider, ControlledTriageOptions } from "./controlled-triage.js";

@@ -16,8 +16,12 @@ docs/reports/2026-10-23-firstmate-wave3-evidence/**/*context*.txt -whitespace
 docs/reports/2026-10-23-firstmate-wave3-evidence/**/*.log -whitespace
 docs/reports/2026-10-23-firstmate-wave2-evidence/root-audit/*.log -whitespace
 
+docs/reports/2026-10-23-firstmate-wave4-evidence/**/*.log -whitespace
+
+docs/reports/2026-10-23-firstmate-wave4-evidence/triage/haiku-context*.md -whitespace
 docs/reports/2026-10-23-firstmate-pr239-final-qualification/*.log -whitespace
 
 docs/reports/2026-10-23-firstmate-wave3-evidence/contracts/*.log -whitespace
 docs/reports/2026-10-23-firstmate-wave3-evidence/contracts/*.stderr -whitespace
+/docs/reports/2026-10-23-firstmate-pr241-final-qualification/** -whitespace
 /docs/reports/2026-10-23-firstmate-pr240-final-qualification/** -whitespace

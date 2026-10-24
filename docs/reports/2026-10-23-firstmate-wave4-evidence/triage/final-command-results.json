@@ -1,0 +1,38 @@
+[
+  {
+    "label": "agents-typecheck-final",
+    "command": [
+      "pnpm",
+      "--filter",
+      "@osstack/agents",
+      "typecheck"
+    ],
+    "exit_code": 0
+  },
+  {
+    "label": "cli-typecheck-final",
+    "command": [
+      "pnpm",
+      "--filter",
+      "@osstack/cli",
+      "typecheck"
+    ],
+    "exit_code": 0
+  },
+  {
+    "label": "biome-final",
+    "command": [
+      "pnpm",
+      "exec",
+      "biome",
+      "check",
+      "packages/core/src/state/attention-triage.ts",
+      "packages/core/src/state/attention-triage.test.ts",
+      "packages/agents/src/controlled-triage.ts",
+      "packages/agents/src/controlled-triage.test.ts",
+      "packages/cli/src/attention-triage.ts",
+      "packages/cli/src/attention-triage.test.ts"
+    ],
+    "exit_code": 0
+  }
+]

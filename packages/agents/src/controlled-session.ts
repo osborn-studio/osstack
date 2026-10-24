@@ -298,3 +298,8 @@ export function createControlledSessionAdapter(options: ControlledSessionAdapter
 export function isControlledSessionAdapter(value: unknown): value is ControlledSessionAdapter {
   return typeof value === "object" && value !== null && controlledAdapters.has(value);
 }
+
+// Internal adapter primitives: one-shot runtimes share the exact SDK capability
+// deny policy without inheriting persistent conversation/session authority.
+export { ownedDirectory as prepareControlledDirectory, assertOwnedDirectory as assertControlledDirectory, bundledExecutable as prepareControlledExecutable,
+  DENIED_TOOLS as controlledDeniedTools, FIXED_SETTINGS as controlledNoToolsSettings };

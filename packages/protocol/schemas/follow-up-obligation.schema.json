@@ -1,0 +1,343 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OSStack FollowUpObligation",
+  "$comment": "Local ledger only; parsing does not authorize remote delivery. Runtime validates canonical repository, source binding, revisions and response byte budget.",
+  "type": "object",
+  "properties": {
+    "repo_path": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4096
+    },
+    "default_tenant": {
+      "type": "boolean",
+      "const": true
+    },
+    "obligation_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "source_session_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "source_task_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "source_run_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "source_creation_version": {
+      "type": "integer",
+      "exclusiveMinimum": 0,
+      "maximum": 9007199254740990
+    },
+    "source_identity_digest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "actor": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "promise": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4096
+    },
+    "destination_ref": {
+      "type": "string",
+      "const": "local_operator"
+    },
+    "resolution_condition": {
+      "type": "string",
+      "enum": [
+        "manual",
+        "session_completed"
+      ]
+    },
+    "due_at": {
+      "anyOf": [
+        {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 8640000000000000
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "state": {
+      "type": "string",
+      "enum": [
+        "open",
+        "drafted",
+        "fulfilled_local",
+        "waived"
+      ]
+    },
+    "revision": {
+      "type": "integer",
+      "exclusiveMinimum": 0,
+      "maximum": 9007199254740990
+    },
+    "created_at": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 8640000000000000
+    },
+    "updated_at": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 8640000000000000
+    },
+    "draft": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "text": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 8192
+            },
+            "content_digest": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "source": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "state": {
+                      "type": "string",
+                      "enum": [
+                        "starting",
+                        "running",
+                        "awaiting_decision",
+                        "idle",
+                        "completed",
+                        "failed",
+                        "cancelled"
+                      ]
+                    },
+                    "version": {
+                      "type": "integer",
+                      "exclusiveMinimum": 0,
+                      "maximum": 9007199254740990
+                    },
+                    "updated_at": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 8640000000000000
+                    }
+                  },
+                  "required": [
+                    "state",
+                    "version",
+                    "updated_at"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "source_missing": {
+              "type": "boolean"
+            },
+            "created_at": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 8640000000000000
+            },
+            "delivery_state": {
+              "type": "string",
+              "const": "unsent"
+            }
+          },
+          "required": [
+            "text",
+            "content_digest",
+            "source",
+            "source_missing",
+            "created_at",
+            "delivery_state"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "resolution": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "mode": {
+              "type": "string",
+              "enum": [
+                "waive",
+                "condition"
+              ]
+            },
+            "actor": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "reason": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1024
+            },
+            "source": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "state": {
+                      "type": "string",
+                      "enum": [
+                        "starting",
+                        "running",
+                        "awaiting_decision",
+                        "idle",
+                        "completed",
+                        "failed",
+                        "cancelled"
+                      ]
+                    },
+                    "version": {
+                      "type": "integer",
+                      "exclusiveMinimum": 0,
+                      "maximum": 9007199254740990
+                    },
+                    "updated_at": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 8640000000000000
+                    }
+                  },
+                  "required": [
+                    "state",
+                    "version",
+                    "updated_at"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "resolved_at": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 8640000000000000
+            },
+            "external_delivery": {
+              "type": "string",
+              "const": "unsupported"
+            }
+          },
+          "required": [
+            "mode",
+            "actor",
+            "reason",
+            "source",
+            "resolved_at",
+            "external_delivery"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "source": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "state": {
+              "type": "string",
+              "enum": [
+                "starting",
+                "running",
+                "awaiting_decision",
+                "idle",
+                "completed",
+                "failed",
+                "cancelled"
+              ]
+            },
+            "version": {
+              "type": "integer",
+              "exclusiveMinimum": 0,
+              "maximum": 9007199254740990
+            },
+            "updated_at": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 8640000000000000
+            }
+          },
+          "required": [
+            "state",
+            "version",
+            "updated_at"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "source_missing": {
+      "type": "boolean"
+    },
+    "external_delivery": {
+      "type": "string",
+      "const": "unsupported"
+    }
+  },
+  "required": [
+    "repo_path",
+    "default_tenant",
+    "obligation_id",
+    "source_session_id",
+    "source_task_id",
+    "source_run_id",
+    "source_creation_version",
+    "source_identity_digest",
+    "actor",
+    "promise",
+    "destination_ref",
+    "resolution_condition",
+    "due_at",
+    "state",
+    "revision",
+    "created_at",
+    "updated_at",
+    "draft",
+    "resolution",
+    "source",
+    "source_missing",
+    "external_delivery"
+  ],
+  "additionalProperties": false
+}

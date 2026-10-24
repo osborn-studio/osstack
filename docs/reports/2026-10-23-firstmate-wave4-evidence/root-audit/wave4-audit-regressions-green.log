@@ -1,0 +1,11 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-local-ledgers/packages/cli
+
+ ✓ src/attention-triage.test.ts (17 tests) 546ms
+ ✓ src/local-ledgers-daemon.test.ts (5 tests) 409ms
+
+ Test Files  2 passed (2)
+      Tests  22 passed (22)
+   Start at  13:18:44
+   Duration  2.08s (transform 955ms, setup 16ms, collect 1.85s, tests 955ms, environment 0ms, prepare 65ms)
+

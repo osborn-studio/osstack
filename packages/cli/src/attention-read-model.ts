@@ -213,7 +213,7 @@ export function readAttentionStatus(
     return source.transaction(() => {
       const schema = source.pragma("user_version", { simple: true });
       // Main migrations 25–39 and Attention 40–42 preserve the v24 read projection.
-      if (!Number.isInteger(schema) || Number(schema) < 24 || Number(schema) > 42)
+      if (!Number.isInteger(schema) || Number(schema) < 24 || Number(schema) > 44)
         throw new Error("unsupported_schema");
       const task = source
         .prepare(

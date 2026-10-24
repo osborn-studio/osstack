@@ -1,0 +1,34 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-local-ledgers/packages/cli
+
+ ✓ src/follow-up-command.test.ts (12 tests) 8ms
+
+⎯⎯⎯⎯⎯⎯ Failed Suites 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/session-rpc.test.ts [ src/session-rpc.test.ts ]
+Error: Failed to resolve entry for package "@osstack/hermes-adapter". The package may have incorrect main/module/exports specified in its package.json.
+  Plugin: vite:import-analysis
+  File: /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-local-ledgers/packages/cli/src/session-rpc.test.ts:14:60
+  7  |  import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+  8  |  import { openDb, SessionRepository, insertRun, insertTask } from "@osstack/core";
+  9  |  import { encodeFrame, FrameDecoder } from "@osstack/hermes-adapter";
+     |                                             ^
+  10 |  import { startDaemon } from "./daemon.js";
+  11 |  import { main } from "./bin.js";
+ ❯ packageEntryFailure ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:16198:15
+ ❯ resolvePackageEntry ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:16195:3
+ ❯ tryNodeResolve ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:16060:18
+ ❯ ResolveIdContext.resolveId ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:15831:19
+ ❯ EnvironmentPluginContainer.resolveId ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:42372:17
+ ❯ TransformPluginContext.resolve ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:42579:15
+ ❯ normalizeUrl ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:40622:26
+ ❯ ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:40753:37
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 1 passed (2)
+      Tests  12 passed (12)
+   Start at  13:02:08
+   Duration  468ms (transform 169ms, setup 18ms, collect 299ms, tests 8ms, environment 0ms, prepare 65ms)
+

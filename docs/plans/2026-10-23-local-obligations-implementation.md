@@ -1,0 +1,27 @@
+# O1 local obligation ledger — implementation contract draft
+
+## Deliverable and ownership
+
+Implement only local, authenticated default-tenant/repository-scoped obligation create/list/draft/resolve. No transport, network send, auto-retry, remote receipt recognition, or public message authorization is exposed. Root owns CLI bin, daemon registration, package index exports and protocol schema generation. The service and CLI handler form a usable RPC contract. Migration 43 was integrated from ae1589d9 (local cherry-pick 6e1abe07); migration 44 is now appended sequentially with the same DDL tested in isolation and an actual 43→44 fixture.
+
+## Scope and evidence
+
+All requests contain explicit `repo_path` and `default_tenant: true`. Canonical existing accessible directories only. SQL joins agent_sessions→tasks→runs, verifying consistent task/run/session linkage and NULL task/run tenant IDs, exact canonical stored session repository. Graph and unbound runs are unsupported. Create references one real source session and expected version, snapshot only safe state/version/IDs and timestamp (never native ID, prompt, model text, credentials). Source cleanup cannot cascade-delete obligations. Subsequent source absence yields `source_missing`; it cannot fulfill a condition.
+
+First destination is exact local operator reference; no arbitrary URLs/remote labels are accepted as registered destinations. This intentionally qualifies only local obligation recording, not a public channel. Promise text is operator-supplied bounded data; it cannot grant authority or become executable instructions. Dates must be finite safe Unix milliseconds and due dates are optional; past-due records remain valid overdue obligations.
+
+## Persistence and transitions
+
+Proposed table `follow_up_obligations`: UUID id, canonical repo_path, default tenant marker, immutable source session/task/run IDs, creation version and identity digest (request hash + task creation time + run start time), promise text, local destination ref, resolution condition enum, idempotency key, canonical create payload SHA, state (`open|drafted|fulfilled_local|waived`), revision, created_at/updated_at, draft metadata/text, resolution JSON. No FK to ephemeral source tables. UNIQUE(repo_path,tenant,idempotency_key); bounded fields, numeric/check constraints, immutable creation identity trigger, terminal rows sealed, no-delete history.
+
+`follow_up_obligation_events` is append-only: obligation_id, revision, transition, actor, content_digest, safe evidence snapshot, created_at. Mutation and event append are one withWrite transaction. CAS takes explicit expected revision. Same idempotency key and identical create payload returns existing row, changed payload conflicts. Retry create is resolved before checking source existence/current version, so restarting or later source cleanup cannot turn a known successful creation into a false failure. Scope never falls back to lookup by ID across all repositories.
+
+`create` creates open revision1 with source snapshot; `draft` takes CAS and generates deterministic unsent local text from promise + actual current safe source state, captures source revision/state and digest, sets drafted but does not resolve or authorize sending. `list` never mutates, bounded <=50 and complete-result <=64KiB, stable keyset pagination, plus overdue count from same scope. Cursor is local read position (does not grant scope; every request reasserts repo/default tenant). `resolve waived` requires explicit actor/reason and preserves original promise. `resolve condition` only supports declared `session_completed` with an actual consistent current `completed` source; never maps generic task done or model text to fulfillment. A fulfilled_local state explicitly proves only that local condition, never external delivery. `resolve external_delivered` is stable unsupported. Repeated resolve with stale revision is conflict, no silent overwrite. Draft cannot move terminal rows.
+
+## Protocol and CLI
+
+RPC methods `follow-up.list`, `follow-up.create`, `follow-up.draft`, `follow-up.resolve`; constructor `(db, dbPath, { nowMs? })` makes no DB mutation or migration. CLI `follow-up <command> --repo PATH --default-tenant ... --json` uses injected raw-result RPC similar to worker view. Create can use a bounded JSON file to avoid exposing promise text in argument logs. Draft/resolve require opaque obligation ID + expected revision; source identifiers are local references, not authorization. Plain output and JSON escape terminal controls. Error responses use stable bounded codes and no raw DB errors.
+
+## Adversarial tests and qualification
+
+Restart persistence; idempotent create after state/source change; key/content collision; cross repo and tenant joins; inconsistent run/session binding; stale source create version; stale CAS and two SQLite connections competing; rollback when event append fails; source deletion and unknown outcome; terminal sealing; malicious text/ANSI and oversized input; dates NaN/Infinity; draft unsent while source complete; external URLs/spool not provider evidence; list zero mutations; output/pagination caps; readonly/unmigrated DB errors. CLI parser/RPC tests prove exact arguments and missing flags fail closed. Root real daemon/CLI test plus full CI required after migration wiring. Rollback disables registration and leaves ledger intact; no externally sent state exists.
