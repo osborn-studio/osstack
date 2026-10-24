@@ -873,3 +873,11 @@ it("read-only preflight timeout leaves authority active rather than recording se
   const current=f.service.inspect({...f.scope,attempt_id:prepared.attempt_id}).attempt;
   expect(current.state).toBe("prepared");expect(current.authorization_status).toBe("active");expect(f.sends).not.toHaveBeenCalled();
 });
+it("lookup window is anchored to durable send_started, not an old prepared draft",async()=>{
+  const f=fixture(),prepared=f.prepare().attempt;f.now(1_000_000);
+  const authorized=f.authorize(prepared).attempt;f.transport.sendOnce=async()=>{throw Error("lost response");};
+  const failed=await f.service.dispatch({...f.scope,attempt_id:prepared.attempt_id,expected_revision:authorized.revision});
+  const lookup=vi.fn(async()=>null);f.transport.lookup=lookup;
+  f.now(1_001_000);await f.service.reconcile({...f.scope,attempt_id:prepared.attempt_id,expected_revision:failed.attempt.revision});
+  expect(lookup).toHaveBeenCalledWith(expect.anything(),expect.any(AbortSignal),{createdAtMs:1_000_000});
+});

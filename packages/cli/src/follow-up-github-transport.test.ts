@@ -38,12 +38,36 @@ export function envelope(): FollowUpDeliveryEnvelope {
   };
   return { ...payload, envelope_digest: hash(deliveryCanonical(payload)) };
 }
+function graphqlReceipt(
+  e: FollowUpDeliveryEnvelope,
+  comment: { id: number; body: string; user: { node_id: string }; issue_url: string },
+) {
+  return {
+    data: {
+      addComment: {
+        clientMutationId: e.attempt_id,
+        subject: {
+          id:
+            comment.issue_url === "https://api.github.com/repos/owner/repo/issues/1"
+              ? e.destination.target_node_id
+              : "OTHER",
+        },
+        commentEdge: {
+          node: { databaseId: comment.id, body: comment.body, author: { id: comment.user.node_id } },
+        },
+      },
+    },
+  };
+}
 async function fixture(handler?: (req: IncomingMessage, res: ServerResponse) => boolean) {
   const e = envelope();
   let posts = 0,
     reads = 0;
   const comments: unknown[] = [];
+  const requests: string[] = [];
+  const postBodies: unknown[] = [];
   const server = createServer((req, res): void => {
+    requests.push(`${req.method} ${req.url}`);
     res.setHeader("x-github-request-id", "REQUEST");
     if (req.method === "POST") posts++;
     if (handler?.(req, res)) return;
@@ -66,7 +90,9 @@ async function fixture(handler?: (req: IncomingMessage, res: ServerResponse) => 
       const chunks: Buffer[] = [];
       req.on("data", (c) => chunks.push(c));
       req.on("end", () => {
-        const body = JSON.parse(Buffer.concat(chunks).toString()).body;
+        const payload = JSON.parse(Buffer.concat(chunks).toString());
+        postBodies.push(payload);
+        const body = payload.variables.input.body;
         const comment = {
           id: posts,
           body,
@@ -74,8 +100,8 @@ async function fixture(handler?: (req: IncomingMessage, res: ServerResponse) => 
           issue_url: "https://api.github.com/repos/owner/repo/issues/1",
         };
         comments.push(comment);
-        res.statusCode = 201;
-        res.end(JSON.stringify(comment));
+        res.statusCode = 200;
+        res.end(JSON.stringify(graphqlReceipt(e, comment)));
       });
       return;
     }
@@ -91,11 +117,16 @@ async function fixture(handler?: (req: IncomingMessage, res: ServerResponse) => 
     fixtureBaseUrl: `http://127.0.0.1:${address.port}`,
     credential: async () => "fixture-token",
   });
-  return { e, transport, comments, posts: () => posts, reads: () => reads };
+  return { e, transport, comments, requests, postBodies, posts: () => posts, reads: () => reads };
+}
+async function send(f: Awaited<ReturnType<typeof fixture>>, timeout = 3000) {
+  const signal = AbortSignal.timeout(timeout);
+  await f.transport.preflight!(f.e, signal);
+  return f.transport.sendOnce(f.e, signal);
 }
 it("sends one exact correlated comment then verifies it by author, target and exact wire body", async () => {
   const f = await fixture();
-  const receipt = await f.transport.sendOnce(f.e, AbortSignal.timeout(3000));
+  const receipt = await send(f);
   expect(f.posts()).toBe(1);
   expect(f.comments).toEqual([expect.objectContaining({ body: githubDeliveryBody(f.e) })]);
   expect(await f.transport.lookup(f.e, AbortSignal.timeout(3000))).toEqual(receipt);
@@ -118,11 +149,11 @@ it.each([
     if (field === "target") value.issue_url += "2";
     if (field === "body") value.body += "!";
     if (field === "id") value.id = 0;
-    res.statusCode = 201;
-    res.end(JSON.stringify(value));
+    res.statusCode = 200;
+    res.end(JSON.stringify(graphqlReceipt(f.e, value)));
     return true;
   });
-  await expect(f.transport.sendOnce(f.e, AbortSignal.timeout(3000))).rejects.toThrow();
+  await expect(send(f)).rejects.toThrow();
   expect(f.posts()).toBe(1);
 });
 it.each(["actor", "target"])("preflight %s mismatch forbids POST", async (field) => {
@@ -131,7 +162,7 @@ it.each(["actor", "target"])("preflight %s mismatch forbids POST", async (field)
     res.end(JSON.stringify({ node_id: "OTHER" }));
     return true;
   });
-  await expect(f.transport.sendOnce(f.e, AbortSignal.timeout(3000))).rejects.toThrow();
+  await expect(send(f)).rejects.toThrow();
   expect(f.posts()).toBe(0);
 });
 it.each([
@@ -153,23 +184,21 @@ it.each([
       res.end("fixture-token should not surface");
     }
     if (mode === "truncated") {
-      res.statusCode = 201;
+      res.statusCode = 200;
       res.end('{"id":');
     }
     if (mode === "oversized") {
-      res.statusCode = 201;
+      res.statusCode = 200;
       res.end("x".repeat(4_194_305));
     }
     return true;
   });
-  await expect(
-    f.transport.sendOnce(f.e, AbortSignal.timeout(mode === "timeout" ? 100 : 3000)),
-  ).rejects.toThrow("github_delivery_unconfirmed");
+  await expect(send(f, mode === "timeout" ? 100 : 3000)).rejects.toThrow("github_delivery_unconfirmed");
   expect(f.posts()).toBe(1);
 });
 it("duplicate correlation or a changed body cannot become delivered by lookup", async () => {
   const f = await fixture();
-  await f.transport.sendOnce(f.e, AbortSignal.timeout(3000));
+  await send(f);
   f.comments.push(f.comments[0]);
   await expect(f.transport.lookup(f.e, AbortSignal.timeout(3000))).rejects.toThrow("duplicate");
   f.comments.pop();
@@ -213,7 +242,7 @@ it("real HTTP lost POST response stays unknown across service reconstruction; lo
     req.on("end", () => {
       f.comments.push({
         id: 1,
-        body: JSON.parse(Buffer.concat(chunks).toString()).body,
+        body: JSON.parse(Buffer.concat(chunks).toString()).variables.input.body,
         user: { node_id: "ACTOR" },
         issue_url: "https://api.github.com/repos/owner/repo/issues/1",
       });
@@ -330,12 +359,13 @@ it("credential rotation between identity preflight and POST prevents admission",
     fixtureBaseUrl: `http://127.0.0.1:${address.port}`,
     credential: async () => (++calls === 1 ? "first-token" : "rotated-token"),
   });
+  await transport.preflight!(f.e, AbortSignal.timeout(3000));
   await expect(transport.sendOnce(f.e, AbortSignal.timeout(3000))).rejects.toThrow("registration_changed");
   expect(f.posts()).toBe(0);
 });
 it("a foreign author copying the public marker cannot veto the real receipt", async () => {
   const f = await fixture();
-  const sent = await f.transport.sendOnce(f.e, AbortSignal.timeout(3000));
+  const sent = await send(f);
   f.comments.unshift({
     id: 999,
     body: githubDeliveryBody(f.e),
@@ -364,14 +394,14 @@ it("uses durable creation context so 600 historical comments cannot hide the new
     res.end(JSON.stringify(items));
     return true;
   });
-  const sent = await f.transport.sendOnce(f.e, AbortSignal.timeout(3000));
+  const sent = await send(f);
   expect(await f.transport.lookup(f.e, AbortSignal.timeout(3000), { createdAtMs })).toEqual(sent);
   expect(observedSince).toBe(new Date(createdAtMs - 300000).toISOString());
   expect(f.posts()).toBe(1);
 });
 it("allows a page of ten large legitimate neighboring comments within a finite response cap", async () => {
   const f = await fixture();
-  const sent = await f.transport.sendOnce(f.e, AbortSignal.timeout(3000));
+  const sent = await send(f);
   for (let i = 0; i < 8; i++)
     f.comments.unshift({
       id: 100 + i,
@@ -380,4 +410,47 @@ it("allows a page of ten large legitimate neighboring comments within a finite r
       issue_url: "https://api.github.com/repos/owner/repo/issues/1",
     });
   expect(await f.transport.lookup(f.e, AbortSignal.timeout(3000))).toEqual(sent);
+});
+it("consumed send issues only one POST and pins immutable GraphQL subject ID", async () => {
+  const f = await fixture();
+  await f.transport.preflight!(f.e, AbortSignal.timeout(3000));
+  const before = f.requests.length;
+  await f.transport.sendOnce(f.e, AbortSignal.timeout(3000));
+  expect(f.requests.slice(before)).toEqual(["POST /graphql"]);
+  expect(f.postBodies[0]).toMatchObject({
+    variables: {
+      input: {
+        subjectId: f.e.destination.target_node_id,
+        clientMutationId: f.e.attempt_id,
+        body: githubDeliveryBody(f.e),
+      },
+    },
+  });
+  await expect(f.transport.sendOnce(f.e, AbortSignal.timeout(3000))).rejects.toThrow("preflight_required");
+  expect(f.posts()).toBe(1);
+});
+it("locked target is rejected during readiness without POST", async () => {
+  const f = await fixture((req, res) => {
+    if (req.url !== "/repos/owner/repo/issues/1") return false;
+    res.end(
+      JSON.stringify({
+        node_id: "ISSUE",
+        number: 1,
+        url: "https://api.github.com/repos/owner/repo/issues/1",
+        locked: true,
+      }),
+    );
+    return true;
+  });
+  await expect(f.transport.preflight!(f.e, AbortSignal.timeout(3000))).rejects.toThrow("target_mismatch");
+  expect(f.posts()).toBe(0);
+});
+it("GraphQL partial errors never become a delivered receipt", async () => {
+  const f = await fixture((req, res) => {
+    if (req.method !== "POST") return false;
+    res.end(JSON.stringify({ data: null, errors: [{ message: "private provider detail" }] }));
+    return true;
+  });
+  await expect(send(f)).rejects.toThrow("graphql_error");
+  expect(f.posts()).toBe(1);
 });

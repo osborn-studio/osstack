@@ -291,7 +291,7 @@ it("live host config revocation prevents transport preflight before any network 
   f.config.enabled = false;
   f.save();
   await expect(
-    f.host.options.transports!.get("github_comment")!.sendOnce(f.attempt.envelope, AbortSignal.timeout(1000)),
+    f.host.options.transports!.get("github_comment")!.preflight!(f.attempt.envelope, AbortSignal.timeout(1000)),
   ).rejects.toThrow("config_changed");
 });
 it("rejects unknown flags rather than offering unattended signing", async () => {

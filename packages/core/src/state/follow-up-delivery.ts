@@ -478,11 +478,12 @@ export class FollowUpDeliveryService {
           return { result: this.result(row, "qualification_pending") };
         const now = this.evidenceClock(row.updated_at_ms);
         if (row.state === "started") row = this.bump(row, "delivery_unknown", "started_unconfirmed", now, {});
-        return { row, envelope: frozen(envelope), transport };
+        const started = this.db.prepare("SELECT created_at_ms FROM follow_up_delivery_events WHERE attempt_id=? AND transition='send_started' ORDER BY revision LIMIT 1").get(row.attempt_id) as {created_at_ms:number}|undefined;
+        return { row, envelope: frozen(envelope), transport, lookupSinceMs: started?.created_at_ms ?? row.created_at_ms };
       }),
     );
     if ("result" in claim) return claim.result;
-    const outcome = await this.boundedCall((signal) => claim.transport.lookup(claim.envelope, signal, {createdAtMs: claim.row.created_at_ms}));
+    const outcome = await this.boundedCall((signal) => claim.transport.lookup(claim.envelope, signal, {createdAtMs: claim.lookupSinceMs}));
     return this.safe(() =>
       this.durableWrite(() => {
         const row = this.row(repo, p.attempt_id);

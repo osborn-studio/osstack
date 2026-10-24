@@ -78,7 +78,8 @@ export function createGithubDeliveryTransport(options: GithubDeliveryTransportOp
           response.on("error", fail);
           response.on("end", () => {
             try {
-              if (response.statusCode !== (body === undefined ? 200 : 201)) throw Error();
+              if (response.statusCode !== (body === undefined || path === "/graphql" ? 200 : 201))
+                throw Error();
               const requestId = response.headers["x-github-request-id"];
               if (typeof requestId !== "string" || !/^[\x21-\x7e]{1,256}$/.test(requestId)) throw Error();
               resolve({
@@ -119,7 +120,8 @@ export function createGithubDeliveryTransport(options: GithubDeliveryTransportOp
     if (
       issue.node_id !== e.destination.target_node_id ||
       issue.url !== targetUrl(e) ||
-      issue.number !== e.destination.issue_number
+      issue.number !== e.destination.issue_number ||
+      issue.locked === true
     )
       throw Error("github_delivery_target_mismatch");
     return token;
@@ -147,26 +149,65 @@ export function createGithubDeliveryTransport(options: GithubDeliveryTransportOp
       provider_request_id: requestId,
     };
   }
+  const tickets = new Map<string, { token: string; expiresAt: number }>();
+  let preflights = 0;
+  const ticketKey = (e: FollowUpDeliveryEnvelope) => `${e.attempt_id}:${e.envelope_digest}`;
   return {
     qualification: options.qualification,
     automatic_retries: false,
     lookup_receipt: true,
     async preflight(e, signal) {
-      await preflight(e, signal);
+      for (const [key, ticket] of tickets) if (ticket.expiresAt <= performance.now()) tickets.delete(key);
+      if (tickets.size + preflights >= 64) throw Error("github_delivery_busy");
+      preflights++;
+      try {
+        const token = await preflight(e, signal);
+        if (signal.aborted) throw Error("github_delivery_cancelled");
+        tickets.set(ticketKey(e), { token, expiresAt: performance.now() + 30000 });
+      } finally {
+        preflights--;
+      }
     },
     async sendOnce(e, signal) {
-      const token = await preflight(e, signal);
-      // Revocation or credential rotation during preflight closes admission before the sole POST.
+      const ticket = tickets.get(ticketKey(e));
+      tickets.delete(ticketKey(e));
+      if (!ticket || ticket.expiresAt <= performance.now()) throw Error("github_delivery_preflight_required");
+      const token = ticket.token;
+      // No network readiness calls after consume: only local credential/config fence, then the sole POST.
       if ((await options.credential(e)) !== token || signal.aborted)
         throw Error("github_delivery_registration_changed");
       // Once durably started, all exceptions remain unknown; never infer non-delivery from HTTP errors.
       const response = await api(
-        `${targetPath(e)}/comments`,
+        "/graphql",
         token,
         signal,
-        JSON.stringify({ body: githubDeliveryBody(e) }),
+        JSON.stringify({
+          query:
+            "mutation OSStackFollowUp($input:AddCommentInput!){addComment(input:$input){clientMutationId subject{id} commentEdge{node{databaseId body author{... on User{id} ... on Bot{id}}}}}}",
+          variables: {
+            input: {
+              subjectId: e.destination.target_node_id,
+              body: githubDeliveryBody(e),
+              clientMutationId: e.attempt_id,
+            },
+          },
+        }),
       );
-      return receipt(e, response.value, response.requestId);
+      const result = record(response.value);
+      if (result.errors !== undefined && (!Array.isArray(result.errors) || result.errors.length))
+        throw Error("github_delivery_graphql_error");
+      const payload = record(record(result.data).addComment),
+        subject = record(payload.subject),
+        comment = record(record(payload.commentEdge).node),
+        author = record(comment.author);
+      if (payload.clientMutationId !== e.attempt_id || subject.id !== e.destination.target_node_id)
+        throw Error("github_delivery_receipt_mismatch");
+      // The mutation is addressed by immutable subject ID, not a mutable owner/repository URL.
+      return receipt(
+        e,
+        { id: comment.databaseId, body: comment.body, user: { node_id: author.id }, issue_url: targetUrl(e) },
+        response.requestId,
+      );
     },
     async lookup(e, signal, context) {
       const token = await preflight(e, signal);
