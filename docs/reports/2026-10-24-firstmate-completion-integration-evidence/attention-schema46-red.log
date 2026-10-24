@@ -1,0 +1,121 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-upgrade/packages/cli
+
+ ❯ src/attention-read-model.test.ts (9 tests | 6 failed) 262ms
+   × reads schema 46 with its additive source ledger without migrating or inventing live coverage 44ms
+     → unsupported_schema
+   × rejects cross tenant task and excludes cross tenant runs and missing repo bindings 23ms
+     → unsupported_schema
+   × reports malformed decisions and accepted receipts without guessing delivery 24ms
+     → unsupported_schema
+   ✓ rejects unsupported schema 23 without opening a write path 27ms
+   ✓ rejects unsupported schema 47 without opening a write path 33ms
+   ✓ rejects unsupported schema 999 without opening a write path 33ms
+   × uses keyset pages and reports truncation after 100 records 27ms
+     → unsupported_schema
+   × follows composite pages without replaying an exhausted collection 27ms
+     → unsupported_schema
+   × skips corrupt session facts while retaining valid inventory 23ms
+     → unsupported_schema
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 6 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/attention-read-model.test.ts > reads schema 46 with its additive source ledger without migrating or inventing live coverage
+Error: unsupported_schema
+ ❯ src/attention-read-model.ts:217:15
+    215|       // Main migrations 25–39 and Attention 40–42 preserve the v24 re…
+    216|       if (!Number.isInteger(schema) || Number(schema) < 24 || Number(s…
+    217|         throw new Error("unsupported_schema");
+       |               ^
+    218|       const task = source
+    219|         .prepare(
+ ❯ sqliteTransaction ../../node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/lib/methods/transaction.js:65:24
+ ❯ readAttentionStatus src/attention-read-model.ts:333:6
+ ❯ src/attention-read-model.test.ts:63:18
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/6]⎯
+
+ FAIL  src/attention-read-model.test.ts > rejects cross tenant task and excludes cross tenant runs and missing repo bindings
+Error: unsupported_schema
+ ❯ src/attention-read-model.ts:217:15
+    215|       // Main migrations 25–39 and Attention 40–42 preserve the v24 re…
+    216|       if (!Number.isInteger(schema) || Number(schema) < 24 || Number(s…
+    217|         throw new Error("unsupported_schema");
+       |               ^
+    218|       const task = source
+    219|         .prepare(
+ ❯ sqliteTransaction ../../node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/lib/methods/transaction.js:65:24
+ ❯ readAttentionStatus src/attention-read-model.ts:333:6
+ ❯ src/attention-read-model.test.ts:82:10
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/6]⎯
+
+ FAIL  src/attention-read-model.test.ts > reports malformed decisions and accepted receipts without guessing delivery
+Error: unsupported_schema
+ ❯ src/attention-read-model.ts:217:15
+    215|       // Main migrations 25–39 and Attention 40–42 preserve the v24 re…
+    216|       if (!Number.isInteger(schema) || Number(schema) < 24 || Number(s…
+    217|         throw new Error("unsupported_schema");
+       |               ^
+    218|       const task = source
+    219|         .prepare(
+ ❯ sqliteTransaction ../../node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/lib/methods/transaction.js:65:24
+ ❯ readAttentionStatus src/attention-read-model.ts:333:6
+ ❯ src/attention-read-model.test.ts:97:18
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/6]⎯
+
+ FAIL  src/attention-read-model.test.ts > uses keyset pages and reports truncation after 100 records
+Error: unsupported_schema
+ ❯ src/attention-read-model.ts:217:15
+    215|       // Main migrations 25–39 and Attention 40–42 preserve the v24 re…
+    216|       if (!Number.isInteger(schema) || Number(schema) < 24 || Number(s…
+    217|         throw new Error("unsupported_schema");
+       |               ^
+    218|       const task = source
+    219|         .prepare(
+ ❯ sqliteTransaction ../../node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/lib/methods/transaction.js:65:24
+ ❯ readAttentionStatus src/attention-read-model.ts:333:6
+ ❯ src/attention-read-model.test.ts:121:17
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/6]⎯
+
+ FAIL  src/attention-read-model.test.ts > follows composite pages without replaying an exhausted collection
+Error: unsupported_schema
+ ❯ src/attention-read-model.ts:217:15
+    215|       // Main migrations 25–39 and Attention 40–42 preserve the v24 re…
+    216|       if (!Number.isInteger(schema) || Number(schema) < 24 || Number(s…
+    217|         throw new Error("unsupported_schema");
+       |               ^
+    218|       const task = source
+    219|         .prepare(
+ ❯ sqliteTransaction ../../node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/lib/methods/transaction.js:65:24
+ ❯ readAttentionStatus src/attention-read-model.ts:333:6
+ ❯ src/attention-read-model.test.ts:143:17
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/6]⎯
+
+ FAIL  src/attention-read-model.test.ts > skips corrupt session facts while retaining valid inventory
+Error: unsupported_schema
+ ❯ src/attention-read-model.ts:217:15
+    215|       // Main migrations 25–39 and Attention 40–42 preserve the v24 re…
+    216|       if (!Number.isInteger(schema) || Number(schema) < 24 || Number(s…
+    217|         throw new Error("unsupported_schema");
+       |               ^
+    218|       const task = source
+    219|         .prepare(
+ ❯ sqliteTransaction ../../node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/lib/methods/transaction.js:65:24
+ ❯ readAttentionStatus src/attention-read-model.ts:333:6
+ ❯ src/attention-read-model.test.ts:162:10
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/6]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  6 failed | 3 passed (9)
+   Start at  18:08:48
+   Duration  1.15s (transform 402ms, setup 14ms, collect 660ms, tests 262ms, environment 0ms, prepare 37ms)
+
+undefined
+/Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-upgrade/packages/cli:
+[ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL] Command failed with exit code 1: vitest run src/attention-read-model.test.ts
