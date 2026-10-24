@@ -4,21 +4,41 @@
 
 Checked on 2026-10-25 (Asia/Shanghai). This guide describes the source interfaces in PR #244 and its prerequisite branches. It does not assert availability on main, npm or your installed version. The 24 items are capability mappings, not 24 individual commands or a line-for-line Firstmate transplant.
 
+## What PR #244 adds
+
+This comparison uses the PR base branch, `codex/firstmate-extension-integration`. The table below does not count commands from earlier PRs as new in #244.
+
+| Change | Command and main arguments | Purpose |
+|---|---|---|
+| New command family | `scout inspect --repo PATH --goal TEXT --path FILE --profile NAME --request-id ID`; `scout promote --scout DIGEST --request-id ID` | Read committed files. Start a new controlled delivery from the investigation. Repeat `--path` for each file. |
+| New subcommands | `sources observe/events/acknowledge SOURCE_ID --repo PATH --default-tenant` | Record observations, read events, or acknowledge a change. Use `--after SEQUENCE` with events. Use `--grant GRANT_ID` with acknowledge. |
+| New subcommands | `worker open`; `worker logs --grant-file PRIVATE_FILE [--before-ordinal N]` | Open a configured viewer. Read persisted output with a separate grant. |
+| New remote control | `remote-home issue-cancel-grant`, `cancel`, `query`; `remote-control --stdio` | Create an exact cancellation grant, request cancellation, or read the receipt. Cancel and query use `--registry FILE --sha256 HASH --alias NAME --grant FILE`. |
+| New grant command | `follow-up-delivery issue-grant ID --repo PATH --default-tenant --revision N --key KEY --output FILE` | Create a grant file. This step does not publish content. |
+| New upgrade commands | `homes prepare-managed-installation`, `apply-upgrade`, `reconcile-upgrade` | Prepare a managed installation, apply an approved upgrade, or check its result. Exact artifact, registry, and plan digests are required. |
+| New parameter value | `attention routing-eval --input FILE --mode paired_holdout` | Compare routing with paired holdout data. This is separate from `router_golden`. |
+| New parameter | `deliver --execution-context FILE` | Use execution context bound to host configuration. The file does not grant arbitrary permissions. |
+| Internal changes | Graph verification, source continuity, Loop containment records, verifier checks, and upgrade guards | Existing commands use these mechanisms. Each mechanism does not need a separate command. |
+
+This table is an interface index. It is not a complete execution configuration. Write operations require host registration, authorization, and a matching target state. Read the command help before an operation.
+
+Use the [prompt language policy](prompt-language.md) for prompts and explanations. It applies writing principles from ASD-STE100. Keep technical identifiers unchanged. State conditions, actions, and results separately.
+
 ## Choose commands by task
 
 | Task | Commands (prefix each with `osstack`) | Capability IDs | Behavior and boundary |
 |---|---|---|---|
 | Supervision and decisions | `attention status/watch/inbox/get/answer/recovery` | 1–9 | Observation, waiting responsibility and revision-bound answers; snapshots do not prove a live process. |
-| Briefs and quiet operation | `attention brief/cockpit/posture/seen/foreground` · `daily` · `cockpit` | 1, 10, 11 | Incremental views scoped to an actor; away mode grants no extra authority. |
+| Briefs and quiet operation | `attention brief/cockpit/posture/seen/foreground` · `daily` · `cockpit` | 1, 10, 11 | Incremental views scoped to an actor; Cockpit needs a running daemon. Away mode grants no extra authority. |
 | Turn and supervision registration | `attention handoff/turn-end/claude-hook/loop/ci` | 5–7 | Explicit registration and verified hooks; no general offline watchdog. |
 | Investigation to delivery | `scout inspect/promote` · `deliver` · `start` · `control` | 12, 23 | Inspect reads committed files; promotion rebinds current policy and HEAD before guarded-local delivery. |
-| Verification and retention | `graph validate/run/status/cancel/resume` · `loop enqueue/run/status` | 2–4, 13, 14, 23 | Graph multi-check delivery is artifact-only; uncertain stop retains workspaces and recovery evidence. |
-| Worker views | `worker list/inspect/watch/open/logs` | 16 | Observers do not control execution; logs require a separate grant and show persisted assistant text. |
+| Verification and retention | `graph validate/run/status/result/cancel/reconcile/resume` · `loop enqueue/run/status` | 2–4, 13, 14, 23 | Graph multi-check delivery is artifact-only; uncertain stop retains workspaces and recovery evidence. Use graph reconcile for unknown outcomes; resolution is not guaranteed. |
+| Worker views | `worker list/inspect/watch/open/logs` | 16 | Observers do not control execution; logs require a separate grant and return bounded persisted assistant output, not live process stdout or a tail. |
 | Sources and continuity | `sources inspect/observe/events/acknowledge` | 3, 5, 15, 18, 19 | Inspect reads pinned sources; observe persists evidence; acknowledge requires an exact host grant. |
 | Remote homes | `remote-home inspect/issue-cancel-grant/cancel/query` · `remote-export --stdio` · `remote-control --stdio` | 17 | Pinned SSH reads and authorized Graph cancellation only; unknown effects are queried, never resent. |
 | Context, memory and routing | `attention context/lesson/triage/routing-eval` · `deliver --execution-context FILE` | 7, 20, 21 | Distinguish offline input evaluation from explicit live model calls; lessons remain drafts without automatic promotion. |
 | External commitments | `follow-up-delivery prepare/list/inspect/issue-grant/authorize/revoke/dispatch/reconcile` | 9, 19, 22 | Publishing needs a host transport, signed authorization and exact target; unknown never triggers automatic resend. |
-| Multi-home upgrades | `homes inspect/plan-upgrade/upgrade-status/prepare-managed-installation/apply-upgrade/reconcile-upgrade` | 24 | Planning does not authorize installation; apply/reconcile require exact digests and never roll back databases. |
+| Multi-home upgrades | `homes inspect/plan-upgrade/upgrade-status/prepare-managed-installation/apply-upgrade/reconcile-upgrade` | 24 | Managed launchd installations only. Planning does not authorize installation; apply/reconcile require exact digests and never roll back databases. |
 | Documentation and delivery evidence | `neat check/fix` · `report` · `scorecard` · `proof` · `pr` | 支撑 / support | Knowledge hygiene and existing evidence presentation; passing does not establish live qualification or publication. |
 
 ## Start safely
@@ -35,6 +55,10 @@ osstack remote-home --help
 osstack follow-up-delivery --help
 osstack homes --help
 ```
+
+`sources acknowledge` and source-context execution additionally require the resolved absolute `OSSTACK_HOME` with no symlink components (resolve it with realpath); a dedicated directory alone is insufficient. Worker views and cursors expire after 15 minutes or a daemon restart. Remote `stop_requested` records a request; it is not proof of physical process termination.
+
+Loop containment records live in a persistent host directory outside the workspace: an absolute `OSSTACK_LOOP_CONTAINMENT_ROOT` takes precedence, then `$OSSTACK_HOME/loop-containment`, then `~/.osstack/loop-containment`. If your development home is inside the project, configure an external containment root. This directory opens no database; changing it or deleting records is not reconciliation of an unknown execution.
 
 ## Common workflows
 

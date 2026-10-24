@@ -29,6 +29,16 @@ export const GIT_HOOKS_DISABLED_ARGS = [
   "core.hooksPath=/dev/null",
 ] as const;
 
+export const REVIEWER_GIT_ARGS = ["-c", "core.hooksPath=/dev/null", "-c", "core.fsmonitor=false", "-c", "core.bare=false"] as const;
+
+export function reviewerGitEnvironment(workspace?: string): NodeJS.ProcessEnv {
+  return {
+    ...Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith("GIT_"))),
+    ...(workspace !== undefined ? { GIT_WORK_TREE: resolve(workspace) } : {}),
+    GIT_OPTIONAL_LOCKS: "0", GIT_CONFIG_NOSYSTEM: "1", GIT_CONFIG_GLOBAL: "/dev/null", GIT_ATTR_NOSYSTEM: "1",
+  };
+}
+
 export interface ReviewerWorkspaceSnapshot {
   schema_version: 1;
   head: string;
@@ -39,6 +49,8 @@ export interface ReviewerWorkspaceSnapshot {
   ignored_sha256: string;
   git_config_sha256: string;
   hooks_sha256: string;
+  refs_sha256: string;
+  git_info_sha256: string;
   worktree_metadata_sha256: string;
   combined_sha256: string;
 }
@@ -49,23 +61,14 @@ export async function snapshotReviewerWorkspace(
   const workspace = await realpath(resolve(workspacePath));
   const [
     headOutput,
-    status,
-    diff,
-    stagedDiff,
+    trackedOutput,
     untrackedOutput,
     ignoredOutput,
     commonGitOutput,
     worktreeGitOutput,
   ] = await Promise.all([
     execGit(workspace, ["rev-parse", "HEAD"]),
-    execGit(workspace, [
-      "status",
-      "--porcelain=v1",
-      "-z",
-      "--untracked-files=all",
-    ]),
-    execGit(workspace, ["diff", "--binary", "HEAD", "--"]),
-    execGit(workspace, ["diff", "--binary", "--cached", "HEAD", "--"]),
+    execGit(workspace, ["ls-files", "--cached", "-z"]),
     execGit(workspace, [
       "ls-files",
       "--others",
@@ -96,12 +99,21 @@ export async function snapshotReviewerWorkspace(
   const untrackedPaths = parseNullDelimited(untrackedOutput);
   const ignoredPaths = parseNullDelimited(ignoredOutput);
 
+  // Raw bytes and metadata are authoritative: status/diff may suppress entries
+  // via index flags or normalize them through executable clean filters.
+  const trackedPaths = parseNullDelimited(trackedOutput);
+  const trackedHash = createHash("sha256");
+  for (const path of trackedPaths) {
+    resolveConfinedPath(workspace, path);
+    await hashTreeEntry(trackedHash, workspace, path);
+  }
+  const trackedDigest = trackedHash.digest("hex");
   const snapshotWithoutCombined = {
     schema_version: 1 as const,
     head: decodeLine(headOutput),
-    status_sha256: sha256(status),
-    diff_sha256: sha256(diff),
-    staged_diff_sha256: sha256(stagedDiff),
+    status_sha256: sha256(trackedOutput),
+    diff_sha256: trackedDigest,
+    staged_diff_sha256: await hashOptionalFiles(worktreeGit, ["index"]),
     untracked_sha256: await hashUntracked(workspace, untrackedPaths),
     ignored_sha256: await hashIgnoredMetadata(workspace, ignoredPaths),
     git_config_sha256: await hashOptionalFiles(commonGit, [
@@ -109,6 +121,8 @@ export async function snapshotReviewerWorkspace(
       "config.worktree",
     ]),
     hooks_sha256: await hashTree(join(commonGit, "hooks")),
+    refs_sha256: sha256(JSON.stringify([await hashTree(join(commonGit, "refs")), await hashTree(join(worktreeGit, "refs")), await hashOptionalFiles(commonGit, ["packed-refs"])])),
+    git_info_sha256: sha256(JSON.stringify([await hashOptionalFiles(commonGit, ["info/exclude", "info/attributes"]), await hashOptionalFiles(worktreeGit, ["info/exclude", "info/attributes"])])),
     worktree_metadata_sha256: await hashOptionalFiles(
       worktreeGit,
       WORKTREE_METADATA_FILES,
@@ -244,14 +258,14 @@ function execGit(
   return new Promise((resolvePromise, reject) => {
     execFile(
       "git",
-      [...args],
+      [...REVIEWER_GIT_ARGS, ...args],
       {
         cwd: workspace,
         timeout: 30_000,
         killSignal: "SIGKILL",
         encoding: "buffer",
         maxBuffer: GIT_OUTPUT_LIMIT,
-        env: { ...process.env, GIT_OPTIONAL_LOCKS: "0" },
+        env: reviewerGitEnvironment(workspace),
       },
       (error, stdout, stderr) => {
         if (error !== null) {

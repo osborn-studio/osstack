@@ -82,3 +82,7 @@ OSStack原生队列包含12个能力收口任务、独立代码QA任务，以及
 Guarded交付另固定首次execution-context配置的语义摘要、规范路径与文件身份，并存入持久routing；repair每次重新建立host context前后均核对该pin，拒绝builder改写Git忽略配置后重新固定新内容。动态来源、权限与policy仍照常重新校验，不缓存授权。旧持久run若有context路径却没有初始pin，后续本地执行保守拒绝，不推断新配置获批。
 
 该execution-context pin约束每次host context的建立，没有完成时再核对文件的检查；完成回执不证明该配置文件从建立context到完成期间始终未变化。
+
+Loop 的宿主 containment 记录是执行前同步持久化的待核对保护记录，不是物理停止证明。未知停止、崩溃、异常或状态写入失败都会保留记录；使用同一 canonical workspace 和宿主 containment root 重启时，在任务发现/执行前拒绝继续。即使进程已经停止，状态写入失败也可能保守阻断；目前无自动 reset，必须调查原执行并保留证据，同 workspace 换 state 路径仍会阻断；不可通过换 workspace、宿主 root 或手删记录推断安全重试。目录 fsync 失败会拒绝启动；同 uid 恶意修改不在该保护的隔离保证内。所有验证适配器都检查候选工作树的前后完整性；检测到修改或调用后无法确认完整性时，不继续重试、提交、自动清理或提取经验。验证器时间预算按单适配器计量，不代表整组验证的总时限。
+
+宿主隔离目录按 `OSSTACK_LOOP_CONTAINMENT_ROOT`（绝对路径）、`OSSTACK_HOME/loop-containment`、`~/.osstack/loop-containment` 顺序选择，须位于候选工作区之外。Git 初始化不会改变 workspace 身份或存储位置。fsync 成功是 OS 层持久性证据，不替代物理断电资格；同 uid 修改和不同宿主 root 之间不构成安全隔离。既有 publisher 成功回调没有 descendant-stop 证明，该限制不被本轮静态审计扩展为保证。

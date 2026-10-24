@@ -25,6 +25,8 @@ DeepSeek 检查器以及你自己的脚本，组织成一套可路由、可循�
 - [当前能力范围](#当前能力范围) · [安装](#安装) · [主要命令](#主要命令)。
 - [按任务选命令及常用参数](docs/guides/command-reference.md) · [完整顶层命令清单](docs/inventory/CLI_COMMANDS.md)。
 
+[Prompt 写作约定（中文 / English）](docs/guides/prompt-language.md)：借鉴 ASD-STE100，写清指令、条件和结果。
+
 ## Firstmate 能力与命令
 
 当前开发分支已为 Firstmate 的 24 项能力建立实现或复用路径，主要入口如下。**这不是 24/24 已上线声明：PR #244 与前序依赖的审计、CI、合并及真实环境资格是独立条件。**
@@ -35,7 +37,7 @@ DeepSeek 检查器以及你自己的脚本，组织成一套可路由、可循�
 | 简报与低打扰 | `attention brief/cockpit/posture/seen/foreground` · `daily` · `cockpit` |
 | 回合与监督登记 | `attention handoff/turn-end/claude-hook/loop/ci` |
 | 调查转交付 | `scout inspect/promote` · `deliver` · `start` · `control` |
-| 验证与保全 | `graph validate/run/status/cancel/resume` · `loop enqueue/run/status` |
+| 验证与保全 | `graph validate/run/status/result/cancel/reconcile/resume` · `loop enqueue/run/status` |
 | 工作进程视图 | `worker list/inspect/watch/open/logs` |
 | 来源与连续性 | `sources inspect/observe/events/acknowledge` |
 | 远程 home | `remote-home inspect/issue-cancel-grant/cancel/query` · `remote-export --stdio` · `remote-control --stdio` |
@@ -49,8 +51,8 @@ DeepSeek 检查器以及你自己的脚本，组织成一套可路由、可循�
 
 | 领域 | 状态 |
 |---|---|
-| npm 包 | 本次发行目标：`@osstack/cli@0.21.0`；实际可用版本用 `npm view @osstack/cli version` 核实 |
-| GitHub Release | npm 发行目标：`@osstack/cli@0.21.0`；最新单文件二进制：[`v0.8.1`](https://github.com/osborn-studio/osstack/releases/tag/v0.8.1) |
+| npm 包 | 已核实 npm latest：`@osstack/cli@0.21.0`（2026-10-25，北京时间）；可用 `npm view @osstack/cli version` 再查 |
+| GitHub Release | 包发行版：`@osstack/cli@0.21.0`；最新单文件二进制：[`v0.8.1`](https://github.com/osborn-studio/osstack/releases/tag/v0.8.1) |
 | macOS 单文件二进制 | 已发布 `darwin-arm64` 的显式 `public-ad-hoc` archive |
 | Knowledge Cloud | 已部署到 EdgeOne：`https://osstack-knowledge-cloud-1grycf4k.edgeone.cool` |
 | Probe | CLI 生命周期已随 CLI 0.19.0 发布；report-only 是 gate 行为，不是后台任务。两周真实使用 checkpoint 仍未完成。 |

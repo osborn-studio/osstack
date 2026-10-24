@@ -22,6 +22,8 @@ import {
   type ReviewCandidateInput,
 } from "./review-boundary.js";
 import {
+  REVIEWER_GIT_ARGS,
+  reviewerGitEnvironment,
   reviewerWorkspaceMutated,
   snapshotReviewerWorkspace,
 } from "./reviewer-isolation.js";
@@ -73,13 +75,13 @@ export async function verifyRun(run: AgentRun, options: LocalVerifierOptions): P
   if (options.artifactBaseCommit !== undefined) {
     const base = options.artifactBaseCommit;
     if (!/^(?:[a-f0-9]{40}|[a-f0-9]{64})$/.test(base)) throw Error("INVALID_ARTIFACT_BASE_COMMIT");
-    const git = (args: string[]) => execFileSync("git", args, { cwd: options.workspacePath, encoding: "utf8", timeout: options.timeoutMs ?? 120_000, maxBuffer: 1_048_576 });
+    const git = (args: string[]) => execFileSync("git", [...REVIEWER_GIT_ARGS, ...args], { env: reviewerGitEnvironment(options.workspacePath), cwd: options.workspacePath, encoding: "utf8", timeout: options.timeoutMs ?? 120_000, maxBuffer: 1_048_576 });
     git(["merge-base", "--is-ancestor", base, "HEAD"]);
     // Final structured review sees the complete committed candidate, not an empty clean-tree diff.
-    const changed = git(["diff", base, "--no-renames", "--name-only", "-z", "--", "."]) + git(["ls-files", "--others", "--exclude-standard", "-z"]);
+    const changed = git(["diff", "--no-ext-diff", "--no-textconv", base, "--no-renames", "--name-only", "-z", "--", "."]) + git(["ls-files", "--others", "--exclude-standard", "-z"]);
     const untracked = git(["ls-files", "--others", "--exclude-standard", "-z"]);
     if (untracked.length > 0) throw Error("CANDIDATE_REVIEW_UNTRACKED");
-    options = { ...options, reviewCandidate: { changed_paths: changed.split("\0").filter(Boolean), diff: git(["diff", base, "--no-renames", "--", "."]) } };
+    options = { ...options, reviewCandidate: { changed_paths: changed.split("\0").filter(Boolean), diff: git(["diff", "--no-ext-diff", "--no-textconv", base, "--no-renames", "--", "."]) } };
   }
   const explicitSpecs = options.task?.evaluation ?? [];
 
@@ -89,11 +91,10 @@ export async function verifyRun(run: AgentRun, options: LocalVerifierOptions): P
     .map(implicitCommandSpec);
   const explicitCommandSpecs = explicitSpecs.filter(isCommandEvaluationSpec);
   const commandRuns: CommandSpecRun[] = [];
-  for (const spec of implicitCommandSpecs) {
-    commandRuns.push({ spec, implicit: true, result: await runSpecCommand(spec, options) });
-  }
-  for (const spec of explicitCommandSpecs) {
-    commandRuns.push({ spec, implicit: false, result: await runSpecCommand(spec, options) });
+  for (const { spec, implicit } of [...implicitCommandSpecs.map(spec => ({ spec, implicit: true })), ...explicitCommandSpecs.map(spec => ({ spec, implicit: false }))]) {
+    const result = await runSpecCommand(spec, options);
+    commandRuns.push({ spec, implicit, result });
+    if (result.termination?.stop_confirmed !== true) return unconfirmedVerifierStop("Verification command stop is unconfirmed; no further checks may run");
   }
 
   const artifactOptions = normalizeArtifactOptions(options);
@@ -101,6 +102,7 @@ export async function verifyRun(run: AgentRun, options: LocalVerifierOptions): P
     (spec) => spec.mode === "artifact" && !isCommandEvaluationSpec(spec),
   );
   const artifact = await verifyArtifacts(options, artifactOptions, explicitArtifactSpecs);
+  if (artifact.issues.some(issue => issue.rule === "verify.adapter_stop_unconfirmed")) return unconfirmedVerifierStop("Artifact command stop is unconfirmed; no further checks may run");
   const adapterSpecs = explicitSpecs.filter(isAdapterEvaluationSpec);
   const adapterResults = await runVerifierAdapters(
     run,
@@ -199,6 +201,11 @@ export async function verifyRun(run: AgentRun, options: LocalVerifierOptions): P
       : {}),
     ...(reviewArtifacts.length > 0 ? { review_artifacts: reviewArtifacts } : {}),
   };
+}
+
+function unconfirmedVerifierStop(message: string): Verdict {
+  return { pass: false, score: 0, reviewer_agent_id: "local-verifier", summary: message,
+    issues: [{ severity: "error", rule: "verify.adapter_stop_unconfirmed", message }] };
 }
 
 function deduplicateImplementationDeviations(
@@ -389,17 +396,18 @@ async function verifyArtifacts(
   if (base !== undefined && !/^(?:[a-f0-9]{40}|[a-f0-9]{64})$/.test(base)) throw Error("INVALID_ARTIFACT_BASE_COMMIT");
   let diffResult: CommandResult;
   if (base === undefined) {
-    diffResult = await runShellCommand("git diff --name-only -- . && git ls-files --others --exclude-standard", {
-      cwd: options.workspacePath, timeoutMs: options.timeoutMs ?? 120_000, outputLimit: options.outputLimit ?? 16_000,
+    diffResult = await runShellCommand("git -c core.fsmonitor=false -c core.hooksPath=/dev/null diff --no-ext-diff --no-textconv --name-only -- . && git -c core.fsmonitor=false -c core.hooksPath=/dev/null ls-files --others --exclude-standard", {
+      cwd: options.workspacePath, inheritEnv: false, env: reviewerGitEnvironment(options.workspacePath), timeoutMs: options.timeoutMs ?? 120_000, outputLimit: options.outputLimit ?? 16_000,
     });
   } else {
-    const git = (args: string[]) => execFileSync("git", args, { cwd: options.workspacePath, encoding: "utf8", timeout: options.timeoutMs ?? 120_000, maxBuffer: 1_048_576 });
+    const git = (args: string[]) => execFileSync("git", [...REVIEWER_GIT_ARGS, ...args], { env: reviewerGitEnvironment(options.workspacePath), cwd: options.workspacePath, encoding: "utf8", timeout: options.timeoutMs ?? 120_000, maxBuffer: 1_048_576 });
     git(["merge-base", "--is-ancestor", base, "HEAD"]);
     // Machine-readable paths must never pass through the executor's tail-truncated log buffer.
-    const stdout = git(["diff", base, "--no-renames", "--name-only", "-z", "--", "."]) + git(["ls-files", "--others", "--exclude-standard", "-z"]);
+    const stdout = git(["diff", "--no-ext-diff", "--no-textconv", base, "--no-renames", "--name-only", "-z", "--", "."]) + git(["ls-files", "--others", "--exclude-standard", "-z"]);
     if (Buffer.byteLength(stdout) > 1_048_576) throw Error("CANDIDATE_ARTIFACT_RANGE_TOO_LARGE");
     diffResult = { command: "git candidate range paths", exitCode: 0, stdout, stderr: "", durationMs: 0 };
   }
+  if (base === undefined && diffResult.termination?.stop_confirmed !== true) return { issues: unconfirmedVerifierStop("Artifact command stop is unconfirmed").issues, evaluations: [] };
   if (diffResult.exitCode !== 0) {
     const issue = commandIssue("verify.artifact_git_diff_failed", diffResult);
     const failAll = (spec: EvaluationSpec, implicit: boolean): EvaluationResult => ({
@@ -607,13 +615,15 @@ async function runVerifierAdapters(
       });
       continue;
     }
-    results.push(await invokeVerifierAdapter(
+    const result = await invokeVerifierAdapter(
       run,
       options,
       adapter,
       adapterSpecs,
       verificationResults,
-    ));
+    );
+    results.push(result);
+    if (result.issues.some(issue => ["verify.adapter_stop_unconfirmed", "verify.reviewer_mutation", "verify.reviewer_integrity_unconfirmed"].includes(issue.rule ?? ""))) break;
   }
   return results;
 }
@@ -644,6 +654,32 @@ async function invokeVerifierAdapter(
     ? requestedTimeout : (adapter.id === "kimi-code" ? 600_000 : 120_000);
   const deadline = performance.now() + timeoutMs;
   const remaining = () => Math.max(0, deadline - performance.now());
+  let beforeSnapshot: Awaited<ReturnType<typeof snapshotReviewerWorkspace>> | undefined;
+  // Availability probes are adapter code and share the read-only boundary.
+  try {
+    beforeSnapshot = await verifierReadDeadline(snapshotReviewerWorkspace(options.workspacePath), remaining());
+  } catch (error) {
+    return {
+      agentId: adapter.id,
+      eventCount: 0,
+      issues: [adapterIssue(
+        adapter.id,
+        "verify.reviewer_snapshot_failed",
+        error instanceof Error ? error.message : String(error),
+      )],
+    };
+  }
+
+  const preparationIntegrity = async (): Promise<Issue[]> => {
+    try {
+      const after = await verifierReadDeadline(snapshotReviewerWorkspace(options.workspacePath), remaining());
+      return reviewerWorkspaceMutated(beforeSnapshot!, after)
+        ? [adapterIssue(adapter.id, "verify.reviewer_mutation", "Verifier availability probe changed candidate state")] : [];
+    } catch (error) {
+      return [adapterIssue(adapter.id, "verify.reviewer_integrity_unconfirmed", "Availability probe integrity could not be verified"),
+        adapterIssue(adapter.id, "verify.reviewer_snapshot_failed", error instanceof Error ? error.message : String(error))];
+    }
+  };
   let availability: Awaited<ReturnType<AgentAdapter["isAvailable"]>>;
   let availabilityTimer: ReturnType<typeof setTimeout> | undefined;
   try {
@@ -655,19 +691,21 @@ async function invokeVerifierAdapter(
     ]);
     if (!availability || typeof availability.available !== "boolean") throw Error("invalid verifier availability");
   } catch (error) {
-    return {agentId:adapter.id,eventCount:0,issues:[adapterIssue(adapter.id,"verify.adapter_failed",error instanceof Error ? error.message : String(error))]};
+    return { agentId: adapter.id, eventCount: 0, issues: [
+      adapterIssue(adapter.id, "verify.adapter_failed", error instanceof Error ? error.message : String(error)),
+      adapterIssue(adapter.id, "verify.adapter_stop_unconfirmed", "Availability probe failed without physical stop evidence"),
+      ...await preparationIntegrity(),
+    ] };
   } finally { clearTimeout(availabilityTimer); }
+  const preparationIssues = await preparationIntegrity();
+  if (preparationIssues.length > 0) return { agentId: adapter.id, eventCount: 0, issues: preparationIssues };
   if (!availability.available) {
-    return {
-      agentId: adapter.id,
-      eventCount: 0,
-      issues: [adapterIssue(adapter.id, "verify.adapter_unavailable", availability.reason ?? "verifier unavailable")],
-    };
+    return { agentId: adapter.id, eventCount: 0,
+      issues: [adapterIssue(adapter.id, "verify.adapter_unavailable", availability.reason ?? "verifier unavailable")] };
   }
 
   const structuredReview = adapter.id === "kimi-code";
   let boundary: CollectedReviewBoundary | undefined;
-  let beforeSnapshot: Awaited<ReturnType<typeof snapshotReviewerWorkspace>> | undefined;
   if (structuredReview) {
     try {
       boundary = await verifierReadDeadline(collectReviewBoundary(
@@ -698,20 +736,6 @@ async function invokeVerifierAdapter(
         })),
       };
     }
-  }
-  // Every verifier is read-only, regardless of its output protocol or provider.
-  try {
-    beforeSnapshot = await verifierReadDeadline(snapshotReviewerWorkspace(options.workspacePath), remaining());
-  } catch (error) {
-    return {
-      agentId: adapter.id,
-      eventCount: 0,
-      issues: [adapterIssue(
-        adapter.id,
-        "verify.reviewer_snapshot_failed",
-        error instanceof Error ? error.message : String(error),
-      )],
-    };
   }
 
   const controller = new AbortController();
@@ -819,8 +843,8 @@ async function invokeVerifierAdapter(
   }
 
   const issues: Issue[] = [];
-  if (timedOut && iterator !== undefined && !iteratorFinished) {
-    issues.push(adapterIssue(adapter.id,"verify.adapter_stop_unconfirmed","Verifier invocation timed out without physical stop evidence; reconciliation required"));
+  if (iterator !== undefined && !iteratorFinished) {
+    issues.push(adapterIssue(adapter.id,"verify.adapter_stop_unconfirmed","Verifier stream ended abnormally without physical stop evidence; reconciliation required"));
   }
   if (snapshotError !== undefined) {
     issues.push(adapterIssue(adapter.id, "verify.reviewer_integrity_unconfirmed", "Post-invocation workspace integrity could not be verified; do not retry this candidate"));
@@ -967,6 +991,10 @@ function verifierAgentTask(
         deterministic_results: deterministicResults,
         evidence_refs: [],
       };
+  const context = { ...(task?.context ?? {}) };
+  // Repository task data cannot grant a reviewer write access to external paths.
+  delete context["review_output_path"];
+  delete context["verify_output_path"];
   return {
     run_id: `${run.run_id}_verify_${sanitizeId(adapter.id)}`,
     task_id: task?.task_id ?? run.task_id,
@@ -981,7 +1009,7 @@ function verifierAgentTask(
       ...(acceptanceLines.length > 0 ? ["", "Evaluation criteria:", ...acceptanceLines] : []),
     ].join("\n"),
     context: {
-      ...(task?.context ?? {}),
+      ...context,
       repo_path: options.workspacePath,
       subject_run_id: run.run_id,
       subject_agent_id: run.agent_id,
@@ -1041,7 +1069,8 @@ function summarize(
     const evaluationNote = evaluations.length > 0
       ? ` ${evaluations.length} evaluation${evaluations.length === 1 ? "" : "s"} passed.`
       : "";
-    return `${parts.join(" and ")} passed.${evaluationNote}`;
+    const adapterNotes = adapters.flatMap(adapter => adapter.summary ? [adapter.summary] : []);
+    return `${parts.join(" and ")} passed.${evaluationNote}${adapterNotes.length ? ` ${adapterNotes.join("; ")}` : ""}`;
   }
   const evaluationNote = failedEvaluations.length > 0
     ? ` Failed evaluations: ${failedEvaluations.map((evaluation) => evaluation.spec_id).join(", ")}.`

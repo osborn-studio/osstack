@@ -27,6 +27,8 @@ surface that makes AI coding work visible and auditable.
 - [Capability map](#current-capability-map) · [Install](#install) · [Main commands](#main-commands).
 - [Task-oriented command reference](docs/guides/command-reference.en.md) · [Top-level command inventory](docs/inventory/CLI_COMMANDS.md).
 
+[Prompt writing policy (English / 中文)](docs/guides/prompt-language.md): ASD-STE100-inspired instructions and explanations.
+
 ## Firstmate capabilities and commands
 
 The development branch maps Firstmate’s 24 capabilities to implementations or existing OSStack mechanisms. Main entry points are below. **This is not a claim that 24/24 are live: audit, CI, merging PR #244 and its prerequisites, and live-environment qualification are separate conditions.**
@@ -37,7 +39,7 @@ The development branch maps Firstmate’s 24 capabilities to implementations or 
 | Briefs and quiet operation | `attention brief/cockpit/posture/seen/foreground` · `daily` · `cockpit` |
 | Turn and supervision registration | `attention handoff/turn-end/claude-hook/loop/ci` |
 | Investigation to delivery | `scout inspect/promote` · `deliver` · `start` · `control` |
-| Verification and retention | `graph validate/run/status/cancel/resume` · `loop enqueue/run/status` |
+| Verification and retention | `graph validate/run/status/result/cancel/reconcile/resume` · `loop enqueue/run/status` |
 | Worker views | `worker list/inspect/watch/open/logs` |
 | Sources and continuity | `sources inspect/observe/events/acknowledge` |
 | Remote homes | `remote-home inspect/issue-cancel-grant/cancel/query` · `remote-export --stdio` · `remote-control --stdio` |
@@ -51,8 +53,8 @@ See the [full English command guide](docs/guides/firstmate-commands.en.md) and [
 
 | Area | Status |
 |---|---|
-| npm package | Release target: `@osstack/cli@0.21.0`; verify availability with `npm view @osstack/cli version` |
-| GitHub release | npm release target: `@osstack/cli@0.21.0`; latest single binary: [`v0.8.1`](https://github.com/osborn-studio/osstack/releases/tag/v0.8.1) |
+| npm package | Verified npm latest: `@osstack/cli@0.21.0` (2026-10-25, Asia/Shanghai); recheck with `npm view @osstack/cli version` |
+| GitHub release | Package release: `@osstack/cli@0.21.0`; latest single binary: [`v0.8.1`](https://github.com/osborn-studio/osstack/releases/tag/v0.8.1) |
 | macOS single binary | Published as explicit `public-ad-hoc` archive for `darwin-arm64` |
 | Knowledge Cloud | Live on EdgeOne: `https://osstack-knowledge-cloud-1grycf4k.edgeone.cool` |
 | Probe | CLI lifecycle shipped in CLI 0.19.0; report-only is gate behavior, not a background job. The two-week real-use checkpoint remains open. |

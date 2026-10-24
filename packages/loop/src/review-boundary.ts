@@ -1,3 +1,4 @@
+import { REVIEWER_GIT_ARGS, reviewerGitEnvironment } from "./reviewer-isolation.js";
 import { execFile } from "node:child_process";
 import type { Stats } from "node:fs";
 import {
@@ -78,10 +79,15 @@ export async function collectReviewBoundary(
     return boundary.pass ? { boundary, sanitized_diff: candidateDiff } : { boundary };
   }
 
+  const indexFlags = await execGit(workspace, ["ls-files", "-v", "-z"], GIT_PATH_OUTPUT_LIMIT);
+  if (parseNullDelimited(indexFlags).some(entry => /^[a-zS] /.test(entry))) {
+    throw Error("REVIEW_HIDDEN_INDEX_ENTRY");
+  }
+
   const [trackedOutput, untrackedOutput] = await Promise.all([
     execGit(
       workspace,
-      ["diff", "--name-only", "-z", "HEAD", "--"],
+      ["diff", "--no-ext-diff", "--no-textconv", "--name-only", "-z", "HEAD", "--"],
       GIT_PATH_OUTPUT_LIMIT,
     ),
     execGit(
@@ -104,7 +110,7 @@ export async function collectReviewBoundary(
   try {
     trackedDiff = await execGit(
       workspace,
-      ["diff", "--binary", "HEAD", "--"],
+      ["diff", "--no-ext-diff", "--no-textconv", "--binary", "HEAD", "--"],
       Math.max(policy.max_total_bytes + 1, 1_024),
     );
   } catch (error) {
@@ -228,9 +234,10 @@ function execGit(
   return new Promise((resolvePromise, reject) => {
     execFile(
       "git",
-      [...args],
+      [...REVIEWER_GIT_ARGS, ...args],
       {
         cwd: workspace,
+        env: reviewerGitEnvironment(workspace),
         timeout: 30_000,
         killSignal: "SIGKILL",
         encoding: "buffer",

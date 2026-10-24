@@ -53,3 +53,7 @@ opening the DB auto-migrates it. The guard now refuses this at runtime for both
 Always set an explicit per-workspace `OSSTACK_HOME` (see the ihiking wrapper
 `tools/osstack/osstack.sh` for the reference pattern), or use the installed
 `osstack` shim which targets the declared serving home.
+
+## Prompt and explanation language
+
+Use the ASD-STE100-inspired authoring policy in [docs/guides/prompt-language.md](docs/guides/prompt-language.md) for new prompts, CLI help, and user explanations. Use short sentences, explicit actions, consistent terms, and separate conditions from actions and results. Preserve command names, flags, paths, schema keys, authorization requirements, and the user's meaning. Apply the same clarity principles to Chinese. Do not claim full STE compliance or runtime enforcement without evidence.

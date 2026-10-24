@@ -121,9 +121,16 @@ it('quarantines revoked host registration once and does not auto-clear when the 
 });
 it('does not write a continuity gap when an in-flight source observation is cancelled',async()=>{
  const f=fixture();await f.service.observe(f.scope);const before=f.service.status(f.scope),events=f.service.events(f.scope).events;
- const actual=(await vi.importActual<typeof import('node:fs/promises')>('node:fs/promises')).open;let blocked=false;let release!:()=>void;const held=new Promise<void>(resolve=>release=resolve);
- vi.mocked(asyncFs.open).mockImplementation(async(path,flags,mode)=>{const handle=await actual(path,flags,mode);if(path===join(f.source,'snapshot.json')){blocked=true;await held;}return handle;});
+ const actual=(await vi.importActual<typeof import('node:fs/promises')>('node:fs/promises')).open;let blocked=false;let closed=false;let release!:()=>void;const held=new Promise<void>(resolve=>release=resolve);
+ vi.mocked(asyncFs.open).mockImplementation(async(path,flags,mode)=>{const handle=await actual(path,flags,mode);if(path===join(f.source,'snapshot.json')){const close=handle.close.bind(handle);handle.close=async()=>{try{await close();}finally{closed=true;}};blocked=true;await held;}return handle;});
  const controller=new AbortController();const pending=f.service.observe(f.scope,controller.signal);const rejected=expect(pending).rejects.toThrow('source_cancelled');
  try{await vi.waitFor(()=>expect(blocked).toBe(true));controller.abort();await rejected;expect(f.service.status(f.scope)).toEqual(before);expect(f.service.events(f.scope).events).toEqual(events);}
- finally{vi.mocked(asyncFs.open).mockImplementation(actual);release();await pending.catch(()=>{});}
+ finally{vi.mocked(asyncFs.open).mockImplementation(actual);release();await pending.catch(()=>{});await vi.waitFor(()=>expect(closed).toBe(true));expect(f.service.status(f.scope)).toEqual(before);expect(f.service.events(f.scope).events).toEqual(events);}
+});
+
+it.each(['read_timeout','registration_stale','config_changed','response_too_large','source_unavailable'] as const)('retains quarantine after %s even when fresh evidence returns',async reason=>{
+ const f=fixture();await f.service.observe(f.scope);const before=f.service.status(f.scope)!;const ready=await f.service.inspect(f.scope);const registry=await import('./local-data-source-registry.js');
+ const inspect=vi.fn().mockResolvedValueOnce({...ready,state:reason==='registration_stale'?'stale':'unknown',reason,freshness:reason==='registration_stale'?'stale':'unknown',qualification:'unqualified',provenance:null,entries:[]}).mockResolvedValue(ready);
+ const spy=vi.spyOn(registry,'createHostLocalDataSourceService').mockReturnValue({inspect});
+ try{const service=createHostSourceObservationService(f.home);await service.observe(f.scope);const unknown=service.status(f.scope)!;expect(unknown).toMatchObject({state:'unknown',reason,record_revision:before.record_revision+1});await service.observe(f.scope);expect(service.status(f.scope)).toEqual(unknown);}finally{spy.mockRestore();}
 });

@@ -259,3 +259,11 @@ it("preserves execution-unconfirmed escalation and stop evidence through candida
   expect(result.completedTasks[0]?.candidate_evidence?.stage).toBe("final_preflight_failed");
   expect(f.stages().some(s => s.stage === "final_preflight_ready")).toBe(false);
 });
+
+it.each(["--assume-unchanged", "--skip-worktree"])("refuses freezing hidden builder edits under %s", flag => {
+  const f = fixture(1);
+  f.git("update-index", flag, "file.txt");
+  writeFileSync(join(f.repo, "file.txt"), "hidden builder edit");
+  expect(f.git("status", "--porcelain")).toBe("");
+  expect(() => freezeCandidate(f.repo)).toThrow("CANDIDATE_HIDDEN_INDEX_ENTRY");
+});

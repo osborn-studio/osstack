@@ -1,4 +1,5 @@
-import { armLoopContainment, hasLoopContainment, releaseLoopContainment } from "./loop-containment.js";
+import { REVIEWER_GIT_ARGS, reviewerGitEnvironment } from "./reviewer-isolation.js";
+import { assertContainmentRootOutsideWorkspace, armLoopContainment, hasLoopContainment, loopContainmentPath, releaseLoopContainment } from "./loop-containment.js";
 import type { LoopLifecycleAdmission } from "./policy-gate.js";
 import { randomUUID } from "node:crypto";
 import { dirname, isAbsolute, join } from "node:path";
@@ -314,7 +315,7 @@ export class LoopEngine {
         ? { reason_code: "policy_denied", reason: policyStopReason(policyReason) }
         : budgetStatus?.exceeded === true
           ? { reason_code: "budget_exceeded", reason: `budget exceeded: ${budgetStatus.reason}` }
-          : completionStopPayload(last.state, last.executedTaskCount, last.goal)),
+          : this.stopPayload(last.state, last.executedTaskCount, last.goal)),
       cycles: results.length,
     });
 
@@ -371,7 +372,7 @@ export class LoopEngine {
     this.emit(result.loop_id, "loop.stopped", {
       ...(budgetStatus?.exceeded === true
         ? { reason_code: "budget_exceeded", reason: `budget exceeded: ${budgetStatus.reason}` }
-        : completionStopPayload(result.state, result.executedTaskCount, result.goal)),
+        : this.stopPayload(result.state, result.executedTaskCount, result.goal)),
     });
     if (this.candidateRecheck) await this.candidateRecheck(finalState);
     return {
@@ -511,13 +512,13 @@ export class LoopEngine {
     const existingState = await readLoopState(jsonPath);
     const loopId = existingState?.loop_id ?? this.options.loopId ?? `loop_${randomUUID()}`;
     const state = existingState ?? createInitialLoopState(loopId);
-    const containmentPath = jsonPath + ".stop-unconfirmed.json";
+    const containmentPath = loopContainmentPath(workspacePath);
     this.containmentPending ||= hasLoopContainment(containmentPath);
     this.implementationUnconfirmed ||= state.completed_tasks.some((task) =>
       task.implementation_unconfirmed === true);
     const decisions = [...(state.decisions ?? [])];
-    if (this.implementationUnconfirmed || this.containmentPending) {
-      if (lifecycle.emitStopped) this.emit(loopId, "loop.stopped", completionStopPayload(state, 0));
+    if (this.implementationUnconfirmed || this.containmentPending || this.candidateContaminated) {
+      if (lifecycle.emitStopped) this.emit(loopId, "loop.stopped", this.stopPayload(state, 0));
       return {
         loop_id: loopId, state, completedTasks: [], events: this.events.slice(eventStartIndex),
         jsonPath, markdownPath: markdownPath ?? join(dirname(jsonPath), "STATE.md"),
@@ -575,7 +576,7 @@ export class LoopEngine {
       pending.shift();
       this.lifecycleEffectsStarted = true;
       let taskResult: { completedTask: CompletedTask; decisions: string[] };
-      try { taskResult = await this.runTask(loopId, workspacePath, task, completed); }
+      try { taskResult = await this.runTask(loopId, workspacePath, task, completed, dirname(containmentPath)); }
       catch (error) {
         if (candidateRecord) await candidateRecord.record("final_preflight_failed", { ...knownCandidate!, taskOrdinal: tasks.indexOf(task) });
         throw error; // Preserve lifecycle containment and the original failure; no ready receipt.
@@ -617,7 +618,7 @@ export class LoopEngine {
         for (const [phase, commands] of [["prepush", policy.profiles.prepush], ["final", [...new Set([...(this.options.verifyCommands ?? []), ...policy.profiles.final])]]] as const) {
           for (const [index, task] of tasks.entries()) {
             const run: AgentRun = { run_id: "candidate-preflight", plan_id: "candidate-preflight", task_id: task.task_id, agent_id: "local-command", outcome: "completed", started_at: new Date().toISOString(), completed_at: new Date().toISOString(), duration_ms: 0, command_results: [] };
-            const verdict = await verifyRun(run, {
+            const verdict = await this.awaitStopSensitive(() => verifyRun(run, {
               workspacePath, sessionId: loopId, commands: index === 0 ? [...commands] : [],
               task, verifierAgentIds: this.options.verifierAgentIds ?? [],
               artifactBaseCommit: batchBase!,
@@ -625,7 +626,7 @@ export class LoopEngine {
               ...(this.options.adapters !== undefined ? { adapters: this.options.adapters } : {}),
               ...(this.options.commandTimeoutMs !== undefined ? { timeoutMs: this.options.commandTimeoutMs } : {}),
               ...(this.options.outputLimit !== undefined ? { outputLimit: this.options.outputLimit } : {}),
-            });
+            }));
             if (verdict.issues.some(issue => issue.rule === "verify.adapter_stop_unconfirmed")) {
               this.implementationUnconfirmed = true;
               for (const completed of current) completed.implementation_unconfirmed = true;
@@ -703,7 +704,7 @@ export class LoopEngine {
       duration_ms: Date.now() - startedAt,
     });
     if (lifecycle.emitStopped) {
-      this.emit(loopId, "loop.stopped", completionStopPayload(nextState, executedTaskCount, goal));
+      this.emit(loopId, "loop.stopped", this.stopPayload(nextState, executedTaskCount, goal));
     }
     if (finalCandidateFrozen && candidateRecord) {
       const frozen = finalCandidateFrozen;
@@ -841,6 +842,7 @@ export class LoopEngine {
     workspacePath: string,
     task: Task,
     historyTasks: readonly CompletedTask[],
+    containmentRoot: string,
   ): Promise<{ completedTask: CompletedTask; decisions: string[] }> {
     const started = Date.now();
     const maxIterations = clampTaskIterations(this.options.maxIterations ?? 1, this.options.budget);
@@ -880,6 +882,7 @@ export class LoopEngine {
       });
       decisions.push(`${task.task_id}: created isolated worktree ${worktree.worktreePath}`);
     }
+    assertContainmentRootOutsideWorkspace(containmentRoot, runWorkspacePath);
     const candidateStartHead = this.candidatePolicy ? freezeCandidate(runWorkspacePath).headSha : undefined;
 
     try {
@@ -918,14 +921,14 @@ export class LoopEngine {
         });
         decisions.push(`${task.task_id}: selected ${plan.agent_id} - ${agentSelection.reason}`);
 
-        finalRun = await executeLegacyImplementation(plan, {
+        finalRun = await this.awaitStopSensitive(() => executeLegacyImplementation(plan, {
           workspacePath: runWorkspacePath,
           sessionId: loopId,
           ...(this.options.adapters !== undefined ? { adapters: this.options.adapters } : {}),
           ...(this.options.executeCommand !== undefined ? { command: this.options.executeCommand } : {}),
           ...(this.options.commandTimeoutMs !== undefined ? { timeoutMs: this.options.commandTimeoutMs } : {}),
           ...(this.options.outputLimit !== undefined ? { outputLimit: this.options.outputLimit } : {}),
-        });
+        }));
         if (finalRun.tokens_in !== undefined || finalRun.tokens_out !== undefined || finalRun.cost_usd !== undefined) {
           taskUsage.reported = true;
           taskUsage.tokensIn += finalRun.tokens_in ?? 0;
@@ -995,7 +998,8 @@ export class LoopEngine {
             }],
           };
         } else {
-          finalVerdict = await verifyRun(finalRun, {
+          const implementationRun = finalRun;
+          finalVerdict = await this.awaitStopSensitive(() => verifyRun(implementationRun, {
           workspacePath: runWorkspacePath,
           commands: this.candidatePolicy?.profiles.local ?? this.options.verifyCommands ?? [],
           verifierAgentIds,
@@ -1007,7 +1011,7 @@ export class LoopEngine {
           ...(this.options.commandTimeoutMs !== undefined ? { timeoutMs: this.options.commandTimeoutMs } : {}),
           ...(this.options.outputLimit !== undefined ? { outputLimit: this.options.outputLimit } : {}),
           ...(this.options.adapters !== undefined ? { adapters: this.options.adapters } : {}),
-          });
+          }));
         }
         if (finalVerdict.issues.some(issue => issue.rule === "verify.adapter_stop_unconfirmed")) {
           this.implementationUnconfirmed = true;
@@ -1289,7 +1293,7 @@ export class LoopEngine {
     }
 
     const deps = this.options.publishDeps ?? { runCommand: runCommandReal };
-    const result = await runPublish(skillId, publishCfg, deps);
+    const result = await this.awaitStopSensitive(() => runPublish(skillId, publishCfg, deps));
     // Durable, auditable release evidence — release identity only on success.
     const evidence = toPublishedAssetEvidence(result, publishCfg.gate);
 
@@ -1434,19 +1438,32 @@ export class LoopEngine {
     }
   }
 
+  private stopPayload(state: LoopState, count: number, goal?: LoopGoalResult): Record<string, unknown> {
+    if (this.containmentPending || this.candidateContaminated || this.implementationUnconfirmed) {
+      return { reason_code: "execution_containment_pending", reason: "Execution reconciliation required; automatic retry is blocked" };
+    }
+    return completionStopPayload(state, count, goal);
+  }
+
+  private async awaitStopSensitive<T>(invoke: () => Promise<T>): Promise<T> {
+    try { return await invoke(); }
+    catch (error) { this.implementationUnconfirmed = true; throw error; }
+  }
+
   private async checkGoal(loopId: string, workspacePath: string): Promise<LoopGoalResult | undefined> {
     const command = this.options.goalCommand;
     if (command === undefined || command.trim() === "") return undefined;
 
     this.lifecycleEffectsStarted = true;
-    const result = await runShellCommand(command, {
+    const result = await this.awaitStopSensitive(() => runShellCommand(command, {
       cwd: workspacePath,
       timeoutMs: this.options.commandTimeoutMs ?? 120_000,
       outputLimit: this.options.outputLimit ?? 16_000,
-    });
+    }));
+    if (result.termination?.stop_confirmed === false || result.cancellation?.stop_confirmed === false) this.implementationUnconfirmed = true;
     const goal: LoopGoalResult = {
       command,
-      pass: result.exitCode === 0,
+      pass: result.exitCode === 0 && !this.implementationUnconfirmed,
       exitCode: result.exitCode,
       durationMs: result.durationMs,
       summary: summarizeGoalResult(result.exitCode, result.stdout, result.stderr),
@@ -1542,7 +1559,10 @@ interface TaskGitEvidence {
 }
 
 async function collectTaskGitEvidence(workspacePath: string): Promise<TaskGitEvidence> {
-  const status = await runShellCommand("git status --short --untracked-files=all", {
+  const git = `git ${REVIEWER_GIT_ARGS.join(" ")}`;
+  const environment = { env: reviewerGitEnvironment(workspacePath), inheritEnv: false };
+  const status = await runShellCommand(`${git} status --short --untracked-files=all`, {
+    ...environment,
     cwd: workspacePath,
     timeoutMs: 10_000,
     outputLimit: 32_000,
@@ -1552,7 +1572,8 @@ async function collectTaskGitEvidence(workspacePath: string): Promise<TaskGitEvi
   }
 
   const changedFiles = parseGitStatusFiles(status.stdout);
-  const diffStat = await runShellCommand("git diff --stat -- .", {
+  const diffStat = await runShellCommand(`${git} diff --no-ext-diff --no-textconv --stat -- .`, {
+    ...environment,
     cwd: workspacePath,
     timeoutMs: 10_000,
     outputLimit: 4_000,
@@ -1563,7 +1584,8 @@ async function collectTaskGitEvidence(workspacePath: string): Promise<TaskGitEvi
     : changedFiles.length === 0
       ? "no git changes"
       : `${changedFiles.length} changed file(s), ${untrackedCount} untracked`;
-  const commit = await runShellCommand("git rev-parse --short HEAD", {
+  const commit = await runShellCommand(`${git} rev-parse --short HEAD`, {
+    ...environment,
     cwd: workspacePath,
     timeoutMs: 10_000,
     outputLimit: 1_000,

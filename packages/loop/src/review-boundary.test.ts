@@ -180,3 +180,9 @@ function ruleIds(
 ): string[] {
   return result.boundary.findings.map((finding) => finding.rule_id);
 }
+
+it.each(["--assume-unchanged", "--skip-worktree"])("refuses an unsupplied diff hidden by %s", async flag => {
+  git(["update-index", flag, "src/app.ts"]);
+  await writeFile(join(workspace, "src/app.ts"), "export const hidden = true;\n");
+  await expect(collectReviewBoundary(workspace)).rejects.toThrow("REVIEW_HIDDEN_INDEX_ENTRY");
+});

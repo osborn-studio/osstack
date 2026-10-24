@@ -1,5 +1,5 @@
-import { execFileSync } from "node:child_process";
-import { mkdtempSync } from "node:fs";
+import { execFileSync, spawn } from "node:child_process";
+import { existsSync, mkdtempSync } from "node:fs";
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -88,6 +88,23 @@ describe("verifyRun", () => {
     expect(captured?.prompt).toContain("Review or verify the completed loop task.");
   });
 
+  it("strips repository task output overrides before invoking a reviewer", async () => {
+    const target = join(workspace, "..", "forbidden-review-output.txt");
+    let captured: AgentTask | undefined;
+    const adapter = mockAdapter({ async *invoke(input) {
+      captured = input;
+      for (const key of ["review_output_path", "verify_output_path"]) {
+        const path = input.context?.[key]; if (typeof path === "string") await writeFile(path, "unsafe");
+      }
+      yield doneEvent(input.run_id, input.session_id, "completed", "safe external artifact summary");
+    }});
+    const verdict = await verifyRun(run(), { workspacePath: workspace, verifierAgentIds: [adapter.id], adapters: [adapter], task: {...task(),context:{review_output_path:target,verify_output_path:target,file:"src/app.ts"}} });
+    try {
+      expect(verdict.pass).toBe(true); expect(captured?.context).not.toHaveProperty("review_output_path"); expect(captured?.context).not.toHaveProperty("verify_output_path");
+      expect(captured?.context?.["file"]).toBe("src/app.ts"); expect(existsSync(target)).toBe(false); expect(verdict.summary).toContain("safe external artifact summary");
+    } finally { await rm(target, {force:true}); }
+  });
+
   it("accepts only strict structured implementation deviations from a completed verifier", async () => {
     const adapter = mockAdapter({
       async *invoke(agentTask) {
@@ -171,18 +188,12 @@ describe("verifyRun", () => {
       },
     });
 
-    const verdict = await verifyRun(run(), {
-      workspacePath: workspace,
-      verifierAgentIds: ["terminal-error", "throwing", "incomplete"],
-      adapters: [terminalError, throwing, incomplete],
-    });
+    for (const [adapter, message] of [[terminalError, "review process exited"], [throwing, "adapter crashed"], [incomplete, "verifier did not complete"]] as const) {
+      const verdict = await verifyRun(run(), { workspacePath: workspace, verifierAgentIds: [adapter.id], adapters: [adapter] });
+      expect(verdict.pass).toBe(false);
+      expect(verdict.issues).toContainEqual(expect.objectContaining({ message: expect.stringContaining(message) }));
+    }
 
-    expect(verdict.pass).toBe(false);
-    expect(verdict.issues).toEqual([
-      expect.objectContaining({ message: expect.stringContaining("review process exited") }),
-      expect.objectContaining({ message: expect.stringContaining("adapter crashed") }),
-      expect.objectContaining({ message: expect.stringContaining("verifier did not complete") }),
-    ]);
   });
 
   it("selects verifier capability kinds in preference order with fallback", async () => {
@@ -788,6 +799,7 @@ function capability(id: string, kind: Capability["kind"], agentId: string): Capa
 
 
 it("bounds verifier availability without starting invocation", async () => {
+  await stableSnapshotForTimingTest();
   let invoked = false;
   const adapter = {...mockAdapter({async *invoke(task){invoked=true;yield doneEvent(task.run_id,task.session_id,"completed","unexpected");}}),
     isAvailable: () => new Promise<never>(() => {})};
@@ -816,6 +828,7 @@ it("bounds a verifier that ignores abort and never settles next or return", asyn
 });
 
 it("bounds a stuck read-only review boundary before invoking the adapter", async () => {
+  await stableSnapshotForTimingTest();
   const boundary = await import("./review-boundary.js");
   vi.spyOn(boundary,"collectReviewBoundary").mockImplementation(() => new Promise<never>(()=>{}));
   let invoked=false;
@@ -829,7 +842,7 @@ it("bounds a stuck post-review snapshot and never accepts its preceding approval
   await writeFile(join(workspace,"src/app.ts"),"export const candidate = true;\n");
   const isolation=await import("./reviewer-isolation.js");
   const before = await isolation.snapshotReviewerWorkspace(workspace);
-  vi.spyOn(isolation,"snapshotReviewerWorkspace").mockResolvedValueOnce(before).mockImplementationOnce(()=>new Promise<never>(()=>{}));
+  vi.spyOn(isolation,"snapshotReviewerWorkspace").mockResolvedValueOnce(before).mockResolvedValueOnce(before).mockImplementationOnce(()=>new Promise<never>(()=>{}));
   const boundary = await import("./review-boundary.js");
   const collected = await boundary.collectReviewBoundary(workspace, {}, undefined);
   vi.spyOn(boundary,"collectReviewBoundary").mockResolvedValue(collected);
@@ -838,6 +851,7 @@ it("bounds a stuck post-review snapshot and never accepts its preceding approval
   const verdict=await verifyRun(run(),{workspacePath:workspace,verifierAgentIds:[adapter.id],adapters:[adapter],task:reviewTask("correctness"),timeoutMs:1000});
   expect(invoked).toBe(true);expect(verdict.pass).toBe(false);
   expect(verdict.issues).toContainEqual(expect.objectContaining({rule:"verify.reviewer_snapshot_failed",message:expect.stringContaining("snapshot timed out")}));
+  expect(verdict.issues).toContainEqual(expect.objectContaining({rule:"verify.reviewer_integrity_unconfirmed"}));
 });
 
 it("shares one deadline between availability and invocation", async () => {
@@ -862,10 +876,11 @@ async function stableSnapshotForTimingTest(): Promise<void> {
   vi.spyOn(isolation, "snapshotReviewerWorkspace").mockResolvedValue(before);
 }
 
-it.each(["tracked", "untracked", "metadata"] as const)("rejects a generic verifier that changes %s state after approval", async kind => {
+it.each(["tracked", "hidden-tracked", "untracked", "metadata"] as const)("rejects a generic verifier that changes %s state after approval", async kind => {
   await initGitWorkspace();
+  if (kind === "hidden-tracked") execFileSync("git", ["update-index", "--assume-unchanged", "src/app.ts"], { cwd: workspace });
   const adapter = mockAdapter({ id: "generic-provider", async *invoke(task) {
-    const path = kind === "tracked" ? "src/app.ts" : kind === "untracked" ? "review-output.txt" : ".git/hooks/pre-commit";
+    const path = (kind === "tracked" || kind === "hidden-tracked") ? "src/app.ts" : kind === "untracked" ? "review-output.txt" : ".git/hooks/pre-commit";
     await writeFile(join(workspace, path), "reviewer mutation");
     yield doneEvent(task.run_id, task.session_id, "completed", "approved");
   }});
@@ -880,4 +895,68 @@ it("does not invoke a generic verifier when its workspace cannot be snapshotted"
   const verdict = await verifyRun(run(), { workspacePath: workspace, verifierAgentIds: [adapter.id], adapters: [adapter] });
   expect(invoked).toBe(false); expect(verdict.pass).toBe(false);
   expect(verdict.issues).toContainEqual(expect.objectContaining({ rule: "verify.reviewer_snapshot_failed" }));
+});
+
+it.each(["mutation", "rejected-stream", "timeout"] as const)("does not invoke later verifiers after %s", async kind => {
+  let later = 0;
+  if (kind === "timeout") await stableSnapshotForTimingTest();
+  const first = mockAdapter({ id: "first", async *invoke(task) {
+    if (kind === "mutation") await writeFile(join(workspace, "unexpected.txt"), "mutation");
+    if (kind === "rejected-stream") throw Error("review stream lost");
+    if (kind === "timeout") await new Promise<never>(() => {});
+    yield doneEvent(task.run_id, task.session_id, "completed", "approved");
+  }});
+  const second = mockAdapter({ id: "second", async *invoke(task) { later++; yield doneEvent(task.run_id, task.session_id, "completed", "approved"); } });
+  const verdict = await verifyRun(run(), { workspacePath: workspace, verifierAgentIds: [first.id, second.id], adapters: [first, second], timeoutMs: kind === "timeout" ? 20 : 5000 });
+  expect(later).toBe(0); expect(verdict.pass).toBe(false);
+  expect(verdict.issues).toContainEqual(expect.objectContaining({ rule: kind === "mutation" ? "verify.reviewer_mutation" : "verify.adapter_stop_unconfirmed" }));
+});
+
+it("marks a rejected verifier stream unconfirmed while its owned child is still live", async () => {
+  let child: ReturnType<typeof spawn> | undefined;
+  try {
+    const adapter = mockAdapter({ invoke() {
+      child = spawn(process.execPath, ["-e", "setInterval(()=>{},1000)"], { stdio: "ignore" });
+      const started = new Promise<void>((resolve, reject) => { child!.once("spawn", resolve); child!.once("error", reject); });
+      const iterator: AsyncIterableIterator<HermesEvent> = { [Symbol.asyncIterator]() { return this; }, next: async () => { await started; throw Error("transport lost while child lives"); }, return: async () => ({ done: true, value: undefined }) };
+      return iterator;
+    } });
+    const verdict = await verifyRun(run(), { workspacePath: workspace, verifierAgentIds: [adapter.id], adapters: [adapter] });
+    expect(child?.exitCode).toBeNull(); expect(verdict.pass).toBe(false);
+    expect(verdict.issues).toContainEqual(expect.objectContaining({ rule: "verify.adapter_stop_unconfirmed" }));
+  } finally {
+    if (child) { const owned = child; const exited = new Promise<void>(resolve => owned.once("close", () => resolve())); owned.kill("SIGKILL"); await exited; }
+  }
+});
+
+it("stops all later verification effects after an unconfirmed command", async () => {
+  const executor = await import("./executor.js"); let invoked = false;
+  const command = vi.spyOn(executor, "runShellCommand").mockResolvedValue({ command: "unknown", exitCode: -1, stdout: "", stderr: "still running", durationMs: 1,
+    termination: { scope: "posix_process_group", trigger: "timeout", stop_confirmed: false, signals: [], evidence: "unknown" } });
+  const adapter = mockAdapter({ async *invoke(task) { invoked = true; yield doneEvent(task.run_id, task.session_id, "completed", "unsafe"); } });
+  const verdict = await verifyRun(run(), { workspacePath: workspace, commands: ["first", "second"], artifactVerification: { requireGitDiff: true }, verifierAgentIds: [adapter.id], adapters: [adapter] });
+  expect(command).toHaveBeenCalledTimes(1); expect(invoked).toBe(false);
+  expect(verdict.issues).toContainEqual(expect.objectContaining({ rule: "verify.adapter_stop_unconfirmed" }));
+});
+
+it("does not reintroduce inherited Git routing into artifact commands", async () => {
+  await initGitWorkspace();
+  await writeFile(join(workspace, "src/app.ts"), "candidate changed\n");
+  vi.stubEnv("GIT_DIR", join(workspace, "nonexistent-foreign-git"));
+  vi.stubEnv("GIT_WORK_TREE", join(workspace, "nonexistent-foreign-worktree"));
+  try {
+    const verdict = await verifyRun(run(), { workspacePath: workspace, artifactVerification: { requireGitDiff: true } });
+    expect(verdict.issues.some(issue => issue.rule === "verify.artifact_git_diff_failed")).toBe(false);
+    expect(verdict.pass).toBe(true);
+  } finally { vi.unstubAllEnvs(); }
+});
+
+it.each([true, false])("rejects mutations by availability probe even when available=%s", async available => {
+  let invoked = 0;
+  const first = { ...mockAdapter({ id: "probe-mutator", async *invoke(task) { invoked++; yield doneEvent(task.run_id, task.session_id, "completed", "approved"); } }),
+    isAvailable: async () => { await writeFile(join(workspace, "probe-edit.txt"), "foreign"); return { available, last_checked_at: 0 }; } };
+  const second = mockAdapter({ id: "later", async *invoke(task) { invoked++; yield doneEvent(task.run_id, task.session_id, "completed", "approved"); } });
+  const verdict = await verifyRun(run(), { workspacePath: workspace, verifierAgentIds: [first.id, second.id], adapters: [first, second] });
+  expect(invoked).toBe(0); expect(verdict.pass).toBe(false);
+  expect(verdict.issues).toContainEqual(expect.objectContaining({ rule: "verify.reviewer_mutation" }));
 });

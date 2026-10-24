@@ -920,6 +920,7 @@ it("bounds source responses while retaining hung operation slots until settlemen
     const results = await Promise.all(requests);
     for (const result of results) expect(result).toMatchObject({ok:false,error:{code:"source_unavailable"}});
     expect(await rpc("source.observe", {...f.scope, source_id:"source"})).toMatchObject({ok:false,error:{code:"source_busy"}});
+    expect(await rpc("source.inspect", {...f.scope, source_id:"source"})).toMatchObject({ok:false,error:{code:"source_busy"}});
     release();
     await vi.waitFor(async () => expect(await rpc("source.events", {...f.scope, source_id:"source"})).toMatchObject({ok:false,error:{code:"source_unavailable"}}));
   } finally { release(); }
@@ -1016,14 +1017,14 @@ it("bounds worker log responses and retains occupied slots until file reads sett
 
 it("keeps the real source ledger unchanged when concurrent RPC observation is refused as busy", async()=>{
  const {repo,scope}=await fixture(false,false);const {writeFile}=await import('node:fs/promises');const {createHash}=await import('node:crypto');const {localSourceManifestDigest}=await import('./local-data-source-registry.js');
- const data=join(root!,'source-busy');await mkdir(data);const sourcePath=join(data,'snapshot.json');const raw=JSON.stringify({schema_version:1,source_id:'notes',version:'1',revision:1,entries:[{id:'one',text:'local'}]});await writeFile(sourcePath,raw);
+ const data=join(realpathSync(root!),'source-busy');await mkdir(data);const sourcePath=join(data,'snapshot.json');const raw=JSON.stringify({schema_version:1,source_id:'notes',version:'1',revision:1,entries:[{id:'one',text:'local'}]});await writeFile(sourcePath,raw);
  const now=Date.now();const manifest={schema_version:1 as const,id:'notes',version:'1',protocol:'local_json_snapshot_v1' as const,repo_path:repo,default_tenant:true as const,capabilities:['snapshot.read'] as ['snapshot.read'],file:'snapshot.json',max_bytes:65536,max_items:20,read_timeout_ms:1000,verified_at_ms:now,expires_at_ms:now+60000,fresh_for_ms:60000};
  await writeFile(join(root!,'source-registry.json'),JSON.stringify({schema_version:1,registrations:[{source_root:data,manifest,manifest_digest:localSourceManifestDigest(manifest),content_digest:createHash('sha256').update(raw).digest('hex')}]}),{mode:0o600});
  const params={...scope,source_id:'notes'};expect(await rpc('source.observe',params)).toMatchObject({ok:true});const before=await rpc('source.events',params);
  const actual=(await vi.importActual<typeof import('node:fs/promises')>('node:fs/promises')).open;let blocked=0;let release!:()=>void;const held=new Promise<void>(resolve=>release=resolve);
  vi.mocked(sourceFs.open).mockImplementation(async(path,flags,mode)=>{const handle=await actual(path,flags,mode);if(path===sourcePath){blocked++;await held;}return handle;});
  const first=rpc('source.observe',params),second=rpc('source.observe',params);
- try{await vi.waitFor(()=>expect(blocked).toBe(2));expect(await rpc('source.observe',params)).toMatchObject({ok:false,error:{code:'source_unavailable'}});
+ try{await vi.waitFor(()=>expect(blocked).toBe(2));expect(await rpc('source.observe',params)).toMatchObject({ok:false,error:{code:'source_busy'}});
   const during=await rpc('source.events',params);expect(during.result?.observation).toEqual(before.result?.observation);expect(during.result?.events).toEqual(before.result?.events);
  }finally{vi.mocked(sourceFs.open).mockImplementation(actual);release();await Promise.allSettled([first,second]);}
  const after=await rpc('source.events',params);expect(after.result?.observation).toEqual(before.result?.observation);expect(after.result?.events).toEqual(before.result?.events);
@@ -1036,4 +1037,26 @@ it('tracks source.inspect for cancellation and bounded shutdown',async()=>{
 });
 it.each(['source.inspect','source.observe','source.events','source.acknowledge'])('maps invalid %s input to invalid_request',async method=>{
  await fixture(false,false);expect(await rpc(method,{})).toMatchObject({ok:false,error:{code:'invalid_request'}});
+});
+
+it.each(['source.inspect','source.observe'])('rejects noncanonical repo identity for %s',async method=>{
+ const f=await fixture(false,false);expect(await rpc(method,{...f.scope,source_id:'notes',repo_path:f.repo+'/'})).toMatchObject({ok:false,error:{code:'invalid_request'}});
+});
+it('maps a source event cursor ahead of the stream to invalid_request',async()=>{
+ const f=await fixture(false,false);expect(await rpc('source.events',{...f.scope,source_id:'notes',after_sequence:1})).toMatchObject({ok:false,error:{code:'invalid_request'}});
+});
+it('rejects an invalid inspect result as an internal failure',async()=>{
+ const f=await fixture(false,false);const sources=await import('./local-data-source-registry.js');
+ vi.spyOn(sources,'createHostLocalDataSourceService').mockReturnValue({inspect:vi.fn().mockResolvedValue({state:'ready',entries:[]})});
+ expect(await rpc('source.inspect',{...f.scope,source_id:'notes'})).toMatchObject({ok:false,error:{code:'source_unavailable'}});
+});
+
+it.each(['source.inspect','source.observe'])('maps nonexistent repo input for %s to invalid_request',async method=>{
+ const f=await fixture(false,false);expect(await rpc(method,{...f.scope,source_id:'notes',repo_path:join(f.repo,'missing')})).toMatchObject({ok:false,error:{code:'invalid_request'}});
+});
+it('accepts cursor N and rejects N+1 for an existing source stream',async()=>{
+ const f=await fixture(false,false);const {SourceObservationLedger}=await import('@osstack/core');const db=openDb({path:daemon!.dbPath});const params={repo_path:f.repo,source_id:'notes',default_tenant:true as const};const now=Date.now();let revision:number;
+ try{revision=new SourceObservationLedger(db,daemon!.dbPath).observe(params,{generation:'1',revision:1,manifest_digest:'a'.repeat(64),content_digest:'b'.repeat(64),verified_at_ms:now,expires_at_ms:now+60000}).record_revision;}finally{db.close();}
+ expect(revision).toBeGreaterThan(0);expect(await rpc('source.events',{...params,after_sequence:revision})).toMatchObject({ok:true,result:{events:[],next_sequence:revision}});
+ expect(await rpc('source.events',{...params,after_sequence:revision+1})).toMatchObject({ok:false,error:{code:'invalid_request'}});
 });

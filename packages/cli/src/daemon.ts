@@ -1145,10 +1145,18 @@ async function handleSingle(ctx: DaemonContext, req: DaemonRequest): Promise<Sin
       const { handleSourceObservationRpc } = await import("./source-observation-command.js");
       if (ctx.draining || controller.signal.aborted) throw Error("source_unavailable");
       if (req.method === "source.inspect") {
-        const {createHostLocalDataSourceService} = await import("./local-data-source-registry.js");
+        const {createHostLocalDataSourceService, LocalSourceInspectParamsSchema, LocalSourceInspectResultSchema} = await import("./local-data-source-registry.js");
+        const parsed = LocalSourceInspectParamsSchema.safeParse(req.params);
+        if (!parsed.success) throw Error("invalid_request");
+        let canonicalRepo: string;
+        try { canonicalRepo = await realpath(parsed.data.repo_path); }
+        catch (error) { if (["ENOENT", "ENOTDIR"].includes((error as NodeJS.ErrnoException).code ?? "")) throw Error("invalid_request"); throw error; }
+        if (canonicalRepo !== parsed.data.repo_path) throw Error("invalid_request");
         if (ctx.draining || controller.signal.aborted) throw Error("source_unavailable");
         ctx.localSources ??= createHostLocalDataSourceService({configPath:join(dirname(ctx.dbPath),"source-registry.json")});
-        return ctx.localSources.inspect(req.params, controller.signal);
+        const result = LocalSourceInspectResultSchema.parse(await ctx.localSources.inspect(parsed.data, controller.signal));
+        if (result.reason === "busy") throw Error("source_observation_not_admitted");
+        return result;
       }
       ctx.sourceObservations ??= createHostSourceObservationService(dirname(ctx.dbPath));
       return handleSourceObservationRpc(req.method as "source.observe" | "source.events" | "source.acknowledge",
@@ -1160,7 +1168,10 @@ async function handleSingle(ctx: DaemonContext, req: DaemonRequest): Promise<Sin
     const settled = () => { ctx.sourceObservationPending?.delete(controller); };
     void pending.then(settled, settled);
     try { return singleOk(req.id, await Promise.race([pending, aborted])); }
-    catch (error) { return singleErr(req.id, error instanceof Error && error.message === "invalid_request" ? "invalid_request" : "source_unavailable", "Source observation unavailable"); }
+    catch (error) {
+      const code = error instanceof Error ? error.message : "";
+      return singleErr(req.id, ["invalid_request", "source_scope_not_canonical", "source_cursor_ahead"].includes(code) ? "invalid_request" : code === "source_observation_not_admitted" ? "source_busy" : "source_unavailable", "Source observation unavailable");
+    }
     finally {
       clearTimeout(timer);
       controller.signal.removeEventListener("abort", abortResponse);

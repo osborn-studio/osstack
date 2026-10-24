@@ -687,7 +687,7 @@ See docs/V2_REFACTOR_PLAN.md for the full roadmap.
       // npm prefixes alike, and matches where serve --install provisions it).
       let checkoutRoot = dirname(fileURLToPath(import.meta.url));
       try { checkoutRoot = dirname(realpathSync(fileURLToPath(import.meta.url))); } catch { /* keep lexical */ }
-      const guardHome = osstackHome();
+      const guardHome = process.env.OSSTACK_HOME ?? defaultOsstackHome();
       try {
         await assertManagedCliHome(guardHome, process.argv[1]);
         const verdict = assertServeAllowed({ checkoutRoot, osstackHome: guardHome });
@@ -7317,10 +7317,11 @@ Options:
           if (loadRoleFile(checkoutRoot)?.role !== "stable-serving") {
             throw new Error("development dist is not stable-serving");
           }
-          await assertManagedCliHome(osstackHome(), binPath);
+          const guardHome = process.env.OSSTACK_HOME ?? defaultOsstackHome();
+          await assertManagedCliHome(guardHome, binPath);
           assertServeAllowed({
             checkoutRoot,
-            osstackHome: process.env.OSSTACK_HOME ?? defaultOsstackHome(),
+            osstackHome: guardHome,
           });
           explicitlyStable = true;
         } catch (error) {
