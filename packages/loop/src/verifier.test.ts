@@ -1000,7 +1000,7 @@ it("enforces the combined base-review path budget before accepting either comple
   const suffix = "x".repeat(220);
   const tracked = Array.from({ length: 2500 }, (_, i) => `tracked-${i}-${suffix}.ts`);
   execFileSync("git", ["update-index", "--index-info"], { cwd: workspace, input: tracked.map(path => `100644 ${blob}\t${path}\n`).join("") });
-  execFileSync("git", ["commit", "-m", "large baseline"], { cwd: workspace, stdio: "ignore" });
+  execFileSync("git", ["-c", "user.name=test", "-c", "user.email=test@invalid", "commit", "-m", "large baseline"], { cwd: workspace, stdio: "ignore" });
   const base = execFileSync("git", ["rev-parse", "HEAD"], { cwd: workspace, encoding: "utf8" }).trim();
   for (let batch = 0; batch < 2500; batch += 50) await Promise.all(Array.from({ length: 50 }, (_, offset) => writeFile(join(workspace, `untracked-${batch + offset}-${suffix}.ts`), "new")));
   const diff = execFileSync("git", ["diff", base, "--name-only", "-z"], { cwd: workspace });
