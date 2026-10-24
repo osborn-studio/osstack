@@ -618,6 +618,20 @@ async function runVerifierAdapters(
   return results;
 }
 
+/** Bounds read-only preparation; outstanding filesystem reads confer no approval. */
+async function verifierReadDeadline<T>(pending: Promise<T>, timeoutMs: number): Promise<T> {
+  if (timeoutMs <= 0) {
+    void pending.catch(() => undefined);
+    throw Error("verifier snapshot timed out");
+  }
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([pending, new Promise<never>((_resolve,reject) => {
+      timer = setTimeout(() => reject(Error("verifier snapshot timed out")), timeoutMs);
+    })]);
+  } finally { clearTimeout(timer); }
+}
+
 async function invokeVerifierAdapter(
   run: AgentRun,
   options: LocalVerifierOptions,
@@ -625,16 +639,21 @@ async function invokeVerifierAdapter(
   adapterSpecs: readonly EvaluationSpec[],
   verificationResults: readonly CommandResult[],
 ): Promise<VerifierAdapterResult> {
-  const timeoutMs = options.timeoutMs ?? (adapter.id === "kimi-code" ? 600_000 : 120_000);
+  const requestedTimeout = options.timeoutMs ?? (adapter.id === "kimi-code" ? 600_000 : 120_000);
+  const timeoutMs = Number.isFinite(requestedTimeout) && requestedTimeout > 0 && requestedTimeout <= 2 ** 31 - 1
+    ? requestedTimeout : (adapter.id === "kimi-code" ? 600_000 : 120_000);
+  const deadline = performance.now() + timeoutMs;
+  const remaining = () => Math.max(0, deadline - performance.now());
   let availability: Awaited<ReturnType<AgentAdapter["isAvailable"]>>;
   let availabilityTimer: ReturnType<typeof setTimeout> | undefined;
   try {
     availability = await Promise.race([
       Promise.resolve().then(() => adapter.isAvailable()),
       new Promise<never>((_resolve, reject) => {
-        availabilityTimer = setTimeout(() => reject(Error("verifier availability timed out")), timeoutMs);
+        availabilityTimer = setTimeout(() => reject(Error("verifier availability timed out")), remaining());
       }),
     ]);
+    if (!availability || typeof availability.available !== "boolean") throw Error("invalid verifier availability");
   } catch (error) {
     return {agentId:adapter.id,eventCount:0,issues:[adapterIssue(adapter.id,"verify.adapter_failed",error instanceof Error ? error.message : String(error))]};
   } finally { clearTimeout(availabilityTimer); }
@@ -651,11 +670,11 @@ async function invokeVerifierAdapter(
   let beforeSnapshot: Awaited<ReturnType<typeof snapshotReviewerWorkspace>> | undefined;
   if (structuredReview) {
     try {
-      boundary = await collectReviewBoundary(
+      boundary = await verifierReadDeadline(collectReviewBoundary(
         options.workspacePath,
         options.reviewBoundary ?? {},
         options.reviewCandidate,
-      );
+      ), remaining());
     } catch (error) {
       return {
         agentId: adapter.id,
@@ -680,7 +699,7 @@ async function invokeVerifierAdapter(
       };
     }
     try {
-      beforeSnapshot = await snapshotReviewerWorkspace(options.workspacePath);
+      beforeSnapshot = await verifierReadDeadline(snapshotReviewerWorkspace(options.workspacePath), remaining());
     } catch (error) {
       return {
         agentId: adapter.id,
@@ -699,7 +718,7 @@ async function invokeVerifierAdapter(
   const timeout = setTimeout(() => {
     timedOut = true;
     controller.abort();
-  }, timeoutMs);
+  }, remaining());
   let eventCount = 0;
   let summary: string | undefined;
   let status: "completed" | "failed" | "cancelled" | "expired" | undefined;
@@ -732,6 +751,7 @@ async function invokeVerifierAdapter(
       boundary,
       verificationResults,
     );
+    if (remaining() <= 0) throw Error("verifier deadline exhausted before invocation");
     iterator = adapter.invoke(agentTask, controller.signal)[Symbol.asyncIterator]();
     while (true) {
       const next = await nextOrAbort();
@@ -786,7 +806,7 @@ async function invokeVerifierAdapter(
     }
     if (beforeSnapshot !== undefined) {
       try {
-        const afterSnapshot = await snapshotReviewerWorkspace(options.workspacePath);
+        const afterSnapshot = await verifierReadDeadline(snapshotReviewerWorkspace(options.workspacePath), remaining());
         workspaceMutated = reviewerWorkspaceMutated(
           beforeSnapshot,
           afterSnapshot,
@@ -798,6 +818,9 @@ async function invokeVerifierAdapter(
   }
 
   const issues: Issue[] = [];
+  if (timedOut && iterator !== undefined && !iteratorFinished) {
+    issues.push(adapterIssue(adapter.id,"verify.adapter_stop_unconfirmed","Verifier invocation timed out without physical stop evidence; reconciliation required"));
+  }
   if (snapshotError !== undefined) {
     issues.push(adapterIssue(
       adapter.id,

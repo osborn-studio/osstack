@@ -34,7 +34,7 @@
 ## 外部资格单列
 
 1. 真实模型：受支持API凭据、经独立复核的holdout数据、实际usage/计费核对、真实provider终止行为；没有这些就不宣称模型更准或更便宜。
-2. 指定静态审计：Claude Code CLI请求Haiku5.5；部分轮次返回意见并修复，最终若OAuth过期则保留`is_error:true`，不能算审计通过。模型字符串与`unrecognized_model`诊断均保留，不声称权重证明。
+2. 指定静态审计：重新登录后，Claude Code CLI 已实际执行 Haiku5.5 四组审计并返回非零 usage；正在逐项修复和复审。历史 OAuth 失败记录保留，不计为通过。模型字符串与 `unrecognized_model` 诊断均保留，不声称权重证明。
 3. 真实公共GitHub：专用sandbox目标、固定actor/node身份、真实send/lookup、网络中断和权限变更；本次未发送真实公开消息。
 4. 真实SSH：远端安装/forced command、host key变更、双机generation与断网恢复；本地child/socket/SSH配置解析不替代跨机测试。
 5. 真实tmux/cmux：本机未安装，需固定版本窗口/socket/关闭行为；launch_requested不是已看到窗口。
@@ -58,3 +58,21 @@ OSStack原生队列包含12个能力收口任务、独立代码QA任务，以及
 交付为[PR #244](https://github.com/osborn-studio/osstack/pull/244)，依赖#243及前序PR栈。当前保留草稿：最终Claude Code CLI Haiku5.5尝试返回OAuth过期、`is_error:true`、0 token；最新兼容修复也尚未获得最终模型审计。已保留组件审计与独立代码复核，但它们不替代最终审计。CI以该PR当前HEAD的检查结果为准，本地通过不冒充CI通过。
 
 12个能力收口任务的代码路径已逐项核对，最终审计条件仍待完成；7类认证/真实环境资格任务保持独立排队、未执行状态。尚未合并或部署，不宣称24/24已在真实环境上线。
+
+## 最终审计的授权边界与恢复范围
+
+- 私有目录、签名与交互确认阻止普通RPC调用者和不可信来源文字制造授权，但不隔离同uid恶意进程，包括可任意读写宿主文件的模型驱动Shell。签名私钥、host registry和交互终端均处于同uid边界；registry中的qualification由操作者声明，不是代码自动验证的资格证明。生产隔离须使用独立uid、受限沙箱或独立密钥保管。
+- GitHub交付状态delivery_unknown不允许重发或换idempotency key重放。精确provider receipt可使其收敛；查不到、分页不完整或超时不能证明未发送。当前无“人工确认未送达后重新授权”的产品内终态解决入口，不应修改数据库绕过。发送/预检默认5秒、只读查询默认30秒，宿主可分别配置sendTimeoutMs/lookupTimeoutMs，均硬上限30秒；兼容timeoutMs仍可统一覆盖。查询最多20页/200条，期限更长仍不保证找回。
+- 实际GitHub sandbox必须覆盖CRLF、末尾空白与正文归一化，之后才可标sandbox_qualified或更高级别。精确正文比较保持fail-closed，不将marker单独视为成功；该真实环境资格尚未执行。
+- 远程取消的“丢ACK查询恢复”只指stop_requested回执已经持久写入、随后ACK丢失的窗口。远端reserve后崩溃、daemon响应丢失、回执落盘失败等仍可能永久delivery_unknown。此次明确接受此有限范围，不新增query的graph.status字段或结果重写重试。操作者可通过既有只读Graph状态入口另行观察；该观察不能归因于本次请求，也不能据此重发取消或推断新grant安全。unknown/not_found回执的home/generation字段是签名请求的目标绑定，不证明当前目标已观察；observed_revision为空且physical_stop始终not_attested。
+- 客户端not_sent仅表示新的本地调用在reserve/transport前预检失败，不证明远端全局状态。reserve不确定、spawn失败或之后的任何失败继续unknown。
+
+补充恢复语义：交付inFlight仅覆盖本次有界dispatch等待与持久结算，不声称超时后provider已经停止。超时后允许独立只读lookup查询，迟到的send响应不会再次写库或重发；若发送期间撤销授权，晚到成功回执也不会覆盖撤销后的unknown，须由精确lookup回执确认。GitHub若规范化CRLF或末尾空白，真实消息可能已发布而send与lookup的精确正文比较都会失败，使该attempt永久unknown；因此正文归一化是启用真实交付前必须完成的sandbox资格。远程取消的显式daemon拒绝（包括CAS/revision冲突）、reserve后配置撤销以及不完整journal写入亦可能被保守分类为unknown，不将其伪装为成功，也不自动重发。
+
+## 本轮审计明确保留的运行范围
+
+- 来源观察与工作日志的请求等待各有2秒期限，未结束的底层读取继续占用原槽位，最多4个；挂起读取可使该入口持续busy，需要正常重启恢复。同步文件系统操作不具有硬实时保证，不支持把挂起的网络挂载视为可强制抢占的本地文件系统。
+- 取消后来源/日志读取各有2秒关闭等待，迟到日志读取在同步DB访问前检查取消。整个daemon关闭不是2秒保证：已接纳的交付等可能写DB的任务仍须完成或确认停止，不能用读请求的超时逻辑强制关闭其数据库。底层操作不收敛时升级drain可能失败并保留恢复状态；不以伪造停止证明换取升级成功。
+- 验证适配器的可用性、边界收集、前后快照和调用共用一个总期限，另有至多100ms迭代器清理等待；底层同步代码无法抢占。调用超时且停止未证实时阻止Loop继续、重启重试与工作树清理。done事件后流不结束视为未完成；未请求的judgment（包括零spec任务）保持fail-closed。
+- Graph候选原始内容每次观察上限128MiB/10,000 entries；Git metadata遍历上限256MiB（stat计量）/20,000 entries。超限拒绝验证。性能测量只代表给定仓库形状，不承诺任意大小仓库都满足交互延迟。
+- managed升级恢复需要保留精确原plan、registry、artifact和历史证据；缺失时不承诺自动恢复。运行包须自包含，主机目录、Node、依赖与密钥由受信任操作者控制。直接DB命令的managed环境必须与注册一致；serve配置拒绝返回78，其他主入口错误由轻量entry统一打印消息并返回1，不输出调用栈。

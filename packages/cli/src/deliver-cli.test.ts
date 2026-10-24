@@ -988,3 +988,19 @@ describe('scout promotion and authoritative recovery lessons', () => {
     } finally {if(candidatePath)execFileSync('git',['worktree','remove','--force',candidatePath],{cwd:workspace});}
   },60000);
 });
+
+it("rejects none-scope push and merge contracts before guarded-git dispatch", async () => {
+  const contractPath = join(tmp, "forbidden-contract.json");
+  await writeFile(contractPath, JSON.stringify({ schema_version: 2, contract_id: "contract-forbidden", task_id: "task-forbidden",
+    canonical_repo: realpathSync(tmp), mode: "implement", base_head: "a".repeat(40), goal: "Publish without scope",
+    required_checks: [{ id: "tests", registry_ref: deliveryCheckReference("pnpm test") }], review_policy_ref: "profile:mac-mini",
+    requested_completion: "local_verified", allowed_paths: ["src"], requested_actions: ["build", "verify", "push", "merge"],
+    budget_ref: `policy:${"b".repeat(64)}`, policy_digest: "b".repeat(64), publication_scope: { mode: "none" }, merge_authority: { mode: "none" } }));
+  const startGuardedGit = vi.fn();
+  const code = await handleDeliverCommand(["--workspace", tmp, "--autonomy", "guarded-git", "--contract", contractPath, "--json"], {
+    ...createDeliverCommandDeps(), startGuardedGit,
+  });
+  expect(code).toBe(2);
+  expect(logs.join("\n")).toContain("invalid_delivery_contract");
+  expect(startGuardedGit).not.toHaveBeenCalled();
+});

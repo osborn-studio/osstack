@@ -1,8 +1,9 @@
+import { readVerificationDirectory, readVerificationFile, VerificationInventoryBudget, verificationInventoryLimits } from './graph-verification-inventory.js';
 import { prepareGraphContainedImage, registerContainedTests, validateContainedTestEvidence, type GraphContainedTestOptions } from './graph-contained-tests.js';
 import type { ContainedImageReceipt } from '@osstack/agents';
 import { execFileSync } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
-import { existsSync, lstatSync, readdirSync, readFileSync, readlinkSync, realpathSync } from 'node:fs';
+import { existsSync, lstatSync, readlinkSync, realpathSync } from 'node:fs';
 import { mkdir, realpath } from 'node:fs/promises';
 import { dirname, isAbsolute, join, resolve } from 'node:path';
 import type { AgentAdapter, AgentTask } from '@osstack/agents';
@@ -40,6 +41,8 @@ export interface GraphVerificationOptions {
   verifyReviewer: (identities: Readonly<ReviewerIdentity>) => Promise<void>;
   /** Reads current running ledger record, including its actual logical attempt. */
   effectIdentity: (kind: Kind) => VerificationEffect;
+  /** Trusted diagnostics only; called once per complete candidate observation. */
+  onCandidateObservation?: (kind: Kind) => void;
   /** Host ledger preparation owns this exact source lease. No nested acquisition. */
   preparationLease?: ExecutionLease;
   slots?: Partial<Record<Kind, { nodeId: string; effectSlot: string; workspaceLeaseRef: string; tokenReservation: number }>>;
@@ -73,20 +76,20 @@ export function readCandidateRevisions(readGit: (...args: string[]) => string): 
 /** Raw bytes/modes/links, including ignored and untracked files. Git status alone
  * misses ignored files, assume-unchanged and timestamp-preserving modifications. */
 function workspaceFingerprint(path: string): string {
-  const hash = createHash('sha256'); let count = 0;
+  const hash = createHash('sha256'); const budget = new VerificationInventoryBudget();
   const visit = (directory: string, prefix: string) => {
-    for (const name of readdirSync(directory).sort()) {
+    for (const name of readVerificationDirectory(directory)) {
       if (!prefix && name === '.git') continue;
-      if (++count > 100000) throw new Error('workspace inventory limit');
       const relative = `${prefix}${name}`; const full = join(directory, name); const stat = lstatSync(full);
       hash.update(JSON.stringify([relative, stat.mode & 0o777, stat.isDirectory() ? 'directory' : stat.isSymbolicLink() ? 'link' : 'file']));
       if (stat.isSymbolicLink()) {
+        budget.entry(Buffer.byteLength(readlinkSync(full)));
         const target = resolve(dirname(full), readlinkSync(full));
         if (!target.startsWith(`${path}/`) || (existsSync(target) && !realpathSync(target).startsWith(`${path}/`))) throw new Error('shared external symlink in candidate workspace');
         hash.update(readlinkSync(full));
       }
-      else if (stat.isDirectory()) visit(full, `${relative}/`);
-      else if (stat.isFile() && stat.size <= 256 * 1024 * 1024 && stat.nlink === 1) hash.update(readFileSync(full));
+      else if (stat.isDirectory()) { budget.entry(); visit(full, `${relative}/`); }
+      else if (stat.isFile() && stat.nlink === 1) hash.update(readVerificationFile(full, stat, budget));
       else throw new Error('unsupported workspace entry/shared writable hardlink');
     }
   };
@@ -94,14 +97,14 @@ function workspaceFingerprint(path: string): string {
 }
 export function assertExactCandidateFiles(path: string, revision: string): void {
   if (resolve(path) !== path || realpathSync(path) !== path) throw new Error('candidate root must be canonical');
-  const expected = new Set<string>();
+  const expected = new Set<string>(); const budget = new VerificationInventoryBudget();
   for (const entry of gitRaw(path, 'ls-tree', '-rz', '--full-tree', revision).split('\0').filter(Boolean)) {
     const match = /^(100644|100755|120000) blob ([a-f0-9]{40})\t([\s\S]+)$/.exec(entry);
     if (!match) throw new Error('unsupported candidate tree entry');
     const name = match[3]!;
     if (isAbsolute(name) || name.split('/').some(part => !part || part === '.' || part === '..' || part === '.git')) throw new Error('unsafe candidate tree path');
     expected.add(name);
-    let parent = dirname(name); while (parent !== '.') { expected.add(parent); parent = dirname(parent); }
+    let parent = dirname(name); while (parent !== '.') { expected.add(parent); if (expected.size > verificationInventoryLimits.candidateEntries) throw Error('verification inventory budget exceeded'); parent = dirname(parent); }
     const file = join(path, name);
     parent = dirname(file);
     while (parent !== path) {
@@ -109,13 +112,14 @@ export function assertExactCandidateFiles(path: string, revision: string): void 
       parent = dirname(parent);
     }
     const stat = lstatSync(file);
-    if (stat.nlink !== 1 || stat.size > 256 * 1024 * 1024) throw new Error('unsupported tracked entry');
+    if (stat.nlink !== 1) throw new Error('unsupported tracked entry');
     const bytes = match[1] === '120000' && stat.isSymbolicLink() ? Buffer.from(readlinkSync(file))
-      : match[1] !== '120000' && stat.isFile() ? readFileSync(file) : undefined;
+      : match[1] !== '120000' && stat.isFile() ? readVerificationFile(file, stat, budget) : undefined;
+    if (stat.isSymbolicLink()) budget.entry(bytes?.length ?? 0);
     if (!bytes || (match[1] !== '120000' && ((stat.mode & 0o111) !== 0) !== (match[1] === '100755'))
       || createHash('sha1').update(`blob ${bytes.length}\0`).update(bytes).digest('hex') !== match[2]) throw new Error('candidate raw tree mismatch');
   }
-  const visit = (directory: string, prefix: string): void => { for (const name of readdirSync(directory)) {
+  const visit = (directory: string, prefix: string): void => { for (const name of readVerificationDirectory(directory)) {
     if (!prefix && name === '.git') continue;
     const relative = `${prefix}${name}`; if (!expected.has(relative)) throw new Error('candidate has unexpected files');
     const full = join(directory, name); if (lstatSync(full).isDirectory()) visit(full, `${relative}/`);
@@ -128,7 +132,8 @@ function repositoryStamp(path: string): string {
   if (git(path, 'rev-parse', '--absolute-git-dir') !== gitDir || git(path, 'rev-parse', '--git-common-dir') !== '.git'
     || existsSync(join(gitDir, 'objects', 'info', 'alternates')) || existsSync(join(gitDir, 'objects', 'info', 'http-alternates'))) throw new Error('shared repository storage forbidden');
   // Every restored repository starts without caches, symlinked metadata or shared objects.
-  const inspect = (directory: string): void => { for (const name of readdirSync(directory)) { const p = join(directory, name); const stat = lstatSync(p); if (stat.isSymbolicLink() || (!stat.isDirectory() && (!stat.isFile() || stat.nlink !== 1))) throw new Error('shared repository metadata'); if (stat.isDirectory()) inspect(p); } };
+  const budget = new VerificationInventoryBudget(verificationInventoryLimits.repositoryBytes, verificationInventoryLimits.repositoryEntries);
+  const inspect = (directory: string): void => { for (const name of readVerificationDirectory(directory, verificationInventoryLimits.repositoryEntries)) { const p = join(directory, name); const stat = lstatSync(p); budget.entry(stat.isFile() ? stat.size : 0); if (stat.isSymbolicLink() || (!stat.isDirectory() && (!stat.isFile() || stat.nlink !== 1))) throw new Error('shared repository metadata'); if (stat.isDirectory()) inspect(p); } };
   inspect(gitDir);
   return verificationCanonical([path, gitDir, join(gitDir, 'objects')].map(p => { const stat = lstatSync(p); return [p, stat.dev, stat.ino]; }));
 }
@@ -144,7 +149,7 @@ export async function prepareGraphVerificationBranch(options: GraphVerificationO
 }
 async function prepareSelection(options: GraphVerificationOptions, kinds: readonly Kind[]) {
   // Capture ALL callbacks and values before the first await.
-  const { authorize, authorizeCancel, authorizePolicy, acquire, effectIdentity, verifyReviewer, preparationLease } = options;
+  const { authorize, authorizeCancel, authorizePolicy, acquire, effectIdentity, verifyReviewer, preparationLease, onCandidateObservation } = options;
   const containedOptions = options.containedTests ? Object.freeze({ ...options.containedTests }) : undefined;
   const check = checkedAuthority(authorize); check();
   const data = snapshot({ root: options.root, binding: parseVerificationBinding(options.binding), candidate: GraphResult.parse(options.candidate), source: options.sourceWorkspace,
@@ -223,7 +228,7 @@ async function prepareSelection(options: GraphVerificationOptions, kinds: readon
     // Paths come from the frozen tree, never from a potentially altered index.
     const trackedPaths = gitRaw(workspace.workspace_path, 'ls-tree', '-rz', '--name-only', binding.candidateRevision).split('\0').filter(Boolean);
     const trackedFingerprint = () => {
-      const hash = createHash('sha256');
+      const hash = createHash('sha256'); const budget = new VerificationInventoryBudget();
       for (const name of trackedPaths) {
         const file = join(workspace.workspace_path, name);
         let parent = dirname(file);
@@ -232,19 +237,20 @@ async function prepareSelection(options: GraphVerificationOptions, kinds: readon
           parent = dirname(parent);
         }
         const stat = lstatSync(file);
-        if ((!stat.isFile() && !stat.isSymbolicLink()) || stat.nlink !== 1 || stat.size > 256 * 1024 * 1024) throw new Error('unsupported tracked entry');
-        const bytes = stat.isSymbolicLink() ? Buffer.from(readlinkSync(file)) : readFileSync(file);
+        if ((!stat.isFile() && !stat.isSymbolicLink()) || stat.nlink !== 1) throw new Error('unsupported tracked entry');
+        const bytes = stat.isSymbolicLink() ? Buffer.from(readlinkSync(file)) : readVerificationFile(file, stat, budget);
+        if (stat.isSymbolicLink()) budget.entry(bytes.length);
         hash.update(JSON.stringify([name, stat.mode, bytes.length, createHash('sha256').update(bytes).digest('hex')]));
       }
       return hash.digest('hex');
     };
-    const candidateIdentity = (): CandidateIdentity => ({
+    const candidateIdentity = (): CandidateIdentity => { onCandidateObservation?.(kind); return ({
       repositoryDigest: createHash('sha256').update(repositoryStamp(workspace.workspace_path)).digest('hex'),
       ...readCandidateRevisions((...args) => git(workspace.workspace_path, ...args)),
       indexTree: git(workspace.workspace_path, 'write-tree'), indexDigest: createHash('sha256').update(gitRaw(workspace.workspace_path, 'ls-files', '--stage', '-v', '-z')).digest('hex'), trackedDigest: trackedFingerprint(),
       ...(kind === 'tests' && containedImage ? { containedContentDigest: containedImage.contentDigest } : {}),
       ...(kind === 'review' ? { inventoryDigest: workspaceFingerprint(workspace.workspace_path) } : {}),
-    });
+    }); };
     // Both workspaces start with a strict inventory; tests may later emit untracked build outputs.
     workspaceFingerprint(workspace.workspace_path);
     const before = snapshot(candidateIdentity());
@@ -328,9 +334,13 @@ async function prepareSelection(options: GraphVerificationOptions, kinds: readon
           || ![...acceptance.passExitCodes, ...acceptance.failExitCodes].includes(command.exitCode))) envelope.verificationFailure = { code: 'INTERNAL_ERROR', message: 'Acceptance command infrastructure failure or unregistered exit code', retrySafe: true };
       }
       compactVerificationOutput(envelope);
-      return publishGraphVerificationEvidence(data.root, envelope, () => {
-        if (verificationCanonical(observe()) !== verificationCanonical(envelope.candidateIdentity.after)) throw new Error('candidate changed during persistence');
+      const publicationAuthority = () => {
         settlementCheck(); if (verificationCanonical(validateVerificationEffect(effectIdentity(kind), binding, slot.nodeId, slot.effectSlot)) !== verificationCanonical(effect)) throw new Error('ledger effect changed during persistence');
+      };
+      return publishGraphVerificationEvidence(data.root, envelope, publicationAuthority, () => {
+        publicationAuthority();
+        if (verificationCanonical(observe()) !== verificationCanonical(envelope.candidateIdentity.after)) throw new Error('candidate changed during persistence');
+        publicationAuthority();
       });
     };
     // G04 reuses plan-derived session IDs on retry. Allocate the real session at invocation,

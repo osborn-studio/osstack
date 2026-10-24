@@ -1199,10 +1199,20 @@ async function handleSingle(ctx: DaemonContext, req: DaemonRequest): Promise<Sin
       ctx.workerLogReads ??= new Set();
       if(ctx.workerLogReads.size>=4)return singleErr(req.id,"worker_log_busy","Worker output reader busy");
       ctx.workerLogAbort ??= new AbortController();
-      const logSignal = ctx.workerLogAbort.signal;
+      const requestAbort = new AbortController();
+      const logSignal = AbortSignal.any([ctx.workerLogAbort.signal,requestAbort.signal]);
+      let abortResponse!: () => void;
+      const aborted = new Promise<never>((_resolve,reject) => {
+        abortResponse = () => reject(Error("worker_log_unavailable"));
+        logSignal.addEventListener("abort",abortResponse,{once:true});
+      });
+      const timer=setTimeout(()=>requestAbort.abort(),2000);
       const pending=realpath(dirname(ctx.dbPath)).then(home=>inspectWorkerLogs(ctx.db,home,req.params,Date.now,logSignal));
       ctx.workerLogReads.add(pending);
-      try{return singleOk(req.id,await pending);}finally{ctx.workerLogReads.delete(pending);}
+      const settled=()=>{ctx.workerLogReads?.delete(pending);};
+      void pending.then(settled,settled);
+      try{return singleOk(req.id,await Promise.race([pending,aborted]));}
+      finally{clearTimeout(timer);logSignal.removeEventListener("abort",abortResponse);}
     }catch{return singleErr(req.id,"worker_log_unavailable","Worker output unavailable");}
   }
   if (req.method === "worker.list" || req.method === "worker.inspect") {
@@ -4421,6 +4431,7 @@ export async function startDaemon(
         if (healthMonitor !== undefined) clearInterval(healthMonitor);
         shutdownPromise = (async () => {
           ctx.draining = true;
+          ctx.workerLogAbort?.abort();
           for (const controller of ctx.sourceObservationPending?.keys() ?? []) controller.abort();
           await drainCancelledReads([...(ctx.sourceObservationPending?.values() ?? [])]);
           await ctx.attentionTriage?.then(service => service.stop()).catch(() => undefined);
@@ -4428,7 +4439,6 @@ export async function startDaemon(
           await Promise.allSettled([...(ctx.followUpDeliveryPending ?? [])]);
           // These reads recheck authorization before their final synchronous DB
           // snapshot, so the database must outlive their asynchronous file reads.
-          ctx.workerLogAbort?.abort();
           await drainCancelledReads([...(ctx.workerLogReads ?? [])]);
           if (graphRpc) {
             try { await (await graphRpc).close(); } catch { /* Initialization may have failed. */ }

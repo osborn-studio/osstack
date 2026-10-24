@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { afterEach, expect, it, vi } from 'vitest';
+import * as autonomy from '@osstack/autonomy';
 import { FifoSemaphore, inspectRepoWriteLock, repoLockPath } from '@osstack/autonomy';
 import { resolveRepositoryScope } from '@osstack/core';
 import { GovernedExecution } from './governed-execution.js';
@@ -227,4 +228,24 @@ it('defers renewal ticks during guarded work and renews before releasing the gua
     await lease.assertActive!(); expect(f.writes.in_use).toBe(1);
   } finally { await lease.release(); }
   expect(f.writes.in_use).toBe(0);
+});
+
+it('coalesces normal release and reconciliation until the physical repository lock is released', async () => {
+  const original = autonomy.acquireRepoWriteLock;
+  let releasePhysical!: () => void; let entered!: () => void;
+  const gate = new Promise<void>(resolve => { releasePhysical = resolve; });
+  const started = new Promise<void>(resolve => { entered = resolve; });
+  let physicalCalls = 0;
+  vi.spyOn(autonomy, 'acquireRepoWriteLock').mockImplementation(async (...args) => {
+    const lock = await original(...args);
+    return { ...lock, release: async () => { physicalCalls++; entered(); await gate; await lock.release(); } };
+  });
+  const f = await fixture(); const lease = await f.admission.acquire({ kind: 'write', runId: 'release-race', workspacePath: f.repo });
+  const pending = lease.release(); await started;
+  let recovered = false; const recovery = lease.releaseAfterReconciliation!(async () => {}).then(() => { recovered = true; });
+  const second = lease.release(); await Promise.resolve(); await Promise.resolve();
+  expect(recovered).toBe(false); expect(f.writes.in_use).toBe(1); expect(physicalCalls).toBe(1);
+  await expect(lease.assertActive!()).rejects.toThrow('unavailable');
+  releasePhysical(); await Promise.all([pending, second, recovery]);
+  expect(recovered).toBe(true); expect(f.writes.in_use).toBe(0); expect(physicalCalls).toBe(1);
 });

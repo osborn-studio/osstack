@@ -77,3 +77,16 @@ it("honors abort before IO and after opening without reading a snapshot", async 
     await expect(readAttentionLoop({ repo: root, path, loop_id: "l", signal: during.signal })).rejects.toThrow("stopped during open");
   } finally { race.swap = undefined; await rm(root, { recursive: true, force: true }); }
 });
+
+it("projects task identity only and never exposes prompts, context or evaluator inputs", async () => {
+  const root=await mkdtemp(join(tmpdir(),"loop-metadata-"));
+  try {
+    const path=join(root,"state.json");
+    const task={task_id:"task",capability:"code.write",prompt:"PRIVATE_PROMPT",source:"manual",context:{token:"PRIVATE_CONTEXT"},evaluation:[]};
+    await writeFile(path,JSON.stringify({loop_id:"l",started_at:new Date().toISOString(),updated_at:new Date().toISOString(),pending:[task],in_progress:[task],completed_tasks:[]}));
+    const facts=await readAttentionLoop({repo:root,path,loop_id:"l"});
+    expect(facts).toMatchObject({pending:[{task_id:"task",capability:"code.write"}],in_progress:[{task_id:"task",capability:"code.write"}]});
+    expect(JSON.stringify(facts)).not.toContain("PRIVATE_");
+    expect(facts.pending?.[0]).not.toHaveProperty("evaluation");
+  }finally{await rm(root,{recursive:true,force:true});}
+});

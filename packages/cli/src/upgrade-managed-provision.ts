@@ -1,4 +1,4 @@
-import { existsSync, readdirSync } from 'node:fs';
+import { existsSync, lstatSync, readdirSync } from 'node:fs';
 import { mkdir, unlink } from 'node:fs/promises';
 import { join } from 'node:path';
 import { acquireDaemonLock } from './daemon-lock.js';
@@ -30,7 +30,7 @@ export async function provisionManagedInstallation(input: { request: string; app
       if(existsSync(plist)){if(readPrivate(plist).toString()!==text)throw Error('upgrade_service_changed');}
       else await publishPrivateBytes(plist,Buffer.from(text));await finishPrivatePublication(plist);
     }
-    for(const [directory,expected] of [[join(config.root,'consumers'),config.consumers.map(c=>Buffer.from(upgradeCanonical(c)))],[join(config.root,'services'),config.consumers.map(c=>Buffer.from(managedPlist(config,c)))]] as const){for(const name of readdirSync(directory).filter(n=>/^\.publish-[a-f0-9]{32}$/.test(n))){const path=join(directory,name);const bytes=readPrivate(path);if(!expected.some(value=>value.equals(bytes)))throw Error('upgrade_provision_unknown_file');await unlink(path);}await syncDirectory(directory);}
+    for(const [directory,expected] of [[join(config.root,'consumers'),config.consumers.map(c=>Buffer.from(upgradeCanonical(c)))],[join(config.root,'services'),config.consumers.map(c=>Buffer.from(managedPlist(config,c)))]] as const){for(const name of readdirSync(directory).filter(n=>/^\.publish-[a-f0-9]{32}$/.test(n))){const path=join(directory,name);const bytes=readPrivate(path);if(lstatSync(path).nlink===1){await unlink(path);continue;}if(!expected.some(value=>value.equals(bytes)))throw Error('upgrade_provision_unknown_file');await unlink(path);}await syncDirectory(directory);}
     await syncDirectory(join(config.root,'services'));
     const release=join(config.root,'releases',bundle.target.build_digest);if(!existsSync(release))await stageRelease(config.root,bundle,signal);
     if(upgradeCanonical(verifyRelease(config.root,bundle.target.build_digest).target)!==upgradeCanonical(bundle.target))throw Error('upgrade_release_metadata_changed');

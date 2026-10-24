@@ -638,6 +638,11 @@ it("revocation racing an in-flight send preserves unknown until explicit lookup"
     expected_revision: started.revision,
     reason: "Stop future authority",
   }).attempt;
+  const lookup = vi.fn(async () => receipt);
+  f.transport.lookup = lookup;
+  expect(await f.service.reconcile({ ...f.scope, attempt_id: a.attempt_id, expected_revision: revoked.revision }))
+    .toMatchObject({ outcome: "in_flight", attempt: { state: "delivery_unknown", revision: revoked.revision } });
+  expect(lookup).not.toHaveBeenCalled();
   release(receipt);
   expect((await pending).attempt).toMatchObject({
     state: "delivery_unknown",
@@ -978,4 +983,33 @@ it("claim-time ticket or credential fence failure leaves grant unconsumed", asyn
   expect(current.state).toBe("prepared");
   expect(current.authorization_status).toBe("active");
   expect(f.sends).not.toHaveBeenCalled();
+});
+
+it("read-only lookup has its own bounded deadline after a send timeout", async () => {
+  const f = fixture();
+  const service = new FollowUpDeliveryService(f.db, f.dbPath, { ...f.options, sendTimeoutMs: 5, lookupTimeoutMs: 100 });
+  const a = f.authorize(f.prepare().attempt).attempt;
+  const receipt = await f.sends.getMockImplementation()!(a.envelope);
+  f.transport.sendOnce = () => new Promise(() => {});
+  f.transport.lookup = async () => { await new Promise(resolve => setTimeout(resolve, 20)); return receipt; };
+  const sent = await service.dispatch({ ...f.scope, attempt_id: a.attempt_id, expected_revision: a.revision });
+  expect(sent.outcome).toBe("delivery_unknown");
+  expect((await service.reconcile({ ...f.scope, attempt_id: a.attempt_id, expected_revision: sent.attempt.revision })).outcome).toBe("delivered");
+});
+
+it("after the bounded dispatch deadline lookup can recover while send remains unresolved", async () => {
+  const f = fixture();
+  const service = new FollowUpDeliveryService(f.db, f.dbPath, { ...f.options, sendTimeoutMs: 5 });
+  const a = f.authorize(f.prepare().attempt).attempt;
+  const receipt = await f.sends.getMockImplementation()!(a.envelope);
+  let release!: (value: unknown) => void;
+  f.transport.sendOnce = () => new Promise(resolve => { release = resolve; });
+  const sent = await service.dispatch({ ...f.scope, attempt_id: a.attempt_id, expected_revision: a.revision });
+  expect(sent.outcome).toBe("delivery_unknown");
+  f.transport.lookup = vi.fn(async () => receipt);
+  const reconciled = await service.reconcile({ ...f.scope, attempt_id: a.attempt_id, expected_revision: sent.attempt.revision });
+  expect(reconciled.outcome).toBe("delivered");
+  release(receipt);
+  await Promise.resolve();
+  expect(service.inspect({ ...f.scope, attempt_id: a.attempt_id }).attempt.revision).toBe(reconciled.attempt.revision);
 });

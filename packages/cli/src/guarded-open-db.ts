@@ -6,8 +6,10 @@
 import { dirname } from "node:path";
 import { realpathSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { openDb as coreOpenDb } from "@osstack/core";
+import { CURRENT_SCHEMA_VERSION, openDb as coreOpenDb } from "@osstack/core";
 import { assertDbAccessAllowed } from "./control-plane-guard.js";
+import { assertManagedHomeMarker } from "./managed-home-guard.js";
+import { VERSION, PROTOCOL_VERSION } from "./version.js";
 
 type OpenDbArgs = Parameters<typeof coreOpenDb>[0];
 
@@ -18,5 +20,6 @@ export function guardedOpenDb(opts: OpenDbArgs): ReturnType<typeof coreOpenDb> {
   // the cli (state.db lives at <home>/state.db).
   const home = dirname(opts.path);
   assertDbAccessAllowed({ checkoutRoot, osstackHome: home });
+  assertManagedHomeMarker(home, process.argv[1], {version:VERSION,protocol_version:PROTOCOL_VERSION,database_schema:CURRENT_SCHEMA_VERSION});
   return coreOpenDb(opts);
 }

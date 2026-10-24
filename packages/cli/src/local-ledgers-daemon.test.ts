@@ -966,3 +966,48 @@ it("bounds shutdown of aborted source reads even if their I/O never settles", as
   await daemon!.close();daemon=undefined;
   expect(await response).toMatchObject({ok:false,error:{code:"source_unavailable"}});
 });
+
+
+it("returns EX_CONFIG for managed serve guard failures without opening the DB", async () => {
+  root=await createScratchDir("tests","managed-serve-refusal");
+  vi.stubEnv("OSSTACK_HOME",root);
+  const backend=await import("./upgrade-native-backend.js");
+  vi.spyOn(backend,"managedStartupIdentity").mockImplementation(() => {throw Error("upgrade_start_blocked");});
+  const errors=vi.spyOn(console,"error").mockImplementation(()=>{});
+  expect(await main(["serve"])).toBe(78);
+  expect(errors).toHaveBeenCalledWith(expect.stringContaining("upgrade_start_blocked"));
+  expect(existsSync(join(root,"state.db"))).toBe(false);
+});
+
+it("refuses managed direct-DB code mismatch before opening state", async () => {
+  root=await createScratchDir("tests","managed-direct-refusal");vi.stubEnv("OSSTACK_HOME",root);
+  const backend=await import("./upgrade-native-backend.js");
+  vi.spyOn(backend,"managedStartupIdentity").mockReturnValue({deployment_kind:"npm",build_digest:"a".repeat(64),build_evidence:"host_manifest",version:"999.0.0",protocol_version:1,database_schema:46});
+  await expect(main(["stack","list"])).rejects.toThrow("upgrade_running_build_mismatch");
+  expect(existsSync(join(root,"state.db"))).toBe(false);
+});
+
+it("formats a direct-DB managed refusal at the actual entrypoint without a stack trace", async () => {
+  root=await createScratchDir("tests","managed-entry-refusal");
+  const {writeFile}=await import("node:fs/promises");
+  await writeFile(join(root,"managed-consumer.json"),JSON.stringify({schema_version:1,root,home_id:"home_"+"a".repeat(32)}),{mode:0o600});
+  const {spawnSync}=await import("node:child_process");
+  const result=spawnSync(process.execPath,[new URL("../dist/bin.js",import.meta.url).pathname,"stack","list"],{
+    env:{...process.env,OSSTACK_HOME:root,OSSTACK_UPDATE_CHECK:"0"},encoding:"utf8",timeout:10000});
+  expect(result.status).toBe(1);
+  expect(result.stderr).toContain("osstack: upgrade_unmanaged_entry");
+  expect(result.stderr).not.toContain("    at ");
+  expect(existsSync(join(root,"state.db"))).toBe(false);
+});
+
+it("bounds worker log responses and retains occupied slots until file reads settle", async () => {
+  const f=await fixture(false,false);const logs=await import("./worker-log-view.js");
+  let release!:()=>void;const held=new Promise<void>(resolve=>{release=resolve;});
+  const reader=vi.spyOn(logs,"inspectWorkerLogs").mockImplementation(async()=>{await held;throw Error("cancelled");});
+  try {
+    const requests=Array.from({length:4},()=>rpc("worker.logs",f.scope));
+    await vi.waitFor(()=>expect(reader).toHaveBeenCalledTimes(4));
+    for(const response of await Promise.all(requests))expect(response).toMatchObject({ok:false,error:{code:"worker_log_unavailable"}});
+    expect(await rpc("worker.logs",f.scope)).toMatchObject({ok:false,error:{code:"worker_log_busy"}});
+  }finally{release();}
+});

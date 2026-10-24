@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { createHash } from 'node:crypto';
 import { execFileSync, spawn, type ChildProcess } from 'node:child_process';
 import { existsSync, readFileSync, realpathSync } from 'node:fs';
-import { chmod, mkdir, readFile, readdir, rm, symlink, writeFile } from 'node:fs/promises';
+import { chmod, link, mkdir, readFile, readdir, rm, symlink, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { createScratchDir } from '@osstack/core';
 import Database from 'better-sqlite3';
@@ -76,6 +76,8 @@ describe('managed native upgrade actual filesystem/process boundaries',()=>{
     const f=await fixture();const c=f.config.consumers[0]!;const priorRoot=process.env['OSSTACK_MANAGED_INSTALLATION'];const priorSocket=process.env['OSSTACK_SOCKET'];
     try{process.env['OSSTACK_MANAGED_INSTALLATION']=f.root;process.env['OSSTACK_SOCKET']=c.socket;
       expect(managedStartupIdentity(c.home,join(f.root,'current','bin.mjs'))).toMatchObject({build_digest:f.old.target.build_digest});
+      expect(()=>assertManagedHomeMarker(c.home,join(f.root,'current','bin.mjs'),{version:'1.0.0',protocol_version:1,database_schema:40})).not.toThrow();
+      for(const mismatch of [{version:'2.0.0',protocol_version:1,database_schema:40},{version:'1.0.0',protocol_version:2,database_schema:40},{version:'1.0.0',protocol_version:1,database_schema:41}])expect(()=>assertManagedHomeMarker(c.home,join(f.root,'current','bin.mjs'),mismatch)).toThrow('upgrade_running_build_mismatch');
       expect(()=>managedStartupIdentity(f.config.consumers[1]!.home,join(f.root,'current','bin.mjs'))).toThrow('upgrade_unregistered_consumer');
       const before=sha256(readFileSync(join(c.home,'state.db')));await publishPrivate(join(f.root,'upgrade-operation.json'),{plan_digest:f.plan.digest});
       expect(()=>managedStartupIdentity(c.home,join(f.root,'current','bin.mjs'))).toThrow('upgrade_start_blocked');expect(()=>assertManagedHomeMarker(c.home,join(f.root,'current','bin.mjs'))).toThrow('upgrade_start_blocked');expect(sha256(readFileSync(join(c.home,'state.db')))).toBe(before);
@@ -94,7 +96,7 @@ describe('managed native upgrade actual filesystem/process boundaries',()=>{
     const f=await fixture();const port=new ManagedNativeUpgradePort(f.input,f.backend);await port.resolveAuthority(f.plan,f.plan.plan.groups[0]!,new AbortController().signal);await port.close();
     const recovery=new ManagedNativeUpgradePort(f.input,f.backend);try{await expect(recovery.reconcileForward(f.plan,f.plan.plan.groups[0]!,f.journal,'0'.repeat(64),AbortSignal.timeout(30000))).rejects.toThrow('upgrade_reconciliation_changed');expect(f.starts()).toBe(2);}finally{await recovery.close();}
   },30000);
-  it('provisions a fresh exact installation without starting processes and refuses an existing root',async()=>{
+  it('provisions a fresh exact installation without starting processes and resumes identical interrupted staging',async()=>{
     const f=await fixture();for(const c of f.config.consumers)await f.backend.stop(c.label,new AbortController().signal);
     const root=realpathSync(await createScratchDir('tests','provision'));roots.push(root);await chmod(root,0o700);const consumers=[];for(const previous of f.config.consumers){const home=realpathSync(await createScratchDir('tests','provision-home'));roots.push(home);await chmod(home,0o700);await publishPrivate(join(home,'deployment-identity.json'),{schema_version:1,home_id:previous.home_id});consumers.push({...previous,home,socket:join(home,'s')});}const config={...f.config,root,consumers};
     const request=join(f.root,'request.json');await publishPrivate(request,config);const input={request,approvedRegistryDigest:sha256(readFileSync(request)),artifact:f.input.artifact,artifactDigest:f.input.artifactDigest};
@@ -106,6 +108,7 @@ describe('managed native upgrade actual filesystem/process boundaries',()=>{
     expect(existsSync(join(root,'installation.json'))).toBe(false);
     for(const c of consumers)expect(existsSync(join(c.home,'managed-consumer.json'))).toBe(false);
     await rm(join(root,'releases'));
+    await writeFile(join(root,'consumers','.publish-'+ 'b'.repeat(32)),'',{mode:0o600});
     const result=await provisionManagedInstallation(input,AbortSignal.timeout(30000));expect(result.state).toBe('provisioned_not_started');expect(f.starts()).toBe(2);expect(loadInstallation(result.registry,result.registry_sha256).root).toBe(root);expect(verifyRelease(root,f.next.target.build_digest).target.version).toBe('2.0.0');
     await rm(join(root,'installation.json'));await rm(join(root,'current'));expect((await provisionManagedInstallation(input,AbortSignal.timeout(30000))).state).toBe('provisioned_not_started');
   },30000);
@@ -135,11 +138,29 @@ const backend={async assertConsumers(){},async service(label){const c=config.con
     if(missing!=='operation_missing')await rm(join(f.root,'restart-permit.json'));
     if(missing!=='permit_missing')await rm(join(f.root,'upgrade-operation.json'));
     const recovery=new ManagedNativeUpgradePort(f.input,f.backend);
-    try{expect(await recovery.reconcileForward(f.plan,f.plan.plan.groups[0]!,f.journal,upgradeDigest(status.records),AbortSignal.timeout(30000))).toMatchObject({state:'verified',reason:'verified_history_fence_cleanup_only'});
+    try{expect(await recovery.reconcileForward(f.plan,f.plan.plan.groups[0]!,f.journal,upgradeDigest(status.records),AbortSignal.timeout(30000))).toMatchObject({state:'verified',reason:'verified_history_fence_cleanup_only',services_observed:false});
       await recovery.complete(); // Repeating cleanup under the same owner is idempotent.
       expect(f.starts()).toBe(4);expect((await f.journal.status(f.plan.digest,'first')).records).toEqual(status.records);
       expect(existsSync(join(f.root,'restart-permit.json'))).toBe(false);expect(existsSync(join(f.root,'upgrade-operation.json'))).toBe(false);
     }finally{await recovery.close();}
+  },30000);
+  it('clears an orphan permit from another plan before the next upgrade stops consumers',async()=>{
+    const f=await fixture();await publishPrivate(join(f.root,'restart-permit.json'),{plan_digest:'f'.repeat(64),build_digest:f.old.target.build_digest});
+    const port=new ManagedNativeUpgradePort(f.input,f.backend);
+    try{expect((await coordinateUpgrade({journal:f.journal,plan:f.plan,groupId:'first',port})).state).toBe('verified');await port.complete();expect(f.starts()).toBe(4);expect(existsSync(join(f.root,'restart-permit.json'))).toBe(false);}finally{await port.close();}
+  },30000);
+  it('accepts only a single publication temp hardlink peer in the pre-DB managed guard',async()=>{
+    const f=await fixture();const c=f.config.consumers[0]!,marker=join(c.home,'managed-consumer.json'),peer=join(c.home,'.publish-'+ 'a'.repeat(32));
+    await link(marker,peer);expect(()=>assertManagedHomeMarker(c.home,join(f.root,'current','bin.mjs'))).not.toThrow();
+    await rm(peer);await link(marker,join(c.home,'untrusted-peer'));
+    expect(()=>assertManagedHomeMarker(c.home,join(f.root,'current','bin.mjs'))).toThrow('upgrade_managed_marker_invalid');
+  },30000);
+  it('removes a foreign orphan permit during historically verified cleanup when no operation exists',async()=>{
+    const f=await fixture();const port=new ManagedNativeUpgradePort(f.input,f.backend);
+    expect((await coordinateUpgrade({journal:f.journal,plan:f.plan,groupId:'first',port})).state).toBe('verified');await port.complete();await port.close();
+    await publishPrivate(join(f.root,'restart-permit.json'),{plan_digest:'f'.repeat(64),build_digest:f.old.target.build_digest});
+    const status=await f.journal.status(f.plan.digest,'first'),recovery=new ManagedNativeUpgradePort(f.input,f.backend);
+    try{expect(await recovery.reconcileForward(f.plan,f.plan.plan.groups[0]!,f.journal,upgradeDigest(status.records),AbortSignal.timeout(30000))).toMatchObject({state:'verified',services_observed:false});expect(existsSync(join(f.root,'restart-permit.json'))).toBe(false);expect(f.starts()).toBe(4);}finally{await recovery.close();}
   },30000);
   it('waits for a physically pending stop before releasing owner locks and prevents late reacquisition after close',async()=>{
     const f=await fixture();let unblock!:()=>void;let arrived!:()=>void;const pending=new Promise<void>(r=>unblock=r);const started=new Promise<void>(r=>arrived=r);

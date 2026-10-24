@@ -1,7 +1,8 @@
 import { createHash } from 'node:crypto';
 import { mkdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { afterEach, expect, it } from 'vitest';
+import { afterEach, expect, it, vi } from 'vitest';
+import * as asyncFs from 'node:fs/promises';
 import { createScratchDirSync, openDb } from '@osstack/core';
 import type { AgentAdapter, AgentTask } from '@osstack/agents';
 import type { HermesEvent } from '@osstack/hermes-adapter';
@@ -10,6 +11,7 @@ import { createHostSourceObservationService } from './source-observation-host.js
 import { createHostSourceContext } from './source-context.js';
 import { createExecutionContextAdapters, type ExecutionContextReceipt } from './execution-context.js';
 import { handleSourceObservationRpc, handleSourceObservationCommand } from './source-observation-command.js';
+vi.mock('node:fs/promises',async importOriginal=>{const actual=await importOriginal<typeof import('node:fs/promises')>();return {...actual,open:vi.fn(actual.open)};});
 const roots:string[]=[];afterEach(()=>{for(const path of roots.splice(0))rmSync(path,{recursive:true,force:true});});
 const hash=(s:string)=>createHash('sha256').update(s).digest('hex');
 function fixture(){const root=realpathSync(createScratchDirSync('tests','source-context'));roots.push(root);const home=join(root,'home'),repo=join(root,'repo'),source=join(root,'source');for(const path of [home,repo,source])mkdirSync(path,{mode:0o700});openDb({path:join(home,'state.db')}).close();const now=Date.now();
@@ -38,3 +40,50 @@ it('rejects revocation of an earlier source while the last asynchronous source v
  const sources=createHostSourceContext(f.home,service);await expect(consume(f,{...f.options,loadContext:sources.load,validateContext:sources.validate,validateContextSync:sources.validateSync})).rejects.toThrow('source_context_authority_changed');expect(calls).toBe(4);expect(f.captured).toHaveLength(0);expect(f.receipts).toHaveLength(1);expect((await f.service.inspect(f.scope)).state).toBe('not_registered');
 });
 it('checks actual pinned source bytes synchronously after asynchronous validation and before dispatch',async()=>{const f=fixture();f.enable();await expect(consume(f,{...f.options,validateContext:async(entries,signal)=>{await f.sources.validate(entries,signal);writeFileSync(join(f.source,'snapshot.json'),'changed-after-validation');}})).rejects.toThrow('source_context_content_changed');expect(f.captured).toHaveLength(0);});
+it('requires an exact private clock-reset grant and invalidates stale acknowledgement revisions',async()=>{
+ const f=fixture();const observed=await f.service.observe(f.scope);const evidence=f.snapshot();const now=Date.now(),high=now+365*86400000;
+ const db=openDb({path:join(f.home,'state.db')});db.prepare('UPDATE source_observation_clock SET observed_at_ms=? WHERE singleton=1').run(high);db.close();
+ expect(f.service.events(f.scope).clock.high_water_ms).toBe(high);
+ const grant={id:'reset',scope:f.scope,...evidence,expected_record_revision:observed.observation!.record_revision,expires_at_ms:now+30000};
+ const publish=(value:unknown)=>writeFileSync(join(f.home,'source-acknowledgements.json'),JSON.stringify({schema_version:1,grants:[value]}),{mode:0o600});
+ publish(grant);await expect(f.service.acknowledge(f.scope,'reset')).rejects.toThrow('source_clock_regression');
+ publish({...grant,clock_reset:{expected_high_water_ms:high,not_before_ms:now-1000,expires_at_ms:now-1}});await expect(f.service.acknowledge(f.scope,'reset')).rejects.toThrow('source_clock_reset_mismatch');
+ publish({...grant,clock_reset:{expected_high_water_ms:high,not_before_ms:now-1000,expires_at_ms:now+30000}});
+ expect(await f.service.acknowledge(f.scope,'reset')).toMatchObject({state:'ready',record_revision:3});
+ publish(grant);await expect(f.service.acknowledge(f.scope,'reset')).rejects.toThrow('source_revision_conflict');
+ expect(f.service.events(f.scope).events.map(e=>e.transition)).toEqual(['snapshot_baseline','clock_reset','snapshot_acknowledged']);
+});
+it('checks the persisted clock high-water again at the final synchronous admission fence',async()=>{
+ const f=fixture();f.enable();
+ await expect(consume(f,{...f.options,validateContext:async(entries,signal)=>{
+  await f.sources.validate(entries,signal);const db=openDb({path:join(f.home,'state.db')});
+  try{db.prepare('UPDATE source_observation_clock SET observed_at_ms=? WHERE singleton=1').run(Date.now()+100000);}finally{db.close();}
+ }})).rejects.toThrow('source_clock_regression');
+ expect(f.captured).toHaveLength(0);
+});
+
+it('recovers clock continuity on the same live inspector instance after sampling a forward excursion',async()=>{
+ const f=fixture();let now=Date.now();const service=createHostSourceObservationService(f.home,{nowMs:()=>now});
+ await service.observe(f.scope);const normal=now;now+=365*86400000;
+ expect((await service.observe(f.scope)).snapshot.reason).toBe('registration_expired');const high=now;now=normal;
+ await expect(service.observe(f.scope)).rejects.toThrow('source_clock_regression');
+ const current=service.status(f.scope)!,evidence=f.snapshot();
+ writeFileSync(join(f.home,'source-acknowledgements.json'),JSON.stringify({schema_version:1,grants:[{id:'live-reset',scope:f.scope,...evidence,expected_record_revision:current.record_revision,expires_at_ms:now+30000,clock_reset:{expected_high_water_ms:high,not_before_ms:now-1,expires_at_ms:now+30000}}]}),{mode:0o600});
+ expect(await service.acknowledge(f.scope,'live-reset')).toMatchObject({state:'ready'});
+ expect((await service.observe(f.scope)).snapshot.state).toBe('ready');
+ const response=await handleSourceObservationRpc('source.events',f.scope,service);
+ expect(response.events?.find(e=>e.transition==='clock_reset')?.clock_reset).toMatchObject({old_high_water_ms:high,new_time_ms:normal,grant_digest:expect.stringMatching(/^[a-f0-9]{64}$/)});
+});
+
+it('does not mutate source continuity when a concurrent inspection is refused as busy',async()=>{
+ const f=fixture();await f.service.observe(f.scope);const before=f.service.status(f.scope),events=f.service.events(f.scope).events;
+ const actualOpen=(await vi.importActual<typeof import('node:fs/promises')>('node:fs/promises')).open;let blocked=0;let release!:()=>void;const gate=new Promise<void>(resolve=>release=resolve);
+ const spy=vi.mocked(asyncFs.open).mockImplementation(async(path,flags,mode)=>{
+  const file=await actualOpen(path,flags,mode);if(path===join(f.source,'snapshot.json')){blocked++;await gate;}return file;
+ });
+ const first=f.service.observe(f.scope),second=f.service.observe(f.scope);
+ try{await vi.waitFor(()=>expect(blocked).toBe(2));await expect(f.service.observe(f.scope)).rejects.toThrow('source_observation_not_admitted');
+  expect(f.service.status(f.scope)).toEqual(before);expect(f.service.events(f.scope).events).toEqual(events);
+ }finally{spy.mockImplementation(actualOpen);release();await Promise.allSettled([first,second]);}
+ expect(f.service.status(f.scope)).toEqual(before);
+});

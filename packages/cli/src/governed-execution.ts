@@ -139,20 +139,21 @@ export class GovernedExecution {
       throw error;
     }
     let reconciled: Promise<void> | undefined;
+    let releasing: Promise<void> | undefined;
     return {
       ...(lock && scope ? { withWriteGuard: async <T>(workspacePath: string, operation: (assertActive: () => void) => T): Promise<T> => {
         if (workspacePath !== scope.workspacePath) throw new Error('write guard workspace mismatch');
-        if (released || retained || writeGuardActive || reconciled) throw new Error('execution lease unavailable');
+        if (released || retained || writeGuardActive || reconciled || releasing) throw new Error('execution lease unavailable');
         writeGuardActive = true;
         try {
           await renewing;
-          if (released || retained) throw new Error('execution lease unavailable');
+          if (released || retained || releasing) throw new Error('execution lease unavailable');
           // Do not let the timer contend with our metadata guard. Renew on both
           // sides while still excluding release; renewal never revives expiry.
           await lock!.renew();
           const value = await lock!.withActiveGuard(check => {
             const assertActive = () => {
-              if (released || retained) throw new Error('execution lease unavailable');
+              if (released || retained || releasing) throw new Error('execution lease unavailable');
               check();
             };
             assertActive(); const result = operation(assertActive);
@@ -171,11 +172,12 @@ export class GovernedExecution {
         } finally { writeGuardActive = false; }
       } } : {}),
       assertActive: async () => {
-        if (released || retained) throw new Error("execution lease unavailable");
+        if (released || retained || releasing) throw new Error("execution lease unavailable");
         await lock?.assertActive();
-        if (released || retained) throw new Error("execution lease unavailable");
+        if (released || retained || releasing) throw new Error("execution lease unavailable");
       },
       releaseAfterReconciliation: (verify) => {
+        if (releasing) return releasing;
         if (writeGuardActive) return Promise.reject(new Error('write guard in progress'));
         if (released) return Promise.resolve();
         if (reconciled) return reconciled;
@@ -203,23 +205,29 @@ export class GovernedExecution {
         return reconciled;
       },
       retain: (reason) => { retained = true; if (timer) clearInterval(timer); if (scope) this.quarantine(scope.repoId, input.runId); process.stderr.write(`osstack: retaining write lease ${input.runId}: ${reason}\n`); },
-      release: async () => {
-        if (writeGuardActive) throw new Error('write guard in progress');
-        if (released) return;
-        if (retained) throw new Error("external stop unconfirmed; reconciliation required before release");
-        released = true;
-        if (timer) clearInterval(timer);
-        await renewing;
-        if (retained) { released = false; throw new Error("external stop unconfirmed; reconciliation required before release"); }
-        // Ownership failure must not free the in-process writer authority.
-        try { await lock?.release(); }
-        catch (error) {
-          released = false; retained = true;
-          if (scope) this.quarantine(scope.repoId, input.runId);
-          process.stderr.write(`repository lock release failed; retained ${input.runId}: ${String(error)}\n`);
-          throw error;
-        }
-        releasePermits();
+      release: () => {
+        if (releasing) return releasing;
+        if (reconciled) return reconciled;
+        if (writeGuardActive) return Promise.reject(new Error('write guard in progress'));
+        if (released) return Promise.resolve();
+        if (retained) return Promise.reject(new Error("external stop unconfirmed; reconciliation required before release"));
+        releasing = (async () => {
+          if (timer) clearInterval(timer);
+          await renewing;
+          if (retained) throw new Error("external stop unconfirmed; reconciliation required before release");
+          // Physical completion, not starting its asynchronous release, is the
+          // final state. Concurrent release/reconciliation callers share this wait.
+          try { await lock?.release(); }
+          catch (error) {
+            retained = true;
+            if (scope) this.quarantine(scope.repoId, input.runId);
+            process.stderr.write(`repository lock release failed; retained ${input.runId}: ${String(error)}\n`);
+            throw error;
+          }
+          released = true;
+          releasePermits();
+        })().finally(() => { releasing = undefined; });
+        return releasing;
       },
     };
   }

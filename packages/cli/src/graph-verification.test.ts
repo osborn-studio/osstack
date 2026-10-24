@@ -1,7 +1,10 @@
 import { createHash } from 'node:crypto';
+import { deflateSync } from 'node:zlib';
+import { writeFileSync } from 'node:fs';
+import { verificationInventoryLimits } from './graph-verification-inventory.js';
 import type { AgentTask } from '@osstack/agents';
 import { execFileSync } from 'node:child_process';
-import { mkdtemp, mkdir, writeFile, readFile, realpath, readdir } from 'node:fs/promises';
+import { mkdtemp, mkdir, writeFile, readFile, realpath, readdir, truncate } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { afterEach, expect, it, vi } from 'vitest';
@@ -26,10 +29,11 @@ afterEach(() => { for (const fn of close.splice(0)) fn(); });
 import { computeGraphEffectKey } from '@osstack/protocol';
 import { prepareGraphVerification, prepareGraphVerificationBranch, loadGraphVerificationEvidence, type GraphVerificationOptions } from './graph-verification.js';
 const git = (cwd: string, ...args: string[]) => execFileSync('git', args, { cwd, encoding: 'utf8' }).trim();
-async function fixture(payloadBytes = 0) {
+async function fixture(payloadBytes = 0, fileCount = 0) {
   const root = await realpath(await mkdtemp(join(tmpdir(), 'g19-'))); const repo = join(root, 'source'); await mkdir(repo);
   git(repo, 'init', '-q'); await writeFile(join(repo, 'file'), 'candidate');
-  if (payloadBytes) await writeFile(join(repo, 'payload'), Buffer.alloc(payloadBytes, 42)); git(repo, 'add', '.'); git(repo, '-c', 'user.name=test', '-c', 'user.email=test@invalid', 'commit', '-qm', 'base');
+  if (payloadBytes) await writeFile(join(repo, 'payload'), Buffer.alloc(payloadBytes, 42));
+  for (let start = 0; start < fileCount; start += 100) await Promise.all(Array.from({ length: Math.min(100, fileCount - start) }, (_, index) => writeFile(join(repo, `entry-${start + index}`), `unique-${start + index}:` + 'x'.repeat(256)))); git(repo, 'add', '.'); git(repo, '-c', 'user.name=test', '-c', 'user.email=test@invalid', 'commit', '-qm', 'base');
   const scope = { schemaVersion: 1 as const, tenantId: 't', principalId: 'p', workspaceId: 'w' };
   const db = openDb({ path: join(root, 'control.sqlite') }); close.push(() => db.close()); const runs = new GraphRunStore(db);
   const created = runs.create({ schemaVersion: 1, kind: 'start', scope, idempotencyKey: 'verification', inputArtifactRef: 'input', source: { product: 'osstack', requestId: 'request' }, spec: { schemaVersion: 1, template: 'code-delivery-v1', publication: 'artifact_only', input: { taskRef: 'task', repositoryRef: 'repo', baseRevision: git(repo, 'rev-parse', 'HEAD'), acceptanceRef: 'acceptance' }, limits: { maxEpochs: 1, maxBranchAttempts: 2, maxConcurrentReaders: 2, maxConcurrentWritersPerRepo: 1, maxActionStarts: 8, deadlineSeconds: 120, tokenReservationLimit: 100 } } }, { executionModel: 'langgraph-functional-v1', durability: 'sync', engineVersion: '1.4.15', checkpointVersion: '1.1.5', templateVersion: '1', registryVersion: '1', compilerVersion: '1', schemaVersion: '1', compiledProgramDigest: 'b'.repeat(64) }, Date.now());
@@ -527,20 +531,52 @@ it('seals cancellation observed during persistence even after a passing check st
       termination: { scope: 'posix_process_group', trigger: 'exit', leader_exit_code: 0, stop_confirmed: true, signals: [], evidence: 'stopped' } } }, { signal: controller.signal });
   expect(result.result).toBeUndefined();
   expect(result.verificationFailure).toMatchObject({ code: 'INTERNAL_ERROR', retrySafe: false });
-});
-it.skipIf(!process.env['OSSTACK_REVIEW_INVENTORY_REPORT'])('measures all review boundaries over a 31 MiB candidate without caching authority checks', async () => {
-  const f = await fixture(31 * 1024 * 1024);
-  f.options.reviewer.adapter.invoke = reviewAdapter(() => JSON.stringify({ schemaVersion: 1, verdict: 'accept', summary: 'fixture', findings: [] }));
-  const started = performance.now(); const prepared = await prepareGraphVerificationBranch(f.options, 'review');
-  const preparationMs = performance.now() - started; const action = prepared.actions[0]!;
-  const samples: Array<{ verifyMs: number; invokeMs: number; persistMs: number }> = [];
-  for (let index = 0; index < 3; index++) {
-    let at = performance.now(); await action.verifyWorkspace!(); const verifyMs = performance.now() - at;
-    at = performance.now(); const evidence = await invokeReview(action); const invokeMs = performance.now() - at;
-    at = performance.now(); const result = await action.persist(evidence); const persistMs = performance.now() - at;
-    expect(result.result).toMatchObject({ kind: 'review', verdict: 'accept' }); samples.push({ verifyMs, invokeMs, persistMs });
+}, 15000);
+it.skipIf(!process.env['OSSTACK_REVIEW_INVENTORY_REPORT'])('measures byte-heavy and many-file/object review boundaries with exact observation counts', async () => {
+  const reports = [];
+  for (const scenario of [{ name: '31MiB', bytes: 31 * 1024 * 1024, files: 0, objects: 0 }, { name: 'many-files-and-objects', bytes: 0, files: 1500, objects: 1500 }]) {
+    const f = await fixture(scenario.bytes, scenario.files); let observations = 0;
+    f.options.onCandidateObservation = () => { observations++; };
+    f.options.reviewer.adapter.invoke = reviewAdapter(() => JSON.stringify({ schemaVersion: 1, verdict: 'accept', summary: 'fixture', findings: [] }));
+    const started = performance.now(); const prepared = await prepareGraphVerificationBranch(f.options, 'review');
+    const preparationMs = performance.now() - started; const action = prepared.actions[0]!;
+    // Valid, unreachable loose Git objects exercise metadata traversal without
+    // modifying candidate content or inventing fake .git entries.
+    for (let index = 0; index < scenario.objects; index++) {
+      const payload = Buffer.from(`benchmark loose object ${index}`);
+      const object = Buffer.concat([Buffer.from(`blob ${payload.length}\0`), payload]);
+      const sha = createHash('sha1').update(object).digest('hex');
+      const directory = join(action.workspace!.workspace_path, '.git', 'objects', sha.slice(0, 2));
+      await mkdir(directory, { recursive: true }); await writeFile(join(directory, sha.slice(2)), deflateSync(object));
+    }
+    const samples = [];
+    for (let index = 0; index < 3; index++) {
+      let at = performance.now(); observations = 0; await action.verifyWorkspace!(); const verifyMs = performance.now() - at; const verifyObservations = observations;
+      at = performance.now(); observations = 0; const evidence = await invokeReview(action); const invokeMs = performance.now() - at; const invokeObservations = observations;
+      at = performance.now(); observations = 0; const result = await action.persist(evidence); const persistMs = performance.now() - at; const persistObservations = observations;
+      expect(result.result).toMatchObject({ kind: 'review', verdict: 'accept' });
+      expect(verifyObservations).toBe(1); expect(persistObservations).toBe(4);
+      samples.push({ verifyMs, invokeMs, persistMs, verifyObservations, invokeObservations, persistObservations });
+    }
+    reports.push({ ...scenario, preparationMs, samples });
   }
   await writeFile(process.env['OSSTACK_REVIEW_INVENTORY_REPORT']!, JSON.stringify({ node: process.version, platform: process.platform,
-    candidateBytes: 31 * 1024 * 1024, preparationMs, samples,
-    qualification: 'Local scratch Git candidate, real raw-byte identity fences, fixture reviewer. Includes Git and evidence I/O. Not a provider, RPC latency or universal repository-size guarantee.' }, null, 2));
-}, 60000);
+    limits: verificationInventoryLimits, reports,
+    qualification: 'Local scratch Git candidates with valid loose objects, real raw-byte identity fences and fixture reviewer. Includes Git/evidence I/O. Not a provider, RPC latency or universal size guarantee.' }, null, 2));
+}, 120000);
+
+it.each([2, 3, 4])('rejects candidate mutation at publication observation %i', async mutationObservation => {
+  const f = await fixture(); let persisting = false; let observations = 0; let workspace = '';
+  f.options.onCandidateObservation = () => { if (persisting && ++observations === mutationObservation) writeFileSync(join(workspace, 'file'), 'changed at publication boundary'); };
+  f.options.reviewer.adapter.invoke = reviewAdapter(() => JSON.stringify({ schemaVersion: 1, verdict: 'accept', summary: 'fixture', findings: [] }));
+  const prepared = await prepareGraphVerificationBranch(f.options, 'review'); const action = prepared.actions[0]!;
+  workspace = action.workspace!.workspace_path; const evidence = await invokeReview(action); persisting = true;
+  await expect(action.persist(evidence)).rejects.toThrow('candidate changed during persistence');
+  expect(observations).toBe(mutationObservation);
+}, 15000);
+it('refuses an oversized untracked candidate before an unbounded content read', async () => {
+  const f = await fixture(); const prepared = await prepareGraphVerificationBranch(f.options, 'review');
+  const action = prepared.actions[0]!; const path = join(action.workspace!.workspace_path, 'oversized');
+  await writeFile(path, ''); await truncate(path, verificationInventoryLimits.candidateBytes + 1);
+  await expect(action.verifyWorkspace!()).rejects.toThrow('candidate workspace mutation detected');
+}, 15000);

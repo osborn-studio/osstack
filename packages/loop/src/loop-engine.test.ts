@@ -1248,3 +1248,20 @@ function profileRoutingFixture() {
     independence_reason: "reported provider or model differs",
   };
 }
+
+it("retains uncertain verifier execution and never retries it after timeout or restart", async () => {
+  const workspace=await makeQueuedWorkspace();const reviewer=new FakeReviewAdapter();let invocations=0;
+  vi.spyOn(reviewer,"invoke").mockImplementation(()=>{
+    invocations++;
+    const iterator: AsyncIterableIterator<HermesEvent>={next:()=>new Promise(()=>{}),return:()=>new Promise(()=>{}),[Symbol.asyncIterator](){return this;}};
+    return iterator;
+  });
+  const options={workspacePath:workspace,sources:["task_queue" as const],executeCommand:"node -e \"require('fs').appendFileSync('execution-count.txt','x')\"",
+    verifierAgentIds:[reviewer.id],adapters:[reviewer],maxIterations:3,commandTimeoutMs:1000};
+  const first=await new LoopEngine(options).runOnce();
+  expect(first.state.completed_tasks[0]).toMatchObject({outcome:"escalated",iterations:1,implementation_unconfirmed:true});
+  expect(first.events).toContainEqual(expect.objectContaining({type:"loop.verify.done",payload:expect.objectContaining({pass:false})}));
+  await new LoopEngine(options).runOnce();
+  expect(invocations).toBe(1);
+  expect(await readFile(join(workspace,"execution-count.txt"),"utf8")).toBe("x");
+});

@@ -231,6 +231,8 @@ function execGit(
       [...args],
       {
         cwd: workspace,
+        timeout: 30_000,
+        killSignal: "SIGKILL",
         encoding: "buffer",
         maxBuffer,
       },

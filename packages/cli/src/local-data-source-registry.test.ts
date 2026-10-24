@@ -85,9 +85,9 @@ it('retains both actual-read slots after timeout until late filesystem work sett
   vi.mocked(open).mockImplementation(actual.open);for(const release of releases)release();
   await vi.waitFor(async()=>expect((await service.inspect(f.params)).state).toBe('ready'));
 });
-it('rejects revoked expiry, wall clock rollback, config symlink and pre-aborted inspection',async()=>{
+it('checks each snapshot freshness without an unrecoverable process-local clock latch',async()=>{
   const f=fixture();let now=2000;const service=createHostLocalDataSourceService({configPath:f.configPath,nowMs:()=>now});expect((await service.inspect(f.params)).state).toBe('ready');
-  now=1999;expect((await service.inspect(f.params)).reason).toBe('invalid_clock');now=10000;expect((await service.inspect(f.params)).reason).toBe('registration_expired');
+  now=1999;expect((await service.inspect(f.params)).state).toBe('ready');now=10000;expect((await service.inspect(f.params)).reason).toBe('registration_expired');
   const abort=new AbortController();abort.abort();expect((await service.inspect(f.params,abort.signal)).reason).toBe('cancelled');
   const alias=join(f.root,'alias.json');symlinkSync(f.configPath,alias);expect((await loadHostLocalSources(alias)).state).toBe('unknown');
 });

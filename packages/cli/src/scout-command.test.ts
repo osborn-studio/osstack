@@ -362,3 +362,10 @@ it("does not treat a zero exit without matching verified delivery output as comp
     host.promote({ digest: scout.digest, requestId: "promote" }),
   ).rejects.toThrow();
 });
+
+it("does not expose bidi paths through CLI filesystem error messages", async () => {
+  await expect(handleScoutCommand([
+    "inspect", "--repo", join(root, "missing-\u202esource"), "--goal", "read", "--path", "source.txt",
+    "--profile", "mac-mini", "--request-id", "error-output", "--json",
+  ], { home: join(root, "home"), policy }, () => {})).rejects.toThrow(/^scout_request_failed$/);
+});

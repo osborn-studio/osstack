@@ -6,7 +6,7 @@ import { join } from "node:path";
 import type { AgentAdapter, AgentTask } from "@osstack/agents";
 import type { Capability } from "@osstack/core";
 import type { HermesEvent } from "@osstack/hermes-adapter";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { AgentRun } from "./executor.js";
 import type { Task } from "./types.js";
 import { verifyRun } from "./verifier.js";
@@ -18,6 +18,7 @@ beforeEach(() => {
 });
 
 afterEach(async () => {
+  vi.restoreAllMocks();
   await rm(workspace, { recursive: true, force: true });
 });
 
@@ -786,7 +787,7 @@ function capability(id: string, kind: Capability["kind"], agentId: string): Capa
 
 it("bounds verifier availability without starting invocation", async () => {
   let invoked = false;
-  const adapter = {...mockAdapter({async *invoke(){invoked=true;}}),
+  const adapter = {...mockAdapter({async *invoke(task){invoked=true;yield doneEvent(task.run_id,task.session_id,"completed","unexpected");}}),
     isAvailable: () => new Promise<never>(() => {})};
   const verdict = await verifyRun(run(), {workspacePath:workspace,verifierAgentIds:[adapter.id],adapters:[adapter],timeoutMs:20});
   expect(verdict.pass).toBe(false);
@@ -809,4 +810,41 @@ it("bounds a verifier that ignores abort and never settles next or return", asyn
   expect(signal?.aborted).toBe(true);
   expect(returned).toBe(true);
   expect(verdict.issues).toContainEqual(expect.objectContaining({rule:"verify.adapter_failed",message:expect.stringContaining("stop_confirmed=unknown")}));
+});
+
+it("bounds a stuck read-only review boundary before invoking the adapter", async () => {
+  const boundary = await import("./review-boundary.js");
+  vi.spyOn(boundary,"collectReviewBoundary").mockImplementation(() => new Promise<never>(()=>{}));
+  let invoked=false;
+  const adapter=kimiAdapter(async function*(task){invoked=true;yield doneEvent(task.run_id,task.session_id,"completed","unexpected");});
+  const verdict=await verifyRun(run(),{workspacePath:workspace,verifierAgentIds:[adapter.id],adapters:[adapter],timeoutMs:20});
+  expect(verdict.pass).toBe(false);expect(invoked).toBe(false);
+  expect(verdict.issues).toContainEqual(expect.objectContaining({rule:"verify.review_boundary_failed",message:expect.stringContaining("snapshot timed out")}));
+});
+it("bounds a stuck post-review snapshot and never accepts its preceding approval", async () => {
+  await initGitWorkspace();
+  await writeFile(join(workspace,"src/app.ts"),"export const candidate = true;\n");
+  const isolation=await import("./reviewer-isolation.js");
+  const actual=isolation.snapshotReviewerWorkspace;
+  vi.spyOn(isolation,"snapshotReviewerWorkspace").mockImplementationOnce(actual).mockImplementationOnce(()=>new Promise<never>(()=>{}));
+  let invoked=false;
+  const adapter=kimiAdapter(async function*(task){invoked=true;yield structuredReviewDoneEvent(task,"approved",[structuredJudgment("correctness",true)]);});
+  const verdict=await verifyRun(run(),{workspacePath:workspace,verifierAgentIds:[adapter.id],adapters:[adapter],task:reviewTask("correctness"),timeoutMs:1000});
+  expect(invoked).toBe(true);expect(verdict.pass).toBe(false);
+  expect(verdict.issues).toContainEqual(expect.objectContaining({rule:"verify.reviewer_snapshot_failed",message:expect.stringContaining("snapshot timed out")}));
+});
+
+it("shares one deadline between availability and invocation", async () => {
+  vi.useFakeTimers();
+  try {
+    let invokedAt=0;let abortedAt=0;
+    const adapter={...mockAdapter({invoke(_task,signal){
+      invokedAt=performance.now();signal.addEventListener("abort",()=>{abortedAt=performance.now();},{once:true});
+      const iterator:AsyncIterableIterator<HermesEvent>={next:()=>new Promise(()=>{}),return:async()=>({done:true,value:undefined}),[Symbol.asyncIterator](){return this;}};return iterator;
+    }}),isAvailable:async()=>{await new Promise(resolve=>setTimeout(resolve,60));return {available:true,last_checked_at:0};}};
+    const pending=verifyRun(run(),{workspacePath:workspace,verifierAgentIds:[adapter.id],adapters:[adapter],timeoutMs:80});
+    await vi.advanceTimersByTimeAsync(200);
+    expect((await pending).pass).toBe(false);
+    expect(abortedAt-invokedAt).toBe(20);
+  }finally{vi.useRealTimers();}
 });

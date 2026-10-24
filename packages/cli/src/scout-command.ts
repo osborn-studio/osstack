@@ -462,7 +462,7 @@ function terminalJson(value: unknown): string {
     character.split("").map(unit => `\\u${unit.charCodeAt(0).toString(16).padStart(4, "0")}`).join(""),
   );
 }
-export async function handleScoutCommand(
+async function handleScoutCommandUnchecked(
   args: string[],
   options: ScoutHostOptions,
   stdout: (line: string) => void = console.log,
@@ -521,4 +521,19 @@ export async function handleScoutCommand(
     return result.exitCode;
   }
   throw Error("scout_subcommand_required");
+}
+
+/** CLI errors must not echo repository-controlled paths, subprocess output or text. */
+export async function handleScoutCommand(
+  args: string[],
+  options: ScoutHostOptions,
+  stdout: (line: string) => void = console.log,
+): Promise<number> {
+  try {
+    return await handleScoutCommandUnchecked(args, options, stdout);
+  } catch (error) {
+    const code = error instanceof Error && /^scout_[a-z_]{1,80}$/.test(error.message)
+      ? error.message : "scout_request_failed";
+    throw new Error(code);
+  }
 }

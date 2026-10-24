@@ -9,6 +9,8 @@ import Database from 'better-sqlite3';
 import { CURRENT_SCHEMA_VERSION, GraphRunStore } from '@osstack/core';
 import { workerCanonical } from '@osstack/protocol';
 import { assertDbAccessAllowed } from './control-plane-guard.js';
+import { assertManagedHomeMarker } from './managed-home-guard.js';
+import { VERSION, PROTOCOL_VERSION } from './version.js';
 import { loadLocalGraphRegistration, GraphRpcService } from './graph-rpc.js';
 import { cancelUnstartedGraphPreparation } from './graph-preparation-recovery.js';
 import { graphUpgradeHolds } from './graph-upgrade-guard.js';
@@ -47,6 +49,7 @@ async function runMaintenance(options: MaintenanceOptions, kind: 'preparation' |
   const home = realpathSync(options.home);
   if (kind === 'verification' && options.apply === true && existsSync(join(home, 'daemon.sock'))) throw Error('MAINTENANCE_DAEMON_MUST_STOP');
   const guard = assertDbAccessAllowed({ checkoutRoot: dirname(realpathSync(fileURLToPath(import.meta.url))), osstackHome: home });
+  assertManagedHomeMarker(home, process.argv[1], {version:VERSION,protocol_version:PROTOCOL_VERSION,database_schema:CURRENT_SCHEMA_VERSION});
   owned(home, true); const path = join(home, 'state.db'); owned(path, false);
   const db = new Database(path, { readonly: options.apply !== true, fileMustExist: true });
   let initialSchema: string | undefined;

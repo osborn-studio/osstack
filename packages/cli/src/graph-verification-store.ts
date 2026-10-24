@@ -220,7 +220,7 @@ function assertEvidenceBudget(envelope: GraphVerificationEnvelope, bytes: string
   for (const item of [...acceptanceSuite, ...(commandSuite ?? []), ...(containedSuite ?? [])]) GraphJsonValue.parse(item);
 }
 async function syncDirectory(path: string) { const file = await open(path, 'r'); try { await file.sync(); } finally { await file.close(); } }
-export async function publishGraphVerificationEvidence(root: string, value: GraphVerificationEnvelope, authorize: () => void): Promise<PersistedGraphActionEvidence> {
+export async function publishGraphVerificationEvidence(root: string, value: GraphVerificationEnvelope, authorize: () => void, observePublication: () => void = authorize): Promise<PersistedGraphActionEvidence> {
   const envelope = validateEnvelope(value, value.binding); const bytes = verificationCanonical(envelope);
   assertEvidenceBudget(envelope, bytes); const digest = sha(bytes);
   const checked = async <T>(op: () => Promise<T>): Promise<T> => { authorize(); const result = await op(); authorize(); return result; };
@@ -228,9 +228,14 @@ export async function publishGraphVerificationEvidence(root: string, value: Grap
   authorize(); const file = await open(temporary, 'wx', 0o600);
   try { authorize(); await checked(() => file.writeFile(bytes)); await checked(() => file.sync()); } finally { await file.close(); }
   await checked(() => chmod(temporary, 0o400));
+  // Keep the expensive raw-byte fence at publication boundaries; cheap live
+  // authority checks still surround every asynchronous storage operation.
+  observePublication();
   await checked(async () => { try { await link(temporary, final); } catch (error) { if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error; const existing = await open(final, constants.O_RDONLY | constants.O_NOFOLLOW); try { if (sha(await existing.readFile()) !== digest) throw new Error('evidence digest collision'); } finally { await existing.close(); } } });
+  observePublication();
   await checked(() => syncDirectory(dir)); await checked(() => syncDirectory(root)); await checked(() => syncDirectory(dirname(root)));
   await checked(() => unlink(temporary));
+  observePublication();
   const evidenceRef = `graph-verification:${digest}`;
   if (envelope.verificationFailure) return { evidenceRef, verificationFailure: envelope.verificationFailure };
   const common = { schemaVersion: 1, candidateRevision: envelope.binding.candidateRevision, evidenceRefs: [evidenceRef], evidenceDigest: digest };

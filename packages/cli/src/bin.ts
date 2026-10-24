@@ -10,8 +10,8 @@ import { homedir } from "node:os";
 import { basename, dirname, isAbsolute, join, relative, resolve } from "node:path";
 import {
   assertDbAccessAllowed,
-  assertServeAllowed,
   ControlPlaneGuardError,
+  assertServeAllowed,
   defaultOsstackHome,
   loadRoleFile,
 } from "./control-plane-guard.js";
@@ -689,16 +689,13 @@ See docs/V2_REFACTOR_PLAN.md for the full roadmap.
       try { checkoutRoot = dirname(realpathSync(fileURLToPath(import.meta.url))); } catch { /* keep lexical */ }
       const guardHome = process.env.OSSTACK_HOME ?? defaultOsstackHome();
       try {
-        const {assertManagedHomeEntry} = await import("./upgrade-native-backend.js");
-        assertManagedHomeEntry(osstackHome(), process.argv[1]);
+        await assertManagedCliHome(osstackHome(), process.argv[1]);
         const verdict = assertServeAllowed({ checkoutRoot, osstackHome: guardHome });
         console.log(`control-plane guard: role=${verdict.role} home=${verdict.homeCategory}${verdict.schema ? ` schema=[${verdict.schema.min},${verdict.schema.max}]` : ""}`);
       } catch (err) {
-        if (err instanceof ControlPlaneGuardError) {
-          console.error(`osstack: refusing to serve — ${err.message}`);
-          return 78; // EX_CONFIG
-        }
-        throw err;
+        console.error(`osstack: refusing to serve — ${err instanceof Error ? err.message : String(err)}`);
+        return 78; // EX_CONFIG: every failure in the pre-DB configuration guard.
+
       }
     }
     let profile: string | undefined;
@@ -6313,6 +6310,16 @@ async function handleLessonsCommand(args: string[]): Promise<number> {
   return 1;
 }
 
+/** Managed direct-DB commands must validate compiled identity before auto-migration. */
+async function assertManagedCliHome(home: string, entry: string | undefined): Promise<void> {
+  const {managedStartupIdentity, verifyManagedCode} = await import("./upgrade-native-backend.js");
+  const identity = managedStartupIdentity(home, entry);
+  if (identity) {
+    const {CURRENT_SCHEMA_VERSION} = await import("@osstack/core");
+    verifyManagedCode(identity, {version:VERSION,protocol_version:PROTOCOL_VERSION,database_schema:CURRENT_SCHEMA_VERSION});
+  }
+}
+
 async function ensureLocalStateDbPath(): Promise<string> {
   const home = osstackHome();
   // Phase 2.1-B: direct-DB commands pass the SAME control-plane guard as
@@ -6321,8 +6328,7 @@ async function ensureLocalStateDbPath(): Promise<string> {
   {
     let checkoutRoot = dirname(fileURLToPath(import.meta.url));
     try { checkoutRoot = dirname(realpathSync(fileURLToPath(import.meta.url))); } catch { /* lexical */ }
-    const {assertManagedHomeEntry} = await import("./upgrade-native-backend.js");
-    assertManagedHomeEntry(home, process.argv[1]);
+    await assertManagedCliHome(home, process.argv[1]);
     assertDbAccessAllowed({ checkoutRoot, osstackHome: home });
   }
   await mkdir(home, { recursive: true });
@@ -7311,15 +7317,16 @@ Options:
           if (loadRoleFile(checkoutRoot)?.role !== "stable-serving") {
             throw new Error("development dist is not stable-serving");
           }
-          const {assertManagedHomeEntry} = await import("./upgrade-native-backend.js");
-          assertManagedHomeEntry(osstackHome(), binPath);
+          await assertManagedCliHome(osstackHome(), binPath);
           assertServeAllowed({
             checkoutRoot,
             osstackHome: process.env.OSSTACK_HOME ?? defaultOsstackHome(),
           });
           explicitlyStable = true;
         } catch (error) {
-          stableGuardFailure = error instanceof Error ? error.message : String(error);
+          if (!(error instanceof ControlPlaneGuardError) &&
+              !(error instanceof Error && (error.message === "development dist is not stable-serving" || error.message.startsWith("upgrade_")))) throw error;
+          stableGuardFailure = error.message;
         }
         if (!explicitlyStable) {
           console.error(

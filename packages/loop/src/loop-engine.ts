@@ -616,6 +616,10 @@ export class LoopEngine {
               ...(this.options.commandTimeoutMs !== undefined ? { timeoutMs: this.options.commandTimeoutMs } : {}),
               ...(this.options.outputLimit !== undefined ? { outputLimit: this.options.outputLimit } : {}),
             });
+            if (verdict.issues.some(issue => issue.rule === "verify.adapter_stop_unconfirmed")) {
+              this.implementationUnconfirmed = true;
+              for (const completed of current) completed.implementation_unconfirmed = true;
+            }
             assertCandidateFrozen(workspacePath, frozen);
             if (!verdict.pass) throw Error("CANDIDATE_PREFLIGHT_FAILED");
           }
@@ -992,6 +996,17 @@ export class LoopEngine {
           ...(this.options.outputLimit !== undefined ? { outputLimit: this.options.outputLimit } : {}),
           ...(this.options.adapters !== undefined ? { adapters: this.options.adapters } : {}),
           });
+        }
+        if (finalVerdict.issues.some(issue => issue.rule === "verify.adapter_stop_unconfirmed")) {
+          this.implementationUnconfirmed = true;
+          preserveWorktreeBranch = worktree !== undefined;
+          outcome = "escalated";
+          const reason = "Verifier stop unconfirmed; reconciliation required before retry or workspace cleanup";
+          this.emit(loopId,"loop.verify.done",{task_id:task.task_id,pass:false,score:0,issue_count:finalVerdict.issues.length,
+            reviewer_agent_id:finalVerdict.reviewer_agent_id,summary:reason,iteration});
+          this.emit(loopId,"loop.escalated",{task_id:task.task_id,reason,iteration,max_iterations:maxIterations,escalate_to:"hermes",agent_id:finalRun.agent_id});
+          decisions.push(`${task.task_id}: ${reason}`);
+          break;
         }
         if (verifyFence) {
           try { await verifyFence(); }

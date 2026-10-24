@@ -8,7 +8,7 @@ import { DeploymentIdentitySchema } from './home-inventory.js';
 import type { UpgradeJournal } from './upgrade-journal.js';
 import type { NativeUpgradePort, UpgradeAuthority, UpgradeStopLease } from './upgrade-coordinator.js';
 import { upgradeCanonical, upgradeDigest, type FrozenUpgradePlan, type UpgradePlanGroup, type UpgradePlanHome } from './upgrade-plan.js';
-import { loadBundle, loadInstallation, privateDirectory, publishPrivate, readPrivate, sha256, stageRelease, switchRelease, syncDirectory, type ManagedInstallation, type ReleaseBundle } from './upgrade-native-files.js';
+import { loadBundle, loadInstallation, privateDirectory, publishPrivate, finishPrivatePublication, readPrivate, sha256, stageRelease, switchRelease, syncDirectory, type ManagedInstallation, type ReleaseBundle } from './upgrade-native-files.js';
 import { launchdUpgradeBackend, managedPlist, removeAbandonedUpgradeSocket, upgradeRpc, verifyRelease, type UpgradeBackend } from './upgrade-native-backend.js';
 export interface NativeUpgradeInput { registry: string; registryDigest: string; artifact: string; artifactDigest: string; approvedPlanDigest: string }
 const pause = (signal: AbortSignal) => new Promise<void>((resolve,reject) => { signal.throwIfAborted(); const timer = setTimeout(() => { signal.removeEventListener('abort', abort); resolve(); },50); const abort = () => { clearTimeout(timer); reject(Error('upgrade_cancelled')); }; signal.addEventListener('abort',abort,{once:true}); });
@@ -58,6 +58,13 @@ export class ManagedNativeUpgradePort implements NativeUpgradePort {
       || upgradeCanonical(group.homes.map(h => h.home_id).sort()) !== upgradeCanonical(this.config.consumers.map(c => c.home_id).sort())) throw Error('upgrade_approval_binding');
     this.plan = plan; this.group = group;
     this.ownerRelease = acquireDaemonLock(join(this.config.root,'upgrade-owner.pid'));
+    // Permission has meaning only with an operation fence. Clear a completion
+    // crash's orphan before a new plan can stop any consumer.
+    const orphan=join(this.config.root,'restart-permit.json');
+    if(!existsSync(join(this.config.root,'upgrade-operation.json'))&&existsSync(orphan)){
+      readPrivate(orphan,8192);await finishPrivatePublication(orphan);
+      await unlink(orphan).catch(error=>{if(error.code!=='ENOENT')throw error;});await syncDirectory(this.config.root);
+    }
     const staged=join(this.config.root,'releases',plan.plan.target.build_digest);if(!existsSync(staged))await stageRelease(this.config.root,this.bundle,signal);
     if(upgradeCanonical(verifyRelease(this.config.root,plan.plan.target.build_digest).target)!==upgradeCanonical(plan.plan.target))throw Error('upgrade_release_metadata_changed');
     signal.throwIfAborted();if(this.closed)throw Error('upgrade_port_closed');
@@ -168,7 +175,7 @@ export class ManagedNativeUpgradePort implements NativeUpgradePort {
       // interrupted fence cleanup, never replays work or claims current health.
       signal.throwIfAborted();
       await journal.cleanupVerifiedClaims(plan.digest,group.group_id,expectedHistory);
-      await this.complete();return{state:'verified' as const,history_digest:expectedHistory,reason:'verified_history_fence_cleanup_only'};
+      await this.complete();return{state:'verified' as const,history_digest:expectedHistory,reason:'verified_history_fence_cleanup_only',services_observed:false};
     }
     this.assertOperation();
     let history = await journal.recordReconciliation(plan.digest,group.group_id,expectedHistory,{verified:false,evidence:{registry:this.input.registryDigest,artifact:this.input.artifactDigest},reason:'explicit_forward_reconciliation'});
@@ -225,8 +232,9 @@ export class ManagedNativeUpgradePort implements NativeUpgradePort {
     this.assertPins();
     if(!this.plan||!this.group||!this.ownerRelease)throw Error('upgrade_operation_binding');
     const operation=join(this.config.root,'upgrade-operation.json'),permit=join(this.config.root,'restart-permit.json');
-    if(existsSync(operation))this.assertOperation();
-    if(existsSync(permit)){const value=JSON.parse(readPrivate(permit).toString());if(value.plan_digest!==this.plan.digest||value.build_digest!==this.plan.plan.target.build_digest)throw Error('upgrade_restart_permit_binding');}
+    const fenced=existsSync(operation);
+    if(fenced){this.assertOperation();await finishPrivatePublication(operation);}
+    if(existsSync(permit)){const bytes=readPrivate(permit);if(fenced){const value=JSON.parse(bytes.toString());if(value.plan_digest!==this.plan.digest||value.build_digest!==this.plan.plan.target.build_digest)throw Error('upgrade_restart_permit_binding');}await finishPrivatePublication(permit);}
     // Make absence of the blocking fence durable before removing startup permission.
     // A crash at either boundary is safe and the same authorized cleanup is resumable.
     await unlink(operation).catch(e=>{if(e.code!=='ENOENT')throw e;});await syncDirectory(this.config.root);
