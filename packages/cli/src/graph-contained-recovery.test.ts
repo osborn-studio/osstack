@@ -443,7 +443,9 @@ it.each(['release', 'worker-journal'])('rejects %s drift after daemon I/O before
   f.options.authorizeRead = () => { if (++reads === 3) {
     if (mode === 'release') f.release();
     else f.db.prepare('INSERT INTO graph_worker_process_events(graph_run_id,generation,kind,event_json,observed_at) VALUES(?,?,?,?,?)')
-      .run(input.request.fence.graphRunId, 1, 'exit_unconfirmed', JSON.stringify({ kind: 'exit_unconfirmed', error: 'contradictory late event' }), Date.now());
+      // A slow fixture may already have exit_unconfirmed before its final exit.
+      // spawn_failed contradicts this known launched worker and is always unused.
+      .run(input.request.fence.graphRunId, 1, 'spawn_failed', JSON.stringify({ kind: 'spawn_failed', error: 'contradictory late event' }), Date.now());
   } };
   const before = f.calls.filter(c => c.startsWith('DELETE')).length;
   await expect(sweepGraphQuiescence(f.db, input.options, { ...input.request, mode: 'stop_contained' })).rejects.toThrow('QUIESCENCE_SWEEP_CHANGED');

@@ -3,7 +3,6 @@ import { randomUUID } from "node:crypto";
 import { dirname, isAbsolute, join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 import {
-  cleanupOrphanedWorktrees,
   cleanupWorktree,
   commitWorktreeChanges,
   createWorktree,
@@ -519,7 +518,6 @@ export class LoopEngine {
       decisions.push(`knowledge: ${this.options.knowledge.mode}/${this.options.knowledge.status} with ${this.options.knowledge.results.length} chunk(s)`);
     }
     this.emit(loopId, "loop.cycle.started", { cycle });
-    if (!this.candidatePolicy) await this.cleanupLoopWorktrees(loopId, workspacePath, cycle, "before_cycle", decisions);
     const discoveredTasks = await this.discover(workspacePath);
     const completedIds = new Set(state.completed_tasks.map((task) => task.task_id));
     const candidateTasks = this.candidatePolicy || this.options.skipCompletedTasks === false
@@ -536,7 +534,6 @@ export class LoopEngine {
     let knownCandidate = policy ? freezeCandidate(workspacePath) : undefined;
     const batchBase = knownCandidate?.headSha;
     let finalCandidateFrozen: ReturnType<typeof freezeCandidate> | undefined;
-    if (policy) await this.cleanupLoopWorktrees(loopId, workspacePath, cycle, "before_cycle", decisions);
     this.emit(loopId, "loop.discover.done", {
       task_count: tasks.length,
       discovered_task_count: discoveredTasks.length,
@@ -627,7 +624,6 @@ export class LoopEngine {
       // tree, and local preflight is not a downstream acceptance receipt.
       if (ready && this.options.archiveCompletedTasks === true) decisions.push("candidate queue retained; remote CI and acceptance pending");
     }
-    await this.cleanupLoopWorktrees(loopId, workspacePath, cycle, "after_cycle", decisions);
 
     const goal = this.implementationUnconfirmed ? undefined : await this.checkGoal(loopId, workspacePath);
     if (goal !== undefined) {
@@ -1362,28 +1358,8 @@ export class LoopEngine {
     return goal;
   }
 
-  private async cleanupLoopWorktrees(
-    loopId: string,
-    workspacePath: string,
-    cycle: number,
-    phase: "before_cycle" | "after_cycle",
-    decisions: string[],
-  ): Promise<void> {
-    if (this.options.useWorktree !== true || this.implementationUnconfirmed) return;
-    this.lifecycleEffectsStarted = true;
-    const result = await cleanupOrphanedWorktrees(workspacePath, {
-      branchPrefix: loopWorktreeBranchPrefix(loopId),
-      ...(this.options.worktreeRoot !== undefined ? { rootPath: this.options.worktreeRoot } : {}),
-    });
-    if (result.removed.length === 0) return;
-    this.emit(loopId, "loop.worktree.orphans_cleaned", {
-      cycle,
-      phase,
-      removed_count: result.removed.length,
-      branches: result.removed.map((worktree) => worktree.branch),
-    });
-    decisions.push(`worktree cleanup: removed ${result.removed.length} orphaned worktree(s) ${phase}`);
-  }
+  // Orphan cleanup is intentionally not part of a cycle. Names and paths cannot
+  // prove ownership, physical stop, or preservation of unmerged work.
 
   private emit(loopId: string, type: LoopEvent["type"], payload?: Record<string, unknown>): void {
     this.events.push({

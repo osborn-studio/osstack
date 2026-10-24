@@ -1,6 +1,6 @@
+import { mkdtempSync, rmSync, realpathSync, writeFileSync } from "node:fs";
 import { healthyAutonomyHealth } from "./test-healthy-autonomy.js";
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, rmSync } from "node:fs";
 import { connect } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -189,6 +189,7 @@ beforeAll(async () => {
   process.env["OSSTACK_HOME"] = home;
   process.env["OSSTACK_SOCKET"] = socketPath;
   process.env["OSSTACK_UPDATE_CHECK"] = "0";
+  process.env["OSSTACK_ATTENTION"] = "1";
   adapter = new FakeSessionAdapter();
   handle = await startDaemon({ socketPath, adapters: [adapter], autonomyHealth: async () => healthyAutonomyHealth() });
 });
@@ -199,6 +200,7 @@ afterAll(async () => {
   delete process.env["OSSTACK_HOME"];
   delete process.env["OSSTACK_SOCKET"];
   delete process.env["OSSTACK_UPDATE_CHECK"];
+  delete process.env["OSSTACK_ATTENTION"];
 });
 
 describe("governed session RPC", () => {
@@ -380,7 +382,7 @@ describe("governed session RPC", () => {
     expect(JSON.stringify(first)).not.toContain("native-secret");
   });
 
-  it("keeps a failed adapter instruction recoverable instead of applying an empty turn", async () => {
+  it("retains failed delivery as uncertain instead of automatically replaying side effects", async () => {
     seedSession("sess_retry");
     const params = {
       session_id: "sess_retry",
@@ -411,14 +413,11 @@ describe("governed session RPC", () => {
         assistant_text: "请选择方向",
       },
     });
-    expect(retried).toMatchObject({
-      ok: true,
-      result: { state: "applied", session_version: 4 },
-    });
+    expect(retried).toMatchObject({ ok: false, error: { code: "delivery_uncertain" } });
     const db = openDb({ path: handle.dbPath });
     try {
       expect(new SessionRepository(db, handle.dbPath).getMessage("msg_retry")).toMatchObject({
-        state: "applied",
+        state: "failed",
       });
     } finally {
       db.close();
@@ -660,8 +659,168 @@ describe("governed session RPC", () => {
   });
 });
 
+it("attention watch/inbox/answer shares the exact governed session receipt", async () => {
+  seedSession("attention");const db=openDb({path:handle.dbPath});
+  db.prepare("UPDATE agent_sessions SET repo_path=?,state='awaiting_decision' WHERE session_id='attention'").run(realpathSync(home));
+  db.prepare("UPDATE session_turns SET decision_json=? WHERE session_id='attention'").run(JSON.stringify(structuredDecision));db.close();
+  const watched=await rpc("attention.watch",{task_id:"task_attention",repo_path:home,default_tenant:true});
+  expect(watched.ok).toBe(true);const scope=(watched.result!["scope"] as {scope_id:string}).scope_id;
+  const inbox=await rpc("attention.inbox",{scope_id:scope});const item=(inbox.result!["items"] as Array<Record<string,unknown>>)[0]!;
+  expect(item["state"]).toBe("open");const params={scope_id:scope,item_id:item["item_id"],action_id:"answer-once",revision:item["revision"],content_hash:item["content_hash"],text:"continue",takeover:false};
+  const before=adapter.resumed.length;expect(await rpc("attention.answer",params)).toMatchObject({ok:true,result:{state:"applied"}});
+  expect(await rpc("attention.answer",params)).toMatchObject({ok:true,result:{state:"applied",replay:true}});
+  expect(adapter.resumed.length-before).toBe(1);
+  expect(await rpc("attention.brief",{scope_id:scope,actor:"owner"})).toMatchObject({ok:true,result:{total:1}});
+});
+
+it("never resumes an abandoned receipt when its original direct message ID is replayed",async()=>{
+  const id="abandoned-rpc";seedSession(id);const db=openDb({path:handle.dbPath});
+  db.prepare("UPDATE agent_sessions SET repo_path=? WHERE session_id=?").run(realpathSync(home),id);
+  const sessions=new SessionRepository(db,handle.dbPath);
+  sessions.applyInbound({message_id:"old-abandoned",session_id:id,turn_id:"turn_"+id,direction:"inbound",kind:"instruction.send",payload:{text:"original"},state:"accepted",created_at:3},2,3);db.close();
+  const watch=await rpc("attention.watch",{task_id:"task_"+id,repo_path:home,default_tenant:true});const scope=(watch.result!["scope"] as {scope_id:string}).scope_id;
+  const before=adapter.resumed.length;
+  expect(await rpc("attention.abandon-receipt",{scope_id:scope,session_id:id,message_id:"old-abandoned",expected_version:3,reason:"Owner inspected effects; abandon original instruction",evidence_sha256:"a".repeat(64),acknowledge_unknown_effects:true})).toMatchObject({ok:true,result:{disposition:"abandoned_unknown",replayed:false}});
+  expect(await rpc("session.send",{session_id:id,runtime_id:adapter.id,turn_id:"turn_"+id,message_id:"old-abandoned",expected_version:2,text:"original"})).toMatchObject({ok:false,error:{code:"delivery_uncertain"}});
+  expect(adapter.resumed.length).toBe(before);
+  expect(await rpc("session.send",{session_id:id,runtime_id:adapter.id,turn_id:"turn_"+id,message_id:"new-owner-instruction",expected_version:3,text:"Inspect current state"})).toMatchObject({ok:true,result:{state:"applied"}});
+  expect(adapter.resumed.length).toBe(before+1);
+});
+it("readmits capacity-limited Loop snapshots but preserves an explicit release",async()=>{
+  const id="loop-admission-rpc";seedSession(id);const db=openDb({path:handle.dbPath});
+  db.prepare("UPDATE agent_sessions SET repo_path=? WHERE session_id=?").run(realpathSync(home),id);
+  const watch=await rpc("attention.watch",{task_id:"task_"+id,repo_path:home,default_tenant:true});const scope=(watch.result!["scope"] as {scope_id:string}).scope_id;
+  const path=join(home,"attention-loop.json");writeFileSync(path,JSON.stringify({loop_id:id,started_at:new Date().toISOString(),updated_at:new Date().toISOString(),completed_tasks:[],pending:[],in_progress:[],decisions:[]}));
+  const params={scope_id:scope,loop_id:id,state_path:path};expect((await rpc("attention.loop",params)).ok).toBe(true);
+  db.prepare("UPDATE attention_subjects SET admitted=0 WHERE kind='loop' AND subject_id=?").run(id);
+  expect((await rpc("attention.loop",params)).ok).toBe(true);
+  expect(db.prepare("SELECT admitted FROM attention_subjects WHERE kind='loop' AND subject_id=?").get(id)).toEqual({admitted:1});
+  expect((await rpc("attention.release",{scope_id:scope,kind:"loop",subject_id:id,expected_version:0})).ok).toBe(true);
+  expect((await rpc("attention.loop",params)).ok).toBe(true);
+  const row=db.prepare("SELECT admitted,payload_json FROM attention_subjects WHERE kind='loop' AND subject_id=?").get(id) as {admitted:number;payload_json:string};
+  expect(row.admitted).toBe(0);expect(JSON.parse(row.payload_json).reason).toBe("owner_released");db.close();
+});
 function sessionRepo(id: string): string {
   const path = join(home, id);
   execFileSync("git", ["init", path], { stdio: "ignore" });
   return path;
 }
+
+it("keeps an Attention answer uncertain after adapter failure and never replays it", async () => {
+  const id = "attention-failed";
+  seedSession(id);
+  const db = openDb({ path: handle.dbPath });
+  db.prepare("UPDATE agent_sessions SET state='awaiting_decision' WHERE session_id=?").run(id);
+  db.prepare("UPDATE session_turns SET decision_json=? WHERE session_id=?").run(JSON.stringify(structuredDecision), id);
+  const repo = (db.prepare("SELECT repo_path FROM agent_sessions WHERE session_id=?").get(id) as { repo_path: string }).repo_path;
+  db.close();
+  const watch = await rpc("attention.watch", { task_id: `task_${id}`, repo_path: repo, default_tenant: true });
+  expect(watch.ok).toBe(true);
+  const scope = (watch.result!["scope"] as { scope_id: string }).scope_id;
+  const inbox = await rpc("attention.inbox", { scope_id: scope });
+  const item = (inbox.result!["items"] as Array<Record<string, unknown>>)[0]!;
+  const params = { scope_id: scope, item_id: item["item_id"], action_id: "answer-failed-once", revision: item["revision"], content_hash: item["content_hash"], text: "fail-once", takeover: false };
+  const before = adapter.resumed.length;
+  expect(await rpc("attention.answer", params)).toMatchObject({ ok: true, result: { state: "uncertain", execution_error: "agent_failed" } });
+  expect(await rpc("attention.answer", params)).toMatchObject({ ok: true, result: { state: "uncertain", replay: true } });
+  expect(adapter.resumed.length - before).toBe(1);
+});
+
+it("keeps the reserved answer uncertain when both completion and failure persistence throw", async () => {
+  const id = "attention-persistence-failed";
+  seedSession(id);
+  const db = openDb({ path: handle.dbPath });
+  db.prepare("UPDATE agent_sessions SET state='awaiting_decision' WHERE session_id=?").run(id);
+  db.prepare("UPDATE session_turns SET decision_json=? WHERE session_id=?").run(JSON.stringify(structuredDecision), id);
+  const repo = (db.prepare("SELECT repo_path FROM agent_sessions WHERE session_id=?").get(id) as { repo_path: string }).repo_path;
+  db.close();
+  const watch = await rpc("attention.watch", { task_id: `task_${id}`, repo_path: repo, default_tenant: true });
+  expect(watch.ok).toBe(true);
+  const scope = (watch.result!["scope"] as { scope_id: string }).scope_id;
+  const inbox = await rpc("attention.inbox", { scope_id: scope });
+  const item = (inbox.result!["items"] as Array<Record<string, unknown>>)[0]!;
+  const params = { scope_id: scope, item_id: item["item_id"], action_id: "answer-persistence-failed", revision: item["revision"], content_hash: item["content_hash"], text: "continue", takeover: false };
+  const before = adapter.resumed.length;
+  const complete = vi.spyOn(SessionRepository.prototype, "completeInboundTurn").mockImplementation(() => { throw new Error("injected completion persistence failure"); });
+  const fail = vi.spyOn(SessionRepository.prototype, "markMessageFailed").mockImplementation(() => { throw new Error("injected failure persistence failure"); });
+  try {
+    const response = await rpc("attention.answer", params);
+    expect(response, JSON.stringify(response)).toMatchObject({ ok: true, result: { state: "uncertain", execution_error: "delivery_uncertain" } });
+    expect(await rpc("attention.answer", params)).toMatchObject({ ok: true, result: { state: "uncertain", replay: true } });
+    expect(adapter.resumed.length - before).toBe(1);
+  } finally { complete.mockRestore(); fail.mockRestore(); }
+});
+
+it("does not reserve manual instructions or answers when execution admission is denied", async () => {
+  const { GovernedExecution } = await import("./governed-execution.js");
+  for (const attention of [false, true]) {
+    const id = attention ? "admission-answer" : "admission-send";
+    seedSession(id);
+    const db = openDb({ path: handle.dbPath });
+    const source = db.prepare("SELECT repo_path,version FROM agent_sessions WHERE session_id=?").get(id) as { repo_path: string; version: number };
+    let method = "session.send";
+    let params: Record<string, unknown> = { session_id: id, runtime_id: adapter.id, turn_id: `turn_${id}`, message_id: `message-${id}`, expected_version: source.version, text: "continue" };
+    if (attention) {
+      db.prepare("UPDATE agent_sessions SET state='awaiting_decision' WHERE session_id=?").run(id);
+      db.prepare("UPDATE session_turns SET decision_json=? WHERE session_id=?").run(JSON.stringify(structuredDecision), id);
+      const watch = await rpc("attention.watch", { task_id: `task_${id}`, repo_path: source.repo_path, default_tenant: true });
+      const scope = (watch.result!["scope"] as { scope_id: string }).scope_id;
+      const inbox = await rpc("attention.inbox", { scope_id: scope });
+      const item = (inbox.result!["items"] as Array<Record<string, unknown>>)[0]!;
+      method = "attention.answer";
+      params = { scope_id: scope, item_id: item["item_id"], action_id: `answer-${id}`, revision: item["revision"], content_hash: item["content_hash"], text: "continue", takeover: false };
+    }
+    const before = adapter.resumed.length;
+    const admission = vi.spyOn(GovernedExecution.prototype, "acquire").mockRejectedValueOnce(new Error("repository writer busy"));
+    try {
+      expect(await rpc(method, params)).toMatchObject({ ok: false, error: { code: "admission_denied" } });
+      expect(adapter.resumed.length).toBe(before);
+      expect(db.prepare("SELECT version FROM agent_sessions WHERE session_id=?").get(id)).toEqual({ version: source.version });
+      expect(db.prepare("SELECT 1 FROM session_messages WHERE session_id=? AND direction='inbound'").get(id)).toBeUndefined();
+      if (attention) expect(db.prepare("SELECT 1 FROM attention_actions WHERE action_id=?").get(`answer-${id}`)).toBeUndefined();
+    } finally { admission.mockRestore(); db.close(); }
+    expect(await rpc(method, params)).toMatchObject({ ok: true, result: { state: "applied" } });
+    expect(adapter.resumed.length - before).toBe(1);
+  }
+});
+
+it("cancels admission queued for either manual route without reserving a receipt", async () => {
+  const { GovernedExecution } = await import("./governed-execution.js");
+  for (const attention of [false, true]) {
+    const id = attention ? "queued-answer" : "queued-send";
+    seedSession(id);
+    const db = openDb({ path: handle.dbPath });
+    const source = db.prepare("SELECT repo_path,version FROM agent_sessions WHERE session_id=?").get(id) as { repo_path: string; version: number };
+    let method = "session.send";
+    let params: Record<string, unknown> = { session_id: id, runtime_id: adapter.id, turn_id: `turn_${id}`, message_id: `message-${id}`, expected_version: source.version, text: "continue" };
+    if (attention) {
+      db.prepare("UPDATE agent_sessions SET state='awaiting_decision' WHERE session_id=?").run(id);
+      db.prepare("UPDATE session_turns SET decision_json=? WHERE session_id=?").run(JSON.stringify(structuredDecision), id);
+      const watch = await rpc("attention.watch", { task_id: `task_${id}`, repo_path: source.repo_path, default_tenant: true });
+      const scope = (watch.result!["scope"] as { scope_id: string }).scope_id;
+      const inbox = await rpc("attention.inbox", { scope_id: scope });
+      const item = (inbox.result!["items"] as Array<Record<string, unknown>>)[0]!;
+      method = "attention.answer";
+      params = { scope_id: scope, item_id: item["item_id"], action_id: `answer-${id}`, revision: item["revision"], content_hash: item["content_hash"], text: "continue", takeover: false };
+    }
+    let queued = false;
+    const admission = vi.spyOn(GovernedExecution.prototype, "acquire").mockImplementationOnce(input => new Promise((_resolve, reject) => {
+      queued = true;
+      if (input.signal?.aborted) reject(new Error("cancelled"));
+      else input.signal?.addEventListener("abort", () => reject(new Error("cancelled")), { once: true });
+    }));
+    try {
+      const sending = rpc(method, params);
+      await vi.waitFor(() => expect(queued).toBe(true));
+      expect(await rpc("run.status", { run_id: `run_${id}` })).toMatchObject({ ok: true, result: { active: true } });
+      expect(await rpc(method, params)).toMatchObject({ ok: false, error: { code: "session_busy" } });
+      expect(await rpc("task.cancel", { run_id: `run_${id}` })).toMatchObject({ ok: true });
+      expect(await sending).toMatchObject({ ok: false, error: { code: "admission_denied" } });
+      expect(await rpc("run.status", { run_id: `run_${id}` })).toMatchObject({ ok: true, result: { active: false } });
+      expect(adapter.resumed.some(input => input.session_id === id)).toBe(false);
+      expect(db.prepare("SELECT version FROM agent_sessions WHERE session_id=?").get(id)).toEqual({ version: source.version });
+      expect(db.prepare("SELECT 1 FROM session_messages WHERE session_id=? AND direction='inbound'").get(id)).toBeUndefined();
+    } finally { admission.mockRestore(); db.close(); }
+    expect(await rpc(method, params)).toMatchObject({ ok: true, result: { state: "applied" } });
+  }
+});

@@ -49,4 +49,11 @@ contracts:
         - docs/superpowers/plans/2026-07-17-neat-implementation-plan.md
     enforcement: advisory
 
-ignore: []
+# Immutable audit inputs retain the relative links from their original source
+# locations. Validate the live documents, not those quoted historical bytes.
+ignore:
+  - rule_id: reference.markdown_target_missing
+    paths:
+      - docs/reports/2026-10-23-firstmate-evidence/claude-round*-context.md
+      - docs/implementation/graph-contained-reopen-evidence/handoff-draft.md
+    reason: Frozen audit/handoff input copies; source-relative links are evidence, not live navigation.

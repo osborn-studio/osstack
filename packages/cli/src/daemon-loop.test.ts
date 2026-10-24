@@ -1317,7 +1317,7 @@ echo review ok
     expect((statusResp.result as { markdown: string }).markdown).toContain("goal: passed");
   });
 
-  it("restores running background loops after daemon restart", async () => {
+  it("retains interrupted background loops for explicit recovery", async () => {
     const workspace = join(tmp, "restart-workspace");
     await mkdir(join(workspace, "tasks"), { recursive: true });
 
@@ -1361,21 +1361,10 @@ echo review ok
     }));
 
     daemon = await startDaemon({ socketPath: `/tmp/osstack-daemon-loop-${randomUUID()}.sock` });
-    const loop = await waitForLoop(daemon.socketPath, loopSessionId, (candidate) => (
-      candidate.executed_task_count >= 1
-    ));
-    expect(loop).toMatchObject({
-      loop_session_id: loopSessionId,
-      status: "running",
-      executed_task_count: 1,
-      profile: daemonProfileRoutingFixture(),
-    });
-
-    const statusResp = await daemonRpc(daemon.socketPath, "loop.status", {
-      workspacePath: workspace,
-    });
-    expect(statusResp.ok).toBe(true);
-    expect((statusResp.result as { markdown: string }).markdown).toContain("daemon-restart-task - success");
+    const loop = await waitForLoop(daemon.socketPath, loopSessionId, (candidate) => candidate.status === "stopped");
+    expect(loop).toMatchObject({ loop_session_id: loopSessionId, status: "stopped", executed_task_count: 0,
+      stop_reason: expect.stringContaining("recovery_required"), profile: daemonProfileRoutingFixture() });
+    expect(await readFile(join(workspace, "tasks", "restart.json"), "utf-8")).toContain("daemon-restart-task");
 
     const stopResp = await daemonRpc(daemon.socketPath, "loop.stop", { loopSessionId });
     expect(stopResp.ok).toBe(true);

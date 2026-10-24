@@ -110,11 +110,12 @@ const tableIntroductions = MIGRATIONS.flatMap(migration =>
 function assertMigrationLineage(db: Database.Database): void {
   const current = db.pragma("user_version", { simple: true }) as number;
   const actual = new Set((db.prepare("SELECT name FROM sqlite_master WHERE type='table'").all() as { name: string }[]).map(row => row.name));
-  // Earlier main versions are unaffected unless an experimental Graph touched them.
-  if (current < 25 && ![...actual].some(name => name.startsWith("graph_"))) return;
+  // Experimental Graph or Attention tables must never be migrated as released main.
+  const experimentalTable = (name: string) => name.startsWith("graph_") || name.startsWith("attention_") || name === "daemon_owner";
+  if (current < 25 && ![...actual].some(experimentalTable)) return;
   const expected = new Set(tableIntroductions.filter(table => table.version <= current).map(table => table.name));
   if ([...expected].some(name => !actual.has(name))
-    || [...actual].some(name => name.startsWith("graph_") && !expected.has(name))) {
+    || [...actual].some(name => experimentalTable(name) && !expected.has(name))) {
     throw new Error("GRAPH_EXPERIMENTAL_SCHEMA_CONFLICT: preserve this home and reconcile with its original build; do not reset user_version or reuse it for the integrated runtime");
   }
 }

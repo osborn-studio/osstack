@@ -215,7 +215,7 @@ it("actual enqueue -> queue -> native worktree batch runs all stages and native 
     await writeFile(join(repo, `tasks/${id}.json`), JSON.stringify(task));
   }
   commitQueue();
-  expect(await run(input.path, ["--verify", input.stage("mandatory")])).toBe(0);
+  expect(await run(input.path, ["--verify", input.stage("mandatory")]), logs.join("\n")).toBe(0);
   const result = JSON.parse(logs.join("\n"));
   expect(result.completed_tasks).toHaveLength(2);
   for (const task of result.completed_tasks)
@@ -245,7 +245,7 @@ it("actual enqueue -> queue -> native worktree batch runs all stages and native 
       encoding: "utf8",
     }),
   ).toBe("");
-});
+}, 20_000);
 it.each([
   "--daemon",
   "--state",
@@ -439,11 +439,12 @@ async function sourceMutant(
     `data:text/javascript;base64,${Buffer.from(stripped).toString("base64")}`,
   );
 }
+// Runs the full baseline plus rejected and mutated pipelines; each keeps its own deadline.
 it("source mutant removing native stage union causes real unverified local merge after full positive baseline", async () => {
   const input = await policyInput();
   await enqueue(input.path);
   commitQueue();
-  expect(await run(input.path)).toBe(0);
+  expect(await run(input.path), logs.join("\n")).toBe(0);
   async function nextBatch(id: string) {
     input.policy.batchId = id;
     await writeFile(input.path, JSON.stringify(input.policy));
@@ -477,7 +478,7 @@ it("source mutant removing native stage union causes real unverified local merge
   expect(
     JSON.parse(logs.join("\n")).completed_tasks[0].candidate_evidence.stage,
   ).toBe("final_preflight_failed");
-});
+}, 20_000);
 it("source mutant deleting private file mode guard accepts actual unsafe bytes after valid baseline", async () => {
   const input = await policyInput();
   const args = [

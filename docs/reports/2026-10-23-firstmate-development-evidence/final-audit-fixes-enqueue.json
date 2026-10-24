@@ -1,0 +1,15 @@
+{
+  "task": {
+    "task_id": "firstmate-final-audit-fixes",
+    "capability": "code.test",
+    "prompt": "复核 Haiku wave3/wave4 调用链并执行最终全仓检查，保留原始历史和精确源码指纹",
+    "priority": 50,
+    "source": "task_queue",
+    "context": {
+      "repository": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack",
+      "mode": "final_audit_gate",
+      "plan_id": "final-audit-fixes"
+    }
+  },
+  "path": "/Volumes/AIMATE_WORK/tmp/osstack/smoke/firstmate-development-20261023/queue/final-audit-fixes/tasks/firstmate-final-audit-fixes.json"
+}

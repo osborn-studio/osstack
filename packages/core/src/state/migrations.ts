@@ -1757,6 +1757,77 @@ export const MIGRATIONS: readonly Migration[] = [
         BEGIN SELECT RAISE(ABORT, 'graph apply resolutions immutable'); END;
     `,
   },
+  {
+    id: 40,
+    name: "attention_observation_and_decision_projection",
+    sql: `
+      CREATE TABLE daemon_owner (
+        singleton INTEGER PRIMARY KEY CHECK(singleton=1), home_id TEXT NOT NULL,
+        instance_id TEXT NOT NULL, generation INTEGER NOT NULL CHECK(generation>0)
+      );
+      CREATE TABLE attention_scopes (
+        scope_id TEXT PRIMARY KEY, task_id TEXT NOT NULL, repo_path TEXT NOT NULL,
+        discovery_after TEXT NOT NULL DEFAULT '', scan_complete INTEGER NOT NULL DEFAULT 0,
+        sampled_at INTEGER NOT NULL DEFAULT 0, deadline INTEGER NOT NULL DEFAULT 0,
+        generation INTEGER NOT NULL, error TEXT, UNIQUE(task_id,repo_path)
+      );
+      CREATE TABLE attention_subjects (
+        scope_id TEXT NOT NULL, kind TEXT NOT NULL CHECK(kind IN ('session','run','loop')), subject_id TEXT NOT NULL,
+        binding_hash TEXT NOT NULL, source_version INTEGER NOT NULL, ordinal_cursor INTEGER NOT NULL DEFAULT 0,
+        admitted INTEGER NOT NULL DEFAULT 0, discovered_at INTEGER NOT NULL, sampled_at INTEGER NOT NULL,
+        generation INTEGER NOT NULL, payload_json TEXT NOT NULL,
+        PRIMARY KEY(scope_id,kind,subject_id)
+      );
+      CREATE TABLE attention_items (
+        item_id TEXT PRIMARY KEY, scope_id TEXT NOT NULL, session_id TEXT NOT NULL, turn_id TEXT NOT NULL,
+        decision_id TEXT NOT NULL, content_hash TEXT NOT NULL, decision_json TEXT NOT NULL,
+        source_version INTEGER NOT NULL, revision INTEGER NOT NULL DEFAULT 1,
+        state TEXT NOT NULL DEFAULT 'open', created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL,
+        external_message_id TEXT, UNIQUE(scope_id,session_id,turn_id,decision_id)
+      );
+      CREATE TABLE attention_actions (
+        action_id TEXT PRIMARY KEY, scope_id TEXT NOT NULL, item_id TEXT NOT NULL UNIQUE,
+        payload_hash TEXT NOT NULL, message_id TEXT NOT NULL UNIQUE, state TEXT NOT NULL,
+        created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL
+      );
+      CREATE TABLE attention_deliveries (
+        delivery_id TEXT PRIMARY KEY, scope_id TEXT NOT NULL, item_id TEXT NOT NULL, revision INTEGER NOT NULL,
+        state TEXT NOT NULL DEFAULT 'pending', attempts INTEGER NOT NULL DEFAULT 0,
+        next_at INTEGER NOT NULL DEFAULT 0, error TEXT, UNIQUE(scope_id,item_id,revision)
+      );
+      CREATE TABLE attention_postures (
+        scope_id TEXT NOT NULL, actor TEXT NOT NULL, posture TEXT NOT NULL,
+        PRIMARY KEY(scope_id,actor)
+      );
+      CREATE TABLE attention_seen (
+        scope_id TEXT NOT NULL, actor TEXT NOT NULL, item_id TEXT NOT NULL, revision INTEGER NOT NULL,
+        PRIMARY KEY(scope_id,actor,item_id)
+      );
+      CREATE TABLE attention_foregrounds (
+        client_id TEXT PRIMARY KEY, token_hash TEXT NOT NULL, scope_id TEXT NOT NULL,
+        generation INTEGER NOT NULL, expires_at INTEGER NOT NULL, subjects_json TEXT NOT NULL,
+        handed_off INTEGER NOT NULL DEFAULT 0, reminder_sent INTEGER NOT NULL DEFAULT 0
+      );
+      CREATE TABLE attention_handoffs (
+        receipt_id TEXT PRIMARY KEY, client_id TEXT NOT NULL, scope_id TEXT NOT NULL,
+        generation INTEGER NOT NULL, subjects_json TEXT NOT NULL, created_at INTEGER NOT NULL
+      );
+      CREATE INDEX attention_items_scope ON attention_items(scope_id,state,created_at,item_id);
+      CREATE INDEX attention_subjects_scope ON attention_subjects(scope_id,kind,subject_id);
+    `,
+  },
+  {
+    id: 41,
+    name: "attention_explicit_receipt_resolution",
+    sql: `
+      CREATE TABLE attention_receipt_resolutions (
+        message_id TEXT PRIMARY KEY, session_id TEXT NOT NULL, session_version INTEGER NOT NULL,
+        disposition TEXT NOT NULL CHECK(disposition='abandoned_unknown'),
+        reason TEXT NOT NULL, evidence_sha256 TEXT NOT NULL, created_at INTEGER NOT NULL
+      );
+      ALTER TABLE attention_handoffs ADD COLUMN valid_until INTEGER NOT NULL DEFAULT 0;
+    `,
+  },
 ];
 
 export const CURRENT_SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1]!.id;

@@ -266,7 +266,11 @@ export class SessionContinuationRepository {
       const reserved = this.db.prepare("SELECT attempt_id FROM session_continuation_attempts WHERE status = 'reserved'")
         .all() as Array<{ attempt_id: string }>;
       for (const { attempt_id } of reserved) this.blockAttempt(this.requireAttempt(attempt_id), "delivery_uncertain", now);
-      for (const grant of this.listActive()) if (Date.parse(grant.body.expires_at) / 1000 <= now) this.block(grant.grant_id, "expired", now);
+      const active = this.db.prepare("SELECT grant_id FROM session_continuation_grants WHERE status='active'").all() as {grant_id:string}[];
+      for (const row of active) {
+        try { const grant=this.requireGrant(row.grant_id); if(Date.parse(grant.body.expires_at)/1000<=now)this.block(grant.grant_id,"expired",now); }
+        catch { this.db.prepare("UPDATE session_continuation_grants SET status='blocked',reason='corrupt_grant',updated_at=? WHERE grant_id=?").run(now,row.grant_id); }
+      }
       return { abandoned, blocked: reserved.length };
     });
   }

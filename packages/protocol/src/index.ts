@@ -95,6 +95,7 @@ export {
   parseInboundAgentCommandResult,
 } from "./envelope.js";
 
+export { AttentionInbox, AttentionStatus, AttentionSessionFact, AttentionWait } from "./attention.js";
 export {
   GraphCheckpointRequest, GraphCheckpointResponse, GraphCheckpointTupleWire,
   GRAPH_CHECKPOINT_MAX_FRAME_BYTES, GRAPH_CHECKPOINT_MAX_TUPLE_BYTES, GRAPH_CHECKPOINT_MAX_PAGE_SIZE,

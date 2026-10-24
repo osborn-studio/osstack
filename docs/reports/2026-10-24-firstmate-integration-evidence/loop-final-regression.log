@@ -1,0 +1,40 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/pr237-main/packages/loop
+
+ ✓ src/loop-engine.test.ts (31 tests) 7395ms
+   ✓ LoopEngine > persists redacted structured Kimi review evidence in events and completed tasks  553ms
+   ✓ LoopEngine > records changed files, diff summary, and commit hash in task evidence  460ms
+   ✓ LoopEngine > escalates after repeated failed verification  339ms
+   ✓ LoopEngine > can execute a successful task in an isolated git worktree and merge it back  669ms
+   ✓ LoopEngine > cleans a failed isolated worktree without merging its changes  605ms
+   ✓ LoopEngine > does not promote cancelled Builder changes when deterministic verification passes  469ms
+   ✓ LoopEngine > retains loop-scoped worktrees whose ownership is unproven  717ms
+   ✓ LoopEngine > preserves the isolated branch when a successful task cannot fast-forward merge  739ms
+ ✓ src/candidate-policy.test.ts (34 tests) 52215ms
+   ✓ candidate policy actual local LoopEngine integration > runs each local check, commits two related slices, freezes and verifies once per profile  3945ms
+   ✓ candidate policy actual local LoopEngine integration > keeps legacy default command verification and creates no candidate record  726ms
+   ✓ candidate policy actual local LoopEngine integration > refuses missing bindings, oversized batches, dirty inputs and unsafe state  502ms
+   ✓ candidate policy actual local LoopEngine integration > refuses actual out-of-scope edits before candidate commit  1054ms
+   ✓ candidate policy actual local LoopEngine integration > does not final-verify after a failed local slice  1304ms
+   ✓ candidate policy actual local LoopEngine integration > final failure cannot archive queued tasks as successful  1996ms
+   ✓ candidate policy actual local LoopEngine integration > detects real final command mutation of frozen candidate and never emits ready  1919ms
+   ✓ candidate policy actual local LoopEngine integration > never trusts a completed persistent record for another execution  2413ms
+   ✓ candidate preservation of full gates and actual scope > rejects executor-committed foreign changes; a HEAD-only scope mutant actually leaks them  4896ms
+   ✓ candidate preservation of full gates and actual scope > checks deletion source when an out-of-scope tracked file is renamed to an allowed target  964ms
+   ✓ candidate preservation of full gates and actual scope > keeps context, explicit artifact and independent adapter evaluations in all three stages  3636ms
+   ✓ candidate preservation of full gates and actual scope > fails every current slice when the final full profile fails  3135ms
+   ✓ candidate preservation of full gates and actual scope > reexecutes the complete explicit batch even when a prior legacy run completed the same task ID  4102ms
+   ✓ candidate preservation of full gates and actual scope > rejects clean but changed HEAD during final verification  2089ms
+   ✓ gives the structured reviewer the committed base-to-candidate patch at final stages  2602ms
+   ✓ retains queue files after successful preflight and keeps candidate HEAD clean  2138ms
+   ✓ rejects clean foreign commits made directly to the main checkout  3245ms
+   ✓ preserves original local failure diagnostics when final preflight also refuses  1205ms
+   ✓ rejects a clean foreign main commit in the post-merge window; deleting the final gate yields observable ready  6106ms
+   ✓ never truncates the committed artifact file list even with a tiny log limit  550ms
+   ✓ preserves execution-unconfirmed escalation and stop evidence through candidate refusal  1030ms
+
+ Test Files  2 passed (2)
+      Tests  65 passed (65)
+   Start at  11:02:12
+   Duration  54.39s (transform 1.74s, setup 0ms, collect 3.81s, tests 59.61s, environment 0ms, prepare 97ms)
+

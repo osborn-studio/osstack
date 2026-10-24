@@ -10,6 +10,7 @@
 // documents the object SHAPE only; the conditional rules live in the superRefine
 // and the tests. This is a known, documented limitation, not a gap.
 
+import { AttentionInbox, AttentionStatus } from "./attention.js";
 import { GraphWorkerMessage } from "./graph-worker.js";
 import { GraphCheckpointRequest, GraphCheckpointResponse } from "./graph-checkpoint.js";
 import type { ZodTypeAny } from "zod";
@@ -48,6 +49,8 @@ interface SchemaEntry {
 
 /** Public protocol contracts emitted as JSON Schema. Order is stable. */
 export const SCHEMA_MANIFEST: readonly SchemaEntry[] = [
+  { key: "attention-inbox", title: "OSStack Attention Inbox", schema: AttentionInbox },
+  { key: "attention-status", title: "OSStack Attention Snapshot", schema: AttentionStatus },
   { key: "graph-worker", title: "Graph Worker IPC", schema: GraphWorkerMessage, references: "root", comment: "Dedicated length-prefixed fd3 transport; cap raw bytes before allocation and JSON.parse. Host registration supplies authority. done is not process exit evidence." },
   { key: "graph-checkpoint-request", title: "Graph Checkpoint Request", schema: GraphCheckpointRequest, comment: "Opaque bounded codec data; transport caps raw frames at 8 MiB. Host binds authenticated run and fences transaction before reads, writes and replay. No JSON field confers authority." },
   { key: "graph-checkpoint-response", title: "Graph Checkpoint Response", schema: GraphCheckpointResponse },

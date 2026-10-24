@@ -31,7 +31,7 @@ it.each([true, false])('reopens the integrated current schema with readwrite=%s'
     expect(reopened.pragma('integrity_check', { simple: true })).toBe('ok');
   } finally { reopened.close(); }
 });
-it.each([24, 25, 26, 27, 37])('upgrades deployed v%s preserving its actual improvement execution', version => {
+it.each([24, 25, 26, 27, 37, 38, 39, 40])('upgrades deployed v%s preserving its actual improvement execution', version => {
   const path = join(root, 'main.db'); const old = new Database(path);
   install(old, MIGRATIONS.filter(m => m.id <= version));
   old.exec(`INSERT INTO improvement_proposals(proposal_id,repo_id,source_asset_ids_json,target,risk,title,rationale,proposed_changes_json,required_gates_json,status,created_at,updated_at) VALUES ('p','repo','[]','eval','low','title','reason','[]','[]','approved',1,1)`);
@@ -110,4 +110,24 @@ it('retains a crashed WAL experimental ledger logically without advancing its sc
     expect(db.prepare("SELECT name FROM sqlite_master WHERE name='improvement_executions'").get()).toBeUndefined();
     expect(db.pragma('integrity_check', { simple: true })).toBe('ok');
   } finally { db.close(); }
+});
+
+it.each([25, 26])('preserves unreleased Attention v%s instead of applying main migrations over it', version => {
+  const draft = JSON.parse(readFileSync(new URL('./fixtures/attention-preintegration-migrations.json', import.meta.url), 'utf8')) as { migrations: typeof MIGRATIONS };
+  const path = join(root, 'attention-draft.db'); const old = new Database(path);
+  install(old, MIGRATIONS.filter(m => m.id <= 24));
+  install(old, draft.migrations.filter(m => m.id <= version));
+  old.exec("INSERT INTO daemon_owner VALUES (1,'home','owner',1)");
+  old.close(); const before = readFileSync(path);
+  for (const readwrite of [true, false]) expect(() => openDb({ path, readwrite })).toThrow('EXPERIMENTAL_SCHEMA_CONFLICT');
+  expect(readFileSync(path).equals(before)).toBe(true);
+});
+
+it("rejects Attention tables mixed into main39 before advancing migrations", () => {
+  const path = join(root, 'mixed-attention.db'); const old = new Database(path);
+  install(old, MIGRATIONS.filter(m => m.id <= 39));
+  old.exec(MIGRATIONS.find(m => m.id === 40)!.sql); old.close();
+  const before = readFileSync(path);
+  expect(() => openDb({ path })).toThrow('EXPERIMENTAL_SCHEMA_CONFLICT');
+  expect(readFileSync(path).equals(before)).toBe(true);
 });

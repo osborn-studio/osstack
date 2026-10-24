@@ -1,0 +1,235 @@
+{
+  "baseline_head": "b476bcc3fbbfcc11953abd3d154e59f7f85c4660",
+  "note": "Hashes of tested working-tree sources. core index includes pre-existing scratch export; that hunk is not part of this change. Tests run against existing user WIP, not a clean checkout.",
+  "files": [
+    {
+      "path": "packages/cli/src/attention-command.test.ts",
+      "sha256": "23903bfd674b19e4c34812d4a0b4ad559daab90d8f0c0610c6a8803387762844"
+    },
+    {
+      "path": "packages/cli/src/attention-command.ts",
+      "sha256": "04906be836ead82eb56c9c1ee10cd653e44b62ec46b351e6b1f4eca67cfe2332"
+    },
+    {
+      "path": "packages/cli/src/attention-hook.test.ts",
+      "sha256": "cb31d625af77fdbc8d191aad5a0c5cfaeef984aae4d185b7656175b98e124abe"
+    },
+    {
+      "path": "packages/cli/src/attention-hook.ts",
+      "sha256": "11c5b9acaabf5ed7cde4ed5302fd0bc79f755b7168d6e4dc206e4e7b2ac25257"
+    },
+    {
+      "path": "packages/cli/src/attention-local-delivery.test.ts",
+      "sha256": "82fe1e26aa9e25f7c0baedef2a95f7bfe3a041d2123ec8b60f7b032cfdfef790"
+    },
+    {
+      "path": "packages/cli/src/attention-local-delivery.ts",
+      "sha256": "a5d24330ebbb11c4169134bf4472d8cfbf4b4f278d7393f737e65400f5247ba5"
+    },
+    {
+      "path": "packages/cli/src/attention-loop-source.test.ts",
+      "sha256": "66501a5a88125a62099113d5f14a7ab8af94226c27da83c5ab8dfceaacb0633a"
+    },
+    {
+      "path": "packages/cli/src/attention-loop-source.ts",
+      "sha256": "9cb26b2e1aa31dbeb9da3429de32adf7fbdabf99ec85ac2e71d54e26b3a11cef"
+    },
+    {
+      "path": "packages/cli/src/attention-planning-command.ts",
+      "sha256": "010a443cac0d23ee3cd96e1d4c149428c3dee2fca3a03e53121e6a59603a9618"
+    },
+    {
+      "path": "packages/cli/src/attention-read-model.test.ts",
+      "sha256": "4e3343903dfc9f200a10714603fb1574d8c10f06f7cc390b33395bc206572baa"
+    },
+    {
+      "path": "packages/cli/src/attention-read-model.ts",
+      "sha256": "c5236db55e4a1235d990e94a295fb021e774ee0fc8acc91105db5dc6b1256544"
+    },
+    {
+      "path": "packages/cli/src/bin.ts",
+      "sha256": "683097091ec9602a9b27eeef6bf0ddc89e6bcc10d54f8dcdff85b98646c19086"
+    },
+    {
+      "path": "packages/cli/src/collaborator-rpc.test.ts",
+      "sha256": "ac9b6a72499a7b2f3f11206dc3e91ced26bc611fa54223bdc45b55920e75658a"
+    },
+    {
+      "path": "packages/cli/src/daemon-daily.test.ts",
+      "sha256": "98c02d9e27ffb28a41760de05cc08806c339f9416f8c56a26e8de82d855c7af0"
+    },
+    {
+      "path": "packages/cli/src/daemon-lock-ownership.test.ts",
+      "sha256": "d88ca38a559122ecda0be2a9316090b0808cacbc7956d6bec2499afcc40c2a9a"
+    },
+    {
+      "path": "packages/cli/src/daemon-lock.ts",
+      "sha256": "0d511f35ca7339f294031fb8cd7d24bcc1b9d629298271c5b7718c79135b0de4"
+    },
+    {
+      "path": "packages/cli/src/daemon-loop-recovery-preservation.test.ts",
+      "sha256": "1f274916ffe6f93425d04138429fc53ec676a9a364ef2505a5a55ab444f6fd1a"
+    },
+    {
+      "path": "packages/cli/src/daemon-loop.test.ts",
+      "sha256": "49fc160aa393fb3779dcb54c5df857c0b88a0d892d379c48f7f48d7f9adcaf85"
+    },
+    {
+      "path": "packages/cli/src/daemon-startup-ownership.test.ts",
+      "sha256": "103f532266077714531a9190957d39a1a23ee82d1e1f82e359062cbf895ff67a"
+    },
+    {
+      "path": "packages/cli/src/daemon.ts",
+      "sha256": "98e4073933efcf8b4e10ee5abffcd5b50932ef56f82c21d17128a5f48577771f"
+    },
+    {
+      "path": "packages/cli/src/session-rpc.test.ts",
+      "sha256": "0030f39328c864884d7fb2f6938f1b2a213088e13170f9f84e3e52d468f3962b"
+    },
+    {
+      "path": "packages/cli/src/supervision-service.ts",
+      "sha256": "de06c55f0fbdae222b9bf148623fd3d44e408081a54dc0a76d631caad6663162"
+    },
+    {
+      "path": "packages/core/src/attention.ts",
+      "sha256": "a63130752c8c87298a3d154955cfc66dcfe7a0190deccf5f9e492e6af61ef888"
+    },
+    {
+      "path": "packages/core/src/index.ts",
+      "sha256": "6dabab8712594f921b8ade14097e34f2d15f2d98e90ccf811b23988ae5f51cf1"
+    },
+    {
+      "path": "packages/core/src/state/attention-actions.test.ts",
+      "sha256": "a427bf1b70b71ad7aadb0591f02176b15e5c831d86174ff2c67247d83bda80ab"
+    },
+    {
+      "path": "packages/core/src/state/attention-actions.ts",
+      "sha256": "1d13f9e5801a4c741644f783367f77bd9103ca1e1f31d1f6cf13c46d445dd68c"
+    },
+    {
+      "path": "packages/core/src/state/attention-experience.test.ts",
+      "sha256": "64d1d8ba1f797bb4d4e5cb44fb5473d682f552d3a85f16ac0f199b4582fdb93b"
+    },
+    {
+      "path": "packages/core/src/state/attention-experience.ts",
+      "sha256": "1c64cd2c69b3f5c40a9af7d543d4963353f8a33ac24c30bcf1102f8e3ecc7aed"
+    },
+    {
+      "path": "packages/core/src/state/attention-observer.test.ts",
+      "sha256": "6b6cbd1c2746124d1c9992c30cf77d7121de4735967a076edeee7854a9988606"
+    },
+    {
+      "path": "packages/core/src/state/attention-observer.ts",
+      "sha256": "81abfb98ba01bfe7532e1fe11e48fcda6c4e2c322fb7427244f9d58a3bf583ac"
+    },
+    {
+      "path": "packages/core/src/state/attention-store.test.ts",
+      "sha256": "38ee825a1dab74bfccdbca0edfca6af722314d4c145b83bce3832c7e449a5712"
+    },
+    {
+      "path": "packages/core/src/state/attention-store.ts",
+      "sha256": "b6ffc14f93f2bc7d5f3a830e859c4ba59bb75d55d42c88b663be3ce666bcb788"
+    },
+    {
+      "path": "packages/core/src/state/migrations.ts",
+      "sha256": "2ca214f04b84a6c0118bb072c6d8d670289c73ef3a47da7fc642f908765d6704"
+    },
+    {
+      "path": "packages/core/src/state/session-continuations.ts",
+      "sha256": "c9fb344662206a52dad35d20bd185c9a976a50bd27526f8ea7eda0a5473132a1"
+    },
+    {
+      "path": "packages/github/src/attention-ci.test.ts",
+      "sha256": "b1cfcd3beb7d00e599cba12451d8b2d5693d0f9289680f5ea13ddb9811d1b5d5"
+    },
+    {
+      "path": "packages/github/src/attention-ci.ts",
+      "sha256": "ff79c491c661c401290dfdc09b6163eb4d54c49ac8b89bab05161f79387e29a0"
+    },
+    {
+      "path": "packages/github/src/index.ts",
+      "sha256": "95b2c2d694894281fca6d1474acb1be62ce8a2080ac935338fe2582c1cffaedd"
+    },
+    {
+      "path": "packages/loop/src/loop-engine.test.ts",
+      "sha256": "23fcbf9b92274ed6fd1655378a3ecd584d18887c4100425c95d0e6cfb0a58a4c"
+    },
+    {
+      "path": "packages/loop/src/loop-engine.ts",
+      "sha256": "ee35cd40833acdbcba5c496eaedda23cc841f09ea5fd7ec9e685c245e1cb35fc"
+    },
+    {
+      "path": "packages/loop/src/loop-worktree-preservation.test.ts",
+      "sha256": "02d1b2d250c687de4b621c025d0e23400f54a9af6fa6ce06707bd2773cee8f54"
+    },
+    {
+      "path": "packages/protocol/fixtures/invalid/attention-inbox.invalid.json",
+      "sha256": "99174afc0cdee5190fa7d2490a916d5b6c35c244566563dfa78317875b6aa715"
+    },
+    {
+      "path": "packages/protocol/fixtures/invalid/attention-status__live-claim.invalid.json",
+      "sha256": "ccead00d847a042bd2dc94aeea26af75f6a1a5baef4016b1c32aff91101771ec"
+    },
+    {
+      "path": "packages/protocol/fixtures/valid/attention-inbox.valid.json",
+      "sha256": "c256e9f105db7e1f3bcbd7b781e2aa5d66866fa9d8be780cfb831ca5941cb636"
+    },
+    {
+      "path": "packages/protocol/fixtures/valid/attention-status.valid.json",
+      "sha256": "24f80dd4f9e41b54ddfd4d1af8e40a01e1ce4d327741daeb800ad210ca00a95f"
+    },
+    {
+      "path": "packages/protocol/schemas/attention-inbox.schema.json",
+      "sha256": "85c33038d2b4cfbb3cf7c503743ac488baaa8418a30675c57fa5406a0e2e47bd"
+    },
+    {
+      "path": "packages/protocol/schemas/attention-status.schema.json",
+      "sha256": "32dd1bf93bb34a3e2024e21aa9b01f306dee68ea14317b3a9a260f5ce78e993e"
+    },
+    {
+      "path": "packages/protocol/src/attention.test.ts",
+      "sha256": "261063dd755827a2a2b460a50a369e0f4406bc827f9e4d63bb21abd79d3cb849"
+    },
+    {
+      "path": "packages/protocol/src/attention.ts",
+      "sha256": "15de95023e6c0e45ec1e4fa79c0da0f3fe4bbd57d81c014354898bdcdad36acd"
+    },
+    {
+      "path": "packages/protocol/src/generate.ts",
+      "sha256": "2fa95d5fece5e96104f0e3af2d13668d19b283ae570d8ab7976b229ec9c110a0"
+    },
+    {
+      "path": "packages/protocol/src/index.ts",
+      "sha256": "f5259a219d0e8fd59c14018c11a2bf934716c5e56203df2f77af4a918d1ff123"
+    },
+    {
+      "path": "packages/protocol/src/protocol.test.ts",
+      "sha256": "3c96dfecaf6ceae2319074ad70f7a1b5015eb15e77156a4838a52ebbdd9c412a"
+    },
+    {
+      "path": "packages/protocol/src/schemas.test.ts",
+      "sha256": "7bd1de07bb81a9e0b4657a8dd51bac1af02cbea09109bdac7432a47794b9546b"
+    },
+    {
+      "path": "packages/supervisor/src/attention-planning.test.ts",
+      "sha256": "cf3218966874e5ad381ce19a11514cb0ebe8faa95ab46944bcc6a1a4de7e02c1"
+    },
+    {
+      "path": "packages/supervisor/src/attention-planning.ts",
+      "sha256": "bc8d24706755796f7dd5ee5330d092338a5b876261eef14c02d832cf68df44cb"
+    },
+    {
+      "path": "packages/supervisor/src/attention.test.ts",
+      "sha256": "c92f91beeae63310658ff34423522df4da7fdf800577c88044db61249c0783db"
+    },
+    {
+      "path": "packages/supervisor/src/attention.ts",
+      "sha256": "0967871b667ff348f2a53671a0620306db5a64a748a939773de05c6ae6e550d6"
+    },
+    {
+      "path": "packages/supervisor/src/index.ts",
+      "sha256": "6c6b2e9dbb95185dbdc707560360d17fb925295ed6fbb58ce7e914e97ffd70a3"
+    }
+  ],
+  "implementation_commit": "0f757fe7af8eff87bf0096451a0fa72d0eb420c3"
+}

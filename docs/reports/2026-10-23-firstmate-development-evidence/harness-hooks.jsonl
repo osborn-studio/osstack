@@ -1,0 +1,3 @@
+{"hook_event_name": "Stop", "session_id": "b270dbcd-2709-4080-8990-356b73032082", "stop_hook_active": false}
+{"hook_event_name": "SessionEnd", "session_id": "b270dbcd-2709-4080-8990-356b73032082", "reason": "other"}
+{"hook_event_name": "SessionEnd", "session_id": "078b0c47-cf36-489e-88f7-0e4a6dddf7a1", "reason": "other"}

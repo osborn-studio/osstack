@@ -129,6 +129,11 @@ export * from "./kg/index.js";
 export * from "./observability/index.js";
 export const CORE_VERSION = "0.0.0";
 export { CURRENT_SCHEMA_VERSION } from "./state/migrations.js";
+export { AttentionStore, attentionDigest, type AttentionOwner, type AttentionScope, type AttentionItem } from "./state/attention-store.js";
+export { AttentionObserver } from "./state/attention-observer.js";
+export { AttentionActions, reserveSessionInstruction } from "./state/attention-actions.js";
+export { AttentionExperience, type AttentionSender } from "./state/attention-experience.js";
+export { classifyAttentionWait, evaluateCoverage, evaluateActivity, type WaitInput } from './attention.js';
 export { GraphRunStore, GraphRunStorageError } from "./state/graph-runs.js";
 export { GraphActionStore, GraphActionStorageError } from "./state/graph-actions.js";
 export type {
@@ -137,6 +142,7 @@ export { readRepositoryGit } from "./graph/repository-git.js";
 export { resolveRepositoryScope } from "./graph/repository-scope.js";
 export type { RepositoryScope } from "./graph/repository-scope.js";
 export { GraphCheckpointStore } from './state/graph-checkpoints.js';
+export * from "./scratch.js";
 ```
 
 ## `@osstack/github`
@@ -149,6 +155,7 @@ export * from "./report.js";
 export * from "./stack.js";
 export * from "./portfolio-status.js";
 export * from "./delivery.js";
+export { AttentionCiReader, type AttentionCiResult } from './attention-ci.js';
 export * from "./candidate-evidence.js";
 ```
 
@@ -252,6 +259,7 @@ export {
 export {
 export {
 export {
+export { AttentionInbox, AttentionStatus, AttentionSessionFact, AttentionWait } from "./attention.js";
 export {
 export type { GraphCheckpointTransport } from './graph-checkpoint.js';
 export {
@@ -296,4 +304,6 @@ export * from "./evaluator-epoch.js";
 export * from "./adversarial-pool.js";
 export * from "./loop-doc.js";
 export * from "./probe-outcomes.js";
+export { classifyAttentionWait, evaluateCoverage, evaluateActivity } from "./attention.js";
+export { AttentionDeliveryContract, deliveryContract, promoteScout, verifyDeliveryContract, acceptAttentionTriage, evaluateAttentionRouting, budgetAttentionContext } from './attention-planning.js';
 ```

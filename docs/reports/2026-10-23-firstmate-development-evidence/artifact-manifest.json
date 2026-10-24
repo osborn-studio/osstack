@@ -1,0 +1,857 @@
+[
+  {
+    "path": ".gitattributes",
+    "bytes": 307,
+    "sha256": "e9ce5cb89aaf7abba3138e4eadcd39dc6ba312f0009e1344c9a75b3ccc0c4c86"
+  },
+  {
+    "path": "docs/guides/attention.md",
+    "bytes": 11284,
+    "sha256": "77c3e54b2e9595278154ccddb2676ace932fdf1db6c32e7fa93fd4d934c9eea8"
+  },
+  {
+    "path": "docs/plans/2026-10-23-firstmate-adoption-plan.md",
+    "bytes": 18001,
+    "sha256": "21be67f4c5f96a1e663256c1abfbda93e3e9ad0c9635e708006308552f86e3f2"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/README.md",
+    "bytes": 3354,
+    "sha256": "d4c8e21879cdc05a9f32d10b2ff7d0138904dd93061f0dca3c0513891fd5e041"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/archive-checks.json",
+    "bytes": 322,
+    "sha256": "d0e0770085541d79e60685ad76f8bb5c6446a7223eee961fec76a6a20eb9a437"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/baseline.json",
+    "bytes": 602743,
+    "sha256": "1a0187b6fa1b3f57871a42a9d7bf1e75e369485db37a510a41361454075399cd"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/d1-loop-attempt1.json",
+    "bytes": 10603,
+    "sha256": "e0de56faee67e5e831fa44eafcfc5289f402e1182c769546d7d93b15793ebb0b"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/d1-loop-attempt1.stderr.txt",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/d1-loop.json",
+    "bytes": 7483,
+    "sha256": "3b51e65f52ba1ceef34439883aad0028887d091403341ee33e3935b27e288aee"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/d1-loop.stderr.txt",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/d1-retry-enqueue.json",
+    "bytes": 1530,
+    "sha256": "d336511127c47c572e01fb988025d7ff8f13d8894440916c67df5295fbec09f2"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/d1-retry-loop.json",
+    "bytes": 12162,
+    "sha256": "d45fa6b907aa3c612e453d5e09832a1efb3a26c52afc87552910e3c3a2e05667"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/d1-retry-loop.stderr.txt",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/d2-loop-attempt1.json",
+    "bytes": 10598,
+    "sha256": "2946a350ac8a032304f3ac631d6dbd7717a4ed6dec80d2f32f4cc99f4f0d9d54"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/d2-loop-attempt1.stderr.txt",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/d2-loop.json",
+    "bytes": 7477,
+    "sha256": "c84ddcd45dfe151e04e85e2ce118810dddfac03e3522fc8a22ff5566e783798b"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/d2-loop.stderr.txt",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/d2-retry-enqueue.json",
+    "bytes": 1530,
+    "sha256": "8835d1c1401e81e689f89ef0a5aa6efd3f3c7185164b8d40f3f0f6e43105243e"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/d2-retry-loop.json",
+    "bytes": 12150,
+    "sha256": "4f1acd598fc3ad1d05ec28198db3a9beb7bf70eedf9da392ca9ca2d3383e5ece"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/d2-retry-loop.stderr.txt",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/d3-loop-attempt1.json",
+    "bytes": 10641,
+    "sha256": "94fdc0608716f30bb6cb1d7e6d05c0d98d178f20c8b64f179ad5478431f8a4c9"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/d3-loop-attempt1.stderr.txt",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/d3-loop.json",
+    "bytes": 7520,
+    "sha256": "5de407398f26cc0e2da087f67ad90f972b8e6e228bb04665781ed556fc48a339"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/d3-loop.stderr.txt",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/d3-retry-enqueue.json",
+    "bytes": 1530,
+    "sha256": "dc2d2a3614b93824f18bf0125e917244b2011fdfbf53eecbe23be1cd57fe2333"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/d3-retry-loop.json",
+    "bytes": 12238,
+    "sha256": "4e34a54c74137b2c2c8fdb062c0736e6342a85fa54caeaf701f4a6d818455ed4"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/d3-retry-loop.stderr.txt",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/final-audit-fixes-enqueue.json",
+    "bytes": 574,
+    "sha256": "34dd5059a4cfda9c7ad51d738120d10f8e051aaff9693f852d7797abbd296d3d"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/final-audit-fixes-loop.json",
+    "bytes": 7267,
+    "sha256": "512b38718600c567a1189333487a9d559e790b827b0deea42f5e327ce8a3a75c"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/final-audit-fixes-loop.stderr.txt",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/final-build.log",
+    "bytes": 9788,
+    "sha256": "191bc1b542e436fd0e1dc3640ec3ea90579cf2bcab5c288b66b3d8d2c4c421c4"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/final-checks.json",
+    "bytes": 875,
+    "sha256": "1e711517d0d8e8fd6b7068188e87669125e836ccb1c6241ab146c8ca1b8742d2"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/final-checks.py",
+    "bytes": 1127,
+    "sha256": "d677d3709af83f20a0ca50952571aed4d7e5d680ea7778b40eec9665a99c6b0e"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/final-diff.log",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/final-schemas.log",
+    "bytes": 63,
+    "sha256": "72eede8bd62b3a68d3e094d4aeccda65c0b3de5a92b0843adc8530af2c2cff41"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/final-staged-diff.log",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/final-startup.log",
+    "bytes": 190,
+    "sha256": "cc0415ce623f0f8f69e6a16350aef8da5be5daac641ad092ab135f24adb64f6e"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/final-test.log",
+    "bytes": 87347,
+    "sha256": "04dfd846258964f4bae27915a838a06e2a437c72594be88091484b3077d0a329"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/final-typecheck.log",
+    "bytes": 11492,
+    "sha256": "0f6c7cd99e4487eee1260482e5db7a5073fe266aa27e6be530e3cfbd4bbd7521"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/finalize.py",
+    "bytes": 2280,
+    "sha256": "202ca909bef0197bebdec62aca401dbfa369a76ae522ea6c476e4d13e4c38b0c"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/gates-native-retry.py",
+    "bytes": 3767,
+    "sha256": "ed38391822ccc4ac58c84420161c2b79cc5164415ce2945c542ab83d4492345f"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/gates.py",
+    "bytes": 3136,
+    "sha256": "5905f86692376cd0fc495ee3a9e96124d3c07d0295d610f5bf9f1997829589af"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/haiku-probe.json",
+    "bytes": 1810,
+    "sha256": "3decc77789b8266cd6d3aaaaccc21edbac579db01085216089946ad439bd732a"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/haiku-probe.stderr.txt",
+    "bytes": 83,
+    "sha256": "61b1ec1babd05607d61c3c37883d25b807fc94e69c2090164e10676c0b2af903"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/haiku-wave1-context.md",
+    "bytes": 248925,
+    "sha256": "d30c348a480690f27b4833035345916319354f2492fb418cca102a36adee3b22"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/haiku-wave1.json",
+    "bytes": 7119,
+    "sha256": "c2242281e494312be4d21d6928b88dace50408c9973e48b3717997484b5a2b8b"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/haiku-wave1.md",
+    "bytes": 5264,
+    "sha256": "825e8c651e1198900eb17f7287426542e7d78a1726212f288317bdf079822a33"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/haiku-wave1.stderr.txt",
+    "bytes": 83,
+    "sha256": "61b1ec1babd05607d61c3c37883d25b807fc94e69c2090164e10676c0b2af903"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/haiku-wave2-context.md",
+    "bytes": 249522,
+    "sha256": "e05e32ad0789ace1659fbd90e7ec1a9597caf5cef01d4e3bd0d39e67792ac1df"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/haiku-wave2.json",
+    "bytes": 7850,
+    "sha256": "ad7c732e9adbcade46c47be6b013b47a57fec7b475aca416dfe0ceff8bfacb2d"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/haiku-wave2.md",
+    "bytes": 5973,
+    "sha256": "6aa7342cb90db793895ff1d5ae6ee47cea6f97c6702225063f5ed975d978b57c"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/haiku-wave2.stderr.txt",
+    "bytes": 83,
+    "sha256": "61b1ec1babd05607d61c3c37883d25b807fc94e69c2090164e10676c0b2af903"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/haiku-wave3-context.md",
+    "bytes": 101838,
+    "sha256": "f63848098aa08043065892b0527f9de88d499e8349d90483dbf61b4de6b8a1e4"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/haiku-wave3.json",
+    "bytes": 8778,
+    "sha256": "94800fb3dc0f1e3cfa93653479172a0eeb9c7fce10573af36e05f567e4f54e21"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/haiku-wave3.md",
+    "bytes": 6904,
+    "sha256": "77112dafd2370f835f2f74fce61115e08b79377364cf2cddf04e638791d36612"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/haiku-wave3.stderr.txt",
+    "bytes": 83,
+    "sha256": "61b1ec1babd05607d61c3c37883d25b807fc94e69c2090164e10676c0b2af903"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/haiku-wave4-context.md",
+    "bytes": 107015,
+    "sha256": "ae98529bd3e3d2733efe7c726573f23fbeedf16ad72af1206b184093a360ce88"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/haiku-wave4.json",
+    "bytes": 4970,
+    "sha256": "15424050e1391ef7bc3109b85206f3707ed2e772345ca105eb622e8ad991abeb"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/haiku-wave4.md",
+    "bytes": 3132,
+    "sha256": "ae39c23a12768d9fc6a56f080e901716d95532d1d2df80505acf61d74a4b2b5c"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/haiku-wave4.stderr.txt",
+    "bytes": 83,
+    "sha256": "61b1ec1babd05607d61c3c37883d25b807fc94e69c2090164e10676c0b2af903"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/haiku-wave5-context.md",
+    "bytes": 7744,
+    "sha256": "d5a34d3c7205c2561b4a122c02082765b4c6f6ce440eff36d88402794bc221f9"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/haiku-wave5.json",
+    "bytes": 3261,
+    "sha256": "9e842cca51668bee8028ea82851d0fbb2b49845d9a5d2c2a86d8c5eeeb6375c0"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/haiku-wave5.md",
+    "bytes": 1445,
+    "sha256": "11c1d3bf088bd0df9937865758181d4003272299c8df886b720bcdc4efead8f4"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/haiku-wave5.stderr.txt",
+    "bytes": 83,
+    "sha256": "61b1ec1babd05607d61c3c37883d25b807fc94e69c2090164e10676c0b2af903"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/harness-cancel.json",
+    "bytes": 132,
+    "sha256": "09de346cd16ae78497f8ec93d0049b1b11bbf24faf8685eea716922e22f78f34"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/harness-hooks.jsonl",
+    "bytes": 323,
+    "sha256": "c248cfc5911b1db83104a8e3f235ce628ef8386724b570b129b74f5f31feb9dc"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/host-stage-gates-retry.json",
+    "bytes": 566,
+    "sha256": "1580cbfb585f7b1f26ed4da38ce464e711307575566a279f2df70c1b1aef956b"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/initial-status.txt",
+    "bytes": 4568,
+    "sha256": "6207c8046d23c6f33afc44d8184669cfc14f04cbc294d5d9097c4a9f724824da"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/pilot.py",
+    "bytes": 5203,
+    "sha256": "631b801d34516f506ddd66f0e74a12c9d56294bedb09f3ca5c511965abb6c424"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/pre-wave4-final-build.log",
+    "bytes": 9788,
+    "sha256": "5217f4436f58ff04f724b93a9f52f714e3671a2a98506bc8b81f5c3fdf5bc34f"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/pre-wave4-final-checks.json",
+    "bytes": 741,
+    "sha256": "1e34eabe0ab79bb71a8b2873973306dbac22e4c38e68a3ad0de786090dd7afd8"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/pre-wave4-final-diff.log",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/pre-wave4-final-schemas.log",
+    "bytes": 63,
+    "sha256": "72eede8bd62b3a68d3e094d4aeccda65c0b3de5a92b0843adc8530af2c2cff41"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/pre-wave4-final-startup.log",
+    "bytes": 191,
+    "sha256": "2616f463f8133cdef36403ab140a65d03509d4defd8b77ebc6012550038f8ea1"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/pre-wave4-final-test.log",
+    "bytes": 89150,
+    "sha256": "429ddf1f56a900cfddfed23d4edc4f8e7a33cf5aa4ccf61b147a059a1740bfe5"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/pre-wave4-final-typecheck.log",
+    "bytes": 11492,
+    "sha256": "bad0d68b5082c9ed236dd694172e81d5e3342d130c92786ffb66e77d5bf7bf47"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/queue-index.json",
+    "bytes": 30629,
+    "sha256": "62e92eac5e01c57e33071605a26e222c94be86add859aa2989b9919885c1885c"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/research-plan-before-implementation.txt",
+    "bytes": 17465,
+    "sha256": "0fa4e248c33ab5474ae1c8200c9e5939c0d599a452164df54ae409115b0f54ca"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/retry-stage-gates.json",
+    "bytes": 2423,
+    "sha256": "bc0d1846ce2d5a4c54bb9a92f2537f20107d24d02f23920ee3ae023573d41a41"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/runtime-pilot.json",
+    "bytes": 529,
+    "sha256": "788297e148738a11abe3a9e3178814abc4f4b126811c33e7e65bebd2eea878b7"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/s0-a-loop.json",
+    "bytes": 7364,
+    "sha256": "ad20d9c8746c12258fe709e1dcf0674d61a1183f550069645859c8f1f7708006"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/s0-b-loop.json",
+    "bytes": 7341,
+    "sha256": "adc57047fdd9491cc97c5d78849b948d93899fe65cc3e74252b8931985500f9b"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/s0-c-loop.json",
+    "bytes": 7508,
+    "sha256": "20b3f8ae202ef97335d49d9f68ff28d6cfe2b2c7026fbbffa568a968d7fb45fc"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/s0-d-loop.json",
+    "bytes": 7335,
+    "sha256": "2a03fe5e7c3eed74a693dba8dbbc023549ae01efbbd32f0531572371ccca788b"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/s0-d-loop.stderr.txt",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/s1-a-loop.json",
+    "bytes": 10585,
+    "sha256": "cf6b7fd9d4a712e3043c468e01b2a48fa5267933ccb7ed938fd48a6e8415ba07"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/s1-a-loop.stderr.txt",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/s1-a-retry-enqueue.json",
+    "bytes": 1542,
+    "sha256": "d5b5e9720c913dbcfe6e865f7e3f1418d1db8f06348c06447560da8a4409dd06"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/s1-a-retry-loop.json",
+    "bytes": 12107,
+    "sha256": "2abd90617a2697e01435628567b01237ace7960eff12f30aff618c923db3345d"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/s1-a-retry-loop.stderr.txt",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/s1-b-loop.json",
+    "bytes": 10587,
+    "sha256": "1c5788d72a148878b6914e63b314c737923b538e3ebb824a070c9d66030ba5b9"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/s1-b-loop.stderr.txt",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/s1-b-retry-enqueue.json",
+    "bytes": 1542,
+    "sha256": "82c84eb5d5cee90dd4ede0ca98df8bdc7f9f853b3a2f51446c877ff1e86b53cc"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/s1-b-retry-loop.json",
+    "bytes": 12112,
+    "sha256": "639cb18905657a818d2007fea8f66371c204a09bbde3ac981326364be3239f24"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/s1-b-retry-loop.stderr.txt",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/s1-c-loop.json",
+    "bytes": 10623,
+    "sha256": "8d482ece943a1a05d474dfda8bda3c0c1144dd3d30715833da9f0c29e7f9912a"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/s1-c-loop.stderr.txt",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/s1-c-retry-enqueue.json",
+    "bytes": 1542,
+    "sha256": "a6aec1a3128273179978fac7d52cfddd4d1f1975d67da09d1ff27f0701b988f7"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/s1-c-retry-loop.json",
+    "bytes": 12189,
+    "sha256": "018ef0ad9954060160f028315ad924f459f3d30036ffef90ac05b5d48349c9be"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/s1-c-retry-loop.stderr.txt",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/s1-d-loop.json",
+    "bytes": 10594,
+    "sha256": "d66dcb42776643f64b26cfe568447489210852b141ae2687cb7dda563d215c65"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/s1-d-loop.stderr.txt",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/s1-d-retry-enqueue.json",
+    "bytes": 1542,
+    "sha256": "c4bbc1fa7453e3ba423a78b02715fe97d8bcc832d2e2435dd3efd4743b5bbf66"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/s1-d-retry-loop.json",
+    "bytes": 12121,
+    "sha256": "0b83b3f77625710170ac2d6e79cac0c515001ffd855539095907a4ba7d64b052"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/s1-d-retry-loop.stderr.txt",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/s1-e-loop.json",
+    "bytes": 10580,
+    "sha256": "548144cd7ed3a113d44c327ba29b03807ac33a1a8a0dc1ab1bdd1fc1b5e87b07"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/s1-e-loop.stderr.txt",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/s1-e-retry-enqueue.json",
+    "bytes": 1542,
+    "sha256": "feac531f0c2edc715d1792a97b01f0558dd524a45e0e6ec57fbc19a957561330"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/s1-e-retry-loop.json",
+    "bytes": 12098,
+    "sha256": "ac3230ddc0298c8c4700c5d53738d83100f679b9e91963225bd3beadc7ab3572"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/s1-e-retry-loop.stderr.txt",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/s1-f-loop.json",
+    "bytes": 10612,
+    "sha256": "aa3147a0869ecc9775a1a716c2868c4c4c548721aefad2170f3360d514543082"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/s1-f-loop.stderr.txt",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/s1-f-retry-enqueue.json",
+    "bytes": 1542,
+    "sha256": "1e708d74f3472e851b06164ad26231e7dc1e1bd23aa0aca273cdfcf1011ed772"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/s1-f-retry-loop.json",
+    "bytes": 12162,
+    "sha256": "bea76c084398bf70a2876871b3b228bb407c0700e4c0adbe6b8af0c1bb531a1e"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/s1-f-retry-loop.stderr.txt",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/s1-g-loop.json",
+    "bytes": 10487,
+    "sha256": "f5de1a483138d594eb1c59a0589f2725cae46c348e1294c6feab61e8d50a0192"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/s1-g-loop.stderr.txt",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/s1-g-retry-enqueue.json",
+    "bytes": 1542,
+    "sha256": "1066559fbd975ad16ab3f11ae010ca52867d3d92bfcb814dc58039bdaeb00942"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/s1-g-retry-loop.json",
+    "bytes": 11914,
+    "sha256": "6296a97b491bbf2ca1efb2e7d9da2f35b8b5526e36d7dd9a030b055cc15886c7"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/s1-g-retry-loop.stderr.txt",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/s2-a-loop.json",
+    "bytes": 10589,
+    "sha256": "818d800c805d8ef36ee7db5dd9b91de9bf7e3fcd7aea676713d5dbb1da9e0df5"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/s2-a-loop.stderr.txt",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/s2-a-retry-enqueue.json",
+    "bytes": 1542,
+    "sha256": "a2aaeb18fbad18f56075fddc6b90f2643fa60a2a51bf30bb155755003ff88407"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/s2-a-retry-loop.json",
+    "bytes": 12118,
+    "sha256": "eb95ce7deaac0baf119460d3943594c296c54e1ec3dda63968e393b210c257c7"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/s2-a-retry-loop.stderr.txt",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/s2-b-loop.json",
+    "bytes": 10580,
+    "sha256": "c3ee2c77a93369db92d782429388f6b57228f0eed7f353b8c233b81ed39d337b"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/s2-b-loop.stderr.txt",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/s2-b-retry-enqueue.json",
+    "bytes": 1542,
+    "sha256": "592999c6deaf05f04f30a8f4eeb2692220273eb957c5aaffeb52fb63b23688ad"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/s2-b-retry-loop.json",
+    "bytes": 12098,
+    "sha256": "35e01448ce3d09f81a1c5a07902244186a377fe85f02b2c0c6553b5ba55165d1"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/s2-b-retry-loop.stderr.txt",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/s2-c-loop.json",
+    "bytes": 10589,
+    "sha256": "09c3f979a7fa0a3c7b12bb5801a4dd29f68113aa576fb69082e126f51ed5d83c"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/s2-c-loop.stderr.txt",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/s2-c-retry-enqueue.json",
+    "bytes": 1542,
+    "sha256": "3d352cef42cbde7556e76cee3ddbaf359b7ae792deab5543cf73ada697be7a1a"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/s2-c-retry-loop.json",
+    "bytes": 12118,
+    "sha256": "1f6f8035321bb2769e596987439db58b1488e025123ad4d132f48fd20909af66"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/s2-c-retry-loop.stderr.txt",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/s2-d-loop.json",
+    "bytes": 7265,
+    "sha256": "f4cad6dcf9ad9038e00ce93c9e118a36770be36ec49fc89e3309b442fdbe4642"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/s2-d-loop.stderr.txt",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/s2-e-loop.json",
+    "bytes": 7263,
+    "sha256": "9844002a454a83bcf83bdfb375e0441fb5d18dff42d151e6078a0ca7a084a1fc"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/s2-e-loop.stderr.txt",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/s2-f-loop.json",
+    "bytes": 7248,
+    "sha256": "6087c097ef9adc645932f4483c52216566e888252679dfb7e07c4317ac486750"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/s2-f-loop.stderr.txt",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/s2-g-loop.json",
+    "bytes": 7281,
+    "sha256": "b7b27bdc58080d0e50dc334da433505baf118528dc766a2414a0a01d6b738a34"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/s2-g-loop.stderr.txt",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/s3-a-loop.json",
+    "bytes": 7249,
+    "sha256": "4931875c7603f5775241dfaab87a2b013a825a1d55d17f55f7e57993ae70fc94"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/s3-a-loop.stderr.txt",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/s3-b-loop.json",
+    "bytes": 7259,
+    "sha256": "a017e4092ab0e73822700af09296818ca2c729d18194b800771a7fb7ec0fce5a"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/s3-b-loop.stderr.txt",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/s3-c-loop.json",
+    "bytes": 7259,
+    "sha256": "8176dc8cb75af4223b14ddddb6141c3da28347c108f22c5d9d900512940021bb"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/s3-c-loop.stderr.txt",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/s3-d-loop.json",
+    "bytes": 7251,
+    "sha256": "35f9205bb5f0fdcc8dac2965f4a69790b65b3f82e1f62819db011d3233283037"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/s3-d-loop.stderr.txt",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/sonnet-probe.json",
+    "bytes": 1783,
+    "sha256": "067af4280aacbbe8948e6435611145f6b628aa0c92185b1771581af0498b5d94"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/sonnet-probe.stderr.txt",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/sonnet-wave1-context.md",
+    "bytes": 64089,
+    "sha256": "6e56f1e075c91ef94aef02b4de60574c95b243be8a0706b1192a8531f43648c1"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/sonnet-wave1.json",
+    "bytes": 14118,
+    "sha256": "936ea50ddbdbf4efb86e5c4747cbb268f61cc7c727d35ba46214ba25954c9a35"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/sonnet-wave1.md",
+    "bytes": 12142,
+    "sha256": "79e0024ed820c5ae034a8059aaaf4ecfba26ffb7b044c7a283ad4de26614f2af"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/sonnet-wave1.stderr.txt",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/sonnet-wave2-context.md",
+    "bytes": 218392,
+    "sha256": "25f734dea6d6f58d0433468675ef946f4f80f037e39ba5a6f0dfad2bc05a2455"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/sonnet-wave2.json",
+    "bytes": 14551,
+    "sha256": "2f0df09cc1eb71ebe96476b44ef3c9f1e2b10e2cecc086c20a94c7c7ad7a84ef"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/sonnet-wave2.md",
+    "bytes": 12618,
+    "sha256": "f5d5f280b518c48b225f24de115a956c29349d4b83af7f00ea9f6f01c184c0d2"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/sonnet-wave2.stderr.txt",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/sonnet-wave3-context.md",
+    "bytes": 248613,
+    "sha256": "175b79c48fb58f9571cc72632d5e0cc3c953aa3902abbc1397f4b5d48dc638f9"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/sonnet-wave3.json",
+    "bytes": 8609,
+    "sha256": "7f25dfe22489051ed92bec5f8b859e740013e25379505945469e4d7e65636877"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/sonnet-wave3.md",
+    "bytes": 6713,
+    "sha256": "68328ffc7b64a29c8cec6daf639b81f0505e4ee0e6f0986f5c74a1778be425cd"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/sonnet-wave3.stderr.txt",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/source-manifest.json",
+    "bytes": 9256,
+    "sha256": "9d3670368aceb013a58c9d58b4525944a915fd87dd28a6b2b0cf2dca544a9aaa"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/stage-gates.json",
+    "bytes": 3176,
+    "sha256": "6d2573a48f5a0c4889e999ca7cb172e780809a2eb240975003b7647ed4ece3dc"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/test-counts.json",
+    "bytes": 660,
+    "sha256": "344541a649fceea33b22df43235a3176e541fb99b04915d7b510df228341e4e3"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/verification.json",
+    "bytes": 249,
+    "sha256": "62bea0462625252d820312f136a2d73101d4ac2bae03874749daf5445fa60a15"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development-evidence/verify-evidence.py",
+    "bytes": 2169,
+    "sha256": "6d8ee28ddfe551b9370c17ecc9b6058b5eb7825aa78527b29e600423292b7a0f"
+  },
+  {
+    "path": "docs/reports/2026-10-23-firstmate-development.md",
+    "bytes": 14352,
+    "sha256": "3920e8919f03b3254ed2abfaa5ac49f619aaca716d5c9afc90df977496bf82b0"
+  }
+]

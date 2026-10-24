@@ -21,6 +21,8 @@ describe("generated JSON Schemas are committed and fresh", () => {
         "agent-command.schema.json",
         "approval-decision.schema.json",
         "approval-request.schema.json",
+        "attention-inbox.schema.json",
+        "attention-status.schema.json",
         "autonomy-risk-decision.schema.json",
         "autonomy-risk-level.schema.json",
         "autonomy-run-state.schema.json",

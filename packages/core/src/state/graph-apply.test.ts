@@ -4,7 +4,8 @@ import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type Database from "better-sqlite3";
+import Database from "better-sqlite3";
+import { MIGRATIONS } from "./migrations.js";
 import { openDb } from "./db.js";
 import { GraphRunStore, type GraphRun, type GraphProgramVersion } from "./graph-runs.js";
 import { GraphActionStore, type GraphInvocationRequest } from "./graph-actions.js";
@@ -19,8 +20,7 @@ const fence = (now = 110) => ({ scope, graphRunId: run.graphRunId, expectedGener
 const response = () => ({ schemaVersion: 1 as const, requestDigest: request.requestDigest, responseDigest: "c".repeat(64),
   disposition: "proposal" as const, proposalDigest: "d".repeat(64), evidenceRef: "response", stopEvidenceRef: "stopped" });
 const start = () => { const result = actions.beginInvocation(fence(), key, "execution", request); run = result.run; return result; };
-beforeEach(() => {
-  dir = mkdtempSync(join(tmpdir(), "graph apply-")); db = openDb({ path: join(dir, "state.db") });
+function seedGraph() {
   const runs = new GraphRunStore(db); actions = new GraphActionStore(db);
   run = runs.create({ schemaVersion: 1, kind: "start", scope, idempotencyKey: "start", inputArtifactRef: "input",
     source: { product: "osstack", requestId: "r", parentRunId: "p" }, spec: { schemaVersion: 1, template: "code-delivery-v1", publication: "artifact_only",
@@ -36,6 +36,10 @@ beforeEach(() => {
     baseRevision: "a".repeat(40), treeRevision: "e".repeat(40), programDigest: program.compiledProgramDigest,
     profileDigest: "1".repeat(64), grantDigest: "2".repeat(64), policyDigest: "3".repeat(64), manifestDigest: "4".repeat(64),
     requestDigest: "5".repeat(64), inputArtifactRef: "input", workspaceLeaseRef: "workspace", provider: "fixture", model: "fixture" };
+}
+beforeEach(() => {
+  dir = mkdtempSync(join(tmpdir(), "graph apply-")); db = openDb({ path: join(dir, "state.db") });
+  seedGraph();
 });
 afterEach(() => { if (db.open) db.close(); rmSync(dir, { recursive: true, force: true }); });
 
@@ -204,8 +208,19 @@ it.each(["requestDigest", "proposalDigest", "manifestDigest", "beforeTreeRevisio
 });
 it("upgrades schema38 with an existing request and response without modifying them", () => {
   const original = actions.getInvocation(fence(), key).invocation;
-  db.exec("DROP TABLE graph_apply_resolutions; DROP TABLE graph_apply_intents;"); db.pragma("user_version=38"); db.close();
-  db = openDb({ path: join(dir, "state.db") }); actions = new GraphActionStore(db);
+  db.close();
+  const historicalPath = join(dir, "historical38.db");
+  db = new Database(historicalPath);
+  db.pragma("foreign_keys=ON");
+  db.transaction(() => { for (const m of MIGRATIONS.filter(m => m.id <= 38)) { db.exec(m.sql); db.pragma(`user_version=${m.id}`); } })();
+  db.prepare("ATTACH DATABASE ? AS seeded").run(join(dir, "state.db"));
+  const tables = db.prepare("SELECT name FROM main.sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'").all() as { name: string }[];
+  db.transaction(() => {
+    db.pragma("defer_foreign_keys=ON");
+    for (const { name } of tables) db.exec(`INSERT INTO main."${name}" SELECT * FROM seeded."${name}"`);
+  })();
+  db.exec("DETACH DATABASE seeded"); db.close();
+  db = openDb({ path: historicalPath }); actions = new GraphActionStore(db);
   expect(actions.getInvocation(fence(), key).invocation).toEqual(original);
   expect(actions.getApply(fence(), key).apply).toBeNull(); expect(begin().applyAuthorized).toBe(true);
   expect(db.pragma("foreign_key_check")).toEqual([]);

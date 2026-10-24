@@ -2,9 +2,10 @@
 
 # CLI Commands
 
-Top-level `osstack` commands parsed from `--help` (47 total).
+Top-level `osstack` commands parsed from `--help` (48 total).
 
 - `agent`
+- `attention`
 - `autonomy`
 - `checkpoint`
 - `cockpit`

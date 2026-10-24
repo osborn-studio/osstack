@@ -1,0 +1,44 @@
+[
+  {
+    "command": "pnpm build",
+    "exit_code": 0,
+    "elapsed_s": 6.631,
+    "log": "final-build.log"
+  },
+  {
+    "command": "pnpm typecheck",
+    "exit_code": 0,
+    "elapsed_s": 11.314,
+    "log": "final-typecheck.log"
+  },
+  {
+    "command": "pnpm test",
+    "exit_code": 0,
+    "elapsed_s": 45.783,
+    "log": "final-test.log"
+  },
+  {
+    "command": "pnpm --filter @osstack/protocol check:schemas",
+    "exit_code": 0,
+    "elapsed_s": 0.296,
+    "log": "final-schemas.log"
+  },
+  {
+    "command": "node scripts/bench-cli-startup.mjs",
+    "exit_code": 0,
+    "elapsed_s": 0.63,
+    "log": "final-startup.log"
+  },
+  {
+    "command": "git diff --check",
+    "exit_code": 0,
+    "elapsed_s": 0.016,
+    "log": "final-diff.log"
+  },
+  {
+    "command": "git diff --cached --check",
+    "exit_code": 0,
+    "elapsed_s": 0.015,
+    "log": "final-staged-diff.log"
+  }
+]
