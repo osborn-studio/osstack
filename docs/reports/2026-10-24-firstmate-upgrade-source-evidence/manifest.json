@@ -100,6 +100,21 @@
       "file": "source-lint2.log",
       "bytes": 1821,
       "sha256": "ff622e30b694b41fb8fcf84be6b36bb642691b3103d4f639b56e9c58f53b5b11"
+    },
+    {
+      "file": "source-p1-final-tests.log",
+      "bytes": 458,
+      "sha256": "f844ec86ff6c93aea034a8423e4de421fd2eba72b9936a78874c91132992f570"
+    },
+    {
+      "file": "source-p1-final-typecheck.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "source-p1-final-lint.log",
+      "bytes": 43,
+      "sha256": "bf192a985229029ff79fce61bff2e1bd6432cc5339297b6804e36ac03dbf802d"
     }
   ]
 }

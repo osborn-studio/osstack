@@ -26,6 +26,7 @@ export interface ExecutionContextAdapterOptions {
   adapters: readonly AgentAdapter[]; workspacePath: string; mode?: "off" | "local";
   contractDigest?: string; contractBrief?: string; maxPromptBytes?: number; maxKnowledgeBytes?: number;
   loadContext?: ExecutionContextLoader;
+  validateContextSync?: (entries: readonly ExecutionContextSource[], signal: AbortSignal) => void;
   validateContext?: (entries: readonly ExecutionContextSource[], signal: AbortSignal) => Promise<void>;
   recordReceipt?: (receipt: ExecutionContextReceipt) => Promise<ExecutionContextReceiptReference>;
   nowMs?: () => number;
@@ -98,6 +99,7 @@ export function createExecutionContextAdapters(options: ExecutionContextAdapterO
         if (!Number.isSafeInteger(dispatchAt) || dispatchAt < sampledAt || [...assembly.mandatory, ...assembly.selected].some(row =>
           row.verified_at_ms > dispatchAt || (row.expires_at_ms !== undefined && row.expires_at_ms < dispatchAt)))
           throw new ExecutionContextError("execution_context_expired_before_invoke");
+        if (options.validateContextSync) { const result: unknown = options.validateContextSync(assembly.selected, controller.signal); if (result !== undefined) { void Promise.resolve(result).catch(() => {}); throw new ExecutionContextError("execution_context_async_dispatch_fence"); } }
         active = adapter.invoke({ ...invocation, prompt: assembly.prompt }, controller.signal)[Symbol.asyncIterator]();
         let observed = false;
         while (true) {

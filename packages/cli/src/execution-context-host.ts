@@ -63,6 +63,7 @@ export async function createHostExecutionContext(
     mode: "local",
     loadContext: async (task, scope) => [...await knowledge(task, scope), ...await sources.load(task, scope)],
     validateContext: sources.validate,
+    validateContextSync: sources.validateSync,
     maxPromptBytes: config.max_prompt_bytes,
     maxKnowledgeBytes: config.max_knowledge_bytes,
     ...(input.contractDigest === undefined
