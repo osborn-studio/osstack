@@ -1,9 +1,8 @@
 import type Database from 'better-sqlite3';
 import { execFileSync } from 'node:child_process';
-import { mkdtemp, mkdir, writeFile, readFile, realpath } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
+import { mkdir, writeFile, readFile, realpath } from 'node:fs/promises';
 import { join } from 'node:path';
-import { openDb, CapabilitySchema } from '@osstack/core';
+import { openDb, CapabilitySchema, createScratchDir } from '@osstack/core';
 import { GraphDelegationStatus, type StartGraphRequest } from '@osstack/protocol';
 import { FifoSemaphore } from '@osstack/autonomy';
 import { GraphRpcService, type GraphHostRegistration, type GraphRpcOptions } from './graph-rpc.js';
@@ -19,7 +18,7 @@ interface GraphRpcFixture {
   writes: () => number; abortObserved: () => boolean; grant: (value: boolean) => void; close: () => Promise<void>;
 }
 export async function graphRpcFixture(mode: 'success' | 'repair' | 'cancel' | 'unknown' = 'success'): Promise<GraphRpcFixture> {
-  const root = await realpath(await mkdtemp(join(tmpdir(), 'g22-rpc-'))); const repo = join(root, 'source'); await mkdir(repo);
+  const root = await realpath(await createScratchDir('tests', 'g22-rpc')); const repo = join(root, 'source'); await mkdir(repo);
   git(repo, 'init', '-q'); await writeFile(join(repo, 'answer'), '0\n'); git(repo, 'add', '.'); git(repo, '-c', 'user.name=G22', '-c', 'user.email=g22@invalid', 'commit', '-qm', 'base');
   const db: Database.Database = openDb({ path: join(root, 'control.sqlite') }); let writes = 0; let granted = true; let abortObserved = false;
   const stopped = new Set<string>();
