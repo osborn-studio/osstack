@@ -129,8 +129,19 @@ export async function launchWorkerViewer(options: { home: string; backend: "tmux
   const handoff = join(home, `viewer-handoff-${randomUUID()}.json`);
   const args = viewerLaunchArguments(config, item, handoff);
   const handle = await open(handoff, "wx", 0o600);
-  try { await handle.writeFile(JSON.stringify({ schema_version: 1, expires_at_ms: Date.now() + 60000, reference, duration_ms: durationMs })); await handle.sync(); }
-  finally { await handle.close(); }
+  try {
+    try { await handle.writeFile(JSON.stringify({ schema_version: 1, expires_at_ms: Date.now() + 60000, reference, duration_ms: durationMs })); await handle.sync(); }
+    finally { await handle.close(); }
+    // Inventory, handoff creation and fsync all yield. Rebind authority after that
+    // preparation, before the only operation that can dispatch a viewer.
+    for (const value of [item.executable, config.node, config.cli]) await verifyPin(value);
+    if (hash(await boundedRead(path, 32768, true)) !== hash(bytes) || await checkSocket() !== socketIdentity) throw Error("viewer_configuration_changed");
+  } catch (error) {
+    // No launcher has seen this capability. Preparation failure is a rejection,
+    // not ambiguous delivery, and its unconsumed authority must be removed.
+    await unlink(handoff);
+    throw error;
+  }
   // Unknown launch retains the expiring handoff because a delayed child may still consume it.
 
   try {
@@ -151,7 +162,7 @@ export async function launchWorkerViewer(options: { home: string; backend: "tmux
 export async function handleWorkerViewerLaunchCommand(args: string[], deps: { home: string;
   inspect: Parameters<typeof launchWorkerViewer>[0]["inspect"]; out?: (text: string) => void; run?: Run }): Promise<number> {
   const out = deps.out ?? console.log;
-  if (args.length === 1 && ["help", "--help"].includes(args[0]!)) {
+  if (args.length === 1 && ["help", "--help"].includes(args[0]!) || args.length === 2 && args[0] === "open" && ["help", "--help"].includes(args[1]!)) {
     out("worker open VIEW_ID --backend tmux|cmux --repo ABSOLUTE_PATH --default-tenant [--duration-ms 1000..900000]\nUses fixed private viewer-backends.json; opens a read-only observer. Never focuses, reuses, closes or controls workers."); return 0;
   }
   try {

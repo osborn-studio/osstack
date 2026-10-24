@@ -2,10 +2,18 @@ import { createHash } from "node:crypto";
 import { chmod, mkdir, readFile, readdir, realpath, rm, writeFile } from "node:fs/promises";
 import { createServer } from "node:net";
 import { join } from "node:path";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { createScratchDir } from "@osstack/core";
-import { consumeViewerHandoff, launchWorkerViewer, viewerLaunchArguments, ViewerHostConfigSchema } from "./worker-viewer-launch.js";
-const cleanup: (() => Promise<void>)[] = []; afterEach(async () => { for (const run of cleanup.splice(0).reverse()) await run(); });
+import { consumeViewerHandoff, handleWorkerViewerLaunchCommand, launchWorkerViewer, viewerLaunchArguments, ViewerHostConfigSchema } from "./worker-viewer-launch.js";
+const intercepted = vi.hoisted(() => ({ beforeOpendir: undefined as (() => Promise<void>) | undefined }));
+vi.mock("node:fs/promises", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("node:fs/promises")>();
+  return { ...actual, opendir: async (...args: Parameters<typeof actual.opendir>) => {
+    await intercepted.beforeOpendir?.();
+    return actual.opendir(...args);
+  } };
+});
+const cleanup: (() => Promise<void>)[] = []; afterEach(async () => { intercepted.beforeOpendir = undefined; for (const run of cleanup.splice(0).reverse()) await run(); });
 const sha = (text: string) => createHash("sha256").update(text).digest("hex");
 async function fixture(kind: "tmux" | "cmux" = "tmux") {
   const root = await realpath(await createScratchDir("tests", "viewer-launch")); cleanup.push(() => rm(root, { recursive: true, force: true }));
@@ -26,6 +34,22 @@ async function fixture(kind: "tmux" | "cmux" = "tmux") {
   return { root, home, program, config, configPath, reference, response };
 }
 describe("host pinned viewer launch", () => {
+  it("rejects registry revocation during handoff inventory without dispatch or leftover authority", async () => {
+    const f = await fixture(); const output: string[] = []; let calls = 0;
+    intercepted.beforeOpendir = async () => { await writeFile(f.configPath, "{}"); };
+    const code = await handleWorkerViewerLaunchCommand(["open", f.reference.view_id, "--backend", "tmux", "--repo", f.root, "--default-tenant"], {
+      home: f.home, inspect: async () => f.response, out: text => output.push(text),
+      run: async () => { calls++; return "pinned-version"; },
+    });
+    expect(code).toBe(1); expect(JSON.parse(output[0]!)).toMatchObject({ state: "rejected", auto_retry: false });
+    expect(calls).toBe(1); expect(await readdir(f.home)).toEqual(["viewer-backends.json"]);
+  });
+  it("serves natural worker open help without inspecting or launching", async () => {
+    const output: string[] = [];
+    const code = await handleWorkerViewerLaunchCommand(["open", "--help"], { home: "/nonexistent", out: text => output.push(text),
+      inspect: async () => { throw Error("must not inspect"); }, run: async () => { throw Error("must not run"); } });
+    expect(code).toBe(0); expect(output[0]).toContain("worker open VIEW_ID");
+  });
   it("launches only a new detached read-only tmux viewer via argv", async () => {
     const f = await fixture(); const calls: string[][] = [];
     const result = await launchWorkerViewer({ home: f.home, backend: "tmux", reference: f.reference, inspect: async () => f.response,

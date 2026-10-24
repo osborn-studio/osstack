@@ -223,15 +223,19 @@ function renderChineseMainHelp(): string {
   stats               查看 agent 与 loop 指标
 
 项目命令：
-  remote-home inspect  Read a pinned remote home snapshot over fixed SSH export
+  remote-home inspect|cancel|query|issue-cancel-grant  远程只读快照、精确授权取消与回执查询
+  remote-control --stdio  宿主私有配置启用的远程取消通道
   homes inspect --manifest <file>  只读盘点显式登记的本地实例
   homes plan-upgrade|upgrade-status  多实例升级计划与只读状态
-  sources inspect      查看宿主登记且固定摘要的本地数据源
+  homes prepare-managed-installation|apply-upgrade|reconcile-upgrade  宿主授权的原生升级
+  sources inspect|observe|events|acknowledge  固定来源快照、持久观察与授权确认
+  scout inspect|promote  只读勘察与显式启动新的受控交付
   follow-up-delivery   授权交付账本（默认无外部传输）
   follow-up           本地承诺账本（不对外发送）
   worker list|inspect|watch|open --repo <path> --default-tenant  只读查看已绑定执行器
+  worker logs --grant-file <file>  凭独立授权只读查看持久输出
   attention status    只读查看任务状态与最新决策（未后台接管）
-  attention routing-eval --input <path> --mode router_golden  验证真实确定性路由
+  attention routing-eval --input <path> --mode router_golden|paired_holdout  路由评估与配对留出比较
   graph               图执行 validate/run/status/cancel/resume；explain 只读关系诊断
   doctor              检查 workspace、loop、agent 与下一步建议
   examples            输出可直接运行的工作流示例
@@ -395,9 +399,31 @@ export async function main(args = process.argv.slice(2)): Promise<number> {
     const {handleRemoteExportCommand} = await import("./remote-home-exporter.js");
     return handleRemoteExportCommand(args.slice(1));
   }
+  if (cmd === "remote-control") {
+    const {handleRemoteControlExportCommand} = await import("./remote-cancel-exporter.js");
+    return handleRemoteControlExportCommand(args.slice(1));
+  }
   if (cmd === "remote-home") {
+    const sub = args[1];
+    if (!sub || (args.length === 2 && ["help", "--help", "-h"].includes(sub))) {
+      const [read, cancel, issuer] = await Promise.all([
+        import("./remote-home-command.js"), import("./remote-cancel-client.js"), import("./remote-cancel-issuer.js"),
+      ]);
+      process.stdout.write(`${read.REMOTE_HOME_HELP}\n${cancel.REMOTE_CANCEL_HELP}\n${issuer.REMOTE_CANCEL_ISSUER_HELP}`);
+      return 0;
+    }
+    if (["cancel", "query", "issue-cancel-grant"].includes(sub)) {
+      // These commands use the selected local private home for grants/journals; the stdio exporter above never does.
+      if (!(args.length === 3 && args[2] === "--help")) applyDeployedEnvDefaults();
+      if (sub === "issue-cancel-grant") {
+        const {handleRemoteCancelIssuerCommand} = await import("./remote-cancel-issuer.js");
+        return handleRemoteCancelIssuerCommand(args.slice(1), {home: osstackHome()});
+      }
+      const {handleRemoteCancelCommand} = await import("./remote-cancel-client.js");
+      return handleRemoteCancelCommand(args.slice(1), {home: osstackHome()});
+    }
     const {handleRemoteHomeCommand} = await import("./remote-home-command.js");
-    return handleRemoteHomeCommand(args.slice(1));
+    return handleRemoteHomeCommand(sub === "inspect" && args.length === 3 && args[2] === "--help" ? ["--help"] : args.slice(1));
   }
 
   // Talk to the daemon that is actually deployed. Without this, a plain shell
@@ -444,14 +470,19 @@ Self-update:
                       and roll back automatically on failure.
 
 Project commands:
+  remote-home inspect|cancel|query|issue-cancel-grant  Pinned remote reads and exact authorized cancellation
+  remote-control --stdio  Host-configured signed remote cancellation exporter
   homes inspect --manifest <file>  Inspect explicitly pinned local home identities
   homes plan-upgrade|upgrade-status  Plan multi-home upgrades and inspect the journal
-  sources inspect      Inspect a host-registered pinned local source
+  homes prepare-managed-installation|apply-upgrade|reconcile-upgrade  Host-authorized native upgrades
+  sources inspect|observe|events|acknowledge  Pinned snapshots, persistent observations and exact approvals
+  scout inspect|promote  Read-only scouting and explicit fresh guarded delivery
   follow-up-delivery   Manage authorized delivery attempts (no transport by default)
   follow-up           Manage local obligations and unsent drafts
   worker list|inspect|watch|open --repo <path> --default-tenant  Inspect bound workers read-only
+  worker logs --grant-file <file>  Read persisted output with a separate content grant
   attention status    Read-only task/session attention snapshot
-  attention routing-eval --input <path> --mode router_golden  Validate real deterministic routing
+  attention routing-eval --input <path> --mode router_golden|paired_holdout  Router evaluation and paired holdout comparison
   graph               Executable delivery graphs and read-only explain (graph --help)
   doctor [--workspace P] [--daemon] [--json]
                       Product readiness check: loop + agents + next steps
@@ -1027,12 +1058,25 @@ See docs/V2_REFACTOR_PLAN.md for the full roadmap.
     }});
   }
   if (cmd === "sources") {
-    const {handleLocalSourceCommand} = await import("./local-source-command.js");
-    return await handleLocalSourceCommand(args.slice(1), {rpc:async (method,params,timeout,signal)=>{
+    const sub = args[1];
+    if (!sub || (args.length === 2 && ["help", "--help", "-h"].includes(sub))) {
+      const [inspect, observations] = await Promise.all([
+        import("./local-source-command.js"), import("./source-observation-command.js"),
+      ]);
+      process.stdout.write(`${inspect.LOCAL_SOURCE_HELP}\n${observations.SOURCE_OBSERVATION_HELP}`);
+      return 0;
+    }
+    const sourceRpc = async (method:string,params:unknown,timeout:number,signal:AbortSignal) => {
       if (signal.aborted) throw Error("source_unavailable");
       const response=await rpc(method,params,timeout) as {ok?:boolean;result?:unknown;error?:{code?:string}};
       if (signal.aborted || !response.ok) throw Error("source_unavailable");return response.result;
-    }});
+    };
+    if (["observe", "events", "acknowledge"].includes(sub)) {
+      const {handleSourceObservationCommand} = await import("./source-observation-command.js");
+      return handleSourceObservationCommand(args.slice(1), {rpc:sourceRpc});
+    }
+    const {handleLocalSourceCommand} = await import("./local-source-command.js");
+    return handleLocalSourceCommand(sub === "inspect" && args.length === 3 && args[2] === "--help" ? ["--help"] : args.slice(1), {rpc:sourceRpc});
   }
   if (cmd === "homes") {
     if (["prepare-managed-installation", "apply-upgrade", "reconcile-upgrade"].includes(args[1] ?? "")) {

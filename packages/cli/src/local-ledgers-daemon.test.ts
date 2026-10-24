@@ -317,6 +317,9 @@ it("exercises the default exported provider without credentials and fails as not
   vi.stubEnv("ANTHROPIC_API_KEY", "");
   vi.stubEnv("ANTHROPIC_BASE_URL", "");
   const f = await fixture(true, true);
+  // Native pinned-binary preparation is real disk I/O; this test targets missing
+  // credentials, while separate tests cover the short preflight deadline.
+  vi.stubEnv("OSSTACK_ATTENTION_TRIAGE_TIMEOUT_MS", "5000");
   const request = await watched(f.repo);
   expect(await rpc("attention.triage", request)).toMatchObject({
     ok: true,
@@ -589,6 +592,28 @@ it("inspects a pinned snapshot through the real daemon and main CLI and honors l
     state: "ready",
     scope: { repo_path: repo, tenant: "default" },
   });
+  output.length = 0;
+  expect(await main(["sources", "observe", "notes", "--repo", repo, "--default-tenant", "--json"])).toBe(0);
+  expect(JSON.parse(output.join(""))).toMatchObject({observation:{state:"ready",record_revision:1}});
+  output.length = 0;
+  expect(await main(["sources", "events", "notes", "--repo", repo, "--default-tenant", "--json"])).toBe(0);
+  expect(JSON.parse(output.join(""))).toMatchObject({history_gap:false,events:[{transition:"snapshot_baseline"}]});
+  const gapContent = JSON.stringify({...JSON.parse(content), revision:4});
+  const gapManifest = {...manifest};
+  await writeFile(join(data,"notes.json"),gapContent);
+  await writeFile(config,JSON.stringify({schema_version:1,registrations:[{source_root:data,manifest:gapManifest,
+    manifest_digest:localSourceManifestDigest(gapManifest),content_digest:createHash("sha256").update(gapContent).digest("hex")}]}));
+  const observedGap = await rpc("source.observe",{...scope,source_id:"notes"});
+  expect(observedGap).toMatchObject({ok:true,result:{observation:{state:"gap"}}});
+  expect(await rpc("source.acknowledge",{...scope,source_id:"notes",grant_id:"repair"})).toMatchObject({ok:false});
+  const record = (observedGap.result!.observation as {record_revision:number}).record_revision;
+  await writeFile(join(root!,"source-acknowledgements.json"),JSON.stringify({schema_version:1,grants:[{id:"repair",
+    scope:{repo_path:repo,source_id:"notes",default_tenant:true},generation:"1",revision:4,
+    manifest_digest:localSourceManifestDigest(gapManifest),content_digest:createHash("sha256").update(gapContent).digest("hex"),
+    expected_record_revision:record,expires_at_ms:Date.now()+30000}]}),{mode:0o600});
+  output.length = 0;
+  expect(await main(["sources","acknowledge","notes","--repo",repo,"--default-tenant","--grant","repair","--json"])).toBe(0);
+  expect(JSON.parse(output.join(""))).toMatchObject({observation:{state:"ready"}});
   await writeFile(
     config,
     JSON.stringify({ schema_version: 1, registrations: [] }),

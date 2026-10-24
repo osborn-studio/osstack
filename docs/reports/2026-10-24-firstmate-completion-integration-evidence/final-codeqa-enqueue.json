@@ -1,0 +1,10 @@
+{
+  "task": {
+    "task_id": "firstmate-final-codeqa",
+    "capability": "code.verify",
+    "prompt": "Verify the fixed integrated Firstmate completion source through eight local build, typecheck, full test, lint, schema, inventory and startup gates. Final Claude audit and external qualification are separately pending and are not asserted by this task.",
+    "priority": 50,
+    "source": "task_queue"
+  },
+  "path": "/Volumes/AIMATE_WORK/tmp/osstack/smoke/firstmate-completion-20261024/queue/tasks/firstmate-final-codeqa.json"
+}

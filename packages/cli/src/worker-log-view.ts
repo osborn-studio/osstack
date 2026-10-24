@@ -56,7 +56,7 @@ export async function inspectWorkerLogs(db: Database.Database, home: string, raw
 }
 export async function handleWorkerLogCommand(args:string[],deps:{rpc:(params:z.infer<typeof WorkerLogParams>)=>Promise<unknown>;out?:(value:string)=>void}){
   const out=deps.out??console.log;
-  if(args.length===1 && args[0]==="--help") {out("worker logs --grant-file PRIVATE_FILE [--before-ordinal N]\nSeparate host content grant; bounded persisted assistant output, not live process stdout. No worker controls.");return 0;}
+  if((args.length===1 && args[0]==="--help") || (args.length===2 && args[0]==="logs" && args[1]==="--help")) {out("worker logs --grant-file PRIVATE_FILE [--before-ordinal N]\nSeparate host content grant; bounded persisted assistant output, not live process stdout. No worker controls.");return 0;}
   try{
     if(args[0]!=="logs" || ![3,5].includes(args.length) || args[1]!=="--grant-file" || !args[2])throw Error();
     if(args.length===5 && (args[3]!=="--before-ordinal" || !/^[1-9][0-9]*$/.test(args[4]!)))throw Error();

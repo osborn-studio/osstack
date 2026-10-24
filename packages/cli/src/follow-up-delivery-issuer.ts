@@ -53,7 +53,7 @@ export async function handleFollowUpDeliveryIssuerCommand(
       ((text) => {
         process.stderr.write(text);
       });
-  if (args.length === 1 && args[0] === "--help") {
+  if ((args.length === 1 && args[0] === "--help") || (args.length === 2 && args[0] === "issue-grant" && args[1] === "--help")) {
     out(FOLLOW_UP_DELIVERY_ISSUER_HELP);
     return 0;
   }

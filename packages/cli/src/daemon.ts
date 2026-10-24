@@ -178,6 +178,8 @@ interface DaemonContext {
   followUpDelivery?: import("@osstack/core").FollowUpDeliveryService;
   followUpDeliveryOptions?: import("@osstack/core").FollowUpDeliveryOptions;
   followUpDeliveryPending?: Set<Promise<unknown>>;
+  sourceObservations?: import("./source-observation-host.js").HostSourceObservationService;
+  sourceObservationPending?: Map<AbortController, Promise<unknown>>;
   localSources?: ReturnType<typeof import("./local-data-source-registry.js").createHostLocalDataSourceService>;
   attentionTriage?: Promise<import("./attention-triage.js").AttentionTriageService>;
   attentionTriageProviderFactory?: () => Promise<import("./attention-triage.js").AttentionTriageProvider>;
@@ -1115,6 +1117,25 @@ async function getAttentionTriage(ctx: DaemonContext) {
 }
 
 async function handleSingle(ctx: DaemonContext, req: DaemonRequest): Promise<SingleResponse | null> {
+  if (["source.observe", "source.events", "source.acknowledge"].includes(req.method)) {
+    if (ctx.draining) return singleErr(req.id, "draining", "Daemon is draining");
+    ctx.sourceObservationPending ??= new Map();
+    if (ctx.sourceObservationPending.size >= 4) return singleErr(req.id, "source_busy", "Source request limit reached");
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 2000);
+    const pending = (async () => {
+      const { createHostSourceObservationService } = await import("./source-observation-host.js");
+      const { handleSourceObservationRpc } = await import("./source-observation-command.js");
+      if (ctx.draining || controller.signal.aborted) throw Error("source_unavailable");
+      ctx.sourceObservations ??= createHostSourceObservationService(dirname(ctx.dbPath));
+      return handleSourceObservationRpc(req.method as "source.observe" | "source.events" | "source.acknowledge",
+        req.params, ctx.sourceObservations, controller.signal);
+    })();
+    ctx.sourceObservationPending.set(controller, pending);
+    try { return singleOk(req.id, await pending); }
+    catch { return singleErr(req.id, "source_unavailable", "Source observation unavailable"); }
+    finally { clearTimeout(timer); ctx.sourceObservationPending.delete(controller); }
+  }
   if (req.method === "source.inspect") {
     if (ctx.draining) return singleErr(req.id,"draining","Daemon is draining");
     try {
@@ -4370,6 +4391,8 @@ export async function startDaemon(
         if (healthMonitor !== undefined) clearInterval(healthMonitor);
         shutdownPromise = (async () => {
           ctx.draining = true;
+          for (const controller of ctx.sourceObservationPending?.keys() ?? []) controller.abort();
+          await Promise.allSettled([...(ctx.sourceObservationPending?.values() ?? [])]);
           await ctx.attentionTriage?.then(service => service.stop()).catch(() => undefined);
           await ctx.supervision?.stop();
           await Promise.allSettled([...(ctx.followUpDeliveryPending ?? [])]);
