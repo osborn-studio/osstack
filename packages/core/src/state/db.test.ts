@@ -509,3 +509,46 @@ describe("graph ledger migration 29", () => {
     } finally { check.close(); }
   });
 });
+
+describe("attention run event cursor migration", () => {
+  it("upgrades genuine schema 41 and retains observations and cursors across reopen", () => {
+    const path = join(tmp, "attention-41.db");
+    const old = new Database(path);
+    for (const m of MIGRATIONS.filter(m => m.id <= 41)) old.exec(m.sql);
+    old.pragma("user_version = 41");
+    old.prepare("INSERT INTO tasks(task_id,title,status,created_at,updated_at) VALUES('legacy','Retain me','running',1,1)").run();
+    old.prepare("INSERT INTO attention_scopes(scope_id,task_id,repo_path,generation) VALUES('scope','legacy','/canonical/repo',1)").run();
+    old.prepare("INSERT INTO attention_subjects(scope_id,kind,subject_id,binding_hash,source_version,discovered_at,sampled_at,generation,payload_json) VALUES('scope','run','run','binding',1,1,1,1,'{}')").run();
+    old.close();
+    const first = openDb({path});
+    try {
+      first.prepare("INSERT INTO attention_run_cursors(scope_id,run_id,binding_hash,last_seq,through_seq,last_event_hash,gap,facts_json,generation,updated_at) VALUES('scope','run','binding',2,5,'hash','history_gap','{}',1,10)").run();
+      expect(first.prepare("SELECT title FROM tasks WHERE task_id='legacy'").get()).toEqual({title:"Retain me"});
+      expect(first.prepare("SELECT subject_id FROM attention_subjects").get()).toEqual({subject_id:"run"});
+    } finally { first.close(); }
+    const second = openDb({path});
+    try {
+      expect(second.prepare("SELECT last_seq,through_seq,gap FROM attention_run_cursors").get()).toEqual({last_seq:2,through_seq:5,gap:"history_gap"});
+      expect(second.pragma("integrity_check", {simple:true})).toBe("ok");
+      // Source deletion must not erase the preserved observation evidence.
+      second.prepare("DELETE FROM attention_scopes WHERE scope_id='scope'").run();
+      expect(second.prepare("SELECT COUNT(*) n FROM attention_run_cursors").get()).toEqual({n:1});
+    } finally { second.close(); }
+  });
+});
+
+it("rolls back a conflicting cursor migration without changing schema 41 facts", () => {
+  const path = join(tmp, "attention-42-conflict.db");
+  const old = new Database(path);
+  for (const m of MIGRATIONS.filter(m => m.id <= 41)) old.exec(m.sql);
+  old.pragma("user_version = 41");
+  old.exec("CREATE VIEW attention_run_cursors AS SELECT 1 AS preserved");
+  old.close();
+  expect(() => openDb({path})).toThrow(/already exists/);
+  const check = new Database(path, {readonly:true});
+  try {
+    expect(check.pragma("user_version", {simple:true})).toBe(41);
+    expect(check.prepare("SELECT preserved FROM attention_run_cursors").get()).toEqual({preserved:1});
+    expect(check.pragma("integrity_check", {simple:true})).toBe("ok");
+  } finally { check.close(); }
+});

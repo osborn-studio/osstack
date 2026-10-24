@@ -1,0 +1,46 @@
+{
+  "base": "16f37b07",
+  "branch": "codex/firstmate-worker-view",
+  "osstack_home": "/Volumes/AIMATE_WORK/tmp/osstack/smoke/pr237-integration/worker-view-next/home",
+  "checks": [
+    {
+      "check": "regression",
+      "command": [
+        "pnpm",
+        "--filter",
+        "@osstack/cli",
+        "exec",
+        "vitest",
+        "run",
+        "src/worker-view-service.test.ts",
+        "src/worker-view-command.test.ts",
+        "src/attention-read-model.test.ts",
+        "src/attention-dashboard.test.ts"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 1.817
+    },
+    {
+      "check": "typecheck",
+      "command": [
+        "pnpm",
+        "--filter",
+        "@osstack/cli",
+        "typecheck"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 1.53
+    },
+    {
+      "check": "build",
+      "command": [
+        "pnpm",
+        "--filter",
+        "@osstack/cli",
+        "build"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.533
+    }
+  ]
+}

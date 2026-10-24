@@ -1,0 +1,1059 @@
+Independent final adversarial review of supplied OSStack code delta. No tools. Prior round identified authority mismatch and receipt resolution enum; now both fixed. Returned JS payload is capped, NOT SQLite physical I/O or latency. Older schemas retain delivery_unknown. Report confirmed remaining P0/P1/P2 with exact evidence, no hypothetical API claims. Do not run skills. Tests are evidence only not a proof.
+
+Previous review:
+{"duration_api_ms":228911,"stop_reason":"end_turn","session_id":"8fca1ca5-1c5d-4184-a07e-db94ea35afff","total_cost_usd":0.38299025000000003,"usage":{"input_tokens":4,"cache_creation_input_tokens":21749,"cache_read_input_tokens":30813,"output_tokens":7536,"output_tokens_details":{"thinking_tokens":6586},"server_tool_use":{"web_search_requests":0,"web_fetch_requests":0},"service_tier":"standard","cache_creation":{"ephemeral_1h_input_tokens":21749,"ephemeral_5m_input_tokens":0},"inference_geo":"global","iterations":[{"input_tokens":2,"output_tokens":7528,"cache_read_input_tokens":26281,"cache_creation_input_tokens":0,"cache_creation":{"ephemeral_5m_input_tokens":0,"ephemeral_1h_input_tokens":0},"type":"message"}],"speed":"standard","fallback_credit":null},"modelUsage":{"claude-haiku-5-5":{"inputTokens":2,"outputTokens":7528,"cacheReadInputTokens":26281,"cacheCreationInputTokens":0,"webSearchRequests":0,"costUSD":0.38299025000000003,"contextWindow":200000,"maxOutputTokens":128000,"thinkingTokens":6586,"canonicalModel":"claude-haiku-5-5","provider":"firstParty","costBasis":"unknown"}},"permission_denials":[],"terminal_reason":"completed","fast_mode_state":"off","fast_mode_disabled_reason":"sdk_opt_in_required","subagent_stats":{"spawned":0,"requested":{"background":0,"foreground":0,"unset":0},"started_in_background":0,"max_depth":0,"spawned_by_subagents":0,"completed":0,"failed":0,"killed":{"parent":0,"user":0,"system":0},"refused":{"depth_limit":0,"concurrency_limit":0,"budget":0},"by_type":{}},"is_error":false,"num_turns":1,"subtype":"success","api_error_status":null,"result":"**Confirmed fixes**\n\n- **Replay byte budget (`run-store.ts`):** The running `SUM` over `seq` is monotone, so `total_bytes<=65536` selects a prefix. Oversized rows add 0 bytes and return `NULL` payload. Any single row of 65536 bytes or less always fits, so each tick makes progress.\n- **Worker reconciliation (`worker-view-service.ts`):** Schema >= 41 excludes messages with a matching `attention_receipt_resolutions` row. `uncertain_delivery` stays unchanged, so history is retained. Terminal state still returns `none`.\n- **Test coverage:** The new run-store and worker-view tests cover the reconciliation and page-byte cases. I did not run them in this no-tools audit.\n\n**Residual issues**\n\n1. **Authority status is read but not compared (`attention-run-projection.ts`, `reduce`).** The `approvals`/`clarifies` query selects `status` into `row`, but only `!row` is checked. A `*.resolved` event with a status that contradicts the authority row is accepted with no gap. This conflicts with the stated rule that conflicting authority echoes retain a gap. Compare the event status with `row.status` and record a gap on mismatch.\n2. **`choice` and `answer` are not validated.** `reduce` checks only `payload.status` for resolved events. It does not require `choice` on `approval.resolved` or `answer` on `clarify.resolved`, and it does not check that `choice` is in the requested choices. The Zod schemas in `events.ts` are not used on this path, so the stated enforcement does not hold here.\n3. **Any resolution row clears the worker wait (`worker-view-service.ts`, `projection`).** The `NOT EXISTS` clause matches on `message_id` and `session_id` only, not on the resolution's status. If the table can hold non-terminal values, a row like that would clear `delivery_unknown` incorrectly. Bind the clause to the reconciled statuses, such as `abandoned_unknown`.\n4. **Per-tick byte bound is incomplete.** `length(CAST(payload_json AS BLOB))` in the metadata CTE likely reads the full value, including overflow pages, for up to 200 rows per subject. Unless `events.payload_json` is size-capped at write time, that cost is not covered by the 12.5 MiB figure. Check for an ingest cap.\n5. **Pre-41 wait semantics are inconsistent with the prose.** For schema < 41, `unresolved_delivery` equals `uncertain_delivery`, so an uncertain message yields `delivery_unknown`, not `unknown`. The behavior may be intended, but the description and code should match.\n\nItems 1 and 2 are the most important. Item 1 directly contradicts the stated binding invariant.","ttft_ms":228949,"type":"result","duration_ms":228956,"uuid":"c8ec98d0-0a38-4830-8f06-da213e94ee62","ttft_stream_ms":1477,"time_to_request_ms":45,"first_content_frame_ms":1477,"queued_turn_count":0,"result_index":0}
+
+
+FILE packages/core/src/state/attention-run-projection.ts
+import { attentionDigest, type AttentionOwner, type AttentionScope, type AttentionStore } from "./attention-store.js";
+import { readRunEventPage, type BoundedRunEvent } from "./run-store.js";
+
+interface Cursor {
+  binding_hash: string;
+  last_seq: number;
+  through_seq: number;
+  last_event_hash: string | null;
+  gap: string | null;
+  facts_json: string;
+}
+interface Run {
+  run_id: string;
+  task_id: string;
+  session_id: string;
+  agent_id: string;
+  capability_id: string;
+  started_at: number;
+  phase: string;
+  outcome: string | null;
+  task_created_at: number;
+}
+interface Observed {
+  observed_status: string | null;
+  unsupported_events: number;
+}
+const statuses = new Set(["queued", "running", "awaiting_approval", "awaiting_clarify", "paused",
+  "cancelling", "cancelled", "failed", "completed", "expired"]);
+const informational = new Set(["token.delta", "reasoning.delta", "reasoning.done", "progress", "tool.started",
+  "tool.updated", "tool.done", "title.updated", "usage.updated", "usage.final"]);
+function hash(event: BoundedRunEvent): string {
+  return attentionDigest([event.event_id, event.run_id, event.session_id, event.seq, event.type,
+    event.created_at, event.terminal, event.payload_bytes, event.payload_json]);
+}
+function object(json: string): Record<string, unknown> | null {
+  try {
+    const value: unknown = JSON.parse(json);
+    return value !== null && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : null;
+  } catch { return null; }
+}
+function reduce(event: BoundedRunEvent, state: Observed, store: AttentionStore): string | null {
+  if (event.payload_json === null) return "oversized_event_payload";
+  if (!event.event_id || event.event_id.length > 4096 || !event.session_id || event.session_id.length > 4096
+    || !event.type || event.type.length > 256 || !Number.isFinite(event.created_at)
+    || ![0, 1].includes(event.terminal)) return "invalid_event_envelope";
+  const payload = object(event.payload_json);
+  if (!payload) return "invalid_event_payload";
+  if (["status", "run.started", "done"].includes(event.type)) {
+    if (typeof payload.status !== "string" || !statuses.has(payload.status)
+      || (event.type === "run.started" && payload.status !== "running")
+      || (event.type === "done" && (!event.terminal || !["completed", "failed", "cancelled", "expired"].includes(payload.status)
+        || !Number.isSafeInteger(payload.last_seq) || (payload.last_seq as number) < 0 || (payload.last_seq as number) > event.seq)))
+      return "invalid_event_payload";
+    state.observed_status = payload.status;
+  } else if (event.type.startsWith("approval.") || event.type.startsWith("clarify.")) {
+    const approval = event.type.startsWith("approval.");
+    const family = approval ? "approval" : "clarify";
+    if (![`${family}.requested`, `${family}.resolved`].includes(event.type)) {
+      state.unsupported_events++;
+      return null;
+    }
+    const id = payload[`${family}_id`];
+    if (typeof id !== "string" || !id || id.length > 4096) return "invalid_event_payload";
+    // Authority stays with the original approval/clarify tables. Events never
+    // grant permission or synthesize a Session answer/action.
+    const table = approval ? "approvals" : "clarifies";
+    const row = store.db.prepare(`SELECT status FROM ${table} WHERE ${family}_id=? AND run_id=?`)
+      .get(id, event.run_id) as { status: string } | undefined;
+    if (!row) return "authority_reference_missing";
+    if (event.type.endsWith(".resolved") && (typeof payload.status !== "string"
+      || !(approval ? ["accepted", "rejected", "timed_out"] : ["answered", "timed_out", "abandoned"]).includes(payload.status)))
+      return "invalid_event_payload";
+    if (event.type.endsWith(".resolved")) {
+      const field = approval ? "choice" : "answer";
+      if (typeof payload[field] !== "string") return "invalid_event_payload";
+      const matches = store.db.prepare(`SELECT 1 FROM ${table} WHERE ${family}_id=? AND run_id=? AND status=? AND ${field} IS ?`)
+        .get(id, event.run_id, payload.status, payload[field]);
+      if (!matches) return "authority_resolution_mismatch";
+    }
+  } else if (event.type === "error") {
+    if (typeof payload.code !== "string" || typeof payload.terminal !== "boolean") return "invalid_event_payload";
+    if (payload.terminal) state.observed_status = "unknown";
+  } else if (!informational.has(event.type)) state.unsupported_events++;
+  return null;
+}
+
+/** One bounded retained-log page. Projection and cursor share the owner-fenced
+ * transaction; it never invokes an adapter, resolves an approval, or pins history. */
+export function projectAttentionRun(store: AttentionStore, owner: AttentionOwner,
+  scope: AttentionScope, runId: string, now: number): void {
+  if (!Number.isFinite(now)) throw new Error("invalid_clock");
+  store.write(owner, () => {
+    const persistedScope = store.getScope(scope.scope_id);
+    if (!persistedScope || persistedScope.task_id !== scope.task_id || persistedScope.repo_path !== scope.repo_path)
+      throw new Error("attention_scope_conflict");
+    const subject = store.db.prepare("SELECT admitted,binding_hash FROM attention_subjects WHERE scope_id=? AND kind='run' AND subject_id=?")
+      .get(scope.scope_id, runId) as { admitted: number; binding_hash: string } | undefined;
+    if (!subject?.admitted) throw new Error("run_not_admitted");
+    if (subject.binding_hash !== attentionDigest([scope.scope_id, "run", runId])) throw new Error("run_subject_binding_conflict");
+    const task = store.db.prepare("SELECT created_at FROM tasks WHERE task_id=? AND tenant_id IS NULL")
+      .get(scope.task_id) as { created_at: number } | undefined;
+    if (!task || scope.scope_id !== attentionDigest([owner.home_id, scope.task_id, scope.repo_path, task.created_at]))
+      throw new Error("attention_scope_conflict");
+    const run = store.db.prepare(`SELECT r.*,t.created_at task_created_at FROM runs r JOIN tasks t ON t.task_id=r.task_id
+      WHERE r.run_id=? AND r.task_id=? AND r.tenant_id IS NULL AND t.tenant_id IS NULL`).get(runId, scope.task_id) as Run | undefined;
+    const saved = store.db.prepare("SELECT * FROM attention_run_cursors WHERE scope_id=? AND run_id=?")
+      .get(scope.scope_id, runId) as Cursor | undefined;
+    const writeSubject = (facts: Record<string, unknown>) => store.db.prepare(
+      "UPDATE attention_subjects SET sampled_at=?,generation=?,payload_json=? WHERE scope_id=? AND kind='run' AND subject_id=?"
+    ).run(now, owner.generation, JSON.stringify({ event_replay: { complete: false, caught_up: false,
+      gap: facts.reason ?? "source_unavailable", completeness_scope: "unverified_retention" }, ...facts }), scope.scope_id, runId);
+    const quarantine = (reason: string) => store.db.prepare(
+      "UPDATE attention_run_cursors SET gap=COALESCE(gap,?),generation=?,updated_at=? WHERE scope_id=? AND run_id=?"
+    ).run(reason, owner.generation, now, scope.scope_id, runId);
+    if (!run) {
+      quarantine("source_missing");
+      writeSubject({ state: "source_missing", reason: "source_missing", process_liveness: "unknown", gap: "history_gap" });
+      return;
+    }
+    const binding = attentionDigest([owner.home_id, scope.scope_id, run.run_id, run.task_id,
+      run.session_id, run.agent_id, run.capability_id, run.started_at]);
+    if (saved && saved.binding_hash !== binding) {
+      quarantine("source_binding_conflict");
+      writeSubject({ state: "unknown", reason: "source_binding_conflict", process_liveness: "unknown", gap: "history_gap" });
+      return;
+    }
+    if (saved && (!Number.isSafeInteger(saved.last_seq) || saved.last_seq < -1
+      || !Number.isSafeInteger(saved.through_seq) || saved.through_seq < -1)) throw new Error("invalid_event_cursor");
+    let cursor = saved?.last_seq ?? -1;
+    let anchor = saved?.last_event_hash ?? null;
+    let gap = saved?.gap ?? null;
+    const state: Observed = { observed_status: null, unsupported_events: 0 };
+    const prior = saved ? object(saved.facts_json) : null;
+    let priorValid = true;
+    if (saved) {
+      if (!prior || !(prior.observed_status === null || typeof prior.observed_status === "string")
+        || !Number.isSafeInteger(prior.unsupported_events) || (prior.unsupported_events as number) < 0)
+        { gap ??= "invalid_cursor_facts"; priorValid = false; }
+      else { state.observed_status = prior.observed_status; state.unsupported_events = prior.unsupported_events as number; }
+    }
+    let anchorValid = true;
+    if (cursor >= 0) {
+      const previous = readRunEventPage(store.db, { taskId: scope.task_id, runId, afterSeq: cursor - 1, throughSeq: cursor, limit: 1 }).events[0];
+      anchorValid = previous !== undefined && hash(previous) === anchor;
+      if (!anchorValid) { gap ??= "event_anchor_changed"; state.observed_status = null; }
+    }
+    const page = readRunEventPage(store.db, { taskId: scope.task_id, runId, afterSeq: cursor, limit: 200,
+      ...(saved && saved.through_seq > cursor ? { throughSeq: saved.through_seq } : {}) });
+    if (page.sequenceGap) gap ??= "event_sequence_gap";
+    if (anchorValid && priorValid) {
+      for (const event of page.events) {
+        if (event.seq !== cursor + 1) { gap ??= "event_sequence_gap"; break; }
+        if (event.session_id !== run.session_id) { gap ??= "event_source_binding_conflict"; break; }
+        const error = reduce(event, state, store);
+        if (error) { gap ??= error; break; }
+        cursor = event.seq;
+        anchor = hash(event);
+      }
+    }
+    const backlog = cursor < page.highWatermark || cursor < page.availableHighWatermark;
+    const caughtUp = cursor >= 0 && !gap && !backlog && state.unsupported_events === 0;
+    // A caught-up cursor verifies newly read rows and the last anchor only.
+    // Mutable earlier rows are not continuously re-hashed; never certify history.
+    const pending = (table: "approvals" | "clarifies", column: "approval_id" | "clarify_id") => {
+      const rows = store.db.prepare(`SELECT ${column} id FROM ${table} WHERE run_id=? AND status='pending' ORDER BY ${column} LIMIT 21`)
+        .all(runId) as { id: string }[];
+      return { ids: rows.slice(0, 20).map((row) => row.id), truncated: rows.length > 20,
+        count: (store.db.prepare(`SELECT COUNT(*) n FROM ${table} WHERE run_id=? AND status='pending'`).get(runId) as { n: number }).n };
+    };
+    store.db.prepare(`INSERT INTO attention_run_cursors(scope_id,run_id,binding_hash,last_seq,through_seq,last_event_hash,gap,facts_json,generation,updated_at)
+      VALUES(?,?,?,?,?,?,?,?,?,?) ON CONFLICT(scope_id,run_id) DO UPDATE SET last_seq=excluded.last_seq,through_seq=excluded.through_seq,
+      last_event_hash=excluded.last_event_hash,gap=excluded.gap,facts_json=excluded.facts_json,generation=excluded.generation,updated_at=excluded.updated_at`)
+      .run(scope.scope_id, runId, binding, cursor, page.highWatermark, anchor, gap, priorValid ? JSON.stringify(state) : saved!.facts_json, owner.generation, now);
+    writeSubject({ state: { phase: run.phase, outcome: run.outcome }, ...state,
+      reason: gap ? "history_gap" : backlog ? "event_backlog" : state.unsupported_events > 0 ? "unsupported_event_type" : "snapshot_only",
+      repo_binding: "unverified", process_liveness: "unknown", gap: gap ? "history_gap" : "retention_unverified",
+      event_replay: { cursor, through_seq: page.highWatermark, complete: false, caught_up: caughtUp, gap, completeness_scope: "unverified_retention" },
+      pending_approvals: pending("approvals", "approval_id"), pending_clarifies: pending("clarifies", "clarify_id"),
+      limitations: ["No historical retention or processed-prefix integrity guarantee", "Event observations do not authorize execution"] });
+  });
+}
+
+
+FILE packages/core/src/state/attention-run-projection.test.ts
+import { realpathSync, rmSync } from "node:fs";
+import { join } from "node:path";
+import { afterEach, expect, it } from "vitest";
+import { createScratchDirSync } from "../scratch.js";
+import { openDb } from "./db.js";
+import { AttentionStore } from "./attention-store.js";
+import { AttentionObserver } from "./attention-observer.js";
+import { appendEvent, insertRun, insertTask, readRunEventPage } from "./run-store.js";
+import { projectAttentionRun } from "./attention-run-projection.js";
+
+const clean: Array<() => void> = [];
+afterEach(() => { for (const fn of clean.splice(0).reverse()) fn(); });
+function setup() {
+  const root = realpathSync(createScratchDirSync("tests", "attention-events"));
+  const path = join(root, "state.db");
+  const db = openDb({ path });
+  clean.push(() => { db.close(); rmSync(root, { recursive: true, force: true }); });
+  insertTask(db, path, { task_id: "t", title: "task", created_at: 1 });
+  insertRun(db, path, { task_id: "t", run_id: "r", session_id: "s", agent_id: "hermes", capability_id: "code", phase: "execute", started_at: 1 });
+  const store = new AttentionStore(db, path);
+  const owner = store.claimOwner("owner");
+  const scope = store.registerScope(owner, "t", root);
+  const observer = new AttentionObserver(store, owner);
+  const event = (seq: number, type = "status", payload: unknown = { status: "running" }) => appendEvent(db, path, {
+    event_id: `r:${seq}`, run_id: "r", session_id: "s", seq, type, payload, terminal: type === "done", created_at: seq + 1,
+  });
+  const facts = () => JSON.parse((db.prepare("SELECT payload_json FROM attention_subjects WHERE kind='run'").get() as { payload_json: string }).payload_json);
+  const cursor = () => db.prepare("SELECT * FROM attention_run_cursors WHERE run_id='r'").get() as { last_seq: number; gap: string | null; generation: number } | undefined;
+  return { root, path, db, store, owner, scope, observer, event, facts, cursor };
+}
+it("pages seq zero through a stable watermark without changing the legacy reader", () => {
+  const { db, event } = setup();
+  for (let seq = 0; seq < 201; seq++) event(seq);
+  const first = readRunEventPage(db, { taskId: "t", runId: "r", afterSeq: -1, limit: 200 });
+  expect(first.events).toHaveLength(200);
+  expect(first).toMatchObject({ nextAfter: 199, highWatermark: 200, hasMore: true, sequenceGap: false });
+  event(201);
+  const last = readRunEventPage(db, { taskId: "t", runId: "r", afterSeq: first.nextAfter, throughSeq: first.highWatermark, limit: 200 });
+  expect(last.events.map((row) => row.seq)).toEqual([200]);
+  expect(last.hasMore).toBe(false);
+});
+it("bounds payload bytes in SQL and refuses invalid cursor arguments", () => {
+  const { db, event } = setup();
+  event(0, "token.delta", { delta: "x".repeat(1000000) });
+  const page = readRunEventPage(db, { taskId: "t", runId: "r", afterSeq: -1, limit: 10 });
+  expect(page.events[0]).toMatchObject({ payload_json: null });
+  expect(page.events[0]!.payload_bytes).toBeGreaterThan(65536);
+  for (const limit of [0, 201, NaN, 1.5])
+    expect(() => readRunEventPage(db, { taskId: "t", runId: "r", afterSeq: -1, limit })).toThrow("invalid_event_page");
+  for (const throughSeq of [-2, NaN, Number.MAX_SAFE_INTEGER + 1])
+    expect(() => readRunEventPage(db, { taskId: "t", runId: "r", afterSeq: -1, limit: 10, throughSeq })).toThrow("invalid_event_page");
+});
+it("projects actual run events and resumes its durable cursor under a new owner", () => {
+  const { event, observer, facts, cursor, db, path, scope } = setup();
+  for (let i = 0; i < 205; i++) event(i);
+  observer.tick(1000);
+  expect(cursor()?.last_seq).toBe(199);
+  expect(facts()).toMatchObject({ reason: "event_backlog", event_replay: { complete: false } });
+  const reopened = openDb({ path });
+  clean.push(() => reopened.close());
+  const nextStore = new AttentionStore(reopened, path);
+  const owner = nextStore.claimOwner("next");
+  new AttentionObserver(nextStore, owner).tick(2000);
+  expect(cursor()).toMatchObject({ last_seq: 204, generation: owner.generation });
+  expect(facts()).toMatchObject({ observed_status: "running", event_replay: { complete: false, caught_up: true } });
+  expect(() => projectAttentionRun(new AttentionStore(db, path), observer.owner, scope, "r", 3000)).toThrow("stale_owner");
+});
+it("keeps a sequence gap sticky even if a missing event later appears", () => {
+  const { event, observer, cursor, facts } = setup();
+  event(0); event(2);
+  observer.tick(1000);
+  expect(cursor()).toMatchObject({ last_seq: 0, gap: "event_sequence_gap" });
+  expect(facts().event_replay.complete).toBe(false);
+  event(1);
+  observer.tick(2000);
+  expect(cursor()).toMatchObject({ last_seq: 2, gap: "event_sequence_gap" });
+  expect(facts().event_replay.complete).toBe(false);
+});
+it.each(["invalid", "oversized", "wrong_session"])("does not advance over %s source data", (kind) => {
+  const { event, observer, cursor, facts, db } = setup();
+  event(0); event(1);
+  if (kind === "invalid") db.prepare("UPDATE events SET payload_json='{' WHERE seq=1").run();
+  if (kind === "oversized") db.prepare("UPDATE events SET payload_json=? WHERE seq=1").run(JSON.stringify({ delta: "x".repeat(1000000) }));
+  if (kind === "wrong_session") db.prepare("UPDATE events SET session_id='unrelated' WHERE seq=1").run();
+  observer.tick(1000);
+  expect(cursor()?.last_seq).toBe(0);
+  expect(facts()).toMatchObject({ reason: "history_gap", event_replay: { complete: false } });
+});
+it("flags unknown event semantics without blocking a later known event", () => {
+  const { event, observer, cursor, facts } = setup();
+  event(0, "future.new_kind", {}); event(1, "status", { status: "awaiting_clarify" });
+  observer.tick(1000);
+  expect(cursor()?.last_seq).toBe(1);
+  expect(facts()).toMatchObject({ observed_status: "awaiting_clarify", unsupported_events: 1,
+    reason: "unsupported_event_type", event_replay: { complete: false } });
+});
+it("does not claim caught up when another event arrived after a page watermark", () => {
+  const { event, observer, cursor, facts } = setup();
+  for (let i = 0; i < 201; i++) event(i);
+  observer.tick(1000);
+  event(201);
+  observer.tick(2000);
+  expect(cursor()?.last_seq).toBe(200);
+  expect(facts()).toMatchObject({ reason: "event_backlog", event_replay: { complete: false } });
+  observer.tick(3000);
+  expect(cursor()?.last_seq).toBe(201);
+  expect(facts().event_replay).toMatchObject({ complete: false, caught_up: true });
+});
+it.each(["mutation", "deletion"])("marks an anchor %s unknown without advancing", (kind) => {
+  const { event, observer, cursor, facts, db } = setup();
+  event(0); observer.tick(1000);
+  if (kind === "mutation") db.prepare("UPDATE events SET payload_json=? WHERE seq=0").run(JSON.stringify({ status: "completed" }));
+  else db.prepare("DELETE FROM events WHERE seq=0").run();
+  event(1);
+  observer.tick(2000);
+  expect(cursor()).toMatchObject({ last_seq: 0, gap: "event_anchor_changed" });
+  expect(facts()).toMatchObject({ observed_status: null, event_replay: { complete: false } });
+});
+it("retains unknown evidence across source deletion and ID reuse", () => {
+  const { event, observer, cursor, facts, db, path } = setup();
+  event(0); observer.tick(1000);
+  db.prepare("DELETE FROM runs WHERE run_id='r'").run();
+  observer.tick(2000);
+  expect(facts().state).toBe("source_missing");
+  expect(facts().event_replay).toMatchObject({ complete: false, caught_up: false });
+  expect(cursor()?.gap).toBe("source_missing");
+  insertRun(db, path, { task_id: "t", run_id: "r", session_id: "s-new", agent_id: "hermes", capability_id: "code", phase: "execute", started_at: 3 });
+  observer.tick(3000);
+  expect(facts()).toMatchObject({ state: "unknown", reason: "source_binding_conflict", event_replay: { complete: false, caught_up: false } });
+  expect(cursor()?.last_seq).toBe(0);
+});
+it("rolls back cursor and projected facts together on a failed projection write", () => {
+  const { event, observer, cursor, db, store, owner, scope } = setup();
+  observer.tick(1000);
+  expect(cursor()?.last_seq).toBe(-1);
+  event(0);
+  db.exec("CREATE TRIGGER projection_failure BEFORE UPDATE ON attention_subjects WHEN NEW.kind='run' BEGIN SELECT RAISE(ABORT,'projection fault'); END;");
+  expect(() => projectAttentionRun(store, owner, scope, "r", 2000)).toThrow("projection fault");
+  expect(cursor()?.last_seq).toBe(-1);
+  db.exec("DROP TRIGGER projection_failure");
+  observer.tick(3000);
+  expect(cursor()?.last_seq).toBe(0);
+});
+it("restricts run pages to the exact default-tenant task and refuses mismatched scopes", () => {
+  const { event, observer, db, store, owner, scope } = setup();
+  event(0); observer.tick(1000);
+  expect(() => readRunEventPage(db, { taskId: "other", runId: "r", afterSeq: -1, limit: 10 })).toThrow("run_source_not_found");
+  expect(() => projectAttentionRun(store, owner, { ...scope, repo_path: "/other" }, "r", 2000)).toThrow("attention_scope_conflict");
+  db.prepare("UPDATE runs SET tenant_id='another' WHERE run_id='r'").run();
+  expect(() => readRunEventPage(db, { taskId: "t", runId: "r", afterSeq: -1, limit: 10 })).toThrow("run_source_not_found");
+});
+it("reads pending authorities without creating actions or treating event data as approval", () => {
+  const { event, observer, facts, db, cursor } = setup();
+  event(0, "approval.requested", { approval_id: "approval", action_summary: "publish", risk: "high" });
+  observer.tick(1000);
+  expect(facts().pending_approvals).toEqual({ ids: ["approval"], count: 1, truncated: false });
+  db.prepare("INSERT INTO events(event_id,run_id,session_id,seq,type,created_at,terminal,payload_json) VALUES('r:1','r','s',1,'approval.resolved',2,0,?)")
+    .run(JSON.stringify({ approval_id: "approval", status: "accepted", choice: "yes" }));
+  observer.tick(2000);
+  expect(cursor()?.last_seq).toBe(0);
+  expect(facts().event_replay).toMatchObject({caught_up:false,gap:"authority_resolution_mismatch"});
+  expect(facts().pending_approvals.count).toBe(1);
+  expect(db.prepare("SELECT COUNT(*) n FROM attention_actions").get()).toEqual({ n: 0 });
+  expect(db.prepare("SELECT status FROM approvals").get()).toEqual({ status: "pending" });
+});
+it("a backlogged run does not starve another run or rewrite authoritative business state", () => {
+  const { event, observer, db, path } = setup();
+  for (let i = 0; i < 500; i++) event(i);
+  insertRun(db, path, { task_id: "t", run_id: "second", session_id: "s2", agent_id: "hermes", capability_id: "code", phase: "execute", started_at: 2 });
+  appendEvent(db, path, { event_id: "second:0", run_id: "second", session_id: "s2", seq: 0, type: "done",
+    terminal: true, created_at: 3, payload: { status: "completed", last_seq: 0 } });
+  observer.tick(1000);
+  const second = JSON.parse((db.prepare("SELECT payload_json FROM attention_subjects WHERE subject_id='second'").get() as { payload_json: string }).payload_json);
+  expect(second).toMatchObject({ observed_status: "completed", state: { phase: "execute", outcome: null }, event_replay: { complete: false, caught_up: true } });
+  expect(db.prepare("SELECT last_seq FROM attention_run_cursors WHERE run_id='r'").get()).toEqual({ last_seq: 199 });
+  expect(db.prepare("SELECT phase,outcome FROM runs WHERE run_id='second'").get()).toEqual({ phase: "execute", outcome: null });
+});
+it("bounds pending authority references while preserving the total count", () => {
+  const { event, observer, facts } = setup();
+  for (let seq = 0; seq < 25; seq++) event(seq, "clarify.requested", { clarify_id: `c${seq}`, question: "Choose" });
+  observer.tick(1000);
+  expect(facts().pending_clarifies).toMatchObject({ count: 25, truncated: true });
+  expect(facts().pending_clarifies.ids).toHaveLength(20);
+});
+it.each(["delete", "retentant", "identity"])("quarantines every retained subject when task %s invalidates its scope", (kind) => {
+  const { event, observer, facts, cursor, db } = setup();
+  event(0); observer.tick(1000);
+  if (kind === "delete") db.prepare("DELETE FROM tasks WHERE task_id='t'").run();
+  if (kind === "retentant") db.prepare("UPDATE tasks SET tenant_id='other' WHERE task_id='t'").run();
+  if (kind === "identity") db.prepare("UPDATE tasks SET created_at=2 WHERE task_id='t'").run();
+  observer.tick(2000);
+  expect(facts()).toMatchObject({ reason: "source_missing", event_replay: { complete: false, caught_up: false } });
+  expect(cursor()?.gap).toBe("source_missing");
+});
+it("discovers the durable event stream even when the run also owns an agent session", () => {
+  const { event, observer, facts, cursor, db, root, scope } = setup();
+  db.prepare("INSERT INTO agent_sessions(session_id,task_id,run_id,agent_id,request_sha256,repo_path,state,resume_supported,version,updated_at) VALUES('session','t','r','hermes','aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',?,'running',1,1,1)").run(root);
+  event(0); observer.tick(1000);
+  expect(cursor()?.last_seq).toBe(0);
+  expect(facts().event_replay.caught_up).toBe(true);
+  expect(observer.inventory(scope.scope_id, 1000)).toMatchObject({ subject_total: 2, admitted: 2 });
+});
+it.each(["delete", "mutate"])("never certifies history even when a non-anchor prefix row is %s", (kind) => {
+  const { event, observer, facts, db } = setup();
+  event(0); event(1); observer.tick(1000);
+  if (kind === "delete") db.prepare("DELETE FROM events WHERE seq=0").run();
+  else db.prepare("UPDATE events SET payload_json=? WHERE seq=0").run(JSON.stringify({ status: "failed" }));
+  observer.tick(2000);
+  expect(facts().event_replay).toMatchObject({ complete: false, caught_up: true, completeness_scope: "unverified_retention" });
+});
+it("detects identical run identity reuse through actual foreign-key anchor cascade", () => {
+  const { event, observer, facts, cursor, db, path } = setup();
+  event(0); observer.tick(1000);
+  db.prepare("DELETE FROM runs WHERE run_id='r'").run();
+  expect(db.prepare("SELECT COUNT(*) n FROM events").get()).toEqual({ n: 0 });
+  insertRun(db, path, { task_id: "t", run_id: "r", session_id: "s", agent_id: "hermes", capability_id: "code", phase: "execute", started_at: 1 });
+  observer.tick(2000);
+  expect(cursor()?.gap).toBe("event_anchor_changed");
+  expect(facts()).toMatchObject({ observed_status: null, event_replay: { complete: false, caught_up: false } });
+});
+it("returns an invalid marker rather than losing the inventory to corrupt subject JSON", () => {
+  const { event, observer, db, scope } = setup();
+  event(0); observer.tick(1000);
+  db.prepare("UPDATE attention_subjects SET payload_json='{' WHERE kind='run'").run();
+  const view = observer.inventory(scope.scope_id, 1000);
+  expect(view.coverage).toBe("degraded");
+  expect(view.subjects[0]?.facts).toMatchObject({ state: "unknown", reason: "invalid_source", event_replay: { complete: false, caught_up: false } });
+});
+it.each([null, "event_sequence_gap"])("stalls on corrupt cursor facts regardless of existing gap %s", (gap) => {
+  const { event, observer, cursor, facts, db } = setup();
+  event(0); observer.tick(1000);
+  db.prepare("UPDATE attention_run_cursors SET gap=?,facts_json='{' WHERE run_id='r'").run(gap);
+  event(1); observer.tick(2000); observer.tick(3000);
+  expect(cursor()?.last_seq).toBe(0);
+  expect(facts().event_replay).toMatchObject({ complete: false, caught_up: false });
+  expect(db.prepare("SELECT facts_json FROM attention_run_cursors").get()).toEqual({ facts_json: "{" });
+});
+it("marks discovery incomplete for a new run behind the persisted discovery key", () => {
+  const { observer, db, path, scope, store } = setup();
+  observer.tick(1000);
+  db.prepare("UPDATE attention_scopes SET discovery_after='1:z' WHERE scope_id=?").run(scope.scope_id);
+  insertRun(db, path, { task_id: "t", run_id: "behind", session_id: "s2", agent_id: "hermes", capability_id: "code", phase: "execute", started_at: 2 });
+  observer.tick(2000);
+  expect(store.getScope(scope.scope_id)?.scan_complete).toBe(0);
+  observer.tick(3000);
+  expect(observer.inventory(scope.scope_id, 3000).subject_total).toBe(2);
+  expect(store.getScope(scope.scope_id)?.scan_complete).toBe(1);
+});
+it("run projection failure returns an explicit incomplete event replay marker", () => {
+  const { observer, event, db, facts } = setup();
+  event(0); observer.tick(1000);
+  db.prepare("UPDATE attention_run_cursors SET last_seq=1.5 WHERE run_id='r'").run();
+  observer.tick(2000);
+  expect(facts()).toMatchObject({ reason: "invalid_source", event_replay: { complete: false, caught_up: false } });
+});
+it("capacity-rejected runs expose explicit incomplete markers without exceeding 100 admissions", () => {
+  const { observer, db, path, scope } = setup();
+  for (let i = 0; i < 100; i++) insertRun(db, path, { task_id: "t", run_id: `x${String(i).padStart(3, "0")}`,
+    session_id: `s${i}`, agent_id: "hermes", capability_id: "code", phase: "execute", started_at: 2 });
+  observer.tick(1000);
+  const row = db.prepare("SELECT admitted,payload_json FROM attention_subjects WHERE kind='run' AND subject_id='x099'").get() as { admitted: number; payload_json: string };
+  expect(row.admitted).toBe(0);
+  expect(JSON.parse(row.payload_json)).toMatchObject({ reason: "capacity_exceeded",
+    event_replay: { complete: false, caught_up: false, gap: "capacity_exceeded" } });
+  expect(observer.inventory(scope.scope_id, 1000)).toMatchObject({ subject_total: 101, admitted: 100, coverage: "degraded" });
+});
+it("an explicit operator repair can resume reads but never clears the retained corruption gap", () => {
+  const { observer, event, db, cursor, facts } = setup();
+  event(0); observer.tick(1000);
+  db.prepare("UPDATE attention_run_cursors SET facts_json='{' WHERE run_id='r'").run();
+  event(1); observer.tick(2000);
+  expect(cursor()?.last_seq).toBe(0);
+  db.prepare("UPDATE attention_run_cursors SET facts_json=? WHERE run_id='r'").run(JSON.stringify({ observed_status: null, unsupported_events: 0 }));
+  observer.tick(3000);
+  expect(cursor()).toMatchObject({ last_seq: 1, gap: "invalid_cursor_facts" });
+  expect(facts().event_replay).toMatchObject({ complete: false, caught_up: false });
+});
+
+it("bounds a replay page by aggregate payload bytes without inventing a sequence gap", () => {
+  const {db,event}=setup();
+  for(let seq=0;seq<200;seq++) event(seq,"token.delta",{delta:"x".repeat(40000)});
+  const first=readRunEventPage(db,{taskId:"t",runId:"r",afterSeq:-1,limit:200});
+  expect(first.events).toHaveLength(1);
+  expect(first).toMatchObject({nextAfter:0,hasMore:true,sequenceGap:false,highWatermark:199});
+  expect(first.events.reduce((total,row)=>total+Buffer.byteLength(row.payload_json??""),0)).toBeLessThanOrEqual(65536);
+  const next=readRunEventPage(db,{taskId:"t",runId:"r",afterSeq:first.nextAfter,throughSeq:first.highWatermark,limit:200});
+  expect(next).toMatchObject({nextAfter:1,hasMore:true,sequenceGap:false});
+});
+
+it.each(["approval","clarify"])("checks %s resolved payload against current authoritative value without changing it", family => {
+  const {event,observer,cursor,db,facts}=setup();
+  const idKey=family+"_id";const field=family==="approval"?"choice":"answer";
+  const status=family==="approval"?"accepted":"answered";
+  event(0, family+".requested",{[idKey]:"a",action_summary:"test",question:"test"});
+  event(1, family+".resolved",{[idKey]:"a",status,[field]:"yes"});
+  observer.tick(1000);expect(cursor()?.last_seq).toBe(1);
+  db.prepare("INSERT INTO events(event_id,run_id,session_id,seq,type,created_at,terminal,payload_json) VALUES('r:2','r','s',2,?,3,0,?)")
+    .run(family+".resolved",JSON.stringify({[idKey]:"a",status,[field]:"changed"}));
+  observer.tick(2000);expect(cursor()?.last_seq).toBe(1);expect(facts().event_replay.gap).toBe("authority_resolution_mismatch");
+});
+
+
+FILE packages/core/src/state/run-store.ts
+// Run/task/event state repositories (R1.1 — relocated from packages/cli/src/store.ts
+// per ADR-001 §D2). This module owns the run/task/event persistence for the
+// kernel: the four daemon-hot-loop writers and the reader functions consolidated
+// from the CLI's raw-SQL sites. An external consumer can now read run/event/proof
+// state through @osstack/core without the product-private CLI.
+//
+// Originally relocated without behavior changes under ADR-001 §D2. Subsequent
+// attention replay adds bounded reads and run-scoped, monotonic authority
+// resolutions; matching terminal-status echoes do not rewrite authority rows.
+
+import type Database from "better-sqlite3";
+import { withWrite } from "./db.js";
+
+/**
+ * Structural input for {@link appendEvent}. Defined locally (not imported from
+ * @osstack/hermes-adapter) to avoid a dependency cycle: hermes-adapter depends
+ * on core, so core must not import it. `HermesEvent` is structurally assignable
+ * to this shape, so CLI call sites pass their `HermesEvent` values unchanged.
+ */
+export interface StoredEventInput {
+  event_id: string;
+  seq: number;
+  run_id: string;
+  session_id: string;
+  created_at: number;
+  terminal: boolean;
+  type: string;
+  payload: unknown;
+}
+
+/** Row shape returned by {@link listEventsForRun} (superset of columns). */
+export interface StoredEventRow {
+  event_id: string;
+  run_id: string;
+  session_id: string;
+  seq: number;
+  type: string;
+  created_at: number;
+  terminal: number;
+  payload_json: string;
+}
+
+/** Row shape returned by {@link getRun}. */
+export interface RunIdentityRow {
+  run_id: string;
+  session_id: string;
+  phase: string;
+}
+
+// ──────────────────────────────────────────────────────────────────────
+// Writers (moved verbatim from cli/src/store.ts)
+// ──────────────────────────────────────────────────────────────────────
+
+export function insertTask(
+  db: Database.Database,
+  path: string,
+  row: {
+    task_id: string;
+    title: string;
+    description?: string;
+    hermes_session_id?: string | null;
+    created_at: number;
+  },
+): void {
+  withWrite(db, path, (d) => {
+    d.prepare(
+      "INSERT INTO tasks(task_id, title, description, hermes_session_id, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+    ).run(
+      row.task_id,
+      row.title,
+      row.description ?? "",
+      row.hermes_session_id ?? null,
+      "running",
+      row.created_at,
+      row.created_at,
+    );
+  });
+}
+
+export function insertRun(
+  db: Database.Database,
+  path: string,
+  row: {
+    run_id: string;
+    task_id: string;
+    session_id: string;
+    agent_id: string;
+    capability_id: string;
+    phase: string;
+    started_at: number;
+    hermes_session_id?: string | null;
+  },
+): void {
+  withWrite(db, path, (d) => {
+    d.prepare(
+      "INSERT INTO runs(run_id, task_id, session_id, agent_id, capability_id, phase, started_at, hermes_session_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+    ).run(
+      row.run_id,
+      row.task_id,
+      row.session_id,
+      row.agent_id,
+      row.capability_id,
+      row.phase,
+      row.started_at,
+      row.hermes_session_id ?? null,
+    );
+  });
+}
+
+export function appendEvent(
+  db: Database.Database,
+  path: string,
+  ev: StoredEventInput,
+): void {
+  withWrite(db, path, (d) => {
+    d.prepare(
+      "INSERT INTO events(event_id, run_id, session_id, seq, type, created_at, terminal, payload_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+    ).run(
+      ev.event_id,
+      ev.run_id,
+      ev.session_id,
+      ev.seq,
+      ev.type,
+      ev.created_at,
+      ev.terminal ? 1 : 0,
+      JSON.stringify(ev.payload),
+    );
+
+    // Approval / clarify events double-write to their own tables so they
+    // survive a daemon restart (Hermes RFC durability requirement) and
+    // can be queried via approval.list / clarify.list without scanning
+    // the event log.
+    if (ev.type === "approval.requested") {
+      const p = ev.payload as { approval_id?: string; action_summary?: string; risk?: string };
+      if (typeof p.approval_id === "string") {
+        d.prepare(
+          "INSERT OR IGNORE INTO approvals(approval_id, run_id, status, action_summary, risk, requested_at) VALUES (?, ?, ?, ?, ?, ?)",
+        ).run(p.approval_id, ev.run_id, "pending", p.action_summary ?? "", p.risk ?? "medium", ev.created_at);
+      }
+    } else if (ev.type === "approval.resolved") {
+      const p = ev.payload as { approval_id?: string; choice?: string; status?: string };
+      if (typeof p.approval_id === "string") {
+        if (!["accepted", "rejected", "timed_out"].includes(p.status ?? "")) throw new Error("invalid_approval_resolution");
+        const changed = d.prepare(
+          "UPDATE approvals SET status = ?, resolved_at = ?, choice = ? WHERE approval_id = ? AND run_id = ? AND status = 'pending'",
+        ).run(p.status, ev.created_at, p.choice ?? null, p.approval_id, ev.run_id).changes;
+        if (changed !== 1) {
+          const prior = d.prepare("SELECT status,choice FROM approvals WHERE approval_id=? AND run_id=?")
+            .get(p.approval_id, ev.run_id) as { status: string; choice: string | null } | undefined;
+          if (!prior || prior.status !== p.status || prior.choice !== (p.choice ?? null))
+            throw new Error("approval_resolution_conflict");
+        }
+      }
+    } else if (ev.type === "clarify.requested") {
+      const p = ev.payload as { clarify_id?: string; question?: string };
+      if (typeof p.clarify_id === "string") {
+        d.prepare(
+          "INSERT OR IGNORE INTO clarifies(clarify_id, run_id, status, question, requested_at) VALUES (?, ?, ?, ?, ?)",
+        ).run(p.clarify_id, ev.run_id, "pending", p.question ?? "", ev.created_at);
+      }
+    } else if (ev.type === "clarify.resolved") {
+      const p = ev.payload as { clarify_id?: string; answer?: string; status?: string };
+      if (typeof p.clarify_id === "string") {
+        if (!["answered", "timed_out", "abandoned"].includes(p.status ?? "")) throw new Error("invalid_clarify_resolution");
+        const changed = d.prepare(
+          "UPDATE clarifies SET status = ?, resolved_at = ?, answer = ? WHERE clarify_id = ? AND run_id = ? AND status = 'pending'",
+        ).run(p.status, ev.created_at, p.answer ?? null, p.clarify_id, ev.run_id).changes;
+        if (changed !== 1) {
+          const prior = d.prepare("SELECT status,answer FROM clarifies WHERE clarify_id=? AND run_id=?")
+            .get(p.clarify_id, ev.run_id) as { status: string; answer: string | null } | undefined;
+          if (!prior || prior.status !== p.status || prior.answer !== (p.answer ?? null))
+            throw new Error("clarify_resolution_conflict");
+        }
+      }
+    }
+  });
+}
+
+export function finalizeRun(
+  db: Database.Database,
+  path: string,
+  run_id: string,
+  outcome: "completed" | "failed" | "cancelled" | "expired",
+  completed_at: number,
+): void {
+  // SQLite UPDATE expressions read pre-UPDATE column values, so we must
+  // compute duration in JS using the read-back started_at — not refer to
+  // `completed_at` inside the same UPDATE (it would be NULL on first set).
+  withWrite(db, path, (d) => {
+    const row = d.prepare("SELECT started_at FROM runs WHERE run_id = ?").get(run_id) as
+      | { started_at: number }
+      | undefined;
+    const duration_ms = row ? (completed_at - row.started_at) * 1000 : null;
+    d.prepare(
+      "UPDATE runs SET outcome = ?, completed_at = ?, duration_ms = ? WHERE run_id = ?",
+    ).run(outcome, completed_at, duration_ms, run_id);
+    d.prepare(
+      "UPDATE tasks SET status = ?, updated_at = ? WHERE task_id = (SELECT task_id FROM runs WHERE run_id = ?)",
+    ).run(
+      outcome === "completed" ? "done" : outcome,
+      completed_at,
+      run_id,
+    );
+  });
+}
+
+// ──────────────────────────────────────────────────────────────────────
+// Readers (consolidated verbatim from the CLI raw-SQL sites)
+// ──────────────────────────────────────────────────────────────────────
+
+/** Count runs started at or after `since` (unix seconds). From daemon.ts. */
+export function countRunsSince(db: Database.Database, since: number): number {
+  return (db.prepare("SELECT COUNT(*) AS c FROM runs WHERE started_at >= ?").get(since) as { c: number }).c;
+}
+
+/** Total run count. From daemon.ts. */
+export function countRuns(db: Database.Database): number {
+  return (db.prepare("SELECT COUNT(*) AS c FROM runs").get() as { c: number }).c;
+}
+
+/** Total event count. From daemon.ts / dashboard.ts. */
+export function countEvents(db: Database.Database): number {
+  return (db.prepare("SELECT COUNT(*) AS c FROM events").get() as { c: number }).c;
+}
+
+/** Count tasks in the 'pending' status. From dashboard.ts. */
+export function countPendingTasks(db: Database.Database): number {
+  return (db.prepare("SELECT COUNT(*) AS c FROM tasks WHERE status = 'pending'").get() as
+    | { c: number }
+    | undefined)?.c ?? 0;
+}
+
+/** Run identity columns for a single run. From bin.ts. */
+export function getRun(db: Database.Database, runId: string): RunIdentityRow | undefined {
+  return db.prepare("SELECT run_id, session_id, phase FROM runs WHERE run_id = ?").get(runId) as
+    | RunIdentityRow
+    | undefined;
+}
+
+/**
+ * Events for a run, ordered by seq ascending. From daemon.ts (snapshot replay)
+ * and bin.ts (persisted loop evidence). `afterSeq` defaults to -1 so a caller
+ * that wants every event (bin.ts) gets `seq > -1` — behavior-identical to the
+ * unfiltered `WHERE run_id = ?` query, since seq is always ≥ 0. The returned
+ * superset includes `terminal`; call sites that ignore it are unaffected.
+ */
+export function listEventsForRun(
+  db: Database.Database,
+  runId: string,
+  opts: { afterSeq?: number } = {},
+): StoredEventRow[] {
+  const afterSeq = opts.afterSeq ?? -1;
+  return db.prepare(
+    "SELECT event_id, run_id, session_id, seq, type, created_at, terminal, payload_json FROM events WHERE run_id = ? AND seq > ? ORDER BY seq ASC",
+  ).all(runId, afterSeq) as StoredEventRow[];
+}
+
+/** Bounded local/default-tenant reader. Oversized payloads never enter JS. */
+export interface BoundedRunEvent extends Omit<StoredEventRow, "payload_json"> {
+  payload_json: string | null;
+  payload_bytes: number;
+}
+export function readRunEventPage(db: Database.Database, input: {
+  taskId: string;
+  runId: string;
+  afterSeq: number;
+  limit: number;
+  throughSeq?: number;
+}): {
+  events: BoundedRunEvent[];
+  nextAfter: number;
+  highWatermark: number;
+  availableHighWatermark: number;
+  hasMore: boolean;
+  sequenceGap: boolean;
+} {
+  if (!input.taskId || !input.runId || !Number.isSafeInteger(input.afterSeq) || input.afterSeq < -1
+    || !Number.isSafeInteger(input.limit) || input.limit < 1 || input.limit > 200
+    || (input.throughSeq !== undefined && (!Number.isSafeInteger(input.throughSeq) || input.throughSeq < input.afterSeq)))
+    throw new Error("invalid_event_page");
+  const read = () => {
+    const source = db.prepare(`SELECT 1 FROM runs r JOIN tasks t ON t.task_id=r.task_id
+      WHERE r.run_id=? AND r.task_id=? AND r.tenant_id IS NULL AND t.tenant_id IS NULL`).get(input.runId, input.taskId);
+    if (!source) throw new Error("run_source_not_found");
+    const max = (db.prepare("SELECT COALESCE(MAX(seq),-1) seq FROM events WHERE run_id=?").get(input.runId) as { seq: number }).seq;
+    const first = db.prepare("SELECT seq FROM events WHERE run_id=? ORDER BY seq LIMIT 1").get(input.runId) as { seq: number } | undefined;
+    if (!Number.isSafeInteger(max) || max < -1 || (first && (!Number.isSafeInteger(first.seq) || first.seq < 0)))
+      throw new Error("invalid_event_sequence");
+    const high = input.throughSeq ?? max;
+    // First select bounded metadata, then fetch payloads only for a 64KiB
+    // aggregate page. Oversized records retain null payload evidence and stop
+    // the reducer; small records still advance up to the 200-event limit.
+    const rows = db.prepare(`WITH metadata AS (
+      SELECT seq,length(CAST(payload_json AS BLOB)) payload_bytes FROM events
+      WHERE run_id=? AND seq>? AND seq<=? ORDER BY seq LIMIT ?
+    ), budgeted AS (
+      SELECT seq,payload_bytes,SUM(CASE WHEN payload_bytes<=65536 THEN payload_bytes ELSE 0 END) OVER (ORDER BY seq) total_bytes FROM metadata
+    ) SELECT substr(e.event_id,1,4097) event_id,e.run_id,substr(e.session_id,1,4097) session_id,
+      e.seq,substr(e.type,1,257) type,e.created_at,e.terminal,b.payload_bytes,
+      CASE WHEN b.payload_bytes<=65536 THEN e.payload_json ELSE NULL END payload_json
+      FROM budgeted b JOIN events e ON e.run_id=? AND e.seq=b.seq
+      WHERE b.total_bytes<=65536 ORDER BY e.seq`)
+      .all(input.runId, input.afterSeq, high, input.limit, input.runId) as BoundedRunEvent[];
+    const events = rows;
+    const nextAfter = events.at(-1)?.seq ?? input.afterSeq;
+    const hasMore = db.prepare("SELECT 1 FROM events WHERE run_id=? AND seq>? AND seq<=? LIMIT 1")
+      .get(input.runId, nextAfter, high) !== undefined;
+    let previous = input.afterSeq;
+    let gap = max < input.afterSeq || max < high;
+    for (const event of events) {
+      if (!Number.isSafeInteger(event.seq) || event.seq !== previous + 1) gap = true;
+      previous = event.seq;
+    }
+    return { events, nextAfter: events.at(-1)?.seq ?? input.afterSeq, highWatermark: high,
+      availableHighWatermark: max, hasMore, sequenceGap: gap };
+  };
+  return db.inTransaction ? read() : db.transaction(read)();
+}
+
+
+FILE packages/cli/src/worker-view-service.ts
+import { createCipheriv, createDecipheriv, createHash, randomBytes } from "node:crypto";
+import { accessSync, constants, realpathSync, statSync } from "node:fs";
+import { isAbsolute } from "node:path";
+import type Database from "better-sqlite3";
+import { CURRENT_SCHEMA_VERSION } from "@osstack/core";
+import { z } from "zod";
+
+export const WORKER_VIEW_MAX_BYTES = 65536;
+const TOKEN_TTL_MS = 15 * 60 * 1000;
+const tokenString = z.string().min(1).max(2048).regex(/^[A-Za-z0-9_-]+$/);
+// Bound JSON escaping as well as characters before encryption/base64 growth.
+const sourceIdentity = z.string().min(1).max(256).refine(id => Buffer.byteLength(JSON.stringify(id), "utf8") <= 1200);
+const scopeInput = {
+  repo_path: z.string().min(1).max(4096).refine(isAbsolute),
+  default_tenant: z.literal(true),
+};
+export const WorkerListParamsSchema = z.object({ ...scopeInput,
+  limit: z.number().int().min(1).max(50).optional(), cursor: tokenString.optional(),
+}).strict();
+export const WorkerInspectParamsSchema = z.object({ ...scopeInput, view_id: tokenString }).strict();
+const states = ["starting", "running", "awaiting_decision", "idle", "completed", "failed", "cancelled", "expired", "outcome_pending", "unknown"] as const;
+const StateSchema = z.enum(states);
+const ViewSchema = z.object({
+  view_id: tokenString, source_kind: z.enum(["run", "session"]),
+  state: StateSchema, revision: z.number().int().safe().positive().nullable(),
+  latest_turn: z.object({ ordinal: z.number().int().safe().positive(), state: StateSchema, decision_present: z.boolean() }).strict().nullable(),
+  last_updated_at_ms: z.number().finite().nonnegative().nullable(),
+  freshness: z.enum(["recent", "stale", "unknown"]),
+  process_liveness: z.literal("unknown"),
+  wait_reason: z.enum(["decision_record_present", "delivery_unknown", "awaiting_instruction", "none", "unknown"]),
+  uncertain_delivery_recorded: z.boolean(),
+  controls: z.literal("unsupported"),
+}).strict();
+const commonResponse = {
+  schema_version: z.literal(1), mode: z.literal("readonly_state_view"),
+  scope: z.object({ repo_path: z.string().max(4096), tenant: z.literal("default"), scope_id: z.string().regex(/^[a-f0-9]{64}$/) }).strict(),
+  sampled_at_ms: z.number().int().nonnegative(),
+  coverage: z.object({
+    graph: z.literal("unsupported_authenticated_registration_required"),
+    unbound_runs: z.literal("excluded_not_bound"),
+    repository_binding: z.literal("canonical_stored_paths_only"),
+    content: z.literal("structured_metadata_only"),
+    counting: z.literal("source_views_not_unique_workers"),
+  }).strict(),
+};
+export const WorkerListResultSchema = z.object({ ...commonResponse,
+  total: z.number().int().nonnegative(), views: z.array(ViewSchema).max(50),
+  next_cursor: tokenString.nullable(), truncated: z.boolean(),
+}).strict();
+export const WorkerInspectResultSchema = z.object({ ...commonResponse, view: ViewSchema }).strict();
+export type WorkerViewListResult = z.infer<typeof WorkerListResultSchema>;
+export type WorkerViewInspectResult = z.infer<typeof WorkerInspectResultSchema>;
+
+/** Valid JSON with terminal control/format characters escaped in strings.
+ * Use the same representation for service budgeting and CLI printing. */
+export function serializeWorkerView(value: unknown): string {
+  const serialized = JSON.stringify(value);
+  if (typeof serialized !== "string") throw new Error("invalid_worker_response");
+  return serialized.replace(/[\p{Cf}\u007f-\u009f\u2028\u2029]/gu,
+    char => char.split("").map(unit => `\\u${unit.charCodeAt(0).toString(16).padStart(4, "0")}`).join(""));
+}
+
+const TokenSchema = z.object({ v: z.literal(1), kind: z.enum(["view", "cursor"]), scope: z.string(),
+  source: z.enum(["run", "session"]), id: sourceIdentity, issued: z.number().int().nonnegative(),
+}).strict();
+type Token = z.infer<typeof TokenSchema>;
+const RowSchema = z.object({
+  kind: z.enum(["run", "session"]), id: sourceIdentity,
+  state: StateSchema, revision: z.number().int().safe().positive().nullable(),
+  updated: z.number().nullable(), ordinal: z.number().int().safe().positive().nullable(),
+  turn_state: StateSchema.nullable(), decision_present: z.number(), uncertain_delivery: z.number(), unresolved_delivery: z.number(),
+});
+type Row = z.infer<typeof RowSchema>;
+
+// Exact canonical paths and both tenant joins are intentional. A run alone has
+// no repository column. Never infer its scope from a task title or event text.
+const RELATION = `WITH bound AS (
+  SELECT s.session_id, s.run_id, s.state, s.version, s.updated_at,
+    r.outcome, r.completed_at, r.started_at
+  FROM agent_sessions s JOIN tasks t ON t.task_id=s.task_id
+  JOIN runs r ON r.run_id=s.run_id AND r.task_id=s.task_id
+    AND r.session_id=s.session_id AND r.agent_id=s.agent_id
+  WHERE s.repo_path=@repo AND t.tenant_id IS NULL AND r.tenant_id IS NULL
+), sources AS (
+  SELECT 'session' AS kind, session_id AS id, session_id, state, version AS revision, updated_at AS updated FROM bound
+  UNION ALL
+  SELECT 'run', run_id, session_id,
+    CASE WHEN outcome IN ('completed','failed','cancelled','expired') THEN outcome
+      WHEN outcome IS NULL THEN 'outcome_pending' ELSE 'unknown' END,
+    NULL, coalesce(completed_at, started_at) FROM bound
+)`;
+const projection = (version: number) => `SELECT p.kind, substr(p.id,1,257) AS id, p.state, p.revision, p.updated,
+  turn.ordinal, turn.state AS turn_state, (turn.decision_json IS NOT NULL) AS decision_present,
+  EXISTS(SELECT 1 FROM session_messages m WHERE m.session_id=p.session_id
+    AND m.direction='inbound' AND m.state IN ('pending','accepted','failed')) AS uncertain_delivery,
+  EXISTS(SELECT 1 FROM session_messages m WHERE m.session_id=p.session_id
+    AND m.direction='inbound' AND m.state IN ('pending','accepted','failed')
+    ${version >= 41 ? "AND NOT EXISTS(SELECT 1 FROM attention_receipt_resolutions r WHERE r.message_id=m.message_id AND r.session_id=m.session_id AND r.disposition='abandoned_unknown')" : ""}) AS unresolved_delivery
+  FROM sources p LEFT JOIN session_turns turn ON turn.session_id=p.session_id
+    AND turn.ordinal=(SELECT max(ordinal) FROM session_turns WHERE session_id=p.session_id)`;
+
+export const WORKER_VIEW_ERROR_CODES = ["invalid_request", "repository_unavailable", "invalid_cursor", "invalid_view", "source_not_found", "source_unavailable", "unsupported_schema", "unsupported_method", "response_too_large"] as const;
+export class WorkerViewError extends Error {
+  constructor(readonly code: typeof WORKER_VIEW_ERROR_CODES[number]) { super(code); this.name = "WorkerViewError"; }
+}
+
+/** Inject the daemon's existing connection. Construction never opens, migrates,
+ * reads, or writes a database. Tokens are opaque, authenticated and ephemeral;
+ * they grant no action authority and never expose provider-native identities. */
+export class WorkerViewService {
+  private readonly key = randomBytes(32);
+  private readonly nowMs: () => number;
+  constructor(private readonly db: Database.Database, options: { nowMs?: () => number } = {}) {
+    this.nowMs = options.nowMs ?? Date.now;
+  }
+
+  handle(method: string, params: unknown): WorkerViewListResult | WorkerViewInspectResult {
+    if (method === "worker.list") return this.list(params);
+    if (method === "worker.inspect") return this.inspect(params);
+    throw new WorkerViewError("unsupported_method");
+  }
+
+  list(raw: unknown): WorkerViewListResult {
+    const parsed = WorkerListParamsSchema.safeParse(raw);
+    if (!parsed.success) throw new WorkerViewError("invalid_request");
+    const params = parsed.data;
+    const common = this.context(params.repo_path);
+    const previous = params.cursor ? this.decode(params.cursor, "cursor", common.scope.scope_id, common.sampled_at_ms) : null;
+    const cursorContext = { ...common, sampled_at_ms: previous?.issued ?? common.sampled_at_ms };
+    return this.read(version => {
+      const query = { repo: common.scope.repo_path };
+      const total = (this.db.prepare(`${RELATION} SELECT count(*) AS n FROM sources`).get(query) as { n: number }).n;
+      const limit = params.limit ?? 25;
+      const rows = this.db.prepare(`${RELATION} ${projection(version)}
+        WHERE (@kind='' OR p.kind>@kind OR (p.kind=@kind AND p.id>@id))
+        ORDER BY p.kind,p.id LIMIT @limit`).all({ ...query, kind: previous?.source ?? "", id: previous?.id ?? "", limit: limit + 1 });
+      const result: WorkerViewListResult = { ...common, total, views: [], next_cursor: null, truncated: false };
+      // Reserve room for a cursor before adding each entry; never silently drop
+      // a row when the byte budget yields a shorter page than the count limit.
+      let last: Row | null = null;
+      for (let i = 0; i < Math.min(rows.length, limit); i++) {
+        const row = RowSchema.parse(rows[i]);
+        const more = i + 1 < rows.length;
+        const candidate = { ...result, views: [...result.views, this.view(row, common)],
+          next_cursor: more ? this.encode("cursor", row, cursorContext) : null, truncated: more };
+        if (this.bytes(candidate) > WORKER_VIEW_MAX_BYTES) {
+          if (!last) throw new WorkerViewError("response_too_large");
+          result.next_cursor = this.encode("cursor", last, cursorContext); result.truncated = true;
+          break;
+        }
+        Object.assign(result, candidate); last = row;
+      }
+      this.checkBytes(result);
+      return WorkerListResultSchema.parse(result);
+    });
+  }
+
+  inspect(raw: unknown): WorkerViewInspectResult {
+    const parsed = WorkerInspectParamsSchema.safeParse(raw);
+    if (!parsed.success) throw new WorkerViewError("invalid_request");
+    const common = this.context(parsed.data.repo_path);
+    const token = this.decode(parsed.data.view_id, "view", common.scope.scope_id, common.sampled_at_ms);
+    return this.read(version => {
+      const rawRow = this.db.prepare(`${RELATION} ${projection(version)} WHERE p.kind=@kind AND p.id=@id`)
+        .get({ repo: common.scope.repo_path, kind: token.source, id: token.id });
+      if (!rawRow) throw new WorkerViewError("source_not_found");
+      const result = { ...common, view: this.view(RowSchema.parse(rawRow), common) };
+      this.checkBytes(result);
+      return WorkerInspectResultSchema.parse(result);
+    });
+  }
+
+  private context(path: string) {
+    let repo: string;
+    try {
+      repo = realpathSync(path);
+      if (repo.length > 4096 || !statSync(repo).isDirectory()) throw new Error();
+      accessSync(repo, constants.R_OK | constants.X_OK);
+    } catch { throw new WorkerViewError("repository_unavailable"); }
+    const now = this.nowMs();
+    if (!Number.isSafeInteger(now) || now < 0) throw new WorkerViewError("source_unavailable");
+    return { schema_version: 1 as const, mode: "readonly_state_view" as const,
+      scope: { repo_path: repo, tenant: "default" as const, scope_id: createHash("sha256").update(`default\0${repo}`).digest("hex") },
+      sampled_at_ms: now, coverage: {
+        graph: "unsupported_authenticated_registration_required" as const,
+        unbound_runs: "excluded_not_bound" as const,
+        repository_binding: "canonical_stored_paths_only" as const,
+        content: "structured_metadata_only" as const,
+        counting: "source_views_not_unique_workers" as const,
+      } };
+  }
+
+  private view(row: Row, common: ReturnType<WorkerViewService["context"]>): z.infer<typeof ViewSchema> {
+    const updated = row.updated !== null && Number.isFinite(row.updated) && row.updated >= 0 && row.updated <= Number.MAX_SAFE_INTEGER / 1000 ? Math.round(row.updated * 1000) : null;
+    const age = updated === null ? -1 : common.sampled_at_ms - updated;
+    const terminal = ["completed", "failed", "cancelled", "expired"].includes(row.state);
+    return { view_id: this.encode("view", row, common), source_kind: row.kind, state: row.state,
+      revision: row.revision,
+      latest_turn: row.ordinal !== null && row.turn_state !== null ? { ordinal: row.ordinal, state: row.turn_state, decision_present: row.decision_present === 1 } : null,
+      last_updated_at_ms: updated, freshness: age < 0 ? "unknown" : age <= 60000 ? "recent" : "stale",
+      process_liveness: "unknown", controls: "unsupported",
+      uncertain_delivery_recorded: row.uncertain_delivery === 1,
+      wait_reason: terminal ? "none" : row.unresolved_delivery ? "delivery_unknown" : row.state === "awaiting_decision" ? (row.decision_present ? "decision_record_present" : "unknown") : row.state === "idle" ? "awaiting_instruction" : "none",
+    };
+  }
+
+  private encode(kind: Token["kind"], row: Row, common: ReturnType<WorkerViewService["context"]>): string {
+    const payload: Token = { v: 1, kind, scope: common.scope.scope_id, source: row.kind, id: row.id, issued: common.sampled_at_ms };
+    const iv = randomBytes(12);
+    const cipher = createCipheriv("aes-256-gcm", this.key, iv);
+    const data = Buffer.concat([cipher.update(JSON.stringify(payload), "utf8"), cipher.final()]);
+    return Buffer.concat([iv, cipher.getAuthTag(), data]).toString("base64url");
+  }
+
+  private decode(value: string, kind: Token["kind"], scope: string, now: number): Token {
+    try {
+      if (!/^[A-Za-z0-9_-]+$/.test(value)) throw new Error();
+      const bytes = Buffer.from(value, "base64url");
+      if (bytes.toString("base64url") !== value || bytes.length < 29) throw new Error();
+      const decipher = createDecipheriv("aes-256-gcm", this.key, bytes.subarray(0, 12));
+      decipher.setAuthTag(bytes.subarray(12, 28));
+      const token = TokenSchema.parse(JSON.parse(Buffer.concat([decipher.update(bytes.subarray(28)), decipher.final()]).toString("utf8")));
+      if (token.kind !== kind || token.scope !== scope || token.issued > now || now - token.issued > TOKEN_TTL_MS) throw new Error();
+      return token;
+    } catch { throw new WorkerViewError(kind === "cursor" ? "invalid_cursor" : "invalid_view"); }
+  }
+
+  private read<T>(fn: (version: number) => T): T {
+    try {
+      return this.db.transaction(() => {
+        const version = this.db.pragma("user_version", { simple: true });
+        if (typeof version !== "number" || version < 24 || version > CURRENT_SCHEMA_VERSION) throw new WorkerViewError("unsupported_schema");
+        return fn(version);
+      })();
+    } catch (error) {
+      if (error instanceof WorkerViewError) throw error;
+      throw new WorkerViewError("source_unavailable");
+    }
+  }
+  private bytes(value: unknown): number { return Buffer.byteLength(serializeWorkerView(value), "utf8") + 1; }
+  private checkBytes(value: unknown): void {
+    if (this.bytes(value) > WORKER_VIEW_MAX_BYTES) throw new WorkerViewError("response_too_large");
+  }
+}

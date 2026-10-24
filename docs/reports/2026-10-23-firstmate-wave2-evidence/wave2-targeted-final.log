@@ -1,0 +1,16 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-followthrough/packages/cli
+
+ ✓ src/daemon-daily.test.ts (9 tests) 1158ms
+   ✓ daemon daily RPC (R2.3) > counts consecutive failures and auto-stops after five  335ms
+ ✓ src/daily-cli.test.ts (25 tests) 599ms
+ ✓ src/worker-view-service.test.ts (31 tests) 572ms
+ ✓ src/daily-attention.test.ts (15 tests) 60ms
+ ✓ src/session-rpc.test.ts (30 tests) 2831ms
+ ✓ src/worker-view-command.test.ts (14 tests) 27ms
+
+ Test Files  6 passed (6)
+      Tests  124 passed (124)
+   Start at  12:08:49
+   Duration  4.32s (transform 856ms, setup 27ms, collect 2.34s, tests 5.25s, environment 0ms, prepare 156ms)
+

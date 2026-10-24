@@ -846,6 +846,53 @@ it("updates watched decisions from durable session changes without inbox refresh
   expect(await rpc("dashboard.snapshot", {workspacePath:home})).toMatchObject({ok:true,result:{attention:{scope_filter:"workspace",workspace_path:realpathSync(home)}}});
 });
 
+it("exposes scoped worker views through the real RPC and CLI without execution", async () => {
+  const id = "worker-entrypoint";
+  seedSession(id);
+  const repo = realpathSync(sessionRepo(id));
+  // The scratch root may be a short socket symlink. Worker views intentionally
+  // admit canonical stored repository bindings only.
+  const fixtureDb = openDb({path:handle.dbPath});
+  fixtureDb.prepare("UPDATE agent_sessions SET repo_path=? WHERE session_id=?").run(repo,id);
+  fixtureDb.close();
+  const executions = adapter.resumed.length + adapter.started.length;
+  const first = await rpc("worker.list", {repo_path:repo, default_tenant:true, limit:1});
+  expect(first).toMatchObject({ok:true,result:{total:2,views:[{process_liveness:"unknown",controls:"unsupported"}],truncated:true}});
+  const view = (first.result!["views"] as Array<{view_id:string;source_kind:string;state:string}>)[0]!;
+  expect(await rpc("worker.inspect", {repo_path:repo,default_tenant:true,view_id:view.view_id})).toMatchObject({ok:true,result:{view:{source_kind:view.source_kind,state:view.state}}});
+  expect(await rpc("worker.inspect", {repo_path:home,default_tenant:true,view_id:view.view_id})).toMatchObject({ok:false,error:{code:"invalid_view"}});
+  expect(await rpc("worker.list", {repo_path:repo})).toMatchObject({ok:false,error:{code:"invalid_request"}});
+  expect(await rpc("worker.list", {repo_path:repo,default_tenant:true,cursor:first.result!["next_cursor"]})).toMatchObject({ok:true,result:{total:2,views:[expect.anything()],truncated:false}});
+  const output = vi.spyOn(process.stdout, "write").mockImplementation(() => true);
+  try {
+    expect(await main(["worker","list","--repo",repo,"--default-tenant","--json"])).toBe(0);
+    const printed = output.mock.calls.map(call => String(call[0])).join("");
+    expect(JSON.parse(printed)).toMatchObject({mode:"readonly_state_view",total:2});
+    expect(printed).not.toContain("native-secret");
+    expect(printed).not.toContain("请选择方向");
+  } finally { output.mockRestore(); }
+  expect(adapter.resumed.length + adapter.started.length).toBe(executions);
+});
+
+it("manual daily reads watched repository state through the daemon without marking it seen", async () => {
+  const id = "daily-entrypoint";
+  seedSession(id);
+  const repo = realpathSync(sessionRepo(id));
+  expect(await rpc("attention.watch", {task_id:`task_${id}`,repo_path:repo,default_tenant:true})).toMatchObject({ok:true});
+  const auditDb = openDb({path:handle.dbPath});
+  const seenBefore = auditDb.prepare("SELECT * FROM attention_seen ORDER BY scope_id,actor,item_id").all();
+  const registry = join(home, "daily-entrypoint.json");
+  writeFileSync(registry, JSON.stringify([{repo_id:id,name:id,path:repo,role:"app",priority:50,verify_commands:[],loop_doc_path:"docs/LOOP.md",enabled:true}]));
+  const {readFileSync} = await import("node:fs");
+  const log = vi.spyOn(console, "log").mockImplementation(() => undefined);
+  try {
+    expect(await main(["daily","--registry",registry,"--json"])).toBe(0);
+    const brief = JSON.parse(readFileSync(join(home,"daily-briefs",`${new Date().toISOString().slice(0,10)}.json`),"utf8"));
+    expect(brief.attention).toMatchObject({tenant:"default",repos:[{repo_id:id,workspace_path:repo,snapshot:{scope_filter:"workspace",totals:{scopes:1}}}]});
+  } finally {log.mockRestore();}
+  try { expect(auditDb.prepare("SELECT * FROM attention_seen ORDER BY scope_id,actor,item_id").all()).toEqual(seenBefore); } finally {auditDb.close();}
+});
+
 it("waits for supervision stop before closing the daemon database", async () => {
   const { SupervisionService } = await import("./supervision-service.js");
   const stop = SupervisionService.prototype.stop;

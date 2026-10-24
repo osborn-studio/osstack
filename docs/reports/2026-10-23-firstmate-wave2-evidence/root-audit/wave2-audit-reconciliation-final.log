@@ -1,0 +1,11 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-contract-integration/packages/cli
+
+ ✓ src/worker-view-command.test.ts (14 tests) 31ms
+ ✓ src/worker-view-service.test.ts (32 tests) 629ms
+
+ Test Files  2 passed (2)
+      Tests  46 passed (46)
+   Start at  12:24:22
+   Duration  1.19s (transform 246ms, setup 32ms, collect 749ms, tests 660ms, environment 0ms, prepare 71ms)
+

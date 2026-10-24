@@ -189,6 +189,7 @@ interface DaemonContext {
   continuations: SessionContinuationRepository;
   collaborator: SessionCollaborator | undefined;
   supervision?: SupervisionService;
+  workerViews?: import("./worker-view-service.js").WorkerViewService;
   /** Local browser dashboard, returned to chat bridges as a shareable URL. */
   dashboardUrl: string | null;
   /** Active runs by run_id → AbortController for cancellation. */
@@ -1078,6 +1079,22 @@ function requestSupervisionScan(ctx: DaemonContext, reason: string): void {
 // ──────────────────────────────────────────────────────────────────────
 
 async function handleSingle(ctx: DaemonContext, req: DaemonRequest): Promise<SingleResponse | null> {
+  if (req.method === "worker.list" || req.method === "worker.inspect") {
+    if (ctx.draining) return singleErr(req.id, "draining", "Daemon is draining");
+    try {
+      const {WorkerViewService, WorkerViewError} = await import("./worker-view-service.js");
+      if (ctx.draining) return singleErr(req.id, "draining", "Daemon is draining");
+      ctx.workerViews ??= new WorkerViewService(ctx.db);
+      try {
+        return singleOk(req.id, ctx.workerViews.handle(req.method, req.params));
+      } catch (error) {
+        if (error instanceof WorkerViewError) return singleErr(req.id, error.code, error.message);
+        throw error;
+      }
+    } catch {
+      return singleErr(req.id, "worker_view_failed", "Worker view unavailable");
+    }
+  }
   if (req.method.startsWith("attention.")) {
     if (!ctx.supervision) return singleErr(req.id,"attention_disabled","Start daemon with OSSTACK_ATTENTION=1 to opt in");
     if (ctx.draining) return singleErr(req.id,"draining","Daemon is draining");
@@ -2044,6 +2061,7 @@ function persistLoopRunEvidence(ctx: DaemonContext, result: LoopRunResult | Loop
     } as unknown as HermesEvent);
   }
   finalizeRun(ctx.db, ctx.dbPath, runId, outcome, Date.now() / 1000);
+  requestSupervisionScan(ctx, "loop.run.persisted");
   return runId;
 }
 
@@ -2466,6 +2484,7 @@ async function persistLoopSessions(ctx: DaemonContext): Promise<void> {
   try {
     await writeFile(tmpPath, `${JSON.stringify(payload, null, 2)}\n`, "utf-8");
     await rename(tmpPath, ctx.loopSessionsPath);
+    requestSupervisionScan(ctx, "loop.snapshot.persisted");
   } catch {
     // best-effort: swallow snapshot failures (next persist will retry)
   }
@@ -2592,7 +2611,12 @@ async function runDailySession(ctx: DaemonContext, session: DailySession): Promi
       // is precisely what `mode: observe` permits, so no makePolicyGate consult
       // happens here; a scheduled brief runs regardless of workspace policy.
       try {
-        const run = await runDailyBrief({ registryPath: session.registryPath });
+        const {createDailyAttentionReader} = await import("./daily-attention.js");
+        const run = await runDailyBrief({
+          registryPath: session.registryPath,
+          signal: session.abort.signal,
+          attentionReader: createDailyAttentionReader(ctx.db, () => ctx.draining ? "unavailable" : ctx.supervision ? "running" : "disabled"),
+        });
         session.lastBriefPath = run.briefPath;
         session.lastResultStatus = run.result.status;
         session.consecutiveFailureCount = 0;
@@ -3412,7 +3436,7 @@ async function handleTaskSubmit(
     for await (const ev of boundedAdapterEvents(adapter.invoke(task, ac.signal), ac.signal)) {
       try {
         appendEvent(ctx.db, ctx.dbPath, ev);
-        if (ev.terminal) requestSupervisionScan(ctx, "run.terminal.persisted");
+        if (ev.terminal || ["run.started", "status", "approval.requested", "approval.resolved", "clarify.requested", "clarify.resolved", "error"].includes(ev.type)) requestSupervisionScan(ctx, "run.fact.persisted");
       } catch (err) {
         process.stderr.write(`osstack: event persist failed: ${(err as Error).message}\n`);
       }
@@ -3470,6 +3494,7 @@ async function handleTaskSubmit(
     ctx.activeRuns.delete(run_id);
     try {
       finalizeRun(ctx.db, ctx.dbPath, run_id, lastOutcome, Date.now() / 1000);
+      requestSupervisionScan(ctx, "run.finalized");
       if (lastUsageTokensIn || lastUsageTokensOut) {
         ctx.db.prepare("UPDATE runs SET tokens_in = ?, tokens_out = ? WHERE run_id = ?")
           .run(lastUsageTokensIn, lastUsageTokensOut, run_id);

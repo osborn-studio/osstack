@@ -1,0 +1,80 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-followthrough/packages/cli
+
+ ✓ src/daemon-daily.test.ts (9 tests) 713ms
+ ✓ src/daily-cli.test.ts (25 tests) 603ms
+ ✓ src/worker-view-service.test.ts (31 tests) 550ms
+ ✓ src/daily-attention.test.ts (15 tests) 60ms
+ ❯ src/session-rpc.test.ts (30 tests | 1 failed) 2499ms
+   ✓ governed session RPC > persists structured-event without treating it as approval 105ms
+   ✓ governed session RPC > persists structured-directive without treating it as approval 85ms
+   ✓ governed session RPC > preserves structured-start on the first session turn 72ms
+   ✓ governed session RPC > preserves structured-start-event on the first session turn 71ms
+   ✓ governed session RPC > tracks a resumed turn for drain and cancellation 118ms
+   ✓ governed session RPC > refuses a new instruction while the daemon is drained 15ms
+   ✓ governed session RPC > starts and persists a real resumable session without exposing its native id 74ms
+   ✓ governed session RPC > lists and snapshots sessions without exposing native ids 15ms
+   ✓ governed session RPC > applies an instruction once and reports an identical replay as duplicate 107ms
+   ✓ governed session RPC > retains failed delivery as uncertain instead of automatically replaying side effects 97ms
+   ✓ governed session RPC > turns an exact bounded OStag decision directive into awaiting_decision 96ms
+   ✓ governed session RPC > rejects stale versions, wrong turns, terminal sessions and oversized messages 116ms
+   ✓ governed session RPC > collapses concurrent duplicate delivery into one adapter resume 88ms
+   ✓ governed session RPC > fails closed on an accepted reservation left by daemon interruption 16ms
+   ✓ governed session RPC > keeps an uncertain delivery visible when a newer message fails 15ms
+   ✓ governed session RPC > exposes list, status, snapshot and send through the CLI 90ms
+   ✓ governed session RPC > starts a resumable session through the CLI without exposing its native id 73ms
+   ✓ governed session RPC > fails closed when an adapter tries to expose protected native metadata 83ms
+   ✓ governed session RPC > rejects instructions addressed to a different runtime before invoking the adapter 14ms
+   ✓ attention watch/inbox/answer shares the exact governed session receipt 88ms
+   ✓ never resumes an abandoned receipt when its original direct message ID is replayed 91ms
+   ✓ readmits capacity-limited Loop snapshots but preserves an explicit release 22ms
+   ✓ keeps an Attention answer uncertain after adapter failure and never replays it 94ms
+   ✓ keeps the reserved answer uncertain when both completion and failure persistence throw 95ms
+   ✓ does not reserve manual instructions or answers when execution admission is denied 180ms
+   ✓ cancels admission queued for either manual route without reserving a receipt 284ms
+   ✓ updates watched decisions from durable session changes without inbox refresh 116ms
+   × exposes scoped worker views through the real RPC and CLI without execution 32ms
+     → expected { id: 1, ok: true, result: { …(6) } } to match object { Object (ok, result) }
+(27 matching properties omitted from actual)
+   ✓ manual daily reads watched repository state through the daemon without marking it seen 59ms
+   ✓ waits for supervision stop before closing the daemon database 3ms
+ ✓ src/worker-view-command.test.ts (14 tests) 27ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/session-rpc.test.ts > exposes scoped worker views through the real RPC and CLI without execution
+AssertionError: expected { id: 1, ok: true, result: { …(6) } } to match object { Object (ok, result) }
+(27 matching properties omitted from actual)
+
+- Expected
++ Received
+
+  {
+    "ok": true,
+    "result": {
+      "view": {
+-       "view_id": "HW9jDnpeOWXvFp2WKl6mPv0ZwuK_Ks9UW1EXmmRJ_gl-MAnFtG6gavj45BXIKg5-VyKWNgQStcfmuvDbOyEXFZj9AwLr3ICFz14zSS5LUX5m0aXRplZblFmFAkWRLCfm1GxAeRytnsR5mIrihQYz5ZOZa7jpm6qf8H8oPubdQLPFF5F7eD2Q6LUdvcLPFUwrXi9NrmT1Gy6qhTH1q9fwME5r4Pr_tr4R-oCO_43rno05arhMYFssL6p-GOrxJgs",
++       "view_id": "cnpf0qaCSRFVtrnTHG54UrvKy9Q1bxxpJMbu5yTqaQNPeIuGXIKDR52JTO875ljSKrkO3z29_mtmAZJtXIPq3dBgDwCNfy2T1di8DlXmUA2mRlNFdsLWIhMn6KI2zc3WcUUMufW-HzjI2KFP6pKpiD3sn1FPewNge8l0pl8Ma9s11xQd889b7pMP1w-sit9xs6N2ywe7jVQsUjXo1gqmAIXVluOuJKBqFMVDCfZIZDrtracTm1cSC0wleW1YtPw",
+      },
+    },
+  }
+
+ ❯ src/session-rpc.test.ts:862:98
+    860|   expect(first).toMatchObject({ok:true,result:{total:2,views:[{process…
+    861|   const view = (first.result!["views"] as Array<{view_id:string}>)[0]!;
+    862|   expect(await rpc("worker.inspect", {repo_path:repo,default_tenant:tr…
+       |                                                                                                  ^
+    863|   expect(await rpc("worker.inspect", {repo_path:home,default_tenant:tr…
+    864|   expect(await rpc("worker.list", {repo_path:repo})).toMatchObject({ok…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 5 passed (6)
+      Tests  1 failed | 123 passed (124)
+   Start at  12:08:21
+   Duration  3.79s (transform 689ms, setup 28ms, collect 2.07s, tests 4.45s, environment 0ms, prepare 155ms)
+
+undefined
+/Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-followthrough/packages/cli:
+[ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL] Command failed with exit code 1: vitest run src/session-rpc.test.ts src/daemon-daily.test.ts src/daily-attention.test.ts src/daily-cli.test.ts src/worker-view-command.test.ts src/worker-view-service.test.ts '--maxWorkers=2' '--testTimeout=20000'

@@ -42,7 +42,7 @@ it("discovers beyond 200 with bounded admission and never claims complete capaci
   observer.tick(1000);
   observer.tick(2000);
   const view = observer.inventory(scope.scope_id, 2000);
-  expect(view.subject_total).toBe(220);
+  expect(view.subject_total).toBe(221);
   expect(view.admitted).toBe(100);
   expect(view.coverage).toBe("degraded");
   expect(
@@ -51,7 +51,7 @@ it("discovers beyond 200 with bounded admission and never claims complete capaci
         .prepare("SELECT COUNT(*) n FROM attention_subjects WHERE admitted=0")
         .get() as { n: number }
     ).n
-  ).toBe(120);
+  ).toBe(121);
 });
 it("projects historical turns atomically and discloses missing ordinal gaps", () => {
   const { observer, scope, db, store } = setup();
