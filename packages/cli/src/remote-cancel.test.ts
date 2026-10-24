@@ -119,7 +119,9 @@ async function fixture(graph?: { scope: typeof scope; repo: string }) {
     sockets = new Set<Socket>();
   let mutate: (v: unknown, m: string, params: unknown) => unknown | Promise<unknown> = (v) => v;
   const children: ChildProcessWithoutNullStreams[] = [];
-  const socket = join(root, "d.sock"),
+  const socketDirectory = join(root, "sockets");
+  await mkdir(socketDirectory, { mode: 0o700 });
+  const socket = join(socketDirectory, "d.sock"),
     server = createServer((s) => {
       sockets.add(s);
       s.on("close", () => sockets.delete(s));
@@ -280,6 +282,7 @@ async function fixture(graph?: { scope: typeof scope; repo: string }) {
       await writeFile(grantPath, JSON.stringify(g), { mode: 0o600 });
     },
     methods,
+    socketDirectory,
     children,
     spawnLocal,
     invoke,
@@ -709,4 +712,12 @@ it("an unrelated running status reply cannot be accepted as cancellation acknowl
   expect(await f.invoke()).toMatchObject({ code: 1, value: { outcome: "delivery_unknown" } });
   expect(await f.invoke()).toMatchObject({ code: 1, value: { outcome: "delivery_unknown" } });
   expect(f.methods.filter((m) => m === "graph.cancel")).toHaveLength(1);
+});
+
+it("unsafe socket ancestors cannot substitute an authenticated private daemon endpoint", async () => {
+  const f = await fixture();
+  await chmod(f.socketDirectory, 0o777);
+  expect(await f.invoke()).toMatchObject({ code: 1, value: { outcome: "delivery_unknown" } });
+  expect(f.methods).toEqual([]);
+  await chmod(f.socketDirectory, 0o700);
 });

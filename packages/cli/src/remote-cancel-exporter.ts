@@ -1,7 +1,7 @@
 import { randomBytes } from "node:crypto";
 import { lstat, realpath } from "node:fs/promises";
 import { connect } from "node:net";
-import { join, relative, isAbsolute, sep } from "node:path";
+import { join, relative, isAbsolute, sep, dirname } from "node:path";
 import type { Readable, Writable } from "node:stream";
 import { z } from "zod";
 import { GraphDelegationStatus } from "@osstack/protocol";
@@ -43,6 +43,7 @@ async function registry(path: string, digest: string): Promise<RemoteCancelServe
 }
 /** One connected existing daemon: all identity/status/cancel frames stay bound to that same process. */
 async function graphConnection(socketPath: string) {
+  await assertRemoteJournal(dirname(socketPath));
   if ((await realpath(socketPath)) !== socketPath) throw Error("remote_cancel_endpoint_invalid");
   const before = await lstat(socketPath);
   if (!before.isSocket() || before.uid !== process.getuid?.() || (before.mode & 0o077) !== 0)
@@ -58,6 +59,7 @@ async function graphConnection(socketPath: string) {
       const requestId = ++id;
       await channel.send({ id: requestId, method, ...(params === undefined ? {} : { params }) });
       const raw = await channel.receive();
+      await assertRemoteJournal(dirname(socketPath));
       const current = await lstat(socketPath);
       if (current.ino !== before.ino || current.dev !== before.dev)
         throw Error("remote_cancel_endpoint_changed");
