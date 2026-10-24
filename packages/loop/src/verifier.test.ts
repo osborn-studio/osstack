@@ -798,9 +798,11 @@ it("bounds a verifier that ignores abort and never settles next or return", asyn
   let returned = false;
   const adapter = mockAdapter({invoke(_task, incoming) {
     signal = incoming;
-    return {next:() => new Promise<IteratorResult<HermesEvent>>(() => {}),
+    const iterator: AsyncIterableIterator<HermesEvent> = {
+      next:() => new Promise<IteratorResult<HermesEvent>>(() => {}),
       return:() => {returned=true;return new Promise<IteratorResult<HermesEvent>>(() => {});},
-      [Symbol.asyncIterator]() {return this;}} as ReturnType<AgentAdapter["invoke"]>;
+      [Symbol.asyncIterator]() {return this;}};
+    return iterator;
   }});
   const verdict = await verifyRun(run(), {workspacePath:workspace,verifierAgentIds:[adapter.id],adapters:[adapter],timeoutMs:20});
   expect(verdict.pass).toBe(false);
