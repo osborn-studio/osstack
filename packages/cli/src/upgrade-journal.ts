@@ -108,6 +108,37 @@ export class UpgradeJournal {
       recovery: { claim_cleanup_pending: completed && claimsHeld > 0, claims_held: claimsHeld, claims_expected: claimNames.length, partial_claim: claimsHeld > 0 && claimsHeld < claimNames.length, historically_stopped_home_ids: [...new Set(records.filter(record => record.phase === 'draining' && record.status === 'confirmed' && record.home_id).map(record => record.home_id!))],
         last_started_phase: lastStarted?.phase ?? null, last_started_home_id: lastStarted?.home_id ?? null } };
   }
+  /** Explicit host reconciliation only, under the installation's native owner mutex.
+   * CAS binds operator approval to the exact observed history. Original attempts are never replayed. */
+  async recordReconciliation(digest: string, groupId: string, expectedHistory: string,
+    value: { verified: boolean; evidence: unknown; reason: 'explicit_forward_reconciliation' | 'reconciled_target_verified' | 'reconciliation_unknown' }): Promise<string> {
+    UpgradeDigest.parse(expectedHistory); const current = await this.status(digest, groupId);
+    if(current.completed)throw Error('upgrade_already_verified');
+    if (upgradeDigest(current.records) !== expectedHistory) throw Error('upgrade_reconciliation_changed');
+    const group = current.plan.plan.groups.find(g => g.group_id === groupId)!;
+    const names = [`claim-${upgradeDigest(group.installation_id)}.json`, ...group.homes.map(home => `home-claim-${upgradeDigest(home.home_id)}.json`)];
+    const owned: string[] = [];
+    for (const name of names) {
+      const claim = await readJson(join(this.root, name), 4096).catch(error => { if (error.code !== 'ENOENT') throw error; return null; }) as {plan_digest?:string;group_id?:string} | null;
+      if (claim && (claim.plan_digest !== digest || claim.group_id !== groupId)) throw Error('upgrade_foreign_claim');
+      if (claim) owned.push(name);
+    }
+    const record = RecordSchema.parse({schema_version:1, plan_digest:digest, group_id:groupId,
+      sequence:current.records.length, previous:current.records.length ? upgradeDigest(current.records.at(-1)) : null,
+      at_ms:Date.now(), phase:value.verified ? 'verified' : 'recovery_required', status:value.verified ? 'confirmed' : 'started',
+      home_id:null,evidence_digest:upgradeDigest(value.evidence),evidence_ref:`reconciliation:${expectedHistory}`,reason:value.reason});
+    await publish(join(this.root,digest),`${upgradeDigest(groupId)}.${String(record.sequence).padStart(4,'0')}.json`,record);
+    if (value.verified) { for (const name of owned) await unlink(join(this.root,name)); await syncDirectory(this.root); }
+    return upgradeDigest([...current.records,record]);
+  }
+  async cleanupVerifiedClaims(digest:string,groupId:string,expectedHistory:string):Promise<void>{
+    const current=await this.status(digest,groupId);if(!current.completed||upgradeDigest(current.records)!==expectedHistory)throw Error('upgrade_reconciliation_changed');
+    const group=current.plan.plan.groups.find(g=>g.group_id===groupId)!;
+    for(const name of [`claim-${upgradeDigest(group.installation_id)}.json`,...group.homes.map(h=>`home-claim-${upgradeDigest(h.home_id)}.json`)]){
+      const path=join(this.root,name);const claim=await readJson(path,4096).catch(error=>{if(error.code!=='ENOENT')throw error;return null;}) as {plan_digest?:string;group_id?:string}|null;
+      if(!claim)continue;if(claim.plan_digest!==digest||claim.group_id!==groupId)throw Error('upgrade_foreign_claim');await unlink(path);
+    }await syncDirectory(this.root);
+  }
   /** Locks are keyed by shared installation, across plans. Never stale-steal by PID or timeout. */
   async claim(digest: string, groupId: string): Promise<UpgradeJournalWriter> {
     const state = await this.status(digest, groupId); const group = state.plan.plan.groups.find(g => g.group_id === groupId)!;
