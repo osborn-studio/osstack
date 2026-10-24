@@ -11,10 +11,11 @@ import type { CommandAudit, ReviewArtifact } from "@osstack/loop";
 const exec = promisify(execFile);
 export const deliveryBytesDigest = (bytes: string | Buffer) => createHash("sha256").update(bytes).digest("hex");
 export async function deliveryGit(workspace: string, args: string[]): Promise<string> {
+  const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith("GIT_")));
   const safeArgs = args[0] === "diff" ? ["diff", "--no-ext-diff", "--no-textconv", ...args.slice(1)] : args;
   return (await exec("git", ["-c", "core.hooksPath=/dev/null", "-c", "core.fsmonitor=false", ...safeArgs], {
     cwd: workspace, encoding: "utf8", timeout: 30000, maxBuffer: 64 * 1024 * 1024,
-    env: { ...process.env, GIT_CONFIG_NOSYSTEM: "1", GIT_CONFIG_GLOBAL: "/dev/null", GIT_TERMINAL_PROMPT: "0" },
+    env: { ...env, GIT_CONFIG_NOSYSTEM: "1", GIT_CONFIG_GLOBAL: "/dev/null", GIT_TERMINAL_PROMPT: "0" },
   })).stdout;
 }
 export async function captureDeliveryCandidate(workspace: string, baseHead: string): Promise<DeliveryCandidateIdentityV2> {

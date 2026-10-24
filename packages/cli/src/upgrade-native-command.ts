@@ -24,8 +24,8 @@ export async function handleNativeUpgradeCommand(args: string[], io: {stdout?:(s
     if (!group) throw Error('upgrade_group_missing');
     port = new ManagedNativeUpgradePort({registry:flags.get('--registry')!,registryDigest:flags.get('--registry-sha256')!,artifact:flags.get('--artifact')!,artifactDigest:flags.get('--artifact-sha256')!,approvedPlanDigest:flags.get('--approve-plan')!});
     const initialStatus=await journal.status(plan.digest,group.group_id);
-    if(command==='apply-upgrade'&&initialStatus.completed){out(JSON.stringify({state:'verified',history_digest:upgradeDigest(initialStatus.records),reason:'inspect_native_fence_before_new_plan'}));return 0;}
     const signal=AbortSignal.timeout(Math.min(plan.plan.budget.max_total_ms,300000));
+    if(command==='apply-upgrade'&&initialStatus.completed){out(JSON.stringify(await port.reconcileForward(plan,group,journal,upgradeDigest(initialStatus.records),signal)));return 0;}
     if (command==='reconcile-upgrade') { out(JSON.stringify(await port.reconcileForward(plan,group,journal,flags.get('--approve-history')!,signal))); return 0; }
     const result=await coordinateUpgrade({journal,plan,groupId:group.group_id,port,signal});
     if(result.state==='verified'&&result.reason===null) await port.complete();

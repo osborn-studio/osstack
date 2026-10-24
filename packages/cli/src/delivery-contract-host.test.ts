@@ -2,12 +2,12 @@ import { execFileSync } from "node:child_process";
 import { chmod, mkdir, readFile, rm, stat, symlink, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { createScratchDir, deliveryCheckReference, freezeDeliveryContract } from "@osstack/core";
-import { afterEach, beforeEach, expect, it } from "vitest";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { deliveryGit, createDeliverySourceFence, createDeliveryVerificationFence, persistDeliveryHostRecord, readDeliveryHostRecord } from "./delivery-contract-host.js";
 
 let root: string;
 beforeEach(async () => { root = await createScratchDir("tests", "contract-host"); });
-afterEach(async () => { await rm(root, { recursive: true, force: true }); });
+afterEach(async () => { vi.unstubAllEnvs(); await rm(root, { recursive: true, force: true }); });
 it("reads only digest-bound local host files and rejects tampering, traversal and symlinks", async () => {
   const directory = join(root, "receipts");
   const ref = await persistDeliveryHostRecord(directory, { trusted: "host" });
@@ -76,4 +76,25 @@ it('requires every receipt reviewer to be independent, including later artifacts
  const input={frozen,runId:'run',runKind:'guarded-local' as const,candidate:{base_head:'a'.repeat(40),head:'a'.repeat(40),tree_id:'c'.repeat(40),diff_digest:'d'.repeat(64)},commands:[{command:'pnpm test',exit_code:0,duration_ms:1}],reviews:[review],builderAgentId:'builder',builderIdentity:{provider_id:'builder-provider',model_id:'builder-model',evidence_source:'reported'},workspaceStateDigest:'e'.repeat(64)};
  expect(buildDeliveryVerificationReceipt(input).review.reviewer_agent_id).toBe('reviewer');
  for(const bad of [{...review,reviewer_agent_id:'builder'},{...review,runtime_identity:{evidence_source:'reported',provider_id:'builder-provider',model_id:'builder-model'}},{...review,runtime_identity:{...review.runtime_identity,evidence_source:'unknown'}}])expect(()=>buildDeliveryVerificationReceipt({...input,reviews:[review,bad]})).toThrow('independent_review_required');
+});
+
+it("ignores inherited Git repository, index and configuration overrides", async () => {
+  const workspace = join(root, "intended"); const other = join(root, "other");
+  for (const [directory, value] of [[workspace, "intended"], [other, "other"]] as const) {
+    await mkdir(directory); await writeFile(join(directory, "file"), value);
+    execFileSync("git", ["init", "-q", directory]);
+    execFileSync("git", ["add", "."], { cwd: directory });
+    execFileSync("git", ["-c", "user.name=test", "-c", "user.email=test@example.invalid", "commit", "-qm", value], { cwd: directory });
+  }
+  const expected = execFileSync("git", ["rev-parse", "HEAD"], { cwd: workspace, encoding: "utf8" });
+  const expectedTree = execFileSync("git", ["write-tree"], { cwd: workspace, encoding: "utf8" });
+  vi.stubEnv("GIT_DIR", join(other, ".git"));
+  vi.stubEnv("GIT_WORK_TREE", other);
+  vi.stubEnv("GIT_INDEX_FILE", join(other, ".git/index"));
+  vi.stubEnv("GIT_CONFIG_PARAMETERS", "'core.bare=true'");
+  expect(await deliveryGit(workspace, ["rev-parse", "HEAD"])).toBe(expected);
+  expect(await deliveryGit(workspace, ["write-tree"])).toBe(expectedTree);
+  const fence = await createDeliverySourceFence(workspace, expected.trim());
+  await writeFile(join(workspace, "file"), "changed");
+  await expect(fence()).rejects.toThrow("delivery_source_changed");
 });

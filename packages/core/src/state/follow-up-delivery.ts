@@ -164,6 +164,7 @@ function frozen<T>(value: T): T {
 /** Host registries/keys are trusted composition, never RPC input. Construction performs no I/O. */
 export class FollowUpDeliveryService {
   private observedClock = 0;
+  private readonly inFlight = new Set<string>();
   constructor(
     private readonly db: Database.Database,
     private readonly dbPath: string,
@@ -443,40 +444,45 @@ export class FollowUpDeliveryService {
       }),
     );
     if ("result" in claim) return claim.result;
-    // No retry or fallback exists here. A throw after this call cannot prove non-delivery.
-    const outcome = await this.boundedCall((signal) => claim.transport.sendOnce(claim.envelope, signal));
-    return this.safe(() =>
-      this.durableWrite(() => {
-        const current = this.row(repo, p.attempt_id);
-        if (current.state !== "started" || current.revision !== claim.row.revision)
-          return this.result(current, "unchanged", true);
-        const now = this.evidenceClock(current.updated_at_ms),
-          receipt = outcome.ok ? this.receipt(claim.envelope, outcome.value) : null;
-        if (!receipt)
+    this.inFlight.add(p.attempt_id);
+    try {
+      // No retry or fallback exists here. A throw after this call cannot prove non-delivery.
+      const outcome = await this.boundedCall((signal) => claim.transport.sendOnce(claim.envelope, signal));
+      return this.safe(() =>
+        this.durableWrite(() => {
+          const current = this.row(repo, p.attempt_id);
+          if (current.state !== "started" || current.revision !== claim.row.revision)
+            return this.result(current, "unchanged", true);
+          const now = this.evidenceClock(current.updated_at_ms),
+            receipt = outcome.ok ? this.receipt(claim.envelope, outcome.value) : null;
+          if (!receipt)
+            return this.result(
+              this.bump(
+                current,
+                "delivery_unknown",
+                outcome.ok ? "receipt_unconfirmed" : "send_outcome_unknown",
+                now,
+                {},
+              ),
+              "delivery_unknown",
+            );
           return this.result(
             this.bump(
               current,
-              "delivery_unknown",
-              outcome.ok ? "receipt_unconfirmed" : "send_outcome_unknown",
+              "delivered",
+              "provider_receipt",
               now,
-              {},
+              { receipt_sha256: hash(receipt) },
+              current.qualification,
+              receipt,
             ),
-            "delivery_unknown",
-          );
-        return this.result(
-          this.bump(
-            current,
             "delivered",
-            "provider_receipt",
-            now,
-            { receipt_sha256: hash(receipt) },
-            current.qualification,
-            receipt,
-          ),
-          "delivered",
-        );
-      }),
-    );
+          );
+        }),
+      );
+    } finally {
+      this.inFlight.delete(p.attempt_id);
+    }
   }
   async reconcile(input: unknown): Promise<FollowUpDeliveryResult> {
     const p = parsed(FollowUpDeliveryActionParams, input),
@@ -486,6 +492,10 @@ export class FollowUpDeliveryService {
         let row = this.row(repo, p.attempt_id);
         this.revision(row, p.expected_revision);
         if (row.state === "prepared") throw new FollowUpDeliveryError("delivery_authorization_required");
+        // The live owner can still provide its receipt. Recovery is for abandoned sends,
+        // not a second RPC racing the one-shot transport on this service.
+        if (row.state === "started" && this.inFlight.has(row.attempt_id))
+          return { result: this.result(row, "in_flight", true) };
         if (["delivered", "definitely_not_sent"].includes(row.state))
           return { result: this.result(row, "unchanged", true) };
         const envelope = this.envelope(row),

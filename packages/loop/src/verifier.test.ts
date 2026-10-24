@@ -782,3 +782,29 @@ function capability(id: string, kind: Capability["kind"], agentId: string): Capa
     version: "0.0.0",
   };
 }
+
+
+it("bounds verifier availability without starting invocation", async () => {
+  let invoked = false;
+  const adapter = {...mockAdapter({async *invoke(){invoked=true;}}),
+    isAvailable: () => new Promise<never>(() => {})};
+  const verdict = await verifyRun(run(), {workspacePath:workspace,verifierAgentIds:[adapter.id],adapters:[adapter],timeoutMs:20});
+  expect(verdict.pass).toBe(false);
+  expect(invoked).toBe(false);
+  expect(verdict.issues).toContainEqual(expect.objectContaining({rule:"verify.adapter_failed",message:expect.stringContaining("availability timed out")}));
+});
+it("bounds a verifier that ignores abort and never settles next or return", async () => {
+  let signal: AbortSignal | undefined;
+  let returned = false;
+  const adapter = mockAdapter({invoke(_task, incoming) {
+    signal = incoming;
+    return {next:() => new Promise<IteratorResult<HermesEvent>>(() => {}),
+      return:() => {returned=true;return new Promise<IteratorResult<HermesEvent>>(() => {});},
+      [Symbol.asyncIterator]() {return this;}} as ReturnType<AgentAdapter["invoke"]>;
+  }});
+  const verdict = await verifyRun(run(), {workspacePath:workspace,verifierAgentIds:[adapter.id],adapters:[adapter],timeoutMs:20});
+  expect(verdict.pass).toBe(false);
+  expect(signal?.aborted).toBe(true);
+  expect(returned).toBe(true);
+  expect(verdict.issues).toContainEqual(expect.objectContaining({rule:"verify.adapter_failed",message:expect.stringContaining("stop_confirmed=unknown")}));
+});

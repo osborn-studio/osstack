@@ -11,3 +11,20 @@ it('quarantines generation changes and prevents resurrection of a retired genera
 it('rejects same-revision changed contents and cannot acknowledge a revision rollback',()=>{const f=fixture();f.ledger.observe(f.scope,{...f.evidence,revision:2});expect(f.ledger.observe(f.scope,{...f.evidence,revision:2,content_digest:'c'.repeat(64)}).reason).toBe('revision_conflict');expect(()=>f.ledger.acknowledge(f.scope,f.evidence,2,f.evidence.content_digest)).toThrow('source_revision_regression');});
 it('persists unavailable state and monotonic clock across restarts without silently clearing quarantine',()=>{const f=fixture();f.ledger.observe(f.scope,f.evidence);f.ledger.unavailable(f.scope,'content_pin_mismatch');expect(f.ledger.observe(f.scope,f.evidence).state).toBe('unknown');f.setNow(99);expect(()=>f.ledger.observe(f.scope,f.evidence)).toThrow('source_clock_regression');const other=new SourceObservationLedger(f.db,f.path,()=>99);expect(()=>other.unavailable(f.scope,'source_unavailable')).toThrow('source_clock_regression');});
 it('retains bounded metadata events, reports history gaps and never implies a missing cursor is current',()=>{const f=fixture();for(let revision=0;revision<505;revision++)f.ledger.observe(f.scope,{...f.evidence,revision});const page=f.ledger.events(f.scope,0,100);expect(page.history_gap).toBe(true);expect(page.events[0]!.sequence).toBe(6);expect(page.events).toHaveLength(100);expect(page.has_more).toBe(true);expect(()=>f.ledger.events(f.scope,506)).toThrow('source_cursor_ahead');expect(f.db.prepare('SELECT count(*) AS n FROM source_observation_events').get()).toEqual({n:500});});
+
+it('keeps restored identical evidence quarantined, deduplicates repolls and permits explicit acknowledgement',()=>{
+ const f=fixture();f.ledger.observe(f.scope,f.evidence);
+ f.ledger.unavailable(f.scope,'read_timeout');
+ const restored=f.ledger.observe(f.scope,f.evidence);
+ expect(restored).toMatchObject({state:'unknown',reason:'read_timeout',record_revision:3,proposed:f.evidence});
+ for(let i=0;i<5;i++)expect(f.ledger.observe(f.scope,f.evidence)).toEqual(restored);
+ expect(f.ledger.events(f.scope).events.map(event=>event.transition)).toEqual(['snapshot_baseline','source_unavailable','snapshot_quarantined']);
+ expect(f.ledger.acknowledge(f.scope,f.evidence,restored.record_revision,f.evidence.content_digest)).toMatchObject({state:'ready',record_revision:4,proposed:null});
+});
+it('recovers writes after wall time catches up without database editing or extending stale evidence trust',()=>{
+ const f=fixture();f.ledger.observe(f.scope,f.evidence);f.setNow(99);
+ expect(()=>f.ledger.observe(f.scope,f.evidence)).toThrow('source_clock_regression');
+ expect(f.ledger.status(f.scope)?.record_revision).toBe(1);
+ f.setNow(100);expect(f.ledger.observe(f.scope,f.evidence).state).toBe('ready');
+ f.setNow(f.evidence.expires_at_ms);expect(()=>f.ledger.observe(f.scope,f.evidence)).toThrow('source_evidence_not_fresh');
+});

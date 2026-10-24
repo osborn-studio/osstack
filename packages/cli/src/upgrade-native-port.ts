@@ -159,9 +159,18 @@ export class ManagedNativeUpgradePort implements NativeUpgradePort {
     if (this.input.approvedPlanDigest !== plan.digest || this.config.installation_id !== group.installation_id
       || upgradeCanonical(this.bundle.target) !== upgradeCanonical(plan.plan.target)
       || upgradeCanonical(group.homes.map(h=>h.home_id).sort()) !== upgradeCanonical(this.config.consumers.map(c=>c.home_id).sort())) throw Error('upgrade_approval_binding');
-    this.ownerRelease = acquireDaemonLock(join(this.config.root,'upgrade-owner.pid')); this.assertOperation();
+    this.ownerRelease = acquireDaemonLock(join(this.config.root,'upgrade-owner.pid')); this.assertPins();
     const previous=await journal.status(plan.digest,group.group_id);
-    if(previous.completed){if(upgradeDigest(previous.records)!==expectedHistory)throw Error('upgrade_reconciliation_changed');if(realpathSync(join(this.config.root,'current'))!==join(this.config.root,'releases',plan.plan.target.build_digest)||upgradeCanonical(verifyRelease(this.config.root,plan.plan.target.build_digest).target)!==upgradeCanonical(plan.plan.target))throw Error('upgrade_release_metadata_changed');for(const home of group.homes){const observed=await this.observe(home,signal);const identity=observed.identity;if(!observed.healthy||identity.build_digest!==plan.plan.target.build_digest||identity.version!==plan.plan.target.version||identity.protocol_version!==plan.plan.target.protocol_version||identity.database_schema!==plan.plan.target.database_schema||identity.generation===home.identity?.generation)throw Error('upgrade_version_mismatch');}await journal.cleanupVerifiedClaims(plan.digest,group.group_id,expectedHistory);await this.complete();return{state:'verified' as const,history_digest:expectedHistory};}
+    if(previous.completed){
+      if(upgradeDigest(previous.records)!==expectedHistory)throw Error('upgrade_reconciliation_changed');
+      if(realpathSync(join(this.config.root,'current'))!==join(this.config.root,'releases',plan.plan.target.build_digest)||upgradeCanonical(verifyRelease(this.config.root,plan.plan.target.build_digest).target)!==upgradeCanonical(plan.plan.target))throw Error('upgrade_release_metadata_changed');
+      // Terminal history already contains verified identities. This only repairs
+      // interrupted fence cleanup, never replays work or claims current health.
+      signal.throwIfAborted();
+      await journal.cleanupVerifiedClaims(plan.digest,group.group_id,expectedHistory);
+      await this.complete();return{state:'verified' as const,history_digest:expectedHistory,reason:'verified_history_fence_cleanup_only'};
+    }
+    this.assertOperation();
     let history = await journal.recordReconciliation(plan.digest,group.group_id,expectedHistory,{verified:false,evidence:{registry:this.input.registryDigest,artifact:this.input.artifactDigest},reason:'explicit_forward_reconciliation'});
     try {
       const current = realpathSync(join(this.config.root,'current'));
@@ -213,6 +222,14 @@ export class ManagedNativeUpgradePort implements NativeUpgradePort {
   async close(): Promise<void> { this.closed=true;await Promise.allSettled([...this.pending]);for (const release of this.stopLocks.values()) release(); this.stopLocks.clear(); this.ownerRelease?.(); this.ownerRelease=undefined; }
   complete():Promise<void>{return this.track(()=>this.doComplete());}
   private async doComplete(): Promise<void> {
-    this.assertOperation(); await unlink(join(this.config.root,'restart-permit.json')).catch(e=>{if(e.code!=='ENOENT')throw e;}); await unlink(join(this.config.root,'upgrade-operation.json')); await syncDirectory(this.config.root);
+    this.assertPins();
+    if(!this.plan||!this.group||!this.ownerRelease)throw Error('upgrade_operation_binding');
+    const operation=join(this.config.root,'upgrade-operation.json'),permit=join(this.config.root,'restart-permit.json');
+    if(existsSync(operation))this.assertOperation();
+    if(existsSync(permit)){const value=JSON.parse(readPrivate(permit).toString());if(value.plan_digest!==this.plan.digest||value.build_digest!==this.plan.plan.target.build_digest)throw Error('upgrade_restart_permit_binding');}
+    // Make absence of the blocking fence durable before removing startup permission.
+    // A crash at either boundary is safe and the same authorized cleanup is resumable.
+    await unlink(operation).catch(e=>{if(e.code!=='ENOENT')throw e;});await syncDirectory(this.config.root);
+    await unlink(permit).catch(e=>{if(e.code!=='ENOENT')throw e;});await syncDirectory(this.config.root);
   }
 }

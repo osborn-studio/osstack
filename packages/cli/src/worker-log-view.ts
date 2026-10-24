@@ -16,7 +16,7 @@ export const WorkerLogRegistry = z.object({schema_version:z.literal(1),grants:z.
 const digest = (bytes: Buffer|string)=>createHash("sha256").update(bytes).digest();
 /** Separate, explicitly host-issued content capability. Ordinary worker view tokens cannot read text.
  * Reads only bounded persisted session output, never arbitrary paths, tool payloads or native process logs. */
-export async function inspectWorkerLogs(db: Database.Database, home: string, raw: unknown, clock:()=>number=Date.now) {
+export async function inspectWorkerLogs(db: Database.Database, home: string, raw: unknown, clock:()=>number=Date.now, signal?:AbortSignal) {
   const nowMs=clock();
   const params = WorkerLogParams.parse(raw); const repo=realpathSync(params.repo_path);
   if(repo!==params.repo_path || !Number.isSafeInteger(nowMs)) throw Error("worker_log_unavailable");
@@ -34,6 +34,7 @@ export async function inspectWorkerLogs(db: Database.Database, home: string, raw
   if(!timingSafeEqual(digest(await readPrivateDeliveryFile(registryPath,32768)),digest(bytes)))throw Error("worker_log_unavailable");
   const current=clock();
   if(!Number.isSafeInteger(current)||current<nowMs||current>=auth.expires_at_ms)throw Error("worker_log_unavailable");
+  if(signal?.aborted)throw Error("worker_log_unavailable");
   const result=db.transaction(()=>{
     const version=db.pragma("user_version",{simple:true});
     if(typeof version!=="number" || version<24 || version>CURRENT_SCHEMA_VERSION)throw Error("worker_log_unavailable");

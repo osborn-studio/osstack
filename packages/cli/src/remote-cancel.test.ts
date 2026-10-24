@@ -361,6 +361,17 @@ it("actual issuer -> client -> child exporter -> existing daemon boundary return
   expect(f.methods.filter((m) => m === "graph.cancel")).toHaveLength(1);
   await expect(readFile(join(f.root, "never-open", "state.db"))).rejects.toThrow();
 });
+it("local identity preflight failure does not reserve or burn the cancellation grant", async () => {
+  const f = await fixture();
+  await chmod(f.entry.identity_file, 0o644);
+  const start = vi.fn(() => { throw Error("unexpected spawn before local preflight"); });
+  expect(await f.invoke("cancel", start as typeof spawn)).toMatchObject({ code: 1, value: { outcome: "not_sent" } });
+  expect(start).not.toHaveBeenCalled();
+  expect(f.methods).toEqual([]);
+  await chmod(f.entry.identity_file, 0o600);
+  expect(await f.invoke()).toMatchObject({ code: 0, value: { outcome: "stop_requested" } });
+  expect(f.methods.filter(method => method === "graph.cancel")).toHaveLength(1);
+});
 it("lost remote ACK after fsync is recovered by query without replay", async () => {
   const f = await fixture();
   f.env["DROP_ACK" as keyof typeof f.env] = "1";

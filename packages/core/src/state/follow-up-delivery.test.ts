@@ -595,6 +595,25 @@ it("rejects oversized escaped content before preparing and preserves exact accep
   expect(Buffer.byteLength(JSON.stringify(result))).toBeLessThan(65536);
 });
 
+it("reconcile preserves an active send and its eventual receipt", async () => {
+  const f = fixture();
+  f.options.timeoutMs = 1000;
+  const a = f.authorize(f.prepare().attempt).attempt;
+  const receipt = await f.sends.getMockImplementation()!(a.envelope);
+  let release!: (value: unknown) => void;
+  let entered!: () => void;
+  const called = new Promise<void>(resolve => { entered = resolve; });
+  f.transport.sendOnce = () => { entered(); return new Promise(resolve => { release = resolve; }); };
+  const pending = f.service.dispatch({ ...f.scope, attempt_id: a.attempt_id, expected_revision: a.revision });
+  await called;
+  const started = f.service.inspect({ ...f.scope, attempt_id: a.attempt_id }).attempt;
+  const concurrent = await f.service.reconcile({ ...f.scope, attempt_id: a.attempt_id, expected_revision: started.revision });
+  release(receipt);
+  const completed = await pending;
+  expect(concurrent).toMatchObject({ outcome: "in_flight", attempt: { state: "started", revision: started.revision } });
+  expect(completed.attempt).toMatchObject({ state: "delivered", receipt });
+});
+
 it("revocation racing an in-flight send preserves unknown until explicit lookup", async () => {
   const f = fixture(),
     a = f.authorize(f.prepare().attempt).attempt;

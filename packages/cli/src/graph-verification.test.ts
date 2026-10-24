@@ -26,9 +26,10 @@ afterEach(() => { for (const fn of close.splice(0)) fn(); });
 import { computeGraphEffectKey } from '@osstack/protocol';
 import { prepareGraphVerification, prepareGraphVerificationBranch, loadGraphVerificationEvidence, type GraphVerificationOptions } from './graph-verification.js';
 const git = (cwd: string, ...args: string[]) => execFileSync('git', args, { cwd, encoding: 'utf8' }).trim();
-async function fixture() {
+async function fixture(payloadBytes = 0) {
   const root = await realpath(await mkdtemp(join(tmpdir(), 'g19-'))); const repo = join(root, 'source'); await mkdir(repo);
-  git(repo, 'init', '-q'); await writeFile(join(repo, 'file'), 'candidate'); git(repo, 'add', '.'); git(repo, '-c', 'user.name=test', '-c', 'user.email=test@invalid', 'commit', '-qm', 'base');
+  git(repo, 'init', '-q'); await writeFile(join(repo, 'file'), 'candidate');
+  if (payloadBytes) await writeFile(join(repo, 'payload'), Buffer.alloc(payloadBytes, 42)); git(repo, 'add', '.'); git(repo, '-c', 'user.name=test', '-c', 'user.email=test@invalid', 'commit', '-qm', 'base');
   const scope = { schemaVersion: 1 as const, tenantId: 't', principalId: 'p', workspaceId: 'w' };
   const db = openDb({ path: join(root, 'control.sqlite') }); close.push(() => db.close()); const runs = new GraphRunStore(db);
   const created = runs.create({ schemaVersion: 1, kind: 'start', scope, idempotencyKey: 'verification', inputArtifactRef: 'input', source: { product: 'osstack', requestId: 'request' }, spec: { schemaVersion: 1, template: 'code-delivery-v1', publication: 'artifact_only', input: { taskRef: 'task', repositoryRef: 'repo', baseRevision: git(repo, 'rev-parse', 'HEAD'), acceptanceRef: 'acceptance' }, limits: { maxEpochs: 1, maxBranchAttempts: 2, maxConcurrentReaders: 2, maxConcurrentWritersPerRepo: 1, maxActionStarts: 8, deadlineSeconds: 120, tokenReservationLimit: 100 } } }, { executionModel: 'langgraph-functional-v1', durability: 'sync', engineVersion: '1.4.15', checkpointVersion: '1.1.5', templateVersion: '1', registryVersion: '1', compilerVersion: '1', schemaVersion: '1', compiledProgramDigest: 'b'.repeat(64) }, Date.now());
@@ -511,3 +512,35 @@ it('keeps sixteen contained stop proofs within the bounded local suite evidence'
   expect(Buffer.byteLength(JSON.stringify(envelope))).toBeGreaterThan(65536);
   expect(Buffer.byteLength(JSON.stringify(envelope))).toBeLessThan(262144);
 },30000);
+
+it('seals cancellation observed during persistence even after a passing check stopped', async () => {
+  const f = await fixture();
+  f.options.acceptanceRegistry = [{ ref: 'acceptance', command: 'exit 0', passExitCodes: [0], failExitCodes: [1] }];
+  const controller = new AbortController();
+  let persisting = false; f.options.verifyReviewer = async () => { if (persisting) controller.abort(); };
+  const prepared = await prepareGraphVerificationBranch(f.options, 'tests');
+  // The persistence identity check is asynchronous: cancellation can arrive here
+  // after the actual executor has already stopped successfully.
+  persisting = true;
+  const result = await prepared.actions[0]!.persist({ status: 'completed', stopped: true,
+    command: { command: 'exit 0', exitCode: 0, stdout: '', stderr: '', durationMs: 1,
+      termination: { scope: 'posix_process_group', trigger: 'exit', leader_exit_code: 0, stop_confirmed: true, signals: [], evidence: 'stopped' } } }, { signal: controller.signal });
+  expect(result.result).toBeUndefined();
+  expect(result.verificationFailure).toMatchObject({ code: 'INTERNAL_ERROR', retrySafe: false });
+});
+it.skipIf(!process.env['OSSTACK_REVIEW_INVENTORY_REPORT'])('measures all review boundaries over a 31 MiB candidate without caching authority checks', async () => {
+  const f = await fixture(31 * 1024 * 1024);
+  f.options.reviewer.adapter.invoke = reviewAdapter(() => JSON.stringify({ schemaVersion: 1, verdict: 'accept', summary: 'fixture', findings: [] }));
+  const started = performance.now(); const prepared = await prepareGraphVerificationBranch(f.options, 'review');
+  const preparationMs = performance.now() - started; const action = prepared.actions[0]!;
+  const samples: Array<{ verifyMs: number; invokeMs: number; persistMs: number }> = [];
+  for (let index = 0; index < 3; index++) {
+    let at = performance.now(); await action.verifyWorkspace!(); const verifyMs = performance.now() - at;
+    at = performance.now(); const evidence = await invokeReview(action); const invokeMs = performance.now() - at;
+    at = performance.now(); const result = await action.persist(evidence); const persistMs = performance.now() - at;
+    expect(result.result).toMatchObject({ kind: 'review', verdict: 'accept' }); samples.push({ verifyMs, invokeMs, persistMs });
+  }
+  await writeFile(process.env['OSSTACK_REVIEW_INVENTORY_REPORT']!, JSON.stringify({ node: process.version, platform: process.platform,
+    candidateBytes: 31 * 1024 * 1024, preparationMs, samples,
+    qualification: 'Local scratch Git candidate, real raw-byte identity fences, fixture reviewer. Includes Git and evidence I/O. Not a provider, RPC latency or universal repository-size guarantee.' }, null, 2));
+}, 60000);

@@ -200,6 +200,7 @@ interface DaemonContext {
   collaborator: SessionCollaborator | undefined;
   supervision?: SupervisionService;
   workerLogReads?: Set<Promise<unknown>>;
+  workerLogAbort?: AbortController;
   workerViews?: import("./worker-view-service.js").WorkerViewService;
   /** Local browser dashboard, returned to chat bridges as a shareable URL. */
   dashboardUrl: string | null;
@@ -1116,12 +1117,28 @@ async function getAttentionTriage(ctx: DaemonContext) {
   return ctx.attentionTriage;
 }
 
+/** Only for reads whose final DB access is fenced by an aborted signal. */
+async function drainCancelledReads(reads: Promise<unknown>[]): Promise<void> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    await Promise.race([
+      Promise.allSettled(reads),
+      new Promise<void>(resolve => { timer = setTimeout(resolve, 2000); }),
+    ]);
+  } finally { clearTimeout(timer); }
+}
+
 async function handleSingle(ctx: DaemonContext, req: DaemonRequest): Promise<SingleResponse | null> {
   if (["source.observe", "source.events", "source.acknowledge"].includes(req.method)) {
     if (ctx.draining) return singleErr(req.id, "draining", "Daemon is draining");
     ctx.sourceObservationPending ??= new Map();
     if (ctx.sourceObservationPending.size >= 4) return singleErr(req.id, "source_busy", "Source request limit reached");
     const controller = new AbortController();
+    let abortResponse!: () => void;
+    const aborted = new Promise<never>((_resolve, reject) => {
+      abortResponse = () => reject(Error("source_unavailable"));
+      controller.signal.addEventListener("abort", abortResponse, {once:true});
+    });
     const timer = setTimeout(() => controller.abort(), 2000);
     const pending = (async () => {
       const { createHostSourceObservationService } = await import("./source-observation-host.js");
@@ -1132,9 +1149,16 @@ async function handleSingle(ctx: DaemonContext, req: DaemonRequest): Promise<Sin
         req.params, ctx.sourceObservations, controller.signal);
     })();
     ctx.sourceObservationPending.set(controller, pending);
-    try { return singleOk(req.id, await pending); }
+    // A timed-out response must not free a still-running I/O slot. Retain the
+    // operation until settlement, but bound the caller's wait independently.
+    const settled = () => { ctx.sourceObservationPending?.delete(controller); };
+    void pending.then(settled, settled);
+    try { return singleOk(req.id, await Promise.race([pending, aborted])); }
     catch { return singleErr(req.id, "source_unavailable", "Source observation unavailable"); }
-    finally { clearTimeout(timer); ctx.sourceObservationPending.delete(controller); }
+    finally {
+      clearTimeout(timer);
+      controller.signal.removeEventListener("abort", abortResponse);
+    }
   }
   if (req.method === "source.inspect") {
     if (ctx.draining) return singleErr(req.id,"draining","Daemon is draining");
@@ -1174,7 +1198,9 @@ async function handleSingle(ctx: DaemonContext, req: DaemonRequest): Promise<Sin
       if(ctx.draining)return singleErr(req.id,"draining","Daemon is draining");
       ctx.workerLogReads ??= new Set();
       if(ctx.workerLogReads.size>=4)return singleErr(req.id,"worker_log_busy","Worker output reader busy");
-      const pending=realpath(dirname(ctx.dbPath)).then(home=>inspectWorkerLogs(ctx.db,home,req.params));
+      ctx.workerLogAbort ??= new AbortController();
+      const logSignal = ctx.workerLogAbort.signal;
+      const pending=realpath(dirname(ctx.dbPath)).then(home=>inspectWorkerLogs(ctx.db,home,req.params,Date.now,logSignal));
       ctx.workerLogReads.add(pending);
       try{return singleOk(req.id,await pending);}finally{ctx.workerLogReads.delete(pending);}
     }catch{return singleErr(req.id,"worker_log_unavailable","Worker output unavailable");}
@@ -4089,8 +4115,12 @@ export async function startDaemon(
     ?? await readContinuationTrust(join(osstackHome(), "continuation-trust.json")));
   // Refuse to start when another daemon already owns the pidfile — two
   // daemons would race for the socket and share the SQLite writer.
-  const {managedStartupIdentity,verifyManagedRuntime} = await import("./upgrade-native-backend.js");
+  const {managedStartupIdentity,verifyManagedRuntime,verifyManagedCode} = await import("./upgrade-native-backend.js");
   const managedIdentity = managedStartupIdentity(osstackHome(), process.argv[1]);
+  if (managedIdentity) {
+    const {CURRENT_SCHEMA_VERSION} = await import("@osstack/core");
+    verifyManagedCode(managedIdentity, {version:DAEMON_VERSION,protocol_version:PROTOCOL_VERSION,database_schema:CURRENT_SCHEMA_VERSION});
+  }
   const releaseLock = acquireDaemonLock(pidFilePath());
   let failedContext: DaemonContext | undefined;
   let stopUpdates: (() => void) | undefined;
@@ -4392,10 +4422,14 @@ export async function startDaemon(
         shutdownPromise = (async () => {
           ctx.draining = true;
           for (const controller of ctx.sourceObservationPending?.keys() ?? []) controller.abort();
-          await Promise.allSettled([...(ctx.sourceObservationPending?.values() ?? [])]);
+          await drainCancelledReads([...(ctx.sourceObservationPending?.values() ?? [])]);
           await ctx.attentionTriage?.then(service => service.stop()).catch(() => undefined);
           await ctx.supervision?.stop();
           await Promise.allSettled([...(ctx.followUpDeliveryPending ?? [])]);
+          // These reads recheck authorization before their final synchronous DB
+          // snapshot, so the database must outlive their asynchronous file reads.
+          ctx.workerLogAbort?.abort();
+          await drainCancelledReads([...(ctx.workerLogReads ?? [])]);
           if (graphRpc) {
             try { await (await graphRpc).close(); } catch { /* Initialization may have failed. */ }
           }

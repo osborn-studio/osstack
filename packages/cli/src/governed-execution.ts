@@ -3,10 +3,12 @@ import { acquireRepoWriteLock, FifoSemaphore, SemaphoreAcquireAbortedError, type
 import { resolveRepositoryScope } from '@osstack/core';
 
 export interface ExecutionLease {
+  /** Idempotent after physical release, including retries of a lost DB acknowledgement. */
   release(): Promise<void>;
   /** Keep ownership until a trusted caller has confirmed external exit. */
   retain(reason: string): void;
-  /** Trusted host only; never accept a worker-provided proof callback. */
+  /** Trusted host only; never accept a worker-provided proof callback.
+   * Idempotent after release: recovery must never release semaphore permits twice. */
   releaseAfterReconciliation?(verify: () => Promise<void>): Promise<void>;
   /** Assert this exact canonical writer lease is still live. */
   assertActive?(): Promise<void>;

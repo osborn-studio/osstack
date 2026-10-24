@@ -1,4 +1,4 @@
-import { realpathSync } from "node:fs";
+import { existsSync, realpathSync } from "node:fs";
 import { mkdir, rm } from "node:fs/promises";
 import { connect } from "node:net";
 import { join } from "node:path";
@@ -900,4 +900,69 @@ it("routes pinned viewer launch to the real inspection service and consumes its 
   expect(await main(["worker","watch-handoff",handoff])).toBe(0);
   vi.spyOn(console,"error").mockImplementation(()=>{});
   expect(await main(["worker","watch-handoff",handoff])).toBe(1);
+});
+
+
+it("bounds source responses while retaining hung operation slots until settlement", async () => {
+  const f = await fixture(false, false);
+  const commands = await import("./source-observation-command.js");
+  let release!: () => void;
+  const held = new Promise<void>(resolve => { release = resolve; });
+  const handler = vi.spyOn(commands, "handleSourceObservationRpc").mockImplementation(async () => {
+    await held;
+    throw Error("source_cancelled");
+  });
+  try {
+    const requests = Array.from({length:4}, () => rpc("source.observe", {...f.scope, source_id:"source"}));
+    await vi.waitFor(() => expect(handler).toHaveBeenCalledTimes(4));
+    const results = await Promise.all(requests);
+    for (const result of results) expect(result).toMatchObject({ok:false,error:{code:"source_unavailable"}});
+    expect(await rpc("source.observe", {...f.scope, source_id:"source"})).toMatchObject({ok:false,error:{code:"source_busy"}});
+    release();
+    await vi.waitFor(async () => expect(await rpc("source.events", {...f.scope, source_id:"source"})).toMatchObject({ok:false,error:{code:"source_unavailable"}}));
+  } finally { release(); }
+});
+
+it("drains pending worker log reads before closing their database", async () => {
+  const f = await fixture(false, false);
+  const logs = await import("./worker-log-view.js");
+  let release!: () => void;
+  const held = new Promise<void>(resolve => { release = resolve; });
+  const reader = vi.spyOn(logs, "inspectWorkerLogs").mockImplementation(async db => {
+    await held;
+    db.prepare("SELECT 1").get();
+    throw Error("fixture_finished");
+  });
+  const response = rpc("worker.logs", f.scope);
+  await vi.waitFor(() => expect(reader).toHaveBeenCalledTimes(1));
+  let closed = false;
+  const closing = daemon!.close().then(() => { closed = true; });
+  try {
+    await new Promise(resolve => setTimeout(resolve, 20));
+    expect(closed).toBe(false);
+  } finally { release(); }
+  await closing;
+  daemon = undefined;
+  expect(await response).toMatchObject({ok:false,error:{code:"worker_log_unavailable"}});
+});
+
+
+it("rejects a managed artifact code mismatch before creating or migrating the database", async () => {
+  root = await createScratchDir("tests", "managed-code-fence");
+  socket = join(root,"d.sock");
+  vi.stubEnv("OSSTACK_HOME",root);vi.stubEnv("OSSTACK_SOCKET",socket);vi.stubEnv("OSSTACK_UPDATE_CHECK","0");
+  const backend = await import("./upgrade-native-backend.js");
+  vi.spyOn(backend,"managedStartupIdentity").mockReturnValue({deployment_kind:"npm",build_digest:"a".repeat(64),build_evidence:"host_manifest",version:"999.0.0",protocol_version:1,database_schema:46});
+  await expect(start()).rejects.toThrow("upgrade_running_build_mismatch");
+  expect(existsSync(join(root,"state.db"))).toBe(false);
+});
+
+it("bounds shutdown of aborted source reads even if their I/O never settles", async () => {
+  const f = await fixture(false,false);
+  const commands = await import("./source-observation-command.js");
+  const handler = vi.spyOn(commands,"handleSourceObservationRpc").mockImplementation(() => new Promise<never>(() => {}));
+  const response = rpc("source.observe", {...f.scope,source_id:"source"});
+  await vi.waitFor(() => expect(handler).toHaveBeenCalledTimes(1));
+  await daemon!.close();daemon=undefined;
+  expect(await response).toMatchObject({ok:false,error:{code:"source_unavailable"}});
 });

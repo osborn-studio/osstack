@@ -33,7 +33,7 @@ export interface RemoteCancelClientDependencies {
   stdout?: (text: string) => void;
   stderr?: (text: string) => void;
 }
-export const REMOTE_CANCEL_HELP = `remote-home cancel|query --registry FILE --sha256 HASH --alias NAME --grant FILE\nSigned exact Graph cancellation only. Local durable attempt precedes transport; repeat cancel becomes query, never resend.\nRemote stop_requested is not physical stopped proof. Missing/offline receipts remain unknown.\n`;
+export const REMOTE_CANCEL_HELP = `remote-home cancel|query --registry FILE --sha256 HASH --alias NAME --grant FILE\nSigned exact Graph cancellation only. Local durable attempt precedes transport; repeat cancel becomes query, never resend.\nRemote stop_requested is not physical stopped proof. Missing/offline receipts remain unknown.\nnot_sent reports only a new local invocation that failed before reserve/transport; it does not attest remote state.\n`;
 export async function handleRemoteCancelCommand(
   args: string[],
   deps: RemoteCancelClientDependencies,
@@ -102,21 +102,13 @@ export async function handleRemoteCancelCommand(
     const previous = await readRemoteJournal(recordPath);
     if (previous && deliveryCanonical(previous) !== deliveryCanonical(record)) throw Error();
     let action = args[0] as "cancel" | "query";
-    if (action === "cancel") {
-      if (previous) action = "query";
-      else if (!(await writeRemoteJournal(recordPath, record))) {
-        if (deliveryCanonical(await readRemoteJournal(recordPath)) !== deliveryCanonical(record))
-          throw Error();
-        action = "query";
-      }
-    }
     unknown = {
       schema_version: 1,
       mode: "remote_graph_cancel",
       alias: entry.alias,
       request_id: b.request_id,
       request_sha256: digest,
-      outcome: "delivery_unknown",
+      outcome: previous || action === "query" ? "delivery_unknown" : "not_sent",
       physical_stop: "not_attested",
       qualification: "remote_host_pending",
     };
@@ -129,7 +121,19 @@ export async function handleRemoteCancelCommand(
       `${entry.port === 22 ? entry.host : `[${entry.host}]:${entry.port}`} ${entry.host_key}\n`,
       { mode: 0o600, flag: "wx" },
     );
-    child = (deps.spawn ?? spawn)("/usr/bin/ssh", buildRemoteControlSshArgs(entry, known), {
+    const sshArgs = buildRemoteControlSshArgs(entry, known);
+    // Local preparation cannot consume a one-shot request. From reserve onward,
+    // every failure remains unknown, including an uncertain journal write or spawn.
+    unknown.outcome = "delivery_unknown";
+    if (action === "cancel") {
+      if (previous) action = "query";
+      else if (!(await writeRemoteJournal(recordPath, record))) {
+        if (deliveryCanonical(await readRemoteJournal(recordPath)) !== deliveryCanonical(record))
+          throw Error();
+        action = "query";
+      }
+    }
+    child = (deps.spawn ?? spawn)("/usr/bin/ssh", sshArgs, {
       stdio: ["pipe", "pipe", "pipe"],
       shell: false,
       env: { PATH: "/usr/bin:/bin", LANG: "C", LC_ALL: "C" },

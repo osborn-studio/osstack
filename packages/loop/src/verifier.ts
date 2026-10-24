@@ -148,10 +148,8 @@ export async function verifyRun(run: AgentRun, options: LocalVerifierOptions): P
     return [evaluationIssue(spec, singleLine(failing.summary ?? "verifier adapter judged this evaluation as failed"))];
   });
   // Fail-closed on unknown judgment ids: an adapter judgment whose id matches no
-  // requested spec must never be silently dropped. A *failing* orphan judgment
-  // is an error (it may be a real failure reported under a mismatched id — losing
-  // it would let a broken run pass); a *passing* orphan is a warning (surfaced,
-  // non-blocking) so a spurious extra judgment can't fail an otherwise-green run.
+  // requested spec must never be silently dropped. Both passing and failing
+  // orphan judgments are errors: a mismatched id cannot satisfy this contract.
   const issues = [
     ...executionOutcomeIssues,
     ...executionIssues,
@@ -627,7 +625,19 @@ async function invokeVerifierAdapter(
   adapterSpecs: readonly EvaluationSpec[],
   verificationResults: readonly CommandResult[],
 ): Promise<VerifierAdapterResult> {
-  const availability = await adapter.isAvailable();
+  const timeoutMs = options.timeoutMs ?? (adapter.id === "kimi-code" ? 600_000 : 120_000);
+  let availability: Awaited<ReturnType<AgentAdapter["isAvailable"]>>;
+  let availabilityTimer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    availability = await Promise.race([
+      Promise.resolve().then(() => adapter.isAvailable()),
+      new Promise<never>((_resolve, reject) => {
+        availabilityTimer = setTimeout(() => reject(Error("verifier availability timed out")), timeoutMs);
+      }),
+    ]);
+  } catch (error) {
+    return {agentId:adapter.id,eventCount:0,issues:[adapterIssue(adapter.id,"verify.adapter_failed",error instanceof Error ? error.message : String(error))]};
+  } finally { clearTimeout(availabilityTimer); }
   if (!availability.available) {
     return {
       agentId: adapter.id,
@@ -685,8 +695,6 @@ async function invokeVerifierAdapter(
   }
 
   const controller = new AbortController();
-  const timeoutMs = options.timeoutMs
-    ?? (structuredReview ? 600_000 : 120_000);
   let timedOut = false;
   const timeout = setTimeout(() => {
     timedOut = true;
@@ -702,6 +710,18 @@ async function invokeVerifierAdapter(
   let reviewArtifactError: string | undefined;
   let snapshotError: string | undefined;
   let workspaceMutated = false;
+  let iterator: AsyncIterator<HermesEvent> | undefined;
+  let iteratorFinished = false;
+  const nextOrAbort = async () => {
+    let abort!: () => void;
+    const cancelled = new Promise<never>((_resolve, reject) => {
+      abort = () => reject(Error(`verifier timed out after ${timeoutMs}ms; stop_confirmed=unknown`));
+      controller.signal.addEventListener("abort", abort, {once:true});
+      if (controller.signal.aborted) abort();
+    });
+    try { return await Promise.race([iterator!.next(), cancelled]); }
+    finally { controller.signal.removeEventListener("abort", abort); }
+  };
 
   try {
     const agentTask = verifierAgentTask(
@@ -712,7 +732,11 @@ async function invokeVerifierAdapter(
       boundary,
       verificationResults,
     );
-    for await (const event of adapter.invoke(agentTask, controller.signal)) {
+    iterator = adapter.invoke(agentTask, controller.signal)[Symbol.asyncIterator]();
+    while (true) {
+      const next = await nextOrAbort();
+      if (next.done) { iteratorFinished = true; break; }
+      const event = next.value;
       eventCount += 1;
       if (event.type === "error" && event.terminal) {
         terminalError = errorPayload(event.payload).message;
@@ -749,6 +773,17 @@ async function invokeVerifierAdapter(
     terminalError = error instanceof Error ? error.message : String(error);
   } finally {
     clearTimeout(timeout);
+    if (!iteratorFinished && iterator) {
+      controller.abort();
+      let cleanupTimer: ReturnType<typeof setTimeout> | undefined;
+      try {
+        await Promise.race([
+          Promise.resolve().then(() => iterator?.return?.()),
+          new Promise<void>(resolve => { cleanupTimer = setTimeout(resolve, 100); }),
+        ]);
+      } catch { /* Cleanup cannot turn an unconfirmed stop into a pass. */ }
+      finally { clearTimeout(cleanupTimer); }
+    }
     if (beforeSnapshot !== undefined) {
       try {
         const afterSnapshot = await snapshotReviewerWorkspace(options.workspacePath);

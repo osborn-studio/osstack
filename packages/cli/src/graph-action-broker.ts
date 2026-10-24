@@ -103,6 +103,20 @@ function canonical(value: unknown): string {
   if (Array.isArray(value)) return `[${value.map(canonical).join(",")}]`;
   return `{${Object.keys(value).sort().map(key => `${JSON.stringify(key)}:${canonical((value as Record<string, unknown>)[key])}`).join(",")}}`;
 }
+/** Retry may refresh isolated workspaces and session identifiers, never the
+ * trusted operation. Callbacks remain host-only; their invocation receipts are
+ * independently revalidated by verification persistence on each attempt. */
+function retryExecutionIdentity(execution: RegisteredExecution): string {
+  if (execution.kind === "freeze" || execution.kind === "workspace") throw Error("immutable retry execution");
+  const { plan_id: _planId, worktree_path: _worktreePath, task, ...plan } = execution.plan;
+  const { task_id: _taskId, ...taskSemantics } = task;
+  const operation = execution.kind === "adapter"
+    ? { adapterId: execution.adapter.id, capabilityId: execution.capabilityId, capabilities: execution.adapter.capabilities() }
+    : execution.kind === "commands" ? { commands: execution.commands }
+    : execution.kind === "contained-suite" ? { commands: execution.checks.map(check => check.command) }
+    : { command: execution.command };
+  return canonical({ kind: execution.kind, plan: { ...plan, task: taskSemantics }, operation });
+}
 class Denied extends Error { constructor(readonly code: GraphErrorCode, message: string) { super(message); } }
 function graphError(code: GraphErrorCode, message: string): GraphError {
   return { schemaVersion: 1, code, message: message.slice(0, 4096) || code, retryable: false,
@@ -295,6 +309,8 @@ export class GraphActionBroker {
     if (!registered || prior.effect.epoch !== binding.epoch || canonical(registered.action) !== canonical(prior.action)) throw new Error("unregistered retry slot");
     const replacement = options.replacement ? this.bind({ ...binding, actions: [options.replacement] }).actions.get(slot(prior.effect.nodeId, prior.effect.effectSlot)) : undefined;
     if (options.replacement && (!replacement || canonical(replacement.action) !== canonical(prior.action) || replacement.tokenReservation !== prior.reservationTokens)) throw Error('immutable retry payload');
+    if (replacement && (!["review", "tests"].includes(prior.action.kind)
+      || retryExecutionIdentity(replacement.execution) !== retryExecutionIdentity(registered.execution))) throw Error("immutable retry execution");
     const next = this.actions.retry(this.fence(binding), effectKey).action;
     if (replacement) (binding.actions as Map<string, BoundAction>).set(slot(prior.effect.nodeId, prior.effect.effectSlot), replacement);
     return this.executeRequest(connection, { schemaVersion: 1, kind: "worker_action", requestId: `retry:${randomUUID()}`,
@@ -392,8 +408,9 @@ export class GraphActionBroker {
       const normalTestsExit = action.action.kind === "tests" && evidence.stopped === true && !signal.aborted
         && ((evidence.commandSuite ? evidence.commandSuite.every(command=>command.termination?.trigger==="exit"&&command.termination.stop_confirmed&&!command.cancellation&&!command.failure_code) : evidence.command?.termination?.trigger === "exit" && evidence.command.termination.stop_confirmed && !evidence.command.cancellation && !evidence.command.failure_code)
           || (evidence.containedSuite ? evidence.containedSuite.every(item=>!item.result.cancelled) : evidence.contained !== undefined && !evidence.contained.result.cancelled));
-      // An abort after execution/evidence completion does not invalidate quality
-      // already established. Cancelled invocations carry a stopped failure above.
+      // Trusted verification persistence classifies cancellation it observes when
+      // deriving the outcome as a non-retryable stopped failure. The broker
+      // preserves that classification instead of overwriting persisted evidence.
       const completed = !failure && (evidence.status === "completed" || (normalTestsExit && persisted.result !== undefined));
       let result: GraphResult | undefined;
       if (completed) {
@@ -429,7 +446,9 @@ export class GraphActionBroker {
             actualTokens: 0, retrySafe: !signal.aborted, error: { message: "admission refused before invocation" } };
           if (!lease && notAcquired) this.actions.recordUnstartedOutcome(this.fence(binding), owned.effectKey, outcome);
           else this.actions.recordOutcome(this.fence(binding), owned.effectKey, outcome);
-        } catch { /* A stale owner cannot mutate a newer generation. */ }
+        } catch { /* Stale ownership or failed storage leaves an unresolved intent.
+          Never claim durable non-execution without a committed settlement;
+          replay stays blocked until trusted reconciliation. */ }
       }
       return reject(error);
     } finally {

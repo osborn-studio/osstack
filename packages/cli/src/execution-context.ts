@@ -39,6 +39,8 @@ const sha256 = /^[a-f0-9]{64}$/;
 export function createExecutionContextAdapters(options: ExecutionContextAdapterOptions): {
   adapters: readonly AgentAdapter[]; receiptRefs(filter?: ExecutionContextReceiptFilter): readonly ExecutionContextReceiptReference[];
 } {
+  // This wrapper is scoped to one host delivery/Graph invocation, not the daemon.
+  // Keep both receipt phases until that owner has collected its final evidence.
   const refs: { ref: ExecutionContextReceiptReference; run_id: string; task_id: string; session_id: string }[] = [];
   if (options.mode === undefined || options.mode === "off") return { adapters: options.adapters, receiptRefs: () => [] };
   if (options.mode !== "local" || !options.loadContext || !options.recordReceipt || !isAbsolute(options.workspacePath))
@@ -118,6 +120,8 @@ export function createExecutionContextAdapters(options: ExecutionContextAdapterO
         closed = true;
         outerSignal.removeEventListener("abort", cancel);
         if (!completed) {
+          // Cleanup is not physical-stop evidence. The executor must retain its
+          // invoked classification and use the delegated confirmStopped proof.
           controller.abort();
           if (active?.return) await boundedCleanup(() => active!.return!());
         }

@@ -458,14 +458,9 @@ export function createScoutHost(options: ScoutHostOptions) {
   };
 }
 function terminalJson(value: unknown): string {
-  return [...JSON.stringify(value, null, 2)]
-    .map((character) => {
-      const code = character.charCodeAt(0);
-      return (code >= 128 && code <= 159) || code === 0x2028 || code === 0x2029
-        ? `\\u${code.toString(16).padStart(4, "0")}`
-        : character;
-    })
-    .join("");
+  return JSON.stringify(value, null, 2).replace(/[\u007f-\u009f\u2028\u2029\p{Cf}]/gu, character =>
+    character.split("").map(unit => `\\u${unit.charCodeAt(0).toString(16).padStart(4, "0")}`).join(""),
+  );
 }
 export async function handleScoutCommand(
   args: string[],

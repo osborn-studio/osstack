@@ -2,7 +2,7 @@ import { chmodSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { join } from "node:path";
 import { createScratchDirSync, openDb } from "@osstack/core";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { WorkerViewService } from "./worker-view-service.js";
 import { inspectWorkerLogs, handleWorkerLogCommand } from "./worker-log-view.js";
 const cleanup: (() => void)[] = [];
@@ -51,4 +51,13 @@ describe("separate bounded worker output grants",()=>{
  const first=await inspectWorkerLogs(f.db,f.home,f.request,()=>2000);expect(first.entries.map(e=>e.ordinal)).toEqual([3,4,5,6]);expect(first.next_before_ordinal).toBe(3);
  const second=await inspectWorkerLogs(f.db,f.home,{...f.request,before_ordinal:3},()=>2000);expect(second.entries.map(e=>e.ordinal)).toEqual([1,2]);expect(second.next_before_ordinal).toBeNull();
  });
+});
+
+it("does not touch the database after a read is cancelled during file I/O", async () => {
+  const f = await setup(); const controller = new AbortController();
+  const transaction = vi.spyOn(f.db,"transaction");
+  const pending = inspectWorkerLogs(f.db,f.home,f.request,()=>2000,controller.signal);
+  controller.abort();
+  await expect(pending).rejects.toThrow("worker_log_unavailable");
+  expect(transaction).not.toHaveBeenCalled();
 });

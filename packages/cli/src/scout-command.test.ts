@@ -308,8 +308,8 @@ it("refuses a repository subdirectory before writing scout state", async () => {
   ).rejects.toMatchObject({ code: "ENOENT" });
 });
 
-it("prints one JSON investigation response and escapes terminal C1 controls", async () => {
-  await writeFile(join(repo, "source.txt"), "\u009b2J untrusted source");
+it("prints one JSON investigation response and escapes terminal C1 and Unicode format controls", async () => {
+  await writeFile(join(repo, "source.txt"), "\u009b2J \u202euntrusted\u2066 source\u2069");
   git("add", ".");
   git(
     "-c",
@@ -342,7 +342,7 @@ it("prints one JSON investigation response and escapes terminal C1 controls", as
     ),
   ).toBe(0);
   expect(output).toHaveLength(1);
-  expect(output[0]).not.toContain("\u009b");
+  for (const control of ["\u009b", "\u202e", "\u2066", "\u2069"]) expect(output[0]).not.toContain(control);
   expect(JSON.parse(output[0]!).facts[0].text).toContain("\u009b");
 });
 it("does not treat a zero exit without matching verified delivery output as completion", async () => {

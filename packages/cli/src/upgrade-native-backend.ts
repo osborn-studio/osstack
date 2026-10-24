@@ -111,7 +111,9 @@ function managedIdentityForConfig(raw: unknown, root: string, home: string, entr
   const operation = join(root,'upgrade-operation.json');
   if (existsSync(operation)) {
     const started = JSON.parse(readPrivate(operation).toString()) as { plan_digest?: unknown };
-    const permit = JSON.parse(readPrivate(join(root,'restart-permit.json')).toString()) as { plan_digest?: unknown; build_digest?: unknown };
+    let permit: { plan_digest?: unknown; build_digest?: unknown };
+    try { permit=JSON.parse(readPrivate(join(root,'restart-permit.json')).toString()) as typeof permit; }
+    catch(error){if((error as NodeJS.ErrnoException).code==='ENOENT')throw Error('upgrade_start_blocked');throw error;}
     if (permit.plan_digest !== started.plan_digest || permit.build_digest !== digest) throw Error('upgrade_start_blocked');
   }
   return { deployment_kind: 'npm' as const, build_digest: digest, build_evidence: 'host_manifest' as const,
@@ -119,6 +121,10 @@ function managedIdentityForConfig(raw: unknown, root: string, home: string, entr
 }
 import { ManagedInstallationSchema } from './upgrade-native-files.js';
 const managedInstallationParser = (value: unknown) => ManagedInstallationSchema.parse(value);
+/** Check compiled code identity before any database open can auto-migrate a home. */
+export function verifyManagedCode(expected: NonNullable<ReturnType<typeof managedStartupIdentity>>, actual: {version:string;protocol_version:number;database_schema:number}): void {
+  if(expected.version!==actual.version||expected.protocol_version!==actual.protocol_version||expected.database_schema!==actual.database_schema)throw Error('upgrade_running_build_mismatch');
+}
 /** Metadata is checked against the running code and opened DB, never used to override their version/schema. */
 export function verifyManagedRuntime(expected: NonNullable<ReturnType<typeof managedStartupIdentity>>, actual: {version:string;protocol_version:number;database_schema:number}) {
   if (expected.version !== actual.version || expected.protocol_version !== actual.protocol_version || expected.database_schema !== actual.database_schema) throw Error('upgrade_running_build_mismatch');

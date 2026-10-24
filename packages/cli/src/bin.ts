@@ -880,7 +880,11 @@ See docs/V2_REFACTOR_PLAN.md for the full roadmap.
     const {handleScoutCommand} = await import("./scout-command.js");
     const {handleDeliverCommand} = await import("./deliver-command.js");
     const deps = createDeliverCommandDeps();
-    return handleScoutCommand(args.slice(1), {home: osstackHome(), policy: deps.deliveryContractPolicy!,
+    if (!deps.deliveryContractPolicy) {
+      console.error("delivery_contract_policy_unavailable");
+      return 1;
+    }
+    return handleScoutCommand(args.slice(1), {home: osstackHome(), policy: deps.deliveryContractPolicy,
       deliver: (input, emitJson) => handleDeliverCommand(input, {...deps, emitJson})});
   }
 
@@ -7301,6 +7305,7 @@ Options:
         && isDevelopmentCliDist(binPath)
       ) {
         let explicitlyStable = false;
+        let stableGuardFailure = "development dist is not stable-serving";
         try {
           const checkoutRoot = dirname(realpathSync(binPath));
           if (loadRoleFile(checkoutRoot)?.role !== "stable-serving") {
@@ -7313,13 +7318,12 @@ Options:
             osstackHome: process.env.OSSTACK_HOME ?? defaultOsstackHome(),
           });
           explicitlyStable = true;
-        } catch {
-          // The default checkout remains development-only until an operator
-          // names it explicitly with --bin or a deployment provisions it.
+        } catch (error) {
+          stableGuardFailure = error instanceof Error ? error.message : String(error);
         }
         if (!explicitlyStable) {
           console.error(
-            "osstack: serve --install aborted — default development dist/bin.js is not stable-serving; pass an explicit absolute --bin to provision this checkout",
+            `osstack: serve --install aborted — default development dist/bin.js is not stable-serving; pass an explicit absolute --bin to provision this checkout (${stableGuardFailure})`,
           );
           return 78;
         }

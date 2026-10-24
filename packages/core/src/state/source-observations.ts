@@ -19,6 +19,8 @@ function observation(row:Row):SourceObservation{return {scope:{repo_path:row.rep
 export class SourceObservationLedger {
  constructor(private readonly db:Database.Database,private readonly dbPath:string,private readonly nowMs:()=>number=Date.now){}
  private row(k:string){return this.db.prepare('SELECT * FROM source_observation_streams WHERE stream_key=?').get(k) as Row|undefined;}
+ // A backwards wall clock must not extend snapshot trust. Writes resume when
+ // epoch time reaches the persisted high-water mark; no DB repair is required.
  private write<T>(fn:(now:number)=>T):T{return withWrite(this.db,this.dbPath,()=>{const now=epoch.parse(this.nowMs());const clock=this.db.prepare('SELECT observed_at_ms FROM source_observation_clock WHERE singleton=1').get() as {observed_at_ms:number};if(now<clock.observed_at_ms)throw Error('source_clock_regression');this.db.prepare('UPDATE source_observation_clock SET observed_at_ms=? WHERE singleton=1').run(now);return fn(now);});}
  private save(k:string,value:SourceObservation,transition:string):SourceObservation{
   if(value.record_revision>=Number.MAX_SAFE_INTEGER-1)throw Error('source_revision_exhausted');
@@ -33,6 +35,8 @@ export class SourceObservationLedger {
    const old=observation(row);const same=e.generation===old.accepted.generation;let reason:string|null=null;
    if(!same)reason=this.db.prepare('SELECT 1 FROM source_observation_generations WHERE stream_key=? AND generation=?').get(k,e.generation)?'retired_generation':'generation_changed';
    else if(e.revision<old.accepted.revision)reason='revision_regression';else if(e.revision===old.accepted.revision&&e.content_digest!==old.accepted.content_digest)reason='revision_conflict';else if(e.revision>old.accepted.revision+1)reason='sequence_gap';
+   // Missing observations break continuity even if the next bytes are identical.
+   // Only an exact host acknowledgement clears quarantine; repolls are deduplicated.
    if(old.state!=='ready')reason=old.reason??'reconciliation_required';
    const state=reason?(reason==='sequence_gap'?'gap':'unknown'):'ready';
    if(state===old.state&&reason===old.reason&&JSON.stringify(reason?old.proposed:old.accepted)===JSON.stringify(e))return old;

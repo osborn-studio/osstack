@@ -25,7 +25,7 @@ export async function provisionManagedInstallation(input: { request: string; app
     for(const name of ['consumers','services']){await mkdir(join(config.root,name),{mode:0o700}).catch(error=>{if(error.code!=='EEXIST')throw error;});privateDirectory(join(config.root,name));}
     if(readdirSync(join(config.root,'consumers')).some(name=>!config.consumers.some(c=>name===`${c.home_id}.json`)&&!/^\.publish-[a-f0-9]{32}$/.test(name)))throw Error('upgrade_provision_unknown_consumer');
     if(readdirSync(join(config.root,'services')).some(name=>!config.consumers.some(c=>name===`${c.home_id}.plist`)&&!/^\.publish-[a-f0-9]{32}$/.test(name)))throw Error('upgrade_provision_unknown_service');
-    for(const c of config.consumers){await publishSame(join(c.home,'managed-consumer.json'),{schema_version:1,root:config.root,home_id:c.home_id});await publishSame(join(config.root,'consumers',`${c.home_id}.json`),c);
+    for(const c of config.consumers){await publishSame(join(config.root,'consumers',`${c.home_id}.json`),c);
       const plist=join(config.root,'services',`${c.home_id}.plist`),text=managedPlist(config,c);
       if(existsSync(plist)){if(readPrivate(plist).toString()!==text)throw Error('upgrade_service_changed');}
       else await publishPrivateBytes(plist,Buffer.from(text));await finishPrivatePublication(plist);
@@ -35,6 +35,8 @@ export async function provisionManagedInstallation(input: { request: string; app
     const release=join(config.root,'releases',bundle.target.build_digest);if(!existsSync(release))await stageRelease(config.root,bundle,signal);
     if(upgradeCanonical(verifyRelease(config.root,bundle.target.build_digest).target)!==upgradeCanonical(bundle.target))throw Error('upgrade_release_metadata_changed');
     await switchRelease(config.root,release,signal);await publishSame(join(config.root,'installation.json'),config);
+    // Homes become managed only after their complete registry and active release are durable.
+    for(const c of config.consumers)await publishSame(join(c.home,'managed-consumer.json'),{schema_version:1,root:config.root,home_id:c.home_id});
     return{state:'provisioned_not_started',registry:join(config.root,'installation.json'),registry_sha256:sha256(readPrivate(join(config.root,'installation.json'))),build_digest:bundle.target.build_digest,services:config.consumers.map(c=>join(config.root,'services',`${c.home_id}.plist`))};
   }finally{for(const release of homeLocks.reverse())release();releaseOwner();}
 }
