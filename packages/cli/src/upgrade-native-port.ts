@@ -105,7 +105,7 @@ export class ManagedNativeUpgradePort implements NativeUpgradePort {
     try {
       db.exec('BEGIN EXCLUSIVE');
       const schema=db.pragma('user_version',{simple:true}) as number;
-      if(schema<33||schema>45)throw Error('upgrade_schema_unqualified');
+      if(schema<33||schema>46)throw Error('upgrade_schema_unqualified');
       const tables = new Set((db.prepare("SELECT name FROM sqlite_master WHERE type='table'").all() as {name:string}[]).map(r=>r.name));
       const expected=['graph_runs','graph_action_admissions','graph_actions','improvement_pr_deliveries','improvement_executions'];
       if(schema>=45)expected.push('follow_up_delivery_attempts');

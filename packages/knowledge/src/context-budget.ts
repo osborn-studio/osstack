@@ -4,7 +4,7 @@ import { isAbsolute } from "node:path";
 export interface ExecutionContextScope { repo_path: string; tenant: "default" }
 export interface ExecutionContextEntry {
   id: string;
-  source_kind: "instruction" | "safety" | "contract" | "knowledge";
+  source_kind: "instruction" | "safety" | "contract" | "knowledge" | "data_source";
   source_ref: string;
   source_digest: string;
   text_sha256: string;
@@ -13,7 +13,7 @@ export interface ExecutionContextEntry {
   text: string;
   verified_at_ms: number;
   expires_at_ms?: number;
-  evidence_kind: "host" | "pinned_local_pack";
+  evidence_kind: "host" | "pinned_local_pack" | "pinned_local_snapshot";
 }
 export type ExecutionContextSource = Omit<ExecutionContextEntry, "text">;
 export interface ExecutionContextAssembly {
@@ -64,7 +64,7 @@ export function assembleExecutionContext(input: {
           !entry.scope || entry.scope.repo_path !== input.scope.repo_path || entry.scope.tenant !== "default" ||
           !epoch(entry.verified_at_ms) || (entry.expires_at_ms !== undefined && !epoch(entry.expires_at_ms)) ||
           (mandatory ? entry.tier !== "mandatory" || !["instruction", "safety", "contract"].includes(entry.source_kind) || entry.evidence_kind !== "host"
-            : entry.tier !== "optional" || entry.source_kind !== "knowledge" || entry.evidence_kind !== "pinned_local_pack") || ids.has(entry.id))
+            : entry.tier !== "optional" || !((entry.source_kind === "knowledge" && entry.evidence_kind === "pinned_local_pack") || (entry.source_kind === "data_source" && entry.evidence_kind === "pinned_local_snapshot"))) || ids.has(entry.id))
         throw new ExecutionContextBudgetError("invalid_context_source", mandatory ? [bounded(entry?.id, 256) ? entry.id : "invalid-mandatory"] : []);
       inputBytes += Buffer.byteLength(entry.text);
       if (inputBytes > 4_000_000) throw new ExecutionContextBudgetError("invalid_context_source");
