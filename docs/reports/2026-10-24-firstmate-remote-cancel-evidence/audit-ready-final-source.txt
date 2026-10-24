@@ -1,4 +1,4 @@
-Read-only static independent audit of final remote Graph cancellation implementation. No tools/edits/execution. Previous attempt failed OAuth before inference; do not claim it reviewed anything. Find confirmed P0/P1 security/correctness errors, preserve unknown-on-crash/no-retry semantics, distinguish physical stop from stop_requested, and audit host-only signing, generation/revision binding, persistent exact receipts, revoked configuration, corrupt and bounded channels. No actual remote qualification performed. Root owns lazy central CLI wiring.
+Read-only static independent audit of final remote Graph cancellation implementation. No tools/edits/execution. Prior Claude attempt failed OAuth before inference. Independent Codex reviewer found mutable socket ancestors, fixed in cda1ca99 with private-parent+ancestor checks before connect and after response and regression asserting zero daemon calls on0777parent. Requested Claude audit remains pending. Identify confirmed remaining P0/P1, especially grant/revocation/receipt/journal boundaries. No actual SSH qualification performed. Root owns central CLI wiring.
 
 --- packages/cli/src/remote-cancel-protocol.ts ---
 import { createHash, createPublicKey, verify } from "node:crypto";
@@ -233,7 +233,7 @@ export async function readRemoteJournal(path: string): Promise<unknown | null> {
 import { randomBytes } from "node:crypto";
 import { lstat, realpath } from "node:fs/promises";
 import { connect } from "node:net";
-import { join, relative, isAbsolute, sep } from "node:path";
+import { join, relative, isAbsolute, sep, dirname } from "node:path";
 import type { Readable, Writable } from "node:stream";
 import { z } from "zod";
 import { GraphDelegationStatus } from "@osstack/protocol";
@@ -275,6 +275,7 @@ async function registry(path: string, digest: string): Promise<RemoteCancelServe
 }
 /** One connected existing daemon: all identity/status/cancel frames stay bound to that same process. */
 async function graphConnection(socketPath: string) {
+  await assertRemoteJournal(dirname(socketPath));
   if ((await realpath(socketPath)) !== socketPath) throw Error("remote_cancel_endpoint_invalid");
   const before = await lstat(socketPath);
   if (!before.isSocket() || before.uid !== process.getuid?.() || (before.mode & 0o077) !== 0)
@@ -290,6 +291,7 @@ async function graphConnection(socketPath: string) {
       const requestId = ++id;
       await channel.send({ id: requestId, method, ...(params === undefined ? {} : { params }) });
       const raw = await channel.receive();
+      await assertRemoteJournal(dirname(socketPath));
       const current = await lstat(socketPath);
       if (current.ino !== before.ino || current.dev !== before.dev)
         throw Error("remote_cancel_endpoint_changed");
@@ -999,7 +1001,9 @@ async function fixture(graph?: { scope: typeof scope; repo: string }) {
     sockets = new Set<Socket>();
   let mutate: (v: unknown, m: string, params: unknown) => unknown | Promise<unknown> = (v) => v;
   const children: ChildProcessWithoutNullStreams[] = [];
-  const socket = join(root, "d.sock"),
+  const socketDirectory = join(root, "sockets");
+  await mkdir(socketDirectory, { mode: 0o700 });
+  const socket = join(socketDirectory, "d.sock"),
     server = createServer((s) => {
       sockets.add(s);
       s.on("close", () => sockets.delete(s));
@@ -1160,6 +1164,7 @@ async function fixture(graph?: { scope: typeof scope; repo: string }) {
       await writeFile(grantPath, JSON.stringify(g), { mode: 0o600 });
     },
     methods,
+    socketDirectory,
     children,
     spawnLocal,
     invoke,
@@ -1589,6 +1594,14 @@ it("an unrelated running status reply cannot be accepted as cancellation acknowl
   expect(await f.invoke()).toMatchObject({ code: 1, value: { outcome: "delivery_unknown" } });
   expect(await f.invoke()).toMatchObject({ code: 1, value: { outcome: "delivery_unknown" } });
   expect(f.methods.filter((m) => m === "graph.cancel")).toHaveLength(1);
+});
+
+it("unsafe socket ancestors cannot substitute an authenticated private daemon endpoint", async () => {
+  const f = await fixture();
+  await chmod(f.socketDirectory, 0o777);
+  expect(await f.invoke()).toMatchObject({ code: 1, value: { outcome: "delivery_unknown" } });
+  expect(f.methods).toEqual([]);
+  await chmod(f.socketDirectory, 0o700);
 });
 
 --- packages/cli/src/remote-home-protocol.ts ---
