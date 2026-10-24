@@ -116,7 +116,10 @@ export class SupervisionService {
   private async scan(): Promise<void> {
     this.assertRunning();
     while (!this.stopped) {
-      const step = this.observer.step({maxSubjects:25,maxEvents:200,maxDurationMs:5});
+      // A socket request spans multiple event-loop turns (accept, frame, reply).
+      // Leave room within its 10ms p95 budget instead of consuming the observer's
+      // entire 5ms ceiling on every turn. The observer still checks each subject.
+      const step = this.observer.step({maxSubjects:25,maxEvents:200,maxDurationMs:2});
       if (step.passComplete) break;
       await new Promise<void>(resolve => setImmediate(resolve));
     }

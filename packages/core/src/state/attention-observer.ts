@@ -69,21 +69,35 @@ export class AttentionObserver {
     if (current) {
       const slots = Math.min(maxSubjects, maxEvents, current.subjects.length - current.next);
       const eventLimit = slots > 0 ? Math.floor(maxEvents / slots) : 0;
-      while (current.next < current.subjects.length && subjectsSampled < slots && performance.now() - started < maxDuration) {
-        const key = current.subjects[current.next++]!;
-        this.store.write(this.owner, () => {
-          const persisted = this.store.getScope(current.scope.scope_id);
-          const task = this.store.db.prepare("SELECT created_at FROM tasks WHERE task_id=? AND tenant_id IS NULL").get(current.scope.task_id) as { created_at: number } | undefined;
-          if (!persisted || persisted.task_id !== current.scope.task_id || persisted.repo_path !== current.scope.repo_path || !task
-            || attentionDigest([this.owner.home_id, persisted.task_id, persisted.repo_path, task.created_at]) !== persisted.scope_id) {
-            if (persisted) this.store.db.prepare("UPDATE attention_scopes SET error='source_binding_conflict',scan_complete=0 WHERE scope_id=?").run(persisted.scope_id);
-            return;
+      const sliceStart = current.next;
+      try {
+        // One disk-space preflight/commit per bounded slice. Nested per-subject
+        // savepoints still isolate malformed source facts; owner/scope/release
+        // checks remain inside the transaction and the clock is checked before
+        // every subject, never only at batch entry.
+        if (slots > 0) this.store.write(this.owner, () => {
+          while (current.next < current.subjects.length && subjectsSampled < slots && performance.now() - started < maxDuration) {
+            const key = current.subjects[current.next++]!;
+            this.store.write(this.owner, () => {
+              const persisted = this.store.getScope(current.scope.scope_id);
+              const task = this.store.db.prepare("SELECT created_at FROM tasks WHERE task_id=? AND tenant_id IS NULL").get(current.scope.task_id) as { created_at: number } | undefined;
+              if (!persisted || persisted.task_id !== current.scope.task_id || persisted.repo_path !== current.scope.repo_path || !task
+                || attentionDigest([this.owner.home_id, persisted.task_id, persisted.repo_path, task.created_at]) !== persisted.scope_id) {
+                if (persisted) this.store.db.prepare("UPDATE attention_scopes SET error='source_binding_conflict',scan_complete=0 WHERE scope_id=?").run(persisted.scope_id);
+                return;
+              }
+              const subject = this.store.db.prepare("SELECT * FROM attention_subjects WHERE scope_id=? AND kind=? AND subject_id=? AND admitted=1").get(current.scope.scope_id, key.kind, key.subject_id) as Subject | undefined;
+              if (!subject) return; // An explicit release during the pass is never reversed.
+              this.sample(current.scope, subject, now, eventLimit);
+              subjectsSampled++; eventQuotaUsed += subject.kind === "session" ? Math.min(50, eventLimit) : eventLimit;
+            });
           }
-          const subject = this.store.db.prepare("SELECT * FROM attention_subjects WHERE scope_id=? AND kind=? AND subject_id=? AND admitted=1").get(current.scope.scope_id, key.kind, key.subject_id) as Subject | undefined;
-          if (!subject) return; // An explicit release during the pass is never reversed.
-          this.sample(current.scope, subject, now, eventLimit);
-          subjectsSampled++; eventQuotaUsed += subject.kind === "session" ? Math.min(50, eventLimit) : eventLimit;
         });
+      } catch (error) {
+        // A transaction rollback also rolls back its scheduling cursor. Otherwise
+        // a retry could skip facts that were sampled but never committed.
+        current.next = sliceStart;
+        throw error;
       }
       if (current.next >= current.subjects.length) delete pass.current;
     }

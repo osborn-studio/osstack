@@ -366,3 +366,16 @@ it.each(['{', '{}'])("does not infer readmission when released metadata becomes 
   observer.tick(2000);
   expect(db.prepare("SELECT admitted FROM attention_subjects WHERE subject_id='s0001'").get()).toEqual({ admitted: 0 });
 });
+
+it("rolls back a failed sampling slice and retries every uncommitted subject", () => {
+  const { observer, scope, db, store } = setup(2);
+  db.exec(`CREATE TRIGGER reject_second_sample BEFORE UPDATE ON attention_subjects
+    WHEN NEW.subject_id='s0001' BEGIN SELECT RAISE(ABORT, 'injected_slice_write_failure'); END`);
+  expect(() => observer.step({ maxSubjects: 25, maxEvents: 200, maxDurationMs: 1000 }, 2000)).toThrow("injected_slice_write_failure");
+  expect(store.listItems(scope.scope_id)).toHaveLength(0);
+  expect(db.prepare("SELECT ordinal_cursor FROM attention_subjects WHERE subject_id='s0000'").get()).toEqual({ ordinal_cursor: 0 });
+  db.exec("DROP TRIGGER reject_second_sample");
+  while (!observer.step({ maxSubjects: 25, maxEvents: 200, maxDurationMs: 1000 }, 2000).passComplete) { /* retry unfinished slice */ }
+  expect(store.listItems(scope.scope_id).map(item => item.session_id).sort()).toEqual(["s0000", "s0001"]);
+  expect(db.prepare("SELECT COUNT(*) n FROM attention_subjects WHERE kind='session' AND ordinal_cursor=1").get()).toEqual({ n: 2 });
+});
