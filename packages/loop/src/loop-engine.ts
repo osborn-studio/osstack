@@ -97,6 +97,7 @@ export interface LoopRunOptions {
   agentId?: string;
   autoAgent?: boolean;
   verifierAgentIds?: string[];
+  /** Retained for API compatibility; execution/reviewer roles are always separated. */
   enforceRoleSeparation?: boolean;
   profileRouting?: LoopProfileRoutingEvidence;
   artifactVerification?: ArtifactVerificationOptions;
@@ -550,6 +551,7 @@ export class LoopEngine {
     const governance = this.applyDiscoveryPolicy(loopId, candidateTasks, decisions);
     const tasks = governance.executable;
     if (this.candidatePolicy && tasks.length !== candidateTasks.length) throw Error("CANDIDATE_BATCH_DEFERRED");
+    if (tasks.length > 0) this.assertExecutionRoleConfiguration();
     const policy = this.candidatePolicy;
     if (policy) validateCandidateBatch(policy, tasks, workspacePath);
     const candidateRecord = policy ? await openCandidateRecord(policy, workspacePath, tasks) : undefined;
@@ -741,6 +743,19 @@ export class LoopEngine {
     return renderLoopStateMarkdown(state);
   }
 
+  private assertExecutionRoleConfiguration(): void {
+    const verifierIds = new Set(this.options.verifierAgentIds ?? []);
+    if (this.options.agentId !== undefined) {
+      if (verifierIds.has(this.options.agentId)) throw new Error("VERIFIER_EXECUTION_ROLE_CONFLICT");
+      return;
+    }
+    if (this.options.executeCommand !== undefined) return;
+    const adapters = this.options.adapters ?? [];
+    if (adapters.length > 0 && adapters.every(adapter => verifierIds.has(adapter.id))) {
+      throw new Error("NO_EXECUTION_ADAPTER_OUTSIDE_VERIFIER_ROLE");
+    }
+  }
+
   private async selectExecutionAgent(
     task: Task,
     historyTasks: readonly CompletedTask[],
@@ -767,7 +782,7 @@ export class LoopEngine {
       adapters as readonly RoutableAdapter[],
     );
     if (routerPick === null) {
-      if (adapters.length !== configuredAdapters.length) throw new Error("NO_EXECUTION_ADAPTER_OUTSIDE_VERIFIER_ROLE");
+      if (adapters.length !== configuredAdapters.length) throw new Error("NO_AVAILABLE_EXECUTION_ADAPTER_AFTER_ROUTING_PROBES");
       return { agentId: "local-noop", reason: `no available adapter for capability ${task.capability}` };
     }
 
@@ -988,10 +1003,8 @@ export class LoopEngine {
           break;
         }
         const verifierAgentIds = this.options.verifierAgentIds ?? [];
-        if (
-          this.options.enforceRoleSeparation === true
-          && verifierAgentIds.includes(finalRun.agent_id)
-        ) {
+        // Defense in depth for the identity returned by execution, including local commands.
+        if (verifierAgentIds.includes(finalRun.agent_id)) {
           finalVerdict = {
             pass: false,
             score: 0,

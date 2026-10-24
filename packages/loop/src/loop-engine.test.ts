@@ -1565,3 +1565,41 @@ it.each(["--assume-unchanged", "--skip-worktree"])("preserves a legacy candidate
   expect((await engine.runOnce()).executedTaskCount).toBe(0);
   expect((await new LoopEngine(options).runOnce()).executedTaskCount).toBe(0);
 });
+
+it.each(["explicit", "only-verifiers"])("releases the lease for a static %s role refusal before containment or effects", async mode => {
+  const workspace = await makeQueuedWorkspace();
+  const reviewer = new FakeLoopAdapter({ id: "dual-role" });
+  const probe = vi.spyOn(reviewer, "isAvailable");
+  const invoke = vi.spyOn(reviewer, "invoke");
+  const release = vi.fn(async () => {}), retain = vi.fn();
+  await expect(new LoopEngine({ workspacePath: workspace, sources: ["task_queue"],
+    ...(mode === "explicit" ? { agentId: reviewer.id } : {}), adapters: [reviewer],
+    verifierAgentIds: [reviewer.id], lifecycleLease: async () => ({ release, retain }) }).runOnce()).rejects.toThrow(
+      mode === "explicit" ? "VERIFIER_EXECUTION_ROLE_CONFLICT" : "NO_EXECUTION_ADAPTER_OUTSIDE_VERIFIER_ROLE",
+    );
+  expect(release).toHaveBeenCalledTimes(1);
+  expect(retain).not.toHaveBeenCalled();
+  expect(probe).not.toHaveBeenCalled();
+  expect(invoke).not.toHaveBeenCalled();
+  await expect(readFile(loopContainmentPath(workspace), "utf8")).rejects.toMatchObject({ code: "ENOENT" });
+});
+
+it("retains protection for a routing miss after an effectful non-verifier availability probe", async () => {
+  const workspace = await makeQueuedWorkspace();
+  const builder = new FakeLoopAdapter();
+  const reviewer = new FakeReviewAdapter();
+  const probe = vi.spyOn(builder, "isAvailable").mockImplementation(async () => {
+    await writeFile(join(workspace, "probe-effect.txt"), "external probe started");
+    return { available: false, last_checked_at: 0 };
+  });
+  const release = vi.fn(async () => {}), retain = vi.fn();
+  await expect(new LoopEngine({ workspacePath: workspace, sources: ["task_queue"], adapters: [builder, reviewer],
+    verifierAgentIds: [reviewer.id], lifecycleLease: async () => ({ release, retain }) }).runOnce()).rejects.toThrow(
+      "NO_AVAILABLE_EXECUTION_ADAPTER_AFTER_ROUTING_PROBES",
+    );
+  expect(probe).toHaveBeenCalled();
+  expect(await readFile(join(workspace, "probe-effect.txt"), "utf8")).toBe("external probe started");
+  expect(release).not.toHaveBeenCalled();
+  expect(retain).toHaveBeenCalledWith("execution or external stop unconfirmed");
+  await expect(readFile(loopContainmentPath(workspace), "utf8")).resolves.toContain("containment_pending");
+});

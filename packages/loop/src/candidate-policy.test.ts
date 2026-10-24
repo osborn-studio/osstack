@@ -3,7 +3,7 @@ import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, readdirSync, chmod
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
-import { CandidatePolicy, candidateBinding, freezeCandidate, assertCandidateFrozen, openCandidateRecord, CandidateEvidence } from "./candidate-policy.js";
+import { CandidatePolicy, candidateBinding, assertCandidateIndexVisible, freezeCandidate, assertCandidateFrozen, openCandidateRecord, CandidateEvidence } from "./candidate-policy.js";
 import * as candidateModule from "./candidate-policy.js";
 import type { AgentAdapter } from "@osstack/agents";
 import type { HermesEvent } from "@osstack/hermes-adapter";
@@ -274,4 +274,18 @@ it("refuses candidate freeze for a sparse checkout with omitted tracked entries"
   f.git("add", "."); f.git("commit", "-m", "nested baseline");
   f.git("sparse-checkout", "init", "--cone"); f.git("sparse-checkout", "set", "other-directory");
   expect(() => freezeCandidate(f.repo)).toThrow("CANDIDATE_HIDDEN_INDEX_ENTRY");
+});
+
+it("checks a real index whose path listing exceeds the old 1 MiB limit", () => {
+  const f = fixture(1);
+  const blob = execFileSync("git", ["hash-object", "-w", "--stdin"], { cwd: f.repo, input: "shared-content", encoding: "utf8" }).trim();
+  const entries = Array.from({ length: 25000 }, (_, i) => `100644 ${blob}\tlarge-index/${String(i).padStart(6, "0")}-${"x".repeat(48)}.ts\n`).join("");
+  execFileSync("git", ["update-index", "--index-info"], { cwd: f.repo, input: entries });
+  const listed = execFileSync("git", ["ls-files", "-v", "-z"], { cwd: f.repo, maxBuffer: 64 * 1024 * 1024 });
+  expect(listed.byteLength).toBeGreaterThan(1_048_576);
+  expect(() => assertCandidateIndexVisible(f.repo)).not.toThrow();
+});
+it("distinguishes an unavailable index observation from a hidden entry", () => {
+  const f = fixture(1);
+  expect(() => assertCandidateIndexVisible(join(f.root, "missing"))).toThrow("CANDIDATE_INDEX_OBSERVATION_UNAVAILABLE");
 });

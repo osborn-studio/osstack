@@ -31,12 +31,15 @@ const sha = (value: unknown) => createHash("sha256").update(JSON.stringify(value
 export function candidateBinding(policy: CandidatePolicy): CandidateBatchBinding {
   return CandidateBatchBinding.parse(Object.fromEntries(Object.keys(CandidateBatchBinding.shape).map(k => [k, policy[k as keyof CandidatePolicy]])));
 }
-function gitRaw(workspace: string, args: string[]): string {
-  return execFileSync("git", ["-C", workspace, ...REVIEWER_GIT_ARGS, ...args], { env: reviewerGitEnvironment(workspace), encoding: "utf8", timeout: 10_000, maxBuffer: 1_048_576 });
+function gitRaw(workspace: string, args: string[], maxBuffer = 1_048_576): string {
+  return execFileSync("git", ["-C", workspace, ...REVIEWER_GIT_ARGS, ...args], { env: reviewerGitEnvironment(workspace), encoding: "utf8", timeout: 10_000, maxBuffer });
 }
 const git = (workspace: string, args: string[]) => gitRaw(workspace, args).trim();
 export function assertCandidateIndexVisible(workspace: string): void {
-  if (gitRaw(workspace, ["ls-files", "-v", "-z"]).split("\0").some(entry => /^[a-zS] /.test(entry))) throw Error("CANDIDATE_HIDDEN_INDEX_ENTRY");
+  let entries: string;
+  try { entries = gitRaw(workspace, ["ls-files", "-v", "-z"], 64 * 1024 * 1024); }
+  catch (error) { throw new Error("CANDIDATE_INDEX_OBSERVATION_UNAVAILABLE", { cause: error }); }
+  if (entries.split("\0").some(entry => /^[a-zS] /.test(entry))) throw Error("CANDIDATE_HIDDEN_INDEX_ENTRY");
 }
 export function freezeCandidate(workspace: string) {
   assertCandidateIndexVisible(workspace);
