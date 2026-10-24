@@ -1,0 +1,73 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion/packages/cli
+
+ ❯ src/local-ledgers-daemon.test.ts (15 tests | 2 failed) 9259ms
+   ✓ keeps local follow-up available with Attention disabled and rejects public delivery claims  1292ms
+   ✓ does not initialize the triage provider when disabled, including the real command 295ms
+   ✓ persists advisory cache and quota across daemon restart without answering or marking items seen  392ms
+   ✓ keeps unknown invocation quarantined after stop and restart, with no late success  438ms
+   ✓ exercises the default exported provider without credentials and fails as not_authenticated  663ms
+   ✓ reads scoped recovery through actual daemon and CLI without retry or private prompt disclosure  1578ms
+   ✓ measures bounded recovery over the actual socket alongside mixed session and run observations 284ms
+   ✓ watches actual daemon snapshots through the main CLI and leaves worker execution unchanged  1376ms
+   ✓ serves local sources as explicitly disabled without a host registry and rejects request-selected paths  325ms
+   ✓ inspects a pinned snapshot through the real daemon and main CLI and honors live revocation  1250ms
+   ✓ keeps public delivery unavailable without trusted host targets even through the real CLI  565ms
+   ✓ runs one signed fake delivery through main CLI without declaring a production send or resolving the promise  335ms
+   ✓ waits for bounded delivery finalization before closing the DB and never accepts a late success  306ms
+   × reads separately authorized output through the real CLI/socket and rejects live revocation 101ms
+     → expected 1 to be +0 // Object.is equality
+   × routes pinned viewer launch to the real inspection service and consumes its handoff once 56ms
+     → expected 1 to be +0 // Object.is equality
+ ✓ src/worker-viewer-launch.test.ts (8 tests) 2429ms
+   ✓ host pinned viewer launch > executes the pinned launcher as a real child with bounded argv, without a shell  2096ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/local-ledgers-daemon.test.ts > reads separately authorized output through the real CLI/socket and rejects live revocation
+AssertionError: expected 1 to be +0 // Object.is equality
+
+- Expected
++ Received
+
+- 0
++ 1
+
+ ❯ src/local-ledgers-daemon.test.ts:855:62
+    853|   const db=openDb({path:daemon!.dbPath});db.prepare("UPDATE session_tu…
+    854|   const out=vi.spyOn(console,"log").mockImplementation(()=>{});
+    855|   expect(await main(["worker","logs","--grant-file",grant])).toBe(0);
+       |                                                              ^
+    856|   expect(JSON.parse(String(out.mock.calls.at(-1)?.[0]))).toMatchObject…
+    857|   await writeFile(file,JSON.stringify({schema_version:1,grants:[]}));
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  src/local-ledgers-daemon.test.ts > routes pinned viewer launch to the real inspection service and consumes its handoff once
+AssertionError: expected 1 to be +0 // Object.is equality
+
+- Expected
++ Received
+
+- 0
++ 1
+
+ ❯ src/local-ledgers-daemon.test.ts:870:123
+    868|   const page=await rpc("worker.list",f.scope);const view=(page.result!…
+    869|   const out=vi.spyOn(console,"log").mockImplementation(()=>{});
+    870|   expect(await main(["worker","open",view,"--backend","tmux","--repo",…
+       |                                                                                                                           ^
+    871|   expect(JSON.parse(String(out.mock.calls.at(-1)?.[0]))).toMatchObject…
+    872|   const handoff=join(home,(await readdir(home)).find(n=>n.startsWith("…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed | 1 passed (2)
+      Tests  2 failed | 21 passed (23)
+   Start at  17:11:01
+   Duration  19.55s (transform 2.11s, setup 88ms, collect 7.26s, tests 11.69s, environment 0ms, prepare 146ms)
+
+undefined
+/Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion/packages/cli:
+[ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL] Command failed with exit code 1: vitest run src/local-ledgers-daemon.test.ts src/worker-viewer-launch.test.ts '--maxWorkers=1' '--testTimeout=20000'

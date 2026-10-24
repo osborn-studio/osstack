@@ -1,0 +1,1135 @@
+Static challenge round3. Check confirmed P0/P1 with concrete reachable cases; otherwise none. Prior unsafe ancestors fixed for all pins/config/socket. Tokens hidden in one-use expiry file; stale files swept bounded; no sameUID/root attacker claim. tmux documented multi-argv directexec, real backend absent qualificationpending. cmux shell-neutral ASCII command only, no arbitrary path shell interpolation. inspect now returns same bound token, not minted replacement. Added separate host-approved persisted-assistant-output grants. This is bounded session transcript snapshots, not process stdout or unified global log stream. Main/daemon lazy wiring included excerpts. Read-only capabilities never authorize actions. Must identify actual auth/scope/expiry/response/DB shutdown issues, not infer absent code from context.
+
+FILE packages/cli/src/worker-viewer-launch.ts
+import { execFile } from "node:child_process";
+import { createHash, randomUUID } from "node:crypto";
+import { constants } from "node:fs";
+import { lstat, open, realpath, unlink, rename, opendir } from "node:fs/promises";
+import { dirname, isAbsolute, join } from "node:path";
+import { promisify } from "node:util";
+import { z } from "zod";
+import { WorkerInspectParamsSchema, WorkerInspectResultSchema } from "./worker-view-service.js";
+
+const absolute = z.string().min(1).max(4096).refine(isAbsolute).refine(v => !/[\p{C}]/u.test(v));
+const pin = z.object({ path: absolute, sha256: z.string().regex(/^[a-f0-9]{64}$/) }).strict();
+const backend = z.object({ kind: z.enum(["tmux", "cmux"]), executable: pin, version_output: z.string().min(1).max(256),
+  socket: absolute, target: z.string().regex(/^(?:\$[0-9]+|[a-f0-9-]{36})$/), shell: z.literal("posix") }).strict();
+export const ViewerHostConfigSchema = z.object({ schema_version: z.literal(1), home: absolute, node: pin, cli: pin,
+  backends: z.array(backend).min(1).max(2) }).strict().refine(c => new Set(c.backends.map(b => b.kind)).size === c.backends.length);
+type ViewerHostConfig = z.infer<typeof ViewerHostConfigSchema>;
+type Backend = ViewerHostConfig["backends"][number];
+type Run = (executable: string, args: string[], environment: NodeJS.ProcessEnv) => Promise<string>;
+const hash = (value: Buffer | string) => createHash("sha256").update(value).digest("hex");
+async function verifyAncestors(path: string) {
+  for (let current = dirname(path); ; current = dirname(current)) {
+    const entry = await lstat(current); const stickyRoot = entry.uid === 0 && (entry.mode & 0o1000) !== 0;
+    if (!entry.isDirectory() || entry.isSymbolicLink() || (entry.uid !== 0 && entry.uid !== process.getuid?.()) || ((entry.mode & 0o022) !== 0 && !stickyRoot)) throw Error("viewer_unsafe_ancestor");
+    if (dirname(current) === current) break;
+  }
+}
+async function boundedRead(path: string, maximum: number, privateFile: boolean) {
+  await verifyAncestors(path);
+  if (await realpath(path) !== path) throw Error("viewer_path_alias");
+  const file = await open(path, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
+  try {
+    const before = await file.stat();
+    if (!before.isFile() || before.size > maximum || before.uid !== process.getuid?.() && before.uid !== 0 ||
+      (before.mode & (privateFile ? 0o077 : 0o022)) !== 0 || privateFile && before.uid !== process.getuid?.()) throw Error("viewer_file_invalid");
+    const bytes = Buffer.alloc(before.size + 1); let length = 0;
+    while (length < bytes.length) { const read = await file.read(bytes, length, bytes.length - length, null); if (!read.bytesRead) break; length += read.bytesRead; }
+    const after = await file.stat(); const current = await lstat(path);
+    if (length !== before.size || before.size !== after.size || before.mtimeMs !== after.mtimeMs || before.ctimeMs !== after.ctimeMs ||
+      current.isSymbolicLink() || current.ino !== before.ino || current.dev !== before.dev) throw Error("viewer_file_changed");
+    return bytes.subarray(0, length);
+  } finally { await file.close(); }
+}
+async function verifyPin(value: z.infer<typeof pin>) {
+  await verifyAncestors(value.path);
+  if (await realpath(value.path) !== value.path) throw Error("viewer_path_alias");
+  const file = await open(value.path, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
+  try {
+    const before = await file.stat();
+    if (!before.isFile() || before.size > 268435456 || (before.uid !== process.getuid?.() && before.uid !== 0) || (before.mode & 0o022)) throw Error("viewer_file_invalid");
+    const digest = createHash("sha256"); const buffer = Buffer.alloc(65536); let length = 0;
+    while (length <= before.size) { const read = await file.read(buffer, 0, buffer.length, null); if (!read.bytesRead) break; length += read.bytesRead; digest.update(buffer.subarray(0, read.bytesRead)); }
+    const after = await file.stat(); const current = await lstat(value.path);
+    if (length !== before.size || after.size !== before.size || before.mtimeMs !== after.mtimeMs || before.ctimeMs !== after.ctimeMs || current.ino !== before.ino || current.dev !== before.dev || current.isSymbolicLink()) throw Error("viewer_file_changed");
+    if (digest.digest("hex") !== value.sha256) throw Error("viewer_pin_mismatch");
+  } finally { await file.close(); }
+}
+const HandoffSchema = z.object({ schema_version: z.literal(1), expires_at_ms: z.number().int(), reference: WorkerInspectParamsSchema,
+  duration_ms: z.number().int().min(1000).max(900000) }).strict();
+/** Single-use, short-lived private handoff: authority never appears in terminal command text. */
+export async function consumeViewerHandoff(homeInput: string, path: string): Promise<string[]> {
+  const home = await realpath(homeInput);
+  if ( !path.startsWith(`${home}/viewer-handoff-`) || !/^viewer-handoff-[a-f0-9-]{36}\.json$/.test(path.slice(home.length + 1))) throw Error("viewer_handoff_invalid");
+  const claim = `${path}.claimed-${randomUUID()}`;
+  // An exclusive hard-link claim is not sufficient: two different claim names race. Rename
+  // atomically removes the original, so exactly one observer can acquire the capability.
+  await rename(path, claim);
+  try {
+    const data = HandoffSchema.parse(JSON.parse((await boundedRead(claim, 16384, true)).toString("utf8")));
+    if (data.expires_at_ms <= Date.now() || data.expires_at_ms > Date.now() + 60000) throw Error("viewer_handoff_expired");
+    return ["watch", data.reference.view_id, "--repo", data.reference.repo_path, "--default-tenant", "--duration-ms", String(data.duration_ms)];
+  } finally { await unlink(claim); }
+}
+const nativeRun: Run = async (executable, args, environment) => {
+  const result = await promisify(execFile)(executable, args, { shell: false, env: environment, timeout: 3000,
+    killSignal: "SIGKILL", maxBuffer: 16384, encoding: "utf8", windowsHide: true });
+  return result.stdout;
+};
+/** tmux's documented multi-argument exec contract; cmux receives only shell-neutral
+ * ASCII words. Repository paths and capability tokens stay in the private handoff. */
+export function viewerLaunchArguments(config: ViewerHostConfig, item: Backend, handoff: string) {
+  const command = ["/usr/bin/env", "-i", "PATH=/usr/bin:/bin", "LANG=C", `OSSTACK_HOME=${config.home}`,
+    config.node.path, config.cli.path, "worker", "watch-handoff", handoff];
+  if (item.kind === "tmux") {
+    if (!/^\$[0-9]+$/.test(item.target)) throw Error("viewer_target_invalid");
+    return ["-N", "-S", item.socket, "new-window", "-d", "-P", "-F", "#{pane_id}", "-t", `${item.target}:`,
+      "-n", "osstack-view", "-c", config.home, ...command];
+  }
+  if (!/^[a-f0-9-]{36}$/.test(item.target) || command.some(word => !/^[a-zA-Z0-9_./=:-]+$/.test(word))) throw Error("viewer_shell_contract_invalid");
+  return ["--socket", item.socket, "--window", item.target, "--json", "new-workspace", "--command", command.join(" ")];
+}
+export async function launchWorkerViewer(options: { home: string; backend: "tmux" | "cmux"; reference: unknown; durationMs?: number;
+  inspect: (reference: z.infer<typeof WorkerInspectParamsSchema>, signal: AbortSignal) => Promise<unknown>; run?: Run }) {
+  const reference = WorkerInspectParamsSchema.parse(options.reference);
+  const durationMs = z.number().int().min(1000).max(900000).parse(options.durationMs ?? 60000);
+  const home = await realpath(options.home);
+  const homeStat = await lstat(home);
+  if (!homeStat.isDirectory() || homeStat.uid !== process.getuid?.() || (homeStat.mode & 0o077) !== 0) throw Error("viewer_home_not_private");
+  const path = join(home, "viewer-backends.json"); const bytes = await boundedRead(path, 32768, true);
+  const config = ViewerHostConfigSchema.parse(JSON.parse(bytes.toString("utf8")));
+  if (config.home !== home || await realpath(reference.repo_path) !== reference.repo_path) throw Error("viewer_scope_mismatch");
+  const item = config.backends.find(row => row.kind === options.backend); if (!item) throw Error("viewer_backend_not_registered");
+  if (item.kind === "cmux" && process.platform !== "darwin") throw Error("viewer_platform_unsupported");
+  const checkSocket = async () => { await verifyAncestors(item.socket); const socket = await lstat(item.socket);
+    if (!socket.isSocket() || socket.uid !== process.getuid?.() || (socket.mode & 0o077) !== 0 || await realpath(item.socket) !== item.socket) throw Error("viewer_socket_invalid");
+    return `${socket.dev}:${socket.ino}`; };
+  const socketIdentity = await checkSocket();
+  for (const value of [item.executable, config.node, config.cli]) await verifyPin(value);
+  const run = options.run ?? nativeRun; const env = { PATH: "/usr/bin:/bin", LANG: "C", LC_ALL: "C" };
+  const version = await run(item.executable.path, [item.kind === "tmux" ? "-V" : "--version"], env);
+  if (version.trim() !== item.version_output) throw Error("viewer_version_mismatch");
+  const controller = new AbortController(); const timer = setTimeout(() => controller.abort(), 1000);
+  try {
+    const observed = WorkerInspectResultSchema.parse(await Promise.race([options.inspect(reference, controller.signal),
+      new Promise<never>((_, reject) => controller.signal.addEventListener("abort", () => reject(Error("viewer_inspect_timeout")), { once: true }))]));
+    if (observed.scope.repo_path !== reference.repo_path || observed.scope.tenant !== "default" || observed.view.view_id !== reference.view_id) throw Error("viewer_scope_mismatch");
+  } finally { clearTimeout(timer); controller.abort(); }
+  if (hash(await boundedRead(path, 32768, true)) !== hash(bytes) || await checkSocket() !== socketIdentity) throw Error("viewer_configuration_changed");
+  for (const value of [item.executable, config.node, config.cli]) await verifyPin(value);
+  if (await checkSocket() !== socketIdentity) throw Error("viewer_configuration_changed");
+  let pending = 0; let scanned = 0;
+  for await (const entry of await opendir(home)) {
+    if (++scanned > 4096) throw Error("viewer_home_inventory_limit");
+    if (!/^viewer-handoff-[a-f0-9-]{36}\.json$/.test(entry.name)) continue;
+    const candidate = join(home, entry.name);
+    const previous = HandoffSchema.parse(JSON.parse((await boundedRead(candidate, 16384, true)).toString("utf8")));
+    if (previous.expires_at_ms <= Date.now()) await unlink(candidate);
+    else if (++pending >= 64) throw Error("viewer_pending_limit");
+  }
+  const handoff = join(home, `viewer-handoff-${randomUUID()}.json`);
+  const args = viewerLaunchArguments(config, item, handoff);
+  const handle = await open(handoff, "wx", 0o600);
+  try { await handle.writeFile(JSON.stringify({ schema_version: 1, expires_at_ms: Date.now() + 60000, reference, duration_ms: durationMs })); await handle.sync(); }
+  finally { await handle.close(); }
+  // Unknown launch retains the expiring handoff because a delayed child may still consume it.
+
+  try {
+    const output = await run(item.executable.path, args, env);
+    if (item.kind === "tmux" && !/^%[0-9]+\s*$/.test(output)) throw Error("invalid_launch_receipt");
+    if (item.kind === "cmux") {
+      const response: unknown = JSON.parse(output);
+      if (!response || typeof response !== "object" || Array.isArray(response) || "ok" in response && response.ok === false) throw Error("invalid_launch_receipt");
+      const payload = "result" in response ? response.result : response;
+      if (!payload || typeof payload !== "object" || !("workspace_id" in payload) || typeof payload.workspace_id !== "string" ||
+        !/^[a-f0-9-]{36}$/i.test(payload.workspace_id)) throw Error("invalid_launch_receipt");
+    }
+    return { state: "launch_requested" as const, backend: item.kind, response_sha256: hash(output), worker_controls: "unsupported", auto_retry: false,
+      qualification: "backend_runtime_pending", duration_ms: durationMs };
+  } catch { return { state: "launch_unknown" as const, backend: item.kind, worker_controls: "unsupported", auto_retry: false, qualification: "backend_runtime_pending" }; }
+}
+
+export async function handleWorkerViewerLaunchCommand(args: string[], deps: { home: string;
+  inspect: Parameters<typeof launchWorkerViewer>[0]["inspect"]; out?: (text: string) => void; run?: Run }): Promise<number> {
+  const out = deps.out ?? console.log;
+  if (args.length === 1 && ["help", "--help"].includes(args[0]!)) {
+    out("worker open VIEW_ID --backend tmux|cmux --repo ABSOLUTE_PATH --default-tenant [--duration-ms 1000..900000]\nUses fixed private viewer-backends.json; opens a read-only observer. Never focuses, reuses, closes or controls workers."); return 0;
+  }
+  try {
+    if (args[0] !== "open" || args.length > 10 || !args[1] || args[1].startsWith("--")) throw Error("invalid_request");
+    const flags = new Map<string, string | true>();
+    for (let i = 2; i < args.length; i++) {
+      const key = args[i]!;
+      if (!["--backend", "--repo", "--default-tenant", "--duration-ms"].includes(key) || flags.has(key)) throw Error("invalid_request");
+      if (key === "--default-tenant") { flags.set(key, true); continue; }
+      const value = args[++i]; if (!value || value.startsWith("--")) throw Error("invalid_request"); flags.set(key, value);
+    }
+    const duration = flags.get("--duration-ms");
+    if (duration !== undefined && (typeof duration !== "string" || !/^[1-9][0-9]*$/.test(duration))) throw Error("invalid_request");
+    const result = await launchWorkerViewer({ home: deps.home, backend: z.enum(["tmux", "cmux"]).parse(flags.get("--backend")),
+      reference: { view_id: args[1], repo_path: flags.get("--repo"), default_tenant: flags.get("--default-tenant") },
+      ...(duration === undefined ? {} : { durationMs: Number(duration) }), inspect: deps.inspect, ...(deps.run ? { run: deps.run } : {}) });
+    out(JSON.stringify(result)); return result.state === "launch_requested" ? 0 : 2;
+  } catch {
+    out(JSON.stringify({ state: "rejected", reason: "viewer_configuration_or_request_invalid", worker_controls: "unsupported", auto_retry: false })); return 1;
+  }
+}
+
+FILE packages/cli/src/worker-viewer-launch.test.ts
+import { createHash } from "node:crypto";
+import { chmod, mkdir, readFile, readdir, realpath, rm, writeFile } from "node:fs/promises";
+import { createServer } from "node:net";
+import { join } from "node:path";
+import { afterEach, describe, expect, it } from "vitest";
+import { createScratchDir } from "@osstack/core";
+import { consumeViewerHandoff, launchWorkerViewer, viewerLaunchArguments, ViewerHostConfigSchema } from "./worker-viewer-launch.js";
+const cleanup: (() => Promise<void>)[] = []; afterEach(async () => { for (const run of cleanup.splice(0).reverse()) await run(); });
+const sha = (text: string) => createHash("sha256").update(text).digest("hex");
+async function fixture(kind: "tmux" | "cmux" = "tmux") {
+  const root = await realpath(await createScratchDir("tests", "viewer-launch")); cleanup.push(() => rm(root, { recursive: true, force: true }));
+  const home = join(root, "home"); await mkdir(home, { mode: 0o700 });
+  const program = join(root, "program"); await writeFile(program, "pinned", { mode: 0o700 });
+  // Short socket spelling is canonical on macOS (/private/tmp), under managed scratch.
+  const socket = join(root, "v.sock"); const server = createServer();
+  await new Promise<void>((resolve, reject) => { server.once("error", reject); server.listen(socket, resolve); });
+  cleanup.push(() => new Promise<void>(resolve => server.close(() => resolve()))); await chmod(socket, 0o600);
+  const config = ViewerHostConfigSchema.parse({ schema_version: 1, home, node: { path: program, sha256: sha("pinned") }, cli: { path: program, sha256: sha("pinned") },
+    backends: [{ kind, executable: { path: program, sha256: sha("pinned") }, version_output: "pinned-version", socket,
+      target: kind === "tmux" ? "$7" : "11111111-1111-1111-1111-111111111111", shell: "posix" }] });
+  const configPath = join(home, "viewer-backends.json"); await writeFile(configPath, JSON.stringify(config), { mode: 0o600 });
+  const reference = { repo_path: root, default_tenant: true as const, view_id: "opaque_token" };
+  const response = { schema_version: 1, mode: "readonly_state_view", scope: { repo_path: root, tenant: "default", scope_id: "a".repeat(64) }, sampled_at_ms: 1,
+    coverage: { graph: "unsupported_authenticated_registration_required", unbound_runs: "excluded_not_bound", repository_binding: "canonical_stored_paths_only", content: "structured_metadata_only", counting: "source_views_not_unique_workers" },
+    view: { view_id: reference.view_id, source_kind: "run", state: "running", revision: 1, latest_turn: null, last_updated_at_ms: 1, freshness: "recent", process_liveness: "unknown", wait_reason: "none", uncertain_delivery_recorded: false, controls: "unsupported" } };
+  return { root, home, program, config, configPath, reference, response };
+}
+describe("host pinned viewer launch", () => {
+  it("launches only a new detached read-only tmux viewer via argv", async () => {
+    const f = await fixture(); const calls: string[][] = [];
+    const result = await launchWorkerViewer({ home: f.home, backend: "tmux", reference: f.reference, inspect: async () => f.response,
+      run: async (_exe, args, env) => { expect(env).not.toHaveProperty("NODE_OPTIONS"); calls.push(args); return calls.length === 1 ? "pinned-version\n" : "%17\n"; } });
+    expect(result.state).toBe("launch_requested"); expect(calls[1]).toContain("-N"); expect(calls[1]).toContain("new-window");
+    expect(calls[1]).toContain("-d"); expect(calls[1]).toContain("watch-handoff"); expect(calls.flat()).not.toContain("send-keys");
+    expect(calls.flat()).not.toContain("kill-pane"); expect(calls.flat()).not.toContain("select-pane");
+  });
+  it("does not launch after registry revocation during inspection", async () => {
+    const f = await fixture(); let calls = 0;
+    await expect(launchWorkerViewer({ home: f.home, backend: "tmux", reference: f.reference,
+      inspect: async () => { await writeFile(f.configPath, "{}"); return f.response; }, run: async () => { calls++; return "pinned-version"; } })).rejects.toThrow("viewer_configuration_changed");
+    expect(calls).toBe(1);
+  });
+  it("never retries an ambiguous launcher failure", async () => {
+    const f = await fixture(); let calls = 0;
+    const result = await launchWorkerViewer({ home: f.home, backend: "tmux", reference: f.reference, inspect: async () => f.response,
+      run: async () => { if (++calls === 1) return "pinned-version"; throw Error("response lost"); } });
+    expect(result.state).toBe("launch_unknown"); expect(result.auto_retry).toBe(false); expect(calls).toBe(2);
+  });
+  it("rejects a changed executable before invoking anything", async () => {
+    const f = await fixture(); await writeFile(f.program, "replaced");
+    await expect(launchWorkerViewer({ home: f.home, backend: "tmux", reference: f.reference, inspect: async () => f.response,
+      run: async () => { throw Error("must not invoke"); } })).rejects.toThrow("viewer_pin_mismatch");
+  });
+  it("keeps capability and repository text out of cmux shell commands", async () => {
+    const f = await fixture("cmux"); const handoff = join(f.home, "viewer-handoff-11111111-1111-1111-1111-111111111111.json");
+    const args = viewerLaunchArguments(f.config, f.config.backends[0]!, handoff);
+    expect(args.slice(0, 5)).toEqual(["--socket", f.config.backends[0]!.socket, "--window", f.config.backends[0]!.target, "--json"]);
+    expect(args.at(-1)).not.toContain(f.reference.view_id); expect(args.at(-1)).toContain("watch-handoff");
+    expect(() => viewerLaunchArguments({...f.config, home:"/tmp/a'$(touch NO)"}, f.config.backends[0]!, handoff)).toThrow("viewer_shell_contract_invalid");
+  });
+  it("consumes a private handoff exactly once without exposing authority in argv", async () => {
+    const f = await fixture(); let captured: string[] = [];
+    await launchWorkerViewer({home:f.home,backend:"tmux",reference:f.reference,inspect:async()=>f.response,
+      run:async(_exe,args)=>{captured=args;return args[0]==="-V"?"pinned-version":"%1";}});
+    expect(captured).not.toContain(f.reference.view_id);
+    const path = join(f.home,(await readdir(f.home)).find(n=>n.startsWith("viewer-handoff-"))!);
+    const results = await Promise.allSettled([consumeViewerHandoff(f.home,path),consumeViewerHandoff(f.home,path)]);
+    expect(results.filter(r=>r.status==="fulfilled")).toHaveLength(1);
+    expect(results.find(r=>r.status==="fulfilled")).toMatchObject({value:["watch",f.reference.view_id,"--repo",f.root,"--default-tenant","--duration-ms","60000"]});
+  });
+  it("rejects a response for another view before launch", async()=>{
+    const f=await fixture();let calls=0;
+    await expect(launchWorkerViewer({home:f.home,backend:"tmux",reference:f.reference,
+      inspect:async()=>({...f.response,view:{...f.response.view,view_id:"different"}}),run:async()=>{calls++;return "pinned-version";}})).rejects.toThrow("viewer_scope_mismatch");
+    expect(calls).toBe(1);
+  });
+  it("executes the pinned launcher as a real child with bounded argv, without a shell", async () => {
+    const f = await fixture(); const log = join(f.root, "argv.json");
+    const source = `#!${process.execPath}\nconst fs=require('fs');if(process.argv[2]==='-V'){console.log('pinned-version')}else{fs.writeFileSync(${JSON.stringify(log)},JSON.stringify({args:process.argv.slice(2),env:process.env}));console.log('%3')}\n`;
+    await writeFile(f.program, source); f.config.backends[0]!.executable.sha256 = sha(source); f.config.node.sha256 = sha(source); f.config.cli.sha256 = sha(source);
+    await writeFile(f.configPath, JSON.stringify(f.config));
+    const result = await launchWorkerViewer({ home: f.home, backend: "tmux", reference: f.reference, inspect: async () => f.response });
+    expect(result.state).toBe("launch_requested");
+    const actual = JSON.parse(await readFile(log, "utf8")); expect(actual.args).toContain("watch-handoff");
+    expect(actual.args).toContain(`OSSTACK_HOME=${f.home}`); expect(actual.env).not.toHaveProperty("NODE_OPTIONS");
+    expect(actual.args).not.toContain("send-keys");
+  });
+});
+
+FILE packages/cli/src/worker-presentation.ts
+import type { Writable } from "node:stream";
+import { z } from "zod";
+import { WORKER_VIEW_ERROR_CODES, WORKER_VIEW_MAX_BYTES, WorkerInspectParamsSchema, WorkerInspectResultSchema, serializeWorkerView } from "./worker-view-service.js";
+export type WorkerPresentationReference = z.infer<typeof WorkerInspectParamsSchema>;
+export type ViewerStop = { reason: "closed" | "duration_elapsed" | "interrupted" | "unknown" | "output_closed"; detail?: string };
+export interface PresentationHandle { readonly done: Promise<ViewerStop> }
+export interface PresentationBackend {
+  capabilities(): { view: true; focus: false; archive: false; output: "structured_snapshot" };
+  open(reference: WorkerPresentationReference, options?: { interval_ms?: number; duration_ms?: number; signal?: AbortSignal }): PresentationHandle;
+  focus(handle: PresentationHandle): "unsupported";
+  closeView(handle: PresentationHandle): void;
+}
+const Budget = z.object({ interval_ms: z.number().int().min(1000).max(10000), duration_ms: z.number().int().min(1000).max(900000) }).strict();
+function abortable<T>(operation: () => Promise<T>, signal: AbortSignal): Promise<T> {
+  if (signal.aborted) return Promise.reject(Error("viewer_closed"));
+  return new Promise((resolve,reject) => {
+    const abort=()=>{signal.removeEventListener("abort",abort);reject(Error("viewer_closed"));}; signal.addEventListener("abort",abort,{once:true});
+    Promise.resolve().then(()=>{if(signal.aborted)throw Error("viewer_closed");return operation();}).then(value=>{signal.removeEventListener("abort",abort);resolve(value);},error=>{signal.removeEventListener("abort",abort);reject(error);});
+  });
+}
+async function readSnapshot(inspect: (signal: AbortSignal)=>Promise<unknown>, signal: AbortSignal): Promise<unknown> {
+  const read=new AbortController();const close=()=>read.abort("viewer_closed");
+  signal.addEventListener("abort",close,{once:true});if(signal.aborted)close();
+  const timeout=setTimeout(()=>read.abort("worker_read_timeout"),1000);
+  try {return await abortable(()=>inspect(read.signal),read.signal);}
+  catch(error){if(read.signal.reason==="worker_read_timeout")throw Error("worker_read_timeout");throw error;}
+  finally{clearTimeout(timeout);signal.removeEventListener("abort",close);}
+}
+export function writePresentationText(output: Writable, text: string, signal: AbortSignal): Promise<void> {
+  if (Buffer.byteLength(text)>WORKER_VIEW_MAX_BYTES || output.destroyed) return Promise.reject(Error("output_closed"));
+  if(signal.aborted)return Promise.reject(Error("viewer_closed"));
+  // One pending chunk at a time. Closing the view never destroys shared stdout.
+  // A pending write retains one error listener until its own callback/late error.
+  return new Promise((resolve,reject)=>{
+    const onError=()=>{signal.removeEventListener("abort",abort);reject(Error("output_closed"));};
+    const abort=()=>{signal.removeEventListener("abort",abort);reject(Error("viewer_closed"));};
+    output.once("error",onError); signal.addEventListener("abort",abort,{once:true});
+    try { output.write(text,error=>{
+      signal.removeEventListener("abort",abort);
+      if(error) {
+        // Node dispatches the corresponding stream error after its callback.
+        // Keep the guard through that dispatch, then also clean callback-only errors.
+        setImmediate(()=>output.removeListener("error",onError));
+        reject(Error("output_closed")); return;
+      }
+      output.removeListener("error",onError);resolve();
+    }); } catch {output.removeListener("error",onError);signal.removeEventListener("abort",abort);reject(Error("output_closed"));}
+  });
+}
+function pause(ms:number,signal:AbortSignal):Promise<void>{
+  return new Promise(resolve=>{const finish=()=>{clearTimeout(timer);signal.removeEventListener("abort",finish);resolve();};const timer=setTimeout(finish,ms);signal.addEventListener("abort",finish,{once:true});if(signal.aborted)finish();});
+}
+/** Local presentation only: the sole dependency is the existing read-only inspect endpoint. */
+export function createTerminalPresentationBackend(deps: { inspect: (reference: WorkerPresentationReference, signal: AbortSignal) => Promise<unknown>; output: Writable }): PresentationBackend {
+  const inspect=deps.inspect; const output=deps.output;
+  const handles=new WeakMap<PresentationHandle,AbortController>();let opened=false;
+  return {
+    capabilities:()=>({view:true,focus:false,archive:false,output:"structured_snapshot"}),
+    open(reference,options={}) {
+      if(opened)throw Error("viewer_already_opened");
+      const request=Object.freeze(WorkerInspectParamsSchema.parse(reference));const budget=Budget.parse({interval_ms:options.interval_ms??2000,duration_ms:options.duration_ms??60000});
+      opened=true;const controller=new AbortController();const externalAbort=()=>controller.abort("interrupted");
+      options.signal?.addEventListener("abort",externalAbort,{once:true});if(options.signal?.aborted)externalAbort();
+      const timer=setTimeout(()=>controller.abort("duration_elapsed"),budget.duration_ms);
+      const done=(async():Promise<ViewerStop>=>{
+        let previous:string|undefined;let binding:string|undefined;
+        try {
+          while(!controller.signal.aborted){
+            let raw:unknown;
+            try {raw=await readSnapshot(signal=>inspect(request,signal),controller.signal);}catch(error){
+              if(controller.signal.aborted)break;
+              const message=error instanceof Error?error.message:"";const detail=(message==="worker_read_timeout"||(WORKER_VIEW_ERROR_CODES as readonly string[]).includes(message))?message:"worker_request_failed";
+              await writePresentationText(output,`Worker observation unknown: ${detail}. Viewer closed; worker state not verified.\n`,controller.signal);return {reason:"unknown",detail};
+            }
+            if(Buffer.byteLength(serializeWorkerView(raw))>WORKER_VIEW_MAX_BYTES)throw Error("invalid_worker_response");
+            const response=WorkerInspectResultSchema.parse(raw);
+            const currentBinding=serializeWorkerView({scope:response.scope,kind:response.view.source_kind});
+            if(binding!==undefined&&binding!==currentBinding)throw Error("worker_binding_changed"); binding=currentBinding;
+            // The response may carry a freshly encoded token. Never renew the
+            // user's original view reference or its 15-minute authority lifetime.
+            const {view_id: _token,...view}=response.view;
+            const snapshot=serializeWorkerView({scope:response.scope,...view});
+            if(snapshot!==previous){await writePresentationText(output,`snapshot=${snapshot}\n`,controller.signal);previous=snapshot;}
+            if(view.state==="unknown"||view.freshness==="unknown")return {reason:"unknown",detail:"source_observation_unknown"};
+            await pause(budget.interval_ms,controller.signal);
+          }
+          return {reason:controller.signal.reason as "closed"|"duration_elapsed"|"interrupted"};
+        }catch(error){
+          if(controller.signal.aborted)return {reason:controller.signal.reason as "closed"|"duration_elapsed"|"interrupted"};
+          if(error instanceof Error&&error.message==="output_closed")return {reason:"output_closed"};
+          const detail=error instanceof Error&&error.message==="worker_binding_changed"?"worker_binding_changed":"invalid_worker_response";
+          try {await writePresentationText(output,`Worker observation unknown: ${detail}. Viewer closed; worker state not verified.\n`,controller.signal);}catch{
+            if(controller.signal.aborted)return {reason:controller.signal.reason as "closed"|"duration_elapsed"|"interrupted"};
+            return {reason:"output_closed"};
+          }
+          return {reason:"unknown",detail};
+        }finally{clearTimeout(timer);options.signal?.removeEventListener("abort",externalAbort);}
+      })();
+      const handle=Object.freeze({done});handles.set(handle,controller);return handle;
+    },
+    focus(handle){if(!handles.has(handle))throw Error("invalid_view_handle");return "unsupported";},
+    closeView(handle){const controller=handles.get(handle);if(!controller)throw Error("invalid_view_handle");controller.abort("closed");},
+  };
+}
+
+FILE packages/cli/src/worker-viewer-command.ts
+import type { Writable } from "node:stream";
+import { createTerminalPresentationBackend, writePresentationText, type PresentationHandle, type WorkerPresentationReference } from "./worker-presentation.js";
+export const WORKER_VIEWER_HELP = "worker watch VIEW_ID --repo ABSOLUTE_PATH --default-tenant [--interval-ms 1000..10000] [--duration-ms 1000..900000]\nRead-only structured snapshots; no log tail or execution controls. Default duration: 60000ms. Ctrl-C closes only this viewer.\n";
+export interface WorkerViewerCommandDependencies {
+  rpc: (method: "worker.inspect", params: WorkerPresentationReference, timeoutMs: number, signal: AbortSignal) => Promise<unknown>;
+  output?: Writable; stderr?: (text: string) => void;
+  onInterrupt?: (listener: () => void) => () => void;
+}
+export async function handleWorkerViewerCommand(args: string[], deps: WorkerViewerCommandDependencies): Promise<number> {
+  const output=deps.output??process.stdout;const err=deps.stderr??(text=>{process.stderr.write(text);});
+  if(args.length===0||(args.length===1&&["--help","help"].includes(args[0]!))){
+    const abort=new AbortController();const timeout=setTimeout(()=>abort.abort(),1000);
+    try{await writePresentationText(output,WORKER_VIEWER_HELP,abort.signal);return 0;}catch{return 1;}finally{clearTimeout(timeout);}
+  }
+  let handle: PresentationHandle;const controller=new AbortController();let removeInterrupt: (()=>void)|undefined;
+  try {
+    if(args[0]!=="watch"||args.length>11||args.some(arg=>arg.length>4096))throw Error("invalid_request");
+    const viewId=args[1];const flags=new Map<string,string|true>();
+    const known=new Set(["--repo","--default-tenant","--interval-ms","--duration-ms"]);
+    if(!viewId||known.has(viewId))throw Error("invalid_request");
+    for(let index=2;index<args.length;index++){
+      const flag=args[index]!;if(!known.has(flag)||flags.has(flag))throw Error("invalid_request");
+      if(flag==="--default-tenant"){flags.set(flag,true);continue;}
+      const value=args[++index];if(!value||known.has(value))throw Error("invalid_request");flags.set(flag,value);
+    }
+    const numeric=(name:string,fallback:number)=>{const raw=flags.get(name);if(raw===undefined)return fallback;if(typeof raw!=="string"||!/^[1-9][0-9]*$/.test(raw))throw Error("invalid_request");return Number(raw);};
+    const backend=createTerminalPresentationBackend({inspect:(reference,signal)=>deps.rpc("worker.inspect",reference,1000,signal),output});
+    const subscribe=deps.onInterrupt??(listener=>{process.once("SIGINT",listener);return ()=>{process.removeListener("SIGINT",listener);};});
+    removeInterrupt=subscribe(()=>controller.abort());
+    handle=backend.open({repo_path:flags.get("--repo") as string,default_tenant:flags.get("--default-tenant") as true,view_id:viewId},
+      {interval_ms:numeric("--interval-ms",2000),duration_ms:numeric("--duration-ms",60000),signal:controller.signal});
+  }catch{removeInterrupt?.();err("invalid_request\n");return 1;}
+  try{const result=await handle.done;return result.reason==="interrupted"?130:["unknown","output_closed"].includes(result.reason)?1:0;}
+  finally{removeInterrupt?.();}
+}
+
+FILE packages/cli/src/worker-view-service.ts
+import { createCipheriv, createDecipheriv, createHash, randomBytes } from "node:crypto";
+import { accessSync, constants, realpathSync, statSync } from "node:fs";
+import { isAbsolute } from "node:path";
+import type Database from "better-sqlite3";
+import { CURRENT_SCHEMA_VERSION } from "@osstack/core";
+import { z } from "zod";
+
+export const WORKER_VIEW_MAX_BYTES = 65536;
+const TOKEN_TTL_MS = 15 * 60 * 1000;
+const tokenString = z.string().min(1).max(2048).regex(/^[A-Za-z0-9_-]+$/);
+// Bound JSON escaping as well as characters before encryption/base64 growth.
+const sourceIdentity = z.string().min(1).max(256).refine(id => Buffer.byteLength(JSON.stringify(id), "utf8") <= 1200);
+const scopeInput = {
+  repo_path: z.string().min(1).max(4096).refine(isAbsolute),
+  default_tenant: z.literal(true),
+};
+export const WorkerListParamsSchema = z.object({ ...scopeInput,
+  limit: z.number().int().min(1).max(50).optional(), cursor: tokenString.optional(),
+}).strict();
+export const WorkerInspectParamsSchema = z.object({ ...scopeInput, view_id: tokenString }).strict();
+const states = ["starting", "running", "awaiting_decision", "idle", "completed", "failed", "cancelled", "expired", "outcome_pending", "unknown"] as const;
+const StateSchema = z.enum(states);
+const ViewSchema = z.object({
+  view_id: tokenString, source_kind: z.enum(["run", "session"]),
+  state: StateSchema, revision: z.number().int().safe().positive().nullable(),
+  latest_turn: z.object({ ordinal: z.number().int().safe().positive(), state: StateSchema, decision_present: z.boolean() }).strict().nullable(),
+  last_updated_at_ms: z.number().finite().nonnegative().nullable(),
+  freshness: z.enum(["recent", "stale", "unknown"]),
+  process_liveness: z.literal("unknown"),
+  wait_reason: z.enum(["decision_record_present", "delivery_unknown", "awaiting_instruction", "none", "unknown"]),
+  uncertain_delivery_recorded: z.boolean(),
+  controls: z.literal("unsupported"),
+}).strict();
+const commonResponse = {
+  schema_version: z.literal(1), mode: z.literal("readonly_state_view"),
+  scope: z.object({ repo_path: z.string().max(4096), tenant: z.literal("default"), scope_id: z.string().regex(/^[a-f0-9]{64}$/) }).strict(),
+  sampled_at_ms: z.number().int().nonnegative(),
+  coverage: z.object({
+    graph: z.literal("unsupported_authenticated_registration_required"),
+    unbound_runs: z.literal("excluded_not_bound"),
+    repository_binding: z.literal("canonical_stored_paths_only"),
+    content: z.literal("structured_metadata_only"),
+    counting: z.literal("source_views_not_unique_workers"),
+  }).strict(),
+};
+export const WorkerListResultSchema = z.object({ ...commonResponse,
+  total: z.number().int().nonnegative(), views: z.array(ViewSchema).max(50),
+  next_cursor: tokenString.nullable(), truncated: z.boolean(),
+}).strict();
+export const WorkerInspectResultSchema = z.object({ ...commonResponse, view: ViewSchema }).strict();
+export type WorkerViewListResult = z.infer<typeof WorkerListResultSchema>;
+export type WorkerViewInspectResult = z.infer<typeof WorkerInspectResultSchema>;
+
+/** Valid JSON with terminal control/format characters escaped in strings.
+ * Use the same representation for service budgeting and CLI printing. */
+export function serializeWorkerView(value: unknown): string {
+  const serialized = JSON.stringify(value);
+  if (typeof serialized !== "string") throw new Error("invalid_worker_response");
+  return serialized.replace(/[\p{Cf}\u007f-\u009f\u2028\u2029]/gu,
+    char => char.split("").map(unit => `\\u${unit.charCodeAt(0).toString(16).padStart(4, "0")}`).join(""));
+}
+
+const TokenSchema = z.object({ v: z.literal(1), kind: z.enum(["view", "cursor"]), scope: z.string(),
+  source: z.enum(["run", "session"]), id: sourceIdentity, issued: z.number().int().nonnegative(),
+}).strict();
+type Token = z.infer<typeof TokenSchema>;
+const RowSchema = z.object({
+  kind: z.enum(["run", "session"]), id: sourceIdentity,
+  state: StateSchema, revision: z.number().int().safe().positive().nullable(),
+  updated: z.number().nullable(), ordinal: z.number().int().safe().positive().nullable(),
+  turn_state: StateSchema.nullable(), decision_present: z.number(), uncertain_delivery: z.number(), unresolved_delivery: z.number(),
+});
+type Row = z.infer<typeof RowSchema>;
+
+// Exact canonical paths and both tenant joins are intentional. A run alone has
+// no repository column. Never infer its scope from a task title or event text.
+const RELATION = `WITH bound AS (
+  SELECT s.session_id, s.run_id, s.state, s.version, s.updated_at,
+    r.outcome, r.completed_at, r.started_at
+  FROM agent_sessions s JOIN tasks t ON t.task_id=s.task_id
+  JOIN runs r ON r.run_id=s.run_id AND r.task_id=s.task_id
+    AND r.session_id=s.session_id AND r.agent_id=s.agent_id
+  WHERE s.repo_path=@repo AND t.tenant_id IS NULL AND r.tenant_id IS NULL
+), sources AS (
+  SELECT 'session' AS kind, session_id AS id, session_id, state, version AS revision, updated_at AS updated FROM bound
+  UNION ALL
+  SELECT 'run', run_id, session_id,
+    CASE WHEN outcome IN ('completed','failed','cancelled','expired') THEN outcome
+      WHEN outcome IS NULL THEN 'outcome_pending' ELSE 'unknown' END,
+    NULL, coalesce(completed_at, started_at) FROM bound
+)`;
+const projection = (version: number) => `SELECT p.kind, substr(p.id,1,257) AS id, p.state, p.revision, p.updated,
+  turn.ordinal, turn.state AS turn_state, (turn.decision_json IS NOT NULL) AS decision_present,
+  EXISTS(SELECT 1 FROM session_messages m WHERE m.session_id=p.session_id
+    AND m.direction='inbound' AND m.state IN ('pending','accepted','failed')) AS uncertain_delivery,
+  EXISTS(SELECT 1 FROM session_messages m WHERE m.session_id=p.session_id
+    AND m.direction='inbound' AND m.state IN ('pending','accepted','failed')
+    ${version >= 41 ? "AND NOT EXISTS(SELECT 1 FROM attention_receipt_resolutions r WHERE r.message_id=m.message_id AND r.session_id=m.session_id AND r.disposition='abandoned_unknown')" : ""}) AS unresolved_delivery
+  FROM sources p LEFT JOIN session_turns turn ON turn.session_id=p.session_id
+    AND turn.ordinal=(SELECT max(ordinal) FROM session_turns WHERE session_id=p.session_id)`;
+
+export const WORKER_VIEW_ERROR_CODES = ["invalid_request", "repository_unavailable", "invalid_cursor", "invalid_view", "source_not_found", "source_unavailable", "unsupported_schema", "unsupported_method", "response_too_large"] as const;
+export class WorkerViewError extends Error {
+  constructor(readonly code: typeof WORKER_VIEW_ERROR_CODES[number]) { super(code); this.name = "WorkerViewError"; }
+}
+
+/** Inject the daemon's existing connection. Construction never opens, migrates,
+ * reads, or writes a database. Tokens are opaque, authenticated and ephemeral;
+ * they grant no action authority and never expose provider-native identities. */
+export class WorkerViewService {
+  private readonly key = randomBytes(32);
+  private readonly nowMs: () => number;
+  constructor(private readonly db: Database.Database, options: { nowMs?: () => number } = {}) {
+    this.nowMs = options.nowMs ?? Date.now;
+  }
+
+  handle(method: string, params: unknown): WorkerViewListResult | WorkerViewInspectResult {
+    if (method === "worker.list") return this.list(params);
+    if (method === "worker.inspect") return this.inspect(params);
+    throw new WorkerViewError("unsupported_method");
+  }
+
+  list(raw: unknown): WorkerViewListResult {
+    const parsed = WorkerListParamsSchema.safeParse(raw);
+    if (!parsed.success) throw new WorkerViewError("invalid_request");
+    const params = parsed.data;
+    const common = this.context(params.repo_path);
+    const previous = params.cursor ? this.decode(params.cursor, "cursor", common.scope.scope_id, common.sampled_at_ms) : null;
+    const cursorContext = { ...common, sampled_at_ms: previous?.issued ?? common.sampled_at_ms };
+    return this.read(version => {
+      const query = { repo: common.scope.repo_path };
+      const total = (this.db.prepare(`${RELATION} SELECT count(*) AS n FROM sources`).get(query) as { n: number }).n;
+      const limit = params.limit ?? 25;
+      const rows = this.db.prepare(`${RELATION} ${projection(version)}
+        WHERE (@kind='' OR p.kind>@kind OR (p.kind=@kind AND p.id>@id))
+        ORDER BY p.kind,p.id LIMIT @limit`).all({ ...query, kind: previous?.source ?? "", id: previous?.id ?? "", limit: limit + 1 });
+      const result: WorkerViewListResult = { ...common, total, views: [], next_cursor: null, truncated: false };
+      // Reserve room for a cursor before adding each entry; never silently drop
+      // a row when the byte budget yields a shorter page than the count limit.
+      let last: Row | null = null;
+      for (let i = 0; i < Math.min(rows.length, limit); i++) {
+        const row = RowSchema.parse(rows[i]);
+        const more = i + 1 < rows.length;
+        const candidate = { ...result, views: [...result.views, this.view(row, common)],
+          next_cursor: more ? this.encode("cursor", row, cursorContext) : null, truncated: more };
+        if (this.bytes(candidate) > WORKER_VIEW_MAX_BYTES) {
+          if (!last) throw new WorkerViewError("response_too_large");
+          result.next_cursor = this.encode("cursor", last, cursorContext); result.truncated = true;
+          break;
+        }
+        Object.assign(result, candidate); last = row;
+      }
+      this.checkBytes(result);
+      return WorkerListResultSchema.parse(result);
+    });
+  }
+
+  inspect(raw: unknown): WorkerViewInspectResult {
+    const parsed = WorkerInspectParamsSchema.safeParse(raw);
+    if (!parsed.success) throw new WorkerViewError("invalid_request");
+    const common = this.context(parsed.data.repo_path);
+    const token = this.decode(parsed.data.view_id, "view", common.scope.scope_id, common.sampled_at_ms);
+    return this.read(version => {
+      const rawRow = this.db.prepare(`${RELATION} ${projection(version)} WHERE p.kind=@kind AND p.id=@id`)
+        .get({ repo: common.scope.repo_path, kind: token.source, id: token.id });
+      if (!rawRow) throw new WorkerViewError("source_not_found");
+      const result = { ...common, view: { ...this.view(RowSchema.parse(rawRow), common), view_id: parsed.data.view_id } };
+      this.checkBytes(result);
+      return WorkerInspectResultSchema.parse(result);
+    });
+  }
+
+  private context(path: string) {
+    let repo: string;
+    try {
+      repo = realpathSync(path);
+      if (repo.length > 4096 || !statSync(repo).isDirectory()) throw new Error();
+      accessSync(repo, constants.R_OK | constants.X_OK);
+    } catch { throw new WorkerViewError("repository_unavailable"); }
+    const now = this.nowMs();
+    if (!Number.isSafeInteger(now) || now < 0) throw new WorkerViewError("source_unavailable");
+    return { schema_version: 1 as const, mode: "readonly_state_view" as const,
+      scope: { repo_path: repo, tenant: "default" as const, scope_id: createHash("sha256").update(`default\0${repo}`).digest("hex") },
+      sampled_at_ms: now, coverage: {
+        graph: "unsupported_authenticated_registration_required" as const,
+        unbound_runs: "excluded_not_bound" as const,
+        repository_binding: "canonical_stored_paths_only" as const,
+        content: "structured_metadata_only" as const,
+        counting: "source_views_not_unique_workers" as const,
+      } };
+  }
+
+  private view(row: Row, common: ReturnType<WorkerViewService["context"]>): z.infer<typeof ViewSchema> {
+    const updated = row.updated !== null && Number.isFinite(row.updated) && row.updated >= 0 && row.updated <= Number.MAX_SAFE_INTEGER / 1000 ? Math.round(row.updated * 1000) : null;
+    const age = updated === null ? -1 : common.sampled_at_ms - updated;
+    const terminal = ["completed", "failed", "cancelled", "expired"].includes(row.state);
+    return { view_id: this.encode("view", row, common), source_kind: row.kind, state: row.state,
+      revision: row.revision,
+      latest_turn: row.ordinal !== null && row.turn_state !== null ? { ordinal: row.ordinal, state: row.turn_state, decision_present: row.decision_present === 1 } : null,
+      last_updated_at_ms: updated, freshness: age < 0 ? "unknown" : age <= 60000 ? "recent" : "stale",
+      process_liveness: "unknown", controls: "unsupported",
+      uncertain_delivery_recorded: row.uncertain_delivery === 1,
+      wait_reason: terminal ? "none" : row.unresolved_delivery ? "delivery_unknown" : row.state === "awaiting_decision" ? (row.decision_present ? "decision_record_present" : "unknown") : row.state === "idle" ? "awaiting_instruction" : "none",
+    };
+  }
+
+  private encode(kind: Token["kind"], row: Row, common: ReturnType<WorkerViewService["context"]>): string {
+    const payload: Token = { v: 1, kind, scope: common.scope.scope_id, source: row.kind, id: row.id, issued: common.sampled_at_ms };
+    const iv = randomBytes(12);
+    const cipher = createCipheriv("aes-256-gcm", this.key, iv);
+    const data = Buffer.concat([cipher.update(JSON.stringify(payload), "utf8"), cipher.final()]);
+    return Buffer.concat([iv, cipher.getAuthTag(), data]).toString("base64url");
+  }
+
+  private decode(value: string, kind: Token["kind"], scope: string, now: number): Token {
+    try {
+      if (!/^[A-Za-z0-9_-]+$/.test(value)) throw new Error();
+      const bytes = Buffer.from(value, "base64url");
+      if (bytes.toString("base64url") !== value || bytes.length < 29) throw new Error();
+      const decipher = createDecipheriv("aes-256-gcm", this.key, bytes.subarray(0, 12));
+      decipher.setAuthTag(bytes.subarray(12, 28));
+      const token = TokenSchema.parse(JSON.parse(Buffer.concat([decipher.update(bytes.subarray(28)), decipher.final()]).toString("utf8")));
+      if (token.kind !== kind || token.scope !== scope || token.issued > now || now - token.issued > TOKEN_TTL_MS) throw new Error();
+      return token;
+    } catch { throw new WorkerViewError(kind === "cursor" ? "invalid_cursor" : "invalid_view"); }
+  }
+
+  private read<T>(fn: (version: number) => T): T {
+    try {
+      return this.db.transaction(() => {
+        const version = this.db.pragma("user_version", { simple: true });
+        if (typeof version !== "number" || version < 24 || version > CURRENT_SCHEMA_VERSION) throw new WorkerViewError("unsupported_schema");
+        return fn(version);
+      })();
+    } catch (error) {
+      if (error instanceof WorkerViewError) throw error;
+      throw new WorkerViewError("source_unavailable");
+    }
+  }
+  private bytes(value: unknown): number { return Buffer.byteLength(serializeWorkerView(value), "utf8") + 1; }
+  private checkBytes(value: unknown): void {
+    if (this.bytes(value) > WORKER_VIEW_MAX_BYTES) throw new WorkerViewError("response_too_large");
+  }
+}
+
+FILE packages/cli/src/worker-log-view.ts
+import { createHash, timingSafeEqual } from "node:crypto";
+import { realpathSync } from "node:fs";
+import { isAbsolute, join } from "node:path";
+import type Database from "better-sqlite3";
+import { CURRENT_SCHEMA_VERSION } from "@osstack/core";
+import { z } from "zod";
+import { readPrivateDeliveryFile } from "./follow-up-delivery-host.js";
+import { serializeWorkerView } from "./worker-view-service.js";
+const path = z.string().min(1).max(4096).refine(isAbsolute);
+const capability = z.string().regex(/^[A-Za-z0-9_-]{43}$/);
+export const WorkerLogParams = z.object({repo_path:path,default_tenant:z.literal(true),capability,
+  before_ordinal:z.number().int().positive().max(Number.MAX_SAFE_INTEGER).optional()}).strict();
+const grant = z.object({repo_path:path,session_id:z.string().min(1).max(256),capability_sha256:z.string().regex(/^[a-f0-9]{64}$/),
+  issued_at_ms:z.number().int().nonnegative(),expires_at_ms:z.number().int().nonnegative(),content:z.literal("persisted_assistant_text")}).strict();
+export const WorkerLogRegistry = z.object({schema_version:z.literal(1),grants:z.array(grant).max(32)}).strict();
+const digest = (bytes: Buffer|string)=>createHash("sha256").update(bytes).digest();
+/** Separate, explicitly host-issued content capability. Ordinary worker view tokens cannot read text.
+ * Reads only bounded persisted session output, never arbitrary paths, tool payloads or native process logs. */
+export async function inspectWorkerLogs(db: Database.Database, home: string, raw: unknown, nowMs=Date.now()) {
+  const params = WorkerLogParams.parse(raw); const repo=realpathSync(params.repo_path);
+  if(repo!==params.repo_path || !Number.isSafeInteger(nowMs)) throw Error("worker_log_unavailable");
+  const registryPath=join(home,"worker-log-grants.json");
+  const bytes=await readPrivateDeliveryFile(registryPath,32768);
+  const registry=WorkerLogRegistry.parse(JSON.parse(bytes.toString("utf8")));
+  const tokenHash=digest(params.capability);
+  const matches=registry.grants.filter(g=>timingSafeEqual(Buffer.from(g.capability_sha256,"hex"),tokenHash));
+  if(matches.length!==1)throw Error("worker_log_unavailable");
+  const auth=matches[0]!;
+  if(auth.repo_path!==repo || auth.issued_at_ms>nowMs || auth.expires_at_ms<=nowMs || auth.expires_at_ms-auth.issued_at_ms>900000 || auth.expires_at_ms<=auth.issued_at_ms)throw Error("worker_log_unavailable");
+  // Re-read authorization after asynchronous file work, before synchronous snapshot. No writes/migrations.
+  if(!timingSafeEqual(digest(await readPrivateDeliveryFile(registryPath,32768)),digest(bytes)))throw Error("worker_log_unavailable");
+  const result=db.transaction(()=>{
+    const version=db.pragma("user_version",{simple:true});
+    if(typeof version!=="number" || version<24 || version>CURRENT_SCHEMA_VERSION)throw Error("worker_log_unavailable");
+    const bound=db.prepare(`SELECT s.session_id FROM agent_sessions s JOIN tasks t ON t.task_id=s.task_id
+      JOIN runs r ON r.run_id=s.run_id AND r.task_id=s.task_id AND r.session_id=s.session_id AND r.agent_id=s.agent_id
+      WHERE s.session_id=? AND s.repo_path=? AND t.tenant_id IS NULL AND r.tenant_id IS NULL`).get(auth.session_id,repo);
+    if(!bound)throw Error("worker_log_unavailable");
+    const rows=db.prepare(`SELECT ordinal, state, updated_at, length(CAST(assistant_text AS BLOB)) AS total_bytes,
+      substr(CAST(assistant_text AS BLOB),1,2048) AS excerpt FROM session_turns
+      WHERE session_id=? AND ordinal<? ORDER BY ordinal DESC LIMIT 5`).all(auth.session_id,params.before_ordinal??Number.MAX_SAFE_INTEGER) as {ordinal:number;state:string;updated_at:number;total_bytes:number;excerpt:Buffer}[];
+    const page=rows.slice(0,4);
+    return {schema_version:1,scope:{repo_path:repo,tenant:"default"},content:"persisted_assistant_text",sampled_at_ms:nowMs,
+      trust:"untrusted_worker_output",process_liveness:"unknown",controls:"unsupported",snapshot_atomic:true,
+      entries:page.map(row=>({ordinal:row.ordinal,state:row.state,updated_at:row.updated_at,text:row.excerpt.toString("utf8"),
+        total_bytes:row.total_bytes,returned_bytes:row.excerpt.length,truncated:row.total_bytes>row.excerpt.length})).reverse(),
+      next_before_ordinal:rows.length>4?page.at(-1)!.ordinal:null,grant_expires_at_ms:auth.expires_at_ms};
+  })();
+  if(Buffer.byteLength(serializeWorkerView(result))>65535)throw Error("worker_log_unavailable");
+  return result;
+}
+export async function handleWorkerLogCommand(args:string[],deps:{rpc:(params:z.infer<typeof WorkerLogParams>)=>Promise<unknown>;out?:(value:string)=>void}){
+  const out=deps.out??console.log;
+  if(args.length===1 && args[0]==="--help") {out("worker logs --grant-file PRIVATE_FILE [--before-ordinal N]\nSeparate host content grant; bounded persisted assistant output, not live process stdout. No worker controls.");return 0;}
+  try{
+    if(args[0]!=="logs" || ![3,5].includes(args.length) || args[1]!=="--grant-file" || !args[2])throw Error();
+    if(args.length===5 && (args[3]!=="--before-ordinal" || !/^[1-9][0-9]*$/.test(args[4]!)))throw Error();
+    const params=WorkerLogParams.parse({...JSON.parse((await readPrivateDeliveryFile(args[2],8192)).toString("utf8")),
+      ...(args.length===5?{before_ordinal:Number(args[4])}:{})});
+    const result=await deps.rpc(params);
+    // RPC response is untrusted; scope and shape must be checked before showing any text.
+    const schema=z.object({schema_version:z.literal(1),scope:z.object({repo_path:z.literal(params.repo_path),tenant:z.literal("default")}).strict(),
+      content:z.literal("persisted_assistant_text"),sampled_at_ms:z.number().int(),trust:z.literal("untrusted_worker_output"),process_liveness:z.literal("unknown"),controls:z.literal("unsupported"),snapshot_atomic:z.literal(true),
+      entries:z.array(z.object({ordinal:z.number().int().positive(),state:z.string().max(32),updated_at:z.number(),text:z.string().max(2048),total_bytes:z.number().int().nonnegative(),returned_bytes:z.number().int().max(2048),truncated:z.boolean()}).strict()).max(4),
+      next_before_ordinal:z.number().int().positive().nullable(),grant_expires_at_ms:z.number().int()}).strict();
+    const text=serializeWorkerView(schema.parse(result));if(Buffer.byteLength(text)>65535)throw Error();out(text);return 0;
+  }catch{out(JSON.stringify({state:"unavailable",reason:"worker_log_unavailable"}));return 1;}
+}
+
+FILE packages/cli/src/worker-log-view.test.ts
+import { chmodSync, mkdirSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { join } from "node:path";
+import { createScratchDirSync, openDb } from "@osstack/core";
+import { afterEach, describe, expect, it } from "vitest";
+import { WorkerViewService } from "./worker-view-service.js";
+import { inspectWorkerLogs, handleWorkerLogCommand } from "./worker-log-view.js";
+const cleanup: (() => void)[] = [];
+afterEach(() => { for (const fn of cleanup.splice(0).reverse()) fn(); });
+function fixture(count = 1) {
+  const root = realpathSync(createScratchDirSync("tests", "worker-view"));
+  cleanup.push(() => rmSync(root, { recursive: true, force: true }));
+  const dbPath = join(root, "state.db");
+  const db = openDb({ path: dbPath });
+  cleanup.push(() => db.close());
+  for (let i = 0; i < count; i++) {
+    db.prepare("INSERT INTO tasks(task_id,title,status,created_at,updated_at) VALUES(?, 'PRIVATE_TITLE', 'running', 1, 1)").run(`t${i}`);
+    db.prepare("INSERT INTO runs(run_id,task_id,session_id,agent_id,capability_id,phase,started_at,last_step) VALUES(?,?,?,'codex-cli','code','execute',1,'PRIVATE_STEP')").run(`r${i}`, `t${i}`, `s${i}`);
+    db.prepare("INSERT INTO agent_sessions(session_id,task_id,run_id,agent_id,request_sha256,native_session_id,repo_path,state,resume_supported,version,updated_at) VALUES(?,?,?,'codex-cli',?,'PRIVATE_NATIVE',?,'awaiting_decision',1,1,1)").run(`s${i}`, `t${i}`, `r${i}`, "a".repeat(64), root);
+    db.prepare("INSERT INTO session_turns(turn_id,session_id,ordinal,state,assistant_text,decision_json,created_at,updated_at) VALUES(?,?,1,'awaiting_decision','PRIVATE_TRANSCRIPT','PRIVATE_DECISION',1,1)").run(`turn${i}`, `s${i}`);
+  }
+  let now = 2000;
+  const service = new WorkerViewService(db, { nowMs: () => now });
+  const params = { repo_path: root, default_tenant: true as const };
+  return { root, dbPath, db, service, params, advance: (ms = 900001) => { now += ms; } };
+}
+
+
+async function setup(){const f=fixture();const home=join(f.root,"home");mkdirSync(home,{mode:0o700});const token="x".repeat(43);
+ const config={schema_version:1,grants:[{repo_path:f.root,session_id:"s0",capability_sha256:createHash("sha256").update(token).digest("hex"),issued_at_ms:1000,expires_at_ms:5000,content:"persisted_assistant_text"}]};
+ const configPath=join(home,"worker-log-grants.json");writeFileSync(configPath,JSON.stringify(config),{mode:0o600});return {...f,home,token,config,configPath,request:{...f.params,capability:token}};}
+describe("separate bounded worker output grants",()=>{
+ it("reads actual scoped persisted transcript without database writes or exposing native identity",async()=>{
+ const f=await setup();const before=f.db.prepare("SELECT total_changes() n").get();const result=await inspectWorkerLogs(f.db,f.home,f.request,2000);
+ expect(result.entries[0]?.text).toBe("PRIVATE_TRANSCRIPT");expect(JSON.stringify(result)).not.toMatch(/PRIVATE_NATIVE|PRIVATE_DECISION|capability|s0/);expect(f.db.prepare("SELECT total_changes() n").get()).toEqual(before);
+ });
+ it("ordinary view tokens cannot grant output access",async()=>{const f=await setup();const view=f.service.list(f.params).views[0]!.view_id;
+ await expect(inspectWorkerLogs(f.db,f.home,{...f.request,capability:view},2000)).rejects.toThrow();});
+ it.each(["UPDATE tasks SET tenant_id='other'","UPDATE runs SET tenant_id='other'","UPDATE runs SET agent_id='other'","UPDATE agent_sessions SET repo_path='/other'"])("rejects broken scope %s",async sql=>{const f=await setup();f.db.exec(sql);await expect(inspectWorkerLogs(f.db,f.home,f.request,2000)).rejects.toThrow();});
+ it("fails closed for expiry, revocation, duplicated grants and permissive host config",async()=>{const f=await setup();await expect(inspectWorkerLogs(f.db,f.home,f.request,5000)).rejects.toThrow();
+ f.config.grants.push(f.config.grants[0]!);writeFileSync(f.configPath,JSON.stringify(f.config));await expect(inspectWorkerLogs(f.db,f.home,f.request,2000)).rejects.toThrow();
+ f.config.grants=[];writeFileSync(f.configPath,JSON.stringify(f.config));await expect(inspectWorkerLogs(f.db,f.home,f.request,2000)).rejects.toThrow();
+ chmodSync(f.configPath,0o644);await expect(inspectWorkerLogs(f.db,f.home,f.request,2000)).rejects.toThrow();});
+ it("bounds large hostile text before materializing and prints escaped JSON through real handler",async()=>{const f=await setup();f.db.prepare("UPDATE session_turns SET assistant_text=?").run("\u001b]52;c;evil\u0007\u202e"+"字".repeat(100000));
+ const result=await inspectWorkerLogs(f.db,f.home,f.request,2000);expect(result.entries[0]).toMatchObject({truncated:true,returned_bytes:2048});
+ const grantFile=join(f.home,"grant.json");writeFileSync(grantFile,JSON.stringify(f.request),{mode:0o600});let output="";
+ expect(await handleWorkerLogCommand(["logs","--grant-file",grantFile],{rpc:async()=>result,out:s=>{output=s;}})).toBe(0);
+ expect(output).not.toContain("\u001b");expect(output).not.toContain("\u202e");expect(Buffer.byteLength(output)).toBeLessThan(65536);
+ });
+ it("paginates newest snapshots without changing or conflating ordinal identity",async()=>{const f=await setup();for(let i=2;i<=6;i++)f.db.prepare("INSERT INTO session_turns(turn_id,session_id,ordinal,state,assistant_text,created_at,updated_at)VALUES(?,'s0',?,'completed',?,1,1)").run("turn"+i,i,"text"+i);
+ const first=await inspectWorkerLogs(f.db,f.home,f.request,2000);expect(first.entries.map(e=>e.ordinal)).toEqual([3,4,5,6]);expect(first.next_before_ordinal).toBe(3);
+ const second=await inspectWorkerLogs(f.db,f.home,{...f.request,before_ordinal:3},2000);expect(second.entries.map(e=>e.ordinal)).toEqual([1,2]);expect(second.next_before_ordinal).toBeNull();
+ });
+});
+
+FILE packages/cli/src/follow-up-delivery-host.ts
+import { createHash, createPublicKey, type KeyObject } from "node:crypto";
+import { constants, closeSync, fstatSync, lstatSync, openSync, readSync, realpathSync } from "node:fs";
+import { lstat, open, realpath } from "node:fs/promises";
+import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
+import { z } from "zod";
+import { FollowUpDeliveryTarget } from "@osstack/protocol";
+import type { FollowUpDeliveryOptions, FollowUpDeliveryTrust } from "@osstack/core";
+import { deliveryCanonical } from "@osstack/core";
+import { createGithubDeliveryTransport } from "./follow-up-github-transport.js";
+const ref = z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$/);
+const baseName = z
+  .string()
+  .regex(/^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$/)
+  .refine((value) => value !== "." && value !== "..");
+export const HostDeliveryConfig = z
+  .object({
+    schema_version: z.literal(1),
+    enabled: z.boolean(),
+    qualification: z.enum(["sandbox_qualified", "production_qualified"]),
+    qualification_note: z.string().min(10).max(1024),
+    targets: z.array(FollowUpDeliveryTarget).min(1).max(32),
+    accounts: z
+      .array(z.object({ account_id: ref, token_file: baseName }).strict())
+      .min(1)
+      .max(8),
+    keys: z
+      .array(
+        z
+          .object({
+            key_id: ref,
+            public_key_pem: z.string().min(1).max(4096),
+            repo_path: z.string().max(4096),
+            destination_refs: z.array(ref).min(1).max(32),
+            max_validity_ms: z.number().int().min(1000).max(300000),
+          })
+          .strict(),
+      )
+      .min(1)
+      .max(16),
+  })
+  .strict();
+export type HostDeliveryConfig = z.infer<typeof HostDeliveryConfig>;
+const hash = (value: Buffer) => createHash("sha256").update(value).digest("hex");
+function inside(root: string, path: string): boolean {
+  const rel = relative(root, path);
+  return rel === "" || (!isAbsolute(rel) && rel !== ".." && !rel.startsWith(`..${sep}`));
+}
+/** Ancestors cannot let another uid replace the private home. Sticky root-owned tmp is allowed. */
+function privateAncestors(path: string): void {
+  const uid = process.getuid?.();
+  if (
+    uid === undefined ||
+    !isAbsolute(path) ||
+    resolve(path) !== path ||
+    realpathSync(dirname(path)) !== dirname(path)
+  )
+    throw Error("delivery_host_config_invalid");
+  for (let current = dirname(path); ; current = dirname(current)) {
+    const entry = lstatSync(current);
+    const privateParent = current === dirname(path);
+    const stickyRoot = entry.uid === 0 && (entry.mode & 0o1000) !== 0;
+    if (
+      !entry.isDirectory() ||
+      entry.isSymbolicLink() ||
+      (entry.uid !== 0 && entry.uid !== uid) ||
+      (privateParent
+        ? entry.uid !== uid || (entry.mode & 0o077) !== 0
+        : (entry.mode & 0o022) !== 0 && !stickyRoot)
+    )
+      throw Error("delivery_host_config_invalid");
+    if (dirname(current) === current) break;
+  }
+}
+/** Bounded synchronous fence needed immediately before a grant is persisted or consumed. */
+function assertRegistryFingerprint(path: string, fingerprint: string): void {
+  privateAncestors(path);
+  const fd = openSync(path, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
+  try {
+    const before = fstatSync(fd),
+      bytes = Buffer.alloc(131073);
+    let length = 0;
+    if (
+      !before.isFile() ||
+      before.uid !== process.getuid?.() ||
+      (before.mode & 0o077) !== 0 ||
+      before.nlink !== 1 ||
+      before.size > 131072
+    )
+      throw Error("delivery_host_config_invalid");
+    while (length < bytes.length) {
+      const n = readSync(fd, bytes, length, bytes.length - length, null);
+      if (!n) break;
+      length += n;
+    }
+    const after = fstatSync(fd),
+      current = lstatSync(path);
+    if (
+      length > 131072 ||
+      !current.isFile() ||
+      current.isSymbolicLink() ||
+      current.ino !== before.ino ||
+      current.dev !== before.dev ||
+      current.ctimeMs !== before.ctimeMs ||
+      after.ctimeMs !== before.ctimeMs ||
+      hash(bytes.subarray(0, length)) !== fingerprint
+    )
+      throw Error("delivery_host_config_changed");
+    privateAncestors(path);
+  } finally {
+    closeSync(fd);
+  }
+}
+/** Host private files: canonical directory, same uid, no symlinks, strict modes, finite reads and identity checks. */
+export async function readPrivateDeliveryFile(path: string, maximum = 131072): Promise<Buffer> {
+  privateAncestors(path);
+  if (!isAbsolute(path) || resolve(path) !== path || (await realpath(dirname(path))) !== dirname(path))
+    throw Error("delivery_host_config_invalid");
+  const directory = await lstat(dirname(path));
+  if (
+    !directory.isDirectory() ||
+    typeof process.getuid !== "function" ||
+    directory.uid !== process.getuid() ||
+    (directory.mode & 0o077) !== 0
+  )
+    throw Error("delivery_host_config_invalid");
+  const file = await open(path, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
+  try {
+    const before = await file.stat();
+    if (
+      !before.isFile() ||
+      before.uid !== process.getuid() ||
+      (before.mode & 0o077) !== 0 ||
+      before.nlink !== 1 ||
+      before.size > maximum
+    )
+      throw Error("delivery_host_config_invalid");
+    const bytes = Buffer.alloc(maximum + 1);
+    let length = 0;
+    while (length < bytes.length) {
+      const result = await file.read(bytes, length, bytes.length - length, null);
+      if (!result.bytesRead) break;
+      length += result.bytesRead;
+    }
+    const after = await file.stat(),
+      current = await lstat(path);
+    if (
+      length > maximum ||
+      !current.isFile() ||
+      current.isSymbolicLink() ||
+      before.dev !== current.dev ||
+      before.ino !== current.ino ||
+      before.ctimeMs !== current.ctimeMs ||
+      before.mtimeMs !== current.mtimeMs ||
+      before.size !== after.size ||
+      before.ctimeMs !== after.ctimeMs ||
+      (await realpath(dirname(path))) !== dirname(path)
+    )
+      throw Error("delivery_host_config_changed");
+    privateAncestors(path);
+    return bytes.subarray(0, length);
+  } finally {
+    await file.close();
+  }
+}
+export async function readHostDeliveryConfig(configPath: string): Promise<{
+  config: HostDeliveryConfig;
+  fingerprint: string;
+  keys: Map<string, KeyObject>;
+}> {
+  const raw = await readPrivateDeliveryFile(configPath);
+  const config = HostDeliveryConfig.parse(JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(raw)));
+  for (const array of [
+    config.targets.map((t) => t.destination_ref),
+    config.accounts.map((a) => a.account_id),
+    config.keys.map((k) => k.key_id),
+  ])
+    if (new Set(array).size !== array.length) throw Error("delivery_host_config_invalid");
+  const keys = new Map<string, KeyObject>();
+  for (const target of config.targets) {
+    if (
+      (await realpath(target.repo_path)) !== target.repo_path ||
+      inside(target.repo_path, configPath) ||
+      !config.accounts.some((a) => a.account_id === target.account_id)
+    )
+      throw Error("delivery_host_config_invalid");
+  }
+  for (const key of config.keys) {
+    if (
+      (await realpath(key.repo_path)) !== key.repo_path ||
+      key.destination_refs.some(
+        (ref) => !config.targets.some((t) => t.destination_ref === ref && t.repo_path === key.repo_path),
+      )
+    )
+      throw Error("delivery_host_config_invalid");
+    if (!key.public_key_pem.startsWith("-----BEGIN PUBLIC KEY-----"))
+      throw Error("delivery_host_config_invalid");
+    const publicKey = createPublicKey(key.public_key_pem);
+    if (publicKey.type !== "public" || publicKey.asymmetricKeyType !== "ed25519")
+      throw Error("delivery_host_config_invalid");
+    keys.set(key.key_id, publicKey);
+  }
+  return { config, fingerprint: hash(raw), keys };
+}
+export type HostFollowUpDelivery =
+  | { state: "ready"; options: FollowUpDeliveryOptions; fingerprint: string }
+  | { state: "disabled" | "invalid"; options: FollowUpDeliveryOptions };
+/** Call only with the daemon's fixed OSSTACK_HOME/follow-up-delivery.json, never a repository/RPC path. */
+export async function loadHostFollowUpDelivery(configPath: string): Promise<HostFollowUpDelivery> {
+  try {
+    const loaded = await readHostDeliveryConfig(configPath),
+      { config, keys } = loaded;
+    if (!config.enabled) return { state: "disabled", options: {} };
+    const targets = new Map(config.targets.map((t) => [t.destination_ref, t]));
+    const trustedKeys = new Map<string, FollowUpDeliveryTrust>(
+      config.keys.map((k) => [
+        k.key_id,
+        {
+          publicKey: keys.get(k.key_id)!,
+          purpose: "follow_up_delivery",
+          repo_path: k.repo_path,
+          provider_id: "github_comment",
+          destination_refs: k.destination_refs,
+          max_validity_ms: k.max_validity_ms,
+        },
+      ]),
+    );
+    const transport = createGithubDeliveryTransport({
+      qualification: config.qualification,
+      credential: async (envelope) => {
+        const current = await readHostDeliveryConfig(configPath);
+        if (
+          !current.config.enabled ||
+          current.fingerprint !== loaded.fingerprint ||
+          deliveryCanonical(targets.get(envelope.destination.destination_ref)) !==
+            deliveryCanonical(envelope.destination)
+        )
+          throw Error("delivery_host_config_changed");
+        const account = config.accounts.find((a) => a.account_id === envelope.destination.account_id);
+        if (!account) throw Error("delivery_host_account_unavailable");
+        const raw = await readPrivateDeliveryFile(join(dirname(configPath), account.token_file), 4097);
+        const token = new TextDecoder("utf-8", { fatal: true }).decode(raw).trim();
+        if (!/^[\x21-\x7e]{1,4096}$/.test(token)) throw Error("delivery_host_account_unavailable");
+        return token;
+      },
+    });
+    return {
+      state: "ready",
+      fingerprint: loaded.fingerprint,
+      options: {
+        assertHostConfiguration: () => assertRegistryFingerprint(configPath, loaded.fingerprint),
+        targets,
+        trustedKeys,
+        transports: new Map([["github_comment", transport]]),
+      },
+    };
+  } catch (error) {
+    return {
+      state: error instanceof Error && "code" in error && error.code === "ENOENT" ? "disabled" : "invalid",
+      options: {},
+    };
+  }
+}
+
+BIN WIRING
+  if (cmd === "worker") {
+    if (args[1] === "logs") {
+      const {handleWorkerLogCommand} = await import("./worker-log-view.js");
+      return handleWorkerLogCommand(args.slice(1), {rpc:async params=>{
+        const response=await rpc("worker.logs",params,2000) as {ok?:boolean;result?:unknown};
+        if(!response.ok)throw Error("worker_log_unavailable");return response.result;
+      }});
+    }
+    if (args[1] === "watch-handoff") {
+      if (args.length !== 3) return 1;
+      const {consumeViewerHandoff} = await import("./worker-viewer-launch.js");
+      const {handleWorkerViewerCommand} = await import("./worker-viewer-command.js");
+      const {inspectWorkerForViewer} = await import("./worker-viewer-rpc.js");
+      try { return await handleWorkerViewerCommand(await consumeViewerHandoff(osstackHome(), args[2]!), {
+        rpc: (_method, params, _timeout, signal) => inspectWorkerForViewer(socketPath(), params, signal),
+      }); } catch { console.error("viewer_handoff_invalid"); return 1; }
+    }
+
+    if (args[1] === "open") {
+      const {handleWorkerViewerLaunchCommand} = await import("./worker-viewer-launch.js");
+      const {inspectWorkerForViewer} = await import("./worker-viewer-rpc.js");
+      return await handleWorkerViewerLaunchCommand(args.slice(1), {home: osstackHome(), inspect: (params, signal) => inspectWorkerForViewer(socketPath(), params, signal)});
+    }
+    if (args[1] === "watch") {
+      const {handleWorkerViewerCommand} = await import("./worker-viewer-command.js");
+      const {inspectWorkerForViewer} = await import("./worker-viewer-rpc.js");
+      return await handleWorkerViewerCommand(args.slice(1), {rpc: (_method, params, _timeout, signal) => inspectWorkerForViewer(socketPath(), params, signal)});
+    }
+    const {handleWorkerViewCommand} = await import("./worker-view-command.js");
+    return await handleWorkerViewCommand(args.slice(1), {
+      rpc: async (method, params) => {
+        const response = await rpc(method, params) as {ok?: boolean; result?: unknown; error?: {code?: string}};
+        if (!response.ok) throw new Error(response.error?.code ?? "worker_request_failed");
+        return response.result;
+      },
+    });
+  }
+
+  if (cmd === "daily") {
+    const sub = args[1];
+    // Scheduling subcommands run through the daemon; bare `daily` (and its
+    // flags like --json/--registry) stays the in-process manual brief.
+    if (sub === "schedule" || sub === "sessions" || sub === "unschedule") {
+      return await handleDailyScheduleCommand(args.slice(1));
+    }
+    const { handleDailyCommand } = await import("./daily-command.js");
+    return await handleDailyCommand(args.slice(1), {
+      attentionReader: async ({workspacePath, signal}) => {
+        signal.throwIfAborted();
+        const response = await rpc("dashboard.snapshot", {workspacePath, attentionLimit:100}, 500) as {ok?:boolean; result?:{attention?:unknown}};
+        signal.throwIfAborted();
+        if (!response.ok) throw new Error("attention_snapshot_unav
+DAEMON WIRING
+  if (req.method === "worker.logs") {
+    if(ctx.draining)return singleErr(req.id,"draining","Daemon is draining");
+    try {
+      const {inspectWorkerLogs}=await import("./worker-log-view.js");
+      if(ctx.draining)return singleErr(req.id,"draining","Daemon is draining");
+      return singleOk(req.id,await inspectWorkerLogs(ctx.db,await realpath(dirname(ctx.dbPath)),req.params));
+    }catch{return singleErr(req.id,"worker_log_unavailable","Worker output unavailable");}
+  }
+  if (req.method === "worker.list" || req.method === "worker.inspect") {
+    if (ctx.draining) return singleErr(req.id, "draining", "Daemon is draining");
+    try {
+      const {WorkerViewService, WorkerViewError} = await import("./worker-view-service.js");
+      if (ctx.draining) return singleErr(req.id, "draining", "Daemon is draining");
+      ctx.workerViews ??= new WorkerViewService(ctx.db);
+      try {
+        return singleOk(req.id, ctx.workerViews.handle(req.method, req.params));
+      } catch (error) {
+        if (error instanceof WorkerViewError) return singleErr(req.id, error.code, error.message);
+        throw error;
+      }
+    } catch {
+      return singleErr(req.id, "worker_view_failed", "Worker view unavailable");
+    }
+  }
+  if (req.method.startsWith("attention.")) {
+    if (!ctx.supervision) return singleErr(req.id,"attention_disabled","Start daemon with OSSTACK_ATTENTION=1 to opt in");
+    if (ctx.draining) return singleErr(req.id,"draining","Daemon is draining");
+    try {
+      if (req.method === "attention.triage" || req.method === "attention.triage-status") {
+        const p = req.params as Record<string,unknown> | undefined;
+        const status = req.method === "attention.triage-status";
+        const keys = status ? ["scope_id"] : ["scope_id","item_id","model_id"];
+        if (!p || Array.isArray(p) || Object.keys(p).some(key => !keys.includes(key)) || typeof p["scope_id"] !== "string" || !/^[a-f0-9]{64}$/.test(p["scope_id"]) || (!status && (typeof p["item_id"] !== "str

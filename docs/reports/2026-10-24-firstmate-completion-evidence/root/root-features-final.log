@@ -1,0 +1,50 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion/packages/cli
+
+ ❯ src/paired-routing-evaluation.test.ts (15 tests | 1 failed) 7795ms
+   ✓ paired routing evaluation > executes both models on the same hidden-label holdout with bounded cost evidence 6ms
+   ✓ paired routing evaluation > rejects insufficient reservation before creating a provider 1ms
+   ✓ paired routing evaluation > rejects training leakage and duplicate prompts before invocation 1ms
+   ✓ paired routing evaluation > preserves incomplete calls and refuses claimed model substitution 1ms
+   ✓ paired routing evaluation > stops the entire evaluation on deadline without creating another physical call  1514ms
+   ✓ paired routing evaluation > never publishes comparison statistics from an incomplete subset 1ms
+   ✓ paired routing evaluation > includes both cache usage classes at explicit prices 1ms
+   ✓ paired routing evaluation > rejects a receipt without physical-exit evidence 0ms
+   × paired routing evaluation > production entrypoint reports missing authentication without claiming a comparison 5005ms
+     → Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+   ✓ paired routing evaluation > stops after integrity error runtime_policy_mismatch 0ms
+   ✓ paired routing evaluation > stops after integrity error runtime_policy_changed 0ms
+   ✓ paired routing evaluation > stops after integrity error runtime_init_unverified 0ms
+   ✓ paired routing evaluation > stops after integrity error runtime_spawn_mismatch 0ms
+   ✓ paired routing evaluation > accepts both excerpt and actual wire-prompt training hashes for overlap rejection 0ms
+   ✓ paired routing evaluation > the actual attention command dispatches paired_holdout rather than supplied predictions  1262ms
+ ✓ src/worker-viewer-launch.test.ts (10 tests) 1106ms
+   ✓ host pinned viewer launch > executes the pinned launcher as a real child with bounded argv, without a shell  678ms
+ ✓ src/worker-log-view.test.ts (9 tests) 715ms
+   ✓ separate bounded worker output grants > reads actual scoped persisted transcript without database writes or exposing native identity  323ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/paired-routing-evaluation.test.ts > paired routing evaluation > production entrypoint reports missing authentication without claiming a comparison
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ src/paired-routing-evaluation.test.ts:73:3
+     71|     expect(report.attempted_calls).toBe(1);
+     72|   });
+     73|   it("production entrypoint reports missing authentication without cla…
+       |   ^
+     74|     vi.stubEnv("ANTHROPIC_API_KEY", undefined); vi.stubEnv("ANTHROPIC_…
+     75|     try {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 2 passed (3)
+      Tests  1 failed | 33 passed (34)
+   Start at  17:14:49
+   Duration  11.94s (transform 1.61s, setup 375ms, collect 1.05s, tests 9.62s, environment 0ms, prepare 360ms)
+
+undefined
+/Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion/packages/cli:
+[ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL] Command failed with exit code 1: vitest run src/worker-log-view.test.ts src/worker-viewer-launch.test.ts src/paired-routing-evaluation.test.ts '--maxWorkers=1'
