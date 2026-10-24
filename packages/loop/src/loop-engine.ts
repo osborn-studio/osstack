@@ -347,7 +347,7 @@ export class LoopEngine {
     } finally {
       if (this.containmentPending) lease?.retain("persisted execution containment requires reconciliation");
       else if (this.candidateContaminated) lease?.retain("verifier candidate integrity requires reconciliation");
-      else if (this.implementationUnconfirmed || (!settled && this.lifecycleEffectsStarted)) lease?.retain("execution, probe or verification did not settle safely; preflight refusal is possible; reconciliation required");
+      else if (this.implementationUnconfirmed || (!settled && this.lifecycleEffectsStarted)) lease?.retain("execution, probe or verification did not settle safely; preflight refusal is possible; this does not prove a process is alive; reconciliation required");
       else await lease?.release();
     }
   }
@@ -572,7 +572,15 @@ export class LoopEngine {
     const pending = [...tasks];
 
     const containmentArmed = tasks.length > 0 || Boolean(this.options.goalCommand?.trim());
-    if (containmentArmed) armLoopContainment(containmentPath);
+    if (containmentArmed) {
+      try { armLoopContainment(containmentPath); }
+      catch (error) {
+        // A partial arm is durable admission evidence even before effects begin.
+        try { this.containmentPending ||= hasLoopContainment(containmentPath); }
+        catch { this.containmentPending = true; }
+        throw error;
+      }
+    }
 
     for (const task of tasks) {
       pending.shift();
@@ -982,7 +990,7 @@ export class LoopEngine {
             command_termination: finalRun.command_results.map((result) => result.termination),
             summary: finalRun.summary,
           })}`;
-          decisions.push(`${task.task_id}: ${finalRun.summary}; stopped for reconciliation; workspace retained`);
+          decisions.push(`${task.task_id}: ${finalRun.summary}; execution completion is unconfirmed (possibly a preflight refusal); this does not prove a process is alive; reconciliation required; workspace retained`);
           this.emit(loopId, "loop.escalated", {
             task_id: task.task_id, reason: finalRun.summary, iteration,
             max_iterations: maxIterations, escalate_to: "hermes", agent_id: finalRun.agent_id,
@@ -1036,7 +1044,7 @@ export class LoopEngine {
           this.implementationUnconfirmed = true;
           preserveWorktreeBranch = worktree !== undefined;
           outcome = "escalated";
-          const reason = "Verifier stop unconfirmed; reconciliation required before retry or workspace cleanup";
+          const reason = "Verifier completion is unconfirmed (possibly a preflight refusal); this does not prove a process is alive; reconciliation required before retry or workspace cleanup";
           this.emit(loopId,"loop.verify.done",{task_id:task.task_id,pass:false,score:0,issue_count:finalVerdict.issues.length,
             reviewer_agent_id:finalVerdict.reviewer_agent_id,summary:reason,iteration});
           this.emit(loopId,"loop.escalated",{task_id:task.task_id,reason,iteration,max_iterations:maxIterations,escalate_to:"hermes",agent_id:finalRun.agent_id});
@@ -1474,7 +1482,7 @@ export class LoopEngine {
 
   private stopPayload(state: LoopState, count: number, goal?: LoopGoalResult): Record<string, unknown> {
     if (this.containmentPending || this.candidateContaminated || this.implementationUnconfirmed) {
-      return { reason_code: "execution_containment_pending", reason: "Execution or validation requires reconciliation (including possible preflight refusal); automatic retry is blocked" };
+      return { reason_code: "execution_containment_pending", reason: "Execution or validation requires reconciliation (including possible preflight refusal); this does not prove a process is alive; automatic retry is blocked" };
     }
     return completionStopPayload(state, count, goal);
   }
@@ -1571,10 +1579,9 @@ function completionStopPayload(
   executedTaskCount: number,
   goal?: LoopGoalResult,
 ): Record<string, unknown> {
-  // Historical serialized reason retained for compatibility; current engine stopPayload
-  // intercepts this persisted state with execution_containment_pending first.
+  // Compatibility mapping; current stopPayload intercepts this state first.
   if (state.completed_tasks.some((task) => task.implementation_unconfirmed === true)) {
-    return { reason_code: "execution_unconfirmed", reason: "Implementation stop is unconfirmed; reconciliation required before further execution or workspace cleanup" };
+    return { reason_code: "execution_unconfirmed", reason: "Implementation completion is unconfirmed (possibly a preflight refusal); this does not prove a process is alive; reconciliation required before further execution or workspace cleanup" };
   }
   if (goal?.pass === true) return { reason_code: "goal_passed", reason: "goal command passed" };
   if (state.wait_reason !== undefined) {

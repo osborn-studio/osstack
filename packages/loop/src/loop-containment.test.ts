@@ -72,3 +72,27 @@ it("uses one identity for filesystem case aliases when the volume supports them"
   try { expect(loopContainmentPath(alias)).toBe(expected); expect(hasLoopContainment(loopContainmentPath(alias))).toBe(true); }
   finally { vi.unstubAllEnvs(); releaseLoopContainment(expected); }
 });
+
+it("retains the lifecycle lease after an ancestor sync fails following marker creation", async () => {
+  const { LoopEngine } = await import("./loop-engine.js");
+  const { loopContainmentPath } = await import("./loop-containment.js");
+  const actual = await vi.importActual<typeof import("node:fs")>("node:fs");
+  const workspace = mkdtempSync(join(tmpdir(), "partial-arm-"));
+  const release = vi.fn(async () => {}), retain = vi.fn();
+  const options = { workspacePath: workspace, sources: [],
+    inputTasks: [{ task_id: "pending", capability: "code.test", prompt: "test", priority: 1, source: "manual" as const }],
+    executeCommand: "node -e \"require('fs').writeFileSync('must-not-run','bad')\"",
+    lifecycleLease: async () => ({ release, retain }) };
+  vi.mocked(fsyncSync)
+    .mockImplementationOnce(actual.fsyncSync) // Marker file succeeds.
+    .mockImplementationOnce(actual.fsyncSync) // Immediate parent succeeds.
+    .mockImplementationOnce(() => { throw new Error("ancestor fsync denied"); });
+  await expect(new LoopEngine(options).runOnce()).rejects.toThrow("ancestor fsync denied");
+  expect(actual.readFileSync(loopContainmentPath(workspace), "utf8")).toContain("containment_pending");
+  expect(release).not.toHaveBeenCalled();
+  expect(retain).toHaveBeenCalledWith("persisted execution containment requires reconciliation");
+  expect(actual.existsSync(join(workspace, "must-not-run"))).toBe(false);
+  expect((await new LoopEngine(options).runOnce()).executedTaskCount).toBe(0);
+  expect(release).not.toHaveBeenCalled();
+  expect(retain).toHaveBeenCalledTimes(2);
+});

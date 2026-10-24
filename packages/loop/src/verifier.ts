@@ -78,8 +78,9 @@ export async function verifyRun(run: AgentRun, options: LocalVerifierOptions): P
     const git = (args: string[]) => execFileSync("git", [...REVIEWER_GIT_ARGS, ...args], { env: reviewerGitEnvironment(options.workspacePath), cwd: options.workspacePath, encoding: "utf8", timeout: options.timeoutMs ?? 120_000, maxBuffer: 1_048_576 });
     git(["merge-base", "--is-ancestor", base, "HEAD"]);
     // Final structured review sees the complete committed candidate, not an empty clean-tree diff.
-    const changed = git(["diff", "--no-ext-diff", "--no-textconv", base, "--no-renames", "--name-only", "-z", "--", "."]) + git(["ls-files", "--others", "--exclude-standard", "-z"]);
     const untracked = git(["ls-files", "--others", "--exclude-standard", "-z"]);
+    const changed = git(["diff", "--no-ext-diff", "--no-textconv", base, "--no-renames", "--name-only", "-z", "--", "."]) + untracked;
+    if (Buffer.byteLength(changed) > 1_048_576) throw Error("CANDIDATE_ARTIFACT_RANGE_TOO_LARGE");
     if (untracked.length > 0) throw Error("CANDIDATE_REVIEW_UNTRACKED");
     options = { ...options, reviewCandidate: { changed_paths: changed.split("\0").filter(Boolean), diff: git(["diff", "--no-ext-diff", "--no-textconv", base, "--no-renames", "--", "."]) } };
   }
@@ -204,6 +205,7 @@ export async function verifyRun(run: AgentRun, options: LocalVerifierOptions): P
 }
 
 function unconfirmedVerifierStop(message: string): Verdict {
+  message += ". A preflight refusal is possible; this is not evidence that a process remains alive. Reconcile before retry.";
   return { pass: false, score: 0, reviewer_agent_id: "local-verifier", summary: message,
     issues: [{ severity: "error", rule: "verify.adapter_stop_unconfirmed", message }] };
 }

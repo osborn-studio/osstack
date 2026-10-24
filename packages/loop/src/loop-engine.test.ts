@@ -1600,7 +1600,7 @@ it("retains protection for a routing miss after an effectful non-verifier availa
   expect(probe).toHaveBeenCalled();
   expect(await readFile(join(workspace, "probe-effect.txt"), "utf8")).toBe("external probe started");
   expect(release).not.toHaveBeenCalled();
-  expect(retain).toHaveBeenCalledWith("execution, probe or verification did not settle safely; preflight refusal is possible; reconciliation required");
+  expect(retain).toHaveBeenCalledWith("execution, probe or verification did not settle safely; preflight refusal is possible; this does not prove a process is alive; reconciliation required");
   await expect(readFile(loopContainmentPath(workspace), "utf8")).resolves.toContain("containment_pending");
 });
 

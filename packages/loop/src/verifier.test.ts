@@ -993,3 +993,19 @@ it("preserves NUL-delimited legacy artifact paths that contain newlines", async 
   const verdict = await verifyRun(run(), { workspacePath: workspace, artifactVerification: { requireGitDiff: true } });
   expect(verdict.issues).toContainEqual(expect.objectContaining({ rule: "verify.artifact_forbidden_path", file: "dist/first\nsecond.ts" }));
 });
+
+it("enforces the combined base-review path budget before accepting either complete listing", async () => {
+  await initGitWorkspace();
+  const blob = execFileSync("git", ["hash-object", "-w", "--stdin"], { cwd: workspace, input: "content", encoding: "utf8" }).trim();
+  const suffix = "x".repeat(220);
+  const tracked = Array.from({ length: 2500 }, (_, i) => `tracked-${i}-${suffix}.ts`);
+  execFileSync("git", ["update-index", "--index-info"], { cwd: workspace, input: tracked.map(path => `100644 ${blob}\t${path}\n`).join("") });
+  execFileSync("git", ["commit", "-m", "large baseline"], { cwd: workspace, stdio: "ignore" });
+  const base = execFileSync("git", ["rev-parse", "HEAD"], { cwd: workspace, encoding: "utf8" }).trim();
+  for (let batch = 0; batch < 2500; batch += 50) await Promise.all(Array.from({ length: 50 }, (_, offset) => writeFile(join(workspace, `untracked-${batch + offset}-${suffix}.ts`), "new")));
+  const diff = execFileSync("git", ["diff", base, "--name-only", "-z"], { cwd: workspace });
+  const untracked = execFileSync("git", ["ls-files", "--others", "--exclude-standard", "-z"], { cwd: workspace });
+  expect(diff.byteLength).toBeLessThan(1_048_576); expect(untracked.byteLength).toBeLessThan(1_048_576);
+  expect(diff.byteLength + untracked.byteLength).toBeGreaterThan(1_048_576);
+  await expect(verifyRun(run(), { workspacePath: workspace, artifactBaseCommit: base })).rejects.toThrow("CANDIDATE_ARTIFACT_RANGE_TOO_LARGE");
+});
