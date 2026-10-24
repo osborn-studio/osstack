@@ -11,7 +11,7 @@ Implementation closes the executable bounded-scout/promotion path and same-execu
 
 ## Claude Code CLI challenge disposition
 
-Two completed tool-less rounds requested `claude-haiku-5-5` with isolated MCP/settings. `modelUsage` reports that identifier; stderr emits `unrecognized_model`. This is requested/reported identity, **not independent provider/weights attestation**. Static audit did not run tests. Exact prompts, results, stderr and checksums are retained.
+Three completed tool-less rounds requested `claude-haiku-5-5` with isolated MCP/settings. `modelUsage` reports that identifier; stderr emits `unrecognized_model`. This is requested/reported identity, **not independent provider/weights attestation**. Static audit did not run tests. Exact prompts, results, stderr and checksums are retained.
 
 Round 1 conditional multi-review issue was addressed by checking every reviewer at receipt construction, not only the first. Added second-artifact builder/identity/source rejection coverage. Concrete hardening addressed repository-root enforcement, atomic temp+fsync+link receipt publication, parent-digest/request-derived promotion task identity, and final live candidate re-verification. Tree identity is no longer labeled as a commit; canonical-JSON identity digests are labeled accurately.
 
@@ -19,4 +19,4 @@ Round 2 had no confirmed P0/P1. Its remaining hypothetical P1 (bare vs frozen co
 
 Conservative behaviors retained intentionally: a started uncertain dispatch is never automatically retried; a lesson provenance/source-integrity exception refuses a success response and preserves candidate/evidence for reconciliation. All-reviewer independence is proven at host receipt construction; the existing V2 receipt stores its first reviewer and the full-artifact digest, not all identities, so it cannot independently re-prove every reviewer from that receipt alone. Live commercial model quality, same-UID OS sandboxing, atomic filesystem snapshots and power-cut recovery are not claimed. Qualified lessons are advisory review drafts, not automatically promoted knowledge.
 
-A final targeted third audit was queued after these P2 fixes; its evidence will be archived separately before integration qualification is closed. See [guide](../../guides/scout-and-recovery-lessons.md).
+The final targeted third audit returned **“Confirmed P0/P1: none.”** Its guesses are resolved by actual admission/tests: explicit promotion authorizes current guarded implementation within the inherited file scope; uncertain dispatch intentionally requires manual reconciliation; typecheck covers the renamed helper; artifact-only local candidates intentionally keep HEAD at the base. See [guide](../../guides/scout-and-recovery-lessons.md).
