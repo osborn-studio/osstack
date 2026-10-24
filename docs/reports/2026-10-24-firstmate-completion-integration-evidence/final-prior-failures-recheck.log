@@ -1,0 +1,62 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-final/packages/cli
+
+ ✓ src/remote-home-integration.test.ts (34 tests) 10757ms
+   ✓ reads real source rows over an isolated child exporter without text, native IDs, paths or DB writes  510ms
+   ✓ CLI command performs the real child exchange and reports incomplete first pages  567ms
+   ✓ an empty complete page does not claim healthy or live execution  501ms
+   ✓ rejects or marks unknown the home boundary  478ms
+   ✓ rejects or marks unknown the generation boundary  324ms
+   ✓ rejects or marks unknown the scope boundary  307ms
+   ✓ rejects or marks unknown the scope_digest boundary  489ms
+   ✓ rejects or marks unknown the count boundary  455ms
+   ✓ rejects or marks unknown the future_clock boundary  443ms
+   ✓ wrong request pins and scope fail before worker reads and never fall back  1760ms
+   ✓ real running daemon identity and worker RPC support child exporter, without opening the child's OSSTACK_HOME  641ms
+   ✓ exporter rejects environment absence, extra arguments and a socket symlink  422ms
+   ✓ exporter process exits after its one-page response even if the reader leaves stdin open  455ms
+   ✓ upstream bound scope filters other tenants and repositories through the real exporter  495ms
+   ✓ exporter exits on invalid startup configuration and arguments without ever reading stdin  937ms
+osstack: retaining write lease run_d84ab04bbc45a27e31ebce13: session resume exit unconfirmed
+osstack: retaining write lease run_ce930c9be4c4b62705ec64d3: session resume exit unconfirmed
+ ✓ src/collaborator-rpc.test.ts (11 tests) 15638ms
+   ✓ signed collaborator through daemon RPC > automatically advances two frozen phases and replay never resets spent budgets  1817ms
+   ✓ signed collaborator through daemon RPC > uses only the signed retry instruction within its finite budget  2605ms
+   ✓ signed collaborator through daemon RPC > cannot use a phase grant as a risk approval  1141ms
+   ✓ signed collaborator through daemon RPC > does not reinterpret a controlled result as a legacy decision directive  606ms
+   ✓ signed collaborator through daemon RPC > preserves opaque results during a delegated resume  1616ms
+   ✓ signed collaborator through daemon RPC > rejects signature, runtime-policy and session-cursor changes without any send  1100ms
+   ✓ signed collaborator through daemon RPC > revokes an in-flight turn and stops before the next instruction  722ms
+   ✓ signed collaborator through daemon RPC > bounds a stalled turn and blocks further automatic delivery  1585ms
+   ✓ signed collaborator through daemon RPC > retains a late real receipt but blocks when the timeout callback has not run yet  2673ms
+   ✓ signed collaborator through daemon RPC > recovers a reserved receipt as uncertain after restart without resending  768ms
+   ✓ signed collaborator through daemon RPC > defers persisted grants and refuses installs until initial health permits work  1004ms
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/tests/worker-48451-mqHnQQ/g22-rpc-LMpztw/delivery/291891bf-34cd-493b-9b17-370bb228a7cf/writer-0'...
+HEAD is now at 27ebb7b base
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/tests/worker-48451-mqHnQQ/g22-rpc-cnEVdz/delivery/198e06f4-2e5c-4b09-ab63-e393dc680863/writer-0'...
+HEAD is now at 1db6830 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/tests/worker-48451-mqHnQQ/g22-rpc-QqsLJa/delivery/64018620-386b-4a01-931c-7a66092c1858/writer-0'...
+HEAD is now at f20006c base
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/tests/worker-48451-mqHnQQ/g22-rpc-bhnuwK/delivery/d5a6dd77-4157-4cbf-95fb-3593a3d2d0e8/writer-0'...
+HEAD is now at f3258ad base
+osstack: retaining write lease graph-action:f3e2d9b33c430488c92725760a6d2604f8336985b6aa7efc83066d40b2408523: Error: adapter result or execution unconfirmed
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/tests/worker-48451-mqHnQQ/g22-rpc-kCHy2Y/direct/writer-0'...
+HEAD is now at f105355 policy
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/tests/worker-48451-mqHnQQ/g22-rpc-yWVLxF/direct/writer-0'...
+HEAD is now at cc68dbf base
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/tests/worker-48451-mqHnQQ/g22-rpc-4TutwX/direct/writer-0'...
+HEAD is now at 81160b4 base
+ ✓ src/graph-review-findings.test.ts (7 tests) 51984ms
+   ✓ settles stopped review cancellation with revoked execute, holding only unproven stop  5534ms
+   ✓ settles stopped tests cancellation with revoked execute, holding only unproven stop  9059ms
+   ✓ settles stopped tests-slow-stop cancellation with revoked execute, holding only unproven stop  7479ms
+   ✓ settles stopped unknown cancellation with revoked execute, holding only unproven stop  3289ms
+   ✓ uses current source policy (revoked) beyond workspace creation and writer availability  1982ms
+   ✓ uses current source policy (untracked) beyond workspace creation and writer availability  12299ms
+   ✓ uses current source policy (newer) beyond workspace creation and writer availability  12259ms
+
+ Test Files  3 passed (3)
+      Tests  52 passed (52)
+   Start at  17:43:43
+   Duration  85.07s (transform 2.14s, setup 92ms, collect 5.96s, tests 78.38s, environment 0ms, prepare 106ms)
+

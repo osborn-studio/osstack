@@ -1,0 +1,45 @@
+{
+  "files": [
+    {
+      "path": "packages/cli/src/worker-view-service.ts",
+      "sha256": "6856007b372dfa75e4d083c3af631c84ab7c3a915fe697aa58f95a52f7e7861b"
+    },
+    {
+      "path": "scripts/vitest-setup-scratch.ts",
+      "sha256": "166bcdcf86efa619c1d30c14b3fe383781b17e56b984ef058b1c194b64c7b1de"
+    },
+    {
+      "path": "AGENTS.md",
+      "sha256": "23a474e0ff32170d9519c388c6dfe6a3cabbe8dc2c7f75d900c2c152687ad1d3"
+    },
+    {
+      "path": "docs/guides/prompt-language.md",
+      "sha256": "894d5e0f91d2352a5df5dbda557f47e2f21c8264e0b16dcc3e6f7b2b09dbd8d1"
+    },
+    {
+      "path": "docs/guides/firstmate-commands.md",
+      "sha256": "ebcd8d433b05cd9522cce5cceab416d6b9a24720551b1e76e39b7c1b514bda1b"
+    },
+    {
+      "path": "docs/guides/firstmate-commands.en.md",
+      "sha256": "dd85d91b50ea0cd7f1f67a03dd89533332a3a10c042d648127c1d17b5427f213"
+    },
+    {
+      "path": "packages/cli/src/source-observation-command.ts",
+      "sha256": "3a064a82c6593c253a2d344600babad7f906309c6a03c9c70a354f6a63a1287b"
+    },
+    {
+      "path": "packages/cli/src/remote-cancel-client.ts",
+      "sha256": "0815157e3db5216862612c52b069ce32b32662a026af4a5c2b721535d9c59bbc"
+    },
+    {
+      "path": "packages/cli/src/upgrade-native-command.ts",
+      "sha256": "5f6b07be2a4e12af05858f5d48b604aa8f9590d034adbadd73f88f168f6389d7"
+    },
+    {
+      "path": "packages/cli/src/worker-log-view.ts",
+      "sha256": "786c38a54eb3bf6ef6df1335cd3f27426f16bdc09a1b237d4d1ea89ed4db5795"
+    }
+  ],
+  "prompt_sha256": "c7935528ca9b62cf6370924aebd51355b6ea3fd3f556dd4e6505751c7d2a2ce1"
+}

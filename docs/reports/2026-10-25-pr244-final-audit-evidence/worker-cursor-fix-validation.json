@@ -1,0 +1,90 @@
+{
+  "head": "6be1d1b0c2d989838caf68366631dd2f27233d9e",
+  "before": {
+    "packages/cli/src/worker-view-service.ts": "6856007b372dfa75e4d083c3af631c84ab7c3a915fe697aa58f95a52f7e7861b",
+    "packages/cli/src/worker-view-service.test.ts": "2dc2fb5fb4b6eb183e01db76c7b053b04ab170d5819655835ee3400ce574dc81"
+  },
+  "after": {
+    "packages/cli/src/worker-view-service.ts": "6856007b372dfa75e4d083c3af631c84ab7c3a915fe697aa58f95a52f7e7861b",
+    "packages/cli/src/worker-view-service.test.ts": "2dc2fb5fb4b6eb183e01db76c7b053b04ab170d5819655835ee3400ce574dc81"
+  },
+  "stable": true,
+  "runs": [
+    {
+      "label": "test-1",
+      "command": [
+        "pnpm",
+        "--filter",
+        "@osstack/cli",
+        "exec",
+        "vitest",
+        "run",
+        "src/worker-view-service.test.ts",
+        "--maxWorkers=2",
+        "--testTimeout=20000"
+      ],
+      "exit_code": 0,
+      "log": "worker-cursor-fix-test-1.log",
+      "sha256": "6b8802ba6b164a57e232d7f8af5116ba52e4175a702c5d0b3008fb29acaf9f72"
+    },
+    {
+      "label": "test-2",
+      "command": [
+        "pnpm",
+        "--filter",
+        "@osstack/cli",
+        "exec",
+        "vitest",
+        "run",
+        "src/worker-view-service.test.ts",
+        "--maxWorkers=2",
+        "--testTimeout=20000"
+      ],
+      "exit_code": 0,
+      "log": "worker-cursor-fix-test-2.log",
+      "sha256": "bf8a7cb65f4ad202318dadcd6cdeccc51219c093f6b196f8213dc3003b81b137"
+    },
+    {
+      "label": "test-3",
+      "command": [
+        "pnpm",
+        "--filter",
+        "@osstack/cli",
+        "exec",
+        "vitest",
+        "run",
+        "src/worker-view-service.test.ts",
+        "--maxWorkers=2",
+        "--testTimeout=20000"
+      ],
+      "exit_code": 0,
+      "log": "worker-cursor-fix-test-3.log",
+      "sha256": "9bdaf3c5d402ac6e52cf55e62a65c7368e05a1dfe234d021aad2fd785339ffc7"
+    },
+    {
+      "label": "typecheck",
+      "command": [
+        "pnpm",
+        "--filter",
+        "@osstack/cli",
+        "typecheck"
+      ],
+      "exit_code": 0,
+      "log": "worker-cursor-fix-typecheck.log",
+      "sha256": "c56410fec3213c9f0143dc3930988099578cafb87a96138bb28554bfe1e18489"
+    },
+    {
+      "label": "lint",
+      "command": [
+        "pnpm",
+        "exec",
+        "biome",
+        "check",
+        "packages/cli/src/worker-view-service.test.ts"
+      ],
+      "exit_code": 0,
+      "log": "worker-cursor-fix-lint.log",
+      "sha256": "f74ba17f82777e6920343a9011d1927f6f7047e2889d3460df1a751f36657153"
+    }
+  ]
+}

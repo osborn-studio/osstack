@@ -54,11 +54,16 @@ export async function createHostExecutionContext(
     input.configPath,
     input.workspacePath,
   );
+  const { createHostSourceContext } = await import("./source-context.js");
+  const sources = createHostSourceContext(home);
+  const knowledge = createPinnedLocalContextLoader(config);
   return createExecutionContextAdapters({
     adapters: input.adapters,
     workspacePath: input.workspacePath,
     mode: "local",
-    loadContext: createPinnedLocalContextLoader(config),
+    loadContext: async (task, scope) => [...await knowledge(task, scope), ...await sources.load(task, scope)],
+    validateContext: sources.validate,
+    validateContextSync: sources.validateSync,
     maxPromptBytes: config.max_prompt_bytes,
     maxKnowledgeBytes: config.max_knowledge_bytes,
     ...(input.contractDigest === undefined

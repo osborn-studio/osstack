@@ -1,0 +1,16 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion/packages/cli
+
+ ✓ src/paired-routing-evaluation.test.ts (15 tests) 4033ms
+   ✓ paired routing evaluation > stops the entire evaluation on deadline without creating another physical call  1515ms
+   ✓ paired routing evaluation > production entrypoint reports missing authentication without claiming a comparison  1827ms
+   ✓ paired routing evaluation > the actual attention command dispatches paired_holdout rather than supplied predictions  679ms
+ ✓ src/worker-viewer-launch.test.ts (10 tests) 618ms
+   ✓ host pinned viewer launch > executes the pinned launcher as a real child with bounded argv, without a shell  532ms
+ ✓ src/worker-log-view.test.ts (9 tests) 345ms
+
+ Test Files  3 passed (3)
+      Tests  34 passed (34)
+   Start at  17:16:32
+   Duration  6.25s (transform 1.26s, setup 71ms, collect 494ms, tests 5.00s, environment 0ms, prepare 125ms)
+

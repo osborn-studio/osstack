@@ -1,0 +1,10 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-upgrade/packages/knowledge
+
+ ✓ src/context-budget.test.ts (13 tests) 4ms
+
+ Test Files  1 passed (1)
+      Tests  13 passed (13)
+   Start at  17:22:00
+   Duration  482ms (transform 64ms, setup 0ms, collect 69ms, tests 4ms, environment 0ms, prepare 57ms)
+

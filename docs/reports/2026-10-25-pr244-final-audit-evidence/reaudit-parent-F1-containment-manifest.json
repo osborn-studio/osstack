@@ -1,0 +1,33 @@
+{
+  "sources": [
+    {
+      "path": "packages/loop/src/loop-containment.ts",
+      "sha256": "5e0ec11edfc2bc46fac546b75d410a3183e9dcba705202d10ef8c9c1cebc0f9e"
+    },
+    {
+      "path": "packages/loop/src/loop-containment.test.ts",
+      "sha256": "c7f7f31a8848a452d2ba3c44c6b3a040b683a9907e592bd0d7bf4998bf0c94ba"
+    },
+    {
+      "path": "packages/loop/src/loop-engine.ts",
+      "sha256": "f755bfc81b784f9f0bbb2add59bd9605cdad4490638e12c59c5c2f5cc0445374"
+    },
+    {
+      "path": "packages/loop/src/loop-engine.test.ts",
+      "sha256": "45010a542d2ffa7fbbba4049641b5b37bcb32c088a14208347a5b1be767af8ec"
+    },
+    {
+      "path": "packages/loop/src/state-file.ts",
+      "sha256": "e643aa3e9273018d0d0eb61289fb43fc5b77dade4769b75a13950b9b8643d33f"
+    },
+    {
+      "path": "packages/loop/src/policy-gate.ts",
+      "sha256": "2086e61b32d40d16d0c6d5caee7309b911c7347d228659ad24ef221e24eadd8d"
+    },
+    {
+      "path": "packages/loop/src/candidate-execution.ts",
+      "sha256": "95006bf5463aead4eb4c8e2203d1821fa8abd5588e4de3206f0a20e49f69badc"
+    }
+  ],
+  "prompt_sha256": "26104384c5805100ed0614f6299a10a35aad24db64a477bf63e40ba74bb683fb"
+}

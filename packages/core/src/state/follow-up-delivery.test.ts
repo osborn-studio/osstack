@@ -595,6 +595,25 @@ it("rejects oversized escaped content before preparing and preserves exact accep
   expect(Buffer.byteLength(JSON.stringify(result))).toBeLessThan(65536);
 });
 
+it("reconcile preserves an active send and its eventual receipt", async () => {
+  const f = fixture();
+  f.options.timeoutMs = 1000;
+  const a = f.authorize(f.prepare().attempt).attempt;
+  const receipt = await f.sends.getMockImplementation()!(a.envelope);
+  let release!: (value: unknown) => void;
+  let entered!: () => void;
+  const called = new Promise<void>(resolve => { entered = resolve; });
+  f.transport.sendOnce = () => { entered(); return new Promise(resolve => { release = resolve; }); };
+  const pending = f.service.dispatch({ ...f.scope, attempt_id: a.attempt_id, expected_revision: a.revision });
+  await called;
+  const started = f.service.inspect({ ...f.scope, attempt_id: a.attempt_id }).attempt;
+  const concurrent = await f.service.reconcile({ ...f.scope, attempt_id: a.attempt_id, expected_revision: started.revision });
+  release(receipt);
+  const completed = await pending;
+  expect(concurrent).toMatchObject({ outcome: "in_flight", attempt: { state: "started", revision: started.revision } });
+  expect(completed.attempt).toMatchObject({ state: "delivered", receipt });
+});
+
 it("revocation racing an in-flight send preserves unknown until explicit lookup", async () => {
   const f = fixture(),
     a = f.authorize(f.prepare().attempt).attempt;
@@ -619,6 +638,11 @@ it("revocation racing an in-flight send preserves unknown until explicit lookup"
     expected_revision: started.revision,
     reason: "Stop future authority",
   }).attempt;
+  const lookup = vi.fn(async () => receipt);
+  f.transport.lookup = lookup;
+  expect(await f.service.reconcile({ ...f.scope, attempt_id: a.attempt_id, expected_revision: revoked.revision }))
+    .toMatchObject({ outcome: "in_flight", attempt: { state: "delivery_unknown", revision: revoked.revision } });
+  expect(lookup).not.toHaveBeenCalled();
   release(receipt);
   expect((await pending).attempt).toMatchObject({
     state: "delivery_unknown",
@@ -843,4 +867,149 @@ it("an existing writer prevents claim before any consuming read or network call"
     state: "prepared",
     authorization_status: "active",
   });
+});
+it("effect-free provider readiness failure leaves a prepared active grant reusable without POST", async () => {
+  const f = fixture();
+  const prepared = f.prepare().attempt;
+  const authorized = f.authorize(prepared).attempt;
+  f.transport.preflight = async () => {
+    throw Error("temporary read-only outage");
+  };
+  await expect(
+    f.service.dispatch({
+      ...f.scope,
+      attempt_id: prepared.attempt_id,
+      expected_revision: authorized.revision,
+    }),
+  ).rejects.toThrow("delivery_destination_unavailable");
+  expect(f.sends).not.toHaveBeenCalled();
+  const current = f.service.inspect({ ...f.scope, attempt_id: prepared.attempt_id }).attempt;
+  expect(current.state).toBe("prepared");
+  expect(current.authorization_status).toBe("active");
+  expect(current.revision).toBe(authorized.revision);
+  f.transport.preflight = async () => {};
+  const sent = await f.service.dispatch({
+    ...f.scope,
+    attempt_id: prepared.attempt_id,
+    expected_revision: authorized.revision,
+  });
+  expect(sent.attempt.state).toBe("delivered");
+  expect(f.sends).toHaveBeenCalledTimes(1);
+});
+it("revocation while read-only preflight runs prevents later consumption and POST", async () => {
+  const f = fixture(),
+    prepared = f.prepare().attempt,
+    authorized = f.authorize(prepared).attempt;
+  let release!: () => void;
+  f.transport.preflight = () =>
+    new Promise<void>((resolve) => {
+      release = resolve;
+    });
+  const dispatch = f.service.dispatch({
+    ...f.scope,
+    attempt_id: prepared.attempt_id,
+    expected_revision: authorized.revision,
+  });
+  await Promise.resolve();
+  f.service.revoke({
+    ...f.scope,
+    attempt_id: prepared.attempt_id,
+    expected_revision: authorized.revision,
+    reason: "cancel during readiness",
+  });
+  release();
+  await expect(dispatch).rejects.toThrow("delivery_revision_conflict");
+  expect(f.sends).not.toHaveBeenCalled();
+  expect(
+    f.service.inspect({ ...f.scope, attempt_id: prepared.attempt_id }).attempt.authorization_status,
+  ).toBe("revoked");
+});
+it("read-only preflight timeout leaves authority active rather than recording send_started", async () => {
+  const f = fixture(),
+    prepared = f.prepare().attempt,
+    authorized = f.authorize(prepared).attempt;
+  f.transport.preflight = () => new Promise<void>(() => {});
+  await expect(
+    f.service.dispatch({
+      ...f.scope,
+      attempt_id: prepared.attempt_id,
+      expected_revision: authorized.revision,
+    }),
+  ).rejects.toThrow("delivery_destination_unavailable");
+  const current = f.service.inspect({ ...f.scope, attempt_id: prepared.attempt_id }).attempt;
+  expect(current.state).toBe("prepared");
+  expect(current.authorization_status).toBe("active");
+  expect(f.sends).not.toHaveBeenCalled();
+});
+it("lookup window is anchored to durable send_started, not an old prepared draft", async () => {
+  const f = fixture(),
+    prepared = f.prepare().attempt;
+  f.now(1_000_000);
+  const authorized = f.authorize(prepared).attempt;
+  f.transport.sendOnce = async () => {
+    throw Error("lost response");
+  };
+  const failed = await f.service.dispatch({
+    ...f.scope,
+    attempt_id: prepared.attempt_id,
+    expected_revision: authorized.revision,
+  });
+  const lookup = vi.fn(async () => null);
+  f.transport.lookup = lookup;
+  f.now(1_001_000);
+  await f.service.reconcile({
+    ...f.scope,
+    attempt_id: prepared.attempt_id,
+    expected_revision: failed.attempt.revision,
+  });
+  expect(lookup).toHaveBeenCalledWith(expect.anything(), expect.any(AbortSignal), { createdAtMs: 1_000_000 });
+});
+it("claim-time ticket or credential fence failure leaves grant unconsumed", async () => {
+  const f = fixture(),
+    prepared = f.prepare().attempt,
+    authorized = f.authorize(prepared).attempt;
+  f.transport.preflight = async () => {};
+  f.transport.assertReady = () => {
+    throw Error("expired ticket or rotated credential");
+  };
+  await expect(
+    f.service.dispatch({
+      ...f.scope,
+      attempt_id: prepared.attempt_id,
+      expected_revision: authorized.revision,
+    }),
+  ).rejects.toThrow();
+  const current = f.service.inspect({ ...f.scope, attempt_id: prepared.attempt_id }).attempt;
+  expect(current.state).toBe("prepared");
+  expect(current.authorization_status).toBe("active");
+  expect(f.sends).not.toHaveBeenCalled();
+});
+
+it("read-only lookup has its own bounded deadline after a send timeout", async () => {
+  const f = fixture();
+  const service = new FollowUpDeliveryService(f.db, f.dbPath, { ...f.options, sendTimeoutMs: 5, lookupTimeoutMs: 100 });
+  const a = f.authorize(f.prepare().attempt).attempt;
+  const receipt = await f.sends.getMockImplementation()!(a.envelope);
+  f.transport.sendOnce = () => new Promise(() => {});
+  f.transport.lookup = async () => { await new Promise(resolve => setTimeout(resolve, 20)); return receipt; };
+  const sent = await service.dispatch({ ...f.scope, attempt_id: a.attempt_id, expected_revision: a.revision });
+  expect(sent.outcome).toBe("delivery_unknown");
+  expect((await service.reconcile({ ...f.scope, attempt_id: a.attempt_id, expected_revision: sent.attempt.revision })).outcome).toBe("delivered");
+});
+
+it("after the bounded dispatch deadline lookup can recover while send remains unresolved", async () => {
+  const f = fixture();
+  const service = new FollowUpDeliveryService(f.db, f.dbPath, { ...f.options, sendTimeoutMs: 5 });
+  const a = f.authorize(f.prepare().attempt).attempt;
+  const receipt = await f.sends.getMockImplementation()!(a.envelope);
+  let release!: (value: unknown) => void;
+  f.transport.sendOnce = () => new Promise(resolve => { release = resolve; });
+  const sent = await service.dispatch({ ...f.scope, attempt_id: a.attempt_id, expected_revision: a.revision });
+  expect(sent.outcome).toBe("delivery_unknown");
+  f.transport.lookup = vi.fn(async () => receipt);
+  const reconciled = await service.reconcile({ ...f.scope, attempt_id: a.attempt_id, expected_revision: sent.attempt.revision });
+  expect(reconciled.outcome).toBe("delivered");
+  release(receipt);
+  await Promise.resolve();
+  expect(service.inspect({ ...f.scope, attempt_id: a.attempt_id }).attempt.revision).toBe(reconciled.attempt.revision);
 });

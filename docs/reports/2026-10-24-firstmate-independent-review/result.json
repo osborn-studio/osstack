@@ -1,0 +1,1 @@
+{"commit":"cfca0901","revokedBeforeHandoffSweep":true,"launches":1,"result":{"state":"launch_requested","backend":"tmux","response_sha256":"509fbea9543c20d04888c05b498077ad89ea4c37503487ee1e96aa34146cc681","worker_controls":"unsupported","auto_retry":false,"qualification":"backend_runtime_pending","duration_ms":60000}}

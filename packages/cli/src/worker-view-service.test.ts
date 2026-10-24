@@ -38,6 +38,7 @@ describe("worker read-only state views", () => {
     expect(JSON.stringify(result)).not.toMatch(/PRIVATE_|assistant_text|native_session_id|payload_json|task_id|source_id/);
     const inspected = f.service.inspect({ ...f.params, view_id: result.views[1]!.view_id });
     expect(inspected.view.state).toBe("awaiting_decision");
+    expect(inspected.view.view_id).toBe(result.views[1]!.view_id);
     expect(f.db.prepare("SELECT total_changes() AS n").get()).toEqual(before);
   });
   it.each(["UPDATE tasks SET tenant_id='other'", "UPDATE runs SET tenant_id='other'", "UPDATE runs SET session_id='other'", "UPDATE runs SET agent_id='other'", "UPDATE agent_sessions SET repo_path=''", "UPDATE runs SET task_id='other'"])("excludes uncertain scope binding: %s", sql => {
@@ -92,7 +93,13 @@ describe("worker read-only state views", () => {
     const page = f.service.list({ ...f.params, limit: 1 });
     const viewId = page.views[0]!.view_id;
     const cursor = page.next_cursor!;
-    expect(() => f.service.list({ ...f.params, cursor: "x" + cursor.slice(1) })).toThrow("invalid_cursor");
+    const tamperedBytes = Buffer.from(cursor, "base64url");
+    // Tokens start with a 12-byte IV. Flip one authentication-tag bit so the
+    // test always changes authenticated bytes, regardless of the random IV.
+    tamperedBytes[12] = tamperedBytes[12]! ^ 1;
+    const tamperedCursor = tamperedBytes.toString("base64url");
+    expect(tamperedCursor).not.toBe(cursor);
+    expect(() => f.service.list({ ...f.params, cursor: tamperedCursor })).toThrow("invalid_cursor");
     expect(() => f.service.list({ ...f.params, cursor: viewId })).toThrow("invalid_cursor");
     expect(() => f.service.inspect({ ...f.params, view_id: cursor })).toThrow("invalid_view");
     const other = join(f.root, "other"); mkdirSync(other);

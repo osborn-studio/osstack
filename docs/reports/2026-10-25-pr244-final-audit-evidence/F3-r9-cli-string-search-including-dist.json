@@ -1,0 +1,29 @@
+{
+  "scope": "packages/cli including ignored dist, excluding node_modules and .git; matching filenames only to avoid oversized sourcemap lines",
+  "results": [
+    {
+      "pattern": "Verifier completion is unconfirmed",
+      "exit_code": 1,
+      "matching_files": [],
+      "stderr": ""
+    },
+    {
+      "pattern": "Verifier stop unconfirmed",
+      "exit_code": 1,
+      "matching_files": [],
+      "stderr": ""
+    },
+    {
+      "pattern": "Implementation completion is unconfirmed",
+      "exit_code": 1,
+      "matching_files": [],
+      "stderr": ""
+    },
+    {
+      "pattern": "Artifact path observation",
+      "exit_code": 1,
+      "matching_files": [],
+      "stderr": ""
+    }
+  ]
+}

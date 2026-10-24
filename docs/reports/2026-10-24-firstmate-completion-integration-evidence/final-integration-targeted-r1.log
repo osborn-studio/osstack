@@ -1,0 +1,86 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-final/packages/cli
+
+invalid_request
+ ❯ src/local-ledgers-daemon.test.ts (15 tests | 2 failed) 5139ms
+   ✓ keeps local follow-up available with Attention disabled and rejects public delivery claims 181ms
+   ✓ does not initialize the triage provider when disabled, including the real command 130ms
+   ✓ persists advisory cache and quota across daemon restart without answering or marking items seen 81ms
+   ✓ keeps unknown invocation quarantined after stop and restart, with no late success 156ms
+   × exercises the default exported provider without credentials and fails as not_authenticated 1047ms
+     → expected { id: 1, ok: true, result: { …(4) } } to match object { ok: true, result: { …(3) } }
+(2 matching properties omitted from actual)
+   ✓ reads scoped recovery through actual daemon and CLI without retry or private prompt disclosure 70ms
+   ✓ measures bounded recovery over the actual socket alongside mixed session and run observations 134ms
+   ✓ watches actual daemon snapshots through the main CLI and leaves worker execution unchanged  1152ms
+   ✓ serves local sources as explicitly disabled without a host registry and rejects request-selected paths 83ms
+   × inspects a pinned snapshot through the real daemon and main CLI and honors live revocation 92ms
+     → expected 1 to be +0 // Object.is equality
+   ✓ keeps public delivery unavailable without trusted host targets even through the real CLI 55ms
+   ✓ runs one signed fake delivery through main CLI without declaring a production send or resolving the promise 79ms
+   ✓ waits for bounded delivery finalization before closing the DB and never accepts a late success 196ms
+   ✓ reads separately authorized output through the real CLI/socket and rejects live revocation 141ms
+   ✓ routes pinned viewer launch to the real inspection service and consumes its handoff once  1541ms
+ ✓ src/worker-viewer-launch.test.ts (12 tests) 826ms
+   ✓ host pinned viewer launch > executes the pinned launcher as a real child with bounded argv, without a shell  462ms
+ ✓ src/source-context.test.ts (11 tests) 1170ms
+   ✓ supports source-only host context with an explicit empty knowledge pack list and closes all DB handles  417ms
+ ✓ src/worker-log-view.test.ts (9 tests) 371ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/local-ledgers-daemon.test.ts > exercises the default exported provider without credentials and fails as not_authenticated
+AssertionError: expected { id: 1, ok: true, result: { …(4) } } to match object { ok: true, result: { …(3) } }
+(2 matching properties omitted from actual)
+
+- Expected
++ Received
+
+  {
+    "ok": true,
+    "result": {
+      "applied": false,
+-     "reason": "not_authenticated",
++     "reason": "provider_preflight_timeout",
+      "state": "fallback",
+    },
+  }
+
+ ❯ src/local-ledgers-daemon.test.ts:321:50
+    319|   const f = await fixture(true, true);
+    320|   const request = await watched(f.repo);
+    321|   expect(await rpc("attention.triage", request)).toMatchObject({
+       |                                                  ^
+    322|     ok: true,
+    323|     result: { state: "fallback", reason: "not_authenticated", applied:…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  src/local-ledgers-daemon.test.ts > inspects a pinned snapshot through the real daemon and main CLI and honors live revocation
+AssertionError: expected 1 to be +0 // Object.is equality
+
+- Expected
++ Received
+
+- 0
++ 1
+
+ ❯ src/local-ledgers-daemon.test.ts:593:101
+    591|   });
+    592|   output.length = 0;
+    593|   expect(await main(["sources", "observe", "notes", "--repo", repo, "-…
+       |                                                                                                     ^
+    594|   expect(JSON.parse(output.join(""))).toMatchObject({observation:{stat…
+    595|   output.length = 0;
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed | 3 passed (4)
+      Tests  2 failed | 45 passed (47)
+   Start at  17:33:33
+   Duration  15.16s (transform 3.59s, setup 236ms, collect 6.25s, tests 7.51s, environment 0ms, prepare 240ms)
+
+undefined
+/Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-final/packages/cli:
+[ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL] Command failed with exit code 1: vitest run src/local-ledgers-daemon.test.ts src/worker-viewer-launch.test.ts src/worker-log-view.test.ts src/source-context.test.ts '--maxWorkers=1' '--testTimeout=20000'

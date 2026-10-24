@@ -1,0 +1,57 @@
+{
+  "before": {
+    "packages/loop/src/loop-engine.ts": "84b4047a54afdaa5257a59373fdfad015a0f2d2feda2e9d43265be1b6f1f87ea",
+    "packages/loop/src/loop-engine.test.ts": "9e4747b43bdcb1ed36903da92ff8ec46b0ef02c6e0ff7cdb4b3028ee68a90d26",
+    "packages/loop/src/loop-containment.test.ts": "55cbd58785defe7de5724f435fdaaa95eb2e7689b2934f618abf70b2db3995aa",
+    "packages/loop/src/loop-containment.ts": "9b9e50dffb2051c0b20899285c3fe3583a3a4393f732eb7a487e525fb4e5a755"
+  },
+  "after": {
+    "packages/loop/src/loop-engine.ts": "84b4047a54afdaa5257a59373fdfad015a0f2d2feda2e9d43265be1b6f1f87ea",
+    "packages/loop/src/loop-engine.test.ts": "9e4747b43bdcb1ed36903da92ff8ec46b0ef02c6e0ff7cdb4b3028ee68a90d26",
+    "packages/loop/src/loop-containment.test.ts": "55cbd58785defe7de5724f435fdaaa95eb2e7689b2934f618abf70b2db3995aa",
+    "packages/loop/src/loop-containment.ts": "9b9e50dffb2051c0b20899285c3fe3583a3a4393f732eb7a487e525fb4e5a755"
+  },
+  "commands": [
+    {
+      "command": [
+        "pnpm",
+        "--filter",
+        "@osstack/loop",
+        "exec",
+        "vitest",
+        "run",
+        "src/loop-engine.test.ts",
+        "src/loop-containment.test.ts"
+      ],
+      "exit_code": 0,
+      "seconds": 25.42098879814148,
+      "log": "F3-r8-arm-tests.log"
+    },
+    {
+      "command": [
+        "pnpm",
+        "--filter",
+        "@osstack/loop",
+        "typecheck"
+      ],
+      "exit_code": 0,
+      "seconds": 2.430089235305786,
+      "log": "F3-r8-arm-typecheck.log"
+    },
+    {
+      "command": [
+        "pnpm",
+        "exec",
+        "biome",
+        "check",
+        "packages/loop/src/loop-engine.ts",
+        "packages/loop/src/loop-engine.test.ts",
+        "packages/loop/src/loop-containment.test.ts",
+        "packages/loop/src/loop-containment.ts"
+      ],
+      "exit_code": 0,
+      "seconds": 0.5209157466888428,
+      "log": "F3-r8-arm-biome.log"
+    }
+  ]
+}

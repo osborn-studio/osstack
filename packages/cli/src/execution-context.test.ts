@@ -213,3 +213,40 @@ it("rejects a pack before its full size would cross the combined byte budget", a
   }
   await expect(createPinnedLocalContextLoader(config)(task, { workspacePath: f.root, signal: new AbortController().signal })).rejects.toThrow("execution_context_source_too_large");
 });
+
+it("keeps observed-receipt failure execution-unconfirmed through the real candidate executor without retry", async () => {
+  const { executeCandidateImplementation, ExecutionPlan } = await import("@osstack/loop");
+  const f = fixture();
+  f.recordReceipt.mockImplementationOnce(async receipt => {
+    f.receipts.push(receipt);
+    return { path: join(f.root, "prepared.json"), digest: "a".repeat(64) };
+  }).mockRejectedValueOnce(new Error("disk full"));
+  const wrapped = createExecutionContextAdapters(f.options);
+  const result = await executeCandidateImplementation({
+    plan: ExecutionPlan.parse({ plan_id: "receipt-failure", agent_id: f.adapter.id, max_iterations: 3,
+      task: { task_id: task.task_id, capability: "code.write", prompt: task.prompt, source: "manual" },
+      stop_condition: { type: "tests_pass" } }),
+    workspace: { workspace_id: "registered", workspace_path: f.root },
+    adapters: wrapped.adapters, authorize: async () => ({ allow: true }), cancellationGraceMs: 20,
+  });
+  expect(result).toMatchObject({ status: "execution_unconfirmed", execution: {
+    failure_code: "cancellation_unconfirmed", cancellation: { invocation_started: true, stop_confirmed: false },
+  } });
+  expect(f.captured).toHaveLength(1);
+  expect(f.signals[0]!.aborted).toBe(true);
+  expect(wrapped.receiptRefs()).toHaveLength(1);
+});
+it("attests adapter admission rather than claiming a later provider-wire authorization fence", async () => {
+  const f = fixture(); let authority = true; let admitted = false;
+  f.adapter.invoke = async function* (input) {
+    admitted = true;
+    await Promise.resolve();
+    authority = false; // A later adapter-owned boundary cannot retract an admitted prompt.
+    f.captured.push(input); yield event;
+  };
+  await consume(createExecutionContextAdapters({ ...f.options, validateContextSync: () => {
+    expect(authority).toBe(true); expect(admitted).toBe(false);
+  } }).adapters[0]!);
+  expect(f.captured).toHaveLength(1);
+  expect(f.receipts.every(receipt => receipt.evidence_boundary === "agent_task_prompt_not_provider_wire")).toBe(true);
+});

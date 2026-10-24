@@ -20,7 +20,7 @@ import { GovernedExecution, type ExecutionLease, type AdmissionInput } from "./g
 
 import { createServer, type Socket } from "node:net";
 import { existsSync, unlinkSync, statSync, chmodSync, mkdirSync } from "node:fs";
-import { readFile, rename, writeFile } from "node:fs/promises";
+import { readFile, realpath, rename, writeFile } from "node:fs/promises";
 import { basename, dirname, isAbsolute, join, resolve, resolve as resolveWorkspacePath } from "node:path";
 import { createHash, randomUUID } from "node:crypto";
 import { performance } from "node:perf_hooks";
@@ -178,6 +178,8 @@ interface DaemonContext {
   followUpDelivery?: import("@osstack/core").FollowUpDeliveryService;
   followUpDeliveryOptions?: import("@osstack/core").FollowUpDeliveryOptions;
   followUpDeliveryPending?: Set<Promise<unknown>>;
+  sourceObservations?: import("./source-observation-host.js").HostSourceObservationService;
+  sourceObservationPending?: Map<AbortController, Promise<unknown>>;
   localSources?: ReturnType<typeof import("./local-data-source-registry.js").createHostLocalDataSourceService>;
   attentionTriage?: Promise<import("./attention-triage.js").AttentionTriageService>;
   attentionTriageProviderFactory?: () => Promise<import("./attention-triage.js").AttentionTriageProvider>;
@@ -197,6 +199,8 @@ interface DaemonContext {
   continuations: SessionContinuationRepository;
   collaborator: SessionCollaborator | undefined;
   supervision?: SupervisionService;
+  workerLogReads?: Set<Promise<unknown>>;
+  workerLogAbort?: AbortController;
   workerViews?: import("./worker-view-service.js").WorkerViewService;
   /** Local browser dashboard, returned to chat bridges as a shareable URL. */
   dashboardUrl: string | null;
@@ -1113,15 +1117,65 @@ async function getAttentionTriage(ctx: DaemonContext) {
   return ctx.attentionTriage;
 }
 
+/** Only for reads whose final DB access is fenced by an aborted signal. */
+async function drainCancelledReads(reads: Promise<unknown>[]): Promise<void> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    await Promise.race([
+      Promise.allSettled(reads),
+      new Promise<void>(resolve => { timer = setTimeout(resolve, 2000); }),
+    ]);
+  } finally { clearTimeout(timer); }
+}
+
 async function handleSingle(ctx: DaemonContext, req: DaemonRequest): Promise<SingleResponse | null> {
-  if (req.method === "source.inspect") {
-    if (ctx.draining) return singleErr(req.id,"draining","Daemon is draining");
-    try {
-      const {createHostLocalDataSourceService} = await import("./local-data-source-registry.js");
-      if (ctx.draining) return singleErr(req.id,"draining","Daemon is draining");
-      ctx.localSources ??= createHostLocalDataSourceService({configPath:join(dirname(ctx.dbPath),"source-registry.json")});
-      return singleOk(req.id,await ctx.localSources.inspect(req.params));
-    } catch(error) {return singleErr(req.id,error instanceof Error && error.message === "invalid_request" ? "invalid_request" : "source_unavailable","Local source unavailable");}
+  if (["source.inspect", "source.observe", "source.events", "source.acknowledge"].includes(req.method)) {
+    if (ctx.draining) return singleErr(req.id, "draining", "Daemon is draining");
+    ctx.sourceObservationPending ??= new Map();
+    if (ctx.sourceObservationPending.size >= 4) return singleErr(req.id, "source_busy", "Source request limit reached");
+    const controller = new AbortController();
+    let abortResponse!: () => void;
+    const aborted = new Promise<never>((_resolve, reject) => {
+      abortResponse = () => reject(Error("source_unavailable"));
+      controller.signal.addEventListener("abort", abortResponse, {once:true});
+    });
+    const timer = setTimeout(() => controller.abort(), 2000);
+    const pending = (async () => {
+      const { createHostSourceObservationService } = await import("./source-observation-host.js");
+      const { handleSourceObservationRpc } = await import("./source-observation-command.js");
+      if (ctx.draining || controller.signal.aborted) throw Error("source_unavailable");
+      if (req.method === "source.inspect") {
+        const {createHostLocalDataSourceService, LocalSourceInspectParamsSchema, LocalSourceInspectResultSchema} = await import("./local-data-source-registry.js");
+        const parsed = LocalSourceInspectParamsSchema.safeParse(req.params);
+        if (!parsed.success) throw Error("invalid_request");
+        let canonicalRepo: string;
+        try { canonicalRepo = await realpath(parsed.data.repo_path); }
+        catch (error) { if (["ENOENT", "ENOTDIR"].includes((error as NodeJS.ErrnoException).code ?? "")) throw Error("invalid_request"); throw error; }
+        if (canonicalRepo !== parsed.data.repo_path) throw Error("invalid_request");
+        if (ctx.draining || controller.signal.aborted) throw Error("source_unavailable");
+        ctx.localSources ??= createHostLocalDataSourceService({configPath:join(dirname(ctx.dbPath),"source-registry.json")});
+        const result = LocalSourceInspectResultSchema.parse(await ctx.localSources.inspect(parsed.data, controller.signal));
+        if (result.reason === "busy") throw Error("source_observation_not_admitted");
+        return result;
+      }
+      ctx.sourceObservations ??= createHostSourceObservationService(dirname(ctx.dbPath));
+      return handleSourceObservationRpc(req.method as "source.observe" | "source.events" | "source.acknowledge",
+        req.params, ctx.sourceObservations, controller.signal);
+    })();
+    ctx.sourceObservationPending.set(controller, pending);
+    // A timed-out response must not free a still-running I/O slot. Retain the
+    // operation until settlement, but bound the caller's wait independently.
+    const settled = () => { ctx.sourceObservationPending?.delete(controller); };
+    void pending.then(settled, settled);
+    try { return singleOk(req.id, await Promise.race([pending, aborted])); }
+    catch (error) {
+      const code = error instanceof Error ? error.message : "";
+      return singleErr(req.id, ["invalid_request", "source_scope_not_canonical", "source_cursor_ahead"].includes(code) ? "invalid_request" : code === "source_observation_not_admitted" ? "source_busy" : "source_unavailable", "Source observation unavailable");
+    }
+    finally {
+      clearTimeout(timer);
+      controller.signal.removeEventListener("abort", abortResponse);
+    }
   }
   if (["prepare","list","inspect","authorize","revoke","dispatch","reconcile"].some(action => req.method === "follow-up-delivery."+action)) {
     if (ctx.draining) return singleErr(req.id,"draining","Daemon is draining");
@@ -1144,6 +1198,30 @@ async function handleSingle(ctx: DaemonContext, req: DaemonRequest): Promise<Sin
       return error instanceof FollowUpError ? singleErr(req.id,error.code,"Local follow-up request failed")
         : singleErr(req.id,"follow_up_request_failed","Local follow-up unavailable");
     }
+  }
+  if (req.method === "worker.logs") {
+    if(ctx.draining)return singleErr(req.id,"draining","Daemon is draining");
+    try {
+      const {inspectWorkerLogs}=await import("./worker-log-view.js");
+      if(ctx.draining)return singleErr(req.id,"draining","Daemon is draining");
+      ctx.workerLogReads ??= new Set();
+      if(ctx.workerLogReads.size>=4)return singleErr(req.id,"worker_log_busy","Worker output reader busy");
+      ctx.workerLogAbort ??= new AbortController();
+      const requestAbort = new AbortController();
+      const logSignal = AbortSignal.any([ctx.workerLogAbort.signal,requestAbort.signal]);
+      let abortResponse!: () => void;
+      const aborted = new Promise<never>((_resolve,reject) => {
+        abortResponse = () => reject(Error("worker_log_unavailable"));
+        logSignal.addEventListener("abort",abortResponse,{once:true});
+      });
+      const timer=setTimeout(()=>requestAbort.abort(),2000);
+      const pending=realpath(dirname(ctx.dbPath)).then(home=>inspectWorkerLogs(ctx.db,home,req.params,Date.now,logSignal));
+      ctx.workerLogReads.add(pending);
+      const settled=()=>{ctx.workerLogReads?.delete(pending);};
+      void pending.then(settled,settled);
+      try{return singleOk(req.id,await Promise.race([pending,aborted]));}
+      finally{clearTimeout(timer);logSignal.removeEventListener("abort",abortResponse);}
+    }catch{return singleErr(req.id,"worker_log_unavailable","Worker output unavailable");}
   }
   if (req.method === "worker.list" || req.method === "worker.inspect") {
     if (ctx.draining) return singleErr(req.id, "draining", "Daemon is draining");
@@ -4055,6 +4133,12 @@ export async function startDaemon(
     ?? await readContinuationTrust(join(osstackHome(), "continuation-trust.json")));
   // Refuse to start when another daemon already owns the pidfile — two
   // daemons would race for the socket and share the SQLite writer.
+  const {managedStartupIdentity,verifyManagedRuntime,verifyManagedCode} = await import("./upgrade-native-backend.js");
+  const managedIdentity = managedStartupIdentity(osstackHome(), process.argv[1]);
+  if (managedIdentity) {
+    const {CURRENT_SCHEMA_VERSION} = await import("@osstack/core");
+    verifyManagedCode(managedIdentity, {version:DAEMON_VERSION,protocol_version:PROTOCOL_VERSION,database_schema:CURRENT_SCHEMA_VERSION});
+  }
   const releaseLock = acquireDaemonLock(pidFilePath());
   let failedContext: DaemonContext | undefined;
   let stopUpdates: (() => void) | undefined;
@@ -4076,6 +4160,10 @@ export async function startDaemon(
   failedContext = ctx;
   if (opts.attentionTriageProviderFactory) ctx.attentionTriageProviderFactory = opts.attentionTriageProviderFactory;
   if (opts.followUpDeliveryOptions) ctx.followUpDeliveryOptions = opts.followUpDeliveryOptions;
+  else {
+    const {loadHostFollowUpDelivery} = await import("./follow-up-delivery-host.js");
+    ctx.followUpDeliveryOptions = (await loadHostFollowUpDelivery(join(await realpath(osstackHome()), "follow-up-delivery.json"))).options;
+  }
   // Initialize only after the authorized home/database startup. Read-only
   // inventory never creates an identity and malformed records are not repaired.
   const {ensureDeploymentHomeId} = await import("./home-inventory.js");
@@ -4091,6 +4179,11 @@ export async function startDaemon(
   } catch (error) {
     if (!(error instanceof Error) || error.message !== "identity_unavailable") throw error;
     console.warn("Deployment identity unavailable; explicit home inventory will report unknown.");
+  }
+
+  if (managedIdentity) {
+    if (!ctx.deploymentIdentity) throw Error("upgrade_running_build_mismatch");
+    Object.assign(ctx.deploymentIdentity,verifyManagedRuntime(managedIdentity,ctx.deploymentIdentity));
   }
 
   const getGraphRpc = (): Promise<GraphRpcService> => {
@@ -4346,9 +4439,15 @@ export async function startDaemon(
         if (healthMonitor !== undefined) clearInterval(healthMonitor);
         shutdownPromise = (async () => {
           ctx.draining = true;
+          ctx.workerLogAbort?.abort();
+          for (const controller of ctx.sourceObservationPending?.keys() ?? []) controller.abort();
+          await drainCancelledReads([...(ctx.sourceObservationPending?.values() ?? [])]);
           await ctx.attentionTriage?.then(service => service.stop()).catch(() => undefined);
           await ctx.supervision?.stop();
           await Promise.allSettled([...(ctx.followUpDeliveryPending ?? [])]);
+          // These reads recheck authorization before their final synchronous DB
+          // snapshot, so the database must outlive their asynchronous file reads.
+          await drainCancelledReads([...(ctx.workerLogReads ?? [])]);
           if (graphRpc) {
             try { await (await graphRpc).close(); } catch { /* Initialization may have failed. */ }
           }

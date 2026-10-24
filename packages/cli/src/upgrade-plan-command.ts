@@ -2,7 +2,7 @@ import { constants } from "node:fs";
 import { open } from "node:fs/promises";
 import { isAbsolute } from "node:path";
 import { inspectHomes } from "./home-inventory.js";
-import { createUpgradePlan } from "./upgrade-plan.js";
+import { createUpgradePlan, upgradeDigest } from "./upgrade-plan.js";
 import { UpgradeJournal } from "./upgrade-journal.js";
 export const UPGRADE_PLAN_HELP = `homes plan-upgrade --request FILE --registry FILE --journal ABSOLUTE_PRIVATE_DIRECTORY
 homes upgrade-status --digest SHA256 --group ID --journal ABSOLUTE_PRIVATE_DIRECTORY
@@ -96,7 +96,8 @@ export async function handleUpgradePlanCommand(
       throw Error("invalid_upgrade_plan_arguments");
     const journal = new UpgradeJournal(flags.get("--journal")!);
     if (command === "upgrade-status") {
-      emit(await journal.status(flags.get("--digest")!, flags.get("--group")!));
+      const status = await journal.status(flags.get("--digest")!, flags.get("--group")!);
+      emit({ ...status, history_digest: upgradeDigest(status.records) });
       return 0;
     }
     const request = await json(flags.get("--request")!);

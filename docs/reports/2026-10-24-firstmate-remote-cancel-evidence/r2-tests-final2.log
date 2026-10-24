@@ -1,0 +1,60 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-delivery/packages/cli
+
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/tests/g22-rpc-wYMPpz/delivery/9418ab1c-e627-46c9-9cab-79167ee5f1ef/writer-0'...
+HEAD is now at 6897f17 base
+ ✓ src/remote-home-integration.test.ts (34 tests) 12639ms
+   ✓ reads real source rows over an isolated child exporter without text, native IDs, paths or DB writes  522ms
+   ✓ CLI command performs the real child exchange and reports incomplete first pages  642ms
+   ✓ an empty complete page does not claim healthy or live execution  756ms
+   ✓ rejects or marks unknown the home boundary  571ms
+   ✓ rejects or marks unknown the generation boundary  447ms
+   ✓ rejects or marks unknown the scope boundary  503ms
+   ✓ rejects or marks unknown the scope_digest boundary  509ms
+   ✓ rejects or marks unknown the count boundary  503ms
+   ✓ rejects or marks unknown the future_clock boundary  471ms
+   ✓ wrong request pins and scope fail before worker reads and never fall back  2162ms
+   ✓ real running daemon identity and worker RPC support child exporter, without opening the child's OSSTACK_HOME  561ms
+   ✓ exporter rejects environment absence, extra arguments and a socket symlink  468ms
+   ✓ exporter process exits after its one-page response even if the reader leaves stdin open  561ms
+   ✓ upstream bound scope filters other tenants and repositories through the real exporter  693ms
+   ✓ exporter exits on invalid startup configuration and arguments without ever reading stdin  971ms
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/tests/g22-rpc-XRUzNN/delivery/4ad9ec1e-723e-44ce-a72c-aa1b805f1a31/writer-0'...
+HEAD is now at 12b1882 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/tests/g22-rpc-bCXACm/delivery/0d8b4ac1-d894-4c1b-9b4e-19a6c2bf6b9c/writer-0'...
+HEAD is now at def2e9a base
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/tests/g22-rpc-4rB3cO/delivery/07cf7905-d0d9-44f4-b392-7cdd6e3119b0/writer-0'...
+HEAD is now at 6f45c27 base
+ ✓ src/remote-cancel.test.ts (27 tests) 8745ms
+   ✓ actual issuer -> client -> child exporter -> existing daemon boundary returns durable receipt without claiming physical stop  829ms
+   ✓ lost remote ACK after fsync is recovered by query without replay  592ms
+   ✓ process killed after reserve and cancellation invocation stays unknown and never replays  556ms
+   ✓ expired write authorization is rejected before daemon access; historical signed query stays available  544ms
+   ✓ corrupted persisted receipt fails closed without RPC or effect replay  567ms
+   ✓ signed remote cancellation drives the actual GraphRpcService worker abort and retains local stop proof separation  1363ms
+   ✓ simultaneous clients sharing request UUID invoke at most one Graph cancel  557ms
+   ✓ valid-shape persisted receipt with wrong generation is refused  563ms
+ ✓ src/remote-home.test.ts (10 tests) 39ms
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/tests/g22-rpc-1J4yH7/delivery/56930b41-85ba-43e2-9c40-543218a3972a/writer-0'...
+HEAD is now at d9309b4 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/tests/g22-rpc-NRNR71/delivery/1a717bea-e1b3-49d2-9010-095ea7d05651/writer-0'...
+HEAD is now at 7065c68 base
+osstack: retaining write lease graph-action:10867b79189c8f7fd591aee3ee4c7d4c706e943dda758d8bb0a751d09b959a57: Error: external stop unconfirmed
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/tests/g22-rpc-hQrnqa/delivery/f01bf0dd-eb3f-4ae1-9394-2a66893e6129/writer-0'...
+HEAD is now at ccc16b6 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/tests/g22-rpc-yIU8XL/delivery/ba693c87-6e55-4c70-ac06-1e4cab237230/writer-0'...
+HEAD is now at 920b673 base
+ ✓ src/graph-rpc.test.ts (10 tests) 63305ms
+   ✓ durably reserves before launch; concurrent replay and fresh service replay never launch twice; ready is atomic v1 evidence  12726ms
+   ✓ persisted cancel intent drives actual worker/executor abort and confirmed stop through G15  1221ms
+   ✓ quality interrupt binds input/revision/current grants and resumes actual checkpoint through G15  24318ms
+   ✓ lost supervisor cannot resume durable waiting evidence or mint a new launch  10857ms
+   ✓ unknown external stop retains holds and cannot become cancelled from Promise drainage  1820ms
+   ✓ close persists cancellation and drains a live executor before returning  963ms
+   ✓ expired waiting lease refuses resume before acknowledging or spending a new budget  10857ms
+
+ Test Files  4 passed (4)
+      Tests  81 passed (81)
+   Start at  17:23:11
+   Duration  67.55s (transform 3.42s, setup 79ms, collect 9.33s, tests 84.73s, environment 1ms, prepare 217ms)
+

@@ -74,9 +74,17 @@ export interface FollowUpTransport {
   /** The adapter must disable SDK retries; declaration is not provider qualification. */
   automatic_retries: boolean;
   lookup_receipt: boolean;
+  /** Effect-free readiness checks, before consuming a grant. Implementations MUST NOT POST here. */
+  preflight?(envelope: Readonly<FollowUpDeliveryEnvelope>, signal: AbortSignal): Promise<void>;
+  /** Synchronous readiness/credential fence, called inside the consuming transaction. */
+  assertReady?(envelope: Readonly<FollowUpDeliveryEnvelope>): void;
   sendOnce(envelope: Readonly<FollowUpDeliveryEnvelope>, signal: AbortSignal): Promise<unknown>;
   /** Trusted provider lookup; caller-supplied receipt objects never enter this port. */
-  lookup(envelope: Readonly<FollowUpDeliveryEnvelope>, signal: AbortSignal): Promise<unknown>;
+  lookup(
+    envelope: Readonly<FollowUpDeliveryEnvelope>,
+    signal: AbortSignal,
+    context?: { createdAtMs: number },
+  ): Promise<unknown>;
 }
 export interface FollowUpDeliveryOptions {
   targets?: ReadonlyMap<string, FollowUpDeliveryTarget>;
@@ -84,7 +92,14 @@ export interface FollowUpDeliveryOptions {
   transports?: ReadonlyMap<string, FollowUpTransport>;
   allowTestTransports?: boolean;
   nowMs?: () => number;
+  /** Legacy host override for both deadlines; per-operation overrides take precedence. */
   timeoutMs?: number;
+  /** One-shot send/preflight deadline, defaults to 5s; capped at 30s. */
+  sendTimeoutMs?: number;
+  /** Read-only lookup deadline, defaults to 30s; capped at 30s. */
+  lookupTimeoutMs?: number;
+  /** Trusted synchronous host revocation fence, evaluated inside authority transactions. */
+  assertHostConfiguration?: () => void;
 }
 interface Row {
   attempt_id: string;
@@ -154,6 +169,7 @@ function frozen<T>(value: T): T {
 /** Host registries/keys are trusted composition, never RPC input. Construction performs no I/O. */
 export class FollowUpDeliveryService {
   private observedClock = 0;
+  private readonly inFlight = new Set<string>();
   constructor(
     private readonly db: Database.Database,
     private readonly dbPath: string,
@@ -305,6 +321,7 @@ export class FollowUpDeliveryService {
         this.revision(row, p.expected_revision);
         if (row.state !== "prepared") throw new FollowUpDeliveryError("delivery_terminal");
         if (existing) throw new FollowUpDeliveryError("delivery_invalid_authorization");
+        this.options.assertHostConfiguration?.();
         const now = this.clock(row.updated_at_ms);
         this.verifyGrant(row, p.grant, now);
         if (
@@ -359,6 +376,33 @@ export class FollowUpDeliveryService {
   async dispatch(input: unknown): Promise<FollowUpDeliveryResult> {
     const p = parsed(FollowUpDeliveryActionParams, input),
       repo = repoPath(p.repo_path);
+    // A transient read-only provider preflight does not consume or wedge a still-prepared attempt.
+    const admission = this.safe(() =>
+      this.durableWrite(() => {
+        const row = this.row(repo, p.attempt_id);
+        this.revision(row, p.expected_revision);
+        if (row.state !== "prepared") return undefined;
+        const envelope = this.envelope(row),
+          transport = this.transport(envelope);
+        if (!transport?.preflight) return undefined;
+        const grant = this.grant(row.attempt_id);
+        if (!grant) throw new FollowUpDeliveryError("delivery_authorization_required");
+        if (grant.state !== "active") throw new FollowUpDeliveryError("delivery_authorization_revoked");
+        this.options.assertHostConfiguration?.();
+        this.verifyGrant(
+          row,
+          SignedFollowUpDeliveryGrant.parse(JSON.parse(grant.signed_json)),
+          this.clock(row.updated_at_ms),
+        );
+        return { envelope: frozen(envelope), transport };
+      }),
+    );
+    if (admission) {
+      const readiness = await this.boundedCall((signal) =>
+        admission.transport.preflight!(admission.envelope, signal),
+      );
+      if (!readiness.ok) throw new FollowUpDeliveryError("delivery_destination_unavailable");
+    }
     const claim = this.safe(() =>
       this.durableWrite(() => {
         const row = this.row(repo, p.attempt_id);
@@ -382,9 +426,11 @@ export class FollowUpDeliveryService {
         if (!grant) throw new FollowUpDeliveryError("delivery_authorization_required");
         if (grant.state !== "active") throw new FollowUpDeliveryError("delivery_authorization_revoked");
         const now = this.clock(row.updated_at_ms);
+        this.options.assertHostConfiguration?.();
         // Verify current key, exact target, immutable content and time INSIDE the consuming transaction.
         this.verifyGrant(row, SignedFollowUpDeliveryGrant.parse(JSON.parse(grant.signed_json)), now);
         this.obligation(repo, row.obligation_id, row.obligation_revision);
+        transport.assertReady?.(envelope);
         const consumed = this.db
           .prepare(
             "UPDATE follow_up_delivery_grants SET state='consumed',updated_at_ms=? WHERE attempt_id=? AND state='active'",
@@ -403,40 +449,45 @@ export class FollowUpDeliveryService {
       }),
     );
     if ("result" in claim) return claim.result;
-    // No retry or fallback exists here. A throw after this call cannot prove non-delivery.
-    const outcome = await this.boundedCall((signal) => claim.transport.sendOnce(claim.envelope, signal));
-    return this.safe(() =>
-      this.durableWrite(() => {
-        const current = this.row(repo, p.attempt_id);
-        if (current.state !== "started" || current.revision !== claim.row.revision)
-          return this.result(current, "unchanged", true);
-        const now = this.evidenceClock(current.updated_at_ms),
-          receipt = outcome.ok ? this.receipt(claim.envelope, outcome.value) : null;
-        if (!receipt)
+    this.inFlight.add(p.attempt_id);
+    try {
+      // No retry or fallback exists here. A throw after this call cannot prove non-delivery.
+      const outcome = await this.boundedCall((signal) => claim.transport.sendOnce(claim.envelope, signal));
+      return this.safe(() =>
+        this.durableWrite(() => {
+          const current = this.row(repo, p.attempt_id);
+          if (current.state !== "started" || current.revision !== claim.row.revision)
+            return this.result(current, "unchanged", true);
+          const now = this.evidenceClock(current.updated_at_ms),
+            receipt = outcome.ok ? this.receipt(claim.envelope, outcome.value) : null;
+          if (!receipt)
+            return this.result(
+              this.bump(
+                current,
+                "delivery_unknown",
+                outcome.ok ? "receipt_unconfirmed" : "send_outcome_unknown",
+                now,
+                {},
+              ),
+              "delivery_unknown",
+            );
           return this.result(
             this.bump(
               current,
-              "delivery_unknown",
-              outcome.ok ? "receipt_unconfirmed" : "send_outcome_unknown",
+              "delivered",
+              "provider_receipt",
               now,
-              {},
+              { receipt_sha256: hash(receipt) },
+              current.qualification,
+              receipt,
             ),
-            "delivery_unknown",
-          );
-        return this.result(
-          this.bump(
-            current,
             "delivered",
-            "provider_receipt",
-            now,
-            { receipt_sha256: hash(receipt) },
-            current.qualification,
-            receipt,
-          ),
-          "delivered",
-        );
-      }),
-    );
+          );
+        }),
+      );
+    } finally {
+      this.inFlight.delete(p.attempt_id);
+    }
   }
   async reconcile(input: unknown): Promise<FollowUpDeliveryResult> {
     const p = parsed(FollowUpDeliveryActionParams, input),
@@ -445,20 +496,38 @@ export class FollowUpDeliveryService {
       this.durableWrite(() => {
         let row = this.row(repo, p.attempt_id);
         this.revision(row, p.expected_revision);
-        if (row.state === "prepared") throw new FollowUpDeliveryError("delivery_authorization_required");
+        // While bounded dispatch is waiting, let its settlement own the receipt.
+        // After its deadline, read-only lookup may reconcile even if the provider
+        // ignores abort; the late send response never writes the database.
+        if (this.inFlight.has(row.attempt_id))
+          return { result: this.result(row, "in_flight", true) };
         if (["delivered", "definitely_not_sent"].includes(row.state))
           return { result: this.result(row, "unchanged", true) };
+        if (row.state === "prepared") throw new FollowUpDeliveryError("delivery_authorization_required");
         const envelope = this.envelope(row),
           transport = this.transport(envelope);
         if (!transport?.lookup_receipt || transport.qualification !== row.qualification)
           return { result: this.result(row, "qualification_pending") };
         const now = this.evidenceClock(row.updated_at_ms);
         if (row.state === "started") row = this.bump(row, "delivery_unknown", "started_unconfirmed", now, {});
-        return { row, envelope: frozen(envelope), transport };
+        const started = this.db
+          .prepare(
+            "SELECT created_at_ms FROM follow_up_delivery_events WHERE attempt_id=? AND transition='send_started' ORDER BY revision LIMIT 1",
+          )
+          .get(row.attempt_id) as { created_at_ms: number } | undefined;
+        return {
+          row,
+          envelope: frozen(envelope),
+          transport,
+          lookupSinceMs: started?.created_at_ms ?? row.created_at_ms,
+        };
       }),
     );
     if ("result" in claim) return claim.result;
-    const outcome = await this.boundedCall((signal) => claim.transport.lookup(claim.envelope, signal));
+    const outcome = await this.boundedCall((signal) =>
+      claim.transport.lookup(claim.envelope, signal, { createdAtMs: claim.lookupSinceMs }),
+      "lookup",
+    );
     return this.safe(() =>
       this.durableWrite(() => {
         const row = this.row(repo, p.attempt_id);
@@ -488,8 +557,13 @@ export class FollowUpDeliveryService {
   }
   private async boundedCall(
     call: (signal: AbortSignal) => Promise<unknown>,
+    operation: "send" | "lookup" = "send",
   ): Promise<{ ok: true; value: unknown } | { ok: false }> {
     const controller = new AbortController();
+    const fallback = operation === "lookup" ? 30000 : 5000;
+    const requested = (operation === "lookup" ? this.options.lookupTimeoutMs : this.options.sendTimeoutMs)
+      ?? this.options.timeoutMs ?? fallback;
+    const deadlineMs = Number.isFinite(requested) ? Math.max(1, Math.min(30000, requested)) : fallback;
     let timer: NodeJS.Timeout | undefined;
     try {
       return await Promise.race([
@@ -505,7 +579,7 @@ export class FollowUpDeliveryService {
               controller.abort();
               resolve({ ok: false });
             },
-            Math.max(1, Math.min(30000, this.options.timeoutMs ?? 5000)),
+            deadlineMs,
           );
         }),
       ]);

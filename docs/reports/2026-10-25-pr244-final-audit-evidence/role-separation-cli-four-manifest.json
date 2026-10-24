@@ -1,0 +1,13 @@
+{
+  "head": "caba4a430997a1c7cf4dcac8a22044d606897c26",
+  "maxWorkers": 2,
+  "testTimeout": 20000,
+  "files": {
+    "packages/cli/src/daemon-loop.test.ts": "7fbaa67fe1c56001e6e0381297a435139a0b958c90dae0ca6749214988159917",
+    "packages/cli/src/loop-cli.test.ts": "86b965a0fc54fc9baf3a78e192150e13068ffa2d4358187734f56cf64405d710",
+    "packages/cli/src/loop-defaults-cli.test.ts": "912d3cfb60f0ceb49936303256dba8fac4957619e6bd648555f3d1697960c4df",
+    "packages/cli/src/local-ledgers-daemon.test.ts": "c8088fdfdb3c1560ac3f6ef02574dbc6fc77a5ffd19e831504dc3170cfd0eaed",
+    "packages/loop/src/loop-engine.ts": "1c05c0c8c05a3964e9de5ac6acb5d8e025f9d1c240b461f046b21c1bd00dfc04"
+  },
+  "test_log_sha256": "cf9c277f98848170c54c56fe7d6f0a9a4258df1c786f2ab9e8c17b0f1298f03c"
+}

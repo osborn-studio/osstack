@@ -1,0 +1,1591 @@
+$ vitest run -- src/scout-command.test.ts
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/packages/cli
+
+ ✓ src/run-spec-files.test.ts (5 tests) 12ms
+ ✓ src/hub-cli.test.ts (42 tests) 8ms
+ ✓ src/home-inventory.test.ts (19 tests) 216ms
+ ✓ src/cockpit-tui.test.ts (11 tests) 5ms
+ ❯ src/daily-attention.test.ts (15 tests | 15 failed) 12ms
+   × keeps unavailable, disabled, and absent provider distinct without fabricated counts or DB migrations 5ms
+     → Could not locate the bindings file. Tried:
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/build/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/build/Debug/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/build/Release/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/out/Debug/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/Debug/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/out/Release/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/Release/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/build/default/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/compiled/22.22.1/darwin/arm64/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/addon-build/release/install-root/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/addon-build/debug/install-root/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/addon-build/default/install-root/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/lib/binding/node-v127-darwin-arm64/better_sqlite3.node
+     → Cannot read properties of undefined (reading 'close')
+   × rejects a malformed or wrongly scoped RPC snapshot: {"tenant":"foreign"} 1ms
+     → Could not locate the bindings file. Tried:
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/build/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/build/Debug/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/build/Release/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/out/Debug/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/Debug/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/out/Release/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/Release/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/build/default/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/compiled/22.22.1/darwin/arm64/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/addon-build/release/install-root/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/addon-build/debug/install-root/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/addon-build/default/install-root/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/lib/binding/node-v127-darwin-arm64/better_sqlite3.node
+     → Cannot read properties of undefined (reading 'close')
+   × rejects a malformed or wrongly scoped RPC snapshot: {"workspace_path":"/elsewhere"} 1ms
+     → Could not locate the bindings file. Tried:
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/build/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/build/Debug/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/build/Release/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/out/Debug/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/Debug/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/out/Release/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/Release/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/build/default/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/compiled/22.22.1/darwin/arm64/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/addon-build/release/install-root/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/addon-build/debug/install-root/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/addon-build/default/install-root/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/lib/binding/node-v127-darwin-arm64/better_sqlite3.node
+     → Cannot read properties of undefined (reading 'close')
+   × rejects a malformed or wrongly scoped RPC snapshot: {"scope_filter":"local_overview"} 1ms
+     → Could not locate the bindings file. Tried:
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/build/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/build/Debug/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/build/Release/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/out/Debug/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/Debug/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/out/Release/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/Release/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/build/default/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/compiled/22.22.1/darwin/arm64/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/addon-build/release/install-root/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/addon-build/debug/install-root/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/addon-build/default/install-root/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/lib/binding/node-v127-darwin-arm64/better_sqlite3.node
+     → Cannot read properties of undefined (reading 'close')
+   × rejects a malformed or wrongly scoped RPC snapshot: {"scopes":[{"scope_id":"evil"}]} 1ms
+     → Could not locate the bindings file. Tried:
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/build/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/build/Debug/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/build/Release/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/out/Debug/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/Debug/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/out/Release/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/Release/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/build/default/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/compiled/22.22.1/darwin/arm64/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/addon-build/release/install-root/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/addon-build/debug/install-root/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/addon-build/default/install-root/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/lib/binding/node-v127-darwin-arm64/better_sqlite3.node
+     → Cannot read properties of undefined (reading 'close')
+   × rejects a malformed or wrongly scoped RPC snapshot: {"returned":1} 0ms
+     → Could not locate the bindings file. Tried:
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/build/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/build/Debug/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/build/Release/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/out/Debug/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/Debug/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/out/Release/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/Release/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/build/default/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/compiled/22.22.1/darwin/arm64/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/addon-build/release/install-root/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/addon-build/debug/install-root/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/addon-build/default/install-root/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/lib/binding/node-v127-darwin-arm64/better_sqlite3.node
+     → Cannot read properties of undefined (reading 'close')
+   × bounds stalled reads, propagates abort, and still reads another repo 0ms
+     → Could not locate the bindings file. Tried:
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/build/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/build/Debug/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/build/Release/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/out/Debug/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/Debug/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/out/Release/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/Release/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/build/default/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/compiled/22.22.1/darwin/arm64/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/addon-build/release/install-root/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/addon-build/debug/install-root/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/addon-build/default/install-root/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/lib/binding/node-v127-darwin-arm64/better_sqlite3.node
+     → Cannot read properties of undefined (reading 'close')
+   × does not call providers after cancellation and caps enabled registry work 0ms
+     → Could not locate the bindings file. Tried:
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/build/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/build/Debug/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/build/Release/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/out/Debug/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/Debug/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/out/Release/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/Release/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/build/default/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/compiled/22.22.1/darwin/arm64/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/addon-build/release/install-root/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/addon-build/debug/install-root/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/addon-build/default/install-root/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/lib/binding/node-v127-darwin-arm64/better_sqlite3.node
+     → Cannot read properties of undefined (reading 'close')
+   × escapes untrusted Markdown and terminal controls in its own section 1ms
+     → Could not locate the bindings file. Tried:
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/build/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/build/Debug/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/build/Release/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/out/Debug/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/Debug/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/out/Release/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/Release/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/build/default/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/compiled/22.22.1/darwin/arm64/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/addon-build/release/install-root/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/addon-build/debug/install-root/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/addon-build/default/install-root/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/lib/binding/node-v127-darwin-arm64/better_sqlite3.node
+     → Cannot read properties of undefined (reading 'close')
+   × rejects stale cached health claims and discloses truncated full totals 0ms
+     → Could not locate the bindings file. Tried:
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/build/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/build/Debug/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/build/Release/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/out/Debug/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/Debug/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/out/Release/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/Release/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/build/default/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/compiled/22.22.1/darwin/arm64/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/addon-build/release/install-root/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/addon-build/debug/install-root/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/addon-build/default/install-root/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/lib/binding/node-v127-darwin-arm64/better_sqlite3.node
+     → Cannot read properties of undefined (reading 'close')
+   × accepts small RPC clock skew but labels a far-future snapshot unknown 0ms
+     → Could not locate the bindings file. Tried:
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/build/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/build/Debug/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/build/Release/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/out/Debug/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/Debug/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/out/Release/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/Release/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/build/default/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/compiled/22.22.1/darwin/arm64/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/addon-build/release/install-root/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/addon-build/debug/install-root/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/addon-build/default/install-root/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/lib/binding/node-v127-darwin-arm64/better_sqlite3.node
+     → Cannot read properties of undefined (reading 'close')
+   × rejects truncated snapshots that hide omitted scopes or lack a continuation cursor 0ms
+     → Could not locate the bindings file. Tried:
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/build/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/build/Debug/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/build/Release/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/out/Debug/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/Debug/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/out/Release/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/Release/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/build/default/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/compiled/22.22.1/darwin/arm64/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/addon-build/release/install-root/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/addon-build/debug/install-root/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/addon-build/default/install-root/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/lib/binding/node-v127-darwin-arm64/better_sqlite3.node
+     → Cannot read properties of undefined (reading 'close')
+   × shows not-watched coverage without presenting zero waits and classifies missing paths 0ms
+     → Could not locate the bindings file. Tried:
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/build/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/build/Debug/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/build/Release/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/out/Debug/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/Debug/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/out/Release/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/Release/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/build/default/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/compiled/22.22.1/darwin/arm64/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/addon-build/release/install-root/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/addon-build/debug/install-root/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/addon-build/default/install-root/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/lib/binding/node-v127-darwin-arm64/better_sqlite3.node
+     → Cannot read properties of undefined (reading 'close')
+   × drops future-clock counts instead of suggesting a current human wait 0ms
+     → Could not locate the bindings file. Tried:
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/build/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/build/Debug/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/build/Release/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/out/Debug/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/Debug/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/out/Release/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/Release/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/build/default/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/compiled/22.22.1/darwin/arm64/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/addon-build/release/install-root/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/addon-build/debug/install-root/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/addon-build/default/install-root/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/lib/binding/node-v127-darwin-arm64/better_sqlite3.node
+     → Cannot read properties of undefined (reading 'close')
+   × caps persisted snapshot bytes and discloses budget-exhausted repository coverage 0ms
+     → Could not locate the bindings file. Tried:
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/build/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/build/Debug/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/build/Release/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/out/Debug/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/Debug/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/out/Release/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/Release/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/build/default/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/compiled/22.22.1/darwin/arm64/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/addon-build/release/install-root/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/addon-build/debug/install-root/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/addon-build/default/install-root/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/lib/binding/node-v127-darwin-arm64/better_sqlite3.node
+     → Cannot read properties of undefined (reading 'close')
+ ✓ src/loop-defaults.test.ts (27 tests) 35ms
+ ✓ src/improvement-candidate-artifacts.test.ts (36 tests) 7243ms
+   ✓ improvement candidate artifacts > captures staged, unstaged, added, deleted and renamed files without altering the source index  784ms
+   ✓ improvement candidate artifacts > includes both paths of a staged rename  347ms
+   ✓ improvement candidate artifacts > detects reviewer index mutations even when the emitted working-tree patch is unchanged  496ms
+   ✓ improvement candidate artifacts > detects permission-only reviewer changes and rejects a staged-only empty patch  772ms
+   ✓ improvement candidate artifacts > ignores normal ignored caches but detects ignored source files  549ms
+   ✓ improvement candidate artifacts > does not treat a directory name as a prefix authorization  304ms
+   ✓ improvement candidate artifacts > never invokes a repository clean filter while capturing raw file bytes  516ms
+   ✓ scans unchanged framework route filenames without accepting glob-shaped authorizations  435ms
+ ✓ src/control-plane-guard.test.ts (16 tests) 10ms
+ ✓ src/improvement-provider-pilot-fixture.test.ts (12 tests) 5ms
+ ❯ src/steward-cli.test.ts (5 tests | 5 failed) 3ms
+   × steward CLI > prints steward help from the top-level steward command 1ms
+     → Failed to resolve entry for package "@osstack/github". The package may have incorrect main/module/exports specified in its package.json.
+   × steward CLI > prints a JSON branch steward report without GitHub writes 0ms
+     → Failed to resolve entry for package "@osstack/github". The package may have incorrect main/module/exports specified in its package.json.
+   × steward CLI > rejects missing steward scan flag values before scanning 0ms
+     → Failed to resolve entry for package "@osstack/github". The package may have incorrect main/module/exports specified in its package.json.
+   × steward CLI > infers the repo from the selected remote 0ms
+     → Failed to resolve entry for package "@osstack/github". The package may have incorrect main/module/exports specified in its package.json.
+   × steward CLI > renders a human branch steward report without --json 0ms
+     → Failed to resolve entry for package "@osstack/github". The package may have incorrect main/module/exports specified in its package.json.
+
+  ...3nh438w0000gn/T/g25-recovery-build-2d1lBX/graph-recovery-host.mjs  89.2kb
+
+⚡ Done in 5ms
+ ✓ src/deployed-home.test.ts (10 tests) 7ms
+ ✓ src/stack-routing.test.ts (15 tests) 3ms
+ ✓ src/hub-doctor.test.ts (13 tests) 22ms
+
+  ...mwg4qzx02j74c3n73nh438w0000gn/T/g25-process-build-Qw9m6E/host.mjs  88.2kb
+
+⚡ Done in 3ms
+ ❯ src/graph-faults.integration.test.ts (1 test | 1 failed) 131ms
+   × fresh host observes a SIGKILLed supervisor without releasing or replaying the live worker or descendants 130ms
+     → host exited before message: node:internal/modules/esm/resolve:275
+    throw new ERR_MODULE_NOT_FOUND(
+          ^
+
+Error [ERR_MODULE_NOT_FOUND]: Cannot find module '/private/var/folders/97/wmwg4qzx02j74c3n73nh438w0000gn/T/g25-process-build-Qw9m6E/node_modules/@osstack/core/dist/index.js' imported from /private/var/folders/97/wmwg4qzx02j74c3n73nh438w0000gn/T/g25-process-build-Qw9m6E/host.mjs
+    at finalizeResolution (node:internal/modules/esm/resolve:275:11)
+    at moduleResolve (node:internal/modules/esm/resolve:861:10)
+    at defaultResolve (node:internal/modules/esm/resolve:985:11)
+    at #cachedDefaultResolve (node:internal/modules/esm/loader:731:20)
+    at ModuleLoader.resolve (node:internal/modules/esm/loader:708:38)
+    at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:310:38)
+    at ModuleJob._link (node:internal/modules/esm/module_job:182:49)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5) {
+  code: 'ERR_MODULE_NOT_FOUND',
+  url: 'file:///private/var/folders/97/wmwg4qzx02j74c3n73nh438w0000gn/T/g25-process-build-Qw9m6E/node_modules/@osstack/core/dist/index.js'
+}
+
+Node.js v22.22.1
+
+ ✓ src/upgrade-plan.test.ts (14 tests) 11ms
+ ✓ src/rpc-latency.test.ts (7 tests) 2ms
+ ✓ src/kimi-review-eval.test.ts (2 tests) 113ms
+ ✓ src/improvement-provider-launcher.test.ts (3 tests) 718ms
+   ✓ isolates the launcher and propagates child outcome 0 without providers  341ms
+   ✓ isolates the launcher and propagates child outcome 7 without providers  323ms
+ ✓ src/graph-process-identity.test.ts (3 tests) 5ms
+ ✓ src/task-command.test.ts (4 tests) 3ms
+ ✓ src/session-command.test.ts (3 tests) 2ms
+ ✓ src/update-check.test.ts (7 tests) 1ms
+ ✓ src/adapter-lifecycle.test.ts (2 tests) 4ms
+ ✓ src/hermes-command.test.ts (3 tests) 2ms
+ ✓ src/continuation-output-checks.test.ts (2 tests) 2ms
+ ✓ src/attention-local-delivery.test.ts (1 test) 4ms
+
+  ...38w0000gn/T/g25-recovery-build-2d1lBX/graph-submission-crash.mjs  287.0kb
+
+⚡ Done in 6ms
+ ❯ src/graph-recovery-crash.integration.test.ts (6 tests | 6 failed) 40619ms
+   × a fresh host recovers an authenticated no-child failure with the original host killed 10523ms
+     → The operation was aborted
+   × a fresh host recovers an authenticated no-child failure with the original host alive 10003ms
+     → The operation was aborted
+   × public submit survives committed reservation with its original host killed before construction 5082ms
+     → Matcher did not succeed in time.
+   × public submit survives committed reservation with its original host alive before construction 5003ms
+     → Matcher did not succeed in time.
+   × refuses an unobserved pre-spawn crash window without starting replacement effects 5004ms
+     → Matcher did not succeed in time.
+   × refuses an unobserved pre-identity crash window without starting replacement effects 5003ms
+     → Matcher did not succeed in time.
+
+⎯⎯⎯⎯⎯ Failed Suites 178 ⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/agent-command.test.ts [ src/agent-command.test.ts ]
+ FAIL  src/proof-pack.test.ts [ src/proof-pack.test.ts ]
+Error: Failed to resolve entry for package "@osstack/agents". The package may have incorrect main/module/exports specified in its package.json.
+  Plugin: vite:import-analysis
+  File: /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/packages/cli/src/agent-command.ts:6:7
+  3  |    defaultAdapters,
+  4  |    rolesForCapabilityKinds
+  5  |  } from "@osstack/agents";
+     |          ^
+  6  |  import { getAgentScorecard, listAgentScorecards } from "@osstack/core";
+  7  |  import { guardedOpenDb as openDb } from "./guarded-open-db.js";
+ ❯ packageEntryFailure ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:16198:15
+ ❯ resolvePackageEntry ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:16195:3
+ ❯ tryNodeResolve ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:16060:18
+ ❯ ResolveIdContext.resolveId ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:15831:19
+ ❯ EnvironmentPluginContainer.resolveId ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:42372:17
+ ❯ TransformPluginContext.resolve ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:42579:15
+ ❯ normalizeUrl ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:40622:26
+ ❯ ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:40753:37
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/220]⎯
+
+ FAIL  src/agent-list-cli.test.ts [ src/agent-list-cli.test.ts ]
+ FAIL  src/checkpoint-cli.test.ts [ src/checkpoint-cli.test.ts ]
+ FAIL  src/compliance-cli.test.ts [ src/compliance-cli.test.ts ]
+ FAIL  src/contracts-cli.test.ts [ src/contracts-cli.test.ts ]
+ FAIL  src/daemon-evidence-cli.test.ts [ src/daemon-evidence-cli.test.ts ]
+ FAIL  src/dashboard-cli.test.ts [ src/dashboard-cli.test.ts ]
+ FAIL  src/governance-cli.test.ts [ src/governance-cli.test.ts ]
+ FAIL  src/i18n-cli.test.ts [ src/i18n-cli.test.ts ]
+ FAIL  src/knowledge-cli.test.ts [ src/knowledge-cli.test.ts ]
+ FAIL  src/lessons-cli.test.ts [ src/lessons-cli.test.ts ]
+ FAIL  src/pr-cli.test.ts [ src/pr-cli.test.ts ]
+ FAIL  src/probe-cli.test.ts [ src/probe-cli.test.ts ]
+ FAIL  src/product-entry-cli.test.ts [ src/product-entry-cli.test.ts ]
+ FAIL  src/proof-cli.test.ts [ src/proof-cli.test.ts ]
+ FAIL  src/release-workflow.test.ts [ src/release-workflow.test.ts ]
+ FAIL  src/report-cli.test.ts [ src/report-cli.test.ts ]
+ FAIL  src/scorecard-cli.test.ts [ src/scorecard-cli.test.ts ]
+ FAIL  src/serve-install-cli.test.ts [ src/serve-install-cli.test.ts ]
+Error: Failed to resolve entry for package "@osstack/hermes-adapter". The package may have incorrect main/module/exports specified in its package.json.
+  Plugin: vite:import-analysis
+  File: /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/packages/cli/src/bin.ts:24:42
+  17 |  import { inflateRawSync } from "node:zlib";
+  18 |  import { parse as parseYaml } from "yaml";
+  19 |  import { encodeFrame, FrameDecoder } from "@osstack/hermes-adapter";
+     |                                             ^
+  20 |  import {
+  21 |    loadProofEvidence,
+ ❯ packageEntryFailure ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:16198:15
+ ❯ resolvePackageEntry ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:16195:3
+ ❯ tryNodeResolve ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:16060:18
+ ❯ ResolveIdContext.resolveId ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:15831:19
+ ❯ EnvironmentPluginContainer.resolveId ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:42372:17
+ ❯ TransformPluginContext.resolve ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:42579:15
+ ❯ normalizeUrl ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:40622:26
+ ❯ ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:40753:37
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/220]⎯
+
+ FAIL  src/agent-scorecard-cli.test.ts [ src/agent-scorecard-cli.test.ts ]
+ FAIL  src/attention-dashboard.test.ts [ src/attention-dashboard.test.ts ]
+ FAIL  src/attention-lesson.test.ts [ src/attention-lesson.test.ts ]
+ FAIL  src/attention-read-model.test.ts [ src/attention-read-model.test.ts ]
+ FAIL  src/autonomy-cli.test.ts [ src/autonomy-cli.test.ts ]
+ FAIL  src/daemon-graph-action-broker.test.ts [ src/daemon-graph-action-broker.test.ts ]
+ FAIL  src/daemon-loop-recovery-preservation.test.ts [ src/daemon-loop-recovery-preservation.test.ts ]
+ FAIL  src/daily-cli.test.ts [ src/daily-cli.test.ts ]
+ FAIL  src/follow-up-delivery-command.test.ts [ src/follow-up-delivery-command.test.ts ]
+ FAIL  src/graph-action-broker-boundary.test.ts [ src/graph-action-broker-boundary.test.ts ]
+ FAIL  src/graph-action-broker.test.ts [ src/graph-action-broker.test.ts ]
+ FAIL  src/graph-branch-broker.test.ts [ src/graph-branch-broker.test.ts ]
+ FAIL  src/graph-contract-integration.test.ts [ src/graph-contract-integration.test.ts ]
+ FAIL  src/graph-delivery-adversarial.test.ts [ src/graph-delivery-adversarial.test.ts ]
+ FAIL  src/graph-delivery-broker.test.ts [ src/graph-delivery-broker.test.ts ]
+ FAIL  src/graph-host-config.test.ts [ src/graph-host-config.test.ts ]
+ FAIL  src/graph-review-findings.test.ts [ src/graph-review-findings.test.ts ]
+ FAIL  src/graph-rpc.test.ts [ src/graph-rpc.test.ts ]
+ FAIL  src/improvement-execution-command.test.ts [ src/improvement-execution-command.test.ts ]
+ FAIL  src/neat-dependency-command.test.ts [ src/neat-dependency-command.test.ts ]
+ FAIL  src/remote-home.test.ts [ src/remote-home.test.ts ]
+ FAIL  src/stack-cli.test.ts [ src/stack-cli.test.ts ]
+Error: Failed to resolve entry for package "@osstack/core". The package may have incorrect main/module/exports specified in its package.json.
+  Plugin: vite:import-analysis
+  File: /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/packages/cli/src/agent-scorecard-cli.test.ts:6:23
+  4  |  import { join } from "node:path";
+  5  |  import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+  6  |  import { openDb } from "@osstack/core";
+     |                          ^
+  7  |  import { main } from "./bin.js";
+  8  |  let tmp;
+ ❯ packageEntryFailure ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:16198:15
+ ❯ resolvePackageEntry ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:16195:3
+ ❯ tryNodeResolve ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:16060:18
+ ❯ ResolveIdContext.resolveId ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:15831:19
+ ❯ EnvironmentPluginContainer.resolveId ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:42372:17
+ ❯ TransformPluginContext.resolve ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:42579:15
+ ❯ normalizeUrl ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:40622:26
+ ❯ ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:40753:37
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/220]⎯
+
+ FAIL  src/assurance-command.test.ts [ src/assurance-command.test.ts ]
+Error: Failed to resolve entry for package "@osstack/contracts". The package may have incorrect main/module/exports specified in its package.json.
+  Plugin: vite:import-analysis
+  File: /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/packages/cli/src/assurance-command.ts:13:7
+  10 |  import {
+  11 |    validateWorkspaceContracts
+  12 |  } from "@osstack/contracts";
+     |          ^
+  13 |  import { scanFiles } from "@osstack/governance";
+  14 |  const execFileAsync = promisify(execFile);
+ ❯ packageEntryFailure ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:16198:15
+ ❯ resolvePackageEntry ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:16195:3
+ ❯ tryNodeResolve ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:16060:18
+ ❯ ResolveIdContext.resolveId ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:15831:19
+ ❯ EnvironmentPluginContainer.resolveId ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:42372:17
+ ❯ TransformPluginContext.resolve ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:42579:15
+ ❯ normalizeUrl ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:40622:26
+ ❯ ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:40753:37
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/220]⎯
+
+ FAIL  src/attention-command.test.ts [ src/attention-command.test.ts ]
+Error: Failed to resolve entry for package "@osstack/protocol". The package may have incorrect main/module/exports specified in its package.json.
+  Plugin: vite:import-analysis
+  File: /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/packages/cli/src/attention-read-model.ts:11:7
+  8  |    SessionDecision,
+  9  |    AttentionSessionFact
+  10 |  } from "@osstack/protocol";
+     |          ^
+  11 |  import {
+  12 |    assertDbAccessAllowed,
+ ❯ packageEntryFailure ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:16198:15
+ ❯ resolvePackageEntry ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:16195:3
+ ❯ tryNodeResolve ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:16060:18
+ ❯ ResolveIdContext.resolveId ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:15831:19
+ ❯ EnvironmentPluginContainer.resolveId ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:42372:17
+ ❯ TransformPluginContext.resolve ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:42579:15
+ ❯ normalizeUrl ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:40622:26
+ ❯ ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:40753:37
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/220]⎯
+
+ FAIL  src/attention-contract-planning.test.ts [ src/attention-contract-planning.test.ts ]
+ FAIL  src/execution-context.test.ts [ src/execution-context.test.ts ]
+ FAIL  src/follow-up-command.test.ts [ src/follow-up-command.test.ts ]
+ FAIL  src/upgrade-coordinator.test.ts [ src/upgrade-coordinator.test.ts ]
+ FAIL  src/upgrade-plan-command.test.ts [ src/upgrade-plan-command.test.ts ]
+ FAIL  src/worker-view-command.test.ts [ src/worker-view-command.test.ts ]
+Error: Failed to resolve entry for package "@osstack/core". The package may have incorrect main/module/exports specified in its package.json.
+  Plugin: vite:import-analysis
+  File: /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/packages/cli/src/attention-contract-planning.test.ts:3:37
+  1  |  import { realpathSync, rmSync, writeFileSync } from "node:fs";
+  2  |  import { join } from "node:path";
+  3  |  import { createScratchDirSync } from "@osstack/core";
+     |                                        ^
+  4  |  import { deliveryContract } from "@osstack/supervisor";
+  5  |  import { expect, it } from "vitest";
+ ❯ packageEntryFailure ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:16198:15
+ ❯ resolvePackageEntry ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:16195:3
+ ❯ tryNodeResolve ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:16060:18
+ ❯ ResolveIdContext.resolveId ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:15831:19
+ ❯ EnvironmentPluginContainer.resolveId ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:42372:17
+ ❯ TransformPluginContext.resolve ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:42579:15
+ ❯ normalizeUrl ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:40622:26
+ ❯ ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:40753:37
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/220]⎯
+
+ FAIL  src/attention-hook.test.ts [ src/attention-hook.test.ts ]
+ FAIL  src/attention-routing-evaluation.test.ts [ src/attention-routing-evaluation.test.ts ]
+ FAIL  src/autonomy-notification.test.ts [ src/autonomy-notification.test.ts ]
+ FAIL  src/daemon-startup-ownership.test.ts [ src/daemon-startup-ownership.test.ts ]
+ FAIL  src/delivery-contract-host.test.ts [ src/delivery-contract-host.test.ts ]
+ FAIL  src/delivery-policy-host.test.ts [ src/delivery-policy-host.test.ts ]
+ FAIL  src/execution-context-host.test.ts [ src/execution-context-host.test.ts ]
+ FAIL  src/graph-contract-host.test.ts [ src/graph-contract-host.test.ts ]
+ FAIL  src/graph-execution-context.test.ts [ src/graph-execution-context.test.ts ]
+ FAIL  src/graph-shutdown.test.ts [ src/graph-shutdown.test.ts ]
+ FAIL  src/scout-command.test.ts [ src/scout-command.test.ts ]
+ FAIL  src/supervise-probe.test.ts [ src/supervise-probe.test.ts ]
+ FAIL  src/supervision-service.test.ts [ src/supervision-service.test.ts ]
+ FAIL  src/supervisor-cli-support.test.ts [ src/supervisor-cli-support.test.ts ]
+ FAIL  src/upgrade-deployed-home.test.ts [ src/upgrade-deployed-home.test.ts ]
+ FAIL  src/upgrade-journal.test.ts [ src/upgrade-journal.test.ts ]
+ FAIL  src/upgrade.test.ts [ src/upgrade.test.ts ]
+ FAIL  src/worker-presentation.test.ts [ src/worker-presentation.test.ts ]
+ FAIL  src/worker-view-service.test.ts [ src/worker-view-service.test.ts ]
+Error: Failed to resolve entry for package "@osstack/core". The package may have incorrect main/module/exports specified in its package.json.
+  Plugin: vite:import-analysis
+  File: /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/packages/cli/src/attention-hook.test.ts:52:48
+  65 |  });
+  66 |  it("reads a private binding from its verified descriptor and rejects a symlink swap", async () => {
+  67 |    const { createScratchDirSync } = await import("@osstack/core");
+     |                                                  ^
+  68 |    const fs = await import("node:fs/promises");
+  69 |    const { join } = await import("node:path");
+ ❯ packageEntryFailure ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:16198:15
+ ❯ resolvePackageEntry ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:16195:3
+ ❯ tryNodeResolve ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:16060:18
+ ❯ ResolveIdContext.resolveId ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:15831:19
+ ❯ EnvironmentPluginContainer.resolveId ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:42372:17
+ ❯ TransformPluginContext.resolve ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:42579:15
+ ❯ normalizeUrl ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:40622:26
+ ❯ ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:40753:37
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/220]⎯
+
+ FAIL  src/attention-loop-source.test.ts [ src/attention-loop-source.test.ts ]
+ FAIL  src/loop-candidate-input.test.ts [ src/loop-candidate-input.test.ts ]
+Error: Failed to resolve entry for package "@osstack/loop". The package may have incorrect main/module/exports specified in its package.json.
+  Plugin: vite:import-analysis
+  File: /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/packages/cli/src/attention-loop-source.ts:4:26
+  2  |  import { open, realpath, lstat } from "node:fs/promises";
+  3  |  import { isAbsolute, relative } from "node:path";
+  4  |  import { LoopState } from "@osstack/loop";
+     |                             ^
+  5  |  export async function readAttentionLoop(input) {
+  6  |    input.signal?.throwIfAborted();
+ ❯ packageEntryFailure ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:16198:15
+ ❯ resolvePackageEntry ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:16195:3
+ ❯ tryNodeResolve ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:16060:18
+ ❯ ResolveIdContext.resolveId ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:15831:19
+ ❯ EnvironmentPluginContainer.resolveId ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:42372:17
+ ❯ TransformPluginContext.resolve ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:42579:15
+ ❯ normalizeUrl ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:40622:26
+ ❯ ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:40753:37
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/220]⎯
+
+ FAIL  src/attention-triage.test.ts [ src/attention-triage.test.ts ]
+ FAIL  src/autonomy-health.test.ts [ src/autonomy-health.test.ts ]
+ FAIL  src/autonomy-host.test.ts [ src/autonomy-host.test.ts ]
+ FAIL  src/config-cli.test.ts [ src/config-cli.test.ts ]
+ FAIL  src/dashboard.test.ts [ src/dashboard.test.ts ]
+ FAIL  src/evaluator-cli.test.ts [ src/evaluator-cli.test.ts ]
+ FAIL  src/graph-chain.integration.test.ts [ src/graph-chain.integration.test.ts ]
+ FAIL  src/graph-checkpoint-daemon.test.ts [ src/graph-checkpoint-daemon.test.ts ]
+ FAIL  src/graph-checkpoint-service.test.ts [ src/graph-checkpoint-service.test.ts ]
+ FAIL  src/graph-process-journal.test.ts [ src/graph-process-journal.test.ts ]
+ FAIL  src/graph-reconciler.test.ts [ src/graph-reconciler.test.ts ]
+ FAIL  src/graph-unstarted-recovery.test.ts [ src/graph-unstarted-recovery.test.ts ]
+ FAIL  src/graph-workspace-paths.test.ts [ src/graph-workspace-paths.test.ts ]
+ FAIL  src/improve-cli.test.ts [ src/improve-cli.test.ts ]
+ FAIL  src/local-data-source-registry.test.ts [ src/local-data-source-registry.test.ts ]
+ FAIL  src/local-ledgers-daemon.test.ts [ src/local-ledgers-daemon.test.ts ]
+ FAIL  src/loop-self-improvement-cli.test.ts [ src/loop-self-improvement-cli.test.ts ]
+ FAIL  src/start-control-cli.test.ts [ src/start-control-cli.test.ts ]
+ FAIL  src/store.test.ts [ src/store.test.ts ]
+ FAIL  src/supervise-cli.test.ts [ src/supervise-cli.test.ts ]
+ FAIL  src/worker-viewer-command.test.ts [ src/worker-viewer-command.test.ts ]
+Error: Failed to resolve entry for package "@osstack/core". The package may have incorrect main/module/exports specified in its package.json.
+  Plugin: vite:import-analysis
+  File: /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/packages/cli/src/attention-triage.test.ts:5:56
+  3  |  import { join } from "node:path";
+  4  |  import { afterEach, beforeEach, expect, it, vi } from "vitest";
+  5  |  import { AttentionStore, attentionDigest, openDb } from "@osstack/core";
+     |                                                           ^
+  6  |  import { AttentionTriageLedger } from "@osstack/core";
+  7  |  import { createAttentionTriageService, handleAttentionTriageCommand } from "./attention-triage.js";
+ ❯ packageEntryFailure ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:16198:15
+ ❯ resolvePackageEntry ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:16195:3
+ ❯ tryNodeResolve ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:16060:18
+ ❯ ResolveIdContext.resolveId ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:15831:19
+ ❯ EnvironmentPluginContainer.resolveId ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:42372:17
+ ❯ TransformPluginContext.resolve ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:42579:15
+ ❯ normalizeUrl ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:40622:26
+ ❯ ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:40753:37
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[9/220]⎯
+
+ FAIL  src/autonomy-scorecard.test.ts [ src/autonomy-scorecard.test.ts ]
+ FAIL  src/loop-probe-observer.test.ts [ src/loop-probe-observer.test.ts ]
+ FAIL  src/loop-profile-routing.test.ts [ src/loop-profile-routing.test.ts ]
+ FAIL  src/neat-patch-policy.test.ts [ src/neat-patch-policy.test.ts ]
+ FAIL  src/neat-proposal-command.test.ts [ src/neat-proposal-command.test.ts ]
+ FAIL  src/neat-trend-command.test.ts [ src/neat-trend-command.test.ts ]
+ FAIL  src/probe-kanban-guard.test.ts [ src/probe-kanban-guard.test.ts ]
+Error: Failed to resolve entry for package "@osstack/core". The package may have incorrect main/module/exports specified in its package.json.
+  Plugin: vite:import-analysis
+  File: /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/packages/cli/src/autonomy-scorecard.test.ts:9:7
+  6  |    openDb,
+  7  |    transitionAutonomyRun
+  8  |  } from "@osstack/core";
+     |          ^
+  9  |  import { mkdtempSync, rmSync } from "node:fs";
+  10 |  import { tmpdir } from "node:os";
+ ❯ packageEntryFailure ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:16198:15
+ ❯ resolvePackageEntry ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:16195:3
+ ❯ tryNodeResolve ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:16060:18
+ ❯ ResolveIdContext.resolveId ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:15831:19
+ ❯ EnvironmentPluginContainer.resolveId ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:42372:17
+ ❯ TransformPluginContext.resolve ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:42579:15
+ ❯ normalizeUrl ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:40622:26
+ ❯ ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:40753:37
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[10/220]⎯
+
+ FAIL  src/collaborator-command.test.ts [ src/collaborator-command.test.ts ]
+ FAIL  src/graph-action-freeze.test.ts [ src/graph-action-freeze.test.ts ]
+Error: Failed to resolve entry for package "@osstack/autonomy". The package may have incorrect main/module/exports specified in its package.json.
+  Plugin: vite:import-analysis
+  File: /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/packages/cli/src/collaborator-command.test.ts:6:40
+  4  |  import { join } from "node:path";
+  5  |  import { afterEach, describe, expect, it, vi } from "vitest";
+  6  |  import { verifyContinuationGrant } from "@osstack/autonomy";
+     |                                           ^
+  7  |  import { handleCollaboratorCommand } from "./collaborator-command.js";
+  8  |  import { readContinuationTrust } from "./session-collaborator.js";
+ ❯ packageEntryFailure ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:16198:15
+ ❯ resolvePackageEntry ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:16195:3
+ ❯ tryNodeResolve ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:16060:18
+ ❯ ResolveIdContext.resolveId ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:15831:19
+ ❯ EnvironmentPluginContainer.resolveId ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:42372:17
+ ❯ TransformPluginContext.resolve ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:42579:15
+ ❯ normalizeUrl ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:40622:26
+ ❯ ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:40753:37
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[11/220]⎯
+
+ FAIL  src/collaborator-rpc.test.ts [ src/collaborator-rpc.test.ts ]
+ FAIL  src/loop-cli.test.ts [ src/loop-cli.test.ts ]
+Error: Failed to resolve entry for package "@osstack/agents". The package may have incorrect main/module/exports specified in its package.json.
+  Plugin: vite:import-analysis
+  File: /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/packages/cli/src/collaborator-rpc.test.ts:9:76
+  7  |  import { join } from "node:path";
+  8  |  import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+  9  |  import { createControlledSessionAdapter } from "@osstack/agents";
+     |                                                  ^
+  10 |  import { canonicalContinuationGrantBody, continuationGrantDigest } from "@osstack/autonomy";
+  11 |  import { openDb, SessionContinuationRepository } from "@osstack/core";
+ ❯ packageEntryFailure ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:16198:15
+ ❯ resolvePackageEntry ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:16195:3
+ ❯ tryNodeResolve ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:16060:18
+ ❯ ResolveIdContext.resolveId ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:15831:19
+ ❯ EnvironmentPluginContainer.resolveId ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:42372:17
+ ❯ TransformPluginContext.resolve ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:42579:15
+ ❯ normalizeUrl ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:40622:26
+ ❯ ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:40753:37
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[12/220]⎯
+
+ FAIL  src/control-plane-doctor.test.ts [ src/control-plane-doctor.test.ts ]
+ FAIL  src/delivery-entrypoint.test.ts [ src/delivery-entrypoint.test.ts ]
+ FAIL  src/graph-apply-crash.integration.test.ts [ src/graph-apply-crash.integration.test.ts ]
+ FAIL  src/graph-command.test.ts [ src/graph-command.test.ts ]
+ FAIL  src/graph-concurrency.integration.test.ts [ src/graph-concurrency.integration.test.ts ]
+ FAIL  src/graph-stopped-verification-recovery.test.ts [ src/graph-stopped-verification-recovery.test.ts ]
+ FAIL  src/graph-verification-join.test.ts [ src/graph-verification-join.test.ts ]
+ FAIL  src/graph-worker-exit-proof.test.ts [ src/graph-worker-exit-proof.test.ts ]
+ FAIL  src/improvement-candidate.test.ts [ src/improvement-candidate.test.ts ]
+ FAIL  src/policy-cli.test.ts [ src/policy-cli.test.ts ]
+ FAIL  src/stack-cli.dryrun.test.ts [ src/stack-cli.dryrun.test.ts ]
+Error: Failed to resolve entry for package "@osstack/core". The package may have incorrect main/module/exports specified in its package.json.
+  Plugin: vite:import-analysis
+  File: /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/packages/cli/src/control-plane-doctor.ts:18:39
+  11 |  import { join, resolve } from "node:path";
+  12 |  import Database from "better-sqlite3";
+  13 |  import { CURRENT_SCHEMA_VERSION } from "@osstack/core";
+     |                                          ^
+  14 |  import {
+  15 |    AUTONOMY_DRAIN_FREE_BYTES,
+ ❯ packageEntryFailure ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:16198:15
+ ❯ resolvePackageEntry ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:16195:3
+ ❯ tryNodeResolve ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:16060:18
+ ❯ ResolveIdContext.resolveId ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:15831:19
+ ❯ EnvironmentPluginContainer.resolveId ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:42372:17
+ ❯ TransformPluginContext.resolve ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:42579:15
+ ❯ normalizeUrl ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:40622:26
+ ❯ ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:40753:37
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[13/220]⎯
+
+ FAIL  src/copilot-relay.integration.test.ts [ src/copilot-relay.integration.test.ts ]
+ FAIL  src/daemon-lock-ownership.test.ts [ src/daemon-lock-ownership.test.ts ]
+ FAIL  src/graph-bounded-recovery.test.ts [ src/graph-bounded-recovery.test.ts ]
+ FAIL  src/graph-contained-recovery.test.ts [ src/graph-contained-recovery.test.ts ]
+ FAIL  src/graph-delivery.integration.test.ts [ src/graph-delivery.integration.test.ts ]
+ FAIL  src/graph-verification.test.ts [ src/graph-verification.test.ts ]
+ FAIL  src/home-inventory-daemon.test.ts [ src/home-inventory-daemon.test.ts ]
+ FAIL  src/remote-home-integration.test.ts [ src/remote-home-integration.test.ts ]
+ FAIL  src/session-rpc.test.ts [ src/session-rpc.test.ts ]
+Error: Failed to resolve entry for package "@osstack/core". The package may have incorrect main/module/exports specified in its package.json.
+  Plugin: vite:import-analysis
+  File: /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/packages/cli/src/copilot-relay.integration.test.ts:8:65
+  6  |  import { join } from "node:path";
+  7  |  import { afterEach, describe, expect, it } from "vitest";
+  8  |  import { insertRun, insertTask, openDb, SessionRepository } from "@osstack/core";
+     |                                                                    ^
+  9  |  import { encodeFrame, FrameDecoder } from "@osstack/hermes-adapter";
+  10 |  import { startDaemon } from "./daemon.js";
+ ❯ packageEntryFailure ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:16198:15
+ ❯ resolvePackageEntry ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:16195:3
+ ❯ tryNodeResolve ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:16060:18
+ ❯ ResolveIdContext.resolveId ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:15831:19
+ ❯ EnvironmentPluginContainer.resolveId ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:42372:17
+ ❯ TransformPluginContext.resolve ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:42579:15
+ ❯ normalizeUrl ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:40622:26
+ ❯ ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:40753:37
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[14/220]⎯
+
+ FAIL  src/daemon-admission.test.ts [ src/daemon-admission.test.ts ]
+ FAIL  src/loop-defaults-cli.test.ts [ src/loop-defaults-cli.test.ts ]
+Error: Failed to resolve entry for package "@osstack/core". The package may have incorrect main/module/exports specified in its package.json.
+  Plugin: vite:import-analysis
+  File: /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/packages/cli/src/daemon-admission.test.ts:10:33
+  8  |  import { randomUUID } from "node:crypto";
+  9  |  import { afterEach, expect, it, vi } from "vitest";
+  10 |  import { CapabilitySchema } from "@osstack/core";
+     |                                    ^
+  11 |  import { FifoSemaphore } from "@osstack/autonomy";
+  12 |  import { encodeFrame, FrameDecoder } from "@osstack/hermes-adapter";
+ ❯ packageEntryFailure ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:16198:15
+ ❯ resolvePackageEntry ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:16195:3
+ ❯ tryNodeResolve ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:16060:18
+ ❯ ResolveIdContext.resolveId ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:15831:19
+ ❯ EnvironmentPluginContainer.resolveId ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:42372:17
+ ❯ TransformPluginContext.resolve ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:42579:15
+ ❯ normalizeUrl ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:40622:26
+ ❯ ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:40753:37
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[15/220]⎯
+
+ FAIL  src/daemon-agent-override.test.ts [ src/daemon-agent-override.test.ts ]
+ FAIL  src/daemon-rpc-latency.test.ts [ src/daemon-rpc-latency.test.ts ]
+Error: Failed to resolve entry for package "@osstack/hermes-adapter". The package may have incorrect main/module/exports specified in its package.json.
+  Plugin: vite:import-analysis
+  File: /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/packages/cli/src/daemon-agent-override.test.ts:8:42
+  6  |  import { randomUUID } from "node:crypto";
+  7  |  import { afterEach, beforeEach, describe, expect, it } from "vitest";
+  8  |  import { encodeFrame, FrameDecoder } from "@osstack/hermes-adapter";
+     |                                             ^
+  9  |  import { startDaemon } from "./daemon.js";
+  10 |  let tmp;
+ ❯ packageEntryFailure ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:16198:15
+ ❯ resolvePackageEntry ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:16195:3
+ ❯ tryNodeResolve ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:16060:18
+ ❯ ResolveIdContext.resolveId ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:15831:19
+ ❯ EnvironmentPluginContainer.resolveId ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:42372:17
+ ❯ TransformPluginContext.resolve ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:42579:15
+ ❯ normalizeUrl ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:40622:26
+ ❯ ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:40753:37
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[16/220]⎯
+
+ FAIL  src/daemon-daily.test.ts [ src/daemon-daily.test.ts ]
+ FAIL  src/daemon-drain-recovery.test.ts [ src/daemon-drain-recovery.test.ts ]
+ FAIL  src/daemon-loop.test.ts [ src/daemon-loop.test.ts ]
+Error: Failed to resolve entry for package "@osstack/hermes-adapter". The package may have incorrect main/module/exports specified in its package.json.
+  Plugin: vite:import-analysis
+  File: /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/packages/cli/src/daemon-daily.test.ts:9:42
+  7  |  import { setTimeout as sleep } from "node:timers/promises";
+  8  |  import { afterEach, beforeEach, describe, expect, it } from "vitest";
+  9  |  import { encodeFrame, FrameDecoder } from "@osstack/hermes-adapter";
+     |                                             ^
+  10 |  import { startDaemon } from "./daemon.js";
+  11 |  let tmp;
+ ❯ packageEntryFailure ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:16198:15
+ ❯ resolvePackageEntry ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:16195:3
+ ❯ tryNodeResolve ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:16060:18
+ ❯ ResolveIdContext.resolveId ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:15831:19
+ ❯ EnvironmentPluginContainer.resolveId ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:42372:17
+ ❯ TransformPluginContext.resolve ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:42579:15
+ ❯ normalizeUrl ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:40622:26
+ ❯ ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:40753:37
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[17/220]⎯
+
+ FAIL  src/daemon-policy-gate.test.ts [ src/daemon-policy-gate.test.ts ]
+Error: Failed to resolve entry for package "@osstack/hermes-adapter". The package may have incorrect main/module/exports specified in its package.json.
+  Plugin: vite:import-analysis
+  File: /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/packages/cli/src/daemon-policy-gate.test.ts:11:42
+  9  |  import { setTimeout as sleep } from "node:timers/promises";
+  10 |  import { afterEach, beforeEach, describe, expect, it } from "vitest";
+  11 |  import { encodeFrame, FrameDecoder } from "@osstack/hermes-adapter";
+     |                                             ^
+  12 |  import { startDaemon as startRealDaemon } from "./daemon.js";
+  13 |  let tmp;
+ ❯ packageEntryFailure ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:16198:15
+ ❯ resolvePackageEntry ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:16195:3
+ ❯ tryNodeResolve ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:16060:18
+ ❯ ResolveIdContext.resolveId ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:15831:19
+ ❯ EnvironmentPluginContainer.resolveId ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:42372:17
+ ❯ TransformPluginContext.resolve ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:42579:15
+ ❯ normalizeUrl ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:40622:26
+ ❯ ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:40753:37
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[18/220]⎯
+
+ FAIL  src/daemon.test.ts [ src/daemon.test.ts ]
+ FAIL  src/worker-viewer-rpc.test.ts [ src/worker-viewer-rpc.test.ts ]
+Error: Failed to resolve entry for package "@osstack/hermes-adapter". The package may have incorrect main/module/exports specified in its package.json.
+  Plugin: vite:import-analysis
+  File: /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/packages/cli/src/daemon.test.ts:10:42
+  4  |  import { connect } from "node:net";
+  5  |  import { afterAll, beforeAll, describe, expect, it } from "vitest";
+  6  |  import { encodeFrame, FrameDecoder } from "@osstack/hermes-adapter";
+     |                                             ^
+  7  |  import { startDaemon } from "./daemon.js";
+  8  |  import { DaemonAlreadyRunningError } from "./daemon-lock.js";
+ ❯ packageEntryFailure ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:16198:15
+ ❯ resolvePackageEntry ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:16195:3
+ ❯ tryNodeResolve ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:16060:18
+ ❯ ResolveIdContext.resolveId ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:15831:19
+ ❯ EnvironmentPluginContainer.resolveId ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:42372:17
+ ❯ TransformPluginContext.resolve ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:42579:15
+ ❯ normalizeUrl ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:40622:26
+ ❯ ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:40753:37
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[19/220]⎯
+
+ FAIL  src/deliver-cli.test.ts [ src/deliver-cli.test.ts ]
+Error: Failed to resolve entry for package "@osstack/agents". The package may have incorrect main/module/exports specified in its package.json.
+  Plugin: vite:import-analysis
+  File: /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/packages/cli/src/deliver-cli.test.ts:18:7
+  13 |  import {
+  14 |    KimiCodeAdapter
+  15 |  } from "@osstack/agents";
+     |          ^
+  16 |  import {
+  17 |    CapabilitySchema,
+ ❯ packageEntryFailure ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:16198:15
+ ❯ resolvePackageEntry ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:16195:3
+ ❯ tryNodeResolve ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:16060:18
+ ❯ ResolveIdContext.resolveId ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:15831:19
+ ❯ EnvironmentPluginContainer.resolveId ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:42372:17
+ ❯ TransformPluginContext.resolve ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:42579:15
+ ❯ normalizeUrl ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:40622:26
+ ❯ ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:40753:37
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[20/220]⎯
+
+ FAIL  src/governed-execution-fault.test.ts [ src/governed-execution-fault.test.ts ]
+ FAIL  src/graph-preparation-recovery.test.ts [ src/graph-preparation-recovery.test.ts ]
+Error: Failed to resolve entry for package "@osstack/autonomy". The package may have incorrect main/module/exports specified in its package.json.
+  Plugin: vite:import-analysis
+  File: /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/packages/cli/src/governed-execution-fault.test.ts:6:0
+  12 |  const __vi_import_2__ = await import("node:os");
+  13 |  const __vi_import_3__ = await import("node:path");
+  14 |  const __vi_import_4__ = await import("@osstack/autonomy");
+     |                                       ^
+  15 |  const __vi_import_5__ = await import("./governed-execution.js");
+  16 |  
+ ❯ packageEntryFailure ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:16198:15
+ ❯ resolvePackageEntry ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:16195:3
+ ❯ tryNodeResolve ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:16060:18
+ ❯ ResolveIdContext.resolveId ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:15831:19
+ ❯ EnvironmentPluginContainer.resolveId ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:42372:17
+ ❯ TransformPluginContext.resolve ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:42579:15
+ ❯ normalizeUrl ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:40622:26
+ ❯ ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:40753:37
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[21/220]⎯
+
+ FAIL  src/governed-execution.test.ts [ src/governed-execution.test.ts ]
+Error: Failed to resolve entry for package "@osstack/autonomy". The package may have incorrect main/module/exports specified in its package.json.
+  Plugin: vite:import-analysis
+  File: /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/packages/cli/src/governed-execution.test.ts:8:66
+  6  |  import { execFileSync } from "node:child_process";
+  7  |  import { afterEach, expect, it, vi } from "vitest";
+  8  |  import { FifoSemaphore, inspectRepoWriteLock, repoLockPath } from "@osstack/autonomy";
+     |                                                                     ^
+  9  |  import { resolveRepositoryScope } from "@osstack/core";
+  10 |  import { GovernedExecution } from "./governed-execution.js";
+ ❯ packageEntryFailure ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:16198:15
+ ❯ resolvePackageEntry ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:16195:3
+ ❯ tryNodeResolve ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:16060:18
+ ❯ ResolveIdContext.resolveId ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:15831:19
+ ❯ EnvironmentPluginContainer.resolveId ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:42372:17
+ ❯ TransformPluginContext.resolve ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:42579:15
+ ❯ normalizeUrl ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:40622:26
+ ❯ ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:40753:37
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[22/220]⎯
+
+ FAIL  src/graph-admission.test.ts [ src/graph-admission.test.ts ]
+ FAIL  src/graph-delivery-receipts.test.ts [ src/graph-delivery-receipts.test.ts ]
+ FAIL  src/graph-execution-command.test.ts [ src/graph-execution-command.test.ts ]
+Error: Failed to resolve entry for package "@osstack/protocol". The package may have incorrect main/module/exports specified in its package.json.
+  Plugin: vite:import-analysis
+  File: /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/packages/cli/src/graph-admission.test.ts:5:38
+  3  |  import { join } from "node:path";
+  4  |  import { expect, it } from "vitest";
+  5  |  import { GraphDelegationStatus } from "@osstack/protocol";
+     |                                         ^
+  6  |  import { GraphDelivery } from "./graph-delivery.js";
+  7  |  import { GraphRpcService, loadLocalGraphRegistration } from "./graph-rpc.js";
+ ❯ packageEntryFailure ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:16198:15
+ ❯ resolvePackageEntry ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:16195:3
+ ❯ tryNodeResolve ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:16060:18
+ ❯ ResolveIdContext.resolveId ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:15831:19
+ ❯ EnvironmentPluginContainer.resolveId ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:42372:17
+ ❯ TransformPluginContext.resolve ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:42579:15
+ ❯ normalizeUrl ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:40622:26
+ ❯ ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:40753:37
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[23/220]⎯
+
+ FAIL  src/graph-apply-changeset.test.ts [ src/graph-apply-changeset.test.ts ]
+Error: Cannot find package '@osstack/agents/experimental/changeset' imported from '/Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/packages/cli/src/graph-apply-changeset.test.ts'
+ ❯ src/graph-apply-changeset.test.ts:7:1
+      5| import { join } from 'node:path';
+      6| import { afterEach, expect, it, vi } from 'vitest';
+      7| import { changesetPolicyDigest } from '@osstack/agents/experimental/ch…
+       | ^
+      8| import { applyGraphChangeset, type GraphApplyPort } from './graph-appl…
+      9| const roots: string[] = [];
+
+Caused by: Error: Failed to load url @osstack/agents/experimental/changeset (resolved id: @osstack/agents/experimental/changeset) in /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/packages/cli/src/graph-apply-changeset.test.ts. Does the file exist?
+ ❯ loadAndTransform ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:35835:17
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[24/220]⎯
+
+ FAIL  src/graph-bounded-messages.test.ts [ src/graph-bounded-messages.test.ts ]
+Error: Failed to resolve entry for package "@osstack/agents". The package may have incorrect main/module/exports specified in its package.json.
+  Plugin: vite:import-analysis
+  File: /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/packages/cli/src/graph-bounded-messages.test.ts:4:45
+  2  |  import { join } from "node:path";
+  3  |  import { expect, it } from "vitest";
+  4  |  import { createBoundedMessagesAdapter } from "@osstack/agents";
+     |                                                ^
+  5  |  import { GraphDelegationStatus } from "@osstack/protocol";
+  6  |  import { GraphRpcService } from "./graph-rpc.js";
+ ❯ packageEntryFailure ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:16198:15
+ ❯ resolvePackageEntry ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:16195:3
+ ❯ tryNodeResolve ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:16060:18
+ ❯ ResolveIdContext.resolveId ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:15831:19
+ ❯ EnvironmentPluginContainer.resolveId ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:42372:17
+ ❯ TransformPluginContext.resolve ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:42579:15
+ ❯ normalizeUrl ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:40622:26
+ ❯ ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:40753:37
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[25/220]⎯
+
+ FAIL  src/graph-candidate-revisions.test.ts [ src/graph-candidate-revisions.test.ts ]
+ FAIL  src/graph-worker-manager.test.ts [ src/graph-worker-manager.test.ts ]
+Error: Failed to resolve entry for package "@osstack/protocol". The package may have incorrect main/module/exports specified in its package.json.
+  Plugin: vite:import-analysis
+  File: /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/packages/cli/src/graph-verification.ts:10:28
+  5  |  import { mkdir, realpath } from "node:fs/promises";
+  6  |  import { dirname, isAbsolute, join, resolve } from "node:path";
+  7  |  import { GraphResult } from "@osstack/protocol";
+     |                               ^
+  8  |  import { assertGraphContractPaths } from "./graph-delivery-contract.js";
+  9  |  import { prepareGraphExecutionContext } from "./graph-execution-context.js";
+ ❯ packageEntryFailure ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:16198:15
+ ❯ resolvePackageEntry ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:16195:3
+ ❯ tryNodeResolve ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:16060:18
+ ❯ ResolveIdContext.resolveId ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:15831:19
+ ❯ EnvironmentPluginContainer.resolveId ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:42372:17
+ ❯ TransformPluginContext.resolve ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:42579:15
+ ❯ normalizeUrl ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:40622:26
+ ❯ ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:40753:37
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[26/220]⎯
+
+ FAIL  src/graph-changeset-invocation.test.ts [ src/graph-changeset-invocation.test.ts ]
+ FAIL  src/graph-compatibility.integration.test.ts [ src/graph-compatibility.integration.test.ts ]
+Error: Failed to resolve entry for package "@osstack/autonomy". The package may have incorrect main/module/exports specified in its package.json.
+  Plugin: vite:import-analysis
+  File: /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/packages/cli/src/graph-changeset-invocation.test.ts:1:30
+  1  |  import { FifoSemaphore } from "@osstack/autonomy";
+     |                                 ^
+  2  |  import { GovernedExecution } from "./governed-execution.js";
+  3  |  import { applyGraphChangesetWithLease } from "./graph-changeset-guarded-apply.js";
+ ❯ packageEntryFailure ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:16198:15
+ ❯ resolvePackageEntry ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:16195:3
+ ❯ tryNodeResolve ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:16060:18
+ ❯ ResolveIdContext.resolveId ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:15831:19
+ ❯ EnvironmentPluginContainer.resolveId ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:42372:17
+ ❯ TransformPluginContext.resolve ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:42579:15
+ ❯ normalizeUrl ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:40622:26
+ ❯ ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:40753:37
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[27/220]⎯
+
+ FAIL  src/graph-delegation.integration.test.ts [ src/graph-delegation.integration.test.ts ]
+ FAIL  src/guarded-git-runtime.test.ts [ src/guarded-git-runtime.test.ts ]
+Error: Failed to resolve entry for package "@osstack/core". The package may have incorrect main/module/exports specified in its package.json.
+  Plugin: vite:import-analysis
+  File: /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/packages/cli/src/graph-delegation.integration.test.ts:10:33
+  7  |  import { expect, it, vi } from "vitest";
+  8  |  import { GraphActionBroker } from "./graph-action-broker.js";
+  9  |  import { CapabilitySchema } from "@osstack/core";
+     |                                    ^
+  10 |  import { GraphDelegationStatus } from "@osstack/protocol";
+  11 |  import { FrameDecoder, encodeFrame } from "@osstack/hermes-adapter";
+ ❯ packageEntryFailure ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:16198:15
+ ❯ resolvePackageEntry ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:16195:3
+ ❯ tryNodeResolve ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:16060:18
+ ❯ ResolveIdContext.resolveId ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:15831:19
+ ❯ EnvironmentPluginContainer.resolveId ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:42372:17
+ ❯ TransformPluginContext.resolve ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:42579:15
+ ❯ normalizeUrl ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:40622:26
+ ❯ ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:40753:37
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[28/220]⎯
+
+ FAIL  src/graph-delivery-contract.test.ts [ src/graph-delivery-contract.test.ts ]
+ FAIL  src/local-source-command.test.ts [ src/local-source-command.test.ts ]
+ FAIL  src/repository-policy.test.ts [ src/repository-policy.test.ts ]
+Error: Failed to resolve entry for package "@osstack/core". The package may have incorrect main/module/exports specified in its package.json.
+  Plugin: vite:import-analysis
+  File: /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/packages/cli/src/graph-delivery-contract.test.ts:2:63
+  1  |  import { expect, it } from "vitest";
+  2  |  import { deliveryCheckReference, freezeDeliveryContract } from "@osstack/core";
+     |                                                                  ^
+  3  |  import { computeGraphInputDigest } from "@osstack/protocol";
+  4  |  import { bindGraphDeliveryContract, verifyGraphContractEnvelope } from "./graph-delivery-contract.js";
+ ❯ packageEntryFailure ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:16198:15
+ ❯ resolvePackageEntry ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:16195:3
+ ❯ tryNodeResolve ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:16060:18
+ ❯ ResolveIdContext.resolveId ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:15831:19
+ ❯ EnvironmentPluginContainer.resolveId ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:42372:17
+ ❯ TransformPluginContext.resolve ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:42579:15
+ ❯ normalizeUrl ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:40622:26
+ ❯ ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:40753:37
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[29/220]⎯
+
+ FAIL  src/graph-performance.test.ts [ src/graph-performance.test.ts ]
+Error: Failed to resolve entry for package "@osstack/hermes-adapter". The package may have incorrect main/module/exports specified in its package.json.
+  Plugin: vite:import-analysis
+  File: /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/packages/cli/src/graph-performance.test.ts:7:42
+  5  |  import { performance } from "node:perf_hooks";
+  6  |  import { expect, it, vi } from "vitest";
+  7  |  import { FrameDecoder, encodeFrame } from "@osstack/hermes-adapter";
+     |                                             ^
+  8  |  import { LoopEngine } from "@osstack/loop";
+  9  |  import { GraphDelegationStatus } from "@osstack/protocol";
+ ❯ packageEntryFailure ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:16198:15
+ ❯ resolvePackageEntry ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:16195:3
+ ❯ tryNodeResolve ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:16060:18
+ ❯ ResolveIdContext.resolveId ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:15831:19
+ ❯ EnvironmentPluginContainer.resolveId ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:42372:17
+ ❯ TransformPluginContext.resolve ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:42579:15
+ ❯ normalizeUrl ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:40622:26
+ ❯ ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:40753:37
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[30/220]⎯
+
+ FAIL  src/graph-platform.test.ts [ src/graph-platform.test.ts ]
+ FAIL  src/session-wait.test.ts [ src/session-wait.test.ts ]
+Error: Failed to resolve entry for package "@osstack/protocol". The package may have incorrect main/module/exports specified in its package.json.
+  Plugin: vite:import-analysis
+  File: /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/packages/cli/src/graph-platform.ts:1:35
+  1  |  import { GraphContractError } from "@osstack/protocol";
+     |                                      ^
+  2  |  export function assertGraphPlatform(versions = process.versions) {
+  3  |    if (versions.bun) throw new GraphContractError("GRAPH_DISTRIBUTION_UNSUPPORTED");
+ ❯ packageEntryFailure ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:16198:15
+ ❯ resolvePackageEntry ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:16195:3
+ ❯ tryNodeResolve ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:16060:18
+ ❯ ResolveIdContext.resolveId ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:15831:19
+ ❯ EnvironmentPluginContainer.resolveId ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:42372:17
+ ❯ TransformPluginContext.resolve ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:42579:15
+ ❯ normalizeUrl ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:40622:26
+ ❯ ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:40753:37
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[31/220]⎯
+
+ FAIL  src/graph-reconcile-rpc.test.ts [ src/graph-reconcile-rpc.test.ts ]
+Error: Failed to resolve entry for package "@osstack/protocol". The package may have incorrect main/module/exports specified in its package.json.
+  Plugin: vite:import-analysis
+  File: /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/packages/cli/src/graph-reconcile-rpc.test.ts:2:38
+  1  |  import { expect, it, vi } from "vitest";
+  2  |  import { GraphDelegationStatus } from "@osstack/protocol";
+     |                                         ^
+  3  |  import { GraphRunStore, openDb } from "@osstack/core";
+  4  |  import { GraphActionBroker } from "./graph-action-broker.js";
+ ❯ packageEntryFailure ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:16198:15
+ ❯ resolvePackageEntry ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:16195:3
+ ❯ tryNodeResolve ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:16060:18
+ ❯ ResolveIdContext.resolveId ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:15831:19
+ ❯ EnvironmentPluginContainer.resolveId ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:42372:17
+ ❯ TransformPluginContext.resolve ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:42579:15
+ ❯ normalizeUrl ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:40622:26
+ ❯ ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:40753:37
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[32/220]⎯
+
+ FAIL  src/graph-review-input.test.ts [ src/graph-review-input.test.ts ]
+Error: Cannot find package '@osstack/agents/experimental/changeset' imported from '/Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/packages/cli/src/graph-review-input.test.ts'
+ ❯ src/graph-review-input.test.ts:6:1
+      4| import { join } from 'node:path';
+      5| import { afterEach, expect, it } from 'vitest';
+      6| import { changesetPolicyDigest } from '@osstack/agents/experimental/ch…
+       | ^
+      7| import { buildGraphReviewInput } from './graph-review-input.js';
+      8| const roots: string[] = [];
+
+Caused by: Error: Failed to load url @osstack/agents/experimental/changeset (resolved id: @osstack/agents/experimental/changeset) in /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/packages/cli/src/graph-apply-changeset.test.ts. Does the file exist?
+ ❯ loadAndTransform ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:35835:17
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[33/220]⎯
+
+ FAIL  src/improvement-environment.test.ts [ src/improvement-environment.test.ts ]
+ FAIL  src/improvement-native-cold.test.ts [ src/improvement-native-cold.test.ts ]
+Error: Failed to resolve entry for package "@osstack/agents". The package may have incorrect main/module/exports specified in its package.json.
+  Plugin: vite:import-analysis
+  File: /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/packages/cli/src/improvement-environment.ts:7:35
+  4  |  import { homedir, tmpdir } from "node:os";
+  5  |  import { dirname, join, posix } from "node:path";
+  6  |  import { buildAgentChildEnv } from "@osstack/agents";
+     |                                      ^
+  7  |  import { parse as parseYaml } from "yaml";
+  8  |  import { z } from "zod";
+ ❯ packageEntryFailure ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:16198:15
+ ❯ resolvePackageEntry ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:16195:3
+ ❯ tryNodeResolve ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:16060:18
+ ❯ ResolveIdContext.resolveId ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:15831:19
+ ❯ EnvironmentPluginContainer.resolveId ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:42372:17
+ ❯ TransformPluginContext.resolve ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:42579:15
+ ❯ normalizeUrl ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:40622:26
+ ❯ ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:40753:37
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[34/220]⎯
+
+ FAIL  src/improvement-execution-adapters.test.ts [ src/improvement-execution-adapters.test.ts ]
+ FAIL  src/product-entry-command.test.ts [ src/product-entry-command.test.ts ]
+Error: Failed to resolve entry for package "@osstack/agents". The package may have incorrect main/module/exports specified in its package.json.
+  Plugin: vite:import-analysis
+  File: /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/packages/cli/src/improvement-execution-adapters.ts:3:88
+  1  |  import { createRequire } from "node:module";
+  2  |  import { dirname, isAbsolute, join, resolve } from "node:path";
+  3  |  import { buildAgentChildEnv, CodexCliAdapter, KimiCodeAdapter } from "@osstack/agents";
+     |                                                                        ^
+  4  |  export function createImprovementExecutionAdapters(options) {
+  5  |    if (options !== void 0) {
+ ❯ packageEntryFailure ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:16198:15
+ ❯ resolvePackageEntry ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:16195:3
+ ❯ tryNodeResolve ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:16060:18
+ ❯ ResolveIdContext.resolveId ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:15831:19
+ ❯ EnvironmentPluginContainer.resolveId ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:42372:17
+ ❯ TransformPluginContext.resolve ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:42579:15
+ ❯ normalizeUrl ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:40622:26
+ ❯ ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:40753:37
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[35/220]⎯
+
+ FAIL  src/improvement-provider-live.test.ts [ src/improvement-provider-live.test.ts ]
+Error: Failed to resolve entry for package "@osstack/config". The package may have incorrect main/module/exports specified in its package.json.
+  Plugin: vite:import-analysis
+  File: /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/packages/cli/src/improvement-provider-live.test.ts:10:30
+  5  |  import { join } from "node:path";
+  6  |  import { promisify } from "node:util";
+  7  |  import { defaultConfig } from "@osstack/config";
+     |                                 ^
+  8  |  import { ImprovementExecutionRepository, ImprovementPrDeliveryRepository, improvementProposalDigest, openDb, upsertImprovementProposal } from "@osstack/core";
+  9  |  import { expect, it } from "vitest";
+ ❯ packageEntryFailure ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:16198:15
+ ❯ resolvePackageEntry ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:16195:3
+ ❯ tryNodeResolve ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:16060:18
+ ❯ ResolveIdContext.resolveId ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:15831:19
+ ❯ EnvironmentPluginContainer.resolveId ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:42372:17
+ ❯ TransformPluginContext.resolve ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:42579:15
+ ❯ normalizeUrl ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:40622:26
+ ❯ ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:40753:37
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[36/220]⎯
+
+ FAIL  src/loop-candidate-cli.test.ts [ src/loop-candidate-cli.test.ts ]
+Error: Failed to resolve entry for package "@osstack/loop". The package may have incorrect main/module/exports specified in its package.json.
+  Plugin: vite:import-analysis
+  File: /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/packages/cli/src/loop-candidate-cli.test.ts:7:0
+  42 |  const __vi_import_3__ = await import("node:os");
+  43 |  const __vi_import_4__ = await import("node:fs");
+  44 |  const __vi_import_5__ = await import("@osstack/loop");
+     |                                       ^
+  45 |  const __vi_import_6__ = await import("node:crypto");
+  46 |  const __vi_import_7__ = await import("@osstack/core");
+ ❯ packageEntryFailure ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:16198:15
+ ❯ resolvePackageEntry ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:16195:3
+ ❯ tryNodeResolve ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:16060:18
+ ❯ ResolveIdContext.resolveId ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:15831:19
+ ❯ EnvironmentPluginContainer.resolveId ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:42372:17
+ ❯ TransformPluginContext.resolve ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:42579:15
+ ❯ normalizeUrl ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:40622:26
+ ❯ ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:40753:37
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[37/220]⎯
+
+ FAIL  src/loop-neat-finalizer.test.ts [ src/loop-neat-finalizer.test.ts ]
+Error: Failed to resolve entry for package "@osstack/governance". The package may have incorrect main/module/exports specified in its package.json.
+  Plugin: vite:import-analysis
+  File: /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/packages/cli/src/loop-neat-finalizer.test.ts:4:7
+  1  |  import {
+  2  |    KnowledgeHygieneReportV1
+  3  |  } from "@osstack/governance";
+     |          ^
+  4  |  import { describe, expect, it, vi } from "vitest";
+  5  |  import { runLoopNeatFinalizer } from "./loop-neat-finalizer.js";
+ ❯ packageEntryFailure ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:16198:15
+ ❯ resolvePackageEntry ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:16195:3
+ ❯ tryNodeResolve ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:16060:18
+ ❯ ResolveIdContext.resolveId ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:15831:19
+ ❯ EnvironmentPluginContainer.resolveId ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:42372:17
+ ❯ TransformPluginContext.resolve ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:42579:15
+ ❯ normalizeUrl ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:40622:26
+ ❯ ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:40753:37
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[38/220]⎯
+
+ FAIL  src/neat-cli.test.ts [ src/neat-cli.test.ts ]
+ FAIL  src/neat-command-v2.test.ts [ src/neat-command-v2.test.ts ]
+ FAIL  src/probe-command.test.ts [ src/probe-command.test.ts ]
+Error: Failed to resolve entry for package "@osstack/protocol". The package may have incorrect main/module/exports specified in its package.json.
+  Plugin: vite:import-analysis
+  File: /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/packages/cli/src/neat-cli.test.ts:4:35
+  2  |  import { tmpdir } from "node:os";
+  3  |  import { join } from "node:path";
+  4  |  import { AgentCommandResult } from "@osstack/protocol";
+     |                                      ^
+  5  |  import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+  6  |  import { main } from "./bin.js";
+ ❯ packageEntryFailure ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:16198:15
+ ❯ resolvePackageEntry ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:16195:3
+ ❯ tryNodeResolve ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:16060:18
+ ❯ ResolveIdContext.resolveId ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:15831:19
+ ❯ EnvironmentPluginContainer.resolveId ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:42372:17
+ ❯ TransformPluginContext.resolve ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:42579:15
+ ❯ normalizeUrl ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:40622:26
+ ❯ ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:40753:37
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[39/220]⎯
+
+ FAIL  src/neat-command.test.ts [ src/neat-command.test.ts ]
+Error: Failed to resolve entry for package "@osstack/governance". The package may have incorrect main/module/exports specified in its package.json.
+  Plugin: vite:import-analysis
+  File: /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/packages/cli/src/neat-command.test.ts:9:7
+  6  |  import {
+  7  |    KnowledgeHygieneReportV1
+  8  |  } from "@osstack/governance";
+     |          ^
+  9  |  import { AgentCommandResult } from "@osstack/protocol";
+  10 |  import Database from "better-sqlite3";
+ ❯ packageEntryFailure ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:16198:15
+ ❯ resolvePackageEntry ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:16195:3
+ ❯ tryNodeResolve ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:16060:18
+ ❯ ResolveIdContext.resolveId ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:15831:19
+ ❯ EnvironmentPluginContainer.resolveId ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:42372:17
+ ❯ TransformPluginContext.resolve ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:42579:15
+ ❯ normalizeUrl ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:40622:26
+ ❯ ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:40753:37
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[40/220]⎯
+
+ FAIL  src/neat-fix-command.test.ts [ src/neat-fix-command.test.ts ]
+ FAIL  src/neat-semantic-artifacts.test.ts [ src/neat-semantic-artifacts.test.ts ]
+Error: Failed to resolve entry for package "@osstack/governance". The package may have incorrect main/module/exports specified in its package.json.
+  Plugin: vite:import-analysis
+  File: /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/packages/cli/src/neat-fix-command.test.ts:8:7
+  6  |    applyKnowledgeHygienePatchPlan,
+  7  |    KnowledgeHygieneReportV1
+  8  |  } from "@osstack/governance";
+     |          ^
+  9  |  import { AgentCommandResult } from "@osstack/protocol";
+  10 |  import { describe, expect, it } from "vitest";
+ ❯ packageEntryFailure ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:16198:15
+ ❯ resolvePackageEntry ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:16195:3
+ ❯ tryNodeResolve ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:16060:18
+ ❯ ResolveIdContext.resolveId ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:15831:19
+ ❯ EnvironmentPluginContainer.resolveId ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:42372:17
+ ❯ TransformPluginContext.resolve ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:42579:15
+ ❯ normalizeUrl ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:40622:26
+ ❯ ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:40753:37
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[41/220]⎯
+
+ FAIL  src/neat-review-command.test.ts [ src/neat-review-command.test.ts ]
+ FAIL  src/neat-semantic-command.test.ts [ src/neat-semantic-command.test.ts ]
+ FAIL  src/probe-compile.test.ts [ src/probe-compile.test.ts ]
+ FAIL  src/probe-dynamic.test.ts [ src/probe-dynamic.test.ts ]
+ FAIL  src/probe-render.test.ts [ src/probe-render.test.ts ]
+Error: Failed to resolve entry for package "@osstack/governance". The package may have incorrect main/module/exports specified in its package.json.
+  Plugin: vite:import-analysis
+  File: /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/packages/cli/src/neat-review-command.test.ts:9:7
+  7  |    KnowledgeHygieneReviewArtifactV2,
+  8  |    checkKnowledgeHygieneV2
+  9  |  } from "@osstack/governance";
+     |          ^
+  10 |  import { AgentCommandResult, PROTOCOL_VERSION } from "@osstack/protocol";
+  11 |  import { describe, expect, it } from "vitest";
+ ❯ packageEntryFailure ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:16198:15
+ ❯ resolvePackageEntry ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:16195:3
+ ❯ tryNodeResolve ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:16060:18
+ ❯ ResolveIdContext.resolveId ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:15831:19
+ ❯ EnvironmentPluginContainer.resolveId ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:42372:17
+ ❯ TransformPluginContext.resolve ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:42579:15
+ ❯ normalizeUrl ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:40622:26
+ ❯ ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:40753:37
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[42/220]⎯
+
+ FAIL  src/neat-transaction-command.test.ts [ src/neat-transaction-command.test.ts ]
+Error: Failed to resolve entry for package "@osstack/governance". The package may have incorrect main/module/exports specified in its package.json.
+  Plugin: vite:import-analysis
+  File: /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/packages/cli/src/neat-transaction-command.test.ts:14:40
+  12 |  import { join } from "node:path";
+  13 |  import { afterEach, describe, expect, it } from "vitest";
+  14 |  import { checkKnowledgeHygieneV2 } from "@osstack/governance";
+     |                                           ^
+  15 |  import { KnowledgeHygieneSimulatedCrashV1 } from "@osstack/governance";
+  16 |  import {
+ ❯ packageEntryFailure ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:16198:15
+ ❯ resolvePackageEntry ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:16195:3
+ ❯ tryNodeResolve ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:16060:18
+ ❯ ResolveIdContext.resolveId ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:15831:19
+ ❯ EnvironmentPluginContainer.resolveId ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:42372:17
+ ❯ TransformPluginContext.resolve ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:42579:15
+ ❯ normalizeUrl ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:40622:26
+ ❯ ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:40753:37
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[43/220]⎯
+
+ FAIL  src/probe-gate.test.ts [ src/probe-gate.test.ts ]
+Error: Failed to resolve entry for package "@osstack/governance". The package may have incorrect main/module/exports specified in its package.json.
+  Plugin: vite:import-analysis
+  File: /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/packages/cli/src/probe-gate.ts:10:7
+  6  |    ProbeRepositoryRelativePathV1,
+  7  |    probeSha256
+  8  |  } from "@osstack/governance";
+     |          ^
+  9  |  import { parse as parseYaml } from "yaml";
+  10 |  import { readProbeRenderDirectory } from "./probe-render.js";
+ ❯ packageEntryFailure ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:16198:15
+ ❯ resolvePackageEntry ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:16195:3
+ ❯ tryNodeResolve ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:16060:18
+ ❯ ResolveIdContext.resolveId ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:15831:19
+ ❯ EnvironmentPluginContainer.resolveId ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:42372:17
+ ❯ TransformPluginContext.resolve ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:42579:15
+ ❯ normalizeUrl ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:40622:26
+ ❯ ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:40753:37
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[44/220]⎯
+
+ FAIL  src/skills-command.test.ts [ src/skills-command.test.ts ]
+Error: Failed to resolve entry for package "@osstack/skill-registry". The package may have incorrect main/module/exports specified in its package.json.
+  Plugin: vite:import-analysis
+  File: /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/packages/cli/src/skills-command.ts:8:7
+  6  |    removeSource,
+  7  |    writeManifest
+  8  |  } from "@osstack/skill-registry";
+     |          ^
+  9  |  export async function handleSkillsCommand(args, deps = {}) {
+  10 |    const resolveManifestPath = deps.manifestPath ?? defaultManifestPath;
+ ❯ packageEntryFailure ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:16198:15
+ ❯ resolvePackageEntry ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:16195:3
+ ❯ tryNodeResolve ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:16060:18
+ ❯ ResolveIdContext.resolveId ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:15831:19
+ ❯ EnvironmentPluginContainer.resolveId ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:42372:17
+ ❯ TransformPluginContext.resolve ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:42579:15
+ ❯ normalizeUrl ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:40622:26
+ ❯ ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:40753:37
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[45/220]⎯
+
+ FAIL  src/steward-command.test.ts [ src/steward-command.test.ts ]
+Error: Failed to resolve entry for package "@osstack/github". The package may have incorrect main/module/exports specified in its package.json.
+  Plugin: vite:import-analysis
+  File: /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/packages/cli/src/steward-command.ts:8:7
+  4  |    renderBranchStewardReport,
+  5  |    scanBranchStewardCandidates
+  6  |  } from "@osstack/github";
+     |          ^
+  7  |  const execFileAsync = promisify(execFile);
+  8  |  function printStewardHelp(stdout) {
+ ❯ packageEntryFailure ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:16198:15
+ ❯ resolvePackageEntry ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:16195:3
+ ❯ tryNodeResolve ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:16060:18
+ ❯ ResolveIdContext.resolveId ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:15831:19
+ ❯ EnvironmentPluginContainer.resolveId ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:42372:17
+ ❯ TransformPluginContext.resolve ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:42579:15
+ ❯ normalizeUrl ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:40622:26
+ ❯ ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:40753:37
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[46/220]⎯
+
+
+⎯⎯⎯⎯⎯⎯ Failed Tests 27 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/daily-attention.test.ts > keeps unavailable, disabled, and absent provider distinct without fabricated counts or DB migrations
+ FAIL  src/daily-attention.test.ts > rejects a malformed or wrongly scoped RPC snapshot: {"tenant":"foreign"}
+ FAIL  src/daily-attention.test.ts > rejects a malformed or wrongly scoped RPC snapshot: {"workspace_path":"/elsewhere"}
+ FAIL  src/daily-attention.test.ts > rejects a malformed or wrongly scoped RPC snapshot: {"scope_filter":"local_overview"}
+ FAIL  src/daily-attention.test.ts > rejects a malformed or wrongly scoped RPC snapshot: {"scopes":[{"scope_id":"evil"}]}
+ FAIL  src/daily-attention.test.ts > rejects a malformed or wrongly scoped RPC snapshot: {"returned":1}
+ FAIL  src/daily-attention.test.ts > bounds stalled reads, propagates abort, and still reads another repo
+ FAIL  src/daily-attention.test.ts > does not call providers after cancellation and caps enabled registry work
+ FAIL  src/daily-attention.test.ts > escapes untrusted Markdown and terminal controls in its own section
+ FAIL  src/daily-attention.test.ts > rejects stale cached health claims and discloses truncated full totals
+ FAIL  src/daily-attention.test.ts > accepts small RPC clock skew but labels a far-future snapshot unknown
+ FAIL  src/daily-attention.test.ts > rejects truncated snapshots that hide omitted scopes or lack a continuation cursor
+ FAIL  src/daily-attention.test.ts > shows not-watched coverage without presenting zero waits and classifies missing paths
+ FAIL  src/daily-attention.test.ts > drops future-clock counts instead of suggesting a current human wait
+ FAIL  src/daily-attention.test.ts > caps persisted snapshot bytes and discloses budget-exhausted repository coverage
+Error: Could not locate the bindings file. Tried:
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/build/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/build/Debug/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/build/Release/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/out/Debug/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/Debug/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/out/Release/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/Release/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/build/default/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/compiled/22.22.1/darwin/arm64/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/addon-build/release/install-root/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/addon-build/debug/install-root/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/addon-build/default/install-root/better_sqlite3.node
+ → /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/lib/binding/node-v127-darwin-arm64/better_sqlite3.node
+ ❯ bindings ../../node_modules/.pnpm/bindings@1.5.0/node_modules/bindings/bindings.js:126:9
+ ❯ new Database ../../node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/lib/database.js:48:64
+ ❯ src/daily-attention.test.ts:11:95
+      9| let root: string;
+     10| let db: Database.Database;
+     11| beforeEach(() => { root = realpathSync(mkdtempSync(join(tmpdir(), "dai…
+       |                                                                                               ^
+     12| afterEach(() => { db.close(); rmSync(root, { recursive: true, force: t…
+     13| const entries = () => [{ repo_id: "one", path: root, enabled: true }];
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[47/220]⎯
+
+ FAIL  src/daily-attention.test.ts > keeps unavailable, disabled, and absent provider distinct without fabricated counts or DB migrations
+ FAIL  src/daily-attention.test.ts > rejects a malformed or wrongly scoped RPC snapshot: {"tenant":"foreign"}
+ FAIL  src/daily-attention.test.ts > rejects a malformed or wrongly scoped RPC snapshot: {"workspace_path":"/elsewhere"}
+ FAIL  src/daily-attention.test.ts > rejects a malformed or wrongly scoped RPC snapshot: {"scope_filter":"local_overview"}
+ FAIL  src/daily-attention.test.ts > rejects a malformed or wrongly scoped RPC snapshot: {"scopes":[{"scope_id":"evil"}]}
+ FAIL  src/daily-attention.test.ts > rejects a malformed or wrongly scoped RPC snapshot: {"returned":1}
+ FAIL  src/daily-attention.test.ts > bounds stalled reads, propagates abort, and still reads another repo
+ FAIL  src/daily-attention.test.ts > does not call providers after cancellation and caps enabled registry work
+ FAIL  src/daily-attention.test.ts > escapes untrusted Markdown and terminal controls in its own section
+ FAIL  src/daily-attention.test.ts > rejects stale cached health claims and discloses truncated full totals
+ FAIL  src/daily-attention.test.ts > accepts small RPC clock skew but labels a far-future snapshot unknown
+ FAIL  src/daily-attention.test.ts > rejects truncated snapshots that hide omitted scopes or lack a continuation cursor
+ FAIL  src/daily-attention.test.ts > shows not-watched coverage without presenting zero waits and classifies missing paths
+ FAIL  src/daily-attention.test.ts > drops future-clock counts instead of suggesting a current human wait
+ FAIL  src/daily-attention.test.ts > caps persisted snapshot bytes and discloses budget-exhausted repository coverage
+TypeError: Cannot read properties of undefined (reading 'close')
+ ❯ src/daily-attention.test.ts:12:22
+     10| let db: Database.Database;
+     11| beforeEach(() => { root = realpathSync(mkdtempSync(join(tmpdir(), "dai…
+     12| afterEach(() => { db.close(); rmSync(root, { recursive: true, force: t…
+       |                      ^
+     13| const entries = () => [{ repo_id: "one", path: root, enabled: true }];
+     14| const snapshot = () => readAttentionDashboard(db, { workspacePath: roo…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[48/220]⎯
+
+ FAIL  src/graph-faults.integration.test.ts > fresh host observes a SIGKILLed supervisor without releasing or replaying the live worker or descendants
+Error: host exited before message: node:internal/modules/esm/resolve:275
+    throw new ERR_MODULE_NOT_FOUND(
+          ^
+
+Error [ERR_MODULE_NOT_FOUND]: Cannot find module '/private/var/folders/97/wmwg4qzx02j74c3n73nh438w0000gn/T/g25-process-build-Qw9m6E/node_modules/@osstack/core/dist/index.js' imported from /private/var/folders/97/wmwg4qzx02j74c3n73nh438w0000gn/T/g25-process-build-Qw9m6E/host.mjs
+    at finalizeResolution (node:internal/modules/esm/resolve:275:11)
+    at moduleResolve (node:internal/modules/esm/resolve:861:10)
+    at defaultResolve (node:internal/modules/esm/resolve:985:11)
+    at #cachedDefaultResolve (node:internal/modules/esm/loader:731:20)
+    at ModuleLoader.resolve (node:internal/modules/esm/loader:708:38)
+    at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:310:38)
+    at ModuleJob._link (node:internal/modules/esm/module_job:182:49)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5) {
+  code: 'ERR_MODULE_NOT_FOUND',
+  url: 'file:///private/var/folders/97/wmwg4qzx02j74c3n73nh438w0000gn/T/g25-process-build-Qw9m6E/node_modules/@osstack/core/dist/index.js'
+}
+
+Node.js v22.22.1
+
+ ❯ ChildProcess.<anonymous> src/graph-faults.integration.test.ts:34:37
+     32|   const message = await new Promise<HostMessage>((resolveMessage, reje…
+     33|     child.once('message', value => { resolveMessage(value as HostMessa…
+     34|     child.once('exit', () => reject(new Error(`host exited before mess…
+       |                                     ^
+     35|     child.once('error', reject);
+     36|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[49/220]⎯
+
+ FAIL  src/graph-recovery-crash.integration.test.ts > a fresh host recovers an authenticated no-child failure with the original host killed
+ FAIL  src/graph-recovery-crash.integration.test.ts > a fresh host recovers an authenticated no-child failure with the original host alive
+AbortError: The operation was aborted
+Caused by: TimeoutError: The operation was aborted due to timeout
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
+Serialized Error: { code: 23, INDEX_SIZE_ERR: 1, DOMSTRING_SIZE_ERR: 2, HIERARCHY_REQUEST_ERR: 3, WRONG_DOCUMENT_ERR: 4, INVALID_CHARACTER_ERR: 5, NO_DATA_ALLOWED_ERR: 6, NO_MODIFICATION_ALLOWED_ERR: 7, NOT_FOUND_ERR: 8, NOT_SUPPORTED_ERR: 9, INUSE_ATTRIBUTE_ERR: 10, INVALID_STATE_ERR: 11, SYNTAX_ERR: 12, INVALID_MODIFICATION_ERR: 13, NAMESPACE_ERR: 14, INVALID_ACCESS_ERR: 15, VALIDATION_ERR: 16, TYPE_MISMATCH_ERR: 17, SECURITY_ERR: 18, NETWORK_ERR: 19, ABORT_ERR: 20, URL_MISMATCH_ERR: 21, QUOTA_EXCEEDED_ERR: 22, TIMEOUT_ERR: 23, INVALID_NODE_TYPE_ERR: 24, DATA_CLONE_ERR: 25 }
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[50/220]⎯
+
+ FAIL  src/graph-recovery-crash.integration.test.ts > public submit survives committed reservation with its original host killed before construction
+ FAIL  src/graph-recovery-crash.integration.test.ts > public submit survives committed reservation with its original host alive before construction
+Error: Matcher did not succeed in time.
+ ❯ src/graph-recovery-crash.integration.test.ts:47:89
+     45| it.each(['killed', 'alive'])('public submit survives committed reserva…
+     46|   const root = fixtureRoot(); const fixture = 'graph-submission-crash'…
+     47|   await expect.poll(() => existsSync(join(root, 'submission.json')), {…
+       |                                                                                         ^
+     48|   const data = JSON.parse(readFileSync(join(root, 'submission.json'), …
+     49|   roots.push(data.root);
+
+Caused by: AssertionError: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[51/220]⎯
+
+ FAIL  src/graph-recovery-crash.integration.test.ts > refuses an unobserved pre-spawn crash window without starting replacement effects
+ FAIL  src/graph-recovery-crash.integration.test.ts > refuses an unobserved pre-identity crash window without starting replacement effects
+Error: Matcher did not succeed in time.
+ ❯ src/graph-recovery-crash.integration.test.ts:64:87
+     62| it.each(['pre-spawn', 'pre-identity'])('refuses an unobserved %s crash…
+     63|   const root = fixtureRoot(); const first = host(root, point);
+     64|   await expect.poll(() => existsSync(join(root, 'boundary.json')), { t…
+       |                                                                                       ^
+     65|   const boundary = JSON.parse(readFileSync(join(root, 'boundary.json')…
+     66|   if (boundary.workerPid) { workerPids.push(boundary.workerPid); expec…
+
+Caused by: AssertionError: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[52/220]⎯
+
+ FAIL  src/steward-cli.test.ts > steward CLI > prints steward help from the top-level steward command
+ FAIL  src/steward-cli.test.ts > steward CLI > prints a JSON branch steward report without GitHub writes
+ FAIL  src/steward-cli.test.ts > steward CLI > rejects missing steward scan flag values before scanning
+ FAIL  src/steward-cli.test.ts > steward CLI > infers the repo from the selected remote
+ FAIL  src/steward-cli.test.ts > steward CLI > renders a human branch steward report without --json
+Error: Failed to resolve entry for package "@osstack/github". The package may have incorrect main/module/exports specified in its package.json.
+ ❯ packageEntryFailure ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:16198:15
+ ❯ resolvePackageEntry ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:16195:3
+ ❯ tryNodeResolve ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:16060:18
+ ❯ ResolveIdContext.resolveId ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:15831:19
+ ❯ EnvironmentPluginContainer.resolveId ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:42372:17
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[53/220]⎯
+
+
+ Test Files  182 failed | 23 passed (205)
+      Tests  27 failed | 257 passed (284)
+   Start at  16:46:52
+   Duration  54.34s (transform 423ms, setup 691ms, collect 301ms, tests 49.20s, environment 19ms, prepare 5.84s)
+
+/Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/packages/cli:
+[ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL] @osstack/cli@0.21.0 test: `vitest run -- src/scout-command.test.ts`
+Exit status 1

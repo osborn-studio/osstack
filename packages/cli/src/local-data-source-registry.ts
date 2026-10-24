@@ -82,7 +82,7 @@ function check(signal:AbortSignal):void {if(signal.aborted)throw new SourceError
 export function createHostLocalDataSourceService(options:{configPath:string;nowMs?:()=>number}):{
   inspect(input:unknown,signal?:AbortSignal):Promise<LocalSourceInspectResult>;
 } {
-  const configPath=options.configPath;const now=options.nowMs??Date.now;let active=0;let lastNow=0;
+  const configPath=options.configPath;const now=options.nowMs??Date.now;let active=0;
   return {async inspect(input,externalSignal){
     const parsed=LocalSourceInspectParamsSchema.safeParse(input);if(!parsed.success)throw Error("invalid_request");const params=parsed.data;
     if(active>=2)return empty(params,"unknown","busy");
@@ -102,8 +102,10 @@ export function createHostLocalDataSourceService(options:{configPath:string;nowM
       }
       if(registeredRepo!==repo)return empty(request,"not_registered","not_registered");
       if(registeredRepo!==registration.manifest.repo_path)throw new SourceError("config_invalid");
+      // Cross-request clock continuity belongs to the persistent ledger, which has
+      // an explicit audited reset; only this read must reject time moving backwards.
       const manifest=registration.manifest;const sampled=now();
-      if(!Number.isSafeInteger(sampled)||sampled<lastNow||sampled<0)throw new SourceError("invalid_clock");lastNow=sampled;
+      if(!Number.isSafeInteger(sampled)||sampled<0)throw new SourceError("invalid_clock");
       if(manifest.verified_at_ms>sampled)return empty(request,"unknown","verification_in_future");
       if(manifest.expires_at_ms<=sampled)return empty(request,"unknown","registration_expired");
       if(manifest.verified_at_ms+manifest.fresh_for_ms<sampled)return empty(request,"stale","registration_stale");
@@ -120,7 +122,7 @@ export function createHostLocalDataSourceService(options:{configPath:string;nowM
       if(snapshot.source_id!==manifest.id||snapshot.version!==manifest.version||snapshot.entries.length>manifest.max_items)throw new SourceError("invalid_snapshot");
       const after=await loadHostLocalSources(configPath);check(controller.signal);
       if(after.state!=="ready"||after.fingerprint!==config.fingerprint)throw new SourceError("config_changed");
-      const finalNow=now();if(!Number.isSafeInteger(finalNow)||finalNow<sampled||finalNow<lastNow)throw new SourceError("invalid_clock");lastNow=finalNow;
+      const finalNow=now();if(!Number.isSafeInteger(finalNow)||finalNow<sampled)throw new SourceError("invalid_clock");
       if(finalNow>=manifest.expires_at_ms)throw new SourceError("registration_expired");
       if(finalNow>manifest.verified_at_ms+manifest.fresh_for_ms)return empty(request,"stale","registration_stale");
       if(performance.now()>=deadline)throw new SourceError("read_timeout");

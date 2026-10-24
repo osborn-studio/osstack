@@ -25,7 +25,7 @@ const policySchema = z.object({ policyDigest: digest, reviewPolicyRef: reference
 const acceptanceSchema = z.object({ ref: reference, command: z.string().min(1).max(8192),
   passExitCodes: z.array(z.number().int().min(0).max(255)), failExitCodes: z.array(z.number().int().min(0).max(255)) }).strict();
 const envelopeSchema = z.object({ schemaVersion: z.literal(1), sourceInputArtifactRef: reference,
-  frozen: FrozenDeliveryContractV2, policy: policySchema, acceptance: acceptanceSchema, contextDigest: digest.optional() }).strict();
+  frozen: FrozenDeliveryContractV2, policy: policySchema, acceptance: acceptanceSchema, acceptances: z.array(acceptanceSchema).min(2).max(16).optional(), contextDigest: digest.optional() }).strict();
 export type GraphContractHostEnvelope = z.infer<typeof envelopeSchema>;
 
 export function parseGraphContractRegistration(value: unknown): GraphDeliveryContractRegistration {
@@ -44,22 +44,34 @@ export function bindGraphDeliveryContract(requestValue: StartGraphRequest, regis
   const contract = frozen.contract;
   if (registration.executionContext && request.scope.tenantId !== 'default') throw Error('GRAPH_CONTEXT_SCOPE_UNSUPPORTED');
   if (contract.mode !== 'implement' || contract.requested_completion !== 'local_verified'
-    || contract.publication_scope.mode !== 'none' || contract.merge_authority.mode !== 'none'
-    || contract.required_checks.length !== 1) throw Error('GRAPH_CONTRACT_UNSUPPORTED');
-  const selected = registration.acceptanceRegistry.filter(item => item.ref === request.spec.input.acceptanceRef);
-  if (selected.length !== 1) throw Error('GRAPH_CONTRACT_REGISTRY_MISMATCH');
-  const acceptance = acceptanceSchema.parse(selected[0]);
-  if (acceptance.passExitCodes.length !== 1 || acceptance.passExitCodes[0] !== 0 || acceptance.failExitCodes.includes(0)
-    || deliveryCheckReference(acceptance.command) !== contract.required_checks[0]!.registry_ref) throw Error('GRAPH_CONTRACT_REGISTRY_MISMATCH');
+    || contract.publication_scope.mode !== 'none' || contract.merge_authority.mode !== 'none') throw Error('GRAPH_CONTRACT_UNSUPPORTED');
+  const acceptances = resolveGraphContractChecks(frozen, registration.acceptanceRegistry, request.spec.input.acceptanceRef);
+  const acceptance = acceptances[0]!;
   assertDeliveryContractAdmission(frozen, { canonicalRepo: registration.repositoryPath, baseHead: request.spec.input.baseRevision,
     taskId: request.spec.input.taskRef, goal: registration.task, policyDigest: policy.policyDigest,
-    reviewPolicyRef: policy.reviewPolicyRef, acceptedCommands: [acceptance.command] });
+    reviewPolicyRef: policy.reviewPolicyRef, acceptedCommands: acceptances.map(item => item.command) });
   for (const name of Object.keys(policy.limits) as (keyof GraphContractHostPolicy['limits'])[]) {
     if (request.spec.limits[name] > policy.limits[name]) throw Error('GRAPH_CONTRACT_BUDGET_EXCEEDED');
   }
   const envelope = freezeWorkerData(envelopeSchema.parse({ schemaVersion: 1, sourceInputArtifactRef: request.inputArtifactRef,
-    frozen, policy, acceptance, ...(registration.executionContext ? { contextDigest: registration.executionContext.configDigest } : {}) }));
+    frozen, policy, acceptance, ...(acceptances.length > 1 ? {acceptances} : {}), ...(registration.executionContext ? { contextDigest: registration.executionContext.configDigest } : {}) }));
   return { request: freezeWorkerData(StartGraphRequest.parse({ ...request, inputArtifactRef: graphContractInputRef(envelope) })), envelope };
+}
+
+/** Ordered bounded host suite; commands are independently registered, never shell-concatenated. */
+export function resolveGraphContractChecks(frozen: FrozenDeliveryContractV2, registry: readonly AcceptanceCommandSpec[], primaryRef: string): AcceptanceCommandSpec[] {
+  const contract=assertFrozenDeliveryContract(frozen).contract;
+  if(contract.required_checks.length>16)throw Error('GRAPH_CONTRACT_CHECK_LIMIT');
+  const selected=contract.required_checks.map(required=>{
+    const matches=registry.filter(item=>deliveryCheckReference(item.command)===required.registry_ref);
+    if(matches.length!==1)throw Error('GRAPH_CONTRACT_REGISTRY_MISMATCH');
+    const check=acceptanceSchema.parse(matches[0]);
+    if(check.passExitCodes.length!==1||check.passExitCodes[0]!==0||check.failExitCodes.includes(0))throw Error('GRAPH_CONTRACT_REGISTRY_MISMATCH');
+    return check;
+  });
+  const primary=selected.filter(item=>item.ref===primaryRef);
+  if(primary.length!==1||new Set(selected.map(item=>item.ref)).size!==selected.length||selected.reduce((sum,item)=>sum+Buffer.byteLength(item.command),0)>16384)throw Error('GRAPH_CONTRACT_REGISTRY_MISMATCH');
+  return [primary[0]!,...selected.filter(item=>item!==primary[0])];
 }
 
 export function graphContractInputRef(envelope: GraphContractHostEnvelope): string {

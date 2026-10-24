@@ -73,6 +73,7 @@ beforeEach(async () => {
   await mkdir(repo);
   await mkdir(home, { mode: 0o700 });
   execFileSync("git", ["init", "-q", repo]);
+  execFileSync("git", ["-C", repo, "-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid", "commit", "--allow-empty", "-qm", "Initial fixture"]);
   oldProfileEnv = Object.fromEntries(
     profileEnv.map((name) => [name, process.env[name]]),
   );

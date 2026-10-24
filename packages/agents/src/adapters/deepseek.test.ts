@@ -1,11 +1,11 @@
 import { mkdtempSync } from "node:fs";
 import { chmod, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, isAbsolute, join, relative, sep } from "node:path";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import type { HermesEvent } from "@osstack/hermes-adapter";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { AgentTask } from "../base.js";
 import {
   extractEvaluationJudgments,
@@ -23,6 +23,7 @@ beforeEach(() => {
 });
 
 afterEach(async () => {
+  vi.unstubAllEnvs();
   await rm(tmp, { recursive: true, force: true });
 });
 
@@ -45,7 +46,7 @@ printf 'review ok\\n'
     const events = await drain(adapter.invoke(task("ds-review.review.code", workspace), new AbortController().signal));
     expect(doneStatus(events)).toBe("completed");
     expect(events.some((event) => event.type === "token.delta")).toBe(true);
-    await expect(readFile(join(workspace, "reviews", "ds-review", "latest.md"), "utf-8"))
+    await expect(readFile(reviewOutput(events, "ds-review", workspace), "utf-8"))
       .resolves.toContain("+changed");
   });
 
@@ -87,7 +88,7 @@ printf 'verify ok\\n'
 
     const events = await drain(adapter.invoke(task("ds-verify.verify.alignment", workspace), new AbortController().signal));
     expect(doneStatus(events)).toBe("completed");
-    await expect(readFile(join(workspace, "reviews", "ds-verify", "latest.md"), "utf-8"))
+    await expect(readFile(reviewOutput(events, "ds-verify", workspace), "utf-8"))
       .resolves.toContain("strict=yes");
   });
 
@@ -128,7 +129,7 @@ printf 'OSSTACK_IMPLEMENTATION_DEVIATIONS: {"deviations":[{"deviation_id":"bound
       { deviation_id: "boundary-drift" },
     ]);
     // The binary saw the full spec JSON through OSSTACK_EVALUATION_SPECS_FILE.
-    await expect(readFile(join(workspace, "reviews", "ds-verify", "latest.md"), "utf-8"))
+    await expect(readFile(reviewOutput(events, "ds-verify", workspace), "utf-8"))
       .resolves.toContain("Reject constant allow.");
   });
 
@@ -210,3 +211,47 @@ async function gitWorkspace(): Promise<string> {
   await execFileAsync("git", ["commit", "-m", "initial"], { cwd: workspace });
   return workspace;
 }
+
+function reviewOutput(events: HermesEvent[], id: string, workspace: string): string {
+ const output=events.find(event=>event.type==='progress'&&(event.payload as {phase?:string}).phase===`${id}.output`);
+ const path=(JSON.parse((output?.payload as {detail:string}).detail) as {path:string}).path;
+ expect(isAbsolute(path)).toBe(true);const rel=relative(workspace,path);expect(rel==='..'||rel.startsWith('..'+sep)).toBe(true);return path;
+}
+it('retains an explicit caller output path instead of replacing it with scratch',async()=>{
+ const workspace=await gitWorkspace(),destination=join(tmp,'explicit-review.md');
+ const bin=await fakeCommand('explicit-review',`cat >/dev/null
+printf 'explicit' > "$2"
+`);
+ const adapter=new DeepSeekReviewAdapter({bin,outputPath:destination});
+ const events=await drain(adapter.invoke(task('ds-review.review.code',workspace),new AbortController().signal));
+ expect(doneStatus(events)).toBe('completed');expect(await readFile(destination,'utf8')).toBe('explicit');
+});
+it('keeps the explicit task output override ahead of the adapter option',async()=>{
+ const workspace=await gitWorkspace(),destination=join(tmp,'task-review.md'),fallback=join(tmp,'option-review.md');
+ const bin=await fakeCommand('context-review',`cat >/dev/null\nprintf 'task override' > "$2"\n`);
+ const adapter=new DeepSeekReviewAdapter({bin,outputPath:fallback});const input=task('ds-review.review.code',workspace);
+ input.context={...input.context,review_output_path:destination};
+ const events=await drain(adapter.invoke(input,new AbortController().signal));
+ expect(doneStatus(events)).toBe('completed');expect(await readFile(destination,'utf8')).toBe('task override');await expect(readFile(fallback)).rejects.toThrow();
+});
+
+it('reports output allocation failure as failed events without running the command',async()=>{
+ const workspace=await gitWorkspace(),badRoot=join(tmp,'not-directory'),marker=join(tmp,'spawned');await writeFile(badRoot,'file');
+ const bin=await fakeCommand('allocation-failure',`printf 'spawned' > "${marker}"
+`);vi.stubEnv('OSSTACK_SCRATCH_ROOT',badRoot);
+ const events=await drain(new DeepSeekReviewAdapter({bin}).invoke(task('ds-review.review.code',workspace),new AbortController().signal));
+ expect(doneStatus(events)).toBe('failed');expect(events).toContainEqual(expect.objectContaining({type:'error',payload:expect.objectContaining({code:'deepseek_output_unavailable'})}));await expect(readFile(marker)).rejects.toThrow();
+});
+it('does not start the reviewer when cancelled after allocating default output',async()=>{
+ const workspace=await gitWorkspace(),marker=join(tmp,'spawned');const bin=await fakeCommand('abort-output',`printf 'spawned' > "${marker}"
+`);
+ const controller=new AbortController(),iterator=new DeepSeekReviewAdapter({bin}).invoke(task('ds-review.review.code',workspace),controller.signal)[Symbol.asyncIterator]();
+ expect((await iterator.next()).value?.type).toBe('run.started');const output=await iterator.next();expect((output.value?.payload as {phase:string}).phase).toBe('ds-review.output');controller.abort();
+ const events:HermesEvent[]=[];for(;;){const next=await iterator.next();if(next.done)break;events.push(next.value);}expect(doneStatus(events)).toBe('cancelled');await expect(readFile(marker)).rejects.toThrow();
+});
+it('preserves long paths and repeated spaces in progress and completion evidence',async()=>{
+ const workspace=await gitWorkspace(),destination=join(tmp,'a'.repeat(80),'two  spaces','b'.repeat(80),'c'.repeat(80),'output.md');await mkdir(dirname(destination),{recursive:true});
+ const bin=await fakeCommand('long-output',`printf 'artifact' > "$2"
+`);const events=await drain(new DeepSeekVerifyAdapter({bin,outputPath:destination}).invoke(task('ds-verify.verify.alignment',workspace),new AbortController().signal));
+ expect(doneStatus(events)).toBe('completed');expect(reviewOutput(events,'ds-verify',workspace)).toBe(destination);const done=[...events].reverse().find(event=>event.type==='done');expect((done?.payload as {result_summary:string}).result_summary).toContain(JSON.stringify(destination));expect(await readFile(destination,'utf8')).toBe('artifact');
+});

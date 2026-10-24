@@ -1,0 +1,63 @@
+{
+  "head": "97c68e4396248664eda5df4b803745b668615dbd",
+  "commands": [
+    {
+      "command": [
+        "git",
+        "merge-base",
+        "--is-ancestor",
+        "742ac8e0",
+        "97c68e43"
+      ],
+      "exit_code": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "git",
+        "diff",
+        "--name-only",
+        "fdddee85",
+        "97c68e43"
+      ],
+      "exit_code": 0,
+      "stdout": "packages/loop/src/verifier.test.ts\npackages/loop/src/verifier.ts\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "git",
+        "diff",
+        "fdddee85",
+        "97c68e43",
+        "--",
+        "packages/loop/src/verifier.ts"
+      ],
+      "exit_code": 0,
+      "stdout": "diff --git a/packages/loop/src/verifier.ts b/packages/loop/src/verifier.ts\nindex 99c19d15..1cdc394f 100644\n--- a/packages/loop/src/verifier.ts\n+++ b/packages/loop/src/verifier.ts\n@@ -103,7 +103,8 @@ export async function verifyRun(run: AgentRun, options: LocalVerifierOptions): P\n     (spec) => spec.mode === \"artifact\" && !isCommandEvaluationSpec(spec),\n   );\n   const artifact = await verifyArtifacts(options, artifactOptions, explicitArtifactSpecs);\n-  if (artifact.issues.some(issue => issue.rule === \"verify.adapter_stop_unconfirmed\")) return unconfirmedVerifierStop(\"Artifact command stop is unconfirmed; no further checks may run\");\n+  const artifactStop = artifact.issues.find(issue => issue.rule === \"verify.adapter_stop_unconfirmed\");\n+  if (artifactStop !== undefined) return { pass: false, score: 0, reviewer_agent_id: \"local-verifier\", summary: artifactStop.message, issues: artifact.issues };\n   const adapterSpecs = explicitSpecs.filter(isAdapterEvaluationSpec);\n   const adapterResults = await runVerifierAdapters(\n     run,\n@@ -696,7 +697,7 @@ async function invokeVerifierAdapter(\n   } catch (error) {\n     return { agentId: adapter.id, eventCount: 0, issues: [\n       adapterIssue(adapter.id, \"verify.adapter_failed\", error instanceof Error ? error.message : String(error)),\n-      adapterIssue(adapter.id, \"verify.adapter_stop_unconfirmed\", \"Availability probe failed without physical stop evidence\"),\n+      adapterIssue(adapter.id, \"verify.adapter_stop_unconfirmed\", \"Availability probe failed without physical stop evidence. A preflight refusal is possible; this is not evidence that a process remains alive. Reconcile before retry.\"),\n       ...await preparationIntegrity(),\n     ] };\n   } finally { clearTimeout(availabilityTimer); }\n@@ -849,7 +850,7 @@ async function invokeVerifierAdapter(\n \n   const issues: Issue[] = [];\n   if (invocationAttempted && !iteratorFinished) {\n-    issues.push(adapterIssue(adapter.id,\"verify.adapter_stop_unconfirmed\",\"Verifier stream ended abnormally without physical stop evidence; reconciliation required\"));\n+    issues.push(adapterIssue(adapter.id,\"verify.adapter_stop_unconfirmed\",\"Verifier stream ended abnormally without physical stop evidence. A preflight refusal is possible; this is not evidence that a process remains alive. Reconcile before retry.\"));\n   }\n   if (snapshotError !== undefined) {\n     issues.push(adapterIssue(adapter.id, \"verify.reviewer_integrity_unconfirmed\", \"Post-invocation workspace integrity could not be verified; do not retry this candidate\"));\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "rg",
+        "-n",
+        "--no-ignore",
+        "Artifact command stop is unconfirmed|Availability probe failed without physical stop evidence|Verifier stream ended abnormally without physical stop evidence",
+        "packages/cli"
+      ],
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": ""
+    }
+  ],
+  "cli_working_bytes_equal_final_commit": {
+    "packages/loop/src/verifier.ts": true,
+    "packages/loop/src/loop-engine.ts": true,
+    "packages/cli/src/daemon-loop.test.ts": true,
+    "packages/cli/src/loop-cli.test.ts": true,
+    "packages/cli/src/loop-defaults-cli.test.ts": true,
+    "packages/cli/src/local-ledgers-daemon.test.ts": true
+  },
+  "interpretation": "The commit diff names verifier.ts and verifier.test.ts. They were already edited before the CLI run began. Its before and after hashes are equal and match the final commit. Thus commit HEAD changed, not tested bytes. Do not claim the commit diff is empty. Dist was built before the run; before/after dist hashes are equal. merge-base exit0 proves ancestry. rg exit1 means no matching old strings, including ignored dist."
+}

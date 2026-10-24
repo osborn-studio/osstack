@@ -1,0 +1,107 @@
+[
+  {
+    "id": "firstmate-qualify-haiku-audit",
+    "queue_status": "queued_not_executed",
+    "gate": "operator_authentication_required",
+    "receipt": {
+      "task": {
+        "task_id": "firstmate-qualify-haiku-audit",
+        "capability": "code.verify",
+        "prompt": "After operator restores Claude CLI authentication, audit the final source with requested claude-haiku-5-5. Preserve is_error, reported model, raw findings and fixes; do not treat login errors as a review.",
+        "priority": 50,
+        "source": "task_queue"
+      },
+      "path": "/Volumes/AIMATE_WORK/tmp/osstack/smoke/firstmate-completion-20261024/queue/tasks/firstmate-qualify-haiku-audit.json"
+    }
+  },
+  {
+    "id": "firstmate-qualify-live-model",
+    "queue_status": "queued_not_executed",
+    "gate": "environment_qualification_pending",
+    "receipt": {
+      "task": {
+        "task_id": "firstmate-qualify-live-model",
+        "capability": "code.verify",
+        "prompt": "Pending authorized API credentials and independent held-out corpus, qualify paired evaluation usage, billing and provider termination. Do not change default routing.",
+        "priority": 50,
+        "source": "task_queue"
+      },
+      "path": "/Volumes/AIMATE_WORK/tmp/osstack/smoke/firstmate-completion-20261024/queue/tasks/firstmate-qualify-live-model.json"
+    }
+  },
+  {
+    "id": "firstmate-qualify-github-sandbox",
+    "queue_status": "queued_not_executed",
+    "gate": "environment_qualification_pending",
+    "receipt": {
+      "task": {
+        "task_id": "firstmate-qualify-github-sandbox",
+        "capability": "code.verify",
+        "prompt": "Pending explicit human permission to send messages to a dedicated sandbox, qualify exact GitHub actor/subject send and receipt reconciliation. No public send is authorized by this queued task.",
+        "priority": 50,
+        "source": "task_queue"
+      },
+      "path": "/Volumes/AIMATE_WORK/tmp/osstack/smoke/firstmate-completion-20261024/queue/tasks/firstmate-qualify-github-sandbox.json"
+    }
+  },
+  {
+    "id": "firstmate-qualify-ssh-hosts",
+    "queue_status": "queued_not_executed",
+    "gate": "environment_qualification_pending",
+    "receipt": {
+      "task": {
+        "task_id": "firstmate-qualify-ssh-hosts",
+        "capability": "code.verify",
+        "prompt": "Pending two explicitly configured sandbox hosts, qualify SSH host-key changes, remote generations, disconnect and exact cancellation receipts; never substitute local execution.",
+        "priority": 50,
+        "source": "task_queue"
+      },
+      "path": "/Volumes/AIMATE_WORK/tmp/osstack/smoke/firstmate-completion-20261024/queue/tasks/firstmate-qualify-ssh-hosts.json"
+    }
+  },
+  {
+    "id": "firstmate-qualify-terminal-backends",
+    "queue_status": "queued_not_executed",
+    "gate": "environment_qualification_pending",
+    "receipt": {
+      "task": {
+        "task_id": "firstmate-qualify-terminal-backends",
+        "capability": "code.verify",
+        "prompt": "Pending installed pinned tmux/cmux versions, qualify new observer creation, close/reuse behavior and unchanged worker authority.",
+        "priority": 50,
+        "source": "task_queue"
+      },
+      "path": "/Volumes/AIMATE_WORK/tmp/osstack/smoke/firstmate-completion-20261024/queue/tasks/firstmate-qualify-terminal-backends.json"
+    }
+  },
+  {
+    "id": "firstmate-qualify-managed-upgrade",
+    "queue_status": "queued_not_executed",
+    "gate": "environment_qualification_pending",
+    "receipt": {
+      "task": {
+        "task_id": "firstmate-qualify-managed-upgrade",
+        "capability": "code.verify",
+        "prompt": "Pending explicit sandbox service-manager installation and complete consumer registry, qualify actual launchd multi-home stop/start and versions. Never operate on user homes or roll back databases.",
+        "priority": 50,
+        "source": "task_queue"
+      },
+      "path": "/Volumes/AIMATE_WORK/tmp/osstack/smoke/firstmate-completion-20261024/queue/tasks/firstmate-qualify-managed-upgrade.json"
+    }
+  },
+  {
+    "id": "firstmate-qualify-cross-platform",
+    "queue_status": "queued_not_executed",
+    "gate": "environment_qualification_pending",
+    "receipt": {
+      "task": {
+        "task_id": "firstmate-qualify-cross-platform",
+        "capability": "code.verify",
+        "prompt": "Qualify supported OS and Node/native runtime matrix; distinguish actual CI evidence from fixtures and leave untested platforms pending.",
+        "priority": 50,
+        "source": "task_queue"
+      },
+      "path": "/Volumes/AIMATE_WORK/tmp/osstack/smoke/firstmate-completion-20261024/queue/tasks/firstmate-qualify-cross-platform.json"
+    }
+  }
+]

@@ -1,0 +1,16 @@
+{
+  "head": "84b406b484583738b5c8701419e6987d984f2e07",
+  "base": "1c343aadee77933ef6ffb2d9e1a8a1b6fcb2e039",
+  "requested_model": "claude-haiku-5-5",
+  "full_context": {
+    "packages/cli/src/execution-context.ts": "0c09785d4cd585b248a619f9616d2b11ab8a40e84119a194d8fe1a1561259ea7",
+    "packages/cli/src/source-context.ts": "a86db5921f95be730c0b896ef38ac3360502e9081aadd1c3216e2efba1f34ece",
+    "packages/cli/src/source-context-fence.ts": "371718b13b6d4932ad67a5926019ebfeb524d838fb1e4fba1a6e16e3404b6620",
+    "packages/core/src/state/attention-observer.ts": "f4de157da3c70a38bfee14e8920d9d10fc28979030507b14b253688a0b5986c3",
+    "packages/core/src/state/attention-store.ts": "b6ffc14f93f2bc7d5f3a830e859c4ba59bb75d55d42c88b663be3ce666bcb788",
+    "packages/cli/src/supervision-service.ts": "34e8afb5aed0a8c99b167f2d488d58cbd3d810cddd43e6f4e5caec34049e3cc7",
+    "packages/cli/src/worker-viewer-launch.ts": "02ba7e8c148fff5e316f328f45ed6e2e200b70ab55b90c24c464e99c3ae3cd71",
+    "packages/cli/src/remote-cancel-exporter.ts": "3a008c7400a7a7b5a203021bf4d792a065ea333c20045cc73fccd60ac799b0dd"
+  },
+  "prompt_sha256": "6f1408d22af5381df073ce952c43e332a27968f17bbc5fd37c1db39832508783"
+}

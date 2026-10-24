@@ -1,0 +1,106 @@
+{
+  "sources": [
+    {
+      "path": "packages/loop/src/loop-containment.ts",
+      "sha256": "9b9e50dffb2051c0b20899285c3fe3583a3a4393f732eb7a487e525fb4e5a755",
+      "coverage": "full"
+    },
+    {
+      "path": "packages/loop/src/loop-containment.test.ts",
+      "sha256": "35187b6f9d03488ba36c470da5a17330bf275992a403c6c0f726cc29715aaaa3",
+      "coverage": "full"
+    },
+    {
+      "path": "scripts/vitest-setup-scratch.ts",
+      "sha256": "166bcdcf86efa619c1d30c14b3fe383781b17e56b984ef058b1c194b64c7b1de",
+      "coverage": "full"
+    },
+    {
+      "path": "biome.json",
+      "sha256": "91f0567b8220c85672d8e918ef8e3ef77e1885aacb42982d89433103020b1fbc",
+      "coverage": "full"
+    },
+    {
+      "path": "packages/loop/src/loop-engine.ts",
+      "sha256": "19e0e9dc160b4fd4c195215b9979b1f58c81522d82c5199e41f69d536c43ca80",
+      "coverage": [
+        [
+          830,
+          895
+        ],
+        [
+          1550,
+          1610
+        ]
+      ]
+    },
+    {
+      "path": "packages/loop/src/loop-engine.test.ts",
+      "sha256": "7ed1cefa8ded91935089d40a76f812945893fd1164a4ee40d40bfe44ce7192c0",
+      "coverage": [
+        [
+          1245,
+          1600
+        ]
+      ]
+    },
+    {
+      "path": "docs/reports/2026-10-24-firstmate-capability-completion-ledger.md",
+      "sha256": "90804769c3cbc92dec993c313a4461a5c8ea9df1602630151ed7465221c8aec1",
+      "coverage": [
+        [
+          80,
+          95
+        ]
+      ]
+    }
+  ],
+  "prior_source_comparison": [
+    {
+      "path": "packages/loop/src/loop-engine.ts",
+      "sha256": "116b91560306680d482fbe1b12e6ff7a4a8c3bc4137c63aae6e8d1b2f7ac9ce6",
+      "coverage": "full",
+      "current_sha256": "19e0e9dc160b4fd4c195215b9979b1f58c81522d82c5199e41f69d536c43ca80",
+      "identical": false
+    },
+    {
+      "path": "packages/loop/src/loop-containment.ts",
+      "sha256": "18e902cc84b4b9fad97197f55b777bf868b84a31a8c9d25344279a2a46dbdfd0",
+      "coverage": "full",
+      "current_sha256": "9b9e50dffb2051c0b20899285c3fe3583a3a4393f732eb7a487e525fb4e5a755",
+      "identical": false
+    },
+    {
+      "path": "packages/loop/src/loop-containment.test.ts",
+      "sha256": "4602d425409c4e95472cbe86fc2d1036a920d4248acb96ff30ceda88987721be",
+      "coverage": "full",
+      "current_sha256": "35187b6f9d03488ba36c470da5a17330bf275992a403c6c0f726cc29715aaaa3",
+      "identical": false
+    },
+    {
+      "path": "scripts/vitest-setup-scratch.ts",
+      "sha256": "166bcdcf86efa619c1d30c14b3fe383781b17e56b984ef058b1c194b64c7b1de",
+      "coverage": "full",
+      "current_sha256": "166bcdcf86efa619c1d30c14b3fe383781b17e56b984ef058b1c194b64c7b1de",
+      "identical": true
+    },
+    {
+      "path": "packages/loop/src/loop-engine.test.ts",
+      "sha256": "9f31a1aebb4794fada376fa64fde11e07acd567023a47e49d4f49dd57fa1e402",
+      "coverage": [
+        1245,
+        1435
+      ],
+      "current_sha256": "7ed1cefa8ded91935089d40a76f812945893fd1164a4ee40d40bfe44ce7192c0",
+      "identical": false
+    },
+    {
+      "path": "packages/loop/src/verifier.ts",
+      "sha256": "7d411e758a3ea4889723dcd8a95faa06a8fea7b9c4bfa89732b8ff24407678fd",
+      "coverage": "full",
+      "current_sha256": "432e77282181041bba93dbc61031360f006bc56db26728f8759c98bb93b2776f",
+      "identical": false
+    }
+  ],
+  "prompt_sha256": "191c9c89f94b0b4955f810a2344dfb97e607af85fd703031c0e3889d1c8d6714"
+}

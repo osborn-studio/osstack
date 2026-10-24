@@ -1,0 +1,20 @@
+{
+  "workspace": "/Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/pr244-final-audit",
+  "trackedFiles": 5378,
+  "trackedBytes": 65341375,
+  "samples": [
+    {
+      "ms": 3194.801625,
+      "digest": "cef34498509a755311c162126488c1623e11984e46e86ec0c94e6cf51489cc58"
+    },
+    {
+      "ms": 3357.231959,
+      "digest": "cef34498509a755311c162126488c1623e11984e46e86ec0c94e6cf51489cc58"
+    },
+    {
+      "ms": 3258.7318339999993,
+      "digest": "cef34498509a755311c162126488c1623e11984e46e86ec0c94e6cf51489cc58"
+    }
+  ],
+  "scope": "real repository measurement, not large-assets or arbitrary filesystem qualification"
+}

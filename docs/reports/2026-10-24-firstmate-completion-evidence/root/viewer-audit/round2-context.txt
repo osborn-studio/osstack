@@ -1,0 +1,364 @@
+Adversarial static review round2. Confirm remaining P0/P1 with reachable counterexamples, otherwise state none. No test execution claimed. Prior dispositions: tmux documented new-window multiple argv uses direct execution (man.openbsd.org/tmux.1), actual installed version qualification still pending (not installed). cmux now shell-neutral ASCII words only, rejects unsafe installation paths; repo and authority token never in command; private expiring single-consumer handoff used. Entry-file pin is not transitive whole-install attestation and no such claim will be made. No same-UID/root attacker boundary. bounded streaming hash; exact view ID binding; lazy bin imports; read-only watch uses RPC only no DB migration. Closing unknown viewer now says worker state not verified. Explicit repeat command may create additional observer, never automatically retried. Review actual fixes incl file claim safety and tests.
+
+FILE packages/cli/src/worker-viewer-launch.ts
+import { execFile } from "node:child_process";
+import { createHash, randomUUID } from "node:crypto";
+import { constants } from "node:fs";
+import { lstat, open, realpath, unlink } from "node:fs/promises";
+import { isAbsolute, join } from "node:path";
+import { promisify } from "node:util";
+import { z } from "zod";
+import { WorkerInspectParamsSchema, WorkerInspectResultSchema } from "./worker-view-service.js";
+
+const absolute = z.string().min(1).max(4096).refine(isAbsolute).refine(v => !/[\p{C}]/u.test(v));
+const pin = z.object({ path: absolute, sha256: z.string().regex(/^[a-f0-9]{64}$/) }).strict();
+const backend = z.object({ kind: z.enum(["tmux", "cmux"]), executable: pin, version_output: z.string().min(1).max(256),
+  socket: absolute, target: z.string().regex(/^(?:\$[0-9]+|[a-f0-9-]{36})$/), shell: z.literal("posix") }).strict();
+export const ViewerHostConfigSchema = z.object({ schema_version: z.literal(1), home: absolute, node: pin, cli: pin,
+  backends: z.array(backend).min(1).max(2) }).strict().refine(c => new Set(c.backends.map(b => b.kind)).size === c.backends.length);
+type ViewerHostConfig = z.infer<typeof ViewerHostConfigSchema>;
+type Backend = ViewerHostConfig["backends"][number];
+type Run = (executable: string, args: string[], environment: NodeJS.ProcessEnv) => Promise<string>;
+const hash = (value: Buffer | string) => createHash("sha256").update(value).digest("hex");
+async function boundedRead(path: string, maximum: number, privateFile: boolean) {
+  if (await realpath(path) !== path) throw Error("viewer_path_alias");
+  const file = await open(path, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
+  try {
+    const before = await file.stat();
+    if (!before.isFile() || before.size > maximum || before.uid !== process.getuid?.() && before.uid !== 0 ||
+      (before.mode & (privateFile ? 0o077 : 0o022)) !== 0 || privateFile && before.uid !== process.getuid?.()) throw Error("viewer_file_invalid");
+    const bytes = Buffer.alloc(before.size + 1); let length = 0;
+    while (length < bytes.length) { const read = await file.read(bytes, length, bytes.length - length, null); if (!read.bytesRead) break; length += read.bytesRead; }
+    const after = await file.stat(); const current = await lstat(path);
+    if (length !== before.size || before.size !== after.size || before.mtimeMs !== after.mtimeMs || before.ctimeMs !== after.ctimeMs ||
+      current.isSymbolicLink() || current.ino !== before.ino || current.dev !== before.dev) throw Error("viewer_file_changed");
+    return bytes.subarray(0, length);
+  } finally { await file.close(); }
+}
+async function verifyPin(value: z.infer<typeof pin>) {
+  if (await realpath(value.path) !== value.path) throw Error("viewer_path_alias");
+  const file = await open(value.path, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
+  try {
+    const before = await file.stat();
+    if (!before.isFile() || before.size > 268435456 || (before.uid !== process.getuid?.() && before.uid !== 0) || (before.mode & 0o022)) throw Error("viewer_file_invalid");
+    const digest = createHash("sha256"); const buffer = Buffer.alloc(65536); let length = 0;
+    while (length <= before.size) { const read = await file.read(buffer, 0, buffer.length, null); if (!read.bytesRead) break; length += read.bytesRead; digest.update(buffer.subarray(0, read.bytesRead)); }
+    const after = await file.stat(); const current = await lstat(value.path);
+    if (length !== before.size || after.size !== before.size || before.mtimeMs !== after.mtimeMs || before.ctimeMs !== after.ctimeMs || current.ino !== before.ino || current.dev !== before.dev || current.isSymbolicLink()) throw Error("viewer_file_changed");
+    if (digest.digest("hex") !== value.sha256) throw Error("viewer_pin_mismatch");
+  } finally { await file.close(); }
+}
+const HandoffSchema = z.object({ schema_version: z.literal(1), expires_at_ms: z.number().int(), reference: WorkerInspectParamsSchema,
+  duration_ms: z.number().int().min(1000).max(900000) }).strict();
+/** Single-use, short-lived private handoff: authority never appears in terminal command text. */
+export async function consumeViewerHandoff(home: string, path: string): Promise<string[]> {
+  if (await realpath(home) !== home || !path.startsWith(`${home}/viewer-handoff-`) || !/^viewer-handoff-[a-f0-9-]{36}\.json$/.test(path.slice(home.length + 1))) throw Error("viewer_handoff_invalid");
+  const claim = `${path}.claimed-${randomUUID()}`;
+  // An exclusive hard-link claim is not sufficient: two different claim names race. Rename
+  // atomically removes the original, so exactly one observer can acquire the capability.
+  const { rename } = await import("node:fs/promises"); await rename(path, claim);
+  try {
+    const data = HandoffSchema.parse(JSON.parse((await boundedRead(claim, 16384, true)).toString("utf8")));
+    if (data.expires_at_ms <= Date.now() || data.expires_at_ms > Date.now() + 60000) throw Error("viewer_handoff_expired");
+    return ["watch", data.reference.view_id, "--repo", data.reference.repo_path, "--default-tenant", "--duration-ms", String(data.duration_ms)];
+  } finally { await unlink(claim); }
+}
+const nativeRun: Run = async (executable, args, environment) => {
+  const result = await promisify(execFile)(executable, args, { shell: false, env: environment, timeout: 3000,
+    killSignal: "SIGKILL", maxBuffer: 16384, encoding: "utf8", windowsHide: true });
+  return result.stdout;
+};
+/** tmux's documented multi-argument exec contract; cmux receives only shell-neutral
+ * ASCII words. Repository paths and capability tokens stay in the private handoff. */
+export function viewerLaunchArguments(config: ViewerHostConfig, item: Backend, handoff: string) {
+  const command = ["/usr/bin/env", "-i", "PATH=/usr/bin:/bin", "LANG=C", `OSSTACK_HOME=${config.home}`,
+    config.node.path, config.cli.path, "worker", "watch-handoff", handoff];
+  if (item.kind === "tmux") {
+    if (!/^\$[0-9]+$/.test(item.target)) throw Error("viewer_target_invalid");
+    return ["-N", "-S", item.socket, "new-window", "-d", "-P", "-F", "#{pane_id}", "-t", `${item.target}:`,
+      "-n", "osstack-view", "-c", config.home, ...command];
+  }
+  if (!/^[a-f0-9-]{36}$/.test(item.target) || command.some(word => !/^[a-zA-Z0-9_./=:-]+$/.test(word))) throw Error("viewer_shell_contract_invalid");
+  return ["--socket", item.socket, "--window", item.target, "--json", "new-workspace", "--command", command.join(" ")];
+}
+export async function launchWorkerViewer(options: { home: string; backend: "tmux" | "cmux"; reference: unknown; durationMs?: number;
+  inspect: (reference: z.infer<typeof WorkerInspectParamsSchema>, signal: AbortSignal) => Promise<unknown>; run?: Run }) {
+  const reference = WorkerInspectParamsSchema.parse(options.reference);
+  const durationMs = z.number().int().min(1000).max(900000).parse(options.durationMs ?? 60000);
+  const home = await realpath(options.home); if (home !== options.home) throw Error("viewer_home_alias");
+  const homeStat = await lstat(home);
+  if (!homeStat.isDirectory() || homeStat.uid !== process.getuid?.() || (homeStat.mode & 0o077) !== 0) throw Error("viewer_home_not_private");
+  const path = join(home, "viewer-backends.json"); const bytes = await boundedRead(path, 32768, true);
+  const config = ViewerHostConfigSchema.parse(JSON.parse(bytes.toString("utf8")));
+  if (config.home !== home || await realpath(reference.repo_path) !== reference.repo_path) throw Error("viewer_scope_mismatch");
+  const item = config.backends.find(row => row.kind === options.backend); if (!item) throw Error("viewer_backend_not_registered");
+  if (item.kind === "cmux" && process.platform !== "darwin") throw Error("viewer_platform_unsupported");
+  const checkSocket = async () => { const socket = await lstat(item.socket);
+    if (!socket.isSocket() || socket.uid !== process.getuid?.() || (socket.mode & 0o077) !== 0 || await realpath(item.socket) !== item.socket) throw Error("viewer_socket_invalid");
+    return `${socket.dev}:${socket.ino}`; };
+  const socketIdentity = await checkSocket();
+  for (const value of [item.executable, config.node, config.cli]) await verifyPin(value);
+  const run = options.run ?? nativeRun; const env = { PATH: "/usr/bin:/bin", LANG: "C", LC_ALL: "C" };
+  const version = await run(item.executable.path, [item.kind === "tmux" ? "-V" : "--version"], env);
+  if (version.trim() !== item.version_output) throw Error("viewer_version_mismatch");
+  const controller = new AbortController(); const timer = setTimeout(() => controller.abort(), 1000);
+  try {
+    const observed = WorkerInspectResultSchema.parse(await Promise.race([options.inspect(reference, controller.signal),
+      new Promise<never>((_, reject) => controller.signal.addEventListener("abort", () => reject(Error("viewer_inspect_timeout")), { once: true }))]));
+    if (observed.scope.repo_path !== reference.repo_path || observed.scope.tenant !== "default" || observed.view.view_id !== reference.view_id) throw Error("viewer_scope_mismatch");
+  } finally { clearTimeout(timer); controller.abort(); }
+  if (hash(await boundedRead(path, 32768, true)) !== hash(bytes) || await checkSocket() !== socketIdentity) throw Error("viewer_configuration_changed");
+  for (const value of [item.executable, config.node, config.cli]) await verifyPin(value);
+  if (await checkSocket() !== socketIdentity) throw Error("viewer_configuration_changed");
+  const handoff = join(home, `viewer-handoff-${randomUUID()}.json`);
+  const args = viewerLaunchArguments(config, item, handoff);
+  const handle = await open(handoff, "wx", 0o600);
+  try { await handle.writeFile(JSON.stringify({ schema_version: 1, expires_at_ms: Date.now() + 60000, reference, duration_ms: durationMs })); await handle.sync(); }
+  finally { await handle.close(); }
+  // Unknown launch retains the expiring handoff because a delayed child may still consume it.
+
+  try {
+    const output = await run(item.executable.path, args, env);
+    if (item.kind === "tmux" && !/^%[0-9]+\s*$/.test(output)) throw Error("invalid_launch_receipt");
+    if (item.kind === "cmux") {
+      const response: unknown = JSON.parse(output);
+      if (!response || typeof response !== "object" || Array.isArray(response) || "ok" in response && response.ok === false) throw Error("invalid_launch_receipt");
+      const payload = "result" in response ? response.result : response;
+      if (!payload || typeof payload !== "object" || !("workspace_id" in payload) || typeof payload.workspace_id !== "string" ||
+        !/^[a-f0-9-]{36}$/i.test(payload.workspace_id)) throw Error("invalid_launch_receipt");
+    }
+    return { state: "launch_requested" as const, backend: item.kind, response_sha256: hash(output), worker_controls: "unsupported", auto_retry: false,
+      qualification: "backend_runtime_pending", duration_ms: durationMs };
+  } catch { return { state: "launch_unknown" as const, backend: item.kind, worker_controls: "unsupported", auto_retry: false, qualification: "backend_runtime_pending" }; }
+}
+
+export async function handleWorkerViewerLaunchCommand(args: string[], deps: { home: string;
+  inspect: Parameters<typeof launchWorkerViewer>[0]["inspect"]; out?: (text: string) => void; run?: Run }): Promise<number> {
+  const out = deps.out ?? console.log;
+  if (args.length === 1 && ["help", "--help"].includes(args[0]!)) {
+    out("worker open VIEW_ID --backend tmux|cmux --repo ABSOLUTE_PATH --default-tenant [--duration-ms 1000..900000]\nUses fixed private viewer-backends.json; opens a read-only observer. Never focuses, reuses, closes or controls workers."); return 0;
+  }
+  try {
+    if (args[0] !== "open" || args.length > 10 || !args[1] || args[1].startsWith("--")) throw Error("invalid_request");
+    const flags = new Map<string, string | true>();
+    for (let i = 2; i < args.length; i++) {
+      const key = args[i]!;
+      if (!["--backend", "--repo", "--default-tenant", "--duration-ms"].includes(key) || flags.has(key)) throw Error("invalid_request");
+      if (key === "--default-tenant") { flags.set(key, true); continue; }
+      const value = args[++i]; if (!value || value.startsWith("--")) throw Error("invalid_request"); flags.set(key, value);
+    }
+    const duration = flags.get("--duration-ms");
+    if (duration !== undefined && (typeof duration !== "string" || !/^[1-9][0-9]*$/.test(duration))) throw Error("invalid_request");
+    const result = await launchWorkerViewer({ home: deps.home, backend: z.enum(["tmux", "cmux"]).parse(flags.get("--backend")),
+      reference: { view_id: args[1], repo_path: flags.get("--repo"), default_tenant: flags.get("--default-tenant") },
+      ...(duration === undefined ? {} : { durationMs: Number(duration) }), inspect: deps.inspect, ...(deps.run ? { run: deps.run } : {}) });
+    out(JSON.stringify(result)); return result.state === "launch_requested" ? 0 : 2;
+  } catch {
+    out(JSON.stringify({ state: "rejected", reason: "viewer_configuration_or_request_invalid", worker_controls: "unsupported", auto_retry: false })); return 1;
+  }
+}
+
+FILE packages/cli/src/worker-viewer-launch.test.ts
+import { createHash } from "node:crypto";
+import { chmod, mkdir, readFile, readdir, realpath, rm, writeFile } from "node:fs/promises";
+import { createServer } from "node:net";
+import { join } from "node:path";
+import { afterEach, describe, expect, it } from "vitest";
+import { createScratchDir } from "@osstack/core";
+import { consumeViewerHandoff, launchWorkerViewer, viewerLaunchArguments, ViewerHostConfigSchema } from "./worker-viewer-launch.js";
+const cleanup: (() => Promise<void>)[] = []; afterEach(async () => { for (const run of cleanup.splice(0).reverse()) await run(); });
+const sha = (text: string) => createHash("sha256").update(text).digest("hex");
+async function fixture(kind: "tmux" | "cmux" = "tmux") {
+  const root = await realpath(await createScratchDir("tests", "viewer-launch")); cleanup.push(() => rm(root, { recursive: true, force: true }));
+  const home = join(root, "home"); await mkdir(home, { mode: 0o700 });
+  const program = join(root, "program"); await writeFile(program, "pinned", { mode: 0o700 });
+  // Short socket spelling is canonical on macOS (/private/tmp), under managed scratch.
+  const socket = join(root, "v.sock"); const server = createServer();
+  await new Promise<void>((resolve, reject) => { server.once("error", reject); server.listen(socket, resolve); });
+  cleanup.push(() => new Promise<void>(resolve => server.close(() => resolve()))); await chmod(socket, 0o600);
+  const config = ViewerHostConfigSchema.parse({ schema_version: 1, home, node: { path: program, sha256: sha("pinned") }, cli: { path: program, sha256: sha("pinned") },
+    backends: [{ kind, executable: { path: program, sha256: sha("pinned") }, version_output: "pinned-version", socket,
+      target: kind === "tmux" ? "$7" : "11111111-1111-1111-1111-111111111111", shell: "posix" }] });
+  const configPath = join(home, "viewer-backends.json"); await writeFile(configPath, JSON.stringify(config), { mode: 0o600 });
+  const reference = { repo_path: root, default_tenant: true as const, view_id: "opaque_token" };
+  const response = { schema_version: 1, mode: "readonly_state_view", scope: { repo_path: root, tenant: "default", scope_id: "a".repeat(64) }, sampled_at_ms: 1,
+    coverage: { graph: "unsupported_authenticated_registration_required", unbound_runs: "excluded_not_bound", repository_binding: "canonical_stored_paths_only", content: "structured_metadata_only", counting: "source_views_not_unique_workers" },
+    view: { view_id: reference.view_id, source_kind: "run", state: "running", revision: 1, latest_turn: null, last_updated_at_ms: 1, freshness: "recent", process_liveness: "unknown", wait_reason: "none", uncertain_delivery_recorded: false, controls: "unsupported" } };
+  return { root, home, program, config, configPath, reference, response };
+}
+describe("host pinned viewer launch", () => {
+  it("launches only a new detached read-only tmux viewer via argv", async () => {
+    const f = await fixture(); const calls: string[][] = [];
+    const result = await launchWorkerViewer({ home: f.home, backend: "tmux", reference: f.reference, inspect: async () => f.response,
+      run: async (_exe, args, env) => { expect(env).not.toHaveProperty("NODE_OPTIONS"); calls.push(args); return calls.length === 1 ? "pinned-version\n" : "%17\n"; } });
+    expect(result.state).toBe("launch_requested"); expect(calls[1]).toContain("-N"); expect(calls[1]).toContain("new-window");
+    expect(calls[1]).toContain("-d"); expect(calls[1]).toContain("watch-handoff"); expect(calls.flat()).not.toContain("send-keys");
+    expect(calls.flat()).not.toContain("kill-pane"); expect(calls.flat()).not.toContain("select-pane");
+  });
+  it("does not launch after registry revocation during inspection", async () => {
+    const f = await fixture(); let calls = 0;
+    await expect(launchWorkerViewer({ home: f.home, backend: "tmux", reference: f.reference,
+      inspect: async () => { await writeFile(f.configPath, "{}"); return f.response; }, run: async () => { calls++; return "pinned-version"; } })).rejects.toThrow("viewer_configuration_changed");
+    expect(calls).toBe(1);
+  });
+  it("never retries an ambiguous launcher failure", async () => {
+    const f = await fixture(); let calls = 0;
+    const result = await launchWorkerViewer({ home: f.home, backend: "tmux", reference: f.reference, inspect: async () => f.response,
+      run: async () => { if (++calls === 1) return "pinned-version"; throw Error("response lost"); } });
+    expect(result.state).toBe("launch_unknown"); expect(result.auto_retry).toBe(false); expect(calls).toBe(2);
+  });
+  it("rejects a changed executable before invoking anything", async () => {
+    const f = await fixture(); await writeFile(f.program, "replaced");
+    await expect(launchWorkerViewer({ home: f.home, backend: "tmux", reference: f.reference, inspect: async () => f.response,
+      run: async () => { throw Error("must not invoke"); } })).rejects.toThrow("viewer_pin_mismatch");
+  });
+  it("keeps capability and repository text out of cmux shell commands", async () => {
+    const f = await fixture("cmux"); const handoff = join(f.home, "viewer-handoff-11111111-1111-1111-1111-111111111111.json");
+    const args = viewerLaunchArguments(f.config, f.config.backends[0]!, handoff);
+    expect(args.slice(0, 5)).toEqual(["--socket", f.config.backends[0]!.socket, "--window", f.config.backends[0]!.target, "--json"]);
+    expect(args.at(-1)).not.toContain(f.reference.view_id); expect(args.at(-1)).toContain("watch-handoff");
+    expect(() => viewerLaunchArguments({...f.config, home:"/tmp/a'$(touch NO)"}, f.config.backends[0]!, handoff)).toThrow("viewer_shell_contract_invalid");
+  });
+  it("consumes a private handoff exactly once without exposing authority in argv", async () => {
+    const f = await fixture(); let captured: string[] = [];
+    await launchWorkerViewer({home:f.home,backend:"tmux",reference:f.reference,inspect:async()=>f.response,
+      run:async(_exe,args)=>{captured=args;return args[0]==="-V"?"pinned-version":"%1";}});
+    expect(captured).not.toContain(f.reference.view_id);
+    const path = join(f.home,(await readdir(f.home)).find(n=>n.startsWith("viewer-handoff-"))!);
+    const results = await Promise.allSettled([consumeViewerHandoff(f.home,path),consumeViewerHandoff(f.home,path)]);
+    expect(results.filter(r=>r.status==="fulfilled")).toHaveLength(1);
+    expect(results.find(r=>r.status==="fulfilled")).toMatchObject({value:["watch",f.reference.view_id,"--repo",f.root,"--default-tenant","--duration-ms","60000"]});
+  });
+  it("rejects a response for another view before launch", async()=>{
+    const f=await fixture();let calls=0;
+    await expect(launchWorkerViewer({home:f.home,backend:"tmux",reference:f.reference,
+      inspect:async()=>({...f.response,view:{...f.response.view,view_id:"different"}}),run:async()=>{calls++;return "pinned-version";}})).rejects.toThrow("viewer_scope_mismatch");
+    expect(calls).toBe(1);
+  });
+  it("executes the pinned launcher as a real child with bounded argv, without a shell", async () => {
+    const f = await fixture(); const log = join(f.root, "argv.json");
+    const source = `#!${process.execPath}\nconst fs=require('fs');if(process.argv[2]==='-V'){console.log('pinned-version')}else{fs.writeFileSync(${JSON.stringify(log)},JSON.stringify({args:process.argv.slice(2),env:process.env}));console.log('%3')}\n`;
+    await writeFile(f.program, source); f.config.backends[0]!.executable.sha256 = sha(source); f.config.node.sha256 = sha(source); f.config.cli.sha256 = sha(source);
+    await writeFile(f.configPath, JSON.stringify(f.config));
+    const result = await launchWorkerViewer({ home: f.home, backend: "tmux", reference: f.reference, inspect: async () => f.response });
+    expect(result.state).toBe("launch_requested");
+    const actual = JSON.parse(await readFile(log, "utf8")); expect(actual.args).toContain("watch-handoff");
+    expect(actual.args).toContain(`OSSTACK_HOME=${f.home}`); expect(actual.env).not.toHaveProperty("NODE_OPTIONS");
+    expect(actual.args).not.toContain("send-keys");
+  });
+});
+
+FILE packages/cli/src/worker-viewer-command.ts
+import type { Writable } from "node:stream";
+import { createTerminalPresentationBackend, writePresentationText, type PresentationHandle, type WorkerPresentationReference } from "./worker-presentation.js";
+export const WORKER_VIEWER_HELP = "worker watch VIEW_ID --repo ABSOLUTE_PATH --default-tenant [--interval-ms 1000..10000] [--duration-ms 1000..900000]\nRead-only structured snapshots; no log tail or execution controls. Default duration: 60000ms. Ctrl-C closes only this viewer.\n";
+export interface WorkerViewerCommandDependencies {
+  rpc: (method: "worker.inspect", params: WorkerPresentationReference, timeoutMs: number, signal: AbortSignal) => Promise<unknown>;
+  output?: Writable; stderr?: (text: string) => void;
+  onInterrupt?: (listener: () => void) => () => void;
+}
+export async function handleWorkerViewerCommand(args: string[], deps: WorkerViewerCommandDependencies): Promise<number> {
+  const output=deps.output??process.stdout;const err=deps.stderr??(text=>{process.stderr.write(text);});
+  if(args.length===0||(args.length===1&&["--help","help"].includes(args[0]!))){
+    const abort=new AbortController();const timeout=setTimeout(()=>abort.abort(),1000);
+    try{await writePresentationText(output,WORKER_VIEWER_HELP,abort.signal);return 0;}catch{return 1;}finally{clearTimeout(timeout);}
+  }
+  let handle: PresentationHandle;const controller=new AbortController();let removeInterrupt: (()=>void)|undefined;
+  try {
+    if(args[0]!=="watch"||args.length>11||args.some(arg=>arg.length>4096))throw Error("invalid_request");
+    const viewId=args[1];const flags=new Map<string,string|true>();
+    const known=new Set(["--repo","--default-tenant","--interval-ms","--duration-ms"]);
+    if(!viewId||known.has(viewId))throw Error("invalid_request");
+    for(let index=2;index<args.length;index++){
+      const flag=args[index]!;if(!known.has(flag)||flags.has(flag))throw Error("invalid_request");
+      if(flag==="--default-tenant"){flags.set(flag,true);continue;}
+      const value=args[++index];if(!value||known.has(value))throw Error("invalid_request");flags.set(flag,value);
+    }
+    const numeric=(name:string,fallback:number)=>{const raw=flags.get(name);if(raw===undefined)return fallback;if(typeof raw!=="string"||!/^[1-9][0-9]*$/.test(raw))throw Error("invalid_request");return Number(raw);};
+    const backend=createTerminalPresentationBackend({inspect:(reference,signal)=>deps.rpc("worker.inspect",reference,1000,signal),output});
+    const subscribe=deps.onInterrupt??(listener=>{process.once("SIGINT",listener);return ()=>{process.removeListener("SIGINT",listener);};});
+    removeInterrupt=subscribe(()=>controller.abort());
+    handle=backend.open({repo_path:flags.get("--repo") as string,default_tenant:flags.get("--default-tenant") as true,view_id:viewId},
+      {interval_ms:numeric("--interval-ms",2000),duration_ms:numeric("--duration-ms",60000),signal:controller.signal});
+  }catch{removeInterrupt?.();err("invalid_request\n");return 1;}
+  try{const result=await handle.done;return result.reason==="interrupted"?130:["unknown","output_closed"].includes(result.reason)?1:0;}
+  finally{removeInterrupt?.();}
+}
+
+FILE packages/cli/src/worker-viewer-rpc.ts
+import { connect } from "node:net";
+import { FrameDecoder, encodeFrame } from "@osstack/hermes-adapter";
+import {
+  WORKER_VIEW_ERROR_CODES,
+  WORKER_VIEW_MAX_BYTES,
+  WorkerInspectParamsSchema,
+} from "./worker-view-service.js";
+/** One bounded read over an existing socket; never starts a daemon or changes worker state. */
+export function inspectWorkerForViewer(
+  socketPath: string,
+  params: unknown,
+  signal: AbortSignal,
+): Promise<unknown> {
+  if (signal.aborted) return Promise.reject(Error("viewer_closed"));
+  const request = WorkerInspectParamsSchema.parse(params);
+  return new Promise((resolve, reject) => {
+    const socket = connect(socketPath);
+    const decoder = new FrameDecoder();
+    let settled = false;
+    let bytes = 0;
+    const finish = (error?: Error, result?: unknown) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      signal.removeEventListener("abort", abort);
+      socket.destroy();
+      if (error) reject(error);
+      else resolve(result);
+    };
+    const abort = () => finish(Error("viewer_closed"));
+    const timer = setTimeout(() => finish(Error("worker_read_timeout")), 1000);
+    signal.addEventListener("abort", abort, { once: true });
+    if (signal.aborted) abort();
+    socket.on("connect", () => {
+      if (!settled)
+        socket.write(
+          encodeFrame({ id: 1, method: "worker.inspect", params: request }),
+        );
+    });
+    socket.on("error", () => finish(Error("worker_request_failed")));
+    socket.on("close", () => finish(Error("worker_request_failed")));
+    socket.on("data", (chunk) => {
+      if (settled) return;
+      try {
+        bytes += chunk.length;
+        if (bytes > WORKER_VIEW_MAX_BYTES + 1024)
+          throw Error("invalid_worker_response");
+        const frames = decoder.push(chunk);
+        if (!frames.length) return;
+        if (frames.length !== 1) throw Error("invalid_worker_response");
+        const response = frames[0] as {
+          id?: unknown;
+          ok?: unknown;
+          result?: unknown;
+          error?: { code?: unknown };
+        };
+        if (!response || response.id !== 1 || typeof response.ok !== "boolean")
+          throw Error("invalid_worker_response");
+        if (!response.ok) {
+          const code = response.error?.code;
+          throw Error(
+            typeof code === "string" &&
+              (WORKER_VIEW_ERROR_CODES as readonly string[]).includes(code)
+              ? code
+              : "worker_request_failed",
+          );
+        }
+        finish(undefined, response.result);
+      } catch (error) {
+        finish(
+          error instanceof Error ? error : Error("invalid_worker_response"),
+        );
+      }
+    });
+  });
+}

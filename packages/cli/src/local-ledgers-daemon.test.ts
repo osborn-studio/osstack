@@ -1,5 +1,7 @@
-import { realpathSync } from "node:fs";
+import { existsSync, realpathSync } from "node:fs";
 import { mkdir, rm } from "node:fs/promises";
+import * as sourceFs from "node:fs/promises";
+vi.mock("node:fs/promises",async importOriginal=>{const actual=await importOriginal<typeof import("node:fs/promises")>();return {...actual,open:vi.fn(actual.open)};});
 import { connect } from "node:net";
 import { join } from "node:path";
 import { createScratchDir, openDb, insertRun, insertTask } from "@osstack/core";
@@ -317,6 +319,9 @@ it("exercises the default exported provider without credentials and fails as not
   vi.stubEnv("ANTHROPIC_API_KEY", "");
   vi.stubEnv("ANTHROPIC_BASE_URL", "");
   const f = await fixture(true, true);
+  // Native pinned-binary preparation is real disk I/O; this test targets missing
+  // credentials, while separate tests cover the short preflight deadline.
+  vi.stubEnv("OSSTACK_ATTENTION_TRIAGE_TIMEOUT_MS", "5000");
   const request = await watched(f.repo);
   expect(await rpc("attention.triage", request)).toMatchObject({
     ok: true,
@@ -589,6 +594,28 @@ it("inspects a pinned snapshot through the real daemon and main CLI and honors l
     state: "ready",
     scope: { repo_path: repo, tenant: "default" },
   });
+  output.length = 0;
+  expect(await main(["sources", "observe", "notes", "--repo", repo, "--default-tenant", "--json"])).toBe(0);
+  expect(JSON.parse(output.join(""))).toMatchObject({observation:{state:"ready",record_revision:1}});
+  output.length = 0;
+  expect(await main(["sources", "events", "notes", "--repo", repo, "--default-tenant", "--json"])).toBe(0);
+  expect(JSON.parse(output.join(""))).toMatchObject({history_gap:false,events:[{transition:"snapshot_baseline"}]});
+  const gapContent = JSON.stringify({...JSON.parse(content), revision:4});
+  const gapManifest = {...manifest};
+  await writeFile(join(data,"notes.json"),gapContent);
+  await writeFile(config,JSON.stringify({schema_version:1,registrations:[{source_root:data,manifest:gapManifest,
+    manifest_digest:localSourceManifestDigest(gapManifest),content_digest:createHash("sha256").update(gapContent).digest("hex")}]}));
+  const observedGap = await rpc("source.observe",{...scope,source_id:"notes"});
+  expect(observedGap).toMatchObject({ok:true,result:{observation:{state:"gap"}}});
+  expect(await rpc("source.acknowledge",{...scope,source_id:"notes",grant_id:"repair"})).toMatchObject({ok:false});
+  const record = (observedGap.result!.observation as {record_revision:number}).record_revision;
+  await writeFile(join(root!,"source-acknowledgements.json"),JSON.stringify({schema_version:1,grants:[{id:"repair",
+    scope:{repo_path:repo,source_id:"notes",default_tenant:true},generation:"1",revision:4,
+    manifest_digest:localSourceManifestDigest(gapManifest),content_digest:createHash("sha256").update(gapContent).digest("hex"),
+    expected_record_revision:record,expires_at_ms:Date.now()+30000}]}),{mode:0o600});
+  output.length = 0;
+  expect(await main(["sources","acknowledge","notes","--repo",repo,"--default-tenant","--grant","repair","--json"])).toBe(0);
+  expect(JSON.parse(output.join(""))).toMatchObject({observation:{state:"ready"}});
   await writeFile(
     config,
     JSON.stringify({ schema_version: 1, registrations: [] }),
@@ -842,4 +869,194 @@ it("waits for bounded delivery finalization before closing the DB and never acce
   } finally {
     db.close();
   }
+});
+
+it("reads separately authorized output through the real CLI/socket and rejects live revocation", async()=>{
+  const f=await fixture(false,false); const {writeFile,chmod}=await import("node:fs/promises");
+  const {createHash}=await import("node:crypto"); const home=realpathSync(root!); await chmod(home,0o700);
+  const token="x".repeat(43);const now=Date.now(); const file=join(home,"worker-log-grants.json");
+  await writeFile(file,JSON.stringify({schema_version:1,grants:[{repo_path:f.repo,session_id:"session",capability_sha256:createHash("sha256").update(token).digest("hex"),issued_at_ms:now,expires_at_ms:now+60000,content:"persisted_assistant_text"}]}),{mode:0o600});
+  const grant=join(home,"log-reader.json");await writeFile(grant,JSON.stringify({...f.scope,capability:token}),{mode:0o600});
+  const db=openDb({path:daemon!.dbPath});db.prepare("UPDATE session_turns SET assistant_text='visible authorized transcript'").run();db.close();
+  const out=vi.spyOn(console,"log").mockImplementation(()=>{});
+  expect(await main(["worker","logs","--grant-file",grant])).toBe(0);
+  expect(JSON.parse(String(out.mock.calls.at(-1)?.[0]))).toMatchObject({content:"persisted_assistant_text",entries:[{text:"visible authorized transcript"}]});
+  await writeFile(file,JSON.stringify({schema_version:1,grants:[]}));
+  expect(await main(["worker","logs","--grant-file",grant])).toBe(1);
+  expect(String(out.mock.calls.at(-1)?.[0])).not.toContain("visible authorized transcript");
+});
+
+it("routes pinned viewer launch to the real inspection service and consumes its handoff once",async()=>{
+  const f=await fixture(false,false);const {writeFile,readFile,readdir,chmod}=await import("node:fs/promises");const {createHash}=await import("node:crypto");
+  const home=realpathSync(root!);await chmod(home,0o700);const backend=join(home,"backend.cjs");
+  const source=`#!${process.execPath}\nif(process.argv[2]==='-V')console.log('fixture-backend');else console.log('%3');\n`;
+  await writeFile(backend,source,{mode:0o700});const pin={path:backend,sha256:createHash("sha256").update(source).digest("hex")};
+  await writeFile(join(home,"viewer-backends.json"),JSON.stringify({schema_version:1,home,node:pin,cli:pin,backends:[{kind:"tmux",executable:pin,version_output:"fixture-backend",socket:realpathSync(socket),target:"$1",shell:"posix"}]}),{mode:0o600});
+  const page=await rpc("worker.list",f.scope);const view=(page.result!["views"] as {view_id:string}[])[0]!.view_id;
+  const out=vi.spyOn(console,"log").mockImplementation(()=>{});
+  expect(await main(["worker","open",view,"--backend","tmux","--repo",f.repo,"--default-tenant","--duration-ms","1000"])).toBe(0);
+  expect(JSON.parse(String(out.mock.calls.at(-1)?.[0]))).toMatchObject({state:"launch_requested",qualification:"backend_runtime_pending"});
+  const handoff=join(home,(await readdir(home)).find(n=>n.startsWith("viewer-handoff-"))!);
+  expect(JSON.parse(await readFile(handoff,"utf8")).reference.view_id).toBe(view);
+  vi.spyOn(process.stdout,"write").mockImplementation(((...args:unknown[])=>{const callback=args.find(a=>typeof a==="function") as (()=>void)|undefined;queueMicrotask(()=>callback?.());return true;}) as typeof process.stdout.write);
+  expect(await main(["worker","watch-handoff",handoff])).toBe(0);
+  vi.spyOn(console,"error").mockImplementation(()=>{});
+  expect(await main(["worker","watch-handoff",handoff])).toBe(1);
+});
+
+
+it("bounds source responses while retaining hung operation slots until settlement", async () => {
+  const f = await fixture(false, false);
+  const commands = await import("./source-observation-command.js");
+  let release!: () => void;
+  const held = new Promise<void>(resolve => { release = resolve; });
+  const handler = vi.spyOn(commands, "handleSourceObservationRpc").mockImplementation(async () => {
+    await held;
+    throw Error("source_cancelled");
+  });
+  try {
+    const requests = Array.from({length:4}, () => rpc("source.observe", {...f.scope, source_id:"source"}));
+    await vi.waitFor(() => expect(handler).toHaveBeenCalledTimes(4));
+    const results = await Promise.all(requests);
+    for (const result of results) expect(result).toMatchObject({ok:false,error:{code:"source_unavailable"}});
+    expect(await rpc("source.observe", {...f.scope, source_id:"source"})).toMatchObject({ok:false,error:{code:"source_busy"}});
+    expect(await rpc("source.inspect", {...f.scope, source_id:"source"})).toMatchObject({ok:false,error:{code:"source_busy"}});
+    release();
+    await vi.waitFor(async () => expect(await rpc("source.events", {...f.scope, source_id:"source"})).toMatchObject({ok:false,error:{code:"source_unavailable"}}));
+  } finally { release(); }
+});
+
+it("drains pending worker log reads before closing their database", async () => {
+  const f = await fixture(false, false);
+  const logs = await import("./worker-log-view.js");
+  let release!: () => void;
+  const held = new Promise<void>(resolve => { release = resolve; });
+  const reader = vi.spyOn(logs, "inspectWorkerLogs").mockImplementation(async db => {
+    await held;
+    db.prepare("SELECT 1").get();
+    throw Error("fixture_finished");
+  });
+  const response = rpc("worker.logs", f.scope);
+  await vi.waitFor(() => expect(reader).toHaveBeenCalledTimes(1));
+  let closed = false;
+  const closing = daemon!.close().then(() => { closed = true; });
+  try {
+    await new Promise(resolve => setTimeout(resolve, 20));
+    expect(closed).toBe(false);
+  } finally { release(); }
+  await closing;
+  daemon = undefined;
+  expect(await response).toMatchObject({ok:false,error:{code:"worker_log_unavailable"}});
+});
+
+
+it("rejects a managed artifact code mismatch before creating or migrating the database", async () => {
+  root = await createScratchDir("tests", "managed-code-fence");
+  socket = join(root,"d.sock");
+  vi.stubEnv("OSSTACK_HOME",root);vi.stubEnv("OSSTACK_SOCKET",socket);vi.stubEnv("OSSTACK_UPDATE_CHECK","0");
+  const backend = await import("./upgrade-native-backend.js");
+  vi.spyOn(backend,"managedStartupIdentity").mockReturnValue({deployment_kind:"npm",build_digest:"a".repeat(64),build_evidence:"host_manifest",version:"999.0.0",protocol_version:1,database_schema:46});
+  await expect(start()).rejects.toThrow("upgrade_running_build_mismatch");
+  expect(existsSync(join(root,"state.db"))).toBe(false);
+});
+
+it("bounds shutdown of aborted source reads even if their I/O never settles", async () => {
+  const f = await fixture(false,false);
+  const commands = await import("./source-observation-command.js");
+  const handler = vi.spyOn(commands,"handleSourceObservationRpc").mockImplementation(() => new Promise<never>(() => {}));
+  const response = rpc("source.observe", {...f.scope,source_id:"source"});
+  await vi.waitFor(() => expect(handler).toHaveBeenCalledTimes(1));
+  await daemon!.close();daemon=undefined;
+  expect(await response).toMatchObject({ok:false,error:{code:"source_unavailable"}});
+});
+
+
+it("returns EX_CONFIG for managed serve guard failures without opening the DB", async () => {
+  root=await createScratchDir("tests","managed-serve-refusal");
+  vi.stubEnv("OSSTACK_HOME",root);
+  const backend=await import("./upgrade-native-backend.js");
+  vi.spyOn(backend,"managedStartupIdentity").mockImplementation(() => {throw Error("upgrade_start_blocked");});
+  const errors=vi.spyOn(console,"error").mockImplementation(()=>{});
+  expect(await main(["serve"])).toBe(78);
+  expect(errors).toHaveBeenCalledWith(expect.stringContaining("upgrade_start_blocked"));
+  expect(existsSync(join(root,"state.db"))).toBe(false);
+});
+
+it("refuses managed direct-DB code mismatch before opening state", async () => {
+  root=await createScratchDir("tests","managed-direct-refusal");vi.stubEnv("OSSTACK_HOME",root);
+  const backend=await import("./upgrade-native-backend.js");
+  vi.spyOn(backend,"managedStartupIdentity").mockReturnValue({deployment_kind:"npm",build_digest:"a".repeat(64),build_evidence:"host_manifest",version:"999.0.0",protocol_version:1,database_schema:46});
+  await expect(main(["stack","list"])).rejects.toThrow("upgrade_running_build_mismatch");
+  expect(existsSync(join(root,"state.db"))).toBe(false);
+});
+
+it("formats a direct-DB managed refusal at the actual entrypoint without a stack trace", async () => {
+  root=await createScratchDir("tests","managed-entry-refusal");
+  const {writeFile}=await import("node:fs/promises");
+  await writeFile(join(root,"managed-consumer.json"),JSON.stringify({schema_version:1,root,home_id:"home_"+"a".repeat(32)}),{mode:0o600});
+  const {spawnSync}=await import("node:child_process");
+  const result=spawnSync(process.execPath,[new URL("../dist/bin.js",import.meta.url).pathname,"stack","list"],{
+    env:{...process.env,OSSTACK_HOME:root,OSSTACK_UPDATE_CHECK:"0"},encoding:"utf8",timeout:10000});
+  expect(result.status).toBe(1);
+  expect(result.stderr).toContain("osstack: upgrade_unmanaged_entry");
+  expect(result.stderr).not.toContain("    at ");
+  expect(existsSync(join(root,"state.db"))).toBe(false);
+});
+
+it("bounds worker log responses and retains occupied slots until file reads settle", async () => {
+  const f=await fixture(false,false);const logs=await import("./worker-log-view.js");
+  let release!:()=>void;const held=new Promise<void>(resolve=>{release=resolve;});
+  const reader=vi.spyOn(logs,"inspectWorkerLogs").mockImplementation(async()=>{await held;throw Error("cancelled");});
+  try {
+    const requests=Array.from({length:4},()=>rpc("worker.logs",f.scope));
+    await vi.waitFor(()=>expect(reader).toHaveBeenCalledTimes(4));
+    for(const response of await Promise.all(requests))expect(response).toMatchObject({ok:false,error:{code:"worker_log_unavailable"}});
+    expect(await rpc("worker.logs",f.scope)).toMatchObject({ok:false,error:{code:"worker_log_busy"}});
+  }finally{release();}
+});
+
+it("keeps the real source ledger unchanged when concurrent RPC observation is refused as busy", async()=>{
+ const {repo,scope}=await fixture(false,false);const {writeFile}=await import('node:fs/promises');const {createHash}=await import('node:crypto');const {localSourceManifestDigest}=await import('./local-data-source-registry.js');
+ const data=join(realpathSync(root!),'source-busy');await mkdir(data);const sourcePath=join(data,'snapshot.json');const raw=JSON.stringify({schema_version:1,source_id:'notes',version:'1',revision:1,entries:[{id:'one',text:'local'}]});await writeFile(sourcePath,raw);
+ const now=Date.now();const manifest={schema_version:1 as const,id:'notes',version:'1',protocol:'local_json_snapshot_v1' as const,repo_path:repo,default_tenant:true as const,capabilities:['snapshot.read'] as ['snapshot.read'],file:'snapshot.json',max_bytes:65536,max_items:20,read_timeout_ms:1000,verified_at_ms:now,expires_at_ms:now+60000,fresh_for_ms:60000};
+ await writeFile(join(root!,'source-registry.json'),JSON.stringify({schema_version:1,registrations:[{source_root:data,manifest,manifest_digest:localSourceManifestDigest(manifest),content_digest:createHash('sha256').update(raw).digest('hex')}]}),{mode:0o600});
+ const params={...scope,source_id:'notes'};expect(await rpc('source.observe',params)).toMatchObject({ok:true});const before=await rpc('source.events',params);
+ const actual=(await vi.importActual<typeof import('node:fs/promises')>('node:fs/promises')).open;let blocked=0;let release!:()=>void;const held=new Promise<void>(resolve=>release=resolve);
+ vi.mocked(sourceFs.open).mockImplementation(async(path,flags,mode)=>{const handle=await actual(path,flags,mode);if(path===sourcePath){blocked++;await held;}return handle;});
+ const first=rpc('source.observe',params),second=rpc('source.observe',params);
+ try{await vi.waitFor(()=>expect(blocked).toBe(2));expect(await rpc('source.observe',params)).toMatchObject({ok:false,error:{code:'source_busy'}});
+  const during=await rpc('source.events',params);expect(during.result?.observation).toEqual(before.result?.observation);expect(during.result?.events).toEqual(before.result?.events);
+ }finally{vi.mocked(sourceFs.open).mockImplementation(actual);release();await Promise.allSettled([first,second]);}
+ const after=await rpc('source.events',params);expect(after.result?.observation).toEqual(before.result?.observation);expect(after.result?.events).toEqual(before.result?.events);
+});
+it('tracks source.inspect for cancellation and bounded shutdown',async()=>{
+ const f=await fixture(false,false);const sources=await import('./local-data-source-registry.js');let signal:AbortSignal|undefined;
+ const inspect=vi.fn((_input:unknown,incoming?:AbortSignal)=>{signal=incoming;return new Promise<never>(()=>{});});
+ vi.spyOn(sources,'createHostLocalDataSourceService').mockReturnValue({inspect});const response=rpc('source.inspect',{...f.scope,source_id:'notes'});
+ await vi.waitFor(()=>expect(inspect).toHaveBeenCalledTimes(1));await daemon!.close();daemon=undefined;expect(signal?.aborted).toBe(true);expect(await response).toMatchObject({ok:false,error:{code:'source_unavailable'}});
+});
+it.each(['source.inspect','source.observe','source.events','source.acknowledge'])('maps invalid %s input to invalid_request',async method=>{
+ await fixture(false,false);expect(await rpc(method,{})).toMatchObject({ok:false,error:{code:'invalid_request'}});
+});
+
+it.each(['source.inspect','source.observe'])('rejects noncanonical repo identity for %s',async method=>{
+ const f=await fixture(false,false);expect(await rpc(method,{...f.scope,source_id:'notes',repo_path:f.repo+'/'})).toMatchObject({ok:false,error:{code:'invalid_request'}});
+});
+it('maps a source event cursor ahead of the stream to invalid_request',async()=>{
+ const f=await fixture(false,false);expect(await rpc('source.events',{...f.scope,source_id:'notes',after_sequence:1})).toMatchObject({ok:false,error:{code:'invalid_request'}});
+});
+it('rejects an invalid inspect result as an internal failure',async()=>{
+ const f=await fixture(false,false);const sources=await import('./local-data-source-registry.js');
+ vi.spyOn(sources,'createHostLocalDataSourceService').mockReturnValue({inspect:vi.fn().mockResolvedValue({state:'ready',entries:[]})});
+ expect(await rpc('source.inspect',{...f.scope,source_id:'notes'})).toMatchObject({ok:false,error:{code:'source_unavailable'}});
+});
+
+it.each(['source.inspect','source.observe'])('maps nonexistent repo input for %s to invalid_request',async method=>{
+ const f=await fixture(false,false);expect(await rpc(method,{...f.scope,source_id:'notes',repo_path:join(f.repo,'missing')})).toMatchObject({ok:false,error:{code:'invalid_request'}});
+});
+it('accepts cursor N and rejects N+1 for an existing source stream',async()=>{
+ const f=await fixture(false,false);const {SourceObservationLedger}=await import('@osstack/core');const db=openDb({path:daemon!.dbPath});const params={repo_path:f.repo,source_id:'notes',default_tenant:true as const};const now=Date.now();let revision:number;
+ try{revision=new SourceObservationLedger(db,daemon!.dbPath).observe(params,{generation:'1',revision:1,manifest_digest:'a'.repeat(64),content_digest:'b'.repeat(64),verified_at_ms:now,expires_at_ms:now+60000}).record_revision;}finally{db.close();}
+ expect(revision).toBeGreaterThan(0);expect(await rpc('source.events',{...params,after_sequence:revision})).toMatchObject({ok:true,result:{events:[],next_sequence:revision}});
+ expect(await rpc('source.events',{...params,after_sequence:revision+1})).toMatchObject({ok:false,error:{code:'invalid_request'}});
 });

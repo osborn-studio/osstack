@@ -1,0 +1,46 @@
+[
+  {
+    "command": [
+      "pnpm",
+      "--filter",
+      "@osstack/loop",
+      "exec",
+      "vitest",
+      "run",
+      "src/loop-engine.test.ts",
+      "src/loop-containment.test.ts"
+    ],
+    "exit_code": 0,
+    "seconds": 18.359052896499634,
+    "log": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pr244-haiku-authenticated-20261024/F1-r2-verified-tests.log",
+    "log_sha256": "707401237bb2e24d78150112bf1d0bca44ad5c2c6e3059c10bc97c6d636fff5b"
+  },
+  {
+    "command": [
+      "pnpm",
+      "--filter",
+      "@osstack/loop",
+      "typecheck"
+    ],
+    "exit_code": 0,
+    "seconds": 2.3414041996002197,
+    "log": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pr244-haiku-authenticated-20261024/F1-r2-verified-typecheck.log",
+    "log_sha256": "8366207267355d3e3d5bf3bf6e8c94c5f93f6078c34f08973fa2b38cdda6cc92"
+  },
+  {
+    "command": [
+      "pnpm",
+      "exec",
+      "biome",
+      "check",
+      "packages/loop/src/loop-engine.ts",
+      "packages/loop/src/loop-engine.test.ts",
+      "packages/loop/src/loop-containment.ts",
+      "packages/loop/src/loop-containment.test.ts"
+    ],
+    "exit_code": 0,
+    "seconds": 0.647892951965332,
+    "log": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pr244-haiku-authenticated-20261024/F1-r2-verified-biome.log",
+    "log_sha256": "e2eaefaae2c39dda767dc850bf842eb86ff60fdf565a635d9f9bdc79e6d1e255"
+  }
+]

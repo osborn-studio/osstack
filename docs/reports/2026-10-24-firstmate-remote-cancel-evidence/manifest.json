@@ -1,0 +1,35 @@
+{
+  "source_commit": "cda1ca99402572e8b8421c5808c9c54de1e66092",
+  "source_sha256": {
+    "packages/cli/src/remote-cancel-protocol.ts": "c60e9bba9412071f7410c739cc71c36ed4faa4917a650c46aff8cb39f3c53767",
+    "packages/cli/src/remote-cancel-exporter.ts": "3a008c7400a7a7b5a203021bf4d792a065ea333c20045cc73fccd60ac799b0dd",
+    "packages/cli/src/remote-cancel-client.ts": "ff8590d30b17fcb55a86f782c63a3a22b89aa37afcba7a93029be8930b9bd422",
+    "packages/cli/src/remote-cancel-issuer.ts": "fee07afb0617c95eebf3a62b1468d6b5d77e06c3d42a56989c73a53e3ec9f36d",
+    "packages/cli/src/remote-cancel.test.ts": "efea847581e37a91950897a2763be3018f38fd347db11e56366b56d5ccfe90ef",
+    "packages/cli/src/remote-home-protocol.ts": "4fe5967e8c3e9d02d2ec2c72a7d9d3fc71162782add9f20026e1c2e55c54cb6c",
+    "packages/cli/src/graph-test-fixture.ts": "a269fc75086172bda01f51a2636484eb589d9857e88c64c2e7f699fc6bb9b801"
+  },
+  "new_control_tests": 29,
+  "unchanged_readonly_regression_tests": 44,
+  "graph_rpc_regression_tests": 10,
+  "final_targeted_result": "29 control tests passed after independent socket-ancestor P1 correction; 44 readonly and 10 GraphRPC regressions passed earlier",
+  "typecheck": "passed",
+  "audit": {
+    "requested_model": "claude-haiku-5-5",
+    "is_error": true,
+    "terminal_reason": "api_error",
+    "result": "OAuth session expired and could not be refreshed",
+    "modelUsage": {},
+    "status": "not_audited_authentication_blocked"
+  },
+  "actual_remote_ssh_calls": 0,
+  "production_credentials_or_trust_mutations": 0,
+  "qualification": "local_fixtures_only_remote_host_pending",
+  "independent_codex_review": {
+    "reviewer": "/root/completion_scout",
+    "finding": "P1 mutable socket ancestor allowed endpoint substitution",
+    "fix": "cda1ca99 requires canonical private socket parent and protected ancestors before connect and after each response",
+    "status": "reviewer confirmed finding closed by code/test assertion review; did not independently rerun tests",
+    "separate_requested_claude_audit": "still authentication blocked"
+  }
+}

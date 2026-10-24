@@ -627,7 +627,7 @@ it("actual candidate unconfirmed synthetic producer retains lease/claim/worktree
   expect(ports.retain).toHaveBeenCalledTimes(1); expect(ports.release).not.toHaveBeenCalled(); expect(counts.attempts()).toBe(1); expect(counts.reviews()).toBe(0);
   const { readdir } = await import("node:fs/promises"); expect(await readdir(input.state)).toContain("batch-batch-one");
   const branches = execFileSync("git", ["-C", repo, "branch", "--format=%(refname:short)"], { encoding: "utf8" }); expect(branches.split("\n").filter(v => v.startsWith("osstack/loop"))).toHaveLength(1);
-  logs = []; expect(await runAgent(input.path)).toBe(2); expect(JSON.parse(logs.join("\n")).events).toEqual(expect.arrayContaining([expect.objectContaining({ payload: expect.objectContaining({ reason_code: "execution_unconfirmed" }) })])); expect(counts.attempts()).toBe(1); expect(counts.reviews()).toBe(0); expect(ports.release).not.toHaveBeenCalled();
+  logs = []; expect(await runAgent(input.path)).toBe(2); expect(JSON.parse(logs.join("\n")).events).toEqual(expect.arrayContaining([expect.objectContaining({ payload: expect.objectContaining({ reason_code: "execution_containment_pending" }) })])); expect(counts.attempts()).toBe(1); expect(counts.reviews()).toBe(0); expect(ports.release).not.toHaveBeenCalled();
 });
 
 it("actual artifact checks reject a previously valid second task against complete frozen batch range", async () => {

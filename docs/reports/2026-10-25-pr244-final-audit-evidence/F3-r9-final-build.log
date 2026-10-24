@@ -1,0 +1,4 @@
+COMMAND ["pnpm", "--filter", "@osstack/loop", "build"]
+$ tsc -p .
+
+EXIT_CODE=0

@@ -1,0 +1,45 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-delivery/packages/cli
+
+Cloning into '/private/var/folders/97/wmwg4qzx02j74c3n73nh438w0000gn/T/g22-rpc-iA2d30/delivery/08645ca3-a433-4c82-b6ba-272ef34b05f6/writer-0'...
+HEAD is now at 043f182 base
+ ✓ src/remote-cancel.test.ts (20 tests) 10289ms
+   ✓ actual issuer -> client -> child exporter -> existing daemon boundary returns durable receipt without claiming physical stop  747ms
+   ✓ lost remote ACK after fsync is recovered by query without replay  1038ms
+   ✓ process killed after reserve and cancellation invocation stays unknown and never replays  766ms
+   ✓ stale daemon binding denies cancel  470ms
+   ✓ stale graph binding denies cancel  349ms
+   ✓ stale revision binding denies cancel  412ms
+   ✓ stale scope binding denies cancel  313ms
+   ✓ expired write authorization is rejected before daemon access; historical signed query stays available  616ms
+   ✓ tampered or wrong-scope signed payload never reaches daemon  335ms
+   ✓ registry revocation during readiness prevents any cancel call  310ms
+   ✓ reserved but uninvoked crash journal never arms on a repeated cancel  330ms
+   ✓ corrupted persisted receipt fails closed without RPC or effect replay  618ms
+   ✓ request ID collision with changed exact signed grant cannot reuse an earlier receipt  395ms
+   ✓ querying absent request has no mutation or local intent reservation  337ms
+   ✓ timeout records unknown once and subsequent cancel changes to query  378ms
+   ✓ signed remote cancellation drives the actual GraphRpcService worker abort and retains local stop proof separation  2735ms
+ ✓ src/remote-home.test.ts (10 tests) 45ms
+ ✓ src/remote-home-integration.test.ts (34 tests) 13045ms
+   ✓ reads real source rows over an isolated child exporter without text, native IDs, paths or DB writes  621ms
+   ✓ CLI command performs the real child exchange and reports incomplete first pages  813ms
+   ✓ an empty complete page does not claim healthy or live execution  615ms
+   ✓ rejects or marks unknown the home boundary  649ms
+   ✓ rejects or marks unknown the generation boundary  544ms
+   ✓ rejects or marks unknown the scope boundary  649ms
+   ✓ rejects or marks unknown the scope_digest boundary  554ms
+   ✓ rejects or marks unknown the count boundary  557ms
+   ✓ rejects or marks unknown the future_clock boundary  509ms
+   ✓ wrong request pins and scope fail before worker reads and never fall back  2349ms
+   ✓ real running daemon identity and worker RPC support child exporter, without opening the child's OSSTACK_HOME  624ms
+   ✓ exporter rejects environment absence, extra arguments and a socket symlink  445ms
+   ✓ exporter process exits after its one-page response even if the reader leaves stdin open  470ms
+   ✓ upstream bound scope filters other tenants and repositories through the real exporter  461ms
+   ✓ exporter exits on invalid startup configuration and arguments without ever reading stdin  998ms
+
+ Test Files  3 passed (3)
+      Tests  64 passed (64)
+   Start at  17:20:37
+   Duration  21.74s (transform 5.45s, setup 67ms, collect 15.85s, tests 23.38s, environment 0ms, prepare 215ms)
+

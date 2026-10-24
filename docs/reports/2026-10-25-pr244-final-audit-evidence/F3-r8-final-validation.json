@@ -1,0 +1,117 @@
+{
+  "before": {
+    "packages/loop/src/verifier.ts": "a4d7b2305d02b8af9349031bc7f39cad19925cd7a4262b036acc604a0c94da08",
+    "packages/loop/src/verifier.test.ts": "fe484ffda2696245bcf85b9440a9d14c8bcb3cedce01a3c78be9db1a3dd61bbe",
+    "packages/loop/src/evaluation-spec.test.ts": "b43544825afe819a2dec2b47df37a29fa0ba96394170f1bb06b1f0f85011f859",
+    "packages/loop/src/reviewer-isolation.ts": "3099004f57f0cbb9e55d54eecc19dabdba72b07bab93f086c7a6347500717725",
+    "packages/loop/src/reviewer-isolation.test.ts": "3ced80689c1cdc7f0436826c2c2e41c1533e93033e0718b0bd0e0fa45f4ed5fc",
+    "packages/loop/src/loop-engine.ts": "84b4047a54afdaa5257a59373fdfad015a0f2d2feda2e9d43265be1b6f1f87ea",
+    "packages/loop/src/loop-engine.test.ts": "9e4747b43bdcb1ed36903da92ff8ec46b0ef02c6e0ff7cdb4b3028ee68a90d26",
+    "packages/loop/src/loop-containment.ts": "9b9e50dffb2051c0b20899285c3fe3583a3a4393f732eb7a487e525fb4e5a755",
+    "packages/loop/src/loop-containment.test.ts": "55cbd58785defe7de5724f435fdaaa95eb2e7689b2934f618abf70b2db3995aa",
+    "packages/loop/src/candidate-policy.ts": "36671abb76be65405ff30eec37187a92225cc9d6bd902c406370fdf07501153f",
+    "packages/loop/src/review-boundary.ts": "25a0dd541215a3f5ec9c7f45437dbd2a3e3d62b1937584e14c67b29b768e7953",
+    "packages/agents/src/worktree.ts": "e67c80cc564f449488ff8bd889c1639e679936cb300ba570b75d90a928938d92",
+    "packages/agents/src/worktree.test.ts": "e9ffbce9bd8d248d8b78ea98b747af033140b29b76fd878f79889c28b7dd9ca6"
+  },
+  "checks": [
+    {
+      "label": "build",
+      "command": [
+        "pnpm",
+        "--filter",
+        "@osstack/loop",
+        "build"
+      ],
+      "exitCode": 0,
+      "seconds": 3.3589582443237305,
+      "log": "F3-r8-final-build.log",
+      "logSha256": "d50f975ecee497aae09d11b9d3d273d12aa0960656bb5a2c61ab3f8f6fe4e29a"
+    },
+    {
+      "label": "tests",
+      "command": [
+        "pnpm",
+        "--filter",
+        "@osstack/loop",
+        "exec",
+        "vitest",
+        "run",
+        "src/verifier.test.ts",
+        "src/reviewer-isolation.test.ts",
+        "src/evaluation-spec.test.ts",
+        "--maxWorkers=2",
+        "--testTimeout=20000"
+      ],
+      "exitCode": 0,
+      "seconds": 14.155249834060669,
+      "log": "F3-r8-final-tests.log",
+      "logSha256": "d005c64dffd95eb561142684603b23f63e86a47ece3d97f0aa88814e9e70aa7f"
+    },
+    {
+      "label": "production-hooks",
+      "command": [
+        "pnpm",
+        "--filter",
+        "@osstack/agents",
+        "exec",
+        "vitest",
+        "run",
+        "src/worktree.test.ts",
+        "--maxWorkers=2",
+        "--testTimeout=20000"
+      ],
+      "exitCode": 0,
+      "seconds": 3.5905849933624268,
+      "log": "F3-r8-final-production-hooks.log",
+      "logSha256": "3520fd45fbdc33f2144898f5edaf202fe15181e56e874c3ceb2af032cc15bc01"
+    },
+    {
+      "label": "typecheck",
+      "command": [
+        "pnpm",
+        "--filter",
+        "@osstack/loop",
+        "typecheck"
+      ],
+      "exitCode": 0,
+      "seconds": 1.590357780456543,
+      "log": "F3-r8-final-typecheck.log",
+      "logSha256": "99c93833b5b3859f5e2fb423076088013a9d4cc1da6afecba110ff2dc8b6685a"
+    },
+    {
+      "label": "lint",
+      "command": [
+        "pnpm",
+        "exec",
+        "biome",
+        "check",
+        "packages/loop/src/verifier.ts",
+        "packages/loop/src/verifier.test.ts",
+        "packages/loop/src/reviewer-isolation.ts",
+        "packages/loop/src/reviewer-isolation.test.ts"
+      ],
+      "exitCode": 0,
+      "seconds": 0.5044441223144531,
+      "log": "F3-r8-final-lint.log",
+      "logSha256": "99756459e7ca7108e712bba4f4886a1151f0193c00828003eba9430f14681a66"
+    }
+  ],
+  "after": {
+    "packages/loop/src/verifier.ts": "a4d7b2305d02b8af9349031bc7f39cad19925cd7a4262b036acc604a0c94da08",
+    "packages/loop/src/verifier.test.ts": "fe484ffda2696245bcf85b9440a9d14c8bcb3cedce01a3c78be9db1a3dd61bbe",
+    "packages/loop/src/evaluation-spec.test.ts": "b43544825afe819a2dec2b47df37a29fa0ba96394170f1bb06b1f0f85011f859",
+    "packages/loop/src/reviewer-isolation.ts": "3099004f57f0cbb9e55d54eecc19dabdba72b07bab93f086c7a6347500717725",
+    "packages/loop/src/reviewer-isolation.test.ts": "3ced80689c1cdc7f0436826c2c2e41c1533e93033e0718b0bd0e0fa45f4ed5fc",
+    "packages/loop/src/loop-engine.ts": "84b4047a54afdaa5257a59373fdfad015a0f2d2feda2e9d43265be1b6f1f87ea",
+    "packages/loop/src/loop-engine.test.ts": "9e4747b43bdcb1ed36903da92ff8ec46b0ef02c6e0ff7cdb4b3028ee68a90d26",
+    "packages/loop/src/loop-containment.ts": "9b9e50dffb2051c0b20899285c3fe3583a3a4393f732eb7a487e525fb4e5a755",
+    "packages/loop/src/loop-containment.test.ts": "55cbd58785defe7de5724f435fdaaa95eb2e7689b2934f618abf70b2db3995aa",
+    "packages/loop/src/candidate-policy.ts": "36671abb76be65405ff30eec37187a92225cc9d6bd902c406370fdf07501153f",
+    "packages/loop/src/review-boundary.ts": "25a0dd541215a3f5ec9c7f45437dbd2a3e3d62b1937584e14c67b29b768e7953",
+    "packages/agents/src/worktree.ts": "e67c80cc564f449488ff8bd889c1639e679936cb300ba570b75d90a928938d92",
+    "packages/agents/src/worktree.test.ts": "e9ffbce9bd8d248d8b78ea98b747af033140b29b76fd878f79889c28b7dd9ca6"
+  },
+  "stable": true,
+  "head": "742ac8e0a66eee1aaa552bc490b4b866d6719272"
+}

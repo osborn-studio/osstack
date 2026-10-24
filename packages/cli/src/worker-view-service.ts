@@ -164,7 +164,7 @@ export class WorkerViewService {
       const rawRow = this.db.prepare(`${RELATION} ${projection(version)} WHERE p.kind=@kind AND p.id=@id`)
         .get({ repo: common.scope.repo_path, kind: token.source, id: token.id });
       if (!rawRow) throw new WorkerViewError("source_not_found");
-      const result = { ...common, view: this.view(RowSchema.parse(rawRow), common) };
+      const result = { ...common, view: { ...this.view(RowSchema.parse(rawRow), common), view_id: parsed.data.view_id } };
       this.checkBytes(result);
       return WorkerInspectResultSchema.parse(result);
     });

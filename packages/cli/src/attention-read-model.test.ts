@@ -45,8 +45,20 @@ function fixture() {
 const hash = (path: string) =>
   createHash("sha256").update(readFileSync(path)).digest("hex");
 
-it("reads scoped durable facts without migrating or inventing live coverage", () => {
+it("reads schema 46 with its additive source ledger without migrating or inventing live coverage", () => {
   const f = fixture();
+  const db = new Database(f.dbPath, { readonly: true, fileMustExist: true });
+  try {
+    expect(db.pragma("user_version", { simple: true })).toBe(46);
+    expect(db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name LIKE 'source_observation_%' ORDER BY name").all()).toEqual([
+      { name: "source_observation_clock" },
+      { name: "source_observation_events" },
+      { name: "source_observation_generations" },
+      { name: "source_observation_streams" },
+    ]);
+  } finally {
+    db.close();
+  }
   const before = hash(f.dbPath);
   const result = readAttentionStatus(f);
   expect(result.mode).toBe("snapshot_only");
@@ -88,10 +100,10 @@ it("reports malformed decisions and accepted receipts without guessing delivery"
   );
   expect(result.limitations).toContain("invalid_decision:s");
 });
-it("rejects unsupported schema without opening a write path", () => {
+it.each([23, 47, 999])("rejects unsupported schema %i without opening a write path", (schema) => {
   const f = fixture();
   const db = new Database(f.dbPath);
-  db.pragma("user_version=999");
+  db.pragma(`user_version=${schema}`);
   db.close();
   const before = hash(f.dbPath);
   expect(() => readAttentionStatus(f)).toThrow(/unsupported_schema/);

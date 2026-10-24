@@ -1,0 +1,37 @@
+COMMAND ["pnpm", "--filter", "@osstack/loop", "exec", "vitest", "run", "src/loop-engine.test.ts", "src/loop-containment.test.ts", "--maxWorkers=2", "--testTimeout=20000"]
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/pr244-final-audit/packages/loop
+
+ ✓ src/loop-containment.test.ts (8 tests) 2952ms
+   ✓ retains the lifecycle lease after an ancestor sync fails following marker creation  2922ms
+ ✓ src/loop-engine.test.ts (53 tests) 25045ms
+   ✓ LoopEngine > runs a real local command loop and writes state files  333ms
+   ✓ LoopEngine > runs reviewer adapters after execution and treats them as verification gates  780ms
+   ✓ LoopEngine > emits the frozen profile and role identities at plan and verify boundaries  583ms
+   ✓ LoopEngine > persists redacted structured Kimi review evidence in events and completed tasks  952ms
+   ✓ LoopEngine > emits a dedicated event only for a verifier's structured implementation deviation  786ms
+   ✓ LoopEngine > records changed files, diff summary, and commit hash in task evidence  393ms
+   ✓ LoopEngine > can execute a successful task in an isolated git worktree and merge it back  748ms
+   ✓ LoopEngine > cleans a failed isolated worktree without merging its changes  609ms
+   ✓ LoopEngine > does not promote cancelled Builder changes when deterministic verification passes  539ms
+   ✓ LoopEngine > retains loop-scoped worktrees whose ownership is unproven  1040ms
+   ✓ LoopEngine > preserves the isolated branch when a successful task cannot fast-forward merge  844ms
+   ✓ retains uncertain verifier execution and never retries it after timeout or restart  1426ms
+   ✓ keeps prearmed containment when state persistence fails after unknown verifier stop  1439ms
+   ✓ never retries or commits candidate mutations from a generic verifier  508ms
+   ✓ retains candidate containment after post-review integrity cannot be observed  394ms
+   ✓ retains a live-child worktree on executor rejection and blocks a different state path  391ms
+   ✓ pins post-review Git evidence and disables repository fsmonitor commands  506ms
+   ✓ retains containment after a reviewer mutates the prepush candidate  2686ms
+   ✓ retains containment after a reviewer mutates the final candidate  3323ms
+   ✓ preserves a legacy candidate containing --assume-unchanged hidden builder edits  707ms
+   ✓ preserves a legacy candidate containing --skip-worktree hidden builder edits  699ms
+   ✓ retains the real worktree and branch after a writing selection probe refuses execution  525ms
+
+ Test Files  2 passed (2)
+      Tests  61 passed (61)
+   Start at  11:02:52
+   Duration  28.64s (transform 2.02s, setup 104ms, collect 3.26s, tests 28.00s, environment 0ms, prepare 144ms)
+
+
+EXIT_CODE=0

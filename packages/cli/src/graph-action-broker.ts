@@ -26,7 +26,10 @@ export interface GraphActionEvidence {
   stopEvidenceRef?: string;
   candidate?: CandidateExecutionResult;
   command?: CommandResult;
+  /** Actual ordered results for one bounded host-registered tests suite. */
+  commandSuite?: CommandResult[];
   contained?: GraphContainedTestEvidence;
+  containedSuite?: GraphContainedTestEvidence[];
   workspace?: unknown;
   frozenCandidate?: Extract<GraphResult, { kind: "candidate_ready" }>;
 }
@@ -41,7 +44,9 @@ type RegisteredExecution =
   | { kind: "freeze"; store: Pick<GraphArtifactStore, "freeze">; input: GraphFreezeInput; authority: Omit<GraphFreezeAuthority, "lease"> }
   | { kind: "adapter"; plan: ExecutionPlan; adapter: AgentAdapter; capabilityId: string }
   | { kind: "command"; plan: ExecutionPlan; command: string }
+  | { kind: "commands"; plan: ExecutionPlan; commands: readonly string[] }
   | ({ kind: "contained"; plan: ExecutionPlan } & RegisteredContainedTests)
+  | {kind:"contained-suite";plan:ExecutionPlan;checks:readonly RegisteredContainedTests[]}
   | { kind: "workspace"; handler: (input: { workspace: RegisteredCandidateWorkspace; signal: AbortSignal; lease: ExecutionLease }) => Promise<{
       status: "completed" | "failed"; stopped: true; evidence: unknown;
     }> };
@@ -97,6 +102,20 @@ function canonical(value: unknown): string {
   if (value === null || typeof value !== "object") return JSON.stringify(value);
   if (Array.isArray(value)) return `[${value.map(canonical).join(",")}]`;
   return `{${Object.keys(value).sort().map(key => `${JSON.stringify(key)}:${canonical((value as Record<string, unknown>)[key])}`).join(",")}}`;
+}
+/** Retry may refresh isolated workspaces and session identifiers, never the
+ * trusted operation. Callbacks remain host-only; their invocation receipts are
+ * independently revalidated by verification persistence on each attempt. */
+function retryExecutionIdentity(execution: RegisteredExecution): string {
+  if (execution.kind === "freeze" || execution.kind === "workspace") throw Error("immutable retry execution");
+  const { plan_id: _planId, worktree_path: _worktreePath, task, ...plan } = execution.plan;
+  const { task_id: _taskId, ...taskSemantics } = task;
+  const operation = execution.kind === "adapter"
+    ? { adapterId: execution.adapter.id, capabilityId: execution.capabilityId, capabilities: execution.adapter.capabilities() }
+    : execution.kind === "commands" ? { commands: execution.commands }
+    : execution.kind === "contained-suite" ? { commands: execution.checks.map(check => check.command) }
+    : { command: execution.command };
+  return canonical({ kind: execution.kind, plan: { ...plan, task: taskSemantics }, operation });
 }
 class Denied extends Error { constructor(readonly code: GraphErrorCode, message: string) { super(message); } }
 function graphError(code: GraphErrorCode, message: string): GraphError {
@@ -175,9 +194,15 @@ export class GraphActionBroker {
         if (!["implement", "repair", "tests", "review"].includes(copy.action.kind)) throw new Error("unsupported candidate action");
         const plan = snapshot(ExecutionPlan.parse(execution.plan));
         if (plan.worktree_path !== undefined && plan.worktree_path !== workspace.workspace_path) throw new Error("workspace mismatch");
-        if (execution.kind === "contained") {
+        if(execution.kind==="contained-suite"){
+          if(copy.action.kind!=="tests"||execution.checks.length<2||execution.checks.length>16||execution.checks.some(item=>!item.command.trim()||item.command.includes("\0")||typeof item.execute!=="function"||typeof item.confirmStopped!=="function")||execution.checks.reduce((sum,item)=>sum+Buffer.byteLength(item.command),0)>16384)throw Error("invalid contained suite registration");
+          selected=Object.freeze({kind:"contained-suite",plan,checks:Object.freeze(execution.checks.map(item=>Object.freeze({command:item.command,execute:item.execute.bind(item),confirmStopped:item.confirmStopped.bind(item)})))});
+        } else if (execution.kind === "contained") {
           if (copy.action.kind !== "tests" || !execution.command.trim() || execution.command.includes("\0") || typeof execution.execute !== "function" || typeof execution.confirmStopped !== "function") throw Error("invalid contained tests registration");
           selected = Object.freeze({ kind: "contained", plan, command: execution.command, execute: execution.execute.bind(execution), confirmStopped: execution.confirmStopped.bind(execution) });
+        } else if (execution.kind === "commands") {
+          if(copy.action.kind!=="tests"||execution.commands.length<2||execution.commands.length>16||execution.commands.some(command=>!command.trim()||command.includes("\0"))||execution.commands.reduce((sum,command)=>sum+Buffer.byteLength(command),0)>16384)throw Error("invalid registered command suite");
+          selected=Object.freeze({kind:"commands",plan,commands:snapshot(execution.commands)});
         } else if (execution.kind === "command") {
           if (!execution.command?.trim() || execution.command.includes("\0")) throw new Error("invalid registered command");
           selected = Object.freeze({ kind: "command", plan, command: execution.command });
@@ -284,6 +309,8 @@ export class GraphActionBroker {
     if (!registered || prior.effect.epoch !== binding.epoch || canonical(registered.action) !== canonical(prior.action)) throw new Error("unregistered retry slot");
     const replacement = options.replacement ? this.bind({ ...binding, actions: [options.replacement] }).actions.get(slot(prior.effect.nodeId, prior.effect.effectSlot)) : undefined;
     if (options.replacement && (!replacement || canonical(replacement.action) !== canonical(prior.action) || replacement.tokenReservation !== prior.reservationTokens)) throw Error('immutable retry payload');
+    if (replacement && (!["review", "tests"].includes(prior.action.kind)
+      || retryExecutionIdentity(replacement.execution) !== retryExecutionIdentity(registered.execution))) throw Error("immutable retry execution");
     const next = this.actions.retry(this.fence(binding), effectKey).action;
     if (replacement) (binding.actions as Map<string, BoundAction>).set(slot(prior.effect.nodeId, prior.effect.effectSlot), replacement);
     return this.executeRequest(connection, { schemaVersion: 1, kind: "worker_action", requestId: `retry:${randomUUID()}`,
@@ -379,10 +406,11 @@ export class GraphActionBroker {
       const failureError = failure ? GraphErrorSchema.parse({ schemaVersion: 1, code: failure.code, message: failure.message,
         retryable: failure.retrySafe, nextAction: failure.retrySafe ? "retry" : "stop" }) : undefined;
       const normalTestsExit = action.action.kind === "tests" && evidence.stopped === true && !signal.aborted
-        && ((evidence.command?.termination?.trigger === "exit" && evidence.command.termination.stop_confirmed && !evidence.command.cancellation && !evidence.command.failure_code)
-          || (evidence.contained !== undefined && !evidence.contained.result.cancelled));
-      // An abort after execution/evidence completion does not invalidate quality
-      // already established. Cancelled invocations carry a stopped failure above.
+        && ((evidence.commandSuite ? evidence.commandSuite.every(command=>command.termination?.trigger==="exit"&&command.termination.stop_confirmed&&!command.cancellation&&!command.failure_code) : evidence.command?.termination?.trigger === "exit" && evidence.command.termination.stop_confirmed && !evidence.command.cancellation && !evidence.command.failure_code)
+          || (evidence.containedSuite ? evidence.containedSuite.every(item=>!item.result.cancelled) : evidence.contained !== undefined && !evidence.contained.result.cancelled));
+      // Trusted verification persistence classifies cancellation it observes when
+      // deriving the outcome as a non-retryable stopped failure. The broker
+      // preserves that classification instead of overwriting persisted evidence.
       const completed = !failure && (evidence.status === "completed" || (normalTestsExit && persisted.result !== undefined));
       let result: GraphResult | undefined;
       if (completed) {
@@ -418,7 +446,9 @@ export class GraphActionBroker {
             actualTokens: 0, retrySafe: !signal.aborted, error: { message: "admission refused before invocation" } };
           if (!lease && notAcquired) this.actions.recordUnstartedOutcome(this.fence(binding), owned.effectKey, outcome);
           else this.actions.recordOutcome(this.fence(binding), owned.effectKey, outcome);
-        } catch { /* A stale owner cannot mutate a newer generation. */ }
+        } catch { /* Stale ownership or failed storage leaves an unresolved intent.
+          Never claim durable non-execution without a committed settlement;
+          replay stays blocked until trusted reconciliation. */ }
       }
       return reject(error);
     } finally {
@@ -489,7 +519,10 @@ export class GraphActionBroker {
     }
     const commandTerminationGraceMs = 1000; const commandKillGraceMs = 1000;
     let contained: GraphContainedTestEvidence | undefined;
+    const containedSuite:GraphContainedTestEvidence[]=[];
+    const containedInvocations:Array<{registration:RegisteredContainedTests;id:string}>=[];
     const authorizeContained = () => { if (signal.aborted) throw Error("contained execution cancelled"); this.authorize(binding); this.fence(binding); };
+    const commandSuite: CommandResult[]=[];
     let threw = false; let command: CommandResult | undefined; let commandPending: Promise<CommandResult> | undefined; let invocationRunId: string | undefined;
     const original = execution.kind === "adapter" ? execution.adapter : undefined;
     const capabilities = execution.kind === "adapter" ? execution.adapter.capabilities().filter(cap => cap.id === execution.capabilityId) : [CapabilitySchema.parse({ id: "registered-command.write", kind: "code.write", agent_id: "registered-command", description: "Registered command" })];
@@ -532,25 +565,43 @@ export class GraphActionBroker {
               }
               return;
             }
-            if (execution.kind === "contained") {
-              contained = await execution.execute({ scope: binding.scope, graphRunId: binding.graphRunId, generation: binding.generation, effectKey: effect.effectKey, invocationId: task.run_id }, invocationSignal, authorizeContained);
+            if (execution.kind === "contained" || execution.kind === "contained-suite") {
+              const checks=execution.kind==="contained-suite"?execution.checks:[execution];
+              const timeout=new AbortController();const timer=setTimeout(()=>timeout.abort(),120000);
+              const suiteSignal=AbortSignal.any([invocationSignal,timeout.signal]);
+              try{for(let index=0;index<checks.length;index++){
+                if(index>0){await verifyWorkspace();await policy?.(action.workspace.workspace_path);}authorizeContained();if(suiteSignal.aborted)throw Error("contained suite cancelled");
+                const registration=checks[index]!;const invocationId=index===0?task.run_id:`${task.run_id}:${index}`;
+                containedInvocations.push({registration,id:invocationId});
+                contained=await registration.execute({scope:binding.scope,graphRunId:binding.graphRunId,generation:binding.generation,effectKey:effect.effectKey,invocationId},suiteSignal,()=>{authorizeContained();if(suiteSignal.aborted)throw Error("contained suite cancelled");});
+                containedSuite.push(contained);if(contained.result.cancelled)break;
+              }}finally{clearTimeout(timer);}
               yield { event_id: randomUUID(), run_id: task.run_id, session_id: task.session_id, seq: 1, type: "done" as const, created_at: Date.now() / 1000, terminal: true,
-                payload: { status: contained.result.cancelled ? "cancelled" : contained.result.exitCode === 0 ? "completed" : "failed", last_seq: 0 } };
+                payload: { status: containedSuite.length===checks.length&&containedSuite.every(item=>!item.result.cancelled&&item.result.exitCode===0)?"completed":"failed", last_seq: 0 } };
               return;
             }
-            if (execution.kind !== "command") throw new Error("invalid execution registration");
-            // runShellCommand starts synchronously before its returned promise; no
-            // untrusted await separates the fence above from the actual spawn.
-            commandPending = runShellCommand(execution.command, { cwd: action.workspace.workspace_path, timeoutMs: 120_000,
-              terminationGraceMs: commandTerminationGraceMs, killGraceMs: commandKillGraceMs,
-              outputLimit: 16_000, ...(invocationSignal ? { signal: invocationSignal } : {}) });
-            command = await commandPending;
+            if (execution.kind !== "command" && execution.kind !== "commands") throw new Error("invalid execution registration");
+            const commands=execution.kind==="commands" ? execution.commands : [execution.command];
+            const deadline=performance.now()+120000;
+            for(let index=0;index<commands.length;index++){
+              const text=commands[index]!;
+              if(index>0){await verifyWorkspace();await policy?.(action.workspace.workspace_path);}
+              authorizeContained();if(invocationSignal.aborted||performance.now()>=deadline)throw Error("command suite cancelled or deadline exhausted");
+              command=undefined;
+              commandPending=runShellCommand(text,{cwd:action.workspace.workspace_path,timeoutMs:Math.max(1,Math.floor(deadline-performance.now())),terminationGraceMs:commandTerminationGraceMs,killGraceMs:commandKillGraceMs,outputLimit:execution.kind==="commands"?512:16000,signal:invocationSignal});
+              command=await commandPending;commandSuite.push(command);
+              if(command.failure_code||command.cancellation||command.termination?.stop_confirmed!==true||command.termination.trigger!=="exit")break;
+            }
             yield { event_id: randomUUID(), run_id: task.run_id, session_id: task.session_id, seq: 1, type: "done" as const,
-              created_at: Date.now() / 1000, terminal: true, payload: { status: command.exitCode === 0 ? "completed" : "failed", last_seq: 0 } };
+              created_at: Date.now() / 1000, terminal: true, payload: { status: commandSuite.length===commands.length&&commandSuite.every(result=>result.exitCode===0) ? "completed" : "failed", last_seq: 0 } };
           } catch (error) { threw = true; throw error; }
         })();
       },
       confirmStopped: async runId => {
+        if(execution.kind==="contained-suite"){
+          const proofs=await Promise.all(containedInvocations.map(item=>item.registration.confirmStopped(item.id)));
+          return {stopped:proofs.length>0&&proofs.every(proof=>proof.stopped===true),evidence:proofs.map(proof=>proof.stopped ? proof.evidence : "unknown").join(";")};
+        }
         if (execution.kind === "contained") return execution.confirmStopped(runId);
         if (original) return original.confirmStopped ? original.confirmStopped(runId) : { stopped: false };
         // Command cancellation can request confirmation before termination settles.
@@ -563,17 +614,21 @@ export class GraphActionBroker {
       adapters: [wrapper], signal,
       // Command confirmation includes TERM/KILL grace, process-group probes and
       // pipe drainage. The outer adapter must not time out after only 50ms.
-      cancellationGraceMs: execution.kind === "contained" ? 30000 : execution.kind === "command" ? commandTerminationGraceMs + commandKillGraceMs + 500 : 50,
+      cancellationGraceMs: (execution.kind === "contained" || execution.kind === "contained-suite") ? 30000 : (execution.kind === "command" || execution.kind === "commands") ? commandTerminationGraceMs + commandKillGraceMs + 500 : 50,
       authorize: async () => { this.authorize(binding); this.fence(binding); await policy?.(action.workspace.workspace_path); this.authorize(binding); this.fence(binding); return { allow: true }; } });
     if (!invocationRunId) throw new Denied("POLICY_DENIED", candidate.reason ?? "candidate preflight refused");
     if (threw || candidate.status === "execution_unconfirmed" || candidate.execution?.failure_code) throw new Error("adapter result or execution unconfirmed");
+    // Contained proof reads the daemon identity twice and container absence once;
+    // each Engine request has a five-second budget. Use the same bounded grace
+    // as contained cancellation, still requiring the fresh physical stop proof.
+    const stopProofGraceMs = execution.kind === "contained" || execution.kind === "contained-suite" ? 30000 : 1000;
     let stopTimer: ReturnType<typeof setTimeout> | undefined;
     const stopped = await Promise.race([wrapper.confirmStopped!(invocationRunId),
-      new Promise<{ stopped: false }>(resolve => { stopTimer = setTimeout(() => resolve({ stopped: false }), 1000); })])
+      new Promise<{ stopped: false }>(resolve => { stopTimer = setTimeout(() => resolve({ stopped: false }), stopProofGraceMs); })])
       .finally(() => { if (stopTimer) clearTimeout(stopTimer); });
     if (stopped.stopped !== true || !stopped.evidence?.trim()) throw new Error("external stop unconfirmed");
     const usage = candidate.execution;
     if ([usage?.tokens_in, usage?.tokens_out].some(value => value !== undefined && (!Number.isSafeInteger(value) || value < 0))) throw new Error("invalid adapter usage");
-    return { status: candidate.status === "implementation_complete" ? "completed" : "failed", stopped: true, ...(["implement", "repair"].includes(action.action.kind) ? { stopEvidenceRef: stopped.evidence } : {}), candidate, ...(command ? { command } : {}), ...(contained ? { contained } : {}) };
+    return { status: candidate.status === "implementation_complete" ? "completed" : "failed", stopped: true, ...(["implement", "repair"].includes(action.action.kind) ? { stopEvidenceRef: stopped.evidence } : {}), candidate, ...(execution.kind === "commands" ? {command:commandSuite[0]!,commandSuite} : command ? { command } : {}), ...(execution.kind==="contained-suite"?{contained:containedSuite[0]!,containedSuite}:contained ? { contained } : {}) };
   }
 }

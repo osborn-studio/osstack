@@ -1,0 +1,10 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-delivery/packages/core
+
+ ✓ src/state/follow-up-delivery.test.ts (46 tests) 1599ms
+
+ Test Files  1 passed (1)
+      Tests  46 passed (46)
+   Start at  17:00:55
+   Duration  2.12s (transform 170ms, setup 0ms, collect 248ms, tests 1.60s, environment 0ms, prepare 36ms)
+

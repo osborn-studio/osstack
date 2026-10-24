@@ -1,0 +1,18 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-final/packages/cli
+
+ ✓ src/local-ledgers-daemon.test.ts (15 tests) 4837ms
+   ✓ exercises the default exported provider without credentials and fails as not_authenticated  781ms
+   ✓ watches actual daemon snapshots through the main CLI and leaves worker execution unchanged  1083ms
+   ✓ routes pinned viewer launch to the real inspection service and consumes its handoff once  1730ms
+ ✓ src/execution-context.test.ts (24 tests) 393ms
+ ✓ src/source-context.test.ts (14 tests) 627ms
+ ✓ src/worker-viewer-launch.test.ts (12 tests) 656ms
+   ✓ host pinned viewer launch > executes the pinned launcher as a real child with bounded argv, without a shell  427ms
+ ✓ src/worker-log-view.test.ts (9 tests) 271ms
+
+ Test Files  5 passed (5)
+      Tests  74 passed (74)
+   Start at  17:36:24
+   Duration  12.85s (transform 2.56s, setup 166ms, collect 4.65s, tests 6.78s, environment 0ms, prepare 219ms)
+

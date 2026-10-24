@@ -1,6 +1,7 @@
 import { open, writeFile, mkdir, realpath } from "node:fs/promises";
 import { join } from "node:path";
 import { randomUUID } from "node:crypto";
+import { constants } from "node:fs";
 export async function handleAttentionPlanning(
   args: string[],
   out: (s: string) => void,
@@ -27,12 +28,17 @@ export async function handleAttentionPlanning(
     flags.set(key, value);
   }
   const read = async (path: string) => {
-    const file = await open(path, "r");
+    const file = await open(path, constants.O_RDONLY | constants.O_NONBLOCK);
     try {
+      const before = await file.stat();
+      if (!before.isFile() || before.size > 1048576) throw new Error("invalid_input_file");
       const data = Buffer.alloc(1048577);
-      const result = await file.read(data, 0, data.length, 0);
-      if (result.bytesRead > 1048576) throw new Error("oversized_input");
-      return JSON.parse(data.subarray(0, result.bytesRead).toString());
+      let length = 0;
+      while (length < data.length) { const result = await file.read(data, length, data.length - length, null); if (!result.bytesRead) break; length += result.bytesRead; }
+      const after = await file.stat();
+      if (length > 1048576) throw new Error("oversized_input");
+      if (before.size !== after.size || before.mtimeMs !== after.mtimeMs || before.ctimeMs !== after.ctimeMs) throw new Error("input_changed");
+      return JSON.parse(data.subarray(0, length).toString());
     } finally {
       await file.close();
     }
@@ -44,10 +50,17 @@ export async function handleAttentionPlanning(
   if (flags.has("--mode") && args[0] !== "routing-eval")
     throw new Error("mode_only_valid_for_routing_eval");
   if (args[0] === "routing-eval") {
-    if (!["supplied_predictions", "router_golden"].includes(mode))
+    if (!["supplied_predictions", "router_golden", "paired_holdout"].includes(mode))
       throw new Error("invalid_routing_eval_mode");
     if ([...flags.keys()].some((k) => !["--input", "--mode"].includes(k)))
       throw new Error("invalid_routing_eval_arguments");
+    if (mode === "paired_holdout") {
+      const { runControlledPairedRouting } = await import("./paired-routing-evaluation.js");
+      const report = await runControlledPairedRouting(await read(input));
+      out(JSON.stringify(report, null, 2).replace(/[\u007f-\u009f\p{Cf}\u2028\u2029]/gu,
+        character => character.split("").map(unit => `\\u${unit.charCodeAt(0).toString(16).padStart(4, "0")}`).join("")));
+      return report.status === "completed" ? 0 : 1;
+    }
     if (mode === "router_golden") {
       let raw: unknown;
       try {

@@ -1,7 +1,8 @@
+import { loopContainmentPath } from "./loop-containment.js";
 import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { mkdtempSync } from "node:fs";
+import { mkdtempSync, realpathSync } from "node:fs";
 import { CapabilitySchema, type Capability, type CostTier } from "@osstack/core";
 import type { AgentAdapter, AgentAvailability, AgentTask } from "@osstack/agents";
 import type { HermesEvent } from "@osstack/hermes-adapter";
@@ -110,7 +111,7 @@ describe("LoopEngine", () => {
   });
 
   it("runs reviewer adapters after execution and treats them as verification gates", async () => {
-    const workspace = await makeQueuedWorkspace();
+    const workspace = await makeGitQueuedWorkspace("baseline\n");
     const reviewer = new FakeReviewAdapter();
     const result = await new LoopEngine({
       loopId: "loop-reviewer",
@@ -134,11 +135,11 @@ describe("LoopEngine", () => {
       }),
     }));
     await expect(readFile(join(workspace, "review-output.txt"), "utf-8"))
-      .resolves.toBe(`reviewed ${result.completedTasks[0]?.run_id}\n`);
+      .rejects.toThrow();
   });
 
   it("emits the frozen profile and role identities at plan and verify boundaries", async () => {
-    const workspace = await makeQueuedWorkspace();
+    const workspace = await makeGitQueuedWorkspace("baseline\n");
     const builder = new FakeLoopAdapter({
       id: "claude-code",
       outputFile: "profile-output.txt",
@@ -191,6 +192,9 @@ describe("LoopEngine", () => {
       "-m",
       "use TypeScript fixture",
     ]);
+    const verifier = await import("./verifier.js"); const actualVerify = verifier.verifyRun;
+    const seenIssues: unknown[] = [];
+    const spy = vi.spyOn(verifier, "verifyRun").mockImplementation(async (...args) => { const result = await actualVerify(...args); seenIssues.push(...result.issues); return result; });
     const reviewer = new FakeKimiReviewAdapter();
     const result = await new LoopEngine({
       loopId: "loop-kimi-review",
@@ -201,6 +205,7 @@ describe("LoopEngine", () => {
       adapters: [reviewer],
     }).runOnce();
 
+    spy.mockRestore(); expect(seenIssues).toEqual([]);
     const expectedReview = expect.objectContaining({
       schema_version: 1,
       reviewer_agent_id: "kimi-code",
@@ -223,7 +228,7 @@ describe("LoopEngine", () => {
   });
 
   it("emits a dedicated event only for a verifier's structured implementation deviation", async () => {
-    const workspace = await makeQueuedWorkspace();
+    const workspace = await makeGitQueuedWorkspace("baseline\n");
     await writeFile(join(workspace, "tasks", "task.json"), JSON.stringify({
       task_id: "task-1",
       capability: "code.test",
@@ -271,27 +276,13 @@ describe("LoopEngine", () => {
     await expect(readFile(join(workspace, "STATE.md"), "utf-8")).resolves.toContain("Changed files: app.txt");
   });
 
-  it("fails verification when builder and evaluator are the same enforced agent", async () => {
+  it("refuses an explicit verifier execution role before launching the builder", async () => {
     const workspace = await makeQueuedWorkspace();
     const adapter = new FakeLoopAdapter({ id: "same-agent" });
-    const result = await new LoopEngine({
-      loopId: "loop-role-separation",
-      workspacePath: workspace,
-      sources: ["task_queue"],
-      agentId: adapter.id,
-      verifierAgentIds: [adapter.id],
-      enforceRoleSeparation: true,
-      adapters: [adapter],
-      maxIterations: 1,
-    }).runOnce();
-
-    expect(result.state.completed_tasks[0]).toMatchObject({
-      task_id: "task-1",
-      outcome: "escalated",
-      agent_id: "same-agent",
-      verifier_agent_id: "same-agent",
-      verify_issues: [expect.objectContaining({ rule: "verify.role_separation" })],
-    });
+    const invoke = vi.spyOn(adapter, "invoke");
+    await expect(new LoopEngine({ workspacePath: workspace, sources: ["task_queue"],
+      agentId: adapter.id, verifierAgentIds: [adapter.id], adapters: [adapter], maxIterations: 1 }).runOnce()).rejects.toThrow("VERIFIER_EXECUTION_ROLE_CONFLICT");
+    expect(invoke).not.toHaveBeenCalled();
   });
 
   it("escalates after repeated failed verification", async () => {
@@ -1121,7 +1112,6 @@ class FakeReviewAdapter implements AgentAdapter {
 
   async *invoke(task: AgentTask): AsyncIterable<HermesEvent> {
     const repoPath = typeof task.context?.["repo_path"] === "string" ? task.context["repo_path"] : undefined;
-    const subjectRunId = typeof task.context?.["subject_run_id"] === "string" ? task.context["subject_run_id"] : "missing";
     if (repoPath === undefined) {
       yield fakeEvent(task, 1, "error", {
         code: "missing_repo_path",
@@ -1131,7 +1121,6 @@ class FakeReviewAdapter implements AgentAdapter {
       return;
     }
 
-    await writeFile(join(repoPath, "review-output.txt"), `reviewed ${subjectRunId}\n`);
     yield fakeEvent(task, 1, "done", {
       status: "completed",
       last_seq: 0,
@@ -1248,3 +1237,403 @@ function profileRoutingFixture() {
     independence_reason: "reported provider or model differs",
   };
 }
+
+it("retains uncertain verifier execution and never retries it after timeout or restart", async () => {
+  const workspace=await makeGitQueuedWorkspace("base\n");const reviewer=new FakeReviewAdapter();let invocations=0;
+  vi.spyOn(reviewer,"invoke").mockImplementation(()=>{
+    invocations++;
+    const iterator: AsyncIterableIterator<HermesEvent>={next:()=>new Promise(()=>{}),return:()=>new Promise(()=>{}),[Symbol.asyncIterator](){return this;}};
+    return iterator;
+  });
+  const options={workspacePath:workspace,sources:["task_queue" as const],executeCommand:"node -e \"require('fs').appendFileSync('execution-count.txt','x')\"",
+    verifierAgentIds:[reviewer.id],adapters:[reviewer],maxIterations:3,commandTimeoutMs:1000};
+  const first=await new LoopEngine(options).runOnce();
+  expect(first.state.completed_tasks[0]).toMatchObject({outcome:"escalated",iterations:1,implementation_unconfirmed:true});
+  expect(first.events).toContainEqual(expect.objectContaining({type:"loop.verify.done",payload:expect.objectContaining({pass:false})}));
+  await new LoopEngine(options).runOnce();
+  expect(invocations).toBe(1);
+  expect(await readFile(join(workspace,"execution-count.txt"),"utf8")).toBe("x");
+});
+
+it("keeps prearmed containment when state persistence fails after unknown verifier stop", async () => {
+  const workspace = await makeGitQueuedWorkspace("base\n");
+  const stateFile = await import("./state-file.js");
+  const reviewer = new FakeReviewAdapter();
+  let invocations = 0;
+  vi.spyOn(reviewer, "invoke").mockImplementation(() => {
+    invocations++;
+    return { next: () => new Promise(() => {}), return: () => new Promise(() => {}),
+      [Symbol.asyncIterator]() { return this; } } as AsyncIterableIterator<HermesEvent>;
+  });
+  const options = { workspacePath: workspace, sources: ["task_queue" as const],
+    executeCommand: "node -e \"require('fs').appendFileSync('execution-count.txt','x')\"",
+    verifierAgentIds: [reviewer.id], adapters: [reviewer], commandTimeoutMs: 1000 };
+  const failure = vi.spyOn(stateFile, "writeLoopState").mockRejectedValueOnce(new Error("ENOSPC after unknown stop"));
+  try { await expect(new LoopEngine(options).runOnce()).rejects.toThrow("ENOSPC"); }
+  finally { failure.mockRestore(); }
+  await expect(readFile(join(workspace, "LOOP-STATE.json"))).rejects.toMatchObject({ code: "ENOENT" });
+  expect(await readFile(loopContainmentPath(workspace), "utf8")).toContain("containment_pending");
+  const restarted = await new LoopEngine(options).runOnce();
+  expect(restarted.executedTaskCount).toBe(0);
+  expect(invocations).toBe(1);
+  expect(await readFile(join(workspace, "execution-count.txt"), "utf8")).toBe("x");
+});
+
+it("blocks restart with an interrupted prearmed record even without any state file", async () => {
+  const workspace = await makeQueuedWorkspace();
+  const { armLoopContainment } = await import("./loop-containment.js");
+  armLoopContainment(loopContainmentPath(workspace));
+  const result = await new LoopEngine({ workspacePath: workspace, sources: ["task_queue"],
+    executeCommand: "node -e \"require('fs').writeFileSync('must-not-run','x')\"" }).runOnce();
+  expect(result.executedTaskCount).toBe(0);
+  await expect(readFile(join(workspace, "must-not-run"))).rejects.toMatchObject({ code: "ENOENT" });
+});
+
+it("never retries or commits candidate mutations from a generic verifier", async () => {
+  const workspace = await makeGitQueuedWorkspace("baseline\n");
+  const before = await git(workspace, ["rev-parse", "HEAD"]); let invocations = 0;
+  const reviewer = new FakeReviewAdapter();
+  reviewer.invoke = async function* (task) {
+    invocations++;
+    const repo = task.context?.["repo_path"]; if (typeof repo !== "string") throw Error("missing repository");
+    if (invocations === 1) await writeFile(join(repo, "review-output.txt"), "foreign verifier edit");
+    yield fakeEvent(task, 1, "done", { status: "completed", last_seq: 0, result_summary: "approved" }, true);
+  };
+  const options = { loopId: "verifier-mutation", workspacePath: workspace, sources: ["task_queue" as const], maxIterations: 3,
+    executeCommand: "node -e \"require('fs').writeFileSync('app.txt','builder')\"", verifierAgentIds: [reviewer.id], adapters: [reviewer] };
+  const engine = new LoopEngine(options);
+  const result = await engine.runOnce();
+  expect(invocations).toBe(1); expect(result.completedTasks[0]?.outcome).toBe("escalated");
+  expect(result.completedTasks[0]?.implementation_unconfirmed).not.toBe(true);
+  expect(await git(workspace, ["rev-parse", "HEAD"])).toBe(before);
+  expect((await new LoopEngine(options).runOnce()).executedTaskCount).toBe(0);
+  expect(invocations).toBe(1);
+});
+
+it("retains candidate containment after post-review integrity cannot be observed", async () => {
+  const workspace = await makeGitQueuedWorkspace("baseline\n");
+  const isolation = await import("./reviewer-isolation.js"); const actual = isolation.snapshotReviewerWorkspace;
+  const spy = vi.spyOn(isolation, "snapshotReviewerWorkspace").mockImplementationOnce(actual).mockImplementationOnce(actual).mockRejectedValueOnce(Error("post-observation unavailable"));
+  let invocations = 0; const reviewer = new FakeReviewAdapter(); const original = reviewer.invoke.bind(reviewer);
+  reviewer.invoke = task => { invocations++; return original(task); };
+  const options = { workspacePath: workspace, sources: ["task_queue" as const], maxIterations: 3,
+    executeCommand: "node -e \"require('fs').writeFileSync('app.txt','builder')\"", verifierAgentIds: [reviewer.id], adapters: [reviewer] };
+  try {
+    const result = await new LoopEngine(options).runOnce();
+    expect(result.completedTasks[0]?.outcome).toBe("escalated"); expect(invocations).toBe(1);
+    expect(result.completedTasks[0]?.implementation_unconfirmed).not.toBe(true);
+    expect((await new LoopEngine(options).runOnce()).executedTaskCount).toBe(0); expect(invocations).toBe(1);
+  } finally { spy.mockRestore(); }
+});
+
+it("retains a live-child worktree on executor rejection and blocks a different state path", async () => {
+  const workspace = await makeGitQueuedWorkspace("base\n");
+  const execution = await import("./candidate-execution.js");
+  const { spawn } = await import("node:child_process");
+  let child: ReturnType<typeof spawn> | undefined;
+  let candidatePath = "";
+  const invocation = vi.spyOn(execution, "executeLegacyImplementation").mockImplementationOnce(async (_plan, options) => {
+    candidatePath = options.workspacePath;
+    expect(await readFile(loopContainmentPath(workspace), "utf8")).toContain("containment_pending");
+    child = spawn(process.execPath, ["-e", "setInterval(()=>{},1000)"], { stdio: "ignore" });
+    await new Promise<void>((resolve, reject) => { child!.once("spawn", resolve); child!.once("error", reject); });
+    throw new Error("executor rejected after launch");
+  });
+  try {
+    const options = { workspacePath: workspace, sources: ["task_queue" as const], useWorktree: true,
+      worktreeRoot: join(workspace, "..", "rejected-live-child"), executeCommand: "unused" };
+    await expect(new LoopEngine(options).runOnce()).rejects.toThrow("rejected after launch");
+    expect(() => process.kill(child!.pid!, 0)).not.toThrow();
+    expect(await readFile(join(candidatePath, "app.txt"), "utf8")).toBe("base\n");
+    expect(await git(workspace, ["worktree", "list", "--porcelain"])).toContain(candidatePath);
+    const restarted = await new LoopEngine({ ...options, stateFilePath: "another-state.json" }).runOnce();
+    expect(restarted.executedTaskCount).toBe(0);
+    expect(restarted.events).toContainEqual(expect.objectContaining({ type: "loop.stopped", payload: expect.objectContaining({ reason_code: "execution_containment_pending" }) }));
+    expect(invocation).toHaveBeenCalledTimes(1);
+  } finally {
+    invocation.mockRestore();
+    if (child !== undefined && child.exitCode === null) {
+      const stopped = new Promise<void>(resolve => child!.once("close", () => resolve()));
+      child.kill("SIGKILL");
+      await stopped;
+    }
+  }
+});
+
+it("retains containment when a goal reports unknown process stop", async () => {
+  const workspace = await makeQueuedWorkspace();
+  const executor = await import("./executor.js");
+  const command = vi.spyOn(executor, "runShellCommand").mockResolvedValueOnce({ command: "goal", exitCode: 1,
+    stdout: "", stderr: "unknown", durationMs: 1, termination: { scope: "posix_process_group",
+      trigger: "timeout", stop_confirmed: false, signals: ["SIGKILL"], evidence: "not attested" } });
+  try {
+    const options = { workspacePath: workspace, sources: [], goalCommand: "goal" };
+    const first = await new LoopEngine(options).runOnce();
+    expect(first.goal?.pass).toBe(false);
+    expect(await readFile(loopContainmentPath(workspace), "utf8")).toContain("containment_pending");
+    await new LoopEngine({ ...options, stateFilePath: "different.json" }).runOnce();
+    expect(command).toHaveBeenCalledTimes(1);
+  } finally { command.mockRestore(); }
+});
+
+it("keeps containment across git init and clean when unknown stop is followed by failed state write", async () => {
+  const workspace = await makeQueuedWorkspace();
+  const originalContainmentPath = loopContainmentPath(workspace);
+  const stateFile = await import("./state-file.js");
+  const verifier = await import("./verifier.js");
+  const { Task } = await import("./types.js");
+  const review = vi.spyOn(verifier, "verifyRun").mockResolvedValue({ pass: false, score: 0, reviewer_agent_id: "test",
+    summary: "unknown", issues: [{ severity: "error", rule: "verify.adapter_stop_unconfirmed", message: "unknown" }] });
+  const persist = vi.spyOn(stateFile, "writeLoopState").mockRejectedValueOnce(new Error("disk full"));
+  const options = { workspacePath: workspace, sources: [], inputTasks: [Task.parse({ task_id: "clean", source: "manual", capability: "code.test", prompt: "test" })],
+    executeCommand: "git init -q && git clean -fdx && node -e \"require('fs').appendFileSync('execution-count.txt','x')\"" };
+  try {
+    await expect(new LoopEngine(options).runOnce()).rejects.toThrow("disk full");
+    persist.mockRestore();
+    expect(loopContainmentPath(workspace)).not.toContain(workspace);
+    expect(loopContainmentPath(workspace)).toBe(originalContainmentPath);
+    expect(await readFile(loopContainmentPath(workspace), "utf8")).toContain("containment_pending");
+    const restarted = await new LoopEngine({ ...options, stateFilePath: "new-state.json" }).runOnce();
+    expect(restarted.executedTaskCount).toBe(0);
+    expect(review).toHaveBeenCalledTimes(1);
+    expect(await readFile(join(workspace, "execution-count.txt"), "utf8")).toBe("x");
+  } finally { review.mockRestore(); persist.mockRestore(); }
+});
+
+it("keeps same-process integrity containment if the durable record disappears", async () => {
+  const workspace = await makeGitQueuedWorkspace("baseline\n");
+  const { Task } = await import("./types.js");
+  const { unlink } = await import("node:fs/promises");
+  const verifier = await import("./verifier.js");
+  const review = vi.spyOn(verifier, "verifyRun").mockResolvedValue({ pass: false, score: 0,
+    reviewer_agent_id: "test", summary: "mutation", issues: [{ severity: "error", rule: "verify.reviewer_mutation", message: "mutation" }] });
+  const inputTasks = [Task.parse({ task_id: "first", source: "manual", capability: "code.test", prompt: "test" })];
+  const engine = new LoopEngine({ workspacePath: workspace, sources: [], inputTasks,
+    executeCommand: "node -e \"require('fs').appendFileSync('execution-count.txt','x')\"" });
+  try {
+    await engine.runOnce();
+    await unlink(loopContainmentPath(workspace));
+    inputTasks.push(Task.parse({ task_id: "second", source: "manual", capability: "code.test", prompt: "test" }));
+    expect((await engine.runOnce()).executedTaskCount).toBe(0);
+    expect(review).toHaveBeenCalledTimes(1);
+    expect(await readFile(join(workspace, "execution-count.txt"), "utf8")).toBe("x");
+  } finally { review.mockRestore(); }
+});
+
+it("rejects containment inside the actual candidate worktree before launching work", async () => {
+  const main = await makeGitQueuedWorkspace("main\n");
+  const candidate = await makeGitQueuedWorkspace("candidate\n");
+  const agents = await import("@osstack/agents");
+  const executor = await import("./candidate-execution.js");
+  const created = vi.spyOn(agents, "createWorktree").mockResolvedValue({ repoPath: main, worktreePath: candidate,
+    branch: "candidate", baseRef: "HEAD", rootPath: join(candidate, "..") });
+  const execute = vi.spyOn(executor, "executeLegacyImplementation");
+  vi.stubEnv("OSSTACK_LOOP_CONTAINMENT_ROOT", join(candidate, "host-control"));
+  try {
+    await expect(new LoopEngine({ workspacePath: main, sources: ["task_queue"], useWorktree: true, executeCommand: "must not execute" }).runOnce()).rejects.toThrow("outside the candidate");
+    expect(execute).not.toHaveBeenCalled();
+    expect(await readFile(loopContainmentPath(main), "utf8")).toContain("containment_pending");
+  } finally { created.mockRestore(); execute.mockRestore(); vi.unstubAllEnvs(); }
+});
+
+it("pins post-review Git evidence and disables repository fsmonitor commands", async () => {
+  const workspace = await makeGitQueuedWorkspace("main\n");
+  const foreign = await makeGitQueuedWorkspace("foreign\n");
+  const before = await git(workspace, ["rev-parse", "--short", "HEAD"]);
+  const sentinel = join(workspace, "fsmonitor-ran");
+  const monitor = join(workspace, "monitor.cjs");
+  const { chmod } = await import("node:fs/promises");
+  await writeFile(monitor, `#!/usr/bin/env node\nrequire('node:fs').writeFileSync(${JSON.stringify(sentinel)}, 'bad');\n`);
+  await chmod(monitor, 0o700);
+  await git(workspace, ["config", "core.fsmonitor", monitor]);
+  await git(workspace, ["config", "core.worktree", foreign]);
+  vi.stubEnv("GIT_DIR", join(foreign, ".git"));
+  vi.stubEnv("GIT_WORK_TREE", foreign);
+  try {
+    const result = await new LoopEngine({ workspacePath: workspace, sources: ["task_queue"],
+      executeCommand: "node -e \"require('fs').writeFileSync('app.txt','builder change')\"" }).runOnce();
+    expect(result.completedTasks[0]?.outcome).toBe("success");
+    expect(result.completedTasks[0]?.changed_files).toContain("app.txt");
+    expect(result.completedTasks[0]?.commit_hash).toBe(before.trim());
+    await expect(readFile(sentinel)).rejects.toMatchObject({ code: "ENOENT" });
+    expect(await readFile(join(foreign, "app.txt"), "utf8")).toBe("foreign\n");
+  } finally { vi.unstubAllEnvs(); }
+});
+
+
+it.each(["code.test", "dual-reviewer.code.test"])("does not probe a verifier during execution routing for %s", async capability => {
+  const workspace = await makeGitQueuedWorkspace("base\n");
+  const reviewer = new FakeLoopAdapter({ id: "dual-reviewer" });
+  const probe = vi.spyOn(reviewer, "isAvailable").mockImplementation(async () => {
+    await writeFile(join(workspace, "app.txt"), "selection probe contamination");
+    return { available: true, last_checked_at: 0 };
+  });
+  const invoke = vi.spyOn(reviewer, "invoke");
+  await expect(new LoopEngine({ workspacePath: workspace,
+    inputTasks: [{ task_id: "dual", capability, prompt: "test", priority: 1, source: "manual" }],
+    adapters: [reviewer], verifierAgentIds: [reviewer.id], maxIterations: 1 }).runOnce()).rejects.toThrow("NO_EXECUTION_ADAPTER_OUTSIDE_VERIFIER_ROLE");
+  expect(probe).not.toHaveBeenCalled();
+  expect(invoke).not.toHaveBeenCalled();
+  expect(await readFile(join(workspace, "app.txt"), "utf8")).toBe("base\n");
+});
+
+it.each(["prepush", "final"] as const)("retains containment after a reviewer mutates the %s candidate", async phase => {
+  const { CandidatePolicy, candidateBinding } = await import("./candidate-policy.js");
+  const workspace = await makeGitQueuedWorkspace("base\n");
+  await git(workspace, ["config", "user.name", "test"]);
+  await git(workspace, ["config", "user.email", "test@example.invalid"]);
+  await writeFile(join(workspace, ".gitignore"), "LOOP-STATE.json\nSTATE.md\n");
+  await git(workspace, ["add", "."]);
+  await git(workspace, ["commit", "-m", "fixture"]);
+  const state = realpathSync(mkdtempSync(join(tmpdir(), "candidate-record-")));
+  const command = "node -e 'process.exit(0)'";
+  const policy = CandidatePolicy.parse({ batchId: "mutation", scopeId: "app", branch: "main",
+    policyFingerprint: "a".repeat(64), environmentFingerprint: "b".repeat(64), testsFingerprint: "c".repeat(64),
+    maxTasks: 1, scopePaths: ["app.txt"], stateDirectory: state,
+    profiles: { local: [command], prepush: [command], final: [command] } });
+  const reviewer = new FakeReviewAdapter();
+  const originalInvoke = reviewer.invoke.bind(reviewer);
+  let calls = 0;
+  const mutateAt = phase === "prepush" ? 2 : 3;
+  reviewer.invoke = async function* (task) {
+    calls++;
+    if (calls === mutateAt) {
+      expect(task.context?.["repo_path"]).toBe(workspace);
+      await writeFile(join(workspace, "app.txt"), "reviewer contamination");
+    }
+    yield* originalInvoke(task);
+  };
+  const options = { workspacePath: workspace, sources: [], inputTasks: [{ task_id: "candidate", capability: "code.test",
+    prompt: "edit", priority: 1, source: "manual" as const, candidateBatch: candidateBinding(policy) }],
+    executeCommand: "node -e \"require('fs').writeFileSync('app.txt','builder')\"",
+    useWorktree: true, candidatePolicy: policy, maxIterations: 3,
+    verifierAgentIds: [reviewer.id], adapters: [reviewer], lessonDrafts: { enabled: false } };
+  const result = await new LoopEngine(options).runOnce();
+  expect(calls).toBe(mutateAt);
+  expect(result.completedTasks[0]?.outcome).toBe("failed");
+  expect(result.completedTasks[0]?.candidate_evidence?.stage).toBe("final_preflight_failed");
+  expect(await readFile(join(workspace, "app.txt"), "utf8")).toBe("reviewer contamination");
+  expect(await git(workspace, ["show", "HEAD:app.txt"])).toBe("builder");
+  await expect(readFile(loopContainmentPath(workspace), "utf8")).resolves.toContain("containment_pending");
+  expect((await new LoopEngine(options).runOnce()).executedTaskCount).toBe(0);
+  expect(calls).toBe(mutateAt);
+});
+
+it("defers dual-role availability probes until after execution selection and inside verification", async () => {
+  const workspace = await makeGitQueuedWorkspace("base\n");
+  const builder = new FakeLoopAdapter();
+  const backup = new FakeLoopAdapter({ id: "backup", costTier: "high" });
+  const reviewer = new FakeLoopAdapter({ id: "dual-reviewer" });
+  const builderInvoke = vi.spyOn(builder, "invoke");
+  const probe = vi.spyOn(reviewer, "isAvailable").mockImplementation(async () => {
+    // A selection-time probe would run before this file exists.
+    expect(await readFile(join(workspace, "agent-output.txt"), "utf8")).toBeTruthy();
+    await writeFile(join(workspace, "app.txt"), "probe contamination");
+    return { available: true, last_checked_at: 0 };
+  });
+  const invoke = vi.spyOn(reviewer, "invoke");
+  const result = await new LoopEngine({ workspacePath: workspace, sources: ["task_queue"],
+    adapters: [reviewer, builder, backup], verifierAgentIds: [reviewer.id], maxIterations: 3 }).runOnce();
+  expect(builderInvoke).toHaveBeenCalledTimes(1);
+  expect(probe).toHaveBeenCalledTimes(1);
+  expect(invoke).not.toHaveBeenCalled();
+  expect(result.completedTasks[0]?.verify_issues).toEqual(expect.arrayContaining([
+    expect.objectContaining({ rule: "verify.reviewer_mutation" }),
+  ]));
+  expect(result.completedTasks[0]?.outcome).not.toBe("success");
+});
+
+it.each(["--assume-unchanged", "--skip-worktree"])("preserves a legacy candidate containing %s hidden builder edits", async flag => {
+  const workspace = await makeGitQueuedWorkspace("base\n");
+  const reviewer = new FakeReviewAdapter();
+  const options = { workspacePath: workspace, sources: ["task_queue" as const], useWorktree: true,
+    executeCommand: `node -e "require('fs').writeFileSync('app.txt','hidden builder edit')" && git update-index ${flag} app.txt`,
+    verifierAgentIds: [reviewer.id], adapters: [reviewer], maxIterations: 3 };
+  const engine = new LoopEngine(options);
+  const result = await engine.runOnce();
+  expect(result.completedTasks[0]?.outcome).toBe("escalated");
+  expect(result.completedTasks[0]?.verify_issues).toEqual(expect.arrayContaining([
+    expect.objectContaining({ rule: "verify.candidate_index_unconfirmed", message: "CANDIDATE_HIDDEN_INDEX_ENTRY" }),
+  ]));
+  const created = result.events.find(event => event.type === "loop.worktree.created");
+  const candidate = created?.payload?.["worktree_path"];
+  expect(typeof candidate).toBe("string");
+  expect(await readFile(join(candidate as string, "app.txt"), "utf8")).toBe("hidden builder edit");
+  expect(await readFile(join(workspace, "app.txt"), "utf8")).toBe("base\n");
+  expect(result.events.some(event => event.type === "loop.worktree.cleaned" || event.type === "loop.worktree.merged")).toBe(false);
+  await expect(readFile(loopContainmentPath(workspace), "utf8")).resolves.toContain("containment_pending");
+  expect((await engine.runOnce()).executedTaskCount).toBe(0);
+  expect((await new LoopEngine(options).runOnce()).executedTaskCount).toBe(0);
+});
+
+it.each(["explicit", "only-verifiers"])("releases the lease for a static %s role refusal before containment or effects", async mode => {
+  const workspace = await makeQueuedWorkspace();
+  const reviewer = new FakeLoopAdapter({ id: "dual-role" });
+  const probe = vi.spyOn(reviewer, "isAvailable");
+  const invoke = vi.spyOn(reviewer, "invoke");
+  const release = vi.fn(async () => {}), retain = vi.fn();
+  await expect(new LoopEngine({ workspacePath: workspace, sources: ["task_queue"],
+    ...(mode === "explicit" ? { agentId: reviewer.id } : {}), adapters: [reviewer],
+    verifierAgentIds: [reviewer.id], lifecycleLease: async () => ({ release, retain }) }).runOnce()).rejects.toThrow(
+      mode === "explicit" ? "VERIFIER_EXECUTION_ROLE_CONFLICT" : "NO_EXECUTION_ADAPTER_OUTSIDE_VERIFIER_ROLE",
+    );
+  expect(release).toHaveBeenCalledTimes(1);
+  expect(retain).not.toHaveBeenCalled();
+  expect(probe).not.toHaveBeenCalled();
+  expect(invoke).not.toHaveBeenCalled();
+  await expect(readFile(loopContainmentPath(workspace), "utf8")).rejects.toMatchObject({ code: "ENOENT" });
+});
+
+it("retains protection for a routing miss after an effectful non-verifier availability probe", async () => {
+  const workspace = await makeQueuedWorkspace();
+  const builder = new FakeLoopAdapter();
+  const reviewer = new FakeReviewAdapter();
+  const probe = vi.spyOn(builder, "isAvailable").mockImplementation(async () => {
+    await writeFile(join(workspace, "probe-effect.txt"), "external probe started");
+    return { available: false, last_checked_at: 0 };
+  });
+  const release = vi.fn(async () => {}), retain = vi.fn();
+  await expect(new LoopEngine({ workspacePath: workspace, sources: ["task_queue"], adapters: [builder, reviewer],
+    verifierAgentIds: [reviewer.id], lifecycleLease: async () => ({ release, retain }) }).runOnce()).rejects.toThrow(
+      "NO_AVAILABLE_EXECUTION_ADAPTER_AFTER_ROUTING_PROBES",
+    );
+  expect(probe).toHaveBeenCalled();
+  expect(await readFile(join(workspace, "probe-effect.txt"), "utf8")).toBe("external probe started");
+  expect(release).not.toHaveBeenCalled();
+  expect(retain).toHaveBeenCalledWith("execution, probe or verification did not settle safely; preflight refusal is possible; this does not prove a process is alive; reconciliation required");
+  await expect(readFile(loopContainmentPath(workspace), "utf8")).resolves.toContain("containment_pending");
+});
+
+
+it("retains the real worktree and branch after a writing selection probe refuses execution", async () => {
+  const workspace = await makeGitQueuedWorkspace("base\n");
+  const builder = new FakeLoopAdapter();
+  const reviewer = new FakeReviewAdapter();
+  let candidatePath = "";
+  const probe = vi.spyOn(builder, "isAvailable").mockImplementation(async () => {
+    expect(candidatePath).not.toBe("");
+    await writeFile(join(candidatePath, "app.txt"), "selection probe evidence");
+    return { available: false, last_checked_at: 0 };
+  });
+  const invoke = vi.spyOn(builder, "invoke");
+  const release = vi.fn(async () => {}), retain = vi.fn();
+  const options = { workspacePath: workspace, sources: ["task_queue" as const], useWorktree: true,
+    adapters: [builder, reviewer], verifierAgentIds: [reviewer.id],
+    prepareVerification: async (path: string) => { candidatePath = path; },
+    lifecycleLease: async () => ({ release, retain }) };
+  const engine = new LoopEngine(options);
+  await expect(engine.runOnce()).rejects.toThrow("NO_AVAILABLE_EXECUTION_ADAPTER_AFTER_ROUTING_PROBES");
+  expect(probe).toHaveBeenCalled();
+  expect(invoke).not.toHaveBeenCalled();
+  expect(await readFile(join(candidatePath, "app.txt"), "utf8")).toBe("selection probe evidence");
+  const listings = await git(workspace, ["worktree", "list", "--porcelain"]);
+  expect(listings).toContain(candidatePath);
+  const branch = (await git(candidatePath, ["symbolic-ref", "--short", "HEAD"])).trim();
+  expect(await git(workspace, ["branch", "--list", branch])).toContain(branch);
+  expect(release).not.toHaveBeenCalled();
+  expect(retain).toHaveBeenCalledWith(expect.stringContaining("preflight refusal is possible"));
+  await expect(readFile(loopContainmentPath(workspace), "utf8")).resolves.toContain("containment_pending");
+  expect((await engine.runOnce()).executedTaskCount).toBe(0);
+  expect((await new LoopEngine({ ...options, stateFilePath: "new-state.json" }).runOnce()).executedTaskCount).toBe(0);
+  expect(await readFile(join(workspace, "app.txt"), "utf8")).toBe("base\n");
+});

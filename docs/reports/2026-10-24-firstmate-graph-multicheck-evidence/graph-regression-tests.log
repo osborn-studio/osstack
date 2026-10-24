@@ -1,0 +1,89 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/packages/cli
+
+osstack: retaining write lease graph-action:879a97feb92f130711f68a96fd20f5699268f52352aa868f151bd1c8f13a2b1a: Error: invalid result kind for registered operation
+osstack: retaining write lease graph-action:e9e9822d51326ebfdb3f3be7176854c4082718f3ce7cf878d7c014f24a2a7c8c: Error: invalid persisted evidence reference
+osstack: retaining write lease graph-action:905d0c0cd43d76ef2ab5cfaa4c798c7e5ad90932ba4ac055ec486fd0aeb76052: Error: candidate preflight refused
+osstack: retaining write lease graph-action:b8786822f050dc7e93f029cd61e66ec1398ff13aee5e727d84ff315611d8b57d: Error: adapter result or execution unconfirmed
+osstack: retaining write lease graph-action:ff68c64fad318c5a7a57e111051d71024681f3ba6c73ffc27215642d5dbc7098: Error: candidate preflight refused
+osstack: retaining write lease graph-action:f2064dffd98179f52bd588004d4f8be99e146492b8a5976f320e1cfdf4eeed87: Error: adapter result or execution unconfirmed
+osstack: retaining write lease graph-action:d6687ed8be913abcc27e35c08b2d33891abfbaaee1e29b27d67e33573e8272da: Error: lost receipt
+osstack: retaining write lease graph-action:c3c2c450dc1002182f600f31c5b59a64e2559a8685832fb6c1cd8c9f8c4bdb4c: injected lock release failure
+osstack: retaining write lease graph-action:c3c2c450dc1002182f600f31c5b59a64e2559a8685832fb6c1cd8c9f8c4bdb4c: Error: injected lock release failure
+osstack: retaining write lease graph-action:5c866fcaf44a6ad82a51e65513ed437f08d555aba9c980ad8e08dacd6d71c445: release failure
+osstack: retaining write lease graph-action:5c866fcaf44a6ad82a51e65513ed437f08d555aba9c980ad8e08dacd6d71c445: Error: release failure
+osstack: retaining write lease graph-action:792824148666d7b17204e03af7088acc14d6972e711bb848045235f3505b9f38: Error: adapter result or execution unconfirmed
+ ✓ src/graph-action-broker-boundary.test.ts (17 tests) 1199ms
+osstack: retaining write lease graph-action:12688c806b670ec6b251be016b383268994105dc0198b3402fdd5b29be23558a: Error: invalid result kind for registered operation
+osstack: retaining write lease graph-action:7e3dbebd780657a15bc624f9518f569b8b01364c9cf2ed3426170f41fd956952: Error: invalid usage
+osstack: retaining write lease graph-action:fe6f6337fd05581263632e88758339bb7a2f461fa27aecd34b6b44ea30bcd434: Error: invalid persisted evidence reference
+osstack: retaining write lease graph-action:9d5965a991758506192d1c25543b5f9084fdf9b6e7de60621bf7c0efca2e3e91: SqliteError: injected
+osstack: retaining write lease graph-action:7c9be8c6d950f903dd0434031781a5f77a76cad0df7476b4cb8af35a9cc932f1: Error: adapter result or execution unconfirmed
+osstack: retaining write lease graph-action:4312a344ed75c2b4256ecf2e21a925900569f0b742ec94899c87b031cb3f3f42: Error: adapter result or execution unconfirmed
+osstack: retaining write lease graph-action:d5b551975ab559f961c6fd2c169205956b93cd03214422767c6c73083f315649: Error: adapter result or execution unconfirmed
+osstack: retaining write lease graph-action:45c64a017bef981341162554d91f77618f3a245558d0af812a66263223a04ead: Error: adapter result or execution unconfirmed
+osstack: retaining write lease graph-action:9a443268fd856d65583cd43f9d1570ede07799bc153d34ffbd7c87fcb0702ed3: Error: adapter result or execution unconfirmed
+ ✓ src/graph-action-broker.test.ts (36 tests) 2542ms
+ ✓ src/graph-contract-host.test.ts (7 tests) 1726ms
+   ✓ loads contract authority through the default real daemon and keeps admission disabled  1009ms
+ ✓ src/graph-contained-recovery.test.ts (72 tests) 13071ms
+   ✓ contained proof bridge > uses the host closure inside actual G15 without inferring business outcome: valid  581ms
+   ✓ contained proof bridge > uses the host closure inside actual G15 without inferring business outcome: revoked  424ms
+   ✓ contained proof bridge > uses the host closure inside actual G15 without inferring business outcome: isolation-lost  336ms
+   ✓ contained proof bridge > uses the host closure inside actual G15 without inferring business outcome: release-drift  320ms
+   ✓ graph quiescence sweep > sweeps actual worker and contained executor after reopening the ledger, without settling or releasing  485ms
+   ✓ graph quiescence sweep > sweeps two distinct contained invocations without re-execution and binds each physical receipt  356ms
+   ✓ graph quiescence sweep > does not omit released or missing-admission historical obligations (held=false)  332ms
+   ✓ graph quiescence sweep > does not omit released or missing-admission historical obligations (held=true)  437ms
+   ✓ graph quiescence sweep > can inspect a released contained action but cannot reacquire cleanup authority  461ms
+   ✓ graph quiescence sweep > never substitutes container absence for a deleted receipt in inspect mode  408ms
+   ✓ graph quiescence sweep > never substitutes container absence for a deleted receipt in stop_contained mode  553ms
+   ✓ graph quiescence sweep > requires explicit stop mode and current stop grant for an orphan; never releases its ledger hold  534ms
+   ✓ graph quiescence sweep > requires old and current generation exit evidence before any container read or stop  361ms
+   ✓ graph quiescence sweep > includes an actionless intermediate generation (durable no-start=false)  321ms
+   ✓ graph quiescence sweep > includes an actionless intermediate generation (durable no-start=true)  405ms
+   ✓ graph quiescence sweep > rejects release drift inside executor authorization before subsequent physical operations  469ms
+   ✓ graph quiescence sweep > rejects revision drift inside executor authorization before subsequent physical operations  388ms
+   ✓ graph quiescence sweep > rejects grant drift inside executor authorization before subsequent physical operations  398ms
+   ✓ graph quiescence sweep > rejects duplicate registration/authority before daemon access  366ms
+   ✓ graph quiescence sweep > rejects extra registration/authority before daemon access  397ms
+   ✓ graph quiescence sweep > rejects async registration/authority before daemon access  319ms
+   ✓ graph quiescence sweep > captures trusted registrations and guards, and reports absent registries as unproven  454ms
+   ✓ graph quiescence sweep > rejects release drift after daemon I/O before further cleanup  344ms
+   ✓ graph quiescence sweep > rejects worker-journal drift after daemon I/O before further cleanup  423ms
+   ✓ graph quiescence sweep > keeps a substituted trusted manifest unproven before Docker calls  306ms
+osstack: retaining write lease graph-action:f76367247f01befc65142b3e50636edba4fc5433cc5fc01c95d5d6f05f79111a: Error: external stop unconfirmed
+osstack: retaining write lease graph-action:4d38f24d296085662442954158e2d308df88844e401bd4fe0c2c7192b46f66c0: Error: G20_RELEASE_HELD
+osstack: retaining write lease graph-action:37c744aebdb627583ea8f817f8fea79be06b52928b70fb586626d1e6ec063d74: Error: G20_RELEASE_HELD
+osstack: retaining write lease graph-action:84800b5686ff37c2b2e7c24c172a3eeab1b81a45af8e3a35a8b5f61c10eb07c8: Error: external stop unconfirmed
+osstack: retaining write lease graph-action:91fb12e6d1a00d7fc07812c32b1a3b013c6b2f4bcb0ae533276cb15041fcba28: Error: G20_RELEASE_HELD
+osstack: retaining write lease graph-action:86bd333a93cb524d56d2688bcffaac1644db4885f1ad78d2e2963f1c912fc933: Error: G20_RELEASE_HELD
+osstack: retaining write lease graph-action:ad30df4127321bee9e6ae2473f1536e35d758d53bd5c6b2716ba1c4cb87da370: Error: G20_LOST_PERSIST_ACK
+ ✓ src/graph-verification-join.test.ts (21 tests) 117260ms
+   ✓ joins real negative outcomes in review then tests order and publishes one immutable row  5961ms
+   ✓ joins real negative outcomes in tests then review order and publishes one immutable row  5133ms
+   ✓ unknown reviewer remains reconciliation-only on repeated evaluation and cannot allocate retry  2423ms
+   ✓ host retry allocates attempt two and recomputes latest durable evidence instead of replaying failed RETURN  5866ms
+   ✓ rejects a stale fence and revoked authority across asynchronous artifact evidence verification  4639ms
+   ✓ held real admission release prevents publication even when both branches are confirmed  4751ms
+   ✓ revalidates durable evidence bytes after a successful publication instead of trusting a cached join  5481ms
+   ✓ retains original repair limits {"maxActionStarts":2} after actual branch execution  5488ms
+   ✓ retains original repair limits {"tokenReservationLimit":2} after actual branch execution  5648ms
+   ✓ retains original repair limits {"maxEpochs":1} after actual branch execution  4502ms
+   ✓ retains original branch-attempt limit on malformed output and original elapsed deadline  5736ms
+   ✓ real worker partial RETURN survives stop/drain and G15 takeover; host retry supersedes cached malformed review  13877ms
+   ✓ actual Functional task throws for unknown verification outcome and host refuses worker pass proposal  4446ms
+   ✓ rejects revoke changing during the actual durable envelope read  5162ms
+   ✓ rejects fence changing during the actual durable envelope read  5606ms
+   ✓ rejects renewal changing during the actual durable envelope read  5068ms
+   ✓ rejects admission-release changing during the actual durable envelope read  5376ms
+   ✓ a new actual unknown action invalidates routing from an already published join  7162ms
+   ✓ publishes an actual passing candidate at exact action and token limits  4952ms
+   ✓ routes a legacy pre-invocation failure to stop without requiring a GraphError or report  3948ms
+   ✓ preserves a failed ledger settlement with a valid unclassified verification receipt  6032ms
+
+ Test Files  5 passed (5)
+      Tests  153 passed (153)
+   Start at  17:12:06
+   Duration  124.39s (transform 1.46s, setup 40ms, collect 3.56s, tests 135.80s, environment 0ms, prepare 206ms)
+
