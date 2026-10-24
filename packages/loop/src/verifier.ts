@@ -103,7 +103,8 @@ export async function verifyRun(run: AgentRun, options: LocalVerifierOptions): P
     (spec) => spec.mode === "artifact" && !isCommandEvaluationSpec(spec),
   );
   const artifact = await verifyArtifacts(options, artifactOptions, explicitArtifactSpecs);
-  if (artifact.issues.some(issue => issue.rule === "verify.adapter_stop_unconfirmed")) return unconfirmedVerifierStop("Artifact command stop is unconfirmed; no further checks may run");
+  const artifactStop = artifact.issues.find(issue => issue.rule === "verify.adapter_stop_unconfirmed");
+  if (artifactStop !== undefined) return { pass: false, score: 0, reviewer_agent_id: "local-verifier", summary: artifactStop.message, issues: artifact.issues };
   const adapterSpecs = explicitSpecs.filter(isAdapterEvaluationSpec);
   const adapterResults = await runVerifierAdapters(
     run,
@@ -696,7 +697,7 @@ async function invokeVerifierAdapter(
   } catch (error) {
     return { agentId: adapter.id, eventCount: 0, issues: [
       adapterIssue(adapter.id, "verify.adapter_failed", error instanceof Error ? error.message : String(error)),
-      adapterIssue(adapter.id, "verify.adapter_stop_unconfirmed", "Availability probe failed without physical stop evidence"),
+      adapterIssue(adapter.id, "verify.adapter_stop_unconfirmed", "Availability probe failed without physical stop evidence. A preflight refusal is possible; this is not evidence that a process remains alive. Reconcile before retry."),
       ...await preparationIntegrity(),
     ] };
   } finally { clearTimeout(availabilityTimer); }
@@ -849,7 +850,7 @@ async function invokeVerifierAdapter(
 
   const issues: Issue[] = [];
   if (invocationAttempted && !iteratorFinished) {
-    issues.push(adapterIssue(adapter.id,"verify.adapter_stop_unconfirmed","Verifier stream ended abnormally without physical stop evidence; reconciliation required"));
+    issues.push(adapterIssue(adapter.id,"verify.adapter_stop_unconfirmed","Verifier stream ended abnormally without physical stop evidence. A preflight refusal is possible; this is not evidence that a process remains alive. Reconcile before retry."));
   }
   if (snapshotError !== undefined) {
     issues.push(adapterIssue(adapter.id, "verify.reviewer_integrity_unconfirmed", "Post-invocation workspace integrity could not be verified; do not retry this candidate"));

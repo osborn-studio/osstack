@@ -1008,4 +1008,8 @@ it("enforces the combined base-review path budget before accepting either comple
   expect(diff.byteLength).toBeLessThan(1_048_576); expect(untracked.byteLength).toBeLessThan(1_048_576);
   expect(diff.byteLength + untracked.byteLength).toBeGreaterThan(1_048_576);
   await expect(verifyRun(run(), { workspacePath: workspace, artifactBaseCommit: base })).rejects.toThrow("CANDIDATE_ARTIFACT_RANGE_TOO_LARGE");
+  const legacyVerdict = await verifyRun(run(), { workspacePath: workspace, artifactVerification: { requireGitDiff: true } });
+  expect(legacyVerdict.pass).toBe(false);
+  expect(legacyVerdict.summary).toContain("Artifact path observation did not complete");
+  expect(legacyVerdict.issues).toContainEqual(expect.objectContaining({ rule: "verify.adapter_stop_unconfirmed", message: legacyVerdict.summary }));
 });
