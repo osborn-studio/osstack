@@ -80,6 +80,16 @@ export interface LoopRunOptions {
   archiveCompletedTasks?: boolean;
   useWorktree?: boolean;
   worktreeRoot?: string;
+  /** Trusted host-only gate before any candidate commit/merge or publish hook.
+   * artifact_only retains an isolated candidate and never commits/merges it. */
+  guardedLocalCandidate?: {
+    mode: "artifact_only";
+    inspect(input: { loopId: string; task: Task; workspacePath: string; run: AgentRun;
+      verdict: Verdict; reviews: readonly ReviewArtifact[] }): Promise<void>;
+  };
+  /** Host samples the candidate before checks/review and validates unchanged bytes afterwards. */
+  prepareVerification?: (workspacePath: string) => Promise<void>;
+  verificationFence?: (workspacePath: string) => Promise<() => Promise<void>>;
   agentId?: string;
   autoAgent?: boolean;
   verifierAgentIds?: string[];
@@ -223,6 +233,8 @@ export class LoopEngine {
   private readonly candidatePolicy: CandidatePolicy | undefined;
   private candidateRecheck: ((state: LoopState) => Promise<void>) | undefined;
   constructor(private readonly options: LoopRunOptions = {}) {
+    if (options.guardedLocalCandidate && (options.useWorktree !== true || options.publish !== undefined || options.selfImprovement !== undefined || options.goalCommand !== undefined))
+      throw new Error("GUARDED_LOCAL_ARTIFACT_ISOLATION_REQUIRED");
     this.candidatePolicy = options.candidatePolicy === undefined ? undefined : CandidatePolicy.parse(options.candidatePolicy);
     if (this.candidatePolicy && options.useWorktree !== true) throw Error("CANDIDATE_WORKTREE_REQUIRED");
     if (this.candidatePolicy && (options.goalCommand !== undefined || options.selfImprovement !== undefined || options.stateFilePath !== undefined || options.markdownPath !== undefined)) throw Error("CANDIDATE_POST_HOOK_FORBIDDEN");
@@ -825,6 +837,7 @@ export class LoopEngine {
     let runWorkspacePath = workspacePath;
     let worktree: WorktreeHandle | undefined;
     let preserveWorktreeBranch = false;
+    let preserveCandidateWorktree = false;
     let worktreeCommit: string | undefined;
     let finalEvidence: TaskGitEvidence = { changedFiles: [], diffSummary: "no git evidence collected" };
     let latestFeedback: IterationFeedback | undefined;
@@ -841,6 +854,7 @@ export class LoopEngine {
         ...(this.options.worktreeRoot !== undefined ? { rootPath: this.options.worktreeRoot } : {}),
       });
       runWorkspacePath = worktree.worktreePath;
+      if (this.options.guardedLocalCandidate) { preserveCandidateWorktree = true; preserveWorktreeBranch = true; }
       this.emit(loopId, "loop.worktree.created", {
         task_id: task.task_id,
         worktree_path: worktree.worktreePath,
@@ -851,6 +865,7 @@ export class LoopEngine {
     const candidateStartHead = this.candidatePolicy ? freezeCandidate(runWorkspacePath).headSha : undefined;
 
     try {
+      await this.options.prepareVerification?.(runWorkspacePath);
       for (let iteration = 1; iteration <= maxIterations; iteration++) {
         iterations = iteration;
         const effectiveTask: Task = latestFeedback === undefined
@@ -933,6 +948,18 @@ export class LoopEngine {
           break;
         }
 
+        let verifyFence: (() => Promise<void>) | undefined;
+        try { verifyFence = await this.options.verificationFence?.(runWorkspacePath); }
+        catch (error) {
+          const reason = error instanceof Error ? error.message : String(error);
+          outcome = "escalated";
+          finalVerdict = { pass: false, score: 0, reviewer_agent_id: "host", summary: reason,
+            issues: [{ severity: "error", rule: "verify.candidate_scope", message: reason }] };
+          this.emit(loopId, "loop.escalated", { task_id: task.task_id, reason, iteration,
+            max_iterations: maxIterations, escalate_to: "hermes", agent_id: finalRun.agent_id });
+          decisions.push(`${task.task_id}: verification scope rejected: ${reason}`);
+          break;
+        }
         const verifierAgentIds = this.options.verifierAgentIds ?? [];
         if (
           this.options.enforceRoleSeparation === true
@@ -963,6 +990,15 @@ export class LoopEngine {
           ...(this.options.outputLimit !== undefined ? { outputLimit: this.options.outputLimit } : {}),
           ...(this.options.adapters !== undefined ? { adapters: this.options.adapters } : {}),
           });
+        }
+        if (verifyFence) {
+          try { await verifyFence(); }
+          catch (error) {
+            finalVerdict = { ...finalVerdict, pass: false, score: 0,
+              summary: "Candidate changed while checks or review were running",
+              issues: [...finalVerdict.issues, { severity: "error", rule: "verify.candidate_changed",
+                message: error instanceof Error ? error.message : String(error) }] };
+          }
         }
         finalEvidence = await collectTaskGitEvidence(runWorkspacePath);
         if (this.candidatePolicy && finalVerdict.pass) assertCandidateScope(runWorkspacePath, this.candidatePolicy, candidateStartHead!);
@@ -1065,7 +1101,25 @@ export class LoopEngine {
         outcome = "failed";
       }
 
-      if (outcome === "success") {
+      if (this.options.guardedLocalCandidate !== undefined) {
+        preserveCandidateWorktree = worktree !== undefined;
+        preserveWorktreeBranch = preserveCandidateWorktree;
+        if (outcome === "success") {
+          try {
+            if (worktree === undefined || finalRun === null || finalVerdict === null)
+              throw new Error("guarded local candidate requires isolated execution evidence");
+            await this.options.guardedLocalCandidate.inspect({ loopId, task, workspacePath: runWorkspacePath,
+              run: finalRun, verdict: finalVerdict, reviews: finalReviewArtifacts ?? [] });
+          } catch (error) {
+            outcome = "escalated";
+            const reason = error instanceof Error ? error.message : String(error);
+            this.emit(loopId, "loop.escalated", { task_id: task.task_id, reason, iteration: iterations,
+              max_iterations: maxIterations, escalate_to: "hermes", agent_id: finalRun?.agent_id ?? "unknown" });
+            decisions.push(`${task.task_id}: guarded candidate rejected: ${reason}`);
+          }
+        }
+      }
+      if (outcome === "success" && this.options.guardedLocalCandidate === undefined) {
         if (!this.candidatePolicy) publishedAsset = await this.runPublishHook(loopId, task, decisions);
         if (!this.candidatePolicy) lessonDraftPath = await this.runLessonDraftHook(loopId, workspacePath, task, decisions, {
           iterations,
@@ -1077,7 +1131,7 @@ export class LoopEngine {
         });
       }
 
-      if (worktree !== undefined && outcome === "success") {
+      if (worktree !== undefined && outcome === "success" && this.options.guardedLocalCandidate === undefined) {
         const commit = await commitWorktreeChanges(worktree, `osstack loop task ${task.task_id}`);
         if (commit.committed) {
           preserveWorktreeBranch = true;
@@ -1097,7 +1151,7 @@ export class LoopEngine {
           : `${task.task_id}: isolated worktree had no git changes to merge`);
       }
     } finally {
-      if (worktree !== undefined && !this.implementationUnconfirmed) {
+      if (worktree !== undefined && !this.implementationUnconfirmed && !preserveCandidateWorktree) {
         await cleanupWorktree(worktree, { removeBranch: !preserveWorktreeBranch });
         this.emit(loopId, "loop.worktree.cleaned", {
           task_id: task.task_id,

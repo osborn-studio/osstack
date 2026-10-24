@@ -2,7 +2,7 @@
 
 # CLI Commands
 
-Top-level `osstack` commands parsed from `--help` (49 total).
+Top-level `osstack` commands parsed from `--help` (50 total).
 
 - `agent`
 - `attention`
@@ -26,6 +26,7 @@ Top-level `osstack` commands parsed from `--help` (49 total).
 - `health`
 - `help`
 - `hermes`
+- `homes`
 - `hub`
 - `init`
 - `kanban`

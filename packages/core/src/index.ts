@@ -41,3 +41,7 @@ export type { RepositoryScope } from "./graph/repository-scope.js";
 export { GraphCheckpointStore } from './state/graph-checkpoints.js';
 
 export * from "./scratch.js";
+
+export { deliveryContractDigest, deliveryCheckReference, freezeDeliveryContract,
+  assertFrozenDeliveryContract, resolveDeliveryContractChecks, assertDeliveryContractAdmission,
+  assertDeliveryContractPaths, verifyDeliveryContractReceipt, promoteDeliveryScout } from "./delivery-contract.js";

@@ -1,0 +1,26 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-supervision-next/packages/autonomy
+
+ ✓ src/risk.test.ts (43 tests) 13ms
+ ✓ src/state-machine.test.ts (7 tests) 13ms
+To /var/folders/97/wmwg4qzx02j74c3n73nh438w0000gn/T/osstack-remote-byEqfz
+ * [new branch]      HEAD -> main
+Switched to a new branch 'osstack/feature'
+ ✓ src/engine.test.ts (36 tests) 44ms
+To /var/folders/97/wmwg4qzx02j74c3n73nh438w0000gn/T/osstack-remote-y4eow5
+ * [new branch]      HEAD -> main
+Switched to a new branch 'osstack/feature'
+To /var/folders/97/wmwg4qzx02j74c3n73nh438w0000gn/T/osstack-remote-y4eow5
+   257a5bd..002f830  002f8302947555326e3fbb66f3e28028b1a0ea50 -> main
+To /var/folders/97/wmwg4qzx02j74c3n73nh438w0000gn/T/osstack-remote-y4eow5
+ + 002f830...257a5bd 257a5bd1be0072b42bef2bdb23fd4696eca82680 -> main (forced update)
+ ✓ src/git-candidate.test.ts (6 tests) 1703ms
+   ✓ guarded staged candidate > requires a clean candidate at the exact fetched base commit  440ms
+   ✓ guarded staged candidate > binds post-merge deployment to the exact fetched merge tree  403ms
+   ✓ guarded staged candidate > fails closed when Git cannot inspect a changed dependency manifest  493ms
+
+ Test Files  4 passed (4)
+      Tests  92 passed (92)
+   Start at  12:50:35
+   Duration  2.83s (transform 433ms, setup 0ms, collect 980ms, tests 1.77s, environment 0ms, prepare 377ms)
+

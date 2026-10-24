@@ -1,0 +1,24 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-supervision-next/packages/autonomy
+
+ ✓ src/risk.test.ts (43 tests) 9ms
+To /var/folders/97/wmwg4qzx02j74c3n73nh438w0000gn/T/osstack-remote-tjFQf0
+ * [new branch]      HEAD -> main
+Switched to a new branch 'osstack/feature'
+To /var/folders/97/wmwg4qzx02j74c3n73nh438w0000gn/T/osstack-remote-HW7CuO
+ * [new branch]      HEAD -> main
+Switched to a new branch 'osstack/feature'
+To /var/folders/97/wmwg4qzx02j74c3n73nh438w0000gn/T/osstack-remote-HW7CuO
+   4dd14af..4756e61  4756e6161af26576c8f2ec2f5bc96dbac6a5fc9c -> main
+To /var/folders/97/wmwg4qzx02j74c3n73nh438w0000gn/T/osstack-remote-HW7CuO
+ + 4756e61...4dd14af 4dd14af6c851cbee59fbfb928c82d88b340cbbcb -> main (forced update)
+ ✓ src/git-candidate.test.ts (7 tests) 1652ms
+   ✓ guarded staged candidate > requires a clean candidate at the exact fetched base commit  321ms
+   ✓ guarded staged candidate > binds post-merge deployment to the exact fetched merge tree  399ms
+   ✓ guarded staged candidate > fails closed when Git cannot inspect a changed dependency manifest  454ms
+
+ Test Files  2 passed (2)
+      Tests  50 passed (50)
+   Start at  12:52:49
+   Duration  1.91s (transform 103ms, setup 0ms, collect 153ms, tests 1.66s, environment 0ms, prepare 83ms)
+

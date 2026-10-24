@@ -1,0 +1,20 @@
+$ tsc --noEmit
+src/attention-planning-command.ts(47,39): error TS2339: Property 'evaluateRoutingGolden' does not exist on type '{ default: typeof import("/Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-supervision-next/packages/supervisor/dist/index"); classifyAttentionWait: (input: WaitInput) => { ...; }; ... 50 more ...; attachProbeOutcomeMetrics(report: { ...; }, source: { ...; }): { ...; }; }'.
+src/attention-planning-command.ts(54,37): error TS2339: Property 'evaluateRoutingGolden' does not exist on type '{ default: typeof import("/Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-supervision-next/packages/supervisor/dist/index"); classifyAttentionWait: (input: WaitInput) => { ...; }; ... 50 more ...; attachProbeOutcomeMetrics(report: { ...; }, source: { ...; }): { ...; }; }'.
+src/attention-routing-evaluation.test.ts(5,10): error TS2305: Module '"@osstack/supervisor"' has no exported member 'evaluateRoutingGolden'.
+src/attention-routing-evaluation.test.ts(5,38): error TS2305: Module '"@osstack/supervisor"' has no exported member 'RoutingGoldenDataset'.
+src/attention-routing-evaluation.test.ts(26,34): error TS7006: Parameter 'c' implicitly has an 'any' type.
+src/attention-routing-evaluation.ts(2,15): error TS2305: Module '"@osstack/supervisor"' has no exported member 'ProfileRoutingGoldenRunner'.
+src/attention-routing-evaluation.ts(7,75): error TS7006: Parameter 'item' implicitly has an 'any' type.
+src/attention-routing-evaluation.ts(7,81): error TS7006: Parameter 'adapters' implicitly has an 'any' type.
+src/deliver-command.ts(520,33): error TS2379: Argument of type '{ policyGate: PolicyGate; worktreeRoot?: string; useWorktree?: true; commandTimeoutMs?: number; maxIterations?: number; inputTasks?: { prompt: string; task_id: string; capability: string; ... 4 more ...; candidateBatch?: { batchId: string; scopeId: string; branch: string; policyFingerprint: string; environmentFinger...' is not assignable to parameter of type 'LoopRunOptions' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  The types of 'guardedLocalCandidate.inspect' are incompatible between these types.
+    Type '(input: { workspacePath: string; run: { run_id: string; agent_id: string; }; verdict: { verify_commands?: import("@osstack/loop").CommandAudit[]; }; reviews: readonly import("@osstack/loop").ReviewArtifact[]; }) => Promise<...>' is not assignable to type '(input: { loopId: string; task: { task_id: string; capability: string; prompt: string; priority: number; source: "task_queue" | "git_diff" | "gh_issue" | "github_branch" | "ci_log" | "manual"; context?: Record<...> | undefined; evaluation?: { ...; }[] | undefined; candidateBatch?: { ...; } | undefined; }; workspaceP...'.
+      Types of parameters 'input' and 'input' are incompatible.
+        Type '{ loopId: string; task: { task_id: string; capability: string; prompt: string; priority: number; source: "task_queue" | "git_diff" | "gh_issue" | "github_branch" | "ci_log" | "manual"; context?: Record<...> | undefined; evaluation?: { ...; }[] | undefined; candidateBatch?: { ...; } | undefined; }; workspacePath: str...' is not assignable to type '{ workspacePath: string; run: { run_id: string; agent_id: string; }; verdict: { verify_commands?: { command: string; exit_code: number; duration_ms: number; summary?: string | undefined; }[]; }; reviews: readonly { ...; }[]; }'.
+          The types of 'verdict.verify_commands' are incompatible between these types.
+            Type '{ command: string; exit_code: number; duration_ms: number; summary?: string | undefined; }[] | undefined' is not assignable to type '{ command: string; exit_code: number; duration_ms: number; summary?: string | undefined; }[]'.
+              Type 'undefined' is not assignable to type '{ command: string; exit_code: number; duration_ms: number; summary?: string | undefined; }[]'.
+/Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-supervision-next/packages/cli:
+[ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL] @osstack/cli@0.21.0 typecheck: `tsc --noEmit`
+Exit status 2

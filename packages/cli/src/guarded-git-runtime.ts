@@ -1,3 +1,5 @@
+import { realpath } from "node:fs/promises";
+import { createDeliveryVerificationFence, buildDeliveryVerificationReceipt, captureDeliveryCandidate, persistDeliveryHostRecord, verifyPersistedDeliveryReceipt, deliveryGit } from "./delivery-contract-host.js";
 import { createHash } from "node:crypto";
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
@@ -28,11 +30,15 @@ import {
 } from "@osstack/agents";
 import {
   freezeProduction,
+  assertFrozenDeliveryContract,
+  assertDeliveryContractAdmission,
+  assertDeliveryContractPaths,
   getProductionFreeze,
   getContractDecision,
 } from "@osstack/core";
 import {
   deliverToGitHub,
+  openPullRequestToGitHub,
   observeCurrentGreenCandidate,
   CandidateEvidenceContextSchema,
   type CandidateEvidenceContext,
@@ -48,6 +54,8 @@ import {
 } from "@osstack/loop";
 import {
   ScopedApprovalDecision,
+  FrozenDeliveryContractV2,
+  type DeliveryReceiptReferenceV2,
   type ScopedApprovalDecision as ScopedApprovalDecisionType,
 } from "@osstack/protocol";
 import { z } from "zod";
@@ -66,6 +74,8 @@ const RuntimeProfile = LoopProfileRoutingEvidence.extend({
 
 export const GuardedGitRouting = z
   .object({
+    delivery_contract: FrozenDeliveryContractV2.optional(),
+    execution_context_path: z.string().min(1).optional(),
     schema_version: z.literal(1),
     task: Task,
     profile: RuntimeProfile,
@@ -111,6 +121,8 @@ export interface GuardedGitRuntimeDeps {
   dbPath: string;
   trustedApprovalPublicKeys: ReadonlyMap<string, string>;
   adapters?: () => AgentAdapter[];
+  createExecutionContext?: (input: { adapters: readonly AgentAdapter[]; workspacePath: string; configPath: string;
+    contractDigest?: string; contractBrief?: string }) => Promise<{ adapters: readonly AgentAdapter[]; receiptRefs(): readonly DeliveryReceiptReferenceV2[] }>;
   now?: () => Date;
   writeProof(input: GuardedGitProofInput): Promise<ProofReference>;
   deliverGit?: typeof deliverToGitHub;
@@ -124,6 +136,7 @@ export interface GuardedGitRuntimeDeps {
   assertPolicyUnchanged?: (
     workspacePath: string,
     expectedPolicySha256: string,
+    baseRevision?: string,
   ) => Promise<void>;
   evaluateGovernance?: (
     workspacePath: string,
@@ -257,6 +270,7 @@ function policyFromRouting(
   deps: GuardedGitRuntimeDeps,
 ): GuardedDeliveryPolicy {
   return {
+    ...(routing.delivery_contract ? { delivery_contract: routing.delivery_contract } : {}),
     policy_sha256: routing.policy_sha256,
     max_auto_risk: routing.max_auto_risk,
     protected_policy_paths: routing.protected_policy_paths,
@@ -291,6 +305,21 @@ export class GuardedGitRuntime {
 
   async start(input: GuardedGitStartInput): Promise<GuardedDeliveryResult> {
     const routing = GuardedGitRouting.parse(input.routing);
+    if (routing.delivery_contract) {
+      input = { ...input, workspace_path: await realpath(input.workspace_path) };
+      const frozen = assertFrozenDeliveryContract(routing.delivery_contract);
+      assertDeliveryContractAdmission(frozen, { canonicalRepo: await realpath(input.workspace_path), baseHead: routing.base_commit_sha,
+        taskId: input.task_id, goal: input.goal, policyDigest: routing.policy_sha256, reviewPolicyRef: `profile:${routing.profile.profile_name}`,
+        acceptedCommands: routing.verify_commands });
+      if (frozen.contract.budget_ref !== `policy:${routing.policy_sha256}`) throw new Error("delivery_contract_budget_ref_mismatch");
+      if (input.contract_sha256 !== frozen.digest || routing.task.task_id !== input.task_id || routing.task.prompt !== input.goal
+        || JSON.stringify(uniqueSorted(input.expected_paths)) !== JSON.stringify(frozen.contract.allowed_paths)
+        || JSON.stringify(uniqueSorted(input.requested_actions)) !== JSON.stringify(frozen.contract.requested_actions)) throw new Error("delivery_contract_runtime_identity_mismatch");
+      const publication = frozen.contract.publication_scope;
+      if (publication.mode !== "none" && (publication.repository.toLowerCase() !== input.repo_id.toLowerCase()
+        || publication.remote !== routing.git.remote || publication.base_ref !== routing.git.base || publication.head_ref !== routing.git.branch))
+        throw new Error("delivery_contract_publication_scope_mismatch");
+    }
     const verifiedBase = await assertGuardedCandidateBase({
       workspace_path: input.workspace_path,
       remote: routing.git.remote,
@@ -373,8 +402,25 @@ export class GuardedGitRuntime {
           if (recordRecovery) recoveryRecorded = true;
           return persisted;
         },
-        runLocal: ({ workspacePath }) =>
-          this.runLocal(workspacePath, routing),
+        runLocal: ({ workspacePath, runId }) =>
+          this.runLocal(workspacePath, routing, runId),
+        verifyContractReceipt: async ({ contract, ref, runId, workspacePath, expectedHeads }) => {
+          await this.assertPolicy(routing, workspacePath);
+          await verifyPersistedDeliveryReceipt({ root: join(routing.evidence_root, "contract-receipts"), ref,
+            frozen: contract, runId, workspace: workspacePath, expectedHeads });
+        },
+        writeContractCompletionReceipt: async (input) => persistDeliveryHostRecord(join(routing.evidence_root, "contract-receipts"), {
+          schema_version: 2, kind: "delivery_completion", ...input, qualification: "host_receipts_not_external_publication_qualification",
+        }),
+        openPullRequest: async (input, scope) => {
+          const contractScope = routing.delivery_contract?.contract.publication_scope;
+          if (!contractScope || contractScope.mode === "none" || contractScope.repository !== scope.repository
+            || contractScope.remote !== input.remote || contractScope.base_ref !== input.base || contractScope.head_ref !== input.branch)
+            throw new Error("delivery_publication_scope_changed");
+          if ((await deliveryGit(input.workspacePath, ["rev-parse", "HEAD"])).trim() !== scope.headCommit)
+            throw new Error("delivery_publication_candidate_changed");
+          return openPullRequestToGitHub(input, scope, this.deps.candidateDeliveryRunner);
+        },
         writeCandidateProof: async (evidence) => {
           const proof = await this.deps.writeProof({
             stage: "candidate",
@@ -415,6 +461,7 @@ export class GuardedGitRuntime {
             expected_diff_sha256: input.diff_sha256,
             idempotency_key: input.idempotency_key,
             message: routing.git.title,
+            ...(routing.delivery_contract ? { hardened: true } : {}),
           });
         },
         deliverGit: async (input) => {
@@ -473,15 +520,18 @@ export class GuardedGitRuntime {
     routing: GuardedGitRouting,
     workspacePath: string,
   ): Promise<void> {
+    if (routing.delivery_contract && !this.deps.assertPolicyUnchanged) throw new Error("delivery_contract_policy_guard_required");
     await this.deps.assertPolicyUnchanged?.(
       workspacePath,
       routing.policy_sha256,
+      ...(routing.delivery_contract ? [routing.delivery_contract.contract.base_head] : []),
     );
   }
 
   private async runLocal(
     workspacePath: string,
     routing: GuardedGitRouting,
+    runId?: string,
   ): Promise<LocalDeliveryResult> {
     await assertGuardedCandidateHead(
       workspacePath,
@@ -493,15 +543,25 @@ export class GuardedGitRuntime {
       routing.evidence_root,
       "LOOP-STATE.json",
     );
+    const adapters = this.deps.adapters?.() ?? defaultAdapters();
+    const contract = routing.delivery_contract;
+    const verificationFence = contract ? createDeliveryVerificationFence(contract) : undefined;
+    let context: Awaited<ReturnType<NonNullable<GuardedGitRuntimeDeps["createExecutionContext"]>>> | undefined;
+    if (routing.execution_context_path) {
+      if (!this.deps.createExecutionContext) throw new Error("execution_context_unavailable");
+      context = await this.deps.createExecutionContext({ adapters, workspacePath, configPath: routing.execution_context_path,
+        ...(contract ? { contractDigest: contract.digest, contractBrief: contract.brief } : {}) });
+    }
     const engine = new LoopEngine({
       loopId: `loop_${routing.task.task_id}`,
       workspacePath,
       stateFilePath,
       sources: [],
-      inputTasks: [routing.task],
+      ...(contract ? { prepareVerification: verificationFence!.prepare, verificationFence: verificationFence! } : {}),
+      inputTasks: [contract && !context ? { ...routing.task, prompt: `${routing.task.prompt}\n\n${contract.brief}` } : routing.task],
       skipCompletedTasks: false,
       agentId: routing.profile.builder_agent_id,
-      adapters: this.deps.adapters?.() ?? defaultAdapters(),
+      adapters: context?.adapters ?? adapters,
       verifierAgentIds: [routing.profile.evaluator_agent_id],
       enforceRoleSeparation: true,
       profileRouting: {
@@ -545,11 +605,14 @@ export class GuardedGitRuntime {
       `${JSON.stringify(result.events, null, 2)}\n`,
       "utf8",
     );
+    if (contract && completed.outcome === "success") await verificationFence!.assertVerified(workspacePath);
     const postDiff = await stageGuardedCandidate({
       workspace_path: workspacePath,
       expected_base_commit_sha: routing.base_commit_sha,
       commands: routing.verify_commands,
+      ...(contract ? { hardened: true } : {}),
     });
+    if (contract && !this.deps.evaluateGovernance) throw new Error("delivery_contract_governance_required");
     const governance = await this.deps.evaluateGovernance?.(
       workspacePath,
     );
@@ -559,7 +622,22 @@ export class GuardedGitRuntime {
       && (completed.verify_commands ?? []).every(
         (command) => command.exit_code === 0,
       );
+    let receipt: DeliveryReceiptReferenceV2 | undefined;
+    if (contract && verificationPass && reviewsPass && governance?.blocking !== true) {
+      if (!runId) throw new Error("delivery_contract_host_run_required");
+      await verificationFence!.assertVerified(workspacePath);
+      assertDeliveryContractPaths(contract, postDiff.changed_paths);
+      const candidate = await captureDeliveryCandidate(workspacePath, contract.contract.base_head);
+      const value = buildDeliveryVerificationReceipt({ frozen: contract, runId, runKind: "guarded-git", candidate,
+        workspaceStateDigest: await verificationFence!.assertVerified(workspacePath), commands: completed.verify_commands ?? [], reviews: completed.review_artifacts ?? [],
+        builderAgentId: completed.agent_id, builderIdentity: routing.profile.builder_identity,
+        contextReceiptRefs: context?.receiptRefs() ?? [] });
+      receipt = await persistDeliveryHostRecord(join(routing.evidence_root, "contract-receipts"), value);
+      await verifyPersistedDeliveryReceipt({ root: join(routing.evidence_root, "contract-receipts"), ref: receipt,
+        frozen: contract, runId, workspace: workspacePath });
+    }
     return LocalDeliveryResult.parse({
+      ...(receipt ? { delivery_receipt: receipt } : {}),
       verification_passed:
         verificationPass && governance?.blocking !== true,
       review_passed: reviewsPass,

@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { mkdtempSync } from "node:fs";
+import { mkdtempSync, realpathSync } from "node:fs";
 import {
   mkdir,
   readFile,
@@ -18,6 +18,8 @@ import type {
 } from "@osstack/agents";
 import {
   CapabilitySchema,
+  freezeDeliveryContract,
+  deliveryCheckReference,
   listAutonomyTransitions,
   type CapabilityKind,
 } from "@osstack/core";
@@ -684,4 +686,62 @@ it("enabled actual runtime stale head falls back to original input only after fi
 });
 it("stale-head fallback cannot bypass policy change after final context sample", async () => {
  const observed = await contextScenario("stale-policy-drift"); expect(observed.result.status).not.toBe("completed"); expect(observed.sample).toHaveBeenCalledTimes(2); expect(observed.deliverGit).not.toHaveBeenCalled(); expect(JSON.stringify(observed.result)).toContain("SYNTHETIC_POLICY_CHANGED_AFTER_SAMPLE");
+});
+
+describe("V2 guarded runtime host receipts", () => {
+  it.each(["local_verified", "pr_opened"] as const)("binds real Loop evidence and obeys completion %s", async (completion) => {
+    const workspace = await fixtureRepo(); const evidenceRoot = join(root, "contract-evidence");
+    const start = startInput({ workspace, evidenceRoot, expectedPaths: ["docs/readme.md"] });
+    const frozen = freezeDeliveryContract({ schema_version: 2, contract_id: "contract-runtime", task_id: start.task_id,
+      canonical_repo: realpathSync(workspace), mode: "implement", base_head: start.routing.base_commit_sha, goal: start.goal,
+      required_checks: [{ id: "tests", registry_ref: deliveryCheckReference(start.routing.verify_commands[0]!) }],
+      review_policy_ref: "profile:test", requested_completion: completion, allowed_paths: ["docs/readme.md"],
+      requested_actions: completion === "local_verified" ? ["build", "verify"] : ["build", "verify", "commit", "push", "open_pr"],
+      budget_ref: `policy:${SHA_A}`, policy_digest: SHA_A, publication_scope: completion === "local_verified" ? { mode: "none" } : {
+        mode: "review_pr", hostname: "github.com", repository: "owner/repo", remote: "origin", base_ref: "main", head_ref: "codex/guarded-test" }, merge_authority: { mode: "none" } });
+    const proofs: GuardedGitProofInput[] = []; const deliverGit = vi.fn(); const externalCalls: string[] = [];
+    let prCreated = false;
+    const runner: NonNullable<GuardedGitRuntimeConstructorDeps["candidateDeliveryRunner"]> = { run: async (command, args) => {
+      const result = (stdout: string, exitCode = 0, stderr = "") => ({ stdout, exitCode, stderr });
+      externalCalls.push(`${command} ${args.join(" ")}`);
+      if (command === "git") {
+        if (args[0] === "remote") return result("git@github.com:owner/repo.git\n");
+        if (args[0] === "push") return result("mock remote accepted exact candidate");
+        return result(git(workspace, [...args]));
+      }
+      if (args[0] === "auth") return result("test auth");
+      if (args[0] === "repo") return result(JSON.stringify({ nameWithOwner: "owner/repo" }));
+      if (args[0] === "api") return args.some(a => a.includes("/protection")) ? result("", 1, "HTTP 404: Branch not protected") : result("[]");
+      if (args[1] === "create") { prCreated = true; return result("https://github.com/owner/repo/pull/42"); }
+      if (args[1] === "view") {
+        if (!prCreated) return result("", 1, "no pull requests found");
+        if (args.includes("isDraft,state")) return result(JSON.stringify({ isDraft: false, state: "OPEN" }));
+        if (args.includes("headRefOid,baseRefName,headRefName")) return result(JSON.stringify({ headRefOid: git(workspace, ["rev-parse", "HEAD"]), baseRefName: "main", headRefName: "codex/guarded-test" }));
+        return result(JSON.stringify({ number: 42, url: "https://github.com/owner/repo/pull/42", headRefOid: git(workspace, ["rev-parse", "HEAD"]), state: "OPEN" }));
+      }
+      throw new Error(`unexpected remote action ${args.join(" ")}`);
+    } };
+    const policyGuard = vi.fn(async () => {});
+    const { runtime, close } = await testRuntime({ workspace, evidenceRoot, proofs, deliverGit, candidateDeliveryRunner: runner, assertPolicyUnchanged: policyGuard,
+      builderInvoke: async function* (task) { await writeFile(join(String(task.context?.["repo_path"]), "docs/readme.md"), "verified candidate");
+        yield doneEvent(task, { status: "completed", last_seq: 0, result_summary: "built" }); } });
+    try {
+      const result = await runtime.start({ ...start, contract_sha256: frozen.digest, requested_actions: frozen.contract.requested_actions,
+        routing: { ...start.routing, delivery_contract: frozen } });
+      expect(result.status, JSON.stringify(result)).toBe("completed");
+      expect(policyGuard).toHaveBeenCalledWith(realpathSync(workspace), SHA_A, frozen.contract.base_head);
+      expect(result.run.context.achieved_completion).toBe(completion);
+      expect(git(workspace, ["rev-list", "--count", "HEAD"])).toBe(completion === "local_verified" ? "1" : "2");
+      expect(externalCalls.some(call => call.includes("pr merge") || call.includes("pr checks"))).toBe(false);
+      if (completion === "pr_opened") expect(externalCalls).toContain(`git push origin ${git(workspace, ["rev-parse", "HEAD"])}:refs/heads/codex/guarded-test`);
+      expect(deliverGit).not.toHaveBeenCalled();
+      expect(proofs.map(p => p.stage)).toEqual(["candidate"]);
+      const receipt = JSON.parse(await readFile(result.run.context.delivery_receipt!.path, "utf8"));
+      expect(receipt.run_id).toBe(start.autonomy_run_id);
+      expect(receipt.contract_digest).toBe(frozen.digest);
+      expect(receipt.checks[0]).toMatchObject({ id: "tests", exit_code: 0 });
+      expect(receipt.review).toMatchObject({ verdict: "approved", builder_provider: "anthropic", reviewer_provider: "kimi" });
+      expect(result.run.context.delivery_completion_receipt).toBeDefined();
+    } finally { close(); }
+  }, 30000);
 });

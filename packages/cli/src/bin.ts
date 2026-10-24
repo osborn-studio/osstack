@@ -223,6 +223,7 @@ function renderChineseMainHelp(): string {
   stats               查看 agent 与 loop 指标
 
 项目命令：
+  homes inspect --manifest <file>  只读盘点显式登记的本地实例
   worker list|inspect --repo <path> --default-tenant  只读查看已绑定执行器
   attention status    只读查看任务状态与最新决策（未后台接管）
   attention routing-eval --input <path> --mode router_golden  验证真实确定性路由
@@ -428,6 +429,7 @@ Self-update:
                       and roll back automatically on failure.
 
 Project commands:
+  homes inspect --manifest <file>  Inspect explicitly pinned local home identities
   worker list|inspect --repo <path> --default-tenant  Inspect bound workers read-only
   attention status    Read-only task/session attention snapshot
   attention routing-eval --input <path> --mode router_golden  Validate real deterministic routing
@@ -971,6 +973,11 @@ See docs/V2_REFACTOR_PLAN.md for the full roadmap.
   if (cmd === "supervise") {
     const { handleSuperviseCommand } = await import("./supervise-command.js");
     return await handleSuperviseCommand(args.slice(1));
+  }
+
+  if (cmd === "homes") {
+    const {handleHomesCommand} = await import("./home-inventory.js");
+    return await handleHomesCommand(args.slice(1));
   }
 
   if (cmd === "worker") {
@@ -7722,6 +7729,7 @@ async function writeRequestedLoopArtifacts(
   args: string[],
   events: LoopEvent[] = [],
   governanceOverride?: GovernanceProofEvidence,
+  outputDirectory?: string,
 ): Promise<LoopEvidenceArtifacts | undefined> {
   const { createLoopStateScorecardFromState, renderLoopStateScorecardHtml, renderLoopStateScorecardMarkdown } = await loadLoop();
   if (!hasRequestedLoopArtifacts(args)) return undefined;
@@ -7730,7 +7738,7 @@ async function writeRequestedLoopArtifacts(
   const loopId = safeFileSegment(state.loop_id);
 
   if (args.includes("--report")) {
-    const reportDir = join(workspacePath, "reports");
+    const reportDir = join(outputDirectory ?? workspacePath, "reports");
     const reportPath = join(reportDir, `osstack-report-${loopId}.md`);
     await mkdir(reportDir, { recursive: true });
     await writeFile(reportPath, await renderReportMarkdownForArtifacts(state, events), "utf-8");
@@ -7738,7 +7746,7 @@ async function writeRequestedLoopArtifacts(
   }
 
   if (args.includes("--scorecard")) {
-    const releaseDir = join(workspacePath, "release");
+    const releaseDir = join(outputDirectory ?? workspacePath, "release");
     const scorecard = createLoopStateScorecardFromState(state);
     const markdownPath = join(releaseDir, `osstack-scorecard-${loopId}.md`);
     const htmlPath = join(releaseDir, `osstack-scorecard-${loopId}.html`);
@@ -7753,7 +7761,7 @@ async function writeRequestedLoopArtifacts(
   if (args.includes("--proof")) {
     const governance = governanceOverride ?? await scanWorkspaceGovernance(workspacePath);
     const knowledge = await createKnowledgeProofEvidence(args, state.loop_id, state.knowledge);
-    const proof = await writeProofPack(state, join(workspacePath, "release"), events, state.loop_id, governance, knowledge, [], workspacePath);
+    const proof = await writeProofPack(state, join(outputDirectory ?? workspacePath, "release"), events, state.loop_id, governance, knowledge, [], workspacePath);
     artifacts.proof_dir = proof.proof_dir;
     artifacts.proof_zip = proof.proof_zip;
     artifacts.proof_manifest = proof.proof_manifest;
@@ -9252,9 +9260,45 @@ export function createDeliverCommandDeps(): DeliverCommandDeps {
     observeLoopProbeEvents,
     writeRequestedLoopArtifacts,
     learnLessonsFromLoopState,
+    createDeliveryStateDirectory: async (digest) => {
+      if (!/^[a-f0-9]{64}$/.test(digest)) throw new Error("invalid_delivery_contract_digest");
+      const directory = join(osstackHome(), "delivery-contracts", digest, randomUUID());
+      await mkdir(directory, { recursive: true, mode: 0o700 });
+      return directory;
+    },
+    deliveryContractPolicy: async (workspacePath, baseRevision) => {
+      const policy = await guardedPolicySnapshot(workspacePath, {
+        requireAutoMerge: false,
+        ...(baseRevision ? {revision:baseRevision} : {}),
+      });
+      return {
+        policyDigest: policy.policySha256,
+        verifyCommands: policy.repoConfig.verification.standard,
+        budgetRef: `policy:${policy.policySha256}`,
+        budget: {
+          max_builder_iterations:
+            policy.repoConfig.autonomy.max_builder_iterations,
+          max_review_rounds: policy.repoConfig.autonomy.max_review_rounds,
+          max_wall_time_ms:
+            policy.repoConfig.autonomy.max_wall_time_minutes * 60000,
+          max_no_progress_rounds:
+            policy.repoConfig.autonomy.max_no_progress_rounds,
+        },
+      };
+    },
+    createExecutionContext: createDeliveryExecutionContext,
     startGuardedGit: startGuardedGitDelivery,
   };
 }
+
+const createDeliveryExecutionContext: NonNullable<
+  DeliverCommandDeps["createExecutionContext"]
+> = async (input) => {
+  const { createHostExecutionContext } = await import(
+    "./execution-context-host.js"
+  );
+  return createHostExecutionContext(input, osstackHome());
+};
 
 function canonicalGuardedJson(value: unknown): string {
   const normalize = (input: unknown): unknown => {
@@ -9279,13 +9323,25 @@ async function guardedGitText(
 ): Promise<string> {
   const { stdout } = await execFileAsync(
     "git",
-    ["-C", workspacePath, ...args],
+    [
+      "-c",
+      "core.hooksPath=/dev/null",
+      "-c",
+      "core.fsmonitor=false",
+      "-c",
+      "diff.external=",
+      "-C",
+      workspacePath,
+      ...args,
+    ],
     {
       timeout: 15_000,
       maxBuffer: 16 * 1024 * 1024,
       env: {
         ...process.env,
         GIT_TERMINAL_PROMPT: "0",
+        GIT_EXTERNAL_DIFF: "",
+        GIT_PAGER: "cat",
       },
     },
   );
@@ -9347,23 +9403,21 @@ function guardedProtectedPolicyPaths(
   return [...paths].sort();
 }
 
-async function guardedPolicySnapshot(workspacePath: string): Promise<{
-  repoConfig: Exclude<
-    Awaited<ReturnType<typeof loadRepoConfig>>,
-    undefined
-  > & { schema_version: 2 };
+async function guardedPolicySnapshot(
+  workspacePath: string,
+  options: { requireAutoMerge?: boolean; revision?: string } = {},
+): Promise<{
+  repoConfig: Exclude<Awaited<ReturnType<typeof loadRepoConfig>>, undefined> & {
+    schema_version: 2;
+  };
   policySha256: string;
   protectedPolicyPaths: string[];
 }> {
+  const revision = options.revision ?? "HEAD";
+  if (revision !== "HEAD" && !/^(?:[a-f0-9]{40}|[a-f0-9]{64})$/.test(revision)) throw new Error("invalid_policy_revision");
   const [repoRaw, policyRaw] = await Promise.all([
-    guardedGitText(workspacePath, [
-      "show",
-      "HEAD:.osstack/repo.yaml",
-    ]),
-    guardedGitText(workspacePath, [
-      "show",
-      "HEAD:.osstack/policy.yaml",
-    ]),
+    guardedGitText(workspacePath, ["show", `${revision}:.osstack/repo.yaml`]),
+    guardedGitText(workspacePath, ["show", `${revision}:.osstack/policy.yaml`]),
   ]);
   let repoValue: unknown;
   let policyValue: unknown;
@@ -9385,24 +9439,21 @@ async function guardedPolicySnapshot(workspacePath: string): Promise<{
     );
   }
   if (
-    policyProfile === undefined
-    || policyProfile.mode !== "execute"
-    || policyProfile.auto_apply !== true
+    policyProfile === undefined ||
+    policyProfile.mode !== "execute" ||
+    policyProfile.auto_apply !== true
   ) {
     throw new Error(
       "guarded-git requires .osstack/policy.yaml mode=execute and auto_apply=true",
     );
   }
-  const privatePolicyId =
-    /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/.test(
-      parsedRepoConfig.product,
-    )
-      ? parsedRepoConfig.product
-      : /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/.test(
-          basename(workspacePath),
-        )
-        ? basename(workspacePath)
-        : `repo-${sha256(workspacePath).slice(0, 16)}`;
+  const privatePolicyId = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/.test(
+    parsedRepoConfig.product,
+  )
+    ? parsedRepoConfig.product
+    : /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/.test(basename(workspacePath))
+      ? basename(workspacePath)
+      : `repo-${sha256(workspacePath).slice(0, 16)}`;
   const privateOverlay = await loadPrivateRepoOverlay(
     osstackHome(),
     privatePolicyId,
@@ -9421,30 +9472,20 @@ async function guardedPolicySnapshot(workspacePath: string): Promise<{
   const repoConfig = RepoConfigSchema.parse({
     ...repoConfigWithoutDeploy,
     autonomy: effective.autonomy,
-    ...(effective.deploy === undefined
-      ? {}
-      : { deploy: effective.deploy }),
+    ...(effective.deploy === undefined ? {} : { deploy: effective.deploy }),
   });
   if (repoConfig.schema_version !== 2) {
     throw new Error("effective guarded policy must remain schema_version 2");
   }
-  if (!repoConfig.git.auto_merge) {
-    throw new Error(
-      "guarded-git requires repo git.auto_merge=true",
-    );
+  if (options.requireAutoMerge !== false && !repoConfig.git.auto_merge) {
+    throw new Error("guarded-git requires repo git.auto_merge=true");
   }
-  if (
-    !repoConfig.git.protected_branches.includes(
-      repoConfig.default_branch,
-    )
-  ) {
+  if (!repoConfig.git.protected_branches.includes(repoConfig.default_branch)) {
     throw new Error(
       "guarded-git base branch must be listed in git.protected_branches",
     );
   }
-  const protectedPolicyPaths = guardedProtectedPolicyPaths(
-    repoConfig,
-  );
+  const protectedPolicyPaths = guardedProtectedPolicyPaths(repoConfig);
   return {
     repoConfig,
     policySha256: sha256(
@@ -9461,17 +9502,11 @@ async function guardedPolicySnapshot(workspacePath: string): Promise<{
 
 async function executeControlledRollbackDrill(
   repoId: string,
-): Promise<Omit<
-  RecordRollbackDrillInput,
-  "drill_id" | "repo_id"
->> {
+): Promise<Omit<RecordRollbackDrillInput, "drill_id" | "repo_id">> {
   const { readRepoRegistry } = await import("@osstack/supervisor");
-  const registry = await readRepoRegistry(
-    join(osstackHome(), "repos.json"),
-  );
+  const registry = await readRepoRegistry(join(osstackHome(), "repos.json"));
   const entry = registry.find(
-    (candidate) =>
-      candidate.repo_id === repoId && candidate.enabled,
+    (candidate) => candidate.repo_id === repoId && candidate.enabled,
   );
   if (entry === undefined) {
     throw new Error(
@@ -9482,18 +9517,13 @@ async function executeControlledRollbackDrill(
   const policy = await guardedPolicySnapshot(workspacePath);
   const staging = policy.repoConfig.deploy?.staging;
   const production = policy.repoConfig.deploy?.production;
-  if (
-    staging?.enabled !== true
-    || production?.enabled !== true
-  ) {
+  if (staging?.enabled !== true || production?.enabled !== true) {
     throw new Error(
       "controlled rollback drill requires enabled staging and production policies",
     );
   }
   if (
-    !production.allowed_environment.includes(
-      "OSSTACK_ROLLBACK_DRILL_TARGET",
-    )
+    !production.allowed_environment.includes("OSSTACK_ROLLBACK_DRILL_TARGET")
   ) {
     throw new Error(
       "production policy must allow OSSTACK_ROLLBACK_DRILL_TARGET for a controlled drill",
@@ -9518,28 +9548,19 @@ async function executeControlledRollbackDrill(
     workspace_path: workspacePath,
     policy: production,
   });
-  const drillRoot = join(
-    osstackHome(),
-    "drills",
-    `drill_${randomUUID()}`,
-  );
+  const drillRoot = join(osstackHome(), "drills", `drill_${randomUUID()}`);
   const drillWorkspace = join(drillRoot, "workspace");
   const sandboxHome = join(drillRoot, "home");
   const sandboxTmp = join(drillRoot, "tmp");
   await mkdir(sandboxHome, { recursive: true, mode: 0o700 });
   await mkdir(sandboxTmp, { recursive: true, mode: 0o700 });
   try {
-    await materializeTrackedDrillWorkspace(
-      workspacePath,
-      drillWorkspace,
-    );
+    await materializeTrackedDrillWorkspace(workspacePath, drillWorkspace);
     const copiedAuthority = await computeDeployScriptAuthority({
       workspace_path: drillWorkspace,
       policy: production,
     });
-    if (
-      copiedAuthority.digest_sha256 !== authority.digest_sha256
-    ) {
+    if (copiedAuthority.digest_sha256 !== authority.digest_sha256) {
       throw new Error(
         "controlled drill workspace script authority does not match accepted base",
       );
@@ -9556,20 +9577,17 @@ async function executeControlledRollbackDrill(
           ? {}
           : { LANG: process.env["LANG"] }),
         TMPDIR: sandboxTmp,
-        OSSTACK_ROLLBACK_DRILL_TARGET:
-          "controlled-non-production",
+        OSSTACK_ROLLBACK_DRILL_TARGET: "controlled-non-production",
       },
     });
     return {
       workspace_path: workspacePath,
-      deploy_script_digest_sha256:
-        result.deploy_script_digest_sha256,
+      deploy_script_digest_sha256: result.deploy_script_digest_sha256,
       rollback: result.rollback,
       ...(result.post_rollback_health === undefined
         ? {}
         : {
-            post_rollback_health:
-              result.post_rollback_health,
+            post_rollback_health: result.post_rollback_health,
           }),
       started_at: startedAt,
       completed_at: Date.now() / 1_000,
@@ -9585,14 +9603,7 @@ async function materializeTrackedDrillWorkspace(
 ): Promise<void> {
   const { stdout } = await execFileAsync(
     "git",
-    [
-      "-c",
-      "core.hooksPath=/dev/null",
-      "-C",
-      sourceWorkspace,
-      "ls-files",
-      "-z",
-    ],
+    ["-c", "core.hooksPath=/dev/null", "-C", sourceWorkspace, "ls-files", "-z"],
     {
       timeout: 15_000,
       maxBuffer: 64 * 1024 * 1024,
@@ -9607,28 +9618,27 @@ async function materializeTrackedDrillWorkspace(
   await mkdir(targetWorkspace, { recursive: true, mode: 0o700 });
   for (const path of stdout.split("\0").filter((value) => value !== "")) {
     if (
-      isAbsolute(path)
-      || path.includes("\0")
-      || path.split("/").some(
-        (segment) =>
-          segment === "" || segment === "." || segment === "..",
-      )
+      isAbsolute(path) ||
+      path.includes("\0") ||
+      path
+        .split("/")
+        .some(
+          (segment) => segment === "" || segment === "." || segment === "..",
+        )
     ) {
       throw new Error(`invalid tracked rollback drill path: ${path}`);
     }
     const source = resolve(sourceWorkspace, path);
     const target = resolve(targetWorkspace, path);
     if (
-      relative(sourceWorkspace, source).startsWith("..")
-      || relative(targetWorkspace, target).startsWith("..")
+      relative(sourceWorkspace, source).startsWith("..") ||
+      relative(targetWorkspace, target).startsWith("..")
     ) {
       throw new Error(`rollback drill path escapes workspace: ${path}`);
     }
     const metadata = await lstat(source);
     if (!metadata.isFile() || metadata.isSymbolicLink()) {
-      throw new Error(
-        `rollback drill requires regular tracked files: ${path}`,
-      );
+      throw new Error(`rollback drill requires regular tracked files: ${path}`);
     }
     await mkdir(dirname(target), { recursive: true });
     await copyFile(source, target);
@@ -9640,10 +9650,7 @@ async function writeGuardedGitProof(
   input: GuardedGitProofInput,
 ): Promise<{ manifest_path: string; manifest_sha256: string }> {
   const { readLoopState } = await loadLoop();
-  const statePath = join(
-    input.routing.evidence_root,
-    "LOOP-STATE.json",
-  );
+  const statePath = join(input.routing.evidence_root, "LOOP-STATE.json");
   const state = await readLoopState(statePath);
   if (state === null) {
     throw new Error("guarded proof has no persisted Loop state");
@@ -9651,10 +9658,7 @@ async function writeGuardedGitProof(
   let events: LoopEvent[];
   try {
     const raw = JSON.parse(
-      await readFile(
-        join(input.routing.evidence_root, "events.json"),
-        "utf8",
-      ),
+      await readFile(join(input.routing.evidence_root, "events.json"), "utf8"),
     ) as unknown;
     if (!Array.isArray(raw)) {
       throw new Error("events.json must contain an array");
@@ -9669,34 +9673,39 @@ async function writeGuardedGitProof(
   }
   const outputDir = join(input.routing.evidence_root, "proof");
   const artifactId = input.evidence.autonomy_run_id;
-  const finalEvidence = input.stage === "final"
-    ? {
-        candidateProof: input.candidate_proof,
-        gitDelivery: input.git_delivery,
-        deployment: input.evidence,
-      }
-    : undefined;
+  const finalEvidence =
+    input.stage === "final"
+      ? {
+          candidateProof: input.candidate_proof,
+          gitDelivery: input.git_delivery,
+          deployment: input.evidence,
+        }
+      : undefined;
   const stageInput: ProofStageInput = {
     stage: input.stage,
+    ...(input.evidence.delivery_contract
+      ? { delivery_contract_evidence: input.evidence.delivery_contract }
+      : {}),
+    ...(input.evidence.delivery_receipt
+      ? { delivery_receipt_evidence: input.evidence.delivery_receipt }
+      : {}),
     risk_evidence: {
       preflight: input.evidence.preflight_risk,
       post_diff: input.evidence.post_diff_risk,
     },
-    ...(
-      input.evidence.approval_request === undefined
-      && input.evidence.approval_decision === undefined
-        ? {}
-        : {
-            approval_evidence: {
-              ...(input.evidence.approval_request === undefined
-                ? {}
-                : { request: input.evidence.approval_request }),
-              ...(input.evidence.approval_decision === undefined
-                ? {}
-                : { decision: input.evidence.approval_decision }),
-            },
-          }
-    ),
+    ...(input.evidence.approval_request === undefined &&
+    input.evidence.approval_decision === undefined
+      ? {}
+      : {
+          approval_evidence: {
+            ...(input.evidence.approval_request === undefined
+              ? {}
+              : { request: input.evidence.approval_request }),
+            ...(input.evidence.approval_decision === undefined
+              ? {}
+              : { decision: input.evidence.approval_decision }),
+          },
+        }),
     ...(finalEvidence === undefined
       ? {}
       : {
@@ -9708,8 +9717,7 @@ async function writeGuardedGitProof(
               ),
               finalEvidence.candidateProof.manifest_path,
             ).replaceAll("\\", "/"),
-            manifest_sha256:
-              finalEvidence.candidateProof.manifest_sha256,
+            manifest_sha256: finalEvidence.candidateProof.manifest_sha256,
           },
           git_delivery_evidence: finalEvidence.gitDelivery,
           ...(finalEvidence.deployment.deploy_eligibility === undefined
@@ -9718,8 +9726,7 @@ async function writeGuardedGitProof(
                 deploy_eligibility_evidence:
                   finalEvidence.deployment.deploy_eligibility,
               }),
-          ...(finalEvidence.deployment.deploy_script_authority ===
-          undefined
+          ...(finalEvidence.deployment.deploy_script_authority === undefined
             ? {}
             : {
                 deploy_script_authority_evidence:
@@ -9737,23 +9744,20 @@ async function writeGuardedGitProof(
                 deploy_production_evidence:
                   finalEvidence.deployment.deploy_production,
               }),
-          ...(finalEvidence.deployment.deploy_production?.rollback ===
-          undefined
+          ...(finalEvidence.deployment.deploy_production?.rollback === undefined
             ? {}
             : {
                 rollback_evidence: {
-                  command:
-                    finalEvidence.deployment.deploy_production.rollback,
+                  command: finalEvidence.deployment.deploy_production.rollback,
                   ...(finalEvidence.deployment.deploy_production
-                      .post_rollback_health === undefined
+                    .post_rollback_health === undefined
                     ? {}
                     : {
                         post_health:
                           finalEvidence.deployment.deploy_production
                             .post_rollback_health,
                       }),
-                  outcome:
-                    finalEvidence.deployment.deploy_production.outcome,
+                  outcome: finalEvidence.deployment.deploy_production.outcome,
                 },
               }),
           ...(finalEvidence.deployment.production_freeze === undefined
@@ -9796,8 +9800,12 @@ async function createGuardedGitRuntimeForDb(
     dbPath,
     trustedApprovalPublicKeys,
     writeProof: writeGuardedGitProof,
-    assertPolicyUnchanged: async (workspacePath, expected) => {
-      const current = await guardedPolicySnapshot(workspacePath);
+    createExecutionContext: createDeliveryExecutionContext,
+    assertPolicyUnchanged: async (workspacePath, expected, baseRevision) => {
+      const current = await guardedPolicySnapshot(workspacePath, {
+        requireAutoMerge: false,
+        ...(baseRevision ? {revision:baseRevision} : {}),
+      });
       if (current.policySha256 !== expected) {
         throw new Error(
           "repository policy changed after autonomy classification",
@@ -9811,8 +9819,7 @@ async function createGuardedGitRuntimeForDb(
         "workspace",
       );
       return {
-        blocking:
-          evidence.blocking || evidence.status === "unknown",
+        blocking: evidence.blocking || evidence.status === "unknown",
         evidence,
       };
     },
@@ -9823,183 +9830,189 @@ const startGuardedGitDelivery: NonNullable<
   DeliverCommandDeps["startGuardedGit"]
 > = async (input) => {
   const { acquireLocalExecution } = await import("./local-execution.js");
-  const lease = await acquireLocalExecution({ workspacePath: input.workspacePath, runId: `guarded_delivery_${randomUUID()}`,
-    dbPath: await ensureLocalStateDbPath(), home: osstackHome(), socketPath: resolveSocketPath(), requiresAgent: true, external: true });
+  const lease = await acquireLocalExecution({
+    workspacePath: input.workspacePath,
+    runId: `guarded_delivery_${randomUUID()}`,
+    dbPath: await ensureLocalStateDbPath(),
+    home: osstackHome(),
+    socketPath: resolveSocketPath(),
+    requiresAgent: true,
+    external: true,
+  });
   let started = false;
   let confirmed = false;
   try {
-  const { GuardedGitRouting } = await import("./guarded-git-runtime.js");
-  const policy = await guardedPolicySnapshot(input.workspacePath);
-  const branch = await guardedGitText(
-    input.workspacePath,
-    ["branch", "--show-current"],
-  );
-  if (
-    branch === ""
-    || branch === policy.repoConfig.default_branch
-    || !branch.startsWith(
-      `${policy.repoConfig.git.branch_prefix}/`,
-    )
-  ) {
-    throw new Error(
-      `guarded-git requires a ${policy.repoConfig.git.branch_prefix}/ feature branch; found ${branch || "(detached)"}`,
-    );
-  }
-  const verifiedBase = await assertGuardedCandidateBase({
-    workspace_path: input.workspacePath,
-    remote: policy.repoConfig.git.remote,
-    base: policy.repoConfig.default_branch,
-  });
-  const remoteUrl = await guardedGitText(input.workspacePath, [
-    "remote",
-    "get-url",
-    policy.repoConfig.git.remote,
-  ]);
-  const repoId = githubRepoId(remoteUrl);
-  if (repoId === undefined) {
-    throw new Error(
-      "guarded-git remote must resolve to exactly one GitHub repository",
-    );
-  }
-  let rollbackDrill: ReturnType<
-    typeof rollbackDrillEligibilityEvidence
-  >;
-  if (
-    input.deployPolicy === "project"
-    && policy.repoConfig.deploy?.production !== undefined
-  ) {
-    const drillDbPath = await ensureLocalStateDbPath();
-    const drillDb = openDb({ path: drillDbPath });
-    try {
-      rollbackDrill = rollbackDrillEligibilityEvidence(
-        getLatestSuccessfulRollbackDrill(drillDb, repoId),
+    const { GuardedGitRouting } = await import("./guarded-git-runtime.js");
+    const policy = await guardedPolicySnapshot(input.workspacePath, {
+      requireAutoMerge:
+        !input.frozenContract ||
+        ["merged", "deployed"].includes(
+          input.frozenContract.contract.requested_completion,
+        ),
+    });
+    const branch = await guardedGitText(input.workspacePath, [
+      "branch",
+      "--show-current",
+    ]);
+    if (
+      branch === "" ||
+      branch === policy.repoConfig.default_branch ||
+      !branch.startsWith(`${policy.repoConfig.git.branch_prefix}/`)
+    ) {
+      throw new Error(
+        `guarded-git requires a ${policy.repoConfig.git.branch_prefix}/ feature branch; found ${branch || "(detached)"}`,
       );
-    } finally {
-      drillDb.close();
     }
-  }
-  const autonomyRunId = `run_${randomUUID().slice(0, 12)}`;
-  const evidenceRoot = join(
-    osstackHome(),
-    "autonomy",
-    autonomyRunId,
-  );
-  await mkdir(evidenceRoot, { recursive: true });
-  const verifyCommands = [
-    ...new Set([
-      ...policy.repoConfig.verification.standard,
-      ...input.verifyCommands,
-    ]),
-  ];
-  const routing = GuardedGitRouting.parse({
-    schema_version: 1,
-    task: {
-      task_id: input.taskId,
-      capability: input.capability,
-      prompt: input.prompt,
-      priority: 50,
-      source: "manual",
-      context: {
-        autonomy_run_id: autonomyRunId,
-        expected_paths: [...new Set(input.expectedPaths)].sort(),
-      },
-    },
-    profile: input.profileRouting.summary,
-    verify_commands: verifyCommands,
-    command_timeout_ms: input.commandTimeoutMs,
-    evidence_root: evidenceRoot,
-    base_commit_sha: verifiedBase.base_commit_sha,
-    policy_sha256: policy.policySha256,
-    max_auto_risk: policy.repoConfig.autonomy.max_auto_risk,
-    protected_policy_paths: policy.protectedPolicyPaths,
-    approval_ttl_ms: 3_600_000,
-    ...(input.deployPolicy === "project"
-      && policy.repoConfig.deploy !== undefined
-      ? {
-          deploy: {
-            base_branch: policy.repoConfig.default_branch,
-            ...policy.repoConfig.deploy,
-            ...(rollbackDrill === undefined
-              ? {}
-              : { rollback_drill: rollbackDrill }),
-          },
-        }
-      : {}),
-    git: {
+    const verifiedBase = await assertGuardedCandidateBase({
+      workspace_path: input.workspacePath,
       remote: policy.repoConfig.git.remote,
       base: policy.repoConfig.default_branch,
-      branch,
-      title: input.prompt.replace(/\s+/g, " ").trim().slice(0, 256),
-      body_file: join(evidenceRoot, "pull-request.md"),
-      ci_timeout_ms: Math.min(
-        policy.repoConfig.autonomy.max_wall_time_minutes
-          * 60_000,
-        86_400_000,
-      ),
-    },
-  });
-  const expectedPaths = [...new Set(input.expectedPaths)].sort();
-  const requestedActions = [
-    ...new Set(input.requestedActions),
-  ].sort();
-  const contractSha256 = sha256(
-    canonicalGuardedJson({
+    });
+    const remoteUrl = await guardedGitText(input.workspacePath, [
+      "remote",
+      "get-url",
+      policy.repoConfig.git.remote,
+    ]);
+    const repoId = githubRepoId(remoteUrl);
+    if (repoId === undefined) {
+      throw new Error(
+        "guarded-git remote must resolve to exactly one GitHub repository",
+      );
+    }
+    let rollbackDrill: ReturnType<typeof rollbackDrillEligibilityEvidence>;
+    if (
+      input.deployPolicy === "project" &&
+      policy.repoConfig.deploy?.production !== undefined
+    ) {
+      const drillDbPath = await ensureLocalStateDbPath();
+      const drillDb = openDb({ path: drillDbPath });
+      try {
+        rollbackDrill = rollbackDrillEligibilityEvidence(
+          getLatestSuccessfulRollbackDrill(drillDb, repoId),
+        );
+      } finally {
+        drillDb.close();
+      }
+    }
+    const autonomyRunId = `run_${randomUUID().slice(0, 12)}`;
+    const evidenceRoot = join(osstackHome(), "autonomy", autonomyRunId);
+    await mkdir(evidenceRoot, { recursive: true });
+    const verifyCommands = [
+      ...new Set([
+        ...policy.repoConfig.verification.standard,
+        ...input.verifyCommands,
+      ]),
+    ];
+    const routing = GuardedGitRouting.parse({
       schema_version: 1,
-      autonomy_run_id: autonomyRunId,
-      task_id: input.taskId,
-      repo_id: repoId,
-      workspace_path: input.workspacePath,
-      goal: input.prompt,
-      expected_paths: expectedPaths,
-      requested_actions: requestedActions,
-      base_commit_sha: verifiedBase.base_commit_sha,
-      policy_sha256: policy.policySha256,
+      ...(input.frozenContract
+        ? { delivery_contract: input.frozenContract }
+        : {}),
+      ...(input.executionContextPath
+        ? { execution_context_path: input.executionContextPath }
+        : {}),
+      task: {
+        task_id: input.taskId,
+        capability: input.capability,
+        prompt: input.prompt,
+        priority: 50,
+        source: "manual",
+        context: {
+          autonomy_run_id: autonomyRunId,
+          expected_paths: [...new Set(input.expectedPaths)].sort(),
+        },
+      },
       profile: input.profileRouting.summary,
       verify_commands: verifyCommands,
-      deploy: routing.deploy ?? null,
-    }),
-  );
-  const dbPath = await ensureLocalStateDbPath();
-  const db = openDb({ path: dbPath });
-  try {
-    const trust = await readAutonomyApprovalTrustStore(
-      join(osstackHome(), "approval-trust.json"),
-    );
-    const runtime = await createGuardedGitRuntimeForDb(
-      db,
-      dbPath,
-      trust,
-    );
-    started = true;
-    const result = await runtime.start({
-      autonomy_run_id: autonomyRunId,
-      task_id: input.taskId,
-      repo_id: repoId,
-      workspace_path: input.workspacePath,
-      goal: input.prompt,
-      expected_paths: expectedPaths,
-      requested_actions: requestedActions,
-      contract_sha256: contractSha256,
-      routing,
-      budget: {
-        max_builder_iterations:
-          policy.repoConfig.autonomy.max_builder_iterations,
-        max_review_rounds:
-          policy.repoConfig.autonomy.max_review_rounds,
-        max_wall_time_ms:
-          policy.repoConfig.autonomy.max_wall_time_minutes
-          * 60_000,
-        max_no_progress_rounds:
-          policy.repoConfig.autonomy.max_no_progress_rounds,
+      command_timeout_ms: input.commandTimeoutMs,
+      evidence_root: evidenceRoot,
+      base_commit_sha: verifiedBase.base_commit_sha,
+      policy_sha256: policy.policySha256,
+      max_auto_risk: policy.repoConfig.autonomy.max_auto_risk,
+      protected_policy_paths: policy.protectedPolicyPaths,
+      approval_ttl_ms: 3_600_000,
+      ...(input.deployPolicy === "project" &&
+      policy.repoConfig.deploy !== undefined
+        ? {
+            deploy: {
+              base_branch: policy.repoConfig.default_branch,
+              ...policy.repoConfig.deploy,
+              ...(rollbackDrill === undefined
+                ? {}
+                : { rollback_drill: rollbackDrill }),
+            },
+          }
+        : {}),
+      git: {
+        remote: policy.repoConfig.git.remote,
+        base: policy.repoConfig.default_branch,
+        branch,
+        title: input.prompt.replace(/\s+/g, " ").trim().slice(0, 256),
+        body_file: join(evidenceRoot, "pull-request.md"),
+        ci_timeout_ms: Math.min(
+          policy.repoConfig.autonomy.max_wall_time_minutes * 60_000,
+          86_400_000,
+        ),
       },
     });
-    confirmed = result.status === "completed" || result.status === "needs_approval";
-    return result;
+    const expectedPaths = [...new Set(input.expectedPaths)].sort();
+    const requestedActions = [...new Set(input.requestedActions)].sort();
+    const contractSha256 =
+      input.frozenContract?.digest ??
+      sha256(
+        canonicalGuardedJson({
+          schema_version: 1,
+          autonomy_run_id: autonomyRunId,
+          task_id: input.taskId,
+          repo_id: repoId,
+          workspace_path: input.workspacePath,
+          goal: input.prompt,
+          expected_paths: expectedPaths,
+          requested_actions: requestedActions,
+          base_commit_sha: verifiedBase.base_commit_sha,
+          policy_sha256: policy.policySha256,
+          profile: input.profileRouting.summary,
+          verify_commands: verifyCommands,
+          deploy: routing.deploy ?? null,
+        }),
+      );
+    const dbPath = await ensureLocalStateDbPath();
+    const db = openDb({ path: dbPath });
+    try {
+      const trust = await readAutonomyApprovalTrustStore(
+        join(osstackHome(), "approval-trust.json"),
+      );
+      const runtime = await createGuardedGitRuntimeForDb(db, dbPath, trust);
+      started = true;
+      const result = await runtime.start({
+        autonomy_run_id: autonomyRunId,
+        task_id: input.taskId,
+        repo_id: repoId,
+        workspace_path: input.workspacePath,
+        goal: input.prompt,
+        expected_paths: expectedPaths,
+        requested_actions: requestedActions,
+        contract_sha256: contractSha256,
+        routing,
+        budget: {
+          max_builder_iterations:
+            policy.repoConfig.autonomy.max_builder_iterations,
+          max_review_rounds: policy.repoConfig.autonomy.max_review_rounds,
+          max_wall_time_ms:
+            policy.repoConfig.autonomy.max_wall_time_minutes * 60_000,
+          max_no_progress_rounds:
+            policy.repoConfig.autonomy.max_no_progress_rounds,
+        },
+      });
+      confirmed =
+        result.status === "completed" || result.status === "needs_approval";
+      return result;
+    } finally {
+      db.close();
+    }
   } finally {
-    db.close();
-  }
-  } finally {
-    if (started && !confirmed) lease.retain("guarded delivery external exit unconfirmed");
+    if (started && !confirmed)
+      lease.retain("guarded delivery external exit unconfirmed");
     else await lease.release();
   }
 };

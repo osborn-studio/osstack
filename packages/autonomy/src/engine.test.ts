@@ -8,7 +8,7 @@ import {
   type ScopedApprovalDecisionPayload,
   type ScopedApprovalRequest,
 } from "@osstack/protocol";
-import type { DeployTargetPolicy } from "@osstack/core";
+import { freezeDeliveryContract, deliveryCheckReference, type DeployTargetPolicy } from "@osstack/core";
 import { describe, expect, it } from "vitest";
 import {
   canonicalScopedApprovalDecisionPayload,
@@ -1079,4 +1079,96 @@ describe("GuardedDeliveryEngine", () => {
       ]));
     },
   );
+});
+
+function contractHarness(completion: "local_verified" | "pr_opened" = "local_verified") {
+  const h = new Harness();
+  const actions = completion === "local_verified" ? ["build", "verify"] : ["build", "verify", "commit", "push", "open_pr"];
+  const task = intent(["docs/readme.md"], actions);
+  const frozen = freezeDeliveryContract({ schema_version: 2, contract_id: "contract-1", task_id: task.task_id,
+    canonical_repo: task.workspace_path, mode: "implement", base_head: "1".repeat(40), goal: task.goal,
+    required_checks: [{ id: "tests", registry_ref: deliveryCheckReference("pnpm test") }], review_policy_ref: "profile:test",
+    requested_completion: completion, allowed_paths: ["docs/readme.md"], requested_actions: actions,
+    budget_ref: "policy", policy_digest: SHA_B, publication_scope: completion === "local_verified" ? { mode: "none" } : {
+      mode: "review_pr", hostname: "github.com", repository: "owner/repo", remote: "origin", base_ref: "main", head_ref: "codex/run-1" }, merge_authority: { mode: "none" } });
+  h.policy.delivery_contract = frozen;
+  h.localResults = [{ ...localSuccess(["docs/readme.md"]), delivery_receipt: { path: "/tmp/receipt.json", digest: SHA_A } }];
+  h.ports.verifyContractReceipt = async () => { h.calls.push("verifyContractReceipt"); };
+  h.ports.writeContractCompletionReceipt = async (input) => { h.calls.push(`completion:${input.achievedCompletion}`); return { path: "/tmp/completion.json", digest: SHA_C }; };
+  h.ports.openPullRequest = async () => { h.calls.push("openPullRequest"); return { pushedCommit: "6".repeat(40), pr: { number: 42, url: "https://github.com/owner/repo/pull/42", reused: false } }; };
+  return { h, task: { ...task, contract_sha256: frozen.digest } };
+}
+describe("V2 contract completion ceilings", () => {
+  it("signs only PR effects for R3 and completes approval through PR-only publication", async () => {
+    const { h, task } = contractHarness("pr_opened");
+    const frozen = freezeDeliveryContract({ ...h.policy.delivery_contract!.contract, allowed_paths: ["src/auth/login.ts"] });
+    h.policy.delivery_contract = frozen;
+    h.localResults = [{ ...localSuccess(["src/auth/login.ts"]), delivery_receipt: { path: "/tmp/receipt.json", digest: SHA_A } }];
+    const runTask = { ...task, expected_paths: ["src/auth/login.ts"], contract_sha256: frozen.digest };
+    const preflight = await h.engine().start(runTask);
+    expect(preflight.status).toBe("needs_approval"); expect(preflight.approval_request?.action_scope).toEqual(["build", "verify"]);
+    const postDiff = await h.engine().resume(runTask.autonomy_run_id, signDecision(preflight.approval_request!));
+    expect(postDiff.status).toBe("needs_approval");
+    expect(postDiff.approval_request).toMatchObject({ phase: "post_diff", action_scope: ["commit", "open_pr", "push"] });
+    await expect(h.engine().resume(runTask.autonomy_run_id, signDecision(postDiff.approval_request!, { action_scope: ["commit", "merge", "open_pr", "push"] }))).rejects.toThrow();
+    expect(h.calls).not.toContain("commit");
+    const result = await h.engine().resume(runTask.autonomy_run_id, signDecision(postDiff.approval_request!));
+    expect(result.status, JSON.stringify(result)).toBe("completed");
+    expect(h.calls.filter(call => call === "commit")).toHaveLength(1);
+    expect(h.calls.filter(call => call === "openPullRequest")).toHaveLength(1);
+    expect(h.calls).not.toContain("deliverGit"); expect(h.calls.filter(call => call.startsWith("deploy:"))).toEqual([]);
+  });
+  it.each(["commit", "push", "open_pr"])("rejects low-risk publication missing %s before starting", async missing => {
+    const { h, task } = contractHarness("pr_opened");
+    h.policy.delivery_contract!.contract.requested_actions = h.policy.delivery_contract!.contract.requested_actions.filter(action => action !== missing);
+    await expect(h.engine().start(task)).rejects.toThrow();
+    expect(h.calls).toEqual([]);
+  });
+  it("completes local verification without commit, push, merge or deploy", async () => {
+    const { h, task } = contractHarness();
+    const result = await h.engine().start(task);
+    expect(result.status).toBe("completed");
+    expect(result.run.context.achieved_completion).toBe("local_verified");
+    expect(h.calls).toContain("completion:local_verified");
+    expect(h.calls).not.toEqual(expect.arrayContaining(["commit"]));
+    expect(h.calls).not.toContain("deliverGit");
+    expect(h.calls).not.toContain("openPullRequest");
+    expect(h.calls.filter(x => x.startsWith("deploy:"))).toEqual([]);
+  });
+  it("opens a PR through the existing publisher port and never invokes merge delivery", async () => {
+    const { h, task } = contractHarness("pr_opened");
+    let result = await h.engine().start(task);
+    if (result.status === "needs_approval") result = await h.engine().resume(task.autonomy_run_id, signDecision(result.approval_request!));
+    expect(result.status, JSON.stringify(result)).toBe("completed");
+    expect(h.calls).toContain("commit");
+    expect(h.calls).toContain("openPullRequest");
+    expect(h.calls).not.toContain("deliverGit");
+    expect(result.run.context.achieved_completion).toBe("pr_opened");
+  });
+  it("refuses boolean local success without a host receipt", async () => {
+    const { h, task } = contractHarness(); h.localResults = [localSuccess(["docs/readme.md"])];
+    const result = await h.engine().start(task);
+    expect(result.status).not.toBe("completed");
+    expect(h.calls).not.toContain("writeCandidateProof");
+    expect(h.calls).not.toContain("commit");
+  });
+  it("revalidates the candidate before side effects and fails closed on changed bytes", async () => {
+    const { h, task } = contractHarness(); let reads = 0;
+    h.ports.verifyContractReceipt = async () => { if (++reads > 1) throw new Error("candidate changed"); };
+    const result = await h.engine().start(task);
+    expect(result.status).not.toBe("completed"); expect(reads).toBe(2);
+    expect(h.calls).not.toContain("commit");
+  });
+});
+
+it("rejects a legacy projection resumed with a new V2 contract policy", async () => {
+  const { h } = contractHarness(); const contract = h.policy.delivery_contract!;
+  delete h.policy.delivery_contract;
+  await h.engine().start(intent(["docs/readme.md"]));
+  h.policy.delivery_contract = contract;
+  await expect(h.engine().resume("run-1")).rejects.toThrow("delivery_contract_resume_mismatch");
+});
+it("rejects a persisted V2 projection resumed without its frozen policy contract", async () => {
+  const { h, task } = contractHarness(); await h.engine().start(task); delete h.policy.delivery_contract;
+  await expect(h.engine().resume("run-1")).rejects.toThrow("delivery_contract_resume_mismatch");
 });

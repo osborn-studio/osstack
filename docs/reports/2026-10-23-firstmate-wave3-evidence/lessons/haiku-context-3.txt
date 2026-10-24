@@ -1,0 +1,761 @@
+Final independent static audit of source below. No tools. Return JSON only with confirmed actionable findings severity and trigger; do not invent findings. Two prior audits produced no high severity bridge issue. All confirmed issues were fixed: RPC receipt binds requested run+repo; source payload contents neither read nor hashed; edited/oversized content preserved; legacy writer create-only atomic with reviewed checks, deterministic revision and reserved namespace collision resistance; explicit SKILL append canonicalizes symlinks and preserves permissions; source-bound append marker prevents duplicate append after EIO moving draft. Lifecycle move uses no-overwrite link then unlink; if crash between these, both copies can remain safely and manual reconciliation is documented. Symlink ancestor path validation is static; malicious concurrent same-UID directory swapping is not a supported security sandbox. Ordinary reader only investigation; Graph strong qualification explicitly pending. Root owns authenticated daemon RPC plus lazy CLI wiring, not in this branch. Last tests 23 Loop +18 CLI passed, Loop build + CLI/Loop typecheck + Biome clean. Assess all changes for P0/P1 and remaining genuine correctness issues, distinguish pre-existing concurrency assumptions from introduced behavior.
+
+FILE packages/cli/src/attention-lesson.ts
+import { constants } from "node:fs";
+import { link, lstat, mkdir, open, realpath, unlink } from "node:fs/promises";
+import { isAbsolute, join, relative, resolve, sep } from "node:path";
+import { createHash, randomUUID } from "node:crypto";
+import type Database from "better-sqlite3";
+import { attentionDigest } from "@osstack/core";
+import { z } from "zod";
+import { attentionDisplayText } from "./attention-dashboard.js";
+
+const hash = (value: unknown) => createHash("sha256").update(JSON.stringify(value)).digest("hex");
+const id = z.string().min(1).max(256);
+const digest = z.string().regex(/^[a-f0-9]{64}$/);
+const receiptSchema = z.object({
+  schema_version: z.literal(1), kind: z.literal("investigation"), qualification: z.literal("ordinary_run_unverified"),
+  tenant: z.literal("default"), scope_id: digest, repo_path: z.string().min(1).max(4096), task_id: id, run_id: id,
+  family: z.enum(["run_failed", "run_completed_unverified", "run_state_unknown"]),
+  source_hash: digest, event_count: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER),
+  through_seq: z.number().int().min(-1).max(Number.MAX_SAFE_INTEGER), history_complete: z.boolean(),
+  event_hashes: z.array(digest).max(128),
+}).strict();
+export type EvidenceLessonReceipt = z.infer<typeof receiptSchema>;
+export type EvidenceLessonReadResult = { state: "candidate"; receipt: EvidenceLessonReceipt } | { state: "unknown"; reason: string };
+export interface RunLessonInput { runId: string; repoPath: string; default_tenant: true }
+export interface EvidenceLessonWriteResult {
+  state: "draft" | "reviewed" | "unknown"; kind?: "investigation"; qualification?: "ordinary_run_unverified";
+  path?: string; created?: boolean; reason?: string; promoted: false;
+}
+
+/** Host RPC reader: authenticated service supplies its existing DB. No open, migration, mutation or model. */
+export async function readEvidenceLesson(db: Database.Database, input: RunLessonInput): Promise<EvidenceLessonReadResult> {
+  if (input.default_tenant !== true || !id.safeParse(input.runId).success || !isAbsolute(input.repoPath)) throw Error("explicit_run_repo_default_tenant_required");
+  let repo: string;
+  try { repo = await realpath(input.repoPath); if (!(await lstat(repo)).isDirectory()) throw Error(); }
+  catch { return { state: "unknown", reason: "workspace_unavailable" }; }
+  try {
+    return db.transaction((): EvidenceLessonReadResult => {
+      const row = db.prepare(`SELECT r.run_id,substr(r.task_id,1,257) task_id,substr(r.session_id,1,257) session_id,substr(r.phase,1,257) phase,substr(r.outcome,1,257) outcome,r.started_at,r.completed_at,t.created_at task_created_at,substr(s.scope_id,1,65) scope_id,substr(o.home_id,1,257) home_id,substr(u.binding_hash,1,65) binding_hash
+        FROM runs r JOIN tasks t ON t.task_id=r.task_id JOIN attention_scopes s ON s.task_id=t.task_id
+        JOIN attention_subjects u ON u.scope_id=s.scope_id AND u.kind='run' AND u.subject_id=r.run_id
+        JOIN daemon_owner o ON o.singleton=1
+        WHERE r.run_id=? AND r.tenant_id IS NULL AND t.tenant_id IS NULL AND s.repo_path=? AND u.admitted=1 LIMIT 2`).all(input.runId, repo) as Array<Record<string, unknown>>;
+      if (row.length !== 1) return { state: "unknown", reason: "source_not_found_or_unbound" };
+      const run = row[0]!;
+      if (run["scope_id"] !== attentionDigest([run["home_id"], run["task_id"], repo, run["task_created_at"]])
+        || run["binding_hash"] !== attentionDigest([run["scope_id"], "run", input.runId])) return { state: "unknown", reason: "source_not_found_or_unbound" };
+      const stats = db.prepare("SELECT COUNT(*) n,COALESCE(MAX(seq),-1) last,COALESCE(SUM(CASE WHEN session_id IS NOT ? THEN 1 ELSE 0 END),0) conflicts FROM events WHERE run_id=?").get(run["session_id"], input.runId) as { n: number; last: number; conflicts: number };
+      if (stats.conflicts !== 0) return { state: "unknown", reason: "source_session_conflict" };
+      const events = db.prepare(`SELECT substr(event_id,1,257) event_id,substr(session_id,1,257) session_id,seq,substr(type,1,257) type,created_at,terminal,
+        length(CAST(payload_json AS BLOB)) bytes
+        FROM events WHERE run_id=? ORDER BY seq LIMIT 128`).all(input.runId) as Array<{ event_id: string; session_id: string; seq: number; type: string; created_at: number; terminal: number; bytes: number }>;
+      if (events.some(event => event.session_id !== run["session_id"])) return { state: "unknown", reason: "source_session_conflict" };
+      let previous = events[0]?.seq === 1 ? 0 : -1;
+      const complete = events.length === stats.n && events.every(event => {
+        const valid = event.seq === previous + 1 && event.bytes <= 4096 && event.event_id.length <= 256 && event.type.length <= 256;
+        previous = event.seq; return valid;
+      });
+      const sourceHash = hash({ run, repo, stats, events });
+      const receipt = receiptSchema.parse({ schema_version: 1, kind: "investigation", qualification: "ordinary_run_unverified", tenant: "default",
+        scope_id: run["scope_id"], repo_path: repo, task_id: run["task_id"], run_id: run["run_id"],
+        family: run["outcome"] === "failed" ? "run_failed" : run["outcome"] === "completed" ? "run_completed_unverified" : "run_state_unknown",
+        source_hash: sourceHash, event_count: stats.n, through_seq: stats.last, history_complete: complete, event_hashes: events.map(hash) });
+      return { state: "candidate", receipt };
+    })();
+  } catch { return { state: "unknown", reason: "source_unavailable" }; }
+}
+
+function display(value: string): string {
+  return attentionDisplayText(value).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/[\\`*_{}[\]()#+.!|~-]/g, "\\$&");
+}
+function candidate(receipt: EvidenceLessonReceipt) {
+  const key = hash([receipt.scope_id, receipt.task_id, receipt.family, receipt.source_hash]);
+  const draftId = `evidence-${key.slice(0, 48)}`;
+  const markdown = [`# Lesson Draft: ${draftId}`, "", "> Investigation only — ordinary adapter outcomes are not independent verification.",
+    "> Review required. No success-after-repair claim, approval, skill change or publication.", "", "## Evidence provenance",
+    `- Scope: ${receipt.scope_id}`, `- Run: ${display(receipt.run_id)}`, `- Task: ${display(receipt.task_id)}`,
+    `- Family: ${receipt.family}`, `- Source snapshot hash: ${receipt.source_hash}`, `- Candidate key: ${key}`,
+    `- Retained events: ${receipt.event_hashes.length}/${receipt.event_count}; through sequence ${receipt.through_seq}; history ${receipt.history_complete ? "complete within read bounds" : "incomplete"}.`,
+    "- Source hash covers bounded persisted metadata only, excluding payload contents. Recheck current source before adoption.",
+    ...receipt.event_hashes.map((value, index) => `- Event ${index + 1} snapshot hash: ${value}`), "", "## Reusable Rule",
+    "Do not infer verified recovery from an adapter's completion message. Obtain independently bound failure, repair and final verification evidence before adopting a lesson.",
+    "", "## Suggested Evaluation", "- Reproduce the failure and inspect a verified repair of the same task and candidate; record actual verifier outcomes.",
+    "", "## Suggested Target Skill", "- Not inferable from unverified run evidence", ""].join("\n");
+  return { state: "candidate" as const, kind: receipt.kind, qualification: receipt.qualification, draftId, markdown, receipt };
+}
+export async function inspectRunLessonEvidence(db: Database.Database, input: RunLessonInput) {
+  const result = await readEvidenceLesson(db, input);
+  return result.state === "candidate" ? candidate(result.receipt) : result;
+}
+
+/** Reject every existing symlink component, even one pointing inside the repository. */
+async function directory(repo: string, relativePath: string, create = false): Promise<string> {
+  const target = resolve(repo, relativePath);
+  const rel = relative(repo, target);
+  if (!rel || isAbsolute(rel) || rel === ".." || rel.startsWith(".." + sep)) throw Error("unsafe_lesson_path");
+  let current = repo;
+  for (const part of rel.split(sep)) {
+    current = join(current, part);
+    try {
+      const stat = await lstat(current);
+      if (!stat.isDirectory() || stat.isSymbolicLink() || await realpath(current) !== current) throw Error("unsafe_lesson_path");
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+      if (create) { try { await mkdir(current, { mode: 0o700 }); } catch (e) { if ((e as NodeJS.ErrnoException).code !== "EEXIST") throw e; }
+        if (!(await lstat(current)).isDirectory() || await realpath(current) !== current) throw Error("unsafe_lesson_path"); }
+    }
+  }
+  return target;
+}
+async function safeRead(path: string): Promise<{ content?: string } | null> {
+  let file: Awaited<ReturnType<typeof open>> | undefined;
+  try {
+    file = await open(path, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
+    const stat = await file.stat(); if (!stat.isFile()) throw Error("unsafe_lesson_file");
+    if (stat.size > 1024 * 1024) return {};
+    const bytes = Buffer.alloc(1024 * 1024 + 1); const { bytesRead } = await file.read(bytes, 0, bytes.length, 0);
+    if (bytesRead > 1024 * 1024) return {};
+    return { content: bytes.subarray(0, bytesRead).toString("utf8") };
+  } catch (error) { if ((error as NodeJS.ErrnoException).code === "ENOENT") return null; throw Error("unsafe_lesson_file"); }
+  finally { await file?.close(); }
+}
+async function existsEntry(path: string): Promise<boolean> {
+  try { await lstat(path); return true; }
+  catch (error) { if ((error as NodeJS.ErrnoException).code === "ENOENT") return false; throw error; }
+}
+async function publishDraft(repo: string, dir: string, path: string, content: string, beforeWrite?: () => Promise<void>): Promise<boolean> {
+  const temporary = join(dir, `.evidence-${randomUUID()}.tmp`);
+  await directory(repo, "loop-lessons/drafts");
+  const file = await open(temporary, constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | constants.O_NOFOLLOW, 0o600);
+  try {
+    await file.writeFile(content, "utf8"); await file.sync();
+    await beforeWrite?.(); await directory(repo, "loop-lessons/drafts");
+    try { await link(temporary, path); return true; }
+    catch (error) { if ((error as NodeJS.ErrnoException).code === "EEXIST") return false; throw error; }
+  } finally { await file.close(); await unlink(temporary); }
+}
+export async function writeEvidenceLessonDraft(value: unknown, options: { repoPath: string; beforeWrite?: () => Promise<void> }): Promise<EvidenceLessonWriteResult> {
+  const receipt = receiptSchema.parse(value); const repo = await realpath(options.repoPath);
+  if (repo !== receipt.repo_path) throw Error("lesson_workspace_mismatch");
+  const draft = candidate(receipt);
+  const dirs = await Promise.all(["drafts", "promoted", "discarded"].map(name => directory(repo, `loop-lessons/${name}`)));
+  for (const dir of dirs.slice(1)) if (await existsEntry(join(dir, `${draft.draftId}.md`)) || await existsEntry(join(dir, `${draft.draftId}-r${hash(draft.markdown).slice(0, 16)}.md`)))
+    return { state: "reviewed", kind: "investigation", qualification: receipt.qualification, created: false, promoted: false };
+  const dir = await directory(repo, "loop-lessons/drafts", true);
+  let path = join(dir, `${draft.draftId}.md`); let content = draft.markdown;
+  const existing = await safeRead(path);
+  if (existing?.content === content) return { state: "draft", path, created: false, kind: "investigation", qualification: receipt.qualification, promoted: false };
+  if (existing !== null) {
+    const prior = draft.draftId; path = join(dir, `${prior}-r${hash(content).slice(0, 16)}.md`);
+    content += `\n## Revision provenance\nRevision of ${prior}; existing user content was preserved.\n`;
+    const revision = await safeRead(path);
+    if (revision !== null && revision.content !== content) throw Error("lesson_revision_conflict");
+    if (revision?.content === content) return { state: "draft", path, created: false, kind: "investigation", qualification: receipt.qualification, promoted: false };
+  }
+  const created = await publishDraft(repo, dir, path, content, options.beforeWrite);
+  if (!created && (await safeRead(path))?.content !== content) throw Error("lesson_create_conflict");
+  return { state: "draft", path, created, kind: "investigation", qualification: receipt.qualification, promoted: false };
+}
+export async function writeRunLessonDraft(db: Database.Database, input: RunLessonInput): Promise<EvidenceLessonWriteResult> {
+  const result = await readEvidenceLesson(db, input);
+  if (result.state === "unknown") return { ...result, promoted: false };
+  return writeEvidenceLessonDraft(result.receipt, { repoPath: input.repoPath, beforeWrite: async () => {
+    const fresh = await readEvidenceLesson(db, input);
+    if (fresh.state !== "candidate" || fresh.receipt.source_hash !== result.receipt.source_hash) throw Error("lesson_source_changed");
+  } });
+}
+export async function handleEvidenceLessonCommand(args: string[], io: { stdout?: (line: string) => void; rpc?: (method: string, params?: unknown, timeoutMs?: number) => Promise<unknown> } = {}): Promise<number> {
+  const flags = new Map<string, string>(); let tenant = false; let preview = false; let json = false;
+  for (let index = 1; index < args.length; index++) {
+    const key = args[index]!;
+    if (key === "--default-tenant" && !tenant) { tenant = true; continue; }
+    if (key === "--dry-run" && !preview) { preview = true; continue; }
+    if (key === "--json" && !json) { json = true; continue; }
+    const value = args[++index];
+    if (!["--from-run", "--repo"].includes(key) || flags.has(key) || !value || value.startsWith("--")) throw Error("invalid_lesson_arguments");
+    flags.set(key, value);
+  }
+  if (!tenant || !flags.get("--from-run") || !flags.get("--repo")) throw Error("explicit_run_repo_default_tenant_required");
+  if (!io.rpc) throw Error("daemon_connection_required");
+  const params: RunLessonInput = { runId: flags.get("--from-run")!, repoPath: await realpath(flags.get("--repo")!), default_tenant: true };
+  const read = async () => {
+    const response = z.object({ ok: z.literal(true), result: z.union([z.object({ state: z.literal("candidate"), receipt: receiptSchema }).strict(), z.object({ state: z.literal("unknown"), reason: z.string().max(256) }).strict()]) }).passthrough().parse(await io.rpc!("attention.lesson-evidence", params, 1000));
+    if (response.result.state === "candidate" && (response.result.receipt.run_id !== params.runId || response.result.receipt.repo_path !== params.repoPath)) throw Error("lesson_receipt_identity_mismatch");
+    return response.result;
+  };
+  const result = await read();
+  const output = result.state === "unknown" || preview ? result : await writeEvidenceLessonDraft(result.receipt, { repoPath: params.repoPath, beforeWrite: async () => {
+    const fresh = await read(); if (fresh.state !== "candidate" || fresh.receipt.source_hash !== result.receipt.source_hash) throw Error("lesson_source_changed");
+  } });
+  (io.stdout ?? console.log)(JSON.stringify(output, null, 2));
+  return result.state === "unknown" ? 1 : 0;
+}
+
+
+FILE packages/loop/src/lesson-draft.ts
+// SOP flywheel — turn recovered failures into reviewable lesson drafts.
+//
+// When a task succeeds after one or more failed attempts, the loop writes a
+// draft to loop-lessons/drafts/<task_id>.md. Drafts are review material only:
+// official skill files are never modified automatically.
+
+import { link, lstat, mkdir, open, readFile, readdir, realpath, rename, unlink } from "node:fs/promises";
+import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
+import { z } from "zod";
+import { constants } from "node:fs";
+import { createHash, randomUUID } from "node:crypto";
+const digest = (value: string) => createHash("sha256").update(value).digest("hex");
+
+/** Write via temp file + rename so a crash never leaves a truncated target. */
+async function writeFileAtomic(targetPath: string, content: string): Promise<void> {
+  const originalMode = (await lstat(targetPath)).mode & 0o777;
+  const tmpPath = join(dirname(targetPath), `.${basename(targetPath)}.${randomUUID()}.tmp`);
+  const file = await open(tmpPath, constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | constants.O_NOFOLLOW, 0o600);
+  try { await file.writeFile(content, "utf8"); await file.chmod(originalMode); await file.sync(); await rename(tmpPath, targetPath); }
+  finally { await file.close(); await unlink(tmpPath).catch(error => { if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error; }); }
+}
+import { isSkillTask, skillIdOf } from "./publisher.js";
+import type { IterationFeedback, Task, Verdict } from "./types.js";
+
+export const LessonDraftConfig = z.object({
+  enabled: z.boolean().default(true),
+  dir: z.string().default("loop-lessons/drafts"),
+});
+export type LessonDraftConfig = z.infer<typeof LessonDraftConfig>;
+
+export interface LessonDraftInput {
+  task: Task;
+  /** Total attempts the task took, including the successful one. */
+  iterations: number;
+  /** Feedback derived from each failed attempt, in attempt order. */
+  feedback: readonly IterationFeedback[];
+  finalVerdict?: Verdict | null;
+  changedFiles?: readonly string[];
+  diffSummary?: string;
+  commitHash?: string;
+}
+
+export interface LessonDraftResult {
+  written: boolean;
+  path?: string;
+  reason?: string;
+}
+
+/** Drafts are only useful when the verifier actually rejected an earlier attempt. */
+export function shouldDraftLesson(input: Pick<LessonDraftInput, "feedback">): boolean {
+  return input.feedback.length > 0;
+}
+
+export function renderLessonDraft(input: LessonDraftInput): string {
+  const { task, feedback } = input;
+  const failedEvaluationIds = [...new Set(feedback.flatMap((entry) => entry.failed_evaluations))];
+  const verifierCatches = feedback.map((entry) => {
+    const issues = entry.blocking_issues.length === 0
+      ? "verification did not pass"
+      : entry.blocking_issues.map((issue) => issue.message).join("; ");
+    return `- Attempt ${entry.attempt}: ${issues}`;
+  });
+  const focus = [...new Set(feedback.flatMap((entry) => entry.suggested_focus))];
+  const suggestedEvaluations = suggestedEvaluationLines(input, failedEvaluationIds);
+  const skillId = isSkillTask(task) ? skillIdOf(task) : undefined;
+
+  const lines = [
+    `# Lesson Draft: ${task.task_id}`,
+    "",
+    `> Generated by osstack loop: task succeeded on attempt ${input.iterations} after ${feedback.length} failed attempt(s).`,
+    "> Review before adopting. Official skill files are never modified automatically.",
+    "",
+    "## Task Prompt",
+    task.prompt,
+    "",
+    "## Failed Evaluations",
+    ...(failedEvaluationIds.length > 0
+      ? failedEvaluationIds.map((id) => `- ${id}`)
+      : ["- None recorded (verification failed without evaluation specs)"]),
+    "",
+    "## What The Verifier Caught",
+    ...verifierCatches,
+    "",
+    "## Final Fix Summary",
+    `- Outcome: success after ${input.iterations} iteration(s)`,
+    ...(input.diffSummary !== undefined ? [`- Diff: ${input.diffSummary}`] : []),
+    ...(input.changedFiles !== undefined && input.changedFiles.length > 0
+      ? [`- Changed files: ${input.changedFiles.join(", ")}`]
+      : []),
+    ...(input.commitHash !== undefined ? [`- Commit: ${input.commitHash}`] : []),
+    ...(input.finalVerdict != null ? [`- Final verdict: ${input.finalVerdict.summary}`] : []),
+    "",
+    "## Reusable Rule",
+    reusableRule(task, failedEvaluationIds, focus),
+    "",
+    "## Suggested Evaluation",
+    ...suggestedEvaluations,
+    "",
+    "## Suggested Target Skill",
+    skillId !== undefined ? `- ${skillId}` : "- Not inferable from task context",
+    "",
+  ];
+  return lines.join("\n");
+}
+
+export async function writeLessonDraft(
+  input: LessonDraftInput,
+  options: { workspacePath: string; config?: Partial<LessonDraftConfig> },
+): Promise<LessonDraftResult> {
+  const config = LessonDraftConfig.parse(options.config ?? {});
+  if (!config.enabled) return { written: false, reason: "lesson drafts disabled" };
+  if (!shouldDraftLesson(input)) {
+    return { written: false, reason: "task succeeded without failed attempts; nothing to learn" };
+  }
+
+  const dir = await resolveLessonDir(options.workspacePath, config.dir);
+  const legacyId = sanitizeFileName(input.task.task_id);
+  const baseId = legacyId === input.task.task_id && legacyId.length <= 60 && !/^(task-|evidence-)|-r[0-9a-f]{16}$/.test(legacyId) ? legacyId : `task-${legacyId.slice(0, 32)}-${digest(input.task.task_id).slice(0, 16)}`;
+  let content = renderLessonDraft(input);
+  const revisionId = `${baseId}-r${digest(content).slice(0, 16)}`;
+  for (const name of ["promoted", "discarded"]) {
+    const reviewedDir = await resolveLessonDir(options.workspacePath, `loop-lessons/${name}`);
+    for (const id of [baseId, revisionId]) if (await existsEntry(join(reviewedDir, `${id}.md`))) return { written: false, reason: "lesson candidate already reviewed" };
+    if (legacyId !== baseId) {
+      try { if ((await readDraftFile(join(reviewedDir, `${legacyId}.md`))).startsWith(`# Lesson Draft: ${input.task.task_id}\n`)) return { written: false, reason: "legacy lesson candidate already reviewed" }; }
+      catch { /* An ambiguous or unreadable legacy filename is not proof this task was reviewed. */ }
+    }
+  }
+  await mkdir(dir, { recursive: true });
+  await resolveLessonDir(options.workspacePath, config.dir);
+  let path = join(dir, `${baseId}.md`);
+  if (await existsEntry(path)) {
+    const existing = await compareDraft(path, content);
+    if (existing) return { written: false, path, reason: "identical lesson candidate already exists" };
+    path = join(dir, `${revisionId}.md`);
+    content += `\n## Revision provenance\nRevision of ${baseId}; existing user content was preserved.\n`;
+    if (await existsEntry(path)) return { written: false, path, reason: await compareDraft(path, content) ? "identical lesson revision already exists" : "lesson revision conflict; user content preserved" };
+  }
+  const tmpPath = join(dir, `.lesson-${randomUUID()}.tmp`);
+  const file = await open(tmpPath, constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | constants.O_NOFOLLOW, 0o600);
+  try {
+    await file.writeFile(content, "utf8"); await file.sync();
+    await resolveLessonDir(options.workspacePath, config.dir);
+    try { await link(tmpPath, path); }
+    catch (error) { if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error; return { written: false, path, reason: "lesson candidate concurrently created; existing content preserved" }; }
+  } finally { await file.close(); await unlink(tmpPath); }
+  return { written: true, path };
+}
+
+async function compareDraft(path: string, content: string): Promise<boolean> {
+  const info = await lstat(path);
+  if (!info.isFile() || info.isSymbolicLink()) throw new Error("unsafe_lesson_file");
+  if (info.size > 1024 * 1024) return false;
+  return await readDraftFile(path) === content;
+}
+
+function reusableRule(task: Task, failedEvaluationIds: string[], focus: string[]): string {
+  const subject = `tasks like "${task.capability}"`;
+  const evaluationClause = failedEvaluationIds.length > 0
+    ? `make the ${failedEvaluationIds.join(", ")} evaluation(s) pass before claiming completion`
+    : "re-run the verifier before claiming completion";
+  const focusClause = focus.length > 0 ? ` Pay attention to: ${focus.join("; ")}.` : "";
+  return `When working on ${subject}, ${evaluationClause}.${focusClause} (Draft rule — refine before adding to a skill.)`;
+}
+
+function suggestedEvaluationLines(input: LessonDraftInput, failedEvaluationIds: string[]): string[] {
+  const lines: string[] = [];
+  const specs = input.task.evaluation ?? [];
+  for (const spec of specs) {
+    if (!failedEvaluationIds.includes(spec.id)) continue;
+    lines.push(spec.command !== undefined
+      ? `- Run \`${spec.command}\` (${spec.id})`
+      : `- Require ${spec.mode} review: ${spec.description} (${spec.id})`);
+  }
+  for (const id of failedEvaluationIds) {
+    if (specs.some((spec) => spec.id === id)) continue;
+    lines.push(`- Keep the ${id} check as a required evaluation`);
+  }
+  if (lines.length === 0) {
+    lines.push("- Add an evaluation spec that would have caught the first failed attempt");
+  }
+  return lines;
+}
+
+function sanitizeFileName(value: string): string {
+  const sanitized = value.replace(/[^a-zA-Z0-9._-]+/g, "-").replace(/^-+|-+$/g, "");
+  return sanitized === "" ? "lesson" : sanitized.slice(0, 80);
+}
+
+// ── Review workflow: list / read / promote / discard ────────────────────
+//
+// Drafts wait in loop-lessons/drafts/ until a human reviews them.
+// Promoting moves a draft to loop-lessons/promoted/ and, ONLY with an
+// explicit target skill path, appends the lesson to that file. Discarding
+// moves it to loop-lessons/discarded/. The loop itself never promotes.
+
+export interface LessonDraftEntry {
+  id: string;
+  path: string;
+  title: string;
+  suggested_skill?: string;
+}
+
+export interface PromoteLessonDraftResult {
+  promoted: boolean;
+  from?: string;
+  to?: string;
+  appended_to?: string;
+  reason?: string;
+}
+
+export interface DiscardLessonDraftResult {
+  discarded: boolean;
+  from?: string;
+  to?: string;
+  reason?: string;
+}
+
+export async function listLessonDrafts(
+  workspacePath: string,
+  dir = "loop-lessons/drafts",
+): Promise<LessonDraftEntry[]> {
+  let draftDir: string;
+  try { draftDir = await resolveLessonDir(workspacePath, dir); }
+  catch (error) { if ((error as NodeJS.ErrnoException).code === "ENOENT") return []; throw error; }
+  let entries: string[];
+  try {
+    entries = await readdir(draftDir);
+  } catch {
+    return [];
+  }
+  const drafts: LessonDraftEntry[] = [];
+  for (const entry of entries.sort()) {
+    if (!entry.endsWith(".md")) continue;
+    const path = join(draftDir, entry);
+    try {
+      drafts.push(parseLessonDraftEntry(path, await readDraftFile(path)));
+    } catch {
+      // Skip unreadable drafts; listing must not fail on one bad file.
+    }
+  }
+  return drafts;
+}
+
+export async function readLessonDraft(
+  workspacePath: string,
+  id: string,
+  dir = "loop-lessons/drafts",
+): Promise<{ entry: LessonDraftEntry; content: string } | null> {
+  const path = join(await resolveLessonDir(workspacePath, dir), `${sanitizeFileName(id)}.md`);
+  try {
+    const content = await readDraftFile(path);
+    return { entry: parseLessonDraftEntry(path, content), content };
+  } catch {
+    return null;
+  }
+}
+
+export async function promoteLessonDraft(
+  workspacePath: string,
+  id: string,
+  options: { dir?: string; promotedDir?: string; toSkillPath?: string } = {},
+): Promise<PromoteLessonDraftResult> {
+  const draft = await readLessonDraft(workspacePath, id, options.dir ?? "loop-lessons/drafts");
+  if (draft === null) return { promoted: false, reason: `no lesson draft found for id ${id}` };
+
+  // Validate lifecycle destinations before touching an explicitly selected skill.
+  const promotedDir = await resolveLessonDir(workspacePath, options.promotedDir ?? "loop-lessons/promoted");
+  const to = join(promotedDir, basename(draft.entry.path));
+  if (await existsEntry(to)) return { promoted: false, reason: "promoted lesson already exists" };
+  if (options.toSkillPath !== undefined) {
+    let skillPath = isAbsolute(options.toSkillPath)
+      ? options.toSkillPath
+      : join(workspacePath, options.toSkillPath);
+    // Minimal path hardening. Skills legitimately live outside the workspace, so
+    // we do NOT confine to the workspace — but we must not let a lesson be
+    // appended to an arbitrary file (e.g. /etc/hosts, ~/.zshrc, a random .md
+    // note). Require the target to be a SKILL.md: the canonical skill entry file
+    // every skill in this ecosystem uses. This blocks obvious misfires while
+    // preserving legitimate external skill targets.
+    if (basename(skillPath).toLowerCase() !== "skill.md") {
+      return {
+        promoted: false,
+        reason: `refusing to append a lesson to a non-skill target: ${options.toSkillPath}. --to-skill must point at a SKILL.md file.`,
+      };
+    }
+    let existing: string;
+    try {
+      skillPath = await realpath(skillPath);
+      if (!(await lstat(skillPath)).isFile()) throw new Error("invalid_skill_file");
+      existing = await readFile(skillPath, "utf-8");
+    } catch {
+      return { promoted: false, reason: `target skill file not found: ${options.toSkillPath}` };
+    }
+    // The marker makes a retry after a failed lifecycle move idempotent.
+    const marker = `<!-- osstack-lesson:${digest(JSON.stringify([await realpath(workspacePath), draft.entry.id, draft.content]))} -->`;
+    const rule = extractLessonSection(draft.content, "## Reusable Rule");
+    const evaluation = extractLessonSection(draft.content, "## Suggested Evaluation");
+    const appended = [
+      existing.endsWith("\n") ? existing : `${existing}\n`,
+      `\n${marker}\n## Lesson: ${draft.entry.id}\n`,
+      "\n",
+      rule ?? "(no reusable rule recorded)",
+      "\n",
+      ...(evaluation !== undefined ? ["\n### Suggested Evaluation\n\n", evaluation, "\n"] : []),
+    ].join("");
+    // Atomic write: a crash mid-write must never truncate an official skill.
+    if (!existing.includes(marker)) await writeFileAtomic(skillPath, appended);
+  }
+
+  await mkdir(promotedDir, { recursive: true });
+  await link(draft.entry.path, to);
+  await unlink(draft.entry.path);
+  return {
+    promoted: true,
+    from: draft.entry.path,
+    to,
+    ...(options.toSkillPath !== undefined ? { appended_to: options.toSkillPath } : {}),
+  };
+}
+
+export async function discardLessonDraft(
+  workspacePath: string,
+  id: string,
+  options: { dir?: string; discardedDir?: string } = {},
+): Promise<DiscardLessonDraftResult> {
+  const draft = await readLessonDraft(workspacePath, id, options.dir ?? "loop-lessons/drafts");
+  if (draft === null) return { discarded: false, reason: `no lesson draft found for id ${id}` };
+  const discardedDir = await resolveLessonDir(workspacePath, options.discardedDir ?? "loop-lessons/discarded");
+  await mkdir(discardedDir, { recursive: true });
+  const to = join(discardedDir, basename(draft.entry.path));
+  if (await existsEntry(to)) return { discarded: false, reason: "discarded lesson already exists" };
+  await link(draft.entry.path, to);
+  await unlink(draft.entry.path);
+  return { discarded: true, from: draft.entry.path, to };
+}
+
+function parseLessonDraftEntry(path: string, content: string): LessonDraftEntry {
+  const id = basename(path).replace(/\.md$/, "");
+  const titleMatch = content.match(/^# Lesson Draft: (.+)$/m);
+  const skillSection = extractLessonSection(content, "## Suggested Target Skill");
+  const skillLine = skillSection?.split("\n").find((line) => line.startsWith("- "));
+  const skill = skillLine?.slice(2).trim();
+  return {
+    id,
+    path,
+    title: titleMatch?.[1]?.trim() ?? id,
+    ...(skill !== undefined && !skill.startsWith("Not inferable") ? { suggested_skill: skill } : {}),
+  };
+}
+
+function extractLessonSection(content: string, heading: string): string | undefined {
+  const lines = content.split("\n");
+  const start = lines.findIndex((line) => line.trim() === heading);
+  if (start === -1) return undefined;
+  const rest = lines.slice(start + 1);
+  const end = rest.findIndex((line) => line.startsWith("## "));
+  const section = (end === -1 ? rest : rest.slice(0, end)).join("\n").trim();
+  return section === "" ? undefined : section;
+}
+
+async function resolveLessonDir(workspacePath: string, dir: string): Promise<string> {
+  const root = await realpath(workspacePath);
+  const lexicalRoot = resolve(workspacePath);
+  const lexicalTarget = resolve(lexicalRoot, dir);
+  const lexicalRelative = relative(lexicalRoot, lexicalTarget);
+  const insideLexicalRoot = lexicalRelative !== ".." && !lexicalRelative.startsWith(".." + sep) && !isAbsolute(lexicalRelative);
+  const target = insideLexicalRoot ? resolve(root, lexicalRelative) : resolve(root, dir);
+  const rel = relative(root, target);
+  if (!rel || isAbsolute(rel) || rel === ".." || rel.startsWith(".." + sep)) throw new Error("unsafe_lesson_path");
+  let current = root;
+  for (const part of rel.split(sep)) {
+    current = join(current, part);
+    try {
+      const info = await lstat(current);
+      if (!info.isDirectory() || info.isSymbolicLink() || await realpath(current) !== current) throw new Error("unsafe_lesson_path");
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+    }
+  }
+  // Keep the caller's path spelling (e.g. /var versus /private/var) for API compatibility.
+  return insideLexicalRoot ? lexicalTarget : target;
+}
+async function existsEntry(path: string): Promise<boolean> {
+  try { await lstat(path); return true; }
+  catch (error) { if ((error as NodeJS.ErrnoException).code === "ENOENT") return false; throw error; }
+}
+async function readDraftFile(path: string): Promise<string> {
+  const file = await open(path, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
+  try {
+    const info = await file.stat();
+    if (!info.isFile() || info.size > 1024 * 1024) throw new Error("unsafe_lesson_file");
+    const bytes = Buffer.alloc(1024 * 1024 + 1);
+    const result = await file.read(bytes, 0, bytes.length, 0);
+    if (result.bytesRead > 1024 * 1024) throw new Error("unsafe_lesson_file");
+    return bytes.subarray(0, result.bytesRead).toString("utf8");
+  } finally { await file.close(); }
+}
+
+
+FILE docs/guides/attention-evidence-lessons.md
+# Evidence-backed lesson candidates
+
+## Implementation contract
+
+This bridge writes review material, never approval or published knowledge. The
+real CLI `attention lesson --from-run RUN --repo PATH --default-tenant` requests
+`attention.lesson-evidence` from the existing authenticated daemon. The RPC reader
+uses the daemon's existing database without opening, migrating or modifying it.
+The CLI never opens a database or starts a daemon. It requires a
+canonical registered Attention repository scope, the default-tenant task/run and
+an admitted run subject. Adapter events and ordinary run outcomes cannot prove a
+verifier succeeded: these sources always yield an **investigation** candidate.
+Absent, foreign, released or ambiguous source bindings fail closed without a file.
+
+The source digest binds scope/task/run identity and bounded persisted event metadata (identity, sequence, type, time, terminal flag and payload byte length). Payload contents are never read or hashed; the fingerprint does not detect same-length payload edits.
+No raw task prompt, transcript, command output, or secret-looking log text is
+copied. Oversized/truncated event history is explicitly incomplete evidence.
+The stable candidate key binds scope/task/failure family/source digest. Candidate
+creation is create-only and atomic; identical input is idempotent. User-edited
+files are preserved and a revision candidate references the prior draft. Reviewed
+promoted/discarded candidates are never silently reintroduced.
+
+Storage uses the existing `loop-lessons/drafts` directory, so existing
+`loop lessons list/show/promote/discard` controls review. Directory components
+must remain under the real repository path and cannot be symlinks. The bridge
+checks drafts, promoted and discarded paths; no automatic promotion or skill edit
+is permitted. Missing current proof remains investigation, regardless of booleans
+such as `passed` or `reviewed` in an input/event.
+
+## Strong evidence qualification
+
+A planned, not yet implemented host-only Graph adapter would inspect authenticated registration scope, immutable
+verification joins, action ledger, candidate artifacts and hashed verifier receipts.
+It must call the registration's synchronous authorize callback before and after
+asynchronous evidence reads. CLI callers cannot supply Graph scope or arbitrary
+Graph database access. A success-after-repair candidate requires an actual prior
+failed verifier command, a confirmed repair action, a different frozen candidate,
+then a same-candidate successful command and independent review. Unknown actions,
+missing receipts, mismatched scope/head/check, or source changes invalidate success.
+
+Graph qualification remains pending until a real authenticated host registration
+is wired. The ordinary CLI does not upgrade itself to that authority. The current
+delivery contract receipt has no complete failure→repair attempt history and is
+not treated as proof of recovery.
+
+## Acceptance cases
+
+- Real ordinary completed run + forged passed/reviewed event → investigation only.
+- Foreign tenant, wrong repo, mismatched task, missing/admission-released run → no file.
+- Repeated unchanged source → same candidate; edited source file → revision without overwrite.
+- Source changes after inspection → retry with a new fingerprint, never reuse old proof.
+- Draft/promoted/discarded symlink escape, symlink final file and unsafe output path → reject.
+- Interrupted publication → no partial Markdown target, no overwriting old user content.
+- Existing list/show/promote/discard sees the candidate; bridge itself never promotes.
+- Missing database/schema/history and opaque execution status remain unknown/investigation.
+- Strong adapter: forged passed flag, wrong scope/candidate/check, unchanged repair,
+  unconfirmed stop, missing final proof or revoked authorization → no recovery claim.
+
+The existing automatic Loop task writer now also uses create-only publication, bounded deterministic revisions and reviewed-candidate checks. Normal task IDs keep their filenames; normalized, long or reserved-namespace IDs get a task-prefixed hash suffix to avoid collisions. Explicit skill promotion includes a source-bound marker, so retrying a failed lifecycle move does not append the same lesson twice. Explicit skill symlinks resolve to the canonical target and retain its permission mode. Promotion/discard use no-overwrite links; a failure after linking can leave both copies for manual reconciliation, but never overwrites a reviewed file.
+
+
+Added regression tests:
+it("preserves user edits, keeps stable revisions and honors reviewed task candidates", async () => {
+  const options = { workspacePath: workspace };
+  const first = await writeLessonDraft(draftInput(), options);
+  expect(await writeLessonDraft(draftInput(), options)).toMatchObject({ written: false, path: first.path });
+  await writeFile(first.path!, "human edit");
+  const revision = await writeLessonDraft(draftInput(), options);
+  expect(revision.path).not.toBe(first.path);
+  expect(await readFile(first.path!, "utf8")).toBe("human edit");
+  expect(await writeLessonDraft(draftInput(), options)).toMatchObject({ written: false, path: revision.path });
+  const entry = (await listLessonDrafts(workspace)).find(item => item.path === revision.path)!;
+  await discardLessonDraft(workspace, entry.id);
+  expect((await writeLessonDraft(draftInput(), options)).written).toBe(false);
+  expect(await readLessonDraft(workspace, entry.id)).toBeNull();
+});
+
+it("does not collide task IDs after filename normalization or truncation", async () => {
+  const paths: string[] = [];
+  for (const taskId of ["a b", "a-b", "x".repeat(90) + "1", "x".repeat(90) + "2"]) {
+    const input = draftInput(); input.task = { ...input.task, task_id: taskId };
+    paths.push((await writeLessonDraft(input, { workspacePath: workspace })).path!);
+  }
+  expect(new Set(paths).size).toBe(4);
+});
+
+it("does not overwrite concurrently published legacy drafts", async () => {
+  const outputs = await Promise.all([writeLessonDraft(draftInput(), { workspacePath: workspace }), writeLessonDraft(draftInput(), { workspacePath: workspace })]);
+  expect(outputs.filter(output => output.written)).toHaveLength(1);
+  expect(outputs[0]?.path).toBe(outputs[1]?.path);
+});
+
+
+it("retries a failed promotion move without duplicating the explicit skill append", async () => {
+  await writeLessonDraft(draftInput(), { workspacePath: workspace });
+  const skill = join(workspace, "SKILL.md"); await writeFile(skill, "# Skill\n");
+  const failMove = vi.spyOn(filesystem, "link").mockRejectedValueOnce(Object.assign(new Error("simulated move failure"), { code: "EIO" }));
+  try { await expect(promoteLessonDraft(workspace, "auth-session-expiry", { toSkillPath: skill })).rejects.toThrow("simulated move failure"); }
+  finally { failMove.mockRestore(); }
+  const afterFailure = await readFile(skill, "utf8"); expect(afterFailure).toContain("osstack-lesson:");
+  expect((await promoteLessonDraft(workspace, "auth-session-expiry", { toSkillPath: skill })).promoted).toBe(true);
+  expect(await readFile(skill, "utf8")).toBe(afterFailure);
+});
+
+
+it("preserves a symlinked explicit skill target and its permissions", async () => {
+  await writeLessonDraft(draftInput(), { workspacePath: workspace });
+  const target = join(workspace, "canonical.md"); await writeFile(target, "# Shared Skill\n"); await filesystem.chmod(target, 0o644);
+  const skill = join(workspace, "SKILL.md"); await filesystem.symlink(target, skill);
+  expect((await promoteLessonDraft(workspace, "auth-session-expiry", { toSkillPath: skill })).promoted).toBe(true);
+  expect((await filesystem.lstat(skill)).isSymbolicLink()).toBe(true);
+  expect(await readFile(target, "utf8")).toContain("## Lesson:");
+  expect((await filesystem.stat(target)).mode & 0o777).toBe(0o644);
+});
+
+it("reserves generated filename namespaces against literal task IDs", async () => {
+  const input = draftInput(); input.task = { ...input.task, task_id: "x".repeat(90) };
+  const first = await writeLessonDraft(input, { workspacePath: workspace });
+  const firstId = (await listLessonDrafts(workspace))[0]!.id;
+  await promoteLessonDraft(workspace, firstId);
+  input.task = { ...input.task, task_id: firstId };
+  const second = await writeLessonDraft(input, { workspacePath: workspace });
+  expect(second.written).toBe(true); expect(second.path).not.toBe(first.path);
+});
+
+
+CLI final tests:
+it("enforces event bounds and rejects cross-session or run-tenant source contamination", async () => {
+  for (let seq = 2; seq <= 130; seq++) appendEvent(db, path, { event_id: `e${seq}`, run_id: "run", session_id: "session", seq, type: "progress", created_at: seq, terminal: false, payload: {} });
+  const receipt = await readEvidenceLesson(db, input());
+  expect(receipt).toMatchObject({ state: "candidate", receipt: { event_count: 130, through_seq: 130, history_complete: false } });
+  if (receipt.state === "candidate") expect(receipt.receipt.event_hashes).toHaveLength(128);
+  db.prepare("UPDATE events SET session_id='foreign' WHERE seq=130").run();
+  expect(await readEvidenceLesson(db, input())).toMatchObject({ state: "unknown", reason: "source_session_conflict" });
+  db.prepare("UPDATE runs SET tenant_id='foreign'").run();
+  expect(await readEvidenceLesson(db, input())).toMatchObject({ state: "unknown", reason: "source_not_found_or_unbound" });
+});
+
+
+it("binds RPC receipt identity to the requested run before preview or publication", async () => {
+  const result = await readEvidenceLesson(db, input()); if (result.state !== "candidate") throw Error();
+  for (const preview of [false, true]) await expect(handleEvidenceLessonCommand(["lesson", "--from-run", "run", "--repo", root, "--default-tenant", ...(preview ? ["--dry-run"] : [])], {
+    stdout: () => {}, rpc: async () => ({ ok: true, result: { ...result, receipt: { ...result.receipt, run_id: "other" } } }),
+  })).rejects.toThrow("lesson_receipt_identity_mismatch");
+  expect((await readdir(root)).includes("loop-lessons")).toBe(false);
+});
+
+it("preserves oversized edits and treats oversized reviewed candidates as reviewed", async () => {
+  const first = await writeRunLessonDraft(db, input()); const human = "human".repeat(300000);
+  await writeFile(first.path!, human);
+  const revision = await writeRunLessonDraft(db, input()); expect(revision.path).not.toBe(first.path);
+  expect(await readFile(first.path!, "utf8")).toBe(human);
+  const preview = await inspectRunLessonEvidence(db, input()); if (preview.state !== "candidate") throw Error();
+  await mkdir(join(root, "loop-lessons/promoted"));
+  await writeFile(join(root, "loop-lessons/promoted", preview.draftId + ".md"), human);
+  expect((await writeRunLessonDraft(db, input())).state).toBe("reviewed");
+});
+
+it("does not expose payload-derived fingerprints in receipts", async () => {
+  const before = await readEvidenceLesson(db, input());
+  db.prepare("UPDATE events SET payload_json=replace(payload_json,'SECRET_TOKEN','PRIVATE_TEXT')").run();
+  expect(await readEvidenceLesson(db, input())).toEqual(before);
+});

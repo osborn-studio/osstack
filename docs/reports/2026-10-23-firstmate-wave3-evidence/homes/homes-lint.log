@@ -1,0 +1,35 @@
+packages/cli/src/home-inventory.ts:14:14 lint/suspicious/noControlCharactersInRegex ━━━━━━━━━━━━━━━━
+
+  × Unexpected control character in a regular expression.
+  
+    12 │   .min(1)
+    13 │   .max(256)
+  > 14 │   .regex(/^[^\x00-\x1f\x7f]+$/);
+       │              ^^^^
+    15 │ export const DeploymentIdentitySchema = z
+    16 │   .object({
+  
+  i Control characters are unusual and potentially incorrect inputs, so they are disallowed.
+  
+
+packages/cli/src/home-inventory.ts:14:19 lint/suspicious/noControlCharactersInRegex ━━━━━━━━━━━━━━━━
+
+  × Unexpected control character in a regular expression.
+  
+    12 │   .min(1)
+    13 │   .max(256)
+  > 14 │   .regex(/^[^\x00-\x1f\x7f]+$/);
+       │                   ^^^^
+    15 │ export const DeploymentIdentitySchema = z
+    16 │   .object({
+  
+  i Control characters are unusual and potentially incorrect inputs, so they are disallowed.
+  
+
+Checked 3 files in 22ms. No fixes applied.
+Found 2 errors.
+lint ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  × Some errors were emitted while running checks.
+  
+

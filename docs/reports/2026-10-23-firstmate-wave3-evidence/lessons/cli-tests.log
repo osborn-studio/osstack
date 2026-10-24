@@ -1,0 +1,11 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-cockpit/packages/cli
+
+ ✓ src/attention-lesson.test.ts (19 tests) 825ms
+   ✓ uses the existing review lifecycle and does not recreate promoted or discarded candidates  448ms
+
+ Test Files  1 passed (1)
+      Tests  19 passed (19)
+   Start at  12:29:28
+   Duration  1.22s (transform 389ms, setup 9ms, collect 247ms, tests 825ms, environment 0ms, prepare 25ms)
+

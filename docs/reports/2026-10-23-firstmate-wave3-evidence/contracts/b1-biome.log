@@ -1,0 +1,113 @@
+packages/core/src/delivery-contract.ts:85:9 lint/complexity/useOptionalChain  FIXABLE  ━━━━━━━━━━━━━
+
+  ! Change to an optional chain.
+  
+    83 │   for (const required of contract.required_checks) {
+    84 │     const check = receipt.checks.find((item) => item.id === required.id && item.registry_ref === required.registry_ref);
+  > 85 │     if (!check || check.exit_code !== 0 || `sha256:${check.command_digest}` !== required.registry_ref) throw new Error("delivery_required_check_failed");
+       │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    86 │   }
+    87 │   if (receipt.checks.some((check) => check.exit_code !== 0)) throw new Error("delivery_host_check_failed");
+  
+  i Unsafe fix: Change to an optional chain.
+  
+     83  83 │     for (const required of contract.required_checks) {
+     84  84 │       const check = receipt.checks.find((item) => item.id === required.id && item.registry_ref === required.registry_ref);
+     85     │ - ····if·(!check·||·check.exit_code·!==·0·||·`sha256:${check.command_digest}`·!==·required.registry_ref)·throw·new·Error("delivery_required_check_failed");
+         85 │ + ····if·(check?.exit_code·!==·0·||·`sha256:${check.command_digest}`·!==·required.registry_ref)·throw·new·Error("delivery_required_check_failed");
+     86  86 │     }
+     87  87 │     if (receipt.checks.some((check) => check.exit_code !== 0)) throw new Error("delivery_host_check_failed");
+  
+
+packages/protocol/src/delivery-contract.ts:7:34 lint/suspicious/noControlCharactersInRegex ━━━━━━━━━━
+
+  × Unexpected control character in a regular expression.
+  
+    5 │ const Id = z.string().min(1).max(256);
+    6 │ const Ref = z.string().min(1).max(255).refine((value) =>
+  > 7 │   !value.startsWith("-") && !/[\s\x00-\x1f\x7f]/.test(value), "unsafe ref");
+      │                                  ^^^^
+    8 │ const RelativePath = z.string().min(1).max(4096).refine((value) =>
+    9 │   !value.startsWith("/") && !value.split(/[\\/]/).includes("..") && !/[\x00-\x1f]/.test(value), "unsafe relative path");
+  
+  i Control characters are unusual and potentially incorrect inputs, so they are disallowed.
+  
+
+packages/protocol/src/delivery-contract.ts:7:39 lint/suspicious/noControlCharactersInRegex ━━━━━━━━━━
+
+  × Unexpected control character in a regular expression.
+  
+    5 │ const Id = z.string().min(1).max(256);
+    6 │ const Ref = z.string().min(1).max(255).refine((value) =>
+  > 7 │   !value.startsWith("-") && !/[\s\x00-\x1f\x7f]/.test(value), "unsafe ref");
+      │                                       ^^^^
+    8 │ const RelativePath = z.string().min(1).max(4096).refine((value) =>
+    9 │   !value.startsWith("/") && !value.split(/[\\/]/).includes("..") && !/[\x00-\x1f]/.test(value), "unsafe relative path");
+  
+  i Control characters are unusual and potentially incorrect inputs, so they are disallowed.
+  
+
+packages/protocol/src/delivery-contract.ts:9:72 lint/suspicious/noControlCharactersInRegex ━━━━━━━━━━
+
+  × Unexpected control character in a regular expression.
+  
+     7 │   !value.startsWith("-") && !/[\s\x00-\x1f\x7f]/.test(value), "unsafe ref");
+     8 │ const RelativePath = z.string().min(1).max(4096).refine((value) =>
+   > 9 │   !value.startsWith("/") && !value.split(/[\\/]/).includes("..") && !/[\x00-\x1f]/.test(value), "unsafe relative path");
+       │                                                                        ^^^^
+    10 │ 
+    11 │ export const DeliveryCompletionV2 = z.enum(["local_verified", "pr_opened", "merged", "deployed"]);
+  
+  i Control characters are unusual and potentially incorrect inputs, so they are disallowed.
+  
+
+packages/protocol/src/delivery-contract.ts:9:77 lint/suspicious/noControlCharactersInRegex ━━━━━━━━━━
+
+  × Unexpected control character in a regular expression.
+  
+     7 │   !value.startsWith("-") && !/[\s\x00-\x1f\x7f]/.test(value), "unsafe ref");
+     8 │ const RelativePath = z.string().min(1).max(4096).refine((value) =>
+   > 9 │   !value.startsWith("/") && !value.split(/[\\/]/).includes("..") && !/[\x00-\x1f]/.test(value), "unsafe relative path");
+       │                                                                             ^^^^
+    10 │ 
+    11 │ export const DeliveryCompletionV2 = z.enum(["local_verified", "pr_opened", "merged", "deployed"]);
+  
+  i Control characters are unusual and potentially incorrect inputs, so they are disallowed.
+  
+
+packages/protocol/src/delivery-contract.ts:29:93 lint/suspicious/noControlCharactersInRegex ━━━━━━━━━━
+
+  × Unexpected control character in a regular expression.
+  
+    27 │   parent_contract_id: Id.optional(),
+    28 │   task_id: Id,
+  > 29 │   canonical_repo: z.string().min(1).max(4096).refine((value) => value.startsWith("/") && !/[\x00-\x1f]/.test(value), "absolute repo required"),
+       │                                                                                             ^^^^
+    30 │   mode: z.enum(["scout", "implement"]),
+    31 │   base_head: Commit,
+  
+  i Control characters are unusual and potentially incorrect inputs, so they are disallowed.
+  
+
+packages/protocol/src/delivery-contract.ts:29:98 lint/suspicious/noControlCharactersInRegex ━━━━━━━━━━
+
+  × Unexpected control character in a regular expression.
+  
+    27 │   parent_contract_id: Id.optional(),
+    28 │   task_id: Id,
+  > 29 │   canonical_repo: z.string().min(1).max(4096).refine((value) => value.startsWith("/") && !/[\x00-\x1f]/.test(value), "absolute repo required"),
+       │                                                                                                  ^^^^
+    30 │   mode: z.enum(["scout", "implement"]),
+    31 │   base_head: Commit,
+  
+  i Control characters are unusual and potentially incorrect inputs, so they are disallowed.
+  
+
+Checked 19 files in 38ms. No fixes applied.
+Found 6 errors.
+Found 1 warning.
+check ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  × Some errors were emitted while running checks.
+  
+

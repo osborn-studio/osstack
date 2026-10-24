@@ -1,0 +1,117 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-supervision-next/packages/cli
+
+To /var/folders/97/wmwg4qzx02j74c3n73nh438w0000gn/T/osstack-guarded-git-jJwptH/remote.git
+ * [new branch]      main -> main
+Switched to a new branch 'codex/guarded-test'
+To /var/folders/97/wmwg4qzx02j74c3n73nh438w0000gn/T/osstack-guarded-git-tiPfib/remote.git
+ * [new branch]      main -> main
+Switched to a new branch 'codex/guarded-test'
+To /var/folders/97/wmwg4qzx02j74c3n73nh438w0000gn/T/osstack-guarded-git-p5qXV2/remote.git
+ * [new branch]      main -> main
+Switched to a new branch 'codex/guarded-test'
+To /var/folders/97/wmwg4qzx02j74c3n73nh438w0000gn/T/osstack-guarded-git-2RaUAJ/remote.git
+ * [new branch]      main -> main
+Switched to a new branch 'codex/guarded-test'
+To /var/folders/97/wmwg4qzx02j74c3n73nh438w0000gn/T/osstack-guarded-git-yueXI6/remote.git
+ * [new branch]      main -> main
+Switched to a new branch 'codex/guarded-test'
+To /var/folders/97/wmwg4qzx02j74c3n73nh438w0000gn/T/osstack-guarded-git-d2LwxB/remote.git
+ * [new branch]      main -> main
+Switched to a new branch 'codex/guarded-test'
+To /var/folders/97/wmwg4qzx02j74c3n73nh438w0000gn/T/osstack-guarded-git-PYWYlm/remote.git
+ * [new branch]      main -> main
+Switched to a new branch 'codex/guarded-test'
+To /var/folders/97/wmwg4qzx02j74c3n73nh438w0000gn/T/osstack-guarded-git-kawkdB/remote.git
+ * [new branch]      main -> main
+Switched to a new branch 'codex/guarded-test'
+To /var/folders/97/wmwg4qzx02j74c3n73nh438w0000gn/T/osstack-guarded-git-2f7Fv3/remote.git
+ * [new branch]      main -> main
+Switched to a new branch 'codex/guarded-test'
+To /var/folders/97/wmwg4qzx02j74c3n73nh438w0000gn/T/osstack-guarded-git-g4JrCx/remote.git
+ * [new branch]      main -> main
+Switched to a new branch 'codex/guarded-test'
+To /var/folders/97/wmwg4qzx02j74c3n73nh438w0000gn/T/osstack-guarded-git-QpVwO7/remote.git
+ * [new branch]      main -> main
+Switched to a new branch 'codex/guarded-test'
+ ✓ src/deliver-cli.test.ts (20 tests) 5033ms
+   ✓ deliver CLI > runs guarded-local with separated profile roles and local-only evidence  814ms
+   ✓ V2 real guarded-local host boundary > retains isolated candidate and fences verification: valid  889ms
+   ✓ V2 real guarded-local host boundary > retains isolated candidate and fences verification: review_mutates  713ms
+   ✓ V2 real guarded-local host boundary > retains isolated candidate and fences verification: governance  664ms
+   ✓ V2 real guarded-local host boundary > retains isolated candidate and fences verification: policy_drift  696ms
+ ✓ src/delivery-contract-host.test.ts (2 tests) 244ms
+To /var/folders/97/wmwg4qzx02j74c3n73nh438w0000gn/T/osstack-guarded-git-p59dma/remote.git
+ * [new branch]      main -> main
+Switched to a new branch 'codex/guarded-test'
+To /var/folders/97/wmwg4qzx02j74c3n73nh438w0000gn/T/osstack-guarded-git-Iia7Xp/remote.git
+ * [new branch]      main -> main
+Switched to a new branch 'codex/guarded-test'
+To /var/folders/97/wmwg4qzx02j74c3n73nh438w0000gn/T/osstack-guarded-git-RmU6au/remote.git
+ * [new branch]      main -> main
+Switched to a new branch 'codex/guarded-test'
+To /var/folders/97/wmwg4qzx02j74c3n73nh438w0000gn/T/osstack-guarded-git-VdDuP9/remote.git
+ * [new branch]      main -> main
+Switched to a new branch 'codex/guarded-test'
+To /var/folders/97/wmwg4qzx02j74c3n73nh438w0000gn/T/osstack-guarded-git-pXQ3EH/remote.git
+ * [new branch]      main -> main
+Switched to a new branch 'codex/guarded-test'
+To /var/folders/97/wmwg4qzx02j74c3n73nh438w0000gn/T/osstack-guarded-git-rqRXAE/remote.git
+ * [new branch]      main -> main
+Switched to a new branch 'codex/guarded-test'
+(node:49721) ExperimentalWarning: stripTypeScriptTypes is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+To /var/folders/97/wmwg4qzx02j74c3n73nh438w0000gn/T/osstack-guarded-mutant-Ts6bvF/remote.git
+ * [new branch]      main -> main
+Switched to a new branch 'codex/guarded-test'
+To /var/folders/97/wmwg4qzx02j74c3n73nh438w0000gn/T/osstack-guarded-git-xOogRA/remote.git
+ * [new branch]      main -> main
+Switched to a new branch 'codex/guarded-test'
+To /var/folders/97/wmwg4qzx02j74c3n73nh438w0000gn/T/osstack-guarded-git-bIpa73/remote.git
+ * [new branch]      main -> main
+Switched to a new branch 'codex/guarded-test'
+To /var/folders/97/wmwg4qzx02j74c3n73nh438w0000gn/T/osstack-guarded-git-eZhqHj/remote.git
+ * [new branch]      main -> main
+Switched to a new branch 'codex/guarded-test'
+To /var/folders/97/wmwg4qzx02j74c3n73nh438w0000gn/T/osstack-guarded-git-CxXs6J/remote.git
+ * [new branch]      main -> main
+Switched to a new branch 'codex/guarded-test'
+To /var/folders/97/wmwg4qzx02j74c3n73nh438w0000gn/T/osstack-guarded-git-1bTYSG/remote.git
+ * [new branch]      main -> main
+Switched to a new branch 'codex/guarded-test'
+To /var/folders/97/wmwg4qzx02j74c3n73nh438w0000gn/T/osstack-guarded-git-iyEpRm/remote.git
+ * [new branch]      main -> main
+Switched to a new branch 'codex/guarded-test'
+To /var/folders/97/wmwg4qzx02j74c3n73nh438w0000gn/T/osstack-guarded-git-X9nYGg/remote.git
+ * [new branch]      main -> main
+Switched to a new branch 'codex/guarded-test'
+ ✓ src/guarded-git-runtime.test.ts (24 tests) 13318ms
+   ✓ GuardedGitRuntime > completes R1 documentation through exact commit and final proof  560ms
+   ✓ GuardedGitRuntime > completes R2 source through exact commit and final proof  561ms
+   ✓ GuardedGitRuntime > pauses a protected policy diff before proof, commit, or Git  492ms
+   ✓ GuardedGitRuntime > resumes blocked Git delivery after restart without rebuilding or recommitting  540ms
+   ✓ guarded context absent preserves original input with zero observer calls  486ms
+   ✓ guarded context undefined preserves original input with zero observer calls  476ms
+   ✓ trusted context actual observer reaches existing consumer without mutating routing/budget  617ms
+   ✓ trusted context throw refuses handoff without hiding callback errors  465ms
+   ✓ trusted context invalid refuses handoff without hiding callback errors  466ms
+   ✓ trusted context changed refuses handoff without hiding callback errors  631ms
+   ✓ unproven pending context falls back only to existing input before writes  596ms
+   ✓ unproven withdrawn context falls back only to existing input before writes  582ms
+   ✓ fallback undefined-policy-drift still checks fresh policy and refuses every delivery  432ms
+   ✓ fallback withdrawn-policy-drift still checks fresh policy and refuses every delivery  554ms
+   ✓ callback private exception text is sanitized on the actual guarded handoff  429ms
+   ✓ source mutant deleting second-context comparison hands off stale hint after actual positive baseline  1198ms
+   ✓ trusted raw-invalid actual handoff refuses rather than silently using original delivery  438ms
+   ✓ trusted badrefs actual handoff refuses rather than silently using original delivery  514ms
+   ✓ trusted missing-policy-guard actual handoff refuses rather than silently using original delivery  431ms
+   ✓ enabled actual runtime stale head falls back to original input only after final fresh policy recheck  540ms
+   ✓ stale-head fallback cannot bypass policy change after final context sample  532ms
+   ✓ V2 guarded runtime host receipts > binds real Loop evidence and obeys completion local_verified  631ms
+   ✓ V2 guarded runtime host receipts > binds real Loop evidence and obeys completion pr_opened  902ms
+
+ Test Files  3 passed (3)
+      Tests  46 passed (46)
+   Start at  12:39:12
+   Duration  15.25s (transform 958ms, setup 27ms, collect 2.29s, tests 18.59s, environment 0ms, prepare 296ms)
+

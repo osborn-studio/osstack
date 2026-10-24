@@ -1,0 +1,132 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-supervision-next/packages/cli
+
+To /var/folders/97/wmwg4qzx02j74c3n73nh438w0000gn/T/osstack-guarded-git-EnGfuh/remote.git
+ * [new branch]      main -> main
+Switched to a new branch 'codex/guarded-test'
+To /var/folders/97/wmwg4qzx02j74c3n73nh438w0000gn/T/osstack-guarded-git-LGyiiq/remote.git
+ * [new branch]      main -> main
+Switched to a new branch 'codex/guarded-test'
+To /var/folders/97/wmwg4qzx02j74c3n73nh438w0000gn/T/osstack-guarded-git-sGwrsC/remote.git
+ * [new branch]      main -> main
+Switched to a new branch 'codex/guarded-test'
+To /var/folders/97/wmwg4qzx02j74c3n73nh438w0000gn/T/osstack-guarded-git-PyZbol/remote.git
+ * [new branch]      main -> main
+Switched to a new branch 'codex/guarded-test'
+To /var/folders/97/wmwg4qzx02j74c3n73nh438w0000gn/T/osstack-guarded-git-7pCJWE/remote.git
+ * [new branch]      main -> main
+Switched to a new branch 'codex/guarded-test'
+To /var/folders/97/wmwg4qzx02j74c3n73nh438w0000gn/T/osstack-guarded-git-z8I6IA/remote.git
+ * [new branch]      main -> main
+Switched to a new branch 'codex/guarded-test'
+To /var/folders/97/wmwg4qzx02j74c3n73nh438w0000gn/T/osstack-guarded-git-SK74fw/remote.git
+ * [new branch]      main -> main
+Switched to a new branch 'codex/guarded-test'
+ ✓ src/deliver-cli.test.ts (17 tests) 3629ms
+   ✓ deliver CLI > runs guarded-local with separated profile roles and local-only evidence  757ms
+   ✓ V2 real guarded-local host boundary > retains isolated candidate and rejects out-of-scope changes: false  926ms
+   ✓ V2 real guarded-local host boundary > retains isolated candidate and rejects out-of-scope changes: true  763ms
+To /var/folders/97/wmwg4qzx02j74c3n73nh438w0000gn/T/osstack-guarded-git-ua5X6k/remote.git
+ * [new branch]      main -> main
+Switched to a new branch 'codex/guarded-test'
+To /var/folders/97/wmwg4qzx02j74c3n73nh438w0000gn/T/osstack-guarded-git-BEruHN/remote.git
+ * [new branch]      main -> main
+Switched to a new branch 'codex/guarded-test'
+To /var/folders/97/wmwg4qzx02j74c3n73nh438w0000gn/T/osstack-guarded-git-Qn0X7Z/remote.git
+ * [new branch]      main -> main
+Switched to a new branch 'codex/guarded-test'
+To /var/folders/97/wmwg4qzx02j74c3n73nh438w0000gn/T/osstack-guarded-git-gUIQVr/remote.git
+ * [new branch]      main -> main
+Switched to a new branch 'codex/guarded-test'
+To /var/folders/97/wmwg4qzx02j74c3n73nh438w0000gn/T/osstack-guarded-git-FE7paD/remote.git
+ * [new branch]      main -> main
+Switched to a new branch 'codex/guarded-test'
+To /var/folders/97/wmwg4qzx02j74c3n73nh438w0000gn/T/osstack-guarded-git-RFK8yk/remote.git
+ * [new branch]      main -> main
+Switched to a new branch 'codex/guarded-test'
+To /var/folders/97/wmwg4qzx02j74c3n73nh438w0000gn/T/osstack-guarded-git-4UrP9Y/remote.git
+ * [new branch]      main -> main
+Switched to a new branch 'codex/guarded-test'
+To /var/folders/97/wmwg4qzx02j74c3n73nh438w0000gn/T/osstack-guarded-git-9EEXIw/remote.git
+ * [new branch]      main -> main
+Switched to a new branch 'codex/guarded-test'
+To /var/folders/97/wmwg4qzx02j74c3n73nh438w0000gn/T/osstack-guarded-git-gfriGv/remote.git
+ * [new branch]      main -> main
+Switched to a new branch 'codex/guarded-test'
+To /var/folders/97/wmwg4qzx02j74c3n73nh438w0000gn/T/osstack-guarded-git-HiFuvd/remote.git
+ * [new branch]      main -> main
+Switched to a new branch 'codex/guarded-test'
+(node:67396) ExperimentalWarning: stripTypeScriptTypes is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+To /var/folders/97/wmwg4qzx02j74c3n73nh438w0000gn/T/osstack-guarded-mutant-EkkqwN/remote.git
+ * [new branch]      main -> main
+Switched to a new branch 'codex/guarded-test'
+To /var/folders/97/wmwg4qzx02j74c3n73nh438w0000gn/T/osstack-guarded-git-am1BxG/remote.git
+ * [new branch]      main -> main
+Switched to a new branch 'codex/guarded-test'
+To /var/folders/97/wmwg4qzx02j74c3n73nh438w0000gn/T/osstack-guarded-git-YWmjlF/remote.git
+ * [new branch]      main -> main
+Switched to a new branch 'codex/guarded-test'
+To /var/folders/97/wmwg4qzx02j74c3n73nh438w0000gn/T/osstack-guarded-git-hAoSCq/remote.git
+ * [new branch]      main -> main
+Switched to a new branch 'codex/guarded-test'
+To /var/folders/97/wmwg4qzx02j74c3n73nh438w0000gn/T/osstack-guarded-git-73Mhlv/remote.git
+ * [new branch]      main -> main
+Switched to a new branch 'codex/guarded-test'
+To /var/folders/97/wmwg4qzx02j74c3n73nh438w0000gn/T/osstack-guarded-git-GTFdka/remote.git
+ * [new branch]      main -> main
+Switched to a new branch 'codex/guarded-test'
+To /var/folders/97/wmwg4qzx02j74c3n73nh438w0000gn/T/osstack-guarded-git-sllJam/remote.git
+ * [new branch]      main -> main
+Switched to a new branch 'codex/guarded-test'
+ ❯ src/guarded-git-runtime.test.ts (23 tests | 1 failed) 13429ms
+   ✓ GuardedGitRuntime > completes R1 documentation through exact commit and final proof  597ms
+   ✓ GuardedGitRuntime > completes R2 source through exact commit and final proof  554ms
+   ✓ GuardedGitRuntime > pauses preflight R3 before invoking Builder 222ms
+   ✓ GuardedGitRuntime > pauses a protected policy diff before proof, commit, or Git  451ms
+   ✓ GuardedGitRuntime > resumes blocked Git delivery after restart without rebuilding or recommitting  577ms
+   ✓ guarded context absent preserves original input with zero observer calls  641ms
+   ✓ guarded context undefined preserves original input with zero observer calls  609ms
+   ✓ trusted context actual observer reaches existing consumer without mutating routing/budget  672ms
+   ✓ trusted context throw refuses handoff without hiding callback errors  510ms
+   ✓ trusted context invalid refuses handoff without hiding callback errors  490ms
+   ✓ trusted context changed refuses handoff without hiding callback errors  691ms
+   ✓ unproven pending context falls back only to existing input before writes  749ms
+   ✓ unproven withdrawn context falls back only to existing input before writes  682ms
+   ✓ fallback undefined-policy-drift still checks fresh policy and refuses every delivery  472ms
+   ✓ fallback withdrawn-policy-drift still checks fresh policy and refuses every delivery  633ms
+   ✓ callback private exception text is sanitized on the actual guarded handoff  493ms
+   ✓ source mutant deleting second-context comparison hands off stale hint after actual positive baseline  1385ms
+   ✓ trusted raw-invalid actual handoff refuses rather than silently using original delivery  512ms
+   ✓ trusted badrefs actual handoff refuses rather than silently using original delivery  604ms
+   ✓ trusted missing-policy-guard actual handoff refuses rather than silently using original delivery  497ms
+   ✓ enabled actual runtime stale head falls back to original input only after final fresh policy recheck  623ms
+   ✓ stale-head fallback cannot bypass policy change after final context sample  610ms
+   × V2 guarded runtime host receipts > binds real Loop evidence and stops before committing for local_verified 152ms
+     → delivery_contract_admission_mismatch
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/guarded-git-runtime.test.ts > V2 guarded runtime host receipts > binds real Loop evidence and stops before committing for local_verified
+Error: delivery_contract_admission_mismatch
+ ❯ assertDeliveryContractAdmission ../core/src/delivery-contract.ts:61:68
+ ❯ GuardedGitRuntime.start src/guarded-git-runtime.ts:309:7
+    307|     if (routing.delivery_contract) {
+    308|       const frozen = assertFrozenDeliveryContract(routing.delivery_con…
+    309|       assertDeliveryContractAdmission(frozen, { canonicalRepo: await r…
+       |       ^
+    310|         taskId: input.task_id, goal: input.goal, policyDigest: routing…
+    311|         acceptedCommands: routing.verify_commands });
+ ❯ src/guarded-git-runtime.test.ts:705:22
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 1 passed (2)
+      Tests  1 failed | 39 passed (40)
+   Start at  12:27:12
+   Duration  14.58s (transform 834ms, setup 19ms, collect 2.04s, tests 17.06s, environment 0ms, prepare 68ms)
+
+undefined
+/Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-supervision-next/packages/cli:
+[ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL] Command failed with exit code 1: vitest run src/deliver-cli.test.ts src/guarded-git-runtime.test.ts

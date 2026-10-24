@@ -1,0 +1,99 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-cockpit/packages/loop
+
+ ❯ src/lesson-draft.test.ts (20 tests | 3 failed) 453ms
+   ✓ shouldDraftLesson > drafts only when the task recovered from failed attempts 1ms
+   ✓ renderLessonDraft > includes prompt, failed evaluations, verifier catches, fix summary, rule, and suggestions 1ms
+   ✓ renderLessonDraft > infers the target skill from publish context when present 0ms
+   ✓ writeLessonDraft > writes the draft under loop-lessons/drafts by default 2ms
+   ✓ writeLessonDraft > skips writing when disabled or when there was no failure to learn from 1ms
+   ✓ writeLessonDraft > parses config defaults 0ms
+   ✓ lesson draft review workflow > lists drafts with title and suggested skill 3ms
+   ✓ lesson draft review workflow > promotes a draft into loop-lessons/promoted without touching skills by default 2ms
+   ✓ lesson draft review workflow > appends the reusable rule to a skill file only with an explicit --to-skill path 2ms
+   ✓ lesson draft review workflow > refuses to promote into a missing skill file and keeps the draft 2ms
+   ✓ lesson draft review workflow > refuses to append to a non-SKILL.md target even when the file exists 2ms
+   ✓ lesson draft review workflow > discards a draft into loop-lessons/discarded 2ms
+   ✓ LoopEngine lesson draft hook > writes a lesson draft when a task succeeds after a failed attempt 209ms
+   ✓ LoopEngine lesson draft hook > writes no draft for first-attempt successes or when disabled 211ms
+   ✓ lesson lifecycle path confinement > rejects a promoted symlink before appending to an explicit skill 2ms
+   ✓ lesson lifecycle path confinement > will not follow a symlink draft or overwrite an existing reviewed candidate 2ms
+   ✓ does not follow a symlink draft leaf when the legacy loop writer updates a task 1ms
+   × preserves user edits, keeps stable revisions and honors reviewed task candidates 6ms
+     → expected { written: true, …(1) } to match object { written: false, …(1) }
+   × does not collide task IDs after filename normalization or truncation 2ms
+     → expected 2 to be 4 // Object.is equality
+   × does not overwrite concurrently published legacy drafts 1ms
+     → expected [ { written: true, …(1) }, …(1) ] to have a length of 1 but got 2
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/lesson-draft.test.ts > preserves user edits, keeps stable revisions and honors reviewed task candidates
+AssertionError: expected { written: true, …(1) } to match object { written: false, …(1) }
+
+- Expected
++ Received
+
+  {
+    "path": "/Volumes/AIMATE_WORK/tmp/osstack/smoke/pr237-integration/lessons/tmp/osstack-lesson-HH1GbS/loop-lessons/drafts/auth-session-expiry.md",
+-   "written": false,
++   "written": true,
+  }
+
+ ❯ src/lesson-draft.test.ts:328:57
+    326|   const options = { workspacePath: workspace };
+    327|   const first = await writeLessonDraft(draftInput(), options);
+    328|   expect(await writeLessonDraft(draftInput(), options)).toMatchObject(…
+       |                                                         ^
+    329|   await writeFile(first.path!, "human edit");
+    330|   const revision = await writeLessonDraft(draftInput(), options);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯
+
+ FAIL  src/lesson-draft.test.ts > does not collide task IDs after filename normalization or truncation
+AssertionError: expected 2 to be 4 // Object.is equality
+
+- Expected
++ Received
+
+- 4
++ 2
+
+ ❯ src/lesson-draft.test.ts:346:31
+    344|     paths.push((await writeLessonDraft(input, { workspacePath: workspa…
+    345|   }
+    346|   expect(new Set(paths).size).toBe(4);
+       |                               ^
+    347| });
+    348| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/3]⎯
+
+ FAIL  src/lesson-draft.test.ts > does not overwrite concurrently published legacy drafts
+AssertionError: expected [ { written: true, …(1) }, …(1) ] to have a length of 1 but got 2
+
+- Expected
++ Received
+
+- 1
++ 2
+
+ ❯ src/lesson-draft.test.ts:351:52
+    349| it("does not overwrite concurrently published legacy drafts", async ()…
+    350|   const outputs = await Promise.all([writeLessonDraft(draftInput(), { …
+    351|   expect(outputs.filter(output => output.written)).toHaveLength(1);
+       |                                                    ^
+    352|   expect(outputs[0]?.path).toBe(outputs[1]?.path);
+    353| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/3]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  3 failed | 17 passed (20)
+   Start at  12:22:54
+   Duration  1.54s (transform 504ms, setup 0ms, collect 852ms, tests 453ms, environment 0ms, prepare 43ms)
+
+undefined
+/Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-cockpit/packages/loop:
+[ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL] Command failed with exit code 1: vitest run src/lesson-draft.test.ts

@@ -1,0 +1,11 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-supervision-next/packages/cli
+
+ ✓ src/delivery-contract-host.test.ts (2 tests) 520ms
+   ✓ fences tracked and new files without altering the candidate index  515ms
+
+ Test Files  1 passed (1)
+      Tests  2 passed (2)
+   Start at  12:51:48
+   Duration  913ms (transform 156ms, setup 8ms, collect 249ms, tests 520ms, environment 0ms, prepare 25ms)
+

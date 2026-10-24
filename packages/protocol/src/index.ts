@@ -107,3 +107,7 @@ export {
   GRAPH_WORKER_MAX_FRAME_BYTES, GraphWorkerIdentity, GraphWorkerBinding, GraphWorkerResume, GraphWorkerMessage,
   WorkerFrameDecoder, WorkerFramedTransport, encodeWorkerFrame, workerCanonical, freezeWorkerData,
 } from './graph-worker.js';
+
+export { DeliveryContractV2, FrozenDeliveryContractV2, DeliveryVerificationReceiptV2,
+  DeliveryCandidateIdentityV2, DeliveryReceiptReferenceV2, DeliveryCompletionV2,
+  DeliveryPublicationScopeV2 } from "./delivery-contract.js";

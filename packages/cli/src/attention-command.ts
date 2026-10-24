@@ -19,7 +19,9 @@ Opt-in daemon: OSSTACK_ATTENTION=1 osstack serve
   attention loop --scope ID --loop-id ID --state-path PATH
   attention ci --scope ID --github-repo OWNER/REPO --pr N --head SHA --required JSON
   attention claude-hook --binding-file PATH
+  attention lesson --from-run ID --repo PATH --default-tenant [--dry-run] [--json]
   attention contract|routing-eval|triage|context|lesson --input PATH [--json]
+Legacy --input planning uses supplied data only; it does not verify execution. Runtime V2: deliver --contract FILE.
 See docs/guides/attention.md for planning flags and verified hook setup.
 No daemon is automatically started. Hooks are explicit calls; no offline watchdog is installed.`;
 export async function handleAttentionCommand(
@@ -30,9 +32,9 @@ export async function handleAttentionCommand(
     rpc?: (
       method: string,
       params?: unknown,
-      timeoutMs?: number
+      timeoutMs?: number,
     ) => Promise<unknown>;
-  } = {}
+  } = {},
 ): Promise<number> {
   const out = io.stdout ?? console.log;
   const err = io.stderr ?? console.error;
@@ -41,14 +43,24 @@ export async function handleAttentionCommand(
     return 0;
   }
   try {
+    if (args[0] === "lesson" && args.includes("--from-run")) {
+      const { handleEvidenceLessonCommand } = await import(
+        "./attention-lesson.js"
+      );
+      return await handleEvidenceLessonCommand(args, io);
+    }
     if (args[0] === "claude-hook") {
       if (!io.rpc) throw new Error("daemon_connection_required");
       const { handleClaudeAttentionHook } = await import("./attention-hook.js");
-      return await handleClaudeAttentionHook(args, (method, params) => io.rpc!(method, params, 1000), out);
+      return await handleClaudeAttentionHook(
+        args,
+        (method, params) => io.rpc!(method, params, 1000),
+        out,
+      );
     }
     if (
       ["contract", "routing-eval", "triage", "context", "lesson"].includes(
-        args[0] ?? ""
+        args[0] ?? "",
       )
     ) {
       const { handleAttentionPlanning } = await import(
@@ -112,21 +124,21 @@ export async function handleAttentionCommand(
             ...result.sessions.map(
               (s) =>
                 `${JSON.stringify(s.session_id)}: ${JSON.stringify(
-                  s.state
+                  s.state,
                 )} · ${JSON.stringify(s.wait.reason)}${
                   s.decision ? ` · ${JSON.stringify(s.decision.question)}` : ""
-                }`
+                }`,
             ),
             `Runs: ${result.runs.length}; omitted: ${result.completeness.omitted_binding_unknown}; truncated: ${result.completeness.truncated}`,
             `Limitations: ${JSON.stringify(result.limitations)}`,
-          ].join("\n")
+          ].join("\n"),
     );
     return 0;
   } catch (error) {
     err(
       `osstack attention: ${
         error instanceof Error ? error.message : String(error)
-      }`
+      }`,
     );
     return 1;
   }
@@ -139,9 +151,9 @@ async function handleLive(
     rpc?: (
       method: string,
       params?: unknown,
-      timeoutMs?: number
+      timeoutMs?: number,
     ) => Promise<unknown>;
-  }
+  },
 ): Promise<number> {
   const command = args[0]!;
   const allowed = [
@@ -246,8 +258,8 @@ async function handleLive(
     params[name] = ["revision", "pr", "expected-version"].includes(key)
       ? Number(value)
       : ["revisions", "subjects", "required"].includes(key)
-      ? JSON.parse(value)
-      : value;
+        ? JSON.parse(value)
+        : value;
   }
   if (command === "answer") params["takeover"] ??= false;
   const call = async (method: string) => {
@@ -258,7 +270,7 @@ async function handleLive(
     };
     if (!response.ok)
       throw new Error(
-        response.error?.code ?? response.error?.message ?? "attention_failed"
+        response.error?.code ?? response.error?.message ?? "attention_failed",
       );
     return response.result;
   };
@@ -277,8 +289,8 @@ async function handleLive(
       : `Attention · ${command}\n${JSON.stringify(
           result,
           null,
-          2
-        )}\nDelivered means transport receipt; applied means instruction receipt; neither means task completed.`
+          2,
+        )}\nDelivered means transport receipt; applied means instruction receipt; neither means task completed.`,
   );
   return 0;
 }

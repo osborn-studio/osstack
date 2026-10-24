@@ -1,0 +1,125 @@
+Final closure audit. Previous full-source audit haiku-result-3.json had p0_p1_findings=[] and two remaining findings: (1) canonical skill target must also be named SKILL.md after realpath; (2) edited/oversized revision conflict should preserve content and return explicit state without throwing. Only those two production lines changed since full audit; additional regression tests are below. Check whether fixes close the findings and introduce any confirmed P0/P1. JSON concise. No tools.
+export async function promoteLessonDraft(
+  workspacePath: string,
+  id: string,
+  options: { dir?: string; promotedDir?: string; toSkillPath?: string } = {},
+): Promise<PromoteLessonDraftResult> {
+  const draft = await readLessonDraft(workspacePath, id, options.dir ?? "loop-lessons/drafts");
+  if (draft === null) return { promoted: false, reason: `no lesson draft found for id ${id}` };
+
+  // Validate lifecycle destinations before touching an explicitly selected skill.
+  const promotedDir = await resolveLessonDir(workspacePath, options.promotedDir ?? "loop-lessons/promoted");
+  const to = join(promotedDir, basename(draft.entry.path));
+  if (await existsEntry(to)) return { promoted: false, reason: "promoted lesson already exists" };
+  if (options.toSkillPath !== undefined) {
+    let skillPath = isAbsolute(options.toSkillPath)
+      ? options.toSkillPath
+      : join(workspacePath, options.toSkillPath);
+    // Minimal path hardening. Skills legitimately live outside the workspace, so
+    // we do NOT confine to the workspace — but we must not let a lesson be
+    // appended to an arbitrary file (e.g. /etc/hosts, ~/.zshrc, a random .md
+    // note). Require the target to be a SKILL.md: the canonical skill entry file
+    // every skill in this ecosystem uses. This blocks obvious misfires while
+    // preserving legitimate external skill targets.
+    if (basename(skillPath).toLowerCase() !== "skill.md") {
+      return {
+        promoted: false,
+        reason: `refusing to append a lesson to a non-skill target: ${options.toSkillPath}. --to-skill must point at a SKILL.md file.`,
+      };
+    }
+    let existing: string;
+    try {
+      skillPath = await realpath(skillPath);
+      if (basename(skillPath).toLowerCase() !== "skill.md") return { promoted: false, reason: "resolved target must be a SKILL.md file" };
+      if (!(await lstat(skillPath)).isFile()) throw new Error("invalid_skill_file");
+      existing = await readFile(skillPath, "utf-8");
+    } catch {
+      return { promoted: false, reason: `target skill file not found: ${options.toSkillPath}` };
+    }
+    // The marker makes a retry after a failed lifecycle move idempotent.
+    const marker = `<!-- osstack-lesson:${digest(JSON.stringify([await realpath(workspacePath), draft.entry.id, draft.content]))} -->`;
+    const rule = extractLessonSection(draft.content, "## Reusable Rule");
+    const evaluation = extractLessonSection(draft.content, "## Suggested Evaluation");
+    const appended = [
+      existing.endsWith("\n") ? existing : `${existing}\n`,
+      `\n${marker}\n## Lesson: ${draft.entry.id}\n`,
+      "\n",
+      rule ?? "(no reusable rule recorded)",
+      "\n",
+      ...(evaluation !== undefined ? ["\n### Suggested Evaluation\n\n", evaluation, "\n"] : []),
+    ].join("");
+    // Atomic write: a crash mid-write must never truncate an official skill.
+    if (!existing.includes(marker)) await writeFileAtomic(skillPath, appended);
+  }
+
+  await mkdir(promotedDir, { recursive: true });
+  await link(draft.entry.path, to);
+  await unlink(draft.entry.path);
+  return {
+    promoted: true,
+    from: draft.entry.path,
+    to,
+    ...(options.toSkillPath !== undefined ? { appended_to: options.toSkillPath } : {}),
+  };
+}
+
+
+export async function writeEvidenceLessonDraft(value: unknown, options: { repoPath: string; beforeWrite?: () => Promise<void> }): Promise<EvidenceLessonWriteResult> {
+  const receipt = receiptSchema.parse(value); const repo = await realpath(options.repoPath);
+  if (repo !== receipt.repo_path) throw Error("lesson_workspace_mismatch");
+  const draft = candidate(receipt);
+  const dirs = await Promise.all(["drafts", "promoted", "discarded"].map(name => directory(repo, `loop-lessons/${name}`)));
+  for (const dir of dirs.slice(1)) if (await existsEntry(join(dir, `${draft.draftId}.md`)) || await existsEntry(join(dir, `${draft.draftId}-r${hash(draft.markdown).slice(0, 16)}.md`)))
+    return { state: "reviewed", kind: "investigation", qualification: receipt.qualification, created: false, promoted: false };
+  const dir = await directory(repo, "loop-lessons/drafts", true);
+  let path = join(dir, `${draft.draftId}.md`); let content = draft.markdown;
+  const existing = await safeRead(path);
+  if (existing?.content === content) return { state: "draft", path, created: false, kind: "investigation", qualification: receipt.qualification, promoted: false };
+  if (existing !== null) {
+    const prior = draft.draftId; path = join(dir, `${prior}-r${hash(content).slice(0, 16)}.md`);
+    content += `\n## Revision provenance\nRevision of ${prior}; existing user content was preserved.\n`;
+    const revision = await safeRead(path);
+    if (revision !== null && revision.content !== content) return { state: "draft", path, created: false, reason: "lesson_revision_conflict_preserved", kind: "investigation", qualification: receipt.qualification, promoted: false };
+    if (revision?.content === content) return { state: "draft", path, created: false, kind: "investigation", qualification: receipt.qualification, promoted: false };
+  }
+  const created = await publishDraft(repo, dir, path, content, options.beforeWrite);
+  if (!created && (await safeRead(path))?.content !== content) throw Error("lesson_create_conflict");
+  return { state: "draft", path, created, kind: "investigation", qualification: receipt.qualification, promoted: false };
+}
+
+it("preserves a symlinked explicit skill target and its permissions", async () => {
+  await writeLessonDraft(draftInput(), { workspacePath: workspace });
+  await mkdir(join(workspace, "canonical"));
+  const target = join(workspace, "canonical/SKILL.md"); await writeFile(target, "# Shared Skill\n"); await filesystem.chmod(target, 0o644);
+  const skill = join(workspace, "SKILL.md"); await filesystem.symlink(target, skill);
+  expect((await promoteLessonDraft(workspace, "auth-session-expiry", { toSkillPath: skill })).promoted).toBe(true);
+  expect((await filesystem.lstat(skill)).isSymbolicLink()).toBe(true);
+  expect(await readFile(target, "utf8")).toContain("## Lesson:");
+  expect((await filesystem.stat(target)).mode & 0o777).toBe(0o644);
+});
+
+it("reserves generated filename namespaces against literal task IDs", async () => {
+  const input = draftInput(); input.task = { ...input.task, task_id: "x".repeat(90) };
+  const first = await writeLessonDraft(input, { workspacePath: workspace });
+  const firstId = (await listLessonDrafts(workspace))[0]!.id;
+  await promoteLessonDraft(workspace, firstId);
+  input.task = { ...input.task, task_id: firstId };
+  const second = await writeLessonDraft(input, { workspacePath: workspace });
+  expect(second.written).toBe(true); expect(second.path).not.toBe(first.path);
+});
+
+
+it("refuses a SKILL.md symlink to a non-skill target without appending", async () => {
+  const draft = await writeLessonDraft(draftInput(), { workspacePath: workspace });
+  const target = join(workspace, "notes.md"); await writeFile(target, "notes");
+  await filesystem.symlink(target, join(workspace, "SKILL.md"));
+  expect((await promoteLessonDraft(workspace, "auth-session-expiry", { toSkillPath: "SKILL.md" })).promoted).toBe(false);
+  expect(await readFile(target, "utf8")).toBe("notes"); await expect(access(draft.path!)).resolves.toBeUndefined();
+});
+
+it("reports a preserved edited revision conflict without overwriting or throwing", async () => {
+  const first = await writeRunLessonDraft(db, input()); await writeFile(first.path!, "human base");
+  const revision = await writeRunLessonDraft(db, input()); const edit = "r".repeat(1024 * 1024 + 1); await writeFile(revision.path!, edit);
+  expect(await writeRunLessonDraft(db, input())).toMatchObject({ state: "draft", created: false, reason: "lesson_revision_conflict_preserved", path: revision.path });
+  expect(await readFile(revision.path!, "utf8")).toBe(edit);
+});

@@ -173,6 +173,7 @@ interface SingleResponse {
 }
 
 interface DaemonContext {
+  deploymentIdentity?: import("./home-inventory.js").DeploymentIdentity;
   dbPath: string;
   loopSessionsPath: string;
   dailySessionsPath: string;
@@ -1099,6 +1100,17 @@ async function handleSingle(ctx: DaemonContext, req: DaemonRequest): Promise<Sin
     if (!ctx.supervision) return singleErr(req.id,"attention_disabled","Start daemon with OSSTACK_ATTENTION=1 to opt in");
     if (ctx.draining) return singleErr(req.id,"draining","Daemon is draining");
     try {
+      if (req.method === "attention.lesson-evidence") {
+        const p = req.params as Record<string, unknown> | undefined;
+        if (!p || Array.isArray(p) || Object.keys(p).some(key => !["runId", "repoPath", "default_tenant"].includes(key)) || typeof p["runId"] !== "string" || typeof p["repoPath"] !== "string" || p["default_tenant"] !== true) throw new Error("invalid_lesson_request");
+        ctx.supervision.store.assertOwner(ctx.supervision.observer.owner);
+        const {readEvidenceLesson} = await import("./attention-lesson.js");
+        if (ctx.draining) throw new Error("draining");
+        const result = await readEvidenceLesson(ctx.db, {runId:p["runId"],repoPath:p["repoPath"],default_tenant:true});
+        ctx.supervision.store.assertOwner(ctx.supervision.observer.owner);
+        if (ctx.draining) throw new Error("draining");
+        return singleOk(req.id, result);
+      }
       if(req.method==="attention.abandon-receipt") {
         const p=req.params as {scope_id:string;session_id:string;message_id:string;expected_version:number;reason:string;evidence_sha256:string;acknowledge_unknown_effects:boolean};
         if(!p||p.acknowledge_unknown_effects!==true)throw new Error("explicit_unknown_effects_ack_required");
@@ -1132,6 +1144,10 @@ async function handleSingle(ctx: DaemonContext, req: DaemonRequest): Promise<Sin
     } catch(error) {return singleErr(req.id,error instanceof Error?error.message:"attention_error","Attention request failed; refresh source facts before retrying");}
   }
   switch (req.method) {
+    case "deployment.identity":
+      return ctx.deploymentIdentity
+        ? singleOk(req.id, ctx.deploymentIdentity)
+        : singleErr(req.id, "identity_unavailable", "Deployment identity unavailable");
     case "version":
       return singleOk(req.id, {
         version: DAEMON_VERSION,
@@ -3980,6 +3996,23 @@ export async function startDaemon(
       : { readConcurrency: opts.readConcurrency }),
   });
   failedContext = ctx;
+  // Initialize only after the authorized home/database startup. Read-only
+  // inventory never creates an identity and malformed records are not repaired.
+  const {ensureDeploymentHomeId} = await import("./home-inventory.js");
+  try {
+    ctx.deploymentIdentity = {
+      schema_version: 1, home_id: await ensureDeploymentHomeId(osstackHome()),
+      generation: `instance_${randomUUID().replaceAll("-", "")}`,
+      version: DAEMON_VERSION, protocol_version: PROTOCOL_VERSION,
+      database_schema: ctx.db.pragma("user_version", {simple:true}) as number,
+      started_at_ms: Date.now(), deployment_kind: "unknown",
+      build_digest: null, build_evidence: "unavailable",
+    };
+  } catch (error) {
+    if (!(error instanceof Error) || error.message !== "identity_unavailable") throw error;
+    console.warn("Deployment identity unavailable; explicit home inventory will report unknown.");
+  }
+
   const getGraphRpc = (): Promise<GraphRpcService> => {
     if (checkpointClosed) return Promise.reject(new Error('GRAPH_SERVICE_CLOSED'));
     graphRpc ??= import('./graph-rpc.js').then(async ({ GraphRpcService, loadLocalGraphRegistration }) => {
