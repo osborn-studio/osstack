@@ -90,6 +90,8 @@ export interface LoopRunOptions {
   /** Host samples the candidate before checks/review and validates unchanged bytes afterwards. */
   prepareVerification?: (workspacePath: string) => Promise<void>;
   verificationFence?: (workspacePath: string) => Promise<() => Promise<void>>;
+  /** Trusted host observer after the actual verifier and source fence. Never accepts adapter-supplied verdicts. */
+  observeVerification?: (input: { loopId: string; task: Task; workspacePath: string; run: AgentRun; verdict: Verdict; iteration: number }) => Promise<void>;
   agentId?: string;
   autoAgent?: boolean;
   verifierAgentIds?: string[];
@@ -998,6 +1000,16 @@ export class LoopEngine {
               summary: "Candidate changed while checks or review were running",
               issues: [...finalVerdict.issues, { severity: "error", rule: "verify.candidate_changed",
                 message: error instanceof Error ? error.message : String(error) }] };
+          }
+        }
+        if (this.options.observeVerification) {
+          try { await this.options.observeVerification({ loopId, task, workspacePath: runWorkspacePath, run: finalRun, verdict: finalVerdict, iteration }); }
+          catch (error) {
+            outcome = "escalated";
+            const reason = error instanceof Error ? error.message : String(error);
+            this.emit(loopId, "loop.escalated", { task_id: task.task_id, reason, iteration, max_iterations: maxIterations, escalate_to: "hermes", agent_id: finalRun.agent_id });
+            decisions.push(`${task.task_id}: host verification observer rejected: ${reason}`);
+            break;
           }
         }
         finalEvidence = await collectTaskGitEvidence(runWorkspacePath);

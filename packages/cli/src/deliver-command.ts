@@ -92,6 +92,8 @@ export interface DeliverEvidenceArtifacts {
 }
 
 export interface DeliverCommandDeps {
+  /** Structured result sink for composed CLI flows; defaults to printing JSON. */
+  emitJson?: (value: unknown) => void;
   enforceObservePolicyGate: (
     workspacePath: string,
   ) => Promise<number | undefined>;
@@ -159,6 +161,7 @@ export async function handleDeliverCommand(
   args: string[],
   deps: DeliverCommandDeps,
 ): Promise<number> {
+  const deliverBlocked = (flags: string[], code: string, message: string): 2 => emitDeliverBlocked(flags, code, message, deps.emitJson);
   if (args[0] === "help" || args.includes("--help") || args.includes("-h")) {
     console.log(`osstack deliver — product entry from one intent to proof
 
@@ -469,7 +472,7 @@ guarded-deploy adds after merge:
       final_proof: guardedResult.run.context.final_proof ?? null,
     };
     if (args.includes("--json")) {
-      console.log(JSON.stringify(summary, null, 2));
+      (deps.emitJson ?? ((value: unknown) => console.log(JSON.stringify(value, null, 2))))(summary);
     } else {
       console.log(`autonomy_run_id=${summary.autonomy_run_id}`);
       console.log(`state=${summary.state}`);
@@ -523,6 +526,7 @@ guarded-deploy adds after merge:
   });
   const worktreeRoot = flagValue(args, "--worktree-root");
   let receiptRef: DeliveryReceiptReferenceV2 | undefined;
+  let receiptRunId: string | undefined;
   let candidateWorkspace: string | undefined;
   let candidateGovernance: DeliverGovernanceEvidence | undefined;
   const evidenceRoot = deliveryStateDirectory ? join(deliveryStateDirectory, "receipts") : join(workspacePath, ".osstack", "delivery-contracts", "legacy");
@@ -535,7 +539,11 @@ guarded-deploy adds after merge:
   }
   const localContract = frozenContract;
   const verificationFence = localContract ? createDeliveryVerificationFence(localContract) : undefined;
+  const recoveryLesson = localContract && deliveryStateDirectory ? (await import("./delivery-recovery-lesson.js")).createDeliveryRecoveryLesson({
+    frozen: localContract, stateDirectory: deliveryStateDirectory, assertVerified: verificationFence!.assertVerified,
+  }) : undefined;
   const engine = new LoopEngine({
+    ...(recoveryLesson ? { observeVerification: recoveryLesson.observe } : {}),
     workspacePath,
     stateFilePath,
     ...(executeCommand !== undefined ? { executeCommand } : {}),
@@ -575,7 +583,7 @@ guarded-deploy adds after merge:
         const ref = await persistDeliveryHostRecord(evidenceRoot, receipt);
         await verifyPersistedDeliveryReceipt({ root: evidenceRoot, ref, frozen: localContract, runId: input.run.run_id, workspace: input.workspacePath });
         await assertSourceUnchanged!();
-        receiptRef = ref; candidateWorkspace = input.workspacePath;
+        receiptRef = ref; receiptRunId = input.run.run_id; candidateWorkspace = input.workspacePath;
       } }, lessonDrafts: { enabled: false } } : {}),
     ...(maxIterations !== undefined ? { maxIterations } : {}),
     ...(effectiveCommandTimeoutMs !== undefined
@@ -631,7 +639,11 @@ guarded-deploy adds after merge:
   }
   const contractSucceeded = receiptRef !== undefined && result.state.completed_tasks.length === 1
     && result.state.completed_tasks.every(completed => completed.outcome === "success") && governance?.blocking !== true && result.budget?.exceeded !== true;
+  const recoveredLesson = contractSucceeded && recoveryLesson && receiptRef && receiptRunId ? await recoveryLesson.finish({
+    root: evidenceRoot, ref: receiptRef, runId: receiptRunId,
+  }) : undefined;
   const summary = {
+    ...(recoveredLesson ? { recovered_lesson: recoveredLesson } : {}),
     ...(localContract ? { delivery_contract: { digest: localContract.digest, brief: localContract.brief,
       achieved_completion: contractSucceeded ? "local_verified" : null, verification_receipt: receiptRef ?? null,
       candidate_workspace: candidateWorkspace ?? result.completedTasks.find(completed => completed.worktree_path)?.worktree_path ?? null, qualification: "local_host_receipt_only" } } : {}),
@@ -666,7 +678,7 @@ guarded-deploy adds after merge:
       : {}),
   };
   if (args.includes("--json")) {
-    console.log(JSON.stringify(summary, null, 2));
+    (deps.emitJson ?? ((value: unknown) => console.log(JSON.stringify(value, null, 2))))(summary);
   } else {
     console.log(`deliver=${result.loop_id}`);
     console.log(`task=${task.path}`);
@@ -755,18 +767,14 @@ async function resolveGuardedProfileRouting(
     ?? new Error("guarded-local did not resolve an execution profile");
 }
 
-function deliverBlocked(
+function emitDeliverBlocked(
   args: string[],
   code: string,
   message: string,
+  emitJson?: (value: unknown) => void,
 ): 2 {
   if (args.includes("--json")) {
-    console.log(JSON.stringify({
-      error: {
-        code,
-        message,
-      },
-    }, null, 2));
+    (emitJson ?? ((value: unknown) => console.log(JSON.stringify(value, null, 2))))({error: {code, message}});
   } else {
     console.error(`osstack: [${code}] ${message}`);
   }

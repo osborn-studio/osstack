@@ -1,7 +1,7 @@
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { execFile } from "node:child_process";
 import { constants } from "node:fs";
-import { lstat, mkdir, open, readlink, realpath, writeFile } from "node:fs/promises";
+import { lstat, mkdir, open, readlink, realpath, link, unlink } from "node:fs/promises";
 import { dirname, isAbsolute, join, relative } from "node:path";
 import { promisify } from "node:util";
 import { assertDeliveryContractPaths, assertFrozenDeliveryContract, deliveryCheckReference, deliveryContractDigest, verifyDeliveryContractReceipt } from "@osstack/core";
@@ -29,11 +29,18 @@ export async function persistDeliveryHostRecord(root: string, value: unknown): P
   const body = `${JSON.stringify(value)}\n`;
   const digest = deliveryBytesDigest(body);
   const path = join(canonicalRoot, `${digest}.json`);
-  try { await writeFile(path, body, { flag: "wx", mode: 0o600 }); }
-  catch (error) {
-    if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
-    await readDeliveryHostRecord(canonicalRoot, { path, digest });
-  }
+  const temporary = join(canonicalRoot, `.receipt-${randomUUID()}.tmp`);
+  const file = await open(temporary, constants.O_CREAT | constants.O_EXCL | constants.O_WRONLY | constants.O_NOFOLLOW, 0o600);
+  try {
+    await file.writeFile(body); await file.sync();
+    try { await link(temporary, path); }
+    catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
+      await readDeliveryHostRecord(canonicalRoot, { path, digest });
+    }
+    const directory = await open(canonicalRoot, constants.O_RDONLY | constants.O_NOFOLLOW);
+    try { await directory.sync(); } finally { await directory.close(); }
+  } finally { await file.close(); await unlink(temporary); }
   return { path, digest };
 }
 export async function readDeliveryHostRecord(root: string, ref: DeliveryReceiptReferenceV2): Promise<unknown> {
@@ -64,6 +71,10 @@ export function buildDeliveryVerificationReceipt(input: {
   const review = input.reviews[0];
   if (!review || input.reviews.some((item) => item.verdict !== "approved") || input.builderIdentity.evidence_source !== "reported"
     || review.runtime_identity.evidence_source !== "reported") throw new Error("delivery_reported_review_missing");
+  if (input.reviews.some(item => item.runtime_identity.evidence_source !== "reported"
+    || item.reviewer_agent_id === input.builderAgentId
+    || (item.runtime_identity.provider_id === input.builderIdentity.provider_id && item.runtime_identity.model_id === input.builderIdentity.model_id)))
+    throw new Error("delivery_independent_review_required");
   const checks = input.commands.map((command, index) => {
     const registryRef = deliveryCheckReference(command.command);
     return { id: contract.required_checks.find((check) => check.registry_ref === registryRef)?.id ?? `host:${index}`,

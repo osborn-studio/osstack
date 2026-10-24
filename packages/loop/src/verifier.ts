@@ -368,6 +368,7 @@ function commandAudit(result: CommandResult): NonNullable<Verdict["verify_comman
     command: result.command,
     exit_code: result.exitCode,
     duration_ms: result.durationMs,
+    exit_confirmed: result.termination?.scope === "posix_process_group" && result.termination.stop_confirmed === true && result.termination.trigger === "exit" && result.failure_code === undefined && result.cancellation === undefined,
     ...(summary !== "" ? { summary } : {}),
   };
 }

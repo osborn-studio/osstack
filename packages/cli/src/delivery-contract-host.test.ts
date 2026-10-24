@@ -69,3 +69,11 @@ it("samples ignored source directories as roots and refuses intermediate symlink
   await rm(join(workspace,"src"),{recursive:true});const outside=join(root,"outside");await mkdir(outside);await writeFile(join(outside,"a"),"secret");await symlink(outside,join(workspace,"src"));
   await expect(createDeliverySourceFence(workspace,base)).rejects.toThrow("parent_escape");
 });
+it('requires every receipt reviewer to be independent, including later artifacts',async()=>{
+ const {buildDeliveryVerificationReceipt}=await import('./delivery-contract-host.js');
+ const frozen=freezeDeliveryContract({schema_version:2,contract_id:'multi-review',task_id:'task',canonical_repo:root,mode:'implement',base_head:'a'.repeat(40),goal:'verify',required_checks:[{id:'test',registry_ref:deliveryCheckReference('pnpm test')}],review_policy_ref:'profile:test',requested_completion:'local_verified',allowed_paths:['src'],requested_actions:['build','verify'],budget_ref:'policy:test',policy_digest:'b'.repeat(64),publication_scope:{mode:'none'},merge_authority:{mode:'none'}});
+ const review={schema_version:1 as const,reviewer_agent_id:'reviewer',verdict:'approved' as const,risk:'low' as const,markdown:'reviewed',judgments:[],findings:[],recommended_actions:[],evidence_refs:[],runtime_identity:{evidence_source:'reported',provider_id:'review-provider',model_id:'review-model'}};
+ const input={frozen,runId:'run',runKind:'guarded-local' as const,candidate:{base_head:'a'.repeat(40),head:'a'.repeat(40),tree_id:'c'.repeat(40),diff_digest:'d'.repeat(64)},commands:[{command:'pnpm test',exit_code:0,duration_ms:1}],reviews:[review],builderAgentId:'builder',builderIdentity:{provider_id:'builder-provider',model_id:'builder-model',evidence_source:'reported'},workspaceStateDigest:'e'.repeat(64)};
+ expect(buildDeliveryVerificationReceipt(input).review.reviewer_agent_id).toBe('reviewer');
+ for(const bad of [{...review,reviewer_agent_id:'builder'},{...review,runtime_identity:{evidence_source:'reported',provider_id:'builder-provider',model_id:'builder-model'}},{...review,runtime_identity:{...review.runtime_identity,evidence_source:'unknown'}}])expect(()=>buildDeliveryVerificationReceipt({...input,reviews:[review,bad]})).toThrow('independent_review_required');
+});
