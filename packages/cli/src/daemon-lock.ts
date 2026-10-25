@@ -1,6 +1,7 @@
 // The application DB is never used as a process mutex: opening it migrates it.
 // This private, fixed-inode SQLite file holds a native exclusive lock until close.
 import Database from "better-sqlite3";
+import { execFileSync } from "node:child_process";
 import {
   lstatSync,
   mkdirSync,
@@ -26,6 +27,25 @@ export class DaemonAlreadyRunningError extends Error {
   }
 }
 const held = new Set<string>();
+export function supportsLockFilesystem(platform: NodeJS.Platform, type: number, directory: string): boolean {
+  if (platform === "linux") {
+    return new Set([0xef53, 0x58465342, 0x9123683e, 0x01021994, 0x794c7630]).has(type >>> 0);
+  }
+  if (platform !== "darwin") return false;
+  // Darwin assigns f_type numbers in filesystem registration order. Ask the
+  // system to filter this exact path by filesystem NAME, not a guessed number.
+  // df returns no row for an excluded type. Never fall back on probe failure.
+  try {
+    const output = execFileSync("/bin/df", ["-k", "-P", "-T", "apfs,hfs", directory], {
+      encoding: "utf8", timeout: 2000, maxBuffer: 65536,
+      env: { ...process.env, LC_ALL: "C" }, stdio: ["ignore", "pipe", "pipe"],
+    });
+    const lines = output.trim().split(/\r?\n/);
+    return lines.length === 2
+      && /^Filesystem\s+1024-blocks\s+Used\s+Available\s+Capacity\s+Mounted on$/.test(lines[0]!)
+      && /^\S+\s+\d+\s+\d+\s+-?\d+\s+\d+%\s+\/.*$/.test(lines[1]!);
+  } catch { return false; }
+}
 function diagnosticPid(path: string): number {
   try {
     const pid = Number(readFileSync(path, "utf8").trim());
@@ -44,17 +64,10 @@ export function acquireDaemonLock(pidFile: string): () => void {
     realpathSync(dirname(pidFile)),
     `${basename(pidFile)}.lock.db`
   );
-  const localTypes = new Set([
-    0x1a, 0x11, 0xef53, 0x58465342, 0x9123683e, 0x01021994, 0x794c7630,
-  ]);
-  if (
-    !["darwin", "linux"].includes(process.platform) ||
-    !localTypes.has(Number(statfsSync(dirname(path)).type) >>> 0)
-  ) {
+  const filesystemType = Number(statfsSync(dirname(path)).type);
+  if (!supportsLockFilesystem(process.platform, filesystemType, dirname(path))) {
     throw new Error(
-      `daemon_lock_unsupported_filesystem:${statfsSync(
-        dirname(path)
-      ).type.toString(16)}:${dirname(path)}`
+      `daemon_lock_unsupported_filesystem:${filesystemType.toString(16)}:${dirname(path)}`
     );
   }
   if (held.has(path)) throw new DaemonAlreadyRunningError(process.pid, pidFile);
