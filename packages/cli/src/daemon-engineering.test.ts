@@ -230,6 +230,9 @@ it("does not reveal whether an unreadable Mission or Session exists",async()=>{
 it("does not abort a later manual Session instruction when cancelling the original Mission",async()=>{
   await fixture();adapter.mode="unknown";const mission=await adopt();const accepted=await rpc("engineering.decide",await answer(mission.mission_id));expect(accepted.ok).toBe(true);
   await until(()=>query("SELECT state FROM session_messages"),value=>value?.["state"]==="failed");
+  // A failed receipt is durable before the asynchronous stop/lease cleanup.
+  // Wait for that cleanup without draining the daemon: the next send is manual.
+  await until(()=>rpc("health"),value=>value.result?.["active_runs"]===0);
   expect(await rpc("attention.abandon-receipt",{scope_id:scope,session_id:"session",message_id:accepted.result!["message_id"],expected_version:2,reason:"Host inspected the prior fixture exit",evidence_sha256:"a".repeat(64),acknowledge_unknown_effects:true})).toMatchObject({ok:true});
   adapter.mode="await_abort";
   const manual=rpc("session.send",{session_id:"session",runtime_id:adapter.id,turn_id:"turn",message_id:"manual-later",expected_version:2,text:"Continue under separate manual authority"});
