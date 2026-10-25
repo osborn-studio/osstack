@@ -1,5 +1,6 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createScratchDirSync } from "@osstack/core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -27,7 +28,11 @@ let priorHome: string | undefined;
 let daemon: DaemonHandles | undefined;
 
 beforeEach(() => {
-  fixture = createScratchDirSync("tests", "daemon-startup-ownership");
+  // The worker TMPDIR is a short alias inside the managed scratch root.
+  // Keep socket paths below macOS's limit even when the scratch root is long.
+  fixture = createScratchDirSync("tests", "daemon-startup-ownership", {
+    OSSTACK_SCRATCH_ROOT: tmpdir(),
+  });
   priorHome = process.env["OSSTACK_HOME"];
   process.env["OSSTACK_HOME"] = join(fixture, "home");
   mkdirSync(join(fixture, "home"));
