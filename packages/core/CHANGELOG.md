@@ -18,6 +18,8 @@
 
 ### Patch Changes
 
+- 1d945a4: Stop attention delivery batches when their budget timer expires, even if the monotonic clock has not reached the nominal deadline. Keep the shorter per-send timeout distinct so longer batches can continue within their remaining budget.
+
 - Updated dependencies [0a61d27]
 - Updated dependencies [c129a31]
 - Updated dependencies [c48e29a]
