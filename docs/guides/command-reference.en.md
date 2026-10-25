@@ -51,6 +51,10 @@ This is a common-options guide. Use `osstack --help` and `osstack <command> --he
 
 Use `loop start` for daemon polling; `--interval-ms` defaults to 5000. `--once` means start with `--cycles 1 --stop-when-idle`. Use `loop list`, `loop stop ID`, and `loop status --workspace .` to inspect/control sessions.
 
+## Documentation workflow
+
+See [installation and upgrade](install-upgrade.en.md), the [Firstmate command guide](firstmate-commands.en.md), and [bilingual documentation maintenance](documentation-maintenance.en.md).
+
 ## What neat does
 
 `osstack neat` defaults to `neat check`. It audits knowledge surfaces, instruction budgets, references and change contracts. It does not delete old files or format the repository. `--all` scans recognized knowledge surfaces; default worktree mode is change-scoped. `--fail-on none|error|warning` controls finding-based exit behavior; exit 0 can include warnings.

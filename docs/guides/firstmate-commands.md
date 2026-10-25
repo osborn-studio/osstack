@@ -2,9 +2,9 @@
 
 [English](firstmate-commands.en.md) · [中文 README](../../README.zh.md)
 
-核对日期：2026-10-25（北京时间）。本手册描述 PR #244 及前序依赖分支的源码接口，不保证已进入 main、npm 或你的已安装版本。24 项是能力映射，不是 24 条独立命令，也不是完整逐行复制 Firstmate。
+核对日期：2026-10-25（北京时间）。PR #244 及前序能力已整合到 main，并随 npm CLI 0.22.1 发布。请用 `osstack --version` 核对本机版本。24 项是能力映射，不是 24 条独立命令，也不是逐行复制 Firstmate。真实环境验证范围见[安装与升级指南](install-upgrade.md)。
 
-## PR #244 新增了什么
+## PR #244 引入的接口（已整合）
 
 以下与 PR 的 base 分支 `codex/firstmate-extension-integration` 比较。前序 PR 已提供的命令仍在总表中，但不能重复算作 #244 新增。
 

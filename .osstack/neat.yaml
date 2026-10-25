@@ -19,6 +19,24 @@ required_surfaces:
   - id: firstmate-command-guide-zh
     path: docs/guides/firstmate-commands.md
     severity: error
+  - id: docs-index-en
+    path: docs/README.md
+    severity: error
+  - id: docs-index-zh
+    path: docs/README.zh.md
+    severity: error
+  - id: install-upgrade-en
+    path: docs/guides/install-upgrade.en.md
+    severity: error
+  - id: install-upgrade-zh
+    path: docs/guides/install-upgrade.md
+    severity: error
+  - id: docs-maintenance-en
+    path: docs/guides/documentation-maintenance.en.md
+    severity: error
+  - id: docs-maintenance-zh
+    path: docs/guides/documentation-maintenance.md
+    severity: error
   - id: architecture-decisions
     path: docs/decisions
     kind: directory

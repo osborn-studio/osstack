@@ -20,6 +20,9 @@ DeepSeek 检查器以及你自己的脚本，组织成一套可路由、可循�
 
 ## 从这里开始
 
+- [中文文档导航](docs/README.zh.md) · [English documentation](docs/README.md)。
+- [安装、升级与验证](docs/guides/install-upgrade.md) · [用 neat 维护双语文档](docs/guides/documentation-maintenance.md)。
+
 - [Graph Engineering 怎么用](#graph-engineering)：执行流程、支持范围和命令。
 - [完整 Graph 上手与参数手册](docs/guides/graph-quickstart.md)：准备配置、验证、运行、结果、取消和恢复。
 - [当前能力范围](#当前能力范围) · [安装](#安装) · [主要命令](#主要命令)。
@@ -29,7 +32,7 @@ DeepSeek 检查器以及你自己的脚本，组织成一套可路由、可循�
 
 ## Firstmate 能力与命令
 
-当前开发分支已为 Firstmate 的 24 项能力建立实现或复用路径，主要入口如下。**这不是 24/24 已上线声明：PR #244 与前序依赖的审计、CI、合并及真实环境资格是独立条件。**
+Firstmate 的 24 项能力映射已整合到 main，并随 CLI 0.22.1 发布。它们通过新增命令和 OSStack 既有机制实现。**npm 发布不等于所有真实集成都已验收。** 远程主机、外部消息传输、托管升级和真实模型仍需按环境验证。请参阅[交付与升级指南](docs/guides/install-upgrade.md)。
 
 | 用途 | 命令入口 |
 |---|---|
@@ -51,15 +54,15 @@ DeepSeek 检查器以及你自己的脚本，组织成一套可路由、可循�
 
 | 领域 | 状态 |
 |---|---|
-| npm 包 | 待发布版本：`@osstack/cli@0.22.1`；2026-10-25（北京时间）检查时 npm latest 为 0.21.0。请用 `npm view @osstack/cli version` 确认发布状态 |
-| GitHub Release | 计划发布的包版本：`@osstack/cli@0.22.1`；最新单文件二进制：[`v0.8.1`](https://github.com/osborn-studio/osstack/releases/tag/v0.8.1) |
+| npm 包 | 已发布：[`@osstack/cli@0.22.1`](https://www.npmjs.com/package/@osstack/cli/v/0.22.1)。2026-10-25（北京时间）已核对 `latest`。请用 `npm view @osstack/cli version` 获取最新结果 |
+| 源码与二进制通道 | 源码标签：[`@osstack/cli@0.22.1`](https://github.com/osborn-studio/osstack/tree/%40osstack%2Fcli%400.22.1)；独立的单文件二进制：[`v0.8.1`](https://github.com/osborn-studio/osstack/releases/tag/v0.8.1) |
 | macOS 单文件二进制 | 已发布 `darwin-arm64` 的显式 `public-ad-hoc` archive |
 | Knowledge Cloud | 已部署到 EdgeOne：`https://osstack-knowledge-cloud-1grycf4k.edgeone.cool` |
 | Probe | CLI 生命周期已随 CLI 0.19.0 发布；report-only 是 gate 行为，不是后台任务。两周真实使用 checkpoint 仍未完成。 |
 | License | MIT |
 | Monorepo | 22 个 workspace package |
 
-**版本边界：** 当前源码的 CLI 包版本为 0.22.1；源码版本不等于公共发布或本机已安装版本。请用 `osstack --version` 与 `npm view @osstack/cli version` 分别核对；Firstmate 本轮能力以分支及 PR 交付状态为准。
+**版本边界：** CLI 0.22.1 已在 npm 发布。请在每台主机上运行 `osstack --version`，确认实际安装版本。更新 npm 包不会自动重启 daemon，也不会升级其他服务器。请参阅[安装与部署检查](docs/guides/install-upgrade.md)。
 
 ## 当前能力范围
 
@@ -136,12 +139,12 @@ osstack 把这些问题变成一套本地优先、可自动化验证的工程流
 ### 通过 npm 安装
 
 ```bash
-npm install -g @osstack/cli
+npm install -g @osstack/cli@0.22.1
 osstack --version
 osstack doctor --workspace .
 ```
 
-0.22.1 源码构建或 npm 完成发行后的期望输出：
+本次发行的期望版本：
 
 ```text
 osstack 0.22.1
@@ -179,7 +182,9 @@ pnpm install
 pnpm build
 pnpm test
 # 为当前源码 checkout 创建私有 home，不使用生产 home。
-export OSSTACK_HOME="$(mktemp -d /tmp/osstack-dev-XXXXXX)"
+export OSSTACK_SCRATCH_ROOT="${OSSTACK_SCRATCH_ROOT:-${TMPDIR:-/tmp}/osstack}"
+mkdir -p "$OSSTACK_SCRATCH_ROOT/runtime"
+export OSSTACK_HOME="$(mktemp -d "$OSSTACK_SCRATCH_ROOT/runtime/source-home-XXXXXX")"
 chmod 700 "$OSSTACK_HOME"
 node packages/cli/dist/bin.js --version
 ```
