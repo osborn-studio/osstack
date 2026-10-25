@@ -1,0 +1,30 @@
+{
+  "status": "passed",
+  "validation_scope": "assembled seven-PR tree; production code identical to frozen source, with two test corrections",
+  "node": "22.22.1",
+  "source_commit": "cf3bc68c71c336b59d0b3735b24bcd22209813b0",
+  "checks": [
+    {"check": "integrated-build", "command": ["pnpm", "build"], "exit_code": 0, "seconds": 5.82, "log": "integrated-build.log", "log_sha256": "f3942f898755b7148415db05901f2b65375ae3355463285ecb42d001d4a75158", "log_bytes": 23750},
+    {"check": "full-test", "command": ["pnpm", "-r", "--no-bail", "test"], "exit_code": 0, "seconds": 462.0, "log": "full-test.log", "log_sha256": "4fe03104ab5314a8c9a61c3e9e4b3f573ece952426ea467d8a63e65f95d0f009", "log_bytes": 239853},
+    {"check": "typecheck", "command": ["pnpm", "typecheck:check"], "exit_code": 0, "seconds": 6.51, "log": "typecheck.log", "log_sha256": "29fd76fb0e486b221492463c5baac464018adb06f8a290cf3ad80ae8cdcbb5a8", "log_bytes": 1737},
+    {"check": "lint", "command": ["pnpm", "lint"], "exit_code": 0, "seconds": 0.74, "log": "lint.log", "log_sha256": "d97f44604f21b016ba2c40b72bccc4baad72c535ff0c003a01da1064c76640c3", "log_bytes": 26936},
+    {"check": "inventory", "command": ["node", "scripts/generate-inventory.mjs", "--check"], "exit_code": 0, "seconds": 0.17, "log": "inventory.log", "log_sha256": "a59b7d9a6d962ccf0d22d13d2cc0f8acbb9e3653a63cce339211a5dfb3cd56e9", "log_bytes": 17},
+    {"check": "startup", "command": ["node", "scripts/bench-cli-startup.mjs"], "exit_code": 0, "seconds": 0.89, "log": "startup.log", "log_sha256": "d543e5a5a303486d8e73e6dfcfe73b799a3e07fa9a89b63a8f0750608ebb4707", "log_bytes": 193},
+    {"check": "changeset-selftest", "command": ["node", "scripts/check-changeset-coverage.mjs", "--self-test"], "exit_code": 0, "seconds": 0.06, "log": "changeset-selftest.log", "log_sha256": "643ce2bf731f23fa265111c8f955bfd321689dca9a759621ceb4e3898795193a", "log_bytes": 33},
+    {"check": "clean-typecheck-contract", "command": ["pnpm", "smoke:clean-typecheck"], "exit_code": 0, "seconds": 0.3, "log": "clean-typecheck-contract.log", "log_sha256": "2bb5a238db6a8760e8ecd9021805ea63f9d21381253977011a102faca1ea25c9", "log_bytes": 105},
+    {"check": "version-packages", "command": ["pnpm", "smoke:version-packages"], "exit_code": 0, "seconds": 0.29, "log": "version-packages.log", "log_sha256": "ea120d35b67371a5131349d17705f72ade0759f1725535e7bf2255386392c64c", "log_bytes": 79},
+    {"check": "release-facts", "command": ["node", "scripts/release-facts.mjs"], "exit_code": 0, "seconds": 0.05, "log": "release-facts.log", "log_sha256": "74844ca649de71032f7f95501f6a7eeaf8ab8241a39e8ed8719d9b4caafcd22f", "log_bytes": 113}
+  ],
+  "full_test": {"passed": 5928, "skipped": 5, "failed": 0, "packages": [{"package": "packages/compliance", "passed": 17, "skipped": 0, "failed": 0}, {"package": "packages/contracts", "passed": 15, "skipped": 0, "failed": 0}, {"package": "packages/github", "passed": 107, "skipped": 0, "failed": 0}, {"package": "packages/knowledge", "passed": 44, "skipped": 0, "failed": 0}, {"package": "packages/protocol", "passed": 274, "skipped": 0, "failed": 0}, {"package": "packages/neat-eval", "passed": 16, "skipped": 0, "failed": 0}, {"package": "packages/runtime", "passed": 1, "skipped": 0, "failed": 0}, {"package": "packages/governance", "passed": 301, "skipped": 0, "failed": 0}, {"package": "packages/knowledge-cloud", "passed": 36, "skipped": 0, "failed": 0}, {"package": "packages/graph", "passed": 257, "skipped": 0, "failed": 0}, {"package": "packages/core", "passed": 924, "skipped": 0, "failed": 0}, {"package": "packages/plugins", "passed": 1, "skipped": 0, "failed": 0}, {"package": "packages/hermes-adapter", "passed": 22, "skipped": 0, "failed": 0}, {"package": "packages/skill-registry", "passed": 3, "skipped": 0, "failed": 0}, {"package": "packages/skills", "passed": 2, "skipped": 0, "failed": 0}, {"package": "packages/autonomy", "passed": 199, "skipped": 0, "failed": 0}, {"package": "packages/agents", "passed": 361, "skipped": 0, "failed": 0}, {"package": "packages/config", "passed": 30, "skipped": 0, "failed": 0}, {"package": "packages/loop", "passed": 515, "skipped": 0, "failed": 0}, {"package": "packages/supervisor", "passed": 88, "skipped": 0, "failed": 0}, {"package": "packages/conformance", "passed": 9, "skipped": 0, "failed": 0}, {"package": "packages/cli", "passed": 2706, "skipped": 5, "failed": 0}]},
+  "targeted_runtime_session_tests": 63,
+  "neat": {"summary": {"error": 0, "warning": 0, "info": 0, "suppressed": 23}, "complete": true},
+  "registry": {"status": "passed", "scope": "design_consistency_only", "capabilities": 24, "planned_runtime_scenarios": 66, "planned_scenarios_by_stage": {"adopt_session": 58, "integrated_controller": 4, "production_qualification": 1, "runtime_registry": 3}, "planned_work_items": 37, "pilot_dependency_closure": ["C01", "C02", "D01", "D02", "D03", "D04", "D05", "D06", "D07", "V00"], "qualification_schema": "shape_checked_only_no_signature_or_runtime_verification", "declared_semantic_divergences": 3, "source_anchors": 74, "source_hashes_verified": 74, "invalid_fixtures_rejected": ["duplicate_id", "unknown_dependency", "dependency_cycle", "runtime_enabled", "missing_source"], "production_runtime_verified": false},
+  "prior_attempts": [
+    {"scope": "original #251 CI", "status": "failed", "cause": "Receipt committed before asynchronous drain cleanup; fixed bounded wait in runtime PR"},
+    {"scope": "first assembled full suite", "status": "failed", "cause": "Failed receipt committed before asynchronous active-send cleanup; fixed health wait before abandon"},
+    {"scope": "one targeted invocation", "status": "invalid_environment", "cause": "Host Node26 SQLite ABI mismatch; corrected Node22 run passed 31 runtime and 32 Session RPC tests"}
+  ],
+  "ci": "Separate per-PR GitHub checks; not inferred from this local receipt",
+  "approval": "Independent GitHub approval is a separate merge gate",
+  "full_log_storage": "Retained in the local task scratch archive; GitHub Actions independently stores CI logs"
+}

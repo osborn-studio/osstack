@@ -6,6 +6,7 @@ Start with the guide for your task. English and Chinese entry guides describe th
 
 | Task | English | 中文 |
 |---|---|---|
+| Adopt a Session waiting for a decision (source pilot) | [Session adoption guide](guides/engineering-session-adoption.en.md) | [Session 采纳指南](guides/engineering-session-adoption.md) |
 | Install, upgrade and check deployment readiness | [Installation and upgrade](guides/install-upgrade.en.md) | [安装与升级](guides/install-upgrade.md) |
 | Choose a command | [Command reference](guides/command-reference.en.md) | [按任务选命令](guides/command-reference.md) |
 | Use Firstmate-derived capabilities | [Firstmate command guide](guides/firstmate-commands.en.md) | [Firstmate 命令手册](guides/firstmate-commands.md) |

@@ -206,6 +206,6 @@ schema 47 迁移后，旧 schema binary 拒绝打开该 home。只替换旧 bina
 
 升级调用 daemon.drain 会先锁存 draining，即使结果 drained=false 或升级随后中止也不自动恢复。原 reserved 可经已授权的精确 cancel 取得未派发证明；未知 committed 不能借此释放。放弃升级并继续运行当前版本前，操作员先确认无安装/重启/其他维护仍在进行，再显式调用 daemon.resume RPC，并读取 health 确认 draining=false。该动作恢复正常准入，包括符合条件的待派发工作；应先处理不应执行的 reserved。它不是清除 hold 或停止未知 Worker 的证明。持续不健康条件仍可再次触发 draining。
 
-已核对当前 CLI：没有 osstack daemon resume 或通用 osstack rpc 子命令。现有 osstack health 可查状态；精确 socket 的单次 Node RPC 操作步骤见[中文运行指南](https://github.com/osborn-studio/osstack/blob/cf3bc68c71c336b59d0b3735b24bcd22209813b0/docs/guides/engineering-session-adoption.md)与[英文运行指南](https://github.com/osborn-studio/osstack/blob/cf3bc68c71c336b59d0b3735b24bcd22209813b0/docs/guides/engineering-session-adoption.en.md)。不以不存在的子命令描述恢复。以 -- 开头的业务文本通过 --input 的严格完整请求 JSON 传入，避免把文本当作选项；此方式不改变身份或授权边界。
+已核对当前 CLI：没有 osstack daemon resume 或通用 osstack rpc 子命令。现有 osstack health 可查状态；精确 socket 的单次 Node RPC 操作步骤见[中文运行指南](../../guides/engineering-session-adoption.md)与[英文运行指南](../../guides/engineering-session-adoption.en.md)。不以不存在的子命令描述恢复。以 -- 开头的业务文本通过 --input 的严格完整请求 JSON 传入，避免把文本当作选项；此方式不改变身份或授权边界。
 
 运行错误须保留准确含义：draining 表示暂停准入，可读/查询/已授权停止仍保留；dispatch_gate_required 要求原动作通过统一派发门，不能改用旧 session.send 绕过；dispatch_inconsistent 表示 phase、message 或 proof 不一致，须保留证据并停止新写入调查。
