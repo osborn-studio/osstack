@@ -154,7 +154,9 @@ export class AttentionExperience {
       if (options.signal?.aborted) { result.stopped = "aborted"; break; }
       const remaining = maxDurationMs - (performance.now() - started);
       if (remaining <= 0) { result.stopped = "deadline"; break; }
-      const outcome = await this.drainOne(sender, Date.now(), Math.min(5000, Math.ceil(remaining)), options.signal);
+      let budgetTimerExpired = false;
+      const outcome = await this.drainOne(sender, Date.now(), Math.min(5000, Math.ceil(remaining)), options.signal,
+        () => { budgetTimerExpired = remaining <= 5000; });
       if (outcome === "idle") { result.stopped = "empty"; break; }
       result.processed++;
       if (outcome === "superseded") result.superseded++;
@@ -163,6 +165,10 @@ export class AttentionExperience {
         if (outcome === "dead_letter") result.deadLetters++;
         else result[outcome]++;
       }
+      // A timer can fire before the monotonic clock reaches its nominal deadline.
+      // Once the batch-budget timer fires, do not claim another receipt.
+      // A shorter per-send timeout can still leave budget for the next receipt.
+      if (budgetTimerExpired) { result.stopped = "deadline"; break; }
     }
     if (options.signal?.aborted) result.stopped = "aborted";
     // Counts use the same eligibility predicate as claim; quiet and delayed
@@ -177,7 +183,8 @@ export class AttentionExperience {
     sender: AttentionSender,
     now = Date.now(),
     timeoutMs: number,
-    signal?: AbortSignal
+    signal?: AbortSignal,
+    onTimeout?: () => void
   ): Promise<"idle" | "superseded" | "delivered" | "retried" | "dead_letter" | "stale" | "cancelled"> {
     const db = this.store.db;
     const row = this.store.write(this.owner, () => {
@@ -236,6 +243,7 @@ export class AttentionExperience {
         }),
         new Promise<never>((_, reject) => {
           timer = setTimeout(() => {
+            onTimeout?.();
             controller.abort();
             reject(new Error("delivery_timeout"));
           }, timeoutMs);
