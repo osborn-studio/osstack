@@ -22,6 +22,9 @@ surface that makes AI coding work visible and auditable.
 
 ## Start Here
 
+- [Documentation index](docs/README.md) · [中文文档导航](docs/README.zh.md).
+- [Install, upgrade and verify](docs/guides/install-upgrade.en.md) · [Maintain bilingual docs with neat](docs/guides/documentation-maintenance.en.md).
+
 - [Graph Engineering](#graph-engineering): execution flow, supported scope and commands.
 - [Graph walkthrough and parameters](docs/guides/graph-quickstart.en.md): configuration, validation, execution, results and recovery.
 - [Capability map](#current-capability-map) · [Install](#install) · [Main commands](#main-commands).
@@ -31,7 +34,7 @@ surface that makes AI coding work visible and auditable.
 
 ## Firstmate capabilities and commands
 
-The development branch maps Firstmate’s 24 capabilities to implementations or existing OSStack mechanisms. Main entry points are below. **This is not a claim that 24/24 are live: audit, CI, merging PR #244 and its prerequisites, and live-environment qualification are separate conditions.**
+Firstmate’s 24 capability mappings are integrated into main and included in CLI 0.22.1. They use new commands and existing OSStack mechanisms. **Package publication does not qualify every live integration.** Remote hosts, external transports, managed upgrades and live models still need environment-specific checks. See the [delivery and upgrade guide](docs/guides/install-upgrade.en.md).
 
 | Purpose | Command entry points |
 |---|---|
@@ -53,15 +56,15 @@ See the [full English command guide](docs/guides/firstmate-commands.en.md) and [
 
 | Area | Status |
 |---|---|
-| npm package | Release candidate: `@osstack/cli@0.22.1`; npm latest was 0.21.0 when checked on 2026-10-25 (Asia/Shanghai). Check publication with `npm view @osstack/cli version` |
-| GitHub release | Planned package release: `@osstack/cli@0.22.1`; latest single binary: [`v0.8.1`](https://github.com/osborn-studio/osstack/releases/tag/v0.8.1) |
+| npm package | Published: [`@osstack/cli@0.22.1`](https://www.npmjs.com/package/@osstack/cli/v/0.22.1). `latest` verified on 2026-10-25 (Asia/Shanghai). Check again with `npm view @osstack/cli version` |
+| Source and binary channels | Source tag: [`@osstack/cli@0.22.1`](https://github.com/osborn-studio/osstack/tree/%40osstack%2Fcli%400.22.1); separate single binary: [`v0.8.1`](https://github.com/osborn-studio/osstack/releases/tag/v0.8.1) |
 | macOS single binary | Published as explicit `public-ad-hoc` archive for `darwin-arm64` |
 | Knowledge Cloud | Live on EdgeOne: `https://osstack-knowledge-cloud-1grycf4k.edgeone.cool` |
 | Probe | CLI lifecycle shipped in CLI 0.19.0; report-only is gate behavior, not a background job. The two-week real-use checkpoint remains open. |
 | License | MIT |
 | Monorepo | 22 workspace packages |
 
-**Release boundary:** The CLI package in this source tree is version 0.22.1. A source version is not proof of public release or local installation. Check `osstack --version` and `npm view @osstack/cli version` separately; the Firstmate additions follow their branch and PR delivery status.
+**Release boundary:** CLI 0.22.1 is published on npm. Check `osstack --version` on each host to confirm its installed version. A package update does not restart a daemon or upgrade another server. See [installation and deployment checks](docs/guides/install-upgrade.en.md).
 
 ## Current Capability Map
 
@@ -160,12 +163,12 @@ osstack answers those questions with a local-first control plane:
 ### npm
 
 ```bash
-npm install -g @osstack/cli
+npm install -g @osstack/cli@0.22.1
 osstack --version
 osstack doctor --workspace .
 ```
 
-Expected for the 0.22.1 source build, or npm after publication:
+Expected version for this release:
 
 ```text
 osstack 0.22.1
@@ -204,7 +207,9 @@ pnpm install
 pnpm build
 pnpm test
 # Use a fresh, private home for this checkout, never the production home.
-export OSSTACK_HOME="$(mktemp -d /tmp/osstack-dev-XXXXXX)"
+export OSSTACK_SCRATCH_ROOT="${OSSTACK_SCRATCH_ROOT:-${TMPDIR:-/tmp}/osstack}"
+mkdir -p "$OSSTACK_SCRATCH_ROOT/runtime"
+export OSSTACK_HOME="$(mktemp -d "$OSSTACK_SCRATCH_ROOT/runtime/source-home-XXXXXX")"
 chmod 700 "$OSSTACK_HOME"
 node packages/cli/dist/bin.js --version
 ```

@@ -51,6 +51,10 @@
 
 daemon 轮询使用 `loop start`，`--interval-ms` 默认 5000；`--once` 等价于 start 的 `--cycles 1 --stop-when-idle`。`loop list` 查看会话，`loop stop ID` 停止，`loop status --workspace .` 查状态。
 
+## 文档工作流
+
+请参阅[安装与升级](install-upgrade.md)、[Firstmate 命令手册](firstmate-commands.md)及[双语文档维护](documentation-maintenance.md)。
+
 ## neat 应该怎么用
 
 `osstack neat` 默认是 `neat check`，检查规则、文档引用、预算与知识合同；它不是无条件删除旧文件或自动格式化整个仓库的命令。全仓检查用 `--all`，默认 worktree 只覆盖变更相关范围。退出码是否阻断由 `--fail-on none|error|warning` 决定，退出 0 不代表没有 warning。

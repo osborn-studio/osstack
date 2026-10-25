@@ -2,9 +2,9 @@
 
 [中文](firstmate-commands.md) · [English README](../../README.md)
 
-Checked on 2026-10-25 (Asia/Shanghai). This guide describes the source interfaces in PR #244 and its prerequisite branches. It does not assert availability on main, npm or your installed version. The 24 items are capability mappings, not 24 individual commands or a line-for-line Firstmate transplant.
+Checked on 2026-10-25 (Asia/Shanghai). PR #244 and its prerequisite capabilities are integrated into main and published in npm CLI 0.22.1. Use `osstack --version` to check your local installation. The 24 items are capability mappings, not 24 individual commands or a line-for-line transplant. See [installation and upgrade](install-upgrade.en.md) for live-environment limits.
 
-## What PR #244 adds
+## Interfaces introduced by PR #244 (integrated)
 
 This comparison uses the PR base branch, `codex/firstmate-extension-integration`. The table below does not count commands from earlier PRs as new in #244.
 
@@ -40,7 +40,7 @@ Use the [prompt language policy](prompt-language.md) for prompts and explanation
 | Context, memory and routing | `attention context/lesson/triage/routing-eval` · `deliver --execution-context FILE` | 7, 20, 21 | Distinguish offline input evaluation from explicit live model calls; lessons remain drafts without automatic promotion. |
 | External commitments | `follow-up-delivery prepare/list/inspect/issue-grant/authorize/revoke/dispatch/reconcile` | 9, 19, 22 | Publishing needs a host transport, signed authorization and exact target; unknown never triggers automatic resend. |
 | Multi-home upgrades | `homes inspect/plan-upgrade/upgrade-status/prepare-managed-installation/apply-upgrade/reconcile-upgrade` | 24 | Managed launchd installations only. Planning does not authorize installation; apply/reconcile require exact digests and never roll back databases. |
-| Documentation and delivery evidence | `neat check/fix` · `report` · `scorecard` · `proof` · `pr` | 支撑 / support | Knowledge hygiene and existing evidence presentation; passing does not establish live qualification or publication. |
+| Documentation and delivery evidence | `neat check/fix` · `report` · `scorecard` · `proof` · `pr` | Support | Knowledge hygiene and existing evidence presentation; passing does not establish live qualification or publication. |
 
 ## Start safely
 
