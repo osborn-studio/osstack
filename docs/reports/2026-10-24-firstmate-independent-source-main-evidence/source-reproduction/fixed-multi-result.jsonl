@@ -1,0 +1,3 @@
+{"finding":"repository_writable_host_authority","home_in_repo":false,"gap_before":"gap","state_after_repository_created_ack":"ready"}
+{"dispatch_refused":true,"reason":"source_context_authority_changed"}
+{"finding":"revoked_first_source_during_later_validation","observations":4,"source_state_at_dispatch":"not_registered","adapter_invoked":false,"revoked_alpha_in_prompt":false}

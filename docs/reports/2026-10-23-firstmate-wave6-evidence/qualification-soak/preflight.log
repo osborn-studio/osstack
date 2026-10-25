@@ -1,0 +1,18 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/tmp/osstack/smoke/pr237-integration/qualification-soak
+
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/smoke/pr237-integration/qualification-soak/preflight/home/graph-delivery/e83f15b2-0002-4f65-acb0-6bc5849403d1/writer-0'...
+HEAD is now at 912b86e local fixture execute policy
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/smoke/pr237-integration/qualification-soak/preflight/home/graph-delivery/c6469935-cb64-490f-9b32-79c321fbfdb0/writer-0'...
+HEAD is now at 912b86e local fixture execute policy
+stdout | soak.test.ts > ten minute real socket mixed observation qualification
+SOAK_COMPLETE {"activeWall":2040.2852910000001,"events":34,"rpc":{"count":40,"p50_ms":0.584791999999652,"p95_ms":1.0640000000003056,"p99_ms":1.8676669999986188,"max_ms":1.8676669999986188},"drain_ms":16916.8035}
+
+ ✓ soak.test.ts (1 test) 30455ms
+   ✓ ten minute real socket mixed observation qualification  30455ms
+
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+   Start at  14:10:28
+   Duration  32.14s (transform 889ms, setup 0ms, collect 1.53s, tests 30.46s, environment 0ms, prepare 28ms)
+

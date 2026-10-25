@@ -1,0 +1,1433 @@
+Independent static audit of bounded run event replay added to OSStack Attention. No tools. Find confirmed P0/P1/P2 with exact file/function, concrete failing sequence and fix; distinguish limitations/test gaps. Current implementation does not claim full historical retention or physical process liveness, no network/model/executor port, no auto approvals. Parent owns migration42 (present), index exports and CLI integration. page API must bound SQL payload before JS, max200 events and64KiB per payload, safe integer cursors and fixed per-page watermark. Scope/defaulttenant/run identity and owner generation must remain fenced; cursor and subject projection atomic; restart preserves cursor; gaps/oversized/malformed data/source deletion/ID reuse/anchor changes cannot claim complete. Complete describes caught-up retained range, never permanent retention. Projection only reads pending authorities and exposes run event observations, never writes approvals or Session actions. Observer is bounded by admitted100 but synchronous performance/soak qualification is future; do not invent a hard deadline.
+BASE 0a7b2ba6265e5bdd95ecf950a18adc0e47940382
+
+FILE packages/core/src/state/run-store.ts
+// Run/task/event state repositories (R1.1 — relocated from packages/cli/src/store.ts
+// per ADR-001 §D2). This module owns the run/task/event persistence for the
+// kernel: the four daemon-hot-loop writers and the reader functions consolidated
+// from the CLI's raw-SQL sites. An external consumer can now read run/event/proof
+// state through @osstack/core without the product-private CLI.
+//
+// Ownership relocation ONLY (ADR-001 §D2, owner-set): identical SQL semantics,
+// no schema change, no new DB design, no business-logic refactoring. The SQL and
+// result mapping below are extracted verbatim from their prior CLI locations.
+
+import type Database from "better-sqlite3";
+import { withWrite } from "./db.js";
+
+/**
+ * Structural input for {@link appendEvent}. Defined locally (not imported from
+ * @osstack/hermes-adapter) to avoid a dependency cycle: hermes-adapter depends
+ * on core, so core must not import it. `HermesEvent` is structurally assignable
+ * to this shape, so CLI call sites pass their `HermesEvent` values unchanged.
+ */
+export interface StoredEventInput {
+  event_id: string;
+  seq: number;
+  run_id: string;
+  session_id: string;
+  created_at: number;
+  terminal: boolean;
+  type: string;
+  payload: unknown;
+}
+
+/** Row shape returned by {@link listEventsForRun} (superset of columns). */
+export interface StoredEventRow {
+  event_id: string;
+  run_id: string;
+  session_id: string;
+  seq: number;
+  type: string;
+  created_at: number;
+  terminal: number;
+  payload_json: string;
+}
+
+/** Row shape returned by {@link getRun}. */
+export interface RunIdentityRow {
+  run_id: string;
+  session_id: string;
+  phase: string;
+}
+
+// ──────────────────────────────────────────────────────────────────────
+// Writers (moved verbatim from cli/src/store.ts)
+// ──────────────────────────────────────────────────────────────────────
+
+export function insertTask(
+  db: Database.Database,
+  path: string,
+  row: {
+    task_id: string;
+    title: string;
+    description?: string;
+    hermes_session_id?: string | null;
+    created_at: number;
+  },
+): void {
+  withWrite(db, path, (d) => {
+    d.prepare(
+      "INSERT INTO tasks(task_id, title, description, hermes_session_id, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+    ).run(
+      row.task_id,
+      row.title,
+      row.description ?? "",
+      row.hermes_session_id ?? null,
+      "running",
+      row.created_at,
+      row.created_at,
+    );
+  });
+}
+
+export function insertRun(
+  db: Database.Database,
+  path: string,
+  row: {
+    run_id: string;
+    task_id: string;
+    session_id: string;
+    agent_id: string;
+    capability_id: string;
+    phase: string;
+    started_at: number;
+    hermes_session_id?: string | null;
+  },
+): void {
+  withWrite(db, path, (d) => {
+    d.prepare(
+      "INSERT INTO runs(run_id, task_id, session_id, agent_id, capability_id, phase, started_at, hermes_session_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+    ).run(
+      row.run_id,
+      row.task_id,
+      row.session_id,
+      row.agent_id,
+      row.capability_id,
+      row.phase,
+      row.started_at,
+      row.hermes_session_id ?? null,
+    );
+  });
+}
+
+export function appendEvent(
+  db: Database.Database,
+  path: string,
+  ev: StoredEventInput,
+): void {
+  withWrite(db, path, (d) => {
+    d.prepare(
+      "INSERT INTO events(event_id, run_id, session_id, seq, type, created_at, terminal, payload_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+    ).run(
+      ev.event_id,
+      ev.run_id,
+      ev.session_id,
+      ev.seq,
+      ev.type,
+      ev.created_at,
+      ev.terminal ? 1 : 0,
+      JSON.stringify(ev.payload),
+    );
+
+    // Approval / clarify events double-write to their own tables so they
+    // survive a daemon restart (Hermes RFC durability requirement) and
+    // can be queried via approval.list / clarify.list without scanning
+    // the event log.
+    if (ev.type === "approval.requested") {
+      const p = ev.payload as { approval_id?: string; action_summary?: string; risk?: string };
+      if (typeof p.approval_id === "string") {
+        d.prepare(
+          "INSERT OR IGNORE INTO approvals(approval_id, run_id, status, action_summary, risk, requested_at) VALUES (?, ?, ?, ?, ?, ?)",
+        ).run(p.approval_id, ev.run_id, "pending", p.action_summary ?? "", p.risk ?? "medium", ev.created_at);
+      }
+    } else if (ev.type === "approval.resolved") {
+      const p = ev.payload as { approval_id?: string; choice?: string; status?: string };
+      if (typeof p.approval_id === "string") {
+        d.prepare(
+          "UPDATE approvals SET status = ?, resolved_at = ?, choice = ? WHERE approval_id = ?",
+        ).run(p.status === "rejected" ? "rejected" : p.status === "timed_out" ? "timed_out" : "accepted",
+              ev.created_at, p.choice ?? null, p.approval_id);
+      }
+    } else if (ev.type === "clarify.requested") {
+      const p = ev.payload as { clarify_id?: string; question?: string };
+      if (typeof p.clarify_id === "string") {
+        d.prepare(
+          "INSERT OR IGNORE INTO clarifies(clarify_id, run_id, status, question, requested_at) VALUES (?, ?, ?, ?, ?)",
+        ).run(p.clarify_id, ev.run_id, "pending", p.question ?? "", ev.created_at);
+      }
+    } else if (ev.type === "clarify.resolved") {
+      const p = ev.payload as { clarify_id?: string; answer?: string; status?: string };
+      if (typeof p.clarify_id === "string") {
+        d.prepare(
+          "UPDATE clarifies SET status = ?, resolved_at = ?, answer = ? WHERE clarify_id = ?",
+        ).run(p.status === "timed_out" ? "timed_out" : p.status === "abandoned" ? "abandoned" : "answered",
+              ev.created_at, p.answer ?? null, p.clarify_id);
+      }
+    }
+  });
+}
+
+export function finalizeRun(
+  db: Database.Database,
+  path: string,
+  run_id: string,
+  outcome: "completed" | "failed" | "cancelled" | "expired",
+  completed_at: number,
+): void {
+  // SQLite UPDATE expressions read pre-UPDATE column values, so we must
+  // compute duration in JS using the read-back started_at — not refer to
+  // `completed_at` inside the same UPDATE (it would be NULL on first set).
+  withWrite(db, path, (d) => {
+    const row = d.prepare("SELECT started_at FROM runs WHERE run_id = ?").get(run_id) as
+      | { started_at: number }
+      | undefined;
+    const duration_ms = row ? (completed_at - row.started_at) * 1000 : null;
+    d.prepare(
+      "UPDATE runs SET outcome = ?, completed_at = ?, duration_ms = ? WHERE run_id = ?",
+    ).run(outcome, completed_at, duration_ms, run_id);
+    d.prepare(
+      "UPDATE tasks SET status = ?, updated_at = ? WHERE task_id = (SELECT task_id FROM runs WHERE run_id = ?)",
+    ).run(
+      outcome === "completed" ? "done" : outcome,
+      completed_at,
+      run_id,
+    );
+  });
+}
+
+// ──────────────────────────────────────────────────────────────────────
+// Readers (consolidated verbatim from the CLI raw-SQL sites)
+// ──────────────────────────────────────────────────────────────────────
+
+/** Count runs started at or after `since` (unix seconds). From daemon.ts. */
+export function countRunsSince(db: Database.Database, since: number): number {
+  return (db.prepare("SELECT COUNT(*) AS c FROM runs WHERE started_at >= ?").get(since) as { c: number }).c;
+}
+
+/** Total run count. From daemon.ts. */
+export function countRuns(db: Database.Database): number {
+  return (db.prepare("SELECT COUNT(*) AS c FROM runs").get() as { c: number }).c;
+}
+
+/** Total event count. From daemon.ts / dashboard.ts. */
+export function countEvents(db: Database.Database): number {
+  return (db.prepare("SELECT COUNT(*) AS c FROM events").get() as { c: number }).c;
+}
+
+/** Count tasks in the 'pending' status. From dashboard.ts. */
+export function countPendingTasks(db: Database.Database): number {
+  return (db.prepare("SELECT COUNT(*) AS c FROM tasks WHERE status = 'pending'").get() as
+    | { c: number }
+    | undefined)?.c ?? 0;
+}
+
+/** Run identity columns for a single run. From bin.ts. */
+export function getRun(db: Database.Database, runId: string): RunIdentityRow | undefined {
+  return db.prepare("SELECT run_id, session_id, phase FROM runs WHERE run_id = ?").get(runId) as
+    | RunIdentityRow
+    | undefined;
+}
+
+/**
+ * Events for a run, ordered by seq ascending. From daemon.ts (snapshot replay)
+ * and bin.ts (persisted loop evidence). `afterSeq` defaults to -1 so a caller
+ * that wants every event (bin.ts) gets `seq > -1` — behavior-identical to the
+ * unfiltered `WHERE run_id = ?` query, since seq is always ≥ 0. The returned
+ * superset includes `terminal`; call sites that ignore it are unaffected.
+ */
+export function listEventsForRun(
+  db: Database.Database,
+  runId: string,
+  opts: { afterSeq?: number } = {},
+): StoredEventRow[] {
+  const afterSeq = opts.afterSeq ?? -1;
+  return db.prepare(
+    "SELECT event_id, run_id, session_id, seq, type, created_at, terminal, payload_json FROM events WHERE run_id = ? AND seq > ? ORDER BY seq ASC",
+  ).all(runId, afterSeq) as StoredEventRow[];
+}
+
+/** Bounded local/default-tenant reader. Oversized payloads never enter JS. */
+export interface BoundedRunEvent extends Omit<StoredEventRow, "payload_json"> {
+  payload_json: string | null;
+  payload_bytes: number;
+}
+export function readRunEventPage(db: Database.Database, input: {
+  taskId: string;
+  runId: string;
+  afterSeq: number;
+  limit: number;
+  throughSeq?: number;
+}): {
+  events: BoundedRunEvent[];
+  nextAfter: number;
+  highWatermark: number;
+  availableHighWatermark: number;
+  hasMore: boolean;
+  sequenceGap: boolean;
+} {
+  if (!input.taskId || !input.runId || !Number.isSafeInteger(input.afterSeq) || input.afterSeq < -1
+    || !Number.isSafeInteger(input.limit) || input.limit < 1 || input.limit > 200
+    || (input.throughSeq !== undefined && (!Number.isSafeInteger(input.throughSeq) || input.throughSeq < input.afterSeq)))
+    throw new Error("invalid_event_page");
+  const read = () => {
+    const source = db.prepare(`SELECT 1 FROM runs r JOIN tasks t ON t.task_id=r.task_id
+      WHERE r.run_id=? AND r.task_id=? AND r.tenant_id IS NULL AND t.tenant_id IS NULL`).get(input.runId, input.taskId);
+    if (!source) throw new Error("run_source_not_found");
+    const max = (db.prepare("SELECT COALESCE(MAX(seq),-1) seq FROM events WHERE run_id=?").get(input.runId) as { seq: number }).seq;
+    const first = db.prepare("SELECT seq FROM events WHERE run_id=? ORDER BY seq LIMIT 1").get(input.runId) as { seq: number } | undefined;
+    if (!Number.isSafeInteger(max) || max < -1 || (first && (!Number.isSafeInteger(first.seq) || first.seq < 0)))
+      throw new Error("invalid_event_sequence");
+    const high = input.throughSeq ?? max;
+    const rows = db.prepare(`SELECT substr(event_id,1,4097) event_id,run_id,substr(session_id,1,4097) session_id,
+      seq,substr(type,1,257) type,created_at,terminal,length(CAST(payload_json AS BLOB)) payload_bytes,
+      CASE WHEN length(CAST(payload_json AS BLOB))<=65536 THEN payload_json ELSE NULL END payload_json
+      FROM events WHERE run_id=? AND seq>? AND seq<=? ORDER BY seq LIMIT ?`)
+      .all(input.runId, input.afterSeq, high, input.limit + 1) as BoundedRunEvent[];
+    const events = rows.slice(0, input.limit);
+    let previous = input.afterSeq;
+    let gap = max < input.afterSeq || max < high;
+    for (const event of events) {
+      if (!Number.isSafeInteger(event.seq) || event.seq !== previous + 1) gap = true;
+      previous = event.seq;
+    }
+    return { events, nextAfter: events.at(-1)?.seq ?? input.afterSeq, highWatermark: high,
+      availableHighWatermark: max, hasMore: rows.length > input.limit, sequenceGap: gap };
+  };
+  return db.inTransaction ? read() : db.transaction(read)();
+}
+
+FILE packages/core/src/state/attention-run-projection.ts
+import { attentionDigest, type AttentionOwner, type AttentionScope, type AttentionStore } from "./attention-store.js";
+import { readRunEventPage, type BoundedRunEvent } from "./run-store.js";
+
+interface Cursor {
+  binding_hash: string;
+  last_seq: number;
+  through_seq: number;
+  last_event_hash: string | null;
+  gap: string | null;
+  facts_json: string;
+}
+interface Run {
+  run_id: string;
+  task_id: string;
+  session_id: string;
+  agent_id: string;
+  capability_id: string;
+  started_at: number;
+  phase: string;
+  outcome: string | null;
+  task_created_at: number;
+}
+interface Observed {
+  observed_status: string | null;
+  unsupported_events: number;
+}
+const statuses = new Set(["queued", "running", "awaiting_approval", "awaiting_clarify", "paused",
+  "cancelling", "cancelled", "failed", "completed", "expired"]);
+const informational = new Set(["token.delta", "reasoning.delta", "reasoning.done", "progress", "tool.started",
+  "tool.updated", "tool.done", "title.updated", "usage.updated", "usage.final"]);
+function hash(event: BoundedRunEvent): string {
+  return attentionDigest([event.event_id, event.run_id, event.session_id, event.seq, event.type,
+    event.created_at, event.terminal, event.payload_bytes, event.payload_json]);
+}
+function object(json: string): Record<string, unknown> | null {
+  try {
+    const value: unknown = JSON.parse(json);
+    return value !== null && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : null;
+  } catch { return null; }
+}
+function reduce(event: BoundedRunEvent, state: Observed, store: AttentionStore): string | null {
+  if (event.payload_json === null) return "oversized_event_payload";
+  if (!event.event_id || event.event_id.length > 4096 || !event.session_id || event.session_id.length > 4096
+    || !event.type || event.type.length > 256 || !Number.isFinite(event.created_at)
+    || ![0, 1].includes(event.terminal)) return "invalid_event_envelope";
+  const payload = object(event.payload_json);
+  if (!payload) return "invalid_event_payload";
+  if (["status", "run.started", "done"].includes(event.type)) {
+    if (typeof payload.status !== "string" || !statuses.has(payload.status)
+      || (event.type === "run.started" && payload.status !== "running")
+      || (event.type === "done" && (!event.terminal || !["completed", "failed", "cancelled", "expired"].includes(payload.status)
+        || !Number.isSafeInteger(payload.last_seq) || (payload.last_seq as number) < 0 || (payload.last_seq as number) > event.seq)))
+      return "invalid_event_payload";
+    state.observed_status = payload.status;
+  } else if (event.type.startsWith("approval.") || event.type.startsWith("clarify.")) {
+    const approval = event.type.startsWith("approval.");
+    const family = approval ? "approval" : "clarify";
+    if (![`${family}.requested`, `${family}.resolved`].includes(event.type)) {
+      state.unsupported_events++;
+      return null;
+    }
+    const id = payload[`${family}_id`];
+    if (typeof id !== "string" || !id || id.length > 4096) return "invalid_event_payload";
+    // Authority stays with the original approval/clarify tables. Events never
+    // grant permission or synthesize a Session answer/action.
+    const table = approval ? "approvals" : "clarifies";
+    const row = store.db.prepare(`SELECT status FROM ${table} WHERE ${family}_id=? AND run_id=?`)
+      .get(id, event.run_id) as { status: string } | undefined;
+    if (!row) return "authority_reference_missing";
+    if (event.type.endsWith(".resolved") && (typeof payload.status !== "string"
+      || !(approval ? ["accepted", "rejected", "timed_out"] : ["answered", "timed_out", "abandoned"]).includes(payload.status)))
+      return "invalid_event_payload";
+  } else if (event.type === "error") {
+    if (typeof payload.code !== "string" || typeof payload.terminal !== "boolean") return "invalid_event_payload";
+    if (payload.terminal) state.observed_status = "unknown";
+  } else if (!informational.has(event.type)) state.unsupported_events++;
+  return null;
+}
+
+/** One bounded retained-log page. Projection and cursor share the owner-fenced
+ * transaction; it never invokes an adapter, resolves an approval, or pins history. */
+export function projectAttentionRun(store: AttentionStore, owner: AttentionOwner,
+  scope: AttentionScope, runId: string, now: number): void {
+  if (!Number.isFinite(now)) throw new Error("invalid_clock");
+  store.write(owner, () => {
+    const persistedScope = store.getScope(scope.scope_id);
+    if (!persistedScope || persistedScope.task_id !== scope.task_id || persistedScope.repo_path !== scope.repo_path)
+      throw new Error("attention_scope_conflict");
+    const subject = store.db.prepare("SELECT admitted,binding_hash FROM attention_subjects WHERE scope_id=? AND kind='run' AND subject_id=?")
+      .get(scope.scope_id, runId) as { admitted: number; binding_hash: string } | undefined;
+    if (!subject?.admitted) throw new Error("run_not_admitted");
+    if (subject.binding_hash !== attentionDigest([scope.scope_id, "run", runId])) throw new Error("run_subject_binding_conflict");
+    const run = store.db.prepare(`SELECT r.*,t.created_at task_created_at FROM runs r JOIN tasks t ON t.task_id=r.task_id
+      WHERE r.run_id=? AND r.task_id=? AND r.tenant_id IS NULL AND t.tenant_id IS NULL`).get(runId, scope.task_id) as Run | undefined;
+    const saved = store.db.prepare("SELECT * FROM attention_run_cursors WHERE scope_id=? AND run_id=?")
+      .get(scope.scope_id, runId) as Cursor | undefined;
+    const writeSubject = (facts: unknown) => store.db.prepare(
+      "UPDATE attention_subjects SET sampled_at=?,generation=?,payload_json=? WHERE scope_id=? AND kind='run' AND subject_id=?"
+    ).run(now, owner.generation, JSON.stringify(facts), scope.scope_id, runId);
+    const quarantine = (reason: string) => store.db.prepare(
+      "UPDATE attention_run_cursors SET gap=COALESCE(gap,?),generation=?,updated_at=? WHERE scope_id=? AND run_id=?"
+    ).run(reason, owner.generation, now, scope.scope_id, runId);
+    if (!run) {
+      quarantine("source_missing");
+      writeSubject({ state: "source_missing", reason: "source_missing", process_liveness: "unknown", gap: "history_gap" });
+      return;
+    }
+    if (scope.scope_id !== attentionDigest([owner.home_id, scope.task_id, scope.repo_path, run.task_created_at]))
+      throw new Error("attention_scope_conflict");
+    const binding = attentionDigest([owner.home_id, scope.scope_id, run.run_id, run.task_id,
+      run.session_id, run.agent_id, run.capability_id, run.started_at]);
+    if (saved && saved.binding_hash !== binding) {
+      quarantine("source_binding_conflict");
+      writeSubject({ state: "unknown", reason: "source_binding_conflict", process_liveness: "unknown", gap: "history_gap" });
+      return;
+    }
+    if (saved && (!Number.isSafeInteger(saved.last_seq) || saved.last_seq < -1
+      || !Number.isSafeInteger(saved.through_seq) || saved.through_seq < -1)) throw new Error("invalid_event_cursor");
+    let cursor = saved?.last_seq ?? -1;
+    let anchor = saved?.last_event_hash ?? null;
+    let gap = saved?.gap ?? null;
+    const state: Observed = { observed_status: null, unsupported_events: 0 };
+    const prior = saved ? object(saved.facts_json) : null;
+    if (saved) {
+      if (!prior || !(prior.observed_status === null || typeof prior.observed_status === "string")
+        || !Number.isSafeInteger(prior.unsupported_events) || (prior.unsupported_events as number) < 0)
+        gap ??= "invalid_cursor_facts";
+      else { state.observed_status = prior.observed_status; state.unsupported_events = prior.unsupported_events as number; }
+    }
+    let anchorValid = true;
+    if (cursor >= 0) {
+      const previous = readRunEventPage(store.db, { taskId: scope.task_id, runId, afterSeq: cursor - 1, throughSeq: cursor, limit: 1 }).events[0];
+      anchorValid = previous !== undefined && hash(previous) === anchor;
+      if (!anchorValid) { gap ??= "event_anchor_changed"; state.observed_status = null; }
+    }
+    const page = readRunEventPage(store.db, { taskId: scope.task_id, runId, afterSeq: cursor, limit: 200,
+      ...(saved && saved.through_seq > cursor ? { throughSeq: saved.through_seq } : {}) });
+    if (page.sequenceGap) gap ??= "event_sequence_gap";
+    if (anchorValid && gap !== "invalid_cursor_facts") {
+      for (const event of page.events) {
+        if (event.seq !== cursor + 1) { gap ??= "event_sequence_gap"; break; }
+        if (event.session_id !== run.session_id) { gap ??= "event_source_binding_conflict"; break; }
+        const error = reduce(event, state, store);
+        if (error) { gap ??= error; break; }
+        cursor = event.seq;
+        anchor = hash(event);
+      }
+    }
+    const backlog = cursor < page.highWatermark || cursor < page.availableHighWatermark;
+    const complete = cursor >= 0 && !gap && !backlog && state.unsupported_events === 0;
+    const pending = (table: "approvals" | "clarifies", column: "approval_id" | "clarify_id") => {
+      const rows = store.db.prepare(`SELECT ${column} id FROM ${table} WHERE run_id=? AND status='pending' ORDER BY ${column} LIMIT 21`)
+        .all(runId) as { id: string }[];
+      return { ids: rows.slice(0, 20).map((row) => row.id), truncated: rows.length > 20,
+        count: (store.db.prepare(`SELECT COUNT(*) n FROM ${table} WHERE run_id=? AND status='pending'`).get(runId) as { n: number }).n };
+    };
+    store.db.prepare(`INSERT INTO attention_run_cursors(scope_id,run_id,binding_hash,last_seq,through_seq,last_event_hash,gap,facts_json,generation,updated_at)
+      VALUES(?,?,?,?,?,?,?,?,?,?) ON CONFLICT(scope_id,run_id) DO UPDATE SET last_seq=excluded.last_seq,through_seq=excluded.through_seq,
+      last_event_hash=excluded.last_event_hash,gap=excluded.gap,facts_json=excluded.facts_json,generation=excluded.generation,updated_at=excluded.updated_at`)
+      .run(scope.scope_id, runId, binding, cursor, page.highWatermark, anchor, gap, JSON.stringify(state), owner.generation, now);
+    writeSubject({ state: { phase: run.phase, outcome: run.outcome }, ...state,
+      reason: gap ? "history_gap" : backlog ? "event_backlog" : state.unsupported_events > 0 ? "unsupported_event_type" : "snapshot_only",
+      repo_binding: "unverified", process_liveness: "unknown", gap: gap ? "history_gap" : "retention_unverified",
+      event_replay: { cursor, through_seq: page.highWatermark, complete, gap, completeness_scope: "retained_range_only" },
+      pending_approvals: pending("approvals", "approval_id"), pending_clarifies: pending("clarifies", "clarify_id"),
+      limitations: ["No historical retention guarantee", "Event observations do not authorize execution"] });
+  });
+}
+
+FILE packages/core/src/state/attention-run-projection.test.ts
+import { realpathSync, rmSync } from "node:fs";
+import { join } from "node:path";
+import { afterEach, expect, it } from "vitest";
+import { createScratchDirSync } from "../scratch.js";
+import { openDb } from "./db.js";
+import { AttentionStore } from "./attention-store.js";
+import { AttentionObserver } from "./attention-observer.js";
+import { appendEvent, insertRun, insertTask, readRunEventPage } from "./run-store.js";
+import { projectAttentionRun } from "./attention-run-projection.js";
+
+const clean: Array<() => void> = [];
+afterEach(() => { for (const fn of clean.splice(0).reverse()) fn(); });
+function setup() {
+  const root = realpathSync(createScratchDirSync("tests", "attention-events"));
+  const path = join(root, "state.db");
+  const db = openDb({ path });
+  clean.push(() => { db.close(); rmSync(root, { recursive: true, force: true }); });
+  insertTask(db, path, { task_id: "t", title: "task", created_at: 1 });
+  insertRun(db, path, { task_id: "t", run_id: "r", session_id: "s", agent_id: "hermes", capability_id: "code", phase: "execute", started_at: 1 });
+  const store = new AttentionStore(db, path);
+  const owner = store.claimOwner("owner");
+  const scope = store.registerScope(owner, "t", root);
+  const observer = new AttentionObserver(store, owner);
+  const event = (seq: number, type = "status", payload: unknown = { status: "running" }) => appendEvent(db, path, {
+    event_id: `r:${seq}`, run_id: "r", session_id: "s", seq, type, payload, terminal: type === "done", created_at: seq + 1,
+  });
+  const facts = () => JSON.parse((db.prepare("SELECT payload_json FROM attention_subjects WHERE kind='run'").get() as { payload_json: string }).payload_json);
+  const cursor = () => db.prepare("SELECT * FROM attention_run_cursors WHERE run_id='r'").get() as { last_seq: number; gap: string | null; generation: number } | undefined;
+  return { root, path, db, store, owner, scope, observer, event, facts, cursor };
+}
+it("pages seq zero through a stable watermark without changing the legacy reader", () => {
+  const { db, event } = setup();
+  for (let seq = 0; seq < 201; seq++) event(seq);
+  const first = readRunEventPage(db, { taskId: "t", runId: "r", afterSeq: -1, limit: 200 });
+  expect(first.events).toHaveLength(200);
+  expect(first).toMatchObject({ nextAfter: 199, highWatermark: 200, hasMore: true, sequenceGap: false });
+  event(201);
+  const last = readRunEventPage(db, { taskId: "t", runId: "r", afterSeq: first.nextAfter, throughSeq: first.highWatermark, limit: 200 });
+  expect(last.events.map((row) => row.seq)).toEqual([200]);
+  expect(last.hasMore).toBe(false);
+});
+it("bounds payload bytes in SQL and refuses invalid cursor arguments", () => {
+  const { db, event } = setup();
+  event(0, "token.delta", { delta: "x".repeat(1000000) });
+  const page = readRunEventPage(db, { taskId: "t", runId: "r", afterSeq: -1, limit: 10 });
+  expect(page.events[0]).toMatchObject({ payload_json: null });
+  expect(page.events[0]!.payload_bytes).toBeGreaterThan(65536);
+  for (const limit of [0, 201, NaN, 1.5])
+    expect(() => readRunEventPage(db, { taskId: "t", runId: "r", afterSeq: -1, limit })).toThrow("invalid_event_page");
+  for (const throughSeq of [-2, NaN, Number.MAX_SAFE_INTEGER + 1])
+    expect(() => readRunEventPage(db, { taskId: "t", runId: "r", afterSeq: -1, limit: 10, throughSeq })).toThrow("invalid_event_page");
+});
+it("projects actual run events and resumes its durable cursor under a new owner", () => {
+  const { event, observer, facts, cursor, db, path, scope } = setup();
+  for (let i = 0; i < 205; i++) event(i);
+  observer.tick(1000);
+  expect(cursor()?.last_seq).toBe(199);
+  expect(facts()).toMatchObject({ reason: "event_backlog", event_replay: { complete: false } });
+  const reopened = openDb({ path });
+  clean.push(() => reopened.close());
+  const nextStore = new AttentionStore(reopened, path);
+  const owner = nextStore.claimOwner("next");
+  new AttentionObserver(nextStore, owner).tick(2000);
+  expect(cursor()).toMatchObject({ last_seq: 204, generation: owner.generation });
+  expect(facts()).toMatchObject({ observed_status: "running", event_replay: { complete: true } });
+  expect(() => projectAttentionRun(new AttentionStore(db, path), observer.owner, scope, "r", 3000)).toThrow("stale_owner");
+});
+it("keeps a sequence gap sticky even if a missing event later appears", () => {
+  const { event, observer, cursor, facts } = setup();
+  event(0); event(2);
+  observer.tick(1000);
+  expect(cursor()).toMatchObject({ last_seq: 0, gap: "event_sequence_gap" });
+  expect(facts().event_replay.complete).toBe(false);
+  event(1);
+  observer.tick(2000);
+  expect(cursor()).toMatchObject({ last_seq: 2, gap: "event_sequence_gap" });
+  expect(facts().event_replay.complete).toBe(false);
+});
+it.each(["invalid", "oversized", "wrong_session"])("does not advance over %s source data", (kind) => {
+  const { event, observer, cursor, facts, db } = setup();
+  event(0); event(1);
+  if (kind === "invalid") db.prepare("UPDATE events SET payload_json='{' WHERE seq=1").run();
+  if (kind === "oversized") db.prepare("UPDATE events SET payload_json=? WHERE seq=1").run(JSON.stringify({ delta: "x".repeat(1000000) }));
+  if (kind === "wrong_session") db.prepare("UPDATE events SET session_id='unrelated' WHERE seq=1").run();
+  observer.tick(1000);
+  expect(cursor()?.last_seq).toBe(0);
+  expect(facts()).toMatchObject({ reason: "history_gap", event_replay: { complete: false } });
+});
+it("flags unknown event semantics without blocking a later known event", () => {
+  const { event, observer, cursor, facts } = setup();
+  event(0, "future.new_kind", {}); event(1, "status", { status: "awaiting_clarify" });
+  observer.tick(1000);
+  expect(cursor()?.last_seq).toBe(1);
+  expect(facts()).toMatchObject({ observed_status: "awaiting_clarify", unsupported_events: 1,
+    reason: "unsupported_event_type", event_replay: { complete: false } });
+});
+it("does not claim caught up when another event arrived after a page watermark", () => {
+  const { event, observer, cursor, facts } = setup();
+  for (let i = 0; i < 201; i++) event(i);
+  observer.tick(1000);
+  event(201);
+  observer.tick(2000);
+  expect(cursor()?.last_seq).toBe(200);
+  expect(facts()).toMatchObject({ reason: "event_backlog", event_replay: { complete: false } });
+  observer.tick(3000);
+  expect(cursor()?.last_seq).toBe(201);
+  expect(facts().event_replay.complete).toBe(true);
+});
+it.each(["mutation", "deletion"])("marks an anchor %s unknown without advancing", (kind) => {
+  const { event, observer, cursor, facts, db } = setup();
+  event(0); observer.tick(1000);
+  if (kind === "mutation") db.prepare("UPDATE events SET payload_json=? WHERE seq=0").run(JSON.stringify({ status: "completed" }));
+  else db.prepare("DELETE FROM events WHERE seq=0").run();
+  event(1);
+  observer.tick(2000);
+  expect(cursor()).toMatchObject({ last_seq: 0, gap: "event_anchor_changed" });
+  expect(facts()).toMatchObject({ observed_status: null, event_replay: { complete: false } });
+});
+it("retains unknown evidence across source deletion and ID reuse", () => {
+  const { event, observer, cursor, facts, db, path } = setup();
+  event(0); observer.tick(1000);
+  db.prepare("DELETE FROM runs WHERE run_id='r'").run();
+  observer.tick(2000);
+  expect(facts().state).toBe("source_missing");
+  expect(cursor()?.gap).toBe("source_missing");
+  insertRun(db, path, { task_id: "t", run_id: "r", session_id: "s-new", agent_id: "hermes", capability_id: "code", phase: "execute", started_at: 3 });
+  observer.tick(3000);
+  expect(facts()).toMatchObject({ state: "unknown", reason: "source_binding_conflict" });
+  expect(cursor()?.last_seq).toBe(0);
+});
+it("rolls back cursor and projected facts together on a failed projection write", () => {
+  const { event, observer, cursor, db, store, owner, scope } = setup();
+  observer.tick(1000);
+  expect(cursor()?.last_seq).toBe(-1);
+  event(0);
+  db.exec("CREATE TRIGGER projection_failure BEFORE UPDATE ON attention_subjects WHEN NEW.kind='run' BEGIN SELECT RAISE(ABORT,'projection fault'); END;");
+  expect(() => projectAttentionRun(store, owner, scope, "r", 2000)).toThrow("projection fault");
+  expect(cursor()?.last_seq).toBe(-1);
+  db.exec("DROP TRIGGER projection_failure");
+  observer.tick(3000);
+  expect(cursor()?.last_seq).toBe(0);
+});
+it("restricts run pages to the exact default-tenant task and refuses mismatched scopes", () => {
+  const { event, observer, db, store, owner, scope } = setup();
+  event(0); observer.tick(1000);
+  expect(() => readRunEventPage(db, { taskId: "other", runId: "r", afterSeq: -1, limit: 10 })).toThrow("run_source_not_found");
+  expect(() => projectAttentionRun(store, owner, { ...scope, repo_path: "/other" }, "r", 2000)).toThrow("attention_scope_conflict");
+  db.prepare("UPDATE runs SET tenant_id='another' WHERE run_id='r'").run();
+  expect(() => readRunEventPage(db, { taskId: "t", runId: "r", afterSeq: -1, limit: 10 })).toThrow("run_source_not_found");
+});
+it("reads pending authorities without creating actions or treating event data as approval", () => {
+  const { event, observer, facts, db, cursor } = setup();
+  event(0, "approval.requested", { approval_id: "approval", action_summary: "publish", risk: "high" });
+  observer.tick(1000);
+  expect(facts().pending_approvals).toEqual({ ids: ["approval"], count: 1, truncated: false });
+  db.prepare("INSERT INTO events(event_id,run_id,session_id,seq,type,created_at,terminal,payload_json) VALUES('r:1','r','s',1,'approval.resolved',2,0,?)")
+    .run(JSON.stringify({ approval_id: "approval", status: "accepted", choice: "yes" }));
+  observer.tick(2000);
+  expect(cursor()?.last_seq).toBe(1);
+  expect(facts().pending_approvals.count).toBe(1);
+  expect(db.prepare("SELECT COUNT(*) n FROM attention_actions").get()).toEqual({ n: 0 });
+  expect(db.prepare("SELECT status FROM approvals").get()).toEqual({ status: "pending" });
+});
+
+FILE packages/core/src/state/attention-observer.ts
+import { classifyAttentionWait, type WaitInput } from "../attention.js";
+import { realpathSync } from "node:fs";
+import { projectAttentionRun } from "./attention-run-projection.js";
+import {
+  attentionDigest,
+  AttentionStore,
+  type AttentionOwner,
+  type AttentionScope,
+} from "./attention-store.js";
+interface Subject {
+  scope_id: string;
+  kind: string;
+  subject_id: string;
+  binding_hash: string;
+  source_version: number;
+  ordinal_cursor: number;
+  admitted: number;
+  discovered_at: number;
+  sampled_at: number;
+  generation: number;
+  payload_json: string;
+}
+interface Source {
+  session_id: string;
+  run_id: string;
+  request_sha256: string;
+  agent_id: string;
+  native_session_id: string | null;
+  repo_path: string;
+  version: number;
+  state: string;
+}
+interface Turn {
+  turn_id: string;
+  ordinal: number;
+  decision_json: string | null;
+  state: string;
+}
+/** Bounded synchronous transactions; no adapter, network, or model port. */
+export class AttentionObserver {
+  constructor(readonly store: AttentionStore, readonly owner: AttentionOwner) {}
+  tick(now = Date.now()): void {
+    if (!Number.isFinite(now)) throw new Error("invalid_clock");
+    this.store.assertOwner(this.owner);
+    for (const scope of this.store.listScopes()) {
+      try {
+        this.store.write(this.owner, () => this.scan(scope, now));
+      } catch (error) {
+        if (error instanceof Error && error.message === "stale_owner")
+          throw error;
+        this.store.write(this.owner, () =>
+          this.store.db
+            .prepare(
+              "UPDATE attention_scopes SET error=?,scan_complete=0 WHERE scope_id=?"
+            )
+            .run(
+              error instanceof Error
+                ? error.message.slice(0, 300)
+                : "source_error",
+              scope.scope_id
+            )
+        );
+      }
+    }
+  }
+  private scan(scope: AttentionScope, now: number): void {
+    const db = this.store.db;
+    const task = db
+      .prepare(
+        "SELECT created_at FROM tasks WHERE task_id=? AND tenant_id IS NULL"
+      )
+      .get(scope.task_id) as { created_at: number } | undefined;
+    if (
+      !task ||
+      attentionDigest([
+        this.owner.home_id,
+        scope.task_id,
+        scope.repo_path,
+        task.created_at,
+      ]) !== scope.scope_id
+    ) {
+      db.prepare(
+        "UPDATE attention_items SET state='source_missing',revision=revision+1 WHERE scope_id=? AND state='open'"
+      ).run(scope.scope_id);
+      db.prepare(
+        "UPDATE attention_scopes SET error='source_missing',scan_complete=0 WHERE scope_id=?"
+      ).run(scope.scope_id);
+      return;
+    }
+    // A scan advances a durable keyset, then restarts from the beginning. New IDs
+    // inserted behind the cursor are picked up on the next pass, never evicted.
+    const rows = db
+      .prepare(
+        `SELECT '0:'||s.session_id AS key,s.session_id AS id,'session' AS kind FROM agent_sessions s JOIN runs r ON r.run_id=s.run_id AND r.task_id=s.task_id
+      WHERE s.task_id=? AND r.tenant_id IS NULL AND '0:'||s.session_id>?
+      UNION ALL SELECT '1:'||r.run_id,r.run_id,'run' FROM runs r WHERE r.task_id=? AND r.tenant_id IS NULL AND '1:'||r.run_id>? AND NOT EXISTS (SELECT 1 FROM agent_sessions s WHERE s.run_id=r.run_id AND s.task_id=r.task_id)
+      ORDER BY key LIMIT 250`
+      )
+      .all(
+        scope.task_id,
+        scope.discovery_after,
+        scope.task_id,
+        scope.discovery_after
+      ) as { key: string; id: string; kind: string }[];
+    for (const row of rows) {
+      if (
+        db
+          .prepare(
+            "SELECT 1 FROM attention_subjects WHERE scope_id=? AND kind=? AND subject_id=? AND admitted=1"
+          )
+          .get(scope.scope_id, row.kind, row.id)
+      )
+        continue;
+      const count = (
+        db
+          .prepare("SELECT COUNT(*) n FROM attention_subjects WHERE admitted=1")
+          .get() as { n: number }
+      ).n;
+      const prior = db
+        .prepare(
+          "SELECT payload_json FROM attention_subjects WHERE scope_id=? AND kind=? AND subject_id=?"
+        )
+        .get(scope.scope_id, row.kind, row.id) as
+        | { payload_json: string }
+        | undefined;
+      if (prior) {
+        try {
+          if (JSON.parse(prior.payload_json).reason === "owner_released")
+            continue;
+        } catch {
+          /* Rebuild corrupt observation metadata from its source. */
+        }
+      }
+      let source: Source | undefined;
+      let sourceError = false;
+      try {
+        source =
+          row.kind === "session" ? this.source(scope, row.id) : undefined;
+      } catch {
+        sourceError = true;
+      }
+      const bound = row.kind === "run" || source !== undefined;
+      const admitted = bound && count < 100 ? 1 : 0;
+      db.prepare(
+        `INSERT INTO attention_subjects(scope_id,kind,subject_id,binding_hash,source_version,admitted,discovered_at,sampled_at,generation,payload_json) VALUES(?,?,?,?,?,?,?,?,?,?) ON CONFLICT(scope_id,kind,subject_id) DO UPDATE SET
+        admitted=excluded.admitted,binding_hash=excluded.binding_hash,source_version=excluded.source_version,sampled_at=excluded.sampled_at,generation=excluded.generation,payload_json=excluded.payload_json`
+      ).run(
+        scope.scope_id,
+        row.kind,
+        row.id,
+        source
+          ? this.binding(source)
+          : attentionDigest([scope.scope_id, row.kind, row.id]),
+        source?.version ?? 0,
+        admitted,
+        now,
+        now,
+        this.owner.generation,
+        JSON.stringify({
+          state: source?.state ?? "unknown",
+          awaiting_decision: source?.state === "awaiting_decision",
+          reason: sourceError
+            ? "source_error"
+            : !bound
+            ? "binding_unknown"
+            : !admitted
+            ? "capacity_exceeded"
+            : "snapshot_only",
+          unresolved_receipts: source ? this.receipts(source.session_id) : [],
+        })
+      );
+    }
+    const subjects = db
+      .prepare(
+        "SELECT * FROM attention_subjects WHERE scope_id=? AND admitted=1 ORDER BY kind,subject_id"
+      )
+      .all(scope.scope_id) as Subject[];
+    for (const subject of subjects) {
+      try {
+        db.transaction(() => {
+          if (subject.kind === "run") {
+            projectAttentionRun(this.store, this.owner, scope, subject.subject_id, now);
+            return;
+          }
+          if (subject.kind !== "session") return;
+          const source = this.source(scope, subject.subject_id);
+          if (!source) {
+            this.store.markMissing(
+              this.owner,
+              scope.scope_id,
+              subject.subject_id
+            );
+            this.update(subject, now, {
+              state: "source_missing",
+              reason: "source_missing",
+            });
+            return;
+          }
+          if (
+            this.binding(source) !== subject.binding_hash ||
+            source.version < subject.source_version
+          ) {
+            this.update(subject, now, {
+              state: source.state,
+              reason: "source_binding_conflict",
+            });
+            return;
+          }
+          const turns = db
+            .prepare(
+              "SELECT turn_id,ordinal,state,decision_json FROM session_turns WHERE session_id=? AND ordinal>? ORDER BY ordinal LIMIT 50"
+            )
+            .all(source.session_id, subject.ordinal_cursor) as Turn[];
+          const latest = db
+            .prepare(
+              "SELECT turn_id,ordinal,state,decision_json FROM session_turns WHERE session_id=? ORDER BY ordinal DESC LIMIT 1"
+            )
+            .get(source.session_id) as Turn | undefined;
+          let cursor = subject.ordinal_cursor;
+          let gap =
+            JSON.parse(subject.payload_json).gap === "history_gap" ||
+            (latest?.ordinal ?? 0) < cursor;
+          for (const turn of turns) {
+            if (turn.ordinal !== cursor + 1) gap = true;
+            try {
+              this.project(scope, source, turn, now);
+            } catch {
+              gap = true;
+            }
+            cursor = turn.ordinal;
+          }
+          if (latest && latest.ordinal <= cursor) {
+            try {
+              this.project(scope, source, latest, now);
+            } catch {
+              gap = true;
+            }
+          }
+          const backlogged = latest !== undefined && latest.ordinal > cursor;
+          db.prepare(
+            "UPDATE attention_subjects SET source_version=?,ordinal_cursor=? WHERE scope_id=? AND kind=? AND subject_id=?"
+          ).run(
+            source.version,
+            cursor,
+            scope.scope_id,
+            subject.kind,
+            subject.subject_id
+          );
+          const unresolved = this.receipts(source.session_id);
+          if (["completed", "failed", "cancelled"].includes(source.state))
+            db.prepare(
+              "UPDATE attention_items SET state='source_closed',revision=revision+1 WHERE scope_id=? AND session_id=? AND state='open'"
+            ).run(scope.scope_id, source.session_id);
+          // Only an applied receipt referencing this exact origin turn establishes
+          // external continuation. Authorization/risk obligations remain unresolved.
+          const items = (
+            db
+              .prepare(
+                "SELECT item_id FROM attention_items WHERE scope_id=? AND session_id=? AND state='open'"
+              )
+              .all(scope.scope_id, source.session_id) as { item_id: string }[]
+          )
+            .map((r) => this.store.getItem(scope.scope_id, r.item_id)!)
+            .filter(
+              (i) =>
+                i.session_id === source.session_id &&
+                i.state === "open" &&
+                !["risk_approval", "task_authorization"].includes(
+                  i.decision.continuation?.gate_kind ?? ""
+                )
+            );
+          for (const item of items) {
+            const applied = db
+              .prepare(
+                "SELECT message_id FROM session_messages WHERE session_id=? AND turn_id=? AND direction='inbound' AND state='applied' ORDER BY created_at,message_id LIMIT 1"
+              )
+              .get(source.session_id, item.turn_id) as
+              | { message_id: string }
+              | undefined;
+            if (applied)
+              db.prepare(
+                "UPDATE attention_items SET state='continued_externally',external_message_id=?,revision=revision+1 WHERE item_id=?"
+              ).run(applied.message_id, item.item_id);
+          }
+          this.update(subject, now, {
+            state: source.state,
+            awaiting_decision: source.state === "awaiting_decision",
+            version: source.version,
+            turn_id: latest?.turn_id ?? null,
+            process_liveness: "unknown",
+            gap: gap ? "history_gap" : "mutable_snapshot_no_complete_event_log",
+            reason: backlogged ? "history_backlog" : null,
+            unresolved_receipts: unresolved,
+            wait: this.wait(source, latest?.turn_id ?? null, now),
+          });
+        })();
+      } catch (error) {
+        this.update(subject, now, {
+          state: "unknown",
+          reason: "invalid_source",
+          detail:
+            error instanceof Error
+              ? error.message.slice(0, 120)
+              : "invalid_source",
+        });
+      }
+    }
+    const complete = rows.length < 250;
+    const undiscovered = db
+      .prepare(
+        `SELECT 1 FROM agent_sessions s JOIN runs r ON r.run_id=s.run_id AND r.task_id=s.task_id
+      WHERE s.task_id=? AND r.tenant_id IS NULL AND NOT EXISTS(SELECT 1 FROM attention_subjects a WHERE a.scope_id=? AND a.kind='session' AND a.subject_id=s.session_id) LIMIT 1`
+      )
+      .get(scope.task_id, scope.scope_id);
+
+    db.prepare(
+      "UPDATE attention_scopes SET discovery_after=?,scan_complete=?,sampled_at=?,deadline=?,generation=?,error=NULL WHERE scope_id=?"
+    ).run(
+      complete ? "" : rows.at(-1)!.key,
+      complete && !undiscovered ? 1 : 0,
+      now,
+      now + 65000,
+      this.owner.generation,
+      scope.scope_id
+    );
+  }
+  private source(scope: AttentionScope, id: string): Source | undefined {
+    const row = this.store.db
+      .prepare(
+        `SELECT s.* FROM agent_sessions s JOIN runs r ON r.run_id=s.run_id AND r.task_id=s.task_id JOIN tasks t ON t.task_id=s.task_id
+      WHERE s.session_id=? AND s.task_id=? AND r.tenant_id IS NULL AND t.tenant_id IS NULL`
+      )
+      .get(id, scope.task_id) as Source | undefined;
+    try {
+      return row && realpathSync(row.repo_path) === scope.repo_path
+        ? row
+        : undefined;
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === "ENOENT") return undefined;
+      throw error;
+    }
+  }
+  private binding(source: Source): string {
+    return attentionDigest([
+      source.session_id,
+      source.run_id,
+      source.request_sha256,
+      source.agent_id,
+      source.repo_path,
+    ]);
+  }
+  private project(
+    scope: AttentionScope,
+    source: Source,
+    turn: Turn,
+    now: number
+  ): void {
+    if (turn.decision_json === null) return;
+    if (turn.decision_json.length > 16384)
+      throw new Error("oversized_decision");
+    this.store.projectDecision(this.owner, {
+      scopeId: scope.scope_id,
+      sessionId: source.session_id,
+      turnId: turn.turn_id,
+      sourceVersion: source.version,
+      decision: JSON.parse(turn.decision_json),
+      now,
+    });
+  }
+  private wait(source: Source, turnId: string | null, now: number) {
+    const db = this.store.db;
+    const input: WaitInput = {
+      state: source.state,
+      turnId,
+      version: source.version,
+      now,
+    };
+    const g = db
+      .prepare(
+        "SELECT grant_id,status,expected_turn_id,expected_version,body_json FROM session_continuation_grants WHERE session_id=? AND status='active'"
+      )
+      .get(source.session_id) as
+      | {
+          grant_id: string;
+          status: string;
+          expected_turn_id: string;
+          expected_version: number;
+          body_json: string;
+        }
+      | undefined;
+    try {
+      if (g)
+        input.grant = {
+          id: g.grant_id,
+          status: g.status,
+          turnId: g.expected_turn_id,
+          version: g.expected_version,
+          expires: Date.parse(JSON.parse(g.body_json).expires_at),
+        };
+    } catch {
+      return { reason: "grant_unreadable", owner: "unknown", blocked: true };
+    }
+    const attempt = db
+      .prepare(
+        "SELECT a.* FROM session_continuation_attempts a JOIN session_continuation_grants g ON a.grant_id=g.grant_id WHERE g.session_id=? AND a.status IN ('checking','reserved') ORDER BY a.created_at LIMIT 1"
+      )
+      .get(source.session_id) as
+      | {
+          status: string;
+          source_turn_id: string;
+          source_version: number;
+          reservation_version: number | null;
+          message_id: string | null;
+        }
+      | undefined;
+    if (attempt)
+      input.attempt = {
+        state: attempt.status,
+        sourceTurn: attempt.source_turn_id,
+        sourceVersion: attempt.source_version,
+        ...(attempt.reservation_version === null
+          ? {}
+          : { reservationVersion: attempt.reservation_version }),
+        ...(attempt.message_id === null
+          ? {}
+          : { messageId: attempt.message_id }),
+      };
+    const message = db
+      .prepare(
+        "SELECT message_id,state FROM session_messages WHERE session_id=? AND direction='inbound' AND state IN ('accepted','failed') AND message_id NOT IN (SELECT message_id FROM attention_receipt_resolutions) ORDER BY CASE state WHEN 'accepted' THEN 0 ELSE 1 END,created_at LIMIT 1"
+      )
+      .get(source.session_id) as
+      | { message_id: string; state: string }
+      | undefined;
+    if (message)
+      input.message = { id: message.message_id, state: message.state };
+    return {
+      ...classifyAttentionWait(input),
+      grant_id: g?.grant_id ?? null,
+      message_id: message?.message_id ?? null,
+    };
+  }
+  private receipts(id: string): unknown[] {
+    return this.store.db
+      .prepare(
+        "SELECT message_id,state FROM session_messages WHERE session_id=? AND direction='inbound' AND state IN ('accepted','failed') AND message_id NOT IN (SELECT message_id FROM attention_receipt_resolutions) ORDER BY created_at LIMIT 10"
+      )
+      .all(id);
+  }
+  private update(s: Subject, now: number, payload: unknown): void {
+    let old: { gap?: string } = {};
+    try {
+      old = JSON.parse(s.payload_json) as { gap?: string };
+    } catch {
+      old = { gap: "history_gap" };
+    }
+    if (old.gap === "history_gap" && payload && typeof payload === "object")
+      payload = { ...payload, gap: "history_gap" };
+    this.store.db
+      .prepare(
+        "UPDATE attention_subjects SET sampled_at=?,generation=?,payload_json=? WHERE scope_id=? AND kind=? AND subject_id=?"
+      )
+      .run(
+        now,
+        this.owner.generation,
+        JSON.stringify(payload),
+        s.scope_id,
+        s.kind,
+        s.subject_id
+      );
+  }
+  inventory(scopeId: string, now = Date.now(), after = "", limit = 100) {
+    if (!Number.isSafeInteger(limit) || limit < 1 || limit > 100)
+      throw new Error("invalid_limit");
+    const scope = this.store.getScope(scopeId);
+    if (!scope) throw new Error("not_found");
+    const db = this.store.db;
+    const counts = db
+      .prepare(
+        "SELECT COUNT(*) total,COALESCE(SUM(admitted),0) admitted FROM attention_subjects WHERE scope_id=?"
+      )
+      .get(scopeId) as { total: number; admitted: number };
+    const rows = db
+      .prepare(
+        "SELECT * FROM attention_subjects WHERE scope_id=? AND kind||':'||subject_id>? ORDER BY kind,subject_id LIMIT ?"
+      )
+      .all(scopeId, after, limit + 1) as Subject[];
+    const current = db
+      .prepare("SELECT generation FROM daemon_owner WHERE singleton=1")
+      .get() as { generation: number };
+    const faulty = db
+      .prepare(
+        "SELECT 1 FROM attention_subjects WHERE scope_id=? AND (sampled_at<? OR generation<>? OR json_extract(payload_json,'$.reason') IS NOT NULL AND json_extract(payload_json,'$.reason')<>'snapshot_only' OR json_extract(payload_json,'$.gap')='history_gap') LIMIT 1"
+      )
+      .get(scopeId, now - 65000, current.generation);
+    const coverage =
+      now < scope.sampled_at
+        ? "unknown"
+        : scope.generation !== current.generation || now > scope.deadline
+        ? "uncovered"
+        : !scope.scan_complete ||
+          scope.error ||
+          counts.total > counts.admitted ||
+          faulty
+        ? "degraded"
+        : "covered";
+    return {
+      scope,
+      coverage,
+      subject_total: counts.total,
+      admitted: counts.admitted,
+      returned: Math.min(limit, rows.length),
+      truncated: rows.length > limit,
+      next_after:
+        rows.length > limit
+          ? `${rows[limit - 1]!.kind}:${rows[limit - 1]!.subject_id}`
+          : null,
+      subjects: rows.slice(0, limit).map(({ payload_json, ...r }) => ({
+        ...r,
+        facts: JSON.parse(payload_json),
+      })),
+      limitations: [
+        "No complete mutable-source history",
+        "Process liveness unknown",
+        "Coverage is observation, not execution ownership",
+      ],
+    };
+  }
+}
+
+FILE packages/core/src/state/attention-store.ts
+import { createHash, randomUUID } from "node:crypto";
+import { realpathSync, statSync } from "node:fs";
+import type Database from "better-sqlite3";
+import { SessionDecision } from "@osstack/protocol";
+import { withWrite } from "./db.js";
+
+export function attentionDigest(value: unknown): string {
+  const canonical = (v: unknown): string => {
+    if (Array.isArray(v)) return `[${v.map(canonical).join(",")}]`;
+    if (v !== null && typeof v === "object")
+      return `{${Object.entries(v)
+        .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+        .map(([k, x]) => `${JSON.stringify(k)}:${canonical(x)}`)
+        .join(",")}}`;
+    return JSON.stringify(v);
+  };
+  return createHash("sha256").update(canonical(value)).digest("hex");
+}
+export interface AttentionOwner {
+  instance_id: string;
+  generation: number;
+  home_id: string;
+}
+export interface AttentionScope {
+  scope_id: string;
+  task_id: string;
+  repo_path: string;
+  discovery_after: string;
+  scan_complete: number;
+  sampled_at: number;
+  deadline: number;
+  generation: number;
+  error: string | null;
+}
+export interface AttentionItem {
+  item_id: string;
+  scope_id: string;
+  session_id: string;
+  turn_id: string;
+  decision_id: string;
+  content_hash: string;
+  decision: SessionDecision;
+  source_version: number;
+  revision: number;
+  state: string;
+  created_at: number;
+  updated_at: number;
+  external_message_id: string | null;
+}
+type ItemRow = Omit<AttentionItem, "decision"> & { decision_json: string };
+function parseItem(row: ItemRow): AttentionItem {
+  const { decision_json, ...rest } = row;
+  return {
+    ...rest,
+    decision: SessionDecision.parse(JSON.parse(decision_json)),
+  };
+}
+export class AttentionStore {
+  constructor(readonly db: Database.Database, readonly path: string) {}
+  /** Only called AFTER the daemon's process lock is acquired. Not an executor lease. */
+  claimOwner(instanceId: string): AttentionOwner {
+    return withWrite(this.db, this.path, () => {
+      this.db
+        .prepare(
+          `INSERT INTO daemon_owner(singleton,home_id,instance_id,generation) VALUES(1,?,?,1)
+        ON CONFLICT(singleton) DO UPDATE SET instance_id=excluded.instance_id,generation=generation+1`
+        )
+        .run(randomUUID(), instanceId);
+      return this.db
+        .prepare(
+          "SELECT home_id,instance_id,generation FROM daemon_owner WHERE singleton=1"
+        )
+        .get() as AttentionOwner;
+    });
+  }
+  assertOwner(owner: AttentionOwner): void {
+    if (
+      !this.db
+        .prepare(
+          "SELECT 1 FROM daemon_owner WHERE singleton=1 AND home_id=? AND instance_id=? AND generation=?"
+        )
+        .get(owner.home_id, owner.instance_id, owner.generation)
+    )
+      throw new Error("stale_owner");
+  }
+  write<T>(owner: AttentionOwner, fn: () => T): T {
+    if (this.db.inTransaction) {
+      this.assertOwner(owner);
+      return fn();
+    }
+    return withWrite(this.db, this.path, () => {
+      this.assertOwner(owner);
+      return fn();
+    });
+  }
+  registerScope(
+    owner: AttentionOwner,
+    taskId: string,
+    repoPath: string
+  ): AttentionScope {
+    const canonicalRepo = realpathSync(repoPath);
+    if (!statSync(canonicalRepo).isDirectory())
+      throw new Error("repository_directory_required");
+    return this.write(owner, () => {
+      const task = this.db
+        .prepare(
+          "SELECT created_at FROM tasks WHERE task_id=? AND tenant_id IS NULL"
+        )
+        .get(taskId) as { created_at: number } | undefined;
+      if (!task) throw new Error("not_found");
+      if (
+        (
+          this.db.prepare("SELECT COUNT(*) n FROM attention_scopes").get() as {
+            n: number;
+          }
+        ).n >= 100 &&
+        !this.db
+          .prepare(
+            "SELECT 1 FROM attention_scopes WHERE task_id=? AND repo_path=?"
+          )
+          .get(taskId, canonicalRepo)
+      )
+        throw new Error("scope_capacity");
+      const scopeId = attentionDigest([
+        owner.home_id,
+        taskId,
+        canonicalRepo,
+        task.created_at,
+      ]);
+      this.db
+        .prepare(
+          `INSERT INTO attention_scopes(scope_id,task_id,repo_path,generation) VALUES(?,?,?,?)
+        ON CONFLICT(scope_id) DO NOTHING`
+        )
+        .run(scopeId, taskId, canonicalRepo, owner.generation);
+      return this.getScope(scopeId)!;
+    });
+  }
+  getScope(scopeId: string): AttentionScope | undefined {
+    return this.db
+      .prepare("SELECT * FROM attention_scopes WHERE scope_id=?")
+      .get(scopeId) as AttentionScope | undefined;
+  }
+  listScopes(): AttentionScope[] {
+    return this.db
+      .prepare("SELECT * FROM attention_scopes ORDER BY scope_id")
+      .all() as AttentionScope[];
+  }
+  getItem(scopeId: string, itemId: string): AttentionItem | undefined {
+    const row = this.db
+      .prepare("SELECT * FROM attention_items WHERE scope_id=? AND item_id=?")
+      .get(scopeId, itemId) as ItemRow | undefined;
+    return row ? parseItem(row) : undefined;
+  }
+  listItems(scopeId: string, after = "", limit = 100): AttentionItem[] {
+    if (!Number.isSafeInteger(limit) || limit < 1 || limit > 100)
+      throw new Error("invalid_limit");
+    return (
+      this.db
+        .prepare(
+          "SELECT * FROM attention_items WHERE scope_id=? AND item_id>? ORDER BY item_id LIMIT ?"
+        )
+        .all(scopeId, after, limit) as ItemRow[]
+    ).map(parseItem);
+  }
+  projectDecision(
+    owner: AttentionOwner,
+    input: {
+      scopeId: string;
+      sessionId: string;
+      turnId: string;
+      sourceVersion: number;
+      decision: unknown;
+      now: number;
+    }
+  ): AttentionItem {
+    const decision = SessionDecision.parse(input.decision);
+    const contentHash = attentionDigest(decision);
+    const itemId = attentionDigest([
+      input.scopeId,
+      input.sessionId,
+      input.turnId,
+      decision.decision_id,
+    ]);
+    if (
+      !Number.isSafeInteger(input.sourceVersion) ||
+      input.sourceVersion < 1 ||
+      !Number.isFinite(input.now)
+    )
+      throw new Error("invalid_source_version");
+    return this.write(owner, () => {
+      if (!this.getScope(input.scopeId)) throw new Error("not_found");
+      const existing = this.getItem(input.scopeId, itemId);
+      if (existing && existing.content_hash !== contentHash)
+        throw new Error("decision_content_conflict");
+      if (existing && existing.source_version > input.sourceVersion)
+        throw new Error("stale_source");
+      this.db
+        .prepare(
+          `INSERT INTO attention_items(item_id,scope_id,session_id,turn_id,decision_id,content_hash,decision_json,source_version,created_at,updated_at)
+        VALUES(?,?,?,?,?,?,?,?,?,?) ON CONFLICT(item_id) DO UPDATE SET
+        revision=revision+CASE WHEN source_version<>excluded.source_version OR state='source_missing' THEN 1 ELSE 0 END,
+        state=CASE WHEN state='source_missing' THEN 'open' ELSE state END,
+        source_version=excluded.source_version,updated_at=excluded.updated_at`
+        )
+        .run(
+          itemId,
+          input.scopeId,
+          input.sessionId,
+          input.turnId,
+          decision.decision_id,
+          contentHash,
+          JSON.stringify(decision),
+          input.sourceVersion,
+          input.now,
+          input.now
+        );
+      return this.getItem(input.scopeId, itemId)!;
+    });
+  }
+  release(
+    owner: AttentionOwner,
+    scopeId: string,
+    kind: string,
+    subjectId: string,
+    expectedVersion: number
+  ): void {
+    if (!["session", "run", "loop"].includes(kind))
+      throw new Error("invalid_subject_kind");
+    this.write(owner, () => {
+      const row = this.db
+        .prepare(
+          "SELECT payload_json,source_version FROM attention_subjects WHERE scope_id=? AND kind=? AND subject_id=?"
+        )
+        .get(scopeId, kind, subjectId) as
+        | { payload_json: string; source_version: number }
+        | undefined;
+      if (!row || row.source_version !== expectedVersion)
+        throw new Error("subject_version_conflict");
+      this.db
+        .prepare(
+          "UPDATE attention_subjects SET admitted=0,payload_json=? WHERE scope_id=? AND kind=? AND subject_id=?"
+        )
+        .run(
+          JSON.stringify({
+            ...JSON.parse(row.payload_json),
+            reason: "owner_released",
+          }),
+          scopeId,
+          kind,
+          subjectId
+        );
+    });
+  }
+  markMissing(owner: AttentionOwner, scopeId: string, sessionId: string): void {
+    this.write(owner, () =>
+      this.db
+        .prepare(
+          `UPDATE attention_items SET state='source_missing',revision=revision+1
+      WHERE scope_id=? AND session_id=? AND state='open'`
+        )
+        .run(scopeId, sessionId)
+    );
+  }
+}
+
+Host validation: 62 tests pass across new projection15/run-store11/observer12/db24, using actual migration42 and actual openDb reopen. Do not assume tests cover unseen cases.

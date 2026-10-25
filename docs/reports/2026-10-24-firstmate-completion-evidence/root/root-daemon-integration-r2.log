@@ -1,0 +1,21 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion/packages/cli
+
+ ✓ src/local-ledgers-daemon.test.ts (15 tests) 13601ms
+   ✓ persists advisory cache and quota across daemon restart without answering or marking items seen  738ms
+   ✓ keeps unknown invocation quarantined after stop and restart, with no late success  1681ms
+   ✓ exercises the default exported provider without credentials and fails as not_authenticated  838ms
+   ✓ reads scoped recovery through actual daemon and CLI without retry or private prompt disclosure  379ms
+   ✓ measures bounded recovery over the actual socket alongside mixed session and run observations  401ms
+   ✓ watches actual daemon snapshots through the main CLI and leaves worker execution unchanged  2737ms
+   ✓ serves local sources as explicitly disabled without a host registry and rejects request-selected paths  428ms
+   ✓ inspects a pinned snapshot through the real daemon and main CLI and honors live revocation  337ms
+   ✓ runs one signed fake delivery through main CLI without declaring a production send or resolving the promise  750ms
+   ✓ waits for bounded delivery finalization before closing the DB and never accepts a late success  1146ms
+   ✓ routes pinned viewer launch to the real inspection service and consumes its handoff once  3307ms
+
+ Test Files  1 passed (1)
+      Tests  15 passed (15)
+   Start at  17:11:45
+   Duration  20.66s (transform 1.58s, setup 15ms, collect 6.32s, tests 13.60s, environment 0ms, prepare 489ms)
+

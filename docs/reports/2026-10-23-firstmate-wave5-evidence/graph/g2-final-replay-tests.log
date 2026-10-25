@@ -1,0 +1,54 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-supervision-next/packages/cli
+
+ ✓ src/graph-execution-context.test.ts (8 tests) 52ms
+osstack: retaining write lease graph-action:5dff1909d41925254880e6e64754d6ab7fa2bc4cb94a291ea7db9e64dd3b52c4: Error: external stop unconfirmed
+osstack: retaining write lease graph-action:b293cba3eb6c1895a5073e69a28b019bf2fbb464294aae2f34a64e1fa20fdc4d: Error: adapter result or execution unconfirmed
+ ✓ src/graph-verification.test.ts (41 tests) 82571ms
+   ✓ restores the exact verified candidate into independent repositories and rejects reviewer writes  1323ms
+   ✓ rejects wrong manifest and reviewer identity before restoring or invoking  517ms
+   ✓ persists actual stopped exit evidence and rejects tampering/replay  2202ms
+   ✓ keeps unknown stop separate from stopped malformed review and valid changes_requested  2917ms
+   ✓ runs real registered command and independent G04 review concurrently with an observable two-way barrier  2968ms
+   ✓ rejects revoke during adapter availability before actual invocation  1405ms
+   ✓ rejects mutate during adapter availability before actual invocation  1214ms
+   ✓ snapshots callback/data replacement and rejects live revocation after preparation awaits  1579ms
+   ✓ rejects mutation during restore before accepting any workspace baseline  1025ms
+   ✓ releases preparation lease if authority is revoked while acquiring it  489ms
+   ✓ uses exact allowlisted exit 7 instead of model pass claims  2141ms
+   ✓ uses exact allowlisted exit 1 instead of model pass claims  1959ms
+   ✓ uses exact allowlisted exit 2 instead of model pass claims  2203ms
+   ✓ refuses surviving descendants, unregistered commands and cross-attempt replay  2099ms
+   ✓ does not accept review done as executor stop proof through the actual broker  1396ms
+   ✓ classifies stopped malformed output with reviewer mutation=false without a code-failure result  2302ms
+   ✓ classifies stopped malformed output with reviewer mutation=true without a code-failure result  2234ms
+   ✓ rejects manifest scope/SHA mismatch and independent identity verifier rejection before invocation  572ms
+   ✓ snapshots executor evidence before asynchronous verification and rechecks authority afterward  3775ms
+   ✓ rejects actual successful command that mutates candidate: printf malicious > file  2280ms
+   ✓ rejects actual successful command that mutates candidate: git update-index --assume-unchanged file; printf malicious > file  2294ms
+   ✓ rejects actual successful command that mutates candidate: chmod +x file  2414ms
+   ✓ rejects actual successful command that mutates candidate: chmod 600 file  2291ms
+   ✓ rejects actual successful command that mutates candidate: git update-index --assume-unchanged file  2247ms
+   ✓ rejects actual successful command that mutates candidate: printf staged > file; git add file; printf candidate > file  2308ms
+   ✓ rejects actual successful command that mutates candidate: git -c user.name=test -c user.email=test@invalid commit --allow-empty -qm malicious  2280ms
+   ✓ allocates distinct actual review sessions on explicit retry and persists prompt receipts  3258ms
+   ✓ rejects an oversized envelope at the storage boundary before publishing any file  1762ms
+   ✓ requires an actual invocation receipt and strips supplied writer context on every invocation  1877ms
+   ✓ validates all new receipts when loading digest-consistent evidence  1897ms
+   ✓ allows untracked build outputs from successful actual acceptance execution  1870ms
+   ✓ confirms ordinary failing tests with escape-heavy and multibyte captured output  2095ms
+   ✓ settles an oversized structured review as a bounded contract failure instead of unknown  2010ms
+   ✓ binds actual contained tests exit 0 to candidate/image/ledger without POSIX evidence  1932ms
+   ✓ binds actual contained tests exit 1 to candidate/image/ledger without POSIX evidence  2064ms
+   ✓ binds actual contained tests exit 42 to candidate/image/ledger without POSIX evidence  2519ms
+   ✓ binds actual contained tests exit 7 to candidate/image/ledger without POSIX evidence  2901ms
+   ✓ rejects cross-candidate, image, generation, invocation and container receipt substitution  2581ms
+   ✓ retains admission and seals replay after contained DELETE acknowledgement loss  1279ms
+   ✓ settles contained cancellation only after durable removal and prevents replay  2566ms
+   ✓ V2 rejects a second reviewer invocation for the same effect but permits a newly authorized logical attempt  1527ms
+
+ Test Files  2 passed (2)
+      Tests  49 passed (49)
+   Start at  13:29:42
+   Duration  83.80s (transform 655ms, setup 19ms, collect 1.51s, tests 82.62s, environment 0ms, prepare 56ms)
+

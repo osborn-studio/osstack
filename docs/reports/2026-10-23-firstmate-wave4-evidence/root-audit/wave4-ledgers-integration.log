@@ -1,0 +1,52 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-local-ledgers/packages/cli
+
+ ✓ src/attention-triage.test.ts (15 tests) 476ms
+ ❯ src/local-ledgers-daemon.test.ts (4 tests | 1 failed) 312ms
+   ✓ keeps local follow-up available with Attention disabled and rejects public delivery claims 75ms
+   ✓ does not initialize the triage provider when disabled, including the real command 69ms
+   × persists advisory cache and quota across daemon restart without answering or marking items seen 57ms
+     → expected { id: 1, ok: true, result: { …(4) } } to match object { ok: true, result: { …(2) } }
+(3 matching properties omitted from actual)
+   ✓ keeps unknown invocation quarantined after stop and restart, with no late success 111ms
+ ✓ src/attention-read-model.test.ts (7 tests) 197ms
+ ✓ src/follow-up-command.test.ts (12 tests) 10ms
+ ✓ src/home-inventory-daemon.test.ts (1 test) 50ms
+ ✓ src/session-rpc.test.ts (32 tests) 3752ms
+   ✓ does not reserve manual instructions or answers when execution admission is denied  306ms
+   ✓ cancels admission queued for either manual route without reserving a receipt  367ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/local-ledgers-daemon.test.ts > persists advisory cache and quota across daemon restart without answering or marking items seen
+AssertionError: expected { id: 1, ok: true, result: { …(4) } } to match object { ok: true, result: { …(2) } }
+(3 matching properties omitted from actual)
+
+- Expected
++ Received
+
+  {
+    "ok": true,
+    "result": {
+-     "reason": "budget_exhausted",
++     "reason": "source_changed",
+      "state": "fallback",
+    },
+  }
+
+ ❯ src/local-ledgers-daemon.test.ts:56:84
+     54|  db.prepare("UPDATE agent_sessions SET version=2").run();db.prepare("U…
+     55|  }finally{db.close();}
+     56|  const changed=await watched(f.repo);expect(await rpc("attention.triag…
+       |                                                                                    ^
+     57| });
+     58| it("keeps unknown invocation quarantined after stop and restart, with …
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 5 passed (6)
+      Tests  1 failed | 70 passed (71)
+   Start at  13:08:16
+   Duration  7.13s (transform 1.99s, setup 63ms, collect 6.11s, tests 4.80s, environment 1ms, prepare 277ms)
+

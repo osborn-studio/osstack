@@ -1,0 +1,52 @@
+{
+  "before": {
+    "packages/loop/src/loop-engine.ts": "7e987ba1a236ff5b0ebdae5679c2a6d1b3fbb839b64918813a791a8cbf9522e5",
+    "packages/loop/src/loop-engine.test.ts": "5175a1b2e84dda684f31338a6c82a6c65898390389a02d3717c7934b5d2ec1d7",
+    "packages/loop/src/candidate-policy.ts": "9484b9dcbe2a8278ee716222e17fdea0675cb81dbbaa7d72f9a64e5e63dc0abd"
+  },
+  "after": {
+    "packages/loop/src/loop-engine.ts": "7e987ba1a236ff5b0ebdae5679c2a6d1b3fbb839b64918813a791a8cbf9522e5",
+    "packages/loop/src/loop-engine.test.ts": "5175a1b2e84dda684f31338a6c82a6c65898390389a02d3717c7934b5d2ec1d7",
+    "packages/loop/src/candidate-policy.ts": "9484b9dcbe2a8278ee716222e17fdea0675cb81dbbaa7d72f9a64e5e63dc0abd"
+  },
+  "commands": [
+    {
+      "label": "tests",
+      "command": [
+        "pnpm",
+        "--filter",
+        "@osstack/loop",
+        "exec",
+        "vitest",
+        "run",
+        "src/loop-engine.test.ts"
+      ],
+      "exit_code": 0,
+      "seconds": 21.410976886749268
+    },
+    {
+      "label": "typecheck",
+      "command": [
+        "pnpm",
+        "--filter",
+        "@osstack/loop",
+        "typecheck"
+      ],
+      "exit_code": 0,
+      "seconds": 2.9017369747161865
+    },
+    {
+      "label": "biome",
+      "command": [
+        "pnpm",
+        "exec",
+        "biome",
+        "check",
+        "packages/loop/src/loop-engine.ts",
+        "packages/loop/src/loop-engine.test.ts"
+      ],
+      "exit_code": 0,
+      "seconds": 0.6734309196472168
+    }
+  ]
+}

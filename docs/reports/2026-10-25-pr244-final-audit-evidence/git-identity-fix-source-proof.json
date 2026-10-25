@@ -1,0 +1,9 @@
+{
+  "head": "b2329ccd541862aec488fe75a5135cd7e07661bc",
+  "production": "packages/loop/src/verifier.ts",
+  "current_sha256": "03a66860e36dd8bbc4bf21dcdc5e22ca2170d273881fba5c61c340a60878d2f8",
+  "head_sha256": "03a66860e36dd8bbc4bf21dcdc5e22ca2170d273881fba5c61c340a60878d2f8",
+  "byte_equal": true,
+  "test_sha256": "8e1c7442d06fdbecb4dfb9a5149b5c09cc8715c1f82695b06b23605f25ba280b",
+  "ci_log_sha256": "2d93a5c0dcc77abbb39a051928a0a5e2e83aec8841010e6ac5ea9535027455f1"
+}

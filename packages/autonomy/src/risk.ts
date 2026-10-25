@@ -75,7 +75,7 @@ const R3_PATH_RULES: ReadonlyArray<{
 ];
 
 const OSSTACK_TRUST_KERNEL_PATH =
-  /^packages\/(?:(?:autonomy\/src\/(?:approval|core-persistence|engine|git-candidate|progress-budget|risk|state-machine|types|index))|(?:protocol\/src\/autonomy)|(?:github\/src\/delivery)|(?:cli\/src\/(?:autonomy-command|guarded-git-runtime|guarded-open-db))|(?:core\/src\/(?:policy\/profile|state\/(?:autonomy-runs|contract-approvals|migrations|schema)))|(?:agents\/src\/adapters\/kimi-code)|(?:loop\/src\/(?:review-boundary|reviewer-isolation)))\.(?:ts|js)$/;
+  /^packages\/(?:(?:autonomy\/src\/(?:approval|core-persistence|engine|git-candidate|progress-budget|risk|state-machine|types|index))|(?:protocol\/src\/(?:autonomy|delivery-contract))|(?:knowledge\/src\/context-budget)|(?:github\/src\/delivery)|(?:cli\/src\/(?:autonomy-command|guarded-git-runtime|guarded-open-db|delivery-contract-host|deliver-command|execution-context))|(?:core\/src\/(?:delivery-contract|policy\/profile|state\/(?:autonomy-runs|contract-approvals|migrations|schema)))|(?:agents\/src\/adapters\/kimi-code)|(?:loop\/src\/(?:review-boundary|reviewer-isolation|loop-engine)))\.(?:ts|js)$/;
 
 const SENSITIVE_PACKAGE_SCRIPTS = new Set([
   "build",

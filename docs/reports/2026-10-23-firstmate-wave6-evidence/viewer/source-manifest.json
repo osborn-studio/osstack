@@ -1,0 +1,7 @@
+{
+  "packages/cli/src/worker-presentation.ts": "1def3efdc486d27d011f6218c320d2a881abb7238865797563f35c08db54e8f3",
+  "packages/cli/src/worker-viewer-command.ts": "1499540823474e42ee47dbc272a0da5f36b81526947d49b2fd551bfde342702d",
+  "packages/cli/src/worker-presentation.test.ts": "7ee347073fa1f5719e9128414e4b92f8762b78e462ae172ad6b896f51f994f7b",
+  "packages/cli/src/worker-viewer-command.test.ts": "2b22d90cce5afaf66b9c1ed821b7338bb09e67a80720f32ef00f3817599cab61",
+  "docs/guides/worker-terminal-viewer.md": "b41d09a6da553c36a4ea2398994dcd8235f0e4f2593f358a684f3aa6ddb416fd"
+}

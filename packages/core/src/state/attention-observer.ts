@@ -1,8 +1,9 @@
 import { classifyAttentionWait, type WaitInput } from "../attention.js";
 import { realpathSync } from "node:fs";
+import { projectAttentionRun } from "./attention-run-projection.js";
 import {
   attentionDigest,
-  AttentionStore,
+  type AttentionStore,
   type AttentionOwner,
   type AttentionScope,
 } from "./attention-store.js";
@@ -36,7 +37,74 @@ interface Turn {
   state: string;
 }
 /** Bounded synchronous transactions; no adapter, network, or model port. */
+export interface AttentionObserverStepOptions { maxSubjects?: number; maxEvents?: number; maxDurationMs?: number }
+export interface AttentionObserverStepResult { passComplete: boolean; scopesVisited: number; subjectsSampled: number; eventQuotaUsed: number; durationMs: number }
 export class AttentionObserver {
+  private pass: { scopes: AttentionScope[]; current?: { scope: AttentionScope; subjects: Array<{ kind: string; subject_id: string }>; next: number } } | undefined;
+  /** Each admitted source gets one share per pass; backlog never jumps the queue.
+   * Persisted discovery/run/ordinal cursors remain the recovery authority. */
+  step(options: AttentionObserverStepOptions = {}, now = Date.now()): AttentionObserverStepResult {
+    const maxSubjects = options.maxSubjects ?? 25; const maxEvents = options.maxEvents ?? 200; const maxDuration = options.maxDurationMs ?? 5;
+    if (!Number.isFinite(now) || !Number.isSafeInteger(maxSubjects) || maxSubjects < 1 || maxSubjects > 100
+      || !Number.isSafeInteger(maxEvents) || maxEvents < 1 || maxEvents > 200 || !Number.isFinite(maxDuration) || maxDuration <= 0 || maxDuration > 1000) throw Error("invalid_step_budget");
+    this.store.assertOwner(this.owner);
+    const started = performance.now(); let scopesVisited = 0; let subjectsSampled = 0; let eventQuotaUsed = 0;
+    this.pass ??= { scopes: this.store.listScopes().sort((a, b) => a.sampled_at - b.sampled_at || a.scope_id.localeCompare(b.scope_id)) };
+    const pass = this.pass;
+    if (!pass.current) {
+      const queuedScope = pass.scopes.shift();
+      const scope = queuedScope ? this.store.getScope(queuedScope.scope_id) : undefined;
+      if (scope) {
+        scopesVisited++;
+        let discovered = false;
+        try { discovered = this.store.write(this.owner, () => this.discover(scope, now)); }
+        catch (error) {
+          if (error instanceof Error && error.message === "stale_owner") throw error;
+          this.store.write(this.owner, () => this.store.db.prepare("UPDATE attention_scopes SET error='source_error',scan_complete=0 WHERE scope_id=?").run(scope.scope_id));
+        }
+        pass.current = { scope, subjects: discovered ? this.store.db.prepare("SELECT kind,subject_id FROM attention_subjects WHERE scope_id=? AND admitted=1 AND kind IN ('session','run') ORDER BY sampled_at,kind,subject_id").all(scope.scope_id) as Array<{ kind: string; subject_id: string }> : [], next: 0 };
+      }
+    }
+    const current = pass.current;
+    if (current) {
+      const slots = Math.min(maxSubjects, maxEvents, current.subjects.length - current.next);
+      const eventLimit = slots > 0 ? Math.floor(maxEvents / slots) : 0;
+      const sliceStart = current.next;
+      try {
+        // One disk-space preflight/commit per bounded slice. Nested per-subject
+        // savepoints still isolate malformed source facts; owner/scope/release
+        // checks remain inside the transaction and the clock is checked before
+        // every subject, never only at batch entry.
+        if (slots > 0) this.store.write(this.owner, () => {
+          while (current.next < current.subjects.length && subjectsSampled < slots && performance.now() - started < maxDuration) {
+            const key = current.subjects[current.next++]!;
+            this.store.write(this.owner, () => {
+              const persisted = this.store.getScope(current.scope.scope_id);
+              const task = this.store.db.prepare("SELECT created_at FROM tasks WHERE task_id=? AND tenant_id IS NULL").get(current.scope.task_id) as { created_at: number } | undefined;
+              if (!persisted || persisted.task_id !== current.scope.task_id || persisted.repo_path !== current.scope.repo_path || !task
+                || attentionDigest([this.owner.home_id, persisted.task_id, persisted.repo_path, task.created_at]) !== persisted.scope_id) {
+                if (persisted) this.store.db.prepare("UPDATE attention_scopes SET error='source_binding_conflict',scan_complete=0 WHERE scope_id=?").run(persisted.scope_id);
+                return;
+              }
+              const subject = this.store.db.prepare("SELECT * FROM attention_subjects WHERE scope_id=? AND kind=? AND subject_id=? AND admitted=1").get(current.scope.scope_id, key.kind, key.subject_id) as Subject | undefined;
+              if (!subject) return; // An explicit release during the pass is never reversed.
+              this.sample(current.scope, subject, now, eventLimit);
+              subjectsSampled++; eventQuotaUsed += subject.kind === "session" ? Math.min(50, eventLimit) : eventLimit;
+            });
+          }
+        });
+      } catch (error) {
+        // A transaction rollback also rolls back its scheduling cursor. Otherwise
+        // a retry could skip facts that were sampled but never committed.
+        current.next = sliceStart;
+        throw error;
+      }
+      if (current.next >= current.subjects.length) delete pass.current;
+    }
+    const passComplete = pass.scopes.length === 0 && !pass.current;
+    if (passComplete) this.pass = undefined;
+    return { passComplete, scopesVisited, subjectsSampled, eventQuotaUsed, durationMs: performance.now() - started };
+  }
   constructor(readonly store: AttentionStore, readonly owner: AttentionOwner) {}
   tick(now = Date.now()): void {
     if (!Number.isFinite(now)) throw new Error("invalid_clock");
@@ -63,6 +131,11 @@ export class AttentionObserver {
     }
   }
   private scan(scope: AttentionScope, now: number): void {
+    if (!this.discover(scope, now)) return;
+    const subjects = this.store.db.prepare("SELECT * FROM attention_subjects WHERE scope_id=? AND admitted=1 ORDER BY kind,subject_id").all(scope.scope_id) as Subject[];
+    for (const subject of subjects) this.sample(scope, subject, now, 200);
+  }
+  private discover(scope: AttentionScope, now: number): boolean {
     const db = this.store.db;
     const task = db
       .prepare(
@@ -84,7 +157,12 @@ export class AttentionObserver {
       db.prepare(
         "UPDATE attention_scopes SET error='source_missing',scan_complete=0 WHERE scope_id=?"
       ).run(scope.scope_id);
-      return;
+      db.prepare("UPDATE attention_run_cursors SET gap=COALESCE(gap,'source_missing'),generation=?,updated_at=? WHERE scope_id=?")
+        .run(this.owner.generation, now, scope.scope_id);
+      db.prepare("UPDATE attention_subjects SET sampled_at=?,generation=?,payload_json=? WHERE scope_id=? AND admitted=1")
+        .run(now, this.owner.generation, JSON.stringify({ state: "source_missing", reason: "source_missing",
+          process_liveness: "unknown", gap: "history_gap", event_replay: { complete: false, caught_up: false, gap: "source_missing", completeness_scope: "unverified_retention" } }), scope.scope_id);
+      return false;
     }
     // A scan advances a durable keyset, then restarts from the beginning. New IDs
     // inserted behind the cursor are picked up on the next pass, never evicted.
@@ -92,7 +170,7 @@ export class AttentionObserver {
       .prepare(
         `SELECT '0:'||s.session_id AS key,s.session_id AS id,'session' AS kind FROM agent_sessions s JOIN runs r ON r.run_id=s.run_id AND r.task_id=s.task_id
       WHERE s.task_id=? AND r.tenant_id IS NULL AND '0:'||s.session_id>?
-      UNION ALL SELECT '1:'||r.run_id,r.run_id,'run' FROM runs r WHERE r.task_id=? AND r.tenant_id IS NULL AND '1:'||r.run_id>? AND NOT EXISTS (SELECT 1 FROM agent_sessions s WHERE s.run_id=r.run_id AND s.task_id=r.task_id)
+      UNION ALL SELECT '1:'||r.run_id,r.run_id,'run' FROM runs r WHERE r.task_id=? AND r.tenant_id IS NULL AND '1:'||r.run_id>?
       ORDER BY key LIMIT 250`
       )
       .all(
@@ -124,10 +202,11 @@ export class AttentionObserver {
         | undefined;
       if (prior) {
         try {
-          if (JSON.parse(prior.payload_json).reason === "owner_released")
-            continue;
+          // Only explicit retryable discovery states can gain admission later.
+          // Missing/corrupt metadata is not evidence that a prior release ended.
+          if (!["capacity_exceeded", "binding_unknown", "source_error"].includes(JSON.parse(prior.payload_json).reason)) continue;
         } catch {
-          /* Rebuild corrupt observation metadata from its source. */
+          continue;
         }
       }
       let source: Source | undefined;
@@ -156,6 +235,8 @@ export class AttentionObserver {
         now,
         this.owner.generation,
         JSON.stringify({
+          ...(row.kind === "run" ? { event_replay: { complete: false, caught_up: false,
+            gap: admitted ? "not_sampled" : "capacity_exceeded", completeness_scope: "unverified_retention" } } : {}),
           state: source?.state ?? "unknown",
           awaiting_decision: source?.state === "awaiting_decision",
           reason: sourceError
@@ -164,164 +245,19 @@ export class AttentionObserver {
             ? "binding_unknown"
             : !admitted
             ? "capacity_exceeded"
-            : "snapshot_only",
+            : "not_sampled",
           unresolved_receipts: source ? this.receipts(source.session_id) : [],
         })
       );
-    }
-    const subjects = db
-      .prepare(
-        "SELECT * FROM attention_subjects WHERE scope_id=? AND admitted=1 ORDER BY kind,subject_id"
-      )
-      .all(scope.scope_id) as Subject[];
-    for (const subject of subjects) {
-      try {
-        db.transaction(() => {
-          if (subject.kind === "run") {
-            const run = db
-              .prepare(
-                "SELECT phase,outcome FROM runs WHERE run_id=? AND task_id=? AND tenant_id IS NULL"
-              )
-              .get(subject.subject_id, scope.task_id);
-            this.update(subject, now, {
-              state: run ?? "source_missing",
-              reason: run ? "snapshot_only" : "source_missing",
-              repo_binding: "unverified",
-              process_liveness: "unknown",
-              gap: "snapshot_only",
-            });
-            return;
-          }
-          if (subject.kind !== "session") return;
-          const source = this.source(scope, subject.subject_id);
-          if (!source) {
-            this.store.markMissing(
-              this.owner,
-              scope.scope_id,
-              subject.subject_id
-            );
-            this.update(subject, now, {
-              state: "source_missing",
-              reason: "source_missing",
-            });
-            return;
-          }
-          if (
-            this.binding(source) !== subject.binding_hash ||
-            source.version < subject.source_version
-          ) {
-            this.update(subject, now, {
-              state: source.state,
-              reason: "source_binding_conflict",
-            });
-            return;
-          }
-          const turns = db
-            .prepare(
-              "SELECT turn_id,ordinal,state,decision_json FROM session_turns WHERE session_id=? AND ordinal>? ORDER BY ordinal LIMIT 50"
-            )
-            .all(source.session_id, subject.ordinal_cursor) as Turn[];
-          const latest = db
-            .prepare(
-              "SELECT turn_id,ordinal,state,decision_json FROM session_turns WHERE session_id=? ORDER BY ordinal DESC LIMIT 1"
-            )
-            .get(source.session_id) as Turn | undefined;
-          let cursor = subject.ordinal_cursor;
-          let gap =
-            JSON.parse(subject.payload_json).gap === "history_gap" ||
-            (latest?.ordinal ?? 0) < cursor;
-          for (const turn of turns) {
-            if (turn.ordinal !== cursor + 1) gap = true;
-            try {
-              this.project(scope, source, turn, now);
-            } catch {
-              gap = true;
-            }
-            cursor = turn.ordinal;
-          }
-          if (latest && latest.ordinal <= cursor) {
-            try {
-              this.project(scope, source, latest, now);
-            } catch {
-              gap = true;
-            }
-          }
-          const backlogged = latest !== undefined && latest.ordinal > cursor;
-          db.prepare(
-            "UPDATE attention_subjects SET source_version=?,ordinal_cursor=? WHERE scope_id=? AND kind=? AND subject_id=?"
-          ).run(
-            source.version,
-            cursor,
-            scope.scope_id,
-            subject.kind,
-            subject.subject_id
-          );
-          const unresolved = this.receipts(source.session_id);
-          if (["completed", "failed", "cancelled"].includes(source.state))
-            db.prepare(
-              "UPDATE attention_items SET state='source_closed',revision=revision+1 WHERE scope_id=? AND session_id=? AND state='open'"
-            ).run(scope.scope_id, source.session_id);
-          // Only an applied receipt referencing this exact origin turn establishes
-          // external continuation. Authorization/risk obligations remain unresolved.
-          const items = (
-            db
-              .prepare(
-                "SELECT item_id FROM attention_items WHERE scope_id=? AND session_id=? AND state='open'"
-              )
-              .all(scope.scope_id, source.session_id) as { item_id: string }[]
-          )
-            .map((r) => this.store.getItem(scope.scope_id, r.item_id)!)
-            .filter(
-              (i) =>
-                i.session_id === source.session_id &&
-                i.state === "open" &&
-                !["risk_approval", "task_authorization"].includes(
-                  i.decision.continuation?.gate_kind ?? ""
-                )
-            );
-          for (const item of items) {
-            const applied = db
-              .prepare(
-                "SELECT message_id FROM session_messages WHERE session_id=? AND turn_id=? AND direction='inbound' AND state='applied' ORDER BY created_at,message_id LIMIT 1"
-              )
-              .get(source.session_id, item.turn_id) as
-              | { message_id: string }
-              | undefined;
-            if (applied)
-              db.prepare(
-                "UPDATE attention_items SET state='continued_externally',external_message_id=?,revision=revision+1 WHERE item_id=?"
-              ).run(applied.message_id, item.item_id);
-          }
-          this.update(subject, now, {
-            state: source.state,
-            awaiting_decision: source.state === "awaiting_decision",
-            version: source.version,
-            turn_id: latest?.turn_id ?? null,
-            process_liveness: "unknown",
-            gap: gap ? "history_gap" : "mutable_snapshot_no_complete_event_log",
-            reason: backlogged ? "history_backlog" : null,
-            unresolved_receipts: unresolved,
-            wait: this.wait(source, latest?.turn_id ?? null, now),
-          });
-        })();
-      } catch (error) {
-        this.update(subject, now, {
-          state: "unknown",
-          reason: "invalid_source",
-          detail:
-            error instanceof Error
-              ? error.message.slice(0, 120)
-              : "invalid_source",
-        });
-      }
     }
     const complete = rows.length < 250;
     const undiscovered = db
       .prepare(
         `SELECT 1 FROM agent_sessions s JOIN runs r ON r.run_id=s.run_id AND r.task_id=s.task_id
-      WHERE s.task_id=? AND r.tenant_id IS NULL AND NOT EXISTS(SELECT 1 FROM attention_subjects a WHERE a.scope_id=? AND a.kind='session' AND a.subject_id=s.session_id) LIMIT 1`
+      WHERE s.task_id=? AND r.tenant_id IS NULL AND NOT EXISTS(SELECT 1 FROM attention_subjects a WHERE a.scope_id=? AND a.kind='session' AND a.subject_id=s.session_id)
+      UNION ALL SELECT 1 FROM runs r WHERE r.task_id=? AND r.tenant_id IS NULL AND NOT EXISTS(SELECT 1 FROM attention_subjects a WHERE a.scope_id=? AND a.kind='run' AND a.subject_id=r.run_id) LIMIT 1`
       )
-      .get(scope.task_id, scope.scope_id);
+      .get(scope.task_id, scope.scope_id, scope.task_id, scope.scope_id);
 
     db.prepare(
       "UPDATE attention_scopes SET discovery_after=?,scan_complete=?,sampled_at=?,deadline=?,generation=?,error=NULL WHERE scope_id=?"
@@ -333,6 +269,140 @@ export class AttentionObserver {
       this.owner.generation,
       scope.scope_id
     );
+    return true;
+  }
+  private sample(scope: AttentionScope, subject: Subject, now: number, eventLimit: number): void {
+    const db = this.store.db;
+    try {
+      db.transaction(() => {
+        if (subject.kind === "run") {
+          projectAttentionRun(this.store, this.owner, scope, subject.subject_id, now, Math.min(200, eventLimit));
+          return;
+        }
+        if (subject.kind !== "session") return;
+        const source = this.source(scope, subject.subject_id);
+        if (!source) {
+          this.store.markMissing(
+            this.owner,
+            scope.scope_id,
+            subject.subject_id
+          );
+          this.update(subject, now, {
+            state: "source_missing",
+            reason: "source_missing",
+          });
+          return;
+        }
+        if (
+          this.binding(source) !== subject.binding_hash ||
+          source.version < subject.source_version
+        ) {
+          this.update(subject, now, {
+            state: source.state,
+            reason: "source_binding_conflict",
+          });
+          return;
+        }
+        const turns = db
+          .prepare(
+            "SELECT turn_id,ordinal,state,decision_json FROM session_turns WHERE session_id=? AND ordinal>? ORDER BY ordinal LIMIT ?"
+          )
+          .all(source.session_id, subject.ordinal_cursor, Math.min(50, eventLimit)) as Turn[];
+        const latest = db
+          .prepare(
+            "SELECT turn_id,ordinal,state,decision_json FROM session_turns WHERE session_id=? ORDER BY ordinal DESC LIMIT 1"
+          )
+          .get(source.session_id) as Turn | undefined;
+        let cursor = subject.ordinal_cursor;
+        let gap =
+          JSON.parse(subject.payload_json).gap === "history_gap" ||
+          (latest?.ordinal ?? 0) < cursor;
+        for (const turn of turns) {
+          if (turn.ordinal !== cursor + 1) gap = true;
+          try {
+            this.project(scope, source, turn, now);
+          } catch {
+            gap = true;
+          }
+          cursor = turn.ordinal;
+        }
+        if (latest && latest.ordinal <= cursor) {
+          try {
+            this.project(scope, source, latest, now);
+          } catch {
+            gap = true;
+          }
+        }
+        const backlogged = latest !== undefined && latest.ordinal > cursor;
+        db.prepare(
+          "UPDATE attention_subjects SET source_version=?,ordinal_cursor=? WHERE scope_id=? AND kind=? AND subject_id=?"
+        ).run(
+          source.version,
+          cursor,
+          scope.scope_id,
+          subject.kind,
+          subject.subject_id
+        );
+        const unresolved = this.receipts(source.session_id);
+        if (["completed", "failed", "cancelled"].includes(source.state))
+          db.prepare(
+            "UPDATE attention_items SET state='source_closed',revision=revision+1 WHERE scope_id=? AND session_id=? AND state='open'"
+          ).run(scope.scope_id, source.session_id);
+        // Only an applied receipt referencing this exact origin turn establishes
+        // external continuation. Authorization/risk obligations remain unresolved.
+        const items = (
+          db
+            .prepare(
+              "SELECT item_id FROM attention_items WHERE scope_id=? AND session_id=? AND state='open'"
+            )
+            .all(scope.scope_id, source.session_id) as { item_id: string }[]
+        )
+          .map((r) => this.store.getItem(scope.scope_id, r.item_id)!)
+          .filter(
+            (i) =>
+              i.session_id === source.session_id &&
+              i.state === "open" &&
+              !["risk_approval", "task_authorization"].includes(
+                i.decision.continuation?.gate_kind ?? ""
+              )
+          );
+        for (const item of items) {
+          const applied = db
+            .prepare(
+              "SELECT message_id FROM session_messages WHERE session_id=? AND turn_id=? AND direction='inbound' AND state='applied' ORDER BY created_at,message_id LIMIT 1"
+            )
+            .get(source.session_id, item.turn_id) as
+            | { message_id: string }
+            | undefined;
+          if (applied)
+            db.prepare(
+              "UPDATE attention_items SET state='continued_externally',external_message_id=?,revision=revision+1 WHERE item_id=?"
+            ).run(applied.message_id, item.item_id);
+        }
+        this.update(subject, now, {
+          state: source.state,
+          awaiting_decision: source.state === "awaiting_decision",
+          version: source.version,
+          turn_id: latest?.turn_id ?? null,
+          process_liveness: "unknown",
+          gap: gap ? "history_gap" : "mutable_snapshot_no_complete_event_log",
+          reason: backlogged ? "history_backlog" : null,
+          unresolved_receipts: unresolved,
+          wait: this.wait(source, latest?.turn_id ?? null, now),
+        });
+      })();
+    } catch (error) {
+      if (error instanceof Error && error.message === "stale_owner") throw error;
+      this.store.assertOwner(this.owner);
+      this.update(subject, now, {
+        state: "unknown",
+        reason: "invalid_source",
+        detail:
+          error instanceof Error
+            ? error.message.slice(0, 120)
+            : "invalid_source",
+      });
+    }
   }
   private source(scope: AttentionScope, id: string): Source | undefined {
     const row = this.store.db
@@ -458,6 +528,9 @@ export class AttentionObserver {
       .all(id);
   }
   private update(s: Subject, now: number, payload: unknown): void {
+    this.store.assertOwner(this.owner);
+    if (s.kind === "run" && payload && typeof payload === "object")
+      payload = { event_replay: { complete: false, caught_up: false, gap: "invalid_source", completeness_scope: "unverified_retention" }, ...payload };
     let old: { gap?: string } = {};
     try {
       old = JSON.parse(s.payload_json) as { gap?: string };
@@ -500,7 +573,7 @@ export class AttentionObserver {
       .get() as { generation: number };
     const faulty = db
       .prepare(
-        "SELECT 1 FROM attention_subjects WHERE scope_id=? AND (sampled_at<? OR generation<>? OR json_extract(payload_json,'$.reason') IS NOT NULL AND json_extract(payload_json,'$.reason')<>'snapshot_only' OR json_extract(payload_json,'$.gap')='history_gap') LIMIT 1"
+        "SELECT 1 FROM attention_subjects WHERE scope_id=? AND (sampled_at<? OR generation<>? OR CASE WHEN json_valid(payload_json) THEN (json_extract(payload_json,'$.state')='unknown' OR json_extract(payload_json,'$.reason') IS NOT NULL AND json_extract(payload_json,'$.reason')<>'snapshot_only' OR json_extract(payload_json,'$.gap')='history_gap') ELSE 1 END) LIMIT 1"
       )
       .get(scopeId, now - 65000, current.generation);
     const coverage =
@@ -514,7 +587,7 @@ export class AttentionObserver {
           faulty
         ? "degraded"
         : "covered";
-    return {
+    const result = {
       scope,
       coverage,
       subject_total: counts.total,
@@ -527,7 +600,11 @@ export class AttentionObserver {
           : null,
       subjects: rows.slice(0, limit).map(({ payload_json, ...r }) => ({
         ...r,
-        facts: JSON.parse(payload_json),
+        facts: (() => {
+          try { return JSON.parse(payload_json) as unknown; }
+          catch { return { state: "unknown", reason: "invalid_source", gap: "history_gap",
+            ...(r.kind === "run" ? { event_replay: { complete: false, caught_up: false, gap: "invalid_source", completeness_scope: "unverified_retention" } } : {}) }; }
+        })(),
       })),
       limitations: [
         "No complete mutable-source history",
@@ -535,5 +612,12 @@ export class AttentionObserver {
         "Coverage is observation, not execution ownership",
       ],
     };
+    // Bound the serialized page, preserving a cursor to every omitted subject.
+    while(Buffer.byteLength(JSON.stringify(result))>262144&&result.subjects.length>1){
+      result.subjects.pop();result.returned=result.subjects.length;result.truncated=true;
+      const last=result.subjects.at(-1)!;result.next_after=`${last.kind}:${last.subject_id}`;
+    }
+    if(Buffer.byteLength(JSON.stringify(result))>262144)throw Error("attention_inventory_too_large");
+    return result;
   }
 }

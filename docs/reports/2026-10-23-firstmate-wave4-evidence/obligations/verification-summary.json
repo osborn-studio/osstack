@@ -1,0 +1,26 @@
+{
+  "tests": {
+    "core_obligations": 23,
+    "core_db": 24,
+    "core_triage": 6,
+    "protocol_all": 230,
+    "cli_follow_up": 12,
+    "cli_worker": 14,
+    "total": 309
+  },
+  "build": [
+    "protocol",
+    "core",
+    "CLI"
+  ],
+  "typecheck": "CLI passed",
+  "migration": "actual43-to44 upgrade + preserved source + readonly reopen + exact SQL checksum passed",
+  "audit_rounds": 2,
+  "final_audit": "No confirmed P0/P1; residual P2 intentional/documented limits in disposition",
+  "baseline_commit": "b6e1a77e",
+  "dependency_commit": "6e1abe07 (same patch as ae1589d9 triage43; do not re-pick)",
+  "model_requested": "claude-haiku-5-5",
+  "real_rpc_cli_qualification": "pending root integration",
+  "transport": "unsupported",
+  "attention_projection": "overdue_count API only; no automatic observer row added"
+}

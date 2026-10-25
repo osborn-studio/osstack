@@ -1,0 +1,33 @@
+Scope: 16 of 23 workspace projects
+packages/protocol build$ tsc -p .
+packages/governance build$ tsc -p .
+packages/github build$ tsc -p .
+packages/compliance build$ tsc -p .
+packages/compliance build: Done
+packages/contracts build$ tsc -p .
+packages/github build: Done
+packages/knowledge build$ tsc -p .
+packages/governance build: Done
+packages/contracts build: Done
+packages/knowledge build: Done
+packages/protocol build: Done
+packages/graph build$ tsc -p .
+packages/core build$ tsc -p .
+packages/graph build: Done
+packages/core build: Done
+packages/hermes-adapter build$ tsc -p .
+packages/autonomy build$ tsc -p .
+packages/skill-registry build$ tsc -p .
+packages/skills build$ tsc -p .
+packages/hermes-adapter build: Done
+packages/skill-registry build: Done
+packages/skills build: Done
+packages/autonomy build: Done
+packages/agents build$ tsc -p . && node scripts/copy-assets.mjs
+packages/agents build: Done
+packages/config build$ tsc -p .
+packages/loop build$ tsc -p .
+packages/config build: Done
+packages/loop build: Done
+packages/supervisor build$ tsc -p .
+packages/supervisor build: Done

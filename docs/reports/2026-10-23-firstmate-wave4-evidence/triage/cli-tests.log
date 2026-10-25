@@ -1,0 +1,10 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-cockpit/packages/cli
+
+ ✓ src/attention-triage.test.ts (15 tests) 387ms
+
+ Test Files  1 passed (1)
+      Tests  15 passed (15)
+   Start at  13:00:18
+   Duration  780ms (transform 156ms, setup 7ms, collect 251ms, tests 387ms, environment 0ms, prepare 25ms)
+

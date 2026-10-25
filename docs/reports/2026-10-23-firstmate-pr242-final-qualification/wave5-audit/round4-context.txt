@@ -1,0 +1,982 @@
+Final narrow independent challenge of the accepted blocking pre-freeze Graph stat-cache defect. No tools, no claims of test execution. Previous review round3 said core.trustctime=false + same-size rewrite + restored mtime bypassed git diff, allowing out-of-scope bytes into frozen artifact (later immutable check prevented ready). Fix now uses bounded raw blob/mode comparison against immutable base before artifact capture. Hidden-index flags still rejected. 27 focused tests passed including RED where old gate persisted1artifact, GREEN leaves empty artifacts and zero review/tests. Review only concrete reachable P0/P1 regressions or whether this fix closes that trace. Same-UID malicious concurrent OS process after verified producers stop is outside filesystem snapshot/sandbox guarantee; post-capture immutable scope check remains. Raw check includes ignored and staged-deleted recreated paths, symlink target bytes, limits, rejects special/submodule/ancestor symlink. Do not broaden to new capabilities. End confirmed blocking count; distinguish P2 availability or stronger unclaimed guarantees.
+
+FILE packages/cli/src/graph-workspace-paths.ts
+import { execFileSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
+import { closeSync, constants, fstatSync, lstatSync, openSync, readSync, readlinkSync, realpathSync, type Stats } from 'node:fs';
+import { join, resolve, sep } from 'node:path';
+
+const MAX_BYTES = 256 * 1024 * 1024;
+const MAX_PATHS = 100000;
+const invalid = (reason: string): never => { throw Error(`GRAPH_CONTRACT_RAW_${reason}`); };
+function records(bytes: Buffer): string[] {
+  const text = bytes.toString('utf8');
+  if (!Buffer.from(text).equals(bytes) || (text && !text.endsWith('\0'))) invalid('PATH_ENCODING');
+  return text.split('\0').filter(Boolean);
+}
+function safeParts(name: string): string[] {
+  const parts = name.split('/');
+  if (name.includes('\\') || parts.some(part => !part || part === '.' || part === '..' || part.toLowerCase() === '.git')) invalid('PATH');
+  return parts;
+}
+function stat(path: string): Stats | undefined {
+  try { return lstatSync(path); } catch (error) {
+    if (['ENOENT', 'ENOTDIR'].includes((error as NodeJS.ErrnoException).code ?? '')) return undefined;
+    throw error;
+  }
+}
+function sameFile(a: Stats, b: Stats): boolean {
+  return a.dev === b.dev && a.ino === b.ino && a.mode === b.mode && a.size === b.size && a.mtimeMs === b.mtimeMs && a.ctimeMs === b.ctimeMs;
+}
+
+/** Read-only raw comparison with the original immutable base. Git's stat cache,
+ * attributes, filters, ignore rules and core.filemode never decide membership.
+ * This is a pre-freeze gate, not a filesystem snapshot; immutable candidate
+ * verification still runs after capture. Bounds match the artifact store. */
+export function graphWorkspaceChangedPaths(workspace: string, baseRevision: string): string[] {
+  if (!/^[a-f0-9]{40}$/.test(baseRevision)) invalid('BASE');
+  const root = realpathSync(workspace);
+  const git = (...args: string[]) => execFileSync('git', ['-c', 'core.hooksPath=/dev/null', '-c', 'core.fsmonitor=false', ...args], {
+    cwd: root, timeout: 30000, maxBuffer: 16 * 1024 * 1024,
+    env: { ...Object.fromEntries(Object.entries(process.env).filter(([name]) => !name.startsWith('GIT_'))),
+      GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOSYSTEM: '1', GIT_NO_REPLACE_OBJECTS: '1', GIT_TERMINAL_PROMPT: '0', GIT_OPTIONAL_LOCKS: '0', LC_ALL: 'C' },
+  });
+  if (git('rev-parse', '--verify', `${baseRevision}^{commit}`).toString().trim() !== baseRevision) invalid('BASE');
+  const base = new Map<string, { mode: string; oid: string }>();
+  for (const entry of records(git('ls-tree', '-r', '-z', '--full-tree', baseRevision))) {
+    const match = /^(100644|100755|120000) blob ([a-f0-9]{40})\t([\s\S]+)$/.exec(entry);
+    if (!match) invalid('BASE_ENTRY');
+    const [, mode, oid, name] = match!; safeParts(name!);
+    if (base.has(name!)) invalid('DUPLICATE_PATH');
+    base.set(name!, { mode: mode!, oid: oid! });
+    if (base.size > MAX_PATHS) invalid('PATH_LIMIT');
+  }
+  for (const entry of records(git('ls-files', '--stage', '-z'))) {
+    if (!/^(100644|100755|120000) [a-f0-9]{40} 0\t/.test(entry)) invalid('INDEX_ENTRY');
+  }
+  // No --exclude-standard: ignored files are also candidate side effects.
+  const names = new Set([...base.keys(), ...records(git('ls-files', '--cached', '--others', '-z'))]);
+  if (names.size > MAX_PATHS) invalid('PATH_LIMIT');
+  const changed: string[] = []; let totalBytes = 0;
+  for (const name of [...names].sort()) {
+    const parts = safeParts(name); let ancestor = root; let missingParent = false;
+    for (const part of parts.slice(0, -1)) {
+      ancestor = join(ancestor, part); const info = stat(ancestor);
+      if (!info) { missingParent = true; break; }
+      if (info.isSymbolicLink()) invalid('SYMLINK_ANCESTOR');
+      if (!info.isDirectory()) {
+        if (!info.isFile()) invalid('SPECIAL_FILE');
+        missingParent = true; break;
+      }
+    }
+    const path = resolve(root, name);
+    if (!path.startsWith(root + sep)) invalid('PATH');
+    const before = missingParent ? undefined : stat(path); const previous = base.get(name);
+    if (!before || before.isDirectory()) {
+      if (before?.isDirectory() && stat(join(path, '.git'))) invalid('NESTED_REPOSITORY');
+      if (previous) changed.push(name);
+      continue;
+    }
+    if (!before.isFile() && !before.isSymbolicLink()) invalid('SPECIAL_FILE');
+    let mode: string; let oid: string;
+    if (before.isSymbolicLink()) {
+      const bytes = readlinkSync(path, { encoding: 'buffer' }); totalBytes += bytes.length;
+      if (totalBytes > MAX_BYTES) invalid('BYTE_LIMIT');
+      mode = '120000'; oid = createHash('sha1').update(`blob ${bytes.length}\0`).update(bytes).digest('hex');
+      const after = stat(path);
+      if (!after || !sameFile(before, after) || !bytes.equals(readlinkSync(path, { encoding: 'buffer' }))) invalid('CHANGED_DURING_READ');
+    } else {
+      if (before.size > MAX_BYTES - totalBytes) invalid('BYTE_LIMIT');
+      // O_NONBLOCK avoids hanging if a concurrent writer replaces a file with a FIFO.
+      const fd = openSync(path, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
+      try {
+        const opened = fstatSync(fd);
+        if (!opened.isFile() || !sameFile(before, opened)) invalid('CHANGED_DURING_READ');
+        const hash = createHash('sha1').update(`blob ${opened.size}\0`); const buffer = Buffer.alloc(64 * 1024);
+        let bytes = 0;
+        for (;;) {
+          const count = readSync(fd, buffer, 0, buffer.length, null); if (!count) break;
+          bytes += count; totalBytes += count;
+          if (totalBytes > MAX_BYTES || bytes > opened.size) invalid('BYTE_LIMIT');
+          hash.update(buffer.subarray(0, count));
+        }
+        const after = stat(path);
+        if (bytes !== opened.size || !sameFile(opened, fstatSync(fd)) || !after || !sameFile(opened, after)) invalid('CHANGED_DURING_READ');
+        oid = hash.digest('hex');
+        // Same raw mode mapping as captureArtifactTree's writer capture.
+        mode = (opened.mode & 0o111) !== 0 ? '100755' : '100644';
+      } finally { closeSync(fd); }
+    }
+    if (!previous || previous.mode !== mode || previous.oid !== oid) changed.push(name);
+  }
+  return changed;
+}
+
+
+FILE packages/cli/src/graph-workspace-paths.test.ts
+import { execFileSync } from 'node:child_process';
+import { chmodSync, mkdirSync, realpathSync, renameSync, rmSync, symlinkSync, truncateSync, unlinkSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { afterEach, expect, it } from 'vitest';
+import { createScratchDirSync } from '@osstack/core';
+import { graphWorkspaceChangedPaths } from './graph-workspace-paths.js';
+
+const roots: string[] = [];
+afterEach(() => { for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true }); });
+function fixture() {
+  const root = realpathSync(createScratchDirSync('tests', 'raw-gate')); roots.push(root); const repo = join(root, 'repo'); mkdirSync(repo);
+  const git = (...args: string[]) => execFileSync('git', args, { cwd: repo, encoding: 'utf8' }).trim();
+  git('init', '-q'); mkdirSync(join(repo, 'dir'));
+  writeFileSync(join(repo, 'dir/file'), 'base'); writeFileSync(join(repo, 'binary'), Buffer.from([0, 255, 1]));
+  git('add', '.'); git('-c', 'user.name=Raw', '-c', 'user.email=raw@invalid', 'commit', '-qm', 'base');
+  const base = git('rev-parse', 'HEAD');
+  return { root, repo, base, git, read: () => graphWorkspaceChangedPaths(repo, base) };
+}
+it('compares clean, binary, deleted, ignored and staged paths without changing the index', () => {
+  const f = fixture(); expect(f.read()).toEqual([]);
+  const index = f.git('ls-files', '--stage');
+  writeFileSync(join(f.repo, 'binary'), Buffer.from([0, 255, 2])); unlinkSync(join(f.repo, 'dir/file'));
+  writeFileSync(join(f.repo, '.git/info/exclude'), 'hidden\n'); writeFileSync(join(f.repo, 'hidden'), 'ignored');
+  expect(f.read()).toEqual(['binary', 'dir/file', 'hidden']); expect(f.git('ls-files', '--stage')).toBe(index);
+  f.git('add', '-u'); expect(f.read()).toEqual(['binary', 'dir/file', 'hidden']);
+});
+it('uses raw executable modes even when core.filemode disables Git detection', () => {
+  const f = fixture(); f.git('config', 'core.filemode', 'false'); chmodSync(join(f.repo, 'binary'), 0o755);
+  expect(f.git('diff', '--name-only')).toBe(''); expect(f.read()).toEqual(['binary']);
+});
+it('hashes symlink targets without reading their contents', () => {
+  const f = fixture(); const outside = join(f.root, 'secret'); writeFileSync(outside, 'private');
+  symlinkSync(outside, join(f.repo, 'link')); f.git('add', 'link'); f.git('-c', 'user.name=Raw', '-c', 'user.email=raw@invalid', 'commit', '-qm', 'link');
+  const base = f.git('rev-parse', 'HEAD'); expect(graphWorkspaceChangedPaths(f.repo, base)).toEqual([]);
+  writeFileSync(outside, 'changed private'); expect(graphWorkspaceChangedPaths(f.repo, base)).toEqual([]);
+  unlinkSync(join(f.repo, 'link')); symlinkSync('missing', join(f.repo, 'link'));
+  expect(graphWorkspaceChangedPaths(f.repo, base)).toEqual(['link']);
+});
+it('fails closed on symlink ancestors instead of following them', () => {
+  const f = fixture(); renameSync(join(f.repo, 'dir'), join(f.root, 'outside')); symlinkSync(join(f.root, 'outside'), join(f.repo, 'dir'));
+  expect(f.read).toThrow('GRAPH_CONTRACT_RAW_SYMLINK_ANCESTOR');
+});
+it('rejects submodule index entries and special files', () => {
+  const f = fixture(); f.git('update-index', '--add', '--cacheinfo', `160000,${f.base},module`);
+  expect(f.read).toThrow('GRAPH_CONTRACT_RAW_INDEX_ENTRY'); f.git('update-index', '--force-remove', 'module');
+  unlinkSync(join(f.repo, 'binary')); execFileSync('mkfifo', [join(f.repo, 'binary')]);
+  expect(f.read).toThrow('GRAPH_CONTRACT_RAW_SPECIAL_FILE');
+});
+it('rejects oversized raw files before allocating or reading their contents', () => {
+  const f = fixture(); truncateSync(join(f.repo, 'binary'), 256 * 1024 * 1024 + 1);
+  expect(f.read).toThrow('GRAPH_CONTRACT_RAW_BYTE_LIMIT');
+});
+it('keeps both the removed file and added descendants when a file becomes a directory', () => {
+  const f = fixture(); unlinkSync(join(f.repo, 'binary')); mkdirSync(join(f.repo, 'binary')); writeFileSync(join(f.repo, 'binary/child'), 'new');
+  expect(f.read()).toEqual(['binary', 'binary/child']);
+});
+it('does not let staged deletions hide files recreated with ignored names', () => {
+  const f = fixture(); f.git('rm', 'binary'); writeFileSync(join(f.repo, '.git/info/exclude'), 'binary\n'); writeFileSync(join(f.repo, 'binary'), 'new');
+  expect(f.read()).toEqual(['binary']);
+});
+it('compares raw bytes rather than attributes-normalized contents', () => {
+  const f = fixture(); writeFileSync(join(f.repo, '.gitattributes'), 'dir/file text eol=lf\n'); writeFileSync(join(f.repo, 'dir/file'), 'base\n');
+  f.git('add', '.'); f.git('-c', 'user.name=Raw', '-c', 'user.email=raw@invalid', 'commit', '-qm', 'attributes');
+  const base = f.git('rev-parse', 'HEAD'); writeFileSync(join(f.repo, 'dir/file'), 'base\r\n');
+  expect(f.git('diff', '--name-only')).toBe(''); expect(graphWorkspaceChangedPaths(f.repo, base)).toEqual(['dir/file']);
+});
+it('requires an immutable commit id and rejects submodules in the original base', () => {
+  const f = fixture(); expect(() => graphWorkspaceChangedPaths(f.repo, 'HEAD')).toThrow('GRAPH_CONTRACT_RAW_BASE');
+  f.git('update-index', '--add', '--cacheinfo', `160000,${f.base},module`); f.git('-c', 'user.name=Raw', '-c', 'user.email=raw@invalid', 'commit', '-qm', 'submodule');
+  expect(() => graphWorkspaceChangedPaths(f.repo, f.git('rev-parse', 'HEAD'))).toThrow('GRAPH_CONTRACT_RAW_BASE_ENTRY');
+});
+
+
+FILE packages/cli/src/graph-delivery-contract.ts
+import { execFileSync } from 'node:child_process';
+import { z } from 'zod';
+import { assertDeliveryContractAdmission, assertDeliveryContractPaths, assertFrozenDeliveryContract, deliveryCheckReference, deliveryContractDigest } from '@osstack/core';
+import { FrozenDeliveryContractV2, GraphBudget, StartGraphRequest, freezeWorkerData, workerCanonical } from '@osstack/protocol';
+import { graphWorkspaceChangedPaths } from './graph-workspace-paths.js';
+import type { AcceptanceCommandSpec } from './graph-verification-store.js';
+
+export interface GraphContractHostPolicy {
+  policyDigest: string;
+  reviewPolicyRef: string;
+  limits: StartGraphRequest['spec']['limits'];
+}
+export interface GraphDeliveryContractRegistration {
+  frozen: FrozenDeliveryContractV2;
+  policy: GraphContractHostPolicy;
+}
+const digest = z.string().regex(/^[a-f0-9]{64}$/);
+const reference = z.string().min(1).max(256);
+const limits = z.unknown().transform((value, ctx): GraphContractHostPolicy['limits'] => {
+  const parsed = GraphBudget.safeParse(value && typeof value === 'object' && !Array.isArray(value) ? { ...value, schemaVersion: 1 } : null);
+  if (!parsed.success) { ctx.addIssue({ code: 'custom', message: 'graph contract policy limits' }); return z.NEVER; }
+  const { schemaVersion: _version, ...result } = parsed.data; return result;
+});
+const policySchema = z.object({ policyDigest: digest, reviewPolicyRef: reference, limits }).strict();
+const acceptanceSchema = z.object({ ref: reference, command: z.string().min(1).max(8192),
+  passExitCodes: z.array(z.number().int().min(0).max(255)), failExitCodes: z.array(z.number().int().min(0).max(255)) }).strict();
+const envelopeSchema = z.object({ schemaVersion: z.literal(1), sourceInputArtifactRef: reference,
+  frozen: FrozenDeliveryContractV2, policy: policySchema, acceptance: acceptanceSchema, contextDigest: digest.optional() }).strict();
+export type GraphContractHostEnvelope = z.infer<typeof envelopeSchema>;
+
+export function parseGraphContractRegistration(value: unknown): GraphDeliveryContractRegistration {
+  const parsed = z.object({ frozen: FrozenDeliveryContractV2, policy: policySchema }).strict().parse(value);
+  return freezeWorkerData({ ...parsed, frozen: assertFrozenDeliveryContract(parsed.frozen) });
+}
+
+/** Host policy is already authorized by the registration. This function grants nothing. */
+export function bindGraphDeliveryContract(requestValue: StartGraphRequest, registration: {
+  repositoryPath: string; task: string; acceptanceRegistry: readonly AcceptanceCommandSpec[];
+  deliveryContract: GraphDeliveryContractRegistration;
+  executionContext?: { configDigest: string };
+}): { request: StartGraphRequest; envelope: GraphContractHostEnvelope } {
+  const request = StartGraphRequest.parse(requestValue);
+  const { frozen, policy } = parseGraphContractRegistration(registration.deliveryContract);
+  const contract = frozen.contract;
+  if (registration.executionContext && request.scope.tenantId !== 'default') throw Error('GRAPH_CONTEXT_SCOPE_UNSUPPORTED');
+  if (contract.mode !== 'implement' || contract.requested_completion !== 'local_verified'
+    || contract.publication_scope.mode !== 'none' || contract.merge_authority.mode !== 'none'
+    || contract.required_checks.length !== 1) throw Error('GRAPH_CONTRACT_UNSUPPORTED');
+  const selected = registration.acceptanceRegistry.filter(item => item.ref === request.spec.input.acceptanceRef);
+  if (selected.length !== 1) throw Error('GRAPH_CONTRACT_REGISTRY_MISMATCH');
+  const acceptance = acceptanceSchema.parse(selected[0]);
+  if (acceptance.passExitCodes.length !== 1 || acceptance.passExitCodes[0] !== 0 || acceptance.failExitCodes.includes(0)
+    || deliveryCheckReference(acceptance.command) !== contract.required_checks[0]!.registry_ref) throw Error('GRAPH_CONTRACT_REGISTRY_MISMATCH');
+  assertDeliveryContractAdmission(frozen, { canonicalRepo: registration.repositoryPath, baseHead: request.spec.input.baseRevision,
+    taskId: request.spec.input.taskRef, goal: registration.task, policyDigest: policy.policyDigest,
+    reviewPolicyRef: policy.reviewPolicyRef, acceptedCommands: [acceptance.command] });
+  for (const name of Object.keys(policy.limits) as (keyof GraphContractHostPolicy['limits'])[]) {
+    if (request.spec.limits[name] > policy.limits[name]) throw Error('GRAPH_CONTRACT_BUDGET_EXCEEDED');
+  }
+  const envelope = freezeWorkerData(envelopeSchema.parse({ schemaVersion: 1, sourceInputArtifactRef: request.inputArtifactRef,
+    frozen, policy, acceptance, ...(registration.executionContext ? { contextDigest: registration.executionContext.configDigest } : {}) }));
+  return { request: freezeWorkerData(StartGraphRequest.parse({ ...request, inputArtifactRef: graphContractInputRef(envelope) })), envelope };
+}
+
+export function graphContractInputRef(envelope: GraphContractHostEnvelope): string {
+  return `graph-contract-input:${deliveryContractDigest(envelopeSchema.parse(envelope))}`;
+}
+
+/** Parses durable host data; provenance and current grant remain the caller's responsibility. */
+export function verifyGraphContractEnvelope(value: unknown, request: StartGraphRequest,
+  registration: { repositoryPath: string; task: string; acceptanceRegistry: readonly AcceptanceCommandSpec[]; deliveryContract: GraphDeliveryContractRegistration; executionContext?: { configDigest: string } }): GraphContractHostEnvelope {
+  const envelope = envelopeSchema.parse(value);
+  const bound = bindGraphDeliveryContract({ ...request, inputArtifactRef: envelope.sourceInputArtifactRef }, registration);
+  if (workerCanonical(bound.envelope) !== workerCanonical(envelope) || workerCanonical(bound.request) !== workerCanonical(request))
+    throw Error('GRAPH_CONTRACT_ENVELOPE_MISMATCH');
+  return freezeWorkerData(envelope);
+}
+
+/** Original base across every repair epoch; --no-renames includes both ends of moves. */
+export function assertGraphContractPaths(frozen: FrozenDeliveryContractV2, workspace: string, candidateRevision?: string): void {
+  const read = (args: string[]) => execFileSync('git', ['-c', 'core.hooksPath=/dev/null', '-c', 'core.fsmonitor=false', ...args], {
+    cwd: workspace, encoding: 'utf8', timeout: 30000, maxBuffer: 16 * 1024 * 1024,
+    env: { ...Object.fromEntries(Object.entries(process.env).filter(([name]) => !name.startsWith('GIT_'))),
+      GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOSYSTEM: '1', GIT_NO_REPLACE_OBJECTS: '1', GIT_TERMINAL_PROMPT: '0' },
+  }).split('\0').filter(Boolean);
+  if (!candidateRevision && read(['ls-files', '-v', '-z']).some(entry => /^[a-zS] /.test(entry)))
+    throw Error('GRAPH_CONTRACT_HIDDEN_INDEX_FLAGS');
+  const paths = candidateRevision
+    ? read(['diff', '--no-ext-diff', '--no-textconv', '--no-renames', '--name-only', '-z', frozen.contract.base_head, candidateRevision, '--'])
+    : graphWorkspaceChangedPaths(workspace, frozen.contract.base_head);
+  assertDeliveryContractPaths(frozen, paths);
+}
+
+
+FILE packages/cli/src/graph-contract-integration.test.ts
+import { execFileSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
+import { readFile, readdir, utimes, writeFile } from 'node:fs/promises';
+import { join } from 'node:path';
+import { expect, it, vi } from 'vitest';
+import { deliveryCheckReference, freezeDeliveryContract } from '@osstack/core';
+import { GraphDelegationStatus, computeGraphInputDigest } from '@osstack/protocol';
+import { GraphRpcService, loadLocalGraphRegistration } from './graph-rpc.js';
+import { graphRpcFixture } from './graph-test-fixture.js';
+import { createExecutionContextAdapters, type ExecutionContextReceiptReference } from './execution-context.js';
+import { persistDeliveryHostRecord } from './delivery-contract-host.js';
+import { GraphContractCompletionReceipt } from './graph-contract-receipt.js';
+import * as contractReceipts from './graph-contract-receipt.js';
+import type { GraphExecutionContextRegistration } from './graph-execution-context.js';
+import { GraphDelivery } from './graph-delivery.js';
+import { assertGraphContractPaths } from './graph-delivery-contract.js';
+
+async function fixture(mode: 'success' | 'repair' | 'unknown' = 'success', context = false) {
+  const f = await graphRpcFixture(mode); await f.service.close();
+  if (context) { f.request.scope = { ...f.request.scope, tenantId: 'default' }; f.registration.scope = f.request.scope; }
+  const originalRun = GraphDelivery.prototype.run;
+  const routes: Awaited<ReturnType<GraphDelivery['run']>>[] = [];
+  const runSpy = vi.spyOn(GraphDelivery.prototype, 'run').mockImplementation(async function (this: GraphDelivery) {
+    const result = await originalRun.call(this);
+    routes.push(result);
+    return result;
+  });
+  const policyDigest = 'b'.repeat(64);
+  const frozen = freezeDeliveryContract({ schema_version: 2, contract_id: 'graph-contract', task_id: f.request.spec.input.taskRef,
+    canonical_repo: f.registration.delivery.repositoryPath, mode: 'implement', base_head: f.request.spec.input.baseRevision, goal: f.registration.delivery.task,
+    required_checks: [{ id: 'accept', registry_ref: deliveryCheckReference(f.registration.delivery.acceptanceRegistry[0]!.command) }],
+    review_policy_ref: 'graph:independent', requested_completion: 'local_verified', allowed_paths: ['answer'], requested_actions: ['build', 'verify'],
+    budget_ref: `policy:${policyDigest}`, policy_digest: policyDigest, publication_scope: { mode: 'none' }, merge_authority: { mode: 'none' } });
+  const registration = { ...f.registration, delivery: { ...f.registration.delivery,
+    deliveryContract: { frozen, policy: { policyDigest, reviewPolicyRef: 'graph:independent', limits: { ...f.request.spec.limits } } } } };
+  const prompts: string[] = []; const writer = registration.delivery.writer.adapter;
+  registration.delivery.writer = { ...registration.delivery.writer, adapter: { ...writer, invoke: async function* (task, signal) {
+    prompts.push(task.prompt); yield* writer.invoke(task, signal);
+  } } };
+  const reviewPrompts: string[] = []; const rawReviewer = registration.delivery.reviewer.adapter;
+  registration.delivery.reviewer = { ...registration.delivery.reviewer, adapter: { ...rawReviewer, invoke: async function* (task, signal) {
+    reviewPrompts.push(task.prompt); yield* rawReviewer.invoke(task, signal);
+  } } };
+  const contextRefs: ExecutionContextReceiptReference[] = []; const receiptRoot = join(f.root, 'context-receipts');
+  const executionContext: GraphExecutionContextRegistration = { configDigest: 'd'.repeat(64), receiptRoot, assertCurrent: () => {},
+    create: async input => {
+      const wrapped = createExecutionContextAdapters({ adapters: [input.adapter], workspacePath: input.workspacePath, mode: 'local',
+        contractDigest: input.frozen.digest, contractBrief: input.frozen.brief, loadContext: async () => [], recordReceipt: async receipt => {
+          const ref = await persistDeliveryHostRecord(receiptRoot, receipt); contextRefs.push(ref); return ref;
+        } });
+      return { adapter: wrapped.adapters[0]!, receiptRefs: wrapped.receiptRefs };
+    } };
+  const options = { ...f.options, registrations: [{ ...registration, delivery: { ...registration.delivery, ...(context ? { executionContext } : {}) } }] }; const service = new GraphRpcService(options);
+  const start = async () => GraphDelegationStatus.parse(await service.handle(f.connection, 'graph.start', f.request));
+  const until = async (id: string, waiting = false) => {
+    const deadline = Date.now() + 20000;
+    for (;;) {
+      const state = GraphDelegationStatus.parse(await service.handle(f.connection, 'graph.status', { schemaVersion: 1, scope: f.request.scope, graphRunId: id }));
+      if (['ready', 'failed', 'reconciliation_required', ...(waiting ? ['waiting_input'] : [])].includes(state.status)) return state;
+      if (Date.now() >= deadline) throw Error(`timeout ${state.status}`); await new Promise(resolve => setTimeout(resolve, 20));
+    }
+  };
+  return { ...f, registration, options, service, start, until, prompts, reviewPrompts, contextRefs, executionContext, routes, close: async () => { await service.close(); runSpy.mockRestore(); await f.close(); } };
+}
+it('binds the durable host contract before the real Graph launch and never changes source HEAD/refs/index/files', async () => {
+  const f = await fixture();
+  try {
+    const git = (...args: string[]) => execFileSync('git', args, { cwd: f.registration.delivery.repositoryPath, encoding: 'utf8' });
+    const source = [git('rev-parse', 'HEAD'), git('show-ref'), git('ls-files', '--stage'), await readFile(join(f.registration.delivery.repositoryPath, 'answer'), 'utf8')];
+    const [a, b] = await Promise.all([f.start(), f.start()]); expect(a.graphRunId).toBe(b.graphRunId);
+    expect(a.inputDigest).not.toBe(computeGraphInputDigest(f.request)); expect(f.writes()).toBe(0);
+    expect(a.admissionBinding).toEqual({requestInputDigest:computeGraphInputDigest(f.request),hostInputDigest:a.inputDigest,contractDigest:f.registration.delivery.deliveryContract.frozen.digest,policyDigest:f.registration.delivery.deliveryContract.policy.policyDigest});
+    const descriptor = JSON.parse((f.db.prepare('SELECT descriptor_json FROM graph_public_delivery WHERE graph_run_id=?').get(a.graphRunId) as { descriptor_json: string }).descriptor_json);
+    expect(descriptor.contractEnvelope.frozen.digest).toBe(f.registration.delivery.deliveryContract.frozen.digest);
+    expect(descriptor.request.inputArtifactRef).toMatch(/^graph-contract-input:/);
+    const ready = await f.until(a.graphRunId); expect(ready.status).toBe('ready'); expect(f.writes()).toBe(1);
+    expect(ready.evidenceRefs.some(ref => ref.startsWith('graph-contract:'))).toBe(true);
+    const receipt = GraphContractCompletionReceipt.parse(await f.service.handle(f.connection, 'graph.contract', { schemaVersion: 1, scope: f.request.scope, graphRunId: a.graphRunId }));
+    expect(receipt).toMatchObject({ achievedCompletion: 'local_verified', publication: 'artifact_only', contextEvidence: [], check: { exitCode: 0 }, review: { verdict: 'accept' } });
+    expect(f.prompts[0]!.split('Delivery contract V2:').length).toBe(2);
+    expect([git('rev-parse', 'HEAD'), git('show-ref'), git('ls-files', '--stage'), await readFile(join(f.registration.delivery.repositoryPath, 'answer'), 'utf8')]).toEqual(source);
+    const replay = new GraphRpcService(f.options);
+    try { expect(await replay.handle(f.connection, 'graph.submit', f.request)).toEqual(ready); } finally { await replay.close(); }
+  } finally { await f.close(); }
+}, 30000);
+it.each(['grant', 'revision'] as const)('does not publish a durable completion file after %s changes during the last await', async drift => {
+  const f = await fixture(); const publish = contractReceipts.publishGraphContractCompletion;
+  const spy = vi.spyOn(contractReceipts, 'publishGraphContractCompletion').mockImplementation(async input => {
+    const ref = await publish(input);
+    if (drift === 'grant') f.grant(false);
+    else f.db.prepare('UPDATE graph_runs SET revision=revision+1 WHERE graph_run_id=?').run(input.decision.snapshot.run.graphRunId);
+    return ref;
+  });
+  try {
+    const start = await f.start(); const deadline = Date.now() + 20000;
+    while (!f.routes.length) { if (Date.now() > deadline) throw Error('driver timeout'); await new Promise(resolve => setTimeout(resolve, 20)); }
+    expect(spy).toHaveBeenCalledOnce();
+    const result = GraphDelegationStatus.parse(await f.service.handle(f.connection, 'graph.result', { schemaVersion: 1, scope: f.request.scope, graphRunId: start.graphRunId }));
+    expect(result.status).not.toBe('ready'); expect(result.evidenceRefs.some(ref => ref.startsWith('graph-contract:'))).toBe(false);
+    await expect(f.service.handle(f.connection, 'graph.contract', { schemaVersion: 1, scope: f.request.scope, graphRunId: start.graphRunId })).rejects.toThrow();
+  } finally { spy.mockRestore(); await f.close(); }
+}, 30000);
+it('never exposes a contract completion when executor stop remains unknown', async () => {
+  const f = await fixture('unknown', true);
+  try {
+    const start = await f.start(); const unknown = await f.until(start.graphRunId); expect(unknown.status).toBe('reconciliation_required');
+    expect(unknown.evidenceRefs.some(ref => ref.startsWith('graph-contract:'))).toBe(false);
+    await expect(f.service.handle(f.connection, 'graph.contract', { schemaVersion: 1, scope: f.request.scope, graphRunId: start.graphRunId })).rejects.toThrow();
+  } finally { await f.close(); }
+}, 30000);
+it('binds actual writer and rebuilt reviewer prompts to two-phase context receipts before ready', async () => {
+  const f = await fixture('success', true);
+  try {
+    const start = await f.start(); const ready = await f.until(start.graphRunId); expect(ready.status).toBe('ready');
+    const receipt = GraphContractCompletionReceipt.parse(await f.service.handle(f.connection, 'graph.contract', { schemaVersion: 1, scope: f.request.scope, graphRunId: start.graphRunId }));
+    expect(receipt.contextDigest).toBe(f.executionContext.configDigest); expect(receipt.contextEvidence).toHaveLength(2); expect(f.contextRefs).toHaveLength(4);
+    const digests = [f.prompts[0]!, f.reviewPrompts[0]!].map(prompt => createHash('sha256').update(prompt).digest('hex'));
+    expect(receipt.contextEvidence.map(row => row.promptDigest).sort()).toEqual(digests.sort());
+    expect(receipt.review.promptDigest).toBe(createHash('sha256').update(f.reviewPrompts[0]!).digest('hex'));
+    for (const prompt of [...f.prompts, ...f.reviewPrompts]) expect(prompt.split('Delivery contract V2:')).toHaveLength(2);
+    for (const ref of f.contextRefs) {
+      const bytes = await readFile(ref.path); expect(createHash('sha256').update(bytes).digest('hex')).toBe(ref.digest);
+      const stored = JSON.parse(bytes.toString()); expect(stored.contract_digest).toBe(f.registration.delivery.deliveryContract.frozen.digest);
+      expect(stored.repo_path).toBe(f.registration.delivery.repositoryPath); expect(stored.execution_repo_path).not.toBe(stored.repo_path);
+    }
+    const published = ready.evidenceRefs.find(ref => ref.startsWith('graph-contract:'))!;
+    const file = join(f.options.root, start.graphRunId, 'contract-receipts', `${published.slice('graph-contract:'.length)}.json`);
+    await writeFile(file, '{}');
+    await expect(f.service.handle(f.connection, 'graph.contract', { schemaVersion: 1, scope: f.request.scope, graphRunId: start.graphRunId })).rejects.toThrow();
+  } finally { await f.close(); }
+}, 30000);
+it('does not transfer a prior epoch context/check/review receipt to a repaired candidate', async () => {
+  const f = await fixture('repair', true);
+  try {
+    const start = await f.start(); const waiting = await f.until(start.graphRunId, true); expect(waiting.status).toBe('waiting_input');
+    await expect(f.service.handle(f.connection, 'graph.contract', { schemaVersion: 1, scope: f.request.scope, graphRunId: start.graphRunId })).rejects.toThrow();
+    await f.service.handle(f.connection, 'graph.resume', { schemaVersion: 1, kind: 'resume', scope: f.request.scope, idempotencyKey: 'repair',
+      graphRunId: start.graphRunId, expectedRevision: waiting.revision, interruptId: waiting.interrupt!.interruptId,
+      input: { kind: 'data', value: { inputDigest: waiting.inputDigest } } });
+    const ready = await f.until(start.graphRunId); expect(ready.status).toBe('ready'); expect(f.writes()).toBe(2);
+    const receipt = GraphContractCompletionReceipt.parse(await f.service.handle(f.connection, 'graph.contract', { schemaVersion: 1, scope: f.request.scope, graphRunId: start.graphRunId }));
+    expect(receipt.epoch).toBe(1); expect(receipt.contextEvidence).toHaveLength(2); expect(f.contextRefs).toHaveLength(8);
+    const keys = (f.db.prepare('SELECT effect_key FROM graph_actions WHERE graph_run_id=? AND node_id IN (?,?)').all(start.graphRunId, 'e1.repair', 'e1.review') as Array<{ effect_key: string }>).map(row => row.effect_key).sort();
+    expect(receipt.contextEvidence.map(row => row.effectKey).sort()).toEqual(keys);
+  } finally { await f.close(); }
+}, 30000);
+it('requires a trusted policy resolver in local registration and rechecks its live authority', async () => {
+  const f = await fixture();
+  try {
+    const registration = f.registration; const config = join(f.root, 'host.json');
+    await writeFile(config, JSON.stringify({ schemaVersion: 1, registration: { id: registration.id, scope: registration.scope,
+      repositoryRef: registration.repositoryRef, repositoryPath: registration.delivery.repositoryPath, taskRef: registration.taskRef,
+      task: registration.delivery.task, inputArtifactRef: registration.inputArtifactRef,
+      writer: { agentId: 'writer', capabilityId: 'write' }, reviewer: { agentId: 'reviewer', capabilityId: 'review' },
+      acceptanceRegistry: registration.delivery.acceptanceRegistry, deliveryContract: registration.delivery.deliveryContract.frozen.contract,
+      grant: { scope: registration.scope, expiresAt: Date.now() + 60000, operations: ['read', 'execute', 'cancel', 'resume'] } } }), { mode: 0o600 });
+    const adapters = new Map([['writer', f.writer], ['reviewer', f.reviewer]]);
+    await expect(loadLocalGraphRegistration(config, adapters)).rejects.toThrow('POLICY_REQUIRED');
+    let allowed = true;
+    const loaded = await loadLocalGraphRegistration(config, adapters, { resolveDeliveryContractPolicy: async () => ({
+      policy: registration.delivery.deliveryContract.policy, assertCurrent: () => { if (!allowed) throw Error('live-policy-changed'); },
+    }) });
+    expect(loaded.delivery.deliveryContract).toEqual(registration.delivery.deliveryContract);
+    loaded.authorize('execute'); allowed = false;
+    expect(() => loaded.authorize('resume')).toThrow('live-policy-changed'); expect(() => loaded.authorize('read')).not.toThrow();
+    await expect(loadLocalGraphRegistration(config, adapters, { resolveDeliveryContractPolicy: async () => ({ policy: registration.delivery.deliveryContract.policy,
+      assertCurrent: (async () => {}) as () => void }) })).rejects.toThrow('POLICY_DENIED');
+  } finally { await f.close(); }
+});
+it('rejects a changed contract under an existing idempotency key before a second launch', async () => {
+  const f = await fixture();
+  try {
+    const first = await f.start();
+    const changed = { ...f.registration, delivery: { ...f.registration.delivery, deliveryContract: { ...f.registration.delivery.deliveryContract,
+      frozen: freezeDeliveryContract({ ...f.registration.delivery.deliveryContract.frozen.contract, contract_id: 'changed' }) } } };
+    const service = new GraphRpcService({ ...f.options, registrations: [changed] });
+    try { await expect(service.handle(f.connection, 'graph.start', f.request)).rejects.toThrow('IDEMPOTENCY_CONFLICT'); } finally { await service.close(); }
+    expect(f.db.prepare('SELECT count(*) n FROM graph_runs').get()).toEqual({ n: 1 });
+    await f.service.handle(f.connection, 'graph.cancel', { schemaVersion: 1, kind: 'cancel', scope: f.request.scope, graphRunId: first.graphRunId, expectedRevision: first.revision, idempotencyKey: 'cancel' });
+  } finally { await f.close(); }
+});
+it('rejects a path outside contract before verification or ready publication', async () => {
+  const f = await fixture(); await f.service.close();
+  const frozen = freezeDeliveryContract({ ...f.registration.delivery.deliveryContract.frozen.contract, allowed_paths: ['other'] });
+  const service = new GraphRpcService({ ...f.options, registrations: [{ ...f.registration, delivery: { ...f.registration.delivery,
+    deliveryContract: { ...f.registration.delivery.deliveryContract, frozen } } }] });
+  try {
+    const start = GraphDelegationStatus.parse(await service.handle(f.connection, 'graph.start', f.request));
+    const deadline = Date.now() + 20000; let status = start;
+    while (!['failed', 'reconciliation_required'].includes(status.status)) {
+      if (Date.now() > deadline) throw Error(`timeout ${status.status}`); await new Promise(resolve => setTimeout(resolve, 20));
+      status = GraphDelegationStatus.parse(await service.handle(f.connection, 'graph.status', { schemaVersion: 1, scope: f.request.scope, graphRunId: start.graphRunId }));
+    }
+    expect(status.candidate).toBeUndefined(); expect(status.resultRef).toBeUndefined();
+    expect(f.db.prepare("SELECT count(*) n FROM graph_actions WHERE node_id LIKE '%.review' OR node_id LIKE '%.tests'").get()).toEqual({ n: 0 });
+  } finally { await service.close(); await f.close(); }
+}, 30000);
+
+it('rejects an ignored untracked path outside the contract before candidate serialization', async () => {
+  const f = await fixture();
+  try {
+    const repo = f.registration.delivery.repositoryPath;
+    await writeFile(join(repo, '.git/info/exclude'), 'hidden-output\n');
+    await writeFile(join(repo, 'hidden-output'), 'candidate side effect');
+    expect(() => assertGraphContractPaths(f.registration.delivery.deliveryContract.frozen, repo)).toThrow('delivery_contract_path_outside_scope');
+  } finally { await f.close(); }
+});
+
+it('refuses a durable contract envelope substituted after reservation',async()=>{
+  const f=await fixture();try{
+    const started=await f.start();const descriptor=JSON.parse((f.db.prepare('SELECT descriptor_json FROM graph_public_delivery WHERE graph_run_id=?').get(started.graphRunId) as {descriptor_json:string}).descriptor_json);
+    // Model disk corruption after explicitly removing the normal immutable-descriptor protection.
+    f.db.exec('DROP TRIGGER graph_public_descriptor_immutable');
+    descriptor.contractEnvelope.sourceInputArtifactRef='different-input';f.db.prepare('UPDATE graph_public_delivery SET descriptor_json=? WHERE graph_run_id=?').run(JSON.stringify(descriptor),started.graphRunId);
+    for(const method of ['graph.status','graph.result','graph.contract'])await expect(f.service.handle(f.connection,method,{schemaVersion:1,scope:f.request.scope,graphRunId:started.graphRunId})).rejects.toThrow('CHECKPOINT_INCOMPATIBLE');
+  }finally{await f.close();}
+});
+
+it.each(['--assume-unchanged', '--skip-worktree'])('rejects writer %s flags before freezing an out-of-scope candidate', async flag => {
+  const f = await fixture(); await f.service.close();
+  const frozen = freezeDeliveryContract({ ...f.registration.delivery.deliveryContract.frozen.contract, allowed_paths: ['other'] });
+  const original = f.registration.delivery.writer.adapter;
+  const adapter = { ...original, invoke: async function* (...args: Parameters<typeof original.invoke>) {
+    yield* original.invoke(...args);
+    execFileSync('git', ['update-index', flag, 'answer'], { cwd: String(args[0].context?.['repo_path']) });
+  } };
+  const service = new GraphRpcService({ ...f.options, registrations: [{ ...f.registration, delivery: { ...f.registration.delivery,
+    writer: { ...f.registration.delivery.writer, adapter }, deliveryContract: { ...f.registration.delivery.deliveryContract, frozen } } }] });
+  try {
+    const start = GraphDelegationStatus.parse(await service.handle(f.connection, 'graph.start', f.request));
+    const deadline = Date.now() + 20000; let status = start;
+    while (!['failed', 'reconciliation_required'].includes(status.status)) {
+      if (Date.now() > deadline) throw Error(`timeout ${status.status}`); await new Promise(resolve => setTimeout(resolve, 20));
+      status = GraphDelegationStatus.parse(await service.handle(f.connection, 'graph.status', { schemaVersion: 1, scope: f.request.scope, graphRunId: start.graphRunId }));
+    }
+    expect(status.candidate).toBeUndefined(); expect(status.resultRef).toBeUndefined();
+    expect(f.db.prepare("SELECT count(*) n FROM graph_actions WHERE node_id LIKE '%.review' OR node_id LIKE '%.tests'").get()).toEqual({ n: 0 });
+  } finally { await service.close(); await f.close(); }
+}, 30000);
+
+it.each(['--assume-unchanged', '--skip-worktree'])('fails closed on %s at the pre-freeze scope gate', async flag => {
+  const f = await fixture();
+  try {
+    const repo = f.registration.delivery.repositoryPath;
+    const frozen = freezeDeliveryContract({ ...f.registration.delivery.deliveryContract.frozen.contract, allowed_paths: ['other'] });
+    execFileSync('git', ['update-index', flag, 'answer'], { cwd: repo });
+    await writeFile(join(repo, 'answer'), 'hidden change');
+    expect(() => assertGraphContractPaths(frozen, repo)).toThrow('GRAPH_CONTRACT_HIDDEN_INDEX_FLAGS');
+  } finally { await f.close(); }
+});
+
+async function hideSameSizeChange(repo: string): Promise<string> {
+  const git = (...args: string[]) => execFileSync('git', args, { cwd: repo, encoding: 'utf8' });
+  git('config', 'core.trustctime', 'false');
+  const path = join(repo, 'answer'); const stamp = new Date(1600000000000);
+  await writeFile(path, '0\n'); await utimes(path, stamp, stamp);
+  git('update-index', '--refresh');
+  await writeFile(path, '1\n'); await utimes(path, stamp, stamp);
+  return git('diff', '--name-only', 'HEAD');
+}
+it('detects raw out-of-scope bytes despite a same-size edit with restored mtime and untrusted ctime', async () => {
+  const f = await fixture();
+  try {
+    const repo = f.registration.delivery.repositoryPath;
+    const frozen = freezeDeliveryContract({ ...f.registration.delivery.deliveryContract.frozen.contract, allowed_paths: ['other'] });
+    expect(await hideSameSizeChange(repo)).toBe('');
+    expect(() => assertGraphContractPaths(frozen, repo)).toThrow('delivery_contract_path_outside_scope');
+  } finally { await f.close(); }
+});
+it('rejects a writer stat-cache bypass before freezing or starting review', async () => {
+  const f = await fixture(); await f.service.close();
+  const frozen = freezeDeliveryContract({ ...f.registration.delivery.deliveryContract.frozen.contract, allowed_paths: ['other'] });
+  const original = f.registration.delivery.writer.adapter; let hiddenDiff: string | undefined;
+  const adapter = { ...original, invoke: async function* (...args: Parameters<typeof original.invoke>) {
+    for await (const event of original.invoke(...args)) {
+      hiddenDiff = await hideSameSizeChange(String(args[0].context?.['repo_path'])); yield event;
+    }
+  } };
+  const service = new GraphRpcService({ ...f.options, registrations: [{ ...f.registration, delivery: { ...f.registration.delivery,
+    writer: { ...f.registration.delivery.writer, adapter }, deliveryContract: { ...f.registration.delivery.deliveryContract, frozen } } }] });
+  try {
+    const start = GraphDelegationStatus.parse(await service.handle(f.connection, 'graph.start', f.request));
+    let status = start; const deadline = Date.now() + 20000;
+    while (!['failed', 'reconciliation_required'].includes(status.status)) {
+      if (Date.now() > deadline) throw Error(`timeout ${status.status}`); await new Promise(resolve => setTimeout(resolve, 20));
+      status = GraphDelegationStatus.parse(await service.handle(f.connection, 'graph.status', { schemaVersion: 1, scope: f.request.scope, graphRunId: start.graphRunId }));
+    }
+    expect(hiddenDiff).toBe(''); expect(status.candidate).toBeUndefined(); expect(status.resultRef).toBeUndefined();
+    const artifacts = await readdir(join(f.options.root, start.graphRunId, 'artifacts', 'artifacts')).catch((error: NodeJS.ErrnoException) => {
+      if (error.code === 'ENOENT') return []; throw error;
+    });
+    expect(artifacts).toEqual([]);
+    expect(f.reviewPrompts).toEqual([]);
+    expect(f.db.prepare("SELECT count(*) n FROM graph_actions WHERE node_id LIKE '%.review' OR node_id LIKE '%.tests'").get()).toEqual({ n: 0 });
+  } finally { await service.close(); await f.close(); }
+}, 30000);
+
+
+FILE packages/core/src/graph/artifact-store.ts
+import { createHash, randomUUID } from "node:crypto";
+import { chmod, lstat, mkdir, mkdtemp, open, readFile, realpath, rename, rm, symlink } from "node:fs/promises";
+import { dirname, isAbsolute, join } from "node:path";
+import type { GraphResult, GraphScope } from "@osstack/protocol";
+import { resolveRepositoryScope } from "./repository-scope.js";
+import { artifactBlobs, artifactGit, artifactPath, captureArtifactTree, gitText, initArtifactRepo, linkSourceObjects } from "./artifact-git.js";
+
+export interface GraphFreezeInput {
+  artifactId: string;
+  scope: GraphScope;
+  runId: string;
+  generation: number;
+  owner: string;
+  workspaceLeaseRef: string;
+  repoId: string;
+  commonDir: string;
+  worktreePath: string;
+  baseRevision: string;
+  implementationReceiptRef: string;
+  producerStopEvidenceRef: string;
+}
+/** Trusted host capabilities, never worker-provided booleans/paths. Host retains
+ * the already-held canonical G10 writer lease and blocks new producers throughout.
+ * Each verifier must resolve undefined or throw; verifyLease authenticates the
+ * actual lease object, generation/owner, canonical repo and current authority. */
+export interface GraphFreezeAuthority {
+  lease: object;
+  /** Optional host-derived apply constraints; never accepted from a worker.
+   * Kept out of the v1 manifest so legacy artifact identities remain stable. */
+  expectedTrees?: { base: string; candidate: string };
+  verifyLease: (input: Readonly<GraphFreezeInput>, lease: object) => void | Promise<void>;
+  verifyImplementationReceipt: (input: Readonly<GraphFreezeInput>) => void | Promise<void>;
+  verifyProducersStopped: (input: Readonly<GraphFreezeInput>) => void | Promise<void>;
+}
+export interface GraphArtifactManifest {
+  version: 1;
+  input: GraphFreezeInput;
+  tree: string;
+  candidateRevision: string;
+  bundleDigest: string;
+}
+type CandidateReady = Extract<GraphResult, { kind: "candidate_ready" }>;
+const sha = (value: string | Buffer): string => createHash("sha256").update(value).digest("hex");
+function canonical(value: unknown): string {
+  if (value === null || typeof value !== "object") return JSON.stringify(value);
+  if (Array.isArray(value)) return `[${value.map(canonical).join(",")}]`;
+  return `{${Object.keys(value).sort().map(key => `${JSON.stringify(key)}:${canonical((value as Record<string, unknown>)[key])}`).join(",")}}`;
+}
+// Full-history bundles are deliberately bounded before any whole-file read.
+const MAX_BUNDLE_BYTES = 256 * 1024 * 1024;
+async function bundleBytes(path: string): Promise<Buffer> {
+  const info = await lstat(path);
+  if (!info.isFile() || info.isSymbolicLink() || info.size > MAX_BUNDLE_BYTES) throw new Error("unsupported artifact bundle size or type (maximum 256 MiB)");
+  const bytes = await readFile(path);
+  if (bytes.length !== info.size || bytes.length > MAX_BUNDLE_BYTES) throw new Error("artifact bundle changed during read");
+  return bytes;
+}
+function snapshot<T>(value: T): T {
+  const result = structuredClone(value);
+  const freeze = (item: unknown): void => { if (item && typeof item === "object") { Object.values(item).forEach(freeze); Object.freeze(item); } };
+  freeze(result); return result;
+}
+function validateInput(input: GraphFreezeInput): void {
+  for (const key of ["artifactId", "runId", "owner", "workspaceLeaseRef", "repoId", "commonDir", "worktreePath", "baseRevision", "implementationReceiptRef", "producerStopEvidenceRef"] as const) {
+    const value = input[key];
+    if (typeof value !== "string" || !value || value.includes("\0")) throw new Error(`invalid freeze ${key}`);
+  }
+  if (!Number.isSafeInteger(input.generation) || input.generation < 1 || input.scope?.schemaVersion !== 1 || !input.scope.tenantId || !input.scope.principalId || !input.scope.workspaceId) throw new Error("invalid freeze identity");
+  if (![input.commonDir, input.worktreePath].every(isAbsolute) || !/^[a-f0-9]{40}$/.test(input.baseRevision)) throw new Error("invalid source path or revision (only SHA1 repositories supported)");
+}
+async function syncDirectory(path: string): Promise<void> {
+  const handle = await open(path, "r");
+  try { await handle.sync(); } catch (error) { if (!["EINVAL", "ENOTSUP", "EOPNOTSUPP"].includes((error as NodeJS.ErrnoException).code ?? "")) throw error; } finally { await handle.close(); }
+}
+async function durableFile(path: string, value: Buffer | string): Promise<void> {
+  const handle = await open(path, "wx", 0o600);
+  try { await handle.writeFile(value); await handle.sync(); } finally { await handle.close(); }
+}
+async function exists(path: string): Promise<boolean> {
+  try { await lstat(path); return true; } catch (error) { if ((error as NodeJS.ErrnoException).code === "ENOENT") return false; throw error; }
+}
+
+/** On-disk immutable artifacts, no scheduler and no automatic GC. Store root and
+ * Git executable must be host-owned, inaccessible to untrusted producers. */
+export class GraphArtifactStore {
+  constructor(private readonly root: string) {
+    if (!isAbsolute(root)) throw new Error("artifact root must be absolute");
+  }
+  private async prepare(): Promise<string> {
+    // Require an existing parent so all newly created directory entries are synced.
+    await realpath(dirname(this.root));
+    await mkdir(this.root, { recursive: true, mode: 0o700 });
+    const root = await realpath(this.root);
+    for (const child of ["artifacts", "ids", "scratch", "locks"]) await mkdir(join(root, child), { recursive: true, mode: 0o700 });
+    await syncDirectory(root); await syncDirectory(dirname(root));
+    return root;
+  }
+  async freeze(raw: GraphFreezeInput, rawAuthority: GraphFreezeAuthority): Promise<CandidateReady> {
+    const input = snapshot(raw); validateInput(input);
+    const authority = Object.freeze({ ...rawAuthority, ...(rawAuthority.expectedTrees === undefined ? {} : { expectedTrees: snapshot(rawAuthority.expectedTrees) }) });
+    if (authority.expectedTrees !== undefined && (!authority.expectedTrees ||
+      ![authority.expectedTrees.base, authority.expectedTrees.candidate].every(value => typeof value === "string" && /^[a-f0-9]{40}$/.test(value)))) throw new Error("invalid freeze tree constraint");
+    if (!authority.lease || typeof authority.lease !== "object") throw new Error("missing canonical lease authority");
+    const check = async (): Promise<void> => {
+      for (const fn of [() => authority.verifyImplementationReceipt(input), () => authority.verifyProducersStopped(input), () => authority.verifyLease(input, authority.lease)]) {
+        if (await fn() !== undefined) throw new Error("nonconforming freeze authority");
+      }
+    };
+    await check();
+    const root = await this.prepare();
+    const id = sha(input.artifactId); const binding = join(root, "ids", `${id}.json`);
+    const lock = join(root, "locks", id);
+    await mkdir(lock); // Cross-process exclusion; stale locks fail closed, never guessed away.
+    let scratch: string | undefined;
+    try {
+      const sourceIdentity = await this.source(input);
+      if (authority.expectedTrees && await gitText(input.worktreePath, ["rev-parse", `${input.baseRevision}^{tree}`]) !== authority.expectedTrees.base) throw new Error("invocation base tree mismatch");
+      await check();
+      scratch = await mkdtemp(join(root, "scratch", "capture-"));
+      const objectRepo = join(scratch, "objects.git");
+      await initArtifactRepo(objectRepo); await linkSourceObjects(objectRepo, input.commonDir);
+      if (await this.source(input) !== sourceIdentity) throw new Error("source identity changed before capture");
+      await check();
+      const tree = await captureArtifactTree(input.worktreePath, objectRepo, { appliedTree: authority.expectedTrees !== undefined });
+      if (authority.expectedTrees && tree !== authority.expectedTrees.candidate) throw new Error("applied tree mismatch");
+      if (await exists(binding)) {
+        const saved = JSON.parse(await readFile(binding, "utf8")) as { inputDigest: string; artifactDigest: string };
+        if (saved.inputDigest !== sha(canonical(input))) throw new Error("artifact replay identity mismatch");
+        const manifest = await this.verify(saved.artifactDigest);
+        if (canonical(manifest.input) !== canonical(input) || manifest.tree !== tree) throw new Error("artifact replay content mismatch");
+        await check();
+        if (await this.source(input) !== sourceIdentity || await captureArtifactTree(input.worktreePath, objectRepo, { appliedTree: authority.expectedTrees !== undefined }) !== tree) throw new Error("source content changed during replay");
+        await check();
+        return this.result(saved.artifactDigest, manifest);
+      }
+      const candidateRevision = await gitText(objectRepo, ["commit-tree", tree, "-p", input.baseRevision], Buffer.from(`OSStack frozen candidate ${sha(canonical(input))}\n`));
+      await artifactGit(objectRepo, ["update-ref", "refs/heads/candidate", candidateRevision]);
+      const staging = join(scratch, "artifact"); await mkdir(staging);
+      const bundlePath = join(staging, "candidate.bundle");
+      await artifactGit(objectRepo, ["bundle", "create", bundlePath, "refs/heads/candidate"]);
+      const manifest: GraphArtifactManifest = { version: 1, input, tree, candidateRevision, bundleDigest: sha(await bundleBytes(bundlePath)) };
+      const manifestBytes = canonical(manifest); const digest = sha(manifestBytes);
+      // Validate from a fresh object database with no alternates or prerequisites.
+      await this.validateBundle(bundlePath, manifest, join(scratch, "verify.git"));
+      await check();
+      if (await this.source(input) !== sourceIdentity || await captureArtifactTree(input.worktreePath, objectRepo, { appliedTree: authority.expectedTrees !== undefined }) !== tree) throw new Error("source content or identity changed during freeze");
+      await check();
+      const bundleHandle = await open(bundlePath, "r"); try { await bundleHandle.sync(); } finally { await bundleHandle.close(); }
+      await durableFile(join(staging, "manifest.json"), manifestBytes); await syncDirectory(staging);
+      const destination = join(root, "artifacts", digest);
+      if (await exists(destination)) await this.verify(digest);
+      else await rename(staging, destination);
+      await syncDirectory(join(root, "artifacts"));
+      const temporaryBinding = join(root, "ids", `.${id}-${randomUUID()}`);
+      await durableFile(temporaryBinding, canonical({ inputDigest: sha(canonical(input)), artifactDigest: digest }));
+      await rename(temporaryBinding, binding); await syncDirectory(join(root, "ids"));
+      await check();
+      return this.result(digest, manifest);
+    } finally {
+      // Only scratch files are disposable. Never source worktrees/artifacts.
+      if (scratch) await rm(scratch, { recursive: true, force: true });
+      await rm(lock, { recursive: true });
+    }
+  }
+  private result(digest: string, manifest: GraphArtifactManifest): CandidateReady {
+    return snapshot({ schemaVersion: 1, kind: "candidate_ready", candidateRevision: manifest.candidateRevision, artifactDigest: digest, artifactRefs: [`graph-artifact:${digest}`] });
+  }
+  private async source(input: GraphFreezeInput): Promise<string> {
+    const scope = await resolveRepositoryScope(input.worktreePath, { repoId: input.repoId, commonDir: input.commonDir });
+    if (scope.workspacePath !== input.worktreePath || scope.commonDir !== input.commonDir || await gitText(input.worktreePath, ["rev-parse", "--show-toplevel"]) !== input.worktreePath) throw new Error("exact source identity mismatch");
+    if (await gitText(input.worktreePath, ["rev-parse", "HEAD"]) !== input.baseRevision) throw new Error("source HEAD revision mismatch");
+    if (await gitText(input.worktreePath, ["rev-parse", "--is-shallow-repository"]) !== "false") throw new Error("unsupported shallow source");
+    if ((await gitText(input.worktreePath, ["ls-tree", "-r", input.baseRevision])).split("\n").some(line => line.startsWith("160000 "))) throw new Error("unsupported submodule");
+    const gitDir = await realpath(await gitText(input.worktreePath, ["rev-parse", "--absolute-git-dir"]));
+    const identities = await Promise.all([input.worktreePath, input.commonDir, gitDir].map(async path => { const s = await lstat(path); return [path, s.dev, s.ino]; }));
+    return canonical(identities);
+  }
+  async verify(digest: string): Promise<GraphArtifactManifest> {
+    if (!/^[a-f0-9]{64}$/.test(digest)) throw new Error("invalid artifact digest");
+    const root = await this.prepare(); const directory = join(root, "artifacts", digest);
+    const bytes = await readFile(join(directory, "manifest.json"));
+    if (sha(bytes) !== digest) throw new Error("corrupt artifact manifest digest");
+    const manifest = JSON.parse(bytes.toString("utf8")) as GraphArtifactManifest;
+    if (manifest.version !== 1 || !/^[a-f0-9]{40}$/.test(manifest.tree) || !/^[a-f0-9]{40}$/.test(manifest.candidateRevision)) throw new Error("invalid artifact manifest");
+    validateInput(manifest.input);
+    const bundle = join(directory, "candidate.bundle");
+    if (sha(await bundleBytes(bundle)) !== manifest.bundleDigest) throw new Error("corrupt artifact bundle digest");
+    const scratch = await mkdtemp(join(root, "scratch", "verify-"));
+    try { await this.validateBundle(bundle, manifest, join(scratch, "repo.git")); } finally { await rm(scratch, { recursive: true, force: true }); }
+    return snapshot(manifest);
+  }
+  private async validateBundle(bundle: string, manifest: GraphArtifactManifest, repo: string): Promise<void> {
+    await initArtifactRepo(repo);
+    await artifactGit(repo, ["bundle", "verify", bundle]);
+    await artifactGit(repo, ["bundle", "unbundle", bundle]);
+    await artifactGit(repo, ["update-ref", "refs/heads/candidate", manifest.candidateRevision]);
+    if (await gitText(repo, ["rev-parse", `${manifest.candidateRevision}^{tree}`]) !== manifest.tree || await gitText(repo, ["rev-parse", `${manifest.candidateRevision}^`]) !== manifest.input.baseRevision) throw new Error("artifact candidate tree/parent mismatch");
+    await artifactGit(repo, ["fsck", "--full", "--strict"]);
+  }
+  async restore(digest: string, destination: { rootPath: string; directoryName: string }): Promise<{ worktreePath: string; candidateRevision: string; tree: string }> {
+    const { rootPath, directoryName } = destination;
+    if (!isAbsolute(rootPath) || !/^[a-zA-Z0-9][a-zA-Z0-9._-]*$/.test(directoryName)) throw new Error("invalid exact restore destination");
+    const parent = await realpath(rootPath); const target = join(parent, directoryName);
+    if (await exists(target)) throw new Error("restore destination already exists");
+    const manifest = await this.verify(digest);
+    await mkdir(target); // exclusive allocation, never reuse or overwrite
+    const root = await realpath(this.root);
+    await initArtifactRepo(target, false);
+    await artifactGit(target, ["bundle", "unbundle", join(root, "artifacts", digest, "candidate.bundle")]);
+    await artifactGit(target, ["update-ref", "HEAD", manifest.candidateRevision]);
+    await artifactGit(target, ["read-tree", manifest.candidateRevision]);
+    const entries = (await artifactGit(target, ["ls-tree", "-rz", "--full-tree", manifest.candidateRevision])).toString("utf8").split("\0").filter(Boolean);
+    const parsed = entries.map(entry => {
+      const match = /^(100644|100755|120000) blob ([a-f0-9]{40})\t([\s\S]+)$/.exec(entry);
+      if (!match) throw new Error("unsupported artifact tree entry"); return match;
+    });
+    const blobs = await artifactBlobs(target, parsed.map(match => match[2]!));
+    for (const [index, match] of parsed.entries()) {
+      const path = artifactPath(target, match[3]!);
+      await mkdir(dirname(path), { recursive: true });
+      if (await realpath(dirname(path)) !== dirname(path) || await exists(path)) throw new Error("restore path collision or symlink ancestor");
+      const bytes = blobs[index]!;
+      if (match[1] === "120000") await symlink(bytes, path);
+      else { await durableFile(path, bytes); await chmod(path, match[1] === "100755" ? 0o755 : 0o644); }
+    }
+    const scratch = await mkdtemp(join(root, "scratch", "restore-"));
+    try {
+      await initArtifactRepo(scratch);
+      if (await captureArtifactTree(target, scratch) !== manifest.tree) throw new Error("restored tree mismatch");
+    } finally { await rm(scratch, { recursive: true, force: true }); }
+    return { worktreePath: target, candidateRevision: manifest.candidateRevision, tree: manifest.tree };
+  }
+}
+
+
+FILE packages/core/src/graph/artifact-git.ts
+import { randomUUID } from "node:crypto";
+import type { Stats } from "node:fs";
+import { spawn } from "node:child_process";
+import { lstat, mkdir, readFile, readlink, realpath, writeFile } from "node:fs/promises";
+import { dirname, join, resolve, sep } from "node:path";
+
+/** Plumbing only. Never inherit Git redirection, templates, hooks, filters or fsmonitor. */
+export async function artifactGit(cwd: string, args: string[], input?: Buffer, outputLimit = 256 * 1024 * 1024): Promise<Buffer> {
+  const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith("GIT_")));
+  Object.assign(env, { GIT_CONFIG_NOSYSTEM: "1", GIT_CONFIG_GLOBAL: "/dev/null", GIT_TERMINAL_PROMPT: "0", GIT_NO_REPLACE_OBJECTS: "1", GIT_OPTIONAL_LOCKS: "0", LC_ALL: "C",
+    GIT_AUTHOR_NAME: "OSStack freeze", GIT_AUTHOR_EMAIL: "freeze@osstack.invalid", GIT_COMMITTER_NAME: "OSStack freeze", GIT_COMMITTER_EMAIL: "freeze@osstack.invalid", GIT_AUTHOR_DATE: "2000-01-01T00:00:00Z", GIT_COMMITTER_DATE: "2000-01-01T00:00:00Z" });
+  return await new Promise((resolvePromise, reject) => {
+    const child = spawn("git", ["-c", "core.hooksPath=/dev/null", "-c", "core.fsmonitor=false", "-c", "init.templateDir=", "-c", "commit.gpgSign=false", "-c", "gc.auto=0", ...args], { cwd, env, stdio: ["pipe", "pipe", "pipe"] });
+    const stdout: Buffer[] = []; const stderr: Buffer[] = []; let bytes = 0;
+    const timer = setTimeout(() => { child.kill("SIGKILL"); reject(new Error("artifact git timed out")); }, 60_000);
+    child.stdout.on("data", (part: Buffer) => { bytes += part.length; if (bytes > outputLimit) { child.kill("SIGKILL"); reject(new Error("artifact git output limit")); } else stdout.push(part); });
+    child.stderr.on("data", (part: Buffer) => { if (stderr.length < 256) stderr.push(part); });
+    child.stdin.on("error", () => { /* exit status reports failed plumbing */ });
+    child.on("error", error => { clearTimeout(timer); reject(error); });
+    child.on("close", code => { clearTimeout(timer); if (code === 0) resolvePromise(Buffer.concat(stdout)); else reject(new Error(`artifact git ${args[0]} failed: ${Buffer.concat(stderr).toString().slice(0, 4096)}`)); });
+    child.stdin.end(input);
+  });
+}
+export async function gitText(cwd: string, args: string[], input?: Buffer): Promise<string> {
+  return (await artifactGit(cwd, args, input)).toString("utf8").trim();
+}
+export function artifactPath(root: string, name: string): string {
+  if (!name || name.includes("\0") || name.includes("\\") || name.split("/").some(part => !part || part === "." || part === ".." || part.toLowerCase() === ".git")) throw new Error("unsupported artifact path");
+  const path = resolve(root, name);
+  if (!path.startsWith(root + sep)) throw new Error("escaping artifact path");
+  return path;
+}
+export async function initArtifactRepo(path: string, bare = true): Promise<void> {
+  await mkdir(path, { recursive: true });
+  await artifactGit(path, ["init", ...(bare ? ["--bare"] : []), "--object-format=sha1"]);
+}
+/** Raw bytes, no add/checkout/clean/smudge or global attributes transformations.
+ * appliedTree matches the bounded applier: include ignored files and use Git
+ * owner-execute semantics. Default preserves historical v1 capture behavior. */
+export async function captureArtifactTree(source: string, objectRepo: string, options: { appliedTree?: boolean } = {}): Promise<string> {
+  // Sparse checkout omissions are not deletions. Require a fully materialized
+  // source instead of silently deleting skipped tracked files from the candidate.
+  const flags = (await artifactGit(source, ["ls-files", "-t", "-z"])).toString("utf8").split("\0");
+  if (flags.some(entry => entry.startsWith("S "))) throw new Error("unsupported skip-worktree source");
+  const stages = (await artifactGit(source, ["ls-files", "--stage", "-z"])).toString("utf8").split("\0");
+  if (stages.some(line => line.startsWith("160000 "))) throw new Error("unsupported submodule");
+  if (stages.some(line => line && !/^\d+ [a-f0-9]+ 0\t/.test(line))) throw new Error("unmerged source index");
+  const namesRaw = await artifactGit(source, ["ls-files", "--cached", "--others", ...(options.appliedTree ? [] : ["--exclude-standard"]), "-z"]);
+  if (!Buffer.from(namesRaw.toString("utf8"), "utf8").equals(namesRaw)) throw new Error("unsupported non-UTF8 path");
+  const names = [...new Set(namesRaw.toString("utf8").split("\0").filter(Boolean))].sort();
+  await artifactGit(objectRepo, ["read-tree", "--empty"]);
+  const entries: { mode: string; name: string }[] = [];
+  const blobs: Buffer[] = []; let total = 0;
+  for (const name of names) {
+    const path = artifactPath(source, name);
+    let info: Stats;
+    try { info = await lstat(path); } catch (error) { if (["ENOENT", "ENOTDIR"].includes((error as NodeJS.ErrnoException).code ?? "")) continue; throw error; }
+    if (await realpath(dirname(path)) !== dirname(path)) throw new Error("source path has symlink ancestor");
+    if (info.isDirectory()) {
+      try { await lstat(join(path, ".git")); } catch (error) { if ((error as NodeJS.ErrnoException).code === "ENOENT") continue; throw error; }
+      throw new Error("unsupported nested repository or submodule");
+    }
+    if (!info.isFile() && !info.isSymbolicLink()) throw new Error("unsupported nested repository, submodule or special file");
+    if (info.isFile() && info.size > 256 * 1024 * 1024 - total) throw new Error("artifact tree size limit");
+    const data = info.isSymbolicLink() ? await readlink(path, { encoding: "buffer" }) : await readFile(path);
+    total += data.length;
+    if (total > 256 * 1024 * 1024 || entries.length >= 100000) throw new Error("artifact tree size limit");
+    blobs.push(Buffer.from(`blob\nmark :${entries.length + 1}\ndata ${data.length}\n`), data, Buffer.from("\n"));
+    const mode = info.isSymbolicLink() ? "120000" : (info.mode & (options.appliedTree ? 0o100 : 0o111)) !== 0 ? "100755" : "100644";
+    entries.push({ mode, name });
+  }
+  if (entries.length) {
+    // One plumbing process writes all raw blobs. No attributes/filters/checkout;
+    // marks bind each returned object to the exact bytes captured above.
+    const marksPath = join(objectRepo, `capture-${randomUUID()}.marks`);
+    await artifactGit(objectRepo, ["fast-import", "--quiet", `--export-marks=${marksPath}`], Buffer.concat(blobs));
+    const marks = new Map((await readFile(marksPath, "utf8")).trim().split("\n").map(line => {
+      const match = /^:(\d+) ([a-f0-9]{40})$/.exec(line);
+      if (!match) throw new Error("invalid artifact blob mark");
+      return [Number(match[1]), match[2]!] as const;
+    }));
+    const index = entries.map(({ mode, name }, i) => {
+      const oid = marks.get(i + 1); if (!oid) throw new Error("missing artifact blob mark");
+      return `${mode} ${oid}\t${name}\0`;
+    }).join("");
+    await artifactGit(objectRepo, ["update-index", "-z", "--index-info"], Buffer.from(index));
+  }
+  return await gitText(objectRepo, ["write-tree"]);
+}
+export async function linkSourceObjects(repo: string, commonDir: string): Promise<void> {
+  if (commonDir.includes("\n")) throw new Error("unsupported object directory path");
+  await mkdir(join(repo, "objects", "info"), { recursive: true });
+  await writeFile(join(repo, "objects", "info", "alternates"), `${join(commonDir, "objects")}\n`);
+}
+
+/** Read exact raw objects in one process; parse lengths, never split binary data
+ * on newlines. Raw bytes are bounded separately from per-entry protocol headers. */
+export async function artifactBlobs(repo: string, oids: readonly string[], maxBlobBytes = 256 * 1024 * 1024): Promise<Buffer[]> {
+  if (!Number.isSafeInteger(maxBlobBytes) || maxBlobBytes < 0 || maxBlobBytes > 256 * 1024 * 1024 || oids.length > 100000) throw new Error("artifact blob limit");
+  if (!oids.every(oid => /^[a-f0-9]{40}$/.test(oid))) throw new Error("invalid artifact blob identity");
+  if (!oids.length) return [];
+  const output = await artifactGit(repo, ["cat-file", "--batch"], Buffer.from(oids.join("\n") + "\n"), maxBlobBytes + oids.length * 64);
+  let offset = 0; let rawBytes = 0;
+  const blobs = oids.map(oid => {
+    const end = output.indexOf(10, offset); if (end < offset) throw new Error("truncated artifact blob header");
+    const header = output.subarray(offset, end).toString("ascii");
+    const match = /^([a-f0-9]{40}) blob (\d+)$/.exec(header);
+    if (!match || match[1] !== oid) throw new Error("artifact blob identity mismatch");
+    const length = Number(match[2]); offset = end + 1;
+    if (!Number.isSafeInteger(length) || length < 0 || offset + length >= output.length || output[offset + length] !== 10) throw new Error("truncated artifact blob");
+    rawBytes += length; if (rawBytes > maxBlobBytes) throw new Error("artifact blob limit");
+    const bytes = output.subarray(offset, offset + length); offset += length + 1; return bytes;
+  });
+  if (offset !== output.length) throw new Error("unexpected artifact blob data");
+  return blobs;
+}
+
+
+Graph delivery freeze integration
+      if (epoch && !feedback) throw Error('IMMUTABLE_FEEDBACK_REQUIRED');
+      const action = epoch ? { kind: 'repair' as const, inputArtifactRef: this.options.request.inputArtifactRef, workspaceLeaseRef,
+        candidateRevision: this.candidate(epoch - 1).candidateRevision, feedbackRef: this.feedbackRef! } : { kind: 'implement' as const, inputArtifactRef: this.options.request.inputArtifactRef, workspaceLeaseRef };
+      const rawAdapter = this.options.writer.adapter;
+      const context = this.options.executionContext ? await prepareGraphExecutionContext({ registration: this.options.executionContext,
+        adapter: rawAdapter, workspacePath: this.options.repositoryPath, frozen: this.options.deliveryContract!.frozen, authorize: () => this.check() }) : undefined;
+      const adapter = context?.adapter ?? rawAdapter;
+      const capability = adapter.capabilities().find(c => c.id === this.options.writer.capabilityId); if (!capability) throw Error('WRITER_CAPABILITY_REQUIRED');
+      return { ...common, workspace, action, execution: { kind: 'adapter', adapter, capabilityId: capability.id, plan: {
+        plan_id: `delivery-${r.graphRunId}-${epoch}`, agent_id: adapter.id, max_iterations: 1,
+        task: { task_id: `delivery-${epoch}`, source: 'manual', capability: capability.kind, priority: 100,
+          prompt: `${this.options.task}${this.options.deliveryContract && !context ? `\n\n${this.options.deliveryContract.frozen.brief}` : ''}${feedback ? `\nRepair frozen candidate ${action.kind === 'repair' ? action.candidateRevision : ''}. Complete host quality feedback:\n${feedback.bundle_json}` : ''}` },
+        stop_condition: { type: 'tests_pass' },
+      } }, persist: async evidence => {
+        if (context && evidence.status === 'completed' && evidence.stopped) {
+          const action = this.latest(n.id)!; const recorded = await context.evidence(evidence.candidate?.execution?.run_id ?? '', { effect: action.effect, effectKey: action.effectKey });
+          this.check(); this.contextEvidence.set(action.effectKey, recorded);
+        }
+        return { evidenceRef: await this.persist(n.id, workspace.workspace_path, evidence),
+          ...(evidence.status === 'completed' && evidence.stopped ? { result: { schemaVersion: 1 as const, kind: 'implementation_complete' as const, workspaceLeaseRef, receiptRef: `e${epoch}.implementation` } } : {}) };
+      } };
+    }
+    if (name === 'freeze') {
+      const implementation = this.latest(`e${epoch}.${epoch ? 'repair' : 'implement'}`);
+      if (implementation?.outcome?.state !== 'confirmed' || implementation.outcome.result.kind !== 'implementation_complete') throw Error('IMPLEMENTATION_REQUIRED');
+      const workspace = this.workspace(); const scope = await resolveRepositoryScope(workspace.workspace_path);
+      const checkProducer = async () => { const evidence = await loadDeliveryReceipt(this.options.root, implementation.outcome!.evidenceRef,
+        this.receiptBinding(implementation.effect.nodeId, workspace.workspace_path));
+        if (evidence.stopped !== true || workerCanonical(evidence.candidate?.workspace) !== workerCanonical(workspace)) throw Error('PRODUCER_STOP_REQUIRED'); this.check();
+        if (this.options.deliveryContract) assertGraphContractPaths(this.options.deliveryContract.frozen, workspace.workspace_path); };
+      return { ...common, workspace, action: { kind: 'freeze', workspaceLeaseRef, receiptRef: implementation.outcome.result.receiptRef },
+        execution: { kind: 'freeze', store: this.artifacts, input: { artifactId: `delivery-${r.graphRunId}-${epoch}`, scope: r.scope, runId: r.graphRunId,
+          generation: r.generation, owner: r.leaseOwner!, workspaceLeaseRef, repoId: scope.repoId, commonDir: scope.commonDir, worktreePath: workspace.workspace_path,
+          baseRevision: epoch ? this.candidate(epoch - 1).candidateRevision : this.compiled.spec.input.baseRevision,
+          implementationReceiptRef: implementation.outcome.result.receiptRef, producerStopEvidenceRef: implementation.outcome.evidenceRef },
+        authority: { verifyLease: async (_input, lease) => { this.check(); await (lease as ExecutionLease).assertActive!(); }, verifyImplementationReceipt: checkProducer, verifyProducersStopped: checkProducer } },
+        persist: async evidence => { return { evidenceRef: await this.persist(n.id, workspace.workspace_path, evidence), actualTokens: 0, result: evidence.frozenCandidate! }; } };
+    }
+    if (name === 'prepare_review' || name === 'prepare_tests') return this.preparation(name === 'prepare_review' ? 'review' : 'tests', 1);
+    const action = this.branches.get(n.id); if (!action) throw Error('PREPARATION_REQUIRED'); return action;
+  }
+  private request(action: GraphRegisteredAction) { const r = this.current(); return { schemaVersion: 1 as const, kind: 'worker_action' as const, requestId: `host:${randomUUID()}`,
+    scope: r.scope, graphRunId: r.graphRunId, specHash: r.identity.specHash, generation: r.generation, epoch: this.epoch,

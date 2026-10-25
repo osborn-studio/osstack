@@ -2,7 +2,7 @@ import { spawn } from "node:child_process";
 import { constants } from "node:fs";
 import { access, mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
+import { basename, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { Capability, CostTier } from "@osstack/core";
 import type { HermesEvent } from "@osstack/hermes-adapter";
@@ -106,7 +106,15 @@ export abstract class DeepSeekCommandAdapter extends BaseAgentAdapter {
     }
 
     const cwd = repoPath(task);
-    const args = this.args(task);
+    let output: { args: string[]; destination: string };
+    try { output = await this.args(task); }
+    catch {
+      yield errorEvent(task, seq++, "deepseek_output_unavailable", "Unable to allocate reviewer output");
+      yield doneEvent(task, seq, "failed", seq - 1, "reviewer output unavailable before command start");
+      return;
+    }
+    const { args, destination } = output;
+    yield { ...envelope(task, seq++, false), type: "progress", payload: { phase: `${this.id}.output`, detail: JSON.stringify({ path: destination }) } };
     yield progressEvent(task, seq++, `${this.id}.start`, `${bin} ${args.join(" ")}`);
 
     // Loop evaluation specs travel via a temp JSON file + env var so newer
@@ -124,10 +132,15 @@ export abstract class DeepSeekCommandAdapter extends BaseAgentAdapter {
       );
     }
 
+    if (signal.aborted) {
+      yield doneEvent(task, seq, "cancelled", seq - 1, "cancelled before DeepSeek command start");
+      return;
+    }
     let input: string | undefined;
     if (this.config.commandKind === "review") {
       const diff = await runCommand("git", ["diff", "--no-ext-diff"], {
         cwd,
+        signal,
         timeoutMs: 30_000,
         outputLimit: this.outputLimit(),
       });
@@ -155,6 +168,10 @@ export abstract class DeepSeekCommandAdapter extends BaseAgentAdapter {
     };
     if (input !== undefined) commandOptions.input = input;
     if (env !== undefined) commandOptions.env = env;
+    if (signal.aborted) {
+      yield doneEvent(task, seq, "cancelled", seq - 1, "cancelled before DeepSeek command start");
+      return;
+    }
     const result = await runCommand(bin, args, commandOptions);
     if (result.stdout.trim() !== "") {
       yield tokenEvent(task, seq++, `${this.id}.stdout`, result.stdout);
@@ -171,7 +188,7 @@ export abstract class DeepSeekCommandAdapter extends BaseAgentAdapter {
         seq,
         "completed",
         seq - 1,
-        `${this.config.defaultBin} completed`,
+        `${this.config.defaultBin} completed; output_path=${JSON.stringify(destination)}`,
         judgments,
         deviations,
       );
@@ -198,13 +215,18 @@ export abstract class DeepSeekCommandAdapter extends BaseAgentAdapter {
     }
   }
 
-  private args(task: AgentTask): string[] {
-    const args = ["--output", outputPath(task, this.options.outputPath ?? this.config.defaultOutputPath)];
+  private async args(task: AgentTask): Promise<{ args: string[]; destination: string }> {
+    let destination = outputPath(task, this.options.outputPath);
+    if (destination === undefined) {
+      const { createScratchDir } = await import("@osstack/core");
+      destination = join(await createScratchDir("runtime", `${this.id}-output`), basename(this.config.defaultOutputPath));
+    }
+    const args = ["--output", destination];
     const strict = typeof task.context?.["strict"] === "boolean"
       ? task.context["strict"]
       : this.options.strict;
     if (strict === true) args.push("--strict");
-    return args;
+    return { args, destination };
   }
 
   private timeoutMs(): number {
@@ -360,9 +382,11 @@ function repoPath(task: AgentTask): string {
   return typeof task.context?.["repo_path"] === "string" ? task.context["repo_path"] : process.cwd();
 }
 
-function outputPath(task: AgentTask, fallback: string): string {
+function outputPath(task: AgentTask, fallback?: string): string | undefined {
   const contextKey = task.capability_id.includes("verify") ? "verify_output_path" : "review_output_path";
-  return typeof task.context?.[contextKey] === "string" ? task.context[contextKey] : fallback;
+  const requested = task.context?.[contextKey];
+  if (typeof requested === "string" && requested.trim() !== "") return requested;
+  return fallback?.trim() ? fallback : undefined;
 }
 
 function nowSeconds(): number {
@@ -399,6 +423,7 @@ function runCommand(
     outputLimit: number;
   },
 ): Promise<CommandResult> {
+  if (options.signal?.aborted) return Promise.resolve({ exitCode: 1, stdout: "", stderr: "cancelled before spawn", timedOut: false });
   return new Promise((resolve) => {
     const child = spawn(command, args, {
       cwd: options.cwd,

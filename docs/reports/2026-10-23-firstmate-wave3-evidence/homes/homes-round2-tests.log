@@ -1,0 +1,53 @@
+$ vitest run -- src/home-inventory.test.ts src/home-inventory-daemon.test.ts --maxWorkers=2
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-contract-integration/packages/cli
+
+ ✓ src/proof-cli.test.ts (44 tests) 1053ms
+   ✓ proof CLI > writes a proof pack with manifest checksums  391ms
+ ✓ src/product-entry-cli.test.ts (46 tests) 2537ms
+   ✓ product entry commands > runs a top-level product doctor across loop readiness and agent availability  1385ms
+   ✓ product entry commands > blocks Trusted Publishing when a public workspace package has not been bootstrapped  989ms
+osstack: clock jump detected drift_ms=9980; re-running external health and recovery probes
+osstack: retaining write lease run-offline-production-recovery: guarded autonomy blocked or exit unconfirmed
+ ✓ src/loop-cli.test.ts (42 tests) 4992ms
+   ✓ loop CLI > gates findings committed by an isolated worktree against the pre-run revision  318ms
+   ✓ loop CLI > passes --worktree through local loop runs  379ms
+   ✓ loop CLI > runs ds-review as a post-execution reviewer verifier  420ms
+   ✓ loop CLI > keeps reviewer-failure from successful reviewed shell execution  409ms
+ ✓ src/daemon-loop.test.ts (25 tests) 5176ms
+   ✓ daemon loop RPC > runs reviewer adapters through daemon loop.run  446ms
+   ✓ daemon loop RPC > creates a blocked kanban card when a background loop escalates  357ms
+   ✓ daemon loop RPC > creates a blocked kanban card after three same-capability loop failures  425ms
+   ✓ daemon loop RPC > stops a background polling loop when its goal command passes  321ms
+ ✓ src/session-rpc.test.ts (30 tests) 2542ms
+ ✓ src/graph-contained-recovery.test.ts (72 tests) 11892ms
+   ✓ contained proof bridge > uses the host closure inside actual G15 without inferring business outcome: valid  405ms
+   ✓ contained proof bridge > uses the host closure inside actual G15 without inferring business outcome: revoked  333ms
+   ✓ contained proof bridge > uses the host closure inside actual G15 without inferring business outcome: isolation-lost  333ms
+   ✓ contained proof bridge > uses the host closure inside actual G15 without inferring business outcome: release-drift  330ms
+   ✓ graph quiescence sweep > sweeps actual worker and contained executor after reopening the ledger, without settling or releasing  339ms
+   ✓ graph quiescence sweep > sweeps two distinct contained invocations without re-execution and binds each physical receipt  397ms
+   ✓ graph quiescence sweep > does not omit released or missing-admission historical obligations (held=false)  341ms
+   ✓ graph quiescence sweep > does not omit released or missing-admission historical obligations (held=true)  345ms
+   ✓ graph quiescence sweep > can inspect a released contained action but cannot reacquire cleanup authority  339ms
+   ✓ graph quiescence sweep > never substitutes container absence for a deleted receipt in inspect mode  335ms
+   ✓ graph quiescence sweep > never substitutes container absence for a deleted receipt in stop_contained mode  327ms
+   ✓ graph quiescence sweep > requires explicit stop mode and current stop grant for an orphan; never releases its ledger hold  350ms
+   ✓ graph quiescence sweep > requires old and current generation exit evidence before any container read or stop  324ms
+   ✓ graph quiescence sweep > includes an actionless intermediate generation (durable no-start=false)  331ms
+   ✓ graph quiescence sweep > includes an actionless intermediate generation (durable no-start=true)  341ms
+   ✓ graph quiescence sweep > rejects release drift inside executor authorization before subsequent physical operations  330ms
+   ✓ graph quiescence sweep > rejects revision drift inside executor authorization before subsequent physical operations  326ms
+   ✓ graph quiescence sweep > rejects grant drift inside executor authorization before subsequent physical operations  325ms
+   ✓ graph quiescence sweep > rejects duplicate registration/authority before daemon access  313ms
+   ✓ graph quiescence sweep > rejects extra registration/authority before daemon access  334ms
+   ✓ graph quiescence sweep > rejects async registration/authority before daemon access  339ms
+   ✓ graph quiescence sweep > captures trusted registrations and guards, and reports absent registries as unproven  350ms
+   ✓ graph quiescence sweep > rejects release drift after daemon I/O before further cleanup  322ms
+   ✓ graph quiescence sweep > rejects worker-journal drift after daemon I/O before further cleanup  321ms
+   ✓ graph quiescence sweep > keeps a substituted trusted manifest unproven before Docker calls  334ms
+ ✓ src/probe-command.test.ts (19 tests) 518ms
+ ✓ src/daily-cli.test.ts (25 tests) 594ms
+/Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-contract-integration/packages/cli:
+[ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL] @osstack/cli@0.21.0 test: `vitest run -- src/home-inventory.test.ts src/home-inventory-daemon.test.ts --maxWorkers=2`
+Command failed with signal "SIGINT"

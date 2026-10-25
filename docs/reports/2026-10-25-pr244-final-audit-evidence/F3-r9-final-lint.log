@@ -1,0 +1,4 @@
+COMMAND ["pnpm", "exec", "biome", "check", "packages/loop/src/verifier.ts", "packages/loop/src/verifier.test.ts", "packages/loop/src/reviewer-isolation.ts", "packages/loop/src/reviewer-isolation.test.ts"]
+Checked 4 files in 77ms. No fixes applied.
+
+EXIT_CODE=0

@@ -1,0 +1,51 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-cockpit/packages/cli
+
+ ❯ src/worker-presentation.test.ts (13 tests | 1 failed) 224ms
+   ✓ reads only the original view token and suppresses unchanged metadata 5ms
+   ✓ closes a pending reader without outputting its late result 52ms
+   ✓ ends unknown on expired token without acquiring another token or invoking controls 1ms
+   ✓ stops on unknown source observation and escapes terminal controls in paths 0ms
+   ✓ honors output backpressure and closing never destroys the shared terminal stream 52ms
+   ✓ handles EPIPE as local output closure, without a worker action 3ms
+   ✓ rejects a changed scope instead of following another worker observation 1ms
+   ✓ bounds response floods and does not echo unvalidated output 1ms
+   ✓ ends a never-settling read on duration and ignores a pre-aborted viewer 1ms
+   ✓ locally times out a hung transport as unknown and aborts its read signal 1ms
+   ✓ cleans a callback-only write error listener after the Node error dispatch turn 1ms
+   × preserves interruption when the final unknown diagnostic is backpressured 53ms
+     → expected { reason: 'output_closed' } to match object { reason: 'interrupted' }
+   ✓ retains only one late-error guard when a pending output never calls back 52ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/worker-presentation.test.ts > preserves interruption when the final unknown diagnostic is backpressured
+AssertionError: expected { reason: 'output_closed' } to match object { reason: 'interrupted' }
+
+- Expected
++ Received
+
+  {
+-   "reason": "interrupted",
++   "reason": "output_closed",
+  }
+
+ ❯ src/worker-presentation.test.ts:82:29
+     80|   const handle=createTerminalPresentationBackend({output,inspect:async…
+     81|   await vi.waitFor(()=>expect(callback).toBeTypeOf('function'));abort.…
+     82|   expect(await handle.done).toMatchObject({reason:'interrupted'});call…
+       |                             ^
+     83| });
+     84| it('retains only one late-error guard when a pending output never call…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 12 passed (13)
+   Start at  13:41:40
+   Duration  1.02s (transform 361ms, setup 16ms, collect 590ms, tests 224ms, environment 0ms, prepare 34ms)
+
+undefined
+/Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-cockpit/packages/cli:
+[ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL] Command failed with exit code 1: vitest run src/worker-presentation.test.ts

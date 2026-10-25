@@ -1,0 +1,12 @@
+{
+  "originalWorkspaceInput": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pr244-haiku-authenticated-20261024/CaseSpellings-o8bnxg/Candidate",
+  "aliasWorkspaceInput": "/volumes/aimate_work/tmp/osstack/runtime/pr244-haiku-authenticated-20261024/casespellings-o8bnxg/candidate",
+  "originalHostRootInput": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pr244-haiku-authenticated-20261024/CaseSpellings-o8bnxg/HostControl",
+  "aliasHostRootInput": "/VOLUMES/AIMATE_WORK/TMP/OSSTACK/RUNTIME/PR244-HAIKU-AUTHENTICATED-20261024/CASESPELLINGS-O8BNXG/HOSTCONTROL",
+  "original": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pr244-haiku-authenticated-20261024/CaseSpellings-o8bnxg/HostControl/8fc78526c72bb59762acdc6f2acfa6057248aad4782627f4990f6f6629006022.json",
+  "alias": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pr244-haiku-authenticated-20261024/CaseSpellings-o8bnxg/HostControl/8fc78526c72bb59762acdc6f2acfa6057248aad4782627f4990f6f6629006022.json",
+  "sameInode": true,
+  "identical": true,
+  "retained": true,
+  "source_sha256": "9b9e50dffb2051c0b20899285c3fe3583a3a4393f732eb7a487e525fb4e5a755"
+}

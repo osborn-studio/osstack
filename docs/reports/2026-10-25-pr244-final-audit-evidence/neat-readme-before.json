@@ -1,0 +1,5384 @@
+{
+  "protocol_version": "1.0",
+  "status": "ok",
+  "result": {
+    "command": "knowledge_hygiene.check",
+    "report": {
+      "generated_at": "2026-10-24T16:37:51.745Z",
+      "repo": {
+        "root": "/Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/pr244-final-audit",
+        "repo_id": "pr244-final-audit"
+      },
+      "input": {
+        "mode": "all",
+        "config_path": ".osstack/neat.yaml",
+        "config_sha256": "d59ce14979176dbd5c388dea01b6b935e3bd123869e254cebf96b939c7d6242b"
+      },
+      "completeness": {
+        "complete": true,
+        "skipped_files": 0,
+        "reasons": []
+      },
+      "summary": {
+        "error": 0,
+        "warning": 0,
+        "info": 0,
+        "suppressed": 23
+      },
+      "metrics": [
+        {
+          "surface": "instruction",
+          "path": "AGENTS.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 4643,
+          "lines": 55,
+          "sha256": "13470229f38ec22e4cf3dd993ffd1c7a47493c35a6798ec6b24bee629fd7f1c3"
+        },
+        {
+          "surface": "instruction",
+          "path": "CLAUDE.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 11,
+          "lines": 1,
+          "sha256": "336cc4fbf19beaada7ccf9986414fa91851a8d7a07dfb3ccbe800a69eed0ab49"
+        },
+        {
+          "surface": "documentation",
+          "path": "README.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 35975,
+          "lines": 790,
+          "sha256": "49c597c8000d1368534d852b02f502a38d4194c42655a6eefa9710f34fd9ecfd"
+        },
+        {
+          "surface": "documentation",
+          "path": "README.zh.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 29527,
+          "lines": 648,
+          "sha256": "abe1cce146ad3ee122c8dc1012cec73c5c767787b68334a9477773b6841140d9"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/2026-05-31-osstack-split-and-agent-config-design.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 4132,
+          "lines": 90,
+          "sha256": "87670dd0f6449dcba1735594ed9411f8943c48cdd54b93e444a4533ffbcf4eb4"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/2026-06-20-branch-steward-design.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 10797,
+          "lines": 371,
+          "sha256": "bc8cedd2a1fdf7fdd4b2149f34496faa5e21c1f10c4f24318b6d116bf7e3a8f6"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/2026-06-22-release-readiness.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 30573,
+          "lines": 396,
+          "sha256": "99b6372942f044d50fe0ee8e344cb1df04d763a96d635ac2d4f3b761bf79c158"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/2026-06-22-upgrade-plan-implementation-audit.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 49626,
+          "lines": 478,
+          "sha256": "58f6cabc7fa522e71bdd3e4060d9b69d1ff8de08577689e08575efa4984a7247"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/2026-07-04-loop-engineering-upgrade-spec.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 15019,
+          "lines": 430,
+          "sha256": "2c6f497f25c1ba066b2ef155acc0b086e27a870e77dac41cb9f266e314c7a6f0"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/2026-07-17-neat-knowledge-hygiene-design.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 46143,
+          "lines": 475,
+          "sha256": "607f430345a648079ab5eb01dd860ce2199f37fe6b4620958374e4e15ecace62"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/2026-07-17-neat-product-technical-spec-v2.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 38633,
+          "lines": 1225,
+          "sha256": "6e9a4b76e883d235499b5052eefc2053c93fcc59c732ab7e5b51c92c1cdc882f"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/2026-07-17-probe-four-quadrant-elicitation-design.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 68809,
+          "lines": 1461,
+          "sha256": "66d55d047b949355fb99eb14f7c4309a0cef9dc1b8a1030f9449dad5a2588f51"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/2026-07-18-neat-semantic-parity-upgrade-design.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 80832,
+          "lines": 1130,
+          "sha256": "124870a5f6de4659b79c2d8264a499b52f6098b856b69f9a97029049a47b59cc"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/KNOWLEDGE_CLOUD_DEPLOYMENT.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 9295,
+          "lines": 204,
+          "sha256": "221e90a7f0a8b3c2a298e1c3478a2a4bcad10f7908e847278f498d53ea5e5c5b"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/LOOP_ENGINEERING_DESIGN.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 36477,
+          "lines": 600,
+          "sha256": "747f43fd533592ee48e92384a420464851b0fa01f63a3302f3d968a1c3a2d305"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/V2_REFACTOR_PLAN.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 42715,
+          "lines": 652,
+          "sha256": "7bbb2bd324991abdc6fb3457093bba067fde6c1c7e548ea697aad52104555c2a"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/decisions",
+          "kind": "directory",
+          "exists": true
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/decisions/ADR-001-shared-control-kernel.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 4915,
+          "lines": 105,
+          "sha256": "1c64f037008a45e83c0b4c11a96ccf778039ec40f6539644682847949ce85a2a"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/decisions/ADR-002-neat-knowledge-hygiene-boundary.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 5412,
+          "lines": 144,
+          "sha256": "85754216212cfd295eaf0192af83a45c4ee881b705add7d3e5a3d430b9cd318a"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/decisions/ADR-003-neat-persistence-v1.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 3478,
+          "lines": 76,
+          "sha256": "5468018da86687e50bd5185d0e9607599e310cf0c4724c2b129d001a84a8a398"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/decisions/ADR-004-probe-boundary.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 6352,
+          "lines": 142,
+          "sha256": "d4b772948b16489c3dc5df96304bec520beea3feff29863a4bc297750ce8974c"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/design/2026-07-01-skill-autopublish-benchmark.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 5378,
+          "lines": 73,
+          "sha256": "33d7130baedd6f9560c19aa529c390b45ba551a1febd8fcebd3021d7500c4b37"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/design/2026-07-01-skill-autopublish-design.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 11357,
+          "lines": 170,
+          "sha256": "93b94bfae0d598377cfa08733421871c5835e565305b3b62ac3a00586c74fef0"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/design/2026-07-01-skill-autopublish-tdd.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 7913,
+          "lines": 114,
+          "sha256": "dd47d18c2dc01a01bb59ac34fed283866be14ae5dc8fa3be3bc3101dfad5059c"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/design/2026-08-12-performance-hints-improvement-plan.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 9940,
+          "lines": 146,
+          "sha256": "d7dc9fa5580fe021f4448861f44624593b689b3c0e00699237ea4528e0142690"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/design/2026-09-08-collaborator-and-self-improvement-rfc.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 28246,
+          "lines": 235,
+          "sha256": "ea1faac79ce85a81ae919230efe54438bacbef1c410a19391af77a805973f1bd"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/design/2026-09-08-github-identity-and-cloud-steward-rfc.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 14246,
+          "lines": 144,
+          "sha256": "8e56d6627bbed418bdfe6aafa13786b61fa8e96de03b9b865208d868a9cbea2e"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/design/2026-09-09-autonomy-next-implementation-plan.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 26094,
+          "lines": 242,
+          "sha256": "f835871599601510ae27387a3b7483eebabda8dbcdb51b03f2a19d5a6783b8c3"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/design/2026-09-11-graph-readonly-pilot.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 4129,
+          "lines": 42,
+          "sha256": "9ded0e9e88a258fe7fffe66085914e06dc015a3474d4322d08e771088363834a"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/design/2026-09-13-executable-graph-plan.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 24142,
+          "lines": 270,
+          "sha256": "f5e9a8c95eb643884f426a9c3cc7149a60ed71868496d7b276ab4ed8ff76bcd1"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/design/2026-09-13-graph-functional-runtime.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 6050,
+          "lines": 56,
+          "sha256": "641270d74737917eef5ef615414ce5a861d81b3807645aee40cc845943afc1f7"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/design/2026-09-13-os-products-definition.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 22052,
+          "lines": 228,
+          "sha256": "19dda0ede88586f07c98b7503704f62fbe2c376e9075b7d475e729f2b496fb63"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/design/2026-09-21-graph-apply-ledger.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 8556,
+          "lines": 48,
+          "sha256": "aa0a3a95a3ec3ed11af546e31e8de189c82f182b1ea35955b52afbb909ab05ce"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/design/2026-09-21-graph-changeset-host-evidence.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 7455,
+          "lines": 68,
+          "sha256": "e89805b559e4e9dea950406445857093008af7886164a2fdd4b5340e1f1c4e0b"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/design/2026-09-21-graph-changeset-proposal-client.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 10789,
+          "lines": 112,
+          "sha256": "be08bd12db2f5bcae355e3ea05b40cbaf5d6015810ce96e152b68112218abc3e"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/design/2026-09-21-graph-invocation-ledger.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 7970,
+          "lines": 50,
+          "sha256": "b8fa441f70955e7f474d0bbdba2bcc38114a27f5beb84d30db1abc509bba53c9"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/design/2026-09-21-graph-physical-apply-review.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 6823,
+          "lines": 50,
+          "sha256": "f1a265ec78ec6c57f9f73875dfe09696dd2e08cc131c32e8f47c193ee07bb67c"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/design/2026-10-23-firstmate-capability-adoption.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 48495,
+          "lines": 463,
+          "sha256": "6d7a49b9e62ae7442ac6a476b510aa7e1ea9256372a9936a72d861c9dc9b2347"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/design/2026-10-24-graph-verification-operating-envelope.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 9913,
+          "lines": 35,
+          "sha256": "bf3e74b4b41e78f1045180b83e0e1dbbfcb66f3439304f376b9b02a38d73a40e"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/external/2026-06-23-umadev-code-benchmark.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 11951,
+          "lines": 228,
+          "sha256": "302c01c0f5c0fdaa3112d7f4d1e0b838c5fcf368804096207dddfae2e0b5b32f"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/external/symphony-analysis.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 11645,
+          "lines": 257,
+          "sha256": "4a73d981a28680bbfee9b5701dbd9a4247afac2ac5dfec75146c4bcad53d8ac2"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/graph-pilot.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 5461,
+          "lines": 70,
+          "sha256": "ab11c8ae1b5dd44b6d1a1921ebabe57df4a1ce91b134676eb805586946732707"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/guides/attention-cockpit.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 3679,
+          "lines": 23,
+          "sha256": "0ecf1b4809a3976858b089d4082d81f8dfdee0b50812e7cb7eceadcd2843e214"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/guides/attention-daily.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 4384,
+          "lines": 58,
+          "sha256": "01f7a5eedf950bec204141b82e901c24cb4f23f0b0c7a6580650bcd14efbd578"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/guides/attention-evidence-lessons.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 4523,
+          "lines": 59,
+          "sha256": "a0e566ea51c8aeac23bd89455785354703980755bed3bb7ca761af1143ea64b5"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/guides/attention-reliability.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 5665,
+          "lines": 82,
+          "sha256": "f9e63f4e8f764ac42e7d57fc44879d10650c9a6bf11ad15ed329c08d180bec60"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/guides/attention-routing-evaluation.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 5371,
+          "lines": 43,
+          "sha256": "cbd24da5dddd7ba9b95f058fedfd5125c8f2112e4f76521fc5aad1284a9b8aed"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/guides/attention-triage.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 6820,
+          "lines": 94,
+          "sha256": "f320cffb91d0675d67789a9182c1ebba3aaf317107afd2fb2be317105cf15b1c"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/guides/attention.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 12067,
+          "lines": 165,
+          "sha256": "32edb089c371a3d830fe8ff21501726e0466e394e8f8e258ccdd4d063017278a"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/guides/command-reference.en.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 5169,
+          "lines": 58,
+          "sha256": "0a45397e690e7cb2a1a30170037910a69a955b298adbe68983863084aea3c501"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/guides/command-reference.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 5041,
+          "lines": 58,
+          "sha256": "2defb89c1ef338615191f6db4a602944adcaf85b58e02aa84aa3e60fcb731fbc"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/guides/cost-control-plan.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 11277,
+          "lines": 64,
+          "sha256": "1838f6ebb18b48f11ac1c7c98318bb932d9ec5bceed6ebe94ad9ad4ee42961c0"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/guides/delivery-contract-v2.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 6764,
+          "lines": 32,
+          "sha256": "ebb118e8331e640a0a4c1076a25b547ffdd7bb6856c45ecc8dfe9bf38a06ef3a"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/guides/execution-context.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 8188,
+          "lines": 57,
+          "sha256": "862fcde8eb8762e5e57c7490b5825cb7ac53b7ab8a22ea0e831f3f1c62ce9505"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/guides/firstmate-extension-host-wiring.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 3862,
+          "lines": 23,
+          "sha256": "9ffe75c512c6be089df8caf5ca91dfca7fd79ebfcc3b04bdfd587a58c5f913d2"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/guides/follow-up-delivery.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 10783,
+          "lines": 53,
+          "sha256": "76209388f82d7b069670c81777201168d63fa22c5b18f6298fa5508ec1509831"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/guides/follow-up-github-delivery.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 11379,
+          "lines": 89,
+          "sha256": "1271d33cf5f7aa04e9166900ec0e609ef400eca9ab996c32120ce614dc763f79"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/guides/graph-delegation.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 24237,
+          "lines": 199,
+          "sha256": "18164cfb71f5f416fcd6cbb4a3265989d848891e38a23e9fbb103c20576cde78"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/guides/graph-delivery-contract.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 4929,
+          "lines": 19,
+          "sha256": "b3f5b0782d4f94453dbbfd0a8a3a518594a79fe5a886d0df2c0f018cfc7081e2"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/guides/graph-quickstart.en.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 12637,
+          "lines": 194,
+          "sha256": "081387aa4098a8d9385db46ad855caa8175a1d832b1bee6ef542dbd9c0f7dd6e"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/guides/graph-quickstart.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 12535,
+          "lines": 194,
+          "sha256": "fee283ae33c79606529bf08ecc5173e2a5466fa9a8743f4933f4dc1b9741a938"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/guides/graph-required-check-suites.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 3262,
+          "lines": 48,
+          "sha256": "c226956b14ac231ae4d72a7a397d6a01a9501637d2d894dc1a7a15ddb4caf01a"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/guides/graph-runtime.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 3160,
+          "lines": 35,
+          "sha256": "00a51a65e3199b4db35cf6428dc069452afb253839dd941091c27baa4c752d9b"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/guides/guarded-candidate-context-handoff.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 3950,
+          "lines": 15,
+          "sha256": "4e868369cd787880c95073b30ef51ede995dfddb03accaa3541fba1e9d0c9cf6"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/guides/home-inventory.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 3735,
+          "lines": 21,
+          "sha256": "3679872043d206496410adabc7e68bdf9952bdcd418145a67f9aadae9e0563d0"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/guides/hub-agent-publishing.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 7786,
+          "lines": 67,
+          "sha256": "0d82c61e5265be372d58b77a975901707bd2d3dab969fec53a8258b88467b6f2"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/guides/local-data-source-registry.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 7776,
+          "lines": 120,
+          "sha256": "8d3a19b8403405ea329851638ea19d9264e4f7e88c33e1e07ca9aa9d1ed6b2ed"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/guides/local-follow-up-obligations.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 7867,
+          "lines": 43,
+          "sha256": "59102402fb01473ffe6b3e5f279a48db8063ca0cac6887801a0d4bd888694e0f"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/guides/local-source-context.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 5622,
+          "lines": 51,
+          "sha256": "a84ec5340724ab153dade213ac371dfcbf0db5a713d914505e91a1e22cec37c5"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/guides/loop-candidate-defaults.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 4099,
+          "lines": 17,
+          "sha256": "fb258d708245648a1fb7d870da53721756530a85a53cc1d55470198f4b12e78e"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/guides/loop-native-candidate.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 5414,
+          "lines": 26,
+          "sha256": "121cfd1c6e60d5d7df0b0e03efe21ad88b9292798ae63658f548f1e4f773dfef"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/guides/managed-native-upgrade.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 8861,
+          "lines": 66,
+          "sha256": "dd77b7732c8fac95f900c8bf4c9410ad7c163bfb42637f81c3a948b7e4e8df8d"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/guides/multi-home-upgrade-plan.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 8669,
+          "lines": 59,
+          "sha256": "716c9d6fb5d22df2f7862cb134c8bae8431b1045666b41dfe9b279570b01b792"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/guides/neat.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 21407,
+          "lines": 516,
+          "sha256": "725de82a9623c8c545861ccd637bf1b1eb50cf44a456e952ce53215335203f39"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/guides/paired-routing-and-worker-observers.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 6777,
+          "lines": 37,
+          "sha256": "eab00d56180c1d7ddadda0a0323bc4c39326ea3d2f86c53997648f2353177c2b"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/guides/remote-graph-cancellation.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 9176,
+          "lines": 100,
+          "sha256": "50eb38318b878abefd8d33be7aa00e50dbca2914f7d31fdfa7bb7a7367170692"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/guides/remote-home-readonly.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 6091,
+          "lines": 53,
+          "sha256": "d6df754ab4d40f489735d7e31545db6806f4743f8f97c13b5fe1323c24ea5473"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/guides/scout-and-recovery-lessons.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 6883,
+          "lines": 43,
+          "sha256": "18bf655578758f3ed48dec81167e08f020c5c5e1d5da56b2d5299d86d40033a2"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/guides/session-relay.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 2841,
+          "lines": 85,
+          "sha256": "c30de18449d2d9130551df0f5040dc62588b0818e7052a01218d4fcc1e52fccf"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/guides/task-closeout.en.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 4021,
+          "lines": 62,
+          "sha256": "3aa102c50868a836f8753fee0f661b28d26980406c40a964834853c8c9051b53"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/guides/task-closeout.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 4120,
+          "lines": 64,
+          "sha256": "1e9495aad7218081ebcf47f334fd39dd786014c0432e32f6399e8a529fa4eaf5"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/guides/worker-state-views.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 7874,
+          "lines": 129,
+          "sha256": "4c8f91e12369de49bbd784cf1b41e53a4ee9abc1da4d805a83ce6a8761df34c9"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/guides/worker-terminal-viewer.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 3688,
+          "lines": 54,
+          "sha256": "b41d09a6da553c36a4ea2398994dcd8235f0e4f2593f358a684f3aa6ddb416fd"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/handoffs/2026-09-21-graph-apply-freeze-bridge.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 8230,
+          "lines": 73,
+          "sha256": "8cb4398c814dfcc35af5703ba002a2325871fce12875453847dd9e4d5e704b93"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/handoffs/2026-09-21-graph-apply-ledger-opus5.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 18505,
+          "lines": 128,
+          "sha256": "af2ad096e2872292e36664cb0441e8bef36d6ed78dbf3e569a68f75ad5eabd8d"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/handoffs/2026-09-21-graph-changeset-client-fable51.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 4256,
+          "lines": 51,
+          "sha256": "e970638ae1937affc9bfdf593b077e86028c07f2a0bb6fda5f00e64edd85b2ca"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/handoffs/2026-09-21-graph-changeset-host-fable51.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 5431,
+          "lines": 54,
+          "sha256": "4200ef8bfcb3699e1b6dfb5901e4d3a1ff6b5f280b8af7af8e05645c1239e7c1"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/handoffs/2026-09-21-graph-guarded-write-authority.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 7295,
+          "lines": 75,
+          "sha256": "d93b42fbb7ee93ac5046f53c29c1f8cfe66ed4ebb8ea2c2b1edcfc6f5f4f7271"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/handoffs/2026-09-21-graph-invocation-ledger-opus5.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 29596,
+          "lines": 251,
+          "sha256": "9526388ab2f2d21985186cb0c4309504555bb76d46d4181189327765f27c50da"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/handoffs/2026-09-21-graph-jev-remaining-work-audit.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 10913,
+          "lines": 91,
+          "sha256": "38e97864e83352307c61b8d316e85bf2b126591d6356a793b03763678ce59710"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/handoffs/2026-09-21-graph-multifile-foundations.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 68253,
+          "lines": 636,
+          "sha256": "33e575c49e518d74a1c7b4875bc969737333baf4d4d8f746ca50ce0c1258fc27"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/handoffs/2026-09-21-graph-physical-apply-opus5.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 10308,
+          "lines": 94,
+          "sha256": "c4000e63d0dcfc33d906aa776f36f056dc87308951081359c254fdd86d922dc7"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/handoffs/osbot/handoff.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 12393,
+          "lines": 133,
+          "sha256": "a8738c918fcef52f690fe82e41583df85d5cdf1bb41dd286cb0a5e598beccfb5"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/2026-09-13-graph-c2-completion.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 8080,
+          "lines": 81,
+          "sha256": "30f23884ecac2e66aa1aee92b227d47fecd215f0d231d1dc106ab4d555249c83"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/2026-09-13-graph-foundation-completion.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 13443,
+          "lines": 107,
+          "sha256": "d0d3390ddfbc6b078c5186644223f7593de496f0aa643dcb472e0c558fb80af5"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/2026-09-13-graph-kernel-completion.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 11002,
+          "lines": 89,
+          "sha256": "1932966b97c2dd50bb092891471614bb5f29c69c36b525a84b423979b53889a9"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/2026-09-13-osstack-graph-upgrade.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 52375,
+          "lines": 848,
+          "sha256": "fcae28b7672442c3e0e0f78454eecae460fe12cb3b243e7a42bb29b30d9312b0"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/2026-09-13-upgrade-plan-review/README.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 1406,
+          "lines": 15,
+          "sha256": "eda15cb66593d25e1fa277d274e0f8a931e7bc76b63fdb934715b44406a2976f"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/2026-09-13-upgrade-plan-review/claude-review-context.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 43376,
+          "lines": 786,
+          "sha256": "6ec033887d17835e3b5396460af86994eb6f9789c0a11570119844ef0a0ea639"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/2026-09-13-upgrade-plan-review/claude-review.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 3399,
+          "lines": 18,
+          "sha256": "9bcda592c76fd10c56fb71837e6255369f27c4775007b0031508d483fd756186"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/2026-09-14-graph-admission-completion.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 4650,
+          "lines": 41,
+          "sha256": "5912a5400b7fa9573c37662dfc243a9218393606677e7e4235338e4df061f53d"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/2026-09-14-graph-admission-next-context.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 3941,
+          "lines": 26,
+          "sha256": "4f136540d93ec103617ccae63100243a9a88e092dc4d789b84dc84789698d737"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/2026-09-14-graph-chain-completion.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 9840,
+          "lines": 83,
+          "sha256": "75569f4f5c8c2fa5a49bd949d1ca970b68e6eab243648c40f11b82ae89bb8a7e"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/2026-09-14-graph-chain-next-context.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 7259,
+          "lines": 44,
+          "sha256": "c41b34ce9e35704e784675e1ba2c01640b5b3e92a8f9f3379b9edfac14f047e0"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/2026-09-14-graph-effects-completion.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 6288,
+          "lines": 51,
+          "sha256": "7148b1770b01f3157065608dac9d8406caff88bb9943eabc7418deedbec6ffd9"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/2026-09-14-graph-effects-next-context.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 6706,
+          "lines": 39,
+          "sha256": "ae6269df625ca7ef7f32b1ddf9ad49bcc6e03ea7f079e2744c90f9d86f2c81f3"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/2026-09-14-graph-verification-completion.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 8289,
+          "lines": 61,
+          "sha256": "6009857d197974880518e5986509887a481519e671ab98e27a61048a99cc365a"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/2026-09-14-graph-verification-next-context.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 8359,
+          "lines": 42,
+          "sha256": "bc191a6420c0ecfa392c3b38fcd0be99d58a6e865c76bcc6e5c5011f868a1fa2"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/2026-09-15-graph-delivery-completion.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 5917,
+          "lines": 45,
+          "sha256": "f85283e6ef0b2bddc2ce8ad8106bf46ae599c9427ffe6f6e8632bd77a8e16fd4"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/2026-09-15-graph-delivery-next-context.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 5819,
+          "lines": 39,
+          "sha256": "e2c7ee409be20d3341dd27ba46ef24d61378e09e6bc3ec54de658f169e1f7696"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/2026-09-15-graph-fault-next-context.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 4091,
+          "lines": 35,
+          "sha256": "006c9eb484e3102a1c08c6886736f52ae195ff39da1ef1a592e0dc6abb0807b2"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/2026-09-15-graph-public-completion.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 5729,
+          "lines": 49,
+          "sha256": "a92dbff06126a7646ff358f9d275c9c4e8952b47b5335fcf79b55778bac67c4e"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/2026-09-15-graph-public-next-context.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 6883,
+          "lines": 47,
+          "sha256": "081ff902b5123f4d7669b4e8761753d72897eac33c3d312ff410745f0d8a2c38"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/2026-09-16-graph-candidate-next-context.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 4606,
+          "lines": 39,
+          "sha256": "100397375fc0d9e6046086c8df178345703c120c1781091d0816337a1c384b2b"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/2026-09-16-graph-contained-next-context.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 3695,
+          "lines": 29,
+          "sha256": "6bab9c376dc4fc3c3b3e3f76796016c16e2cc8072279b46410c7adc231d3d388"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/2026-09-16-graph-recovery-next-context.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 3456,
+          "lines": 28,
+          "sha256": "03fc2f7a2eb1333909785603ca5da816920c2d4937fed120b27555b539e6cdde"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/2026-09-17-graph-quiescence-next-context.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 4958,
+          "lines": 35,
+          "sha256": "f386fff6f35f6648a4877c49478a9853cad533ca3f419c1883d701868ac8c457"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/2026-09-17-graph-reopen-next-context.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 5482,
+          "lines": 39,
+          "sha256": "2033319830b38ecbc544aa2e055a46924a79d4315e9321b7197bd3d0780679e5"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/2026-09-18-graph-binding-next-context.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 2146,
+          "lines": 20,
+          "sha256": "068623bf9a48015cd34f454b2aeee513c9b847b5b2d250c11c003e4305d8a530"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/2026-09-18-graph-proof-next-context.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 3270,
+          "lines": 26,
+          "sha256": "f1d6e1f4b5859287580b7deba560aba3eec83316e4e34e325e691886f6bff555"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/2026-09-18-graph-sweep-next-context.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 3923,
+          "lines": 29,
+          "sha256": "2ded6c40519226778845b04622ccc00ddc2d354699d84a88a6ada064ba0c99b8"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/2026-09-18-graph-unblock-next-context.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 4821,
+          "lines": 38,
+          "sha256": "9c271744d85b161827babecfdbc505e5727c82e934304c99acc3a5415628b274"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/2026-09-18-graph-worker-coverage-next-context.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 2999,
+          "lines": 26,
+          "sha256": "81ceb20a6b5008209eb9b56c0b333f9183d97798f31cbac0e19ed5e680a62a43"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/2026-09-19-graph-reconcile-next-context.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 3320,
+          "lines": 28,
+          "sha256": "ad847b4bbab2c5d75ba544170cafb9aa272ba140ee53f743f3d7a57af2f25d63"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/2026-09-20-graph-bounded-backend-next-context.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 4651,
+          "lines": 28,
+          "sha256": "6749172393a4242eb2ec865cd91affd0f94ab9ee6358f8c74dff84537173e6e9"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/2026-09-20-graph-bounded-recovery-next-context.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 4023,
+          "lines": 27,
+          "sha256": "2f3c2477b99e654d728156a1e2f0e22f16c2f52e3c38f7578bbe7ab9bebb920d"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/2026-09-20-graph-deepseek-next-context.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 4905,
+          "lines": 39,
+          "sha256": "596105eb78973707c931e3ea38613ac805b4eefca5c0b5b2949bd03c662da99b"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-admission-evidence/G08-executor.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 9184,
+          "lines": 57,
+          "sha256": "189ba5b12f31e31b6ce00cb336b36a4605c105e9da4b86f037b284230ec90cea"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-admission-evidence/G09-executor.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 9119,
+          "lines": 68,
+          "sha256": "e36b6de456454f093ced2c5e924239e47d66cf7934636e9984af267441683018"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-admission-evidence/G09-interface.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 3840,
+          "lines": 22,
+          "sha256": "52de2bc2d25df561a3901d2e76afc619219b41e4fc2cec5cb3a5ca1375920e9a"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-admission-evidence/G10-executor.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 8145,
+          "lines": 46,
+          "sha256": "771a05bbc198185c9057db90ae89a426d611ffa39bdaaef67394b93ac1178a1e"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-admission-evidence/README.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 4740,
+          "lines": 36,
+          "sha256": "70c64b9df9c952cf39bd5fb3bb2534fb4965402b3bb15362ae4483aad7b8a4e8"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-admission-evidence/acceptance-STATE.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 6682,
+          "lines": 39,
+          "sha256": "e6d0fc1f6e5f4026e0f1ca1483a027d969fd90b8ee419a94ef04c1ec52bb12fe"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-admission-evidence/claude-closure.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 2799,
+          "lines": 15,
+          "sha256": "52726017bba78fdfd0b10e35c042ebc28639b0d0a0c59a96e916ccfed9b6250f"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-admission-evidence/claude-design-review.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 7105,
+          "lines": 56,
+          "sha256": "b27bb5e9b41ff9d5e17da5639b06b9976a17477e7dfdc3c0199df41bb9b8dafc"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-admission-evidence/claude-final.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 6475,
+          "lines": 41,
+          "sha256": "913e33873ccc9fcb740a4707a4a271475fe4955704d4efd711f62ab44bafc2dc"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-admission-evidence/claude-implementation.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 8212,
+          "lines": 44,
+          "sha256": "4cbe827067efdcd9fde4b21333166d3c2d5452204e84e6535da75a6e9bd9e078"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-admission-evidence/recovery-boundary.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 5164,
+          "lines": 29,
+          "sha256": "de957546b3b1fc601e858b7e472ae3eceacbad3e6040dc52aeaab779e9c8a466"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-admission-evidence/supervisor.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 10502,
+          "lines": 33,
+          "sha256": "93b5a96baf9bcf68aa58c26e91b908fd3b30104ecc1fb662fd02dcdd8b14c547"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-admission-unblock-evidence/STATE-final.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 2785,
+          "lines": 27,
+          "sha256": "18cfa15eb264416749e0b64cba09b95140690c6f13a5960e64c65111408e17f5"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-admission-unblock-evidence/STATE.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 3082,
+          "lines": 27,
+          "sha256": "5aae42318c9ae9efba8d0144960a24373904f0ab7d58922d8a914d7953e9ded2"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-admission-unblock-evidence/consult-response.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 13021,
+          "lines": 91,
+          "sha256": "745b932bb0cc3a911eaf1450329c7ee25b3ce89f7f5ab180af966dab2ae05e3e"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-admission-unblock-evidence/focused-response.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 4593,
+          "lines": 41,
+          "sha256": "f4b9528789ffc6d0ffcbbb4b1f9f0e7e890261202cd4591c9f5b8a98021dbead"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-admission-unblock-evidence/review-response.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 5088,
+          "lines": 30,
+          "sha256": "40b708c79ff2acd1608c43cab8c974833aeff140f46874172fbc92c5e22a93ee"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-baseline.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 4516,
+          "lines": 29,
+          "sha256": "dc62e94ffe9fc0415bfb919f9284f228df2f5b0e44f3e844fe029f05a3662560"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-binding-reader-evidence/STATE.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 1433,
+          "lines": 27,
+          "sha256": "82263f034b3d525161eaf106d75b84ab3add656b07e2f1f73011ffcf699593ae"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-bounded-messages-evidence/STATE.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 1827,
+          "lines": 27,
+          "sha256": "753ba62dbe707cbc758dd61735ca31300fe1935f2c284437e78f3f260b4891ad"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-bounded-messages-evidence/design-response.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 8607,
+          "lines": 189,
+          "sha256": "eef6bd556689397e77c679e0fdf1600abc65974a32b317f2978daac2325d29e0"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-bounded-messages-evidence/final-review-response.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 4487,
+          "lines": 28,
+          "sha256": "93021550bff733cccf36739510c36f4803cc887c63917b4fd9217837f4448f0f"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-bounded-messages-evidence/review-response.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 4422,
+          "lines": 17,
+          "sha256": "2f1c123706b3c32e9ac1b9d70dbc39535702cea15a9337ea431c8e362efac79e"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-bounded-recovery-evidence/STATE.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 1753,
+          "lines": 27,
+          "sha256": "c4678ab49831aec574261878093673195cfed36a298b3b8db5db7b6ccaf2731d"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-bounded-recovery-evidence/final-review-response.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 2930,
+          "lines": 18,
+          "sha256": "b6a68f75687c77fbf8296e62201373c58a08ebfdf0065da0107405e35297dc78"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-bounded-recovery-evidence/review-response.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 7026,
+          "lines": 38,
+          "sha256": "4d17d4930a14879402a59e44939994b4f16833ed45d87b9ec4e5c317febba485"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-c2-evidence/README.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 2859,
+          "lines": 16,
+          "sha256": "a18d5eac431a1666222b79385a5c4ae13da6d4ec2d1590982e73d88704ca1a57"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-c2-evidence/STATE.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 1600,
+          "lines": 26,
+          "sha256": "d81e10c33b687cfcf8a5b1a1ac8642b6966fa12bdf2520024cb3b06fe3bb94e4"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-c2-evidence/acceptance-STATE.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 10895,
+          "lines": 27,
+          "sha256": "21e7b54b037736b62f1cf720b2d6301ed7fff85580e4d907768563417e08ce01"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-c2-evidence/claude-design-review.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 6934,
+          "lines": 48,
+          "sha256": "20003b562e18e766e0aedc913cb720ef90b7eca5d5b014061345d320c8cea6bd"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-c2-evidence/claude-functional-review.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 9717,
+          "lines": 75,
+          "sha256": "1252528bcc46355200e8b3ff87c67485e4a9a0d62af16631ee8f8d750bb77824"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-c2-evidence/executor.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 12611,
+          "lines": 66,
+          "sha256": "cb2de6a773c5342527bd00361a6cb03cc35d275d2a31fcc83ebcf94d4261fe60"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-c2-evidence/review-adjudication.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 4089,
+          "lines": 28,
+          "sha256": "22b1329bc47d32d1311bfeedf71bdde448526f8a1aed2ed1107b113d5c314f7b"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-c2-evidence/supervisor.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 10096,
+          "lines": 37,
+          "sha256": "591c8a4946fd3b74e2f7fd92034a938f1cbca7673358f37a196ce973e4851bde"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-chain-evidence/G14-STATE.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 2414,
+          "lines": 26,
+          "sha256": "bfc9a85ccdceb26f01d07787d17f824c14841b43e4383b9be05b58fd90f6d3fc"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-chain-evidence/G14-handoff.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 11600,
+          "lines": 49,
+          "sha256": "3be3d821850f3c40b416a2f90e92dc401b8c0aae99c4cb794714e3bd76b8491e"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-chain-evidence/G14-interface.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 3484,
+          "lines": 12,
+          "sha256": "746f2a88d7540bd9313e26663991bb2e21a3cc38017eef3e6f4b0c14c9767d52"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-chain-evidence/G15-STATE.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 2533,
+          "lines": 26,
+          "sha256": "6367af8b91bf7329fb527b34aa727466041e33518c05eb8dee9bfe903bc3927b"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-chain-evidence/G15-handoff.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 7905,
+          "lines": 63,
+          "sha256": "99a5db8cadbf90a4a6846c23b01188daac726953e81e57687060e8001a51428e"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-chain-evidence/G15-interface.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 7140,
+          "lines": 42,
+          "sha256": "bdf00d4338b4d2647638708aa18f9630f21a14506fbcd45c51eb96e9145ce0c5"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-chain-evidence/G16-STATE.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 2414,
+          "lines": 26,
+          "sha256": "18e3c6b9659a0d6c473d550d06fd013494552e782634902a62ba881a684bfd37"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-chain-evidence/G16-handoff.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 11400,
+          "lines": 58,
+          "sha256": "f5414daa77968531e8442892989fac4e6e7a0c9180b3c6117b7d94b5c8ea72e1"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-chain-evidence/G16-interface.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 4838,
+          "lines": 21,
+          "sha256": "92a50670e76e631ae24573ed8a29128e4b26c1bc209e13491e9d54c75663f791"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-chain-evidence/G17-STATE.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 936,
+          "lines": 26,
+          "sha256": "49a8d39828e1bcb892a2ef7a3fc334960da0cfc6efe355508610a89bbb48a22d"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-chain-evidence/G17-handoff.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 10525,
+          "lines": 58,
+          "sha256": "9c25bf02f446f2591ec56e59a73156b7248a1b863911fc73b08a70e2da8a0bd1"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-chain-evidence/G17-interface.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 3972,
+          "lines": 20,
+          "sha256": "7543b1516dedc6c517c690528c5e44f658edf479e263bc6363308c2b8d20e028"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-chain-evidence/G17-parent-update.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 3228,
+          "lines": 7,
+          "sha256": "895fe0f6cd2bf47ef278878be4d369ccabc0fee9361dcb0566e10752d3640fb6"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-chain-evidence/README.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 2660,
+          "lines": 17,
+          "sha256": "d9f75065bb02fa44daf6e4ffaa0719b9725430b45d3042574a49308e11d3685b"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-chain-evidence/acceptance-STATE.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 10554,
+          "lines": 27,
+          "sha256": "b4d9ccc0e208df304299abfa413552379b7d95fe6befeb550a7b8ce4c34349b8"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-chain-evidence/acceptance-retry-note.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 732,
+          "lines": 5,
+          "sha256": "4e2231d4dbf03e2d134a94594e62df11c982fd08f01e152843cf13831216ee69"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-chain-evidence/claude-adjudication.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 7889,
+          "lines": 57,
+          "sha256": "5fa360a5d848b1806020ca3673012a99ab3b75f0983ce0a30d7338f83f17e11d"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-chain-evidence/claude-admission.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 6454,
+          "lines": 34,
+          "sha256": "bb47ba196c534af654003cd4065765cb23206b8931df9e2cc7e980a21f45a47a"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-chain-evidence/claude-closure.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 8320,
+          "lines": 50,
+          "sha256": "788f2075b93e7b689e9efaa85e33da84b5ae7e265dad9c62b106cb028cc6f83e"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-chain-evidence/claude-design.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 6560,
+          "lines": 47,
+          "sha256": "04dabc257ed4cd6029eec253645a79efc49d4950d36b5c6b336f46cd82eaa656"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-chain-evidence/claude-recovery-broker.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 10086,
+          "lines": 78,
+          "sha256": "5dfa182228ac10f883cb57624e07e458366802b40fb432e36b166365e1867a89"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-chain-evidence/claude-worker-artifact.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 11346,
+          "lines": 64,
+          "sha256": "72d688c932163b7a36b3f88619c824db20a8203a8252b7102e8815f0752585a3"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-chain-evidence/first-acceptance/acceptance-STATE.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 1201,
+          "lines": 26,
+          "sha256": "9452bf6347302e297a33786fc26f0ccbc68f24d5da291320cdd7b1d81ef19ce8"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-chain-evidence/parent-coordination.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 11468,
+          "lines": 28,
+          "sha256": "36755de9d7209bf89bb999f6b0cf4183fe27e6ef76dab879af6d3e72c4a2cb6a"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-chain-evidence/second-acceptance/acceptance-STATE.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 11448,
+          "lines": 38,
+          "sha256": "3303283b158c9e77c619ddac75ec673a86754d359c329634b00b8329e2672990"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-contained-candidate-evidence/acceptance-STATE.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 2479,
+          "lines": 27,
+          "sha256": "c7af4edc222c5ff8ea08a4e77e1105cdd099397595c1b183e4434ef63b83055e"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-contained-executor-evidence/acceptance-STATE.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 5505,
+          "lines": 27,
+          "sha256": "2ba4308b24b4feb97309e05de79ca413e64957e4bcae546b18358ceb5bb7ddcc"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-contained-executor-evidence/review-adjudication.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 3079,
+          "lines": 27,
+          "sha256": "8899e761262a9dd2058a32fdaaa8603c3f28c6de8c9eb2b6eb2b79fa1ba96c15"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-contained-proof-evidence/STATE.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 3117,
+          "lines": 39,
+          "sha256": "f9a989484b8f7b555d3cd3893c4bc7a301fab6656373016239f440c65998a517"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-contained-proof-evidence/first-loop/STATE.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 1761,
+          "lines": 29,
+          "sha256": "39950b85719bdd0edd759b1c2605332e977cf6a882df15b35cc55e266e1e8133"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-contained-proof-evidence/review-adjudication.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 1196,
+          "lines": 9,
+          "sha256": "19571795ad635a042dba4ea4f78150893c69707323ab2d739c2b974a60fb56eb"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-contained-reopen-evidence/acceptance-STATE.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 2959,
+          "lines": 30,
+          "sha256": "9c563c875d2bae6a6064e876711d84a1bf1bce0c8df3eea3d40a5b06617a7779"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-contained-reopen-evidence/handoff-draft.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 4570,
+          "lines": 39,
+          "sha256": "a6a9d98198c3140bb016da87a0553f685dd2ebf3d86c0875b9b1d37d2ba012cb"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-contained-reopen-evidence/recheck-STATE.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 1460,
+          "lines": 27,
+          "sha256": "448ef05a2bd48caac41d3cc17a267ed8e2fd2e9fcf0a78075bf363ef1d4749e6"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-contained-reopen-evidence/report-draft.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 4388,
+          "lines": 40,
+          "sha256": "af2ad3949808c17d3b87f1febc81c234d252e4b95e891fd1ef51728ce57b649e"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-contained-reopen-evidence/review-adjudication.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 684,
+          "lines": 7,
+          "sha256": "5582e0d23c621f87e8a4d854290116ee2f35e94b9a3e92314c62101c5fd5b452"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-deepseek-live-evidence/STATE.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 1676,
+          "lines": 27,
+          "sha256": "a40d49bb985e8f24eb1b4b8cdaa6d8a0fde7da7c43d6d7f9241faaa021be0f0a"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-deepseek-live-evidence/fable-final-response.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 4694,
+          "lines": 31,
+          "sha256": "6bebf665fe405bd93f02b1a1379231d5ac86e12d60fff6b13c6fcbe0747fdff3"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-deepseek-live-evidence/fable-harness-response.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 2844,
+          "lines": 20,
+          "sha256": "a68d515209ee7dec097283584170e26f3660dbaa1a0678c5f68e8bdcee66519d"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-deepseek-live-evidence/fable-review-response.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 3590,
+          "lines": 17,
+          "sha256": "94d1d9b6e6f47eeedeabda44134116ed13db2a5bd405997da0ccd5d8cb3bb89b"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-delivery-evidence/G21-implementation-STATE.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 1795,
+          "lines": 26,
+          "sha256": "208ef069cb12d3016c154943b0b30d1111e4ed16ed213198044eb59144b61c37"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-delivery-evidence/G21-readonly-review-STATE.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 1795,
+          "lines": 26,
+          "sha256": "eaa811a9af2ece29527fb15b65edbcea23bd3e0ac7b6479c03487790c1006226"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-delivery-evidence/README.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 1756,
+          "lines": 14,
+          "sha256": "463f6fca90f963ecff23a4aa3fd7a785d40f9cde3387b4eeb665fedb59df8b97"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-delivery-evidence/acceptance-2-STATE.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 2310,
+          "lines": 27,
+          "sha256": "d459e676d5cd9eac48b90618b2f3cb42c578a0b6e90c7e6db50a87b81a45ea1f"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-delivery-evidence/claude-design-review.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 8276,
+          "lines": 74,
+          "sha256": "7c4346ed3249c3d2c982ec12793bbbe84bb1dfe3df51f274546737d943578830"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-delivery-evidence/claude-implementation-review.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 6890,
+          "lines": 46,
+          "sha256": "25798bf29ded857facdcc757ea0379e1b34bc2ae5c0e053117dfaf0fd3124240"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-delivery-evidence/codex-final-review.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 4937,
+          "lines": 23,
+          "sha256": "c03dbf4d8bb6235d1d17318613c3f3e0691f5490facac9e1ad3c1181a577c898"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-delivery-evidence/implementation-notes.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 6531,
+          "lines": 40,
+          "sha256": "198a1b3188462783856731281a5c1cf8b2a17c9154245221fcb4802316c4d0f7"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-delivery-evidence/review-adjudication.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 3535,
+          "lines": 28,
+          "sha256": "6fe30aab7d7d160ed53a2faf089daa7905bfdd4221e27c57c77f2428dbcfc5a4"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-effects-evidence/G11-STATE.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 2268,
+          "lines": 26,
+          "sha256": "5ced81e6d326aa51a3206b75cfbd0dd7d76d3d251922d59c7d1402eeb29a2eff"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-effects-evidence/G11-handoff.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 3486,
+          "lines": 24,
+          "sha256": "2690f131dcea2a8f262014051c26ecd9c86c87cc74fc593b8993a02f8c077b33"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-effects-evidence/G12-STATE.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 2009,
+          "lines": 26,
+          "sha256": "8a9c0cb253ddd376723ad4d407200f7da95dd7fb1c0381355cf75932dfa55845"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-effects-evidence/G12-handoff.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 6423,
+          "lines": 46,
+          "sha256": "0f11072b402ae1b0ba35d574ddad411e2f939ca5aff1fc56ab2b1684919fbbd8"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-effects-evidence/G12-interface.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 3194,
+          "lines": 4,
+          "sha256": "61a57b3b62da87988e385bd754ce9b32c27b5715b2fd353c88f9b1284371438c"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-effects-evidence/G13-STATE.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 2011,
+          "lines": 26,
+          "sha256": "c5d5c2b3e9119928aaa1a70d83bb60ab576b542f909f27ad2ac4ccac0e9f7572"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-effects-evidence/G13-handoff.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 6921,
+          "lines": 47,
+          "sha256": "cfe64ab4777f6221a2adfee17fa35844669606cc68aac45a43d90d6148c05751"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-effects-evidence/G13-interface.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 4823,
+          "lines": 19,
+          "sha256": "816c91419c70123d7f52fff888cecb88d23747ceb8fb8dd1f7f2a1abd94ddf03"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-effects-evidence/README.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 1680,
+          "lines": 15,
+          "sha256": "91cae97d4b4c5248cde0febb79917256be051ebc61b8c8826e6901262809ed4f"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-effects-evidence/acceptance-STATE.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 7457,
+          "lines": 49,
+          "sha256": "df3d0d89550b15579118c20bcaf957392167cc4253f9d053d9344ca1b49b696d"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-effects-evidence/claude-closure-adjudication.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 1458,
+          "lines": 10,
+          "sha256": "90155cd28762c7a0423e3b530b9ecd6d4e30795100f73470ec46ac1ed2295be8"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-effects-evidence/claude-closure.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 3530,
+          "lines": 28,
+          "sha256": "d01a90b8ae7d07df55ca4ed6aa53c9f0e2a459ec27d9f3cb22a5c4674cedb3db"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-effects-evidence/claude-design-adjudication.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 1617,
+          "lines": 15,
+          "sha256": "c4e51075368cec0aea88fb89b4afafe5b6a98c2f40a1b5a0941d52c74dfee6ef"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-effects-evidence/claude-design.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 5154,
+          "lines": 31,
+          "sha256": "b8c52cadce333931e3b3d62fd0dcbc50cc9d9a889b937d9e8b6ce298cfca9ae5"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-effects-evidence/claude-implementation-adjudication.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 2894,
+          "lines": 13,
+          "sha256": "ef9c0786c6b655a68f2ba949ab13bce8d516770af2d48d1475639831cb53ae3b"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-effects-evidence/claude-implementation.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 4547,
+          "lines": 29,
+          "sha256": "2ebe1d77e41a094938e765abf5993dab93199ed2eda979d5405b8272519bd1b2"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-effects-evidence/first-acceptance/acceptance-STATE.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 2752,
+          "lines": 29,
+          "sha256": "33fde28cc6d0a8c7eff0cd5751727d09f3d565537e5e5378c7deba3eb2395bc7"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-effects-evidence/idle-rerun/acceptance-STATE.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 2752,
+          "lines": 29,
+          "sha256": "02cfef9fe4c79addf6e265df8ea09bbdae45522f8fb0262335ed827c3e4eb25c"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-effects-evidence/second-acceptance/acceptance-STATE.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 5105,
+          "lines": 39,
+          "sha256": "3d354444703cbba8870b24e7b14e618a47bd5c36b34f568e712d69cff846bdce"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-fault-foundation-evidence/G25-process-actor-STATE.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 1884,
+          "lines": 26,
+          "sha256": "acff5319a35f6f334cbbc4f089fae2efa281507a695bf4a877dddb35b8b35faf"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-fault-foundation-evidence/README.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 2612,
+          "lines": 16,
+          "sha256": "20a13b602230044eb60df7ca53a49dc49339ef6e02467bb3333435f0052554b3"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-fault-foundation-evidence/acceptance2-STATE.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 9984,
+          "lines": 27,
+          "sha256": "4575ee7c46a5fd0734aed2475a0c91cac6447b0f819e594b33822ec119245ddf"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-fault-foundation-evidence/opus-code-report.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 12353,
+          "lines": 122,
+          "sha256": "600e11a2ffc60c2f697b75044e694d84d83f5667cbb77640ceeea144e71b80e0"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-fault-foundation-evidence/opus-delta-input.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 110341,
+          "lines": 1264,
+          "sha256": "7a5eb1c836f3b0b5a768dc15d125a414dc81a61ddfd144e6cd23262afb79a780"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-fault-foundation-evidence/opus-delta-report.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 8008,
+          "lines": 41,
+          "sha256": "391e01bde415bdd7014a56446095a71e0d9f554943ab5eb436583987d022a5c4"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-fault-foundation-evidence/opus-design-report.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 12030,
+          "lines": 108,
+          "sha256": "b85cdffd91f7c9c27da0c39280744f328a9e72ae825700b1b32ddd1c4b684da1"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-fault-foundation-evidence/opus-final-report.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 8063,
+          "lines": 41,
+          "sha256": "23b1a41ad915c64a4ae478967f889fd9d52c109001ea915a1a3a016f8e8321ed"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-fault-foundation-evidence/process-feedback.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 14877,
+          "lines": 119,
+          "sha256": "6f9731ef029beeae06fab165566fe82f0d9db533a9447de818a7f5f240dd595d"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-fault-foundation-evidence/process-interface.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 2760,
+          "lines": 11,
+          "sha256": "6b133cd3b01970cb0d470b9a3e0a15d69bbe5106cc25079587fb704f27b5b044"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-fault-foundation-evidence/process-report.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 8263,
+          "lines": 71,
+          "sha256": "dc6c00bca5cb4df3121f5959545a678699a7b8087f4bf2db02ed3e1bc7da129f"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-fault-foundation-evidence/review-adjudication.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 6566,
+          "lines": 41,
+          "sha256": "7e6e5cef952983a44e091dc357ac817999efd616c8131cde727ddd41162e469b"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-fault-foundation-evidence/superseded-acceptance-1/acceptance-STATE.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 8458,
+          "lines": 30,
+          "sha256": "3f004b93a64effac02bb1cf2199b903cac4ed7e94a847de4519305cf39efc4ad"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-foundation-evidence/G01-STATE.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 1311,
+          "lines": 26,
+          "sha256": "9fd291e2053331ccd03bb843fc56d80b6ea42137bbb46f2dd3dc868ede814d5a"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-foundation-evidence/G01-executor.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 2559,
+          "lines": 29,
+          "sha256": "809f9d22febfb546a8617e2fe4d90861077d6823bc5b2061f7531fb74af539be"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-foundation-evidence/G02-STATE.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 1568,
+          "lines": 26,
+          "sha256": "fb274ed41722a38f45b6df4805f6a1a47a5bfdbb8c274f49b879a0addbbbc872"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-foundation-evidence/G02-executor.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 4711,
+          "lines": 41,
+          "sha256": "fdc3656be49a4e4583424c0baa9445e36066f94878f7ca341ee89c3d8ee192db"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-foundation-evidence/G03-STATE.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 1674,
+          "lines": 26,
+          "sha256": "4136cfbf543afa80d5a484e31b22aa2e18baf00b8068e54233dde3e490c0b461"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-foundation-evidence/G03-executor.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 5350,
+          "lines": 40,
+          "sha256": "d3bf545f3e6b8e7794ecf4d03fefdcf5900ca71e9a7884a4b87271f1401f996f"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-foundation-evidence/G04-STATE.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 1378,
+          "lines": 26,
+          "sha256": "1afec4d3732f55e07beef8763504a0ec8c1f57be3a050df4706a82a4108d90da"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-foundation-evidence/G04-executor.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 3226,
+          "lines": 43,
+          "sha256": "d1c95e01bb3c5565a20b65c447fe92fe7a1bda37ea27e7aeb37255dee0d5702d"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-foundation-evidence/acceptance-STATE.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 3288,
+          "lines": 27,
+          "sha256": "265bad79b0b053a4ce1dd3baa5c880f7f055a0693d045c135f039d6d8ce6e4fe"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-foundation-evidence/claude-final-review.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 6350,
+          "lines": 34,
+          "sha256": "52acb098a74ce30480d8d3445bb618dfeb32886a4e044a9ca8990a84a3b99c26"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-foundation-evidence/claude-g01-g02-review.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 8577,
+          "lines": 98,
+          "sha256": "beaabcfaf75116a6eb38e2fe1db56118e8b2fad069ad715dfea3bb51440c2b9e"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-foundation-evidence/g02-review-followup.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 6080,
+          "lines": 29,
+          "sha256": "17166ba62e3a7d0968f74cb870963f7a37f832a76dfe54127bd623b2b6f0563a"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-integration-evidence/README.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 3415,
+          "lines": 20,
+          "sha256": "f795ecdf5302e612ae4f52a4e0b8bf1eb36b87bdc0fcc6d12a8f98deba0efd67"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-kernel-evidence/G05-STATE.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 1483,
+          "lines": 26,
+          "sha256": "825e4be7780ba1f7618a6a734547afbc3e3486135304edadf2cae38acd0800cd"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-kernel-evidence/G05-executor.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 3920,
+          "lines": 26,
+          "sha256": "4d2da0d57f60bbc37887ff7426d577b242dcb67a90fd3061c51ea6983c01118c"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-kernel-evidence/G06-STATE.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 2439,
+          "lines": 26,
+          "sha256": "5c3bd56c73ff0e3604fe71ed91647875fe82f9698a8759c07d624c2e219e4d7e"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-kernel-evidence/G06-executor.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 6646,
+          "lines": 104,
+          "sha256": "dbe7515f2672b52db4648831c69f4bbb8467b6ffc16850f708dc94f16734c719"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-kernel-evidence/G07-STATE.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 3326,
+          "lines": 26,
+          "sha256": "27c85845c5e829c86afccb347e192ed4d3647d921cd392e0258fedb8ff9c1d9d"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-kernel-evidence/G07-executor.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 3564,
+          "lines": 27,
+          "sha256": "83bfe8209e2499c163ee56db7250a51da4141783c456ed4b60a857f0d34349f6"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-kernel-evidence/README.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 2330,
+          "lines": 20,
+          "sha256": "5a65f0e7195a943479d97c3b1ebf504cefa6a58136b52f17db5d2a0d6d1e467e"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-kernel-evidence/acceptance-STATE.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 5070,
+          "lines": 27,
+          "sha256": "3d8d8722a81ea5a6731c6db43b18b9e8b35efe849e92f2ecf0c9a72500b33053"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-kernel-evidence/claude-final-review.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 3906,
+          "lines": 25,
+          "sha256": "a1d1c9c401feaf2f16af5a143335526a824f82477d41ec4499f67f2cd8ae4d7e"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-kernel-evidence/claude-g05-review.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 9484,
+          "lines": 39,
+          "sha256": "6ee09d53d0261da5605891805da5f347ed7d40e2f20df6be347f220b3d34b263"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-kernel-evidence/review-adjudication.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 5305,
+          "lines": 37,
+          "sha256": "2104e8b5915a616fd07ce46647afeab49caceb78d9317882695efa53923725ec"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-kernel-evidence/review-followup.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 6225,
+          "lines": 29,
+          "sha256": "cf2cb68969234ffbdb4ba37f4e665d4e3e00447f717e96910f60b7a86effd65b"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-public-evidence/G22-G24-actor-STATE.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 1672,
+          "lines": 26,
+          "sha256": "30f15cbec9d839b9ce649231d9ce062fc1efdeadd6ecad34bf6af4ff7465074a"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-public-evidence/G22-G24-fixes-STATE.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 1931,
+          "lines": 26,
+          "sha256": "4ba3b4d32ed1b8a4e8dd76e98124e1fb31e890fbe4b468cac1725ed85c7b680f"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-public-evidence/G22-G24-reviewer-STATE.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 1679,
+          "lines": 26,
+          "sha256": "dfeb8190de13744b885293a050550e375b62a71460137dbead1ca636af0d17ce"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-public-evidence/G22-G24-reviewer-final-STATE.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 1957,
+          "lines": 26,
+          "sha256": "5c55690bf5a49a0dec11db077a6f2ad5578039d3e74c1480a7278f9102b1338d"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-public-evidence/acceptance-2-STATE.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 7681,
+          "lines": 27,
+          "sha256": "3d092628e7626b33f069f90a7d9bf84e30293de90397caaaac9e3df2eb8e32cc"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-public-evidence/fixes-interface.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 3279,
+          "lines": 10,
+          "sha256": "39b5fac15d9edb47b0ce560aecda32b3874354ee6b83615221c7f1af648c622b"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-public-evidence/fixes-parent-feedback.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 993,
+          "lines": 1,
+          "sha256": "9647673a14b261e5325ea6b59999009cff310d41cd1893dcf0e353d032f10ff7"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-public-evidence/fixes-report.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 3896,
+          "lines": 26,
+          "sha256": "c1139a3d23cb8c2b0c67668c9bd6130007d50dc6959f80a70b6590771a16275a"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-public-evidence/interface.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 10574,
+          "lines": 47,
+          "sha256": "213c7f0604e5e97ac8702c3b825ff39ee39fb720529b1f63e758ff704f27c9bd"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-public-evidence/parent-feedback.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 12482,
+          "lines": 25,
+          "sha256": "b488385bb8346b6a542e8fe5fae3c89f0226052d525bf41e652a458f8b379598"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-public-evidence/review-adjudication.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 3336,
+          "lines": 18,
+          "sha256": "775fccb4fab1d44465e268275e795380993676cc4829a02b034c9f6e58518ccf"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-public-evidence/reviewer-final-report.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 9082,
+          "lines": 54,
+          "sha256": "9df24acc471330ec95b5a23b4e750edd7db54c7494dff678dd0d460718925148"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-public-evidence/reviewer-report.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 10007,
+          "lines": 73,
+          "sha256": "ea0077dd32df399771350d04a051e45a7f529468c689cfebd95f1255c2b2339f"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-public-reconcile-evidence/STATE.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 5348,
+          "lines": 49,
+          "sha256": "01b36a7211cc07d18335aa73ab3d2259d38297fd915eab25be0d87d4cbb21507"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-public-reconcile-evidence/fable-final-response.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 3859,
+          "lines": 19,
+          "sha256": "a1d73cee4d12c8be27c627f75eeb3dc4016aa74b2a29942e8c45097f384e163b"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-public-reconcile-evidence/fable-review-response.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 5859,
+          "lines": 33,
+          "sha256": "e11f706d823cfdc4b2bb912eeffbd83d9a03bcf242bcefececa6beedc66bbff3"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-quiescence-sweep-evidence/STATE.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 1413,
+          "lines": 27,
+          "sha256": "e39dd9beb4a68ac34e848ae59ac3f9ec9ca215318eb4a900d401d28bb655abe5"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-runtime-compatibility.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 2791,
+          "lines": 26,
+          "sha256": "6870581ffa5427966ea83d82a2718b1714210e547f26dfed7f06c2d10bead4ba"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-saver-decision.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 17197,
+          "lines": 106,
+          "sha256": "9b4a524d005f24ef675b0d171b2d6959ad6c3f008df929814dc6d4e0d5c4e5a4"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-unstarted-recovery-evidence/acceptance-STATE.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 4409,
+          "lines": 27,
+          "sha256": "18a3c0bc35278ad62486f403b9bbdbc86505b52534330eb20a812387754f199c"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-unstarted-recovery-evidence/review-adjudication.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 3691,
+          "lines": 28,
+          "sha256": "cc551763a7a4d8c04ac2b01749387a3f94edd9dd5ff869b51a4a24b1543d5601"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-upgrade-final-evidence/README.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 3312,
+          "lines": 23,
+          "sha256": "2029696da5ae8c33b7151dcd6210cd49e67a9c9528914e99d641acdad5ffcbe2"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-verification-evidence/G18-STATE.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 1567,
+          "lines": 26,
+          "sha256": "9364e0250a5324a07caaeb93113013d78b1e62f9eaf3e7f153b2f21ed3aaff15"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-verification-evidence/G18-handoff.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 8685,
+          "lines": 62,
+          "sha256": "39226bd3023d811f85accb5a704061b75720ebb645edb018bcfad4d0135d133f"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-verification-evidence/G18-interface.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 3218,
+          "lines": 18,
+          "sha256": "d4dbcda56ca211ff3af70e23d9d7889c6acf8bff1ef3ca1620208ad48e079c48"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-verification-evidence/G19-STATE.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 1904,
+          "lines": 26,
+          "sha256": "96b563eb730bb753c6549ee692e69c536e2e71bb2cb54fbf6b2a36f90c2a488d"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-verification-evidence/G19-handoff.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 6978,
+          "lines": 41,
+          "sha256": "c0210c9f7746963c53e917cc2779217c57a3ab9091e6305a25f0bf09d395b103"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-verification-evidence/G19-hardening-STATE.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 1069,
+          "lines": 26,
+          "sha256": "c804681d076773b50f20d2335ec28003fffb005f2eebc34a6ca2a6ad04bb1f7d"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-verification-evidence/G19-hardening-handoff.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 6839,
+          "lines": 59,
+          "sha256": "63b0f4cc46750add17181e54df6504c879100603ed6a6b841f711d8842cb767b"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-verification-evidence/G19-interface.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 6073,
+          "lines": 30,
+          "sha256": "5eb14c831510beb4c176106b3b06f71ebb8b0930ccaab2c92967bbe79a086763"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-verification-evidence/G20-integration-STATE.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 813,
+          "lines": 26,
+          "sha256": "b34c45cefaaa69f559bf7cd2eadd3a6ab43de0e42a25f2e33e8e8ed81d38ef5c"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-verification-evidence/G20-integration-handoff.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 6596,
+          "lines": 88,
+          "sha256": "83df733c650325bac6cca0d388ef000e38e3a427bd66760b3c956235f9cda14f"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-verification-evidence/README.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 1693,
+          "lines": 16,
+          "sha256": "de85b03a0068c0a13f0a86d5e04a5a0fb1fea9d06b389057c15584af84586ee1"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-verification-evidence/acceptance-2-STATE.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 1201,
+          "lines": 26,
+          "sha256": "39d29f81fb1aff577767dd565147687125b1d2796391a8fda2b765c12ea1d4ed"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-verification-evidence/acceptance-STATE.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 1391,
+          "lines": 28,
+          "sha256": "294355aab0d92b5c897cc69060b3aa4a68d251300cca97d7bf75dd74bda7be1c"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-verification-evidence/attempt-1-acceptance-STATE.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 1391,
+          "lines": 28,
+          "sha256": "294355aab0d92b5c897cc69060b3aa4a68d251300cca97d7bf75dd74bda7be1c"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-verification-evidence/claude-adjudication.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 6288,
+          "lines": 42,
+          "sha256": "004923b261e36d0e4d87ac6fa8ca86f2aa44c8693ab80f9018bd5ce6c0060d2b"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-verification-evidence/claude-design.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 8333,
+          "lines": 45,
+          "sha256": "60d11489c75b77839a5773d7eb0775405d03cee6a366d28b979f301f54235cbd"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-verification-evidence/claude-final.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 6413,
+          "lines": 53,
+          "sha256": "b943b7a3ae7388c052016f73da06db37d818c41b1d390a5209ab88ef745103d9"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-verification-evidence/claude-implementation.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 10403,
+          "lines": 79,
+          "sha256": "177da8c29620becf785ec2a98fe4ea7891334ddfc22af0b7741c178e7396ae89"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-verification-evidence/claude-output.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 3200,
+          "lines": 16,
+          "sha256": "099b63de8aae438020f12448bf39976560a60f9f99a533a14c06a217fec68623"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-verification-evidence/parent-interfaces.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 592,
+          "lines": 1,
+          "sha256": "1242b0db41f1e247acd112d43056045589f9202d44609fda8eb05c56b1392d68"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-worker-coverage-evidence/STATE.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 3437,
+          "lines": 39,
+          "sha256": "5d9ace4018f6858acea1ecdf1e7c1299823712f0c3deffa0013f903076672170"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-worker-coverage-evidence/first-loop/STATE.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 2510,
+          "lines": 30,
+          "sha256": "c32b9f290b3ccf595d9b4a7e858456cab1cb6fe4ed76750304d27a1bca51f437"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-worker-coverage-evidence/review-adjudication.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 1238,
+          "lines": 10,
+          "sha256": "dd619dd3adb5c77e97d09472de3885ed25d335356fa8c50314e6a043973386f8"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-worker-quiescence-evidence/STATE.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 2187,
+          "lines": 29,
+          "sha256": "3e455d038a3a0235bc9d86a7873550151395e0b999fef5dfc6282ad4ca3f2218"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/implementation/graph-worker-quiescence-evidence/recheck-STATE.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 1514,
+          "lines": 27,
+          "sha256": "bf2c1dd1615863b0ea2703a57d754b366bc123511f2af471c8e67313dfc4577f"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/inventory/CLI_COMMANDS.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 985,
+          "lines": 65,
+          "sha256": "e5021b92466f1fe95a93df4ca0a1e10bd4ed43123a4c7e91efd9791aaef3ae77"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/inventory/PACKAGE_GRAPH.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 2548,
+          "lines": 51,
+          "sha256": "fd2de8e4257edb23171d93c69ebade4afa1318a02edc804887f596510899f81c"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/inventory/PUBLIC_EXPORTS.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 11638,
+          "lines": 323,
+          "sha256": "5f6c8d19b7bd3b40617eae5e5a2dc9074908eff9146081edbc12a0b99f423c23"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/operations/kimi-mac-mini-baseline.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 3236,
+          "lines": 61,
+          "sha256": "e8448e843f467800a2e0515efaa163b21bed88dc1ff2b37797f3fc22fb377f7e"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/plans/2026-10-23-execution-context-implementation.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 6962,
+          "lines": 110,
+          "sha256": "eb3c031b519ff13a04c081cbcf0d2815eea570cd797566848f43fc4702a7f40a"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/plans/2026-10-23-firstmate-adoption-plan.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 18001,
+          "lines": 214,
+          "sha256": "21be67f4c5f96a1e663256c1abfbda93e3e9ad0c9635e708006308552f86e3f2"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/plans/2026-10-23-firstmate-graph-contract.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 7993,
+          "lines": 64,
+          "sha256": "93ba1aeaac6bd2c81e30950c1da7a0dc71089781717814f338c76d56be8d8884"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/plans/2026-10-23-firstmate-remaining-extensions.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 27150,
+          "lines": 169,
+          "sha256": "71031701fcf999a076ce8aa5ddf1328eb23e5d17380593dd6957fa305227e560"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/plans/2026-10-23-firstmate-remaining-integration.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 26500,
+          "lines": 171,
+          "sha256": "86333b97604b476498fbc2bb161ebe316f8330cc021488cbdae7e27fb73d97cd"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/plans/2026-10-23-firstmate-remaining-master.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 9034,
+          "lines": 70,
+          "sha256": "ab16000872b46cbdca9f37fe8f1e32ec3ac85381be0780d248fdc41433de51eb"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/plans/2026-10-23-firstmate-remaining-reliability.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 23155,
+          "lines": 201,
+          "sha256": "ba08f8635de7d0551844835a17b272d95fead1d08c6e8715a44906474f6699e7"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/plans/2026-10-23-local-obligations-implementation.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 5421,
+          "lines": 27,
+          "sha256": "6ec48f9c897eb8e82c02a2c94a63018868a28aca999830ce99a3b840a4aa6ea8"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/plans/2026-10-23-public-follow-up-delivery.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 7673,
+          "lines": 47,
+          "sha256": "2a335e3a5399edd6c6a6863fc82d45122c26fc04c3d1431616e61d7c8180f912"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/plans/2026-10-23-remote-home-readonly.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 5217,
+          "lines": 29,
+          "sha256": "ff138a947579c591405930ccc71236eeeb32d0b7ae285f607eb6a4055a93aa19"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/plans/2026-10-24-firstmate-code-completion.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 4457,
+          "lines": 41,
+          "sha256": "00f2ca6111f0f355476e3c1ce8150b897fb545630f2808e6ff7fe82b7a003547"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/probe/2026-08-02-production-acceptance-intent.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 1754,
+          "lines": 34,
+          "sha256": "72ae26eba93239b549e87cc43311b9968b6b0f47a5c97375ba54b1500f6ec029"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/probe/2026-08-02-production-acceptance-test-plan.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 6836,
+          "lines": 93,
+          "sha256": "ba2981f3af4ab02f939922842a7b3c2b63f0c3af1fb382c997d06cb90c5dd6b3"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/probe/README.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 1616,
+          "lines": 42,
+          "sha256": "0eb20fbc91b522f41dc88baac545396edf48a93e6fdcc97383abb68227f5a35a"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/probe/restate-audit/README.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 3596,
+          "lines": 81,
+          "sha256": "58d491d6f53a26157c70a4ca64e5b5e3f3a14590518ad25d40145a37add8bd8b"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/probe/restate-audit/production-acceptance-human-audit.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 831,
+          "lines": 31,
+          "sha256": "c183cccae2e36c13226319b178c0c98d50ff46f576039862926bc4cf584cd75a"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/probe/restate-audit/production-acceptance-restatement.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 1383,
+          "lines": 25,
+          "sha256": "89bca054f0295f4ec4a63c3645f8c9b797830744c05e38f755529e7497c999bf"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/probe/restate-audit/sessions/probe_64a1f1af-583d-45a6-a2bf-76d29f7029cc/ledger.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 465,
+          "lines": 16,
+          "sha256": "980af1fdb46cfcd98f1d71ab6b058509a4eb194d8a5d47c6fa11d158a842e93d"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/probe/restate-audit/sessions/probe_64a1f1af-583d-45a6-a2bf-76d29f7029cc/product-delta.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 145,
+          "lines": 6,
+          "sha256": "171e74c84c2e5eeb255691fb8b78fba9087a7fd86231172692213e08712ee97a"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/probe/restate-audit/sessions/probe_64a1f1af-583d-45a6-a2bf-76d29f7029cc/technical-delta.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 147,
+          "lines": 6,
+          "sha256": "98edff3b59da91ce7d3f721db0079b222d347f0b2312edbb64782e7351725737"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/probe/restate-audit/sessions/probe_64a1f1af-583d-45a6-a2bf-76d29f7029cc/test-matrix.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 140,
+          "lines": 6,
+          "sha256": "8e3b4d42035f034eda25254f409a82d2c704959e880f955dfe73668316878a44"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/probe/sessions/probe_9bce3f19-3a7b-4a46-b745-0b6a1e9d2a62/ledger.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 4010,
+          "lines": 39,
+          "sha256": "ed599f4354d45e67a3ad953671ae946d201fcb5687f3b55d09cf3da67ff8b839"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/probe/sessions/probe_9bce3f19-3a7b-4a46-b745-0b6a1e9d2a62/product-delta.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 474,
+          "lines": 10,
+          "sha256": "163e00966d5921ce60d7bcb5004d6b4cd12eac1996ac7473f53d91db9c304e4c"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/probe/sessions/probe_9bce3f19-3a7b-4a46-b745-0b6a1e9d2a62/technical-delta.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 1167,
+          "lines": 16,
+          "sha256": "c95cc7f3ba113e5d48677fd2fce11821b2d85674e81c4417eeb12cb771b424ce"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/probe/sessions/probe_9bce3f19-3a7b-4a46-b745-0b6a1e9d2a62/test-matrix.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 1119,
+          "lines": 16,
+          "sha256": "83f5d5692ce959e9cab981a256fad9a7880c3e961dd061606d7366955c9c9d4f"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/product/00_TERMINOLOGY_CONSISTENCY.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 1329,
+          "lines": 25,
+          "sha256": "cce2986425a8e94424da65daad1880e46c2a23733f358c2e9d408a02769fa7d8"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/product/01_VISION.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 936,
+          "lines": 26,
+          "sha256": "70efe8ddd2fe3b4b77f57716b8080ae0065757ee03076a13915c0eb61c535dca"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/product/02_PRD.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 1169,
+          "lines": 29,
+          "sha256": "1f4078941a92b01c1d9c799a21c5923a3ef8fd18c919084bbec24fc402d3910f"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/product/03_USER_JOURNEY_AND_USE_CASES.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 883,
+          "lines": 23,
+          "sha256": "2a473d2e1a1f5572122efb6723d00b9b68db9545fc7377da535149ddab9fc690"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/product/04_SYSTEM_ARCHITECTURE.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 1025,
+          "lines": 34,
+          "sha256": "93e961699d2643ffb459263026b9017593654e7161ca8fe9d98724ba392a15d8"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/product/05_AI_AND_LLM_ARCHITECTURE.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 735,
+          "lines": 22,
+          "sha256": "e20edbc0a82107dec2b89b900828e5f43bde1eddc387f8831d7e771f388cda9c"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/product/06_SKILLS_AND_AGENT_REGISTRY.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 1657,
+          "lines": 50,
+          "sha256": "d0b190f6c8c1e66571df105b4a6a73fe68798474a81ffe3f5e5e35166cc39e5a"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/product/07_REPORT_TEMPLATES_AND_OUTPUTS.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 731,
+          "lines": 31,
+          "sha256": "74b613fd7225d3eae406f1bde5b33c8e570e4638fd1a8d1ea5ed736d0da85b4b"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/product/08_LIVE_WORKBENCH_UI_SPEC.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 3108,
+          "lines": 72,
+          "sha256": "fd6f11f26887a9975dfd2a244cdd3973dfbb21e2475f2d0b8cc6b6ca2d637b56"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/product/09_IMPLEMENTATION_PLAN.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 638,
+          "lines": 21,
+          "sha256": "cc128da6403a8a34ecb3f0ac427e4d2c51e2bf4cd27b0fdbba14e696b82bba55"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/product/10_TASK_BREAKDOWN.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 2767,
+          "lines": 39,
+          "sha256": "53c03f0ae34d15c134feaef2a57f3a98a21139c8c93d0752a638eb086e68b374"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/product/11_TEST_AND_EVAL_PLAN.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 1570,
+          "lines": 44,
+          "sha256": "f76d926ff9a3e015202e665d376b07a7c72919c7484dcaa0128c3748e3d3a3ff"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/product/12_RUNBOOK.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 1543,
+          "lines": 69,
+          "sha256": "791fad7f32a0a2c01b8dba5401ed69b87fff6a011328b1d9ca4f531473fb165d"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/product/13_DECISIONS.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 800,
+          "lines": 18,
+          "sha256": "65820848e9b57b5312fd9829850e7b14f09d6555e1c1d8d88d6fab016134cd6b"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/product/14_RECURSIVE_CONTROL_PLANE.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 9467,
+          "lines": 191,
+          "sha256": "60c2ccf715cf0327ec28946b14a02eaed8ebeae63b645dd176fc8087644fc128"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/product/15_OSSTACK_5_6_PRODUCT_AND_ARCHITECTURE.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 19747,
+          "lines": 417,
+          "sha256": "c4dca10b50c2084e5bb7604d47e64cb0f3dfc8196878c0a33f869226c1db0484"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/product/16_GITHUB_FIRST_CORE_PRODUCT_UPGRADE_PORTFOLIO.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 19387,
+          "lines": 432,
+          "sha256": "f14cfa8e0143a1cedb450eb16fe2c676eeaeaf0d71128b17f3fb67cf482b0082"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/product/17_CLAUDE_CORE_PRODUCTS_EXECUTION_DIRECTIVE.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 18912,
+          "lines": 546,
+          "sha256": "d56d00c19ea4ea624db3ca37bffb249023cf23026a9e1fcb1fb10adbe00bfd8c"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/releases/loop-engineering-release-handoff.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 6483,
+          "lines": 120,
+          "sha256": "2c4236685577187ffa1454a6abf55467ddc661652a858817bea3f578fab78e92"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/releases/neat-r0.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 1513,
+          "lines": 36,
+          "sha256": "c7b9e31d3af88723ccbbeffb43986ed101616a6eca79317ee5b506eb369b4aaf"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/releases/neat-r1.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 1263,
+          "lines": 28,
+          "sha256": "8dd008e97d38ab0f5a69bec986dc3f6fe94dcfedd9810765c1809c69cad6114b"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/releases/neat-r2.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 1896,
+          "lines": 48,
+          "sha256": "1dd9027d7a6f90e27bd28a3a805ad5629d1475ccbfc694049fe3835d87d44fae"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/releases/neat-r3.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 1686,
+          "lines": 34,
+          "sha256": "635f2856c1963f9e0de7dccef1d0a04af9427d90969c0673d268c94032cf7497"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/releases/neat-r4.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 3222,
+          "lines": 73,
+          "sha256": "955083ee67b53d96b29a1e97338a55585d53cccef807706b297bd82549e4d65d"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-07-28-kimi-autonomy-phase-d-promotion.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 3971,
+          "lines": 114,
+          "sha256": "fced9af463cb2b112ea1096d5c6fa13675074bc26a6775d033aa24cdf5e64023"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-07-28-kimi-profile-deliver-phase-b-validation.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 6398,
+          "lines": 174,
+          "sha256": "903f5d31e915a52d3d09ac6a784abea2bedd33d7b5f6734221c221d96f84a522"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-09-08-collaborator-fable-review.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 18351,
+          "lines": 143,
+          "sha256": "07eb6af06021c7471273a2eb9ac2986ce80860f602b23297a5084e3261857f54"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-09-08-collaborator-foundation-implementation.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 9551,
+          "lines": 104,
+          "sha256": "1309bf33ebb01bf3a51419aa5e4580f5d926ccc1db5d9bd826481e1821f63891"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-09-08-improvement-candidate-execution.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 7821,
+          "lines": 66,
+          "sha256": "c0b43bbc9683f3fc40bde3d3e71748c5a56d7c16fc994fbc3c909eb870c11abd"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-09-08-loop-harness-fable-review.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 17905,
+          "lines": 132,
+          "sha256": "c7a25cfa1eeba2c56b93edb02e969b9af53e8a93f2a6b81bd167ece33d849fbf"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-09-08-loop-papers-and-harness-research.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 15284,
+          "lines": 133,
+          "sha256": "d73a6605b4148f1e3af3aa11813284a28d73cb5d44baa13dcad11e4670f10733"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-09-08-signed-session-collaborator.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 10479,
+          "lines": 125,
+          "sha256": "f51d5accb1486851c93584e57aeb02b04a18900c164c6ce1e10b885cd229f452"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-09-09-authorize-to-pr-fable-review.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 16898,
+          "lines": 118,
+          "sha256": "11172d97cb3ab0fc85b767cd4f3cff7899021c1e5c3e6f8cfdb3c0d6f3f37d7d"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-09-09-authorize-to-pr.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 6881,
+          "lines": 62,
+          "sha256": "b6677b3508e40027887a43a1492919e7d087048dd141795f1afbd867c8159a3f"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-09-09-autonomy-plan-fable-review.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 18873,
+          "lines": 149,
+          "sha256": "d511e1b847b8991c4e64720a2afab20fbbc6e84823b09bd84faf38178bb20d9e"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-09-09-execution-control-fable-review.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 11293,
+          "lines": 82,
+          "sha256": "8d270573381ab0648b8141bfd627c12eb0b6d00ad5217f804e3e11e35566f868"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-09-09-hub-agent-publishing.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 4991,
+          "lines": 35,
+          "sha256": "fca822278c6c9a4656e5c06054bd246f23cf8038e6bb52bed9a0e8e419542a98"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-09-09-hub-publish-fable-review.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 12216,
+          "lines": 91,
+          "sha256": "5cd3ac2d9f494f96cd79066e6bf6e216b5da3e3ead343e977c82f60d65f7765a"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-09-09-improvement-execution-control.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 4563,
+          "lines": 46,
+          "sha256": "6cdf1783a5684ace3ef2032d6d80bbaeae466a6b89713170e7a5030b18730cdc"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-09-09-improvement-native-builds.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 7042,
+          "lines": 54,
+          "sha256": "98c21cd395e56d7d6e7d24c8ed23df7647d2ea4c1d9fbc4fd31d0fd9a771949e"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-09-09-improvement-pnpm-environment.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 6786,
+          "lines": 52,
+          "sha256": "9b06bf1ebc1f6ed5d100f65371c47440f3105ede7dedeafd294050c8db6502c3"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-09-09-improvement-provider-pilot.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 6944,
+          "lines": 54,
+          "sha256": "5a3e77a4d31d8a37467e7e7e7c59aba433a6896c1650892f5ecb79cfd523804e"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-09-09-native-build-fable-review.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 18231,
+          "lines": 114,
+          "sha256": "329dcf0a9a7cf70a8cf7779746354398b1dc7b01de07310cdec1737434f7c77c"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-09-09-pnpm-environment-fable-review.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 11879,
+          "lines": 81,
+          "sha256": "8b70ed3a4effee855660a506abe668130b38b03c4ed3fb64f63310fafc33c2e3"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-09-09-pr223-revision.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 4064,
+          "lines": 32,
+          "sha256": "6eb39f51bd0a7804c33eae9202e74645cf0548a1620a78cedbdee9c0f01cf274"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-09-09-pr224-revision.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 3515,
+          "lines": 23,
+          "sha256": "568a08792c1af6f924fb91f19fd6991f75e48c64eb1081e0dcf771c3435d8c4c"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-09-09-provider-pilot-fable-review.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 12502,
+          "lines": 97,
+          "sha256": "0abae31e317811565f030ee8998bd500e239e7ce3e97e860d478c7bc4df146e2"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-09-11-graph-engineering-evidence/README.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 2666,
+          "lines": 41,
+          "sha256": "1c43bfedd37101795363ba5edf3369af3c064844475969e804c141840a5f717b"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-09-11-graph-engineering-evidence/claude-round1.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 11975,
+          "lines": 77,
+          "sha256": "ee07e61e053db0bdc1c77786b3d725afe4fac66fc5043e647e80b1c8fc24af23"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-09-11-graph-engineering-evidence/claude-round2.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 4846,
+          "lines": 21,
+          "sha256": "a52f6594f48edd276f193d780eb6bdcce0de5b9be746f623321091ce6516fadf"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-09-11-graph-engineering-fable-review.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 5052,
+          "lines": 45,
+          "sha256": "6ae770968c0dcaa11c81e9f9a74f32cc6281b14746131c1228d702a46eb9425d"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-09-11-graph-engineering-research.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 41892,
+          "lines": 355,
+          "sha256": "58d5024c3e186fa4ead5af05c706a119d16256564c6667a675475790eec58bba"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-09-11-graph-pilot-evidence/claude-final-review.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 2989,
+          "lines": 31,
+          "sha256": "d5890c8f5b22f7f6f5439f28448a082c8a69d52f2bc61037b919518f3c1b5630"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-09-11-graph-pilot-evidence/claude-review.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 5641,
+          "lines": 55,
+          "sha256": "e1095245ccac7749e90db8502369d7bd7c7879199e89d5e6b942149b6399144f"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-09-11-graph-pilot-validation.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 6540,
+          "lines": 76,
+          "sha256": "9dae4d9d4717179c8397c9eb9fabcf022c157e1d6a84b45efbbae82207c815b5"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-09-13-executable-graph-claude-review.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 5147,
+          "lines": 56,
+          "sha256": "836c331db60f778a10950c3239ce80c5e5cb767d36437400ba8674a23bbb6631"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-09-13-executable-graph-context.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 4983,
+          "lines": 46,
+          "sha256": "fd728f5903eff39ea78d2b12bc68b29c2155340bf6b0f68f2ac7668aa4152043"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-09-13-executable-graph-evidence/README.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 3782,
+          "lines": 49,
+          "sha256": "8d18f21af79dff2a0d5310ccc749468ebbe3d7d764f4c42cb66083202216553c"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-09-13-executable-graph-evidence/claude-round1-context.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 37820,
+          "lines": 937,
+          "sha256": "e216587864d02d13e4b38e64242e32a9d802eb8a156663a1d28b2b4c2672e90b"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-09-13-executable-graph-evidence/claude-round1.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 6152,
+          "lines": 45,
+          "sha256": "4e0b13699c0b7849545e94b597bc649ca43886add5998d6d3e166ec38156661d"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-09-13-executable-graph-evidence/claude-round2-context.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 13887,
+          "lines": 198,
+          "sha256": "0672737b00d6dbd7e5068bad2414df3cc849961e6e3d37d4d9464423916098ae"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-09-13-executable-graph-evidence/claude-round2.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 5306,
+          "lines": 47,
+          "sha256": "b39747d3fcbf81881ca65055f028cb156eda1f4af13cb51b717b8c471978ecb1"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-09-13-executable-graph-evidence/claude-round3-context.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 22871,
+          "lines": 266,
+          "sha256": "0359baa45d0b1e247cc2983a7823276c7409479b89fa7fdc070998d406b782e9"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-09-13-executable-graph-evidence/claude-round3.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 2923,
+          "lines": 19,
+          "sha256": "bbbcd80bbdcbd520e07f4c0d0dcf2ea977688a33fa4db45bd898a9e76cc1c6de"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-09-13-executable-graph-research.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 22877,
+          "lines": 190,
+          "sha256": "79f6887c6eb8f813edaf9252414c0445a4796dca60a8fceac2958b520c7349d3"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-09-13-os-products-claude-review.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 3463,
+          "lines": 43,
+          "sha256": "4479992f2d25a92b66d2dac2d80399744d510ee336d26d8956cabe1ab1d20c3b"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-09-13-os-products-context.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 5504,
+          "lines": 49,
+          "sha256": "f403e55117f318ee643c72894638b082916b5952edc2d83073564c0793b306ce"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-09-13-os-products-evidence/README.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 1277,
+          "lines": 12,
+          "sha256": "2ee29fca10a2602386ee77bb6fbf5cdd003cfbf042208c1d59be26caff49bfd3"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-09-13-os-products-evidence/claude-round1-context.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 31824,
+          "lines": 444,
+          "sha256": "9dc9fd03c130535a45173b7aad7e274b9cb85bcbe679c85156786dfe0bc64902"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-09-13-os-products-evidence/claude-round1.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 4937,
+          "lines": 40,
+          "sha256": "4839a1f0dff0eaf34d2edddd614fdea2a574e0a8faa42e239fc127d30af9ad4f"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-09-13-os-products-evidence/claude-round2-context.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 9707,
+          "lines": 60,
+          "sha256": "9c933e7078dee9c8ec01a2899813773be16b64e696509ed488b0b479bc8995a9"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-09-13-os-products-evidence/claude-round2.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 4027,
+          "lines": 22,
+          "sha256": "e5a2065c202035094bc96349926fe48ec0e1755679c44b89c58b8279617d104b"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-09-13-os-products-evidence/claude-round3-context.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 3169,
+          "lines": 14,
+          "sha256": "825ec9b1e854c03ad90f5509195b733f28827f06c32c952b7f49b19dd43552d6"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-09-13-os-products-evidence/claude-round3.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 2573,
+          "lines": 11,
+          "sha256": "01263d55ec69786ae32f30ed37ac4166f9a2d827e86f3f02ac7a91bc9c814b36"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-10-23-delivery-contract-audit.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 5107,
+          "lines": 37,
+          "sha256": "09349b92f05fa17e0292d401be3df31adac7b08c36809bcd7b82a8e955d8200f"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-10-23-firstmate-analysis.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 21692,
+          "lines": 216,
+          "sha256": "8e11f6e3c014d9a58eebc1e176831490b06699ce39acbc9301b90e65b948c8c1"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-10-23-firstmate-claude-audit.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 8184,
+          "lines": 80,
+          "sha256": "49b89033f875a2d3b7f202b866a6b2c872f4c74d5aa9e8975e223262ee5f4f6f"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-10-23-firstmate-delivery-ledger.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 30244,
+          "lines": 120,
+          "sha256": "7a70be3a356d822f8e680528c5b3339a8441397db7c4e2e6136ecb3dbb7531d0"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-10-23-firstmate-development-evidence/README.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 3354,
+          "lines": 23,
+          "sha256": "d4c8e21879cdc05a9f32d10b2ff7d0138904dd93061f0dca3c0513891fd5e041"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-10-23-firstmate-development-evidence/haiku-wave1-context.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 248925,
+          "lines": 5227,
+          "sha256": "d30c348a480690f27b4833035345916319354f2492fb418cca102a36adee3b22"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-10-23-firstmate-development-evidence/haiku-wave1.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 5264,
+          "lines": 41,
+          "sha256": "825e8c651e1198900eb17f7287426542e7d78a1726212f288317bdf079822a33"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-10-23-firstmate-development-evidence/haiku-wave2-context.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 249522,
+          "lines": 6536,
+          "sha256": "e05e32ad0789ace1659fbd90e7ec1a9597caf5cef01d4e3bd0d39e67792ac1df"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-10-23-firstmate-development-evidence/haiku-wave2.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 5973,
+          "lines": 43,
+          "sha256": "6aa7342cb90db793895ff1d5ae6ee47cea6f97c6702225063f5ed975d978b57c"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-10-23-firstmate-development-evidence/haiku-wave3-context.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 101838,
+          "lines": 2790,
+          "sha256": "f63848098aa08043065892b0527f9de88d499e8349d90483dbf61b4de6b8a1e4"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-10-23-firstmate-development-evidence/haiku-wave3.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 6904,
+          "lines": 57,
+          "sha256": "77112dafd2370f835f2f74fce61115e08b79377364cf2cddf04e638791d36612"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-10-23-firstmate-development-evidence/haiku-wave4-context.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 107015,
+          "lines": 2874,
+          "sha256": "ae98529bd3e3d2733efe7c726573f23fbeedf16ad72af1206b184093a360ce88"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-10-23-firstmate-development-evidence/haiku-wave4.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 3132,
+          "lines": 32,
+          "sha256": "ae39c23a12768d9fc6a56f080e901716d95532d1d2df80505acf61d74a4b2b5c"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-10-23-firstmate-development-evidence/haiku-wave5-context.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 7744,
+          "lines": 187,
+          "sha256": "d5a34d3c7205c2561b4a122c02082765b4c6f6ce440eff36d88402794bc221f9"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-10-23-firstmate-development-evidence/haiku-wave5.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 1445,
+          "lines": 15,
+          "sha256": "11c1d3bf088bd0df9937865758181d4003272299c8df886b720bcdc4efead8f4"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-10-23-firstmate-development-evidence/sonnet-wave1-context.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 64089,
+          "lines": 1131,
+          "sha256": "6e56f1e075c91ef94aef02b4de60574c95b243be8a0706b1192a8531f43648c1"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-10-23-firstmate-development-evidence/sonnet-wave1.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 12142,
+          "lines": 151,
+          "sha256": "79e0024ed820c5ae034a8059aaaf4ecfba26ffb7b044c7a283ad4de26614f2af"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-10-23-firstmate-development-evidence/sonnet-wave2-context.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 218392,
+          "lines": 4734,
+          "sha256": "25f734dea6d6f58d0433468675ef946f4f80f037e39ba5a6f0dfad2bc05a2455"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-10-23-firstmate-development-evidence/sonnet-wave2.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 12618,
+          "lines": 120,
+          "sha256": "f5d5f280b518c48b225f24de115a956c29349d4b83af7f00ea9f6f01c184c0d2"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-10-23-firstmate-development-evidence/sonnet-wave3-context.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 248613,
+          "lines": 5225,
+          "sha256": "175b79c48fb58f9571cc72632d5e0cc3c953aa3902abbc1397f4b5d48dc638f9"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-10-23-firstmate-development-evidence/sonnet-wave3.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 6713,
+          "lines": 79,
+          "sha256": "68328ffc7b64a29c8cec6daf639b81f0505e4ee0e6f0986f5c74a1778be425cd"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-10-23-firstmate-development.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 14504,
+          "lines": 108,
+          "sha256": "bedc09a9a0ac885b739d8600b03af60ec588d5a62f28be4afd30c98eb7441086"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-10-23-firstmate-evidence/README.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 4252,
+          "lines": 42,
+          "sha256": "30484ae73863f508b1fe3d8735a563cb09a269a20d6c6e4b47d38edbe5fbba9e"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-10-23-firstmate-evidence/claude-round1-context.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 131225,
+          "lines": 2239,
+          "sha256": "d8e4fff9a01e5e57176c2716aa765f755503154da1f9309999d7b33ddc921a92"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-10-23-firstmate-evidence/claude-round1.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 9847,
+          "lines": 93,
+          "sha256": "8433ebef82b2ab5b9e2285a59b6ae37645059e15193f06d48bfe279e82d494e2"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-10-23-firstmate-evidence/claude-round2-context.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 197516,
+          "lines": 3205,
+          "sha256": "096714532213ffc88b97e40c4539d9d28cbd56c6eaae183e796e2ca126479501"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-10-23-firstmate-evidence/claude-round2.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 7443,
+          "lines": 74,
+          "sha256": "1bf4f920ef7f901ce169622e5902b644f69f02f5d1620bb50905f697be202f02"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-10-23-firstmate-evidence/claude-round3-context.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 115670,
+          "lines": 1573,
+          "sha256": "63e467c5c90bf066e754956272b9ea33fd3b5b0b7f50876b21ed12c1a0ef252f"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-10-23-firstmate-evidence/claude-round3.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 5329,
+          "lines": 41,
+          "sha256": "37c49d62e350bebcbcdacdd601403fe3398c8eac7cab343d82c96ca121e52eef"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-10-23-firstmate-evidence/source-excerpts-round2-addendum.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 23387,
+          "lines": 515,
+          "sha256": "1e65606605b9b3beced57e0ad5da766f136c0e9fd399672370c8b6e76b228823"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-10-23-firstmate-evidence/source-excerpts-round3-addendum.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 13928,
+          "lines": 231,
+          "sha256": "6ddff2c541bf8221b1506f5399266c75a82b5ee1b36e5debb8e52c77584a08f8"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-10-23-firstmate-evidence/source-excerpts.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 102159,
+          "lines": 1891,
+          "sha256": "42b08ce8e4e22327cefad297c1259bd5245c48519c8a015f1e070669d06a07f2"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-10-23-firstmate-next-plan-audit/README.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 704,
+          "lines": 5,
+          "sha256": "3be7ff3c2c2c4cbfec27b35fb565f7ea44aa9d06801c064ed95a07334ecc21f0"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-10-23-firstmate-pr237-final-qualification/README.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 950,
+          "lines": 7,
+          "sha256": "83e23ec12f5261d258fd7db8ce62168afc4e8f156fb668326af5ff9802ed40c5"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-10-23-firstmate-pr238-final-qualification/README.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 1586,
+          "lines": 11,
+          "sha256": "c9d9359979575ac0ccc0c9a0e9827ca43bfe0277f80dc63961ac3b5cb12eaffd"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-10-23-firstmate-pr239-final-qualification/README.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 1623,
+          "lines": 11,
+          "sha256": "7a469cd64af9565a3e2084463f184fb74470a2fe64e4819c42884324b11ff02a"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-10-23-firstmate-pr242-final-qualification/README.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 1700,
+          "lines": 11,
+          "sha256": "13764e635ec8fde0c0fc6a902157e51162a0ab6888c27d10b118e46d8b0d8af9"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-10-23-firstmate-pr242-final-qualification/wave5-audit/disposition.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 1795,
+          "lines": 9,
+          "sha256": "c31ab23c092b0ac4315470b91f341f70f27bde699e7559e3cd78d44472b5c788"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-10-23-firstmate-pr243-final-qualification/README.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 2007,
+          "lines": 13,
+          "sha256": "19ac3296198faa55843876fec3691bd0f584b6f4a2ac29e0ce26245a77b6e080"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-10-23-firstmate-wave1-evidence/README.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 2234,
+          "lines": 19,
+          "sha256": "83b23e990d076d177d26be41fb737f1c4c7a38e4fb6538e50dcedf9179947865"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-10-23-firstmate-wave1-evidence/cockpit/audit-disposition.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 1723,
+          "lines": 9,
+          "sha256": "9375a7da72e3cc51587d2552fefe77b618bc08d30283def6e08b5d80b19a4c3c"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-10-23-firstmate-wave1-evidence/integration-disposition.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 2363,
+          "lines": 12,
+          "sha256": "8bc406612eb9ed7593d4a819dfbd4027e2a0e26003716dfb2c6d977e00898f15"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-10-23-firstmate-wave1-evidence/outbox-disposition.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 1768,
+          "lines": 9,
+          "sha256": "225c47048724ef8dcac9e21cd6e5b3a1e4b58faa327158185e379d4488254aed"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-10-23-firstmate-wave1-evidence/routing-next/audit-disposition.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 2423,
+          "lines": 17,
+          "sha256": "13377e24b810b931b1bb7124780b39553dc9e6bc6be3ad0761d0a97d3a0fe94c"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-10-23-firstmate-wave1-evidence/supervision-next/audit-disposition.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 2269,
+          "lines": 14,
+          "sha256": "6d9e0ee0eaa198c3cbbab30f38f3e2cfc1a0091f21ef832c09c8bf4256349ddf"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-10-23-firstmate-wave1-evidence/supervision-next/integration-notes.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 2806,
+          "lines": 12,
+          "sha256": "903962b2f1bc9c29a282fd5c0f17746f3f7602e6a4ca0b705d922fbf7a63d95a"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-10-23-firstmate-wave2-evidence/README.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 2286,
+          "lines": 13,
+          "sha256": "cae3cff0a98196d62b13588c0e966cccc573db04302dc6acfa02ebfc6bd17e73"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-10-23-firstmate-wave2-evidence/daily/audit-disposition.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 5770,
+          "lines": 92,
+          "sha256": "f372a7bbc1660633a22b5d37a29ac2fa98695a7804dd5b5290024c7e57a39733"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-10-23-firstmate-wave2-evidence/root-audit/disposition.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 2477,
+          "lines": 13,
+          "sha256": "720087c087e0f9862ee8daa5af506e900f786db990e5468be25fff48d9c00ed9"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-10-23-firstmate-wave2-evidence/run-events/audit-disposition.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 5158,
+          "lines": 40,
+          "sha256": "cdb642ddea6f71b0af3892ab4c595eee01e44a089f5dd16c1c49c4fd66667a92"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-10-23-firstmate-wave2-evidence/run-events/haiku-round1-report.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 9737,
+          "lines": 86,
+          "sha256": "5f218ec1d2a55fc4a23c68393337705ca214a1a9f5a18a4e83fa0a31c7a13e32"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-10-23-firstmate-wave2-evidence/run-events/haiku-round2-report.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 12928,
+          "lines": 160,
+          "sha256": "3dc4fb0d99fd79e168bf0f2d87d9a0c6bc5a317bfd8741645629c42f6c314916"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-10-23-firstmate-wave2-evidence/run-events/haiku-round3-report.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 4421,
+          "lines": 43,
+          "sha256": "7ab370fbb10abc0f48dd0330b87eeeef96e6309a93ced2fdc85c791e2f4cab0e"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-10-23-firstmate-wave2-evidence/run-events/haiku-round4-report.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 3458,
+          "lines": 31,
+          "sha256": "c6a917e455ae155939dfb24e1d5742143ca88ddda85cc6d75977926638109327"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-10-23-firstmate-wave2-evidence/run-events/integration-notes.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 3424,
+          "lines": 13,
+          "sha256": "d034f3715a1879f6b58f5dbb063415b61921d6118f484a0a035e40a73931ebec"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-10-23-firstmate-wave2-evidence/worker-view-next/audit-disposition.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 6264,
+          "lines": 68,
+          "sha256": "b0633eb8db9e9a66c2be3532ba2a00b8edd852ac1c02924d0263b0bbafe51d02"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-10-23-firstmate-wave3-evidence/README.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 2244,
+          "lines": 11,
+          "sha256": "5e5c16ce1358b9ea11e7d98478e109ed7ee2fc630c85e06e26964c17da927b52"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-10-23-firstmate-wave3-evidence/context/audit-disposition.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 4355,
+          "lines": 27,
+          "sha256": "f586b2624b3730d257e7f306f698447cc2d9f16dd9ab5fe585ba54f412311c8a"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-10-23-firstmate-wave3-evidence/homes/disposition.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 1673,
+          "lines": 9,
+          "sha256": "64661ce5a9c3b1debbd674155893d65b7ac27b10bc23253c1c99bae9312a68dd"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-10-23-firstmate-wave3-evidence/lessons/audit-disposition.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 3552,
+          "lines": 35,
+          "sha256": "9f4d39538eedfdbe244906a23f0f7151492f2ca014366799ab4f849a55eb2f0c"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-10-23-firstmate-wave3-integration.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 3867,
+          "lines": 27,
+          "sha256": "6da59cdf87a2407db3672df29dea9a215393655b82745342ea4bc56486c76dfb"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-10-23-firstmate-wave4-evidence/README.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 1770,
+          "lines": 9,
+          "sha256": "4dab5f97876d7bb7e7c1db276f2297503afd6ae62cb8cb5713405ddf835f02b2"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-10-23-firstmate-wave4-evidence/obligations/audit-disposition.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 3754,
+          "lines": 23,
+          "sha256": "06e3118f7a16767486e59de7056d916dde64fcdd62a7c43f2285a7019bcfc97d"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-10-23-firstmate-wave4-evidence/triage/audit-disposition.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 3980,
+          "lines": 27,
+          "sha256": "a88de9247917591109f10b3e99e847cc46b3fea274508ce569b85dc767f55cf0"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-10-23-firstmate-wave4-evidence/triage/haiku-context-2.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 72908,
+          "lines": 902,
+          "sha256": "8f6c17a14c22940ec9750eac35f68abdf42d4787d505c5757375cc50d3204040"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-10-23-firstmate-wave4-evidence/triage/haiku-context-3.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 90940,
+          "lines": 1139,
+          "sha256": "88a53b2a2f873a84f3993488db17abc09a812089a2d7812c6f4d71464988ad1e"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-10-23-firstmate-wave4-evidence/triage/haiku-context.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 64765,
+          "lines": 831,
+          "sha256": "64fbe4843edb1cc8555403b44f7c912e444070b47feb400885619e52507a5bc4"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-10-23-firstmate-wave4-integration.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 3195,
+          "lines": 28,
+          "sha256": "4cab1e58de5eb2d97b7b1c71790efd18f346f040d52f5f8f26b418622f49eafb"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-10-23-firstmate-wave5-evidence/reliability/audit-disposition.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 3244,
+          "lines": 20,
+          "sha256": "cad1ccd2b1a9e5a3af41f4a1c0e2221d113bd7787120cdf27fbaecd3df3851a5"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-10-23-firstmate-wave5-evidence/reliability/haiku-context-1.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 99901,
+          "lines": 1745,
+          "sha256": "284aaeadcf1382af999e6cca4b7fb2f52f2d63cc86a81796dbc21368293b5a17"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-10-23-firstmate-wave5-evidence/reliability/haiku-context-2.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 112920,
+          "lines": 2059,
+          "sha256": "5d19f8339c65d0d50edb351e1d57e1a0653860e73c0ea0655aa2a7164add8eff"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-10-23-firstmate-wave5-evidence/reliability/haiku-context-3.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 89062,
+          "lines": 1742,
+          "sha256": "76192f7f7744b5a8c0c245aa358114abcba9b3a4286beaffcc3a813982855cb2"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-10-23-firstmate-wave5-evidence/remote/audit-disposition.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 3389,
+          "lines": 25,
+          "sha256": "a29118d0d9cc1f55b3141baa6724b1bedfd49a64ff0fa83bfa75607b8c63af99"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-10-23-firstmate-wave5-integration.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 3620,
+          "lines": 24,
+          "sha256": "28e3f344f9d3627dd498fde77c5433bd5f4cfe94ec91a0b9a0b6048d17a0e491"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-10-23-firstmate-wave6-evidence/follow-up-delivery-next/audit-disposition.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 6650,
+          "lines": 35,
+          "sha256": "24aea18a66c6427e3b7e691fa2e9741104e557cc793fa822dc134b2b81189e8f"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-10-23-firstmate-wave6-evidence/follow-up-delivery-next/contract-draft.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 6397,
+          "lines": 41,
+          "sha256": "32c8b11222981f6969e92b5b465521d991f57eae70ddcd5c5c2f0ffc5a63a6a3"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-10-23-firstmate-wave6-evidence/qualification-soak/REPLAY.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 1097,
+          "lines": 7,
+          "sha256": "d177da8f071be7d9aac0f40b1240734e923bcab097c3cf949f7f37ad8e0675d8"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-10-23-firstmate-wave6-evidence/qualification-soak/report.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 5815,
+          "lines": 45,
+          "sha256": "4afab94c478da46b63b45f35ad05a64830cb64b8475286511899a4d0a3b8e34c"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-10-23-firstmate-wave6-evidence/sources/audit-disposition.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 2482,
+          "lines": 13,
+          "sha256": "af1f46971e2d7f0cb7020675fb47a41c2bb7770db2024d4d0fc6d6e26728d328"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-10-23-firstmate-wave6-evidence/sources/haiku-context-1.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 43360,
+          "lines": 505,
+          "sha256": "bc4dc05e652dcc8797cc88d60f7204e20dcf9d82d8e7304e96ac8f49a606f500"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-10-23-firstmate-wave6-evidence/sources/haiku-context-2.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 37365,
+          "lines": 422,
+          "sha256": "c35919944a3df283d053f69824d6aa49a88234532c70980a3228576b9c11a5c9"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-10-23-firstmate-wave6-evidence/sources/haiku-context-3.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 32688,
+          "lines": 333,
+          "sha256": "b257b07a635cf530df90a9b317c5b251ee33f3b413b490f2c32c4f6937607139"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-10-23-firstmate-wave6-evidence/sources/verified-commands.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 1900,
+          "lines": 15,
+          "sha256": "610b10ddd2701af4c8320fffa50d50dd93e003c9c3e1604a6812fca4f1a6c7a9"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-10-23-firstmate-wave6-evidence/viewer/audit-disposition.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 1753,
+          "lines": 11,
+          "sha256": "626a0f4a32f555153d6b185405d3ab2b7ed0f461d5a990a9b95f6d89837f4e84"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-10-23-firstmate-wave6-evidence/viewer/haiku-context-1.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 38117,
+          "lines": 519,
+          "sha256": "e6b75f71241fd040cdf15f9f46e340bb1266914ae0071c8a8387b45bb9e7dbce"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-10-23-firstmate-wave6-evidence/viewer/haiku-context-2.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 26417,
+          "lines": 325,
+          "sha256": "3895f83690d6da364edb37f6303a7c49505599fce72de1c0a41453291c9d0a1f"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-10-23-firstmate-wave6-evidence/viewer/haiku-context-3.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 42942,
+          "lines": 600,
+          "sha256": "32e2e6233e5bf04ab6ad964e9e108c93571b3a89d724e771129aab10e5455fc2"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-10-23-firstmate-wave6-evidence/viewer/verified-commands.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 1754,
+          "lines": 13,
+          "sha256": "3fe7fb69d7ac073563fb8028eb32a9910ca45e5e609b9ca1c8bef8448dbb9446"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-10-23-firstmate-wave6-integration.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 4904,
+          "lines": 33,
+          "sha256": "5c0b96417607861a375af598fe3dd5a93bdd6909fd5231cfbaef27543b4ebc53"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-10-23-follow-up-delivery-audit.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 2653,
+          "lines": 11,
+          "sha256": "f4d976c870efa5e50704d3b65cb8abbbcb373f527c4089bb66064dd6000cdb44"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-10-23-graph-contract-audit.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 6462,
+          "lines": 51,
+          "sha256": "6e8b3faa215048c6d13f4ec24f193124866eb85680a53301b5d470ef632daef0"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-10-23-upgrade-journal-audit.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 7191,
+          "lines": 46,
+          "sha256": "e578a3b0b337022460d6a2fafdb452e48758271ec51843d7e9dd9f3852d12bba"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-10-24-firstmate-capability-completion-ledger.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 15401,
+          "lines": 84,
+          "sha256": "450da9202f23e6df299109e2a0ea6c08861ea083249a419e54f251cad94e722c"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-10-24-firstmate-capability-status.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 5707,
+          "lines": 44,
+          "sha256": "ee28adf84c45260f1cfb1a9f3e9a59d54337567f85e3116acc55ec5679685a65"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-10-24-firstmate-completion-evidence/root/README.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 2050,
+          "lines": 11,
+          "sha256": "0fd26e699a71da9c9e5f486dc51ad366aea2bd7c82113955a73766ed88ce1ec3"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-10-24-firstmate-completion-integration-evidence/README.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 6491,
+          "lines": 33,
+          "sha256": "6b8087a6d582edf4a50c860f577fea477ad4eb418e4f72c267136f1de510134f"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-10-24-firstmate-github-delivery-evidence/README.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 4221,
+          "lines": 23,
+          "sha256": "3184cf6b1550cf6ab639b3a0f9692f46cca877ad0fc6402999a8633f32201a82"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-10-24-firstmate-graph-multicheck-evidence/README.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 1617,
+          "lines": 9,
+          "sha256": "f1c90943e1651d2e0e5ee815212f77ee0d3fe2d22a4c41da92631f738d0b49f6"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-10-24-firstmate-independent-review/README.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 2853,
+          "lines": 13,
+          "sha256": "c16cd893c9b72929d07a83fdb56c7de1485c70ca710e32240ad40b9e9a37b0c6"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-10-24-firstmate-independent-review/delivery-evidence-review.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 2955,
+          "lines": 46,
+          "sha256": "acaa44cb9237a4fb4b49fd71b8986826b39bbe9abc9b54c2a1769caa824838e4"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-10-24-firstmate-independent-review/observer-batch-review.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 2187,
+          "lines": 35,
+          "sha256": "3b5cd4337daf0b847873dd0637aac08be070e4a0190abb4f3704a09596506c7d"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-10-24-firstmate-independent-source-main-evidence/README.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 5057,
+          "lines": 39,
+          "sha256": "1e3fb381bfe2a8a039364f2d7e6252711de1d3c27e390eb888cd1850e0c17bb7"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-10-24-firstmate-integration-evidence/README.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 767,
+          "lines": 7,
+          "sha256": "77fc941be2411d938025939bb47fb63194046828f776dd13672de9ba4318c488"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-10-24-firstmate-main-integration.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 4475,
+          "lines": 38,
+          "sha256": "61232f6c32de352f6eed315adcf56aa7ca30f7c795872b910d80bc5938b3faea"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-10-24-firstmate-remote-cancel-evidence/README.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 4819,
+          "lines": 27,
+          "sha256": "2d13bb64ef3b56321acdf1edd958735b287c4cd006dd70063c5f4c0e5829824c"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-10-24-firstmate-remote-cancel-evidence/independent-review.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 1026,
+          "lines": 7,
+          "sha256": "3ae23ff69bb2b8278787eae7afec16d777252d689282592c67187928b2fb38ce"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-10-24-firstmate-scout-evidence/README.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 4276,
+          "lines": 22,
+          "sha256": "0be4ae1c75fc095ec7ac6947b8700c50cd77f80a2717f2821a4af534002bc87c"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-10-24-firstmate-supervision-active-evidence/README.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 7046,
+          "lines": 52,
+          "sha256": "eea0d53646bc882b84dad61ba752ee476bb2b5d76f9aa70c52d447052aa7449f"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-10-24-firstmate-upgrade-source-audit.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 7649,
+          "lines": 50,
+          "sha256": "106afd39229e62caaf89f2f1d7ec2d05a7e671b1642e59eca10736153b55a22e"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/2026-10-24-loop-descendant-fixture-handshake.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 1918,
+          "lines": 30,
+          "sha256": "0deecda6ac78fcf2df3de9f2587308356577141c8a12183f5bcec6c9d8fee0ab"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/graph-admission-lease-closeout.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 8114,
+          "lines": 52,
+          "sha256": "8d3c4e40235e29a82cf445b9339d18da1d8cb0a27ca7a139686fe3e0822c1f88"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/graph-admission-unblock-validation.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 5801,
+          "lines": 47,
+          "sha256": "8bc2bc47cad57f968364242f6a4e9a5e09d5eba55c23ab4a569f21e4be1d31d3"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/graph-binding-reader-validation.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 3218,
+          "lines": 27,
+          "sha256": "3c21ff92b2297b040f2e8b7663f7bcf1c700b573f26f5b52c6a4e5b6a4c5e465"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/graph-bounded-messages-validation.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 7580,
+          "lines": 62,
+          "sha256": "82fe6833b9e8d583570ba47dfd664204bf46169125201459ec2520b8fa5e7c0b"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/graph-bounded-recovery-validation.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 6232,
+          "lines": 44,
+          "sha256": "d125058d2a16ae5d121d79d628f2e0e07e45593c4262bd248d6bc4647cc92049"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/graph-contained-candidate-validation.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 7387,
+          "lines": 54,
+          "sha256": "9fd101f199ee5430286d989b224d67eff120b1277d06baf44b90152f38cef9c9"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/graph-contained-executor-validation.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 6778,
+          "lines": 58,
+          "sha256": "2a710958821ad6600e7a57bee4644981c1a623ae47ae7a87b506b42e054a0992"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/graph-contained-proof-validation.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 4861,
+          "lines": 28,
+          "sha256": "54e878cf1164ab2a39368e54c24cd799f3651d31e459af08c29766e09c87c245"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/graph-contained-reopen-validation.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 5716,
+          "lines": 42,
+          "sha256": "f2d56caf1563bde1a037143f082e7b4a814250b28d8dca260464f5a0c0b11e29"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/graph-deepseek-live-validation.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 5707,
+          "lines": 51,
+          "sha256": "441a32d3109c98bdd8134eacfb5adb68088f53b3daca2a07ce9406c6dce7ca9c"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/graph-policy-admission-validation.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 5340,
+          "lines": 32,
+          "sha256": "85e8f198dc458ca7b3678688a059316dbfbf0038ebeed22848b0261c592b3e32"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/graph-public-reconcile-validation.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 5159,
+          "lines": 41,
+          "sha256": "52c74fc44c1c080bbfa379b6289aea417b03c49999b3a0192611bbba1a48c917"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/graph-quiescence-sweep-validation.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 4503,
+          "lines": 30,
+          "sha256": "cf954f29d988a11d86a236ad80ad3d36e34ad85e5820aa988ca6bfeed25d9730"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/graph-runtime-fault-validation.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 11804,
+          "lines": 96,
+          "sha256": "533640bfb843e1426c1f346b2be1ce68de8ee0837a6d33148fa440cb97bd5967"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/graph-runtime-host-stall-validation.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 8442,
+          "lines": 55,
+          "sha256": "44895876544872be5329e485546d7c85e9e50d7c7d71914d6e12d53f257883e1"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/graph-runtime-performance.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 1608,
+          "lines": 9,
+          "sha256": "d317144a0b13efba5de2fbaf05e5b9ebc876e4a34ad971c74eb4a521ecb69a55"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/graph-runtime-pilot.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 4279,
+          "lines": 36,
+          "sha256": "ee13b437feee7a22b814bd30b5210031a0bfdb39c8f8dd5370c96ca4d098ae6a"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/graph-unstarted-recovery-validation.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 4916,
+          "lines": 38,
+          "sha256": "3b9085670450ca092f44b83b9c9af1e3dcf361e4411110cdd7eec7bd6127b4c2"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/graph-upgrade-completion.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 6251,
+          "lines": 52,
+          "sha256": "736be78f19debad953a2287bffd344a11d92c167151435003cbe3e5708f0279b"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/graph-upgrade-deployment.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 13186,
+          "lines": 79,
+          "sha256": "1f4bca0bc02a27e03629bbcb85ea76491528b3cbbf4830ed418e35999fb923c6"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/graph-worker-coverage-validation.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 4573,
+          "lines": 27,
+          "sha256": "75176c2ba88948c3a0f7deeebf902b57d778647e85c88b91e680d4ea5cf3c338"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/graph-worker-quiescence-validation.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 6320,
+          "lines": 40,
+          "sha256": "b547a8dc9c19a76458da750e400a21ee34d122fd1abb5012378f5f11e59821d9"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/kimi-autonomy/final-audit-verdict.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 6024,
+          "lines": 146,
+          "sha256": "1fbad787a9d354c2344184b326af8aa8e9d3dc0980f703cae5fb52af983cdec9"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/neat-r0-dogfood.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 969,
+          "lines": 20,
+          "sha256": "ba34e055ff10908b70a2d53da2217cf46471eb9e8d56f368dd19111b6749bf32"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/neat-r0-golden-eval.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 3046,
+          "lines": 44,
+          "sha256": "1498bc6f5e2685a420b81640002b610ecfeed06b1b132cfcad976196719e4e37"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/neat-semantic-parity-evaluation-2026-07-18.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 3626,
+          "lines": 65,
+          "sha256": "b5bea136b21d287bb1e6f0ca3d3a87ab4af5ed41134779e62068d450eeefac80"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/reports/neat-semantic-parity-v3-rebaseline-2026-08-03.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 4323,
+          "lines": 75,
+          "sha256": "bcc9f6ae6119ff0210e73ef2c39343dcf2cb0da69de2c269aac5f9bace56094c"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/runbooks/2026-07-27-kimi-autonomy-validation-deployment-release.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 14692,
+          "lines": 454,
+          "sha256": "2f4924e0140d733cf8b0cb40253ae82eb5316d0ee4ce1f93845037ad54b78d2d"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/runbooks/graph-runtime.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 12287,
+          "lines": 96,
+          "sha256": "5e482df84f407eb7a8573ed5e7f37918d7737bc608976f0093d9805bda6faee5"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/runbooks/guarded-git-autonomy.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 8101,
+          "lines": 224,
+          "sha256": "04ddd72b4e536e9d144778a3e8c3194e41c8d243054af46f1fbefeb25e2c4b0e"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/runbooks/kimi-mac-mini-autonomy.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 18375,
+          "lines": 551,
+          "sha256": "9afdb914d836b54c3dabcd30250e35a599796db4f73de78d12ada36752c1717d"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/runbooks/kimi-profile-routing.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 6896,
+          "lines": 204,
+          "sha256": "e2b042932f1c403046ad32a1d750dec56e8c7fc6521421a2a956ddcbb7eb6dc0"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/specs/AGENT_COMMAND_PROTOCOL_V1.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 7401,
+          "lines": 158,
+          "sha256": "d141c739f9e4b16c458979395951255256182a8bc617a51d2ad89c79380371ee"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/specs/CONFORMANCE_MATRIX.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 14998,
+          "lines": 60,
+          "sha256": "058b0b2d0dc99102d7b61111311194f0a68235a102b117b7f464753d5656df45"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/specs/OSSTACK_RUN_SPEC_V1.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 7863,
+          "lines": 218,
+          "sha256": "2e462b514cb62a073c4ed720cbcfb5324233890c826d17cf813509809eb04223"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/specs/POLICY_PROFILE_V1.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 8468,
+          "lines": 209,
+          "sha256": "4d3d23c4a7aef709d2b2f8579fbc8678083edda83b1c0df9ea962a38560f8498"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/superpowers/KIMI_AUTONOMY_STATUS.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 5308,
+          "lines": 70,
+          "sha256": "955d311cd919f5bf462946677d25178f6cca7f77ecfdd4e9143ceb277895cf41"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/superpowers/audits/2026-07-27-kimi-autonomy-audit-appendix-full-reports.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 6155,
+          "lines": 45,
+          "sha256": "5877b14f92c961c8f35f7913820794343ef07a5a3e6e0d810f276136f7a2486c"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/superpowers/audits/2026-07-27-kimi-autonomy-audit-closure-ledger.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 18417,
+          "lines": 459,
+          "sha256": "0038286751d565c1e4de74fdc2e9a7bdb3643850ddb8e2750e638e77a2147b45"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/superpowers/audits/2026-07-27-kimi-autonomy-plan-audit-by-fable5.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 24019,
+          "lines": 150,
+          "sha256": "6c7c42de96747651956febd948ec41c4e84d75e8e4e60520865d0fd15778b19d"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/superpowers/plans/2026-06-20-branch-steward.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 31522,
+          "lines": 1047,
+          "sha256": "ed7be6c1431bd93c209f7128a7d0191c5b53cb5fa901581f0b291da845dc7b84"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/superpowers/plans/2026-07-07-merge-orchestration-loop-s1.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 16797,
+          "lines": 309,
+          "sha256": "ab8ebe0f98a36595b8c40a96e8d86ac695b518af0f6575c34ec8ab7a2f17f062"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/superpowers/plans/2026-07-11-osstack-r0-r1-architecture.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 7934,
+          "lines": 145,
+          "sha256": "d307ee16ff3a6711bcf416f35f7ce4992ec5b7332333103baa3952862fd46598"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/superpowers/plans/2026-07-11-osstack-r0-r1.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 8408,
+          "lines": 103,
+          "sha256": "8764071b4ec63ba38658fb9eb68103d31d36ffad0c58d9f5b38e6983e061aca1"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/superpowers/plans/2026-07-11-osstack-r1-golden-paths-architecture.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 8544,
+          "lines": 152,
+          "sha256": "70cf47b96153222307ce783ac5594a904fa07e7cc02d7f2488aacfe2808e40b3"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/superpowers/plans/2026-07-11-osstack-r2-policy-kernel-and-automation.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 8133,
+          "lines": 144,
+          "sha256": "b7cf96e08544bdde44d97854857fa0011d501202935c2aaa83d6ba6e591461e3"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/superpowers/plans/2026-07-17-neat-implementation-plan.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 41679,
+          "lines": 1353,
+          "sha256": "c88c613151784f4f7069f815af6a5cbc5f1b2c51e2ff2dd2f0f1f9b5d65d83c3"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/superpowers/plans/2026-07-27-deploy-mac-mini-operations-implementation.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 32760,
+          "lines": 1158,
+          "sha256": "4220ec47556f797330d61d9a5d1e397c89740405b8ba715bc633673d41252d28"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/superpowers/plans/2026-07-27-guarded-git-autonomy-implementation.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 42321,
+          "lines": 1437,
+          "sha256": "341959e2535907daf93beb1185f119564a90b3dbdb5accc522a251fef38e4e4c"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/superpowers/plans/2026-07-27-kimi-adapter-verifier-implementation.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 37507,
+          "lines": 1232,
+          "sha256": "d53010c9dc5a9977673f4aee7adfac3f2fc02b96028b5186889a7be653c3f97e"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/superpowers/plans/2026-07-27-kimi-autonomy-execution-control-v3.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 25549,
+          "lines": 568,
+          "sha256": "2f7cc1a3086d229803e11b5468c106b27aed80c59e62a7654ad1b0cf92bdee38"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/superpowers/plans/2026-07-27-kimi-code-mac-mini-autonomy.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 11856,
+          "lines": 287,
+          "sha256": "c952472788bcd1f256af6c2195afffa9a3be04ef8aaa92137adf5b698bab41ff"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/superpowers/plans/2026-07-27-kimi-code-mac-mini-autonomy.v2.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 20941,
+          "lines": 341,
+          "sha256": "dc638aca09747ffd8ce16ccd7f68a6ad90ccd2d8290bc5f7fa702cec3d6025a5"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/superpowers/plans/2026-07-27-kimi-productization-release-implementation.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 25745,
+          "lines": 902,
+          "sha256": "a39a13428585a3735a136175d238e6679246320db9a746ab218c31b3d4e44c05"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/superpowers/plans/2026-07-27-kimi-profile-deliver-routing-implementation.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 25642,
+          "lines": 853,
+          "sha256": "ab5612d97cf55730c30ff5977b531c66eeea2265e2adaaed46ff05e6ef2345b8"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/superpowers/prompts/2026-07-27-kimi-autonomy-codex-execution-prompt.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 4586,
+          "lines": 128,
+          "sha256": "762c6e76e5d79d865079b4384f77af11d6e1a43f0bccdebb52afdf3896db8c97"
+        },
+        {
+          "surface": "documentation",
+          "path": "docs/superpowers/specs/2026-07-27-kimi-code-mac-mini-autonomous-development-design.md",
+          "kind": "file",
+          "exists": true,
+          "bytes": 42781,
+          "lines": 1352,
+          "sha256": "ec564b3451db1cded1810900536653da0190aea4b0604e305d166b8f8f354e15"
+        }
+      ],
+      "schema_version": "2",
+      "findings": [],
+      "assessment_scope": {
+        "selected_rule_ids": [
+          "instruction.canonical_missing",
+          "instruction.mirror_missing",
+          "instruction.mirror_drift",
+          "surface.required_missing",
+          "budget.warn_exceeded",
+          "budget.error_exceeded",
+          "reference.markdown_target_missing",
+          "reference.instruction_import_missing",
+          "contract.review_required",
+          "memory.platform_limit_exceeded",
+          "probe.artifact_integrity",
+          "probe.destination_missing",
+          "probe.deferred_stale",
+          "probe.waiver_expired",
+          "scan.incomplete",
+          "rulebook.managed_context_block",
+          "rulebook.narrative_block",
+          "rulebook.narrative_density",
+          "rulebook.invalid_waiver",
+          "dependency.review_due",
+          "semantic.narrative",
+          "semantic.contradiction",
+          "semantic.drift",
+          "semantic.memory_overlap",
+          "semantic.cross_repository_impact"
+        ]
+      },
+      "coverage": [
+        {
+          "dimension": "mechanical",
+          "state": "complete",
+          "source_units_total": 584,
+          "candidates_generated": 23,
+          "candidates_assessed": 23,
+          "candidates_skipped": 0,
+          "reason_codes": []
+        },
+        {
+          "dimension": "narrative",
+          "state": "partial",
+          "source_units_total": 1,
+          "candidates_generated": 0,
+          "candidates_assessed": 0,
+          "candidates_skipped": 0,
+          "reason_codes": [
+            "bounded_candidate_generator"
+          ]
+        },
+        {
+          "dimension": "contradiction",
+          "state": "not_assessed",
+          "source_units_total": 0,
+          "candidates_generated": 0,
+          "candidates_assessed": 0,
+          "candidates_skipped": 0,
+          "reason_codes": [
+            "not_requested"
+          ]
+        },
+        {
+          "dimension": "drift",
+          "state": "not_assessed",
+          "source_units_total": 0,
+          "candidates_generated": 0,
+          "candidates_assessed": 0,
+          "candidates_skipped": 0,
+          "reason_codes": [
+            "not_requested"
+          ]
+        },
+        {
+          "dimension": "memory_overlap",
+          "state": "not_assessed",
+          "source_units_total": 0,
+          "candidates_generated": 0,
+          "candidates_assessed": 0,
+          "candidates_skipped": 0,
+          "reason_codes": [
+            "not_requested"
+          ]
+        },
+        {
+          "dimension": "cross_repository",
+          "state": "partial",
+          "source_units_total": 0,
+          "candidates_generated": 0,
+          "candidates_assessed": 0,
+          "candidates_skipped": 0,
+          "reason_codes": [
+            "bounded_candidate_generator"
+          ]
+        }
+      ],
+      "health_claim": "assessed_scope_clean",
+      "rejection_counts": {}
+    }
+  }
+}

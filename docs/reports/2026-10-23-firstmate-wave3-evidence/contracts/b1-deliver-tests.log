@@ -1,0 +1,46 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-supervision-next/packages/cli
+
+ ❯ src/deliver-cli.test.ts (17 tests | 1 failed) 3291ms
+   ✓ deliver CLI > accepts all guarded autonomy modes 2ms
+   ✓ deliver CLI > preserves bare deliver legacy output without probing adapters 119ms
+   ✓ deliver CLI > runs a product-entry delivery flow and writes report, scorecard, and proof 117ms
+   ✓ deliver CLI > records governed delivery findings without blocking by default 75ms
+   ✓ deliver CLI > records legacy findings as baseline evidence and gates only new findings 160ms
+   ✓ deliver CLI > creates a shadow checkpoint before a non-worktree delivery run 133ms
+   ✓ deliver CLI > fails strict governed delivery runs on error severity findings 89ms
+   ✓ deliver CLI > suggests a verify command from package.json and records it in task context 71ms
+   ✓ deliver CLI > runs guarded-local with separated profile roles and local-only evidence  821ms
+   ✓ deliver CLI > dispatches guarded-git through the durable runtime and surfaces approval 53ms
+   ✓ deliver CLI > requires project policy and dispatches guarded-deploy through the durable runtime 53ms
+   ✓ deliver CLI > blocks guarded-local before Builder invoke when verification cannot be detected 35ms
+   ✓ deliver CLI > fails closed at delivery execution when no independent Evaluator is available 49ms
+   ✓ deliver CLI > rejects an invalid guarded-local command timeout before Builder invoke 41ms
+   ✓ deliver CLI > keeps explicit legacy mode on the frozen no-profile path 71ms
+   × V2 real guarded-local host boundary > retains isolated candidate and rejects out-of-scope changes: false 778ms
+     → Cannot read properties of undefined (reading 'path')
+   ✓ V2 real guarded-local host boundary > retains isolated candidate and rejects out-of-scope changes: true  625ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/deliver-cli.test.ts > V2 real guarded-local host boundary > retains isolated candidate and rejects out-of-scope changes: false
+TypeError: Cannot read properties of undefined (reading 'path')
+ ❯ src/deliver-cli.test.ts:875:85
+    873|       expect(summary.delivery_contract.achieved_completion).toBe(outsi…
+    874|       if (!outside) {
+    875|         const receipt = JSON.parse(await readFile(summary.delivery_con…
+       |                                                                                     ^
+    876|         expect(receipt.source).toBe("osstack_loop_host");
+    877|         expect(receipt.checks).toEqual(expect.arrayContaining([expect.…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 16 passed (17)
+   Start at  12:26:36
+   Duration  4.53s (transform 677ms, setup 9ms, collect 1.08s, tests 3.29s, environment 0ms, prepare 26ms)
+
+undefined
+/Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-supervision-next/packages/cli:
+[ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL] Command failed with exit code 1: vitest run src/deliver-cli.test.ts

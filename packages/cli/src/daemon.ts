@@ -20,8 +20,8 @@ import { GovernedExecution, type ExecutionLease, type AdmissionInput } from "./g
 
 import { createServer, type Socket } from "node:net";
 import { existsSync, unlinkSync, statSync, chmodSync, mkdirSync } from "node:fs";
-import { readFile, rename, writeFile } from "node:fs/promises";
-import { basename, dirname, isAbsolute, join, resolve } from "node:path";
+import { readFile, realpath, rename, writeFile } from "node:fs/promises";
+import { basename, dirname, isAbsolute, join, resolve, resolve as resolveWorkspacePath } from "node:path";
 import { createHash, randomUUID } from "node:crypto";
 import { performance } from "node:perf_hooks";
 import { setTimeout as sleep } from "node:timers/promises";
@@ -173,6 +173,16 @@ interface SingleResponse {
 }
 
 interface DaemonContext {
+  deploymentIdentity?: import("./home-inventory.js").DeploymentIdentity;
+  followUps?: import("@osstack/core").FollowUpObligationService;
+  followUpDelivery?: import("@osstack/core").FollowUpDeliveryService;
+  followUpDeliveryOptions?: import("@osstack/core").FollowUpDeliveryOptions;
+  followUpDeliveryPending?: Set<Promise<unknown>>;
+  sourceObservations?: import("./source-observation-host.js").HostSourceObservationService;
+  sourceObservationPending?: Map<AbortController, Promise<unknown>>;
+  localSources?: ReturnType<typeof import("./local-data-source-registry.js").createHostLocalDataSourceService>;
+  attentionTriage?: Promise<import("./attention-triage.js").AttentionTriageService>;
+  attentionTriageProviderFactory?: () => Promise<import("./attention-triage.js").AttentionTriageProvider>;
   dbPath: string;
   loopSessionsPath: string;
   dailySessionsPath: string;
@@ -189,6 +199,9 @@ interface DaemonContext {
   continuations: SessionContinuationRepository;
   collaborator: SessionCollaborator | undefined;
   supervision?: SupervisionService;
+  workerLogReads?: Set<Promise<unknown>>;
+  workerLogAbort?: AbortController;
+  workerViews?: import("./worker-view-service.js").WorkerViewService;
   /** Local browser dashboard, returned to chat bridges as a shareable URL. */
   dashboardUrl: string | null;
   /** Active runs by run_id → AbortController for cancellation. */
@@ -705,6 +718,7 @@ async function handleSessionStart(
       else lease?.retain("session start exit unconfirmed");
     } else await lease?.release();
     ctx.activeRuns.delete(runId);
+    requestSupervisionScan(ctx, "session.start.settled");
   }
 }
 
@@ -1060,19 +1074,195 @@ async function executeReservedSessionTurn(
     } finally {
       ctx.activeSessionSends.delete(session.session_id);
       if (ctx.activeRuns.get(session.run_id) === controller) ctx.activeRuns.delete(session.run_id);
+      requestSupervisionScan(ctx, "session.send.settled");
     }
   }
+}
+
+function requestSupervisionScan(ctx: DaemonContext, reason: string): void {
+  if (ctx.draining || !ctx.supervision) return;
+  void ctx.supervision.requestScan(reason).catch(() => {
+    // The periodic pass is the recovery path; never fail a persisted session reply.
+  });
 }
 
 // ──────────────────────────────────────────────────────────────────────
 // Single-shot methods
 // ──────────────────────────────────────────────────────────────────────
 
+async function getAttentionTriage(ctx: DaemonContext) {
+  if (!ctx.supervision || ctx.draining) throw new Error("attention_unavailable");
+  ctx.attentionTriage ??= (async () => {
+    const {createAttentionTriageService} = await import("./attention-triage.js");
+    const {AttentionTriageLedger} = await import("@osstack/core");
+    if (!ctx.supervision || ctx.draining) throw new Error("attention_unavailable");
+    const enabled = process.env["OSSTACK_ATTENTION_TRIAGE_ENABLED"] === "1";
+    const model = enabled ? process.env["OSSTACK_ATTENTION_TRIAGE_MODEL"] ?? "" : "disabled";
+    const maxCost = enabled ? Number(process.env["OSSTACK_ATTENTION_TRIAGE_MAX_COST_USD"] ?? 0.05) : 0.05;
+    if (!Number.isFinite(maxCost) || maxCost <= 0 || maxCost > 0.25) throw new Error("invalid_triage_configuration");
+    try {
+    const service = createAttentionTriageService({
+      ledger:new AttentionTriageLedger(ctx.supervision.store,ctx.supervision.observer.owner),
+      config:{enabled,model_id:model,calls_per_hour:enabled ? Number(process.env["OSSTACK_ATTENTION_TRIAGE_CALLS_PER_HOUR"] ?? 5) : 5,
+        timeout_ms:enabled ? Number(process.env["OSSTACK_ATTENTION_TRIAGE_TIMEOUT_MS"] ?? 20000) : 20000},
+      providerFactory:ctx.attentionTriageProviderFactory ?? (async () => {
+        const {createControlledTriageProvider} = await import("@osstack/agents");
+        const {createScratchDir} = await import("@osstack/core");
+        return createControlledTriageProvider({state_directory:await createScratchDir("runtime","attention-triage"),model_id:model,max_cost_usd:maxCost});
+      }),
+    });
+    return service;
+    } catch { throw new Error("invalid_triage_configuration"); }
+  })();
+  return ctx.attentionTriage;
+}
+
+/** Only for reads whose final DB access is fenced by an aborted signal. */
+async function drainCancelledReads(reads: Promise<unknown>[]): Promise<void> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    await Promise.race([
+      Promise.allSettled(reads),
+      new Promise<void>(resolve => { timer = setTimeout(resolve, 2000); }),
+    ]);
+  } finally { clearTimeout(timer); }
+}
+
 async function handleSingle(ctx: DaemonContext, req: DaemonRequest): Promise<SingleResponse | null> {
+  if (["source.inspect", "source.observe", "source.events", "source.acknowledge"].includes(req.method)) {
+    if (ctx.draining) return singleErr(req.id, "draining", "Daemon is draining");
+    ctx.sourceObservationPending ??= new Map();
+    if (ctx.sourceObservationPending.size >= 4) return singleErr(req.id, "source_busy", "Source request limit reached");
+    const controller = new AbortController();
+    let abortResponse!: () => void;
+    const aborted = new Promise<never>((_resolve, reject) => {
+      abortResponse = () => reject(Error("source_unavailable"));
+      controller.signal.addEventListener("abort", abortResponse, {once:true});
+    });
+    const timer = setTimeout(() => controller.abort(), 2000);
+    const pending = (async () => {
+      const { createHostSourceObservationService } = await import("./source-observation-host.js");
+      const { handleSourceObservationRpc } = await import("./source-observation-command.js");
+      if (ctx.draining || controller.signal.aborted) throw Error("source_unavailable");
+      if (req.method === "source.inspect") {
+        const {createHostLocalDataSourceService, LocalSourceInspectParamsSchema, LocalSourceInspectResultSchema} = await import("./local-data-source-registry.js");
+        const parsed = LocalSourceInspectParamsSchema.safeParse(req.params);
+        if (!parsed.success) throw Error("invalid_request");
+        let canonicalRepo: string;
+        try { canonicalRepo = await realpath(parsed.data.repo_path); }
+        catch (error) { if (["ENOENT", "ENOTDIR"].includes((error as NodeJS.ErrnoException).code ?? "")) throw Error("invalid_request"); throw error; }
+        if (canonicalRepo !== parsed.data.repo_path) throw Error("invalid_request");
+        if (ctx.draining || controller.signal.aborted) throw Error("source_unavailable");
+        ctx.localSources ??= createHostLocalDataSourceService({configPath:join(dirname(ctx.dbPath),"source-registry.json")});
+        const result = LocalSourceInspectResultSchema.parse(await ctx.localSources.inspect(parsed.data, controller.signal));
+        if (result.reason === "busy") throw Error("source_observation_not_admitted");
+        return result;
+      }
+      ctx.sourceObservations ??= createHostSourceObservationService(dirname(ctx.dbPath));
+      return handleSourceObservationRpc(req.method as "source.observe" | "source.events" | "source.acknowledge",
+        req.params, ctx.sourceObservations, controller.signal);
+    })();
+    ctx.sourceObservationPending.set(controller, pending);
+    // A timed-out response must not free a still-running I/O slot. Retain the
+    // operation until settlement, but bound the caller's wait independently.
+    const settled = () => { ctx.sourceObservationPending?.delete(controller); };
+    void pending.then(settled, settled);
+    try { return singleOk(req.id, await Promise.race([pending, aborted])); }
+    catch (error) {
+      const code = error instanceof Error ? error.message : "";
+      return singleErr(req.id, ["invalid_request", "source_scope_not_canonical", "source_cursor_ahead"].includes(code) ? "invalid_request" : code === "source_observation_not_admitted" ? "source_busy" : "source_unavailable", "Source observation unavailable");
+    }
+    finally {
+      clearTimeout(timer);
+      controller.signal.removeEventListener("abort", abortResponse);
+    }
+  }
+  if (["prepare","list","inspect","authorize","revoke","dispatch","reconcile"].some(action => req.method === "follow-up-delivery."+action)) {
+    if (ctx.draining) return singleErr(req.id,"draining","Daemon is draining");
+    const {FollowUpDeliveryService,FollowUpDeliveryError} = await import("@osstack/core");
+    if (ctx.draining) return singleErr(req.id,"draining","Daemon is draining");
+    ctx.followUpDelivery ??= new FollowUpDeliveryService(ctx.db,ctx.dbPath,ctx.followUpDeliveryOptions ?? {});
+    ctx.followUpDeliveryPending ??= new Set();
+    const pending=ctx.followUpDelivery.handle(req.method,req.params);ctx.followUpDeliveryPending.add(pending);
+    try {return singleOk(req.id,await pending);}
+    catch(error){return error instanceof FollowUpDeliveryError ? singleErr(req.id,error.code,"Follow-up delivery request failed") : singleErr(req.id,"delivery_unavailable","Follow-up delivery unavailable");}
+    finally{ctx.followUpDeliveryPending.delete(pending);}
+  }
+  if (["follow-up.create", "follow-up.list", "follow-up.draft", "follow-up.resolve"].includes(req.method)) {
+    if (ctx.draining) return singleErr(req.id, "draining", "Daemon is draining");
+    const {FollowUpObligationService, FollowUpError} = await import("@osstack/core");
+    if (ctx.draining) return singleErr(req.id, "draining", "Daemon is draining");
+    ctx.followUps ??= new FollowUpObligationService(ctx.db, ctx.dbPath);
+    try { return singleOk(req.id, ctx.followUps.handle(req.method, req.params)); }
+    catch (error) {
+      return error instanceof FollowUpError ? singleErr(req.id,error.code,"Local follow-up request failed")
+        : singleErr(req.id,"follow_up_request_failed","Local follow-up unavailable");
+    }
+  }
+  if (req.method === "worker.logs") {
+    if(ctx.draining)return singleErr(req.id,"draining","Daemon is draining");
+    try {
+      const {inspectWorkerLogs}=await import("./worker-log-view.js");
+      if(ctx.draining)return singleErr(req.id,"draining","Daemon is draining");
+      ctx.workerLogReads ??= new Set();
+      if(ctx.workerLogReads.size>=4)return singleErr(req.id,"worker_log_busy","Worker output reader busy");
+      ctx.workerLogAbort ??= new AbortController();
+      const requestAbort = new AbortController();
+      const logSignal = AbortSignal.any([ctx.workerLogAbort.signal,requestAbort.signal]);
+      let abortResponse!: () => void;
+      const aborted = new Promise<never>((_resolve,reject) => {
+        abortResponse = () => reject(Error("worker_log_unavailable"));
+        logSignal.addEventListener("abort",abortResponse,{once:true});
+      });
+      const timer=setTimeout(()=>requestAbort.abort(),2000);
+      const pending=realpath(dirname(ctx.dbPath)).then(home=>inspectWorkerLogs(ctx.db,home,req.params,Date.now,logSignal));
+      ctx.workerLogReads.add(pending);
+      const settled=()=>{ctx.workerLogReads?.delete(pending);};
+      void pending.then(settled,settled);
+      try{return singleOk(req.id,await Promise.race([pending,aborted]));}
+      finally{clearTimeout(timer);logSignal.removeEventListener("abort",abortResponse);}
+    }catch{return singleErr(req.id,"worker_log_unavailable","Worker output unavailable");}
+  }
+  if (req.method === "worker.list" || req.method === "worker.inspect") {
+    if (ctx.draining) return singleErr(req.id, "draining", "Daemon is draining");
+    try {
+      const {WorkerViewService, WorkerViewError} = await import("./worker-view-service.js");
+      if (ctx.draining) return singleErr(req.id, "draining", "Daemon is draining");
+      ctx.workerViews ??= new WorkerViewService(ctx.db);
+      try {
+        return singleOk(req.id, ctx.workerViews.handle(req.method, req.params));
+      } catch (error) {
+        if (error instanceof WorkerViewError) return singleErr(req.id, error.code, error.message);
+        throw error;
+      }
+    } catch {
+      return singleErr(req.id, "worker_view_failed", "Worker view unavailable");
+    }
+  }
   if (req.method.startsWith("attention.")) {
     if (!ctx.supervision) return singleErr(req.id,"attention_disabled","Start daemon with OSSTACK_ATTENTION=1 to opt in");
     if (ctx.draining) return singleErr(req.id,"draining","Daemon is draining");
     try {
+      if (req.method === "attention.triage" || req.method === "attention.triage-status") {
+        const p = req.params as Record<string,unknown> | undefined;
+        const status = req.method === "attention.triage-status";
+        const keys = status ? ["scope_id"] : ["scope_id","item_id","model_id"];
+        if (!p || Array.isArray(p) || Object.keys(p).some(key => !keys.includes(key)) || typeof p["scope_id"] !== "string" || !/^[a-f0-9]{64}$/.test(p["scope_id"]) || (!status && (typeof p["item_id"] !== "string" || !/^[a-f0-9]{64}$/.test(p["item_id"]) || typeof p["model_id"] !== "string" || !/^[a-zA-Z0-9._:-]{1,128}$/.test(p["model_id"])))) throw new Error("invalid_triage_request");
+        const service = await getAttentionTriage(ctx);
+        if (ctx.draining) throw new Error("draining");
+        return singleOk(req.id,status ? service.diagnostics(p["scope_id"]) : await service.run({scope_id:p["scope_id"],item_id:p["item_id"] as string,model_id:p["model_id"] as string}));
+      }
+      if (req.method === "attention.lesson-evidence") {
+        const p = req.params as Record<string, unknown> | undefined;
+        if (!p || Array.isArray(p) || Object.keys(p).some(key => !["runId", "repoPath", "default_tenant"].includes(key)) || typeof p["runId"] !== "string" || typeof p["repoPath"] !== "string" || p["default_tenant"] !== true) throw new Error("invalid_lesson_request");
+        ctx.supervision.store.assertOwner(ctx.supervision.observer.owner);
+        const {readEvidenceLesson} = await import("./attention-lesson.js");
+        if (ctx.draining) throw new Error("draining");
+        const result = await readEvidenceLesson(ctx.db, {runId:p["runId"],repoPath:p["repoPath"],default_tenant:true});
+        ctx.supervision.store.assertOwner(ctx.supervision.observer.owner);
+        if (ctx.draining) throw new Error("draining");
+        return singleOk(req.id, result);
+      }
       if(req.method==="attention.abandon-receipt") {
         const p=req.params as {scope_id:string;session_id:string;message_id:string;expected_version:number;reason:string;evidence_sha256:string;acknowledge_unknown_effects:boolean};
         if(!p||p.acknowledge_unknown_effects!==true)throw new Error("explicit_unknown_effects_ack_required");
@@ -1106,6 +1296,10 @@ async function handleSingle(ctx: DaemonContext, req: DaemonRequest): Promise<Sin
     } catch(error) {return singleErr(req.id,error instanceof Error?error.message:"attention_error","Attention request failed; refresh source facts before retrying");}
   }
   switch (req.method) {
+    case "deployment.identity":
+      return ctx.deploymentIdentity
+        ? singleOk(req.id, ctx.deploymentIdentity)
+        : singleErr(req.id, "identity_unavailable", "Deployment identity unavailable");
     case "version":
       return singleOk(req.id, {
         version: DAEMON_VERSION,
@@ -1525,7 +1719,16 @@ async function handleSingle(ctx: DaemonContext, req: DaemonRequest): Promise<Sin
       const p = objectParams(req.params);
       if (p instanceof Error) return singleErr(req.id, "bad_request", p.message);
       const workspacePath = optionalString(p, "workspacePath");
+      const attentionAfter = p["attentionAfter"];
+      const attentionLimit = p["attentionLimit"];
+      if ((attentionAfter !== undefined && (typeof attentionAfter !== "string" || !/^[a-f0-9]{64}$/.test(attentionAfter))) ||
+          (attentionLimit !== undefined && (typeof attentionLimit !== "number" || !Number.isInteger(attentionLimit) || attentionLimit < 1 || attentionLimit > 100))) {
+        return singleErr(req.id, "bad_request", "Invalid Attention pagination");
+      }
       return singleOk(req.id, createDashboardSnapshot({
+        attentionService: ctx.draining ? "unavailable" : ctx.supervision ? "running" : "disabled",
+        ...(attentionAfter === undefined ? {} : {attentionAfter: attentionAfter as string}),
+        ...(attentionLimit === undefined ? {} : {attentionLimit: attentionLimit as number}),
         db: ctx.db,
         kanban: ctx.kanban,
         dbPath: ctx.dbPath,
@@ -2026,6 +2229,7 @@ function persistLoopRunEvidence(ctx: DaemonContext, result: LoopRunResult | Loop
     } as unknown as HermesEvent);
   }
   finalizeRun(ctx.db, ctx.dbPath, runId, outcome, Date.now() / 1000);
+  requestSupervisionScan(ctx, "loop.run.persisted");
   return runId;
 }
 
@@ -2448,6 +2652,7 @@ async function persistLoopSessions(ctx: DaemonContext): Promise<void> {
   try {
     await writeFile(tmpPath, `${JSON.stringify(payload, null, 2)}\n`, "utf-8");
     await rename(tmpPath, ctx.loopSessionsPath);
+    requestSupervisionScan(ctx, "loop.snapshot.persisted");
   } catch {
     // best-effort: swallow snapshot failures (next persist will retry)
   }
@@ -2574,7 +2779,12 @@ async function runDailySession(ctx: DaemonContext, session: DailySession): Promi
       // is precisely what `mode: observe` permits, so no makePolicyGate consult
       // happens here; a scheduled brief runs regardless of workspace policy.
       try {
-        const run = await runDailyBrief({ registryPath: session.registryPath });
+        const {createDailyAttentionReader} = await import("./daily-attention.js");
+        const run = await runDailyBrief({
+          registryPath: session.registryPath,
+          signal: session.abort.signal,
+          attentionReader: createDailyAttentionReader(ctx.db, () => ctx.draining ? "unavailable" : ctx.supervision ? "running" : "disabled"),
+        });
         session.lastBriefPath = run.briefPath;
         session.lastResultStatus = run.result.status;
         session.consecutiveFailureCount = 0;
@@ -3394,6 +3604,7 @@ async function handleTaskSubmit(
     for await (const ev of boundedAdapterEvents(adapter.invoke(task, ac.signal), ac.signal)) {
       try {
         appendEvent(ctx.db, ctx.dbPath, ev);
+        if (ev.terminal || ["run.started", "status", "approval.requested", "approval.resolved", "clarify.requested", "clarify.resolved", "error"].includes(ev.type)) requestSupervisionScan(ctx, "run.fact.persisted");
       } catch (err) {
         process.stderr.write(`osstack: event persist failed: ${(err as Error).message}\n`);
       }
@@ -3451,6 +3662,7 @@ async function handleTaskSubmit(
     ctx.activeRuns.delete(run_id);
     try {
       finalizeRun(ctx.db, ctx.dbPath, run_id, lastOutcome, Date.now() / 1000);
+      requestSupervisionScan(ctx, "run.finalized");
       if (lastUsageTokensIn || lastUsageTokensOut) {
         ctx.db.prepare("UPDATE runs SET tokens_in = ?, tokens_out = ? WHERE run_id = ?")
           .run(lastUsageTokensIn, lastUsageTokensOut, run_id);
@@ -3705,6 +3917,10 @@ export interface DaemonHandles {
 }
 
 export interface StartDaemonOptions {
+  /** Trusted embedding only. Production has no target, signer or transport by default. */
+  followUpDeliveryOptions?: import("@osstack/core").FollowUpDeliveryOptions;
+  /** Trusted host injection for local qualification; never RPC-configurable. */
+  attentionTriageProviderFactory?: () => Promise<import("./attention-triage.js").AttentionTriageProvider>;
   /** Trusted host registry and actual socket authentication; never RPC fields. */
   graphRpc?: Pick<GraphRpcOptions, 'registrations' | 'resolveCaller'>;
   graphCheckpointBindings?: ReadonlyMap<object, GraphCheckpointBinding>;
@@ -3917,6 +4133,12 @@ export async function startDaemon(
     ?? await readContinuationTrust(join(osstackHome(), "continuation-trust.json")));
   // Refuse to start when another daemon already owns the pidfile — two
   // daemons would race for the socket and share the SQLite writer.
+  const {managedStartupIdentity,verifyManagedRuntime,verifyManagedCode} = await import("./upgrade-native-backend.js");
+  const managedIdentity = managedStartupIdentity(osstackHome(), process.argv[1]);
+  if (managedIdentity) {
+    const {CURRENT_SCHEMA_VERSION} = await import("@osstack/core");
+    verifyManagedCode(managedIdentity, {version:DAEMON_VERSION,protocol_version:PROTOCOL_VERSION,database_schema:CURRENT_SCHEMA_VERSION});
+  }
   const releaseLock = acquireDaemonLock(pidFilePath());
   let failedContext: DaemonContext | undefined;
   let stopUpdates: (() => void) | undefined;
@@ -3936,11 +4158,40 @@ export async function startDaemon(
       : { readConcurrency: opts.readConcurrency }),
   });
   failedContext = ctx;
+  if (opts.attentionTriageProviderFactory) ctx.attentionTriageProviderFactory = opts.attentionTriageProviderFactory;
+  if (opts.followUpDeliveryOptions) ctx.followUpDeliveryOptions = opts.followUpDeliveryOptions;
+  else {
+    const {loadHostFollowUpDelivery} = await import("./follow-up-delivery-host.js");
+    ctx.followUpDeliveryOptions = (await loadHostFollowUpDelivery(join(await realpath(osstackHome()), "follow-up-delivery.json"))).options;
+  }
+  // Initialize only after the authorized home/database startup. Read-only
+  // inventory never creates an identity and malformed records are not repaired.
+  const {ensureDeploymentHomeId} = await import("./home-inventory.js");
+  try {
+    ctx.deploymentIdentity = {
+      schema_version: 1, home_id: await ensureDeploymentHomeId(osstackHome()),
+      generation: `instance_${randomUUID().replaceAll("-", "")}`,
+      version: DAEMON_VERSION, protocol_version: PROTOCOL_VERSION,
+      database_schema: ctx.db.pragma("user_version", {simple:true}) as number,
+      started_at_ms: Date.now(), deployment_kind: "unknown",
+      build_digest: null, build_evidence: "unavailable",
+    };
+  } catch (error) {
+    if (!(error instanceof Error) || error.message !== "identity_unavailable") throw error;
+    console.warn("Deployment identity unavailable; explicit home inventory will report unknown.");
+  }
+
+  if (managedIdentity) {
+    if (!ctx.deploymentIdentity) throw Error("upgrade_running_build_mismatch");
+    Object.assign(ctx.deploymentIdentity,verifyManagedRuntime(managedIdentity,ctx.deploymentIdentity));
+  }
+
   const getGraphRpc = (): Promise<GraphRpcService> => {
     if (checkpointClosed) return Promise.reject(new Error('GRAPH_SERVICE_CLOSED'));
     graphRpc ??= import('./graph-rpc.js').then(async ({ GraphRpcService, loadLocalGraphRegistration }) => {
       const configured = opts.graphRpc;
-      const local = configured ? undefined : await loadLocalGraphRegistration(join(osstackHome(), 'graph-host.json'), ctx.adapters);
+      const resolvers = configured ? undefined : (await import('./graph-contract-host.js')).createGraphContractHostResolvers(osstackHome());
+      const local = configured ? undefined : await loadLocalGraphRegistration(join(osstackHome(), 'graph-host.json'), ctx.adapters, resolvers);
       const service = new GraphRpcService({ db: ctx.db, root: join(osstackHome(), 'graph-delivery'),
         registrations: (configured?.registrations ?? [local!]).map(registration => ({ ...registration,
           admitNewRuns: () => !ctx.draining && (registration.admitNewRuns ? registration.admitNewRuns() : true),
@@ -4067,7 +4318,7 @@ export async function startDaemon(
             try { sock.write(encodeFrame(singleErr(req.id, "execution_failed", error instanceof Error ? error.message : String(error)))); } catch { /* disconnected */ }
           };
 
-          if (['graph.validate', 'graph.start', 'graph.submit', 'graph.status', 'graph.result', 'graph.cancel', 'graph.reconcile', 'graph.resume'].includes(req.method)) {
+          if (['graph.validate', 'graph.start', 'graph.submit', 'graph.status', 'graph.result', 'graph.contract', 'graph.cancel', 'graph.reconcile', 'graph.resume'].includes(req.method)) {
             void getGraphRpc().then(service => service.handle(sock, req.method, req.params)).then(result => {
               try { sock.write(encodeFrame(singleOk(req.id, result))); } catch { /* disconnected */ }
             }).catch(async error => {
@@ -4188,7 +4439,15 @@ export async function startDaemon(
         if (healthMonitor !== undefined) clearInterval(healthMonitor);
         shutdownPromise = (async () => {
           ctx.draining = true;
+          ctx.workerLogAbort?.abort();
+          for (const controller of ctx.sourceObservationPending?.keys() ?? []) controller.abort();
+          await drainCancelledReads([...(ctx.sourceObservationPending?.values() ?? [])]);
+          await ctx.attentionTriage?.then(service => service.stop()).catch(() => undefined);
           await ctx.supervision?.stop();
+          await Promise.allSettled([...(ctx.followUpDeliveryPending ?? [])]);
+          // These reads recheck authorization before their final synchronous DB
+          // snapshot, so the database must outlive their asynchronous file reads.
+          await drainCancelledReads([...(ctx.workerLogReads ?? [])]);
           if (graphRpc) {
             try { await (await graphRpc).close(); } catch { /* Initialization may have failed. */ }
           }
@@ -4237,7 +4496,11 @@ export async function startDaemon(
 
       const dashOpts = dashboardUrlFromEnv();
       void startDashboardServer(
-        () => createDashboardSnapshot({
+        (params) => createDashboardSnapshot({
+          attentionService: ctx.draining ? "unavailable" : ctx.supervision ? "running" : "disabled",
+          ...(params?.workspacePath === undefined ? {} : {workspacePath: resolveWorkspacePath(params.workspacePath)}),
+          ...(params?.attentionAfter === undefined ? {} : {attentionAfter: params.attentionAfter}),
+          ...(params?.attentionLimit === undefined ? {} : {attentionLimit: params.attentionLimit}),
           db: ctx.db,
           kanban: ctx.kanban,
           dbPath: ctx.dbPath,

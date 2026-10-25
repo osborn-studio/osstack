@@ -1,0 +1,19 @@
+{
+  "wave6-schema-final-loop-result.json": "2488279f9abf102952dadce636a15e04bd8eff30db1cccb3fb950b04aebeac10",
+  "first-checks.json": "796b50b695a428f27f0637ce26f4a737e0b9bea50645b4849faf446c80992ba0",
+  "wave6-schema-final-checks.json": "e00e0fb04203bea281d89bc4ec0d3e68a4223df3f54ffc05e081f438dbf2d7ed",
+  "lint.log": "58b6ac9beaba7b6437dce602ecd917a3e9b1e6fe38fef014c3572399697b5191",
+  "wave6-schema-final-enqueue.json": "0b6d57ba37b502d00f5419cdc1386e589d9139b193ff93976b8fc8a852d76028",
+  "test.log": "4edbc8786882f1bf899ba70733e7b1d7a5ea4daa07d5be053d0cfb5eaeca108a",
+  "inventory-generate.log": "864f8d7f121cb71b530754916f239c73473df297d7f2214f917c3d93362dfa80",
+  "typecheck.log": "e0aa3205654b25e0af8c49cc61573353efe395cc01ce7088e55021e45039e5e9",
+  "schemas.log": "72eede8bd62b3a68d3e094d4aeccda65c0b3de5a92b0843adc8530af2c2cff41",
+  "startup.log": "9bf890d53a1a74690680d21aa2a741931b0b8c9dd23a77c47e7f2413a72c798d",
+  "README.md": "19ac3296198faa55843876fec3691bd0f584b6f4a2ac29e0ce26245a77b6e080",
+  "schema-regression.log": "45be16bd019a04d5bd79fc39288d2f3f443a358ceef62099c3c0c2182a0f23ca",
+  "first-loop-result.json": "0a6359b74cbd8bf11742a975da4a9491aed96dc5b730c49c09dc2df4abb85926",
+  "first-enqueue.json": "e6e7b2df76296b9395e882be879a383292b588418ec2355327f3da8ee3e84a66",
+  "first-test.log": "aa754becf18660b7c12b9d62c75207b3af71add7c5d6b4e7bad33965adb0c4a7",
+  "inventory.log": "a59b7d9a6d962ccf0d22d13d2cc0f8acbb9e3653a63cce339211a5dfb3cd56e9",
+  "build.log": "f7c9b8256723975176b5b2be86e3ae570eca9b458a3920a2d997a570392bb229"
+}

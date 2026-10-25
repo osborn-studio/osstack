@@ -1,0 +1,21 @@
+{
+  "packages/cli/src/deliver-command.ts": "b09f4bb2a8c3bf20d9c7315008c148319c99771445fca2451900bfa19be693ec",
+  "packages/cli/src/guarded-git-runtime.ts": "6e8e2663066394c7ee7b3c759dd93162ee941f410fe9a8055107bd8b833ecae5",
+  "packages/cli/src/delivery-contract-host.ts": "819541b448fa9889eb4cfe9230f96567be3ac53ee2dafb63891bb6f6a72605ea",
+  "packages/cli/src/execution-context.ts": "6cc128d9ec683d6f51c5f1c7b2376bbdc51da58701cad1864136d486c326e98e",
+  "packages/cli/src/execution-context-host.ts": "fb1449c95a24c644a55eec1e6fe37fe2ff7757f63c92d3e9bab166e39411fe71",
+  "packages/core/src/delivery-contract.ts": "fca14f4dc312e8021f0a3049c3ac8be4981569512fce42a122ec781d11984ce3",
+  "packages/protocol/src/delivery-contract.ts": "ee8829029432bbf439ac35da1e66cf3df75b1ea66e8b8547833f08057edce663",
+  "packages/autonomy/src/engine.ts": "9b4c1b134568ca83caf2f6f5d1ca698bf8c1676881b985316d2d095982fc0160",
+  "packages/autonomy/src/state-machine.ts": "a8a53f3615874633b4ca5def1c2fb468cfadb6cbc8aa235e2d8d40c1927896a2",
+  "packages/autonomy/src/risk.ts": "978b67e3eb73c90cc1e148ffaba539c75b480122f07ddc45eea3541fb9872711",
+  "packages/github/src/delivery.ts": "5a0ab81f10616d953a0c6dca30b46532e03dd42747df700b3dd9b1efde2d7f60",
+  "packages/loop/src/types.ts": "38e7a91964401665b97fcccda1d42c371325c1799cca1989b404f1cb811e5f2f",
+  "packages/cli/src/delivery-entrypoint.test.ts": "113c80e0fbafc1d955ffcd6fd177e1e45fa1f33f6aa241470647ab5be19c0dad",
+  "packages/cli/src/delivery-policy-host.test.ts": "95a806d8901612ad34a756556e751ef3908643d09d5ffae50025862c95a92070",
+  "packages/cli/src/deliver-cli.test.ts": "e13bb1a5c0e95ec01dc13c7014d662ac3e6e41741dab70bd8bed226ab4a3a561",
+  "packages/cli/src/guarded-git-runtime.test.ts": "afd7aea2fd58c8028a3ff9b9ae95ee679cac903ce342ed23df11241828cfa5ee",
+  "docs/guides/delivery-contract-v2.md": "32cae4a12bdfc3b44d4a7e1e63e693218bdcccd638abf1aa334c6526b383291c",
+  "docs/reports/2026-10-23-delivery-contract-audit.md": "09349b92f05fa17e0292d401be3df31adac7b08c36809bcd7b82a8e955d8200f",
+  "packages/cli/src/bin.ts": "f89f7501f1df30b2b7606dd16cfc5f7204386baeb3de3a0d1092953aea4376ac"
+}

@@ -1,0 +1,39 @@
+{
+  "loop_id": "loop_d6a8c49f-301b-4eb7-8f43-cc7e59cfe137",
+  "retry_of_task_id": "task_2cb38a72-retry-retry",
+  "retry_task": {
+    "task_id": "task_2cb38a72-retry-retry-retry",
+    "capability": "code.test",
+    "prompt": "Retry failed osstack loop task task_2cb38a72-retry-retry.\nPrevious outcome: escalated.\nPrevious agent: local-command.\nSummary: Builder execution ended failed: Process group 72691 gone (kill(-pgid, 0): ESRCH); leader exit observed",
+    "priority": 70,
+    "source": "task_queue",
+    "context": {
+      "retry_of_task_id": "task_2cb38a72-retry-retry",
+      "retry_from_loop_id": "loop_d6a8c49f-301b-4eb7-8f43-cc7e59cfe137",
+      "previous_outcome": "escalated",
+      "previous_agent_id": "local-command",
+      "previous_iterations": 1,
+      "previous_run_id": "run_b481f149-c0d6-4ba3-a892-3a3b53a73a1b",
+      "previous_error_summary": "Builder execution ended failed: Process group 72691 gone (kill(-pgid, 0): ESRCH); leader exit observed",
+      "previous_verify_summary": "3 issues found by local verifier. Failed evaluations: verify-command-1.",
+      "previous_verify_issues": [
+        {
+          "severity": "error",
+          "message": "Builder execution ended failed: Process group 72691 gone (kill(-pgid, 0): ESRCH); leader exit observed",
+          "rule": "execute.outcome_not_completed"
+        },
+        {
+          "severity": "error",
+          "message": "python3 /Volumes/AIMATE_WORK/tmp/osstack/smoke/pr237-integration/run-checks.py failed (1): build 0 typecheck 0 test 1 lint 0 schemas 0 inventory 0 startup 0",
+          "rule": "execute.command_failed"
+        },
+        {
+          "severity": "error",
+          "message": "python3 /Volumes/AIMATE_WORK/tmp/osstack/smoke/pr237-integration/verify-checks.py failed (1): Traceback (most recent call last): File \"/Volumes/AIMATE_WORK/tmp/osstack/smoke/pr237-integration/verify-checks.py\", line 4, in <module> assert len(results)==7 and all(r['exit_code']==0 for r in results), results ^^^^^^^^^^^^^^^^^^^^^^^^^^^",
+          "rule": "verify.command_failed"
+        }
+      ]
+    }
+  },
+  "path": "/Volumes/AIMATE_WORK/tmp/osstack/smoke/pr237-integration/queue/tasks/task_2cb38a72-retry-retry-retry.json"
+}

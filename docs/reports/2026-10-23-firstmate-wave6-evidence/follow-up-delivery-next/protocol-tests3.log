@@ -1,0 +1,41 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-routing-next/packages/protocol
+
+ ❯ src/follow-up-delivery.test.ts (8 tests | 1 failed) 6ms
+   ✓ rejects non-canonical UTF-8, invisible or oversized text 2ms
+   ✓ rejects non-canonical UTF-8, invisible or oversized text 0ms
+   ✓ rejects non-canonical UTF-8, invisible or oversized text 0ms
+   ✓ rejects non-canonical UTF-8, invisible or oversized text 0ms
+   ✓ preserves valid Unicode, whitespace and exact content without normalization 0ms
+   ✓ rejects caller authority and receipts on action requests 0ms
+   ✓ requires explicit scope and bounds page limits 0ms
+   × normalizes only pagination UUID case and preserves explicitly reviewed BOM/control body data 3ms
+     → expected 'AAAAAAAA-AAAA-4AAA-8AAA-AAAAAAAAAAAA' to be 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa' // Object.is equality
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/follow-up-delivery.test.ts > normalizes only pagination UUID case and preserves explicitly reviewed BOM/control body data
+AssertionError: expected 'AAAAAAAA-AAAA-4AAA-8AAA-AAAAAAAAAAAA' to be 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa' // Object.is equality
+
+Expected: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+Received: "AAAAAAAA-AAAA-4AAA-8AAA-AAAAAAAAAAAA"
+
+ ❯ src/follow-up-delivery.test.ts:47:77
+     45| it("normalizes only pagination UUID case and preserves explicitly revi…
+     46|   const after_id = "AAAAAAAA-AAAA-4AAA-8AAA-AAAAAAAAAAAA";
+     47|   expect(FollowUpDeliveryListParams.parse({ ...scope, after_id }).afte…
+       |                                                                             ^
+     48|   const body = "\uFEFFexplicit\u009b\u200b";
+     49|   expect(FollowUpDeliveryPrepareParams.parse({ ...prepare, body }).bod…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 7 passed (8)
+   Start at  13:56:45
+   Duration  292ms (transform 28ms, setup 0ms, collect 32ms, tests 6ms, environment 0ms, prepare 28ms)
+
+undefined
+/Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-routing-next/packages/protocol:
+[ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL] Command failed with exit code 1: vitest run src/follow-up-delivery.test.ts

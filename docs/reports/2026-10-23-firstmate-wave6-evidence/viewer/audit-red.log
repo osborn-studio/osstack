@@ -1,0 +1,62 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-cockpit/packages/cli
+
+ ❯ src/worker-presentation.test.ts (11 tests | 2 failed) 5120ms
+   ✓ reads only the original view token and suppresses unchanged metadata 4ms
+   ✓ closes a pending reader without outputting its late result 52ms
+   ✓ ends unknown on expired token without acquiring another token or invoking controls 1ms
+   ✓ stops on unknown source observation and escapes terminal controls in paths 0ms
+   ✓ honors output backpressure and closing never destroys the shared terminal stream 51ms
+   ✓ handles EPIPE as local output closure, without a worker action 3ms
+   ✓ rejects a changed scope instead of following another worker observation 1ms
+   ✓ bounds response floods and does not echo unvalidated output 1ms
+   ✓ ends a never-settling read on duration and ignores a pre-aborted viewer 1ms
+   × locally times out a hung transport as unknown and aborts its read signal 5004ms
+     → Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+   × cleans a callback-only write error listener after the Node error dispatch turn 2ms
+     → expected 1 to be +0 // Object.is equality
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/worker-presentation.test.ts > locally times out a hung transport as unknown and aborts its read signal
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ src/worker-presentation.test.ts:64:1
+     62| });
+     63| 
+     64| it('locally times out a hung transport as unknown and aborts its read …
+       | ^
+     65|   vi.useFakeTimers();const out=sink();let signal:AbortSignal|undefined;
+     66|   const handle=createTerminalPresentationBackend({output:out.output,in…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  src/worker-presentation.test.ts > cleans a callback-only write error listener after the Node error dispatch turn
+AssertionError: expected 1 to be +0 // Object.is equality
+
+- Expected
++ Received
+
+- 0
++ 1
+
+ ❯ src/worker-presentation.test.ts:75:95
+     73|   });
+     74|   await expect(writePresentationText(out.output,'hello',new AbortContr…
+     75|   await new Promise(resolve=>setImmediate(resolve));expect(out.output.…
+       |                                                                                               ^
+     76| });
+     77| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed | 9 passed (11)
+   Start at  13:38:22
+   Duration  5.80s (transform 301ms, setup 13ms, collect 502ms, tests 5.12s, environment 0ms, prepare 34ms)
+
+undefined
+/Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-cockpit/packages/cli:
+[ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL] Command failed with exit code 1: vitest run src/worker-presentation.test.ts

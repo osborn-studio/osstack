@@ -259,3 +259,33 @@ describe("run-store approval/clarify double-write", () => {
     } finally { db.close(); }
   });
 });
+
+it.each(["approval", "clarify"])("fences %s resolution by run and pending status, rolling back rejected events", (family) => {
+  const path = join(tmp, "authority.db");
+  const db = openDb({ path });
+  try {
+    insertTask(db, path, { task_id: "t", title: "authority", created_at: 1 });
+    for (const run of ["a", "b"]) insertRun(db, path, { task_id: "t", run_id: run, session_id: run,
+      agent_id: "hermes", capability_id: "code", phase: "execute", started_at: 1 });
+    const emit = (run: string, seq: number, status?: string, answer = "yes") => appendEvent(db, path, {
+      event_id: `${run}:${seq}`, run_id: run, session_id: run, seq, created_at: seq + 1, terminal: false,
+      type: `${family}.${seq === 0 ? "requested" : "resolved"}`,
+      payload: { [`${family}_id`]: "shared", action_summary: "publish", risk: "high", question: "Choose",
+        ...(status === undefined ? {} : { status }), choice: answer, answer },
+    });
+    emit("a", 0);
+    const status = family === "approval" ? "accepted" : "answered";
+    expect(() => emit("b", 1, status)).toThrow(`${family}_resolution_conflict`);
+    const table = family === "approval" ? "approvals" : "clarifies";
+    expect(db.prepare(`SELECT run_id,status FROM ${table}`).get()).toEqual({ run_id: "a", status: "pending" });
+    expect(db.prepare("SELECT COUNT(*) n FROM events WHERE run_id='b'").get()).toEqual({ n: 0 });
+    expect(() => emit("a", 1)).toThrow(`invalid_${family}_resolution`);
+    emit("a", 1, status);
+    emit("a", 2, status); // Matching adapter echo preserves the original resolution timestamp.
+    expect(() => emit("a", 3, "timed_out")).toThrow(`${family}_resolution_conflict`);
+    expect(() => emit("a", 3, status, "different")).toThrow(`${family}_resolution_conflict`);
+    expect(() => emit("b", 1, status)).toThrow(`${family}_resolution_conflict`);
+    expect(db.prepare(`SELECT status,resolved_at FROM ${table}`).get()).toEqual({ status, resolved_at: 2 });
+    expect(db.prepare("SELECT COUNT(*) n FROM events WHERE run_id='a'").get()).toEqual({ n: 3 });
+  } finally { db.close(); }
+});

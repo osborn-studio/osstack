@@ -1,0 +1,48 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-routing-next/packages/cli
+
+warning: in the working copy of 'dir/file', CRLF will be replaced by LF the next time Git touches it
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/smoke/pr237-integration/graph-raw-paths/tmp/g22-rpc-4tLsYE/delivery/2d3c84ec-a6cc-426e-9e3f-47d0f1959f2e/writer-0'...
+HEAD is now at 03211b6 base
+ ✓ src/graph-workspace-paths.test.ts (10 tests) 1585ms
+   ✓ hashes symlink targets without reading their contents  323ms
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/smoke/pr237-integration/graph-raw-paths/tmp/g22-rpc-gvbsip/delivery/7d297f31-4a54-45c3-92fa-a3028b1c0823/writer-0'...
+HEAD is now at 1c4bd3d base
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/smoke/pr237-integration/graph-raw-paths/tmp/g22-rpc-JdZOIe/delivery/36cf6487-54a9-44de-bf3f-6b1b2a1b68d8/writer-0'...
+HEAD is now at 5474d22 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/smoke/pr237-integration/graph-raw-paths/tmp/g22-rpc-qeBfUe/delivery/d06d4172-ef07-4eea-b9e3-de26829e8356/writer-0'...
+HEAD is now at 5db06d8 base
+osstack: retaining write lease graph-action:d50a58d700861ca2dc0b702830f38615f2c32fd6c05604ff0394b06f5640f21f: Error: external stop unconfirmed
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/smoke/pr237-integration/graph-raw-paths/tmp/g22-rpc-rWckUj/delivery/e03c0c9d-a6d9-4f0b-93af-3f571a17b1d0/writer-0'...
+HEAD is now at d917101 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/smoke/pr237-integration/graph-raw-paths/tmp/g22-rpc-yauUtq/delivery/5492f2f7-c10f-4efd-9641-62a35f3c18fd/writer-0'...
+HEAD is now at 8274406 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/smoke/pr237-integration/graph-raw-paths/tmp/g22-rpc-QsgZsf/delivery/44831263-5b96-4483-8c8b-4c8a2e49d4df/writer-0'...
+HEAD is now at 023edc0 base
+osstack: retaining write lease graph-action:7b3de4eaafa35712638cc48eaeae6cb28d3c77c84da367061102d15d5d15311c: Error: delivery_contract_path_outside_scope
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/smoke/pr237-integration/graph-raw-paths/tmp/g22-rpc-JlqPl3/delivery/03c2c533-15bf-4319-91b6-5a6537223f37/writer-0'...
+HEAD is now at ae41f82 base
+osstack: retaining write lease graph-action:05b817c1a197048d7bd4832f1a75c57a829afad510f9c789dc6f0c74b074d1fc: Error: GRAPH_CONTRACT_HIDDEN_INDEX_FLAGS
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/smoke/pr237-integration/graph-raw-paths/tmp/g22-rpc-7MA42J/delivery/1e459954-f3a9-4330-93af-a2996f226319/writer-0'...
+HEAD is now at 2899b12 base
+osstack: retaining write lease graph-action:fe9c1addd0084a856d81145116284efae94dcfde04a6321d9cb881fa4c164dcb: Error: GRAPH_CONTRACT_HIDDEN_INDEX_FLAGS
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/smoke/pr237-integration/graph-raw-paths/tmp/g22-rpc-5fBkht/delivery/94c7b720-2294-431b-92c4-d37fdb860d9c/writer-0'...
+HEAD is now at efefc6d base
+osstack: retaining write lease graph-action:1636213b563396788d464420128e81e91861b9b0af0cd6e5f5a591c76f98cd40: Error: delivery_contract_path_outside_scope
+ ✓ src/graph-contract-integration.test.ts (17 tests) 40603ms
+   ✓ binds the durable host contract before the real Graph launch and never changes source HEAD/refs/index/files  5645ms
+   ✓ does not publish a durable completion file after grant changes during the last await  5546ms
+   ✓ does not publish a durable completion file after revision changes during the last await  5535ms
+   ✓ never exposes a contract completion when executor stop remains unknown  1466ms
+   ✓ binds actual writer and rebuilt reviewer prompts to two-phase context receipts before ready  5529ms
+   ✓ does not transfer a prior epoch context/check/review receipt to a repaired candidate  10365ms
+   ✓ rejects a path outside contract before verification or ready publication  1476ms
+   ✓ rejects writer --assume-unchanged flags before freezing an out-of-scope candidate  1470ms
+   ✓ rejects writer --skip-worktree flags before freezing an out-of-scope candidate  1485ms
+   ✓ rejects a writer stat-cache bypass before freezing or starting review  1505ms
+
+ Test Files  2 passed (2)
+      Tests  27 passed (27)
+   Start at  14:12:01
+   Duration  42.36s (transform 907ms, setup 25ms, collect 2.01s, tests 42.19s, environment 0ms, prepare 82ms)
+

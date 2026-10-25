@@ -1,0 +1,11 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-contract-integration/packages/cli
+
+ ✓ src/attention-lesson.test.ts (19 tests) 716ms
+ ✓ src/session-rpc.test.ts (31 tests) 2480ms
+
+ Test Files  2 passed (2)
+      Tests  50 passed (50)
+   Start at  12:32:31
+   Duration  3.70s (transform 700ms, setup 17ms, collect 1.35s, tests 3.20s, environment 0ms, prepare 54ms)
+

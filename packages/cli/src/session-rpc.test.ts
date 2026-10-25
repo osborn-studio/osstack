@@ -824,3 +824,139 @@ it("cancels admission queued for either manual route without reserving a receipt
     expect(await rpc(method, params)).toMatchObject({ ok: true, result: { state: "applied" } });
   }
 });
+
+it("updates watched decisions from durable session changes without inbox refresh", async () => {
+  const id = "dirty-decision";
+  seedSession(id);
+  const repo = sessionRepo(id);
+  expect(await rpc("attention.watch", {task_id: `task_${id}`, repo_path: repo, default_tenant: true})).toMatchObject({ok: true});
+  expect(await rpc("session.send", {session_id:id,runtime_id:adapter.id,turn_id:`turn_${id}`,message_id:`msg_${id}`,expected_version:2,text:"structured-event"})).toMatchObject({ok:true});
+  await vi.waitFor(async () => {
+    expect(await rpc("dashboard.snapshot", {workspacePath:repo})).toMatchObject({ok:true,result:{attention:{scope_filter:"workspace",totals:{scopes:1,open_items:1}}}});
+  }, {timeout:2000});
+  for (const params of [{attentionLimit:0},{attentionLimit:101},{attentionLimit:"2"},{attentionAfter:"invalid"}]) {
+    expect(await rpc("dashboard.snapshot", params)).toMatchObject({ok:false,error:{code:"bad_request"}});
+  }
+  expect(await rpc("dashboard.snapshot", {workspacePath:repo,attentionLimit:1})).toMatchObject({ok:true,result:{attention:{returned:1}}});
+  const endpoint = (await rpc("dashboard.url")).result!["url"] as string;
+  const response = await fetch(`${endpoint.replace("/dashboard", "/api/dashboard")}?workspace=${encodeURIComponent(repo)}&attention_limit=1`);
+  expect(response.status).toBe(200);
+  expect(await response.json()).toMatchObject({attention:{workspace_path:realpathSync(repo),returned:1,totals:{scopes:1,open_items:1}}});
+
+  expect(await rpc("dashboard.snapshot", {workspacePath:home})).toMatchObject({ok:true,result:{attention:{scope_filter:"workspace",workspace_path:realpathSync(home)}}});
+});
+
+it("exposes scoped worker views through the real RPC and CLI without execution", async () => {
+  const id = "worker-entrypoint";
+  seedSession(id);
+  const repo = realpathSync(sessionRepo(id));
+  // The scratch root may be a short socket symlink. Worker views intentionally
+  // admit canonical stored repository bindings only.
+  const fixtureDb = openDb({path:handle.dbPath});
+  fixtureDb.prepare("UPDATE agent_sessions SET repo_path=? WHERE session_id=?").run(repo,id);
+  fixtureDb.close();
+  const executions = adapter.resumed.length + adapter.started.length;
+  const first = await rpc("worker.list", {repo_path:repo, default_tenant:true, limit:1});
+  expect(first).toMatchObject({ok:true,result:{total:2,views:[{process_liveness:"unknown",controls:"unsupported"}],truncated:true}});
+  const view = (first.result!["views"] as Array<{view_id:string;source_kind:string;state:string}>)[0]!;
+  expect(await rpc("worker.inspect", {repo_path:repo,default_tenant:true,view_id:view.view_id})).toMatchObject({ok:true,result:{view:{source_kind:view.source_kind,state:view.state}}});
+  expect(await rpc("worker.inspect", {repo_path:home,default_tenant:true,view_id:view.view_id})).toMatchObject({ok:false,error:{code:"invalid_view"}});
+  expect(await rpc("worker.list", {repo_path:repo})).toMatchObject({ok:false,error:{code:"invalid_request"}});
+  expect(await rpc("worker.list", {repo_path:repo,default_tenant:true,cursor:first.result!["next_cursor"]})).toMatchObject({ok:true,result:{total:2,views:[expect.anything()],truncated:false}});
+  const output = vi.spyOn(process.stdout, "write").mockImplementation(() => true);
+  try {
+    expect(await main(["worker","list","--repo",repo,"--default-tenant","--json"])).toBe(0);
+    const printed = output.mock.calls.map(call => String(call[0])).join("");
+    expect(JSON.parse(printed)).toMatchObject({mode:"readonly_state_view",total:2});
+    expect(printed).not.toContain("native-secret");
+    expect(printed).not.toContain("请选择方向");
+  } finally { output.mockRestore(); }
+  expect(adapter.resumed.length + adapter.started.length).toBe(executions);
+});
+
+it("manual daily reads watched repository state through the daemon without marking it seen", async () => {
+  const id = "daily-entrypoint";
+  seedSession(id);
+  const repo = realpathSync(sessionRepo(id));
+  expect(await rpc("attention.watch", {task_id:`task_${id}`,repo_path:repo,default_tenant:true})).toMatchObject({ok:true});
+  const auditDb = openDb({path:handle.dbPath});
+  const seenBefore = auditDb.prepare("SELECT * FROM attention_seen ORDER BY scope_id,actor,item_id").all();
+  const registry = join(home, "daily-entrypoint.json");
+  writeFileSync(registry, JSON.stringify([{repo_id:id,name:id,path:repo,role:"app",priority:50,verify_commands:[],loop_doc_path:"docs/LOOP.md",enabled:true}]));
+  const {readFileSync} = await import("node:fs");
+  const log = vi.spyOn(console, "log").mockImplementation(() => undefined);
+  try {
+    expect(await main(["daily","--registry",registry,"--json"])).toBe(0);
+    const brief = JSON.parse(readFileSync(join(home,"daily-briefs",`${new Date().toISOString().slice(0,10)}.json`),"utf8"));
+    expect(brief.attention).toMatchObject({tenant:"default",repos:[{repo_id:id,workspace_path:repo,snapshot:{scope_filter:"workspace",totals:{scopes:1}}}]});
+  } finally {log.mockRestore();}
+  try { expect(auditDb.prepare("SELECT * FROM attention_seen ORDER BY scope_id,actor,item_id").all()).toEqual(seenBefore); } finally {auditDb.close();}
+});
+
+it("evidence lesson uses actual watched run RPC and preserves a reviewed investigation draft", async () => {
+  const id = "lesson-entrypoint";
+  seedSession(id);
+  const repo = realpathSync(sessionRepo(id));
+  expect(await rpc("attention.watch", {task_id:`task_${id}`,repo_path:repo,default_tenant:true})).toMatchObject({ok:true});
+  const params = {runId:`run_${id}`, repoPath:repo, default_tenant:true};
+  expect(await rpc("attention.lesson-evidence", params)).toMatchObject({ok:true,result:{state:"candidate",receipt:{qualification:"ordinary_run_unverified",run_id:`run_${id}`}}});
+  expect(await rpc("attention.lesson-evidence", {...params,passed:true})).toMatchObject({ok:false,error:{code:"invalid_lesson_request"}});
+  const executions = adapter.started.length + adapter.resumed.length;
+  const {readFileSync} = await import("node:fs");
+  const output = vi.spyOn(console, "log").mockImplementation(() => undefined);
+  try {
+    expect(await main(["attention","lesson","--from-run",`run_${id}`,"--repo",repo,"--default-tenant","--json"])).toBe(0);
+    const written = JSON.parse(String(output.mock.calls.at(-1)?.[0]));
+    expect(written).toMatchObject({state:"draft",created:true,promoted:false,qualification:"ordinary_run_unverified"});
+    expect(readFileSync(written.path,"utf8")).toContain("Investigation only");
+    expect(await main(["attention","lesson","--from-run",`run_${id}`,"--repo",repo,"--default-tenant","--json"])).toBe(0);
+    expect(JSON.parse(String(output.mock.calls.at(-1)?.[0]))).toMatchObject({created:false,path:written.path});
+  } finally {output.mockRestore();}
+  expect(adapter.started.length + adapter.resumed.length).toBe(executions);
+});
+
+
+it("follow-up uses actual RPC and CLI, preserves unsent drafts, and fences stale or foreign updates", async () => {
+  const id="follow-up-entrypoint";seedSession(id);const repo=realpathSync(sessionRepo(id));
+  const db=openDb({path:handle.dbPath}); db.prepare("UPDATE agent_sessions SET repo_path=? WHERE session_id=?").run(repo,id);
+  const executions=adapter.started.length+adapter.resumed.length;
+  const scope={repo_path:repo,default_tenant:true};
+  const input={...scope,source_session_id:id,expected_source_version:2,idempotency_key:"create-once",actor:"operator",promise:"Review actual result",destination_ref:"local_operator",resolution_condition:"session_completed",due_at:null};
+  const created=await rpc("follow-up.create",input);expect(created).toMatchObject({ok:true,result:{obligation:{state:"open",revision:1,external_delivery:"unsupported"}}});
+  const row=created.result!["obligation"] as {obligation_id:string};
+  expect(await rpc("follow-up.create",input)).toMatchObject({ok:true,result:{duplicate:true,obligation:{obligation_id:row.obligation_id}}});
+  const request={...scope,obligation_id:row.obligation_id,expected_revision:1,actor:"operator"};
+  expect(await rpc("follow-up.draft",request)).toMatchObject({ok:true,result:{obligation:{state:"drafted",revision:2,draft:{delivery_state:"unsent"}}}});
+  expect(await rpc("follow-up.draft",request)).toMatchObject({ok:false,error:{code:"follow_up_revision_conflict"}});
+  expect(await rpc("follow-up.resolve",{...request,expected_revision:2,mode:"condition",reason:"Check"})).toMatchObject({ok:false,error:{code:"follow_up_condition_not_met"}});
+  expect(await rpc("follow-up.list",{...scope,repo_path:realpathSync(home)})).toMatchObject({ok:true,result:{obligations:[]}});
+  const output=vi.spyOn(process.stdout,"write").mockImplementation(()=>true);
+  try {expect(await main(["follow-up","list","--repo",repo,"--default-tenant","--json"])).toBe(0);const printed=output.mock.calls.map(call=>String(call[0])).join("");expect(JSON.parse(printed)).toMatchObject({obligations:[{obligation_id:row.obligation_id,state:"drafted",has_draft:true}]});expect(printed).not.toContain("native-secret");}finally{output.mockRestore();}
+  db.prepare("UPDATE agent_sessions SET state='completed',version=3,updated_at=3 WHERE session_id=?").run(id);
+  expect(await rpc("follow-up.resolve",{...request,expected_revision:2,mode:"condition",reason:"Verified local source"})).toMatchObject({ok:true,result:{obligation:{state:"fulfilled_local",external_delivery:"unsupported",draft:null}}});
+  expect(db.prepare("SELECT COUNT(*) n FROM follow_up_obligation_events WHERE obligation_id=?").get(row.obligation_id)).toEqual({n:3});db.close();
+  expect(adapter.started.length+adapter.resumed.length).toBe(executions);
+});
+
+it("waits for supervision stop before closing the daemon database", async () => {
+  const { SupervisionService } = await import("./supervision-service.js");
+  const stop = SupervisionService.prototype.stop;
+  let release!: () => void;
+  let reached!: () => void;
+  const waiting = new Promise<void>(resolve => { reached = resolve; });
+  const gate = new Promise<void>(resolve => { release = resolve; });
+  let openDuringStop = false;
+  const spy = vi.spyOn(SupervisionService.prototype, "stop").mockImplementation(async function(this: InstanceType<typeof SupervisionService>) {
+    await stop.call(this);
+    reached();
+    await gate;
+    openDuringStop = this.store.db.open;
+  });
+  try {
+    const closing = handle.close();
+    await waiting;
+    release();
+    await closing;
+    expect(openDuringStop).toBe(true);
+  } finally { release(); spy.mockRestore(); }
+});

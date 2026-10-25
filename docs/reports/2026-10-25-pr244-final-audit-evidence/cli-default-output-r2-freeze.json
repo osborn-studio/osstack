@@ -1,0 +1,9 @@
+{
+  "packages/agents/src/adapters/deepseek-command.ts": "8267c1fc685da8c7e462322e678d3d799c42d74080728be3ec41b60db32083d6",
+  "packages/agents/src/adapters/deepseek.test.ts": "807bb56473007c392e7f5a232398191d47a86492aa43bf173646f2a4370e3831",
+  "packages/loop/src/verifier.ts": "432e77282181041bba93dbc61031360f006bc56db26728f8759c98bb93b2776f",
+  "packages/loop/src/verifier.test.ts": "e5ad9d81e4e0854d9b7f5623f13335fb71619461b265736d7cd88fb4f0113bc6",
+  "packages/cli/src/daemon-loop.test.ts": "7fbaa67fe1c56001e6e0381297a435139a0b958c90dae0ca6749214988159917",
+  "packages/cli/src/loop-cli.test.ts": "86b965a0fc54fc9baf3a78e192150e13068ffa2d4358187734f56cf64405d710",
+  "packages/cli/src/loop-defaults-cli.test.ts": "912d3cfb60f0ceb49936303256dba8fac4957619e6bd648555f3d1697960c4df"
+}

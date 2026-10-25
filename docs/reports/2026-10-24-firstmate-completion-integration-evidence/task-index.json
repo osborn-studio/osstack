@@ -1,0 +1,74 @@
+[
+  {
+    "id": "firstmate-close-scout",
+    "capabilities": "12",
+    "prompt": "Host-enforced read-only investigation and explicit promotion through fresh guarded delivery admission",
+    "queue": "/Volumes/AIMATE_WORK/tmp/osstack/smoke/firstmate-completion-20261024/queue/tasks/firstmate-close-scout.json"
+  },
+  {
+    "id": "firstmate-close-lesson",
+    "capabilities": "20",
+    "prompt": "Authoritative failure-repair-success evidence bridge to create-only lesson draft",
+    "queue": "/Volumes/AIMATE_WORK/tmp/osstack/smoke/firstmate-completion-20261024/queue/tasks/firstmate-close-lesson.json"
+  },
+  {
+    "id": "firstmate-close-delivery",
+    "capabilities": "22,23",
+    "prompt": "Production GitHub transport, exact receipt lookup, private host registry and explicit issuer approval",
+    "queue": "/Volumes/AIMATE_WORK/tmp/osstack/smoke/firstmate-completion-20261024/queue/tasks/firstmate-close-delivery.json"
+  },
+  {
+    "id": "firstmate-close-upgrade",
+    "capabilities": "24",
+    "prompt": "Concrete pinned installer and per-home stop/start/build proof with explicit unknown reconciliation",
+    "queue": "/Volumes/AIMATE_WORK/tmp/osstack/smoke/firstmate-completion-20261024/queue/tasks/firstmate-close-upgrade.json"
+  },
+  {
+    "id": "firstmate-close-paired-routing",
+    "capabilities": "7,21",
+    "prompt": "Bounded no-tools paired held-out model evaluation with source labels hidden, cost and uncertainty evidence",
+    "queue": "/Volumes/AIMATE_WORK/tmp/osstack/smoke/firstmate-completion-20261024/queue/tasks/firstmate-close-paired-routing.json"
+  },
+  {
+    "id": "firstmate-close-source-events",
+    "capabilities": "15,18,19",
+    "prompt": "Host-pinned event/snapshot protocol with generation, sequence/gap checks and scoped read ledger",
+    "queue": "/Volumes/AIMATE_WORK/tmp/osstack/smoke/firstmate-completion-20261024/queue/tasks/firstmate-close-source-events.json"
+  },
+  {
+    "id": "firstmate-close-source-context",
+    "capabilities": "18,20",
+    "prompt": "Explicit host-approved source-to-context loader through actual prompt budget and provenance receipts",
+    "queue": "/Volumes/AIMATE_WORK/tmp/osstack/smoke/firstmate-completion-20261024/queue/tasks/firstmate-close-source-context.json"
+  },
+  {
+    "id": "firstmate-close-viewer-backends",
+    "capabilities": "16",
+    "prompt": "Pinned tmux/cmux viewer launchers and bounded read-only log view with no worker control authority",
+    "queue": "/Volumes/AIMATE_WORK/tmp/osstack/smoke/firstmate-completion-20261024/queue/tasks/firstmate-close-viewer-backends.json"
+  },
+  {
+    "id": "firstmate-close-remote-actions",
+    "capabilities": "15,17",
+    "prompt": "Separate scoped short-lived remote cancel authorization, durable idempotent receipt and unknown reconciliation",
+    "queue": "/Volumes/AIMATE_WORK/tmp/osstack/smoke/firstmate-completion-20261024/queue/tasks/firstmate-close-remote-actions.json"
+  },
+  {
+    "id": "firstmate-close-graph-checks",
+    "capabilities": "13,23",
+    "prompt": "Multiple registered checks bound to frozen artifact and durable contract completion receipt",
+    "queue": "/Volumes/AIMATE_WORK/tmp/osstack/smoke/firstmate-completion-20261024/queue/tasks/firstmate-close-graph-checks.json"
+  },
+  {
+    "id": "firstmate-close-supervision-qualification",
+    "capabilities": "2,3,5,6,14",
+    "prompt": "Active mixed Graph supervision load, stop/restart/generation tests, observer budget and Loop overhead measurements",
+    "queue": "/Volumes/AIMATE_WORK/tmp/osstack/smoke/firstmate-completion-20261024/queue/tasks/firstmate-close-supervision-qualification.json"
+  },
+  {
+    "id": "firstmate-close-final-ledger",
+    "capabilities": "1,4,8,9,10,11",
+    "prompt": "Reconcile all 24 rows against executable entries, inherited invariants and separate real-environment qualification",
+    "queue": "/Volumes/AIMATE_WORK/tmp/osstack/smoke/firstmate-completion-20261024/queue/tasks/firstmate-close-final-ledger.json"
+  }
+]

@@ -1,0 +1,63 @@
+COMMAND ["pnpm", "--filter", "@osstack/loop", "exec", "vitest", "run", "src/verifier.test.ts", "src/reviewer-isolation.test.ts", "src/evaluation-spec.test.ts", "--maxWorkers=2", "--testTimeout=20000"]
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/pr244-final-audit/packages/loop
+
+ ✓ src/reviewer-isolation.test.ts (18 tests) 8122ms
+   ✓ reviewer workspace isolation > keeps identical snapshots for an unchanged review  339ms
+   ✓ reviewer workspace isolation > detects a tracked edit  338ms
+   ✓ reviewer workspace isolation > detects a staged edit  437ms
+   ✓ reviewer workspace isolation > detects a new untracked file  322ms
+   ✓ reviewer workspace isolation > detects an index-only mutation after worktree content is restored  464ms
+   ✓ reviewer workspace isolation > rejects reviewer write to ignored file  329ms
+   ✓ reviewer workspace isolation > rejects reviewer write to git hook  388ms
+   ✓ reviewer workspace isolation > rejects reviewer write to git config  439ms
+   ✓ keeps snapshots and boundaries on the requested repository under hostile Git environment  1093ms
+   ✓ detects reviewer mutation of other-ref  474ms
+   ✓ detects reviewer mutation of packed-refs  384ms
+   ✓ detects reviewer mutation of exclude  357ms
+   ✓ detects reviewer mutation of attributes  429ms
+   ✓ detects raw edits hidden by --assume-unchanged  451ms
+   ✓ detects raw edits hidden by --skip-worktree  449ms
+   ✓ detects EOL-only raw changes and never executes clean filters while observing  543ms
+   ✓ keeps raw snapshots on the authorized workspace despite repo-local core.worktree  502ms
+   ✓ ignores global and system exclude configuration by policy  383ms
+ ✓ src/evaluation-spec.test.ts (17 tests) 3473ms
+   ✓ verifier per-evaluation results > passes semantic_review specs to verifier adapters in structured context  509ms
+   ✓ verifier per-evaluation results > does not let a passing judgment mark a spec pass when the adapter itself failed  533ms
+   ✓ verifier per-evaluation results > honors per-spec adapter judgments over adapter-level pass/fail  394ms
+   ✓ verifier per-evaluation results > fails semantic_review specs when the verifier adapter rejects  490ms
+ ✓ src/verifier.test.ts (45 tests) 20946ms
+   ✓ verifyRun > runs verifier adapters with repo and subject context  516ms
+   ✓ verifyRun > strips repository task output overrides before invoking a reviewer  368ms
+   ✓ verifyRun > accepts only strict structured implementation deviations from a completed verifier  547ms
+   ✓ verifyRun > fails when a verifier adapter is missing, unavailable, or reports failure  665ms
+   ✓ verifyRun > turns verifier error events, thrown errors, and incomplete streams into issues  1072ms
+   ✓ verifyRun > selects verifier capability kinds in preference order with fallback  2021ms
+   ✓ verifyRun > fails closed on a failing adapter judgment reported under an unknown evaluation id  339ms
+   ✓ verifyRun > fails closed on a passing adapter judgment with an unknown id  311ms
+   ✓ verifyRun > passes the supplied ignored candidate patch and paths to Kimi  597ms
+   ✓ verifyRun > passes the supplied assume-unchanged candidate patch and paths to Kimi  529ms
+   ✓ verifyRun > blocks a secret in a supplied ignored candidate before invoking Kimi  328ms
+   ✓ verifyRun > blocks at the pre-review boundary without invoking Kimi  549ms
+   ✓ verifyRun > blocks a structured changes_requested verdict and preserves the artifact  622ms
+   ✓ verifyRun > blocks missing, unknown, and duplicate structured judgments  1593ms
+   ✓ verifyRun > blocks malformed structured review artifacts  669ms
+   ✓ verifyRun > blocks reviewer mutation after a valid approval  739ms
+   ✓ verifyRun > passes an approved complete structured review without mutation  702ms
+   ✓ bounds a verifier that ignores abort and never settles next or return  339ms
+   ✓ bounds a stuck post-review snapshot and never accepts its preceding approval  1343ms
+   ✓ rejects a generic verifier that changes tracked state after approval  313ms
+   ✓ rejects a generic verifier that changes hidden-tracked state after approval  593ms
+   ✓ rejects a generic verifier that changes untracked state after approval  356ms
+   ✓ rejects a generic verifier that changes metadata state after approval  338ms
+   ✓ rejects mutations by availability probe even when available=true  411ms
+   ✓ checks every legacy artifact path even when the log limit would drop an early forbidden path  304ms
+   ✓ enforces the combined base-review path budget before accepting either complete listing  1013ms
+
+ Test Files  3 passed (3)
+      Tests  80 passed (80)
+   Start at  11:00:06
+   Duration  22.84s (transform 1.13s, setup 84ms, collect 1.93s, tests 32.54s, environment 0ms, prepare 374ms)
+
+
+EXIT_CODE=0

@@ -287,3 +287,38 @@ describe("cockpit TUI model", () => {
     expect(cockpitTuiKeyFromInput("x")).toBe("x");
   });
 });
+
+it("puts read-only Attention coverage first and strips terminal controls from source text", () => {
+  const model = cockpitTuiModel({}, {
+    attention: {
+      status: "stale", reason: "scan_expired", scope_filter: "workspace", workspace_path: "/repo", sampled_at_ms: 1000,
+      totals: { scopes: 1, open_items: 2, uncertain_answers: 1, unmonitored_subjects: 3, pending_answers: 0, dead_letters: 1 },
+      scopes: [{ scope_id: "a".repeat(64), task_title: "untrusted\u001b[2J\nTitle", coverage: "stale", reason: "scan_expired" }],
+      returned: 1, truncated: false, next_after: null,
+    }, next_steps: [],
+  }, emptyKnowledge);
+  expect(model.sections[0]?.title).toBe("Attention");
+  expect(renderCockpitTui(model)).toContain("uncertain_answers=1");
+  expect(renderCockpitTui(model)).toContain("untrusted Title");
+  expect(renderCockpitTui(model)).not.toContain("\u001b");
+  expect(model.actions).toEqual([]);
+  expect(renderCockpitFullscreen(model, { width: 80, height: 24 })).toContain("Attention");
+  expect(renderCockpitFullscreen(model, { width: 80, height: 24 })).toContain("stale");
+});
+
+it("never renders unavailable Attention counters as zero", () => {
+  const model = cockpitTuiModel({}, { attention: { status: "unavailable", reason: "schema_unavailable", totals: null, scopes: [] } }, emptyKnowledge);
+  expect(model.sections[0]?.lines.join("\n")).toContain("counts=unknown");
+  expect(model.sections[0]?.lines.join("\n")).not.toContain("open_items=0");
+});
+
+it("keeps actions and key hints visible when Attention fills a short terminal", () => {
+  const model = cockpitTuiModel({}, {dashboard:{workspace_path:"/repo"},next_steps:[1,2,3].map(n=>({label:`Action ${n}`,command:`command${n}`,status:"ready"}))}, emptyKnowledge);
+  model.sections.unshift({title:"Attention",lines:Array.from({length:5},(_,n)=>`observation ${n}`)});
+  const output=renderCockpitFullscreen(model,{width:80,height:20});
+  expect(output).toContain("> Attention");
+  expect(output).toContain("3. [ready] Action 3");
+  expect(output).toContain("Keys: up/down move");
+  expect(output.split("\n")).toHaveLength(20);
+  expect(output.split("\n").at(-1)).toMatch(/^\+-+\+$/);
+});

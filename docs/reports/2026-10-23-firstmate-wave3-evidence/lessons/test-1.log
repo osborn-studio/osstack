@@ -1,0 +1,11 @@
+$ vitest run src/attention-lesson.test.ts
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-cockpit/packages/cli
+
+ ✓ src/attention-lesson.test.ts (9 tests) 219ms
+
+ Test Files  1 passed (1)
+      Tests  9 passed (9)
+   Start at  12:11:15
+   Duration  701ms (transform 199ms, setup 9ms, collect 317ms, tests 219ms, environment 0ms, prepare 32ms)
+

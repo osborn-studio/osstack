@@ -1,0 +1,58 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/packages/cli
+
+ ✓ src/graph-verification.test.ts > restores the exact verified candidate into independent repositories and rejects reviewer writes 2559ms
+ ✓ src/graph-verification.test.ts > rejects wrong manifest and reviewer identity before restoring or invoking 568ms
+ ✓ src/graph-verification.test.ts > persists actual stopped exit evidence and rejects tampering/replay 3482ms
+ ✓ src/graph-verification.test.ts > keeps unknown stop separate from stopped malformed review and valid changes_requested 6813ms
+ ✓ src/graph-verification.test.ts > runs real registered command and independent G04 review concurrently with an observable two-way barrier 5594ms
+ ✓ src/graph-verification.test.ts > rejects revoke during adapter availability before actual invocation 3303ms
+ ✓ src/graph-verification.test.ts > rejects mutate during adapter availability before actual invocation 4980ms
+ ✓ src/graph-verification.test.ts > snapshots callback/data replacement and rejects live revocation after preparation awaits 5439ms
+ ✓ src/graph-verification.test.ts > rejects mutation during restore before accepting any workspace baseline 3671ms
+ ✓ src/graph-verification.test.ts > releases preparation lease if authority is revoked while acquiring it 1536ms
+ ✓ src/graph-verification.test.ts > uses exact allowlisted exit 7 instead of model pass claims 8161ms
+ ✓ src/graph-verification.test.ts > uses exact allowlisted exit 1 instead of model pass claims 7913ms
+ ✓ src/graph-verification.test.ts > uses exact allowlisted exit 2 instead of model pass claims 7207ms
+ ✓ src/graph-verification.test.ts > refuses surviving descendants, unregistered commands and cross-attempt replay 7145ms
+osstack: retaining write lease graph-action:f601a94eed65c7e65e6757b63f4fc86119ddbc21f7abb5ad7a5a83b2c5e8f45f: Error: external stop unconfirmed
+ ✓ src/graph-verification.test.ts > does not accept review done as executor stop proof through the actual broker 4142ms
+ ✓ src/graph-verification.test.ts > classifies stopped malformed output with reviewer mutation=false without a code-failure result 6587ms
+ ✓ src/graph-verification.test.ts > classifies stopped malformed output with reviewer mutation=true without a code-failure result 8452ms
+ ✓ src/graph-verification.test.ts > rejects manifest scope/SHA mismatch and independent identity verifier rejection before invocation 2242ms
+ ✓ src/graph-verification.test.ts > snapshots executor evidence before asynchronous verification and rechecks authority afterward 10916ms
+ ✓ src/graph-verification.test.ts > rejects actual successful command that mutates candidate: printf malicious > file 6644ms
+ ✓ src/graph-verification.test.ts > rejects actual successful command that mutates candidate: git update-index --assume-unchanged file; printf malicious > file 7116ms
+ ✓ src/graph-verification.test.ts > rejects actual successful command that mutates candidate: chmod +x file 6328ms
+ ✓ src/graph-verification.test.ts > rejects actual successful command that mutates candidate: chmod 600 file 6124ms
+ ✓ src/graph-verification.test.ts > rejects actual successful command that mutates candidate: git update-index --assume-unchanged file 6015ms
+ ✓ src/graph-verification.test.ts > rejects actual successful command that mutates candidate: printf staged > file; git add file; printf candidate > file 6722ms
+ ✓ src/graph-verification.test.ts > rejects actual successful command that mutates candidate: git -c user.name=test -c user.email=test@invalid commit --allow-empty -qm malicious 7265ms
+ ✓ src/graph-verification.test.ts > allocates distinct actual review sessions on explicit retry and persists prompt receipts 10272ms
+ ✓ src/graph-verification.test.ts > rejects an oversized envelope at the storage boundary before publishing any file 6472ms
+ ✓ src/graph-verification.test.ts > requires an actual invocation receipt and strips supplied writer context on every invocation 6725ms
+ ✓ src/graph-verification.test.ts > validates all new receipts when loading digest-consistent evidence 6818ms
+ ✓ src/graph-verification.test.ts > allows untracked build outputs from successful actual acceptance execution 6507ms
+ ✓ src/graph-verification.test.ts > confirms ordinary failing tests with escape-heavy and multibyte captured output 7012ms
+ ✓ src/graph-verification.test.ts > settles an oversized structured review as a bounded contract failure instead of unknown 7121ms
+ ✓ src/graph-verification.test.ts > binds actual contained tests exit 0 to candidate/image/ledger without POSIX evidence 7419ms
+ ✓ src/graph-verification.test.ts > binds actual contained tests exit 1 to candidate/image/ledger without POSIX evidence 7239ms
+ ✓ src/graph-verification.test.ts > binds actual contained tests exit 42 to candidate/image/ledger without POSIX evidence 6965ms
+ ✓ src/graph-verification.test.ts > binds actual contained tests exit 7 to candidate/image/ledger without POSIX evidence 5974ms
+ ✓ src/graph-verification.test.ts > rejects cross-candidate, image, generation, invocation and container receipt substitution 6174ms
+osstack: retaining write lease graph-action:c78d13da0698b2bb21963be9d85f7eabde9b7d5b1cc0e21c88ea92421a133e71: Error: adapter result or execution unconfirmed
+ ✓ src/graph-verification.test.ts > retains admission and seals replay after contained DELETE acknowledgement loss 3961ms
+ ✓ src/graph-verification.test.ts > settles contained cancellation only after durable removal and prevents replay 6154ms
+ ✓ src/graph-verification.test.ts > V2 rejects a second reviewer invocation for the same effect but permits a newly authorized logical attempt 3832ms
+ ✓ src/graph-verification.test.ts > executes and validates every contained registered check with later exit 0 6319ms
+ ✓ src/graph-verification.test.ts > executes and validates every contained registered check with later exit 1 6338ms
+osstack: retaining write lease graph-action:2a92f2d56421ee0d0cf518bfdad62f346771646cc52856d7a6118e4d91b05658: Error: adapter result or execution unconfirmed
+ ✓ src/graph-verification.test.ts > does not launch another suite check after unknown container removal 3905ms
+ ✓ src/graph-verification.test.ts > persists actual native suite exits and refuses missing or substituted later checks 6814ms
+ ✓ src/graph-verification.test.ts > keeps sixteen contained stop proofs within the bounded local suite evidence 9067ms
+
+ Test Files  1 passed (1)
+      Tests  46 passed (46)
+   Start at  17:19:56
+   Duration  279.16s (transform 649ms, setup 9ms, collect 970ms, tests 278.01s, environment 0ms, prepare 29ms)
+

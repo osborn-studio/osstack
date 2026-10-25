@@ -1,0 +1,1510 @@
+{
+  "source_sha": "14574347f6c52047550d46a0629bd87735c598a8",
+  "node": "v22.22.1",
+  "platform": "darwin",
+  "release": "27.0.0",
+  "arch": "arm64",
+  "cpu": "Apple M4",
+  "started_at": "2026-10-23T21:11:25.037Z",
+  "ended_at": "2026-10-23T21:21:44.029Z",
+  "duration_requested_ms": 600000,
+  "active_wall_ms": 600060.563333,
+  "workload": {
+    "scopes": 10,
+    "admitted_subjects": 100,
+    "sessions": 30,
+    "runs": 50,
+    "loop_snapshots": 20,
+    "graphs": 2,
+    "graph_mode": "real daemon artifact_only with synthetic writer/reviewer, completed before measured readonly traffic",
+    "graph_writer_invocations": 2,
+    "rpc_target_per_second": 20,
+    "event_target_per_minute": 1000,
+    "burst_10x_count": 10,
+    "producer": "explicit local database fixture; daemon timer discovers facts; no dirty-signal injection",
+    "session_projection": "version supersession, not every transient state replay",
+    "loop_projection": "snapshot only, intermediate snapshots may be superseded"
+  },
+  "counts": {
+    "events_produced": 10091,
+    "events_in_db": 10141,
+    "session_updates": 589,
+    "loop_updates": 295,
+    "rpc": 12001,
+    "rpc_errors": 0,
+    "network_attempts": 0,
+    "real_provider_calls": 0,
+    "public_send_calls": 0
+  },
+  "rpc_roundtrip": {
+    "count": 12001,
+    "p50_ms": 0.5736670000478625,
+    "p95_ms": 2.2060420000052545,
+    "p99_ms": 3.5821669999859296,
+    "max_ms": 17.70633399998769
+  },
+  "rpc_by_method": {
+    "attention.recovery": {
+      "count": 2001,
+      "p50_ms": 0.8765839999996388,
+      "p95_ms": 3.4121670000022277,
+      "p99_ms": 4.523709000000963,
+      "max_ms": 8.057499999995343
+    },
+    "session.status": {
+      "count": 2000,
+      "p50_ms": 0.45537499999045394,
+      "p95_ms": 1.6841669999994338,
+      "p99_ms": 1.9006249999802094,
+      "max_ms": 4.87958300000173
+    },
+    "run.status": {
+      "count": 2000,
+      "p50_ms": 0.34095899999374524,
+      "p95_ms": 1.1818749999802094,
+      "p99_ms": 1.3852909999841359,
+      "max_ms": 4.846082999982173
+    },
+    "graph.status": {
+      "count": 2000,
+      "p50_ms": 0.5838339999972959,
+      "p95_ms": 2.169458999997005,
+      "p99_ms": 2.584000000002561,
+      "max_ms": 9.597291999991285
+    },
+    "graph.result": {
+      "count": 2000,
+      "p50_ms": 0.5879580000037095,
+      "p95_ms": 2.148291000004974,
+      "p99_ms": 2.6792500000010477,
+      "max_ms": 17.70633399998769
+    },
+    "attention.inbox": {
+      "count": 2000,
+      "p50_ms": 0.6251249999986612,
+      "p95_ms": 2.3196250000037253,
+      "p99_ms": 2.78020799998194,
+      "max_ms": 7.066375000023982
+    }
+  },
+  "observer_steps": {
+    "count": 212,
+    "p50_ms": 2.6844169999822043,
+    "p95_ms": 5.2529170000052545,
+    "p99_ms": 5.581833000003826,
+    "max_ms": 5.641334000043571
+  },
+  "resources": {
+    "process_cpu_us": {
+      "user": 16401138,
+      "system": 3574531
+    },
+    "peak_rss_bytes": 250445824,
+    "event_loop_delay_ms": {
+      "p95": 12.230655,
+      "max": 22.183935
+    },
+    "db_bytes": 3457024,
+    "wal_bytes": 4161232
+  },
+  "convergence": {
+    "drain_ms": 18941.87070900004,
+    "run_events": {
+      "count": 10091,
+      "p50_ms": 15265.49558300001,
+      "p95_ms": 28618.60495899999,
+      "p99_ms": 29836.020749999967,
+      "max_ms": 30213.807749999978
+    },
+    "session_versions": {
+      "count": 589,
+      "p50_ms": 15247.290167,
+      "p95_ms": 28627.291290999972,
+      "p99_ms": 29911.651499999978,
+      "max_ms": 30051.19516699999
+    },
+    "runs": [
+      {
+        "id": "r-0-0",
+        "sid": "s-0-0",
+        "seq": 291,
+        "produced": 291,
+        "projected": 291,
+        "pending": 0,
+        "latency": {
+          "count": 291,
+          "p50_ms": 18871.733666999993,
+          "p95_ms": 27908.232582999975,
+          "p99_ms": 28050.420999999973,
+          "max_ms": 28095.82495900002
+        }
+      },
+      {
+        "id": "r-0-1",
+        "sid": "s-0-1",
+        "seq": 200,
+        "produced": 200,
+        "projected": 200,
+        "pending": 0,
+        "latency": {
+          "count": 200,
+          "p50_ms": 13037.208500000008,
+          "p95_ms": 27897.792666999987,
+          "p99_ms": 27990.647582999954,
+          "max_ms": 28035.227542000008
+        }
+      },
+      {
+        "id": "r-0-2",
+        "sid": "s-0-2",
+        "seq": 200,
+        "produced": 200,
+        "projected": 200,
+        "pending": 0,
+        "latency": {
+          "count": 200,
+          "p50_ms": 12975.112834,
+          "p95_ms": 27836.745291999992,
+          "p99_ms": 27931.318749999977,
+          "max_ms": 27975.491834000015
+        }
+      },
+      {
+        "id": "r-0-3",
+        "sid": "s-0-3",
+        "seq": 200,
+        "produced": 200,
+        "projected": 200,
+        "pending": 0,
+        "latency": {
+          "count": 200,
+          "p50_ms": 12916.482542000012,
+          "p95_ms": 27777.315083999987,
+          "p99_ms": 27870.94520799996,
+          "max_ms": 27916.63750000001
+        }
+      },
+      {
+        "id": "r-0-4",
+        "sid": "s-0-4",
+        "seq": 200,
+        "produced": 200,
+        "projected": 200,
+        "pending": 0,
+        "latency": {
+          "count": 200,
+          "p50_ms": 12855.537375000014,
+          "p95_ms": 27717.7935,
+          "p99_ms": 27810.082999999926,
+          "max_ms": 27855.912249999994
+        }
+      },
+      {
+        "id": "r-1-0",
+        "sid": "s-1-0",
+        "seq": 200,
+        "produced": 200,
+        "projected": 200,
+        "pending": 0,
+        "latency": {
+          "count": 200,
+          "p50_ms": 12794.289417000022,
+          "p95_ms": 27658.476791999987,
+          "p99_ms": 27750.98879199993,
+          "max_ms": 27796.350250000018
+        }
+      },
+      {
+        "id": "r-1-1",
+        "sid": "s-1-1",
+        "seq": 200,
+        "produced": 200,
+        "projected": 200,
+        "pending": 0,
+        "latency": {
+          "count": 200,
+          "p50_ms": 12735.532625000022,
+          "p95_ms": 27597.824999999997,
+          "p99_ms": 27688.833832999924,
+          "max_ms": 27734.76345900001
+        }
+      },
+      {
+        "id": "r-1-2",
+        "sid": "s-1-2",
+        "seq": 200,
+        "produced": 200,
+        "projected": 200,
+        "pending": 0,
+        "latency": {
+          "count": 200,
+          "p50_ms": 12674.265417000017,
+          "p95_ms": 27537.71833399999,
+          "p99_ms": 27630.75745799992,
+          "max_ms": 27677.254750000022
+        }
+      },
+      {
+        "id": "r-1-3",
+        "sid": "s-1-3",
+        "seq": 200,
+        "produced": 200,
+        "projected": 200,
+        "pending": 0,
+        "latency": {
+          "count": 200,
+          "p50_ms": 12614.207292000006,
+          "p95_ms": 27477.953167,
+          "p99_ms": 27570.05791699997,
+          "max_ms": 27615.099334
+        }
+      },
+      {
+        "id": "r-1-4",
+        "sid": "s-1-4",
+        "seq": 200,
+        "produced": 200,
+        "projected": 200,
+        "pending": 0,
+        "latency": {
+          "count": 200,
+          "p50_ms": 12553.975334000017,
+          "p95_ms": 27417.199583999987,
+          "p99_ms": 27509.29649999994,
+          "max_ms": 27556.338292
+        }
+      },
+      {
+        "id": "r-2-0",
+        "sid": "s-2-0",
+        "seq": 200,
+        "produced": 200,
+        "projected": 200,
+        "pending": 0,
+        "latency": {
+          "count": 200,
+          "p50_ms": 12452.295583,
+          "p95_ms": 27343.218374999997,
+          "p99_ms": 27441.275959000006,
+          "max_ms": 27451.783208000008
+        }
+      },
+      {
+        "id": "r-2-1",
+        "sid": "s-2-1",
+        "seq": 200,
+        "produced": 200,
+        "projected": 200,
+        "pending": 0,
+        "latency": {
+          "count": 200,
+          "p50_ms": 12392.904250000021,
+          "p95_ms": 27284.534082999977,
+          "p99_ms": 27379.236417,
+          "max_ms": 27393.393333000015
+        }
+      },
+      {
+        "id": "r-2-2",
+        "sid": "s-2-2",
+        "seq": 200,
+        "produced": 200,
+        "projected": 200,
+        "pending": 0,
+        "latency": {
+          "count": 200,
+          "p50_ms": 12331.778624999977,
+          "p95_ms": 27222.565166999993,
+          "p99_ms": 27320.894959000005,
+          "max_ms": 27332.36037499999
+        }
+      },
+      {
+        "id": "r-2-3",
+        "sid": "s-2-3",
+        "seq": 200,
+        "produced": 200,
+        "projected": 200,
+        "pending": 0,
+        "latency": {
+          "count": 200,
+          "p50_ms": 12272.196916999994,
+          "p95_ms": 27164.315541999997,
+          "p99_ms": 27262.250042,
+          "max_ms": 27272.053917000012
+        }
+      },
+      {
+        "id": "r-2-4",
+        "sid": "s-2-4",
+        "seq": 200,
+        "produced": 200,
+        "projected": 200,
+        "pending": 0,
+        "latency": {
+          "count": 200,
+          "p50_ms": 15202.134125000004,
+          "p95_ms": 30103.206458,
+          "p99_ms": 30202.911709000004,
+          "max_ms": 30213.807749999978
+        }
+      },
+      {
+        "id": "r-3-0",
+        "sid": "s-3-0",
+        "seq": 200,
+        "produced": 200,
+        "projected": 200,
+        "pending": 0,
+        "latency": {
+          "count": 200,
+          "p50_ms": 15152.268749999988,
+          "p95_ms": 30042.411374999967,
+          "p99_ms": 30142.8355,
+          "max_ms": 30151.285916999972
+        }
+      },
+      {
+        "id": "r-3-1",
+        "sid": "s-3-1",
+        "seq": 200,
+        "produced": 200,
+        "projected": 200,
+        "pending": 0,
+        "latency": {
+          "count": 200,
+          "p50_ms": 15093.368332999991,
+          "p95_ms": 29984.204541999963,
+          "p99_ms": 30082.531834,
+          "max_ms": 30091.799457999994
+        }
+      },
+      {
+        "id": "r-3-2",
+        "sid": "s-3-2",
+        "seq": 200,
+        "produced": 200,
+        "projected": 200,
+        "pending": 0,
+        "latency": {
+          "count": 200,
+          "p50_ms": 15032.908999999985,
+          "p95_ms": 29923.655499999993,
+          "p99_ms": 30021.472709,
+          "max_ms": 30032.899167000025
+        }
+      },
+      {
+        "id": "r-3-3",
+        "sid": "s-3-3",
+        "seq": 200,
+        "produced": 200,
+        "projected": 200,
+        "pending": 0,
+        "latency": {
+          "count": 200,
+          "p50_ms": 14971.414916999987,
+          "p95_ms": 29863.579957999988,
+          "p99_ms": 29960.593917000002,
+          "max_ms": 29971.10375000001
+        }
+      },
+      {
+        "id": "r-3-4",
+        "sid": "s-3-4",
+        "seq": 200,
+        "produced": 200,
+        "projected": 200,
+        "pending": 0,
+        "latency": {
+          "count": 200,
+          "p50_ms": 14913.190375000006,
+          "p95_ms": 29803.18862499995,
+          "p99_ms": 29902.422209000004,
+          "max_ms": 29910.510249999992
+        }
+      },
+      {
+        "id": "r-4-0",
+        "sid": "s-4-0",
+        "seq": 200,
+        "produced": 200,
+        "projected": 200,
+        "pending": 0,
+        "latency": {
+          "count": 200,
+          "p50_ms": 14851.156750000024,
+          "p95_ms": 29742.086249999993,
+          "p99_ms": 29842.853084000002,
+          "max_ms": 29853.376958000008
+        }
+      },
+      {
+        "id": "r-4-1",
+        "sid": "s-4-1",
+        "seq": 200,
+        "produced": 200,
+        "projected": 200,
+        "pending": 0,
+        "latency": {
+          "count": 200,
+          "p50_ms": 14792.61258299998,
+          "p95_ms": 29682.70945799997,
+          "p99_ms": 29782.518000000004,
+          "max_ms": 29793.32024999999
+        }
+      },
+      {
+        "id": "r-4-2",
+        "sid": "s-4-2",
+        "seq": 200,
+        "produced": 200,
+        "projected": 200,
+        "pending": 0,
+        "latency": {
+          "count": 200,
+          "p50_ms": 14732.231458000024,
+          "p95_ms": 29622.916833999974,
+          "p99_ms": 29721.991584000003,
+          "max_ms": 29733.66866700002
+        }
+      },
+      {
+        "id": "r-4-3",
+        "sid": "s-4-3",
+        "seq": 200,
+        "produced": 200,
+        "projected": 200,
+        "pending": 0,
+        "latency": {
+          "count": 200,
+          "p50_ms": 14671.405833000026,
+          "p95_ms": 29563.462916999997,
+          "p99_ms": 29660.175250000004,
+          "max_ms": 29673.771833000006
+        }
+      },
+      {
+        "id": "r-4-4",
+        "sid": "s-4-4",
+        "seq": 200,
+        "produced": 200,
+        "projected": 200,
+        "pending": 0,
+        "latency": {
+          "count": 200,
+          "p50_ms": 14612.292041999986,
+          "p95_ms": 29504.027624999988,
+          "p99_ms": 29599.453500000003,
+          "max_ms": 29612.588958000008
+        }
+      },
+      {
+        "id": "r-5-0",
+        "sid": "s-5-0",
+        "seq": 200,
+        "produced": 200,
+        "projected": 200,
+        "pending": 0,
+        "latency": {
+          "count": 200,
+          "p50_ms": 14553.382166999974,
+          "p95_ms": 29444.491875000007,
+          "p99_ms": 29540.337375000003,
+          "max_ms": 29552.036625000008
+        }
+      },
+      {
+        "id": "r-5-1",
+        "sid": "s-5-1",
+        "seq": 200,
+        "produced": 200,
+        "projected": 200,
+        "pending": 0,
+        "latency": {
+          "count": 200,
+          "p50_ms": 14492.911041999992,
+          "p95_ms": 29384.90049999999,
+          "p99_ms": 29480.845125000003,
+          "max_ms": 29491.25524999993
+        }
+      },
+      {
+        "id": "r-5-2",
+        "sid": "s-5-2",
+        "seq": 200,
+        "produced": 200,
+        "projected": 200,
+        "pending": 0,
+        "latency": {
+          "count": 200,
+          "p50_ms": 14430.924999999988,
+          "p95_ms": 29323.59129199997,
+          "p99_ms": 29422.417584000003,
+          "max_ms": 29432.945917000005
+        }
+      },
+      {
+        "id": "r-5-3",
+        "sid": "s-5-3",
+        "seq": 200,
+        "produced": 200,
+        "projected": 200,
+        "pending": 0,
+        "latency": {
+          "count": 200,
+          "p50_ms": 14371.647042000026,
+          "p95_ms": 29262.761916999996,
+          "p99_ms": 29360.991667000002,
+          "max_ms": 29371.650167000014
+        }
+      },
+      {
+        "id": "r-5-4",
+        "sid": "s-5-4",
+        "seq": 200,
+        "produced": 200,
+        "projected": 200,
+        "pending": 0,
+        "latency": {
+          "count": 200,
+          "p50_ms": 14313.739791999978,
+          "p95_ms": 29204.06029199995,
+          "p99_ms": 29300.356417000003,
+          "max_ms": 29312.818207999982
+        }
+      },
+      {
+        "id": "r-6-0",
+        "sid": "s-6-0",
+        "seq": 200,
+        "produced": 200,
+        "projected": 200,
+        "pending": 0,
+        "latency": {
+          "count": 200,
+          "p50_ms": 14251.40066699998,
+          "p95_ms": 29143.275332999998,
+          "p99_ms": 29240.963709000003,
+          "max_ms": 29251.633625000017
+        }
+      },
+      {
+        "id": "r-6-1",
+        "sid": "s-6-1",
+        "seq": 200,
+        "produced": 200,
+        "projected": 200,
+        "pending": 0,
+        "latency": {
+          "count": 200,
+          "p50_ms": 14192.597583000024,
+          "p95_ms": 29083.508541999967,
+          "p99_ms": 29180.927042000003,
+          "max_ms": 29191.902832999942
+        }
+      },
+      {
+        "id": "r-6-2",
+        "sid": "s-6-2",
+        "seq": 200,
+        "produced": 200,
+        "projected": 200,
+        "pending": 0,
+        "latency": {
+          "count": 200,
+          "p50_ms": 14132.921542000026,
+          "p95_ms": 29023.514792,
+          "p99_ms": 29122.662292,
+          "max_ms": 29132.033958000015
+        }
+      },
+      {
+        "id": "r-6-3",
+        "sid": "s-6-3",
+        "seq": 200,
+        "produced": 200,
+        "projected": 200,
+        "pending": 0,
+        "latency": {
+          "count": 200,
+          "p50_ms": 14071.309791999985,
+          "p95_ms": 28963.713499999954,
+          "p99_ms": 29062.184875000003,
+          "max_ms": 29071.545166999975
+        }
+      },
+      {
+        "id": "r-6-4",
+        "sid": "s-6-4",
+        "seq": 200,
+        "produced": 200,
+        "projected": 200,
+        "pending": 0,
+        "latency": {
+          "count": 200,
+          "p50_ms": 14012.473500000022,
+          "p95_ms": 28904.320542,
+          "p99_ms": 29000.751542,
+          "max_ms": 29011.97566699999
+        }
+      },
+      {
+        "id": "r-7-0",
+        "sid": "s-7-0",
+        "seq": 200,
+        "produced": 200,
+        "projected": 200,
+        "pending": 0,
+        "latency": {
+          "count": 200,
+          "p50_ms": 13953.264250000007,
+          "p95_ms": 28844.233791999985,
+          "p99_ms": 28941.3355,
+          "max_ms": 28952.41858300002
+        }
+      },
+      {
+        "id": "r-7-1",
+        "sid": "s-7-1",
+        "seq": 200,
+        "produced": 200,
+        "projected": 200,
+        "pending": 0,
+        "latency": {
+          "count": 200,
+          "p50_ms": 13892.016041999974,
+          "p95_ms": 28783.810083999997,
+          "p99_ms": 28881.064209000004,
+          "max_ms": 28892.64624999999
+        }
+      },
+      {
+        "id": "r-7-2",
+        "sid": "s-7-2",
+        "seq": 200,
+        "produced": 200,
+        "projected": 200,
+        "pending": 0,
+        "latency": {
+          "count": 200,
+          "p50_ms": 13830.454333000001,
+          "p95_ms": 28723.044166999985,
+          "p99_ms": 28820.307459000003,
+          "max_ms": 28831.15525000001
+        }
+      },
+      {
+        "id": "r-7-3",
+        "sid": "s-7-3",
+        "seq": 200,
+        "produced": 200,
+        "projected": 200,
+        "pending": 0,
+        "latency": {
+          "count": 200,
+          "p50_ms": 13772.220374999975,
+          "p95_ms": 28663.326666999958,
+          "p99_ms": 28761.916334,
+          "max_ms": 28771.353166999994
+        }
+      },
+      {
+        "id": "r-7-4",
+        "sid": "s-7-4",
+        "seq": 200,
+        "produced": 200,
+        "projected": 200,
+        "pending": 0,
+        "latency": {
+          "count": 200,
+          "p50_ms": 13713.603667000018,
+          "p95_ms": 28604.15841699997,
+          "p99_ms": 28700.802709000003,
+          "max_ms": 28711.65512499999
+        }
+      },
+      {
+        "id": "r-8-0",
+        "sid": "s-8-0",
+        "seq": 200,
+        "produced": 200,
+        "projected": 200,
+        "pending": 0,
+        "latency": {
+          "count": 200,
+          "p50_ms": 13652.52095799998,
+          "p95_ms": 28544.662416999985,
+          "p99_ms": 28641.700667000005,
+          "max_ms": 28652.197082999977
+        }
+      },
+      {
+        "id": "r-8-1",
+        "sid": "s-8-1",
+        "seq": 200,
+        "produced": 200,
+        "projected": 200,
+        "pending": 0,
+        "latency": {
+          "count": 200,
+          "p50_ms": 13592.024582999991,
+          "p95_ms": 28483.872208999994,
+          "p99_ms": 28582.175292,
+          "max_ms": 28591.884750000027
+        }
+      },
+      {
+        "id": "r-8-2",
+        "sid": "s-8-2",
+        "seq": 200,
+        "produced": 200,
+        "projected": 200,
+        "pending": 0,
+        "latency": {
+          "count": 200,
+          "p50_ms": 13531.908832999994,
+          "p95_ms": 28424.34020799998,
+          "p99_ms": 28520.463500000005,
+          "max_ms": 28532.90654200001
+        }
+      },
+      {
+        "id": "r-8-3",
+        "sid": "s-8-3",
+        "seq": 200,
+        "produced": 200,
+        "projected": 200,
+        "pending": 0,
+        "latency": {
+          "count": 200,
+          "p50_ms": 13471.693582999986,
+          "p95_ms": 28363.158582999953,
+          "p99_ms": 28461.352250000004,
+          "max_ms": 28470.490583000006
+        }
+      },
+      {
+        "id": "r-8-4",
+        "sid": "s-8-4",
+        "seq": 200,
+        "produced": 200,
+        "projected": 200,
+        "pending": 0,
+        "latency": {
+          "count": 200,
+          "p50_ms": 13412.393749999988,
+          "p95_ms": 28304.676582999993,
+          "p99_ms": 28402.612625,
+          "max_ms": 28412.373666999978
+        }
+      },
+      {
+        "id": "r-9-0",
+        "sid": "s-9-0",
+        "seq": 200,
+        "produced": 200,
+        "projected": 200,
+        "pending": 0,
+        "latency": {
+          "count": 200,
+          "p50_ms": 13352.213042000018,
+          "p95_ms": 28243.386582999956,
+          "p99_ms": 28341.944750000002,
+          "max_ms": 28352.635458000004
+        }
+      },
+      {
+        "id": "r-9-1",
+        "sid": "s-9-1",
+        "seq": 200,
+        "produced": 200,
+        "projected": 200,
+        "pending": 0,
+        "latency": {
+          "count": 200,
+          "p50_ms": 13292.630041999975,
+          "p95_ms": 28183.58458299999,
+          "p99_ms": 28281.790792,
+          "max_ms": 28291.493000000017
+        }
+      },
+      {
+        "id": "r-9-2",
+        "sid": "s-9-2",
+        "seq": 200,
+        "produced": 200,
+        "projected": 200,
+        "pending": 0,
+        "latency": {
+          "count": 200,
+          "p50_ms": 13232.405374999973,
+          "p95_ms": 28122.80562499998,
+          "p99_ms": 28220.298959,
+          "max_ms": 28233.64079199999
+        }
+      },
+      {
+        "id": "r-9-3",
+        "sid": "s-9-3",
+        "seq": 200,
+        "produced": 200,
+        "projected": 200,
+        "pending": 0,
+        "latency": {
+          "count": 200,
+          "p50_ms": 13172.219042000012,
+          "p95_ms": 28062.434917000006,
+          "p99_ms": 28162.849667000002,
+          "max_ms": 28173.169125000015
+        }
+      },
+      {
+        "id": "r-9-4",
+        "sid": "s-9-4",
+        "seq": 200,
+        "produced": 200,
+        "projected": 200,
+        "pending": 0,
+        "latency": {
+          "count": 200,
+          "p50_ms": 13111.469374999986,
+          "p95_ms": 28004.747959,
+          "p99_ms": 28102.746167000005,
+          "max_ms": 28111.031041999988
+        }
+      }
+    ],
+    "sessions": [
+      {
+        "id": "s-0-0",
+        "version": 21,
+        "updated": 20,
+        "observed": 20,
+        "pending": 0,
+        "latency": {
+          "count": 20,
+          "p50_ms": 12943.340916999965,
+          "p95_ms": 18440.738250000002,
+          "p99_ms": 18861.884,
+          "max_ms": 18861.884
+        }
+      },
+      {
+        "id": "s-0-1",
+        "version": 21,
+        "updated": 20,
+        "observed": 20,
+        "pending": 0,
+        "latency": {
+          "count": 20,
+          "p50_ms": 11924.105291999993,
+          "p95_ms": 17420.580209,
+          "p99_ms": 17841.021125,
+          "max_ms": 17841.021125
+        }
+      },
+      {
+        "id": "s-0-2",
+        "version": 21,
+        "updated": 20,
+        "observed": 20,
+        "pending": 0,
+        "latency": {
+          "count": 20,
+          "p50_ms": 10901.588499999954,
+          "p95_ms": 16402.885334000006,
+          "p99_ms": 16821.049166,
+          "max_ms": 16821.049166
+        }
+      },
+      {
+        "id": "s-1-0",
+        "version": 21,
+        "updated": 20,
+        "observed": 20,
+        "pending": 0,
+        "latency": {
+          "count": 20,
+          "p50_ms": 9881.824916999962,
+          "p95_ms": 15382.311334000005,
+          "p99_ms": 15801.00325,
+          "max_ms": 15801.00325
+        }
+      },
+      {
+        "id": "s-1-1",
+        "version": 21,
+        "updated": 20,
+        "observed": 20,
+        "pending": 0,
+        "latency": {
+          "count": 20,
+          "p50_ms": 8861.857166999951,
+          "p95_ms": 14361.330000000002,
+          "p99_ms": 14781.522083,
+          "max_ms": 14781.522083
+        }
+      },
+      {
+        "id": "s-1-2",
+        "version": 21,
+        "updated": 20,
+        "observed": 20,
+        "pending": 0,
+        "latency": {
+          "count": 20,
+          "p50_ms": 7843.001332999964,
+          "p95_ms": 13340.807584000002,
+          "p99_ms": 13762.139833000001,
+          "max_ms": 13762.139833000001
+        }
+      },
+      {
+        "id": "s-2-0",
+        "version": 21,
+        "updated": 20,
+        "observed": 20,
+        "pending": 0,
+        "latency": {
+          "count": 20,
+          "p50_ms": 6822.866875000007,
+          "p95_ms": 12320.565042000002,
+          "p99_ms": 12741.140958,
+          "max_ms": 12741.140958
+        }
+      },
+      {
+        "id": "s-2-1",
+        "version": 21,
+        "updated": 20,
+        "observed": 20,
+        "pending": 0,
+        "latency": {
+          "count": 20,
+          "p50_ms": 5802.843082999985,
+          "p95_ms": 11302.049959000004,
+          "p99_ms": 11720.926,
+          "max_ms": 11720.926
+        }
+      },
+      {
+        "id": "s-2-2",
+        "version": 21,
+        "updated": 20,
+        "observed": 20,
+        "pending": 0,
+        "latency": {
+          "count": 20,
+          "p50_ms": 6066.663416999974,
+          "p95_ms": 29426.081917000003,
+          "p99_ms": 29965.755667000078,
+          "max_ms": 29965.755667000078
+        }
+      },
+      {
+        "id": "s-3-0",
+        "version": 21,
+        "updated": 20,
+        "observed": 20,
+        "pending": 0,
+        "latency": {
+          "count": 20,
+          "p50_ms": 5450.245374999999,
+          "p95_ms": 28946.82783299999,
+          "p99_ms": 29606.015082999947,
+          "max_ms": 29606.015082999947
+        }
+      },
+      {
+        "id": "s-3-1",
+        "version": 21,
+        "updated": 20,
+        "observed": 20,
+        "pending": 0,
+        "latency": {
+          "count": 20,
+          "p50_ms": 5645.133624999988,
+          "p95_ms": 29248.84895799996,
+          "p99_ms": 29668.00012500002,
+          "max_ms": 29668.00012500002
+        }
+      },
+      {
+        "id": "s-3-2",
+        "version": 21,
+        "updated": 20,
+        "observed": 20,
+        "pending": 0,
+        "latency": {
+          "count": 20,
+          "p50_ms": 5936.965083999996,
+          "p95_ms": 29322.307624999958,
+          "p99_ms": 29977.123957999982,
+          "max_ms": 29977.123957999982
+        }
+      },
+      {
+        "id": "s-4-0",
+        "version": 21,
+        "updated": 20,
+        "observed": 20,
+        "pending": 0,
+        "latency": {
+          "count": 20,
+          "p50_ms": 6200.887999999999,
+          "p95_ms": 29612.499791999988,
+          "p99_ms": 30015.988957999973,
+          "max_ms": 30015.988957999973
+        }
+      },
+      {
+        "id": "s-4-1",
+        "version": 21,
+        "updated": 20,
+        "observed": 20,
+        "pending": 0,
+        "latency": {
+          "count": 20,
+          "p50_ms": 5602.257207999999,
+          "p95_ms": 28994.45754199999,
+          "p99_ms": 29646.749582999968,
+          "max_ms": 29646.749582999968
+        }
+      },
+      {
+        "id": "s-4-2",
+        "version": 21,
+        "updated": 20,
+        "observed": 20,
+        "pending": 0,
+        "latency": {
+          "count": 20,
+          "p50_ms": 23847.071708000032,
+          "p95_ms": 29261.415957999998,
+          "p99_ms": 29911.651499999978,
+          "max_ms": 29911.651499999978
+        }
+      },
+      {
+        "id": "s-5-0",
+        "version": 21,
+        "updated": 20,
+        "observed": 20,
+        "pending": 0,
+        "latency": {
+          "count": 20,
+          "p50_ms": 24150.559082999942,
+          "p95_ms": 29527.54458399999,
+          "p99_ms": 29931.39970800001,
+          "max_ms": 29931.39970800001
+        }
+      },
+      {
+        "id": "s-5-1",
+        "version": 21,
+        "updated": 20,
+        "observed": 20,
+        "pending": 0,
+        "latency": {
+          "count": 20,
+          "p50_ms": 23549.338667000004,
+          "p95_ms": 28912.642208000005,
+          "p99_ms": 29552.419458999997,
+          "max_ms": 29552.419458999997
+        }
+      },
+      {
+        "id": "s-5-2",
+        "version": 21,
+        "updated": 20,
+        "observed": 20,
+        "pending": 0,
+        "latency": {
+          "count": 20,
+          "p50_ms": 23855.206540999992,
+          "p95_ms": 29104.970708999987,
+          "p99_ms": 29740.378584000006,
+          "max_ms": 29740.378584000006
+        }
+      },
+      {
+        "id": "s-6-0",
+        "version": 21,
+        "updated": 20,
+        "observed": 20,
+        "pending": 0,
+        "latency": {
+          "count": 20,
+          "p50_ms": 23894.579624999955,
+          "p95_ms": 29398.79791699999,
+          "p99_ms": 30051.19516699999,
+          "max_ms": 30051.19516699999
+        }
+      },
+      {
+        "id": "s-6-1",
+        "version": 20,
+        "updated": 19,
+        "observed": 19,
+        "pending": 0,
+        "latency": {
+          "count": 19,
+          "p50_ms": 24162.18516699999,
+          "p95_ms": 29660.126917,
+          "p99_ms": 29660.126917,
+          "max_ms": 29660.126917
+        }
+      },
+      {
+        "id": "s-6-2",
+        "version": 20,
+        "updated": 19,
+        "observed": 19,
+        "pending": 0,
+        "latency": {
+          "count": 19,
+          "p50_ms": 23143.660374999978,
+          "p95_ms": 28641.628542000006,
+          "p99_ms": 28641.628542000006,
+          "max_ms": 28641.628542000006
+        }
+      },
+      {
+        "id": "s-7-0",
+        "version": 20,
+        "updated": 19,
+        "observed": 19,
+        "pending": 0,
+        "latency": {
+          "count": 19,
+          "p50_ms": 22123.53995799995,
+          "p95_ms": 27620.295792000004,
+          "p99_ms": 27620.295792000004,
+          "max_ms": 27620.295792000004
+        }
+      },
+      {
+        "id": "s-7-1",
+        "version": 20,
+        "updated": 19,
+        "observed": 19,
+        "pending": 0,
+        "latency": {
+          "count": 19,
+          "p50_ms": 21102.410291999986,
+          "p95_ms": 26602.157334000003,
+          "p99_ms": 26602.157334000003,
+          "max_ms": 26602.157334000003
+        }
+      },
+      {
+        "id": "s-7-2",
+        "version": 20,
+        "updated": 19,
+        "observed": 19,
+        "pending": 0,
+        "latency": {
+          "count": 19,
+          "p50_ms": 20083.67724999995,
+          "p95_ms": 25581.591542000002,
+          "p99_ms": 25581.591542000002,
+          "max_ms": 25581.591542000002
+        }
+      },
+      {
+        "id": "s-8-0",
+        "version": 20,
+        "updated": 19,
+        "observed": 19,
+        "pending": 0,
+        "latency": {
+          "count": 19,
+          "p50_ms": 19062.09233299998,
+          "p95_ms": 24562.123959000004,
+          "p99_ms": 24562.123959000004,
+          "max_ms": 24562.123959000004
+        }
+      },
+      {
+        "id": "s-8-1",
+        "version": 20,
+        "updated": 19,
+        "observed": 19,
+        "pending": 0,
+        "latency": {
+          "count": 19,
+          "p50_ms": 18042.458707999962,
+          "p95_ms": 23541.933417,
+          "p99_ms": 23541.933417,
+          "max_ms": 23541.933417
+        }
+      },
+      {
+        "id": "s-8-2",
+        "version": 20,
+        "updated": 19,
+        "observed": 19,
+        "pending": 0,
+        "latency": {
+          "count": 19,
+          "p50_ms": 17022.49104199995,
+          "p95_ms": 22520.377209000006,
+          "p99_ms": 22520.377209000006,
+          "max_ms": 22520.377209000006
+        }
+      },
+      {
+        "id": "s-9-0",
+        "version": 20,
+        "updated": 19,
+        "observed": 19,
+        "pending": 0,
+        "latency": {
+          "count": 19,
+          "p50_ms": 16002.98887499998,
+          "p95_ms": 21500.024875000003,
+          "p99_ms": 21500.024875000003,
+          "max_ms": 21500.024875000003
+        }
+      },
+      {
+        "id": "s-9-1",
+        "version": 20,
+        "updated": 19,
+        "observed": 19,
+        "pending": 0,
+        "latency": {
+          "count": 19,
+          "p50_ms": 14982.608416999981,
+          "p95_ms": 20480.246542,
+          "p99_ms": 20480.246542,
+          "max_ms": 20480.246542
+        }
+      },
+      {
+        "id": "s-9-2",
+        "version": 20,
+        "updated": 19,
+        "observed": 19,
+        "pending": 0,
+        "latency": {
+          "count": 19,
+          "p50_ms": 13964.207416999969,
+          "p95_ms": 19462.674209000004,
+          "p99_ms": 19462.674209000004,
+          "max_ms": 19462.674209000004
+        }
+      }
+    ],
+    "loops": [
+      {
+        "id": "loop-0-0",
+        "updates": 15,
+        "distinct_observed_snapshots": 16,
+        "final_matches": true
+      },
+      {
+        "id": "loop-0-1",
+        "updates": 15,
+        "distinct_observed_snapshots": 16,
+        "final_matches": true
+      },
+      {
+        "id": "loop-1-0",
+        "updates": 15,
+        "distinct_observed_snapshots": 16,
+        "final_matches": true
+      },
+      {
+        "id": "loop-1-1",
+        "updates": 15,
+        "distinct_observed_snapshots": 16,
+        "final_matches": true
+      },
+      {
+        "id": "loop-2-0",
+        "updates": 15,
+        "distinct_observed_snapshots": 16,
+        "final_matches": true
+      },
+      {
+        "id": "loop-2-1",
+        "updates": 15,
+        "distinct_observed_snapshots": 16,
+        "final_matches": true
+      },
+      {
+        "id": "loop-3-0",
+        "updates": 15,
+        "distinct_observed_snapshots": 16,
+        "final_matches": true
+      },
+      {
+        "id": "loop-3-1",
+        "updates": 15,
+        "distinct_observed_snapshots": 16,
+        "final_matches": true
+      },
+      {
+        "id": "loop-4-0",
+        "updates": 15,
+        "distinct_observed_snapshots": 16,
+        "final_matches": true
+      },
+      {
+        "id": "loop-4-1",
+        "updates": 15,
+        "distinct_observed_snapshots": 16,
+        "final_matches": true
+      },
+      {
+        "id": "loop-5-0",
+        "updates": 15,
+        "distinct_observed_snapshots": 16,
+        "final_matches": true
+      },
+      {
+        "id": "loop-5-1",
+        "updates": 15,
+        "distinct_observed_snapshots": 16,
+        "final_matches": true
+      },
+      {
+        "id": "loop-6-0",
+        "updates": 15,
+        "distinct_observed_snapshots": 16,
+        "final_matches": true
+      },
+      {
+        "id": "loop-6-1",
+        "updates": 15,
+        "distinct_observed_snapshots": 16,
+        "final_matches": true
+      },
+      {
+        "id": "loop-7-0",
+        "updates": 15,
+        "distinct_observed_snapshots": 16,
+        "final_matches": true
+      },
+      {
+        "id": "loop-7-1",
+        "updates": 14,
+        "distinct_observed_snapshots": 15,
+        "final_matches": true
+      },
+      {
+        "id": "loop-8-0",
+        "updates": 14,
+        "distinct_observed_snapshots": 15,
+        "final_matches": true
+      },
+      {
+        "id": "loop-8-1",
+        "updates": 14,
+        "distinct_observed_snapshots": 15,
+        "final_matches": true
+      },
+      {
+        "id": "loop-9-0",
+        "updates": 14,
+        "distinct_observed_snapshots": 15,
+        "final_matches": true
+      },
+      {
+        "id": "loop-9-1",
+        "updates": 14,
+        "distinct_observed_snapshots": 15,
+        "final_matches": true
+      }
+    ]
+  },
+  "failures": [],
+  "checkpoints": [
+    {
+      "elapsed_ms": 60108.527333,
+      "produced": 1011,
+      "rpc": 1203,
+      "rpcErrors": 0,
+      "pending_events": 197,
+      "rss_bytes": 250445824
+    },
+    {
+      "elapsed_ms": 120119.31712500002,
+      "produced": 2020,
+      "rpc": 2403,
+      "rpcErrors": 0,
+      "pending_events": 197,
+      "rss_bytes": 250445824
+    },
+    {
+      "elapsed_ms": 180222.274,
+      "produced": 3031,
+      "rpc": 3605,
+      "rpcErrors": 0,
+      "pending_events": 198,
+      "rss_bytes": 250445824
+    },
+    {
+      "elapsed_ms": 240415.693,
+      "produced": 4043,
+      "rpc": 4809,
+      "rpcErrors": 0,
+      "pending_events": 202,
+      "rss_bytes": 250445824
+    },
+    {
+      "elapsed_ms": 300570.088083,
+      "produced": 5055,
+      "rpc": 6012,
+      "rpcErrors": 0,
+      "pending_events": 205,
+      "rss_bytes": 250445824
+    },
+    {
+      "elapsed_ms": 360746.915791,
+      "produced": 6067,
+      "rpc": 7215,
+      "rpcErrors": 0,
+      "pending_events": 208,
+      "rss_bytes": 250445824
+    },
+    {
+      "elapsed_ms": 420883.916625,
+      "produced": 7078,
+      "rpc": 8418,
+      "rpcErrors": 0,
+      "pending_events": 210,
+      "rss_bytes": 250445824
+    },
+    {
+      "elapsed_ms": 481020.675875,
+      "produced": 8090,
+      "rpc": 9621,
+      "rpcErrors": 0,
+      "pending_events": 213,
+      "rss_bytes": 250445824
+    },
+    {
+      "elapsed_ms": 541134.069166,
+      "produced": 9100,
+      "rpc": 10823,
+      "rpcErrors": 0,
+      "pending_events": 214,
+      "rss_bytes": 250445824
+    }
+  ],
+  "loop_tick_overhead": {
+    "measured": false,
+    "reason": "No real Loop execution workload on/off comparison; snapshot observation and event loop delay are not Loop tick overhead"
+  },
+  "qualification": {
+    "local_synthetic_only": true,
+    "capacity_qualification": false,
+    "linux": false,
+    "shared_runner": true,
+    "internal_rpc_p95_not_derived_from_roundtrip": true,
+    "full_history_retention": false
+  }
+}

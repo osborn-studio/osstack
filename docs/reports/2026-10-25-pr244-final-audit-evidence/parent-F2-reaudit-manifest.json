@@ -1,0 +1,59 @@
+{
+  "files": [
+    {
+      "path": "packages/cli/src/source-observation-host.ts",
+      "sha256": "423d7e8b8ce42ab4b921427d2da846db573938ba7089b3c55325cc9d6f93c4bb",
+      "coverage": "full"
+    },
+    {
+      "path": "packages/cli/src/source-observation-command.ts",
+      "sha256": "3a064a82c6593c253a2d344600babad7f906309c6a03c9c70a354f6a63a1287b",
+      "coverage": "full"
+    },
+    {
+      "path": "packages/cli/src/local-data-source-registry.ts",
+      "sha256": "0018837f6f43ff1029fad3a444a9d163d5b112fdf0e94866c878f3014bcb80a1",
+      "coverage": "full"
+    },
+    {
+      "path": "packages/cli/src/source-context.test.ts",
+      "sha256": "eedb45f928b3614d8cba7ed1791c8255638d24123306ebb5fe6bb394046d83e4",
+      "coverage": "full"
+    },
+    {
+      "path": "packages/cli/src/local-ledgers-daemon.test.ts",
+      "sha256": "d992e912f5f80fc09ad31de3de017d009f3bc07b33a366936bcfae9e5cc76330",
+      "coverage": "full"
+    },
+    {
+      "path": "packages/core/src/state/source-observations.ts",
+      "sha256": "245a04dda8e30f08ab9257b3d474a395523c4f758fe9bb023f063a855d6f5197",
+      "coverage": "full"
+    },
+    {
+      "path": "docs/reports/2026-10-24-source-continuity-boundaries.md",
+      "sha256": "9afdba9a62b8724fd504fd3bdd0d76671d7c30f20f15c53c58a4aa8a5114f151",
+      "coverage": "full"
+    },
+    {
+      "path": "packages/cli/src/daemon.ts",
+      "sha256": "a8b66b9278afc693fda2fc20f751fec2d59f6a7c8a1c01f1c4afb564844d32c4",
+      "coverage": "170-190",
+      "excerpt_sha256": "360c66811ce72cb413abdb901d70f4c20beb0bda2b2ca7ca8d2bf87a451fa91f"
+    },
+    {
+      "path": "packages/cli/src/daemon.ts",
+      "sha256": "a8b66b9278afc693fda2fc20f751fec2d59f6a7c8a1c01f1c4afb564844d32c4",
+      "coverage": "1115-1180",
+      "excerpt_sha256": "bb83d80a53cac73851c6db18b80006d58699613acac386182ae8f201901f25cf"
+    },
+    {
+      "path": "packages/cli/src/daemon.ts",
+      "sha256": "a8b66b9278afc693fda2fc20f751fec2d59f6a7c8a1c01f1c4afb564844d32c4",
+      "coverage": "4408-4470",
+      "excerpt_sha256": "68a4c10bc4ce3b487fc7704de01666f277cbd9f46d2e703b45e3fac9f38b5d2c"
+    }
+  ],
+  "prompt_sha256": "bd14b5361813b3c970a79d070ddd5e41488cefb2a732a04ccda2927e78c7a7d1",
+  "prompt_bytes": 122299
+}

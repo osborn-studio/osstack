@@ -1,0 +1,49 @@
+{
+  "head": "fdddee855845e245cbca079da5958f473abc1e58",
+  "head_after": "97c68e4396248664eda5df4b803745b668615dbd",
+  "command": [
+    "pnpm",
+    "--filter",
+    "@osstack/cli",
+    "exec",
+    "vitest",
+    "run",
+    "src/daemon-loop.test.ts",
+    "src/loop-cli.test.ts",
+    "src/loop-defaults-cli.test.ts",
+    "src/local-ledgers-daemon.test.ts",
+    "--maxWorkers=2",
+    "--testTimeout=20000"
+  ],
+  "exit_code": 0,
+  "elapsed_s": 38.05559706687927,
+  "before": {
+    "packages/loop/src/verifier.ts": "03a66860e36dd8bbc4bf21dcdc5e22ca2170d273881fba5c61c340a60878d2f8",
+    "packages/loop/src/loop-engine.ts": "84b4047a54afdaa5257a59373fdfad015a0f2d2feda2e9d43265be1b6f1f87ea",
+    "packages/loop/dist/index.js": "b172f8282df8e44ab0ffe0d489241af0d8200ae45aea4f4a6cf62ca55ef17b60",
+    "packages/cli/src/daemon-loop.test.ts": "7fbaa67fe1c56001e6e0381297a435139a0b958c90dae0ca6749214988159917",
+    "packages/cli/src/loop-cli.test.ts": "86b965a0fc54fc9baf3a78e192150e13068ffa2d4358187734f56cf64405d710",
+    "packages/cli/src/loop-defaults-cli.test.ts": "912d3cfb60f0ceb49936303256dba8fac4957619e6bd648555f3d1697960c4df",
+    "packages/cli/src/local-ledgers-daemon.test.ts": "c8088fdfdb3c1560ac3f6ef02574dbc6fc77a5ffd19e831504dc3170cfd0eaed"
+  },
+  "after": {
+    "packages/loop/src/verifier.ts": "03a66860e36dd8bbc4bf21dcdc5e22ca2170d273881fba5c61c340a60878d2f8",
+    "packages/loop/src/loop-engine.ts": "84b4047a54afdaa5257a59373fdfad015a0f2d2feda2e9d43265be1b6f1f87ea",
+    "packages/loop/dist/index.js": "b172f8282df8e44ab0ffe0d489241af0d8200ae45aea4f4a6cf62ca55ef17b60",
+    "packages/cli/src/daemon-loop.test.ts": "7fbaa67fe1c56001e6e0381297a435139a0b958c90dae0ca6749214988159917",
+    "packages/cli/src/loop-cli.test.ts": "86b965a0fc54fc9baf3a78e192150e13068ffa2d4358187734f56cf64405d710",
+    "packages/cli/src/loop-defaults-cli.test.ts": "912d3cfb60f0ceb49936303256dba8fac4957619e6bd648555f3d1697960c4df",
+    "packages/cli/src/local-ledgers-daemon.test.ts": "c8088fdfdb3c1560ac3f6ef02574dbc6fc77a5ffd19e831504dc3170cfd0eaed"
+  },
+  "stable": true,
+  "logs": {
+    "F3-r9-cli-four.log": "9c7007d46d2b85d9fd25f334e9b01ef082c6d89f8458f7a8f4d946e3ba27dd5a",
+    "F3-r9-cli-string-search.json": "6bf42354a67d6e81917540a9f7a56e79715ce6554188e5f62bc29f54cad8c015",
+    "F3-r9-cli-string-search-including-dist.json": "7db9d137a099ad8f26b9ebea8030b67207ca04831c1318b43f13ff0d6bdc8c75"
+  },
+  "basis": "reaudit-F3-r8-result.json C2",
+  "test_result": {
+    "files_passed": 4,
+    "tests_passed": 124
+  }
+}

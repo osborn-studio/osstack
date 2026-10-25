@@ -18,6 +18,8 @@ import {
   type AutonomyReliabilityReport,
 } from "./autonomy-scorecard.js";
 
+import { readAttentionDashboard, type AttentionDashboard, type AttentionDashboardService } from "./attention-dashboard.js";
+
 export interface DashboardAdapter {
   id: string;
   display_name: string;
@@ -41,10 +43,15 @@ export interface DashboardSnapshotOptions {
   adapters: readonly DashboardAdapter[];
   activeRuns: number;
   activeLoops?: number;
+  /** Host lifecycle state; absence must not imply a running observer. */
+  attentionService?: AttentionDashboardService;
+  attentionAfter?: string;
+  attentionLimit?: number;
   now?: () => number;
 }
 
 export interface DashboardSnapshot {
+  attention: AttentionDashboard;
   dashboard: {
     title: string;
     version: string;
@@ -165,6 +172,8 @@ export interface DashboardServerHandle {
 
 export interface DashboardHttpSnapshotParams {
   workspacePath?: string;
+  attentionAfter?: string;
+  attentionLimit?: number;
 }
 
 export function dashboardUrl(opts: DashboardUrlOptions): string {
@@ -253,6 +262,13 @@ export function createDashboardSnapshot(opts: DashboardSnapshotOptions): Dashboa
   });
 
   return {
+    attention: readAttentionDashboard(opts.db, {
+      service: opts.attentionService ?? "unavailable",
+      nowMs: generatedAt * 1_000,
+      ...(opts.workspacePath === undefined ? {} : { workspacePath: opts.workspacePath }),
+      ...(opts.attentionAfter === undefined ? {} : { after: opts.attentionAfter }),
+      ...(opts.attentionLimit === undefined ? {} : { limit: opts.attentionLimit }),
+    }),
     dashboard: {
       title: "osstack 开发驾驶舱",
       version: opts.version,
@@ -532,9 +548,19 @@ async function handleDashboardRequest(
   }
   if (path === "/api/dashboard") {
     const workspacePath = requestUrl.searchParams.get("workspace") ?? undefined;
-    send(res, 200, "application/json; charset=utf-8", JSON.stringify(snapshot(
-      workspacePath === undefined ? undefined : { workspacePath },
-    )));
+    const attentionAfter = requestUrl.searchParams.get("attention_after") ?? undefined;
+    const rawLimit = requestUrl.searchParams.get("attention_limit");
+    const attentionLimit = rawLimit === null ? undefined : Number(rawLimit);
+    if ((attentionAfter !== undefined && !/^[a-f0-9]{64}$/.test(attentionAfter))
+      || (attentionLimit !== undefined && (!Number.isSafeInteger(attentionLimit) || attentionLimit < 1 || attentionLimit > 100))) {
+      send(res, 400, "application/json; charset=utf-8", JSON.stringify({ error: "invalid_attention_page" }));
+      return;
+    }
+    send(res, 200, "application/json; charset=utf-8", JSON.stringify(snapshot({
+      ...(workspacePath === undefined ? {} : { workspacePath }),
+      ...(attentionAfter === undefined ? {} : { attentionAfter }),
+      ...(attentionLimit === undefined ? {} : { attentionLimit }),
+    })));
     return;
   }
   if (path === "/dashboard/url") {
@@ -579,6 +605,7 @@ function dashboardText(language: DashboardLanguage): {
   kanban: string;
   recentRuns: string;
   codeMap: string;
+  attention: string;
   metrics: string[];
   successRate: string;
   blocked: string;
@@ -612,6 +639,7 @@ function dashboardText(language: DashboardLanguage): {
       kanban: "任务看板",
       recentRuns: "最近运行",
       codeMap: "代码地图",
+      attention: "Attention · 只读监督",
       metrics: ["总体进度", "运行次数", "活动任务", "队列任务", "活动 Loops", "事件记录", "看板卡片", "质量评分"],
       successRate: "成功率",
       blocked: "阻塞",
@@ -645,6 +673,7 @@ function dashboardText(language: DashboardLanguage): {
     kanban: "Kanban Board",
     recentRuns: "Recent Runs",
     codeMap: "Code Map",
+    attention: "Attention · Read-only observation",
     metrics: ["Progress", "Runs", "Active Tasks", "Queued Tasks", "Active Loops", "Events", "Board Cards", "Quality Grade"],
     successRate: "Success rate",
     blocked: "Blocked",
@@ -728,6 +757,12 @@ export function renderDashboardHtml(language: DashboardLanguage = dashboardLangu
     <div class="pill" id="generated">loading...</div>
   </header>
 
+  <section class="section panel" aria-labelledby="attention-heading">
+    <h2 id="attention-heading">${text.attention}</h2>
+    <div id="attention" style="white-space:pre-wrap;overflow-wrap:anywhere" role="status" aria-live="polite"></div>
+    <a id="attention-first" hidden>First page</a> <a id="attention-next" hidden>More watched tasks</a>
+  </section>
+
   <section class="grid6" id="metrics"></section>
 
   <section class="section grid3">
@@ -799,10 +834,67 @@ function artifactRow(label, artifact){
   if (!artifact || !artifact.path) return '';
   return '<div class="row"><span class="dot ok"></span><span><b>'+esc(label)+'</b><br><small>'+esc(artifact.path)+'</small></span></div>';
 }
+function renderAttention(a, zh = false) {
+  const el = document.getElementById('attention');
+  const label = zh ? {
+    states: { available:'观测已更新', covered:'观测已更新', degraded:'监督不完整', stale:'观测已过期', unknown:'来源不确定', disabled:'监督已停用', unavailable:'监督暂不可用', not_watched:'尚未登记监督任务' },
+    unknown:'统计暂不可用', repo:'当前仓库', all:'本机概览（默认租户）', open:'待答决定', uncertain:'结果不确定的回答', pending:'正在提交的回答', unmonitored:'未纳入监督的已发现任务', dead:'通知失败', human:'等待人工', system:'等待系统', unclassified:'等待原因不明', missing:'来源缺失的决定', applied:'已应用的回答', note:'仅展示监督结果；回答已应用不代表任务完成。', first:'第一页', more:'更多监督任务', sample:'上次读取'
+  } : {
+    states: { available:'Observation current', covered:'Observation current', degraded:'Coverage incomplete', stale:'Observation expired', unknown:'Source uncertain', disabled:'Observation disabled', unavailable:'Observation unavailable', not_watched:'No watched tasks registered' },
+    unknown:'Counts unavailable', repo:'Selected repository', all:'Local overview (default tenant)', open:'Open decisions', uncertain:'Answers with uncertain outcome', pending:'Answers pending', unmonitored:'Discovered tasks outside coverage', dead:'Failed notifications', human:'Waiting for a person', system:'Waiting for the system', unclassified:'Wait reason unknown', missing:'Decisions with missing sources', applied:'Applied answers', note:'Read-only observation. An applied answer does not mean the task is complete.', first:'First page', more:'More watched tasks', sample:'Read at'
+  };
+  const state = value => label.states[value] || label.states.unknown;
+  const lines = [state(a && a.status)];
+  if (!a) { el.textContent = lines.concat(label.unknown).join('\\n'); return; }
+  lines.push(a.scope_filter === 'workspace' ? label.repo + ': ' + a.workspace_path : label.all);
+  if (!a.totals) lines.push(label.unknown);
+  else {
+    const n = a.totals;
+    lines.push(label.open + ': ' + n.open_items + ' · ' + label.uncertain + ': ' + n.uncertain_answers + ' · ' + label.pending + ': ' + n.pending_answers);
+    lines.push(label.missing + ': ' + n.missing_source_items + ' · ' + label.applied + ': ' + n.applied_answers);
+    lines.push(label.unmonitored + ': ' + n.unmonitored_subjects + ' · ' + label.dead + ': ' + n.dead_letters);
+    lines.push(label.human + ': ' + n.human_waits + ' · ' + label.system + ': ' + n.system_waits + ' · ' + label.unclassified + ': ' + n.unknown_waits);
+  }
+  for (const s of a.scopes || []) lines.push(s.task_title + ' · ' + state(s.coverage) + ' · scope=' + s.scope_id);
+  if (a.truncated && a.totals) lines.push(label.more + ' (' + a.returned + '/' + a.totals.scopes + ')');
+  lines.push(label.note);
+  // Source text stays text, including angle brackets, quotes and backticks.
+  el.textContent = lines.join('\\n');
+  const current = new URL(window.location.href);
+  const first = document.getElementById('attention-first');
+  first.textContent = label.first;
+  first.hidden = !current.searchParams.has('attention_after');
+  current.searchParams.delete('attention_after');
+  first.href = current.pathname + current.search;
+  const next = document.getElementById('attention-next');
+  next.textContent = label.more;
+  next.hidden = !a.truncated || !/^[a-f0-9]{64}$/.test(a.next_after || '');
+  if (!next.hidden) {
+    current.searchParams.set('attention_after', a.next_after);
+    next.href = current.pathname + current.search;
+  }
+}
 const t = ${JSON.stringify(text)};
+function dashboardSearch() {
+  const query = new URLSearchParams(window.location.search);
+  const after = query.get('attention_after');
+  const limit = query.get('attention_limit');
+  if (after !== null && !/^[a-f0-9]{64}$/.test(after)) query.delete('attention_after');
+  if (limit !== null && (!Number.isSafeInteger(Number(limit)) || Number(limit) < 1 || Number(limit) > 100)) query.delete('attention_limit');
+  const value = query.toString();
+  return value ? '?' + value : '';
+}
+let latestDashboardRequest = 0;
 async function load(){
-  const res = await fetch('/api/dashboard' + window.location.search);
+  const request = ++latestDashboardRequest;
+  const controller = new AbortController();
+  const deadline = setTimeout(() => controller.abort(), 4500);
+  try {
+  const res = await fetch('/api/dashboard' + dashboardSearch(), { signal: controller.signal });
+  if (!res.ok) throw new Error('snapshot_unavailable');
   const d = await res.json();
+  if (request !== latestDashboardRequest) return;
+  renderAttention(d.attention, t.htmlLang === 'zh-CN');
   document.getElementById('generated').textContent = d.dashboard.phase + ' · ' + new Date(d.dashboard.generated_at * 1000).toLocaleString() + ' · ' + d.dashboard.workspace_path;
   document.getElementById('metrics').innerHTML = [
     metric(t.metrics[0], d.overview.progress_percent + '%', 'blue', d.overview.progress_percent),
@@ -831,6 +923,9 @@ async function load(){
     return '<div class="lane"><div class="lane-title"><span>'+lane+'</span><span>'+col.cards.length+'</span></div>'+col.cards.map(c => '<div class="card"><b>'+esc(c.title)+'</b><small>'+esc(c.assignee || t.unassigned)+(c.blocked_reason ? ' · '+esc(c.blocked_reason) : '')+'</small></div>').join('')+'</div>';
   }).join('');
   document.getElementById('runs').innerHTML = d.recent_runs.map(r => '<tr><td>'+esc(r.run_id)+'</td><td>'+esc(r.agent_id)+'</td><td>'+esc(r.phase)+'</td><td><span class="'+statusClass(r.outcome)+'">'+esc(r.outcome || 'running')+'</span></td></tr>').join('') || '<tr><td colspan="4">'+esc(t.noRuns)+'</td></tr>';
+  } catch {
+    if (request === latestDashboardRequest) renderAttention({ status:'unavailable', totals:null, scopes:[] }, t.htmlLang === 'zh-CN');
+  } finally { clearTimeout(deadline); }
 }
 load();
 setInterval(load, 5000);

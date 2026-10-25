@@ -1,0 +1,12 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-extension-integration/packages/cli
+
+ ✓ src/home-inventory-daemon.test.ts (1 test) 53ms
+ ✓ src/local-ledgers-daemon.test.ts (13 tests) 1856ms
+   ✓ watches actual daemon snapshots through the main CLI and leaves worker execution unchanged  1046ms
+
+ Test Files  2 passed (2)
+      Tests  14 passed (14)
+   Start at  14:24:28
+   Duration  2.96s (transform 682ms, setup 15ms, collect 1.91s, tests 1.91s, environment 0ms, prepare 54ms)
+

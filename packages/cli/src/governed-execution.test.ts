@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { afterEach, expect, it, vi } from 'vitest';
+import * as autonomy from '@osstack/autonomy';
 import { FifoSemaphore, inspectRepoWriteLock, repoLockPath } from '@osstack/autonomy';
 import { resolveRepositoryScope } from '@osstack/core';
 import { GovernedExecution } from './governed-execution.js';
@@ -216,7 +217,10 @@ it('rejects a new guard while reconciliation verification is already pending', a
   let finish!: () => void; const barrier = new Promise<void>(resolve => { finish = resolve; });
   const release = lease.releaseAfterReconciliation!(() => barrier);
   await expect(lease.withWriteGuard!(scope.workspacePath, () => 1)).rejects.toThrow('unavailable');
-  finish(); await release; expect(f.writes.in_use).toBe(0);
+  await expect(lease.releaseAfterReconciliation!(async () => { throw Error('second verifier denied'); })).rejects.toThrow('second verifier denied');
+  const normalRelease = lease.release();
+  finish(); await Promise.all([release, normalRelease]); expect(f.writes.in_use).toBe(0);
+  await expect(lease.releaseAfterReconciliation!(async () => { throw Error('released verifier denied'); })).rejects.toThrow('released verifier denied');
 });
 it('defers renewal ticks during guarded work and renews before releasing the guard state', async () => {
   const f = await fixture(); vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] });
@@ -227,4 +231,25 @@ it('defers renewal ticks during guarded work and renews before releasing the gua
     await lease.assertActive!(); expect(f.writes.in_use).toBe(1);
   } finally { await lease.release(); }
   expect(f.writes.in_use).toBe(0);
+});
+
+it('coalesces normal release and reconciliation until the physical repository lock is released', async () => {
+  const original = autonomy.acquireRepoWriteLock;
+  let releasePhysical!: () => void; let entered!: () => void;
+  const gate = new Promise<void>(resolve => { releasePhysical = resolve; });
+  const started = new Promise<void>(resolve => { entered = resolve; });
+  let physicalCalls = 0;
+  vi.spyOn(autonomy, 'acquireRepoWriteLock').mockImplementation(async (...args) => {
+    const lock = await original(...args);
+    return { ...lock, release: async () => { physicalCalls++; entered(); await gate; await lock.release(); } };
+  });
+  const f = await fixture(); const lease = await f.admission.acquire({ kind: 'write', runId: 'release-race', workspacePath: f.repo });
+  const pending = lease.release(); await started;
+  await expect(lease.releaseAfterReconciliation!(async () => { throw Error('recovery grant revoked'); })).rejects.toThrow('recovery grant revoked');
+  let verifications = 0; let recovered = false; const recovery = lease.releaseAfterReconciliation!(async () => { verifications++; }).then(() => { recovered = true; });
+  const second = lease.release(); await Promise.resolve(); await Promise.resolve();
+  expect(recovered).toBe(false); expect(f.writes.in_use).toBe(1); expect(physicalCalls).toBe(1);
+  await expect(lease.assertActive!()).rejects.toThrow('unavailable');
+  releasePhysical(); await Promise.all([pending, second, recovery]);
+  expect(recovered).toBe(true); expect(verifications).toBe(1); expect(f.writes.in_use).toBe(0); expect(physicalCalls).toBe(1);
 });

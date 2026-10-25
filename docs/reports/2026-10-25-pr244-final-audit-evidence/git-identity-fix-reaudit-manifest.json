@@ -1,0 +1,31 @@
+{
+  "files": [
+    {
+      "path": "packages/loop/src/verifier.test.ts",
+      "sha256": "8e1c7442d06fdbecb4dfb9a5149b5c09cc8715c1f82695b06b23605f25ba280b",
+      "coverage": "full"
+    },
+    {
+      "path": "packages/loop/src/verifier.ts",
+      "sha256": "03a66860e36dd8bbc4bf21dcdc5e22ca2170d273881fba5c61c340a60878d2f8",
+      "coverage": "full"
+    },
+    {
+      "path": "git-identity-before.log",
+      "sha256": "b7d1e8fb5d687c76975a876a620ad79db505ed2955550e07f8ba1c05b46b6580",
+      "coverage": "full log"
+    },
+    {
+      "path": "git-identity-strict-before.log",
+      "sha256": "2d1cb17e1dcc9754b97783361715950b7ae3d801cbad7995fdbd7fdb9fe3b0b5",
+      "coverage": "full log"
+    },
+    {
+      "path": "git-identity-strict-after.log",
+      "sha256": "cbff6b26bea1e0edb5c8bc1d705686cc8c9ab5c017152dfb9e31313434431648",
+      "coverage": "full log"
+    }
+  ],
+  "prompt_sha256": "0dfad179d578f9180358148714fb106ac6ac590618e788049d8a5720b2e36a4b",
+  "prompt_bytes": 94350
+}

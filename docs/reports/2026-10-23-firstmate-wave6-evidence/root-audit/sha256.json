@@ -1,0 +1,16 @@
+{
+  "delivery-round1-source-manifest.json": "a8f2a58caecd36e00df9c95706cbaf5a351e872a8d58fcbc5015070650536114",
+  "extensions-round1-context.txt": "6f208c034427a55754d1ce4aba06a7f1da2841ee0368359cab6ef372f11a6198",
+  "delivery-round1-stderr.log": "61b1ec1babd05607d61c3c37883d25b807fc94e69c2090164e10676c0b2af903",
+  "wave6-upgrade-help.log": "6ede485f01f5a67224e604975c7000fa9fcb0c82ae6d06fa1feb7b57aef82dae",
+  "extensions-round1-stderr.log": "61b1ec1babd05607d61c3c37883d25b807fc94e69c2090164e10676c0b2af903",
+  "delivery-round1-result.json": "12a962c3d54f995074a9a29f4a61cdc65431522308adcf0078d32090edfc058e",
+  "delivery-round1-context.txt": "d1648cca6ffbd318b47097e41e1447a9500b1fe69101f891fe34286d15ff0797",
+  "wave6-root-build.log": "b2e8d41e1ba6730270cb862fcf71ef3a80f868242dd5b6835d528f67852cd871",
+  "extensions-round1-source-manifest.json": "9351c67f467e30dbded45a5d714bc5b46948c132a55f62dfe8c0b090bed480a6",
+  "wave6-default-delivery.log": "11dd4a91cf8a4bea54cc0b3538b576168b9bce50930354b091f0a1011a67a3e1",
+  "wave6-final-host-typecheck.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "extensions-round1-result.json": "530583a3ce1169e9f44fe5606483860eb6086168f23c567f7ec01ee3522a47f9",
+  "wave6-host-integration-final.log": "8a3e97ea51b4e2ae4c6bb964ec16a9191210c2a90ed85b9b49cc3e77f8ec9c36",
+  "wave6-host-lint.log": "4305bee816b0bbae19952fa0c000bf3df692344003b99e829de9600c46069e32"
+}

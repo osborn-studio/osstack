@@ -1,0 +1,19 @@
+{
+  "wave4-loop-result.json": "921c4568bf074394ceef8be59196e67aee74157642fdaaae7860ce8dff28ac8a",
+  "wave4-final-checks.json": "1361e5957f5c53396975d6df50b2b3fcd46ae7637c12064bac466ff9cc691ec3",
+  "wave4-lint-retry.log": "b002479aa2beeb3035737c984a64848c82493a3a20376afa6618a611d9a40de6",
+  "lint.log": "b935fcd11c84d158379936e4ef805edb288cb1084cc220694ca1ef08278c1ad2",
+  "wave4-final-enqueue.json": "3ff23643caf9b5d7c7cd94a2b81de64078f7ed23187d7c5981988fe850d1f54c",
+  "test.log": "044e86271f08936984cc39ad7615ca8abdd1a657c7570d5c213ff79fb72d263d",
+  "inventory-generate.log": "864f8d7f121cb71b530754916f239c73473df297d7f2214f917c3d93362dfa80",
+  "typecheck.log": "791677a1c9255d1378067a9fd541d13a8d541bc1772253142be39ee46195a7e1",
+  "wave4-worker-fixture-retry.log": "296b97ce43dcc621709ffaccf8079fa8c513827a5a31fbb0378c9cb1922f5581",
+  "wave4-final-loop-result.json": "68cb1420dce4b5554150ab7625a9b920cf9933eadab0d64ea57600f9b0cf5a61",
+  "schemas.log": "72eede8bd62b3a68d3e094d4aeccda65c0b3de5a92b0843adc8530af2c2cff41",
+  "wave4-final-loop-stdout.log": "926e534e1a71a3bf9e29185ef588d8d66d30de23c9d7368cc8e3330d76b0d326",
+  "startup.log": "bf2705c27e4af8dc1920862a41f96680e055f09372f65b6ba3c1c89adc3bbb9d",
+  "wave4-checks.json": "c4768eae7de5387aa4b616cd2eceb811eb3477fe10b1647815522fa4f1b23c08",
+  "wave4-final-loop-stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "inventory.log": "a59b7d9a6d962ccf0d22d13d2cc0f8acbb9e3653a63cce339211a5dfb3cd56e9",
+  "build.log": "1e5ebefe1cedf6b3d65d7b845efbc498425434c03588ea2f6ada10c018416977"
+}

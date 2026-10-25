@@ -1,0 +1,5 @@
+$ tsc --noEmit
+src/guarded-git-runtime.ts(2,129): error TS6133: 'deliveryGit' is declared but its value is never read.
+/Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-supervision-next/packages/cli:
+[ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL] @osstack/cli@0.21.0 typecheck: `tsc --noEmit`
+Exit status 2

@@ -1,0 +1,44 @@
+packages/core/src/state/follow-up-delivery.ts:129:79 lint/complexity/useOptionalChain  FIXABLE  ━━━━━━━━━━
+
+  ! Change to an optional chain.
+  
+    127 │       let row=this.row(repo,p.attempt_id);this.revision(row,p.expected_revision);
+    128 │       if(row.state==="prepared")throw new FollowUpDeliveryError("delivery_authorization_required");if(["delivered","definitely_not_sent"].includes(row.state))return {result:this.result(row,"unchanged",true)};
+  > 129 │       const envelope=this.envelope(row),transport=this.transport(envelope);if(!transport||!transport.lookup_receipt||transport.qualification!==row.qualification)return {result:this.result(row,"qualification_pending")};
+        │                                                                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    130 │       const now=this.clock(row.updated_at_ms);if(row.state==="started")row=this.bump(row,"delivery_unknown","started_unconfirmed",now,{});
+    131 │       return {row,envelope:frozen(envelope),transport};
+  
+  i Unsafe fix: Change to an optional chain.
+  
+    127 127 │         let row=this.row(repo,p.attempt_id);this.revision(row,p.expected_revision);
+    128 128 │         if(row.state==="prepared")throw new FollowUpDeliveryError("delivery_authorization_required");if(["delivered","definitely_not_sent"].includes(row.state))return {result:this.result(row,"unchanged",true)};
+    129     │ - ······const·envelope=this.envelope(row),transport=this.transport(envelope);if(!transport||!transport.lookup_receipt||transport.qualification!==row.qualification)return·{result:this.result(row,"qualification_pending")};
+        129 │ + ······const·envelope=this.envelope(row),transport=this.transport(envelope);if(!transport?.lookup_receipt||transport.qualification!==row.qualification)return·{result:this.result(row,"qualification_pending")};
+    130 130 │         const now=this.clock(row.updated_at_ms);if(row.state==="started")row=this.bump(row,"delivery_unknown","started_unconfirmed",now,{});
+    131 131 │         return {row,envelope:frozen(envelope),transport};
+  
+
+packages/core/src/state/follow-up-delivery.ts:157:8 lint/complexity/useOptionalChain  FIXABLE  ━━━━━━━━━━
+
+  ! Change to an optional chain.
+  
+    155 │   private verifyGrant(row:Row,grant:SignedFollowUpDeliveryGrant,now:number):void{
+    156 │     const envelope=this.envelope(row),body=grant.body,{grant_id:_id,issued_at_ms,expires_at_ms,max_calls:_calls,...subject}=body,key=this.options.trustedKeys?.get(grant.key_id);
+  > 157 │     if(!key||key.purpose!=="follow_up_delivery"||key.publicKey.type!=="public"||key.publicKey.asymmetricKeyType!=="ed25519"||key.repo_path!==row.repo_path||key.provider_id!==envelope.destination.provider_id||!key.destination_refs.includes(envelope.destination.destination_ref)||!Number.isSafeInteger(key.max_validity_ms)||key.max_validity_ms<1||expires_at_ms-issued_at_ms>key.max_validity_ms||deliveryCanonical(subject)!==deliveryCanonical(this.subject(envelope)))throw new FollowUpDeliveryError("delivery_invalid_authorization");
+        │        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    158 │     if(now<issued_at_ms||now>=expires_at_ms)throw new FollowUpDeliveryError("delivery_authorization_expired");
+    159 │     if(hash(this.target(row.repo_path,envelope.destination.destination_ref))!==envelope.destination_digest)throw new FollowUpDeliveryError("delivery_destination_unavailable");
+  
+  i Unsafe fix: Change to an optional chain.
+  
+    155 155 │     private verifyGrant(row:Row,grant:SignedFollowUpDeliveryGrant,now:number):void{
+    156 156 │       const envelope=this.envelope(row),body=grant.body,{grant_id:_id,issued_at_ms,expires_at_ms,max_calls:_calls,...subject}=body,key=this.options.trustedKeys?.get(grant.key_id);
+    157     │ - ····if(!key||key.purpose!=="follow_up_delivery"||key.publicKey.type!=="public"||key.publicKey.asymmetricKeyType!=="ed25519"||key.repo_path!==row.repo_path||key.provider_id!==envelope.destination.provider_id||!key.destination_refs.includes(envelope.destination.destination_ref)||!Number.isSafeInteger(key.max_validity_ms)||key.max_validity_ms<1||expires_at_ms-issued_at_ms>key.max_validity_ms||deliveryCanonical(subject)!==deliveryCanonical(this.subject(envelope)))throw·new·FollowUpDeliveryError("delivery_invalid_authorization");
+        157 │ + ····if(key?.purpose!=="follow_up_delivery"||key.publicKey.type!=="public"||key.publicKey.asymmetricKeyType!=="ed25519"||key.repo_path!==row.repo_path||key.provider_id!==envelope.destination.provider_id||!key.destination_refs.includes(envelope.destination.destination_ref)||!Number.isSafeInteger(key.max_validity_ms)||key.max_validity_ms<1||expires_at_ms-issued_at_ms>key.max_validity_ms||deliveryCanonical(subject)!==deliveryCanonical(this.subject(envelope)))throw·new·FollowUpDeliveryError("delivery_invalid_authorization");
+    158 158 │       if(now<issued_at_ms||now>=expires_at_ms)throw new FollowUpDeliveryError("delivery_authorization_expired");
+    159 159 │       if(hash(this.target(row.repo_path,envelope.destination.destination_ref))!==envelope.destination_digest)throw new FollowUpDeliveryError("delivery_destination_unavailable");
+  
+
+Checked 6 files in 27ms. No fixes applied.
+Found 2 warnings.

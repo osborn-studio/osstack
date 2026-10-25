@@ -389,6 +389,7 @@ const DelegationFields = z.object({
   schemaVersion: Version, scope: Scope, graphRunId: Id, source: Start.shape.source,
   status: GraphRunState, revision: Count, generation: Count,
   inputDigest: Digest, specHash: Digest, createdAt: Count, updatedAt: Count,
+  admissionBinding: z.object({ requestInputDigest: Digest, hostInputDigest: Digest, contractDigest: Digest, policyDigest: Digest }).strict().optional(),
   publication: z.literal("artifact_only"), phase: Id,
   budget: z.object({ limits: Spec.shape.limits, actionStarts: Count, reservedTokens: z.string().regex(/^(0|[1-9][0-9]{0,39})$/), chargedTokens: z.string().regex(/^(0|[1-9][0-9]{0,39})$/), accountingBlocked: z.boolean() }).strict(),
   candidate: z.object({ candidateRevision: Commit, artifactRefs: Refs, artifactDigest: Digest }).strict().optional(),
@@ -405,6 +406,9 @@ const DelegationStatus = z.discriminatedUnion("status", [
   DelegationFields.extend({ status: z.enum(["cancel_pending", "reconciliation_required"]), delivery: z.literal("delivery_unknown") }),
   DelegationFields.extend({ status: GraphRunState.exclude(["ready", "cancel_pending", "reconciliation_required"]), delivery: z.enum(["pending", "delivery_unknown"]) }),
 ]).superRefine((value, ctx) => {
+  if (value.admissionBinding && value.admissionBinding.hostInputDigest !== value.inputDigest) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Admission must bind the durable host input" });
+  }
   if (value.interrupt && value.interrupt.inputDigest !== value.inputDigest) {
     ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Interrupt must bind original input" });
   }

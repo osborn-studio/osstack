@@ -1,0 +1,56 @@
+Evidence completion for closure audit: prior response labeled a CONDITIONAL P1 solely because safeRead and writeRunLessonDraft were omitted. Their exact unchanged code is below. safeRead returns {} on oversize, not null or throw; the new revision.content comparison therefore returns preserved conflict. The actual 19-test Vitest log includes the oversized test and passed. Do not report conditional speculation as confirmed high severity. Confirm whether the remaining finding is closed and state actual confirmed P0/P1 count. The prior canonical SKILL basename finding was already confirmed closed. No production code changed since prior audit. No tools; concise JSON.
+async function safeRead(path: string): Promise<{ content?: string } | null> {
+  let file: Awaited<ReturnType<typeof open>> | undefined;
+  try {
+    file = await open(path, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
+    const stat = await file.stat(); if (!stat.isFile()) throw Error("unsafe_lesson_file");
+    if (stat.size > 1024 * 1024) return {};
+    const bytes = Buffer.alloc(1024 * 1024 + 1); const { bytesRead } = await file.read(bytes, 0, bytes.length, 0);
+    if (bytesRead > 1024 * 1024) return {};
+    return { content: bytes.subarray(0, bytesRead).toString("utf8") };
+  } catch (error) { if ((error as NodeJS.ErrnoException).code === "ENOENT") return null; throw Error("unsafe_lesson_file"); }
+  finally { await file?.close(); }
+}
+
+export async function writeEvidenceLessonDraft(value: unknown, options: { repoPath: string; beforeWrite?: () => Promise<void> }): Promise<EvidenceLessonWriteResult> {
+  const receipt = receiptSchema.parse(value); const repo = await realpath(options.repoPath);
+  if (repo !== receipt.repo_path) throw Error("lesson_workspace_mismatch");
+  const draft = candidate(receipt);
+  const dirs = await Promise.all(["drafts", "promoted", "discarded"].map(name => directory(repo, `loop-lessons/${name}`)));
+  for (const dir of dirs.slice(1)) if (await existsEntry(join(dir, `${draft.draftId}.md`)) || await existsEntry(join(dir, `${draft.draftId}-r${hash(draft.markdown).slice(0, 16)}.md`)))
+    return { state: "reviewed", kind: "investigation", qualification: receipt.qualification, created: false, promoted: false };
+  const dir = await directory(repo, "loop-lessons/drafts", true);
+  let path = join(dir, `${draft.draftId}.md`); let content = draft.markdown;
+  const existing = await safeRead(path);
+  if (existing?.content === content) return { state: "draft", path, created: false, kind: "investigation", qualification: receipt.qualification, promoted: false };
+  if (existing !== null) {
+    const prior = draft.draftId; path = join(dir, `${prior}-r${hash(content).slice(0, 16)}.md`);
+    content += `\n## Revision provenance\nRevision of ${prior}; existing user content was preserved.\n`;
+    const revision = await safeRead(path);
+    if (revision !== null && revision.content !== content) return { state: "draft", path, created: false, reason: "lesson_revision_conflict_preserved", kind: "investigation", qualification: receipt.qualification, promoted: false };
+    if (revision?.content === content) return { state: "draft", path, created: false, kind: "investigation", qualification: receipt.qualification, promoted: false };
+  }
+  const created = await publishDraft(repo, dir, path, content, options.beforeWrite);
+  if (!created && (await safeRead(path))?.content !== content) throw Error("lesson_create_conflict");
+  return { state: "draft", path, created, kind: "investigation", qualification: receipt.qualification, promoted: false };
+}
+export async function writeRunLessonDraft(db: Database.Database, input: RunLessonInput): Promise<EvidenceLessonWriteResult> {
+  const result = await readEvidenceLesson(db, input);
+  if (result.state === "unknown") return { ...result, promoted: false };
+  return writeEvidenceLessonDraft(result.receipt, { repoPath: input.repoPath, beforeWrite: async () => {
+    const fresh = await readEvidenceLesson(db, input);
+    if (fresh.state !== "candidate" || fresh.receipt.source_hash !== result.receipt.source_hash) throw Error("lesson_source_changed");
+  } });
+}
+
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-cockpit/packages/cli
+
+ ✓ src/attention-lesson.test.ts (19 tests) 825ms
+   ✓ uses the existing review lifecycle and does not recreate promoted or discarded candidates  448ms
+
+ Test Files  1 passed (1)
+      Tests  19 passed (19)
+   Start at  12:29:28
+   Duration  1.22s (transform 389ms, setup 9ms, collect 247ms, tests 825ms, environment 0ms, prepare 25ms)
+

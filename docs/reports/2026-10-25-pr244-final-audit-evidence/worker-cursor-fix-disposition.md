@@ -1,0 +1,7 @@
+# Deterministic cursor-tampering fixture
+
+Original qualified QA failed only worker-view-service.test.ts96: expected invalid_cursor, but no error. Old expression `"x" + cursor.slice(1)` does not mutate a token whose first character is already x. Token generation starts with12 random IV bytes and base64url encoding, so that case has probability1/64. The failure log does not retain the token, so its actual first character cannot be retrospectively inspected; the no-op defect is proven directly by the expression and producer encoding.
+
+Production token layout is IV12 || authentication-tag16 || ciphertext. Decode canonicalizes base64url, uses IV bytes0-11, tag12-27 and ciphertext28+, and rejects AES-GCM verification errors as invalid_cursor. No production change was needed. The fixed fixture decodes the valid token, XORs bit0 at offset12, re-encodes it, asserts the token differs, then requires exact invalid_cursor. This changes a real tag bit for every possible random IV while preserving IV and ciphertext. Type-confusion/scope/instance/expiry checks remain unchanged.
+
+Three full-file test runs, CLI typecheck and targeted Biome all exited0. Validation manifest binds production/test bytes before and after and all log hashes. Production source-proof compares current file to HEAD byte-for-byte. Raw original failure preserved unchanged. Haiku scope review completed in worker-cursor-fix-reaudit-* (CLI exit0); see raw reviewer verdict; parent owns full QA/CI and submission.

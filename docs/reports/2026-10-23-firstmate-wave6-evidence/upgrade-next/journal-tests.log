@@ -1,0 +1,11 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-supervision-next/packages/cli
+
+ ✓ src/upgrade-plan.test.ts (9 tests) 19ms
+ ✓ src/upgrade-journal.test.ts (13 tests) 95ms
+
+ Test Files  2 passed (2)
+      Tests  22 passed (22)
+   Start at  13:36:45
+   Duration  914ms (transform 407ms, setup 26ms, collect 672ms, tests 113ms, environment 1ms, prepare 94ms)
+

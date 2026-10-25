@@ -4,9 +4,9 @@
 // from the CLI's raw-SQL sites. An external consumer can now read run/event/proof
 // state through @osstack/core without the product-private CLI.
 //
-// Ownership relocation ONLY (ADR-001 §D2, owner-set): identical SQL semantics,
-// no schema change, no new DB design, no business-logic refactoring. The SQL and
-// result mapping below are extracted verbatim from their prior CLI locations.
+// Originally relocated without behavior changes under ADR-001 §D2. Subsequent
+// attention replay adds bounded reads and run-scoped, monotonic authority
+// resolutions; matching terminal-status echoes do not rewrite authority rows.
 
 import type Database from "better-sqlite3";
 import { withWrite } from "./db.js";
@@ -140,10 +140,16 @@ export function appendEvent(
     } else if (ev.type === "approval.resolved") {
       const p = ev.payload as { approval_id?: string; choice?: string; status?: string };
       if (typeof p.approval_id === "string") {
-        d.prepare(
-          "UPDATE approvals SET status = ?, resolved_at = ?, choice = ? WHERE approval_id = ?",
-        ).run(p.status === "rejected" ? "rejected" : p.status === "timed_out" ? "timed_out" : "accepted",
-              ev.created_at, p.choice ?? null, p.approval_id);
+        if (!["accepted", "rejected", "timed_out"].includes(p.status ?? "")) throw new Error("invalid_approval_resolution");
+        const changed = d.prepare(
+          "UPDATE approvals SET status = ?, resolved_at = ?, choice = ? WHERE approval_id = ? AND run_id = ? AND status = 'pending'",
+        ).run(p.status, ev.created_at, p.choice ?? null, p.approval_id, ev.run_id).changes;
+        if (changed !== 1) {
+          const prior = d.prepare("SELECT status,choice FROM approvals WHERE approval_id=? AND run_id=?")
+            .get(p.approval_id, ev.run_id) as { status: string; choice: string | null } | undefined;
+          if (!prior || prior.status !== p.status || prior.choice !== (p.choice ?? null))
+            throw new Error("approval_resolution_conflict");
+        }
       }
     } else if (ev.type === "clarify.requested") {
       const p = ev.payload as { clarify_id?: string; question?: string };
@@ -155,10 +161,16 @@ export function appendEvent(
     } else if (ev.type === "clarify.resolved") {
       const p = ev.payload as { clarify_id?: string; answer?: string; status?: string };
       if (typeof p.clarify_id === "string") {
-        d.prepare(
-          "UPDATE clarifies SET status = ?, resolved_at = ?, answer = ? WHERE clarify_id = ?",
-        ).run(p.status === "timed_out" ? "timed_out" : p.status === "abandoned" ? "abandoned" : "answered",
-              ev.created_at, p.answer ?? null, p.clarify_id);
+        if (!["answered", "timed_out", "abandoned"].includes(p.status ?? "")) throw new Error("invalid_clarify_resolution");
+        const changed = d.prepare(
+          "UPDATE clarifies SET status = ?, resolved_at = ?, answer = ? WHERE clarify_id = ? AND run_id = ? AND status = 'pending'",
+        ).run(p.status, ev.created_at, p.answer ?? null, p.clarify_id, ev.run_id).changes;
+        if (changed !== 1) {
+          const prior = d.prepare("SELECT status,answer FROM clarifies WHERE clarify_id=? AND run_id=?")
+            .get(p.clarify_id, ev.run_id) as { status: string; answer: string | null } | undefined;
+          if (!prior || prior.status !== p.status || prior.answer !== (p.answer ?? null))
+            throw new Error("clarify_resolution_conflict");
+        }
       }
     }
   });
@@ -241,4 +253,66 @@ export function listEventsForRun(
   return db.prepare(
     "SELECT event_id, run_id, session_id, seq, type, created_at, terminal, payload_json FROM events WHERE run_id = ? AND seq > ? ORDER BY seq ASC",
   ).all(runId, afterSeq) as StoredEventRow[];
+}
+
+/** Bounded local/default-tenant reader. Oversized payloads never enter JS. */
+export interface BoundedRunEvent extends Omit<StoredEventRow, "payload_json"> {
+  payload_json: string | null;
+  payload_bytes: number;
+}
+export function readRunEventPage(db: Database.Database, input: {
+  taskId: string;
+  runId: string;
+  afterSeq: number;
+  limit: number;
+  throughSeq?: number;
+}): {
+  events: BoundedRunEvent[];
+  nextAfter: number;
+  highWatermark: number;
+  availableHighWatermark: number;
+  hasMore: boolean;
+  sequenceGap: boolean;
+} {
+  if (!input.taskId || !input.runId || !Number.isSafeInteger(input.afterSeq) || input.afterSeq < -1
+    || !Number.isSafeInteger(input.limit) || input.limit < 1 || input.limit > 200
+    || (input.throughSeq !== undefined && (!Number.isSafeInteger(input.throughSeq) || input.throughSeq < input.afterSeq)))
+    throw new Error("invalid_event_page");
+  const read = () => {
+    const source = db.prepare(`SELECT 1 FROM runs r JOIN tasks t ON t.task_id=r.task_id
+      WHERE r.run_id=? AND r.task_id=? AND r.tenant_id IS NULL AND t.tenant_id IS NULL`).get(input.runId, input.taskId);
+    if (!source) throw new Error("run_source_not_found");
+    const max = (db.prepare("SELECT COALESCE(MAX(seq),-1) seq FROM events WHERE run_id=?").get(input.runId) as { seq: number }).seq;
+    const first = db.prepare("SELECT seq FROM events WHERE run_id=? ORDER BY seq LIMIT 1").get(input.runId) as { seq: number } | undefined;
+    if (!Number.isSafeInteger(max) || max < -1 || (first && (!Number.isSafeInteger(first.seq) || first.seq < 0)))
+      throw new Error("invalid_event_sequence");
+    const high = input.throughSeq ?? max;
+    // First select bounded metadata, then fetch payloads only for a 64KiB
+    // aggregate page. Oversized records retain null payload evidence and stop
+    // the reducer; small records still advance up to the 200-event limit.
+    const rows = db.prepare(`WITH metadata AS (
+      SELECT seq,length(CAST(payload_json AS BLOB)) payload_bytes FROM events
+      WHERE run_id=? AND seq>? AND seq<=? ORDER BY seq LIMIT ?
+    ), budgeted AS (
+      SELECT seq,payload_bytes,SUM(CASE WHEN payload_bytes<=65536 THEN payload_bytes ELSE 0 END) OVER (ORDER BY seq) total_bytes FROM metadata
+    ) SELECT substr(e.event_id,1,4097) event_id,e.run_id,substr(e.session_id,1,4097) session_id,
+      e.seq,substr(e.type,1,257) type,e.created_at,e.terminal,b.payload_bytes,
+      CASE WHEN b.payload_bytes<=65536 THEN e.payload_json ELSE NULL END payload_json
+      FROM budgeted b JOIN events e ON e.run_id=? AND e.seq=b.seq
+      WHERE b.total_bytes<=65536 ORDER BY e.seq`)
+      .all(input.runId, input.afterSeq, high, input.limit, input.runId) as BoundedRunEvent[];
+    const events = rows;
+    const nextAfter = events.at(-1)?.seq ?? input.afterSeq;
+    const hasMore = db.prepare("SELECT 1 FROM events WHERE run_id=? AND seq>? AND seq<=? LIMIT 1")
+      .get(input.runId, nextAfter, high) !== undefined;
+    let previous = input.afterSeq;
+    let gap = max < input.afterSeq || max < high;
+    for (const event of events) {
+      if (!Number.isSafeInteger(event.seq) || event.seq !== previous + 1) gap = true;
+      previous = event.seq;
+    }
+    return { events, nextAfter: events.at(-1)?.seq ?? input.afterSeq, highWatermark: high,
+      availableHighWatermark: max, hasMore, sequenceGap: gap };
+  };
+  return db.inTransaction ? read() : db.transaction(read)();
 }

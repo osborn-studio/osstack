@@ -1,0 +1,28 @@
+{
+  "at": "2026-10-24T17:22:26.220037+00:00",
+  "results": {
+    "verifier_42": 0,
+    "isolation_boundary_candidate_75": 0,
+    "typecheck": 0,
+    "biome": 0
+  },
+  "engine_evidence": "F3-B2-final-validation.json contains command exit codes and before/after hashes",
+  "sources": {
+    "packages/loop/src/verifier.ts": "f99249117ac719fd05d623520f850a5dd8c2388487b65b4c61b29b34613f2f4a",
+    "packages/loop/src/verifier.test.ts": "2d6fad9d6421ffc05d61c3c3f29411d107e568fd61e4fe6be7a9a6c628c26327",
+    "packages/loop/src/reviewer-isolation.ts": "a113fb3b7961af9ed6043f732e5288489710eef051f292cc2bf2ec20f2711c0b",
+    "packages/loop/src/reviewer-isolation.test.ts": "14be75dbf3cb5de187eb1dc24409f683a8f80a3b660ae33d505604b9abac5b68",
+    "packages/loop/src/loop-engine.ts": "7e987ba1a236ff5b0ebdae5679c2a6d1b3fbb839b64918813a791a8cbf9522e5",
+    "packages/loop/src/loop-engine.test.ts": "5175a1b2e84dda684f31338a6c82a6c65898390389a02d3717c7934b5d2ec1d7",
+    "packages/loop/src/loop-containment.ts": "9b9e50dffb2051c0b20899285c3fe3583a3a4393f732eb7a487e525fb4e5a755",
+    "packages/loop/src/loop-containment.test.ts": "35187b6f9d03488ba36c470da5a17330bf275992a403c6c0f726cc29715aaaa3",
+    "packages/loop/src/review-boundary.ts": "25a0dd541215a3f5ec9c7f45437dbd2a3e3d62b1937584e14c67b29b768e7953",
+    "packages/loop/src/review-boundary.test.ts": "307634a5d86ffa7c9c1b9d057a9cc90851f11b4d405040c7652eea9f88bc7910",
+    "packages/loop/src/evaluation-spec.test.ts": "b43544825afe819a2dec2b47df37a29fa0ba96394170f1bb06b1f0f85011f859",
+    "packages/loop/src/candidate-policy.ts": "9484b9dcbe2a8278ee716222e17fdea0675cb81dbbaa7d72f9a64e5e63dc0abd",
+    "packages/loop/src/candidate-policy.test.ts": "f451cc9c76e08419e5901c1ca8397a965b43857638537ee4d47d39e6ad3a0afc",
+    "scripts/vitest-setup-scratch.ts": "166bcdcf86efa619c1d30c14b3fe383781b17e56b984ef058b1c194b64c7b1de",
+    "packages/core/src/scratch.ts": "d9895ba579525c1ea092bb4626408011d09cecba2e293d89d2fa4c656086343c",
+    "packages/loop/vitest.config.ts": "27b2d58d43fa0a5c27bc72affe822b8dd6d5107d339f219794a4525961c07e66"
+  }
+}

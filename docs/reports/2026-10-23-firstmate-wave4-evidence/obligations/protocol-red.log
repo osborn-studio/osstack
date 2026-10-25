@@ -1,0 +1,29 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-routing-next/packages/protocol
+
+
+⎯⎯⎯⎯⎯⎯ Failed Suites 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/follow-up.test.ts [ src/follow-up.test.ts ]
+Error: Cannot find module './follow-up.js' imported from '/Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-routing-next/packages/protocol/src/follow-up.test.ts'
+ ❯ src/follow-up.test.ts:2:1
+      1| import { expect, it } from "vitest";
+      2| import { FollowUpCreateParams, FollowUpResolveParams } from "./follow-…
+       | ^
+      3| const input = { repo_path: "/repo", default_tenant: true, source_sessi…
+      4|   idempotency_key: "once", actor: "local operator", promise: "Review o…
+
+Caused by: Error: Failed to load url ./follow-up.js (resolved id: ./follow-up.js) in /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-routing-next/packages/protocol/src/follow-up.test.ts. Does the file exist?
+ ❯ loadAndTransform ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:35835:17
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  no tests
+   Start at  12:40:14
+   Duration  231ms (transform 39ms, setup 0ms, collect 0ms, tests 0ms, environment 0ms, prepare 34ms)
+
+undefined
+/Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-routing-next/packages/protocol:
+[ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL] Command failed with exit code 1: vitest run src/follow-up.test.ts

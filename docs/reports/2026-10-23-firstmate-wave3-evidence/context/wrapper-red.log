@@ -1,0 +1,30 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-routing-next/packages/cli
+
+
+⎯⎯⎯⎯⎯⎯ Failed Suites 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/execution-context.test.ts [ src/execution-context.test.ts ]
+Error: Cannot find module './execution-context.js' imported from '/Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-routing-next/packages/cli/src/execution-context.test.ts'
+ ❯ src/execution-context.test.ts:8:1
+      6| import { executionContextDigest, type ExecutionContextEntry } from "@o…
+      7| import { afterEach, expect, it, vi } from "vitest";
+      8| import { createExecutionContextAdapters, createPinnedLocalContextLoade…
+       | ^
+      9| 
+     10| const roots: string[] = [];
+
+Caused by: Error: Failed to load url ./execution-context.js (resolved id: ./execution-context.js) in /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-routing-next/packages/cli/src/execution-context.test.ts. Does the file exist?
+ ❯ loadAndTransform ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:35835:17
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  no tests
+   Start at  12:21:06
+   Duration  556ms (transform 229ms, setup 14ms, collect 0ms, tests 0ms, environment 0ms, prepare 33ms)
+
+undefined
+/Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-routing-next/packages/cli:
+[ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL] Command failed with exit code 1: vitest run src/execution-context.test.ts

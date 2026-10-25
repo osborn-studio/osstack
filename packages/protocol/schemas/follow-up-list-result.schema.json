@@ -1,0 +1,241 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OSStack FollowUpListResult",
+  "$comment": "Local ledger only; parsing does not authorize remote delivery. Runtime validates canonical repository, source binding, revisions and response byte budget.",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "type": "number",
+      "const": 1
+    },
+    "scope": {
+      "type": "object",
+      "properties": {
+        "repo_path": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096
+        },
+        "default_tenant": {
+          "type": "boolean",
+          "const": true
+        }
+      },
+      "required": [
+        "repo_path",
+        "default_tenant"
+      ],
+      "additionalProperties": false
+    },
+    "sampled_at_ms": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 8640000000000000
+    },
+    "obligations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "repo_path": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4096
+          },
+          "default_tenant": {
+            "type": "boolean",
+            "const": true
+          },
+          "obligation_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "source_session_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          },
+          "source_task_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          },
+          "source_run_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          },
+          "source_creation_version": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740990
+          },
+          "source_identity_digest": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "actor": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "destination_ref": {
+            "type": "string",
+            "const": "local_operator"
+          },
+          "resolution_condition": {
+            "type": "string",
+            "enum": [
+              "manual",
+              "session_completed"
+            ]
+          },
+          "due_at": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 8640000000000000
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "open",
+              "drafted",
+              "fulfilled_local",
+              "waived"
+            ]
+          },
+          "revision": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740990
+          },
+          "created_at": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 8640000000000000
+          },
+          "updated_at": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 8640000000000000
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "state": {
+                    "type": "string",
+                    "enum": [
+                      "starting",
+                      "running",
+                      "awaiting_decision",
+                      "idle",
+                      "completed",
+                      "failed",
+                      "cancelled"
+                    ]
+                  },
+                  "version": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0,
+                    "maximum": 9007199254740990
+                  },
+                  "updated_at": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 8640000000000000
+                  }
+                },
+                "required": [
+                  "state",
+                  "version",
+                  "updated_at"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "source_missing": {
+            "type": "boolean"
+          },
+          "external_delivery": {
+            "type": "string",
+            "const": "unsupported"
+          },
+          "promise_preview": {
+            "type": "string",
+            "maxLength": 160
+          },
+          "has_draft": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "repo_path",
+          "default_tenant",
+          "obligation_id",
+          "source_session_id",
+          "source_task_id",
+          "source_run_id",
+          "source_creation_version",
+          "source_identity_digest",
+          "actor",
+          "destination_ref",
+          "resolution_condition",
+          "due_at",
+          "state",
+          "revision",
+          "created_at",
+          "updated_at",
+          "source",
+          "source_missing",
+          "external_delivery",
+          "promise_preview",
+          "has_draft"
+        ],
+        "additionalProperties": false
+      },
+      "maxItems": 50
+    },
+    "next_cursor": {
+      "anyOf": [
+        {
+          "type": "string",
+          "maxLength": 1024
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "overdue_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "external_delivery": {
+      "type": "string",
+      "const": "unsupported"
+    }
+  },
+  "required": [
+    "schema_version",
+    "scope",
+    "sampled_at_ms",
+    "obligations",
+    "next_cursor",
+    "overdue_count",
+    "external_delivery"
+  ],
+  "additionalProperties": false
+}

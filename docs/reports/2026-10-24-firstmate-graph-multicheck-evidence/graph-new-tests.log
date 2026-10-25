@@ -1,0 +1,16 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/packages/cli
+
+osstack: retaining write lease graph-action:95142692cc4a6a5cbdc4d3d55698aa982cbf6f061d8a591cd7a0f4d68344df91: Error: adapter result or execution unconfirmed
+ ✓ src/graph-verification.test.ts (46 tests | 41 skipped) 24116ms
+   ✓ executes and validates every contained registered check with later exit 0  4247ms
+   ✓ executes and validates every contained registered check with later exit 1  4866ms
+   ✓ does not launch another suite check after unknown container removal  3190ms
+   ✓ persists actual native suite exits and refuses missing or substituted later checks  4968ms
+   ✓ keeps sixteen contained stop proofs within the bounded local suite evidence  6844ms
+
+ Test Files  1 passed (1)
+      Tests  5 passed | 41 skipped (46)
+   Start at  17:17:00
+   Duration  26.64s (transform 1.35s, setup 19ms, collect 2.23s, tests 24.12s, environment 0ms, prepare 42ms)
+

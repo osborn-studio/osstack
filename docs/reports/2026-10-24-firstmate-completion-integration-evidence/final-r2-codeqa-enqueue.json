@@ -1,0 +1,10 @@
+{
+  "task": {
+    "task_id": "firstmate-final-r2-codeqa",
+    "capability": "code.verify",
+    "prompt": "Run all eight local qualification gates and every workspace package test on the fixed schema46 read model and descendant handshake source. Retain prior failed attempts. Final requested Claude audit remains blocked by expired authentication and external qualifications are separate.",
+    "priority": 50,
+    "source": "task_queue"
+  },
+  "path": "/Volumes/AIMATE_WORK/tmp/osstack/smoke/firstmate-completion-20261024/queue/tasks/firstmate-final-r2-codeqa.json"
+}

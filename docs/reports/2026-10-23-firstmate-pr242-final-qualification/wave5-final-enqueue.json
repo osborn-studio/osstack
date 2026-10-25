@@ -1,0 +1,10 @@
+{
+  "task": {
+    "task_id": "firstmate-wave5-final-source-qualification",
+    "capability": "code.test",
+    "prompt": "Qualify source 113bb8cc: Graph V2 actual host, original/host dual-digest binding, fixed SSH read-only exporter, cooperative supervision and scoped recovery. All eight checks; no merge, deployment or live remote/provider claim.",
+    "priority": 50,
+    "source": "task_queue"
+  },
+  "path": "/Volumes/AIMATE_WORK/tmp/osstack/smoke/pr237-integration/wave5-final-loop/tasks/firstmate-wave5-final-source-qualification.json"
+}

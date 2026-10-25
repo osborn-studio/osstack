@@ -1,0 +1,15 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/packages/cli
+
+ ✓ src/deliver-cli.test.ts (28 tests | 23 skipped) 12662ms
+   ✓ scout promotion and authoritative recovery lessons > qualifies only actual changed-source recovery: repaired  2404ms
+   ✓ scout promotion and authoritative recovery lessons > qualifies only actual changed-source recovery: no_repair  1429ms
+   ✓ scout promotion and authoritative recovery lessons > qualifies only actual changed-source recovery: same_source  2523ms
+   ✓ scout promotion and authoritative recovery lessons > qualifies only actual changed-source recovery: timeout  3944ms
+   ✓ scout promotion and authoritative recovery lessons > qualifies only actual changed-source recovery: tampered_history  2360ms
+
+ Test Files  1 passed (1)
+      Tests  5 passed | 23 skipped (28)
+   Start at  16:58:10
+   Duration  13.77s (transform 613ms, setup 8ms, collect 955ms, tests 12.66s, environment 0ms, prepare 27ms)
+

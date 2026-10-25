@@ -1,0 +1,12 @@
+$ vitest run src/state/follow-up-delivery.test.ts
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-routing-next/packages/core
+
+ ✓ src/state/follow-up-delivery.test.ts (26 tests) 2763ms
+   ✓ scope, idempotency and append-only history remain durable  2188ms
+
+ Test Files  1 passed (1)
+      Tests  26 passed (26)
+   Start at  13:34:35
+   Duration  3.16s (transform 100ms, setup 0ms, collect 147ms, tests 2.76s, environment 0ms, prepare 34ms)
+

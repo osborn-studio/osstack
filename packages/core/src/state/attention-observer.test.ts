@@ -42,7 +42,7 @@ it("discovers beyond 200 with bounded admission and never claims complete capaci
   observer.tick(1000);
   observer.tick(2000);
   const view = observer.inventory(scope.scope_id, 2000);
-  expect(view.subject_total).toBe(220);
+  expect(view.subject_total).toBe(221);
   expect(view.admitted).toBe(100);
   expect(view.coverage).toBe("degraded");
   expect(
@@ -51,7 +51,7 @@ it("discovers beyond 200 with bounded admission and never claims complete capaci
         .prepare("SELECT COUNT(*) n FROM attention_subjects WHERE admitted=0")
         .get() as { n: number }
     ).n
-  ).toBe(120);
+  ).toBe(121);
 });
 it("projects historical turns atomically and discloses missing ordinal gaps", () => {
   const { observer, scope, db, store } = setup();
@@ -303,4 +303,88 @@ it("replays an expired handoff as historical evidence without renewing it", asyn
   expect(() =>
     ux.handoff(scope.scope_id, fresh.client_id, fresh.token, 130000)
   ).toThrow("invalid_foreground");
+});
+
+it("slices only admitted subjects fairly while preserving per-source event cursors", () => {
+  const { observer, scope, db } = setup(100);
+  let rounds = 0; let complete = false;
+  while (!complete && rounds++ < 20) {
+    const slice = observer.step({ maxSubjects: 7, maxEvents: 14, maxDurationMs: 1000 }, 2000);
+    expect(slice.subjectsSampled).toBeLessThanOrEqual(7);
+    expect(slice.eventQuotaUsed).toBeLessThanOrEqual(14);
+    complete = slice.passComplete;
+  }
+  expect(complete).toBe(true);
+  expect(rounds).toBe(15);
+  expect((db.prepare("SELECT COUNT(*) n FROM attention_subjects WHERE admitted=1 AND ordinal_cursor=1").get() as { n: number }).n).toBe(100);
+  expect(observer.inventory(scope.scope_id, 2000).subject_total).toBe(101);
+});
+it("does not revive an admitted subject released between slices", () => {
+  const { observer, scope, store, owner, db } = setup(3);
+  observer.step({ maxSubjects: 1, maxEvents: 1, maxDurationMs: 1000 }, 2000);
+  store.release(owner, scope.scope_id, "session", "s0002", 1);
+  while (!observer.step({ maxSubjects: 1, maxEvents: 1, maxDurationMs: 1000 }, 2000).passComplete) { /* drain pass */ }
+  expect(db.prepare("SELECT admitted,ordinal_cursor FROM attention_subjects WHERE subject_id='s0002'").get()).toMatchObject({ admitted: 0, ordinal_cursor: 0 });
+});
+it("keeps capacity overflow explicit and advances the existing discovery cursor across passes", () => {
+  const { observer, scope, db } = setup(600);
+  for (let pass = 0; pass < 3; pass++) {
+    while (!observer.step({ maxSubjects: 25, maxEvents: 200, maxDurationMs: 1000 }, 2000 + pass).passComplete) { /* drain pass */ }
+  }
+  expect(observer.inventory(scope.scope_id, 2003)).toMatchObject({ subject_total: 601, admitted: 100, coverage: "degraded" });
+  expect((db.prepare("SELECT COUNT(*) n FROM attention_subjects WHERE admitted=0 AND json_extract(payload_json,'$.reason')='capacity_exceeded'").get() as { n: number }).n).toBe(501);
+});
+it("does not call an unknown observation healthy when its reason field is absent", () => {
+  const { observer, scope, db } = setup(1);
+  observer.tick(2000);
+  db.prepare("UPDATE attention_subjects SET payload_json=?").run(JSON.stringify({ state: "unknown", reason: null }));
+  expect(observer.inventory(scope.scope_id, 2001).coverage).toBe("degraded");
+});
+it("fences an interrupted slice after owner replacement", () => {
+  const { observer, store } = setup(4);
+  observer.step({ maxSubjects: 1, maxEvents: 1, maxDurationMs: 1000 }, 1000);
+  store.claimOwner("new");
+  expect(() => observer.step({}, 2000)).toThrow("stale_owner");
+});
+it("does not publish full coverage while newly admitted subjects still await sampling", () => {
+  const { observer, scope } = setup(4);
+  observer.step({ maxSubjects: 1, maxEvents: 1, maxDurationMs: 1000 }, 1000);
+  expect(observer.inventory(scope.scope_id, 1001).coverage).toBe("degraded");
+  expect(observer.inventory(scope.scope_id, 999).coverage).toBe("unknown");
+});
+it("retains explicit release when a scope disappears and later returns", () => {
+  const { observer, scope, store, owner, db } = setup(2);
+  observer.tick(1000); store.release(owner, scope.scope_id, 'session', 's0001', 1);
+  db.exec("UPDATE tasks SET created_at=2"); observer.tick(2000);
+  db.exec("UPDATE tasks SET created_at=1"); observer.tick(3000);
+  expect(db.prepare("SELECT admitted,json_extract(payload_json,'$.reason') reason FROM attention_subjects WHERE subject_id='s0001'").get()).toMatchObject({ admitted: 0, reason: 'owner_released' });
+});
+it.each(['{', '{}'])("does not infer readmission when released metadata becomes %s", payload => {
+  const { observer, scope, store, owner, db } = setup(2);
+  observer.tick(1000); store.release(owner, scope.scope_id, 'session', 's0001', 1);
+  db.prepare("UPDATE attention_subjects SET payload_json=? WHERE kind='session' AND subject_id='s0001'").run(payload);
+  observer.tick(2000);
+  expect(db.prepare("SELECT admitted FROM attention_subjects WHERE subject_id='s0001'").get()).toEqual({ admitted: 0 });
+});
+
+it("rolls back a failed sampling slice and retries every uncommitted subject", () => {
+  const { observer, scope, db, store } = setup(2);
+  db.exec(`CREATE TRIGGER reject_second_sample BEFORE UPDATE ON attention_subjects
+    WHEN NEW.subject_id='s0001' BEGIN SELECT RAISE(ABORT, 'injected_slice_write_failure'); END`);
+  expect(() => observer.step({ maxSubjects: 25, maxEvents: 200, maxDurationMs: 1000 }, 2000)).toThrow("injected_slice_write_failure");
+  expect(store.listItems(scope.scope_id)).toHaveLength(0);
+  expect(db.prepare("SELECT ordinal_cursor FROM attention_subjects WHERE subject_id='s0000'").get()).toEqual({ ordinal_cursor: 0 });
+  db.exec("DROP TRIGGER reject_second_sample");
+  while (!observer.step({ maxSubjects: 25, maxEvents: 200, maxDurationMs: 1000 }, 2000).passComplete) { /* retry unfinished slice */ }
+  expect(store.listItems(scope.scope_id).map(item => item.session_id).sort()).toEqual(["s0000", "s0001"]);
+  expect(db.prepare("SELECT COUNT(*) n FROM attention_subjects WHERE kind='session' AND ordinal_cursor=1").get()).toEqual({ n: 2 });
+});
+
+it("bounds inventory response bytes and resumes after the final emitted subject",()=>{
+ const {db,observer,scope}=setup(12);observer.tick(1000);observer.tick(2000);
+ db.prepare("UPDATE attention_subjects SET payload_json=? WHERE scope_id=?").run(JSON.stringify({state:"unknown",padding:"x".repeat(30000)}),scope.scope_id);
+ const page=observer.inventory(scope.scope_id,2000);expect(Buffer.byteLength(JSON.stringify(page))).toBeLessThanOrEqual(262144);
+ expect(page.truncated).toBe(true);expect(page.returned).toBe(page.subjects.length);expect(page.next_after).toBeTruthy();
+ const next=observer.inventory(scope.scope_id,2000,page.next_after!);expect(next.subjects.length).toBeGreaterThan(0);
+ expect(next.subjects.some(item=>page.subjects.some(prior=>prior.subject_id===item.subject_id&&prior.kind===item.kind))).toBe(false);
 });

@@ -1,0 +1,1437 @@
+{
+  "source_sha": "14574347f6c52047550d46a0629bd87735c598a8",
+  "node": "v22.22.1",
+  "platform": "darwin",
+  "release": "27.0.0",
+  "arch": "arm64",
+  "cpu": "Apple M4",
+  "started_at": "2026-10-23T21:10:41.240Z",
+  "ended_at": "2026-10-23T21:11:00.197Z",
+  "duration_requested_ms": 2000,
+  "active_wall_ms": 2040.2852910000001,
+  "workload": {
+    "scopes": 10,
+    "admitted_subjects": 100,
+    "sessions": 30,
+    "runs": 50,
+    "loop_snapshots": 20,
+    "graphs": 2,
+    "graph_mode": "real daemon artifact_only with synthetic writer/reviewer, completed before measured readonly traffic",
+    "graph_writer_invocations": 2,
+    "rpc_target_per_second": 20,
+    "event_target_per_minute": 1000,
+    "burst_10x_count": 0,
+    "producer": "explicit local database fixture; daemon timer discovers facts; no dirty-signal injection",
+    "session_projection": "version supersession, not every transient state replay",
+    "loop_projection": "snapshot only, intermediate snapshots may be superseded"
+  },
+  "counts": {
+    "events_produced": 34,
+    "events_in_db": 84,
+    "session_updates": 2,
+    "loop_updates": 1,
+    "rpc": 40,
+    "rpc_errors": 0,
+    "network_attempts": 0,
+    "real_provider_calls": 0,
+    "public_send_calls": 0
+  },
+  "rpc_roundtrip": {
+    "count": 40,
+    "p50_ms": 0.584791999999652,
+    "p95_ms": 1.0640000000003056,
+    "p99_ms": 1.8676669999986188,
+    "max_ms": 1.8676669999986188
+  },
+  "rpc_by_method": {
+    "attention.recovery": {
+      "count": 7,
+      "p50_ms": 0.917833999999857,
+      "p95_ms": 1.8676669999986188,
+      "p99_ms": 1.8676669999986188,
+      "max_ms": 1.8676669999986188
+    },
+    "session.status": {
+      "count": 7,
+      "p50_ms": 0.4853750000002037,
+      "p95_ms": 0.7860419999997248,
+      "p99_ms": 0.7860419999997248,
+      "max_ms": 0.7860419999997248
+    },
+    "run.status": {
+      "count": 7,
+      "p50_ms": 0.3173750000005384,
+      "p95_ms": 0.976249999999709,
+      "p99_ms": 0.976249999999709,
+      "max_ms": 0.976249999999709
+    },
+    "graph.status": {
+      "count": 7,
+      "p50_ms": 0.5626670000001468,
+      "p95_ms": 0.6297079999985726,
+      "p99_ms": 0.6297079999985726,
+      "max_ms": 0.6297079999985726
+    },
+    "graph.result": {
+      "count": 6,
+      "p50_ms": 0.5383329999986017,
+      "p95_ms": 1.4463749999995343,
+      "p99_ms": 1.4463749999995343,
+      "max_ms": 1.4463749999995343
+    },
+    "attention.inbox": {
+      "count": 6,
+      "p50_ms": 0.5950000000011642,
+      "p95_ms": 0.6920829999999114,
+      "p99_ms": 0.6920829999999114,
+      "max_ms": 0.6920829999999114
+    }
+  },
+  "observer_steps": {
+    "count": 0,
+    "p50_ms": null,
+    "p95_ms": null,
+    "p99_ms": null,
+    "max_ms": null
+  },
+  "resources": {
+    "process_cpu_us": {
+      "user": 37941,
+      "system": 6531
+    },
+    "peak_rss_bytes": 256131072,
+    "event_loop_delay_ms": {
+      "p95": 12.091391,
+      "max": 12.746751
+    },
+    "db_bytes": 1572864,
+    "wal_bytes": 4140632
+  },
+  "convergence": {
+    "drain_ms": 16916.8035,
+    "run_events": {
+      "count": 34,
+      "p50_ms": 17933.226833,
+      "p95_ms": 18895.382290999998,
+      "p99_ms": 18955.100458,
+      "max_ms": 18955.100458
+    },
+    "session_versions": {
+      "count": 2,
+      "p50_ms": 17933.170124999997,
+      "p95_ms": 18955.049124999998,
+      "p99_ms": 18955.049124999998,
+      "max_ms": 18955.049124999998
+    },
+    "runs": [
+      {
+        "id": "r-0-0",
+        "sid": "s-0-0",
+        "seq": 1,
+        "produced": 1,
+        "projected": 1,
+        "pending": 0,
+        "latency": {
+          "count": 1,
+          "p50_ms": 18955.100458,
+          "p95_ms": 18955.100458,
+          "p99_ms": 18955.100458,
+          "max_ms": 18955.100458
+        }
+      },
+      {
+        "id": "r-0-1",
+        "sid": "s-0-1",
+        "seq": 1,
+        "produced": 1,
+        "projected": 1,
+        "pending": 0,
+        "latency": {
+          "count": 1,
+          "p50_ms": 18895.382290999998,
+          "p95_ms": 18895.382290999998,
+          "p99_ms": 18895.382290999998,
+          "max_ms": 18895.382290999998
+        }
+      },
+      {
+        "id": "r-0-2",
+        "sid": "s-0-2",
+        "seq": 1,
+        "produced": 1,
+        "projected": 1,
+        "pending": 0,
+        "latency": {
+          "count": 1,
+          "p50_ms": 18835.146416,
+          "p95_ms": 18835.146416,
+          "p99_ms": 18835.146416,
+          "max_ms": 18835.146416
+        }
+      },
+      {
+        "id": "r-0-3",
+        "sid": "s-0-3",
+        "seq": 1,
+        "produced": 1,
+        "projected": 1,
+        "pending": 0,
+        "latency": {
+          "count": 1,
+          "p50_ms": 18773.970125,
+          "p95_ms": 18773.970125,
+          "p99_ms": 18773.970125,
+          "max_ms": 18773.970125
+        }
+      },
+      {
+        "id": "r-0-4",
+        "sid": "s-0-4",
+        "seq": 1,
+        "produced": 1,
+        "projected": 1,
+        "pending": 0,
+        "latency": {
+          "count": 1,
+          "p50_ms": 18715.883208,
+          "p95_ms": 18715.883208,
+          "p99_ms": 18715.883208,
+          "max_ms": 18715.883208
+        }
+      },
+      {
+        "id": "r-1-0",
+        "sid": "s-1-0",
+        "seq": 1,
+        "produced": 1,
+        "projected": 1,
+        "pending": 0,
+        "latency": {
+          "count": 1,
+          "p50_ms": 18653.665208,
+          "p95_ms": 18653.665208,
+          "p99_ms": 18653.665208,
+          "max_ms": 18653.665208
+        }
+      },
+      {
+        "id": "r-1-1",
+        "sid": "s-1-1",
+        "seq": 1,
+        "produced": 1,
+        "projected": 1,
+        "pending": 0,
+        "latency": {
+          "count": 1,
+          "p50_ms": 18594.654083,
+          "p95_ms": 18594.654083,
+          "p99_ms": 18594.654083,
+          "max_ms": 18594.654083
+        }
+      },
+      {
+        "id": "r-1-2",
+        "sid": "s-1-2",
+        "seq": 1,
+        "produced": 1,
+        "projected": 1,
+        "pending": 0,
+        "latency": {
+          "count": 1,
+          "p50_ms": 18534.252791,
+          "p95_ms": 18534.252791,
+          "p99_ms": 18534.252791,
+          "max_ms": 18534.252791
+        }
+      },
+      {
+        "id": "r-1-3",
+        "sid": "s-1-3",
+        "seq": 1,
+        "produced": 1,
+        "projected": 1,
+        "pending": 0,
+        "latency": {
+          "count": 1,
+          "p50_ms": 18474.497958,
+          "p95_ms": 18474.497958,
+          "p99_ms": 18474.497958,
+          "max_ms": 18474.497958
+        }
+      },
+      {
+        "id": "r-1-4",
+        "sid": "s-1-4",
+        "seq": 1,
+        "produced": 1,
+        "projected": 1,
+        "pending": 0,
+        "latency": {
+          "count": 1,
+          "p50_ms": 18414.431833,
+          "p95_ms": 18414.431833,
+          "p99_ms": 18414.431833,
+          "max_ms": 18414.431833
+        }
+      },
+      {
+        "id": "r-2-0",
+        "sid": "s-2-0",
+        "seq": 1,
+        "produced": 1,
+        "projected": 1,
+        "pending": 0,
+        "latency": {
+          "count": 1,
+          "p50_ms": 18354.742458,
+          "p95_ms": 18354.742458,
+          "p99_ms": 18354.742458,
+          "max_ms": 18354.742458
+        }
+      },
+      {
+        "id": "r-2-1",
+        "sid": "s-2-1",
+        "seq": 1,
+        "produced": 1,
+        "projected": 1,
+        "pending": 0,
+        "latency": {
+          "count": 1,
+          "p50_ms": 18293.767416,
+          "p95_ms": 18293.767416,
+          "p99_ms": 18293.767416,
+          "max_ms": 18293.767416
+        }
+      },
+      {
+        "id": "r-2-2",
+        "sid": "s-2-2",
+        "seq": 1,
+        "produced": 1,
+        "projected": 1,
+        "pending": 0,
+        "latency": {
+          "count": 1,
+          "p50_ms": 18234.436083,
+          "p95_ms": 18234.436083,
+          "p99_ms": 18234.436083,
+          "max_ms": 18234.436083
+        }
+      },
+      {
+        "id": "r-2-3",
+        "sid": "s-2-3",
+        "seq": 1,
+        "produced": 1,
+        "projected": 1,
+        "pending": 0,
+        "latency": {
+          "count": 1,
+          "p50_ms": 18174.206458,
+          "p95_ms": 18174.206458,
+          "p99_ms": 18174.206458,
+          "max_ms": 18174.206458
+        }
+      },
+      {
+        "id": "r-2-4",
+        "sid": "s-2-4",
+        "seq": 1,
+        "produced": 1,
+        "projected": 1,
+        "pending": 0,
+        "latency": {
+          "count": 1,
+          "p50_ms": 18115.048625,
+          "p95_ms": 18115.048625,
+          "p99_ms": 18115.048625,
+          "max_ms": 18115.048625
+        }
+      },
+      {
+        "id": "r-3-0",
+        "sid": "s-3-0",
+        "seq": 1,
+        "produced": 1,
+        "projected": 1,
+        "pending": 0,
+        "latency": {
+          "count": 1,
+          "p50_ms": 18054.487083,
+          "p95_ms": 18054.487083,
+          "p99_ms": 18054.487083,
+          "max_ms": 18054.487083
+        }
+      },
+      {
+        "id": "r-3-1",
+        "sid": "s-3-1",
+        "seq": 1,
+        "produced": 1,
+        "projected": 1,
+        "pending": 0,
+        "latency": {
+          "count": 1,
+          "p50_ms": 17994.633625,
+          "p95_ms": 17994.633625,
+          "p99_ms": 17994.633625,
+          "max_ms": 17994.633625
+        }
+      },
+      {
+        "id": "r-3-2",
+        "sid": "s-3-2",
+        "seq": 1,
+        "produced": 1,
+        "projected": 1,
+        "pending": 0,
+        "latency": {
+          "count": 1,
+          "p50_ms": 17933.226833,
+          "p95_ms": 17933.226833,
+          "p99_ms": 17933.226833,
+          "max_ms": 17933.226833
+        }
+      },
+      {
+        "id": "r-3-3",
+        "sid": "s-3-3",
+        "seq": 1,
+        "produced": 1,
+        "projected": 1,
+        "pending": 0,
+        "latency": {
+          "count": 1,
+          "p50_ms": 17873.799415999998,
+          "p95_ms": 17873.799415999998,
+          "p99_ms": 17873.799415999998,
+          "max_ms": 17873.799415999998
+        }
+      },
+      {
+        "id": "r-3-4",
+        "sid": "s-3-4",
+        "seq": 1,
+        "produced": 1,
+        "projected": 1,
+        "pending": 0,
+        "latency": {
+          "count": 1,
+          "p50_ms": 17815.379875,
+          "p95_ms": 17815.379875,
+          "p99_ms": 17815.379875,
+          "max_ms": 17815.379875
+        }
+      },
+      {
+        "id": "r-4-0",
+        "sid": "s-4-0",
+        "seq": 1,
+        "produced": 1,
+        "projected": 1,
+        "pending": 0,
+        "latency": {
+          "count": 1,
+          "p50_ms": 17754.536708,
+          "p95_ms": 17754.536708,
+          "p99_ms": 17754.536708,
+          "max_ms": 17754.536708
+        }
+      },
+      {
+        "id": "r-4-1",
+        "sid": "s-4-1",
+        "seq": 1,
+        "produced": 1,
+        "projected": 1,
+        "pending": 0,
+        "latency": {
+          "count": 1,
+          "p50_ms": 17694.596458,
+          "p95_ms": 17694.596458,
+          "p99_ms": 17694.596458,
+          "max_ms": 17694.596458
+        }
+      },
+      {
+        "id": "r-4-2",
+        "sid": "s-4-2",
+        "seq": 1,
+        "produced": 1,
+        "projected": 1,
+        "pending": 0,
+        "latency": {
+          "count": 1,
+          "p50_ms": 17633.983625,
+          "p95_ms": 17633.983625,
+          "p99_ms": 17633.983625,
+          "max_ms": 17633.983625
+        }
+      },
+      {
+        "id": "r-4-3",
+        "sid": "s-4-3",
+        "seq": 1,
+        "produced": 1,
+        "projected": 1,
+        "pending": 0,
+        "latency": {
+          "count": 1,
+          "p50_ms": 17575.097541,
+          "p95_ms": 17575.097541,
+          "p99_ms": 17575.097541,
+          "max_ms": 17575.097541
+        }
+      },
+      {
+        "id": "r-4-4",
+        "sid": "s-4-4",
+        "seq": 1,
+        "produced": 1,
+        "projected": 1,
+        "pending": 0,
+        "latency": {
+          "count": 1,
+          "p50_ms": 17515.458124999997,
+          "p95_ms": 17515.458124999997,
+          "p99_ms": 17515.458124999997,
+          "max_ms": 17515.458124999997
+        }
+      },
+      {
+        "id": "r-5-0",
+        "sid": "s-5-0",
+        "seq": 1,
+        "produced": 1,
+        "projected": 1,
+        "pending": 0,
+        "latency": {
+          "count": 1,
+          "p50_ms": 17452.722958,
+          "p95_ms": 17452.722958,
+          "p99_ms": 17452.722958,
+          "max_ms": 17452.722958
+        }
+      },
+      {
+        "id": "r-5-1",
+        "sid": "s-5-1",
+        "seq": 1,
+        "produced": 1,
+        "projected": 1,
+        "pending": 0,
+        "latency": {
+          "count": 1,
+          "p50_ms": 17394.391708,
+          "p95_ms": 17394.391708,
+          "p99_ms": 17394.391708,
+          "max_ms": 17394.391708
+        }
+      },
+      {
+        "id": "r-5-2",
+        "sid": "s-5-2",
+        "seq": 1,
+        "produced": 1,
+        "projected": 1,
+        "pending": 0,
+        "latency": {
+          "count": 1,
+          "p50_ms": 17334.560290999998,
+          "p95_ms": 17334.560290999998,
+          "p99_ms": 17334.560290999998,
+          "max_ms": 17334.560290999998
+        }
+      },
+      {
+        "id": "r-5-3",
+        "sid": "s-5-3",
+        "seq": 1,
+        "produced": 1,
+        "projected": 1,
+        "pending": 0,
+        "latency": {
+          "count": 1,
+          "p50_ms": 17273.897541,
+          "p95_ms": 17273.897541,
+          "p99_ms": 17273.897541,
+          "max_ms": 17273.897541
+        }
+      },
+      {
+        "id": "r-5-4",
+        "sid": "s-5-4",
+        "seq": 1,
+        "produced": 1,
+        "projected": 1,
+        "pending": 0,
+        "latency": {
+          "count": 1,
+          "p50_ms": 17215.204375,
+          "p95_ms": 17215.204375,
+          "p99_ms": 17215.204375,
+          "max_ms": 17215.204375
+        }
+      },
+      {
+        "id": "r-6-0",
+        "sid": "s-6-0",
+        "seq": 1,
+        "produced": 1,
+        "projected": 1,
+        "pending": 0,
+        "latency": {
+          "count": 1,
+          "p50_ms": 17154.207,
+          "p95_ms": 17154.207,
+          "p99_ms": 17154.207,
+          "max_ms": 17154.207
+        }
+      },
+      {
+        "id": "r-6-1",
+        "sid": "s-6-1",
+        "seq": 1,
+        "produced": 1,
+        "projected": 1,
+        "pending": 0,
+        "latency": {
+          "count": 1,
+          "p50_ms": 17095.205958,
+          "p95_ms": 17095.205958,
+          "p99_ms": 17095.205958,
+          "max_ms": 17095.205958
+        }
+      },
+      {
+        "id": "r-6-2",
+        "sid": "s-6-2",
+        "seq": 1,
+        "produced": 1,
+        "projected": 1,
+        "pending": 0,
+        "latency": {
+          "count": 1,
+          "p50_ms": 17035.407041,
+          "p95_ms": 17035.407041,
+          "p99_ms": 17035.407041,
+          "max_ms": 17035.407041
+        }
+      },
+      {
+        "id": "r-6-3",
+        "sid": "s-6-3",
+        "seq": 1,
+        "produced": 1,
+        "projected": 1,
+        "pending": 0,
+        "latency": {
+          "count": 1,
+          "p50_ms": 16974.705083,
+          "p95_ms": 16974.705083,
+          "p99_ms": 16974.705083,
+          "max_ms": 16974.705083
+        }
+      },
+      {
+        "id": "r-6-4",
+        "sid": "s-6-4",
+        "seq": 0,
+        "produced": 0,
+        "projected": 0,
+        "pending": 0,
+        "latency": {
+          "count": 0,
+          "p50_ms": null,
+          "p95_ms": null,
+          "p99_ms": null,
+          "max_ms": null
+        }
+      },
+      {
+        "id": "r-7-0",
+        "sid": "s-7-0",
+        "seq": 0,
+        "produced": 0,
+        "projected": 0,
+        "pending": 0,
+        "latency": {
+          "count": 0,
+          "p50_ms": null,
+          "p95_ms": null,
+          "p99_ms": null,
+          "max_ms": null
+        }
+      },
+      {
+        "id": "r-7-1",
+        "sid": "s-7-1",
+        "seq": 0,
+        "produced": 0,
+        "projected": 0,
+        "pending": 0,
+        "latency": {
+          "count": 0,
+          "p50_ms": null,
+          "p95_ms": null,
+          "p99_ms": null,
+          "max_ms": null
+        }
+      },
+      {
+        "id": "r-7-2",
+        "sid": "s-7-2",
+        "seq": 0,
+        "produced": 0,
+        "projected": 0,
+        "pending": 0,
+        "latency": {
+          "count": 0,
+          "p50_ms": null,
+          "p95_ms": null,
+          "p99_ms": null,
+          "max_ms": null
+        }
+      },
+      {
+        "id": "r-7-3",
+        "sid": "s-7-3",
+        "seq": 0,
+        "produced": 0,
+        "projected": 0,
+        "pending": 0,
+        "latency": {
+          "count": 0,
+          "p50_ms": null,
+          "p95_ms": null,
+          "p99_ms": null,
+          "max_ms": null
+        }
+      },
+      {
+        "id": "r-7-4",
+        "sid": "s-7-4",
+        "seq": 0,
+        "produced": 0,
+        "projected": 0,
+        "pending": 0,
+        "latency": {
+          "count": 0,
+          "p50_ms": null,
+          "p95_ms": null,
+          "p99_ms": null,
+          "max_ms": null
+        }
+      },
+      {
+        "id": "r-8-0",
+        "sid": "s-8-0",
+        "seq": 0,
+        "produced": 0,
+        "projected": 0,
+        "pending": 0,
+        "latency": {
+          "count": 0,
+          "p50_ms": null,
+          "p95_ms": null,
+          "p99_ms": null,
+          "max_ms": null
+        }
+      },
+      {
+        "id": "r-8-1",
+        "sid": "s-8-1",
+        "seq": 0,
+        "produced": 0,
+        "projected": 0,
+        "pending": 0,
+        "latency": {
+          "count": 0,
+          "p50_ms": null,
+          "p95_ms": null,
+          "p99_ms": null,
+          "max_ms": null
+        }
+      },
+      {
+        "id": "r-8-2",
+        "sid": "s-8-2",
+        "seq": 0,
+        "produced": 0,
+        "projected": 0,
+        "pending": 0,
+        "latency": {
+          "count": 0,
+          "p50_ms": null,
+          "p95_ms": null,
+          "p99_ms": null,
+          "max_ms": null
+        }
+      },
+      {
+        "id": "r-8-3",
+        "sid": "s-8-3",
+        "seq": 0,
+        "produced": 0,
+        "projected": 0,
+        "pending": 0,
+        "latency": {
+          "count": 0,
+          "p50_ms": null,
+          "p95_ms": null,
+          "p99_ms": null,
+          "max_ms": null
+        }
+      },
+      {
+        "id": "r-8-4",
+        "sid": "s-8-4",
+        "seq": 0,
+        "produced": 0,
+        "projected": 0,
+        "pending": 0,
+        "latency": {
+          "count": 0,
+          "p50_ms": null,
+          "p95_ms": null,
+          "p99_ms": null,
+          "max_ms": null
+        }
+      },
+      {
+        "id": "r-9-0",
+        "sid": "s-9-0",
+        "seq": 0,
+        "produced": 0,
+        "projected": 0,
+        "pending": 0,
+        "latency": {
+          "count": 0,
+          "p50_ms": null,
+          "p95_ms": null,
+          "p99_ms": null,
+          "max_ms": null
+        }
+      },
+      {
+        "id": "r-9-1",
+        "sid": "s-9-1",
+        "seq": 0,
+        "produced": 0,
+        "projected": 0,
+        "pending": 0,
+        "latency": {
+          "count": 0,
+          "p50_ms": null,
+          "p95_ms": null,
+          "p99_ms": null,
+          "max_ms": null
+        }
+      },
+      {
+        "id": "r-9-2",
+        "sid": "s-9-2",
+        "seq": 0,
+        "produced": 0,
+        "projected": 0,
+        "pending": 0,
+        "latency": {
+          "count": 0,
+          "p50_ms": null,
+          "p95_ms": null,
+          "p99_ms": null,
+          "max_ms": null
+        }
+      },
+      {
+        "id": "r-9-3",
+        "sid": "s-9-3",
+        "seq": 0,
+        "produced": 0,
+        "projected": 0,
+        "pending": 0,
+        "latency": {
+          "count": 0,
+          "p50_ms": null,
+          "p95_ms": null,
+          "p99_ms": null,
+          "max_ms": null
+        }
+      },
+      {
+        "id": "r-9-4",
+        "sid": "s-9-4",
+        "seq": 0,
+        "produced": 0,
+        "projected": 0,
+        "pending": 0,
+        "latency": {
+          "count": 0,
+          "p50_ms": null,
+          "p95_ms": null,
+          "p99_ms": null,
+          "max_ms": null
+        }
+      }
+    ],
+    "sessions": [
+      {
+        "id": "s-0-0",
+        "version": 2,
+        "updated": 1,
+        "observed": 1,
+        "pending": 0,
+        "latency": {
+          "count": 1,
+          "p50_ms": 18955.049124999998,
+          "p95_ms": 18955.049124999998,
+          "p99_ms": 18955.049124999998,
+          "max_ms": 18955.049124999998
+        }
+      },
+      {
+        "id": "s-0-1",
+        "version": 2,
+        "updated": 1,
+        "observed": 1,
+        "pending": 0,
+        "latency": {
+          "count": 1,
+          "p50_ms": 17933.170124999997,
+          "p95_ms": 17933.170124999997,
+          "p99_ms": 17933.170124999997,
+          "max_ms": 17933.170124999997
+        }
+      },
+      {
+        "id": "s-0-2",
+        "version": 1,
+        "updated": 0,
+        "observed": 0,
+        "pending": 0,
+        "latency": {
+          "count": 0,
+          "p50_ms": null,
+          "p95_ms": null,
+          "p99_ms": null,
+          "max_ms": null
+        }
+      },
+      {
+        "id": "s-1-0",
+        "version": 1,
+        "updated": 0,
+        "observed": 0,
+        "pending": 0,
+        "latency": {
+          "count": 0,
+          "p50_ms": null,
+          "p95_ms": null,
+          "p99_ms": null,
+          "max_ms": null
+        }
+      },
+      {
+        "id": "s-1-1",
+        "version": 1,
+        "updated": 0,
+        "observed": 0,
+        "pending": 0,
+        "latency": {
+          "count": 0,
+          "p50_ms": null,
+          "p95_ms": null,
+          "p99_ms": null,
+          "max_ms": null
+        }
+      },
+      {
+        "id": "s-1-2",
+        "version": 1,
+        "updated": 0,
+        "observed": 0,
+        "pending": 0,
+        "latency": {
+          "count": 0,
+          "p50_ms": null,
+          "p95_ms": null,
+          "p99_ms": null,
+          "max_ms": null
+        }
+      },
+      {
+        "id": "s-2-0",
+        "version": 1,
+        "updated": 0,
+        "observed": 0,
+        "pending": 0,
+        "latency": {
+          "count": 0,
+          "p50_ms": null,
+          "p95_ms": null,
+          "p99_ms": null,
+          "max_ms": null
+        }
+      },
+      {
+        "id": "s-2-1",
+        "version": 1,
+        "updated": 0,
+        "observed": 0,
+        "pending": 0,
+        "latency": {
+          "count": 0,
+          "p50_ms": null,
+          "p95_ms": null,
+          "p99_ms": null,
+          "max_ms": null
+        }
+      },
+      {
+        "id": "s-2-2",
+        "version": 1,
+        "updated": 0,
+        "observed": 0,
+        "pending": 0,
+        "latency": {
+          "count": 0,
+          "p50_ms": null,
+          "p95_ms": null,
+          "p99_ms": null,
+          "max_ms": null
+        }
+      },
+      {
+        "id": "s-3-0",
+        "version": 1,
+        "updated": 0,
+        "observed": 0,
+        "pending": 0,
+        "latency": {
+          "count": 0,
+          "p50_ms": null,
+          "p95_ms": null,
+          "p99_ms": null,
+          "max_ms": null
+        }
+      },
+      {
+        "id": "s-3-1",
+        "version": 1,
+        "updated": 0,
+        "observed": 0,
+        "pending": 0,
+        "latency": {
+          "count": 0,
+          "p50_ms": null,
+          "p95_ms": null,
+          "p99_ms": null,
+          "max_ms": null
+        }
+      },
+      {
+        "id": "s-3-2",
+        "version": 1,
+        "updated": 0,
+        "observed": 0,
+        "pending": 0,
+        "latency": {
+          "count": 0,
+          "p50_ms": null,
+          "p95_ms": null,
+          "p99_ms": null,
+          "max_ms": null
+        }
+      },
+      {
+        "id": "s-4-0",
+        "version": 1,
+        "updated": 0,
+        "observed": 0,
+        "pending": 0,
+        "latency": {
+          "count": 0,
+          "p50_ms": null,
+          "p95_ms": null,
+          "p99_ms": null,
+          "max_ms": null
+        }
+      },
+      {
+        "id": "s-4-1",
+        "version": 1,
+        "updated": 0,
+        "observed": 0,
+        "pending": 0,
+        "latency": {
+          "count": 0,
+          "p50_ms": null,
+          "p95_ms": null,
+          "p99_ms": null,
+          "max_ms": null
+        }
+      },
+      {
+        "id": "s-4-2",
+        "version": 1,
+        "updated": 0,
+        "observed": 0,
+        "pending": 0,
+        "latency": {
+          "count": 0,
+          "p50_ms": null,
+          "p95_ms": null,
+          "p99_ms": null,
+          "max_ms": null
+        }
+      },
+      {
+        "id": "s-5-0",
+        "version": 1,
+        "updated": 0,
+        "observed": 0,
+        "pending": 0,
+        "latency": {
+          "count": 0,
+          "p50_ms": null,
+          "p95_ms": null,
+          "p99_ms": null,
+          "max_ms": null
+        }
+      },
+      {
+        "id": "s-5-1",
+        "version": 1,
+        "updated": 0,
+        "observed": 0,
+        "pending": 0,
+        "latency": {
+          "count": 0,
+          "p50_ms": null,
+          "p95_ms": null,
+          "p99_ms": null,
+          "max_ms": null
+        }
+      },
+      {
+        "id": "s-5-2",
+        "version": 1,
+        "updated": 0,
+        "observed": 0,
+        "pending": 0,
+        "latency": {
+          "count": 0,
+          "p50_ms": null,
+          "p95_ms": null,
+          "p99_ms": null,
+          "max_ms": null
+        }
+      },
+      {
+        "id": "s-6-0",
+        "version": 1,
+        "updated": 0,
+        "observed": 0,
+        "pending": 0,
+        "latency": {
+          "count": 0,
+          "p50_ms": null,
+          "p95_ms": null,
+          "p99_ms": null,
+          "max_ms": null
+        }
+      },
+      {
+        "id": "s-6-1",
+        "version": 1,
+        "updated": 0,
+        "observed": 0,
+        "pending": 0,
+        "latency": {
+          "count": 0,
+          "p50_ms": null,
+          "p95_ms": null,
+          "p99_ms": null,
+          "max_ms": null
+        }
+      },
+      {
+        "id": "s-6-2",
+        "version": 1,
+        "updated": 0,
+        "observed": 0,
+        "pending": 0,
+        "latency": {
+          "count": 0,
+          "p50_ms": null,
+          "p95_ms": null,
+          "p99_ms": null,
+          "max_ms": null
+        }
+      },
+      {
+        "id": "s-7-0",
+        "version": 1,
+        "updated": 0,
+        "observed": 0,
+        "pending": 0,
+        "latency": {
+          "count": 0,
+          "p50_ms": null,
+          "p95_ms": null,
+          "p99_ms": null,
+          "max_ms": null
+        }
+      },
+      {
+        "id": "s-7-1",
+        "version": 1,
+        "updated": 0,
+        "observed": 0,
+        "pending": 0,
+        "latency": {
+          "count": 0,
+          "p50_ms": null,
+          "p95_ms": null,
+          "p99_ms": null,
+          "max_ms": null
+        }
+      },
+      {
+        "id": "s-7-2",
+        "version": 1,
+        "updated": 0,
+        "observed": 0,
+        "pending": 0,
+        "latency": {
+          "count": 0,
+          "p50_ms": null,
+          "p95_ms": null,
+          "p99_ms": null,
+          "max_ms": null
+        }
+      },
+      {
+        "id": "s-8-0",
+        "version": 1,
+        "updated": 0,
+        "observed": 0,
+        "pending": 0,
+        "latency": {
+          "count": 0,
+          "p50_ms": null,
+          "p95_ms": null,
+          "p99_ms": null,
+          "max_ms": null
+        }
+      },
+      {
+        "id": "s-8-1",
+        "version": 1,
+        "updated": 0,
+        "observed": 0,
+        "pending": 0,
+        "latency": {
+          "count": 0,
+          "p50_ms": null,
+          "p95_ms": null,
+          "p99_ms": null,
+          "max_ms": null
+        }
+      },
+      {
+        "id": "s-8-2",
+        "version": 1,
+        "updated": 0,
+        "observed": 0,
+        "pending": 0,
+        "latency": {
+          "count": 0,
+          "p50_ms": null,
+          "p95_ms": null,
+          "p99_ms": null,
+          "max_ms": null
+        }
+      },
+      {
+        "id": "s-9-0",
+        "version": 1,
+        "updated": 0,
+        "observed": 0,
+        "pending": 0,
+        "latency": {
+          "count": 0,
+          "p50_ms": null,
+          "p95_ms": null,
+          "p99_ms": null,
+          "max_ms": null
+        }
+      },
+      {
+        "id": "s-9-1",
+        "version": 1,
+        "updated": 0,
+        "observed": 0,
+        "pending": 0,
+        "latency": {
+          "count": 0,
+          "p50_ms": null,
+          "p95_ms": null,
+          "p99_ms": null,
+          "max_ms": null
+        }
+      },
+      {
+        "id": "s-9-2",
+        "version": 1,
+        "updated": 0,
+        "observed": 0,
+        "pending": 0,
+        "latency": {
+          "count": 0,
+          "p50_ms": null,
+          "p95_ms": null,
+          "p99_ms": null,
+          "max_ms": null
+        }
+      }
+    ],
+    "loops": [
+      {
+        "id": "loop-0-0",
+        "updates": 1,
+        "distinct_observed_snapshots": 2,
+        "final_matches": true
+      },
+      {
+        "id": "loop-0-1",
+        "updates": 0,
+        "distinct_observed_snapshots": 1,
+        "final_matches": true
+      },
+      {
+        "id": "loop-1-0",
+        "updates": 0,
+        "distinct_observed_snapshots": 1,
+        "final_matches": true
+      },
+      {
+        "id": "loop-1-1",
+        "updates": 0,
+        "distinct_observed_snapshots": 1,
+        "final_matches": true
+      },
+      {
+        "id": "loop-2-0",
+        "updates": 0,
+        "distinct_observed_snapshots": 1,
+        "final_matches": true
+      },
+      {
+        "id": "loop-2-1",
+        "updates": 0,
+        "distinct_observed_snapshots": 1,
+        "final_matches": true
+      },
+      {
+        "id": "loop-3-0",
+        "updates": 0,
+        "distinct_observed_snapshots": 1,
+        "final_matches": true
+      },
+      {
+        "id": "loop-3-1",
+        "updates": 0,
+        "distinct_observed_snapshots": 1,
+        "final_matches": true
+      },
+      {
+        "id": "loop-4-0",
+        "updates": 0,
+        "distinct_observed_snapshots": 1,
+        "final_matches": true
+      },
+      {
+        "id": "loop-4-1",
+        "updates": 0,
+        "distinct_observed_snapshots": 1,
+        "final_matches": true
+      },
+      {
+        "id": "loop-5-0",
+        "updates": 0,
+        "distinct_observed_snapshots": 1,
+        "final_matches": true
+      },
+      {
+        "id": "loop-5-1",
+        "updates": 0,
+        "distinct_observed_snapshots": 1,
+        "final_matches": true
+      },
+      {
+        "id": "loop-6-0",
+        "updates": 0,
+        "distinct_observed_snapshots": 1,
+        "final_matches": true
+      },
+      {
+        "id": "loop-6-1",
+        "updates": 0,
+        "distinct_observed_snapshots": 1,
+        "final_matches": true
+      },
+      {
+        "id": "loop-7-0",
+        "updates": 0,
+        "distinct_observed_snapshots": 1,
+        "final_matches": true
+      },
+      {
+        "id": "loop-7-1",
+        "updates": 0,
+        "distinct_observed_snapshots": 1,
+        "final_matches": true
+      },
+      {
+        "id": "loop-8-0",
+        "updates": 0,
+        "distinct_observed_snapshots": 1,
+        "final_matches": true
+      },
+      {
+        "id": "loop-8-1",
+        "updates": 0,
+        "distinct_observed_snapshots": 1,
+        "final_matches": true
+      },
+      {
+        "id": "loop-9-0",
+        "updates": 0,
+        "distinct_observed_snapshots": 1,
+        "final_matches": true
+      },
+      {
+        "id": "loop-9-1",
+        "updates": 0,
+        "distinct_observed_snapshots": 1,
+        "final_matches": true
+      }
+    ]
+  },
+  "failures": [],
+  "checkpoints": [],
+  "loop_tick_overhead": {
+    "measured": false,
+    "reason": "No real Loop execution workload on/off comparison; snapshot observation and event loop delay are not Loop tick overhead"
+  },
+  "qualification": {
+    "local_synthetic_only": true,
+    "capacity_qualification": false,
+    "linux": false,
+    "shared_runner": true,
+    "internal_rpc_p95_not_derived_from_roundtrip": true,
+    "full_history_retention": false
+  }
+}

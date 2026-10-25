@@ -1,0 +1,27 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-local-ledgers/packages/core
+
+ ✓ src/state/graph-runs.test.ts (40 tests) 1788ms
+   ✓ graph run storage > serializes independent SQLite workers: same-request  442ms
+ ✓ src/state/graph-actions.test.ts (37 tests) 2039ms
+   ✓ graph action ledger > serializes independent SQLite workers: same-key  542ms
+ ✓ src/state/graph-invocations.test.ts (29 tests) 3655ms
+   ✓ survives process SIGKILL at before_commit without duplicate dispatch  970ms
+   ✓ survives process SIGKILL at mid_transaction without duplicate dispatch  583ms
+   ✓ survives process SIGKILL at after_commit without duplicate dispatch  510ms
+   ✓ survives process SIGKILL at after_response without duplicate dispatch  489ms
+   ✓ survives process SIGKILL at after_receipt without duplicate dispatch  423ms
+ ✓ src/state/graph-apply.test.ts (27 tests) 4477ms
+   ✓ does not repeat physical writes after SIGKILL at before_gate  912ms
+   ✓ does not repeat physical writes after SIGKILL at mid_gate  579ms
+   ✓ does not repeat physical writes after SIGKILL at after_gate  556ms
+   ✓ does not repeat physical writes after SIGKILL at partial  488ms
+   ✓ does not repeat physical writes after SIGKILL at after_files  428ms
+   ✓ does not repeat physical writes after SIGKILL at mid_completion  451ms
+   ✓ does not repeat physical writes after SIGKILL at after_receipt  398ms
+
+ Test Files  4 passed (4)
+      Tests  133 passed (133)
+   Start at  13:32:45
+   Duration  4.86s (transform 207ms, setup 0ms, collect 569ms, tests 11.96s, environment 0ms, prepare 156ms)
+

@@ -3,6 +3,7 @@ import { execFileSync } from "node:child_process";
 import { lstat, mkdir, open, realpath } from "node:fs/promises";
 import { isAbsolute, join, relative, resolve, sep } from "node:path";
 import { z } from "zod";
+import { REVIEWER_GIT_ARGS, reviewerGitEnvironment } from "./reviewer-isolation.js";
 
 const fingerprint = z.string().regex(/^[a-f0-9]{64}$/);
 const identifier = z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_.-]{0,95}$/);
@@ -30,11 +31,18 @@ const sha = (value: unknown) => createHash("sha256").update(JSON.stringify(value
 export function candidateBinding(policy: CandidatePolicy): CandidateBatchBinding {
   return CandidateBatchBinding.parse(Object.fromEntries(Object.keys(CandidateBatchBinding.shape).map(k => [k, policy[k as keyof CandidatePolicy]])));
 }
-function gitRaw(workspace: string, args: string[]): string {
-  return execFileSync("git", ["-C", workspace, ...args], { encoding: "utf8", timeout: 10_000, maxBuffer: 1_048_576 });
+function gitRaw(workspace: string, args: string[], maxBuffer = 1_048_576): string {
+  return execFileSync("git", ["-C", workspace, ...REVIEWER_GIT_ARGS, ...args], { env: reviewerGitEnvironment(workspace), encoding: "utf8", timeout: 10_000, maxBuffer });
 }
 const git = (workspace: string, args: string[]) => gitRaw(workspace, args).trim();
+export function assertCandidateIndexVisible(workspace: string): void {
+  let entries: string;
+  try { entries = gitRaw(workspace, ["ls-files", "-v", "-z"], 64 * 1024 * 1024); }
+  catch (error) { throw new Error("CANDIDATE_INDEX_OBSERVATION_UNAVAILABLE", { cause: error }); }
+  if (entries.split("\0").some(entry => /^[a-zS] /.test(entry))) throw Error("CANDIDATE_HIDDEN_INDEX_ENTRY");
+}
 export function freezeCandidate(workspace: string) {
+  assertCandidateIndexVisible(workspace);
   if (git(workspace, ["status", "--porcelain", "--untracked-files=all"]) !== "") throw Error("CANDIDATE_DIRTY");
   const headSha = git(workspace, ["rev-parse", "HEAD"]), treeSha = git(workspace, ["rev-parse", "HEAD^{tree}"]), branch = git(workspace, ["branch", "--show-current"]);
   if (!/^(?:[a-f0-9]{40}|[a-f0-9]{64})$/.test(headSha) || !/^(?:[a-f0-9]{40}|[a-f0-9]{64})$/.test(treeSha) || !branch) throw Error("CANDIDATE_GIT_IDENTITY_INVALID");

@@ -1,0 +1,107 @@
+{
+  "files": [
+    {
+      "path": "packages/loop/src/verifier.ts",
+      "sha256": "354743c487989355b9e7b28f6df2365739844b4e22e23d0aacbe7a61415993e2",
+      "selection": "full"
+    },
+    {
+      "path": "packages/loop/src/verifier.test.ts",
+      "sha256": "bb664e86b2a4d02ed2b35eed0a7612ff314c9cb77c7280e09e70192ad7c5e16d",
+      "selection": "full"
+    },
+    {
+      "path": "packages/loop/src/executor.ts",
+      "sha256": "fbf9d07b64bc4fe4f230ecffe52a757ebde03192f196f6710c2395c3ee1edfe7",
+      "selection": "full"
+    },
+    {
+      "path": "packages/loop/src/executor.test.ts",
+      "sha256": "23e9494af17ca1a0befbe00c81c414f4235f56aa0bce36a6273b6cd5947b3b91",
+      "selection": "full"
+    },
+    {
+      "path": "packages/loop/src/review-boundary.ts",
+      "sha256": "3b94e3c933c7b50e6a0c85e01c1713faa836ac69a400ba6c27608bd8129df53f",
+      "selection": "full"
+    },
+    {
+      "path": "packages/loop/src/reviewer-isolation.ts",
+      "sha256": "07b39a05d149597d6e8d255e0563c794dab5e7496c4e725e8b5a7519d82983fd",
+      "selection": "full"
+    },
+    {
+      "path": "packages/cli/src/source-observation-host.ts",
+      "sha256": "b2ca86601c4c9034bbe8a46a4ef05eb1cb721a3a8a558d191a4a30a1dacc3acb",
+      "selection": "full"
+    },
+    {
+      "path": "packages/cli/src/source-observation-command.ts",
+      "sha256": "4b4050868cf1e3b24bd1812d416542dc11f714408974dc7645b579914e468997",
+      "selection": "full"
+    },
+    {
+      "path": "packages/cli/src/local-data-source-registry.ts",
+      "sha256": "dffd57cfbfcb5d0a5722b8baa61246e688e4dbda9199fbf64f770ee133dd7d90",
+      "selection": "full"
+    },
+    {
+      "path": "packages/cli/src/worker-log-view.ts",
+      "sha256": "786c38a54eb3bf6ef6df1335cd3f27426f16bdc09a1b237d4d1ea89ed4db5795",
+      "selection": "full"
+    },
+    {
+      "path": "packages/cli/src/worker-log-view.test.ts",
+      "sha256": "b370fa0033d5ad667e2c4c7a9f0f07b274dea8fb232f10730a094aa6df4a5401",
+      "selection": "full"
+    },
+    {
+      "path": "packages/cli/src/follow-up-delivery-host.ts",
+      "sha256": "6e39e975b954189214daa42a1dd4b8014f9673f4dd34d395b2d8bcfe2c1361b8",
+      "selection": "full"
+    },
+    {
+      "path": "packages/cli/src/local-ledgers-daemon.test.ts",
+      "sha256": "3d9bfe11aa8e18b2e6afc47823c3cb772b3b958da3fcec6431f4caddaeea624a",
+      "selection": "full"
+    },
+    {
+      "path": "packages/cli/src/upgrade-native-backend.ts",
+      "sha256": "2476bcd4a9e143b92344660e09d77db386ca107432a983d305b6e646c90409a3",
+      "selection": "full"
+    },
+    {
+      "path": "packages/cli/src/daemon.ts",
+      "sha256": "2f3f8042a9aca9b67882aaef9ab20faa315e2aace14a84d91165f3e81c216a89",
+      "selection": [
+        [
+          1119,
+          1220
+        ],
+        [
+          4100,
+          4190
+        ],
+        [
+          4400,
+          4515
+        ]
+      ]
+    },
+    {
+      "path": "packages/cli/src/bin.ts",
+      "sha256": "5eb5b02135fd67abd2821091af7e22897d272c38173058d9ff74ef511471834a",
+      "selection": [
+        [
+          875,
+          895
+        ],
+        [
+          7310,
+          7355
+        ]
+      ]
+    }
+  ],
+  "prompt_sha256": "4a4a2cf286fcfdc63694b080d8b514946ff4c7f2737c50b3f6ed3e6169900936"
+}

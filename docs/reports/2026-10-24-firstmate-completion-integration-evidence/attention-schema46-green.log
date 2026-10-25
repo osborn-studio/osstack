@@ -1,0 +1,10 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-upgrade/packages/cli
+
+ ✓ src/attention-read-model.test.ts (9 tests) 234ms
+
+ Test Files  1 passed (1)
+      Tests  9 passed (9)
+   Start at  18:09:03
+   Duration  1.07s (transform 365ms, setup 18ms, collect 616ms, tests 234ms, environment 0ms, prepare 35ms)
+

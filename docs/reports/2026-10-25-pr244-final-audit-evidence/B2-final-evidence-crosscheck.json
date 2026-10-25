@@ -1,0 +1,32 @@
+{
+  "storeUnchanged": true,
+  "currentSha256": "5f11a70120906b2e65cae5f00aec2303bf6eca8b81e8ea165e35419f0b571300",
+  "modelManifestEvidence": [
+    {
+      "round": "r3",
+      "path": "packages/cli/src/graph-verification-store.ts",
+      "sha256": "5f11a70120906b2e65cae5f00aec2303bf6eca8b81e8ea165e35419f0b571300",
+      "bytes": 27173
+    },
+    {
+      "round": "r4",
+      "path": "packages/cli/src/graph-verification-store.ts",
+      "sha256": "5f11a70120906b2e65cae5f00aec2303bf6eca8b81e8ea165e35419f0b571300",
+      "bytes": 27173
+    },
+    {
+      "round": "r9",
+      "path": "packages/cli/src/graph-verification-store.ts",
+      "sha256": "5f11a70120906b2e65cae5f00aec2303bf6eca8b81e8ea165e35419f0b571300",
+      "bytes": 27173
+    },
+    {
+      "round": "r10",
+      "path": "packages/cli/src/graph-verification-store.ts",
+      "sha256": "5f11a70120906b2e65cae5f00aec2303bf6eca8b81e8ea165e35419f0b571300",
+      "bytes": 27173
+    }
+  ],
+  "benchmarkFixture": "graph-verification.test.ts fixture options.acquire is stub release/assertActive callbacks; opt-in benchmark invokes this fixture directly, not brokerFixture/GovernedExecution",
+  "currentDocSha256": "bf3e74b4b41e78f1045180b83e0e1dbbfcb66f3439304f376b9b02a38d73a40e"
+}

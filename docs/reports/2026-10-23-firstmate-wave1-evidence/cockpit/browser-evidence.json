@@ -1,0 +1,8 @@
+{
+  "malformed_page_rendered": true,
+  "pagination_verified": true,
+  "script_injected_elements": 0,
+  "current_build_console_errors": [],
+  "offline_observation": "Observation unavailable\nLocal overview (default tenant)\nCounts unavailable\nRead-only observation. An applied answer does not mean the task is complete.",
+  "qualification": "Actual Chrome, isolated local fixture, not production daemon"
+}

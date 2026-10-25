@@ -1,0 +1,10 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-cockpit/packages/core
+
+ ✓ src/state/attention-recovery-view.test.ts (8 tests) 155ms
+
+ Test Files  1 passed (1)
+      Tests  8 passed (8)
+   Start at  13:13:22
+   Duration  479ms (transform 91ms, setup 0ms, collect 125ms, tests 155ms, environment 0ms, prepare 34ms)
+

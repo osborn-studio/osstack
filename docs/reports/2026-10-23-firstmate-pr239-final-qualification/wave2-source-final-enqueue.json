@@ -1,0 +1,10 @@
+{
+  "task": {
+    "task_id": "firstmate-wave2-final-source-qualification",
+    "capability": "code.test",
+    "prompt": "Qualify final wave2 source 7912b5de after bounded pending-ID review fix; run eight full checks, retain every result, no merge or deployment.",
+    "priority": 50,
+    "source": "task_queue"
+  },
+  "path": "/Volumes/AIMATE_WORK/tmp/osstack/smoke/pr237-integration/wave2-loop/tasks/firstmate-wave2-final-source-qualification.json"
+}

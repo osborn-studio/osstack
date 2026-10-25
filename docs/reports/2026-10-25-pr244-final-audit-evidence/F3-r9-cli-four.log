@@ -1,0 +1,74 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/pr244-final-audit/packages/cli
+
+osstack: clock jump detected drift_ms=9980; re-running external health and recovery probes
+osstack: retaining write lease run-offline-production-recovery: guarded autonomy blocked or exit unconfirmed
+ ✓ src/daemon-loop.test.ts (25 tests) 15115ms
+   ✓ daemon loop RPC > persists deferred-work reasons across daemon restart instead of reporting idle  1107ms
+   ✓ daemon loop RPC > routes guarded autonomy resume through the daemon socket  443ms
+   ✓ daemon loop RPC > waits for guarded autonomy boot recovery before closing its database  529ms
+   ✓ daemon loop RPC > forces external health recovery after a detected wall-clock jump  581ms
+   ✓ daemon loop RPC > limits guarded autonomy writers to two after persisting their queued runs  678ms
+   ✓ daemon loop RPC > keeps blocked delivery queued offline and resumes after network recovery  426ms
+   ✓ daemon loop RPC > recovers an interrupted production deployment while GitHub remains offline  302ms
+   ✓ daemon loop RPC > runs and reports a local loop cycle through the daemon socket  903ms
+   ✓ daemon loop RPC > attaches neat evidence to a successful daemon loop without gating it  753ms
+   ✓ daemon loop RPC > runs finite multi-cycle loops through daemon RPC  884ms
+   ✓ daemon loop RPC > runs reviewer adapters through daemon loop.run  1363ms
+   ✓ daemon loop RPC > starts, reports, and stops a background polling loop  955ms
+   ✓ daemon loop RPC > stops a polling loop session when its budget is exceeded and persists the reason  933ms
+   ✓ daemon loop RPC > starts a cron-scheduled background loop  703ms
+   ✓ daemon loop RPC > includes background loop metrics in daemon stats  710ms
+   ✓ daemon loop RPC > creates a blocked kanban card when a background loop escalates  922ms
+   ✓ daemon loop RPC > creates a blocked kanban card after three same-capability loop failures  1151ms
+   ✓ daemon loop RPC > stops a background polling loop when its goal command passes  636ms
+ ✓ src/local-ledgers-daemon.test.ts (36 tests) 16394ms
+   ✓ exercises the default exported provider without credentials and fails as not_authenticated  1680ms
+   ✓ measures bounded recovery over the actual socket alongside mixed session and run observations  353ms
+   ✓ watches actual daemon snapshots through the main CLI and leaves worker execution unchanged  1157ms
+   ✓ waits for bounded delivery finalization before closing the DB and never accepts a late success  342ms
+   ✓ routes pinned viewer launch to the real inspection service and consumes its handoff once  2080ms
+   ✓ bounds source responses while retaining hung operation slots until settlement  2100ms
+   ✓ bounds shutdown of aborted source reads even if their I/O never settles  2153ms
+   ✓ bounds worker log responses and retains occupied slots until file reads settle  2044ms
+   ✓ tracks source.inspect for cancellation and bounded shutdown  2094ms
+(node:75006) ExperimentalWarning: stripTypeScriptTypes is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:75006) ExperimentalWarning: vm.USE_MAIN_CONTEXT_DEFAULT_LOADER is an experimental feature and might change at any time
+ ✓ src/loop-defaults-cli.test.ts (21 tests) 8500ms
+   ✓ actual main run executes persisted native command and verifier  535ms
+   ✓ actual main keeps configured failing verify gate  461ms
+   ✓ actual main keeps explicit failing verify gate  475ms
+   ✓ actual explicit execute overrides default while verify still runs  405ms
+   ✓ reviewer-only defaults use agent admission and actual synthetic failing adapter  522ms
+   ✓ actual run consumes flag-looking verify value while native default iteration still applies  371ms
+   ✓ source mutation omitting defaults demonstrably loses configured actual execution after valid baseline  542ms
+   ✓ source mutation dropping default verifier gives real corrupt-byte false success after valid baseline  911ms
+   ✓ actual missing-config ordinary run preserves native execution and admission  517ms
+   ✓ actual missing-config --reviewer uses agent admission and native verifier invocation  462ms
+   ✓ actual missing-config --checker uses agent admission and native verifier invocation  532ms
+   ✓ actual explicit execute suppresses persisted profile and roles without native routing  601ms
+   ✓ actual explicit profile suppresses persisted shell and derives native agent/reviewer admission  848ms
+   ✓ actual nonlegacy autonomy bypasses malformed preferences and uses original native routing  619ms
+ ✓ src/loop-cli.test.ts (42 tests) 13242ms
+   ✓ loop CLI > creates a shadow checkpoint before a local non-worktree loop run  324ms
+   ✓ loop CLI > keeps legacy full-scan findings as warn evidence while strict baseline scope passes clean changes  590ms
+   ✓ loop CLI > blocks new changed-file errors in strict baseline scope  573ms
+   ✓ loop CLI > gates findings committed by an isolated worktree against the pre-run revision  864ms
+   ✓ loop CLI > passes --worktree through local loop runs  1152ms
+   ✓ loop CLI > runs ds-review as a post-execution reviewer verifier  1233ms
+   ✓ loop CLI > keeps builder-unavailable from successful reviewed shell execution  467ms
+   ✓ loop CLI > keeps reviewer-unavailable from successful reviewed shell execution  1114ms
+   ✓ loop CLI > keeps reviewer-failure from successful reviewed shell execution  1031ms
+   ✓ loop CLI > can run and inspect a loop through the daemon  621ms
+   ✓ loop CLI > can manage a daemon background polling loop  644ms
+   ✓ loop CLI > treats loop start --once as a single daemon-managed cycle  517ms
+   ✓ loop CLI > starts a daemon loop with a cron schedule  526ms
+
+ Test Files  4 passed (4)
+      Tests  124 passed (124)
+   Start at  11:00:05
+   Duration  36.61s (transform 4.78s, setup 126ms, collect 14.80s, tests 53.25s, environment 1ms, prepare 388ms)
+
+
+EXIT_CODE=0

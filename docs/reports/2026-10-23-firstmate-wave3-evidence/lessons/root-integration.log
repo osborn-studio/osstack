@@ -1,0 +1,51 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-contract-integration/packages/cli
+
+ ✓ src/attention-lesson.test.ts (19 tests) 855ms
+   ✓ uses the existing review lifecycle and does not recreate promoted or discarded candidates  385ms
+ ❯ src/session-rpc.test.ts (31 tests | 1 failed) 2646ms
+   ✓ governed session RPC > persists structured-event without treating it as approval 104ms
+   ✓ governed session RPC > persists structured-directive without treating it as approval 90ms
+   ✓ governed session RPC > preserves structured-start on the first session turn 71ms
+   ✓ governed session RPC > preserves structured-start-event on the first session turn 75ms
+   ✓ governed session RPC > tracks a resumed turn for drain and cancellation 121ms
+   ✓ governed session RPC > refuses a new instruction while the daemon is drained 14ms
+   ✓ governed session RPC > starts and persists a real resumable session without exposing its native id 72ms
+   ✓ governed session RPC > lists and snapshots sessions without exposing native ids 16ms
+   ✓ governed session RPC > applies an instruction once and reports an identical replay as duplicate 97ms
+   ✓ governed session RPC > retains failed delivery as uncertain instead of automatically replaying side effects 85ms
+   ✓ governed session RPC > turns an exact bounded OStag decision directive into awaiting_decision 83ms
+   ✓ governed session RPC > rejects stale versions, wrong turns, terminal sessions and oversized messages 109ms
+   ✓ governed session RPC > collapses concurrent duplicate delivery into one adapter resume 83ms
+   ✓ governed session RPC > fails closed on an accepted reservation left by daemon interruption 14ms
+   ✓ governed session RPC > keeps an uncertain delivery visible when a newer message fails 14ms
+   ✓ governed session RPC > exposes list, status, snapshot and send through the CLI 84ms
+   ✓ governed session RPC > starts a resumable session through the CLI without exposing its native id 70ms
+   ✓ governed session RPC > fails closed when an adapter tries to expose protected native metadata 83ms
+   ✓ governed session RPC > rejects instructions addressed to a different runtime before invoking the adapter 14ms
+   ✓ attention watch/inbox/answer shares the exact governed session receipt 85ms
+   ✓ never resumes an abandoned receipt when its original direct message ID is replayed 88ms
+   ✓ readmits capacity-limited Loop snapshots but preserves an explicit release 21ms
+   ✓ keeps an Attention answer uncertain after adapter failure and never replays it 89ms
+   ✓ keeps the reserved answer uncertain when both completion and failure persistence throw 92ms
+   ✓ does not reserve manual instructions or answers when execution admission is denied 184ms
+   ✓ cancels admission queued for either manual route without reserving a receipt  337ms
+   ✓ updates watched decisions from durable session changes without inbox refresh 210ms
+   ✓ exposes scoped worker views through the real RPC and CLI without execution 41ms
+   ✓ manual daily reads watched repository state through the daemon without marking it seen 59ms
+   ✓ waits for supervision stop before closing the daemon database 3ms
+   × evidence lesson uses actual watched run RPC and preserves a reviewed investigation draft 26ms
+     → connect ENOENT /var/folders/97/wmwg4qzx02j74c3n73nh438w0000gn/T/osstack-session-rpc-mlm4Iu/d.sock
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/session-rpc.test.ts > evidence lesson uses actual watched run RPC and preserves a reviewed investigation draft
+Error: connect ENOENT /var/folders/97/wmwg4qzx02j74c3n73nh438w0000gn/T/osstack-session-rpc-mlm4Iu/d.sock
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 1 passed (2)
+      Tests  1 failed | 49 passed (50)
+   Start at  12:32:16
+   Duration  4.18s (transform 887ms, setup 18ms, collect 1.75s, tests 3.50s, environment 1ms, prepare 79ms)
+

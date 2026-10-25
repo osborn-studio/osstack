@@ -1,0 +1,13 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/packages/core
+
+ ✓ src/state/attention-observer.test.ts (22 tests) 1045ms
+ ✓ src/state/attention-experience.test.ts (15 tests) 422ms
+ ✓ src/state/attention-actions.test.ts (8 tests) 214ms
+ ✓ src/state/attention-store.test.ts (3 tests) 84ms
+
+ Test Files  4 passed (4)
+      Tests  48 passed (48)
+   Start at  17:35:10
+   Duration  3.64s (transform 396ms, setup 0ms, collect 865ms, tests 1.76s, environment 1ms, prepare 231ms)
+

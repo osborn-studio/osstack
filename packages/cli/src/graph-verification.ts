@@ -1,13 +1,17 @@
+import { readVerificationDirectory, readVerificationFile, VerificationInventoryBudget, verificationInventoryLimits } from './graph-verification-inventory.js';
 import { prepareGraphContainedImage, registerContainedTests, validateContainedTestEvidence, type GraphContainedTestOptions } from './graph-contained-tests.js';
 import type { ContainedImageReceipt } from '@osstack/agents';
 import { execFileSync } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
-import { existsSync, lstatSync, readdirSync, readFileSync, readlinkSync, realpathSync } from 'node:fs';
+import { existsSync, lstatSync, readlinkSync, realpathSync } from 'node:fs';
 import { mkdir, realpath } from 'node:fs/promises';
 import { dirname, isAbsolute, join, resolve } from 'node:path';
 import type { AgentAdapter, AgentTask } from '@osstack/agents';
 import type { GraphArtifactStore, GraphArtifactManifest } from '@osstack/core/graph-artifacts';
 import { GraphResult } from '@osstack/protocol';
+import type { FrozenDeliveryContractV2 } from '@osstack/protocol';
+import { assertGraphContractPaths, resolveGraphContractChecks } from './graph-delivery-contract.js';
+import { prepareGraphExecutionContext, type GraphExecutionContextRegistration, type GraphContextEvidence } from './graph-execution-context.js';
 import { ExecutionPlan, type RegisteredCandidateWorkspace } from '@osstack/loop';
 import { parseVerificationBinding, verificationCanonical, type VerificationBinding } from '@osstack/graph/nodes/branch';
 import { createReviewRequest, parseReviewReport } from '@osstack/graph/nodes/review';
@@ -28,11 +32,19 @@ export interface GraphVerificationOptions {
   /** Opt-in immutable-image tests; default registered shell behavior is unchanged. */
   containedTests?: GraphContainedTestOptions;
   acceptanceRegistry: readonly AcceptanceCommandSpec[]; writerIdentity: string;
+  deliveryContract?: FrozenDeliveryContractV2;
+  executionContext?: GraphExecutionContextRegistration;
+  contextRepositoryPath?: string;
+  recordContextEvidence?: (value: GraphContextEvidence) => void;
   reviewer: { identity: string; adapter: AgentAdapter; capabilityId: string };
   /** Independent host identity/credential check; never derived from review/model output. */
   verifyReviewer: (identities: Readonly<ReviewerIdentity>) => Promise<void>;
   /** Reads current running ledger record, including its actual logical attempt. */
   effectIdentity: (kind: Kind) => VerificationEffect;
+  /** Trusted diagnostics only; called once per complete candidate observation. */
+  onCandidateObservation?: (kind: Kind) => void;
+  /** Trusted preparation diagnostics; restore includes its internal artifact verification. */
+  onPreparationPhase?: (phase: 'verifyArtifact' | 'restore' | 'assertExactCandidateFiles', durationMs: number) => void;
   /** Host ledger preparation owns this exact source lease. No nested acquisition. */
   preparationLease?: ExecutionLease;
   slots?: Partial<Record<Kind, { nodeId: string; effectSlot: string; workspaceLeaseRef: string; tokenReservation: number }>>;
@@ -66,20 +78,20 @@ export function readCandidateRevisions(readGit: (...args: string[]) => string): 
 /** Raw bytes/modes/links, including ignored and untracked files. Git status alone
  * misses ignored files, assume-unchanged and timestamp-preserving modifications. */
 function workspaceFingerprint(path: string): string {
-  const hash = createHash('sha256'); let count = 0;
+  const hash = createHash('sha256'); const budget = new VerificationInventoryBudget();
   const visit = (directory: string, prefix: string) => {
-    for (const name of readdirSync(directory).sort()) {
+    for (const name of readVerificationDirectory(directory)) {
       if (!prefix && name === '.git') continue;
-      if (++count > 100000) throw new Error('workspace inventory limit');
       const relative = `${prefix}${name}`; const full = join(directory, name); const stat = lstatSync(full);
       hash.update(JSON.stringify([relative, stat.mode & 0o777, stat.isDirectory() ? 'directory' : stat.isSymbolicLink() ? 'link' : 'file']));
       if (stat.isSymbolicLink()) {
+        budget.entry(Buffer.byteLength(readlinkSync(full)));
         const target = resolve(dirname(full), readlinkSync(full));
         if (!target.startsWith(`${path}/`) || (existsSync(target) && !realpathSync(target).startsWith(`${path}/`))) throw new Error('shared external symlink in candidate workspace');
         hash.update(readlinkSync(full));
       }
-      else if (stat.isDirectory()) visit(full, `${relative}/`);
-      else if (stat.isFile() && stat.size <= 256 * 1024 * 1024 && stat.nlink === 1) hash.update(readFileSync(full));
+      else if (stat.isDirectory()) { budget.entry(); visit(full, `${relative}/`); }
+      else if (stat.isFile() && stat.nlink === 1) hash.update(readVerificationFile(full, stat, budget));
       else throw new Error('unsupported workspace entry/shared writable hardlink');
     }
   };
@@ -87,14 +99,14 @@ function workspaceFingerprint(path: string): string {
 }
 export function assertExactCandidateFiles(path: string, revision: string): void {
   if (resolve(path) !== path || realpathSync(path) !== path) throw new Error('candidate root must be canonical');
-  const expected = new Set<string>();
+  const expected = new Set<string>(); const budget = new VerificationInventoryBudget();
   for (const entry of gitRaw(path, 'ls-tree', '-rz', '--full-tree', revision).split('\0').filter(Boolean)) {
     const match = /^(100644|100755|120000) blob ([a-f0-9]{40})\t([\s\S]+)$/.exec(entry);
     if (!match) throw new Error('unsupported candidate tree entry');
     const name = match[3]!;
     if (isAbsolute(name) || name.split('/').some(part => !part || part === '.' || part === '..' || part === '.git')) throw new Error('unsafe candidate tree path');
     expected.add(name);
-    let parent = dirname(name); while (parent !== '.') { expected.add(parent); parent = dirname(parent); }
+    let parent = dirname(name); while (parent !== '.') { expected.add(parent); if (expected.size > verificationInventoryLimits.candidateEntries) throw Error('verification inventory budget exceeded'); parent = dirname(parent); }
     const file = join(path, name);
     parent = dirname(file);
     while (parent !== path) {
@@ -102,13 +114,14 @@ export function assertExactCandidateFiles(path: string, revision: string): void 
       parent = dirname(parent);
     }
     const stat = lstatSync(file);
-    if (stat.nlink !== 1 || stat.size > 256 * 1024 * 1024) throw new Error('unsupported tracked entry');
+    if (stat.nlink !== 1) throw new Error('unsupported tracked entry');
     const bytes = match[1] === '120000' && stat.isSymbolicLink() ? Buffer.from(readlinkSync(file))
-      : match[1] !== '120000' && stat.isFile() ? readFileSync(file) : undefined;
+      : match[1] !== '120000' && stat.isFile() ? readVerificationFile(file, stat, budget) : undefined;
+    if (stat.isSymbolicLink()) budget.entry(bytes?.length ?? 0);
     if (!bytes || (match[1] !== '120000' && ((stat.mode & 0o111) !== 0) !== (match[1] === '100755'))
       || createHash('sha1').update(`blob ${bytes.length}\0`).update(bytes).digest('hex') !== match[2]) throw new Error('candidate raw tree mismatch');
   }
-  const visit = (directory: string, prefix: string): void => { for (const name of readdirSync(directory)) {
+  const visit = (directory: string, prefix: string): void => { for (const name of readVerificationDirectory(directory)) {
     if (!prefix && name === '.git') continue;
     const relative = `${prefix}${name}`; if (!expected.has(relative)) throw new Error('candidate has unexpected files');
     const full = join(directory, name); if (lstatSync(full).isDirectory()) visit(full, `${relative}/`);
@@ -121,7 +134,8 @@ function repositoryStamp(path: string): string {
   if (git(path, 'rev-parse', '--absolute-git-dir') !== gitDir || git(path, 'rev-parse', '--git-common-dir') !== '.git'
     || existsSync(join(gitDir, 'objects', 'info', 'alternates')) || existsSync(join(gitDir, 'objects', 'info', 'http-alternates'))) throw new Error('shared repository storage forbidden');
   // Every restored repository starts without caches, symlinked metadata or shared objects.
-  const inspect = (directory: string): void => { for (const name of readdirSync(directory)) { const p = join(directory, name); const stat = lstatSync(p); if (stat.isSymbolicLink() || (!stat.isDirectory() && (!stat.isFile() || stat.nlink !== 1))) throw new Error('shared repository metadata'); if (stat.isDirectory()) inspect(p); } };
+  const budget = new VerificationInventoryBudget(verificationInventoryLimits.repositoryBytes, verificationInventoryLimits.repositoryEntries);
+  const inspect = (directory: string): void => { for (const name of readVerificationDirectory(directory, verificationInventoryLimits.repositoryEntries)) { const p = join(directory, name); const stat = lstatSync(p); budget.entry(stat.isFile() ? stat.size : 0); if (stat.isSymbolicLink() || (!stat.isDirectory() && (!stat.isFile() || stat.nlink !== 1))) throw new Error('shared repository metadata'); if (stat.isDirectory()) inspect(p); } };
   inspect(gitDir);
   return verificationCanonical([path, gitDir, join(gitDir, 'objects')].map(p => { const stat = lstatSync(p); return [p, stat.dev, stat.ino]; }));
 }
@@ -137,7 +151,7 @@ export async function prepareGraphVerificationBranch(options: GraphVerificationO
 }
 async function prepareSelection(options: GraphVerificationOptions, kinds: readonly Kind[]) {
   // Capture ALL callbacks and values before the first await.
-  const { authorize, authorizeCancel, authorizePolicy, acquire, effectIdentity, verifyReviewer, preparationLease } = options;
+  const { authorize, authorizeCancel, authorizePolicy, acquire, effectIdentity, verifyReviewer, preparationLease, onCandidateObservation, onPreparationPhase } = options;
   const containedOptions = options.containedTests ? Object.freeze({ ...options.containedTests }) : undefined;
   const check = checkedAuthority(authorize); check();
   const data = snapshot({ root: options.root, binding: parseVerificationBinding(options.binding), candidate: GraphResult.parse(options.candidate), source: options.sourceWorkspace,
@@ -150,6 +164,14 @@ async function prepareSelection(options: GraphVerificationOptions, kinds: readon
     capabilities: () => structuredClone(capabilities), isAvailable: adapter.isAvailable.bind(adapter), invoke: adapter.invoke.bind(adapter),
     ...(adapter.confirmStopped ? { confirmStopped: adapter.confirmStopped.bind(adapter) } : {}) });
   const verifyArtifact = options.artifacts.verify.bind(options.artifacts); const restore = options.artifacts.restore.bind(options.artifacts);
+  const timedPreparation = async <T>(phase: 'verifyArtifact' | 'restore', operation: () => Promise<T>): Promise<T> => {
+    const started = performance.now(); try { return await operation(); }
+    finally { onPreparationPhase?.(phase, performance.now() - started); }
+  };
+  const exactCandidate = (path: string) => {
+    const started = performance.now(); try { assertExactCandidateFiles(path, binding.candidateRevision); }
+    finally { onPreparationPhase?.('assertExactCandidateFiles', performance.now() - started); }
+  };
   const { binding } = data;
   check();
   if (!isAbsolute(data.root) || data.root.includes('\0') || !isAbsolute(data.source.workspace_path) || data.source.workspace_id !== binding.scope.workspaceId) throw new Error('invalid host workspace/root');
@@ -160,6 +182,8 @@ async function prepareSelection(options: GraphVerificationOptions, kinds: readon
   const acceptanceMatches = data.registry.filter(spec => spec.ref === binding.acceptanceRef);
   if (acceptanceMatches.length !== 1) throw new Error('acceptance must resolve unique trusted command');
   const acceptance = acceptanceMatches[0]!;
+  const acceptanceSuite = options.deliveryContract ? resolveGraphContractChecks(options.deliveryContract,data.registry,binding.acceptanceRef) : [acceptance];
+
   const identities = snapshot({ writerIdentity: data.writerIdentity, reviewerIdentity: data.reviewerIdentity, adapterId: reviewer.id, capabilityId: data.capabilityId });
   const checked = async <T>(operation: () => Promise<T>): Promise<T> => { check(); const value = await operation(); check(); return value; };
   const independent = async () => { const result: unknown = await checked(() => verifyReviewer(identities)); if (result !== undefined) throw new Error('independent verifier must return void'); check(); };
@@ -177,25 +201,26 @@ async function prepareSelection(options: GraphVerificationOptions, kinds: readon
       if (value.candidateRevision !== binding.candidateRevision || verificationCanonical(value.input.scope) !== verificationCanonical(binding.scope)
         || value.input.runId !== binding.graphRunId || value.input.worktreePath !== data.source.workspace_path) throw new Error('artifact manifest binding mismatch');
     };
-    manifest = snapshot(await checked(() => verifyArtifact(binding.artifactDigest))); validateManifest(manifest);
+    manifest = snapshot(await checked(() => timedPreparation('verifyArtifact', () => verifyArtifact(binding.artifactDigest)))); validateManifest(manifest);
     await checked(() => realpath(dirname(data.root)));
     await checked(() => mkdir(data.root, { mode: 0o700, recursive: true }));
     if (await checked(() => realpath(data.root)) !== data.root || data.root === data.source.workspace_path || data.root.startsWith(`${data.source.workspace_path}/`)) throw new Error('host root must be canonical and outside source workspace');
     const paths: string[] = [];
     for (const kind of data.kinds) {
       await preparedCheck();
-      const restored = await checked(() => restore(binding.artifactDigest, { rootPath: data.root, directoryName: `${kind}-${randomUUID()}` }));
+      const restored = await checked(() => timedPreparation('restore', () => restore(binding.artifactDigest, { rootPath: data.root, directoryName: `${kind}-${randomUUID()}` })));
       if (restored.candidateRevision !== binding.candidateRevision || restored.tree !== manifest.tree || dirname(restored.worktreePath) !== data.root) throw new Error('restored candidate mismatch');
+      if (options.deliveryContract) assertGraphContractPaths(options.deliveryContract, restored.worktreePath, binding.candidateRevision);
       if (kind === 'tests' && containedOptions) {
-        assertExactCandidateFiles(restored.worktreePath, binding.candidateRevision);
+        exactCandidate(restored.worktreePath);
         containedImage = snapshot(await checked(() => prepareGraphContainedImage(containedOptions, restored.worktreePath, binding.candidateRevision, check)));
-        assertExactCandidateFiles(restored.worktreePath, binding.candidateRevision);
+        exactCandidate(restored.worktreePath);
       }
       paths.push(restored.worktreePath);
       await preparedCheck();
     }
     reviewPath = paths[data.kinds.indexOf('review')]!; testsPath = paths[data.kinds.indexOf('tests')]!;
-    const final = await checked(() => verifyArtifact(binding.artifactDigest)); validateManifest(final);
+    const final = await checked(() => timedPreparation('verifyArtifact', () => verifyArtifact(binding.artifactDigest))); validateManifest(final);
     if (verificationCanonical(final) !== verificationCanonical(manifest)) throw new Error('artifact changed during preparation');
     await preparedCheck();
   } catch (error) { preparationFailure = { error }; }
@@ -207,13 +232,13 @@ async function prepareSelection(options: GraphVerificationOptions, kinds: readon
   const workspaces: Partial<Record<Kind, RegisteredCandidateWorkspace>> = {};
   if (reviewPath) workspaces.review = snapshot({ workspace_id: binding.scope.workspaceId, workspace_path: reviewPath });
   if (testsPath) workspaces.tests = snapshot({ workspace_id: binding.scope.workspaceId, workspace_path: testsPath });
-  const actions = data.kinds.map(kind => {
+  const actions = await Promise.all(data.kinds.map(async kind => {
     const workspace = workspaces[kind]!;
-    assertExactCandidateFiles(workspace.workspace_path, binding.candidateRevision);
+    exactCandidate(workspace.workspace_path);
     // Paths come from the frozen tree, never from a potentially altered index.
     const trackedPaths = gitRaw(workspace.workspace_path, 'ls-tree', '-rz', '--name-only', binding.candidateRevision).split('\0').filter(Boolean);
     const trackedFingerprint = () => {
-      const hash = createHash('sha256');
+      const hash = createHash('sha256'); const budget = new VerificationInventoryBudget();
       for (const name of trackedPaths) {
         const file = join(workspace.workspace_path, name);
         let parent = dirname(file);
@@ -222,19 +247,20 @@ async function prepareSelection(options: GraphVerificationOptions, kinds: readon
           parent = dirname(parent);
         }
         const stat = lstatSync(file);
-        if ((!stat.isFile() && !stat.isSymbolicLink()) || stat.nlink !== 1 || stat.size > 256 * 1024 * 1024) throw new Error('unsupported tracked entry');
-        const bytes = stat.isSymbolicLink() ? Buffer.from(readlinkSync(file)) : readFileSync(file);
+        if ((!stat.isFile() && !stat.isSymbolicLink()) || stat.nlink !== 1) throw new Error('unsupported tracked entry');
+        const bytes = stat.isSymbolicLink() ? Buffer.from(readlinkSync(file)) : readVerificationFile(file, stat, budget);
+        if (stat.isSymbolicLink()) budget.entry(bytes.length);
         hash.update(JSON.stringify([name, stat.mode, bytes.length, createHash('sha256').update(bytes).digest('hex')]));
       }
       return hash.digest('hex');
     };
-    const candidateIdentity = (): CandidateIdentity => ({
+    const candidateIdentity = (): CandidateIdentity => { onCandidateObservation?.(kind); return ({
       repositoryDigest: createHash('sha256').update(repositoryStamp(workspace.workspace_path)).digest('hex'),
       ...readCandidateRevisions((...args) => git(workspace.workspace_path, ...args)),
       indexTree: git(workspace.workspace_path, 'write-tree'), indexDigest: createHash('sha256').update(gitRaw(workspace.workspace_path, 'ls-files', '--stage', '-v', '-z')).digest('hex'), trackedDigest: trackedFingerprint(),
       ...(kind === 'tests' && containedImage ? { containedContentDigest: containedImage.contentDigest } : {}),
       ...(kind === 'review' ? { inventoryDigest: workspaceFingerprint(workspace.workspace_path) } : {}),
-    });
+    }); };
     // Both workspaces start with a strict inventory; tests may later emit untracked build outputs.
     workspaceFingerprint(workspace.workspace_path);
     const before = snapshot(candidateIdentity());
@@ -248,7 +274,8 @@ async function prepareSelection(options: GraphVerificationOptions, kinds: readon
       check();
     };
     candidateCheck();
-    const contained = kind === 'tests' && containedOptions && containedImage ? registerContainedTests(containedOptions, containedImage, binding, acceptance.command) : undefined;
+    const containedChecks = kind === 'tests' && containedOptions && containedImage ? acceptanceSuite.map(spec=>registerContainedTests(containedOptions, containedImage!, binding, spec.command)) : undefined;
+    const contained=containedChecks?.[0];
     const invocations = new Map<string, ReviewerInvocation>();
     const slot = data.slots[kind] ?? { nodeId: kind, effectSlot: 'invoke', workspaceLeaseRef: `verification:${randomUUID()}`, tokenReservation: 0 };
     if (!Number.isSafeInteger(slot.tokenReservation) || slot.tokenReservation < 0) throw new Error('invalid token reservation');
@@ -271,13 +298,17 @@ async function prepareSelection(options: GraphVerificationOptions, kinds: readon
       settlementCheck();
       if (verificationCanonical(validateVerificationEffect(effectIdentity(kind), binding, slot.nodeId, slot.effectSlot)) !== verificationCanonical(effect)) throw new Error('ledger effect changed during verification');
       const envelope: GraphVerificationEnvelope = { schemaVersion: 1, binding, kind, nodeId: slot.nodeId, effectSlot: slot.effectSlot, ...effect,
-        workspace, workspaceLeaseRef: slot.workspaceLeaseRef, candidateIdentity: { before, after: observe() }, acceptance, writerIdentity: data.writerIdentity, reviewerIdentity: data.reviewerIdentity, evidence };
+        workspace, workspaceLeaseRef: slot.workspaceLeaseRef, candidateIdentity: { before, after: observe() }, acceptance, ...(acceptanceSuite.length>1?{acceptanceSuite}:{}), writerIdentity: data.writerIdentity, reviewerIdentity: data.reviewerIdentity, evidence };
       if (context?.signal.aborted) envelope.verificationFailure = { code: 'INTERNAL_ERROR', message: 'Verification cancelled after confirmed executor stop', retrySafe: false };
       if (verificationCanonical(envelope.candidateIdentity.after) !== verificationCanonical(before)) envelope.verificationFailure = { code: 'INTERNAL_ERROR', message: 'Candidate workspace mutation detected after execution', retrySafe: false };
       if (kind === 'review') {
         const receipt = invocations.get(evidence.candidate?.execution?.run_id ?? '');
         if (!receipt || receipt.effectKey !== effect.effectKey) throw new Error('missing actual reviewer invocation receipt');
         envelope.reviewerInvocation = receipt;
+        if (executionContext && evidence.status === 'completed' && evidence.stopped) {
+          const contextReceipt = await executionContext.evidence(receipt.runId, effect);
+          settlementCheck(); options.recordContextEvidence!(contextReceipt);
+        }
         if (!envelope.verificationFailure) {
           if (evidence.status !== 'completed' || evidence.candidate?.execution?.failure_code || evidence.candidate?.status !== 'implementation_complete') envelope.verificationFailure = { code: 'INTERNAL_ERROR', message: 'Review executor failed after stopping', retrySafe: true };
           else {
@@ -286,31 +317,68 @@ async function prepareSelection(options: GraphVerificationOptions, kinds: readon
           }
         }
       } else if (contained) {
-        if (!evidence.contained || evidence.command) throw Error('missing actual contained command evidence');
+        if (!evidence.contained || evidence.command || evidence.commandSuite) throw Error('missing actual contained command evidence');
+        if(acceptanceSuite.length>1){
+          const results=evidence.containedSuite;if(!results||results.length===0||results.length>acceptanceSuite.length||verificationCanonical(results[0])!==verificationCanonical(evidence.contained))throw Error('missing actual contained suite');
+          for(let index=0;index<results.length;index++){
+            containedChecks![index]!.verify(results[index]!);
+            const actual=validateContainedTestEvidence(results[index]!,binding,effect.effectKey,acceptanceSuite[index]!.command,before.containedContentDigest);
+            if(actual.identity.invocationId!==(index===0?evidence.candidate?.execution?.run_id:`${evidence.candidate?.execution?.run_id}:${index}`))throw Error('contained suite invocation mismatch');
+            if(actual.result.cancelled||![...acceptanceSuite[index]!.passExitCodes,...acceptanceSuite[index]!.failExitCodes].includes(actual.result.exitCode))envelope.verificationFailure={code:'INTERNAL_ERROR',message:'Contained suite infrastructure outcome',retrySafe:false};
+          }
+          if(results.length!==acceptanceSuite.length)envelope.verificationFailure={code:'INTERNAL_ERROR',message:'Contained suite incomplete',retrySafe:false};
+        }else if(evidence.containedSuite)throw Error('unexpected contained suite');
         contained.verify(evidence.contained);
         const receipt = validateContainedTestEvidence(evidence.contained, binding, effect.effectKey, acceptance.command, before.containedContentDigest);
         if (!envelope.verificationFailure && (receipt.result.cancelled || ![...acceptance.passExitCodes, ...acceptance.failExitCodes].includes(receipt.result.exitCode))) envelope.verificationFailure = { code: 'INTERNAL_ERROR', message: 'Contained command cancelled or returned unregistered exit code', retrySafe: false };
       } else {
         if (evidence.contained) throw Error('unexpected contained evidence');
+        if(acceptanceSuite.length>1){
+          const results=evidence.commandSuite;
+          if(!results||results.length===0||verificationCanonical(results[0])!==verificationCanonical(evidence.command))throw Error('missing actual command suite');
+          if(results.length!==acceptanceSuite.length||results.some((result,index)=>result.command!==acceptanceSuite[index]?.command||result.failure_code||result.cancellation||result.termination?.scope!=='posix_process_group'||result.termination.trigger!=='exit'||result.termination.stop_confirmed!==true||result.termination.leader_exit_code!==result.exitCode||![...acceptanceSuite[index]!.passExitCodes,...acceptanceSuite[index]!.failExitCodes].includes(result.exitCode)))envelope.verificationFailure={code:'INTERNAL_ERROR',message:'Registered command suite incomplete or infrastructure outcome unconfirmed',retrySafe:false};
+        }else if(evidence.commandSuite)throw Error('unexpected command suite');
         const command = evidence.command;
         if (!command || command.command !== acceptance.command || command.termination?.stop_confirmed !== true) throw new Error('missing actual registered command stop evidence');
         if (!envelope.verificationFailure && (command.failure_code || command.cancellation || command.termination.scope !== 'posix_process_group' || command.termination.trigger !== 'exit' || command.termination.leader_exit_code !== command.exitCode
           || ![...acceptance.passExitCodes, ...acceptance.failExitCodes].includes(command.exitCode))) envelope.verificationFailure = { code: 'INTERNAL_ERROR', message: 'Acceptance command infrastructure failure or unregistered exit code', retrySafe: true };
       }
       compactVerificationOutput(envelope);
-      return publishGraphVerificationEvidence(data.root, envelope, () => {
-        if (verificationCanonical(observe()) !== verificationCanonical(envelope.candidateIdentity.after)) throw new Error('candidate changed during persistence');
+      const publicationAuthority = () => {
         settlementCheck(); if (verificationCanonical(validateVerificationEffect(effectIdentity(kind), binding, slot.nodeId, slot.effectSlot)) !== verificationCanonical(effect)) throw new Error('ledger effect changed during persistence');
+      };
+      return publishGraphVerificationEvidence(data.root, envelope, publicationAuthority, () => {
+        publicationAuthority();
+        if (verificationCanonical(observe()) !== verificationCanonical(envelope.candidateIdentity.after)) throw new Error('candidate changed during persistence');
+        publicationAuthority();
       });
     };
     // G04 reuses plan-derived session IDs on retry. Allocate the real session at invocation,
     // rebuilding task/context from trusted fields so caller history/resume hints cannot pass through.
     const plan = snapshot(ExecutionPlan.parse({ plan_id: `verification:${randomUUID()}`, agent_id: kind === 'review' ? reviewer.id : 'registered-command', max_iterations: 1,
       task: { task_id: `verification:${kind}:${randomUUID()}`, capability: kind === 'review' ? matches[0]!.kind : 'code.test', source: 'manual',
-        prompt: kind === 'review' ? `Independently review frozen candidate ${binding.candidateRevision} against acceptance ${binding.acceptanceRef}. Return only JSON {"schemaVersion":1,"verdict":"accept"|"changes_requested","summary":string,"findings":string[]}. Do not modify files.` : `Run registered acceptance ${binding.acceptanceRef}.` },
+        prompt: kind === 'review' ? `Independently review frozen candidate ${binding.candidateRevision} against acceptance ${binding.acceptanceRef}. Return only JSON {"schemaVersion":1,"verdict":"accept"|"changes_requested","summary":string,"findings":string[]}. Do not modify files.${options.deliveryContract && !options.executionContext ? `\n\n${options.deliveryContract.brief}` : ''}` : `Run registered acceptance ${binding.acceptanceRef}.` },
       stop_condition: { type: kind === 'review' ? 'review_approved' : 'tests_pass' } }));
+    const observeActual = (actual: AgentTask) => {
+      check(); candidateCheck();
+      if (actual.task_id !== plan.task.task_id || actual.capability_id !== data.capabilityId || actual.context?.repo_path !== workspace.workspace_path
+        || invocations.has(actual.run_id)) throw Error('invalid or repeated reviewer invocation');
+      const effect = validateVerificationEffect(effectIdentity(kind), binding, slot.nodeId, slot.effectSlot);
+      invocations.set(actual.run_id, snapshot({ runId: actual.run_id, taskId: actual.task_id, sessionId: actual.session_id, adapterId: reviewer.id, capabilityId: actual.capability_id,
+        promptDigest: createHash('sha256').update(actual.prompt).digest('hex'), contextDigest: createHash('sha256').update(verificationCanonical(actual.context)).digest('hex'),
+        historyPassed: false, effectKey: effect.effectKey }));
+    };
+    if (options.executionContext && (!options.deliveryContract || !options.contextRepositoryPath || !options.recordContextEvidence)) throw Error('GRAPH_CONTEXT_CONTRACT_REQUIRED');
+    const executionContext = kind === 'review' && options.executionContext ? await prepareGraphExecutionContext({ registration: options.executionContext,
+      adapter: reviewer, workspacePath: options.contextRepositoryPath!, frozen: options.deliveryContract!, authorize: check, observe: observeActual }) : undefined;
+    const reviewerEffectsStarted = new Set<string>();
     const invocationReviewer: AgentAdapter = Object.freeze({ ...reviewer,
       invoke: (task: AgentTask, signal: AbortSignal) => (async function* () {
+        if (options.deliveryContract) {
+          const effect = validateVerificationEffect(effectIdentity(kind), binding, slot.nodeId, slot.effectSlot);
+          if (reviewerEffectsStarted.has(effect.effectKey)) throw Error('invalid or repeated reviewer invocation');
+          reviewerEffectsStarted.add(effect.effectKey);
+        }
         const runId = task.run_id; const taskId = task.task_id;
         await independent(); candidateCheck();
         await authorizePolicy?.(workspace.workspace_path); check();
@@ -318,17 +386,14 @@ async function prepareSelection(options: GraphVerificationOptions, kinds: readon
         if (taskId !== plan.task.task_id || invocations.has(runId)) throw new Error('invalid or repeated reviewer invocation');
         const actual: AgentTask = snapshot({ run_id: runId, task_id: taskId, session_id: randomUUID(), capability_id: data.capabilityId,
           prompt: plan.task.prompt, context: { repo_path: workspace.workspace_path } });
-        const effect = validateVerificationEffect(effectIdentity(kind), binding, slot.nodeId, slot.effectSlot);
-        invocations.set(runId, snapshot({ runId, taskId, sessionId: actual.session_id, adapterId: reviewer.id, capabilityId: actual.capability_id,
-          promptDigest: createHash('sha256').update(actual.prompt).digest('hex'), contextDigest: createHash('sha256').update(verificationCanonical(actual.context)).digest('hex'),
-          historyPassed: false, effectKey: effect.effectKey }));
         check();
-        yield* reviewer.invoke(actual, signal);
+        if (executionContext) yield* executionContext.adapter.invoke(actual, signal);
+        else { observeActual(actual); yield* reviewer.invoke(actual, signal); }
       })(),
     });
     const action: GraphRegisteredAction = { nodeId: slot.nodeId, effectSlot: slot.effectSlot, action: snapshot(request.action), tokenReservation: slot.tokenReservation,
-      workspace, verifyWorkspace, persist, execution: kind === 'review' ? { kind: 'adapter', plan, adapter: invocationReviewer, capabilityId: data.capabilityId } : contained ? { kind: 'contained', plan, ...contained.registration } : { kind: 'command', plan, command: acceptance.command } };
+      workspace, verifyWorkspace, persist, execution: kind === 'review' ? { kind: 'adapter', plan, adapter: invocationReviewer, capabilityId: data.capabilityId } : contained ? (containedChecks!.length>1?{kind:'contained-suite',plan,checks:containedChecks!.map(item=>item.registration)}:{ kind: 'contained', plan, ...contained.registration }) : acceptanceSuite.length>1 ? {kind:'commands',plan,commands:acceptanceSuite.map(spec=>spec.command)} : { kind: 'command', plan, command: acceptance.command } };
     Object.freeze(action.execution); return Object.freeze(action);
-  });
+  }));
   return Object.freeze({ binding, workspaces: Object.freeze(workspaces), actions: Object.freeze(actions) });
 }

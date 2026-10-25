@@ -1,0 +1,10 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion/packages/cli
+
+ ✓ src/worker-log-view.test.ts (9 tests) 298ms
+
+ Test Files  1 passed (1)
+      Tests  9 passed (9)
+   Start at  17:08:12
+   Duration  1.31s (transform 447ms, setup 21ms, collect 727ms, tests 298ms, environment 0ms, prepare 44ms)
+

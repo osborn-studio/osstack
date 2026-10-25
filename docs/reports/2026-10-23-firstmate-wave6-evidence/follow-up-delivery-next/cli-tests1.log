@@ -1,0 +1,61 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-routing-next/packages/cli
+
+invalid_delivery_request
+invalid_delivery_request
+ ❯ src/follow-up-delivery-command.test.ts (12 tests | 3 failed) 10ms
+   × documents explicit scope and qualification %j 3ms
+     → Cannot read properties of undefined (reading 'length')
+   × documents explicit scope and qualification "help" 2ms
+     → expected 1 to be +0 // Object.is equality
+   × documents explicit scope and qualification "--help" 0ms
+     → expected 1 to be +0 // Object.is equality
+   ✓ rejects invalid or invented authority arguments "dispatch" 0ms
+   ✓ rejects invalid or invented authority arguments "dispatch" 0ms
+   ✓ rejects invalid or invented authority arguments "authorize" 0ms
+   ✓ rejects invalid or invented authority arguments "list" 0ms
+   ✓ rejects invalid or invented authority arguments "list" 0ms
+   ✓ rejects invalid or invented authority arguments "inspect" 0ms
+   ✓ sends strict scope to the RPC and suppresses internal errors 1ms
+   ✓ rejects invalid and oversized RPC replies 1ms
+   ✓ lists bounded JSON with explicit keyset continuation 0ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/follow-up-delivery-command.test.ts > documents explicit scope and qualification %j
+TypeError: Cannot read properties of undefined (reading 'length')
+ ❯ handleFollowUpDeliveryCommand src/follow-up-delivery-command.ts:19:11
+     17| export async function handleFollowUpDeliveryCommand(args:string[],deps…
+     18|  const out=deps.stdout??(text=>{process.stdout.write(text);}),err=deps…
+     19|  if(!args.length||(args.length===1&&["help","--help"].includes(args[0]…
+       |           ^
+     20|  const action=args[0];let params:unknown;
+     21|  try{
+ ❯ src/follow-up-delivery-command.test.ts:4:139
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯
+
+ FAIL  src/follow-up-delivery-command.test.ts > documents explicit scope and qualification "help"
+ FAIL  src/follow-up-delivery-command.test.ts > documents explicit scope and qualification "--help"
+AssertionError: expected 1 to be +0 // Object.is equality
+
+- Expected
++ Received
+
+- 0
++ 1
+
+ ❯ src/follow-up-delivery-command.test.ts:4:193
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/3]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  3 failed | 9 passed (12)
+   Start at  13:38:57
+   Duration  746ms (transform 290ms, setup 16ms, collect 492ms, tests 10ms, environment 0ms, prepare 36ms)
+
+undefined
+/Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-routing-next/packages/cli:
+[ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL] Command failed with exit code 1: vitest run src/follow-up-delivery-command.test.ts

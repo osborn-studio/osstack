@@ -1,0 +1,19 @@
+{
+  "packages/cli/src/graph-execution-command.ts": "ef92ba455a1247edfa273f2b50259aed64042801cfb6dcf3f95db3af6ab81b6c",
+  "packages/cli/src/graph-execution-command.test.ts": "65dc681aa9d5ca84e5d3b5cd0320053fd5b5e3328576b4732d1d7f5738c14542",
+  "packages/cli/src/graph-rpc.ts": "1eddb74d63000bfff8dfe2c3b1de18a9446c97a49b3af487027c8568e5502dee",
+  "packages/cli/src/graph-contract-host.ts": "27f50eb26a2271162255df9b82dcdc22ab3a95b6e070af953679b994d644510c",
+  "packages/cli/src/graph-contract-host.test.ts": "30fbc4501c73a06977de0854a12b9d2c15d42ecab24f27b06cf5037ae452dc62",
+  "packages/cli/src/graph-contract-integration.test.ts": "94ac04e32fd650440c7d177b6de768aaf20a502791780c0d23744b05fc1fde5a",
+  "packages/cli/src/graph-delivery.ts": "f5ffb3f42985638afb47bca2e1f4382d99c9132fdb6db1bd0eb940594f8d7e99",
+  "packages/cli/src/graph-delivery-contract.ts": "13bbf422081cafe93e569e63e8882da38219723291ab4981cfa401a9e65fa6bd",
+  "packages/cli/src/graph-execution-context.ts": "1a96a939552a41908c47c7c6c50bb4338d65643c7faebdd095fabf8243518173",
+  "packages/cli/src/graph-verification-join.ts": "af9d2bab8fb1c7538227015718c37b66bd523d8a887b3afe9ac1e87140ffb517",
+  "packages/cli/src/execution-context.ts": "6cc128d9ec683d6f51c5f1c7b2376bbdc51da58701cad1864136d486c326e98e",
+  "packages/cli/src/delivery-contract-host.ts": "9af05b9d376fc014647032893d6cd44cffd066ac4c9902a20ee52d3220968650",
+  "packages/cli/src/attention-loop-source.ts": "86239fb7527ca5f33dd203be4f08462c4adfe903b46bd2a42eaf816d157e5201",
+  "packages/core/src/state/attention-experience.ts": "deed380d5e341062af55d83a7750d5968f6a06efadcd58dbf511cf6f30f49791",
+  "packages/core/src/state/graph-verification.ts": "b56ec07ec173aaf74ee5cf9def98b2ceac84a14a74ac7861586ee6446ee587ed",
+  "packages/cli/src/graph-command.ts": "ab7ef4bf90c227d6f050d9b0c626e386f79dcaa5ab66dbca25accc1fba644762",
+  "packages/cli/src/attention-command.ts": "25e234615044d6d1fb9d6d688db04aebd608ae5fe179ae905b8435bfccd813a4"
+}

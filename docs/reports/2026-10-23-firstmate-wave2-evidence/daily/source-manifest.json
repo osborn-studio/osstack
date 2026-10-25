@@ -1,0 +1,7 @@
+{
+  "packages/cli/src/daily-attention.ts": "40bed215c4ea37a39125f57f16a9cfb0097deb792ed72a5cd99ad83db71b54a5",
+  "packages/cli/src/daily-attention.test.ts": "03f8c85e349154f8cc82680967c6f3b264088b02921707af03e0f33f4232c47c",
+  "packages/cli/src/daily-command.ts": "b9f9873cec624251f24c736baa2a81d7334761a1be9ddaaa38ccf8793063a2fe",
+  "packages/cli/src/daily-cli.test.ts": "ce5009ba7449d026eb1c1c86474315ef60c019c157bdbb9d7888a77645b09845",
+  "docs/guides/attention-daily.md": "01f7a5eedf950bec204141b82e901c24cb4f23f0b0c7a6580650bcd14efbd578"
+}

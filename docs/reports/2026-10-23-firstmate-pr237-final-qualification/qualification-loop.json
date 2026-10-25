@@ -1,0 +1,544 @@
+{
+  "loop_id": "loop_d6a8c49f-301b-4eb7-8f43-cc7e59cfe137",
+  "json_path": "/Volumes/AIMATE_WORK/tmp/osstack/smoke/pr237-integration/queue/LOOP-STATE.json",
+  "markdown_path": "/Volumes/AIMATE_WORK/tmp/osstack/smoke/pr237-integration/queue/STATE.md",
+  "completed_tasks": [
+    {
+      "task_id": "task_2cb38a72",
+      "capability": "code.test",
+      "outcome": "escalated",
+      "iterations": 1,
+      "agent_id": "local-command",
+      "duration_ms": 425343,
+      "run_id": "run_96ff5cde-122f-45f6-b996-b1beb432207a",
+      "started_at": "2026-10-23T17:35:10.825Z",
+      "completed_at": "2026-10-23T17:42:16.125Z",
+      "execution_summary": "Process group 83098 gone (kill(-pgid, 0): ESRCH); leader exit observed",
+      "execution_commands": [
+        {
+          "command": "python3 /Volumes/AIMATE_WORK/tmp/osstack/smoke/pr237-integration/run-checks.py",
+          "exit_code": 1,
+          "duration_ms": 425300,
+          "summary": "build 0 typecheck 0 test 1 lint 0 schemas 0 inventory 0 startup 0"
+        }
+      ],
+      "verifier_agent_id": "local-verifier",
+      "verify_summary": "2 issues found by local verifier.",
+      "verify_issue_count": 2,
+      "verify_issues": [
+        {
+          "severity": "error",
+          "message": "Builder execution ended failed: Process group 83098 gone (kill(-pgid, 0): ESRCH); leader exit observed",
+          "rule": "execute.outcome_not_completed"
+        },
+        {
+          "severity": "error",
+          "message": "python3 /Volumes/AIMATE_WORK/tmp/osstack/smoke/pr237-integration/run-checks.py failed (1): build 0 typecheck 0 test 1 lint 0 schemas 0 inventory 0 startup 0",
+          "rule": "execute.command_failed"
+        }
+      ],
+      "verify_commands": [
+        {
+          "command": "true",
+          "exit_code": 0,
+          "duration_ms": 11
+        }
+      ],
+      "evaluations": [
+        {
+          "spec_id": "verify-command-1",
+          "mode": "command",
+          "description": "Shell verifier: true",
+          "required": true,
+          "weight": 1,
+          "pass": true,
+          "summary": "command passed (11 ms)",
+          "implicit": true
+        }
+      ],
+      "iteration_feedback": [
+        {
+          "attempt": 1,
+          "verdict_summary": "2 issues found by local verifier.",
+          "blocking_issues": [
+            {
+              "severity": "error",
+              "message": "Builder execution ended failed: Process group 83098 gone (kill(-pgid, 0): ESRCH); leader exit observed",
+              "rule": "execute.outcome_not_completed"
+            },
+            {
+              "severity": "error",
+              "message": "python3 /Volumes/AIMATE_WORK/tmp/osstack/smoke/pr237-integration/run-checks.py failed (1): build 0 typecheck 0 test 1 lint 0 schemas 0 inventory 0 startup 0",
+              "rule": "execute.command_failed"
+            }
+          ],
+          "failed_evaluations": [],
+          "suggested_focus": [],
+          "previous_diff_summary": "git status unavailable: fatal: not a git repository (or any parent up to mount point /Volumes) Stopping at filesystem boundary (GIT_DISCOVERY_ACROSS_FILESYSTEM not set)."
+        }
+      ],
+      "diff_summary": "git status unavailable: fatal: not a git repository (or any parent up to mount point /Volumes) Stopping at filesystem boundary (GIT_DISCOVERY_ACROSS_FILESYSTEM not set).",
+      "error_summary": "Builder execution ended failed: Process group 83098 gone (kill(-pgid, 0): ESRCH); leader exit observed"
+    },
+    {
+      "task_id": "task_2cb38a72-retry",
+      "capability": "code.test",
+      "outcome": "escalated",
+      "iterations": 1,
+      "agent_id": "local-command",
+      "duration_ms": 1037263,
+      "run_id": "run_9f06b219-c125-4497-b40f-f1688a1b26a7",
+      "started_at": "2026-10-23T17:49:02.863Z",
+      "completed_at": "2026-10-23T18:06:19.879Z",
+      "execution_summary": "Process group 36930 gone (kill(-pgid, 0): ESRCH); leader exit observed",
+      "execution_commands": [
+        {
+          "command": "python3 /Volumes/AIMATE_WORK/tmp/osstack/smoke/pr237-integration/run-checks.py",
+          "exit_code": 1,
+          "duration_ms": 1037016,
+          "summary": "build 0 typecheck 0 test 1 lint 0 schemas 0 inventory 0 startup 0"
+        }
+      ],
+      "verifier_agent_id": "local-verifier",
+      "verify_summary": "3 issues found by local verifier. Failed evaluations: verify-command-1.",
+      "verify_issue_count": 3,
+      "verify_issues": [
+        {
+          "severity": "error",
+          "message": "Builder execution ended failed: Process group 36930 gone (kill(-pgid, 0): ESRCH); leader exit observed",
+          "rule": "execute.outcome_not_completed"
+        },
+        {
+          "severity": "error",
+          "message": "python3 /Volumes/AIMATE_WORK/tmp/osstack/smoke/pr237-integration/run-checks.py failed (1): build 0 typecheck 0 test 1 lint 0 schemas 0 inventory 0 startup 0",
+          "rule": "execute.command_failed"
+        },
+        {
+          "severity": "error",
+          "message": "python3 /Volumes/AIMATE_WORK/tmp/osstack/smoke/pr237-integration/verify-checks.py failed (1): Traceback (most recent call last): File \"/Volumes/AIMATE_WORK/tmp/osstack/smoke/pr237-integration/verify-checks.py\", line 4, in <module> assert len(results)==7 and all(r['exit_code']==0 for r in results), results ^^^^^^^^^^^^^^^^^^^^^^^^^^^",
+          "rule": "verify.command_failed"
+        }
+      ],
+      "verify_commands": [
+        {
+          "command": "python3 /Volumes/AIMATE_WORK/tmp/osstack/smoke/pr237-integration/verify-checks.py",
+          "exit_code": 1,
+          "duration_ms": 224,
+          "summary": "Traceback (most recent call last): File \"/Volumes/AIMATE_WORK/tmp/osstack/smoke/pr237-integration/verify-checks.py\", line 4, in <module> assert len(results)==7 and all(r['exit_code']==0 for r in results), results ^^^^^^^^^^^^^^^^^^^^^^^^^^^"
+        }
+      ],
+      "evaluations": [
+        {
+          "spec_id": "verify-command-1",
+          "mode": "command",
+          "description": "Shell verifier: python3 /Volumes/AIMATE_WORK/tmp/osstack/smoke/pr237-integration/verify-checks.py",
+          "required": true,
+          "weight": 1,
+          "pass": false,
+          "summary": "command failed (exit 1): Traceback (most recent call last): File \"/Volumes/AIMATE_WORK/tmp/osstack/smoke/pr237-integration/verify-checks.py\", line 4, in <module> assert len(results)==7 and all(r['exit_code']==0 for r in results), results ^^^^^^^^^^^^^^^^^^^^^^^^^^^",
+          "implicit": true
+        }
+      ],
+      "iteration_feedback": [
+        {
+          "attempt": 1,
+          "verdict_summary": "3 issues found by local verifier. Failed evaluations: verify-command-1.",
+          "blocking_issues": [
+            {
+              "severity": "error",
+              "message": "Builder execution ended failed: Process group 36930 gone (kill(-pgid, 0): ESRCH); leader exit observed",
+              "rule": "execute.outcome_not_completed"
+            },
+            {
+              "severity": "error",
+              "message": "python3 /Volumes/AIMATE_WORK/tmp/osstack/smoke/pr237-integration/run-checks.py failed (1): build 0 typecheck 0 test 1 lint 0 schemas 0 inventory 0 startup 0",
+              "rule": "execute.command_failed"
+            },
+            {
+              "severity": "error",
+              "message": "python3 /Volumes/AIMATE_WORK/tmp/osstack/smoke/pr237-integration/verify-checks.py failed (1): Traceback (most recent call last): File \"/Volumes/AIMATE_WORK/tmp/osstack/smoke/pr237-integration/verify-checks.py\", line 4, in <module> assert len(results)==7 and all(r['exit_code']==0 for r in results), results ^^^^^^^^^^^^^^^^^^^^^^^^^^^",
+              "rule": "verify.command_failed"
+            }
+          ],
+          "failed_evaluations": [
+            "verify-command-1"
+          ],
+          "suggested_focus": [
+            "satisfy evaluation verify-command-1: Shell verifier: python3 /Volumes/AIMATE_WORK/tmp/osstack/smoke/pr237-integration/verify-checks.py"
+          ],
+          "previous_diff_summary": "git status unavailable: fatal: not a git repository (or any parent up to mount point /Volumes) Stopping at filesystem boundary (GIT_DISCOVERY_ACROSS_FILESYSTEM not set)."
+        }
+      ],
+      "diff_summary": "git status unavailable: fatal: not a git repository (or any parent up to mount point /Volumes) Stopping at filesystem boundary (GIT_DISCOVERY_ACROSS_FILESYSTEM not set).",
+      "error_summary": "Builder execution ended failed: Process group 36930 gone (kill(-pgid, 0): ESRCH); leader exit observed"
+    },
+    {
+      "task_id": "task_2cb38a72-retry-retry",
+      "capability": "code.test",
+      "outcome": "escalated",
+      "iterations": 1,
+      "agent_id": "local-command",
+      "duration_ms": 1116123,
+      "run_id": "run_b481f149-c0d6-4ba3-a892-3a3b53a73a1b",
+      "started_at": "2026-10-23T18:07:33.030Z",
+      "completed_at": "2026-10-23T18:26:09.013Z",
+      "execution_summary": "Process group 72691 gone (kill(-pgid, 0): ESRCH); leader exit observed",
+      "execution_commands": [
+        {
+          "command": "python3 /Volumes/AIMATE_WORK/tmp/osstack/smoke/pr237-integration/run-checks.py",
+          "exit_code": 1,
+          "duration_ms": 1115983,
+          "summary": "build 0 typecheck 0 test 1 lint 0 schemas 0 inventory 0 startup 0"
+        }
+      ],
+      "verifier_agent_id": "local-verifier",
+      "verify_summary": "3 issues found by local verifier. Failed evaluations: verify-command-1.",
+      "verify_issue_count": 3,
+      "verify_issues": [
+        {
+          "severity": "error",
+          "message": "Builder execution ended failed: Process group 72691 gone (kill(-pgid, 0): ESRCH); leader exit observed",
+          "rule": "execute.outcome_not_completed"
+        },
+        {
+          "severity": "error",
+          "message": "python3 /Volumes/AIMATE_WORK/tmp/osstack/smoke/pr237-integration/run-checks.py failed (1): build 0 typecheck 0 test 1 lint 0 schemas 0 inventory 0 startup 0",
+          "rule": "execute.command_failed"
+        },
+        {
+          "severity": "error",
+          "message": "python3 /Volumes/AIMATE_WORK/tmp/osstack/smoke/pr237-integration/verify-checks.py failed (1): Traceback (most recent call last): File \"/Volumes/AIMATE_WORK/tmp/osstack/smoke/pr237-integration/verify-checks.py\", line 4, in <module> assert len(results)==7 and all(r['exit_code']==0 for r in results), results ^^^^^^^^^^^^^^^^^^^^^^^^^^^",
+          "rule": "verify.command_failed"
+        }
+      ],
+      "verify_commands": [
+        {
+          "command": "python3 /Volumes/AIMATE_WORK/tmp/osstack/smoke/pr237-integration/verify-checks.py",
+          "exit_code": 1,
+          "duration_ms": 91,
+          "summary": "Traceback (most recent call last): File \"/Volumes/AIMATE_WORK/tmp/osstack/smoke/pr237-integration/verify-checks.py\", line 4, in <module> assert len(results)==7 and all(r['exit_code']==0 for r in results), results ^^^^^^^^^^^^^^^^^^^^^^^^^^^"
+        }
+      ],
+      "evaluations": [
+        {
+          "spec_id": "verify-command-1",
+          "mode": "command",
+          "description": "Shell verifier: python3 /Volumes/AIMATE_WORK/tmp/osstack/smoke/pr237-integration/verify-checks.py",
+          "required": true,
+          "weight": 1,
+          "pass": false,
+          "summary": "command failed (exit 1): Traceback (most recent call last): File \"/Volumes/AIMATE_WORK/tmp/osstack/smoke/pr237-integration/verify-checks.py\", line 4, in <module> assert len(results)==7 and all(r['exit_code']==0 for r in results), results ^^^^^^^^^^^^^^^^^^^^^^^^^^^",
+          "implicit": true
+        }
+      ],
+      "iteration_feedback": [
+        {
+          "attempt": 1,
+          "verdict_summary": "3 issues found by local verifier. Failed evaluations: verify-command-1.",
+          "blocking_issues": [
+            {
+              "severity": "error",
+              "message": "Builder execution ended failed: Process group 72691 gone (kill(-pgid, 0): ESRCH); leader exit observed",
+              "rule": "execute.outcome_not_completed"
+            },
+            {
+              "severity": "error",
+              "message": "python3 /Volumes/AIMATE_WORK/tmp/osstack/smoke/pr237-integration/run-checks.py failed (1): build 0 typecheck 0 test 1 lint 0 schemas 0 inventory 0 startup 0",
+              "rule": "execute.command_failed"
+            },
+            {
+              "severity": "error",
+              "message": "python3 /Volumes/AIMATE_WORK/tmp/osstack/smoke/pr237-integration/verify-checks.py failed (1): Traceback (most recent call last): File \"/Volumes/AIMATE_WORK/tmp/osstack/smoke/pr237-integration/verify-checks.py\", line 4, in <module> assert len(results)==7 and all(r['exit_code']==0 for r in results), results ^^^^^^^^^^^^^^^^^^^^^^^^^^^",
+              "rule": "verify.command_failed"
+            }
+          ],
+          "failed_evaluations": [
+            "verify-command-1"
+          ],
+          "suggested_focus": [
+            "satisfy evaluation verify-command-1: Shell verifier: python3 /Volumes/AIMATE_WORK/tmp/osstack/smoke/pr237-integration/verify-checks.py"
+          ],
+          "previous_diff_summary": "git status unavailable: fatal: not a git repository (or any parent up to mount point /Volumes) Stopping at filesystem boundary (GIT_DISCOVERY_ACROSS_FILESYSTEM not set)."
+        }
+      ],
+      "diff_summary": "git status unavailable: fatal: not a git repository (or any parent up to mount point /Volumes) Stopping at filesystem boundary (GIT_DISCOVERY_ACROSS_FILESYSTEM not set).",
+      "error_summary": "Builder execution ended failed: Process group 72691 gone (kill(-pgid, 0): ESRCH); leader exit observed"
+    },
+    {
+      "task_id": "task_2cb38a72-retry-retry-retry",
+      "capability": "code.test",
+      "outcome": "success",
+      "iterations": 1,
+      "agent_id": "local-command",
+      "duration_ms": 2193,
+      "run_id": "run_a885a708-553c-45a2-a74d-969b06d136bd",
+      "started_at": "2026-10-23T18:26:26.018Z",
+      "completed_at": "2026-10-23T18:26:28.065Z",
+      "execution_summary": "Process group 85835 gone (kill(-pgid, 0): ESRCH); leader exit observed",
+      "execution_commands": [
+        {
+          "command": "python3 /Volumes/AIMATE_WORK/tmp/osstack/smoke/pr237-integration/qualify-integration.py",
+          "exit_code": 0,
+          "duration_ms": 2047,
+          "summary": "{\"qualification\": \"passed\", \"head\": \"2d33db37cebb2e37036625c555c602c6e305cffe\", \"totals\": {\"passed\": 4645, \"failed\": 0, \"skipped\": 3}, \"ci\": \"https://github.com/osborn-studio/osstack/actions/runs/40000751879\"}"
+        }
+      ],
+      "verifier_agent_id": "local-verifier",
+      "verify_summary": "1 verifier command and 0 verifier adapters passed. 1 evaluation passed.",
+      "verify_issue_count": 0,
+      "verify_commands": [
+        {
+          "command": "python3 /Volumes/AIMATE_WORK/tmp/osstack/smoke/pr237-integration/verify-qualification.py",
+          "exit_code": 0,
+          "duration_ms": 109,
+          "summary": "Qualification verified; initial failed attempts remain preserved."
+        }
+      ],
+      "evaluations": [
+        {
+          "spec_id": "verify-command-1",
+          "mode": "command",
+          "description": "Shell verifier: python3 /Volumes/AIMATE_WORK/tmp/osstack/smoke/pr237-integration/verify-qualification.py",
+          "required": true,
+          "weight": 1,
+          "pass": true,
+          "summary": "command passed (109 ms)",
+          "implicit": true
+        }
+      ],
+      "diff_summary": "git status unavailable: fatal: not a git repository (or any parent up to mount point /Volumes) Stopping at filesystem boundary (GIT_DISCOVERY_ACROSS_FILESYSTEM not set)."
+    }
+  ],
+  "events": [
+    {
+      "event_id": "evt_ce2df88f-fd45-4227-9b43-83d6706e7bb1",
+      "loop_id": "loop_d6a8c49f-301b-4eb7-8f43-cc7e59cfe137",
+      "type": "loop.started",
+      "seq": 1,
+      "created_at": 1792779986015,
+      "payload": {
+        "workspace_path": "/Volumes/AIMATE_WORK/tmp/osstack/smoke/pr237-integration/queue"
+      }
+    },
+    {
+      "event_id": "evt_8b48d6bf-c352-43c1-a878-77f78293e9e0",
+      "loop_id": "loop_d6a8c49f-301b-4eb7-8f43-cc7e59cfe137",
+      "type": "loop.cycle.started",
+      "seq": 2,
+      "created_at": 1792779986015,
+      "payload": {
+        "cycle": 1
+      }
+    },
+    {
+      "event_id": "evt_d0feefae-27ad-4208-9669-f5d84875d67f",
+      "loop_id": "loop_d6a8c49f-301b-4eb7-8f43-cc7e59cfe137",
+      "type": "loop.discover.done",
+      "seq": 3,
+      "created_at": 1792779986018,
+      "payload": {
+        "task_count": 1,
+        "discovered_task_count": 4,
+        "skipped_task_count": 3
+      }
+    },
+    {
+      "event_id": "evt_2c518113-43db-4b8c-9db6-763e5983c9d8",
+      "loop_id": "loop_d6a8c49f-301b-4eb7-8f43-cc7e59cfe137",
+      "type": "loop.plan.done",
+      "seq": 4,
+      "created_at": 1792779986018,
+      "payload": {
+        "task_id": "task_2cb38a72-retry-retry-retry",
+        "plan_id": "plan_12e0beaa-7bba-412e-a5ee-54a65cfbde34",
+        "agent_id": "local-command",
+        "routing_reason": "local execute command",
+        "iteration": 1
+      }
+    },
+    {
+      "event_id": "evt_6fa65b13-af7d-48d4-a49e-30d5ac44a8b9",
+      "loop_id": "loop_d6a8c49f-301b-4eb7-8f43-cc7e59cfe137",
+      "type": "loop.execute.done",
+      "seq": 5,
+      "created_at": 1792779988070,
+      "payload": {
+        "task_id": "task_2cb38a72-retry-retry-retry",
+        "run_id": "run_a885a708-553c-45a2-a74d-969b06d136bd",
+        "outcome": "completed",
+        "agent_id": "local-command",
+        "summary": "Process group 85835 gone (kill(-pgid, 0): ESRCH); leader exit observed",
+        "iteration": 1
+      }
+    },
+    {
+      "event_id": "evt_7ff402c2-0150-4f86-be38-12d7d6f62493",
+      "loop_id": "loop_d6a8c49f-301b-4eb7-8f43-cc7e59cfe137",
+      "type": "loop.verify.done",
+      "seq": 6,
+      "created_at": 1792779988211,
+      "payload": {
+        "task_id": "task_2cb38a72-retry-retry-retry",
+        "pass": true,
+        "score": 1,
+        "issue_count": 0,
+        "evaluation_count": 1,
+        "failed_evaluation_ids": [],
+        "reviewer_agent_id": "local-verifier",
+        "summary": "1 verifier command and 0 verifier adapters passed. 1 evaluation passed.",
+        "changed_files": [],
+        "diff_summary": "git status unavailable: fatal: not a git repository (or any parent up to mount point /Volumes) Stopping at filesystem boundary (GIT_DISCOVERY_ACROSS_FILESYSTEM not set).",
+        "iteration": 1
+      }
+    },
+    {
+      "event_id": "evt_3937f6da-48b1-46aa-b4fb-0b96aa86a6d9",
+      "loop_id": "loop_d6a8c49f-301b-4eb7-8f43-cc7e59cfe137",
+      "type": "loop.iterate.done",
+      "seq": 7,
+      "created_at": 1792779988211,
+      "payload": {
+        "task_id": "task_2cb38a72-retry-retry-retry",
+        "action": "stop",
+        "reason": "Verifier passed with score 1.00.",
+        "iteration": 1,
+        "issue_count": 0,
+        "failed_evaluation_ids": []
+      }
+    },
+    {
+      "event_id": "evt_7590f507-ad42-43e3-9ce9-b1c085fbb84f",
+      "loop_id": "loop_d6a8c49f-301b-4eb7-8f43-cc7e59cfe137",
+      "type": "loop.state.written",
+      "seq": 8,
+      "created_at": 1792779988213,
+      "payload": {
+        "jsonPath": "/Volumes/AIMATE_WORK/tmp/osstack/smoke/pr237-integration/queue/LOOP-STATE.json",
+        "markdownPath": "/Volumes/AIMATE_WORK/tmp/osstack/smoke/pr237-integration/queue/STATE.md"
+      }
+    },
+    {
+      "event_id": "evt_346bafc2-e75c-4145-86db-30f9748c2e99",
+      "loop_id": "loop_d6a8c49f-301b-4eb7-8f43-cc7e59cfe137",
+      "type": "loop.cycle.completed",
+      "seq": 9,
+      "created_at": 1792779988213,
+      "payload": {
+        "cycle": 1,
+        "task_count": 1,
+        "discovered_task_count": 4,
+        "skipped_task_count": 3,
+        "duration_ms": 2199
+      }
+    },
+    {
+      "event_id": "evt_5fe0898e-9d9c-4aac-95f8-15bcdd9f01cf",
+      "loop_id": "loop_d6a8c49f-301b-4eb7-8f43-cc7e59cfe137",
+      "type": "loop.stopped",
+      "seq": 10,
+      "created_at": 1792779988214,
+      "payload": {
+        "reason_code": "completed",
+        "reason": "manual run completed"
+      }
+    }
+  ],
+  "learned_lessons": {
+    "learned": 3,
+    "lessons": [
+      {
+        "pitfall_id": "pit_c9d46c6d32780386",
+        "family": "reviewer_checker_failed",
+        "fingerprint": "c9d46c6d327803866be61d51bca8a162df3cf46b35324c4e8bd80230fc9b87b8",
+        "tech_stack_json": "[\"code\",\"test\"]",
+        "symptom": "task_2cb38a72 ended with escalated after 1 iteration. Builder execution ended failed: Process group 83098 gone (kill(-pgid, 0): ESRCH); leader exit observed",
+        "resolution": "Inspect reviewer/checker findings, fix the reported issues, and rerun the verifier before retrying the loop.",
+        "verified_count": 0,
+        "source_run_ids_json": "[\"loop_d6a8c49f-301b-4eb7-8f43-cc7e59cfe137\"]",
+        "observation_run_ids_json": "[\"loop_d6a8c49f-301b-4eb7-8f43-cc7e59cfe137\"]",
+        "status": "active",
+        "tenant_id": null,
+        "created_at": 1792777336.2,
+        "updated_at": 1792779988.228,
+        "last_seen_at": 1792779988.228,
+        "tech_stack": [
+          "code",
+          "test"
+        ],
+        "source_run_ids": [
+          "loop_d6a8c49f-301b-4eb7-8f43-cc7e59cfe137"
+        ],
+        "observation_count": 1,
+        "observation_run_ids": [
+          "loop_d6a8c49f-301b-4eb7-8f43-cc7e59cfe137"
+        ],
+        "legacy_verified_count": 0
+      },
+      {
+        "pitfall_id": "pit_0bc564ac71d132bd",
+        "family": "reviewer_checker_failed",
+        "fingerprint": "0bc564ac71d132bd3e45302a56f23b72f8a6a6ee13654cd7cd3f92115ff01828",
+        "tech_stack_json": "[\"code\",\"test\"]",
+        "symptom": "task_2cb38a72-retry ended with escalated after 1 iteration. Builder execution ended failed: Process group 36930 gone (kill(-pgid, 0): ESRCH); leader exit observed",
+        "resolution": "Inspect reviewer/checker findings, fix the reported issues, and rerun the verifier before retrying the loop.",
+        "verified_count": 0,
+        "source_run_ids_json": "[\"loop_d6a8c49f-301b-4eb7-8f43-cc7e59cfe137\"]",
+        "observation_run_ids_json": "[\"loop_d6a8c49f-301b-4eb7-8f43-cc7e59cfe137\"]",
+        "status": "active",
+        "tenant_id": null,
+        "created_at": 1792778780.137,
+        "updated_at": 1792779988.229,
+        "last_seen_at": 1792779988.229,
+        "tech_stack": [
+          "code",
+          "test"
+        ],
+        "source_run_ids": [
+          "loop_d6a8c49f-301b-4eb7-8f43-cc7e59cfe137"
+        ],
+        "observation_count": 1,
+        "observation_run_ids": [
+          "loop_d6a8c49f-301b-4eb7-8f43-cc7e59cfe137"
+        ],
+        "legacy_verified_count": 0
+      },
+      {
+        "pitfall_id": "pit_d6a1c7bdc6453e81",
+        "family": "reviewer_checker_failed",
+        "fingerprint": "d6a1c7bdc6453e8144205b939ae2e2a6cad85517c5241564c6af3925049d32f3",
+        "tech_stack_json": "[\"code\",\"test\"]",
+        "symptom": "task_2cb38a72-retry-retry ended with escalated after 1 iteration. Builder execution ended failed: Process group 72691 gone (kill(-pgid, 0): ESRCH); leader exit observed",
+        "resolution": "Inspect reviewer/checker findings, fix the reported issues, and rerun the verifier before retrying the loop.",
+        "verified_count": 0,
+        "source_run_ids_json": "[\"loop_d6a8c49f-301b-4eb7-8f43-cc7e59cfe137\"]",
+        "observation_run_ids_json": "[\"loop_d6a8c49f-301b-4eb7-8f43-cc7e59cfe137\"]",
+        "status": "active",
+        "tenant_id": null,
+        "created_at": 1792779969.17,
+        "updated_at": 1792779988.229,
+        "last_seen_at": 1792779988.229,
+        "tech_stack": [
+          "code",
+          "test"
+        ],
+        "source_run_ids": [
+          "loop_d6a8c49f-301b-4eb7-8f43-cc7e59cfe137"
+        ],
+        "observation_count": 1,
+        "observation_run_ids": [
+          "loop_d6a8c49f-301b-4eb7-8f43-cc7e59cfe137"
+        ],
+        "legacy_verified_count": 0
+      }
+    ],
+    "verified": 0,
+    "verified_lessons": []
+  },
+  "metrics": {
+    "total_cycles": 4,
+    "avg_duration_ms": 645231,
+    "success_rate": 0.25,
+    "tokens_consumed": 0,
+    "cost_consumed": 0
+  }
+}

@@ -89,6 +89,10 @@ describe("daemon daily RPC (R2.3)", () => {
     const date = new Date().toISOString().slice(0, 10);
     const briefPath = join(tmp, "home", "daily-briefs", `${date}.json`);
     await expect(readFile(briefPath, "utf8")).resolves.toContain("repo-a");
+    const brief = JSON.parse(await readFile(briefPath, "utf8"));
+    expect(brief.attention).toMatchObject({ tenant: "default", repos: [
+      { repo_id: "repo-a", status: "disabled", snapshot: { totals: null } },
+    ] });
   });
 
   it("records the schedule expression verbatim while the interval drives execution", async () => {

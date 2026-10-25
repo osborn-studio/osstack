@@ -1,0 +1,69 @@
+{
+  "files": [
+    {
+      "path": "packages/cli/src/source-context.ts",
+      "sha256": "a86db5921f95be730c0b896ef38ac3360502e9081aadd1c3216e2efba1f34ece",
+      "coverage": "full"
+    },
+    {
+      "path": "packages/cli/src/source-context-fence.ts",
+      "sha256": "a472da01850990ed31e6fbae3d4fc4da1f514ef4d069c031d68dd22651f469ec",
+      "coverage": "full"
+    },
+    {
+      "path": "packages/cli/src/source-observation-host.ts",
+      "sha256": "b3ffea589597077d4840570549b457c31f34417482b818e93369a37db327477a",
+      "coverage": "full"
+    },
+    {
+      "path": "packages/cli/src/source-observation-command.ts",
+      "sha256": "3a064a82c6593c253a2d344600babad7f906309c6a03c9c70a354f6a63a1287b",
+      "coverage": "full"
+    },
+    {
+      "path": "packages/cli/src/local-data-source-registry.ts",
+      "sha256": "0018837f6f43ff1029fad3a444a9d163d5b112fdf0e94866c878f3014bcb80a1",
+      "coverage": "full"
+    },
+    {
+      "path": "packages/cli/src/source-context.test.ts",
+      "sha256": "a88eab699951bacbf03e4e12cb79225e4fb4676ae4c76dab2ddfb03a52f17653",
+      "coverage": "full"
+    },
+    {
+      "path": "packages/cli/src/local-ledgers-daemon.test.ts",
+      "sha256": "0d6e055159279ce2cc0d46892b925ed837453e6209acfee93653ddfd4217246b",
+      "coverage": "full"
+    },
+    {
+      "path": "packages/core/src/state/source-observations.ts",
+      "sha256": "245a04dda8e30f08ab9257b3d474a395523c4f758fe9bb023f063a855d6f5197",
+      "coverage": "full"
+    },
+    {
+      "path": "docs/reports/2026-10-24-source-continuity-boundaries.md",
+      "sha256": "eccf4f69354869c956ca52d000f6cd2b698a486eb4129608926d3f213a654c63",
+      "coverage": "full"
+    },
+    {
+      "path": "packages/cli/src/daemon.ts",
+      "sha256": "f3863e07c16bf1e71253c1323afee5f180019a564e8ba8cdc138f8821be87a94",
+      "coverage": "170-190",
+      "excerpt_sha256": "360c66811ce72cb413abdb901d70f4c20beb0bda2b2ca7ca8d2bf87a451fa91f"
+    },
+    {
+      "path": "packages/cli/src/daemon.ts",
+      "sha256": "f3863e07c16bf1e71253c1323afee5f180019a564e8ba8cdc138f8821be87a94",
+      "coverage": "1115-1190",
+      "excerpt_sha256": "2756b76318546c90301a5cac0707c87db88a5c1313d01359cdcdc30114db642d"
+    },
+    {
+      "path": "packages/cli/src/daemon.ts",
+      "sha256": "f3863e07c16bf1e71253c1323afee5f180019a564e8ba8cdc138f8821be87a94",
+      "coverage": "4415-4480",
+      "excerpt_sha256": "389f242ec76e102042687c789683de7794af25f3e502563fc72616fb9d08e8f0"
+    }
+  ],
+  "prompt_sha256": "01e24e0750be6e70d8f30fc5d6559735f2fe89a6c7b9869c350825a9cec85b66",
+  "prompt_bytes": 136157
+}
