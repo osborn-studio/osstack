@@ -1,3 +1,4 @@
+import { FollowUpCreateParams, FollowUpListParams, FollowUpDraftParams, FollowUpResolveParams, FollowUpObligation, FollowUpMutationResult, FollowUpListResult } from "./follow-up.js";
 // JSON Schema generation — Zod is the source of truth; this module emits the
 // committed schemas/*.schema.json artifacts. A single manifest is the shared
 // source of truth for both scripts/generate-schemas.mjs (writes/checks the
@@ -10,6 +11,7 @@
 // documents the object SHAPE only; the conditional rules live in the superRefine
 // and the tests. This is a known, documented limitation, not a gap.
 
+import { DeliveryContractV2, FrozenDeliveryContractV2, DeliveryVerificationReceiptV2 } from "./delivery-contract.js";
 import { AttentionInbox, AttentionStatus } from "./attention.js";
 import { GraphWorkerMessage } from "./graph-worker.js";
 import { GraphCheckpointRequest, GraphCheckpointResponse } from "./graph-checkpoint.js";
@@ -49,6 +51,19 @@ interface SchemaEntry {
 
 /** Public protocol contracts emitted as JSON Schema. Order is stable. */
 export const SCHEMA_MANIFEST: readonly SchemaEntry[] = [
+  {key:"follow-up-create-params",title:"OSStack FollowUpCreateParams",schema:FollowUpCreateParams,comment:"Local ledger only; parsing does not authorize remote delivery. Runtime validates canonical repository, source binding, revisions and response byte budget."},
+  {key:"follow-up-list-params",title:"OSStack FollowUpListParams",schema:FollowUpListParams,comment:"Local ledger only; parsing does not authorize remote delivery. Runtime validates canonical repository, source binding, revisions and response byte budget."},
+  {key:"follow-up-draft-params",title:"OSStack FollowUpDraftParams",schema:FollowUpDraftParams,comment:"Local ledger only; parsing does not authorize remote delivery. Runtime validates canonical repository, source binding, revisions and response byte budget."},
+  {key:"follow-up-resolve-params",title:"OSStack FollowUpResolveParams",schema:FollowUpResolveParams,comment:"Local ledger only; parsing does not authorize remote delivery. Runtime validates canonical repository, source binding, revisions and response byte budget."},
+  {key:"follow-up-obligation",title:"OSStack FollowUpObligation",schema:FollowUpObligation,comment:"Local ledger only; parsing does not authorize remote delivery. Runtime validates canonical repository, source binding, revisions and response byte budget."},
+  {key:"follow-up-mutation-result",title:"OSStack FollowUpMutationResult",schema:FollowUpMutationResult,comment:"Local ledger only; parsing does not authorize remote delivery. Runtime validates canonical repository, source binding, revisions and response byte budget."},
+  {key:"follow-up-list-result",title:"OSStack FollowUpListResult",schema:FollowUpListResult,comment:"Local ledger only; parsing does not authorize remote delivery. Runtime validates canonical repository, source binding, revisions and response byte budget."},
+  {key:"delivery-contract-v2",title:"OSStack Delivery Contract v2",schema:DeliveryContractV2,
+    comment:"Shape only. Zod additionally enforces completion/action/publication constraints, unique checks, canonical references and scout restrictions. Contract fields constrain existing host authorization; they never grant it."},
+  {key:"frozen-delivery-contract-v2",title:"OSStack Frozen Delivery Contract v2",schema:FrozenDeliveryContractV2,
+    comment:"Shape only. The host must recompute the canonical contract digest and bind it to the actual repository and accepted policy."},
+  {key:"delivery-verification-receipt-v2",title:"OSStack Host Delivery Verification Receipt v2",schema:DeliveryVerificationReceiptV2,
+    comment:"Parsing does not authenticate provenance. Verify host-owned receipt, run/task/candidate/contract/policy binding, actual command results and independent review before deriving completion."},
   { key: "attention-inbox", title: "OSStack Attention Inbox", schema: AttentionInbox },
   { key: "attention-status", title: "OSStack Attention Snapshot", schema: AttentionStatus },
   { key: "graph-worker", title: "Graph Worker IPC", schema: GraphWorkerMessage, references: "root", comment: "Dedicated length-prefixed fd3 transport; cap raw bytes before allocation and JSON.parse. Host registration supplies authority. done is not process exit evidence." },

@@ -1,0 +1,44 @@
+[
+  {
+    "command": "attention --help",
+    "exit_code": 0,
+    "stdout": "Usage: osstack attention status --db /absolute/state.db --task ID --repo /absolute/repo --default-tenant [--json] [--cursor TOKEN]\nRead-only snapshot. No daemon is started and no database is migrated.\nLive process state is unknown; this command does not establish background supervision.\nOpt-in daemon: OSSTACK_ATTENTION=1 osstack serve\n  attention watch --task ID --repo PATH --default-tenant\n  attention inbox|inventory|deliveries --scope ID [--after ID] [--json]\n  attention get --scope ID --item ID\n  attention answer --scope ID --item ID --action ID --revision N --content-hash HASH --text TEXT [--takeover --grant ID]\n  attention release --scope ID --kind session|run|loop --subject ID --expected-version N\n  attention abandon-receipt --scope ID --session ID --message ID --expected-version N --reason TEXT --evidence-sha256 HASH --acknowledge-unknown-effects\n  attention recovery --scope ID [--after CURSOR] [--limit 1..25] [--json]\n  attention brief|cockpit --scope ID --actor NAME\n  attention posture --scope ID --actor NAME --posture attended|quiet|away\n  attention seen --scope ID --actor NAME --revisions JSON\n  attention foreground --scope ID --subjects JSON\n  attention handoff --scope ID --client ID --token TOKEN\n  attention turn-end --scope ID --client ID --token TOKEN --role foreground_owner\n  attention loop --scope ID --loop-id ID --state-path PATH\n  attention ci --scope ID --github-repo OWNER/REPO --pr N --head SHA --required JSON\n  attention claude-hook --binding-file PATH\n  attention lesson --from-run ID --repo PATH --default-tenant [--dry-run] [--json]\n  attention triage --scope ID --item ID --model EXACT [--json]\n  attention triage --status --scope ID [--json]\n  attention contract|routing-eval|triage|context|lesson --input PATH [--json]\nLegacy --input planning uses supplied data only; it does not verify execution. Runtime V2: deliver --contract FILE.\nSee docs/guides/attention.md for planning flags and verified hook setup.\nNo daemon is automatically started. Hooks are explicit calls; no offline watchdog is installed.\n",
+    "stderr": ""
+  },
+  {
+    "command": "scout --help",
+    "exit_code": 0,
+    "stdout": "osstack scout inspect --repo PATH --goal TEXT --path FILE [--path FILE] --profile NAME --request-id ID\nosstack scout promote --scout DIGEST --request-id ID\nInspect reads bounded committed files only. Promote explicitly starts fresh guarded-local delivery; it never inherits approval or publishes.\n",
+    "stderr": ""
+  },
+  {
+    "command": "sources --help",
+    "exit_code": 0,
+    "stdout": "sources inspect SOURCE_ID --repo ABSOLUTE_PATH --default-tenant [--json]\nRead only an explicitly host-registered, pinned local snapshot. No actions or automatic context injection.\n\nsources observe|events|acknowledge SOURCE_ID --repo ABSOLUTE_PATH --default-tenant [--after SEQUENCE] [--grant GRANT_ID] [--json]\nObserve persists sequence evidence; events reads its bounded journal. Acknowledge requires an exact private host grant. Events reports clock high-water; a short-lived clock_reset grant quarantines other streams while recovering the approved source. Clock recovery requires a fresh registered snapshot for an existing stream; source-context dispatch and acknowledgement require an OSSTACK_HOME path with no symlink components (use its resolved path). Observe/status/events do not enforce this canonical-path rule.\n",
+    "stderr": ""
+  },
+  {
+    "command": "worker --help",
+    "exit_code": 0,
+    "stdout": "worker list --repo ABSOLUTE_PATH --default-tenant [--limit 1..50] [--cursor TOKEN] [--json]\nworker inspect VIEW_ID --repo ABSOLUTE_PATH --default-tenant [--json]\nRead-only Session and bound-run state views. Graph and log tails are not supported.\nViews and cursors expire after 15 minutes or a daemon restart.\n",
+    "stderr": ""
+  },
+  {
+    "command": "remote-home --help",
+    "exit_code": 0,
+    "stdout": "remote-home inspect --registry FILE --sha256 HASH --alias NAME [--limit 1..50]\nRead a pinned remote home through fixed SSH stdio; partial pages and transport failures remain explicit.\n\nremote-home cancel|query --registry FILE --sha256 HASH --alias NAME --grant FILE\nSigned exact Graph cancellation only. Local durable attempt precedes transport; repeat cancel becomes query, never resend.\nRemote stop_requested is not physical stopped proof. Missing/offline receipts remain unknown.\nnot_sent reports only a new local invocation that failed before reserve/transport; it does not attest remote state.\n\nremote-home issue-cancel-grant --target NAME --daemon-generation INSTANCE --graph-run ID --graph-generation N --revision N --output FILE\nRequires host-private remote-cancel-issuer.json, issuer-KEY.pem, local interactive TTY and exact preview digest approval.\nCreates only one bounded generation/revision-specific cancellation grant. Does not connect or cancel. No --yes or RPC signer.\n",
+    "stderr": ""
+  },
+  {
+    "command": "follow-up-delivery --help",
+    "exit_code": 0,
+    "stdout": "follow-up-delivery prepare --repo PATH --default-tenant --input FILE [--json]\nfollow-up-delivery list --repo PATH --default-tenant [--limit 1..50] [--after ID] [--json]\nfollow-up-delivery inspect ID --repo PATH --default-tenant [--json]\nfollow-up-delivery authorize ID --repo PATH --default-tenant --revision N --grant FILE [--json]\nfollow-up-delivery revoke ID --repo PATH --default-tenant --revision N --reason TEXT [--json]\nfollow-up-delivery dispatch|reconcile ID --repo PATH --default-tenant --revision N [--json]\nGitHub delivery is disabled unless the host installs a private follow-up-delivery.json registry, credential, and trusted issuer key.\nAbsent transport stays qualification_pending and never consumes authorization.\nAuthorize imports a signed, host-trusted, exact-target/body/scope/single-attempt grant.\nLocal issue-grant requires a host-provisioned private issuer and interactive exact-preview approval; RPC callers cannot create authority.\nPrepare input excludes repo_path/default_tenant. Unknown delivery never retries; reconcile only queries a registered provider.\nJSON output preserves exact reviewable content. Dispatch/reconcile exit 0 only for production-qualified delivered evidence; fake and sandbox evidence exit 1.\nDelivery does not resolve the independent local obligation.\n",
+    "stderr": ""
+  },
+  {
+    "command": "homes --help",
+    "exit_code": 0,
+    "stdout": "homes inspect --manifest FILE [--json]\nRead only explicitly pinned local home identities; never upgrades or opens databases.\n",
+    "stderr": ""
+  }
+]

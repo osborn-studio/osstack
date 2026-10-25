@@ -1,0 +1,10 @@
+{
+  "task": {
+    "task_id": "firstmate-wave5-audited-source-qualification",
+    "capability": "code.test",
+    "prompt": "Qualify final Graph/remote/recovery source after audit: hidden-index rejection, immutable descriptor binding, unknown exit2, scoped terminal escaping. All eight checks; no real remote/provider/deploy claims.",
+    "priority": 50,
+    "source": "task_queue"
+  },
+  "path": "/Volumes/AIMATE_WORK/tmp/osstack/smoke/pr237-integration/wave5-audited-loop/tasks/firstmate-wave5-audited-source-qualification.json"
+}

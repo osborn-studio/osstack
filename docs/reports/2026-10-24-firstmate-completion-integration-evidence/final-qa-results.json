@@ -1,0 +1,85 @@
+{
+  "head": "84b406b484583738b5c8701419e6987d984f2e07",
+  "checks": [
+    {
+      "name": "build",
+      "command": [
+        "pnpm",
+        "build"
+      ],
+      "exit_code": 0,
+      "seconds": 10.763622283935547
+    },
+    {
+      "name": "inventory-generate",
+      "command": [
+        "node",
+        "scripts/generate-inventory.mjs"
+      ],
+      "exit_code": 0,
+      "seconds": 0.25397682189941406
+    },
+    {
+      "name": "typecheck",
+      "command": [
+        "pnpm",
+        "typecheck:check"
+      ],
+      "exit_code": 0,
+      "seconds": 15.03507399559021
+    },
+    {
+      "name": "test",
+      "command": [
+        "pnpm",
+        "-r",
+        "--workspace-concurrency=1",
+        "--no-bail",
+        "test",
+        "--maxWorkers=2",
+        "--testTimeout=20000"
+      ],
+      "exit_code": 1,
+      "seconds": 1259.2927160263062
+    },
+    {
+      "name": "lint",
+      "command": [
+        "pnpm",
+        "lint"
+      ],
+      "exit_code": 0,
+      "seconds": 1.2713549137115479
+    },
+    {
+      "name": "schemas",
+      "command": [
+        "pnpm",
+        "--filter",
+        "@osstack/protocol",
+        "check:schemas"
+      ],
+      "exit_code": 0,
+      "seconds": 0.5488629341125488
+    },
+    {
+      "name": "inventory",
+      "command": [
+        "node",
+        "scripts/generate-inventory.mjs",
+        "--check"
+      ],
+      "exit_code": 0,
+      "seconds": 0.30340075492858887
+    },
+    {
+      "name": "startup",
+      "command": [
+        "node",
+        "scripts/bench-cli-startup.mjs"
+      ],
+      "exit_code": 0,
+      "seconds": 1.6061697006225586
+    }
+  ]
+}

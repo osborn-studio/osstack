@@ -1,0 +1,578 @@
+Independently challenge this implementation plan. Prioritize concrete unsafe assumptions, missing authority boundaries, untestable promises and dependency mistakes. Focus first batch cockpit summary, serial supervision with stop join, actual deterministic routing qualification. Do not demand new permissions for local read-only code. No tools; do not pretend to test. Give confirmed blockers vs qualifications.
+
+# Firstmate 后续开发总计划与交付账本
+
+起点：PR #237 最终整合提交 `2d33db37`（尚待完整当前提交资格与独立人工批准）。旧研究的 24 项是能力地图；目前 8 项本地实现、12 项部分覆盖、4 项未新增，不用计划数量换算完成比例。
+
+## 详细设计
+
+- [产品集成：控制台、契约、受限分诊、路由评估、上下文、lesson](2026-10-24-firstmate-remaining-integration.md)
+- [可靠性：单飞监督、通知吞吐、事件补读、公平性、恢复与性能](2026-10-24-firstmate-remaining-reliability.md)
+- [扩展：worker 视图、发布范围、home 盘点、承诺账本与远程协议](2026-10-24-firstmate-remaining-extensions.md)
+
+三份方案均有真实源码落点、接口、依赖、对抗验收与回退。方案完成不等于实现完成。
+
+## 分批执行
+
+| 批次 | 可独立闭环的产物 | 依赖与验收 |
+|---|---|---|
+| 1 | 主 Cockpit 的只读 Attention 摘要；监督单飞与可等待停止；真实路由器 golden 评估 | #237 通过；分别测试 disabled/stale/跨 repo、停止竞态/晚到结果、显式路由覆盖/风险角色；主线程集中装配入口 |
+| 2 | 通知有界批处理；run event 有界分页与补读；daily 统一摘要 | 第 1 批服务生命周期稳定；迁移编号串行；不引入执行权限 |
+| 3 | V2 交付契约及实际 guarded delivery 接线；实际 prompt 上下文证明；执行证据转 lesson | 分清 base/candidate、可信 checks/review、只读 scout；不接受外部 passed 布尔当证明 |
+| 4 | 显式无工具分诊、持久预算；可见 worker 只读视图；home 盘点；本地 obligation 账本 | 首轮默认为本地、显式选择；不打开公开消息或远程控制权限 |
+| 5 | Graph 契约/context；公平调度、恢复诊断与性能资格；真实模型成对路由评估 | 保存精确候选与模型请求证据；真实模型收益未知时保持 shadow |
+| 6 | 远程只读投影、viewer 后端、公开 transport、多 home 升级协调 | 独立身份、断线 unknown、未知投递不重试；有实际 host/transport 才能取得端到端资格 |
+
+并发上限为主线程 + 3 位 subagent。隔离 worktree 下开发，单代理独占一个功能文件集；daemon/bin、migration、public schema 和集成验证由主线程统一接线。PR #237 未合并时后续 PR 明确依赖其 feature 分支，不能把后续代码直接混入 #237 或声称已上线。
+
+## OSStack 管理和完成门槛
+
+任务通过 `osstack loop enqueue` 写入独立 scratch 工作区，记录 task id、先决条件、源码提交、反例测试和审计文件。执行/验证回执用 Loop 产生；失败保留并用原生 retry 建新尝试，不改旧失败为成功。
+
+每批执行：设计锁定 → 子代理代码及定向测试 → 主线程集成 → Haiku 5.5 独立静态挑战 → 修复确证阻断 → 完整 build/typecheck/test/lint/schema/inventory/startup → exact-head CI → PR ready。GitHub 独立批准仍单独需要；不自动合并或部署。
+
+对远程主机、公共 transport、特殊终端后端等未配置的真实环境，仅交付可测试的本地接口不算完整能力资格；必须在能力表保留“部分/未验证”，绝不以模型审计替代真实运行。
+
+# Firstmate 剩余 S3 与产品集成实施方案
+
+本报告只做方案，未改生产代码。基线：`/Users/osborn/Developer/CodeX/.worktrees/osstack/pr237-main`，PR #237 整合 `main d2bc09e5` 的工作树；主代理仍在修审计问题，因此后续实施必须重新固定最终提交。依据能力状态表、原设计/计划及以下实际函数。不是将 24 项研究地图解释成 24 项全部交付承诺，也不把离线 helper 解释成运行时集成。
+
+## 1. 明确目前欠缺的连接
+
+| 能力 | 已有真实实现 | 缺口 |
+|---|---|---|
+| 单一 Cockpit | `attention-command.ts` 的 `handleAttentionCommand` 将 inventory/inbox/brief/deliveries 四个 RPC 依次拼起来 | 主入口 `bin.ts:handleDashboardCommand`、`handleCockpitTuiCommand` 使用 `dashboard.snapshot`；`dashboard.ts:createDashboardSnapshot` 和 `cockpit-tui.ts:cockpitTuiModel` 尚无 Attention 区块，四次读取也不是原子快照 |
+| scout / implement | `supervisor/src/attention-planning.ts:deliveryContract/promoteScout/verifyDeliveryContract` | 只由 `cli/src/attention-planning-command.ts:handleAttentionPlanning` 读取外部 JSON；实际 `deliver-command.ts:handleDeliverCommand`、`autonomy/src/engine.ts:GuardedDeliveryEngine`、`cli/src/graph-delivery.ts:GraphDelivery` 未受该契约约束 |
+| 统一完成标准 | helper 检查传入 digest/head/passed/reviewed/completion | `passed` 和 `reviewed` 目前是调用者提供的数据，不是验证器证明；单个 `head` 同时代表起点和交付终点也不能适配实际实现提交 |
+| 可选分诊 | `acceptAttentionTriage` 允许三种分类，非法输入回退 | CLI 只是读取用户提供的模型输出；没有真实受限调用、预算预留、取消、使用量回执和源版本绑定 |
+| 轻量路由 | `evaluateAttentionRouting` 统计外部输入的 route/token 数据 | 没有冻结 golden、真实成对执行、可复现数据分割与策略启用门禁；不能声称准确率或成本收益 |
+| 上下文/lesson | `budgetAttentionContext` 做 UTF-8 限额；lesson helper 写新草稿 | 没有连接真实 AgentTask 构造；知识检索和 Loop trace 目前不能当作已注入模型。lesson 未从可信结果回执自动采集、缺少稳定身份与治理来源绑定 |
+
+## 2. 共同约束与可交付口径
+
+1. 以 PR #237 最终通过提交为共同父提交；先完成它的全测试、Haiku 审计与可合并状态，再开始本方案的生产修改。后续 PR 可以依赖 #237 的分支，但不得声称已上线主线。
+2. 每项要有真实入口闭环：用户命令 → 受控读取/执行 → 可信来源 → 可见结果 → 有界失败。只有单元函数或 schema 的任务状态应叫“基础完成”，不能叫“能力完成”。
+3. 统一的 host 身份、scope、source version、未知回执、权限与审批继续来自现有账本。模型解释不能改变 `attention_items.state`、grant、签名 approval、CI required checks、Graph lease 或 publish 权限。
+4. 新模型调用默认关闭；用户明确配置模型/预算后才允许运行。用户指定模型不存在或认证失败时给出准确错误，不静默替换其他模型。
+5. 日志输出只保留受控文本/证据摘要；本地 home 绝不默认指向生产。开发和实测 home 放统一 scratch root。敏感内容不自动提交到 PR。
+6. `core` 不依赖 `supervisor`。后者已依赖 `core`、`loop`、`governance`，把它引入底层会造成循环。公共纯契约放 `protocol` 或 `core` 叶子模块，宿主装配保持 lazy；新增公共导出先测载入耗时。
+7. “可合并”需要测试、独立审计和 GitHub 必要检查；“发布/部署”单独遵循既有授权，完成设计或本地验证不等于部署。
+
+## 3. A：统一 Cockpit 和 daily 主入口
+
+### A1：单次一致快照与主控制台（首个可交付）
+
+**改动落点**：新增 `cli/src/attention-dashboard.ts` 纯读取模块与测试；扩展 `dashboard.ts` 的 `DashboardSnapshotOptions` / `DashboardSnapshot` / `createDashboardSnapshot`；在 `daemon.ts` 的 `dashboard.snapshot` 分支传入服务状态；`cockpit-tui.ts:cockpitTuiModel`、`renderCockpitFullscreen`；协议若新增公共 schema 则置 `protocol/src/attention.ts`。主代理集中修改 `daemon.ts` 和 `bin.ts`，子代理交付独立模块。
+
+**接口**：`attention: { status: disabled|unavailable|available, sampled_at_ms, generation?, scope_filter, totals, scopes, next_after, truncated, limitations }`。单 scope 行含 scope_id/task_id/repo、coverage 原因、业务未决数量、unknown receipts、uncovered subjects、通知死信数、最近成功 scan 时间。只列存在且已绑定的 scope；明确 canonical workspace 过滤，不能把别的仓库 scope 计进“当前仓库无待办”。没有显式 actor 时只显示事实总数，不返回 actor 简报/已读数据。
+
+单次只读 SQLite 事务计算 scope 行和总数；不在事务中访问 GitHub、启动 watcher、调用模型或文件扫描。一次最多 100 scope、每 scope 展示前三项；总数不能由页面行数推导。已停用 observer 仍可展示历史事实，但 coverage 必须 unavailable/stale；旧 schema 且无 Attention 表时返回 unavailable，不迁移、不抛整个控制台错误。
+
+主入口显示“待你处理 / 系统等待 / 来源不确定 / 未监控 / 通知失败”。`answered`、`applied`、任务完成保持不同概念。每个操作是带明确 scope/item/version 的结构化下一步，TUI 默认选择只输出命令；既有 `bin.ts:executeCockpitTuiAction` 支持显式 `--execute-action`，新增 Attention 动作只能经过同一受控 CLI/RPC 与 source version 校验，不能因来自快照而视为授权。A1 先只提供查询/打开动作，不把 answer/abandon 自动加入可执行 action 列表。Web 对不可信说明做 HTML 转义，终端去控制字节，不拼可执行 shell。保留既有 cockpit/dashboard 别名兼容。
+
+**反例验收**：多个 repo 同名任务不混；全量 101 scopes 截断有总数；并发更新不会产生“一半新一半旧”关联状态；service disabled 不显示 0 待办伪健康；observer 过期但 timer 活着显示降级；unknown action 不显示“点击重试”；quiet 不隐藏未决；Web XSS/TUI ANSI 内容只作文本；80×24 终端不会把高风险警告裁掉。
+
+**性能**：索引读取目标 RPC p95 <10ms，100 scopes/100 subjects/1000 items 固定数据测试；超预算先 query plan/分页，不能放宽 source 校验。`--help` 和 `--version` 按仓库预算复测。
+
+### A2：daily 与增量反馈
+
+`daily-command.ts:DailyBrief/runDailyBrief/deriveOwnerDecisions/renderDailyMarkdown` 接受同一 Attention summary provider；默认不隐式启动 daemon，不为 daily 增加模型调用。选择显式 scopes + actor 后才产生增量 brief；读取不调用 `seen`。daily 出现源错误时保留上一条观测时间与 error，不能报告“全部清空”。
+
+验收：daily 离线可生成剩余已有内容；attention 超时不挂起其它内容；一次读取不会改变已读、posture、grant；同一未决不重复生成多个 owner decision。此 PR 依赖 A1 接口，可以独立开发 daily 适配器。
+
+## 4. B：交付契约真正进入 delivery / autonomy / Graph
+
+### B0：契约 V2 与可信证据边界
+
+新增 `protocol/src/delivery-contract.ts`，纯规范化/摘要逻辑建议 `core/src/delivery-contract.ts`。现有 helper 保留 V1 兼容与明确“离线输入校验”标记；不要无声把 V1 输入当运行时批准。
+
+建议 V2：`schema_version, contract_id, parent_contract_id?, task_id, canonical_repo, mode, base_head, goal, required_checks[{id,registry_ref}], review_policy_ref, requested_completion, allowed_paths, requested_actions, budget_ref, policy_digest`。digest 覆盖规范化后的完整值，required_checks ID 唯一。`base_head` 为入场基线；`candidate_head` / `tree_digest` / `diff_digest` 出现在 host 写入的 evidence binding 中。实现通常产生新提交，不能要求最终 HEAD 等于起始 HEAD。
+
+运行记录：`contract_digest, run_id, run_kind, candidate_identity, policy_digest, verification_receipt_refs, review_receipt_ref?, publication_receipt_refs, achieved_completion, status`。存储优先扩展现有 autonomy context 的严格 schema 和 Graph 输入/证明绑定；只有需要跨 run 查询契约血缘时再加独立 `delivery_contracts` / `delivery_contract_runs` 表。若新增迁移，由单独集成负责人分配最终编号，禁止并行代理各写相同 migration ID。
+
+**权威验证**：`verifyDeliveryContract` 的布尔 `reviewed` 不进入生产通过条件。逐项加载 host 的 receipt，核对 run、candidate、命令注册 ID、执行结果、独立评审身份、policy digest 与完成阶段；拒绝用户 JSON 声称的 passed。验证命令来自已接受的 CLI/policy 配置；contract 中的外来文本不是 shell 执行授权。
+
+### B1：guarded-local / guarded-git 最小运行集成
+
+`deliver-command.ts:handleDeliverCommand` 增加 `--contract FILE`，先解析/绑定 workspace/base head、派生 effective options、打印同 digest brief，再创建执行记录。CLI 参数与 contract 冲突应失败而非最后覆盖；较严格组织策略与 contract 取并集，不能通过 contract 降低必需检查。`DeliverCommandDeps.startGuardedGit` 显式携带 frozen contract。
+
+`autonomy/src/engine.ts:GuardedDeliveryContextSchema` 保存版本化 contract；`GuardedDeliveryEngine.runLocalAndClassify` / `writeCandidateAndDeliver` / `writeFinalAndComplete` 在对应阶段验证绑定回执。旧 run 没有 contract 仍使用旧逻辑，报告 legacy；不能在恢复时从当前 CLI 偷换 contract。`local_verified` 终止于本地 proof；`pr_opened` 不继续自动 merge；`merged/deployed` 仍需要现有风险与签名批准。
+
+**scout 最小范围**：先支持受限无工具调查材料生成/校验，不将普通 code executor 当只读模型。scout 只可 `local_verified`，禁用 `--execute`、写入型 adapter、push/merge/deploy ports；若无法证明 adapter 无写工具，则拒绝 scout 执行。产出是研究报告及证据，不能标成代码交付。`promote` 是显式创建新 implement contract，与旧 contract 建父子引用；重新绑定当前 base_head 和重新做 risk admission，不能继承 scout 的“通过”或 approval nonce。允许重试创建时用 request ID 幂等，避免重复 promotion 生成多个兄弟契约。
+
+**反例验收**：contract 换 repo/head/check；在运行中替换文件；恢复跨版本；CLI `--verify` 删除必需项；review 自证；scout 混入发布 action；旧 scout 证据套给 implement；只承诺 PR 却到 merge；用户指定 model 被 availability fallback；动作失败未知时再起新 contract 绕过回执。所有案例 fail closed，且不能消耗错误 scope 的授权。
+
+### B2：Graph 完成证明连接（必须独立 PR）
+
+落点 `cli/src/graph-delivery.ts:GraphDeliveryOptions/GraphDelivery.run/evaluate/binding`、`graph-delivery-receipts.ts:publishDeliveryReceipt/loadDeliveryReceipt`、`graph/src/templates/code-delivery-v1.ts:deliveryEpoch` 及真实 graph spec/compiler/host 请求类型。对已有 `specHash`、run identity、candidate epoch、lease 的绑定做增量，将 contract digest 纳入 host input identity；**不修改已发布 registry/template 同版本的含义**，若语义变更需新版本和兼容 reader。
+
+Graph 的 candidate_ready 是本地候选证明，不等于 GitHub PR/merge/deploy。高层 contract 按各阶段 receipt 聚合 `achieved_completion`；Graph 本体不得凭一个 `completion=merged` 字段自行得到 publish capability。重跑 candidate epoch 后旧 checks/review 不能转移；只有同 candidate 证据可完成。新 contract 不绕过 budget/lease/approval。
+
+测试重点：模板 hash 变化检测；旧 graph run 恢复保持 legacy；新 candidate/新 epoch 不复用旧 receipt；外部伪造 contract digest 不覆盖 host reservation；Graph failed/cancelled/unknown 不被标完成。B2 在 B0 schema 冻结后可与 B1 分开实现，最后集中接 CLI 装配。
+
+## 5. C：真实的受限分诊调用
+
+### C1：无工具 provider 与一轮显式分诊
+
+新增 `cli/src/attention-triage.ts` service、`agents` 或现有受限会话层的窄 provider 封装，复用 `agents/src/controlled-session.ts:ControlledSessionAdapter` 的 SDK 固定 tools/settings/MCP/环境约束，禁止直接使用会话通用 `invoke` 的任意 adapter。该 adapter 当前是 session 持久化模式，应增加专用一次性接口或限定独立 runtime 生命周期；不能共用可恢复主会话，否则污染主对话或引入工具权限。
+
+输入：`scope_id, item_id, item_revision, source_hash, deterministic_category, bounded_question_excerpt, schema_version`。输出：`category: human_decision|system_wait|source_uncertain, explanation<=500`，严格拒绝额外字段。模型建议仅为 `advisory`；真实类别/等待责任/风险审批仍以确定性字段为准。即使模型输出 system_wait 也不能隐藏 human approval；每条解释标注 model/policy fingerprint、input digest 与时间。
+
+接口初版 `attention triage --scope ... --item ... --model ...`，显式配置开关后可使用；线上 read-only query 不同步阻塞等待模型。建议每 scope 每小时最多 5 次、全 daemon 同时 1 次、输入≤8KiB、输出≤2KiB、单次≤20s、maxTurns=1，全部参数须有有限上界。初版只主动调用，自动事件分诊在预算可证明后单独开关。
+
+### C2：预算、缓存与故障恢复
+
+若跨重启预算需要可靠，新增小的 `attention_triage_attempts`：attempt_id、scope/item/revision/input_digest、model_id/policy_fingerprint、budget_window、reserved_at、status、usage/result_digest。预留预算事务先于网络调用；失败和超时也算一次尝试；崩溃后的 reserved/started 标 unknown，不返还额度或自动重新发起。唯一缓存 key 包含 item revision/source hash/model policy；源变后结果标 stale，不覆盖新来源。
+
+完成后只写解释记录，不能修改 item.state 或调用 answer/resume/approve/merge。预算耗尽、credentials 缺失、provider error、超时、无 usage、JSON 错误全部回到确定性结果，并显示明确 reason。provider init 未验证 tools=[]/MCP=[]/model exact 时立即拒绝。模型实体由请求和 provider 返回标识记录，不声称独立验证模型权重。
+
+**反例验收**：并发两次只占允许额度；重启不能重置预算；恶意问答注入“调用工具/删除状态”无动作；有效 JSON 多一个 command 字段拒绝；超时后晚到响应不更新 revision；model unavailable 不改用默认；unknown receipt 不被模型判断为“已答”；数据库失败导致预算不明时不调用模型。
+
+**性能**：默认关闭时零 provider 初始化/零模型调用；分诊在独立队列，observer tick 和 RPC 查询不等待；memory/output bound 经实测。用户指定 Haiku 5.5 适合这条工作流的测试和审计，但运行时模型选择仍来自显式配置。
+
+## 6. D：路由 golden 与成对真实评估
+
+落点现有 `supervisor/src/attention-planning.ts:evaluateAttentionRouting`；真正执行路由是 `core/src/orchestrator/router.ts:routeCapability`，产品 profile 在 `cli/src/loop-profile-routing.ts:resolveLoopProfileRouting`，推荐提示 `stack-routing.ts:recommendRouting`。这三者职责不同，评估不得把提示推荐当真实模型调度。
+
+新增 `supervisor/src/routing-evaluation.ts` 及 `fixtures/routing-golden-v1.jsonl`，新 CLI runner 独立 `attention routing-eval --dataset ... --run --model ... --output ...`。离线既有 `--input` 聚合保留，但报告明确来源 `supplied_predictions`；真实执行来源 `recorded_provider_runs`。
+
+golden case：`case_id, split, intent, prompt_fixture_ref, expected_capability_kind, required_role, independent_review_required, risk_flags, forbidden_downgrades, expected_override?`；保存 label rationale、dataset hash 与版本。先建设约 60 条开发集+约 40 条封闭 holdout，覆盖调查/实现/只审计/迁移/UI/部署/模糊任务/显式 agent override/审批诱导；这只是第一版资格样本，不是总体准确率证明。任务类别和安全关键子集都分层汇报，禁止只报总平均。
+
+每 case 两个输入 arm：只任务意图、完整 prompt；相同 model/policy/budget，随机或交错执行次序，记录 prompt digest、原始输出、parse errors、usage 是否测得、延迟、fallback、review 漏失/不必要升级。tokens 缺失标 unknown，不填 0。数据生成/标签阶段不得用待测模型的输出当真值；holdout 不调参、不用 eval 提示泄露 expected。
+
+严格 validate：重复 case ID、空集、非法 route、负/NaN tokens、被污染 split、缺 case 结果、未完成 arm 全部使结果 incomplete。报告同时保留 denominator、失败数、精确路由匹配、允许兼容路由、review 漏失；不得把超时 case 从分母删除。
+
+**启用门禁**：这批只交付 benchmark/shadow，不改默认路由。后续策略启用独立 PR，要求 holdout 安全关键子集零已知漏 review、全部显式 override honored、成本与延迟收益有可重复测量，至少两个独立重复批次，并由策略配置显式选用。出现任何安全降级维持 disabled。
+
+**反例验收**：prompt 中“忽略 review”不得弱化 required_role；配置 unavailable exact agent 必须沿用 `AgentOverrideError` fail closed；把错误结果复制到另一 case/input hash 不能算通过；断点续跑只重做已证明未调用项，其余记 unknown；预算达到上限不会继续循环。
+
+## 7. E：context 连接实际 prompt 与治理
+
+现有 `budgetAttentionContext` 对任意 entries 排序，但没有检索来源与 payload integrity；`knowledge/src/pack.ts:resolveKnowledgeSearch/retrieveKnowledge/assembleKnowledgeSnippet` 已有来源元数据，`cli/src/bin.ts:createKnowledgeProofEvidence` 是证明采集；`loop-engine.ts` 的 knowledge 只记录 trace/event，不足以证明内容进入 AgentTask.prompt。
+
+新增 `core` 或 `knowledge` 的纯 `context-budget.ts` 与 `cli/src/execution-context.ts` 宿主装配。先实现一条真实路径：guarded-local deliver → 完成授权/契约选定 → 检索显式配置的 local knowledge pack → 预算组装 → 真正发出的 AgentTask.prompt → proof 同 digest 记录。再扩到 Graph writer/reviewer，独立 PR。
+
+规范 entry：`id, source_kind, source_ref, source_digest, scope, tier, text, verified_at, expires_at?, evidence_kind`。instruction/contract/safety mandatory 单独来源，不接受知识正文把自己标为 required。mandatory 不能因 expired 自动消失；过期或超限必须阻断执行并显示 required_omitted。未决 action/decision 继续保存在源账本，不能当过期记忆裁掉。可选知识才按新鲜度与预算淘汰。
+
+完整 rendered prompt（分隔符/引用元数据/转义开销都算）验 UTF-8 bytes；若模型 token window 是准入条件，必须使用被声明的 tokenizer 或保守上界并标 estimate，不能把 bytes 当 tokens。建议初始可选知识预算 8KiB/总上下文配置硬上限，留足模型回答空间；没有可信 model window 时不宣称不超窗口。
+
+未信任检索材料用独立区块和 provenance 明示为资料，不成为权限指令。验证包 digest/pin/检索 stale 状态；拒绝跨 repo/operator 私有 scope。只扫描显式来源路径，复用 `governance/.../instruction-source.ts:inspectInstructionSource` 的 source 检查，不自行覆盖 AGENTS.md。`knowledge-hygiene/rules/budget-rule.ts:BUDGET_RULES_V1` 的静态预算建议与运行预算需要统一单位定义，但静态规则通过不能代替最终 prompt 限额。
+
+**反例验收**：中文/emoji 与包装字节实际超限；同名 ID 不同来源冲突；恶意 source 自称 required；未来 verified_at；内容 hash 改变；过期必须说明；mandatory 不能静默遗漏；跨 tenant/repo pack 被拒；模型实际接收的字符串 digest 等于 proof；plain knowledge trace 但无注入不能标 used。
+
+## 8. F：从执行证据生成 lesson draft，并连接现有审核
+
+`loop/src/lesson-draft.ts:renderLessonDraft/writeLessonDraft/listLessonDrafts/promoteLessonDraft` 已有草稿生命周期；`core/src/state/lessons.ts:upsertPitfallLesson` 是 pitfall 库；两者不能无声合并或自动把草稿变成有效知识。现有 `attention-planning-command.ts` lesson 只是用户 JSON → 新文件，没有证明其确实发生过。
+
+新增 `cli/src/attention-lesson.ts`：显式 `attention lesson --from-run RUN --repo ...` 从同 scope 的可信 run/verification evidence 构造 `LessonDraftInput`，禁止相信输入 self-reported finalVerdict。只有“之前 verifier 真实失败，之后同任务经验证恢复”才用 success-after-repair 模板；unknown 或未完成只能生成明确的 investigation draft，不能写 success 文案。记录 run/contract/candidate/check/source hashes，引用证据路径；摘要不复制密钥、完整私有 transcript。
+
+稳定草稿键由 scope/task/失败族/最终 proof digest 得出；create-only、同键同内容幂等、冲突另建修订引用，不覆盖现有用户编辑。目录路径必须 realpath confined，拒绝 drafts/promoted symlink 越界；输出目录按 repo 配置确定。初版事件触发只排 pending draft suggestion，用户显式命令才能写 repo；如果未来默认自动生成，要独立选择开关和容量/保留策略。
+
+审核继续使用现有 `loop lessons show/promote/discard`，向 guide 明确显式 promote 可改 skill，新增 bridge 不自动调用 promote，不自动发布 Knowledge Cloud。支持调用现有 knowledge publish validation 输出可发布性报告；验证通过也不是发布动作。draft 变更通过仓库正常 PR 审核保留证据来源。
+
+**反例验收**：缺 final receipt/未知 action 不写成功课题；伪造 run_id/repo 不跨读；用户编辑草稿不被覆盖；重复事件仅一个 draft；磁盘失败无半成品；symlink 指到 AGENTS/skill 不写；draft source 过期展示复核，不自动移除；pitfall observation_count 增长不标 effectiveness verified。
+
+## 9. 可并行 PR 拆分与交接规则
+
+| PR | 范围 | 依赖 | 并行所有权/不得触碰 |
+|---|---|---|---|
+| P1 | A1 原子 Attention dashboard summary + TUI/Web | #237 | dashboard/attention-dashboard/cockpit-tui；主代理装配 daemon/bin |
+| P2 | B0 contract V2/规范化/可信 evidence schema | #237 | protocol delivery-contract/core leaf；不改 autonomy |
+| P3 | C1/C2 受限分诊 provider、预算、CLI | #237；schema 接口先定 | 新 attention-triage 模块；迁移由主代理集中分配 |
+| P4 | D golden 数据/runner/shadow 报告 | #237 | routing-evaluation + fixtures；不改默认 router |
+| P5 | E local knowledge → 实际 prompt + proof | #237；B0 输入绑定定稿 | 新 context 模块/knowledge；deliver 装配由主代理 |
+| P6 | F evidence → lesson draft + review bridge | #237 | 新 attention-lesson/lesson 安全 IO；不改共享命令总入口 |
+| P7 | A2 daily 统一 | P1 | daily-command/测试 |
+| P8 | B1 guarded-local/scout/promote | P2 | deliver/autonomy，独占修改 |
+| P9 | B1 guarded-git 完成级别/恢复 | P8 | autonomy + proof，避免与 P8 同时编辑 |
+| P10 | B2 Graph 绑定/候选证明 | P2 | graph-delivery/receipts/template-version，独占 |
+| P11 | E Graph writer/reviewer context | P5+P10 | Graph prompt 单一路径 |
+| P12 | 产品入口/完整回归/文档与性能资格 | P1–P11 | 主代理集成收口 |
+
+四个实际并发槽位包括主代理；建议首波三个子代理 P1/P2/P4，主代理负责 #237 收口和接口审查；次波 P3/P5/P6；后续 P7/P8/P10，再串行 P9/P11/P12。不是无限增开代理；重叠文件、数据库迁移和公共入口必须串行。每个代理提交独立 worktree、commit、测试摘要、已知限制；不互相直接修改共享工作树。
+
+OSStack 管理任务建议以本表 PR 为父 task，下分 contract/schema、实现、反例、性能、审计、文档六种验收项，任务 artifact 包含 baseline SHA、source hash、命令退出码、测试数量、audit request/result model、独立证据引用。完成状态由真实命令回执推进，不能提交一份计划就把实现任务标 verified。
+
+## 10. 每个 PR 的 Haiku 审计与集成验收
+
+1. 冻结该 PR 实际 diff、依赖接口与威胁/反例表；Claude Code CLI 固定请求 `claude-haiku-5-5`，无工具/无 hooks/MCP、独立 scratch config、读取 stdin context、输出 JSON 及 stderr。模型不可用如实阻断该审计资格，不改名或虚构通过。
+2. 审计提示要求找可复现行为与文件/函数；重点攻击 scope/actor/未知回执、contract 证据伪造、模型权限逃逸、预算并发/重启、source 注入/过期和新增入口旁路。保存原始结果及 request model / response modelUsage。
+3. P0/P1 必须修复并用失败→通过的反例测试证明；每次实质修复重新给审计器看最终 diff。P2 是否接受需说明用户影响和落点；不把模型“无发现”当测试通过。
+4. 定向 package 测试 → 完整 `pnpm build/typecheck/test` → 实际 lint/schema freshness/changeset coverage/CLI startup → 干净 worktree smoke。新上下文/分诊需真实 provider 最小运行资格；无凭证时保留禁用状态、报告未验证，不能假装已完成真实集成。
+5. 保留 no-new-permissions/no-side-effects 的零调用探针，最终审查 main 漂移。PR 标 ready 之后删除对应临时 worktree；不自动 merge/deploy。
+
+## 11. 本方案不宣称已覆盖的其它 Firstmate 工作
+
+远程 home、可见终端 worker、公共 Relay、通用扩展握手、多 home 更新收敛仍须独立设计（身份/传输/隔离/断连与恢复）。本方案完成后，能力 #1/#12/#13/#20/#21 会从 helper 进一步变为产品路径；#7 为确定性监督附加有限解释；它不承诺模型常驻 supervisor 或上游所有后端等价。对外能力表应逐项更新真实入口和资格，不能把 PR 数量换算成“24 项全完成”。
+
+# Firstmate 后续：监督可靠性与运行资格实施方案
+
+日期：2026-10-23。性质：供主线程整合的只读源码调查与可执行开发拆分；尚未实施。调查目录 `/Users/osborn/Developer/CodeX/.worktrees/osstack/pr237-main`，以 PR #237 整合后源码为基础，主线程仍在修改人工 admission 路径，因此本方案不对该路径当前状态作最终审计结论。
+
+## 1. 当前事实与交付目标
+
+PR #237 已有独立 Attention 投影、owner generation fence、默认租户及 canonical repo 绑定、100 个全局活跃 subject 上限、Session ordinal 历史补读、稳定 decision episode、人工回答回执、保守重启、通知 outbox、foreground handoff。不要将这些重复列为待从零开发。
+
+| 真实现有落点 | 已有行为 | 剩余缺口 |
+|---|---|---|
+| `packages/cli/src/supervision-service.ts` / `SupervisionService.start/scan/stop` | 启动扫一次，30 秒 interval 补扫，单个 delivery drain 防重入 | 没有事件 dirty 加速；Loop 异步读取没有整体 single-flight 与 stop join；停止仅等待 deliveryDone |
+| `packages/core/src/state/attention-observer.ts` / `tick/scan` | scope 写事务、每页 250 个发现条目、每 Session 每轮 50 turns、100 admitted subject | run 只读 phase/outcome 快照；scope 数量和累计发现库存没有固定上限；一轮同步扫描可能影响 RPC；Session 中间原地变更明确不可完整恢复 |
+| 同上 / `inventory` | scope 65 秒 deadline、generation、发现未完成和 gap 降级 | wall clock 回退能暂时 unknown，恢复后缺少 monotonic freshness 资格；没有 backlog age、扫描时长、公平性统计 |
+| `packages/core/src/state/run-store.ts` / `appendEvent/listEventsForRun` | `events` 原生账本，`(run_id,seq)` 唯一，approval/clarify 事务双写 | `listEventsForRun` 无分页 limit，不可直接作为有界监督 replay API；删除 run 会级联删除事件，没有 supervision 保留契约 |
+| `packages/core/src/state/attention-experience.ts` / `enqueue/drain/recoverDeliveries` | 同 item/revision 去重、5 次重试、超时 abort、死信、重启恢复 sending | 每 30 秒最多处理一个通知，100 项通知可能要约 50 分钟；缺少每轮有界 drain 队列及吞吐资格 |
+| `packages/cli/src/daemon-lock.ts` / `acquireDaemonLock` | 固定 lock DB inode、SQLite 原生 exclusive lock、文件系统 allowlist |已有竞争/SIGKILL/exec child 测试不等于所有 OS/FS 支持组合都通过；需把真实资格机器信息发布 |
+| `packages/cli/src/daemon.ts` / `restoreLoopSessions/restoreDailySessions` | 中断 running/stopping 保留为 stopped/recovery_required | 用户缺少统一、只读、绑定证据的恢复说明；不应由 observer 自动重试未知动作 |
+| `packages/cli/src/governed-execution.ts` / `GovernedExecution`；`packages/core/src/state/graph-recovery.ts` / `GraphRecoveryStore` | 主线已有仓库 writer lease、quarantine、物理停止证明、Graph recovery ledger | Attention 应显示既有事实和引导既有恢复入口，不能创建第二个 lease/approval/recovery 实现 |
+
+目标分三层：先缩短观察延迟并保证公平停止；再增加 run 事件补读及安全恢复可见性；最后用固定负载和真实宿主故障测试取得可复现资格。代码存在、自动测试通过、真实平台资格通过必须分别标记。
+
+## 2. 必须维持的边界
+
+- observer 没有 adapter/executor/model 端口；任何归约、重放、时钟恢复、heartbeat 都不能调用 resume、answer、merge、kill 或清理 worktree。
+- `attention_items` 仍是 Session decision 的投影。run approval/clarify 的权威事实继续在 `approvals/clarifies`；首批只放进 run observation 的 bounded facts，并给出现有授权入口，不伪造 Session item。
+- scope 是本地数据范围，不是远程认证。不要把新统计/ledger 暴露为跨租户查询，不允许用户填 owner generation 获取权力。
+- 未知投递不重发。恢复、停止、关闭新特性都保留 message/action 与未决项；离线超过 deadline 后重新扫描，不延长旧 handoff。
+- 不改既有 migration 1–41；新迁移由主线程串行分配编号，不能多个 agent 都假定自己是 42。默认优先无迁移的独立改进。
+- 所有开发 CLI 使用 scratch 内显式 OSSTACK_HOME；不读取或迁移生产 home。源码与测试 worktree 放用户规定隐藏根，临时测试数据放 OSSTACK_SCRATCH_ROOT。
+
+## 3. 第一批可并行开发的完整交付切片
+
+### R1：可停止的监督调度器（M，首个建议实现 PR）
+
+**用户结果：** 已注册来源有变更时尽快更新，突发变更不会制造多个扫描，关闭 daemon 后不再有 Loop 读取回调写已关闭数据库。
+
+**文件：** 现有 `packages/cli/src/supervision-service.ts`；新增 `packages/cli/src/supervision-service.test.ts`；daemon 接线作为后续小任务而非与其他 agent 同改。
+
+**接口和实现：**
+
+1. 加入实例内部 `requestScan(reason)`、`runningScan`、`dirty`、`stopping`；只有一个 scan promise。扫中再收到 dirty 只安排一次后续 pass。同步 observer 部分本轮仅调用一次；Loop 读取统一 await，不再 fire-and-forget。`start()` 幂等，`stop()` 清 timer、拒绝新请求、join 在途 pass 与 drain。
+2. 内部 source reader 注入窄接口便于阻塞/失败测试；默认仍 lazy import `readAttentionLoop`。对 Loop payload corruption 逐项失败和降级，不让一个坏条目阻断其他来源。
+3. 每个异步读取保存 owner generation、binding_hash、请求时 source sample version；提交前重验仍 active、同 binding、未 stop。晚到的旧结果不能覆盖新绑定或把 release 项重新 admitted。
+
+**3 组验收：**
+
+- 100 次 dirty burst + 阻塞 Loop reader：最多一个 scan 活动、一轮合并重扫；重复 start 不增 timer；一次失败后下轮可以继续。
+- stop 在 await reader 时发生：stop 等待完成或受控取消；DB 关闭后零写；reader 迟到不能提高 coverage 或 resurrect released subject。
+- 一坏 Loop + 一好 Loop + Session：好来源仍更新，错误有结构化 reason；不开启后台监督时零 timer/source reads。
+
+**验证：** cli 定向 Vitest、build、typecheck；无 schema/API 修改。**回退：** 保留现有 30 秒补扫，关掉 dirty fast path；安全 stop join 不能回退。
+
+### R2：通知有界批量排空（M，可与 R1 并行，避免同改 service）
+
+**用户结果：** 大量待决策项不会因每半分钟仅投递一条而积压几十分钟；仍保持同 delivery ID 幂等和有限重试。
+
+**文件：** `packages/core/src/state/attention-experience.ts`、对应 `.test.ts`，后续由主线程将批量接口接入 service。
+
+**接口：** 保留单条 `drain` 兼容路径；新增 `drainBatch(sender,{maxItems:20,maxDurationMs:1000,signal}) -> {attempted,delivered,retried,superseded,remainingDue,oldestDueAt}`。从最小 next_at、delivery_id 排序领取；一条超时不无限占用本轮预算；默认串行 sender，避免对将来 transport 扩大并发副作用。
+
+**约束：** 每条持久 `sending` 后才调用 sender；只在精确 attempts+state fence 下确认。批量预算耗尽只停止领下一条，不清空 pending。quiet 在每条领取时重验；已发出的网络动作不能因姿态变化假称撤回。超过最大次数保持 dead_letter；业务 answer 完全不受影响。
+
+**3 组验收：**
+
+- 100 条新通知、前 20 条包含 superseded 和失败：统计准确、下一批继续、没有饿死有效通知；同 ID 成功但 ACK 丢失只产生一个本地 artifact。
+- sender 忽略 AbortSignal 迟到：不能再次修改已完成/已重试代次；stop 不领新工作；永久失败精确 5 次。
+- quiet/away 切换、源 item revision 改变、旧 owner 执行确认：不越权发送新的过期问题，不影响 action/message 状态。
+
+**验证：** core experience + local delivery 定向测试；吞吐只在 R8 实测后声明。**回退：** batch limit 设 1，保留 outbox。
+
+### R3：daemon 提交后 dirty 通知（M，依赖 R1；主线程专属 daemon 接线）
+
+**文件：** `packages/cli/src/daemon.ts`、`supervision-service.ts`、现有 Session/daemon RPC 测试，最多 4 文件。
+
+**实现：** 已持久化 `appendEvent`、Session create/turn finish/inbound message 结果、collaborator receipt、Loop 状态保存之后，调用 service 的 `markDirty({kind,id})`。标脏仅提示，不是事实；不能在 DB commit 之前发布 covered。短期不改 core repository 全局签名，也不建立全局 EventEmitter。其他进程写入仍由 30 秒补扫发现。
+
+**验收：** 持久化失败不产生“已观察”证明；漏 dirty 重启/30 秒补扫仍收敛；请求突发合并且不会嵌套 SQLite transaction。现有 session/collaborator/Graph 授权和 reserve 回归全过。
+
+**回退：** 去掉 dirty 调用即回到定时观察；持久协议不受影响。
+
+## 4. run replay 与覆盖语义
+
+### R4a：有界原生事件页 API（S/M，独立 PR 或 R4 第一提交）
+
+**文件：** `packages/core/src/state/run-store.ts`、`run-store.test.ts`、必要 index 显式导出。
+
+**接口：** 新增 `readRunEventPage(db,{runId,afterSeq,limit,throughSeq?})`，limit 1–200，afterSeq 从 -1 开始，返回 `{events,nextAfter,highWatermark,hasMore}`；不要改变老 `listEventsForRun` 调用者全量语义。调用方必须先限定同 scope 的 task/run/default tenant，不接受裸 runId 作为外部授权。
+
+**实现：** 单短读事务捕获 MAX(seq) 当本轮水位，读取 `seq > after AND seq <= highWatermark ORDER BY seq LIMIT limit+1`。有上限验证 payload 长度，避免把超大 JSON 全面进入 model/日志。不得将 `seq` 最大值当全局全序；每 run 独立 cursor。
+
+**验收：** seq 0 的第一事件、200/201 页边界、扫描中 append 下一页、删除/缺号、非法 limit、无事件；旧 API 回归保持。事件顺序缺口要返回可解释事实，不把 “序号变大” 当完整性证据。
+
+### R4b：原子 run 投影 cursor（M，依赖 R4a；迁移串行）
+
+**文件：** 新 `packages/core/src/state/attention-run-projection.ts` 与 test、`attention-observer.ts`、migration、migration test（生成协议另批）。
+
+**数据：** 建议单一新表 `attention_source_cursors(scope_id,kind,subject_id,source_binding_hash,event_cursor,through_seq,last_event_hash,gap,backlog_count,last_success_at,generation)`；kind 首批仅 run。不能把 Session `ordinal_cursor` 复用为 run seq。cursor 和归约 payload 在相同 `AttentionStore.write(owner,...)` 事务提交。
+
+**归约：** 明确支持 source `status`、terminal、approval/clarify lifecycle 的真实 envelope；由具体 producer 的 schema 校验表决定映射，未知 type 只记录 unsupported count。approval/clarify 当前权威表交叉确认；事件“resolved”不能替代签名审批。原 run business phase/outcome 与 observed event state 分字段显示，冲突 reason 可见。
+
+**完整性：** event sequence 连续且绑定不变才推进 complete cursor；损坏事件不得静默跳过再声称完整。可持久 quarantine `{seq,event_id,hash,reason}` 并允许读取后续仅供事实展示，但 `history_gap` 保持，直到显式重建/确证。重启保留 cursor，源消失保留未决观察；原生事件被删时必须降级，不能宣传永久完整历史。历史保留 pin 是后续另 PR，不在本批偷偷修改所有删除入口。
+
+**3 组验收：**
+
+- commit 前后崩溃：源已提交但 cursor 未提交重启补一次；projection/cursor 任意写失败整体回滚；owner 换代拒绝旧提交。
+- 重复、乱序、seq gap、同 ID 内容改变、超大/坏 payload：不回退新状态、不伪称 complete；100 subjects 中单 run 风暴不饿死其他来源。
+- crossed task/tenant/repo、run 删除/ID 重用、approval 模拟消息：无跨 scope 事实、无清除真实授权义务、无 adapter 调用。
+
+**回退：** feature flag 关闭 event replay，保留新表；仍显示 `snapshot_only`；不做降 schema 或回退 DB 快照。
+
+### R5：公平预算、freshness 与统计（分两批 M，依赖 R1/R4）
+
+**R5a 文件：** `attention-observer.ts`、test、`attention-store.ts`（必要）；不触碰 RPC 文件。将 `tick` 拆成 `step({maxSubjects,maxEvents,deadline})` + 兼容 tick wrapper。跨 scope round-robin；单轮 25 subjects / 200 events 起步，实际参数 R8 测量决定。所有 scope 每轮取有限 quota，250 discovery 页保留，但不再每个 RPC 前无界全部扫描。新 scope 注册明确最大数量或 admission error，不能只限制 subjects 而无限 scopes。
+
+**验收：** 100 active、>250 discovered、多 scopes、某一 run 10k backlog，所有 admitted subject 有可计算的最大轮转延迟；删除/新 ID 在 cursor 后方和前方均最终发现；每个页面写事务有限，不阻塞非监督 RPC。
+
+**R5b 文件：** `supervision-service.ts`、daemon stats 函数、`daemon-rpc-latency.test.ts`、新 performance fixture（≤4）。在 service 内使用 monotonic clock 测 scan 间隔与 wall-clock discontinuity；休眠或时钟跳变使本代 freshness invalid，下一次成功扫描恢复。持久时间仍 wall clock 供跨重启说明；不能把 monotonic 时间当跨进程可比较。
+
+**stats 增量：** `attention.enabled/owner_generation/last_scan_at/last_success_at/scan_duration_ms/backlog_subjects/backlog_events/oldest_backlog_ms/discovery_incomplete/source_gap_count/stale_coverage_count/pending_deliveries/dead_letters/oldest_attention_ms`。窗口固定容量，原有 `stats.rpc` p95 复用。unknown observations 用分母明示，通知重复率只以 transport receipt 证据计算，不能默认零。
+
+**验收：** clock 往前/往后、休眠恢复、timer 活着但 scan 卡住，均不会延长旧 handoff；统计查询零网络/模型；未知 denominator 输出 null，不伪造 0%。
+
+## 5. 恢复可见性与来源保全
+
+### R6：只读恢复诊断及明确处置入口（两批 M）
+
+**最小交付：** `attention recovery inspect --scope ...` 输出“缺哪些证据、已有回执在哪里、应使用哪个现有命令”，让用户区分一个任务等人还是执行结果不明。首批不新增自动恢复 RPC。
+
+**R6a 文件：** 新 `packages/core/src/state/attention-recovery-view.ts` 和 test；`attention-actions.ts` 仅复用现有 get/recover 状态，不修改执行路径。结果建议 `{subject,sourceVersion,ownerGeneration,waitOwner,pendingMessageIds,actionStates,grantAttemptStates,evidenceRefs,nextStep,canAutoRetry:false}`；只展示绑定 ID、状态和证据摘要，不返签名、提示全文或 arbitrary file path contents。
+
+**R6b 文件：** `supervision-service.ts`、`attention-command.ts`、对应 test、guide；Graph subject 不伪造支持：若来自 Graph，仅引用现有 `GraphRecoveryStore.inspectExecutors` 的可信 host 诊断适配，不能接受客户端传 `verifyProof`/worker stopped JSON。Loop recovery_required 只引用已保存快照，未获 stop proof 时只能保留。
+
+**验收：** accepted/failed/late applied/grant checking/reserved/source disappeared 六类组合；同 message 只出现一次证据链；只读前后 DB 行及 worktree 文件 byte hash 不变；不存在恢复视图触发模型执行、释放 writer lease 或改变 abandoned_unknown 的行为。
+
+**明确下一阶段：** 若要提供自动对账，只能从已有 adapter 给出真实性可校验、精确 native session/turn/message 的 terminal receipt；没有这种能力时保持 unknown。用户“放弃未知”是操作处置，不是证明之前没执行。不能因为要“全部完成”而伪造这项平台能力。
+
+### R7：保全资格与手动清理入口审查（M）
+
+**已有：** `agents/worktree.ts` 的 `cleanupGraphWorktree` 有 retained record + verifySafe；`cleanupWorktree/cleanupOrphanedWorktrees` 仍存在供显式 owner 调用。daemon/Loop 自动 orphan 扫删已关闭。
+
+**交付：** 制作真实入口 inventory（rg 搜索 cleanupWorktree、cleanupOrphanedWorktrees、git worktree remove）；为每个入口记录持有的资源 owner、成果保全、执行停止证据。仅修复证实会把未知残留当 owned 的路径；不全面替换主线 Graph retention。
+
+**测试：** 临时 repo 的 tracked dirty/untracked/unmerged/index stage/linked worktree、活动 writer 和未确认外部进程；执行诊断/重启/升级后 hash 相同；只有明确自有已终止资源可以清理。清理失败保留记录，不能因为 branch 已保存就忽略未跟踪成果。
+
+**回退：** 停用有问题清理入口，保留资源和说明；不能以删记录掩盖磁盘残留。
+
+## 6. 真实性能与宿主资格
+
+### R8：固定负载 benchmark 与 CI 资格（两个 M，可先写 fixture）
+
+**R8a 文件：** 新 `scripts/bench-attention.mjs`、`scripts/fixtures/attention-load.mjs`、fixture tests、package script。复用 `scripts/lib/scratch.mjs` 创建隔离 DB/home，不修改生产路径；受控模型/adapter/network spy 总调用数必须为 0。
+
+**负载：** 100 admitted subject，10 scopes，1000 生命周期事件/分钟，持续 10 分钟；30% Session、50% run、20% Loop snapshot；混合决策、普通 activity、CI waiting（用本地固定样本，不真正网络 poll）；另做 1000 discovered/100 admitted 的容量超额 case；加入单一源 10 倍突发和同一期间 20 次短 RPC/秒。
+
+**通过标准：**
+
+- observer backlog 在负载停止后 10 分钟内收敛，且没有永久漏项；每个 subject 处理公平；event_seq 不重复投影、不丢有效 decision；所有 gap 如实统计。
+- 非流式读取 RPC p95 <10ms；纯归约 p95 <1ms/event；分别报告 daemon socket round trip 和内部 handler，不混为同一个测量；写路径独立统计。
+- `--version` 本地 <150ms / CI <250ms，`--help` 本地 <500ms / CI <900ms，继续使用现有脚本；不允许为通过测试提高产品 deadline 或跳掉原 Graph 测试。
+- 记录 CPU、wall time、RSS peak、DB/WAL size、event loop delay、扫描时长 p50/p95/p99、backlog age、notification oldest age；Loop overhead <1% 用相同 workload 开关前后实际测量，不从静态运行时间推导。
+
+**R8b 文件：** `.github/workflows/ci.yml` 或独立 attention workflow、benchmark 文档、资格 JSON schema。CI 每 PR 跑确定性短负载和不漏项 gate；10 分钟 soak 单独 job或手动运行，不能让整个 PR 默认无限增长。性能 noisy runner 分开标注，不把一次 Linux pass 宣称所有机器支持。
+
+**证据格式：** source SHA、dirty manifest、Node/native binding 版本、OS release/arch/FS type、参数、随机 seed、开始结束时间、完整 sample、阈值与 verdict。baseline 和 candidate 使用相同机器与负载，不做无依据节省率。
+
+### R9：真实进程故障矩阵及资格表（两批 M）
+
+**R9a 文件：** 现有 `daemon-lock-ownership.test.ts`、`daemon-loop-recovery-preservation.test.ts`、新增 `attention-crash.integration.test.ts`、host fixture。复用真实子进程/SQLite fixtures，而不是仅 mock 异常。
+
+**注入点：** A 源提交后投影前；B action reserve 后 adapter 调用前；C 外部调用开始后 receipt 前；D delivered artifact 后 ACK 前；E owner 创建后首次 scan 前；F source reader 等待中 stop；G SQLite busy/full/commit failure；H restart 后旧 child 仍存活。B/C 结果保守 unknown，不以测试方便自动重发。
+
+**验收：** 单 owner；旧 generation 无写；零重复业务动作；项目数据保全；完整未决 item/action 可查；关闭 observer 不关闭原执行器；停止未知不释放 Graph/admission lease。原始注入点与期望不变式保存在可复跑 fixture。
+
+**R9b 支持矩阵：** macOS 当前本地 FS + Node22，Linux CI 实际 FS + Node22，各自记录 acquire竞争、SIGKILL、exec descendant、重新启动、DB failure 成绩。现有 allowlist 包含更多 FS 不等于已验证。不能访问实际宿主的组合写未验证，Windows/网络FS保持拒绝而非 pidfile fallback。
+
+**真实 harness：** Claude Code Stop 当前已有单版本资格，补充 normal stop/cancel/duplicate/worker-role/timeouts 的原始记录；没有条件就不扩充支持版本。新的可见 worker/远程 harness 由另一个能力轨道负责，必须复用相同资格规范。
+
+## 7. PR 拆分、并行安排与合入条件
+
+| PR | 可执行范围 | 前置依赖 | 并行边界 |
+|---|---|---|---|
+| REL-1 | R1 service single-flight、stop join | PR237 验收收口 | 独占 service；不改 daemon |
+| REL-2 | R2 outbox bounded batch | PR237 | 独占 core experience，可与 REL-1 并行 |
+| REL-3 | R4a 有界事件页 API | PR237 | 独占 run-store，可与前两者并行 |
+| REL-4 | R3 dirty wiring + R4b run projection | REL-1/3 | 主线程分配迁移，独占 daemon/observer；先 projection 后 wiring 两提交 |
+| REL-5 | R5 公平调度及统计 | REL-4 | observer/daemon 不能与 REL-4 同写；基准 fixture 可先并行 |
+| REL-6 | R6 恢复只读视图 + R7 入口 inventory | PR237；UI层对接统一 cockpit 轨道 | helper/test 可并行，公共 CLI 接线串行 |
+| REL-7 | R8/R9 集成资格和文档 | 最终实现稳定 | fixture 开发可提前，最终完整测试须精确源码定稿后重跑 |
+
+每个 PR 的最小验证包括受影响包的 meaningful tests、build/typecheck，schema/index/inventory 发生变化则重新生成并检查 freshness。合入候选统一跑完整仓测试、CLI startup 和 changeset coverage；不得用规划 agent 的阅读结论替代代码审计。
+
+Claude Code CLI Haiku 5.5 可用于各批精确 diff 和故障状态机挑战：固定请求模型名、保存 CLI 版本、输入 source SHA/完整相关上下文、原始 JSON/stderr、逐项复现和处置。模型提出的潜在问题必须复核；静态审计不能代替真实 crash/soak。CLI 返回 requested model 只证明请求/回报字段，不能额外声称上游身份已独立认证。
+
+## 8. 完成口径
+
+- R1–R5 合格：第 5 项从快照周期补扫提升为“本地已支持来源的事件加速 + 有界 run seq replay”，Session mutable history 和外部 Loop 仍如实披露限制，不能写跨所有 backend 完整 event log。
+- R6 合格：第 2/4/14 项的异常解释和恢复操作更完整，仍不自动夺回未知 writer。
+- R8/R9 合格：可以发布具有机器/版本约束的可靠性、吞吐与零模型观察资格，而非只是文件和测试数量。
+- 通知批量出队不等于第 22 项公共 follow-up，run ledger 不等于第 17 项远程身份。跨轨道功能在各自完成前继续显示部分/未实施。
+
+第一轮建议立刻并行 REL-1、REL-2、REL-3；三者分别占 service、experience、run-store，几乎无共享文件冲突。主线程最后负责 daemon、migration、protocol/inventory 和最终审计收口。
+
+# Firstmate 剩余扩展实施方案：可见 worker、远程 home、承诺账本与版本收敛
+
+## 证据与交付口径
+
+本方案在 2026-10-23 读取 `/Users/osborn/Developer/CodeX/.worktrees/osstack/pr237-main` 的 PR #237 整合源码；主线程正在修复 admission，本文不修改源码，不代表该修复已经验收。依据为 `docs/reports/2026-10-24-firstmate-capability-status.md`、原研究报告、原详细设计 §12/§16、原实施计划 Future 条目及下面列出的实际实现。
+
+24 项研究能力不是 24 个必须照搬的产品模块。对 #16/#17/#22/#24 采用可验收的最小切片，再递进到完整能力；#15/#18/#23 补足扩展需要的协商、来源与发布约束。完成离线协议、只读盘点或本地账本，不应记为真实远程执行、外部消息送达或多 home 更新完成。
+
+本轮可立即并行开发 V1、P1、U1、O1 的实现和测试，R1 的协议及双进程试验也可独立开发。实际远程服务器、发布仓库及公共消息目的地尚未在本轮指定；在这些配置缺失时继续完成程序、隔离环境验证与操作说明，明确“待真实环境资格”，不伪造端到端成功。
+
+## 已存在的能力，避免重复建设
+
+| 能力 | 已验证代码锚点 | 可复用内容 / 不能推出的结论 |
+|---|---|---|
+| 真正执行身份 | `packages/agents/src/base.ts` 的 `AgentRuntimeIdentity`、`AgentAdapter.confirmStopped` | 运行身份含 configured/reported/inferred 证据等级；取消请求和迭代器结束不等于真实停止。 |
+| 会话观察 | `packages/agents/src/session.ts` 的 `AgentSessionDescriptorSchema`、`AgentSessionCapabilitiesSchema`；`packages/core/src/state/sessions.ts` 的 `SessionRepository.latestSnapshot` | 会话 ID、turn、version、native ID、resume/snapshot 支持；没有通用终端句柄。 |
+| 会话 RPC | `packages/cli/src/daemon.ts` 的 `session.list/status/snapshot` 和 `task.cancel`；`packages/cli/src/session-command.ts` 的 `handleSessionCommand` | 现有取消入口是 `task.cancel` 按 run ID；不要设计成调用不存在的 `session.cancel`。需统一视图时再加受版本约束的专用 façade。 |
+| Graph worker | `packages/protocol/src/graph-worker.ts` 的 `GraphWorkerBinding`、`WorkerFrameDecoder`、`WorkerFramedTransport`；`packages/cli/src/graph-worker-manager.ts` 的 `GraphWorkerManager`、`GraphWorkerHandle.logs/cancel/stop/finalExit` | 已有 scope、generation、owner、程序/input digest、有限日志和退出证据。不需要再造 worker 执行器。进程内日志不是持久 log service。 |
+| Graph 控制 | `packages/cli/src/graph-rpc.ts` 的 `GraphRpcService.handle/status`、`GraphHostRegistration.authorize/resolveCaller`；`graph-worker-exit-proof.ts` 的两个 verify 函数 | 连接身份来自 host 注册，不信任请求 JSON 自报身份；取消后 pending/reconciliation 与物理退出区分。Graph 的 artifact_only 不等于 GitHub 发布。 |
+| 本地通知 | `packages/core/src/state/attention-experience.ts` 的 `AttentionExperience.enqueue/brief/seen`；`packages/cli/src/attention-local-delivery.ts` 的 `localAttentionSender` | local spool 通过 delivery ID 原子去重，不能据此声称有人收到公开消息。 |
+| 原自治通知 | `packages/core/src/state/notification-outbox.ts` 的 `enqueueAutonomyNotification/recordNotificationAttempt`；`packages/cli/src/autonomy-notification.ts` 的 `drainAutonomyNotifications` | 有有限重试、退避、死信；发送超时会重试，不能直接复用为不支持幂等的公共发帖 transport。 |
+| 发布与批准 | `packages/autonomy/src/approval.ts` 的 `scopedApprovalDigest/verifyScopedApprovalDecision`；`engine.ts` 的 `GuardedDeliveryEngine`；`packages/github/src/delivery.ts` 的 `deliverToGitHub/observeCurrentGreenCandidate` | 已有 head、scope、独立评审和保护规则观察；不能新建“监督批准”绕过它。 |
+| Contract | `packages/supervisor/src/attention-planning.ts` 的 `deliveryContract/promoteScout/verifyDeliveryContract` | 当前只有 completion 等字段、离线证据一致性校验；未实现设计文档所写独立 publication/merge_authority 轴。contract digest 不是授权。 |
+| 升级 | `packages/cli/src/upgrade.ts` 的 `resolveDeployedHome/alignEnvWithDeployment/stopDaemon/waitForDaemon/handleUpgradeCommand` | 已对单个部署执行 drain、安装、重启、版本核实；checkout 部署拒绝套用 npm 更新。没有多 home 协调器。 |
+| 升级门禁 | `packages/cli/src/graph-upgrade-guard.ts` 的 `graphUpgradeHolds/assertGraphUpgradeSafe`；`control-plane-guard.ts` 的 `assertServeAllowed/assertDbAccessAllowed` | Graph 活跃/未知执行阻止升级；开发 checkout 不可打开默认/保留 home 自动迁移。 |
+
+## 全局不可破坏条件
+
+1. 身份是 home + source scope + run/session + generation/version；PID、pane 名称、文件名、目录路径、模型自报不能单独成为控制权。
+2. 展示、状态读取、批准、执行、对外发送分开授权。展示后端永远不接收 shell 文本、prompt 或“发送按键来执行”的通道。
+3. 断连、超时、证据缺口为 unknown；不替换到本地执行，不自动重发可能成功的外部动作，不释放未确认的 writer 占用。
+4. 远程来源、公开消息和模型输出均为不可信输入。解析通过仅证明格式，不证明 actor 或授权。
+5. 增量数据库迁移只能由集成负责人在最终基线上分配编号；并行 agent 不各自占用 42。新表需要旧快照迁移、未来 schema 拒绝、失败回滚与关闭功能后保留数据验证。
+6. 禁用新功能停止新动作并保留账本；回退同 schema 版本优先。已发生外部副作用后，不能回灌旧 DB 消除事实。
+7. 公共导出/CLI 引入大依赖前测加载成本；协议/展示功能默认 lazy。非流式本地 RPC p95 < 10ms 是目标，需要测量，不因声明自动达标。
+
+## V：可见 worker（能力 #16，部分 #15/#19）
+
+### V1：单一只读 worker 视图，优先实施
+
+用户目标：从 Attention 中看到是谁在执行、最新可证实状态、最近有限输出、对应决策、何时更新；能够准确定位真实执行器，不依赖浏览日志猜状态。
+
+新增建议：`packages/protocol/src/worker-view.ts`，`packages/core/src/worker-view.ts`（纯投影），`packages/cli/src/worker-view-service.ts`，`worker-view-command.ts`；修改 `session-command.ts`/`attention-command.ts` 和 daemon 的 lazy 注册区。Graph 来源通过 GraphRpcService 的已认证 registration 提供，不直接把进程 map 暴露给任意 local socket 客户端。
+
+`WorkerView v1`：`view_id`（服务端生成）；`scope`；`source {kind:session|run|graph, id, generation?, revision}`；`identity {agent_id,native_session_id?,evidence_level}`；`execution_state`（沿用源状态）；`observation {state:fresh|stale|unknown,last_observed_at,reason?}`；`wait {owner,reason,resolution_ref?}`；`output {kind:snapshot|log_tail|unavailable,cursor?,truncated,entries[]}`；`controls {cancel:unsupported|requestable, resume:unsupported|separate_authorization}`。字段最大长度、数量和输出字节上限必须写入 Zod schema。首期最多 50 条记录/页、单 worker 输出最多 64 KiB；超限显示截断与游标，不悄悄省略来源完整性。
+
+接口 `worker.list(scope,cursor,limit)`、`worker.inspect(view_id,expected_source?)` 只读；首期直接展示 existing snapshots，不承诺所有 adapter 完整日志。既有 GraphHandle.logs 为内存 tail，重启后显示 unavailable，不假装有历史。若要持久日志，独立 V2 做服务端受限 spool，只使用生成的 resource ID，不接受任意文件路径。
+
+取消先链接现有 task.cancel/graph.cancel 的受控操作流程。若新增 `worker.cancel`，请求必须有 view/source revision、幂等 key 和 authenticated scope，服务端重读绑定后调用现有执行器，返回 requested / unconfirmed / stopped；UI 不把 requested 标绿为“停止成功”。避免新 façade 降低 Graph 已有授权强度。
+
+验收：两个 scope 同名 native session 不串读；旧 generation 视图不能取消新 worker；输出含终端 ANSI/OSC 链接和控制字节以纯文本处理；无输出不会推导 dead；取消不支持时明确 unsupported；worker 退出后 tail 仍标来源与时间；进程 map 丢失后 unknown；100 worker 分页和超长输出不阻塞 daemon；只读命令不启动 daemon、不迁移 DB。
+
+### V2：展示后端接口与第一个本地 viewer
+
+新增 `PresentationBackend`：`capabilities(): {view,focus,archive}`、`open(binding,viewRef)`、`focus(handle)`、`closeView(handle)`；明确 `closeView` 只关视图，绝不 stop/archive task。这里的 archive 若会删除日志必须另有明确保留策略和审批，不能放入通用默认接口。
+
+先实现 terminal text viewer（现有 CLI/TUI）；再可选 tmux viewer，启动的是固定 `osstack worker tail --view-id ...` 命令，参数数组传入且不拼接 shell。pane 存 view token，仅 view 权限；即使 pane 被用户复用，也只撤销/重建展示，不控制原 worker。cmux/herdr/Zellij 不一次全实现，每后端需要版本/OS 资格。现阶段不依赖桌面 App 私有会话协议。
+
+验收：pane 重命名、复用 ID、用户关闭 pane、断终端、无 tmux、版本未知、输出 flood；任一展示异常不影响任务。展示插件不能升级执行权限。回退关闭 viewer 注册，保留 worker 身份和原控制面。
+
+PR 拆分：V1a schema + 纯投影 + fixtures；V1b 真实 Session/Graph 服务接线 + CLI/TUI + scoped tests；V2a tail spool（确有需求时）；V2b 一个 opt-in backend。只有 V1b 可说“可见 worker 首个可用版本”，V1a 仅基础。
+
+## P：显式发布范围（能力 #23，协同 contract 集成工作）
+
+### P1：把发布范围加入真实交付边界
+
+与负责 S3 contract 集成的 agent 协商同一 contract owner，避免同时改 `attention-planning.ts`。建议 contract v2 新增可选 `publication_scope {hostname,repository,base_ref,head_ref,head_sha,mode:none|draft_pr|review_pr}` 和 `merge_authority {mode:manual|existing_guarded_policy,approval_ref?}`。scout 只能 none；缺失新字段的 v1 仍可读/本地校验，但不得隐式授予 push/PR/merge。
+
+来源 repo 用规范的 Git remote owner/repo + hostname，比对真实 origin 与 candidate ref；repo_path 只是本地定位。创建 PR 前再次解析远端、base、head；push 前持有既有 repository writer fence 并核对 head SHA；重定向/仓库改名不能扩权。固定 digest 应绑定 scope，scout promotion 生成新 contract 后重新评估 scope，不继承未知授权。
+
+修改点：`packages/supervisor/src/attention-planning.ts` 的 contract schema/digest、`packages/autonomy/src/engine.ts` guarded delivery 入口、`packages/github/src/delivery.ts` `pushCandidate/createPullRequest/deliverToGitHub` 的 input 和效果前校验。由现有 `verifyScopedApprovalDecision` 验证审批的 scope/head/diff/risk 等要求，不能接受自造 approval JSON 或 `reviewed:true` 代替。
+
+失败返回 `publication_scope_mismatch`、`approval_required`、`candidate_changed`、`protection_not_satisfied` 等稳定原因；保留本地产物。完成级别明确 local_verified / pr_opened / ready_for_review / merged / deployed，不能 PR 创建即视为 merged，不能机器审计替代 GitHub last push approval。
+
+对抗验收：fork origin 指向别库；Git config 改写后 URL 不同；旧 head 的审批；base 在等待 CI 时移动；review_pr 缺批准；未列出的 `--admin`/强推行为；Graph artifact_only 被普通 contract 指示发布；历史同 key PR 恢复只读取同一 repo/head；组织保护规则不可读取时 fail closed。真实远程验收用专用 sandbox repo，不在用户业务 PR 上测试 merge。
+
+回退关闭 v2 publication，恢复本地 verified 输出；现有 PR 和发布回执保留。PR P1a contract schema + parser兼容（与主集成 owner 合并）；P1b 效果边界校验 + GitHub mock adversarial tests；P1c sandbox end-to-end 记录。不要新增第二套发布引擎。
+
+## U：显式 home 盘点与版本收敛（能力 #24）
+
+### U1：只读版本盘点，可独立实施
+
+新增 `packages/cli/src/home-inventory.ts` 和命令 `osstack homes inspect --manifest <file> --json`。manifest 只含操作者显式登记的 home ID、固定 socket ref、部署类型 npm/checkout、期望 version/protocol/构建 digest（可选）、enable 标记。不得自动遍历用户目录猜 home；不得读保留 home DB 来“顺便”查 schema，优先向现有 daemon `version`/`health` 读取已服务信息。未响应显示 unreachable/unknown。
+
+现有 `version` RPC 仅有 version/phase/protocol；新增 `deployment.identity` 只读接口返回 home_id、daemon_owner_generation、version、protocol、schema_version、build digest evidence、启动时间、部署角色（不暴露环境变量/令牌）。home_id 首次初始化只能由已授权 daemon 启动流程创建；registry 不能把陌生 socket 自报 ID 自动 pin 为可信。第一版对本地同 UID endpoint 绑定 manifest canonical socket + returned ID，明确此信任边界，不宣传网络认证。
+
+数据输出同时列 desired / observed / observed_at / status，版本同号但 build 不同为 drift。输出实际服务版本，不使用本地 package.json 代替。每个 home 超时<=3s、并发<=4、max homes 32（可以后续实测调整），一个离线不阻塞其它项，返回完整部分失败摘要。
+
+验收：shell OSSTACK_HOME 与部署 home 不同；同路径 symlink；registry 重复 home ID/socket；同版本不同 digest；过期 observation；daemon 更换 generation；未声明版本字段旧 daemon；坏 JSON/超大响应。只读盘点不能调用 npm、launchctl、openDb、写 role file。
+
+### U2：协调现有 updater，不另造 updater
+
+需 U1 + R1 身份（若跨主机）+现有 upgrade 故障资格。`upgrade plan` 产生不可变 plan digest，包含目标精确版本、home ID、当前身份、schema兼容、部署类型、健康要求和顺序；`apply` 只调用对应 home 的现有受控 updater。npm-global 二进制被多个 home 共享时必须归为一个 deployment group，先全部 drain，任何 home 状态 unknown 即暂停该组，不能先更新共享包破坏另一 home。
+
+更新状态机 planned -> draining -> quiescent -> installed -> restarting -> verified；失败分 aborted_before_install / restart_failed / version_mismatch / recovery_required。每步保存 journal，重启先对账，不盲目重复安装。操作者批准的 plan digest、有效期和精确目标绑定；旧计划或 identity变化要求重新 plan。维护窗口本身不授予 publish 权。
+
+复用 `upgrade.ts` 的 resolveDeployedHome/alignEnvWithDeployment/stopDaemon/waitForDaemon；需要抽出可注入端口以支持本地假 updater 与测试，而不是执行机器全局 npm 安装。现有 hardcoded launchd label 是多实例约束，先明确仅单组单部署；多实例服务管理器作为单独支持项。
+
+升级前要求所有 shared binary consumers 已知、daemon drain 达成、Graph 持久 hold 为 0、会话未知动作处理明确；timeout 不是停止证据。备份是停止后的一致快照；downgrade 不意味着恢复旧数据库，schema不兼容则拒绝启动并保留新事实。回退优先同 schema 的功能关闭/上一兼容二进制。
+
+验收：第二 home drain 卡住第一 home 不安装；upgrade进程在每步 kill 后重启；两个操作者执行同 plan；registry漏列共享安装 consumer（无法证明完整即只生成计划、不apply）；checkout不走npm；新daemon版本正确但identity错；安装成功后回执丢失；旧DB存在外部副作用不能回滚数据。PR U1只读盘点，U2a计划/journal，U2b单组executor，U2c真实双home资格。U1不可声称“已自动多home收敛”。
+
+## O：对外承诺与 follow-up（能力 #22）
+
+### O1：本地 obligation 账本，可独立实施
+
+目标是持久记录“答应谁、在何条件/截止前回复什么”，不把本地 notification 当已送达。首期生成待发送草稿与证据摘要，不向外界自动发送。
+
+新增 `packages/protocol/src/follow-up.ts`、`packages/core/src/state/follow-up-obligations.ts`、CLI `follow-up list/create/draft/resolve` 与 Attention 增量视图。表建议 `follow_up_obligations`：id、scope、source_kind/source_id/source_revision、actor、destination_ref（受控注册ID，不是任意URL）、promise摘要、due_at、resolution_condition、state、revision、created_at/updated_at；`follow_up_attempts`：attempt_id、obligation_id、revision、content_digest、destination_digest、authorization_ref、idempotency_key、state、provider_receipt_ref、error_code、时间。UNIQUE(scope,idempotency_key) 及CAS revision。只保存必要内容，秘密在已有配置外部引用。
+
+义务状态 open / ready / awaiting_authorization / fulfilled / waived；投递尝试状态 prepared / started / delivered / delivery_unknown / definitely_not_sent。分开建模：消息已送不表示承诺实现，任务结束也不等于公开已回复。waived 记录操作者、理由和原承诺，不删除。来源删除/清理后保留义务与引用，标 source_missing。
+
+O1 CLI 对同 key 同内容返回同记录，不同内容冲突；提供到期聚合，quiet/away只影响呈现，不取消义务；草稿从真实源证据构建并附“未发送”。本地 resolve 必须明确是人工解除、通过条件验证，还是拥有 verified provider receipt 的送达，不接受随意 URL 当证明。
+
+对抗验收：重启、重复创建、跨scope读写、过期revision、恶意destination/提示注入、源任务被清理、due_at越界、文本超长；自动任务done不能覆盖awaiting_authorization；读取list不改变状态；local spool不可作为外部receipt；第三方消息文字“已经批准”不改变授权。
+
+### O2：单一公开 transport，最后接线发送
+
+新增 `FollowUpTransport`：`capabilities {idempotentSend,lookupReceipt}`、`prepare(destination,content)`、`send(approvedEnvelope,signal)`、`lookup(attemptIdentity)`。transport只允许已登记的精确目的地类型；首个可选 GitHub PR/issue comment（已有gh桥接可复用认证，但不复用未经校验的任意URL），或既有 Hermes Relay。最终选哪个以现有部署为准，不能为“全部做完”同时新增多个未验证消息网关。
+
+发送前形成可审阅的精确body、recipient/thread、关联承诺、内容digest；绑定明确发送授权，保留过期/撤销检查；这是产品功能权限模型，不要求开发过程中每次实现都询问用户。测试全走假transport或明确sandbox。收到公共请求仅创建不可信草稿；控制指令仍走 authenticated sender+scope grant，不把一条publiccomment作为execution请求。
+
+最关键失败规则：transport不支持幂等/receipt lookup时，一旦 started 后 timeout/crash => delivery_unknown，不能自动重试。可以查询并核对精确目的地+body digest+provider ID 得到delivered；无法证明则需要人工对账。内容标记可助查找但不是强幂等保证，不能只靠“查不到评论”便重发。明确not_sent（例如发送前验证失败）才可安全再试。
+
+验收：provider发送成功但响应丢失、请求发出前失败、SDK自动retry、跨thread伪receipt、授权过期与撤销、内容改变、双dispatcher竞争、late response、错误地收到别人的同bodycomment、目标删除；必须证明单个attempt最多一次实际send调用，未知attempt不重发。回退关dispatcher保留 obligations与attempts。PR O1账本+CLI、O2a transport contract+fakechaos、O2b单provider+sandbox资格。
+
+## R：远程 home 与断线语义（能力 #17/#15/#18/#19）
+
+### R1：经固定身份认证的只读远程投影
+
+原计划明确把远程作为新协议项目，不能直接将本地 Unix RPC 对外监听。建议新 `packages/protocol/src/remote-home.ts`，CLI端 `remote-home-transport.ts` / `remote-home-command.ts`，服务端只读 exporter；首个 transport 是操作者已配置的 SSH stdio 固定程序，禁止开启公共TCP listener。不是共享SQLite、挂载home目录、远程shell任意命令执行。
+
+SSH方案须 pin host key、BatchMode、拒绝未知/改变 host key；使用预登记alias和固定服务器子命令，参数从受限注册值构建，防 `-oProxyCommand` /shell injection。SSH认证的host identity与OSStack home identity分别校验，登录成功不等于接入了正确home。禁止失败后 fallback localhost/default home。
+
+握手请求含 protocol range、client identity、nonce、requested scope、只读 capability。响应含 home_id、instance/generation、schema/protocol、supported methods、nonce回显、最大frame/页限、session-bound capability，绑定SSH通道。客户端验证预先登记的home_id和key pin；nonce回显只防误绑，不宣传为独立密码认证。控制权授予不由响应的布尔字段决定。
+
+`RemoteObservation`：home_id/source_scope/source_id/source_generation/source_revision、observed_at、received_at、event_cursor、freshness、evidence_hash。网络wallclock不可信，以本地monotonic接收时间判stale。重连相同home但generation变更，先全量同步再接受增量；cursor不连续=>gap/unknown并请求快照；旧generation事件不写入新投影。首期仅 status/decision metadata，日志正文和私密路径默认不传；明确 redaction 配置。
+
+复用 `WorkerFrameDecoder` 的有限帧理念，可提取无Graph依赖通用framing但不要改变原Graph 8MiB限制/既有协议；remote默认单帧64KiB，snapshot分页<=50，max在途8、写缓冲和超时固定。exporter只接受严格method allowlist，不能把任意RPC method透传；server身份来自连接层注册，不来自request actor。
+
+验收：hostkey替换/home ID错误/nonce错/protocol不兼容；SSH成功但返回shellbanner；frame oversize/碎片/背压；旧generation replay/乱序/gap/clockskew；断网无法确认远程任务是否活着=>unknown且本地adapter从未invoke；恶意path不能打开任意文件；只读token执行start/send/cancel均拒绝。双进程本地stdio可先验证状态机，真实远程hostkey与断网需要独立实机记录。
+
+### R2：远程动作资格，排在 R1 后
+
+远程执行不复用“普通读连接”隐式升级。新短期grant绑定 actor、home、repo、action集合、run/turn/generation、预算、有效期与nonce。保留远端主权：writer admission/repository lock/approval必须在真正执行的远端取得；本地观察端不能认为持有本地lock就保护远程repo。
+
+发送动作前本地记录请求digest与idempotency key，远端以(scope,key,digest)事务reserve并返回durable receipt，结果查询绑定同home和grant。ACK丢失 => delivery_unknown，重连优先query，绝不换host重发；endpoint不支持同key强幂等时动作禁用。完成回执必须区分accepted/applied/stop_requested/stopped；adapter confirmStopped仍需远端精确实例证据。远程grant过期不意味着远程进程已停止。
+
+最小先做受绑定cancel request与receipt查询，再考虑resume/submit。真正执行需验证两地崩溃、重复请求、授权撤销与隔离；任何“fallback local”、ssh重试启动、传输断线释放repo锁都应成为审计P1/P0。远程恢复与共享repo网络文件系统另行支持矩阵，不为首版泛化。
+
+### R3：通用来源扩展注册（能力 #18）
+
+在 CI exact-head/Loop只读适配稳定之后新增 manifest：id、version、digest、protocol、scope绑定、methods、读取来源范围、maxBytes/maxItems、expiry、所需凭据ref。安装时显式pin digest和capabilities；启动handshake核对版本，变更digest停用待重新登记。manifest是声明，不是授权；代码执行能力取决于受限runner和hostgrant。
+
+优先数据型provider，不运行任意download脚本。事件签名/序号与snapshot一致性各有记录；未知事件不当completion。扩展接线不能使source插件绕过原source ledger写session/approve/publish。测试pin错/过期/扩权/注入/慢provider/大页/gap。若仅新增interfaces没有生产调用点，记“协议基础”，不记“通用扩展已实现”。
+
+PR R1a schemas+strictparser+fake transport，R1b本地exporter+固定SSHreader，R1c双host只读资格，R2a grant/receipt/unknown状态机，R2b一个真实动作adapter+故障测试，R3a manifest data-source registry（可以在R1后与R2并行）。回退只禁用连接/新动作，保留远端identity和未知receipt供对账。
+
+## 开发编排与验收清单
+
+建议主线程保持 PR237 测试与审计收口；随后最多 3 个并发实现agent（4总槽包含主线程）。第一波：worker视图 V1、home盘点 U1、本地obligation O1；P1由contract集成owner负责，不单独抢同文件。第二波在对应第一波合入统一集成分支后继续 V2、O2、R1；U2需有U1证据，R2需R1身份与故障语义先成立。不是同时让多个agent修改daemon、migrations、protocol index。
+
+每个agent独立 worktree 在 `~/Developer/CodeX/.worktrees/osstack/<task>`；使用对应 `codex/` 分支；显式scratch OSSTACK_HOME，临时输出全部放OSSTACK_SCRATCH_ROOT。主线程集中整合 daemon路由、index exports、migration编号、schemas/inventory产物与changeset。已有用户主checkout的107项改动保持不动。
+
+每个PR要求：真实用户入口+失败行为+最少一条端到端隔离测试+关键对抗测试+类型检查+关联package测试；公共接口增加conformance/schema检查；全部整合后一次完整 build/typecheck/test/lint/schema/inventory/startup预算验证。自测不要调用默认home、真实消息发送或全局upgrader。
+
+Claude Code CLI Haiku 5.5 可用于各PR挑战：固定源manifest及diff、明确本切片未宣称的能力、提供失败注入测试与运行日志；提示其重点寻找scope越权、identity混淆、重复副作用、unknown降格、假停止证据、假发布证据。保存请求模型、CLI实际报告、raw stdout/stderr、上下文hash和逐条处置。工具成功退出≠审计通过；空泛/损坏输出不计轮次。静态审计不替代真实跨host/终端/消息投递资格，也不能代替GitHub保护要求的独立人类审批。
+
+验收矩阵必须逐行记录 implemented / tested-local / qualified-real / enabled，标明版本、OS、transport、fixture或真实环境。最终能力状态只按真实交付提升：V1可把#16从未实施提升为部分；R1只读把#17提升为部分；O1仅本地承诺账本把#22提升为部分；U1盘点使#24部分。完整端到端资格之后再考虑“实现”，不能用一个新文件或测试数量把四项直接标满。

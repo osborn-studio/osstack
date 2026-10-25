@@ -1,0 +1,11 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-contract-integration/packages/cli
+
+ ✓ src/home-inventory.test.ts (10 tests) 22ms
+ ✓ src/home-inventory-daemon.test.ts (1 test) 43ms
+
+ Test Files  2 passed (2)
+      Tests  11 passed (11)
+   Start at  12:19:25
+   Duration  1.38s (transform 737ms, setup 18ms, collect 1.21s, tests 65ms, environment 0ms, prepare 59ms)
+

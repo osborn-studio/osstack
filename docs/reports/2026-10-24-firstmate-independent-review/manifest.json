@@ -1,0 +1,66 @@
+{
+  "original_commit": "cfca0901141af826a0d319ea14867a39e003a03d",
+  "original_files": [
+    {
+      "file": "packages/cli/src/paired-routing-evaluation.ts",
+      "sha256": "39a1a0b6c97fa0c96148490e1caab7466dfc9e0c8c6aa1596ab512a06043c9f7"
+    },
+    {
+      "file": "packages/agents/src/controlled-triage.ts",
+      "sha256": "63c077c67e56c5d53b63ece02eb277a7436e9c45def6f4d6c58dada2dc9b6acb"
+    },
+    {
+      "file": "packages/cli/src/worker-viewer-launch.ts",
+      "sha256": "fafa6eab6993dd656e38660849507f851fcb5e1f5848f458fff4129c8534be2f"
+    },
+    {
+      "file": "packages/cli/src/worker-log-view.ts",
+      "sha256": "0c9277f96544fe95d16827c968697094edd901f967808c97cca7469f8c602165"
+    },
+    {
+      "file": "packages/cli/src/bin.ts",
+      "sha256": "5f55995006d6765ce50b852cb5b6a42a5e73b4b90829df7c284aa49e9f6f5115"
+    },
+    {
+      "file": "packages/cli/src/daemon.ts",
+      "sha256": "ea057790edc054f64c3ad83e08c84ed7653ccdb1674c89adb6acbc9c7ca2b5f4"
+    }
+  ],
+  "followup_head": "09c87bc851d66116e703e56a14c4a800bbcb269b",
+  "followup_working_files": [
+    {
+      "file": "packages/cli/src/worker-viewer-launch.ts",
+      "sha256": "02ba7e8c148fff5e316f328f45ed6e2e200b70ab55b90c24c464e99c3ae3cd71"
+    },
+    {
+      "file": "packages/cli/src/worker-viewer-launch.test.ts",
+      "sha256": "651479462e98cf383eff9bb46d4c1a0704dccd2c21be7e18956a757fcaf29616"
+    },
+    {
+      "file": "packages/cli/src/daemon.ts",
+      "sha256": "1a086b7438a237c30a16e2330df4bb6d699ec6aa086a955e657e4d98da0f6846"
+    },
+    {
+      "file": "packages/cli/src/local-ledgers-daemon.test.ts",
+      "sha256": "dce1ffb01da5e5c905e86e5257dbd7302c7eea985e20fbad4a7610ba33124a63"
+    }
+  ],
+  "evidence": [
+    {
+      "file": "probe.cjs",
+      "sha256": "0b265d18723aa2a464bc35348c5b076c3e547407379a4df259a343dc2559b54d"
+    },
+    {
+      "file": "result.json",
+      "sha256": "8a27ec660597caa6f6682d4eb3787c8a0ddce4175886c1fddfa8cfe178833929"
+    },
+    {
+      "file": "probe-fixed.cjs",
+      "sha256": "7b4d39f5bb7b2c0bb386c9fe27899944d8f109f7457c46f348645ffa426ba5bc"
+    },
+    {
+      "file": "fixed-result.json",
+      "sha256": "8515f789e6690a535d17d9a210455cea652f7e948fc3a3209333b74740e541eb"
+    }
+  ]
+}

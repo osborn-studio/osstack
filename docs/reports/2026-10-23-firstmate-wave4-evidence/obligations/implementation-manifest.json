@@ -1,0 +1,16 @@
+{
+  "files": {
+    "packages/protocol/src/follow-up.ts": "200df29af446aa659238846c7f700789c28bb13afef8cff7b878510160399ce5",
+    "packages/protocol/src/follow-up.test.ts": "a3dc0861f11983f6062260e5cd07857783d906eb7d8d72364580199ad4816bf6",
+    "packages/protocol/src/index.ts": "6d997c1b5b515536d107e95a78eadcc66a10d3de6ab3f0ed415cec4c577f548e",
+    "packages/core/src/state/follow-up-obligations.ts": "29c9f82a600b31cf4a804b398bf01fadbd5cd50501000482fe014c0ae67ff18b",
+    "packages/core/src/state/follow-up-obligations.test.ts": "031832b01a90c947d4e1ee74fadf3c022eb799b0065e0d6897e636482eb0e86c",
+    "packages/core/src/state/follow-up-obligations-ddl.ts": "ebf085ca816e724835e1f265ac916d79bbdbeca3fde6f76cc5880f1c60b3abb1",
+    "packages/core/src/state/migrations.ts": "85b91ff10b8c04679e6ba707336ff77cd9f0722d6e729019806fcba3ca1c1a53",
+    "packages/core/src/index.ts": "d42cd66d7751398f07b073b51ba776a9d6d377e21801df6490f8d67664a85371",
+    "packages/cli/src/follow-up-command.ts": "26e474eab2805a23ef97d410ca1fbee5ddc764e1f3d06961ec099b8b14f2c4c6",
+    "packages/cli/src/follow-up-command.test.ts": "bffe21b020e6ff2e4279d1401367354f0589860403b672d138a1290827529939",
+    "docs/guides/local-follow-up-obligations.md": "59102402fb01473ffe6b3e5f279a48db8063ca0cac6887801a0d4bd888694e0f",
+    "docs/plans/2026-10-23-local-obligations-implementation.md": "6ec48f9c897eb8e82c02a2c94a63018868a28aca999830ce99a3b840a4aa6ea8"
+  }
+}

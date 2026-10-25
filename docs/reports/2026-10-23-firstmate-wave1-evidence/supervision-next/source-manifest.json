@@ -1,0 +1,9 @@
+{
+  "head": "6db57e281ab9d5dbeecb68362553aab059ecd368",
+  "files": {
+    "packages/cli/src/attention-loop-source.test.ts": "7ef94be91ae6a7741321dc6cdf5cb31737db0f1335b26b9cafc93734f2b4317c",
+    "packages/cli/src/attention-loop-source.ts": "86239fb7527ca5f33dd203be4f08462c4adfe903b46bd2a42eaf816d157e5201",
+    "packages/cli/src/supervision-service.test.ts": "433277d8aa32ebb817789b1bdf7a97d4d3a4c9b56ba226207ffb6a7a345ec25d",
+    "packages/cli/src/supervision-service.ts": "fd78adfbe877f6f2cb759f24bd53304633f5aed4b09f6106bd68abf29f3c839b"
+  }
+}

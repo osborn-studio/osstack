@@ -1,0 +1,66 @@
+{
+  "files": [
+    {
+      "path": "packages/agents/src/adapters/deepseek-command.ts",
+      "sha256": "8267c1fc685da8c7e462322e678d3d799c42d74080728be3ec41b60db32083d6",
+      "coverage": "full"
+    },
+    {
+      "path": "packages/agents/src/adapters/deepseek.test.ts",
+      "sha256": "807bb56473007c392e7f5a232398191d47a86492aa43bf173646f2a4370e3831",
+      "coverage": "full"
+    },
+    {
+      "path": "packages/agents/src/adapters/ds-review.ts",
+      "sha256": "ea762b796b6c6cb78e9feafd20a8446173f049da3a83c6358fc848a46ace6de0",
+      "coverage": "full"
+    },
+    {
+      "path": "packages/agents/src/adapters/ds-verify.ts",
+      "sha256": "fdf3892e2721da327cc951e031efbac8b83682396e9841c13c2d28034d7c8de1",
+      "coverage": "full"
+    },
+    {
+      "path": "packages/core/src/scratch.ts",
+      "sha256": "d9895ba579525c1ea092bb4626408011d09cecba2e293d89d2fa4c656086343c",
+      "coverage": "full"
+    },
+    {
+      "path": "packages/loop/src/reviewer-isolation.ts",
+      "sha256": "a113fb3b7961af9ed6043f732e5288489710eef051f292cc2bf2ec20f2711c0b",
+      "coverage": "full"
+    },
+    {
+      "path": "packages/loop/src/verifier.ts",
+      "sha256": "432e77282181041bba93dbc61031360f006bc56db26728f8759c98bb93b2776f",
+      "coverage": "610-1110",
+      "excerpt_sha256": "81e79a2ba30e6b72da2569e2a3d9d5184a6c34adc782c361b80b8613124d1f0e"
+    },
+    {
+      "path": "packages/loop/src/verifier.test.ts",
+      "sha256": "e5ad9d81e4e0854d9b7f5623f13335fb71619461b265736d7cd88fb4f0113bc6",
+      "coverage": "1-155",
+      "excerpt_sha256": "b6fabd175a74e96e4315b7229b2f895e7e8e8fd8c0cc14d44b6425cb881ef00d"
+    },
+    {
+      "path": "packages/cli/src/daemon-loop.test.ts",
+      "sha256": "7fbaa67fe1c56001e6e0381297a435139a0b958c90dae0ca6749214988159917",
+      "coverage": "900-1040",
+      "excerpt_sha256": "964274441ad4ff691f4be16d28ad660cd244d4f85de4a5f19c3b8855a5fbf11e"
+    },
+    {
+      "path": "packages/cli/src/loop-cli.test.ts",
+      "sha256": "86b965a0fc54fc9baf3a78e192150e13068ffa2d4358187734f56cf64405d710",
+      "coverage": "1190-1320",
+      "excerpt_sha256": "946e04e3c7dabe511177cf5f08201047c669898190934f5428e2b024171a8693"
+    },
+    {
+      "path": "packages/cli/src/loop-defaults-cli.test.ts",
+      "sha256": "912d3cfb60f0ceb49936303256dba8fac4957619e6bd648555f3d1697960c4df",
+      "coverage": "58-100",
+      "excerpt_sha256": "1302386b3c97f4677191702eb14c20911e4bf5916809f8378f1c29dd46e6ab5d"
+    }
+  ],
+  "prompt_sha256": "00f63b49a814d0c0b2ce3c3901798f808d1134609c70cf5c1ebaaabe40e8a036",
+  "prompt_bytes": 97535
+}

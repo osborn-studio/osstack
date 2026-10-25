@@ -1,0 +1,12 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-supervision-next/packages/autonomy
+
+ ✓ src/state-machine.test.ts (7 tests) 8ms
+ ✓ src/risk.test.ts (43 tests) 18ms
+ ✓ src/engine.test.ts (36 tests) 46ms
+
+ Test Files  3 passed (3)
+      Tests  86 passed (86)
+   Start at  12:31:21
+   Duration  1.01s (transform 502ms, setup 0ms, collect 972ms, tests 72ms, environment 0ms, prepare 199ms)
+

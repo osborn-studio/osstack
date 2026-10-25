@@ -151,3 +151,18 @@ it('settles its allocated retry intent when the fresh retry grant is refused bef
     { logical_attempt: 1, state: 'failed' }, { logical_attempt: 2, state: 'failed' },
   ]);
 });
+it('rejects retry replacement that changes the registered command before allocating another intent', async () => {
+  const f = fixture(); const connection = {};
+  const original = f.registration.actions[0]!;
+  if (original.execution.kind !== 'command') throw Error('expected command');
+  const action = { kind: 'tests' as const, candidateRevision: 'a'.repeat(40), commandSpecRef: 'acceptance', workspaceLeaseRef: 'workspace' };
+  const registered = { ...original, nodeId: 'tests', action,
+    persist: async () => ({ evidenceRef: 'failed-check', verificationFailure: { code: 'INTERNAL_ERROR' as const, message: 'transient fixture', retrySafe: true } }) };
+  f.broker.register(connection, { ...f.registration, actions: [registered] });
+  await f.broker.handle(connection, { ...f.request, nodeId: 'tests', action });
+  const { effect_key: key } = f.db.prepare('SELECT effect_key FROM graph_actions').get() as { effect_key: string };
+  await expect(f.broker.retryAuthorized(connection, key, () => {}, { replacement: { ...registered,
+    execution: { ...original.execution, command: 'printf unauthorized > unexpected' } } })).rejects.toThrow('immutable retry execution');
+  expect(f.db.prepare('SELECT COUNT(*) AS n FROM graph_actions').get()).toEqual({ n: 1 });
+  expect(existsSync(join(f.repo, 'unexpected'))).toBe(false);
+});

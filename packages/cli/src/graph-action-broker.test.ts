@@ -315,3 +315,18 @@ it('pins and forwards host apply tree constraints to freeze', async () => {
     action: { kind: 'freeze', workspaceLeaseRef: 'workspace', receiptRef: 'receipt' } });
   expect(result).toMatchObject({ outcome: { state: 'confirmed' } }); expect(checked).toBe(true);
 });
+it('does not turn a failed unstarted settlement commit into replay permission', async () => {
+  let calls = 0; const f = fixture(actor(async function* (task) { calls++; yield done(task); }));
+  const broker = new GraphActionBroker(f.db, { ...f.options, authorizePolicy: async () => { throw Error('policy refused'); } });
+  broker.register(f.connection, f.registration);
+  f.db.exec("CREATE TRIGGER fail_unstarted BEFORE UPDATE OF state ON graph_actions WHEN NEW.state = 'failed' BEGIN SELECT RAISE(ABORT, 'settlement unavailable'); END");
+  expect(await broker.handle(f.connection, f.request)).toMatchObject({ kind: 'worker_action_rejected' });
+  expect(f.db.prepare('SELECT state, execution_ref FROM graph_actions').get()).toEqual({ state: 'intent', execution_ref: null });
+  f.db.exec('DROP TRIGGER fail_unstarted');
+  // Even a fresh host with available storage and policy must reconcile this
+  // unresolved durable intent; it must never convert ordinary replay to retry.
+  const restarted = new GraphActionBroker(f.db, f.options); restarted.register(f.connection, f.registration);
+  expect(await restarted.handle(f.connection, f.request)).toMatchObject({ outcome: { state: 'unknown', error: { code: 'ACTION_OUTCOME_UNKNOWN' } } });
+  expect(calls).toBe(0); expect(f.writes.in_use).toBe(0);
+  expect(f.db.prepare('SELECT COUNT(*) AS n FROM graph_actions').get()).toEqual({ n: 1 });
+});

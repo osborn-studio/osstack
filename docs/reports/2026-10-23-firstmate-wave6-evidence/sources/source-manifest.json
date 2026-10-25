@@ -1,0 +1,7 @@
+{
+  "packages/cli/src/local-data-source-registry.ts": "dffd57cfbfcb5d0a5722b8baa61246e688e4dbda9199fbf64f770ee133dd7d90",
+  "packages/cli/src/local-data-source-registry.test.ts": "b351c813f991236a0326084f3161b9ec8afaf220e7f7c1d9db88646a777ee3a8",
+  "packages/cli/src/local-source-command.ts": "f9d2e71f8c0ffd0ffdfc2b1748c0b2029f10a62ad5969d32bbb563ec88bbfc91",
+  "packages/cli/src/local-source-command.test.ts": "cb8eba5cba237005b0dc639156f07b9aeff67da5060064002a7dcbf5eaab1371",
+  "docs/guides/local-data-source-registry.md": "8d3a19b8403405ea329851638ea19d9264e4f7e88c33e1e07ca9aa9d1ed6b2ed"
+}

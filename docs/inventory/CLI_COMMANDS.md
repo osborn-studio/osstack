@@ -2,7 +2,7 @@
 
 # CLI Commands
 
-Top-level `osstack` commands parsed from `--help` (48 total).
+Top-level `osstack` commands parsed from `--help` (56 total).
 
 - `agent`
 - `attention`
@@ -19,6 +19,8 @@ Top-level `osstack` commands parsed from `--help` (48 total).
 - `deliver`
 - `doctor`
 - `examples`
+- `follow-up`
+- `follow-up-delivery`
 - `govern`
 - `governance`
 - `graph`
@@ -26,6 +28,7 @@ Top-level `osstack` commands parsed from `--help` (48 total).
 - `health`
 - `help`
 - `hermes`
+- `homes`
 - `hub`
 - `init`
 - `kanban`
@@ -40,11 +43,15 @@ Top-level `osstack` commands parsed from `--help` (48 total).
 - `probe`
 - `proof`
 - `release`
+- `remote-control`
+- `remote-home`
 - `report`
 - `scorecard`
+- `scout`
 - `serve`
 - `session`
 - `skills`
+- `sources`
 - `start`
 - `stats`
 - `status`
@@ -52,6 +59,7 @@ Top-level `osstack` commands parsed from `--help` (48 total).
 - `task`
 - `upgrade`
 - `version`
+- `worker`
 
 Doc 15 §2.2 context: this surface is the raw capability layer; the
 task-oriented golden paths (`daily` / `start` / `improve`) compose it.

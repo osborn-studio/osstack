@@ -1,0 +1,32 @@
+{
+  "files": [
+    {
+      "path": "docs/guides/firstmate-commands.md",
+      "sha256": "6b9622e2b113634485ba8853bf985a3432a3daf1384abf02e2372e7fb8479e03"
+    },
+    {
+      "path": "docs/guides/firstmate-commands.en.md",
+      "sha256": "8f19f4e085d537d846fbd6e2d6ee7ce72ca088fa3082c110e87f9c184c6ebe26"
+    },
+    {
+      "path": ".osstack/neat.yaml",
+      "sha256": "0fa0c04dcda29ed18275b6e3ebf5002889b84376b31e4d9c4958f07b0b079149"
+    },
+    {
+      "path": "README.md",
+      "sha256": "9fe45258519c628b96cbacc15234ca482fe4810a60454c09572ecf7bb0d20825",
+      "selection": "first 90 lines"
+    },
+    {
+      "path": "README.zh.md",
+      "sha256": "7061367c435f50fa998433023d428a5c356e22d8cb91d83a070d954a7df8a37e",
+      "selection": "first 90 lines"
+    },
+    {
+      "path": "packages/cli/src/bin.ts",
+      "sha256": "b0c75e97823b59330bd8519487373e06be6c0e5fb0a28a350039381f1622d4c7",
+      "selection": "serve guard and policy stderr"
+    }
+  ],
+  "prompt_sha256": "8d5fcb3a4b7a8ee77e5d76abfed000081dae839f99178e3e69dd4138c7ec4cb6"
+}

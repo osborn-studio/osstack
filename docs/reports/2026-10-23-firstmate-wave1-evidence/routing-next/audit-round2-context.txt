@@ -1,0 +1,1546 @@
+Independent final static challenge after first audit. No tools. Only confirmed introduced defects, distinguish latent concerns and existing router policy. Report P0/P1/P2 counts. Scope: deterministic real-router regression with fixed CLI bridge, fixture adapters and no provider execution; no holdout or savings claims; current policy unchanged. Prior P1: --role serialization truncated IDs containing '='. Fixed with roleOverrideId rejection ONLY on role_overrides because these values use argv; other profile IDs pass through structured parameters and do not truncate. Prior P2 fixed: unreadable JSON dataset_hash null; validate capability outcomes, reject undefined instead of converting to none; reject cross-adapter duplicate capability IDs; defaultAdapters/loadConfig spies now throw, env profiles explicitly overridden; provider_invocation_scope declares fixture_invoke_attempts; emitted report and expected values cloned. Trusted bridge code is not a user-supplied executable. Existing production fallback and adapter-only independence are deliberate matrix observations, not changes or safety qualifications. Additional fixture coverage suggestions are future coverage, not defects by themselves. Check fixes for new regressions and identify any remaining confirmed blocker.
+
+FILE packages/supervisor/src/routing-evaluation.ts
+import { createHash } from "node:crypto";
+import { z } from "zod";
+import type { Capability, CapabilityKind, RoutableAdapter } from "@osstack/core";
+
+const id = z.string().trim().min(1).max(256);
+const text = z.string().min(1).max(1000);
+// Production --role parsing splits on '='; reject IDs that cannot round-trip.
+const roleOverrideId = id.refine(value => !value.includes("="), "role_override_id_cannot_contain_equals");
+const capabilityOutcome = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("selected"), adapter_id: id, capability_id: id, reason: text }).strict(),
+  z.object({ kind: z.literal("rejected"), code: z.enum(["agent_not_found", "agent_unavailable", "agent_capability_mismatch"]) }).strict(),
+  z.object({ kind: z.literal("none") }).strict(),
+]);
+const profileOutcome = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("profile_selected"), builder: id, evaluator: id, independent: z.literal(true), overrides: z.record(id, id) }).strict(),
+  z.object({ kind: z.literal("profile_rejected"), message: text }).strict(),
+]);
+const role = z.object({ primary: id, fallback: z.array(id).max(32) }).strict();
+const roles = z.object({ coding: role, "test-verify": role, design: role }).strict();
+
+// Capability kinds come from the real runtime schema without eagerly importing
+// the core control-plane barrel into every supervisor consumer.
+function schemas(kinds: typeof import("@osstack/core").CapabilityKind) {
+  const adapter = z.object({
+    id, cost_tier: z.enum(["low", "mid", "high"]),
+    availability: z.enum(["available", "unavailable", "error"]),
+    capabilities: z.array(z.object({ id, kind: kinds }).strict()).max(64),
+    identity: z.object({ provider_id: id, model_id: id }).strict().optional(),
+  }).strict().superRefine((a, ctx) => {
+    if (new Set(a.capabilities.map(c => c.id)).size !== a.capabilities.length)
+      ctx.addIssue({ code: "custom", message: "duplicate_capability_id" });
+  });
+  const common = { id, rationale: text, adapters: z.array(adapter).max(32) };
+  const capability = z.object({ ...common, entrypoint: z.literal("capability"),
+    request: z.object({ capability_id: id.optional(), kind: kinds.optional(), agent_id: id.optional() }).strict()
+      .refine(r => Object.keys(r).length > 0, "routing_request_required"),
+    expected: capabilityOutcome,
+  }).strict();
+  const profile = z.object({ ...common, entrypoint: z.literal("profile"), roles,
+    explicit_builder: id.optional(), explicit_evaluators: z.array(id).max(1),
+    role_overrides: z.object({ coding: roleOverrideId.optional(), "test-verify": roleOverrideId.optional(), design: roleOverrideId.optional() }).strict(),
+    expected: profileOutcome,
+  }).strict();
+  return z.object({ version: z.literal(1), dataset_id: id,
+    cases: z.array(z.discriminatedUnion("entrypoint", [capability, profile])).min(1).max(256),
+  }).strict().superRefine((data, ctx) => {
+    if (new Set(data.cases.map(c => c.id)).size !== data.cases.length)
+      ctx.addIssue({ code: "custom", path: ["cases"], message: "duplicate_case_id" });
+    for (const [index, item] of data.cases.entries()) {
+      const capabilityIds = item.adapters.flatMap(a => a.capabilities.map(c => c.id));
+      if (new Set(capabilityIds).size !== capabilityIds.length)
+        ctx.addIssue({ code: "custom", path: ["cases", index, "adapters"], message: "duplicate_capability_id_across_adapters" });
+      if (new Set(item.adapters.map(a => a.id)).size !== item.adapters.length)
+        ctx.addIssue({ code: "custom", path: ["cases", index, "adapters"], message: "duplicate_adapter_id" });
+    }
+  });
+}
+export type RoutingGoldenDataset = z.infer<ReturnType<typeof schemas>>;
+export type RoutingGoldenCase = RoutingGoldenDataset["cases"][number];
+export type ProfileRoutingGoldenCase = Extract<RoutingGoldenCase, { entrypoint: "profile" }>;
+export type ProfileRoutingGoldenOutcome = z.infer<typeof profileOutcome>;
+type Outcome = z.infer<typeof capabilityOutcome> | ProfileRoutingGoldenOutcome;
+
+/** Fixture adapters provide facts only. No credentials, provider clients, or
+ * subprocess probes are created. Any future execution attempt fails visibly. */
+export interface RoutingEvaluationAdapter extends RoutableAdapter {
+  readonly display_name: string;
+  isAvailable(): Promise<{ available: boolean; last_checked_at: number }>;
+  runtimeIdentity(): Promise<{
+    adapter_id: string; adapter_version: string; auth_mode: string; provider_id: string;
+    model_id: string; evidence_source: "configured";
+  }>;
+  invoke(): never;
+}
+export type ProfileRoutingGoldenRunner = (
+  item: ProfileRoutingGoldenCase, adapters: RoutingEvaluationAdapter[],
+) => Promise<unknown>;
+export interface RoutingGoldenCaseResult {
+  id: string; entrypoint: "capability" | "profile";
+  status: "passed" | "failed" | "incomplete";
+  expected: Outcome; actual: Outcome | null;
+  differences: string[]; error?: string;
+}
+export interface RoutingGoldenReport {
+  mode: "router_golden"; dataset_hash: string | null; dataset_id: string | null;
+  qualification: "deterministic_regression_only";
+  status: "passed" | "failed" | "incomplete";
+  total: number; evaluated: number; passed: number; failed: number; incomplete: number;
+  provider_invocations: number; provider_invocation_scope: "fixture_invoke_attempts"; default_enabled: false;
+  results: RoutingGoldenCaseResult[]; errors: string[];
+}
+function canonical(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(canonical).join(",")}]`;
+  if (value !== null && typeof value === "object")
+    return `{${Object.keys(value).sort().map(k => `${JSON.stringify(k)}:${canonical((value as Record<string, unknown>)[k])}`).join(",")}}`;
+  return JSON.stringify(value) ?? "null";
+}
+function differences(expected: Outcome, actual: Outcome): string[] {
+  const a = expected as Record<string, unknown>, b = actual as Record<string, unknown>;
+  return [...new Set([...Object.keys(a), ...Object.keys(b)])].sort()
+    .filter(key => canonical(a[key]) !== canonical(b[key]));
+}
+
+/** Execute one fixed entrypoint per case, never choose between predictions.
+ * Profile wiring is supplied by CLI to avoid a supervisor -> CLI dependency. */
+export async function evaluateRoutingGolden(raw: unknown, profileRunner?: ProfileRoutingGoldenRunner): Promise<RoutingGoldenReport> {
+  let digest: string | null = null;
+  try { digest = createHash("sha256").update(canonical(raw)).digest("hex"); } catch { /* Invalid cyclic input is incomplete. */ }
+  const rawCases = raw && typeof raw === "object" && "cases" in raw ? raw.cases : undefined;
+  const total = Array.isArray(rawCases) ? rawCases.length : 0;
+  const report: RoutingGoldenReport = {
+    mode: "router_golden", dataset_hash: digest, dataset_id: null,
+    qualification: "deterministic_regression_only", status: "incomplete",
+    total, evaluated: 0, passed: 0, failed: 0, incomplete: total,
+    provider_invocations: 0, provider_invocation_scope: "fixture_invoke_attempts", default_enabled: false, results: [], errors: [],
+  };
+  const { CapabilityKind: kinds, routeCapability, AgentOverrideError } = await import("@osstack/core");
+  const parsed = schemas(kinds).safeParse(raw);
+  if (!parsed.success || digest === null) {
+    report.errors = parsed.success ? ["unhashable_dataset"] : parsed.error.issues.slice(0, 30).map(i => `${i.path.join(".")}: ${i.message}`);
+    return report;
+  }
+  report.dataset_id = parsed.data.dataset_id;
+  report.incomplete = 0;
+  for (const item of parsed.data.cases) {
+    const adapters: RoutingEvaluationAdapter[] = item.adapters.map(a => ({
+      id: a.id, display_name: a.id, cost_tier: a.cost_tier,
+      capabilities: (): Capability[] => a.capabilities.map(c => ({ ...c, kind: c.kind as CapabilityKind,
+        agent_id: a.id, description: `Golden fixture ${a.id}`, cost_tier: a.cost_tier, hints: {}, version: "1" })),
+      isAvailable: async () => {
+        if (a.availability === "error") throw Error("fixture_probe_failed");
+        return { available: a.availability === "available", last_checked_at: 1 };
+      },
+      runtimeIdentity: async () => ({ adapter_id: a.id, adapter_version: "fixture-v1", auth_mode: "fixture",
+        provider_id: a.identity?.provider_id ?? `fixture:${a.id}`, model_id: a.identity?.model_id ?? "fixture-model",
+        evidence_source: "configured" }),
+      invoke: () => { report.provider_invocations++; throw Error("provider_invocation_forbidden"); },
+    }));
+    const result: RoutingGoldenCaseResult = { id: item.id, entrypoint: item.entrypoint,
+      status: "incomplete", expected: structuredClone(item.expected), actual: null, differences: [] };
+    const invokesBefore = report.provider_invocations;
+    try {
+      let actual: Outcome;
+      if (item.entrypoint === "capability") {
+        try {
+          const picked = await routeCapability({
+            ...(item.request.agent_id === undefined ? {} : { agent_id: item.request.agent_id }),
+            ...(item.request.capability_id === undefined ? {} : { capability_id: item.request.capability_id }),
+            ...(item.request.kind === undefined ? {} : { kind: item.request.kind }),
+          }, adapters);
+          if (picked === undefined) throw Error("capability_result_missing_or_invalid");
+          const value = picked === null ? { kind: "none" } : {
+            kind: "selected", adapter_id: picked.adapter.id, capability_id: picked.capability.id, reason: picked.reason,
+          };
+          const checked = capabilityOutcome.safeParse(value);
+          if (!checked.success) throw Error("capability_result_missing_or_invalid");
+          actual = checked.data;
+        } catch (error) {
+          if (!(error instanceof AgentOverrideError)) throw error;
+          actual = { kind: "rejected", code: error.code };
+        }
+      } else {
+        if (!profileRunner) throw Error("profile_runner_unavailable");
+        const value = await profileRunner(item, adapters);
+        const checked = profileOutcome.safeParse(value);
+        if (!checked.success) throw Error("profile_result_missing_or_invalid");
+        actual = checked.data;
+      }
+      if (report.provider_invocations !== invokesBefore) throw Error("provider_invocation_forbidden");
+      result.actual = actual;
+      result.differences = differences(result.expected, actual);
+      result.status = result.differences.length ? "failed" : "passed";
+      report.evaluated++;
+      report[result.status]++;
+    } catch (error) {
+      result.error = error instanceof Error ? error.message : "routing_evaluation_failed";
+      report.incomplete++;
+    }
+    report.results.push(result);
+  }
+  report.status = report.incomplete || report.provider_invocations ? "incomplete" : report.failed ? "failed" : "passed";
+  // A trusted bridge retaining fixture adapters must not mutate an emitted report.
+  return structuredClone(report);
+}
+
+FILE packages/supervisor/src/routing-evaluation.test.ts
+import { describe, expect, it } from "vitest";
+import { evaluateRoutingGolden } from "./routing-evaluation.js";
+
+const dataset = () => ({
+  version: 1,
+  dataset_id: "routing-regression-v1",
+  cases: [{
+    id: "cheap-write", rationale: "Kind routing uses the cheapest available writer.",
+    entrypoint: "capability",
+    request: { kind: "code.write" },
+    adapters: [
+      { id: "expensive", cost_tier: "high", availability: "available", capabilities: [{ id: "expensive.write", kind: "code.write" }] },
+      { id: "cheap", cost_tier: "low", availability: "available", capabilities: [{ id: "cheap.write", kind: "code.write" }] },
+    ],
+    expected: { kind: "selected", adapter_id: "cheap", capability_id: "cheap.write", reason: "kind=code.write lowest-cost (low)" },
+  }],
+});
+
+describe("real routing golden evaluation", () => {
+  it("runs the real capability router, keeps the full denominator and performs no provider calls", async () => {
+    const result = await evaluateRoutingGolden(dataset());
+    expect(result).toMatchObject({ mode: "router_golden", status: "passed", total: 1, evaluated: 1, passed: 1, failed: 0, incomplete: 0, provider_invocations: 0 });
+    expect(result.dataset_hash).toMatch(/^[a-f0-9]{64}$/);
+    expect(result.results[0]).toMatchObject({ id: "cheap-write", status: "passed", differences: [], actual: { adapter_id: "cheap" } });
+  });
+  it("reports mismatches without silently dropping cases", async () => {
+    const input = dataset(); input.cases[0]!.expected.adapter_id = "expensive";
+    const result = await evaluateRoutingGolden(input);
+    expect(result).toMatchObject({ status: "failed", total: 1, evaluated: 1, failed: 1, passed: 0 });
+    expect(result.results[0]!.differences).toContain("adapter_id");
+  });
+  it.each([
+    {}, { ...dataset(), cases: [] }, { ...dataset(), cases: [...dataset().cases, ...dataset().cases] },
+    { ...dataset(), cases: [undefined] },
+    { ...dataset(), cases: [{ ...dataset().cases[0], expected: { kind: "anything" } }] },
+    { ...dataset(), cases: [{ ...dataset().cases[0], supplied_predictions: "cheap" }] },
+  ])("marks malformed/empty/duplicate data incomplete", async (input) => {
+    const result = await evaluateRoutingGolden(input);
+    expect(result.status).toBe("incomplete"); expect(result.evaluated).toBe(0);
+    expect(result.errors.length).toBeGreaterThan(0);
+  });
+  it("hashes canonical input, including changed labels and adapter order", async () => {
+    const input = dataset(); const same = { cases: structuredClone(input.cases), dataset_id: input.dataset_id, version: 1 };
+    expect((await evaluateRoutingGolden(input)).dataset_hash).toBe((await evaluateRoutingGolden(same)).dataset_hash);
+    const reversed = structuredClone(input); reversed.cases[0]!.adapters.reverse();
+    expect((await evaluateRoutingGolden(reversed)).dataset_hash).not.toBe((await evaluateRoutingGolden(input)).dataset_hash);
+    input.cases[0]!.rationale = "Reviewed changed rationale";
+    expect((await evaluateRoutingGolden(input)).dataset_hash).not.toBe((await evaluateRoutingGolden(same)).dataset_hash);
+  });
+});
+
+const profileDataset = () => ({ version: 1, dataset_id: "profile", cases: [{
+  id: "profile", rationale: "The CLI supplies the actual profile entrypoint.", entrypoint: "profile",
+  roles: { coding: { primary: "a", fallback: [] }, "test-verify": { primary: "b", fallback: [] }, design: { primary: "c", fallback: [] } },
+  explicit_evaluators: [], role_overrides: {}, adapters: [{ id: "a", cost_tier: "low", availability: "available", capabilities: [] }],
+  expected: { kind: "profile_rejected", message: "no Builder is available" },
+}] });
+it("counts a missing profile runner as incomplete, never a passing rejection", async () => {
+  expect(await evaluateRoutingGolden(profileDataset())).toMatchObject({ status: "incomplete", total: 1, evaluated: 0, incomplete: 1 });
+});
+it.each([undefined, {}, { kind: "profile_selected", builder: "a" }])("counts a missing/malformed profile result as incomplete", async value => {
+  const result = await evaluateRoutingGolden(profileDataset(), async () => value);
+  expect(result).toMatchObject({ status: "incomplete", total: 1, evaluated: 0, incomplete: 1 });
+  expect(result.results[0]!.error).toBe("profile_result_missing_or_invalid");
+});
+it("records and rejects provider invocation even when the caller swallows its exception", async () => {
+  const result = await evaluateRoutingGolden(profileDataset(), async (_item, adapters) => {
+    try { adapters[0]!.invoke(); } catch { /* Attempt must still be detected. */ }
+    return { kind: "profile_rejected", message: "no Builder is available" };
+  });
+  expect(result).toMatchObject({ status: "incomplete", provider_invocations: 1, evaluated: 0 });
+  expect(result.results[0]!.error).toBe("provider_invocation_forbidden");
+});
+it("rejects malformed capabilities and repeated adapters before execution", async () => {
+  const input = dataset(); input.cases[0]!.adapters[0]!.capabilities[0]!.kind = "not-a-real-kind";
+  expect((await evaluateRoutingGolden(input)).status).toBe("incomplete");
+  const duplicate = dataset(); duplicate.cases[0]!.adapters.push(duplicate.cases[0]!.adapters[0]!);
+  expect((await evaluateRoutingGolden(duplicate)).status).toBe("incomplete");
+});
+it("retains the full mixed-entrypoint denominator when one result is missing", async () => {
+  const input = { version: 1, dataset_id: "mixed", cases: [...dataset().cases, ...profileDataset().cases] };
+  const result = await evaluateRoutingGolden(input, async () => undefined);
+  expect(result).toMatchObject({ status: "incomplete", total: 2, evaluated: 1, passed: 1, incomplete: 1 });
+  expect(result.results.map(c => c.status)).toEqual(["passed", "incomplete"]);
+});
+it("does not turn an unexpected entrypoint exception into an expected rejection", async () => {
+  const result = await evaluateRoutingGolden(profileDataset(), async () => { throw Error("unexpected_failure"); });
+  expect(result).toMatchObject({ status: "incomplete", total: 1, evaluated: 0, passed: 0, incomplete: 1 });
+});
+it("rejects role override IDs that the production argv parser would truncate", async () => {
+  const input = profileDataset(); input.cases[0]!.role_overrides = { "test-verify": "backup=x" };
+  let called = false;
+  const result = await evaluateRoutingGolden(input, async () => { called = true; return undefined; });
+  expect(result.status).toBe("incomplete"); expect(called).toBe(false);
+  expect(result.errors.join()).toContain("role_override_id_cannot_contain_equals");
+});
+it("rejects ambiguous capability IDs shared by different adapters", async () => {
+  const input = dataset(); input.cases[0]!.adapters[1]!.capabilities[0]!.id = input.cases[0]!.adapters[0]!.capabilities[0]!.id;
+  const result = await evaluateRoutingGolden(input);
+  expect(result.status).toBe("incomplete"); expect(result.errors.join()).toContain("duplicate_capability_id_across_adapters");
+});
+it("compares against a snapshot even if trusted bridge code mutates its input expectation", async () => {
+  const result = await evaluateRoutingGolden(profileDataset(), async item => {
+    item.expected = { kind: "profile_rejected", message: "changed" };
+    return item.expected;
+  });
+  expect(result).toMatchObject({ status: "failed", failed: 1 });
+  expect(result.results[0]!.expected).toEqual({ kind: "profile_rejected", message: "no Builder is available" });
+});
+it("returns a report snapshot that retained adapters cannot mutate", async () => {
+  let invoke: (() => never) | undefined;
+  const result = await evaluateRoutingGolden(profileDataset(), async (_item, adapters) => {
+    invoke = adapters[0]!.invoke;
+    return { kind: "profile_rejected", message: "no Builder is available" };
+  });
+  expect(() => invoke!()).toThrow("provider_invocation_forbidden");
+  expect(result.provider_invocations).toBe(0);
+});
+
+FILE packages/supervisor/src/routing-evaluation-missing.test.ts
+import { afterEach, expect, it, vi } from "vitest";
+import * as core from "@osstack/core";
+import { evaluateRoutingGolden } from "./routing-evaluation.js";
+afterEach(() => vi.restoreAllMocks());
+it.each([undefined, { adapter: { id: "a" }, capability: {}, reason: "broken" }])("marks a missing/malformed production capability result incomplete", async value => {
+  vi.spyOn(core, "routeCapability").mockResolvedValue(value as never);
+  const result = await evaluateRoutingGolden({ version: 1, dataset_id: "missing-result", cases: [{
+    id: "missing", rationale: "An absent result is not the intentional no-candidate null result.",
+    entrypoint: "capability", request: { kind: "code.write" }, adapters: [], expected: { kind: "none" },
+  }] });
+  expect(result).toMatchObject({ status: "incomplete", total: 1, evaluated: 0, passed: 0, incomplete: 1 });
+  expect(result.results[0]!.error).toBe("capability_result_missing_or_invalid");
+});
+
+FILE packages/cli/src/attention-routing-evaluation.ts
+import { selectProfile, type OsstackConfig } from "@osstack/config";
+import type { ProfileRoutingGoldenRunner } from "@osstack/supervisor";
+import { resolveLoopProfileRouting } from "./loop-profile-routing.js";
+
+/** Use the production profile entrypoint with a complete fixture configuration.
+ * Neither the user's config, machine profile, nor installed adapters are read. */
+export const runProfileRoutingGolden: ProfileRoutingGoldenRunner = async (item, adapters) => {
+  const config: OsstackConfig = {
+    version: 1, active_profile: "golden", agent_runtime: {},
+    defaults: { roles: item.roles },
+    profiles: { golden: { roles: item.roles, match: { hostnames: [], model_hints: [] } } },
+  };
+  const args = ["--profile", "golden"];
+  for (const [role, adapter] of Object.entries(item.role_overrides)) {
+    if (adapter !== undefined) args.push("--role", `${role}=${adapter}`);
+  }
+  const result = await resolveLoopProfileRouting(args, item.explicit_builder, item.explicit_evaluators, {
+    loadConfig: () => config,
+    selectProfile: (value, options) => selectProfile(value, { ...options, hostname: "golden-fixture", model: "" }),
+    adapters: () => adapters,
+  });
+  if (result instanceof Error) return { kind: "profile_rejected", message: result.message };
+  if (!result) return undefined;
+  return { kind: "profile_selected", builder: result.agentId, evaluator: result.verifierAgentIds[0],
+    independent: result.summary.independent, overrides: result.summary.overrides };
+};
+
+FILE packages/cli/src/attention-routing-evaluation.test.ts
+import { readFileSync, writeFileSync, rmSync } from "node:fs";
+import { join } from "node:path";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { createScratchDirSync } from "@osstack/core";
+import { evaluateRoutingGolden, type RoutingGoldenDataset } from "@osstack/supervisor";
+import * as agents from "@osstack/agents";
+import * as config from "@osstack/config";
+import { runProfileRoutingGolden } from "./attention-routing-evaluation.js";
+import { handleAttentionPlanning } from "./attention-planning-command.js";
+
+const fixture = (): RoutingGoldenDataset => JSON.parse(readFileSync(new URL("../../supervisor/src/fixtures/routing-golden-v1.json", import.meta.url), "utf8"));
+const directories: string[] = [];
+afterEach(() => { vi.restoreAllMocks(); vi.unstubAllEnvs(); directories.forEach(p => { rmSync(p, { recursive: true, force: true }); }); directories.length = 0; });
+function inputFile(value: unknown, raw = false) {
+  const directory = createScratchDirSync("tests", "routing-golden"); directories.push(directory);
+  const path = join(directory, "input.json"); writeFileSync(path, raw ? String(value) : JSON.stringify(value)); return path;
+}
+
+describe("deterministic routing production wiring", () => {
+  it("passes every reviewed case through its fixed actual entrypoint without real adapters or configuration", async () => {
+    const providers = vi.spyOn(agents, "defaultAdapters").mockImplementation(() => { throw Error("real_adapters_forbidden"); });
+    const userConfig = vi.spyOn(config, "loadConfig").mockImplementation(() => { throw Error("user_config_forbidden"); });
+    vi.stubEnv("OSSTACK_AGENT_PROFILE", "never-use-this-profile");
+    vi.stubEnv("OSSTACK_PROFILE", "never-use-this-either");
+    const result = await evaluateRoutingGolden(fixture(), runProfileRoutingGolden);
+    expect(result.results.filter(c => c.status !== "passed")).toEqual([]);
+    expect(result).toMatchObject({ status: "passed", total: 22, evaluated: 22, passed: 22, incomplete: 0, provider_invocations: 0 });
+    expect(providers).not.toHaveBeenCalled(); expect(userConfig).not.toHaveBeenCalled();
+  });
+  it("runs through the real planning CLI entrypoint and exits nonzero on a routing mismatch", async () => {
+    const input = fixture(); const output: string[] = [];
+    expect(await handleAttentionPlanning(["routing-eval", "--mode", "router_golden", "--input", inputFile(input), "--json"], line => output.push(line))).toBe(0);
+    expect(JSON.parse(output[0]!)).toMatchObject({ mode: "router_golden", qualification: "deterministic_regression_only", passed: 22 });
+    const item = input.cases[0]!;
+    if (item.expected.kind !== "selected") throw Error("fixture");
+    item.expected.adapter_id = "wrong";
+    expect(await handleAttentionPlanning(["routing-eval", "--mode", "router_golden", "--input", inputFile(input)], line => output.push(line))).toBe(1);
+    expect(JSON.parse(output[1]!)).toMatchObject({ status: "failed", total: 22, evaluated: 22, passed: 21, failed: 1 });
+  });
+  it("keeps legacy aggregation compatible while clearly labeling supplied predictions", async () => {
+    const path = inputFile([{ id: "one", expected: "x", intentRoute: "x", promptRoute: "y", reviewRequired: true,
+      intentReview: true, promptReview: false, intentTokens: 2, promptTokens: 5 }]);
+    const output: string[] = [];
+    expect(await handleAttentionPlanning(["routing-eval", "--input", path], line => output.push(line))).toBe(0);
+    expect(JSON.parse(output[0]!)).toMatchObject({ mode: "supplied_predictions", router_executed: false,
+      qualification: "supplied_predictions_only", cases: 1, intent_accuracy: 1, prompt_accuracy: 0, intent_tokens: 2, prompt_tokens: 5 });
+  });
+  it.each([{}, { version: 1, dataset_id: "empty", cases: [] }, "bad json"])("fails closed with an incomplete report for bad input %j", async value => {
+    const output: string[] = [];
+    expect(await handleAttentionPlanning(["routing-eval", "--mode", "router_golden", "--input", inputFile(value, typeof value === "string")], line => output.push(line))).toBe(1);
+    expect(JSON.parse(output[0]!)).toMatchObject({ status: "incomplete", evaluated: 0 });
+    if (typeof value === "string") expect(JSON.parse(output[0]!)).toMatchObject({ dataset_hash: null, errors: ["input_unreadable_or_invalid_json"] });
+  });
+  it("rejects an unknown mode instead of falling back to supplied predictions", async () => {
+    await expect(handleAttentionPlanning(["routing-eval", "--mode", "auto", "--input", inputFile(fixture())], () => {})).rejects.toThrow("invalid_routing_eval_mode");
+  });
+});
+
+FILE packages/cli/src/attention-planning-command.ts
+import { open, writeFile, mkdir, realpath } from "node:fs/promises";
+import { join } from "node:path";
+import { randomUUID } from "node:crypto";
+export async function handleAttentionPlanning(
+  args: string[],
+  out: (s: string) => void
+): Promise<number> {
+  const flags = new Map<string, string>();
+  for (let i = 1; i < args.length; i++) {
+    if (args[i] === "--json") continue;
+    const key = args[i]!;
+    const value = args[++i];
+    if (
+      !["--input", "--head", "--evidence", "--budget", "--repo", "--mode"].includes(
+        key
+      ) ||
+      !value ||
+      value.startsWith("--") ||
+      flags.has(key)
+    )
+      throw new Error("invalid_planning_arguments");
+    flags.set(key, value);
+  }
+  const read = async (path: string) => {
+    const file = await open(path, "r");
+    try {
+      const data = Buffer.alloc(1048577);
+      const result = await file.read(data, 0, data.length, 0);
+      if (result.bytesRead > 1048576) throw new Error("oversized_input");
+      return JSON.parse(data.subarray(0, result.bytesRead).toString());
+    } finally {
+      await file.close();
+    }
+  };
+  const input = flags.get("--input");
+  if (!input) throw new Error("input_required");
+  const planning = await import("@osstack/supervisor");
+  const mode = flags.get("--mode") ?? "supplied_predictions";
+  if (flags.has("--mode") && args[0] !== "routing-eval") throw new Error("mode_only_valid_for_routing_eval");
+  if (args[0] === "routing-eval") {
+    if (!["supplied_predictions", "router_golden"].includes(mode)) throw new Error("invalid_routing_eval_mode");
+    if ([...flags.keys()].some(k => !["--input", "--mode"].includes(k))) throw new Error("invalid_routing_eval_arguments");
+    if (mode === "router_golden") {
+      let raw: unknown;
+      try { raw = await read(input); }
+      catch {
+        const report = await planning.evaluateRoutingGolden(null);
+        report.dataset_hash = null;
+        report.errors = ["input_unreadable_or_invalid_json"];
+        out(JSON.stringify(report, null, 2));
+        return 1;
+      }
+      const { runProfileRoutingGolden } = await import("./attention-routing-evaluation.js");
+      const report = await planning.evaluateRoutingGolden(raw, runProfileRoutingGolden);
+      out(JSON.stringify(report, null, 2));
+      return report.status === "passed" ? 0 : 1;
+    }
+  }
+  const data = await read(input);
+  let result: unknown;
+  switch (args[0]) {
+    case "contract":
+      result = flags.has("--evidence")
+        ? planning.verifyDeliveryContract(
+            data,
+            await read(flags.get("--evidence")!)
+          )
+        : flags.has("--head")
+        ? planning.promoteScout(data, flags.get("--head")!)
+        : planning.deliveryContract(data);
+      break;
+    case "routing-eval":
+      result = { ...planning.evaluateAttentionRouting(data), mode: "supplied_predictions",
+        qualification: "supplied_predictions_only", router_executed: false };
+      break;
+    case "triage":
+      result = planning.acceptAttentionTriage(data, 1, {
+        category: "source_uncertain",
+        explanation:
+          "Use deterministic source facts; model output unavailable or invalid.",
+      });
+      break;
+    case "context":
+      result = planning.budgetAttentionContext(
+        data,
+        Number(flags.get("--budget") ?? 8000),
+        Date.now()
+      );
+      break;
+    case "lesson": {
+      if (!flags.has("--repo")) throw new Error("repo_required");
+      const repo = await realpath(flags.get("--repo")!);
+      const { renderLessonDraft } = await import("@osstack/loop");
+      const content = renderLessonDraft(data);
+      const directory = join(repo, "loop-lessons", "drafts");
+      await mkdir(directory, { recursive: true });
+      const path = join(directory, `attention-${randomUUID()}.md`);
+      await writeFile(path, content, { flag: "wx" });
+      result = { path, state: "draft", promoted: false };
+      break;
+    }
+    default:
+      throw new Error("unknown_planning_command");
+  }
+  out(JSON.stringify(result, null, 2));
+  return 0;
+}
+
+FILE packages/cli/src/loop-profile-routing.ts
+import {
+  defaultAdapters,
+  type AgentAdapter,
+  type AgentRuntimeIdentity,
+} from "@osstack/agents";
+import {
+  loadConfig,
+  resolveDeliveryRoles,
+  selectProfile,
+  type AgentRole,
+  type OsstackConfig,
+  type ResolvedProfile,
+} from "@osstack/config";
+
+export interface LoopProfileSummary {
+  profile_name: string;
+  reason: string;
+  builder_agent_id: string;
+  evaluator_agent_id: string;
+  designer_agent_id?: string;
+  builder_identity: AgentRuntimeIdentity;
+  evaluator_identity: AgentRuntimeIdentity;
+  designer_identity?: AgentRuntimeIdentity;
+  independent: boolean;
+  independence_reason: string;
+  overrides: Record<string, string>;
+  resolutions: Record<string, {
+    chosen: string | null;
+    reason: string;
+    tried: Array<{ id: string; ok: boolean; reason?: string }>;
+  }>;
+}
+
+export interface LoopProfileRoutingResult {
+  agentId: string;
+  verifierAgentIds: string[];
+  summary: LoopProfileSummary;
+}
+
+export interface LoopProfileRoutingDeps {
+  loadConfig?: () => OsstackConfig;
+  selectProfile?: (
+    config: OsstackConfig,
+    opts?: { override?: string | undefined },
+  ) => ResolvedProfile;
+  adapters?: () => AgentAdapter[];
+}
+
+export function shouldResolveExecutionProfile(input: {
+  explicitProfile: boolean;
+  roleOverrides: boolean;
+  guardedAutonomy: boolean;
+  autoAgent: boolean;
+  executeCommand: boolean;
+}): boolean {
+  return input.explicitProfile
+    || input.roleOverrides
+    || input.guardedAutonomy
+    || (input.autoAgent && !input.executeCommand);
+}
+
+export async function resolveLoopProfileRouting(
+  args: string[],
+  explicitAgentId: string | undefined,
+  explicitVerifierAgentIds: readonly string[],
+  deps: LoopProfileRoutingDeps = {},
+): Promise<LoopProfileRoutingResult | undefined | Error> {
+  const profileOverride = flagValue(args, "--profile")
+    ?? process.env["OSSTACK_AGENT_PROFILE"]
+    ?? process.env["OSSTACK_PROFILE"];
+  const overrides = parseRoleOverrides(args);
+  if (overrides instanceof Error) return overrides;
+  const autonomy = flagValue(args, "--autonomy");
+  const shouldResolve = shouldResolveExecutionProfile({
+    explicitProfile: profileOverride !== undefined,
+    roleOverrides: Object.keys(overrides).length > 0,
+    guardedAutonomy: autonomy !== undefined && autonomy !== "legacy",
+    autoAgent: args.includes("--auto-agent"),
+    executeCommand: flagValue(args, "--execute") !== undefined,
+  });
+  if (!shouldResolve) {
+    return undefined;
+  }
+
+  const requestedBuilder = explicitAgentId ?? overrides.coding;
+  const requestedEvaluator = explicitVerifierAgentIds[0]
+    ?? overrides["test-verify"];
+  if (
+    requestedBuilder !== undefined
+    && requestedBuilder === requestedEvaluator
+  ) {
+    return new Error(
+      "explicit Builder and Evaluator must use different adapters",
+    );
+  }
+
+  const config = deps.loadConfig?.() ?? loadConfig();
+  const profile = (deps.selectProfile ?? selectProfile)(
+    config,
+    profileOverride !== undefined ? { override: profileOverride } : {},
+  );
+  const roles = {
+    coding: {
+      ...profile.roles.coding,
+      fallback: [...profile.roles.coding.fallback],
+    },
+    "test-verify": {
+      ...profile.roles["test-verify"],
+      fallback: [...profile.roles["test-verify"].fallback],
+    },
+    design: {
+      ...profile.roles.design,
+      fallback: [...profile.roles.design.fallback],
+    },
+  };
+  for (
+    const [role, agentId]
+    of Object.entries(overrides) as Array<[AgentRole, string]>
+  ) {
+    roles[role] = {
+      primary: agentId,
+      fallback: roles[role].fallback.filter(
+        (candidate) => candidate !== agentId,
+      ),
+    };
+  }
+  if (explicitAgentId !== undefined) {
+    roles.coding = {
+      primary: explicitAgentId,
+      fallback: roles.coding.fallback.filter(
+        (candidate) => candidate !== explicitAgentId,
+      ),
+    };
+  }
+  const explicitEvaluatorId = explicitVerifierAgentIds[0];
+  if (explicitEvaluatorId !== undefined) {
+    roles["test-verify"] = {
+      primary: explicitEvaluatorId,
+      fallback: roles["test-verify"].fallback.filter(
+        (candidate) => candidate !== explicitEvaluatorId,
+      ),
+    };
+  }
+
+  const adapters = deps.adapters?.() ?? defaultAdapters();
+  const resolution = await resolveDeliveryRoles(
+    roles,
+    adapters,
+    {
+      autoFallback: true,
+      identityOverrides: config.agent_runtime,
+      independenceLevel: "adapter",
+    },
+  );
+  const builder = resolution.builder.chosen;
+  const evaluator = resolution.evaluator.chosen;
+  if (builder === null) {
+    return new Error("no Builder is available");
+  }
+  if (evaluator === null) {
+    return new Error("no independent Evaluator is available");
+  }
+  if (
+    explicitAgentId !== undefined
+    && builder !== explicitAgentId
+  ) {
+    return new Error(
+      `explicit Builder "${explicitAgentId}" is unavailable`,
+    );
+  }
+  if (
+    explicitEvaluatorId !== undefined
+    && evaluator !== explicitEvaluatorId
+  ) {
+    return new Error(
+      `explicit Evaluator "${explicitEvaluatorId}" is unavailable or conflicts with the Builder`,
+    );
+  }
+  if (!resolution.independent) {
+    return new Error(
+      `Builder/Evaluator separation failed: ${resolution.independence_reason}`,
+    );
+  }
+  const builderIdentity = resolution.identities.builder;
+  const evaluatorIdentity = resolution.identities.evaluator;
+  if (
+    builderIdentity === undefined
+    || evaluatorIdentity === undefined
+  ) {
+    return new Error("Builder or Evaluator runtime identity is unavailable");
+  }
+  const summaryOverrides = {
+    ...Object.fromEntries(Object.entries(overrides)),
+    ...(explicitAgentId !== undefined
+      ? { coding: explicitAgentId }
+      : {}),
+    ...(explicitEvaluatorId !== undefined
+      ? { "test-verify": explicitEvaluatorId }
+      : {}),
+  };
+  return {
+    agentId: builder,
+    verifierAgentIds: [evaluator],
+    summary: {
+      profile_name: profile.name,
+      reason: profile.reason,
+      builder_agent_id: builder,
+      evaluator_agent_id: evaluator,
+      ...(resolution.designer.chosen !== null
+        ? { designer_agent_id: resolution.designer.chosen }
+        : {}),
+      builder_identity: builderIdentity,
+      evaluator_identity: evaluatorIdentity,
+      ...(resolution.identities.designer !== undefined
+        ? { designer_identity: resolution.identities.designer }
+        : {}),
+      independent: resolution.independent,
+      independence_reason: resolution.independence_reason,
+      overrides: summaryOverrides,
+      resolutions: Object.fromEntries(
+        Object.entries({
+          coding: resolution.builder,
+          "test-verify": resolution.evaluator,
+          design: resolution.designer,
+        }).map(([role, roleResolution]) => [
+          role,
+          {
+            chosen: roleResolution.chosen,
+            reason: roleResolution.reason,
+            tried: roleResolution.tried,
+          },
+        ]),
+      ),
+    },
+  };
+}
+
+export function parseRoleOverrides(
+  args: string[],
+): Partial<Record<AgentRole, string>> | Error {
+  const overrides: Partial<Record<AgentRole, string>> = {};
+  for (const raw of flagValues(args, "--role")) {
+    const [roleRaw, agentId] = raw.split("=", 2);
+    if (
+      roleRaw === undefined
+      || agentId === undefined
+      || agentId.trim() === ""
+    ) {
+      return new Error(`--role must use role=agent-id, got "${raw}"`);
+    }
+    const role = normalizeLoopRole(roleRaw);
+    if (role === undefined) {
+      return new Error(
+        `unknown --role "${roleRaw}"; use coder, evaluator, or designer`,
+      );
+    }
+    overrides[role] = agentId.trim();
+  }
+  return overrides;
+}
+
+export function normalizeLoopRole(
+  value: string,
+): AgentRole | undefined {
+  const normalized = value.trim().toLowerCase();
+  if (
+    normalized === "coder"
+    || normalized === "builder"
+    || normalized === "coding"
+  ) {
+    return "coding";
+  }
+  if (
+    normalized === "evaluator"
+    || normalized === "judge"
+    || normalized === "verifier"
+    || normalized === "test-verify"
+  ) {
+    return "test-verify";
+  }
+  if (
+    normalized === "designer"
+    || normalized === "design"
+  ) {
+    return "design";
+  }
+  return undefined;
+}
+
+function flagValue(
+  args: readonly string[],
+  name: string,
+): string | undefined {
+  const index = args.indexOf(name);
+  return index >= 0 && index + 1 < args.length
+    ? args[index + 1]
+    : undefined;
+}
+
+function flagValues(
+  args: readonly string[],
+  name: string,
+): string[] {
+  const values: string[] = [];
+  for (let index = 0; index < args.length - 1; index += 1) {
+    if (args[index] === name) {
+      values.push(args[index + 1]!);
+      index += 1;
+    }
+  }
+  return values;
+}
+
+FILE packages/core/src/orchestrator/router.ts
+// Capability router (S2 basic version).
+//
+// Given a task's requested capability_id (or capability kind) and a set of
+// available adapters, pick which adapter should run it. S3 will replace
+// this with the data-driven policy engine; for now we keep it transparent
+// and rule-based so users can reason about routing.
+//
+// Selection rules (in order, first match wins):
+//   1. Exact capability_id match if the requested adapter is available.
+//   2. Same kind, lowest cost_tier (low > mid > high preference).
+//   3. Same kind, any available adapter.
+//   4. None — return null and let the caller decide.
+
+// @osstack/agents depends on @osstack/core for the Capability schema, so to
+// avoid a cycle we re-declare the minimum routable-adapter surface here
+// (just the fields the router actually reads).
+import type { Capability, CapabilityKind, CostTier } from "../capability.js";
+
+export interface RouterAvailability {
+  available: boolean;
+  reason?: string;
+}
+
+export interface RoutableAdapter {
+  readonly id: string;
+  readonly cost_tier: CostTier;
+  capabilities(): readonly Capability[];
+  isAvailable(): Promise<RouterAvailability>;
+}
+
+export interface RoutingRequest {
+  capability_id?: string;
+  kind?: CapabilityKind;
+  /** Optional override: force this agent if it can serve the requested kind. */
+  agent_id?: string;
+}
+
+export interface RoutingDecision {
+  adapter: RoutableAdapter;
+  capability: Capability;
+  reason: string;
+}
+
+const TIER_ORDER: Record<CostTier, number> = { low: 0, mid: 1, high: 2 };
+
+/** Explicit agent_id override could not be honored. FAIL-CLOSED: the caller
+ *  asked for a specific agent, so silently substituting a different (often
+ *  cheaper) agent is never acceptable — a review "performed" by the wrong
+ *  engine is worse than an error (Phase 2 closure G1.1; incident 2026-07-18). */
+export class AgentOverrideError extends Error {
+  readonly code: "agent_not_found" | "agent_unavailable" | "agent_capability_mismatch";
+  readonly agent_id: string;
+  constructor(code: AgentOverrideError["code"], agentId: string, detail?: string) {
+    super(`agent override failed (${code}): ${agentId}${detail ? ` — ${detail}` : ""}`);
+    this.name = "AgentOverrideError";
+    this.code = code;
+    this.agent_id = agentId;
+  }
+}
+
+export interface RouteOptions {
+  /** Bound on a single adapter availability probe when honoring an explicit
+   *  agent_id override. A hanging probe becomes agent_unavailable, never a
+   *  silent fallback. */
+  probeTimeoutMs?: number;
+}
+
+const DEFAULT_PROBE_TIMEOUT_MS = 10_000;
+
+export async function routeCapability(
+  request: RoutingRequest,
+  adapters: ReadonlyArray<RoutableAdapter>,
+  options: RouteOptions = {},
+): Promise<RoutingDecision | null> {
+  if (request.agent_id !== undefined && (typeof request.agent_id !== "string" || request.agent_id.length === 0)) {
+    throw new AgentOverrideError("agent_not_found", "(invalid)", "agent_id must be a non-empty string");
+  }
+  if (adapters.length === 0) {
+    if (request.agent_id !== undefined) throw new AgentOverrideError("agent_not_found", request.agent_id, "no adapters registered");
+    return null;
+  }
+
+  // 1. Exact agent override — FAIL-CLOSED. When agent_id is set the ONLY
+  //    outcomes are (a) that agent, or (b) AgentOverrideError. Never fall
+  //    through to capability/kind routing.
+  if (request.agent_id !== undefined) {
+    const adapter = adapters.find((a) => a.id === request.agent_id);
+    if (!adapter) throw new AgentOverrideError("agent_not_found", request.agent_id);
+    const timeoutMs = options.probeTimeoutMs ?? DEFAULT_PROBE_TIMEOUT_MS;
+    let avail: RouterAvailability;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    try {
+      avail = await Promise.race([
+        adapter.isAvailable(),
+        new Promise<never>((_, reject) => {
+          timer = setTimeout(() => reject(new Error(`availability probe timed out after ${timeoutMs}ms`)), timeoutMs);
+          (timer as { unref?: () => void }).unref?.();
+        }),
+      ]);
+    } catch (err) {
+      throw new AgentOverrideError("agent_unavailable", request.agent_id, err instanceof Error ? err.message : String(err));
+    } finally {
+      if (timer !== undefined) clearTimeout(timer);
+    }
+    if (!avail.available) {
+      throw new AgentOverrideError("agent_unavailable", request.agent_id, avail.reason ?? "adapter reports unavailable");
+    }
+    // STRICT capability selection under an override: a supplied capability_id
+    // must match exactly; a supplied kind must match a capability of that kind;
+    // only a fully unspecified request may take the adapter's first capability.
+    let cap: Capability | undefined;
+    if (request.capability_id !== undefined) {
+      cap = adapter.capabilities().find((c) => c.id === request.capability_id);
+    } else if (request.kind !== undefined) {
+      cap = adapter.capabilities().find((c) => c.kind === request.kind);
+    } else {
+      cap = adapter.capabilities()[0];
+    }
+    if (!cap) {
+      throw new AgentOverrideError("agent_capability_mismatch", request.agent_id, `no capability matching ${request.capability_id ?? request.kind ?? "(unspecified)"}`);
+    }
+    return { adapter, capability: cap, reason: "agent_id override" };
+  }
+
+  // 2. Exact capability_id match.
+  if (request.capability_id) {
+    for (const adapter of adapters) {
+      const cap = adapter.capabilities().find((c) => c.id === request.capability_id);
+      if (cap && await isAvailable(adapter)) {
+        return { adapter, capability: cap, reason: "exact capability_id match" };
+      }
+    }
+  }
+
+  // 3. Kind-based: prefer lowest cost tier.
+  const kind = request.kind ?? capabilityKindFromId(request.capability_id);
+  if (kind) {
+    const candidates: Array<{ adapter: RoutableAdapter; cap: Capability }> = [];
+    for (const adapter of adapters) {
+      const cap = adapter.capabilities().find((c) => c.kind === kind);
+      if (cap && await isAvailable(adapter)) candidates.push({ adapter, cap });
+    }
+    candidates.sort((a, b) => TIER_ORDER[a.adapter.cost_tier] - TIER_ORDER[b.adapter.cost_tier]);
+    if (candidates.length > 0) {
+      const winner = candidates[0]!;
+      return {
+        adapter: winner.adapter,
+        capability: winner.cap,
+        reason: `kind=${kind} lowest-cost (${winner.adapter.cost_tier})`,
+      };
+    }
+  }
+
+  // 4. Fall back to the first available adapter's first capability.
+  for (const adapter of adapters) {
+    if (await isAvailable(adapter)) {
+      const cap = adapter.capabilities()[0];
+      if (cap) return { adapter, capability: cap, reason: "fallback first-available" };
+    }
+  }
+
+  return null;
+}
+
+async function isAvailable(adapter: RoutableAdapter): Promise<boolean> {
+  try {
+    const a = await adapter.isAvailable();
+    return a.available;
+  } catch {
+    return false;
+  }
+}
+
+
+// Known CapabilityKind values, hand-mirrored from capability.ts. Kept here
+// (rather than re-extracted from the Zod enum) so this module stays a leaf
+// import — no circular dance with the Zod schema. If you add a kind there,
+// add it here too. The router test exercises the round-trip.
+const KIND_SET = new Set<string>([
+  // Software lifecycle
+  "code.write", "code.review", "review.code", "code.refactor", "code.test", "code.debug",
+  "design.prd", "design.architecture", "design.review",
+  "doc.write", "doc.summarize",
+  "plan.decompose", "plan.estimate",
+  "research.web", "research.code",
+  "release.check", "release.verify",
+  "ops.deploy", "ops.rollback",
+  // Professional services (PartnerOS)
+  "intent.draft", "intent.clarify", "intent.assign",
+  "client.followup", "client.summarize",
+  "matter.summarize", "matter.checklist",
+  "risk.check", "verify.acceptance", "verify.alignment",
+  "artifact.create", "artifact.revise", "approval.request",
+  "memory.write", "memory.read",
+  // Autonomous ML research (karpathy/autoresearch)
+  "research.ml", "research.experiment",
+]);
+
+function capabilityKindFromId(id: string | undefined): CapabilityKind | undefined {
+  if (!id) return undefined;
+  // 1. If the whole id is a known kind ("code.write"), use it directly.
+  if (KIND_SET.has(id)) return id as CapabilityKind;
+  // 2. If it looks like "<agent_id>.<kind>" and the suffix is a known kind,
+  //    extract that. Greedy: try the longest dotted suffix first so we don't
+  //    confuse "ops.deploy" with "code.deploy".
+  const parts = id.split(".");
+  for (let i = 1; i < parts.length; i++) {
+    const candidate = parts.slice(i).join(".");
+    if (KIND_SET.has(candidate)) return candidate as CapabilityKind;
+  }
+  return undefined;
+}
+
+FILE docs/guides/attention-routing-evaluation.md
+# Deterministic routing regression evaluation
+
+Run the production routing functions against an explicit, reviewable fixture matrix:
+
+```sh
+osstack attention routing-eval --mode router_golden --input packages/supervisor/src/fixtures/routing-golden-v1.json --json
+```
+
+When running a development checkout, set an explicit isolated `OSSTACK_HOME` as required by the repository guard. This command does not start a daemon, open the state DB, load the user's agent configuration, or create installed provider adapters. Availability, capabilities, cost tiers and runtime identities are fixture facts. A guarded fixture adapter records and rejects any attempt to invoke a provider.
+
+The [version 1 matrix](../../packages/supervisor/src/fixtures/routing-golden-v1.json) contains 22 cases with label rationales. Each case fixes exactly one entrypoint:
+
+- `capability` calls the actual `routeCapability` with capability/kind, optional explicit agent, fixture adapter availability and cost tiers. It compares the adapter, capability and reason, or the exact override rejection code/no candidate outcome.
+- `profile` calls the actual `resolveLoopProfileRouting` with a complete fixture role configuration, a fixed profile and optional explicit builder/evaluator or role preferences. It compares builder/evaluator selection, adapter independence, recorded overrides or the exact rejection message.
+
+The profile bridge is supplied by the CLI because supervisor cannot depend on CLI. Calling the supervisor evaluator directly without that bridge leaves profile cases `incomplete`; it does not substitute a fake profile prediction.
+
+## Report and exit status
+
+The report contains `mode: router_golden`, `qualification: deterministic_regression_only`, the canonical input SHA-256 `dataset_hash`, dataset ID, total case denominator, evaluated/passed/failed/incomplete counts, fixture `invoke()` attempt count (`provider_invocation_scope: fixture_invoke_attempts`) and every case's expected value, actual value, differences or incomplete reason. Object keys are canonicalized for hashing; case/adapter ordering and labels are retained in the hash. The hash identifies input data, not a signed qualification certificate or router build version.
+
+Exit 0 requires all cases to produce valid matching results with zero provider invocations. Mismatches exit 1 and remain in the denominator. Missing results, invalid expectations, duplicate IDs/adapters, empty/invalid datasets and unexpected execution errors produce `incomplete` and exit 1. Dataset validation happens before any routing. For invalid datasets, no cases are executed; `total` is the supplied cases-array length, `incomplete` equals that length, and `errors` explains the rejection. A missing/non-array cases field has total 0 and an explicit incomplete status. Unreadable or invalid JSON inputs also produce an incomplete report.
+
+Input is limited to 1 MiB; the schema caps datasets at 256 cases, 32 adapters per case and 64 capabilities per adapter. Unknown fields are rejected, including supplied predictions. Capability IDs must be unique across adapters within each case. Role override IDs containing `=` are rejected because the existing `--role` argv parser cannot round-trip them. Each profile case must explicitly provide all three role bindings, an `explicit_evaluators` array and a `role_overrides` object. The fixture is the versioned, fully worked format reference.
+
+## What the current routers actually guarantee
+
+Explicit capability `agent_id`, profile `explicit_builder` and profile `explicit_evaluators` are tested for failure-closed behavior. An unavailable pinned adapter must not silently pass by selecting a substitute.
+
+The existing `--role` preference can fall back to configured alternatives; it is not the same contract as a hard evaluator pin. The matrix records that behavior rather than changing production policy. The capability router also has a legacy first-available fallback when no kind matches. Generic capability routing therefore does not establish review-role safety. The profile resolver enforces distinct builder/evaluator adapters at its current `adapter` independence level; it does not prove different providers/models, even when identities are configured.
+
+This matrix is a deterministic regression suite, not a holdout study, model-intent classifier, production availability test, permission check, or token/cost savings experiment. It does not change the default router. A passing report means these reviewed expectations match this invocation of the routing code; it does not mean every existing routing behavior is desirable or safe for every caller. Real provider comparisons remain a separate qualification stage.
+
+## Legacy supplied-prediction aggregation
+
+Existing usage remains compatible:
+
+```sh
+osstack attention routing-eval --input routing-results.json --json
+osstack attention routing-eval --mode supplied_predictions --input routing-results.json --json
+```
+
+Both aggregate the caller's existing prediction/label/usage rows. Reports retain those metrics and add `mode: supplied_predictions`, `qualification: supplied_predictions_only` and `router_executed: false`. They do not run the router or verify the caller's claimed predictions or token usage. Choose `router_golden` explicitly for actual deterministic router execution; unknown modes fail instead of falling back.
+
+EVIDENCE cli-tests.log
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-routing-next/packages/cli
+
+ ✓ src/loop-profile-routing.test.ts (12 tests) 10ms
+ ✓ src/attention-command.test.ts (6 tests) 4ms
+ ✓ src/attention-routing-evaluation.test.ts (7 tests) 46ms
+
+ Test Files  3 passed (3)
+      Tests  25 passed (25)
+   Start at  11:35:40
+   Duration  4.21s (transform 2.67s, setup 91ms, collect 6.75s, tests 60ms, environment 0ms, prepare 135ms)
+
+
+EVIDENCE supervisor-suite.log
+$ vitest run --passWithNoTests
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-routing-next/packages/supervisor
+
+ ✓ src/types.test.ts (7 tests) 7ms
+ ✓ src/routing-evaluation.test.ts (21 tests) 1503ms
+   ✓ real routing golden evaluation > runs the real capability router, keeps the full denominator and performs no provider calls  1485ms
+ ✓ src/assetizer.test.ts (3 tests) 6ms
+ ✓ src/trace-normalizer.test.ts (2 tests) 9ms
+ ✓ src/hygiene-proposal.test.ts (4 tests) 8ms
+ ✓ src/probe-outcomes.test.ts (2 tests) 5ms
+ ✓ src/repo-registry.test.ts (3 tests) 84ms
+ ✓ src/hygiene-scanner.test.ts (3 tests) 208ms
+ ✓ src/evaluator-epoch.test.ts (6 tests) 12ms
+ ✓ src/attention-planning.test.ts (3 tests) 7ms
+ ✓ src/failure-taxonomy.test.ts (8 tests) 3ms
+ ✓ src/gate.test.ts (5 tests) 3ms
+ ✓ src/loop-doc.test.ts (3 tests) 3ms
+ ✓ src/proposal.test.ts (5 tests) 8ms
+ ✓ src/adversarial-pool.test.ts (3 tests) 5ms
+ ✓ src/attention.test.ts (4 tests) 6ms
+ ✓ src/portfolio.test.ts (2 tests) 3ms
+ ✓ src/routing-evaluation-missing.test.ts (2 tests) 4ms
+ ✓ src/repo-scanner.test.ts (2 tests) 46ms
+
+ Test Files  19 passed (19)
+      Tests  88 passed (88)
+   Start at  11:35:20
+   Duration  4.10s (transform 3.39s, setup 0ms, collect 17.95s, tests 1.93s, environment 22ms, prepare 2.62s)
+
+
+EVIDENCE typecheck-cli.log
+$ tsc --noEmit
+
+EVIDENCE build-supervisor.log
+$ tsc -p .
+
+EVIDENCE lint.log
+Checked 7 files in 20ms. No fixes applied.
+
+EVIDENCE cli-golden-result.json
+{
+  "mode": "router_golden",
+  "dataset_hash": "f171c3475cd7d2d232515ad9347f13d200a18ec400bd840ce676da1683301139",
+  "dataset_id": "firstmate-routing-regression-v1",
+  "qualification": "deterministic_regression_only",
+  "status": "passed",
+  "total": 22,
+  "evaluated": 22,
+  "passed": 22,
+  "failed": 0,
+  "incomplete": 0,
+  "provider_invocations": 0,
+  "provider_invocation_scope": "fixture_invoke_attempts",
+  "default_enabled": false,
+  "results": [
+    {
+      "id": "kind-lowest-cost",
+      "entrypoint": "capability",
+      "status": "passed",
+      "expected": {
+        "kind": "selected",
+        "adapter_id": "cheap",
+        "capability_id": "cheap.code.write",
+        "reason": "kind=code.write lowest-cost (low)"
+      },
+      "actual": {
+        "kind": "selected",
+        "adapter_id": "cheap",
+        "capability_id": "cheap.code.write",
+        "reason": "kind=code.write lowest-cost (low)"
+      },
+      "differences": []
+    },
+    {
+      "id": "exact-capability-before-cost",
+      "entrypoint": "capability",
+      "status": "passed",
+      "expected": {
+        "kind": "selected",
+        "adapter_id": "writer",
+        "capability_id": "writer.code.write",
+        "reason": "exact capability_id match"
+      },
+      "actual": {
+        "kind": "selected",
+        "adapter_id": "writer",
+        "capability_id": "writer.code.write",
+        "reason": "exact capability_id match"
+      },
+      "differences": []
+    },
+    {
+      "id": "explicit-override-before-cost",
+      "entrypoint": "capability",
+      "status": "passed",
+      "expected": {
+        "kind": "selected",
+        "adapter_id": "writer",
+        "capability_id": "writer.code.write",
+        "reason": "agent_id override"
+      },
+      "actual": {
+        "kind": "selected",
+        "adapter_id": "writer",
+        "capability_id": "writer.code.write",
+        "reason": "agent_id override"
+      },
+      "differences": []
+    },
+    {
+      "id": "override-missing",
+      "entrypoint": "capability",
+      "status": "passed",
+      "expected": {
+        "kind": "rejected",
+        "code": "agent_not_found"
+      },
+      "actual": {
+        "kind": "rejected",
+        "code": "agent_not_found"
+      },
+      "differences": []
+    },
+    {
+      "id": "override-unavailable",
+      "entrypoint": "capability",
+      "status": "passed",
+      "expected": {
+        "kind": "rejected",
+        "code": "agent_unavailable"
+      },
+      "actual": {
+        "kind": "rejected",
+        "code": "agent_unavailable"
+      },
+      "differences": []
+    },
+    {
+      "id": "override-probe-error",
+      "entrypoint": "capability",
+      "status": "passed",
+      "expected": {
+        "kind": "rejected",
+        "code": "agent_unavailable"
+      },
+      "actual": {
+        "kind": "rejected",
+        "code": "agent_unavailable"
+      },
+      "differences": []
+    },
+    {
+      "id": "override-capability-mismatch",
+      "entrypoint": "capability",
+      "status": "passed",
+      "expected": {
+        "kind": "rejected",
+        "code": "agent_capability_mismatch"
+      },
+      "actual": {
+        "kind": "rejected",
+        "code": "agent_capability_mismatch"
+      },
+      "differences": []
+    },
+    {
+      "id": "kind-unavailable-skipped",
+      "entrypoint": "capability",
+      "status": "passed",
+      "expected": {
+        "kind": "selected",
+        "adapter_id": "writer",
+        "capability_id": "writer.code.write",
+        "reason": "kind=code.write lowest-cost (high)"
+      },
+      "actual": {
+        "kind": "selected",
+        "adapter_id": "writer",
+        "capability_id": "writer.code.write",
+        "reason": "kind=code.write lowest-cost (high)"
+      },
+      "differences": []
+    },
+    {
+      "id": "review-kind-suffix",
+      "entrypoint": "capability",
+      "status": "passed",
+      "expected": {
+        "kind": "selected",
+        "adapter_id": "review-engine",
+        "capability_id": "review-engine.review.code",
+        "reason": "kind=review.code lowest-cost (mid)"
+      },
+      "actual": {
+        "kind": "selected",
+        "adapter_id": "review-engine",
+        "capability_id": "review-engine.review.code",
+        "reason": "kind=review.code lowest-cost (mid)"
+      },
+      "differences": []
+    },
+    {
+      "id": "empty-adapters",
+      "entrypoint": "capability",
+      "status": "passed",
+      "expected": {
+        "kind": "none"
+      },
+      "actual": {
+        "kind": "none"
+      },
+      "differences": []
+    },
+    {
+      "id": "legacy-first-available",
+      "entrypoint": "capability",
+      "status": "passed",
+      "expected": {
+        "kind": "selected",
+        "adapter_id": "cheap",
+        "capability_id": "cheap.code.write",
+        "reason": "fallback first-available"
+      },
+      "actual": {
+        "kind": "selected",
+        "adapter_id": "cheap",
+        "capability_id": "cheap.code.write",
+        "reason": "fallback first-available"
+      },
+      "differences": []
+    },
+    {
+      "id": "profile-independent-review",
+      "entrypoint": "profile",
+      "status": "passed",
+      "expected": {
+        "kind": "profile_selected",
+        "builder": "writer",
+        "evaluator": "reviewer",
+        "independent": true,
+        "overrides": {}
+      },
+      "actual": {
+        "kind": "profile_selected",
+        "builder": "writer",
+        "evaluator": "reviewer",
+        "independent": true,
+        "overrides": {}
+      },
+      "differences": []
+    },
+    {
+      "id": "profile-review-fallback",
+      "entrypoint": "profile",
+      "status": "passed",
+      "expected": {
+        "kind": "profile_selected",
+        "builder": "writer",
+        "evaluator": "backup",
+        "independent": true,
+        "overrides": {}
+      },
+      "actual": {
+        "kind": "profile_selected",
+        "builder": "writer",
+        "evaluator": "backup",
+        "independent": true,
+        "overrides": {}
+      },
+      "differences": []
+    },
+    {
+      "id": "profile-no-independent-review",
+      "entrypoint": "profile",
+      "status": "passed",
+      "expected": {
+        "kind": "profile_rejected",
+        "message": "no independent Evaluator is available"
+      },
+      "actual": {
+        "kind": "profile_rejected",
+        "message": "no independent Evaluator is available"
+      },
+      "differences": []
+    },
+    {
+      "id": "profile-no-builder",
+      "entrypoint": "profile",
+      "status": "passed",
+      "expected": {
+        "kind": "profile_rejected",
+        "message": "no Builder is available"
+      },
+      "actual": {
+        "kind": "profile_rejected",
+        "message": "no Builder is available"
+      },
+      "differences": []
+    },
+    {
+      "id": "profile-explicit-builder-unavailable",
+      "entrypoint": "profile",
+      "status": "passed",
+      "expected": {
+        "kind": "profile_rejected",
+        "message": "explicit Builder \"writer\" is unavailable"
+      },
+      "actual": {
+        "kind": "profile_rejected",
+        "message": "explicit Builder \"writer\" is unavailable"
+      },
+      "differences": []
+    },
+    {
+      "id": "profile-explicit-self-review",
+      "entrypoint": "profile",
+      "status": "passed",
+      "expected": {
+        "kind": "profile_rejected",
+        "message": "explicit Builder and Evaluator must use different adapters"
+      },
+      "actual": {
+        "kind": "profile_rejected",
+        "message": "explicit Builder and Evaluator must use different adapters"
+      },
+      "differences": []
+    },
+    {
+      "id": "profile-explicit-evaluator-unavailable",
+      "entrypoint": "profile",
+      "status": "passed",
+      "expected": {
+        "kind": "profile_rejected",
+        "message": "explicit Evaluator \"reviewer\" is unavailable or conflicts with the Builder"
+      },
+      "actual": {
+        "kind": "profile_rejected",
+        "message": "explicit Evaluator \"reviewer\" is unavailable or conflicts with the Builder"
+      },
+      "differences": []
+    },
+    {
+      "id": "profile-explicit-pair-recorded",
+      "entrypoint": "profile",
+      "status": "passed",
+      "expected": {
+        "kind": "profile_selected",
+        "builder": "writer",
+        "evaluator": "reviewer",
+        "independent": true,
+        "overrides": {
+          "coding": "writer",
+          "test-verify": "reviewer"
+        }
+      },
+      "actual": {
+        "kind": "profile_selected",
+        "builder": "writer",
+        "evaluator": "reviewer",
+        "independent": true,
+        "overrides": {
+          "coding": "writer",
+          "test-verify": "reviewer"
+        }
+      },
+      "differences": []
+    },
+    {
+      "id": "profile-role-override-recorded",
+      "entrypoint": "profile",
+      "status": "passed",
+      "expected": {
+        "kind": "profile_selected",
+        "builder": "writer",
+        "evaluator": "backup",
+        "independent": true,
+        "overrides": {
+          "test-verify": "backup"
+        }
+      },
+      "actual": {
+        "kind": "profile_selected",
+        "builder": "writer",
+        "evaluator": "backup",
+        "independent": true,
+        "overrides": {
+          "test-verify": "backup"
+        }
+      },
+      "differences": []
+    },
+    {
+      "id": "profile-role-preference-can-fallback",
+      "entrypoint": "profile",
+      "status": "passed",
+      "expected": {
+        "kind": "profile_selected",
+        "builder": "writer",
+        "evaluator": "backup",
+        "independent": true,
+        "overrides": {
+          "test-verify": "missing"
+        }
+      },
+      "actual": {
+        "kind": "profile_selected",
+        "builder": "writer",
+        "evaluator": "backup",
+        "independent": true,
+        "overrides": {
+          "test-verify": "missing"
+        }
+      },
+      "differences": []
+    },
+    {
+      "id": "profile-adapter-independence-only",
+      "entrypoint": "profile",
+      "status": "passed",
+      "expected": {
+        "kind": "profile_selected",
+        "builder": "writer",
+        "evaluator": "reviewer",
+        "independent": true,
+        "overrides": {}
+      },
+      "actual": {
+        "kind": "profile_selected",
+        "builder": "writer",
+        "evaluator": "reviewer",
+        "independent": true,
+        "overrides": {}
+      },
+      "differences": []
+    }
+  ],
+  "errors": []
+}

@@ -1,0 +1,7 @@
+{
+  "packages/cli/src/attention-lesson.ts": "8eaac70c561d5b60cef5797ac48647d98ae10a8cb5eae3d1ebd498ac869060a7",
+  "packages/cli/src/attention-lesson.test.ts": "88985cfa053c11850d7724bf38fb7069fa532a3390450378cb853a37c3b9eea0",
+  "packages/loop/src/lesson-draft.ts": "8cde6f2a4dbcb829fca3189320b015247f412296f3adad3256525d5609ad356f",
+  "packages/loop/src/lesson-draft.test.ts": "319782ec5c2e4c4f0170807171535cc75f3e1c195e32991c0717a5c44686dd60",
+  "docs/guides/attention-evidence-lessons.md": "a0e566ea51c8aeac23bd89455785354703980755bed3bb7ca761af1143ea64b5"
+}

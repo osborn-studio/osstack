@@ -1,0 +1,11 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-cockpit/packages/cli
+
+ ✓ src/worker-viewer-command.test.ts (4 tests) 109ms
+ ✓ src/worker-presentation.test.ts (9 tests) 120ms
+
+ Test Files  2 passed (2)
+      Tests  13 passed (13)
+   Start at  13:36:22
+   Duration  827ms (transform 352ms, setup 21ms, collect 1.06s, tests 228ms, environment 0ms, prepare 72ms)
+

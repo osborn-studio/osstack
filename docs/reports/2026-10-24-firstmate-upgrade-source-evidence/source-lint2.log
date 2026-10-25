@@ -1,0 +1,23 @@
+packages/knowledge/src/context-budget.ts:56:7 lint/complexity/useOptionalChain  FIXABLE  ━━━━━━━━━━━
+
+  ! Change to an optional chain.
+  
+    54 │       !Number.isSafeInteger(input.maxKnowledgeBytes) || input.maxKnowledgeBytes < 0 || input.maxKnowledgeBytes > 1_000_000 || !epoch(input.nowMs))
+    55 │     throw new ExecutionContextBudgetError("invalid_context_budget");
+  > 56 │   if (!input.scope || input.scope.tenant !== "default" || !bounded(input.scope.repo_path, 4096) || !isAbsolute(input.scope.repo_path) ||
+       │       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    57 │       !Array.isArray(input.mandatory) || !Array.isArray(input.optional) || input.mandatory.length < 2 || input.mandatory.length > 3 || input.optional.length > 32)
+    58 │     throw new ExecutionContextBudgetError("invalid_context_source");
+  
+  i Unsafe fix: Change to an optional chain.
+  
+     54  54 │         !Number.isSafeInteger(input.maxKnowledgeBytes) || input.maxKnowledgeBytes < 0 || input.maxKnowledgeBytes > 1_000_000 || !epoch(input.nowMs))
+     55  55 │       throw new ExecutionContextBudgetError("invalid_context_budget");
+     56     │ - ··if·(!input.scope·||·input.scope.tenant·!==·"default"·||·!bounded(input.scope.repo_path,·4096)·||·!isAbsolute(input.scope.repo_path)·||
+         56 │ + ··if·(input.scope?.tenant·!==·"default"·||·!bounded(input.scope.repo_path,·4096)·||·!isAbsolute(input.scope.repo_path)·||
+     57  57 │         !Array.isArray(input.mandatory) || !Array.isArray(input.optional) || input.mandatory.length < 2 || input.mandatory.length > 3 || input.optional.length > 32)
+     58  58 │       throw new ExecutionContextBudgetError("invalid_context_source");
+  
+
+Checked 12 files in 61ms. No fixes applied.
+Found 1 warning.

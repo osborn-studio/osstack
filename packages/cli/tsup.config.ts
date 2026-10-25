@@ -1,4 +1,6 @@
 import { defineConfig } from "tsup";
+import { readFileSync } from "node:fs";
+const version = (JSON.parse(readFileSync(new URL("./package.json", import.meta.url), "utf8")) as { version: string }).version;
 
 export default defineConfig({
   // cli-entry.ts is a thin wrapper that answers --version without loading
@@ -8,6 +10,8 @@ export default defineConfig({
   entry: { bin: "src/cli-entry.ts", "graph-maintenance": "src/graph-maintenance.ts" },
   format: ["esm"],
   target: "node20",
+  // Managed runtime identity must not be replaceable by a launch environment.
+  define: { "process.env.OSSTACK_VERSION": JSON.stringify(version) },
   splitting: true,
   clean: true,
   banner: { js: "#!/usr/bin/env node" },

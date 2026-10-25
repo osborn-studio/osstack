@@ -1,0 +1,66 @@
+[
+  {
+    "path": "packages/core/src/state/follow-up-delivery.ts",
+    "sha256": "d27e921451215fb758b986ba91ae50df39fd7a83aaff3c1c225398200b3d21a4"
+  },
+  {
+    "path": "packages/core/src/state/follow-up-delivery-ddl.ts",
+    "sha256": "6283fdd46e111d2fb4f7374ed44b93f03df88b384f39a4ce5016abe06ec6c900"
+  },
+  {
+    "path": "packages/core/src/state/db.ts",
+    "sha256": "72057b005cdec61b08d27459d4fcf58b9bfea672056537038cdefe9b1b74f2c2"
+  },
+  {
+    "path": "packages/protocol/src/follow-up-delivery.ts",
+    "sha256": "7a044ee666c39901f324b659d37bdfbfd4fcdeec90d0b57d12514dd009a253a9"
+  },
+  {
+    "path": "packages/cli/src/follow-up-delivery-command.ts",
+    "sha256": "687b6f1b8f682ae909fda048fbc0d31b4f61bc7151afe57820812ec388ba8a57"
+  },
+  {
+    "path": "packages/cli/src/local-ledgers-daemon.test.ts",
+    "sha256": "301726a997c14cf4264d8fdb52c1f58cf009849080307b4a4d11b9e154cf8e2b"
+  },
+  {
+    "path": "docs/guides/follow-up-delivery.md",
+    "sha256": "76209388f82d7b069670c81777201168d63fa22c5b18f6298fa5508ec1509831"
+  },
+  {
+    "path": "packages/cli/src/daemon.ts",
+    "sha256": "30ed433d73d1f5315d154b51d32615dcf81c81b619b25eb86319cb5c94ed8e57",
+    "excerpts": [
+      [
+        160,
+        190
+      ],
+      [
+        1115,
+        1140
+      ],
+      [
+        3833,
+        3850
+      ],
+      [
+        4070,
+        4085
+      ],
+      [
+        4340,
+        4365
+      ]
+    ]
+  },
+  {
+    "path": "packages/cli/src/bin.ts",
+    "sha256": "98e156e140893720efd82984f54963e92398d4ef26c83d4b54bda3cfca0162a6",
+    "excerpts": [
+      [
+        990,
+        1050
+      ]
+    ]
+  }
+]

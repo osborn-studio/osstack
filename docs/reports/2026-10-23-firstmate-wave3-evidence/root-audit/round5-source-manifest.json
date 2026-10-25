@@ -1,0 +1,11 @@
+{
+  "packages/cli/src/delivery-contract-host.ts": "9af05b9d376fc014647032893d6cd44cffd066ac4c9902a20ee52d3220968650",
+  "packages/cli/src/deliver-command.ts": "d5bbb1096d494445e878a6fb4580aa6aa93bfd1b846d78ec128d98e578528cbb",
+  "packages/cli/src/delivery-contract-host.test.ts": "94acb7c0d0056fff7ca46f44f3cf54dfe512993a2147767be1e15899890975d8",
+  "packages/cli/src/delivery-entrypoint.test.ts": "af32bdd88eadd45f97c48b87522d0f04afa9729144c25fffb9bf6fe5cedbfc5d",
+  "packages/cli/src/guarded-git-runtime.ts": "3c23e4e766c6af0926d1a3b9fc905acf2c7fd7b672cf7b9c165b47a5a2b9e2e8",
+  "packages/github/src/delivery.ts": "5a0ab81f10616d953a0c6dca30b46532e03dd42747df700b3dd9b1efde2d7f60",
+  "docs/guides/delivery-contract-v2.md": "ebb118e8331e640a0a4c1076a25b547ffdd7bb6856c45ecc8dfe9bf38a06ef3a",
+  "packages/github/src/delivery.test.ts": "045f7a99da6f68c22d519f19785037b2b65e27c0cd83b54362c235fc1e3bc3ed",
+  "packages/cli/src/bin.ts": "659d001ed12a8b42e2f7fdca3fef759c3d0741a48634839a5fa83a1c7db6b32f"
+}

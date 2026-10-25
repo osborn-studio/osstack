@@ -1,0 +1,11 @@
+{
+  "packages/core/src/state/attention-observer.ts": "d9ef1128e5a694270f356e984a6b6eeb0c7f5c2461a64384611c7a3fc5ca3cbb",
+  "packages/core/src/state/attention-run-projection.ts": "a0ad6a39803d9cf1746117100ae5a4deef9a9ccf8ae42b73acebde711dbc182f",
+  "packages/core/src/state/attention-recovery-view.ts": "e90c79424b1c5cb47fec7cb52bfa2d315b1fcc14e0bf313fe33d1950190e69bd",
+  "packages/core/src/state/index.ts": "84790f1bae9348655707e3b7e2608c44c36446604bf5e253139570072d42ba6e",
+  "packages/core/src/state/attention-observer.test.ts": "4474113cd4ab11883931d4fc9b81cdaed213d0e173f37bf56fad1b232cab9285",
+  "packages/core/src/state/attention-run-projection.test.ts": "5faf55ffa6c5918fecb0e8ab1da9924bc4ac8455bd42e9b01b6d88eaa9471287",
+  "packages/core/src/state/attention-recovery-view.test.ts": "1e001b7cab3e44c0f8a2091802346771c1872c13a8a535c4f96db7327b55ede9",
+  "scripts/bench-attention.mjs": "53c7530eee9dd6b0ac35688c5f0e32cc8d116e1f096e072d0769f0514dc444c7",
+  "docs/guides/attention-reliability.md": "f9e63f4e8f764ac42e7d57fc44879d10650c9a6bf11ad15ed329c08d180bec60"
+}

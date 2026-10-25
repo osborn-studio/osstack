@@ -1,0 +1,67 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-routing-next/packages/cli
+
+Sourcemap for "/Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-routing-next/packages/protocol/dist/follow-up-delivery.js" points to missing source files
+Sourcemap for "/Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-routing-next/packages/core/dist/state/follow-up-delivery-ddl.js" points to missing source files
+Sourcemap for "/Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-routing-next/packages/core/dist/state/follow-up-delivery.js" points to missing source files
+ ❯ src/graph-contract-integration.test.ts (17 tests | 2 failed | 15 skipped) 244ms
+   ↓ binds the durable host contract before the real Graph launch and never changes source HEAD/refs/index/files
+   ↓ does not publish a durable completion file after grant changes during the last await
+   ↓ does not publish a durable completion file after revision changes during the last await
+   ↓ never exposes a contract completion when executor stop remains unknown
+   ↓ binds actual writer and rebuilt reviewer prompts to two-phase context receipts before ready
+   ↓ does not transfer a prior epoch context/check/review receipt to a repaired candidate
+   ↓ requires a trusted policy resolver in local registration and rechecks its live authority
+   ↓ rejects a changed contract under an existing idempotency key before a second launch
+   ↓ rejects a path outside contract before verification or ready publication
+   ↓ rejects an ignored untracked path outside the contract before candidate serialization
+   ↓ refuses a durable contract envelope substituted after reservation
+   ↓ rejects writer --assume-unchanged flags before freezing an out-of-scope candidate
+   ↓ rejects writer --skip-worktree flags before freezing an out-of-scope candidate
+   ↓ fails closed on --assume-unchanged at the pre-freeze scope gate
+   ↓ fails closed on --skip-worktree at the pre-freeze scope gate
+   × detects raw out-of-scope bytes despite a same-size edit with restored mtime and untrusted ctime 150ms
+     → expected [Function] to throw an error
+   × rejects a writer stat-cache bypass before freezing or starting review 94ms
+     → INPUT_CONTRACT_INVALID
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/graph-contract-integration.test.ts > detects raw out-of-scope bytes despite a same-size edit with restored mtime and untrusted ctime
+AssertionError: expected [Function] to throw an error
+
+- Expected: 
+null
+
++ Received: 
+undefined
+
+ ❯ src/graph-contract-integration.test.ts:267:58
+    265|     const frozen = freezeDeliveryContract({ ...f.registration.delivery…
+    266|     expect(await hideSameSizeChange(repo)).toBe('');
+    267|     expect(() => assertGraphContractPaths(frozen, repo)).toThrow('deli…
+       |                                                          ^
+    268|   } finally { await f.close(); }
+    269| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  src/graph-contract-integration.test.ts > rejects a writer stat-cache bypass before freezing or starting review
+GraphContractError: INPUT_CONTRACT_INVALID
+ ❯ GraphRpcService.handle src/graph-rpc.ts:159:27
+    157|     this.pendingRequests.add(pending);
+    158|     try { return await pending; }
+    159|     catch (error) { throw new GraphContractError(GraphErrorCode.parse(…
+       |                           ^
+    160|     finally { this.pendingRequests.delete(pending); }
+    161|   }
+ ❯ src/graph-contract-integration.test.ts:282:47
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed | 15 skipped (17)
+   Start at  14:08:24
+   Duration  1.79s (transform 797ms, setup 13ms, collect 1.35s, tests 244ms, environment 0ms, prepare 28ms)
+

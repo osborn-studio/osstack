@@ -1,0 +1,51 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/packages/cli
+
+ ❯ src/graph-delivery-contract.test.ts (21 tests | 1 failed) 40ms
+   ✓ binds the entire trusted envelope into existing input identity and retains the caller input reference 15ms
+   ✓ rejects registry mismatch without treating caller values as authority 0ms
+   ✓ rejects duplicate_registry mismatch without treating caller values as authority 0ms
+   ✓ rejects nonzero_pass mismatch without treating caller values as authority 0ms
+   ✓ rejects multiple_checks mismatch without treating caller values as authority 0ms
+   ✓ rejects repo mismatch without treating caller values as authority 0ms
+   ✓ rejects goal mismatch without treating caller values as authority 2ms
+   ✓ rejects task mismatch without treating caller values as authority 1ms
+   ✓ rejects base mismatch without treating caller values as authority 2ms
+   ✓ rejects policy mismatch without treating caller values as authority 2ms
+   ✓ rejects review mismatch without treating caller values as authority 1ms
+   ✓ rejects budget_ref mismatch without treating caller values as authority 3ms
+   ✓ rejects digest mismatch without treating caller values as authority 1ms
+   ✓ enforces the existing host maxEpochs ceiling 1ms
+   ✓ enforces the existing host maxBranchAttempts ceiling 1ms
+   ✓ enforces the existing host maxConcurrentReaders ceiling 1ms
+   ✓ enforces the existing host maxActionStarts ceiling 1ms
+   ✓ enforces the existing host tokenReservationLimit ceiling 1ms
+   ✓ enforces the existing host deadlineSeconds ceiling 1ms
+   ✓ keeps the initial local knowledge path in default tenant and hashes its exact config 2ms
+   × binds all independently registered required checks into the host envelope 3ms
+     → GRAPH_CONTRACT_UNSUPPORTED
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/graph-delivery-contract.test.ts > binds all independently registered required checks into the host envelope
+Error: GRAPH_CONTRACT_UNSUPPORTED
+ ❯ bindGraphDeliveryContract src/graph-delivery-contract.ts:48:53
+     46|   if (contract.mode !== 'implement' || contract.requested_completion !…
+     47|     || contract.publication_scope.mode !== 'none' || contract.merge_au…
+     48|     || contract.required_checks.length !== 1) throw Error('GRAPH_CONTR…
+       |                                                     ^
+     49|   const selected = registration.acceptanceRegistry.filter(item => item…
+     50|   if (selected.length !== 1) throw Error('GRAPH_CONTRACT_REGISTRY_MISM…
+ ❯ src/graph-delivery-contract.test.ts:62:15
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 20 passed (21)
+   Start at  17:02:50
+   Duration  609ms (transform 243ms, setup 12ms, collect 383ms, tests 40ms, environment 0ms, prepare 32ms)
+
+undefined
+/Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/packages/cli:
+[ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL] Command failed with exit code 1: vitest run src/graph-delivery-contract.test.ts

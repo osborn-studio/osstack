@@ -1,5 +1,5 @@
 import { describe, expect, it, beforeEach, afterEach } from "vitest";
-import { mkdtempSync, mkdirSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, mkdirSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { assertServeAllowed, ControlPlaneGuardError, loadRoleFile, reserveHome, assertDbAccessAllowed } from "./control-plane-guard.js";
@@ -125,4 +125,13 @@ describe("direct DB access guard (Phase 2.1-B)", () => {
     declare({ role: "stable-serving", allowed_osstack_homes: ["~/.osstack"] });
     expect(assertDbAccessAllowed({ checkoutRoot: root, osstackHome: "~/.osstack" }).role).toBe("stable-serving");
   });
+});
+
+
+it("refuses marked managed homes through the shared direct-DB guard before opening any database",()=>{
+  const root=mkdtempSync(join(tmpdir(),"managed-guard-"));
+  try{const home=join(root,"home");mkdirSync(home,{mode:0o700});writeFileSync(join(home,"managed-consumer.json"),"{}",{mode:0o600});
+    expect(()=>assertDbAccessAllowed({checkoutRoot:root,osstackHome:home})).toThrow("upgrade_managed_marker_invalid");
+    expect(existsSync(join(home,"state.db"))).toBe(false);
+  }finally{rmSync(root,{recursive:true,force:true});}
 });

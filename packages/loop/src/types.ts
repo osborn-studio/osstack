@@ -161,6 +161,8 @@ export const Verdict = z.object({
     command: z.string(),
     exit_code: z.number(),
     duration_ms: z.number(),
+    /** Host process-group exit evidence; absent is unqualified, not success. */
+    exit_confirmed: z.boolean().optional(),
     summary: z.string().optional(),
   })).optional(),
   /** Per-evaluation-spec results (explicit task specs plus implicit legacy specs). */

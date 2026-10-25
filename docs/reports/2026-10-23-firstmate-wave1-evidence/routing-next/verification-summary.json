@@ -1,0 +1,118 @@
+[
+  {
+    "check": "final-supervisor-build",
+    "argv": [
+      "pnpm",
+      "--filter",
+      "@osstack/supervisor",
+      "build"
+    ],
+    "exit_code": 0,
+    "seconds": 1.336
+  },
+  {
+    "check": "final-cli-build",
+    "argv": [
+      "pnpm",
+      "--filter",
+      "@osstack/cli",
+      "build"
+    ],
+    "exit_code": 0,
+    "seconds": 0.823
+  },
+  {
+    "check": "final-supervisor-typecheck",
+    "argv": [
+      "pnpm",
+      "--filter",
+      "@osstack/supervisor",
+      "typecheck"
+    ],
+    "exit_code": 0,
+    "seconds": 1.455
+  },
+  {
+    "check": "final-cli-typecheck",
+    "argv": [
+      "pnpm",
+      "--filter",
+      "@osstack/cli",
+      "typecheck"
+    ],
+    "exit_code": 0,
+    "seconds": 2.338
+  },
+  {
+    "check": "final-supervisor-tests",
+    "argv": [
+      "pnpm",
+      "--filter",
+      "@osstack/supervisor",
+      "test"
+    ],
+    "exit_code": 0,
+    "seconds": 4.005
+  },
+  {
+    "check": "final-cli-tests",
+    "argv": [
+      "pnpm",
+      "--filter",
+      "@osstack/cli",
+      "exec",
+      "vitest",
+      "run",
+      "src/attention-routing-evaluation.test.ts",
+      "src/loop-profile-routing.test.ts",
+      "src/attention-command.test.ts"
+    ],
+    "exit_code": 0,
+    "seconds": 2.845
+  },
+  {
+    "check": "final-lint",
+    "argv": [
+      "pnpm",
+      "exec",
+      "biome",
+      "check",
+      "packages/supervisor/src/routing-evaluation.ts",
+      "packages/supervisor/src/routing-evaluation.test.ts",
+      "packages/supervisor/src/routing-evaluation-missing.test.ts",
+      "packages/supervisor/src/index.ts",
+      "packages/cli/src/attention-planning-command.ts",
+      "packages/cli/src/attention-routing-evaluation.ts",
+      "packages/cli/src/attention-routing-evaluation.test.ts"
+    ],
+    "exit_code": 0,
+    "seconds": 0.541
+  },
+  {
+    "check": "final-cli-golden",
+    "argv": [
+      "node",
+      "packages/cli/dist/bin.js",
+      "attention",
+      "routing-eval",
+      "--mode",
+      "router_golden",
+      "--input",
+      "packages/supervisor/src/fixtures/routing-golden-v1.json",
+      "--json"
+    ],
+    "exit_code": 0,
+    "seconds": 0.313
+  },
+  {
+    "check": "final-diff-check",
+    "argv": [
+      "git",
+      "diff",
+      "--cached",
+      "--check"
+    ],
+    "exit_code": 0,
+    "seconds": 0.021
+  }
+]

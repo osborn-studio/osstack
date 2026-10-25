@@ -1,0 +1,4 @@
+COMMAND ["pnpm", "--filter", "@osstack/loop", "typecheck"]
+$ tsc --noEmit
+
+EXIT_CODE=0

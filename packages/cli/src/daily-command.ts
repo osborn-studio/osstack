@@ -12,6 +12,7 @@
 // Read-only: the ONLY thing it writes is the dated brief JSON under
 // $OSSTACK_HOME/daily-briefs/ (delta substrate). No apply, no execution.
 
+import { readDailyAttention, renderDailyAttention, type DailyAttentionReader, type DailyAttentionSummary } from "./daily-attention.js";
 import { existsSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { mkdir, readFile, readdir, realpath, writeFile } from "node:fs/promises";
@@ -45,6 +46,8 @@ import {
 } from "./autonomy-scorecard.js";
 
 export interface DailyCliDeps {
+  attentionReader?: DailyAttentionReader;
+  signal?: AbortSignal;
   /** Injectable command runner for the GitHub adapter (offline in tests). */
   runner?: CommandRunner;
   /** Clock override (tests pin the ISO date + generated_at). */
@@ -54,6 +57,8 @@ export interface DailyCliDeps {
 
 /** Inputs to the reusable brief core (`runDailyBrief`). */
 export interface RunDailyBriefDeps {
+  attentionReader?: DailyAttentionReader;
+  signal?: AbortSignal;
   /** Resolved repo registry path (absolute). The daemon resolves + stores this. */
   registryPath: string;
   /** Injectable command runner for the GitHub adapter (offline in tests). */
@@ -131,6 +136,7 @@ export interface DailyBrief {
    */
   owner_decisions?: OwnerDecision[];
   autonomy?: AutonomyReliabilityReport;
+  attention?: DailyAttentionSummary;
   warnings: string[];
 }
 
@@ -194,6 +200,11 @@ export async function runDailyBrief(deps: RunDailyBriefDeps): Promise<DailyBrief
   const { summary: autonomy, warning: autonomyWarning } =
     readAutonomyReliability(now);
 
+  const attention = await readDailyAttention(enabled, { nowMs: (deps.now?.() ?? new Date()).getTime(),
+    ...(deps.attentionReader === undefined ? {} : { reader: deps.attentionReader }),
+    ...(deps.signal === undefined ? {} : { signal: deps.signal }),
+  });
+
   const warnings = github.filter((g) => g.warning !== undefined).map((g) => `${g.repo_id}: ${g.warning}`);
   if (stackWarning !== undefined) warnings.push(stackWarning);
   if (probeWarning !== undefined) warnings.push(probeWarning);
@@ -203,6 +214,8 @@ export async function runDailyBrief(deps: RunDailyBriefDeps): Promise<DailyBrief
     warnings.push(hygieneHistory.warning);
   }
   warnings.push(...knowledgeHygieneWarnings(portfolio));
+  const incompleteAttention = attention.repos.filter(repo => repo.status !== "available").length + attention.omitted_repos;
+  if (incompleteAttention > 0) warnings.push(`Attention supervision incomplete for ${incompleteAttention} repository entries; see per-repository coverage.`);
 
   // 4. Delta against the most recent previous brief.
   const briefsDir = join(osstackHome(), "daily-briefs");
@@ -212,6 +225,7 @@ export async function runDailyBrief(deps: RunDailyBriefDeps): Promise<DailyBrief
   const brief: DailyBrief = {
     generated_at: now.toISOString(),
     date,
+    attention,
     portfolio,
     github,
     ...(stack !== undefined ? { stack } : {}),
@@ -296,6 +310,8 @@ export async function handleDailyCommand(args: string[], deps: DailyCliDeps = {}
   // in runDailyBrief so the daemon and the CLI produce identical briefs.
   const run = await runDailyBrief({
     registryPath: resolveRegistryPath(args),
+    ...(deps.attentionReader === undefined ? {} : { attentionReader: deps.attentionReader }),
+    ...(deps.signal === undefined ? {} : { signal: deps.signal }),
     ...(deps.runner !== undefined ? { runner: deps.runner } : {}),
     ...(deps.now !== undefined ? { now: deps.now } : {}),
   });
@@ -320,7 +336,7 @@ function readStackBoardSummary(board = "stack"): { summary?: StackBoardSummary; 
   // No state DB yet ⇒ no stack board; omit rather than create one as a side effect.
   if (!existsSync(dbPath)) return {};
   try {
-    const db = openDb({ path: dbPath });
+    const db = openDb({ path: dbPath, readwrite: false });
     try {
       const repo = new KanbanRepository(db, dbPath);
       const view = getBoard(repo, { board, includeArchived: true });
@@ -352,7 +368,7 @@ function readProbePortfolioSummary(
   const dbPath = join(osstackHome(), "state.db");
   if (!existsSync(dbPath)) return {};
   try {
-    const db = openDb({ path: dbPath });
+    const db = openDb({ path: dbPath, readwrite: false });
     try {
       const summary = queryProbePortfolioSummary(db, {
         as_of_ms: asOfMs,
@@ -389,7 +405,7 @@ function readPortfolioKnowledgeHygieneHistory(
   const dbPath = join(osstackHome(), "state.db");
   if (!existsSync(dbPath)) return { byRepo };
   try {
-    const db = openDb({ path: dbPath });
+    const db = openDb({ path: dbPath, readwrite: false });
     try {
       for (const entry of entries) {
         const trend = queryKnowledgeHygieneTrendV2(db, entry.repo_id, {
@@ -541,6 +557,20 @@ export function deriveOwnerDecisions(brief: DailyBrief): OwnerDecision[] {
           command: `osstack start ${shQuote(goal)} --repo-id ${shQuote(g.repo_id)}`,
           argv: ["osstack", "start", goal, "--repo-id", g.repo_id],
         },
+      });
+    }
+  }
+  const seenScopes = new Set<string>();
+  for (const repo of brief.attention?.repos ?? []) {
+    for (const scope of repo.snapshot?.scopes ?? []) {
+      if (seenScopes.has(scope.scope_id) || !(scope.human_waits || scope.uncertain_answers || scope.missing_source_items)) continue;
+      seenScopes.add(scope.scope_id);
+      // Viewing evidence is the only suggested operation; stale facts cannot grant authority.
+      const subcommand = repo.status === "available" && scope.coverage === "covered" && scope.human_waits > 0 && scope.open_items > 0 ? "inbox" : "inventory";
+      const argv = ["osstack", "attention", subcommand, "--scope", scope.scope_id];
+      decisions.push({ command: `attention.${subcommand}`,
+        reason: `Review scope ${scope.scope_id}: human waits ${scope.human_waits}, uncertain answers ${scope.uncertain_answers}, source missing ${scope.missing_source_items}; observation ${repo.status}`,
+        run: { command: argv.map(shQuote).join(" "), argv },
       });
     }
   }
@@ -827,6 +857,8 @@ export function renderDailyMarkdown(brief: DailyBrief): string {
   }
   lines.push("");
 
+  if (brief.attention !== undefined) lines.push(...renderDailyAttention(brief.attention));
+
   if (brief.stack !== undefined) {
     lines.push("## Stack board");
     lines.push(`- board "${brief.stack.board}": ${brief.stack.total} card(s)`);
@@ -930,7 +962,8 @@ export function renderDailyMarkdown(brief: DailyBrief): string {
   lines.push("## Owner decisions");
   const ownerDecisions = brief.owner_decisions ?? [];
   if (ownerDecisions.length === 0) {
-    lines.push("- None — portfolio looks healthy.");
+    const incompleteAttention = brief.attention && (brief.attention.omitted_repos > 0 || brief.attention.repos.some(repo => repo.status !== "available"));
+    lines.push(incompleteAttention ? "- None suggested — supervision has incomplete coverage." : "- None — portfolio looks healthy.");
   } else {
     ownerDecisions.forEach((d, i) => {
       lines.push(`${i + 1}. [${d.command}] ${d.reason}`);

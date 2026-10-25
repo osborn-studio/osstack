@@ -1,0 +1,112 @@
+{
+  "total_runs": 50,
+  "total_events": 10141,
+  "per_agent": [
+    {
+      "agent_id": "synthetic",
+      "capability_id": "code",
+      "runs": 50,
+      "completed": 0,
+      "failed": 0,
+      "cancelled": 0,
+      "in_flight": 50,
+      "avg_duration_ms": null,
+      "total_tokens_in": 0,
+      "total_tokens_out": 0,
+      "total_pii_redacted": 0
+    }
+  ],
+  "loops": {
+    "total_sessions": 0,
+    "running": 0,
+    "stopping": 0,
+    "stopped": 0,
+    "failed": 0,
+    "total_cycles": 0,
+    "total_discovered": 0,
+    "total_executed": 0,
+    "total_skipped": 0,
+    "total_successful": 0,
+    "total_failed": 0,
+    "total_escalated": 0,
+    "total_tokens_consumed": 0,
+    "total_cycle_duration_ms": 0,
+    "avg_cycle_duration_ms": null,
+    "per_loop": []
+  },
+  "rpc": [
+    {
+      "method": "attention.watch",
+      "count": 20,
+      "window": 20,
+      "p50_ms": 26.09762499999988,
+      "p95_ms": 29.85933399999999,
+      "max_ms": 31.681499999999915
+    },
+    {
+      "method": "graph.start",
+      "count": 2,
+      "window": 2,
+      "p50_ms": 10.561624999999367,
+      "p95_ms": 17.561040999999932,
+      "max_ms": 17.561040999999932
+    },
+    {
+      "method": "attention.loop",
+      "count": 20,
+      "window": 20,
+      "p50_ms": 0.4718749999999545,
+      "p95_ms": 1.335833999999977,
+      "max_ms": 4.693125000000009
+    },
+    {
+      "method": "attention.recovery",
+      "count": 2001,
+      "window": 512,
+      "p50_ms": 0.6706669999985024,
+      "p95_ms": 1.1939999999012798,
+      "max_ms": 3.965708999981871
+    },
+    {
+      "method": "attention.inbox",
+      "count": 2000,
+      "window": 512,
+      "p50_ms": 0.38812499993946403,
+      "p95_ms": 0.7111670000012964,
+      "max_ms": 2.00508400000399
+    },
+    {
+      "method": "graph.result",
+      "count": 2000,
+      "window": 512,
+      "p50_ms": 0.3382920000003651,
+      "p95_ms": 0.6282500000670552,
+      "max_ms": 1.8447500000038417
+    },
+    {
+      "method": "graph.status",
+      "count": 2235,
+      "window": 512,
+      "p50_ms": 0.333708000020124,
+      "p95_ms": 0.6042910000542179,
+      "max_ms": 1.7810830000089481
+    },
+    {
+      "method": "session.status",
+      "count": 2000,
+      "window": 512,
+      "p50_ms": 0.23733300005551428,
+      "p95_ms": 0.4235000000335276,
+      "max_ms": 1.2307919999875594
+    },
+    {
+      "method": "run.status",
+      "count": 2000,
+      "window": 512,
+      "p50_ms": 0.11791699996683747,
+      "p95_ms": 0.21549999999115244,
+      "max_ms": 0.7600829999992129
+    }
+  ],
+  "generated_at": 1792790504.028
+}

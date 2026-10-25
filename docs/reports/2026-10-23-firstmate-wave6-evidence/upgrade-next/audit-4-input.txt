@@ -1,0 +1,179 @@
+Final static delta audit ONLY. No tools. Reply <=400 words. Previous P1: fresh partial claim acquisition unnecessarily stranded own claims before any native effect. Fixed: keep attempted names; on failure before returning writer, read each claim and unlink ONLY exact token-matching claim; never remove foreign claims; fsync; uncertain cleanup reports recovery_required and partial status. Existing started journals remain non-replayable and are NOT cleaned. New sync assertCurrent validates all file tokens/ownership before native mutation, with no await between that assertion and call. Generic restart errors now recovery_required. Check this small delta for actual P0/P1/P2 regressions. Production CLI still plan/status only, no native updater implementation. Native reconciliation/physical qualification disabled; do not audit that as implemented.
+
+CLAIM IMPLEMENTATION
+  /** Locks are keyed by shared installation, across plans. Never stale-steal by PID or timeout. */
+  async claim(digest: string, groupId: string): Promise<UpgradeJournalWriter> {
+    const state = await this.status(digest, groupId); const group = state.plan.plan.groups.find(g => g.group_id === groupId)!;
+    if (state.completed) throw Error('upgrade_already_verified');
+    if (state.phase === 'recovery_required' || state.records.some(record => record.phase !== 'qualification_pending')) throw Error('upgrade_recovery_required');
+    const claim = { plan_digest: digest, group_id: groupId, token: randomBytes(32).toString('hex') };
+    const names = [`claim-${upgradeDigest(group.installation_id)}.json`, ...group.homes.map(home => `home-claim-${upgradeDigest(home.home_id)}.json`).sort()];
+    const attempted: string[] = [];
+    try {
+      for (const name of names) { attempted.push(name); await publish(this.root, name, claim); }
+    } catch (error) {
+      // No writer was returned and no native effect can have started. Remove only this fresh token's claims.
+      let cleanupUnknown = false;
+      for (const name of attempted) {
+        try {
+          const value = await readJson(join(this.root, name), 4096).catch(failure => { if ((failure as NodeJS.ErrnoException).code !== 'ENOENT') throw failure; return null; });
+          if (value && upgradeCanonical(value) === upgradeCanonical(claim)) await unlink(join(this.root, name));
+        } catch { cleanupUnknown = true; }
+      }
+      try { await syncDirectory(this.root); } catch { cleanupUnknown = true; }
+      if (cleanupUnknown || (error as NodeJS.ErrnoException).code === 'EEXIST') throw Error('upgrade_recovery_required'); throw error;
+    }
+    const assertClaim = async () => {
+      for (const name of names) if (upgradeCanonical(await readJson(join(this.root, name), 4096)) !== upgradeCanonical(claim)) throw Error('upgrade_claim_changed');
+    };
+    const release = async () => { await assertClaim(); for (const name of names) await unlink(join(this.root, name)); await syncDirectory(this.root); };
+    const current = await this.status(digest, groupId);
+    if (current.completed) { await release(); throw Error('upgrade_already_verified'); }
+    if (upgradeCanonical(current.records) !== upgradeCanonical(state.records)) throw Error('upgrade_recovery_required');
+    let sequence = state.records.length; let previous = state.records.length ? upgradeDigest(state.records.at(-1)) : null; let writing = false;
+    return {
+      assertCurrent: () => {
+        try {
+          for (const name of names) {
+            const fd = openSync(join(this.root, name), constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
+            try {
+              const info = fstatSync(fd); if (!info.isFile() || info.nlink !== 1 || (info.mode & 0o077) !== 0 || info.size > 4096
+                || process.getuid && info.uid !== process.getuid()) throw Error('upgrade_claim_changed');
+              const buffer = Buffer.alloc(4097); let length = 0;
+              while (length < buffer.length) { const size = readSync(fd, buffer, length, buffer.length - length, length); if (!size) break; length += size; }
+              if (length > 4096 || buffer.subarray(0, length).toString('utf8') !== upgradeCanonical(claim)) throw Error('upgrade_claim_changed');
+            } finally { closeSync(fd); }
+          }
+        } catch { throw Error('upgrade_claim_changed'); }
+      },
+      append: async value => {
+        if (writing) throw Error('upgrade_journal_concurrent_write'); writing = true;
+        try {
+          await assertClaim(); const record = RecordSchema.parse({ ...value, schema_version: 1, plan_digest: digest, group_id: groupId, sequence, previous });
+          await publish(join(this.root, digest), `${upgradeDigest(groupId)}.${String(sequence).padStart(4, '0')}.json`, record);
+          await assertClaim(); previous = upgradeDigest(record); sequence += 1; return record;
+        } finally { writing = false; }
+      },
+      releaseVerified: async () => {
+        await assertClaim(); const current = await this.status(digest, groupId);
+        if (!current.completed || writing) throw Error('upgrade_release_requires_verified');
+        await release();
+      },
+    };
+  }
+}
+export interface UpgradeJournalWriter {
+  assertCurrent(): void;
+  append(value: Pick<UpgradeJournalRecord, 'at_ms' | 'phase' | 'status' | 'home_id' | 'evidence_digest' | 'evidence_ref' | 'reason'>): Promise<UpgradeJournalRecord>;
+  releaseVerified(): Promise<void>;
+}
+
+PORT INVOCATION + FLOW
+  const call = async <T>(operation: (signal: AbortSignal) => Promise<T>, mutating = false): Promise<T> => {
+    clockCheck(); if (steps >= plan.plan.budget.max_steps) throw Error('upgrade_budget_exhausted'); steps += 1;
+    const controller = new AbortController(); let rejectAbort!: (error: Error) => void;
+    const cancelled = new Promise<never>((_, reject) => { rejectAbort = reject; });
+    const abort = () => { controller.abort(); rejectAbort(Error('upgrade_cancelled')); };
+    input.signal?.addEventListener('abort', abort, { once: true }); if (input.signal?.aborted) abort();
+    const remaining = plan.plan.budget.max_total_ms - (mono() - startedAt);
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    try {
+      const deadline = new Promise<never>((_, reject) => { timer = setTimeout(() => { controller.abort(); reject(Error('upgrade_operation_unknown')); }, Math.max(1, Math.min(remaining, plan.plan.budget.max_step_ms))); });
+      // After timeout, the late operation cannot append or advance phases. Its physical effects remain unknown.
+      const value = await Promise.race([Promise.resolve().then(() => { clockCheck(); if (mutating) synchronous(writer!.assertCurrent); return operation(controller.signal); }), deadline, cancelled]);
+      clockCheck(); return value;
+    } finally { if (timer) clearTimeout(timer); input.signal?.removeEventListener('abort', abort); }
+  };
+  try {
+    const resolved = await call(signal => port.resolveAuthority(plan, group, signal));
+    if (!resolved) return result('qualification_pending', 'shared_consumers_not_attested');
+    const { assertCurrent, ...raw } = resolved; const parsed = AuthoritySchema.parse(raw);
+    if (typeof assertCurrent !== 'function' || parsed.plan_digest !== plan.digest || parsed.group_id !== group.group_id || parsed.installation_id !== group.installation_id
+      || upgradeCanonical([...parsed.consumer_home_ids].sort()) !== upgradeCanonical(group.homes.map(h => h.home_id).sort())) throw Error('upgrade_authority_binding');
+    authority = { ...parsed, assertCurrent: assertCurrent.bind(resolved) }; clockCheck();
+    writer = await input.journal.claim(plan.digest, group.group_id); clockCheck(); await append('started', null, parsed, parsed.authorization_ref);
+    for (const home of group.homes) {
+      const observation = await call(signal => port.observe(home, signal));
+      const identity = DeploymentIdentitySchema.parse(observation.identity);
+      if (observation.healthy !== true || upgradeCanonical(identity) !== upgradeCanonical(home.identity)) throw Error('upgrade_identity_changed');
+      ref.parse(observation.receipt_ref); await append('confirmed', home, identity, observation.receipt_ref); clockCheck();
+    }
+    phase = 'draining';
+    for (const home of group.homes) {
+      await append('started', home); clockCheck(); sideEffectStarted = true;
+      const lease = await call(signal => port.drain(home, signal), true); const receipt = StoppedSchema.parse(lease.receipt);
+      if (receipt.home_id !== home.home_id || receipt.generation !== home.identity?.generation || typeof lease.assertHeld !== 'function') throw Error('upgrade_stop_binding');
+      const frozenLease = { receipt, assertHeld: lease.assertHeld.bind(lease) }; synchronous(frozenLease.assertHeld); stops.push(frozenLease);
+      await append('confirmed', home, receipt, receipt.receipt_ref); clockCheck();
+    }
+    const quiescent = () => { clockCheck(); for (const stop of stops) synchronous(stop.assertHeld); if (stops.length !== group.homes.length) throw Error('upgrade_all_consumers_required'); };
+    quiescent(); phase = 'quiescent'; await append('confirmed', null, stops.map(s => s.receipt)); quiescent(); phase = 'snapshotting';
+    for (const home of group.homes) {
+      await append('started', home); quiescent(); const receipt = ReceiptSchema.parse(await call(signal => { quiescent(); return port.snapshot(home, signal); }, true));
+      quiescent(); if (receipt.home_id !== home.home_id || receipt.source_generation !== home.identity?.generation) throw Error('upgrade_snapshot_binding');
+      await append('confirmed', home, receipt, receipt.receipt_ref); quiescent();
+    }
+    phase = 'installing'; await append('started', null); quiescent(); installStarted = true;
+    const installed = InstallSchema.parse(await call(signal => { quiescent(); return port.install(plan, group, signal); }, true)); quiescent();
+    if (installed.plan_digest !== plan.digest || installed.installation_id !== group.installation_id || installed.version !== plan.plan.target.version || installed.build_digest !== plan.plan.target.build_digest) throw Error('upgrade_install_mismatch');
+    phase = 'installed'; await append('confirmed', null, installed, installed.receipt_ref); clockCheck(); phase = 'restarting';
+    for (const home of group.homes) {
+      await append('started', home); clockCheck(); synchronous(stops[group.homes.indexOf(home)]!.assertHeld);
+      const receipt = ReceiptSchema.parse(await call(signal => { synchronous(stops[group.homes.indexOf(home)]!.assertHeld); return port.restart(home, signal); }, true));
+      if (receipt.home_id !== home.home_id || receipt.source_generation !== home.identity?.generation) throw Error('upgrade_restart_binding');
+      await append('confirmed', home, receipt, receipt.receipt_ref); clockCheck();
+    }
+    phase = 'verifying';
+    for (const home of group.homes) {
+      await append('started', home); clockCheck(); const observed = await call(signal => port.observe(home, signal)); const identity = DeploymentIdentitySchema.parse(observed.identity);
+      if (observed.healthy !== true || identity.home_id !== home.home_id || identity.generation === home.identity?.generation || identity.deployment_kind !== 'npm'
+        || identity.version !== plan.plan.target.version || identity.build_digest !== plan.plan.target.build_digest || identity.build_evidence !== 'host_manifest'
+        || identity.protocol_version !== plan.plan.target.protocol_version || identity.database_schema !== plan.plan.target.database_schema) throw Error('upgrade_version_mismatch');
+      ref.parse(observed.receipt_ref); await append('confirmed', home, identity, observed.receipt_ref); clockCheck();
+    }
+    phase = 'verified'; clockCheck(); await append('confirmed', null);
+    try { await writer.releaseVerified(); } catch { closed = true; return result('verified', 'claim_release_requires_reconciliation'); }
+    closed = true; return result('verified');
+  } catch (error) {
+    if (error instanceof Error && error.message === 'upgrade_already_verified') return result('verified');
+    const message = error instanceof Error && /^upgrade_[a-z_]+$/.test(error.message) ? error.message : 'upgrade_port_failure';
+    if (!writer && message !== 'upgrade_recovery_required') {
+      const status = await input.journal.status(plan.digest, group.group_id).catch(() => null);
+      return result(!status || status.phase === 'recovery_required' ? 'recovery_required' : 'qualification_pending', message);
+    }
+    const state: UpgradePhase = message === 'upgrade_recovery_required' || sideEffectStarted && !installStarted ? 'recovery_required'
+      : !installStarted ? 'aborted_before_install' : message === 'upgrade_version_mismatch' ? 'version_mismatch' : 'recovery_required';
+    phase = state; closed = true;
+    // A failed journal write leaves its previous started record. Never undo an external fact or steal the claim.
+    try { await append('failed', null, undefined, undefined, message); } catch { /* Caller must inspect the retained claim and previous record. */ }
+    return result(state, message);
+  }
+}
+
+TESTS
+it('claims individual homes as well as installations across different plans', async () => {
+  const f = await fixture(); await f.journal.claim(f.plan.digest, 'group');
+  const next = createUpgradePlan({ ...f.request, groups: [{ ...f.request.groups[0]!, installation_id: 'different-alias' }] }, f.observations, f.now);
+  await f.journal.create(next); await expect(f.journal.claim(next.digest, 'group')).rejects.toThrow('recovery_required');
+  const status = await f.journal.status(next.digest, 'group'); expect(status.phase).toBe('qualification_pending'); expect(status.recovery.claims_held).toBe(0);
+});
+
+it('rejects direct replay of a started journal even if claim files were manually removed', async () => {
+  const f = await fixture(); const writer = await f.journal.claim(f.plan.digest, 'group'); await writer.append({ ...record, phase: 'draining', status: 'started' });
+  for (const name of (await readdir(f.root)).filter(name => name.includes('claim-'))) await rm(join(f.root, name));
+  await expect(new UpgradeJournal(f.root).claim(f.plan.digest, 'group')).rejects.toThrow('recovery_required');
+});
+it('rejects noncanonical record bytes instead of silently normalizing an immutable journal', async () => {
+  const f = await fixture(); const writer = await f.journal.claim(f.plan.digest, 'group'); await writer.append(record);
+  const path = join(f.root, f.plan.digest); const name = (await readdir(path)).find(name => name.endsWith('.0000.json'))!;
+  const value = JSON.parse(await readFile(join(path, name), 'utf8')); await writeFile(join(path, name), JSON.stringify(value, null, 2));
+  await expect(f.journal.status(f.plan.digest, 'group')).rejects.toThrow('non_canonical');
+});
+
+it('reports an incomplete claim set left by process loss before a writer was returned', async () => {
+  const f = await fixture(); const claim = { plan_digest: f.plan.digest, group_id: 'group', token: 'c'.repeat(64) };
+  await writeFile(join(f.root, `claim-${upgradeDigest('shared-npm-global')}.json`), upgradeCanonical(claim), { mode: 0o600 });
+  const status = await f.journal.status(f.plan.digest, 'group'); expect(status.phase).toBe('recovery_required');
+  expect(status.recovery).toMatchObject({ claims_held: 1, claims_expected: 3, partial_claim: true });
+  await expect(f.journal.claim(f.plan.digest, 'group')).rejects.toThrow('recovery_required');
+});

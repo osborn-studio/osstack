@@ -1,0 +1,1043 @@
+Re-audit final delivery fixes against your previous review. Static code only, no tools. Confirm P0/P1 with exact trace. Production GitHub action remains default-off until private host registry/credential/operator signing. New change addresses availability P1: preflight GETs happen BEFORE consume and create a bounded one-use exact-envelope readiness ticket (64 total in-flight/tickets, 30s monotonic TTL). sendOnce consumes ticket, performs only local registry/token fence, then exactly ONE network POST; no GET after durable consume. A crash/config race between durable started and POST stays unknown by contract. POST uses fixed GraphQL addComment with pinned immutable subjectId rather than mutable owner/repo REST path. Validates GraphQL errors, clientMutationId, returned subject ID, author ID/body/message ID. Lookup remains REST list + trusted since bound; window now uses durable send_started event time. Locked issue rejected before consume. Foreign copied markers ignored; author-owned duplicates unknown. 60 CLI +47core verification expected (logs being rerun), do not claim execution. Current primary docs https://docs.github.com/en/graphql/reference/issues#addcomment confirms subjectId input and subject/commentEdge response. Real GitHub credentials/GraphQL permission/raw body qualification not run, explicitly pending. Return confirmed P0/P1 count and required fixes, P2 and live qualifications separate.
+Previous audit:
+## Final audit result
+
+**Confirmed P0: 0. Confirmed P1: 1, availability only. Safety P1: 0.** This is from reading the source; I ran no tools or tests.
+
+## P1: Transient GitHub failures after consume wedge an unsent message
+
+**Source:** `sendOnce` in `packages/cli/src/follow-up-github-transport.ts` calls `preflight(e, signal)`, which issues GET `/user` and GET issue, before the POST. `dispatch` in `packages/core/src/state/follow-up-delivery.ts` commits consume plus `started` before calling `sendOnce`.
+
+**Trace:**
+1. Admission preflight succeeds (GET `/user` 200, GET issue 200). The attempt stays `prepared`.
+2. The claim transaction consumes the grant and commits `started`. No POST has been issued.
+3. Inside `sendOnce`, the second `preflight` gets a 403 secondary rate limit, a 503, or a timeout. The cumulative 5 s `boundedCall` budget also covers both GETs, so slow responses trigger this too.
+4. `api` rejects with `github_delivery_unconfirmed`. `boundedCall` returns `{ok:false}`, and `dispatch` bumps the attempt to `delivery_unknown / send_outcome_unknown`.
+5. The POST line never executed. `reconcile` goes to `lookup`, which succeeds this time, finds nothing, and records `lookup_unconfirmed`.
+6. No transition reaches `definitely_not_sent`. `prepare` for that obligation throws `delivery_unresolved_attempt`, `authorize` requires `prepared`, and `revoke` leaves `delivery_unknown`.
+
+**Result:** the obligation is permanently blocked and zero messages were sent. No duplicate send occurs. The contract's "started stays unknown" rule does not require this case. The rule applies to failures after the send attempt, and this one happens before any POST.
+
+**Fix (no protocol or migration change):** `sendOnce` should make no network calls. Admission already verified actor and target. Keep only the local credential and fingerprint fence and the `signal.aborted` check, then POST.
+
+**Test:** a fixture counts requests. Assert that `sendOnce` issues exactly one request (the POST), and that a GET failure during admission leaves the attempt `prepared`.
+
+## Verified fixes
+
+- **Synchronous fence:** `assertHostConfiguration` runs inside the `authorize` and claim transactions.
+- **Effect-free preflight:** `dispatch` admission runs preflight before consume. Grant, revision, expiry, and obligation are rechecked in the claim transaction.
+- **Started is terminal-unknown:** no path from `started` to `definitely_not_sent` exists. `revoke` and `reconcile` both map `started` to `delivery_unknown`.
+- **Foreign marker copy:** `lookup` skips comments whose author or `issue_url` does not match before the marker test, so a foreign copy cannot block a correct receipt.
+- **Lookup bounds:** `since` is applied, and the 4 MiB cap is sufficient for 10 comments of at most 65,536 characters.
+- **Issuer:** `issue-grant` reruns `readHostDeliveryConfig` after the key read and before signing.
+- **Protocol integrity:** the grant signature regex matches Ed25519 base64 length.
+
+## Remaining P2 (availability and correctness, no safety impact)
+
+1. **`since` anchored on prepare time.** `lookup` uses `claim.row.created_at_ms`. An attempt prepared 7 days before dispatch gets a 7-day window. In a busy thread, reconcile then becomes `lookup_incomplete` permanently. Fix: anchor on the `send_started` event time from the existing events table.
+2. **The 20-page bound is not the effective limit.** `boundedCall` caps the whole lookup at 5 s, which covers the preflight and every page GET. Realistically this is about 5 to 10 pages, so busy threads hit an unknown well before 200 comments. Fix: give lookup its own budget, up to the 30 s clamp.
+3. **Locked issues are not rejected pre-consume.** Preflight ignores `issue.locked`. A locked issue returns 403 on POST after consume, which wedges an attempt that was never sent. Fix: reject `locked === true` in preflight.
+4. **Actor-authored marker copies fail closed.** If the operator's own account, which is probably the actor, posts the wire body or preview, the duplicate or mismatch makes reconcile throw permanently. Not a false delivery. Document it, and avoid posting wire bodies under the actor account.
+5. **Reconcile races in-flight `started`.** `reconcile` converts `started` to `delivery_unknown`, and then `dispatch` discards the success receipt because `current.state !== "started"`. Recoverable by a later reconcile.
+6. **Error codes.** `assertRegistryFingerprint` throws plain `Error("delivery_host_config_changed")`, which `safe()` maps to `delivery_database_unavailable`. No state effect, but operators see the wrong code.
+7. **Clock regression** makes every `authorize` and `dispatch` refuse until the clock recovers. `revoke` still works.
+8. **Any local RPC client can `prepare` a bogus attempt**, which blocks the obligation with `delivery_unresolved_attempt` until someone revokes it. Availability only, since sending still requires a grant bound to the previewed body.
+
+## Accepted by contract, not counted
+
+- **Started-without-POST wedge.** A crash after the `started` commit, a config or token race between consume and POST, or any post-consume HTTP 403 leaves the obligation permanently blocked with no operator recovery path. The safety property holds. Recoverability is nil. Root needs an explicit decision here, which would require a protocol or schema change and is out of scope.
+
+## Live qualification (not code defects, but gating)
+
+1. **Body normalization.** If GitHub alters the stored body (CRLF, trailing whitespace), `receipt()` throws after a successful POST. Every send becomes unknown, and every lookup fails. This affects 100% of deliveries and should gate production.
+2. **`since` semantics.** Confirm it filters on `updated_at`, and confirm ascending order.
+3. **Locked-issue and secondary-rate-limit responses.** Confirm whether they arrive as 403, and whether they carry a Retry-After.
+4. **Link header and `x-github-request-id`.** Confirm both are present on every paginated and POST response.
+FILE packages/cli/src/follow-up-github-transport.ts
+import { createHash } from "node:crypto";
+import { request as httpsRequest } from "node:https";
+import { request as httpRequest } from "node:http";
+import type { FollowUpDeliveryEnvelope, FollowUpDeliveryReceipt } from "@osstack/protocol";
+import type { FollowUpTransport } from "@osstack/core";
+
+const sha = (value: string) => createHash("sha256").update(value).digest("hex");
+/** Included in the human preview. Correlation is not itself proof: author, target and exact body must match. */
+export function githubDeliveryBody(envelope: FollowUpDeliveryEnvelope): string {
+  return `${envelope.body}\n\n<!-- osstack-delivery:${envelope.attempt_id}:${envelope.envelope_digest} -->`;
+}
+export interface GithubDeliveryTransportOptions {
+  qualification: FollowUpTransport["qualification"];
+  /** Host-owned resolver rechecks current registration and reads a private credential for each operation. */
+  credential(envelope: FollowUpDeliveryEnvelope): Promise<string>;
+  /** Only local HTTP fixtures are accepted, and only under test_only qualification. */
+  fixtureBaseUrl?: string;
+}
+interface JsonResponse {
+  value: unknown;
+  requestId: string;
+  hasNext: boolean;
+}
+/** No redirects, retry middleware, shell, proxy environment, or provider error bodies are used. */
+export function createGithubDeliveryTransport(options: GithubDeliveryTransportOptions): FollowUpTransport {
+  const base = options.fixtureBaseUrl ? new URL(options.fixtureBaseUrl) : new URL("https://api.github.com");
+  if (
+    options.fixtureBaseUrl &&
+    (options.qualification !== "test_only" ||
+      base.protocol !== "http:" ||
+      base.hostname !== "127.0.0.1" ||
+      base.username ||
+      base.password ||
+      base.pathname !== "/" ||
+      base.search ||
+      base.hash)
+  )
+    throw Error("invalid_delivery_fixture");
+  const api = async (
+    path: string,
+    token: string,
+    signal: AbortSignal,
+    body?: string,
+  ): Promise<JsonResponse> => {
+    if (signal.aborted || !/^[\x21-\x7e]{1,4096}$/.test(token)) throw Error("github_delivery_unavailable");
+    const url = new URL(path, base);
+    return new Promise((resolve, reject) => {
+      const fail = () => reject(Error("github_delivery_unconfirmed"));
+      const request = (base.protocol === "https:" ? httpsRequest : httpRequest)(
+        url,
+        {
+          method: body === undefined ? "GET" : "POST",
+          signal,
+          headers: {
+            authorization: `Bearer ${token}`,
+            accept: "application/vnd.github+json",
+            "x-github-api-version": "2026-03-10",
+            "user-agent": "osstack-follow-up-delivery",
+            ...(body === undefined
+              ? {}
+              : {
+                  "content-type": "application/json",
+                  "content-length": Buffer.byteLength(body),
+                }),
+          },
+        },
+        (response) => {
+          const chunks: Buffer[] = [];
+          let bytes = 0;
+          response.on("data", (chunk: Buffer) => {
+            bytes += chunk.length;
+            if (bytes > 4_194_304) {
+              response.destroy();
+              request.destroy();
+              fail();
+            } else chunks.push(chunk);
+          });
+          response.on("error", fail);
+          response.on("end", () => {
+            try {
+              if (response.statusCode !== (body === undefined || path === "/graphql" ? 200 : 201))
+                throw Error();
+              const requestId = response.headers["x-github-request-id"];
+              if (typeof requestId !== "string" || !/^[\x21-\x7e]{1,256}$/.test(requestId)) throw Error();
+              resolve({
+                value: JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(Buffer.concat(chunks))),
+                requestId,
+                hasNext: /rel="next"/.test(String(response.headers.link ?? "")),
+              });
+            } catch {
+              fail();
+            }
+          });
+        },
+      );
+      request.on("error", fail);
+      request.setTimeout(5000, () => request.destroy(Error("github_delivery_timeout")));
+      request.end(body);
+    });
+  };
+  function record(value: unknown): Record<string, unknown> {
+    if (!value || typeof value !== "object" || Array.isArray(value))
+      throw Error("github_delivery_invalid_response");
+    return value as Record<string, unknown>;
+  }
+  const targetPath = (e: FollowUpDeliveryEnvelope) =>
+    `/repos/${encodeURIComponent(e.destination.owner)}/${encodeURIComponent(e.destination.repository)}/issues/${e.destination.issue_number}`;
+  const targetUrl = (e: FollowUpDeliveryEnvelope) => `https://api.github.com${targetPath(e)}`;
+  async function preflight(e: FollowUpDeliveryEnvelope, signal: AbortSignal): Promise<string> {
+    if (
+      e.destination.host !== "github.com" ||
+      e.destination.provider_id !== "github_comment" ||
+      sha(e.body) !== e.body_sha256
+    )
+      throw Error("github_delivery_invalid_envelope");
+    const token = await options.credential(e);
+    const actor = record((await api("/user", token, signal)).value);
+    if (actor.node_id !== e.destination.actor_node_id) throw Error("github_delivery_actor_mismatch");
+    const issue = record((await api(targetPath(e), token, signal)).value);
+    if (
+      issue.node_id !== e.destination.target_node_id ||
+      issue.url !== targetUrl(e) ||
+      issue.number !== e.destination.issue_number ||
+      issue.locked === true
+    )
+      throw Error("github_delivery_target_mismatch");
+    return token;
+  }
+  function receipt(e: FollowUpDeliveryEnvelope, value: unknown, requestId: string): FollowUpDeliveryReceipt {
+    const comment = record(value),
+      user = record(comment.user);
+    if (
+      !Number.isSafeInteger(comment.id) ||
+      Number(comment.id) < 1 ||
+      comment.issue_url !== targetUrl(e) ||
+      user.node_id !== e.destination.actor_node_id ||
+      comment.body !== githubDeliveryBody(e)
+    )
+      throw Error("github_delivery_receipt_mismatch");
+    return {
+      provider_id: "github_comment",
+      account_id: e.destination.account_id,
+      target_node_id: e.destination.target_node_id,
+      author_node_id: e.destination.actor_node_id,
+      destination_digest: e.destination_digest,
+      body_sha256: e.body_sha256,
+      attempt_id: e.attempt_id,
+      provider_message_id: String(comment.id),
+      provider_request_id: requestId,
+    };
+  }
+  const tickets = new Map<string, { token: string; expiresAt: number }>();
+  let preflights = 0;
+  const ticketKey = (e: FollowUpDeliveryEnvelope) => `${e.attempt_id}:${e.envelope_digest}`;
+  return {
+    qualification: options.qualification,
+    automatic_retries: false,
+    lookup_receipt: true,
+    async preflight(e, signal) {
+      for (const [key, ticket] of tickets) if (ticket.expiresAt <= performance.now()) tickets.delete(key);
+      if (tickets.size + preflights >= 64) throw Error("github_delivery_busy");
+      preflights++;
+      try {
+        const token = await preflight(e, signal);
+        if (signal.aborted) throw Error("github_delivery_cancelled");
+        tickets.set(ticketKey(e), { token, expiresAt: performance.now() + 30000 });
+      } finally {
+        preflights--;
+      }
+    },
+    async sendOnce(e, signal) {
+      const ticket = tickets.get(ticketKey(e));
+      tickets.delete(ticketKey(e));
+      if (!ticket || ticket.expiresAt <= performance.now()) throw Error("github_delivery_preflight_required");
+      const token = ticket.token;
+      // No network readiness calls after consume: only local credential/config fence, then the sole POST.
+      if ((await options.credential(e)) !== token || signal.aborted)
+        throw Error("github_delivery_registration_changed");
+      // Once durably started, all exceptions remain unknown; never infer non-delivery from HTTP errors.
+      const response = await api(
+        "/graphql",
+        token,
+        signal,
+        JSON.stringify({
+          query:
+            "mutation OSStackFollowUp($input:AddCommentInput!){addComment(input:$input){clientMutationId subject{id} commentEdge{node{databaseId body author{... on User{id} ... on Bot{id}}}}}}",
+          variables: {
+            input: {
+              subjectId: e.destination.target_node_id,
+              body: githubDeliveryBody(e),
+              clientMutationId: e.attempt_id,
+            },
+          },
+        }),
+      );
+      const result = record(response.value);
+      if (result.errors !== undefined && (!Array.isArray(result.errors) || result.errors.length))
+        throw Error("github_delivery_graphql_error");
+      const payload = record(record(result.data).addComment),
+        subject = record(payload.subject),
+        comment = record(record(payload.commentEdge).node),
+        author = record(comment.author);
+      if (payload.clientMutationId !== e.attempt_id || subject.id !== e.destination.target_node_id)
+        throw Error("github_delivery_receipt_mismatch");
+      // The mutation is addressed by immutable subject ID, not a mutable owner/repository URL.
+      return receipt(
+        e,
+        { id: comment.databaseId, body: comment.body, user: { node_id: author.id }, issue_url: targetUrl(e) },
+        response.requestId,
+      );
+    },
+    async lookup(e, signal, context) {
+      const token = await preflight(e, signal);
+      let found: FollowUpDeliveryReceipt | undefined;
+      // Old busy threads do not hide a new attempt behind historical pages. Context comes from the durable ledger.
+      const since =
+        context && Number.isSafeInteger(context.createdAtMs) && context.createdAtMs >= 0
+          ? `&since=${encodeURIComponent(new Date(Math.max(0, context.createdAtMs - 300000)).toISOString())}`
+          : "";
+      // Fixed bounded pages, never follow a provider-supplied URL. Incomplete enumeration remains unknown.
+      for (let page = 1; page <= 20; page++) {
+        const response = await api(
+          `${targetPath(e)}/comments?per_page=10&page=${page}${since}`,
+          token,
+          signal,
+        );
+        if (!Array.isArray(response.value) || response.value.length > 10)
+          throw Error("github_delivery_invalid_list");
+        for (const raw of response.value) {
+          const comment = record(raw);
+          // A public marker copied by another author is not a candidate receipt and cannot veto one.
+          if (
+            !comment.user ||
+            typeof comment.user !== "object" ||
+            Array.isArray(comment.user) ||
+            (comment.user as Record<string, unknown>).node_id !== e.destination.actor_node_id ||
+            comment.issue_url !== targetUrl(e)
+          )
+            continue;
+          if (typeof comment.body !== "string" || !comment.body.includes(`osstack-delivery:${e.attempt_id}:`))
+            continue;
+          const match = receipt(e, raw, response.requestId);
+          if (found) throw Error("github_delivery_duplicate_correlation");
+          found = match;
+        }
+        if (!response.hasNext && response.value.length < 10) {
+          if ((await options.credential(e)) !== token || signal.aborted)
+            throw Error("github_delivery_registration_changed");
+          return found ?? null;
+        }
+      }
+      throw Error("github_delivery_lookup_incomplete");
+    },
+  };
+}
+
+
+FILE packages/cli/src/follow-up-github-transport.test.ts
+import { createHash, randomUUID } from "node:crypto";
+import { createServer, type Server, type IncomingMessage, type ServerResponse } from "node:http";
+import { afterEach, expect, it } from "vitest";
+import { deliveryCanonical } from "@osstack/core";
+import type { FollowUpDeliveryEnvelope } from "@osstack/protocol";
+import { createGithubDeliveryTransport, githubDeliveryBody } from "./follow-up-github-transport.js";
+const servers: Server[] = [];
+afterEach(async () => {
+  for (const server of servers.splice(0)) {
+    server.closeAllConnections();
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+  }
+});
+const hash = (s: string) => createHash("sha256").update(s).digest("hex");
+export function envelope(): FollowUpDeliveryEnvelope {
+  const target = {
+    destination_ref: "issue",
+    repo_path: "/repo",
+    provider_id: "github_comment" as const,
+    account_id: "account",
+    host: "github.com" as const,
+    owner: "owner",
+    repository: "repo",
+    issue_number: 1,
+    target_node_id: "ISSUE",
+    actor_node_id: "ACTOR",
+  };
+  const payload = {
+    repo_path: "/repo",
+    default_tenant: true as const,
+    attempt_id: randomUUID(),
+    obligation_id: randomUUID(),
+    obligation_revision: 1,
+    destination: target,
+    destination_digest: hash(deliveryCanonical(target)),
+    body: "Exact message",
+    body_sha256: hash("Exact message"),
+  };
+  return { ...payload, envelope_digest: hash(deliveryCanonical(payload)) };
+}
+function graphqlReceipt(
+  e: FollowUpDeliveryEnvelope,
+  comment: { id: number; body: string; user: { node_id: string }; issue_url: string },
+) {
+  return {
+    data: {
+      addComment: {
+        clientMutationId: e.attempt_id,
+        subject: {
+          id:
+            comment.issue_url === "https://api.github.com/repos/owner/repo/issues/1"
+              ? e.destination.target_node_id
+              : "OTHER",
+        },
+        commentEdge: {
+          node: { databaseId: comment.id, body: comment.body, author: { id: comment.user.node_id } },
+        },
+      },
+    },
+  };
+}
+async function fixture(handler?: (req: IncomingMessage, res: ServerResponse) => boolean) {
+  const e = envelope();
+  let posts = 0,
+    reads = 0;
+  const comments: unknown[] = [];
+  const requests: string[] = [];
+  const postBodies: unknown[] = [];
+  const server = createServer((req, res): void => {
+    requests.push(`${req.method} ${req.url}`);
+    res.setHeader("x-github-request-id", "REQUEST");
+    if (req.method === "POST") posts++;
+    if (handler?.(req, res)) return;
+    res.setHeader("content-type", "application/json");
+    if (req.url === "/user") {
+      res.end(JSON.stringify({ node_id: "ACTOR" }));
+      return;
+    }
+    if (req.url === "/repos/owner/repo/issues/1") {
+      res.end(
+        JSON.stringify({
+          node_id: "ISSUE",
+          number: 1,
+          url: "https://api.github.com/repos/owner/repo/issues/1",
+        }),
+      );
+      return;
+    }
+    if (req.method === "POST") {
+      const chunks: Buffer[] = [];
+      req.on("data", (c) => chunks.push(c));
+      req.on("end", () => {
+        const payload = JSON.parse(Buffer.concat(chunks).toString());
+        postBodies.push(payload);
+        const body = payload.variables.input.body;
+        const comment = {
+          id: posts,
+          body,
+          user: { node_id: "ACTOR" },
+          issue_url: "https://api.github.com/repos/owner/repo/issues/1",
+        };
+        comments.push(comment);
+        res.statusCode = 200;
+        res.end(JSON.stringify(graphqlReceipt(e, comment)));
+      });
+      return;
+    }
+    reads++;
+    res.end(JSON.stringify(comments));
+  });
+  servers.push(server);
+  await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+  const address = server.address();
+  if (!address || typeof address === "string") throw Error();
+  const transport = createGithubDeliveryTransport({
+    qualification: "test_only",
+    fixtureBaseUrl: `http://127.0.0.1:${address.port}`,
+    credential: async () => "fixture-token",
+  });
+  return { e, transport, comments, requests, postBodies, posts: () => posts, reads: () => reads };
+}
+async function send(f: Awaited<ReturnType<typeof fixture>>, timeout = 3000) {
+  const signal = AbortSignal.timeout(timeout);
+  await f.transport.preflight!(f.e, signal);
+  return f.transport.sendOnce(f.e, signal);
+}
+it("sends one exact correlated comment then verifies it by author, target and exact wire body", async () => {
+  const f = await fixture();
+  const receipt = await send(f);
+  expect(f.posts()).toBe(1);
+  expect(f.comments).toEqual([expect.objectContaining({ body: githubDeliveryBody(f.e) })]);
+  expect(await f.transport.lookup(f.e, AbortSignal.timeout(3000))).toEqual(receipt);
+});
+it.each([
+  "author",
+  "target",
+  "body",
+  "id",
+])("rejects corrupt %s receipts without resending", async (field) => {
+  const f = await fixture((req, res) => {
+    if (req.method !== "POST") return false;
+    const value = {
+      id: 1,
+      body: githubDeliveryBody(f.e),
+      user: { node_id: "ACTOR" },
+      issue_url: "https://api.github.com/repos/owner/repo/issues/1",
+    };
+    if (field === "author") value.user.node_id = "OTHER";
+    if (field === "target") value.issue_url += "2";
+    if (field === "body") value.body += "!";
+    if (field === "id") value.id = 0;
+    res.statusCode = 200;
+    res.end(JSON.stringify(graphqlReceipt(f.e, value)));
+    return true;
+  });
+  await expect(send(f)).rejects.toThrow();
+  expect(f.posts()).toBe(1);
+});
+it.each(["actor", "target"])("preflight %s mismatch forbids POST", async (field) => {
+  const f = await fixture((req, res) => {
+    if (req.url !== (field === "actor" ? "/user" : "/repos/owner/repo/issues/1")) return false;
+    res.end(JSON.stringify({ node_id: "OTHER" }));
+    return true;
+  });
+  await expect(send(f)).rejects.toThrow();
+  expect(f.posts()).toBe(0);
+});
+it.each([
+  "redirect",
+  "server_error",
+  "truncated",
+  "oversized",
+  "timeout",
+])("%s response remains unconfirmed and never retries POST", async (mode) => {
+  const f = await fixture((req, res) => {
+    if (req.method !== "POST") return false;
+    if (mode === "redirect") {
+      res.statusCode = 307;
+      res.setHeader("location", "http://127.0.0.1:1/leak");
+      res.end();
+    }
+    if (mode === "server_error") {
+      res.statusCode = 503;
+      res.end("fixture-token should not surface");
+    }
+    if (mode === "truncated") {
+      res.statusCode = 200;
+      res.end('{"id":');
+    }
+    if (mode === "oversized") {
+      res.statusCode = 200;
+      res.end("x".repeat(4_194_305));
+    }
+    return true;
+  });
+  await expect(send(f, mode === "timeout" ? 100 : 3000)).rejects.toThrow("github_delivery_unconfirmed");
+  expect(f.posts()).toBe(1);
+});
+it("duplicate correlation or a changed body cannot become delivered by lookup", async () => {
+  const f = await fixture();
+  await send(f);
+  f.comments.push(f.comments[0]);
+  await expect(f.transport.lookup(f.e, AbortSignal.timeout(3000))).rejects.toThrow("duplicate");
+  f.comments.pop();
+  (f.comments[0] as { body: string }).body += "edited";
+  await expect(f.transport.lookup(f.e, AbortSignal.timeout(3000))).rejects.toThrow("mismatch");
+  expect(f.posts()).toBe(1);
+});
+it("bounded enumeration fails closed if pages remain; ignores untrusted next URL", async () => {
+  let pages = 0;
+  const f = await fixture((req, res) => {
+    if (!req.url?.includes("per_page")) return false;
+    pages++;
+    res.setHeader("link", '<http://attacker.invalid>; rel="next"');
+    res.end("[]");
+    return true;
+  });
+  await expect(f.transport.lookup(f.e, AbortSignal.timeout(3000))).rejects.toThrow("incomplete");
+  expect(pages).toBe(20);
+  expect(f.posts()).toBe(0);
+});
+it("never exposes a network fixture under production qualification", () => {
+  expect(() =>
+    createGithubDeliveryTransport({
+      qualification: "production_qualified",
+      fixtureBaseUrl: "http://127.0.0.1:1234",
+      credential: async () => "token",
+    }),
+  ).toThrow();
+});
+it("real HTTP lost POST response stays unknown across service reconstruction; lookup resolves without a second POST", async () => {
+  const { generateKeyPairSync, sign } = await import("node:crypto"),
+    fs = await import("node:fs"),
+    { join } = await import("node:path");
+  const { createScratchDirSync, openDb, FollowUpObligationService, FollowUpDeliveryService } = await import(
+    "@osstack/core"
+  );
+  const f = await fixture((req, res) => {
+    if (req.method !== "POST") return false;
+    const chunks: Buffer[] = [];
+    req.on("data", (c) => chunks.push(c));
+    req.on("end", () => {
+      f.comments.push({
+        id: 1,
+        body: JSON.parse(Buffer.concat(chunks).toString()).variables.input.body,
+        user: { node_id: "ACTOR" },
+        issue_url: "https://api.github.com/repos/owner/repo/issues/1",
+      });
+      res.destroy();
+    });
+    return true;
+  });
+  const root = fs.realpathSync(createScratchDirSync("tests", "delivery-wire-ledger")),
+    repo = join(root, "repo");
+  fs.mkdirSync(repo);
+  const path = join(root, "state.db"),
+    db = openDb({ path });
+  try {
+    db.exec(
+      "INSERT INTO tasks(task_id,title,status,created_at,updated_at) VALUES('t','test','running',1,1); INSERT INTO runs(run_id,task_id,session_id,agent_id,capability_id,phase,started_at) VALUES('r','t','s','codex-cli','code','execute',1)",
+    );
+    db.prepare(
+      "INSERT INTO agent_sessions(session_id,task_id,run_id,agent_id,request_sha256,repo_path,state,resume_supported,version,updated_at) VALUES('s','t','r','codex-cli',?,?,'idle',1,1,1)",
+    ).run("a".repeat(64), repo);
+    const scope = { repo_path: repo, default_tenant: true };
+    const ob = new FollowUpObligationService(db, path).create({
+      ...scope,
+      source_session_id: "s",
+      expected_source_version: 1,
+      idempotency_key: "ob",
+      actor: "operator",
+      promise: "Reply",
+      destination_ref: "local_operator",
+      resolution_condition: "manual",
+    }).obligation;
+    const keys = generateKeyPairSync("ed25519"),
+      target = { ...f.e.destination, repo_path: repo };
+    const options = {
+      targets: new Map([[target.destination_ref, target]]),
+      trustedKeys: new Map([
+        [
+          "key",
+          {
+            publicKey: keys.publicKey,
+            purpose: "follow_up_delivery" as const,
+            repo_path: repo,
+            provider_id: "github_comment" as const,
+            destination_refs: [target.destination_ref],
+            max_validity_ms: 60000,
+          },
+        ],
+      ]),
+      transports: new Map([["github_comment", f.transport]]),
+      allowTestTransports: true,
+    };
+    let service = new FollowUpDeliveryService(db, path, options);
+    const prepared = service.prepare({
+      ...scope,
+      obligation_id: ob.obligation_id,
+      expected_obligation_revision: 1,
+      destination_ref: target.destination_ref,
+      body: "One public reply",
+      idempotency_key: "once",
+    }).attempt;
+    const now = Date.now(),
+      body = {
+        ...prepared.authorization_subject,
+        grant_id: randomUUID(),
+        issued_at_ms: now,
+        expires_at_ms: now + 60000,
+        max_calls: 1,
+      };
+    const authorized = service.authorize({
+      ...scope,
+      attempt_id: prepared.attempt_id,
+      expected_revision: prepared.revision,
+      grant: {
+        body,
+        key_id: "key",
+        signature: sign(null, Buffer.from(deliveryCanonical(body)), keys.privateKey).toString("base64"),
+      },
+    }).attempt;
+    const failed = await service.dispatch({
+      ...scope,
+      attempt_id: prepared.attempt_id,
+      expected_revision: authorized.revision,
+    });
+    expect(failed.attempt.state).toBe("delivery_unknown");
+    expect(f.posts()).toBe(1);
+    service = new FollowUpDeliveryService(db, path, options);
+    const repeated = await service.dispatch({
+      ...scope,
+      attempt_id: prepared.attempt_id,
+      expected_revision: failed.attempt.revision,
+    });
+    expect(repeated.attempt.state).toBe("delivery_unknown");
+    expect(f.posts()).toBe(1);
+    const recovered = await service.reconcile({
+      ...scope,
+      attempt_id: prepared.attempt_id,
+      expected_revision: failed.attempt.revision,
+    });
+    expect(recovered.attempt.state).toBe("delivered");
+    expect(recovered.attempt.qualification).toBe("test_only");
+    expect(f.posts()).toBe(1);
+  } finally {
+    db.close();
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+it("credential rotation between identity preflight and POST prevents admission", async () => {
+  const f = await fixture();
+  let calls = 0;
+  // Reuse a fixture server address without letting any production config select a base URL.
+  const address = servers[servers.length - 1]!.address();
+  if (!address || typeof address === "string") throw Error();
+  const transport = createGithubDeliveryTransport({
+    qualification: "test_only",
+    fixtureBaseUrl: `http://127.0.0.1:${address.port}`,
+    credential: async () => (++calls === 1 ? "first-token" : "rotated-token"),
+  });
+  await transport.preflight!(f.e, AbortSignal.timeout(3000));
+  await expect(transport.sendOnce(f.e, AbortSignal.timeout(3000))).rejects.toThrow("registration_changed");
+  expect(f.posts()).toBe(0);
+});
+it("a foreign author copying the public marker cannot veto the real receipt", async () => {
+  const f = await fixture();
+  const sent = await send(f);
+  f.comments.unshift({
+    id: 999,
+    body: githubDeliveryBody(f.e),
+    user: { node_id: "FOREIGN" },
+    issue_url: "https://api.github.com/repos/owner/repo/issues/1",
+  });
+  expect(await f.transport.lookup(f.e, AbortSignal.timeout(3000))).toEqual(sent);
+});
+it("uses durable creation context so 600 historical comments cannot hide the new receipt", async () => {
+  const createdAtMs = Date.now();
+  let observedSince: string | null = null;
+  const f = await fixture((req, res) => {
+    if (!req.url?.includes("per_page")) return false;
+    const url = new URL(req.url, "http://fixture.invalid");
+    observedSince = url.searchParams.get("since");
+    const historical = Array.from({ length: 600 }, (_, id) => ({
+      id: id + 1,
+      body: "old",
+      user: { node_id: "ACTOR" },
+      issue_url: "https://api.github.com/repos/owner/repo/issues/1",
+    }));
+    const filtered = observedSince ? f.comments : historical;
+    const page = Number(url.searchParams.get("page"));
+    const items = filtered.slice((page - 1) * 10, page * 10);
+    if (page * 10 < filtered.length) res.setHeader("link", '<https://api.github.com>; rel="next"');
+    res.end(JSON.stringify(items));
+    return true;
+  });
+  const sent = await send(f);
+  expect(await f.transport.lookup(f.e, AbortSignal.timeout(3000), { createdAtMs })).toEqual(sent);
+  expect(observedSince).toBe(new Date(createdAtMs - 300000).toISOString());
+  expect(f.posts()).toBe(1);
+});
+it("allows a page of ten large legitimate neighboring comments within a finite response cap", async () => {
+  const f = await fixture();
+  const sent = await send(f);
+  for (let i = 0; i < 8; i++)
+    f.comments.unshift({
+      id: 100 + i,
+      body: "🙂".repeat(65536),
+      user: { node_id: "ACTOR" },
+      issue_url: "https://api.github.com/repos/owner/repo/issues/1",
+    });
+  expect(await f.transport.lookup(f.e, AbortSignal.timeout(3000))).toEqual(sent);
+});
+it("consumed send issues only one POST and pins immutable GraphQL subject ID", async () => {
+  const f = await fixture();
+  await f.transport.preflight!(f.e, AbortSignal.timeout(3000));
+  const before = f.requests.length;
+  await f.transport.sendOnce(f.e, AbortSignal.timeout(3000));
+  expect(f.requests.slice(before)).toEqual(["POST /graphql"]);
+  expect(f.postBodies[0]).toMatchObject({
+    variables: {
+      input: {
+        subjectId: f.e.destination.target_node_id,
+        clientMutationId: f.e.attempt_id,
+        body: githubDeliveryBody(f.e),
+      },
+    },
+  });
+  await expect(f.transport.sendOnce(f.e, AbortSignal.timeout(3000))).rejects.toThrow("preflight_required");
+  expect(f.posts()).toBe(1);
+});
+it("locked target is rejected during readiness without POST", async () => {
+  const f = await fixture((req, res) => {
+    if (req.url !== "/repos/owner/repo/issues/1") return false;
+    res.end(
+      JSON.stringify({
+        node_id: "ISSUE",
+        number: 1,
+        url: "https://api.github.com/repos/owner/repo/issues/1",
+        locked: true,
+      }),
+    );
+    return true;
+  });
+  await expect(f.transport.preflight!(f.e, AbortSignal.timeout(3000))).rejects.toThrow("target_mismatch");
+  expect(f.posts()).toBe(0);
+});
+it("GraphQL partial errors never become a delivered receipt", async () => {
+  const f = await fixture((req, res) => {
+    if (req.method !== "POST") return false;
+    res.end(JSON.stringify({ data: null, errors: [{ message: "private provider detail" }] }));
+    return true;
+  });
+  await expect(send(f)).rejects.toThrow("graphql_error");
+  expect(f.posts()).toBe(1);
+});
+
+CORE TYPES
+  "delivery_terminal",
+  "delivery_invalid_clock",
+  "delivery_durability_unavailable",
+  "delivery_database_unavailable",
+  "delivery_response_too_large",
+  "delivery_unsupported_method",
+] as const;
+export class FollowUpDeliveryError extends Error {
+  constructor(readonly code: (typeof FOLLOW_UP_DELIVERY_ERRORS)[number]) {
+    super(code);
+    this.name = "FollowUpDeliveryError";
+  }
+}
+export interface FollowUpDeliveryTrust {
+  publicKey: KeyObject;
+  purpose: "follow_up_delivery";
+  repo_path: string;
+  provider_id: "github_comment";
+  destination_refs: readonly string[];
+  max_validity_ms: number;
+}
+export interface FollowUpTransport {
+  qualification: "test_only" | "sandbox_qualified" | "production_qualified";
+  /** The adapter must disable SDK retries; declaration is not provider qualification. */
+  automatic_retries: boolean;
+  lookup_receipt: boolean;
+  /** Effect-free readiness checks, before consuming a grant. Implementations MUST NOT POST here. */
+  preflight?(envelope: Readonly<FollowUpDeliveryEnvelope>, signal: AbortSignal): Promise<void>;
+  sendOnce(envelope: Readonly<FollowUpDeliveryEnvelope>, signal: AbortSignal): Promise<unknown>;
+  /** Trusted provider lookup; caller-supplied receipt objects never enter this port. */
+  lookup(envelope: Readonly<FollowUpDeliveryEnvelope>, signal: AbortSignal, context?: { createdAtMs: number }): Promise<unknown>;
+}
+export interface FollowUpDeliveryOptions {
+  targets?: ReadonlyMap<string, FollowUpDeliveryTarget>;
+  trustedKeys?: ReadonlyMap<string, FollowUpDeliveryTrust>;
+  transports?: ReadonlyMap<string, FollowUpTransport>;
+  allowTestTransports?: boolean;
+  nowMs?: () => number;
+  timeoutMs?: number;
+  /** Trusted synchronous host revocation fence, evaluated inside authority transactions. */
+  assertHostConfiguration?: () => void;
+}
+interface Row {
+  attempt_id: string;
+  repo_path: string;
+CORE DISPATCH/RECONCILE
+        const row = this.row(repo, p.attempt_id);
+        this.revision(row, p.expected_revision);
+        if (["delivered", "definitely_not_sent"].includes(row.state))
+          return this.result(row, "unchanged", true);
+        const now = this.evidenceClock(row.updated_at_ms);
+        this.db
+          .prepare(
+            "UPDATE follow_up_delivery_grants SET state='revoked',updated_at_ms=? WHERE attempt_id=? AND state='active'",
+          )
+          .run(now, row.attempt_id);
+        return this.result(
+          this.bump(
+            row,
+            row.state === "prepared" ? "definitely_not_sent" : "delivery_unknown",
+            row.state === "prepared" ? "revoked_before_send" : "revoked_after_start",
+            now,
+            { reason: p.reason, timestamp_basis: "monotone_revocation_record" },
+          ),
+          "revoked",
+        );
+      }),
+    );
+  }
+  async dispatch(input: unknown): Promise<FollowUpDeliveryResult> {
+    const p = parsed(FollowUpDeliveryActionParams, input),
+      repo = repoPath(p.repo_path);
+    // A transient read-only provider preflight does not consume or wedge a still-prepared attempt.
+    const admission = this.safe(() => this.durableWrite(() => {
+      const row = this.row(repo, p.attempt_id);
+      this.revision(row, p.expected_revision);
+      if (row.state !== "prepared") return undefined;
+      const envelope = this.envelope(row), transport = this.transport(envelope);
+      if (!transport?.preflight) return undefined;
+      const grant = this.grant(row.attempt_id);
+      if (!grant) throw new FollowUpDeliveryError("delivery_authorization_required");
+      if (grant.state !== "active") throw new FollowUpDeliveryError("delivery_authorization_revoked");
+      this.options.assertHostConfiguration?.();
+      this.verifyGrant(row, SignedFollowUpDeliveryGrant.parse(JSON.parse(grant.signed_json)), this.clock(row.updated_at_ms));
+      return {envelope: frozen(envelope), transport};
+    }));
+    if (admission) {
+      const readiness = await this.boundedCall(signal => admission.transport.preflight!(admission.envelope, signal));
+      if (!readiness.ok) throw new FollowUpDeliveryError("delivery_destination_unavailable");
+    }
+    const claim = this.safe(() =>
+      this.durableWrite(() => {
+        const row = this.row(repo, p.attempt_id);
+        this.revision(row, p.expected_revision);
+        if (row.state !== "prepared")
+          return {
+            result: this.result(
+              row,
+              row.state === "started"
+                ? "in_flight"
+                : row.state === "delivery_unknown"
+                  ? "delivery_unknown"
+                  : "unchanged",
+              true,
+            ),
+          };
+        const envelope = this.envelope(row),
+          transport = this.transport(envelope);
+        if (!transport) return { result: this.result(row, "qualification_pending") };
+        const grant = this.grant(row.attempt_id);
+        if (!grant) throw new FollowUpDeliveryError("delivery_authorization_required");
+        if (grant.state !== "active") throw new FollowUpDeliveryError("delivery_authorization_revoked");
+        const now = this.clock(row.updated_at_ms);
+        this.options.assertHostConfiguration?.();
+        // Verify current key, exact target, immutable content and time INSIDE the consuming transaction.
+        this.verifyGrant(row, SignedFollowUpDeliveryGrant.parse(JSON.parse(grant.signed_json)), now);
+        this.obligation(repo, row.obligation_id, row.obligation_revision);
+        const consumed = this.db
+          .prepare(
+            "UPDATE follow_up_delivery_grants SET state='consumed',updated_at_ms=? WHERE attempt_id=? AND state='active'",
+          )
+          .run(now, row.attempt_id);
+        if (consumed.changes !== 1) throw new FollowUpDeliveryError("delivery_authorization_revoked");
+        const started = this.bump(
+          row,
+          "started",
+          "send_started",
+          now,
+          { grant_id: grant.grant_id },
+          transport.qualification,
+        );
+        return { row: started, envelope: frozen(envelope), transport };
+      }),
+    );
+    if ("result" in claim) return claim.result;
+    // No retry or fallback exists here. A throw after this call cannot prove non-delivery.
+    const outcome = await this.boundedCall((signal) => claim.transport.sendOnce(claim.envelope, signal));
+    return this.safe(() =>
+      this.durableWrite(() => {
+        const current = this.row(repo, p.attempt_id);
+        if (current.state !== "started" || current.revision !== claim.row.revision)
+          return this.result(current, "unchanged", true);
+        const now = this.evidenceClock(current.updated_at_ms),
+          receipt = outcome.ok ? this.receipt(claim.envelope, outcome.value) : null;
+        if (!receipt)
+          return this.result(
+            this.bump(
+              current,
+              "delivery_unknown",
+              outcome.ok ? "receipt_unconfirmed" : "send_outcome_unknown",
+              now,
+              {},
+            ),
+            "delivery_unknown",
+          );
+        return this.result(
+          this.bump(
+            current,
+            "delivered",
+            "provider_receipt",
+            now,
+            { receipt_sha256: hash(receipt) },
+            current.qualification,
+            receipt,
+          ),
+          "delivered",
+        );
+      }),
+    );
+  }
+  async reconcile(input: unknown): Promise<FollowUpDeliveryResult> {
+    const p = parsed(FollowUpDeliveryActionParams, input),
+      repo = storedRepoPath(p.repo_path);
+    const claim = this.safe(() =>
+      this.durableWrite(() => {
+        let row = this.row(repo, p.attempt_id);
+        this.revision(row, p.expected_revision);
+        if (row.state === "prepared") throw new FollowUpDeliveryError("delivery_authorization_required");
+        if (["delivered", "definitely_not_sent"].includes(row.state))
+          return { result: this.result(row, "unchanged", true) };
+        const envelope = this.envelope(row),
+          transport = this.transport(envelope);
+        if (!transport?.lookup_receipt || transport.qualification !== row.qualification)
+          return { result: this.result(row, "qualification_pending") };
+        const now = this.evidenceClock(row.updated_at_ms);
+        if (row.state === "started") row = this.bump(row, "delivery_unknown", "started_unconfirmed", now, {});
+        const started = this.db.prepare("SELECT created_at_ms FROM follow_up_delivery_events WHERE attempt_id=? AND transition='send_started' ORDER BY revision LIMIT 1").get(row.attempt_id) as {created_at_ms:number}|undefined;
+        return { row, envelope: frozen(envelope), transport, lookupSinceMs: started?.created_at_ms ?? row.created_at_ms };
+      }),
+    );
+    if ("result" in claim) return claim.result;
+    const outcome = await this.boundedCall((signal) => claim.transport.lookup(claim.envelope, signal, {createdAtMs: claim.lookupSinceMs}));
+    return this.safe(() =>
+      this.durableWrite(() => {
+        const row = this.row(repo, p.attempt_id);
+        if (row.state !== "delivery_unknown" || row.revision !== claim.row.revision)
+          return this.result(row, "unchanged", true);
+        const now = this.evidenceClock(row.updated_at_ms),
+          receipt = outcome.ok ? this.receipt(claim.envelope, outcome.value) : null;
+        if (!receipt)
+          return this.result(
+            this.bump(row, "delivery_unknown", "lookup_unconfirmed", now, {}),
+            "delivery_unknown",
+          );
+        return this.result(
+          this.bump(
+            row,
+            "delivered",
+            "provider_lookup_receipt",
+            now,
+            { receipt_sha256: hash(receipt) },
+            row.qualification,
+            receipt,
+          ),
+          "delivered",
+        );
+      }),
+    );
+  }
+  private async boundedCall(
+    call: (signal: AbortSignal) => Promise<unknown>,
+  ): Promise<{ ok: true; value: unknown } | { ok: false }> {
+    const controller = new AbortController();
+    let timer: NodeJS.Timeout | undefined;
+    try {
+      return await Promise.race([
+        Promise.resolve()
+          .then(() => call(controller.signal))
+          .then(
+            (value) => ({ ok: true as const, value }),
+            () => ({ ok: false as const }),
+          ),
+        new Promise<{ ok: false }>((resolve) => {
+          timer = setTimeout(
+            () => {
+              controller.abort();
+              resolve({ ok: false });
+            },
+            Math.max(1, Math.min(30000, this.options.timeoutMs ?? 5000)),
+          );
+        }),
+      ]);
+    } finally {
+      if (timer) clearTimeout(timer);
+      controller.abort();
+    }
+  }
+  private target(repo: string, ref: string): FollowUpDeliveryTarget {
+    const result = FollowUpDeliveryTarget.safeParse(this.options.targets?.get(ref));
+    if (!result.success || result.data.destination_ref !== ref || result.data.repo_path !== repo)
+      throw new FollowUpDeliveryError("delivery_destination_unavailable");
+    return result.data;
+  }
+  private transport(envelope: FollowUpDeliveryEnvelope): FollowUpTransport | undefined {
+    const current = this.target(envelope.repo_path, envelope.destination.destination_ref);
+    if (hash(current) !== envelope.destination_digest)
+      throw new FollowUpDeliveryError("delivery_destination_unavailable");
+    const t = this.options.transports?.get(current.provider_id);
+    if (
+      !t ||
+      t.automatic_retries ||
+      !(["test_only", "sandbox_qualified", "production_qualified"] as string[]).includes(t.qualification) ||
+      (t.qualification === "test_only" && !this.options.allowTestTransports)
+    )
+      return undefined;
+    return t;
+  }
+  private subject(envelope: FollowUpDeliveryEnvelope) {
+    return FollowUpDeliverySubject.parse({
+      domain: "osstack.follow-up-delivery.v1",
+      repo_path: envelope.repo_path,

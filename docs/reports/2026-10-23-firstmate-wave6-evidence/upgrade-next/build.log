@@ -1,0 +1,16 @@
+CLI Building entry: src/upgrade-coordinator.ts, src/upgrade-journal.ts, src/upgrade-plan.ts
+CLI Using tsconfig: tsconfig.json
+CLI tsup v8.5.1
+CLI Using tsup config: /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-supervision-next/packages/cli/tsup.config.ts
+CLI Target: node22
+CLI Cleaning output folder
+ESM Build start
+ESM ../../../../../../../tmp/osstack/smoke/pr237-integration/upgrade-next/build/chunk-D3C4U7LX.js          9.56 KB
+ESM ../../../../../../../tmp/osstack/smoke/pr237-integration/upgrade-next/build/upgrade-coordinator.js     12.00 KB
+ESM ../../../../../../../tmp/osstack/smoke/pr237-integration/upgrade-next/build/upgrade-journal.js         12.28 KB
+ESM ../../../../../../../tmp/osstack/smoke/pr237-integration/upgrade-next/build/upgrade-plan.js            619.00 B
+ESM ../../../../../../../tmp/osstack/smoke/pr237-integration/upgrade-next/build/upgrade-coordinator.js.map 21.83 KB
+ESM ../../../../../../../tmp/osstack/smoke/pr237-integration/upgrade-next/build/chunk-D3C4U7LX.js.map      29.36 KB
+ESM ../../../../../../../tmp/osstack/smoke/pr237-integration/upgrade-next/build/upgrade-plan.js.map        71.00 B
+ESM ../../../../../../../tmp/osstack/smoke/pr237-integration/upgrade-next/build/upgrade-journal.js.map     22.04 KB
+ESM ⚡️ Build success in 9ms

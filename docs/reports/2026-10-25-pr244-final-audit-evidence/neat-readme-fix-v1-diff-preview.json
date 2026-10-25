@@ -1,0 +1,19 @@
+{
+  "protocol_version": "1.0",
+  "status": "ok",
+  "result": {
+    "command": "knowledge_hygiene.fix",
+    "mode": "preview",
+    "patch_plan": {
+      "schema_version": "1",
+      "patch_id": "khp_2418c5bc21db759c0d208600846634c46ac47527d7391ac07697eb7e9c62f40f",
+      "generated_at": "2026-10-24T16:40:11.753Z",
+      "repo": {
+        "root": "/Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/pr244-final-audit",
+        "repo_id": "pr244-final-audit"
+      },
+      "diff_id": "diff_01f193d2667eae3dd9f08dd3afb408d5b93e231d99c44ce4871f7bf3af763f59",
+      "actions": []
+    }
+  }
+}

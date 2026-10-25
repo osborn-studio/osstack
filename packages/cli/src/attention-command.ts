@@ -10,6 +10,7 @@ Opt-in daemon: OSSTACK_ATTENTION=1 osstack serve
   attention answer --scope ID --item ID --action ID --revision N --content-hash HASH --text TEXT [--takeover --grant ID]
   attention release --scope ID --kind session|run|loop --subject ID --expected-version N
   attention abandon-receipt --scope ID --session ID --message ID --expected-version N --reason TEXT --evidence-sha256 HASH --acknowledge-unknown-effects
+  attention recovery --scope ID [--after CURSOR] [--limit 1..25] [--json]
   attention brief|cockpit --scope ID --actor NAME
   attention posture --scope ID --actor NAME --posture attended|quiet|away
   attention seen --scope ID --actor NAME --revisions JSON
@@ -19,7 +20,11 @@ Opt-in daemon: OSSTACK_ATTENTION=1 osstack serve
   attention loop --scope ID --loop-id ID --state-path PATH
   attention ci --scope ID --github-repo OWNER/REPO --pr N --head SHA --required JSON
   attention claude-hook --binding-file PATH
+  attention lesson --from-run ID --repo PATH --default-tenant [--dry-run] [--json]
+  attention triage --scope ID --item ID --model EXACT [--json]
+  attention triage --status --scope ID [--json]
   attention contract|routing-eval|triage|context|lesson --input PATH [--json]
+Legacy --input planning uses supplied data only; it does not verify execution. Runtime V2: deliver --contract FILE.
 See docs/guides/attention.md for planning flags and verified hook setup.
 No daemon is automatically started. Hooks are explicit calls; no offline watchdog is installed.`;
 export async function handleAttentionCommand(
@@ -30,9 +35,9 @@ export async function handleAttentionCommand(
     rpc?: (
       method: string,
       params?: unknown,
-      timeoutMs?: number
+      timeoutMs?: number,
     ) => Promise<unknown>;
-  } = {}
+  } = {},
 ): Promise<number> {
   const out = io.stdout ?? console.log;
   const err = io.stderr ?? console.error;
@@ -41,14 +46,29 @@ export async function handleAttentionCommand(
     return 0;
   }
   try {
+    if (args[0] === "triage" && !args.includes("--input")) {
+      const {handleAttentionTriageCommand} = await import("./attention-triage.js");
+      if (!io.rpc) throw new Error("daemon_connection_required");
+      return await handleAttentionTriageCommand(args,{...io,rpc:io.rpc});
+    }
+    if (args[0] === "lesson" && args.includes("--from-run")) {
+      const { handleEvidenceLessonCommand } = await import(
+        "./attention-lesson.js"
+      );
+      return await handleEvidenceLessonCommand(args, io);
+    }
     if (args[0] === "claude-hook") {
       if (!io.rpc) throw new Error("daemon_connection_required");
       const { handleClaudeAttentionHook } = await import("./attention-hook.js");
-      return await handleClaudeAttentionHook(args, (method, params) => io.rpc!(method, params, 1000), out);
+      return await handleClaudeAttentionHook(
+        args,
+        (method, params) => io.rpc!(method, params, 1000),
+        out,
+      );
     }
     if (
       ["contract", "routing-eval", "triage", "context", "lesson"].includes(
-        args[0] ?? ""
+        args[0] ?? "",
       )
     ) {
       const { handleAttentionPlanning } = await import(
@@ -112,21 +132,21 @@ export async function handleAttentionCommand(
             ...result.sessions.map(
               (s) =>
                 `${JSON.stringify(s.session_id)}: ${JSON.stringify(
-                  s.state
+                  s.state,
                 )} · ${JSON.stringify(s.wait.reason)}${
                   s.decision ? ` · ${JSON.stringify(s.decision.question)}` : ""
-                }`
+                }`,
             ),
             `Runs: ${result.runs.length}; omitted: ${result.completeness.omitted_binding_unknown}; truncated: ${result.completeness.truncated}`,
             `Limitations: ${JSON.stringify(result.limitations)}`,
-          ].join("\n")
+          ].join("\n"),
     );
     return 0;
   } catch (error) {
     err(
       `osstack attention: ${
         error instanceof Error ? error.message : String(error)
-      }`
+      }`,
     );
     return 1;
   }
@@ -139,14 +159,15 @@ async function handleLive(
     rpc?: (
       method: string,
       params?: unknown,
-      timeoutMs?: number
+      timeoutMs?: number,
     ) => Promise<unknown>;
-  }
+  },
 ): Promise<number> {
   const command = args[0]!;
   const allowed = [
     "watch",
     "inventory",
+    "recovery",
     "inbox",
     "get",
     "answer",
@@ -172,6 +193,7 @@ async function handleLive(
     "repo",
     "scope",
     "after",
+    "limit",
     "item",
     "action",
     "revision",
@@ -243,11 +265,11 @@ async function handleLive(
     };
     const name = mapped[key] ?? key;
     if (params[name] !== undefined) throw new Error("duplicate_flag:" + flag);
-    params[name] = ["revision", "pr", "expected-version"].includes(key)
+    params[name] = ["revision", "pr", "expected-version", "limit"].includes(key)
       ? Number(value)
       : ["revisions", "subjects", "required"].includes(key)
-      ? JSON.parse(value)
-      : value;
+        ? JSON.parse(value)
+        : value;
   }
   if (command === "answer") params["takeover"] ??= false;
   const call = async (method: string) => {
@@ -258,7 +280,7 @@ async function handleLive(
     };
     if (!response.ok)
       throw new Error(
-        response.error?.code ?? response.error?.message ?? "attention_failed"
+        response.error?.code ?? response.error?.message ?? "attention_failed",
       );
     return response.result;
   };
@@ -271,14 +293,11 @@ async function handleLive(
           deliveries: await call("attention.deliveries"),
         }
       : await call("attention." + command);
+  const safeOutput = (value: unknown) => JSON.stringify(value,null,2).replace(/[\u007f-\u009f\p{Cf}]/gu, char => char.split("").map(unit => "\\u"+unit.charCodeAt(0).toString(16).padStart(4,"0")).join(""));
   (io.stdout ?? console.log)(
     json
-      ? JSON.stringify(result, null, 2)
-      : `Attention · ${command}\n${JSON.stringify(
-          result,
-          null,
-          2
-        )}\nDelivered means transport receipt; applied means instruction receipt; neither means task completed.`
+      ? safeOutput(result)
+      : `Attention · ${command}\n${safeOutput(result)}\nDelivered means transport receipt; applied means instruction receipt; neither means task completed.`,
   );
   return 0;
 }

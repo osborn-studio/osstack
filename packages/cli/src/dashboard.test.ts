@@ -84,6 +84,7 @@ describe("dashboard", () => {
         now: () => 300,
       });
 
+      expect(snapshot.attention).toMatchObject({ status: "unavailable", reason: "observer_unavailable", totals: null });
       expect(snapshot.overview.total_runs).toBe(2);
       expect(snapshot.overview.completed_runs).toBe(1);
       expect(snapshot.overview.active_runs).toBe(1);
@@ -366,4 +367,70 @@ describe("dashboard", () => {
     expect(chinese).toContain("已记录观察");
     expect(chinese).toContain("历史计数（非验证）");
   });
+});
+
+it("serves read-only Attention facts through the real dashboard HTTP path with bounded paging", async () => {
+  const path = join(tmp, "attention-http.db");
+  const db = openDb({ path });
+  const { AttentionStore } = await import("@osstack/core");
+  const store = new AttentionStore(db, path);
+  const owner = store.claimOwner("dashboard-test");
+  for (const task_id of ["one", "two"]) {
+    insertTask(db, path, { task_id, title: task_id, created_at: 1 });
+    store.registerScope(owner, task_id, tmp);
+  }
+  db.prepare("UPDATE attention_scopes SET sampled_at=300000,deadline=365000,scan_complete=1").run();
+  const server = await startDashboardServer(params => createDashboardSnapshot({
+    db, dbPath: path, kanban: new KanbanRepository(db, path),
+    ...params, attentionService: "running", now: () => 300,
+    version: "test", phase: "test", dashboardUrl: "http://127.0.0.1", adapters: [], activeRuns: 0,
+  }), { host: "127.0.0.1", port: 0 });
+  try {
+    const api = `${server.url.replace("/dashboard", "/api/dashboard")}?workspace=${encodeURIComponent(tmp)}&attention_limit=1`;
+    const first = await (await fetch(api)).json() as { attention: { status: string; totals: { scopes: number }; returned: number; next_after: string } };
+    expect(first.attention).toMatchObject({ status: "available", totals: { scopes: 2 }, returned: 1 });
+    const next = await (await fetch(`${api}&attention_after=${first.attention.next_after}`)).json() as { attention: { totals: { scopes: number }; truncated: boolean } };
+    expect(next.attention).toMatchObject({ totals: { scopes: 2 }, truncated: false });
+    expect((await fetch(`${api}&attention_after=bad`)).status).toBe(400);
+    expect(db.prepare("SELECT COUNT(*) n FROM attention_seen").get()).toEqual({ n: 0 });
+  } finally { await server.close(); db.close(); }
+});
+
+it("renders untrusted Attention source text as text, never markup or executable links", async () => {
+  const { runInNewContext } = await import("node:vm");
+  const html = renderDashboardHtml();
+  const script = html.match(/<script>([\s\S]*?)<\/script>/)![1]!.split("const t = ")[0]!;
+  const elements: Record<string, { textContent: string; hidden: boolean; href: string }> = {};
+  const context = { URL, window: { location: { href: "http://127.0.0.1/dashboard?workspace=%2Frepo&attention_limit=1" } },
+    document: { getElementById: (id: string) => elements[id] ??= { textContent: "", hidden: true, href: "" } } };
+  runInNewContext(script + `renderAttention({ status:'stale', totals:null, scopes:[{task_title:'<img src=x onerror=alert(1)>',coverage:'stale',scope_id:'javascript:alert(1)'}], truncated:true, next_after:'javascript:alert(1)' });`, context);
+  expect(elements["attention"]!.textContent).toContain("<img src=x onerror=alert(1)>");
+  expect(elements["attention"]!.textContent).toContain("Counts unavailable");
+  expect(elements["attention"]!.textContent).toContain("\n");
+  expect(elements["attention-next"]!.hidden).toBe(true);
+  expect(Object.hasOwn(elements["attention"]!, "innerHTML")).toBe(false);
+});
+
+it("replaces a lost dashboard connection with unavailable Attention instead of stale healthy UI", async () => {
+  const { runInNewContext } = await import("node:vm");
+  const script = renderDashboardHtml().match(/<script>([\s\S]*?)<\/script>/)![1]!;
+  const elements: Record<string, { textContent: string; hidden: boolean; href: string }> = {};
+  runInNewContext(script, {
+    URL, URLSearchParams, AbortController, setTimeout, clearTimeout, setInterval: () => {},
+    window: { location: { href: "http://127.0.0.1/dashboard", search: "" } },
+    fetch: async () => { throw new Error("offline"); },
+    document: { getElementById: (id: string) => elements[id] ??= { textContent: "Previously healthy", hidden: true, href: "" } },
+  });
+  await new Promise(resolve => setTimeout(resolve, 0));
+  expect(elements["attention"]!.textContent).toContain("Observation unavailable");
+  expect(elements["attention"]!.textContent).toContain("Counts unavailable");
+});
+
+it("normalizes malformed Attention page links before fetching the full dashboard", async () => {
+  const { runInNewContext } = await import("node:vm");
+  const script = renderDashboardHtml().match(/<script>([\s\S]*?)<\/script>/)![1]!.split("const t = ")[0]!;
+  // Read the production helper without starting its automatic refresh loop.
+  const helper = renderDashboardHtml().split("function dashboardSearch() {")[1]!.split("let latestDashboardRequest")[0]!;
+  const context = { URLSearchParams, window: { location: { search: "?workspace=%2Frepo&attention_after=bad&attention_limit=0" } } };
+  expect(runInNewContext(script + "function dashboardSearch() {" + helper + "dashboardSearch()", context)).toBe("?workspace=%2Frepo");
 });

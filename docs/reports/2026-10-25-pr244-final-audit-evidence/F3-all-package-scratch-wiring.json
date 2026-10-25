@@ -1,0 +1,138 @@
+{
+  "count": 22,
+  "allUseSharedSetup": true,
+  "configs": [
+    {
+      "path": "packages/agents/vitest.config.ts",
+      "sha256": "a6396a52dba5dac3a02dc498e9abdcc925a3cd691b63e931c12112f0f6cd8379",
+      "includesSharedScratchSetup": true,
+      "text": "import { defineConfig } from \"vitest/config\";\nexport default defineConfig({ test: { setupFiles: [\"../../scripts/vitest-setup-scratch.ts\"] } });\n"
+    },
+    {
+      "path": "packages/autonomy/vitest.config.ts",
+      "sha256": "a6396a52dba5dac3a02dc498e9abdcc925a3cd691b63e931c12112f0f6cd8379",
+      "includesSharedScratchSetup": true,
+      "text": "import { defineConfig } from \"vitest/config\";\nexport default defineConfig({ test: { setupFiles: [\"../../scripts/vitest-setup-scratch.ts\"] } });\n"
+    },
+    {
+      "path": "packages/cli/vitest.config.ts",
+      "sha256": "315c2e1b0773b508a316cb20b966ff2a34d664664fa2e6fc26f880c8b0b7c618",
+      "includesSharedScratchSetup": true,
+      "text": "import { defineConfig } from \"vitest/config\";\n\nexport default defineConfig({\n  test: {\n    // Some suites call process.chdir(), which throws under the worker_threads\n    // pool. Vitest's historical default here is the forks pool; pin it\n    // explicitly so introducing this config file cannot silently change the\n    // pool/isolation behavior those tests depend on.\n    pool: \"forks\",\n    sequence: { setupFiles: \"list\" },\n    // Graph/session suites spawn their own workers and repeatedly hash native\n    // runtimes. Bound nested process contention without relaxing deadlines.\n    maxWorkers: 2,\n    // R2.1 hermeticity guard: point OSSTACK_HOME at a per-test-file tmp dir before any\n    // test module loads so no suite can touch the real ~/.osstack.\n    setupFiles: [\"../../scripts/vitest-setup-scratch.ts\", \"./src/test-setup-hermetic-home.ts\"],\n  },\n});\n"
+    },
+    {
+      "path": "packages/compliance/vitest.config.ts",
+      "sha256": "a6396a52dba5dac3a02dc498e9abdcc925a3cd691b63e931c12112f0f6cd8379",
+      "includesSharedScratchSetup": true,
+      "text": "import { defineConfig } from \"vitest/config\";\nexport default defineConfig({ test: { setupFiles: [\"../../scripts/vitest-setup-scratch.ts\"] } });\n"
+    },
+    {
+      "path": "packages/config/vitest.config.ts",
+      "sha256": "a6396a52dba5dac3a02dc498e9abdcc925a3cd691b63e931c12112f0f6cd8379",
+      "includesSharedScratchSetup": true,
+      "text": "import { defineConfig } from \"vitest/config\";\nexport default defineConfig({ test: { setupFiles: [\"../../scripts/vitest-setup-scratch.ts\"] } });\n"
+    },
+    {
+      "path": "packages/conformance/vitest.config.ts",
+      "sha256": "a6396a52dba5dac3a02dc498e9abdcc925a3cd691b63e931c12112f0f6cd8379",
+      "includesSharedScratchSetup": true,
+      "text": "import { defineConfig } from \"vitest/config\";\nexport default defineConfig({ test: { setupFiles: [\"../../scripts/vitest-setup-scratch.ts\"] } });\n"
+    },
+    {
+      "path": "packages/contracts/vitest.config.ts",
+      "sha256": "a6396a52dba5dac3a02dc498e9abdcc925a3cd691b63e931c12112f0f6cd8379",
+      "includesSharedScratchSetup": true,
+      "text": "import { defineConfig } from \"vitest/config\";\nexport default defineConfig({ test: { setupFiles: [\"../../scripts/vitest-setup-scratch.ts\"] } });\n"
+    },
+    {
+      "path": "packages/core/vitest.config.ts",
+      "sha256": "a6396a52dba5dac3a02dc498e9abdcc925a3cd691b63e931c12112f0f6cd8379",
+      "includesSharedScratchSetup": true,
+      "text": "import { defineConfig } from \"vitest/config\";\nexport default defineConfig({ test: { setupFiles: [\"../../scripts/vitest-setup-scratch.ts\"] } });\n"
+    },
+    {
+      "path": "packages/github/vitest.config.ts",
+      "sha256": "a6396a52dba5dac3a02dc498e9abdcc925a3cd691b63e931c12112f0f6cd8379",
+      "includesSharedScratchSetup": true,
+      "text": "import { defineConfig } from \"vitest/config\";\nexport default defineConfig({ test: { setupFiles: [\"../../scripts/vitest-setup-scratch.ts\"] } });\n"
+    },
+    {
+      "path": "packages/governance/vitest.config.ts",
+      "sha256": "a6396a52dba5dac3a02dc498e9abdcc925a3cd691b63e931c12112f0f6cd8379",
+      "includesSharedScratchSetup": true,
+      "text": "import { defineConfig } from \"vitest/config\";\nexport default defineConfig({ test: { setupFiles: [\"../../scripts/vitest-setup-scratch.ts\"] } });\n"
+    },
+    {
+      "path": "packages/graph/vitest.config.ts",
+      "sha256": "a6396a52dba5dac3a02dc498e9abdcc925a3cd691b63e931c12112f0f6cd8379",
+      "includesSharedScratchSetup": true,
+      "text": "import { defineConfig } from \"vitest/config\";\nexport default defineConfig({ test: { setupFiles: [\"../../scripts/vitest-setup-scratch.ts\"] } });\n"
+    },
+    {
+      "path": "packages/hermes-adapter/vitest.config.ts",
+      "sha256": "a6396a52dba5dac3a02dc498e9abdcc925a3cd691b63e931c12112f0f6cd8379",
+      "includesSharedScratchSetup": true,
+      "text": "import { defineConfig } from \"vitest/config\";\nexport default defineConfig({ test: { setupFiles: [\"../../scripts/vitest-setup-scratch.ts\"] } });\n"
+    },
+    {
+      "path": "packages/knowledge/vitest.config.ts",
+      "sha256": "a6396a52dba5dac3a02dc498e9abdcc925a3cd691b63e931c12112f0f6cd8379",
+      "includesSharedScratchSetup": true,
+      "text": "import { defineConfig } from \"vitest/config\";\nexport default defineConfig({ test: { setupFiles: [\"../../scripts/vitest-setup-scratch.ts\"] } });\n"
+    },
+    {
+      "path": "packages/knowledge-cloud/vitest.config.ts",
+      "sha256": "a6396a52dba5dac3a02dc498e9abdcc925a3cd691b63e931c12112f0f6cd8379",
+      "includesSharedScratchSetup": true,
+      "text": "import { defineConfig } from \"vitest/config\";\nexport default defineConfig({ test: { setupFiles: [\"../../scripts/vitest-setup-scratch.ts\"] } });\n"
+    },
+    {
+      "path": "packages/loop/vitest.config.ts",
+      "sha256": "27b2d58d43fa0a5c27bc72affe822b8dd6d5107d339f219794a4525961c07e66",
+      "includesSharedScratchSetup": true,
+      "text": "import { defineConfig } from \"vitest/config\";\n\nexport default defineConfig({\n  test: {\n    setupFiles: [\"../../scripts/vitest-setup-scratch.ts\"],\n    coverage: {\n      provider: \"v8\",\n      reporter: [\"text\", \"json-summary\"],\n      reportsDirectory: \"./coverage\",\n      include: [\"src/**/*.ts\"],\n      exclude: [\"src/**/*.test.ts\"],\n      thresholds: {\n        lines: 80,\n        functions: 80,\n        branches: 80,\n        statements: 80,\n      },\n    },\n  },\n});\n"
+    },
+    {
+      "path": "packages/neat-eval/vitest.config.ts",
+      "sha256": "a6396a52dba5dac3a02dc498e9abdcc925a3cd691b63e931c12112f0f6cd8379",
+      "includesSharedScratchSetup": true,
+      "text": "import { defineConfig } from \"vitest/config\";\nexport default defineConfig({ test: { setupFiles: [\"../../scripts/vitest-setup-scratch.ts\"] } });\n"
+    },
+    {
+      "path": "packages/plugins/vitest.config.ts",
+      "sha256": "a6396a52dba5dac3a02dc498e9abdcc925a3cd691b63e931c12112f0f6cd8379",
+      "includesSharedScratchSetup": true,
+      "text": "import { defineConfig } from \"vitest/config\";\nexport default defineConfig({ test: { setupFiles: [\"../../scripts/vitest-setup-scratch.ts\"] } });\n"
+    },
+    {
+      "path": "packages/protocol/vitest.config.ts",
+      "sha256": "a6396a52dba5dac3a02dc498e9abdcc925a3cd691b63e931c12112f0f6cd8379",
+      "includesSharedScratchSetup": true,
+      "text": "import { defineConfig } from \"vitest/config\";\nexport default defineConfig({ test: { setupFiles: [\"../../scripts/vitest-setup-scratch.ts\"] } });\n"
+    },
+    {
+      "path": "packages/runtime/vitest.config.ts",
+      "sha256": "a6396a52dba5dac3a02dc498e9abdcc925a3cd691b63e931c12112f0f6cd8379",
+      "includesSharedScratchSetup": true,
+      "text": "import { defineConfig } from \"vitest/config\";\nexport default defineConfig({ test: { setupFiles: [\"../../scripts/vitest-setup-scratch.ts\"] } });\n"
+    },
+    {
+      "path": "packages/skill-registry/vitest.config.ts",
+      "sha256": "a6396a52dba5dac3a02dc498e9abdcc925a3cd691b63e931c12112f0f6cd8379",
+      "includesSharedScratchSetup": true,
+      "text": "import { defineConfig } from \"vitest/config\";\nexport default defineConfig({ test: { setupFiles: [\"../../scripts/vitest-setup-scratch.ts\"] } });\n"
+    },
+    {
+      "path": "packages/skills/vitest.config.ts",
+      "sha256": "a6396a52dba5dac3a02dc498e9abdcc925a3cd691b63e931c12112f0f6cd8379",
+      "includesSharedScratchSetup": true,
+      "text": "import { defineConfig } from \"vitest/config\";\nexport default defineConfig({ test: { setupFiles: [\"../../scripts/vitest-setup-scratch.ts\"] } });\n"
+    },
+    {
+      "path": "packages/supervisor/vitest.config.ts",
+      "sha256": "a6396a52dba5dac3a02dc498e9abdcc925a3cd691b63e931c12112f0f6cd8379",
+      "includesSharedScratchSetup": true,
+      "text": "import { defineConfig } from \"vitest/config\";\nexport default defineConfig({ test: { setupFiles: [\"../../scripts/vitest-setup-scratch.ts\"] } });\n"
+    }
+  ]
+}

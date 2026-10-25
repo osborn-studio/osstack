@@ -1,0 +1,83 @@
+{
+  "head": "fdddee855845e245cbca079da5958f473abc1e58",
+  "root_vitest_configs": [],
+  "apps_directory_exists": false,
+  "checks": [
+    {
+      "command": [
+        "rg",
+        "-n",
+        "LoopEngine|loop-containment|CONTAINMENT_ROOT",
+        "scripts",
+        "--glob",
+        "*.test.mjs"
+      ],
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "rg",
+        "-n",
+        "LoopEngine|@osstack/loop|loop/dist|loop run",
+        "scripts",
+        "--glob",
+        "*.mjs"
+      ],
+      "exit_code": 0,
+      "stdout": "scripts/deprecate-broken-npm-versions.mjs:20:    spec: \"@osstack/loop@0.13.0\",\nscripts/deprecate-broken-npm-versions.mjs:22:    message: \"Broken release: @osstack/governance@0.13.0 was not published. Upgrade to @osstack/loop@0.13.1 or later.\",\nscripts/check-changeset-coverage.mjs:137:    parseChangesetPackageNames('---\\n\"@osstack/governance\": minor\\n\\'@osstack/loop\\': patch\\n---\\n\\nRelease.\\n'),\nscripts/check-changeset-coverage.mjs:138:    [\"@osstack/governance\", \"@osstack/loop\"],\nscripts/smoke-npm-install.mjs:132:  assertIncludes(loopHelp.stdout, \"osstack loop run [options]\", \"loop help must expose loop run\");\nscripts/verify-contained-executor.mjs:13:import { executeCandidateImplementation, ExecutionPlan } from '../packages/loop/dist/index.js';\nscripts/smoke-npm-broken-deprecation.mjs:87:const loopSpec = \"@osstack/loop@0.13.0\";\nscripts/smoke-npm-broken-deprecation.mjs:89:const loopMessage = \"Broken release: @osstack/governance@0.13.0 was not published. Upgrade to @osstack/loop@0.13.1 or later.\";\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "rg",
+        "-n",
+        "Verifier completion is unconfirmed|Verifier stop unconfirmed|Implementation completion is unconfirmed|Artifact path observation",
+        "packages/cli"
+      ],
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": ""
+    }
+  ],
+  "files": [
+    {
+      "path": "scripts/neat-semantic-live-diagnostic.test.mjs",
+      "sha256": "1f3bd34f76e6a84ccedce266f91ebbe013fa1028e2e92c3705e67fdb9f23f06e"
+    },
+    {
+      "path": "scripts/graph-test-env.test.mjs",
+      "sha256": "6b7a11636f74ab340898a60c2247220efb90e9862ad31254b0d1e56b8414ca68"
+    },
+    {
+      "path": "scripts/soak-kimi-autonomy.test.mjs",
+      "sha256": "aebbba98c2fc5e4ea3d64f612bf197bd7b57068de6469dbd456aef4e3d22d275"
+    },
+    {
+      "path": "scripts/fixtures/graph-c2-journal.test.mjs",
+      "sha256": "9e17e2a16341f8ac76799eafb22e1699a507f4e63bfb00771e862b1d90e4c7e2"
+    },
+    {
+      "path": "scripts/fixtures/graph-c2-ledger.test.mjs",
+      "sha256": "c7334eb00d7a3cd6769862855a39ccc06218a6fa99d96f029a3711c665ba30e5"
+    },
+    {
+      "path": "scripts/soak-kimi-autonomy.mjs",
+      "sha256": "bb985041da1953195ffbb5dcfa33c535f62a2d25ee218ea513df3119f0f817f7"
+    },
+    {
+      "path": "scripts/fixtures/graph-c2-runtime.mjs",
+      "sha256": "4481c2454addd2600d71873763a14d4ab3becc9feba53bd9035df04f0df11505"
+    },
+    {
+      "path": "pnpm-workspace.yaml",
+      "sha256": "810ea37f810d926d051413abe9b22ddeaf4974e180712c9f49e114b30b47ef8b"
+    },
+    {
+      "path": "package.json",
+      "sha256": "0b24ea7cee1a525cd0d47517c429f48be053898a84782d4eeaba7fbc3e5df475"
+    }
+  ],
+  "interpretation": "rg exit 1 means no matches. Five node:test files do not construct LoopEngine. Soak subprocesses are dedicated deterministic fixture scripts; this scope does not claim live soak qualification. Root pnpm workspace contains packages/* only."
+}

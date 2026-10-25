@@ -1,0 +1,16 @@
+{
+  "final-loop-qualified.log": "a8683e0806c6c76b70e8a53a5f20870ed6756eec2af7a4ebbf0fb945c18e828b",
+  "integration-qualification.json": "d8c53380709da076e0f32ff4930a4478429901ede73e0771abfca682463831fe",
+  "final-startup.log": "c200abd3025de8a96148afbb89ca593c35b9663bc5c62be60deea88e848aa812",
+  "final-inventory.log": "a59b7d9a6d962ccf0d22d13d2cc0f8acbb9e3653a63cce339211a5dfb3cd56e9",
+  "final-schemas.log": "72eede8bd62b3a68d3e094d4aeccda65c0b3de5a92b0843adc8530af2c2cff41",
+  "qualification-retry-enqueue.json": "0e7b53037998d6df2d731a304c37cdf60582bf0542f3eb6174ec34962f8dbfc8",
+  "README.md": "83e23ec12f5261d258fd7db8ce62168afc4e8f156fb668326af5ff9802ed40c5",
+  "final-typecheck.log": "61b6c9f8f8b810373014ad12b8812565b3e91d83b2c9b843c413c1ed83948417",
+  "final-build.log": "9abf5fa35468c08aaf3802f76db38fa51f94058014cbc9b68d619791c8789799",
+  "final-test.log": "5f3969fee710a0252b47cc619f320052605aba43dd8542114d2c994ba04c542c",
+  "qualification-loop.json": "36e26d3544825cec096785dcfdc811ebf6efe82c5ce76cbdbbacb7a122da821a",
+  "final-source-manifest.json": "a4fe202427753d55f65650d61ee5ce2d4412e6649f178f1228b33c3dcde3cab6",
+  "qualification-loop-stderr.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "final-lint.log": "8d5e8885c634b7f1e0b2b7c134fd5a63e747b44f4cf69b82df1c61cad7602b11"
+}

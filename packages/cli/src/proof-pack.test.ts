@@ -13,26 +13,30 @@ describe("staged proof evidence", () => {
     expect(createProofStageMetadata({ stage: "candidate" })).toEqual({
       proof_stage: "candidate",
     });
-    expect(() => createProofStageMetadata({
-      stage: "candidate",
-      supersedes: {
-        manifest_path: "../candidate/manifest.json",
-        manifest_sha256: "a".repeat(64),
-      },
-    })).toThrow(/candidate proof must not supersede/);
+    expect(() =>
+      createProofStageMetadata({
+        stage: "candidate",
+        supersedes: {
+          manifest_path: "../candidate/manifest.json",
+          manifest_sha256: "a".repeat(64),
+        },
+      }),
+    ).toThrow(/candidate proof must not supersede/);
   });
 
   it("requires a checksummed candidate manifest for final metadata", () => {
     expect(() => createProofStageMetadata({ stage: "final" })).toThrow(
       /final proof requires supersedes/,
     );
-    expect(createProofStageMetadata({
-      stage: "final",
-      supersedes: {
-        manifest_path: "../osstack-proof-run/manifest.json",
-        manifest_sha256: "b".repeat(64),
-      },
-    })).toEqual({
+    expect(
+      createProofStageMetadata({
+        stage: "final",
+        supersedes: {
+          manifest_path: "../osstack-proof-run/manifest.json",
+          manifest_sha256: "b".repeat(64),
+        },
+      }),
+    ).toEqual({
       proof_stage: "final",
       supersedes: {
         manifest_path: "../osstack-proof-run/manifest.json",
@@ -77,10 +81,12 @@ describe("staged proof evidence", () => {
   });
 
   it("keeps post-merge deploy, rollback, and freeze evidence out of candidate proof", () => {
-    expect(() => createProofStageArtifacts({
-      stage: "candidate",
-      deploy_staging_evidence: { outcome: "healthy" },
-    })).toThrow(/candidate proof.*deploy evidence/i);
+    expect(() =>
+      createProofStageArtifacts({
+        stage: "candidate",
+        deploy_staging_evidence: { outcome: "healthy" },
+      }),
+    ).toThrow(/candidate proof.*deploy evidence/i);
 
     const artifacts = createProofStageArtifacts({
       stage: "final",
@@ -124,30 +130,35 @@ describe("createVerifierOutputArtifacts", () => {
   it("writes redacted structured Kimi Markdown and JSON evidence", () => {
     const artifacts = createVerifierOutputArtifacts({
       status: "pass",
-      results: [{
-        task_id: "task/one",
-        pass: true,
-        score: 1,
-        reviewer_agent_id: "kimi-code",
-        summary: "Approved.",
-        event_seq: 7,
-        review_artifacts: [{
-          schema_version: 1,
+      results: [
+        {
+          task_id: "task/one",
+          pass: true,
+          score: 1,
           reviewer_agent_id: "kimi-code",
-          verdict: "approved",
-          risk: "read_only",
-          markdown: "# Review\n\nApproved sk-test-secret-token-12345678901234567890",
-          judgments: [],
-          findings: [],
-          recommended_actions: [],
-          evidence_refs: ["src/app.ts"],
-          runtime_identity: {
-            adapter_id: "kimi-code",
-            provider_id: "kimi",
-            model_id: "kimi-code/k3",
-          },
-        }],
-      }],
+          summary: "Approved.",
+          event_seq: 7,
+          review_artifacts: [
+            {
+              schema_version: 1,
+              reviewer_agent_id: "kimi-code",
+              verdict: "approved",
+              risk: "read_only",
+              markdown:
+                "# Review\n\nApproved sk-test-secret-token-12345678901234567890",
+              judgments: [],
+              findings: [],
+              recommended_actions: [],
+              evidence_refs: ["src/app.ts"],
+              runtime_identity: {
+                adapter_id: "kimi-code",
+                provider_id: "kimi",
+                model_id: "kimi-code/k3",
+              },
+            },
+          ],
+        },
+      ],
     });
 
     expect(artifacts.map((artifact) => artifact.path)).toEqual([
@@ -156,7 +167,7 @@ describe("createVerifierOutputArtifacts", () => {
     ]);
     expect(artifacts[0]?.content).toContain("# Review");
     expect(artifacts[0]?.content).toContain("[REDACTED:");
-    expect(artifacts[1]?.content).toContain("\"verdict\": \"approved\"");
+    expect(artifacts[1]?.content).toContain('"verdict": "approved"');
     expect(artifacts[1]?.content).toContain("[REDACTED:");
     expect(JSON.stringify(artifacts)).not.toContain("sk-test-secret-token");
   });
@@ -164,14 +175,16 @@ describe("createVerifierOutputArtifacts", () => {
   it("keeps the legacy text artifact for unstructured reviewers", () => {
     const artifacts = createVerifierOutputArtifacts({
       status: "pass",
-      results: [{
-        task_id: "legacy-task",
-        pass: true,
-        score: 1,
-        reviewer_agent_id: "local-verifier",
-        summary: "Verifier passed.",
-        event_seq: 2,
-      }],
+      results: [
+        {
+          task_id: "legacy-task",
+          pass: true,
+          score: 1,
+          reviewer_agent_id: "local-verifier",
+          summary: "Verifier passed.",
+          event_seq: 2,
+        },
+      ],
     });
 
     expect(artifacts).toEqual([
@@ -231,18 +244,22 @@ describe("createVerifierOutputArtifacts", () => {
       runtime_identity: {},
     };
 
-    expect(() => createVerifierOutputArtifacts({
-      status: "pass",
-      results: [{
-        task_id: "task-one",
-        pass: true,
-        score: 1,
-        reviewer_agent_id: "kimi-code",
-        summary: "Approved.",
-        event_seq: 7,
-        review_artifacts: [review, review],
-      }],
-    })).toThrow(/duplicate proof artifact path/);
+    expect(() =>
+      createVerifierOutputArtifacts({
+        status: "pass",
+        results: [
+          {
+            task_id: "task-one",
+            pass: true,
+            score: 1,
+            reviewer_agent_id: "kimi-code",
+            summary: "Approved.",
+            event_seq: 7,
+            review_artifacts: [review, review],
+          },
+        ],
+      }),
+    ).toThrow(/duplicate proof artifact path/);
   });
 });
 
@@ -287,11 +304,13 @@ describe("profile routing proof evidence", () => {
 
     expect(policy).toMatchObject({
       status: "recorded",
-      decisions: [expect.objectContaining({
-        profile_name: "mac-mini",
-        independent: true,
-        independence_reason: "reported provider or model differs",
-      })],
+      decisions: [
+        expect.objectContaining({
+          profile_name: "mac-mini",
+          independent: true,
+          independence_reason: "reported provider or model differs",
+        }),
+      ],
     });
     expect(runtime).toMatchObject({
       status: "recorded",
@@ -332,3 +351,19 @@ function loopEvent(
     payload,
   };
 }
+
+it("includes V2 contract and host receipt reference in the hashed proof artifact set", () => {
+  const contract = { digest: "a".repeat(64), contract: { schema_version: 2 } };
+  const receipt = { path: "/host/evidence.json", digest: "b".repeat(64) };
+  const artifacts = createProofStageArtifacts({
+    stage: "candidate",
+    delivery_contract_evidence: contract,
+    delivery_receipt_evidence: receipt,
+  });
+  expect(artifacts.map((item) => item.path)).toEqual([
+    "delivery-contract.json",
+    "delivery-verification-receipt-reference.json",
+  ]);
+  expect(JSON.parse(artifacts[0]!.content)).toEqual(contract);
+  expect(JSON.parse(artifacts[1]!.content)).toEqual(receipt);
+});

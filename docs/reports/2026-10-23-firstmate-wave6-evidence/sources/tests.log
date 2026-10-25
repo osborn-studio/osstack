@@ -1,0 +1,11 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-cockpit/packages/cli
+
+ ✓ src/local-source-command.test.ts (3 tests) 4ms
+ ✓ src/local-data-source-registry.test.ts (12 tests) 159ms
+
+ Test Files  2 passed (2)
+      Tests  15 passed (15)
+   Start at  13:50:28
+   Duration  585ms (transform 204ms, setup 17ms, collect 553ms, tests 162ms, environment 0ms, prepare 58ms)
+

@@ -1,0 +1,11 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-final/packages/loop
+
+ ✓ src/executor.test.ts (116 tests) 3793ms
+   ✓ command process groups > confirms timeout termination of children and grandchildren  509ms
+
+ Test Files  1 passed (1)
+      Tests  116 passed (116)
+   Start at  18:08:32
+   Duration  4.14s (transform 117ms, setup 31ms, collect 114ms, tests 3.79s, environment 0ms, prepare 32ms)
+

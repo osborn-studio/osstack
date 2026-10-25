@@ -49,10 +49,10 @@ export const LEGAL_TRANSITIONS: Record<
     "escalated",
     "cancelled",
   ],
-  candidate_proof: ["committing", "delivery_evidence_failed", "escalated"],
+  candidate_proof: ["final_proof", "committing", "delivery_evidence_failed", "escalated"],
   committing: ["pushing", "blocked_delivery", "escalated"],
   pushing: ["opening_pr", "blocked_delivery", "escalated"],
-  opening_pr: ["waiting_ci", "blocked_delivery", "escalated"],
+  opening_pr: ["final_proof", "waiting_ci", "blocked_delivery", "escalated"],
   waiting_ci: ["merging", "repairing", "blocked_delivery", "escalated"],
   merging: [
     "deploying_staging",

@@ -1,0 +1,20 @@
+{
+  "scope": "compiled viewer command with fixture inspect responses; real OS signal and closed stdout pipe, not full daemon CLI",
+  "core_version_stub": "unused core schema version export44 in smoke bundle only; real service path covered separately by Vitest",
+  "results": [
+    {
+      "mode": "sigint",
+      "first_snapshot": true,
+      "exit_code": 130,
+      "signal": null,
+      "stderr": "{\"exit_code\":130,\"read_count\":1}\n"
+    },
+    {
+      "mode": "epipe",
+      "first_snapshot": true,
+      "exit_code": 1,
+      "signal": null,
+      "stderr": "{\"exit_code\":1,\"read_count\":2}\n"
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "source_commit": "f5725c3c159a07042de5807ea188eacac6c0c7c8",
+  "base_commit": "1c343aadee77933ef6ffb2d9e1a8a1b6fcb2e039",
+  "source_sha256": {
+    "packages/cli/src/follow-up-github-transport.ts": "39ffa2092c275000368f37847a928e9319e9f35b608022c7364fb7140c3ee122",
+    "packages/cli/src/follow-up-github-transport.test.ts": "012de0ef1206ae9d339bfcf394a6507bac6a263e8398ee713cc9bcecc9fed570",
+    "packages/cli/src/follow-up-delivery-host.ts": "6e39e975b954189214daa42a1dd4b8014f9673f4dd34d395b2d8bcfe2c1361b8",
+    "packages/cli/src/follow-up-delivery-host.test.ts": "89cd2c0028888b221b2f8ac775e8a6cda4d7866ebc5182a8893b4a1eee306223",
+    "packages/cli/src/follow-up-delivery-issuer.ts": "6aeecb55587783cc4803961394fa47a4b8a777d0dabd52d0bf7e2f0295311c1e",
+    "packages/core/src/state/follow-up-delivery.ts": "b93392bdf6f152a224cb601558cb91844574c9063250db982928c7ccd61716bb",
+    "packages/core/src/state/follow-up-delivery.test.ts": "abf53ff3c422a83906f0a113e8df192f548f2d50588bc6e9130e32ee3b596974"
+  },
+  "tests": {
+    "cli": 61,
+    "core": 48
+  },
+  "real_public_sends": 0,
+  "qualification": "local_fixtures_only",
+  "audit_final_fix": "round4 P1 addressed locally in f5725c3c; independent post-fix review pending authenticated CLI"
+}

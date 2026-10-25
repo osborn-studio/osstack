@@ -4,15 +4,20 @@
 // draft to loop-lessons/drafts/<task_id>.md. Drafts are review material only:
 // official skill files are never modified automatically.
 
-import { mkdir, readFile, readdir, rename, writeFile } from "node:fs/promises";
-import { basename, dirname, isAbsolute, join } from "node:path";
+import { link, lstat, mkdir, open, readFile, readdir, realpath, rename, unlink } from "node:fs/promises";
+import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { z } from "zod";
+import { constants } from "node:fs";
+import { createHash, randomUUID } from "node:crypto";
+const digest = (value: string) => createHash("sha256").update(value).digest("hex");
 
 /** Write via temp file + rename so a crash never leaves a truncated target. */
 async function writeFileAtomic(targetPath: string, content: string): Promise<void> {
-  const tmpPath = join(dirname(targetPath), `.${basename(targetPath)}.${process.pid}.${Date.now()}.tmp`);
-  await writeFile(tmpPath, content, "utf-8");
-  await rename(tmpPath, targetPath);
+  const originalMode = (await lstat(targetPath)).mode & 0o777;
+  const tmpPath = join(dirname(targetPath), `.${basename(targetPath)}.${randomUUID()}.tmp`);
+  const file = await open(tmpPath, constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | constants.O_NOFOLLOW, 0o600);
+  try { await file.writeFile(content, "utf8"); await file.chmod(originalMode); await file.sync(); await rename(tmpPath, targetPath); }
+  finally { await file.close(); await unlink(tmpPath).catch(error => { if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error; }); }
 }
 import { isSkillTask, skillIdOf } from "./publisher.js";
 import type { IterationFeedback, Task, Verdict } from "./types.js";
@@ -108,11 +113,45 @@ export async function writeLessonDraft(
     return { written: false, reason: "task succeeded without failed attempts; nothing to learn" };
   }
 
-  const dir = isAbsolute(config.dir) ? config.dir : join(options.workspacePath, config.dir);
-  const path = join(dir, `${sanitizeFileName(input.task.task_id)}.md`);
-  await mkdir(dirname(path), { recursive: true });
-  await writeFile(path, renderLessonDraft(input), "utf-8");
+  const dir = await resolveLessonDir(options.workspacePath, config.dir);
+  const legacyId = sanitizeFileName(input.task.task_id);
+  const baseId = legacyId === input.task.task_id && legacyId.length <= 60 && !/^(task-|evidence-)|-r[0-9a-f]{16}$/.test(legacyId) ? legacyId : `task-${legacyId.slice(0, 32)}-${digest(input.task.task_id).slice(0, 16)}`;
+  let content = renderLessonDraft(input);
+  const revisionId = `${baseId}-r${digest(content).slice(0, 16)}`;
+  for (const name of ["promoted", "discarded"]) {
+    const reviewedDir = await resolveLessonDir(options.workspacePath, `loop-lessons/${name}`);
+    for (const id of [baseId, revisionId]) if (await existsEntry(join(reviewedDir, `${id}.md`))) return { written: false, reason: "lesson candidate already reviewed" };
+    if (legacyId !== baseId) {
+      try { if ((await readDraftFile(join(reviewedDir, `${legacyId}.md`))).startsWith(`# Lesson Draft: ${input.task.task_id}\n`)) return { written: false, reason: "legacy lesson candidate already reviewed" }; }
+      catch { /* An ambiguous or unreadable legacy filename is not proof this task was reviewed. */ }
+    }
+  }
+  await mkdir(dir, { recursive: true });
+  await resolveLessonDir(options.workspacePath, config.dir);
+  let path = join(dir, `${baseId}.md`);
+  if (await existsEntry(path)) {
+    const existing = await compareDraft(path, content);
+    if (existing) return { written: false, path, reason: "identical lesson candidate already exists" };
+    path = join(dir, `${revisionId}.md`);
+    content += `\n## Revision provenance\nRevision of ${baseId}; existing user content was preserved.\n`;
+    if (await existsEntry(path)) return { written: false, path, reason: await compareDraft(path, content) ? "identical lesson revision already exists" : "lesson revision conflict; user content preserved" };
+  }
+  const tmpPath = join(dir, `.lesson-${randomUUID()}.tmp`);
+  const file = await open(tmpPath, constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | constants.O_NOFOLLOW, 0o600);
+  try {
+    await file.writeFile(content, "utf8"); await file.sync();
+    await resolveLessonDir(options.workspacePath, config.dir);
+    try { await link(tmpPath, path); }
+    catch (error) { if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error; return { written: false, path, reason: "lesson candidate concurrently created; existing content preserved" }; }
+  } finally { await file.close(); await unlink(tmpPath); }
   return { written: true, path };
+}
+
+async function compareDraft(path: string, content: string): Promise<boolean> {
+  const info = await lstat(path);
+  if (!info.isFile() || info.isSymbolicLink()) throw new Error("unsafe_lesson_file");
+  if (info.size > 1024 * 1024) return false;
+  return await readDraftFile(path) === content;
 }
 
 function reusableRule(task: Task, failedEvaluationIds: string[], focus: string[]): string {
@@ -181,7 +220,9 @@ export async function listLessonDrafts(
   workspacePath: string,
   dir = "loop-lessons/drafts",
 ): Promise<LessonDraftEntry[]> {
-  const draftDir = resolveLessonDir(workspacePath, dir);
+  let draftDir: string;
+  try { draftDir = await resolveLessonDir(workspacePath, dir); }
+  catch (error) { if ((error as NodeJS.ErrnoException).code === "ENOENT") return []; throw error; }
   let entries: string[];
   try {
     entries = await readdir(draftDir);
@@ -193,7 +234,7 @@ export async function listLessonDrafts(
     if (!entry.endsWith(".md")) continue;
     const path = join(draftDir, entry);
     try {
-      drafts.push(parseLessonDraftEntry(path, await readFile(path, "utf-8")));
+      drafts.push(parseLessonDraftEntry(path, await readDraftFile(path)));
     } catch {
       // Skip unreadable drafts; listing must not fail on one bad file.
     }
@@ -206,9 +247,9 @@ export async function readLessonDraft(
   id: string,
   dir = "loop-lessons/drafts",
 ): Promise<{ entry: LessonDraftEntry; content: string } | null> {
-  const path = join(resolveLessonDir(workspacePath, dir), `${sanitizeFileName(id)}.md`);
+  const path = join(await resolveLessonDir(workspacePath, dir), `${sanitizeFileName(id)}.md`);
   try {
-    const content = await readFile(path, "utf-8");
+    const content = await readDraftFile(path);
     return { entry: parseLessonDraftEntry(path, content), content };
   } catch {
     return null;
@@ -223,8 +264,12 @@ export async function promoteLessonDraft(
   const draft = await readLessonDraft(workspacePath, id, options.dir ?? "loop-lessons/drafts");
   if (draft === null) return { promoted: false, reason: `no lesson draft found for id ${id}` };
 
+  // Validate lifecycle destinations before touching an explicitly selected skill.
+  const promotedDir = await resolveLessonDir(workspacePath, options.promotedDir ?? "loop-lessons/promoted");
+  const to = join(promotedDir, basename(draft.entry.path));
+  if (await existsEntry(to)) return { promoted: false, reason: "promoted lesson already exists" };
   if (options.toSkillPath !== undefined) {
-    const skillPath = isAbsolute(options.toSkillPath)
+    let skillPath = isAbsolute(options.toSkillPath)
       ? options.toSkillPath
       : join(workspacePath, options.toSkillPath);
     // Minimal path hardening. Skills legitimately live outside the workspace, so
@@ -241,28 +286,32 @@ export async function promoteLessonDraft(
     }
     let existing: string;
     try {
+      skillPath = await realpath(skillPath);
+      if (basename(skillPath).toLowerCase() !== "skill.md") return { promoted: false, reason: "resolved target must be a SKILL.md file" };
+      if (!(await lstat(skillPath)).isFile()) throw new Error("invalid_skill_file");
       existing = await readFile(skillPath, "utf-8");
     } catch {
       return { promoted: false, reason: `target skill file not found: ${options.toSkillPath}` };
     }
+    // The marker makes a retry after a failed lifecycle move idempotent.
+    const marker = `<!-- osstack-lesson:${digest(JSON.stringify([await realpath(workspacePath), draft.entry.id, draft.content]))} -->`;
     const rule = extractLessonSection(draft.content, "## Reusable Rule");
     const evaluation = extractLessonSection(draft.content, "## Suggested Evaluation");
     const appended = [
       existing.endsWith("\n") ? existing : `${existing}\n`,
-      `\n## Lesson: ${draft.entry.id}\n`,
+      `\n${marker}\n## Lesson: ${draft.entry.id}\n`,
       "\n",
       rule ?? "(no reusable rule recorded)",
       "\n",
       ...(evaluation !== undefined ? ["\n### Suggested Evaluation\n\n", evaluation, "\n"] : []),
     ].join("");
     // Atomic write: a crash mid-write must never truncate an official skill.
-    await writeFileAtomic(skillPath, appended);
+    if (!existing.includes(marker)) await writeFileAtomic(skillPath, appended);
   }
 
-  const promotedDir = resolveLessonDir(workspacePath, options.promotedDir ?? "loop-lessons/promoted");
   await mkdir(promotedDir, { recursive: true });
-  const to = join(promotedDir, basename(draft.entry.path));
-  await rename(draft.entry.path, to);
+  await link(draft.entry.path, to);
+  await unlink(draft.entry.path);
   return {
     promoted: true,
     from: draft.entry.path,
@@ -278,10 +327,12 @@ export async function discardLessonDraft(
 ): Promise<DiscardLessonDraftResult> {
   const draft = await readLessonDraft(workspacePath, id, options.dir ?? "loop-lessons/drafts");
   if (draft === null) return { discarded: false, reason: `no lesson draft found for id ${id}` };
-  const discardedDir = resolveLessonDir(workspacePath, options.discardedDir ?? "loop-lessons/discarded");
+  const discardedDir = await resolveLessonDir(workspacePath, options.discardedDir ?? "loop-lessons/discarded");
   await mkdir(discardedDir, { recursive: true });
   const to = join(discardedDir, basename(draft.entry.path));
-  await rename(draft.entry.path, to);
+  if (await existsEntry(to)) return { discarded: false, reason: "discarded lesson already exists" };
+  await link(draft.entry.path, to);
+  await unlink(draft.entry.path);
   return { discarded: true, from: draft.entry.path, to };
 }
 
@@ -309,6 +360,40 @@ function extractLessonSection(content: string, heading: string): string | undefi
   return section === "" ? undefined : section;
 }
 
-function resolveLessonDir(workspacePath: string, dir: string): string {
-  return isAbsolute(dir) ? dir : join(workspacePath, dir);
+async function resolveLessonDir(workspacePath: string, dir: string): Promise<string> {
+  const root = await realpath(workspacePath);
+  const lexicalRoot = resolve(workspacePath);
+  const lexicalTarget = resolve(lexicalRoot, dir);
+  const lexicalRelative = relative(lexicalRoot, lexicalTarget);
+  const insideLexicalRoot = lexicalRelative !== ".." && !lexicalRelative.startsWith(".." + sep) && !isAbsolute(lexicalRelative);
+  const target = insideLexicalRoot ? resolve(root, lexicalRelative) : resolve(root, dir);
+  const rel = relative(root, target);
+  if (!rel || isAbsolute(rel) || rel === ".." || rel.startsWith(".." + sep)) throw new Error("unsafe_lesson_path");
+  let current = root;
+  for (const part of rel.split(sep)) {
+    current = join(current, part);
+    try {
+      const info = await lstat(current);
+      if (!info.isDirectory() || info.isSymbolicLink() || await realpath(current) !== current) throw new Error("unsafe_lesson_path");
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+    }
+  }
+  // Keep the caller's path spelling (e.g. /var versus /private/var) for API compatibility.
+  return insideLexicalRoot ? lexicalTarget : target;
+}
+async function existsEntry(path: string): Promise<boolean> {
+  try { await lstat(path); return true; }
+  catch (error) { if ((error as NodeJS.ErrnoException).code === "ENOENT") return false; throw error; }
+}
+async function readDraftFile(path: string): Promise<string> {
+  const file = await open(path, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
+  try {
+    const info = await file.stat();
+    if (!info.isFile() || info.size > 1024 * 1024) throw new Error("unsafe_lesson_file");
+    const bytes = Buffer.alloc(1024 * 1024 + 1);
+    const result = await file.read(bytes, 0, bytes.length, 0);
+    if (result.bytesRead > 1024 * 1024) throw new Error("unsafe_lesson_file");
+    return bytes.subarray(0, result.bytesRead).toString("utf8");
+  } finally { await file.close(); }
 }

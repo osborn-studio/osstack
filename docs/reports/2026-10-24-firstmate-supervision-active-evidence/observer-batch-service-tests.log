@@ -1,0 +1,10 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/packages/cli
+
+ ✓ src/supervision-service.test.ts (24 tests) 786ms
+
+ Test Files  1 passed (1)
+      Tests  24 passed (24)
+   Start at  17:37:49
+   Duration  3.68s (transform 1.56s, setup 16ms, collect 2.60s, tests 786ms, environment 0ms, prepare 45ms)
+

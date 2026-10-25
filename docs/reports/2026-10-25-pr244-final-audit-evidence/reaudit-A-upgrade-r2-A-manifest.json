@@ -1,0 +1,161 @@
+{
+  "head": "e508156efee7649dc4d2f374fe9a4947d8cc38fb",
+  "working_tree_snapshot": true,
+  "files": [
+    {
+      "path": "packages/cli/src/source-observation-command.ts",
+      "sha256": "8fa049c4d94eadefedb2f8e4de0d820d458fdcc512711bfa63370c8bc8fab373",
+      "coverage": "full"
+    },
+    {
+      "path": "packages/cli/src/supervision-service.ts",
+      "sha256": "34e8afb5aed0a8c99b167f2d488d58cbd3d810cddd43e6f4e5caec34049e3cc7",
+      "coverage": "full"
+    },
+    {
+      "path": "packages/cli/src/local-ledgers-daemon.test.ts",
+      "sha256": "213e05a1a63b8f17b8a032f03fc80c617ee4cfab424404c94b842f2d55d6129a",
+      "coverage": "full"
+    },
+    {
+      "path": "packages/cli/src/execution-context.ts",
+      "sha256": "aa5298f4ccef92779fd012ec6fed61adef96a805282a19ded76f6a0093afb7f6",
+      "coverage": "full"
+    },
+    {
+      "path": "packages/cli/src/execution-context.test.ts",
+      "sha256": "d24f2f237cac6265dbf2a4ac0828d5c8259b4ec650a2a099091936f62ffaeff3",
+      "coverage": "full"
+    },
+    {
+      "path": "packages/cli/src/execution-context-host.ts",
+      "sha256": "149ac22d6d8190e5ca24208e431f74945881d7b8116f097df3985ed2835ef314",
+      "coverage": "full"
+    },
+    {
+      "path": "packages/cli/src/source-context.ts",
+      "sha256": "a86db5921f95be730c0b896ef38ac3360502e9081aadd1c3216e2efba1f34ece",
+      "coverage": "full"
+    },
+    {
+      "path": "packages/cli/src/source-context-fence.ts",
+      "sha256": "a472da01850990ed31e6fbae3d4fc4da1f514ef4d069c031d68dd22651f469ec",
+      "coverage": "full"
+    },
+    {
+      "path": "packages/cli/src/source-context.test.ts",
+      "sha256": "08faed6ace7b3beb176cda0a7d3f0cdb91fa35b2c713df51d44908a54104edc0",
+      "coverage": "full"
+    },
+    {
+      "path": "packages/cli/src/source-observation-host.ts",
+      "sha256": "b830ff957d303c6721bf623dfa92b2fec6dd46492116f8661a0ae2ed9dbf47f0",
+      "coverage": "full"
+    },
+    {
+      "path": "packages/core/src/state/source-observations.ts",
+      "sha256": "f9022c03afbba144bad2ee018a1932640c45bcd61405dc8d747e3d785c227e25",
+      "coverage": "full"
+    },
+    {
+      "path": "packages/core/src/state/source-observations.test.ts",
+      "sha256": "e268a13c8ea17bd11925da80f767c60623f43739debcc8c81f97485cc4d62520",
+      "coverage": "full"
+    },
+    {
+      "path": "packages/loop/src/candidate-execution.ts",
+      "sha256": "95006bf5463aead4eb4c8e2203d1821fa8abd5588e4de3206f0a20e49f69badc",
+      "coverage": "full"
+    },
+    {
+      "path": "packages/cli/src/graph-execution-context.ts",
+      "sha256": "1a96a939552a41908c47c7c6c50bb4338d65643c7faebdd095fabf8243518173",
+      "coverage": "full"
+    },
+    {
+      "path": "packages/cli/src/graph-contract-host.ts",
+      "sha256": "27f50eb26a2271162255df9b82dcdc22ab3a95b6e070af953679b994d644510c",
+      "coverage": "full"
+    },
+    {
+      "path": "packages/cli/src/attention-loop-source.ts",
+      "sha256": "86239fb7527ca5f33dd203be4f08462c4adfe903b46bd2a42eaf816d157e5201",
+      "coverage": "full"
+    },
+    {
+      "path": "packages/cli/src/attention-loop-source.test.ts",
+      "sha256": "69aea5e572c0bd78ba51a13a21728d7d6580f9d8fec19e63255c2066272aa4d8",
+      "coverage": "full"
+    },
+    {
+      "path": "packages/cli/src/local-data-source-registry.ts",
+      "sha256": "dffd57cfbfcb5d0a5722b8baa61246e688e4dbda9199fbf64f770ee133dd7d90",
+      "coverage": "full"
+    },
+    {
+      "path": "packages/cli/src/managed-home-guard.ts",
+      "sha256": "7717b6da80f6b0a62c64ba1dbe2e0072211ee2ba6c0884856851b54ed5561779",
+      "coverage": "full"
+    },
+    {
+      "path": "packages/cli/src/upgrade-native-backend.ts",
+      "sha256": "2476bcd4a9e143b92344660e09d77db386ca107432a983d305b6e646c90409a3",
+      "coverage": "full"
+    },
+    {
+      "path": "packages/cli/src/control-plane-guard.ts",
+      "sha256": "0301f5dc1cfeb99a0d439bd47447403b4d53067bfaada2fd9a88d0a0cddf735f",
+      "coverage": "full"
+    },
+    {
+      "path": "packages/loop/src/executor.ts",
+      "sha256": "fbf9d07b64bc4fe4f230ecffe52a757ebde03192f196f6710c2395c3ee1edfe7",
+      "coverage": "lines 80-450",
+      "excerpt_sha256": "53f9e3ba47556820a0de52ee67ab1f462dfa44baefbbe0323733843fabaa1a4f"
+    },
+    {
+      "path": "packages/loop/src/candidate-execution.test.ts",
+      "sha256": "d5219e39d59830f75367e512b11207ddfe9a3abd99ff039be8838addf4669497",
+      "coverage": "lines 225-280",
+      "excerpt_sha256": "e59d9c70fc1e498f71b16865e190b9cc7617bdc48f91b3f349126eddf5d91776"
+    },
+    {
+      "path": "packages/cli/src/graph-action-broker.ts",
+      "sha256": "7621c2797c82eccfbf77aabb5209b607d9af130031437bb7c1bce05e325b8f40",
+      "coverage": "lines 305-660",
+      "excerpt_sha256": "d1888924396348b7e3af5755a2119570fa78c7dcbe3d742d3ba82cb5a869acf6"
+    },
+    {
+      "path": "packages/cli/src/deliver-command.ts",
+      "sha256": "bfc9d583b6c9e35f9019a510df104401ebc79c3373e89097162d705cff0cf006",
+      "coverage": "lines 500-600",
+      "excerpt_sha256": "214508f384b97e6851edb0c181f37736d67ec3b710ddf2170aa4ec2b8c1e8c87"
+    },
+    {
+      "path": "packages/cli/src/guarded-git-runtime.ts",
+      "sha256": "3c23e4e766c6af0926d1a3b9fc905acf2c7fd7b672cf7b9c165b47a5a2b9e2e8",
+      "coverage": "lines 510-650",
+      "excerpt_sha256": "3f3b67090a8d9bbd28e08411b862318590961f95754bc41bcf2c86d4ace7d5ad"
+    },
+    {
+      "path": "packages/cli/src/bin.ts",
+      "sha256": "c145c0a707b1d7f0285aebc4471b9dd1ec8822e63da177709025790d237e61b9",
+      "coverage": "lines 670-725",
+      "excerpt_sha256": "1743fbf2fe0115dba36e3b135d60585ea99a973f2d07d17b01d4a9d24fba43b3"
+    },
+    {
+      "path": "packages/cli/src/bin.ts",
+      "sha256": "c145c0a707b1d7f0285aebc4471b9dd1ec8822e63da177709025790d237e61b9",
+      "coverage": "lines 6300-6355",
+      "excerpt_sha256": "a29f4ded47233621c9c91d023f9a18c02e9887e5a55a510426454d3a4645a169"
+    },
+    {
+      "path": "packages/cli/src/bin.ts",
+      "sha256": "c145c0a707b1d7f0285aebc4471b9dd1ec8822e63da177709025790d237e61b9",
+      "coverage": "lines 7300-7345",
+      "excerpt_sha256": "d5fb1acfe10b720f6e95a1fcfcc5e2047985e6c49bcbf22bdee94a382a91cc84"
+    }
+  ],
+  "prompt_sha256": "aba0b83b35f2a1e7a9bcf6f8797d94171c2ee431999227a3caf5eed520c0b3d6",
+  "prompt_bytes": 319451
+}

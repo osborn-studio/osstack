@@ -1,0 +1,258 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OSStack Frozen Delivery Contract v2",
+  "$comment": "Shape only. The host must recompute the canonical contract digest and bind it to the actual repository and accepted policy.",
+  "type": "object",
+  "properties": {
+    "contract": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "type": "number",
+          "const": 2
+        },
+        "contract_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "parent_contract_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "task_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "canonical_repo": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096
+        },
+        "mode": {
+          "type": "string",
+          "enum": [
+            "scout",
+            "implement"
+          ]
+        },
+        "base_head": {
+          "type": "string",
+          "pattern": "^(?:[a-f0-9]{40}|[a-f0-9]{64})$"
+        },
+        "goal": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 16000
+        },
+        "required_checks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256
+              },
+              "registry_ref": {
+                "type": "string",
+                "pattern": "^sha256:[a-f0-9]{64}$"
+              }
+            },
+            "required": [
+              "id",
+              "registry_ref"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 1,
+          "maxItems": 100
+        },
+        "review_policy_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "requested_completion": {
+          "type": "string",
+          "enum": [
+            "local_verified",
+            "pr_opened",
+            "merged",
+            "deployed"
+          ]
+        },
+        "allowed_paths": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4096
+          },
+          "minItems": 1,
+          "maxItems": 1000
+        },
+        "requested_actions": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "build",
+              "verify",
+              "commit",
+              "push",
+              "open_pr",
+              "merge",
+              "deploy:staging",
+              "deploy:production"
+            ]
+          },
+          "minItems": 1,
+          "maxItems": 8
+        },
+        "budget_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "policy_digest": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "publication_scope": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "mode": {
+                  "type": "string",
+                  "const": "none"
+                }
+              },
+              "required": [
+                "mode"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "mode": {
+                  "type": "string",
+                  "enum": [
+                    "push",
+                    "draft_pr",
+                    "review_pr"
+                  ]
+                },
+                "hostname": {
+                  "type": "string",
+                  "const": "github.com"
+                },
+                "repository": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_.-]+\\/[A-Za-z0-9_.-]+$"
+                },
+                "remote": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"
+                },
+                "base_ref": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 255
+                },
+                "head_ref": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 255
+                }
+              },
+              "required": [
+                "mode",
+                "hostname",
+                "repository",
+                "remote",
+                "base_ref",
+                "head_ref"
+              ],
+              "additionalProperties": false
+            }
+          ]
+        },
+        "merge_authority": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "mode": {
+                  "type": "string",
+                  "const": "none"
+                }
+              },
+              "required": [
+                "mode"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "mode": {
+                  "type": "string",
+                  "const": "existing_guarded_policy"
+                },
+                "policy_ref": {
+                  "type": "string",
+                  "pattern": "^sha256:[a-f0-9]{64}$"
+                }
+              },
+              "required": [
+                "mode",
+                "policy_ref"
+              ],
+              "additionalProperties": false
+            }
+          ]
+        }
+      },
+      "required": [
+        "schema_version",
+        "contract_id",
+        "task_id",
+        "canonical_repo",
+        "mode",
+        "base_head",
+        "goal",
+        "required_checks",
+        "review_policy_ref",
+        "requested_completion",
+        "allowed_paths",
+        "requested_actions",
+        "budget_ref",
+        "policy_digest",
+        "publication_scope",
+        "merge_authority"
+      ],
+      "additionalProperties": false
+    },
+    "digest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "brief": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 32000
+    }
+  },
+  "required": [
+    "contract",
+    "digest",
+    "brief"
+  ],
+  "additionalProperties": false
+}

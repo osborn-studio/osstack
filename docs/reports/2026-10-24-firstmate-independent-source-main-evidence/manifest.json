@@ -1,0 +1,38 @@
+{
+  "evidence_kind": "independent_codex_source_reproduction_and_actual_main_tests",
+  "reviewer": "completion_delivery",
+  "source_original_commit": "eae27b87453d434f445f9309be661f49ed464f2a",
+  "source_corrected_commit": "3a56983dbb7e09be9f487486f8af5446a77bf984",
+  "source_corrected_file_sha256": {
+    "packages/cli/src/source-context-fence.ts": "371718b13b6d4932ad67a5926019ebfeb524d838fb1e4fba1a6e16e3404b6620",
+    "packages/cli/src/source-context.ts": "a86db5921f95be730c0b896ef38ac3360502e9081aadd1c3216e2efba1f34ece",
+    "packages/cli/src/source-observation-host.ts": "b2ca86601c4c9034bbe8a46a4ef05eb1cb721a3a8a558d191a4a30a1dacc3acb",
+    "packages/cli/src/execution-context.ts": "0c09785d4cd585b248a619f9616d2b11ab8a40e84119a194d8fe1a1561259ea7",
+    "packages/cli/src/execution-context-host.ts": "149ac22d6d8190e5ca24208e431f74945881d7b8116f097df3985ed2835ef314"
+  },
+  "main_validation": {
+    "branch_head_at_evidence_capture": "924eb561481a5d3391312edad0173d32bdf22413",
+    "file_sha256": {
+      "packages/cli/src/bin.ts": "14d5fc901e4494ea77b516f1a37225920ed55de1f79454877a3e659f3f25ecff",
+      "packages/cli/src/remote-cancel-main.test.ts": "816e7e3f47bdac739de824dfadee69ea569ec44b2e72c210038a2d85af9eb2a6"
+    },
+    "path_status_at_evidence_capture": [],
+    "tests_passed": 5,
+    "typecheck": "passed",
+    "test_file_lint": "passed",
+    "diff_check": "passed",
+    "qualification": "actual_main_bundled_from_bin_ts_local_child_processes_not_installed_release_or_live_ssh",
+    "source_commit": "c8dc83fa34394ba9e75eab7d0df098ab0debfd61",
+    "commit_relation": "Parent committed the same verified file bytes after execution; hashes verified against commit."
+  },
+  "independent_source_fix_result": {
+    "repository_owned_authority": "blocked: source_host_inside_repository",
+    "sequential_validation_revocation": "blocked: source_context_authority_changed",
+    "adapter_invoked": false,
+    "revoked_source_in_prompt": false,
+    "external_host_positive_ack_control": "ready"
+  },
+  "claude_audit": "pending_authentication; these are independent Codex results and do not substitute for requested Claude Code CLI audit",
+  "real_remote_ssh_calls": 0,
+  "real_public_posts": 0
+}

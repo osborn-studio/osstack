@@ -1,0 +1,78 @@
+{
+  "baseHead": "36976ab84e7ae189ec25d3ef68c195dd8769b2fd",
+  "sources": [
+    {
+      "path": "packages/loop/src/verifier.ts",
+      "sha256": "cd72a85446d1a0a22a479239496d7a0b0184b428b3de6d0fdeb1499b6609613b",
+      "bytes": 40243
+    },
+    {
+      "path": "packages/loop/src/verifier.test.ts",
+      "sha256": "6262fa73bf1df54868561871e55d64bde88e9ecebae43846435d315f29b12975",
+      "bytes": 31980
+    },
+    {
+      "path": "packages/loop/src/reviewer-isolation.ts",
+      "sha256": "0688f11cdb30d70306e06f7a11f62ff3d55bba053bc6ecd48d6bc2ce29297da0",
+      "bytes": 9798
+    },
+    {
+      "path": "packages/loop/src/reviewer-isolation.test.ts",
+      "sha256": "93040499b303e08b1465040b7e5afa37be137eface4ee39d8bd32f73f19a5c9d",
+      "bytes": 5169
+    },
+    {
+      "path": "packages/loop/src/loop-engine.ts",
+      "sha256": "f755bfc81b784f9f0bbb2add59bd9605cdad4490638e12c59c5c2f5cc0445374",
+      "bytes": 79725
+    },
+    {
+      "path": "packages/loop/src/loop-engine.test.ts",
+      "sha256": "45010a542d2ffa7fbbba4049641b5b37bcb32c088a14208347a5b1be767af8ec",
+      "bytes": 52690
+    },
+    {
+      "path": "packages/loop/src/loop-containment.ts",
+      "sha256": "5e0ec11edfc2bc46fac546b75d410a3183e9dcba705202d10ef8c9c1cebc0f9e",
+      "bytes": 1317
+    },
+    {
+      "path": "packages/loop/src/loop-containment.test.ts",
+      "sha256": "c7f7f31a8848a452d2ba3c44c6b3a040b683a9907e592bd0d7bf4998bf0c94ba",
+      "bytes": 1569
+    },
+    {
+      "path": "packages/loop/src/review-boundary.ts",
+      "sha256": "7237810066d67879b09a10ba86a8fa19181e3804f5cdf2958ba68e50a94abb50",
+      "bytes": 9929
+    }
+  ],
+  "evidence": [
+    {
+      "path": "F3-final-focused.log",
+      "sha256": "c38a66239f0ae9b862203037c228f900409966306234cfa0cde99dc27833b911"
+    },
+    {
+      "path": "F3-final-typecheck.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "F3-final-lint.log",
+      "sha256": "7204a74622bc776e83cfffdb78c3d4836f12b852f4db046e08ab77af5805a67f"
+    },
+    {
+      "path": "F1-containment-tests-final.log",
+      "sha256": "96c6a890cd1ff6238acf3489db1474fe3b6cf1d34e37426d535eb8b8382fa9d9"
+    },
+    {
+      "path": "F3-kimi-diagnostic.log",
+      "sha256": "6647108b36286a4679ea437e24ecc72027f8c5da5ea34f0dfedd19ad653daf56"
+    },
+    {
+      "path": "F3-validation.json",
+      "sha256": "c8c1a7366b746676ad38c29303406a0fd1fcd37d8d0fb38a8c3c3f0756b44dda"
+    }
+  ],
+  "promptSha256": "c0c1aa870967a9f9bc1878db3957b16cb8265d2d30b7dfb2f4cbcc22bfa17093",
+  "promptBytes": 255584
+}

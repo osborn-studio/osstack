@@ -1,0 +1,10 @@
+{
+  "task": {
+    "task_id": "firstmate-wave5-raw-final-qualification",
+    "capability": "code.test",
+    "prompt": "Qualify frozen source317c2070 including raw Graph pre-freeze byte/mode gate. Eight full checks; static audit, external qualification and CI remain separately evidenced.",
+    "priority": 50,
+    "source": "task_queue"
+  },
+  "path": "/Volumes/AIMATE_WORK/tmp/osstack/smoke/pr237-integration/wave5-raw-final-loop/tasks/firstmate-wave5-raw-final-qualification.json"
+}

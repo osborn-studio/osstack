@@ -838,3 +838,70 @@ describe("deriveOwnerDecisions (R2.4 dispatchable run payloads)", () => {
     );
   });
 });
+
+describe("daily Attention integration", () => {
+  it("persists injected scoped supervision and keeps decisions advisory", async () => {
+    const registryPath = await seedRegistry();
+    const { AttentionStore } = await import("@osstack/core");
+    const { insertTask } = await import("./store.js");
+    const { createDailyAttentionReader, readDailyAttention } = await import("./daily-attention.js");
+    const nowMs = Date.parse("2026-07-11T09:00:00Z");
+    const db = openDb({ path: join(tmp, "attention.db") });
+    try {
+      const store = new AttentionStore(db, join(tmp, "attention.db"));
+      const owner = store.claimOwner("daily-test");
+      const selectedRepo = await realpath(join(tmp, "withgh"));
+      insertTask(db, store.path, { task_id: "selected", title: "Human decision", created_at: 1 });
+      const scope = store.registerScope(owner, "selected", selectedRepo);
+      const unscanned = await readDailyAttention([{ repo_id: "selected", path: selectedRepo, enabled: true }], { nowMs, reader: createDailyAttentionReader(db, () => "running") });
+      expect(unscanned.repos[0]).toMatchObject({ status: "stale", snapshot: { scopes: [{ sampled_at_ms: 0 }] } });
+      db.prepare("UPDATE attention_scopes SET sampled_at=?,deadline=?,scan_complete=1").run(nowMs, nowMs + 65000);
+      db.prepare("INSERT INTO attention_subjects(scope_id,kind,subject_id,binding_hash,source_version,admitted,discovered_at,sampled_at,generation,payload_json) VALUES(?,'session','human','hash',1,1,?,?,?,?)").run(scope.scope_id, nowMs, nowMs, owner.generation, '{"wait":{"owner":"human"}}');
+      db.prepare("INSERT INTO attention_items(item_id,scope_id,session_id,turn_id,decision_id,content_hash,decision_json,source_version,state,created_at,updated_at) VALUES('item',?,'human','turn','decision','hash','{}',1,'open',?,?)").run(scope.scope_id, nowMs, nowMs);
+      insertTask(db, store.path, { task_id: "foreign", title: "Private", created_at: 1 });
+      store.registerScope(owner, "foreign", selectedRepo);
+      db.prepare("UPDATE tasks SET tenant_id='private' WHERE task_id='foreign'").run();
+      db.pragma("query_only=ON");
+      const before = db.prepare("SELECT total_changes() AS n").get();
+      const deps = { runner: makeRunner([], "success"), now: () => new Date(nowMs), attentionReader: createDailyAttentionReader(db, () => "running") };
+      const run = await runDailyBrief({ registryPath, ...deps });
+      expect(run.brief.attention?.repos.map(r => r.status)).toEqual(["available", "not_watched"]);
+      expect(run.brief.attention?.repos[0]?.snapshot?.totals).toMatchObject({ scopes: 1, human_waits: 1, open_items: 1 });
+      expect(run.brief.owner_decisions?.[0]).toMatchObject({ command: "attention.inbox", run: { argv: ["osstack", "attention", "inbox", "--scope", scope.scope_id] } });
+      const duplicated = { ...run.brief, github: [{ ...run.brief.github[0]!, ci_runs: [{ ...run.brief.github[0]!.ci_runs[0]!, conclusion: "failure" }] }], attention: { ...run.brief.attention!, repos: Array(3).fill(run.brief.attention!.repos[0]) } };
+      const decisions = deriveOwnerDecisions(duplicated);
+      expect(decisions[0]?.command).toBe("repo.fix_ci");
+      expect(decisions.filter(decision => decision.command === "attention.inbox")).toHaveLength(1);
+      expect(JSON.parse(await readFile(run.briefPath, "utf8")).attention).toEqual(run.brief.attention);
+      await handleDailyCommand(["--registry", registryPath, "--json"], { ...deps, out });
+      expect(AgentCommandResult.parse(JSON.parse(logs[0]!)).status).toBe("ok");
+      const stale = await runDailyBrief({ registryPath, ...deps, now: () => new Date(nowMs + 65001) });
+      expect(stale.brief.attention?.repos[0]?.status).toBe("stale");
+      expect(stale.brief.owner_decisions?.[0]?.command).toBe("attention.inventory");
+      const clockBack = await runDailyBrief({ registryPath, ...deps, now: () => new Date(nowMs - 1000) });
+      expect(clockBack.brief.attention?.repos[0]).toMatchObject({ status: "unknown", reason: "clock_moved_backwards", snapshot: null });
+      expect(db.prepare("SELECT total_changes() AS n").get()).toEqual(before);
+    } finally { db.close(); }
+  });
+
+  it("does not create a database in an uninitialized home or migrate a legacy daily database", async () => {
+    const registryPath = await seedRegistry();
+    const run = await runDailyBrief({ registryPath, runner: makeRunner([], "success") });
+    expect(run.brief.attention?.repos.every(r => r.status === "unknown")).toBe(true);
+    const { existsSync } = await import("node:fs");
+    expect(existsSync(join(tmp, "home", "state.db"))).toBe(false);
+    const { default: Database } = await import("better-sqlite3");
+    const path = join(tmp, "home", "state.db");
+    const legacy = new Database(path);
+    legacy.exec("CREATE TABLE untouched(value TEXT); INSERT INTO untouched VALUES('preserve')");
+    const schema = legacy.prepare("SELECT sql FROM sqlite_master ORDER BY name").all(); legacy.close();
+    const before = await readFile(path);
+    const second = await runDailyBrief({ registryPath, runner: makeRunner([], "success") });
+    expect(second.brief.warnings.some(w => w.includes("stack board unavailable"))).toBe(true);
+    expect(second.brief.warnings.some(w => w.includes("probe portfolio unavailable"))).toBe(true);
+    expect(await readFile(path)).toEqual(before);
+    const check = new Database(path, { readonly: true });
+    expect(check.prepare("SELECT sql FROM sqlite_master ORDER BY name").all()).toEqual(schema);
+    expect(check.pragma("user_version", { simple: true })).toBe(0); check.close();
+  });
+});

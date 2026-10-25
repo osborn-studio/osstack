@@ -1,0 +1,11 @@
+# F3 r6 D1/D2/D4/D7 closure delta
+
+D1: Dynamic selectExecutionAgent is now inside awaitStopSensitive, so its rejection conservatively sets implementationUnconfirmed before finally can delete a worktree. Pure static role checks still precede prearm/effects and release normally. A real useWorktree test creates the candidate, writes app.txt in a non-verifier availability probe, returns unavailable, and proves rejection retains the actual bytes, worktree registration, branch, host marker and lifecycle lease. Builder invocation is absent; same-instance and alternate-state restart execute no tasks. Because runOnce rejects, there is no fabricated completed-task record; the durable prearmed host marker is the cross-restart protection, and the in-memory uncertainty flag guards cleanup/same-instance behavior.
+
+D2 OWNER ACCEPTED: all verifyRun rejections (including preflight validation/range errors) remain conservative uncertainty and preserve containment. The wrapper cannot prove whether execution began. Lease and stop messages now explicitly include possible preflight refusal; neither implies a process is alive. Source comment states the distinction. No automatic reconciliation/reset is introduced. This can require investigation for an ordinary validation refusal that actually launched nothing.
+
+D4: completionStopPayload's historical execution_unconfirmed mapping is retained for compatibility. New source comment accurately states that current stopPayload intercepts persisted uncertainty with execution_containment_pending. We no longer claim a separate currently reachable completion caller.
+
+D7 OWNER ACCEPTED LOCAL FILESYSTEM BOUNDARY: containment arming fsyncs the marker and ancestor directories through the filesystem root. Every ancestor must permit opening and directory fsync; restricted-permission or filesystems without this support refuse execution. This is deliberately conservative, not a portability guarantee. OS fsync success remains distinct from power-loss hardware qualification. No fallback weakens persistence on failure.
+
+Source/test freeze for graph r7 and parent full QA. Exact scoped checks/logs are F3-r7-selection-tests.log, -typecheck.log, -biome.log; validation JSON binds current sources. No deployment.

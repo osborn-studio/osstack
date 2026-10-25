@@ -1,0 +1,11 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-supervision-next/packages/cli
+
+ ✓ src/graph-delivery-contract.test.ts (20 tests) 29ms
+ ✓ src/graph-execution-context.test.ts (8 tests) 51ms
+
+ Test Files  2 passed (2)
+      Tests  28 passed (28)
+   Start at  13:19:04
+   Duration  1.20s (transform 617ms, setup 62ms, collect 1.82s, tests 80ms, environment 0ms, prepare 94ms)
+

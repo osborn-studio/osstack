@@ -1,0 +1,22 @@
+{
+  "command": [
+    "rg",
+    "-n",
+    "-i",
+    "--hidden",
+    "--glob",
+    "!.git/**",
+    "--glob",
+    "!node_modules/**",
+    "--glob",
+    "!**/node_modules/**",
+    "--glob",
+    "!**/dist/**",
+    "inspect.{0,100}LOOP-STATE|before deleting|power-loss durable|has its own field",
+    "."
+  ],
+  "cwd": "/Users/osborn/Developer/CodeX/.worktrees/osstack/pr244-final-audit",
+  "exit_code": 0,
+  "stderr": "",
+  "scope": "whole repository including hidden files, package README and agent/skill prompts; excludes .git, node_modules and generated dist"
+}

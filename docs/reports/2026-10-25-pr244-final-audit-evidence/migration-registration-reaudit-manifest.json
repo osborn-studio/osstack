@@ -1,0 +1,17 @@
+{
+  "files": [
+    {
+      "path": "packages/core/src/state/migrations.ts",
+      "sha256": "d66c7ca9b521eb3989ee423690def37bcb61b1c66924d7165f8925a825b6beb8"
+    },
+    {
+      "path": "packages/core/src/state/source-observations-ddl.ts",
+      "sha256": "4aa40151e93fccda5035a8a010dcf38c2b4a722c4306b7fae3b8a2048f58bab9"
+    },
+    {
+      "path": "packages/core/src/state/db.ts",
+      "sha256": "72057b005cdec61b08d27459d4fcf58b9bfea672056537038cdefe9b1b74f2c2"
+    }
+  ],
+  "prompt_sha256": "25ee3c110403706831d227d9aeb89a7efcd2f7e4122623af235ef58b2c6959fb"
+}

@@ -1,0 +1,13 @@
+{
+  "head": "869afb089d61edd708818f48bcf6956bb313ece7",
+  "working_tree_snapshot": true,
+  "files": [
+    {
+      "path": "packages/cli/src/source-observation-command.ts",
+      "sha256": "8d6d81d70efc0382ba3ff9dce220900fa739e9550daea1b86701927c9aa9ffa4",
+      "coverage": "full"
+    }
+  ],
+  "prompt_sha256": "9a57da8a566b17a2606d26fb9b99613866e7edb20a374c887c96355de1af8cd6",
+  "prompt_bytes": 32346
+}

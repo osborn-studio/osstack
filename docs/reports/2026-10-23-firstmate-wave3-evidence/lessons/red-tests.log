@@ -1,0 +1,31 @@
+$ vitest run src/attention-lesson.test.ts
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-cockpit/packages/cli
+
+
+⎯⎯⎯⎯⎯⎯ Failed Suites 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/attention-lesson.test.ts [ src/attention-lesson.test.ts ]
+Error: Cannot find module './attention-lesson.js' imported from '/Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-cockpit/packages/cli/src/attention-lesson.test.ts'
+ ❯ src/attention-lesson.test.ts:8:1
+      6| import { AttentionStore, appendEvent, insertRun, insertTask, openDb } …
+      7| import type Database from "better-sqlite3";
+      8| import { handleEvidenceLessonCommand, inspectRunLessonEvidence, writeR…
+       | ^
+      9| 
+     10| let root: string; let db: Database.Database; let path: string; let sto…
+
+Caused by: Error: Failed to load url ./attention-lesson.js (resolved id: ./attention-lesson.js) in /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-cockpit/packages/cli/src/attention-lesson.test.ts. Does the file exist?
+ ❯ loadAndTransform ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:35835:17
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  no tests
+   Start at  12:08:34
+   Duration  415ms (transform 168ms, setup 8ms, collect 0ms, tests 0ms, environment 0ms, prepare 29ms)
+
+/Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-cockpit/packages/cli:
+[ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL] @osstack/cli@0.21.0 test: `vitest run src/attention-lesson.test.ts`
+Exit status 1

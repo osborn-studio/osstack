@@ -7,6 +7,7 @@ import { stripTypeScriptTypes } from "node:module";
 import { compileFunction } from "node:vm";
 import {
   deliverToGitHub,
+  openPullRequestToGitHub,
   observeCurrentGreenCandidate,
   githubDeliveryEnvironment,
   type DeliveryCommandResult,
@@ -1094,4 +1095,33 @@ it("current observer stale remote head returns no hint without writes so origina
  const runner = evidenceRunner(call => call.args[0] === "ls-remote" ? result(`${OTHER_SHA}\trefs/heads/osstack/task-123\n${OTHER_SHA}\trefs/heads/main\n`) : undefined);
  expect(await observeCurrentGreenCandidate(input(), context, runner)).toBeUndefined(); expect(runner.calls.some(call => call.args[0] === "push" || call.args[1] === "merge" || call.args[1] === "create" || call.args.includes("--watch"))).toBe(false);
  expect(runner.calls.filter(call => call.args[0] === "ls-remote")).toHaveLength(1); expect(runner.calls.some(call => call.args.includes("number,url,headRefOid,state,mergeable,mergeStateStatus,statusCheckRollup"))).toBe(false);
+});
+
+describe("contract PR-only publication", () => {
+  const scope = { repository: "gilosbornhello/osstack", headCommit: HEAD_SHA, draft: false };
+  function runner(override?: Override) { return evidenceRunner((call, r) => {
+    const custom = override?.(call, r); if (custom) return custom;
+    if (call.args.includes("isDraft,state")) return result(JSON.stringify({ isDraft: false, state: "OPEN" }));
+    return undefined;
+  }); }
+  it("opens or reuses the exact PR and never watches CI or merges", async () => {
+    const r = runner(); const published = await openPullRequestToGitHub(input(), scope, r);
+    expect(published.pushedCommit).toBe(HEAD_SHA);
+    expect(commandStrings(r).some(c => c.includes("pr merge") || c.includes("pr checks"))).toBe(false);
+  });
+  it("rejects repository and candidate mismatches before pushing", async () => {
+    for (const bad of [{ ...scope, repository: "foreign/repo" }, { ...scope, headCommit: OTHER_SHA }]) {
+      const r = runner(); await expect(openPullRequestToGitHub(input(), bad, r)).rejects.toThrow(/mismatch/);
+      expect(commandStrings(r).some(c => c.startsWith("git push"))).toBe(false);
+    }
+  });
+  it("does not claim draft publication when an existing PR is ready", async () => {
+    const r = runner(); await expect(openPullRequestToGitHub(input(), { ...scope, draft: true }, r)).rejects.toThrow("draft scope mismatch");
+    expect(commandStrings(r).some(c => c.includes("pr merge"))).toBe(false);
+  });
+  it("rechecks destination before push and refuses remote changes", async () => {
+    let reads = 0; const r = runner(call => call.args[0] === "remote" && ++reads === 2 ? result("git@github.com:foreign/repo.git") : undefined);
+    await expect(openPullRequestToGitHub(input(), scope, r)).rejects.toThrow("publication destination changed");
+    expect(commandStrings(r).some(c => c.startsWith("git push"))).toBe(false);
+  });
 });

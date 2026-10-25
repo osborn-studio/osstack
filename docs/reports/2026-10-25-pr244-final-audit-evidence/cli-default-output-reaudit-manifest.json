@@ -1,0 +1,60 @@
+{
+  "files": [
+    {
+      "path": "packages/agents/src/adapters/deepseek-command.ts",
+      "sha256": "5d03e9c267610411983ee5e6b32a87aecec6d48a7c39d51c2a73e1ef0e154c2f",
+      "coverage": "full"
+    },
+    {
+      "path": "packages/agents/src/adapters/deepseek.test.ts",
+      "sha256": "394146272345146761e484a1aeccdcee611711f0f45739bcc6e5396b0dccb23f",
+      "coverage": "full"
+    },
+    {
+      "path": "packages/agents/src/adapters/ds-review.ts",
+      "sha256": "ea762b796b6c6cb78e9feafd20a8446173f049da3a83c6358fc848a46ace6de0",
+      "coverage": "full"
+    },
+    {
+      "path": "packages/agents/src/adapters/ds-verify.ts",
+      "sha256": "fdf3892e2721da327cc951e031efbac8b83682396e9841c13c2d28034d7c8de1",
+      "coverage": "full"
+    },
+    {
+      "path": "packages/core/src/scratch.ts",
+      "sha256": "d9895ba579525c1ea092bb4626408011d09cecba2e293d89d2fa4c656086343c",
+      "coverage": "full"
+    },
+    {
+      "path": "packages/loop/src/reviewer-isolation.ts",
+      "sha256": "4b335a808f975abd04a5755d9e1ef8a8dde081df5f1c16825a6a0914c71dd3ae",
+      "coverage": "full"
+    },
+    {
+      "path": "packages/loop/src/verifier.ts",
+      "sha256": "7d411e758a3ea4889723dcd8a95faa06a8fea7b9c4bfa89732b8ff24407678fd",
+      "coverage": "610-920",
+      "excerpt_sha256": "370fb1fecfe7b801bc8785fc523737f82b267d8e310c93d9b2cecc8ab0e537d1"
+    },
+    {
+      "path": "packages/cli/src/daemon-loop.test.ts",
+      "sha256": "82d634d1f86277db855e3f74055ade1901dda37eef0b3a075913fda7b4150acf",
+      "coverage": "924-1000",
+      "excerpt_sha256": "a43577808e1a3854f7846528b2e21614cbc42e7ddeb2344686478c64a67f1df2"
+    },
+    {
+      "path": "packages/cli/src/loop-cli.test.ts",
+      "sha256": "5f18dd631577aa43c54f31238c69f70834db6975ca8937983a10f8aad9a9ecd0",
+      "coverage": "1190-1290",
+      "excerpt_sha256": "368f13c71590f4b329b2f6311bf020379a8d414c725b18d6076262bc701b5ba2"
+    },
+    {
+      "path": "packages/cli/src/loop-defaults-cli.test.ts",
+      "sha256": "912d3cfb60f0ceb49936303256dba8fac4957619e6bd648555f3d1697960c4df",
+      "coverage": "58-100",
+      "excerpt_sha256": "1302386b3c97f4677191702eb14c20911e4bf5916809f8378f1c29dd46e6ab5d"
+    }
+  ],
+  "prompt_sha256": "31aa95acd4b11801203c4c0c67d541bc440113a70eed014d8576d9ca3bd73374",
+  "prompt_bytes": 66390
+}

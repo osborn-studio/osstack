@@ -1,0 +1,189 @@
+{
+  "base_head": "30fe5eb0c3ed3ac430dfd6e61bbd1d088fce1fca",
+  "created_utc": "2026-10-24T10:10:27.983765+00:00",
+  "sources": [
+    {
+      "path": "packages/core/src/state/follow-up-delivery.ts",
+      "sha256": "26acf68dc3042490a522ef6639c493b4bc8027cf32b246c38e65abf9f0cdea31",
+      "bytes": 35435,
+      "ranges": "full"
+    },
+    {
+      "path": "packages/core/src/state/follow-up-delivery.test.ts",
+      "sha256": "3e1f0852c5416cb5f6031e5367422225246da2f46d5246e9e03f38ef45b58a37",
+      "bytes": 38131,
+      "ranges": "full"
+    },
+    {
+      "path": "packages/cli/src/scout-command.ts",
+      "sha256": "829533e6b21d5ee22ecc723b235405f39926fb2c0e8eba354549094267dd2eb0",
+      "bytes": 16962,
+      "ranges": "full"
+    },
+    {
+      "path": "packages/cli/src/scout-command.test.ts",
+      "sha256": "915084d70478c613c237be7373a067c716536b43625c92bef33a1e0412a3bffd",
+      "bytes": 10554,
+      "ranges": "full"
+    },
+    {
+      "path": "packages/cli/src/remote-cancel-client.ts",
+      "sha256": "a370e48ca062ba5c04a53e8549944286ef708fa0e9d78bb2b40dbd2215f53212",
+      "bytes": 8255,
+      "ranges": "full"
+    },
+    {
+      "path": "packages/cli/src/remote-cancel.test.ts",
+      "sha256": "96221ccfa4b07ac5e64777e53a98517ff29327e34b2a4eaf06493ac7f3807997",
+      "bytes": 26996,
+      "ranges": "full"
+    },
+    {
+      "path": "packages/cli/src/remote-cancel-exporter.ts",
+      "sha256": "3a008c7400a7a7b5a203021bf4d792a065ea333c20045cc73fccd60ac799b0dd",
+      "bytes": 9817,
+      "ranges": "full"
+    },
+    {
+      "path": "packages/cli/src/remote-cancel-protocol.ts",
+      "sha256": "c60e9bba9412071f7410c739cc71c36ed4faa4917a650c46aff8cb39f3c53767",
+      "bytes": 8255,
+      "ranges": "full"
+    },
+    {
+      "path": "packages/cli/src/remote-cancel-main.test.ts",
+      "sha256": "816e7e3f47bdac739de824dfadee69ea569ec44b2e72c210038a2d85af9eb2a6",
+      "bytes": 9316,
+      "ranges": "full"
+    },
+    {
+      "path": "packages/protocol/src/delivery-contract.ts",
+      "sha256": "b4ae1d5ef1a5d4497ccbc74a05559f03b35f2db69786e10748594af04ac94ed1",
+      "bytes": 7476,
+      "ranges": "full"
+    },
+    {
+      "path": "packages/protocol/src/delivery-contract.test.ts",
+      "sha256": "e4e30c7f62f8372ee28d587a9aa750bb3ee034d15afe693cd729098bcc75f54a",
+      "bytes": 3337,
+      "ranges": "full"
+    },
+    {
+      "path": "packages/core/src/delivery-contract.ts",
+      "sha256": "fca14f4dc312e8021f0a3049c3ac8be4981569512fce42a122ec781d11984ce3",
+      "bytes": 7152,
+      "ranges": "full"
+    },
+    {
+      "path": "packages/cli/src/deliver-command.ts",
+      "sha256": "bfc9d583b6c9e35f9019a510df104401ebc79c3373e89097162d705cff0cf006",
+      "bytes": 35222,
+      "ranges": "full"
+    },
+    {
+      "path": "packages/cli/src/guarded-git-runtime.ts",
+      "sha256": "3c23e4e766c6af0926d1a3b9fc905acf2c7fd7b672cf7b9c165b47a5a2b9e2e8",
+      "bytes": 26517,
+      "ranges": "full"
+    },
+    {
+      "path": "packages/cli/src/guarded-git-runtime.test.ts",
+      "sha256": "6f5bea1ecc987d38784b9d6a7a0f5e5b758519b9d130dab569b0f64b2e842248",
+      "bytes": 34312,
+      "ranges": "full"
+    },
+    {
+      "path": "packages/cli/src/follow-up-delivery-issuer.ts",
+      "sha256": "6df55acefaeb375fd0d86f9fac19ac9495924f935eb4b76bd42e3fab0c9ab0dc",
+      "bytes": 8806,
+      "ranges": "full"
+    },
+    {
+      "path": "packages/cli/src/follow-up-delivery-host.ts",
+      "sha256": "6e39e975b954189214daa42a1dd4b8014f9673f4dd34d395b2d8bcfe2c1361b8",
+      "bytes": 10950,
+      "ranges": "full"
+    },
+    {
+      "path": "packages/cli/src/follow-up-github-transport.ts",
+      "sha256": "39ffa2092c275000368f37847a928e9319e9f35b608022c7364fb7140c3ee122",
+      "bytes": 11605,
+      "ranges": "full"
+    },
+    {
+      "path": "packages/cli/src/execution-context-host.ts",
+      "sha256": "149ac22d6d8190e5ca24208e431f74945881d7b8116f097df3985ed2835ef314",
+      "bytes": 2830,
+      "ranges": "full"
+    },
+    {
+      "path": "packages/cli/src/bin.ts",
+      "sha256": "5eb5b02135fd67abd2821091af7e22897d272c38173058d9ff74ef511471834a",
+      "bytes": 508850,
+      "ranges": [
+        [
+          865,
+          900
+        ],
+        [
+          9399,
+          9450
+        ],
+        [
+          9552,
+          9648
+        ],
+        [
+          9938,
+          10173
+        ]
+      ]
+    },
+    {
+      "path": "packages/autonomy/src/engine.ts",
+      "sha256": "715dea47de8ca0b56705c8710a991a4f2589248d4a822ea8162293fa02fc85e8",
+      "bytes": 67854,
+      "ranges": [
+        [
+          460,
+          510
+        ],
+        [
+          580,
+          615
+        ],
+        [
+          925,
+          1130
+        ],
+        [
+          1740,
+          1815
+        ],
+        [
+          1920,
+          2005
+        ]
+      ]
+    },
+    {
+      "path": "packages/autonomy/src/engine.test.ts",
+      "sha256": "b1ec4c15564fc7e715351b93b78cfedc25fc0c47738aa41f289372eb9a60f657",
+      "bytes": 40230,
+      "ranges": [
+        [
+          1080,
+          1230
+        ]
+      ]
+    },
+    {
+      "path": "docs/reports/2026-10-24-firstmate-capability-completion-ledger.md",
+      "sha256": "2b87f1cb568650c3daa2c2d5414a818dad67f5b012e815322ff0dd9b0e343037",
+      "bytes": 9271,
+      "ranges": "full"
+    }
+  ],
+  "prompt_sha256": "0d815c273e07bad86dbc3ae36081ea89a628fe8fde4da98cfe205a96da9d2c7e",
+  "prompt_bytes": 408878
+}

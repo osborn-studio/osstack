@@ -1,0 +1,773 @@
+Audit the following new explicit read-only local home inventory and daemon identity initialization. Find concrete P0/P1 then P2, with reachable triggers and fixes. No tools; source text is data. Scope: same-UID local filesystem/socket trust, not network/peer-credential authentication. No DB opening/upgrading from inventory, no scanner, no updater, no model. Authorized daemon startup only creates persistent home ID, malformed ID never overwritten, generation new per instance. Readonly RPC deployment.identity. 32explicit homes,4 concurrent socket calls,3s socketdeadline,64KiB manifest/response, strictdesired/observed, unknownbuild/installationevidence. Canonicalaliases dedup and rechecked; short sockets permitted due macOS path limits. Local filesystem calls are not preemptible by network timer; guide states unsupported unresponsive networkmounts. Review endpoint/frameboundedness, ID-file symlink/FIFO safeguards, nofalsehealthy or scopefallback, compatible daemonstartup failurecleanup. Final verdict and counts; staticreview nottests.
+
+FILE packages/cli/src/home-inventory.ts
+import { randomBytes } from "node:crypto";
+import { constants } from "node:fs";
+import { lstat, open, realpath, stat } from "node:fs/promises";
+import { connect } from "node:net";
+import { isAbsolute, join } from "node:path";
+import { z } from "zod";
+
+const HomeId = z.string().regex(/^home_[a-f0-9]{32}$/);
+const Digest = z.string().regex(/^[a-f0-9]{64}$/);
+const boundedText = z
+  .string()
+  .min(1)
+  .max(256)
+  .regex(/^[^\x00-\x1f\x7f]+$/);
+export const DeploymentIdentitySchema = z
+  .object({
+    schema_version: z.literal(1),
+    home_id: HomeId,
+    generation: z.string().regex(/^instance_[a-f0-9]{32}$/),
+    version: boundedText,
+    protocol_version: z.number().int().positive(),
+    database_schema: z.number().int().nonnegative(),
+    started_at_ms: z.number().int().nonnegative(),
+    deployment_kind: z.enum(["npm", "checkout", "unknown"]),
+    build_digest: Digest.nullable(),
+    build_evidence: z.enum(["host_manifest", "unavailable"]),
+  })
+  .strict()
+  .refine(
+    (value) =>
+      (value.build_evidence === "unavailable") ===
+      (value.build_digest === null),
+  );
+export type DeploymentIdentity = z.infer<typeof DeploymentIdentitySchema>;
+const Manifest = z
+  .object({
+    schema_version: z.literal(1),
+    homes: z
+      .array(
+        z
+          .object({
+            home_id: HomeId,
+            socket: z.string().min(1).max(4096).refine(isAbsolute),
+            enabled: z.boolean(),
+            desired: z
+              .object({
+                version: boundedText,
+                protocol_version: z.number().int().positive().optional(),
+                database_schema: z.number().int().nonnegative().optional(),
+                deployment_kind: z.enum(["npm", "checkout"]).optional(),
+                build_digest: Digest.optional(),
+              })
+              .strict(),
+          })
+          .strict(),
+      )
+      .min(1)
+      .max(32),
+  })
+  .strict()
+  .refine(
+    (value) =>
+      new Set(value.homes.map((home) => home.home_id)).size ===
+        value.homes.length &&
+      new Set(value.homes.map((home) => home.socket)).size ===
+        value.homes.length,
+  );
+type HomeEntry = z.infer<typeof Manifest>["homes"][number];
+type Status =
+  | "matched"
+  | "drift"
+  | "unknown"
+  | "unreachable"
+  | "identity_mismatch"
+  | "unsafe_endpoint"
+  | "disabled";
+export interface HomeObservation {
+  desired: HomeEntry;
+  observed: DeploymentIdentity | null;
+  observed_at_ms: number;
+  status: Status;
+  reason: string | null;
+}
+
+/** Only the authorized daemon startup calls this initializer. Inventory never does. */
+export async function ensureDeploymentHomeId(home: string): Promise<string> {
+  const path = join(home, "deployment-identity.json");
+  try {
+    const parent = await lstat(home);
+    if (
+      !parent.isDirectory() ||
+      (process.getuid && parent.uid !== process.getuid())
+    )
+      throw new Error();
+    try {
+      const file = await open(
+        path,
+        constants.O_CREAT |
+          constants.O_EXCL |
+          constants.O_WRONLY |
+          constants.O_NOFOLLOW,
+        0o600,
+      );
+      try {
+        await file.writeFile(
+          JSON.stringify({
+            schema_version: 1,
+            home_id: `home_${randomBytes(16).toString("hex")}`,
+          }),
+        );
+        await file.sync();
+      } finally {
+        await file.close();
+      }
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
+    }
+    const file = await open(
+      path,
+      constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK,
+    );
+    try {
+      const info = await file.stat();
+      if (
+        !info.isFile() ||
+        info.size > 256 ||
+        (process.getuid && info.uid !== process.getuid())
+      )
+        throw new Error();
+      const buffer = Buffer.alloc(257);
+      const { bytesRead } = await file.read(buffer, 0, buffer.length, 0);
+      if (bytesRead > 256) throw new Error();
+      return z
+        .object({ schema_version: z.literal(1), home_id: HomeId })
+        .strict()
+        .parse(JSON.parse(buffer.subarray(0, bytesRead).toString())).home_id;
+    } finally {
+      await file.close();
+    }
+  } catch {
+    throw new Error("identity_unavailable");
+  }
+}
+
+/** Fixed read-only RPC, 64KiB total response bound before buffering. No DB or generic method port. */
+export function readHomeIdentity(
+  socketPath: string,
+  timeoutMs = 3000,
+): Promise<unknown> {
+  return new Promise((resolve, reject) => {
+    const socket = connect(socketPath);
+    let bytes = Buffer.alloc(0);
+    let settled = false;
+    const finish = (error?: string, value?: unknown) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      socket.destroy();
+      error ? reject(new Error(error)) : resolve(value);
+    };
+    const timer = setTimeout(
+      () => finish("unreachable"),
+      Math.min(3000, Math.max(1, timeoutMs)),
+    );
+    socket.on("error", () => finish("unreachable"));
+    socket.on("close", () => finish("invalid_response"));
+    socket.on("connect", () => {
+      const body = Buffer.from(
+        JSON.stringify({ id: 1, method: "deployment.identity" }),
+      );
+      const header = Buffer.alloc(4);
+      header.writeUInt32BE(body.length);
+      socket.write(Buffer.concat([header, body]));
+    });
+    socket.on("data", (chunk) => {
+      if (bytes.length + chunk.length > 65536) {
+        finish("invalid_response");
+        return;
+      }
+      bytes = Buffer.concat([bytes, chunk]);
+      if (bytes.length < 4) return;
+      const size = bytes.readUInt32BE();
+      if (size > 65532) {
+        finish("invalid_response");
+        return;
+      }
+      if (bytes.length < 4 + size) return;
+      if (bytes.length !== 4 + size) {
+        finish("invalid_response");
+        return;
+      }
+      try {
+        const response = z
+          .object({
+            id: z.literal(1),
+            ok: z.literal(true),
+            result: DeploymentIdentitySchema,
+          })
+          .strict()
+          .parse(JSON.parse(bytes.subarray(4).toString()));
+        finish(undefined, response.result);
+      } catch {
+        finish("invalid_response");
+      }
+    });
+  });
+}
+
+/** Local same-UID socket/file ownership is a trust boundary, not network authentication. */
+export async function inspectHomes(
+  raw: unknown,
+): Promise<{
+  schema_version: 1;
+  mode: "readonly_inventory";
+  complete: boolean;
+  homes: HomeObservation[];
+  limitations: string[];
+}> {
+  const parsed = Manifest.safeParse(raw);
+  if (!parsed.success) throw new Error("invalid_manifest");
+  const rows: HomeObservation[] = parsed.data.homes.map((desired) => ({
+    desired,
+    observed: null,
+    observed_at_ms: Date.now(),
+    status: "disabled",
+    reason: null,
+  }));
+  const canonicalSockets = new Set<string>();
+  for (const row of rows) {
+    if (!row.desired.enabled) continue;
+    const canonical = await realpath(row.desired.socket).catch(() => null);
+    if (canonical !== null) {
+      if (canonicalSockets.has(canonical)) throw new Error("duplicate_socket");
+      canonicalSockets.add(canonical);
+    }
+  }
+  let next = 0;
+  const worker = async () => {
+    while (next < rows.length) {
+      const row = rows[next++]!;
+      if (!row.desired.enabled) continue;
+      try {
+        const canonical = await realpath(row.desired.socket);
+        const info = await stat(row.desired.socket);
+        if (
+          !info.isSocket() ||
+          (process.getuid && info.uid !== process.getuid())
+        ) {
+          row.status = "unsafe_endpoint";
+          row.reason = "canonical_same_uid_socket_required";
+          continue;
+        }
+        let observed: DeploymentIdentity;
+        try {
+          observed = DeploymentIdentitySchema.parse(
+            await readHomeIdentity(row.desired.socket),
+          );
+        } catch (error) {
+          row.status =
+            error instanceof Error && error.message === "unreachable"
+              ? "unreachable"
+              : "unknown";
+          row.reason = "identity_unavailable";
+          continue;
+        }
+        if ((await realpath(row.desired.socket)) !== canonical) {
+          row.status = "unsafe_endpoint";
+          row.reason = "endpoint_changed";
+          continue;
+        }
+        row.observed_at_ms = Date.now();
+        if (observed.home_id !== row.desired.home_id) {
+          row.status = "identity_mismatch";
+          row.reason = "pinned_home_mismatch";
+          continue;
+        }
+        row.observed = observed;
+        const desired = row.desired.desired;
+        const unknown =
+          (desired.build_digest !== undefined &&
+            observed.build_digest === null) ||
+          (desired.deployment_kind !== undefined &&
+            observed.deployment_kind === "unknown");
+        const drift =
+          desired.version !== observed.version ||
+          (desired.protocol_version !== undefined &&
+            desired.protocol_version !== observed.protocol_version) ||
+          (desired.database_schema !== undefined &&
+            desired.database_schema !== observed.database_schema) ||
+          (desired.build_digest !== undefined &&
+            observed.build_digest !== null &&
+            desired.build_digest !== observed.build_digest) ||
+          (desired.deployment_kind !== undefined &&
+            observed.deployment_kind !== "unknown" &&
+            desired.deployment_kind !== observed.deployment_kind);
+        row.status = drift ? "drift" : unknown ? "unknown" : "matched";
+        row.reason = unknown ? "deployment_evidence_unavailable" : null;
+      } catch {
+        row.status = "unreachable";
+        row.reason = "endpoint_unavailable";
+      }
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(4, rows.length) }, worker));
+  return {
+    schema_version: 1,
+    mode: "readonly_inventory",
+    complete: rows.every(
+      (row) => row.status === "matched" || row.status === "disabled",
+    ),
+    homes: rows,
+    limitations: [
+      "Local same-UID sockets with canonical alias deduplication only; no network or peer-credential attestation.",
+      "No database opened, daemon started, software installed or deployment modified.",
+      "Matched applies only to declared desired fields; missing build/deployment evidence is never inferred.",
+      "Snapshot only; generation is reported for comparison, not an upgrade authorization.",
+    ],
+  };
+}
+
+export async function handleHomesCommand(
+  args: string[],
+  out: (value: string) => void = console.log,
+): Promise<number> {
+  if (args.length === 1 && args[0] === "--help") {
+    out(
+      "homes inspect --manifest FILE [--json]\nRead only explicitly pinned local home identities; never upgrades or opens databases.",
+    );
+    return 0;
+  }
+  if (
+    args[0] !== "inspect" ||
+    args[1] !== "--manifest" ||
+    !args[2] ||
+    (args.length !== 3 && !(args.length === 4 && args[3] === "--json"))
+  )
+    throw new Error("invalid_homes_arguments");
+  const file = await open(args[2], constants.O_RDONLY | constants.O_NONBLOCK);
+  let raw: unknown;
+  try {
+    const info = await file.stat();
+    if (!info.isFile()) throw new Error("invalid_manifest");
+    const buffer = Buffer.alloc(65537);
+    const { bytesRead } = await file.read(buffer, 0, buffer.length, 0);
+    if (bytesRead > 65536) throw new Error("manifest_too_large");
+    raw = JSON.parse(buffer.subarray(0, bytesRead).toString());
+  } finally {
+    await file.close();
+  }
+  const result = await inspectHomes(raw);
+  out(JSON.stringify(result, null, 2));
+  return result.complete ? 0 : 1;
+}
+
+FILE packages/cli/src/home-inventory.test.ts
+import { mkdtemp, mkdir, readFile, symlink, writeFile } from "node:fs/promises";
+import { createServer } from "node:net";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import {
+  DeploymentIdentitySchema,
+  ensureDeploymentHomeId,
+  inspectHomes,
+  readHomeIdentity,
+} from "./home-inventory.js";
+
+const identity = {
+  schema_version: 1,
+  home_id: "home_12345678901234567890123456789012",
+  generation: "instance_12345678901234567890123456789012",
+  version: "1.2.3",
+  protocol_version: 2,
+  database_schema: 42,
+  started_at_ms: 1,
+  deployment_kind: "unknown",
+  build_digest: null,
+  build_evidence: "unavailable",
+};
+const entry = (socket: string) => ({
+  home_id: identity.home_id,
+  socket,
+  enabled: true,
+  desired: { version: "1.2.3", protocol_version: 2 },
+});
+const servers: ReturnType<typeof createServer>[] = [];
+afterEach(async () => {
+  await Promise.all(
+    servers
+      .splice(0)
+      .map(
+        (server) =>
+          new Promise<void>((resolve) => server.close(() => resolve())),
+      ),
+  );
+});
+async function endpoint(reply: unknown, raw = false) {
+  const dir = await mkdtemp(join(tmpdir(), "home-inventory-"));
+  const socket = join(dir, "d.sock");
+  const server = createServer((client) => {
+    client.once("data", () => {
+      if (raw) {
+        client.end(reply as Buffer);
+        return;
+      }
+      const body = Buffer.from(
+        JSON.stringify({ id: 1, ok: true, result: reply }),
+      );
+      const header = Buffer.alloc(4);
+      header.writeUInt32BE(body.length);
+      client.end(Buffer.concat([header, body]));
+    });
+  });
+  servers.push(server);
+  await new Promise<void>((resolve) => server.listen(socket, resolve));
+  return socket;
+}
+describe("read-only explicit homes inventory", () => {
+  it("persists a stable home ID only when initialized by the daemon", async () => {
+    const home = await mkdtemp(join(tmpdir(), "home-identity-"));
+    const first = await ensureDeploymentHomeId(home);
+    expect(await ensureDeploymentHomeId(home)).toBe(first);
+    expect(
+      JSON.parse(
+        await readFile(join(home, "deployment-identity.json"), "utf8"),
+      ),
+    ).toEqual({ schema_version: 1, home_id: first });
+    await writeFile(join(home, "deployment-identity.json"), "broken");
+    await expect(ensureDeploymentHomeId(home)).rejects.toThrow(
+      "identity_unavailable",
+    );
+    expect(await readFile(join(home, "deployment-identity.json"), "utf8")).toBe(
+      "broken",
+    );
+  });
+  it("rejects a symlink identity without modifying its destination", async () => {
+    const home = await mkdtemp(join(tmpdir(), "home-identity-"));
+    const outside = join(home, "outside");
+    await writeFile(outside, "untouched");
+    await symlink(outside, join(home, "deployment-identity.json"));
+    await expect(ensureDeploymentHomeId(home)).rejects.toThrow(
+      "identity_unavailable",
+    );
+    expect(await readFile(outside, "utf8")).toBe("untouched");
+  });
+  it("reads the real framed daemon response and matches pinned home and version", async () => {
+    const socket = await endpoint(identity);
+    const result = await inspectHomes({
+      schema_version: 1,
+      homes: [entry(socket)],
+    });
+    expect(result.homes[0]).toMatchObject({
+      status: "matched",
+      observed: identity,
+    });
+  });
+  it("never accepts the right version from the wrong home", async () => {
+    const socket = await endpoint({
+      ...identity,
+      home_id: "home_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    });
+    const result = await inspectHomes({
+      schema_version: 1,
+      homes: [entry(socket)],
+    });
+    expect(result.homes[0]).toMatchObject({
+      status: "identity_mismatch",
+      observed: null,
+    });
+  });
+  it("compares desired build and deployment evidence without manufacturing it", async () => {
+    const socket = await endpoint(identity);
+    const result = await inspectHomes({
+      schema_version: 1,
+      homes: [
+        {
+          ...entry(socket),
+          desired: {
+            version: "1.2.3",
+            build_digest: "a".repeat(64),
+            deployment_kind: "npm",
+          },
+        },
+      ],
+    });
+    expect(result.homes[0]?.status).toBe("unknown");
+  });
+  it("reports actual version drift and keeps unreachable homes in the denominator", async () => {
+    const socket = await endpoint({ ...identity, version: "1.2.4" });
+    const result = await inspectHomes({
+      schema_version: 1,
+      homes: [
+        entry(socket),
+        {
+          ...entry(socket + "-missing"),
+          home_id: "home_bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        },
+      ],
+    });
+    expect(result.homes.map((row) => row.status)).toEqual([
+      "drift",
+      "unreachable",
+    ]);
+    expect(result.complete).toBe(false);
+  });
+  it("rejects malformed, duplicate and oversized manifests before reading endpoints", async () => {
+    await expect(
+      inspectHomes({
+        schema_version: 1,
+        homes: [entry("/tmp/a"), entry("/tmp/b")],
+      }),
+    ).rejects.toThrow("invalid_manifest");
+    await expect(
+      inspectHomes({
+        schema_version: 1,
+        homes: [{ ...entry("/tmp/a"), shell: "x" }],
+      }),
+    ).rejects.toThrow("invalid_manifest");
+    await expect(
+      inspectHomes({
+        schema_version: 1,
+        homes: Array.from({ length: 33 }, () => entry("/tmp/a")),
+      }),
+    ).rejects.toThrow("invalid_manifest");
+  });
+  it("rejects oversized frame headers before buffering a body and malformed identity", async () => {
+    const header = Buffer.alloc(4);
+    header.writeUInt32BE(65537);
+    const socket = await endpoint(header, true);
+    await expect(readHomeIdentity(socket, 100)).rejects.toThrow(
+      "invalid_response",
+    );
+    const old = await endpoint({ version: "1.2.3" });
+    expect(
+      (await inspectHomes({ schema_version: 1, homes: [entry(old)] })).homes[0]
+        ?.status,
+    ).toBe("unknown");
+    expect(
+      DeploymentIdentitySchema.safeParse({ ...identity, started_at_ms: NaN })
+        .success,
+    ).toBe(false);
+  });
+  it("disabled entries never contact a socket and cannot count as a match", async () => {
+    const result = await inspectHomes({
+      schema_version: 1,
+      homes: [{ ...entry("/tmp/missing-home"), enabled: false }],
+    });
+    expect(result.homes[0]).toMatchObject({
+      status: "disabled",
+      observed: null,
+    });
+  });
+  it("rejects non-socket endpoints and duplicate aliases but accepts a pinned short socket alias", async () => {
+    const home = await mkdtemp(join(tmpdir(), "home-endpoint-"));
+    await mkdir(join(home, "directory"));
+    expect(
+      (
+        await inspectHomes({
+          schema_version: 1,
+          homes: [entry(join(home, "directory"))],
+        })
+      ).homes[0]?.status,
+    ).toBe("unsafe_endpoint");
+    const socket = await endpoint(identity);
+    const alias = join(home, "alias");
+    await symlink(socket, alias);
+    expect(
+      (await inspectHomes({ schema_version: 1, homes: [entry(alias)] }))
+        .homes[0]?.status,
+    ).toBe("matched");
+    await expect(
+      inspectHomes({
+        schema_version: 1,
+        homes: [
+          entry(socket),
+          { ...entry(alias), home_id: "home_bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" },
+        ],
+      }),
+    ).rejects.toThrow("duplicate_socket");
+  });
+});
+
+it("times out an unresponsive local endpoint and closes the connection", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "home-hung-"));
+  const socket = join(dir, "d.sock");
+  let closed = false;
+  const server = createServer((client) => {
+    client.on("data", () => {});
+    client.on("close", () => {
+      closed = true;
+    });
+  });
+  servers.push(server);
+  await new Promise<void>((resolve) => server.listen(socket, resolve));
+  await expect(readHomeIdentity(socket, 20)).rejects.toThrow("unreachable");
+  await vi.waitFor(() => expect(closed).toBe(true));
+});
+
+FILE packages/cli/src/home-inventory-daemon.test.ts
+import { mkdtemp, readFile, writeFile } from "node:fs/promises";
+import { join } from "node:path";
+import { tmpdir } from "node:os";
+import { afterEach, expect, it, vi } from "vitest";
+import { startDaemon, type DaemonHandles } from "./daemon.js";
+import {
+  DeploymentIdentitySchema,
+  readHomeIdentity,
+} from "./home-inventory.js";
+import { main } from "./bin.js";
+let daemon: DaemonHandles | undefined;
+afterEach(async () => {
+  await daemon?.close();
+  daemon = undefined;
+  vi.unstubAllEnvs();
+  vi.restoreAllMocks();
+});
+it("reports the serving home identity through the actual CLI and preserves ID across daemon generations", async () => {
+  const home = await mkdtemp(join(tmpdir(), "homes-daemon-"));
+  vi.stubEnv("OSSTACK_HOME", home);
+  vi.stubEnv("OSSTACK_UPDATE_CHECK", "0");
+  const socket = join(home, "d.sock");
+  daemon = await startDaemon({ socketPath: socket, adapters: [] });
+  const first = DeploymentIdentitySchema.parse(await readHomeIdentity(socket));
+  expect(first.database_schema).toBe(42);
+  const saved = JSON.parse(
+    await readFile(join(home, "deployment-identity.json"), "utf8"),
+  );
+  expect(first.home_id).toBe(saved.home_id);
+  const manifest = join(home, "homes.json");
+  await writeFile(
+    manifest,
+    JSON.stringify({
+      schema_version: 1,
+      homes: [
+        {
+          home_id: first.home_id,
+          socket,
+          enabled: true,
+          desired: {
+            version: first.version,
+            protocol_version: first.protocol_version,
+          },
+        },
+      ],
+    }),
+  );
+  const out = vi.spyOn(console, "log").mockImplementation(() => {});
+  expect(
+    await main(["homes", "inspect", "--manifest", manifest, "--json"]),
+  ).toBe(0);
+  expect(JSON.parse(String(out.mock.calls[0]?.[0]))).toMatchObject({
+    mode: "readonly_inventory",
+    homes: [{ status: "matched", observed: { generation: first.generation } }],
+  });
+  await daemon.close();
+  daemon = await startDaemon({ socketPath: socket, adapters: [] });
+  const second = DeploymentIdentitySchema.parse(await readHomeIdentity(socket));
+  expect(second.home_id).toBe(first.home_id);
+  expect(second.generation).not.toBe(first.generation);
+});
+
+FILE docs/guides/home-inventory.md
+# Inspect explicitly registered local homes
+
+`osstack homes inspect --manifest /absolute/homes.json --json` reads only the listed local Unix sockets. It never discovers homes by walking directories, opens a database, starts a daemon, installs a package or applies an upgrade.
+
+```json
+{"schema_version":1,"homes":[{"home_id":"home_0123456789abcdef0123456789abcdef","socket":"/absolute/declared-home/daemon.sock","enabled":true,"desired":{"version":"0.21.0","protocol_version":1}}]}
+```
+
+The authorized daemon startup creates `deployment-identity.json` once in its serving home. Obtain and explicitly register that home ID from that controlled deployment. A responding socket is never automatically trusted or pinned. A malformed or symlink identity file disables identity reporting; it is not overwritten. The home ID remains stable across restarts; each daemon instance has a new generation.
+
+The `deployment.identity` RPC reports the serving binary's version, protocol, actual open database schema and startup generation. Build digest and deployment type currently remain explicitly unavailable/unknown because this runtime does not have an independently pinned installation manifest. Add optional `desired.database_schema`, `desired.build_digest` or `desired.deployment_kind` only when those assertions are required; missing observed evidence yields `unknown`, not a match. `matched` applies only to fields requested in the manifest.
+
+Up to 32 entries are accepted, with four socket reads at a time and a three-second deadline per socket operation. Responses are capped at 64 KiB before buffering; manifests are regular files capped at 64 KiB. IDs, desired fields and unknown fields are strictly validated. Duplicate IDs and socket paths fail; canonical aliases of the same enabled endpoint also fail. A short socket symlink can be used on macOS, where full scratch paths can exceed the Unix socket pathname limit. Aliases are canonicalized and checked for changes after the read.
+
+This is local same-UID socket/file ownership trust, not remote authentication or peer-credential attestation. A same-UID process that controls the home/socket is already inside that trust boundary. Filesystem metadata calls are local and not preemptible by the network timer; do not register paths on unresponsive network mounts. An unavailable, old, malformed or mismatched endpoint remains in the result as `unreachable`, `unknown` or `identity_mismatch`. One failure does not produce a healthy summary or remove the failed entry from the denominator.
+
+Results are observations, not upgrade authorization. Shared-install consumer discovery, drain coordination, crash-safe multi-home update journals and real multi-home upgrade qualification remain separate work.
+
+ACTUAL DAEMON/CLI WIRING
+diff --git a/packages/cli/src/bin.ts b/packages/cli/src/bin.ts
+index a90f1fc5..2eba1c83 100644
+--- a/packages/cli/src/bin.ts
++++ b/packages/cli/src/bin.ts
+@@ -223,6 +223,7 @@ function renderChineseMainHelp(): string {
+   stats               查看 agent 与 loop 指标
+ 
+ 项目命令：
++  homes inspect --manifest <file>  只读盘点显式登记的本地实例
+   worker list|inspect --repo <path> --default-tenant  只读查看已绑定执行器
+   attention status    只读查看任务状态与最新决策（未后台接管）
+   attention routing-eval --input <path> --mode router_golden  验证真实确定性路由
+@@ -428,6 +429,7 @@ Self-update:
+                       and roll back automatically on failure.
+ 
+ Project commands:
++  homes inspect --manifest <file>  Inspect explicitly pinned local home identities
+   worker list|inspect --repo <path> --default-tenant  Inspect bound workers read-only
+   attention status    Read-only task/session attention snapshot
+   attention routing-eval --input <path> --mode router_golden  Validate real deterministic routing
+@@ -973,6 +975,11 @@ See docs/V2_REFACTOR_PLAN.md for the full roadmap.
+     return await handleSuperviseCommand(args.slice(1));
+   }
+ 
++  if (cmd === "homes") {
++    const {handleHomesCommand} = await import("./home-inventory.js");
++    return await handleHomesCommand(args.slice(1));
++  }
++
+   if (cmd === "worker") {
+     const {handleWorkerViewCommand} = await import("./worker-view-command.js");
+     return await handleWorkerViewCommand(args.slice(1), {
+diff --git a/packages/cli/src/daemon.ts b/packages/cli/src/daemon.ts
+index 6af60b34..31c2f0dd 100644
+--- a/packages/cli/src/daemon.ts
++++ b/packages/cli/src/daemon.ts
+@@ -173,6 +173,7 @@ interface SingleResponse {
+ }
+ 
+ interface DaemonContext {
++  deploymentIdentity?: import("./home-inventory.js").DeploymentIdentity;
+   dbPath: string;
+   loopSessionsPath: string;
+   dailySessionsPath: string;
+@@ -1132,6 +1133,10 @@ async function handleSingle(ctx: DaemonContext, req: DaemonRequest): Promise<Sin
+     } catch(error) {return singleErr(req.id,error instanceof Error?error.message:"attention_error","Attention request failed; refresh source facts before retrying");}
+   }
+   switch (req.method) {
++    case "deployment.identity":
++      return ctx.deploymentIdentity
++        ? singleOk(req.id, ctx.deploymentIdentity)
++        : singleErr(req.id, "identity_unavailable", "Deployment identity unavailable");
+     case "version":
+       return singleOk(req.id, {
+         version: DAEMON_VERSION,
+@@ -3980,6 +3985,20 @@ export async function startDaemon(
+       : { readConcurrency: opts.readConcurrency }),
+   });
+   failedContext = ctx;
++  // Initialize only after the authorized home/database startup. Read-only
++  // inventory never creates an identity and malformed records are not repaired.
++  try {
++    const {ensureDeploymentHomeId} = await import("./home-inventory.js");
++    ctx.deploymentIdentity = {
++      schema_version: 1, home_id: await ensureDeploymentHomeId(osstackHome()),
++      generation: `instance_${randomUUID().replaceAll("-", "")}`,
++      version: DAEMON_VERSION, protocol_version: PROTOCOL_VERSION,
++      database_schema: ctx.db.pragma("user_version", {simple:true}) as number,
++      started_at_ms: Date.now(), deployment_kind: "unknown",
++      build_digest: null, build_evidence: "unavailable",
++    };
++  } catch { /* retain unavailable identity; never guess or overwrite a pin */ }
++
+   const getGraphRpc = (): Promise<GraphRpcService> => {
+     if (checkpointClosed) return Promise.reject(new Error('GRAPH_SERVICE_CLOSED'));
+     graphRpc ??= import('./graph-rpc.js').then(async ({ GraphRpcService, loadLocalGraphRegistration }) => {
+
+TEST EVIDENCE
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-contract-integration/packages/cli
+
+ ✓ src/home-inventory.test.ts (11 tests) 94ms
+ ✓ src/home-inventory-daemon.test.ts (1 test) 43ms
+
+ Test Files  2 passed (2)
+      Tests  12 passed (12)
+   Start at  12:21:37
+   Duration  1.23s (transform 662ms, setup 14ms, collect 1.07s, tests 137ms, environment 0ms, prepare 61ms)
+

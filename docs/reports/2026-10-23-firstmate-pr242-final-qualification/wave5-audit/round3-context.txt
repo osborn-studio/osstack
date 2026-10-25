@@ -1,0 +1,1617 @@
+Perform a narrow independent final challenge of these Graph audit fixes, not a broad new feature design. No tools. Report only confirmed P0/P1 with concrete exploit path; classify missing evidence or availability-only limitations as P2/unverified. Previous round candidate: git assume-unchanged could hide out-of-contract tracked changes before artifact capture; artifact capture reads raw bytes so must fail before serialization. New code rejects lowercase ls-files -v flags and S before workspace path checks; candidateRevision checks immutable tree diff. Tests include real Graph writer and direct pre-freeze gate for both flags. Previous exact unknown ACTION_OUTCOME_UNKNOWN/CANCEL_UNCONFIRMED now exit2 with reconciliation and help updated. Check that security/semantics fixes are sufficient and note any remaining concrete blockers. Runtime tests are separately executed by host; do not claim execution. End with clear blocking count.
+
+FILE packages/cli/src/graph-delivery-contract.ts
+import { execFileSync } from 'node:child_process';
+import { z } from 'zod';
+import { assertDeliveryContractAdmission, assertDeliveryContractPaths, assertFrozenDeliveryContract, deliveryCheckReference, deliveryContractDigest } from '@osstack/core';
+import { FrozenDeliveryContractV2, GraphBudget, StartGraphRequest, freezeWorkerData, workerCanonical } from '@osstack/protocol';
+import type { AcceptanceCommandSpec } from './graph-verification-store.js';
+
+export interface GraphContractHostPolicy {
+  policyDigest: string;
+  reviewPolicyRef: string;
+  limits: StartGraphRequest['spec']['limits'];
+}
+export interface GraphDeliveryContractRegistration {
+  frozen: FrozenDeliveryContractV2;
+  policy: GraphContractHostPolicy;
+}
+const digest = z.string().regex(/^[a-f0-9]{64}$/);
+const reference = z.string().min(1).max(256);
+const limits = z.unknown().transform((value, ctx): GraphContractHostPolicy['limits'] => {
+  const parsed = GraphBudget.safeParse(value && typeof value === 'object' && !Array.isArray(value) ? { ...value, schemaVersion: 1 } : null);
+  if (!parsed.success) { ctx.addIssue({ code: 'custom', message: 'graph contract policy limits' }); return z.NEVER; }
+  const { schemaVersion: _version, ...result } = parsed.data; return result;
+});
+const policySchema = z.object({ policyDigest: digest, reviewPolicyRef: reference, limits }).strict();
+const acceptanceSchema = z.object({ ref: reference, command: z.string().min(1).max(8192),
+  passExitCodes: z.array(z.number().int().min(0).max(255)), failExitCodes: z.array(z.number().int().min(0).max(255)) }).strict();
+const envelopeSchema = z.object({ schemaVersion: z.literal(1), sourceInputArtifactRef: reference,
+  frozen: FrozenDeliveryContractV2, policy: policySchema, acceptance: acceptanceSchema, contextDigest: digest.optional() }).strict();
+export type GraphContractHostEnvelope = z.infer<typeof envelopeSchema>;
+
+export function parseGraphContractRegistration(value: unknown): GraphDeliveryContractRegistration {
+  const parsed = z.object({ frozen: FrozenDeliveryContractV2, policy: policySchema }).strict().parse(value);
+  return freezeWorkerData({ ...parsed, frozen: assertFrozenDeliveryContract(parsed.frozen) });
+}
+
+/** Host policy is already authorized by the registration. This function grants nothing. */
+export function bindGraphDeliveryContract(requestValue: StartGraphRequest, registration: {
+  repositoryPath: string; task: string; acceptanceRegistry: readonly AcceptanceCommandSpec[];
+  deliveryContract: GraphDeliveryContractRegistration;
+  executionContext?: { configDigest: string };
+}): { request: StartGraphRequest; envelope: GraphContractHostEnvelope } {
+  const request = StartGraphRequest.parse(requestValue);
+  const { frozen, policy } = parseGraphContractRegistration(registration.deliveryContract);
+  const contract = frozen.contract;
+  if (registration.executionContext && request.scope.tenantId !== 'default') throw Error('GRAPH_CONTEXT_SCOPE_UNSUPPORTED');
+  if (contract.mode !== 'implement' || contract.requested_completion !== 'local_verified'
+    || contract.publication_scope.mode !== 'none' || contract.merge_authority.mode !== 'none'
+    || contract.required_checks.length !== 1) throw Error('GRAPH_CONTRACT_UNSUPPORTED');
+  const selected = registration.acceptanceRegistry.filter(item => item.ref === request.spec.input.acceptanceRef);
+  if (selected.length !== 1) throw Error('GRAPH_CONTRACT_REGISTRY_MISMATCH');
+  const acceptance = acceptanceSchema.parse(selected[0]);
+  if (acceptance.passExitCodes.length !== 1 || acceptance.passExitCodes[0] !== 0 || acceptance.failExitCodes.includes(0)
+    || deliveryCheckReference(acceptance.command) !== contract.required_checks[0]!.registry_ref) throw Error('GRAPH_CONTRACT_REGISTRY_MISMATCH');
+  assertDeliveryContractAdmission(frozen, { canonicalRepo: registration.repositoryPath, baseHead: request.spec.input.baseRevision,
+    taskId: request.spec.input.taskRef, goal: registration.task, policyDigest: policy.policyDigest,
+    reviewPolicyRef: policy.reviewPolicyRef, acceptedCommands: [acceptance.command] });
+  for (const name of Object.keys(policy.limits) as (keyof GraphContractHostPolicy['limits'])[]) {
+    if (request.spec.limits[name] > policy.limits[name]) throw Error('GRAPH_CONTRACT_BUDGET_EXCEEDED');
+  }
+  const envelope = freezeWorkerData(envelopeSchema.parse({ schemaVersion: 1, sourceInputArtifactRef: request.inputArtifactRef,
+    frozen, policy, acceptance, ...(registration.executionContext ? { contextDigest: registration.executionContext.configDigest } : {}) }));
+  return { request: freezeWorkerData(StartGraphRequest.parse({ ...request, inputArtifactRef: graphContractInputRef(envelope) })), envelope };
+}
+
+export function graphContractInputRef(envelope: GraphContractHostEnvelope): string {
+  return `graph-contract-input:${deliveryContractDigest(envelopeSchema.parse(envelope))}`;
+}
+
+/** Parses durable host data; provenance and current grant remain the caller's responsibility. */
+export function verifyGraphContractEnvelope(value: unknown, request: StartGraphRequest,
+  registration: { repositoryPath: string; task: string; acceptanceRegistry: readonly AcceptanceCommandSpec[]; deliveryContract: GraphDeliveryContractRegistration; executionContext?: { configDigest: string } }): GraphContractHostEnvelope {
+  const envelope = envelopeSchema.parse(value);
+  const bound = bindGraphDeliveryContract({ ...request, inputArtifactRef: envelope.sourceInputArtifactRef }, registration);
+  if (workerCanonical(bound.envelope) !== workerCanonical(envelope) || workerCanonical(bound.request) !== workerCanonical(request))
+    throw Error('GRAPH_CONTRACT_ENVELOPE_MISMATCH');
+  return freezeWorkerData(envelope);
+}
+
+/** Original base across every repair epoch; --no-renames includes both ends of moves. */
+export function assertGraphContractPaths(frozen: FrozenDeliveryContractV2, workspace: string, candidateRevision?: string): void {
+  const read = (args: string[]) => execFileSync('git', ['-c', 'core.hooksPath=/dev/null', '-c', 'core.fsmonitor=false', ...args], {
+    cwd: workspace, encoding: 'utf8', timeout: 30000, maxBuffer: 16 * 1024 * 1024,
+    env: { ...Object.fromEntries(Object.entries(process.env).filter(([name]) => !name.startsWith('GIT_'))),
+      GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOSYSTEM: '1', GIT_NO_REPLACE_OBJECTS: '1', GIT_TERMINAL_PROMPT: '0' },
+  }).split('\0').filter(Boolean);
+  if (!candidateRevision && read(['ls-files', '-v', '-z']).some(entry => /^[a-zS] /.test(entry)))
+    throw Error('GRAPH_CONTRACT_HIDDEN_INDEX_FLAGS');
+  const paths = read(['diff', '--no-ext-diff', '--no-textconv', '--no-renames', '--name-only', '-z', frozen.contract.base_head,
+    ...(candidateRevision ? [candidateRevision] : []), '--']);
+  if (!candidateRevision) paths.push(...read(['ls-files', '--others', '-z']));
+  assertDeliveryContractPaths(frozen, paths);
+}
+
+
+FILE packages/cli/src/graph-contract-integration.test.ts
+import { execFileSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
+import { readFile, writeFile } from 'node:fs/promises';
+import { join } from 'node:path';
+import { expect, it, vi } from 'vitest';
+import { deliveryCheckReference, freezeDeliveryContract } from '@osstack/core';
+import { GraphDelegationStatus, computeGraphInputDigest } from '@osstack/protocol';
+import { GraphRpcService, loadLocalGraphRegistration } from './graph-rpc.js';
+import { graphRpcFixture } from './graph-test-fixture.js';
+import { createExecutionContextAdapters, type ExecutionContextReceiptReference } from './execution-context.js';
+import { persistDeliveryHostRecord } from './delivery-contract-host.js';
+import { GraphContractCompletionReceipt } from './graph-contract-receipt.js';
+import * as contractReceipts from './graph-contract-receipt.js';
+import type { GraphExecutionContextRegistration } from './graph-execution-context.js';
+import { GraphDelivery } from './graph-delivery.js';
+import { assertGraphContractPaths } from './graph-delivery-contract.js';
+
+async function fixture(mode: 'success' | 'repair' | 'unknown' = 'success', context = false) {
+  const f = await graphRpcFixture(mode); await f.service.close();
+  if (context) { f.request.scope = { ...f.request.scope, tenantId: 'default' }; f.registration.scope = f.request.scope; }
+  const originalRun = GraphDelivery.prototype.run;
+  const routes: Awaited<ReturnType<GraphDelivery['run']>>[] = [];
+  const runSpy = vi.spyOn(GraphDelivery.prototype, 'run').mockImplementation(async function (this: GraphDelivery) {
+    const result = await originalRun.call(this);
+    routes.push(result);
+    return result;
+  });
+  const policyDigest = 'b'.repeat(64);
+  const frozen = freezeDeliveryContract({ schema_version: 2, contract_id: 'graph-contract', task_id: f.request.spec.input.taskRef,
+    canonical_repo: f.registration.delivery.repositoryPath, mode: 'implement', base_head: f.request.spec.input.baseRevision, goal: f.registration.delivery.task,
+    required_checks: [{ id: 'accept', registry_ref: deliveryCheckReference(f.registration.delivery.acceptanceRegistry[0]!.command) }],
+    review_policy_ref: 'graph:independent', requested_completion: 'local_verified', allowed_paths: ['answer'], requested_actions: ['build', 'verify'],
+    budget_ref: `policy:${policyDigest}`, policy_digest: policyDigest, publication_scope: { mode: 'none' }, merge_authority: { mode: 'none' } });
+  const registration = { ...f.registration, delivery: { ...f.registration.delivery,
+    deliveryContract: { frozen, policy: { policyDigest, reviewPolicyRef: 'graph:independent', limits: { ...f.request.spec.limits } } } } };
+  const prompts: string[] = []; const writer = registration.delivery.writer.adapter;
+  registration.delivery.writer = { ...registration.delivery.writer, adapter: { ...writer, invoke: async function* (task, signal) {
+    prompts.push(task.prompt); yield* writer.invoke(task, signal);
+  } } };
+  const reviewPrompts: string[] = []; const rawReviewer = registration.delivery.reviewer.adapter;
+  registration.delivery.reviewer = { ...registration.delivery.reviewer, adapter: { ...rawReviewer, invoke: async function* (task, signal) {
+    reviewPrompts.push(task.prompt); yield* rawReviewer.invoke(task, signal);
+  } } };
+  const contextRefs: ExecutionContextReceiptReference[] = []; const receiptRoot = join(f.root, 'context-receipts');
+  const executionContext: GraphExecutionContextRegistration = { configDigest: 'd'.repeat(64), receiptRoot, assertCurrent: () => {},
+    create: async input => {
+      const wrapped = createExecutionContextAdapters({ adapters: [input.adapter], workspacePath: input.workspacePath, mode: 'local',
+        contractDigest: input.frozen.digest, contractBrief: input.frozen.brief, loadContext: async () => [], recordReceipt: async receipt => {
+          const ref = await persistDeliveryHostRecord(receiptRoot, receipt); contextRefs.push(ref); return ref;
+        } });
+      return { adapter: wrapped.adapters[0]!, receiptRefs: wrapped.receiptRefs };
+    } };
+  const options = { ...f.options, registrations: [{ ...registration, delivery: { ...registration.delivery, ...(context ? { executionContext } : {}) } }] }; const service = new GraphRpcService(options);
+  const start = async () => GraphDelegationStatus.parse(await service.handle(f.connection, 'graph.start', f.request));
+  const until = async (id: string, waiting = false) => {
+    const deadline = Date.now() + 20000;
+    for (;;) {
+      const state = GraphDelegationStatus.parse(await service.handle(f.connection, 'graph.status', { schemaVersion: 1, scope: f.request.scope, graphRunId: id }));
+      if (['ready', 'failed', 'reconciliation_required', ...(waiting ? ['waiting_input'] : [])].includes(state.status)) return state;
+      if (Date.now() >= deadline) throw Error(`timeout ${state.status}`); await new Promise(resolve => setTimeout(resolve, 20));
+    }
+  };
+  return { ...f, registration, options, service, start, until, prompts, reviewPrompts, contextRefs, executionContext, routes, close: async () => { await service.close(); runSpy.mockRestore(); await f.close(); } };
+}
+it('binds the durable host contract before the real Graph launch and never changes source HEAD/refs/index/files', async () => {
+  const f = await fixture();
+  try {
+    const git = (...args: string[]) => execFileSync('git', args, { cwd: f.registration.delivery.repositoryPath, encoding: 'utf8' });
+    const source = [git('rev-parse', 'HEAD'), git('show-ref'), git('ls-files', '--stage'), await readFile(join(f.registration.delivery.repositoryPath, 'answer'), 'utf8')];
+    const [a, b] = await Promise.all([f.start(), f.start()]); expect(a.graphRunId).toBe(b.graphRunId);
+    expect(a.inputDigest).not.toBe(computeGraphInputDigest(f.request)); expect(f.writes()).toBe(0);
+    expect(a.admissionBinding).toEqual({requestInputDigest:computeGraphInputDigest(f.request),hostInputDigest:a.inputDigest,contractDigest:f.registration.delivery.deliveryContract.frozen.digest,policyDigest:f.registration.delivery.deliveryContract.policy.policyDigest});
+    const descriptor = JSON.parse((f.db.prepare('SELECT descriptor_json FROM graph_public_delivery WHERE graph_run_id=?').get(a.graphRunId) as { descriptor_json: string }).descriptor_json);
+    expect(descriptor.contractEnvelope.frozen.digest).toBe(f.registration.delivery.deliveryContract.frozen.digest);
+    expect(descriptor.request.inputArtifactRef).toMatch(/^graph-contract-input:/);
+    const ready = await f.until(a.graphRunId); expect(ready.status).toBe('ready'); expect(f.writes()).toBe(1);
+    expect(ready.evidenceRefs.some(ref => ref.startsWith('graph-contract:'))).toBe(true);
+    const receipt = GraphContractCompletionReceipt.parse(await f.service.handle(f.connection, 'graph.contract', { schemaVersion: 1, scope: f.request.scope, graphRunId: a.graphRunId }));
+    expect(receipt).toMatchObject({ achievedCompletion: 'local_verified', publication: 'artifact_only', contextEvidence: [], check: { exitCode: 0 }, review: { verdict: 'accept' } });
+    expect(f.prompts[0]!.split('Delivery contract V2:').length).toBe(2);
+    expect([git('rev-parse', 'HEAD'), git('show-ref'), git('ls-files', '--stage'), await readFile(join(f.registration.delivery.repositoryPath, 'answer'), 'utf8')]).toEqual(source);
+    const replay = new GraphRpcService(f.options);
+    try { expect(await replay.handle(f.connection, 'graph.submit', f.request)).toEqual(ready); } finally { await replay.close(); }
+  } finally { await f.close(); }
+}, 30000);
+it.each(['grant', 'revision'] as const)('does not publish a durable completion file after %s changes during the last await', async drift => {
+  const f = await fixture(); const publish = contractReceipts.publishGraphContractCompletion;
+  const spy = vi.spyOn(contractReceipts, 'publishGraphContractCompletion').mockImplementation(async input => {
+    const ref = await publish(input);
+    if (drift === 'grant') f.grant(false);
+    else f.db.prepare('UPDATE graph_runs SET revision=revision+1 WHERE graph_run_id=?').run(input.decision.snapshot.run.graphRunId);
+    return ref;
+  });
+  try {
+    const start = await f.start(); const deadline = Date.now() + 20000;
+    while (!f.routes.length) { if (Date.now() > deadline) throw Error('driver timeout'); await new Promise(resolve => setTimeout(resolve, 20)); }
+    expect(spy).toHaveBeenCalledOnce();
+    const result = GraphDelegationStatus.parse(await f.service.handle(f.connection, 'graph.result', { schemaVersion: 1, scope: f.request.scope, graphRunId: start.graphRunId }));
+    expect(result.status).not.toBe('ready'); expect(result.evidenceRefs.some(ref => ref.startsWith('graph-contract:'))).toBe(false);
+    await expect(f.service.handle(f.connection, 'graph.contract', { schemaVersion: 1, scope: f.request.scope, graphRunId: start.graphRunId })).rejects.toThrow();
+  } finally { spy.mockRestore(); await f.close(); }
+}, 30000);
+it('never exposes a contract completion when executor stop remains unknown', async () => {
+  const f = await fixture('unknown', true);
+  try {
+    const start = await f.start(); const unknown = await f.until(start.graphRunId); expect(unknown.status).toBe('reconciliation_required');
+    expect(unknown.evidenceRefs.some(ref => ref.startsWith('graph-contract:'))).toBe(false);
+    await expect(f.service.handle(f.connection, 'graph.contract', { schemaVersion: 1, scope: f.request.scope, graphRunId: start.graphRunId })).rejects.toThrow();
+  } finally { await f.close(); }
+}, 30000);
+it('binds actual writer and rebuilt reviewer prompts to two-phase context receipts before ready', async () => {
+  const f = await fixture('success', true);
+  try {
+    const start = await f.start(); const ready = await f.until(start.graphRunId); expect(ready.status).toBe('ready');
+    const receipt = GraphContractCompletionReceipt.parse(await f.service.handle(f.connection, 'graph.contract', { schemaVersion: 1, scope: f.request.scope, graphRunId: start.graphRunId }));
+    expect(receipt.contextDigest).toBe(f.executionContext.configDigest); expect(receipt.contextEvidence).toHaveLength(2); expect(f.contextRefs).toHaveLength(4);
+    const digests = [f.prompts[0]!, f.reviewPrompts[0]!].map(prompt => createHash('sha256').update(prompt).digest('hex'));
+    expect(receipt.contextEvidence.map(row => row.promptDigest).sort()).toEqual(digests.sort());
+    expect(receipt.review.promptDigest).toBe(createHash('sha256').update(f.reviewPrompts[0]!).digest('hex'));
+    for (const prompt of [...f.prompts, ...f.reviewPrompts]) expect(prompt.split('Delivery contract V2:')).toHaveLength(2);
+    for (const ref of f.contextRefs) {
+      const bytes = await readFile(ref.path); expect(createHash('sha256').update(bytes).digest('hex')).toBe(ref.digest);
+      const stored = JSON.parse(bytes.toString()); expect(stored.contract_digest).toBe(f.registration.delivery.deliveryContract.frozen.digest);
+      expect(stored.repo_path).toBe(f.registration.delivery.repositoryPath); expect(stored.execution_repo_path).not.toBe(stored.repo_path);
+    }
+    const published = ready.evidenceRefs.find(ref => ref.startsWith('graph-contract:'))!;
+    const file = join(f.options.root, start.graphRunId, 'contract-receipts', `${published.slice('graph-contract:'.length)}.json`);
+    await writeFile(file, '{}');
+    await expect(f.service.handle(f.connection, 'graph.contract', { schemaVersion: 1, scope: f.request.scope, graphRunId: start.graphRunId })).rejects.toThrow();
+  } finally { await f.close(); }
+}, 30000);
+it('does not transfer a prior epoch context/check/review receipt to a repaired candidate', async () => {
+  const f = await fixture('repair', true);
+  try {
+    const start = await f.start(); const waiting = await f.until(start.graphRunId, true); expect(waiting.status).toBe('waiting_input');
+    await expect(f.service.handle(f.connection, 'graph.contract', { schemaVersion: 1, scope: f.request.scope, graphRunId: start.graphRunId })).rejects.toThrow();
+    await f.service.handle(f.connection, 'graph.resume', { schemaVersion: 1, kind: 'resume', scope: f.request.scope, idempotencyKey: 'repair',
+      graphRunId: start.graphRunId, expectedRevision: waiting.revision, interruptId: waiting.interrupt!.interruptId,
+      input: { kind: 'data', value: { inputDigest: waiting.inputDigest } } });
+    const ready = await f.until(start.graphRunId); expect(ready.status).toBe('ready'); expect(f.writes()).toBe(2);
+    const receipt = GraphContractCompletionReceipt.parse(await f.service.handle(f.connection, 'graph.contract', { schemaVersion: 1, scope: f.request.scope, graphRunId: start.graphRunId }));
+    expect(receipt.epoch).toBe(1); expect(receipt.contextEvidence).toHaveLength(2); expect(f.contextRefs).toHaveLength(8);
+    const keys = (f.db.prepare('SELECT effect_key FROM graph_actions WHERE graph_run_id=? AND node_id IN (?,?)').all(start.graphRunId, 'e1.repair', 'e1.review') as Array<{ effect_key: string }>).map(row => row.effect_key).sort();
+    expect(receipt.contextEvidence.map(row => row.effectKey).sort()).toEqual(keys);
+  } finally { await f.close(); }
+}, 30000);
+it('requires a trusted policy resolver in local registration and rechecks its live authority', async () => {
+  const f = await fixture();
+  try {
+    const registration = f.registration; const config = join(f.root, 'host.json');
+    await writeFile(config, JSON.stringify({ schemaVersion: 1, registration: { id: registration.id, scope: registration.scope,
+      repositoryRef: registration.repositoryRef, repositoryPath: registration.delivery.repositoryPath, taskRef: registration.taskRef,
+      task: registration.delivery.task, inputArtifactRef: registration.inputArtifactRef,
+      writer: { agentId: 'writer', capabilityId: 'write' }, reviewer: { agentId: 'reviewer', capabilityId: 'review' },
+      acceptanceRegistry: registration.delivery.acceptanceRegistry, deliveryContract: registration.delivery.deliveryContract.frozen.contract,
+      grant: { scope: registration.scope, expiresAt: Date.now() + 60000, operations: ['read', 'execute', 'cancel', 'resume'] } } }), { mode: 0o600 });
+    const adapters = new Map([['writer', f.writer], ['reviewer', f.reviewer]]);
+    await expect(loadLocalGraphRegistration(config, adapters)).rejects.toThrow('POLICY_REQUIRED');
+    let allowed = true;
+    const loaded = await loadLocalGraphRegistration(config, adapters, { resolveDeliveryContractPolicy: async () => ({
+      policy: registration.delivery.deliveryContract.policy, assertCurrent: () => { if (!allowed) throw Error('live-policy-changed'); },
+    }) });
+    expect(loaded.delivery.deliveryContract).toEqual(registration.delivery.deliveryContract);
+    loaded.authorize('execute'); allowed = false;
+    expect(() => loaded.authorize('resume')).toThrow('live-policy-changed'); expect(() => loaded.authorize('read')).not.toThrow();
+    await expect(loadLocalGraphRegistration(config, adapters, { resolveDeliveryContractPolicy: async () => ({ policy: registration.delivery.deliveryContract.policy,
+      assertCurrent: (async () => {}) as () => void }) })).rejects.toThrow('POLICY_DENIED');
+  } finally { await f.close(); }
+});
+it('rejects a changed contract under an existing idempotency key before a second launch', async () => {
+  const f = await fixture();
+  try {
+    const first = await f.start();
+    const changed = { ...f.registration, delivery: { ...f.registration.delivery, deliveryContract: { ...f.registration.delivery.deliveryContract,
+      frozen: freezeDeliveryContract({ ...f.registration.delivery.deliveryContract.frozen.contract, contract_id: 'changed' }) } } };
+    const service = new GraphRpcService({ ...f.options, registrations: [changed] });
+    try { await expect(service.handle(f.connection, 'graph.start', f.request)).rejects.toThrow('IDEMPOTENCY_CONFLICT'); } finally { await service.close(); }
+    expect(f.db.prepare('SELECT count(*) n FROM graph_runs').get()).toEqual({ n: 1 });
+    await f.service.handle(f.connection, 'graph.cancel', { schemaVersion: 1, kind: 'cancel', scope: f.request.scope, graphRunId: first.graphRunId, expectedRevision: first.revision, idempotencyKey: 'cancel' });
+  } finally { await f.close(); }
+});
+it('rejects a path outside contract before verification or ready publication', async () => {
+  const f = await fixture(); await f.service.close();
+  const frozen = freezeDeliveryContract({ ...f.registration.delivery.deliveryContract.frozen.contract, allowed_paths: ['other'] });
+  const service = new GraphRpcService({ ...f.options, registrations: [{ ...f.registration, delivery: { ...f.registration.delivery,
+    deliveryContract: { ...f.registration.delivery.deliveryContract, frozen } } }] });
+  try {
+    const start = GraphDelegationStatus.parse(await service.handle(f.connection, 'graph.start', f.request));
+    const deadline = Date.now() + 20000; let status = start;
+    while (!['failed', 'reconciliation_required'].includes(status.status)) {
+      if (Date.now() > deadline) throw Error(`timeout ${status.status}`); await new Promise(resolve => setTimeout(resolve, 20));
+      status = GraphDelegationStatus.parse(await service.handle(f.connection, 'graph.status', { schemaVersion: 1, scope: f.request.scope, graphRunId: start.graphRunId }));
+    }
+    expect(status.candidate).toBeUndefined(); expect(status.resultRef).toBeUndefined();
+    expect(f.db.prepare("SELECT count(*) n FROM graph_actions WHERE node_id LIKE '%.review' OR node_id LIKE '%.tests'").get()).toEqual({ n: 0 });
+  } finally { await service.close(); await f.close(); }
+}, 30000);
+
+it('rejects an ignored untracked path outside the contract before candidate serialization', async () => {
+  const f = await fixture();
+  try {
+    const repo = f.registration.delivery.repositoryPath;
+    await writeFile(join(repo, '.git/info/exclude'), 'hidden-output\n');
+    await writeFile(join(repo, 'hidden-output'), 'candidate side effect');
+    expect(() => assertGraphContractPaths(f.registration.delivery.deliveryContract.frozen, repo)).toThrow('delivery_contract_path_outside_scope');
+  } finally { await f.close(); }
+});
+
+it('refuses a durable contract envelope substituted after reservation',async()=>{
+  const f=await fixture();try{
+    const started=await f.start();const descriptor=JSON.parse((f.db.prepare('SELECT descriptor_json FROM graph_public_delivery WHERE graph_run_id=?').get(started.graphRunId) as {descriptor_json:string}).descriptor_json);
+    // Model disk corruption after explicitly removing the normal immutable-descriptor protection.
+    f.db.exec('DROP TRIGGER graph_public_descriptor_immutable');
+    descriptor.contractEnvelope.sourceInputArtifactRef='different-input';f.db.prepare('UPDATE graph_public_delivery SET descriptor_json=? WHERE graph_run_id=?').run(JSON.stringify(descriptor),started.graphRunId);
+    for(const method of ['graph.status','graph.result','graph.contract'])await expect(f.service.handle(f.connection,method,{schemaVersion:1,scope:f.request.scope,graphRunId:started.graphRunId})).rejects.toThrow('CHECKPOINT_INCOMPATIBLE');
+  }finally{await f.close();}
+});
+
+it.each(['--assume-unchanged', '--skip-worktree'])('rejects writer %s flags before freezing an out-of-scope candidate', async flag => {
+  const f = await fixture(); await f.service.close();
+  const frozen = freezeDeliveryContract({ ...f.registration.delivery.deliveryContract.frozen.contract, allowed_paths: ['other'] });
+  const original = f.registration.delivery.writer.adapter;
+  const adapter = { ...original, invoke: async function* (...args: Parameters<typeof original.invoke>) {
+    yield* original.invoke(...args);
+    execFileSync('git', ['update-index', flag, 'answer'], { cwd: String(args[0].context?.['repo_path']) });
+  } };
+  const service = new GraphRpcService({ ...f.options, registrations: [{ ...f.registration, delivery: { ...f.registration.delivery,
+    writer: { ...f.registration.delivery.writer, adapter }, deliveryContract: { ...f.registration.delivery.deliveryContract, frozen } } }] });
+  try {
+    const start = GraphDelegationStatus.parse(await service.handle(f.connection, 'graph.start', f.request));
+    const deadline = Date.now() + 20000; let status = start;
+    while (!['failed', 'reconciliation_required'].includes(status.status)) {
+      if (Date.now() > deadline) throw Error(`timeout ${status.status}`); await new Promise(resolve => setTimeout(resolve, 20));
+      status = GraphDelegationStatus.parse(await service.handle(f.connection, 'graph.status', { schemaVersion: 1, scope: f.request.scope, graphRunId: start.graphRunId }));
+    }
+    expect(status.candidate).toBeUndefined(); expect(status.resultRef).toBeUndefined();
+    expect(f.db.prepare("SELECT count(*) n FROM graph_actions WHERE node_id LIKE '%.review' OR node_id LIKE '%.tests'").get()).toEqual({ n: 0 });
+  } finally { await service.close(); await f.close(); }
+}, 30000);
+
+it.each(['--assume-unchanged', '--skip-worktree'])('fails closed on %s at the pre-freeze scope gate', async flag => {
+  const f = await fixture();
+  try {
+    const repo = f.registration.delivery.repositoryPath;
+    const frozen = freezeDeliveryContract({ ...f.registration.delivery.deliveryContract.frozen.contract, allowed_paths: ['other'] });
+    execFileSync('git', ['update-index', flag, 'answer'], { cwd: repo });
+    await writeFile(join(repo, 'answer'), 'hidden change');
+    expect(() => assertGraphContractPaths(frozen, repo)).toThrow('GRAPH_CONTRACT_HIDDEN_INDEX_FLAGS');
+  } finally { await f.close(); }
+});
+
+
+FILE packages/cli/src/graph-delivery.ts
+import { execFileSync } from 'node:child_process';
+import { createHash, randomUUID } from 'node:crypto';
+import { mkdir, writeFile, realpath } from 'node:fs/promises';
+import { join } from 'node:path';
+import type Database from 'better-sqlite3';
+import type { AgentAdapter } from '@osstack/agents';
+import { GraphRunStore, GraphActionStore, GraphCheckpointStore, resolveRepositoryScope, type GraphRun, type GraphRunFence } from '@osstack/core';
+import { GraphRecoveryStore, type GraphExecutorInventory } from '@osstack/core/graph-recovery';
+import { verifyJournaledGraphWorkerExit } from './graph-worker-exit-proof.js';
+import { GraphArtifactStore } from '@osstack/core/graph-artifacts';
+import { GraphDeliveryEpochStore, GraphVerificationStore } from '@osstack/core/graph-verification';
+import { compileGraphSpec, type CompiledGraphSpec } from '@osstack/graph/spec-compiler';
+import { graphProgramVersion, resolveV4GraphProgram } from '@osstack/graph/program-resolver';
+import { deliveryEpoch } from '@osstack/graph/templates/code-delivery-v1';
+import { type GraphResult, WorkerActionRequest, workerCanonical, StartGraphRequest, freezeWorkerData, type WorkerActionResponse, type GraphWorkerResume } from '@osstack/protocol';
+import type { RegisteredCandidateWorkspace } from '@osstack/loop';
+import { GraphActionBroker, assertGraphAdapterSupported, type GraphRegisteredAction, type GraphActionEvidence } from './graph-action-broker.js';
+import { GraphRuntime, type GraphRuntimeHandle, type GraphRuntimeStop } from './graph-runtime.js';
+import { GraphCheckpointService } from './graph-checkpoint-service.js';
+import { prepareGraphVerificationBranch, loadGraphVerificationEvidence, type GraphVerificationOptions } from './graph-verification.js';
+import { GraphVerificationJoinService, type GraphVerificationDecision } from './graph-verification-join.js';
+import { publishDeliveryReceipt, loadDeliveryReceipt } from './graph-delivery-receipts.js';
+import { publishBoundedRecoveryJournal } from './graph-bounded-recovery-journal.js';
+import type { AdmissionInput, ExecutionLease } from './governed-execution.js';
+import { assertGraphContractPaths, parseGraphContractRegistration, verifyGraphContractEnvelope, type GraphDeliveryContractRegistration, type GraphContractHostEnvelope } from './graph-delivery-contract.js';
+import { publishGraphContractCompletion } from './graph-contract-receipt.js';
+import { prepareGraphExecutionContext, snapshotGraphExecutionContext, type GraphExecutionContextRegistration, type GraphContextEvidence } from './graph-execution-context.js';
+
+export interface GraphDeliveryOptions {
+  db: Database.Database; request: StartGraphRequest; root: string; repositoryPath: string;
+  task: string; writer: { identity: string; adapter: AgentAdapter; capabilityId: string };
+  reviewer: GraphVerificationOptions['reviewer']; verifyReviewer: GraphVerificationOptions['verifyReviewer'];
+  acceptanceRegistry: GraphVerificationOptions['acceptanceRegistry'];
+  deliveryContract?: GraphDeliveryContractRegistration;
+  /** Durable host envelope from the same public reservation transaction. Never worker input. */
+  contractEnvelope?: GraphContractHostEnvelope;
+  executionContext?: GraphExecutionContextRegistration;
+  containedTests?: GraphVerificationOptions['containedTests'];
+  acquire: (input: AdmissionInput) => Promise<ExecutionLease>; authorize: () => void;
+  /** Reserved and exclusively selected by the public host before construction. */
+  reservedRun?: GraphRun;
+  authorizeCancel?: () => void;
+  /** Current source authority is distinct from the physical candidate checkout. */
+  authorizePolicy?: (input: { policyRoot: string; workspacePath: string }) => Promise<void>;
+  qualityInterrupt?: (proof: GraphDeliveryInterrupt) => void;
+  publish?: (candidate: Candidate, feedbackRef: string, contractReceiptRef?: string) => void;
+}
+export interface GraphDeliveryInterrupt {
+  interruptId: string; inputDigest: string; kind: 'quality';
+  checkpointDigest: string; feedbackRef: string;
+}
+export function assertGraphDeliverySupported(options: Pick<GraphDeliveryOptions, 'writer' | 'reviewer'>): void {
+  assertGraphAdapterSupported(options.writer.adapter);
+  assertGraphAdapterSupported(options.reviewer.adapter);
+}
+export function graphDeliveryVersion(compiled: CompiledGraphSpec) {
+  return graphProgramVersion(compiled);
+}
+type Candidate = Extract<GraphResult, { kind: 'candidate_ready' }>;
+type Kind = 'review' | 'tests';
+const git = (cwd: string, ...args: string[]) => execFileSync('git', ['-c','core.hooksPath=/dev/null','-c','core.fsmonitor=false', ...args], { cwd, encoding: 'utf8', timeout: 30000,
+  env: { ...Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith('GIT_'))), GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOSYSTEM: '1' } }).trim();
+
+/** Trusted host composition. No worker-selected executors, paths or commands.
+ * Functional tasks own replay; effects own invocation; immutable joins own repair. */
+export class GraphDelivery {
+  readonly compiled: CompiledGraphSpec;
+  readonly broker: GraphActionBroker;
+  readonly artifacts: GraphArtifactStore;
+  private readonly runs: GraphRunStore;
+  private runValue!: GraphRun;
+  private owned: GraphRun | undefined;
+  private runtime!: GraphRuntime;
+  private epoch = 0;
+  private readonly installed = new Map<string, Promise<void>>();
+  private readonly branches = new Map<string, GraphRegisteredAction>();
+  private readonly workspaces = new Map<number, RegisteredCandidateWorkspace>();
+  private readonly contextEvidence = new Map<string, GraphContextEvidence>();
+  private feedbackRef: string | undefined;
+  private connection: object | undefined;
+  private closed = false;
+  private started = false;
+  private stopping = false;
+  private active: GraphRuntimeHandle | undefined;
+  private waiting: { proof: GraphDeliveryInterrupt; verify: () => void; resolve: () => void; reject: (error: Error) => void } | undefined;
+  private readonly options: GraphDeliveryOptions;
+  constructor(options: GraphDeliveryOptions) {
+    assertGraphDeliverySupported(options);
+    const adapter = (a: AgentAdapter): AgentAdapter => {
+      const capabilities = freezeWorkerData(structuredClone(a.capabilities()));
+      return Object.freeze({ id: a.id, display_name: a.display_name, cost_tier: a.cost_tier,
+        capabilities: () => structuredClone(capabilities), isAvailable: a.isAvailable.bind(a), invoke: a.invoke.bind(a),
+        ...(a.confirmStopped ? { confirmStopped: a.confirmStopped.bind(a) } : {}) });
+    };
+    this.options = Object.freeze({ ...options, request: freezeWorkerData(StartGraphRequest.parse(options.request)),
+      ...(options.deliveryContract ? { deliveryContract: parseGraphContractRegistration(options.deliveryContract) } : {}),
+      ...(options.contractEnvelope ? { contractEnvelope: freezeWorkerData(structuredClone(options.contractEnvelope)) } : {}),
+      ...(options.executionContext ? { executionContext: snapshotGraphExecutionContext(options.executionContext) } : {}),
+      writer: Object.freeze({ ...options.writer, adapter: adapter(options.writer.adapter) }),
+      reviewer: Object.freeze({ ...options.reviewer, adapter: adapter(options.reviewer.adapter) }),
+      ...(options.containedTests ? { containedTests: Object.freeze({ ...options.containedTests }) } : {}),
+      acceptanceRegistry: freezeWorkerData(structuredClone(options.acceptanceRegistry)) });
+    options = this.options;
+    if (Boolean(options.deliveryContract) !== Boolean(options.contractEnvelope)) throw Error('GRAPH_CONTRACT_ENVELOPE_REQUIRED');
+    if (options.executionContext && !options.deliveryContract) throw Error('GRAPH_CONTEXT_CONTRACT_REQUIRED');
+    if (options.deliveryContract) verifyGraphContractEnvelope(options.contractEnvelope, options.request,
+      { ...options, deliveryContract: options.deliveryContract });
+    const capability = options.writer.adapter.capabilities().find(c => c.id === options.writer.capabilityId);
+    if (options.writer.identity !== options.writer.adapter.id || !capability || !['code.write','code.refactor','code.debug'].includes(capability.kind)) throw Error('WRITER_IDENTITY_REQUIRED');
+    this.compiled = options.reservedRun
+      ? resolveV4GraphProgram(options.request.spec, options.reservedRun.identity)
+      : compileGraphSpec(options.request.spec);
+    this.runs = new GraphRunStore(options.db);
+    if (options.reservedRun) this.runValue = options.reservedRun;
+    this.broker = new GraphActionBroker(options.db, { acquire: options.acquire,
+      ...(options.authorizePolicy ? { authorizePolicy: (workspacePath: string) => options.authorizePolicy!({ policyRoot: options.repositoryPath, workspacePath }) } : {}) });
+    this.artifacts = new GraphArtifactStore(join(options.root, 'artifacts'));
+  }
+  /** Called by the service after run() completes, before its shared DB closes. */
+  async drainDatabaseUsers(): Promise<void> { if (this.runtime) await this.runtime.drainDatabaseUsers(); }
+  current(): GraphRun { return this.runs.get(this.runValue.scope, this.runValue.graphRunId)!; }
+  private leaseDeadline(): number {
+    const createdAt = this.runValue ? this.current().createdAt : Date.now();
+    return Math.min(Date.now() + 300000, createdAt + this.compiled.spec.limits.deadlineSeconds * 1000 + 1000);
+  }
+  private assertOwned(): void {
+    if (!this.owned) return;
+    const r = this.current();
+    if (r.generation !== this.owned.generation || r.leaseOwner !== this.owned.leaseOwner || workerCanonical(r.identity) !== workerCanonical(this.owned.identity)) throw Error('STALE_DELIVERY_OWNER');
+  }
+  private fence(premise = this.current()): GraphRunFence { this.assertOwned(); const r = premise; return { scope: r.scope, graphRunId: r.graphRunId, identity: r.identity,
+    expectedGeneration: r.generation, expectedOwner: r.leaseOwner, expectedRevision: r.revision, now: Date.now() }; }
+  private check(): void {
+    if (this.closed) throw Error('DELIVERY_CLOSED');
+    this.assertOwned();
+    const value: unknown = this.options.authorize();
+    if (value !== undefined) { void Promise.resolve(value).catch(() => {}); throw Error('AUTHORITY_MUST_BE_SYNCHRONOUS'); }
+    if (this.options.executionContext) {
+      const current: unknown = this.options.executionContext.assertCurrent();
+      if (current !== undefined) { void Promise.resolve(current).catch(() => {}); throw Error('GRAPH_CONTEXT_AUTHORITY'); }
+    }
+  }
+  private checkSettlement(): void {
+    if (!this.stopping || this.current().status !== 'cancel_pending' || !this.options.authorizeCancel) { this.check(); return; }
+    this.assertOwned();
+    const value: unknown = this.options.authorizeCancel();
+    if (value !== undefined) { void Promise.resolve(value).catch(() => {}); throw Error('AUTHORITY_MUST_BE_SYNCHRONOUS'); }
+  }
+  private latest(nodeId: string, effectSlot = 'main') {
+    const row = this.options.db.prepare('SELECT effect_key FROM graph_actions WHERE graph_run_id=? AND node_id=? AND effect_slot=? ORDER BY logical_attempt DESC LIMIT 1').get(this.current().graphRunId, nodeId, effectSlot) as { effect_key: string } | undefined;
+    return row ? new GraphActionStore(this.options.db).get(this.fence(), row.effect_key).action : undefined;
+  }
+  private result(nodeId: string): GraphResult {
+    const a = this.latest(nodeId);
+    if (a?.outcome?.state !== 'confirmed') throw Error(`PREDECESSOR_NOT_CONFIRMED: ${nodeId}`);
+    return a.outcome.result;
+  }
+  private candidate(epoch = this.epoch): Candidate {
+    const value = this.result(`e${epoch}.freeze`);
+    if (value.kind !== 'candidate_ready') throw Error('CANDIDATE_REQUIRED');
+    return value;
+  }
+  private binding() { const r = this.current(); const c = this.candidate(); return { scope: r.scope, graphRunId: r.graphRunId, specHash: r.identity.specHash,
+    epoch: this.epoch, candidateRevision: c.candidateRevision, artifactDigest: c.artifactDigest, acceptanceRef: r.spec!.input.acceptanceRef }; }
+  private receiptBinding(nodeId: string, workspacePath: string, effectSlot = 'main') {
+    const a = this.latest(nodeId, effectSlot); const r = this.current();
+    if (!a) throw Error('DELIVERY_EFFECT_REQUIRED');
+    const owner = this.options.db.prepare('SELECT owner FROM graph_worker_leases WHERE graph_run_id=? AND generation=?').get(r.graphRunId, a.generation) as { owner: string } | undefined;
+    if (!owner) throw Error('DELIVERY_EFFECT_LEASE_REQUIRED');
+    return { effect: a.effect, effectKey: a.effectKey, generation: a.generation, owner: owner.owner, workspacePath };
+  }
+  private async persist(nodeId: string, workspacePath: string, evidence: GraphActionEvidence, effectSlot = 'main'): Promise<string> {
+    if (this.latest(nodeId, effectSlot)?.state !== 'running') throw Error('RUNNING_EFFECT_REQUIRED');
+    const ref = await publishDeliveryReceipt(this.options.root, this.receiptBinding(nodeId, workspacePath, effectSlot), evidence, () => this.checkSettlement());
+    const action = this.latest(nodeId, effectSlot)!;
+    await publishBoundedRecoveryJournal(this.options.root, action, this.current().leaseOwner!, workspacePath, ref, evidence, () => this.checkSettlement());
+    return ref;
+  }
+  private async restoreWorkspaceMappings(): Promise<void> {
+    // Functional replay may skip cached workspace callbacks. Recover mappings
+    // from exact content-addressed ledger receipts, never from worker RETURNs.
+    for (let epoch = 0; epoch <= this.epoch; epoch++) {
+      const nodeId = `e${epoch}.workspace`; const a = this.latest(nodeId);
+      if (a?.outcome?.state !== 'confirmed') continue;
+      const receipt = await loadDeliveryReceipt(this.options.root, a.outcome.evidenceRef, this.receiptBinding(nodeId, this.options.repositoryPath));
+      const value = receipt.workspace as { workspace?: RegisteredCandidateWorkspace } | undefined;
+      const workspace = value?.workspace;
+      if (!workspace || workspace.workspace_id !== this.current().scope.workspaceId || workspace.workspace_path !== join(this.options.root, `writer-${epoch}`)
+        || await realpath(workspace.workspace_path) !== workspace.workspace_path) throw Error('WORKSPACE_RECEIPT_MISMATCH');
+      this.check(); this.workspaces.set(epoch, Object.freeze({ ...workspace }));
+    }
+  }
+  private workspace(epoch = this.epoch): RegisteredCandidateWorkspace {
+    const w = this.workspaces.get(epoch); if (!w) throw Error('WORKSPACE_MAPPING_REQUIRED'); return w;
+  }
+  private async preparation(kind: Kind, attempt: number): Promise<GraphRegisteredAction> {
+    const p = deliveryEpoch(this.compiled, this.epoch); const n = p.node(`prepare_${kind}`); const candidate = this.candidate();
+    const epoch = this.epoch; const source = this.workspace(); const branch = p.node(kind);
+    return { nodeId: n.id, effectSlot: p.preparationSlot(kind, attempt), tokenReservation: n.tokenReservation,
+      action: { kind: 'workspace_create', repositoryRef: this.compiled.spec.input.repositoryRef, baseRevision: candidate.candidateRevision }, workspace: source,
+      execution: { kind: 'workspace', handler: async ({ lease }) => {
+        const prepared = await prepareGraphVerificationBranch({ root: join(this.options.root, 'verification'), artifacts: this.artifacts, candidate,
+          binding: this.binding(), sourceWorkspace: source, authorize: () => this.check(), authorizeCancel: () => this.checkSettlement(), acquire: this.options.acquire,
+          ...(this.options.authorizePolicy ? { authorizePolicy: (workspacePath: string) => this.options.authorizePolicy!({ policyRoot: this.options.repositoryPath, workspacePath }) } : {}),
+          ...(this.options.containedTests ? { containedTests: this.options.containedTests } : {}),
+          preparationLease: lease, acceptanceRegistry: this.options.acceptanceRegistry, writerIdentity: this.options.writer.identity,
+          ...(this.options.deliveryContract ? { deliveryContract: this.options.deliveryContract.frozen } : {}),
+          ...(this.options.executionContext ? { executionContext: this.options.executionContext, contextRepositoryPath: this.options.repositoryPath,
+            recordContextEvidence: (value: GraphContextEvidence) => { this.check(); this.contextEvidence.set(value.effectKey, value); } } : {}),
+          reviewer: this.options.reviewer, verifyReviewer: this.options.verifyReviewer,
+          slots: { [kind]: { nodeId: branch.id, effectSlot: branch.effectSlot, workspaceLeaseRef: `e${epoch}.${kind}`, tokenReservation: branch.tokenReservation } },
+          effectIdentity: () => { const a = this.latest(branch.id); if (a?.state !== 'running') throw Error('RUNNING_EFFECT_REQUIRED'); return { effect: a.effect, effectKey: a.effectKey }; },
+        }, kind);
+        const action = prepared.actions[0]!; this.branches.set(branch.id, action);
+        return { status: 'completed', stopped: true, evidence: { workspace: action.workspace, workspaceLeaseRef: `e${epoch}.${kind}` } };
+      } }, persist: async evidence => ({ evidenceRef: await this.persist(n.id, source.workspace_path, evidence, p.preparationSlot(kind, attempt)), actualTokens: 0,
+        result: { schemaVersion: 1, kind: 'workspace', workspaceLeaseRef: `e${epoch}.${kind}`, receiptRef: `e${epoch}.prepared.${kind}.${attempt}` } }) };
+  }
+  private async registration(name: string): Promise<GraphRegisteredAction> {
+    const p = deliveryEpoch(this.compiled, this.epoch); const n = p.node(name); const r = this.current(); const epoch = this.epoch;
+    const common = { nodeId: n.id, effectSlot: n.effectSlot, tokenReservation: n.tokenReservation };
+    const workspaceLeaseRef = `e${epoch}.writer`;
+    if (name === 'workspace') {
+      const path = join(this.options.root, `writer-${epoch}`); const workspace = { workspace_id: r.scope.workspaceId, workspace_path: path };
+      const baseRevision = epoch === 0 ? this.compiled.spec.input.baseRevision : this.candidate(epoch - 1).candidateRevision;
+      return { ...common, workspace: { workspace_id: r.scope.workspaceId, workspace_path: this.options.repositoryPath },
+        action: { kind: 'workspace_create', repositoryRef: this.compiled.spec.input.repositoryRef, baseRevision },
+        execution: { kind: 'workspace', handler: async () => {
+          this.check();
+          if (epoch === 0) { if (git(this.options.repositoryPath, 'rev-parse', `${baseRevision}^{commit}`) !== baseRevision) throw Error('BASE_REVISION_MISMATCH'); git(this.options.root, 'clone', '--no-local', '--no-hardlinks', '--', this.options.repositoryPath, path); git(path, 'checkout', '--detach', baseRevision); }
+          else { const restored = await this.artifacts.restore(this.candidate(epoch - 1).artifactDigest, { rootPath: this.options.root, directoryName: `writer-${epoch}` }); if (restored.worktreePath !== path) throw Error('RESTORE_PATH_MISMATCH'); }
+          this.workspaces.set(epoch, workspace);
+          return { status: 'completed', stopped: true, evidence: { workspace, baseRevision } };
+        } }, persist: async evidence => ({ evidenceRef: await this.persist(n.id, this.options.repositoryPath, evidence), actualTokens: 0,
+          result: { schemaVersion: 1, kind: 'workspace', workspaceLeaseRef, receiptRef: `e${epoch}.workspace` } }) };
+    }
+    if (name === 'implement' || name === 'repair') {
+      this.result(`e${epoch}.workspace`); const workspace = this.workspace();
+      const feedback = epoch ? this.options.db.prepare('SELECT bundle_json FROM graph_verification_joins WHERE receipt_ref=? AND graph_run_id=?').get(this.feedbackRef, r.graphRunId) as { bundle_json: string } | undefined : undefined;
+      if (epoch && !feedback) throw Error('IMMUTABLE_FEEDBACK_REQUIRED');
+      const action = epoch ? { kind: 'repair' as const, inputArtifactRef: this.options.request.inputArtifactRef, workspaceLeaseRef,
+        candidateRevision: this.candidate(epoch - 1).candidateRevision, feedbackRef: this.feedbackRef! } : { kind: 'implement' as const, inputArtifactRef: this.options.request.inputArtifactRef, workspaceLeaseRef };
+      const rawAdapter = this.options.writer.adapter;
+      const context = this.options.executionContext ? await prepareGraphExecutionContext({ registration: this.options.executionContext,
+        adapter: rawAdapter, workspacePath: this.options.repositoryPath, frozen: this.options.deliveryContract!.frozen, authorize: () => this.check() }) : undefined;
+      const adapter = context?.adapter ?? rawAdapter;
+      const capability = adapter.capabilities().find(c => c.id === this.options.writer.capabilityId); if (!capability) throw Error('WRITER_CAPABILITY_REQUIRED');
+      return { ...common, workspace, action, execution: { kind: 'adapter', adapter, capabilityId: capability.id, plan: {
+        plan_id: `delivery-${r.graphRunId}-${epoch}`, agent_id: adapter.id, max_iterations: 1,
+        task: { task_id: `delivery-${epoch}`, source: 'manual', capability: capability.kind, priority: 100,
+          prompt: `${this.options.task}${this.options.deliveryContract && !context ? `\n\n${this.options.deliveryContract.frozen.brief}` : ''}${feedback ? `\nRepair frozen candidate ${action.kind === 'repair' ? action.candidateRevision : ''}. Complete host quality feedback:\n${feedback.bundle_json}` : ''}` },
+        stop_condition: { type: 'tests_pass' },
+      } }, persist: async evidence => {
+        if (context && evidence.status === 'completed' && evidence.stopped) {
+          const action = this.latest(n.id)!; const recorded = await context.evidence(evidence.candidate?.execution?.run_id ?? '', { effect: action.effect, effectKey: action.effectKey });
+          this.check(); this.contextEvidence.set(action.effectKey, recorded);
+        }
+        return { evidenceRef: await this.persist(n.id, workspace.workspace_path, evidence),
+          ...(evidence.status === 'completed' && evidence.stopped ? { result: { schemaVersion: 1 as const, kind: 'implementation_complete' as const, workspaceLeaseRef, receiptRef: `e${epoch}.implementation` } } : {}) };
+      } };
+    }
+    if (name === 'freeze') {
+      const implementation = this.latest(`e${epoch}.${epoch ? 'repair' : 'implement'}`);
+      if (implementation?.outcome?.state !== 'confirmed' || implementation.outcome.result.kind !== 'implementation_complete') throw Error('IMPLEMENTATION_REQUIRED');
+      const workspace = this.workspace(); const scope = await resolveRepositoryScope(workspace.workspace_path);
+      const checkProducer = async () => { const evidence = await loadDeliveryReceipt(this.options.root, implementation.outcome!.evidenceRef,
+        this.receiptBinding(implementation.effect.nodeId, workspace.workspace_path));
+        if (evidence.stopped !== true || workerCanonical(evidence.candidate?.workspace) !== workerCanonical(workspace)) throw Error('PRODUCER_STOP_REQUIRED'); this.check();
+        if (this.options.deliveryContract) assertGraphContractPaths(this.options.deliveryContract.frozen, workspace.workspace_path); };
+      return { ...common, workspace, action: { kind: 'freeze', workspaceLeaseRef, receiptRef: implementation.outcome.result.receiptRef },
+        execution: { kind: 'freeze', store: this.artifacts, input: { artifactId: `delivery-${r.graphRunId}-${epoch}`, scope: r.scope, runId: r.graphRunId,
+          generation: r.generation, owner: r.leaseOwner!, workspaceLeaseRef, repoId: scope.repoId, commonDir: scope.commonDir, worktreePath: workspace.workspace_path,
+          baseRevision: epoch ? this.candidate(epoch - 1).candidateRevision : this.compiled.spec.input.baseRevision,
+          implementationReceiptRef: implementation.outcome.result.receiptRef, producerStopEvidenceRef: implementation.outcome.evidenceRef },
+        authority: { verifyLease: async (_input, lease) => { this.check(); await (lease as ExecutionLease).assertActive!(); }, verifyImplementationReceipt: checkProducer, verifyProducersStopped: checkProducer } },
+        persist: async evidence => { return { evidenceRef: await this.persist(n.id, workspace.workspace_path, evidence), actualTokens: 0, result: evidence.frozenCandidate! }; } };
+    }
+    if (name === 'prepare_review' || name === 'prepare_tests') return this.preparation(name === 'prepare_review' ? 'review' : 'tests', 1);
+    const action = this.branches.get(n.id); if (!action) throw Error('PREPARATION_REQUIRED'); return action;
+  }
+  private request(action: GraphRegisteredAction) { const r = this.current(); return { schemaVersion: 1 as const, kind: 'worker_action' as const, requestId: `host:${randomUUID()}`,
+    scope: r.scope, graphRunId: r.graphRunId, specHash: r.identity.specHash, generation: r.generation, epoch: this.epoch,
+    nodeId: action.nodeId, effectSlot: action.effectSlot, action: action.action }; }
+  private async dispatch(connection: object, value: WorkerActionRequest, options: { signal?: AbortSignal }): Promise<WorkerActionResponse> {
+    if (this.stopping) throw Error('DELIVERY_STOPPING');
+    this.check(); const request = WorkerActionRequest.parse(value); const r = this.current();
+    if (request.epoch !== this.epoch || request.generation !== r.generation || request.graphRunId !== r.graphRunId || request.specHash !== r.identity.specHash || workerCanonical(request.scope) !== workerCanonical(r.scope)) throw Error('DELIVERY_IDENTITY_MISMATCH');
+    const name = request.nodeId.replace(`e${this.epoch}.`, ''); const n = deliveryEpoch(this.compiled, this.epoch).node(name);
+    if (request.effectSlot !== n.effectSlot) throw Error('DELIVERY_SLOT_MISMATCH');
+    if (!this.installed.has(n.id)) this.installed.set(n.id, this.registration(name).then(action => { this.check(); this.broker.installActions(connection, [action]); }));
+    await this.installed.get(n.id);
+    let response = await this.broker.handle(connection, request, options);
+    if (name !== 'review' && name !== 'tests') return response;
+    // The host inspects the actual attested failure. The task never caches failed RETURN.
+    while (response.kind === 'worker_action_response' && response.outcome.state === 'failed' && response.outcome.error.retryable) {
+      const prior = this.latest(n.id)!;
+      if (prior.effect.logicalAttempt >= n.maxLedgerAttempts) break;
+      if (!prior.outcome?.evidenceRef.startsWith('graph-verification:')) break;
+      const envelope = await loadGraphVerificationEvidence(join(this.options.root, 'verification'), prior.outcome!.evidenceRef, this.binding(), { effect: prior.effect, effectKey: prior.effectKey });
+      if (!envelope.verificationFailure?.retrySafe) break;
+      const snapshot = new GraphVerificationStore(this.options.db, () => {}).snapshot(this.fence());
+      const cost = deliveryEpoch(this.compiled, this.epoch).nextCost[name];
+      if (snapshot.budget.accountingBlocked || snapshot.budget.actionStarts + cost.actions > this.compiled.spec.limits.maxActionStarts
+        || BigInt(snapshot.budget.chargedTokens) + BigInt(snapshot.budget.reservedTokens) + BigInt(cost.tokens) > BigInt(this.compiled.spec.limits.tokenReservationLimit)) break;
+      const prep = await this.preparation(name, prior.effect.logicalAttempt + 1);
+      this.broker.installActions(connection, [prep]);
+      const prepared = await this.broker.handle(connection, this.request(prep), options);
+      if (prepared.kind !== 'worker_action_response' || prepared.outcome.state !== 'confirmed') return response;
+      response = await this.broker.retryAuthorized(connection, prior.effectKey, () => { this.check(); }, { ...options, replacement: this.branches.get(n.id)! });
+      if (response.kind === 'worker_action_response') response = { ...response, requestId: request.requestId };
+    }
+    return response;
+  }
+  private async evaluate(): Promise<GraphVerificationDecision> {
+    const p = deliveryEpoch(this.compiled, this.epoch);
+    return new GraphVerificationJoinService(this.options.db, { binding: this.binding(), artifacts: this.artifacts, evidenceRoot: join(this.options.root, 'verification'),
+      slots: p.slots, nextCost: p.nextCost, authorize: () => this.check() }).evaluate(this.fence());
+  }
+  private async takeover(handle: GraphRuntimeHandle, stopped: GraphRuntimeStop): Promise<void> {
+    const r = this.current(); const key = {};
+    const inspection = new GraphRecoveryStore(this.options.db, () => { throw Error('INSPECTION_ONLY'); });
+    let inventory: GraphExecutorInventory | undefined;
+    const verify = () => { const observed = this.runtime.observedExit(handle.connection);
+      if (!stopped.actionsSettled || stopped.worker.kind !== 'exited' || stopped.worker.journalError || workerCanonical(observed) !== workerCanonical(stopped.worker)) throw Error('PHYSICAL_WORKER_STOP_REQUIRED');
+      return verifyJournaledGraphWorkerExit(this.options.db, handle.binding);
+    };
+    this.runtime.reconciler.register(key, { binding: { scope: r.scope, graphRunId: r.graphRunId, identity: r.identity, generation: r.generation, owner: r.leaseOwner },
+      authorize: () => this.check(), stopWorker: async () => stopped,
+      verifyWorker: async () => verify(),
+      verifyQuiescence: async snapshot => { verify(); const decision = await this.evaluate(); if (decision.snapshot.pendingAdmissions || decision.snapshot.unresolvedActions) throw Error('QUIESCENCE_REQUIRED');
+        inventory = inspection.inspectExecutors(snapshot.fence);
+        if (inventory.requiredEffectKeys.length) throw Error('QUIESCENCE_REQUIRED');
+        return { executorEvidenceRef: decision.publication!.record.receiptRef, workspaceEvidenceRef: this.candidate().artifactRefs[0]! }; },
+      verifyOutcome: async () => { throw Error('NO_EFFECT_RECONCILIATION'); }, recheck: (_snapshot, proof) => {
+        this.check(); if (workerCanonical(verify()) !== workerCanonical(proof.worker) || !inventory) throw Error('QUIESCENCE_REQUIRED');
+        inspection.assertExecutorInventory(inventory);
+      }, release: async () => {},
+    });
+    try { const takeover = await this.runtime.reconciler.reconcile(key, { kind: 'takeover', fence: this.fence(), receiptId: `delivery-takeover-${this.epoch}`, owner: `delivery-${r.generation + 1}`, leaseExpiresAt: this.leaseDeadline() }); this.owned = takeover.result.run; }
+    finally { this.runtime.reconciler.unregister(key); }
+  }
+  private checkpointDigest(): string {
+    const rows = this.options.db.prepare('SELECT namespace,checkpoint_id,checkpoint FROM graph_checkpoints WHERE graph_run_id=? ORDER BY namespace,checkpoint_id').all(this.current().graphRunId);
+    const writes = this.options.db.prepare("SELECT namespace,checkpoint_id,task_id,channel,write_index,value FROM graph_checkpoint_writes WHERE graph_run_id=? ORDER BY namespace,checkpoint_id,task_id,write_index").all(this.current().graphRunId);
+    if (!rows.length || !writes.some(row => (row as { channel: string }).channel === '__interrupt__')) throw Error('DURABLE_INTERRUPT_REQUIRED');
+    return createHash('sha256').update(workerCanonical({ rows, writes })).digest('hex');
+  }
+  verifyResume(proof: GraphDeliveryInterrupt): void {
+    if (!this.waiting || workerCanonical(proof) !== workerCanonical(this.waiting.proof) || this.stopping) throw Error('LIVE_QUIESCENCE_REQUIRED');
+    this.waiting.verify();
+  }
+  resumeQuality(proof: GraphDeliveryInterrupt): void { this.verifyResume(proof); this.waiting!.resolve(); }
+  /** Actual worker and broker signal chain. A drained Promise never clears holds. */
+  async cancel(): Promise<void> {
+    this.stopping = true; this.waiting?.reject(Error('DELIVERY_CANCELLED'));
+    const handle = this.active;
+    if (!handle) return;
+    const stopped = await handle.stop('GRAPH_CANCEL_REQUESTED');
+    if (!this.owned || stopped.worker.kind !== 'exited' || !stopped.actionsSettled) return;
+    const r = this.current(); if (r.status !== 'cancel_pending') return;
+    const inspection = new GraphRecoveryStore(this.options.db, () => { throw Error('INSPECTION_ONLY'); });
+    let inventory: GraphExecutorInventory | undefined;
+    const verify = () => {
+      this.assertOwned();
+      if (stopped.worker.journalError || workerCanonical(this.runtime.observedExit(handle.connection)) !== workerCanonical(stopped.worker)) throw Error('PHYSICAL_WORKER_STOP_REQUIRED');
+      return verifyJournaledGraphWorkerExit(this.options.db, handle.binding);
+    };
+    const key = {};
+    this.runtime.reconciler.register(key, { binding: { scope: r.scope, graphRunId: r.graphRunId, identity: r.identity, generation: r.generation, owner: r.leaseOwner },
+      authorize: () => { this.assertOwned(); const result: unknown = (this.options.authorizeCancel ?? this.options.authorize)();
+        if (result !== undefined) { void Promise.resolve(result).catch(() => {}); throw Error('AUTHORITY_MUST_BE_SYNCHRONOUS'); } }, stopWorker: async () => stopped,
+      verifyWorker: async () => verify(),
+      verifyQuiescence: async snapshot => {
+        const exit = verify(); inventory = inspection.inspectExecutors(snapshot.fence);
+        if (inventory.requiredEffectKeys.length) throw Error('QUIESCENCE_REQUIRED');
+        return { executorEvidenceRef: `graph-executor-inventory:${inventory.digest}`, workspaceEvidenceRef: exit.evidenceRef };
+      },
+      verifyOutcome: async () => { throw Error('NO_EFFECT_RECONCILIATION'); }, recheck: (_snapshot, proof) => {
+        if (workerCanonical(verify()) !== workerCanonical(proof.worker) || !inventory) throw Error('QUIESCENCE_REQUIRED');
+        inspection.assertExecutorInventory(inventory);
+      }, release: async () => {},
+    });
+    try { await this.runtime.reconciler.reconcile(key, { kind: 'project', status: 'cancelled', receiptId: `delivery-cancel-${r.generation}`, fence: this.fence() }); }
+    finally { this.runtime.reconciler.unregister(key); }
+  }
+  async run(): Promise<{ route: GraphVerificationDecision['route']; candidate?: Candidate; feedbackRef?: string }> {
+    if (this.started) throw Error('DELIVERY_ALREADY_STARTED'); this.started = true;
+    this.check(); await mkdir(this.options.root, { recursive: true, mode: 0o700 }); this.check();
+    if (this.options.root === this.options.repositoryPath || this.options.root.startsWith(`${this.options.repositoryPath}/`) || await realpath(this.options.root) !== this.options.root || await realpath(this.options.repositoryPath) !== this.options.repositoryPath) throw Error('CANONICAL_HOST_PATHS_REQUIRED');
+    this.check();
+    const modulePath = join(this.options.root, 'delivery.mjs'); await writeFile(modulePath, this.compiled.source, { flag: 'wx', mode: 0o600 }); this.check();
+    const version = graphDeliveryVersion(this.compiled);
+    this.runtime = new GraphRuntime({ db: this.options.db, broker: this.broker,
+      checkpoints: new GraphCheckpointService({ runs: this.runs, checkpoints: new GraphCheckpointStore(this.options.db), bindings: new Map() }),
+      programs: [{ id: 'code-delivery-v1', modulePath, digest: this.compiled.compiledProgramDigest }] });
+    let resume: GraphWorkerResume | undefined;
+    let lastStopped: GraphRuntimeStop | undefined;
+    let durableWorkerStopped = false;
+    try {
+      this.runValue = this.options.reservedRun ?? this.runtime.prepare(this.options.request, version);
+      if (this.stopping || this.current().status === 'cancel_pending') return { route: { kind: 'stop', epoch: 0, reason: 'cancel_requested' } };
+      this.runValue = this.runtime.claim(this.runValue, 'delivery-1', this.leaseDeadline()); this.owned = this.runValue;
+      this.runs.project({ ...this.fence(), status: 'running' });
+      new GraphDeliveryEpochStore(this.options.db).activate(this.fence(), 0, deliveryEpoch(this.compiled, 0).cost);
+      for (;;) {
+        durableWorkerStopped = false;
+        await this.restoreWorkspaceMappings();
+        const r = this.current(); this.installed.clear();
+        const handle = this.runtime.start({ request: this.options.request, run: r, programId: 'code-delivery-v1', leaseDurationMs: 60000, ...(resume ? { resume } : {}),
+          authorize: () => this.check(), registration: { scope: r.scope, graphRunId: r.graphRunId, identity: r.identity, generation: r.generation, owner: r.leaseOwner!, epoch: this.epoch,
+            workspace: { workspace_id: r.scope.workspaceId, workspace_path: this.options.repositoryPath }, authorize: () => this.check(), actions: [] },
+          dispatch: (key, request, options) => this.dispatch(key, request, options) });
+        this.active = handle; this.connection = handle.connection;
+        let workerError: unknown;
+        try { await handle.result; } catch (error) { workerError = error; }
+        const stopped = await handle.stop(); lastStopped = stopped;
+        if (this.stopping || this.current().status === 'cancel_pending') return { route: { kind: 'reconcile', epoch: this.epoch, reason: 'cancel_requested' } };
+        if (!stopped.actionsSettled || stopped.worker.kind !== 'exited' || stopped.worker.journalError) throw Error('PHYSICAL_WORKER_STOP_REQUIRED');
+        const verifyDurableExit = () => {
+          durableWorkerStopped = false; const proof = verifyJournaledGraphWorkerExit(this.options.db, handle.binding); durableWorkerStopped = true; return proof;
+        };
+        const workerProof = verifyDurableExit();
+        // No heartbeat now. Extend only the live lease, then capture a fresh immutable premise.
+        const current = this.current(); this.runs.renewLease({ ...this.fence(), leaseExpiresAt: Math.max(current.leaseExpiresAt!, this.leaseDeadline()) });
+        if (!this.latest(`e${this.epoch}.freeze`)) throw workerError ?? Error('FREEZE_REQUIRED');
+        const decision = await this.evaluate(); const candidate = this.candidate();
+        if (decision.route.kind !== 'repair_required') {
+          // Dispatch already exhausted or could not admit the explicit retry.
+          // A sealed failure must never advertise a retry that cannot be resumed.
+          const route = decision.route.kind === 'retry_required'
+            ? { kind: 'stop' as const, epoch: this.epoch, reason: 'retry_dispatch_incomplete' } : decision.route;
+          this.check();
+          const assertContractCurrent = () => {
+            this.check();
+            const current = new GraphVerificationStore(this.options.db, () => {}).snapshot(this.fence(decision.snapshot.run));
+            if (current.digest !== decision.snapshot.digest) throw Error('GRAPH_CONTRACT_SNAPSHOT_CHANGED');
+          };
+          const contractReceiptRef = route.kind === 'ready' && this.options.contractEnvelope ? await publishGraphContractCompletion({
+            root: this.options.root, envelope: this.options.contractEnvelope, decision, artifacts: this.artifacts, assertCurrent: assertContractCurrent,
+            contextEvidence: [...this.contextEvidence.values()],
+            ...(this.options.executionContext ? { contextReceiptRoot: this.options.executionContext.receiptRoot } : {}),
+          }) : undefined;
+          const inspection = new GraphRecoveryStore(this.options.db, () => { throw Error('INSPECTION_ONLY'); });
+          const inventory = inspection.inspectExecutors(this.fence(decision.snapshot.run));
+          if (route.kind !== 'reconcile' && inventory.requiredEffectKeys.length) throw Error('QUIESCENCE_REQUIRED');
+          if (this.current().status !== 'cancel_pending') this.options.db.transaction(() => {
+            if (contractReceiptRef) {
+              this.check();
+              new GraphVerificationStore(this.options.db, () => {}).assertCurrentInTransaction(decision.snapshot, Date.now());
+            }
+            if (workerCanonical(verifyDurableExit()) !== workerCanonical(workerProof)) throw Error('PHYSICAL_WORKER_STOP_REQUIRED');
+            inspection.assertExecutorInventory(inventory);
+            this.runs.project({ ...this.fence(decision.snapshot.run), status: route.kind === 'ready' ? 'ready' : route.kind === 'reconcile' ? 'reconciliation_required' : 'failed' });
+            if (decision.publication) this.options.publish?.(candidate, decision.publication.record.receiptRef, contractReceiptRef);
+          }).immediate();
+          return { route, candidate, ...(decision.publication ? { feedbackRef: decision.publication.record.receiptRef } : {}) };
+        }
+        if (workerError || !decision.publication) throw workerError ?? Error('IMMUTABLE_JOIN_REQUIRED');
+        this.check();
+        this.feedbackRef = decision.publication.record.receiptRef;
+        this.options.publish?.(candidate, this.feedbackRef);
+        if (this.options.qualityInterrupt) {
+          const proof: GraphDeliveryInterrupt = { interruptId: `quality:${r.graphRunId}:${this.epoch}:${r.generation}`, inputDigest: r.identity.inputDigest,
+            kind: 'quality', checkpointDigest: this.checkpointDigest(), feedbackRef: this.feedbackRef };
+          await new Promise<void>((resolve, reject) => {
+            this.waiting = { proof, resolve, reject, verify: () => {
+              this.check();
+              if (workerCanonical(verifyDurableExit()) !== workerCanonical(workerProof)) throw Error('PHYSICAL_WORKER_STOP_REQUIRED');
+              if (this.checkpointDigest() !== proof.checkpointDigest || workerCanonical(this.runtime.observedExit(handle.connection)) !== workerCanonical(stopped.worker)
+                || stopped.worker.kind !== 'exited' || !stopped.actionsSettled) throw Error('PHYSICAL_WORKER_STOP_REQUIRED');
+              if (!this.options.db.prepare('SELECT 1 FROM graph_verification_joins WHERE graph_run_id=? AND receipt_ref=?').get(r.graphRunId, proof.feedbackRef)) throw Error('IMMUTABLE_JOIN_REQUIRED');
+            } };
+            this.options.qualityInterrupt!(proof);
+          });
+          this.waiting = undefined;
+        }
+        await this.takeover(handle, stopped);
+        const next = this.epoch + 1;
+        new GraphDeliveryEpochStore(this.options.db).activate(this.fence(), next, deliveryEpoch(this.compiled, next).cost, this.feedbackRef);
+        resume = { kind: 'interrupt', value: { ...decision.route, feedbackRef: this.feedbackRef } };
+        this.epoch = next;
+      }
+    } catch (error) {
+      // An idempotent prepare may find another owner's run. Failed acquisition
+      // grants no authority to project that run's status.
+      if (!this.owned) throw error;
+      const current = this.current();
+      let inventoryUnknown = true;
+      try { inventoryUnknown = new GraphRecoveryStore(this.options.db, () => { throw Error('INSPECTION_ONLY'); })
+        .inspectExecutors(this.fence(current)).requiredEffectKeys.length > 0; } catch { /* An unreadable inventory is not quiescence. */ }
+      const reconcile = inventoryUnknown || !durableWorkerStopped || !lastStopped?.actionsSettled || lastStopped.worker.kind !== 'exited';
+      try {
+        this.check();
+        if (!['ready','failed','cancelled','cancel_pending'].includes(current.status) && current.leaseExpiresAt! > Date.now()) {
+          this.runs.project({ ...this.fence(current), status: reconcile ? 'reconciliation_required' : 'failed' });
+        }
+      } catch { /* Revoked/stale hosts cannot project replacement or cancellation state. */ }
+      return { route: { kind: reconcile ? 'reconcile' : 'stop', epoch: this.epoch, reason: String(error).slice(0, 4096) } };
+    } finally { this.closed = true; await this.runtime.close(); if (this.connection) this.broker.unregister(this.connection); }
+  }
+}
+
+
+FILE packages/core/src/graph/artifact-git.ts
+import { randomUUID } from "node:crypto";
+import type { Stats } from "node:fs";
+import { spawn } from "node:child_process";
+import { lstat, mkdir, readFile, readlink, realpath, writeFile } from "node:fs/promises";
+import { dirname, join, resolve, sep } from "node:path";
+
+/** Plumbing only. Never inherit Git redirection, templates, hooks, filters or fsmonitor. */
+export async function artifactGit(cwd: string, args: string[], input?: Buffer, outputLimit = 256 * 1024 * 1024): Promise<Buffer> {
+  const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith("GIT_")));
+  Object.assign(env, { GIT_CONFIG_NOSYSTEM: "1", GIT_CONFIG_GLOBAL: "/dev/null", GIT_TERMINAL_PROMPT: "0", GIT_NO_REPLACE_OBJECTS: "1", GIT_OPTIONAL_LOCKS: "0", LC_ALL: "C",
+    GIT_AUTHOR_NAME: "OSStack freeze", GIT_AUTHOR_EMAIL: "freeze@osstack.invalid", GIT_COMMITTER_NAME: "OSStack freeze", GIT_COMMITTER_EMAIL: "freeze@osstack.invalid", GIT_AUTHOR_DATE: "2000-01-01T00:00:00Z", GIT_COMMITTER_DATE: "2000-01-01T00:00:00Z" });
+  return await new Promise((resolvePromise, reject) => {
+    const child = spawn("git", ["-c", "core.hooksPath=/dev/null", "-c", "core.fsmonitor=false", "-c", "init.templateDir=", "-c", "commit.gpgSign=false", "-c", "gc.auto=0", ...args], { cwd, env, stdio: ["pipe", "pipe", "pipe"] });
+    const stdout: Buffer[] = []; const stderr: Buffer[] = []; let bytes = 0;
+    const timer = setTimeout(() => { child.kill("SIGKILL"); reject(new Error("artifact git timed out")); }, 60_000);
+    child.stdout.on("data", (part: Buffer) => { bytes += part.length; if (bytes > outputLimit) { child.kill("SIGKILL"); reject(new Error("artifact git output limit")); } else stdout.push(part); });
+    child.stderr.on("data", (part: Buffer) => { if (stderr.length < 256) stderr.push(part); });
+    child.stdin.on("error", () => { /* exit status reports failed plumbing */ });
+    child.on("error", error => { clearTimeout(timer); reject(error); });
+    child.on("close", code => { clearTimeout(timer); if (code === 0) resolvePromise(Buffer.concat(stdout)); else reject(new Error(`artifact git ${args[0]} failed: ${Buffer.concat(stderr).toString().slice(0, 4096)}`)); });
+    child.stdin.end(input);
+  });
+}
+export async function gitText(cwd: string, args: string[], input?: Buffer): Promise<string> {
+  return (await artifactGit(cwd, args, input)).toString("utf8").trim();
+}
+export function artifactPath(root: string, name: string): string {
+  if (!name || name.includes("\0") || name.includes("\\") || name.split("/").some(part => !part || part === "." || part === ".." || part.toLowerCase() === ".git")) throw new Error("unsupported artifact path");
+  const path = resolve(root, name);
+  if (!path.startsWith(root + sep)) throw new Error("escaping artifact path");
+  return path;
+}
+export async function initArtifactRepo(path: string, bare = true): Promise<void> {
+  await mkdir(path, { recursive: true });
+  await artifactGit(path, ["init", ...(bare ? ["--bare"] : []), "--object-format=sha1"]);
+}
+/** Raw bytes, no add/checkout/clean/smudge or global attributes transformations.
+ * appliedTree matches the bounded applier: include ignored files and use Git
+ * owner-execute semantics. Default preserves historical v1 capture behavior. */
+export async function captureArtifactTree(source: string, objectRepo: string, options: { appliedTree?: boolean } = {}): Promise<string> {
+  // Sparse checkout omissions are not deletions. Require a fully materialized
+  // source instead of silently deleting skipped tracked files from the candidate.
+  const flags = (await artifactGit(source, ["ls-files", "-t", "-z"])).toString("utf8").split("\0");
+  if (flags.some(entry => entry.startsWith("S "))) throw new Error("unsupported skip-worktree source");
+  const stages = (await artifactGit(source, ["ls-files", "--stage", "-z"])).toString("utf8").split("\0");
+  if (stages.some(line => line.startsWith("160000 "))) throw new Error("unsupported submodule");
+  if (stages.some(line => line && !/^\d+ [a-f0-9]+ 0\t/.test(line))) throw new Error("unmerged source index");
+  const namesRaw = await artifactGit(source, ["ls-files", "--cached", "--others", ...(options.appliedTree ? [] : ["--exclude-standard"]), "-z"]);
+  if (!Buffer.from(namesRaw.toString("utf8"), "utf8").equals(namesRaw)) throw new Error("unsupported non-UTF8 path");
+  const names = [...new Set(namesRaw.toString("utf8").split("\0").filter(Boolean))].sort();
+  await artifactGit(objectRepo, ["read-tree", "--empty"]);
+  const entries: { mode: string; name: string }[] = [];
+  const blobs: Buffer[] = []; let total = 0;
+  for (const name of names) {
+    const path = artifactPath(source, name);
+    let info: Stats;
+    try { info = await lstat(path); } catch (error) { if (["ENOENT", "ENOTDIR"].includes((error as NodeJS.ErrnoException).code ?? "")) continue; throw error; }
+    if (await realpath(dirname(path)) !== dirname(path)) throw new Error("source path has symlink ancestor");
+    if (info.isDirectory()) {
+      try { await lstat(join(path, ".git")); } catch (error) { if ((error as NodeJS.ErrnoException).code === "ENOENT") continue; throw error; }
+      throw new Error("unsupported nested repository or submodule");
+    }
+    if (!info.isFile() && !info.isSymbolicLink()) throw new Error("unsupported nested repository, submodule or special file");
+    if (info.isFile() && info.size > 256 * 1024 * 1024 - total) throw new Error("artifact tree size limit");
+    const data = info.isSymbolicLink() ? await readlink(path, { encoding: "buffer" }) : await readFile(path);
+    total += data.length;
+    if (total > 256 * 1024 * 1024 || entries.length >= 100000) throw new Error("artifact tree size limit");
+    blobs.push(Buffer.from(`blob\nmark :${entries.length + 1}\ndata ${data.length}\n`), data, Buffer.from("\n"));
+    const mode = info.isSymbolicLink() ? "120000" : (info.mode & (options.appliedTree ? 0o100 : 0o111)) !== 0 ? "100755" : "100644";
+    entries.push({ mode, name });
+  }
+  if (entries.length) {
+    // One plumbing process writes all raw blobs. No attributes/filters/checkout;
+    // marks bind each returned object to the exact bytes captured above.
+    const marksPath = join(objectRepo, `capture-${randomUUID()}.marks`);
+    await artifactGit(objectRepo, ["fast-import", "--quiet", `--export-marks=${marksPath}`], Buffer.concat(blobs));
+    const marks = new Map((await readFile(marksPath, "utf8")).trim().split("\n").map(line => {
+      const match = /^:(\d+) ([a-f0-9]{40})$/.exec(line);
+      if (!match) throw new Error("invalid artifact blob mark");
+      return [Number(match[1]), match[2]!] as const;
+    }));
+    const index = entries.map(({ mode, name }, i) => {
+      const oid = marks.get(i + 1); if (!oid) throw new Error("missing artifact blob mark");
+      return `${mode} ${oid}\t${name}\0`;
+    }).join("");
+    await artifactGit(objectRepo, ["update-index", "-z", "--index-info"], Buffer.from(index));
+  }
+  return await gitText(objectRepo, ["write-tree"]);
+}
+export async function linkSourceObjects(repo: string, commonDir: string): Promise<void> {
+  if (commonDir.includes("\n")) throw new Error("unsupported object directory path");
+  await mkdir(join(repo, "objects", "info"), { recursive: true });
+  await writeFile(join(repo, "objects", "info", "alternates"), `${join(commonDir, "objects")}\n`);
+}
+
+/** Read exact raw objects in one process; parse lengths, never split binary data
+ * on newlines. Raw bytes are bounded separately from per-entry protocol headers. */
+export async function artifactBlobs(repo: string, oids: readonly string[], maxBlobBytes = 256 * 1024 * 1024): Promise<Buffer[]> {
+  if (!Number.isSafeInteger(maxBlobBytes) || maxBlobBytes < 0 || maxBlobBytes > 256 * 1024 * 1024 || oids.length > 100000) throw new Error("artifact blob limit");
+  if (!oids.every(oid => /^[a-f0-9]{40}$/.test(oid))) throw new Error("invalid artifact blob identity");
+  if (!oids.length) return [];
+  const output = await artifactGit(repo, ["cat-file", "--batch"], Buffer.from(oids.join("\n") + "\n"), maxBlobBytes + oids.length * 64);
+  let offset = 0; let rawBytes = 0;
+  const blobs = oids.map(oid => {
+    const end = output.indexOf(10, offset); if (end < offset) throw new Error("truncated artifact blob header");
+    const header = output.subarray(offset, end).toString("ascii");
+    const match = /^([a-f0-9]{40}) blob (\d+)$/.exec(header);
+    if (!match || match[1] !== oid) throw new Error("artifact blob identity mismatch");
+    const length = Number(match[2]); offset = end + 1;
+    if (!Number.isSafeInteger(length) || length < 0 || offset + length >= output.length || output[offset + length] !== 10) throw new Error("truncated artifact blob");
+    rawBytes += length; if (rawBytes > maxBlobBytes) throw new Error("artifact blob limit");
+    const bytes = output.subarray(offset, offset + length); offset += length + 1; return bytes;
+  });
+  if (offset !== output.length) throw new Error("unexpected artifact blob data");
+  return blobs;
+}
+
+
+FILE packages/cli/src/graph-verification.ts
+import { prepareGraphContainedImage, registerContainedTests, validateContainedTestEvidence, type GraphContainedTestOptions } from './graph-contained-tests.js';
+import type { ContainedImageReceipt } from '@osstack/agents';
+import { execFileSync } from 'node:child_process';
+import { createHash, randomUUID } from 'node:crypto';
+import { existsSync, lstatSync, readdirSync, readFileSync, readlinkSync, realpathSync } from 'node:fs';
+import { mkdir, realpath } from 'node:fs/promises';
+import { dirname, isAbsolute, join, resolve } from 'node:path';
+import type { AgentAdapter, AgentTask } from '@osstack/agents';
+import type { GraphArtifactStore, GraphArtifactManifest } from '@osstack/core/graph-artifacts';
+import { GraphResult } from '@osstack/protocol';
+import type { FrozenDeliveryContractV2 } from '@osstack/protocol';
+import { assertGraphContractPaths } from './graph-delivery-contract.js';
+import { prepareGraphExecutionContext, type GraphExecutionContextRegistration, type GraphContextEvidence } from './graph-execution-context.js';
+import { ExecutionPlan, type RegisteredCandidateWorkspace } from '@osstack/loop';
+import { parseVerificationBinding, verificationCanonical, type VerificationBinding } from '@osstack/graph/nodes/branch';
+import { createReviewRequest, parseReviewReport } from '@osstack/graph/nodes/review';
+import { createTestsRequest } from '@osstack/graph/nodes/tests';
+import type { AdmissionInput, ExecutionLease } from './governed-execution.js';
+import type { GraphActionEvidence, GraphRegisteredAction, PersistedGraphActionEvidence } from './graph-action-broker.js';
+import { compactVerificationOutput, parseAcceptanceCommand, publishGraphVerificationEvidence, validateVerificationEffect, type CandidateIdentity, type CandidateObservation, type ReviewerInvocation, type AcceptanceCommandSpec, type GraphVerificationEnvelope, type VerificationEffect } from './graph-verification-store.js';
+export { loadGraphVerificationEvidence } from './graph-verification-store.js';
+export type { AcceptanceCommandSpec, GraphVerificationEnvelope, VerificationEffect } from './graph-verification-store.js';
+type Kind = 'review' | 'tests';
+export interface ReviewerIdentity { writerIdentity: string; reviewerIdentity: string; adapterId: string; capabilityId: string }
+export interface GraphVerificationOptions {
+  root: string; artifacts: GraphArtifactStore; candidate: Extract<GraphResult, { kind: 'candidate_ready' }>; binding: VerificationBinding;
+  sourceWorkspace: RegisteredCandidateWorkspace; authorize: () => void; acquire: (input: AdmissionInput) => Promise<ExecutionLease>;
+  /** Current host cancel grant permits only stopped cancellation evidence settlement. */
+  authorizeCancel?: () => void;
+  authorizePolicy?: (workspacePath: string) => Promise<void>;
+  /** Opt-in immutable-image tests; default registered shell behavior is unchanged. */
+  containedTests?: GraphContainedTestOptions;
+  acceptanceRegistry: readonly AcceptanceCommandSpec[]; writerIdentity: string;
+  deliveryContract?: FrozenDeliveryContractV2;
+  executionContext?: GraphExecutionContextRegistration;
+  contextRepositoryPath?: string;
+  recordContextEvidence?: (value: GraphContextEvidence) => void;
+  reviewer: { identity: string; adapter: AgentAdapter; capabilityId: string };
+  /** Independent host identity/credential check; never derived from review/model output. */
+  verifyReviewer: (identities: Readonly<ReviewerIdentity>) => Promise<void>;
+  /** Reads current running ledger record, including its actual logical attempt. */
+  effectIdentity: (kind: Kind) => VerificationEffect;
+  /** Host ledger preparation owns this exact source lease. No nested acquisition. */
+  preparationLease?: ExecutionLease;
+  slots?: Partial<Record<Kind, { nodeId: string; effectSlot: string; workspaceLeaseRef: string; tokenReservation: number }>>;
+}
+export interface PreparedGraphVerification {
+  binding: VerificationBinding; reviewWorkspace: RegisteredCandidateWorkspace; testsWorkspace: RegisteredCandidateWorkspace;
+  actions: readonly GraphRegisteredAction[];
+}
+function snapshot<T>(value: T): T {
+  const copy = structuredClone(value);
+  const freeze = (item: unknown) => { if (item && typeof item === 'object') { Object.values(item).forEach(freeze); Object.freeze(item); } };
+  freeze(copy); return copy;
+}
+function checkedAuthority(authorize: () => void): () => void {
+  return () => { const result: unknown = authorize(); if (result !== undefined) { void Promise.resolve(result).catch(() => {}); throw new Error('authority must be synchronous'); } };
+}
+function gitRaw(path: string, ...args: string[]): string {
+  const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith('GIT_')));
+  return execFileSync('git', ['-c', 'core.hooksPath=/dev/null', '-c', 'core.fsmonitor=false', ...args], { cwd: path, encoding: 'utf8', timeout: 10000, maxBuffer: 16 * 1024 * 1024,
+    env: { ...env, GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOSYSTEM: '1', GIT_OPTIONAL_LOCKS: '0' } });
+}
+function git(path: string, ...args: string[]) { return gitRaw(path, ...args).trim(); }
+/** One subprocess per observation; never cache across authority/preimage checks.
+ * This is not an atomic filesystem snapshot: the caller still compares all evidence. */
+export function readCandidateRevisions(readGit: (...args: string[]) => string): Pick<CandidateIdentity, 'head' | 'tree'> {
+  const [head, tree, ...extra] = readGit('rev-parse', 'HEAD', 'HEAD^{tree}').split(/\r?\n/);
+  const revision = /^(?:[a-f0-9]{40}|[a-f0-9]{64})$/;
+  if (!head || !tree || extra.length || !revision.test(head) || !revision.test(tree)) throw Error('CANDIDATE_REVISIONS_INVALID');
+  return { head, tree };
+}
+/** Raw bytes/modes/links, including ignored and untracked files. Git status alone
+ * misses ignored files, assume-unchanged and timestamp-preserving modifications. */
+function workspaceFingerprint(path: string): string {
+  const hash = createHash('sha256'); let count = 0;
+  const visit = (directory: string, prefix: string) => {
+    for (const name of readdirSync(directory).sort()) {
+      if (!prefix && name === '.git') continue;
+      if (++count > 100000) throw new Error('workspace inventory limit');
+      const relative = `${prefix}${name}`; const full = join(directory, name); const stat = lstatSync(full);
+      hash.update(JSON.stringify([relative, stat.mode & 0o777, stat.isDirectory() ? 'directory' : stat.isSymbolicLink() ? 'link' : 'file']));
+      if (stat.isSymbolicLink()) {
+        const target = resolve(dirname(full), readlinkSync(full));
+        if (!target.startsWith(`${path}/`) || (existsSync(target) && !realpathSync(target).startsWith(`${path}/`))) throw new Error('shared external symlink in candidate workspace');
+        hash.update(readlinkSync(full));
+      }
+      else if (stat.isDirectory()) visit(full, `${relative}/`);
+      else if (stat.isFile() && stat.size <= 256 * 1024 * 1024 && stat.nlink === 1) hash.update(readFileSync(full));
+      else throw new Error('unsupported workspace entry/shared writable hardlink');
+    }
+  };
+  visit(path, ''); return hash.digest('hex');
+}
+export function assertExactCandidateFiles(path: string, revision: string): void {
+  if (resolve(path) !== path || realpathSync(path) !== path) throw new Error('candidate root must be canonical');
+  const expected = new Set<string>();
+  for (const entry of gitRaw(path, 'ls-tree', '-rz', '--full-tree', revision).split('\0').filter(Boolean)) {
+    const match = /^(100644|100755|120000) blob ([a-f0-9]{40})\t([\s\S]+)$/.exec(entry);
+    if (!match) throw new Error('unsupported candidate tree entry');
+    const name = match[3]!;
+    if (isAbsolute(name) || name.split('/').some(part => !part || part === '.' || part === '..' || part === '.git')) throw new Error('unsafe candidate tree path');
+    expected.add(name);
+    let parent = dirname(name); while (parent !== '.') { expected.add(parent); parent = dirname(parent); }
+    const file = join(path, name);
+    parent = dirname(file);
+    while (parent !== path) {
+      if (!lstatSync(parent).isDirectory() || lstatSync(parent).isSymbolicLink()) throw new Error('candidate tracked parent changed');
+      parent = dirname(parent);
+    }
+    const stat = lstatSync(file);
+    if (stat.nlink !== 1 || stat.size > 256 * 1024 * 1024) throw new Error('unsupported tracked entry');
+    const bytes = match[1] === '120000' && stat.isSymbolicLink() ? Buffer.from(readlinkSync(file))
+      : match[1] !== '120000' && stat.isFile() ? readFileSync(file) : undefined;
+    if (!bytes || (match[1] !== '120000' && ((stat.mode & 0o111) !== 0) !== (match[1] === '100755'))
+      || createHash('sha1').update(`blob ${bytes.length}\0`).update(bytes).digest('hex') !== match[2]) throw new Error('candidate raw tree mismatch');
+  }
+  const visit = (directory: string, prefix: string): void => { for (const name of readdirSync(directory)) {
+    if (!prefix && name === '.git') continue;
+    const relative = `${prefix}${name}`; if (!expected.has(relative)) throw new Error('candidate has unexpected files');
+    const full = join(directory, name); if (lstatSync(full).isDirectory()) visit(full, `${relative}/`);
+  } };
+  visit(path, '');
+}
+function repositoryStamp(path: string): string {
+  const gitDir = join(path, '.git');
+  for (const p of [path, gitDir, join(gitDir, 'objects')]) if (!lstatSync(p).isDirectory() || realpathSync(p) !== p) throw new Error('workspace repository is not independent');
+  if (git(path, 'rev-parse', '--absolute-git-dir') !== gitDir || git(path, 'rev-parse', '--git-common-dir') !== '.git'
+    || existsSync(join(gitDir, 'objects', 'info', 'alternates')) || existsSync(join(gitDir, 'objects', 'info', 'http-alternates'))) throw new Error('shared repository storage forbidden');
+  // Every restored repository starts without caches, symlinked metadata or shared objects.
+  const inspect = (directory: string): void => { for (const name of readdirSync(directory)) { const p = join(directory, name); const stat = lstatSync(p); if (stat.isSymbolicLink() || (!stat.isDirectory() && (!stat.isFile() || stat.nlink !== 1))) throw new Error('shared repository metadata'); if (stat.isDirectory()) inspect(p); } };
+  inspect(gitDir);
+  return verificationCanonical([path, gitDir, join(gitDir, 'objects')].map(p => { const stat = lstatSync(p); return [p, stat.dev, stat.ino]; }));
+}
+/** Explicit trusted host preparation. No worker-supplied paths, commands, identity
+ * claims, writer history or automatic cleanup. Same UID is not an OS sandbox. */
+export async function prepareGraphVerification(options: GraphVerificationOptions): Promise<PreparedGraphVerification> {
+  const selected = await prepareSelection(options, ['review', 'tests']);
+  return { ...selected, reviewWorkspace: selected.workspaces.review!, testsWorkspace: selected.workspaces.tests! };
+}
+/** A single ledger preparation returns only the physical workspace it created. */
+export async function prepareGraphVerificationBranch(options: GraphVerificationOptions, kind: Kind) {
+  return prepareSelection(options, [kind]);
+}
+async function prepareSelection(options: GraphVerificationOptions, kinds: readonly Kind[]) {
+  // Capture ALL callbacks and values before the first await.
+  const { authorize, authorizeCancel, authorizePolicy, acquire, effectIdentity, verifyReviewer, preparationLease } = options;
+  const containedOptions = options.containedTests ? Object.freeze({ ...options.containedTests }) : undefined;
+  const check = checkedAuthority(authorize); check();
+  const data = snapshot({ root: options.root, binding: parseVerificationBinding(options.binding), candidate: GraphResult.parse(options.candidate), source: options.sourceWorkspace,
+    writerIdentity: options.writerIdentity, reviewerIdentity: options.reviewer.identity, capabilityId: options.reviewer.capabilityId,
+    kinds, registry: options.acceptanceRegistry.map(parseAcceptanceCommand), slots: options.slots ?? {} });
+  if (!data.kinds.length || new Set(data.kinds).size !== data.kinds.length || data.kinds.some(k => k !== 'review' && k !== 'tests')) throw Error('invalid preparation kinds');
+  const adapter = options.reviewer.adapter;
+  const capabilities = snapshot(adapter.capabilities());
+  const reviewer: AgentAdapter = Object.freeze({ id: adapter.id, display_name: adapter.display_name, cost_tier: adapter.cost_tier,
+    capabilities: () => structuredClone(capabilities), isAvailable: adapter.isAvailable.bind(adapter), invoke: adapter.invoke.bind(adapter),
+    ...(adapter.confirmStopped ? { confirmStopped: adapter.confirmStopped.bind(adapter) } : {}) });
+  const verifyArtifact = options.artifacts.verify.bind(options.artifacts); const restore = options.artifacts.restore.bind(options.artifacts);
+  const { binding } = data;
+  check();
+  if (!isAbsolute(data.root) || data.root.includes('\0') || !isAbsolute(data.source.workspace_path) || data.source.workspace_id !== binding.scope.workspaceId) throw new Error('invalid host workspace/root');
+  if (data.candidate.kind !== 'candidate_ready' || data.candidate.candidateRevision !== binding.candidateRevision || data.candidate.artifactDigest !== binding.artifactDigest) throw new Error('candidate binding mismatch');
+  if (!data.writerIdentity.trim() || !data.reviewerIdentity.trim() || data.writerIdentity === data.reviewerIdentity || data.reviewerIdentity !== reviewer.id || !reviewer.confirmStopped || typeof verifyReviewer !== 'function') throw new Error('independent reviewer identity/stop verifier required');
+  const matches = capabilities.filter(cap => cap.id === data.capabilityId);
+  if (matches.length !== 1 || matches[0]!.agent_id !== reviewer.id || !['review.code', 'code.review'].includes(matches[0]!.kind)) throw new Error('review capability mismatch');
+  const acceptanceMatches = data.registry.filter(spec => spec.ref === binding.acceptanceRef);
+  if (acceptanceMatches.length !== 1) throw new Error('acceptance must resolve unique trusted command');
+  const acceptance = acceptanceMatches[0]!;
+  const identities = snapshot({ writerIdentity: data.writerIdentity, reviewerIdentity: data.reviewerIdentity, adapterId: reviewer.id, capabilityId: data.capabilityId });
+  const checked = async <T>(operation: () => Promise<T>): Promise<T> => { check(); const value = await operation(); check(); return value; };
+  const independent = async () => { const result: unknown = await checked(() => verifyReviewer(identities)); if (result !== undefined) throw new Error('independent verifier must return void'); check(); };
+  await independent();
+  check();
+  const lease = preparationLease ?? await acquire({ kind: 'write', runId: `graph-verification-prepare:${randomUUID()}`, workspacePath: data.source.workspace_path, authorize: async () => { check(); } });
+  const preparedCheck = async () => { if (!lease.assertActive) throw new Error('canonical G10 preparation lease required'); await checked(() => lease.assertActive!()); };
+  let containedImage: ContainedImageReceipt | undefined;
+  let manifest!: GraphArtifactManifest; let reviewPath!: string; let testsPath!: string;
+  let preparationFailure: { error: unknown } | undefined;
+  try {
+    check();
+    await preparedCheck();
+    const validateManifest = (value: GraphArtifactManifest) => {
+      if (value.candidateRevision !== binding.candidateRevision || verificationCanonical(value.input.scope) !== verificationCanonical(binding.scope)
+        || value.input.runId !== binding.graphRunId || value.input.worktreePath !== data.source.workspace_path) throw new Error('artifact manifest binding mismatch');
+    };
+    manifest = snapshot(await checked(() => verifyArtifact(binding.artifactDigest))); validateManifest(manifest);
+    await checked(() => realpath(dirname(data.root)));
+    await checked(() => mkdir(data.root, { mode: 0o700, recursive: true }));
+    if (await checked(() => realpath(data.root)) !== data.root || data.root === data.source.workspace_path || data.root.startsWith(`${data.source.workspace_path}/`)) throw new Error('host root must be canonical and outside source workspace');
+    const paths: string[] = [];
+    for (const kind of data.kinds) {
+      await preparedCheck();
+      const restored = await checked(() => restore(binding.artifactDigest, { rootPath: data.root, directoryName: `${kind}-${randomUUID()}` }));
+      if (restored.candidateRevision !== binding.candidateRevision || restored.tree !== manifest.tree || dirname(restored.worktreePath) !== data.root) throw new Error('restored candidate mismatch');
+      if (options.deliveryContract) assertGraphContractPaths(options.deliveryContract, restored.worktreePath, binding.candidateRevision);
+      if (kind === 'tests' && containedOptions) {
+        assertExactCandidateFiles(restored.worktreePath, binding.candidateRevision);
+        containedImage = snapshot(await checked(() => prepareGraphContainedImage(containedOptions, restored.worktreePath, binding.candidateRevision, check)));
+        assertExactCandidateFiles(restored.worktreePath, binding.candidateRevision);
+      }
+      paths.push(restored.worktreePath);
+      await preparedCheck();
+    }
+    reviewPath = paths[data.kinds.indexOf('review')]!; testsPath = paths[data.kinds.indexOf('tests')]!;
+    const final = await checked(() => verifyArtifact(binding.artifactDigest)); validateManifest(final);
+    if (verificationCanonical(final) !== verificationCanonical(manifest)) throw new Error('artifact changed during preparation');
+    await preparedCheck();
+  } catch (error) { preparationFailure = { error }; }
+  // Restore promises have settled: no external agent exists during preparation.
+  // Leave allocated directories intact even when publication/authority fails.
+  try { if (!preparationLease) await lease.release(); } catch (error) { lease.retain(String(error)); throw error; }
+  if (preparationFailure) throw preparationFailure.error;
+  check();
+  const workspaces: Partial<Record<Kind, RegisteredCandidateWorkspace>> = {};
+  if (reviewPath) workspaces.review = snapshot({ workspace_id: binding.scope.workspaceId, workspace_path: reviewPath });
+  if (testsPath) workspaces.tests = snapshot({ workspace_id: binding.scope.workspaceId, workspace_path: testsPath });
+  const actions = await Promise.all(data.kinds.map(async kind => {
+    const workspace = workspaces[kind]!;
+    assertExactCandidateFiles(workspace.workspace_path, binding.candidateRevision);
+    // Paths come from the frozen tree, never from a potentially altered index.
+    const trackedPaths = gitRaw(workspace.workspace_path, 'ls-tree', '-rz', '--name-only', binding.candidateRevision).split('\0').filter(Boolean);
+    const trackedFingerprint = () => {
+      const hash = createHash('sha256');
+      for (const name of trackedPaths) {
+        const file = join(workspace.workspace_path, name);
+        let parent = dirname(file);
+        while (parent !== workspace.workspace_path) {
+          if (!lstatSync(parent).isDirectory() || lstatSync(parent).isSymbolicLink()) throw new Error('candidate tracked parent changed');
+          parent = dirname(parent);
+        }
+        const stat = lstatSync(file);
+        if ((!stat.isFile() && !stat.isSymbolicLink()) || stat.nlink !== 1 || stat.size > 256 * 1024 * 1024) throw new Error('unsupported tracked entry');
+        const bytes = stat.isSymbolicLink() ? Buffer.from(readlinkSync(file)) : readFileSync(file);
+        hash.update(JSON.stringify([name, stat.mode, bytes.length, createHash('sha256').update(bytes).digest('hex')]));
+      }
+      return hash.digest('hex');
+    };
+    const candidateIdentity = (): CandidateIdentity => ({
+      repositoryDigest: createHash('sha256').update(repositoryStamp(workspace.workspace_path)).digest('hex'),
+      ...readCandidateRevisions((...args) => git(workspace.workspace_path, ...args)),
+      indexTree: git(workspace.workspace_path, 'write-tree'), indexDigest: createHash('sha256').update(gitRaw(workspace.workspace_path, 'ls-files', '--stage', '-v', '-z')).digest('hex'), trackedDigest: trackedFingerprint(),
+      ...(kind === 'tests' && containedImage ? { containedContentDigest: containedImage.contentDigest } : {}),
+      ...(kind === 'review' ? { inventoryDigest: workspaceFingerprint(workspace.workspace_path) } : {}),
+    });
+    // Both workspaces start with a strict inventory; tests may later emit untracked build outputs.
+    workspaceFingerprint(workspace.workspace_path);
+    const before = snapshot(candidateIdentity());
+    if (before.head !== binding.candidateRevision || before.tree !== manifest.tree || before.indexTree !== manifest.tree) throw new Error('candidate workspace mutation detected');
+    const observe = (): CandidateObservation => {
+      try { return candidateIdentity(); } catch (error) { return { error: String(error).slice(0, 4096) }; }
+    };
+    const candidateCheck = () => {
+      check();
+      if (verificationCanonical(observe()) !== verificationCanonical(before)) throw new Error('candidate workspace mutation detected');
+      check();
+    };
+    candidateCheck();
+    const contained = kind === 'tests' && containedOptions && containedImage ? registerContainedTests(containedOptions, containedImage, binding, acceptance.command) : undefined;
+    const invocations = new Map<string, ReviewerInvocation>();
+    const slot = data.slots[kind] ?? { nodeId: kind, effectSlot: 'invoke', workspaceLeaseRef: `verification:${randomUUID()}`, tokenReservation: 0 };
+    if (!Number.isSafeInteger(slot.tokenReservation) || slot.tokenReservation < 0) throw new Error('invalid token reservation');
+    const requestInput = { binding, generation: 1, requestId: 'register', ...slot };
+    const request = kind === 'review' ? createReviewRequest(requestInput) : createTestsRequest(requestInput);
+    const verifyWorkspace = async () => { await independent(); candidateCheck(); };
+    const persist = async (raw: GraphActionEvidence, context?: { signal: AbortSignal }): Promise<PersistedGraphActionEvidence> => {
+      const evidence = snapshot(raw);
+      const settlementCheck = () => {
+        if (context?.signal.aborted && evidence.stopped === true && authorizeCancel) checkedAuthority(authorizeCancel)();
+        else check();
+      };
+      settlementCheck();
+      if (evidence.stopped !== true || evidence.candidate?.status === 'execution_unconfirmed' || evidence.candidate?.execution?.failure_code === 'cancellation_unconfirmed'
+        || evidence.command?.failure_code === 'process_exit_unconfirmed' || evidence.command?.failure_code === 'surviving_descendants') throw new Error('executor stop unconfirmed');
+      const effect = snapshot(validateVerificationEffect(effectIdentity(kind), binding, slot.nodeId, slot.effectSlot));
+      settlementCheck();
+      const identityCheck: unknown = await verifyReviewer(identities);
+      if (identityCheck !== undefined) throw new Error('independent verifier must return void');
+      settlementCheck();
+      if (verificationCanonical(validateVerificationEffect(effectIdentity(kind), binding, slot.nodeId, slot.effectSlot)) !== verificationCanonical(effect)) throw new Error('ledger effect changed during verification');
+      const envelope: GraphVerificationEnvelope = { schemaVersion: 1, binding, kind, nodeId: slot.nodeId, effectSlot: slot.effectSlot, ...effect,
+        workspace, workspaceLeaseRef: slot.workspaceLeaseRef, candidateIdentity: { before, after: observe() }, acceptance, writerIdentity: data.writerIdentity, reviewerIdentity: data.reviewerIdentity, evidence };
+      if (context?.signal.aborted) envelope.verificationFailure = { code: 'INTERNAL_ERROR', message: 'Verification cancelled after confirmed executor stop', retrySafe: false };
+      if (verificationCanonical(envelope.candidateIdentity.after) !== verificationCanonical(before)) envelope.verificationFailure = { code: 'INTERNAL_ERROR', message: 'Candidate workspace mutation detected after execution', retrySafe: false };
+      if (kind === 'review') {
+        const receipt = invocations.get(evidence.candidate?.execution?.run_id ?? '');
+        if (!receipt || receipt.effectKey !== effect.effectKey) throw new Error('missing actual reviewer invocation receipt');
+        envelope.reviewerInvocation = receipt;
+        if (executionContext && evidence.status === 'completed' && evidence.stopped) {
+          const contextReceipt = await executionContext.evidence(receipt.runId, effect);
+          settlementCheck(); options.recordContextEvidence!(contextReceipt);
+        }
+        if (!envelope.verificationFailure) {
+          if (evidence.status !== 'completed' || evidence.candidate?.execution?.failure_code || evidence.candidate?.status !== 'implementation_complete') envelope.verificationFailure = { code: 'INTERNAL_ERROR', message: 'Review executor failed after stopping', retrySafe: true };
+          else {
+            try { envelope.report = parseReviewReport(JSON.parse(evidence.candidate.execution?.summary ?? 'null')); }
+            catch { envelope.verificationFailure = { code: 'OUTPUT_CONTRACT_INVALID', message: 'Review summary is not a valid structured report', retrySafe: true }; }
+          }
+        }
+      } else if (contained) {
+        if (!evidence.contained || evidence.command) throw Error('missing actual contained command evidence');
+        contained.verify(evidence.contained);
+        const receipt = validateContainedTestEvidence(evidence.contained, binding, effect.effectKey, acceptance.command, before.containedContentDigest);
+        if (!envelope.verificationFailure && (receipt.result.cancelled || ![...acceptance.passExitCodes, ...acceptance.failExitCodes].includes(receipt.result.exitCode))) envelope.verificationFailure = { code: 'INTERNAL_ERROR', message: 'Contained command cancelled or returned unregistered exit code', retrySafe: false };
+      } else {
+        if (evidence.contained) throw Error('unexpected contained evidence');
+        const command = evidence.command;
+        if (!command || command.command !== acceptance.command || command.termination?.stop_confirmed !== true) throw new Error('missing actual registered command stop evidence');
+        if (!envelope.verificationFailure && (command.failure_code || command.cancellation || command.termination.scope !== 'posix_process_group' || command.termination.trigger !== 'exit' || command.termination.leader_exit_code !== command.exitCode
+          || ![...acceptance.passExitCodes, ...acceptance.failExitCodes].includes(command.exitCode))) envelope.verificationFailure = { code: 'INTERNAL_ERROR', message: 'Acceptance command infrastructure failure or unregistered exit code', retrySafe: true };
+      }
+      compactVerificationOutput(envelope);
+      return publishGraphVerificationEvidence(data.root, envelope, () => {
+        if (verificationCanonical(observe()) !== verificationCanonical(envelope.candidateIdentity.after)) throw new Error('candidate changed during persistence');
+        settlementCheck(); if (verificationCanonical(validateVerificationEffect(effectIdentity(kind), binding, slot.nodeId, slot.effectSlot)) !== verificationCanonical(effect)) throw new Error('ledger effect changed during persistence');
+      });
+    };
+    // G04 reuses plan-derived session IDs on retry. Allocate the real session at invocation,
+    // rebuilding task/context from trusted fields so caller history/resume hints cannot pass through.
+    const plan = snapshot(ExecutionPlan.parse({ plan_id: `verification:${randomUUID()}`, agent_id: kind === 'review' ? reviewer.id : 'registered-command', max_iterations: 1,
+      task: { task_id: `verification:${kind}:${randomUUID()}`, capability: kind === 'review' ? matches[0]!.kind : 'code.test', source: 'manual',
+        prompt: kind === 'review' ? `Independently review frozen candidate ${binding.candidateRevision} against acceptance ${binding.acceptanceRef}. Return only JSON {"schemaVersion":1,"verdict":"accept"|"changes_requested","summary":string,"findings":string[]}. Do not modify files.${options.deliveryContract && !options.executionContext ? `\n\n${options.deliveryContract.brief}` : ''}` : `Run registered acceptance ${binding.acceptanceRef}.` },
+      stop_condition: { type: kind === 'review' ? 'review_approved' : 'tests_pass' } }));
+    const observeActual = (actual: AgentTask) => {
+      check(); candidateCheck();
+      if (actual.task_id !== plan.task.task_id || actual.capability_id !== data.capabilityId || actual.context?.repo_path !== workspace.workspace_path
+        || invocations.has(actual.run_id)) throw Error('invalid or repeated reviewer invocation');
+      const effect = validateVerificationEffect(effectIdentity(kind), binding, slot.nodeId, slot.effectSlot);
+      invocations.set(actual.run_id, snapshot({ runId: actual.run_id, taskId: actual.task_id, sessionId: actual.session_id, adapterId: reviewer.id, capabilityId: actual.capability_id,
+        promptDigest: createHash('sha256').update(actual.prompt).digest('hex'), contextDigest: createHash('sha256').update(verificationCanonical(actual.context)).digest('hex'),
+        historyPassed: false, effectKey: effect.effectKey }));
+    };
+    if (options.executionContext && (!options.deliveryContract || !options.contextRepositoryPath || !options.recordContextEvidence)) throw Error('GRAPH_CONTEXT_CONTRACT_REQUIRED');
+    const executionContext = kind === 'review' && options.executionContext ? await prepareGraphExecutionContext({ registration: options.executionContext,
+      adapter: reviewer, workspacePath: options.contextRepositoryPath!, frozen: options.deliveryContract!, authorize: check, observe: observeActual }) : undefined;
+    const reviewerEffectsStarted = new Set<string>();
+    const invocationReviewer: AgentAdapter = Object.freeze({ ...reviewer,
+      invoke: (task: AgentTask, signal: AbortSignal) => (async function* () {
+        if (options.deliveryContract) {
+          const effect = validateVerificationEffect(effectIdentity(kind), binding, slot.nodeId, slot.effectSlot);
+          if (reviewerEffectsStarted.has(effect.effectKey)) throw Error('invalid or repeated reviewer invocation');
+          reviewerEffectsStarted.add(effect.effectKey);
+        }
+        const runId = task.run_id; const taskId = task.task_id;
+        await independent(); candidateCheck();
+        await authorizePolicy?.(workspace.workspace_path); check();
+        if (signal.aborted) throw new Error('review invocation cancelled');
+        if (taskId !== plan.task.task_id || invocations.has(runId)) throw new Error('invalid or repeated reviewer invocation');
+        const actual: AgentTask = snapshot({ run_id: runId, task_id: taskId, session_id: randomUUID(), capability_id: data.capabilityId,
+          prompt: plan.task.prompt, context: { repo_path: workspace.workspace_path } });
+        check();
+        if (executionContext) yield* executionContext.adapter.invoke(actual, signal);
+        else { observeActual(actual); yield* reviewer.invoke(actual, signal); }
+      })(),
+    });
+    const action: GraphRegisteredAction = { nodeId: slot.nodeId, effectSlot: slot.effectSlot, action: snapshot(request.action), tokenReservation: slot.tokenReservation,
+      workspace, verifyWorkspace, persist, execution: kind === 'review' ? { kind: 'adapter', plan, adapter: invocationReviewer, capabilityId: data.capabilityId } : contained ? { kind: 'contained', plan, ...contained.registration } : { kind: 'command', plan, command: acceptance.command } };
+    Object.freeze(action.execution); return Object.freeze(action);
+  }));
+  return Object.freeze({ binding, workspaces: Object.freeze(workspaces), actions: Object.freeze(actions) });
+}
+
+
+FILE packages/cli/src/graph-execution-command.ts
+import { assertGraphPlatform } from './graph-platform.js';
+import { closeSync, constants, fstatSync, openSync, readSync } from 'node:fs';
+import {
+  GRAPH_JSON_LIMITS, GraphContractError, GraphDelegationStatus, GraphDeliveryUnknown, GraphError,
+  GraphRequest, GraphScope, GraphStatusRequest, computeGraphInputDigest,
+} from '@osstack/protocol';
+
+export interface GraphCommandDependencies {
+  stdout?: (text: string) => void;
+  stderr?: (text: string) => void;
+  rpc?: (method: string, params: unknown) => Promise<unknown>;
+}
+export const GRAPH_EXECUTION_HELP = `Usage: osstack graph <command> [--json]
+  validate --spec FILE               Offline fixed-template and budget validation
+  run --request FILE                Submit a StartGraphRequest to the local daemon
+  status --run ID --scope FILE       Read authoritative run state
+  result --run ID --scope FILE       Read artifact-only delivery and evidence references
+  contract --run ID --scope FILE     Read a verified host contract completion receipt
+  cancel --request FILE             Persist cancellation intent; confirmation is separate
+  reconcile --request FILE          Recheck cancellation using trusted host no-child evidence
+  resume --request FILE             Resume an exact interrupt with current host authorization
+Request/scope files are strict v1 JSON (max 64 KiB). No implicit scope or grant.
+run/cancel/reconcile/resume retain the request's idempotencyKey across transport retries.
+Exit: 0 acknowledged; 1 input/RPC rejection; 2 unknown outcome (follow returned nextAction).
+Transport loss permits retrying the same key; ACTION_OUTCOME_UNKNOWN/CANCEL_UNCONFIRMED require reconciliation.
+The server must have explicit trusted graph-host configuration. graph explain remains available.`;
+
+function readJson(path: string): unknown {
+  const fd = openSync(path, constants.O_RDONLY | constants.O_NONBLOCK);
+  try {
+    const st = fstatSync(fd);
+    if (!st.isFile() || st.size > GRAPH_JSON_LIMITS.maxBytes) throw new GraphContractError('INPUT_CONTRACT_INVALID');
+    const bytes = Buffer.alloc(GRAPH_JSON_LIMITS.maxBytes + 1);
+    let size = 0;
+    while (size < bytes.length) {
+      const count = readSync(fd, bytes, size, bytes.length - size, null);
+      if (!count) break;
+      size += count;
+    }
+    if (size > GRAPH_JSON_LIMITS.maxBytes) throw new GraphContractError('INPUT_CONTRACT_INVALID');
+    return JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes.subarray(0, size))) as unknown;
+  } finally { closeSync(fd); }
+}
+function options(args: string[], allowed: string[]): Map<string, string> {
+  const found = new Map<string, string>();
+  for (let index = 0; index < args.length; index++) {
+    const key = args[index]!;
+    if (found.has(key) || ![...allowed, '--json'].includes(key)) throw new GraphContractError('INPUT_CONTRACT_INVALID');
+    const value = key === '--json' ? 'true' : args[++index];
+    if (!value || value.startsWith('--')) throw new GraphContractError('INPUT_CONTRACT_INVALID');
+    found.set(key, value);
+  }
+  for (const key of allowed) if (!found.has(key)) throw new GraphContractError('INPUT_CONTRACT_INVALID');
+  return found;
+}
+function failure(code: unknown, message: string): GraphError {
+  const nextAction = code === 'REVISION_CONFLICT' ? 'refresh' : code === 'UNAUTHENTICATED' || code === 'POLICY_DENIED' || code === 'GRANT_EXPIRED' ? 'reauthorize'
+    : code === 'ACTION_OUTCOME_UNKNOWN' || code === 'CANCEL_UNCONFIRMED' ? 'reconcile'
+    : code === 'EXECUTOR_UNSUPPORTED' || code === 'GRAPH_ADMISSION_DISABLED' ? 'stop' : 'fix_input';
+  const parsed = GraphError.safeParse({ schemaVersion: 1, code, message: message.slice(0, 4096) || 'Graph request rejected', retryable: false, nextAction });
+  return parsed.success ? parsed.data : { schemaVersion: 1, code: 'INTERNAL_ERROR', message: 'Graph request failed', retryable: false, nextAction: 'stop' };
+}
+export async function handleGraphExecutionCommand(args: string[], deps: GraphCommandDependencies = {}): Promise<number> {
+  const stdout = deps.stdout ?? console.log; const stderr = deps.stderr ?? console.error;
+  const json = args.includes('--json');
+  const emit = (value: unknown): void => { stdout(JSON.stringify(value, null, json ? 2 : undefined)); };
+  if (args.length === 2 && args[1] === '--help') { stdout(GRAPH_EXECUTION_HELP); return 0; }
+  let sentMutation: GraphRequest | undefined;
+  const unknownDelivery = (mutation: GraphRequest): number => {
+    emit(GraphDeliveryUnknown.parse({ schemaVersion: 1, kind: 'delivery_unknown', scope: mutation.scope,
+      idempotencyKey: mutation.idempotencyKey, inputDigest: computeGraphInputDigest(mutation),
+      ...(mutation.kind === 'start' ? {} : { graphRunId: mutation.graphRunId }), nextAction: 'retry_same_request' }));
+    return 2;
+  };
+  try {
+    const command = args[0];
+    if (command !== "validate") assertGraphPlatform();
+    if (command === 'validate') {
+      const opts = options(args.slice(1), ['--spec']);
+      const { compileGraphSpec } = await import('@osstack/graph/spec-compiler');
+      let compiled: ReturnType<typeof compileGraphSpec>;
+      try { compiled = compileGraphSpec(readJson(opts.get('--spec')!)); }
+      catch { throw new GraphContractError('SPEC_INVALID'); }
+      emit({ schemaVersion: 1, valid: true, specHash: compiled.specHash, template: compiled.spec.template,
+        compilerVersion: compiled.compilerVersion, compiledProgramDigest: compiled.compiledProgramDigest,
+        nodes: compiled.plan.nodes.map(({ id, operation, inputs }) => ({ id, operation, inputs })), budget: compiled.budget });
+      return 0;
+    }
+    let params: unknown; let method: string; let mutation: GraphRequest | undefined;
+    if (command === 'status' || command === 'result' || command === 'contract') {
+      const opts = options(args.slice(1), ['--run', '--scope']);
+      params = GraphStatusRequest.parse({ schemaVersion: 1, scope: GraphScope.parse(readJson(opts.get('--scope')!)), graphRunId: opts.get('--run') });
+      method = `graph.${command}`;
+    } else if (command === 'run' || command === 'cancel' || command === 'reconcile' || command === 'resume') {
+      const opts = options(args.slice(1), ['--request']);
+      mutation = GraphRequest.parse(readJson(opts.get('--request')!));
+      if (mutation.kind !== (command === 'run' ? 'start' : command === 'reconcile' ? 'cancel' : command)) throw new GraphContractError('INPUT_CONTRACT_INVALID');
+      params = mutation; method = command === 'reconcile' ? 'graph.reconcile' : `graph.${mutation.kind}`;
+    } else throw new GraphContractError('INPUT_CONTRACT_INVALID');
+    if (!deps.rpc) throw new GraphContractError('UNAUTHENTICATED');
+    let response: unknown;
+    sentMutation = mutation;
+    try { response = await deps.rpc(method, params); }
+    catch {
+      if (!mutation) throw new GraphContractError('INTERNAL_ERROR');
+      return unknownDelivery(mutation);
+    }
+    if (!response || typeof response !== 'object') throw new GraphContractError('OUTPUT_CONTRACT_INVALID');
+    const envelope = response as { ok?: unknown; result?: unknown; error?: { code?: unknown; message?: unknown } };
+    if (envelope.ok === false) {
+      const error = failure(envelope.error?.code, typeof envelope.error?.message === 'string' ? envelope.error.message : 'Graph request rejected');
+      if (json) emit({ schemaVersion: 1, kind: 'graph_error', error }); else stderr(`osstack graph: ${error.code}: ${error.message}`);
+      return ['ACTION_OUTCOME_UNKNOWN', 'CANCEL_UNCONFIRMED'].includes(error.code) ? 2 : 1;
+    }
+    if (envelope.ok !== true) throw new GraphContractError('OUTPUT_CONTRACT_INVALID');
+    if (command === 'contract') {
+      const { GraphContractCompletionReceipt } = await import('./graph-contract-receipt.js');
+      const receipt = GraphContractCompletionReceipt.safeParse(envelope.result);
+      if (!receipt.success) throw new GraphContractError('OUTPUT_CONTRACT_INVALID');
+      const requested = GraphStatusRequest.parse(params);
+      if (JSON.stringify(receipt.data.scope) !== JSON.stringify(requested.scope) || receipt.data.graphRunId !== requested.graphRunId) throw new GraphContractError('RESPONSE_MISMATCH');
+      emit(receipt.data); return 0;
+    }
+    const parsedStatus = GraphDelegationStatus.safeParse(envelope.result);
+    if (!parsedStatus.success) throw new GraphContractError('OUTPUT_CONTRACT_INVALID');
+    const status = parsedStatus.data;
+    const requested = GraphStatusRequest.safeParse(params);
+    if (JSON.stringify(status.scope) !== JSON.stringify((mutation ?? requested.data)!.scope)
+      || (mutation?.kind !== 'start' && status.graphRunId !== (mutation ?? requested.data)!.graphRunId)
+      || (mutation?.kind === 'start' && (status.admissionBinding?.requestInputDigest ?? status.inputDigest) !== computeGraphInputDigest(mutation))) throw new GraphContractError('RESPONSE_MISMATCH');
+    emit(status); return 0;
+  } catch (error) {
+    // A malformed or mismatched acknowledgement cannot prove non-execution.
+    if (sentMutation) return unknownDelivery(sentMutation);
+    const code = error instanceof GraphContractError ? error.code : 'INPUT_CONTRACT_INVALID';
+    const report = failure(code, error instanceof GraphContractError ? error.message : 'Invalid graph input or response');
+    if (json) emit({ schemaVersion: 1, kind: 'graph_error', error: report }); else stderr(`osstack graph: ${report.code}: ${report.message}`);
+    return 1;
+  }
+}
+
+
+FILE packages/cli/src/graph-execution-command.test.ts
+import { mkdtempSync, writeFileSync, rmSync, readdirSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { afterEach, expect, it, vi } from 'vitest';
+import { computeGraphInputDigest, StartGraphRequest } from '@osstack/protocol';
+import { handleGraphCommand } from './graph-command.js';
+const roots: string[] = [];
+afterEach(() => { vi.unstubAllEnvs(); for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true }); });
+function fixture() {
+  const root = mkdtempSync(join(tmpdir(), 'graph-command-')); roots.push(root);
+  const request = StartGraphRequest.parse({ schemaVersion: 1, kind: 'start', scope: { schemaVersion: 1, tenantId: 'local', principalId: 'owner', workspaceId: 'repo' },
+    idempotencyKey: 'one', inputArtifactRef: 'task-input', source: { product: 'osstack', requestId: 'source-one' },
+    spec: { schemaVersion: 1, template: 'code-delivery-v1', publication: 'artifact_only', input: { taskRef: 'task', repositoryRef: 'repo', baseRevision: 'a'.repeat(40), acceptanceRef: 'test' },
+      limits: { maxEpochs: 1, maxBranchAttempts: 1, maxConcurrentReaders: 2, maxConcurrentWritersPerRepo: 1, maxActionStarts: 7, deadlineSeconds: 60, tokenReservationLimit: 49152 } } });
+  const save = (name: string, value: unknown) => { const p = join(root, name); writeFileSync(p, JSON.stringify(value)); return p; };
+  const file = save('request.json', request); const scopeFile = save('scope.json', request.scope); const specFile = save('spec.json', request.spec);
+  const status = { schemaVersion: 1, scope: request.scope, graphRunId: 'graph-1', source: request.source, status: 'queued', revision: 0, generation: 0,
+    inputDigest: computeGraphInputDigest(request), specHash: 'b'.repeat(64), createdAt: 1, updatedAt: 1, publication: 'artifact_only', phase: 'queued',
+    budget: { limits: request.spec.limits, actionStarts: 0, reservedTokens: '0', chargedTokens: '0', accountingBlocked: false }, delivery: 'pending', evidenceRefs: [] };
+  const stdout = vi.fn(); const stderr = vi.fn(); const rpc = vi.fn().mockResolvedValue({ ok: true, result: status });
+  return { root, request, file, specFile, scopeFile, save, status, deps: { stdout, stderr, rpc }, output: () => JSON.parse(stdout.mock.calls.at(-1)![0] as string) as Record<string, unknown> };
+}
+it('validates offline without opening or migrating a reserved control plane', async () => {
+  const f = fixture(); f.save('control-plane-reserved.json', {}); writeFileSync(join(f.root, 'state.db'), 'must not open');
+  vi.stubEnv('OSSTACK_HOME', f.root); const before = readdirSync(f.root);
+  expect(await handleGraphCommand(['validate', '--spec', f.specFile, '--json'], f.deps)).toBe(0);
+  expect(f.output()).toMatchObject({ valid: true, budget: { maxActionStarts: 7 } });
+  expect(f.deps.rpc).not.toHaveBeenCalled(); expect(readdirSync(f.root)).toEqual(before);
+  const invalid = f.save('bad.json', { ...f.request.spec, limits: { ...f.request.spec.limits, maxActionStarts: 1 } });
+  expect(await handleGraphCommand(['validate', '--spec', invalid, '--json'], f.deps)).toBe(1);
+  expect(f.output()).toMatchObject({ error: { code: 'SPEC_INVALID' } });
+});
+it('submits exact business JSON and preserves key on duplicate CLI invocations', async () => {
+  const f = fixture();
+  for (let i = 0; i < 2; i++) expect(await handleGraphCommand(['run', '--request', f.file, '--json'], f.deps)).toBe(0);
+  expect(f.deps.rpc.mock.calls).toEqual([['graph.start', f.request], ['graph.start', f.request]]);
+  expect(f.output()).toMatchObject({ graphRunId: 'graph-1', status: 'queued', inputDigest: computeGraphInputDigest(f.request) });
+});
+it('reads scoped status and result via daemon; rejects mismatched response scope', async () => {
+  const f = fixture();
+  for (const command of ['status', 'result']) expect(await handleGraphCommand([command, '--run', 'graph-1', '--scope', f.scopeFile, '--json'], f.deps)).toBe(0);
+  expect(f.deps.rpc.mock.calls[0]).toEqual(['graph.status', { schemaVersion: 1, scope: f.request.scope, graphRunId: 'graph-1' }]);
+  f.deps.rpc.mockResolvedValue({ ok: true, result: { ...f.status, scope: { ...f.request.scope, principalId: 'someone-else' } } });
+  expect(await handleGraphCommand(['status', '--run', 'graph-1', '--scope', f.scopeFile, '--json'], f.deps)).toBe(1);
+  expect(f.output()).toMatchObject({ error: { code: 'RESPONSE_MISMATCH' } });
+});
+it('lost mutation response reports delivery_unknown and exact retry binding', async () => {
+  const f = fixture(); f.deps.rpc.mockRejectedValue(new Error('response lost'));
+  expect(await handleGraphCommand(['run', '--request', f.file, '--json'], f.deps)).toBe(2);
+  expect(f.output()).toEqual({ schemaVersion: 1, kind: 'delivery_unknown', scope: f.request.scope, idempotencyKey: 'one', inputDigest: computeGraphInputDigest(f.request), nextAction: 'retry_same_request' });
+  expect(f.deps.rpc).toHaveBeenCalledTimes(1);
+});
+it('preserves cancel/resume fences and cannot turn approved booleans into a resume request', async () => {
+  const f = fixture();
+  const cancel = { schemaVersion: 1, kind: 'cancel', scope: f.request.scope, graphRunId: 'graph-1', expectedRevision: 3, idempotencyKey: 'cancel-1' };
+  const resume = { ...cancel, kind: 'resume', idempotencyKey: 'resume-1', interruptId: 'i-1', input: { kind: 'data', value: { inputDigest: f.status.inputDigest } } };
+  for (const request of [cancel, resume]) {
+    expect(await handleGraphCommand([request.kind, '--request', f.save(`${request.kind}.json`, request), '--json'], f.deps)).toBe(0);
+    expect(f.deps.rpc.mock.calls.at(-1)).toEqual([`graph.${request.kind}`, request]);
+  }
+  const count = f.deps.rpc.mock.calls.length;
+  expect(await handleGraphCommand(['resume', '--request', f.save('approved.json', { ...resume, input: true }), '--json'], f.deps)).toBe(1);
+  expect(f.deps.rpc).toHaveBeenCalledTimes(count);
+});
+it('returns stable rejection codes and rejects duplicate flags and oversized JSON before RPC', async () => {
+  const f = fixture(); f.deps.rpc.mockResolvedValue({ ok: false, error: { code: 'IDEMPOTENCY_CONFLICT', message: 'same key, different business input' } });
+  expect(await handleGraphCommand(['run', '--request', f.file, '--json'], f.deps)).toBe(1);
+  expect(f.output()).toMatchObject({ error: { code: 'IDEMPOTENCY_CONFLICT', retryable: false } });
+  f.deps.rpc.mockClear();
+  for (const args of [['run', '--request', f.file, '--request', f.file], ['cancel', '--request', f.file], ['run', '--request', f.save('large.json', 'x'.repeat(70000))]]) {
+    expect(await handleGraphCommand([...args, '--json'], f.deps)).toBe(1);
+  }
+  expect(f.deps.rpc).not.toHaveBeenCalled();
+});
+
+it('malformed and mismatched mutation acknowledgements preserve the original retry key', async () => {
+  const f = fixture();
+  for (const reply of [null, { ok: true, result: {} }, { ok: true, result: { ...f.status, inputDigest: 'c'.repeat(64) } }]) {
+    f.deps.rpc.mockResolvedValue(reply);
+    expect(await handleGraphCommand(['run', '--request', f.file, '--json'], f.deps)).toBe(2);
+    expect(f.output()).toMatchObject({ kind: 'delivery_unknown', idempotencyKey: f.request.idempotencyKey, inputDigest: computeGraphInputDigest(f.request) });
+  }
+});
+
+it.each(['EXECUTOR_UNSUPPORTED', 'GRAPH_ADMISSION_DISABLED'])('surfaces %s as a definite nonretryable rejection', async code => {
+  const f = fixture(); f.deps.rpc.mockResolvedValue({ ok: false, error: { code, message: code } });
+  expect(await handleGraphCommand(['run', '--request', f.file, '--json'], f.deps)).toBe(1);
+  expect(f.output()).toMatchObject({ error: { code, retryable: false, nextAction: 'stop' } });
+  expect(f.deps.rpc).toHaveBeenCalledTimes(1);
+});
+
+it('reconcile sends the strict cancellation contract and preserves its exact retry identity on lost response', async () => {
+  const f = fixture(); const request = { schemaVersion: 1, kind: 'cancel', scope: f.request.scope, graphRunId: 'graph-1', expectedRevision: 3, idempotencyKey: 'settle' };
+  const file = f.save('reconcile.json', request);
+  expect(await handleGraphCommand(['reconcile', '--request', file, '--json'], f.deps)).toBe(0);
+  expect(f.deps.rpc.mock.calls[0]).toEqual(['graph.reconcile', request]);
+  f.deps.rpc.mockRejectedValue(Error('lost response'));
+  expect(await handleGraphCommand(['reconcile', '--request', file, '--json'], f.deps)).toBe(2);
+  expect(f.output()).toMatchObject({ kind: 'delivery_unknown', idempotencyKey: 'settle', inputDigest: computeGraphInputDigest(request), nextAction: 'retry_same_request' });
+  f.deps.rpc.mockClear();
+  expect(await handleGraphCommand(['reconcile', '--request', f.save('forged.json', { ...request, evidenceRefs: ['trust-me'], outcome: 'stopped' }), '--json'], f.deps)).toBe(1);
+  expect(f.deps.rpc).not.toHaveBeenCalled();
+});
+
+it('requires both original and durable digests for host-bound contract acknowledgements', async () => {
+  const f = fixture(); const hostInputDigest = 'e'.repeat(64);
+  const admissionBinding = { requestInputDigest: computeGraphInputDigest(f.request), hostInputDigest, contractDigest: 'a'.repeat(64), policyDigest: 'b'.repeat(64) };
+  f.deps.rpc.mockResolvedValue({ ok: true, result: { ...f.status, inputDigest: hostInputDigest, admissionBinding } });
+  expect(await handleGraphCommand(['run', '--request', f.file, '--json'], f.deps)).toBe(0);
+  for (const invalid of [{ ...admissionBinding, requestInputDigest: 'c'.repeat(64) }, { ...admissionBinding, hostInputDigest: 'd'.repeat(64) }]) {
+    f.deps.rpc.mockResolvedValue({ ok: true, result: { ...f.status, inputDigest: hostInputDigest, admissionBinding: invalid } });
+    expect(await handleGraphCommand(['run', '--request', f.file, '--json'], f.deps)).toBe(2);
+  }
+});
+it('reads only a complete scoped host contract receipt and rejects substituted identities', async () => {
+  const f = fixture(); const digest = 'a'.repeat(64); const effect = { effectKey: digest, evidenceRef: 'evidence', logicalAttempt: 1 };
+  const receipt = { schemaVersion: 1, source: 'osstack_graph_host', graphRunId: 'graph-1', scope: f.request.scope,
+    inputDigest: digest, specHash: digest, generation: 1, epoch: 0, contractDigest: digest, policyDigest: digest, baseHead: 'a'.repeat(40),
+    candidate: { revision: 'b'.repeat(40), tree: 'c'.repeat(40), artifactDigest: digest }, joinRef: 'join',
+    check: { ...effect, id: 'test', registryRef: 'sha256:'+digest, commandDigest: digest, exitCode: 0 },
+    review: { ...effect, verdict: 'accept', writerIdentity: 'writer', reviewerIdentity: 'reviewer', authority: 'registered_host_reviewer', promptDigest: digest },
+    achievedCompletion: 'local_verified', publication: 'artifact_only', contextEvidence: [] };
+  const args = ['contract', '--run', 'graph-1', '--scope', f.scopeFile, '--json'];
+  f.deps.rpc.mockResolvedValue({ ok: true, result: receipt });
+  expect(await handleGraphCommand(args, f.deps)).toBe(0);
+  expect(f.deps.rpc.mock.calls.at(-1)?.[0]).toBe('graph.contract');
+  for (const value of [{...receipt,graphRunId:'other'}, {...receipt,scope:{...f.request.scope,principalId:'other'}}, {...receipt,check:{...receipt.check,exitCode:1}}]) {
+    f.deps.rpc.mockResolvedValue({ok:true,result:value}); expect(await handleGraphCommand(args,f.deps)).toBe(1);
+  }
+});
+
+it.each(['ACTION_OUTCOME_UNKNOWN','CANCEL_UNCONFIRMED'])('keeps %s distinct from definite non-execution',async code=>{
+  const f=fixture();f.deps.rpc.mockResolvedValue({ok:false,error:{code,message:code}});
+  expect(await handleGraphCommand(['run','--request',f.file,'--json'],f.deps)).toBe(2);
+  expect(f.output()).toMatchObject({kind:'graph_error',error:{code,nextAction:'reconcile'}});
+});
+

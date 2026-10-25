@@ -1,0 +1,7 @@
+{
+  "packages/cli/src/loop-candidate-cli.test.ts": "f4823589f72ab203bf7ceca5f1a859b0c4653730b7aa63ee98a5aa8ca90db146",
+  "packages/loop/src/loop-engine.ts": "1c05c0c8c05a3964e9de5ac6acb5d8e025f9d1c240b461f046b21c1bd00dfc04",
+  "packages/loop/src/loop-engine.test.ts": "db4b86f355a04e897d3856f0742b63c3d94e6f2f17c87d2ff700917a9ba0e6a4",
+  "packages/loop/src/loop-containment.ts": "9b9e50dffb2051c0b20899285c3fe3583a3a4393f732eb7a487e525fb4e5a755",
+  "packages/loop/src/loop-containment.test.ts": "35187b6f9d03488ba36c470da5a17330bf275992a403c6c0f726cc29715aaaa3"
+}

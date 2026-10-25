@@ -1,0 +1,1000 @@
+复审本次 Cockpit A1 最终源码。请只输出简短 JSON，最多5项可复现缺陷，包含 severity,file,function,reproduction；说明P0/P1是否为0，不虚构运行测试。前轮P1：400响应load盲读，已加dashboardSearch规范化、res.ok、超时/failure unavailable、请求顺序保护与反例。另修等待仅admitted、items/other_items守恒、中文“观测已更新”、全屏异常scope、bidi控制码。前轮条件担忧：下面提供真实schema/store证明NOT NULL、默认tenant NULL、canonical repo存储。旧TUI其他模块未清理ANSI属于已存在范围外问题，勿称本补丁引入。主代理将两处daemon调用接入实际lifecycle和分页字段，本子代理不拥有daemon/bin文件。
+边界：read-only localhost same UID既有host，无后台/模型/审批/answer权限；一致性仅Attention块。请检查目前新增代码是否还有确证P0/P1。
+
+## packages/cli/src/attention-dashboard.ts
+import { realpathSync, statSync } from "node:fs";
+import type Database from "better-sqlite3";
+
+export type AttentionDashboardService = "running" | "disabled" | "unavailable";
+export interface AttentionDashboardCounts {
+  scopes: number;
+  subjects: number;
+  unmonitored_subjects: number;
+  human_waits: number;
+  system_waits: number;
+  unknown_waits: number;
+  items: number;
+  other_items: number;
+  open_items: number;
+  pending_answers: number;
+  uncertain_answers: number;
+  missing_source_items: number;
+  applied_answers: number;
+  dead_letters: number;
+}
+export interface AttentionDashboardScope extends Omit<AttentionDashboardCounts, "scopes"> {
+  scope_id: string;
+  task_id: string;
+  task_title: string;
+  repo_path: string;
+  sampled_at_ms: number;
+  coverage: "covered" | "degraded" | "stale" | "unknown";
+  reason: string | null;
+}
+export interface AttentionDashboard {
+  status: "available" | "degraded" | "stale" | "disabled" | "unavailable" | "not_watched";
+  reason: string | null;
+  scope_filter: "workspace" | "local_overview";
+  workspace_path: string | null;
+  tenant: "default";
+  sampled_at_ms: number;
+  consistency: "attention_block_transaction";
+  totals: AttentionDashboardCounts | null;
+  scopes: AttentionDashboardScope[];
+  returned: number;
+  truncated: boolean;
+  next_after: string | null;
+  limitations: string[];
+}
+export interface AttentionDashboardOptions {
+  workspacePath?: string;
+  service: AttentionDashboardService;
+  nowMs?: number;
+  after?: string;
+  limit?: number;
+}
+
+const countKeys = ["subjects", "unmonitored_subjects", "human_waits", "system_waits", "unknown_waits", "items", "other_items", "open_items", "pending_answers", "uncertain_answers", "missing_source_items", "applied_answers", "dead_letters"] as const;
+
+/** An independent read transaction. Does not claim whole-dashboard consistency,
+ * inspect processes, migrate/open a DB, mark seen, or acquire observation ownership. */
+export function readAttentionDashboard(db: Database.Database, options: AttentionDashboardOptions): AttentionDashboard {
+  const now = options.nowMs ?? Date.now();
+  const limit = options.limit ?? 25;
+  const after = options.after ?? "";
+  if (!Number.isSafeInteger(limit) || limit < 1 || limit > 100 || !Number.isFinite(now)
+    || (after !== "" && !/^[a-f0-9]{64}$/.test(after))) throw new Error("invalid_attention_page");
+  const result: AttentionDashboard = {
+    status: "unavailable", reason: null,
+    scope_filter: options.workspacePath === undefined ? "local_overview" : "workspace",
+    workspace_path: null, tenant: "default", sampled_at_ms: now,
+    consistency: "attention_block_transaction", totals: null, scopes: [], returned: 0, truncated: false, next_after: null,
+    limitations: ["Observation only; no execution or approval authority", "Counts are persisted facts, not proof of process liveness or task completion", "Unmonitored counts include only discovered subjects in registered scopes", "Only the Attention block shares a read transaction"],
+  };
+  if (options.workspacePath !== undefined) {
+    try {
+      result.workspace_path = realpathSync(options.workspacePath);
+      if (!statSync(result.workspace_path).isDirectory()) throw new Error("not_directory");
+    } catch { return { ...result, reason: "workspace_unavailable" }; }
+  }
+  if (options.service !== "running") return { ...result, status: options.service, reason: "observer_" + options.service };
+  try {
+    return db.transaction(() => {
+      const tables = new Set((db.prepare("SELECT name FROM sqlite_master WHERE type='table'").all() as { name: string }[]).map(r => r.name));
+      if (!["tasks", "daemon_owner", "attention_scopes", "attention_subjects", "attention_items", "attention_deliveries"].every(t => tables.has(t)))
+        return { ...result, reason: "schema_unavailable" };
+      const owner = db.prepare("SELECT generation FROM daemon_owner WHERE singleton=1").get() as { generation: number } | undefined;
+      if (!owner) return { ...result, reason: "owner_unavailable" };
+      // The SAME filtered relation feeds counts and paged rows. Missing task and
+      // non-default tenant scopes are excluded; filesystem canonicalization precedes SQL.
+      const query = `WITH filtered AS (
+        SELECT s.*,t.title AS task_title FROM attention_scopes s JOIN tasks t ON t.task_id=s.task_id
+        WHERE t.tenant_id IS NULL AND (@repo IS NULL OR s.repo_path=@repo)
+      ), subject_counts AS (
+        SELECT u.scope_id,COUNT(*) AS subjects,SUM(CASE WHEN admitted=1 THEN 0 ELSE 1 END) AS unmonitored_subjects,
+          SUM(CASE WHEN admitted<>1 THEN 0 WHEN json_valid(payload_json) THEN json_extract(payload_json,'$.wait.owner')='human' ELSE 0 END) AS human_waits,
+          SUM(CASE WHEN admitted<>1 THEN 0 WHEN json_valid(payload_json) THEN json_extract(payload_json,'$.wait.owner')='system' ELSE 0 END) AS system_waits,
+          SUM(CASE WHEN admitted<>1 THEN 0 WHEN json_valid(payload_json) THEN COALESCE(json_extract(payload_json,'$.wait.owner'),'unknown') NOT IN ('human','system','none') ELSE 1 END) AS unknown_waits,
+          SUM(CASE WHEN u.sampled_at<@cutoff OR u.sampled_at>@now OR u.generation<>@generation OR NOT json_valid(payload_json) THEN 1
+            WHEN COALESCE(json_extract(payload_json,'$.reason'),'snapshot_only')<>'snapshot_only' OR json_extract(payload_json,'$.gap')='history_gap' THEN 1 ELSE 0 END) AS faulty_subjects
+        FROM attention_subjects u JOIN filtered f ON f.scope_id=u.scope_id GROUP BY u.scope_id
+      ), item_counts AS (
+        SELECT i.scope_id,COUNT(*) AS items,SUM(state NOT IN ('open','answer_reserved','answer_uncertain','source_missing','answer_applied')) AS other_items,SUM(state='open') AS open_items,SUM(state='answer_reserved') AS pending_answers,
+          SUM(state='answer_uncertain') AS uncertain_answers,SUM(state='source_missing') AS missing_source_items,
+          SUM(state='answer_applied') AS applied_answers
+        FROM attention_items i JOIN filtered f ON f.scope_id=i.scope_id GROUP BY i.scope_id
+      ), delivery_counts AS (
+        SELECT d.scope_id,SUM(state='dead_letter') AS dead_letters FROM attention_deliveries d JOIN filtered f ON f.scope_id=d.scope_id GROUP BY d.scope_id
+      ), stats AS (
+        SELECT f.*,${countKeys.map(key => `COALESCE(${key},0) AS ${key}`).join(",")},
+          CASE WHEN f.sampled_at>@now THEN 'unknown'
+            WHEN f.generation<>@generation OR f.deadline<@now THEN 'stale'
+            WHEN f.scan_complete<>1 OR f.error IS NOT NULL OR COALESCE(unmonitored_subjects,0)>0 OR COALESCE(faulty_subjects,0)>0 THEN 'degraded'
+            ELSE 'covered' END AS coverage,
+          CASE WHEN f.sampled_at>@now THEN 'clock_moved_backwards'
+            WHEN f.generation<>@generation THEN 'owner_changed' WHEN f.deadline<@now THEN 'scan_expired'
+            WHEN f.scan_complete<>1 THEN 'scan_incomplete' WHEN f.error IS NOT NULL THEN 'scan_failed'
+            WHEN COALESCE(unmonitored_subjects,0)>0 THEN 'unmonitored_subjects'
+            WHEN COALESCE(faulty_subjects,0)>0 THEN 'source_gap_or_error' ELSE NULL END AS reason
+        FROM filtered f LEFT JOIN subject_counts USING(scope_id) LEFT JOIN item_counts USING(scope_id) LEFT JOIN delivery_counts USING(scope_id)
+      ) `;
+      const params = { repo: result.workspace_path, now, cutoff: now - 65_000, generation: owner.generation };
+      const aggregate = db.prepare(query + `SELECT COUNT(*) AS scopes,${countKeys.map(k => `COALESCE(SUM(${k}),0) AS ${k}`).join(",")},
+        COALESCE(SUM(coverage IN ('stale','unknown')),0) AS stale_scopes,COALESCE(SUM(coverage='degraded'),0) AS degraded_scopes FROM stats`).get(params) as AttentionDashboardCounts & { stale_scopes: number; degraded_scopes: number };
+      const { stale_scopes, degraded_scopes, ...totals } = aggregate;
+      const rows = db.prepare(query + `SELECT scope_id,task_id,task_title,repo_path,sampled_at AS sampled_at_ms,coverage,reason,${countKeys.join(",")} FROM stats WHERE scope_id>@after ORDER BY scope_id LIMIT @limit`).all({ ...params, after, limit: limit + 1 }) as AttentionDashboardScope[];
+      const scopes = rows.slice(0, limit);
+      return { ...result, status: totals.scopes === 0 ? "not_watched" : stale_scopes ? "stale" : degraded_scopes ? "degraded" : "available",
+        reason: totals.scopes === 0 ? "no_registered_scope" : stale_scopes ? "stale_observation" : degraded_scopes ? "incomplete_coverage" : null,
+        totals, scopes, returned: scopes.length, truncated: rows.length > limit,
+        next_after: rows.length > limit ? scopes.at(-1)!.scope_id : null } as AttentionDashboard;
+    })();
+  } catch {
+    // Bad/missing columns, malformed legacy data, busy/read failures all make
+    // this block unavailable. Never turn failed observation into a healthy zero.
+    return { ...result, reason: "source_unavailable" };
+  }
+}
+
+/** Display-only: strip terminal escapes and control/bidi characters. Never use
+ * display-cleaned strings as identities, paths, or executable command arguments. */
+export function attentionDisplayText(value: unknown): string {
+  // biome-ignore lint/suspicious/noControlCharactersInRegex: remove untrusted terminal control sequences
+  return String(value ?? "").replace(/\u001b\[[0-?]*[ -/]*[@-~]/g, "")
+    // biome-ignore lint/suspicious/noControlCharactersInRegex: transport controls must not reach a terminal
+    .replace(/[\u0000-\u001f\u007f-\u009f\u061c\u200e\u200f\u2028-\u202e\u2066-\u2069\ufeff]/g, " ");
+}
+
+
+## packages/cli/src/attention-dashboard.test.ts
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import Database from "better-sqlite3";
+import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { AttentionStore, openDb } from "@osstack/core";
+import { insertTask } from "./store.js";
+import { readAttentionDashboard } from "./attention-dashboard.js";
+
+let root: string;
+let db: Database.Database;
+let store: AttentionStore;
+const now = 100_000;
+beforeEach(() => {
+  root = mkdtempSync(join(tmpdir(), "attention-dashboard-"));
+  db = openDb({ path: join(root, "state.db") });
+  store = new AttentionStore(db, join(root, "state.db"));
+  store.claimOwner("test");
+});
+afterEach(() => { if (db.open) db.close(); rmSync(root, { recursive: true, force: true }); });
+function scope(id: string, repo = root, tenant?: string) {
+  insertTask(db, store.path, { task_id: id, title: id, created_at: 1 });
+  const owner = { instance_id: "test", generation: 1, home_id: (db.prepare("SELECT home_id FROM daemon_owner").get() as { home_id: string }).home_id };
+  const result = store.registerScope(owner, id, repo);
+  db.prepare("UPDATE attention_scopes SET sampled_at=?,deadline=?,scan_complete=1 WHERE scope_id=?").run(now, now + 65000, result.scope_id);
+  if (tenant) db.prepare("UPDATE tasks SET tenant_id=? WHERE task_id=?").run(tenant, id);
+  return result.scope_id;
+}
+function subject(scopeId: string, id: string, admitted = 1, payload = '{"wait":{"owner":"human"}}') {
+  db.prepare("INSERT INTO attention_subjects(scope_id,kind,subject_id,binding_hash,source_version,admitted,discovered_at,sampled_at,generation,payload_json) VALUES(?,'session',?,'hash',1,?,?,?,1,?)").run(scopeId, id, admitted, now, now, payload);
+}
+function item(scopeId: string, id: string, state = "open") {
+  db.prepare("INSERT INTO attention_items(item_id,scope_id,session_id,turn_id,decision_id,content_hash,decision_json,source_version,state,created_at,updated_at) VALUES(?,?,?,'turn',?,'hash','{}',1,?,?,?)").run(id, scopeId, id, id, state, now, now);
+}
+const options = () => ({ workspacePath: root, service: "running" as const, nowMs: now });
+
+describe("Attention dashboard read model", () => {
+  it("distinguishes disabled, unavailable, and not watched without inventing healthy zero counts", () => {
+    expect(readAttentionDashboard(db, { ...options(), service: "disabled" })).toMatchObject({ status: "disabled", totals: null });
+    expect(readAttentionDashboard(db, { ...options(), service: "unavailable" })).toMatchObject({ status: "unavailable", totals: null });
+    expect(readAttentionDashboard(db, options())).toMatchObject({ status: "not_watched", totals: { scopes: 0 } });
+  });
+  it("filters rows and all totals to canonical workspace and default tenant", () => {
+    const other = join(root, "other"); mkdirSync(other);
+    const selected = scope("selected"); const elsewhere = scope("other", other); const foreign = scope("foreign", root, "private");
+    subject(selected, "s"); item(selected, "i");
+    for (const id of [elsewhere, foreign]) { subject(id, id, 0); item(id, id, "answer_uncertain"); }
+    const alias = join(root, "alias"); symlinkSync(root, alias);
+    const result = readAttentionDashboard(db, { ...options(), workspacePath: alias });
+    expect(result).toMatchObject({ status: "available", workspace_path: realpathSync(root), totals: { scopes: 1, subjects: 1, unmonitored_subjects: 0, open_items: 1, uncertain_answers: 0, human_waits: 1 } });
+    expect(result.scopes.map(s => s.scope_id)).toEqual([selected]);
+    expect(readAttentionDashboard(db, { service: "running", nowMs: now })).toMatchObject({ scope_filter: "local_overview", workspace_path: null, totals: { scopes: 2 } });
+  });
+  it("keeps complete filtered totals and a deterministic scope cursor when paging", () => {
+    for (let n = 0; n < 3; n++) { const s = scope(`s${n}`); subject(s, `s${n}`, n === 0 ? 0 : 1); item(s, `i${n}`); }
+    const first = readAttentionDashboard(db, { ...options(), limit: 1 });
+    const second = readAttentionDashboard(db, { ...options(), limit: 1, after: first.next_after! });
+    expect(first.totals).toEqual(second.totals);
+    expect(first.totals).toMatchObject({ scopes: 3, subjects: 3, unmonitored_subjects: 1, open_items: 3 });
+    expect(first).toMatchObject({ returned: 1, truncated: true });
+    expect(second.scopes[0]!.scope_id > first.scopes[0]!.scope_id).toBe(true);
+  });
+  it("retains business facts while stale owner, scan deadline, and source gaps degrade observation", () => {
+    const s = scope("one"); subject(s, "s"); item(s, "i", "answer_uncertain");
+    expect(readAttentionDashboard(db, { ...options(), nowMs: now + 65001 })).toMatchObject({ status: "stale", totals: { uncertain_answers: 1 } });
+    db.prepare("UPDATE daemon_owner SET generation=2").run();
+    expect(readAttentionDashboard(db, options()).scopes[0]).toMatchObject({ coverage: "stale", reason: "owner_changed" });
+    db.prepare("UPDATE daemon_owner SET generation=1").run();
+    db.prepare("UPDATE attention_subjects SET payload_json=?").run('{"gap":"history_gap"}');
+    expect(readAttentionDashboard(db, options())).toMatchObject({ status: "degraded" });
+  });
+  it("discloses malformed projection data and missing owner rather than claiming coverage", () => {
+    const s = scope("one"); subject(s, "s", 1, "not json");
+    expect(readAttentionDashboard(db, options())).toMatchObject({ status: "degraded", totals: { unknown_waits: 1 } });
+    db.prepare("DELETE FROM daemon_owner").run();
+    expect(readAttentionDashboard(db, options())).toMatchObject({ status: "unavailable", totals: null });
+  });
+  it("uses read-only SQL and handles old schemas without opening or migrating another DB", () => {
+    scope("one"); db.pragma("query_only=ON");
+    expect(readAttentionDashboard(db, options()).status).toBe("available");
+    const legacy = new Database(":memory:");
+    legacy.exec("CREATE TABLE tasks(task_id TEXT)");
+    expect(readAttentionDashboard(legacy, options())).toMatchObject({ status: "unavailable", reason: "schema_unavailable", totals: null });
+    expect(legacy.prepare("SELECT name FROM sqlite_master WHERE type='table'").all()).toEqual([{ name: "tasks" }]);
+    legacy.close();
+  });
+  it("rejects invalid pages and labels an inaccessible explicit workspace unavailable", () => {
+    expect(() => readAttentionDashboard(db, { ...options(), limit: 101 })).toThrow("invalid_attention_page");
+    expect(() => readAttentionDashboard(db, { ...options(), after: "x' OR 1=1" })).toThrow("invalid_attention_page");
+    expect(readAttentionDashboard(db, { ...options(), workspacePath: join(root, "missing") })).toMatchObject({ status: "unavailable", reason: "workspace_unavailable", totals: null });
+  });
+});
+
+it("counts pending, uncertain, missing, applied answers and dead letters independently without join multiplication", () => {
+  const s = scope("counts"); subject(s, "s", 1, '{"wait":{"owner":"system"}}');
+  for (const state of ["open", "answer_reserved", "answer_uncertain", "source_missing", "answer_applied", "source_closed", "continued_externally", "answer_abandoned"]) item(s, state, state);
+  db.prepare("INSERT INTO attention_deliveries(delivery_id,scope_id,item_id,revision,state) VALUES('dead',?,'open',1,'dead_letter'),('sent',?,'answer_applied',1,'delivered')").run(s,s);
+  const result = readAttentionDashboard(db, options());
+  expect(result.totals).toMatchObject({ scopes: 1, subjects: 1, system_waits: 1, open_items: 1, pending_answers: 1, uncertain_answers: 1, missing_source_items: 1, applied_answers: 1, dead_letters: 1 });
+  expect(result.scopes[0]).toMatchObject({ open_items: 1, pending_answers: 1, uncertain_answers: 1, missing_source_items: 1, applied_answers: 1, dead_letters: 1 });
+});
+
+it("counts every stored decision and excludes released subjects from current wait classification", () => {
+  const s = scope("released"); subject(s, "s", 0); item(s, "future", "future_state"); item(s, "closed", "source_closed");
+  expect(readAttentionDashboard(db, options()).totals).toMatchObject({ items: 2, other_items: 2, human_waits: 0, system_waits: 0, unknown_waits: 0, unmonitored_subjects: 1 });
+});
+
+
+## packages/cli/src/dashboard.test.ts
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import {
+  createAutonomyRun,
+  freezeProduction,
+  openDb,
+  KanbanRepository,
+  upsertPitfallLesson,
+} from "@osstack/core";
+import { insertRun, insertTask, finalizeRun } from "./store.js";
+import { createDashboardSnapshot, dashboardUrl, renderDashboardHtml, startDashboardServer } from "./dashboard.js";
+
+let tmp: string;
+beforeEach(() => { tmp = mkdtempSync(join(tmpdir(), "osstack-dashboard-")); });
+afterEach(() => { rmSync(tmp, { recursive: true, force: true }); });
+
+describe("dashboard", () => {
+  it("summarizes osstack runs, board cards, agents, and quality", () => {
+    const path = join(tmp, "state.db");
+    const db = openDb({ path });
+    try {
+      insertTask(db, path, { task_id: "t1", title: "Build dashboard", created_at: 100 });
+      insertRun(db, path, {
+        run_id: "r1",
+        task_id: "t1",
+        session_id: "s1",
+        agent_id: "codex-cli",
+        capability_id: "codex-cli.code.write",
+        phase: "code",
+        started_at: 100,
+      });
+      finalizeRun(db, path, "r1", "completed", 103);
+      db.prepare("UPDATE runs SET tokens_in = 10, tokens_out = 20 WHERE run_id = ?").run("r1");
+      mkdirSync(join(tmp, "reports"));
+      mkdirSync(join(tmp, "release", "osstack-proof-r1"), { recursive: true });
+      writeFileSync(join(tmp, "reports", "osstack-report-r1.md"), "# report\n");
+      writeFileSync(join(tmp, "release", "osstack-proof-r1", "manifest.json"), "{}\n");
+      upsertPitfallLesson(db, path, {
+        family: "verify_failed",
+        tech_stack: ["typescript"],
+        symptom: "test failed",
+        resolution: "rerun verifier",
+        source_run_id: "r1",
+      });
+      // Preserve a mixed counter from before observation tracking, while only
+      // the explicit failure above contributes to the current observation count.
+      db.prepare("UPDATE pitfall_lessons SET verified_count = 7").run();
+
+      insertTask(db, path, { task_id: "t2", title: "Verify release", created_at: 200 });
+      insertRun(db, path, {
+        run_id: "r2",
+        task_id: "t2",
+        session_id: "s2",
+        agent_id: "claude-code",
+        capability_id: "claude-code.code.test",
+        phase: "test",
+        started_at: 200,
+      });
+      db.prepare(
+        "INSERT INTO tasks(task_id, title, description, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)",
+      ).run("t3", "Queued follow-up", "", "pending", 250, 250);
+
+      const kanban = new KanbanRepository(db, path, () => 300);
+      kanban.createCard({ card_id: "card_1", title: "Design URL flow", status: "done", assignee: "google-stitch" });
+      kanban.createCard({ card_id: "card_2", title: "Ship HTTP server", status: "running", assignee: "codex-cli" });
+      kanban.createCard({ card_id: "card_3", title: "Fix tunnel auth", status: "blocked", assignee: "claude-code" });
+
+      const snapshot = createDashboardSnapshot({
+        db,
+        kanban,
+        dbPath: path,
+        workspacePath: tmp,
+        version: "0.0.0",
+        phase: "test",
+        dashboardUrl: "http://127.0.0.1:8799/dashboard",
+        adapters: [
+          { id: "codex-cli", display_name: "Codex", cost_tier: "mid" },
+          { id: "claude-code", display_name: "Claude Code", cost_tier: "high" },
+        ],
+        activeRuns: 1,
+        activeLoops: 2,
+        now: () => 300,
+      });
+
+      expect(snapshot.attention).toMatchObject({ status: "unavailable", reason: "observer_unavailable", totals: null });
+      expect(snapshot.overview.total_runs).toBe(2);
+      expect(snapshot.overview.completed_runs).toBe(1);
+      expect(snapshot.overview.active_runs).toBe(1);
+      expect(snapshot.overview.queued_tasks).toBe(1);
+      expect(snapshot.overview.active_loops).toBe(2);
+      expect(snapshot.overview.progress_percent).toBe(33);
+      expect(snapshot.quality.grade).toBe("B");
+      expect(snapshot.board.by_status.done).toBe(1);
+      expect(snapshot.board.by_status.running).toBe(1);
+      expect(snapshot.board.by_status.blocked).toBe(1);
+      expect(snapshot.agents.map((a) => a.id)).toEqual(["codex-cli", "claude-code"]);
+      expect(snapshot.evidence.reports).toBe(1);
+      expect(snapshot.evidence.proof_packs).toBe(1);
+      expect(snapshot.lessons.total).toBe(1);
+      expect(snapshot.lessons.recent).toEqual([expect.objectContaining({
+        family: "verify_failed",
+        observation_count: 1,
+        legacy_verified_count: 7,
+        verified_count: 7,
+      })]);
+      expect(snapshot.autonomy.reliability.weekly.run_count).toBe(0);
+      expect(snapshot.agent_scorecards[0]).toMatchObject({
+        agent_id: "codex-cli",
+        total_runs: 1,
+      });
+      expect(snapshot.next_steps).toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          label: "Coding",
+          command: "osstack deliver \"<task>\" --auto-agent --worktree --checkpoint",
+        }),
+        expect.objectContaining({
+          label: "测试验证",
+          command: "osstack cockpit proof --workspace <path> --json",
+        }),
+      ]));
+      expect(snapshot.recent_runs[0]?.run_id).toBe("r2");
+      expect(snapshot.dashboard.url).toBe("http://127.0.0.1:8799/dashboard");
+      expect(snapshot.dashboard.workspace_path).toBe(tmp);
+    } finally {
+      db.close();
+    }
+  });
+
+  it("builds a shareable dashboard url from host and port options", () => {
+    expect(dashboardUrl({ host: "127.0.0.1", urlHost: "localhost", port: 8799 }))
+      .toBe("http://localhost:8799/dashboard");
+  });
+
+  it("projects active production freezes into the cockpit snapshot", () => {
+    const path = join(tmp, "state.db");
+    const db = openDb({ path });
+    try {
+      createAutonomyRun(db, path, {
+        autonomy_run_id: "run-deploy-7",
+        transition_id: "run-deploy-7:queued",
+        task_id: "task-deploy-7",
+        repo_id: "owner/example-web",
+        workspace_path: "/tmp/example-web",
+        contract_sha256: "a".repeat(64),
+        routing: { builder: "claude", evaluator: "kimi" },
+        budget: {
+          max_builder_iterations: 3,
+          max_review_rounds: 3,
+          max_wall_time_ms: 5_400_000,
+          max_no_progress_rounds: 2,
+        },
+        attempt: {},
+        event: { kind: "queued" },
+        occurred_at: 100,
+      });
+      freezeProduction(db, path, {
+        repo_id: "owner/example-web",
+        reason: "production health check failed",
+        source_run_id: "run-deploy-7",
+        frozen_at: 200,
+      });
+
+      const snapshot = createDashboardSnapshot({
+        db,
+        kanban: new KanbanRepository(db, path, () => 300),
+        dbPath: path,
+        workspacePath: tmp,
+        version: "0.0.0",
+        phase: "test",
+        dashboardUrl: "http://127.0.0.1:8799/dashboard",
+        adapters: [],
+        activeRuns: 0,
+        now: () => 300,
+      });
+
+      expect(snapshot.autonomy.deploy_freezes).toEqual([{
+        repo_id: "owner/example-web",
+        target: "production",
+        frozen: true,
+        reason: "production health check failed",
+        source_run_id: "run-deploy-7",
+        frozen_at: 200,
+      }]);
+      expect(
+        snapshot.autonomy.reliability.attention.production_frozen,
+      ).toEqual([
+        expect.objectContaining({
+          repo_id: "owner/example-web",
+          source_run_id: "run-deploy-7",
+        }),
+      ]);
+      expect(
+        snapshot.autonomy.reliability.weekly.metrics.active_freeze_count,
+      ).toBe(1);
+    } finally {
+      db.close();
+    }
+  });
+
+  it("surfaces release readiness blockers as cockpit next steps", () => {
+    const path = join(tmp, "state.db");
+    const db = openDb({ path });
+    try {
+      writeFileSync(join(tmp, "release-readiness.md"), [
+        "# Osstack Release Readiness",
+        "",
+        "## Blockers",
+        "",
+        "- [github_actions_check] Fix GitHub Actions runner allocation before publishing or deploying.",
+        "- [proof_validation] Remove external certification claims and repair compliance report references before publishing or deploying.",
+        "",
+        "## Next Steps",
+        "",
+        "- Open GitHub Actions settings/billing and confirm ubuntu-latest jobs can be assigned a runner.",
+      ].join("\n"));
+
+      const snapshot = createDashboardSnapshot({
+        db,
+        kanban: new KanbanRepository(db, path, () => 300),
+        dbPath: path,
+        workspacePath: tmp,
+        version: "0.0.0",
+        phase: "test",
+        dashboardUrl: "http://127.0.0.1:8799/dashboard",
+        adapters: [],
+        activeRuns: 0,
+        now: () => 300,
+      });
+
+      expect(snapshot.next_steps).toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          label: "Release Readiness",
+          detail: "2 blocker(s): github_actions_check, proof_validation",
+          command: `osstack release doctor --target all --workspace ${tmp} --output release-readiness.md --json`,
+          status: "blocked",
+          blockers: [
+            {
+              id: "github_actions_check",
+              detail: "Fix GitHub Actions runner allocation before publishing or deploying.",
+            },
+            {
+              id: "proof_validation",
+              detail: "Remove external certification claims and repair compliance report references before publishing or deploying.",
+            },
+          ],
+        }),
+      ]));
+    } finally {
+      db.close();
+    }
+  });
+
+  it("serves workspace-scoped release readiness blockers from the dashboard API", async () => {
+    const path = join(tmp, "state.db");
+    const workspace = join(tmp, "workspace");
+    mkdirSync(workspace, { recursive: true });
+    writeFileSync(join(workspace, "release-readiness.md"), [
+      "# Osstack Release Readiness",
+      "",
+      "## Blockers",
+      "",
+      "- [github_actions_check] Fix GitHub Actions runner allocation before publishing or deploying.",
+    ].join("\n"));
+
+    const db = openDb({ path });
+    const kanban = new KanbanRepository(db, path, () => 300);
+    const server = await startDashboardServer((params) => createDashboardSnapshot({
+      db,
+      kanban,
+      dbPath: path,
+      ...(params?.workspacePath === undefined ? {} : { workspacePath: params.workspacePath }),
+      version: "0.0.0",
+      phase: "test",
+      dashboardUrl: "http://127.0.0.1:8799/dashboard",
+      adapters: [],
+      activeRuns: 0,
+      now: () => 300,
+    }), { host: "127.0.0.1", port: 0 });
+
+    try {
+      const response = await fetch(`${server.url.replace("/dashboard", "/api/dashboard")}?workspace=${encodeURIComponent(workspace)}`);
+      const snapshot = await response.json() as {
+        next_steps: Array<{ label: string; blockers?: Array<{ id: string; detail: string }> }>;
+      };
+
+      expect(snapshot.next_steps).toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          label: "Release Readiness",
+          blockers: [{
+            id: "github_actions_check",
+            detail: "Fix GitHub Actions runner allocation before publishing or deploying.",
+          }],
+        }),
+      ]));
+    } finally {
+      await server.close();
+      db.close();
+    }
+  });
+
+  it("serves workspace-scoped dashboard URLs for integrations", async () => {
+    const path = join(tmp, "state.db");
+    const workspace = join(tmp, "workspace with spaces");
+    mkdirSync(workspace, { recursive: true });
+
+    const db = openDb({ path });
+    const kanban = new KanbanRepository(db, path, () => 300);
+    const server = await startDashboardServer(() => createDashboardSnapshot({
+      db,
+      kanban,
+      dbPath: path,
+      version: "0.0.0",
+      phase: "test",
+      dashboardUrl: "http://127.0.0.1:8799/dashboard",
+      adapters: [],
+      activeRuns: 0,
+      now: () => 300,
+    }), { host: "127.0.0.1", port: 0 });
+
+    try {
+      const response = await fetch(`${server.url.replace("/dashboard", "/dashboard/url")}?workspace=${encodeURIComponent(workspace)}`);
+      const body = await response.json() as { url: string };
+
+      expect(new URL(body.url).searchParams.get("workspace")).toBe(workspace);
+    } finally {
+      await server.close();
+      db.close();
+    }
+  });
+
+  it("renders cockpit sections for evidence, lessons, and scorecards", () => {
+    const html = renderDashboardHtml();
+
+    expect(html).toContain('id="evidence"');
+    expect(html).toContain('id="scorecards"');
+    expect(html).toContain('id="lessons"');
+    expect(html).toContain("<code>'+esc(n.command)+'</code>");
+    expect(html).toContain("Array.isArray(n.blockers)");
+    expect(html).toContain("release-blocker");
+    expect(html).toContain("d.dashboard.workspace_path");
+  });
+
+  it("renders cockpit chrome in English and Chinese", () => {
+    const english = renderDashboardHtml("en");
+    const chinese = renderDashboardHtml("zh-CN");
+
+    expect(english).toContain('<html lang="en">');
+    expect(english).toContain("<title>osstack Cockpit</title>");
+    expect(english).toContain("<h2>Evidence Assets</h2>");
+    expect(english).toContain("Queued Tasks");
+    expect(english).toContain("No recent runs");
+    expect(english).toContain("tracked observations");
+    expect(english).toContain("legacy count (not validation)");
+    expect(chinese).toContain('<html lang="zh-CN">');
+    expect(chinese).toContain("<title>osstack 开发驾驶舱</title>");
+    expect(chinese).toContain("<h2>证据资产</h2>");
+    expect(chinese).toContain("<h2>Agent 评分卡</h2>");
+    expect(chinese).toContain("<h2>经验教训</h2>");
+    expect(chinese).toContain("队列任务");
+    expect(chinese).toContain("暂无运行记录");
+    expect(chinese).toContain("最新报告");
+    expect(chinese).toContain("最新 Proof pack");
+    expect(chinese).toContain("次运行");
+    expect(chinese).toContain("成功");
+    expect(chinese).toContain("已记录观察");
+    expect(chinese).toContain("历史计数（非验证）");
+  });
+});
+
+it("serves read-only Attention facts through the real dashboard HTTP path with bounded paging", async () => {
+  const path = join(tmp, "attention-http.db");
+  const db = openDb({ path });
+  const { AttentionStore } = await import("@osstack/core");
+  const store = new AttentionStore(db, path);
+  const owner = store.claimOwner("dashboard-test");
+  for (const task_id of ["one", "two"]) {
+    insertTask(db, path, { task_id, title: task_id, created_at: 1 });
+    store.registerScope(owner, task_id, tmp);
+  }
+  db.prepare("UPDATE attention_scopes SET sampled_at=300000,deadline=365000,scan_complete=1").run();
+  const server = await startDashboardServer(params => createDashboardSnapshot({
+    db, dbPath: path, kanban: new KanbanRepository(db, path),
+    ...params, attentionService: "running", now: () => 300,
+    version: "test", phase: "test", dashboardUrl: "http://127.0.0.1", adapters: [], activeRuns: 0,
+  }), { host: "127.0.0.1", port: 0 });
+  try {
+    const api = `${server.url.replace("/dashboard", "/api/dashboard")}?workspace=${encodeURIComponent(tmp)}&attention_limit=1`;
+    const first = await (await fetch(api)).json() as { attention: { status: string; totals: { scopes: number }; returned: number; next_after: string } };
+    expect(first.attention).toMatchObject({ status: "available", totals: { scopes: 2 }, returned: 1 });
+    const next = await (await fetch(`${api}&attention_after=${first.attention.next_after}`)).json() as { attention: { totals: { scopes: number }; truncated: boolean } };
+    expect(next.attention).toMatchObject({ totals: { scopes: 2 }, truncated: false });
+    expect((await fetch(`${api}&attention_after=bad`)).status).toBe(400);
+    expect(db.prepare("SELECT COUNT(*) n FROM attention_seen").get()).toEqual({ n: 0 });
+  } finally { await server.close(); db.close(); }
+});
+
+it("renders untrusted Attention source text as text, never markup or executable links", async () => {
+  const { runInNewContext } = await import("node:vm");
+  const html = renderDashboardHtml();
+  const script = html.match(/<script>([\s\S]*?)<\/script>/)![1]!.split("const t = ")[0]!;
+  const elements: Record<string, { textContent: string; hidden: boolean; href: string }> = {};
+  const context = { URL, window: { location: { href: "http://127.0.0.1/dashboard?workspace=%2Frepo&attention_limit=1" } },
+    document: { getElementById: (id: string) => elements[id] ??= { textContent: "", hidden: true, href: "" } } };
+  runInNewContext(script + `renderAttention({ status:'stale', totals:null, scopes:[{task_title:'<img src=x onerror=alert(1)>',coverage:'stale',scope_id:'javascript:alert(1)'}], truncated:true, next_after:'javascript:alert(1)' });`, context);
+  expect(elements["attention"]!.textContent).toContain("<img src=x onerror=alert(1)>");
+  expect(elements["attention"]!.textContent).toContain("Counts unavailable");
+  expect(elements["attention"]!.textContent).toContain("\n");
+  expect(elements["attention-next"]!.hidden).toBe(true);
+  expect(Object.hasOwn(elements["attention"]!, "innerHTML")).toBe(false);
+});
+
+it("replaces a lost dashboard connection with unavailable Attention instead of stale healthy UI", async () => {
+  const { runInNewContext } = await import("node:vm");
+  const script = renderDashboardHtml().match(/<script>([\s\S]*?)<\/script>/)![1]!;
+  const elements: Record<string, { textContent: string; hidden: boolean; href: string }> = {};
+  runInNewContext(script, {
+    URL, URLSearchParams, AbortController, setTimeout, clearTimeout, setInterval: () => {},
+    window: { location: { href: "http://127.0.0.1/dashboard", search: "" } },
+    fetch: async () => { throw new Error("offline"); },
+    document: { getElementById: (id: string) => elements[id] ??= { textContent: "Previously healthy", hidden: true, href: "" } },
+  });
+  await new Promise(resolve => setTimeout(resolve, 0));
+  expect(elements["attention"]!.textContent).toContain("Observation unavailable");
+  expect(elements["attention"]!.textContent).toContain("Counts unavailable");
+});
+
+it("normalizes malformed Attention page links before fetching the full dashboard", async () => {
+  const { runInNewContext } = await import("node:vm");
+  const script = renderDashboardHtml().match(/<script>([\s\S]*?)<\/script>/)![1]!.split("const t = ")[0]!;
+  // Read the production helper without starting its automatic refresh loop.
+  const helper = renderDashboardHtml().split("function dashboardSearch() {")[1]!.split("let latestDashboardRequest")[0]!;
+  const context = { URLSearchParams, window: { location: { search: "?workspace=%2Frepo&attention_after=bad&attention_limit=0" } } };
+  expect(runInNewContext(script + "function dashboardSearch() {" + helper + "dashboardSearch()", context)).toBe("?workspace=%2Frepo");
+});
+
+
+## dashboard HTTP
+async function handleDashboardRequest(
+  req: IncomingMessage,
+  res: ServerResponse,
+  snapshot: (params?: DashboardHttpSnapshotParams) => DashboardSnapshot,
+  url: string,
+): Promise<void> {
+  const requestUrl = new URL(req.url ?? "/", url);
+  const path = requestUrl.pathname;
+  if (path === "/" || path === "/dashboard") {
+    send(res, 200, "text/html; charset=utf-8", renderDashboardHtml());
+    return;
+  }
+  if (path === "/api/dashboard") {
+    const workspacePath = requestUrl.searchParams.get("workspace") ?? undefined;
+    const attentionAfter = requestUrl.searchParams.get("attention_after") ?? undefined;
+    const rawLimit = requestUrl.searchParams.get("attention_limit");
+    const attentionLimit = rawLimit === null ? undefined : Number(rawLimit);
+    if ((attentionAfter !== undefined && !/^[a-f0-9]{64}$/.test(attentionAfter))
+      || (attentionLimit !== undefined && (!Number.isSafeInteger(attentionLimit) || attentionLimit < 1 || attentionLimit > 100))) {
+      send(res, 400, "application/json; charset=utf-8", JSON.stringify({ error: "invalid_attention_page" }));
+      return;
+    }
+    send(res, 200, "application/json; charset=utf-8", JSON.stringify(snapshot({
+      ...(workspacePath === undefined ? {} : { workspacePath }),
+      ...(attentionAfter === undefined ? {} : { attentionAfter }),
+      ...(attentionLimit === undefined ? {} : { attentionLimit }),
+    })));
+    return;
+  }
+  if (path === "/dashboard/url") {
+    send(res, 200, "application/json; charset=utf-8", JSON.stringify({
+      url: dashboardUrlWithWorkspace(url, requestUrl.searchParams.get("workspace") ?? undefined),
+    }));
+    return;
+  }
+  send(res, 404, "text/plain; charset=utf-8", "not found");
+}
+
+
+
+## dashboard browser
+function renderAttention(a, zh = false) {
+  const el = document.getElementById('attention');
+  const label = zh ? {
+    states: { available:'观测已更新', covered:'观测已更新', degraded:'监督不完整', stale:'观测已过期', unknown:'来源不确定', disabled:'监督已停用', unavailable:'监督暂不可用', not_watched:'尚未登记监督任务' },
+    unknown:'统计暂不可用', repo:'当前仓库', all:'本机概览（默认租户）', open:'待答决定', uncertain:'结果不确定的回答', pending:'正在提交的回答', unmonitored:'未纳入监督的已发现任务', dead:'通知失败', human:'等待人工', system:'等待系统', unclassified:'等待原因不明', missing:'来源缺失的决定', applied:'已应用的回答', note:'仅展示监督结果；回答已应用不代表任务完成。', first:'第一页', more:'更多监督任务', sample:'上次读取'
+  } : {
+    states: { available:'Observation current', covered:'Observation current', degraded:'Coverage incomplete', stale:'Observation expired', unknown:'Source uncertain', disabled:'Observation disabled', unavailable:'Observation unavailable', not_watched:'No watched tasks registered' },
+    unknown:'Counts unavailable', repo:'Selected repository', all:'Local overview (default tenant)', open:'Open decisions', uncertain:'Answers with uncertain outcome', pending:'Answers pending', unmonitored:'Discovered tasks outside coverage', dead:'Failed notifications', human:'Waiting for a person', system:'Waiting for the system', unclassified:'Wait reason unknown', missing:'Decisions with missing sources', applied:'Applied answers', note:'Read-only observation. An applied answer does not mean the task is complete.', first:'First page', more:'More watched tasks', sample:'Read at'
+  };
+  const state = value => label.states[value] || label.states.unknown;
+  const lines = [state(a && a.status)];
+  if (!a) { el.textContent = lines.concat(label.unknown).join('\\n'); return; }
+  lines.push(a.scope_filter === 'workspace' ? label.repo + ': ' + a.workspace_path : label.all);
+  if (!a.totals) lines.push(label.unknown);
+  else {
+    const n = a.totals;
+    lines.push(label.open + ': ' + n.open_items + ' · ' + label.uncertain + ': ' + n.uncertain_answers + ' · ' + label.pending + ': ' + n.pending_answers);
+    lines.push(label.missing + ': ' + n.missing_source_items + ' · ' + label.applied + ': ' + n.applied_answers);
+    lines.push(label.unmonitored + ': ' + n.unmonitored_subjects + ' · ' + label.dead + ': ' + n.dead_letters);
+    lines.push(label.human + ': ' + n.human_waits + ' · ' + label.system + ': ' + n.system_waits + ' · ' + label.unclassified + ': ' + n.unknown_waits);
+  }
+  for (const s of a.scopes || []) lines.push(s.task_title + ' · ' + state(s.coverage) + ' · scope=' + s.scope_id);
+  if (a.truncated && a.totals) lines.push(label.more + ' (' + a.returned + '/' + a.totals.scopes + ')');
+  lines.push(label.note);
+  // Source text stays text, including angle brackets, quotes and backticks.
+  el.textContent = lines.join('\\n');
+  const current = new URL(window.location.href);
+  const first = document.getElementById('attention-first');
+  first.textContent = label.first;
+  first.hidden = !current.searchParams.has('attention_after');
+  current.searchParams.delete('attention_after');
+  first.href = current.pathname + current.search;
+  const next = document.getElementById('attention-next');
+  next.textContent = label.more;
+  next.hidden = !a.truncated || !/^[a-f0-9]{64}$/.test(a.next_after || '');
+  if (!next.hidden) {
+    current.searchParams.set('attention_after', a.next_after);
+    next.href = current.pathname + current.search;
+  }
+}
+const t = ${JSON.stringify(text)};
+function dashboardSearch() {
+  const query = new URLSearchParams(window.location.search);
+  const after = query.get('attention_after');
+  const limit = query.get('attention_limit');
+  if (after !== null && !/^[a-f0-9]{64}$/.test(after)) query.delete('attention_after');
+  if (limit !== null && (!Number.isSafeInteger(Number(limit)) || Number(limit) < 1 || Number(limit) > 100)) query.delete('attention_limit');
+  const value = query.toString();
+  return value ? '?' + value : '';
+}
+let latestDashboardRequest = 0;
+async function load(){
+  const request = ++latestDashboardRequest;
+  const controller = new AbortController();
+  const deadline = setTimeout(() => controller.abort(), 4500);
+  try {
+  const res = await fetch('/api/dashboard' + dashboardSearch(), { signal: controller.signal });
+  if (!res.ok) throw new Error('snapshot_unavailable');
+  const d = await res.json();
+  if (request !== latestDashboardRequest) return;
+  renderAttention(d.attention, t.htmlLang === 'zh-CN');
+  document.getElementById('generated').textContent = d.dashboard.phase + ' · ' + new Date(d.dashboard.generated_at * 1000).toLocaleString() + ' · ' + d.dashboard.workspace_path;
+  document.getElementById('metrics').innerHTML = [
+    metric(t.metrics[0], d.overview.progress_percent + '%', 'blue', d.overview.progress_percent),
+    metric(t.metrics[1], d.overview.total_runs, 'ok'),
+    metric(t.metrics[2], d.overview.active_runs, 'warn'),
+    metric(t.metrics[3], d.overview.queued_tasks, d.overview.queued_tasks > 0 ? 'warn' : 'ok'),
+    metric(t.metrics[4], d.overview.active_loops, 'warn'),
+    metric(t.metrics[5], d.overview.total_events, 'blue'),
+    metric(t.metrics[6], d.board.total, 'ok'),
+    metric(t.metrics[7], d.quality.grade, d.quality.grade === 'A' ? 'ok' : d.quality.grade === 'B' ? 'warn' : 'err')
+  ].join('');
+  document.getElementById('agents').innerHTML = d.agents.map(a => '<div class="row"><span class="dot ok"></span><span><b>'+esc(a.id)+'</b><br><small>'+esc(a.display_name)+' · '+esc(a.cost_tier)+'</small></span></div>').join('');
+  document.getElementById('quality').innerHTML = '<div class="row"><div class="quality '+statusClass(d.quality.grade)+'">'+d.quality.grade+'</div><span>'+esc(t.successRate)+' '+Math.round(d.quality.success_rate*100)+'% · '+esc(t.blocked)+' '+d.quality.blocked_cards+'</span></div><div class="list" style="margin-top:12px">'+d.quality.dimensions.map(q => '<div class="row"><span class="tag">'+q.grade+'</span><span>'+esc(q.name)+'<br><small>'+esc(q.detail)+'</small></span></div>').join('')+'</div>';
+  document.getElementById('next').innerHTML = d.next_steps.map(n => '<div class="row"><span class="dot '+statusClass(n.status)+'"></span><span><b>'+esc(n.label)+'</b><br><small>'+esc(n.detail)+'</small>'+releaseBlockersHtml(n)+(n.command ? '<br><code>'+esc(n.command)+'</code>' : '')+'</span></div>').join('');
+  document.getElementById('evidence').innerHTML = [
+    '<div class="row"><span class="dot blue"></span><span><b>'+esc(t.reports)+'</b><br><small>'+d.evidence.reports+' '+esc(t.markdownReports)+'</small></span></div>',
+    '<div class="row"><span class="dot blue"></span><span><b>'+esc(t.proofPacks)+'</b><br><small>'+d.evidence.proof_packs+' '+esc(t.checksumedProofPacks)+'</small></span></div>',
+    artifactRow(t.latestReport, d.evidence.latest_report),
+    artifactRow(t.latestProofPack, d.evidence.latest_proof_pack),
+    '<div class="row"><span class="dot blue"></span><span><b>'+esc(t.commands)+'</b><br><small>osstack report · osstack proof · osstack pr</small></span></div>'
+  ].join('');
+  document.getElementById('scorecards').innerHTML = d.agent_scorecards.length ? d.agent_scorecards.map(s => '<div class="row"><span class="dot '+(s.recent_failures ? 'warn' : 'ok')+'"></span><span><b>'+esc(s.agent_id)+'</b><br><small>'+s.total_runs+' '+esc(t.runsLabel)+' · '+Math.round(s.success_rate*100)+'% '+esc(t.successLabel)+' · '+esc(s.capability_fit)+'</small></span></div>').join('') : '<div class="row"><span class="dot warn"></span><span>'+esc(t.noAgentHistory)+'</span></div>';
+  document.getElementById('lessons').innerHTML = d.lessons.recent.length ? d.lessons.recent.map(l => '<div class="row"><span class="dot warn"></span><span><b>'+esc(l.family)+'</b><br><small>'+esc(l.symptom)+' · '+esc(t.observationsLabel)+' '+l.observation_count+' · '+esc(t.legacyCountLabel)+' '+l.legacy_verified_count+'</small></span></div>').join('') : '<div class="row"><span class="dot ok"></span><span>'+esc(t.noLessons)+'</span></div>';
+  document.getElementById('board').innerHTML = lanes.map(lane => {
+    const col = d.board.columns.find(c => c.name === lane) || { cards: [] };
+    return '<div class="lane"><div class="lane-title"><span>'+lane+'</span><span>'+col.cards.length+'</span></div>'+col.cards.map(c => '<div class="card"><b>'+esc(c.title)+'</b><small>'+esc(c.assignee || t.unassigned)+(c.blocked_reason ? ' · '+esc(c.blocked_reason) : '')+'</small></div>').join('')+'</div>';
+  }).join('');
+  document.getElementById('runs').innerHTML = d.recent_runs.map(r => '<tr><td>'+esc(r.run_id)+'</td><td>'+esc(r.agent_id)+'</td><td>'+esc(r.phase)+'</td><td><span class="'+statusClass(r.outcome)+'">'+esc(r.outcome || 'running')+'</span></td></tr>').join('') || '<tr><td colspan="4">'+esc(t.noRuns)+'</td></tr>';
+  } catch {
+    if (request === latestDashboardRequest) renderAttention({ status:'unavailable', totals:null, scopes:[] }, t.htmlLang === 'zh-CN');
+  } finally { clearTimeout(deadline); }
+}
+load();
+setInterval(load, 5000);
+</script>
+</body>
+</html>`;
+}
+
+
+## cockpit display
+/** Display only. These observations never become executable TUI actions. */
+function attentionLines(value: Record<string, unknown>): string[] {
+  const text = attentionDisplayText;
+  const totals = isRecord(value["totals"]) ? value["totals"] : undefined;
+  const lines = [
+    `${text(value["status"])}${value["reason"] ? " " + text(value["reason"]) : ""} | ${text(value["scope_filter"])} default tenant`,
+  ];
+  if (totals === undefined) lines.push("counts=unknown");
+  else {
+    lines.push(`open_items=${text(totals["open_items"])} uncertain_answers=${text(totals["uncertain_answers"])} pending_answers=${text(totals["pending_answers"])}`);
+    lines.push(`unmonitored_subjects=${text(totals["unmonitored_subjects"])} dead_letters=${text(totals["dead_letters"])} scopes=${text(totals["scopes"])}`);
+    lines.push(`applied_answers=${text(totals["applied_answers"])} (not task completion); missing_source_items=${text(totals["missing_source_items"])}`);
+    lines.push(`human_waits=${text(totals["human_waits"])} system_waits=${text(totals["system_waits"])} unknown_waits=${text(totals["unknown_waits"])}`);
+  }
+  const scopes = Array.isArray(value["scopes"]) ? value["scopes"].filter(isRecord) : [];
+  const issue = scopes.find(scope => scope["coverage"] !== "covered");
+  if (issue) lines.splice(3, 0, `${text(issue["task_title"])}: ${text(issue["coverage"])} ${text(issue["reason"])}`);
+  for (const scope of scopes) lines.push(`${text(scope["task_title"])}: ${text(scope["coverage"])} ${text(scope["reason"])} scope=${text(scope["scope_id"])}`);
+  if (value["truncated"] === true) lines.push(`More scopes: returned=${text(value["returned"])} next_after=${text(value["next_after"])}`);
+  lines.push("Read-only observation; use attention inventory/inbox for an explicit scope.");
+  return lines;
+}
+
+
+## authoritative schema
+    id: 40,
+    name: "attention_observation_and_decision_projection",
+    sql: `
+      CREATE TABLE daemon_owner (
+        singleton INTEGER PRIMARY KEY CHECK(singleton=1), home_id TEXT NOT NULL,
+        instance_id TEXT NOT NULL, generation INTEGER NOT NULL CHECK(generation>0)
+      );
+      CREATE TABLE attention_scopes (
+        scope_id TEXT PRIMARY KEY, task_id TEXT NOT NULL, repo_path TEXT NOT NULL,
+        discovery_after TEXT NOT NULL DEFAULT '', scan_complete INTEGER NOT NULL DEFAULT 0,
+        sampled_at INTEGER NOT NULL DEFAULT 0, deadline INTEGER NOT NULL DEFAULT 0,
+        generation INTEGER NOT NULL, error TEXT, UNIQUE(task_id,repo_path)
+      );
+      CREATE TABLE attention_subjects (
+        scope_id TEXT NOT NULL, kind TEXT NOT NULL CHECK(kind IN ('session','run','loop')), subject_id TEXT NOT NULL,
+        binding_hash TEXT NOT NULL, source_version INTEGER NOT NULL, ordinal_cursor INTEGER NOT NULL DEFAULT 0,
+        admitted INTEGER NOT NULL DEFAULT 0, discovered_at INTEGER NOT NULL, sampled_at INTEGER NOT NULL,
+        generation INTEGER NOT NULL, payload_json TEXT NOT NULL,
+        PRIMARY KEY(scope_id,kind,subject_id)
+      );
+      CREATE TABLE attention_items (
+        item_id TEXT PRIMARY KEY, scope_id TEXT NOT NULL, session_id TEXT NOT NULL, turn_id TEXT NOT NULL,
+        decision_id TEXT NOT NULL, content_hash TEXT NOT NULL, decision_json TEXT NOT NULL,
+        source_version INTEGER NOT NULL, revision INTEGER NOT NULL DEFAULT 1,
+        state TEXT NOT NULL DEFAULT 'open', created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL,
+        external_message_id TEXT, UNIQUE(scope_id,session_id,turn_id,decision_id)
+      );
+      CREATE TABLE attention_actions (
+        action_id TEXT PRIMARY KEY, scope_id TEXT NOT NULL, item_id TEXT NOT NULL UNIQUE,
+        payload_hash TEXT NOT NULL, message_id TEXT NOT NULL UNIQUE, state TEXT NOT NULL,
+        created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL
+      );
+      CREATE TABLE attention_deliveries (
+        delivery_id TEXT PRIMARY KEY, scope_id TEXT NOT NULL, item_id TEXT NOT NULL, revision INTEGER NOT NULL,
+        state TEXT NOT NULL DEFAULT 'pending', attempts INTEGER NOT NULL DEFAULT 0,
+        next_at INTEGER NOT NULL DEFAULT 0, error TEXT, UNIQUE(scope_id,item_id,revision)
+      );
+      CREATE TABLE attention_postures (
+        scope_id TEXT NOT NULL, actor TEXT NOT NULL, posture TEXT NOT NULL,
+        PRIMARY KEY(scope_id,actor)
+      );
+      CREATE TABLE attention_seen (
+        scope_id TEXT NOT NULL, actor TEXT NOT NULL, item_id TEXT NOT NULL, revision INTEGER NOT NULL,
+        PRIMARY KEY(scope_id,actor,item_id)
+      );
+      CREATE TABLE attention_foregrounds (
+        client_id TEXT PRIMARY KEY, token_hash TEXT NOT NULL, scope_id TEXT NOT NULL,
+        generation INTEGER NOT NULL, expires_at INTEGER NOT NULL, subjects_json TEXT NOT NULL,
+        handed_off INTEGER NOT NULL DEFAULT 0, reminder_sent INTEGER NOT NULL DEFAULT 0
+      );
+      CREATE TABLE attention_handoffs (
+        receipt_id TEXT PRIMARY KEY, client_id TEXT NOT NULL, scope_id TEXT NOT NULL,
+        generation INTEGER NOT NULL, subjects_json TEXT NOT NULL, created_at INTEGER NOT NULL
+      );
+      CREATE INDEX attention_items_scope ON attention_items(scope_id,state,created_at,item_id);
+      CREATE INDEX attention_subjects_scope ON attention_subjects(scope_id,kind,subject_id);
+    `,
+  },
+  {
+    id: 41,
+    name: "attention_explicit_receipt_resolution",
+    sql: `
+      CREATE TABLE attention_receipt_resolutions (
+        message_id TEXT PRIMARY KEY, session_id TEXT NOT NULL, session_version INTEGER NOT NULL,
+        disposition TEXT NOT NULL CHECK(disposition='abandoned_unknown'),
+        reason TEXT NOT NULL, evidence_sha256 TEXT NOT NULL, created_at INTEGER NOT NULL
+      );
+      ALTER TABLE attention_handoffs ADD COLUMN valid_until INTEGER NOT NULL DEFAULT 0;
+    `,
+  },
+];
+
+export const CURRENT_SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1]!.id;
+
+
+## registerScope
+  registerScope(
+    owner: AttentionOwner,
+    taskId: string,
+    repoPath: string
+  ): AttentionScope {
+    const canonicalRepo = realpathSync(repoPath);
+    if (!statSync(canonicalRepo).isDirectory())
+      throw new Error("repository_directory_required");
+    return this.write(owner, () => {
+      const task = this.db
+        .prepare(
+          "SELECT created_at FROM tasks WHERE task_id=? AND tenant_id IS NULL"
+        )
+        .get(taskId) as { created_at: number } | undefined;
+      if (!task) throw new Error("not_found");
+      if (
+        (
+          this.db.prepare("SELECT COUNT(*) n FROM attention_scopes").get() as {
+            n: number;
+          }
+        ).n >= 100 &&
+        !this.db
+          .prepare(
+            "SELECT 1 FROM attention_scopes WHERE task_id=? AND repo_path=?"
+          )
+          .get(taskId, canonicalRepo)
+      )
+        throw new Error("scope_capacity");
+      const scopeId = attentionDigest([
+        owner.home_id,
+        taskId,
+        canonicalRepo,
+        task.created_at,
+      ]);
+      this.db
+        .prepare(
+          `INSERT INTO attention_scopes(scope_id,task_id,repo_path,generation) VALUES(?,?,?,?)
+        ON CONFLICT(scope_id) DO NOTHING`
+        )
+        .run(scopeId, taskId, canonicalRepo, owner.generation);
+      return this.getScope(scopeId)!;
+    });
+  }
+
+
+## Tests
+$ vitest run src/attention-dashboard.test.ts src/cockpit-tui.test.ts src/dashboard.test.ts
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-cockpit/packages/cli
+
+ ✓ src/attention-dashboard.test.ts (9 tests) 248ms
+ ✓ src/dashboard.test.ts (12 tests) 228ms
+ ✓ src/cockpit-tui.test.ts (10 tests) 7ms
+
+ Test Files  3 passed (3)
+      Tests  31 passed (31)
+   Start at  11:34:52
+   Duration  1.87s (transform 747ms, setup 51ms, collect 2.11s, tests 483ms, environment 0ms, prepare 129ms)
+

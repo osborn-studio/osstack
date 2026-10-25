@@ -2,6 +2,7 @@ import { defineConfig } from "vitest/config";
 
 export default defineConfig({
   test: {
+    setupFiles: ["../../scripts/vitest-setup-scratch.ts"],
     coverage: {
       provider: "v8",
       reporter: ["text", "json-summary"],

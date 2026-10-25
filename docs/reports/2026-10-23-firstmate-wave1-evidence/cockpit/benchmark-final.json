@@ -1,0 +1,32 @@
+{
+  "node": "v22.22.1",
+  "platform": "darwin",
+  "arch": "arm64",
+  "scope_count": 100,
+  "subject_count": 100,
+  "item_count": 1000,
+  "returned": 25,
+  "status": "available",
+  "samples": 100,
+  "warmup": 10,
+  "p50_ms": 1.4843340000000467,
+  "p95_ms": 4.836166999999989,
+  "max_ms": 21.813417000000015,
+  "qualification": "in-process read model; not daemon RPC or soak",
+  "totals": {
+    "scopes": 100,
+    "subjects": 100,
+    "unmonitored_subjects": 0,
+    "human_waits": 0,
+    "system_waits": 0,
+    "unknown_waits": 100,
+    "items": 1000,
+    "other_items": 0,
+    "open_items": 1000,
+    "pending_answers": 0,
+    "uncertain_answers": 0,
+    "missing_source_items": 0,
+    "applied_answers": 0,
+    "dead_letters": 0
+  }
+}

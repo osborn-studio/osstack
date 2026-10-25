@@ -1,7 +1,11 @@
+import { SOURCE_OBSERVATIONS_DDL } from "./source-observations-ddl.js";
+import { FOLLOW_UP_DELIVERY_DDL } from "./follow-up-delivery-ddl.js";
 // SQLite migrations. Each migration is idempotent (CREATE ... IF NOT EXISTS)
 // or guarded by user_version pragma so it runs exactly once.
 //
 // Engine pragmas (WAL etc.) are applied at connection open in db.ts, NOT here.
+
+import { FOLLOW_UP_OBLIGATIONS_DDL } from "./follow-up-obligations-ddl.js";
 
 export interface Migration {
   readonly id: number;
@@ -1828,6 +1832,44 @@ export const MIGRATIONS: readonly Migration[] = [
       ALTER TABLE attention_handoffs ADD COLUMN valid_until INTEGER NOT NULL DEFAULT 0;
     `,
   },
+  {
+    id: 42,
+    name: "attention_run_event_cursors",
+    sql: `
+      CREATE TABLE attention_run_cursors (
+        scope_id TEXT NOT NULL, run_id TEXT NOT NULL, binding_hash TEXT NOT NULL,
+        last_seq INTEGER NOT NULL DEFAULT -1 CHECK(last_seq>=-1),
+        through_seq INTEGER NOT NULL DEFAULT -1 CHECK(through_seq>=-1),
+        last_event_hash TEXT, gap TEXT, facts_json TEXT NOT NULL DEFAULT '{}',
+        generation INTEGER NOT NULL CHECK(generation>0), updated_at INTEGER NOT NULL,
+        PRIMARY KEY(scope_id,run_id)
+      );
+    `,
+  },
+  {
+    id: 43,
+    name: "attention_bounded_triage_attempts",
+    sql: `
+      CREATE TABLE attention_triage_attempts (
+        attempt_id TEXT PRIMARY KEY, scope_id TEXT NOT NULL, item_id TEXT NOT NULL,
+        item_revision INTEGER NOT NULL CHECK(item_revision>0), source_hash TEXT NOT NULL,
+        input_digest TEXT NOT NULL, requested_model TEXT NOT NULL, policy_fingerprint TEXT NOT NULL,
+        owner_generation INTEGER NOT NULL CHECK(owner_generation>0),
+        reserved_at INTEGER NOT NULL CHECK(reserved_at>=0), deadline_at INTEGER NOT NULL,
+        status TEXT NOT NULL CHECK(status IN ('reserved','running','succeeded','failed','stale','unknown')),
+        active_slot INTEGER UNIQUE CHECK(active_slot IS NULL OR active_slot=1),
+        reported_model TEXT, usage_json TEXT CHECK(usage_json IS NULL OR length(usage_json)<=2048),
+        result_json TEXT CHECK(result_json IS NULL OR length(result_json)<=2048),
+        result_digest TEXT, reason TEXT CHECK(reason IS NULL OR length(reason)<=256)
+      );
+      CREATE INDEX attention_triage_budget ON attention_triage_attempts(scope_id,reserved_at);
+      CREATE INDEX attention_triage_time ON attention_triage_attempts(reserved_at);
+      CREATE INDEX attention_triage_cache ON attention_triage_attempts(input_digest,requested_model,policy_fingerprint,status);
+    `,
+  },
+  { id: 44, name: "local_follow_up_obligations", sql: FOLLOW_UP_OBLIGATIONS_DDL },
+  { id: 45, name: "public_follow_up_delivery_attempts", sql: FOLLOW_UP_DELIVERY_DDL },
+  { id: 46, name: "local_source_observation_ledger", sql: SOURCE_OBSERVATIONS_DDL },
 ];
 
 export const CURRENT_SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1]!.id;

@@ -1,0 +1,490 @@
+{
+  "loop_id": "loop_112fb040-2e63-41d2-b3e7-cf2aa5332901",
+  "state": {
+    "loop_id": "loop_112fb040-2e63-41d2-b3e7-cf2aa5332901",
+    "started_at": "2026-10-23T18:41:22.778Z",
+    "updated_at": "2026-10-23T18:52:41.657Z",
+    "completed_tasks": [
+      {
+        "task_id": "firstmate-wave1-qualification",
+        "capability": "code.test",
+        "outcome": "escalated",
+        "iterations": 1,
+        "agent_id": "local-command",
+        "duration_ms": 678877,
+        "run_id": "run_516fab54-0560-4f31-be05-ea0c8849000f",
+        "started_at": "2026-10-23T18:41:22.780Z",
+        "completed_at": "2026-10-23T18:52:41.575Z",
+        "execution_summary": "Process group 52105 gone (kill(-pgid, 0): ESRCH); leader exit observed",
+        "execution_commands": [
+          {
+            "command": "python3 /Volumes/AIMATE_WORK/tmp/osstack/smoke/pr237-integration/run-wave1-checks.py",
+            "exit_code": 1,
+            "duration_ms": 678795,
+            "summary": "build 0 inventory-generate 0 typecheck 0 test 1 lint 0 schemas 0 inventory 0 startup 0"
+          }
+        ],
+        "verifier_agent_id": "local-verifier",
+        "verify_summary": "3 issues found by local verifier. Failed evaluations: verify-command-1.",
+        "verify_issue_count": 3,
+        "verify_issues": [
+          {
+            "severity": "error",
+            "message": "Builder execution ended failed: Process group 52105 gone (kill(-pgid, 0): ESRCH); leader exit observed",
+            "rule": "execute.outcome_not_completed"
+          },
+          {
+            "severity": "error",
+            "message": "python3 /Volumes/AIMATE_WORK/tmp/osstack/smoke/pr237-integration/run-wave1-checks.py failed (1): build 0 inventory-generate 0 typecheck 0 test 1 lint 0 schemas 0 inventory 0 startup 0",
+            "rule": "execute.command_failed"
+          },
+          {
+            "severity": "error",
+            "message": "python3 /Volumes/AIMATE_WORK/tmp/osstack/smoke/pr237-integration/verify-wave1-checks.py failed (1): Traceback (most recent call last): File \"/Volumes/AIMATE_WORK/tmp/osstack/smoke/pr237-integration/verify-wave1-checks.py\", line 4, in <module> assert len(x)==8 and all(c[\"exit_code\"]==0 for c in x) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^",
+            "rule": "verify.command_failed"
+          }
+        ],
+        "verify_commands": [
+          {
+            "command": "python3 /Volumes/AIMATE_WORK/tmp/osstack/smoke/pr237-integration/verify-wave1-checks.py",
+            "exit_code": 1,
+            "duration_ms": 33,
+            "summary": "Traceback (most recent call last): File \"/Volumes/AIMATE_WORK/tmp/osstack/smoke/pr237-integration/verify-wave1-checks.py\", line 4, in <module> assert len(x)==8 and all(c[\"exit_code\"]==0 for c in x) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^"
+          }
+        ],
+        "evaluations": [
+          {
+            "spec_id": "verify-command-1",
+            "mode": "command",
+            "description": "Shell verifier: python3 /Volumes/AIMATE_WORK/tmp/osstack/smoke/pr237-integration/verify-wave1-checks.py",
+            "required": true,
+            "weight": 1,
+            "pass": false,
+            "summary": "command failed (exit 1): Traceback (most recent call last): File \"/Volumes/AIMATE_WORK/tmp/osstack/smoke/pr237-integration/verify-wave1-checks.py\", line 4, in <module> assert len(x)==8 and all(c[\"exit_code\"]==0 for c in x) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^",
+            "implicit": true
+          }
+        ],
+        "iteration_feedback": [
+          {
+            "attempt": 1,
+            "verdict_summary": "3 issues found by local verifier. Failed evaluations: verify-command-1.",
+            "blocking_issues": [
+              {
+                "severity": "error",
+                "message": "Builder execution ended failed: Process group 52105 gone (kill(-pgid, 0): ESRCH); leader exit observed",
+                "rule": "execute.outcome_not_completed"
+              },
+              {
+                "severity": "error",
+                "message": "python3 /Volumes/AIMATE_WORK/tmp/osstack/smoke/pr237-integration/run-wave1-checks.py failed (1): build 0 inventory-generate 0 typecheck 0 test 1 lint 0 schemas 0 inventory 0 startup 0",
+                "rule": "execute.command_failed"
+              },
+              {
+                "severity": "error",
+                "message": "python3 /Volumes/AIMATE_WORK/tmp/osstack/smoke/pr237-integration/verify-wave1-checks.py failed (1): Traceback (most recent call last): File \"/Volumes/AIMATE_WORK/tmp/osstack/smoke/pr237-integration/verify-wave1-checks.py\", line 4, in <module> assert len(x)==8 and all(c[\"exit_code\"]==0 for c in x) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^",
+                "rule": "verify.command_failed"
+              }
+            ],
+            "failed_evaluations": [
+              "verify-command-1"
+            ],
+            "suggested_focus": [
+              "satisfy evaluation verify-command-1: Shell verifier: python3 /Volumes/AIMATE_WORK/tmp/osstack/smoke/pr237-integration/verify-wave1-checks.py"
+            ],
+            "previous_diff_summary": "docs/inventory/PUBLIC_EXPORTS.md | 2 ++ 1 file changed, 2 insertions(+)"
+          }
+        ],
+        "changed_files": [
+          "docs/inventory/PUBLIC_EXPORTS.md",
+          "?? docs/reports/2026-10-23-firstmate-wave1-evidence/README.md",
+          "?? docs/reports/2026-10-23-firstmate-wave1-evidence/cockpit/audit-disposition.md",
+          "?? docs/reports/2026-10-23-firstmate-wave1-evidence/cockpit/benchmark-final.json",
+          "?? docs/reports/2026-10-23-firstmate-wave1-evidence/cockpit/browser-evidence.json",
+          "?? docs/reports/2026-10-23-firstmate-wave1-evidence/cockpit/browser-final.png",
+          "?? docs/reports/2026-10-23-firstmate-wave1-evidence/cockpit/browser-offline.png",
+          "?? docs/reports/2026-10-23-firstmate-wave1-evidence/cockpit/haiku-context.md",
+          "?? docs/reports/2026-10-23-firstmate-wave1-evidence/cockpit/haiku-final-context.md",
+          "?? docs/reports/2026-10-23-firstmate-wave1-evidence/cockpit/haiku-final-result.json",
+          "?? docs/reports/2026-10-23-firstmate-wave1-evidence/cockpit/haiku-final-stderr.txt",
+          "?? docs/reports/2026-10-23-firstmate-wave1-evidence/cockpit/haiku-result.json",
+          "?? docs/reports/2026-10-23-firstmate-wave1-evidence/cockpit/haiku-stderr.txt",
+          "?? docs/reports/2026-10-23-firstmate-wave1-evidence/cockpit/source-manifest.json",
+          "?? docs/reports/2026-10-23-firstmate-wave1-evidence/outbox-audit-context.md",
+          "?? docs/reports/2026-10-23-firstmate-wave1-evidence/outbox-audit-result.json",
+          "?? docs/reports/2026-10-23-firstmate-wave1-evidence/outbox-audit-round2-context.md",
+          "?? docs/reports/2026-10-23-firstmate-wave1-evidence/outbox-audit-round2-result.json",
+          "?? docs/reports/2026-10-23-firstmate-wave1-evidence/outbox-disposition.md",
+          "?? docs/reports/2026-10-23-firstmate-wave1-evidence/routing-next/audit-context.txt",
+          "?? docs/reports/2026-10-23-firstmate-wave1-evidence/routing-next/audit-disposition.md",
+          "?? docs/reports/2026-10-23-firstmate-wave1-evidence/routing-next/audit-result.json",
+          "?? docs/reports/2026-10-23-firstmate-wave1-evidence/routing-next/audit-round2-context.txt",
+          "?? docs/reports/2026-10-23-firstmate-wave1-evidence/routing-next/audit-round2-result.json",
+          "?? docs/reports/2026-10-23-firstmate-wave1-evidence/routing-next/audit-round2-stderr.txt",
+          "?? docs/reports/2026-10-23-firstmate-wave1-evidence/routing-next/audit-stderr.txt",
+          "?? docs/reports/2026-10-23-firstmate-wave1-evidence/routing-next/implementation-manifest.json",
+          "?? docs/reports/2026-10-23-firstmate-wave1-evidence/routing-next/import-cost.json",
+          "?? docs/reports/2026-10-23-firstmate-wave1-evidence/routing-next/verification-summary.json",
+          "?? docs/reports/2026-10-23-firstmate-wave1-evidence/supervision-next/audit-disposition.md",
+          "?? docs/reports/2026-10-23-firstmate-wave1-evidence/supervision-next/haiku-context.txt",
+          "?? docs/reports/2026-10-23-firstmate-wave1-evidence/supervision-next/haiku-result.json",
+          "?? docs/reports/2026-10-23-firstmate-wave1-evidence/supervision-next/haiku-round2-context.txt",
+          "?? docs/reports/2026-10-23-firstmate-wave1-evidence/supervision-next/haiku-round2-result.json",
+          "?? docs/reports/2026-10-23-firstmate-wave1-evidence/supervision-next/haiku-round2-stderr.txt",
+          "?? docs/reports/2026-10-23-firstmate-wave1-evidence/supervision-next/haiku-stderr.txt",
+          "?? docs/reports/2026-10-23-firstmate-wave1-evidence/supervision-next/integration-notes.md",
+          "?? docs/reports/2026-10-23-firstmate-wave1-evidence/supervision-next/source-manifest.json"
+        ],
+        "diff_summary": "docs/inventory/PUBLIC_EXPORTS.md | 2 ++ 1 file changed, 2 insertions(+)",
+        "commit_hash": "16f37b07",
+        "error_summary": "Builder execution ended failed: Process group 52105 gone (kill(-pgid, 0): ESRCH); leader exit observed"
+      }
+    ],
+    "in_progress": [],
+    "pending": [],
+    "deferred_tasks": [],
+    "key_metrics": {
+      "total_cycles": 1,
+      "avg_duration_ms": 678877,
+      "success_rate": 0,
+      "tokens_consumed": 0,
+      "cost_consumed": 0
+    },
+    "decisions": [
+      "firstmate-wave1-qualification: selected local-command - local execute command",
+      "firstmate-wave1-qualification: escalate after iteration 1 - Maximum iterations reached (1) with 3 verifier issues remaining."
+    ]
+  },
+  "completedTasks": [
+    {
+      "task_id": "firstmate-wave1-qualification",
+      "capability": "code.test",
+      "outcome": "escalated",
+      "iterations": 1,
+      "agent_id": "local-command",
+      "duration_ms": 678877,
+      "run_id": "run_516fab54-0560-4f31-be05-ea0c8849000f",
+      "started_at": "2026-10-23T18:41:22.780Z",
+      "completed_at": "2026-10-23T18:52:41.575Z",
+      "execution_summary": "Process group 52105 gone (kill(-pgid, 0): ESRCH); leader exit observed",
+      "execution_commands": [
+        {
+          "command": "python3 /Volumes/AIMATE_WORK/tmp/osstack/smoke/pr237-integration/run-wave1-checks.py",
+          "exit_code": 1,
+          "duration_ms": 678795,
+          "summary": "build 0 inventory-generate 0 typecheck 0 test 1 lint 0 schemas 0 inventory 0 startup 0"
+        }
+      ],
+      "verifier_agent_id": "local-verifier",
+      "verify_summary": "3 issues found by local verifier. Failed evaluations: verify-command-1.",
+      "verify_issue_count": 3,
+      "verify_issues": [
+        {
+          "severity": "error",
+          "message": "Builder execution ended failed: Process group 52105 gone (kill(-pgid, 0): ESRCH); leader exit observed",
+          "rule": "execute.outcome_not_completed"
+        },
+        {
+          "severity": "error",
+          "message": "python3 /Volumes/AIMATE_WORK/tmp/osstack/smoke/pr237-integration/run-wave1-checks.py failed (1): build 0 inventory-generate 0 typecheck 0 test 1 lint 0 schemas 0 inventory 0 startup 0",
+          "rule": "execute.command_failed"
+        },
+        {
+          "severity": "error",
+          "message": "python3 /Volumes/AIMATE_WORK/tmp/osstack/smoke/pr237-integration/verify-wave1-checks.py failed (1): Traceback (most recent call last): File \"/Volumes/AIMATE_WORK/tmp/osstack/smoke/pr237-integration/verify-wave1-checks.py\", line 4, in <module> assert len(x)==8 and all(c[\"exit_code\"]==0 for c in x) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^",
+          "rule": "verify.command_failed"
+        }
+      ],
+      "verify_commands": [
+        {
+          "command": "python3 /Volumes/AIMATE_WORK/tmp/osstack/smoke/pr237-integration/verify-wave1-checks.py",
+          "exit_code": 1,
+          "duration_ms": 33,
+          "summary": "Traceback (most recent call last): File \"/Volumes/AIMATE_WORK/tmp/osstack/smoke/pr237-integration/verify-wave1-checks.py\", line 4, in <module> assert len(x)==8 and all(c[\"exit_code\"]==0 for c in x) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^"
+        }
+      ],
+      "evaluations": [
+        {
+          "spec_id": "verify-command-1",
+          "mode": "command",
+          "description": "Shell verifier: python3 /Volumes/AIMATE_WORK/tmp/osstack/smoke/pr237-integration/verify-wave1-checks.py",
+          "required": true,
+          "weight": 1,
+          "pass": false,
+          "summary": "command failed (exit 1): Traceback (most recent call last): File \"/Volumes/AIMATE_WORK/tmp/osstack/smoke/pr237-integration/verify-wave1-checks.py\", line 4, in <module> assert len(x)==8 and all(c[\"exit_code\"]==0 for c in x) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^",
+          "implicit": true
+        }
+      ],
+      "iteration_feedback": [
+        {
+          "attempt": 1,
+          "verdict_summary": "3 issues found by local verifier. Failed evaluations: verify-command-1.",
+          "blocking_issues": [
+            {
+              "severity": "error",
+              "message": "Builder execution ended failed: Process group 52105 gone (kill(-pgid, 0): ESRCH); leader exit observed",
+              "rule": "execute.outcome_not_completed"
+            },
+            {
+              "severity": "error",
+              "message": "python3 /Volumes/AIMATE_WORK/tmp/osstack/smoke/pr237-integration/run-wave1-checks.py failed (1): build 0 inventory-generate 0 typecheck 0 test 1 lint 0 schemas 0 inventory 0 startup 0",
+              "rule": "execute.command_failed"
+            },
+            {
+              "severity": "error",
+              "message": "python3 /Volumes/AIMATE_WORK/tmp/osstack/smoke/pr237-integration/verify-wave1-checks.py failed (1): Traceback (most recent call last): File \"/Volumes/AIMATE_WORK/tmp/osstack/smoke/pr237-integration/verify-wave1-checks.py\", line 4, in <module> assert len(x)==8 and all(c[\"exit_code\"]==0 for c in x) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^",
+              "rule": "verify.command_failed"
+            }
+          ],
+          "failed_evaluations": [
+            "verify-command-1"
+          ],
+          "suggested_focus": [
+            "satisfy evaluation verify-command-1: Shell verifier: python3 /Volumes/AIMATE_WORK/tmp/osstack/smoke/pr237-integration/verify-wave1-checks.py"
+          ],
+          "previous_diff_summary": "docs/inventory/PUBLIC_EXPORTS.md | 2 ++ 1 file changed, 2 insertions(+)"
+        }
+      ],
+      "changed_files": [
+        "docs/inventory/PUBLIC_EXPORTS.md",
+        "?? docs/reports/2026-10-23-firstmate-wave1-evidence/README.md",
+        "?? docs/reports/2026-10-23-firstmate-wave1-evidence/cockpit/audit-disposition.md",
+        "?? docs/reports/2026-10-23-firstmate-wave1-evidence/cockpit/benchmark-final.json",
+        "?? docs/reports/2026-10-23-firstmate-wave1-evidence/cockpit/browser-evidence.json",
+        "?? docs/reports/2026-10-23-firstmate-wave1-evidence/cockpit/browser-final.png",
+        "?? docs/reports/2026-10-23-firstmate-wave1-evidence/cockpit/browser-offline.png",
+        "?? docs/reports/2026-10-23-firstmate-wave1-evidence/cockpit/haiku-context.md",
+        "?? docs/reports/2026-10-23-firstmate-wave1-evidence/cockpit/haiku-final-context.md",
+        "?? docs/reports/2026-10-23-firstmate-wave1-evidence/cockpit/haiku-final-result.json",
+        "?? docs/reports/2026-10-23-firstmate-wave1-evidence/cockpit/haiku-final-stderr.txt",
+        "?? docs/reports/2026-10-23-firstmate-wave1-evidence/cockpit/haiku-result.json",
+        "?? docs/reports/2026-10-23-firstmate-wave1-evidence/cockpit/haiku-stderr.txt",
+        "?? docs/reports/2026-10-23-firstmate-wave1-evidence/cockpit/source-manifest.json",
+        "?? docs/reports/2026-10-23-firstmate-wave1-evidence/outbox-audit-context.md",
+        "?? docs/reports/2026-10-23-firstmate-wave1-evidence/outbox-audit-result.json",
+        "?? docs/reports/2026-10-23-firstmate-wave1-evidence/outbox-audit-round2-context.md",
+        "?? docs/reports/2026-10-23-firstmate-wave1-evidence/outbox-audit-round2-result.json",
+        "?? docs/reports/2026-10-23-firstmate-wave1-evidence/outbox-disposition.md",
+        "?? docs/reports/2026-10-23-firstmate-wave1-evidence/routing-next/audit-context.txt",
+        "?? docs/reports/2026-10-23-firstmate-wave1-evidence/routing-next/audit-disposition.md",
+        "?? docs/reports/2026-10-23-firstmate-wave1-evidence/routing-next/audit-result.json",
+        "?? docs/reports/2026-10-23-firstmate-wave1-evidence/routing-next/audit-round2-context.txt",
+        "?? docs/reports/2026-10-23-firstmate-wave1-evidence/routing-next/audit-round2-result.json",
+        "?? docs/reports/2026-10-23-firstmate-wave1-evidence/routing-next/audit-round2-stderr.txt",
+        "?? docs/reports/2026-10-23-firstmate-wave1-evidence/routing-next/audit-stderr.txt",
+        "?? docs/reports/2026-10-23-firstmate-wave1-evidence/routing-next/implementation-manifest.json",
+        "?? docs/reports/2026-10-23-firstmate-wave1-evidence/routing-next/import-cost.json",
+        "?? docs/reports/2026-10-23-firstmate-wave1-evidence/routing-next/verification-summary.json",
+        "?? docs/reports/2026-10-23-firstmate-wave1-evidence/supervision-next/audit-disposition.md",
+        "?? docs/reports/2026-10-23-firstmate-wave1-evidence/supervision-next/haiku-context.txt",
+        "?? docs/reports/2026-10-23-firstmate-wave1-evidence/supervision-next/haiku-result.json",
+        "?? docs/reports/2026-10-23-firstmate-wave1-evidence/supervision-next/haiku-round2-context.txt",
+        "?? docs/reports/2026-10-23-firstmate-wave1-evidence/supervision-next/haiku-round2-result.json",
+        "?? docs/reports/2026-10-23-firstmate-wave1-evidence/supervision-next/haiku-round2-stderr.txt",
+        "?? docs/reports/2026-10-23-firstmate-wave1-evidence/supervision-next/haiku-stderr.txt",
+        "?? docs/reports/2026-10-23-firstmate-wave1-evidence/supervision-next/integration-notes.md",
+        "?? docs/reports/2026-10-23-firstmate-wave1-evidence/supervision-next/source-manifest.json"
+      ],
+      "diff_summary": "docs/inventory/PUBLIC_EXPORTS.md | 2 ++ 1 file changed, 2 insertions(+)",
+      "commit_hash": "16f37b07",
+      "error_summary": "Builder execution ended failed: Process group 52105 gone (kill(-pgid, 0): ESRCH); leader exit observed"
+    }
+  ],
+  "events": [
+    {
+      "event_id": "evt_61d0cff2-539e-40f5-a69f-7e51ff11d31c",
+      "loop_id": "loop_112fb040-2e63-41d2-b3e7-cf2aa5332901",
+      "type": "loop.started",
+      "seq": 1,
+      "created_at": 1792780882779,
+      "payload": {
+        "workspace_path": "/Users/osborn/Developer/CodeX/.worktrees/osstack/firstmate-next-wave"
+      }
+    },
+    {
+      "event_id": "evt_fcf8b765-4ee9-4cb3-9cfe-06cbc71fe59c",
+      "loop_id": "loop_112fb040-2e63-41d2-b3e7-cf2aa5332901",
+      "type": "loop.cycle.started",
+      "seq": 2,
+      "created_at": 1792780882779,
+      "payload": {
+        "cycle": 1
+      }
+    },
+    {
+      "event_id": "evt_7118a4a7-22fa-4db1-b5b1-af30a6afceb2",
+      "loop_id": "loop_112fb040-2e63-41d2-b3e7-cf2aa5332901",
+      "type": "loop.discover.done",
+      "seq": 3,
+      "created_at": 1792780882779,
+      "payload": {
+        "task_count": 1,
+        "discovered_task_count": 1,
+        "skipped_task_count": 0
+      }
+    },
+    {
+      "event_id": "evt_1d864621-bf17-463e-bcf5-7fe54be8a1e0",
+      "loop_id": "loop_112fb040-2e63-41d2-b3e7-cf2aa5332901",
+      "type": "loop.plan.done",
+      "seq": 4,
+      "created_at": 1792780882780,
+      "payload": {
+        "task_id": "firstmate-wave1-qualification",
+        "plan_id": "plan_40518070-f783-4f5e-9764-8a5eceba4324",
+        "agent_id": "local-command",
+        "routing_reason": "local execute command",
+        "iteration": 1
+      }
+    },
+    {
+      "event_id": "evt_c7a8f209-e638-4f22-8f23-1c994411ab99",
+      "loop_id": "loop_112fb040-2e63-41d2-b3e7-cf2aa5332901",
+      "type": "loop.execute.done",
+      "seq": 5,
+      "created_at": 1792781561575,
+      "payload": {
+        "task_id": "firstmate-wave1-qualification",
+        "run_id": "run_516fab54-0560-4f31-be05-ea0c8849000f",
+        "outcome": "failed",
+        "agent_id": "local-command",
+        "summary": "Process group 52105 gone (kill(-pgid, 0): ESRCH); leader exit observed",
+        "iteration": 1
+      }
+    },
+    {
+      "event_id": "evt_99825c08-d42c-49fe-92d3-ea380580753a",
+      "loop_id": "loop_112fb040-2e63-41d2-b3e7-cf2aa5332901",
+      "type": "loop.verify.done",
+      "seq": 6,
+      "created_at": 1792781561656,
+      "payload": {
+        "task_id": "firstmate-wave1-qualification",
+        "pass": false,
+        "score": 0,
+        "issue_count": 3,
+        "evaluation_count": 1,
+        "failed_evaluation_ids": [
+          "verify-command-1"
+        ],
+        "reviewer_agent_id": "local-verifier",
+        "summary": "3 issues found by local verifier. Failed evaluations: verify-command-1.",
+        "changed_files": [
+          "docs/inventory/PUBLIC_EXPORTS.md",
+          "?? docs/reports/2026-10-23-firstmate-wave1-evidence/README.md",
+          "?? docs/reports/2026-10-23-firstmate-wave1-evidence/cockpit/audit-disposition.md",
+          "?? docs/reports/2026-10-23-firstmate-wave1-evidence/cockpit/benchmark-final.json",
+          "?? docs/reports/2026-10-23-firstmate-wave1-evidence/cockpit/browser-evidence.json",
+          "?? docs/reports/2026-10-23-firstmate-wave1-evidence/cockpit/browser-final.png",
+          "?? docs/reports/2026-10-23-firstmate-wave1-evidence/cockpit/browser-offline.png",
+          "?? docs/reports/2026-10-23-firstmate-wave1-evidence/cockpit/haiku-context.md",
+          "?? docs/reports/2026-10-23-firstmate-wave1-evidence/cockpit/haiku-final-context.md",
+          "?? docs/reports/2026-10-23-firstmate-wave1-evidence/cockpit/haiku-final-result.json",
+          "?? docs/reports/2026-10-23-firstmate-wave1-evidence/cockpit/haiku-final-stderr.txt",
+          "?? docs/reports/2026-10-23-firstmate-wave1-evidence/cockpit/haiku-result.json",
+          "?? docs/reports/2026-10-23-firstmate-wave1-evidence/cockpit/haiku-stderr.txt",
+          "?? docs/reports/2026-10-23-firstmate-wave1-evidence/cockpit/source-manifest.json",
+          "?? docs/reports/2026-10-23-firstmate-wave1-evidence/outbox-audit-context.md",
+          "?? docs/reports/2026-10-23-firstmate-wave1-evidence/outbox-audit-result.json",
+          "?? docs/reports/2026-10-23-firstmate-wave1-evidence/outbox-audit-round2-context.md",
+          "?? docs/reports/2026-10-23-firstmate-wave1-evidence/outbox-audit-round2-result.json",
+          "?? docs/reports/2026-10-23-firstmate-wave1-evidence/outbox-disposition.md",
+          "?? docs/reports/2026-10-23-firstmate-wave1-evidence/routing-next/audit-context.txt",
+          "?? docs/reports/2026-10-23-firstmate-wave1-evidence/routing-next/audit-disposition.md",
+          "?? docs/reports/2026-10-23-firstmate-wave1-evidence/routing-next/audit-result.json",
+          "?? docs/reports/2026-10-23-firstmate-wave1-evidence/routing-next/audit-round2-context.txt",
+          "?? docs/reports/2026-10-23-firstmate-wave1-evidence/routing-next/audit-round2-result.json",
+          "?? docs/reports/2026-10-23-firstmate-wave1-evidence/routing-next/audit-round2-stderr.txt",
+          "?? docs/reports/2026-10-23-firstmate-wave1-evidence/routing-next/audit-stderr.txt",
+          "?? docs/reports/2026-10-23-firstmate-wave1-evidence/routing-next/implementation-manifest.json",
+          "?? docs/reports/2026-10-23-firstmate-wave1-evidence/routing-next/import-cost.json",
+          "?? docs/reports/2026-10-23-firstmate-wave1-evidence/routing-next/verification-summary.json",
+          "?? docs/reports/2026-10-23-firstmate-wave1-evidence/supervision-next/audit-disposition.md",
+          "?? docs/reports/2026-10-23-firstmate-wave1-evidence/supervision-next/haiku-context.txt",
+          "?? docs/reports/2026-10-23-firstmate-wave1-evidence/supervision-next/haiku-result.json",
+          "?? docs/reports/2026-10-23-firstmate-wave1-evidence/supervision-next/haiku-round2-context.txt",
+          "?? docs/reports/2026-10-23-firstmate-wave1-evidence/supervision-next/haiku-round2-result.json",
+          "?? docs/reports/2026-10-23-firstmate-wave1-evidence/supervision-next/haiku-round2-stderr.txt",
+          "?? docs/reports/2026-10-23-firstmate-wave1-evidence/supervision-next/haiku-stderr.txt",
+          "?? docs/reports/2026-10-23-firstmate-wave1-evidence/supervision-next/integration-notes.md",
+          "?? docs/reports/2026-10-23-firstmate-wave1-evidence/supervision-next/source-manifest.json"
+        ],
+        "diff_summary": "docs/inventory/PUBLIC_EXPORTS.md | 2 ++ 1 file changed, 2 insertions(+)",
+        "commit_hash": "16f37b07",
+        "iteration": 1
+      }
+    },
+    {
+      "event_id": "evt_5f8c11d6-2cff-40c5-b8e3-43733df1d064",
+      "loop_id": "loop_112fb040-2e63-41d2-b3e7-cf2aa5332901",
+      "type": "loop.iterate.done",
+      "seq": 7,
+      "created_at": 1792781561657,
+      "payload": {
+        "task_id": "firstmate-wave1-qualification",
+        "action": "escalate",
+        "reason": "Maximum iterations reached (1) with 3 verifier issues remaining.",
+        "iteration": 1,
+        "issue_count": 3,
+        "failed_evaluation_ids": [
+          "verify-command-1"
+        ]
+      }
+    },
+    {
+      "event_id": "evt_0881b03e-a667-4a80-8eed-f1bc5f16c626",
+      "loop_id": "loop_112fb040-2e63-41d2-b3e7-cf2aa5332901",
+      "type": "loop.escalated",
+      "seq": 8,
+      "created_at": 1792781561657,
+      "payload": {
+        "task_id": "firstmate-wave1-qualification",
+        "reason": "Maximum iterations reached (1) with 3 verifier issues remaining.",
+        "iteration": 1,
+        "max_iterations": 1,
+        "escalate_to": "hermes",
+        "agent_id": "local-command"
+      }
+    },
+    {
+      "event_id": "evt_e9066b0c-3dc4-4a5e-8165-4a2db2b8e522",
+      "loop_id": "loop_112fb040-2e63-41d2-b3e7-cf2aa5332901",
+      "type": "loop.state.written",
+      "seq": 9,
+      "created_at": 1792781561658,
+      "payload": {
+        "jsonPath": "/Volumes/AIMATE_WORK/tmp/osstack/smoke/pr237-integration/wave1-loop/LOOP-STATE.json",
+        "markdownPath": "/Volumes/AIMATE_WORK/tmp/osstack/smoke/pr237-integration/wave1-loop/STATE.md"
+      }
+    },
+    {
+      "event_id": "evt_eb81f4d9-9a00-46da-b528-247ba68232b4",
+      "loop_id": "loop_112fb040-2e63-41d2-b3e7-cf2aa5332901",
+      "type": "loop.cycle.completed",
+      "seq": 10,
+      "created_at": 1792781561658,
+      "payload": {
+        "cycle": 1,
+        "task_count": 1,
+        "discovered_task_count": 1,
+        "skipped_task_count": 0,
+        "duration_ms": 678881
+      }
+    },
+    {
+      "event_id": "evt_74e65948-7dff-4202-8dc2-2035b7642fd3",
+      "loop_id": "loop_112fb040-2e63-41d2-b3e7-cf2aa5332901",
+      "type": "loop.stopped",
+      "seq": 11,
+      "created_at": 1792781561658,
+      "payload": {
+        "reason_code": "completed",
+        "reason": "manual run completed"
+      }
+    }
+  ],
+  "jsonPath": "/Volumes/AIMATE_WORK/tmp/osstack/smoke/pr237-integration/wave1-loop/LOOP-STATE.json",
+  "markdownPath": "/Volumes/AIMATE_WORK/tmp/osstack/smoke/pr237-integration/wave1-loop/STATE.md",
+  "discoveredTaskCount": 1,
+  "executedTaskCount": 1,
+  "skippedTaskCount": 0
+}

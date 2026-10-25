@@ -1,0 +1,10 @@
+{
+  "task": {
+    "task_id": "firstmate-wave6-final-qualification",
+    "capability": "code.test",
+    "prompt": "Qualify frozen source bfe13252: worker readonly viewer, pinned local sources, signed delivery ledger and shutdown, multi-home plan/status only. Eight full checks. No real provider or native upgrade claims.",
+    "priority": 50,
+    "source": "task_queue"
+  },
+  "path": "/Volumes/AIMATE_WORK/tmp/osstack/smoke/pr237-integration/wave6-final-loop/tasks/firstmate-wave6-final-qualification.json"
+}

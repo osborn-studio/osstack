@@ -1,0 +1,116 @@
+{
+  "head": "af312fd7623fa27668e91a6bf8965e0dc043be1a",
+  "gates_passed": 8,
+  "package_suites_passed": 22,
+  "tests_passed": 5585,
+  "tests_failed": 0,
+  "tests_skipped": 4,
+  "packages": [
+    {
+      "package": "compliance",
+      "summary": "17 passed (17)"
+    },
+    {
+      "package": "contracts",
+      "summary": "15 passed (15)"
+    },
+    {
+      "package": "github",
+      "summary": "107 passed (107)"
+    },
+    {
+      "package": "governance",
+      "summary": "301 passed (301)"
+    },
+    {
+      "package": "knowledge",
+      "summary": "44 passed (44)"
+    },
+    {
+      "package": "neat-eval",
+      "summary": "16 passed (16)"
+    },
+    {
+      "package": "protocol",
+      "summary": "256 passed (256)"
+    },
+    {
+      "package": "runtime",
+      "summary": "1 passed (1)"
+    },
+    {
+      "package": "core",
+      "summary": "843 passed (843)"
+    },
+    {
+      "package": "graph",
+      "summary": "257 passed (257)"
+    },
+    {
+      "package": "knowledge-cloud",
+      "summary": "36 passed (36)"
+    },
+    {
+      "package": "autonomy",
+      "summary": "199 passed (199)"
+    },
+    {
+      "package": "hermes-adapter",
+      "summary": "22 passed (22)"
+    },
+    {
+      "package": "plugins",
+      "summary": "1 passed (1)"
+    },
+    {
+      "package": "skill-registry",
+      "summary": "3 passed (3)"
+    },
+    {
+      "package": "skills",
+      "summary": "2 passed (2)"
+    },
+    {
+      "package": "agents",
+      "summary": "356 passed (356)"
+    },
+    {
+      "package": "config",
+      "summary": "30 passed (30)"
+    },
+    {
+      "package": "loop",
+      "summary": "445 passed (445)"
+    },
+    {
+      "package": "conformance",
+      "summary": "9 passed (9)"
+    },
+    {
+      "package": "supervisor",
+      "summary": "88 passed (88)"
+    },
+    {
+      "package": "cli",
+      "summary": "2537 passed | 4 skipped (2541)"
+    }
+  ],
+  "skipped_files": [
+    "src/improvement-native-cold.test.ts (1 test | 1 skipped)",
+    "src/graph-performance.test.ts (1 test | 1 skipped)",
+    "src/improvement-provider-live.test.ts (1 test | 1 skipped)",
+    "src/supervision-active-qualification.test.ts (1 test | 1 skipped)"
+  ],
+  "pr": "https://github.com/osborn-studio/osstack/pull/244",
+  "final_claude_audit": "blocked_authentication",
+  "pr_state_at_publication": "draft",
+  "ci": "See current PR check status; local evidence does not assert CI success.",
+  "supplemental_checks": {
+    "source_head": "bfa666cfb917b8db0a93653835018e1a7cac43c9",
+    "production_same_as_full_run": true,
+    "graph_performance": "passed",
+    "native_cold_two_checkouts": "passed",
+    "active_supervision": "three separate isolated passes",
+    "provider_live": "not_run_missing_qualification"
+  }
+}

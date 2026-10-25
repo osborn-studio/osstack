@@ -1,0 +1,30 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-cockpit/packages/core
+
+
+⎯⎯⎯⎯⎯⎯ Failed Suites 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/state/attention-recovery-view.test.ts [ src/state/attention-recovery-view.test.ts ]
+Error: Cannot find module './attention-recovery-view.js' imported from '/Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-cockpit/packages/core/src/state/attention-recovery-view.test.ts'
+ ❯ src/state/attention-recovery-view.test.ts:8:1
+      6| import { AttentionStore } from "./attention-store.js";
+      7| import { AttentionObserver } from "./attention-observer.js";
+      8| import { readAttentionRecovery } from "./attention-recovery-view.js";
+       | ^
+      9| const cleanup: Array<() => void> = [];
+     10| afterEach(() => { for (const fn of cleanup.splice(0)) fn(); });
+
+Caused by: Error: Failed to load url ./attention-recovery-view.js (resolved id: ./attention-recovery-view.js) in /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-cockpit/packages/core/src/state/attention-recovery-view.test.ts. Does the file exist?
+ ❯ loadAndTransform ../../node_modules/.pnpm/vite@6.4.3_@types+node@25.8.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:35835:17
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  no tests
+   Start at  13:12:47
+   Duration  406ms (transform 100ms, setup 0ms, collect 0ms, tests 0ms, environment 0ms, prepare 56ms)
+
+undefined
+/Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-cockpit/packages/core:
+[ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL] Command failed with exit code 1: vitest run src/state/attention-recovery-view.test.ts

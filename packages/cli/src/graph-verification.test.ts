@@ -1,12 +1,15 @@
 import { createHash } from 'node:crypto';
+import { deflateSync } from 'node:zlib';
+import { writeFileSync } from 'node:fs';
+import { verificationInventoryLimits } from './graph-verification-inventory.js';
 import type { AgentTask } from '@osstack/agents';
 import { execFileSync } from 'node:child_process';
-import { mkdtemp, mkdir, writeFile, readFile, realpath, readdir } from 'node:fs/promises';
+import { mkdtemp, mkdir, writeFile, readFile, realpath, readdir, truncate } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { afterEach, expect, it, vi } from 'vitest';
 import { GraphArtifactStore } from '@osstack/core/graph-artifacts';
-import { resolveRepositoryScope, CapabilitySchema, openDb, GraphRunStore } from '@osstack/core';
+import { resolveRepositoryScope, CapabilitySchema, openDb, GraphRunStore, freezeDeliveryContract, deliveryCheckReference } from '@osstack/core';
 import { FifoSemaphore } from '@osstack/autonomy';
 import { executeCandidateImplementation } from '@osstack/loop';
 import { GraphActionBroker, type GraphRegisteredAction } from './graph-action-broker.js';
@@ -26,9 +29,11 @@ afterEach(() => { for (const fn of close.splice(0)) fn(); });
 import { computeGraphEffectKey } from '@osstack/protocol';
 import { prepareGraphVerification, prepareGraphVerificationBranch, loadGraphVerificationEvidence, type GraphVerificationOptions } from './graph-verification.js';
 const git = (cwd: string, ...args: string[]) => execFileSync('git', args, { cwd, encoding: 'utf8' }).trim();
-async function fixture() {
+async function fixture(payloadBytes = 0, fileCount = 0) {
   const root = await realpath(await mkdtemp(join(tmpdir(), 'g19-'))); const repo = join(root, 'source'); await mkdir(repo);
-  git(repo, 'init', '-q'); await writeFile(join(repo, 'file'), 'candidate'); git(repo, 'add', '.'); git(repo, '-c', 'user.name=test', '-c', 'user.email=test@invalid', 'commit', '-qm', 'base');
+  git(repo, 'init', '-q'); await writeFile(join(repo, 'file'), 'candidate');
+  if (payloadBytes) await writeFile(join(repo, 'payload'), Buffer.alloc(payloadBytes, 42));
+  for (let start = 0; start < fileCount; start += 100) await Promise.all(Array.from({ length: Math.min(100, fileCount - start) }, (_, index) => writeFile(join(repo, `entry-${start + index}`), `unique-${start + index}:` + 'x'.repeat(256)))); git(repo, 'add', '.'); git(repo, '-c', 'user.name=test', '-c', 'user.email=test@invalid', 'commit', '-qm', 'base');
   const scope = { schemaVersion: 1 as const, tenantId: 't', principalId: 'p', workspaceId: 'w' };
   const db = openDb({ path: join(root, 'control.sqlite') }); close.push(() => db.close()); const runs = new GraphRunStore(db);
   const created = runs.create({ schemaVersion: 1, kind: 'start', scope, idempotencyKey: 'verification', inputArtifactRef: 'input', source: { product: 'osstack', requestId: 'request' }, spec: { schemaVersion: 1, template: 'code-delivery-v1', publication: 'artifact_only', input: { taskRef: 'task', repositoryRef: 'repo', baseRevision: git(repo, 'rev-parse', 'HEAD'), acceptanceRef: 'acceptance' }, limits: { maxEpochs: 1, maxBranchAttempts: 2, maxConcurrentReaders: 2, maxConcurrentWritersPerRepo: 1, maxActionStarts: 8, deadlineSeconds: 120, tokenReservationLimit: 100 } } }, { executionModel: 'langgraph-functional-v1', durability: 'sync', engineVersion: '1.4.15', checkpointVersion: '1.1.5', templateVersion: '1', registryVersion: '1', compilerVersion: '1', schemaVersion: '1', compiledProgramDigest: 'b'.repeat(64) }, Date.now());
@@ -342,7 +347,7 @@ it('settles an oversized structured review as a bounded contract failure instead
 // By default these use a deterministic Engine API fixture. The exact same tests
 // can target the dedicated Linux daemon via an explicit host-owned config file.
 async function containedFixture(exitCode: number) {
-  const f = await fixture(); let actualExit = exitCode; let onStart = () => {}; let loseDelete = false;
+  const f = await fixture(); let actualExit = exitCode; let onStart = () => {}; let loseDelete = false; let removedReadDelayMs = 0; let removedReads = 0;
   const journalRoot = join(f.root, 'contained-journal'); await mkdir(journalRoot);
   const configPath = process.env['G25_CONTAINED_CONFIG'];
   let config: { socketPath: string; daemonId: string; baseImageId: string };
@@ -361,11 +366,12 @@ async function containedFixture(exitCode: number) {
       }
       if (path.includes('/images/')) { const base = path.includes(config.baseImageId); res.end(JSON.stringify({ Id: base ? config.baseImageId : 'sha256:' + 'b'.repeat(64), Config: { WorkingDir: directory, Labels: labels } })); return; }
       if (path.endsWith('/create')) {
+        removed = false; started = false;
         let body = ''; for await (const chunk of req) body += chunk; containerConfig = JSON.parse(body) as typeof containerConfig;
         res.writeHead(201).end(JSON.stringify({ Id: 'c'.repeat(64) })); return;
       }
       if (req.method === 'DELETE') { removed = true; res.writeHead(loseDelete ? 500 : 204).end(); return; }
-      if (removed) { res.writeHead(404).end(); return; }
+      if (removed) { removedReads++; if (removedReadDelayMs) await new Promise(resolve => setTimeout(resolve, removedReadDelayMs)); res.writeHead(404).end(); return; }
       if (path.endsWith('/start')) { started = true; onStart(); res.writeHead(204).end(); return; }
       if (path.endsWith('/logs')) { res.end(); return; }
       res.end(JSON.stringify({ Id: 'c'.repeat(64), Image: 'sha256:' + 'b'.repeat(64), Config: containerConfig!, HostConfig: { ...(containerConfig!['HostConfig'] as object), CapAdd: null }, Mounts: [],
@@ -375,7 +381,7 @@ async function containedFixture(exitCode: number) {
   }
   f.options.containedTests = { ...config, journalRoot, authorizeStop: () => {}, authorizeRead: () => {} };
   f.options.acceptanceRegistry = [{ ref: 'acceptance', command: `test "$(cat file)" = candidate || exit 98; test "$(pwd)" != /tmp || exit 99; exit ${exitCode}`, passExitCodes: [0, 42], failExitCodes: [1] }];
-  return { ...f, setExit: (value: number) => { actualExit = value; }, onStart: (fn: () => void) => { onStart = fn; }, loseDelete: () => { loseDelete = true; } };
+  return { ...f, setExit: (value: number) => { actualExit = value; }, onStart: (fn: () => void) => { onStart = fn; }, loseDelete: () => { loseDelete = true; }, delayRemovedRead: (ms: number) => { removedReadDelayMs = ms; }, removedReads: () => removedReads };
 }
 it.each([0, 1, 42, 7])('binds actual contained tests exit %i to candidate/image/ledger without POSIX evidence', async code => {
   const f = await containedFixture(code); const b = await brokerFixture(f); const response = await b.invoke('tests');
@@ -432,3 +438,157 @@ it('settles contained cancellation only after durable removal and prevents repla
   expect(receipt.kind).toBe('docker_removed');
   expect(f.db.prepare('SELECT released_at FROM graph_action_admissions WHERE released_at IS NULL').all()).toEqual([]);
 }, 30000);
+
+it('V2 rejects a second reviewer invocation for the same effect but permits a newly authorized logical attempt', async () => {
+  const f = await fixture(); const seen: AgentTask[] = [];
+  f.options.deliveryContract = freezeDeliveryContract({ schema_version: 2, contract_id: 'review-contract', task_id: 'task',
+    canonical_repo: f.options.sourceWorkspace.workspace_path, mode: 'implement', base_head: f.binding.candidateRevision, goal: 'review',
+    required_checks: [{ id: 'test', registry_ref: deliveryCheckReference('exit 1') }], review_policy_ref: 'host-review',
+    requested_completion: 'local_verified', allowed_paths: ['file'], requested_actions: ['build', 'verify'],
+    budget_ref: `policy:${'b'.repeat(64)}`, policy_digest: 'b'.repeat(64), publication_scope: { mode: 'none' }, merge_authority: { mode: 'none' } });
+  let attempt = 1; const original = f.options.effectIdentity;
+  f.options.effectIdentity = kind => { const effect = { ...original(kind).effect, logicalAttempt: attempt }; return { effect, effectKey: computeGraphEffectKey(effect) }; };
+  f.options.reviewer.adapter.invoke = async function* (task, signal) { seen.push(structuredClone(task)); yield* reviewAdapter(() => 'bad')(task, signal); };
+  const p = await prepareGraphVerification(f.options); const action = p.actions[0]!;
+  await invokeReview(action);
+  if (action.execution.kind !== 'adapter') throw Error('expected review adapter');
+  const repeated = action.execution.adapter.invoke({ ...seen[0]!, run_id: 'second-run' }, new AbortController().signal)[Symbol.asyncIterator]();
+  await expect(repeated.next()).rejects.toThrow('repeated reviewer invocation'); expect(seen).toHaveLength(1);
+  attempt = 2; await invokeReview(action); expect(seen).toHaveLength(2);
+  expect(seen[0]!.session_id).not.toBe(seen[1]!.session_id);
+}, 15000);
+
+function bindMultipleChecks(f: Awaited<ReturnType<typeof fixture>>) {
+  f.options.acceptanceRegistry = [
+    { ref: 'acceptance', command: 'exit 0', passExitCodes: [0], failExitCodes: [1] },
+    { ref: 'second', command: 'test -f file', passExitCodes: [0], failExitCodes: [1] },
+  ];
+  f.options.deliveryContract = freezeDeliveryContract({ schema_version: 2, contract_id: 'suite-contract', task_id: 'task',
+    canonical_repo: f.options.sourceWorkspace.workspace_path, mode: 'implement', base_head: f.binding.candidateRevision, goal: 'review',
+    required_checks: f.options.acceptanceRegistry.map((item,index)=>({id:`check-${index}`, registry_ref:deliveryCheckReference(item.command)})), review_policy_ref: 'host-review',
+    requested_completion: 'local_verified', allowed_paths: ['file'], requested_actions: ['build', 'verify'],
+    budget_ref: `policy:${'b'.repeat(64)}`, policy_digest: 'b'.repeat(64), publication_scope: { mode: 'none' }, merge_authority: { mode: 'none' } });
+}
+it.each([0,1])('executes and validates every contained registered check with later exit %i', async laterExit => {
+  const f = await containedFixture(0); bindMultipleChecks(f);
+  if(laterExit===1){f.options.acceptanceRegistry[1]!.command='exit 1'; f.options.deliveryContract=freezeDeliveryContract({...f.options.deliveryContract!.contract,required_checks:f.options.acceptanceRegistry.map((item,index)=>({id:`check-${index}`,registry_ref:deliveryCheckReference(item.command)}))});}
+  let starts=0; f.onStart(()=>{starts++;f.setExit(starts===2?laterExit:0);});
+  const b=await brokerFixture(f); expect(await b.invoke('tests')).toMatchObject({outcome:{state:'confirmed',result:{kind:'tests',passed:laterExit===0}}});
+  const row=f.db.prepare("SELECT json_extract(outcome_json, '$.evidenceRef') AS evidence_ref FROM graph_actions WHERE node_id=?").get('tests') as {evidence_ref:string};
+  const envelope=await loadGraphVerificationEvidence(f.options.root,row.evidence_ref,f.binding);
+  expect(envelope.evidence.containedSuite?.map(item=>item.result.exitCode)).toEqual([0,laterExit]);
+  expect(new Set(envelope.evidence.containedSuite?.map(item=>item.identity.invocationId)).size).toBe(2);
+  expect(await readdir(f.options.containedTests!.journalRoot)).toHaveLength(2);
+  const {publishGraphVerificationEvidence}=await import('./graph-verification-store.js');
+  const missing=structuredClone(envelope);missing.evidence.containedSuite!.pop();await expect(publishGraphVerificationEvidence(f.options.root,missing,()=>{})).rejects.toThrow();
+  const substituted=structuredClone(envelope);substituted.evidence.containedSuite![1]=structuredClone(substituted.evidence.containedSuite![0]!);await expect(publishGraphVerificationEvidence(f.options.root,substituted,()=>{})).rejects.toThrow();
+},30000);
+it.runIf(!process.env['G25_CONTAINED_CONFIG'])('does not launch another suite check after unknown container removal',async()=>{
+ const f=await containedFixture(0);bindMultipleChecks(f);f.loseDelete();let starts=0;f.onStart(()=>starts++);
+ const b=await brokerFixture(f);expect(await b.invoke('tests')).toMatchObject({outcome:{state:'unknown'}});expect(starts).toBe(1);
+ expect(await b.invoke('tests')).toMatchObject({outcome:{state:'unknown'}});expect(starts).toBe(1);
+},30000);
+it('persists actual native suite exits and refuses missing or substituted later checks', async () => {
+  const f = await fixture(); bindMultipleChecks(f);
+  const b = await brokerFixture(f);
+  expect(await b.invoke('tests')).toMatchObject({ outcome: { state: 'confirmed', result: { passed: true } } });
+  const row = f.db.prepare("SELECT json_extract(outcome_json, '$.evidenceRef') AS evidence_ref FROM graph_actions WHERE node_id=?").get('tests') as { evidence_ref: string };
+  const envelope = await loadGraphVerificationEvidence(f.options.root, row.evidence_ref, f.binding);
+  expect(envelope.evidence.commandSuite?.map(item => item.command)).toEqual(['exit 0', 'test -f file']);
+  const { publishGraphVerificationEvidence } = await import('./graph-verification-store.js');
+  const missing = structuredClone(envelope); missing.evidence.commandSuite!.pop();
+  await expect(publishGraphVerificationEvidence(f.options.root, missing, () => {})).rejects.toThrow();
+  const substituted = structuredClone(envelope); substituted.evidence.commandSuite![1] = structuredClone(substituted.evidence.commandSuite![0]!);
+  await expect(publishGraphVerificationEvidence(f.options.root, substituted, () => {})).rejects.toThrow();
+  const uncertain = structuredClone(envelope); uncertain.evidence.commandSuite![1]!.failure_code='surviving_descendants';
+  uncertain.verificationFailure={code:'INTERNAL_ERROR',message:'stop uncertain',retrySafe:false};
+  await expect(publishGraphVerificationEvidence(f.options.root, uncertain, () => {})).rejects.toThrow();
+}, 15000);
+
+it.skipIf(Boolean(process.env['G25_CONTAINED_CONFIG']))('waits for fresh contained stop proof when a valid Engine read exceeds one second', async () => {
+  const f = await containedFixture(0); f.delayRemovedRead(1100);
+  const b = await brokerFixture(f);
+  expect(await b.invoke('tests')).toMatchObject({ outcome: { state: 'confirmed', result: { passed: true } } });
+  // Each confirmation still uses the real executor journal and Engine identity /
+  // absence checks. The fixture delays the 404 response, never invents a proof.
+  expect(f.removedReads()).toBeGreaterThanOrEqual(2);
+}, 30000);
+
+it('keeps sixteen contained stop proofs within the bounded local suite evidence', async () => {
+  const f = await containedFixture(0); bindMultipleChecks(f);
+  f.options.acceptanceRegistry=Array.from({length:16},(_,index)=>({ref:index===0?'acceptance':`check-${index}`,command:`exit 0 # ${index} ${'\t'.repeat(1000)}`,passExitCodes:[0],failExitCodes:[1]}));
+  f.options.deliveryContract=freezeDeliveryContract({...f.options.deliveryContract!.contract,required_checks:f.options.acceptanceRegistry.map((item,index)=>({id:`check-${index}`,registry_ref:deliveryCheckReference(item.command)}))});
+  const b=await brokerFixture(f);expect(await b.invoke('tests')).toMatchObject({outcome:{state:'confirmed',result:{passed:true}}});
+  const row=f.db.prepare("SELECT json_extract(outcome_json, '$.evidenceRef') AS evidence_ref FROM graph_actions WHERE node_id=?").get('tests') as {evidence_ref:string};
+  const envelope=await loadGraphVerificationEvidence(f.options.root,row.evidence_ref,f.binding);
+  expect(envelope.evidence.containedSuite).toHaveLength(16);
+  expect(Buffer.byteLength(JSON.stringify(envelope))).toBeGreaterThan(65536);
+  expect(Buffer.byteLength(JSON.stringify(envelope))).toBeLessThan(262144);
+},30000);
+
+it('seals cancellation observed during persistence even after a passing check stopped', async () => {
+  const f = await fixture();
+  f.options.acceptanceRegistry = [{ ref: 'acceptance', command: 'exit 0', passExitCodes: [0], failExitCodes: [1] }];
+  const controller = new AbortController();
+  let persisting = false; f.options.verifyReviewer = async () => { if (persisting) controller.abort(); };
+  const prepared = await prepareGraphVerificationBranch(f.options, 'tests');
+  // The persistence identity check is asynchronous: cancellation can arrive here
+  // after the actual executor has already stopped successfully.
+  persisting = true;
+  const result = await prepared.actions[0]!.persist({ status: 'completed', stopped: true,
+    command: { command: 'exit 0', exitCode: 0, stdout: '', stderr: '', durationMs: 1,
+      termination: { scope: 'posix_process_group', trigger: 'exit', leader_exit_code: 0, stop_confirmed: true, signals: [], evidence: 'stopped' } } }, { signal: controller.signal });
+  expect(result.result).toBeUndefined();
+  expect(result.verificationFailure).toMatchObject({ code: 'INTERNAL_ERROR', retrySafe: false });
+}, 15000);
+it.skipIf(!process.env['OSSTACK_REVIEW_INVENTORY_REPORT'])('measures byte-heavy and many-file/object review boundaries with exact observation counts', async () => {
+  const reports = [];
+  for (const scenario of [{ name: '31MiB', bytes: 31 * 1024 * 1024, files: 0, objects: 0 }, { name: 'many-files-and-objects', bytes: 0, files: 1500, objects: 1500 }]) {
+    const f = await fixture(scenario.bytes, scenario.files); let observations = 0;
+    const phases: Record<string, number[]> = {};
+    f.options.onPreparationPhase = (phase, durationMs) => { phases[phase] ??= []; phases[phase].push(durationMs); };
+    f.options.onCandidateObservation = () => { observations++; };
+    f.options.reviewer.adapter.invoke = reviewAdapter(() => JSON.stringify({ schemaVersion: 1, verdict: 'accept', summary: 'fixture', findings: [] }));
+    const started = performance.now(); const prepared = await prepareGraphVerificationBranch(f.options, 'review');
+    const preparationMs = performance.now() - started; const action = prepared.actions[0]!;
+    // Valid, unreachable loose Git objects exercise metadata traversal without
+    // modifying candidate content or inventing fake .git entries.
+    for (let index = 0; index < scenario.objects; index++) {
+      const payload = Buffer.from(`benchmark loose object ${index}`);
+      const object = Buffer.concat([Buffer.from(`blob ${payload.length}\0`), payload]);
+      const sha = createHash('sha1').update(object).digest('hex');
+      const directory = join(action.workspace!.workspace_path, '.git', 'objects', sha.slice(0, 2));
+      await mkdir(directory, { recursive: true }); await writeFile(join(directory, sha.slice(2)), deflateSync(object));
+    }
+    const samples = [];
+    for (let index = 0; index < 3; index++) {
+      let at = performance.now(); observations = 0; await action.verifyWorkspace!(); const verifyMs = performance.now() - at; const verifyObservations = observations;
+      at = performance.now(); observations = 0; const evidence = await invokeReview(action); const invokeMs = performance.now() - at; const invokeObservations = observations;
+      at = performance.now(); observations = 0; const result = await action.persist(evidence); const persistMs = performance.now() - at; const persistObservations = observations;
+      expect(result.result).toMatchObject({ kind: 'review', verdict: 'accept' });
+      expect(verifyObservations).toBe(1); expect(persistObservations).toBe(4);
+      samples.push({ verifyMs, invokeMs, persistMs, verifyObservations, invokeObservations, persistObservations });
+    }
+    reports.push({ ...scenario, preparationMs, phases,
+      phaseNotes: 'restore includes one internal artifact verification, batch Git blob extraction, per-file durable write/fsync and recaptured tree verification. verifyArtifact records the two additional whole-bundle validations; exact phase includes the actual preparation raw-file check.', samples });
+  }
+  await writeFile(process.env['OSSTACK_REVIEW_INVENTORY_REPORT']!, JSON.stringify({ node: process.version, platform: process.platform,
+    limits: verificationInventoryLimits, reports,
+    qualification: 'Local scratch Git candidates with valid loose objects, real raw-byte identity fences and fixture reviewer. Includes Git/evidence I/O. Not a provider, RPC latency or universal size guarantee.' }, null, 2));
+}, 120000);
+
+it.each([2, 3, 4])('rejects candidate mutation at publication observation %i', async mutationObservation => {
+  const f = await fixture(); let persisting = false; let observations = 0; let workspace = '';
+  f.options.onCandidateObservation = () => { if (persisting && ++observations === mutationObservation) writeFileSync(join(workspace, 'file'), 'changed at publication boundary'); };
+  f.options.reviewer.adapter.invoke = reviewAdapter(() => JSON.stringify({ schemaVersion: 1, verdict: 'accept', summary: 'fixture', findings: [] }));
+  const prepared = await prepareGraphVerificationBranch(f.options, 'review'); const action = prepared.actions[0]!;
+  workspace = action.workspace!.workspace_path; const evidence = await invokeReview(action); persisting = true;
+  await expect(action.persist(evidence)).rejects.toThrow('candidate changed during persistence');
+  expect(observations).toBe(mutationObservation);
+}, 15000);
+it('refuses an oversized untracked candidate before an unbounded content read', async () => {
+  const f = await fixture(); const prepared = await prepareGraphVerificationBranch(f.options, 'review');
+  const action = prepared.actions[0]!; const path = join(action.workspace!.workspace_path, 'oversized');
+  await writeFile(path, ''); await truncate(path, verificationInventoryLimits.candidateBytes + 1);
+  await expect(action.verifyWorkspace!()).rejects.toThrow('candidate workspace mutation detected');
+}, 15000);

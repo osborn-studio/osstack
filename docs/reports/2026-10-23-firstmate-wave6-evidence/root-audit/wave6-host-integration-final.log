@@ -1,0 +1,13 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-extension-integration/packages/cli
+
+ ✓ src/upgrade-plan-command.test.ts (3 tests) 288ms
+ ✓ src/worker-viewer-rpc.test.ts (6 tests) 8ms
+ ✓ src/local-ledgers-daemon.test.ts (13 tests) 1823ms
+   ✓ watches actual daemon snapshots through the main CLI and leaves worker execution unchanged  1040ms
+
+ Test Files  3 passed (3)
+      Tests  22 passed (22)
+   Start at  14:07:21
+   Duration  3.17s (transform 888ms, setup 19ms, collect 1.67s, tests 2.12s, environment 0ms, prepare 99ms)
+

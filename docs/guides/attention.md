@@ -146,7 +146,7 @@ CI 使用已有 GitHub 命令执行器，独立并发上限 2、缓存上限 100
 
 交付契约工具从同一冻结对象派生 digest、brief、effective options；scout→implement 产生新 ID。校验 mode、head、必选验证、review 与完成层级。它检查输入自洽，不是外部执行证明，也不会自动调用 deliver 或复用审批授权。
 
-分诊只接收三种分类和有限解释，拒绝 action/tool 字段，失败回确定性视图；当前没有自动模型调用。routing-eval 评估提供的候选路由结果与 golden labels，记录准确率、漏 review 和 usage；未证明收益前不改变默认路由。context 按层级、时间与 UTF-8 字节预算筛选，披露被省略的必选信息；lesson 只新建带随机 ID 的既有格式 draft，不覆盖用户记忆，不修改 AGENTS，不自动 promote。
+上述 `--input` 分诊是离线输入检查，只接收三种分类和有限解释，拒绝 action/tool 字段；显式 `triage --scope ... --item ... --model EXACT` 才会调用已配置的受限 provider。`routing-eval` 默认评估调用者提供的预测；`--mode router_golden` 运行确定性路由 fixture，`--mode paired_holdout` 才进行显式双模型评估，需要凭据和合格数据。未证明收益前不改变默认路由。context 按层级、时间与 UTF-8 字节预算筛选，披露被省略的必选信息；lesson 只新建带随机 ID 的既有格式 draft，不覆盖用户记忆，不修改 AGENTS，不自动 promote。
 
 ## 恢复行为变更
 
@@ -155,3 +155,11 @@ daemon 在 socket 清理、业务 DB 打开、恢复前取得独立 SQLite 文�
 旧 running/stopping Loop 和 daily 快照恢复为 stopped/recovery_required。启动和 Loop cycle 都不再强制删除未知 orphan worktree。保留成果后由操作者核对并明确开启新工作。未知外部 worker 不会被本功能终止或自动重启。
 
 整合前实验版 Attention 的 schema 25–26 与已发布 main 编号冲突，不能直接复用其 home；保留原目录与旧版本用于对账，在新隔离 home 验证。新版本会拒绝冲突的迁移谱系，不重置版本号或改写旧账本。
+
+## 集成能力与验证
+
+- [Cockpit 只读监督视图](attention-cockpit.md)
+- [真实确定性路由评估](attention-routing-evaluation.md)
+- [后续开发总计划](../plans/2026-10-23-firstmate-remaining-master.md)
+
+本地通知每轮最多处理 20 项、等待预算 1 秒，关闭时取消并等待逻辑回执完成。回执写失败在下一次扫描恢复；这只保证本地按 delivery ID 幂等的 artifact，不代表公共消息送达。

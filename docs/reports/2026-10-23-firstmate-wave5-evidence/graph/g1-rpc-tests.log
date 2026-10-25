@@ -1,0 +1,40 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-supervision-next/packages/cli
+
+Cloning into '/private/var/folders/97/wmwg4qzx02j74c3n73nh438w0000gn/T/g22-rpc-GB2w0U/delivery/de7f845c-2317-4112-bc71-5bb85d108237/writer-0'...
+Cloning into '/private/var/folders/97/wmwg4qzx02j74c3n73nh438w0000gn/T/g22-rpc-Ch2PPZ/delivery/7eafe07b-5e9f-42c6-bec8-dea494d02946/writer-0'...
+HEAD is now at 38a1ce2 base
+HEAD is now at 38a1ce2 base
+Cloning into '/private/var/folders/97/wmwg4qzx02j74c3n73nh438w0000gn/T/g22-rpc-92vp7j/delivery/47892005-9440-420f-8fdc-208fad2d64b9/writer-0'...
+HEAD is now at eec7aca base
+Cloning into '/private/var/folders/97/wmwg4qzx02j74c3n73nh438w0000gn/T/g22-rpc-gokAgP/delivery/07c746be-aed2-436c-964c-69937f913e4e/writer-0'...
+HEAD is now at 992007a base
+Cloning into '/private/var/folders/97/wmwg4qzx02j74c3n73nh438w0000gn/T/g22-rpc-tdNE4b/delivery/8e961629-2c99-4271-bacf-9c81a2d1259b/writer-0'...
+HEAD is now at 41e85e5 base
+osstack: retaining write lease graph-action:9cfae70ede6f0f13aaf6042b516042bd0ce0065a3dd60a703e3d5b1faecc1c7c: Error: delivery_contract_path_outside_scope
+ ✓ src/graph-contract-integration.test.ts (3 tests) 6674ms
+   ✓ binds the durable host contract before the real Graph launch and never changes source HEAD/refs/index/files  5053ms
+   ✓ rejects a path outside contract before verification or ready publication  1537ms
+Cloning into '/private/var/folders/97/wmwg4qzx02j74c3n73nh438w0000gn/T/g22-rpc-O94ceB/delivery/8c971ea6-2c70-4d9d-83f3-a9d2927eb041/writer-0'...
+HEAD is now at 1fa2730 base
+Cloning into '/private/var/folders/97/wmwg4qzx02j74c3n73nh438w0000gn/T/g22-rpc-hIjIc8/delivery/48068aff-7db1-4c70-b1b4-b613b24343fe/writer-0'...
+HEAD is now at 389eb57 base
+osstack: retaining write lease graph-action:0c2600f33789921f69d5c87eadef33770b6ede84813aa7593e7622d490d1b6bd: Error: external stop unconfirmed
+Cloning into '/private/var/folders/97/wmwg4qzx02j74c3n73nh438w0000gn/T/g22-rpc-b74vVj/delivery/dff16c18-1320-4c50-84ea-72aad1422d1d/writer-0'...
+HEAD is now at 7daf728 base
+Cloning into '/private/var/folders/97/wmwg4qzx02j74c3n73nh438w0000gn/T/g22-rpc-YG33u4/delivery/bbb94b7a-eb46-4cca-b61a-08c85b635b24/writer-0'...
+HEAD is now at b618971 base
+ ✓ src/graph-rpc.test.ts (10 tests) 26852ms
+   ✓ durably reserves before launch; concurrent replay and fresh service replay never launch twice; ready is atomic v1 evidence  3856ms
+   ✓ persisted cancel intent drives actual worker/executor abort and confirmed stop through G15  446ms
+   ✓ quality interrupt binds input/revision/current grants and resumes actual checkpoint through G15  9168ms
+   ✓ lost supervisor cannot resume durable waiting evidence or mint a new launch  5464ms
+   ✓ unknown external stop retains holds and cannot become cancelled from Promise drainage  1700ms
+   ✓ close persists cancellation and drains a live executor before returning  530ms
+   ✓ expired waiting lease refuses resume before acknowledging or spending a new budget  5476ms
+
+ Test Files  2 passed (2)
+      Tests  13 passed (13)
+   Start at  13:03:22
+   Duration  27.77s (transform 483ms, setup 15ms, collect 1.53s, tests 33.53s, environment 0ms, prepare 54ms)
+

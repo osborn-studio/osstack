@@ -1,15 +1,18 @@
+import { assertDeliveryContractAdmission, assertDeliveryContractPaths, freezeDeliveryContract } from "@osstack/core";
+import type { FrozenDeliveryContractV2, DeliveryReceiptReferenceV2 } from "@osstack/protocol";
+import { createDeliveryVerificationFence, createDeliverySourceFence, buildDeliveryVerificationReceipt, captureDeliveryCandidate, deliveryGit, persistDeliveryHostRecord, verifyPersistedDeliveryReceipt } from "./delivery-contract-host.js";
 import { execFile } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { realpathSync } from "node:fs";
 import { readFile, stat } from "node:fs/promises";
-import { join } from "node:path";
+import { isAbsolute, join } from "node:path";
 import { promisify } from "node:util";
 import {
   defaultAdapters,
   type AgentAdapter,
 } from "@osstack/agents";
 import type { GovernanceFinding } from "@osstack/governance";
-import type { GuardedDeliveryResult } from "@osstack/autonomy";
+import type { GuardedDeliveryPolicy, GuardedDeliveryResult } from "@osstack/autonomy";
 import {
   enqueueTask,
   LoopEngine,
@@ -89,6 +92,8 @@ export interface DeliverEvidenceArtifacts {
 }
 
 export interface DeliverCommandDeps {
+  /** Structured result sink for composed CLI flows; defaults to printing JSON. */
+  emitJson?: (value: unknown) => void;
   enforceObservePolicyGate: (
     workspacePath: string,
   ) => Promise<number | undefined>;
@@ -120,11 +125,16 @@ export interface DeliverCommandDeps {
     args: string[],
     events: LoopEvent[],
     governance?: DeliverGovernanceEvidence,
+    outputDirectory?: string,
   ) => Promise<DeliverEvidenceArtifacts | undefined>;
   learnLessonsFromLoopState: (
     state: LoopState,
   ) => Promise<unknown>;
   adapters?: () => AgentAdapter[];
+  createDeliveryStateDirectory?: (contractDigest: string) => Promise<string>;
+  deliveryContractPolicy?: (workspacePath: string, baseRevision?: string) => Promise<{ policyDigest: string; verifyCommands: string[]; budgetRef: string; budget: GuardedDeliveryPolicy["budget"] }>;
+  createExecutionContext?: (input: { adapters: readonly AgentAdapter[]; workspacePath: string; configPath: string;
+    contractDigest?: string; contractBrief?: string }) => Promise<{ adapters: readonly AgentAdapter[]; receiptRefs(): readonly DeliveryReceiptReferenceV2[] }>;
   startGuardedGit?: (input: {
     prompt: string;
     workspacePath: string;
@@ -136,6 +146,8 @@ export interface DeliverCommandDeps {
     commandTimeoutMs: number;
     deployPolicy?: "project";
     profileRouting: LoopProfileRoutingResult;
+    frozenContract?: FrozenDeliveryContractV2;
+    executionContextPath?: string;
   }) => Promise<GuardedDeliveryResult>;
   remotePorts?: {
     push: () => Promise<unknown>;
@@ -149,10 +161,11 @@ export async function handleDeliverCommand(
   args: string[],
   deps: DeliverCommandDeps,
 ): Promise<number> {
+  const deliverBlocked = (flags: string[], code: string, message: string): 2 => emitDeliverBlocked(flags, code, message, deps.emitJson);
   if (args[0] === "help" || args.includes("--help") || args.includes("-h")) {
     console.log(`osstack deliver — product entry from one intent to proof
 
-  osstack deliver "Add billing dashboard" [--workspace P] [--execute CMD] [--verify CMD] [--auto-agent] [--worktree] [--checkpoint] [--govern [warn|strict]] [--govern-scope workspace|changed|baseline] [--autonomy legacy|guarded-local|guarded-git|guarded-deploy] [--deploy-policy project] [--profile NAME] [--expected-path P] [--action A] [--command-timeout-ms N] [--json]
+  osstack deliver "Add billing dashboard" [--workspace P] [--execute CMD] [--verify CMD] [--auto-agent] [--worktree] [--checkpoint] [--govern [warn|strict]] [--govern-scope workspace|changed|baseline] [--autonomy legacy|guarded-local|guarded-git|guarded-deploy] [--contract FILE] [--execution-context FILE] [--deploy-policy project] [--profile NAME] [--expected-path P] [--action A] [--command-timeout-ms N] [--json]
 
 Stages:
   intake -> plan -> execute-loop -> verify-review -> proof
@@ -166,8 +179,10 @@ guarded-deploy adds after merge:
     return 0;
   }
 
-  const prompt = firstPositionalValue(args, new Set([
+  let prompt = firstPositionalValue(args, new Set([
     "--workspace",
+    "--contract",
+    "--execution-context",
     "--state",
     "--execute",
     "--verify",
@@ -188,6 +203,15 @@ guarded-deploy adds after merge:
     "--expected-path",
     "--action",
   ]));
+  let frozenContract: FrozenDeliveryContractV2 | undefined;
+  const contractPath = flagValue(args, "--contract");
+  try {
+    if (contractPath !== undefined) {
+      if ((await stat(contractPath)).size > 128 * 1024) throw new Error("delivery_contract_too_large");
+      frozenContract = freezeDeliveryContract(JSON.parse(await readFile(contractPath, "utf8")));
+      prompt ??= frozenContract.contract.goal;
+    }
+  } catch (error) { return deliverBlocked(args, "invalid_delivery_contract", error instanceof Error ? error.message : String(error)); }
   if (prompt === undefined) {
     console.error("osstack: deliver requires a prompt");
     return 1;
@@ -209,6 +233,10 @@ guarded-deploy adds after merge:
   const guardedDeploy = autonomy === "guarded-deploy";
   const guardedGit = autonomy === "guarded-git" || guardedDeploy;
   const guarded = guardedLocal || guardedGit;
+  if (frozenContract && (!guarded || frozenContract.contract.mode === "scout" || flagValue(args, "--execute") !== undefined))
+    return deliverBlocked(args, "delivery_contract_runtime_unsupported", "V2 requires a guarded implement adapter; scout lacks a proven tool-free executor");
+  if (frozenContract && guardedLocal && frozenContract.contract.requested_completion !== "local_verified")
+    return deliverBlocked(args, "delivery_contract_completion_conflict", "guarded-local only produces a local candidate proof");
   const deployPolicy = flagValue(args, "--deploy-policy");
   if (
     guardedDeploy
@@ -230,7 +258,7 @@ guarded-deploy adds after merge:
       "--deploy-policy project is valid only with --autonomy guarded-deploy",
     );
   }
-  const stateFilePath = flagValue(args, "--state") ?? "LOOP-STATE.json";
+  let stateFilePath = flagValue(args, "--state") ?? "LOOP-STATE.json";
   const executeCommand = flagValue(args, "--execute");
   let agentId = flagValue(args, "--agent");
   let verifierAgentIds = [
@@ -269,11 +297,26 @@ guarded-deploy adds after merge:
     workspacePath,
     { includeYarn: guarded },
   );
-  const verifyCommands = guarded
+  let verifyCommands = guarded
     && explicitVerifyCommands.length === 0
     && suggestedVerify !== undefined
     ? [suggestedVerify]
     : explicitVerifyCommands;
+  let contractPolicy: Awaited<ReturnType<NonNullable<DeliverCommandDeps["deliveryContractPolicy"]>>> | undefined;
+  if (frozenContract) {
+    if (!deps.deliveryContractPolicy) return deliverBlocked(args, "delivery_contract_policy_unavailable", "host policy binding is required");
+    try {
+      contractPolicy = await deps.deliveryContractPolicy(realpathSync(workspacePath));
+      if (!contractPolicy.budget || [contractPolicy.budget.max_builder_iterations, contractPolicy.budget.max_review_rounds, contractPolicy.budget.max_wall_time_ms, contractPolicy.budget.max_no_progress_rounds].some(value => !Number.isSafeInteger(value) || value <= 0)) throw new Error("delivery_contract_budget_invalid");
+      if (explicitVerifyCommands.some(command => !contractPolicy!.verifyCommands.includes(command))) throw new Error("delivery_check_not_registered");
+      verifyCommands = [...new Set(contractPolicy.verifyCommands)];
+      if (contractPolicy.budgetRef !== frozenContract.contract.budget_ref) throw new Error("delivery_contract_budget_ref_mismatch");
+      for (const [flag, allowed] of [["--expected-path", frozenContract.contract.allowed_paths], ["--action", frozenContract.contract.requested_actions]] as const) {
+        const explicit = flagValues(args, flag);
+        if (explicit.length && JSON.stringify([...new Set(explicit)].sort()) !== JSON.stringify([...allowed].sort())) throw new Error(`delivery_contract_cli_conflict:${flag}`);
+      }
+    } catch (error) { return deliverBlocked(args, "delivery_contract_policy_failed", error instanceof Error ? error.message : String(error)); }
+  }
   if (guarded && verifyCommands.length === 0) {
     return deliverBlocked(
       args,
@@ -348,6 +391,12 @@ guarded-deploy adds after merge:
     agentId = profileRouting.agentId;
     verifierAgentIds = profileRouting.verifierAgentIds;
   }
+  if (frozenContract) {
+    try { assertDeliveryContractAdmission(frozenContract, { canonicalRepo: realpathSync(workspacePath),
+      baseHead: (await deliveryGit(workspacePath, ["rev-parse", "HEAD"])).trim(), taskId: frozenContract.contract.task_id,
+      goal: prompt, policyDigest: contractPolicy!.policyDigest, reviewPolicyRef: `profile:${profileRouting!.summary.profile_name}`, acceptedCommands: verifyCommands }); }
+    catch (error) { return deliverBlocked(args, "delivery_contract_admission_failed", error instanceof Error ? error.message : String(error)); }
+  }
   if (guardedGit) {
     if (deps.startGuardedGit === undefined || profileRouting === undefined) {
       return deliverBlocked(
@@ -356,7 +405,7 @@ guarded-deploy adds after merge:
         "guarded-git runtime is not configured",
       );
     }
-    const taskId = `task_${randomUUID().slice(0, 8)}`;
+    const taskId = frozenContract?.contract.task_id ?? `task_${randomUUID().slice(0, 8)}`;
     let guardedResult: GuardedDeliveryResult;
     try {
       guardedResult = await deps.startGuardedGit({
@@ -364,8 +413,8 @@ guarded-deploy adds after merge:
         workspacePath: realpathSync(workspacePath),
         taskId,
         capability,
-        expectedPaths: flagValues(args, "--expected-path"),
-        requestedActions:
+        expectedPaths: frozenContract?.contract.allowed_paths ?? flagValues(args, "--expected-path"),
+        requestedActions: frozenContract?.contract.requested_actions ?? (
           flagValues(args, "--action").length === 0
             ? [
                 "build",
@@ -377,13 +426,15 @@ guarded-deploy adds after merge:
                 "push",
                 "verify",
               ]
-            : flagValues(args, "--action"),
+            : flagValues(args, "--action")),
         verifyCommands,
         commandTimeoutMs: effectiveCommandTimeoutMs!,
         ...(guardedDeploy
           ? { deployPolicy: "project" as const }
           : {}),
         profileRouting,
+        ...(frozenContract ? { frozenContract } : {}),
+        ...(flagValue(args, "--execution-context") ? { executionContextPath: flagValue(args, "--execution-context")! } : {}),
       });
     } catch (error) {
       return deliverBlocked(
@@ -421,7 +472,7 @@ guarded-deploy adds after merge:
       final_proof: guardedResult.run.context.final_proof ?? null,
     };
     if (args.includes("--json")) {
-      console.log(JSON.stringify(summary, null, 2));
+      (deps.emitJson ?? ((value: unknown) => console.log(JSON.stringify(value, null, 2))))(summary);
     } else {
       console.log(`autonomy_run_id=${summary.autonomy_run_id}`);
       console.log(`state=${summary.state}`);
@@ -436,14 +487,28 @@ guarded-deploy adds after merge:
     "verify-review",
     "proof",
   ];
+  let deliveryStateDirectory: string | undefined;
+  if (frozenContract) {
+    if (!deps.createDeliveryStateDirectory) return deliverBlocked(args, "delivery_state_unavailable", "V2 requires private host delivery state");
+    deliveryStateDirectory = await deps.createDeliveryStateDirectory(frozenContract.digest);
+    if (!isAbsolute(deliveryStateDirectory)) throw new Error("delivery_state_absolute_path_required");
+    if (flagValue(args, "--state") === undefined) stateFilePath = join(deliveryStateDirectory, "LOOP-STATE.json");
+  }
+  let assertSourceUnchanged: (() => Promise<void>) | undefined;
+  if (frozenContract) {
+    try { assertSourceUnchanged = await createDeliverySourceFence(workspacePath, frozenContract.contract.base_head); }
+    catch { return deliverBlocked(args, "delivery_source_check_unavailable", "Original checkout could not be safely sampled within the documented limits; no task was enqueued or dispatched."); }
+  }
   const task = await enqueueTask({
-    workspacePath,
+    workspacePath: deliveryStateDirectory ?? workspacePath,
     prompt,
     capability,
+    ...(frozenContract ? { taskId: frozenContract.contract.task_id } : {}),
     ...(priority !== undefined ? { priority } : {}),
     context: {
       deliver_pipeline: {
         stages,
+        ...(frozenContract ? { delivery_contract: frozenContract } : {}),
         suggested_verify: suggestedVerify,
         verify_commands: verifyCommands,
         ...(effectiveCommandTimeoutMs !== undefined
@@ -460,13 +525,31 @@ guarded-deploy adds after merge:
     },
   });
   const worktreeRoot = flagValue(args, "--worktree-root");
+  let receiptRef: DeliveryReceiptReferenceV2 | undefined;
+  let receiptRunId: string | undefined;
+  let candidateWorkspace: string | undefined;
+  let candidateGovernance: DeliverGovernanceEvidence | undefined;
+  const evidenceRoot = deliveryStateDirectory ? join(deliveryStateDirectory, "receipts") : join(workspacePath, ".osstack", "delivery-contracts", "legacy");
+  const contextPath = flagValue(args, "--execution-context");
+  let executionContext: Awaited<ReturnType<NonNullable<DeliverCommandDeps["createExecutionContext"]>>> | undefined;
+  if (contextPath) {
+    if (!deps.createExecutionContext || !adapters) return deliverBlocked(args, "execution_context_unavailable", "host execution context is not configured");
+    executionContext = await deps.createExecutionContext({ adapters, workspacePath: realpathSync(workspacePath), configPath: contextPath,
+      ...(frozenContract ? { contractDigest: frozenContract.digest, contractBrief: frozenContract.brief } : {}) });
+  }
+  const localContract = frozenContract;
+  const verificationFence = localContract ? createDeliveryVerificationFence(localContract) : undefined;
+  const recoveryLesson = localContract && deliveryStateDirectory ? (await import("./delivery-recovery-lesson.js")).createDeliveryRecoveryLesson({
+    frozen: localContract, stateDirectory: deliveryStateDirectory, assertVerified: verificationFence!.assertVerified,
+  }) : undefined;
   const engine = new LoopEngine({
+    ...(recoveryLesson ? { observeVerification: recoveryLesson.observe } : {}),
     workspacePath,
     stateFilePath,
     ...(executeCommand !== undefined ? { executeCommand } : {}),
     ...(agentId !== undefined ? { agentId } : {}),
     ...(autoAgent ? { autoAgent } : {}),
-    ...(adapters !== undefined ? { adapters } : {}),
+    ...(adapters !== undefined ? { adapters: executionContext?.adapters ?? adapters } : {}),
     ...(verifyCommands.length > 0 ? { verifyCommands } : {}),
     ...(guardedLocal
       ? {
@@ -478,28 +561,59 @@ guarded-deploy adds after merge:
           artifactVerification: { requireGitDiff: true },
         }
       : {}),
-    sources: ["task_queue"],
+    sources: localContract ? [] : ["task_queue"],
+    ...(localContract ? { prepareVerification: verificationFence!.prepare, verificationFence: verificationFence!, inputTasks: [{ ...task.task, prompt: executionContext ? prompt : `${prompt}\n\n${localContract.brief}` }],
+      guardedLocalCandidate: { mode: "artifact_only" as const, inspect: async (input: { workspacePath: string; run: { run_id: string; agent_id: string };
+        verdict: { verify_commands?: import("@osstack/loop").CommandAudit[] | undefined }; reviews: readonly import("@osstack/loop").ReviewArtifact[] }) => {
+        await assertSourceUnchanged!();
+        const currentPolicy = await deps.deliveryContractPolicy!(realpathSync(workspacePath), localContract.contract.base_head);
+        if (currentPolicy.policyDigest !== localContract.contract.policy_digest || currentPolicy.budgetRef !== localContract.contract.budget_ref)
+          throw new Error("delivery_contract_policy_changed");
+        await verificationFence!.assertVerified(input.workspacePath);
+        candidateGovernance = await deps.createLoopGovernanceEvidence("strict", input.workspacePath, governanceScope ?? "workspace", governanceBaseline);
+        if (candidateGovernance.blocking) throw new Error("delivery_candidate_governance_blocked");
+        await verificationFence!.assertVerified(input.workspacePath);
+        const { stageGuardedCandidate } = await import("@osstack/autonomy");
+        const staged = await stageGuardedCandidate({ workspace_path: input.workspacePath, expected_base_commit_sha: localContract.contract.base_head, commands: verifyCommands, hardened: true });
+        assertDeliveryContractPaths(localContract, staged.changed_paths);
+        const candidate = await captureDeliveryCandidate(input.workspacePath, localContract.contract.base_head);
+        const receipt = buildDeliveryVerificationReceipt({ frozen: localContract, runId: input.run.run_id, runKind: "guarded-local", candidate,
+          workspaceStateDigest: await verificationFence!.assertVerified(input.workspacePath), commands: input.verdict.verify_commands ?? [], reviews: input.reviews, builderAgentId: input.run.agent_id,
+          builderIdentity: { ...profileRouting!.summary.builder_identity }, contextReceiptRefs: executionContext?.receiptRefs() ?? [] });
+        const ref = await persistDeliveryHostRecord(evidenceRoot, receipt);
+        await verifyPersistedDeliveryReceipt({ root: evidenceRoot, ref, frozen: localContract, runId: input.run.run_id, workspace: input.workspacePath });
+        await assertSourceUnchanged!();
+        receiptRef = ref; receiptRunId = input.run.run_id; candidateWorkspace = input.workspacePath;
+      } }, lessonDrafts: { enabled: false } } : {}),
     ...(maxIterations !== undefined ? { maxIterations } : {}),
     ...(effectiveCommandTimeoutMs !== undefined
       ? { commandTimeoutMs: effectiveCommandTimeoutMs }
       : {}),
+    ...(localContract ? { budget: {
+      max_task_iterations: Math.min(contractPolicy!.budget.max_builder_iterations, contractPolicy!.budget.max_review_rounds),
+      max_runtime_ms: contractPolicy!.budget.max_wall_time_ms, no_progress_limit: contractPolicy!.budget.max_no_progress_rounds,
+    }, maxIterations: Math.min(maxIterations ?? 1, contractPolicy!.budget.max_builder_iterations, contractPolicy!.budget.max_review_rounds),
+    commandTimeoutMs: Math.min(effectiveCommandTimeoutMs ?? GUARDED_LOCAL_COMMAND_TIMEOUT_MS, contractPolicy!.budget.max_wall_time_ms) } : {}),
     ...(useWorktree ? { useWorktree: true } : {}),
     ...(worktreeRoot !== undefined ? { worktreeRoot } : {}),
     policyGate: makePolicyGate(workspacePath),
   });
   const result = await engine.runOnce();
+  try { await assertSourceUnchanged?.(); } catch {
+    return deliverBlocked(args, "delivery_source_changed", "Original checkout changed during candidate execution; preserve both locations for inspection. No successful completion is claimed.");
+  }
   const artifactArgs = ensureFlags(
     args,
     ["--report", "--scorecard", "--proof"],
   );
-  const governance = governanceMode === undefined
+  const governance = candidateGovernance ?? (governanceMode === undefined
     ? undefined
     : await deps.createLoopGovernanceEvidence(
       governanceMode,
       workspacePath,
       governanceScope ?? "workspace",
       governanceBaseline,
-    );
+    ));
   const events = governance === undefined
     ? result.events
     : deps.appendGovernanceVerifyEvent(
@@ -517,9 +631,22 @@ guarded-deploy adds after merge:
     artifactArgs,
     events,
     governance,
+    deliveryStateDirectory,
   );
   const learnedLessons = await deps.learnLessonsFromLoopState(result.state);
+  try { await assertSourceUnchanged?.(); } catch {
+    return deliverBlocked(args, "delivery_source_changed", "Original checkout changed while finalizing evidence; completion is blocked and changes are preserved.");
+  }
+  const contractSucceeded = receiptRef !== undefined && result.state.completed_tasks.length === 1
+    && result.state.completed_tasks.every(completed => completed.outcome === "success") && governance?.blocking !== true && result.budget?.exceeded !== true;
+  const recoveredLesson = contractSucceeded && recoveryLesson && receiptRef && receiptRunId ? await recoveryLesson.finish({
+    root: evidenceRoot, ref: receiptRef, runId: receiptRunId,
+  }) : undefined;
   const summary = {
+    ...(recoveredLesson ? { recovered_lesson: recoveredLesson } : {}),
+    ...(localContract ? { delivery_contract: { digest: localContract.digest, brief: localContract.brief,
+      achieved_completion: contractSucceeded ? "local_verified" : null, verification_receipt: receiptRef ?? null,
+      candidate_workspace: candidateWorkspace ?? result.completedTasks.find(completed => completed.worktree_path)?.worktree_path ?? null, qualification: "local_host_receipt_only" } } : {}),
     prompt,
     stages,
     suggested_verify: suggestedVerify,
@@ -551,7 +678,7 @@ guarded-deploy adds after merge:
       : {}),
   };
   if (args.includes("--json")) {
-    console.log(JSON.stringify(summary, null, 2));
+    (deps.emitJson ?? ((value: unknown) => console.log(JSON.stringify(value, null, 2))))(summary);
   } else {
     console.log(`deliver=${result.loop_id}`);
     console.log(`task=${task.path}`);
@@ -570,7 +697,7 @@ guarded-deploy adds after merge:
       console.log(`proof=${artifacts.proof_dir}`);
     }
   }
-  return result.state.completed_tasks.some(
+  return (localContract !== undefined && !contractSucceeded) || result.state.completed_tasks.some(
     (completed) => completed.outcome !== "success",
   ) || governance?.blocking === true
     ? 2
@@ -640,18 +767,14 @@ async function resolveGuardedProfileRouting(
     ?? new Error("guarded-local did not resolve an execution profile");
 }
 
-function deliverBlocked(
+function emitDeliverBlocked(
   args: string[],
   code: string,
   message: string,
+  emitJson?: (value: unknown) => void,
 ): 2 {
   if (args.includes("--json")) {
-    console.log(JSON.stringify({
-      error: {
-        code,
-        message,
-      },
-    }, null, 2));
+    (emitJson ?? ((value: unknown) => console.log(JSON.stringify(value, null, 2))))({error: {code, message}});
   } else {
     console.error(`osstack: [${code}] ${message}`);
   }

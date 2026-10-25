@@ -1,0 +1,22 @@
+{
+  "source_sha": "14574347f6c52047550d46a0629bd87735c598a8",
+  "branch": "codex/firstmate-qualification-soak",
+  "dirty_manifest": "",
+  "harness_sha256": "b0f26e278c1b3d948f211e26ed2ef5f648a260e4077f7d2b77d9efa13f1e171b",
+  "config_sha256": "ec7e0dea24309d1f7923de3333ef70ad673e29d0196792f418b6afb80ba0647f",
+  "architecture": "arm64",
+  "macos": [
+    "27.0.1",
+    [
+      "",
+      "",
+      ""
+    ],
+    "arm64"
+  ],
+  "filesystem": "Filesystem   512-blocks       Used  Available Capacity  iused       ifree %iused  Mounted on\n/dev/disk7s3 7813627488 1495959328 3486991632    31% 11917512 17434958160    0%   /Volumes/AIMATE_WORK",
+  "baseline_comparison": false,
+  "randomness": "deterministic round robin; no random seed",
+  "execution": "pnpm exec vitest run --config <R>/vitest.config.mjs; SOAK_DURATION_MS=600000 SOAK_TAG=full; Node22; TMPDIR=<R>/tmp; OSSTACK_SCRATCH_ROOT=/Volumes/AIMATE_WORK/tmp/osstack",
+  "socket": "/tmp/oq-<pid>/d.sock through symlink to scratch home; deleted on shutdown"
+}

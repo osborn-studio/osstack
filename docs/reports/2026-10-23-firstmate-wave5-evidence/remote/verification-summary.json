@@ -1,0 +1,18 @@
+{
+  "tests": {
+    "remote": 44,
+    "worker_regression": 46,
+    "passed": 90,
+    "skipped": 0
+  },
+  "cli_typecheck": "passed",
+  "biome": "passed",
+  "workspace_build": "passed before final audit fixes; module bundling and CLI typecheck validate final files",
+  "haiku_rounds": 2,
+  "confirmed_P0": 0,
+  "confirmed_P1": 0,
+  "real_remote_host": "qualification_pending",
+  "actual_running_local_daemon_and_child_exporter": "passed",
+  "native_ssh_G_parser": "passed_without_network",
+  "bin_integration": "root_owned_pending"
+}

@@ -1,0 +1,12 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-cockpit/packages/cli
+
+ ✓ src/local-data-source-registry.test.ts (16 tests) 170ms
+ ✓ src/local-source-command.test.ts (4 tests) 1514ms
+   ✓ locally bounds a hung RPC without echoing malformed responses  1507ms
+
+ Test Files  2 passed (2)
+      Tests  20 passed (20)
+   Start at  13:59:58
+   Duration  1.96s (transform 203ms, setup 17ms, collect 571ms, tests 1.68s, environment 0ms, prepare 53ms)
+

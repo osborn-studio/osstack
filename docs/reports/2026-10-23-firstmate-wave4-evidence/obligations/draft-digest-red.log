@@ -1,0 +1,51 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-routing-next/packages/core
+
+ ❯ src/state/follow-up-obligations.test.ts (18 tests | 1 failed) 419ms
+   ✓ persists create/event atomically and replays idempotence after source cleanup 28ms
+   × draft is unsent, captures facts, and never resolves a completed source 21ms
+     → expected 'beccb72666d62b37becb0c232de9bc3465a4a…' to be 'ae45dc0566ac1f53380d285324fce2055ecd7…' // Object.is equality
+   ✓ only verifies an explicitly selected local completed-session condition 17ms
+   ✓ waives missing sources explicitly without deleting the original promise 18ms
+   ✓ rejects foreign or inconsistent task_tenant sources 17ms
+   ✓ rejects foreign or inconsistent run_tenant sources 16ms
+   ✓ rejects foreign or inconsistent run_binding sources 16ms
+   ✓ rejects foreign or inconsistent repo sources 16ms
+   ✓ requires a fresh source revision and exact explicit scope on every operation 18ms
+   ✓ rolls back row mutation when the append-only event cannot be written 17ms
+   ✓ paginates within scope and never mutates on list 18ms
+   ✓ does not attach a recreated source to the old obligation 17ms
+   ✓ rejects a second connection's stale revision and retains both audit events 17ms
+   ✓ migrates an actual schema 43 database to 44 without rewriting existing source rows 90ms
+   ✓ fails closed without migrating from a service constructor or write against readonly DB 17ms
+   ✓ handles escaped control-heavy local data without truncation or external actions 19ms
+   ✓ bounds escaped list output and binds cursors to the same repository and filter 39ms
+   ✓ refuses forged external delivery fields and unknown resolve modes without mutation 17ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/state/follow-up-obligations.test.ts > draft is unsent, captures facts, and never resolves a completed source
+AssertionError: expected 'beccb72666d62b37becb0c232de9bc3465a4a…' to be 'ae45dc0566ac1f53380d285324fce2055ecd7…' // Object.is equality
+
+Expected: "ae45dc0566ac1f53380d285324fce2055ecd785af05e0802960646fb544daa5e"
+Received: "beccb72666d62b37becb0c232de9bc3465a4a8d3b09d52ba931e2189a64270ac"
+
+ ❯ src/state/follow-up-obligations.test.ts:42:40
+     40|   expect(result).toMatchObject({ state: "drafted", revision: 2, draft:…
+     41|   expect(result.draft!.text).toContain("UNSENT");
+     42|   expect(result.draft!.content_digest).toBe(createHash("sha256").updat…
+       |                                        ^
+     43|   expect(() => f.service.draft({ ...f.scope, obligation_id: created.ob…
+     44| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 17 passed (18)
+   Start at  12:51:08
+   Duration  764ms (transform 102ms, setup 0ms, collect 137ms, tests 419ms, environment 0ms, prepare 32ms)
+
+undefined
+/Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-routing-next/packages/core:
+[ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL] Command failed with exit code 1: vitest run src/state/follow-up-obligations.test.ts

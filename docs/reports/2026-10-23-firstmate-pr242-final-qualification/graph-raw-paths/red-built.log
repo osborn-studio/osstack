@@ -1,0 +1,75 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-routing-next/packages/cli
+
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/smoke/pr237-integration/graph-raw-paths/tmp/g22-rpc-CBRXcK/delivery/3d7933bb-9355-459d-a634-139b868b2def/writer-0'...
+HEAD is now at a77b2c5 base
+osstack: retaining write lease graph-action:04acfd59372823e30736f3f9fe35a2b09b0b52f7725de583c6b4036550f3736a: Error: delivery_contract_path_outside_scope
+ ❯ src/graph-contract-integration.test.ts (17 tests | 2 failed | 15 skipped) 2295ms
+   ↓ binds the durable host contract before the real Graph launch and never changes source HEAD/refs/index/files
+   ↓ does not publish a durable completion file after grant changes during the last await
+   ↓ does not publish a durable completion file after revision changes during the last await
+   ↓ never exposes a contract completion when executor stop remains unknown
+   ↓ binds actual writer and rebuilt reviewer prompts to two-phase context receipts before ready
+   ↓ does not transfer a prior epoch context/check/review receipt to a repaired candidate
+   ↓ requires a trusted policy resolver in local registration and rechecks its live authority
+   ↓ rejects a changed contract under an existing idempotency key before a second launch
+   ↓ rejects a path outside contract before verification or ready publication
+   ↓ rejects an ignored untracked path outside the contract before candidate serialization
+   ↓ refuses a durable contract envelope substituted after reservation
+   ↓ rejects writer --assume-unchanged flags before freezing an out-of-scope candidate
+   ↓ rejects writer --skip-worktree flags before freezing an out-of-scope candidate
+   ↓ fails closed on --assume-unchanged at the pre-freeze scope gate
+   ↓ fails closed on --skip-worktree at the pre-freeze scope gate
+   × detects raw out-of-scope bytes despite a same-size edit with restored mtime and untrusted ctime 179ms
+     → expected [Function] to throw an error
+   × rejects a writer stat-cache bypass before freezing or starting review 2115ms
+     → expected [ Array(1) ] to deeply equal []
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/graph-contract-integration.test.ts > detects raw out-of-scope bytes despite a same-size edit with restored mtime and untrusted ctime
+AssertionError: expected [Function] to throw an error
+
+- Expected: 
+null
+
++ Received: 
+undefined
+
+ ❯ src/graph-contract-integration.test.ts:267:58
+    265|     const frozen = freezeDeliveryContract({ ...f.registration.delivery…
+    266|     expect(await hideSameSizeChange(repo)).toBe('');
+    267|     expect(() => assertGraphContractPaths(frozen, repo)).toThrow('deli…
+       |                                                          ^
+    268|   } finally { await f.close(); }
+    269| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  src/graph-contract-integration.test.ts > rejects a writer stat-cache bypass before freezing or starting review
+AssertionError: expected [ Array(1) ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   "06e4a7533a8dba69d1c79db77a02acb8e79f17d4b38d34d885904378b27f6261",
++ ]
+
+ ❯ src/graph-contract-integration.test.ts:292:23
+    290|       if (error.code === 'ENOENT') return []; throw error;
+    291|     });
+    292|     expect(artifacts).toEqual([]);
+       |                       ^
+    293|     expect(f.reviewPrompts).toEqual([]);
+    294|     expect(f.db.prepare("SELECT count(*) n FROM graph_actions WHERE no…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed | 15 skipped (17)
+   Start at  14:11:51
+   Duration  3.83s (transform 743ms, setup 12ms, collect 1.34s, tests 2.29s, environment 0ms, prepare 38ms)
+

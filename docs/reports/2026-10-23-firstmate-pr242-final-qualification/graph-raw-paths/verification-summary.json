@@ -1,0 +1,24 @@
+{
+  "commit": "caa40e655a83ea0def0149a64659820880ca0571",
+  "parent": "3c7e6f94f743db03861d4ffb43e2938ae07df14a",
+  "focused_tests": {
+    "passed": 27,
+    "failed": 0,
+    "log": "green-final.log"
+  },
+  "cli_typecheck": "passed",
+  "red_proof": {
+    "log": "red-built.log",
+    "old_gate_direct_test": "accepted out-of-scope same-size restored-mtime edit",
+    "old_gate_graph_test": "stored 1 artifact before later rejection",
+    "fixed_gate": "no artifact stored; no review/tests started"
+  },
+  "scope": "4 CLI Graph files; no daemon/bin/core changes",
+  "limits": {
+    "raw_bytes": 268435456,
+    "paths": 100000,
+    "git_output_bytes": 16777216,
+    "candidate_revision": "immutable diff unchanged"
+  },
+  "audit": "parent final Haiku audit pending; no new component audit claimed"
+}

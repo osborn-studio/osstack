@@ -1,0 +1,75 @@
+{
+  "baseHead": "36976ab84e7ae189ec25d3ef68c195dd8769b2fd",
+  "sources": [
+    {
+      "path": "packages/loop/src/verifier.ts",
+      "sha256": "079953cd334d06ad881dcd5aa379a111b719bba0da3d58a5df26c645a9bf356c",
+      "bytes": 41630
+    },
+    {
+      "path": "packages/loop/src/verifier.test.ts",
+      "sha256": "25f89ebf5556e2f624b04c1d7fafe1197bc2a67307a78e17f5f4645946f9ab25",
+      "bytes": 35206
+    },
+    {
+      "path": "packages/loop/src/reviewer-isolation.ts",
+      "sha256": "c235f02282e426c21a1609f58d4b415b2b22dc967214fbef28841aa06e8a06fc",
+      "bytes": 10694
+    },
+    {
+      "path": "packages/loop/src/reviewer-isolation.test.ts",
+      "sha256": "f25ff7ffb9e4fabf97f0c2c8705e1bff8325810dbffd29c4babb06bd298d9c81",
+      "bytes": 7722
+    },
+    {
+      "path": "packages/loop/src/loop-engine.ts",
+      "sha256": "8a5e7b382f06e4e60e0d4f80b176f1b560e3dbe1f685725127c6d36f829523e2",
+      "bytes": 80709
+    },
+    {
+      "path": "packages/loop/src/loop-engine.test.ts",
+      "sha256": "5d01835f920ebf36f40c4ebcc2c643e81d666f8ce94a85da51fe66a19ae7be46",
+      "bytes": 58550
+    },
+    {
+      "path": "packages/loop/src/loop-containment.ts",
+      "sha256": "9125e2c54d5f000aaa880b878ee12c940529a270f32e36cb4cc5cf236eea42d8",
+      "bytes": 2320
+    },
+    {
+      "path": "packages/loop/src/loop-containment.test.ts",
+      "sha256": "bf8abd910481508bbd932cab0a846511ffc6bdeeb13086e5d97eaf69735e43ca",
+      "bytes": 2656
+    },
+    {
+      "path": "packages/loop/src/review-boundary.ts",
+      "sha256": "d26395198d96c1e530287ff1170c49d3744f53d518ea470ac6d9adcd7bce10ae",
+      "bytes": 10143
+    },
+    {
+      "path": "packages/loop/src/review-boundary.test.ts",
+      "sha256": "cb4f643a2671508639f332f75fd160dc147198c4d37920fe2204b28b91dfcdd1",
+      "bytes": 7265
+    }
+  ],
+  "evidence": [
+    {
+      "path": "F3-r2-integrated-final.log",
+      "sha256": "168bf2a83eeee90d924ace706ae126a86163ebcc10c48807ef91c2674823f4e0"
+    },
+    {
+      "path": "F3-r2-integrated-typecheck.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "F3-r2-integrated-lint.log",
+      "sha256": "a3635ee1ab625b6bf11cc536aa8bcd306fc08afd6c444ac23b345ac4e2913d53"
+    },
+    {
+      "path": "F3-r2-validation.json",
+      "sha256": "175da56babb4bd8b115b11118029aa508b060944bf24a9f18f6e397bb23ddf04"
+    }
+  ],
+  "promptSha256": "d7fdee2ad1d94889b6b79bf29889dd4b1b4c6c76b9ab1331e1813c380d224132",
+  "promptBytes": 322832
+}

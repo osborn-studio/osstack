@@ -37,6 +37,8 @@ export type { ContainedCommandOptions, ContainedStopReceipt, ContainedCommandExe
 export { prepareContainedImage } from "./contained.js";
 export type { ContainedImageOptions, ContainedImageReceipt, ContainedCandidateFile, ContainedCommandResult } from "./contained.js";
 export { createBoundedMessagesAdapter, type BoundedMessagesOptions } from "./bounded-messages.js";
+export { createControlledTriageProvider } from "./controlled-triage.js";
+export type { ControlledTriageProvider, ControlledTriageOptions } from "./controlled-triage.js";
 ```
 
 ## `@osstack/autonomy`
@@ -131,6 +133,7 @@ export const CORE_VERSION = "0.0.0";
 export { CURRENT_SCHEMA_VERSION } from "./state/migrations.js";
 export { AttentionStore, attentionDigest, type AttentionOwner, type AttentionScope, type AttentionItem } from "./state/attention-store.js";
 export { AttentionObserver } from "./state/attention-observer.js";
+export { readAttentionRecovery, type AttentionRecoveryRequest, type AttentionRecoverySubject } from "./state/attention-recovery-view.js";
 export { AttentionActions, reserveSessionInstruction } from "./state/attention-actions.js";
 export { AttentionExperience, type AttentionSender } from "./state/attention-experience.js";
 export { classifyAttentionWait, evaluateCoverage, evaluateActivity, type WaitInput } from './attention.js';
@@ -143,6 +146,11 @@ export { resolveRepositoryScope } from "./graph/repository-scope.js";
 export type { RepositoryScope } from "./graph/repository-scope.js";
 export { GraphCheckpointStore } from './state/graph-checkpoints.js';
 export * from "./scratch.js";
+export { deliveryContractDigest, deliveryCheckReference, freezeDeliveryContract,
+export { FollowUpObligationService, FollowUpError, FOLLOW_UP_ERROR_CODES, FOLLOW_UP_MAX_BYTES, serializeFollowUp } from "./state/follow-up-obligations.js";
+export { FollowUpDeliveryService, FollowUpDeliveryError, FOLLOW_UP_DELIVERY_ERRORS, deliveryCanonical, serializeFollowUpDelivery } from "./state/follow-up-delivery.js";
+export type { FollowUpDeliveryTrust, FollowUpTransport, FollowUpDeliveryOptions } from "./state/follow-up-delivery.js";
+export { SourceObservationLedger, SourceObservationScopeSchema, SourceSnapshotEvidenceSchema, type SourceObservationScope, type SourceObservation, type SourceSnapshotEvidence } from './state/source-observations.js';
 ```
 
 ## `@osstack/github`
@@ -190,6 +198,7 @@ export const HERMES_ADAPTER_VERSION = "0.0.0";
 ```ts
 export * from "./types.js";
 export * from "./pack.js";
+export { assembleExecutionContext, executionContextDigest, ExecutionContextBudgetError,
 ```
 
 ## `@osstack/knowledge-cloud`
@@ -263,6 +272,9 @@ export { AttentionInbox, AttentionStatus, AttentionSessionFact, AttentionWait } 
 export {
 export type { GraphCheckpointTransport } from './graph-checkpoint.js';
 export {
+export { DeliveryContractV2, FrozenDeliveryContractV2, DeliveryVerificationReceiptV2,
+export { FollowUpState, FollowUpCreateParams, FollowUpListParams, FollowUpDraftParams,
+export { FollowUpDeliveryTarget, FollowUpDeliverySubject, FollowUpDeliveryGrantBody, SignedFollowUpDeliveryGrant,
 ```
 
 ## `@osstack/runtime`
@@ -306,4 +318,6 @@ export * from "./loop-doc.js";
 export * from "./probe-outcomes.js";
 export { classifyAttentionWait, evaluateCoverage, evaluateActivity } from "./attention.js";
 export { AttentionDeliveryContract, deliveryContract, promoteScout, verifyDeliveryContract, acceptAttentionTriage, evaluateAttentionRouting, budgetAttentionContext } from './attention-planning.js';
+export { evaluateRoutingGolden } from "./routing-evaluation.js";
+export type { RoutingGoldenDataset, RoutingGoldenCase, ProfileRoutingGoldenCase, ProfileRoutingGoldenRunner, ProfileRoutingGoldenOutcome, RoutingEvaluationAdapter, RoutingGoldenReport } from "./routing-evaluation.js";
 ```

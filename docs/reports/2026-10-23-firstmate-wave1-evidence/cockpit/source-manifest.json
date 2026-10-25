@@ -1,0 +1,9 @@
+{
+  "packages/cli/src/attention-dashboard.ts": "5c4fe7294d740820fbf02d35028b617b7efe82c5c6f373b1aa9333b3d5dcf62a",
+  "packages/cli/src/attention-dashboard.test.ts": "bfb5244a337b14549e2fa88ecd698f35e749bf75530f8149405c3dcaca358058",
+  "packages/cli/src/dashboard.ts": "b7292513ef54f68ac55932c1f9e92aa8a27e0d600866a1aadfd58489692bc3a4",
+  "packages/cli/src/dashboard.test.ts": "d2642d3f6820b9ed11ef12545daa29aa26c6f04912bcc451bf15620959f47c3b",
+  "packages/cli/src/cockpit-tui.ts": "40b14fee1faf9ac5f768c46fe3666f90b94a7ffe46ed9518c72c633cd573fdb6",
+  "packages/cli/src/cockpit-tui.test.ts": "a9c48117ea30ef0e63476770be5df50442d5afc15a1dee125e21a4ee8559e3bd",
+  "docs/guides/attention-cockpit.md": "0ecf1b4809a3976858b089d4082d81f8dfdee0b50812e7cb7eceadcd2843e214"
+}

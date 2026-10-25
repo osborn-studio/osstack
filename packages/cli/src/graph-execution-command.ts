@@ -15,12 +15,14 @@ export const GRAPH_EXECUTION_HELP = `Usage: osstack graph <command> [--json]
   run --request FILE                Submit a StartGraphRequest to the local daemon
   status --run ID --scope FILE       Read authoritative run state
   result --run ID --scope FILE       Read artifact-only delivery and evidence references
+  contract --run ID --scope FILE     Read a verified host contract completion receipt
   cancel --request FILE             Persist cancellation intent; confirmation is separate
   reconcile --request FILE          Recheck cancellation using trusted host no-child evidence
   resume --request FILE             Resume an exact interrupt with current host authorization
 Request/scope files are strict v1 JSON (max 64 KiB). No implicit scope or grant.
 run/cancel/reconcile/resume retain the request's idempotencyKey across transport retries.
-Exit: 0 acknowledged; 1 input/RPC rejection; 2 delivery_unknown (retry the same request).
+Exit: 0 acknowledged; 1 input/RPC rejection; 2 unknown outcome (follow returned nextAction).
+Transport loss permits retrying the same key; ACTION_OUTCOME_UNKNOWN/CANCEL_UNCONFIRMED require reconciliation.
 The server must have explicit trusted graph-host configuration. graph explain remains available.`;
 
 function readJson(path: string): unknown {
@@ -85,7 +87,7 @@ export async function handleGraphExecutionCommand(args: string[], deps: GraphCom
       return 0;
     }
     let params: unknown; let method: string; let mutation: GraphRequest | undefined;
-    if (command === 'status' || command === 'result') {
+    if (command === 'status' || command === 'result' || command === 'contract') {
       const opts = options(args.slice(1), ['--run', '--scope']);
       params = GraphStatusRequest.parse({ schemaVersion: 1, scope: GraphScope.parse(readJson(opts.get('--scope')!)), graphRunId: opts.get('--run') });
       method = `graph.${command}`;
@@ -108,16 +110,24 @@ export async function handleGraphExecutionCommand(args: string[], deps: GraphCom
     if (envelope.ok === false) {
       const error = failure(envelope.error?.code, typeof envelope.error?.message === 'string' ? envelope.error.message : 'Graph request rejected');
       if (json) emit({ schemaVersion: 1, kind: 'graph_error', error }); else stderr(`osstack graph: ${error.code}: ${error.message}`);
-      return 1;
+      return ['ACTION_OUTCOME_UNKNOWN', 'CANCEL_UNCONFIRMED'].includes(error.code) ? 2 : 1;
     }
     if (envelope.ok !== true) throw new GraphContractError('OUTPUT_CONTRACT_INVALID');
+    if (command === 'contract') {
+      const { GraphContractCompletionReceipt } = await import('./graph-contract-receipt.js');
+      const receipt = GraphContractCompletionReceipt.safeParse(envelope.result);
+      if (!receipt.success) throw new GraphContractError('OUTPUT_CONTRACT_INVALID');
+      const requested = GraphStatusRequest.parse(params);
+      if (JSON.stringify(receipt.data.scope) !== JSON.stringify(requested.scope) || receipt.data.graphRunId !== requested.graphRunId) throw new GraphContractError('RESPONSE_MISMATCH');
+      emit(receipt.data); return 0;
+    }
     const parsedStatus = GraphDelegationStatus.safeParse(envelope.result);
     if (!parsedStatus.success) throw new GraphContractError('OUTPUT_CONTRACT_INVALID');
     const status = parsedStatus.data;
     const requested = GraphStatusRequest.safeParse(params);
     if (JSON.stringify(status.scope) !== JSON.stringify((mutation ?? requested.data)!.scope)
       || (mutation?.kind !== 'start' && status.graphRunId !== (mutation ?? requested.data)!.graphRunId)
-      || (mutation?.kind === 'start' && status.inputDigest !== computeGraphInputDigest(mutation))) throw new GraphContractError('RESPONSE_MISMATCH');
+      || (mutation?.kind === 'start' && (status.admissionBinding?.requestInputDigest ?? status.inputDigest) !== computeGraphInputDigest(mutation))) throw new GraphContractError('RESPONSE_MISMATCH');
     emit(status); return 0;
   } catch (error) {
     // A malformed or mismatched acknowledgement cannot prove non-execution.

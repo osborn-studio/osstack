@@ -365,3 +365,14 @@ describe("guarded staged candidate", () => {
     }
   });
 });
+
+it("rejects local clean filters before hardened staging or committing can execute them", async () => {
+  const marker = join(directory, "FILTER_EXECUTED");
+  await writeFile(join(directory, ".gitattributes"), "* filter=unsafe\n");
+  await writeFile(join(directory, "README.md"), "changed candidate");
+  execFileSync("git", ["config", "filter.unsafe.clean", `touch '${marker}'; cat`], { cwd: directory });
+  await expect(stageGuardedCandidate({ workspace_path: directory, commands: [], hardened: true })).rejects.toThrow("filters are unsupported");
+  await expect(commitGuardedCandidate({ workspace_path: directory, expected_base_commit_sha: "a".repeat(40), expected_diff_sha256: "b".repeat(64),
+    idempotency_key: "test", message: "test", hardened: true })).rejects.toThrow("filters are unsupported");
+  await expect(readFile(marker)).rejects.toMatchObject({ code: "ENOENT" });
+});

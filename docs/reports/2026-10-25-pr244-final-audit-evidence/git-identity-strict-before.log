@@ -1,0 +1,74 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/pr244-final-audit/packages/loop
+
+ ❯ src/verifier.test.ts (45 tests | 1 failed | 44 skipped) 136ms
+   ↓ verifyRun > passes per-run command environment without changing the host environment
+   ↓ verifyRun > fails closed when Builder execution is failed even if verification has no other issue
+   ↓ verifyRun > fails closed when Builder execution is cancelled even if verification has no other issue
+   ↓ verifyRun > runs verifier adapters with repo and subject context
+   ↓ verifyRun > strips repository task output overrides before invoking a reviewer
+   ↓ verifyRun > accepts only strict structured implementation deviations from a completed verifier
+   ↓ verifyRun > fails when a verifier adapter is missing, unavailable, or reports failure
+   ↓ verifyRun > turns verifier error events, thrown errors, and incomplete streams into issues
+   ↓ verifyRun > selects verifier capability kinds in preference order with fallback
+   ↓ verifyRun > fails artifact verification when a task reports success but produces no diff
+   ↓ verifyRun > fails artifact verification when changes miss target paths or hit forbidden paths
+   ↓ verifyRun > passes artifact verification when changed files hit the required target path
+   ↓ verifyRun > fails closed on a failing adapter judgment reported under an unknown evaluation id
+   ↓ verifyRun > fails closed on a passing adapter judgment with an unknown id
+   ↓ verifyRun > passes the supplied ignored candidate patch and paths to Kimi
+   ↓ verifyRun > passes the supplied assume-unchanged candidate patch and paths to Kimi
+   ↓ verifyRun > blocks a secret in a supplied ignored candidate before invoking Kimi
+   ↓ verifyRun > blocks at the pre-review boundary without invoking Kimi
+   ↓ verifyRun > blocks a structured changes_requested verdict and preserves the artifact
+   ↓ verifyRun > blocks missing, unknown, and duplicate structured judgments
+   ↓ verifyRun > blocks malformed structured review artifacts
+   ↓ verifyRun > blocks reviewer mutation after a valid approval
+   ↓ verifyRun > passes an approved complete structured review without mutation
+   ↓ bounds verifier availability without starting invocation
+   ↓ bounds a verifier that ignores abort and never settles next or return
+   ↓ bounds a stuck read-only review boundary before invoking the adapter
+   ↓ bounds a stuck post-review snapshot and never accepts its preceding approval
+   ↓ shares one deadline between availability and invocation
+   ↓ rejects a generic verifier that changes tracked state after approval
+   ↓ rejects a generic verifier that changes hidden-tracked state after approval
+   ↓ rejects a generic verifier that changes untracked state after approval
+   ↓ rejects a generic verifier that changes metadata state after approval
+   ↓ does not invoke a generic verifier when its workspace cannot be snapshotted
+   ↓ does not invoke later verifiers after mutation
+   ↓ does not invoke later verifiers after rejected-stream
+   ↓ does not invoke later verifiers after timeout
+   ↓ marks a rejected verifier stream unconfirmed while its owned child is still live
+   ↓ stops all later verification effects after an unconfirmed command
+   ↓ does not reintroduce inherited Git routing into artifact commands
+   ↓ rejects mutations by availability probe even when available=true
+   ↓ rejects mutations by availability probe even when available=false
+   ↓ stops later reviewers when invoke spawns an owned child and throws synchronously
+   ↓ checks every legacy artifact path even when the log limit would drop an early forbidden path
+   ↓ preserves NUL-delimited legacy artifact paths that contain newlines
+   × enforces the combined base-review path budget before accepting either complete listing 135ms
+     → Command failed: git commit -m large baseline
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/verifier.test.ts > enforces the combined base-review path budget before accepting either complete listing
+Error: Command failed: git commit -m large baseline
+ ❯ src/verifier.test.ts:1003:3
+    1001|   const tracked = Array.from({ length: 2500 }, (_, i) => `tracked-${i}…
+    1002|   execFileSync("git", ["update-index", "--index-info"], { cwd: workspa…
+    1003|   execFileSync("git", ["commit", "-m", "large baseline"], { cwd: works…
+       |   ^
+    1004|   const base = execFileSync("git", ["rev-parse", "HEAD"], { cwd: works…
+    1005|   for (let batch = 0; batch < 2500; batch += 50) await Promise.all(Arr…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 44 skipped (45)
+   Start at  11:25:03
+   Duration  805ms (transform 297ms, setup 24ms, collect 462ms, tests 136ms, environment 0ms, prepare 35ms)
+
+undefined
+/Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/pr244-final-audit/packages/loop:
+[ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL] Command failed with exit code 1: vitest run src/verifier.test.ts -t 'combined base-review path budget' '--maxWorkers=2' '--testTimeout=20000'

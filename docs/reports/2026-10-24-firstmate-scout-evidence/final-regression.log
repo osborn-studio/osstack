@@ -1,0 +1,27 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/packages/cli
+
+ ✓ src/scout-command.test.ts (16 tests) 1773ms
+ ✓ src/delivery-contract-host.test.ts (4 tests) 851ms
+   ✓ fences tracked and new files without altering the candidate index  622ms
+ ✓ src/deliver-cli.test.ts (28 tests) 20598ms
+   ✓ deliver CLI > runs guarded-local with separated profile roles and local-only evidence  747ms
+   ✓ V2 real guarded-local host boundary > retains isolated candidate and fences verification: valid  1384ms
+   ✓ V2 real guarded-local host boundary > retains isolated candidate and fences verification: outside  350ms
+   ✓ V2 real guarded-local host boundary > retains isolated candidate and fences verification: review_mutates  866ms
+   ✓ V2 real guarded-local host boundary > retains isolated candidate and fences verification: governance  944ms
+   ✓ V2 real guarded-local host boundary > retains isolated candidate and fences verification: policy_drift  994ms
+   ✓ V2 real guarded-local host boundary > retains isolated candidate and fences verification: hidden_index  332ms
+   ✓ V2 real guarded-local host boundary > retains isolated candidate and fences verification: new_ignored  363ms
+   ✓ V2 real guarded-local host boundary > retains isolated candidate and fences verification: late_mutation  1102ms
+   ✓ scout promotion and authoritative recovery lessons > qualifies only actual changed-source recovery: repaired  2255ms
+   ✓ scout promotion and authoritative recovery lessons > qualifies only actual changed-source recovery: no_repair  1481ms
+   ✓ scout promotion and authoritative recovery lessons > qualifies only actual changed-source recovery: same_source  2202ms
+   ✓ scout promotion and authoritative recovery lessons > qualifies only actual changed-source recovery: timeout  3901ms
+   ✓ scout promotion and authoritative recovery lessons > qualifies only actual changed-source recovery: tampered_history  2494ms
+
+ Test Files  3 passed (3)
+      Tests  48 passed (48)
+   Start at  17:00:23
+   Duration  21.83s (transform 704ms, setup 20ms, collect 1.51s, tests 23.22s, environment 0ms, prepare 91ms)
+

@@ -1,0 +1,74 @@
+{
+  "head": "30fe5eb0c3ed3ac430dfd6e61bbd1d088fce1fca",
+  "working_tree_snapshot": true,
+  "files": [
+    {
+      "path": "packages/cli/src/upgrade-native-port.ts",
+      "sha256": "fd2acbd8f26fe721a9f74075d360e394527756968e56c4d7a30031d5761f478b",
+      "coverage": "full"
+    },
+    {
+      "path": "packages/cli/src/upgrade-native-backend.ts",
+      "sha256": "2476bcd4a9e143b92344660e09d77db386ca107432a983d305b6e646c90409a3",
+      "coverage": "full"
+    },
+    {
+      "path": "packages/cli/src/managed-home-guard.ts",
+      "sha256": "456b37ae898913bc87565db507256ad618be96481315d07bd2f6419339f09431",
+      "coverage": "full"
+    },
+    {
+      "path": "packages/cli/src/upgrade-native-command.ts",
+      "sha256": "5f6b07be2a4e12af05858f5d48b604aa8f9590d034adbadd73f88f168f6389d7",
+      "coverage": "full"
+    },
+    {
+      "path": "packages/cli/src/upgrade-managed-provision.ts",
+      "sha256": "e2e50d6939cab6406f067f8e53ff610c05d438095589e57ae828176dc9e38524",
+      "coverage": "full"
+    },
+    {
+      "path": "packages/cli/src/upgrade-native-files.ts",
+      "sha256": "be57419b1c156b99782b8474a26f6b1767aa8b79160d73570169104f4c0778b9",
+      "coverage": "full"
+    },
+    {
+      "path": "packages/cli/src/upgrade-native.test.ts",
+      "sha256": "25b532b71a0ec9ffc0da3c883abc6a97491af8934fc1fe9a854fb2a4fbe53d45",
+      "coverage": "full"
+    },
+    {
+      "path": "packages/cli/src/upgrade-native-command.test.ts",
+      "sha256": "1ab8004df932abdde851a84b2ce134e8ac1dd3dacc6f26c6fe346fd1bd2699b0",
+      "coverage": "full"
+    },
+    {
+      "path": "packages/cli/src/upgrade-journal.ts",
+      "sha256": "0fb2f97233cff739e39d98d9745c1b059eabca1267c30dd1c2d3c07419b5ac87",
+      "coverage": "full"
+    },
+    {
+      "path": "packages/cli/src/upgrade-coordinator.ts",
+      "sha256": "2111fa5f28b69e44e9c496e16f93c8726d72c082fb19de847816220dc0b78351",
+      "coverage": "full"
+    },
+    {
+      "path": "packages/cli/src/upgrade-plan.ts",
+      "sha256": "393dfb55ced89ee8d1997c5a9747638f44f039ca622b3a03aee8f938dd539eda",
+      "coverage": "full"
+    },
+    {
+      "path": "packages/cli/src/home-inventory.ts",
+      "sha256": "123cc52dd2895542a44d32702819f4cc3e4e413406d3288605afa0cd68031992",
+      "coverage": "full"
+    },
+    {
+      "path": "packages/cli/src/daemon.ts",
+      "sha256": "2f3f8042a9aca9b67882aaef9ab20faa315e2aace14a84d91165f3e81c216a89",
+      "coverage": "lines 4070-4180",
+      "excerpt_sha256": "f98a167e6520170bec39c969f20b0fbd70d6e7fd7be893d24b36946f5b1752b7"
+    }
+  ],
+  "prompt_sha256": "0962f45c6421a13d441f4c3ec4f96cafbf853407a0dbaced5cdb558df4dd70b0",
+  "prompt_bytes": 165153
+}
