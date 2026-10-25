@@ -181,7 +181,7 @@ it("bounds a hung sender by the batch deadline and ignores its late completion",
   let aborted = false;
   vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
   // Node timers can fire before performance.now reaches their nominal deadline.
-  vi.spyOn(performance, "now").mockReturnValueOnce(0).mockReturnValueOnce(0).mockReturnValue(9.5);
+  vi.spyOn(performance, "now").mockReturnValueOnce(0).mockReturnValueOnce(0).mockReturnValue(9);
   const pending = ux.drainBatch(async (_item, signal) => {
     signal.addEventListener("abort", () => { aborted = true; }, { once: true });
     await new Promise<void>(resolve => { finish = resolve; });
@@ -191,7 +191,8 @@ it("bounds a hung sender by the batch deadline and ignores its late completion",
   expect(result).toMatchObject({ attempted: 1, delivered: 0, retried: 1, stopped: "deadline" });
   expect(aborted).toBe(true);
   finish?.();
-  await Promise.resolve();
+  // Let the real sender settle and drain its promise continuations.
+  await new Promise<void>(resolve => setImmediate(resolve));
   expect(db.prepare("SELECT COUNT(*) n FROM attention_deliveries WHERE state='delivered'").get()).toEqual({ n: 0 });
 });
 
@@ -211,6 +212,23 @@ it("continues after a per-send timeout while the longer batch budget remains", a
   await vi.advanceTimersByTimeAsync(5000);
   expect(await pending).toMatchObject({ attempted: 2, delivered: 0, retried: 2, stopped: "deadline" });
   expect(db.prepare("SELECT COUNT(*) n FROM attention_deliveries WHERE state='pending' AND attempts=0").get()).toEqual({ n: 3 });
+});
+
+it("does not claim another receipt when less than one timer millisecond remains", async () => {
+  const { ux, scope, db } = setup();
+  ux.enqueue(scope);
+  vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+  // Claim with 5000.5 ms left; the independent 5000 ms send timeout leaves 0.5 ms.
+  vi.spyOn(performance, "now").mockReturnValueOnce(0).mockReturnValueOnce(0.5).mockReturnValue(5000.5);
+  let calls = 0;
+  const pending = ux.drainBatch(async () => {
+    calls++;
+    await new Promise<void>(() => {});
+  }, { maxItems: 5, maxDurationMs: 5001 });
+  await vi.runAllTimersAsync();
+  expect(await pending).toMatchObject({ attempted: 1, retried: 1, stopped: "deadline" });
+  expect(calls).toBe(1);
+  expect(db.prepare("SELECT COUNT(*) n FROM attention_deliveries WHERE state='pending' AND attempts=0").get()).toEqual({ n: 4 });
 });
 
 it("cancels a batch in flight without taking more receipts, and pre-abort takes none", async () => {

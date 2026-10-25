@@ -153,7 +153,9 @@ export class AttentionExperience {
     while (result.processed < maxItems) {
       if (options.signal?.aborted) { result.stopped = "aborted"; break; }
       const remaining = maxDurationMs - (performance.now() - started);
-      if (remaining <= 0) { result.stopped = "deadline"; break; }
+      // Node timers have a minimum delay of one millisecond. Do not claim work
+      // when even that minimum timer cannot fit in the remaining budget.
+      if (remaining < 1) { result.stopped = "deadline"; break; }
       let budgetTimerExpired = false;
       const outcome = await this.drainOne(sender, Date.now(), Math.min(5000, Math.ceil(remaining)), options.signal,
         () => { budgetTimerExpired = remaining <= 5000; });
