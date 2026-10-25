@@ -1,5 +1,11 @@
 # @osstack/cli
 
+## 0.22.1
+
+### Patch Changes
+
+- 7a8d2db: Identify supported macOS lock filesystems by their system-reported names instead of unstable numeric registration IDs. Keep unknown filesystems and failed probes blocked.
+
 ## 0.22.0
 
 ### Minor Changes

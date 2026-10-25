@@ -51,15 +51,15 @@ DeepSeek 检查器以及你自己的脚本，组织成一套可路由、可循�
 
 | 领域 | 状态 |
 |---|---|
-| npm 包 | 待发布版本：`@osstack/cli@0.22.0`；2026-10-25（北京时间）检查时 npm latest 为 0.21.0。请用 `npm view @osstack/cli version` 确认发布状态 |
-| GitHub Release | 计划发布的包版本：`@osstack/cli@0.22.0`；最新单文件二进制：[`v0.8.1`](https://github.com/osborn-studio/osstack/releases/tag/v0.8.1) |
+| npm 包 | 待发布版本：`@osstack/cli@0.22.1`；2026-10-25（北京时间）检查时 npm latest 为 0.21.0。请用 `npm view @osstack/cli version` 确认发布状态 |
+| GitHub Release | 计划发布的包版本：`@osstack/cli@0.22.1`；最新单文件二进制：[`v0.8.1`](https://github.com/osborn-studio/osstack/releases/tag/v0.8.1) |
 | macOS 单文件二进制 | 已发布 `darwin-arm64` 的显式 `public-ad-hoc` archive |
 | Knowledge Cloud | 已部署到 EdgeOne：`https://osstack-knowledge-cloud-1grycf4k.edgeone.cool` |
 | Probe | CLI 生命周期已随 CLI 0.19.0 发布；report-only 是 gate 行为，不是后台任务。两周真实使用 checkpoint 仍未完成。 |
 | License | MIT |
 | Monorepo | 22 个 workspace package |
 
-**版本边界：** 当前源码的 CLI 包版本为 0.22.0；源码版本不等于公共发布或本机已安装版本。请用 `osstack --version` 与 `npm view @osstack/cli version` 分别核对；Firstmate 本轮能力以分支及 PR 交付状态为准。
+**版本边界：** 当前源码的 CLI 包版本为 0.22.1；源码版本不等于公共发布或本机已安装版本。请用 `osstack --version` 与 `npm view @osstack/cli version` 分别核对；Firstmate 本轮能力以分支及 PR 交付状态为准。
 
 ## 当前能力范围
 
@@ -141,10 +141,10 @@ osstack --version
 osstack doctor --workspace .
 ```
 
-0.22.0 源码构建或 npm 完成发行后的期望输出：
+0.22.1 源码构建或 npm 完成发行后的期望输出：
 
 ```text
-osstack 0.22.0
+osstack 0.22.1
 ```
 
 ### 使用 macOS 单文件 archive
