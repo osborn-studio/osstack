@@ -7,7 +7,12 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { ModuleKind, transpileModule } from "typescript";
 import { createScratchDirSync } from "@osstack/core";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { acquireDaemonLock, DaemonAlreadyRunningError } from "./daemon-lock.js";
+import { acquireDaemonLock, DaemonAlreadyRunningError, supportsLockFilesystem } from "./daemon-lock.js";
+
+it.skipIf(process.platform !== "darwin")("uses the real named filesystem probe and rejects devfs", () => {
+  expect(supportsLockFilesystem("darwin", 0x19, fixture)).toBe(true);
+  expect(supportsLockFilesystem("darwin", 0x1a, "/dev")).toBe(false);
+});
 
 let fixture: string;
 let pidFile: string;

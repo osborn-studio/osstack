@@ -6,6 +6,7 @@ on:
     paths:
       - ".github/workflows/release.yml"
       - ".github/workflows/macos-release-candidate.yml"
+      - "packages/cli/src/daemon-lock*.ts"
   push:
     branches: [main]
     paths:
