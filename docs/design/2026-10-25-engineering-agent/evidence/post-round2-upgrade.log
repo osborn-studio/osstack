@@ -1,0 +1,22 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/capability-registry-pilot/packages/cli
+
+ ✓ src/engineering-upgrade-guard.test.ts (8 tests) 219ms
+ ✓ src/upgrade-native.test.ts (25 tests) 8397ms
+   ✓ managed native upgrade actual filesystem/process boundaries > accepts a clean schema47 home but refuses an unqualified schema48 home  777ms
+   ✓ managed native upgrade actual filesystem/process boundaries > stops both real processes, snapshots unchanged databases, atomically switches exact release and verifies new generations  481ms
+   ✓ managed native upgrade actual filesystem/process boundaries > preserves unknown restart, refuses implicit replay, and explicit history-bound recovery does not start an already-running consumer twice  472ms
+   ✓ managed native upgrade actual filesystem/process boundaries > recovers forward after SIGKILL while a real stopped home and database are kernel-locked  530ms
+   ✓ managed native upgrade actual filesystem/process boundaries > keeps terminal history intact while explicitly cleaning a fence left after verification  488ms
+   ✓ managed native upgrade actual filesystem/process boundaries > cleans completed history with stopped consumers after permit_missing crash without restarting them  486ms
+   ✓ managed native upgrade actual filesystem/process boundaries > cleans completed history with stopped consumers after operation_missing crash without restarting them  493ms
+   ✓ managed native upgrade actual filesystem/process boundaries > cleans completed history with stopped consumers after both_missing crash without restarting them  487ms
+   ✓ managed native upgrade actual filesystem/process boundaries > clears an orphan permit from another plan before the next upgrade stops consumers  482ms
+   ✓ managed native upgrade actual filesystem/process boundaries > removes a foreign orphan permit during historically verified cleanup when no operation exists  495ms
+   ✓ managed native upgrade actual filesystem/process boundaries > recovers a SIGKILL stale socket only after native ownership and connection refusal prove it is abandoned  361ms
+
+ Test Files  2 passed (2)
+      Tests  33 passed (33)
+   Start at  06:28:23
+   Duration  8.96s (transform 275ms, setup 40ms, collect 742ms, tests 8.62s, environment 0ms, prepare 64ms)
+

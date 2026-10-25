@@ -1,0 +1,925 @@
+{
+  "events": [
+    {
+      "event_id": 1,
+      "card_id": "card_b9e8c9b9",
+      "board": "default",
+      "kind": "created",
+      "payload": "{\"title\":\"ADOPT-P2 — Freeze cancel and endObservation authority\",\"status\":\"triage\"}",
+      "created_at": 1792931463.319
+    },
+    {
+      "event_id": 2,
+      "card_id": "card_f7963127",
+      "board": "default",
+      "kind": "created",
+      "payload": "{\"title\":\"ADOPT-C01 — Minimal Mission protocol\",\"status\":\"triage\"}",
+      "created_at": 1792931529.478
+    },
+    {
+      "event_id": 3,
+      "card_id": "card_f7963127",
+      "board": "default",
+      "kind": "commented",
+      "payload": "{\"author\":\"cli\",\"body\":\"Baseline 14e7433b; scope adopt_session only. Design: docs/design/2026-10-25-engineering-agent/runtime-contract-v2.md and implementation-handoff.md. Delivery evidence must identify candidate and tests; environment limits stay explicit.\"}",
+      "created_at": 1792931529.608
+    },
+    {
+      "event_id": 4,
+      "card_id": "card_703604bb",
+      "board": "default",
+      "kind": "created",
+      "payload": "{\"title\":\"ADOPT-C02 — Mission events and bindings\",\"status\":\"triage\"}",
+      "created_at": 1792931529.724
+    },
+    {
+      "event_id": 5,
+      "card_id": "card_703604bb",
+      "board": "default",
+      "kind": "commented",
+      "payload": "{\"author\":\"cli\",\"body\":\"Baseline 14e7433b; scope adopt_session only. Design: docs/design/2026-10-25-engineering-agent/runtime-contract-v2.md and implementation-handoff.md. Delivery evidence must identify candidate and tests; environment limits stay explicit.\"}",
+      "created_at": 1792931529.838
+    },
+    {
+      "event_id": 6,
+      "card_id": "card_01240a73",
+      "board": "default",
+      "kind": "created",
+      "payload": "{\"title\":\"ADOPT-D01 — Decision and wait schemas\",\"status\":\"triage\"}",
+      "created_at": 1792931529.951
+    },
+    {
+      "event_id": 7,
+      "card_id": "card_01240a73",
+      "board": "default",
+      "kind": "commented",
+      "payload": "{\"author\":\"cli\",\"body\":\"Baseline 14e7433b; scope adopt_session only. Design: docs/design/2026-10-25-engineering-agent/runtime-contract-v2.md and implementation-handoff.md. Delivery evidence must identify candidate and tests; environment limits stay explicit.\"}",
+      "created_at": 1792931530.068
+    },
+    {
+      "event_id": 8,
+      "card_id": "card_3fec0175",
+      "board": "default",
+      "kind": "created",
+      "payload": "{\"title\":\"ADOPT-D02 — Additive schema and wait store\",\"status\":\"triage\"}",
+      "created_at": 1792931530.18
+    },
+    {
+      "event_id": 9,
+      "card_id": "card_3fec0175",
+      "board": "default",
+      "kind": "commented",
+      "payload": "{\"author\":\"cli\",\"body\":\"Baseline 14e7433b; scope adopt_session only. Design: docs/design/2026-10-25-engineering-agent/runtime-contract-v2.md and implementation-handoff.md. Delivery evidence must identify candidate and tests; environment limits stay explicit.\"}",
+      "created_at": 1792931530.295
+    },
+    {
+      "event_id": 10,
+      "card_id": "card_eebee7ec",
+      "board": "default",
+      "kind": "created",
+      "payload": "{\"title\":\"ADOPT-D03 — Atomic answer reservation and identity\",\"status\":\"triage\"}",
+      "created_at": 1792931530.409
+    },
+    {
+      "event_id": 11,
+      "card_id": "card_eebee7ec",
+      "board": "default",
+      "kind": "commented",
+      "payload": "{\"author\":\"cli\",\"body\":\"Baseline 14e7433b; scope adopt_session only. Design: docs/design/2026-10-25-engineering-agent/runtime-contract-v2.md and implementation-handoff.md. Delivery evidence must identify candidate and tests; environment limits stay explicit.\"}",
+      "created_at": 1792931530.523
+    },
+    {
+      "event_id": 12,
+      "card_id": "card_8693d85a",
+      "board": "default",
+      "kind": "created",
+      "payload": "{\"title\":\"ADOPT-D04 — Dispatch gate, stop, auth and recovery\",\"status\":\"triage\"}",
+      "created_at": 1792931530.637
+    },
+    {
+      "event_id": 13,
+      "card_id": "card_8693d85a",
+      "board": "default",
+      "kind": "commented",
+      "payload": "{\"author\":\"cli\",\"body\":\"Baseline 14e7433b; scope adopt_session only. Design: docs/design/2026-10-25-engineering-agent/runtime-contract-v2.md and implementation-handoff.md. Delivery evidence must identify candidate and tests; environment limits stay explicit.\"}",
+      "created_at": 1792931530.756
+    },
+    {
+      "event_id": 14,
+      "card_id": "card_13500fd3",
+      "board": "default",
+      "kind": "created",
+      "payload": "{\"title\":\"ADOPT-D05 — Single CLI entry and token binding\",\"status\":\"triage\"}",
+      "created_at": 1792931530.869
+    },
+    {
+      "event_id": 15,
+      "card_id": "card_13500fd3",
+      "board": "default",
+      "kind": "commented",
+      "payload": "{\"author\":\"cli\",\"body\":\"Baseline 14e7433b; scope adopt_session only. Design: docs/design/2026-10-25-engineering-agent/runtime-contract-v2.md and implementation-handoff.md. Delivery evidence must identify candidate and tests; environment limits stay explicit.\"}",
+      "created_at": 1792931530.983
+    },
+    {
+      "event_id": 16,
+      "card_id": "card_9aabb541",
+      "board": "default",
+      "kind": "created",
+      "payload": "{\"title\":\"ADOPT-D06 — Obligation reducer and observed-turn proof\",\"status\":\"triage\"}",
+      "created_at": 1792931531.097
+    },
+    {
+      "event_id": 17,
+      "card_id": "card_9aabb541",
+      "board": "default",
+      "kind": "commented",
+      "payload": "{\"author\":\"cli\",\"body\":\"Baseline 14e7433b; scope adopt_session only. Design: docs/design/2026-10-25-engineering-agent/runtime-contract-v2.md and implementation-handoff.md. Delivery evidence must identify candidate and tests; environment limits stay explicit.\"}",
+      "created_at": 1792931531.214
+    },
+    {
+      "event_id": 18,
+      "card_id": "card_34a3aca4",
+      "board": "default",
+      "kind": "created",
+      "payload": "{\"title\":\"ADOPT-D07 — Adversarial pilot scenarios and full regression\",\"status\":\"triage\"}",
+      "created_at": 1792931531.328
+    },
+    {
+      "event_id": 19,
+      "card_id": "card_34a3aca4",
+      "board": "default",
+      "kind": "commented",
+      "payload": "{\"author\":\"cli\",\"body\":\"Baseline 14e7433b; scope adopt_session only. Design: docs/design/2026-10-25-engineering-agent/runtime-contract-v2.md and implementation-handoff.md. Delivery evidence must identify candidate and tests; environment limits stay explicit.\"}",
+      "created_at": 1792931531.442
+    },
+    {
+      "event_id": 20,
+      "card_id": "card_b650d18e",
+      "board": "default",
+      "kind": "created",
+      "payload": "{\"title\":\"ADOPT-D08 — Actual local Session pilot and evidence\",\"status\":\"triage\"}",
+      "created_at": 1792931531.555
+    },
+    {
+      "event_id": 21,
+      "card_id": "card_b650d18e",
+      "board": "default",
+      "kind": "commented",
+      "payload": "{\"author\":\"cli\",\"body\":\"Baseline 14e7433b; scope adopt_session only. Design: docs/design/2026-10-25-engineering-agent/runtime-contract-v2.md and implementation-handoff.md. Delivery evidence must identify candidate and tests; environment limits stay explicit.\"}",
+      "created_at": 1792931531.669
+    },
+    {
+      "event_id": 22,
+      "card_id": "card_fb5a8b6a",
+      "board": "default",
+      "kind": "created",
+      "payload": "{\"title\":\"ADOPT-V00 — Manual journey baseline protocol\",\"status\":\"triage\"}",
+      "created_at": 1792931531.782
+    },
+    {
+      "event_id": 23,
+      "card_id": "card_fb5a8b6a",
+      "board": "default",
+      "kind": "commented",
+      "payload": "{\"author\":\"cli\",\"body\":\"Baseline 14e7433b; scope adopt_session only. Design: docs/design/2026-10-25-engineering-agent/runtime-contract-v2.md and implementation-handoff.md. Delivery evidence must identify candidate and tests; environment limits stay explicit.\"}",
+      "created_at": 1792931531.896
+    },
+    {
+      "event_id": 24,
+      "card_id": "card_091ff5ef",
+      "board": "default",
+      "kind": "created",
+      "payload": "{\"title\":\"ADOPT-AUDIT — Sonnet 5.5 challenge and repairs\",\"status\":\"triage\"}",
+      "created_at": 1792931532.01
+    },
+    {
+      "event_id": 25,
+      "card_id": "card_091ff5ef",
+      "board": "default",
+      "kind": "commented",
+      "payload": "{\"author\":\"cli\",\"body\":\"Baseline 14e7433b; scope adopt_session only. Design: docs/design/2026-10-25-engineering-agent/runtime-contract-v2.md and implementation-handoff.md. Delivery evidence must identify candidate and tests; environment limits stay explicit.\"}",
+      "created_at": 1792931532.125
+    },
+    {
+      "event_id": 26,
+      "card_id": "card_df812ac7",
+      "board": "default",
+      "kind": "created",
+      "payload": "{\"title\":\"ADOPT-PR — Pull request and CI\",\"status\":\"triage\"}",
+      "created_at": 1792931532.24
+    },
+    {
+      "event_id": 27,
+      "card_id": "card_df812ac7",
+      "board": "default",
+      "kind": "commented",
+      "payload": "{\"author\":\"cli\",\"body\":\"Baseline 14e7433b; scope adopt_session only. Design: docs/design/2026-10-25-engineering-agent/runtime-contract-v2.md and implementation-handoff.md. Delivery evidence must identify candidate and tests; environment limits stay explicit.\"}",
+      "created_at": 1792931532.354
+    },
+    {
+      "event_id": 28,
+      "card_id": "card_b9e8c9b9",
+      "board": "default",
+      "kind": "moved",
+      "payload": "{\"from\":\"triage\",\"to\":\"todo\",\"actor\":\"cli\",\"blocked_reason\":null}",
+      "created_at": 1792931554.617
+    },
+    {
+      "event_id": 29,
+      "card_id": "card_b9e8c9b9",
+      "board": "default",
+      "kind": "moved",
+      "payload": "{\"from\":\"todo\",\"to\":\"ready\",\"actor\":\"cli\",\"blocked_reason\":null}",
+      "created_at": 1792931554.73
+    },
+    {
+      "event_id": 30,
+      "card_id": "card_b9e8c9b9",
+      "board": "default",
+      "kind": "moved",
+      "payload": "{\"from\":\"ready\",\"to\":\"running\",\"actor\":\"cli\",\"blocked_reason\":null}",
+      "created_at": 1792931554.843
+    },
+    {
+      "event_id": 31,
+      "card_id": "card_f7963127",
+      "board": "default",
+      "kind": "moved",
+      "payload": "{\"from\":\"triage\",\"to\":\"todo\",\"actor\":\"cli\",\"blocked_reason\":null}",
+      "created_at": 1792931554.955
+    },
+    {
+      "event_id": 32,
+      "card_id": "card_f7963127",
+      "board": "default",
+      "kind": "moved",
+      "payload": "{\"from\":\"todo\",\"to\":\"ready\",\"actor\":\"cli\",\"blocked_reason\":null}",
+      "created_at": 1792931555.071
+    },
+    {
+      "event_id": 33,
+      "card_id": "card_f7963127",
+      "board": "default",
+      "kind": "moved",
+      "payload": "{\"from\":\"ready\",\"to\":\"running\",\"actor\":\"cli\",\"blocked_reason\":null}",
+      "created_at": 1792931555.183
+    },
+    {
+      "event_id": 34,
+      "card_id": "card_703604bb",
+      "board": "default",
+      "kind": "moved",
+      "payload": "{\"from\":\"triage\",\"to\":\"todo\",\"actor\":\"cli\",\"blocked_reason\":null}",
+      "created_at": 1792931555.299
+    },
+    {
+      "event_id": 35,
+      "card_id": "card_703604bb",
+      "board": "default",
+      "kind": "moved",
+      "payload": "{\"from\":\"todo\",\"to\":\"ready\",\"actor\":\"cli\",\"blocked_reason\":null}",
+      "created_at": 1792931555.412
+    },
+    {
+      "event_id": 36,
+      "card_id": "card_703604bb",
+      "board": "default",
+      "kind": "moved",
+      "payload": "{\"from\":\"ready\",\"to\":\"running\",\"actor\":\"cli\",\"blocked_reason\":null}",
+      "created_at": 1792931555.525
+    },
+    {
+      "event_id": 37,
+      "card_id": "card_01240a73",
+      "board": "default",
+      "kind": "moved",
+      "payload": "{\"from\":\"triage\",\"to\":\"todo\",\"actor\":\"cli\",\"blocked_reason\":null}",
+      "created_at": 1792931555.638
+    },
+    {
+      "event_id": 38,
+      "card_id": "card_01240a73",
+      "board": "default",
+      "kind": "moved",
+      "payload": "{\"from\":\"todo\",\"to\":\"ready\",\"actor\":\"cli\",\"blocked_reason\":null}",
+      "created_at": 1792931555.753
+    },
+    {
+      "event_id": 39,
+      "card_id": "card_01240a73",
+      "board": "default",
+      "kind": "moved",
+      "payload": "{\"from\":\"ready\",\"to\":\"running\",\"actor\":\"cli\",\"blocked_reason\":null}",
+      "created_at": 1792931555.867
+    },
+    {
+      "event_id": 40,
+      "card_id": "card_3fec0175",
+      "board": "default",
+      "kind": "moved",
+      "payload": "{\"from\":\"triage\",\"to\":\"todo\",\"actor\":\"cli\",\"blocked_reason\":null}",
+      "created_at": 1792931555.979
+    },
+    {
+      "event_id": 41,
+      "card_id": "card_3fec0175",
+      "board": "default",
+      "kind": "moved",
+      "payload": "{\"from\":\"todo\",\"to\":\"ready\",\"actor\":\"cli\",\"blocked_reason\":null}",
+      "created_at": 1792931556.094
+    },
+    {
+      "event_id": 42,
+      "card_id": "card_3fec0175",
+      "board": "default",
+      "kind": "moved",
+      "payload": "{\"from\":\"ready\",\"to\":\"running\",\"actor\":\"cli\",\"blocked_reason\":null}",
+      "created_at": 1792931556.207
+    },
+    {
+      "event_id": 43,
+      "card_id": "card_eebee7ec",
+      "board": "default",
+      "kind": "moved",
+      "payload": "{\"from\":\"triage\",\"to\":\"todo\",\"actor\":\"cli\",\"blocked_reason\":null}",
+      "created_at": 1792931556.32
+    },
+    {
+      "event_id": 44,
+      "card_id": "card_eebee7ec",
+      "board": "default",
+      "kind": "moved",
+      "payload": "{\"from\":\"todo\",\"to\":\"ready\",\"actor\":\"cli\",\"blocked_reason\":null}",
+      "created_at": 1792931556.433
+    },
+    {
+      "event_id": 45,
+      "card_id": "card_eebee7ec",
+      "board": "default",
+      "kind": "moved",
+      "payload": "{\"from\":\"ready\",\"to\":\"running\",\"actor\":\"cli\",\"blocked_reason\":null}",
+      "created_at": 1792931556.547
+    },
+    {
+      "event_id": 46,
+      "card_id": "card_8693d85a",
+      "board": "default",
+      "kind": "moved",
+      "payload": "{\"from\":\"triage\",\"to\":\"todo\",\"actor\":\"cli\",\"blocked_reason\":null}",
+      "created_at": 1792931556.66
+    },
+    {
+      "event_id": 47,
+      "card_id": "card_8693d85a",
+      "board": "default",
+      "kind": "moved",
+      "payload": "{\"from\":\"todo\",\"to\":\"ready\",\"actor\":\"cli\",\"blocked_reason\":null}",
+      "created_at": 1792931556.773
+    },
+    {
+      "event_id": 48,
+      "card_id": "card_8693d85a",
+      "board": "default",
+      "kind": "moved",
+      "payload": "{\"from\":\"ready\",\"to\":\"running\",\"actor\":\"cli\",\"blocked_reason\":null}",
+      "created_at": 1792931556.885
+    },
+    {
+      "event_id": 49,
+      "card_id": "card_13500fd3",
+      "board": "default",
+      "kind": "moved",
+      "payload": "{\"from\":\"triage\",\"to\":\"todo\",\"actor\":\"cli\",\"blocked_reason\":null}",
+      "created_at": 1792931557.001
+    },
+    {
+      "event_id": 50,
+      "card_id": "card_13500fd3",
+      "board": "default",
+      "kind": "moved",
+      "payload": "{\"from\":\"todo\",\"to\":\"ready\",\"actor\":\"cli\",\"blocked_reason\":null}",
+      "created_at": 1792931557.115
+    },
+    {
+      "event_id": 51,
+      "card_id": "card_13500fd3",
+      "board": "default",
+      "kind": "moved",
+      "payload": "{\"from\":\"ready\",\"to\":\"running\",\"actor\":\"cli\",\"blocked_reason\":null}",
+      "created_at": 1792931557.229
+    },
+    {
+      "event_id": 52,
+      "card_id": "card_9aabb541",
+      "board": "default",
+      "kind": "moved",
+      "payload": "{\"from\":\"triage\",\"to\":\"todo\",\"actor\":\"cli\",\"blocked_reason\":null}",
+      "created_at": 1792931557.343
+    },
+    {
+      "event_id": 53,
+      "card_id": "card_9aabb541",
+      "board": "default",
+      "kind": "moved",
+      "payload": "{\"from\":\"todo\",\"to\":\"ready\",\"actor\":\"cli\",\"blocked_reason\":null}",
+      "created_at": 1792931557.461
+    },
+    {
+      "event_id": 54,
+      "card_id": "card_9aabb541",
+      "board": "default",
+      "kind": "moved",
+      "payload": "{\"from\":\"ready\",\"to\":\"running\",\"actor\":\"cli\",\"blocked_reason\":null}",
+      "created_at": 1792931557.584
+    },
+    {
+      "event_id": 55,
+      "card_id": "card_34a3aca4",
+      "board": "default",
+      "kind": "moved",
+      "payload": "{\"from\":\"triage\",\"to\":\"todo\",\"actor\":\"cli\",\"blocked_reason\":null}",
+      "created_at": 1792931557.706
+    },
+    {
+      "event_id": 56,
+      "card_id": "card_34a3aca4",
+      "board": "default",
+      "kind": "moved",
+      "payload": "{\"from\":\"todo\",\"to\":\"ready\",\"actor\":\"cli\",\"blocked_reason\":null}",
+      "created_at": 1792931557.831
+    },
+    {
+      "event_id": 57,
+      "card_id": "card_34a3aca4",
+      "board": "default",
+      "kind": "moved",
+      "payload": "{\"from\":\"ready\",\"to\":\"running\",\"actor\":\"cli\",\"blocked_reason\":null}",
+      "created_at": 1792931557.964
+    },
+    {
+      "event_id": 58,
+      "card_id": "card_b650d18e",
+      "board": "default",
+      "kind": "moved",
+      "payload": "{\"from\":\"triage\",\"to\":\"todo\",\"actor\":\"cli\",\"blocked_reason\":null}",
+      "created_at": 1792931558.107
+    },
+    {
+      "event_id": 59,
+      "card_id": "card_b650d18e",
+      "board": "default",
+      "kind": "moved",
+      "payload": "{\"from\":\"todo\",\"to\":\"ready\",\"actor\":\"cli\",\"blocked_reason\":null}",
+      "created_at": 1792931558.244
+    },
+    {
+      "event_id": 60,
+      "card_id": "card_fb5a8b6a",
+      "board": "default",
+      "kind": "moved",
+      "payload": "{\"from\":\"triage\",\"to\":\"todo\",\"actor\":\"cli\",\"blocked_reason\":null}",
+      "created_at": 1792931558.39
+    },
+    {
+      "event_id": 61,
+      "card_id": "card_fb5a8b6a",
+      "board": "default",
+      "kind": "moved",
+      "payload": "{\"from\":\"todo\",\"to\":\"ready\",\"actor\":\"cli\",\"blocked_reason\":null}",
+      "created_at": 1792931558.524
+    },
+    {
+      "event_id": 62,
+      "card_id": "card_fb5a8b6a",
+      "board": "default",
+      "kind": "moved",
+      "payload": "{\"from\":\"ready\",\"to\":\"running\",\"actor\":\"cli\",\"blocked_reason\":null}",
+      "created_at": 1792931558.653
+    },
+    {
+      "event_id": 63,
+      "card_id": "card_091ff5ef",
+      "board": "default",
+      "kind": "moved",
+      "payload": "{\"from\":\"triage\",\"to\":\"todo\",\"actor\":\"cli\",\"blocked_reason\":null}",
+      "created_at": 1792931558.783
+    },
+    {
+      "event_id": 64,
+      "card_id": "card_091ff5ef",
+      "board": "default",
+      "kind": "moved",
+      "payload": "{\"from\":\"todo\",\"to\":\"ready\",\"actor\":\"cli\",\"blocked_reason\":null}",
+      "created_at": 1792931558.911
+    },
+    {
+      "event_id": 65,
+      "card_id": "card_df812ac7",
+      "board": "default",
+      "kind": "moved",
+      "payload": "{\"from\":\"triage\",\"to\":\"todo\",\"actor\":\"cli\",\"blocked_reason\":null}",
+      "created_at": 1792931559.034
+    },
+    {
+      "event_id": 66,
+      "card_id": "card_df812ac7",
+      "board": "default",
+      "kind": "moved",
+      "payload": "{\"from\":\"todo\",\"to\":\"ready\",\"actor\":\"cli\",\"blocked_reason\":null}",
+      "created_at": 1792931559.164
+    },
+    {
+      "event_id": 67,
+      "card_id": "card_b9e8c9b9",
+      "board": "default",
+      "kind": "commented",
+      "payload": "{\"author\":\"cli\",\"body\":\"ADR-15 finalized: independent scope stop, immutable mission owner, explicit stop operator, read-only authenticated replay; endObservation preserves unknown receipts. Implementation contract checked with all 3 agents.\"}",
+      "created_at": 1792931956.929
+    },
+    {
+      "event_id": 68,
+      "card_id": "card_b9e8c9b9",
+      "board": "default",
+      "kind": "completed",
+      "payload": "{\"from\":\"running\",\"to\":\"done\",\"actor\":\"cli\",\"blocked_reason\":null}",
+      "created_at": 1792931957.249
+    },
+    {
+      "event_id": 69,
+      "card_id": "card_f7963127",
+      "board": "default",
+      "kind": "commented",
+      "payload": "{\"author\":\"cli\",\"body\":\"Implementation complete; targeted contract/daemon tests pass. Integration, full-suite and external audit remain separate gates.\"}",
+      "created_at": 1792932442.57
+    },
+    {
+      "event_id": 70,
+      "card_id": "card_f7963127",
+      "board": "default",
+      "kind": "completed",
+      "payload": "{\"from\":\"running\",\"to\":\"done\",\"actor\":\"cli\",\"blocked_reason\":null}",
+      "created_at": 1792932442.687
+    },
+    {
+      "event_id": 71,
+      "card_id": "card_703604bb",
+      "board": "default",
+      "kind": "commented",
+      "payload": "{\"author\":\"cli\",\"body\":\"Implementation complete; targeted contract/daemon tests pass. Integration, full-suite and external audit remain separate gates.\"}",
+      "created_at": 1792932442.814
+    },
+    {
+      "event_id": 72,
+      "card_id": "card_703604bb",
+      "board": "default",
+      "kind": "completed",
+      "payload": "{\"from\":\"running\",\"to\":\"done\",\"actor\":\"cli\",\"blocked_reason\":null}",
+      "created_at": 1792932442.933
+    },
+    {
+      "event_id": 73,
+      "card_id": "card_01240a73",
+      "board": "default",
+      "kind": "commented",
+      "payload": "{\"author\":\"cli\",\"body\":\"Implementation complete; targeted contract/daemon tests pass. Integration, full-suite and external audit remain separate gates.\"}",
+      "created_at": 1792932443.048
+    },
+    {
+      "event_id": 74,
+      "card_id": "card_01240a73",
+      "board": "default",
+      "kind": "completed",
+      "payload": "{\"from\":\"running\",\"to\":\"done\",\"actor\":\"cli\",\"blocked_reason\":null}",
+      "created_at": 1792932443.164
+    },
+    {
+      "event_id": 75,
+      "card_id": "card_3fec0175",
+      "board": "default",
+      "kind": "commented",
+      "payload": "{\"author\":\"cli\",\"body\":\"Implementation complete; targeted contract/daemon tests pass. Integration, full-suite and external audit remain separate gates.\"}",
+      "created_at": 1792932443.281
+    },
+    {
+      "event_id": 76,
+      "card_id": "card_3fec0175",
+      "board": "default",
+      "kind": "completed",
+      "payload": "{\"from\":\"running\",\"to\":\"done\",\"actor\":\"cli\",\"blocked_reason\":null}",
+      "created_at": 1792932443.398
+    },
+    {
+      "event_id": 77,
+      "card_id": "card_eebee7ec",
+      "board": "default",
+      "kind": "commented",
+      "payload": "{\"author\":\"cli\",\"body\":\"Implementation complete; targeted contract/daemon tests pass. Integration, full-suite and external audit remain separate gates.\"}",
+      "created_at": 1792932443.523
+    },
+    {
+      "event_id": 78,
+      "card_id": "card_eebee7ec",
+      "board": "default",
+      "kind": "completed",
+      "payload": "{\"from\":\"running\",\"to\":\"done\",\"actor\":\"cli\",\"blocked_reason\":null}",
+      "created_at": 1792932443.647
+    },
+    {
+      "event_id": 79,
+      "card_id": "card_8693d85a",
+      "board": "default",
+      "kind": "commented",
+      "payload": "{\"author\":\"cli\",\"body\":\"Implementation complete; targeted contract/daemon tests pass. Integration, full-suite and external audit remain separate gates.\"}",
+      "created_at": 1792932443.772
+    },
+    {
+      "event_id": 80,
+      "card_id": "card_8693d85a",
+      "board": "default",
+      "kind": "completed",
+      "payload": "{\"from\":\"running\",\"to\":\"done\",\"actor\":\"cli\",\"blocked_reason\":null}",
+      "created_at": 1792932443.909
+    },
+    {
+      "event_id": 81,
+      "card_id": "card_13500fd3",
+      "board": "default",
+      "kind": "commented",
+      "payload": "{\"author\":\"cli\",\"body\":\"Implementation complete; targeted contract/daemon tests pass. Integration, full-suite and external audit remain separate gates.\"}",
+      "created_at": 1792932444.032
+    },
+    {
+      "event_id": 82,
+      "card_id": "card_13500fd3",
+      "board": "default",
+      "kind": "completed",
+      "payload": "{\"from\":\"running\",\"to\":\"done\",\"actor\":\"cli\",\"blocked_reason\":null}",
+      "created_at": 1792932444.157
+    },
+    {
+      "event_id": 83,
+      "card_id": "card_9aabb541",
+      "board": "default",
+      "kind": "commented",
+      "payload": "{\"author\":\"cli\",\"body\":\"Implementation complete; targeted contract/daemon tests pass. Integration, full-suite and external audit remain separate gates.\"}",
+      "created_at": 1792932444.295
+    },
+    {
+      "event_id": 84,
+      "card_id": "card_9aabb541",
+      "board": "default",
+      "kind": "completed",
+      "payload": "{\"from\":\"running\",\"to\":\"done\",\"actor\":\"cli\",\"blocked_reason\":null}",
+      "created_at": 1792932444.415
+    },
+    {
+      "event_id": 85,
+      "card_id": "card_b650d18e",
+      "board": "default",
+      "kind": "moved",
+      "payload": "{\"from\":\"ready\",\"to\":\"running\",\"actor\":\"cli\",\"blocked_reason\":null}",
+      "created_at": 1792932444.533
+    },
+    {
+      "event_id": 86,
+      "card_id": "card_091ff5ef",
+      "board": "default",
+      "kind": "moved",
+      "payload": "{\"from\":\"ready\",\"to\":\"running\",\"actor\":\"cli\",\"blocked_reason\":null}",
+      "created_at": 1792932444.65
+    },
+    {
+      "event_id": 87,
+      "card_id": "card_989ff3e7",
+      "board": "default",
+      "kind": "created",
+      "payload": "{\"title\":\"A01 — Sonnet audit: live receipt truth, transient source recovery, completion and terminal bounds\",\"status\":\"triage\"}",
+      "created_at": 1792933504.388
+    },
+    {
+      "event_id": 88,
+      "card_id": "card_989ff3e7",
+      "board": "default",
+      "kind": "moved",
+      "payload": "{\"from\":\"triage\",\"to\":\"todo\",\"actor\":\"cli\",\"blocked_reason\":null}",
+      "created_at": 1792933504.502
+    },
+    {
+      "event_id": 89,
+      "card_id": "card_989ff3e7",
+      "board": "default",
+      "kind": "moved",
+      "payload": "{\"from\":\"todo\",\"to\":\"ready\",\"actor\":\"cli\",\"blocked_reason\":null}",
+      "created_at": 1792933504.614
+    },
+    {
+      "event_id": 90,
+      "card_id": "card_989ff3e7",
+      "board": "default",
+      "kind": "moved",
+      "payload": "{\"from\":\"ready\",\"to\":\"running\",\"actor\":\"cli\",\"blocked_reason\":null}",
+      "created_at": 1792933504.728
+    },
+    {
+      "event_id": 91,
+      "card_id": "card_1576a69e",
+      "board": "default",
+      "kind": "created",
+      "payload": "{\"title\":\"A02 — Sonnet audit: preflight/backoff, exact stop binding and source-aware RPC replay\",\"status\":\"triage\"}",
+      "created_at": 1792933504.841
+    },
+    {
+      "event_id": 92,
+      "card_id": "card_1576a69e",
+      "board": "default",
+      "kind": "moved",
+      "payload": "{\"from\":\"triage\",\"to\":\"todo\",\"actor\":\"cli\",\"blocked_reason\":null}",
+      "created_at": 1792933504.955
+    },
+    {
+      "event_id": 93,
+      "card_id": "card_1576a69e",
+      "board": "default",
+      "kind": "moved",
+      "payload": "{\"from\":\"todo\",\"to\":\"ready\",\"actor\":\"cli\",\"blocked_reason\":null}",
+      "created_at": 1792933505.069
+    },
+    {
+      "event_id": 94,
+      "card_id": "card_1576a69e",
+      "board": "default",
+      "kind": "moved",
+      "payload": "{\"from\":\"ready\",\"to\":\"running\",\"actor\":\"cli\",\"blocked_reason\":null}",
+      "created_at": 1792933505.183
+    },
+    {
+      "event_id": 95,
+      "card_id": "card_6fadf16c",
+      "board": "default",
+      "kind": "created",
+      "payload": "{\"title\":\"A03 — Sonnet audit: cancelled read projection, exact help parsing and documented limits\",\"status\":\"triage\"}",
+      "created_at": 1792933505.297
+    },
+    {
+      "event_id": 96,
+      "card_id": "card_6fadf16c",
+      "board": "default",
+      "kind": "moved",
+      "payload": "{\"from\":\"triage\",\"to\":\"todo\",\"actor\":\"cli\",\"blocked_reason\":null}",
+      "created_at": 1792933505.412
+    },
+    {
+      "event_id": 97,
+      "card_id": "card_6fadf16c",
+      "board": "default",
+      "kind": "moved",
+      "payload": "{\"from\":\"todo\",\"to\":\"ready\",\"actor\":\"cli\",\"blocked_reason\":null}",
+      "created_at": 1792933505.526
+    },
+    {
+      "event_id": 98,
+      "card_id": "card_6fadf16c",
+      "board": "default",
+      "kind": "moved",
+      "payload": "{\"from\":\"ready\",\"to\":\"running\",\"actor\":\"cli\",\"blocked_reason\":null}",
+      "created_at": 1792933505.641
+    },
+    {
+      "event_id": 99,
+      "card_id": "card_b650d18e",
+      "board": "default",
+      "kind": "commented",
+      "payload": "{\"author\":\"cli\",\"body\":\"Real provider lacks isolated API credential; physical power-loss and hostile containment not qualified. Local 52 scenarios automated; six remain unverified.\"}",
+      "created_at": 1792934576.744
+    },
+    {
+      "event_id": 100,
+      "card_id": "card_b650d18e",
+      "board": "default",
+      "kind": "blocked",
+      "payload": "{\"from\":\"running\",\"to\":\"blocked\",\"actor\":\"cli\",\"blocked_reason\":\"Real provider lacks isolated API credential; physical power-loss and hostile containment not qualified. Local 52 scenarios automated; six remain unverified.\"}",
+      "created_at": 1792934576.888
+    },
+    {
+      "event_id": 101,
+      "card_id": "card_fb5a8b6a",
+      "board": "default",
+      "kind": "commented",
+      "payload": "{\"author\":\"cli\",\"body\":\"Human baseline and long-run usage/cost study require recruited participants and real tasks; cannot substitute model audit for user evidence.\"}",
+      "created_at": 1792934577.028
+    },
+    {
+      "event_id": 102,
+      "card_id": "card_fb5a8b6a",
+      "board": "default",
+      "kind": "blocked",
+      "payload": "{\"from\":\"running\",\"to\":\"blocked\",\"actor\":\"cli\",\"blocked_reason\":\"Human baseline and long-run usage/cost study require recruited participants and real tasks; cannot substitute model audit for user evidence.\"}",
+      "created_at": 1792934577.16
+    },
+    {
+      "event_id": 103,
+      "card_id": "card_989ff3e7",
+      "board": "default",
+      "kind": "commented",
+      "payload": "{\"author\":\"cli\",\"body\":\"Core audit fixes: 84 focused tests and migration evidence passed.\"}",
+      "created_at": 1792934577.293
+    },
+    {
+      "event_id": 104,
+      "card_id": "card_989ff3e7",
+      "board": "default",
+      "kind": "completed",
+      "payload": "{\"from\":\"running\",\"to\":\"done\",\"actor\":\"cli\",\"blocked_reason\":null}",
+      "created_at": 1792934577.431
+    },
+    {
+      "event_id": 105,
+      "card_id": "card_1576a69e",
+      "board": "default",
+      "kind": "commented",
+      "payload": "{\"author\":\"cli\",\"body\":\"Runtime audit fixes: 59 tests passed, including exact-message queued cancellation.\"}",
+      "created_at": 1792934577.567
+    },
+    {
+      "event_id": 106,
+      "card_id": "card_1576a69e",
+      "board": "default",
+      "kind": "completed",
+      "payload": "{\"from\":\"running\",\"to\":\"done\",\"actor\":\"cli\",\"blocked_reason\":null}",
+      "created_at": 1792934577.7
+    },
+    {
+      "event_id": 107,
+      "card_id": "card_6fadf16c",
+      "board": "default",
+      "kind": "commented",
+      "payload": "{\"author\":\"cli\",\"body\":\"Protocol and read model fixes passed; bilingual contracts and scenario evidence updated.\"}",
+      "created_at": 1792934577.832
+    },
+    {
+      "event_id": 108,
+      "card_id": "card_6fadf16c",
+      "board": "default",
+      "kind": "completed",
+      "payload": "{\"from\":\"running\",\"to\":\"done\",\"actor\":\"cli\",\"blocked_reason\":null}",
+      "created_at": 1792934577.967
+    },
+    {
+      "event_id": 109,
+      "card_id": "card_34a3aca4",
+      "board": "default",
+      "kind": "commented",
+      "payload": "{\"author\":\"cli\",\"body\":\"Local assertions and full suite pass, but design D07 acceptance also requires all 58 pilot scenarios and real API. Six remain unverified; keep the original whole acceptance blocked rather than relabeling it done.\"}",
+      "created_at": 1792935017.828
+    },
+    {
+      "event_id": 110,
+      "card_id": "card_34a3aca4",
+      "board": "default",
+      "kind": "blocked",
+      "payload": "{\"from\":\"running\",\"to\":\"blocked\",\"actor\":\"cli\",\"blocked_reason\":\"Local assertions and full suite pass, but design D07 acceptance also requires all 58 pilot scenarios and real API. Six remain unverified; keep the original whole acceptance blocked rather than relabeling it done.\"}",
+      "created_at": 1792935017.944
+    },
+    {
+      "event_id": 111,
+      "card_id": "card_091ff5ef",
+      "board": "default",
+      "kind": "commented",
+      "payload": "{\"author\":\"cli\",\"body\":\"Claude Code CLI claude-sonnet-5-5: three implementation reviews and final documentation closeout complete. No remaining P0/P1/code P2; documentation P2-D PASS. Real-provider and containment qualification remain blocked. Final full-suite verification is being repeated after a local generated-artifact cache error.\"}",
+      "created_at": 1792935966.072
+    },
+    {
+      "event_id": 112,
+      "card_id": "card_091ff5ef",
+      "board": "default",
+      "kind": "completed",
+      "payload": "{\"from\":\"running\",\"to\":\"done\",\"actor\":\"cli\",\"blocked_reason\":null}",
+      "created_at": 1792935966.413
+    },
+    {
+      "event_id": 113,
+      "card_id": "card_df812ac7",
+      "board": "default",
+      "kind": "moved",
+      "payload": "{\"from\":\"ready\",\"to\":\"running\",\"actor\":\"cli\",\"blocked_reason\":null}",
+      "created_at": 1792935966.694
+    },
+    {
+      "event_id": 114,
+      "card_id": "card_34a3aca4",
+      "board": "default",
+      "kind": "commented",
+      "payload": "{\"author\":\"cli\",\"body\":\"Final local run: 22 packages, 5928 passed, 5 existing conditional skips. All 10 checks exit 0. Real API/containment acceptance is still unverified for six pilot scenarios, so D07 remains blocked.\"}",
+      "created_at": 1792936516.225
+    },
+    {
+      "event_id": 115,
+      "card_id": "card_df812ac7",
+      "board": "default",
+      "kind": "commented",
+      "payload": "{\"author\":\"cli\",\"body\":\"Final local verification passed: 5928 tests, 5 existing skips, all 10 checks exit 0; exact Sonnet 5.5 review and documentation closeout passed. Preparing the PR. GitHub CI is a separate pending check.\"}",
+      "created_at": 1792936516.345
+    }
+  ],
+  "latest_event_id": 115
+}

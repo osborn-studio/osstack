@@ -31,3 +31,9 @@ docs/reports/2026-10-23-firstmate-wave6-evidence/** -whitespace
 docs/reports/2026-10-23-firstmate-pr242-final-qualification/** -whitespace
 
 docs/reports/2026-10-23-firstmate-pr243-final-qualification/** -whitespace
+# Keep frozen Session-pilot audit inputs and test logs byte-for-byte.
+# Collapse quoted/generated evidence in reviews; source and reports remain visible.
+docs/design/2026-10-25-engineering-agent/evidence/fable-5.1/*-input.md -whitespace linguist-generated=true
+docs/design/2026-10-25-engineering-agent/evidence/fable-5.1/host-source-addendum.md -whitespace linguist-generated=true
+docs/design/2026-10-25-engineering-agent/evidence/sonnet-5.5/*-input.txt -whitespace linguist-generated=true
+docs/design/2026-10-25-engineering-agent/evidence/**/*.log -whitespace linguist-generated=true

@@ -1,0 +1,86 @@
+{
+  "scope": "final bounded pilot design review; frozen documents and pinned source, no runtime execution",
+  "inputs": [
+    {
+      "label": "FROZEN/evidence/fable-5.1/round2.md",
+      "sha256": "84f0aa643c39e99bf509ba8588d976824a93b44658ab2312417856c769c3a401",
+      "bytes": 10760
+    },
+    {
+      "label": "FROZEN/runtime-contract-v2.md",
+      "sha256": "b1abc57fa7205af6a0c66c7cc1ba18a658ecb64efeb3885f7971669d60ae39f7",
+      "bytes": 24643
+    },
+    {
+      "label": "FROZEN/waiting-decision-pilot.md",
+      "sha256": "788517657a6b996294b993cc5d7074c2378d518b78e05522cadd3b810d23e418",
+      "bytes": 19368
+    },
+    {
+      "label": "FROZEN/implementation-plan.md",
+      "sha256": "00a55fa9e9ef43909aa093638f667697fd5904c1e6597b9cb545edfaef15b385",
+      "bytes": 12562
+    },
+    {
+      "label": "FROZEN/work-items.json",
+      "sha256": "9e89fcf6f59607ba4f229c9ef98718f3cffa04993341e278a24fa96b41e85770",
+      "bytes": 12371
+    },
+    {
+      "label": "FROZEN/pilot-scenarios.json",
+      "sha256": "ae0a0883b8f74f196b208feaa41ad0ae960abd3af4daf957623ab24fc638e857",
+      "bytes": 26739
+    },
+    {
+      "label": "FROZEN/qualification-contract.schema.json",
+      "sha256": "18936d35983b4cf32eb9cbfc894dd8a07b148280fa7b56fe1c3ae6297779f865",
+      "bytes": 8053
+    },
+    {
+      "label": "FROZEN/validate-design.py",
+      "sha256": "6e6736a1208631a6114392663b60c2cf0dfff93c7bff15657ca69cc1fa367dca",
+      "bytes": 9026
+    },
+    {
+      "label": "FROZEN/evidence/design-validation.json",
+      "sha256": "3889ad7028789a52424a7ea9ee68ee6f7b6230081fc05d5768a1698d85bc9c70",
+      "bytes": 822
+    },
+    {
+      "label": "FROZEN/audit-report.md",
+      "sha256": "632180d10d949b3577581ae39d9fda224645d150ce91706d19b135c0a69e757a",
+      "bytes": 7773
+    },
+    {
+      "label": "PINNED_SOURCE/packages/cli/src/daemon.ts:610-1100",
+      "sha256": "8aa2274ef0e17b1ce0b4e96dd0465157777cb1cd76d4a0269228e7991ef66378",
+      "bytes": 24363
+    },
+    {
+      "label": "PINNED_SOURCE/packages/cli/src/daemon.ts:1260-1307",
+      "sha256": "d131ac73d912eeaf21339ba3f10824c41b7bd42c68858075c6f693a52015c980",
+      "bytes": 4107
+    },
+    {
+      "label": "PINNED_SOURCE/packages/core/src/state/attention-actions.ts:1-360",
+      "sha256": "56fdff1edfcfc4f3ea399a7889e14620f8611a5d38a7314402adcd4d735a12f5",
+      "bytes": 14009
+    },
+    {
+      "label": "PINNED_SOURCE/packages/core/src/state/sessions.ts:140-365",
+      "sha256": "80cb9b59b8e289e8286e99adbceafe2e51312a833394047deb1080de3b860879",
+      "bytes": 9122
+    },
+    {
+      "label": "PINNED_SOURCE/packages/core/src/state/migrations.ts:1730-1890",
+      "sha256": "78aafc72c45b910a43dc8168f5f52b482795e50184046c45f18f58bdc52fbcdc",
+      "bytes": 9027
+    },
+    {
+      "label": "PINNED_SOURCE/packages/core/src/state/db.ts:79-142",
+      "sha256": "5d497682510a4ad75c9bea721ca9d1d0cae6141cb7e9c2d696f949179728eaaf",
+      "bytes": 3464
+    }
+  ],
+  "prompt_sha256": "a983daba29093b6e0a9431c7bd9ad4792be97bb717d50d45561ef12e3e0d659e"
+}

@@ -1,0 +1,16 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/capability-registry-pilot/packages/cli
+
+
+  ../../../../../../../tmp/osstack/tests/eng-build-xPAUn4/host.mjs  2.2mb ⚠️
+
+⚡ Done in 48ms
+ ✓ src/engineering-crash.integration.test.ts (2 tests) 4456ms
+   ✓ WD16: SIGKILL during admission preserves first-dispatch authority across process restart  2071ms
+   ✓ WD16: SIGKILL during invoking preserves first-dispatch authority across process restart  2300ms
+
+ Test Files  1 passed (1)
+      Tests  2 passed (2)
+   Start at  06:32:19
+   Duration  6.54s (transform 727ms, setup 61ms, collect 1.35s, tests 4.46s, environment 0ms, prepare 166ms)
+

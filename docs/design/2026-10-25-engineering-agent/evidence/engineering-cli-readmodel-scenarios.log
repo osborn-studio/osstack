@@ -1,0 +1,11 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/capability-registry-pilot/packages/cli
+
+ ✓ src/engineering-command.test.ts (13 tests) 14ms
+ ✓ src/attention-read-model.test.ts (13 tests) 961ms
+
+ Test Files  2 passed (2)
+      Tests  26 passed (26)
+   Start at  06:32:19
+   Duration  3.17s (transform 843ms, setup 94ms, collect 1.92s, tests 975ms, environment 0ms, prepare 236ms)
+

@@ -51,6 +51,7 @@ import {
 import {
   AgentOverrideError,
   reserveSessionInstruction,
+  isEngineeringCancelledBeforeDispatch,
   AttentionActions,
   countEvents,
   countRuns,
@@ -199,6 +200,7 @@ interface DaemonContext {
   continuations: SessionContinuationRepository;
   collaborator: SessionCollaborator | undefined;
   supervision?: SupervisionService;
+  engineering?: import("./engineering-host.js").EngineeringHost;
   workerLogReads?: Set<Promise<unknown>>;
   workerLogAbort?: AbortController;
   workerViews?: import("./worker-view-service.js").WorkerViewService;
@@ -764,7 +766,7 @@ async function handleSessionSend(
   if (p instanceof Error) return singleErr(req.id, "bad_request", p.message);
   // Completed receipt replay remains read-only while drained; no new/retried
   // instruction may reserve a message or invoke an adapter during an upgrade.
-  if (ctx.draining && ctx.sessions.getMessage(p.message_id)?.state !== "applied") {
+  if (ctx.draining && ctx.sessions.getMessage(p.message_id)?.state !== "applied" && !isEngineeringCancelledBeforeDispatch(ctx.db, p.message_id)) {
     return singleErr(req.id, "draining", "daemon is not accepting session instructions");
   }
 
@@ -790,6 +792,9 @@ async function handleSessionSend(
         state: "accepted",
         created_at: Date.now() / 1000,
       }, p.expected_version, Date.now() / 1000);
+      if (isEngineeringCancelledBeforeDispatch(ctx.db, p.message_id)) {
+        return singleErr(req.id, "cancelled_original_answer", "The original answer was cancelled before dispatch. It cannot be sent again.");
+      }
       if (existingMessage.state === "applied") {
         return singleOk(req.id, { state: replay.outcome, session_version: replay.session_version });
       }
@@ -861,7 +866,7 @@ async function handleSessionSend(
       if (err instanceof SessionMessageIdConflict) {
         return singleErr(req.id, "message_id_conflict", "message_id was already used for different content");
       }
-      if (err instanceof Error && ["delivery_uncertain", "continuation_in_flight", "grant_owned", "signed_approval_required", "invalid_decision"].includes(err.message)) return singleErr(req.id, err.message, "Refresh the decision and use its authorized owner route");
+      if (err instanceof Error && ["delivery_uncertain", "continuation_in_flight", "grant_owned", "signed_approval_required", "invalid_decision", "dispatch_inconsistent"].includes(err.message)) return singleErr(req.id, err.message, "Refresh the decision and use its authorized owner route");
       throw err;
     }
     if (applied.outcome === "duplicate") {
@@ -913,6 +918,7 @@ async function executeReservedSessionTurn(
     admittedLease?: ExecutionLease;
     controller?: AbortController;
     completed?: (turnId: string, version: number, now: number) => void;
+    engineeringPermit?: Parameters<import("@osstack/core").EngineeringStore["consumeDispatchPermit"]>[0];
   } = {},
 ): Promise<SingleResponse> {
   const applied = { session_version: reservationVersion };
@@ -920,10 +926,18 @@ async function executeReservedSessionTurn(
   const controller = options.controller ?? new AbortController();
   const now = Date.now() / 1000;
   ctx.activeRuns.set(session.run_id, controller);
-  let lease: ExecutionLease | undefined;
+  let lease: ExecutionLease | undefined = options.admittedLease;
   let started = false;
   let settled = false;
   try {
+    // This guard stays active even when the feature flag is off. An extended
+    // receipt can enter this helper only with the one-use CAS winner's permit.
+    const engineeringPhase = ctx.db.prepare("SELECT 1 FROM attention_dispatch_phases WHERE message_id=?").get(p.message_id);
+    if (engineeringPhase) {
+      if (!ctx.engineering || !options.engineeringPermit) return singleErr(req.id, "dispatch_gate_required", "Use the original engineering action; this receipt cannot be sent through another route");
+      try { ctx.engineering.store.consumeDispatchPermit(options.engineeringPermit, p.message_id); }
+      catch { return singleErr(req.id, "dispatch_gate_required", "The dispatch permit is invalid or already consumed"); }
+    }
     lease = options.admittedLease ?? await acquireSessionAdmission(ctx, adapter.id, session.repo_path, session.run_id, controller.signal);
     const failReservedMessage = (
       code: string,
@@ -1051,6 +1065,7 @@ async function executeReservedSessionTurn(
         applied_at: completedAt,
       });
       options.completed?.(turnId, updated.version, completedAt);
+      if (engineeringPhase) ctx.engineering!.store.recordCompletion(p.message_id, turnId, updated.version);
       return updated;
     })();
     return singleOk(req.id, {
@@ -1239,6 +1254,15 @@ async function handleSingle(ctx: DaemonContext, req: DaemonRequest): Promise<Sin
       return singleErr(req.id, "worker_view_failed", "Worker view unavailable");
     }
   }
+  if (req.method.startsWith("engineering.")) {
+    if (!ctx.supervision) return singleErr(req.id, "attention_disabled", "Enable OSSTACK_ATTENTION=1 for Session adoption");
+    if (!ctx.engineering) return singleErr(req.id, "engineering_disabled", "Enable OSSTACK_ENGINEERING=1 with a private host authority file");
+    try { return singleOk(req.id, await ctx.engineering.handle(req.method, req.params)); }
+    catch (error) {
+      const code = error instanceof Error && /^[a-z_]{1,64}$/.test(error.message) ? error.message : "engineering_failed";
+      return singleErr(req.id, code, "Engineering request was not completed; inspect the original Mission and receipt before retrying");
+    }
+  }
   if (req.method.startsWith("attention.")) {
     if (!ctx.supervision) return singleErr(req.id,"attention_disabled","Start daemon with OSSTACK_ATTENTION=1 to opt in");
     if (ctx.draining) return singleErr(req.id,"draining","Daemon is draining");
@@ -1360,10 +1384,13 @@ async function handleSingle(ctx: DaemonContext, req: DaemonRequest): Promise<Sin
       while ((ctx.activeRuns.size > 0 || graphUpgradeHolds(ctx.db) > 0) && Date.now() < deadline) {
         await new Promise((r) => setTimeout(r, 200));
       }
+      const { engineeringUpgradeHolds } = await import("./engineering-upgrade-guard.js");
+      const attentionDispatchHolds = engineeringUpgradeHolds(ctx.db);
       return singleOk(req.id, {
         draining: true,
-        drained: ctx.activeRuns.size === 0 && graphUpgradeHolds(ctx.db) === 0,
+        drained: ctx.activeRuns.size === 0 && graphUpgradeHolds(ctx.db) === 0 && attentionDispatchHolds === 0,
         graph_holds: graphUpgradeHolds(ctx.db),
+        attention_dispatch_holds: attentionDispatchHolds,
         active_runs: ctx.activeRuns.size,
       });
     }
@@ -4287,6 +4314,45 @@ export async function startDaemon(
       ctx.dbPath,
     );
   }
+  if (process.env["OSSTACK_ENGINEERING"] === "1") {
+    if (!ctx.supervision) throw new Error("attention_disabled");
+    const authPath = process.env["OSSTACK_ENGINEERING_AUTH_FILE"];
+    if (!authPath) throw new Error("engineering_auth_required");
+    const [{ EngineeringHost }, { EngineeringAccess }, { EngineeringStore }] = await Promise.all([
+      import("./engineering-host.js"), import("./engineering-access.js"), import("@osstack/core"),
+    ]);
+    // Change and verify the actual connection used by reservations and completed
+    // callbacks, not a diagnostic connection to the same file.
+    ctx.db.pragma("synchronous = FULL");
+    if (ctx.db.pragma("synchronous", { simple: true }) !== 2) throw new Error("engineering_durability_unavailable");
+    const store = new EngineeringStore(ctx.supervision.store, ctx.supervision.observer.owner, { liveSend: sessionId => ctx.activeSessionSends.get(sessionId) });
+    ctx.engineering = new EngineeringHost(store, new EngineeringAccess(authPath), {
+      getSession: id => ctx.sessions.getSession(id),
+      qualified: session => {
+        const adapter = ctx.adapters.get(session.agent_id);
+        return !!(session.resume_supported && session.native_session_id && adapter && isSessionCapableAdapter(adapter) && adapter.sessionCapabilities().resume);
+      },
+      draining: () => ctx.draining,
+      active: id => ctx.activeSessionSends.has(id),
+      acquire: (session, messageId) => acquireManualSessionAdmission(ctx, session, messageId),
+      execute: async (dispatch, session, admission) => {
+        const adapter = ctx.adapters.get(session.agent_id);
+        if (!adapter || !isSessionCapableAdapter(adapter)) { await admission.release(); throw new Error("executor_not_qualified"); }
+        await executeReservedSessionTurn(ctx, { id: dispatch.action_id, method: "engineering.dispatch" }, {
+          session_id: dispatch.session_id, runtime_id: session.agent_id, turn_id: dispatch.turn_id,
+          message_id: dispatch.message_id, expected_version: dispatch.reservation_version - 1, text: dispatch.text,
+        }, session, adapter, dispatch.reservation_version, {
+          admittedLease: admission.lease, controller: admission.controller, engineeringPermit: dispatch.permit,
+        });
+      },
+      stop: ({ runId, sessionId, messageIds }) => {
+        const activeMessage = ctx.activeSessionSends.get(sessionId);
+        if (!activeMessage || !messageIds.includes(activeMessage)) return false;
+        const controller = ctx.activeRuns.get(runId); controller?.abort(); return controller !== undefined;
+      },
+    });
+    ctx.engineering.start();
+  }
   const stopUpdateChecker = startUpdateChecker();
   stopUpdates = stopUpdateChecker;
   let dashboard: DashboardServerHandle | null = null;
@@ -4476,6 +4542,7 @@ export async function startDaemon(
             ...dailyCompletions,
             guardedRecovery,
             collaboratorStopped,
+            ctx.engineering?.close(),
           ]);
           await new Promise<void>((resolveClose) => server.close(() => resolveClose()));
           try { if (dashboard !== null) await dashboard.close(); }
@@ -4559,6 +4626,8 @@ export async function startDaemon(
     try { stopUpdates?.(); } catch { /* continue cleanup */ }
     if (failedContext) {
       failedContext.draining = true;
+      for (const controller of failedContext.activeRuns.values()) controller.abort();
+      await failedContext.engineering?.close();
       await failedContext.supervision?.stop();
       const stopped = Promise.resolve().then(() => failedContext!.collaborator?.stop());
       for (const session of [...failedContext.dailySessions.values(), ...failedContext.loopSessions.values()]) {

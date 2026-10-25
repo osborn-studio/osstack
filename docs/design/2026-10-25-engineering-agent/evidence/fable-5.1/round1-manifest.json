@@ -1,0 +1,122 @@
+{
+  "version": 1,
+  "scope": "full design files plus selected source excerpts, not full repository",
+  "inputs": [
+    {
+      "label": "DESIGN/README.md",
+      "sha256": "a3fa8fc922d0ce281b324cc55b3302baa5a0770494458cea6f313f74f984e6d5",
+      "bytes": 3382
+    },
+    {
+      "label": "DESIGN/design.md",
+      "sha256": "7ea4ff9c559f1fdd103a28177aa86bf16fbdecd187e3e8d6577a50538ff30684",
+      "bytes": 22364
+    },
+    {
+      "label": "DESIGN/waiting-decision-pilot.md",
+      "sha256": "44a0852260471e8fe9e1a4865c1c066637faaa968b5e7372cbe7e77651a7890b",
+      "bytes": 17050
+    },
+    {
+      "label": "DESIGN/implementation-plan.md",
+      "sha256": "a82e7b5d213fcb34ed6f5930eff5656a1bf599ba4c27d6323e236f52425efe50",
+      "bytes": 11158
+    },
+    {
+      "label": "DESIGN/evidence-and-methods.md",
+      "sha256": "d141add67828381fdc75acd43e8acf55ab46053ce618b9c7f57c554792379ebd",
+      "bytes": 8332
+    },
+    {
+      "label": "DESIGN/task-prompt.md",
+      "sha256": "dc603e6264f8a1788f87c94882c3c8022d48fed72a9335bb38f129b1087b52a1",
+      "bytes": 5000
+    },
+    {
+      "label": "DESIGN/validation.md",
+      "sha256": "8cec1dfdd27b228b85f091053e9d42b050fb9fce7493cff38af59c000b414ef2",
+      "bytes": 3860
+    },
+    {
+      "label": "DESIGN/capabilities.json",
+      "sha256": "9bbe4eff89a14df99f15f2f132cbf46e2b83a0adafaa0c54df25911695ca4294",
+      "bytes": 50873
+    },
+    {
+      "label": "DESIGN/capability-registry.schema.json",
+      "sha256": "ca22ad8b558ac1c93fcf59e0eadeebe20e353805ca31e1328a45531e5dd3f485",
+      "bytes": 7480
+    },
+    {
+      "label": "DESIGN/work-items.json",
+      "sha256": "2af3aaa0d4f318d5cfedc45db10bef52dcecd289d7a7e0d7dc111c3804ad6426",
+      "bytes": 11565
+    },
+    {
+      "label": "DESIGN/pilot-scenarios.json",
+      "sha256": "83c401df9d65ff242e549c1a644027f08a3b7b6de311be852f1907f888f87479",
+      "bytes": 10900
+    },
+    {
+      "label": "DESIGN/validate-design.py",
+      "sha256": "1b361cf980148d4ffcdf1c7437f5ae26bc9d2e46c76d97632aec219e63423d10",
+      "bytes": 6666
+    },
+    {
+      "label": "OSSTACK/packages/core/src/state/attention-actions.ts lines 1-370",
+      "sha256": "1d13f9e5801a4c741644f783367f77bd9103ca1e1f31d1f6cf13c46d445dd68c",
+      "bytes": 12353
+    },
+    {
+      "label": "OSSTACK/packages/core/src/state/attention-store.ts lines 1-290",
+      "sha256": "b6ffc14f93f2bc7d5f3a830e859c4ba59bb75d55d42c88b663be3ce666bcb788",
+      "bytes": 8697
+    },
+    {
+      "label": "OSSTACK/packages/core/src/attention.ts lines 1-120",
+      "sha256": "aae8441f36e81252dfd122bf2e234a1b3e914ada29993f300243c5895b0289ed",
+      "bytes": 3594
+    },
+    {
+      "label": "OSSTACK/packages/core/src/state/attention-run-projection.ts lines 1-125",
+      "sha256": "887482e6ab715b48e56e52772c0d281c068f885aebc70da94eb001f6051534d1",
+      "bytes": 7685
+    },
+    {
+      "label": "OSSTACK/packages/core/src/state/db.ts lines 60-115",
+      "sha256": "7d10126eedf175223ea9c5240a4351250d05f10e1e333d8da0e183068c601582",
+      "bytes": 2606
+    },
+    {
+      "label": "OSSTACK/packages/cli/src/start-control-command.ts lines 1-42",
+      "sha256": "d7d9a438a86c18104647928a180150b94b2825a2361f2c1ca46bd6681e47df84",
+      "bytes": 2850
+    },
+    {
+      "label": "OSSTACK/packages/core/src/capability.ts lines 1-100",
+      "sha256": "7180332bfdb2b71fefc47c88de1014fb4b2eb9434dcbae757884009cbd2cfdcb",
+      "bytes": 4258
+    },
+    {
+      "label": "OSSTACK/packages/protocol/schemas/session-decision.schema.json lines 1-200",
+      "sha256": "b97f8130a57ff75fa0db3ec67c238219a7551b7cd6b19dba6d85c6728c54349b",
+      "bytes": 2470
+    },
+    {
+      "label": "FIRSTMATE/bin/fm-captain-hold.sh lines 1-88",
+      "sha256": "97fc9cd1764b91568df98be1bc09488782e54ae876a260d4c567ae21f87305aa",
+      "bytes": 5800
+    },
+    {
+      "label": "FIRSTMATE/bin/fm-send.sh lines 148-207",
+      "sha256": "e224592c035df6cee4c2ba0229cfe1be1f689c51d18e371f5f8cd07237915836",
+      "bytes": 4047
+    },
+    {
+      "label": "FIRSTMATE/AGENTS.md lines 260-302",
+      "sha256": "2cc6433e8c69372b9dc84b1af8c7c1c9e4fb22d238437d4fa508aadbd8fe1426",
+      "bytes": 5344
+    }
+  ],
+  "prompt_sha256": "2fb1c298aa63959515d46fa8560bef7470cd5d87fff973b002e0b8003f818087"
+}

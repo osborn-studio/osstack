@@ -1,0 +1,138 @@
+[
+  {
+    "path": "docs/design/2026-10-25-engineering-agent/implementation-handoff.md",
+    "sha256": "856b64db1be504529d6064fee25e36508eaae3a2860c670c8618675c1a6ce927",
+    "bytes": 5520
+  },
+  {
+    "path": "docs/design/2026-10-25-engineering-agent/runtime-contract-v2.md",
+    "sha256": "0b5ac03714afc5190ca60f6e21929a7b60227560fe6ad1367ad66397938b3b56",
+    "bytes": 29517
+  },
+  {
+    "path": "docs/guides/engineering-session-adoption.en.md",
+    "sha256": "117a2058e1f9b95c2634beefb92d8745924f3cb87c6002082ad39ea645486c88",
+    "bytes": 11109
+  },
+  {
+    "path": "packages/cli/src/attention-read-model.ts",
+    "sha256": "8da524dfe5e0d583623d685bfae6d911422845e495acd4e1cdff064a246afdf4",
+    "bytes": 11260
+  },
+  {
+    "path": "packages/cli/src/daemon-engineering.test.ts",
+    "sha256": "5da0551840eeee6b2599fb7d5b3ba90df75a4a6b43860c6e60276d950856fe32",
+    "bytes": 17756
+  },
+  {
+    "path": "packages/cli/src/engineering-access.test.ts",
+    "sha256": "0a3d255604387c1c1967a2f6f7e8e664ec6025bffb116a291b737f4059c8be53",
+    "bytes": 3526
+  },
+  {
+    "path": "packages/cli/src/engineering-access.ts",
+    "sha256": "5716902bb14679788e54cbadb5f8e6ec4c929c421fdf181a49f3dc581d6f0fb4",
+    "bytes": 4424
+  },
+  {
+    "path": "packages/cli/src/engineering-command.test.ts",
+    "sha256": "73dc611e94e4368dacaf2b169b37e7084ea6f2cc0f51f5c956080767b2c444d4",
+    "bytes": 8205
+  },
+  {
+    "path": "packages/cli/src/engineering-command.ts",
+    "sha256": "5ee9264efcbc465a4abf45ed19c8f13c69a977dfd0314d92dfd6c71600323ee2",
+    "bytes": 10438
+  },
+  {
+    "path": "packages/cli/src/engineering-crash.integration.test.ts",
+    "sha256": "8eb0fe30c1aba95e9a91d270304ad9d94b5024d1eb99c8cddc4b259f2bf51e5f",
+    "bytes": 6933
+  },
+  {
+    "path": "packages/cli/src/engineering-host.test.ts",
+    "sha256": "746da75cb480ad52bb83c050448a468fcdc037c87ebdda9a9d2604595fe24f62",
+    "bytes": 5918
+  },
+  {
+    "path": "packages/cli/src/engineering-host.ts",
+    "sha256": "08bc62d19674e1b859faa758991413aa5f5f9064ef0c0d786fb660f4c97e4b4e",
+    "bytes": 8658
+  },
+  {
+    "path": "packages/cli/src/governed-execution.ts",
+    "sha256": "471d5ba2b17392ce4dce2b31df64673f71bac02b5b5a5ae58d7ef4e703c93f75",
+    "bytes": 11980
+  },
+  {
+    "path": "packages/core/src/state/attention-actions.ts",
+    "sha256": "5e1b703e177d292a878e4d16fbc39413021b5018de9c1e2554603f12381e02b1",
+    "bytes": 14405
+  },
+  {
+    "path": "packages/core/src/state/attention-recovery-view.ts",
+    "sha256": "9785174f3dce64150a4c623a8d3af5dc5adcff35181b82b0d66f35c7324b71fc",
+    "bytes": 10311
+  },
+  {
+    "path": "packages/core/src/state/attention-store.ts",
+    "sha256": "b6ffc14f93f2bc7d5f3a830e859c4ba59bb75d55d42c88b663be3ce666bcb788",
+    "bytes": 8697
+  },
+  {
+    "path": "packages/core/src/state/engineering-ddl.ts",
+    "sha256": "e7067bfc981362f7d9740ac574bebe87c246e62fbd1bb0e2e0ac71b6b18fb5c3",
+    "bytes": 6322
+  },
+  {
+    "path": "packages/core/src/state/engineering-dispatch.ts",
+    "sha256": "36b03aea0604875d67c41ac2c2c1e807d0e4cc7d2dc593ac9b4c2a24ae469abd",
+    "bytes": 3390
+  },
+  {
+    "path": "packages/core/src/state/engineering-scenarios.test.ts",
+    "sha256": "75ebcd3e21ab06324c48ae17136c7993f1a1cebb0192bf28f40acef491e04bf7",
+    "bytes": 18710
+  },
+  {
+    "path": "packages/core/src/state/engineering-store.test.ts",
+    "sha256": "b34984ebbd7c05eb70e5f7e90aa156a7404ac576e2614c9fe3cb6eeaf068bb52",
+    "bytes": 16892
+  },
+  {
+    "path": "packages/core/src/state/engineering-store.ts",
+    "sha256": "aa7c1a82b862a4469647a36b1d032cfb5d893f5dd8c29b4841ca4df17ebca5dc",
+    "bytes": 44632
+  },
+  {
+    "path": "packages/core/src/state/sessions.ts",
+    "sha256": "923c69781b1bdf9370e92cefeaef2fdb8128c2105eb5bf20f4163d37d84d5710",
+    "bytes": 13767
+  },
+  {
+    "path": "packages/protocol/src/attention.ts",
+    "sha256": "3a65d08c7fdb34d9518e074084b80491d2fff54dd163a5fbfa16e37a3d66da78",
+    "bytes": 3694
+  },
+  {
+    "path": "packages/protocol/src/engineering.test.ts",
+    "sha256": "ae25a3bbc9bc40435d584c828a98b456234797892e54f2098ec3f53a9a78f9da",
+    "bytes": 5794
+  },
+  {
+    "path": "packages/protocol/src/engineering.ts",
+    "sha256": "d251764e375560b6a3146a92cf68887486a9001520ac15c3b8ec27cd3cca46ae",
+    "bytes": 5052
+  },
+  {
+    "path": "scripts/fixtures/engineering-crash-host.ts",
+    "sha256": "4fdbda531624e3a12beaad34629270b96c8617d02cd52225234bfbcb05451c29",
+    "bytes": 3458
+  },
+  {
+    "path": "packages/cli/src/daemon.ts",
+    "sha256": "e23a95648cf18978bdf3ab2a7d703900e524b1d998ec43048f594fd5c1f691d4",
+    "bytes": 203885,
+    "excerpted": true
+  }
+]

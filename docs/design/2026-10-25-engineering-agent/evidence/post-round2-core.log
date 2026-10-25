@@ -1,0 +1,14 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/capability-registry-pilot/packages/core
+
+ ✓ src/state/attention-actions.test.ts (8 tests) 199ms
+ ✓ src/state/attention-recovery-view.test.ts (12 tests) 313ms
+ ✓ src/state/engineering-scenarios.test.ts (29 tests) 855ms
+ ✓ src/state/engineering-store.test.ts (39 tests) 1180ms
+
+ Test Files  4 passed (4)
+      Tests  88 passed (88)
+   Start at  06:31:00
+   Duration  1.56s (transform 177ms, setup 67ms, collect 570ms, tests 2.55s, environment 0ms, prepare 183ms)
+
+$ tsc --noEmit

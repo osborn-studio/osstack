@@ -52,6 +52,10 @@ Firstmate’s 24 capability mappings are integrated into main and included in CL
 
 See the [full English command guide](docs/guides/firstmate-commands.en.md) and [中文手册](docs/guides/firstmate-commands.md) for examples, read/write boundaries, authorization requirements and outstanding live qualification. Documents are checked with `osstack neat check`; that check is not deployment or functional acceptance.
 
+The mappings above describe existing commands. Unified engineering-agent orchestration is still being implemented in stages.
+
+**Source-only pilot:** `osstack engineering adopt/observe/decide/defer/cancel/end-observation/reconcile` adopts an existing Session that is waiting for a decision. The host records ownership, answers and recovery evidence. It is opt-in and proves at most one observed reply turn; it does not yet route a new goal through Loop or Graph. See the [English guide](docs/guides/engineering-session-adoption.en.md), [中文指南](docs/guides/engineering-session-adoption.md), and [architecture and capability registry](docs/design/2026-10-25-engineering-agent/README.md). This pilot is not included in npm 0.22.1.
+
 ## Current Status
 
 | Area | Status |

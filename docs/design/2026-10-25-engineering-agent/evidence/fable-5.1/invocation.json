@@ -1,0 +1,27 @@
+{
+  "cli_path": "/opt/homebrew/bin/claude",
+  "cli_version": "2.1.291",
+  "requested_model": "claude-fable-5-1",
+  "auth_logged_in": true,
+  "auth_provider": "firstParty",
+  "mode": "tool_less_adversarial_design_review",
+  "flags": [
+    "-p",
+    "--model",
+    "claude-fable-5-1",
+    "--effort",
+    "high",
+    "--output-format",
+    "json",
+    "--disable-slash-commands",
+    "--tools",
+    "",
+    "--safe-mode",
+    "--strict-mcp-config",
+    "--mcp-config",
+    "{\"mcpServers\":{}}",
+    "--no-session-persistence"
+  ],
+  "scope": "Frozen supplied design and selected public source; reviewer cannot run tools, browse, edit, or execute tests.",
+  "model_identity_limit": "API/CLI reported model identifier, not independent attestation of model weights."
+}

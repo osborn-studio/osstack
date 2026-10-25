@@ -1,0 +1,13 @@
+{
+  "check": "controlled_provider_session_adoption",
+  "attempted_operation": "availability_preflight",
+  "availability": {
+    "available": false,
+    "reason": "Controlled sessions require an explicit ANTHROPIC_API_KEY.",
+    "status": "not_authenticated",
+    "last_checked_at": 1792932646.263
+  },
+  "real_session_started": false,
+  "qualification": "unverified",
+  "reason": "CLI OAuth login does not supply the explicit API key required by this isolated controlled adapter."
+}

@@ -1,0 +1,24 @@
+Board: default  (17 cards, latest_event=115)
+
+  RUNNING (1)
+    card_df812ac7  ADOPT-PR — Pull request and CI  [P90 · root]
+
+  BLOCKED (3)
+    card_34a3aca4  ADOPT-D07 — Adversarial pilot scenarios and full regression  [P90 · root · ⛔Local assertions and full suite pass, but design D07 acceptance also requires all 58 pilot scenarios and real API. Six remain unverified; keep the original whole acceptance blocked rather than relabeling it done.]
+    card_b650d18e  ADOPT-D08 — Actual local Session pilot and evidence  [P90 · root · ⛔Real provider lacks isolated API credential; physical power-loss and hostile containment not qualified. Local 52 scenarios automated; six remain unverified.]
+    card_fb5a8b6a  ADOPT-V00 — Manual journey baseline protocol  [P90 · root · ⛔Human baseline and long-run usage/cost study require recruited participants and real tasks; cannot substitute model audit for user evidence.]
+
+  DONE (13)
+    card_b9e8c9b9  ADOPT-P2 — Freeze cancel and endObservation authority  [P100 · root]
+    card_989ff3e7  A01 — Sonnet audit: live receipt truth, transient source recovery, completion and terminal bounds  [P95 · pilot_core]
+    card_1576a69e  A02 — Sonnet audit: preflight/backoff, exact stop binding and source-aware RPC replay  [P95 · pilot_runtime]
+    card_6fadf16c  A03 — Sonnet audit: cancelled read projection, exact help parsing and documented limits  [P95 · pilot_protocol]
+    card_f7963127  ADOPT-C01 — Minimal Mission protocol  [P90 · pilot_protocol]
+    card_703604bb  ADOPT-C02 — Mission events and bindings  [P90 · pilot_core]
+    card_01240a73  ADOPT-D01 — Decision and wait schemas  [P90 · pilot_protocol]
+    card_3fec0175  ADOPT-D02 — Additive schema and wait store  [P90 · pilot_core]
+    card_eebee7ec  ADOPT-D03 — Atomic answer reservation and identity  [P90 · pilot_core]
+    card_8693d85a  ADOPT-D04 — Dispatch gate, stop, auth and recovery  [P90 · pilot_runtime]
+    card_13500fd3  ADOPT-D05 — Single CLI entry and token binding  [P90 · pilot_protocol]
+    card_9aabb541  ADOPT-D06 — Obligation reducer and observed-turn proof  [P90 · pilot_core]
+    card_091ff5ef  ADOPT-AUDIT — Sonnet 5.5 challenge and repairs  [P90 · root]

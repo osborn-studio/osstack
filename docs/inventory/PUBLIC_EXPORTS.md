@@ -135,6 +135,8 @@ export { AttentionStore, attentionDigest, type AttentionOwner, type AttentionSco
 export { AttentionObserver } from "./state/attention-observer.js";
 export { readAttentionRecovery, type AttentionRecoveryRequest, type AttentionRecoverySubject } from "./state/attention-recovery-view.js";
 export { AttentionActions, reserveSessionInstruction } from "./state/attention-actions.js";
+export { EngineeringStore, engineeringSourceIdentity, type EngineeringPrincipal, type EngineeringMission, type EngineeringWait, type EngineeringActionReceipt, type EngineeringStopResult, type EngineeringObservationProof, type EngineeringDispatchPermit, type EngineeringHostEvidence } from "./state/engineering-store.js";
+export { getEngineeringDispatchPhase, isEngineeringCancelledBeforeDispatch, type EngineeringDispatchPhase } from "./state/engineering-dispatch.js";
 export { AttentionExperience, type AttentionSender } from "./state/attention-experience.js";
 export { classifyAttentionWait, evaluateCoverage, evaluateActivity, type WaitInput } from './attention.js';
 export { GraphRunStore, GraphRunStorageError } from "./state/graph-runs.js";
@@ -275,6 +277,7 @@ export {
 export { DeliveryContractV2, FrozenDeliveryContractV2, DeliveryVerificationReceiptV2,
 export { FollowUpState, FollowUpCreateParams, FollowUpListParams, FollowUpDraftParams,
 export { FollowUpDeliveryTarget, FollowUpDeliverySubject, FollowUpDeliveryGrantBody, SignedFollowUpDeliveryGrant,
+export {
 ```
 
 ## `@osstack/runtime`

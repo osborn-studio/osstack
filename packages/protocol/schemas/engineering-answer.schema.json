@@ -1,0 +1,46 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OSStack EngineeringAnswer",
+  "$comment": "Session adoption pilot shape only. Host authentication, current scope grants, immutable owner, exact source binding, transactional CAS and dispatch fences are runtime checks. No field grants authority.",
+  "anyOf": [
+    {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "const": "choice"
+        },
+        "choice_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256,
+          "pattern": "^[^\\u0000]+$"
+        }
+      },
+      "required": [
+        "kind",
+        "choice_id"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "const": "text"
+        },
+        "text": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 16000
+        }
+      },
+      "required": [
+        "kind",
+        "text"
+      ],
+      "additionalProperties": false
+    }
+  ]
+}

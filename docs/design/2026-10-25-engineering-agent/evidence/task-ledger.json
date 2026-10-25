@@ -1,0 +1,115 @@
+{
+  "cli_version": "0.22.1",
+  "scope": "development_management",
+  "items": [
+    {
+      "work_item_id": "P2",
+      "card_id": "card_b9e8c9b9",
+      "assignee": "root",
+      "state": "done"
+    },
+    {
+      "work_item_id": "C01",
+      "card_id": "card_f7963127",
+      "assignee": "pilot_protocol",
+      "state": "done"
+    },
+    {
+      "work_item_id": "C02",
+      "card_id": "card_703604bb",
+      "assignee": "pilot_core",
+      "state": "done"
+    },
+    {
+      "work_item_id": "D01",
+      "card_id": "card_01240a73",
+      "assignee": "pilot_protocol",
+      "state": "done"
+    },
+    {
+      "work_item_id": "D02",
+      "card_id": "card_3fec0175",
+      "assignee": "pilot_core",
+      "state": "done"
+    },
+    {
+      "work_item_id": "D03",
+      "card_id": "card_eebee7ec",
+      "assignee": "pilot_core",
+      "state": "done"
+    },
+    {
+      "work_item_id": "D04",
+      "card_id": "card_8693d85a",
+      "assignee": "pilot_runtime",
+      "state": "done"
+    },
+    {
+      "work_item_id": "D05",
+      "card_id": "card_13500fd3",
+      "assignee": "pilot_protocol",
+      "state": "done"
+    },
+    {
+      "work_item_id": "D06",
+      "card_id": "card_9aabb541",
+      "assignee": "pilot_core",
+      "state": "done"
+    },
+    {
+      "work_item_id": "D07",
+      "card_id": "card_34a3aca4",
+      "assignee": "root",
+      "state": "blocked",
+      "evidence_note": "Local assertions and full suite pass, but design D07 acceptance also requires all 58 pilot scenarios and real API. Six remain unverified; keep the original whole acceptance blocked rather than relabeling it done."
+    },
+    {
+      "work_item_id": "D08",
+      "card_id": "card_b650d18e",
+      "assignee": "root",
+      "state": "blocked",
+      "evidence_note": "Real provider lacks isolated API credential; physical power-loss and hostile containment not qualified. Local 52 scenarios automated; six remain unverified."
+    },
+    {
+      "work_item_id": "V00",
+      "card_id": "card_fb5a8b6a",
+      "assignee": "root",
+      "state": "blocked",
+      "evidence_note": "Human baseline and long-run usage/cost study require recruited participants and real tasks; cannot substitute model audit for user evidence."
+    },
+    {
+      "work_item_id": "AUDIT",
+      "card_id": "card_091ff5ef",
+      "assignee": "root",
+      "state": "done",
+      "evidence_note": "Exact claude-sonnet-5-5 implementation rounds and final documentation closeout PASS; static review only."
+    },
+    {
+      "work_item_id": "PR",
+      "card_id": "card_df812ac7",
+      "assignee": "root",
+      "state": "running"
+    },
+    {
+      "work_item_id": "A01",
+      "card_id": "card_989ff3e7",
+      "assignee": "pilot_core",
+      "state": "done",
+      "evidence_note": "Core audit fixes: 84 focused tests and migration evidence passed."
+    },
+    {
+      "work_item_id": "A02",
+      "card_id": "card_1576a69e",
+      "assignee": "pilot_runtime",
+      "state": "done",
+      "evidence_note": "Runtime audit fixes: 59 tests passed, including exact-message queued cancellation."
+    },
+    {
+      "work_item_id": "A03",
+      "card_id": "card_6fadf16c",
+      "assignee": "pilot_protocol",
+      "state": "done",
+      "evidence_note": "Protocol and read model fixes passed; bilingual contracts and scenario evidence updated."
+    }
+  ]
+}

@@ -3,7 +3,7 @@ import { mkdtempSync, readFileSync, realpathSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import Database from "better-sqlite3";
-import { openDb } from "@osstack/core";
+import { openDb, AttentionStore, EngineeringStore, reserveSessionInstruction } from "@osstack/core";
 import { afterEach, expect, it } from "vitest";
 import { readAttentionStatus } from "./attention-read-model.js";
 
@@ -45,11 +45,16 @@ function fixture() {
 const hash = (path: string) =>
   createHash("sha256").update(readFileSync(path)).digest("hex");
 
-it("reads schema 46 with its additive source ledger without migrating or inventing live coverage", () => {
+it("reads schema 47 with its additive engineering ledger without migrating or inventing live coverage", () => {
   const f = fixture();
   const db = new Database(f.dbPath, { readonly: true, fileMustExist: true });
   try {
-    expect(db.pragma("user_version", { simple: true })).toBe(46);
+    expect(db.pragma("user_version", { simple: true })).toBe(47);
+    expect(db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name IN ('engineering_missions','attention_dispatch_phases','engineering_completions') ORDER BY name").all()).toEqual([
+      { name: "attention_dispatch_phases" },
+      { name: "engineering_completions" },
+      { name: "engineering_missions" },
+    ]);
     expect(db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name LIKE 'source_observation_%' ORDER BY name").all()).toEqual([
       { name: "source_observation_clock" },
       { name: "source_observation_events" },
@@ -100,7 +105,7 @@ it("reports malformed decisions and accepted receipts without guessing delivery"
   );
   expect(result.limitations).toContain("invalid_decision:s");
 });
-it.each([23, 47, 999])("rejects unsupported schema %i without opening a write path", (schema) => {
+it.each([23, 48, 999])("rejects unsupported schema %i without opening a write path", (schema) => {
   const f = fixture();
   const db = new Database(f.dbPath);
   db.pragma(`user_version=${schema}`);
@@ -160,4 +165,53 @@ it("skips corrupt session facts while retaining valid inventory", () => {
   );
   db.close();
   expect(readAttentionStatus(f).limitations).toContain("corrupt_session:s");
+});
+
+it("retains read-only support for schema 46 without engineering tables", () => {
+  const f = fixture();
+  const db = new Database(f.dbPath);
+  db.exec(`DROP TABLE engineering_completions;
+    DROP TABLE attention_dispatch_phases;
+    DROP TABLE engineering_interactions;
+    DROP TABLE engineering_requests;
+    DROP TABLE engineering_events;
+    DROP TABLE engineering_waits;
+    DROP TABLE engineering_missions;
+    PRAGMA user_version=46;`);
+  db.close();
+  const before = hash(f.dbPath);
+  expect(readAttentionStatus(f).sessions[0]?.state).toBe("awaiting_decision");
+  expect(hash(f.dbPath)).toBe(before);
+});
+
+function cancelledFixture() {
+  const f = fixture();
+  const db = openDb({ path: f.dbPath }); db.pragma("synchronous=FULL");
+  db.exec("UPDATE agent_sessions SET native_session_id='native' WHERE session_id='s'");
+  const attention = new AttentionStore(db, f.dbPath); const owner = attention.claimOwner("read-model-test");
+  const scope = attention.registerScope(owner, "t", f.root);
+  const principal = { principal_id: "owner", client_session_id: "cli", read_scopes: [scope.scope_id], write_scopes: [scope.scope_id], stop_scopes: [scope.scope_id], operator_scopes: [] };
+  const store = new EngineeringStore(attention, owner);
+  const mission = store.adopt(principal, { scope_id: scope.scope_id, task_id: "t", run_id: "r", session_id: "s", goal: "Observe this reply", request_id: "adopt", completion_level: "observed_turn" }, 1000).mission;
+  const view = store.observe(principal, { mission_id: mission.mission_id }, 1001); const wait = view.waits[0]!;
+  const answer = store.decide(principal, { mission_id: mission.mission_id, wait_id: wait.wait_id, if_revision: view.mission.revision, decision_ref: wait.decision_ref, action_id: "read-model-answer", answer: { kind: "choice", choice_id: "a" }, interaction_token: wait.interaction_token! }, 1002);
+  store.cancel(principal, { mission_id: mission.mission_id, if_revision: answer.mission.revision, request_id: "cancel" }, 1003);
+  db.close(); return { ...f, messageId: answer.message_id };
+}
+it("P2-4 reads a proved cancelled-before-dispatch receipt without inventing pending delivery", () => {
+  const f = cancelledFixture(); const before = hash(f.dbPath);
+  const result = readAttentionStatus(f);
+  expect(result.sessions[0]?.wait).toEqual({ reason: "cancelled_before_dispatch", owner: "human", message_id: f.messageId, grant_id: null });
+  expect(result.sessions[0]?.process_liveness).toBe("unknown");
+  expect(hash(f.dbPath)).toBe(before);
+});
+it("P2-4 refuses a cancelled phase label when its persisted proof is inconsistent", () => {
+  const f = cancelledFixture(); const db = new Database(f.dbPath);
+  db.exec("UPDATE engineering_events SET payload_json='{}' WHERE kind='stop_requested'"); db.close();
+  expect(readAttentionStatus(f).sessions[0]?.wait).toMatchObject({ reason: "dispatch_inconsistent", owner: "unknown", message_id: f.messageId });
+});
+it("P2-4 lets a new pending message take precedence over an old cancelled receipt", () => {
+  const f = cancelledFixture(); const db = openDb({ path: f.dbPath });
+  reserveSessionInstruction(db, f.dbPath, { message_id: "new-pending", session_id: "s", turn_id: "turn", direction: "inbound", kind: "instruction.send", payload: { text: "Inspect current state" }, state: "accepted", created_at: 1004 }, 2, 1004); db.close();
+  expect(readAttentionStatus(f).sessions[0]?.wait).toMatchObject({ reason: "accepted_in_flight_or_uncertain", message_id: "new-pending" });
 });

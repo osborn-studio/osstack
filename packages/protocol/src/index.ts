@@ -119,3 +119,8 @@ export { FollowUpDeliveryTarget, FollowUpDeliverySubject, FollowUpDeliveryGrantB
   FollowUpDeliveryActionParams, FollowUpDeliveryAuthorizeParams, FollowUpDeliveryRevokeParams,
   FollowUpDeliveryInspectParams, FollowUpDeliveryListParams, FollowUpDeliveryAttempt,
   FollowUpDeliveryResult, FollowUpDeliveryListItem, FollowUpDeliveryListResult } from "./follow-up-delivery.js";
+export {
+  EngineeringDecisionRef, EngineeringAnswer, EngineeringAdoptRequest, EngineeringObserveRequest,
+  EngineeringDecideRequest, EngineeringDeferRequest, EngineeringCancelRequest,
+  EngineeringEndObservationRequest, EngineeringReconcileRequest, EngineeringRpcRequests,
+} from "./engineering.js";

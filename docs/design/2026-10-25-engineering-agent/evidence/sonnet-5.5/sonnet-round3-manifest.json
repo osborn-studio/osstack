@@ -1,0 +1,98 @@
+[
+  {
+    "path": "packages/core/src/state/engineering-store.ts",
+    "sha256": "87361d266cc87c3bf981ad7d265597df931c7d19ed78cba3d74a359e6c3709df",
+    "bytes": 52173
+  },
+  {
+    "path": "packages/core/src/state/engineering-store.test.ts",
+    "sha256": "e569f4d0821f2c4b74209c1eb1b965b5331d4a7064baa03eb8a5bcd4fb51bad6",
+    "bytes": 31579
+  },
+  {
+    "path": "packages/core/src/state/engineering-dispatch.ts",
+    "sha256": "36b03aea0604875d67c41ac2c2c1e807d0e4cc7d2dc593ac9b4c2a24ae469abd",
+    "bytes": 3390
+  },
+  {
+    "path": "packages/core/src/state/engineering-ddl.ts",
+    "sha256": "e7067bfc981362f7d9740ac574bebe87c246e62fbd1bb0e2e0ac71b6b18fb5c3",
+    "bytes": 6322
+  },
+  {
+    "path": "packages/core/src/state/db.ts",
+    "sha256": "bda761c2999f90292d546b6b871ad83567b851cc605767d6d6cc12417f183fee",
+    "bytes": 6927
+  },
+  {
+    "path": "packages/core/src/state/sessions.ts",
+    "sha256": "923c69781b1bdf9370e92cefeaef2fdb8128c2105eb5bf20f4163d37d84d5710",
+    "bytes": 13767
+  },
+  {
+    "path": "packages/core/src/state/attention-actions.ts",
+    "sha256": "795c2d55d41277282b4ca6bc95e115b4e468bc5403e6a81f14c51db8bef04da7",
+    "bytes": 14470
+  },
+  {
+    "path": "packages/cli/src/engineering-host.ts",
+    "sha256": "23f234aa550132bfaf0af44d865d13a86384ce912083efcb554caacbbafe233e",
+    "bytes": 11854
+  },
+  {
+    "path": "packages/cli/src/engineering-host.test.ts",
+    "sha256": "2286198ccf5f1ad62a751e9e3ea241dec9ac103dc21d53dcdfc7b05e6b285ab5",
+    "bytes": 8052
+  },
+  {
+    "path": "packages/cli/src/daemon-engineering.test.ts",
+    "sha256": "3c5d9887474b4b2d93c36013dedfbb295ebb1edf1fde9e9be70775eb7ba7fe21",
+    "bytes": 28938
+  },
+  {
+    "path": "packages/cli/src/engineering-upgrade-guard.ts",
+    "sha256": "909b03a706135e0b70904063d82938e3c1f7b4e783f68e0cc2a1af92eef2c7df",
+    "bytes": 1094
+  },
+  {
+    "path": "packages/cli/src/engineering-upgrade-guard.test.ts",
+    "sha256": "61441ff9c724729dd0ef6c1298fc6378e42b212b1697346d2438ff9e9cfbb205",
+    "bytes": 5383
+  },
+  {
+    "path": "packages/cli/src/upgrade-native-port.ts",
+    "sha256": "76c9bc59112843d9a30f67a57285a8f053a950ef0eac8e89bb19c811b6f2e0e4",
+    "bytes": 24349
+  },
+  {
+    "path": "packages/cli/src/upgrade-native.test.ts",
+    "sha256": "fc76e5514c341a2ab244d173b584eeb0f1299750c4ea777af5fa3199e3135fcc",
+    "bytes": 31295
+  },
+  {
+    "path": "packages/cli/src/upgrade-coordinator.ts",
+    "sha256": "2111fa5f28b69e44e9c496e16f93c8726d72c082fb19de847816220dc0b78351",
+    "bytes": 14179
+  },
+  {
+    "path": "docs/guides/engineering-session-adoption.en.md",
+    "sha256": "9e0e29abc0c59e2ce5dd5c31812996e4a684fc00da226ed3cc7bdc98ee31bea5",
+    "bytes": 21301
+  },
+  {
+    "path": "docs/guides/engineering-session-adoption.md",
+    "sha256": "b9af7d34770ea06167de198364bb715aba631de962f32acf6bdd362011fb679f",
+    "bytes": 19147
+  },
+  {
+    "path": "docs/design/2026-10-25-engineering-agent/evidence/sonnet-5.5/disposition.md",
+    "sha256": "f5f1b6b8f9fec8360139eb31df915deedc296018c3eefae16cd7ffd966a2ce72",
+    "bytes": 6646
+  },
+  {
+    "path": "packages/cli/src/daemon.ts",
+    "sha256": "62174ff1a06f623b2de173c751da431de284831a624770d91981a4f0ea8cfbe8",
+    "bytes": 204744,
+    "excerpted": true
+  }
+]

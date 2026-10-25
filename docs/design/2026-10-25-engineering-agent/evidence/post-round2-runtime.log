@@ -1,0 +1,20 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/capability-registry-pilot/packages/cli
+
+ ✓ src/session-rpc.test.ts (32 tests) 3131ms
+   ✓ cancels admission queued for either manual route without reserving a receipt  399ms
+ ✓ src/engineering-host.test.ts (3 tests) 269ms
+ ✓ src/engineering-access.test.ts (6 tests) 14ms
+ ✓ src/daemon-engineering.test.ts (20 tests) 9994ms
+   ✓ adopts an existing Session, commits one reply turn and reads its observation proof  500ms
+   ✓ checks live authorization after admission and recovers only the uncommitted first dispatch  327ms
+   ✓ rechecks deferred waits on the bounded observer without a model or an automatic answer  1056ms
+   ✓ keeps a healthy slow reply in flight across two observer ticks and finalizes the original attention ledger  2298ms
+   ✓ persists one blocked reason and avoids reacquiring writer admission while authority stays revoked  2396ms
+   ✓ keeps a refused drain live and resumes the original reserved first dispatch only after explicit resume  1135ms
+
+ Test Files  4 passed (4)
+      Tests  61 passed (61)
+   Start at  06:32:19
+   Duration  14.42s (transform 2.65s, setup 72ms, collect 8.07s, tests 13.41s, environment 2ms, prepare 452ms)
+

@@ -4,7 +4,7 @@ import * as sourceFs from "node:fs/promises";
 vi.mock("node:fs/promises",async importOriginal=>{const actual=await importOriginal<typeof import("node:fs/promises")>();return {...actual,open:vi.fn(actual.open)};});
 import { connect } from "node:net";
 import { join } from "node:path";
-import { createScratchDir, openDb, insertRun, insertTask } from "@osstack/core";
+import { createScratchDir, openDb, insertRun, insertTask, CURRENT_SCHEMA_VERSION } from "@osstack/core";
 import { encodeFrame, FrameDecoder } from "@osstack/hermes-adapter";
 import { afterEach, expect, it, vi } from "vitest";
 import {
@@ -955,7 +955,7 @@ it("rejects a managed artifact code mismatch before creating or migrating the da
   socket = join(root,"d.sock");
   vi.stubEnv("OSSTACK_HOME",root);vi.stubEnv("OSSTACK_SOCKET",socket);vi.stubEnv("OSSTACK_UPDATE_CHECK","0");
   const backend = await import("./upgrade-native-backend.js");
-  vi.spyOn(backend,"managedStartupIdentity").mockReturnValue({deployment_kind:"npm",build_digest:"a".repeat(64),build_evidence:"host_manifest",version:"999.0.0",protocol_version:1,database_schema:46});
+  vi.spyOn(backend,"managedStartupIdentity").mockReturnValue({deployment_kind:"npm",build_digest:"a".repeat(64),build_evidence:"host_manifest",version:"999.0.0",protocol_version:1,database_schema:CURRENT_SCHEMA_VERSION});
   await expect(start()).rejects.toThrow("upgrade_running_build_mismatch");
   expect(existsSync(join(root,"state.db"))).toBe(false);
 });
@@ -985,7 +985,7 @@ it("returns EX_CONFIG for managed serve guard failures without opening the DB", 
 it("refuses managed direct-DB code mismatch before opening state", async () => {
   root=await createScratchDir("tests","managed-direct-refusal");vi.stubEnv("OSSTACK_HOME",root);
   const backend=await import("./upgrade-native-backend.js");
-  vi.spyOn(backend,"managedStartupIdentity").mockReturnValue({deployment_kind:"npm",build_digest:"a".repeat(64),build_evidence:"host_manifest",version:"999.0.0",protocol_version:1,database_schema:46});
+  vi.spyOn(backend,"managedStartupIdentity").mockReturnValue({deployment_kind:"npm",build_digest:"a".repeat(64),build_evidence:"host_manifest",version:"999.0.0",protocol_version:1,database_schema:CURRENT_SCHEMA_VERSION});
   await expect(main(["stack","list"])).rejects.toThrow("upgrade_running_build_mismatch");
   expect(existsSync(join(root,"state.db"))).toBe(false);
 });

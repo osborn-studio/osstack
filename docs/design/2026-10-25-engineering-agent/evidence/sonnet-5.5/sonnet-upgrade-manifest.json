@@ -1,0 +1,18 @@
+[
+  {
+    "path": "packages/cli/src/upgrade-native-port.ts",
+    "sha256": "c501149a7f4ed8aad5cbc7419641b8b0dbd2839c51d82eaa9dcaa0984a4d9081"
+  },
+  {
+    "path": "packages/cli/src/upgrade-native.test.ts",
+    "sha256": "5bc56f8eae0551df9710f36bfaa00be50cda5fcd4dd9c95506cd19e63375d425"
+  },
+  {
+    "path": "packages/core/src/state/engineering-ddl.ts",
+    "sha256": "e7067bfc981362f7d9740ac574bebe87c246e62fbd1bb0e2e0ac71b6b18fb5c3"
+  },
+  {
+    "path": "packages/core/src/state/engineering-dispatch.ts",
+    "sha256": "36b03aea0604875d67c41ac2c2c1e807d0e4cc7d2dc593ac9b4c2a24ae469abd"
+  }
+]

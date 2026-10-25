@@ -1,0 +1,44 @@
+{
+  "version": 1,
+  "tests": [
+    {
+      "test": "fm-classify-decision-key.test.sh",
+      "source_commit": "af1c6817fc47589b162cbc361671c43cdb150933",
+      "command": [
+        "bash",
+        "tests/fm-classify-decision-key.test.sh"
+      ],
+      "exit_code": 0,
+      "passed_assertion_lines": 23,
+      "log": "fm-classify-decision-key.test.sh.log",
+      "log_sha256": "601b9ca2c97a6fd140d02c467934900f21ee4758e02b207e862d6642f57f3841",
+      "scope": "original_firstmate_test_with_fixtures_not_osstack_runtime"
+    },
+    {
+      "test": "fm-wake-drain-open-decisions.test.sh",
+      "source_commit": "af1c6817fc47589b162cbc361671c43cdb150933",
+      "command": [
+        "bash",
+        "tests/fm-wake-drain-open-decisions.test.sh"
+      ],
+      "exit_code": 0,
+      "passed_assertion_lines": 9,
+      "log": "fm-wake-drain-open-decisions.test.sh.log",
+      "log_sha256": "a1e96eb9691251ec2cca185394609fab4a34740953a6f5ed0be263850cd6208d",
+      "scope": "original_firstmate_test_with_fixtures_not_osstack_runtime"
+    },
+    {
+      "test": "fm-send-resolve-key.test.sh",
+      "source_commit": "af1c6817fc47589b162cbc361671c43cdb150933",
+      "command": [
+        "bash",
+        "tests/fm-send-resolve-key.test.sh"
+      ],
+      "exit_code": 0,
+      "passed_assertion_lines": 24,
+      "log": "fm-send-resolve-key.test.sh.log",
+      "log_sha256": "7bd0ca4077dd43191e079b346087f98174130f8aeeeee6c9e670538a383c4ab1",
+      "scope": "original_firstmate_test_with_fixtures_not_osstack_runtime"
+    }
+  ]
+}

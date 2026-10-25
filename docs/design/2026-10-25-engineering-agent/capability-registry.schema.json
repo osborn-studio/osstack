@@ -1,0 +1,287 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "OSStack behavior capability design registry v1",
+  "$comment": "Design-only schema. Runtime qualification requires a separately reviewed versioned protocol, not changing these constants to bypass evidence gates.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "registry_kind": {
+      "const": "behavior_capability_design"
+    },
+    "status": {
+      "const": "proposal"
+    },
+    "baselines": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "osstack": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{40}$"
+        },
+        "firstmate": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{40}$"
+        }
+      },
+      "required": [
+        "osstack",
+        "firstmate"
+      ]
+    },
+    "source_manifest": {
+      "const": "sources.json"
+    },
+    "capability_count": {
+      "const": 24
+    },
+    "capabilities": {
+      "type": "array",
+      "minItems": 24,
+      "maxItems": 24,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^FM-(0[1-9]|1[0-9]|2[0-4])$"
+          },
+          "ledger_number": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 24
+          },
+          "name": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "zh": {
+                "type": "string",
+                "minLength": 1
+              },
+              "en": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "zh",
+              "en"
+            ]
+          },
+          "owner_component": {
+            "type": "string",
+            "minLength": 1
+          },
+          "trigger": {
+            "type": "string",
+            "minLength": 1
+          },
+          "upstream_refs": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "minItems": 1,
+            "uniqueItems": true
+          },
+          "osstack_refs": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "minItems": 1,
+            "uniqueItems": true
+          },
+          "existing_test_refs": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "minItems": 1,
+            "uniqueItems": true
+          },
+          "existing_entries": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "minItems": 1,
+            "uniqueItems": true
+          },
+          "baseline": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "implementation": {
+                "const": "source_mapped"
+              },
+              "description": {
+                "type": "string",
+                "minLength": 1
+              },
+              "agent_integration": {
+                "const": "not_end_to_end_qualified"
+              },
+              "runtime_revalidation": {
+                "const": "not_run_in_this_design"
+              }
+            },
+            "required": [
+              "implementation",
+              "description",
+              "agent_integration",
+              "runtime_revalidation"
+            ]
+          },
+          "target": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "default_behavior": {
+                "type": "string",
+                "minLength": 1
+              },
+              "integration_gap": {
+                "type": "string",
+                "minLength": 1
+              },
+              "invariants": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "minItems": 1,
+                "uniqueItems": true
+              },
+              "authority_rule": {
+                "type": "string",
+                "minLength": 1
+              },
+              "semantic_policy": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "default_behavior",
+              "integration_gap",
+              "invariants",
+              "authority_rule",
+              "semantic_policy"
+            ]
+          },
+          "depends_on": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^FM-(0[1-9]|1[0-9]|2[0-4])$"
+            },
+            "uniqueItems": true
+          },
+          "acceptance": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "expected": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "status": {
+                  "const": "planned"
+                },
+                "required_evidence": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "minItems": 1,
+                  "uniqueItems": true
+                }
+              },
+              "required": [
+                "id",
+                "expected",
+                "status",
+                "required_evidence"
+              ]
+            }
+          },
+          "activation": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "state": {
+                "const": "design_only"
+              },
+              "runtime_enabled": {
+                "const": false
+              },
+              "required_gates": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "minItems": 1,
+                "uniqueItems": true
+              },
+              "rollback": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "state",
+              "runtime_enabled",
+              "required_gates",
+              "rollback"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "ledger_number",
+          "name",
+          "owner_component",
+          "trigger",
+          "upstream_refs",
+          "osstack_refs",
+          "existing_test_refs",
+          "existing_entries",
+          "baseline",
+          "target",
+          "depends_on",
+          "acceptance",
+          "activation"
+        ]
+      }
+    }
+  },
+  "required": [
+    "schema_version",
+    "registry_kind",
+    "status",
+    "baselines",
+    "source_manifest",
+    "capability_count",
+    "capabilities"
+  ]
+}

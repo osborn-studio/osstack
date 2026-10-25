@@ -1,0 +1,1343 @@
+{
+  "schema_version": 1,
+  "status": "assertion_evidence_inventory",
+  "baseline_commit": "14e7433b70f103499059c15fb9bf2ed87b0b0279",
+  "source_scenarios_sha256": "b41c4fb3397922b2354f21f2f100c82e3227dd84522354754ea4be634790108e",
+  "note": "Mapped by reading actual test assertions and running targeted suites. automated is local evidence, not a production acceptance claim. Six live/containment cases remain unverified. The eight later cases retain their actual stage (not all are goal_dispatch).",
+  "all_adopt_session_qualified": false,
+  "counts": {
+    "total": 66,
+    "adopt_session": 58,
+    "automated": 52,
+    "unverified": 6,
+    "deferred": 8
+  },
+  "local_test_receipts": [
+    {
+      "command": "pnpm --filter @osstack/core exec vitest run src/state/engineering-store.test.ts src/state/engineering-scenarios.test.ts src/state/attention-actions.test.ts src/state/attention-recovery-view.test.ts",
+      "runtime": "Node.js22",
+      "exit_code": 0,
+      "passed_tests": 88,
+      "log": "docs/design/2026-10-25-engineering-agent/evidence/post-round2-core.log",
+      "sha256": "96f9e1f968e245654033b36b74e1de98ac81d03a689054b64dbd73e5650f0fc6"
+    },
+    {
+      "command": "pnpm --filter @osstack/cli exec vitest run src/engineering-command.test.ts src/attention-read-model.test.ts",
+      "runtime": "Node.js22",
+      "exit_code": 0,
+      "passed_tests": 26,
+      "log": "docs/design/2026-10-25-engineering-agent/evidence/engineering-cli-readmodel-scenarios.log",
+      "sha256": "d5a8ae4fcf19f17f1046fb7a7b8ff441963d0e15c4afa5c8785327cb3bc7eb99"
+    },
+    {
+      "command": "pnpm --filter @osstack/cli exec vitest run src/engineering-access.test.ts src/engineering-host.test.ts src/daemon-engineering.test.ts src/session-rpc.test.ts",
+      "runtime": "Node.js22",
+      "exit_code": 0,
+      "passed_tests": 61,
+      "log": "docs/design/2026-10-25-engineering-agent/evidence/post-round2-runtime.log",
+      "sha256": "c0562c8f98c55acd0ff49bcd6e1e1a9812de2aa94a36f4613fcd191ff936373d"
+    },
+    {
+      "command": "pnpm --filter @osstack/cli exec vitest run src/engineering-crash.integration.test.ts",
+      "runtime": "Node.js22",
+      "exit_code": 0,
+      "passed_tests": 2,
+      "log": "docs/design/2026-10-25-engineering-agent/evidence/engineering-crash-scenarios.log",
+      "sha256": "4aa4822acaf69e8a0e8a0986993f60f7c9d6ddd7a0514da143b01e919ee60813"
+    },
+    {
+      "command": "pnpm --filter @osstack/protocol exec vitest run src/engineering.test.ts src/attention.test.ts src/schemas.test.ts",
+      "runtime": "Node.js22",
+      "exit_code": 0,
+      "passed_tests": 55,
+      "log": "docs/design/2026-10-25-engineering-agent/evidence/engineering-protocol-scenarios.log",
+      "sha256": "5acf64364030a03b0f2a0b231465fe17e0a211323503f713bbf87e1802a329b7"
+    }
+  ],
+  "scenarios": [
+    {
+      "id": "WD-01",
+      "name": "buried-question",
+      "delivery_stage": "adopt_session",
+      "required_layer": "contract",
+      "owner_work_item": "D07",
+      "status": "automated",
+      "assertions": [
+        {
+          "file": "packages/core/src/state/engineering-scenarios.test.ts",
+          "test": "WD-01 preserves a buried question after unrelated progress",
+          "line": 53,
+          "assertion": "Unrelated progress keeps the original wait open and creates no message.",
+          "test_file_sha256": "10c4f6ce597014d093ddd65e9e848c22d568df85e4f038af2d93bfce8d878a8c"
+        }
+      ],
+      "scope": "Local automated assertions only; no blanket production, hardware-durability or Provider qualification."
+    },
+    {
+      "id": "WD-02",
+      "name": "unrelated-done",
+      "delivery_stage": "adopt_session",
+      "required_layer": "contract",
+      "owner_work_item": "D07",
+      "status": "automated",
+      "assertions": [
+        {
+          "file": "packages/core/src/state/engineering-scenarios.test.ts",
+          "test": "WD-02 ignores an unrelated done event and keeps the blocked decision",
+          "line": 60,
+          "assertion": "Another Run terminal leaves the wait open and ObservationProof null.",
+          "test_file_sha256": "10c4f6ce597014d093ddd65e9e848c22d568df85e4f038af2d93bfce8d878a8c"
+        }
+      ],
+      "scope": "Local automated assertions only; no blanket production, hardware-durability or Provider qualification."
+    },
+    {
+      "id": "WD-03",
+      "name": "empty-wake-queue",
+      "delivery_stage": "adopt_session",
+      "required_layer": "integration",
+      "owner_work_item": "D07",
+      "status": "automated",
+      "assertions": [
+        {
+          "file": "packages/core/src/state/engineering-scenarios.test.ts",
+          "test": "WD-03 reconstructs open waits even when the incremental event page is empty",
+          "line": 65,
+          "assertion": "Empty incremental event page still returns the authoritative open wait.",
+          "test_file_sha256": "10c4f6ce597014d093ddd65e9e848c22d568df85e4f038af2d93bfce8d878a8c"
+        }
+      ],
+      "scope": "Local automated assertions only; no blanket production, hardware-durability or Provider qualification."
+    },
+    {
+      "id": "WD-04",
+      "name": "source-disappears",
+      "delivery_stage": "adopt_session",
+      "required_layer": "fault",
+      "owner_work_item": "D07",
+      "status": "automated",
+      "assertions": [
+        {
+          "file": "packages/core/src/state/engineering-scenarios.test.ts",
+          "test": "WD-04 keeps the obligation after the source Session disappears",
+          "line": 70,
+          "assertion": "Deleted source Session marks source_status unavailable, preserves the same open wait, records a reason event, and creates no proof.",
+          "test_file_sha256": "10c4f6ce597014d093ddd65e9e848c22d568df85e4f038af2d93bfce8d878a8c"
+        },
+        {
+          "file": "packages/core/src/state/engineering-store.test.ts",
+          "test": "does not poison a reserved answer after a transient repository outage and records one reason",
+          "line": 253,
+          "assertion": "Transient repository loss preserves the original reservation and open wait; restoration permits its original dispatch and deduplicates the diagnostic event.",
+          "test_file_sha256": "e569f4d0821f2c4b74209c1eb1b965b5331d4a7064baa03eb8a5bcd4fb51bad6"
+        },
+        {
+          "file": "packages/core/src/state/engineering-store.test.ts",
+          "test": "persists a real completed turn during a repository outage and projects completion only after observation recovers",
+          "line": 190,
+          "assertion": "Renaming the actual repository cannot erase a completed turn, applied message or exact proof; projection stays unresolved while observation is unavailable and completes after the repository returns.",
+          "test_file_sha256": "e569f4d0821f2c4b74209c1eb1b965b5331d4a7064baa03eb8a5bcd4fb51bad6"
+        }
+      ],
+      "scope": "Local automated assertions only; no blanket production, hardware-durability or Provider qualification."
+    },
+    {
+      "id": "WD-05",
+      "name": "exact-choice",
+      "delivery_stage": "adopt_session",
+      "required_layer": "integration",
+      "owner_work_item": "D07",
+      "status": "automated",
+      "assertions": [
+        {
+          "file": "packages/cli/src/daemon-engineering.test.ts",
+          "test": "adopts an existing Session, commits one reply turn and reads its observation proof",
+          "line": 99,
+          "assertion": "Socket RPC resolves the exact choice to its label, creates one resume and reads exact reply proof.",
+          "test_file_sha256": "3c5d9887474b4b2d93c36013dedfbb295ebb1edf1fde9e9be70775eb7ba7fe21"
+        }
+      ],
+      "scope": "Local automated assertions only; no blanket production, hardware-durability or Provider qualification."
+    },
+    {
+      "id": "WD-06",
+      "name": "stale-revision",
+      "delivery_stage": "adopt_session",
+      "required_layer": "contract",
+      "owner_work_item": "D07",
+      "status": "automated",
+      "assertions": [
+        {
+          "file": "packages/core/src/state/engineering-store.test.ts",
+          "test": "requires the actual FULL connection and rejects stale actor, source and item binding",
+          "line": 66,
+          "assertion": "Stale item_revision rejects before reservation.",
+          "test_file_sha256": "e569f4d0821f2c4b74209c1eb1b965b5331d4a7064baa03eb8a5bcd4fb51bad6"
+        }
+      ],
+      "scope": "Local automated assertions only; no blanket production, hardware-durability or Provider qualification."
+    },
+    {
+      "id": "WD-07",
+      "name": "stale-content",
+      "delivery_stage": "adopt_session",
+      "required_layer": "contract",
+      "owner_work_item": "D07",
+      "status": "automated",
+      "assertions": [
+        {
+          "file": "packages/core/src/state/engineering-scenarios.test.ts",
+          "test": "WD-07 refuses an altered content digest without reserving a message",
+          "line": 78,
+          "assertion": "Wrong content digest rejects before message reservation.",
+          "test_file_sha256": "10c4f6ce597014d093ddd65e9e848c22d568df85e4f038af2d93bfce8d878a8c"
+        },
+        {
+          "file": "packages/core/src/state/engineering-store.test.ts",
+          "test": "uses canonical parsed decisions for refresh and defer when strings need trimming",
+          "line": 282,
+          "assertion": "Whitespace normalization uses the parsed decision digest for refresh and defer rather than a conflicting raw representation.",
+          "test_file_sha256": "e569f4d0821f2c4b74209c1eb1b965b5331d4a7064baa03eb8a5bcd4fb51bad6"
+        }
+      ],
+      "scope": "Local automated assertions only; no blanket production, hardware-durability or Provider qualification."
+    },
+    {
+      "id": "WD-08",
+      "name": "cross-repo",
+      "delivery_stage": "adopt_session",
+      "required_layer": "security",
+      "owner_work_item": "D07",
+      "status": "automated",
+      "assertions": [
+        {
+          "file": "packages/core/src/state/engineering-scenarios.test.ts",
+          "test": "WD-08 refuses a cross-repository source without relocating the Mission",
+          "line": 83,
+          "assertion": "Changed repository rejects; Mission never rebinds and no message exists.",
+          "test_file_sha256": "10c4f6ce597014d093ddd65e9e848c22d568df85e4f038af2d93bfce8d878a8c"
+        }
+      ],
+      "scope": "Local automated assertions only; no blanket production, hardware-durability or Provider qualification."
+    },
+    {
+      "id": "WD-09",
+      "name": "ambiguous-continue",
+      "delivery_stage": "adopt_session",
+      "required_layer": "journey",
+      "owner_work_item": "D07",
+      "status": "automated",
+      "assertions": [
+        {
+          "file": "packages/core/src/state/engineering-scenarios.test.ts",
+          "test": "WD-09 requires a named explicit choice when two questions are open",
+          "line": 89,
+          "assertion": "With two waits, plain continue is rejected and both remain open.",
+          "test_file_sha256": "10c4f6ce597014d093ddd65e9e848c22d568df85e4f038af2d93bfce8d878a8c"
+        }
+      ],
+      "scope": "Local automated assertions only; no blanket production, hardware-durability or Provider qualification."
+    },
+    {
+      "id": "WD-10",
+      "name": "forged-actor",
+      "delivery_stage": "adopt_session",
+      "required_layer": "security",
+      "owner_work_item": "D07",
+      "status": "automated",
+      "assertions": [
+        {
+          "file": "packages/cli/src/daemon-engineering.test.ts",
+          "test": "rejects forged request roles and cross-owner steering while preserving scope-operator stop",
+          "line": 111,
+          "assertion": "RPC rejects a forged actor field; a different writer cannot claim operator stop.",
+          "test_file_sha256": "3c5d9887474b4b2d93c36013dedfbb295ebb1edf1fde9e9be70775eb7ba7fe21"
+        }
+      ],
+      "scope": "Local automated assertions only; no blanket production, hardware-durability or Provider qualification."
+    },
+    {
+      "id": "WD-11",
+      "name": "approval-as-text",
+      "delivery_stage": "adopt_session",
+      "required_layer": "security",
+      "owner_work_item": "D07",
+      "status": "automated",
+      "assertions": [
+        {
+          "file": "packages/core/src/state/engineering-scenarios.test.ts",
+          "test": "WD-11 refuses ordinary answers for risk and task authorization gates",
+          "line": 203,
+          "assertion": "Risk and task-authorization decisions cannot be adopted through the ordinary answer path; no messages are created.",
+          "test_file_sha256": "10c4f6ce597014d093ddd65e9e848c22d568df85e4f038af2d93bfce8d878a8c"
+        }
+      ],
+      "scope": "Local automated assertions only; no blanket production, hardware-durability or Provider qualification."
+    },
+    {
+      "id": "WD-12",
+      "name": "revoked-authority",
+      "delivery_stage": "adopt_session",
+      "required_layer": "security",
+      "owner_work_item": "D07",
+      "status": "automated",
+      "assertions": [
+        {
+          "file": "packages/cli/src/daemon-engineering.test.ts",
+          "test": "checks live authorization after admission and recovers only the uncommitted first dispatch",
+          "line": 121,
+          "assertion": "Write revocation after asynchronous admission prevents Adapter resume; original reserved action remains recoverable after valid authorization.",
+          "test_file_sha256": "3c5d9887474b4b2d93c36013dedfbb295ebb1edf1fde9e9be70775eb7ba7fe21"
+        }
+      ],
+      "scope": "Local automated assertions only; no blanket production, hardware-durability or Provider qualification."
+    },
+    {
+      "id": "WD-13",
+      "name": "same-key-replay",
+      "delivery_stage": "adopt_session",
+      "required_layer": "contract",
+      "owner_work_item": "D07",
+      "status": "automated",
+      "assertions": [
+        {
+          "file": "packages/core/src/state/engineering-store.test.ts",
+          "test": "reserves atomically, replays after token expiry, and commits first dispatch only once",
+          "line": 40,
+          "assertion": "Same authenticated payload returns the same message after expiry; phase CAS permits one dispatch only.",
+          "test_file_sha256": "e569f4d0821f2c4b74209c1eb1b965b5331d4a7064baa03eb8a5bcd4fb51bad6"
+        }
+      ],
+      "scope": "Local automated assertions only; no blanket production, hardware-durability or Provider qualification."
+    },
+    {
+      "id": "WD-14",
+      "name": "same-key-conflict",
+      "delivery_stage": "adopt_session",
+      "required_layer": "contract",
+      "owner_work_item": "D07",
+      "status": "automated",
+      "assertions": [
+        {
+          "file": "packages/core/src/state/engineering-scenarios.test.ts",
+          "test": "WD-14 rejects changed payload under the same action key",
+          "line": 96,
+          "assertion": "Same action key with a changed choice conflicts and leaves one message.",
+          "test_file_sha256": "10c4f6ce597014d093ddd65e9e848c22d568df85e4f038af2d93bfce8d878a8c"
+        }
+      ],
+      "scope": "Local automated assertions only; no blanket production, hardware-durability or Provider qualification."
+    },
+    {
+      "id": "WD-15",
+      "name": "two-clients",
+      "delivery_stage": "adopt_session",
+      "required_layer": "race",
+      "owner_work_item": "D07",
+      "status": "automated",
+      "assertions": [
+        {
+          "file": "packages/core/src/state/engineering-scenarios.test.ts",
+          "test": "WD-15 gives only one reservation to two UI windows answering the same revision",
+          "line": 101,
+          "assertion": "Two UI snapshots at the same Mission revision produce one accepted reservation.",
+          "test_file_sha256": "10c4f6ce597014d093ddd65e9e848c22d568df85e4f038af2d93bfce8d878a8c"
+        }
+      ],
+      "scope": "Local automated assertions only; no blanket production, hardware-durability or Provider qualification."
+    },
+    {
+      "id": "WD-16",
+      "name": "crash-after-reserve",
+      "delivery_stage": "adopt_session",
+      "required_layer": "fault",
+      "owner_work_item": "D07",
+      "status": "automated",
+      "assertions": [
+        {
+          "file": "packages/cli/src/engineering-crash.integration.test.ts",
+          "test": "WD16: SIGKILL during %s preserves first-dispatch authority across process restart",
+          "line": 63,
+          "assertion": "Separate host process is killed during admission; restarted process performs the original first dispatch once with the same action and completion proof.",
+          "test_file_sha256": "8eb0fe30c1aba95e9a91d270304ad9d94b5024d1eb99c8cddc4b259f2bf51e5f"
+        }
+      ],
+      "scope": "Local automated assertions only; no blanket production, hardware-durability or Provider qualification."
+    },
+    {
+      "id": "WD-17",
+      "name": "crash-after-send",
+      "delivery_stage": "adopt_session",
+      "required_layer": "fault",
+      "owner_work_item": "D07",
+      "status": "automated",
+      "assertions": [
+        {
+          "file": "packages/cli/src/engineering-crash.integration.test.ts",
+          "test": "WD16: SIGKILL during %s preserves first-dispatch authority across process restart",
+          "line": 63,
+          "assertion": "Separate host process is killed after invocation was logged; recovery tick does not invoke again and does not invent applied proof.",
+          "test_file_sha256": "8eb0fe30c1aba95e9a91d270304ad9d94b5024d1eb99c8cddc4b259f2bf51e5f"
+        }
+      ],
+      "scope": "Local automated assertions only; no blanket production, hardware-durability or Provider qualification."
+    },
+    {
+      "id": "WD-18",
+      "name": "unknown-after-restart",
+      "delivery_stage": "adopt_session",
+      "required_layer": "fault",
+      "owner_work_item": "D07",
+      "status": "automated",
+      "assertions": [
+        {
+          "file": "packages/cli/src/daemon-engineering.test.ts",
+          "test": "never repeats a committed unknown action across a real daemon restart",
+          "line": 154,
+          "assertion": "Failed transport remains queryable after actual daemon close/restart and resume count remains one.",
+          "test_file_sha256": "3c5d9887474b4b2d93c36013dedfbb295ebb1edf1fde9e9be70775eb7ba7fe21"
+        },
+        {
+          "file": "packages/cli/src/engineering-crash.integration.test.ts",
+          "test": "WD16: SIGKILL during %s preserves first-dispatch authority across process restart",
+          "line": 63,
+          "assertion": "SIGKILL invoking branch validates the process-crash boundary with persistent invocation count.",
+          "test_file_sha256": "8eb0fe30c1aba95e9a91d270304ad9d94b5024d1eb99c8cddc4b259f2bf51e5f"
+        }
+      ],
+      "scope": "Local automated assertions only; no blanket production, hardware-durability or Provider qualification."
+    },
+    {
+      "id": "WD-19",
+      "name": "applied-resume",
+      "delivery_stage": "adopt_session",
+      "required_layer": "live",
+      "owner_work_item": "D07",
+      "status": "unverified",
+      "assertions": [
+        {
+          "file": "packages/cli/src/daemon-engineering.test.ts",
+          "test": "adopts an existing Session, commits one reply turn and reads its observation proof",
+          "line": 99,
+          "assertion": "Fixture Adapter reply is applied exactly once, and the original action has an ObservationProof.",
+          "test_file_sha256": "3c5d9887474b4b2d93c36013dedfbb295ebb1edf1fde9e9be70775eb7ba7fe21"
+        },
+        {
+          "file": "packages/cli/src/daemon-engineering.test.ts",
+          "test": "keeps a healthy slow reply in flight across two observer ticks and finalizes the original attention ledger",
+          "line": 208,
+          "assertion": "A fixture reply spanning two watchdog ticks stays in_flight and atomically finalizes both ledgers; this still does not qualify a live Provider.",
+          "test_file_sha256": "3c5d9887474b4b2d93c36013dedfbb295ebb1edf1fde9e9be70775eb7ba7fe21"
+        }
+      ],
+      "reason": "Live Provider/CLI harness reply was not executed. The socket/DB/Adapter fixture proves local integration only.",
+      "automated_fixture_coverage": "partial; does not satisfy the required live or containment qualification"
+    },
+    {
+      "id": "WD-20",
+      "name": "multiple-obligations",
+      "delivery_stage": "adopt_session",
+      "required_layer": "contract",
+      "owner_work_item": "D07",
+      "status": "automated",
+      "assertions": [
+        {
+          "file": "packages/core/src/state/engineering-scenarios.test.ts",
+          "test": "WD-20 clears only the answered Mission and leaves the other obligation open",
+          "line": 107,
+          "assertion": "An exact reply completion clears only its Mission; another Session wait stays open.",
+          "test_file_sha256": "10c4f6ce597014d093ddd65e9e848c22d568df85e4f038af2d93bfce8d878a8c"
+        }
+      ],
+      "scope": "Local automated assertions only; no blanket production, hardware-durability or Provider qualification."
+    },
+    {
+      "id": "WD-21",
+      "name": "old-owner",
+      "delivery_stage": "adopt_session",
+      "required_layer": "race",
+      "owner_work_item": "D07",
+      "status": "automated",
+      "assertions": [
+        {
+          "file": "packages/core/src/state/engineering-scenarios.test.ts",
+          "test": "WD-21 rejects the old daemon generation before creating a new effect",
+          "line": 119,
+          "assertion": "Old owner cannot commit dispatch after daemon generation replacement.",
+          "test_file_sha256": "10c4f6ce597014d093ddd65e9e848c22d568df85e4f038af2d93bfce8d878a8c"
+        }
+      ],
+      "scope": "Local automated assertions only; no blanket production, hardware-durability or Provider qualification."
+    },
+    {
+      "id": "WD-22",
+      "name": "cancel-versus-answer",
+      "delivery_stage": "adopt_session",
+      "required_layer": "race",
+      "owner_work_item": "D07",
+      "status": "automated",
+      "assertions": [
+        {
+          "file": "packages/cli/src/daemon-engineering.test.ts",
+          "test": "cancels before dispatch through its independent channel and does not invoke the adapter",
+          "line": 134,
+          "assertion": "Cancellation while asynchronous admission is blocked produces cancelled_before_dispatch and zero resume calls.",
+          "test_file_sha256": "3c5d9887474b4b2d93c36013dedfbb295ebb1edf1fde9e9be70775eb7ba7fe21"
+        }
+      ],
+      "scope": "Local automated assertions only; no blanket production, hardware-durability or Provider qualification."
+    },
+    {
+      "id": "WD-23",
+      "name": "quiet-await",
+      "delivery_stage": "adopt_session",
+      "required_layer": "performance",
+      "owner_work_item": "D07",
+      "status": "automated",
+      "assertions": [
+        {
+          "file": "packages/core/src/state/engineering-scenarios.test.ts",
+          "test": "WD-23 and WD-24 defer without approval and bound unchanged rechecks to one reminder",
+          "line": 125,
+          "assertion": "One hundred unchanged reductions retain a deferred unanswered wait with one reminder.",
+          "test_file_sha256": "10c4f6ce597014d093ddd65e9e848c22d568df85e4f038af2d93bfce8d878a8c"
+        },
+        {
+          "file": "packages/cli/src/daemon-engineering.test.ts",
+          "test": "rechecks deferred waits on the bounded observer without a model or an automatic answer",
+          "line": 201,
+          "assertion": "Actual watchdog emits one reminder with zero Adapter resumes and no automatic answer.",
+          "test_file_sha256": "3c5d9887474b4b2d93c36013dedfbb295ebb1edf1fde9e9be70775eb7ba7fe21"
+        }
+      ],
+      "scope": "Local automated assertions only; no blanket production, hardware-durability or Provider qualification."
+    },
+    {
+      "id": "WD-24",
+      "name": "defer-not-approve",
+      "delivery_stage": "adopt_session",
+      "required_layer": "contract",
+      "owner_work_item": "D07",
+      "status": "automated",
+      "assertions": [
+        {
+          "file": "packages/core/src/state/engineering-scenarios.test.ts",
+          "test": "WD-23 and WD-24 defer without approval and bound unchanged rechecks to one reminder",
+          "line": 125,
+          "assertion": "Deferral remains unanswered, creates no message and at most one reminder.",
+          "test_file_sha256": "10c4f6ce597014d093ddd65e9e848c22d568df85e4f038af2d93bfce8d878a8c"
+        }
+      ],
+      "scope": "Local automated assertions only; no blanket production, hardware-durability or Provider qualification."
+    },
+    {
+      "id": "WD-25",
+      "name": "away-not-authority",
+      "delivery_stage": "integrated_controller",
+      "required_layer": "security",
+      "owner_work_item": "I01",
+      "status": "deferred",
+      "assertions": [],
+      "reason": "Outside adopt_session. Remains mandatory for the original named delivery stage and owner work item; not counted as pilot pass."
+    },
+    {
+      "id": "WD-26",
+      "name": "return-brief",
+      "delivery_stage": "integrated_controller",
+      "required_layer": "journey",
+      "owner_work_item": "I01",
+      "status": "deferred",
+      "assertions": [],
+      "reason": "Outside adopt_session. Remains mandatory for the original named delivery stage and owner work item; not counted as pilot pass."
+    },
+    {
+      "id": "WD-27",
+      "name": "candidate-changed",
+      "delivery_stage": "integrated_controller",
+      "required_layer": "contract",
+      "owner_work_item": "I03",
+      "status": "deferred",
+      "assertions": [],
+      "reason": "Outside adopt_session. Remains mandatory for the original named delivery stage and owner work item; not counted as pilot pass."
+    },
+    {
+      "id": "WD-28",
+      "name": "stop-not-confirmed",
+      "delivery_stage": "adopt_session",
+      "required_layer": "live",
+      "owner_work_item": "D07",
+      "status": "unverified",
+      "assertions": [
+        {
+          "file": "packages/cli/src/daemon-engineering.test.ts",
+          "test": "does not equate a committed abort request with proof that all effects stopped",
+          "line": 144,
+          "assertion": "Abort produces stop_unknown; committed phase and unknown effects are preserved.",
+          "test_file_sha256": "3c5d9887474b4b2d93c36013dedfbb295ebb1edf1fde9e9be70775eb7ba7fe21"
+        },
+        {
+          "file": "packages/core/src/state/engineering-store.test.ts",
+          "test": "bounds stop retries, preserves the first intent, and exposes only this Mission's unresolved committed message",
+          "line": 305,
+          "assertion": "Repeated stop keeps the original intent and exposes only this Mission unresolved committed message, not later manual Session work.",
+          "test_file_sha256": "e569f4d0821f2c4b74209c1eb1b965b5331d4a7064baa03eb8a5bcd4fb51bad6"
+        }
+      ],
+      "reason": "No supported process containment domain was qualified on a live Worker. The fixture proves conservative stop_unknown behavior only.",
+      "automated_fixture_coverage": "partial; does not satisfy the required live or containment qualification"
+    },
+    {
+      "id": "WD-29",
+      "name": "clock-backwards",
+      "delivery_stage": "adopt_session",
+      "required_layer": "fault",
+      "owner_work_item": "D07",
+      "status": "automated",
+      "assertions": [
+        {
+          "file": "packages/core/src/state/engineering-scenarios.test.ts",
+          "test": "WD-29 rejects backwards time and does not extend a replayed token's lifetime",
+          "line": 135,
+          "assertion": "Time before token issue rejects; accepted replay does not extend token timestamps.",
+          "test_file_sha256": "10c4f6ce597014d093ddd65e9e848c22d568df85e4f038af2d93bfce8d878a8c"
+        }
+      ],
+      "scope": "Local automated assertions only; no blanket production, hardware-durability or Provider qualification."
+    },
+    {
+      "id": "WD-30",
+      "name": "queue-overload",
+      "delivery_stage": "adopt_session",
+      "required_layer": "performance",
+      "owner_work_item": "D07",
+      "status": "automated",
+      "assertions": [
+        {
+          "file": "packages/cli/src/engineering-host.test.ts",
+          "test": "keeps the independent stop channel reachable when all sixteen dispatch slots are waiting",
+          "line": 39,
+          "assertion": "All 16 dispatch slots wait on admission, but cancel reaches the independent stop port and records a receipt.",
+          "test_file_sha256": "2286198ccf5f1ad62a751e9e3ea241dec9ac103dc21d53dcdfc7b05e6b285ab5"
+        }
+      ],
+      "scope": "Local automated assertions only; no blanket production, hardware-durability or Provider qualification."
+    },
+    {
+      "id": "WD-31",
+      "name": "wait-cycle",
+      "delivery_stage": "integrated_controller",
+      "required_layer": "contract",
+      "owner_work_item": "C03",
+      "status": "deferred",
+      "assertions": [],
+      "reason": "Outside adopt_session. Remains mandatory for the original named delivery stage and owner work item; not counted as pilot pass."
+    },
+    {
+      "id": "WD-32",
+      "name": "manual-intervention",
+      "delivery_stage": "adopt_session",
+      "required_layer": "live",
+      "owner_work_item": "D07",
+      "status": "unverified",
+      "assertions": [
+        {
+          "file": "packages/core/src/state/engineering-scenarios.test.ts",
+          "test": "WD-42 keeps direct source advancement in reconciliation until explicit disposition",
+          "line": 148,
+          "assertion": "Manual Session advancement cannot fabricate applied evidence.",
+          "test_file_sha256": "10c4f6ce597014d093ddd65e9e848c22d568df85e4f038af2d93bfce8d878a8c"
+        },
+        {
+          "file": "packages/core/src/state/engineering-scenarios.test.ts",
+          "test": "WD-56 disposes an exact unanswered observation without fabricating applied evidence",
+          "line": 166,
+          "assertion": "Exact owner-authorized observation disposal creates no delivery proof or resume.",
+          "test_file_sha256": "10c4f6ce597014d093ddd65e9e848c22d568df85e4f038af2d93bfce8d878a8c"
+        }
+      ],
+      "reason": "Out-of-band intervention was injected in persisted Session records; a real interactive Provider session intervention remains unverified.",
+      "automated_fixture_coverage": "partial; does not satisfy the required live or containment qualification"
+    },
+    {
+      "id": "WD-33",
+      "name": "real-harness",
+      "delivery_stage": "adopt_session",
+      "required_layer": "live",
+      "owner_work_item": "D08",
+      "status": "unverified",
+      "assertions": [
+        {
+          "file": "packages/cli/src/daemon-engineering.test.ts",
+          "test": "adopts an existing Session, commits one reply turn and reads its observation proof",
+          "line": 99,
+          "assertion": "Fixture-only plumbing: exact one-resume reply proof. No real Provider was called by this test.",
+          "test_file_sha256": "3c5d9887474b4b2d93c36013dedfbb295ebb1edf1fde9e9be70775eb7ba7fe21"
+        }
+      ],
+      "reason": "No live supported Codex/Claude harness completed this end-to-end journey. Fixture success does not qualify a Provider/model/profile.",
+      "automated_fixture_coverage": "partial; does not satisfy the required live or containment qualification"
+    },
+    {
+      "id": "WD-34",
+      "name": "control-plane-isolation",
+      "delivery_stage": "production_qualification",
+      "required_layer": "security",
+      "owner_work_item": "V03",
+      "status": "deferred",
+      "assertions": [],
+      "reason": "Outside adopt_session. Remains mandatory for the original named delivery stage and owner work item; not counted as pilot pass."
+    },
+    {
+      "id": "WD-35",
+      "name": "legacy-approved-contract",
+      "delivery_stage": "adopt_session",
+      "required_layer": "security",
+      "owner_work_item": "D07",
+      "status": "automated",
+      "assertions": [
+        {
+          "file": "packages/core/src/state/engineering-scenarios.test.ts",
+          "test": "WD-35 observes legacy approved contracts without manufacturing initial dispatch",
+          "line": 213,
+          "assertion": "Historical approval stays approved, no new run/action/message/dispatch is created.",
+          "test_file_sha256": "10c4f6ce597014d093ddd65e9e848c22d568df85e4f038af2d93bfce8d878a8c"
+        }
+      ],
+      "scope": "Local automated assertions only; no blanket production, hardware-durability or Provider qualification."
+    },
+    {
+      "id": "WD-36",
+      "name": "cancel-before-commit",
+      "delivery_stage": "adopt_session",
+      "required_layer": "race",
+      "owner_work_item": "D07",
+      "status": "automated",
+      "assertions": [
+        {
+          "file": "packages/cli/src/daemon-engineering.test.ts",
+          "test": "cancels before dispatch through its independent channel and does not invoke the adapter",
+          "line": 134,
+          "assertion": "T-cancel wins before T-dispatch, leaving strict cancellation proof and no Adapter call.",
+          "test_file_sha256": "3c5d9887474b4b2d93c36013dedfbb295ebb1edf1fde9e9be70775eb7ba7fe21"
+        }
+      ],
+      "scope": "Local automated assertions only; no blanket production, hardware-durability or Provider qualification."
+    },
+    {
+      "id": "WD-37",
+      "name": "cancel-after-commit",
+      "delivery_stage": "adopt_session",
+      "required_layer": "race",
+      "owner_work_item": "D07",
+      "status": "automated",
+      "assertions": [
+        {
+          "file": "packages/cli/src/daemon-engineering.test.ts",
+          "test": "does not equate a committed abort request with proof that all effects stopped",
+          "line": 144,
+          "assertion": "T-dispatch wins first, so cancellation requests abort without marking the original unsent.",
+          "test_file_sha256": "3c5d9887474b4b2d93c36013dedfbb295ebb1edf1fde9e9be70775eb7ba7fe21"
+        },
+        {
+          "file": "packages/cli/src/daemon-engineering.test.ts",
+          "test": "does not abort a later manual Session instruction when cancelling the original Mission",
+          "line": 230,
+          "assertion": "Cancellation of a completed old Mission cannot abort a later independent manual Session instruction.",
+          "test_file_sha256": "3c5d9887474b4b2d93c36013dedfbb295ebb1edf1fde9e9be70775eb7ba7fe21"
+        }
+      ],
+      "scope": "Local automated assertions only; no blanket production, hardware-durability or Provider qualification."
+    },
+    {
+      "id": "WD-38",
+      "name": "expired-token-replay",
+      "delivery_stage": "adopt_session",
+      "required_layer": "security",
+      "owner_work_item": "D07",
+      "status": "automated",
+      "assertions": [
+        {
+          "file": "packages/core/src/state/engineering-scenarios.test.ts",
+          "test": "WD-38 reads committed and applied replays without changing any ledger rows",
+          "line": 228,
+          "assertion": "Expired-token committed/applied replay leaves all recorded ledger rows unchanged.",
+          "test_file_sha256": "10c4f6ce597014d093ddd65e9e848c22d568df85e4f038af2d93bfce8d878a8c"
+        },
+        {
+          "file": "packages/core/src/state/engineering-store.test.ts",
+          "test": "keeps completed Missions absorbing and committed/applied replay read-only",
+          "line": 295,
+          "assertion": "Completed Mission replay is read-only; terminal cancellation cannot overwrite completion.",
+          "test_file_sha256": "e569f4d0821f2c4b74209c1eb1b965b5331d4a7064baa03eb8a5bcd4fb51bad6"
+        }
+      ],
+      "scope": "Local automated assertions only; no blanket production, hardware-durability or Provider qualification."
+    },
+    {
+      "id": "WD-39",
+      "name": "immutable-question",
+      "delivery_stage": "adopt_session",
+      "required_layer": "contract",
+      "owner_work_item": "D07",
+      "status": "automated",
+      "assertions": [
+        {
+          "file": "packages/core/src/state/engineering-scenarios.test.ts",
+          "test": "WD-39 rejects rewritten content under an immutable decision identity",
+          "line": 143,
+          "assertion": "Same question identity with altered content is rejected.",
+          "test_file_sha256": "10c4f6ce597014d093ddd65e9e848c22d568df85e4f038af2d93bfce8d878a8c"
+        }
+      ],
+      "scope": "Local automated assertions only; no blanket production, hardware-durability or Provider qualification."
+    },
+    {
+      "id": "WD-40",
+      "name": "daemon-vs-source-generation",
+      "delivery_stage": "adopt_session",
+      "required_layer": "fault",
+      "owner_work_item": "D07",
+      "status": "automated",
+      "assertions": [
+        {
+          "file": "packages/core/src/state/engineering-scenarios.test.ts",
+          "test": "WD-40 keeps source identity separate from daemon replacement and queries the original action",
+          "line": 238,
+          "assertion": "Daemon generation changes while source identity stays fixed and original receipt remains queryable.",
+          "test_file_sha256": "10c4f6ce597014d093ddd65e9e848c22d568df85e4f038af2d93bfce8d878a8c"
+        }
+      ],
+      "scope": "Local automated assertions only; no blanket production, hardware-durability or Provider qualification."
+    },
+    {
+      "id": "WD-41",
+      "name": "applied-is-completed-turn",
+      "delivery_stage": "adopt_session",
+      "required_layer": "live",
+      "owner_work_item": "D07",
+      "status": "unverified",
+      "assertions": [
+        {
+          "file": "packages/cli/src/daemon-engineering.test.ts",
+          "test": "ends observation without stopping an already committed invocation or inventing success",
+          "line": 161,
+          "assertion": "In-flight fixture remains accepted/committed with null ObservationProof; endObservation does not stop it or claim success.",
+          "test_file_sha256": "3c5d9887474b4b2d93c36013dedfbb295ebb1edf1fde9e9be70775eb7ba7fe21"
+        }
+      ],
+      "reason": "In-flight behavior uses a controllable Adapter fixture. A real model reply with live timing and transport remains unverified.",
+      "automated_fixture_coverage": "partial; does not satisfy the required live or containment qualification"
+    },
+    {
+      "id": "WD-42",
+      "name": "source-advanced-without-proof",
+      "delivery_stage": "adopt_session",
+      "required_layer": "contract",
+      "owner_work_item": "D07",
+      "status": "automated",
+      "assertions": [
+        {
+          "file": "packages/core/src/state/engineering-scenarios.test.ts",
+          "test": "WD-42 keeps direct source advancement in reconciliation until explicit disposition",
+          "line": 148,
+          "assertion": "Out-of-band source advancement retains reconciliation with no applied proof.",
+          "test_file_sha256": "10c4f6ce597014d093ddd65e9e848c22d568df85e4f038af2d93bfce8d878a8c"
+        }
+      ],
+      "scope": "Local automated assertions only; no blanket production, hardware-durability or Provider qualification."
+    },
+    {
+      "id": "WD-43",
+      "name": "worker-flock-is-insufficient",
+      "delivery_stage": "adopt_session",
+      "required_layer": "security",
+      "owner_work_item": "D07",
+      "status": "unverified",
+      "assertions": [
+        {
+          "file": "packages/cli/src/daemon-engineering.test.ts",
+          "test": "does not equate a committed abort request with proof that all effects stopped",
+          "line": 144,
+          "assertion": "Partial conservative behavior only: even the fixture abort yields stop_unknown, never containment proof.",
+          "test_file_sha256": "3c5d9887474b4b2d93c36013dedfbb295ebb1edf1fde9e9be70775eb7ba7fe21"
+        }
+      ],
+      "reason": "The trusted-process pilot has no tested child-process containment/exit proof. A surviving child that writes after parent exit has not been qualified; no quiescence or replacement-writer claim is made.",
+      "automated_fixture_coverage": "partial; does not satisfy the required live or containment qualification"
+    },
+    {
+      "id": "WD-44",
+      "name": "released-lineage",
+      "delivery_stage": "adopt_session",
+      "required_layer": "integration",
+      "owner_work_item": "D07",
+      "status": "automated",
+      "assertions": [
+        {
+          "file": "packages/core/src/state/engineering-store.test.ts",
+          "test": "upgrades canonical schema46 without changing existing receipts or granting legacy dispatch",
+          "line": 162,
+          "assertion": "Canonical migration preserves legacy receipts and creates no legacy dispatch phase.",
+          "test_file_sha256": "e569f4d0821f2c4b74209c1eb1b965b5331d4a7064baa03eb8a5bcd4fb51bad6"
+        },
+        {
+          "file": "packages/core/src/state/engineering-store.test.ts",
+          "test": "refuses an unknown experimental engineering table before migration",
+          "line": 175,
+          "assertion": "Mismatched schema refuses before mutation, preserving user_version46 and the original data.",
+          "test_file_sha256": "e569f4d0821f2c4b74209c1eb1b965b5331d4a7064baa03eb8a5bcd4fb51bad6"
+        },
+        {
+          "file": "packages/core/src/state/engineering-store.test.ts",
+          "test": "reopens schema47 read-only and read-write with every additive table recognized by lineage",
+          "line": 330,
+          "assertion": "Read-only and writable schema47 reopen recognize every additive table in the lineage allowlist.",
+          "test_file_sha256": "e569f4d0821f2c4b74209c1eb1b965b5331d4a7064baa03eb8a5bcd4fb51bad6"
+        }
+      ],
+      "scope": "Local automated assertions only; no blanket production, hardware-durability or Provider qualification."
+    },
+    {
+      "id": "WD-45",
+      "name": "qualification-forgery",
+      "delivery_stage": "runtime_registry",
+      "required_layer": "security",
+      "owner_work_item": "R05",
+      "status": "deferred",
+      "assertions": [],
+      "reason": "Outside adopt_session. Remains mandatory for the original named delivery stage and owner work item; not counted as pilot pass."
+    },
+    {
+      "id": "WD-46",
+      "name": "qualification-profile-mismatch",
+      "delivery_stage": "runtime_registry",
+      "required_layer": "contract",
+      "owner_work_item": "R05",
+      "status": "deferred",
+      "assertions": [],
+      "reason": "Outside adopt_session. Remains mandatory for the original named delivery stage and owner work item; not counted as pilot pass."
+    },
+    {
+      "id": "WD-47",
+      "name": "observed-cost-not-hard-cap",
+      "delivery_stage": "adopt_session",
+      "required_layer": "contract",
+      "owner_work_item": "D07",
+      "status": "automated",
+      "assertions": [
+        {
+          "file": "packages/core/src/state/engineering-scenarios.test.ts",
+          "test": "WD-47 reports unmetered provider cost as unknown without asserting a hard cap",
+          "line": 222,
+          "assertion": "Missing usage is explicitly unknown; no cost/token zero or hard cap is asserted.",
+          "test_file_sha256": "10c4f6ce597014d093ddd65e9e848c22d568df85e4f038af2d93bfce8d878a8c"
+        }
+      ],
+      "scope": "Local automated assertions only; no blanket production, hardware-durability or Provider qualification."
+    },
+    {
+      "id": "WD-48",
+      "name": "principal-replay-scope",
+      "delivery_stage": "adopt_session",
+      "required_layer": "security",
+      "owner_work_item": "D07",
+      "status": "automated",
+      "assertions": [
+        {
+          "file": "packages/core/src/state/engineering-scenarios.test.ts",
+          "test": "WD-48 binds token and replay to the authenticated principal and client",
+          "line": 153,
+          "assertion": "Client mismatch, other-principal replay and changed token body are rejected.",
+          "test_file_sha256": "10c4f6ce597014d093ddd65e9e848c22d568df85e4f038af2d93bfce8d878a8c"
+        }
+      ],
+      "scope": "Local automated assertions only; no blanket production, hardware-durability or Provider qualification."
+    },
+    {
+      "id": "WD-49",
+      "name": "legacy-action-phase",
+      "delivery_stage": "adopt_session",
+      "required_layer": "fault",
+      "owner_work_item": "D07",
+      "status": "automated",
+      "assertions": [
+        {
+          "file": "packages/core/src/state/engineering-store.test.ts",
+          "test": "upgrades canonical schema46 without changing existing receipts or granting legacy dispatch",
+          "line": 162,
+          "assertion": "Legacy uncertain action retains its state, has no phase, and is not upgraded to first-dispatch authority.",
+          "test_file_sha256": "e569f4d0821f2c4b74209c1eb1b965b5331d4a7064baa03eb8a5bcd4fb51bad6"
+        }
+      ],
+      "scope": "Local automated assertions only; no blanket production, hardware-durability or Provider qualification."
+    },
+    {
+      "id": "WD-50",
+      "name": "adoption-pilot-no-registry",
+      "delivery_stage": "adopt_session",
+      "required_layer": "journey",
+      "owner_work_item": "D07",
+      "status": "automated",
+      "assertions": [
+        {
+          "file": "packages/cli/src/daemon-engineering.test.ts",
+          "test": "adopts an existing Session, commits one reply turn and reads its observation proof",
+          "line": 99,
+          "assertion": "Fresh isolated daemon fixture has no runtime-registry qualification file; its initial startSession throws if called. Adopt/answer/observe completes through the existing Session.",
+          "test_file_sha256": "3c5d9887474b4b2d93c36013dedfbb295ebb1edf1fde9e9be70775eb7ba7fe21"
+        }
+      ],
+      "scope": "Local automated assertions only; no blanket production, hardware-durability or Provider qualification."
+    },
+    {
+      "id": "WD-51",
+      "name": "restart-first-dispatch",
+      "delivery_stage": "adopt_session",
+      "required_layer": "integration",
+      "owner_work_item": "D07",
+      "status": "automated",
+      "assertions": [
+        {
+          "file": "packages/core/src/state/engineering-store.test.ts",
+          "test": "recovers only the original reserved first dispatch under the new daemon owner",
+          "line": 94,
+          "assertion": "New owner can commit only the existing reserved action; a later owner cannot commit it again.",
+          "test_file_sha256": "e569f4d0821f2c4b74209c1eb1b965b5331d4a7064baa03eb8a5bcd4fb51bad6"
+        },
+        {
+          "file": "packages/cli/src/engineering-crash.integration.test.ts",
+          "test": "WD16: SIGKILL during %s preserves first-dispatch authority across process restart",
+          "line": 63,
+          "assertion": "Admission-crash branch resumes the original message once after process restart.",
+          "test_file_sha256": "8eb0fe30c1aba95e9a91d270304ad9d94b5024d1eb99c8cddc4b259f2bf51e5f"
+        }
+      ],
+      "scope": "Local automated assertions only; no blanket production, hardware-durability or Provider qualification."
+    },
+    {
+      "id": "WD-52",
+      "name": "dispatch-admission-fails",
+      "delivery_stage": "adopt_session",
+      "required_layer": "integration",
+      "owner_work_item": "D07",
+      "status": "automated",
+      "assertions": [
+        {
+          "file": "packages/cli/src/engineering-host.test.ts",
+          "test": "pages beyond sixteen denied old reservations and retries temporary admission without resending committed work",
+          "line": 11,
+          "assertion": "After denied admission, a20 remains reserved and uncommitted with zero executions; later valid admission invokes exactly once.",
+          "test_file_sha256": "2286198ccf5f1ad62a751e9e3ea241dec9ac103dc21d53dcdfc7b05e6b285ab5"
+        },
+        {
+          "file": "packages/cli/src/engineering-host.test.ts",
+          "test": "rejects revoked authority before admission with exponential retry intervals capped at sixty seconds",
+          "line": 58,
+          "assertion": "Unchanged denial uses bounded exponential retry delay instead of repeatedly invoking writer admission.",
+          "test_file_sha256": "2286198ccf5f1ad62a751e9e3ea241dec9ac103dc21d53dcdfc7b05e6b285ab5"
+        }
+      ],
+      "scope": "Local automated assertions only; no blanket production, hardware-durability or Provider qualification."
+    },
+    {
+      "id": "WD-53",
+      "name": "cancelled-phase-migration",
+      "delivery_stage": "adopt_session",
+      "required_layer": "integration",
+      "owner_work_item": "D07",
+      "status": "automated",
+      "assertions": [
+        {
+          "file": "packages/core/src/state/engineering-scenarios.test.ts",
+          "test": "WD-53 upgrades schema46 then releases only a proven uncommitted cancellation",
+          "line": 247,
+          "assertion": "Actual schema46 upgrade followed by cancellation retains the original CHECK and releases only proven uncommitted guard.",
+          "test_file_sha256": "10c4f6ce597014d093ddd65e9e848c22d568df85e4f038af2d93bfce8d878a8c"
+        }
+      ],
+      "scope": "Local automated assertions only; no blanket production, hardware-durability or Provider qualification."
+    },
+    {
+      "id": "WD-54",
+      "name": "all-entrances-gated",
+      "delivery_stage": "adopt_session",
+      "required_layer": "integration",
+      "owner_work_item": "D07",
+      "status": "automated",
+      "assertions": [
+        {
+          "file": "packages/cli/src/daemon-engineering.test.ts",
+          "test": "keeps legacy attention and session routes receipt-only for engineering reservations",
+          "line": 179,
+          "assertion": "Engineering reservation makes attention replay receipt-only and legacy session.send rejects; no duplicate call.",
+          "test_file_sha256": "3c5d9887474b4b2d93c36013dedfbb295ebb1edf1fde9e9be70775eb7ba7fe21"
+        },
+        {
+          "file": "packages/core/src/state/engineering-store.test.ts",
+          "test": "reserves atomically, replays after token expiry, and commits first dispatch only once",
+          "line": 40,
+          "assertion": "A consumed or absent process-local permit cannot enter dispatch again.",
+          "test_file_sha256": "e569f4d0821f2c4b74209c1eb1b965b5331d4a7064baa03eb8a5bcd4fb51bad6"
+        }
+      ],
+      "scope": "Local automated assertions only; no blanket production, hardware-durability or Provider qualification."
+    },
+    {
+      "id": "WD-55",
+      "name": "source-native-replaced",
+      "delivery_stage": "adopt_session",
+      "required_layer": "integration",
+      "owner_work_item": "D07",
+      "status": "automated",
+      "assertions": [
+        {
+          "file": "packages/core/src/state/engineering-scenarios.test.ts",
+          "test": "WD-55 preserves source identity when native ID becomes %s",
+          "line": 160,
+          "assertion": "Replaced or null native ID preserves the original Mission source and refuses send.",
+          "test_file_sha256": "10c4f6ce597014d093ddd65e9e848c22d568df85e4f038af2d93bfce8d878a8c"
+        }
+      ],
+      "scope": "Local automated assertions only; no blanket production, hardware-durability or Provider qualification."
+    },
+    {
+      "id": "WD-56",
+      "name": "dispose-without-action",
+      "delivery_stage": "adopt_session",
+      "required_layer": "integration",
+      "owner_work_item": "D07",
+      "status": "automated",
+      "assertions": [
+        {
+          "file": "packages/core/src/state/engineering-scenarios.test.ts",
+          "test": "WD-56 disposes an exact unanswered observation without fabricating applied evidence",
+          "line": 166,
+          "assertion": "Owner disposal creates steering only, no session message or applied completion.",
+          "test_file_sha256": "10c4f6ce597014d093ddd65e9e848c22d568df85e4f038af2d93bfce8d878a8c"
+        }
+      ],
+      "scope": "Local automated assertions only; no blanket production, hardware-durability or Provider qualification."
+    },
+    {
+      "id": "WD-57",
+      "name": "dispose-with-unknown-action",
+      "delivery_stage": "adopt_session",
+      "required_layer": "integration",
+      "owner_work_item": "D07",
+      "status": "automated",
+      "assertions": [
+        {
+          "file": "packages/core/src/state/engineering-scenarios.test.ts",
+          "test": "WD-57 refuses disposal of unknown delivery but permits receipt query and cancellation",
+          "line": 174,
+          "assertion": "Unknown action prevents disposal but remains queryable and independently cancellable.",
+          "test_file_sha256": "10c4f6ce597014d093ddd65e9e848c22d568df85e4f038af2d93bfce8d878a8c"
+        }
+      ],
+      "scope": "Local automated assertions only; no blanket production, hardware-durability or Provider qualification."
+    },
+    {
+      "id": "WD-58",
+      "name": "observed-turn-success",
+      "delivery_stage": "adopt_session",
+      "required_layer": "integration",
+      "owner_work_item": "D08",
+      "status": "automated",
+      "assertions": [
+        {
+          "file": "packages/core/src/state/engineering-store.test.ts",
+          "test": "records exact completed turn evidence in the original transaction, without resuming twice",
+          "line": 82,
+          "assertion": "Completion is written inside the original applied-turn transaction and yields only exact ObservationProof.",
+          "test_file_sha256": "e569f4d0821f2c4b74209c1eb1b965b5331d4a7064baa03eb8a5bcd4fb51bad6"
+        },
+        {
+          "file": "packages/core/src/state/engineering-store.test.ts",
+          "test": "rolls back completed turn evidence when its database identity changed: %s",
+          "line": 217,
+          "assertion": "Changing native Session identity, Run agent identity or scope repository binding atomically rolls back the original turn and completion evidence.",
+          "test_file_sha256": "e569f4d0821f2c4b74209c1eb1b965b5331d4a7064baa03eb8a5bcd4fb51bad6"
+        }
+      ],
+      "scope": "Local automated assertions only; no blanket production, hardware-durability or Provider qualification."
+    },
+    {
+      "id": "WD-59",
+      "name": "historical-run-terminal",
+      "delivery_stage": "adopt_session",
+      "required_layer": "integration",
+      "owner_work_item": "D07",
+      "status": "automated",
+      "assertions": [
+        {
+          "file": "packages/core/src/state/engineering-store.test.ts",
+          "test": "retains the exact decision and never completes from the earlier Run terminal",
+          "line": 34,
+          "assertion": "Earlier completed Run does not make an adopted awaiting-decision Mission complete.",
+          "test_file_sha256": "e569f4d0821f2c4b74209c1eb1b965b5331d4a7064baa03eb8a5bcd4fb51bad6"
+        }
+      ],
+      "scope": "Local automated assertions only; no blanket production, hardware-durability or Provider qualification."
+    },
+    {
+      "id": "WD-60",
+      "name": "end-observation",
+      "delivery_stage": "adopt_session",
+      "required_layer": "integration",
+      "owner_work_item": "D07",
+      "status": "automated",
+      "assertions": [
+        {
+          "file": "packages/cli/src/daemon-engineering.test.ts",
+          "test": "ends observation without stopping an already committed invocation or inventing success",
+          "line": 161,
+          "assertion": "Explicit observation termination is idempotent, does not stop committed work, and leaves proof null and receipt accepted.",
+          "test_file_sha256": "3c5d9887474b4b2d93c36013dedfbb295ebb1edf1fde9e9be70775eb7ba7fe21"
+        }
+      ],
+      "scope": "Local automated assertions only; no blanket production, hardware-durability or Provider qualification."
+    },
+    {
+      "id": "WD-61",
+      "name": "signer-role-confusion",
+      "delivery_stage": "runtime_registry",
+      "required_layer": "integration",
+      "owner_work_item": "R05",
+      "status": "deferred",
+      "assertions": [],
+      "reason": "Outside adopt_session. Remains mandatory for the original named delivery stage and owner work item; not counted as pilot pass."
+    },
+    {
+      "id": "WD-62",
+      "name": "cancelled-original-item",
+      "delivery_stage": "adopt_session",
+      "required_layer": "integration",
+      "owner_work_item": "D07",
+      "status": "automated",
+      "assertions": [
+        {
+          "file": "packages/core/src/state/engineering-scenarios.test.ts",
+          "test": "WD-62 preserves cancelled original receipt and rejects replacement answers",
+          "line": 183,
+          "assertion": "Cancelled original remains cancelled; altered or replacement answer is refused.",
+          "test_file_sha256": "10c4f6ce597014d093ddd65e9e848c22d568df85e4f038af2d93bfce8d878a8c"
+        },
+        {
+          "file": "packages/cli/src/attention-read-model.test.ts",
+          "test": "P2-4 reads a proved cancelled-before-dispatch receipt without inventing pending delivery",
+          "line": 201,
+          "assertion": "The read-only projection returns cancelled_before_dispatch with no pending receipt and unchanged DB bytes.",
+          "test_file_sha256": "bd5313f599e74006f96f432c6da99230ca8ff6e714d347a8bcb34aa74150fa9b"
+        },
+        {
+          "file": "packages/cli/src/attention-read-model.test.ts",
+          "test": "P2-4 refuses a cancelled phase label when its persisted proof is inconsistent",
+          "line": 208,
+          "assertion": "A phase label without its exact durable cancellation proof is dispatch_inconsistent.",
+          "test_file_sha256": "bd5313f599e74006f96f432c6da99230ca8ff6e714d347a8bcb34aa74150fa9b"
+        },
+        {
+          "file": "packages/cli/src/attention-read-model.test.ts",
+          "test": "P2-4 lets a new pending message take precedence over an old cancelled receipt",
+          "line": 213,
+          "assertion": "A later independent pending instruction takes precedence over a proved old cancellation.",
+          "test_file_sha256": "bd5313f599e74006f96f432c6da99230ca8ff6e714d347a8bcb34aa74150fa9b"
+        },
+        {
+          "file": "packages/cli/src/daemon-engineering.test.ts",
+          "test": "returns dispatch_inconsistent for a new manual send when original cancellation evidence is missing",
+          "line": 307,
+          "assertion": "A corrupt cancellation proof blocks a later manual send instead of releasing the original guard.",
+          "test_file_sha256": "3c5d9887474b4b2d93c36013dedfbb295ebb1edf1fde9e9be70775eb7ba7fe21"
+        }
+      ],
+      "scope": "Local automated assertions only; no blanket production, hardware-durability or Provider qualification."
+    },
+    {
+      "id": "WD-63",
+      "name": "resolution-before-dispatch",
+      "delivery_stage": "adopt_session",
+      "required_layer": "integration",
+      "owner_work_item": "D07",
+      "status": "automated",
+      "assertions": [
+        {
+          "file": "packages/core/src/state/engineering-store.test.ts",
+          "test": "an existing resolution stops first dispatch and is never repaired back to reserved",
+          "line": 113,
+          "assertion": "A preexisting abandoned_unknown resolution blocks dispatch and remains authoritative during recovery.",
+          "test_file_sha256": "e569f4d0821f2c4b74209c1eb1b965b5331d4a7064baa03eb8a5bcd4fb51bad6"
+        }
+      ],
+      "scope": "Local automated assertions only; no blanket production, hardware-durability or Provider qualification."
+    },
+    {
+      "id": "WD-64",
+      "name": "reserved-projection-recovery",
+      "delivery_stage": "adopt_session",
+      "required_layer": "integration",
+      "owner_work_item": "D07",
+      "status": "automated",
+      "assertions": [
+        {
+          "file": "packages/core/src/state/engineering-store.test.ts",
+          "test": "rejects abandon on a reserved first dispatch without mutating it",
+          "line": 74,
+          "assertion": "Recovery keeps an original gated action reserved rather than uncertain, before all dispatch preconditions are separately checked.",
+          "test_file_sha256": "e569f4d0821f2c4b74209c1eb1b965b5331d4a7064baa03eb8a5bcd4fb51bad6"
+        },
+        {
+          "file": "packages/cli/src/daemon-engineering.test.ts",
+          "test": "keeps a refused drain live and resumes the original reserved first dispatch only after explicit resume",
+          "line": 291,
+          "assertion": "A held reserved action cannot dispatch while draining; explicit daemon.resume restores its original first dispatch once and confirmed completion clears the hold.",
+          "test_file_sha256": "3c5d9887474b4b2d93c36013dedfbb295ebb1edf1fde9e9be70775eb7ba7fe21"
+        }
+      ],
+      "scope": "Local automated assertions only; no blanket production, hardware-durability or Provider qualification."
+    },
+    {
+      "id": "WD-65",
+      "name": "abandon-reserved-rejected",
+      "delivery_stage": "adopt_session",
+      "required_layer": "integration",
+      "owner_work_item": "D07",
+      "status": "automated",
+      "assertions": [
+        {
+          "file": "packages/core/src/state/engineering-store.test.ts",
+          "test": "rejects abandon on a reserved first dispatch without mutating it",
+          "line": 74,
+          "assertion": "Abandon refuses reserved first dispatch without writing a receipt resolution.",
+          "test_file_sha256": "e569f4d0821f2c4b74209c1eb1b965b5331d4a7064baa03eb8a5bcd4fb51bad6"
+        },
+        {
+          "file": "packages/core/src/state/engineering-store.test.ts",
+          "test": "cancel before dispatch persists proof, releases only the proven reservation, and never sends",
+          "line": 51,
+          "assertion": "Explicit cancellation creates exact proof and prevents first dispatch.",
+          "test_file_sha256": "e569f4d0821f2c4b74209c1eb1b965b5331d4a7064baa03eb8a5bcd4fb51bad6"
+        }
+      ],
+      "scope": "Local automated assertions only; no blanket production, hardware-durability or Provider qualification."
+    },
+    {
+      "id": "WD-66",
+      "name": "steering-owner-only",
+      "delivery_stage": "adopt_session",
+      "required_layer": "integration",
+      "owner_work_item": "D07",
+      "status": "automated",
+      "assertions": [
+        {
+          "file": "packages/core/src/state/engineering-scenarios.test.ts",
+          "test": "WD-66 limits observation steering to its owner with current read and write",
+          "line": 190,
+          "assertion": "Other writer and write-revoked owner cannot steer the observation.",
+          "test_file_sha256": "10c4f6ce597014d093ddd65e9e848c22d568df85e4f038af2d93bfce8d878a8c"
+        }
+      ],
+      "scope": "Local automated assertions only; no blanket production, hardware-durability or Provider qualification."
+    }
+  ]
+}

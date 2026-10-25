@@ -1,0 +1,54 @@
+{
+  "scope": "design_review_only",
+  "rounds": [
+    {
+      "round": 1,
+      "requested_model": "claude-fable-5-1",
+      "reported_canonical_model": "claude-fable-5-1",
+      "duration_ms": 514631,
+      "input_sha256": "2fb1c298aa63959515d46fa8560bef7470cd5d87fff973b002e0b8003f818087",
+      "response_sha256": "b47d3470f43b59c6479f1933e11db4b10d279abff77eadc423220b69ae1a1994",
+      "report_sha256": "eb3de330feda04f8069ecd3200aed1d7da1fa071549279750f4a8eb06d97777b",
+      "report_transform": "one_trailing_newline_added",
+      "empty_source_excerpts": []
+    },
+    {
+      "round": 2,
+      "requested_model": "claude-fable-5-1",
+      "reported_canonical_model": "claude-fable-5-1",
+      "duration_ms": 442399,
+      "input_sha256": "0c8b7f3316acf7fbbf06efd5d26e9189728c99df83c3a9fb5a9fe09902df3409",
+      "response_sha256": "9d6b4ed594fb5c5336a21092840c348b1e2c45bd69f79b4d720822a05a4d89ed",
+      "report_sha256": "84f0aa643c39e99bf509ba8588d976824a93b44658ab2312417856c769c3a401",
+      "report_transform": "none",
+      "empty_source_excerpts": []
+    },
+    {
+      "round": 3,
+      "requested_model": "claude-fable-5-1",
+      "reported_canonical_model": "claude-fable-5-1",
+      "duration_ms": 201887,
+      "input_sha256": "a983daba29093b6e0a9431c7bd9ad4792be97bb717d50d45561ef12e3e0d659e",
+      "response_sha256": "b0601226007dbeb8dd401244c58dcbc324852de67b48fc0a58b1330867502192",
+      "report_sha256": "ee02147d2c3ee2a6f71638f8ee7138042ffb0173935a82b47558964c24e1584f",
+      "report_transform": "none",
+      "empty_source_excerpts": []
+    },
+    {
+      "round": 4,
+      "requested_model": "claude-fable-5-1",
+      "reported_canonical_model": "claude-fable-5-1",
+      "duration_ms": 83219,
+      "input_sha256": "a6bb87916b159d0339e9438006042b30eda91033a99360f3e8ec347300553083",
+      "response_sha256": "b6c1459be268394bd880d4ab67d13ac97b47dd22709a562e28741ef9636e839e",
+      "report_sha256": "adb44642dc42ea450c14f8e9d5d14f9c5ab1d1fdd2ed7bf795a77df9cd8b0e59",
+      "report_transform": "none",
+      "empty_source_excerpts": [
+        "PINNED_SOURCE/packages/core/src/state/db.ts:200-285"
+      ]
+    }
+  ],
+  "raw_report_content_matches_model_results": true,
+  "frozen_input_hashes_verified": 4,
+  "production_runtime_verified": false
+}

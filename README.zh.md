@@ -50,6 +50,10 @@ Firstmate 的 24 项能力映射已整合到 main，并随 CLI 0.22.1 发布。�
 
 查看[完整中文命令手册](docs/guides/firstmate-commands.md)与[English guide](docs/guides/firstmate-commands.en.md)，包含参数示例、只读/写操作边界、授权前提和未完成的真实环境资格。文档通过 `osstack neat check` 检查；该检查不代表部署或功能验收。
 
+以上映射描述现有命令的能力。统一工程 Agent 的编排入口仍在分阶段实现。
+
+**源码试点：** `osstack engineering adopt/observe/decide/defer/cancel/end-observation/reconcile` 可采纳正在等待决策的既有 Session。主机记录所有权、答案和恢复证据。试点需显式启用，最多证明一个回复回合已被观察；新目标的 Loop / Graph 自动选路尚未实现。参阅[中文指南](docs/guides/engineering-session-adoption.md)、[English guide](docs/guides/engineering-session-adoption.en.md)与[架构及能力注册表](docs/design/2026-10-25-engineering-agent/README.md)。该试点尚未包含在 npm 0.22.1 中。
+
 ## 当前状态
 
 | 领域 | 状态 |

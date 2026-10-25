@@ -1,0 +1,27 @@
+[
+  {
+    "path": "docs/guides/engineering-session-adoption.md",
+    "sha256": "e38b6d786055f8ae73d2be02b9741346b65ec6d1911c8d968eeaf51a1345d967",
+    "bytes": 20761
+  },
+  {
+    "path": "docs/guides/engineering-session-adoption.en.md",
+    "sha256": "efc3262a2571618f36f485e449d3bb49a9d6c62df5ddb676ac5ed6bcbf845967",
+    "bytes": 23188
+  },
+  {
+    "path": "docs/design/2026-10-25-engineering-agent/runtime-contract-v2.md",
+    "sha256": "d12b35ba99dfcc9839bc7bf9e1279b214679c5959a373ef049612b5165b83580",
+    "bytes": 34614
+  },
+  {
+    "path": "packages/cli/src/upgrade-coordinator.ts",
+    "sha256": "2111fa5f28b69e44e9c496e16f93c8726d72c082fb19de847816220dc0b78351",
+    "bytes": 14179
+  },
+  {
+    "path": "packages/cli/src/upgrade-native-port.ts",
+    "sha256": "76c9bc59112843d9a30f67a57285a8f053a950ef0eac8e89bb19c811b6f2e0e4",
+    "bytes": 24349
+  }
+]

@@ -1,0 +1,194 @@
+{
+  "status": "passed",
+  "baseline_commit": "14e7433b70f103499059c15fb9bf2ed87b0b0279",
+  "runtime": "Node.js 22.22.1 / pnpm 11.4.0 / macOS",
+  "passed_tests": 5928,
+  "skipped_tests": 5,
+  "package_count": 22,
+  "package_summaries": {
+    "packages/contracts": {
+      "passed": 15
+    },
+    "packages/compliance": {
+      "passed": 17
+    },
+    "packages/github": {
+      "passed": 107
+    },
+    "packages/knowledge": {
+      "passed": 44
+    },
+    "packages/protocol": {
+      "passed": 274
+    },
+    "packages/neat-eval": {
+      "passed": 16
+    },
+    "packages/runtime": {
+      "passed": 1
+    },
+    "packages/governance": {
+      "passed": 301
+    },
+    "packages/knowledge-cloud": {
+      "passed": 36
+    },
+    "packages/graph": {
+      "passed": 257
+    },
+    "packages/core": {
+      "passed": 924
+    },
+    "packages/plugins": {
+      "passed": 1
+    },
+    "packages/hermes-adapter": {
+      "passed": 22
+    },
+    "packages/skill-registry": {
+      "passed": 3
+    },
+    "packages/skills": {
+      "passed": 2
+    },
+    "packages/autonomy": {
+      "passed": 199
+    },
+    "packages/agents": {
+      "passed": 361
+    },
+    "packages/config": {
+      "passed": 30
+    },
+    "packages/loop": {
+      "passed": 515
+    },
+    "packages/supervisor": {
+      "passed": 88
+    },
+    "packages/conformance": {
+      "passed": 9
+    },
+    "packages/cli": {
+      "passed": 2706,
+      "skipped": 5
+    }
+  },
+  "checks": [
+    {
+      "check": "integrated-build",
+      "command": [
+        "pnpm",
+        "build"
+      ],
+      "exit_code": 0,
+      "seconds": 7.36,
+      "log": "integrated-build.log",
+      "sha256": "0766788e6895c870c18b11fe513571ca9f5530258fab5ca2bfe15bf29a491a50"
+    },
+    {
+      "check": "full-test",
+      "command": [
+        "pnpm",
+        "-r",
+        "--no-bail",
+        "test"
+      ],
+      "exit_code": 0,
+      "seconds": 518.43,
+      "log": "full-test.log",
+      "sha256": "9794ba13c1b9cde03138bfc76340d45dd5deaf78be3304d281b6b37476241243"
+    },
+    {
+      "check": "typecheck",
+      "command": [
+        "pnpm",
+        "typecheck:check"
+      ],
+      "exit_code": 0,
+      "seconds": 9.66,
+      "log": "typecheck.log",
+      "sha256": "9c6fee6850d304624e0a8215a9f37120e6f9e91cabff7b3d43e541c1c0a6a488"
+    },
+    {
+      "check": "lint",
+      "command": [
+        "pnpm",
+        "lint"
+      ],
+      "exit_code": 0,
+      "seconds": 0.76,
+      "log": "lint.log",
+      "sha256": "6ad8d797351c184f371414eb6731e845802cfc3af21bc372e4585325c8c17e23"
+    },
+    {
+      "check": "inventory",
+      "command": [
+        "node",
+        "scripts/generate-inventory.mjs",
+        "--check"
+      ],
+      "exit_code": 0,
+      "seconds": 0.17,
+      "log": "inventory.log",
+      "sha256": "a59b7d9a6d962ccf0d22d13d2cc0f8acbb9e3653a63cce339211a5dfb3cd56e9"
+    },
+    {
+      "check": "startup",
+      "command": [
+        "node",
+        "scripts/bench-cli-startup.mjs"
+      ],
+      "exit_code": 0,
+      "seconds": 0.88,
+      "log": "startup.log",
+      "sha256": "d7cf9ba83678dbc284879acb8178fb5361daa920b2d4bdf72760e4768723320a"
+    },
+    {
+      "check": "changeset-selftest",
+      "command": [
+        "node",
+        "scripts/check-changeset-coverage.mjs",
+        "--self-test"
+      ],
+      "exit_code": 0,
+      "seconds": 0.05,
+      "log": "changeset-selftest.log",
+      "sha256": "643ce2bf731f23fa265111c8f955bfd321689dca9a759621ceb4e3898795193a"
+    },
+    {
+      "check": "clean-typecheck-contract",
+      "command": [
+        "pnpm",
+        "smoke:clean-typecheck"
+      ],
+      "exit_code": 0,
+      "seconds": 0.28,
+      "log": "clean-typecheck-contract.log",
+      "sha256": "2bb5a238db6a8760e8ecd9021805ea63f9d21381253977011a102faca1ea25c9"
+    },
+    {
+      "check": "version-packages",
+      "command": [
+        "pnpm",
+        "smoke:version-packages"
+      ],
+      "exit_code": 0,
+      "seconds": 0.28,
+      "log": "version-packages.log",
+      "sha256": "ea120d35b67371a5131349d17705f72ade0759f1725535e7bf2255386392c64c"
+    },
+    {
+      "check": "release-facts",
+      "command": [
+        "node",
+        "scripts/release-facts.mjs"
+      ],
+      "exit_code": 0,
+      "seconds": 0.05,
+      "log": "release-facts.log",
+      "sha256": "74844ca649de71032f7f95501f6a7eeaf8ab8241a39e8ed8719d9b4caafcd22f"
+    }
+  ],
+  "note": "Local full workspace validation of the final source. Earlier runs invalidated by restoring tracked knowledge/dist outputs and stale incremental metadata are excluded. A forced TypeScript rebuild and dynamic import check preceded this complete rerun. Five environment-gated tests retain their existing skips. Claude audit is separate static evidence."
+}

@@ -1,0 +1,5 @@
+$ node scripts/smoke-clean-typecheck-contract.mjs
+{
+  "ok": true,
+  "kind": "clean-typecheck-contract"
+}

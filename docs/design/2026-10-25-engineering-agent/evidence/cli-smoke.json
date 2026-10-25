@@ -1,0 +1,49 @@
+{
+  "status": "passed",
+  "profile": "deterministic fixture Adapter, actual compiled CLI and independent daemon process",
+  "commands": [
+    {
+      "command": "adopt",
+      "state": "awaiting_decision",
+      "replay": false
+    },
+    {
+      "command": "observe",
+      "state": "awaiting_decision",
+      "replay": null
+    },
+    {
+      "command": "defer",
+      "state": "awaiting_decision",
+      "replay": false
+    },
+    {
+      "command": "observe",
+      "state": "awaiting_decision",
+      "replay": null
+    },
+    {
+      "command": "decide",
+      "state": "answer_recorded",
+      "replay": false
+    },
+    {
+      "command": "observe",
+      "state": "completed",
+      "replay": null
+    },
+    {
+      "command": "decide",
+      "state": "completed",
+      "replay": true
+    },
+    {
+      "command": "reconcile",
+      "state": "completed",
+      "replay": true
+    }
+  ],
+  "invocations": 1,
+  "completion_level": "observed_turn",
+  "provider_qualified": false
+}

@@ -1,0 +1,96 @@
+{
+  "scope": "revised design and original review plus exact additional source, not full repository",
+  "inputs": [
+    {
+      "label": "ORIGINAL_REVIEW/round1.md",
+      "sha256": "eb3de330feda04f8069ecd3200aed1d7da1fa071549279750f4a8eb06d97777b",
+      "bytes": 26358
+    },
+    {
+      "label": "REVISED_DESIGN/runtime-contract-v2.md",
+      "sha256": "c53bce66db74c479f9430b00fa25cf2357d47a10671f11a1f8fa39c499cc56ec",
+      "bytes": 15617
+    },
+    {
+      "label": "REVISED_DESIGN/design.md",
+      "sha256": "0ff7598b9f733b08c36b0e0d523c8db2b69f5d217894f8ede7b60580d1c644b1",
+      "bytes": 23220
+    },
+    {
+      "label": "REVISED_DESIGN/waiting-decision-pilot.md",
+      "sha256": "0526f8b88e37160268af8797fafec9e2f709976839eec4cd7eda2bf03c5b224b",
+      "bytes": 18279
+    },
+    {
+      "label": "REVISED_DESIGN/implementation-plan.md",
+      "sha256": "36c493fc38393be7922023b08a9319dd4297a26a4f39b636623ff250b04caa94",
+      "bytes": 12026
+    },
+    {
+      "label": "REVISED_DESIGN/audit-report.md",
+      "sha256": "1af1391629553f0a7098df08f4cdc06425b819857fcd80c3487a0bf842e7b237",
+      "bytes": 5483
+    },
+    {
+      "label": "REVISED_DESIGN/work-items.json",
+      "sha256": "a70233dffbbfcdfe11fd35819baf6aaf73d8d76ad40ead624e6f38c444058e30",
+      "bytes": 12242
+    },
+    {
+      "label": "REVISED_DESIGN/qualification-contract.schema.json",
+      "sha256": "18936d35983b4cf32eb9cbfc894dd8a07b148280fa7b56fe1c3ae6297779f865",
+      "bytes": 8053
+    },
+    {
+      "label": "REVISED_DESIGN/semantic-divergences.json",
+      "sha256": "9a9684fce53dd8e933ae2e240e2fcf9c63ed5739480d92782353eee12a542865",
+      "bytes": 2236
+    },
+    {
+      "label": "REVISED_DESIGN/validate-design.py",
+      "sha256": "cc88fcc71c7c42be59f161ac650a530702090b32b21535c093250d40842cfe43",
+      "bytes": 8115
+    },
+    {
+      "label": "REVISED_DESIGN/evidence/design-validation.json",
+      "sha256": "132da28b451cdfca39a6f00ea51f8bbbe9fa01b347fab232bca53a8c8d1b6aca",
+      "bytes": 665
+    },
+    {
+      "label": "ADDITIONAL_ACTUAL_SESSION_SOURCE",
+      "sha256": "b565a0775a5a2113fb25f7cc253d1da831a3bc63ede66091e316702057defcc3",
+      "bytes": 23376
+    },
+    {
+      "label": "PINNED_OSSTACK/packages/core/src/state/db.ts",
+      "sha256": "c3099f09bf565a8488e88058ee7f233647c1653e9ae8b702b40479b0a19970ad",
+      "bytes": 7649
+    },
+    {
+      "label": "PINNED_OSSTACK/packages/core/src/state/migrations.ts",
+      "sha256": "e782a8e47de928e4516a279ff4de9c742274a3eebfcb3f6f0518a0599e68e774",
+      "bytes": 6924
+    },
+    {
+      "label": "PINNED_OSSTACK/packages/cli/src/daemon.ts",
+      "sha256": "ea79602e7ec0c81be9977623d1c6bad063fc1d0b75a573de737cf7e1cba371bb",
+      "bytes": 1128
+    },
+    {
+      "label": "PINNED_OSSTACK/packages/cli/src/adapter-lifecycle.ts",
+      "sha256": "be787ce848ff1cfb7356412b4d1c1f5386ce5946b468664f250402535c89d0de",
+      "bytes": 2476
+    },
+    {
+      "label": "PINNED_OSSTACK/packages/core/src/state/attention-store.ts",
+      "sha256": "75be3e0e58ffde844f90bd563a5ddebd9ebabf600eb21dc9230438b47ff92565",
+      "bytes": 1766
+    },
+    {
+      "label": "PINNED_OSSTACK/packages/core/src/state/attention-actions.ts",
+      "sha256": "2c6737c08afbb792d52474a45017be4a9c6f9c016fdbf5844c52c3f0d49eb1b8",
+      "bytes": 7752
+    }
+  ],
+  "prompt_sha256": "0c8b7f3316acf7fbbf06efd5d26e9189728c99df83c3a9fb5a9fe09902df3409"
+}

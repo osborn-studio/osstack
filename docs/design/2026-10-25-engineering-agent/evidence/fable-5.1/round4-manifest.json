@@ -1,0 +1,51 @@
+{
+  "scope": "targeted closure of R3 issues, not a repeated full architecture or production audit",
+  "inputs": [
+    {
+      "label": "evidence/fable-5.1/round3.md",
+      "sha256": "ee02147d2c3ee2a6f71638f8ee7138042ffb0173935a82b47558964c24e1584f",
+      "bytes": 6141
+    },
+    {
+      "label": "runtime-contract-v2.md",
+      "sha256": "568ec76047b10afe6c797e83b89959283f0ce1922c5732245d922a0c0c29c22e",
+      "bytes": 27116
+    },
+    {
+      "label": "waiting-decision-pilot.md",
+      "sha256": "28bd45d9c848f1a7ef26f95b5646caf3d95efbff258fe4ba32f0fd80b7c70493",
+      "bytes": 19523
+    },
+    {
+      "label": "evidence/design-validation.json",
+      "sha256": "c7a2f0af280d84402855e14b16ae4fd7752502498e5f4014f8e1cc24be04b513",
+      "bytes": 822
+    },
+    {
+      "label": "NEW_TEST_CONTRACTS_ONLY",
+      "sha256": "1eeee850fca4e1114373fd7d036cc7a87ca709cfbdb986467655c63e360bde1d",
+      "bytes": 2811
+    },
+    {
+      "label": "PINNED_SOURCE/packages/core/src/state/attention-actions.ts:1-360",
+      "sha256": "56fdff1edfcfc4f3ea399a7889e14620f8611a5d38a7314402adcd4d735a12f5",
+      "bytes": 14009
+    },
+    {
+      "label": "PINNED_SOURCE/packages/core/src/state/db.ts:200-285",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "label": "PINNED_SOURCE/packages/cli/src/daemon.ts:1250-1305",
+      "sha256": "29313e72c3b79b2e44c5301a45e946f1a2a3515b9ea0fcce9dbca65708161bb8",
+      "bytes": 5318
+    },
+    {
+      "label": "PINNED_SOURCE/packages/core/src/state/attention-store.ts:45-105",
+      "sha256": "ccafcb88755eb5ae77e6a2a25b6eeb228149804a171ba0d401f651e09a705ebb",
+      "bytes": 2257
+    }
+  ],
+  "prompt_sha256": "a6bb87916b159d0339e9438006042b30eda91033a99360f3e8ec347300553083"
+}

@@ -1,0 +1,10 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/capability-registry-pilot/packages/cli
+
+ ✓ src/engineering-upgrade-guard.test.ts (8 tests) 157ms
+
+ Test Files  1 passed (1)
+      Tests  8 passed (8)
+   Start at  06:15:01
+   Duration  594ms (transform 177ms, setup 18ms, collect 273ms, tests 157ms, environment 0ms, prepare 25ms)
+

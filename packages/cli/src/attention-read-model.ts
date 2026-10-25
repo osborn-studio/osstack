@@ -3,6 +3,7 @@ import { existsSync, realpathSync, statSync } from "node:fs";
 import { dirname, isAbsolute, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import Database from "better-sqlite3";
+import { isEngineeringCancelledBeforeDispatch } from "@osstack/core";
 import {
   AttentionStatus,
   SessionDecision,
@@ -69,22 +70,37 @@ interface Row {
 }
 /** Persistent facts only; accepted is not proof that a live process is still sending. */
 export function readStoredWait(db: Database.Database, row: Row): AttentionWait {
-  const pending = db
+  // A cancelled reservation remains an accepted message for audit purposes.
+  // Only the shared persisted-proof verifier may remove it from pending delivery.
+  // A later actual pending message must take precedence over that old receipt.
+  const pendingRows = db
     .prepare(
       `SELECT message_id,state FROM session_messages WHERE session_id=? AND direction='inbound'
-    AND state IN ('accepted','failed') ORDER BY CASE state WHEN 'accepted' THEN 0 ELSE 1 END,created_at,message_id LIMIT 1`
+    AND state IN ('accepted','failed') ORDER BY CASE state WHEN 'accepted' THEN 0 ELSE 1 END,created_at,message_id LIMIT 101`
     )
-    .get(row.session_id) as { message_id: string; state: string } | undefined;
-  if (pending)
+    .all(row.session_id) as Array<{ message_id: string; state: string }>;
+  const hasPhases = Boolean(db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='attention_dispatch_phases'").get());
+  let cancelled: string | undefined;
+  for (const pending of pendingRows) {
+    const phase = hasPhases ? db.prepare("SELECT phase FROM attention_dispatch_phases WHERE message_id=?").get(pending.message_id) as { phase: string } | undefined : undefined;
+    if (phase?.phase === "cancelled_before_dispatch") {
+      if (!isEngineeringCancelledBeforeDispatch(db, pending.message_id)) return {
+        reason: "dispatch_inconsistent", owner: "unknown", grant_id: null, message_id: pending.message_id,
+      };
+      cancelled ??= pending.message_id;
+      continue;
+    }
     return {
-      reason:
-        pending.state === "accepted"
-          ? "accepted_in_flight_or_uncertain"
-          : "delivery_failed",
-      owner: "unknown",
-      grant_id: null,
-      message_id: pending.message_id,
+      reason: pending.state === "accepted" ? "accepted_in_flight_or_uncertain" : "delivery_failed",
+      owner: "unknown", grant_id: null, message_id: pending.message_id,
     };
+  }
+  if (pendingRows.length > 100) return {
+    reason: "pending_receipt_scan_truncated", owner: "unknown", grant_id: null, message_id: null,
+  };
+  if (cancelled) return {
+    reason: "cancelled_before_dispatch", owner: "human", grant_id: null, message_id: cancelled,
+  };
   const grant = db
     .prepare(
       `SELECT grant_id,expected_turn_id,expected_version,body_json FROM session_continuation_grants
@@ -212,9 +228,9 @@ export function readAttentionStatus(
     const source = db;
     return source.transaction(() => {
       const schema = source.pragma("user_version", { simple: true });
-      // Reviewed migrations 25–46 preserve the v24 read projection. Migration 46
-      // only adds source-observation tables; future migrations still need review.
-      if (!Number.isInteger(schema) || Number(schema) < 24 || Number(schema) > 46)
+      // Reviewed migrations 25–47 preserve the v24 read projection. Migration 47
+      // adds engineering tables; future migrations still need review.
+      if (!Number.isInteger(schema) || Number(schema) < 24 || Number(schema) > 47)
         throw new Error("unsupported_schema");
       const task = source
         .prepare(

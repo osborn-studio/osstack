@@ -1,0 +1,12 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/capability-registry-pilot/packages/protocol
+
+ ✓ src/attention.test.ts (2 tests) 7ms
+ ✓ src/engineering.test.ts (8 tests) 9ms
+ ✓ src/schemas.test.ts (45 tests) 9ms
+
+ Test Files  3 passed (3)
+      Tests  55 passed (55)
+   Start at  06:14:06
+   Duration  743ms (transform 177ms, setup 114ms, collect 306ms, tests 25ms, environment 0ms, prepare 217ms)
+
