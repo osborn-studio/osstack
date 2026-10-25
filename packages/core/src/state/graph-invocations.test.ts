@@ -169,7 +169,7 @@ it("refuses a response for a legacy action without an invocation request", () =>
 
 it.each(["before_commit", "mid_transaction", "after_commit", "after_response", "after_receipt"])("survives process SIGKILL at %s without duplicate dispatch", async point => {
   const ts = await import("typescript");
-  for (const name of ["graph-actions", "graph-apply", "graph-invocations", "graph-storage", "graph-runs", "db", "migrations", "follow-up-obligations-ddl", "follow-up-delivery-ddl", "source-observations-ddl"]) {
+  for (const name of ["graph-actions", "graph-apply", "graph-invocations", "graph-storage", "graph-runs", "db", "migrations", "follow-up-obligations-ddl", "follow-up-delivery-ddl", "source-observations-ddl", "engineering-ddl"]) {
     writeFileSync(join(dir, `${name}.js`), ts.transpileModule(readFileSync(new URL(`./${name}.ts`, import.meta.url), "utf8"),
       { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 } }).outputText);
   }

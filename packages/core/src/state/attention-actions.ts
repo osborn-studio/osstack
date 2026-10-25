@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import type Database from "better-sqlite3";
 import { SessionDecision } from "@osstack/protocol";
 import { withWrite } from "./db.js";
+import { getEngineeringDispatchPhase, isEngineeringCancelledBeforeDispatch } from "./engineering-dispatch.js";
 import { SessionRepository, type SessionMessageInput } from "./sessions.js";
 import {
   AttentionStore,
@@ -23,14 +24,10 @@ export function reserveSessionInstruction(
     const sessions = new SessionRepository(db, path);
     if (sessions.getMessage(message.message_id))
       return sessions.applyInbound(message, version, now);
-    if (
-      db
-        .prepare(
-          "SELECT 1 FROM session_messages WHERE session_id=? AND direction='inbound' AND state IN ('accepted','failed') AND message_id NOT IN (SELECT message_id FROM attention_receipt_resolutions) LIMIT 1"
-        )
-        .get(message.session_id)
-    )
+    if ((db.prepare("SELECT p.message_id FROM attention_dispatch_phases p JOIN session_messages m ON m.message_id=p.message_id WHERE m.session_id=? AND p.phase='cancelled_before_dispatch'").all(message.session_id) as Array<{ message_id: string }>).some(row => !isEngineeringCancelledBeforeDispatch(db, row.message_id))) throw new Error("dispatch_inconsistent");
+    if ((db.prepare("SELECT message_id FROM session_messages WHERE session_id=? AND direction='inbound' AND state IN ('accepted','failed') AND message_id NOT IN (SELECT message_id FROM attention_receipt_resolutions)").all(message.session_id) as Array<{ message_id: string }>).some(row => !isEngineeringCancelledBeforeDispatch(db, row.message_id)))
       throw new Error("delivery_uncertain");
+    if (db.prepare("SELECT 1 FROM attention_dispatch_phases p JOIN session_messages m ON m.message_id=p.message_id WHERE m.session_id=? AND p.phase='cancelled_before_dispatch' AND m.state='applied'").get(message.session_id)) throw new Error("dispatch_inconsistent");
     if (
       db
         .prepare(
@@ -214,6 +211,7 @@ export class AttentionActions {
     if (!prior) return undefined;
     if (prior.payload_hash !== attentionDigest(input))
       throw new Error("action_id_conflict");
+    if (getEngineeringDispatchPhase(this.store.db, prior.message_id)?.phase === "cancelled_before_dispatch") return { ...this.reconcile(prior), replay: true };
     if (prior.message_id === applyingMessageId)
       return { ...prior, state: "in_flight", replay: true };
     return { ...this.reconcile(prior), replay: true };
@@ -256,6 +254,12 @@ export class AttentionActions {
         .get(input.message_id, input.session_id) as
         | { state: string }
         | undefined;
+      const phase = getEngineeringDispatchPhase(db, input.message_id);
+      if (phase?.phase === "reserved") throw new Error("not_dispatched_use_cancel");
+      if (phase?.phase === "cancelled_before_dispatch") {
+        if (!isEngineeringCancelledBeforeDispatch(db, input.message_id)) throw new Error("dispatch_inconsistent");
+        return { disposition: "cancelled_before_dispatch", message_id: input.message_id, replayed: true, execution_outcome: "not_dispatched", next_action: "The original answer is cancelled. It cannot be sent again." };
+      }
       if (!message || !["accepted", "failed"].includes(message.state))
         throw new Error("receipt_not_uncertain");
       if (
@@ -315,6 +319,11 @@ export class AttentionActions {
   }
   reconcile(action: Action, now = Date.now()): Action {
     return this.store.write(this.owner, () => {
+      const phase = getEngineeringDispatchPhase(this.store.db, action.message_id);
+      if (phase?.phase === "cancelled_before_dispatch") {
+        if (!isEngineeringCancelledBeforeDispatch(this.store.db, action.message_id)) return { ...action, state: "needs_reconciliation" };
+        return { ...action, state: "cancelled_before_dispatch" };
+      }
       if (
         this.store.db
           .prepare(
@@ -326,6 +335,9 @@ export class AttentionActions {
       const receipt = this.store.db
         .prepare("SELECT state FROM session_messages WHERE message_id=?")
         .get(action.message_id) as { state: string } | undefined;
+      if (phase?.phase === "reserved") {
+        return { ...action, state: action.state === "reserved" && receipt?.state === "accepted" ? "reserved" : "needs_reconciliation" };
+      }
       const state =
         receipt?.state === "applied"
           ? "applied"
@@ -334,9 +346,9 @@ export class AttentionActions {
           : "uncertain";
       this.store.db
         .prepare(
-          "UPDATE attention_actions SET state=?,updated_at=? WHERE action_id=?"
+          "UPDATE attention_actions SET state=?,updated_at=? WHERE action_id=? AND state<>?"
         )
-        .run(state, now, action.action_id);
+        .run(state, now, action.action_id, state);
       this.store.db
         .prepare(
           "UPDATE attention_items SET state=?,revision=revision+1,updated_at=? WHERE item_id=? AND state<>?"
@@ -347,7 +359,7 @@ export class AttentionActions {
           action.item_id,
           state === "applied" ? "answer_applied" : "answer_uncertain"
         );
-      return { ...action, state, updated_at: now };
+      return { ...action, state, updated_at: state === action.state ? action.updated_at : now };
     });
   }
 }
