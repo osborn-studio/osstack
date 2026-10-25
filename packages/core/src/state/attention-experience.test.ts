@@ -1,12 +1,16 @@
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, expect, it } from "vitest";
+import { afterEach, expect, it, vi } from "vitest";
 import { openDb } from "./db.js";
 import { AttentionStore } from "./attention-store.js";
 import { AttentionExperience } from "./attention-experience.js";
 const cleanup: Array<() => void> = [];
-afterEach(() => cleanup.splice(0).forEach((f) => { f(); }));
+afterEach(() => {
+  vi.restoreAllMocks();
+  vi.useRealTimers();
+  cleanup.splice(0).forEach((f) => { f(); });
+});
 function setup() {
   const root = mkdtempSync(join(tmpdir(), "experience-"));
   const path = join(root, "db");
@@ -175,15 +179,38 @@ it("bounds a hung sender by the batch deadline and ignores its late completion",
   ux.enqueue(scope);
   let finish: (() => void) | undefined;
   let aborted = false;
-  const result = await ux.drainBatch(async (_item, signal) => {
+  vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+  // Node timers can fire before performance.now reaches their nominal deadline.
+  vi.spyOn(performance, "now").mockReturnValueOnce(0).mockReturnValueOnce(0).mockReturnValue(9.5);
+  const pending = ux.drainBatch(async (_item, signal) => {
     signal.addEventListener("abort", () => { aborted = true; }, { once: true });
     await new Promise<void>(resolve => { finish = resolve; });
   }, { maxItems: 5, maxDurationMs: 10 });
+  await vi.runAllTimersAsync();
+  const result = await pending;
   expect(result).toMatchObject({ attempted: 1, delivered: 0, retried: 1, stopped: "deadline" });
   expect(aborted).toBe(true);
   finish?.();
   await Promise.resolve();
   expect(db.prepare("SELECT COUNT(*) n FROM attention_deliveries WHERE state='delivered'").get()).toEqual({ n: 0 });
+});
+
+it("continues after a per-send timeout while the longer batch budget remains", async () => {
+  const { ux, scope, db } = setup();
+  ux.enqueue(scope);
+  vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+  vi.spyOn(performance, "now").mockReturnValueOnce(0).mockReturnValueOnce(0).mockReturnValue(5000);
+  const sent: string[] = [];
+  const pending = ux.drainBatch(async item => {
+    sent.push(item.delivery_id);
+    await new Promise<void>(() => {});
+  }, { maxItems: 5, maxDurationMs: 10_000 });
+  await vi.advanceTimersByTimeAsync(5000);
+  expect(sent).toHaveLength(2);
+  expect(new Set(sent).size).toBe(2);
+  await vi.advanceTimersByTimeAsync(5000);
+  expect(await pending).toMatchObject({ attempted: 2, delivered: 0, retried: 2, stopped: "deadline" });
+  expect(db.prepare("SELECT COUNT(*) n FROM attention_deliveries WHERE state='pending' AND attempts=0").get()).toEqual({ n: 3 });
 });
 
 it("cancels a batch in flight without taking more receipts, and pre-abort takes none", async () => {
