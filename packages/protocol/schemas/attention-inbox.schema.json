@@ -216,7 +216,8 @@
               "answer_reserved",
               "answer_uncertain",
               "answer_applied",
-              "answer_abandoned"
+              "answer_abandoned",
+              "answer_cancelled"
             ]
           },
           "created_at": {

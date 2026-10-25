@@ -110,6 +110,7 @@ export const AttentionInbox = z
               "answer_uncertain",
               "answer_applied",
               "answer_abandoned",
+              "answer_cancelled",
             ]),
             created_at: z.number().finite(),
             updated_at: z.number().finite(),

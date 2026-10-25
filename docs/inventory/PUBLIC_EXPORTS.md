@@ -275,6 +275,7 @@ export {
 export { DeliveryContractV2, FrozenDeliveryContractV2, DeliveryVerificationReceiptV2,
 export { FollowUpState, FollowUpCreateParams, FollowUpListParams, FollowUpDraftParams,
 export { FollowUpDeliveryTarget, FollowUpDeliverySubject, FollowUpDeliveryGrantBody, SignedFollowUpDeliveryGrant,
+export {
 ```
 
 ## `@osstack/runtime`
