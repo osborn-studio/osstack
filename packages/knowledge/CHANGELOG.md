@@ -1,5 +1,12 @@
 # @osstack/knowledge
 
+## 0.22.0
+
+### Minor Changes
+
+- c8dc83f: Complete Firstmate adoption entry points for bounded scout promotion, evidence-backed lesson drafts, multi-check Graph contracts, source generation/event ledgers and explicitly approved context, paired model evaluation, private worker observers, independently authorized remote Graph cancellation, GitHub follow-up delivery, and managed multi-home upgrade recovery. Keep external provider, terminal backend, SSH and service-manager qualification explicit and disabled without host authority.
+- c129a31: Bind explicitly requested V2 delivery to frozen scope, host verification receipts, and requested completion boundaries. Add pinned local prompt context with byte budgets and adapter-boundary receipts, evidence-backed investigation drafts, and explicit read-only local deployment identity inventory. Legacy execution remains available; these additions do not imply remote, publication or deployment qualification.
+
 ## 0.20.0
 
 ### Patch Changes

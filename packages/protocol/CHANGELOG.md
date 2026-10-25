@@ -1,5 +1,18 @@
 # @osstack/protocol
 
+## 0.22.0
+
+### Minor Changes
+
+- 0a61d27: Add scoped read-only attention snapshots and opt-in persistent decision observation, guarded manual answers, delivery receipts, explicit foreground handoff, and local notification artifacts. Add bounded Loop/CI observation and offline planning helpers. The observer makes no model calls and confers no execution or approval authority.
+
+  Daemon ownership now uses a fixed-file native exclusive lock before startup side effects. Interrupted Loop/daily sessions require explicit recovery; startup and loop cycles preserve unknown worktrees. Ambiguous or failed session instructions are no longer automatically replayed; an explicit, recorded owner disposition is available without claiming their effects succeeded. SQLite migrations 40–41 add the independent attention records.
+
+- c129a31: Bind explicitly requested V2 delivery to frozen scope, host verification receipts, and requested completion boundaries. Add pinned local prompt context with byte budgets and adapter-boundary receipts, evidence-backed investigation drafts, and explicit read-only local deployment identity inventory. Legacy execution remains available; these additions do not imply remote, publication or deployment qualification.
+- c48e29a: Add bounded read-only worker viewing, pinned local-source inspection, signed single-attempt follow-up delivery ledgers, and explicit multi-home upgrade planning/status. External delivery adapters and native shared-installation upgrade execution require separate host qualification and are not enabled by default.
+- 7e5a84d: Bind Graph delivery to frozen host contracts and context evidence, add pinned SSH read-only worker observation, and expose bounded cooperative supervision with scoped recovery diagnostics.
+- 63064cd: Add explicitly enabled advisory triage with persistent budgets and unresolved-stop quarantine, and a scoped local follow-up ledger with immutable evidence, unsent drafts and source-condition resolution. Connect actual CLI and daemon entrypoints without granting external delivery or source execution authority.
+
 ## 0.20.0
 
 ### Minor Changes

@@ -1,5 +1,26 @@
 # @osstack/agents
 
+## 0.22.0
+
+### Minor Changes
+
+- c8dc83f: Complete Firstmate adoption entry points for bounded scout promotion, evidence-backed lesson drafts, multi-check Graph contracts, source generation/event ledgers and explicitly approved context, paired model evaluation, private worker observers, independently authorized remote Graph cancellation, GitHub follow-up delivery, and managed multi-home upgrade recovery. Keep external provider, terminal backend, SSH and service-manager qualification explicit and disabled without host authority.
+- 63064cd: Add explicitly enabled advisory triage with persistent budgets and unresolved-stop quarantine, and a scoped local follow-up ledger with immutable evidence, unsent drafts and source-condition resolution. Connect actual CLI and daemon entrypoints without granting external delivery or source execution authority.
+
+### Patch Changes
+
+- Updated dependencies [0a61d27]
+- Updated dependencies [c8dc83f]
+- Updated dependencies [c129a31]
+- Updated dependencies [c48e29a]
+- Updated dependencies [3d5fdc0]
+- Updated dependencies [7e5a84d]
+- Updated dependencies [63064cd]
+- Updated dependencies [b185daa]
+  - @osstack/core@0.22.0
+  - @osstack/protocol@0.22.0
+  - @osstack/hermes-adapter@0.22.0
+
 ## 0.21.0
 
 ### Minor Changes

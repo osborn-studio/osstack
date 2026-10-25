@@ -1,6 +1,6 @@
 {
   "name": "@osstack/skill-registry",
-  "version": "0.21.0",
+  "version": "0.22.0",
   "description": "External skill ingestion: watch GStack/SuperPower/Everything-Claude/Anthropic Skills repos, LLM-normalize to Hermes SKILL.md, propose via PR, batch via npm release.",
   "license": "MIT",
   "type": "module",

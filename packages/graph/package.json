@@ -1,6 +1,6 @@
 {
   "name": "@osstack/graph",
-  "version": "0.21.0",
+  "version": "0.22.0",
   "description": "Isolated LangGraph kernel boundary for osstack graph workers.",
   "license": "MIT",
   "type": "module",

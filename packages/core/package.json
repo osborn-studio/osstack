@@ -1,6 +1,6 @@
 {
   "name": "@osstack/core",
-  "version": "0.21.0",
+  "version": "0.22.0",
   "description": "OSBORN stack core — orchestrator, lifecycle, policy, memory, learning, privacy, observability, knowledge-graph, state, events.",
   "license": "MIT",
   "type": "module",

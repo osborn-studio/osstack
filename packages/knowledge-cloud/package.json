@@ -1,6 +1,6 @@
 {
   "name": "@osstack/knowledge-cloud",
-  "version": "0.20.0",
+  "version": "0.22.0",
   "description": "Minimal Osstack Knowledge Cloud HTTP service for official and tenant knowledge packs.",
   "license": "MIT",
   "type": "module",

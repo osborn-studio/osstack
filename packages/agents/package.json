@@ -1,6 +1,6 @@
 {
   "name": "@osstack/agents",
-  "version": "0.21.0",
+  "version": "0.22.0",
   "description": "Sub-agent adapters (claude-code, codex-cli, …). Each implements AgentAdapter interface.",
   "license": "MIT",
   "type": "module",

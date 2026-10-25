@@ -1,5 +1,32 @@
 # @osstack/core
 
+## 0.22.0
+
+### Minor Changes
+
+- 0a61d27: Add scoped read-only attention snapshots and opt-in persistent decision observation, guarded manual answers, delivery receipts, explicit foreground handoff, and local notification artifacts. Add bounded Loop/CI observation and offline planning helpers. The observer makes no model calls and confers no execution or approval authority.
+
+  Daemon ownership now uses a fixed-file native exclusive lock before startup side effects. Interrupted Loop/daily sessions require explicit recovery; startup and loop cycles preserve unknown worktrees. Ambiguous or failed session instructions are no longer automatically replayed; an explicit, recorded owner disposition is available without claiming their effects succeeded. SQLite migrations 40–41 add the independent attention records.
+
+- c8dc83f: Complete Firstmate adoption entry points for bounded scout promotion, evidence-backed lesson drafts, multi-check Graph contracts, source generation/event ledgers and explicitly approved context, paired model evaluation, private worker observers, independently authorized remote Graph cancellation, GitHub follow-up delivery, and managed multi-home upgrade recovery. Keep external provider, terminal backend, SSH and service-manager qualification explicit and disabled without host authority.
+- c129a31: Bind explicitly requested V2 delivery to frozen scope, host verification receipts, and requested completion boundaries. Add pinned local prompt context with byte budgets and adapter-boundary receipts, evidence-backed investigation drafts, and explicit read-only local deployment identity inventory. Legacy execution remains available; these additions do not imply remote, publication or deployment qualification.
+- c48e29a: Add bounded read-only worker viewing, pinned local-source inspection, signed single-attempt follow-up delivery ledgers, and explicit multi-home upgrade planning/status. External delivery adapters and native shared-installation upgrade execution require separate host qualification and are not enabled by default.
+- 3d5fdc0: Add bounded persistent run-event projection, isolate approval/clarification resolution echoes, and expose scoped worker state views plus read-only Attention summaries in manual and scheduled daily briefs. Migrate the control-plane database incrementally to schema 42 without rewriting historical migrations.
+- 7e5a84d: Bind Graph delivery to frozen host contracts and context evidence, add pinned SSH read-only worker observation, and expose bounded cooperative supervision with scoped recovery diagnostics.
+- 63064cd: Add explicitly enabled advisory triage with persistent budgets and unresolved-stop quarantine, and a scoped local follow-up ledger with immutable evidence, unsent drafts and source-condition resolution. Connect actual CLI and daemon entrypoints without granting external delivery or source execution authority.
+- b185daa: Integrate scoped Attention summaries into the main cockpit, bound supervision and local notification work, and add deterministic routing qualification against the actual routing entrypoints.
+
+### Patch Changes
+
+- 1d945a4: Stop attention delivery batches when their budget timer expires, even if the monotonic clock has not reached the nominal deadline. Keep the shorter per-send timeout distinct so longer batches can continue within their remaining budget.
+
+- Updated dependencies [0a61d27]
+- Updated dependencies [c129a31]
+- Updated dependencies [c48e29a]
+- Updated dependencies [7e5a84d]
+- Updated dependencies [63064cd]
+  - @osstack/protocol@0.22.0
+
 ## 0.21.0
 
 ### Minor Changes
