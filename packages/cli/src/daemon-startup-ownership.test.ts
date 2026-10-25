@@ -28,7 +28,7 @@ let priorHome: string | undefined;
 let daemon: DaemonHandles | undefined;
 
 beforeEach(() => {
-  // The worker TMPDIR is a short alias inside the managed scratch root.
+  // The worker TMPDIR is a short alias that points into the managed scratch root.
   // Keep socket paths below macOS's limit even when the scratch root is long.
   fixture = createScratchDirSync("tests", "daemon-startup-ownership", {
     OSSTACK_SCRATCH_ROOT: tmpdir(),
