@@ -1,0 +1,45 @@
+[
+  {
+    "command": [
+      "pnpm",
+      "--filter",
+      "@osstack/loop",
+      "exec",
+      "vitest",
+      "run",
+      "src/loop-engine.test.ts",
+      "src/loop-containment.test.ts"
+    ],
+    "exit_code": 0,
+    "tests_passed": 45,
+    "log": "F1-r3-tests.log",
+    "log_sha256": "30d6399d1079d76fed35154d7c18e7b9701ed78b6b8ef2f8a5ef75a87e59b857"
+  },
+  {
+    "command": [
+      "pnpm",
+      "--filter",
+      "@osstack/loop",
+      "typecheck"
+    ],
+    "exit_code": 0,
+    "log": "F1-r3-typecheck.log",
+    "log_sha256": "8366207267355d3e3d5bf3bf6e8c94c5f93f6078c34f08973fa2b38cdda6cc92"
+  },
+  {
+    "command": [
+      "pnpm",
+      "exec",
+      "biome",
+      "check",
+      "packages/loop/src/loop-engine.ts",
+      "packages/loop/src/loop-engine.test.ts",
+      "packages/loop/src/loop-containment.ts",
+      "packages/loop/src/loop-containment.test.ts",
+      "scripts/vitest-setup-scratch.ts"
+    ],
+    "exit_code": 0,
+    "log": "F1-r3-biome.log",
+    "log_sha256": "fc6e81f812976e8726a6f36868a710f771e069c2c7cc277b70c98fc561fb895e"
+  }
+]

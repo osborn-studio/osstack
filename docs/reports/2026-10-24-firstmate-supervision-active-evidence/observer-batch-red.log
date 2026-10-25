@@ -1,0 +1,58 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/packages/core
+
+ ❯ src/state/attention-observer.test.ts (22 tests | 1 failed | 21 skipped) 47ms
+   ↓ discovers beyond 200 with bounded admission and never claims complete capacity
+   ↓ projects historical turns atomically and discloses missing ordinal gaps
+   ↓ fences old generations, retains missing source, and expires coverage independently of business state
+   ↓ isolates a poison decision to its subject instead of blinding a healthy session
+   ↓ issues only observation handoff receipts and rejects gaps and stale foreground generations
+   ↓ keeps gaps sticky across transient invalid observations and continues after corrupt turns
+   ↓ allows a once-only expired foreground reminder but never silently renews a handoff receipt
+   ↓ isolates discovery filesystem errors and permits explicit slot release without silent eviction
+   ↓ rolls back a subject cursor when a late projection failure would otherwise erase a newly found gap
+   ↓ reuses explicitly released capacity without silently evicting or readmitting its old owner
+   ↓ degrades coverage when a previously admitted standalone run disappears
+   ↓ replays an expired handoff as historical evidence without renewing it
+   ↓ slices only admitted subjects fairly while preserving per-source event cursors
+   ↓ does not revive an admitted subject released between slices
+   ↓ keeps capacity overflow explicit and advances the existing discovery cursor across passes
+   ↓ does not call an unknown observation healthy when its reason field is absent
+   ↓ fences an interrupted slice after owner replacement
+   ↓ does not publish full coverage while newly admitted subjects still await sampling
+   ↓ retains explicit release when a scope disappears and later returns
+   ↓ does not infer readmission when released metadata becomes {
+   ↓ does not infer readmission when released metadata becomes {}
+   × rolls back a failed sampling slice and retries every uncommitted subject 46ms
+     → expected [ { …(13) } ] to have a length of +0 but got 1
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/state/attention-observer.test.ts > rolls back a failed sampling slice and retries every uncommitted subject
+AssertionError: expected [ { …(13) } ] to have a length of +0 but got 1
+
+- Expected
++ Received
+
+- 0
++ 1
+
+ ❯ src/state/attention-observer.test.ts:375:43
+    373|     WHEN NEW.subject_id='s0001' BEGIN SELECT RAISE(ABORT, 'injected_sl…
+    374|   expect(() => observer.step({ maxSubjects: 25, maxEvents: 200, maxDur…
+    375|   expect(store.listItems(scope.scope_id)).toHaveLength(0);
+       |                                           ^
+    376|   expect(db.prepare("SELECT ordinal_cursor FROM attention_subjects WHE…
+    377|   db.exec("DROP TRIGGER reject_second_sample");
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 21 skipped (22)
+   Start at  17:34:57
+   Duration  735ms (transform 325ms, setup 0ms, collect 443ms, tests 47ms, environment 0ms, prepare 40ms)
+
+undefined
+/Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-scout/packages/core:
+[ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL] Command failed with exit code 1: vitest run src/state/attention-observer.test.ts -t 'rolls back a failed sampling' '--maxWorkers=1'

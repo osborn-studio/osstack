@@ -1,0 +1,12 @@
+# R9 narrow closure: D1-D4 and C1-C4 only
+
+D1: The owner explicitly accepts the existing engine phrase "does not prove a process is alive" as equivalent to "not evidence that a process remains alive". No engine source change is needed.
+D2: Both adapter messages now state possible preflight refusal, no proof of a live process, and reconciliation before retry. Entering invoke/isAvailable does not prove that its internal preflight passed or that a process started. The exact abnormal stream/probe cause stays at the start of the message. No stop condition changes.
+D3: verifyRun now preserves the actual artifact failure message and issues in its immediate failed verdict. It no longer replaces the path observation cause with a generic command-stop message. The existing real 2500 tracked plus 2500 untracked budget fixture now asserts the legacy verdict summary contains the actual path observation cause and equals its unknown-stop issue message. No later adapter can run on this path.
+D4: The independent unified manifest is embedded in this packet. It records final source SHA, HEAD, each log SHA, and actual exit code. Original arm JSON/logs are preserved unchanged. The unified manifest supplements them, not rewrites them. Source equality is checked by the host. Model need not claim it verified files.
+C1: agents/worktree.ts did not change in R8 or R9. The exact empty diff evidence is attached. Actual production hook tests ran source and passed. Parent native QA builds all packages before its tests.
+C2: The parent assigned a separate agent the exact four-string search and four CLI/daemon test files. Its final evidence is attached when available; this is separate from current scoped source checks.
+C3: Parent supplies direct root/scripts entrypoint evidence. Root workspace package discovery and shared setup remain unchanged.
+C4: The complete loop-containment.test.ts is attached. The ancestor-fsync failure test calls new LoopEngine(...).runOnce(), then restarts another engine. It asserts retained lifecycle lease, marker, absent execution sentinel, and zero restart tasks. It is an actual engine lifecycle test, not merely the helper.
+
+R8 explicitly found no remaining safety-critical delta defect and closed F1-F5. Review only these D/C closures and regressions in this small delta. Do not reopen accepted platform/sandbox/finite-observation boundaries. Full native QA and current CI are independent final gates, not claimed passed here.

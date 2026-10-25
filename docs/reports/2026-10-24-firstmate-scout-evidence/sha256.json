@@ -1,0 +1,19 @@
+{
+  "README.md": "0be4ae1c75fc095ec7ac6947b8700c50cd77f80a2717f2821a4af534002bc87c",
+  "audit-round1-prompt.txt": "218268973b7027585d9d84654a07d5f78aa9c20a6badcb26692dc4740c7245a5",
+  "audit-round1-result.json": "1f96f5b106807d91e8129ca81f8a9b972858210248d94981b39d11ff98d84199",
+  "audit-round1-stderr.log": "61b1ec1babd05607d61c3c37883d25b807fc94e69c2090164e10676c0b2af903",
+  "audit-round2-prompt.txt": "f5b288507a389e5386bd400d3a63246d9a9ba1891b769a87cc0bf43e2bb70d39",
+  "audit-round2-result.json": "fa483d28ba0302b69ccbc25c649a46023b2ce103f3806dc0dbb1ba7e123baf2a",
+  "audit-round2-stderr.log": "61b1ec1babd05607d61c3c37883d25b807fc94e69c2090164e10676c0b2af903",
+  "audit-round3-prompt.txt": "9cc18b4b7f4dc5550d8be4040ee0b591fc287023fc9cad9a5ae29e0f5f212d60",
+  "audit-round3-result.json": "5115d886129110d86e7bbdaa0fe10fb320b4f71805d850373e3d231267b81704",
+  "audit-round3-stderr.log": "61b1ec1babd05607d61c3c37883d25b807fc94e69c2090164e10676c0b2af903",
+  "final-regression.log": "e3b74d9895fa1a1a92e0b4ecce030d5621285ab56e319a64f3131f12ab52dc07",
+  "loop-tests.log": "9f6610ad85d4c7fa623f215da12c885ac65d3aa1e1bae1177eb51aeb32dd9a2e",
+  "mcp.json": "691f62624936af38f0e6b2ac6c8b43162a23696696f62d5037d9eb2b43bd73c5",
+  "recovery-negative.log": "42be78b55aa5e8db6c7711b7e47487c97a362a7c79ca3ab33b3f92fce4a9313d",
+  "red.log": "a9352db356875a4790c974fc61f9a83d10909cf7b80afd957dac2a97e586b27c",
+  "settings.json": "0050eadecfa962b33bee547188ebb3bccf067bd2e12e08bf0f519340afcf138b",
+  "typecheck.log": "8366207267355d3e3d5bf3bf6e8c94c5f93f6078c34f08973fa2b38cdda6cc92"
+}

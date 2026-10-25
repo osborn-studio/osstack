@@ -15,7 +15,7 @@ import type { GraphExecutionContextRegistration } from './graph-execution-contex
 import { GraphDelivery } from './graph-delivery.js';
 import { assertGraphContractPaths } from './graph-delivery-contract.js';
 
-async function fixture(mode: 'success' | 'repair' | 'unknown' = 'success', context = false) {
+async function fixture(mode: 'success' | 'repair' | 'unknown' = 'success', context = false, extraChecks: readonly string[] = []) {
   const f = await graphRpcFixture(mode); await f.service.close();
   if (context) { f.request.scope = { ...f.request.scope, tenantId: 'default' }; f.registration.scope = f.request.scope; }
   const originalRun = GraphDelivery.prototype.run;
@@ -25,10 +25,11 @@ async function fixture(mode: 'success' | 'repair' | 'unknown' = 'success', conte
     routes.push(result);
     return result;
   });
+  f.registration.delivery.acceptanceRegistry=[...f.registration.delivery.acceptanceRegistry,...extraChecks.map((command,index)=>({ref:`extra-${index}`,command:command.replaceAll('%ROOT%',f.root),passExitCodes:[0],failExitCodes:[1]}))];
   const policyDigest = 'b'.repeat(64);
   const frozen = freezeDeliveryContract({ schema_version: 2, contract_id: 'graph-contract', task_id: f.request.spec.input.taskRef,
     canonical_repo: f.registration.delivery.repositoryPath, mode: 'implement', base_head: f.request.spec.input.baseRevision, goal: f.registration.delivery.task,
-    required_checks: [{ id: 'accept', registry_ref: deliveryCheckReference(f.registration.delivery.acceptanceRegistry[0]!.command) }],
+    required_checks: f.registration.delivery.acceptanceRegistry.map((check,index)=>({id:index===0?'accept':`extra-${index}`,registry_ref:deliveryCheckReference(check.command)})),
     review_policy_ref: 'graph:independent', requested_completion: 'local_verified', allowed_paths: ['answer'], requested_actions: ['build', 'verify'],
     budget_ref: `policy:${policyDigest}`, policy_digest: policyDigest, publication_scope: { mode: 'none' }, merge_authority: { mode: 'none' } });
   const registration = { ...f.registration, delivery: { ...f.registration.delivery,
@@ -294,3 +295,15 @@ it('rejects a writer stat-cache bypass before freezing or starting review', asyn
     expect(f.db.prepare("SELECT count(*) n FROM graph_actions WHERE node_id LIKE '%.review' OR node_id LIKE '%.tests'").get()).toEqual({ n: 0 });
   } finally { await service.close(); await f.close(); }
 }, 30000);
+
+it('executes each registered check and returns exact per-check completion receipts',async()=>{
+ const f=await fixture('success',false,["test -s answer; printf checked > '%ROOT%/second-check-ran'", "test $(wc -c < answer) -eq 2"]);
+ try{const start=await f.start();expect((await f.until(start.graphRunId)).status).toBe('ready');expect(await readFile(join(f.root,'second-check-ran'),'utf8')).toBe('checked');
+ const receipt=GraphContractCompletionReceipt.parse(await f.service.handle(f.connection,'graph.contract',{schemaVersion:1,scope:f.request.scope,graphRunId:start.graphRunId}));expect(receipt.checks).toHaveLength(3);expect(receipt.checks?.map(check=>check.suiteIndex)).toEqual([0,1,2]);expect(receipt.checks?.every(check=>check.exitCode===0)).toBe(true);
+ }finally{await f.close();}
+},30000);
+it('does not claim local verification when a later required check fails after the primary passes',async()=>{
+ const f=await fixture('success',false,['exit 1']);
+ try{const start=await f.start();const state=await f.until(start.graphRunId,true);expect(state.status).not.toBe('ready');await expect(f.service.handle(f.connection,'graph.contract',{schemaVersion:1,scope:f.request.scope,graphRunId:start.graphRunId})).rejects.toThrow();}
+ finally{await f.close();}
+},30000);

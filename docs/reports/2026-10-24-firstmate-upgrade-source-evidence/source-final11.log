@@ -1,0 +1,10 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-upgrade/packages/cli
+
+ ✓ src/source-context.test.ts (11 tests) 660ms
+
+ Test Files  1 passed (1)
+      Tests  11 passed (11)
+   Start at  17:23:22
+   Duration  2.91s (transform 1.20s, setup 37ms, collect 1.88s, tests 660ms, environment 0ms, prepare 44ms)
+

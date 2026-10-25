@@ -1,0 +1,29 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-upgrade/packages/core
+
+ ✓ src/state/source-observations.test.ts (5 tests) 317ms
+ ✓ src/state/graph-runs.test.ts (40 tests) 3092ms
+   ✓ graph run storage > serializes independent SQLite workers: same-request  836ms
+ ✓ src/state/graph-actions.test.ts (37 tests) 3409ms
+   ✓ graph action ledger > serializes independent SQLite workers: same-key  990ms
+   ✓ graph action ledger > serializes independent SQLite workers: shared-budget  376ms
+ ✓ src/state/graph-invocations.test.ts (29 tests) 5235ms
+   ✓ survives process SIGKILL at before_commit without duplicate dispatch  1505ms
+   ✓ survives process SIGKILL at mid_transaction without duplicate dispatch  767ms
+   ✓ survives process SIGKILL at after_commit without duplicate dispatch  562ms
+   ✓ survives process SIGKILL at after_response without duplicate dispatch  566ms
+   ✓ survives process SIGKILL at after_receipt without duplicate dispatch  633ms
+ ✓ src/state/graph-apply.test.ts (27 tests) 6660ms
+   ✓ does not repeat physical writes after SIGKILL at before_gate  1462ms
+   ✓ does not repeat physical writes after SIGKILL at mid_gate  830ms
+   ✓ does not repeat physical writes after SIGKILL at after_gate  561ms
+   ✓ does not repeat physical writes after SIGKILL at partial  556ms
+   ✓ does not repeat physical writes after SIGKILL at after_files  765ms
+   ✓ does not repeat physical writes after SIGKILL at mid_completion  634ms
+   ✓ does not repeat physical writes after SIGKILL at after_receipt  579ms
+
+ Test Files  5 passed (5)
+      Tests  138 passed (138)
+   Start at  17:21:48
+   Duration  7.78s (transform 789ms, setup 0ms, collect 2.41s, tests 18.71s, environment 3ms, prepare 508ms)
+

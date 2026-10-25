@@ -1,0 +1,32 @@
+{
+  "baseHead": "97c68e4396248664eda5df4b803745b668615dbd",
+  "sources": [],
+  "evidence": [
+    {
+      "path": "reaudit-F3-r9-result.json",
+      "sha256": "5ad1d09cd7b8e568f0996757cd9102871ebbed1e13368dc743d43a7e7a3318be"
+    },
+    {
+      "path": "F3-r10-context.json",
+      "sha256": "cc60ee1dea5bf71a5808ffbc5ed45386a8a5f056df8dfe165c43a13e3a7ebc06"
+    },
+    {
+      "path": "F3-r10-final-validation.json",
+      "sha256": "cdc4b419bc6f5736d31bc8d41d20ff55c5a2e9026f6256fb8079e1e9f6191a11"
+    },
+    {
+      "path": "F3-r10-final-engine-containment.log",
+      "sha256": "1906043a6dc4dafa209f45fb4f85414a47d00bb4cc20ede9637d71783002f1dc"
+    },
+    {
+      "path": "F3-r9-unified-manifest.json",
+      "sha256": "1a004664e284365d8f5b8390d7fd27ce91020ffaa7055caecf294e459ee03375"
+    },
+    {
+      "path": "F3-r9-cli-validation.json",
+      "sha256": "1d25585621d5f9f008d738a6a7113fb9543aed6368e7c9ad157ea0218c963827"
+    }
+  ],
+  "promptSha256": "33dc472ea9e05fe79ccc24baa9391178e8f94d600e7d9582060f8ec49be7fe42",
+  "promptBytes": 30134
+}

@@ -2,7 +2,9 @@ import { execFileSync } from "node:child_process";
 import { mkdtempSync, realpathSync } from "node:fs";
 import {
   cp,
+  mkdir,
   readFile,
+  readdir,
   rm,
   stat,
   writeFile,
@@ -929,4 +931,91 @@ describe("V2 real guarded-local host boundary", () => {
       if (candidatePath) execFileSync("git", ["worktree", "remove", "--force", candidatePath], { cwd: workspace });
     }
   }, 60000);
+});
+
+// Live host path: committed-source scout -> explicit fresh admission -> isolated
+// builder -> real check failure -> source repair -> real check and independent review.
+describe('scout promotion and authoritative recovery lessons', () => {
+  it.each(['repaired', 'no_repair', 'same_source', 'timeout', 'tampered_history'])('qualifies only actual changed-source recovery: %s', async mode => {
+    const { createScoutHost } = await import('./scout-command.js');
+    const workspace = await initGuardedFixture();
+    const original = await readFile(join(workspace, 'src/greeting.ts'), 'utf8');
+    const before = execFileSync('git', ['rev-parse', 'HEAD'], {cwd:workspace,encoding:'utf8'}).trim();
+    let attempts=0;let candidatePath:string|undefined;
+    const adapters=guardedAdapters(async function* (task) {
+      attempts++;const candidate=String(task.context?.['repo_path']);candidatePath=candidate;
+      if(mode==='timeout') await writeFile(join(candidate,'src/greeting.ts'), attempts===1 ? original+'\nsetTimeout(() => {}, 10000);\n' : original+'\nexport const timeoutRepaired = true;\n');
+      else if(mode==='repaired'||mode==='tampered_history') await writeFile(join(candidate,'src/greeting.ts'),attempts===1 ? 'export function greeting(name: string): string { return `Broken, ${name}!`; }\n' : original+'\nexport const repaired = true;\n');
+      else await writeFile(join(candidate,'src/greeting.ts'),original+'\nexport const noRepair = true;\n');
+      yield doneEvent(task,'completed','builder completed');
+    });
+    // Same-source case fails review once, not a required check; it must not create a recovery lesson.
+    let reviews=0;
+    if(mode==='same_source')adapters[1]!.invoke=async function* (task){reviews++;if(reviews===1)yield doneEvent(task,'failed','review rejected');else yield structuredReviewDoneEvent(task);};
+    const policyDigest='b'.repeat(64);
+    const policy=async()=>({policyDigest,verifyCommands:['pnpm test'],budgetRef:`policy:${policyDigest}`,budget:{max_builder_iterations:2,max_review_rounds:2,max_wall_time_ms:60000,max_no_progress_rounds:2}});
+    const defaultDeps=createDeliverCommandDeps();let deliveryState:string|undefined;
+    const deps={...defaultDeps,adapters:()=>adapters,deliveryContractPolicy:policy,
+      createDeliveryStateDirectory:async(digest:string)=>{deliveryState=await defaultDeps.createDeliveryStateDirectory!(digest);return deliveryState;},
+      createLoopGovernanceEvidence:async(...args:Parameters<typeof defaultDeps.createLoopGovernanceEvidence>)=>{
+        if(mode==='tampered_history'&&args[1]===candidatePath&&deliveryState){const dir=join(deliveryState,'recovery-evidence');for(const file of await readdir(dir)){const path=join(dir,file);if(JSON.parse(await readFile(path,'utf8')).pass===false)await writeFile(path,'{}');}}
+        return defaultDeps.createLoopGovernanceEvidence(...args);
+      },
+    };
+    const host=createScoutHost({home:join(tmp,'scout-host'),policy,deliver:(args,emitJson)=>handleDeliverCommand([...args,...(mode==='timeout'?['--command-timeout-ms','2000']:[])],{...deps,emitJson})});
+    try {
+      const scout=await host.inspect({repo:workspace,goal:'Repair greeting',paths:['src/greeting.ts'],profile:'mac-mini',requestId:`inspect-${mode}`});
+      expect(attempts).toBe(0);expect(scout.facts[0]?.text).toBe(original);
+      await writeFile(join(workspace,'new-base.txt'),'A newer committed base after the investigation.');commitFixture(workspace);
+      const latestHead=execFileSync('git',['rev-parse','HEAD'],{cwd:workspace,encoding:'utf8'}).trim();expect(latestHead).not.toBe(before);
+      const pendingPromotion=host.promote({digest:scout.digest,requestId:`promote-${mode}`});
+      if(mode==='tampered_history'){await expect(pendingPromotion).rejects.toThrow('digest_mismatch');expect(logs).toHaveLength(0);expect(await readFile(join(workspace,'src/greeting.ts'),'utf8')).toBe(original);return;}
+      const promotion=await pendingPromotion;
+      expect(promotion.exitCode,logs.join('\n')+errors.join('\n')).toBe(0);
+      expect(logs).toHaveLength(0);
+      const summary=JSON.parse(JSON.stringify(promotion.deliveryResult));
+      expect(summary.delivery_contract.achieved_completion).toBe('local_verified');
+      expect(summary.recovered_lesson.state).toBe(mode==='repaired'?'draft':'not_qualified');
+      expect(await readFile(join(workspace,'src/greeting.ts'),'utf8')).toBe(original);
+      expect(execFileSync('git',['rev-parse','HEAD'],{cwd:workspace,encoding:'utf8'}).trim()).toBe(latestHead);
+      const verifiedReceipt=JSON.parse(await readFile(summary.delivery_contract.verification_receipt.path,'utf8'));expect(verifiedReceipt.candidate.base_head).toBe(latestHead);
+      if(mode==='repaired'){
+        expect(attempts).toBe(2);expect(summary.recovered_lesson.evidence).toHaveLength(2);
+        const [failure,success]=await Promise.all(summary.recovered_lesson.evidence.map(async (ref:{path:string})=>JSON.parse(await readFile(ref.path,'utf8'))));
+        expect(failure.pass).toBe(false);expect(failure.checks[0].exitCode).not.toBe(0);expect(success.pass).toBe(true);expect(success.checks[0].exitCode).toBe(0);expect(failure.workspaceDigest).not.toBe(success.workspaceDigest);
+        expect(await readFile(summary.recovered_lesson.path,'utf8')).toContain('task succeeded on attempt 2');
+        expect(summary.recovered_lesson.path).not.toContain(workspace);
+      }
+    } finally {if(candidatePath)execFileSync('git',['worktree','remove','--force',candidatePath],{cwd:workspace});}
+  },60000);
+});
+
+it("rejects none-scope push and merge contracts before guarded-git dispatch", async () => {
+  const contractPath = join(tmp, "forbidden-contract.json");
+  await writeFile(contractPath, JSON.stringify({ schema_version: 2, contract_id: "contract-forbidden", task_id: "task-forbidden",
+    canonical_repo: realpathSync(tmp), mode: "implement", base_head: "a".repeat(40), goal: "Publish without scope",
+    required_checks: [{ id: "tests", registry_ref: deliveryCheckReference("pnpm test") }], review_policy_ref: "profile:mac-mini",
+    requested_completion: "local_verified", allowed_paths: ["src"], requested_actions: ["build", "verify", "push", "merge"],
+    budget_ref: `policy:${"b".repeat(64)}`, policy_digest: "b".repeat(64), publication_scope: { mode: "none" }, merge_authority: { mode: "none" } }));
+  const startGuardedGit = vi.fn();
+  const code = await handleDeliverCommand(["--workspace", tmp, "--autonomy", "guarded-git", "--contract", contractPath, "--json"], {
+    ...createDeliverCommandDeps(), startGuardedGit,
+  });
+  expect(code).toBe(2);
+  expect(logs.join("\n")).toContain("invalid_delivery_contract");
+  expect(startGuardedGit).not.toHaveBeenCalled();
+});
+
+it("escapes policy loader terminal errors used by scout promotion", async () => {
+  const workspace = join(tmp, "policy-\u202e\u009b\u001b");
+  await mkdir(join(workspace, ".osstack"), { recursive: true });
+  await writeFile(join(workspace, ".osstack", "policy.yaml"), "mode: [\n");
+  expect(await createDeliverCommandDeps().enforceObservePolicyGate(workspace)).toBe(1);
+  const output = errors.join("\n");
+  expect(output).not.toContain("\u202e");
+  expect(output).not.toContain("\u009b");
+  expect(output).toContain("\\u202e");
+  expect(output).toContain("\\u009b");
+  expect(output).not.toContain("\u001b");
+  expect(output).toContain("\\u001b");
 });

@@ -146,7 +146,7 @@ CI 使用已有 GitHub 命令执行器，独立并发上限 2、缓存上限 100
 
 交付契约工具从同一冻结对象派生 digest、brief、effective options；scout→implement 产生新 ID。校验 mode、head、必选验证、review 与完成层级。它检查输入自洽，不是外部执行证明，也不会自动调用 deliver 或复用审批授权。
 
-分诊只接收三种分类和有限解释，拒绝 action/tool 字段，失败回确定性视图；当前没有自动模型调用。routing-eval 评估提供的候选路由结果与 golden labels，记录准确率、漏 review 和 usage；未证明收益前不改变默认路由。context 按层级、时间与 UTF-8 字节预算筛选，披露被省略的必选信息；lesson 只新建带随机 ID 的既有格式 draft，不覆盖用户记忆，不修改 AGENTS，不自动 promote。
+上述 `--input` 分诊是离线输入检查，只接收三种分类和有限解释，拒绝 action/tool 字段；显式 `triage --scope ... --item ... --model EXACT` 才会调用已配置的受限 provider。`routing-eval` 默认评估调用者提供的预测；`--mode router_golden` 运行确定性路由 fixture，`--mode paired_holdout` 才进行显式双模型评估，需要凭据和合格数据。未证明收益前不改变默认路由。context 按层级、时间与 UTF-8 字节预算筛选，披露被省略的必选信息；lesson 只新建带随机 ID 的既有格式 draft，不覆盖用户记忆，不修改 AGENTS，不自动 promote。
 
 ## 恢复行为变更
 

@@ -2,7 +2,7 @@
 
 # CLI Commands
 
-Top-level `osstack` commands parsed from `--help` (53 total).
+Top-level `osstack` commands parsed from `--help` (56 total).
 
 - `agent`
 - `attention`
@@ -43,8 +43,11 @@ Top-level `osstack` commands parsed from `--help` (53 total).
 - `probe`
 - `proof`
 - `release`
+- `remote-control`
+- `remote-home`
 - `report`
 - `scorecard`
+- `scout`
 - `serve`
 - `session`
 - `skills`

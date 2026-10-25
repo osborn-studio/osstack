@@ -1,0 +1,38 @@
+{
+  "sources": {
+    "packages/loop/src/loop-engine.ts": "bdcb311ad800f4cf15ab1772726c5e6ed7850000b869d1f435e16383a5f7c007",
+    "packages/loop/src/loop-engine.test.ts": "cc5d8c265f88ac138b0cc5d5513ea83efb790fb2abc1def9cb61119be01238b9"
+  },
+  "commands": [
+    {
+      "command": [
+        "pnpm",
+        "--filter",
+        "@osstack/loop",
+        "typecheck"
+      ],
+      "exit_code": 0
+    },
+    {
+      "command": [
+        "pnpm",
+        "exec",
+        "biome",
+        "check",
+        "packages/loop/src/loop-engine.ts",
+        "packages/loop/src/loop-engine.test.ts"
+      ],
+      "exit_code": 0
+    }
+  ],
+  "tests": {
+    "command": "pnpm --filter @osstack/loop exec vitest run src/loop-engine.test.ts",
+    "exit_code": 0,
+    "passed": 53,
+    "log": "F3-r7-selection-tests.log"
+  },
+  "post_test_sources": {
+    "packages/loop/src/loop-engine.ts": "bdcb311ad800f4cf15ab1772726c5e6ed7850000b869d1f435e16383a5f7c007",
+    "packages/loop/src/loop-engine.test.ts": "cc5d8c265f88ac138b0cc5d5513ea83efb790fb2abc1def9cb61119be01238b9"
+  }
+}

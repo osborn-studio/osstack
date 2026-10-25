@@ -1,0 +1,12 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-delivery/packages/cli
+
+ ✓ src/follow-up-github-transport.test.ts (20 tests) 208ms
+ ✓ src/follow-up-delivery-host.test.ts (24 tests) 350ms
+ ✓ src/follow-up-delivery-command.test.ts (13 tests) 43ms
+
+ Test Files  3 passed (3)
+      Tests  57 passed (57)
+   Start at  17:00:58
+   Duration  992ms (transform 247ms, setup 19ms, collect 813ms, tests 600ms, environment 0ms, prepare 86ms)
+

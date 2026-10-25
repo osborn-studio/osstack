@@ -1,0 +1,626 @@
+{
+  "head": "30fe5eb0c3ed3ac430dfd6e61bbd1d088fce1fca",
+  "base": "1c343aadee77933ef6ffb2d9e1a8a1b6fcb2e039",
+  "requested_model": "claude-haiku-5-5",
+  "groups": {
+    "A": {
+      "files": [
+        {
+          "path": "packages/cli/src/bin.ts",
+          "mode": "diff-context-30",
+          "sha256": "ffdd46fea2574756e472f94ca17f034619a3ea6948cb82ddfff0b39c12feba64"
+        },
+        {
+          "path": "packages/cli/src/daemon.ts",
+          "mode": "diff-context-30",
+          "sha256": "d87fa86b14ae7691f6e19c6310ac724379a0ac5f9c668815d39fbdc3c5bfa170"
+        },
+        {
+          "path": "packages/agents/src/controlled-triage.test.ts",
+          "mode": "full-source",
+          "sha256": "31990544bddd3d0dcc02acc4a2ee24aa95a0deccdf14faed74beccc026337033"
+        },
+        {
+          "path": "packages/agents/src/controlled-triage.ts",
+          "mode": "full-source",
+          "sha256": "63c077c67e56c5d53b63ece02eb277a7436e9c45def6f4d6c58dada2dc9b6acb"
+        },
+        {
+          "path": "packages/cli/src/attention-planning-command.ts",
+          "mode": "full-source",
+          "sha256": "c5cc670ee0263c0d8ad6125830447187fccbee9d33fe17605d408f5340b51a83"
+        },
+        {
+          "path": "packages/cli/src/attention-read-model.test.ts",
+          "mode": "full-source",
+          "sha256": "6d8578b7e5cc939c2f61c651f858d5f8c7cc7a5e622e6c8dce33b872d8716992"
+        },
+        {
+          "path": "packages/cli/src/attention-read-model.ts",
+          "mode": "full-source",
+          "sha256": "2b7bbba03bb324efc03151d37e7a8ff92414c0c77fba2ac584dcd2933b6a69d5"
+        },
+        {
+          "path": "packages/cli/src/execution-context-host.ts",
+          "mode": "full-source",
+          "sha256": "149ac22d6d8190e5ca24208e431f74945881d7b8116f097df3985ed2835ef314"
+        },
+        {
+          "path": "packages/cli/src/execution-context.ts",
+          "mode": "full-source",
+          "sha256": "0c09785d4cd585b248a619f9616d2b11ab8a40e84119a194d8fe1a1561259ea7"
+        },
+        {
+          "path": "packages/cli/src/paired-routing-evaluation.test.ts",
+          "mode": "full-source",
+          "sha256": "8ccb5f155e6f53b8526dbb9345ce38da623882e351c95e9526427cebc5566282"
+        },
+        {
+          "path": "packages/cli/src/paired-routing-evaluation.ts",
+          "mode": "full-source",
+          "sha256": "39a1a0b6c97fa0c96148490e1caab7466dfc9e0c8c6aa1596ab512a06043c9f7"
+        },
+        {
+          "path": "packages/cli/src/source-context-fence.ts",
+          "mode": "full-source",
+          "sha256": "371718b13b6d4932ad67a5926019ebfeb524d838fb1e4fba1a6e16e3404b6620"
+        },
+        {
+          "path": "packages/cli/src/source-context.test.ts",
+          "mode": "full-source",
+          "sha256": "c90c911ccdcdde755e7776b58580623de624f4869f38a2b7c083f1bb38c0b62e"
+        },
+        {
+          "path": "packages/cli/src/source-context.ts",
+          "mode": "full-source",
+          "sha256": "a86db5921f95be730c0b896ef38ac3360502e9081aadd1c3216e2efba1f34ece"
+        },
+        {
+          "path": "packages/cli/src/source-observation-command.ts",
+          "mode": "full-source",
+          "sha256": "4b4050868cf1e3b24bd1812d416542dc11f714408974dc7645b579914e468997"
+        },
+        {
+          "path": "packages/cli/src/source-observation-host.ts",
+          "mode": "full-source",
+          "sha256": "b2ca86601c4c9034bbe8a46a4ef05eb1cb721a3a8a558d191a4a30a1dacc3acb"
+        },
+        {
+          "path": "packages/cli/src/supervision-active-qualification.test.ts",
+          "mode": "full-source",
+          "sha256": "9113a6763218331eb9a4c4f34547a31085d11cf2147c5a6354a0f78816ae9981"
+        },
+        {
+          "path": "packages/cli/src/supervision-service.ts",
+          "mode": "full-source",
+          "sha256": "34e8afb5aed0a8c99b167f2d488d58cbd3d810cddd43e6f4e5caec34049e3cc7"
+        },
+        {
+          "path": "packages/cli/src/worker-log-view.test.ts",
+          "mode": "full-source",
+          "sha256": "b7eb4a3723fe24ff05a1ef9678a32809c85489b295a83772d7acbe036554fe86"
+        },
+        {
+          "path": "packages/cli/src/worker-log-view.ts",
+          "mode": "full-source",
+          "sha256": "92103003ea08bd5e1edcf1e032b62d8d729008e8d0bafac1f688f8ef03bfc1da"
+        },
+        {
+          "path": "packages/cli/src/worker-presentation.ts",
+          "mode": "full-source",
+          "sha256": "6ac5b9bee8d7edfcae8732d700a504cf60b7b1ab33edf4440ca3017b40e4f263"
+        },
+        {
+          "path": "packages/cli/src/worker-view-service.test.ts",
+          "mode": "full-source",
+          "sha256": "c4986bfe5dda3d23113cde2f1ec58b42f854c26527718211f968f8ed915fcff5"
+        },
+        {
+          "path": "packages/cli/src/worker-view-service.ts",
+          "mode": "full-source",
+          "sha256": "6856007b372dfa75e4d083c3af631c84ab7c3a915fe697aa58f95a52f7e7861b"
+        },
+        {
+          "path": "packages/cli/src/worker-viewer-launch.test.ts",
+          "mode": "full-source",
+          "sha256": "651479462e98cf383eff9bb46d4c1a0704dccd2c21be7e18956a757fcaf29616"
+        },
+        {
+          "path": "packages/cli/src/worker-viewer-launch.ts",
+          "mode": "full-source",
+          "sha256": "02ba7e8c148fff5e316f328f45ed6e2e200b70ab55b90c24c464e99c3ae3cd71"
+        },
+        {
+          "path": "packages/core/src/state/attention-observer.test.ts",
+          "mode": "full-source",
+          "sha256": "5c215d47dfb27666e9e42160bdcd5237cbb1e8c3dac84f568ff8e28c1c3175e0"
+        },
+        {
+          "path": "packages/core/src/state/attention-observer.ts",
+          "mode": "full-source",
+          "sha256": "f4de157da3c70a38bfee14e8920d9d10fc28979030507b14b253688a0b5986c3"
+        },
+        {
+          "path": "packages/core/src/state/source-observations-ddl.ts",
+          "mode": "full-source",
+          "sha256": "4aa40151e93fccda5035a8a010dcf38c2b4a722c4306b7fae3b8a2048f58bab9"
+        },
+        {
+          "path": "packages/core/src/state/source-observations.test.ts",
+          "mode": "full-source",
+          "sha256": "a71002ea6689dc701ccca6ead875485362dc7c40938cb5d6b59c2778579e5d03"
+        },
+        {
+          "path": "packages/core/src/state/source-observations.ts",
+          "mode": "full-source",
+          "sha256": "55ea14e003ea7fcb398e8ebeca25ca687319f29d3adaf6586548b51e66d97f19"
+        },
+        {
+          "path": "packages/knowledge/src/context-budget.ts",
+          "mode": "full-source",
+          "sha256": "3a41933465cb2738c3cef17f401ebab968537fef4a3c80e5457b13cf3ccc0682"
+        }
+      ],
+      "prompt_bytes": 361516,
+      "prompt_sha256": "a91f89ad369a840d150e8a5de47f6d7cc479d1906094b61e8a9958620e3a2cbf"
+    },
+    "C": {
+      "files": [
+        {
+          "path": "packages/cli/src/bin.ts",
+          "mode": "diff-context-30",
+          "sha256": "ffdd46fea2574756e472f94ca17f034619a3ea6948cb82ddfff0b39c12feba64"
+        },
+        {
+          "path": "packages/cli/src/daemon.ts",
+          "mode": "diff-context-30",
+          "sha256": "d87fa86b14ae7691f6e19c6310ac724379a0ac5f9c668815d39fbdc3c5bfa170"
+        },
+        {
+          "path": "packages/agents/vitest.config.ts",
+          "mode": "full-source",
+          "sha256": "a6396a52dba5dac3a02dc498e9abdcc925a3cd691b63e931c12112f0f6cd8379"
+        },
+        {
+          "path": "packages/autonomy/vitest.config.ts",
+          "mode": "full-source",
+          "sha256": "a6396a52dba5dac3a02dc498e9abdcc925a3cd691b63e931c12112f0f6cd8379"
+        },
+        {
+          "path": "packages/cli/src/control-plane-guard.test.ts",
+          "mode": "full-source",
+          "sha256": "77a8c8f7e673acab867b2c9f7db53bae01238f02cf7a14a523804a5ba2531b99"
+        },
+        {
+          "path": "packages/cli/src/control-plane-guard.ts",
+          "mode": "full-source",
+          "sha256": "0301f5dc1cfeb99a0d439bd47447403b4d53067bfaada2fd9a88d0a0cddf735f"
+        },
+        {
+          "path": "packages/cli/src/managed-home-guard.ts",
+          "mode": "full-source",
+          "sha256": "fc84c3f74e37be7b74eff07c7d9a9ac74381a0bb3b95381ca29a1f8bad0ede52"
+        },
+        {
+          "path": "packages/cli/src/remote-cancel-client.ts",
+          "mode": "full-source",
+          "sha256": "ff8590d30b17fcb55a86f782c63a3a22b89aa37afcba7a93029be8930b9bd422"
+        },
+        {
+          "path": "packages/cli/src/remote-cancel-exporter.ts",
+          "mode": "full-source",
+          "sha256": "3a008c7400a7a7b5a203021bf4d792a065ea333c20045cc73fccd60ac799b0dd"
+        },
+        {
+          "path": "packages/cli/src/remote-cancel-issuer.ts",
+          "mode": "full-source",
+          "sha256": "fee07afb0617c95eebf3a62b1468d6b5d77e06c3d42a56989c73a53e3ec9f36d"
+        },
+        {
+          "path": "packages/cli/src/remote-cancel-main.test.ts",
+          "mode": "full-source",
+          "sha256": "816e7e3f47bdac739de824dfadee69ea569ec44b2e72c210038a2d85af9eb2a6"
+        },
+        {
+          "path": "packages/cli/src/remote-cancel-protocol.ts",
+          "mode": "full-source",
+          "sha256": "c60e9bba9412071f7410c739cc71c36ed4faa4917a650c46aff8cb39f3c53767"
+        },
+        {
+          "path": "packages/cli/src/remote-cancel.test.ts",
+          "mode": "full-source",
+          "sha256": "efea847581e37a91950897a2763be3018f38fd347db11e56366b56d5ccfe90ef"
+        },
+        {
+          "path": "packages/cli/src/remote-home-protocol.ts",
+          "mode": "full-source",
+          "sha256": "4fe5967e8c3e9d02d2ec2c72a7d9d3fc71162782add9f20026e1c2e55c54cb6c"
+        },
+        {
+          "path": "packages/cli/src/upgrade-coordinator.ts",
+          "mode": "full-source",
+          "sha256": "2111fa5f28b69e44e9c496e16f93c8726d72c082fb19de847816220dc0b78351"
+        },
+        {
+          "path": "packages/cli/src/upgrade-journal.ts",
+          "mode": "full-source",
+          "sha256": "0fb2f97233cff739e39d98d9745c1b059eabca1267c30dd1c2d3c07419b5ac87"
+        },
+        {
+          "path": "packages/cli/src/upgrade-managed-provision.ts",
+          "mode": "full-source",
+          "sha256": "895f464e0e61d00baa4aa65362a772828a90671280d9415a574879e9063cdc5a"
+        },
+        {
+          "path": "packages/cli/src/upgrade-native-backend.ts",
+          "mode": "full-source",
+          "sha256": "41766a95921238876e2c0d870b0c6e499ff7f9371c45be3fcc0be0f5554cb583"
+        },
+        {
+          "path": "packages/cli/src/upgrade-native-command.test.ts",
+          "mode": "full-source",
+          "sha256": "e0e43238b4077172e613bd698fafd12bf2e5b7b6a31b1f1e9a551849ca935438"
+        },
+        {
+          "path": "packages/cli/src/upgrade-native-command.ts",
+          "mode": "full-source",
+          "sha256": "a3bbb725a60ab4f839b06fcff5f2733075df058de40c3d9fe4c7f9f6c859cd67"
+        },
+        {
+          "path": "packages/cli/src/upgrade-native-files.ts",
+          "mode": "full-source",
+          "sha256": "be57419b1c156b99782b8474a26f6b1767aa8b79160d73570169104f4c0778b9"
+        },
+        {
+          "path": "packages/cli/src/upgrade-native-port.ts",
+          "mode": "full-source",
+          "sha256": "7bef3655fd8405f6c049479b9c7e72e5856e41fb356b299fd825819a143b3bc5"
+        },
+        {
+          "path": "packages/cli/src/upgrade-native.test.ts",
+          "mode": "full-source",
+          "sha256": "220a3c94d38c8294bf4d4fdfb4dc98500ca5ed34e5b9e426d2bf7cf9f561527f"
+        },
+        {
+          "path": "packages/cli/src/upgrade-plan-command.ts",
+          "mode": "full-source",
+          "sha256": "e28058b98692de5e5c61a9d3da59c3d17f7aa4ab3e029c33b53c2f95158237e6"
+        },
+        {
+          "path": "packages/cli/vitest.config.ts",
+          "mode": "full-source",
+          "sha256": "315c2e1b0773b508a316cb20b966ff2a34d664664fa2e6fc26f880c8b0b7c618"
+        },
+        {
+          "path": "packages/compliance/vitest.config.ts",
+          "mode": "full-source",
+          "sha256": "a6396a52dba5dac3a02dc498e9abdcc925a3cd691b63e931c12112f0f6cd8379"
+        },
+        {
+          "path": "packages/config/vitest.config.ts",
+          "mode": "full-source",
+          "sha256": "a6396a52dba5dac3a02dc498e9abdcc925a3cd691b63e931c12112f0f6cd8379"
+        },
+        {
+          "path": "packages/conformance/vitest.config.ts",
+          "mode": "full-source",
+          "sha256": "a6396a52dba5dac3a02dc498e9abdcc925a3cd691b63e931c12112f0f6cd8379"
+        },
+        {
+          "path": "packages/contracts/vitest.config.ts",
+          "mode": "full-source",
+          "sha256": "a6396a52dba5dac3a02dc498e9abdcc925a3cd691b63e931c12112f0f6cd8379"
+        },
+        {
+          "path": "packages/core/vitest.config.ts",
+          "mode": "full-source",
+          "sha256": "a6396a52dba5dac3a02dc498e9abdcc925a3cd691b63e931c12112f0f6cd8379"
+        },
+        {
+          "path": "packages/github/vitest.config.ts",
+          "mode": "full-source",
+          "sha256": "a6396a52dba5dac3a02dc498e9abdcc925a3cd691b63e931c12112f0f6cd8379"
+        },
+        {
+          "path": "packages/governance/vitest.config.ts",
+          "mode": "full-source",
+          "sha256": "a6396a52dba5dac3a02dc498e9abdcc925a3cd691b63e931c12112f0f6cd8379"
+        },
+        {
+          "path": "packages/graph/vitest.config.ts",
+          "mode": "full-source",
+          "sha256": "a6396a52dba5dac3a02dc498e9abdcc925a3cd691b63e931c12112f0f6cd8379"
+        },
+        {
+          "path": "packages/hermes-adapter/vitest.config.ts",
+          "mode": "full-source",
+          "sha256": "a6396a52dba5dac3a02dc498e9abdcc925a3cd691b63e931c12112f0f6cd8379"
+        },
+        {
+          "path": "packages/knowledge-cloud/vitest.config.ts",
+          "mode": "full-source",
+          "sha256": "a6396a52dba5dac3a02dc498e9abdcc925a3cd691b63e931c12112f0f6cd8379"
+        },
+        {
+          "path": "packages/knowledge/vitest.config.ts",
+          "mode": "full-source",
+          "sha256": "a6396a52dba5dac3a02dc498e9abdcc925a3cd691b63e931c12112f0f6cd8379"
+        },
+        {
+          "path": "packages/loop/src/executor.test.ts",
+          "mode": "full-source",
+          "sha256": "14db44783fc5ab3a1bba693ba8b7a8d0c45ae0c2cc377264ecdbaca74374ecf0"
+        },
+        {
+          "path": "packages/loop/src/loop-engine.ts",
+          "mode": "diff-context-30",
+          "sha256": "91d77bed57a99d72b5bbfc89bd59aa540ff8199cd45b9dffba5fa8543a0fba66"
+        },
+        {
+          "path": "packages/loop/src/types.ts",
+          "mode": "full-source",
+          "sha256": "3f6c6a368a9e7ce921c20fb56be4dee27993263101f11482e23f2f57410e326c"
+        },
+        {
+          "path": "packages/loop/src/verifier.ts",
+          "mode": "full-source",
+          "sha256": "7d4a63946f1ac8001669af7012c6e41dc19e3113c51e5d1772d22ee85d14eabd"
+        },
+        {
+          "path": "packages/loop/vitest.config.ts",
+          "mode": "full-source",
+          "sha256": "27b2d58d43fa0a5c27bc72affe822b8dd6d5107d339f219794a4525961c07e66"
+        },
+        {
+          "path": "packages/neat-eval/vitest.config.ts",
+          "mode": "full-source",
+          "sha256": "a6396a52dba5dac3a02dc498e9abdcc925a3cd691b63e931c12112f0f6cd8379"
+        },
+        {
+          "path": "packages/plugins/vitest.config.ts",
+          "mode": "full-source",
+          "sha256": "a6396a52dba5dac3a02dc498e9abdcc925a3cd691b63e931c12112f0f6cd8379"
+        },
+        {
+          "path": "packages/protocol/vitest.config.ts",
+          "mode": "full-source",
+          "sha256": "a6396a52dba5dac3a02dc498e9abdcc925a3cd691b63e931c12112f0f6cd8379"
+        },
+        {
+          "path": "packages/runtime/vitest.config.ts",
+          "mode": "full-source",
+          "sha256": "a6396a52dba5dac3a02dc498e9abdcc925a3cd691b63e931c12112f0f6cd8379"
+        },
+        {
+          "path": "packages/skill-registry/vitest.config.ts",
+          "mode": "full-source",
+          "sha256": "a6396a52dba5dac3a02dc498e9abdcc925a3cd691b63e931c12112f0f6cd8379"
+        },
+        {
+          "path": "packages/skills/vitest.config.ts",
+          "mode": "full-source",
+          "sha256": "a6396a52dba5dac3a02dc498e9abdcc925a3cd691b63e931c12112f0f6cd8379"
+        },
+        {
+          "path": "packages/supervisor/vitest.config.ts",
+          "mode": "full-source",
+          "sha256": "a6396a52dba5dac3a02dc498e9abdcc925a3cd691b63e931c12112f0f6cd8379"
+        },
+        {
+          "path": "scripts/bench-supervision-active.mjs",
+          "mode": "full-source",
+          "sha256": "93ee445ff902c9daf99d92b3a7156f090dd0d30a619ce331a18f706ef5f1e004"
+        },
+        {
+          "path": "scripts/vitest-setup-scratch.ts",
+          "mode": "full-source",
+          "sha256": "e0b89962734bd7ea2a91066968fa8f18773636be91817ae01fb4efe6ce374c86"
+        }
+      ],
+      "prompt_bytes": 406196,
+      "prompt_sha256": "641f782ce01b4e612759d2c6ba4864fc1ccf0fb54bfc6b80fe35b5ac96c48417"
+    },
+    "B1": {
+      "files": [
+        {
+          "path": "packages/cli/src/bin.ts",
+          "mode": "diff-context-30",
+          "sha256": "ffdd46fea2574756e472f94ca17f034619a3ea6948cb82ddfff0b39c12feba64"
+        },
+        {
+          "path": "packages/cli/src/daemon.ts",
+          "mode": "diff-context-30",
+          "sha256": "d87fa86b14ae7691f6e19c6310ac724379a0ac5f9c668815d39fbdc3c5bfa170"
+        },
+        {
+          "path": ".changeset/firstmate-capability-completion.md",
+          "mode": "full-source",
+          "sha256": "8dcc5a21f55092c7a552db2577e98c9322c1e802dfd8136fffd834a154766421"
+        },
+        {
+          "path": "packages/cli/src/deliver-cli.test.ts",
+          "mode": "full-source",
+          "sha256": "ad81d040297134b5816eef0f798d89021d96822d3e6a06a866b813e997de2cb5"
+        },
+        {
+          "path": "packages/cli/src/deliver-command.ts",
+          "mode": "full-source",
+          "sha256": "bfc9d583b6c9e35f9019a510df104401ebc79c3373e89097162d705cff0cf006"
+        },
+        {
+          "path": "packages/cli/src/delivery-recovery-lesson.ts",
+          "mode": "full-source",
+          "sha256": "263f3d951e8d87db58b41ff94f791865c505907563236fc0511efe85b409bc4f"
+        },
+        {
+          "path": "packages/cli/src/follow-up-delivery-command.ts",
+          "mode": "full-source",
+          "sha256": "9e436ed7517d63c906a03a6b9013dd2b35ae74148c798b5f91e0f6ed0d9739e9"
+        },
+        {
+          "path": "packages/cli/src/follow-up-delivery-host.test.ts",
+          "mode": "full-source",
+          "sha256": "89cd2c0028888b221b2f8ac775e8a6cda4d7866ebc5182a8893b4a1eee306223"
+        },
+        {
+          "path": "packages/cli/src/follow-up-delivery-host.ts",
+          "mode": "full-source",
+          "sha256": "6e39e975b954189214daa42a1dd4b8014f9673f4dd34d395b2d8bcfe2c1361b8"
+        },
+        {
+          "path": "packages/cli/src/follow-up-delivery-issuer.ts",
+          "mode": "full-source",
+          "sha256": "6df55acefaeb375fd0d86f9fac19ac9495924f935eb4b76bd42e3fab0c9ab0dc"
+        },
+        {
+          "path": "packages/cli/src/follow-up-github-transport.test.ts",
+          "mode": "full-source",
+          "sha256": "012de0ef1206ae9d339bfcf394a6507bac6a263e8398ee713cc9bcecc9fed570"
+        },
+        {
+          "path": "packages/cli/src/follow-up-github-transport.ts",
+          "mode": "full-source",
+          "sha256": "39ffa2092c275000368f37847a928e9319e9f35b608022c7364fb7140c3ee122"
+        },
+        {
+          "path": "packages/cli/src/local-ledgers-daemon.test.ts",
+          "mode": "full-source",
+          "sha256": "dce1ffb01da5e5c905e86e5257dbd7302c7eea985e20fbad4a7610ba33124a63"
+        },
+        {
+          "path": "packages/cli/src/scout-command.test.ts",
+          "mode": "full-source",
+          "sha256": "0de7e1c54aed3a9b06dd5830bc2e02f79e6fe3212763d7ec4fcca36ddd772a48"
+        },
+        {
+          "path": "packages/cli/src/scout-command.ts",
+          "mode": "full-source",
+          "sha256": "344cdfaf3413dc49e451ab665d7822688913765a8c9305a80c2f4ff1d1a8cd58"
+        },
+        {
+          "path": "packages/core/src/index.ts",
+          "mode": "full-source",
+          "sha256": "cb2171818023f1f900c7aa69583f4a3472687bd776cded7ab1cc28a4790fcde4"
+        },
+        {
+          "path": "packages/core/src/state/follow-up-delivery.test.ts",
+          "mode": "full-source",
+          "sha256": "abf53ff3c422a83906f0a113e8df192f548f2d50588bc6e9130e32ee3b596974"
+        },
+        {
+          "path": "packages/core/src/state/follow-up-delivery.ts",
+          "mode": "full-source",
+          "sha256": "b93392bdf6f152a224cb601558cb91844574c9063250db982928c7ccd61716bb"
+        },
+        {
+          "path": "packages/core/src/state/migrations.ts",
+          "mode": "diff-context-30",
+          "sha256": "e2bbbf66e6f1c2cbcc80dc0408d50fffd64f0a2926cb0afad55396dc601ce5ce"
+        }
+      ],
+      "prompt_bytes": 355305,
+      "prompt_sha256": "f28d21fb8e4b2d03439f640d54d050c892644fa04a3103b05897e36e75162a7d"
+    },
+    "B2": {
+      "files": [
+        {
+          "path": "packages/cli/src/bin.ts",
+          "mode": "diff-context-30",
+          "sha256": "ffdd46fea2574756e472f94ca17f034619a3ea6948cb82ddfff0b39c12feba64"
+        },
+        {
+          "path": "packages/cli/src/daemon.ts",
+          "mode": "diff-context-30",
+          "sha256": "d87fa86b14ae7691f6e19c6310ac724379a0ac5f9c668815d39fbdc3c5bfa170"
+        },
+        {
+          "path": "packages/cli/src/delivery-contract-host.test.ts",
+          "mode": "full-source",
+          "sha256": "06b9e05310a2cd042c386cd0097c76660bfdffe60b923cf015d35b20ba14facb"
+        },
+        {
+          "path": "packages/cli/src/delivery-contract-host.ts",
+          "mode": "full-source",
+          "sha256": "ef59c4da90d4f538a9292ae8862b6327620333e17815fa6a72a56ad2e6436896"
+        },
+        {
+          "path": "packages/cli/src/graph-action-broker.ts",
+          "mode": "full-source",
+          "sha256": "ac9fa03a5faaf5591d8c43dfb855c4e9d486599b37d35d749c5f7a0d59b6084a"
+        },
+        {
+          "path": "packages/cli/src/graph-check-suite.ts",
+          "mode": "full-source",
+          "sha256": "425976d7561ad9de24e45a373342e56e25fbfb396824cc26ad2001d29263d29b"
+        },
+        {
+          "path": "packages/cli/src/graph-contract-integration.test.ts",
+          "mode": "full-source",
+          "sha256": "89531aeece85ef09b4116c1e6caa69aa8013b3c3a56b9ec9edf4b5018d3fd5eb"
+        },
+        {
+          "path": "packages/cli/src/graph-contract-receipt.ts",
+          "mode": "full-source",
+          "sha256": "4e213dd503d43f983d6ea42abd7c89caddb8dbd49a6cf80b1f898e2f4037ba35"
+        },
+        {
+          "path": "packages/cli/src/graph-delivery-contract.test.ts",
+          "mode": "full-source",
+          "sha256": "13e93da5bae89846bc34eeb5b69ecb4b4fbf9aa215208a6944e3e3dd3aa35034"
+        },
+        {
+          "path": "packages/cli/src/graph-delivery-contract.ts",
+          "mode": "full-source",
+          "sha256": "530f0be149817440e53c7b5303c9ada1ba9300a40be81407696ee2b964cfef86"
+        },
+        {
+          "path": "packages/cli/src/graph-test-fixture.ts",
+          "mode": "full-source",
+          "sha256": "a269fc75086172bda01f51a2636484eb589d9857e88c64c2e7f699fc6bb9b801"
+        },
+        {
+          "path": "packages/cli/src/graph-verification-join.ts",
+          "mode": "full-source",
+          "sha256": "e17b564da7690e8ac96233787de4e3f208d8a1ce78d8abbcb3dd76d1a454a104"
+        },
+        {
+          "path": "packages/cli/src/graph-verification-store.ts",
+          "mode": "full-source",
+          "sha256": "76ceb7cbb9d01b0c5abb05d86096024821511873a42671dc303ee285131f149f"
+        },
+        {
+          "path": "packages/cli/src/graph-verification.test.ts",
+          "mode": "full-source",
+          "sha256": "da8883f69385e3f90e91ca5ce0805721c327424db6f3ddc8d125c7eb950e1a43"
+        },
+        {
+          "path": "packages/cli/src/graph-verification.ts",
+          "mode": "full-source",
+          "sha256": "d21334ac4222531587e678a499507f2039cc97b7034732ba27b517a96f31f213"
+        },
+        {
+          "path": "packages/core/src/state/graph-actions.test.ts",
+          "mode": "full-source",
+          "sha256": "7e681ba5c27a2fd882b9a8d199158ef0ee40b47e0f512766f22d30bc60aacbc4"
+        },
+        {
+          "path": "packages/core/src/state/graph-apply.test.ts",
+          "mode": "full-source",
+          "sha256": "8a8dee3ac76494040c5b36a70f24577459b4c118c90ed4ddd50716bf7fcd78a9"
+        },
+        {
+          "path": "packages/core/src/state/graph-invocations.test.ts",
+          "mode": "full-source",
+          "sha256": "83830a9f35c8499f087b3756e750424e8dc404f4559ff12ddc5f6afac44d1109"
+        },
+        {
+          "path": "packages/core/src/state/graph-runs.test.ts",
+          "mode": "full-source",
+          "sha256": "802f99899a6ceb45d8fc1c758195d09f14783b1597479ed771fcb7539b893c86"
+        }
+      ],
+      "prompt_bytes": 409367,
+      "prompt_sha256": "5a5f17ed91a20c6835ffc4f44245d26bb642c293ec241912ec5a5b80e18c01ea"
+    }
+  }
+}

@@ -1,0 +1,23 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-delivery/packages/cli
+
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/tests/g22-rpc-OK7UZp/delivery/c64f4e28-9275-48b5-bd58-130786f5a58d/writer-0'...
+HEAD is now at 7d12a04 base
+ ✓ src/remote-cancel.test.ts (29 tests) 9070ms
+   ✓ actual issuer -> client -> child exporter -> existing daemon boundary returns durable receipt without claiming physical stop  641ms
+   ✓ lost remote ACK after fsync is recovered by query without replay  518ms
+   ✓ process killed after reserve and cancellation invocation stays unknown and never replays  465ms
+   ✓ stale daemon binding denies cancel  305ms
+   ✓ expired write authorization is rejected before daemon access; historical signed query stays available  545ms
+   ✓ corrupted persisted receipt fails closed without RPC or effect replay  568ms
+   ✓ request ID collision with changed exact signed grant cannot reuse an earlier receipt  392ms
+   ✓ signed remote cancellation drives the actual GraphRpcService worker abort and retains local stop proof separation  1396ms
+   ✓ simultaneous clients sharing request UUID invoke at most one Graph cancel  484ms
+   ✓ valid-shape persisted receipt with wrong generation is refused  452ms
+   ✓ an unrelated running status reply cannot be accepted as cancellation acknowledgement  463ms
+
+ Test Files  1 passed (1)
+      Tests  29 passed (29)
+   Start at  17:28:20
+   Duration  12.83s (transform 2.14s, setup 25ms, collect 3.43s, tests 9.07s, environment 0ms, prepare 44ms)
+

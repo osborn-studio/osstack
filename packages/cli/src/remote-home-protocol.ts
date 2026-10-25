@@ -72,7 +72,8 @@ export class RemoteChannel {
   private sent=0;
   private closed=false;
   private pending: {resolve:(value:unknown)=>void;reject:(error:Error)=>void;timer:NodeJS.Timeout} | null=null;
-  constructor(private readonly input:Readable,private readonly output:Writable,private readonly inputLimit=REMOTE_MAX_BYTES) {
+  constructor(private readonly input:Readable,private readonly output:Writable,private readonly inputLimit=REMOTE_MAX_BYTES,private readonly maxFrames=2) {
+    if(!Number.isInteger(maxFrames)||maxFrames<2||maxFrames>8)throw new Error("invalid_frame");
     if(!Number.isInteger(inputLimit)||inputLimit<REMOTE_MAX_BYTES||inputLimit>REMOTE_MAX_BYTES+1024)throw new Error("invalid_frame");
     input.on("data",this.data);input.on("end",this.end);input.on("error",this.error);output.on("error",this.error);
   }
@@ -86,7 +87,7 @@ export class RemoteChannel {
     const length=this.bytes.readUInt32BE();
     if(length===0||length>this.inputLimit-4){this.fail("invalid_frame");return;}
     if(this.bytes.length<length+4)return;
-    if(this.bytes.length!==length+4||++this.count>2){this.fail("invalid_frame");return;}
+    if(this.bytes.length!==length+4||++this.count>this.maxFrames){this.fail("invalid_frame");return;}
     let parsed:unknown;
     try {parsed=JSON.parse(new TextDecoder("utf-8",{fatal:true}).decode(this.bytes.subarray(4)));}
     catch {this.fail("invalid_frame");return;}
@@ -106,7 +107,7 @@ export class RemoteChannel {
   }
   async send(value:unknown):Promise<void>{
     if(this.failure)throw this.failure;
-    if(++this.sent>2)throw new Error("invalid_frame");
+    if(++this.sent>this.maxFrames)throw new Error("invalid_frame");
     const frame=encodeRemoteFrame(value);
     await new Promise<void>((resolve,reject)=>{
       const timer=setTimeout(()=>{this.fail("transport_timeout");reject(new Error("transport_timeout"));},3000);

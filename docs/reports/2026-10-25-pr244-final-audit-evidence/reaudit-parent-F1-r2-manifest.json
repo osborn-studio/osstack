@@ -1,0 +1,45 @@
+{
+  "sources": [
+    {
+      "path": "packages/loop/src/loop-containment.ts",
+      "sha256": "9125e2c54d5f000aaa880b878ee12c940529a270f32e36cb4cc5cf236eea42d8"
+    },
+    {
+      "path": "packages/loop/src/loop-containment.test.ts",
+      "sha256": "bf8abd910481508bbd932cab0a846511ffc6bdeeb13086e5d97eaf69735e43ca"
+    },
+    {
+      "path": "packages/loop/src/loop-engine.ts",
+      "sha256": "8a5e7b382f06e4e60e0d4f80b176f1b560e3dbe1f685725127c6d36f829523e2"
+    },
+    {
+      "path": "packages/loop/src/loop-engine.test.ts",
+      "sha256": "5d01835f920ebf36f40c4ebcc2c643e81d666f8ce94a85da51fe66a19ae7be46"
+    },
+    {
+      "path": "packages/loop/src/state-file.ts",
+      "sha256": "e643aa3e9273018d0d0eb61289fb43fc5b77dade4769b75a13950b9b8643d33f"
+    },
+    {
+      "path": "packages/loop/src/policy-gate.ts",
+      "sha256": "2086e61b32d40d16d0c6d5caee7309b911c7347d228659ad24ef221e24eadd8d"
+    },
+    {
+      "path": "packages/loop/src/candidate-execution.ts",
+      "sha256": "95006bf5463aead4eb4c8e2203d1821fa8abd5588e4de3206f0a20e49f69badc"
+    },
+    {
+      "path": "packages/loop/src/executor.ts",
+      "sha256": "fbf9d07b64bc4fe4f230ecffe52a757ebde03192f196f6710c2395c3ee1edfe7"
+    },
+    {
+      "path": "packages/loop/src/verifier.ts",
+      "sha256": "079953cd334d06ad881dcd5aa379a111b719bba0da3d58a5df26c645a9bf356c"
+    },
+    {
+      "path": "packages/loop/src/publisher.ts",
+      "sha256": "5281d6e1f4da16cf8f386f276e20e4b6e8ac17b9b199c80f98adeda39a39495a"
+    }
+  ],
+  "prompt_sha256": "4746f41b2bf6e49ec41ca3ecaa0038d933e3288f4e3867b50ad571bf9b5890b8"
+}

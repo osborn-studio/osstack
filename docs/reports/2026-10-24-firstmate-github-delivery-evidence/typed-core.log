@@ -1,0 +1,76 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-delivery/packages/core
+
+ ❯ src/state/follow-up-delivery.test.ts (45 tests | 1 failed) 1398ms
+   ✓ prepares exact reviewable data but a caller cannot grant authority by actor or receipt fields 30ms
+   ✓ signed single-attempt dispatch does not fulfill the local obligation and cannot send twice 30ms
+   ✓ unregistered provider leaves authorization unconsumed and never records started 24ms
+   ✓ rejects a signed grant with a changed binding {"domain":"osstack.session-continuation.v1"} 21ms
+   ✓ rejects a signed grant with a changed binding {"attempt_id":"22222222-2222-4222-8222-222222222222"} 21ms
+   ✓ rejects a signed grant with a changed binding {"body_sha256":"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"} 20ms
+   ✓ rejects a signed grant with a changed binding {"destination_digest":"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"} 21ms
+   ✓ rejects a signed grant with a changed binding {"account_id":"other"} 21ms
+   ✓ rejects a signed grant with a changed binding {"provider_id":"email"} 22ms
+   ✓ rejects a signed grant with a changed binding {"max_calls":2} 22ms
+   ✓ rejects a signed grant with a changed binding {"repo_path":"/other"} 21ms
+   ✓ rejects a signed grant with a changed binding {"default_tenant":false} 20ms
+   ✓ rechecks expiration, key scope and revocation immediately before consumption 29ms
+   ✓ rejects a future grant and a signature made by an untrusted key 22ms
+   ✓ two SQLite connections cannot dispatch the same attempt twice 30ms
+   ✓ lost response is unknown and blocks re-sending or replacement with a new idempotency key 27ms
+   ✓ timeout persists unknown; late response cannot silently overwrite it 57ms
+   ✓ rejects a provider receipt with wrong target_node_id 25ms
+   ✓ rejects a provider receipt with wrong author_node_id 27ms
+   ✓ rejects a provider receipt with wrong account_id 27ms
+   ✓ rejects a provider receipt with wrong destination_digest 27ms
+   ✓ rejects a provider receipt with wrong body_sha256 26ms
+   ✓ rejects a provider receipt with wrong attempt_id 27ms
+   ✓ reconciliation uses only the trusted lookup port; user receipt assertions and not-found never prove delivery 30ms
+   ✓ automatic-retry or unqualified fake transports cannot consume an authorization 23ms
+   ✓ target or obligation changes after approval fail before send 25ms
+   ✓ scope, idempotency and append-only history remain durable 21ms
+   ✓ survives SIGKILL after durable consumption with no resend on restart 128ms
+   ✓ upgrades a real schema 44 database, preserving source rows and immutable 44 lineage 110ms
+   ✓ rejects oversized escaped content before preparing and preserves exact accepted body 34ms
+   ✓ revocation racing an in-flight send preserves unknown until explicit lookup 28ms
+   ✓ service construction is read-only and bare provider booleans cannot prove sending 27ms
+   ✓ allows authority removal despite clock regression or invalid clock 9999 24ms
+   ✓ allows authority removal despite clock regression or invalid clock NaN 24ms
+   ✓ allows authority removal despite clock regression or invalid clock Infinity 23ms
+   ✓ a delivered obligation needs a fresh explicit attempt and signed grant for any additional message 29ms
+   ✓ a settled timed-out handle performs no DB work when a transport resolves after database close 59ms
+   ✓ requires FULL durable consumption and restores the shared connection settings before transport 27ms
+   ✓ fails closed before consumption when the database is not in WAL mode 22ms
+   ✓ persists observed expiry even when authorization checks fail, including across service restart 25ms
+   ✓ records an irreversible result under logical time even if the wall clock regresses during send 25ms
+   ✓ retains exact historical scope for inspection and revocation after the repository moves 24ms
+   ✓ an existing writer prevents claim before any consuming read or network call 39ms
+   ✓ effect-free provider readiness failure leaves a prepared active grant reusable without POST 26ms
+   × trusted not-started result closes the consumed attempt without permitting reuse of its grant 27ms
+     → delivery_database_unavailable
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/state/follow-up-delivery.test.ts > trusted not-started result closes the consumed attempt without permitting reuse of its grant
+FollowUpDeliveryError: delivery_database_unavailable
+ ❯ FollowUpDeliveryService.safe src/state/follow-up-delivery.ts:740:13
+    738|     } catch (error) {
+    739|       if (error instanceof FollowUpDeliveryError) throw error;
+    740|       throw new FollowUpDeliveryError("delivery_database_unavailable");
+       |             ^
+    741|     }
+    742|   }
+ ❯ FollowUpDeliveryService.dispatch src/state/follow-up-delivery.ts:432:17
+ ❯ src/state/follow-up-delivery.test.ts:863:16
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 44 passed (45)
+   Start at  16:58:59
+   Duration  1.77s (transform 98ms, setup 0ms, collect 145ms, tests 1.40s, environment 0ms, prepare 31ms)
+
+undefined
+/Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-delivery/packages/core:
+[ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL] Command failed with exit code 1: vitest run src/state/follow-up-delivery.test.ts

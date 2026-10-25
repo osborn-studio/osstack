@@ -426,6 +426,7 @@ function startInput(options: {
 
 async function testRuntime(options: {
   RuntimeType?: typeof GuardedGitRuntime;
+  createExecutionContext?: GuardedGitRuntimeConstructorDeps["createExecutionContext"];
   omitPolicyGuard?: boolean;
   workspace: string;
   evidenceRoot: string;
@@ -449,6 +450,7 @@ async function testRuntime(options: {
     dbPath,
     trustedApprovalPublicKeys: new Map(),
     adapters: () => adapters(options.builderInvoke),
+    ...(options.createExecutionContext ? { createExecutionContext: options.createExecutionContext } : {}),
     writeProof: async (input) => {
       options.proofs.push(input);
       const directory = join(
@@ -744,4 +746,34 @@ describe("V2 guarded runtime host receipts", () => {
       expect(result.run.context.delivery_completion_receipt).toBeDefined();
     } finally { close(); }
   }, 30000);
+});
+
+it("pins initial execution context across actual guarded repair iterations", async () => {
+  const workspace = await fixtureRepo();
+  const evidenceRoot = join(root, "context-repair");
+  const configPath = join(workspace, "context.json");
+  const config = { schema_version: 1, mode: "local", repo_path: realpathSync(workspace), default_tenant: true, packs: [], max_prompt_bytes: 1000 };
+  await writeFile(configPath, JSON.stringify(config));
+  await writeFile(join(workspace, ".git", "info", "exclude"), "context.json\n", { flag: "a" });
+  let builders = 0;
+  const createContext = vi.fn(async (input: { adapters: readonly AgentAdapter[] }) => ({ adapters: input.adapters, receiptRefs: () => [] }));
+  const { runtime, close } = await testRuntime({ workspace, evidenceRoot, proofs: [], deliverGit: vi.fn(), createExecutionContext: createContext,
+    builderInvoke: async function* (task) {
+      builders++;
+      await writeFile(configPath, JSON.stringify({ ...config, max_prompt_bytes: 2000 }));
+      yield doneEvent(task, { status: "completed", last_seq: 0, result_summary: "built" });
+    },
+  });
+  try {
+    const start = startInput({ workspace, evidenceRoot, expectedPaths: ["docs/readme.md", "context.json"] });
+    start.routing.execution_context_path = configPath;
+    start.routing.verify_commands = ["node -e 'process.exit(1)'"];
+    start.budget.max_no_progress_rounds = 3;
+    const result = await runtime.start(start);
+    expect(result.status).not.toBe("completed");
+    expect(JSON.stringify(result)).toContain("execution_context_configuration_changed");
+    expect(builders).toBe(1);
+    expect(createContext).toHaveBeenCalledTimes(1);
+    expect(result.run.context.routing).toMatchObject({ execution_context_pin: { config_sha256: expect.any(String) } });
+  } finally { close(); }
 });

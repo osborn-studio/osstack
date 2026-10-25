@@ -1,12 +1,12 @@
-import { execFileSync } from "node:child_process";
-import { mkdtempSync } from "node:fs";
+import { execFileSync, spawn } from "node:child_process";
+import { existsSync, mkdtempSync } from "node:fs";
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { AgentAdapter, AgentTask } from "@osstack/agents";
 import type { Capability } from "@osstack/core";
 import type { HermesEvent } from "@osstack/hermes-adapter";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { AgentRun } from "./executor.js";
 import type { Task } from "./types.js";
 import { verifyRun } from "./verifier.js";
@@ -15,9 +15,12 @@ let workspace: string;
 
 beforeEach(() => {
   workspace = mkdtempSync(join(tmpdir(), "osstack-verifier-"));
+  execFileSync("git", ["init", "-b", "main"], { cwd: workspace, stdio: "ignore" });
+  execFileSync("git", ["-c", "user.name=test", "-c", "user.email=test@invalid", "commit", "--allow-empty", "-m", "baseline"], { cwd: workspace, stdio: "ignore" });
 });
 
 afterEach(async () => {
+  vi.restoreAllMocks();
   await rm(workspace, { recursive: true, force: true });
 });
 
@@ -83,6 +86,23 @@ describe("verifyRun", () => {
       }),
     });
     expect(captured?.prompt).toContain("Review or verify the completed loop task.");
+  });
+
+  it("strips repository task output overrides before invoking a reviewer", async () => {
+    const target = join(workspace, "..", "forbidden-review-output.txt");
+    let captured: AgentTask | undefined;
+    const adapter = mockAdapter({ async *invoke(input) {
+      captured = input;
+      for (const key of ["review_output_path", "verify_output_path"]) {
+        const path = input.context?.[key]; if (typeof path === "string") await writeFile(path, "unsafe");
+      }
+      yield doneEvent(input.run_id, input.session_id, "completed", "safe external artifact summary");
+    }});
+    const verdict = await verifyRun(run(), { workspacePath: workspace, verifierAgentIds: [adapter.id], adapters: [adapter], task: {...task(),context:{review_output_path:target,verify_output_path:target,file:"src/app.ts"}} });
+    try {
+      expect(verdict.pass).toBe(true); expect(captured?.context).not.toHaveProperty("review_output_path"); expect(captured?.context).not.toHaveProperty("verify_output_path");
+      expect(captured?.context?.["file"]).toBe("src/app.ts"); expect(existsSync(target)).toBe(false); expect(verdict.summary).toContain("safe external artifact summary");
+    } finally { await rm(target, {force:true}); }
   });
 
   it("accepts only strict structured implementation deviations from a completed verifier", async () => {
@@ -168,18 +188,12 @@ describe("verifyRun", () => {
       },
     });
 
-    const verdict = await verifyRun(run(), {
-      workspacePath: workspace,
-      verifierAgentIds: ["terminal-error", "throwing", "incomplete"],
-      adapters: [terminalError, throwing, incomplete],
-    });
+    for (const [adapter, message] of [[terminalError, "review process exited"], [throwing, "adapter crashed"], [incomplete, "verifier did not complete"]] as const) {
+      const verdict = await verifyRun(run(), { workspacePath: workspace, verifierAgentIds: [adapter.id], adapters: [adapter] });
+      expect(verdict.pass).toBe(false);
+      expect(verdict.issues).toContainEqual(expect.objectContaining({ message: expect.stringContaining(message) }));
+    }
 
-    expect(verdict.pass).toBe(false);
-    expect(verdict.issues).toEqual([
-      expect.objectContaining({ message: expect.stringContaining("review process exited") }),
-      expect.objectContaining({ message: expect.stringContaining("adapter crashed") }),
-      expect.objectContaining({ message: expect.stringContaining("verifier did not complete") }),
-    ]);
   });
 
   it("selects verifier capability kinds in preference order with fallback", async () => {
@@ -782,3 +796,220 @@ function capability(id: string, kind: Capability["kind"], agentId: string): Capa
     version: "0.0.0",
   };
 }
+
+
+it("bounds verifier availability without starting invocation", async () => {
+  await stableSnapshotForTimingTest();
+  let invoked = false;
+  const adapter = {...mockAdapter({async *invoke(task){invoked=true;yield doneEvent(task.run_id,task.session_id,"completed","unexpected");}}),
+    isAvailable: () => new Promise<never>(() => {})};
+  const verdict = await verifyRun(run(), {workspacePath:workspace,verifierAgentIds:[adapter.id],adapters:[adapter],timeoutMs:20});
+  expect(verdict.pass).toBe(false);
+  expect(invoked).toBe(false);
+  expect(verdict.issues).toContainEqual(expect.objectContaining({rule:"verify.adapter_failed",message:expect.stringContaining("availability timed out")}));
+});
+it("bounds a verifier that ignores abort and never settles next or return", async () => {
+  await stableSnapshotForTimingTest();
+  let signal: AbortSignal | undefined;
+  let returned = false;
+  const adapter = mockAdapter({invoke(_task, incoming) {
+    signal = incoming;
+    const iterator: AsyncIterableIterator<HermesEvent> = {
+      next:() => new Promise<IteratorResult<HermesEvent>>(() => {}),
+      return:() => {returned=true;return new Promise<IteratorResult<HermesEvent>>(() => {});},
+      [Symbol.asyncIterator]() {return this;}};
+    return iterator;
+  }});
+  const verdict = await verifyRun(run(), {workspacePath:workspace,verifierAgentIds:[adapter.id],adapters:[adapter],timeoutMs:20});
+  expect(verdict.pass).toBe(false);
+  expect(signal?.aborted).toBe(true);
+  expect(returned).toBe(true);
+  expect(verdict.issues).toContainEqual(expect.objectContaining({rule:"verify.adapter_failed",message:expect.stringContaining("stop_confirmed=unknown")}));
+});
+
+it("bounds a stuck read-only review boundary before invoking the adapter", async () => {
+  await stableSnapshotForTimingTest();
+  const boundary = await import("./review-boundary.js");
+  vi.spyOn(boundary,"collectReviewBoundary").mockImplementation(() => new Promise<never>(()=>{}));
+  let invoked=false;
+  const adapter=kimiAdapter(async function*(task){invoked=true;yield doneEvent(task.run_id,task.session_id,"completed","unexpected");});
+  const verdict=await verifyRun(run(),{workspacePath:workspace,verifierAgentIds:[adapter.id],adapters:[adapter],timeoutMs:20});
+  expect(verdict.pass).toBe(false);expect(invoked).toBe(false);
+  expect(verdict.issues).toContainEqual(expect.objectContaining({rule:"verify.review_boundary_failed",message:expect.stringContaining("snapshot timed out")}));
+});
+it("bounds a stuck post-review snapshot and never accepts its preceding approval", async () => {
+  await initGitWorkspace();
+  await writeFile(join(workspace,"src/app.ts"),"export const candidate = true;\n");
+  const isolation=await import("./reviewer-isolation.js");
+  const before = await isolation.snapshotReviewerWorkspace(workspace);
+  vi.spyOn(isolation,"snapshotReviewerWorkspace").mockResolvedValueOnce(before).mockResolvedValueOnce(before).mockImplementationOnce(()=>new Promise<never>(()=>{}));
+  const boundary = await import("./review-boundary.js");
+  const collected = await boundary.collectReviewBoundary(workspace, {}, undefined);
+  vi.spyOn(boundary,"collectReviewBoundary").mockResolvedValue(collected);
+  let invoked=false;
+  const adapter=kimiAdapter(async function*(task){invoked=true;yield structuredReviewDoneEvent(task,"approved",[structuredJudgment("correctness",true)]);});
+  const verdict=await verifyRun(run(),{workspacePath:workspace,verifierAgentIds:[adapter.id],adapters:[adapter],task:reviewTask("correctness"),timeoutMs:1000});
+  expect(invoked).toBe(true);expect(verdict.pass).toBe(false);
+  expect(verdict.issues).toContainEqual(expect.objectContaining({rule:"verify.reviewer_snapshot_failed",message:expect.stringContaining("snapshot timed out")}));
+  expect(verdict.issues).toContainEqual(expect.objectContaining({rule:"verify.reviewer_integrity_unconfirmed"}));
+});
+
+it("shares one deadline between availability and invocation", async () => {
+  await stableSnapshotForTimingTest();
+  vi.useFakeTimers();
+  try {
+    let invokedAt=0;let abortedAt=0;
+    const adapter={...mockAdapter({invoke(_task,signal){
+      invokedAt=performance.now();signal.addEventListener("abort",()=>{abortedAt=performance.now();},{once:true});
+      const iterator:AsyncIterableIterator<HermesEvent>={next:()=>new Promise(()=>{}),return:async()=>({done:true,value:undefined}),[Symbol.asyncIterator](){return this;}};return iterator;
+    }}),isAvailable:async()=>{await new Promise(resolve=>setTimeout(resolve,60));return {available:true,last_checked_at:0};}};
+    const pending=verifyRun(run(),{workspacePath:workspace,verifierAgentIds:[adapter.id],adapters:[adapter],timeoutMs:80});
+    await vi.advanceTimersByTimeAsync(200);
+    expect((await pending).pass).toBe(false);
+    expect(abortedAt-invokedAt).toBe(20);
+  }finally{vi.useRealTimers();}
+});
+
+async function stableSnapshotForTimingTest(): Promise<void> {
+  const isolation = await import("./reviewer-isolation.js");
+  const before = await isolation.snapshotReviewerWorkspace(workspace);
+  vi.spyOn(isolation, "snapshotReviewerWorkspace").mockResolvedValue(before);
+}
+
+it.each(["tracked", "hidden-tracked", "untracked", "metadata"] as const)("rejects a generic verifier that changes %s state after approval", async kind => {
+  await initGitWorkspace();
+  if (kind === "hidden-tracked") execFileSync("git", ["update-index", "--assume-unchanged", "src/app.ts"], { cwd: workspace });
+  const adapter = mockAdapter({ id: "generic-provider", async *invoke(task) {
+    const path = (kind === "tracked" || kind === "hidden-tracked") ? "src/app.ts" : kind === "untracked" ? "review-output.txt" : ".git/hooks/pre-commit";
+    await writeFile(join(workspace, path), "reviewer mutation");
+    yield doneEvent(task.run_id, task.session_id, "completed", "approved");
+  }});
+  const verdict = await verifyRun(run(), { workspacePath: workspace, verifierAgentIds: [adapter.id], adapters: [adapter] });
+  expect(verdict.pass).toBe(false);
+  expect(verdict.issues).toContainEqual(expect.objectContaining({ rule: "verify.reviewer_mutation" }));
+});
+
+it("does not invoke a generic verifier when its workspace cannot be snapshotted", async () => {
+  await rm(join(workspace, ".git"), { recursive: true }); let invoked = false;
+  const adapter = mockAdapter({ async *invoke(task) { invoked = true; yield doneEvent(task.run_id, task.session_id, "completed", "approved"); } });
+  const verdict = await verifyRun(run(), { workspacePath: workspace, verifierAgentIds: [adapter.id], adapters: [adapter] });
+  expect(invoked).toBe(false); expect(verdict.pass).toBe(false);
+  expect(verdict.issues).toContainEqual(expect.objectContaining({ rule: "verify.reviewer_snapshot_failed" }));
+});
+
+it.each(["mutation", "rejected-stream", "timeout"] as const)("does not invoke later verifiers after %s", async kind => {
+  let later = 0;
+  if (kind === "timeout") await stableSnapshotForTimingTest();
+  const first = mockAdapter({ id: "first", async *invoke(task) {
+    if (kind === "mutation") await writeFile(join(workspace, "unexpected.txt"), "mutation");
+    if (kind === "rejected-stream") throw Error("review stream lost");
+    if (kind === "timeout") await new Promise<never>(() => {});
+    yield doneEvent(task.run_id, task.session_id, "completed", "approved");
+  }});
+  const second = mockAdapter({ id: "second", async *invoke(task) { later++; yield doneEvent(task.run_id, task.session_id, "completed", "approved"); } });
+  const verdict = await verifyRun(run(), { workspacePath: workspace, verifierAgentIds: [first.id, second.id], adapters: [first, second], timeoutMs: kind === "timeout" ? 20 : 5000 });
+  expect(later).toBe(0); expect(verdict.pass).toBe(false);
+  expect(verdict.issues).toContainEqual(expect.objectContaining({ rule: kind === "mutation" ? "verify.reviewer_mutation" : "verify.adapter_stop_unconfirmed" }));
+});
+
+it("marks a rejected verifier stream unconfirmed while its owned child is still live", async () => {
+  let child: ReturnType<typeof spawn> | undefined;
+  try {
+    const adapter = mockAdapter({ invoke() {
+      child = spawn(process.execPath, ["-e", "setInterval(()=>{},1000)"], { stdio: "ignore" });
+      const started = new Promise<void>((resolve, reject) => { child!.once("spawn", resolve); child!.once("error", reject); });
+      const iterator: AsyncIterableIterator<HermesEvent> = { [Symbol.asyncIterator]() { return this; }, next: async () => { await started; throw Error("transport lost while child lives"); }, return: async () => ({ done: true, value: undefined }) };
+      return iterator;
+    } });
+    const verdict = await verifyRun(run(), { workspacePath: workspace, verifierAgentIds: [adapter.id], adapters: [adapter] });
+    expect(child?.exitCode).toBeNull(); expect(verdict.pass).toBe(false);
+    expect(verdict.issues).toContainEqual(expect.objectContaining({ rule: "verify.adapter_stop_unconfirmed" }));
+  } finally {
+    if (child) { const owned = child; const exited = new Promise<void>(resolve => owned.once("close", () => resolve())); owned.kill("SIGKILL"); await exited; }
+  }
+});
+
+it("stops all later verification effects after an unconfirmed command", async () => {
+  const executor = await import("./executor.js"); let invoked = false;
+  const command = vi.spyOn(executor, "runShellCommand").mockResolvedValue({ command: "unknown", exitCode: -1, stdout: "", stderr: "still running", durationMs: 1,
+    termination: { scope: "posix_process_group", trigger: "timeout", stop_confirmed: false, signals: [], evidence: "unknown" } });
+  const adapter = mockAdapter({ async *invoke(task) { invoked = true; yield doneEvent(task.run_id, task.session_id, "completed", "unsafe"); } });
+  const verdict = await verifyRun(run(), { workspacePath: workspace, commands: ["first", "second"], artifactVerification: { requireGitDiff: true }, verifierAgentIds: [adapter.id], adapters: [adapter] });
+  expect(command).toHaveBeenCalledTimes(1); expect(invoked).toBe(false);
+  expect(verdict.issues).toContainEqual(expect.objectContaining({ rule: "verify.adapter_stop_unconfirmed" }));
+});
+
+it("does not reintroduce inherited Git routing into artifact commands", async () => {
+  await initGitWorkspace();
+  await writeFile(join(workspace, "src/app.ts"), "candidate changed\n");
+  vi.stubEnv("GIT_DIR", join(workspace, "nonexistent-foreign-git"));
+  vi.stubEnv("GIT_WORK_TREE", join(workspace, "nonexistent-foreign-worktree"));
+  try {
+    const verdict = await verifyRun(run(), { workspacePath: workspace, artifactVerification: { requireGitDiff: true } });
+    expect(verdict.issues.some(issue => issue.rule === "verify.artifact_git_diff_failed")).toBe(false);
+    expect(verdict.pass).toBe(true);
+  } finally { vi.unstubAllEnvs(); }
+});
+
+it.each([true, false])("rejects mutations by availability probe even when available=%s", async available => {
+  let invoked = 0;
+  const first = { ...mockAdapter({ id: "probe-mutator", async *invoke(task) { invoked++; yield doneEvent(task.run_id, task.session_id, "completed", "approved"); } }),
+    isAvailable: async () => { await writeFile(join(workspace, "probe-edit.txt"), "foreign"); return { available, last_checked_at: 0 }; } };
+  const second = mockAdapter({ id: "later", async *invoke(task) { invoked++; yield doneEvent(task.run_id, task.session_id, "completed", "approved"); } });
+  const verdict = await verifyRun(run(), { workspacePath: workspace, verifierAgentIds: [first.id, second.id], adapters: [first, second] });
+  expect(invoked).toBe(0); expect(verdict.pass).toBe(false);
+  expect(verdict.issues).toContainEqual(expect.objectContaining({ rule: "verify.reviewer_mutation" }));
+});
+
+it("stops later reviewers when invoke spawns an owned child and throws synchronously", async () => {
+  let child: ReturnType<typeof spawn> | undefined;
+  let later = 0;
+  const first = mockAdapter({ id: "throwing-invoke", invoke() {
+    child = spawn(process.execPath, ["-e", "setInterval(()=>{},1000)"], { stdio: "ignore" });
+    throw Error("invoke failed after child launch");
+  } });
+  const second = mockAdapter({ id: "later-reviewer", async *invoke(task) { later++; yield doneEvent(task.run_id, task.session_id, "completed", "approved"); } });
+  try {
+    const verdict = await verifyRun(run(), { workspacePath: workspace, verifierAgentIds: [first.id, second.id], adapters: [first, second] });
+    expect(child?.exitCode).toBeNull(); expect(later).toBe(0); expect(verdict.pass).toBe(false);
+    expect(verdict.issues).toContainEqual(expect.objectContaining({ rule: "verify.adapter_stop_unconfirmed" }));
+  } finally {
+    if (child) { const owned = child; const closed = new Promise<void>(resolve => owned.once("close", () => resolve())); owned.kill("SIGKILL"); await closed; }
+  }
+});
+
+it("checks every legacy artifact path even when the log limit would drop an early forbidden path", async () => {
+  await initGitWorkspace();
+  await mkdir(join(workspace, "dist")); await mkdir(join(workspace, "z-many"));
+  await writeFile(join(workspace, "dist", "forbidden.ts"), "must reject");
+  for (let i = 0; i < 150; i++) await writeFile(join(workspace, "z-many", `file-${String(i).padStart(3, "0")}.ts`), "later");
+  const verdict = await verifyRun(run(), { workspacePath: workspace, outputLimit: 32, artifactVerification: { requireGitDiff: true } });
+  expect(verdict.pass).toBe(false);
+  expect(verdict.issues).toContainEqual(expect.objectContaining({ rule: "verify.artifact_forbidden_path", file: "dist/forbidden.ts" }));
+});
+it("preserves NUL-delimited legacy artifact paths that contain newlines", async () => {
+  await initGitWorkspace(); await mkdir(join(workspace, "dist"));
+  await writeFile(join(workspace, "dist", "first\nsecond.ts"), "must reject");
+  const verdict = await verifyRun(run(), { workspacePath: workspace, artifactVerification: { requireGitDiff: true } });
+  expect(verdict.issues).toContainEqual(expect.objectContaining({ rule: "verify.artifact_forbidden_path", file: "dist/first\nsecond.ts" }));
+});
+
+it("enforces the combined base-review path budget before accepting either complete listing", async () => {
+  await initGitWorkspace();
+  const blob = execFileSync("git", ["hash-object", "-w", "--stdin"], { cwd: workspace, input: "content", encoding: "utf8" }).trim();
+  const suffix = "x".repeat(220);
+  const tracked = Array.from({ length: 2500 }, (_, i) => `tracked-${i}-${suffix}.ts`);
+  execFileSync("git", ["update-index", "--index-info"], { cwd: workspace, input: tracked.map(path => `100644 ${blob}\t${path}\n`).join("") });
+  execFileSync("git", ["-c", "user.name=test", "-c", "user.email=test@invalid", "commit", "-m", "large baseline"], { cwd: workspace, stdio: "ignore" });
+  const base = execFileSync("git", ["rev-parse", "HEAD"], { cwd: workspace, encoding: "utf8" }).trim();
+  for (let batch = 0; batch < 2500; batch += 50) await Promise.all(Array.from({ length: 50 }, (_, offset) => writeFile(join(workspace, `untracked-${batch + offset}-${suffix}.ts`), "new")));
+  const diff = execFileSync("git", ["diff", base, "--name-only", "-z"], { cwd: workspace });
+  const untracked = execFileSync("git", ["ls-files", "--others", "--exclude-standard", "-z"], { cwd: workspace });
+  expect(diff.byteLength).toBeLessThan(1_048_576); expect(untracked.byteLength).toBeLessThan(1_048_576);
+  expect(diff.byteLength + untracked.byteLength).toBeGreaterThan(1_048_576);
+  await expect(verifyRun(run(), { workspacePath: workspace, artifactBaseCommit: base })).rejects.toThrow("CANDIDATE_ARTIFACT_RANGE_TOO_LARGE");
+  const legacyVerdict = await verifyRun(run(), { workspacePath: workspace, artifactVerification: { requireGitDiff: true } });
+  expect(legacyVerdict.pass).toBe(false);
+  expect(legacyVerdict.summary).toContain("Artifact path observation did not complete");
+  expect(legacyVerdict.issues).toContainEqual(expect.objectContaining({ rule: "verify.adapter_stop_unconfirmed", message: legacyVerdict.summary }));
+});

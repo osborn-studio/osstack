@@ -1,0 +1,68 @@
+{
+  "head": "869afb089d61edd708818f48bcf6956bb313ece7",
+  "working_tree_snapshot": true,
+  "files": [
+    {
+      "path": "packages/cli/src/sqlite-file-guard.ts",
+      "sha256": "80a844caa83a7d4681505088e72d6db6c8e4da113eda4dfbbf3b9017da581521",
+      "coverage": "full"
+    },
+    {
+      "path": "packages/cli/src/guarded-open-db.ts",
+      "sha256": "ea5a81104af08020d2ccc1f65f492ae872397faa77718bb0d10a04c05cd20af7",
+      "coverage": "full"
+    },
+    {
+      "path": "packages/cli/src/guarded-open-db.test.ts",
+      "sha256": "71c397901a4a119d3b6eff38aa3dd4258c3dc53cd8e909298a70f8c6e61bd929",
+      "coverage": "full"
+    },
+    {
+      "path": "packages/cli/src/source-observation-host.ts",
+      "sha256": "d9a2d12887002860208fe1bcc5eb1e212168545ad5fedc088d36ab332fdc5e6d",
+      "coverage": "full"
+    },
+    {
+      "path": "packages/cli/src/source-context.test.ts",
+      "sha256": "f160cf4c65ee929180f650878ba2fefb02808a18bbfc7dc9b660125d86f69c50",
+      "coverage": "full"
+    },
+    {
+      "path": "packages/cli/src/graph-maintenance.ts",
+      "sha256": "d3a736712d60745ac646848360a2c997daa308100cd7d3508c14863138c52082",
+      "coverage": "full"
+    },
+    {
+      "path": "packages/cli/src/graph-maintenance-files.test.ts",
+      "sha256": "95b4e2a8094775cc175d27360d6158dfb17a96118e2aa33f3c4c19abca0fd440",
+      "coverage": "full"
+    },
+    {
+      "path": "packages/cli/src/managed-home-guard.ts",
+      "sha256": "1f73bf572f8bd3e43e4de4569c426613111b5383999a65827720322b562c18c3",
+      "coverage": "full"
+    },
+    {
+      "path": "packages/cli/src/control-plane-guard.ts",
+      "sha256": "0301f5dc1cfeb99a0d439bd47447403b4d53067bfaada2fd9a88d0a0cddf735f",
+      "coverage": "full"
+    },
+    {
+      "path": "packages/cli/tsup.config.ts",
+      "sha256": "749c8dee40ef5c88934f1fd08f534d8b8b258eb7b9b7b44f263593492b6f7bdb",
+      "coverage": "full"
+    },
+    {
+      "path": "packages/cli/src/version.ts",
+      "sha256": "27324a081680bc6b1467168cfe870479027ed0a8aff055b17913915986f6b8d0",
+      "coverage": "full"
+    },
+    {
+      "path": "packages/cli/dist/chunk-JR4JEOKB.js",
+      "sha256": "6660915f133cef3f6275897a562b31120167257e8efbd66e3d87df9fb51538e4",
+      "coverage": "full"
+    }
+  ],
+  "prompt_sha256": "af6244ae488ad32df9779d4a640a26411a81fc832f5a33a1815fc24e053ca64b",
+  "prompt_bytes": 130512
+}

@@ -1,0 +1,34 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-upgrade/packages/cli
+
+ ✓ src/upgrade-coordinator.test.ts (41 tests) 5551ms
+   ✓ stops every shared consumer before any snapshot/install and records exact verified identities  470ms
+   ✓ rejects a foreign snapshot receipt without replaying a native action  301ms
+   ✓ rejects a foreign restart receipt without replaying a native action  354ms
+   ✓ rejects a foreign install receipt without replaying a native action  799ms
+   ✓ rechecks the remaining home maintenance fence before each restart  417ms
+   ✓ preserves the frozen deployment-group order before any native port call  336ms
+ ✓ src/upgrade-plan-command.test.ts (4 tests) 892ms
+   ✓ routes plan and status through actual main without exposing an apply command  835ms
+ ✓ src/upgrade-native.test.ts (14 tests) 7785ms
+   ✓ managed native upgrade actual filesystem/process boundaries > stops both real processes, snapshots unchanged databases, atomically switches exact release and verifies new generations  1122ms
+   ✓ managed native upgrade actual filesystem/process boundaries > preserves unknown restart, refuses implicit replay, and explicit history-bound recovery does not start an already-running consumer twice  542ms
+   ✓ managed native upgrade actual filesystem/process boundaries > blocks managed startup before DB access unless registered and explicitly permitted after switch  361ms
+   ✓ managed native upgrade actual filesystem/process boundaries > rejects injected extra modules even when all originally pinned files remain intact  422ms
+   ✓ managed native upgrade actual filesystem/process boundaries > quarantines unresolved delivery after physical stop and refuses migration  783ms
+   ✓ managed native upgrade actual filesystem/process boundaries > rejects stale reconciliation approval before a service can be started  603ms
+   ✓ managed native upgrade actual filesystem/process boundaries > provisions a fresh exact installation without starting processes and refuses an existing root  607ms
+   ✓ managed native upgrade actual filesystem/process boundaries > recovers forward after SIGKILL while a real stopped home and database are kernel-locked  870ms
+   ✓ managed native upgrade actual filesystem/process boundaries > keeps terminal history intact while explicitly cleaning a fence left after verification  624ms
+   ✓ managed native upgrade actual filesystem/process boundaries > waits for a physically pending stop before releasing owner locks and prevents late reacquisition after close  438ms
+   ✓ managed native upgrade actual filesystem/process boundaries > recovers a SIGKILL stale socket only after native ownership and connection refusal prove it is abandoned  702ms
+   ✓ managed native upgrade actual filesystem/process boundaries > mutually excludes different journals sharing one physical installation  338ms
+ ✓ src/upgrade-plan.test.ts (14 tests) 20ms
+ ✓ src/upgrade-native-command.test.ts (3 tests) 4ms
+ ✓ src/upgrade-journal.test.ts (12 tests) 690ms
+
+ Test Files  6 passed (6)
+      Tests  88 passed (88)
+   Start at  17:16:07
+   Duration  14.65s (transform 1.72s, setup 58ms, collect 12.62s, tests 14.94s, environment 1ms, prepare 294ms)
+

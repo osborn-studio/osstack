@@ -1,0 +1,990 @@
+{
+  "head": "6be1d1b0c2d989838caf68366631dd2f27233d9e",
+  "note": "Matching hashes establish input evidence coverage only. Scoped verdict acceptance is tracked separately; validation-only entries are not independent reviews.",
+  "files": [
+    {
+      "path": "packages/agents/src/adapters/deepseek-command.ts",
+      "sha256": "8267c1fc685da8c7e462322e678d3d799c42d74080728be3ec41b60db32083d6",
+      "evidence": [
+        "F3-r9-unified-manifest.json",
+        "cli-default-output-r2-freeze.json",
+        "cli-default-output-r2-reaudit-manifest.json",
+        "reaudit-F3-r4-manifest.json",
+        "reaudit-F3-r5-manifest.json",
+        "reaudit-F3-r6-manifest.json",
+        "reaudit-F3-r7-manifest.json",
+        "reaudit-F3-r8-manifest.json",
+        "reaudit-F3-r9-manifest.json"
+      ]
+    },
+    {
+      "path": "packages/agents/src/controlled-triage.ts",
+      "sha256": "63c077c67e56c5d53b63ece02eb277a7436e9c45def6f4d6c58dada2dc9b6acb",
+      "evidence": [
+        "audit-manifest.json"
+      ]
+    },
+    {
+      "path": "packages/agents/vitest.config.ts",
+      "sha256": "a6396a52dba5dac3a02dc498e9abdcc925a3cd691b63e931c12112f0f6cd8379",
+      "evidence": [
+        "audit-manifest.json"
+      ]
+    },
+    {
+      "path": "packages/autonomy/vitest.config.ts",
+      "sha256": "a6396a52dba5dac3a02dc498e9abdcc925a3cd691b63e931c12112f0f6cd8379",
+      "evidence": [
+        "audit-manifest.json"
+      ]
+    },
+    {
+      "path": "packages/cli/src/attention-loop-source.ts",
+      "sha256": "cde02be6f4d44f7ba1958be32dbc8b28f2313dd2237fdfa759d23e5603b50591",
+      "evidence": [
+        "reaudit-A-upgrade-r4-A-manifest.json"
+      ]
+    },
+    {
+      "path": "packages/cli/src/attention-planning-command.ts",
+      "sha256": "c5cc670ee0263c0d8ad6125830447187fccbee9d33fe17605d408f5340b51a83",
+      "evidence": [
+        "audit-manifest.json"
+      ]
+    },
+    {
+      "path": "packages/cli/src/attention-read-model.ts",
+      "sha256": "2b7bbba03bb324efc03151d37e7a8ff92414c0c77fba2ac584dcd2933b6a69d5",
+      "evidence": [
+        "audit-manifest.json",
+        "db-closure-final4-manifest.json",
+        "reaudit-A-upgrade-final-upgrade-manifest.json",
+        "reaudit-A-upgrade-final2-upgrade-manifest.json"
+      ]
+    },
+    {
+      "path": "packages/cli/src/bin.ts",
+      "sha256": "7006c4c8103f9566e637d625bdc2269433bb6647e3d6722e61df5fbae867dd2f",
+      "evidence": [
+        "readme-haiku-r5-manifest.json"
+      ]
+    },
+    {
+      "path": "packages/cli/src/control-plane-guard.ts",
+      "sha256": "0301f5dc1cfeb99a0d439bd47447403b4d53067bfaada2fd9a88d0a0cddf735f",
+      "evidence": [
+        "audit-A-upgrade-final-freeze.json",
+        "audit-manifest.json",
+        "readme-haiku-r3-manifest.json",
+        "readme-haiku-r5-manifest.json",
+        "reaudit-A-upgrade-A-manifest.json",
+        "reaudit-A-upgrade-final-upgrade-manifest.json",
+        "reaudit-A-upgrade-final2-upgrade-manifest.json",
+        "reaudit-A-upgrade-final3-upgrade-manifest.json",
+        "reaudit-A-upgrade-r2-A-manifest.json",
+        "reaudit-A-upgrade-r3-A-manifest.json",
+        "reaudit-A-upgrade-r3-upgrade-manifest.json",
+        "reaudit-parent-final-manifest.json"
+      ]
+    },
+    {
+      "path": "packages/cli/src/daemon.ts",
+      "sha256": "8aa53df69d425073d05a3b38378283600230300baccc6b05268bf36c345bb99a",
+      "evidence": [
+        "F3-r9-unified-manifest.json",
+        "parent-F2-final-freeze.json",
+        "parent-F2-r3-reaudit-manifest.json",
+        "reaudit-F3-r7-manifest.json",
+        "reaudit-F3-r8-manifest.json",
+        "reaudit-F3-r9-manifest.json"
+      ]
+    },
+    {
+      "path": "packages/cli/src/deliver-command.ts",
+      "sha256": "bfc9d583b6c9e35f9019a510df104401ebc79c3373e89097162d705cff0cf006",
+      "evidence": [
+        "audit-manifest.json",
+        "reaudit-A-upgrade-A-manifest.json",
+        "reaudit-A-upgrade-r2-A-manifest.json",
+        "reaudit-A-upgrade-r3-A-manifest.json",
+        "reaudit-B1-manifest.json",
+        "reaudit-B1-r2-manifest.json",
+        "reaudit-B1-r3-manifest.json",
+        "reaudit-B1-r4-manifest.json",
+        "reaudit-B1-r4b-manifest.json"
+      ]
+    },
+    {
+      "path": "packages/cli/src/delivery-contract-host.ts",
+      "sha256": "99351ba224b3d6d7667eec217d2a8d62c996951ce688239c4d4616afa5222363",
+      "evidence": [
+        "reaudit-B2-manifest.json"
+      ]
+    },
+    {
+      "path": "packages/cli/src/delivery-recovery-lesson.ts",
+      "sha256": "263f3d951e8d87db58b41ff94f791865c505907563236fc0511efe85b409bc4f",
+      "evidence": [
+        "audit-manifest.json"
+      ]
+    },
+    {
+      "path": "packages/cli/src/execution-context-host.ts",
+      "sha256": "149ac22d6d8190e5ca24208e431f74945881d7b8116f097df3985ed2835ef314",
+      "evidence": [
+        "audit-manifest.json",
+        "reaudit-A-upgrade-A-manifest.json",
+        "reaudit-A-upgrade-r2-A-manifest.json",
+        "reaudit-A-upgrade-r3-A-manifest.json",
+        "reaudit-B1-manifest.json",
+        "reaudit-B1-r2-manifest.json",
+        "reaudit-B1-r3-manifest.json",
+        "reaudit-B1-r4-manifest.json",
+        "reaudit-B1-r4b-manifest.json"
+      ]
+    },
+    {
+      "path": "packages/cli/src/execution-context.ts",
+      "sha256": "aa5298f4ccef92779fd012ec6fed61adef96a805282a19ded76f6a0093afb7f6",
+      "evidence": [
+        "reaudit-A-upgrade-A-manifest.json",
+        "reaudit-A-upgrade-r2-A-manifest.json",
+        "reaudit-A-upgrade-r3-A-manifest.json",
+        "reaudit-A-upgrade-r4-A-manifest.json",
+        "reaudit-B1-r2-manifest.json",
+        "reaudit-B1-r3-manifest.json",
+        "reaudit-B1-r4-manifest.json",
+        "reaudit-B1-r4b-manifest.json"
+      ]
+    },
+    {
+      "path": "packages/cli/src/follow-up-delivery-command.ts",
+      "sha256": "9e436ed7517d63c906a03a6b9013dd2b35ae74148c798b5f91e0f6ed0d9739e9",
+      "evidence": [
+        "audit-manifest.json",
+        "reaudit-B1-r3-manifest.json",
+        "reaudit-B1-r4-manifest.json",
+        "reaudit-B1-r4b-manifest.json"
+      ]
+    },
+    {
+      "path": "packages/cli/src/follow-up-delivery-host.ts",
+      "sha256": "6e39e975b954189214daa42a1dd4b8014f9673f4dd34d395b2d8bcfe2c1361b8",
+      "evidence": [
+        "audit-manifest.json",
+        "reaudit-B1-manifest.json",
+        "reaudit-B1-r2-manifest.json",
+        "reaudit-B1-r3-manifest.json",
+        "reaudit-B1-r4-manifest.json",
+        "reaudit-B1-r4b-manifest.json",
+        "reaudit-parent-manifest.json",
+        "reaudit-parent-r2-manifest.json"
+      ]
+    },
+    {
+      "path": "packages/cli/src/follow-up-delivery-issuer.ts",
+      "sha256": "6df55acefaeb375fd0d86f9fac19ac9495924f935eb4b76bd42e3fab0c9ab0dc",
+      "evidence": [
+        "audit-manifest.json",
+        "reaudit-B1-manifest.json",
+        "reaudit-B1-r2-manifest.json",
+        "reaudit-B1-r3-manifest.json",
+        "reaudit-B1-r4-manifest.json",
+        "reaudit-B1-r4b-manifest.json"
+      ]
+    },
+    {
+      "path": "packages/cli/src/follow-up-github-transport.ts",
+      "sha256": "39ffa2092c275000368f37847a928e9319e9f35b608022c7364fb7140c3ee122",
+      "evidence": [
+        "audit-manifest.json",
+        "reaudit-B1-manifest.json",
+        "reaudit-B1-r2-manifest.json",
+        "reaudit-B1-r3-manifest.json",
+        "reaudit-B1-r4-manifest.json",
+        "reaudit-B1-r4b-manifest.json"
+      ]
+    },
+    {
+      "path": "packages/cli/src/governed-execution.ts",
+      "sha256": "471d5ba2b17392ce4dce2b31df64673f71bac02b5b5a5ae58d7ef4e703c93f75",
+      "evidence": [
+        "B2-r10-validation.json",
+        "B2-r9-validation.json",
+        "reaudit-B2-r10-manifest.json",
+        "reaudit-B2-r9-manifest.json"
+      ]
+    },
+    {
+      "path": "packages/cli/src/graph-action-broker.ts",
+      "sha256": "51b4e929cbb4a810018e7d7d49bd55010e6250fe4a92efa57944723331f97457",
+      "evidence": [
+        "B2-r10-validation.json",
+        "B2-r4-validation.json",
+        "B2-r9-validation.json",
+        "db-closure-final4-manifest.json",
+        "reaudit-B2-r10-manifest.json",
+        "reaudit-B2-r4-manifest.json",
+        "reaudit-B2-r5-manifest.json",
+        "reaudit-B2-r6-manifest.json",
+        "reaudit-B2-r7-manifest.json",
+        "reaudit-B2-r8-manifest.json",
+        "reaudit-B2-r9-manifest.json"
+      ]
+    },
+    {
+      "path": "packages/cli/src/graph-check-suite.ts",
+      "sha256": "425976d7561ad9de24e45a373342e56e25fbfb396824cc26ad2001d29263d29b",
+      "evidence": [
+        "audit-manifest.json"
+      ]
+    },
+    {
+      "path": "packages/cli/src/graph-contract-receipt.ts",
+      "sha256": "4e213dd503d43f983d6ea42abd7c89caddb8dbd49a6cf80b1f898e2f4037ba35",
+      "evidence": [
+        "audit-manifest.json"
+      ]
+    },
+    {
+      "path": "packages/cli/src/graph-delivery-contract.ts",
+      "sha256": "530f0be149817440e53c7b5303c9ada1ba9300a40be81407696ee2b964cfef86",
+      "evidence": [
+        "audit-manifest.json"
+      ]
+    },
+    {
+      "path": "packages/cli/src/graph-maintenance.ts",
+      "sha256": "d3a736712d60745ac646848360a2c997daa308100cd7d3508c14863138c52082",
+      "evidence": [
+        "audit-A-upgrade-final-freeze.json",
+        "db-closure-final4-manifest.json",
+        "reaudit-A-upgrade-final3-upgrade-manifest.json"
+      ]
+    },
+    {
+      "path": "packages/cli/src/graph-test-fixture.ts",
+      "sha256": "a269fc75086172bda01f51a2636484eb589d9857e88c64c2e7f699fc6bb9b801",
+      "evidence": [
+        "audit-manifest.json"
+      ]
+    },
+    {
+      "path": "packages/cli/src/graph-verification-inventory.ts",
+      "sha256": "e4da813e14824d392dfbe08ea36aa302058ad03ce8ca5575696bb14458a52b61",
+      "evidence": [
+        "B2-r10-validation.json",
+        "B2-r4-validation.json",
+        "B2-r9-validation.json",
+        "reaudit-B2-r10-manifest.json",
+        "reaudit-B2-r11-manifest.json",
+        "reaudit-B2-r4-manifest.json",
+        "reaudit-B2-r5-manifest.json",
+        "reaudit-B2-r6-manifest.json",
+        "reaudit-B2-r7-manifest.json",
+        "reaudit-B2-r8-manifest.json",
+        "reaudit-B2-r9-manifest.json"
+      ]
+    },
+    {
+      "path": "packages/cli/src/graph-verification-join.ts",
+      "sha256": "e17b564da7690e8ac96233787de4e3f208d8a1ce78d8abbcb3dd76d1a454a104",
+      "evidence": [
+        "audit-manifest.json",
+        "db-closure-final4-manifest.json"
+      ]
+    },
+    {
+      "path": "packages/cli/src/graph-verification-store.ts",
+      "sha256": "5f11a70120906b2e65cae5f00aec2303bf6eca8b81e8ea165e35419f0b571300",
+      "evidence": [
+        "B2-r10-validation.json",
+        "B2-r9-validation.json",
+        "reaudit-B2-r10-manifest.json",
+        "reaudit-B2-r3-manifest.json",
+        "reaudit-B2-r4-manifest.json",
+        "reaudit-B2-r5-manifest.json",
+        "reaudit-B2-r6-manifest.json",
+        "reaudit-B2-r7-manifest.json",
+        "reaudit-B2-r8-manifest.json",
+        "reaudit-B2-r9-manifest.json"
+      ]
+    },
+    {
+      "path": "packages/cli/src/graph-verification.ts",
+      "sha256": "69626aa604598d5efbe730ecdf4749ae39e34490a201c16a4db03f40dd9a90fd",
+      "evidence": [
+        "B2-r10-validation.json",
+        "B2-r4-validation.json",
+        "B2-r9-validation.json",
+        "reaudit-B2-r10-manifest.json",
+        "reaudit-B2-r11-manifest.json",
+        "reaudit-B2-r4-manifest.json",
+        "reaudit-B2-r5-manifest.json",
+        "reaudit-B2-r6-manifest.json",
+        "reaudit-B2-r7-manifest.json",
+        "reaudit-B2-r8-manifest.json",
+        "reaudit-B2-r9-manifest.json"
+      ]
+    },
+    {
+      "path": "packages/cli/src/guarded-git-runtime.ts",
+      "sha256": "489302b4becdb1d0297ad13639a1caa36dba8b7e59baf85cf87bc8ccdc2fd416",
+      "evidence": [
+        "reaudit-B1-r4-manifest.json",
+        "reaudit-B1-r4b-manifest.json"
+      ]
+    },
+    {
+      "path": "packages/cli/src/guarded-open-db.ts",
+      "sha256": "ea5a81104af08020d2ccc1f65f492ae872397faa77718bb0d10a04c05cd20af7",
+      "evidence": [
+        "audit-A-upgrade-final-freeze.json",
+        "db-closure-final4-manifest.json",
+        "reaudit-A-upgrade-final3-upgrade-manifest.json"
+      ]
+    },
+    {
+      "path": "packages/cli/src/local-data-source-registry.ts",
+      "sha256": "0018837f6f43ff1029fad3a444a9d163d5b112fdf0e94866c878f3014bcb80a1",
+      "evidence": [
+        "parent-F2-r2-reaudit-manifest.json",
+        "parent-F2-reaudit-manifest.json",
+        "reaudit-A-upgrade-r3-A-manifest.json",
+        "reaudit-A-upgrade-r4-A-manifest.json",
+        "reaudit-parent-final-manifest.json"
+      ]
+    },
+    {
+      "path": "packages/cli/src/managed-home-guard.ts",
+      "sha256": "1f73bf572f8bd3e43e4de4569c426613111b5383999a65827720322b562c18c3",
+      "evidence": [
+        "audit-A-upgrade-final-freeze.json",
+        "reaudit-A-upgrade-final-upgrade-manifest.json",
+        "reaudit-A-upgrade-final2-upgrade-manifest.json",
+        "reaudit-A-upgrade-final3-upgrade-manifest.json",
+        "reaudit-A-upgrade-r3-A-manifest.json",
+        "reaudit-A-upgrade-r3-upgrade-manifest.json"
+      ]
+    },
+    {
+      "path": "packages/cli/src/paired-routing-evaluation.ts",
+      "sha256": "39a1a0b6c97fa0c96148490e1caab7466dfc9e0c8c6aa1596ab512a06043c9f7",
+      "evidence": [
+        "audit-manifest.json"
+      ]
+    },
+    {
+      "path": "packages/cli/src/remote-cancel-client.ts",
+      "sha256": "0815157e3db5216862612c52b069ce32b32662a026af4a5c2b721535d9c59bbc",
+      "evidence": [
+        "readme-haiku-language-manifest.json",
+        "readme-haiku-language-r2-manifest.json",
+        "readme-haiku-language-r3-manifest.json",
+        "reaudit-B1-final-manifest.json"
+      ]
+    },
+    {
+      "path": "packages/cli/src/remote-cancel-exporter.ts",
+      "sha256": "3a008c7400a7a7b5a203021bf4d792a065ea333c20045cc73fccd60ac799b0dd",
+      "evidence": [
+        "audit-manifest.json",
+        "readme-haiku-r2-manifest.json",
+        "readme-haiku-r3-manifest.json",
+        "reaudit-B1-final-manifest.json",
+        "reaudit-B1-manifest.json",
+        "reaudit-B1-r2-manifest.json",
+        "reaudit-B1-r3-manifest.json",
+        "reaudit-B1-r4-manifest.json",
+        "reaudit-B1-r4b-manifest.json"
+      ]
+    },
+    {
+      "path": "packages/cli/src/remote-cancel-issuer.ts",
+      "sha256": "fee07afb0617c95eebf3a62b1468d6b5d77e06c3d42a56989c73a53e3ec9f36d",
+      "evidence": [
+        "audit-manifest.json"
+      ]
+    },
+    {
+      "path": "packages/cli/src/remote-cancel-protocol.ts",
+      "sha256": "c60e9bba9412071f7410c739cc71c36ed4faa4917a650c46aff8cb39f3c53767",
+      "evidence": [
+        "audit-manifest.json",
+        "reaudit-B1-final-manifest.json",
+        "reaudit-B1-manifest.json",
+        "reaudit-B1-r2-manifest.json",
+        "reaudit-B1-r3-manifest.json",
+        "reaudit-B1-r4-manifest.json",
+        "reaudit-B1-r4b-manifest.json"
+      ]
+    },
+    {
+      "path": "packages/cli/src/remote-home-protocol.ts",
+      "sha256": "4fe5967e8c3e9d02d2ec2c72a7d9d3fc71162782add9f20026e1c2e55c54cb6c",
+      "evidence": [
+        "audit-manifest.json",
+        "reaudit-B1-r2-manifest.json",
+        "reaudit-B1-r3-manifest.json",
+        "reaudit-B1-r4-manifest.json",
+        "reaudit-B1-r4b-manifest.json"
+      ]
+    },
+    {
+      "path": "packages/cli/src/scout-command.ts",
+      "sha256": "dacfbb91c610361cea38fd682536eec34a4f2cf67e4d92990e6b33da2fe4fda8",
+      "evidence": [
+        "readme-haiku-r2-manifest.json",
+        "readme-haiku-r3-manifest.json",
+        "reaudit-B1-r3-manifest.json",
+        "reaudit-B1-r4-manifest.json",
+        "reaudit-B1-r4b-manifest.json"
+      ]
+    },
+    {
+      "path": "packages/cli/src/source-context-fence.ts",
+      "sha256": "a472da01850990ed31e6fbae3d4fc4da1f514ef4d069c031d68dd22651f469ec",
+      "evidence": [
+        "parent-F2-r2-reaudit-manifest.json",
+        "reaudit-A-upgrade-r2-A-manifest.json",
+        "reaudit-A-upgrade-r3-A-manifest.json",
+        "reaudit-A-upgrade-r4-A-manifest.json"
+      ]
+    },
+    {
+      "path": "packages/cli/src/source-context.ts",
+      "sha256": "a86db5921f95be730c0b896ef38ac3360502e9081aadd1c3216e2efba1f34ece",
+      "evidence": [
+        "audit-manifest.json",
+        "parent-F2-r2-reaudit-manifest.json",
+        "reaudit-A-upgrade-A-manifest.json",
+        "reaudit-A-upgrade-r2-A-manifest.json",
+        "reaudit-A-upgrade-r3-A-manifest.json",
+        "reaudit-A-upgrade-r4-A-manifest.json"
+      ]
+    },
+    {
+      "path": "packages/cli/src/source-observation-command.ts",
+      "sha256": "3a064a82c6593c253a2d344600babad7f906309c6a03c9c70a354f6a63a1287b",
+      "evidence": [
+        "parent-F2-r2-reaudit-manifest.json",
+        "parent-F2-reaudit-manifest.json",
+        "readme-haiku-language-manifest.json",
+        "readme-haiku-language-r2-manifest.json",
+        "readme-haiku-language-r3-manifest.json"
+      ]
+    },
+    {
+      "path": "packages/cli/src/source-observation-host.ts",
+      "sha256": "154dcde431f8970317fe79d132d5772ae07e8b5348ee9c0a506d32f4d579afd6",
+      "evidence": [
+        "parent-F2-final-freeze.json",
+        "parent-F2-r3-reaudit-manifest.json"
+      ]
+    },
+    {
+      "path": "packages/cli/src/sqlite-file-guard.ts",
+      "sha256": "80a844caa83a7d4681505088e72d6db6c8e4da113eda4dfbbf3b9017da581521",
+      "evidence": [
+        "audit-A-upgrade-final-freeze.json",
+        "reaudit-A-upgrade-final3-upgrade-manifest.json"
+      ]
+    },
+    {
+      "path": "packages/cli/src/supervision-service.ts",
+      "sha256": "34e8afb5aed0a8c99b167f2d488d58cbd3d810cddd43e6f4e5caec34049e3cc7",
+      "evidence": [
+        "audit-manifest.json",
+        "db-closure-final4-manifest.json",
+        "reaudit-A-upgrade-r2-A-manifest.json",
+        "reaudit-A-upgrade-r3-A-manifest.json"
+      ]
+    },
+    {
+      "path": "packages/cli/src/upgrade-coordinator.ts",
+      "sha256": "2111fa5f28b69e44e9c496e16f93c8726d72c082fb19de847816220dc0b78351",
+      "evidence": [
+        "audit-manifest.json",
+        "reaudit-A-upgrade-final-upgrade-manifest.json",
+        "reaudit-A-upgrade-final2-upgrade-manifest.json",
+        "reaudit-A-upgrade-r2-upgrade-manifest.json",
+        "reaudit-A-upgrade-r3-upgrade-manifest.json",
+        "reaudit-A-upgrade-upgrade-manifest.json"
+      ]
+    },
+    {
+      "path": "packages/cli/src/upgrade-journal.ts",
+      "sha256": "0fb2f97233cff739e39d98d9745c1b059eabca1267c30dd1c2d3c07419b5ac87",
+      "evidence": [
+        "audit-manifest.json",
+        "reaudit-A-upgrade-final-upgrade-manifest.json",
+        "reaudit-A-upgrade-final2-upgrade-manifest.json",
+        "reaudit-A-upgrade-r2-upgrade-manifest.json",
+        "reaudit-A-upgrade-r3-upgrade-manifest.json",
+        "reaudit-A-upgrade-upgrade-manifest.json"
+      ]
+    },
+    {
+      "path": "packages/cli/src/upgrade-managed-provision.ts",
+      "sha256": "bac13087d60441820520d60053171f640da065012f8670b00319fa5654b1a935",
+      "evidence": [
+        "reaudit-A-upgrade-final-upgrade-manifest.json",
+        "reaudit-A-upgrade-final2-upgrade-manifest.json"
+      ]
+    },
+    {
+      "path": "packages/cli/src/upgrade-native-backend.ts",
+      "sha256": "2476bcd4a9e143b92344660e09d77db386ca107432a983d305b6e646c90409a3",
+      "evidence": [
+        "reaudit-A-upgrade-A-manifest.json",
+        "reaudit-A-upgrade-final-upgrade-manifest.json",
+        "reaudit-A-upgrade-final2-upgrade-manifest.json",
+        "reaudit-A-upgrade-r2-A-manifest.json",
+        "reaudit-A-upgrade-r2-upgrade-manifest.json",
+        "reaudit-A-upgrade-r3-A-manifest.json",
+        "reaudit-A-upgrade-r3-upgrade-manifest.json",
+        "reaudit-A-upgrade-upgrade-manifest.json",
+        "reaudit-parent-manifest.json",
+        "reaudit-parent-r2-manifest.json"
+      ]
+    },
+    {
+      "path": "packages/cli/src/upgrade-native-command.ts",
+      "sha256": "5f6b07be2a4e12af05858f5d48b604aa8f9590d034adbadd73f88f168f6389d7",
+      "evidence": [
+        "readme-haiku-language-manifest.json",
+        "readme-haiku-language-r2-manifest.json",
+        "readme-haiku-language-r3-manifest.json",
+        "readme-haiku-r2-manifest.json",
+        "readme-haiku-r3-manifest.json",
+        "reaudit-A-upgrade-final-upgrade-manifest.json",
+        "reaudit-A-upgrade-final2-upgrade-manifest.json",
+        "reaudit-A-upgrade-r2-upgrade-manifest.json",
+        "reaudit-A-upgrade-r3-upgrade-manifest.json",
+        "reaudit-A-upgrade-upgrade-manifest.json"
+      ]
+    },
+    {
+      "path": "packages/cli/src/upgrade-native-files.ts",
+      "sha256": "be57419b1c156b99782b8474a26f6b1767aa8b79160d73570169104f4c0778b9",
+      "evidence": [
+        "audit-manifest.json",
+        "reaudit-A-upgrade-final-upgrade-manifest.json",
+        "reaudit-A-upgrade-final2-upgrade-manifest.json",
+        "reaudit-A-upgrade-r2-upgrade-manifest.json",
+        "reaudit-A-upgrade-r3-upgrade-manifest.json",
+        "reaudit-A-upgrade-upgrade-manifest.json"
+      ]
+    },
+    {
+      "path": "packages/cli/src/upgrade-native-port.ts",
+      "sha256": "2de31f92f417d429f63af8c9aa0b0516b24e5a54989761cdb36925ecab55e8d7",
+      "evidence": [
+        "db-closure-final4-manifest.json",
+        "reaudit-A-upgrade-final-upgrade-manifest.json",
+        "reaudit-A-upgrade-final2-upgrade-manifest.json",
+        "reaudit-A-upgrade-r3-upgrade-manifest.json"
+      ]
+    },
+    {
+      "path": "packages/cli/src/upgrade-plan-command.ts",
+      "sha256": "e28058b98692de5e5c61a9d3da59c3d17f7aa4ab3e029c33b53c2f95158237e6",
+      "evidence": [
+        "audit-manifest.json"
+      ]
+    },
+    {
+      "path": "packages/cli/src/worker-log-view.ts",
+      "sha256": "786c38a54eb3bf6ef6df1335cd3f27426f16bdc09a1b237d4d1ea89ed4db5795",
+      "evidence": [
+        "db-closure-final4-manifest.json",
+        "readme-haiku-language-manifest.json",
+        "readme-haiku-language-r2-manifest.json",
+        "readme-haiku-language-r3-manifest.json",
+        "reaudit-parent-final-manifest.json",
+        "reaudit-parent-manifest.json",
+        "reaudit-parent-r2-manifest.json"
+      ]
+    },
+    {
+      "path": "packages/cli/src/worker-presentation.ts",
+      "sha256": "6ac5b9bee8d7edfcae8732d700a504cf60b7b1ab33edf4440ca3017b40e4f263",
+      "evidence": [
+        "audit-manifest.json"
+      ]
+    },
+    {
+      "path": "packages/cli/src/worker-view-service.ts",
+      "sha256": "6856007b372dfa75e4d083c3af631c84ab7c3a915fe697aa58f95a52f7e7861b",
+      "evidence": [
+        "audit-manifest.json",
+        "db-closure-final4-manifest.json",
+        "readme-haiku-language-r2-manifest.json",
+        "readme-haiku-language-r3-manifest.json"
+      ]
+    },
+    {
+      "path": "packages/cli/src/worker-viewer-launch.ts",
+      "sha256": "02ba7e8c148fff5e316f328f45ed6e2e200b70ab55b90c24c464e99c3ae3cd71",
+      "evidence": [
+        "audit-manifest.json"
+      ]
+    },
+    {
+      "path": "packages/cli/tsup.config.ts",
+      "sha256": "749c8dee40ef5c88934f1fd08f534d8b8b258eb7b9b7b44f263593492b6f7bdb",
+      "evidence": [
+        "audit-A-upgrade-final-freeze.json",
+        "db-closure-final4-manifest.json",
+        "reaudit-A-upgrade-final2-upgrade-manifest.json",
+        "reaudit-A-upgrade-final3-upgrade-manifest.json"
+      ]
+    },
+    {
+      "path": "packages/cli/vitest.config.ts",
+      "sha256": "315c2e1b0773b508a316cb20b966ff2a34d664664fa2e6fc26f880c8b0b7c618",
+      "evidence": [
+        "audit-manifest.json"
+      ]
+    },
+    {
+      "path": "packages/compliance/vitest.config.ts",
+      "sha256": "a6396a52dba5dac3a02dc498e9abdcc925a3cd691b63e931c12112f0f6cd8379",
+      "evidence": [
+        "audit-manifest.json"
+      ]
+    },
+    {
+      "path": "packages/config/vitest.config.ts",
+      "sha256": "a6396a52dba5dac3a02dc498e9abdcc925a3cd691b63e931c12112f0f6cd8379",
+      "evidence": [
+        "audit-manifest.json"
+      ]
+    },
+    {
+      "path": "packages/conformance/vitest.config.ts",
+      "sha256": "a6396a52dba5dac3a02dc498e9abdcc925a3cd691b63e931c12112f0f6cd8379",
+      "evidence": [
+        "audit-manifest.json"
+      ]
+    },
+    {
+      "path": "packages/contracts/vitest.config.ts",
+      "sha256": "a6396a52dba5dac3a02dc498e9abdcc925a3cd691b63e931c12112f0f6cd8379",
+      "evidence": [
+        "audit-manifest.json"
+      ]
+    },
+    {
+      "path": "packages/core/src/index.ts",
+      "sha256": "cb2171818023f1f900c7aa69583f4a3472687bd776cded7ab1cc28a4790fcde4",
+      "evidence": [
+        "audit-manifest.json"
+      ]
+    },
+    {
+      "path": "packages/core/src/state/attention-observer.ts",
+      "sha256": "00cdd181b53148e7bd55c9395bc674e9eece392026663b0564e79e8743811b38",
+      "evidence": [
+        "reaudit-A-upgrade-r4-A-manifest.json"
+      ]
+    },
+    {
+      "path": "packages/core/src/state/follow-up-delivery.ts",
+      "sha256": "5a6ffa6094e200189c5f323b1403857c56a511f76cfead0ba372026d9008f887",
+      "evidence": [
+        "db-closure-final4-manifest.json",
+        "reaudit-B1-r3-manifest.json",
+        "reaudit-B1-r4-manifest.json",
+        "reaudit-B1-r4b-manifest.json",
+        "reaudit-parent-final-manifest.json"
+      ]
+    },
+    {
+      "path": "packages/core/src/state/migrations.ts",
+      "sha256": "d66c7ca9b521eb3989ee423690def37bcb61b1c66924d7165f8925a825b6beb8",
+      "evidence": [
+        "migration-registration-reaudit-manifest.json"
+      ]
+    },
+    {
+      "path": "packages/core/src/state/source-observations-ddl.ts",
+      "sha256": "4aa40151e93fccda5035a8a010dcf38c2b4a722c4306b7fae3b8a2048f58bab9",
+      "evidence": [
+        "audit-manifest.json",
+        "migration-registration-reaudit-manifest.json",
+        "reaudit-A-upgrade-r3-A-manifest.json"
+      ]
+    },
+    {
+      "path": "packages/core/src/state/source-observations.ts",
+      "sha256": "245a04dda8e30f08ab9257b3d474a395523c4f758fe9bb023f063a855d6f5197",
+      "evidence": [
+        "db-closure-final4-manifest.json",
+        "parent-F2-r2-reaudit-manifest.json",
+        "parent-F2-reaudit-manifest.json",
+        "reaudit-A-upgrade-r3-A-manifest.json",
+        "reaudit-A-upgrade-r4-A-manifest.json"
+      ]
+    },
+    {
+      "path": "packages/core/vitest.config.ts",
+      "sha256": "a6396a52dba5dac3a02dc498e9abdcc925a3cd691b63e931c12112f0f6cd8379",
+      "evidence": [
+        "audit-manifest.json"
+      ]
+    },
+    {
+      "path": "packages/github/vitest.config.ts",
+      "sha256": "a6396a52dba5dac3a02dc498e9abdcc925a3cd691b63e931c12112f0f6cd8379",
+      "evidence": [
+        "audit-manifest.json"
+      ]
+    },
+    {
+      "path": "packages/governance/vitest.config.ts",
+      "sha256": "a6396a52dba5dac3a02dc498e9abdcc925a3cd691b63e931c12112f0f6cd8379",
+      "evidence": [
+        "audit-manifest.json"
+      ]
+    },
+    {
+      "path": "packages/graph/vitest.config.ts",
+      "sha256": "a6396a52dba5dac3a02dc498e9abdcc925a3cd691b63e931c12112f0f6cd8379",
+      "evidence": [
+        "audit-manifest.json"
+      ]
+    },
+    {
+      "path": "packages/hermes-adapter/vitest.config.ts",
+      "sha256": "a6396a52dba5dac3a02dc498e9abdcc925a3cd691b63e931c12112f0f6cd8379",
+      "evidence": [
+        "audit-manifest.json"
+      ]
+    },
+    {
+      "path": "packages/knowledge-cloud/vitest.config.ts",
+      "sha256": "a6396a52dba5dac3a02dc498e9abdcc925a3cd691b63e931c12112f0f6cd8379",
+      "evidence": [
+        "audit-manifest.json"
+      ]
+    },
+    {
+      "path": "packages/knowledge/src/context-budget.ts",
+      "sha256": "3a41933465cb2738c3cef17f401ebab968537fef4a3c80e5457b13cf3ccc0682",
+      "evidence": [
+        "audit-manifest.json"
+      ]
+    },
+    {
+      "path": "packages/knowledge/vitest.config.ts",
+      "sha256": "a6396a52dba5dac3a02dc498e9abdcc925a3cd691b63e931c12112f0f6cd8379",
+      "evidence": [
+        "audit-manifest.json"
+      ]
+    },
+    {
+      "path": "packages/loop/src/candidate-policy.ts",
+      "sha256": "36671abb76be65405ff30eec37187a92225cc9d6bd902c406370fdf07501153f",
+      "evidence": [
+        "F3-r10-final-validation.json",
+        "F3-r6-validation.json",
+        "F3-r8-compat-validation.json",
+        "F3-r8-final-validation.json",
+        "F3-r9-final-validation.json",
+        "F3-r9-pre-regression-validation.json",
+        "F3-r9-unified-manifest.json",
+        "reaudit-F3-r6-manifest.json",
+        "reaudit-F3-r7-manifest.json",
+        "reaudit-F3-r8-manifest.json",
+        "reaudit-F3-r9-manifest.json"
+      ]
+    },
+    {
+      "path": "packages/loop/src/loop-containment.ts",
+      "sha256": "9b9e50dffb2051c0b20899285c3fe3583a3a4393f732eb7a487e525fb4e5a755",
+      "evidence": [
+        "F1-closure-validation.json",
+        "F3-r10-final-validation.json",
+        "F3-r4-validation.json",
+        "F3-r5-validation.json",
+        "F3-r6-validation.json",
+        "F3-r8-arm-validation.json",
+        "F3-r8-compat-validation.json",
+        "F3-r8-final-validation.json",
+        "F3-r9-final-validation.json",
+        "F3-r9-pre-regression-validation.json",
+        "F3-r9-unified-manifest.json",
+        "cli-candidate-restart-contract-manifest.json",
+        "reaudit-F3-r4-manifest.json",
+        "reaudit-F3-r5-manifest.json",
+        "reaudit-F3-r6-manifest.json",
+        "reaudit-F3-r7-manifest.json",
+        "reaudit-F3-r8-manifest.json",
+        "reaudit-F3-r9-manifest.json",
+        "reaudit-parent-F1-closure-manifest.json"
+      ]
+    },
+    {
+      "path": "packages/loop/src/loop-engine.ts",
+      "sha256": "84b4047a54afdaa5257a59373fdfad015a0f2d2feda2e9d43265be1b6f1f87ea",
+      "evidence": [
+        "F3-r10-final-validation.json",
+        "F3-r8-arm-validation.json",
+        "F3-r8-compat-validation.json",
+        "F3-r8-final-validation.json",
+        "F3-r9-cli-validation.json",
+        "F3-r9-final-validation.json",
+        "F3-r9-pre-regression-validation.json",
+        "F3-r9-unified-manifest.json",
+        "reaudit-F3-r8-manifest.json",
+        "reaudit-F3-r9-manifest.json"
+      ]
+    },
+    {
+      "path": "packages/loop/src/review-boundary.ts",
+      "sha256": "25a0dd541215a3f5ec9c7f45437dbd2a3e3d62b1937584e14c67b29b768e7953",
+      "evidence": [
+        "F3-r10-final-validation.json",
+        "F3-r4-validation.json",
+        "F3-r5-validation.json",
+        "F3-r6-validation.json",
+        "F3-r8-compat-validation.json",
+        "F3-r8-final-validation.json",
+        "F3-r9-final-validation.json",
+        "F3-r9-pre-regression-validation.json",
+        "F3-r9-unified-manifest.json",
+        "reaudit-F3-r4-manifest.json",
+        "reaudit-F3-r5-manifest.json",
+        "reaudit-F3-r6-manifest.json",
+        "reaudit-F3-r7-manifest.json",
+        "reaudit-F3-r8-manifest.json",
+        "reaudit-F3-r9-manifest.json"
+      ]
+    },
+    {
+      "path": "packages/loop/src/reviewer-isolation.ts",
+      "sha256": "7fede405c975abf0e014939d6be46032d3a7afcf81201d3cf01fd91d027755e1",
+      "evidence": [
+        "F3-r10-final-validation.json",
+        "F3-r8-compat-validation.json",
+        "F3-r9-final-validation.json",
+        "F3-r9-pre-regression-validation.json",
+        "F3-r9-unified-manifest.json",
+        "reaudit-F3-r8-manifest.json",
+        "reaudit-F3-r9-manifest.json"
+      ]
+    },
+    {
+      "path": "packages/loop/src/types.ts",
+      "sha256": "3f6c6a368a9e7ce921c20fb56be4dee27993263101f11482e23f2f57410e326c",
+      "evidence": [
+        "audit-manifest.json",
+        "reaudit-A-upgrade-r4-A-manifest.json"
+      ]
+    },
+    {
+      "path": "packages/loop/src/verifier.ts",
+      "sha256": "03a66860e36dd8bbc4bf21dcdc5e22ca2170d273881fba5c61c340a60878d2f8",
+      "evidence": [
+        "F3-r10-final-validation.json",
+        "F3-r9-cli-validation.json",
+        "F3-r9-final-validation.json",
+        "F3-r9-pre-regression-validation.json",
+        "F3-r9-unified-manifest.json",
+        "reaudit-F3-r9-manifest.json"
+      ]
+    },
+    {
+      "path": "packages/loop/vitest.config.ts",
+      "sha256": "27b2d58d43fa0a5c27bc72affe822b8dd6d5107d339f219794a4525961c07e66",
+      "evidence": [
+        "F3-r5-validation.json",
+        "F3-r6-validation.json",
+        "audit-manifest.json",
+        "reaudit-F3-r5-manifest.json",
+        "reaudit-F3-r6-manifest.json"
+      ]
+    },
+    {
+      "path": "packages/neat-eval/vitest.config.ts",
+      "sha256": "a6396a52dba5dac3a02dc498e9abdcc925a3cd691b63e931c12112f0f6cd8379",
+      "evidence": [
+        "audit-manifest.json"
+      ]
+    },
+    {
+      "path": "packages/plugins/vitest.config.ts",
+      "sha256": "a6396a52dba5dac3a02dc498e9abdcc925a3cd691b63e931c12112f0f6cd8379",
+      "evidence": [
+        "audit-manifest.json"
+      ]
+    },
+    {
+      "path": "packages/protocol/vitest.config.ts",
+      "sha256": "a6396a52dba5dac3a02dc498e9abdcc925a3cd691b63e931c12112f0f6cd8379",
+      "evidence": [
+        "audit-manifest.json"
+      ]
+    },
+    {
+      "path": "packages/runtime/vitest.config.ts",
+      "sha256": "a6396a52dba5dac3a02dc498e9abdcc925a3cd691b63e931c12112f0f6cd8379",
+      "evidence": [
+        "audit-manifest.json"
+      ]
+    },
+    {
+      "path": "packages/skill-registry/vitest.config.ts",
+      "sha256": "a6396a52dba5dac3a02dc498e9abdcc925a3cd691b63e931c12112f0f6cd8379",
+      "evidence": [
+        "audit-manifest.json"
+      ]
+    },
+    {
+      "path": "packages/skills/vitest.config.ts",
+      "sha256": "a6396a52dba5dac3a02dc498e9abdcc925a3cd691b63e931c12112f0f6cd8379",
+      "evidence": [
+        "audit-manifest.json"
+      ]
+    },
+    {
+      "path": "packages/supervisor/vitest.config.ts",
+      "sha256": "a6396a52dba5dac3a02dc498e9abdcc925a3cd691b63e931c12112f0f6cd8379",
+      "evidence": [
+        "audit-manifest.json"
+      ]
+    },
+    {
+      "path": "scripts/bench-supervision-active.mjs",
+      "sha256": "93ee445ff902c9daf99d92b3a7156f090dd0d30a619ce331a18f706ef5f1e004",
+      "evidence": [
+        "audit-manifest.json"
+      ]
+    },
+    {
+      "path": "scripts/vitest-setup-scratch.ts",
+      "sha256": "166bcdcf86efa619c1d30c14b3fe383781b17e56b984ef058b1c194b64c7b1de",
+      "evidence": [
+        "F1-case-validation.json",
+        "F1-closure-validation.json",
+        "F1-final-validation.json",
+        "F3-r4-validation.json",
+        "F3-r5-validation.json",
+        "F3-r6-validation.json",
+        "F3-r9-unified-manifest.json",
+        "mixed-edit-F1-final-validation.json",
+        "readme-haiku-language-r2-manifest.json",
+        "readme-haiku-language-r3-manifest.json",
+        "reaudit-F3-r4-manifest.json",
+        "reaudit-F3-r5-manifest.json",
+        "reaudit-F3-r6-manifest.json",
+        "reaudit-F3-r7-manifest.json",
+        "reaudit-F3-r8-manifest.json",
+        "reaudit-F3-r9-manifest.json",
+        "reaudit-parent-F1-closure-manifest.json",
+        "reaudit-parent-F1-final-manifest.json"
+      ]
+    }
+  ]
+}

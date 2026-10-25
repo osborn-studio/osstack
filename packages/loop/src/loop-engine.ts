@@ -1,3 +1,5 @@
+import { REVIEWER_GIT_ARGS, reviewerGitEnvironment } from "./reviewer-isolation.js";
+import { assertContainmentRootOutsideWorkspace, armLoopContainment, hasLoopContainment, loopContainmentPath, releaseLoopContainment } from "./loop-containment.js";
 import type { LoopLifecycleAdmission } from "./policy-gate.js";
 import { randomUUID } from "node:crypto";
 import { dirname, isAbsolute, join } from "node:path";
@@ -56,7 +58,7 @@ import {
   type Verdict,
 } from "./types.js";
 import { truncateUnicodeSafe } from "./unicode.js";
-import { CandidatePolicy, validateCandidateBatch, openCandidateRecord, freezeCandidate, assertCandidateFrozen, assertCandidateScope, assertCandidateStateDirectory, assertCandidateStateFile } from "./candidate-policy.js";
+import { CandidatePolicy, validateCandidateBatch, openCandidateRecord, freezeCandidate, assertCandidateFrozen, assertCandidateScope, assertCandidateStateDirectory, assertCandidateStateFile, assertCandidateIndexVisible } from "./candidate-policy.js";
 import { chmod } from "node:fs/promises";
 
 export interface LoopRunOptions {
@@ -90,9 +92,12 @@ export interface LoopRunOptions {
   /** Host samples the candidate before checks/review and validates unchanged bytes afterwards. */
   prepareVerification?: (workspacePath: string) => Promise<void>;
   verificationFence?: (workspacePath: string) => Promise<() => Promise<void>>;
+  /** Trusted host observer after the actual verifier and source fence. Never accepts adapter-supplied verdicts. */
+  observeVerification?: (input: { loopId: string; task: Task; workspacePath: string; run: AgentRun; verdict: Verdict; iteration: number }) => Promise<void>;
   agentId?: string;
   autoAgent?: boolean;
   verifierAgentIds?: string[];
+  /** Retained for API compatibility; execution/reviewer roles are always separated. */
   enforceRoleSeparation?: boolean;
   profileRouting?: LoopProfileRoutingEvidence;
   artifactVerification?: ArtifactVerificationOptions;
@@ -227,6 +232,8 @@ export interface LoopRunCyclesResult {
 export class LoopEngine {
   private seq = 0;
   private implementationUnconfirmed = false;
+  private containmentPending = false;
+  private candidateContaminated = false;
   private lifecycleEffectsStarted = false;
   private readonly events: LoopEvent[] = [];
 
@@ -292,7 +299,7 @@ export class LoopEngine {
         estimated_cost_usd: result.state.key_metrics?.cost_consumed ?? 0,
         no_progress_cycles: noProgressCycles,
       });
-      if (budgetStatus?.exceeded === true || this.implementationUnconfirmed) break;
+      if (budgetStatus?.exceeded === true || this.implementationUnconfirmed || this.containmentPending || this.candidateContaminated) break;
       if (result.goal?.pass === true) break;
       if (options.stopWhenIdle === true && result.executedTaskCount === 0) break;
       if (cycle < cycles && intervalMs > 0) await sleep(intervalMs);
@@ -309,7 +316,7 @@ export class LoopEngine {
         ? { reason_code: "policy_denied", reason: policyStopReason(policyReason) }
         : budgetStatus?.exceeded === true
           ? { reason_code: "budget_exceeded", reason: `budget exceeded: ${budgetStatus.reason}` }
-          : completionStopPayload(last.state, last.executedTaskCount, last.goal)),
+          : this.stopPayload(last.state, last.executedTaskCount, last.goal)),
       cycles: results.length,
     });
 
@@ -338,7 +345,9 @@ export class LoopEngine {
       settled = true;
       return result;
     } finally {
-      if (this.implementationUnconfirmed || (!settled && this.lifecycleEffectsStarted)) lease?.retain("execution or external stop unconfirmed");
+      if (this.containmentPending) lease?.retain("persisted execution containment requires reconciliation");
+      else if (this.candidateContaminated) lease?.retain("verifier candidate integrity requires reconciliation");
+      else if (this.implementationUnconfirmed || (!settled && this.lifecycleEffectsStarted)) lease?.retain("execution, probe or verification did not settle safely; preflight refusal is possible; this does not prove a process is alive; reconciliation required");
       else await lease?.release();
     }
   }
@@ -364,7 +373,7 @@ export class LoopEngine {
     this.emit(result.loop_id, "loop.stopped", {
       ...(budgetStatus?.exceeded === true
         ? { reason_code: "budget_exceeded", reason: `budget exceeded: ${budgetStatus.reason}` }
-        : completionStopPayload(result.state, result.executedTaskCount, result.goal)),
+        : this.stopPayload(result.state, result.executedTaskCount, result.goal)),
     });
     if (this.candidateRecheck) await this.candidateRecheck(finalState);
     return {
@@ -504,11 +513,13 @@ export class LoopEngine {
     const existingState = await readLoopState(jsonPath);
     const loopId = existingState?.loop_id ?? this.options.loopId ?? `loop_${randomUUID()}`;
     const state = existingState ?? createInitialLoopState(loopId);
+    const containmentPath = loopContainmentPath(workspacePath);
+    this.containmentPending ||= hasLoopContainment(containmentPath);
     this.implementationUnconfirmed ||= state.completed_tasks.some((task) =>
       task.implementation_unconfirmed === true);
     const decisions = [...(state.decisions ?? [])];
-    if (this.implementationUnconfirmed) {
-      if (lifecycle.emitStopped) this.emit(loopId, "loop.stopped", completionStopPayload(state, 0));
+    if (this.implementationUnconfirmed || this.containmentPending || this.candidateContaminated) {
+      if (lifecycle.emitStopped) this.emit(loopId, "loop.stopped", this.stopPayload(state, 0));
       return {
         loop_id: loopId, state, completedTasks: [], events: this.events.slice(eventStartIndex),
         jsonPath, markdownPath: markdownPath ?? join(dirname(jsonPath), "STATE.md"),
@@ -540,6 +551,7 @@ export class LoopEngine {
     const governance = this.applyDiscoveryPolicy(loopId, candidateTasks, decisions);
     const tasks = governance.executable;
     if (this.candidatePolicy && tasks.length !== candidateTasks.length) throw Error("CANDIDATE_BATCH_DEFERRED");
+    if (tasks.length > 0) this.assertExecutionRoleConfiguration();
     const policy = this.candidatePolicy;
     if (policy) validateCandidateBatch(policy, tasks, workspacePath);
     const candidateRecord = policy ? await openCandidateRecord(policy, workspacePath, tasks) : undefined;
@@ -559,11 +571,22 @@ export class LoopEngine {
     const completed: CompletedTask[] = [...state.completed_tasks];
     const pending = [...tasks];
 
+    const containmentArmed = tasks.length > 0 || Boolean(this.options.goalCommand?.trim());
+    if (containmentArmed) {
+      try { armLoopContainment(containmentPath); }
+      catch (error) {
+        // A partial arm is durable admission evidence even before effects begin.
+        try { this.containmentPending ||= hasLoopContainment(containmentPath); }
+        catch { this.containmentPending = true; }
+        throw error;
+      }
+    }
+
     for (const task of tasks) {
       pending.shift();
       this.lifecycleEffectsStarted = true;
       let taskResult: { completedTask: CompletedTask; decisions: string[] };
-      try { taskResult = await this.runTask(loopId, workspacePath, task, completed); }
+      try { taskResult = await this.runTask(loopId, workspacePath, task, completed, dirname(containmentPath)); }
       catch (error) {
         if (candidateRecord) await candidateRecord.record("final_preflight_failed", { ...knownCandidate!, taskOrdinal: tasks.indexOf(task) });
         throw error; // Preserve lifecycle containment and the original failure; no ready receipt.
@@ -576,7 +599,7 @@ export class LoopEngine {
         if (frozenTask.branch !== policy!.branch) throw Error("CANDIDATE_BRANCH_MISMATCH");
         await candidateRecord.record(taskResult.completedTask.outcome === "success" ? "candidate_commit" : "local_validation_failed", { taskOrdinal: tasks.indexOf(task), ...frozenTask });
       }
-      if (this.implementationUnconfirmed || (policy && taskResult.completedTask.outcome !== "success")) break;
+      if (this.implementationUnconfirmed || this.candidateContaminated || (policy && taskResult.completedTask.outcome !== "success")) break;
       if (!policy && this.options.archiveCompletedTasks === true) {
         const archive = await archiveCompletedTaskFile(task, taskResult.completedTask, workspacePath);
         this.emit(loopId, "loop.queue.archived", {
@@ -605,7 +628,7 @@ export class LoopEngine {
         for (const [phase, commands] of [["prepush", policy.profiles.prepush], ["final", [...new Set([...(this.options.verifyCommands ?? []), ...policy.profiles.final])]]] as const) {
           for (const [index, task] of tasks.entries()) {
             const run: AgentRun = { run_id: "candidate-preflight", plan_id: "candidate-preflight", task_id: task.task_id, agent_id: "local-command", outcome: "completed", started_at: new Date().toISOString(), completed_at: new Date().toISOString(), duration_ms: 0, command_results: [] };
-            const verdict = await verifyRun(run, {
+            const verdict = await this.awaitStopSensitive(() => verifyRun(run, {
               workspacePath, sessionId: loopId, commands: index === 0 ? [...commands] : [],
               task, verifierAgentIds: this.options.verifierAgentIds ?? [],
               artifactBaseCommit: batchBase!,
@@ -613,7 +636,12 @@ export class LoopEngine {
               ...(this.options.adapters !== undefined ? { adapters: this.options.adapters } : {}),
               ...(this.options.commandTimeoutMs !== undefined ? { timeoutMs: this.options.commandTimeoutMs } : {}),
               ...(this.options.outputLimit !== undefined ? { outputLimit: this.options.outputLimit } : {}),
-            });
+            }));
+            if (verdict.issues.some(issue => issue.rule === "verify.adapter_stop_unconfirmed")) {
+              this.implementationUnconfirmed = true;
+              for (const completed of current) completed.implementation_unconfirmed = true;
+            }
+            if (verdict.issues.some(issue => issue.rule === "verify.reviewer_mutation" || issue.rule === "verify.reviewer_integrity_unconfirmed")) this.candidateContaminated = true;
             assertCandidateFrozen(workspacePath, frozen);
             if (!verdict.pass) throw Error("CANDIDATE_PREFLIGHT_FAILED");
           }
@@ -637,7 +665,7 @@ export class LoopEngine {
       if (ready && this.options.archiveCompletedTasks === true) decisions.push("candidate queue retained; remote CI and acceptance pending");
     }
 
-    const goal = this.implementationUnconfirmed ? undefined : await this.checkGoal(loopId, workspacePath);
+    const goal = this.implementationUnconfirmed || this.candidateContaminated ? undefined : await this.checkGoal(loopId, workspacePath);
     if (goal !== undefined) {
       decisions.push(`goal: ${goal.pass ? "passed" : "not met"} - ${goal.summary}`);
     }
@@ -676,6 +704,7 @@ export class LoopEngine {
     if (policy) { await assertCandidateStateFile(jsonPath); await assertCandidateStateFile(markdownPath!); }
     const paths = await writeLoopState(jsonPath, nextState, { ...(markdownPath !== undefined ? { markdownPath } : {}) });
     if (policy) { await chmod(paths.jsonPath, 0o600); await chmod(paths.markdownPath, 0o600); }
+    if (containmentArmed && !this.implementationUnconfirmed && !this.candidateContaminated) releaseLoopContainment(containmentPath);
     this.emit(loopId, "loop.state.written", { jsonPath: paths.jsonPath, markdownPath: paths.markdownPath });
     this.emit(loopId, "loop.cycle.completed", {
       cycle,
@@ -685,7 +714,7 @@ export class LoopEngine {
       duration_ms: Date.now() - startedAt,
     });
     if (lifecycle.emitStopped) {
-      this.emit(loopId, "loop.stopped", completionStopPayload(nextState, executedTaskCount, goal));
+      this.emit(loopId, "loop.stopped", this.stopPayload(nextState, executedTaskCount, goal));
     }
     if (finalCandidateFrozen && candidateRecord) {
       const frozen = finalCandidateFrozen;
@@ -722,18 +751,36 @@ export class LoopEngine {
     return renderLoopStateMarkdown(state);
   }
 
+  private assertExecutionRoleConfiguration(): void {
+    const verifierIds = new Set(this.options.verifierAgentIds ?? []);
+    if (this.options.agentId !== undefined) {
+      if (verifierIds.has(this.options.agentId)) throw new Error("VERIFIER_EXECUTION_ROLE_CONFLICT");
+      return;
+    }
+    if (this.options.executeCommand !== undefined) return;
+    const adapters = this.options.adapters ?? [];
+    if (adapters.length > 0 && adapters.every(adapter => verifierIds.has(adapter.id))) {
+      throw new Error("NO_EXECUTION_ADAPTER_OUTSIDE_VERIFIER_ROLE");
+    }
+  }
+
   private async selectExecutionAgent(
     task: Task,
     historyTasks: readonly CompletedTask[],
   ): Promise<AgentSelection> {
+    const verifierIds = new Set(this.options.verifierAgentIds ?? []);
     if (this.options.agentId !== undefined) {
+      if (verifierIds.has(this.options.agentId)) throw new Error("VERIFIER_EXECUTION_ROLE_CONFLICT");
       return { agentId: this.options.agentId, reason: "agent_id override" };
     }
     if (this.options.executeCommand !== undefined) {
       return { agentId: "local-command", reason: "local execute command" };
     }
 
-    const adapters = this.options.adapters ?? [];
+    // Reviewer availability probes belong only inside the verifier integrity boundary.
+    const configuredAdapters = this.options.adapters ?? [];
+    const adapters = configuredAdapters.filter(adapter => !verifierIds.has(adapter.id));
+    if (adapters.length === 0 && configuredAdapters.length > 0) throw new Error("NO_EXECUTION_ADAPTER_OUTSIDE_VERIFIER_ROLE");
     if (adapters.length === 0) {
       return { agentId: "local-noop", reason: "no execute command or adapters configured" };
     }
@@ -743,6 +790,7 @@ export class LoopEngine {
       adapters as readonly RoutableAdapter[],
     );
     if (routerPick === null) {
+      if (adapters.length !== configuredAdapters.length) throw new Error("NO_AVAILABLE_EXECUTION_ADAPTER_AFTER_ROUTING_PROBES");
       return { agentId: "local-noop", reason: `no available adapter for capability ${task.capability}` };
     }
 
@@ -823,6 +871,7 @@ export class LoopEngine {
     workspacePath: string,
     task: Task,
     historyTasks: readonly CompletedTask[],
+    containmentRoot: string,
   ): Promise<{ completedTask: CompletedTask; decisions: string[] }> {
     const started = Date.now();
     const maxIterations = clampTaskIterations(this.options.maxIterations ?? 1, this.options.budget);
@@ -862,6 +911,7 @@ export class LoopEngine {
       });
       decisions.push(`${task.task_id}: created isolated worktree ${worktree.worktreePath}`);
     }
+    assertContainmentRootOutsideWorkspace(containmentRoot, runWorkspacePath);
     const candidateStartHead = this.candidatePolicy ? freezeCandidate(runWorkspacePath).headSha : undefined;
 
     try {
@@ -871,7 +921,7 @@ export class LoopEngine {
         const effectiveTask: Task = latestFeedback === undefined
           ? task
           : { ...task, context: withIterationFeedback(task.context, latestFeedback) };
-        const agentSelection = await this.selectExecutionAgent(effectiveTask, historyTasks);
+        const agentSelection = await this.awaitStopSensitive(() => this.selectExecutionAgent(effectiveTask, historyTasks));
         const plan = planTask(effectiveTask, {
           maxIterations,
           agentId: agentSelection.agentId,
@@ -900,14 +950,14 @@ export class LoopEngine {
         });
         decisions.push(`${task.task_id}: selected ${plan.agent_id} - ${agentSelection.reason}`);
 
-        finalRun = await executeLegacyImplementation(plan, {
+        finalRun = await this.awaitStopSensitive(() => executeLegacyImplementation(plan, {
           workspacePath: runWorkspacePath,
           sessionId: loopId,
           ...(this.options.adapters !== undefined ? { adapters: this.options.adapters } : {}),
           ...(this.options.executeCommand !== undefined ? { command: this.options.executeCommand } : {}),
           ...(this.options.commandTimeoutMs !== undefined ? { timeoutMs: this.options.commandTimeoutMs } : {}),
           ...(this.options.outputLimit !== undefined ? { outputLimit: this.options.outputLimit } : {}),
-        });
+        }));
         if (finalRun.tokens_in !== undefined || finalRun.tokens_out !== undefined || finalRun.cost_usd !== undefined) {
           taskUsage.reported = true;
           taskUsage.tokensIn += finalRun.tokens_in ?? 0;
@@ -940,7 +990,7 @@ export class LoopEngine {
             command_termination: finalRun.command_results.map((result) => result.termination),
             summary: finalRun.summary,
           })}`;
-          decisions.push(`${task.task_id}: ${finalRun.summary}; stopped for reconciliation; workspace retained`);
+          decisions.push(`${task.task_id}: ${finalRun.summary}; execution completion is unconfirmed (possibly a preflight refusal); this does not prove a process is alive; reconciliation required; workspace retained`);
           this.emit(loopId, "loop.escalated", {
             task_id: task.task_id, reason: finalRun.summary, iteration,
             max_iterations: maxIterations, escalate_to: "hermes", agent_id: finalRun.agent_id,
@@ -961,10 +1011,8 @@ export class LoopEngine {
           break;
         }
         const verifierAgentIds = this.options.verifierAgentIds ?? [];
-        if (
-          this.options.enforceRoleSeparation === true
-          && verifierAgentIds.includes(finalRun.agent_id)
-        ) {
+        // Defense in depth for the identity returned by execution, including local commands.
+        if (verifierAgentIds.includes(finalRun.agent_id)) {
           finalVerdict = {
             pass: false,
             score: 0,
@@ -977,7 +1025,8 @@ export class LoopEngine {
             }],
           };
         } else {
-          finalVerdict = await verifyRun(finalRun, {
+          const implementationRun = finalRun;
+          finalVerdict = await this.awaitStopSensitive(() => verifyRun(implementationRun, {
           workspacePath: runWorkspacePath,
           commands: this.candidatePolicy?.profiles.local ?? this.options.verifyCommands ?? [],
           verifierAgentIds,
@@ -989,7 +1038,28 @@ export class LoopEngine {
           ...(this.options.commandTimeoutMs !== undefined ? { timeoutMs: this.options.commandTimeoutMs } : {}),
           ...(this.options.outputLimit !== undefined ? { outputLimit: this.options.outputLimit } : {}),
           ...(this.options.adapters !== undefined ? { adapters: this.options.adapters } : {}),
-          });
+          }));
+        }
+        if (finalVerdict.issues.some(issue => issue.rule === "verify.adapter_stop_unconfirmed")) {
+          this.implementationUnconfirmed = true;
+          preserveWorktreeBranch = worktree !== undefined;
+          outcome = "escalated";
+          const reason = "Verifier completion is unconfirmed (possibly a preflight refusal); this does not prove a process is alive; reconciliation required before retry or workspace cleanup";
+          this.emit(loopId,"loop.verify.done",{task_id:task.task_id,pass:false,score:0,issue_count:finalVerdict.issues.length,
+            reviewer_agent_id:finalVerdict.reviewer_agent_id,summary:reason,iteration});
+          this.emit(loopId,"loop.escalated",{task_id:task.task_id,reason,iteration,max_iterations:maxIterations,escalate_to:"hermes",agent_id:finalRun.agent_id});
+          decisions.push(`${task.task_id}: ${reason}`);
+          break;
+        }
+        if (finalVerdict.issues.some(issue => issue.rule === "verify.reviewer_mutation" || issue.rule === "verify.reviewer_integrity_unconfirmed")) {
+          this.candidateContaminated = true;
+          preserveWorktreeBranch = worktree !== undefined;
+          outcome = "escalated";
+          const reason = "Verifier changed candidate integrity or could not prove it unchanged; reconciliation required before retry";
+          this.emit(loopId, "loop.verify.done", { task_id: task.task_id, pass: false, score: 0, issue_count: finalVerdict.issues.length, reviewer_agent_id: finalVerdict.reviewer_agent_id, summary: reason, iteration });
+          this.emit(loopId, "loop.escalated", { task_id: task.task_id, reason, iteration, max_iterations: maxIterations, escalate_to: "hermes", agent_id: finalRun.agent_id });
+          decisions.push(`${task.task_id}: ${reason}`);
+          break;
         }
         if (verifyFence) {
           try { await verifyFence(); }
@@ -998,6 +1068,16 @@ export class LoopEngine {
               summary: "Candidate changed while checks or review were running",
               issues: [...finalVerdict.issues, { severity: "error", rule: "verify.candidate_changed",
                 message: error instanceof Error ? error.message : String(error) }] };
+          }
+        }
+        if (this.options.observeVerification) {
+          try { await this.options.observeVerification({ loopId, task, workspacePath: runWorkspacePath, run: finalRun, verdict: finalVerdict, iteration }); }
+          catch (error) {
+            outcome = "escalated";
+            const reason = error instanceof Error ? error.message : String(error);
+            this.emit(loopId, "loop.escalated", { task_id: task.task_id, reason, iteration, max_iterations: maxIterations, escalate_to: "hermes", agent_id: finalRun.agent_id });
+            decisions.push(`${task.task_id}: host verification observer rejected: ${reason}`);
+            break;
           }
         }
         finalEvidence = await collectTaskGitEvidence(runWorkspacePath);
@@ -1101,6 +1181,21 @@ export class LoopEngine {
         outcome = "failed";
       }
 
+      if (outcome === "success" && worktree !== undefined) {
+        try { assertCandidateIndexVisible(runWorkspacePath); }
+        catch (error) {
+          // Hidden edits cannot be treated as an empty successful commit or discarded.
+          this.candidateContaminated = true;
+          outcome = "escalated";
+          const reason = error instanceof Error ? error.message : String(error);
+          if (finalVerdict !== null) finalVerdict = { ...finalVerdict, pass: false, score: 0,
+            summary: "Candidate index visibility requires reconciliation",
+            issues: [...finalVerdict.issues, { severity: "error", rule: "verify.candidate_index_unconfirmed", message: reason }] };
+          this.emit(loopId, "loop.escalated", { task_id: task.task_id, reason, iteration: iterations,
+            max_iterations: maxIterations, escalate_to: "hermes", agent_id: finalRun?.agent_id ?? "unknown" });
+          decisions.push(`${task.task_id}: candidate index rejected before publication or commit: ${reason}`);
+        }
+      }
       if (this.options.guardedLocalCandidate !== undefined) {
         preserveCandidateWorktree = worktree !== undefined;
         preserveWorktreeBranch = preserveCandidateWorktree;
@@ -1151,7 +1246,7 @@ export class LoopEngine {
           : `${task.task_id}: isolated worktree had no git changes to merge`);
       }
     } finally {
-      if (worktree !== undefined && !this.implementationUnconfirmed && !preserveCandidateWorktree) {
+      if (worktree !== undefined && !this.implementationUnconfirmed && !this.candidateContaminated && !preserveCandidateWorktree) {
         await cleanupWorktree(worktree, { removeBranch: !preserveWorktreeBranch });
         this.emit(loopId, "loop.worktree.cleaned", {
           task_id: task.task_id,
@@ -1214,7 +1309,7 @@ export class LoopEngine {
       });
 
     return {
-      completedTask: await this.applySelfImprovement(loopId, completedTask, decisions),
+      completedTask: this.implementationUnconfirmed || this.candidateContaminated ? completedTask : await this.applySelfImprovement(loopId, completedTask, decisions),
       decisions,
     };
   }
@@ -1240,7 +1335,7 @@ export class LoopEngine {
     }
 
     const deps = this.options.publishDeps ?? { runCommand: runCommandReal };
-    const result = await runPublish(skillId, publishCfg, deps);
+    const result = await this.awaitStopSensitive(() => runPublish(skillId, publishCfg, deps));
     // Durable, auditable release evidence — release identity only on success.
     const evidence = toPublishedAssetEvidence(result, publishCfg.gate);
 
@@ -1385,19 +1480,34 @@ export class LoopEngine {
     }
   }
 
+  private stopPayload(state: LoopState, count: number, goal?: LoopGoalResult): Record<string, unknown> {
+    if (this.containmentPending || this.candidateContaminated || this.implementationUnconfirmed) {
+      return { reason_code: "execution_containment_pending", reason: "Execution or validation requires reconciliation (including possible preflight refusal); this does not prove a process is alive; automatic retry is blocked" };
+    }
+    return completionStopPayload(state, count, goal);
+  }
+
+  // A rejection does not distinguish preflight refusal from launched effects.
+  // Retention is conservative and is not evidence that a process remains alive.
+  private async awaitStopSensitive<T>(invoke: () => Promise<T>): Promise<T> {
+    try { return await invoke(); }
+    catch (error) { this.implementationUnconfirmed = true; throw error; }
+  }
+
   private async checkGoal(loopId: string, workspacePath: string): Promise<LoopGoalResult | undefined> {
     const command = this.options.goalCommand;
     if (command === undefined || command.trim() === "") return undefined;
 
     this.lifecycleEffectsStarted = true;
-    const result = await runShellCommand(command, {
+    const result = await this.awaitStopSensitive(() => runShellCommand(command, {
       cwd: workspacePath,
       timeoutMs: this.options.commandTimeoutMs ?? 120_000,
       outputLimit: this.options.outputLimit ?? 16_000,
-    });
+    }));
+    if (result.termination?.stop_confirmed === false || result.cancellation?.stop_confirmed === false) this.implementationUnconfirmed = true;
     const goal: LoopGoalResult = {
       command,
-      pass: result.exitCode === 0,
+      pass: result.exitCode === 0 && !this.implementationUnconfirmed,
       exitCode: result.exitCode,
       durationMs: result.durationMs,
       summary: summarizeGoalResult(result.exitCode, result.stdout, result.stderr),
@@ -1469,8 +1579,9 @@ function completionStopPayload(
   executedTaskCount: number,
   goal?: LoopGoalResult,
 ): Record<string, unknown> {
+  // Compatibility mapping; current stopPayload intercepts this state first.
   if (state.completed_tasks.some((task) => task.implementation_unconfirmed === true)) {
-    return { reason_code: "execution_unconfirmed", reason: "Implementation stop is unconfirmed; reconciliation required before further execution or workspace cleanup" };
+    return { reason_code: "execution_unconfirmed", reason: "Implementation completion is unconfirmed (possibly a preflight refusal); this does not prove a process is alive; reconciliation required before further execution or workspace cleanup" };
   }
   if (goal?.pass === true) return { reason_code: "goal_passed", reason: "goal command passed" };
   if (state.wait_reason !== undefined) {
@@ -1493,7 +1604,10 @@ interface TaskGitEvidence {
 }
 
 async function collectTaskGitEvidence(workspacePath: string): Promise<TaskGitEvidence> {
-  const status = await runShellCommand("git status --short --untracked-files=all", {
+  const git = `git ${REVIEWER_GIT_ARGS.join(" ")}`;
+  const environment = { env: reviewerGitEnvironment(workspacePath), inheritEnv: false };
+  const status = await runShellCommand(`${git} status --short --untracked-files=all`, {
+    ...environment,
     cwd: workspacePath,
     timeoutMs: 10_000,
     outputLimit: 32_000,
@@ -1503,7 +1617,8 @@ async function collectTaskGitEvidence(workspacePath: string): Promise<TaskGitEvi
   }
 
   const changedFiles = parseGitStatusFiles(status.stdout);
-  const diffStat = await runShellCommand("git diff --stat -- .", {
+  const diffStat = await runShellCommand(`${git} diff --no-ext-diff --no-textconv --stat -- .`, {
+    ...environment,
     cwd: workspacePath,
     timeoutMs: 10_000,
     outputLimit: 4_000,
@@ -1514,7 +1629,8 @@ async function collectTaskGitEvidence(workspacePath: string): Promise<TaskGitEvi
     : changedFiles.length === 0
       ? "no git changes"
       : `${changedFiles.length} changed file(s), ${untrackedCount} untracked`;
-  const commit = await runShellCommand("git rev-parse --short HEAD", {
+  const commit = await runShellCommand(`${git} rev-parse --short HEAD`, {
+    ...environment,
     cwd: workspacePath,
     timeoutMs: 10_000,
     outputLimit: 1_000,

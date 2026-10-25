@@ -1,0 +1,15 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion-final/packages/cli
+
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/tests/g22-rpc-WiiouQ/delivery/bc38f4ef-aefd-4eec-887e-23ffae1eb4e4/writer-0'...
+HEAD is now at 0534c23 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/tests/g22-rpc-WiiouQ/delivery/edec2af9-fc86-43b0-a81d-8c6bbfb68f4c/writer-0'...
+HEAD is now at 0534c23 base
+ ✓ src/graph-performance.test.ts (1 test) 12438ms
+   ✓ measures real graph cold/hot workers, checkpoint/broker timings and concurrent non-graph socket RPC  12436ms
+
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+   Start at  18:25:47
+   Duration  13.88s (transform 782ms, setup 27ms, collect 1.24s, tests 12.44s, environment 0ms, prepare 33ms)
+

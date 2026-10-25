@@ -1,0 +1,22 @@
+{
+  "exit_code": 0,
+  "seconds": 271.1605792045593,
+  "prompt_sha256": "bdd086531f944fe6f37f64b586ba0361d6cbd61ff5bc5792342d683c222c9354",
+  "command": [
+    "/opt/homebrew/bin/claude",
+    "-p",
+    "--model",
+    "claude-haiku-5-5",
+    "--effort",
+    "high",
+    "--output-format",
+    "json",
+    "--disable-slash-commands",
+    "--tools",
+    "",
+    "--strict-mcp-config",
+    "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pr244-haiku-authenticated-20261024/mcp.json",
+    "--settings",
+    "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pr244-haiku-authenticated-20261024/settings.json"
+  ]
+}

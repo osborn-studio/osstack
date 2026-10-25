@@ -1,3 +1,4 @@
+import { graphChecksPassed } from './graph-check-suite.js';
 import type Database from 'better-sqlite3';
 import type { GraphAction, GraphRunFence } from '@osstack/core';
 import { GraphVerificationStore, type GraphVerificationSnapshot, type GraphVerificationRecord } from '@osstack/core/graph-verification';
@@ -77,7 +78,7 @@ export class GraphVerificationJoinService {
           if (envelope.verificationFailure) throw Error('JOIN_FAILED_EVIDENCE');
           const result = GraphResult.parse({ schemaVersion: 1, kind, candidateRevision: binding.candidateRevision,
             evidenceRefs: [outcome.evidenceRef], evidenceDigest: outcome.evidenceRef.slice('graph-verification:'.length),
-            ...(kind === 'review' ? { verdict: envelope.report!.verdict } : { passed: envelope.acceptance.passExitCodes.includes(envelope.evidence.contained?.result.exitCode ?? envelope.evidence.command!.exitCode) }) });
+            ...(kind === 'review' ? { verdict: envelope.report!.verdict } : { passed: graphChecksPassed(envelope) }) });
           if (verificationCanonical(outcome.result) !== verificationCanonical(result)) throw Error('JOIN_RESULT_MISMATCH');
           branches.push({ ...base, state: 'confirmed', result });
         } else {

@@ -24,6 +24,8 @@ let workspace: string;
 
 beforeEach(() => {
   workspace = mkdtempSync(join(tmpdir(), "osstack-evaluation-"));
+  execFileSync("git", ["init", "-b", "main"], { cwd: workspace, stdio: "ignore" });
+  execFileSync("git", ["-c", "user.name=test", "-c", "user.email=test@invalid", "commit", "--allow-empty", "-m", "baseline"], { cwd: workspace, stdio: "ignore" });
 });
 
 afterEach(async () => {

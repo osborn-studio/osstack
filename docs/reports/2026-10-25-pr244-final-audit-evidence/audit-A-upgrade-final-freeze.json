@@ -1,0 +1,22 @@
+{
+  "source_review_snapshot_delta": [],
+  "files": {
+    "packages/cli/src/sqlite-file-guard.ts": "80a844caa83a7d4681505088e72d6db6c8e4da113eda4dfbbf3b9017da581521",
+    "packages/cli/src/guarded-open-db.ts": "ea5a81104af08020d2ccc1f65f492ae872397faa77718bb0d10a04c05cd20af7",
+    "packages/cli/src/guarded-open-db.test.ts": "71c397901a4a119d3b6eff38aa3dd4258c3dc53cd8e909298a70f8c6e61bd929",
+    "packages/cli/src/source-observation-host.ts": "d9a2d12887002860208fe1bcc5eb1e212168545ad5fedc088d36ab332fdc5e6d",
+    "packages/cli/src/source-context.test.ts": "f160cf4c65ee929180f650878ba2fefb02808a18bbfc7dc9b660125d86f69c50",
+    "packages/cli/src/graph-maintenance.ts": "d3a736712d60745ac646848360a2c997daa308100cd7d3508c14863138c52082",
+    "packages/cli/src/graph-maintenance-files.test.ts": "95b4e2a8094775cc175d27360d6158dfb17a96118e2aa33f3c4c19abca0fd440",
+    "packages/cli/src/managed-home-guard.ts": "1f73bf572f8bd3e43e4de4569c426613111b5383999a65827720322b562c18c3",
+    "packages/cli/src/control-plane-guard.ts": "0301f5dc1cfeb99a0d439bd47447403b4d53067bfaada2fd9a88d0a0cddf735f",
+    "packages/cli/tsup.config.ts": "749c8dee40ef5c88934f1fd08f534d8b8b258eb7b9b7b44f263593492b6f7bdb",
+    "packages/cli/src/version.ts": "27324a081680bc6b1467168cfe870479027ed0a8aff055b17913915986f6b8d0",
+    "packages/cli/dist/chunk-JR4JEOKB.js": "6660915f133cef3f6275897a562b31120167257e8efbd66e3d87df9fb51538e4"
+  },
+  "review_chain": [
+    "reaudit-A-upgrade-final-A-result.json",
+    "reaudit-A-upgrade-final3-upgrade-result.json",
+    "reaudit-A-upgrade-final4-upgrade-result.json"
+  ]
+}

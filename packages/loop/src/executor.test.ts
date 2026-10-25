@@ -1,3 +1,5 @@
+import { execFileSync } from "node:child_process";
+import { randomUUID } from "node:crypto";
 import { existsSync, mkdtempSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -800,10 +802,18 @@ async function withProcessFixture(source: string, test: (fixture: {
     .map((file) => Number(readFileSync(join(workspace, file), "utf8"))).filter((pid) => pid > 1);
   const leaderPid = () => Number(readFileSync(join(workspace, "leader.pid"), "utf8"));
   const realKill = process.kill.bind(process);
+  const identity = `osstack-fixture-${randomUUID()}`;
+  const preload = join(workspace, "fixture-identity.cjs");
+  writeFileSync(preload, `process.title = ${JSON.stringify(identity)};`);
+  const ownsPid = (pid: number) => {
+    try { return execFileSync("ps", ["-p", String(pid), "-o", "args="], {encoding:"utf8",stdio:["ignore","pipe","ignore"]}).trim() === identity; }
+    catch { return false; }
+  };
   const cleanup = () => {
-    // Negative ID only targets the fixture's own group when detached; the RED
-    // implementation has no such group. Individual PIDs also clean up RED runs.
+    // Confirm the fixture marker before signalling; a recorded PID may have
+    // exited and been reused. The preload is inherited by fixture descendants.
     for (const pid of pids()) {
+      if (!ownsPid(pid)) continue;
       for (const target of [-pid, pid]) {
         try { realKill(target, "SIGKILL"); } catch (error) {
           if ((error as NodeJS.ErrnoException).code !== "ESRCH") throw error;
@@ -811,9 +821,8 @@ async function withProcessFixture(source: string, test: (fixture: {
       }
     }
   };
-  const safety = setTimeout(cleanup, 3_000);
   try {
-    await test({ command: `exec '${process.execPath.replaceAll("'", "'\\''")}' main.cjs`,
+    await test({ command: `NODE_OPTIONS='--require ${preload.replaceAll("'", "'\\''")}' exec '${process.execPath.replaceAll("'", "'\\''")}' main.cjs`,
       waitFor: (file) => waitUntil(() => existsSync(join(workspace, file))), cleanup, leaderPid,
       assertStopped: () => {
         expect(pids().length).toBeGreaterThan(0);
@@ -821,7 +830,6 @@ async function withProcessFixture(source: string, test: (fixture: {
         expect(pidExists(-leaderPid())).toBe(false);
       } });
   } finally {
-    clearTimeout(safety);
     vi.restoreAllMocks();
     cleanup();
     await waitUntil(() => pids().every((pid) => !pidExists(pid)));
@@ -989,9 +997,14 @@ describe("reviewed lifecycle compatibility", () => {
   });
 
   it("lets finishing descendants drain within a bounded window", async () => {
+    // Starting Node is not part of the descendant's short finishing window.
+    // The child starts its remaining work only after the ready leader exits.
     await withProcessFixture(`const {spawn} = require('node:child_process');
-      const child = spawn(process.execPath, ['-e', 'setTimeout(() => {}, 10)'], {stdio: 'ignore'});
-      fs.writeFileSync('child.pid', String(child.pid)); process.exit(0);`, async (fixture) => {
+      const child = spawn(process.execPath, ['-e', "process.on('disconnect', () => setTimeout(() => {}, 10)); process.send('ready');"],
+        {stdio: ['ignore', 'ignore', 'ignore', 'ipc']});
+      child.once('message', message => {
+        if (message === 'ready') { fs.writeFileSync('child.pid', String(child.pid)); process.exit(0); }
+      });`, async (fixture) => {
       const result = await runShellCommand(fixture.command, { cwd: workspace, timeoutMs: 2000, outputLimit: 1000 });
       expect(result).toMatchObject({ exitCode: 0, termination: { trigger: "exit", stop_confirmed: true, signals: [] } });
       fixture.assertStopped();

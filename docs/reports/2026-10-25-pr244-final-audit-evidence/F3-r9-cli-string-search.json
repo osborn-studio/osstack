@@ -1,0 +1,26 @@
+[
+  {
+    "pattern": "Verifier completion is unconfirmed",
+    "exit_code": 1,
+    "stdout": "",
+    "stderr": ""
+  },
+  {
+    "pattern": "Verifier stop unconfirmed",
+    "exit_code": 1,
+    "stdout": "",
+    "stderr": ""
+  },
+  {
+    "pattern": "Implementation completion is unconfirmed",
+    "exit_code": 1,
+    "stdout": "",
+    "stderr": ""
+  },
+  {
+    "pattern": "Artifact path observation",
+    "exit_code": 1,
+    "stdout": "",
+    "stderr": ""
+  }
+]

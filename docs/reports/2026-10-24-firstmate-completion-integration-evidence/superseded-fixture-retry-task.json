@@ -1,0 +1,11 @@
+{
+  "task_id": "firstmate-fixture-retry-codeqa",
+  "capability": "code.verify",
+  "prompt": "Verify composite local coverage after the sole Loop fixture handshake correction: rerun the entire Loop package and local gates, verify that the other 21 package suites passed on an identical production tree, and retain the failed full attempt. Do not claim a single all-green full run or final Claude audit.",
+  "priority": 50,
+  "source": "task_queue",
+  "context": {
+    "execution_status": "not_executed",
+    "superseded_reason": "Final full suite revealed six CLI schema compatibility failures in addition to the Loop fixture; a new complete full run is required."
+  }
+}

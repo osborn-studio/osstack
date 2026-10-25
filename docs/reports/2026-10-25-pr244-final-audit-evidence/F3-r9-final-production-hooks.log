@@ -1,0 +1,19 @@
+COMMAND ["pnpm", "--filter", "@osstack/agents", "exec", "vitest", "run", "src/worktree.test.ts", "--maxWorkers=2", "--testTimeout=20000"]
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/pr244-final-audit/packages/agents
+
+ ✓ src/worktree.test.ts (9 tests) 3459ms
+   ✓ git worktree lifecycle > persists graph retention across generic and prefix cleanup until trusted explicit export cleanup  518ms
+   ✓ git worktree lifecycle > fails closed for corrupted persistent retention and revoked safe cleanup  403ms
+   ✓ git worktree lifecycle > commits isolated changes, fast-forwards the repo, and cleans up  409ms
+   ✓ git worktree lifecycle > does not execute repository hooks while committing isolated changes  351ms
+   ✓ git worktree lifecycle > does not execute repository hooks while fast-forwarding verified changes  355ms
+   ✓ git worktree lifecycle > can remove a worktree while preserving its branch  602ms
+
+ Test Files  1 passed (1)
+      Tests  9 passed (9)
+   Start at  11:00:30
+   Duration  3.84s (transform 65ms, setup 41ms, collect 56ms, tests 3.46s, environment 0ms, prepare 98ms)
+
+
+EXIT_CODE=0

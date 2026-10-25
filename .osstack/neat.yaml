@@ -10,6 +10,15 @@ required_surfaces:
   - id: readme
     path: README.md
     severity: error
+  - id: readme-zh
+    path: README.zh.md
+    severity: error
+  - id: firstmate-command-guide-en
+    path: docs/guides/firstmate-commands.en.md
+    severity: error
+  - id: firstmate-command-guide-zh
+    path: docs/guides/firstmate-commands.md
+    severity: error
   - id: architecture-decisions
     path: docs/decisions
     kind: directory
@@ -36,6 +45,9 @@ contracts:
     review:
       any_path:
         - README.md
+        - README.zh.md
+        - docs/guides/firstmate-commands.en.md
+        - docs/guides/firstmate-commands.md
         - docs/inventory/CLI_COMMANDS.md
     enforcement: advisory
   - id: neat-governance-surface

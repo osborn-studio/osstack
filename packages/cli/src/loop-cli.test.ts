@@ -11,7 +11,7 @@ import {
 } from "node:fs/promises";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { isAbsolute, join, relative, sep } from "node:path";
 import { randomUUID } from "node:crypto";
 import { setTimeout as sleep } from "node:timers/promises";
 import { CodexCliAdapter, KimiCodeAdapter, defaultAdapters } from "@osstack/agents";
@@ -1208,6 +1208,7 @@ required_surfaces:
       task_id: "cli-reviewer-task",
       capability: "code.test",
       prompt: "Exercise CLI reviewer adapter",
+      context: { review_output_path: join(tmp, "forbidden-review-output.md"), verify_output_path: join(tmp, "forbidden-verify-output.md") },
     }));
 
     const fakeReview = join(workspace, "ds-review");
@@ -1222,6 +1223,7 @@ while [ "$#" -gt 0 ]; do
   esac
 done
 input="$(cat)"
+printf '%s' "$out" > "$OSSTACK_TEST_REVIEW_OUTPUT_CAPTURE"
 mkdir -p "$(dirname "$out")"
 printf 'reviewed:\\n%s\\n' "$input" > "$out"
 echo review ok
@@ -1229,6 +1231,9 @@ echo review ok
     await chmod(fakeReview, 0o755);
 
     const previous = process.env["OSSTACK_DS_REVIEW_BIN"];
+    const previousCapture = process.env["OSSTACK_TEST_REVIEW_OUTPUT_CAPTURE"];
+    const capture = join(tmp, "review-output-path.txt");
+    process.env["OSSTACK_TEST_REVIEW_OUTPUT_CAPTURE"] = capture;
     process.env["OSSTACK_DS_REVIEW_BIN"] = fakeReview;
     process.env["OSSTACK_HOME"] = join(tmp, "reviewer-positive-home");
     // Capability/availability only: no synthetic health verdict or writer invoke.
@@ -1263,10 +1268,19 @@ echo review ok
         type: "loop.verify.done",
         payload: expect.objectContaining({ reviewer_agent_id: "ds-review" }),
       }));
-      await expect(readFile(join(workspace, "reviews", "ds-review", "latest.md"), "utf-8"))
+      await expect(readFile(join(tmp, "forbidden-review-output.md"))).rejects.toThrow();
+      await expect(readFile(join(tmp, "forbidden-verify-output.md"))).rejects.toThrow();
+      const outputPath = await readFile(capture, "utf8");
+      expect(isAbsolute(outputPath)).toBe(true);
+      const rel = relative(workspace, outputPath);
+      expect(rel === ".." || rel.startsWith(".." + sep)).toBe(true);
+      expect(JSON.stringify(result)).toContain(JSON.stringify(outputPath).slice(1,-1));
+      await expect(readFile(outputPath, "utf-8"))
         .resolves.toContain("+after reviewer");
       expect(builderInvoke).not.toHaveBeenCalled();
     } finally {
+      if (previousCapture === undefined) delete process.env["OSSTACK_TEST_REVIEW_OUTPUT_CAPTURE"];
+      else process.env["OSSTACK_TEST_REVIEW_OUTPUT_CAPTURE"] = previousCapture;
       if (previous === undefined) delete process.env["OSSTACK_DS_REVIEW_BIN"];
       else process.env["OSSTACK_DS_REVIEW_BIN"] = previous;
       for (const probe of probes) probe.mockRestore();

@@ -1,0 +1,84 @@
+{
+  "head": "869afb089d61edd708818f48bcf6956bb313ece7",
+  "working_tree_snapshot": true,
+  "files": [
+    {
+      "path": "packages/core/src/state/db.ts",
+      "sha256": "72057b005cdec61b08d27459d4fcf58b9bfea672056537038cdefe9b1b74f2c2",
+      "coverage": "full"
+    },
+    {
+      "path": "packages/core/src/state/source-observations.ts",
+      "sha256": "245a04dda8e30f08ab9257b3d474a395523c4f758fe9bb023f063a855d6f5197",
+      "coverage": "full"
+    },
+    {
+      "path": "packages/core/src/state/source-observations.test.ts",
+      "sha256": "49132b20920cfe94c0a250321fb97b641ae60797c3434bff2fee980395fac06a",
+      "coverage": "full"
+    },
+    {
+      "path": "packages/core/src/state/attention-observer.ts",
+      "sha256": "00cdd181b53148e7bd55c9395bc674e9eece392026663b0564e79e8743811b38",
+      "coverage": "full"
+    },
+    {
+      "path": "packages/core/src/state/attention-observer.test.ts",
+      "sha256": "dee5e36a2d410fbedab7c7e9edf8c03902f7fcca7b9d46bafbce64399de5d54d",
+      "coverage": "full"
+    },
+    {
+      "path": "packages/cli/src/attention-loop-source.ts",
+      "sha256": "cde02be6f4d44f7ba1958be32dbc8b28f2313dd2237fdfa759d23e5603b50591",
+      "coverage": "full"
+    },
+    {
+      "path": "packages/cli/src/attention-loop-source.test.ts",
+      "sha256": "34fc27e33eccbc0f2e35fd2841d49e025dd144b7dc43eb406500be0d3867f95a",
+      "coverage": "full"
+    },
+    {
+      "path": "packages/cli/src/source-context.ts",
+      "sha256": "a86db5921f95be730c0b896ef38ac3360502e9081aadd1c3216e2efba1f34ece",
+      "coverage": "full"
+    },
+    {
+      "path": "packages/cli/src/source-context.test.ts",
+      "sha256": "d9cd1d3530f183ba632be652a6d07bf325bb4be5347746bd8857eb02a566a9f8",
+      "coverage": "full"
+    },
+    {
+      "path": "packages/cli/src/source-context-fence.ts",
+      "sha256": "a472da01850990ed31e6fbae3d4fc4da1f514ef4d069c031d68dd22651f469ec",
+      "coverage": "full"
+    },
+    {
+      "path": "packages/cli/src/source-observation-host.ts",
+      "sha256": "3eab84354843cc162b72284fb85fc6d867fab051a85a83f0f763fc925998e3dc",
+      "coverage": "full"
+    },
+    {
+      "path": "packages/cli/src/source-observation-command.ts",
+      "sha256": "6782a7c9930d3c0159e5c5aebe10df8be534c1f5a78dd36ca98820fef3412b64",
+      "coverage": "full"
+    },
+    {
+      "path": "packages/cli/src/local-data-source-registry.ts",
+      "sha256": "0018837f6f43ff1029fad3a444a9d163d5b112fdf0e94866c878f3014bcb80a1",
+      "coverage": "full"
+    },
+    {
+      "path": "packages/cli/src/execution-context.ts",
+      "sha256": "aa5298f4ccef92779fd012ec6fed61adef96a805282a19ded76f6a0093afb7f6",
+      "coverage": "full"
+    },
+    {
+      "path": "packages/loop/src/types.ts",
+      "sha256": "3f6c6a368a9e7ce921c20fb56be4dee27993263101f11482e23f2f57410e326c",
+      "coverage": "lines 370-415",
+      "excerpt_sha256": "6cddbca3112a5fd1e6641e5a1a098a9eea29fcf1538371b2ee96e58b971c5235"
+    }
+  ],
+  "prompt_sha256": "caa9ed29dcfeeeb17aba430b2bff62515137eb173766f573ae7b7ecc8145fca9",
+  "prompt_bytes": 183854
+}

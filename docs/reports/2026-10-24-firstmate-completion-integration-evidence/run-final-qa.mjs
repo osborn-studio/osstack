@@ -1,0 +1,5 @@
+import {LoopEngine} from "/Users/osborn/Developer/CodeX/.worktrees/osstack/firstmate-completion-final/packages/loop/dist/index.js";
+import {readFile,writeFile} from 'node:fs/promises';
+const root="/Volumes/AIMATE_WORK/tmp/osstack/smoke/firstmate-completion-20261024"; const task=JSON.parse(await readFile(JSON.parse(await readFile(root+'/final-codeqa-enqueue.json','utf8')).path,'utf8'));
+const engine=new LoopEngine({workspacePath:"/Users/osborn/Developer/CodeX/.worktrees/osstack/firstmate-completion-final",stateFilePath:root+'/final-qa-loop/LOOP-STATE.json',markdownPath:root+'/final-qa-loop/STATE.md',sources:[],inputTasks:[task],executeCommand:'python3 '+root+'/run-final-qa.py',verifyCommands:['python3 '+root+'/verify-final-qa.py'],maxIterations:1,commandTimeoutMs:2700000,outputLimit:12000,archiveCompletedTasks:false});
+const result=await engine.runOnce();await writeFile(root+'/final-qa-loop-result.json',JSON.stringify(result,null,2));console.log(JSON.stringify(result.completedTasks));process.exitCode=result.completedTasks.at(-1)?.outcome==='success'?0:1;

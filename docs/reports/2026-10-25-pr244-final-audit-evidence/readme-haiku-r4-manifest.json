@@ -1,0 +1,18 @@
+{
+  "files": [
+    {
+      "path": "packages/cli/src/bin.ts",
+      "sha256": "975c222b7ab2387cd4d327d79c8047706406c09c51ea4d8ce47e7755ae8ec4c4",
+      "selection": "serve guard + remaining defaultOsstackHome uses"
+    },
+    {
+      "path": "docs/guides/firstmate-commands.md",
+      "sha256": "2b5a6fbd8b303a016e2426a1d4a08afcb4b7818d974947952d1c8b929b32bf20"
+    },
+    {
+      "path": "docs/guides/firstmate-commands.en.md",
+      "sha256": "ac92d42380cfcb8239f7afd0f5d84d942fd4a73a7a441f02907b9e351eae8f11"
+    }
+  ],
+  "prompt_sha256": "762dfb981adac1da621e61cfd5c4d8eeed652d17eb4306d06d4e5f79944ab4b3"
+}

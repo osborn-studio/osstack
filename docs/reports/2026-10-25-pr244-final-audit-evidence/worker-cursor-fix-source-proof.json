@@ -1,0 +1,8 @@
+{
+  "production_path": "packages/cli/src/worker-view-service.ts",
+  "current_sha256": "6856007b372dfa75e4d083c3af631c84ab7c3a915fe697aa58f95a52f7e7861b",
+  "head_blob_sha256": "6856007b372dfa75e4d083c3af631c84ab7c3a915fe697aa58f95a52f7e7861b",
+  "byte_equal": true,
+  "test_sha256": "2dc2fb5fb4b6eb183e01db76c7b053b04ab170d5819655835ee3400ce574dc81",
+  "failure_source": "qualified-qa-logs/test.log lines3010-3025"
+}

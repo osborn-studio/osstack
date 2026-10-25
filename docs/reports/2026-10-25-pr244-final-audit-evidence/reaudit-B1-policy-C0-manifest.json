@@ -1,0 +1,44 @@
+{
+  "prompt_sha256": "6609a3e677c86e26c91b8a24e87e8aa9c9af9643bf60005533fb03452d2553bc",
+  "sources": [
+    {
+      "path": "packages/cli/src/bin.ts",
+      "sha256": "78398cb4e47b9a76ddb46dce4cb8224703a804bf1891a981df60bae1fcd489c2",
+      "ranges": [
+        [
+          9380,
+          9455
+        ]
+      ]
+    },
+    {
+      "path": "packages/cli/src/deliver-cli.test.ts",
+      "sha256": "591320d8746048632f26dc7f1281cdcbc8c6c625121adb44fe58ff5443f4e8c3",
+      "ranges": [
+        [
+          1,
+          65
+        ],
+        [
+          990,
+          1060
+        ]
+      ]
+    },
+    {
+      "path": "packages/cli/src/policy-gate.ts",
+      "sha256": "bc79e1f4480f5241acbc6bb22f25e163009fb9aa26cd85aaa631bf9eaa457786",
+      "ranges": "full"
+    },
+    {
+      "path": "packages/core/src/policy/profile.ts",
+      "sha256": "9114610891310ee3fb1d4ce967b76066da16224f7095bb9a45784fe84a68aa33",
+      "ranges": [
+        [
+          450,
+          505
+        ]
+      ]
+    }
+  ]
+}

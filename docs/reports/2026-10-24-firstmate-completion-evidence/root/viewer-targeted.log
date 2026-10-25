@@ -1,0 +1,13 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/firstmate-completion/packages/cli
+
+ ✓ src/worker-presentation.test.ts (13 tests) 241ms
+ ✓ src/worker-viewer-launch.test.ts (8 tests) 1149ms
+   ✓ host pinned viewer launch > executes the pinned launcher as a real child with bounded argv, without a shell  1010ms
+ ✓ src/worker-viewer-command.test.ts (4 tests) 122ms
+
+ Test Files  3 passed (3)
+      Tests  25 passed (25)
+   Start at  17:04:46
+   Duration  4.78s (transform 1.05s, setup 41ms, collect 2.41s, tests 1.51s, environment 0ms, prepare 172ms)
+

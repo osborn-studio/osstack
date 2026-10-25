@@ -1,0 +1,12 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/pr244-final-audit/packages/cli
+
+ ✓ src/worker-view-service.test.ts (32 tests) 925ms
+
+ Test Files  1 passed (1)
+      Tests  32 passed (32)
+   Start at  11:13:46
+   Duration  2.14s (transform 521ms, setup 48ms, collect 901ms, tests 925ms, environment 0ms, prepare 51ms)
+
+
+EXIT_CODE=0
