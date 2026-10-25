@@ -1,5 +1,32 @@
 # @osstack/loop
 
+## 0.22.0
+
+### Minor Changes
+
+- c129a31: Bind explicitly requested V2 delivery to frozen scope, host verification receipts, and requested completion boundaries. Add pinned local prompt context with byte budgets and adapter-boundary receipts, evidence-backed investigation drafts, and explicit read-only local deployment identity inventory. Legacy execution remains available; these additions do not imply remote, publication or deployment qualification.
+
+### Patch Changes
+
+- 0a61d27: Add scoped read-only attention snapshots and opt-in persistent decision observation, guarded manual answers, delivery receipts, explicit foreground handoff, and local notification artifacts. Add bounded Loop/CI observation and offline planning helpers. The observer makes no model calls and confers no execution or approval authority.
+
+  Daemon ownership now uses a fixed-file native exclusive lock before startup side effects. Interrupted Loop/daily sessions require explicit recovery; startup and loop cycles preserve unknown worktrees. Ambiguous or failed session instructions are no longer automatically replayed; an explicit, recorded owner disposition is available without claiming their effects succeeded. SQLite migrations 40–41 add the independent attention records.
+
+- Updated dependencies [0a61d27]
+- Updated dependencies [c8dc83f]
+- Updated dependencies [c129a31]
+- Updated dependencies [c48e29a]
+- Updated dependencies [3d5fdc0]
+- Updated dependencies [7e5a84d]
+- Updated dependencies [63064cd]
+- Updated dependencies [b185daa]
+  - @osstack/core@0.22.0
+  - @osstack/protocol@0.22.0
+  - @osstack/github@0.22.0
+  - @osstack/agents@0.22.0
+  - @osstack/autonomy@0.22.0
+  - @osstack/hermes-adapter@0.22.0
+
 ## 0.21.0
 
 ### Minor Changes

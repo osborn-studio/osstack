@@ -53,15 +53,15 @@ See the [full English command guide](docs/guides/firstmate-commands.en.md) and [
 
 | Area | Status |
 |---|---|
-| npm package | Verified npm latest: `@osstack/cli@0.21.0` (2026-10-25, Asia/Shanghai); recheck with `npm view @osstack/cli version` |
-| GitHub release | Package release: `@osstack/cli@0.21.0`; latest single binary: [`v0.8.1`](https://github.com/osborn-studio/osstack/releases/tag/v0.8.1) |
+| npm package | Release candidate: `@osstack/cli@0.22.0`; npm latest was 0.21.0 when checked on 2026-10-25 (Asia/Shanghai). Check publication with `npm view @osstack/cli version` |
+| GitHub release | Planned package release: `@osstack/cli@0.22.0`; latest single binary: [`v0.8.1`](https://github.com/osborn-studio/osstack/releases/tag/v0.8.1) |
 | macOS single binary | Published as explicit `public-ad-hoc` archive for `darwin-arm64` |
 | Knowledge Cloud | Live on EdgeOne: `https://osstack-knowledge-cloud-1grycf4k.edgeone.cool` |
 | Probe | CLI lifecycle shipped in CLI 0.19.0; report-only is gate behavior, not a background job. The two-week real-use checkpoint remains open. |
 | License | MIT |
 | Monorepo | 22 workspace packages |
 
-**Release boundary:** The CLI package in this source tree is version 0.21.0. A source version is not proof of public release or local installation. Check `osstack --version` and `npm view @osstack/cli version` separately; the Firstmate additions follow their branch and PR delivery status.
+**Release boundary:** The CLI package in this source tree is version 0.22.0. A source version is not proof of public release or local installation. Check `osstack --version` and `npm view @osstack/cli version` separately; the Firstmate additions follow their branch and PR delivery status.
 
 ## Current Capability Map
 
@@ -165,10 +165,10 @@ osstack --version
 osstack doctor --workspace .
 ```
 
-Expected for the 0.20.0 source build, or npm after publication:
+Expected for the 0.22.0 source build, or npm after publication:
 
 ```text
-osstack 0.21.0
+osstack 0.22.0
 ```
 
 ### macOS Single-Binary Archive

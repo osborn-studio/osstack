@@ -1,5 +1,13 @@
 # @osstack/knowledge-cloud
 
+## 0.22.0
+
+### Patch Changes
+
+- Updated dependencies [c8dc83f]
+- Updated dependencies [c129a31]
+  - @osstack/knowledge@0.22.0
+
 ## 0.20.0
 
 ### Patch Changes
