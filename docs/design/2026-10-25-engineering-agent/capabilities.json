@@ -1,0 +1,1588 @@
+{
+  "schema_version": 1,
+  "registry_kind": "behavior_capability_design",
+  "status": "proposal",
+  "baselines": {
+    "osstack": "14e7433b70f103499059c15fb9bf2ed87b0b0279",
+    "firstmate": "af1c6817fc47589b162cbc361671c43cdb150933"
+  },
+  "source_manifest": "sources.json",
+  "capability_count": 24,
+  "capabilities": [
+    {
+      "id": "FM-01",
+      "ledger_number": 1,
+      "name": {
+        "zh": "单一用户联络入口",
+        "en": "Single liaison"
+      },
+      "owner_component": "engineering-controller",
+      "trigger": "user_goal_received",
+      "upstream_refs": [
+        "SRC-001"
+      ],
+      "osstack_refs": [
+        "SRC-002"
+      ],
+      "existing_test_refs": [
+        "SRC-003"
+      ],
+      "existing_entries": [
+        "start",
+        "control",
+        "daily"
+      ],
+      "baseline": {
+        "implementation": "source_mapped",
+        "description": "合同入口和聚合视图存在；approve 生成命令，不启动执行",
+        "agent_integration": "not_end_to_end_qualified",
+        "runtime_revalidation": "not_run_in_this_design"
+      },
+      "target": {
+        "default_behavior": "用户只提交目标和必要决定，完成支持范围内的交付",
+        "integration_gap": "持久主控、统一对话和目标责任链",
+        "invariants": [
+          "子任务进展不能替代整个任务的完成证明"
+        ],
+        "authority_rule": "Use existing typed authority records and authenticated host grants; manifest and model text grant no authority.",
+        "semantic_policy": "Preserve observable behavior; stricter OSStack identity, scope and authorization checks are allowed and must be documented."
+      },
+      "depends_on": [
+        "FM-02",
+        "FM-03",
+        "FM-04",
+        "FM-05",
+        "FM-07",
+        "FM-08",
+        "FM-09",
+        "FM-13",
+        "FM-15"
+      ],
+      "acceptance": [
+        {
+          "id": "AC-FM-01",
+          "expected": "用户只提交目标和必要决定，完成支持范围内的交付",
+          "status": "planned",
+          "required_evidence": [
+            "candidate_bound_contract_test",
+            "host_receipt",
+            "single_entry_journey_trace"
+          ]
+        }
+      ],
+      "activation": {
+        "state": "design_only",
+        "runtime_enabled": false,
+        "required_gates": [
+          "contract_tested",
+          "host_verified",
+          "journey_verified"
+        ],
+        "rollback": "Stop new automatic dispatch; retain observe, cancel, decision and reconciliation paths."
+      }
+    },
+    {
+      "id": "FM-02",
+      "ledger_number": 2,
+      "name": {
+        "zh": "执行状态语义",
+        "en": "Execution state semantics"
+      },
+      "owner_component": "observation-service",
+      "trigger": "status_observed",
+      "upstream_refs": [
+        "SRC-004"
+      ],
+      "osstack_refs": [
+        "SRC-005"
+      ],
+      "existing_test_refs": [
+        "SRC-006"
+      ],
+      "existing_entries": [
+        "attention status",
+        "session status"
+      ],
+      "baseline": {
+        "implementation": "source_mapped",
+        "description": "业务状态、进程观察和覆盖状态已有区分",
+        "agent_integration": "not_end_to_end_qualified",
+        "runtime_revalidation": "not_run_in_this_design"
+      },
+      "target": {
+        "default_behavior": "陈旧快照显示未知，仍保留开放决定",
+        "integration_gap": "统一 Mission 视图与新鲜度解释",
+        "invariants": [
+          "忙闲、存活和业务等待不得互相推导"
+        ],
+        "authority_rule": "Use existing typed authority records and authenticated host grants; manifest and model text grant no authority.",
+        "semantic_policy": "Preserve observable behavior; stricter OSStack identity, scope and authorization checks are allowed and must be documented."
+      },
+      "depends_on": [],
+      "acceptance": [
+        {
+          "id": "AC-FM-02",
+          "expected": "陈旧快照显示未知，仍保留开放决定",
+          "status": "planned",
+          "required_evidence": [
+            "candidate_bound_contract_test",
+            "host_receipt",
+            "single_entry_journey_trace"
+          ]
+        }
+      ],
+      "activation": {
+        "state": "design_only",
+        "runtime_enabled": false,
+        "required_gates": [
+          "contract_tested",
+          "host_verified",
+          "journey_verified"
+        ],
+        "rollback": "Stop new automatic dispatch; retain observe, cancel, decision and reconciliation paths."
+      }
+    },
+    {
+      "id": "FM-03",
+      "ledger_number": 3,
+      "name": {
+        "zh": "旧实例隔离",
+        "en": "Generation fencing"
+      },
+      "owner_component": "host-broker",
+      "trigger": "controller_claimed",
+      "upstream_refs": [
+        "SRC-007"
+      ],
+      "osstack_refs": [
+        "SRC-008",
+        "SRC-070",
+        "SRC-071",
+        "SRC-072",
+        "SRC-074"
+      ],
+      "existing_test_refs": [
+        "SRC-009"
+      ],
+      "existing_entries": [
+        "serve (OSSTACK_ATTENTION=1)"
+      ],
+      "baseline": {
+        "implementation": "source_mapped",
+        "description": "已有 owner generation 与 owner-fenced 写入",
+        "agent_integration": "not_end_to_end_qualified",
+        "runtime_revalidation": "not_run_in_this_design"
+      },
+      "target": {
+        "default_behavior": "重启后旧控制者的发送和恢复请求被拒绝",
+        "integration_gap": "跨主控和所有副作用端统一 fencing",
+        "invariants": [
+          "旧 generation 不得产生新副作用"
+        ],
+        "authority_rule": "Use existing typed authority records and authenticated host grants; manifest and model text grant no authority.",
+        "semantic_policy": "Preserve observable behavior; stricter OSStack identity, scope and authorization checks are allowed and must be documented."
+      },
+      "depends_on": [],
+      "acceptance": [
+        {
+          "id": "AC-FM-03",
+          "expected": "重启后旧控制者的发送和恢复请求被拒绝",
+          "status": "planned",
+          "required_evidence": [
+            "candidate_bound_contract_test",
+            "host_receipt",
+            "single_entry_journey_trace"
+          ]
+        }
+      ],
+      "activation": {
+        "state": "design_only",
+        "runtime_enabled": false,
+        "required_gates": [
+          "contract_tested",
+          "host_verified",
+          "journey_verified"
+        ],
+        "rollback": "Stop new automatic dispatch; retain observe, cancel, decision and reconciliation paths."
+      }
+    },
+    {
+      "id": "FM-04",
+      "ledger_number": 4,
+      "name": {
+        "zh": "等待责任与解除",
+        "en": "Wait ownership and clearing"
+      },
+      "owner_component": "decision-service",
+      "trigger": "decision_or_external_wait_observed",
+      "upstream_refs": [
+        "SRC-010",
+        "SRC-021",
+        "SRC-023",
+        "SRC-065",
+        "SRC-066",
+        "SRC-067"
+      ],
+      "osstack_refs": [
+        "SRC-005",
+        "SRC-022",
+        "SRC-008",
+        "SRC-068",
+        "SRC-069",
+        "SRC-070",
+        "SRC-071",
+        "SRC-072",
+        "SRC-074"
+      ],
+      "existing_test_refs": [
+        "SRC-011"
+      ],
+      "existing_entries": [
+        "attention inventory",
+        "attention answer"
+      ],
+      "baseline": {
+        "implementation": "source_mapped",
+        "description": "已有等待责任分类和显式回答保护",
+        "agent_integration": "not_end_to_end_qualified",
+        "runtime_revalidation": "not_run_in_this_design"
+      },
+      "target": {
+        "default_behavior": "回答仅解除精确问题关联的阻塞步骤",
+        "integration_gap": "WaitObligation、阻塞边和主控恢复路径",
+        "invariants": [
+          "无关事件、超时和来源消失不能清除决定"
+        ],
+        "authority_rule": "Use existing typed authority records and authenticated host grants; manifest and model text grant no authority.",
+        "semantic_policy": "Preserve observable behavior; stricter OSStack identity, scope and authorization checks are allowed and must be documented."
+      },
+      "depends_on": [
+        "FM-02",
+        "FM-08",
+        "FM-09"
+      ],
+      "acceptance": [
+        {
+          "id": "AC-FM-04",
+          "expected": "回答仅解除精确问题关联的阻塞步骤",
+          "status": "planned",
+          "required_evidence": [
+            "candidate_bound_contract_test",
+            "host_receipt",
+            "single_entry_journey_trace"
+          ]
+        }
+      ],
+      "activation": {
+        "state": "design_only",
+        "runtime_enabled": false,
+        "required_gates": [
+          "contract_tested",
+          "host_verified",
+          "journey_verified"
+        ],
+        "rollback": "Stop new automatic dispatch; retain observe, cancel, decision and reconciliation paths."
+      }
+    },
+    {
+      "id": "FM-05",
+      "ledger_number": 5,
+      "name": {
+        "zh": "事件驱动监督",
+        "en": "Event driven supervision"
+      },
+      "owner_component": "engineering-controller",
+      "trigger": "source_event_received",
+      "upstream_refs": [
+        "SRC-012"
+      ],
+      "osstack_refs": [
+        "SRC-013"
+      ],
+      "existing_test_refs": [
+        "SRC-014"
+      ],
+      "existing_entries": [
+        "sources observe",
+        "sources events"
+      ],
+      "baseline": {
+        "implementation": "source_mapped",
+        "description": "来源有 generation、sequence、gap 和观察记录",
+        "agent_integration": "not_end_to_end_qualified",
+        "runtime_revalidation": "not_run_in_this_design"
+      },
+      "target": {
+        "default_behavior": "空轮询不调用模型；重启后消费游标可恢复",
+        "integration_gap": "默认主控消费、唤醒去重和背压",
+        "invariants": [
+          "gap 不能被视为没有待办"
+        ],
+        "authority_rule": "Use existing typed authority records and authenticated host grants; manifest and model text grant no authority.",
+        "semantic_policy": "Preserve observable behavior; stricter OSStack identity, scope and authorization checks are allowed and must be documented."
+      },
+      "depends_on": [
+        "FM-02",
+        "FM-03"
+      ],
+      "acceptance": [
+        {
+          "id": "AC-FM-05",
+          "expected": "空轮询不调用模型；重启后消费游标可恢复",
+          "status": "planned",
+          "required_evidence": [
+            "candidate_bound_contract_test",
+            "host_receipt",
+            "single_entry_journey_trace"
+          ]
+        }
+      ],
+      "activation": {
+        "state": "design_only",
+        "runtime_enabled": false,
+        "required_gates": [
+          "contract_tested",
+          "host_verified",
+          "journey_verified"
+        ],
+        "rollback": "Stop new automatic dispatch; retain observe, cancel, decision and reconciliation paths."
+      }
+    },
+    {
+      "id": "FM-06",
+      "ledger_number": 6,
+      "name": {
+        "zh": "回合结束检查",
+        "en": "Turn end backstop"
+      },
+      "owner_component": "harness-adapter",
+      "trigger": "harness_turn_ended",
+      "upstream_refs": [
+        "SRC-015"
+      ],
+      "osstack_refs": [
+        "SRC-016"
+      ],
+      "existing_test_refs": [
+        "SRC-017"
+      ],
+      "existing_entries": [
+        "attention claude-hook",
+        "attention turn-end"
+      ],
+      "baseline": {
+        "implementation": "source_mapped",
+        "description": "已有 Claude Stop hook 的绑定与检查",
+        "agent_integration": "not_end_to_end_qualified",
+        "runtime_revalidation": "not_run_in_this_design"
+      },
+      "target": {
+        "default_behavior": "关闭前台后合格宿主继续监督，未合格宿主明确告知",
+        "integration_gap": "各支持 harness 与主控监督的资格测试",
+        "invariants": [
+          "会话回合结束不等于工程任务结束"
+        ],
+        "authority_rule": "Use existing typed authority records and authenticated host grants; manifest and model text grant no authority.",
+        "semantic_policy": "Preserve observable behavior; stricter OSStack identity, scope and authorization checks are allowed and must be documented."
+      },
+      "depends_on": [
+        "FM-03",
+        "FM-05"
+      ],
+      "acceptance": [
+        {
+          "id": "AC-FM-06",
+          "expected": "关闭前台后合格宿主继续监督，未合格宿主明确告知",
+          "status": "planned",
+          "required_evidence": [
+            "candidate_bound_contract_test",
+            "host_receipt",
+            "single_entry_journey_trace"
+          ]
+        }
+      ],
+      "activation": {
+        "state": "design_only",
+        "runtime_enabled": false,
+        "required_gates": [
+          "contract_tested",
+          "host_verified",
+          "journey_verified"
+        ],
+        "rollback": "Stop new automatic dispatch; retain observe, cancel, decision and reconciliation paths."
+      }
+    },
+    {
+      "id": "FM-07",
+      "ledger_number": 7,
+      "name": {
+        "zh": "主会话与监督分工",
+        "en": "Liaison and supervisor separation"
+      },
+      "owner_component": "engineering-controller",
+      "trigger": "actionable_wake_received",
+      "upstream_refs": [
+        "SRC-018"
+      ],
+      "osstack_refs": [
+        "SRC-019"
+      ],
+      "existing_test_refs": [
+        "SRC-020"
+      ],
+      "existing_entries": [
+        "attention triage"
+      ],
+      "baseline": {
+        "implementation": "source_mapped",
+        "description": "已有受限制的 triage 及监督相关服务",
+        "agent_integration": "not_end_to_end_qualified",
+        "runtime_revalidation": "not_run_in_this_design"
+      },
+      "target": {
+        "default_behavior": "模型故障时仍可停止、观察和保留等待",
+        "integration_gap": "确定性控制器与模型行动提案闭环",
+        "invariants": [
+          "监督模型的文字不能生成批准"
+        ],
+        "authority_rule": "Use existing typed authority records and authenticated host grants; manifest and model text grant no authority.",
+        "semantic_policy": "Preserve observable behavior; stricter OSStack identity, scope and authorization checks are allowed and must be documented."
+      },
+      "depends_on": [
+        "FM-03",
+        "FM-05"
+      ],
+      "acceptance": [
+        {
+          "id": "AC-FM-07",
+          "expected": "模型故障时仍可停止、观察和保留等待",
+          "status": "planned",
+          "required_evidence": [
+            "candidate_bound_contract_test",
+            "host_receipt",
+            "single_entry_journey_trace"
+          ]
+        }
+      ],
+      "activation": {
+        "state": "design_only",
+        "runtime_enabled": false,
+        "required_gates": [
+          "contract_tested",
+          "host_verified",
+          "journey_verified"
+        ],
+        "rollback": "Stop new automatic dispatch; retain observe, cancel, decision and reconciliation paths."
+      }
+    },
+    {
+      "id": "FM-08",
+      "ledger_number": 8,
+      "name": {
+        "zh": "决定持久化与绑定",
+        "en": "Durable bound decisions"
+      },
+      "owner_component": "decision-service",
+      "trigger": "answer_received",
+      "upstream_refs": [
+        "SRC-021",
+        "SRC-023",
+        "SRC-065",
+        "SRC-066",
+        "SRC-067"
+      ],
+      "osstack_refs": [
+        "SRC-022",
+        "SRC-008",
+        "SRC-068",
+        "SRC-069",
+        "SRC-070",
+        "SRC-071",
+        "SRC-072",
+        "SRC-074"
+      ],
+      "existing_test_refs": [
+        "SRC-011"
+      ],
+      "existing_entries": [
+        "attention answer",
+        "control approve"
+      ],
+      "baseline": {
+        "implementation": "source_mapped",
+        "description": "回答已检查 revision、hash、scope、turn 与 source version",
+        "agent_integration": "not_end_to_end_qualified",
+        "runtime_revalidation": "not_run_in_this_design"
+      },
+      "target": {
+        "default_behavior": "旧问题、跨仓库和伪身份回答均拒绝",
+        "integration_gap": "统一对话 intake 和 typed authority resolver",
+        "invariants": [
+          "普通选择不能绕过正式审批"
+        ],
+        "authority_rule": "Use existing typed authority records and authenticated host grants; manifest and model text grant no authority.",
+        "semantic_policy": "Preserve observable behavior; stricter OSStack identity, scope and authorization checks are allowed and must be documented."
+      },
+      "depends_on": [
+        "FM-03"
+      ],
+      "acceptance": [
+        {
+          "id": "AC-FM-08",
+          "expected": "旧问题、跨仓库和伪身份回答均拒绝",
+          "status": "planned",
+          "required_evidence": [
+            "candidate_bound_contract_test",
+            "host_receipt",
+            "single_entry_journey_trace"
+          ]
+        }
+      ],
+      "activation": {
+        "state": "design_only",
+        "runtime_enabled": false,
+        "required_gates": [
+          "contract_tested",
+          "host_verified",
+          "journey_verified"
+        ],
+        "rollback": "Stop new automatic dispatch; retain observe, cancel, decision and reconciliation paths."
+      }
+    },
+    {
+      "id": "FM-09",
+      "ledger_number": 9,
+      "name": {
+        "zh": "回答幂等与未知投递",
+        "en": "Idempotent answers and uncertain delivery"
+      },
+      "owner_component": "delivery-service",
+      "trigger": "delivery_result_observed",
+      "upstream_refs": [
+        "SRC-023",
+        "SRC-021",
+        "SRC-065",
+        "SRC-066",
+        "SRC-067"
+      ],
+      "osstack_refs": [
+        "SRC-024",
+        "SRC-022",
+        "SRC-008",
+        "SRC-068",
+        "SRC-069",
+        "SRC-070",
+        "SRC-071",
+        "SRC-072",
+        "SRC-074"
+      ],
+      "existing_test_refs": [
+        "SRC-025"
+      ],
+      "existing_entries": [
+        "session send",
+        "attention deliveries"
+      ],
+      "baseline": {
+        "implementation": "source_mapped",
+        "description": "已有持久发送尝试与未知回执处置",
+        "agent_integration": "not_end_to_end_qualified",
+        "runtime_revalidation": "not_run_in_this_design"
+      },
+      "target": {
+        "default_behavior": "提交后崩溃重启也不会产生第二条回答",
+        "integration_gap": "Mission 投递状态、精确查询和恢复连接",
+        "invariants": [
+          "unknown 不自动重发，不换键重试"
+        ],
+        "authority_rule": "Use existing typed authority records and authenticated host grants; manifest and model text grant no authority.",
+        "semantic_policy": "Preserve observable behavior; stricter OSStack identity, scope and authorization checks are allowed and must be documented."
+      },
+      "depends_on": [
+        "FM-03",
+        "FM-08"
+      ],
+      "acceptance": [
+        {
+          "id": "AC-FM-09",
+          "expected": "提交后崩溃重启也不会产生第二条回答",
+          "status": "planned",
+          "required_evidence": [
+            "candidate_bound_contract_test",
+            "host_receipt",
+            "single_entry_journey_trace"
+          ]
+        }
+      ],
+      "activation": {
+        "state": "design_only",
+        "runtime_enabled": false,
+        "required_gates": [
+          "contract_tested",
+          "host_verified",
+          "journey_verified"
+        ],
+        "rollback": "Stop new automatic dispatch; retain observe, cancel, decision and reconciliation paths."
+      }
+    },
+    {
+      "id": "FM-10",
+      "ledger_number": 10,
+      "name": {
+        "zh": "低打扰与离开",
+        "en": "Quiet and away posture"
+      },
+      "owner_component": "experience-service",
+      "trigger": "posture_or_reminder_due",
+      "upstream_refs": [
+        "SRC-026"
+      ],
+      "osstack_refs": [
+        "SRC-027"
+      ],
+      "existing_test_refs": [
+        "SRC-028"
+      ],
+      "existing_entries": [
+        "attention posture",
+        "attention brief"
+      ],
+      "baseline": {
+        "implementation": "source_mapped",
+        "description": "已有偏好、批次、去重与失败通知处理",
+        "agent_integration": "not_end_to_end_qualified",
+        "runtime_revalidation": "not_run_in_this_design"
+      },
+      "target": {
+        "default_behavior": "未变化的问题每提醒窗口最多提醒一次",
+        "integration_gap": "统一会话的离开、返回与提醒预算",
+        "invariants": [
+          "离开姿态不能扩大权限"
+        ],
+        "authority_rule": "Use existing typed authority records and authenticated host grants; manifest and model text grant no authority.",
+        "semantic_policy": "Preserve observable behavior; stricter OSStack identity, scope and authorization checks are allowed and must be documented."
+      },
+      "depends_on": [
+        "FM-04",
+        "FM-05"
+      ],
+      "acceptance": [
+        {
+          "id": "AC-FM-10",
+          "expected": "未变化的问题每提醒窗口最多提醒一次",
+          "status": "planned",
+          "required_evidence": [
+            "candidate_bound_contract_test",
+            "host_receipt",
+            "single_entry_journey_trace"
+          ]
+        }
+      ],
+      "activation": {
+        "state": "design_only",
+        "runtime_enabled": false,
+        "required_gates": [
+          "contract_tested",
+          "host_verified",
+          "journey_verified"
+        ],
+        "rollback": "Stop new automatic dispatch; retain observe, cancel, decision and reconciliation paths."
+      }
+    },
+    {
+      "id": "FM-11",
+      "ledger_number": 11,
+      "name": {
+        "zh": "增量简报",
+        "en": "Incremental briefing"
+      },
+      "owner_component": "experience-service",
+      "trigger": "user_returned",
+      "upstream_refs": [
+        "SRC-029"
+      ],
+      "osstack_refs": [
+        "SRC-030"
+      ],
+      "existing_test_refs": [
+        "SRC-031"
+      ],
+      "existing_entries": [
+        "daily",
+        "attention inbox"
+      ],
+      "baseline": {
+        "implementation": "source_mapped",
+        "description": "已有按 scope 的状态及增量展示基础",
+        "agent_integration": "not_end_to_end_qualified",
+        "runtime_revalidation": "not_run_in_this_design"
+      },
+      "target": {
+        "default_behavior": "返回时同时展示新结果和之前仍开放的问题",
+        "integration_gap": "Mission 恢复时优先展示未决项与真实变化",
+        "invariants": [
+          "阅读游标不可以清除未回答问题"
+        ],
+        "authority_rule": "Use existing typed authority records and authenticated host grants; manifest and model text grant no authority.",
+        "semantic_policy": "Preserve observable behavior; stricter OSStack identity, scope and authorization checks are allowed and must be documented."
+      },
+      "depends_on": [
+        "FM-04",
+        "FM-05"
+      ],
+      "acceptance": [
+        {
+          "id": "AC-FM-11",
+          "expected": "返回时同时展示新结果和之前仍开放的问题",
+          "status": "planned",
+          "required_evidence": [
+            "candidate_bound_contract_test",
+            "host_receipt",
+            "single_entry_journey_trace"
+          ]
+        }
+      ],
+      "activation": {
+        "state": "design_only",
+        "runtime_enabled": false,
+        "required_gates": [
+          "contract_tested",
+          "host_verified",
+          "journey_verified"
+        ],
+        "rollback": "Stop new automatic dispatch; retain observe, cancel, decision and reconciliation paths."
+      }
+    },
+    {
+      "id": "FM-12",
+      "ledger_number": 12,
+      "name": {
+        "zh": "调查与交付分型",
+        "en": "Investigation and delivery modes"
+      },
+      "owner_component": "execution-router",
+      "trigger": "insufficient_task_evidence",
+      "upstream_refs": [
+        "SRC-032"
+      ],
+      "osstack_refs": [
+        "SRC-033"
+      ],
+      "existing_test_refs": [
+        "SRC-034"
+      ],
+      "existing_entries": [
+        "scout inspect",
+        "scout promote"
+      ],
+      "baseline": {
+        "implementation": "source_mapped",
+        "description": "scout 与提升路径已有合同及候选约束",
+        "agent_integration": "not_end_to_end_qualified",
+        "runtime_revalidation": "not_run_in_this_design"
+      },
+      "target": {
+        "default_behavior": "信息不足时先调查，提升时绑定当前 HEAD 与权限",
+        "integration_gap": "主控选择调查、判断何时提升为实施",
+        "invariants": [
+          "调查权限不能隐式变为交付权限"
+        ],
+        "authority_rule": "Use existing typed authority records and authenticated host grants; manifest and model text grant no authority.",
+        "semantic_policy": "Preserve observable behavior; stricter OSStack identity, scope and authorization checks are allowed and must be documented."
+      },
+      "depends_on": [
+        "FM-13",
+        "FM-15"
+      ],
+      "acceptance": [
+        {
+          "id": "AC-FM-12",
+          "expected": "信息不足时先调查，提升时绑定当前 HEAD 与权限",
+          "status": "planned",
+          "required_evidence": [
+            "candidate_bound_contract_test",
+            "host_receipt",
+            "single_entry_journey_trace"
+          ]
+        }
+      ],
+      "activation": {
+        "state": "design_only",
+        "runtime_enabled": false,
+        "required_gates": [
+          "contract_tested",
+          "host_verified",
+          "journey_verified"
+        ],
+        "rollback": "Stop new automatic dispatch; retain observe, cancel, decision and reconciliation paths."
+      }
+    },
+    {
+      "id": "FM-13",
+      "ledger_number": 13,
+      "name": {
+        "zh": "交付完成标准",
+        "en": "Verified completion"
+      },
+      "owner_component": "completion-service",
+      "trigger": "executor_candidate_ready",
+      "upstream_refs": [
+        "SRC-035"
+      ],
+      "osstack_refs": [
+        "SRC-036"
+      ],
+      "existing_test_refs": [
+        "SRC-037"
+      ],
+      "existing_entries": [
+        "deliver",
+        "graph"
+      ],
+      "baseline": {
+        "implementation": "source_mapped",
+        "description": "已有交付合同与验证证据模型",
+        "agent_integration": "not_end_to_end_qualified",
+        "runtime_revalidation": "not_run_in_this_design"
+      },
+      "target": {
+        "default_behavior": "候选改变使旧检查失效，无法误报已部署",
+        "integration_gap": "统一 Mission 的完成判定与同候选检查",
+        "invariants": [
+          "检查通过必须对应交付的同一候选"
+        ],
+        "authority_rule": "Use existing typed authority records and authenticated host grants; manifest and model text grant no authority.",
+        "semantic_policy": "Preserve observable behavior; stricter OSStack identity, scope and authorization checks are allowed and must be documented."
+      },
+      "depends_on": [
+        "FM-02",
+        "FM-19"
+      ],
+      "acceptance": [
+        {
+          "id": "AC-FM-13",
+          "expected": "候选改变使旧检查失效，无法误报已部署",
+          "status": "planned",
+          "required_evidence": [
+            "candidate_bound_contract_test",
+            "host_receipt",
+            "single_entry_journey_trace"
+          ]
+        }
+      ],
+      "activation": {
+        "state": "design_only",
+        "runtime_enabled": false,
+        "required_gates": [
+          "contract_tested",
+          "host_verified",
+          "journey_verified"
+        ],
+        "rollback": "Stop new automatic dispatch; retain observe, cancel, decision and reconciliation paths."
+      }
+    },
+    {
+      "id": "FM-14",
+      "ledger_number": 14,
+      "name": {
+        "zh": "清理前保全",
+        "en": "Preservation before cleanup"
+      },
+      "owner_component": "recovery-service",
+      "trigger": "cleanup_requested",
+      "upstream_refs": [
+        "SRC-035"
+      ],
+      "osstack_refs": [
+        "SRC-038"
+      ],
+      "existing_test_refs": [
+        "SRC-039"
+      ],
+      "existing_entries": [
+        "attention recovery"
+      ],
+      "baseline": {
+        "implementation": "source_mapped",
+        "description": "已有恢复视图及保全边界",
+        "agent_integration": "not_end_to_end_qualified",
+        "runtime_revalidation": "not_run_in_this_design"
+      },
+      "target": {
+        "default_behavior": "取消未确认或工作未交付时保留现场",
+        "integration_gap": "Mission 完成后统一清理条件",
+        "invariants": [
+          "未知副作用或未停止进程不得触发清理"
+        ],
+        "authority_rule": "Use existing typed authority records and authenticated host grants; manifest and model text grant no authority.",
+        "semantic_policy": "Preserve observable behavior; stricter OSStack identity, scope and authorization checks are allowed and must be documented."
+      },
+      "depends_on": [
+        "FM-13",
+        "FM-19"
+      ],
+      "acceptance": [
+        {
+          "id": "AC-FM-14",
+          "expected": "取消未确认或工作未交付时保留现场",
+          "status": "planned",
+          "required_evidence": [
+            "candidate_bound_contract_test",
+            "host_receipt",
+            "single_entry_journey_trace"
+          ]
+        }
+      ],
+      "activation": {
+        "state": "design_only",
+        "runtime_enabled": false,
+        "required_gates": [
+          "contract_tested",
+          "host_verified",
+          "journey_verified"
+        ],
+        "rollback": "Stop new automatic dispatch; retain observe, cancel, decision and reconciliation paths."
+      }
+    },
+    {
+      "id": "FM-15",
+      "ledger_number": 15,
+      "name": {
+        "zh": "能力协商",
+        "en": "Capability negotiation"
+      },
+      "owner_component": "execution-router",
+      "trigger": "executor_admission_requested",
+      "upstream_refs": [
+        "SRC-040"
+      ],
+      "osstack_refs": [
+        "SRC-041"
+      ],
+      "existing_test_refs": [
+        "SRC-042"
+      ],
+      "existing_entries": [
+        "agent",
+        "sources inspect",
+        "remote-home inspect"
+      ],
+      "baseline": {
+        "implementation": "source_mapped",
+        "description": "已有 Adapter 能力 schema 和固定宿主协议",
+        "agent_integration": "not_end_to_end_qualified",
+        "runtime_revalidation": "not_run_in_this_design"
+      },
+      "target": {
+        "default_behavior": "不支持该产物的 Graph 模板不得被自动选择",
+        "integration_gap": "行为注册表关联 ExecutorEnvelope 与资格",
+        "invariants": [
+          "声明能力不等于获得权限或实测资格"
+        ],
+        "authority_rule": "Use existing typed authority records and authenticated host grants; manifest and model text grant no authority.",
+        "semantic_policy": "Preserve observable behavior; stricter OSStack identity, scope and authorization checks are allowed and must be documented."
+      },
+      "depends_on": [],
+      "acceptance": [
+        {
+          "id": "AC-FM-15",
+          "expected": "不支持该产物的 Graph 模板不得被自动选择",
+          "status": "planned",
+          "required_evidence": [
+            "candidate_bound_contract_test",
+            "host_receipt",
+            "single_entry_journey_trace"
+          ]
+        }
+      ],
+      "activation": {
+        "state": "design_only",
+        "runtime_enabled": false,
+        "required_gates": [
+          "contract_tested",
+          "host_verified",
+          "journey_verified"
+        ],
+        "rollback": "Stop new automatic dispatch; retain observe, cancel, decision and reconciliation paths."
+      }
+    },
+    {
+      "id": "FM-16",
+      "ledger_number": 16,
+      "name": {
+        "zh": "可见工作进程",
+        "en": "Inspectable workers"
+      },
+      "owner_component": "worker-host",
+      "trigger": "worker_inspection_requested",
+      "upstream_refs": [
+        "SRC-040"
+      ],
+      "osstack_refs": [
+        "SRC-043"
+      ],
+      "existing_test_refs": [
+        "SRC-044"
+      ],
+      "existing_entries": [
+        "worker open",
+        "worker logs"
+      ],
+      "baseline": {
+        "implementation": "source_mapped",
+        "description": "已有受约束 viewer 与 worker 日志入口",
+        "agent_integration": "not_end_to_end_qualified",
+        "runtime_revalidation": "not_run_in_this_design"
+      },
+      "target": {
+        "default_behavior": "可查看精确任务的 Worker，退出窗口不丢责任",
+        "integration_gap": "由统一任务页按需展开，不要求用户管理",
+        "invariants": [
+          "可见窗口不代表进程身份或完成证明"
+        ],
+        "authority_rule": "Use existing typed authority records and authenticated host grants; manifest and model text grant no authority.",
+        "semantic_policy": "Preserve observable behavior; stricter OSStack identity, scope and authorization checks are allowed and must be documented."
+      },
+      "depends_on": [
+        "FM-03",
+        "FM-15"
+      ],
+      "acceptance": [
+        {
+          "id": "AC-FM-16",
+          "expected": "可查看精确任务的 Worker，退出窗口不丢责任",
+          "status": "planned",
+          "required_evidence": [
+            "candidate_bound_contract_test",
+            "host_receipt",
+            "single_entry_journey_trace"
+          ]
+        }
+      ],
+      "activation": {
+        "state": "design_only",
+        "runtime_enabled": false,
+        "required_gates": [
+          "contract_tested",
+          "host_verified",
+          "journey_verified"
+        ],
+        "rollback": "Stop new automatic dispatch; retain observe, cancel, decision and reconciliation paths."
+      }
+    },
+    {
+      "id": "FM-17",
+      "ledger_number": 17,
+      "name": {
+        "zh": "远程 home 与断线未知",
+        "en": "Remote home uncertainty"
+      },
+      "owner_component": "remote-host",
+      "trigger": "remote_connection_changed",
+      "upstream_refs": [
+        "SRC-045"
+      ],
+      "osstack_refs": [
+        "SRC-046"
+      ],
+      "existing_test_refs": [
+        "SRC-047"
+      ],
+      "existing_entries": [
+        "remote-home",
+        "remote-control"
+      ],
+      "baseline": {
+        "implementation": "source_mapped",
+        "description": "有远端观察和受授权的取消；非任意远程启动平台",
+        "agent_integration": "not_end_to_end_qualified",
+        "runtime_revalidation": "not_run_in_this_design"
+      },
+      "target": {
+        "default_behavior": "断线期间显示未知，重连用原身份查询",
+        "integration_gap": "主控远程资格、边界和恢复状态整合",
+        "invariants": [
+          "断线不能推导远程停止，不能重复写入"
+        ],
+        "authority_rule": "Use existing typed authority records and authenticated host grants; manifest and model text grant no authority.",
+        "semantic_policy": "Preserve observable behavior; stricter OSStack identity, scope and authorization checks are allowed and must be documented."
+      },
+      "depends_on": [
+        "FM-03",
+        "FM-09",
+        "FM-15"
+      ],
+      "acceptance": [
+        {
+          "id": "AC-FM-17",
+          "expected": "断线期间显示未知，重连用原身份查询",
+          "status": "planned",
+          "required_evidence": [
+            "candidate_bound_contract_test",
+            "host_receipt",
+            "single_entry_journey_trace"
+          ]
+        }
+      ],
+      "activation": {
+        "state": "design_only",
+        "runtime_enabled": false,
+        "required_gates": [
+          "contract_tested",
+          "host_verified",
+          "journey_verified"
+        ],
+        "rollback": "Stop new automatic dispatch; retain observe, cancel, decision and reconciliation paths."
+      }
+    },
+    {
+      "id": "FM-18",
+      "ledger_number": 18,
+      "name": {
+        "zh": "外部事件扩展",
+        "en": "External event sources"
+      },
+      "owner_component": "source-host",
+      "trigger": "registered_source_changed",
+      "upstream_refs": [
+        "SRC-012"
+      ],
+      "osstack_refs": [
+        "SRC-048"
+      ],
+      "existing_test_refs": [
+        "SRC-014"
+      ],
+      "existing_entries": [
+        "sources observe",
+        "sources events",
+        "sources acknowledge"
+      ],
+      "baseline": {
+        "implementation": "source_mapped",
+        "description": "固定 source host 及观察/ack 协议存在",
+        "agent_integration": "not_end_to_end_qualified",
+        "runtime_revalidation": "not_run_in_this_design"
+      },
+      "target": {
+        "default_behavior": "伪造来源与缺序列触发对账，不触发越权行动",
+        "integration_gap": "自动事件归属和 Mission 唤醒关系",
+        "invariants": [
+          "事件正文不是执行授权"
+        ],
+        "authority_rule": "Use existing typed authority records and authenticated host grants; manifest and model text grant no authority.",
+        "semantic_policy": "Preserve observable behavior; stricter OSStack identity, scope and authorization checks are allowed and must be documented."
+      },
+      "depends_on": [
+        "FM-03",
+        "FM-05"
+      ],
+      "acceptance": [
+        {
+          "id": "AC-FM-18",
+          "expected": "伪造来源与缺序列触发对账，不触发越权行动",
+          "status": "planned",
+          "required_evidence": [
+            "candidate_bound_contract_test",
+            "host_receipt",
+            "single_entry_journey_trace"
+          ]
+        }
+      ],
+      "activation": {
+        "state": "design_only",
+        "runtime_enabled": false,
+        "required_gates": [
+          "contract_tested",
+          "host_verified",
+          "journey_verified"
+        ],
+        "rollback": "Stop new automatic dispatch; retain observe, cancel, decision and reconciliation paths."
+      }
+    },
+    {
+      "id": "FM-19",
+      "ledger_number": 19,
+      "name": {
+        "zh": "对外状态账本",
+        "en": "Observable receipts and state"
+      },
+      "owner_component": "evidence-service",
+      "trigger": "effect_receipt_received",
+      "upstream_refs": [
+        "SRC-049"
+      ],
+      "osstack_refs": [
+        "SRC-050"
+      ],
+      "existing_test_refs": [
+        "SRC-051"
+      ],
+      "existing_entries": [
+        "attention deliveries",
+        "follow-up"
+      ],
+      "baseline": {
+        "implementation": "source_mapped",
+        "description": "已有若干领域的持久回执",
+        "agent_integration": "not_end_to_end_qualified",
+        "runtime_revalidation": "not_run_in_this_design"
+      },
+      "target": {
+        "default_behavior": "报告可追溯到每个权威记录与实际回执",
+        "integration_gap": "统一关联索引、可导出证据与用户解释",
+        "invariants": [
+          "跨系统回执不能冒充全局原子事务"
+        ],
+        "authority_rule": "Use existing typed authority records and authenticated host grants; manifest and model text grant no authority.",
+        "semantic_policy": "Preserve observable behavior; stricter OSStack identity, scope and authorization checks are allowed and must be documented."
+      },
+      "depends_on": [],
+      "acceptance": [
+        {
+          "id": "AC-FM-19",
+          "expected": "报告可追溯到每个权威记录与实际回执",
+          "status": "planned",
+          "required_evidence": [
+            "candidate_bound_contract_test",
+            "host_receipt",
+            "single_entry_journey_trace"
+          ]
+        }
+      ],
+      "activation": {
+        "state": "design_only",
+        "runtime_enabled": false,
+        "required_gates": [
+          "contract_tested",
+          "host_verified",
+          "journey_verified"
+        ],
+        "rollback": "Stop new automatic dispatch; retain observe, cancel, decision and reconciliation paths."
+      }
+    },
+    {
+      "id": "FM-20",
+      "ledger_number": 20,
+      "name": {
+        "zh": "记忆预算与衰减",
+        "en": "Budgeted evidence based memory"
+      },
+      "owner_component": "memory-service",
+      "trigger": "verified_lesson_available",
+      "upstream_refs": [
+        "SRC-052"
+      ],
+      "osstack_refs": [
+        "SRC-053"
+      ],
+      "existing_test_refs": [
+        "SRC-054"
+      ],
+      "existing_entries": [
+        "attention lesson"
+      ],
+      "baseline": {
+        "implementation": "source_mapped",
+        "description": "已有失败、修复、复验和独立审查的经验草稿路径",
+        "agent_integration": "not_end_to_end_qualified",
+        "runtime_revalidation": "not_run_in_this_design"
+      },
+      "target": {
+        "default_behavior": "过期或被反证的经验不会改变执行权限",
+        "integration_gap": "按任务检索、跨仓库隔离、过期失效与用户纠正",
+        "invariants": [
+          "模型生成的经验不能自行升级为事实或策略"
+        ],
+        "authority_rule": "Use existing typed authority records and authenticated host grants; manifest and model text grant no authority.",
+        "semantic_policy": "Preserve observable behavior; stricter OSStack identity, scope and authorization checks are allowed and must be documented."
+      },
+      "depends_on": [
+        "FM-13",
+        "FM-19"
+      ],
+      "acceptance": [
+        {
+          "id": "AC-FM-20",
+          "expected": "过期或被反证的经验不会改变执行权限",
+          "status": "planned",
+          "required_evidence": [
+            "candidate_bound_contract_test",
+            "host_receipt",
+            "single_entry_journey_trace"
+          ]
+        }
+      ],
+      "activation": {
+        "state": "design_only",
+        "runtime_enabled": false,
+        "required_gates": [
+          "contract_tested",
+          "host_verified",
+          "journey_verified"
+        ],
+        "rollback": "Stop new automatic dispatch; retain observe, cancel, decision and reconciliation paths."
+      }
+    },
+    {
+      "id": "FM-21",
+      "ledger_number": 21,
+      "name": {
+        "zh": "轻任务路由",
+        "en": "Cost aware routing"
+      },
+      "owner_component": "execution-router",
+      "trigger": "route_selection_requested",
+      "upstream_refs": [
+        "SRC-001"
+      ],
+      "osstack_refs": [
+        "SRC-055"
+      ],
+      "existing_test_refs": [
+        "SRC-056"
+      ],
+      "existing_entries": [
+        "attention routing-eval"
+      ],
+      "baseline": {
+        "implementation": "source_mapped",
+        "description": "已有路由评估及保留集方法，默认不自动切换",
+        "agent_integration": "not_end_to_end_qualified",
+        "runtime_revalidation": "not_run_in_this_design"
+      },
+      "target": {
+        "default_behavior": "同类保留场景达标后才启用新路由",
+        "integration_gap": "行为路由、执行器选择与预算闭环",
+        "invariants": [
+          "便宜模型不能取消必须的审查"
+        ],
+        "authority_rule": "Use existing typed authority records and authenticated host grants; manifest and model text grant no authority.",
+        "semantic_policy": "Preserve observable behavior; stricter OSStack identity, scope and authorization checks are allowed and must be documented."
+      },
+      "depends_on": [
+        "FM-13",
+        "FM-15"
+      ],
+      "acceptance": [
+        {
+          "id": "AC-FM-21",
+          "expected": "同类保留场景达标后才启用新路由",
+          "status": "planned",
+          "required_evidence": [
+            "candidate_bound_contract_test",
+            "host_receipt",
+            "single_entry_journey_trace"
+          ]
+        }
+      ],
+      "activation": {
+        "state": "design_only",
+        "runtime_enabled": false,
+        "required_gates": [
+          "contract_tested",
+          "host_verified",
+          "journey_verified"
+        ],
+        "rollback": "Stop new automatic dispatch; retain observe, cancel, decision and reconciliation paths."
+      }
+    },
+    {
+      "id": "FM-22",
+      "ledger_number": 22,
+      "name": {
+        "zh": "对外承诺持久化",
+        "en": "Durable external commitments"
+      },
+      "owner_component": "publication-host",
+      "trigger": "authorized_commitment_due",
+      "upstream_refs": [
+        "SRC-049"
+      ],
+      "osstack_refs": [
+        "SRC-057"
+      ],
+      "existing_test_refs": [
+        "SRC-058"
+      ],
+      "existing_entries": [
+        "follow-up",
+        "follow-up-delivery"
+      ],
+      "baseline": {
+        "implementation": "source_mapped",
+        "description": "存在具体主体、单次 grant 与对外回执机制",
+        "agent_integration": "not_end_to_end_qualified",
+        "runtime_revalidation": "not_run_in_this_design"
+      },
+      "target": {
+        "default_behavior": "已授权的最终回复有回执；未知时不重复发布",
+        "integration_gap": "Mission 的公开承诺与完成回复追踪",
+        "invariants": [
+          "聊天意图不是公开发送的授权"
+        ],
+        "authority_rule": "Use existing typed authority records and authenticated host grants; manifest and model text grant no authority.",
+        "semantic_policy": "Preserve observable behavior; stricter OSStack identity, scope and authorization checks are allowed and must be documented."
+      },
+      "depends_on": [
+        "FM-08",
+        "FM-09",
+        "FM-19",
+        "FM-23"
+      ],
+      "acceptance": [
+        {
+          "id": "AC-FM-22",
+          "expected": "已授权的最终回复有回执；未知时不重复发布",
+          "status": "planned",
+          "required_evidence": [
+            "candidate_bound_contract_test",
+            "host_receipt",
+            "single_entry_journey_trace"
+          ]
+        }
+      ],
+      "activation": {
+        "state": "design_only",
+        "runtime_enabled": false,
+        "required_gates": [
+          "contract_tested",
+          "host_verified",
+          "journey_verified"
+        ],
+        "rollback": "Stop new automatic dispatch; retain observe, cancel, decision and reconciliation paths."
+      }
+    },
+    {
+      "id": "FM-23",
+      "ledger_number": 23,
+      "name": {
+        "zh": "自仓库发布边界",
+        "en": "Repository publication authority"
+      },
+      "owner_component": "publication-host",
+      "trigger": "publication_requested",
+      "upstream_refs": [
+        "SRC-059"
+      ],
+      "osstack_refs": [
+        "SRC-060"
+      ],
+      "existing_test_refs": [
+        "SRC-061"
+      ],
+      "existing_entries": [
+        "deliver --autonomy guarded-git"
+      ],
+      "baseline": {
+        "implementation": "source_mapped",
+        "description": "已有合同与受控交付路径",
+        "agent_integration": "not_end_to_end_qualified",
+        "runtime_revalidation": "not_run_in_this_design"
+      },
+      "target": {
+        "default_behavior": "仅开 PR 的任务不会自动合并或发布",
+        "integration_gap": "主控区分 local、PR、merged、deployed 完成级别",
+        "invariants": [
+          "能够 push 不等于被授权 merge 或 deploy"
+        ],
+        "authority_rule": "Use existing typed authority records and authenticated host grants; manifest and model text grant no authority.",
+        "semantic_policy": "Preserve observable behavior; stricter OSStack identity, scope and authorization checks are allowed and must be documented."
+      },
+      "depends_on": [
+        "FM-08",
+        "FM-13",
+        "FM-19"
+      ],
+      "acceptance": [
+        {
+          "id": "AC-FM-23",
+          "expected": "仅开 PR 的任务不会自动合并或发布",
+          "status": "planned",
+          "required_evidence": [
+            "candidate_bound_contract_test",
+            "host_receipt",
+            "single_entry_journey_trace"
+          ]
+        }
+      ],
+      "activation": {
+        "state": "design_only",
+        "runtime_enabled": false,
+        "required_gates": [
+          "contract_tested",
+          "host_verified",
+          "journey_verified"
+        ],
+        "rollback": "Stop new automatic dispatch; retain observe, cancel, decision and reconciliation paths."
+      }
+    },
+    {
+      "id": "FM-24",
+      "ledger_number": 24,
+      "name": {
+        "zh": "多 home 自更新",
+        "en": "Managed multi home upgrades"
+      },
+      "owner_component": "upgrade-host",
+      "trigger": "managed_upgrade_requested",
+      "upstream_refs": [
+        "SRC-062"
+      ],
+      "osstack_refs": [
+        "SRC-063"
+      ],
+      "existing_test_refs": [
+        "SRC-064"
+      ],
+      "existing_entries": [
+        "upgrade",
+        "homes plan-upgrade",
+        "homes apply-upgrade",
+        "homes reconcile-upgrade"
+      ],
+      "baseline": {
+        "implementation": "source_mapped",
+        "description": "已有管理式升级、锁、日志和恢复验证基础",
+        "agent_integration": "not_end_to_end_qualified",
+        "runtime_revalidation": "not_run_in_this_design"
+      },
+      "target": {
+        "default_behavior": "旧任务可观察与对账；不兼容时阻止新执行",
+        "integration_gap": "主控自身版本固定、任务兼容与宿主分批资格",
+        "invariants": [
+          "升级不能重放旧副作用或隐式回滚 DB"
+        ],
+        "authority_rule": "Use existing typed authority records and authenticated host grants; manifest and model text grant no authority.",
+        "semantic_policy": "Preserve observable behavior; stricter OSStack identity, scope and authorization checks are allowed and must be documented."
+      },
+      "depends_on": [
+        "FM-03",
+        "FM-14",
+        "FM-19"
+      ],
+      "acceptance": [
+        {
+          "id": "AC-FM-24",
+          "expected": "旧任务可观察与对账；不兼容时阻止新执行",
+          "status": "planned",
+          "required_evidence": [
+            "candidate_bound_contract_test",
+            "host_receipt",
+            "single_entry_journey_trace"
+          ]
+        }
+      ],
+      "activation": {
+        "state": "design_only",
+        "runtime_enabled": false,
+        "required_gates": [
+          "contract_tested",
+          "host_verified",
+          "journey_verified"
+        ],
+        "rollback": "Stop new automatic dispatch; retain observe, cancel, decision and reconciliation paths."
+      }
+    }
+  ]
+}
