@@ -246,3 +246,22 @@ osstack health
 尚需独立验证：真实 Provider 回答、物理断电与文件系统持久性、跨重启的进程域停止证明、恶意同 UID Worker 隔离、非默认租户、远程宿主。单元测试、完整测试和模型审计不能替代这些资格。
 
 完整规格见[修订后的运行时契约](../design/2026-10-25-engineering-agent/runtime-contract-v2.md)与[试点场景](../design/2026-10-25-engineering-agent/pilot-scenarios.json)。
+
+
+## 重复本地集成检查
+
+在干净的开发工作区使用受支持的 Node 版本执行：
+
+```sh
+pnpm install --frozen-lockfile
+pnpm build
+pnpm smoke:engineering-decision
+```
+
+此检查使用独立 daemon 进程、编译后的 CLI 和可控 Adapter。它创建专用 home、授权文件和临时目录，验证采纳、观察、延期、回答一次、完成回合证明、同键重放和回执查询。成功要求 Adapter 恰好调用一次，并确认 daemon 退出。JSON 始终标明 `provider_qualified: false`。CI 执行同一检查。
+
+回答已应用，不代表执行许可已释放。`health` 和 `daemon.drain` 返回 `execution_lease_holds`。仍持有读写许可时，`drained` 为 false；物理写锁释放失败也不能报告安全排空。`daemon.resume` 不释放这些许可。不要为了升级而强行清除锁。
+
+来源身份替换一经发现，Mission 就保持对账限制。即使等待项已清除、原 native ID 恢复、daemon 重启，也不能自动解除。可以查询原动作回执，或明确结束观察。后续手工回合不能成为原 Mission 成功的证据。
+
+集成顺序和外部验证条件见[剩余任务计划](../plans/2026-10-26-session-pilot-debt.md)。
