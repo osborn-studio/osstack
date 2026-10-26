@@ -1,6 +1,6 @@
 # Firstmate → OSStack：能力抽取与升级路线图
 
-日期：2026-10-26（北京时间）。状态：设计与任务登记；本文件不启用运行时能力。
+日期：2026-10-26。状态：设计与任务登记；本文件不启用运行时能力。
 
 目标：用户只与 OSStack 工程 Agent 沟通。OSStack 负责识别目标、调查、拆解、选择 Loop / Graph / Scout、安排工作者、持续监督、收集必要决定、验证同一候选并交付。工作者可被查看，但不需要用户管理。
 
@@ -116,6 +116,8 @@ flowchart LR
 | I04 | 主控及多个 home 升级 | 版本与 schema 兼容；未完成任务可恢复；旧写者不能复活 |
 
 每个工作包再按 `.a 协议与纯逻辑 → .b 宿主接线 → .c 旅程与证据` 拆成小 PR；不预先为所有阶段复制数据模型。通常每个实现 PR 修改不超过约 5 个主要文件。新增 migration 与共享协议先合入，再并行做 adapter；每个 PR 直接面向 main，待前置合入后重建后续候选。
+
+原计划中的建议文件名不等于最终落点。当前试点协议位于 `packages/protocol/src/engineering.ts`，存储与派发位于 `packages/core/src/state/engineering-store.ts`、`engineering-ddl.ts`、`engineering-dispatch.ts`，宿主位于 `packages/cli/src/engineering-host.ts`。后续 C/D 工作优先复用这些实际模块，不能依据历史计划再新建第二套 Mission、等待或发送存储。
 
 ## 6. 补入原设计的八项功能工作包
 
