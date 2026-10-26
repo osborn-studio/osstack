@@ -13,7 +13,7 @@
 5. [原始材料与独立验证](evidence-and-methods.md)：源码证据、研究方法、工具和不能由模型意见替代的验证。
 6. [改写后的题目与任务说明](task-prompt.md)：可直接交给实施团队的任务。
 7. [Fable 5.1 挑战审计报告](audit-report.md)：原始意见、逐项核验、设计修订及复审结论。
-8. [采纳试点交付报告](https://github.com/osborn-studio/osstack/blob/cf3bc68c71c336b59d0b3735b24bcd22209813b0/docs/reports/2026-10-25-session-adoption-pilot.md)与[Sonnet 5.5 实现审计](https://github.com/osborn-studio/osstack/blob/cf3bc68c71c336b59d0b3735b24bcd22209813b0/docs/design/2026-10-25-engineering-agent/evidence/sonnet-5.5/disposition.md)：当前源码、命令、本地验证、实际任务账本和未通过的真实环境资格。
+8. [采纳试点交付报告](../../reports/2026-10-25-session-adoption-pilot.md)与[Sonnet 5.5 实现审计](evidence/sonnet-5.5/disposition.md)：当前源码、命令、本地验证、实际任务账本和未通过的真实环境资格。
 9. [设计阶段验证记录](validation.md)：保留设计交付时的执行结果；当前实现的验证见采纳试点交付报告。
 
 另有 [运行时资格契约草案](qualification-contract.schema.json) 和 [允许的语义差异](semantic-divergences.json)。前者仅定义证据结构，后者约束后续差分验收；二者均不代表运行时已经通过认证。
