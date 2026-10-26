@@ -34,6 +34,8 @@ surface that makes AI coding work visible and auditable.
 
 ## Firstmate capabilities and commands
 
+For the next integration stage, see the [engineering-agent upgrade roadmap](docs/design/2026-10-26-firstmate-upgrade/README.md). It maps all 24 capabilities to 50 work packages and acceptance evidence. Automatic goal dispatch and Loop/Graph selection remain planned; the delivered Session adoption pilot has a narrower scope.
+
 Firstmate’s 24 capability mappings are integrated into main and included in CLI 0.22.1. They use new commands and existing OSStack mechanisms. **Package publication does not qualify every live integration.** Remote hosts, external transports, managed upgrades and live models still need environment-specific checks. See the [delivery and upgrade guide](docs/guides/install-upgrade.en.md).
 
 | Purpose | Command entry points |

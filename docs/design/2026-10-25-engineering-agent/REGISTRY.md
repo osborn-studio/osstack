@@ -4,6 +4,8 @@ This machine-readable design registry records 24 Firstmate capabilities, 74 fixe
 
 这是设计注册表。运行时启用状态保持关闭；本地测试、模型审计和生产资格是不同证据。
 
+The [2026-10-26 adoption roadmap](../2026-10-26-firstmate-upgrade/README.md) adds current scope, source anchors and 50 mapped work packages. It preserves these frozen records. 新路线图补充当前交付范围与后续工作，不改写此处的历史验证状态。
+
 Run the structural and dependency validator with Python 3 and `jsonschema >= 4`:
 
 ```sh

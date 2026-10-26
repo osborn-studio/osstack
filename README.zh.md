@@ -32,6 +32,8 @@ DeepSeek 检查器以及你自己的脚本，组织成一套可路由、可循�
 
 ## Firstmate 能力与命令
 
+后续融合见[工程 Agent 升级路线图](docs/design/2026-10-26-firstmate-upgrade/README.md)：24 项能力逐一映射到 50 个工作包和验收证据。自动目标派发及 Loop/Graph 选择仍属计划；已交付的 Session 采纳试点范围更小。
+
 Firstmate 的 24 项能力映射已整合到 main，并随 CLI 0.22.1 发布。它们通过新增命令和 OSStack 既有机制实现。**npm 发布不等于所有真实集成都已验收。** 远程主机、外部消息传输、托管升级和真实模型仍需按环境验证。请参阅[交付与升级指南](docs/guides/install-upgrade.md)。
 
 | 用途 | 命令入口 |
