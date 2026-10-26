@@ -472,3 +472,34 @@ it('SIGKILL inside guarded work leaves ownership and the mutation guard for expl
   expect(await readFile(path, 'utf8')).toBe(before);
   expect(await readdir(directory)).toContain(basename(path) + '.guard');
 }, 10000);
+
+
+it.each(['before_publication', 'after_publication'] as const)(
+  'does not attest absence when its metadata guard cleanup fails %s', async phase => {
+    const repoId = 'guard-cleanup-failure';
+    const path = repoLockPath(directory, repoId);
+    const guard = `${path}.guard`;
+    let ticks = 0;
+    let absent = false;
+    if (phase === 'before_publication') {
+      await writeFile(path, JSON.stringify({ pid: process.pid, autonomy_run_id: 'existing',
+        repo_id: repoId, acquired_at: new Date().toISOString() }));
+    }
+    await expect(acquireRepoWriteLock({
+      root_dir: directory, repo_id: repoId, autonomy_run_id: 'candidate', recover_stale: false,
+      on_not_acquired: () => { absent = true; },
+      now: () => {
+        ticks++;
+        if (phase === 'after_publication' && ticks === 2) writeFileSync(join(guard, 'block-rmdir'), 'fixture');
+        return new Date().toISOString();
+      },
+      is_process_alive: () => {
+        if (phase === 'before_publication') writeFileSync(join(guard, 'block-rmdir'), 'fixture');
+        return true;
+      },
+    })).rejects.toMatchObject({ code: 'ENOTEMPTY' });
+    expect(absent).toBe(false);
+    expect((await inspectRepoWriteLock(directory, repoId))?.autonomy_run_id).toBe(phase === 'before_publication' ? 'existing' : 'candidate');
+    expect(await readdir(guard)).toEqual(['block-rmdir']);
+  },
+);

@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { writeFileSync } from 'node:fs';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdir, mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { execFileSync } from 'node:child_process';
@@ -65,8 +65,17 @@ it('rejects same-run reentry promptly and shares canonical lock across independe
   const f = await fixture();
   const lease = await f.admission.acquire({ kind: 'write', runId: 'same', workspacePath: f.repo });
   await expect(f.admission.acquire({ kind: 'write', runId: 'same', workspacePath: f.other })).rejects.toThrow('already admitted');
-  const independent = new GovernedExecution({ reads: new FifoSemaphore(1), writes: new FifoSemaphore(1), repositories: new Map(), checkHealth: async () => {} });
-  await expect(independent.acquire({ kind: 'write', runId: 'other-home', workspacePath: f.other })).rejects.toThrow('locked');
+  const independentWrites = new FifoSemaphore(1);
+  const independentQueues = new Map<string, FifoSemaphore>();
+  const independent = new GovernedExecution({ reads: new FifoSemaphore(1), writes: independentWrites, repositories: independentQueues, checkHealth: async () => {} });
+  let notAcquired = false;
+  await expect(independent.acquire({ kind: 'write', runId: 'other-home', workspacePath: f.other,
+    onNotAcquired: () => { notAcquired = true; },
+  })).rejects.toThrow('locked');
+  expect(notAcquired).toBe(true);
+  // Ordinary contention acquired no physical lock and must free its capacity.
+  expect(independentWrites.in_use).toBe(0);
+  expect(independentQueues.size).toBe(0);
   await lease.release();
   const next = await independent.acquire({ kind: 'write', runId: 'after', workspacePath: f.other });
   await next.release();
@@ -170,7 +179,9 @@ it('preserves both admission and cleanup errors and quarantines a replaced pre-a
       throw Error('grant revoked');
     } });
   await expect(attempt).rejects.toMatchObject({ name: 'AggregateError', errors: [expect.objectContaining({ message: 'grant revoked' }), expect.any(Error)] });
-  expect(notAcquired).toBe(false); expect(f.writes.in_use).toBe(0);
+  expect(notAcquired).toBe(false); expect(f.writes.in_use).toBe(1);
+  expect(f.admission.hasWriters).toBe(true);
+  expect([...f.repositories.values()][0]?.in_use).toBe(1);
   expect((await inspectRepoWriteLock(root, scope.repoId))?.token).toBe(token);
   await expect(f.admission.acquire({ kind: 'write', runId: 'next', workspacePath: f.repo })).rejects.toThrow('reconciliation required');
 });
@@ -253,3 +264,65 @@ it('coalesces normal release and reconciliation until the physical repository lo
   releasePhysical(); await Promise.all([pending, second, recovery]);
   expect(recovered).toBe(true); expect(verifications).toBe(1); expect(f.writes.in_use).toBe(0); expect(physicalCalls).toBe(1);
 });
+
+
+it.each(['generic', 'busy', 'ownership', 'corrupt'] as const)('retains a %s acquisition failure after its physical lock was published', async kind => {
+  const f = await fixture();
+  const scope = await resolveRepositoryScope(f.repo);
+  const lockRoot = join(scope.commonDir, 'osstack', 'writer-locks');
+  const original = autonomy.acquireRepoWriteLock;
+  let cleanup: (() => Promise<void>) | undefined;
+  let absenceAttested = false;
+  vi.spyOn(autonomy, 'acquireRepoWriteLock').mockImplementation(async (...args) => {
+    const lock = await original(...args);
+    cleanup = () => lock.release();
+    // Model publication succeeding, followed by mutation-guard cleanup failing
+    // before acquireRepoWriteLock can return its newly created handle.
+    if (kind === 'busy') throw new autonomy.RepoLockBusyError(lock.path, lock.owner);
+    if (kind === 'ownership') throw new autonomy.RepoLockOwnershipError(lock.path);
+    if (kind === 'corrupt') throw new autonomy.RepoLockCorruptError(lock.path, 'fixture post-publication failure');
+    throw Error('fixture post-publication failure');
+  });
+  try {
+    await expect(f.admission.acquire({ kind: 'write', runId: 'published-unknown', workspacePath: f.repo,
+      onNotAcquired: () => { absenceAttested = true; },
+    })).rejects.toThrow();
+    expect(absenceAttested).toBe(false);
+    expect(await inspectRepoWriteLock(lockRoot, scope.repoId)).not.toBeNull();
+    expect(f.writes.in_use).toBe(1);
+    expect([...f.repositories.values()][0]?.in_use).toBe(1);
+    await expect(f.admission.acquire({ kind: 'write', runId: 'next', workspacePath: f.repo })).rejects.toThrow('reconciliation required');
+  } finally { await cleanup?.(); }
+});
+
+
+it.each(['corrupt_owner', 'foreign_repository', 'guard_timeout', 'directory_error'] as const)(
+  'releases capacity after a proven pre-publication %s rejection', async mode => {
+    const f = await fixture();
+    const scope = await resolveRepositoryScope(f.repo);
+    const lockRoot = join(scope.commonDir, 'osstack', 'writer-locks');
+    const lockPath = repoLockPath(lockRoot, scope.repoId);
+    await mkdir(join(scope.commonDir, 'osstack'), { recursive: true });
+    if (mode === 'directory_error') writeFileSync(lockRoot, 'fixture file in place of directory');
+    else {
+      await mkdir(lockRoot);
+      if (mode === 'corrupt_owner') writeFileSync(lockPath, 'not JSON');
+      if (mode === 'foreign_repository') writeFileSync(lockPath, JSON.stringify({
+        pid: process.pid, autonomy_run_id: 'other', repo_id: 'different-repository', acquired_at: new Date().toISOString(),
+      }));
+      if (mode === 'guard_timeout') await mkdir(`${lockPath}.guard`);
+    }
+    let notAcquired = false;
+    await expect(f.admission.acquire({ kind: 'write', runId: 'rejected', workspacePath: f.repo,
+      onNotAcquired: () => { notAcquired = true; },
+    })).rejects.toThrow();
+    expect(notAcquired).toBe(true);
+    expect(f.writes.in_use).toBe(0);
+    expect(f.repositories.size).toBe(0);
+    // Remove only the known disposable fixture, then prove capacity was not
+    // quarantined by an attempt that never published a repository owner.
+    await rm(lockRoot, { recursive: true, force: true });
+    const next = await f.admission.acquire({ kind: 'write', runId: 'after', workspacePath: f.repo });
+    await next.release();
+  },
+);

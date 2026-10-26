@@ -146,7 +146,14 @@ export class EngineeringStore {
     if (!this.db.prepare("SELECT 1 FROM tasks t JOIN runs r ON r.task_id=t.task_id WHERE t.task_id=? AND r.run_id=? AND r.session_id=? AND r.agent_id=? AND t.tenant_id IS NULL AND r.tenant_id IS NULL").get(mission.task_id, mission.run_id, mission.session_id, session.agent_id)) throw new EngineeringSourceFault("identity", "source_scope_changed");
     return { session, snapshot: sessions.latestSnapshot(mission.session_id) };
   }
-  private source(mission: Pick<EngineeringMission, "scope_id" | "task_id" | "run_id" | "session_id" | "source_instance_id" | "repo_path">) {
+  private source(mission: Pick<EngineeringMission, "mission_id" | "scope_id" | "task_id" | "run_id" | "session_id" | "source_instance_id" | "repo_path">) {
+    // A cleared wait must not erase a detected source replacement. Keep the
+    // original Mission quarantined even if the old native identity reappears.
+    // Receipt queries and explicit endObservation do not use this source gate.
+    const identityFault = this.db.prepare(`SELECT json_extract(payload_json,'$.reason') AS reason
+      FROM engineering_events WHERE mission_id=? AND kind='source_observation_error'
+      AND json_extract(payload_json,'$.category')='identity' ORDER BY seq LIMIT 1`).get(mission.mission_id) as { reason: string } | undefined;
+    if (identityFault) throw new EngineeringSourceFault("identity", identityFault.reason);
     const source = this.databaseSource(mission);
     let canonical: string;
     try { canonical = realpathSync(source.session.repo_path); }

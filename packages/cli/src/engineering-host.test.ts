@@ -70,3 +70,48 @@ it("rejects revoked authority before admission with exponential retry intervals 
   }
   expect(admissions).toBe(0);
 });
+
+
+it("releases admission without committing when drain begins during asynchronous acquisition", async () => {
+  root = await createScratchDir("tests", "engineering-drain-barrier");
+  const repo = join(root, "repo");
+  mkdirSync(repo);
+  const auth = join(root, "authority.json");
+  writeFileSync(auth, JSON.stringify({ version: 1, principals: [{
+    credential_sha256: createHash("sha256").update("drain-barrier-credential".repeat(3)).digest("hex"),
+    principal_id: "owner", client_session_id: "ui", read_scopes: [], write_scopes: [], stop_scopes: [], operator_scopes: [],
+  }] }), { mode: 0o600 });
+  let admitted!: () => void;
+  let acquired!: () => void;
+  const acquisitionStarted = new Promise<void>(resolve => { acquired = resolve; });
+  const acquisitionGate = new Promise<void>(resolve => { admitted = resolve; });
+  let draining = false;
+  const released = vi.fn(async () => {});
+  const committed = vi.fn(() => { throw Error("drain must prevent commit"); });
+  const executed = vi.fn(async () => { throw Error("drain must prevent invocation"); });
+  const row = { created_at: 1, action_id: "action", message_id: "message", mission_id: "mission",
+    session_id: "session", owner_principal_id: "owner", client_session_id: "ui" };
+  const store = { listReserved: () => [row], getReserved: () => row, preflightDispatch: () => {},
+    recordDispatchBlocked: () => {}, commitDispatch: committed } as unknown as EngineeringStore;
+  const ports: EngineeringHostPorts = {
+    getSession: id => ({ session_id: id, task_id: "task", run_id: "run", agent_id: "fixture", request_sha256: "a".repeat(64),
+      native_session_id: "native", repo_path: repo, state: "awaiting_decision", resume_supported: true, version: 2, updated_at: 1 }),
+    qualified: () => true, draining: () => draining, active: () => false,
+    acquire: async () => {
+      acquired();
+      await acquisitionGate;
+      return { lease: { release: released, retain: () => {} }, controller: new AbortController(), release: released };
+    },
+    execute: executed, stop: () => false,
+  };
+  host = new EngineeringHost(store, new EngineeringAccess(auth), ports);
+  host.recover();
+  await acquisitionStarted;
+  draining = true;
+  admitted();
+  // Await physical cleanup instead of sleeping for the scheduled dispatch.
+  await expect.poll(() => released.mock.calls.length).toBe(1);
+  expect(committed).not.toHaveBeenCalled();
+  expect(executed).not.toHaveBeenCalled();
+  expect(store.getReserved("action")).toEqual(row);
+});
