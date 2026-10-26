@@ -8,7 +8,7 @@
   },
   "base_plan": "../2026-10-25-engineering-agent/work-items.json",
   "base_plan_sha256": "9e89fcf6f59607ba4f229c9ef98718f3cffa04993341e278a24fa96b41e85770",
-  "inheritance": "Original work, acceptance and depends_on are required; *_add fields append. Current status only describes the stated scope. No automatic dispatch.",
+  "inheritance": "Original task identity and acceptance remain required. depends_on and depends_on_add retain full-package constraints; delivery-gates.json defines narrower prerequisite milestones for incremental development. Neither graph dispatches work or grants authority.",
   "board": "firstmate-upgrade-roadmap",
   "owner_roles": {
     "R": "契约/来源维护者",
@@ -35,7 +35,8 @@
       "depends_on_add": [],
       "current_state": "planned",
       "acceptance_add": "协议区分行为契约、宿主资格与当前交付记录；稳定 ID 不携带命令或权限",
-      "verification": "schema 正负例、旧版本兼容与无任意命令测试"
+      "verification": "schema 正负例、旧版本兼容与无任意命令测试",
+      "owner_role": "契约/来源维护者"
     },
     {
       "id": "R02",
@@ -44,7 +45,8 @@
       "depends_on_add": [],
       "current_state": "planned",
       "acceptance_add": "loader 校验构建摘要、撤销与版本；只读来源库不加载运行 home 内容",
-      "verification": "替换文件、过期资格和未签发条目均拒绝"
+      "verification": "替换文件、过期资格和未签发条目均拒绝",
+      "owner_role": "契约/来源维护者"
     },
     {
       "id": "R03",
@@ -52,8 +54,9 @@
       "slice": "S0",
       "depends_on_add": [],
       "current_state": "planned",
-      "acceptance_add": "新增来源分类覆盖 instruction/skill/hook/configuration/presentation；无法分类须分诊",
-      "verification": "相同 Git 对象重放一致；许可和差异索引完备"
+      "acceptance_add": "新增来源分类覆盖 instruction/skill/hook/configuration/presentation；无法分类须分诊；分类必须包括 runtime/test。外部 tasks-axi/quota-axi 版本与实现未固定，列为未解析依赖，不认证依赖它们的行为。归档固定提交 git bundle、manifest 与许可证；来源维护者每次升级前及每月人工检查候选，不自动升级或执行上游代码。",
+      "verification": "相同 Git 对象重放一致；许可和差异索引完备",
+      "owner_role": "契约/来源维护者"
     },
     {
       "id": "R04",
@@ -61,8 +64,9 @@
       "slice": "S0",
       "depends_on_add": [],
       "current_state": "planned",
-      "acceptance_add": "24 项及 X01–X08 逐项生成行为 fixture；原 66 场景保留",
-      "verification": "来源→契约→旅程无孤项；上游需外部环境的测试单列"
+      "acceptance_add": "24 项及 X01–X08 逐项生成行为 fixture；原 66 场景保留；模型抽取禁工具、MCP、hooks、任意网络和工作区写；只允许必要模型端点。schema 输出由独立确定性验证器复核；毒化原文不得改变资格或授权。",
+      "verification": "来源→契约→旅程无孤项；上游需外部环境的测试单列",
+      "owner_role": "契约/来源维护者"
     },
     {
       "id": "R05",
@@ -70,8 +74,9 @@
       "slice": "S0",
       "depends_on_add": [],
       "current_state": "planned",
-      "acceptance_add": "持续检查新增行为、资格撤销、来源变更和当前完成证据",
-      "verification": "移除来源、注入循环、伪造完成记录都会失败"
+      "acceptance_add": "持续检查新增行为、资格撤销、来源变更和当前完成证据；负责 CI verifier 和资格签发协议；V03 负责宿主测量，V06 负责独立信任根运维/撤销与发布门禁。签发者不得使用规划器自述作为证据。",
+      "verification": "移除来源、注入循环、伪造完成记录都会失败",
+      "owner_role": "契约/来源维护者"
     },
     {
       "id": "D01",
@@ -82,7 +87,9 @@
       "acceptance_add": "继承原验收；当前完成仅覆盖 adopt_session 范围",
       "verification": "核对本地实现与交付证据；不视为 goal_dispatch 或全宿主资格",
       "scope_profile": "adopt_session",
-      "evidence_refs": ["../../reports/2026-10-26-session-pilot-delivery.json", "../../reports/2026-10-25-session-adoption-pilot.md"]
+      "evidence_refs": ["../../reports/2026-10-26-session-pilot-delivery.json", "../../reports/2026-10-25-session-adoption-pilot.md"],
+      "owner_role": "Session/决定开发者",
+      "current_evidence": "current-evidence.json"
     },
     {
       "id": "D02",
@@ -93,7 +100,9 @@
       "acceptance_add": "继承原验收；当前完成仅覆盖 adopt_session 范围",
       "verification": "核对本地实现与交付证据；不视为 goal_dispatch 或全宿主资格",
       "scope_profile": "adopt_session",
-      "evidence_refs": ["../../reports/2026-10-26-session-pilot-delivery.json", "../../reports/2026-10-25-session-adoption-pilot.md"]
+      "evidence_refs": ["../../reports/2026-10-26-session-pilot-delivery.json", "../../reports/2026-10-25-session-adoption-pilot.md"],
+      "owner_role": "Session/决定开发者",
+      "current_evidence": "current-evidence.json"
     },
     {
       "id": "D03",
@@ -104,7 +113,9 @@
       "acceptance_add": "继承原验收；当前完成仅覆盖 adopt_session 范围",
       "verification": "核对本地实现与交付证据；不视为 goal_dispatch 或全宿主资格",
       "scope_profile": "adopt_session",
-      "evidence_refs": ["../../reports/2026-10-26-session-pilot-delivery.json", "../../reports/2026-10-25-session-adoption-pilot.md"]
+      "evidence_refs": ["../../reports/2026-10-26-session-pilot-delivery.json", "../../reports/2026-10-25-session-adoption-pilot.md"],
+      "owner_role": "Session/决定开发者",
+      "current_evidence": "current-evidence.json"
     },
     {
       "id": "D04",
@@ -115,7 +126,9 @@
       "acceptance_add": "继承原验收；当前完成仅覆盖 adopt_session 范围",
       "verification": "核对本地实现与交付证据；不视为 goal_dispatch 或全宿主资格",
       "scope_profile": "adopt_session",
-      "evidence_refs": ["../../reports/2026-10-26-session-pilot-delivery.json", "../../reports/2026-10-25-session-adoption-pilot.md"]
+      "evidence_refs": ["../../reports/2026-10-26-session-pilot-delivery.json", "../../reports/2026-10-25-session-adoption-pilot.md"],
+      "owner_role": "Session/决定开发者",
+      "current_evidence": "current-evidence.json"
     },
     {
       "id": "D05",
@@ -126,7 +139,9 @@
       "acceptance_add": "继承原验收；当前完成仅覆盖 adopt_session 范围",
       "verification": "核对本地实现与交付证据；不视为 goal_dispatch 或全宿主资格",
       "scope_profile": "adopt_session",
-      "evidence_refs": ["../../reports/2026-10-26-session-pilot-delivery.json", "../../reports/2026-10-25-session-adoption-pilot.md"]
+      "evidence_refs": ["../../reports/2026-10-26-session-pilot-delivery.json", "../../reports/2026-10-25-session-adoption-pilot.md"],
+      "owner_role": "Session/决定开发者",
+      "current_evidence": "current-evidence.json"
     },
     {
       "id": "D06",
@@ -137,7 +152,9 @@
       "acceptance_add": "继承原验收；当前完成仅覆盖 adopt_session 范围",
       "verification": "核对本地实现与交付证据；不视为 goal_dispatch 或全宿主资格",
       "scope_profile": "adopt_session",
-      "evidence_refs": ["../../reports/2026-10-26-session-pilot-delivery.json", "../../reports/2026-10-25-session-adoption-pilot.md"]
+      "evidence_refs": ["../../reports/2026-10-26-session-pilot-delivery.json", "../../reports/2026-10-25-session-adoption-pilot.md"],
+      "owner_role": "Session/决定开发者",
+      "current_evidence": "current-evidence.json"
     },
     {
       "id": "D07",
@@ -149,7 +166,10 @@
       "verification": "核对本地实现与交付证据；不视为 goal_dispatch 或全宿主资格",
       "scope_profile": "adopt_session",
       "evidence_refs": ["../../reports/2026-10-26-session-pilot-delivery.json", "../../reports/2026-10-25-session-adoption-pilot.md"],
-      "blocker": "本地等待测试已交付；WD-19/28/32/33/41/43 的完整宿主资格仍缺证据。环境责任人提供受控宿主后复验。"
+      "blocker": "本地等待测试已交付；WD-19/28/32/33/41/43 的完整宿主资格仍缺证据。环境责任人提供受控宿主后复验。",
+      "owner_role": "Session/决定开发者",
+      "unblock_condition": "本地等待测试已交付；WD-19/28/32/33/41/43 的完整宿主资格仍缺证据。环境责任人提供受控宿主后复验。",
+      "missing_evidence": ["qualified host/provider observations with retained failure diagnostics"]
     },
     {
       "id": "D08",
@@ -161,7 +181,10 @@
       "verification": "核对本地实现与交付证据；不视为 goal_dispatch 或全宿主资格",
       "scope_profile": "adopt_session",
       "evidence_refs": ["../../reports/2026-10-26-session-pilot-delivery.json", "../../reports/2026-10-25-session-adoption-pilot.md"],
-      "blocker": "本地完整 CLI 旅程及一次实际 Codex start/resume 有证据；受控 Claude、多宿主及完整恢复组合待环境负责人提供条件。"
+      "blocker": "本地完整 CLI 旅程及一次实际 Codex start/resume 有证据；受控 Claude、多宿主及完整恢复组合待环境负责人提供条件。",
+      "owner_role": "Session/决定开发者",
+      "unblock_condition": "本地完整 CLI 旅程及一次实际 Codex start/resume 有证据；受控 Claude、多宿主及完整恢复组合待环境负责人提供条件。",
+      "missing_evidence": ["qualified host/provider observations with retained failure diagnostics"]
     },
     {
       "id": "C01",
@@ -172,7 +195,9 @@
       "acceptance_add": "继承原验收；当前完成仅覆盖 adopt_session 范围",
       "verification": "核对本地实现与交付证据；不视为 goal_dispatch 或全宿主资格",
       "scope_profile": "adopt_session",
-      "evidence_refs": ["../../reports/2026-10-26-session-pilot-delivery.json", "../../reports/2026-10-25-session-adoption-pilot.md"]
+      "evidence_refs": ["../../reports/2026-10-26-session-pilot-delivery.json", "../../reports/2026-10-25-session-adoption-pilot.md"],
+      "owner_role": "主控/存储开发者",
+      "current_evidence": "current-evidence.json"
     },
     {
       "id": "C02",
@@ -183,7 +208,9 @@
       "acceptance_add": "继承原验收；当前完成仅覆盖 adopt_session 范围",
       "verification": "核对本地实现与交付证据；不视为 goal_dispatch 或全宿主资格",
       "scope_profile": "adopt_session",
-      "evidence_refs": ["../../reports/2026-10-26-session-pilot-delivery.json", "../../reports/2026-10-25-session-adoption-pilot.md"]
+      "evidence_refs": ["../../reports/2026-10-26-session-pilot-delivery.json", "../../reports/2026-10-25-session-adoption-pilot.md"],
+      "owner_role": "主控/存储开发者",
+      "current_evidence": "current-evidence.json"
     },
     {
       "id": "C03",
@@ -191,8 +218,9 @@
       "slice": "S1",
       "depends_on_add": [],
       "current_state": "planned",
-      "acceptance_add": "Mission revision、plan revision、source generation 和 binding generation 分开",
-      "verification": "纯状态机重放不调模型、不产生副作用"
+      "acceptance_add": "Mission revision、plan revision、source generation 和 binding generation 分开；S1 复用 engineering-store/ddl 扩展 MissionPlan、ExecutorBinding、ActionIntent 与累计预算预留账本；重新规划/引擎切换不重置预算；不得新建第二套 Mission 权威。",
+      "verification": "纯状态机重放不调模型、不产生副作用",
+      "owner_role": "主控/存储开发者"
     },
     {
       "id": "C04",
@@ -200,17 +228,19 @@
       "slice": "S1",
       "depends_on_add": [],
       "current_state": "planned",
-      "acceptance_add": "复用 daemon owner；接管与旧进程静默证明分开",
-      "verification": "旧 owner/绑定/撤权竞争的故障测试"
+      "acceptance_add": "复用 daemon owner；接管与旧进程静默证明分开；S2 前实现 ADR-17 拟定 start_executor 相位、精确 typed effect digest、授权单次消费与取消线性化；租约接管不证明执行器停止。",
+      "verification": "旧 owner/绑定/撤权竞争的故障测试",
+      "owner_role": "主控/存储开发者"
     },
     {
       "id": "C05",
       "inherits": "C05",
       "slice": "S2",
-      "depends_on_add": [],
+      "depends_on_add": ["DEBT02"],
       "current_state": "planned",
-      "acceptance_add": "安装、drain、恢复与观测共用既有服务生命周期；无重复 watcher",
-      "verification": "macOS/Linux 前台退出、接管及恢复分别验证"
+      "acceptance_add": "安装、drain、恢复与观测共用既有服务生命周期；无重复 watcher；S2 上线前交付 DEBT02 恢复入口及迁移恢复构建；无法证明静默时保持隔离，不能承诺所有 unknown 可释放。",
+      "verification": "macOS/Linux 前台退出、接管及恢复分别验证",
+      "owner_role": "主控/存储开发者"
     },
     {
       "id": "C06",
@@ -218,8 +248,9 @@
       "slice": "S1",
       "depends_on_add": [],
       "current_state": "planned",
-      "acceptance_add": "严格 action schema、循环抑制和无变化零模型调用；计划解释可追溯",
-      "verification": "注入越权、过期、非 JSON 和循环建议；全部不得执行"
+      "acceptance_add": "严格 action schema、循环抑制和无变化零模型调用；计划解释可追溯；接入 run_approval/run_clarify/contract_approval 三类 resolver；回答只解除对应问题，写派发另需匹配当前 typed intent 的授权。",
+      "verification": "注入越权、过期、非 JSON 和循环建议；全部不得执行",
+      "owner_role": "主控/存储开发者"
     },
     {
       "id": "C07",
@@ -228,7 +259,8 @@
       "depends_on_add": [],
       "current_state": "planned",
       "acceptance_add": "纳入 stow、内外技能分层、外部记忆、预算/衰减/归档/reset 检查",
-      "verification": "来源错误、跨项目污染、用户纠正、过期与记忆注入测试"
+      "verification": "来源错误、跨项目污染、用户纠正、过期与记忆注入测试",
+      "owner_role": "主控/存储开发者"
     },
     {
       "id": "E01",
@@ -236,17 +268,19 @@
       "slice": "S2",
       "depends_on_add": ["X05"],
       "current_state": "planned",
-      "acceptance_add": "模型、harness、视图、账号 profile 和宿主资格独立声明",
-      "verification": "Executor contract suite 校验产物/终止/恢复/版本组合"
+      "acceptance_add": "模型、harness、视图、账号 profile 和宿主资格独立声明；准入 profile 必须声明 actor/tenant/repository identity、允许操作、隔离能力、adapter/host 版本及 evidence digest；可信同用户实验明确不支持恶意同 UID 隔离。",
+      "verification": "Executor contract suite 校验产物/终止/恢复/版本组合",
+      "owner_role": "执行器开发者"
     },
     {
       "id": "E02",
       "inherits": "E02",
       "slice": "S2",
-      "depends_on_add": ["X02"],
+      "depends_on_add": ["X02", "DEBT02"],
       "current_state": "planned",
-      "acceptance_add": "Loop 服务接口与 CLI 共享业务层；controller_once 精确授权",
-      "verification": "旧 CLI 回归与重放、双消费、候选漂移负例"
+      "acceptance_add": "Loop 服务接口与 CLI 共享业务层；controller_once 精确授权；S2 先满足 C03.budget_storage、C04.start_dispatch、I03.local_proof、I04.compat_recovery、DEBT02.recovery_contract；DEBT01 的安全失败合同先验收，清理便利性优化不阻断。",
+      "verification": "旧 CLI 回归与重放、双消费、候选漂移负例",
+      "owner_role": "执行器开发者"
     },
     {
       "id": "E03",
@@ -255,7 +289,8 @@
       "depends_on_add": [],
       "current_state": "planned",
       "acceptance_add": "Graph 当前 artifact 能力不能伪装成 PR 支持",
-      "verification": "各模板独立完成、停止、重启和不支持范围测试"
+      "verification": "各模板独立完成、停止、重启和不支持范围测试",
+      "owner_role": "执行器开发者"
     },
     {
       "id": "E04",
@@ -264,7 +299,8 @@
       "depends_on_add": ["DEBT03"],
       "current_state": "planned",
       "acceptance_add": "调查与实施转换绑定当前 HEAD、scope 与权限；手工发送回执保全",
-      "verification": "只读到写权限提升、陈旧 HEAD、清理失败场景"
+      "verification": "只读到写权限提升、陈旧 HEAD、清理失败场景",
+      "owner_role": "执行器开发者"
     },
     {
       "id": "E05",
@@ -272,8 +308,9 @@
       "slice": "S3",
       "depends_on_add": ["X03"],
       "current_state": "planned",
-      "acceptance_add": "资格过滤先于模型评分；所有分支沿用累计预算",
-      "verification": "保留集比较路由；切换检查点、预算耗尽与 unknown 场景"
+      "acceptance_add": "资格过滤先于模型评分；所有分支沿用累计预算；调用模型前应用任务数据出站 allowlist/never-send 和额度快照新鲜度门禁；无可用额度不得借路由绕过准入。",
+      "verification": "保留集比较路由；切换检查点、预算耗尽与 unknown 场景",
+      "owner_role": "执行器开发者"
     },
     {
       "id": "E06",
@@ -281,8 +318,9 @@
       "slice": "S3",
       "depends_on_add": [],
       "current_state": "planned",
-      "acceptance_add": "写集合及设备锁决定并行；集成候选串行验证",
-      "verification": "冲突隔离、两分支分别通过但集成失败的测试"
+      "acceptance_add": "写集合及设备锁决定并行；集成候选串行验证；Mission 取消扇出：未提交步骤取消，已提交步骤请求停止，unknown 保留；安全停止不依赖普通工作队列。",
+      "verification": "冲突隔离、两分支分别通过但集成失败的测试",
+      "owner_role": "执行器开发者"
     },
     {
       "id": "I01",
@@ -290,8 +328,9 @@
       "slice": "S4",
       "depends_on_add": [],
       "current_state": "planned",
-      "acceptance_add": "harness hook、事件游标、提醒预算与返回简报共享主控事实",
-      "verification": "终端关闭、事件 gap、静默、未回答问题恢复"
+      "acceptance_add": "harness hook、事件游标、提醒预算与返回简报共享主控事实；活而无进展 Worker 由进展游标和时间窗判断，单 episode 有界提醒/升级，达到上限停靠；不能自动杀任意进程。通知失败独立可观测并有有界告警。",
+      "verification": "终端关闭、事件 gap、静默、未回答问题恢复",
+      "owner_role": "集成负责人"
     },
     {
       "id": "I02",
@@ -300,7 +339,8 @@
       "depends_on_add": ["X04"],
       "current_state": "planned",
       "acceptance_add": "受信 process-event 扩展与远端绑定；传输只报告事实",
-      "verification": "断线/重连/乱序/过期回执和观察新鲜度测试"
+      "verification": "断线/重连/乱序/过期回执和观察新鲜度测试",
+      "owner_role": "集成负责人"
     },
     {
       "id": "I03",
@@ -308,17 +348,19 @@
       "slice": "S5",
       "depends_on_add": [],
       "current_state": "planned",
-      "acceptance_add": "PR 健康、候选漂移、完成级别、清理与承诺共享证据关联",
-      "verification": "local/PR/merged/published/deployed 严格分级，同候选重验"
+      "acceptance_add": "PR 健康、候选漂移、完成级别、清理与承诺共享证据关联；S2 前先交付 local CompletionProof；S5 再扩展 forge/发布/承诺。绑定精确候选、所需检查集合、产物与范围；缺必需检查 fail closed；队列/auto-merge 变化重验；命令成功须权威回读确认。",
+      "verification": "local/PR/merged/published/deployed 严格分级，同候选重验",
+      "owner_role": "集成负责人"
     },
     {
       "id": "I04",
       "inherits": "I04",
       "slice": "S6",
-      "depends_on_add": ["X08"],
+      "depends_on_add": ["X08", "DEBT02"],
       "current_state": "planned",
-      "acceptance_add": "多 home 分批升级，进行中任务固定版本；不复制数据库",
-      "verification": "旧写者拒绝、兼容恢复和无降 schema 回退演练"
+      "acceptance_add": "多 home 分批升级，进行中任务固定版本；不复制数据库；S1 新 migration 前先交付兼容恢复构建和备份/导出验证。保持 ADR-16：旧二进制拒绝新版 schema，cancel 是写操作；回退关闭新派发而不降库，未知义务保留。",
+      "verification": "旧写者拒绝、兼容恢复和无降 schema 回退演练",
+      "owner_role": "集成负责人"
     },
     {
       "id": "V00",
@@ -326,8 +368,9 @@
       "slice": "S0",
       "depends_on_add": [],
       "current_state": "planned",
-      "acceptance_add": "手工基线与自动方案使用相同任务集；分母包含失败/放弃",
-      "verification": "先登记测量协议，再运行授权脱敏样本；缺样本不得报收益"
+      "acceptance_add": "手工基线与自动方案使用相同任务集；分母包含失败/放弃；S0 固定诊断留存协议、故障注入切点和失败/放弃分母。",
+      "verification": "先登记测量协议，再运行授权脱敏样本；缺样本不得报收益",
+      "owner_role": "独立验证/发布负责人"
     },
     {
       "id": "V01",
@@ -336,7 +379,8 @@
       "depends_on_add": [],
       "current_state": "planned",
       "acceptance_add": "独立模型不复制 reducer；外部内容注入属于攻击样本",
-      "verification": "交叉检查不变量；隐藏保留集不由实现者改写"
+      "verification": "交叉检查不变量；隐藏保留集不由实现者改写",
+      "owner_role": "独立验证/发布负责人"
     },
     {
       "id": "V02",
@@ -344,8 +388,9 @@
       "slice": "S6",
       "depends_on_add": [],
       "current_state": "planned",
-      "acceptance_add": "扩展到 X 系列的停止、授权、预算与跨 home 状态机",
-      "verification": "删除关键 fence 或唯一约束后测试必须失败"
+      "acceptance_add": "扩展到 X 系列的停止、授权、预算与跨 home 状态机；每个切片的授权 opt-in 前运行对应变异/故障子集；S6 仅是全矩阵收尾，不能延后前期保护验证。",
+      "verification": "删除关键 fence 或唯一约束后测试必须失败",
+      "owner_role": "独立验证/发布负责人"
     },
     {
       "id": "V03",
@@ -353,9 +398,12 @@
       "slice": "S6",
       "depends_on_add": ["X04", "X06", "X07", "X08"],
       "current_state": "partial_blocked",
-      "acceptance_add": "真实组合逐格认证；隔离、断电、租户、provider、长期运行独立列证据",
+      "acceptance_add": "真实组合逐格认证；隔离、断电、租户、provider、长期运行独立列证据；S0 先准备诊断保全夹具并登记 LIVE01 复验条件；完整真实环境不可用仍 blocked，不能借本地测试签发宿主资格。",
       "verification": "现场实验记录精确版本/候选/失败/排除项；复查中断丢诊断原因",
-      "blocker": "需环境负责人提供物理断电、进程隔离、受控 Provider、远端/非默认租户及长期运行环境。模拟测试继续进行。"
+      "blocker": "需环境负责人提供物理断电、进程隔离、受控 Provider、远端/非默认租户及长期运行环境。模拟测试继续进行。",
+      "owner_role": "独立验证/发布负责人",
+      "unblock_condition": "需环境负责人提供物理断电、进程隔离、受控 Provider、远端/非默认租户及长期运行环境。模拟测试继续进行。",
+      "missing_evidence": ["qualified host/provider observations with retained failure diagnostics"]
     },
     {
       "id": "V04",
@@ -364,7 +412,8 @@
       "depends_on_add": ["X01", "X06"],
       "current_state": "planned",
       "acceptance_add": "J01–J07 对照用户旅程；无需用户管理 Worker",
-      "verification": "完成率、干预数、成本、恢复/队列时间及条件分母分别报告"
+      "verification": "完成率、干预数、成本、恢复/队列时间及条件分母分别报告",
+      "owner_role": "独立验证/发布负责人"
     },
     {
       "id": "V05",
@@ -373,7 +422,8 @@
       "depends_on_add": [],
       "current_state": "planned",
       "acceptance_add": "中文/英文按同一事实源生成；STE-inspired 而非合规认证",
-      "verification": "命令示例逐条执行；neat 和链接检查；无未实现命令"
+      "verification": "命令示例逐条执行；neat 和链接检查；无未实现命令",
+      "owner_role": "独立验证/发布负责人"
     },
     {
       "id": "V06",
@@ -381,9 +431,12 @@
       "slice": "S6",
       "depends_on_add": ["M01", "M02", "X07", "X08"],
       "current_state": "partial_blocked",
-      "acceptance_add": "支持组合逐格灰度；包发布、安装、生效、部署分开记录",
+      "acceptance_add": "支持组合逐格灰度；包发布、安装、生效、部署分开记录；S0 处理 release-channel 权限阻断；每个启用切片验证签发/撤销/信任根与发布通道。不得降低分支保护。",
       "verification": "解除 Actions 版本 PR 权限阻断后验证 npm、PATH、daemon 与回退；不得降低分支保护",
-      "blocker": "Actions 创建版本 PR 被仓库权限阻断；发布负责人按现有保护规则修复流程后复验。其他 V 系列也尚未完成。"
+      "blocker": "Actions 创建版本 PR 被仓库权限阻断；发布负责人按现有保护规则修复流程后复验。其他 V 系列也尚未完成。",
+      "owner_role": "独立验证/发布负责人",
+      "unblock_condition": "Actions 创建版本 PR 被仓库权限阻断；发布负责人按现有保护规则修复流程后复验。其他 V 系列也尚未完成。",
+      "missing_evidence": ["release-channel permission and protected release receipt"]
     },
     {
       "id": "X01",
@@ -392,8 +445,9 @@
       "depends_on_add": ["C03", "D05"],
       "current_state": "planned",
       "proposed_targets": ["packages/cli/src/start-control-command.ts", "packages/cli/src/engineering-command.ts"],
-      "acceptance_add": "输入绑定认证用户、Mission 和范围；改口、暂停、撤权使旧计划失效；人工 Worker steering 进入事件账本",
-      "verification": "J01/J03/J05：单入口接单、改范围和回答；多任务的含糊继续拒绝；外部文本不能伪造操作者"
+      "acceptance_add": "输入绑定认证用户、Mission 和范围；改口、暂停、撤权使旧计划失效；人工 Worker steering 进入事件账本；无法检测人工 Worker steering 的 adapter 将其声明为不支持或 unknown，并使旧计划失效；生命周期控制 interrupt/exit/relaunch 是有后置条件的 typed 操作，不能用任意对话文本代替。",
+      "verification": "J01/J03/J05：单入口接单、改范围和回答；多任务的含糊继续拒绝；外部文本不能伪造操作者",
+      "owner_role": "集成负责人"
     },
     {
       "id": "X02",
@@ -402,8 +456,9 @@
       "depends_on_add": ["C01"],
       "current_state": "planned",
       "proposed_targets": ["packages/core/src/delivery-contract.ts", "packages/cli/src/deliver-command.ts"],
-      "acceptance_add": "local-only/PR 等模式冻结完成合同；rigor 定义检查集合；自仓库身份不自动授予发布；GitHub 后逐项接 GitLab/Gerrit/Forgejo",
-      "verification": "J02/J06：各 forge 独立 sandbox；禁止用 push 权代替 merge/deploy；Gerrit 不伪造人类审核"
+      "acceptance_add": "local-only/PR 等模式冻结完成合同；rigor 定义检查集合；自仓库身份不自动授予发布；GitHub 后逐项接 GitLab/Gerrit/Forgejo；forge 类型必须来自可信配置或确认的 endpoint；作者不能批准自己的 finding；精确 head/required checks/独立批准/merge queue 重验；退出码不代替 merge 状态回读。",
+      "verification": "J02/J06：各 forge 独立 sandbox；禁止用 push 权代替 merge/deploy；Gerrit 不伪造人类审核",
+      "owner_role": "集成负责人"
     },
     {
       "id": "X03",
@@ -412,8 +467,9 @@
       "depends_on_add": ["C03"],
       "current_state": "planned",
       "proposed_targets": ["packages/supervisor/src/engineering/capacity.ts", "packages/core/src/state/engineering-capacity.ts"],
-      "acceptance_add": "lane/project/主机压力/验证设备分别限额；原子预留；unknown 保留资源；PR-ready 在安全检查点释放合适资源",
-      "verification": "并发压力与饥饿测试；崩溃/未知不超卖；停止和撤权独立优先通道"
+      "acceptance_add": "lane/project/主机压力/验证设备分别限额；原子预留；unknown 保留资源；PR-ready 在安全检查点释放合适资源；同一主机的不同 home 使用独立的受信 host resource broker，以规范仓库/设备身份原子租赁，不共享业务 SQLite。unknown 占用保留；PR-ready 释放后返工必须重新准入。压力/电池/保留槽位信号有过期时间。",
+      "verification": "并发压力与饥饿测试；崩溃/未知不超卖；停止和撤权独立优先通道",
+      "owner_role": "集成负责人"
     },
     {
       "id": "X04",
@@ -422,8 +478,9 @@
       "depends_on_add": ["C04", "E05", "I01"],
       "current_state": "planned",
       "proposed_targets": ["packages/supervisor/src/engineering/delegation.ts", "packages/cli/src/remote-home-protocol.ts"],
-      "acceptance_add": "charter 固定父级、scope、深度、预算；持久 outbox/receipt；依赖集移交先冻结原派发权，未知只对账；重复 parent 绑定拒绝",
-      "verification": "J05：父/子崩溃、乱序/丢回执、断线、撤权、部分依赖移交和终止前未报告；不双派发、不静默本地替代"
+      "acceptance_add": "charter 固定父级、scope、深度、预算；持久 outbox/receipt；依赖集移交先冻结原派发权，未知只对账；重复 parent 绑定拒绝；预算 escrow：父级先预留子额度，子未知时不可回收再花；实际费用 unknown 不声称硬 token 上限。子主管空队列默认空闲；有界重拉，超限停靠。远端只允许固定受信入口与编码参数；readiness doctor 不自动安装；macOS Aqua/keychain 单列。",
+      "verification": "J05：父/子崩溃、乱序/丢回执、断线、撤权、部分依赖移交和终止前未报告；不双派发、不静默本地替代",
+      "owner_role": "集成负责人"
     },
     {
       "id": "X05",
@@ -431,9 +488,10 @@
       "slice": "S1",
       "depends_on_add": ["R02", "C01"],
       "current_state": "planned",
-      "proposed_targets": ["packages/protocol/src/engineering-profile.ts", "packages/agents/src", "packages/cli/src/worker-viewer-launch.ts"],
+      "proposed_targets": ["packages/agents/src/adapters/claude-code.ts", "packages/agents/src/adapters/codex-cli.ts", "packages/cli/src/engineering-host.ts"],
       "acceptance_add": "Codex/Claude 首批逐版本实测；其他 harness/backend 每格保留资格；model/effort/account/env allowlist 分开；公开技能与内置技能不混权",
-      "verification": "逐 profile contract suite：登录缺失、参数不支持、view 缺失、secret/env 泄漏、人工介入、终止恢复；未测组合拒绝"
+      "verification": "逐 profile contract suite：登录缺失、参数不支持、view 缺失、secret/env 泄漏、人工介入、终止恢复；未测组合拒绝",
+      "owner_role": "集成负责人"
     },
     {
       "id": "X06",
@@ -442,8 +500,9 @@
       "depends_on_add": ["I01"],
       "current_state": "planned",
       "proposed_targets": ["packages/core/src/state/attention-experience.ts", "packages/cli/src/daily-attention.ts"],
-      "acceptance_add": "quiet/away/Calm 仅控制展示与通知；ahoy/bearings 映射返回和定位；保留全部日志、上下文、未决事项和授权",
-      "verification": "J04：隐藏日志可展开且导出完整；提醒不重复；用户返回先见未决；各 harness 单独截图/终端记录"
+      "acceptance_add": "quiet/away/Calm 仅控制展示与通知；ahoy/bearings 映射返回和定位；保留全部日志、上下文、未决事项和授权；Calm 不隐藏待决问题；通知失败须独立可见，有界重试而非静默丢弃。",
+      "verification": "J04：隐藏日志可展开且导出完整；提醒不重复；用户返回先见未决；各 harness 单独截图/终端记录",
+      "owner_role": "集成负责人"
     },
     {
       "id": "X07",
@@ -452,8 +511,9 @@
       "depends_on_add": ["I03", "X01"],
       "current_state": "planned",
       "proposed_targets": ["packages/cli/src/source-observation-host.ts", "packages/cli/src/follow-up-delivery-host.ts"],
-      "acceptance_add": "inbox/语音/Relay 归一为结构化来源输入；内容不自带授权；公开发送须冻结渠道、内容及身份；一次性执行与 unknown 对账",
-      "verification": "J01/J06：伪造 mention、重复事件、转写歧义、过期配对、内容漂移、发送未知；授权 sandbox 后验证真实回执"
+      "acceptance_add": "inbox/语音/Relay 归一为结构化来源输入；内容不自带授权；公开发送须冻结渠道、内容及身份；一次性执行与 unknown 对账；媒体 URL 是不可信输入，受出站目标/大小/类型/重定向约束。绑定公开承诺的任务在原子跨域移交未认证前禁止远端 handoff；配对 token 不等于写或发布权限。",
+      "verification": "J01/J06：伪造 mention、重复事件、转写歧义、过期配对、内容漂移、发送未知；授权 sandbox 后验证真实回执",
+      "owner_role": "集成负责人"
     },
     {
       "id": "X08",
@@ -462,8 +522,9 @@
       "depends_on_add": ["R02", "C05"],
       "current_state": "planned",
       "proposed_targets": ["packages/cli/src/product-entry-command.ts", "packages/cli/src/upgrade-coordinator.ts"],
-      "acceptance_add": "记录实际 PATH binary、登录与 profile；区分可更新/已安装/进程已生效；安装、切账号和重启各守授权；变更撤销旧资格",
-      "verification": "J07：PATH 遮蔽、多版本、过期凭据、离线检查、旧 daemon、部分 home 升级；不靠版本字符串签发资格"
+      "acceptance_add": "记录实际 PATH binary、登录与 profile；区分可更新/已安装/进程已生效；安装、切账号和重启各守授权；变更撤销旧资格；版本探测仅运行显式允许且身份固定的可执行文件，最小环境、超时和输出上限；不遍历执行任意 PATH 副本。可写/身份未知路径只报风险不执行。",
+      "verification": "J07：PATH 遮蔽、多版本、过期凭据、离线检查、旧 daemon、部分 home 升级；不靠版本字符串签发资格",
+      "owner_role": "集成负责人"
     },
     {
       "id": "M01",
@@ -473,7 +534,8 @@
       "current_state": "planned",
       "proposed_targets": ["packages/cli/src/daemon.ts", "packages/core/src/kanban/repository.ts"],
       "acceptance_add": "提供外部 ID upsert、依赖引用和 source/candidate/receipt 更新；当前状态独立于冻结计划；重导不重复；卡片不产生权限",
-      "verification": "并发导入、部分失败、重复 ID、循环依赖、缺候选/证据时虚假完成；实际命名看板回读"
+      "verification": "并发导入、部分失败、重复 ID、循环依赖、缺候选/证据时虚假完成；实际命名看板回读",
+      "owner_role": "看板维护者"
     },
     {
       "id": "M02",
@@ -483,7 +545,8 @@
       "current_state": "planned",
       "proposed_targets": ["packages/cli/src/dashboard.ts", "packages/cli/src/stack-cli.ts"],
       "acceptance_add": "UI/CLI 可选 board 和 scope；区分 feature、工作包、验证、债务、完成与资格；默认空看板不掩盖项目",
-      "verification": "多个命名看板、空板、筛选、分页、部分资格；数字能追到卡片及固定候选"
+      "verification": "多个命名看板、空板、筛选、分页、部分资格；数字能追到卡片及固定候选",
+      "owner_role": "看板维护者"
     },
     {
       "id": "DEBT01",
@@ -493,17 +556,21 @@
       "current_state": "planned",
       "proposed_targets": ["packages/autonomy/src/repo-lock.ts", "packages/cli/src/engineering-host.ts"],
       "acceptance_add": "仅确认 pre-rename 且未产生副作用时清理保守锁；unknown、已发布或身份变化继续保全",
-      "verification": "在 rename 前/后注入失败，确认前者可安全恢复而后者不能错误解锁"
+      "verification": "在 rename 前/后注入失败，确认前者可安全恢复而后者不能错误解锁",
+      "owner_role": "Session/恢复开发者",
+      "canonical_card": "session-pilot-debt/card_c676432e"
     },
     {
       "id": "DEBT02",
       "title": "未知执行义务的操作员恢复",
-      "slice": "S4",
+      "slice": "S2",
       "depends_on_add": [],
       "current_state": "planned",
       "proposed_targets": ["packages/cli/src/engineering-host.ts", "packages/core/src/state/engineering-store.ts"],
-      "acceptance_add": "受信操作者凭精确执行身份和静默证据处置 obligation；审计原因；不能以删除账本当恢复",
-      "verification": "旧身份、缺静默证据、跨租户操作拒绝；恢复可重放且不重发副作用"
+      "acceptance_add": "受信操作者凭精确执行身份和静默证据处置 obligation；审计原因；不能以删除账本当恢复；恢复保留原 effect 身份及账本，审计 operator 权限和证据；缺静默证据只能隔离/升级，不能删除锁强行恢复。",
+      "verification": "旧身份、缺静默证据、跨租户操作拒绝；恢复可重放且不重发副作用",
+      "owner_role": "Session/恢复开发者",
+      "canonical_card": "session-pilot-debt/card_f251dadf"
     },
     {
       "id": "DEBT03",
@@ -513,7 +580,28 @@
       "current_state": "planned",
       "proposed_targets": ["packages/cli/src/daemon.ts", "packages/core/src/state/session-continuations.ts"],
       "acceptance_add": "session.send 已应用后即使 cleanup 失败仍保留 applied 回执；未知不能降格为未发送",
-      "verification": "真实 DB/故障注入：应用成功+清理失败、重启、重复调用保持原回执并阻止重复发送"
+      "verification": "真实 DB/故障注入：应用成功+清理失败、重启、重复调用保持原回执并阻止重复发送",
+      "owner_role": "Session/恢复开发者",
+      "canonical_card": "session-pilot-debt/card_9a161476"
+    }
+  ],
+  "pr_slicing_policy": "The three labels are optional review boundaries, not a mandatory 150-PR quota. Keep each PR independently reviewable and based on main after prerequisites land.",
+  "frozen_manifests": [
+    {
+      "path": "../2026-10-25-engineering-agent/work-items.json",
+      "sha256": "9e89fcf6f59607ba4f229c9ef98718f3cffa04993341e278a24fa96b41e85770"
+    },
+    {
+      "path": "../2026-10-25-engineering-agent/capabilities.json",
+      "sha256": "6ed659e7c2c84781fe01fd468d4f78644348e158b716a025791065daa5d7e3ff"
+    },
+    {
+      "path": "../2026-10-25-engineering-agent/sources.json",
+      "sha256": "30cd9f3a810c981ddb13706676af8394f7ec10a3a49bf42b7e52915e93b9b327"
+    },
+    {
+      "path": "../2026-10-25-engineering-agent/semantic-divergences.json",
+      "sha256": "9a9684fce53dd8e933ae2e240e2fcf9c63ed5739480d92782353eee12a542865"
     }
   ]
 }

@@ -1,6 +1,6 @@
 # Firstmate → OSStack：能力抽取与升级路线图
 
-日期：2026-10-26。状态：设计与任务登记；本文件不启用运行时能力。
+日期：2026-10-26；审计修订：2026-10-27（Asia/Shanghai）。状态：设计与任务登记；本文件不启用运行时能力。
 
 目标：用户只与 OSStack 工程 Agent 沟通。OSStack 负责识别目标、调查、拆解、选择 Loop / Graph / Scout、安排工作者、持续监督、收集必要决定、验证同一候选并交付。工作者可被查看，但不需要用户管理。
 
@@ -15,9 +15,11 @@
 | 原设计 | `docs/design/2026-10-25-engineering-agent/` | 24 项能力、37 项原工作包、66 个分阶段场景；冻结记录不改写为当前完成状态 |
 | 已交付范围 | 显式开启的 `adopt_session` | 能回答既有等待、观察原回复回合；不能据此声明完整 `goal_dispatch` 已交付 |
 
-main 的 [CI 40332791896](https://github.com/osborn-studio/osstack/actions/runs/40332791896) 为 5,950 passed / 7 条件跳过 / 0 failed；另有 13 项冒烟自测及完整本地决策流程通过。[Release 40332791930](https://github.com/osborn-studio/osstack/actions/runs/40332791930) 被 Actions 创建版本 PR 的权限阻断。合并、发布、部署和环境资格是四个状态。
+固定基线 `c1cfccf`（Linux）的 [CI 40332791896](https://github.com/osborn-studio/osstack/actions/runs/40332791896) 为 5,950 passed / 7 条件跳过 / 0 failed。历史候选 `64daf4af`（macOS）另有 13 项冒烟自测及完整本地决策流程通过；本次核对这两个提交的生产目录完全一致，但未复跑真实 Provider。当前观察及历史证据摘要见 [current-evidence.json](current-evidence.json)。[Release 40332791930](https://github.com/osborn-studio/osstack/actions/runs/40332791930) 被 Actions 创建版本 PR 的权限阻断。合并、发布、部署和环境资格是四个状态。
 
 原 20 项后续融合工作包继续保留。新增 X01–X08 八项显式功能工作包，补齐原计划只概括、未独立验收的行为。再登记 M01–M02 两项管理缺口及 DEBT01–DEBT03 三项已有技术债。连同原 37 项，路线图共 50 个工作包；不是 50 个独立 feature，也不是 50 个可直接并行的编码任务。
+
+优先读取 [审计修订合同](audit-revision.md)、[分层依赖门槛](delivery-gates.json)、[新增反例与语义差异](audit-contracts.json)。这些补充约束当前路线图；原 ADR-01–16 保持有效。
 
 配套文件：
 
@@ -115,7 +117,7 @@ flowchart LR
 | I03 | 完成、清理、外部承诺与发布 | local / PR / merged / published / deployed 分级证明 |
 | I04 | 主控及多个 home 升级 | 版本与 schema 兼容；未完成任务可恢复；旧写者不能复活 |
 
-每个工作包再按 `.a 协议与纯逻辑 → .b 宿主接线 → .c 旅程与证据` 拆成小 PR；不预先为所有阶段复制数据模型。通常每个实现 PR 修改不超过约 5 个主要文件。新增 migration 与共享协议先合入，再并行做 adapter；每个 PR 直接面向 main，待前置合入后重建后续候选。
+按需要选择 `.a 协议与纯逻辑 → .b 宿主接线 → .c 旅程与证据` 的审查边界，不强制每包三个 PR；不预先为所有阶段复制数据模型。通常每个实现 PR 修改不超过约 5 个主要文件。新增 migration 与共享协议先合入，再并行做 adapter；每个 PR 直接面向 main，待前置合入后重建后续候选。
 
 原计划中的建议文件名不等于最终落点。当前试点协议位于 `packages/protocol/src/engineering.ts`，存储与派发位于 `packages/core/src/state/engineering-store.ts`、`engineering-ddl.ts`、`engineering-dispatch.ts`，宿主位于 `packages/cli/src/engineering-host.ts`。后续 C/D 工作优先复用这些实际模块，不能依据历史计划再新建第二套 Mission、等待或发送存储。
 
@@ -148,7 +150,7 @@ flowchart LR
 
 **RD-05：跨 home 不共享数据库。** 远端保存本地权威；父级保存绑定及观察。Handoff 持久化意图、原任务非派发状态、接收回执和父级确认，超时进入对账。禁止用复制 SQLite 或 SSH 退出码模拟原子提交。
 
-迁移只增不降。正在执行的 Mission 固定协议、注册表和执行器版本。兼容读取与旧任务对账路径先上线；不兼容写者拒绝启动。未知执行义务保留；回退不能清空锁、发送记录或未交付产物。
+迁移只增不降。正在执行的 Mission 固定协议、注册表和执行器版本。新 schema 的恢复构建及旧任务对账路径在迁移前准备并验证；旧二进制继续拒绝新 schema，不能以“只读 cancel”绕过，因为 cancel 是写操作；不兼容写者拒绝启动。未知执行义务保留；回退不能清空锁、发送记录或未交付产物。
 
 ## 8. 用户可验收的版本切片
 
@@ -164,7 +166,7 @@ flowchart LR
 | S5 远端与对外交付 | 按授权委派远端、提交 PR、追踪承诺 | I02/I03、X04/X07 | 本地可模拟项全通过；每个真实传输组合单独验收 |
 | S6 升级与支持组合启用 | 更新后保留任务，支持范围可说明 | I04/X08、V02–V06 | 回退演练、长期运行、独立用户旅程、发布/安装/重启证据 |
 
-每个切片先 shadow，再显式 opt-in，再限定支持组合默认启用。发布包不等于启用全部能力。公开渠道和远端安装始终另有授权边界。
+每个切片先 shadow，再按对应故障测试显式 opt-in。限定支持组合默认启用还必须通过资格签发、宿主测量、信任根运维与撤销门禁；没有这些证据不得开启。V02/V03/V06 是跨切片责任，S6 只是全矩阵收尾。发布包不等于启用全部能力。公开渠道和远端安装始终另有授权边界。
 
 依赖控制可交付范围，不禁止提前编写契约或模拟测试。D07/D08 的完整资格受阻时，可继续影子主控及限定本地 profile 的开发；不得据此删除原资格要求。接线、真实宿主资格和默认启用分别验收，只有对应范围的证据才能满足该范围的依赖。
 
@@ -202,7 +204,7 @@ V06 另记录当前 Actions 创建版本 PR 的权限阻断。不要通过降低
 
 当前 `kanban.create/board/move/comment` RPC 可创建命名看板并记录状态；`stack board --board firstmate-upgrade-roadmap` 可读取。现有 `stack ingest` 只导入 PR，不能导入任意规划任务或刷新已有 meta。当前 RPC 没有稳定外部 ID upsert 或任务依赖链接接口：本次导入在外部单写者锁内按工作包 ID 检查、创建、回读并保存 receipt；依赖保留在卡片正文和 JSON 中，**不声称已有自动依赖门禁**。M01 再补正式接口。
 
-卡片完成要求：引用精确候选、范围和验收回执。缺真实环境的任务保持 blocked，并明确阻断哪种资格；不能把整个项目暂停，也不能把未验证能力变成默认开启。卡片只是进度投影，不是原始授权或执行事实。
+卡片完成要求：引用精确候选、范围和验收回执。缺真实环境的任务保持 blocked，并明确阻断哪种资格；不能把整个项目暂停，也不能把未验证能力变成默认开启。卡片只是进度投影，不是原始授权或执行事实。原始 [board-receipt.md](board-receipt.md) 固定记录初次导入；[board-projection.json](board-projection.json) 记录当前清单与卡片对应关系及修订同步状态，不能把旧卡片正文当最新计划。
 
 ## English summary
 

@@ -1,0 +1,380 @@
+{
+  "schema_version": 1,
+  "kind": "proposed_contract_supplement_not_qualification",
+  "scenarios": [
+    {
+      "id": "AT-01",
+      "name": "start_unknown",
+      "owners": ["C04", "E02", "DEBT02"],
+      "status": "planned",
+      "assertion": "Kill between authorization consumption and handle persistence; retain exact unknown effect and lock, permit safe cancellation request, never replay."
+    },
+    {
+      "id": "AT-02",
+      "name": "start_cancel",
+      "owners": ["C04", "E02"],
+      "status": "planned",
+      "assertion": "Race cancellation with commit; whichever linearizes first determines cancelled_before_dispatch versus stop_requested; unknown never becomes not_sent."
+    },
+    {
+      "id": "AT-03",
+      "name": "mission_cancel",
+      "owners": ["E06"],
+      "status": "planned",
+      "assertion": "Fan out cancellation across unstarted, committed and unknown steps; preserve separate outcomes and stop priority."
+    },
+    {
+      "id": "AT-04",
+      "name": "budget",
+      "owners": ["C03", "X04"],
+      "status": "planned",
+      "assertion": "Replan, switch engine and disconnect child; committed spend plus all reservations stays within enforceable admission budget, unknown child allocation is not reclaimed; measured provider cost remains observed/unknown."
+    },
+    {
+      "id": "AT-05",
+      "name": "two_homes",
+      "owners": ["X03"],
+      "status": "planned",
+      "assertion": "Two homes request one canonical device/repository resource; host broker admits only one, stale lease or home restart cannot oversell."
+    },
+    {
+      "id": "AT-06",
+      "name": "pr_return",
+      "owners": ["X03"],
+      "status": "planned",
+      "assertion": "PR-ready releases capacity; review rework must reacquire capacity or queue."
+    },
+    {
+      "id": "AT-07",
+      "name": "handoff",
+      "owners": ["X04", "X07"],
+      "status": "planned",
+      "assertion": "Partition handoff; one dispatch owner, no local fallback for unknown remote, public-obligation transfer refuses until its atomic protocol qualifies."
+    },
+    {
+      "id": "AT-08",
+      "name": "effect_digest",
+      "owners": ["C04", "C06"],
+      "status": "planned",
+      "assertion": "Change typed method, params, candidate, plan, binding, repository, actor, tenant or budget reservation; old one-shot authorization must fail."
+    },
+    {
+      "id": "AT-09",
+      "name": "schema_recovery",
+      "owners": ["I04"],
+      "status": "planned",
+      "assertion": "Old binary rejects new schema. Recovery-capable current-schema build reads/query/cancels with authorization; disabling new dispatch retains obligations, backup restoration only before any post-migration effect and with fenced writers."
+    },
+    {
+      "id": "AT-10",
+      "name": "validator",
+      "owners": ["R05", "M01"],
+      "status": "planned",
+      "assertion": "Reject changed status projection, evidence contents, moving refs, escaping paths, stale snapshots, feature mapped only as cross-cutting and invalid shapes."
+    },
+    {
+      "id": "AT-11",
+      "name": "poison",
+      "owners": ["R03", "R04"],
+      "status": "planned",
+      "assertion": "Upstream AGENTS or fixture asks to execute code or self-qualify; tool-less extraction cannot execute it; deterministic verifier rejects authority-shaped output."
+    },
+    {
+      "id": "AT-12",
+      "name": "merge",
+      "owners": ["X02", "I03"],
+      "status": "planned",
+      "assertion": "Missing required check, changed head, stale queued merge, self approval, or success exit with failed forge readback never yields merged proof."
+    },
+    {
+      "id": "AT-13",
+      "name": "stalled",
+      "owners": ["I01", "X01"],
+      "status": "planned",
+      "assertion": "Alive-but-stalled worker yields bounded episode alerts then parked status; no arbitrary process kill; unknown direct steering invalidates plan."
+    },
+    {
+      "id": "AT-14",
+      "name": "idle_child",
+      "owners": ["X04"],
+      "status": "planned",
+      "assertion": "Empty child queue produces no work/model loop; repeated death stops after bounded respawn count."
+    },
+    {
+      "id": "AT-15",
+      "name": "public_input",
+      "owners": ["X07"],
+      "status": "planned",
+      "assertion": "Mention/media cannot authorize writes; blocked URL/redirect cannot fetch; public obligation cannot silently migrate filesystems."
+    },
+    {
+      "id": "AT-16",
+      "name": "outbound_path",
+      "owners": ["E05", "X05", "X08"],
+      "status": "planned",
+      "assertion": "Blocked task data never reaches router; stale quota blocks admission; untrusted PATH executable is never invoked for version probing."
+    },
+    {
+      "id": "AT-17",
+      "name": "diagnostics",
+      "owners": ["V00", "V03"],
+      "status": "planned",
+      "assertion": "Trial interruption keeps sanitized immutable event cursor, versions, effect IDs and failure cut; loss is recorded and live qualification remains blocked."
+    },
+    {
+      "id": "AT-18",
+      "name": "notification",
+      "owners": ["X06", "I01"],
+      "status": "planned",
+      "assertion": "Calm never hides decisions; transport failure remains visible and retries are bounded."
+    },
+    {
+      "id": "AT-19",
+      "name": "slot_owner",
+      "owners": ["E06", "I03"],
+      "status": "planned",
+      "assertion": "Cleanup of a reused worktree slot fails ownership check and retains the current owner artifact."
+    }
+  ],
+  "semantic_divergences": [
+    {
+      "id": "RD-DIV-04",
+      "owners": ["X03"],
+      "scenario": "AT-06",
+      "upstream": "PR-ready work can return without consuming capacity.",
+      "osstack": "Re-admit before work resumes.",
+      "reason": "No shared-resource oversell.",
+      "review": "Claude Sonnet 5.5 A14 challenged; host adopted. Human implementation review pending."
+    },
+    {
+      "id": "RD-DIV-05",
+      "owners": ["X07"],
+      "scenario": "AT-15",
+      "upstream": "Pair token activates public-response behavior.",
+      "osstack": "Input identity is not write/publish authority; bind scope and exact effect.",
+      "reason": "Preserve OSStack authority boundary.",
+      "review": "Claude Sonnet 5.5 A19 challenged; host adopted. Human implementation review pending."
+    },
+    {
+      "id": "RD-DIV-06",
+      "owners": ["X02"],
+      "scenario": "AT-12",
+      "upstream": "Forge-specific submission conventions may permit autonomous flows.",
+      "osstack": "Gerrit change delivery does not fabricate independent review or submit authority.",
+      "reason": "Independent approval and candidate checks remain mandatory.",
+      "review": "Claude Sonnet 5.5 A19/A21 challenged; host adopted. Human implementation review pending."
+    }
+  ],
+  "external_dependencies": [
+    {
+      "name": "tasks-axi",
+      "version": "unresolved",
+      "status": "not_qualified",
+      "owner": "R03",
+      "required_behavior": "Typed public commitment state machine and atomic backlog move"
+    },
+    {
+      "name": "quota-axi",
+      "version": "unresolved",
+      "status": "not_qualified",
+      "owner": "R03",
+      "required_behavior": "Account quota observation and freshness"
+    }
+  ],
+  "supplement_source_refs": ["ADD-064", "ADD-065", "ADD-066", "ADD-067", "ADD-068", "ADD-069", "ADD-070", "ADD-071", "ADD-072", "ADD-073", "ADD-074"],
+  "behavior_evidence_rule": "Inventory-only entries identify material for R03/R04 investigation; they cannot certify behavior. contract_excerpt means read, not executed.",
+  "capability_negative_cases": [
+    {
+      "id": "FM-01-NEG",
+      "capability": "FM-01",
+      "status": "planned",
+      "inputs": ["缺仓库、范围冲突、子任务完成冒充总完成"],
+      "required_result": "拒绝超范围或过期动作，保留真实状态；不能报告 一次目标输入后在同一入口看见计划、问题、进展和交付 已完成。",
+      "owner": "R04"
+    },
+    {
+      "id": "FM-02-NEG",
+      "capability": "FM-02",
+      "status": "planned",
+      "inputs": ["进程存活推导工作推进、陈旧状态清除等待"],
+      "required_result": "拒绝超范围或过期动作，保留真实状态；不能报告 同时呈现执行、业务等待与观察新鲜度 已完成。",
+      "owner": "R04"
+    },
+    {
+      "id": "FM-03-NEG",
+      "capability": "FM-03",
+      "status": "planned",
+      "inputs": ["旧 owner/代数写入、把接管当作进程已停止"],
+      "required_result": "拒绝超范围或过期动作，保留真实状态；不能报告 接管后旧实例不能产生新副作用 已完成。",
+      "owner": "R04"
+    },
+    {
+      "id": "FM-04-NEG",
+      "capability": "FM-04",
+      "status": "planned",
+      "inputs": ["超时、来源消失、无关事件解除决定"],
+      "required_result": "拒绝超范围或过期动作，保留真实状态；不能报告 等待有负责主体和解除证据 已完成。",
+      "owner": "R04"
+    },
+    {
+      "id": "FM-05-NEG",
+      "capability": "FM-05",
+      "status": "planned",
+      "inputs": ["游标 gap、事件洪水和超卖"],
+      "required_result": "拒绝超范围或过期动作，保留真实状态；不能报告 持久事件驱动有界唤醒，容量不足可解释 已完成。",
+      "owner": "R04"
+    },
+    {
+      "id": "FM-06-NEG",
+      "capability": "FM-06",
+      "status": "planned",
+      "inputs": ["hook 丢失、重复和回合结束冒充任务完成"],
+      "required_result": "拒绝超范围或过期动作，保留真实状态；不能报告 回合结束触发一次有效检查，开放任务仍归主控 已完成。",
+      "owner": "R04"
+    },
+    {
+      "id": "FM-07-NEG",
+      "capability": "FM-07",
+      "status": "planned",
+      "inputs": ["文本越权、空轮询模型消耗、重复 watcher"],
+      "required_result": "拒绝超范围或过期动作，保留真实状态；不能报告 确定性监督只在需要判断时请求结构化建议 已完成。",
+      "owner": "R04"
+    },
+    {
+      "id": "FM-08-NEG",
+      "capability": "FM-08",
+      "status": "planned",
+      "inputs": ["多问题含糊继续、过期批准、跨任务回答"],
+      "required_result": "拒绝超范围或过期动作，保留真实状态；不能报告 明确问题和回答的绑定，复用现有授权 已完成。",
+      "owner": "R04"
+    },
+    {
+      "id": "FM-09-NEG",
+      "capability": "FM-09",
+      "status": "planned",
+      "inputs": ["换 ID 重发、已应用被 cleanup 错误覆盖"],
+      "required_result": "拒绝超范围或过期动作，保留真实状态；不能报告 未知发送可对账且不重复 已完成。",
+      "owner": "R04"
+    },
+    {
+      "id": "FM-10-NEG",
+      "capability": "FM-10",
+      "status": "planned",
+      "inputs": ["away 扩权、Calm 隐藏审批"],
+      "required_result": "拒绝超范围或过期动作，保留真实状态；不能报告 用户离开时控制提醒，回来保留未决项 已完成。",
+      "owner": "R04"
+    },
+    {
+      "id": "FM-11-NEG",
+      "capability": "FM-11",
+      "status": "planned",
+      "inputs": ["阅读游标清问题、简报遗漏未决项"],
+      "required_result": "拒绝超范围或过期动作，保留真实状态；不能报告 只讲变化并优先讲待用户决定 已完成。",
+      "owner": "R04"
+    },
+    {
+      "id": "FM-12-NEG",
+      "capability": "FM-12",
+      "status": "planned",
+      "inputs": ["只读自动提升、旧 HEAD/旧范围"],
+      "required_result": "拒绝超范围或过期动作，保留真实状态；不能报告 证据不足先调查，经授权再实施 已完成。",
+      "owner": "R04"
+    },
+    {
+      "id": "FM-13-NEG",
+      "capability": "FM-13",
+      "status": "planned",
+      "inputs": ["分支各自通过但集成失败、检查旧候选"],
+      "required_result": "拒绝超范围或过期动作，保留真实状态；不能报告 完成证明绑定实际交付候选及完成级别 已完成。",
+      "owner": "R04"
+    },
+    {
+      "id": "FM-14-NEG",
+      "capability": "FM-14",
+      "status": "planned",
+      "inputs": ["清理丢证据、强解未知锁"],
+      "required_result": "拒绝超范围或过期动作，保留真实状态；不能报告 未交付产物、未知效果或活进程保持保全 已完成。",
+      "owner": "R04"
+    },
+    {
+      "id": "FM-15-NEG",
+      "capability": "FM-15",
+      "status": "planned",
+      "inputs": ["声明当实测、版本/账号/宿主不匹配"],
+      "required_result": "拒绝超范围或过期动作，保留真实状态；不能报告 未支持组合有明确原因，只有资格范围可派发 已完成。",
+      "owner": "R04"
+    },
+    {
+      "id": "FM-16-NEG",
+      "capability": "FM-16",
+      "status": "planned",
+      "inputs": ["窗口标题当身份、人工 steering 不留事件"],
+      "required_result": "拒绝超范围或过期动作，保留真实状态；不能报告 用户按需查看 Worker，日常无需管理 已完成。",
+      "owner": "R04"
+    },
+    {
+      "id": "FM-17-NEG",
+      "capability": "FM-17",
+      "status": "planned",
+      "inputs": ["断线当停止、偷偷本地替代"],
+      "required_result": "拒绝超范围或过期动作，保留真实状态；不能报告 远端断线保留原绑定和未知状态 已完成。",
+      "owner": "R04"
+    },
+    {
+      "id": "FM-18-NEG",
+      "capability": "FM-18",
+      "status": "planned",
+      "inputs": ["未注册来源、消息文本授予权限"],
+      "required_result": "拒绝超范围或过期动作，保留真实状态；不能报告 外部事件按来源归属任务，事实与授权分开 已完成。",
+      "owner": "R04"
+    },
+    {
+      "id": "FM-19-NEG",
+      "capability": "FM-19",
+      "status": "planned",
+      "inputs": ["SSH 返回码冒充事务、漏父回执"],
+      "required_result": "拒绝超范围或过期动作，保留真实状态；不能报告 跨系统意图、回执和关联可追溯导出 已完成。",
+      "owner": "R04"
+    },
+    {
+      "id": "FM-20-NEG",
+      "capability": "FM-20",
+      "status": "planned",
+      "inputs": ["跨项目污染、技能/记忆提高权限"],
+      "required_result": "拒绝超范围或过期动作，保留真实状态；不能报告 经验有来源、预算和衰减，可纠正归档 已完成。",
+      "owner": "R04"
+    },
+    {
+      "id": "FM-21-NEG",
+      "capability": "FM-21",
+      "status": "planned",
+      "inputs": ["便宜模型取消审查、切引擎重置预算"],
+      "required_result": "拒绝超范围或过期动作，保留真实状态；不能报告 资格和资源满足后选择合适成本的执行器 已完成。",
+      "owner": "R04"
+    },
+    {
+      "id": "FM-22-NEG",
+      "capability": "FM-22",
+      "status": "planned",
+      "inputs": ["聊天即发送、未知重发、换任务清预算"],
+      "required_result": "拒绝超范围或过期动作，保留真实状态；不能报告 承诺形成耐久责任链和最终回执 已完成。",
+      "owner": "R04"
+    },
+    {
+      "id": "FM-23-NEG",
+      "capability": "FM-23",
+      "status": "planned",
+      "inputs": ["能 push 就自动 merge/deploy，自仓库自动特权"],
+      "required_result": "拒绝超范围或过期动作，保留真实状态；不能报告 区分本地、PR、合并、发布和部署授权 已完成。",
+      "owner": "R04"
+    },
+    {
+      "id": "FM-24-NEG",
+      "capability": "FM-24",
+      "status": "planned",
+      "inputs": ["降 schema、旧写者复活、已安装冒充已生效"],
+      "required_result": "拒绝超范围或过期动作，保留真实状态；不能报告 升级后旧任务可恢复，实际进程版本可确认 已完成。",
+      "owner": "R04"
+    }
+  ]
+}

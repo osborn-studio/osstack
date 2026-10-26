@@ -1,0 +1,152 @@
+{
+  "schema_version": 1,
+  "kind": "planning_prerequisite_milestones_not_runtime_scheduler",
+  "scope": "goal_dispatch_design",
+  "full_package_graph": "work-packages.json",
+  "rule": "All requirements below are prospective gates, not claims of completed implementation. Full package completion still uses inherited edges. A narrow milestone must carry its own scoped evidence; blocked host qualification does not prevent contract development.",
+  "milestones": [
+    {
+      "id": "D07.local_fixture",
+      "owner": "D07",
+      "phase": "contract",
+      "scope": "adopt_session_local",
+      "requires": [],
+      "status": "planned"
+    },
+    {
+      "id": "D08.local_journey",
+      "owner": "D08",
+      "phase": "contract",
+      "scope": "adopt_session_local",
+      "requires": ["D07.local_fixture"],
+      "status": "planned"
+    },
+    {
+      "id": "I01.local_contract",
+      "owner": "I01",
+      "phase": "contract",
+      "scope": "goal_dispatch_local",
+      "requires": ["D08.local_journey"],
+      "status": "planned"
+    },
+    {
+      "id": "C03.budget_storage",
+      "owner": "C03",
+      "phase": "wired",
+      "scope": "goal_dispatch_local",
+      "requires": [],
+      "status": "planned"
+    },
+    {
+      "id": "C04.start_dispatch",
+      "owner": "C04",
+      "phase": "wired",
+      "scope": "goal_dispatch_local",
+      "requires": ["C03.budget_storage"],
+      "status": "planned"
+    },
+    {
+      "id": "I03.local_proof",
+      "owner": "I03",
+      "phase": "wired",
+      "scope": "goal_dispatch_local",
+      "requires": [],
+      "status": "planned"
+    },
+    {
+      "id": "I04.compat_recovery",
+      "owner": "I04",
+      "phase": "wired",
+      "scope": "schema_recovery",
+      "requires": [],
+      "status": "planned"
+    },
+    {
+      "id": "DEBT01.safe_failure",
+      "owner": "DEBT01",
+      "phase": "contract",
+      "scope": "repo_lock",
+      "requires": [],
+      "status": "planned"
+    },
+    {
+      "id": "DEBT02.recovery_contract",
+      "owner": "DEBT02",
+      "phase": "wired",
+      "scope": "unknown_obligation",
+      "requires": [],
+      "status": "planned"
+    },
+    {
+      "id": "V06.release_channel",
+      "owner": "V06",
+      "phase": "wired",
+      "scope": "protected_release",
+      "requires": [],
+      "status": "planned"
+    },
+    {
+      "id": "R05.qualifier_protocol",
+      "owner": "R05",
+      "phase": "contract",
+      "scope": "qualification",
+      "requires": [],
+      "status": "planned"
+    },
+    {
+      "id": "V03.host_measurement",
+      "owner": "V03",
+      "phase": "host_qualified",
+      "scope": "exact_support_cell",
+      "requires": ["R05.qualifier_protocol"],
+      "status": "planned"
+    },
+    {
+      "id": "V06.trust_operations",
+      "owner": "V06",
+      "phase": "wired",
+      "scope": "qualification",
+      "requires": ["R05.qualifier_protocol"],
+      "status": "planned"
+    },
+    {
+      "id": "V02.slice_faults",
+      "owner": "V02",
+      "phase": "wired",
+      "scope": "current_slice",
+      "requires": [],
+      "status": "planned"
+    },
+    {
+      "id": "V03.diagnostic_retention",
+      "owner": "V03",
+      "phase": "contract",
+      "scope": "live_trial",
+      "requires": [],
+      "status": "planned"
+    },
+    {
+      "id": "D07.host_qualification",
+      "owner": "D07",
+      "phase": "host_qualified",
+      "scope": "exact_support_cell",
+      "requires": ["D07.local_fixture", "V03.host_measurement"],
+      "status": "planned"
+    },
+    {
+      "id": "D08.host_qualification",
+      "owner": "D08",
+      "phase": "host_qualified",
+      "scope": "exact_support_cell",
+      "requires": ["D07.host_qualification", "D08.local_journey"],
+      "status": "planned"
+    }
+  ],
+  "release_requirements": {
+    "before_new_schema": ["I04.compat_recovery"],
+    "S2_opt_in": ["C03.budget_storage", "C04.start_dispatch", "I03.local_proof", "I04.compat_recovery", "DEBT01.safe_failure", "DEBT02.recovery_contract", "V02.slice_faults"],
+    "every_artifact_release": ["V06.release_channel"],
+    "every_default_enable": ["R05.qualifier_protocol", "V03.host_measurement", "V06.trust_operations", "V02.slice_faults"],
+    "before_live_trial": ["V03.diagnostic_retention"]
+  }
+}

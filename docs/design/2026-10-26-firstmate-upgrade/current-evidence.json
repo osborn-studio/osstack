@@ -1,0 +1,73 @@
+{
+  "schema_version": 1,
+  "record_kind": "reviewed_local_evidence_projection_not_qualification",
+  "observed_at": "2026-10-26T23:49:32.115133+00:00",
+  "code_candidate": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+  "review_base": "76cb3578f4f491227faf221e11b97c4ca835a59e",
+  "scope_profile": "adopt_session",
+  "local_scoped_items": [
+    "C01",
+    "C02",
+    "D01",
+    "D02",
+    "D03",
+    "D04",
+    "D05",
+    "D06"
+  ],
+  "runtime_qualification": false,
+  "integration_into_main": true,
+  "ci_observation": {
+    "conclusion": "success",
+    "createdAt": "2026-10-26T13:41:25Z",
+    "headSha": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+    "updatedAt": "2026-10-26T14:02:31Z",
+    "url": "https://github.com/osborn-studio/osstack/actions/runs/40332791896"
+  },
+  "historical_evidence": [
+    {
+      "path": "../../reports/2026-10-26-session-pilot-delivery.json",
+      "sha256": "3fff5bce81fb505b6aaa0aa7dff5e7cd8e353afcf6a7621f4fdb9aa797e8ea3f",
+      "historical": true
+    },
+    {
+      "path": "../../reports/2026-10-25-session-adoption-pilot.md",
+      "sha256": "8481a331aa662227b3775bf1ca0540234b4310112fbe0f9a938c5c1af2ceae9d",
+      "historical": true
+    }
+  ],
+  "equivalence": {
+    "from": "64daf4afb55b7f11f9c700fa595d7d91e0766d18",
+    "to": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+    "paths": [
+      "packages",
+      "scripts",
+      "package.json",
+      "pnpm-lock.yaml"
+    ],
+    "changed_paths": [],
+    "meaning": "Identical checked production trees preserve local implementation evidence; no fresh provider qualification is inferred."
+  },
+  "code_files": [
+    {
+      "path": "packages/protocol/src/engineering.ts",
+      "sha256": "d251764e375560b6a3146a92cf68887486a9001520ac15c3b8ec27cd3cca46ae"
+    },
+    {
+      "path": "packages/core/src/state/engineering-store.ts",
+      "sha256": "a11803e6b2deab290e0fb1707576e99552fe106d1e4ea9725402b988fe8fe705"
+    },
+    {
+      "path": "packages/core/src/state/engineering-ddl.ts",
+      "sha256": "e7067bfc981362f7d9740ac574bebe87c246e62fbd1bb0e2e0ac71b6b18fb5c3"
+    },
+    {
+      "path": "packages/core/src/state/engineering-dispatch.ts",
+      "sha256": "36b03aea0604875d67c41ac2c2c1e807d0e4cc7d2dc593ac9b4c2a24ae469abd"
+    },
+    {
+      "path": "packages/cli/src/engineering-host.ts",
+      "sha256": "23f234aa550132bfaf0af44d865d13a86384ce912083efcb554caacbbafe233e"
+    }
+  ]
+}
