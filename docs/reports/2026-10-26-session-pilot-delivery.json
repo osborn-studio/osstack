@@ -1,0 +1,373 @@
+{
+  "schema_version": 1,
+  "scope": "adopt_session_maintenance",
+  "record_kind": "delivery_evidence_not_runtime_qualification",
+  "code_candidate": "64daf4afb55b7f11f9c700fa595d7d91e0766d18",
+  "integration_main_sha": "a74296c0f6fe5f0b3c3b5c1849b27e1b1ef07ace",
+  "integrated_into_main": false,
+  "provider_qualified": false,
+  "board": "session-pilot-debt",
+  "task_cards": [
+    {
+      "id": "INT01",
+      "card_id": "card_f9a5c968",
+      "assignee": "root",
+      "status": "ready"
+    },
+    {
+      "id": "CORE01",
+      "card_id": "card_f4e6a395",
+      "assignee": "pilot_completion",
+      "status": "ready"
+    },
+    {
+      "id": "RUN01",
+      "card_id": "card_6bd0b827",
+      "assignee": "pilot_runtime_cleanup",
+      "status": "ready"
+    },
+    {
+      "id": "SMOKE01",
+      "card_id": "card_a0d941ce",
+      "assignee": "pilot_smoke",
+      "status": "ready"
+    },
+    {
+      "id": "EVID01",
+      "card_id": "card_cb0c70ea",
+      "assignee": "root",
+      "status": "ready"
+    },
+    {
+      "id": "VERIFY01",
+      "card_id": "card_a7b41724",
+      "assignee": "root",
+      "status": "done"
+    },
+    {
+      "id": "LIVE01",
+      "card_id": "card_d21a83d5",
+      "assignee": "external-environment",
+      "status": "blocked"
+    },
+    {
+      "id": "DEBT01",
+      "card_id": "card_c676432e",
+      "assignee": "future-runtime",
+      "status": "todo"
+    },
+    {
+      "id": "DEBT02",
+      "card_id": "card_f251dadf",
+      "assignee": "future-runtime",
+      "status": "todo"
+    },
+    {
+      "id": "DEBT03",
+      "card_id": "card_9a161476",
+      "assignee": "future-runtime",
+      "status": "todo"
+    }
+  ],
+  "promotion_prs": [
+    {
+      "number": 259,
+      "base": "main",
+      "source_sha": "0cf68ab2e1df5ec434e464f4ad5b443c27bf2509",
+      "enabled_ci": "passed",
+      "manual_paid_deepseek": "skipped"
+    },
+    {
+      "number": 260,
+      "base": "codex/promote-session-state",
+      "source_sha": "1a2dee56d99a758f0c45ad2d40aeaf63b050393b",
+      "enabled_ci": "passed",
+      "manual_paid_deepseek": "skipped"
+    },
+    {
+      "number": 261,
+      "base": "codex/promote-session-runtime",
+      "source_sha": "d3ed4fcc36a2f929393c51da692d7ca883281b8a",
+      "enabled_ci": "passed",
+      "manual_paid_deepseek": "skipped"
+    },
+    {
+      "number": 262,
+      "base": "codex/promote-session-cli",
+      "source_sha": "6866ede2ddaa760a2d3e0840d5d2c4c625acb078",
+      "enabled_ci": "passed",
+      "manual_paid_deepseek": "skipped"
+    },
+    {
+      "number": 263,
+      "base": "codex/promote-session-registry",
+      "source_sha": "0a7ba08670de1d923df430d67fd628a288622ba3",
+      "enabled_ci": "passed",
+      "manual_paid_deepseek": "skipped"
+    },
+    {
+      "number": 264,
+      "base": "codex/promote-session-design",
+      "source_sha": "2212325e5e7a9c692a02d06d0e59eb18957b573b",
+      "enabled_ci": "passed",
+      "manual_paid_deepseek": "skipped"
+    }
+  ],
+  "final_full_suite": {
+    "command": "pnpm test",
+    "candidate_commit": "64daf4afb55b7f11f9c700fa595d7d91e0766d18",
+    "exit_code": 0,
+    "packages": 22,
+    "passed": 5952,
+    "skipped": 5,
+    "failed": 0,
+    "log_sha256": "f6384a574ba7cc9dfe50bc6b43404d6a1ecd809895ff286fa3fc90e4d0406517",
+    "status": "passed"
+  },
+  "claude_review": {
+    "model": "claude-sonnet-5-5",
+    "cli_version": "2.1.291",
+    "rounds": 2,
+    "status": "PASS_static",
+    "remaining_P0_P1_P2": 0,
+    "is_error": false,
+    "candidate": "64daf4afb55b7f11f9c700fa595d7d91e0766d18",
+    "not_test_execution": true,
+    "source": "sonnet-closeout.json"
+  },
+  "live_native_session": {
+    "status": "passed",
+    "candidate_sha": "64daf4afb55b7f11f9c700fa595d7d91e0766d18",
+    "node_version": "v22.22.1",
+    "codex_cli_version": "codex-cli 0.160.1",
+    "model": "CLI default (not pinned)",
+    "compiled_js_manifest_sha256": "41dddbfd5cc5e42a6dd5e491f544566d79a55b42050ec781203b51c73700c570",
+    "provider_qualified": false,
+    "qualification": "single_local_native_start_resume_observation_only",
+    "unverified": [
+      "process_domain_termination",
+      "physical_power_loss",
+      "hostile_same_uid_isolation",
+      "long_term_cost",
+      "remote_hosts",
+      "nondefault_tenants",
+      "manual_intervention"
+    ]
+  },
+  "unresolved_live_trial": "Earlier 7629e637 attempt was prematurely stopped by its harness on needs_reconciliation; source diagnosis was not preserved, so the underlying cause remains unresolved. Later passes are separate evidence.",
+  "other_checks": {
+    "build": "passed",
+    "verification": [
+      {
+        "name": "typecheck",
+        "exit_code": 0
+      },
+      {
+        "name": "lint",
+        "exit_code": 0
+      },
+      {
+        "name": "inventory",
+        "exit_code": 0
+      },
+      {
+        "name": "startup",
+        "exit_code": 0
+      },
+      {
+        "name": "changeset",
+        "exit_code": 0
+      },
+      {
+        "name": "changeset-selftest",
+        "exit_code": 0
+      },
+      {
+        "name": "release-facts",
+        "exit_code": 0
+      },
+      {
+        "name": "version-packages",
+        "exit_code": 0
+      },
+      {
+        "name": "clean-typecheck",
+        "exit_code": 0
+      },
+      {
+        "name": "engineering-smoke",
+        "exit_code": 0
+      },
+      {
+        "name": "registry",
+        "exit_code": 0
+      }
+    ],
+    "smoke_self_tests_passed": 13,
+    "lint_existing_warnings": 21,
+    "startup_median_ms": {
+      "version": 46,
+      "help": 110
+    }
+  },
+  "evidence_sha256": {
+    "full-test-closeout.log": "f6384a574ba7cc9dfe50bc6b43404d6a1ecd809895ff286fa3fc90e4d0406517",
+    "sonnet-round1-input.txt": "bd46c159783d082fc1530d19c2f680b2021860bdf76bd328502d6609bb10950d",
+    "sonnet-review.json": "37a498a2a2ae8d55279bf35281ecde894e1be41f42ca1f2b7244cab82097e3aa",
+    "sonnet-closeout-input.txt": "0c13e4bf0b1d1adebbfb15d71822aee3116183be5a5ca7c92d30b14593be30c8",
+    "sonnet-closeout.json": "308b6c71cfc804313dbd346792378f1a516e3003a5d71b594e28a9d3c136dcd9",
+    "live-codex-adoption-result.json": "e600fe4f2c0709b71949f10beb7063910292945c3a544e7b69c61f7d928dc0b4",
+    "live-codex-adoption.mjs": "df4d65fc67db9b6a22e4cab593b1357fe8d2852add2a97efb175bff5585fb1b8",
+    "live-codex-dist-manifest.json": "cba8ead549f726f985956d6157441af7025b8eef66834014a0ba52ba0ed1822d"
+  },
+  "evidence_storage": "Task-local scratch runtime/session-debt-20261026; raw prompts, model output and machine logs are intentionally not copied into the repository.",
+  "remaining_debt": [
+    {
+      "id": "DEBT01",
+      "title": "Refine pre-rename publication failure cleanup without weakening proof",
+      "acceptance": "Only optimize after a phase-specific proof and crash/fault tests distinguish staged-file cleanup from published ownership. Current conservative retention is safe; no force-clear shortcut."
+    },
+    {
+      "id": "DEBT02",
+      "title": "Design trusted operator recovery for retained unknown execution obligations",
+      "acceptance": "Requires runtime contract and containment proof, including restart and physical-lock ownership. daemon.resume must not erase obligations."
+    },
+    {
+      "id": "DEBT03",
+      "title": "Preserve applied receipt on manual session.send cleanup failure",
+      "acceptance": "Pre-existing path: transport error after an applied receipt must remain distinguishable from failed delivery; preserve idempotent receipt and never resend automatically."
+    }
+  ],
+  "new_delivery_prs": [
+    {
+      "number": 265,
+      "branch": "codex/session-pilot-safety",
+      "base": "codex/promote-session-docs",
+      "role": "production_safety_and_regressions"
+    },
+    {
+      "branch": "codex/session-pilot-verification",
+      "base": "codex/session-pilot-safety",
+      "role": "smoke_docs_and_evidence"
+    }
+  ],
+  "merge_policy": "Keep dependent PRs Draft. After each predecessor reaches main, retarget the successor to main, inspect the diff and repeat required CI before merging.",
+  "historical_snapshot": {
+    "scope": "pre_recovery_delivery_evidence",
+    "fields": [
+      "integration_main_sha",
+      "integrated_into_main",
+      "task_cards",
+      "promotion_prs",
+      "new_delivery_prs"
+    ],
+    "meaning": "These fields preserve the initial delivery snapshot, not current GitHub state. See main_recovery for a separately dated integration observation. Test runs, source hashes and audit receipts retain their original candidates."
+  },
+  "main_recovery": {
+    "observed_at_utc": "2026-10-26T13:10:54.283582+00:00",
+    "verified_main_sha": "bffbdcb173a893f76e36b3230b36f2eb9fb8b830",
+    "verification_scope": "GitHub PR state/base plus local merge-commit ancestry against the exact observed refs/heads/main SHA; consult immutable recovery receipts for source-tree equivalence. Heads are observed before any report update.",
+    "replacement_prs": [
+      {
+        "original_pr": 260,
+        "landing_pr": 267,
+        "status": "merged_into_main"
+      },
+      {
+        "original_pr": 261,
+        "landing_pr": 268,
+        "status": "merged_into_main"
+      },
+      {
+        "original_pr": 262,
+        "landing_pr": 269,
+        "status": "merged_into_main"
+      }
+    ],
+    "layers": [
+      {
+        "pr": 259,
+        "base": "main",
+        "state": "MERGED",
+        "is_draft": false,
+        "status": "merged_into_main",
+        "head_at_observation": "4488fb6a2a0e3872307009a9c85df91b7011cc22",
+        "merge_commit": "a69ea5127a68cb98c37f2009d864951048c18179",
+        "merge_commit_is_main_ancestor": true
+      },
+      {
+        "pr": 267,
+        "base": "main",
+        "state": "MERGED",
+        "is_draft": false,
+        "status": "merged_into_main",
+        "head_at_observation": "cee2cecdb1b8456a04fc3013f88630cf25947a71",
+        "merge_commit": "b79b61f3043fed6c2d05e99707f757cfd1fc490f",
+        "merge_commit_is_main_ancestor": true
+      },
+      {
+        "pr": 268,
+        "base": "main",
+        "state": "MERGED",
+        "is_draft": false,
+        "status": "merged_into_main",
+        "head_at_observation": "f9b7345d78f8b5cf39f6ee81aca37b4aa9a955e6",
+        "merge_commit": "5292e80ac70ae6296c6088672520585c6cd88e2a",
+        "merge_commit_is_main_ancestor": true
+      },
+      {
+        "pr": 269,
+        "base": "main",
+        "state": "MERGED",
+        "is_draft": false,
+        "status": "merged_into_main",
+        "head_at_observation": "3709ede4e57d3e54237ecd82385df53ef465fd20",
+        "merge_commit": "5a5c17cee088aab95f16288c654da30b62e41106",
+        "merge_commit_is_main_ancestor": true
+      },
+      {
+        "pr": 263,
+        "base": "main",
+        "state": "MERGED",
+        "is_draft": false,
+        "status": "merged_into_main",
+        "head_at_observation": "469eb802b10ba07fd6dc5131a5e3be5ca220b077",
+        "merge_commit": "7a80ad1dd93a7ac5b2463e78e1cb47e7766a5bd3",
+        "merge_commit_is_main_ancestor": true
+      },
+      {
+        "pr": 264,
+        "base": "main",
+        "state": "MERGED",
+        "is_draft": false,
+        "status": "merged_into_main",
+        "head_at_observation": "fdf62445ad470c97e38cb55e80693567e4ce516b",
+        "merge_commit": "8a65524597aa5c4788573c811aa61dddb22a91c0",
+        "merge_commit_is_main_ancestor": true
+      },
+      {
+        "pr": 265,
+        "base": "main",
+        "state": "MERGED",
+        "is_draft": false,
+        "status": "merged_into_main",
+        "head_at_observation": "d223883484e64b307cf4d8f44c9f375680cf2f3e",
+        "merge_commit": "bffbdcb173a893f76e36b3230b36f2eb9fb8b830",
+        "merge_commit_is_main_ancestor": true
+      },
+      {
+        "pr": 266,
+        "base": "codex/session-pilot-safety",
+        "state": "OPEN",
+        "is_draft": true,
+        "status": "draft",
+        "head_at_observation": "2543d9e3d9950868ff37d5d8ae885273a372acab",
+        "merge_commit": null,
+        "merge_commit_is_main_ancestor": false
+      }
+    ],
+    "all_layers_integrated": false,
+    "provider_qualified": false,
+    "verification_pr": 266
+  }
+}

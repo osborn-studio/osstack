@@ -246,3 +246,25 @@ Resuming admission lets eligible queued work run again. First cancel any reserve
 Independent checks still required: live Provider replies, physical power loss and filesystem durability, process-domain termination across restarts, hostile same-UID Worker isolation, nondefault tenants, and remote hosts. Unit tests, the full test suite, and model audits do not replace those qualifications.
 
 See the [revised runtime contract](../design/2026-10-25-engineering-agent/runtime-contract-v2.md) and [pilot scenarios](../design/2026-10-25-engineering-agent/pilot-scenarios.json).
+
+
+## Repeat the local integration check
+
+From a clean development checkout, use the supported Node version and run:
+
+```sh
+pnpm install --frozen-lockfile
+pnpm build
+pnpm smoke:engineering-decision
+```
+
+The smoke uses a separate daemon process, the compiled CLI, and a deterministic Adapter. It creates its own home, authority file and scratch directory. It tests adoption, observation, deferral, one answer, completed-turn proof, same-key replay and receipt lookup. Success requires exactly one Adapter invocation and confirmed daemon exit. The JSON result always states `provider_qualified: false`. CI runs the same check.
+
+An applied reply is separate from lease cleanup. `health` and `daemon.drain` expose `execution_lease_holds`. A held read or write permit keeps `drained` false, including after a failed physical writer-lock release. `daemon.resume` does not release these permits. Do not force-clear the lock to complete an upgrade.
+
+A detected source identity replacement keeps the Mission in reconciliation, even if all waits were cleared and the old native ID returns. This restriction survives restart. Read the original action receipt or explicitly end observation. A later manual turn does not become the original Mission's success evidence.
+
+See the [remaining-work plan](../plans/2026-10-26-session-pilot-debt.md) for the integration order and external qualification gates.
+
+
+On upgrade, an existing event with `category: identity` also preserves this restriction. Temporary repository unavailability is a separate category and can recover after the repository returns. This change needs no database migration. Drain counts all held execution permits, including Loop and Graph work; a retained unknown execution can intentionally keep drain blocked.
