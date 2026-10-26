@@ -4,7 +4,7 @@ Date: 2026-10-26. Scope: the opt-in `adopt_session` pilot. This work does not en
 
 ## Baseline and delivery boundary
 
-The complete reviewed pilot is pinned at `2212325e5e7a9c692a02d06d0e59eb18957b573b`. Main is `a74296c0f6fe5f0b3c3b5c1849b27e1b1ef07ace`. PR #252 reached main. PRs #253–#258 were merged into their predecessor feature branches, so their merged labels do not prove main delivery. Restore the six remaining layers as small promotion PRs. Keep downstream PRs Draft until their predecessor reaches main, then retarget them to main before merging. Check ancestry, not only PR state.
+The complete reviewed pilot is pinned at `2212325e5e7a9c692a02d06d0e59eb18957b573b`. At the start of this delivery plan, main was `a74296c0f6fe5f0b3c3b5c1849b27e1b1ef07ace`. This paragraph records that baseline. See the dated recovery section in the [delivery report](../reports/2026-10-26-session-pilot-debt.md) for replacement PRs and the observed main state. PR #252 reached main. PRs #253–#258 were merged into their predecessor feature branches, so their merged labels do not prove main delivery. Restore the six remaining layers as small promotion PRs. Keep downstream PRs Draft until their predecessor reaches main, then retarget them to main before merging. Check ancestry, not only PR state.
 
 Use the installed OSStack 0.22.1 daemon in a dedicated task home. Board: `session-pilot-debt`. The exported card IDs and receipts belong to the delivery report. The design's original `work-items.json` and `pilot-scenarios.json` stay planning contracts; do not rewrite them to imply execution or qualification.
 

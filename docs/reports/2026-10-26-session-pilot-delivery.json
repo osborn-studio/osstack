@@ -251,5 +251,123 @@
       "role": "smoke_docs_and_evidence"
     }
   ],
-  "merge_policy": "Keep dependent PRs Draft. After each predecessor reaches main, retarget the successor to main, inspect the diff and repeat required CI before merging."
+  "merge_policy": "Keep dependent PRs Draft. After each predecessor reaches main, retarget the successor to main, inspect the diff and repeat required CI before merging.",
+  "historical_snapshot": {
+    "scope": "pre_recovery_delivery_evidence",
+    "fields": [
+      "integration_main_sha",
+      "integrated_into_main",
+      "task_cards",
+      "promotion_prs",
+      "new_delivery_prs"
+    ],
+    "meaning": "These fields preserve the initial delivery snapshot, not current GitHub state. See main_recovery for a separately dated integration observation. Test runs, source hashes and audit receipts retain their original candidates."
+  },
+  "main_recovery": {
+    "observed_at_utc": "2026-10-26T13:10:54.283582+00:00",
+    "verified_main_sha": "bffbdcb173a893f76e36b3230b36f2eb9fb8b830",
+    "verification_scope": "GitHub PR state/base plus local merge-commit ancestry against the exact observed refs/heads/main SHA; consult immutable recovery receipts for source-tree equivalence. Heads are observed before any report update.",
+    "replacement_prs": [
+      {
+        "original_pr": 260,
+        "landing_pr": 267,
+        "status": "merged_into_main"
+      },
+      {
+        "original_pr": 261,
+        "landing_pr": 268,
+        "status": "merged_into_main"
+      },
+      {
+        "original_pr": 262,
+        "landing_pr": 269,
+        "status": "merged_into_main"
+      }
+    ],
+    "layers": [
+      {
+        "pr": 259,
+        "base": "main",
+        "state": "MERGED",
+        "is_draft": false,
+        "status": "merged_into_main",
+        "head_at_observation": "4488fb6a2a0e3872307009a9c85df91b7011cc22",
+        "merge_commit": "a69ea5127a68cb98c37f2009d864951048c18179",
+        "merge_commit_is_main_ancestor": true
+      },
+      {
+        "pr": 267,
+        "base": "main",
+        "state": "MERGED",
+        "is_draft": false,
+        "status": "merged_into_main",
+        "head_at_observation": "cee2cecdb1b8456a04fc3013f88630cf25947a71",
+        "merge_commit": "b79b61f3043fed6c2d05e99707f757cfd1fc490f",
+        "merge_commit_is_main_ancestor": true
+      },
+      {
+        "pr": 268,
+        "base": "main",
+        "state": "MERGED",
+        "is_draft": false,
+        "status": "merged_into_main",
+        "head_at_observation": "f9b7345d78f8b5cf39f6ee81aca37b4aa9a955e6",
+        "merge_commit": "5292e80ac70ae6296c6088672520585c6cd88e2a",
+        "merge_commit_is_main_ancestor": true
+      },
+      {
+        "pr": 269,
+        "base": "main",
+        "state": "MERGED",
+        "is_draft": false,
+        "status": "merged_into_main",
+        "head_at_observation": "3709ede4e57d3e54237ecd82385df53ef465fd20",
+        "merge_commit": "5a5c17cee088aab95f16288c654da30b62e41106",
+        "merge_commit_is_main_ancestor": true
+      },
+      {
+        "pr": 263,
+        "base": "main",
+        "state": "MERGED",
+        "is_draft": false,
+        "status": "merged_into_main",
+        "head_at_observation": "469eb802b10ba07fd6dc5131a5e3be5ca220b077",
+        "merge_commit": "7a80ad1dd93a7ac5b2463e78e1cb47e7766a5bd3",
+        "merge_commit_is_main_ancestor": true
+      },
+      {
+        "pr": 264,
+        "base": "main",
+        "state": "MERGED",
+        "is_draft": false,
+        "status": "merged_into_main",
+        "head_at_observation": "fdf62445ad470c97e38cb55e80693567e4ce516b",
+        "merge_commit": "8a65524597aa5c4788573c811aa61dddb22a91c0",
+        "merge_commit_is_main_ancestor": true
+      },
+      {
+        "pr": 265,
+        "base": "main",
+        "state": "MERGED",
+        "is_draft": false,
+        "status": "merged_into_main",
+        "head_at_observation": "d223883484e64b307cf4d8f44c9f375680cf2f3e",
+        "merge_commit": "bffbdcb173a893f76e36b3230b36f2eb9fb8b830",
+        "merge_commit_is_main_ancestor": true
+      },
+      {
+        "pr": 266,
+        "base": "codex/session-pilot-safety",
+        "state": "OPEN",
+        "is_draft": true,
+        "status": "draft",
+        "head_at_observation": "2543d9e3d9950868ff37d5d8ae885273a372acab",
+        "merge_commit": null,
+        "merge_commit_is_main_ancestor": false
+      }
+    ],
+    "all_layers_integrated": false,
+    "provider_qualified": false,
+    "verification_pr": 266
+  }
 }

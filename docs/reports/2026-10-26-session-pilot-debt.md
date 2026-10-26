@@ -55,6 +55,8 @@
 
 任务在实际 OSStack 看板 `session-pilot-debt` 中管理。卡片编号、状态及验证记录导出到 [机器交付账本](2026-10-26-session-pilot-delivery.json)。专用管理 home 使用已安装版本，不与开发版测试数据库混用。
 
+### 初始推广方案（历史快照）
+
 检查发现 #253–#258 合入了前置功能分支，未进入 main。#252 的协议层已在 main。六个推广 PR 保留原来已经审阅的源码树：
 
 | 顺序 | PR | 内容 |
@@ -66,7 +68,24 @@
 | 5 | [#263](https://github.com/osborn-studio/osstack/pull/263) | 架构设计与实施契约 |
 | 6 | [#264](https://github.com/osborn-studio/osstack/pull/264) | 双语指南与历史证据索引 |
 
-本次安全修复见 [#265](https://github.com/osborn-studio/osstack/pull/265)；验证脚本与本报告位于 `codex/session-pilot-verification` 后续独立 PR。六个推广 PR 的全部启用 CI 已通过；付费 DeepSeek 手动检查未运行。每个下游 PR 在前置项进入 main 前保持 Draft；之后必须切换目标为 main，重新检查差异和 CI，再合并。中间层不应单独启用试点。是否已集成，须核对 main 的提交祖先和源码，不能只看 PR 的 `merged` 标签。
+本次安全修复见 [#265](https://github.com/osborn-studio/osstack/pull/265)；验证脚本与本报告位于 [#266](https://github.com/osborn-studio/osstack/pull/266)。六个推广 PR 的全部启用 CI 已通过；付费 DeepSeek 手动检查未运行。每个下游 PR 在前置项进入 main 前保持 Draft；之后必须切换目标为 main，重新检查差异和 CI，再合并。中间层不应单独启用试点。是否已集成，须核对 main 的提交祖先和源码，不能只看 PR 的 `merged` 标签。
+
+### Main 恢复进度（带日期的快照）
+
+观察时间：`2026-10-26T13:10:54.283582+00:00`；核对的 main：`bffbdcb173a893f76e36b3230b36f2eb9fb8b830`。原 #260、#261、#262 曾合入功能分支；其 main 恢复 PR 分别是 #267、#268、#269。以下状态属于本次观察，不是实时状态，也不会改写前面的测试、审计或真实调用记录。
+
+| PR | 目标 | 观察状态 |
+|---|---|---|
+| [#259](https://github.com/osborn-studio/osstack/pull/259) | `main` | 已合入 main |
+| [#267](https://github.com/osborn-studio/osstack/pull/267) | `main` | 已合入 main |
+| [#268](https://github.com/osborn-studio/osstack/pull/268) | `main` | 已合入 main |
+| [#269](https://github.com/osborn-studio/osstack/pull/269) | `main` | 已合入 main |
+| [#263](https://github.com/osborn-studio/osstack/pull/263) | `main` | 已合入 main |
+| [#264](https://github.com/osborn-studio/osstack/pull/264) | `main` | 已合入 main |
+| [#265](https://github.com/osborn-studio/osstack/pull/265) | `main` | 已合入 main |
+| [#266](https://github.com/osborn-studio/osstack/pull/266) | `codex/session-pilot-safety` | Draft，尚未转 Ready |
+
+依次处理 #269 → #263 → #264 → #265 → #266。每一项以前置进入 main 为条件，再核对实际差异与新的 CI。此快照不表示未合并的 #266 已经进入 main；Provider 资格仍为 false。
 
 ## 仍未验证的边界
 
@@ -84,4 +103,4 @@
 
 ## English summary
 
-This change fixes source identity reconciliation and unsafe drain reports after failed lock cleanup. It adds a bounded CLI-to-daemon smoke in CI and records a separate live Codex native Session journey. Tasks are managed in OSStack. Six promotion PRs repair the missing path to main; downstream PRs must be retargeted to main before merge. Local test success and a live reply do not certify process containment, physical durability, provider qualification or the complete engineering controller.
+This change fixes source identity reconciliation and unsafe drain reports after failed lock cleanup. It adds a bounded CLI-to-daemon smoke in CI and records a separate live Codex native Session journey. Tasks are managed in OSStack. The initial six-PR promotion table is a historical snapshot. PRs #267, #268 and #269 replace #260, #261 and #262 for direct main integration. The dated recovery table records the observed state; downstream PRs require their predecessors on main, a main base, and fresh CI before merge. An unmerged verification PR is not counted as delivered. Local test success and a live reply do not certify process containment, physical durability, provider qualification or the complete engineering controller.
