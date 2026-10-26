@@ -1,0 +1,517 @@
+{
+  "schema_version": 1,
+  "kind": "pinned_source_inventory",
+  "note": "Git-object hashes prove identity, not semantics. Selected excerpts were read; catalogued files and upstream tests were not executed in this design update. Existing 74 anchors remain unchanged.",
+  "license": {
+    "repository": "firstmate",
+    "spdx": "MIT",
+    "copyright": "2026 Kun Chen",
+    "source_ref": "ADD-003"
+  },
+  "sources": [
+    {
+      "id": "ADD-001",
+      "repository": "firstmate",
+      "commit": "af1c6817fc47589b162cbc361671c43cdb150933",
+      "path": "README.md",
+      "sha256": "8d481add11dea0345107d3079b14fec2b568c296284b37657e13e85ff2690661",
+      "inspection": "selected_contract_excerpt_read"
+    },
+    {
+      "id": "ADD-002",
+      "repository": "firstmate",
+      "commit": "af1c6817fc47589b162cbc361671c43cdb150933",
+      "path": "AGENTS.md",
+      "sha256": "1d67d8fea74b30be6b4de1e1eec0d41f5ed7c7d0215c79d873c3facef96e3896",
+      "inspection": "selected_contract_excerpt_read"
+    },
+    {
+      "id": "ADD-003",
+      "repository": "firstmate",
+      "commit": "af1c6817fc47589b162cbc361671c43cdb150933",
+      "path": "LICENSE",
+      "sha256": "945016bd37e1ba7211622ef60ee1d23ab727896ba7710edd21e8fbe983863969",
+      "inspection": "selected_contract_excerpt_read"
+    },
+    {
+      "id": "ADD-004",
+      "repository": "firstmate",
+      "commit": "af1c6817fc47589b162cbc361671c43cdb150933",
+      "path": "docs/architecture.md",
+      "sha256": "95b55e5dd461be17dbf01b1cd88b05f841b4786d33d2a98e5c2be3dee7b6c6ce",
+      "inspection": "selected_contract_excerpt_read"
+    },
+    {
+      "id": "ADD-005",
+      "repository": "firstmate",
+      "commit": "af1c6817fc47589b162cbc361671c43cdb150933",
+      "path": "docs/secondmate-parent-channel.md",
+      "sha256": "bc201844f26c856e87d7a1d29211a328dff65e1682fa7429c5c5735142dde274",
+      "inspection": "selected_contract_excerpt_read"
+    },
+    {
+      "id": "ADD-006",
+      "repository": "firstmate",
+      "commit": "af1c6817fc47589b162cbc361671c43cdb150933",
+      "path": "docs/calm.md",
+      "sha256": "44eb6f996322eac6f8f934d516bc54af33d64b296a19ddf0c02fb73260421330",
+      "inspection": "selected_contract_excerpt_read"
+    },
+    {
+      "id": "ADD-007",
+      "repository": "firstmate",
+      "commit": "af1c6817fc47589b162cbc361671c43cdb150933",
+      "path": "bin/fm-capacity.sh",
+      "sha256": "69b18847430f78bce72643b8c6f12335ef23e2003bef6e20f3ac2c4eb360f0ce",
+      "inspection": "selected_contract_excerpt_read"
+    },
+    {
+      "id": "ADD-008",
+      "repository": "firstmate",
+      "commit": "af1c6817fc47589b162cbc361671c43cdb150933",
+      "path": "bin/fm-project-capacity-lib.sh",
+      "sha256": "8722b50acaa6c2988b7b31c1e56a12ec23769c3c3675d5afdc487e1480a0ba94",
+      "inspection": "selected_contract_excerpt_read"
+    },
+    {
+      "id": "ADD-009",
+      "repository": "firstmate",
+      "commit": "af1c6817fc47589b162cbc361671c43cdb150933",
+      "path": "bin/fm-dispatch-resolve.sh",
+      "sha256": "b1c723539770abb6d8d7fbdbdcf8809e9927ce19e69d2cb80256c6d1ff396bdc",
+      "inspection": "selected_contract_excerpt_read"
+    },
+    {
+      "id": "ADD-010",
+      "repository": "firstmate",
+      "commit": "af1c6817fc47589b162cbc361671c43cdb150933",
+      "path": "bin/fm-operational-input.sh",
+      "sha256": "b796910c2ebbc2f77c18ef73722cbe76abb874d6f120cc9e2e326fbae219334d",
+      "inspection": "selected_contract_excerpt_read"
+    },
+    {
+      "id": "ADD-011",
+      "repository": "firstmate",
+      "commit": "af1c6817fc47589b162cbc361671c43cdb150933",
+      "path": "bin/fm-tool-update-check.sh",
+      "sha256": "a2eeb3ae350808f025f797d7ec71baf6082dfaed9e3148aa115155d8676b3cc5",
+      "inspection": "selected_contract_excerpt_read"
+    },
+    {
+      "id": "ADD-012",
+      "repository": "firstmate",
+      "commit": "af1c6817fc47589b162cbc361671c43cdb150933",
+      "path": "bin/fm-backlog-handoff.sh",
+      "sha256": "6db0062a926a4e133636d7368c75915b1f7054b62c11dc945d38f5906be8895f",
+      "inspection": "selected_contract_excerpt_read"
+    },
+    {
+      "id": "ADD-013",
+      "repository": "firstmate",
+      "commit": "af1c6817fc47589b162cbc361671c43cdb150933",
+      "path": "docs/configuration.md",
+      "sha256": "dd089ab478ff1c10885a0dfd6d4af6d417fc48794d1d34eb84e6ee84cbfd7a9d",
+      "inspection": "path_and_hash_verified"
+    },
+    {
+      "id": "ADD-014",
+      "repository": "firstmate",
+      "commit": "af1c6817fc47589b162cbc361671c43cdb150933",
+      "path": "docs/remote-secondmates.md",
+      "sha256": "8f0d36d7e88568caaabf323b3da67f7f2f074ae147bb0866409f6f7a683f7e00",
+      "inspection": "path_and_hash_verified"
+    },
+    {
+      "id": "ADD-015",
+      "repository": "firstmate",
+      "commit": "af1c6817fc47589b162cbc361671c43cdb150933",
+      "path": "docs/voice-relay.md",
+      "sha256": "aaefb4510f8e46f70a7781236a947c8ff67302af080c5edbcd6e16a8cebd9087",
+      "inspection": "path_and_hash_verified"
+    },
+    {
+      "id": "ADD-016",
+      "repository": "firstmate",
+      "commit": "af1c6817fc47589b162cbc361671c43cdb150933",
+      "path": "docs/verification/stow-memory.md",
+      "sha256": "ae09fd38a6c252b8056823f4112a5d24ba0999d17fac8b7ba63490923b7be05c",
+      "inspection": "path_and_hash_verified"
+    },
+    {
+      "id": "ADD-017",
+      "repository": "firstmate",
+      "commit": "af1c6817fc47589b162cbc361671c43cdb150933",
+      "path": "docs/verification/dispatch-auth.md",
+      "sha256": "883379ee3d0238647ad949e33068eed9ed0fed4b77d6e1b8e5986f6494181648",
+      "inspection": "path_and_hash_verified"
+    },
+    {
+      "id": "ADD-018",
+      "repository": "firstmate",
+      "commit": "af1c6817fc47589b162cbc361671c43cdb150933",
+      "path": "docs/verification/dispatch-resolve.md",
+      "sha256": "1d21bfd3ca414730b0e6e7f35d3928931d431de3ef8803e6c446d40f5fd35ec3",
+      "inspection": "path_and_hash_verified"
+    },
+    {
+      "id": "ADD-019",
+      "repository": "firstmate",
+      "commit": "af1c6817fc47589b162cbc361671c43cdb150933",
+      "path": "docs/gerrit-change-watch.md",
+      "sha256": "632428a2835852dbbf5ae45c508379ab5f40bcce4f5ae85b707baa8b4c170b75",
+      "inspection": "path_and_hash_verified"
+    },
+    {
+      "id": "ADD-020",
+      "repository": "firstmate",
+      "commit": "af1c6817fc47589b162cbc361671c43cdb150933",
+      "path": "docs/gitlab-merge-watch.md",
+      "sha256": "e442cb99ec3714ddecd46da5fe6da444029112ac6c2634a9c6074097d9a4e1c2",
+      "inspection": "path_and_hash_verified"
+    },
+    {
+      "id": "ADD-021",
+      "repository": "firstmate",
+      "commit": "af1c6817fc47589b162cbc361671c43cdb150933",
+      "path": "docs/forgejo-tea-integration.md",
+      "sha256": "1359317289f9ef694ba3e0d4964db29868a35cd3c36c0289b60867523cadd63f",
+      "inspection": "path_and_hash_verified"
+    },
+    {
+      "id": "ADD-022",
+      "repository": "firstmate",
+      "commit": "af1c6817fc47589b162cbc361671c43cdb150933",
+      "path": "docs/gerrit-forge-integration.md",
+      "sha256": "1a8cd1558d900a380e2621df177b50c4aa1bbd94d1d9868202b975ba146029d4",
+      "inspection": "path_and_hash_verified"
+    },
+    {
+      "id": "ADD-023",
+      "repository": "osstack",
+      "commit": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+      "path": "packages/cli/src/start-control-command.ts",
+      "sha256": "073ff55a62bf7d7e86f66bfade6f931e57bbaa58ce6271b8e8876d6773dc146c",
+      "inspection": "path_and_hash_verified"
+    },
+    {
+      "id": "ADD-024",
+      "repository": "osstack",
+      "commit": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+      "path": "packages/core/src/attention.ts",
+      "sha256": "a63130752c8c87298a3d154955cfc66dcfe7a0190deccf5f9e492e6af61ef888",
+      "inspection": "path_and_hash_verified"
+    },
+    {
+      "id": "ADD-025",
+      "repository": "osstack",
+      "commit": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+      "path": "packages/core/src/state/attention-store.ts",
+      "sha256": "b6ffc14f93f2bc7d5f3a830e859c4ba59bb75d55d42c88b663be3ce666bcb788",
+      "inspection": "path_and_hash_verified"
+    },
+    {
+      "id": "ADD-026",
+      "repository": "osstack",
+      "commit": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+      "path": "packages/cli/src/daemon.ts",
+      "sha256": "ec2585eabc24605c27e2385705ab8fa7da853dc69558675cf600d38ede51cc6f",
+      "inspection": "path_and_hash_verified"
+    },
+    {
+      "id": "ADD-027",
+      "repository": "osstack",
+      "commit": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+      "path": "packages/core/src/state/sessions.ts",
+      "sha256": "923c69781b1bdf9370e92cefeaef2fdb8128c2105eb5bf20f4163d37d84d5710",
+      "inspection": "path_and_hash_verified"
+    },
+    {
+      "id": "ADD-028",
+      "repository": "osstack",
+      "commit": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+      "path": "packages/core/src/state/db.ts",
+      "sha256": "bda761c2999f90292d546b6b871ad83567b851cc605767d6d6cc12417f183fee",
+      "inspection": "path_and_hash_verified"
+    },
+    {
+      "id": "ADD-029",
+      "repository": "osstack",
+      "commit": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+      "path": "packages/cli/src/adapter-lifecycle.ts",
+      "sha256": "39ced6878c09460c4ddaecde2a9ed7845c3a5de9ed6db45130e06dc2813d5fff",
+      "inspection": "path_and_hash_verified"
+    },
+    {
+      "id": "ADD-030",
+      "repository": "osstack",
+      "commit": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+      "path": "packages/core/src/state/attention-actions.ts",
+      "sha256": "795c2d55d41277282b4ca6bc95e115b4e468bc5403e6a81f14c51db8bef04da7",
+      "inspection": "path_and_hash_verified"
+    },
+    {
+      "id": "ADD-031",
+      "repository": "osstack",
+      "commit": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+      "path": "packages/core/src/state/attention-run-projection.ts",
+      "sha256": "a0ad6a39803d9cf1746117100ae5a4deef9a9ccf8ae42b73acebde711dbc182f",
+      "inspection": "path_and_hash_verified"
+    },
+    {
+      "id": "ADD-032",
+      "repository": "osstack",
+      "commit": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+      "path": "packages/protocol/schemas/session-decision.schema.json",
+      "sha256": "b97f8130a57ff75fa0db3ec67c238219a7551b7cd6b19dba6d85c6728c54349b",
+      "inspection": "path_and_hash_verified"
+    },
+    {
+      "id": "ADD-033",
+      "repository": "osstack",
+      "commit": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+      "path": "packages/core/src/state/source-observations.ts",
+      "sha256": "245a04dda8e30f08ab9257b3d474a395523c4f758fe9bb023f063a855d6f5197",
+      "inspection": "path_and_hash_verified"
+    },
+    {
+      "id": "ADD-034",
+      "repository": "osstack",
+      "commit": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+      "path": "packages/cli/src/attention-hook.ts",
+      "sha256": "3e9395bb68ee0485e5f6f397339026d9f14c26c63c515da0523ac9d34313564f",
+      "inspection": "path_and_hash_verified"
+    },
+    {
+      "id": "ADD-035",
+      "repository": "osstack",
+      "commit": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+      "path": "packages/supervisor/src/attention.ts",
+      "sha256": "0967871b667ff348f2a53671a0620306db5a64a748a939773de05c6ae6e550d6",
+      "inspection": "path_and_hash_verified"
+    },
+    {
+      "id": "ADD-036",
+      "repository": "osstack",
+      "commit": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+      "path": "packages/core/src/state/session-continuations.ts",
+      "sha256": "c9fb344662206a52dad35d20bd185c9a976a50bd27526f8ea7eda0a5473132a1",
+      "inspection": "path_and_hash_verified"
+    },
+    {
+      "id": "ADD-037",
+      "repository": "osstack",
+      "commit": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+      "path": "packages/core/src/state/attention-experience.ts",
+      "sha256": "6e526c702bae4afab0d6ca010fa5700126c141a009541988becf346b0e9acf43",
+      "inspection": "path_and_hash_verified"
+    },
+    {
+      "id": "ADD-038",
+      "repository": "osstack",
+      "commit": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+      "path": "packages/cli/src/daily-attention.ts",
+      "sha256": "40bed215c4ea37a39125f57f16a9cfb0097deb792ed72a5cd99ad83db71b54a5",
+      "inspection": "path_and_hash_verified"
+    },
+    {
+      "id": "ADD-039",
+      "repository": "osstack",
+      "commit": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+      "path": "packages/cli/src/scout-command.ts",
+      "sha256": "dacfbb91c610361cea38fd682536eec34a4f2cf67e4d92990e6b33da2fe4fda8",
+      "inspection": "path_and_hash_verified"
+    },
+    {
+      "id": "ADD-040",
+      "repository": "osstack",
+      "commit": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+      "path": "packages/core/src/delivery-contract.ts",
+      "sha256": "fca14f4dc312e8021f0a3049c3ac8be4981569512fce42a122ec781d11984ce3",
+      "inspection": "path_and_hash_verified"
+    },
+    {
+      "id": "ADD-041",
+      "repository": "osstack",
+      "commit": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+      "path": "packages/core/src/state/attention-recovery-view.ts",
+      "sha256": "9785174f3dce64150a4c623a8d3af5dc5adcff35181b82b0d66f35c7324b71fc",
+      "inspection": "path_and_hash_verified"
+    },
+    {
+      "id": "ADD-042",
+      "repository": "osstack",
+      "commit": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+      "path": "packages/core/src/capability.ts",
+      "sha256": "7180332bfdb2b71fefc47c88de1014fb4b2eb9434dcbae757884009cbd2cfdcb",
+      "inspection": "path_and_hash_verified"
+    },
+    {
+      "id": "ADD-043",
+      "repository": "osstack",
+      "commit": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+      "path": "packages/cli/src/worker-viewer-launch.ts",
+      "sha256": "02ba7e8c148fff5e316f328f45ed6e2e200b70ab55b90c24c464e99c3ae3cd71",
+      "inspection": "path_and_hash_verified"
+    },
+    {
+      "id": "ADD-044",
+      "repository": "osstack",
+      "commit": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+      "path": "packages/cli/src/remote-home-protocol.ts",
+      "sha256": "4fe5967e8c3e9d02d2ec2c72a7d9d3fc71162782add9f20026e1c2e55c54cb6c",
+      "inspection": "path_and_hash_verified"
+    },
+    {
+      "id": "ADD-045",
+      "repository": "osstack",
+      "commit": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+      "path": "packages/cli/src/source-observation-host.ts",
+      "sha256": "154dcde431f8970317fe79d132d5772ae07e8b5348ee9c0a506d32f4d579afd6",
+      "inspection": "path_and_hash_verified"
+    },
+    {
+      "id": "ADD-046",
+      "repository": "osstack",
+      "commit": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+      "path": "packages/core/src/state/follow-up-delivery.ts",
+      "sha256": "5a6ffa6094e200189c5f323b1403857c56a511f76cfead0ba372026d9008f887",
+      "inspection": "path_and_hash_verified"
+    },
+    {
+      "id": "ADD-047",
+      "repository": "osstack",
+      "commit": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+      "path": "packages/cli/src/attention-lesson.ts",
+      "sha256": "8eaac70c561d5b60cef5797ac48647d98ae10a8cb5eae3d1ebd498ac869060a7",
+      "inspection": "path_and_hash_verified"
+    },
+    {
+      "id": "ADD-048",
+      "repository": "osstack",
+      "commit": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+      "path": "packages/supervisor/src/routing-evaluation.ts",
+      "sha256": "37cf04d8fba4b7d61555199ed8c3c52e75d47473c991c5a5a0368677a0dde6c5",
+      "inspection": "path_and_hash_verified"
+    },
+    {
+      "id": "ADD-049",
+      "repository": "osstack",
+      "commit": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+      "path": "packages/cli/src/follow-up-delivery-host.ts",
+      "sha256": "6e39e975b954189214daa42a1dd4b8014f9673f4dd34d395b2d8bcfe2c1361b8",
+      "inspection": "path_and_hash_verified"
+    },
+    {
+      "id": "ADD-050",
+      "repository": "osstack",
+      "commit": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+      "path": "packages/cli/src/deliver-command.ts",
+      "sha256": "bfc9d583b6c9e35f9019a510df104401ebc79c3373e89097162d705cff0cf006",
+      "inspection": "path_and_hash_verified"
+    },
+    {
+      "id": "ADD-051",
+      "repository": "osstack",
+      "commit": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+      "path": "packages/cli/src/upgrade-coordinator.ts",
+      "sha256": "2111fa5f28b69e44e9c496e16f93c8726d72c082fb19de847816220dc0b78351",
+      "inspection": "path_and_hash_verified"
+    },
+    {
+      "id": "ADD-052",
+      "repository": "firstmate",
+      "commit": "af1c6817fc47589b162cbc361671c43cdb150933",
+      "path": "tests/fm-capacity.test.sh",
+      "sha256": "f7c46ba01bc114e1d75a6c63855898abcbe83d8b85a5f2e1ce32102c255d5ccd",
+      "inspection": "path_and_hash_verified"
+    },
+    {
+      "id": "ADD-053",
+      "repository": "firstmate",
+      "commit": "af1c6817fc47589b162cbc361671c43cdb150933",
+      "path": "tests/fm-project-capacity.test.sh",
+      "sha256": "4e9b3100854b65467bfdfc870414e374e4e58789fb0e09a4453eea570d31ed08",
+      "inspection": "path_and_hash_verified"
+    },
+    {
+      "id": "ADD-054",
+      "repository": "firstmate",
+      "commit": "af1c6817fc47589b162cbc361671c43cdb150933",
+      "path": "tests/fm-backlog-handoff.test.sh",
+      "sha256": "46c108dc09ce568547be9db06cb6e9e8093ede9e33b423a8f1cae9d96fbc9ee1",
+      "inspection": "path_and_hash_verified"
+    },
+    {
+      "id": "ADD-055",
+      "repository": "firstmate",
+      "commit": "af1c6817fc47589b162cbc361671c43cdb150933",
+      "path": "tests/fm-remote-backlog-handoff.test.sh",
+      "sha256": "1b96c9af6b33e6f7cc4194b633b813c7d47850f0ad3efae013e4b52cf1770698",
+      "inspection": "path_and_hash_verified"
+    },
+    {
+      "id": "ADD-056",
+      "repository": "firstmate",
+      "commit": "af1c6817fc47589b162cbc361671c43cdb150933",
+      "path": "tests/fm-secondmate-safety.test.sh",
+      "sha256": "e079d9729ef0711e62148ae8e0b1663f1868fd3fdb32e62541fe788ae5ed1e3b",
+      "inspection": "path_and_hash_verified"
+    },
+    {
+      "id": "ADD-057",
+      "repository": "firstmate",
+      "commit": "af1c6817fc47589b162cbc361671c43cdb150933",
+      "path": "tests/fm-remote-secondmate-parent-binding.test.sh",
+      "sha256": "873030f1137de4e5ad77ce34a863f2cabe9bb2e3342b46144e7480c2790d1095",
+      "inspection": "path_and_hash_verified"
+    },
+    {
+      "id": "ADD-058",
+      "repository": "firstmate",
+      "commit": "af1c6817fc47589b162cbc361671c43cdb150933",
+      "path": "tests/fm-calm-pi-extension.test.sh",
+      "sha256": "7fe4e791b68e79e070b53f42d313aa25af8a727fa05ba2ef55af314594886ee9",
+      "inspection": "path_and_hash_verified"
+    },
+    {
+      "id": "ADD-059",
+      "repository": "firstmate",
+      "commit": "af1c6817fc47589b162cbc361671c43cdb150933",
+      "path": "tests/fm-calm-claude-mod.test.sh",
+      "sha256": "7eb3bd51b8c29f2a554fdb334a246550212001909d19382d34a9126581aed633",
+      "inspection": "path_and_hash_verified"
+    },
+    {
+      "id": "ADD-060",
+      "repository": "firstmate",
+      "commit": "af1c6817fc47589b162cbc361671c43cdb150933",
+      "path": "tests/fm-public-followup.test.sh",
+      "sha256": "29263ef204b84027e803bca4dfcc4f70b7c9873fbc171d8e53a9ea26c36c7f78",
+      "inspection": "path_and_hash_verified"
+    },
+    {
+      "id": "ADD-061",
+      "repository": "firstmate",
+      "commit": "af1c6817fc47589b162cbc361671c43cdb150933",
+      "path": "tests/fm-self-repo-role.test.sh",
+      "sha256": "b72c2a94436a045d958afa9a4121b7f10759784aadc118990869692471310e58",
+      "inspection": "path_and_hash_verified"
+    },
+    {
+      "id": "ADD-062",
+      "repository": "firstmate",
+      "commit": "af1c6817fc47589b162cbc361671c43cdb150933",
+      "path": "tests/fm-tool-update-check.test.sh",
+      "sha256": "8a7478f3f440c2466587be5f2fa5d96a597bbce0ba5e76c8da8f3cf35f460639",
+      "inspection": "path_and_hash_verified"
+    },
+    {
+      "id": "ADD-063",
+      "repository": "firstmate",
+      "commit": "af1c6817fc47589b162cbc361671c43cdb150933",
+      "path": "tests/fm-update.test.sh",
+      "sha256": "ad7c65d5ddfeca2d132c55ca65472f3c8bea7991da3fdf933f852fbad6435a4e",
+      "inspection": "path_and_hash_verified"
+    }
+  ]
+}
