@@ -42,7 +42,7 @@ if (!db.prepare("SELECT 1 FROM tasks WHERE task_id='task'").get()) {
 }
 db.close();
 const daemon = await startDaemon({
-  socketPath: process.env["OSSTACK_SOCKET"] ?? join(root, "d.sock"), workspacePath: repo, adapters: [new CrashFixture()],
+  socketPath: process.env["OSSTACK_ENGINEERING_FIXTURE_SOCKET"] ?? join(root, "d.sock"), workspacePath: repo, adapters: [new CrashFixture()],
   autonomyHealth: async () => {
     if (mode === "admission") await new Promise<void>(() => {});
     return healthyAutonomyHealth();

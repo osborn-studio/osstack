@@ -362,7 +362,7 @@ it.each(["complete", "unknown"] as const)("keeps drain blocked after a %s receip
   // Completion must not enqueue a fresh observer pass while the daemon drains.
   expect(scan.mock.calls.some(([reason]) => reason === "session.send.settled")).toBe(false);
   expect(await rpc("daemon.drain", { timeout_ms: 0 })).toMatchObject({ ok: true, result: {
-    drained: mode === "complete", active_runs: 0, attention_dispatch_holds: mode === "complete" ? 0 : 1,
+    drained: mode === "complete", active_runs: 0, attention_dispatch_holds: mode === "complete" ? 0 : 1, execution_lease_holds: 0,
   } });
   expect(adapter.resumed).toHaveLength(1);
 });
@@ -437,4 +437,29 @@ it.each(["release_failed", "handle_not_returned"] as const)("keeps %s admission 
       drained: false, active_runs: 0, attention_dispatch_holds: 0, execution_lease_holds: 1,
     } });
   } finally { await cleanup?.(); }
+});
+
+
+it("requests a settled observer scan after cleanup when the daemon is accepting work", async () => {
+  await fixture();
+  const entered = barrier();
+  const finish = barrier();
+  const original = autonomy.acquireRepoWriteLock;
+  vi.spyOn(autonomy, "acquireRepoWriteLock").mockImplementation(async (...args) => {
+    const lock = await original(...args);
+    return { ...lock, release: async () => {
+      entered.release();
+      await finish.promise;
+      await lock.release();
+    } };
+  });
+  const scan = vi.spyOn(SupervisionService.prototype, "requestScan");
+  const mission = await adopt();
+  expect(await rpc("engineering.decide", await answer(mission.mission_id))).toMatchObject({ ok: true });
+  await entered.promise;
+  expect(scan.mock.calls.some(([reason]) => reason === "session.send.settled")).toBe(false);
+  finish.release();
+  await until(() => rpc("health"), value => value.result?.["active_runs"] === 0);
+  expect(scan.mock.calls.filter(([reason]) => reason === "session.send.settled")).toHaveLength(1);
+  expect(await rpc("health")).toMatchObject({ ok: true, result: { draining: false, execution_lease_holds: 0 } });
 });

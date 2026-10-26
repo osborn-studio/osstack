@@ -1,4 +1,5 @@
 ---
+"@osstack/autonomy": patch
 "@osstack/core": patch
 "@osstack/cli": patch
 ---

@@ -265,3 +265,6 @@ An applied reply is separate from lease cleanup. `health` and `daemon.drain` exp
 A detected source identity replacement keeps the Mission in reconciliation, even if all waits were cleared and the old native ID returns. This restriction survives restart. Read the original action receipt or explicitly end observation. A later manual turn does not become the original Mission's success evidence.
 
 See the [remaining-work plan](../plans/2026-10-26-session-pilot-debt.md) for the integration order and external qualification gates.
+
+
+On upgrade, an existing event with `category: identity` also preserves this restriction. Temporary repository unavailability is a separate category and can recover after the repository returns. This change needs no database migration. Drain counts all held execution permits, including Loop and Graph work; a retained unknown execution can intentionally keep drain blocked.
