@@ -1,0 +1,72 @@
+{
+  "version": 1,
+  "status": "proposed_contract_rules_not_runtime_allowlist",
+  "upstream_commit": "af1c6817fc47589b162cbc361671c43cdb150933",
+  "requires_reviewed_contract_version": true,
+  "rules": [
+    {
+      "id": "DIV-01",
+      "capabilities": [
+        "FM-04",
+        "FM-08",
+        "FM-09"
+      ],
+      "scenario_ids": [
+        "WD-19",
+        "WD-41"
+      ],
+      "when": {
+        "upstream_plane": "durable_inbox",
+        "event": "answer_enqueued",
+        "osstack_profile": "session_reply_turn"
+      },
+      "upstream_observation": "question_closed_at_enqueue",
+      "osstack_observation": "answer_recorded_obligation_pending_until_reply_turn_committed",
+      "verdict": "allowed_divergence",
+      "source": "bin/fm-send.sh",
+      "reason": "Human answer demand ends at receipt; dependent step release waits for the exact completed turn. No second resume."
+    },
+    {
+      "id": "DIV-02",
+      "capabilities": [
+        "FM-08"
+      ],
+      "scenario_ids": [
+        "WD-06",
+        "WD-07",
+        "WD-08",
+        "WD-39"
+      ],
+      "when": {
+        "input_identity": "legacy_key_without_scope_or_revision",
+        "event": "answer_submitted",
+        "osstack_profile": "typed_decision"
+      },
+      "upstream_observation": "legacy_key_may_be_resolved_in_home",
+      "osstack_observation": "reject_missing_exact_scope_item_revision_binding",
+      "verdict": "allowed_divergence",
+      "source": "bin/fm-classify-lib.sh",
+      "reason": "OSStack requires scoped current identity and never guesses a default decision bucket."
+    },
+    {
+      "id": "DIV-03",
+      "capabilities": [
+        "FM-07",
+        "FM-10"
+      ],
+      "scenario_ids": [
+        "WD-25"
+      ],
+      "when": {
+        "posture": "away",
+        "event": "actor_requests_decision_authority",
+        "osstack_profile": "fixed_host_authority"
+      },
+      "upstream_observation": "branch_ownership_can_change_under_away_contract",
+      "osstack_observation": "away_changes_notifications_only_not_authority",
+      "verdict": "allowed_divergence",
+      "source": "bin/fm-send.sh",
+      "reason": "OSStack keeps existing authenticated authority, independently of notification posture."
+    }
+  ]
+}
