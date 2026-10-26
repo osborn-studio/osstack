@@ -1,0 +1,40 @@
+{
+  "mode": "tool-less static review, no test execution by reviewer",
+  "reviews": [
+    {
+      "review": "split-audit",
+      "model": "claude-sonnet-5-5",
+      "is_error": false,
+      "input_sha256": "aa5d192e6eb6fdaad23a7146bbb60018ffed6741e6103fc1ee0c8d67e5a9b72c",
+      "input_bytes": 71349,
+      "response_file": "split-audit.json",
+      "response_sha256": "d3c73bab870547072c9e28801c4af8d0e822fcb3eb36c9a565b7865e6532ddce",
+      "raw_input_storage": "Local scratch archive; not included in this PR diff"
+    },
+    {
+      "review": "split-audit-closeout",
+      "model": "claude-sonnet-5-5",
+      "is_error": false,
+      "input_sha256": "a7c94a7363ecccc45870f75d7ed37d14fb2f90f7621a57b9d89d04a28e391feb",
+      "input_bytes": 21318,
+      "response_file": "split-audit-closeout.json",
+      "response_sha256": "76daa6aa5e71bbbb035c380bdbfdbd4a48e64e2fef3da58a7627fdb6de490944",
+      "raw_input_storage": "Local scratch archive; not included in this PR diff"
+    },
+    {
+      "review": "split-audit-race",
+      "model": "claude-sonnet-5-5",
+      "is_error": false,
+      "input_sha256": "8f6ce81851b2f5ab04f3965dc882339496e22493797bdf136f3b4377eeb94f52",
+      "input_bytes": 48915,
+      "response_file": "split-audit-race.json",
+      "response_sha256": "cfbdd0e81c65b4d31edb1036fdc26ca7f9291c60147e1d9f83704cbf028b9910",
+      "raw_input_storage": "Local scratch archive; not included in this PR diff"
+    }
+  ],
+  "final_reviewed_test": {
+    "path": "packages/cli/src/daemon-engineering.test.ts",
+    "sha256": "f47c1367c0ff395424fab4a53371b4fdecf9c9c849ef0fe2a155df0aace1ba01",
+    "commit": "1a2dee56d99a758f0c45ad2d40aeaf63b050393b"
+  }
+}

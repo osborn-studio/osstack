@@ -6,6 +6,7 @@
 
 | 任务 | 中文 | English |
 |---|---|---|
+| 采纳正在等待决策的 Session（源码试点） | [Session 采纳指南](guides/engineering-session-adoption.md) | [Session adoption guide](guides/engineering-session-adoption.en.md) |
 | 安装、升级、检查部署条件 | [安装与升级](guides/install-upgrade.md) | [Installation and upgrade](guides/install-upgrade.en.md) |
 | 选择命令 | [按任务选命令](guides/command-reference.md) | [Command reference](guides/command-reference.en.md) |
 | 使用借鉴 Firstmate 的能力 | [Firstmate 命令手册](guides/firstmate-commands.md) | [Firstmate command guide](guides/firstmate-commands.en.md) |
