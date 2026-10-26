@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { z } from 'zod';
 import { acquireDaemonLock, DaemonAlreadyRunningError } from './daemon-lock.js';
 import { graphUpgradeHolds } from './graph-upgrade-guard.js';
+import { engineeringUpgradeHolds } from './engineering-upgrade-guard.js';
 import { DeploymentIdentitySchema } from './home-inventory.js';
 import type { UpgradeJournal } from './upgrade-journal.js';
 import type { NativeUpgradePort, UpgradeAuthority, UpgradeStopLease } from './upgrade-coordinator.js';
@@ -90,8 +91,12 @@ export class ManagedNativeUpgradePort implements NativeUpgradePort {
     const identity = DeploymentIdentitySchema.parse(await upgradeRpc(c.socket,'deployment.identity',signal));
     if (upgradeCanonical(identity) !== upgradeCanonical(home.identity)) throw Error('upgrade_identity_changed');
     z.object({ pid: z.number().int().positive() }).passthrough().parse(await upgradeRpc(c.socket,'health',signal));
-    const drain = z.object({ drained: z.literal(true), graph_holds: z.literal(0), active_runs: z.literal(0) }).passthrough().parse(await upgradeRpc(c.socket,'daemon.drain',signal));
-    if (!drain.drained) throw Error('upgrade_not_drained'); this.assertOperation();
+    const drain = z.object({ drained: z.boolean(), graph_holds: z.number().int().nonnegative(), active_runs: z.number().int().nonnegative(), attention_dispatch_holds: z.number().int().nonnegative().optional() }).passthrough().parse(await upgradeRpc(c.socket,'daemon.drain',signal));
+    // Older schema daemons cannot contain the new dispatch ledger. A v47 host
+    // must positively attest zero holds before a service-stop side effect.
+    if (identity.database_schema >= 47 && drain.attention_dispatch_holds !== 0) throw Error('upgrade_unknown_actions');
+    if (drain.graph_holds !== 0) throw Error('upgrade_graph_holds');
+    if (!drain.drained || drain.active_runs !== 0) throw Error('upgrade_not_drained'); this.assertOperation();
     await this.backend.stop(c.label,signal);
     if (await this.backend.service(c.label,signal) !== 'absent') throw Error('upgrade_stop_unknown');
     signal.throwIfAborted(); this.assertOperation();
@@ -112,16 +117,21 @@ export class ManagedNativeUpgradePort implements NativeUpgradePort {
     try {
       db.exec('BEGIN EXCLUSIVE');
       const schema=db.pragma('user_version',{simple:true}) as number;
-      if(schema<33||schema>46)throw Error('upgrade_schema_unqualified');
+      // Deliberately qualified, not CURRENT_SCHEMA_VERSION: a future migration
+      // needs its own stopped-home compatibility review before this gate opens.
+      if(schema<33||schema>47)throw Error('upgrade_schema_unqualified');
       const tables = new Set((db.prepare("SELECT name FROM sqlite_master WHERE type='table'").all() as {name:string}[]).map(r=>r.name));
       const expected=['graph_runs','graph_action_admissions','graph_actions','improvement_pr_deliveries','improvement_executions'];
       if(schema>=45)expected.push('follow_up_delivery_attempts');
+      if(schema>=47)expected.push('attention_dispatch_phases','engineering_missions','session_messages');
       if(expected.some(name=>!tables.has(name)))throw Error('upgrade_schema_tables_missing');
       if((db.prepare("SELECT count(*) n FROM improvement_executions WHERE state IN ('claimed','running')").get() as {n:number}).n>0)throw Error('upgrade_unknown_actions');
       if(graphUpgradeHolds(db)>0)throw Error('upgrade_graph_holds');
       if((db.prepare("SELECT count(*) n FROM graph_actions WHERE state IN ('running','unknown','cancel_pending')").get() as {n:number}).n>0
         ||(db.prepare("SELECT count(*) n FROM improvement_pr_deliveries WHERE state IN ('push_dispatched','pr_dispatched')").get() as {n:number}).n>0)throw Error('upgrade_unknown_actions');
       if(tables.has('follow_up_delivery_attempts')&&(db.prepare("SELECT count(*) n FROM follow_up_delivery_attempts WHERE state IN ('started','delivery_unknown')").get() as {n:number}).n>0)throw Error('upgrade_unknown_delivery');
+      if(schema<47&&tables.has('attention_dispatch_phases'))throw Error('upgrade_schema_unqualified');
+      if(engineeringUpgradeHolds(db)>0)throw Error('upgrade_unknown_actions');
       this.stopLocks.set(homeId,()=>{try{db.exec('ROLLBACK');}finally{db.close();release();}});
     }catch(error){db.close();throw error;}
   }

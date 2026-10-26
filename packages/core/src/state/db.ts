@@ -111,7 +111,7 @@ function assertMigrationLineage(db: Database.Database): void {
   const current = db.pragma("user_version", { simple: true }) as number;
   const actual = new Set((db.prepare("SELECT name FROM sqlite_master WHERE type='table'").all() as { name: string }[]).map(row => row.name));
   // Experimental Graph or Attention tables must never be migrated as released main.
-  const experimentalTable = (name: string) => name.startsWith("graph_") || name.startsWith("attention_") || name === "daemon_owner";
+  const experimentalTable = (name: string) => name.startsWith("graph_") || name.startsWith("attention_") || name.startsWith("engineering_") || name === "daemon_owner";
   if (current < 25 && ![...actual].some(experimentalTable)) return;
   const expected = new Set(tableIntroductions.filter(table => table.version <= current).map(table => table.name));
   if ([...expected].some(name => !actual.has(name))

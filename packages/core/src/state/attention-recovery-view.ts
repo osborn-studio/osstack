@@ -1,8 +1,9 @@
 import { realpathSync } from "node:fs";
 import { AgentSessionState } from "./schema.js";
 import { attentionDigest, type AttentionOwner, type AttentionStore } from "./attention-store.js";
+import { getEngineeringDispatchPhase, isEngineeringCancelledBeforeDispatch } from "./engineering-dispatch.js";
 interface EvidencePage<T> { total: number; truncated: boolean; rows: T[] }
-interface MessageEvidence { message_id: string; turn_id: string; state: string; disposition: string | null }
+interface MessageEvidence { message_id: string; turn_id: string; state: string; disposition: string | null; dispatch_phase?: string }
 interface ActionEvidence { action_id: string; item_id: string; message_id: string; state: string }
 interface GrantEvidence { attempt_id: string; grant_id: string; status: string; message_id: string | null }
 export interface AttentionRecoverySubject {
@@ -54,13 +55,18 @@ export function readAttentionRecovery(store: AttentionStore, owner: AttentionOwn
       const messages = page<MessageEvidence>(`SELECT substr(m.message_id,1,4097) message_id,substr(m.turn_id,1,4097) turn_id,m.state,r.disposition FROM session_messages m LEFT JOIN attention_receipt_resolutions r
         ON r.message_id=m.message_id AND r.session_id=m.session_id WHERE m.session_id=? AND m.direction='inbound' ORDER BY m.created_at,m.message_id LIMIT 20`,
         "SELECT COUNT(*) n FROM session_messages WHERE session_id=? AND direction='inbound'", [session.session_id]);
+      for (const message of messages.rows) {
+        const phase = getEngineeringDispatchPhase(store.db, message.message_id);
+        if (phase) message.dispatch_phase = phase.phase;
+        if (phase?.phase === "cancelled_before_dispatch") message.disposition = isEngineeringCancelledBeforeDispatch(store.db, message.message_id) ? "cancelled_before_dispatch" : "needs_reconciliation";
+      }
       const actions = page<ActionEvidence>(`SELECT substr(a.action_id,1,4097) action_id,substr(a.item_id,1,4097) item_id,substr(a.message_id,1,4097) message_id,substr(a.state,1,65) state FROM attention_actions a JOIN attention_items i ON i.item_id=a.item_id AND i.scope_id=a.scope_id
         JOIN session_messages m ON m.message_id=a.message_id AND m.session_id=i.session_id AND m.turn_id=i.turn_id WHERE a.scope_id=? AND i.session_id=? ORDER BY a.created_at,a.action_id LIMIT 20`,
         `SELECT COUNT(*) n FROM attention_actions a JOIN attention_items i ON i.item_id=a.item_id AND i.scope_id=a.scope_id
         JOIN session_messages m ON m.message_id=a.message_id AND m.session_id=i.session_id AND m.turn_id=i.turn_id WHERE a.scope_id=? AND i.session_id=?`, [scope.scope_id, session.session_id]);
       const grants = page<GrantEvidence>(`SELECT substr(a.attempt_id,1,4097) attempt_id,substr(a.grant_id,1,4097) grant_id,a.status,substr(a.message_id,1,4097) message_id FROM session_continuation_attempts a JOIN session_continuation_grants g ON g.grant_id=a.grant_id WHERE g.session_id=? ORDER BY a.created_at,a.attempt_id LIMIT 20`,
         "SELECT COUNT(*) n FROM session_continuation_attempts a JOIN session_continuation_grants g ON g.grant_id=a.grant_id WHERE g.session_id=?", [session.session_id]);
-      const unresolved = store.db.prepare("SELECT 1 FROM session_messages WHERE session_id=? AND direction='inbound' AND state IN ('pending','accepted','failed') LIMIT 1").get(session.session_id);
+      const unresolved = (store.db.prepare("SELECT message_id FROM session_messages WHERE session_id=? AND direction='inbound' AND state IN ('pending','accepted','failed')").all(session.session_id) as Array<{ message_id: string }>).some(message => !isEngineeringCancelledBeforeDispatch(store.db, message.message_id));
       const activeGrant = store.db.prepare("SELECT 1 FROM session_continuation_attempts a JOIN session_continuation_grants g ON g.grant_id=a.grant_id WHERE g.session_id=? AND a.status IN ('checking','reserved') LIMIT 1").get(session.session_id);
       const missing = [...(unresolved ? ["terminal_receipt"] : []), ...(activeGrant ? ["continuation_receipt"] : [])];
       return { ...base, state: missing.length ? "unknown" : session.state === "awaiting_decision" ? "pending_human" : "observed", missing_evidence: missing,

@@ -1360,10 +1360,13 @@ async function handleSingle(ctx: DaemonContext, req: DaemonRequest): Promise<Sin
       while ((ctx.activeRuns.size > 0 || graphUpgradeHolds(ctx.db) > 0) && Date.now() < deadline) {
         await new Promise((r) => setTimeout(r, 200));
       }
+      const { engineeringUpgradeHolds } = await import("./engineering-upgrade-guard.js");
+      const attentionDispatchHolds = engineeringUpgradeHolds(ctx.db);
       return singleOk(req.id, {
         draining: true,
-        drained: ctx.activeRuns.size === 0 && graphUpgradeHolds(ctx.db) === 0,
+        drained: ctx.activeRuns.size === 0 && graphUpgradeHolds(ctx.db) === 0 && attentionDispatchHolds === 0,
         graph_holds: graphUpgradeHolds(ctx.db),
+        attention_dispatch_holds: attentionDispatchHolds,
         active_runs: ctx.activeRuns.size,
       });
     }
