@@ -22,18 +22,18 @@ const home=process.env.OSSTACK_HOME,sock=process.env.OSSTACK_SOCKET,root=process
 const target=JSON.parse(fs.readFileSync(path.join(fs.realpathSync(path.join(root,'current')),'.osstack-release.json'))).target;
 const db=new DatabaseSync(path.join(home,'state.db'));db.exec('PRAGMA user_version='+target.database_schema);
 const identity={schema_version:1,home_id:process.env.TEST_HOME_ID,generation:'instance_'+crypto.randomBytes(16).toString('hex'),version:target.version,protocol_version:target.protocol_version,database_schema:target.database_schema,started_at_ms:Date.now(),deployment_kind:'npm',build_digest:target.build_digest,build_evidence:'host_manifest'};
-const server=net.createServer(s=>{let b=Buffer.alloc(0);s.on('data',c=>{b=Buffer.concat([b,c]);if(b.length<4||b.length<4+b.readUInt32BE())return;const q=JSON.parse(b.subarray(4));let result=q.method==='deployment.identity'?identity:q.method==='health'?{pid:process.pid,version:target.version,protocol_version:target.protocol_version}:{drained:true,graph_holds:0,active_runs:0};const body=Buffer.from(JSON.stringify({id:1,ok:true,result})),head=Buffer.alloc(4);head.writeUInt32BE(body.length);s.end(Buffer.concat([head,body]));});});server.listen(sock);
+const server=net.createServer(s=>{let b=Buffer.alloc(0);s.on('data',c=>{b=Buffer.concat([b,c]);if(b.length<4||b.length<4+b.readUInt32BE())return;const q=JSON.parse(b.subarray(4));const attentionHolds=fs.existsSync(path.join(home,'drain-holds'))?Number(fs.readFileSync(path.join(home,'drain-holds'),'utf8')):0;let result=q.method==='deployment.identity'?identity:q.method==='health'?{pid:process.pid,version:target.version,protocol_version:target.protocol_version}:{drained:attentionHolds===0,graph_holds:0,active_runs:0,attention_dispatch_holds:attentionHolds};const body=Buffer.from(JSON.stringify({id:1,ok:true,result})),head=Buffer.alloc(4);head.writeUInt32BE(body.length);s.end(Buffer.concat([head,body]));});});server.listen(sock);
 process.on('SIGTERM',()=>server.close(()=>{db.close();process.exit(0);}));`;
-function bundle(version:string,schema:number):ReleaseBundle { const files=[{path:'bin.mjs',mode:0o600 as const,content_base64:Buffer.from(script+`\n// ${version}\n`).toString('base64')}];return{schema_version:1,target:{version,build_digest:bundleBuildDigest(files),protocol_version:1,database_schema:schema,readable_schema_min:40,readable_schema_max:45},files}; }
-async function fixture() {
+function bundle(version:string,schema:number):ReleaseBundle { const files=[{path:'bin.mjs',mode:0o600 as const,content_base64:Buffer.from(script+`\n// ${version}\n`).toString('base64')}];return{schema_version:1,target:{version,build_digest:bundleBuildDigest(files),protocol_version:1,database_schema:schema,readable_schema_min:40,readable_schema_max:Math.max(45,schema)},files}; }
+async function fixture(oldSchema=40,nextSchema=41) {
   const root=realpathSync(await createScratchDir('tests','native-upgrade'));roots.push(root);await chmod(root,0o700);
   const config:ManagedInstallation={schema_version:1,backend:'launchd',installation_id:'shared',root,node:realpathSync(process.execPath),node_sha256:createHash('sha256').update(readFileSync(realpathSync(process.execPath))).digest('hex'),entry:'bin.mjs',consumers:[]};
   // A short canonical directory is required for AF_UNIX; OSStack's test setup already owns TMPDIR.
-  for(let i=1;i<=2;i++){const home=realpathSync(await createScratchDir('tests',`u${i}`));roots.push(home);await chmod(home,0o700);const db=new Database(join(home,'state.db'));db.pragma('user_version=40');db.exec('CREATE TABLE graph_runs(status TEXT);CREATE TABLE graph_action_admissions(released_at INTEGER);CREATE TABLE graph_actions(state TEXT);CREATE TABLE improvement_pr_deliveries(state TEXT);CREATE TABLE improvement_executions(state TEXT);');db.close();config.consumers.push({home_id:`home_${String(i).padStart(32,'0')}`,home,socket:join(home,'s'),label:`ai.osstack.managed.test${i}`});}
+  for(let i=1;i<=2;i++){const home=realpathSync(await createScratchDir('tests',`u${i}`));roots.push(home);await chmod(home,0o700);const db=new Database(join(home,'state.db'));db.pragma(`user_version=${oldSchema}`);db.exec('CREATE TABLE graph_runs(status TEXT);CREATE TABLE graph_action_admissions(released_at INTEGER);CREATE TABLE graph_actions(state TEXT);CREATE TABLE improvement_pr_deliveries(state TEXT);CREATE TABLE improvement_executions(state TEXT);');if(oldSchema>=45)db.exec('CREATE TABLE follow_up_delivery_attempts(state TEXT)');if(oldSchema>=47)db.exec('CREATE TABLE engineering_missions(mission_id TEXT); CREATE TABLE attention_dispatch_phases(message_id TEXT,phase TEXT); CREATE TABLE session_messages(message_id TEXT,state TEXT)');db.close();config.consumers.push({home_id:`home_${String(i).padStart(32,'0')}`,home,socket:join(home,'s'),label:`ai.osstack.managed.test${i}`});}
   await mkdir(join(root,'consumers'),{mode:0o700});await mkdir(join(root,'services'),{mode:0o700});await mkdir(join(root,'journal'),{mode:0o700});
   for(const c of config.consumers){await publishPrivate(join(c.home,'managed-consumer.json'),{schema_version:1,root,home_id:c.home_id});await publishPrivate(join(c.home,'deployment-identity.json'),{schema_version:1,home_id:c.home_id});await publishPrivate(join(root,'consumers',`${c.home_id}.json`),c);await writeFile(join(root,'services',`${c.home_id}.plist`),managedPlist(config,c),{mode:0o600});}
   await publishPrivate(join(root,'installation.json'),config);
-  const old=bundle('1.0.0',40), next=bundle('2.0.0',41);await stageRelease(root,old,new AbortController().signal);await switchRelease(root,join(root,'releases',old.target.build_digest),new AbortController().signal);
+  const old=bundle('1.0.0',oldSchema), next=bundle('2.0.0',nextSchema);await stageRelease(root,old,new AbortController().signal);await switchRelease(root,join(root,'releases',old.target.build_digest),new AbortController().signal);
   const artifact=join(root,'artifact.json');await publishPrivate(artifact,next);
   const running=new Map<string,ChildProcess>(); let starts=0;
   const backend:UpgradeBackend={async assertConsumers(config,pids){for(const[label,p]of running){if(p.exitCode===null&&p.signalCode===null&&(!config.consumers.some(c=>c.label===label)||!pids.includes(p.pid!)))throw Error('upgrade_unregistered_process');}},async service(label){const p=running.get(label);return p&&p.exitCode===null&&p.signalCode===null?'running':'absent';},async stop(label){const p=running.get(label);if(!p)throw Error('missing process');await new Promise<void>(r=>{p.once('exit',()=>r());p.kill('SIGTERM');});},async start(plist){const c=config.consumers.find(c=>plist.endsWith(`${c.home_id}.plist`))!;starts++;
@@ -48,6 +48,31 @@ async function fixture() {
   return{root,config,old,next,plan,input,backend,journal,starts:()=>starts};
 }
 describe('managed native upgrade actual filesystem/process boundaries',()=>{
+  it('accepts a clean schema47 home but refuses an unqualified schema48 home',async()=>{
+    for(const schema of [47,48]){
+      const f=await fixture(schema,schema);const port=new ManagedNativeUpgradePort(f.input,f.backend);
+      try{const result=await coordinateUpgrade({journal:f.journal,plan:f.plan,groupId:'first',port});
+        if(schema===47){expect(result.state).toBe('verified');expect(f.starts()).toBe(4);}
+        else{expect(result).toMatchObject({state:'recovery_required',reason:'upgrade_schema_unqualified'});expect(f.starts()).toBe(2);}
+      }finally{await port.close();}
+    }
+  },60000);
+  it.each(['reserved','dispatch_committed'] as const)('quarantines schema47 %s without an applied receipt before replacing code',async phase=>{
+    const f=await fixture(47,47);const db=new Database(join(f.config.consumers[0]!.home,'state.db'));
+    db.prepare('INSERT INTO attention_dispatch_phases VALUES(?,?)').run('message',phase);db.exec("INSERT INTO session_messages VALUES('message','accepted')");db.close();
+    const port=new ManagedNativeUpgradePort(f.input,f.backend);
+    try{const result=await coordinateUpgrade({journal:f.journal,plan:f.plan,groupId:'first',port});expect(result).toMatchObject({state:'recovery_required',reason:'upgrade_unknown_actions'});expect(f.starts()).toBe(2);expect(realpathSync(join(f.root,'current'))).toBe(join(f.root,'releases',f.old.target.build_digest));}finally{await port.close();}
+  },30000);
+  it('refuses to stop a live schema47 service when drain reports an unresolved attention action',async()=>{
+    const f=await fixture(47,47);const c=f.config.consumers[0]!;await writeFile(join(c.home,'drain-holds'),'1');
+    const port=new ManagedNativeUpgradePort(f.input,f.backend);
+    try{const result=await coordinateUpgrade({journal:f.journal,plan:f.plan,groupId:'first',port});expect(result).toMatchObject({state:'recovery_required',reason:'upgrade_unknown_actions'});expect(await f.backend.service(c.label,new AbortController().signal)).toBe('running');expect(f.starts()).toBe(2);expect(realpathSync(join(f.root,'current'))).toBe(join(f.root,'releases',f.old.target.build_digest));}finally{await port.close();}
+  },30000);
+  it('fails closed when a pre47 home contains an unexpected engineering dispatch ledger',async()=>{
+    const f=await fixture(46,46);const db=new Database(join(f.config.consumers[0]!.home,'state.db'));db.exec('CREATE TABLE attention_dispatch_phases(message_id TEXT,phase TEXT)');db.close();
+    const port=new ManagedNativeUpgradePort(f.input,f.backend);
+    try{const result=await coordinateUpgrade({journal:f.journal,plan:f.plan,groupId:'first',port});expect(result).toMatchObject({state:'recovery_required',reason:'upgrade_schema_unqualified'});expect(f.starts()).toBe(2);}finally{await port.close();}
+  },30000);
   it('stops both real processes, snapshots unchanged databases, atomically switches exact release and verifies new generations',async()=>{
     const f=await fixture();const port=new ManagedNativeUpgradePort(f.input,f.backend);
     try {const result=await coordinateUpgrade({journal:f.journal,plan:f.plan,groupId:'first',port});expect(result).toMatchObject({state:'verified'});await port.complete();
