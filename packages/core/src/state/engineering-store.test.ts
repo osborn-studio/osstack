@@ -187,6 +187,58 @@ function finish(f: ReturnType<typeof setup>, store: EngineeringStore, messageId:
     store.recordCompletion(messageId, "done", 3, 9000);
   })();
 }
+function finishManualTurn(f: ReturnType<typeof setup>, state: "idle" | "completed" = "completed") {
+  reserveSessionInstruction(f.db, f.path, {
+    message_id: "manual-message", session_id: "s", turn_id: "done", direction: "inbound",
+    kind: "instruction.send", payload: { text: "Inspect another change" }, state: "accepted", created_at: 9001,
+  }, 3, 9001);
+  new SessionRepository(f.db, f.path).completeInboundTurn({
+    message_id: "manual-message", expected_version: 4, applied_at: 9002,
+    turn: { turn_id: "manual-turn", session_id: "s", ordinal: 3, state, assistant_text: "A different result", decision: null, created_at: 9002, updated_at: 9002 },
+  });
+}
+it.each(["idle", "completed"] as const)("keeps the original applied proof without claiming a later manual %s turn as Mission completion", state => {
+  const f = setup(); const a = f.store.decide(f.principal, f.answer, 1002); f.store.commitDispatch(a.action_id, f.principal, 1003);
+  finish(f, f.store, a.message_id);
+  const evidence = f.db.prepare("SELECT * FROM engineering_completions").get();
+  finishManualTurn(f, state);
+  const view = f.store.observe(f.principal, { mission_id: a.mission.mission_id }, 9003);
+  expect(view).toMatchObject({ mission: { state: "observing" }, turn_id: "manual-turn", source_version: 5, observation_proof: null });
+  expect(view.waits).toEqual([expect.objectContaining({ state: "cleared", action_id: a.action_id })]);
+  expect(f.db.prepare("SELECT * FROM engineering_completions").get()).toEqual(evidence);
+  expect(view.events).toContainEqual(expect.objectContaining({ kind: "answer_applied", payload: expect.objectContaining({ action_id: a.action_id, message_id: a.message_id, completed_turn_id: "done", session_version: 3 }) }));
+  expect(view.events.some(event => event.kind === "observation_completed")).toBe(false);
+  const beforeReplay = f.db.prepare("SELECT total_changes() n").get();
+  expect(f.store.reconcile(f.principal, { kind: "query_action", mission_id: a.mission.mission_id, action_id: a.action_id }, 9004)).toMatchObject({ state: "applied", message_id: a.message_id });
+  expect(f.store.decide(f.principal, f.answer, 1_000_000)).toMatchObject({ state: "applied", replay: true, message_id: a.message_id });
+  expect(f.db.prepare("SELECT total_changes() n").get()).toEqual(beforeReplay);
+  const end = f.store.endObservation(f.principal, { mission_id: a.mission.mission_id, if_revision: view.mission.revision, request_id: "end-after-manual-turn" }, 1_000_001);
+  expect(end).toMatchObject({ mission: { state: "observation_ended", observation_proof_json: null }, committed_message_ids: [] });
+  expect(f.db.prepare("SELECT COUNT(*) n FROM session_messages").get()).toEqual({ n: 2 });
+  expect(f.db.prepare("SELECT * FROM engineering_completions").get()).toEqual(evidence);
+});
+it.each(["replacement", null])("keeps source identity mismatch absorbing after all original waits cleared: native ID %s", nativeId => {
+  const f = setup(); const a = f.store.decide(f.principal, f.answer, 1002); f.store.commitDispatch(a.action_id, f.principal, 1003);
+  finish(f, f.store, a.message_id); finishManualTurn(f);
+  f.store.refresh(a.mission.mission_id, 9003);
+  expect(f.store.getMission(a.mission.mission_id).state).toBe("observing");
+  expect(f.db.prepare("SELECT state FROM engineering_waits").get()).toEqual({ state: "cleared" });
+  const evidence = f.db.prepare("SELECT * FROM engineering_completions").get();
+  f.db.prepare("UPDATE agent_sessions SET native_session_id=? WHERE session_id='s'").run(nativeId);
+  expect(f.store.refresh(a.mission.mission_id, 9004)).toBe("identity_mismatch");
+  const quarantined = f.store.getMission(a.mission.mission_id);
+  expect(quarantined.state).toBe("needs_reconciliation");
+  f.db.exec("UPDATE agent_sessions SET native_session_id='native' WHERE session_id='s'");
+  const restarted = new EngineeringStore(f.attention, f.attention.claimOwner("after-identity-change"));
+  const before = f.db.prepare("SELECT total_changes() n").get();
+  for (const now of [9005, 9006, 9007]) expect(restarted.refresh(a.mission.mission_id, now)).toBe("identity_mismatch");
+  expect(restarted.getMission(a.mission.mission_id)).toEqual(quarantined);
+  expect(f.db.prepare("SELECT total_changes() n").get()).toEqual(before);
+  expect(f.db.prepare("SELECT * FROM engineering_completions").get()).toEqual(evidence);
+  expect(restarted.reconcile(f.principal, { kind: "query_action", mission_id: a.mission.mission_id, action_id: a.action_id }, 9008)).toMatchObject({ state: "applied", message_id: a.message_id });
+  const end = restarted.endObservation(f.principal, { mission_id: a.mission.mission_id, if_revision: quarantined.revision, request_id: "end-after-identity-change" }, 9009);
+  expect(end.mission.state).toBe("observation_ended");
+});
 it("persists a real completed turn during a repository outage and projects completion only after observation recovers", () => {
   const f = setup(); const a = f.store.decide(f.principal, f.answer, 1002); f.store.commitDispatch(a.action_id, f.principal, 1003);
   const moved = `${f.root}-temporarily-unavailable`;
@@ -249,6 +301,52 @@ it("drops live evidence on restart and keeps a committed missing receipt unknown
   const before = f.db.prepare("SELECT total_changes() n").get();
   for (const now of [3000, 4000, 5000]) restarted.refresh(a.mission.mission_id, now);
   expect(f.db.prepare("SELECT total_changes() n").get()).toEqual(before);
+});
+it.each([undefined, "another-message"])("recovers a delivery-unknown wait only when its original completion arrives (live marker: %s)", liveMarker => {
+  const f = setup();
+  const store = new EngineeringStore(f.attention, f.owner, { liveSend: () => liveMarker });
+  const a = store.decide(f.principal, f.answer, 1002); store.commitDispatch(a.action_id, f.principal, 1003);
+  store.refresh(a.mission.mission_id, 2000);
+  expect(store.getMission(a.mission.mission_id).state).toBe("needs_reconciliation");
+  expect(f.db.prepare("SELECT state FROM engineering_waits").get()).toEqual({ state: "delivery_unknown" });
+  expect(f.db.prepare("SELECT state FROM attention_actions").get()).toEqual({ state: "uncertain" });
+  expect(f.db.prepare("SELECT COUNT(*) n FROM engineering_completions").get()).toEqual({ n: 0 });
+  const beforeReplay = f.db.prepare("SELECT total_changes() n").get();
+  expect(store.reconcile(f.principal, { kind: "query_action", mission_id: a.mission.mission_id, action_id: a.action_id }, 2001)).toMatchObject({ state: "uncertain", message_id: a.message_id });
+  expect(store.decide(f.principal, f.answer, 2002)).toMatchObject({ state: "uncertain", message_id: a.message_id, replay: true });
+  expect(() => store.commitDispatch(a.action_id, f.principal, 2003)).toThrow("dispatch_already_committed");
+  expect(store.listReserved()).toEqual([]);
+  expect(f.db.prepare("SELECT total_changes() n").get()).toEqual(beforeReplay);
+
+  // This injects the original durable callback, not a retry or a new turn. It
+  // tests recovery semantics; it does not explain a historical live-run fault.
+  finish(f, store, a.message_id);
+  const view = store.observe(f.principal, { mission_id: a.mission.mission_id }, 9001);
+  expect(view).toMatchObject({ mission: { state: "completed" }, observation_proof: {
+    action_id: a.action_id, message_id: a.message_id, completed_turn_id: "done", session_version: 3,
+  } });
+  expect(view.waits[0]?.state).toBe("cleared");
+  expect(f.db.prepare("SELECT state FROM attention_actions").get()).toEqual({ state: "applied" });
+  expect(f.db.prepare("SELECT COUNT(*) n FROM session_messages").get()).toEqual({ n: 1 });
+  expect(f.db.prepare("SELECT COUNT(*) n FROM engineering_completions").get()).toEqual({ n: 1 });
+  expect(view.events.filter(event => event.kind === "answer_applied")).toHaveLength(1);
+});
+it("preserves an identity fault when a late original applied receipt is durably recorded", () => {
+  const f = setup(); let liveMessage: string | undefined;
+  const store = new EngineeringStore(f.attention, f.owner, { liveSend: () => liveMessage });
+  const a = store.decide(f.principal, f.answer, 1002); store.commitDispatch(a.action_id, f.principal, 1003); liveMessage = a.message_id;
+  f.db.exec("UPDATE agent_sessions SET native_session_id='replacement' WHERE session_id='s'");
+  expect(store.refresh(a.mission.mission_id, 2000)).toBe("identity_mismatch");
+  f.db.exec("UPDATE agent_sessions SET native_session_id='native' WHERE session_id='s'");
+  finish(f, store, a.message_id); liveMessage = undefined;
+  const view = store.observe(f.principal, { mission_id: a.mission.mission_id }, 9001);
+  expect(view).toMatchObject({ mission: { state: "needs_reconciliation" }, source_status: "identity_mismatch", observation_proof: null });
+  expect(view.waits[0]?.state).toBe("needs_reconciliation");
+  expect(store.reconcile(f.principal, { kind: "query_action", mission_id: a.mission.mission_id, action_id: a.action_id }, 9002)).toMatchObject({ state: "applied", message_id: a.message_id });
+  expect(f.db.prepare("SELECT message_id,completed_turn_id FROM engineering_completions").get()).toEqual({ message_id: a.message_id, completed_turn_id: "done" });
+  expect(store.listReserved()).toEqual([]);
+  expect(f.db.prepare("SELECT COUNT(*) n FROM session_messages").get()).toEqual({ n: 1 });
+  expect(view.events.some(event => event.kind === "observation_completed")).toBe(false);
 });
 it("does not poison a reserved answer after a transient repository outage and records one reason", () => {
   const f = setup(); const a = f.store.decide(f.principal, f.answer, 1002); const moved = `${f.root}-temporarily-unavailable`;

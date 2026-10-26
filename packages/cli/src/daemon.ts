@@ -1343,6 +1343,7 @@ async function handleSingle(ctx: DaemonContext, req: DaemonRequest): Promise<Sin
         db_path: ctx.dbPath,
         adapters: Array.from(ctx.adapters.keys()),
         active_runs: ctx.activeRuns.size,
+        execution_lease_holds: ctx.writeSemaphore.in_use + ctx.readSemaphore.in_use,
         draining: ctx.draining,
         concurrency: {
           writes: {
@@ -1381,14 +1382,19 @@ async function handleSingle(ctx: DaemonContext, req: DaemonRequest): Promise<Sin
       ctx.draining = true;
       ctx.drainingFromHealth = false;
       const deadline = Date.now() + timeoutMs;
-      while ((ctx.activeRuns.size > 0 || graphUpgradeHolds(ctx.db) > 0) && Date.now() < deadline) {
+      while ((ctx.activeRuns.size > 0 || ctx.writeSemaphore.in_use > 0 || ctx.readSemaphore.in_use > 0
+        || graphUpgradeHolds(ctx.db) > 0) && Date.now() < deadline) {
         await new Promise((r) => setTimeout(r, 200));
       }
       const { engineeringUpgradeHolds } = await import("./engineering-upgrade-guard.js");
       const attentionDispatchHolds = engineeringUpgradeHolds(ctx.db);
+      // A durable turn receipt can precede lease cleanup. Failed release or
+      // unconfirmed adapter exit retains admission after activeRuns is cleared.
+      const executionLeaseHolds = ctx.writeSemaphore.in_use + ctx.readSemaphore.in_use;
       return singleOk(req.id, {
         draining: true,
-        drained: ctx.activeRuns.size === 0 && graphUpgradeHolds(ctx.db) === 0 && attentionDispatchHolds === 0,
+        drained: ctx.activeRuns.size === 0 && executionLeaseHolds === 0 && graphUpgradeHolds(ctx.db) === 0 && attentionDispatchHolds === 0,
+        execution_lease_holds: executionLeaseHolds,
         graph_holds: graphUpgradeHolds(ctx.db),
         attention_dispatch_holds: attentionDispatchHolds,
         active_runs: ctx.activeRuns.size,

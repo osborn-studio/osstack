@@ -45,6 +45,10 @@ export interface RepoLockOptions {
    * Managed admission MUST use false until the host reconciles external writers.
    */
   recover_stale?: boolean;
+  /** Host-only, synchronous proof for this acquisition attempt. Publication was
+   * never started and any metadata guard acquired here was released. This does
+   * not attest absence of another owner's lock or an existing metadata guard. */
+  on_not_acquired?: () => void;
   pid?: number;
   now?: () => string;
   is_process_alive?: (pid: number) => boolean;
@@ -163,12 +167,13 @@ async function readOwner(path: string): Promise<RepoLockOwner> {
  * this short section fails closed until quiescent administrative recovery. All
  * participating binaries must use this protocol on a trusted local lock root.
  */
-async function withMutationGuard<T>(path: string, action: () => Promise<T>): Promise<T> {
+async function withMutationGuard<T>(path: string, action: () => Promise<T>, attempt?: { guardHeld: boolean }): Promise<T> {
   const guard = `${path}.guard`;
   const deadline = performance.now() + 2_000;
   for (;;) {
     try {
       await mkdir(guard, { mode: 0o700 });
+      if (attempt) attempt.guardHeld = true;
       break;
     } catch (error) {
       if (errorCode(error) !== "EEXIST") throw error;
@@ -183,6 +188,7 @@ async function withMutationGuard<T>(path: string, action: () => Promise<T>): Pro
   } finally {
     // No recursive deletion: a modified guard is ambiguous and must fail closed.
     await rmdir(guard);
+    if (attempt) attempt.guardHeld = false;
   }
 }
 
@@ -293,6 +299,18 @@ function lockHandle(
 export async function acquireRepoWriteLock(
   options: Omit<RepoLockOptions, "mode">,
 ): Promise<RepoWriteLock> {
+  const attempt = { publicationStarted: false, guardHeld: false };
+  try { return await acquireRepoWriteLockAttempt(options, attempt); }
+  catch (error) {
+    if (!attempt.publicationStarted && !attempt.guardHeld) options.on_not_acquired?.();
+    throw error;
+  }
+}
+
+async function acquireRepoWriteLockAttempt(
+  options: Omit<RepoLockOptions, "mode">,
+  attempt: { publicationStarted: boolean; guardHeld: boolean },
+): Promise<RepoWriteLock> {
   const pid = options.pid ?? process.pid;
   const now = options.now ?? (() => new Date().toISOString());
   const leaseMs = options.lease_ms ?? 60_000;
@@ -340,9 +358,10 @@ export async function acquireRepoWriteLock(
     });
     // Replace the dead owner's file atomically, without a missing-lock window or
     // stale rename that can accidentally move a newly acquired live lock.
+    attempt.publicationStarted = true;
     await publishOwner(path, owner);
     return lockHandle(path, owner, now, leaseMs);
-  });
+  }, attempt);
   try {
     if (staleOwner) {
       await options.on_audit?.({
