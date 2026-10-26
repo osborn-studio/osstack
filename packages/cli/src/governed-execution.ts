@@ -1,5 +1,5 @@
 import { join } from "node:path";
-import { acquireRepoWriteLock, FifoSemaphore, SemaphoreAcquireAbortedError, type SemaphoreLease, type RepoWriteLock } from '@osstack/autonomy';
+import { acquireRepoWriteLock, FifoSemaphore, RepoLockBusyError, SemaphoreAcquireAbortedError, type SemaphoreLease, type RepoWriteLock } from '@osstack/autonomy';
 import { resolveRepositoryScope } from '@osstack/core';
 
 export interface ExecutionLease {
@@ -108,7 +108,14 @@ export class GovernedExecution {
       if (input.kind === 'write' && scope) {
         // A failed filesystem acquisition may have left an ownership obligation.
         cleanup.confirmed = false;
-        lock = await acquireRepoWriteLock({ root_dir: join(scope.commonDir, "osstack", "writer-locks"), recover_stale: false, repo_id: scope.repoId, autonomy_run_id: input.runId });
+        try {
+          lock = await acquireRepoWriteLock({ root_dir: join(scope.commonDir, "osstack", "writer-locks"), recover_stale: false, repo_id: scope.repoId, autonomy_run_id: input.runId });
+        } catch (error) {
+          // A busy owner proves this attempt published no lock. Other failures
+          // may occur after publication but before a handle reaches this caller.
+          if (error instanceof RepoLockBusyError) cleanup.confirmed = true;
+          throw error;
+        }
         // Authorization may wait behind another branch's synchronous work.
         // Start ownership renewal before that wait, not after publishing admission.
         startRenewal();
@@ -123,6 +130,10 @@ export class GovernedExecution {
     } catch (error) {
       if (timer) clearInterval(timer);
       await renewing;
+      if (!lock && !cleanup.confirmed) {
+        if (scope) this.quarantine(scope.repoId, input.runId);
+        throw error;
+      }
       try {
         await lock?.release();
         if (lock) cleanup.confirmed = true;
@@ -135,7 +146,10 @@ export class GovernedExecution {
       } catch (releaseError) {
         if (scope) this.quarantine(scope.repoId, input.runId);
         throw new AggregateError([error, releaseError], 'admission rejected and ownership cleanup failed');
-      } finally { releasePermits(); }
+      }
+      // Release capacity only after physical cleanup succeeds. A rejected
+      // admission can still own a repository lock, so drain must see this hold.
+      releasePermits();
       throw error;
     }
     let reconciled: Promise<void> | undefined;

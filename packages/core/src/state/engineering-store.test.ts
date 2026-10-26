@@ -187,6 +187,58 @@ function finish(f: ReturnType<typeof setup>, store: EngineeringStore, messageId:
     store.recordCompletion(messageId, "done", 3, 9000);
   })();
 }
+function finishManualTurn(f: ReturnType<typeof setup>, state: "idle" | "completed" = "completed") {
+  reserveSessionInstruction(f.db, f.path, {
+    message_id: "manual-message", session_id: "s", turn_id: "done", direction: "inbound",
+    kind: "instruction.send", payload: { text: "Inspect another change" }, state: "accepted", created_at: 9001,
+  }, 3, 9001);
+  new SessionRepository(f.db, f.path).completeInboundTurn({
+    message_id: "manual-message", expected_version: 4, applied_at: 9002,
+    turn: { turn_id: "manual-turn", session_id: "s", ordinal: 3, state, assistant_text: "A different result", decision: null, created_at: 9002, updated_at: 9002 },
+  });
+}
+it.each(["idle", "completed"] as const)("keeps the original applied proof without claiming a later manual %s turn as Mission completion", state => {
+  const f = setup(); const a = f.store.decide(f.principal, f.answer, 1002); f.store.commitDispatch(a.action_id, f.principal, 1003);
+  finish(f, f.store, a.message_id);
+  const evidence = f.db.prepare("SELECT * FROM engineering_completions").get();
+  finishManualTurn(f, state);
+  const view = f.store.observe(f.principal, { mission_id: a.mission.mission_id }, 9003);
+  expect(view).toMatchObject({ mission: { state: "observing" }, turn_id: "manual-turn", source_version: 5, observation_proof: null });
+  expect(view.waits).toEqual([expect.objectContaining({ state: "cleared", action_id: a.action_id })]);
+  expect(f.db.prepare("SELECT * FROM engineering_completions").get()).toEqual(evidence);
+  expect(view.events).toContainEqual(expect.objectContaining({ kind: "answer_applied", payload: expect.objectContaining({ action_id: a.action_id, message_id: a.message_id, completed_turn_id: "done", session_version: 3 }) }));
+  expect(view.events.some(event => event.kind === "observation_completed")).toBe(false);
+  const beforeReplay = f.db.prepare("SELECT total_changes() n").get();
+  expect(f.store.reconcile(f.principal, { kind: "query_action", mission_id: a.mission.mission_id, action_id: a.action_id }, 9004)).toMatchObject({ state: "applied", message_id: a.message_id });
+  expect(f.store.decide(f.principal, f.answer, 1_000_000)).toMatchObject({ state: "applied", replay: true, message_id: a.message_id });
+  expect(f.db.prepare("SELECT total_changes() n").get()).toEqual(beforeReplay);
+  const end = f.store.endObservation(f.principal, { mission_id: a.mission.mission_id, if_revision: view.mission.revision, request_id: "end-after-manual-turn" }, 1_000_001);
+  expect(end).toMatchObject({ mission: { state: "observation_ended", observation_proof_json: null }, committed_message_ids: [] });
+  expect(f.db.prepare("SELECT COUNT(*) n FROM session_messages").get()).toEqual({ n: 2 });
+  expect(f.db.prepare("SELECT * FROM engineering_completions").get()).toEqual(evidence);
+});
+it.each(["replacement", null])("keeps source identity mismatch absorbing after all original waits cleared: native ID %s", nativeId => {
+  const f = setup(); const a = f.store.decide(f.principal, f.answer, 1002); f.store.commitDispatch(a.action_id, f.principal, 1003);
+  finish(f, f.store, a.message_id); finishManualTurn(f);
+  f.store.refresh(a.mission.mission_id, 9003);
+  expect(f.store.getMission(a.mission.mission_id).state).toBe("observing");
+  expect(f.db.prepare("SELECT state FROM engineering_waits").get()).toEqual({ state: "cleared" });
+  const evidence = f.db.prepare("SELECT * FROM engineering_completions").get();
+  f.db.prepare("UPDATE agent_sessions SET native_session_id=? WHERE session_id='s'").run(nativeId);
+  expect(f.store.refresh(a.mission.mission_id, 9004)).toBe("identity_mismatch");
+  const quarantined = f.store.getMission(a.mission.mission_id);
+  expect(quarantined.state).toBe("needs_reconciliation");
+  f.db.exec("UPDATE agent_sessions SET native_session_id='native' WHERE session_id='s'");
+  const restarted = new EngineeringStore(f.attention, f.attention.claimOwner("after-identity-change"));
+  const before = f.db.prepare("SELECT total_changes() n").get();
+  for (const now of [9005, 9006, 9007]) expect(restarted.refresh(a.mission.mission_id, now)).toBe("identity_mismatch");
+  expect(restarted.getMission(a.mission.mission_id)).toEqual(quarantined);
+  expect(f.db.prepare("SELECT total_changes() n").get()).toEqual(before);
+  expect(f.db.prepare("SELECT * FROM engineering_completions").get()).toEqual(evidence);
+  expect(restarted.reconcile(f.principal, { kind: "query_action", mission_id: a.mission.mission_id, action_id: a.action_id }, 9008)).toMatchObject({ state: "applied", message_id: a.message_id });
+  const end = restarted.endObservation(f.principal, { mission_id: a.mission.mission_id, if_revision: quarantined.revision, request_id: "end-after-identity-change" }, 9009);
+  expect(end.mission.state).toBe("observation_ended");
+});
 it("persists a real completed turn during a repository outage and projects completion only after observation recovers", () => {
   const f = setup(); const a = f.store.decide(f.principal, f.answer, 1002); f.store.commitDispatch(a.action_id, f.principal, 1003);
   const moved = `${f.root}-temporarily-unavailable`;

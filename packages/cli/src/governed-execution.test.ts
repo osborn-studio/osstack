@@ -65,8 +65,13 @@ it('rejects same-run reentry promptly and shares canonical lock across independe
   const f = await fixture();
   const lease = await f.admission.acquire({ kind: 'write', runId: 'same', workspacePath: f.repo });
   await expect(f.admission.acquire({ kind: 'write', runId: 'same', workspacePath: f.other })).rejects.toThrow('already admitted');
-  const independent = new GovernedExecution({ reads: new FifoSemaphore(1), writes: new FifoSemaphore(1), repositories: new Map(), checkHealth: async () => {} });
+  const independentWrites = new FifoSemaphore(1);
+  const independentQueues = new Map<string, FifoSemaphore>();
+  const independent = new GovernedExecution({ reads: new FifoSemaphore(1), writes: independentWrites, repositories: independentQueues, checkHealth: async () => {} });
   await expect(independent.acquire({ kind: 'write', runId: 'other-home', workspacePath: f.other })).rejects.toThrow('locked');
+  // Ordinary contention acquired no physical lock and must free its capacity.
+  expect(independentWrites.in_use).toBe(0);
+  expect(independentQueues.size).toBe(0);
   await lease.release();
   const next = await independent.acquire({ kind: 'write', runId: 'after', workspacePath: f.other });
   await next.release();
@@ -170,7 +175,9 @@ it('preserves both admission and cleanup errors and quarantines a replaced pre-a
       throw Error('grant revoked');
     } });
   await expect(attempt).rejects.toMatchObject({ name: 'AggregateError', errors: [expect.objectContaining({ message: 'grant revoked' }), expect.any(Error)] });
-  expect(notAcquired).toBe(false); expect(f.writes.in_use).toBe(0);
+  expect(notAcquired).toBe(false); expect(f.writes.in_use).toBe(1);
+  expect(f.admission.hasWriters).toBe(true);
+  expect([...f.repositories.values()][0]?.in_use).toBe(1);
   expect((await inspectRepoWriteLock(root, scope.repoId))?.token).toBe(token);
   await expect(f.admission.acquire({ kind: 'write', runId: 'next', workspacePath: f.repo })).rejects.toThrow('reconciliation required');
 });
@@ -252,4 +259,31 @@ it('coalesces normal release and reconciliation until the physical repository lo
   await expect(lease.assertActive!()).rejects.toThrow('unavailable');
   releasePhysical(); await Promise.all([pending, second, recovery]);
   expect(recovered).toBe(true); expect(verifications).toBe(1); expect(f.writes.in_use).toBe(0); expect(physicalCalls).toBe(1);
+});
+
+
+it('retains an unknown acquisition that published its physical lock before throwing', async () => {
+  const f = await fixture();
+  const scope = await resolveRepositoryScope(f.repo);
+  const lockRoot = join(scope.commonDir, 'osstack', 'writer-locks');
+  const original = autonomy.acquireRepoWriteLock;
+  let cleanup: (() => Promise<void>) | undefined;
+  let absenceAttested = false;
+  vi.spyOn(autonomy, 'acquireRepoWriteLock').mockImplementation(async (...args) => {
+    const lock = await original(...args);
+    cleanup = () => lock.release();
+    // Model publication succeeding, followed by mutation-guard cleanup failing
+    // before acquireRepoWriteLock can return its newly created handle.
+    throw Error('fixture post-publication failure');
+  });
+  try {
+    await expect(f.admission.acquire({ kind: 'write', runId: 'published-unknown', workspacePath: f.repo,
+      onNotAcquired: () => { absenceAttested = true; },
+    })).rejects.toThrow('fixture post-publication failure');
+    expect(absenceAttested).toBe(false);
+    expect(await inspectRepoWriteLock(lockRoot, scope.repoId)).not.toBeNull();
+    expect(f.writes.in_use).toBe(1);
+    expect([...f.repositories.values()][0]?.in_use).toBe(1);
+    await expect(f.admission.acquire({ kind: 'write', runId: 'next', workspacePath: f.repo })).rejects.toThrow('reconciliation required');
+  } finally { await cleanup?.(); }
 });

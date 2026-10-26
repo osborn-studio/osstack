@@ -4,6 +4,8 @@ import { mkdirSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { connect } from "node:net";
 import { join } from "node:path";
 import { createScratchDir, openDb, insertRun, insertTask } from "@osstack/core";
+import * as autonomy from "@osstack/autonomy";
+import { SupervisionService } from "./supervision-service.js";
 import type { AgentSessionEvent, AgentSessionInput, SessionCapableAdapter } from "@osstack/agents";
 import { encodeFrame, FrameDecoder, type HermesEvent } from "@osstack/hermes-adapter";
 import { afterEach, expect, it, vi } from "vitest";
@@ -48,6 +50,13 @@ let adapter: FixtureAdapter;
 let gate: Promise<void> | undefined;
 let releaseGate: (()=>void) | undefined;
 let admissionChecks=0;
+const releaseBarriers: Array<() => void> = [];
+function barrier() {
+  let release!: () => void;
+  const promise = new Promise<void>(resolve => { release = resolve; });
+  releaseBarriers.push(release);
+  return { promise, release };
+}
 const credential="engineering-owner-secret-".repeat(2);
 const operatorCredential="engineering-operator-secret-".repeat(2);
 const writerCredential="engineering-other-writer-".repeat(2);
@@ -94,7 +103,7 @@ function query(sql:string):Record<string,unknown>|undefined {const db=openDb({pa
 async function adopt(){const result=await rpc("engineering.adopt",{credential,scope_id:scope,task_id:"task",run_id:"run",session_id:"session",goal:"Observe one reply turn",request_id:"adopt"});expect(result).toMatchObject({ok:true});return result.result!["mission"] as {mission_id:string;revision:number};}
 async function observe(mission_id:string){const result=await rpc("engineering.observe",{credential,mission_id});expect(result).toMatchObject({ok:true});return result.result!;}
 async function answer(mission_id:string){const view=await observe(mission_id);const wait=(view["waits"] as Array<Record<string,unknown>>)[0]!;return {credential,mission_id,wait_id:wait["wait_id"],if_revision:(view["mission"] as {revision:number}).revision,decision_ref:wait["decision_ref"],action_id:"answer",answer:{kind:"choice",choice_id:"keep"},interaction_token:wait["interaction_token"]};}
-afterEach(async()=>{releaseGate?.();gate=undefined;releaseGate=undefined;await daemon?.close();daemon=undefined;vi.unstubAllEnvs();if(root)rmSync(root,{recursive:true,force:true});root=undefined;});
+afterEach(async()=>{releaseGate?.();for(const release of releaseBarriers.splice(0))release();gate=undefined;releaseGate=undefined;await daemon?.close();daemon=undefined;vi.restoreAllMocks();vi.unstubAllEnvs();if(root)rmSync(root,{recursive:true,force:true});root=undefined;});
 
 it("adopts an existing Session, commits one reply turn and reads its observation proof",async()=>{
   await fixture();const mission=await adopt();const request=await answer(mission.mission_id);
@@ -319,4 +328,113 @@ it("returns dispatch_inconsistent for a new manual send when original cancellati
   const db=openDb({path:daemon!.dbPath});db.prepare("DELETE FROM engineering_events WHERE kind='stop_requested'").run();db.close();
   expect(await rpc("session.send",{session_id:"session",runtime_id:adapter.id,turn_id:"turn",message_id:"new-manual",expected_version:2,text:"Do not trust a missing proof"})).toMatchObject({ok:false,error:{code:"dispatch_inconsistent"}});
   expect(adapter.resumed).toHaveLength(0);expect(query("SELECT message_id FROM session_messages WHERE message_id='new-manual'")).toBeUndefined();
+});
+
+
+it.each(["complete", "unknown"] as const)("keeps drain blocked after a %s receipt until physical lease cleanup finishes", async mode => {
+  await fixture();
+  adapter.mode = mode;
+  const entered = barrier();
+  const finish = barrier();
+  const original = autonomy.acquireRepoWriteLock;
+  vi.spyOn(autonomy, "acquireRepoWriteLock").mockImplementation(async (...args) => {
+    const lock = await original(...args);
+    return { ...lock, release: async () => {
+      entered.release();
+      await finish.promise;
+      await lock.release();
+    } };
+  });
+  const scan = vi.spyOn(SupervisionService.prototype, "requestScan");
+  const mission = await adopt();
+  const request = await answer(mission.mission_id);
+  expect(await rpc("engineering.decide", request)).toMatchObject({ ok: true });
+  // The physical-release barrier fixes the ordering. No delay is used to guess
+  // whether the completed receipt is visible before the asynchronous cleanup.
+  await entered.promise;
+  expect(query("SELECT state FROM session_messages")?.["state"]).toBe(mode === "complete" ? "applied" : "failed");
+  expect(await rpc("health")).toMatchObject({ ok: true, result: { active_runs: 1 } });
+  expect(await rpc("daemon.drain", { timeout_ms: 0 })).toMatchObject({ ok: true, result: { drained: false, active_runs: 1 } });
+  expect(await rpc("engineering.decide", request)).toMatchObject({ ok: true, result: { replay: true } });
+  expect(adapter.resumed).toHaveLength(1);
+  finish.release();
+  await until(() => rpc("health"), value => value.result?.["active_runs"] === 0);
+  // Completion must not enqueue a fresh observer pass while the daemon drains.
+  expect(scan.mock.calls.some(([reason]) => reason === "session.send.settled")).toBe(false);
+  expect(await rpc("daemon.drain", { timeout_ms: 0 })).toMatchObject({ ok: true, result: {
+    drained: mode === "complete", active_runs: 0, attention_dispatch_holds: mode === "complete" ? 0 : 1,
+  } });
+  expect(adapter.resumed).toHaveLength(1);
+});
+
+it("keeps a failed physical lease release visible to drain without changing an applied receipt", async () => {
+  await fixture();
+  const releaseAttempted = barrier();
+  const original = autonomy.acquireRepoWriteLock;
+  let cleanup: (() => Promise<void>) | undefined;
+  vi.spyOn(autonomy, "acquireRepoWriteLock").mockImplementation(async (...args) => {
+    const lock = await original(...args);
+    cleanup = () => lock.release();
+    return { ...lock, release: async () => {
+      releaseAttempted.release();
+      throw new Error("fixture physical release failed");
+    } };
+  });
+  try {
+    const mission = await adopt();
+    const request = await answer(mission.mission_id);
+    expect(await rpc("engineering.decide", request)).toMatchObject({ ok: true });
+    await releaseAttempted.promise;
+    await until(() => rpc("health"), value => value.result?.["active_runs"] === 0);
+    expect(query("SELECT state FROM session_messages")?.["state"]).toBe("applied");
+    expect((await observe(mission.mission_id))["observation_proof"]).not.toBeNull();
+    expect(await rpc("engineering.decide", request)).toMatchObject({ ok: true, result: { replay: true } });
+    expect(await rpc("health")).toMatchObject({ ok: true, result: { concurrency: { writes: { active: 1 } } } });
+    expect(await rpc("daemon.drain", { timeout_ms: 0 })).toMatchObject({ ok: true, result: {
+      drained: false, active_runs: 0, attention_dispatch_holds: 0, execution_lease_holds: 1,
+    } });
+    expect(await rpc("daemon.resume")).toMatchObject({ ok: true });
+    expect(await rpc("session.send", { session_id: "session", runtime_id: adapter.id,
+      turn_id: query("SELECT turn_id FROM session_turns ORDER BY ordinal DESC LIMIT 1")!["turn_id"],
+      message_id: "after-release-failure", expected_version: 3, text: "Do not reuse retained admission",
+    })).toMatchObject({ ok: false, error: { code: "admission_denied" } });
+    expect(adapter.resumed).toHaveLength(1);
+  } finally {
+    // Release only the test-owned filesystem fixture. This is not a product
+    // recovery path and it does not clear the daemon's retained admission.
+    await cleanup?.();
+  }
+});
+
+
+it.each(["release_failed", "handle_not_returned"] as const)("keeps %s admission cleanup held after the unstarted answer is cancelled", async mode => {
+  await fixture();
+  const original = autonomy.acquireRepoWriteLock;
+  let cleanup: (() => Promise<void>) | undefined;
+  vi.spyOn(autonomy, "acquireRepoWriteLock").mockImplementation(async (...args) => {
+    const lock = await original(...args);
+    cleanup = () => lock.release();
+    if (mode === "handle_not_returned") throw new Error("fixture post-publication failure");
+    return { ...lock,
+      assertActive: async () => { throw new Error("fixture post-acquisition validation failed"); },
+      release: async () => { throw new Error("fixture rejected admission cleanup failed"); },
+    };
+  });
+  try {
+    const mission = await adopt();
+    expect(await rpc("engineering.decide", await answer(mission.mission_id))).toMatchObject({ ok: true });
+    await until(() => query("SELECT COUNT(*) AS count FROM engineering_events WHERE kind='dispatch_blocked'"), value => value?.["count"] === 1);
+    expect(query("SELECT phase FROM attention_dispatch_phases")?.["phase"]).toBe("reserved");
+    const view = await observe(mission.mission_id);
+    expect(await rpc("engineering.cancel", { credential, mission_id: mission.mission_id,
+      if_revision: (view["mission"] as { revision: number }).revision, request_id: "cancel-rejected-admission",
+    })).toMatchObject({ ok: true });
+    expect(query("SELECT phase FROM attention_dispatch_phases")?.["phase"]).toBe("cancelled_before_dispatch");
+    expect(adapter.resumed).toHaveLength(0);
+    // Cancellation proves no dispatch. It does not prove that the repository
+    // lease obtained before admission was rejected has been physically freed.
+    expect(await rpc("daemon.drain", { timeout_ms: 0 })).toMatchObject({ ok: true, result: {
+      drained: false, active_runs: 0, attention_dispatch_holds: 0, execution_lease_holds: 1,
+    } });
+  } finally { await cleanup?.(); }
 });
