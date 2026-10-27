@@ -7,7 +7,7 @@
 | Gate | 直接前置 | 联合场景 | 能证明的范围 |
 |---|---|---|---|
 | `J01.contracts` | 无 | JA59、JA70 | strict JSON/expected-kind、完整组件形状、身份与角色绑定、独立规范字节与摘要域；不证明主机授权或完成 |
-| `J08.admission_boundary` | J01.contracts、J05.scoped | JA02、JA71 | 真实受信主机 admission 的 repo/scope/current-authorization 边界；不发 permit、不建 run、不调用 executor、不持久消费 |
+| `J08.admission_boundary` | J01.contracts | JA02、JA71 | 真实受信主机 admission 的 repo/scope/current-authorization 边界；不发 permit、不建 run、不调用 executor、不持久消费 |
 | `J01.scoped` | J01.contracts、J08.admission_boundary | JA01、JA02、JA59、JA70 | 原真实 Session/task 完成隔离及任务授权绑定，加组件验收 |
 | `J08.scoped` | 原 J03/J07/J12/J08.recovery，再加 J01.scoped | 原 JA16/JA17/JA49/JA61，再加JA71/JA72 | 首次完整受限 trial；不得早于真实主机边界证明 |
 
@@ -42,10 +42,16 @@ J08 的边界子片必须使用实际受信主机入口；pure helper、parser �
 
 JP-08a 的真实代码生产者是 J08 qualification-owner；JA02仍由J01保管原验收语义，其oracle显式标记 `implementation_producer_work_item: J08`。独立人员检查针对真实实现者而非仅看case归属。JA01语义和JA02 given/when/then/bad_variant/oracle均保持原样；JA71新增有效请求到validated_no_effect的正控制与无条件拒绝反例，JA72新增完整trial复用受检入口的实际trace/绕行反例。
 
-`method-admission.ts` 已由J05规划生产。JP-08a必须在J05.scoped之后扩展同一文件，不再与J05并行创建；其唯一写集合是该模块与邻接测试，effects为none且无schema资源。组件子片登记在冻结的 `component-slice-specs.json` 中；验证器检查实际计划条目与闭合登记相等、gate依赖一致，以及共享文件的先后顺序。新登记需独立设计修订，不能往任意工作包追加未验证子片。
+`method-admission.ts` 由J05规划生产，完整trial接线仍按J05之后的顺序扩展它。JP-08a独占新的真实主机入口`method-host-admission.ts`及邻接测试，effects为none且无schema资源；它不是pure helper，JA71必须从真实host ingress观察该入口，JA72必须证明完整trial复用它。边界子片不依赖J05/E0，价值实验stop不应阻止独立Firstmate主机验收与发布通道。组件子片登记在冻结的 `component-slice-specs.json` 中；验证器检查实际计划条目与闭合登记相等、gate依赖一致，以及共享文件的先后顺序。新登记需独立设计修订，不能往任意工作包追加未验证子片。
 
 JP-01c/01d是regression-only验收子片，拥有明确测试文件与角色。JP-01d不能修改冻结契约；如果任何代码/配置/契约字节改变，旧组件和下游证据失效，按新组合候选重评。四个override消费者的PR以明确 `required_base_gates` 作基线，不等待整个J01包的host验收才消费组件；原work-package依赖仍用于职责和合并冲突分析，不得被解释成忽略slice阶段。
 
 四项只描述**直接替换的边数**。它会传递影响J05/J06/J07、J12/J13、早期实验、schema/recovery阶段及其legacy包装，不只影响四个表行。完整变化集合保存在 `evidence/gate-layers/transitive-impact.json`。这些阶段仍必须满足自己的原host/recovery/legacy场景；例如J12仍需操作员授权、真实hold、精确proof与迁移故障证据，不能因不再依赖方法级JA01/JA02就视为无授权。J08/J09/J14/J16/J17 的执行链必须传递包含J01.scoped和真实admission边界；发布链与原legacy producer/case要求保持独立保留。
 
 保护语义使用已固定摘要的原case归档、新组件case规格和子片登记。JA01/JA02的oracle观测边界同样受保护；JA59/JA70/JA71/JA72不能被改成授予运行权限或省略正控制。源文件/验证器本身的维护者仍需独立审计，这不是防止有权修改整个仓库者的密码学信任根。
+
+## 候选身份与影响归档
+
+闭合子片登记现枚举`frozen_contract_artifacts`、三gate的`identity_fields`及实际入口路径。证据必须包含精确candidate、每项契约/入口源码摘要、传递导入源码集合、lockfile/编译器/runtime/config与support cell/oracle摘要；冻结契约清单只包含已存在的组件文件。J05/J07的两个未来扩展路径另列`tracked_contract_extension_paths`，不是初始组件门槛前置；创建或修改它们后须重新冻结组合契约/依赖manifest并使下游旧证据失效，避免语义上的自依赖。J01/J05/J07等写入重叠契约的工作包必须声明失效并在组合候选重评全部下游证据。规划验证器只检查规格完整性，真正证据比对仍由后续实现。
+
+`transitive-impact.json`包含冻结基线图并受摘要保护；校验器重算移除的J01继承、新增的E0继承和执行边界闭包。独立host/legacy release节点不得被J25.e0 stop阻断。只有指定值实验消费者继续受原continue/shrink规则约束。有效阶段图以gate及显式slice为准，包级依赖用于职责/冲突，不可替代阶段基线。

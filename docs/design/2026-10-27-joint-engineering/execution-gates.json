@@ -16,7 +16,17 @@
         "JA02",
         "JA59",
         "JA70"
-      ]
+      ],
+      "identity_fields": [
+        "candidate_sha",
+        "contract_artifacts_digest",
+        "entry_source_digest",
+        "config_digest",
+        "dependency_manifest_digest",
+        "support_cell_digest",
+        "oracle_digest"
+      ],
+      "evidence_binding_ref": "evidence/gate-layers/component-slice-specs.json#gate_evidence_bindings/J01.scoped"
     },
     {
       "id": "J02.scoped",
@@ -1844,14 +1854,23 @@
       "joint_case_requirements": [
         "JA59",
         "JA70"
-      ]
+      ],
+      "identity_fields": [
+        "candidate_sha",
+        "contract_artifacts_digest",
+        "entry_source_digest",
+        "config_digest",
+        "dependency_manifest_digest",
+        "support_cell_digest",
+        "oracle_digest"
+      ],
+      "evidence_binding_ref": "evidence/gate-layers/component-slice-specs.json#gate_evidence_bindings/J01.contracts"
     },
     {
       "id": "J08.admission_boundary",
       "owner_work_item": "J08",
       "requires": [
-        "J01.contracts",
-        "J05.scoped"
+        "J01.contracts"
       ],
       "stage": "real_host_non_effecting_admission_boundary",
       "evidence_state": "specified_not_run",
@@ -1859,7 +1878,17 @@
         "JA02",
         "JA71"
       ],
-      "effects": "none"
+      "effects": "none",
+      "identity_fields": [
+        "candidate_sha",
+        "contract_artifacts_digest",
+        "entry_source_digest",
+        "config_digest",
+        "dependency_manifest_digest",
+        "support_cell_digest",
+        "oracle_digest"
+      ],
+      "evidence_binding_ref": "evidence/gate-layers/component-slice-specs.json#gate_evidence_bindings/J08.admission_boundary"
     }
   ],
   "legacy_gate_map": [

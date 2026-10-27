@@ -4,6 +4,7 @@ import copy
 import importlib.util
 from pathlib import Path
 import unittest
+from unittest.mock import patch
 
 ROOT=Path(__file__).resolve().parent
 spec=importlib.util.spec_from_file_location('joint_validator',ROOT/'validate-design.py')
@@ -154,11 +155,47 @@ class DesignChecks(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'early admission may not produce effects'):
             v.validate(self.data)
 
-    def test_shared_admission_path_requires_its_J05_producer(self):
-        self.gate('J08.admission_boundary')['requires'].remove('J05.scoped')
-        self.work('J08')['component_slices'][0]['requires'].remove('J05.scoped')
+    def test_early_host_boundary_cannot_inherit_e0_decision_via_j05(self):
+        self.gate('J08.admission_boundary')['requires'].append('J05.scoped')
+        self.work('J08')['component_slices'][0]['requires'].append('J05.scoped')
         with self.assertRaisesRegex(ValueError, 'component producer prerequisites changed'):
             v.validate(self.data)
+
+    def test_e0_stop_does_not_block_independent_host_and_legacy_paths(self):
+        gm = {g['id']: g for g in self.data['execution-gates.json']['gates']}
+        def closure(gid):
+            result = set()
+            for dep in gm[gid]['requires']:
+                result.add(dep); result.update(closure(dep))
+            return result
+        for gid in ('J01.scoped', 'J01.legacy_full', 'J10.protocol', 'J23.harness', 'J27.release_channel', 'legacy:V06.release_channel', 'legacy:V03.host_measurement'):
+            self.assertNotIn('J25.e0', closure(gid))
+        self.assertIn('J25.e0', closure('J05.scoped'))
+        self.assertIn('J25.e0', closure('J08.scoped'))
+
+    def test_three_component_host_gates_need_machine_identity_fields(self):
+        for gid in ('J01.contracts', 'J08.admission_boundary', 'J01.scoped'):
+            self.data = v.load()
+            self.gate(gid)['identity_fields'].remove('candidate_sha')
+            with self.assertRaisesRegex(ValueError, 'component evidence identity binding drift'):
+                v.validate(self.data)
+
+    def test_contract_writer_cannot_omit_invalidation(self):
+        for wid in ('J01', 'J05', 'J07'):
+            self.data = v.load()
+            self.work(wid).pop('invalidates_component_evidence')
+            with self.assertRaisesRegex(ValueError, 'contract write invalidation missing or changed'):
+                v.validate(self.data)
+
+    def test_impact_archive_bytes_are_verified(self):
+        original = Path.read_bytes
+        def changed(path):
+            if path.name == 'transitive-impact.json':
+                return b'{}'
+            return original(path)
+        with patch.object(Path, 'read_bytes', changed):
+            with self.assertRaisesRegex(ValueError, 'transitive-impact.json: frozen layer specification changed'):
+                v.validate(self.data)
 
     def test_non_scoped_original_host_edges_cannot_be_replaced(self):
         for gid in ('J01.legacy_full', 'J10.protocol', 'J27.release_channel', 'J23.harness'):
