@@ -37,3 +37,17 @@ Original round 1 report remains unchanged in evidence; model severity is advisor
 - P3-2: tests cover default recursive-triggers-OFF conflict behavior. ON variant is not claimed; BEFORE INSERT abort remains independent of delete-trigger settings.
 - P3-3/P3-4: cross-row live phase and exclusive maintenance operation requirements remain explicit J12 obligations.
 - P3-5/P3-6: force-build protocol as well as core before dynamic imports; clarify catalog scope and base-label versus build provenance.
+
+## Round 4 closeout
+
+- P1-1: explicit terminal-sealing condition and same-subject forged-digest rejection added to the illustrative verifier-to-storage test. The shared parser already rejected this; J11 now pins that obligation at its consumer boundary.
+- P1-2: explicit SQL duplicate/conflict equivalence assertion plus stored input-digest lookup; doc requires host lookup/comparison rather than interpreting SQL errors as replay semantics.
+- P2-1/P2-2: named exact completion provenance for abandoned_unknown and in-memory rollback test scope.
+- P2-3: freeze rejects untracked non-test state source files before compilation. Modified tracked implementations already fail the base diff. This developer guard remains a source/catalog check, not a hermetic build attestation.
+- P2-4/P3: confirmed intended pins/transitions and documented future owner serialization; no new production features.
+
+## Round 5 closeout
+
+- P2-1: all freeze Git/build calls now use the repository root derived from the script path, validated against Git's actual top level. Relative caller cwd cannot vacuously bypass pathspec guards. Untracked scanning includes ignored files as well as ordinary untracked state sources.
+- P2-2: corrected illustrative candidate identity: it is an explicit synthetic trusted-build input deliberately distinct from manifest.base_commit; J12 authenticates the real build/candidate. MigrationSpec equality covers DDL/fixture/target-schema/schema-spec only. The negative candidate case now checks the independent trusted input.
+- P3-1: SQL's forged-digest limitation remains explicit and the required verifier rejection is tested; adding an acceptance-of-forgery test is not necessary for this spec boundary.

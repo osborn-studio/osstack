@@ -1,17 +1,23 @@
 // Regenerate candidate pins after a state-owner-approved rebase. Never opens a serving home.
 import Database from 'better-sqlite3';
-import { readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync, realpathSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 const root = new URL('./', import.meta.url);
+const repositoryRoot = realpathSync(fileURLToPath(new URL('../../../../', import.meta.url)));
+const git = args => execFileSync('git', args, {cwd:repositoryRoot,encoding:'utf8'});
+if (realpathSync(git(['rev-parse','--show-toplevel']).trim()) !== repositoryRoot) throw Error('WRONG_REPOSITORY_ROOT');
 const base = process.argv[2];
 if (!base || !/^[a-f0-9]{40}$/.test(base)) throw Error('usage: freeze.mjs <reviewed-base-commit>');
-execFileSync('git', ['merge-base', '--is-ancestor', base, 'HEAD']);
+git(['merge-base', '--is-ancestor', base, 'HEAD']);
 // The compiled migration runner must come from this reviewed source lineage.
-execFileSync('git', ['diff', '--exit-code', base, '--', 'packages/core/src/state/', ':(exclude)packages/core/src/state/*.test.ts']);
+git(['diff', '--exit-code', base, '--', 'packages/core/src/state/', ':(exclude)packages/core/src/state/*.test.ts']);
+const untracked = git(['ls-files', '--others', '--', 'packages/core/src/state/', ':(exclude)packages/core/src/state/*.test.ts']);
+if (untracked.trim()) throw Error('UNTRACKED_STATE_SOURCE');
 // Force compilation before importing the runner, so stale dist cannot supply the catalog.
-execFileSync('pnpm', ['--filter', '@osstack/protocol', 'exec', 'tsc', '-b', '--force'], {stdio:'inherit'});
-execFileSync('pnpm', ['--filter', '@osstack/core', 'exec', 'tsc', '-b', '--force'], {stdio:'inherit'});
+execFileSync('pnpm', ['--filter', '@osstack/protocol', 'exec', 'tsc', '-b', '--force'], {cwd:repositoryRoot,stdio:'inherit'});
+execFileSync('pnpm', ['--filter', '@osstack/core', 'exec', 'tsc', '-b', '--force'], {cwd:repositoryRoot,stdio:'inherit'});
 const { canonicalJointJson, schemaSpecDigest } = await import('@osstack/protocol/joint');
 const { runMigrations } = await import('../../dist/state/db.js');
 const { CURRENT_SCHEMA_VERSION } = await import('../../dist/state/migrations.js');

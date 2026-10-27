@@ -49,7 +49,7 @@ describe('J11 bootstrap candidate', () => {
       expect(() => runMigrations(db)).toThrow('user_version=48');
     } finally { db.close(); }
   });
-  it.each(['before_ddl','after_ddl','after_version'])('rolls back interruption at %s atomically', step => {
+  it.each(['before_ddl','after_ddl','after_version'])('rolls back in-memory transaction interruption at %s atomically', step => {
     const db=fixture();
     try {
       const before=legacy(db);
@@ -77,6 +77,9 @@ describe('J11 bootstrap candidate', () => {
       const r=receipt(); const values=args(r);
       const sql='INSERT INTO operator_recovery_decisions VALUES(?,?,?,?,?,?,?,?,?,?,?)';
       db.prepare(sql).run(...values);
+      // SQL rejects replay and conflict alike: J12 must look up and compare input_digest first.
+      expect(()=>db.prepare(sql).run(...values.map((v,i)=>i===2?'b'.repeat(64):v))).toThrow('operator recovery history immutable or revision conflict');
+      expect(db.prepare('SELECT input_digest FROM operator_recovery_decisions WHERE principal_ref=? AND request_id=?').get('operator',r.request_id)).toEqual({input_digest:'a'.repeat(64)});
       const stored=db.prepare('SELECT receipt_json FROM operator_recovery_decisions').get() as {receipt_json:string};
       expect(decodeJointContractAs('recovery_receipt', stored.receipt_json)).toEqual(r);
       for (const statement of [sql,sql.replace('INSERT','INSERT OR IGNORE'),sql+' ON CONFLICT DO NOTHING',sql.replace('INSERT','INSERT OR REPLACE'),sql.replace('INSERT INTO','REPLACE INTO'),sql+" ON CONFLICT(principal_ref,request_id) DO UPDATE SET post_state='unknown'"]) expect(()=>db.prepare(statement).run(...values)).toThrow();
@@ -189,8 +192,10 @@ it('joins host-loaded proofs using the merged J01 context before persisting a re
   const fixtures = JSON.parse(readFileSync(new URL('../../../protocol/fixtures/joint/contracts.json', import.meta.url), 'utf8')).fixtures as Array<{id:string;payload:unknown}>;
   const base = RecoveryReceipt.parse(fixtures.find(f => f.id === 'valid-recovery-attention-subject')!.payload);
   const spec = JSON.parse(read('manifest.json')) as {base_commit:string;schema_spec_digest:string;spec:{ddl_digest:string;fixture_digest:string;target_schema:number}};
+  // Synthetic authenticated-build input for this illustration; deliberately distinct from base_commit.
+  const trustedCandidateSha = 'c'.repeat(40);
   const proof = {record_ref:'host-proof',type:'invocation_contained' as const,subject_digest:base.subject_digest,evidence_digest:'a'.repeat(64),producer_ref:'host'};
-  const receipt = RecoveryReceipt.parse({...base,if_revision:0,prior_phase:'dispatch_committed',decision:'proven_stopped',schema_spec_digest:spec.schema_spec_digest,ddl_digest:spec.spec.ddl_digest,fixture_digest:spec.spec.fixture_digest,actual_target_schema:spec.spec.target_schema,candidate_sha:spec.base_commit,proof_refs:[proof.record_ref],proofs:[proof]});
+  const receipt = RecoveryReceipt.parse({...base,if_revision:0,prior_phase:'dispatch_committed',decision:'proven_stopped',schema_spec_digest:spec.schema_spec_digest,ddl_digest:spec.spec.ddl_digest,fixture_digest:spec.spec.fixture_digest,actual_target_schema:spec.spec.target_schema,candidate_sha:trustedCandidateSha,proof_refs:[proof.record_ref],proofs:[proof]});
   const envelope = {kind:'recovery_proof',schema_version:1,subject:receipt.subject,proof,record_ref:proof.record_ref,authorization_ref:'authenticated-host-grant',
     owner_generation:receipt.owner_generation,binding_generation:receipt.binding_generation,support_profile_digest:receipt.support_profile_digest,
     prior_phase:receipt.prior_phase,schema_spec_digest:receipt.schema_spec_digest,recovery_build_digest:receipt.recovery_build_digest,observed_at_ms:receipt.observed_at_ms};
@@ -199,7 +204,7 @@ it('joins host-loaded proofs using the merged J01 context before persisting a re
     db.exec(ddl);
     const persist = (loaded: unknown[],candidate=receipt) => {
       // Illustration of pinned-spec admission only; J12 still authenticates build/current state.
-      if(candidate.ddl_digest!==spec.spec.ddl_digest || candidate.fixture_digest!==spec.spec.fixture_digest || candidate.actual_target_schema!==spec.spec.target_schema || candidate.schema_spec_digest!==spec.schema_spec_digest || candidate.candidate_sha!==spec.base_commit) throw Error('MIGRATION_SPEC_MISMATCH');
+      if(candidate.ddl_digest!==spec.spec.ddl_digest || candidate.fixture_digest!==spec.spec.fixture_digest || candidate.actual_target_schema!==spec.spec.target_schema || candidate.schema_spec_digest!==spec.schema_spec_digest || candidate.candidate_sha!==trustedCandidateSha) throw Error('MIGRATION_SPEC_MISMATCH');
       const verified = verifyRecoveryProofEnvelopes(candidate,loaded);
       db.prepare('INSERT INTO operator_recovery_decisions VALUES(?,?,?,?,?,?,?,?,?,?,?)').run(
         verified.operator_ref,verified.request_id,'a'.repeat(64),verified.subject_digest,canonicalJointJson(verified.subject),verified.if_revision,
@@ -217,6 +222,7 @@ it('joins host-loaded proofs using the merged J01 context before persisting a re
     for(const patch of [{ddl_digest:'f'.repeat(64)},{fixture_digest:'f'.repeat(64)},{actual_target_schema:49},{schema_spec_digest:'f'.repeat(64)},{candidate_sha:'f'.repeat(40)}]) {
       expect(()=>persist([envelope],{...receipt,...patch})).toThrow('MIGRATION_SPEC_MISMATCH');
     }
+    expect(()=>persist([envelope],{...receipt,subject_digest:'f'.repeat(64)})).toThrow('SUBJECT_MISMATCH');
     const otherSubject = {...receipt.subject,home_id:'other-home'};
     expect(() => persist([{...envelope,subject:otherSubject,proof:{...proof,subject_digest:recoverySubjectDigest(otherSubject)}}])).toThrow('PROOF_CONTENT_MISMATCH');
     persist([envelope]);
