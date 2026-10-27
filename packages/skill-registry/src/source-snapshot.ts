@@ -62,6 +62,7 @@ function inspect(options: GitSourceOptions): GitSourceInspection {
   const parsed = Input.safeParse(options);
   if (!parsed.success) return fail('INVALID_INPUT');
   const o = parsed.data;
+  if (/[\x00-\x1f\x7f]/.test(o.repository) || /^[a-z][a-z0-9+.-]*:\/\/[^/]*@/i.test(o.repository)) return fail('INVALID_INPUT');
   if (!isAbsolute(o.gitBinary) || !isAbsolute(o.repositoryPath) || !pathSafe(o.subdir, true)
     || !o.licensePaths.every(p => pathSafe(p)) || new Set(o.licensePaths).size !== o.licensePaths.length) return fail('INVALID_INPUT');
   const preliminary = SourcePin.safeParse({ kind: 'source_pin', schema_version: 1, repository: o.repository, commit: o.commit,

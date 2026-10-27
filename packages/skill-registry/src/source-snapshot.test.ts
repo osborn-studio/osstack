@@ -192,7 +192,8 @@ print('verified')`], { input: JSON.stringify(a), encoding: 'utf8' });
   it('binds the mirror root and rejects malformed identity before running Git', async () => {
     const { root, options } = await fixture();
     expect(() => inspectGitSource({ ...options, repositoryPath: join(root, 'method') })).toThrow('INVALID_INPUT');
-    expect(() => inspectGitSource({ ...options, repository: '\ud800', gitBinary: '/nonexistent' })).toThrow('INVALID_INPUT');
+    expect(() => inspectGitSource({ ...options, repository: '\ud800' })).toThrow('INVALID_INPUT');
+    for (const repository of ['https://user:secret@example.invalid/repo','https://token@example.invalid/repo','opaque\nidentity','opaque\u007fidentity']) expect(()=>inspectGitSource({...options,repository})).toThrow('INVALID_INPUT');
   });
   it('rejects included and worktree promisor configuration', async () => {
     const { root, options, git } = await fixture();
