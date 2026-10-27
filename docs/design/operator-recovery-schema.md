@@ -74,3 +74,30 @@ Host-only owner/subject joins are intentional: a local recovery owner must acqui
 The executable catalog test binds a reviewed base SHA label and the complete `runMigrations` catalog. It is not a general checkout/build provenance attestation and does not claim lazy runtime tables outside that migration catalog were instantiated. Force compilation covers protocol and core before freeze imports; independent Python validates the resulting digests afterward.
 
 J12 must recompute `recoverySubjectDigest(subject_json)` and compare it with the row/receipt digest before INSERT; terminal sealing is conditional on that mandatory host validation, not an SQL hash function. Same subject plus forged digest must fail before the ledger write. SQL rejects duplicate primary keys identically for replay and conflict: the host's prior lookup and `recoveryRequestInputDigest` comparison are mandatory, not inferred from SQL error strings. `applied_observed` over an abandoned_unknown action requires an already existing exact completion row and applied-message provenance.
+
+## JA20/JA47 home + broker composition investigation after PR #284
+
+Reviewed main is `3192b424174e5eb977d640cc0418e67c6b1461d1`. The historical home manifest remains pinned to `69859eecfcc84af9d6eff755ed41243ca5f51f95`; no fixture or reference-vector bytes are rewritten by this investigation. The Git comparison between those commits changes only the two state specification test files: the migration runner, schema, migration list and imported DDL helpers are identical. Fresh `runMigrations` execution on the reviewed main still yields home version 47 and exactly the manifest's complete source catalog; the candidate bootstrap yields exactly its target catalog. That establishes compatibility with this composed main, not a new allocation of version 48 or a reusable migration certificate.
+
+The composition test opens two separate in-memory databases. The home input contains the real committed Attention action, accepted message, abandoned-unknown disposition, delivery-unknown wait and no completion. The broker input contains the actual held lease granted at broker generation 1 and retained after takeover to generation 2. Both retain valid foreign keys; neither database silently imports the other's recovery tables. These are executable synthetic fixtures, not observed provider state, authenticated recovery authority or cross-database atomicity.
+
+### Producer graph and cycle counterexamples
+
+The test reads the current execution-gates graph and adds two named raw-material input nodes for the existing home and broker fixtures. Those material nodes do not require a formally qualified J17 schema gate. J11.scoped still requires J01.contracts; J17.schema_spec still follows J11.scoped; J17.recovery still follows J17.schema_spec and J12.scoped; controller/storage activation follows recovery. The test records a topological order and rejects both counterexamples with a concrete cycle trace:
+
+- Making J11.scoped wait for J17.schema_spec creates the J11 → J17.schema_spec → J11 cycle.
+- Making J12.scoped depend on J17.scoped reverses the recovery/controller boundary, because J17.scoped already requires J12.scoped.
+
+These checks describe producer order and reject the proposed bad graph. They do not assert a controller implementation, build, qualified owner or passing gate exists. The fixture nodes are test-only material labels, not additions to the central gate registry.
+
+### Receipt completeness and actual association boundaries
+
+The field-removal matrix comes from the committed protocol JSON schema and is executed against the actual kind-specific decoder and proof-envelope verifier. It covers all 27 required receipt fields for Attention, effect and broker subjects, their required nested subject/proof fields, conditional effect identity, broker proof identity, and every required top-level proof-envelope field. Explicit null binding/profile values and empty preserve-unknown proof arrays remain valid where allowed; omitting those fields is rejected. A readable JSON file with an omitted owner field demonstrates that file presence and JSON syntax alone are inadequate validators.
+
+Additional cases construct internally consistent receipts which the protocol accepts, then reject them against the actual home mission/action/message/session/scope/phase/disposition/wait rows or the broker SQL identity/generation guard. Receipt/envelope pairs which agree with each other still fail when schema, DDL, fixture, candidate or recovery-build identity differs from the pinned input. Positive ledger examples retain original home obligations and keep broker preserve-unknown slots held; they do not implement completion, release authority or a cross-home transaction.
+
+The home association helper is an executable test oracle only. Its maintenance generation 7 is deliberately distinct from the fixture daemon generation 1, and its tenant/build/candidate/grant inputs are synthetic pins. It does not authenticate an operator, infer maintenance authority from daemon_owner, verify proof provenance, implement live compare-and-swap or install a recovery handler. Effect subjects have structural coverage here, not a deployed effect-store join. Those remain runtime J12/J17 work and cannot be inferred from green tests.
+
+### Open decisions remain open
+
+O03 is narrowed by concrete source/target catalogs and held-row inputs, but schema ownership/queue allocation and real runtime recovery are still missing; home candidate 48 and dedicated broker candidate 0→1 remain unreserved. O06 has a fresh review for the exact main above, not a blanket exemption for future main changes. J01.contracts has not formally passed. This investigation supplies JA20/JA47 material and counterexamples only; it does not assign independent principals, issue J11.scoped, enable broker/controller runtime, or update the central acceptance ledger. Formal oracle custody, independent safety review, final candidate binding and the remaining gate prerequisites must be evaluated separately.
