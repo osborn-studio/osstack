@@ -11,11 +11,11 @@ const root = new URL('../../fixtures/broker-recovery/', import.meta.url);
 const read = (name: string) => readFileSync(new URL(name, root), 'utf8');
 const hash = (value: string) => createHash('sha256').update(value).digest('hex');
 const catalog = (db: Database.Database) => db.prepare("SELECT type,name,tbl_name,sql FROM sqlite_master WHERE substr(name,1,7)<>'sqlite_' ORDER BY type,name").all();
-function fixture(): Database.Database {
+function fixture(sql = read('schema.sql')): Database.Database {
   const db = new Database(':memory:');
   db.pragma('foreign_keys=ON');
   db.pragma('recursive_triggers=OFF');
-  try { db.exec(read('schema.sql')); db.exec(read('held-orphan.sql')); return db; }
+  try { db.exec(sql); db.exec(read('held-orphan.sql')); return db; }
   catch (error) { db.close(); throw error; }
 }
 function receipt(revision = 0, stopped = false): RecoveryReceipt {
@@ -53,7 +53,96 @@ function lease(db: Database.Database) { return db.prepare('SELECT * FROM broker_
 const decisions = (db: Database.Database) => db.prepare('SELECT * FROM broker_recovery_decisions ORDER BY prior_revision').all();
 const insert = (db: Database.Database, r: RecoveryReceipt) => db.prepare(insertSql).run(...args(r));
 
-describe('JP-17a independent broker storage candidate', () => {
+// Each mutant removes exactly one nonredundant defensive predicate. The same
+// counterexample must fail on the candidate and persist on the executable mutant;
+// syntax errors or redundant predicates cannot count as mutation kills.
+const receiptChecks: Array<[string, unknown, string]> = [
+  ['kind', 'other', "json_extract(receipt_json,'$.kind')='recovery_receipt'"],
+  ['schema_version', 2, "json_extract(receipt_json,'$.schema_version')=1"],
+  ['target', 'home', "json_extract(receipt_json,'$.target')='broker'"],
+  ['prior_phase', 'dispatch_committed', "json_extract(receipt_json,'$.prior_phase')='broker_unknown'"],
+  ['prior_resolution', 'resolved', "json_extract(receipt_json,'$.prior_resolution') IN ('none','abandoned_unknown')"],
+  ['subject.kind', 'effect', "json_extract(receipt_json,'$.subject.kind')='broker_lease'"],
+  ['subject.broker_id', 'wrong', "json_extract(receipt_json,'$.subject.broker_id')=broker_id"],
+  ['subject.lease_id', 'wrong', "json_extract(receipt_json,'$.subject.lease_id')=lease_id"],
+  ['target_home_id', 'wrong', "json_extract(receipt_json,'$.subject.home_id')=json_extract(receipt_json,'$.target_home_id')"],
+  ['if_revision', 1, "json_extract(receipt_json,'$.if_revision')=prior_revision"],
+  ['owner_generation', 1, "json_extract(receipt_json,'$.owner_generation')=owner_generation"],
+  ['actual_target_schema', 2, "json_extract(receipt_json,'$.actual_target_schema')=1"],
+  ['decision', 'preserve_unknown', "json_extract(receipt_json,'$.decision')=decision"],
+  ['request_id', 'wrong', "json_extract(receipt_json,'$.request_id')=request_id"],
+  ['operator_ref', 'wrong', "json_extract(receipt_json,'$.operator_ref')=principal_ref"],
+  ['proofs.0.type', 'wrong', "json_extract(receipt_json,'$.proofs[0].type')='invocation_contained'"],
+  ['proofs.0.record_ref', 'wrong', "json_extract(receipt_json,'$.proofs[0].record_ref')=json_extract(receipt_json,'$.proof_refs[0]')"],
+  ['proofs.0.subject_digest', 'f'.repeat(64), "json_extract(receipt_json,'$.proofs[0].subject_digest')=json_extract(receipt_json,'$.subject_digest')"],
+  ['proofs.0.evidence_digest', 'e'.repeat(63), "length(json_extract(receipt_json,'$.proofs[0].evidence_digest'))=64"],
+  ['proofs.0.evidence_digest', 'z'.repeat(64), "json_extract(receipt_json,'$.proofs[0].evidence_digest') NOT GLOB '*[^0-9a-f]*'"],
+  ['proofs.0.producer_ref', ' ', "length(trim(json_extract(receipt_json,'$.proofs[0].producer_ref')))>0"],
+  ['proofs.0.broker_identity.broker_id', 'wrong', "json_extract(receipt_json,'$.proofs[0].broker_identity.broker_id')=broker_id"],
+  ['proofs.0.broker_identity.lease_id', 'wrong', "json_extract(receipt_json,'$.proofs[0].broker_identity.lease_id')=lease_id"],
+  ['proofs.0.broker_identity.schema', 2, "json_extract(receipt_json,'$.proofs[0].broker_identity.schema')=1"],
+  ['proofs.0.broker_identity.owner_generation', 1, "json_extract(receipt_json,'$.proofs[0].broker_identity.owner_generation')=owner_generation"],
+];
+function changedReceipt(path: string, value: unknown, stopped = true) {
+  const r=receipt(0,stopped); const parameters=args(r);
+  const json: Record<string,unknown>=JSON.parse(parameters[8] as string);
+  const parts=path.split('.'); let cursor=json;
+  for(const part of parts.slice(0,-1)) cursor=cursor[part] as Record<string,unknown>;
+  cursor[parts.at(-1)!]=value;parameters[8]=JSON.stringify(json);return parameters;
+}
+
+describe('JP-17a dedicated broker storage candidate', () => {
+
+  it.each(receiptChecks)('rejects and mutation-kills isolated receipt predicate %s (%s)', (path,value,predicate) => {
+    const parameters=changedReceipt(path,value);const sql=read('schema.sql');
+    expect(sql.split(predicate)).toHaveLength(2);
+    const db=fixture();const mutant=fixture(sql.replace(predicate,'1'));
+    try {
+      const before=lease(db);sqlReject(()=>db.prepare(insertSql).run(...parameters));
+      expect(lease(db)).toEqual(before);expect(decisions(db)).toEqual([]);
+      // A genuinely executable mutant admits the unsafe row and releases the slot.
+      expect(mutant.prepare(insertSql).run(...parameters).changes).toBe(1);
+      expect(lease(mutant).state).toBe('resolved_stopped');expect(decisions(mutant)).toHaveLength(1);
+    }finally{db.close();mutant.close();}
+  });
+  it.each(['proofs-type','proofs-nonempty','refs-nonempty','blank-record'])('rejects additional proof shape %s', kind => {
+    const db=fixture();try {
+      const r=receipt(0,kind==='blank-record');const parameters=args(r);
+      const bad: Record<string,unknown>=JSON.parse(parameters[8] as string);
+      if(kind==='proofs-type') bad.proofs={};
+      if(kind==='proofs-nonempty') bad.proofs=receipt(0,true).proofs;
+      if(kind==='refs-nonempty') bad.proof_refs=['unexpected'];
+      if(kind==='blank-record') {bad.proof_refs=[' '];(bad.proofs as Array<Record<string,unknown>>)[0]!.record_ref=' ';}
+      parameters[8]=JSON.stringify(bad);const before=lease(db);
+      sqlReject(()=>db.prepare(insertSql).run(...parameters));expect(lease(db)).toEqual(before);expect(decisions(db)).toEqual([]);
+    }finally{db.close();}
+  });
+  it.each([
+    ['state','resolved_stopped'],['recovery_revision',1],['grant_generation',3],
+    ['grant_generation',0],['grant_generation',-1],['grant_generation',1.5],['grant_generation',9007199254740992],['broker_id','absent'],
+  ])('rejects invalid initial lease %s=%s', (column,value) => {
+    const db=fixture();try {
+      const before=lease(db);const row={...before,lease_id:'new-lease',resource_key:'new-resource',[column as string]:value};
+      const columns=Object.keys(row);sqlReject(()=>db.prepare(`INSERT INTO broker_leases(${columns.join(',')}) VALUES(${columns.map(()=>'?').join(',')})`).run(...Object.values(row)));
+      expect(lease(db)).toEqual(before);expect(db.prepare('SELECT COUNT(*) AS n FROM broker_leases').get()).toEqual({n:1});
+    }finally{db.close();}
+  });
+  it.each([-1,0,1.5,9007199254740992])('rejects invalid decision generation %s', value => {
+    const db=fixture();try {const parameters=args(receipt(0,true));parameters[6]=value;
+      const before=lease(db);sqlReject(()=>db.prepare(insertSql).run(...parameters));expect(lease(db)).toEqual(before);expect(decisions(db)).toEqual([]);
+    }finally{db.close();}
+  });
+  it.each(['ON','OFF'])('blocks second identity conflict strategies with foreign_keys=%s', foreignKeys => {
+    const db=fixture();try {
+      db.pragma(`foreign_keys=${foreignKeys}`);const before=db.prepare('SELECT * FROM broker_identity').get();
+      for(const prefix of ['INSERT','INSERT OR IGNORE','INSERT OR REPLACE','REPLACE']) {
+        sqlReject(()=>db.exec(`${prefix} INTO broker_identity VALUES(1,'replacement','osstack.resource-broker',1,3,'replacement-owner')`));
+      }
+      sqlReject(()=>db.exec("INSERT INTO broker_identity VALUES(1,'replacement','osstack.resource-broker',1,3,'replacement-owner') ON CONFLICT(singleton) DO UPDATE SET owner_generation=3"));
+      expect(db.prepare('SELECT * FROM broker_identity').get()).toEqual(before);expect(lease(db).state).toBe('held_orphan');
+    }finally{db.close();}
+  });
+
   it('pins real SQL/catalog bytes to a separate unreserved 0-to-1 candidate, never a deployed broker', () => {
     const manifest = JSON.parse(read('manifest.json'));
     expect(manifest.status).toBe('candidate_spec_only');

@@ -60,3 +60,11 @@ Current tests execute real in-memory SQLite and rollback injected transactions. 
 With Node 22 and an explicit scratch OSSTACK_HOME, install the lockfile and build `@osstack/protocol`. Run `pnpm --filter @osstack/core exec vitest run src/state/broker-recovery-spec.test.ts`. Independently run `python3 -I packages/core/fixtures/broker-recovery/freeze.py --check`. To intentionally change candidate bytes, edit/review the SQL then run the same Python script without `--check`; never treat regeneration as qualification.
 
 The implementation owner writes this candidate; an independent agent froze its oracle before receiving the candidate. The archived oracle digest and later independent execution are evidence of process separation only. Trusted principal identity, safety review and central gate custody remain the main project's explicit responsibility.
+
+### Defensive connection and identity boundaries
+
+A future host must set and verify `foreign_keys=ON` and `ignore_check_constraints=OFF` on every connection before accepting requests. The offline tests run with these defaults and deliberately set `recursive_triggers=OFF` to challenge conflict replacement; they do not defend arbitrary SQL/DDL or a connection configured to disable CHECK constraints. Only the explicitly tested malformed CHECK case establishes `OR IGNORE` returning zero changes, not every possible failure path.
+
+The `v1` schema change label names the candidate family and is not an immutable snapshot identifier. The complete `schema_spec_digest` and its DDL, fixture and catalog digests identify the exact snapshot after a refreeze. `prior_resolution` is strict-parsed by the future host; SQL admits its two allowed values but does not derive it from the lease revision (a preserve decision can increment revision without establishing abandonment).
+
+The dedicated database is independent storage, not proof that the author or reviewer is an independently authenticated principal. The prospective oracle file records criteria frozen before this candidate; its chronology and byte identity do not confer JA20/JA47 or deployment qualification. SQLite engine versions and actual command outcomes belong to the accompanying verification archive.
