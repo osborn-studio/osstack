@@ -9,6 +9,7 @@ export const JOINT_DIGEST_DOMAINS = Object.freeze([
   'method-recipe.v1', 'method-input.v1', 'environment.v1', 'scenario.v1', 'check-registry.v1',
   'schema-spec.v1', 'recovery-subject.v1', 'trial-root.v1',
   'recovery-request-input.v1', 'trial-consumption-input.v1',
+  'source-content.v1', 'source-inspection.v1',
 ].map(name => `osstack.joint.${name}`));
 const domains = new Set(JOINT_DIGEST_DOMAINS);
 

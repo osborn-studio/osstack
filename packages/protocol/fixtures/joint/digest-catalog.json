@@ -278,6 +278,32 @@
       ],
       "array_rule": "preserve declared order",
       "schema_rule": "Strict versioned schema-aware constructor; ? marks a conditional field, not an arbitrary optional key."
+    },
+    {
+      "domain": "osstack.joint.source-content.v1",
+      "exact_top_level_keys": [
+        "schema_version",
+        "repository",
+        "commit",
+        "subdir",
+        "files"
+      ],
+      "array_rule": "files sorted by raw UTF-8 repo-relative path; no normalization; license overrides source role",
+      "schema_rule": "J02a inspectGitSource constructs bounded exact manifest; each file path/mode/blob/bytes/sha256/role is included"
+    },
+    {
+      "domain": "osstack.joint.source-inspection.v1",
+      "exact_top_level_keys": [
+        "kind",
+        "schema_version",
+        "dependency_resolution",
+        "repository_identity",
+        "expected_digest_checked",
+        "pin",
+        "files"
+      ],
+      "array_rule": "files sorted by raw UTF-8 path; pin.license_refs sorted unique ASCII digest refs",
+      "schema_rule": "J02a output includes not_performed/caller_asserted/expected-digest-check markers; exclude inspection_digest only; no adoption authority"
     }
   ]
 }
