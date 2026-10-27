@@ -1,0 +1,1800 @@
+$ vitest run
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/joint-contracts/packages/cli
+
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/tests/g22-rpc-YCLj1u/delivery/1f53f320-2755-456d-a2c7-5046f7e3dcc7/writer-0'...
+HEAD is now at 2e2285e base
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/tests/g22-rpc-7aU1st/delivery/d3313d3f-2be6-4cb4-887b-f8cfaa64a6e4/writer-0'...
+HEAD is now at fee6b74 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/tests/g22-rpc-w0ZSsl/delivery/388e6dab-698a-44b9-af74-e1e2c86044df/writer-0'...
+HEAD is now at 7d6e960 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/tests/g22-rpc-J9ysuf/delivery/3681c76d-5840-4fe0-bb25-c94f2bcdc380/writer-0'...
+HEAD is now at c40f705 base
+osstack: retaining write lease graph-action:4c31cd2a1065f04ce7652f3326755c1cb5912bad57a4055e0e16e1d8bef143b4: Error: external stop unconfirmed
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/tests/g22-rpc-8xTDJp/delivery/5ab77cbd-bccd-4757-8c61-c18bfa982804/writer-0'...
+HEAD is now at 401edd7 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/tests/g22-rpc-z8hCGy/delivery/c3cce7c3-ef80-4ba8-8139-170eb8a57510/writer-0'...
+HEAD is now at 4514237 base
+ ✓ src/deliver-cli.test.ts (30 tests) 21271ms
+   ✓ deliver CLI > runs guarded-local with separated profile roles and local-only evidence  903ms
+   ✓ V2 real guarded-local host boundary > retains isolated candidate and fences verification: valid  1512ms
+   ✓ V2 real guarded-local host boundary > retains isolated candidate and fences verification: outside  368ms
+   ✓ V2 real guarded-local host boundary > retains isolated candidate and fences verification: review_mutates  873ms
+   ✓ V2 real guarded-local host boundary > retains isolated candidate and fences verification: governance  967ms
+   ✓ V2 real guarded-local host boundary > retains isolated candidate and fences verification: policy_drift  1022ms
+   ✓ V2 real guarded-local host boundary > retains isolated candidate and fences verification: hidden_index  339ms
+   ✓ V2 real guarded-local host boundary > retains isolated candidate and fences verification: new_ignored  357ms
+   ✓ V2 real guarded-local host boundary > retains isolated candidate and fences verification: late_mutation  1158ms
+   ✓ scout promotion and authoritative recovery lessons > qualifies only actual changed-source recovery: repaired  2298ms
+   ✓ scout promotion and authoritative recovery lessons > qualifies only actual changed-source recovery: no_repair  1667ms
+   ✓ scout promotion and authoritative recovery lessons > qualifies only actual changed-source recovery: same_source  2394ms
+   ✓ scout promotion and authoritative recovery lessons > qualifies only actual changed-source recovery: timeout  3908ms
+   ✓ scout promotion and authoritative recovery lessons > qualifies only actual changed-source recovery: tampered_history  2194ms
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/tests/g22-rpc-c6rMDs/delivery/99180c2e-6c9b-4b38-8db6-eab293ebff41/writer-0'...
+HEAD is now at e1f5991 base
+osstack: retaining write lease graph-action:9294f60b71db83e75c445c8b39885ef2d2c275d0855d8eeeee24a7b2a9be0159: Error: delivery_contract_path_outside_scope
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/tests/g22-rpc-kgeLuj/delivery/7310060c-c6d5-48cc-8168-a62ad614c992/writer-0'...
+HEAD is now at 1718744 base
+osstack: retaining write lease graph-action:b4b72ba9b99e2cedfe1e5636b83a446db614a24cf9504fa25623d0278a37a6d3: Error: GRAPH_CONTRACT_HIDDEN_INDEX_FLAGS
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/tests/g22-rpc-Zlyd6P/delivery/707209a7-fd39-492a-b0a1-f8713e63f590/writer-0'...
+HEAD is now at 4d29642 base
+osstack: retaining write lease graph-action:283fc4f6768fa15bfb0ed317c981870f6ceefaa05bd6d4315b88700f74beeb64: Error: GRAPH_CONTRACT_HIDDEN_INDEX_FLAGS
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/tests/g22-rpc-VC5R6A/delivery/a7cb771a-6b29-4a70-a20e-8820e8fc68c1/writer-0'...
+HEAD is now at 63abd99 base
+osstack: retaining write lease graph-action:47f44b3371c4e7ca9e98e912f255af626c68457d2db23e6d9e870b0f72a6b2cf: Error: delivery_contract_path_outside_scope
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/tests/g22-rpc-1iiDdJ/delivery/e7101e21-dd9a-4ca6-ab41-80be9292f499/writer-0'...
+HEAD is now at f44cf20 base
+ ✓ src/local-ledgers-daemon.test.ts (36 tests) 12504ms
+   ✓ watches actual daemon snapshots through the main CLI and leaves worker execution unchanged  1048ms
+   ✓ routes pinned viewer launch to the real inspection service and consumes its handoff once  1597ms
+   ✓ bounds source responses while retaining hung operation slots until settlement  2046ms
+   ✓ bounds shutdown of aborted source reads even if their I/O never settles  2105ms
+   ✓ bounds worker log responses and retains occupied slots until file reads settle  2034ms
+   ✓ tracks source.inspect for cancellation and bounded shutdown  2083ms
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/tests/g22-rpc-jLTcFa/delivery/588da6db-7fd5-41c3-a5a3-a14687b3a2a2/writer-0'...
+HEAD is now at 915e137 base
+ ✓ src/graph-contract-integration.test.ts (19 tests) 38853ms
+   ✓ binds the durable host contract before the real Graph launch and never changes source HEAD/refs/index/files  4020ms
+   ✓ does not publish a durable completion file after grant changes during the last await  3810ms
+   ✓ does not publish a durable completion file after revision changes during the last await  3835ms
+   ✓ never exposes a contract completion when executor stop remains unknown  1469ms
+   ✓ binds actual writer and rebuilt reviewer prompts to two-phase context receipts before ready  3850ms
+   ✓ does not transfer a prior epoch context/check/review receipt to a repaired candidate  7586ms
+   ✓ rejects a path outside contract before verification or ready publication  1522ms
+   ✓ rejects writer --assume-unchanged flags before freezing an out-of-scope candidate  1511ms
+   ✓ rejects writer --skip-worktree flags before freezing an out-of-scope candidate  1505ms
+   ✓ rejects a writer stat-cache bypass before freezing or starting review  1516ms
+   ✓ executes each registered check and returns exact per-check completion receipts  3874ms
+   ✓ does not claim local verification when a later required check fails after the primary passes  3751ms
+
+  .../../tmp/osstack-w-70e18aec/g17-build-wEVTKR/graph-chain-host.mjs  2.2mb ⚠️
+
+⚡ Done in 35ms
+ ✓ src/remote-home-integration.test.ts (34 tests) 6541ms
+   ✓ wrong request pins and scope fail before worker reads and never fall back  1033ms
+   ✓ real running daemon identity and worker RPC support child exporter, without opening the child's OSSTACK_HOME  325ms
+   ✓ exporter exits on invalid startup configuration and arguments without ever reading stdin  534ms
+ ✓ src/upgrade-coordinator.test.ts (41 tests) 2118ms
+ ✓ src/source-context.test.ts (30 tests) 1008ms
+ ✓ src/remote-cancel-main.test.ts (5 tests) 6271ms
+   ✓ actual main advertises remote/source/native-upgrade/scout/log entrypoints in both languages  494ms
+   ✓ remote-home aggregate help and every natural subcommand help routes without setup  1708ms
+   ✓ actual main dispatches invalid write commands to their fail-closed handlers  1213ms
+   ✓ source main keeps inspect help and exposes persistent observation actions without daemon access  2452ms
+   ✓ actual main remote-control speaks only bounded stdio and queries signed receipts without opening a DB  358ms
+ ✓ src/graph-contract-host.test.ts (7 tests) 951ms
+   ✓ loads contract authority through the default real daemon and keeps admission disabled  379ms
+ ✓ src/delivery-entrypoint.test.ts (2 tests) 2754ms
+   ✓ runs the real V2 delivery and rejects source mutation: false  1742ms
+   ✓ runs the real V2 delivery and rejects source mutation: true  1010ms
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/tests/g22-rpc-Y4JrMn/delivery/91e0e34b-2b6a-4137-8d8b-024a00fcc758/writer-0'...
+HEAD is now at 022bcd1 base
+ ✓ src/remote-cancel.test.ts (31 tests) 4553ms
+   ✓ signed remote cancellation drives the actual GraphRpcService worker abort and retains local stop proof separation  711ms
+
+  ../../../../../../../tmp/osstack/tests/eng-build-YnNbaf/host.mjs  2.2mb ⚠️
+
+⚡ Done in 34ms
+ ✓ src/engineering-crash.integration.test.ts (2 tests) 2834ms
+   ✓ WD16: SIGKILL during admission preserves first-dispatch authority across process restart  718ms
+   ✓ WD16: SIGKILL during invoking preserves first-dispatch authority across process restart  2052ms
+ ✓ src/execution-context.test.ts (26 tests) 458ms
+ ✓ src/graph-execution-context.test.ts (8 tests) 85ms
+ ✓ src/execution-context-host.test.ts (1 test) 24ms
+ ✓ src/upgrade-journal.test.ts (12 tests) 211ms
+ ✓ src/graph-chain.integration.test.ts (30 tests) 41511ms
+   ✓ uses real worker IPC and durable SQLite checkpoints, retires both ports and exposes OS exit  361ms
+   ✓ assembly: real command implement → freeze persists a selfcontained candidate  1603ms
+   ✓ daemon: real command implement → freeze persists a selfcontained candidate  1920ms
+   ✓ assembly: SIGKILL at before-return resumes using actual SQLite saver and ledger  1501ms
+   ✓ assembly: SIGKILL at before-final resumes using actual SQLite saver and ledger  1432ms
+   ✓ assembly: SIGKILL at after-final resumes using actual SQLite saver and ledger  1441ms
+   ✓ assembly: restore then SIGKILL again re-enters implement without repeating the confirmed external command  1919ms
+   ✓ daemon: SIGKILL at before-return resumes using actual SQLite saver and ledger  2971ms
+   ✓ daemon: SIGKILL at before-final resumes using actual SQLite saver and ledger  1793ms
+   ✓ daemon: SIGKILL at after-final resumes using actual SQLite saver and ledger  1612ms
+   ✓ daemon: restore then SIGKILL again re-enters implement without repeating the confirmed external command  2016ms
+   ✓ daemon: true daemon process SIGKILL/restart retains SQLite results and resumes through G15  2021ms
+   ✓ assembly: real broker unknown stays quarantined, then durable applied release failure is retried without resending  875ms
+   ✓ assembly: trusted not_applied reconciliation releases exact retained broker lease without automatically retrying  787ms
+   ✓ assembly: cancel reaches actual command process group and kills abort-ignoring worker without starting freeze  759ms
+   ✓ daemon: real broker unknown stays quarantined, then durable applied release failure is retried without resending  1146ms
+   ✓ daemon: trusted not_applied reconciliation releases exact retained broker lease without automatically retrying  996ms
+   ✓ daemon: cancel reaches actual command process group and kills abort-ignoring worker without starting freeze  898ms
+   ✓ daemon: unknown retained canonical lock survives actual daemon SIGKILL and releases only after G15 committed decision  2285ms
+   ✓ assembly: bounded stop reports undrained actual broker Promise and refuses recovery before drainage  1662ms
+   ✓ assembly: original deadline aborts actual in-flight command through supervisor heartbeat  2463ms
+   ✓ assembly: stubborn command cancellation settles after proven process-group exit  1807ms
+   ✓ daemon: bounded stop reports undrained actual broker Promise and refuses recovery before drainage  1790ms
+   ✓ daemon: original deadline aborts actual in-flight command through supervisor heartbeat  2472ms
+   ✓ daemon: stubborn command cancellation settles after proven process-group exit  1821ms
+   ✓ module: late actual worker OS exit replaces unconfirmed observation without rewriting bounded stop  380ms
+   ✓ keeps a database lifetime barrier after bounded stop reports pending host work  324ms
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/tests/g22-rpc-vqg6e0/graph-delivery/a05ab28c-bfe7-4bc8-9e3b-eb0bb3f4e23c/writer-0'...
+HEAD is now at 816688a base
+osstack: retaining write lease graph-action:ce1535f2f00256d3ac9210f37e007a1bdef11ce44929162d18076ba0e441a231: Error: external stop unconfirmed
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/tests/g22-rpc-gWfmED/graph-delivery/65f6e0cd-6310-48e4-81c4-537be80433d8/writer-0'...
+HEAD is now at 8bfd075 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/tests/g22-rpc-3l9wYj/graph-delivery/fe8dd5ac-0368-49b3-b975-2d722f8ad17a/writer-0'...
+HEAD is now at e44e038 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/tests/g22-rpc-LTKNTJ/graph-delivery/7f392d77-3ec3-4afb-99d3-6bb92624b801/writer-0'...
+HEAD is now at 3099ff2 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/tests/g22-rpc-kYVTvM/graph-delivery/4d05f713-53e0-4b33-85d1-2e882fcb10e7/writer-0'...
+HEAD is now at 7e06924 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/tests/g22-rpc-l2URgE/graph-delivery/65e5a288-b02e-4956-9a8c-fe881aad0752/writer-0'...
+HEAD is now at 80d2f6d base
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/tests/g22-rpc-dDTurO/graph-delivery/a474b106-d12a-41a0-8a43-a478e8933651/writer-0'...
+HEAD is now at ea2295e base
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/tests/g22-rpc-XLwgGW/graph-delivery/67cb15c3-9370-408a-9782-fe6d296f8ad8/writer-0'...
+HEAD is now at 5c18e76 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/tests/g22-rpc-JGBPw5/graph-delivery/3ec85ae6-b9af-45c2-b697-86efb35e4c61/writer-0'...
+HEAD is now at ebdfc56 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/tests/g22-rpc-QT2ZSJ/graph-delivery/ff1f0611-7b56-4dbc-a6bb-40bd22de22a4/writer-0'...
+HEAD is now at 2ec8d79 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/tests/g22-rpc-HoMrGV/graph-delivery/ae19b807-d8ba-467f-9411-a75d786f0826/writer-0'...
+HEAD is now at 882b43c base
+osstack: retaining write lease graph-action:96029e25ecb442934d88daad0a1e8881062a6479e9929bd62cfa211edb6904fb: Error: adapter result or execution unconfirmed
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/tests/g22-rpc-gRrW0b/graph-delivery/3899c556-6e2c-4bb6-ae24-44e872b10859/writer-0'...
+HEAD is now at 6307901 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/tests/g22-rpc-QHEDik/graph-delivery/36787f84-abc7-4ada-9709-988e010b7d0a/writer-0'...
+HEAD is now at a8a15db base
+osstack: retaining write lease graph-action:dc62ac6d88fa8c0eb583184a558e8cf13a033c1e840376fe8afe02334450c15c: Error: adapter result or execution unconfirmed
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/tests/g22-rpc-827wwA/graph-delivery/20524739-082e-4bea-800e-c262b121c0a7/writer-0'...
+HEAD is now at 0a5d56c base
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/tests/g22-rpc-nv7ck4/graph-delivery/5f8aea19-ea8b-4c67-a9d2-d9aa666264ff/writer-0'...
+HEAD is now at 59b31a8 base
+ ✓ src/graph-stopped-verification-recovery.test.ts (15 tests) 54148ms
+   ✓ cancels exact stopped tests after owner exit, without changing any action or replaying the writer  3910ms
+   ✓ preserves all obligations for live-owner  3456ms
+   ✓ preserves all obligations for wrong-token  3510ms
+   ✓ preserves all obligations for changed-expiry  3575ms
+   ✓ preserves all obligations for dirty-workspace  3460ms
+   ✓ preserves all obligations for tampered-receipt  3531ms
+   ✓ preserves all obligations for missing-exit  3494ms
+   ✓ preserves all obligations for other-hold  3349ms
+   ✓ preserves all obligations for unknown-action  3372ms
+   ✓ preserves all obligations for wrong-program  3407ms
+   ✓ preserves all obligations for revoked  3421ms
+   ✓ preserves all obligations for symlink-root  3857ms
+   ✓ does not acknowledge a lock that disappears during its first release attempt  3503ms
+   ✓ retries a lost release ACK only for the same inspected token  4180ms
+   ✓ requires guarded maintenance, closed admission, exact revision, backup and inspected owner  4120ms
+ ✓ src/graph-verification.test.ts (53 tests | 1 skipped) 73693ms
+   ✓ restores the exact verified candidate into independent repositories and rejects reviewer writes  1294ms
+   ✓ rejects wrong manifest and reviewer identity before restoring or invoking  512ms
+   ✓ persists actual stopped exit evidence and rejects tampering/replay  1307ms
+   ✓ keeps unknown stop separate from stopped malformed review and valid changes_requested  1320ms
+   ✓ runs real registered command and independent G04 review concurrently with an observable two-way barrier  1846ms
+   ✓ rejects revoke during adapter availability before actual invocation  1284ms
+   ✓ rejects mutate during adapter availability before actual invocation  1236ms
+   ✓ snapshots callback/data replacement and rejects live revocation after preparation awaits  1550ms
+   ✓ rejects mutation during restore before accepting any workspace baseline  955ms
+   ✓ releases preparation lease if authority is revoked while acquiring it  409ms
+   ✓ uses exact allowlisted exit 7 instead of model pass claims  1305ms
+   ✓ uses exact allowlisted exit 1 instead of model pass claims  1237ms
+   ✓ uses exact allowlisted exit 2 instead of model pass claims  1362ms
+   ✓ refuses surviving descendants, unregistered commands and cross-attempt replay  1401ms
+   ✓ does not accept review done as executor stop proof through the actual broker  1332ms
+   ✓ classifies stopped malformed output with reviewer mutation=false without a code-failure result  1408ms
+   ✓ classifies stopped malformed output with reviewer mutation=true without a code-failure result  1417ms
+   ✓ rejects manifest scope/SHA mismatch and independent identity verifier rejection before invocation  470ms
+   ✓ snapshots executor evidence before asynchronous verification and rechecks authority afterward  2489ms
+   ✓ rejects actual successful command that mutates candidate: printf malicious > file  1311ms
+   ✓ rejects actual successful command that mutates candidate: git update-index --assume-unchanged file; printf malicious > file  1466ms
+   ✓ rejects actual successful command that mutates candidate: chmod +x file  1331ms
+   ✓ rejects actual successful command that mutates candidate: chmod 600 file  1287ms
+   ✓ rejects actual successful command that mutates candidate: git update-index --assume-unchanged file  1372ms
+   ✓ rejects actual successful command that mutates candidate: printf staged > file; git add file; printf candidate > file  1317ms
+   ✓ rejects actual successful command that mutates candidate: git -c user.name=test -c user.email=test@invalid commit --allow-empty -qm malicious  1335ms
+   ✓ allocates distinct actual review sessions on explicit retry and persists prompt receipts  1675ms
+   ✓ rejects an oversized envelope at the storage boundary before publishing any file  1606ms
+   ✓ requires an actual invocation receipt and strips supplied writer context on every invocation  1394ms
+   ✓ validates all new receipts when loading digest-consistent evidence  1305ms
+   ✓ allows untracked build outputs from successful actual acceptance execution  1370ms
+   ✓ confirms ordinary failing tests with escape-heavy and multibyte captured output  1362ms
+   ✓ settles an oversized structured review as a bounded contract failure instead of unknown  1391ms
+   ✓ binds actual contained tests exit 0 to candidate/image/ledger without POSIX evidence  1421ms
+   ✓ binds actual contained tests exit 1 to candidate/image/ledger without POSIX evidence  1345ms
+   ✓ binds actual contained tests exit 42 to candidate/image/ledger without POSIX evidence  1389ms
+   ✓ binds actual contained tests exit 7 to candidate/image/ledger without POSIX evidence  1436ms
+   ✓ rejects cross-candidate, image, generation, invocation and container receipt substitution  1436ms
+   ✓ retains admission and seals replay after contained DELETE acknowledgement loss  1210ms
+   ✓ settles contained cancellation only after durable removal and prevents replay  1358ms
+   ✓ V2 rejects a second reviewer invocation for the same effect but permits a newly authorized logical attempt  1599ms
+   ✓ executes and validates every contained registered check with later exit 0  2300ms
+   ✓ executes and validates every contained registered check with later exit 1  1476ms
+   ✓ does not launch another suite check after unknown container removal  1214ms
+   ✓ persists actual native suite exits and refuses missing or substituted later checks  1394ms
+   ✓ waits for fresh contained stop proof when a valid Engine read exceeds one second  4733ms
+   ✓ keeps sixteen contained stop proofs within the bounded local suite evidence  2486ms
+   ✓ seals cancellation observed during persistence even after a passing check stopped  1086ms
+   ✓ rejects candidate mutation at publication observation 2  988ms
+   ✓ rejects candidate mutation at publication observation 3  1006ms
+   ✓ rejects candidate mutation at publication observation 4  1019ms
+   ✓ refuses an oversized untracked candidate before an unbounded content read  839ms
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/tests/worker-33166-K7yq3m/g21-delivery-ug5PR4/delivery/writer-0'...
+HEAD is now at 9c66a76 base
+osstack: retaining write lease graph-action:249f4919e8ad3c1127fac12c2e580b68b7588ef1c81dfcc71d96e12a3ba05c9f: Error: external stop unconfirmed
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/tests/worker-33166-K7yq3m/g21-delivery-JnYBQg/delivery/writer-0'...
+HEAD is now at 232da48 base
+osstack: retaining write lease graph-action:f4326abb378d76f4f42f42d7fe511c0c8b36f3f3113b4ee6dea92bccae46910c: Error: G20_RELEASE_HELD
+osstack: retaining write lease graph-action:3cd7f8c222b1a6b9b1512a735925e02fb3fca9e2f98e8b2d1fb403c09d4dafbe: Error: G20_RELEASE_HELD
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/tests/worker-33166-K7yq3m/g21-delivery-CJ7C3f/delivery/writer-0'...
+HEAD is now at a0ab0bb base
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/tests/worker-33166-K7yq3m/g21-delivery-9onUq8/delivery/writer-0'...
+HEAD is now at 9112a9f base
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/tests/worker-33166-K7yq3m/g21-delivery-GavZl8/delivery/writer-0'...
+HEAD is now at 1fd3935 base
+osstack: retaining write lease graph-action:3541ecb4312f38719e75bd631b7aa2defc4b43ad3b4488884d333ebf65e31a79: Error: external stop unconfirmed
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/tests/worker-33166-K7yq3m/g21-delivery-Lt1wFq/delivery/writer-0'...
+HEAD is now at 72b32e8 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/tests/worker-33166-K7yq3m/g21-delivery-LGBNh7/delivery/writer-0'...
+HEAD is now at cf4ff37 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/tests/worker-33166-K7yq3m/g21-delivery-C1WcjD/delivery/writer-0'...
+HEAD is now at 0bd6a38 base
+osstack: retaining write lease graph-action:b230e30024e293b153856c731c182759ef4a593fd00e344e04e0b4fbb87ac0f2: Error: G20_RELEASE_HELD
+osstack: retaining write lease graph-action:a2e4c037ee1740392941ce1c9f6559da281b80450815580613366f231940757e: Error: G20_RELEASE_HELD
+osstack: retaining write lease graph-action:b51da974e0934b8971292f582f56736dce46be7214249a81b6b41b150bf0894b: Error: G20_LOST_PERSIST_ACK
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/tests/worker-33166-K7yq3m/g21-delivery-H4Yv6j/delivery/writer-0'...
+HEAD is now at be42d2c base
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/tests/worker-33166-K7yq3m/g21-delivery-xm2QvY/delivery/writer-0'...
+HEAD is now at 1506586 base
+ ✓ src/graph-verification-join.test.ts (21 tests) 40161ms
+   ✓ joins real negative outcomes in review then tests order and publishes one immutable row  1898ms
+   ✓ joins real negative outcomes in tests then review order and publishes one immutable row  1844ms
+   ✓ unknown reviewer remains reconciliation-only on repeated evaluation and cannot allocate retry  1550ms
+   ✓ host retry allocates attempt two and recomputes latest durable evidence instead of replaying failed RETURN  2136ms
+   ✓ rejects a stale fence and revoked authority across asynchronous artifact evidence verification  1823ms
+   ✓ held real admission release prevents publication even when both branches are confirmed  1653ms
+   ✓ revalidates durable evidence bytes after a successful publication instead of trusting a cached join  1840ms
+   ✓ retains original repair limits {"maxActionStarts":2} after actual branch execution  1730ms
+   ✓ retains original repair limits {"tokenReservationLimit":2} after actual branch execution  2387ms
+   ✓ retains original repair limits {"maxEpochs":1} after actual branch execution  2304ms
+   ✓ retains original branch-attempt limit on malformed output and original elapsed deadline  1783ms
+   ✓ real worker partial RETURN survives stop/drain and G15 takeover; host retry supersedes cached malformed review  3138ms
+   ✓ actual Functional task throws for unknown verification outcome and host refuses worker pass proposal  2069ms
+   ✓ rejects revoke changing during the actual durable envelope read  1912ms
+   ✓ rejects fence changing during the actual durable envelope read  1688ms
+   ✓ rejects renewal changing during the actual durable envelope read  1724ms
+   ✓ rejects admission-release changing during the actual durable envelope read  1718ms
+   ✓ a new actual unknown action invalidates routing from an already published join  1913ms
+   ✓ publishes an actual passing candidate at exact action and token limits  1726ms
+   ✓ routes a legacy pre-invocation failure to stop without requiring a GraphError or report  1467ms
+   ✓ preserves a failed ledger settlement with a valid unclassified verification receipt  1727ms
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/tests/worker-93847-2le7cA/g21-adversarial-muC12r/delivery/writer-0'...
+HEAD is now at bd4e7c4 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/tests/worker-33166-K7yq3m/g21-delivery-ZjWpKm/delivery/writer-0'...
+HEAD is now at 0c0c383 base
+osstack: retaining write lease graph-action:55b3ad7f0306cd0df52e3c88cc27c78418694e0724d89960a82eb506d60961be: Error: external stop unconfirmed
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/tests/worker-93847-2le7cA/g21-adversarial-UQfFic/delivery/writer-0'...
+HEAD is now at 3ffaa30 base
+osstack: retaining write lease graph-action:76a3df9223e66dea64e4b94c4e2d424e5483c83409db8f48b69a1f87fff3f9b6: Error: external stop unconfirmed
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/tests/worker-93847-2le7cA/g21-adversarial-dS22ox/delivery/writer-0'...
+HEAD is now at decdfb9 base
+ ✓ src/graph-delivery.integration.test.ts (11 tests) 40744ms
+   ✓ actual child delivery succeeds with review finishing last  3330ms
+   ✓ actual child delivery succeeds with tests finishing last  3455ms
+   ✓ repairs from immutable complete join through physical child stop and G15 resume  7016ms
+   ✓ host bounded retry returns only final confirmed task result and fresh independent workspace  3741ms
+   ✓ finite branch failure stops without a failed task RETURN or poisoned join  3714ms
+   ✓ negative quality at epoch cap stops  3483ms
+   ✓ keeps direct in reconciliation when real worker exit journaling failed  3163ms
+   ✓ keeps repair in reconciliation when real worker exit journaling failed  3160ms
+   ✓ cancels actual delivery with clean exit and inventory evidence  3160ms
+   ✓ cancels actual delivery with journal-failed exit and inventory evidence  3187ms
+   ✓ cancels actual delivery with missing-admission exit and inventory evidence  3222ms
+
+  ..../../../tmp/osstack-w-e73d830c/g25-bounded-build-IvtQzy/host.mjs  311.4kb
+
+⚡ Done in 11ms
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/tests/worker-93847-2le7cA/g21-adversarial-qu94rJ/delivery/writer-0'...
+HEAD is now at 8c50caa base
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/tests/worker-93847-2le7cA/g21-adversarial-1CaT0M/delivery/writer-0'...
+HEAD is now at d173794 base
+osstack: retaining write lease graph-action:5f5948fcc3e93223fd9390a9c1304aeaabdad1d51750d78b434f44b4c803be96: Error: STALE_DELIVERY_OWNER
+stderr | src/graph-bounded-recovery.test.ts > retains admission when alive prevents recovery
+{"event":"graph_recovery_blocked","graphRunId":"2d52ba37-66c7-42e8-a73c-5997d69b38d8","stage":"unstarted_preparation","code":"PREPARATION_RECOVERY_SCOPE"}
+
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/tests/worker-93847-2le7cA/g21-adversarial-dgPaPF/delivery/writer-0'...
+HEAD is now at b15f356 base
+stderr | src/graph-bounded-recovery.test.ts > retains admission when disconnect prevents recovery
+{"event":"graph_recovery_blocked","graphRunId":"809ba5c2-f46b-4d4a-aaf7-a431e8ae96cf","stage":"unstarted_preparation","code":"PREPARATION_RECOVERY_SCOPE"}
+
+osstack: retaining write lease graph-action:6b5c1b58e1044f2e13f2a2d9dac1cc6bfc04274bd544d720bc0f457024acde1c: Error: authority revoked
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/tests/worker-93847-2le7cA/g21-adversarial-C7og02/delivery/writer-0'...
+HEAD is now at 30caf25 base
+stderr | src/graph-bounded-recovery.test.ts > retains admission when no-worker-exit prevents recovery
+{"event":"graph_recovery_blocked","graphRunId":"ea1a62b9-8bb9-4bc2-b1cf-53b20162711d","stage":"unstarted_preparation","code":"PREPARATION_RECOVERY_SCOPE"}
+
+stderr | src/graph-bounded-recovery.test.ts > retains admission when future-template prevents recovery
+{"event":"graph_recovery_blocked","graphRunId":"05b11495-d203-436f-bf8b-09bab2726147","stage":"unstarted_preparation","code":"PREPARATION_RECOVERY_SCOPE"}
+
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/tests/worker-93847-2le7cA/g21-adversarial-bDVMrl/delivery/writer-0'...
+HEAD is now at f5a7e43 base
+stderr | src/graph-bounded-recovery.test.ts > retains admission when workspace-tampered prevents recovery
+{"event":"graph_recovery_blocked","graphRunId":"17b74481-043d-40fd-8697-0fc0fcdb942d","stage":"unstarted_preparation","code":"PREPARATION_RECOVERY_SCOPE"}
+
+stderr | src/graph-bounded-recovery.test.ts > retains admission when journal-tampered prevents recovery
+{"event":"graph_recovery_blocked","graphRunId":"0e204555-fbbb-4f92-8792-6e13b7b5b124","stage":"unstarted_preparation","code":"PREPARATION_RECOVERY_SCOPE"}
+
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/tests/worker-93847-2le7cA/g21-adversarial-M439Hu/delivery/writer-0'...
+HEAD is now at ead3478 base
+stderr | src/graph-bounded-recovery.test.ts > retains admission when missing-journal prevents recovery
+{"event":"graph_recovery_blocked","graphRunId":"3fa79e91-b961-4d17-81bb-91fcd58cd71c","stage":"unstarted_preparation","code":"PREPARATION_RECOVERY_SCOPE"}
+
+stderr | src/graph-bounded-recovery.test.ts > retains admission when receipt-tampered prevents recovery
+{"event":"graph_recovery_blocked","graphRunId":"7a57c6b2-272f-41d5-b8af-15544a52b69e","stage":"unstarted_preparation","code":"PREPARATION_RECOVERY_SCOPE"}
+
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/tests/worker-93847-2le7cA/g21-adversarial-EzaWrX/delivery/writer-0'...
+HEAD is now at f131782 base
+stderr | src/graph-bounded-recovery.test.ts > retains admission when ignored-file prevents recovery
+{"event":"graph_recovery_blocked","graphRunId":"b32a26e0-3b39-41e6-bc03-bb6d7f500248","stage":"unstarted_preparation","code":"PREPARATION_RECOVERY_SCOPE"}
+
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/tests/worker-93847-2le7cA/g21-adversarial-IujTPd/delivery/writer-0'...
+HEAD is now at 910bdff base
+stderr | src/graph-bounded-recovery.test.ts > retains admission when symlink prevents recovery
+{"event":"graph_recovery_blocked","graphRunId":"ed808e49-8a0a-4f0e-8e33-5ec28e8ba57f","stage":"unstarted_preparation","code":"PREPARATION_RECOVERY_SCOPE"}
+
+ ✓ src/graph-delivery-adversarial.test.ts (12 tests) 31869ms
+   ✓ retains unknown-review uncertainty without retry, repair or ready publication  2047ms
+   ✓ retains unknown-writer uncertainty without retry, repair or ready publication  1388ms
+   ✓ stops before freeze after actual token overrun and preserves charged action evidence  1404ms
+   ✓ captures business inputs, executors, commands and authority before asynchronous execution  3550ms
+   ✓ cannot project state after foreign-owner invalidates its authority  1812ms
+   ✓ cannot project state after revoked invalidates its authority  1802ms
+   ✓ retains reconciliation when denied preparation has no durable admission receipt  3337ms
+   ✓ preserves sibling evidence when denied preparation races with tests  3572ms
+   ✓ deterministically preserves started terminal sibling admission and missing retry-preparation reconciliation  3341ms
+   ✓ deterministically retains cancelled pre-admission sibling with no fabricated admission or discharge  3078ms
+   ✓ renews the owned lease during an actual pending writer invocation and still completes  6374ms
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/tests/g22-rpc-ricJL1/graph-delivery/396495d3-de48-4936-b3ea-87ea045d2cf7/writer-0'...
+HEAD is now at efe2267 base
+stderr | src/graph-bounded-recovery.test.ts > concurrent reconciliation cannot duplicate a settlement or free another action
+{"event":"graph_recovery_blocked","graphRunId":"dc69a041-bd88-46e5-b5ac-6de9f4127605","stage":"unstarted_preparation","code":"REVISION_CONFLICT"}
+
+ ✓ src/graph-bounded-recovery.test.ts (16 tests) 28291ms
+   ✓ public cancellation recovers a bounded writer before-commit across a real host exit without invoking again  1868ms
+   ✓ public cancellation recovers a bounded writer after-commit across a real host exit without invoking again  1785ms
+   ✓ retains admission when alive prevents recovery  1729ms
+   ✓ retains admission when disconnect prevents recovery  1678ms
+   ✓ retains admission when no-worker-exit prevents recovery  1735ms
+   ✓ retains admission when future-template prevents recovery  1729ms
+   ✓ retains admission when workspace-tampered prevents recovery  1993ms
+   ✓ retains admission when journal-tampered prevents recovery  1734ms
+   ✓ retains admission when missing-journal prevents recovery  1714ms
+   ✓ retains admission when receipt-tampered prevents recovery  1738ms
+   ✓ retains admission when ignored-file prevents recovery  1737ms
+   ✓ retains admission when symlink prevents recovery  1692ms
+   ✓ retains admission when revoked prevents recovery  1731ms
+   ✓ replays a lost release ACK after another service restart without unlinking a replacement owner  1880ms
+   ✓ rechecks cancellation authority inside the final recovery transaction  1755ms
+   ✓ concurrent reconciliation cannot duplicate a settlement or free another action  1792ms
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/tests/g22-rpc-nkILTb/graph-delivery/d4741c3f-4e85-499b-9460-977e02ca5d7d/writer-0'...
+HEAD is now at 82eb9bd base
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/tests/g22-rpc-aKRkJy/graph-delivery/c785962c-cabf-4132-982b-bd4ca6b9f024/writer-0'...
+HEAD is now at be0bc47 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/tests/g22-rpc-3hhwkK/graph-delivery/fde440f0-8040-4130-8cee-1a564fc027be/writer-0'...
+HEAD is now at 13c3285 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/tests/g22-rpc-0Fszyn/graph-delivery/e1beecd6-34ae-4463-9971-59c243258e6c/writer-0'...
+HEAD is now at 6b8effe base
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/tests/g22-rpc-jeocaB/graph-delivery/431bafdf-9b69-478f-88ef-ecd87089780f/writer-0'...
+HEAD is now at 3b71982 base
+(node:16558) ExperimentalWarning: stripTypeScriptTypes is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:16558) ExperimentalWarning: vm.USE_MAIN_CONTEXT_DEFAULT_LOADER is an experimental feature and might change at any time
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/tests/g22-rpc-RIvl8a/graph-delivery/95331363-1d6d-4caf-b35a-8ffba42b2c68/writer-0'...
+HEAD is now at fcf3536 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/tests/g22-rpc-KGfQZA/graph-delivery/c998d178-8d28-49a8-b5f4-faff8d8d1cde/writer-0'...
+HEAD is now at def79c6 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/tests/g22-rpc-LqY7M6/graph-delivery/4038c7ec-c22e-45fa-84d2-484602dfcc7b/writer-0'...
+HEAD is now at 8a1fbcc base
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/tests/g22-rpc-ME7pTP/graph-delivery/2ee735a8-3ee1-4d35-ac37-57745a8e33f7/writer-0'...
+HEAD is now at bd1fd26 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/tests/g22-rpc-JHMnDU/graph-delivery/0906256f-cd1b-4ab5-b185-4f5a25fd0d09/writer-0'...
+HEAD is now at 893efdd base
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/tests/g22-rpc-O0zcOC/graph-delivery/b8c03f43-f72e-4b03-b002-e3bb9fdcb9fe/writer-0'...
+HEAD is now at b3fec3c base
+stderr | src/graph-preparation-recovery.test.ts > retries a lost release acknowledgement after restart while refusing a replacement lock
+{"event":"graph_recovery_blocked","graphRunId":"b8c03f43-f72e-4b03-b002-e3bb9fdcb9fe","stage":"unstarted_preparation","code":"PREPARATION_RECOVERY_LOCK_PRESENT"}
+
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/tests/g22-rpc-SCPJDq/graph-delivery/f50920c6-9f14-4f00-978f-e583ff8fb555/writer-0'...
+HEAD is now at 8ef401c base
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/tests/g22-rpc-NA7k53/graph-delivery/78cb5193-5d07-4a17-be33-22ad08036713/writer-0'...
+HEAD is now at d17632e base
+stderr | src/graph-preparation-recovery.test.ts > refuses a lock appearing between proof capture and the G15 transaction
+{"event":"graph_recovery_blocked","graphRunId":"78cb5193-5d07-4a17-be33-22ad08036713","stage":"unstarted_preparation","code":"PREPARATION_RECOVERY_LOCK_PRESENT"}
+
+ ✓ src/loop-candidate-cli.test.ts (36 tests) 18078ms
+   ✓ actual enqueue -> queue -> native worktree batch runs all stages and native verifier union  1740ms
+   ✓ actual mandatory native verify failure is not replaced by green policy stages  716ms
+   ✓ actual final stage failure marks candidate failed and retains private one-shot claim  1081ms
+   ✓ actual required Task evaluation remains gating in candidate local stage  679ms
+   ✓ source mutant removing native stage union causes real unverified local merge after full positive baseline  2558ms
+   ✓ actual candidate ignores unavailable implicit knowledge context without config reads/search despite synthetic cloud config/env  933ms
+   ✓ actual candidate green reviewer runs every stage and no postfreeze hooks mutate evidence  1042ms
+   ✓ actual candidate final-fail reviewer runs every stage and no postfreeze hooks mutate evidence  1028ms
+   ✓ actual candidate recover reviewer runs every stage and no postfreeze hooks mutate evidence  1399ms
+   ✓ actual candidate artifact gate forbidden-local prevents readiness with base-range evidence  699ms
+   ✓ actual candidate artifact gate target-miss prevents readiness with base-range evidence  638ms
+   ✓ actual candidate unconfirmed synthetic producer retains lease/claim/worktree and never retries  1596ms
+   ✓ actual artifact checks reject a previously valid second task against complete frozen batch range  1365ms
+   ✓ actual candidate profile/role resolver derives separate builder/reviewer and preserves all stages  1011ms
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/tests/g22-rpc-3lTMZG/graph-delivery/2e3b9b2f-0285-4fae-9213-1f95fba2b1ae/writer-0'...
+HEAD is now at 80ba936 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/tests/g22-rpc-SHEa4t/delivery/270659b0-c1ab-471f-92a5-a61045929be2/writer-0'...
+HEAD is now at 2edefe7 base
+stderr | src/graph-preparation-recovery.test.ts > refuses a symlink-substituted lock directory without changing the ledger
+{"event":"graph_recovery_blocked","graphRunId":"2e3b9b2f-0285-4fae-9213-1f95fba2b1ae","stage":"unstarted_preparation","code":"PREPARATION_RECOVERY_WORKSPACE"}
+
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/tests/g22-rpc-59jeII/graph-delivery/1d5acbad-ba67-41d7-9974-53e1e2458b49/writer-0'...
+HEAD is now at af4dc19 base
+stderr | src/graph-preparation-recovery.test.ts > replays a lost project acknowledgement without another decision or action
+{"event":"graph_recovery_blocked","graphRunId":"1d5acbad-ba67-41d7-9974-53e1e2458b49","stage":"unstarted_preparation","code":"INTERNAL_ERROR"}
+
+ ✓ src/graph-preparation-recovery.test.ts (16 tests) 21986ms
+   ✓ reconciles the legacy missing admission through public RPC without changing actions or reexecuting  1459ms
+   ✓ runs guarded maintenance with a consistent backup, unchanged actions and no schema migration  1412ms
+   ✓ preserves the obligation when lock blocks independent proof  1379ms
+   ✓ preserves the obligation when execution-ref blocks independent proof  1367ms
+   ✓ preserves the obligation when unknown blocks independent proof  1314ms
+   ✓ preserves the obligation when held-predecessor blocks independent proof  1309ms
+   ✓ preserves the obligation when missing-exit blocks independent proof  1339ms
+   ✓ preserves the obligation when wrong-message blocks independent proof  1332ms
+   ✓ preserves the obligation when extra-action blocks independent proof  1326ms
+   ✓ preserves the obligation when wrong-usage blocks independent proof  1551ms
+   ✓ preserves the obligation when revoked blocks independent proof  1368ms
+   ✓ retries a lost release acknowledgement after restart while refusing a replacement lock  1343ms
+   ✓ rechecks cancellation authority at the final G15 commit  1323ms
+   ✓ refuses a lock appearing between proof capture and the G15 transaction  1353ms
+   ✓ refuses a symlink-substituted lock directory without changing the ledger  1392ms
+   ✓ replays a lost project acknowledgement without another decision or action  1420ms
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/tests/worker-50504-Kl97Cr/graph-delegation-qUrd6V/home/graph-delivery/52028c2f-8de6-48ec-b1a6-b049bb91f388/writer-0'...
+HEAD is now at 7454e05 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/tests/g22-rpc-zozwJM/delivery/99e24791-f839-4983-a202-7e8cd9f56f32/writer-0'...
+HEAD is now at c6b230d base
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/tests/g22-rpc-02mHFp/delivery/af9f5ad8-7a09-4789-9b8e-37d6fc85be9a/writer-0'...
+HEAD is now at 511dad8 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/tests/worker-50504-Kl97Cr/graph-delegation-qZuOGZ/home/graph-delivery/11a3953e-104e-43f7-b755-d6eb7c6bbc3d/writer-0'...
+HEAD is now at 165ee62 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/tests/g22-rpc-pG3Bgt/delivery/61bf6d0a-9f1a-442a-b50b-e2f83115f8ee/writer-0'...
+HEAD is now at 8d06ba7 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/tests/worker-50504-Kl97Cr/graph-delegation-qZuOGZ/home/graph-delivery/a638df06-bbbf-4ddd-b746-fdb0a2381c85/writer-0'...
+HEAD is now at 165ee62 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/tests/g22-rpc-8yvCQa/delivery/7d155ecb-c747-42ab-af83-fde8ed4ffba0/writer-0'...
+HEAD is now at c7a47df base
+osstack: retaining write lease graph-action:c029d71e00070db2b4009cdac9a6002686ebd6c8e31658c511fc12e72436d773: Error: external stop unconfirmed
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/tests/g22-rpc-fgvt4B/delivery/2ae0464e-3af2-48dd-a9ae-3d52d83eaf68/writer-0'...
+HEAD is now at a80bd84 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/tests/worker-50504-Kl97Cr/graph-delegation-ukX58D/home/graph-delivery/8dadb090-7d94-475b-ba20-423736fe8db4/writer-0'...
+HEAD is now at c29f4a6 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/tests/g22-rpc-Gzt5J1/delivery/1e3a1af8-7f8d-4665-a867-749a0c4ed589/writer-0'...
+HEAD is now at a80bd84 base
+ ✓ src/graph-rpc.test.ts (10 tests) 20937ms
+   ✓ durably reserves before launch; concurrent replay and fresh service replay never launch twice; ready is atomic v1 evidence  3717ms
+   ✓ persisted cancel intent drives actual worker/executor abort and confirmed stop through G15  701ms
+   ✓ quality interrupt binds input/revision/current grants and resumes actual checkpoint through G15  7605ms
+   ✓ lost supervisor cannot resume durable waiting evidence or mint a new launch  3425ms
+   ✓ unknown external stop retains holds and cannot become cancelled from Promise drainage  1430ms
+   ✓ close persists cancellation and drains a live executor before returning  433ms
+   ✓ expired waiting lease refuses resume before acknowledging or spending a new budget  3307ms
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/tests/worker-50504-Kl97Cr/graph-delegation-PpyeWk/home/graph-delivery/fabba0fd-62c5-4d56-acd7-1a8825377ac3/writer-0'...
+HEAD is now at e640628 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/tests/worker-75133-6PmhnM/g22-rpc-e7PWM5/delivery/ff4a61c3-08ba-4496-9e23-ef80ee5e8e1e/writer-0'...
+HEAD is now at 51cf109 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/tests/worker-75133-6PmhnM/g22-rpc-RuYJt2/delivery/c00ca519-c914-4ee9-8e66-ca8aa059f4ff/writer-0'...
+HEAD is now at 911e431 base
+ ✓ src/graph-delegation.integration.test.ts (5 tests) 23363ms
+   ✓ real daemon loads owner config and CLI run/status retain durable idempotency and stable conflict codes  7189ms
+   ✓ simulated OSBot/OStag host bindings preserve parents, isolate source results and refuse unverified callers  7445ms
+   ✓ actual daemon enrolls anthropic owner config and CLI reaches ready with fixture provider responses  3774ms
+   ✓ actual daemon enrolls deepseek owner config and CLI reaches ready with fixture provider responses  4805ms
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/tests/worker-75133-6PmhnM/g22-rpc-KgXrHW/delivery/0805d958-92b0-4ae9-aa96-13bbfc6f3c90/writer-0'...
+HEAD is now at afacdeb base
+To /tmp/osstack-w-592f8e0c/osstack-guarded-git-jDtCvY/remote.git
+ * [new branch]      main -> main
+Switched to a new branch 'codex/guarded-test'
+To /tmp/osstack-w-592f8e0c/osstack-guarded-git-3EidL9/remote.git
+ * [new branch]      main -> main
+Switched to a new branch 'codex/guarded-test'
+To /tmp/osstack-w-592f8e0c/osstack-guarded-git-u2hgXJ/remote.git
+ * [new branch]      main -> main
+Switched to a new branch 'codex/guarded-test'
+To /tmp/osstack-w-592f8e0c/osstack-guarded-git-gehXX6/remote.git
+ * [new branch]      main -> main
+Switched to a new branch 'codex/guarded-test'
+To /tmp/osstack-w-592f8e0c/osstack-guarded-git-lqv4Qg/remote.git
+ * [new branch]      main -> main
+Switched to a new branch 'codex/guarded-test'
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/tests/worker-75133-6PmhnM/g22-rpc-I1FraX/delivery/ef3a2dc5-9a8b-416a-8235-479fb26dd3da/writer-0'...
+To /tmp/osstack-w-592f8e0c/osstack-guarded-git-M7T0dl/remote.git
+ * [new branch]      main -> main
+Switched to a new branch 'codex/guarded-test'
+HEAD is now at 2560576 base
+To /tmp/osstack-w-592f8e0c/osstack-guarded-git-t93b1r/remote.git
+ * [new branch]      main -> main
+Switched to a new branch 'codex/guarded-test'
+To /tmp/osstack-w-592f8e0c/osstack-guarded-git-iJPAay/remote.git
+ * [new branch]      main -> main
+Switched to a new branch 'codex/guarded-test'
+osstack: retaining write lease graph-action:edce2eff01f60fc1132c10ae13f95225bc19b5a6cdc6b45c3e6eba7a0e45fa69: Error: adapter result or execution unconfirmed
+To /tmp/osstack-w-592f8e0c/osstack-guarded-git-CWXqSd/remote.git
+ * [new branch]      main -> main
+Switched to a new branch 'codex/guarded-test'
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/tests/worker-75133-6PmhnM/g22-rpc-ou3gsy/direct/writer-0'...
+HEAD is now at 1dceb1a policy
+To /tmp/osstack-w-592f8e0c/osstack-guarded-git-Kav4lM/remote.git
+ * [new branch]      main -> main
+Switched to a new branch 'codex/guarded-test'
+To /tmp/osstack-w-592f8e0c/osstack-guarded-git-Vs29nH/remote.git
+ * [new branch]      main -> main
+Switched to a new branch 'codex/guarded-test'
+To /tmp/osstack-w-592f8e0c/osstack-guarded-git-QhAUXA/remote.git
+ * [new branch]      main -> main
+Switched to a new branch 'codex/guarded-test'
+To /tmp/osstack-w-592f8e0c/osstack-guarded-git-EfEdj7/remote.git
+ * [new branch]      main -> main
+Switched to a new branch 'codex/guarded-test'
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/tests/worker-75133-6PmhnM/g22-rpc-fPv2ri/direct/writer-0'...
+HEAD is now at 687127b base
+To /tmp/osstack-w-592f8e0c/osstack-guarded-git-GykeFM/remote.git
+ * [new branch]      main -> main
+Switched to a new branch 'codex/guarded-test'
+To /tmp/osstack-w-592f8e0c/osstack-guarded-git-UcLcLO/remote.git
+ * [new branch]      main -> main
+Switched to a new branch 'codex/guarded-test'
+To /tmp/osstack-w-592f8e0c/osstack-guarded-git-HSS3EN/remote.git
+ * [new branch]      main -> main
+Switched to a new branch 'codex/guarded-test'
+To /tmp/osstack-w-592f8e0c/osstack-guarded-git-s1VrzT/remote.git
+ * [new branch]      main -> main
+Switched to a new branch 'codex/guarded-test'
+(node:82958) ExperimentalWarning: stripTypeScriptTypes is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+To /tmp/osstack-w-592f8e0c/osstack-guarded-mutant-O2K2Zk/remote.git
+ * [new branch]      main -> main
+Switched to a new branch 'codex/guarded-test'
+To /tmp/osstack-w-592f8e0c/osstack-guarded-git-kUKQL1/remote.git
+ * [new branch]      main -> main
+Switched to a new branch 'codex/guarded-test'
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/tests/worker-75133-6PmhnM/g22-rpc-zjEwBb/direct/writer-0'...
+HEAD is now at 0640f31 base
+To /tmp/osstack-w-592f8e0c/osstack-guarded-git-XR3uaK/remote.git
+ * [new branch]      main -> main
+Switched to a new branch 'codex/guarded-test'
+To /tmp/osstack-w-592f8e0c/osstack-guarded-git-JwOHho/remote.git
+ * [new branch]      main -> main
+Switched to a new branch 'codex/guarded-test'
+To /tmp/osstack-w-592f8e0c/osstack-guarded-git-Z5pKXP/remote.git
+ * [new branch]      main -> main
+Switched to a new branch 'codex/guarded-test'
+To /tmp/osstack-w-592f8e0c/osstack-guarded-git-bg3FzB/remote.git
+ * [new branch]      main -> main
+Switched to a new branch 'codex/guarded-test'
+To /tmp/osstack-w-592f8e0c/osstack-guarded-git-FK3EBN/remote.git
+ * [new branch]      main -> main
+Switched to a new branch 'codex/guarded-test'
+ ✓ src/graph-review-findings.test.ts (7 tests) 18128ms
+   ✓ settles stopped review cancellation with revoked execute, holding only unproven stop  2239ms
+   ✓ settles stopped tests cancellation with revoked execute, holding only unproven stop  2276ms
+   ✓ settles stopped tests-slow-stop cancellation with revoked execute, holding only unproven stop  2422ms
+   ✓ settles stopped unknown cancellation with revoked execute, holding only unproven stop  1848ms
+   ✓ uses current source policy (revoked) beyond workspace creation and writer availability  1821ms
+   ✓ uses current source policy (untracked) beyond workspace creation and writer availability  3717ms
+   ✓ uses current source policy (newer) beyond workspace creation and writer availability  3742ms
+To /tmp/osstack-w-592f8e0c/osstack-guarded-git-wj9YkV/remote.git
+ * [new branch]      main -> main
+Switched to a new branch 'codex/guarded-test'
+To /tmp/osstack-w-592f8e0c/osstack-guarded-git-9QfAr6/remote.git
+ * [new branch]      main -> main
+Switched to a new branch 'codex/guarded-test'
+ ✓ src/guarded-git-runtime.test.ts (25 tests) 15410ms
+   ✓ GuardedGitRuntime > completes R1 documentation through exact commit and final proof  562ms
+   ✓ GuardedGitRuntime > completes R2 source through exact commit and final proof  562ms
+   ✓ GuardedGitRuntime > pauses a protected policy diff before proof, commit, or Git  435ms
+   ✓ GuardedGitRuntime > resumes blocked Git delivery after restart without rebuilding or recommitting  521ms
+   ✓ guarded context absent preserves original input with zero observer calls  493ms
+   ✓ guarded context undefined preserves original input with zero observer calls  492ms
+   ✓ trusted context actual observer reaches existing consumer without mutating routing/budget  632ms
+   ✓ trusted context throw refuses handoff without hiding callback errors  483ms
+   ✓ trusted context invalid refuses handoff without hiding callback errors  469ms
+   ✓ trusted context changed refuses handoff without hiding callback errors  590ms
+   ✓ unproven pending context falls back only to existing input before writes  632ms
+   ✓ unproven withdrawn context falls back only to existing input before writes  629ms
+   ✓ fallback undefined-policy-drift still checks fresh policy and refuses every delivery  494ms
+   ✓ fallback withdrawn-policy-drift still checks fresh policy and refuses every delivery  621ms
+   ✓ callback private exception text is sanitized on the actual guarded handoff  475ms
+   ✓ source mutant deleting second-context comparison hands off stale hint after actual positive baseline  1460ms
+   ✓ trusted raw-invalid actual handoff refuses rather than silently using original delivery  472ms
+   ✓ trusted badrefs actual handoff refuses rather than silently using original delivery  558ms
+   ✓ trusted missing-policy-guard actual handoff refuses rather than silently using original delivery  472ms
+   ✓ enabled actual runtime stale head falls back to original input only after final fresh policy recheck  575ms
+   ✓ stale-head fallback cannot bypass policy change after final context sample  579ms
+   ✓ V2 guarded runtime host receipts > binds real Loop evidence and obeys completion local_verified  1099ms
+   ✓ V2 guarded runtime host receipts > binds real Loop evidence and obeys completion pr_opened  1456ms
+   ✓ pins initial execution context across actual guarded repair iterations  440ms
+ ✓ src/graph-contained-recovery.test.ts (72 tests) 9982ms
+   ✓ contained proof bridge > uses the host closure inside actual G15 without inferring business outcome: valid  319ms
+   ✓ contained proof bridge > uses the host closure inside actual G15 without inferring business outcome: revoked  313ms
+   ✓ contained proof bridge > uses the host closure inside actual G15 without inferring business outcome: isolation-lost  312ms
+   ✓ contained proof bridge > uses the host closure inside actual G15 without inferring business outcome: release-drift  334ms
+   ✓ graph quiescence sweep > sweeps actual worker and contained executor after reopening the ledger, without settling or releasing  319ms
+   ✓ graph quiescence sweep > sweeps two distinct contained invocations without re-execution and binds each physical receipt  335ms
+   ✓ graph quiescence sweep > does not omit released or missing-admission historical obligations (held=false)  313ms
+   ✓ graph quiescence sweep > does not omit released or missing-admission historical obligations (held=true)  313ms
+   ✓ graph quiescence sweep > can inspect a released contained action but cannot reacquire cleanup authority  308ms
+   ✓ graph quiescence sweep > never substitutes container absence for a deleted receipt in inspect mode  305ms
+   ✓ graph quiescence sweep > never substitutes container absence for a deleted receipt in stop_contained mode  311ms
+   ✓ graph quiescence sweep > requires explicit stop mode and current stop grant for an orphan; never releases its ledger hold  329ms
+   ✓ graph quiescence sweep > requires old and current generation exit evidence before any container read or stop  304ms
+   ✓ graph quiescence sweep > includes an actionless intermediate generation (durable no-start=true)  317ms
+   ✓ graph quiescence sweep > rejects release drift inside executor authorization before subsequent physical operations  301ms
+   ✓ graph quiescence sweep > rejects grant drift inside executor authorization before subsequent physical operations  315ms
+   ✓ graph quiescence sweep > rejects duplicate registration/authority before daemon access  302ms
+   ✓ graph quiescence sweep > rejects async registration/authority before daemon access  304ms
+   ✓ graph quiescence sweep > captures trusted registrations and guards, and reports absent registries as unproven  309ms
+   ✓ graph quiescence sweep > rejects release drift after daemon I/O before further cleanup  307ms
+   ✓ graph quiescence sweep > rejects worker-journal drift after daemon I/O before further cleanup  313ms
+   ✓ graph quiescence sweep > keeps a substituted trusted manifest unproven before Docker calls  303ms
+ ✓ src/improvement-candidate.test.ts (31 tests) 14971ms
+   ✓ approved improvement candidate execution > builds and verifies a real external-worktree patch, preserves main, and replays without running again  575ms
+   ✓ approved improvement candidate execution > fails closed for gate and retains the attempt  524ms
+   ✓ approved improvement candidate execution > fails closed for reviewer_mutation and retains the attempt  551ms
+   ✓ approved improvement candidate execution > fails closed for missing_judgment and retains the attempt  590ms
+   ✓ approved improvement candidate execution > retains a stop requested during reviewer without publishing a terminal result  375ms
+   ✓ approved improvement candidate execution > freezes caller data before giving instructions to adapters  595ms
+   ✓ one authorization to a real Git commit and simulated GitHub draft PR > approves once and delivers only the saved verified patch, ignoring later builder edits  942ms
+   ✓ one authorization to a real Git commit and simulated GitHub draft PR > reconciles a lost push response without sending a second write  923ms
+   ✓ one authorization to a real Git commit and simulated GitHub draft PR > reconciles a lost pr response without sending a second write  932ms
+   ✓ one authorization to a real Git commit and simulated GitHub draft PR > refuses tampered artifacts before any GitHub write  616ms
+   ✓ one authorization to a real Git commit and simulated GitHub draft PR > refuses a moved remote base without rebasing or writing  692ms
+   ✓ one authorization to a real Git commit and simulated GitHub draft PR > never overwrites an existing delivery branch  907ms
+   ✓ one authorization to a real Git commit and simulated GitHub draft PR > does not report delivery when the observed PR head binding differs  935ms
+   ✓ one authorization to a real Git commit and simulated GitHub draft PR > does not report delivery when the observed PR base binding differs  915ms
+   ✓ one authorization to a real Git commit and simulated GitHub draft PR > does not report delivery when the observed PR draft binding differs  968ms
+   ✓ one authorization to a real Git commit and simulated GitHub draft PR > honors a stop before push without issuing the next external action  650ms
+   ✓ one authorization to a real Git commit and simulated GitHub draft PR > honors a stop after push without issuing the next external action  1166ms
+   ✓ one authorization to a real Git commit and simulated GitHub draft PR > requires clean reconstruction gates to pass, even if the candidate gate passed  900ms
+osstack: retaining write lease graph-action:42669c4b7568722f61fb3e37bc2cfb3d224577fa14b082c233147c1e67266a6c: graph changeset apply requires reconciliation
+ ✓ src/graph-changeset-invocation.test.ts (46 tests) 16831ms
+   ✓ applies a real Git candidate only after durable provider and apply evidence, then settles the original action  333ms
+   ✓ keeps real workspace quarantined and reservation held if completeApply fails before commit  319ms
+   ✓ freezes, restores and replays exactly the ledger-confirmed applied candidate  1569ms
+   ✓ refuses extra changes after apply instead of freezing them into the candidate  593ms
+   ✓ refuses mismatched freeze receipt binding  384ms
+   ✓ refuses mismatched freeze stop binding  363ms
+   ✓ refuses mismatched freeze scope binding  363ms
+   ✓ refuses mismatched freeze lease binding  364ms
+   ✓ refuses mismatched freeze owner binding  412ms
+   ✓ refuses mismatched freeze base binding  762ms
+   ✓ refuses an orphan completion artifact without the committed apply resolution  1089ms
+   ✓ rechecks fenced state after asynchronous physical authority verification  1040ms
+   ✓ does not substitute provider completion for physical producer stop proof  935ms
+   ✓ refuses freeze after implementation admission was released  903ms
+   ✓ rejects gitignored extra files planted after apply  1415ms
+   ✓ rejects admission release during receipt evidence reads  908ms
+   ✓ applies three files under the real writer guard and holds capacity until explicit release  2365ms
+   ✓ retains real writer capacity when guarded apply becomes quarantined  917ms
+ ✓ src/upgrade-native.test.ts (25 tests) 15057ms
+   ✓ managed native upgrade actual filesystem/process boundaries > accepts a clean schema47 home but refuses an unqualified schema48 home  757ms
+   ✓ managed native upgrade actual filesystem/process boundaries > stops both real processes, snapshots unchanged databases, atomically switches exact release and verifies new generations  505ms
+   ✓ managed native upgrade actual filesystem/process boundaries > preserves unknown restart, refuses implicit replay, and explicit history-bound recovery does not start an already-running consumer twice  504ms
+   ✓ managed native upgrade actual filesystem/process boundaries > provisions a fresh exact installation without starting processes and resumes identical interrupted staging  493ms
+   ✓ managed native upgrade actual filesystem/process boundaries > recovers forward after SIGKILL while a real stopped home and database are kernel-locked  1389ms
+   ✓ managed native upgrade actual filesystem/process boundaries > keeps terminal history intact while explicitly cleaning a fence left after verification  1337ms
+   ✓ managed native upgrade actual filesystem/process boundaries > cleans completed history with stopped consumers after permit_missing crash without restarting them  1135ms
+   ✓ managed native upgrade actual filesystem/process boundaries > cleans completed history with stopped consumers after operation_missing crash without restarting them  1114ms
+   ✓ managed native upgrade actual filesystem/process boundaries > cleans completed history with stopped consumers after both_missing crash without restarting them  1389ms
+   ✓ managed native upgrade actual filesystem/process boundaries > clears an orphan permit from another plan before the next upgrade stops consumers  1356ms
+   ✓ managed native upgrade actual filesystem/process boundaries > accepts only a single publication temp hardlink peer in the pre-DB managed guard  388ms
+   ✓ managed native upgrade actual filesystem/process boundaries > removes a foreign orphan permit during historically verified cleanup when no operation exists  1121ms
+   ✓ managed native upgrade actual filesystem/process boundaries > waits for a physically pending stop before releasing owner locks and prevents late reacquisition after close  385ms
+   ✓ managed native upgrade actual filesystem/process boundaries > recovers a SIGKILL stale socket only after native ownership and connection refusal prove it is abandoned  658ms
+   ✓ managed native upgrade actual filesystem/process boundaries > mutually excludes different journals sharing one physical installation  349ms
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/tests/g22-rpc-hKfbG6/delivery/7ed434ad-4924-4a68-9860-9fe176f9b669/writer-0'...
+HEAD is now at c0bc6e3 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/tests/g22-rpc-HCmq2n/delivery/0fd77655-a0fe-43a7-8a79-593cd32c1071/writer-0'...
+HEAD is now at 626911d base
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/tests/g22-rpc-lIbuDB/delivery/52ee0f3c-0579-4943-a439-fa2b457e4818/writer-0'...
+HEAD is now at 70e3100 base
+ ✓ src/improvement-execution-command.test.ts (10 tests) 10197ms
+   ✓ improve execution command > previews, executes the confirmed request, reports status and replays without rerunning agents or gates  972ms
+   ✓ delivers from a draft proposal with one confirmation and replays without another side effect  1425ms
+   ✓ prepares real pnpm dependencies in both stages before delivering with one CLI confirmation  4007ms
+   ✓ records a failed frozen install, retains occupancy and never starts the builder  1778ms
+   ✓ binds --build-deps into the one-shot digest and refuses a wider confirmation  1395ms
+
+  ...ck/tests/worker-56634-GuDbUn/graph-apply-build-IAulmB/fixture.mjs  36.5kb
+
+⚡ Done in 8ms
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/tests/g22-rpc-0v9Ba9/delivery/024ce9f7-3d10-491d-ab3a-3f0234886b9f/writer-0'...
+HEAD is now at 1ff52d7 base
+osstack: retaining write lease graph-action:9b0eb809a3e8a3a71493cf9906c852beb361b218d1ce211085d47a0f5af341a2: Error: external stop unconfirmed
+stderr | src/graph-bounded-messages.test.ts > anthropic dispatched disconnected inference stays unresolved through public reconcile
+{"event":"graph_recovery_blocked","graphRunId":"024ce9f7-3d10-491d-ab3a-3f0234886b9f","stage":"unstarted_preparation","code":"PREPARATION_RECOVERY_SCOPE"}
+
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/tests/g22-rpc-wQi0gY/delivery/899ddcd3-74c7-4867-add9-5b74a081dd91/writer-0'...
+HEAD is now at 4967c70 base
+osstack: retaining write lease graph-action:40e4ac7eca6faabc6be871bbec6707f4f731629802c09bd7b29f0aa3dcf1274b: Error: external stop unconfirmed
+stderr | src/graph-bounded-messages.test.ts > deepseek dispatched disconnected inference stays unresolved through public reconcile
+{"event":"graph_recovery_blocked","graphRunId":"899ddcd3-74c7-4867-add9-5b74a081dd91","stage":"unstarted_preparation","code":"PREPARATION_RECOVERY_SCOPE"}
+
+ ✓ src/graph-bounded-messages.test.ts (5 tests) 14177ms
+   ✓ anthropic writer and independent reviewer run through public graph to ready  4233ms
+   ✓ deepseek writer and independent reviewer run through public graph to ready  3435ms
+   ✓ routes a stopped negative review to a quality interrupt rather than ready  3598ms
+   ✓ anthropic dispatched disconnected inference stays unresolved through public reconcile  1439ms
+   ✓ deepseek dispatched disconnected inference stays unresolved through public reconcile  1470ms
+ ✓ src/graph-apply-crash.integration.test.ts (18 tests) 10249ms
+   ✓ never falsely confirms or replays filesystem writes after SIGKILL at before_gate  363ms
+   ✓ never falsely confirms or replays filesystem writes after SIGKILL at after_gate  556ms
+   ✓ never falsely confirms or replays filesystem writes after SIGKILL at before_create  563ms
+   ✓ never falsely confirms or replays filesystem writes after SIGKILL at after_create  637ms
+   ✓ never falsely confirms or replays filesystem writes after SIGKILL at before_delete  587ms
+   ✓ never falsely confirms or replays filesystem writes after SIGKILL at after_delete  578ms
+   ✓ never falsely confirms or replays filesystem writes after SIGKILL at before_replace  595ms
+   ✓ never falsely confirms or replays filesystem writes after SIGKILL at after_replace  602ms
+   ✓ never falsely confirms or replays filesystem writes after SIGKILL at before_complete  622ms
+   ✓ never falsely confirms or replays filesystem writes after SIGKILL at after_complete  636ms
+   ✓ never falsely confirms or replays filesystem writes after SIGKILL at before_file_sync  502ms
+   ✓ never falsely confirms or replays filesystem writes after SIGKILL at after_file_sync  500ms
+   ✓ never falsely confirms or replays filesystem writes after SIGKILL at before_create_dirsync  503ms
+   ✓ never falsely confirms or replays filesystem writes after SIGKILL at after_create_dirsync  502ms
+   ✓ never falsely confirms or replays filesystem writes after SIGKILL at before_delete_dirsync  548ms
+   ✓ never falsely confirms or replays filesystem writes after SIGKILL at after_delete_dirsync  543ms
+   ✓ never falsely confirms or replays filesystem writes after SIGKILL at before_replace_dirsync  798ms
+   ✓ never falsely confirms or replays filesystem writes after SIGKILL at after_replace_dirsync  575ms
+repository lock release failed; retained run: Error: fixture physical release failed
+osstack: retained admission after rejected repository lock cleanup; reconciliation required
+osstack: retained admission after unknown repository lock acquisition; reconciliation required
+ ✓ src/daemon-engineering.test.ts (26 tests) 10674ms
+   ✓ checks live authorization after admission and recovers only the uncommitted first dispatch  307ms
+   ✓ rechecks deferred waits on the bounded observer without a model or an automatic answer  1063ms
+   ✓ keeps a healthy slow reply in flight across two observer ticks and finalizes the original attention ledger  2295ms
+   ✓ persists one blocked reason and avoids reacquiring writer admission while authority stays revoked  2377ms
+   ✓ engineering.cancel releases only its proven unstarted queue reservation  364ms
+   ✓ keeps a refused drain live and resumes the original reserved first dispatch only after explicit resume  1162ms
+osstack: retaining write lease run_3116ed6a89614538c5ea4b73: session resume exit unconfirmed
+osstack: retaining write lease run_70b03d9cb09a3f9f7e776272: session resume exit unconfirmed
+ ✓ src/collaborator-rpc.test.ts (11 tests) 9067ms
+   ✓ signed collaborator through daemon RPC > automatically advances two frozen phases and replay never resets spent budgets  1128ms
+   ✓ signed collaborator through daemon RPC > uses only the signed retry instruction within its finite budget  1212ms
+   ✓ signed collaborator through daemon RPC > cannot use a phase grant as a risk approval  543ms
+   ✓ signed collaborator through daemon RPC > does not reinterpret a controlled result as a legacy decision directive  554ms
+   ✓ signed collaborator through daemon RPC > preserves opaque results during a delegated resume  828ms
+   ✓ signed collaborator through daemon RPC > rejects signature, runtime-policy and session-cursor changes without any send  463ms
+   ✓ signed collaborator through daemon RPC > revokes an in-flight turn and stops before the next instruction  705ms
+   ✓ signed collaborator through daemon RPC > bounds a stalled turn and blocks further automatic delivery  1541ms
+   ✓ signed collaborator through daemon RPC > retains a late real receipt but blocks when the timeout callback has not run yet  727ms
+   ✓ signed collaborator through daemon RPC > recovers a reserved receipt as uncertain after restart without resending  380ms
+   ✓ signed collaborator through daemon RPC > defers persisted grants and refuses installs until initial health permits work  984ms
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/tests/g22-rpc-FiXIcn/delivery/6a884a06-1ccc-4a14-9db9-1644abc29b9c/writer-0'...
+HEAD is now at e5f5693 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/tests/g22-rpc-k6Vdx4/delivery/452168e3-ea54-4fd2-bc1a-77608ef70a9b/writer-0'...
+HEAD is now at 28c67f5 base
+ ✓ src/graph-worker-manager.test.ts (34 tests) 9119ms
+   ✓ handshakes asynchronously, executes Functional+remote sync checkpoints and isolates bounded logs  389ms
+   ✓ reserves each run synchronously and requires verified exit before replacement  471ms
+   ✓ executes snapshotted bytes even when the original trusted module is changed  335ms
+   ✓ expires leases and terminates an unresponsive child with actual exit evidence  2037ms
+   ✓ does not equate invoke rejection to worker exit or await inherited log pipes  344ms
+   ✓ done leaves exit pending until the OS observes termination  355ms
+   ✓ revokes a running lease and old callbacks cannot respond through a replacement connection  385ms
+   ✓ caps each log stream independently and does not pass a DB home or node injection environment  337ms
+   ✓ waits for the remote final checkpoint acknowledgement before resolving the program  343ms
+   ✓ allows startup grace before requiring heartbeats  354ms
+   ✓ does not apply a checkpoint RPC timeout to a healthy long-running governed action  630ms
+   ✓ records the authenticated child identity before its program receives init  329ms
+   ✓ surfaces failed exit journaling even after the successful program result has settled  342ms
+   ✓ host event-loop stalls can request conservative stop but never invent physical exit  438ms
+   ✓ drains buffered worker heartbeats after a host event-loop stall before declaring expiry  643ms
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/tests/g22-rpc-ygQYMe/delivery/7947944a-371f-4c42-bd99-8965d93b532d/writer-0'...
+HEAD is now at de459ef base
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/tests/g22-rpc-3kbS4l/delivery/df82285a-d082-4abd-8b4b-756f9b861667/writer-0'...
+HEAD is now at 9011138 base
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/tests/g22-rpc-N8XQZS/delivery/aafb7db1-e826-4246-b4aa-ecad7cda657c/writer-0'...
+HEAD is now at 9011138 base
+ ✓ src/graph-admission.test.ts (10 tests) 8136ms
+   ✓ disables new admission while retaining reads, exact replay and cancellation of admitted live work  518ms
+   ✓ admission disabled still permits an authorized live quality resume of the existing run  7022ms
+ ✓ src/graph-concurrency.integration.test.ts (4 tests) 7644ms
+   ✓ F09 seed=250915: two SQLite connections deduplicate a submit burst and reject changed payloads  3578ms
+   ✓ F08/F11 seed=250915: competing cancellation revisions cannot relaunch a revoked writer  419ms
+   ✓ F09/F11 seed=250915: resume and cancel race commits one revision without resetting the budget  3399ms
+osstack: clock jump detected drift_ms=9980; re-running external health and recovery probes
+osstack: retaining write lease run-offline-production-recovery: guarded autonomy blocked or exit unconfirmed
+ ✓ src/loop-cli.test.ts (42 tests) 5539ms
+   ✓ loop CLI > gates findings committed by an isolated worktree against the pre-run revision  328ms
+   ✓ loop CLI > passes --worktree through local loop runs  473ms
+   ✓ loop CLI > runs ds-review as a post-execution reviewer verifier  615ms
+   ✓ loop CLI > keeps builder-unavailable from successful reviewed shell execution  336ms
+   ✓ loop CLI > keeps reviewer-unavailable from successful reviewed shell execution  319ms
+   ✓ loop CLI > keeps reviewer-failure from successful reviewed shell execution  470ms
+ ✓ src/daemon-loop.test.ts (25 tests) 5498ms
+   ✓ daemon loop RPC > runs and reports a local loop cycle through the daemon socket  303ms
+   ✓ daemon loop RPC > runs reviewer adapters through daemon loop.run  514ms
+   ✓ daemon loop RPC > starts, reports, and stops a background polling loop  301ms
+   ✓ daemon loop RPC > creates a blocked kanban card when a background loop escalates  340ms
+   ✓ daemon loop RPC > creates a blocked kanban card after three same-capability loop failures  421ms
+   ✓ daemon loop RPC > stops a background polling loop when its goal command passes  316ms
+ ✓ src/improvement-environment.test.ts (18 tests) 5774ms
+   ✓ installs real workspace dependencies twice with isolated receipts and no lifecycle hooks  2474ms
+   ✓ records toolchain drift without invoking install and rejects uncommitted input changes  986ms
+   ✓ forces pnpm builtin and builds only the selected version, without root/workspace lifecycle scripts  1636ms
+   ✓ rejects a tampered build receipt before install and leaves the failed stage occupied  663ms
+Preparing worktree (new branch 'other')
+Preparing worktree (new branch 'other')
+Preparing worktree (new branch 'other')
+osstack: retaining write lease one: external stop unconfirmed
+Preparing worktree (new branch 'other')
+Preparing worktree (new branch 'other')
+Preparing worktree (new branch 'other')
+osstack: retaining write lease retained: unknown
+Preparing worktree (new branch 'other')
+osstack: retaining write lease read1: uncertain read executor
+osstack: retaining write lease read2: other executor
+Preparing worktree (new branch 'other')
+Preparing worktree (new branch 'other')
+Preparing worktree (new branch 'other')
+Preparing worktree (new branch 'other')
+Preparing worktree (new branch 'other')
+Preparing worktree (new branch 'other')
+osstack: retained admission after rejected repository lock cleanup; reconciliation required
+Preparing worktree (new branch 'other')
+Preparing worktree (new branch 'other')
+Preparing worktree (new branch 'other')
+Preparing worktree (new branch 'other')
+Preparing worktree (new branch 'other')
+Preparing worktree (new branch 'other')
+Preparing worktree (new branch 'other')
+Preparing worktree (new branch 'other')
+osstack: retained admission after unknown repository lock acquisition; reconciliation required
+Preparing worktree (new branch 'other')
+osstack: retained admission after unknown repository lock acquisition; reconciliation required
+ ✓ src/improvement-candidate-artifacts.test.ts (36 tests) 5100ms
+   ✓ improvement candidate artifacts > captures staged, unstaged, added, deleted and renamed files without altering the source index  579ms
+   ✓ improvement candidate artifacts > detects reviewer index mutations even when the emitted working-tree patch is unchanged  381ms
+   ✓ improvement candidate artifacts > detects permission-only reviewer changes and rejects a staged-only empty patch  533ms
+   ✓ improvement candidate artifacts > ignores normal ignored caches but detects ignored source files  429ms
+   ✓ scans unchanged framework route filenames without accepting glob-shaped authorizations  322ms
+Preparing worktree (new branch 'other')
+osstack: retained admission after unknown repository lock acquisition; reconciliation required
+Preparing worktree (new branch 'other')
+osstack: retained admission after unknown repository lock acquisition; reconciliation required
+
+  ...tack-w-5a81241c/g25-recovery-build-44Fp3z/graph-recovery-host.mjs  94.7kb
+
+⚡ Done in 10ms
+Preparing worktree (new branch 'other')
+Preparing worktree (new branch 'other')
+Preparing worktree (new branch 'other')
+
+  ...-w-5a81241c/g25-recovery-build-44Fp3z/graph-submission-crash.mjs  310.6kb
+
+⚡ Done in 6ms
+Preparing worktree (new branch 'other')
+ ✓ src/governed-execution.test.ts (28 tests) 4159ms
+   ✓ releases capacity after a proven pre-publication guard_timeout rejection  2084ms
+ ✓ src/graph-recovery-crash.integration.test.ts (6 tests) 4109ms
+   ✓ a fresh host recovers an authenticated no-child failure with the original host killed  741ms
+   ✓ a fresh host recovers an authenticated no-child failure with the original host alive  682ms
+   ✓ public submit survives committed reservation with its original host killed before construction  773ms
+   ✓ public submit survives committed reservation with its original host alive before construction  761ms
+   ✓ refuses an unobserved pre-spawn crash window without starting replacement effects  676ms
+   ✓ refuses an unobserved pre-identity crash window without starting replacement effects  476ms
+ ✓ src/session-rpc.test.ts (32 tests) 2611ms
+stderr | src/graph-reconcile-rpc.test.ts > reconciles an actual registration failure from a fresh SQLite connection with admission disabled and unsupported adapters
+{"event":"graph_recovery_blocked","graphRunId":"5c9e5b41-a6a0-499f-ab73-e5383db573bd","stage":"unstarted_preparation","code":"REVISION_CONFLICT"}
+
+(node:91256) ExperimentalWarning: stripTypeScriptTypes is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:91256) ExperimentalWarning: vm.USE_MAIN_CONTEXT_DEFAULT_LOADER is an experimental feature and might change at any time
+stderr | src/graph-reconcile-rpc.test.ts > retains uncertainty when missing-journal prevents all-generation absence proof
+{"event":"graph_recovery_blocked","graphRunId":"1eeeb1b8-d99f-44ac-9372-d86de3be5ba0","stage":"unstarted_preparation","code":"PREPARATION_RECOVERY_SCOPE"}
+
+stderr | src/graph-reconcile-rpc.test.ts > retains uncertainty when missing-journal prevents all-generation absence proof
+{"event":"graph_recovery_blocked","graphRunId":"1eeeb1b8-d99f-44ac-9372-d86de3be5ba0","stage":"unstarted_preparation","code":"PREPARATION_RECOVERY_SCOPE"}
+
+stderr | src/graph-reconcile-rpc.test.ts > retains uncertainty when checkpoint prevents all-generation absence proof
+{"event":"graph_recovery_blocked","graphRunId":"b3acb941-6a04-47af-943e-6833a4f32bbd","stage":"unstarted_preparation","code":"PREPARATION_RECOVERY_SCOPE"}
+
+stderr | src/graph-reconcile-rpc.test.ts > retains uncertainty when checkpoint prevents all-generation absence proof
+{"event":"graph_recovery_blocked","graphRunId":"b3acb941-6a04-47af-943e-6833a4f32bbd","stage":"unstarted_preparation","code":"PREPARATION_RECOVERY_SCOPE"}
+
+stderr | src/graph-reconcile-rpc.test.ts > retains uncertainty when unobserved-generation prevents all-generation absence proof
+{"event":"graph_recovery_blocked","graphRunId":"9c9762d8-51c2-4bae-aa92-6c010c4f8639","stage":"unstarted_preparation","code":"PREPARATION_RECOVERY_SCOPE"}
+
+stderr | src/graph-reconcile-rpc.test.ts > retains uncertainty when unobserved-generation prevents all-generation absence proof
+{"event":"graph_recovery_blocked","graphRunId":"9c9762d8-51c2-4bae-aa92-6c010c4f8639","stage":"unstarted_preparation","code":"PREPARATION_RECOVERY_SCOPE"}
+
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/tests/g22-rpc-TlciGu/delivery/3d637c92-0a12-4e24-a870-4a27c942ed6b/writer-0'...
+HEAD is now at 636f0cf base
+osstack: retaining write lease graph-action:8146f022109985079c28534e714010e4662862d647120f19501c282bdd280491: Error: external stop unconfirmed
+ ✓ src/loop-defaults-cli.test.ts (21 tests) 3294ms
+   ✓ source mutation dropping default verifier gives real corrupt-byte false success after valid baseline  424ms
+stderr | src/graph-reconcile-rpc.test.ts > keeps actual unknown external work and its admission held on a fresh host
+{"event":"graph_recovery_blocked","graphRunId":"3d637c92-0a12-4e24-a870-4a27c942ed6b","stage":"unstarted_preparation","code":"PREPARATION_RECOVERY_SCOPE"}
+
+stderr | src/graph-reconcile-rpc.test.ts > acknowledges durable intent when concurrent graph.cancel advances the proof snapshot
+{"event":"graph_recovery_blocked","graphRunId":"671fcc63-ccf0-4fa4-89f4-d5185d6f3650","stage":"unstarted_preparation","code":"REVISION_CONFLICT"}
+
+stderr | src/graph-reconcile-rpc.test.ts > acknowledges durable intent when concurrent graph.reconcile advances the proof snapshot
+{"event":"graph_recovery_blocked","graphRunId":"b71b8957-162b-47ea-8d08-de6666e7bb8a","stage":"unstarted_preparation","code":"REVISION_CONFLICT"}
+
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/tests/g22-rpc-tqcQjg/delivery/a224265d-dc23-4f24-9105-0e05516f06b8/writer-0'...
+HEAD is now at 77886ad base
+stderr | src/graph-reconcile-rpc.test.ts > reconcile signals the actual live writer and leaves settlement to its supervisor
+{"event":"graph_recovery_blocked","graphRunId":"a224265d-dc23-4f24-9105-0e05516f06b8","stage":"unstarted_preparation","code":"PREPARATION_RECOVERY_SCOPE"}
+
+ ✓ src/graph-reconcile-rpc.test.ts (20 tests) 3531ms
+   ✓ keeps actual unknown external work and its admission held on a fresh host  1439ms
+   ✓ reconcile signals the actual live writer and leaves settlement to its supervisor  422ms
+ ✓ src/graph-review-input.test.ts (13 tests) 3298ms
+   ✓ includes cumulative modifications, deleted before bytes and created after bytes across repair epochs  368ms
+   ✓ includes the complete incremental evidence for a repair that restores the original task bytes  360ms
+   ✓ accepts the exact file byte bound and empty content but rejects invalid UTF-8  524ms
+osstack: retaining write lease run_4bcf1294: adapter cancellation exit unconfirmed
+ ✓ src/daemon-admission.test.ts (6 tests) 3269ms
+   ✓ keeps a direct adapter's lease past terminal output until producer cleanup, then admits Loop  416ms
+   ✓ cancelled real producer: confirmed=false controls cross-instance admission  1247ms
+   ✓ cancelled real producer: confirmed=true controls cross-instance admission  1249ms
+Preparing worktree (detached HEAD 4802ebd)
+ ✓ src/graph-apply-changeset.test.ts (21 tests) 2968ms
+   ✓ preserves executable mode and ignores malicious clean filter configuration  322ms
+osstack: retaining write lease graph-action:1c6377ea609e261ad9048ed01476f8f9ef689d83d14832b34514cee101242d0e: Error: adapter result or execution unconfirmed
+osstack: retaining write lease graph-action:e7965edfa2e2e80d53e20621928849b2455d4ccdbe48a48c5fae5d1dab488a57: Error: adapter result or execution unconfirmed
+ ✓ src/product-entry-cli.test.ts (46 tests) 2286ms
+   ✓ product entry commands > runs a top-level product doctor across loop readiness and agent availability  1174ms
+   ✓ product entry commands > blocks Trusted Publishing when a public workspace package has not been bootstrapped  981ms
+osstack: retaining write lease graph-action:cdb6bffa6d650b8b568616fa7e6d99147512a23ee5030b7694e11ad64ab91e98: Error: adapter result or execution unconfirmed
+osstack: retaining write lease graph-action:3f59eb31427c370432890783ef7b3735600a2f8cbd01b384cafafc91bf3bd309: Error: invalid result kind for registered operation
+osstack: retaining write lease graph-action:20b0c162a0787acc48655339c450c85f8127db310203fbee2dd34ae63dbe1208: Error: invalid usage
+osstack: retaining write lease graph-action:ed5c718ac7df7a21191346b89532a531d1d3823e2f78c21f44e799fa2a65594c: Error: invalid persisted evidence reference
+osstack: retaining write lease graph-action:7eb8f855f581750887a21b9d047bd4f1ebe9c0dff5679b2b3c453fbc144d1c14: SqliteError: injected
+osstack: retaining write lease graph-action:12a4ecb14598a0739af998383835f29cf3aa7057fbd7eacf8f2499bd8231e5ec: Error: adapter result or execution unconfirmed
+osstack: retaining write lease graph-action:c4d3a29a936029b678b6b7666d3908b34f29f08155609c9c73161baee57a30b9: Error: adapter result or execution unconfirmed
+osstack: retaining write lease graph-action:04d461d3fbc71f2c344a928479a494377709457128e8e08aad4ace4df280c5ed: Error: adapter result or execution unconfirmed
+osstack: retaining write lease graph-action:d64f00c57e02f3f6d8b41d8ef6ede3bfe8e9000fa617f3e7e243bea5cc7e2abb: Error: adapter result or execution unconfirmed
+osstack: retaining write lease graph-action:0ac5dd999e94cf45546d5a409554c5a27ef40bdb3714cc792e651eff9c2162ff: Error: adapter result or execution unconfirmed
+ ✓ src/graph-action-broker.test.ts (37 tests) 2039ms
+ ✓ src/agent-list-cli.test.ts (2 tests) 2114ms
+   ✓ agent list CLI > lists local agents with roles, capabilities, and auth modes  1144ms
+   ✓ agent list CLI > prints a role-oriented human list  969ms
+ ✓ src/improvement-execution-adapters.test.ts (13 tests) 2371ms
+   ✓ createImprovementExecutionAdapters > uses real Codex process receipts: empty-exit  649ms
+   ✓ createImprovementExecutionAdapters > uses the bundled no-tool Kimi reviewer and forwards real structured judgments with isolated home  340ms
+ ✓ src/paired-routing-evaluation.test.ts (15 tests) 1791ms
+   ✓ paired routing evaluation > stops the entire evaluation on deadline without creating another physical call  1516ms
+ ✓ src/graph-worker-exit-proof.test.ts (38 tests) 1441ms
+   ✓ verifies a real parent-observed exit after reopening SQLite, including inside the G15 final transaction  350ms
+ ✓ src/scout-command.test.ts (17 tests) 1669ms
+Cloning into '/Volumes/AIMATE_WORK/tmp/osstack/tests/g22-rpc-pICoEN/delivery/e0608972-0325-4014-87cf-25a21dbd5768/writer-0'...
+HEAD is now at 72310e4 base
+osstack: retaining write lease graph-action:95de13c3f9892ab04641009222d01720a1c4a794f2f45a2adb8b295cb3500132: Error: external stop unconfirmed
+stderr | src/graph-compatibility.integration.test.ts > F12: restored SQLite snapshot and disabled admission retain unknown effects without replay or lock loss
+{"event":"graph_recovery_blocked","graphRunId":"e0608972-0325-4014-87cf-25a21dbd5768","stage":"unstarted_preparation","code":"PREPARATION_RECOVERY_SCOPE"}
+
+ ✓ src/graph-compatibility.integration.test.ts (2 tests) 1623ms
+   ✓ F12: restored SQLite snapshot and disabled admission retain unknown effects without replay or lock loss  1501ms
+ ✓ src/graph-unstarted-recovery.test.ts (20 tests) 1495ms
+ ✓ src/dashboard-cli.test.ts (33 tests) 961ms
+ ✓ src/local-source-command.test.ts (4 tests) 1509ms
+   ✓ locally bounds a hung RPC without echoing malformed responses  1503ms
+ ✓ src/graph-verification-inventory.test.ts (3 tests) 887ms
+   ✓ rejects a real directory at the repository 20001-entry boundary  882ms
+stderr | src/stack-cli.test.ts > handleStackCommand: ingest > errors and returns 1 when --prs is missing
+osstack: stack ingest requires --prs <comma-separated PR numbers>
+
+stderr | src/stack-cli.test.ts > handleStackCommand: ingest > errors and returns 1 when --prs is empty
+osstack: stack ingest requires --prs <comma-separated PR numbers>
+
+stdout | src/stack-cli.test.ts > handleStackCommand: ingest > is idempotent across repeated ingests (no duplicate-card crash)
+ingested 3 PRs into board "stack" (order: 47,48,49)
+
+stdout | src/stack-cli.test.ts > handleStackCommand: ingest > is idempotent across repeated ingests (no duplicate-card crash)
+ingested 3 PRs into board "stack" (order: 47,48,49)
+
+stdout | src/stack-cli.test.ts > handleStackCommand: ingest > passes --repo through to ingestStack when provided
+ingested 1 PRs into board "stack" (order: 1)
+
+stdout | src/stack-cli.test.ts > handleStackCommand: ingest > re-ingest is idempotent: comments stay at 1/card and no-op events do not grow
+ingested 3 PRs into board "stack" (order: 47,48,49)
+
+stdout | src/stack-cli.test.ts > handleStackCommand: ingest > re-ingest is idempotent: comments stay at 1/card and no-op events do not grow
+ingested 3 PRs into board "stack" (order: 47,48,49)
+
+stderr | src/stack-cli.test.ts > handleStackCommand: ingest > returns 1 (not a thrown rejection) when ingestStack fails
+osstack: stack ingest failed: gh exploded
+
+stderr | src/stack-cli.test.ts > handleStackCommand: ingest > returns 1 with a non-numeric message when --prs has a garbage token
+osstack: --prs contains a non-numeric PR number: x
+
+stderr | src/stack-cli.test.ts > handleStackCommand: ingest > rejects trailing garbage like '47abc' rather than silently truncating to 47
+osstack: --prs contains a non-numeric PR number: 47abc
+
+stdout | src/stack-cli.test.ts > handleStackCommand: ingest > dedups repeated PR numbers in --prs (47,47,48 -> two cards)
+ingested 2 PRs into board "stack" (order: 47,48)
+
+stdout | src/stack-cli.test.ts > handleStackCommand: board > prints lane headers, card ids, and a [0/N checks] marker
+ingested 3 PRs into board "stack" (order: 47,48,49)
+
+stdout | src/stack-cli.test.ts > handleStackCommand: board > reflects a passed check as [1/N checks] for that card
+ingested 3 PRs into board "stack" (order: 47,48,49)
+
+stdout | src/stack-cli.test.ts > handleStackCommand: move > moves a card to a new status and prints a confirmation
+ingested 3 PRs into board "stack" (order: 47,48,49)
+
+stdout | src/stack-cli.test.ts > handleStackCommand: move > returns 1 when moving a nonexistent card
+ingested 3 PRs into board "stack" (order: 47,48,49)
+
+stderr | src/stack-cli.test.ts > handleStackCommand: move > returns 1 when moving a nonexistent card
+osstack: Kanban card not found: pr-999
+
+stdout | src/stack-cli.test.ts > handleStackCommand: move > returns 1 for an invalid status string
+ingested 3 PRs into board "stack" (order: 47,48,49)
+
+stderr | src/stack-cli.test.ts > handleStackCommand: move > returns 1 for an invalid status string
+osstack: invalid status "not-a-status"
+
+stdout | src/stack-cli.test.ts > handleStackCommand: move > evaluates every transition guard and emits no move event when one denies
+ingested 3 PRs into board "stack" (order: 47,48,49)
+
+stderr | src/stack-cli.test.ts > handleStackCommand: move > evaluates every transition guard and emits no move event when one denies
+osstack: transition denied by probe-readiness: readiness denied
+
+stdout | src/stack-cli.test.ts > handleStackCommand: check > sets a check to pass and emits a check event
+ingested 3 PRs into board "stack" (order: 47,48,49)
+
+stdout | src/stack-cli.test.ts > handleStackCommand: check > returns 1 when the check idx does not exist
+ingested 3 PRs into board "stack" (order: 47,48,49)
+
+stderr | src/stack-cli.test.ts > handleStackCommand: check > returns 1 when the check idx does not exist
+osstack: Kanban card check not found: pr-47#99
+
+stdout | src/stack-cli.test.ts > handleStackCommand: timeline > lists events in ascending order including created, moved, check kinds
+ingested 3 PRs into board "stack" (order: 47,48,49)
+
+stdout | src/stack-cli.test.ts > handleStackCommand: timeline > lists events in ascending order including created, moved, check kinds
+moved pr-48 -> running
+
+stdout | src/stack-cli.test.ts > handleStackCommand: timeline > lists events in ascending order including created, moved, check kinds
+check pr-47#0 -> pass
+
+stdout | src/stack-cli.test.ts > handleStackCommand: timeline > filters to a single card with --card
+ingested 3 PRs into board "stack" (order: 47,48,49)
+
+stdout | src/stack-cli.test.ts > handleStackCommand: timeline > filters to a single card with --card
+moved pr-48 -> running
+
+stderr | src/stack-cli.test.ts > handleStackCommand: unknown subcommand > returns 1 with a usage message for an unknown subcommand
+osstack: usage: stack <ingest|board|move|check|timeline|runbook|recommend|retro> [...args]
+
+ ✓ src/proof-cli.test.ts (44 tests) 766ms
+stdout | src/stack-cli.test.ts > handleStackCommand: retro > preserves a approved proposal when a later retro suggests different gates
+ingested 3 PRs into board "stack" (order: 47,48,49)
+
+stdout | src/stack-cli.test.ts > handleStackCommand: retro > preserves a rejected proposal when a later retro suggests different gates
+ingested 3 PRs into board "stack" (order: 47,48,49)
+
+stdout | src/stack-cli.test.ts > handleStackCommand: retro > preserves a applied proposal when a later retro suggests different gates
+ingested 3 PRs into board "stack" (order: 47,48,49)
+
+stdout | src/stack-cli.test.ts > handleStackCommand: retro > preserves a needs_human proposal when a later retro suggests different gates
+ingested 3 PRs into board "stack" (order: 47,48,49)
+
+stdout | src/stack-cli.test.ts > handleStackCommand: retro > counts reworkCount from REAL blocked-transition events (2× blocked shows 2×; never-blocked shows none)
+ingested 3 PRs into board "stack" (order: 47,48,49)
+
+stdout | src/stack-cli.test.ts > handleStackCommand: retro > prints a retro for a seeded board
+ingested 3 PRs into board "stack" (order: 47,48,49)
+
+
+  ...../../../tmp/osstack-w-2fbc45d6/g25-process-build-iuVzNh/host.mjs  93.6kb
+
+⚡ Done in 11ms
+stdout | src/stack-cli.test.ts > handleStackCommand: retro > persists an idempotent memory fact under --write
+ingested 3 PRs into board "stack" (order: 47,48,49)
+
+stdout | src/stack-cli.test.ts > handleStackCommand: retro > records an improvement proposal under --write when a gate was missing
+ingested 3 PRs into board "stack" (order: 47,48,49)
+
+stdout | src/stack-cli.test.ts > handleStackCommand: runbook > returns 0 and prints the 3 PRs in bottom-up order with a [x] for the passed check
+ingested 3 PRs into board "stack" (order: 47,48,49)
+
+stdout | src/stack-cli.test.ts > handleStackCommand: recommend > returns 0 and prints role: merge-manager and agent: claude-code for a pr card with no learned preference
+ingested 3 PRs into board "stack" (order: 47,48,49)
+
+stdout | src/stack-cli.test.ts > handleStackCommand: recommend > uses a learned prefer_agent fact for the card's subject (card_type) to recommend codex-cli
+ingested 3 PRs into board "stack" (order: 47,48,49)
+
+stdout | src/stack-cli.test.ts > handleStackCommand: recommend > returns 1 for a missing card
+ingested 3 PRs into board "stack" (order: 47,48,49)
+
+stderr | src/stack-cli.test.ts > handleStackCommand: recommend > returns 1 for a missing card
+osstack: card not found: pr-999
+
+stdout | src/stack-cli.test.ts > handleStackCommand: recommend > with --assign, persists the recommended agent as the card's assignee
+ingested 3 PRs into board "stack" (order: 47,48,49)
+
+stdout | src/stack-cli.test.ts > handleStackCommand: recommend > honors the NEWEST preference when two conflicting facts exist (newest-wins, end-to-end)
+ingested 3 PRs into board "stack" (order: 47,48,49)
+
+ ✓ src/stack-cli.test.ts (41 tests) 771ms
+ ✓ src/graph-faults.integration.test.ts (1 test) 1136ms
+   ✓ fresh host observes a SIGKILLed supervisor without releasing or replaying the live worker or descendants  1135ms
+ ✓ src/graph-process-journal.test.ts (9 tests) 1095ms
+   ✓ persists timeout separately from actual late exit and keeps DB drainage pending  382ms
+osstack: retaining write lease graph-action:7f62e68b44592e28f42d2c5871c812e0c9c1ab8c7a95178a8097640a66171ad8: Error: invalid result kind for registered operation
+osstack: retaining write lease graph-action:388d3c755b2ce679282c77080822c2bd9b438f8f3190b68051cd3b83d7753df5: Error: invalid persisted evidence reference
+osstack: retaining write lease graph-action:786ec37a3d2be6db419ef0159d4b77ae9b5794d907577b0e8e532fd518a94fc6: Error: candidate preflight refused
+osstack: retaining write lease graph-action:bb830dc39152f6fff57dc454b84d6d3475ce0535ecfe5188da601d4ab93b5e72: Error: candidate preflight refused
+osstack: retaining write lease graph-action:e54b5ce1a3a77b78cc57b4e3eae0552077f3b25765713a36ec3e5f91e4d8af70: Error: lost receipt
+osstack: retaining write lease graph-action:5180ee18939f262a24e0b11b7ca4374eec4dde98ddc22317cacd099a0f108c76: injected lock release failure
+osstack: retaining write lease graph-action:5180ee18939f262a24e0b11b7ca4374eec4dde98ddc22317cacd099a0f108c76: Error: injected lock release failure
+osstack: retaining write lease graph-action:a93b504f5b059308e10c1d886149219b6abd26fea0d8cf9cbac2eb52a55a8947: release failure
+osstack: retaining write lease graph-action:a93b504f5b059308e10c1d886149219b6abd26fea0d8cf9cbac2eb52a55a8947: Error: release failure
+ ✓ src/graph-action-broker-boundary.test.ts (17 tests) 927ms
+Preparing worktree (new branch 'other-worktree')
+ ✓ src/daemon-policy-gate.test.ts (5 tests) 1114ms
+   ✓ daemon policy gate (R2.2) > stops a scheduled session on the next tick when policy.yaml is flipped to observe mid-session  337ms
+   ✓ holds daemon Loop behind a graph lease for a second worktree and aborts queued admission  324ms
+ ✓ src/probe-command.test.ts (19 tests) 558ms
+warning: in the working copy of 'dir/file', CRLF will be replaced by LF the next time Git touches it
+ ✓ src/daily-cli.test.ts (25 tests) 617ms
+ ✓ src/graph-workspace-paths.test.ts (10 tests) 1068ms
+ ✓ src/supervision-service.test.ts (24 tests) 587ms
+ ✓ src/delivery-contract-host.test.ts (5 tests) 998ms
+   ✓ fences tracked and new files without altering the candidate index  578ms
+ ✓ src/daemon-daily.test.ts (9 tests) 852ms
+ ✓ src/worker-view-service.test.ts (32 tests) 703ms
+ ✓ src/graph-reconciler.test.ts (23 tests) 680ms
+ ✓ src/neat-transaction-command.test.ts (4 tests) 647ms
+ ✓ src/worker-viewer-launch.test.ts (12 tests) 360ms
+   ✓ host pinned viewer launch > executes the pinned launcher as a real child with bounded argv, without a shell  319ms
+ ✓ src/autonomy-cli.test.ts (15 tests) 337ms
+ ✓ src/attention-lesson.test.ts (19 tests) 592ms
+ ✓ src/attention-triage.test.ts (17 tests) 547ms
+ ✓ src/improvement-provider-launcher.test.ts (3 tests) 676ms
+   ✓ isolates the launcher and propagates child outcome 0 without providers  313ms
+   ✓ isolates the launcher and propagates child outcome 7 without providers  309ms
+ ✓ src/graph-action-freeze.test.ts (1 test) 565ms
+   ✓ freezes a real confirmed implementation under the same shared admission into a verified artifact  565ms
+osstack: retaining write lease graph-action:d2dd91532164abf5b7c76e13f9110fa0f3e84b160ef7df620a4c43fd5ce64fa5: Error: external stop unconfirmed
+ ✓ src/improve-cli.test.ts (12 tests) 454ms
+ ✓ src/graph-branch-broker.test.ts (9 tests) 528ms
+warning: Not a git repository. Use --no-index to compare two paths outside a working tree
+usage: git diff --no-index [<options>] <path> <path> [<pathspec>...]
+
+Diff output format options
+    -p, --patch           generate patch
+    -s, --no-patch        suppress diff output
+    -u                    generate patch
+    -U, --unified[=<n>]   generate diffs with <n> lines context
+    -W, --[no-]function-context
+                          generate diffs with <n> lines context
+    --raw                 generate the diff in raw format
+    --patch-with-raw      synonym for '-p --raw'
+    --patch-with-stat     synonym for '-p --stat'
+    --numstat             machine friendly --stat
+    --shortstat           output only the last line of --stat
+    -X, --dirstat[=<param1>,<param2>...]
+                          output the distribution of relative amount of changes for each sub-directory
+    --cumulative          synonym for --dirstat=cumulative
+    --dirstat-by-file[=<param1>,<param2>...]
+                          synonym for --dirstat=files,<param1>,<param2>...
+    --check               warn if changes introduce conflict markers or whitespace errors
+    --summary             condensed summary such as creations, renames and mode changes
+    --name-only           show only names of changed files
+    --name-status         show only names and status of changed files
+    --stat[=<width>[,<name-width>[,<count>]]]
+                          generate diffstat
+    --stat-width <width>  generate diffstat with a given width
+    --stat-name-width <width>
+                          generate diffstat with a given name width
+    --stat-graph-width <width>
+                          generate diffstat with a given graph width
+    --stat-count <count>  generate diffstat with limited lines
+    --[no-]compact-summary
+                          generate compact summary in diffstat
+    --binary              output a binary diff that can be applied
+    --[no-]full-index     show full pre- and post-image object names on the "index" lines
+    --[no-]color[=<when>] show colored diff
+    --ws-error-highlight <kind>
+                          highlight whitespace errors in the 'context', 'old' or 'new' lines in the diff
+    -z                    do not munge pathnames and use NULs as output field terminators in --raw or --numstat
+    --[no-]abbrev[=<n>]   use <n> digits to display object names
+    --src-prefix <prefix> show the given source prefix instead of "a/"
+    --dst-prefix <prefix> show the given destination prefix instead of "b/"
+    --line-prefix <prefix>
+                          prepend an additional prefix to every line of output
+    --no-prefix           do not show any source or destination prefix
+    --default-prefix      use default prefixes a/ and b/
+    --inter-hunk-context <n>
+                          show context between diff hunks up to the specified number of lines
+    --output-indicator-new <char>
+                          specify the character to indicate a new line instead of '+'
+    --output-indicator-old <char>
+                          specify the character to indicate an old line instead of '-'
+    --output-indicator-context <char>
+                          specify the character to indicate a context instead of ' '
+
+Diff rename options
+    -B, --break-rewrites[=<n>[/<m>]]
+                          break complete rewrite changes into pairs of delete and create
+    -M, --find-renames[=<n>]
+                          detect renames
+    -D, --irreversible-delete
+                          omit the preimage for deletes
+    -C, --find-copies[=<n>]
+                          detect copies
+    --[no-]find-copies-harder
+                          use unmodified files as source to find copies
+    --no-renames          disable rename detection
+    --[no-]rename-empty   use empty blobs as rename source
+    --[no-]follow         continue listing the history of a file beyond renames
+    -l <n>                prevent rename/copy detection if the number of rename/copy targets exceeds given limit
+
+Diff algorithm options
+    --minimal             produce the smallest possible diff
+    -w, --ignore-all-space
+                          ignore whitespace when comparing lines
+    -b, --ignore-space-change
+                          ignore changes in amount of whitespace
+    --ignore-space-at-eol ignore changes in whitespace at EOL
+    --ignore-cr-at-eol    ignore carrier-return at the end of line
+    --ignore-blank-lines  ignore changes whose lines are all blank
+    -I, --[no-]ignore-matching-lines <regex>
+                          ignore changes whose all lines match <regex>
+    --[no-]indent-heuristic
+                          heuristic to shift diff hunk boundaries for easy reading
+    --patience            generate diff using the "patience diff" algorithm
+    --histogram           generate diff using the "histogram diff" algorithm
+    --diff-algorithm <algorithm>
+                          choose a diff algorithm
+    --anchored <text>     generate diff using the "anchored diff" algorithm
+    --word-diff[=<mode>]  show word diff, using <mode> to delimit changed words
+    --word-diff-regex <regex>
+                          use <regex> to decide what a word is
+    --color-words[=<regex>]
+                          equivalent to --word-diff=color --word-diff-regex=<regex>
+    --[no-]color-moved[=<mode>]
+                          moved lines of code are colored differently
+    --[no-]color-moved-ws <mode>
+                          how white spaces are ignored in --color-moved
+
+Other diff options
+    --[no-]relative[=<prefix>]
+                          when run from subdir, exclude changes outside and show relative paths
+    -a, --[no-]text       treat all files as text
+    -R                    swap two inputs, reverse the diff
+    --[no-]exit-code      exit with 1 if there were differences, 0 otherwise
+    --[no-]quiet          disable all output of the program
+    --[no-]ext-diff       allow an external diff helper to be executed
+    --[no-]textconv       run external text conversion filters when comparing binary files
+    --ignore-submodules[=<when>]
+                          ignore changes to submodules in the diff generation
+    --submodule[=<format>]
+                          specify how differences in submodules are shown
+    --ita-invisible-in-index
+                          hide 'git add -N' entries from the index
+    --ita-visible-in-index
+                          treat 'git add -N' entries as real in the index
+    -S <string>           look for differences that change the number of occurrences of the specified string
+    -G <regex>            look for differences that change the number of occurrences of the specified regex
+    --pickaxe-all         show all changes in the changeset with -S or -G
+    --pickaxe-regex       treat <string> in -S as extended POSIX regular expression
+    -O <file>             control the order in which files appear in the output
+    --rotate-to <path>    show the change in the specified path first
+    --skip-to <path>      skip the output to the specified path
+    --find-object <object-id>
+                          look for differences that change the number of occurrences of the specified object
+    --diff-filter [(A|C|D|M|R|T|U|X|B)...[*]]
+                          select files by diff type
+    --max-depth <depth>   maximum tree depth to recurse
+    --output <file>       output to a specific file
+
+osstack: autonomy health recovered — daemon resumed accepting work
+warning: Not a git repository. Use --no-index to compare two paths outside a working tree
+usage: git diff --no-index [<options>] <path> <path> [<pathspec>...]
+
+Diff output format options
+    -p, --patch           generate patch
+    -s, --no-patch        suppress diff output
+    -u                    generate patch
+    -U, --unified[=<n>]   generate diffs with <n> lines context
+    -W, --[no-]function-context
+                          generate diffs with <n> lines context
+    --raw                 generate the diff in raw format
+    --patch-with-raw      synonym for '-p --raw'
+    --patch-with-stat     synonym for '-p --stat'
+    --numstat             machine friendly --stat
+    --shortstat           output only the last line of --stat
+    -X, --dirstat[=<param1>,<param2>...]
+                          output the distribution of relative amount of changes for each sub-directory
+    --cumulative          synonym for --dirstat=cumulative
+    --dirstat-by-file[=<param1>,<param2>...]
+                          synonym for --dirstat=files,<param1>,<param2>...
+    --check               warn if changes introduce conflict markers or whitespace errors
+    --summary             condensed summary such as creations, renames and mode changes
+    --name-only           show only names of changed files
+    --name-status         show only names and status of changed files
+    --stat[=<width>[,<name-width>[,<count>]]]
+                          generate diffstat
+    --stat-width <width>  generate diffstat with a given width
+    --stat-name-width <width>
+                          generate diffstat with a given name width
+    --stat-graph-width <width>
+                          generate diffstat with a given graph width
+    --stat-count <count>  generate diffstat with limited lines
+    --[no-]compact-summary
+                          generate compact summary in diffstat
+    --binary              output a binary diff that can be applied
+    --[no-]full-index     show full pre- and post-image object names on the "index" lines
+    --[no-]color[=<when>] show colored diff
+    --ws-error-highlight <kind>
+                          highlight whitespace errors in the 'context', 'old' or 'new' lines in the diff
+    -z                    do not munge pathnames and use NULs as output field terminators in --raw or --numstat
+    --[no-]abbrev[=<n>]   use <n> digits to display object names
+    --src-prefix <prefix> show the given source prefix instead of "a/"
+    --dst-prefix <prefix> show the given destination prefix instead of "b/"
+    --line-prefix <prefix>
+                          prepend an additional prefix to every line of output
+    --no-prefix           do not show any source or destination prefix
+    --default-prefix      use default prefixes a/ and b/
+    --inter-hunk-context <n>
+                          show context between diff hunks up to the specified number of lines
+    --output-indicator-new <char>
+                          specify the character to indicate a new line instead of '+'
+    --output-indicator-old <char>
+                          specify the character to indicate an old line instead of '-'
+    --output-indicator-context <char>
+                          specify the character to indicate a context instead of ' '
+
+Diff rename options
+    -B, --break-rewrites[=<n>[/<m>]]
+                          break complete rewrite changes into pairs of delete and create
+    -M, --find-renames[=<n>]
+                          detect renames
+    -D, --irreversible-delete
+                          omit the preimage for deletes
+    -C, --find-copies[=<n>]
+                          detect copies
+    --[no-]find-copies-harder
+                          use unmodified files as source to find copies
+    --no-renames          disable rename detection
+    --[no-]rename-empty   use empty blobs as rename source
+    --[no-]follow         continue listing the history of a file beyond renames
+    -l <n>                prevent rename/copy detection if the number of rename/copy targets exceeds given limit
+
+Diff algorithm options
+    --minimal             produce the smallest possible diff
+    -w, --ignore-all-space
+                          ignore whitespace when comparing lines
+    -b, --ignore-space-change
+                          ignore changes in amount of whitespace
+    --ignore-space-at-eol ignore changes in whitespace at EOL
+    --ignore-cr-at-eol    ignore carrier-return at the end of line
+    --ignore-blank-lines  ignore changes whose lines are all blank
+    -I, --[no-]ignore-matching-lines <regex>
+                          ignore changes whose all lines match <regex>
+    --[no-]indent-heuristic
+                          heuristic to shift diff hunk boundaries for easy reading
+    --patience            generate diff using the "patience diff" algorithm
+    --histogram           generate diff using the "histogram diff" algorithm
+    --diff-algorithm <algorithm>
+                          choose a diff algorithm
+    --anchored <text>     generate diff using the "anchored diff" algorithm
+    --word-diff[=<mode>]  show word diff, using <mode> to delimit changed words
+    --word-diff-regex <regex>
+                          use <regex> to decide what a word is
+    --color-words[=<regex>]
+                          equivalent to --word-diff=color --word-diff-regex=<regex>
+    --[no-]color-moved[=<mode>]
+                          moved lines of code are colored differently
+    --[no-]color-moved-ws <mode>
+                          how white spaces are ignored in --color-moved
+
+Other diff options
+    --[no-]relative[=<prefix>]
+                          when run from subdir, exclude changes outside and show relative paths
+    -a, --[no-]text       treat all files as text
+    -R                    swap two inputs, reverse the diff
+    --[no-]exit-code      exit with 1 if there were differences, 0 otherwise
+    --[no-]quiet          disable all output of the program
+    --[no-]ext-diff       allow an external diff helper to be executed
+    --[no-]textconv       run external text conversion filters when comparing binary files
+    --ignore-submodules[=<when>]
+                          ignore changes to submodules in the diff generation
+    --submodule[=<format>]
+                          specify how differences in submodules are shown
+    --ita-invisible-in-index
+                          hide 'git add -N' entries from the index
+    --ita-visible-in-index
+                          treat 'git add -N' entries as real in the index
+    -S <string>           look for differences that change the number of occurrences of the specified string
+    -G <regex>            look for differences that change the number of occurrences of the specified regex
+    --pickaxe-all         show all changes in the changeset with -S or -G
+    --pickaxe-regex       treat <string> in -S as extended POSIX regular expression
+    -O <file>             control the order in which files appear in the output
+    --rotate-to <path>    show the change in the specified path first
+    --skip-to <path>      skip the output to the specified path
+    --find-object <object-id>
+                          look for differences that change the number of occurrences of the specified object
+    --diff-filter [(A|C|D|M|R|T|U|X|B)...[*]]
+                          select files by diff type
+    --max-depth <depth>   maximum tree depth to recurse
+    --output <file>       output to a specific file
+
+osstack: autonomy health recovered — daemon resumed accepting work
+warning: Not a git repository. Use --no-index to compare two paths outside a working tree
+usage: git diff --no-index [<options>] <path> <path> [<pathspec>...]
+
+Diff output format options
+    -p, --patch           generate patch
+    -s, --no-patch        suppress diff output
+    -u                    generate patch
+    -U, --unified[=<n>]   generate diffs with <n> lines context
+    -W, --[no-]function-context
+                          generate diffs with <n> lines context
+    --raw                 generate the diff in raw format
+    --patch-with-raw      synonym for '-p --raw'
+    --patch-with-stat     synonym for '-p --stat'
+    --numstat             machine friendly --stat
+    --shortstat           output only the last line of --stat
+    -X, --dirstat[=<param1>,<param2>...]
+                          output the distribution of relative amount of changes for each sub-directory
+    --cumulative          synonym for --dirstat=cumulative
+    --dirstat-by-file[=<param1>,<param2>...]
+                          synonym for --dirstat=files,<param1>,<param2>...
+    --check               warn if changes introduce conflict markers or whitespace errors
+    --summary             condensed summary such as creations, renames and mode changes
+    --name-only           show only names of changed files
+    --name-status         show only names and status of changed files
+    --stat[=<width>[,<name-width>[,<count>]]]
+                          generate diffstat
+    --stat-width <width>  generate diffstat with a given width
+    --stat-name-width <width>
+                          generate diffstat with a given name width
+    --stat-graph-width <width>
+                          generate diffstat with a given graph width
+    --stat-count <count>  generate diffstat with limited lines
+    --[no-]compact-summary
+                          generate compact summary in diffstat
+    --binary              output a binary diff that can be applied
+    --[no-]full-index     show full pre- and post-image object names on the "index" lines
+    --[no-]color[=<when>] show colored diff
+    --ws-error-highlight <kind>
+                          highlight whitespace errors in the 'context', 'old' or 'new' lines in the diff
+    -z                    do not munge pathnames and use NULs as output field terminators in --raw or --numstat
+    --[no-]abbrev[=<n>]   use <n> digits to display object names
+    --src-prefix <prefix> show the given source prefix instead of "a/"
+    --dst-prefix <prefix> show the given destination prefix instead of "b/"
+    --line-prefix <prefix>
+                          prepend an additional prefix to every line of output
+    --no-prefix           do not show any source or destination prefix
+    --default-prefix      use default prefixes a/ and b/
+    --inter-hunk-context <n>
+                          show context between diff hunks up to the specified number of lines
+    --output-indicator-new <char>
+                          specify the character to indicate a new line instead of '+'
+    --output-indicator-old <char>
+                          specify the character to indicate an old line instead of '-'
+    --output-indicator-context <char>
+                          specify the character to indicate a context instead of ' '
+
+Diff rename options
+    -B, --break-rewrites[=<n>[/<m>]]
+                          break complete rewrite changes into pairs of delete and create
+    -M, --find-renames[=<n>]
+                          detect renames
+    -D, --irreversible-delete
+                          omit the preimage for deletes
+    -C, --find-copies[=<n>]
+                          detect copies
+    --[no-]find-copies-harder
+                          use unmodified files as source to find copies
+    --no-renames          disable rename detection
+    --[no-]rename-empty   use empty blobs as rename source
+    --[no-]follow         continue listing the history of a file beyond renames
+    -l <n>                prevent rename/copy detection if the number of rename/copy targets exceeds given limit
+
+Diff algorithm options
+    --minimal             produce the smallest possible diff
+    -w, --ignore-all-space
+                          ignore whitespace when comparing lines
+    -b, --ignore-space-change
+                          ignore changes in amount of whitespace
+    --ignore-space-at-eol ignore changes in whitespace at EOL
+    --ignore-cr-at-eol    ignore carrier-return at the end of line
+    --ignore-blank-lines  ignore changes whose lines are all blank
+    -I, --[no-]ignore-matching-lines <regex>
+                          ignore changes whose all lines match <regex>
+    --[no-]indent-heuristic
+                          heuristic to shift diff hunk boundaries for easy reading
+    --patience            generate diff using the "patience diff" algorithm
+    --histogram           generate diff using the "histogram diff" algorithm
+    --diff-algorithm <algorithm>
+                          choose a diff algorithm
+    --anchored <text>     generate diff using the "anchored diff" algorithm
+    --word-diff[=<mode>]  show word diff, using <mode> to delimit changed words
+    --word-diff-regex <regex>
+                          use <regex> to decide what a word is
+    --color-words[=<regex>]
+                          equivalent to --word-diff=color --word-diff-regex=<regex>
+    --[no-]color-moved[=<mode>]
+                          moved lines of code are colored differently
+    --[no-]color-moved-ws <mode>
+                          how white spaces are ignored in --color-moved
+
+Other diff options
+    --[no-]relative[=<prefix>]
+                          when run from subdir, exclude changes outside and show relative paths
+    -a, --[no-]text       treat all files as text
+    -R                    swap two inputs, reverse the diff
+    --[no-]exit-code      exit with 1 if there were differences, 0 otherwise
+    --[no-]quiet          disable all output of the program
+    --[no-]ext-diff       allow an external diff helper to be executed
+    --[no-]textconv       run external text conversion filters when comparing binary files
+    --ignore-submodules[=<when>]
+                          ignore changes to submodules in the diff generation
+    --submodule[=<format>]
+                          specify how differences in submodules are shown
+    --ita-invisible-in-index
+                          hide 'git add -N' entries from the index
+    --ita-visible-in-index
+                          treat 'git add -N' entries as real in the index
+    -S <string>           look for differences that change the number of occurrences of the specified string
+    -G <regex>            look for differences that change the number of occurrences of the specified regex
+    --pickaxe-all         show all changes in the changeset with -S or -G
+    --pickaxe-regex       treat <string> in -S as extended POSIX regular expression
+    -O <file>             control the order in which files appear in the output
+    --rotate-to <path>    show the change in the specified path first
+    --skip-to <path>      skip the output to the specified path
+    --find-object <object-id>
+                          look for differences that change the number of occurrences of the specified object
+    --diff-filter [(A|C|D|M|R|T|U|X|B)...[*]]
+                          select files by diff type
+    --max-depth <depth>   maximum tree depth to recurse
+    --output <file>       output to a specific file
+
+osstack: autonomy health recovered — daemon resumed accepting work
+osstack: autonomy health recovered — daemon resumed accepting work
+osstack: autonomy health recovered — daemon resumed accepting work
+osstack: autonomy health recovered — daemon resumed accepting work
+ ✓ src/loop-self-improvement-cli.test.ts (5 tests) 547ms
+ ✓ src/daemon-drain-recovery.test.ts (10 tests) 413ms
+ ✓ src/follow-up-delivery-host.test.ts (24 tests) 407ms
+ ✓ src/neat-dependency-command.test.ts (1 test) 359ms
+   ✓ neat dependencies > records deterministic candidates idempotently and reads the downstream inbox  359ms
+ ✓ src/attention-read-model.test.ts (13 tests) 377ms
+ ✓ src/start-control-cli.test.ts (20 tests) 447ms
+ ✓ src/graph-command.test.ts (12 tests) 357ms
+ ✓ src/repository-policy.test.ts (3 tests) 424ms
+ ✓ src/daemon-evidence-cli.test.ts (1 test) 332ms
+   ✓ daemon evidence CLI > renders report and proof artifacts for a persisted daemon loop run_id  332ms
+ ✓ src/daemon-lock-ownership.test.ts (12 tests) 349ms
+ ✓ src/engineering-host.test.ts (4 tests) 319ms
+ ✓ src/daemon-graph-action-broker.test.ts (1 test) 271ms
+ ✓ src/follow-up-github-transport.test.ts (24 tests) 214ms
+ ✓ src/worker-log-view.test.ts (10 tests) 222ms
+ ✓ src/policy-cli.test.ts (12 tests) 180ms
+ ✓ src/graph-delivery-broker.test.ts (5 tests) 220ms
+ ✓ src/agent-scorecard-cli.test.ts (4 tests) 199ms
+ ✓ src/pr-cli.test.ts (3 tests) 237ms
+ ✓ src/attention-dashboard.test.ts (9 tests) 198ms
+ ✓ src/lessons-cli.test.ts (5 tests) 220ms
+ ✓ src/autonomy-health.test.ts (9 tests) 205ms
+ ✓ src/evaluator-cli.test.ts (4 tests) 204ms
+ ✓ src/worker-presentation.test.ts (13 tests) 222ms
+ ✓ src/daemon-loop-recovery-preservation.test.ts (2 tests) 213ms
+ ✓ src/graph-checkpoint-service.test.ts (6 tests) 179ms
+ ✓ src/dashboard.test.ts (12 tests) 180ms
+ ✓ src/engineering-upgrade-guard.test.ts (8 tests) 216ms
+ ✓ src/neat-proposal-command.test.ts (5 tests) 195ms
+ ✓ src/supervise-cli.test.ts (5 tests) 211ms
+ ✓ src/home-inventory.test.ts (19 tests) 156ms
+ ✓ src/probe-render.test.ts (4 tests) 94ms
+ ✓ src/copilot-relay.integration.test.ts (1 test) 167ms
+ ✓ src/local-data-source-registry.test.ts (16 tests) 166ms
+ ✓ src/delivery-policy-host.test.ts (1 test) 146ms
+ ✓ src/daemon-startup-ownership.test.ts (3 tests) 121ms
+ ✓ src/report-cli.test.ts (8 tests) 136ms
+ ✓ src/neat-cli.test.ts (3 tests) 149ms
+ ✓ src/neat-command.test.ts (29 tests) 143ms
+ ✓ src/autonomy-scorecard.test.ts (2 tests) 64ms
+ ✓ src/scorecard-cli.test.ts (7 tests) 131ms
+ ✓ src/steward-cli.test.ts (5 tests) 123ms
+ ✓ src/worker-viewer-command.test.ts (4 tests) 104ms
+ ✓ src/governance-cli.test.ts (3 tests) 142ms
+ ✓ src/kimi-review-eval.test.ts (2 tests) 115ms
+ ✓ src/attention-hook.test.ts (4 tests) 119ms
+ ✓ src/graph-candidate-revisions.test.ts (7 tests) 123ms
+ ✓ src/daemon-rpc-latency.test.ts (2 tests) 120ms
+ ✓ src/graph-shutdown.test.ts (1 test) 99ms
+ ✓ src/autonomy-notification.test.ts (3 tests) 80ms
+ ✓ src/knowledge-cli.test.ts (24 tests) 69ms
+ ✓ src/loop-probe-observer.test.ts (2 tests) 56ms
+ ✓ src/neat-trend-command.test.ts (4 tests) 71ms
+ ✓ src/upgrade-plan-command.test.ts (4 tests) 67ms
+ ✓ src/home-inventory-daemon.test.ts (1 test) 59ms
+stderr | src/stack-cli.dryrun.test.ts > stack dry-run: Knowledge Layer 8-PR fixture (offline) > the fixture runner throws for an unknown PR, so nothing hits live gh
+osstack: stack ingest failed: dry-run: no fixture for PR 99
+
+ ✓ src/stack-cli.dryrun.test.ts (2 tests) 68ms
+ ✓ src/probe-kanban-guard.test.ts (2 tests) 59ms
+ ✓ src/supervise-probe.test.ts (1 test) 63ms
+ ✓ src/daemon-agent-override.test.ts (1 test) 50ms
+ ✓ src/daemon.test.ts (8 tests) 51ms
+ ✓ src/follow-up-delivery-command.test.ts (13 tests) 45ms
+ ✓ src/graph-checkpoint-daemon.test.ts (1 test) 54ms
+ ✓ src/neat-semantic-command.test.ts (13 tests) 38ms
+repository lease renewal failed; retained broken: Error: lost lease
+ ✓ src/governed-execution-fault.test.ts (1 test) 60ms
+ ✓ src/daily-attention.test.ts (15 tests) 61ms
+ ✓ src/graph-delivery-receipts.test.ts (4 tests) 31ms
+ ✓ src/graph-execution-command.test.ts (14 tests) 50ms
+ ✓ src/guarded-open-db.test.ts (9 tests) 43ms
+ ✓ src/compliance-cli.test.ts (3 tests) 48ms
+ ✓ src/neat-review-command.test.ts (10 tests) 34ms
+ ✓ src/contracts-cli.test.ts (2 tests) 50ms
+ ✓ src/neat-command-v2.test.ts (4 tests) 42ms
+ ✓ src/probe-cli.test.ts (2 tests) 46ms
+ ✓ src/autonomy-host.test.ts (2 tests) 37ms
+ ✓ src/neat-fix-command.test.ts (7 tests) 31ms
+ ✓ src/worker-view-command.test.ts (14 tests) 32ms
+ ✓ src/loop-candidate-input.test.ts (39 tests) 35ms
+ ✓ src/checkpoint-cli.test.ts (7 tests) 33ms
+ ✓ src/hub-doctor.test.ts (13 tests) 21ms
+ ✓ src/store.test.ts (1 test) 24ms
+ ✓ src/config-cli.test.ts (6 tests) 19ms
+ ✓ src/serve-install-cli.test.ts (12 tests) 23ms
+ ✓ src/loop-defaults.test.ts (27 tests) 25ms
+ ✓ src/graph-delivery-contract.test.ts (21 tests) 25ms
+ ✓ src/probe-compile.test.ts (2 tests) 19ms
+ ✓ src/neat-semantic-artifacts.test.ts (2 tests) 11ms
+ ✓ src/remote-home.test.ts (10 tests) 20ms
+ ✓ src/attention-routing-evaluation.test.ts (7 tests) 16ms
+ ✓ src/graph-host-config.test.ts (10 tests) 19ms
+stdout | src/upgrade.test.ts > safe self-upgrade > drains and snapshots state before installing and health-checking
+osstack upgrade: current version: 0.22.1 (channel: latest)
+
+stdout | src/upgrade.test.ts > safe self-upgrade > drains and snapshots state before installing and health-checking
+osstack upgrade: update available: 0.22.1 → 0.22.2
+
+stdout | src/upgrade.test.ts > safe self-upgrade > drains and snapshots state before installing and health-checking
+osstack upgrade: draining daemon (waiting for active runs, max 60s)…
+
+stdout | src/upgrade.test.ts > safe self-upgrade > drains and snapshots state before installing and health-checking
+osstack upgrade: state.db backed up → /tmp/osstack-w-ec45c36a/osstack-upgrade-Wn8PSS/home/backups/state-v0.22.1-2026-10-27-06-05-09.db
+osstack upgrade: installing @osstack/cli@0.22.2…
+
+stdout | src/upgrade.test.ts > safe self-upgrade > drains and snapshots state before installing and health-checking
+osstack upgrade: starting daemon (detached `osstack serve`)…
+
+stdout | src/upgrade.test.ts > safe self-upgrade > drains and snapshots state before installing and health-checking
+osstack upgrade: daemon healthy on 0.22.2.
+osstack upgrade: upgrade complete: 0.22.1 → 0.22.2
+
+stdout | src/upgrade.test.ts > safe self-upgrade > restores the previous binary and database after failed health
+osstack upgrade: current version: 0.22.1 (channel: latest)
+
+stdout | src/upgrade.test.ts > safe self-upgrade > restores the previous binary and database after failed health
+osstack upgrade: update available: 0.22.1 → 0.22.2
+
+stdout | src/upgrade.test.ts > safe self-upgrade > restores the previous binary and database after failed health
+osstack upgrade: draining daemon (waiting for active runs, max 60s)…
+
+stdout | src/upgrade.test.ts > safe self-upgrade > restores the previous binary and database after failed health
+osstack upgrade: state.db backed up → /tmp/osstack-w-ec45c36a/osstack-upgrade-tV6aZa/home/backups/state-v0.22.1-2026-10-27-06-05-09.db
+osstack upgrade: installing @osstack/cli@0.22.2…
+
+stdout | src/upgrade.test.ts > safe self-upgrade > restores the previous binary and database after failed health
+osstack upgrade: starting daemon (detached `osstack serve`)…
+
+stdout | src/upgrade.test.ts > safe self-upgrade > restores the previous binary and database after failed health
+osstack upgrade: daemon failed health check on 0.22.2 — ROLLING BACK to 0.22.1…
+osstack upgrade: draining daemon (waiting for active runs, max 60s)…
+
+stdout | src/upgrade.test.ts > safe self-upgrade > restores the previous binary and database after failed health
+osstack upgrade: pre-upgrade state.db snapshot restored
+
+stdout | src/upgrade.test.ts > safe self-upgrade > restores the previous binary and database after failed health
+osstack upgrade: starting daemon (detached `osstack serve`)…
+
+stdout | src/upgrade.test.ts > safe self-upgrade > restores the previous binary and database after failed health
+osstack upgrade: rolled back to 0.22.1; daemon healthy again. Investigate before retrying.
+
+stdout | src/upgrade.test.ts > does not shut down or replace the installation when graph drain is incomplete
+osstack upgrade: current version: 0.22.1 (channel: latest)
+
+stdout | src/upgrade.test.ts > does not shut down or replace the installation when graph drain is incomplete
+osstack upgrade: update available: 0.22.1 → 0.22.2
+
+stdout | src/upgrade.test.ts > does not shut down or replace the installation when graph drain is incomplete
+osstack upgrade: draining daemon (waiting for active runs, max 60s)…
+
+stdout | src/upgrade.test.ts > does not shut down or replace the installation when graph drain is incomplete
+osstack upgrade: ABORT: daemon still has active runs or graph recovery holds
+
+stdout | src/upgrade.test.ts > does not shut down or replace the installation when graph drain is incomplete
+osstack upgrade: ABORT: could not quiesce the daemon — nothing was swapped.
+
+ ✓ src/upgrade.test.ts (3 tests) 18ms
+ ✓ src/run-spec-files.test.ts (5 tests) 13ms
+ ✓ src/upgrade-plan.test.ts (14 tests) 11ms
+ ✓ src/control-plane-guard.test.ts (17 tests) 11ms
+ ✓ src/collaborator-command.test.ts (3 tests) 11ms
+ ✓ src/engineering-command.test.ts (13 tests) 11ms
+ ✓ src/attention-loop-source.test.ts (7 tests) 11ms
+ ✓ src/control-plane-doctor.test.ts (8 tests) 10ms
+stdout | src/upgrade-deployed-home.test.ts > alignEnvWithDeployment > overrides a mismatched caller env (the incident shape)
+osstack upgrade: note: OSSTACK_HOME in this shell (/Users/example/.osstack) differs from the deployed daemon's home (/Users/example/.osstack-stable, from launchd plist) — using the deployed home.
+
+ ✓ src/upgrade-deployed-home.test.ts (9 tests) 9ms
+ ✓ src/engineering-access.test.ts (6 tests) 9ms
+ ✓ src/probe-gate.test.ts (2 tests) 8ms
+ ✓ src/hub-cli.test.ts (42 tests) 8ms
+ ✓ src/worker-viewer-rpc.test.ts (6 tests) 9ms
+ ✓ src/follow-up-command.test.ts (12 tests) 9ms
+ ✓ src/session-wait.test.ts (12 tests) 5ms
+ ✓ src/probe-dynamic.test.ts (3 tests) 7ms
+ ✓ src/deployed-home.test.ts (10 tests) 7ms
+ ✓ src/graph-process-identity.test.ts (3 tests) 7ms
+ ✓ src/graph-maintenance-files.test.ts (2 tests) 7ms
+ ✓ src/supervisor-cli-support.test.ts (6 tests) 5ms
+ ✓ src/improvement-provider-pilot-fixture.test.ts (12 tests) 5ms
+ ✓ src/daemon-lock-filesystem.test.ts (24 tests) 5ms
+ ✓ src/loop-profile-routing.test.ts (12 tests) 5ms
+ ✓ src/proof-pack.test.ts (10 tests) 5ms
+ ✓ src/cockpit-tui.test.ts (11 tests) 5ms
+ ✓ src/adapter-lifecycle.test.ts (2 tests) 4ms
+ ✓ src/attention-local-delivery.test.ts (1 test) 4ms
+ ✓ src/release-workflow.test.ts (13 tests) 5ms
+ ✓ src/skills-command.test.ts (3 tests) 4ms
+ ✓ src/neat-patch-policy.test.ts (9 tests) 3ms
+ ✓ src/attention-contract-planning.test.ts (1 test) 4ms
+ ✓ src/i18n-cli.test.ts (2 tests) 3ms
+ ✓ src/stack-routing.test.ts (15 tests) 3ms
+ ✓ src/steward-command.test.ts (1 test) 3ms
+ ✓ src/task-command.test.ts (4 tests) 3ms
+ ✓ src/rpc-latency.test.ts (7 tests) 3ms
+ ✓ src/session-command.test.ts (3 tests) 4ms
+ ✓ src/upgrade-native-command.test.ts (6 tests) 3ms
+ ✓ src/assurance-command.test.ts (3 tests) 3ms
+ ✓ src/hermes-command.test.ts (3 tests) 3ms
+ ✓ src/agent-command.test.ts (2 tests) 3ms
+ ✓ src/attention-command.test.ts (7 tests) 3ms
+ ✓ src/product-entry-command.test.ts (1 test) 3ms
+ ✓ src/loop-neat-finalizer.test.ts (4 tests) 3ms
+ ✓ src/continuation-output-checks.test.ts (2 tests) 2ms
+ ✓ src/update-check.test.ts (7 tests) 2ms
+ ✓ src/graph-platform.test.ts (1 test) 2ms
+ ↓ src/graph-performance.test.ts (1 test | 1 skipped)
+ ↓ src/improvement-native-cold.test.ts (1 test | 1 skipped)
+ ↓ src/improvement-provider-live.test.ts (1 test | 1 skipped)
+ ↓ src/supervision-active-qualification.test.ts (1 test | 1 skipped)
+
+ Test Files  222 passed | 4 skipped (226)
+      Tests  2721 passed | 5 skipped (2726)
+   Start at  22:58:18
+   Duration  416.04s (transform 2.43s, setup 1.38s, collect 36.37s, tests 763.27s, environment 17ms, prepare 5.92s)
+

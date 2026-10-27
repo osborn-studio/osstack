@@ -1,0 +1,26 @@
+{
+  "code_sha": "a05e2d2482ced902128a3cd7f572bbe6cfd70f2f",
+  "started_at": "2026-10-27T08:20:13.270266+00:00",
+  "checks": [
+    {
+      "name": "verified-build",
+      "command": [
+        "pnpm",
+        "build"
+      ],
+      "exit_code": 0,
+      "log": "verified-build.log",
+      "sha256": "5dd69e080be3785f63f73f9de98e1aff2a89acb7e68c1ea0819993f7324eb4e2"
+    },
+    {
+      "name": "verified-typecheck",
+      "command": [
+        "pnpm",
+        "typecheck:check"
+      ],
+      "exit_code": 2,
+      "log": "verified-typecheck.log",
+      "sha256": "ac2732fc89d394ef9f14bfc36d05dd6551be25d236f0cbbbc7655c50b4e4dc71"
+    }
+  ]
+}

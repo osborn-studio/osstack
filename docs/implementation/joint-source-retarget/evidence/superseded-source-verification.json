@@ -1,0 +1,47 @@
+{
+  "code_sha": "2cdc94272bf4e1f0d300faa3923740dbf30d66c1",
+  "started_at": "2026-10-27T10:04:00.917077+00:00",
+  "checks": [
+    {
+      "name": "final-frozen-build",
+      "command": [
+        "pnpm",
+        "build"
+      ],
+      "exit_code": 0,
+      "log": "source-final-frozen-build.log",
+      "sha256": "7d51d2030515a683f4ee94f845360a0e722599cf7fbafccfe84cbd917dbcb382"
+    },
+    {
+      "name": "final-frozen-typecheck",
+      "command": [
+        "pnpm",
+        "typecheck:check"
+      ],
+      "exit_code": 0,
+      "log": "source-final-frozen-typecheck.log",
+      "sha256": "c1f0bc9dd730e18a0fa3a9479ed31ccfcc0ab22274c0b9f03688b79bc3bb72ea"
+    },
+    {
+      "name": "final-frozen-lint",
+      "command": [
+        "pnpm",
+        "lint"
+      ],
+      "exit_code": 0,
+      "log": "source-final-frozen-lint.log",
+      "sha256": "983b20b02d891019179131a4d5c92af478f6ce01a725e68be806a51c0137b5db"
+    },
+    {
+      "name": "final-frozen-inventory",
+      "command": [
+        "node",
+        "scripts/generate-inventory.mjs",
+        "--check"
+      ],
+      "exit_code": 0,
+      "log": "source-final-frozen-inventory.log",
+      "sha256": "a59b7d9a6d962ccf0d22d13d2cc0f8acbb9e3653a63cce339211a5dfb3cd56e9"
+    }
+  ]
+}

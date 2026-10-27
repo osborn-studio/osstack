@@ -85,5 +85,6 @@ ignore:
   - rule_id: reference.markdown_target_missing
     paths:
       - docs/reports/2026-10-23-firstmate-evidence/claude-round*-context.md
+      - docs/design/2026-10-27-joint-engineering/evidence/inputs/pstack-revision2-*.md
       - docs/implementation/graph-contained-reopen-evidence/handoff-draft.md
     reason: Frozen audit/handoff input copies; source-relative links are evidence, not live navigation.

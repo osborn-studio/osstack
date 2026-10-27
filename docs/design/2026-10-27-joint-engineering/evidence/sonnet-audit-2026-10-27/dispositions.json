@@ -1,0 +1,542 @@
+{
+  "schema_version": 1,
+  "items": [
+    {
+      "id": "RV01",
+      "raw_source": "review-recovered-raw.md",
+      "original_severity": "P1",
+      "original_title": "摘要与规范化没有可复现的定义，`binding_digest` 无来源",
+      "disposition": "accepted",
+      "host_rationale": "digest-catalog 和逐字节 canonical 规则、Binding 自身摘要、26 个黄金向量；旧合同/config hash 不变。",
+      "revision_refs": [
+        "audit-specifications.md#4-新摘要的精确字节规则"
+      ],
+      "acceptance_ids": [
+        "JA59"
+      ],
+      "status": "design_revised_product_verification_pending"
+    },
+    {
+      "id": "RV02",
+      "raw_source": "review-recovered-raw.md",
+      "original_severity": "P1",
+      "original_title": "方法绑定、许可、资格、产物清单的持久化和迁移没有责任人，且与 INV10 排序冲突",
+      "disposition": "accepted",
+      "host_rationale": "host/core 权威存储与 state-owner 明确；方法存储 J08/J10 依赖 J12；所有新 schema 包声明迁移/谱系路径与队列。",
+      "revision_refs": [
+        "audit-specifications.md#10-明确存储和宿主限制"
+      ],
+      "acceptance_ids": [
+        "JA49",
+        "JA52",
+        "JA60"
+      ],
+      "status": "design_revised_product_verification_pending"
+    },
+    {
+      "id": "RV03",
+      "raw_source": "review-recovered-raw.md",
+      "original_severity": "P1",
+      "original_title": "`trial_permit` 约束不足，无消耗语义",
+      "disposition": "accepted",
+      "host_rationale": "24h TTL、30min wall 上限；完整 Binding/profile 绑定、单 root 原子消费与内部预算；失败后新许可。",
+      "revision_refs": [
+        "audit-specifications.md#3-首次试验的身份消费和预算"
+      ],
+      "acceptance_ids": [
+        "JA49",
+        "JA61"
+      ],
+      "status": "design_revised_product_verification_pending"
+    },
+    {
+      "id": "RV04",
+      "raw_source": "review-recovered-raw.md",
+      "original_severity": "P1",
+      "original_title": "`support_profile_digest` 对象未定义，且生产者排在消费者之后",
+      "disposition": "accepted",
+      "host_rationale": "J01 定义 SupportProfile，operator_attested_trial 与 measured_qualified 分型；J08登记试验，J23测量并对接线候选重测。",
+      "revision_refs": [
+        "contract.schema.json"
+      ],
+      "acceptance_ids": [
+        "JA34",
+        "JA61"
+      ],
+      "status": "design_revised_product_verification_pending"
+    },
+    {
+      "id": "RV05",
+      "raw_source": "review-recovered-raw.md",
+      "original_severity": "P1",
+      "original_title": "目标 schema 冻结没有 owner；`recovery_receipt` 丢了 gate 要求的绑定字段；`delivery-gates.json` 里程碑图无人校验",
+      "disposition": "partially_accepted",
+      "host_rationale": "补 actual_target_schema/DDL/fixture/candidate；J11冻结 home+method 状态，broker 在独立 J17.schema_spec 冻结，完整 gate 仍合取两者，不要求首个 local 先建 broker。",
+      "revision_refs": [
+        "execution-gates.json"
+      ],
+      "acceptance_ids": [
+        "JA20",
+        "JA47",
+        "JA52",
+        "JA60"
+      ],
+      "status": "design_revised_product_verification_pending"
+    },
+    {
+      "id": "RV06",
+      "raw_source": "review-recovered-raw.md",
+      "original_severity": "P2",
+      "original_title": "方法材料进入 Graph 启动输入摘要的机制未定，JADR10 问错了问题",
+      "disposition": "accepted",
+      "host_rationale": "选定 host-owned v2 immutable config，不污染 repo；持久 registration 重启重算同 envelope，实时许可状态独立校验。",
+      "revision_refs": [
+        "audit-specifications.md#9-graph-输入身份与宿主配置的确定选择"
+      ],
+      "acceptance_ids": [
+        "JA08",
+        "JA46"
+      ],
+      "status": "design_revised_product_verification_pending"
+    },
+    {
+      "id": "RV07",
+      "raw_source": "review-recovered-raw.md",
+      "original_severity": "P2",
+      "original_title": "恢复回执的对象标识与试点遗留 hold、broker 租约不匹配，证明要求按决定未分化",
+      "disposition": "accepted",
+      "host_rationale": "typed subject 区分旧 attention action、effect、broker lease，旧对象不再要求伪造 effect_id；证明按裁决分型。",
+      "revision_refs": [
+        "contract.schema.json"
+      ],
+      "acceptance_ids": [
+        "JA51"
+      ],
+      "status": "design_revised_product_verification_pending"
+    },
+    {
+      "id": "RV08",
+      "raw_source": "review-recovered-raw.md",
+      "original_severity": "P2",
+      "original_title": "schema 约束与宿主现有约束不一致，且文档没给出弥补规则",
+      "disposition": "accepted",
+      "host_rationale": "primary→registry command digest→AcceptanceCommandSpec.ref 映射、16项/字节限制、路径语法、512任务ID和首期64KiB预算边界明确。",
+      "revision_refs": [
+        "audit-specifications.md#10-明确存储和宿主限制"
+      ],
+      "acceptance_ids": [
+        "JA04",
+        "JA10"
+      ],
+      "status": "design_revised_product_verification_pending"
+    },
+    {
+      "id": "RV09",
+      "raw_source": "review-recovered-raw.md",
+      "original_severity": "P2",
+      "original_title": "pstack 来源负例在联合验收中被降格；旧 A01–A48 无归属",
+      "disposition": "accepted",
+      "host_rationale": "114旧场景保留，A16/A17/A27等有 gate 负责人；新增可信失败、blocking findings、历史反例与分类器验收。",
+      "revision_refs": [
+        "legacy-case-map.json"
+      ],
+      "acceptance_ids": [
+        "JA57",
+        "JA68",
+        "JA69"
+      ],
+      "status": "design_revised_product_verification_pending"
+    },
+    {
+      "id": "RV10",
+      "raw_source": "review-recovered-raw.md",
+      "original_severity": "P2",
+      "original_title": "FM 能力的 `negative_cases` 与验收之间没有追溯",
+      "disposition": "accepted",
+      "host_rationale": "负例赋稳定 ID，cases covers_negative_ids 双向校验；专门补 wait/gap/父回执/发布权限反例。",
+      "revision_refs": [
+        "capability-map.json"
+      ],
+      "acceptance_ids": [
+        "JA63",
+        "JA64",
+        "JA65",
+        "JA66"
+      ],
+      "status": "design_revised_product_verification_pending"
+    },
+    {
+      "id": "RV11",
+      "raw_source": "review-recovered-raw.md",
+      "original_severity": "P2",
+      "original_title": "产物种类从 10 缩到 5，PS02/PS07/PS13 失去载体",
+      "disposition": "accepted",
+      "host_rationale": "原10类方法材料保留在 artifact-catalog，明确 body schema 冻结/生产/消费；五类 host receipts 与材料区分。",
+      "revision_refs": [
+        "artifact-catalog.json"
+      ],
+      "acceptance_ids": [
+        "JA14",
+        "JA45"
+      ],
+      "status": "design_revised_product_verification_pending"
+    },
+    {
+      "id": "RV12",
+      "raw_source": "review-recovered-raw.md",
+      "original_severity": "P2",
+      "original_title": "\"收益不明则停止\"没有阻塞边，JA36 的 When 与依赖闭包不符",
+      "disposition": "accepted",
+      "host_rationale": "J25 protocol/E0/E1 分阶段，E1 依赖 J09；J10 及后继经决定门槛，避免全包依赖造成自举循环。",
+      "revision_refs": [
+        "execution-gates.json"
+      ],
+      "acceptance_ids": [
+        "JA58",
+        "JA60"
+      ],
+      "status": "design_revised_product_verification_pending"
+    },
+    {
+      "id": "RV13",
+      "raw_source": "review-recovered-raw.md",
+      "original_severity": "P2",
+      "original_title": "实验阈值在拟定样本量下统计上不可达，决策几乎恒为\"不确定\"",
+      "disposition": "partially_accepted",
+      "host_rationale": "接受样本精度不足；40任务改为探索并要求功效分析，不为通过而降低阈值。审计“更高不一致率所需样本下降”的补充不采用；近似方差随之增大。",
+      "revision_refs": [
+        "audit-specifications.md#10-明确存储和宿主限制"
+      ],
+      "acceptance_ids": [
+        "JA58"
+      ],
+      "status": "design_revised_product_verification_pending"
+    },
+    {
+      "id": "RV14",
+      "raw_source": "review-recovered-raw.md",
+      "original_severity": "P2",
+      "original_title": "24 个 FM 的 `semantic_difference` 是同一句样板，Firstmate 的监督角色分区与\"结果由脚本而非模型回报\"原则无落点",
+      "disposition": "partially_accepted",
+      "host_rationale": "24项FM差异逐项重写，planner不能代答/away不转权、父回执持久发布；不采纳禁止一切非人类自动动作的过宽表达。",
+      "revision_refs": [
+        "capability-map.json"
+      ],
+      "acceptance_ids": [
+        "JA65",
+        "JA67"
+      ],
+      "status": "design_revised_product_verification_pending"
+    },
+    {
+      "id": "RV15",
+      "raw_source": "review-recovered-raw.md",
+      "original_severity": "P2",
+      "original_title": "来源台账失真：读取深度被统一抹平，部分上游条目未固定",
+      "disposition": "accepted",
+      "host_rationale": "恢复原 inspection/usage，另记录本轮 hash核验；200个pstack文件逐项分类，tdd/sequence原则补pin；未采用不等于已语义阅读。",
+      "revision_refs": [
+        "source-coverage.json"
+      ],
+      "acceptance_ids": [
+        "JA03"
+      ],
+      "status": "design_revised_product_verification_pending"
+    },
+    {
+      "id": "RV16",
+      "raw_source": "review-recovered-raw.md",
+      "original_severity": "P2",
+      "original_title": "若干遗留验证类任务被强行映射到不相干的 J 项，实际无人负责",
+      "disposition": "partially_accepted",
+      "host_rationale": "R04/V01/V02/V05 的真实产出和子工作流明确归 J02/J23/J06；不采用关键词相交充当语义覆盖证明。",
+      "revision_refs": [
+        "work-packages.json"
+      ],
+      "acceptance_ids": [
+        "JA60"
+      ],
+      "status": "design_revised_product_verification_pending"
+    },
+    {
+      "id": "RV17",
+      "raw_source": "review-recovered-raw.md",
+      "original_severity": "P2",
+      "original_title": "校验器会放过哪些关键坏设计",
+      "disposition": "partially_accepted",
+      "host_rationale": "关键依赖、旧gate、oracle、schema关键约束、图边、PR键、来源和迁移队列增加负例。只主张已覆盖的变异，未宣称任意schema约束完整变异证明。",
+      "revision_refs": [
+        "test_validate_design.py"
+      ],
+      "acceptance_ids": [
+        "JA60"
+      ],
+      "status": "design_revised_product_verification_pending"
+    },
+    {
+      "id": "RV18",
+      "raw_source": "review-recovered-raw.md",
+      "original_severity": "P3",
+      "original_title": "校验器的静默跳过与复现前提不一致",
+      "disposition": "accepted",
+      "host_rationale": "缺 pstack 当前报告明确失败；README声明完整 checkout及历史审计归档前置。",
+      "revision_refs": [
+        "README.md"
+      ],
+      "acceptance_ids": [],
+      "status": "design_revised_product_verification_pending"
+    },
+    {
+      "id": "CH01",
+      "raw_source": "challenge-raw.md",
+      "original_severity": "P0",
+      "original_title": "recovery_receipt 没有 (phase × decision × proof) 放行矩阵，会放行重发",
+      "disposition": "partially_accepted",
+      "host_rationale": "确认设计缺矩阵；补phase/decision/typed proof和真实authority读取。P0是原审计标签，本次归为实施前P1设计阻塞，未证实现行产品漏洞。",
+      "revision_refs": [
+        "audit-specifications.md#1-恢复裁决不是重新派发许可"
+      ],
+      "acceptance_ids": [
+        "JA51"
+      ],
+      "status": "design_revised_product_verification_pending"
+    },
+    {
+      "id": "CH02",
+      "raw_source": "challenge-raw.md",
+      "original_severity": "P1",
+      "original_title": "\"禁迁移恢复构建\"与\"持久裁决\"自相矛盾，恢复路径可能死锁",
+      "disposition": "accepted",
+      "host_rationale": "选择受控增量 recovery-ledger bootstrap，JADR11明确ADR16窄例外；原hold行/谱系/owner/事务均验证。",
+      "revision_refs": [
+        "audit-specifications.md#2-为带-hold-的旧库建立可写的恢复入口"
+      ],
+      "acceptance_ids": [
+        "JA52"
+      ],
+      "status": "design_revised_product_verification_pending"
+    },
+    {
+      "id": "CH03",
+      "raw_source": "challenge-raw.md",
+      "original_severity": "P1",
+      "original_title": "trial_permit 约束不足，冷启动可以在错误环境放行",
+      "disposition": "partially_accepted",
+      "host_rationale": "补完整Binding闭包与TrialSupportProfile、scratch真实路径和issuer验证。无需在permit重复所有已经通过Binding摘要绑定的字段。",
+      "revision_refs": [
+        "audit-specifications.md#3-首次试验的身份消费和预算"
+      ],
+      "acceptance_ids": [
+        "JA61"
+      ],
+      "status": "design_revised_product_verification_pending"
+    },
+    {
+      "id": "CH04",
+      "raw_source": "challenge-raw.md",
+      "original_severity": "P1",
+      "original_title": "permit 单次消费没有账本、单位和 fence 挂点，并发或崩溃会出错",
+      "disposition": "partially_accepted",
+      "host_rationale": "采用持久单root消费和实际authorize挂点；不采用整条Graph“raw调用恰好1次”的错误验收，改为一个root且内部槽位有界。",
+      "revision_refs": [
+        "audit-specifications.md#3-首次试验的身份消费和预算"
+      ],
+      "acceptance_ids": [
+        "JA49"
+      ],
+      "status": "design_revised_product_verification_pending"
+    },
+    {
+      "id": "CH05",
+      "raw_source": "challenge-raw.md",
+      "original_severity": "P1",
+      "original_title": "摘要规则有歧义，两个独立实现的 digest 会互不兼容",
+      "disposition": "partially_accepted",
+      "host_rationale": "接受精确字节/域/字段需求；采用受限joint-canonical-v1而非声称完整JCS，保留既有摘要算法不变。",
+      "revision_refs": [
+        "digest-catalog.json"
+      ],
+      "acceptance_ids": [
+        "JA59"
+      ],
+      "status": "design_revised_product_verification_pending"
+    },
+    {
+      "id": "CH06",
+      "raw_source": "challenge-raw.md",
+      "original_severity": "P1",
+      "original_title": "旧场景没有变成 J 级门槛，校验器也不加载它们",
+      "disposition": "accepted",
+      "host_rationale": "66 FM +48 PS 全量保留原状态与断言、绑定J负责人和适用scope；不能以新JA通过替代旧场景。",
+      "revision_refs": [
+        "legacy-case-map.json"
+      ],
+      "acceptance_ids": [
+        "JA60"
+      ],
+      "status": "design_revised_product_verification_pending"
+    },
+    {
+      "id": "CH07",
+      "raw_source": "challenge-raw.md",
+      "original_severity": "P2",
+      "original_title": "\"映射非空\"和\"对称\"只证明一致，不证明语义覆盖",
+      "disposition": "accepted",
+      "host_rationale": "新增semantic_assertions及具体状态/简报/清理/分类断言；记录仍需独立语义复核，结构覆盖不是穷尽证明。",
+      "revision_refs": [
+        "acceptance-cases.json"
+      ],
+      "acceptance_ids": [
+        "JA54",
+        "JA55",
+        "JA56",
+        "JA57"
+      ],
+      "status": "design_revised_product_verification_pending"
+    },
+    {
+      "id": "CH08",
+      "raw_source": "challenge-raw.md",
+      "original_severity": "P1",
+      "original_title": "第一条价值路径缺驱动和 reproduction 产物的生产者",
+      "disposition": "accepted",
+      "host_rationale": "J03显式拆两个命名driver；J09只消费注册bug-fix场景的受信复现回执。",
+      "revision_refs": [
+        "implementation-plan.md"
+      ],
+      "acceptance_ids": [
+        "JA18",
+        "JA50"
+      ],
+      "status": "design_revised_product_verification_pending"
+    },
+    {
+      "id": "CH09",
+      "raw_source": "challenge-raw.md",
+      "original_severity": "P1",
+      "original_title": "价值路径过度工程，且没有价值门槛",
+      "disposition": "partially_accepted",
+      "host_rationale": "增加早期E0与后续决定门槛；可选pinned pack只用于探索，不替代mandatory或提供资格；不把可行性试验当收益结论。",
+      "revision_refs": [
+        "execution-gates.json"
+      ],
+      "acceptance_ids": [
+        "JA58"
+      ],
+      "status": "design_revised_product_verification_pending"
+    },
+    {
+      "id": "CH10",
+      "raw_source": "challenge-raw.md",
+      "original_severity": "P1",
+      "original_title": "实验设计存在臂不对称、夹具泄漏和分辨率问题",
+      "disposition": "partially_accepted",
+      "host_rationale": "两臂共同oracle、封存holdout、意向处理、小样本与unknown成本规则。要求在锁候选/试验前封存，不强制holdout必须早于所有recipe提交。",
+      "revision_refs": [
+        "verification-spec.md"
+      ],
+      "acceptance_ids": [
+        "JA58",
+        "JA62"
+      ],
+      "status": "design_revised_product_verification_pending"
+    },
+    {
+      "id": "CH11",
+      "raw_source": "challenge-raw.md",
+      "original_severity": "P2",
+      "original_title": "预算维度未区分可强制与不可强制，\"未知预留\"的守恒断言可能空转",
+      "disposition": "partially_accepted",
+      "host_rationale": "profile标各维enforceability，许可含累计上限，unknown占整笔预留；不可强制的硬预算请求拒绝，不能以忽略该维度放行。",
+      "revision_refs": [
+        "contract.schema.json"
+      ],
+      "acceptance_ids": [
+        "JA23",
+        "JA49"
+      ],
+      "status": "design_revised_product_verification_pending"
+    },
+    {
+      "id": "CH12",
+      "raw_source": "challenge-raw.md",
+      "original_severity": "P2",
+      "original_title": "验收 oracle 可以自证",
+      "disposition": "partially_accepted",
+      "host_rationale": "每case oracle_spec独立角色/冻结时点及专属证据；当前未分配人或摘要，保持未执行。语义裁决不由同一作者模型自证。",
+      "revision_refs": [
+        "acceptance-cases.json"
+      ],
+      "acceptance_ids": [
+        "JA62"
+      ],
+      "status": "design_revised_product_verification_pending"
+    },
+    {
+      "id": "CH13",
+      "raw_source": "challenge-raw.md",
+      "original_severity": "P2",
+      "original_title": "write_paths 不完整，merge-order 校验器看不见真正的共享文件",
+      "disposition": "partially_accepted",
+      "host_rationale": "登记实际db/migrations/schema与共享资源队列、PR路径manifest；不在未来main未确定时抢占迁移号，合入候选重新分配并复验。",
+      "revision_refs": [
+        "execution-gates.json"
+      ],
+      "acceptance_ids": [
+        "JA60"
+      ],
+      "status": "design_revised_product_verification_pending"
+    },
+    {
+      "id": "CH14",
+      "raw_source": "challenge-raw.md",
+      "original_severity": "P2",
+      "original_title": "阻塞 gate 只在叙述里，没有进入机器可校验的结构",
+      "disposition": "partially_accepted",
+      "host_rationale": "O01–O06机器化且blocked_by双向校验；按阶段阻断，不阻止为解决未知所必需的规格/调查工作。",
+      "revision_refs": [
+        "unknowns.json"
+      ],
+      "acceptance_ids": [
+        "JA60"
+      ],
+      "status": "design_revised_product_verification_pending"
+    },
+    {
+      "id": "CH15",
+      "raw_source": "challenge-raw.md",
+      "original_severity": "P2",
+      "original_title": "方法材料没有区分角色，reviewer 会拿到 builder 的方法",
+      "disposition": "accepted",
+      "host_rationale": "Binding角色材料映射、receipt.role和受信node-role映射；reviewer不能收到builder专用指令。",
+      "revision_refs": [
+        "contract.schema.json"
+      ],
+      "acceptance_ids": [
+        "JA53"
+      ],
+      "status": "design_revised_product_verification_pending"
+    },
+    {
+      "id": "CH16",
+      "raw_source": "challenge-raw.md",
+      "original_severity": "P3",
+      "original_title": "schema 作为投影，约束比现有代码松",
+      "disposition": "partially_accepted",
+      "host_rationale": "补检查/Git标识约束及host verifier规则；原schema已有host_record_ref，问题是信任校验而非字段缺失。",
+      "revision_refs": [
+        "contract.schema.json"
+      ],
+      "acceptance_ids": [
+        "JA10",
+        "JA50"
+      ],
+      "status": "design_revised_product_verification_pending"
+    }
+  ],
+  "counts": {
+    "accepted": 18,
+    "partially_accepted": 16
+  },
+  "not_independent_issues_count": "34 original opinions include overlapping findings across two prompts"
+}

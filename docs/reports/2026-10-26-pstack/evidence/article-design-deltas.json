@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "report_revision": 2,
+  "status": "design_only_not_implemented",
+  "deltas": [
+    {"id":"AD01","article_ids":["ART1"],"capability_ids":["PS08","PS01"],"work_packages":["W06","W03"],"acceptance_ids":["A33","A34"],"before":"先构建来源与 recipe 编译，再补一个 smoke harness。","after":"先证明稳定的验证工具能独立操作真实表面，再固定方法编译接口。","design_reason":"验证能力先形成可观察价值，控制面继续复用现有权限。"},
+    {"id":"AD02","article_ids":["ART1"],"capability_ids":["PS08","PS09","PS20"],"work_packages":["W18","W05"],"acceptance_ids":["A35","A36"],"before":"feature map 主要是一份验收目录。","after":"把用户入口、前提、动作、观察、陷阱和恢复做成可检索的分层产品地图。","design_reason":"让新任务只加载相关路径，并检测地图与真实产品的漂移。"},
+    {"id":"AD03","article_ids":["ART2"],"capability_ids":["PS02","PS03","PS24"],"work_packages":["W17","W03"],"acceptance_ids":["A37","A38"],"before":"重述偏向摘要；recall/teach 被归到次级说明能力。","after":"区分意图误解与证据上下文不足；先建立可纠正的问题模型和有限范围的历史依据。","design_reason":"防止把用户或模型的根因猜测直接固化为实施要求。"},
+    {"id":"AD04","article_ids":["ART2"],"capability_ids":["PS04","PS23"],"work_packages":["W17"],"acceptance_ids":["A39","A47"],"before":"先列 schema 和模块，再设计用户调用方式。","after":"先给出最小使用教程和调用样例，再推导接口；分别产出教程、操作指南、参考与解释。","design_reason":"通过实际调用是否顺畅检验边界，降低非专家使用成本。"},
+    {"id":"AD05","article_ids":["ART2"],"capability_ids":["PS04","PS07"],"work_packages":["W17","W03"],"acceptance_ids":["A40","A41"],"before":"原型和竞争设计延后到较完整运行时之后。","after":"对改变实现的技术未知先做有预算的可丢弃实验；设计未证实的 API 保持草案。","design_reason":"最小顺序实验即可回答问题，不需要先实现动态多代理引擎。"},
+    {"id":"AD06","article_ids":["ART2"],"capability_ids":["PS06"],"work_packages":["W07","W17"],"acceptance_ids":["A42"],"before":"容易把对抗评审用在任何抽象计划上。","after":"评审聚焦源码、可运行草图、具体不变量和实验结果；无证据猜测不自动升级成阻塞实现任务。","design_reason":"必要的权限与恢复不变量仍保留，避免抽象风险层层累积。"},
+    {"id":"AD07","article_ids":["ART1"],"capability_ids":["PS08","PS06"],"work_packages":["W06","W07","W08"],"acceptance_ids":["A43"],"before":"文档强调最终独立验收，开发中间循环描述不足。","after":"开发者自验证可有预算地连续试改；正式 local_verified 仍由现有可信 host/join 判定。","design_reason":"减少人工逐步检查，同时不把 self-report 升级为交付回执。"},
+    {"id":"AD08","article_ids":["ART1"],"capability_ids":["PS16","PS20"],"work_packages":["W06","W12"],"acceptance_ids":["A44"],"before":"工作树隔离容易被理解为足够的并行条件。","after":"明确端口、DB、环境、身份和资源容量；在环境复现后再扩大并行。","design_reason":"保留本地优先和既有 worktree 纪律，未来可接云执行器但不绑定供应商。"},
+    {"id":"AD09","article_ids":["ART1"],"capability_ids":["PS09"],"work_packages":["W19","W11"],"acceptance_ids":["A45"],"before":"维护主要发生在方法升级资格检查。","after":"验证工具具有 owner、健康/漂移状态和变更触发维护，周期运行仅在用户配置后启用。","design_reason":"维护坏掉会阻止自验证；本轮不创建定时任务或通知。"},
+    {"id":"AD10","article_ids":["ART2"],"capability_ids":["PS13","PS23"],"work_packages":["W10","W17"],"acceptance_ids":["A46"],"before":"执行计划和接口规格容易长期被当成当前事实。","after":"区分设计假设、已验证决策和战术计划；已结束计划退出当前检索，历史保留。","design_reason":"避免陈旧计划污染上下文，同时满足 OSStack 恢复审计要求。"},
+    {"id":"AD11","article_ids":["ART1","ART2"],"capability_ids":["PS14","PS15"],"work_packages":["W15"],"acceptance_ids":["A47"],"before":"主要评估完成率、成本与方法命中。","after":"增加首次可复现环境耗时、人工介入、工具故障率和新使用者完成场景；PR 数只作活动量。","design_reason":"不把作者个人吞吐或倍数描述当作 OSStack 已证明收益。"},
+    {"id":"AD12","article_ids":["ART2"],"capability_ids":["PS01","PS20","PS24"],"work_packages":["W05","W09"],"acceptance_ids":["A48"],"before":"能力目录可能演变成大量需要用户记住的技能入口。","after":"保留一个任务入口，按工作类型加载方法、功能地图和证据；展示选择理由并允许纠正。","design_reason":"让组合能力内化到产品工作流，避免把上下文成本转给用户。"}
+  ]
+}

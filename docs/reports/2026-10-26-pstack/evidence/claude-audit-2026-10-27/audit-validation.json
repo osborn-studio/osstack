@@ -1,0 +1,24 @@
+{
+  "generated_at_utc": "2026-10-26T23:53:53.987333+00:00",
+  "status": "pass",
+  "scope": "audit_archive_integrity_not_product_acceptance_or_semantic_correctness",
+  "checks": [
+    "exact_submitted_inputs_retained",
+    "all_45_reviewed_file_hashes_unchanged",
+    "three_actual_fable_5_1_calls_and_faithful_raw_outputs",
+    "12_audit_and_10_challenge_findings_all_dispositioned",
+    "frozen_brief_negative_probe_completed",
+    "outside_report_workspace_path_status_preserved",
+    "summary_local_links_and_pinned_source_links"
+  ],
+  "completed_review_passes": 2,
+  "cli_invocations_including_partial_retry": 3,
+  "review_opinions_including_duplicate_topics": 22,
+  "dispositions": {
+    "accepted": 6,
+    "partially_accepted": 14,
+    "not_accepted_as_defect": 2
+  },
+  "host_additional_findings": 1,
+  "reviewed_original_report_files_unchanged": 7
+}

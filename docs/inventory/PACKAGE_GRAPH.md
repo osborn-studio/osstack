@@ -25,7 +25,7 @@ Workspace packages, publish status, and internal (workspace) dependencies.
 | `@osstack/plugins` | 0.22.0 | public | `core` |
 | `@osstack/protocol` | 0.22.0 | public | — |
 | `@osstack/runtime` | 0.20.0 | public | — |
-| `@osstack/skill-registry` | 0.22.0 | public | `core` |
+| `@osstack/skill-registry` | 0.22.0 | public | `core`, `protocol` |
 | `@osstack/skills` | 0.22.0 | public | `core` |
 | `@osstack/supervisor` | 0.22.0 | **private** | `core`, `governance`, `loop` |
 
@@ -43,7 +43,7 @@ hermes-adapter -> core
 knowledge-cloud -> knowledge
 loop -> agents, autonomy, core, github, governance, hermes-adapter, protocol
 plugins -> core
-skill-registry -> core
+skill-registry -> core, protocol
 skills -> core
 supervisor -> core, governance, loop
 ```

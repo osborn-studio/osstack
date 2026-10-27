@@ -1,0 +1,9 @@
+{
+  "original_failed_run": 40466370252,
+  "failure": "Missing archived logs and source-relative links in immutable audit inputs",
+  "repair": "Explicitly track seven original logs; narrowly ignore copied pstack-revision2 Markdown inputs using existing frozen-evidence rule; all current documents remain checked",
+  "focused_check": "docs-hygiene-final.log.gz",
+  "focused_result": "passed",
+  "raw_failure_sha256": "fef2978e7a039737110b97c2cfdb06c1eba23a9305455ff2ab3771b07558da52",
+  "raw_check_sha256": "0cddecf5800af3f7606771069e9d0e9892599f415276923d66ff0234ec1025b5"
+}

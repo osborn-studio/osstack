@@ -1,0 +1,171 @@
+{
+  "integration": "dd0f8d09687c6d77394771f61102c9685ec33b2c",
+  "main": "ce543535be9b1ef96a8c4fb14d13ea8483444051",
+  "complete_stack_equals_integration": true,
+  "prs": [
+    {
+      "name": "r01",
+      "branch": "codex/firstmate-behavior-contract",
+      "base": "origin/main",
+      "head": "48d6b927d36e5c673eb80c8956daa69779614cc7",
+      "base_sha": "ce543535be9b1ef96a8c4fb14d13ea8483444051",
+      "files": [
+        {
+          "path": ".changeset/behavior-capability-contracts.md",
+          "branch_blob": "94b6d305467cdf6f080906c868f4964b69d2b3ee",
+          "integration_blob": "94b6d305467cdf6f080906c868f4964b69d2b3ee"
+        },
+        {
+          "path": "docs/inventory/PUBLIC_EXPORTS.md",
+          "branch_blob": "815d20206dfe78105e32b980c3a5674f216ece17",
+          "integration_blob": "622a7513db0f03b736b867ffe454d3a102275a46"
+        },
+        {
+          "path": "packages/protocol/src/behavior-capability.test.ts",
+          "branch_blob": "ec326efe5de7b3d3df868900e82a09ebd1870dab",
+          "integration_blob": "ec326efe5de7b3d3df868900e82a09ebd1870dab"
+        },
+        {
+          "path": "packages/protocol/src/behavior-capability.ts",
+          "branch_blob": "0ed5c0759832e4696b6408abe19e2ed7e5ee66b8",
+          "integration_blob": "0ed5c0759832e4696b6408abe19e2ed7e5ee66b8"
+        },
+        {
+          "path": "packages/protocol/src/index.ts",
+          "branch_blob": "ce156c143f7e414808847d99902f1bcbe51b4aa2",
+          "integration_blob": "ce156c143f7e414808847d99902f1bcbe51b4aa2"
+        }
+      ],
+      "number": 275,
+      "url": "https://github.com/osborn-studio/osstack/pull/275",
+      "draft": true
+    },
+    {
+      "name": "r02",
+      "branch": "codex/firstmate-behavior-loader",
+      "base": "codex/firstmate-behavior-contract",
+      "head": "5e86a77859367a333829748908bbf986048132b9",
+      "base_sha": "48d6b927d36e5c673eb80c8956daa69779614cc7",
+      "files": [
+        {
+          "path": ".changeset/behavior-registry-loader.md",
+          "branch_blob": "65b9b39f8d203f1c8cd81c4cbac35ff227a544a6",
+          "integration_blob": "65b9b39f8d203f1c8cd81c4cbac35ff227a544a6"
+        },
+        {
+          "path": "docs/guides/behavior-registry-evaluator.md",
+          "branch_blob": "6d57a8bebf06ff2c87106d80c774e1a22d6e147a",
+          "integration_blob": "6d57a8bebf06ff2c87106d80c774e1a22d6e147a"
+        },
+        {
+          "path": "docs/inventory/PUBLIC_EXPORTS.md",
+          "branch_blob": "622a7513db0f03b736b867ffe454d3a102275a46",
+          "integration_blob": "622a7513db0f03b736b867ffe454d3a102275a46"
+        },
+        {
+          "path": "packages/core/src/behavior-registry.test.ts",
+          "branch_blob": "e97287da9ac3ef0aa977b3dccde1de81ef5d2385",
+          "integration_blob": "e97287da9ac3ef0aa977b3dccde1de81ef5d2385"
+        },
+        {
+          "path": "packages/core/src/behavior-registry.ts",
+          "branch_blob": "eb1a4f06eacde7342dbc9518b573ae354c36c87a",
+          "integration_blob": "eb1a4f06eacde7342dbc9518b573ae354c36c87a"
+        },
+        {
+          "path": "packages/core/src/index.ts",
+          "branch_blob": "ca27d7a7cfa336f98e04f733d47d58c8496c4fde",
+          "integration_blob": "ca27d7a7cfa336f98e04f733d47d58c8496c4fde"
+        }
+      ],
+      "number": 276,
+      "url": "https://github.com/osborn-studio/osstack/pull/276",
+      "draft": true
+    },
+    {
+      "name": "debt03",
+      "branch": "codex/session-receipt-fix",
+      "base": "origin/main",
+      "head": "585ed985ac4a8513778470f6443d0ce7ce2c7893",
+      "base_sha": "ce543535be9b1ef96a8c4fb14d13ea8483444051",
+      "files": [
+        {
+          "path": ".changeset/session-send-receipt.md",
+          "branch_blob": "e7c075af0a666c99097d97082c8db5dec47f6bc3",
+          "integration_blob": "e7c075af0a666c99097d97082c8db5dec47f6bc3"
+        },
+        {
+          "path": "packages/cli/src/daemon.ts",
+          "branch_blob": "e074894e9e99df1b9de6d564a838b3f6fb36b683",
+          "integration_blob": "2ebe7135accff7adbfd01ac6dcb2da59b1c0313a"
+        },
+        {
+          "path": "packages/cli/src/session-send-receipt.test.ts",
+          "branch_blob": "b34ad66d72f9aff6a0adc077fc78a8cf29781071",
+          "integration_blob": "2fb9754edfb1593d135b75bc76038ed4bb5a2ca0"
+        }
+      ],
+      "number": 277,
+      "url": "https://github.com/osborn-studio/osstack/pull/277",
+      "draft": true
+    },
+    {
+      "name": "start",
+      "branch": "codex/session-start-cleanup",
+      "base": "codex/session-receipt-fix",
+      "head": "81f01d1a91248396dfdd2dce1132b69d478556cf",
+      "base_sha": "585ed985ac4a8513778470f6443d0ce7ce2c7893",
+      "files": [
+        {
+          "path": ".changeset/session-start-cleanup.md",
+          "branch_blob": "538d6b9015e0cf003993a75aee4dcd55d34d3266",
+          "integration_blob": "538d6b9015e0cf003993a75aee4dcd55d34d3266"
+        },
+        {
+          "path": "packages/cli/src/daemon.ts",
+          "branch_blob": "46efc1b08c053f8829e93d4164e31cf43ab9013f",
+          "integration_blob": "2ebe7135accff7adbfd01ac6dcb2da59b1c0313a"
+        },
+        {
+          "path": "packages/cli/src/session-send-receipt.test.ts",
+          "branch_blob": "6467bca7a6ee776be5d6ab545e92f266184f714c",
+          "integration_blob": "2fb9754edfb1593d135b75bc76038ed4bb5a2ca0"
+        }
+      ],
+      "number": 278,
+      "url": "https://github.com/osborn-studio/osstack/pull/278",
+      "draft": true
+    },
+    {
+      "name": "terminal",
+      "branch": "codex/session-terminal-fence",
+      "base": "codex/session-start-cleanup",
+      "head": "cae25bc612e6e6884cf548e5bc8d3a745863a909",
+      "base_sha": "81f01d1a91248396dfdd2dce1132b69d478556cf",
+      "files": [
+        {
+          "path": ".changeset/session-terminal-boundary.md",
+          "branch_blob": "66d78824830de52ad56ecf9b61c59830e8ba7550",
+          "integration_blob": "66d78824830de52ad56ecf9b61c59830e8ba7550"
+        },
+        {
+          "path": "packages/cli/src/daemon.ts",
+          "branch_blob": "2ebe7135accff7adbfd01ac6dcb2da59b1c0313a",
+          "integration_blob": "2ebe7135accff7adbfd01ac6dcb2da59b1c0313a"
+        },
+        {
+          "path": "packages/cli/src/session-send-receipt.test.ts",
+          "branch_blob": "2fb9754edfb1593d135b75bc76038ed4bb5a2ca0",
+          "integration_blob": "2fb9754edfb1593d135b75bc76038ed4bb5a2ca0"
+        }
+      ],
+      "number": 279,
+      "url": "https://github.com/osborn-studio/osstack/pull/279",
+      "draft": true
+    }
+  ],
+  "production_test_candidate": "20b4a81dfcffd80b4919643be362dcfcefad7cf5",
+  "only_post_test_change": [
+    "docs/inventory/PUBLIC_EXPORTS.md"
+  ]
+}

@@ -1,0 +1,4 @@
+{
+  "reason": "Audit fixes changed executable freeze/spec tests and source batch reader; in-progress runs are not final candidate evidence. Fresh full runs follow.",
+  "stopped": true
+}
