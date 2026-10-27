@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "research_date_client": "2026-10-26",
+  "captured_at_utc": "2026-10-26T16:04:56.389792+00:00",
+  "pstack": {
+    "repository": "https://github.com/cursor/plugins.git",
+    "path": "pstack",
+    "clone": "/Volumes/AIMATE_WORK/Developer/CodeX/cursor-plugins",
+    "commit": "99b609a72323b70204eab407c622f436e858e112",
+    "pstack_tree": "880564357e051d7c7802da1cb5d8df1d0b008299",
+    "version": "0.15.32",
+    "clone_mode": "partial clone, sparse checkout including complete pstack, scripts, harness/pstack and workflow manifests",
+    "license": "MIT",
+    "tracked_files": 200,
+    "skills": 58,
+    "principles": 24,
+    "playbooks": 23,
+    "agents": 2,
+    "automation_skills": 3
+  },
+  "osstack": {
+    "workspace_head": "0a61d278a6cede4fa7b3142fae3e7ab13cc4ed41",
+    "workspace_branch": "codex/firstmate-supervision",
+    "integration_baseline": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+    "remote_main_verified_by": "git ls-remote origin refs/heads/main",
+    "workspace_clean": false,
+    "uncommitted_material": "Existing 2026-10-25 engineering-agent design consulted as design context, not source of implementation truth."
+  },
+  "report_revision": 2,
+  "supplemental_sources": {
+    "record": "author-articles.json",
+    "article_ids": [
+      "ART1",
+      "ART2"
+    ],
+    "upstream_git_pin_unchanged": true,
+    "osstack_integration_baseline_unchanged": true
+  }
+}

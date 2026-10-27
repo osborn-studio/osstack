@@ -1415,17 +1415,17 @@
           {
             "role": "builder",
             "method_text_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
-            "role_required_artifacts_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            "role_required_artifacts_digest": "a182a30f92b1526e83b5b9ff115d0c188b57263c936a63d6e89fd757f883c172"
           },
           {
             "role": "reviewer",
             "method_text_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-            "role_required_artifacts_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            "role_required_artifacts_digest": "74816d1c586fad22cedf7ada79fad3a44ebf74967e4a867dd4632177a8bc3d1e"
           },
           {
             "role": "verifier",
             "method_text_sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
-            "role_required_artifacts_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            "role_required_artifacts_digest": "aa2b51b280a39941f4ed3ef9be51139351d1a23d3356010827b0f0324d681c39"
           }
         ],
         "required_artifacts_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
@@ -1451,17 +1451,17 @@
           {
             "role": "builder",
             "method_text_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
-            "role_required_artifacts_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            "role_required_artifacts_digest": "a182a30f92b1526e83b5b9ff115d0c188b57263c936a63d6e89fd757f883c172"
           },
           {
             "role": "reviewer",
             "method_text_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-            "role_required_artifacts_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            "role_required_artifacts_digest": "74816d1c586fad22cedf7ada79fad3a44ebf74967e4a867dd4632177a8bc3d1e"
           },
           {
             "role": "verifier",
             "method_text_sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
-            "role_required_artifacts_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            "role_required_artifacts_digest": "aa2b51b280a39941f4ed3ef9be51139351d1a23d3356010827b0f0324d681c39"
           }
         ],
         "required_artifacts_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
@@ -1487,17 +1487,17 @@
           {
             "role": "builder",
             "method_text_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
-            "role_required_artifacts_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            "role_required_artifacts_digest": "a182a30f92b1526e83b5b9ff115d0c188b57263c936a63d6e89fd757f883c172"
           },
           {
             "role": "reviewer",
             "method_text_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-            "role_required_artifacts_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            "role_required_artifacts_digest": "74816d1c586fad22cedf7ada79fad3a44ebf74967e4a867dd4632177a8bc3d1e"
           },
           {
             "role": "verifier",
             "method_text_sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
-            "role_required_artifacts_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            "role_required_artifacts_digest": "aa2b51b280a39941f4ed3ef9be51139351d1a23d3356010827b0f0324d681c39"
           }
         ],
         "required_artifacts_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
@@ -2605,17 +2605,17 @@
           {
             "role": "builder",
             "method_text_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
-            "role_required_artifacts_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            "role_required_artifacts_digest": "a182a30f92b1526e83b5b9ff115d0c188b57263c936a63d6e89fd757f883c172"
           },
           {
             "role": "reviewer",
             "method_text_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-            "role_required_artifacts_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            "role_required_artifacts_digest": "74816d1c586fad22cedf7ada79fad3a44ebf74967e4a867dd4632177a8bc3d1e"
           },
           {
             "role": "verifier",
             "method_text_sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
-            "role_required_artifacts_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            "role_required_artifacts_digest": "aa2b51b280a39941f4ed3ef9be51139351d1a23d3356010827b0f0324d681c39"
           }
         ],
         "required_artifacts_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
@@ -2641,17 +2641,17 @@
           {
             "role": "builder",
             "method_text_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
-            "role_required_artifacts_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            "role_required_artifacts_digest": "05e18e3d04bfa58bb98f9821081a9583a002899e6e2a3a3ab78a76979d9f29d6"
           },
           {
             "role": "reviewer",
             "method_text_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-            "role_required_artifacts_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            "role_required_artifacts_digest": "974dec72ad39b69edad7aeee27e0d7b196bf375f805d88d39c92258119f5ad55"
           },
           {
             "role": "verifier",
             "method_text_sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
-            "role_required_artifacts_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            "role_required_artifacts_digest": "c1e07c31311cab2b93b507fb80f0dbc013d3433f9254462ffdd61eb859cd8c61"
           }
         ],
         "required_artifacts_digest": "bad-digest",

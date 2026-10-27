@@ -1,0 +1,80 @@
+{
+  "base": "daad404e00c000247fdfb2adda13127c4c1c8e26",
+  "candidate": "b6eec5e59d0a63841d5d4b13571312bfe8651179",
+  "files": [
+    {
+      "path": ".changeset/session-send-receipt.md",
+      "sha256": "b490563eabf9a33ed173eaeb5071256d236a9629bcae224fb906e2ad71d1ce9f",
+      "bytes": 467
+    },
+    {
+      "path": ".changeset/session-start-cleanup.md",
+      "sha256": "9d883e25ce1f7327b5bd0380154dcbac5bad2182c38464524da5c8ea63413c7c",
+      "bytes": 493
+    },
+    {
+      "path": ".changeset/session-terminal-boundary.md",
+      "sha256": "76532b63427823f2092758cf89eda31b384f0172315073bc4133923985d26cd2",
+      "bytes": 583
+    },
+    {
+      "path": "packages/cli/src/daemon.ts",
+      "sha256": "e7f0ede3fb6e72b5703955d78103581bec60e914ff1fbc608b0a6c0ad9234247",
+      "bytes": 206325
+    },
+    {
+      "path": "packages/cli/src/session-send-receipt.test.ts",
+      "sha256": "033086ea159cb34f7061b5891ded778abd6838e75decc0cb9dc66922a0fc6700",
+      "bytes": 23615
+    },
+    {
+      "path": "packages/core/src/state/sessions.ts",
+      "sha256": "923c69781b1bdf9370e92cefeaef2fdb8128c2105eb5bf20f4163d37d84d5710",
+      "bytes": 13767
+    },
+    {
+      "path": "packages/cli/src/governed-execution.ts",
+      "sha256": "a58688226dfb47465ef317762fd50863d7c8e09a40e99f7eb719e9d243f95698",
+      "bytes": 12773
+    },
+    {
+      "path": "packages/cli/src/adapter-lifecycle.ts",
+      "sha256": "39ced6878c09460c4ddaecde2a9ed7845c3a5de9ed6db45130e06dc2813d5fff",
+      "bytes": 2273
+    },
+    {
+      "path": "packages/autonomy/src/repo-lock.ts",
+      "sha256": "be2ca6351a7c9c33e40b66f77749ef216cb72778f9dc9181fcefe471dc2d7a48",
+      "bytes": 14931
+    },
+    {
+      "path": "packages/agents/src/base.ts",
+      "sha256": "4d039a9370a0f1fb2db9be138bbb2db01b3933be04b5fdf8fb7be319aeb03026",
+      "bytes": 4774
+    },
+    {
+      "path": "packages/agents/src/adapters/codex-cli.ts",
+      "sha256": "630aa2ddbae0ed95aa4ebeefa626b36887c3f1e27c7fe579c4ce5d737caa3db8",
+      "bytes": 23189
+    },
+    {
+      "path": "packages/agents/src/adapters/claude-code.ts",
+      "sha256": "f183fba64234eb7158a18275aa42e08d14f0c05c52111a2b0730d625cdc5c9e6",
+      "bytes": 18182
+    },
+    {
+      "path": "packages/agents/src/controlled-session.ts",
+      "sha256": "8e3acb2b783ba4126edaeddecc7e5c134f9848b013efd1cf03bccb0c1c1cbde2",
+      "bytes": 18781
+    },
+    {
+      "path": "docs/design/2026-10-25-engineering-agent/runtime-contract-v2.md",
+      "ref": "4199d9aa",
+      "sha256": "e2d3317ab71eb90ccdda4d9f4044fe0ce7ff9a07b7a8f432a1923d8eabe670ee",
+      "bytes": 34771
+    }
+  ],
+  "diff_sha256": "75388ef38c4f679b91192f6f591e467fe253ccfaeab075f38d99ef863b76f1d0",
+  "prompt_sha256": "d947af10e64e3a40f573f8e92fd7f4f2c9d403c0ffafbccfa14bee60f98d1f03",
+  "scope": "DEBT03, start cleanup and missing terminal fence"
+}

@@ -1,0 +1,403 @@
+{
+  "version": 2,
+  "status": "design_plan_not_imported",
+  "work_items": [
+    {
+      "id": "R01",
+      "state": "planned",
+      "work": "将本设计注册表升级为运行时协议；`packages/protocol/src/behavior-capability.ts`",
+      "depends_on": [],
+      "acceptance": "严格 schema；稳定 ID；独立版本；无任意命令字段",
+      "delivery_receipt": null
+    },
+    {
+      "id": "R02",
+      "state": "planned",
+      "work": "受信 registry loader；`packages/core/src/behavior-registry.ts`",
+      "depends_on": [
+        "R01"
+      ],
+      "acceptance": "SHA、依赖、资格证据、版本校验；非法或未认证条目禁用",
+      "delivery_receipt": null
+    },
+    {
+      "id": "R03",
+      "state": "planned",
+      "work": "原始材料快照与差异索引；`scripts/capabilities/source-manifest.mjs`",
+      "depends_on": [
+        "R01"
+      ],
+      "acceptance": "固定 commit、许可、路径、hash；移动分支不能改变重放输入",
+      "delivery_receipt": null
+    },
+    {
+      "id": "R04",
+      "state": "planned",
+      "work": "行为场景与来源映射；`packages/protocol/fixtures/behavior/*`",
+      "depends_on": [
+        "R03"
+      ],
+      "acceptance": "每个原始行为有证据和语义差异说明；未映射项阻断完成",
+      "delivery_receipt": null
+    },
+    {
+      "id": "R05",
+      "state": "planned",
+      "work": "registry 一致性与资格检查 CI；`scripts/capabilities/validate.mjs`",
+      "depends_on": [
+        "R02",
+        "R04"
+      ],
+      "acceptance": "孤立条目、循环依赖、失效证据、虚假完成状态均失败",
+      "delivery_receipt": null
+    },
+    {
+      "id": "D01",
+      "state": "planned",
+      "work": "typed DecisionAuthorityRef / WaitObligation；`packages/protocol/src/engineering-decision.ts`",
+      "depends_on": [
+        "C01"
+      ],
+      "acceptance": "session/approval/clarify/contract 明确区分；无通用文本审批",
+      "delivery_receipt": null
+    },
+    {
+      "id": "D02",
+      "state": "planned",
+      "work": "additive migration、唯一约束与 store；`packages/core/src/state/engineering-waits.ts`",
+      "depends_on": [
+        "D01",
+        "C02"
+      ],
+      "acceptance": "重复观察不新建问题；旧源不清除；schema 升级可恢复",
+      "delivery_receipt": null
+    },
+    {
+      "id": "D03",
+      "state": "planned",
+      "work": "提取可组合回答事务；`packages/core/src/state/attention-actions.ts`",
+      "depends_on": [
+        "D02"
+      ],
+      "acceptance": "原有 stale/hash/grant/unknown 保护不退化；单事务绑定 Mission",
+      "delivery_receipt": null
+    },
+    {
+      "id": "D04",
+      "state": "planned",
+      "work": "daemon 内 Session resolver、dispatch phase、停止与 FULL 写连接；`packages/cli/src/engineering-decision-host.ts`",
+      "depends_on": [
+        "D03"
+      ],
+      "acceptance": "ADR-03–08 生效；不创建第二发送账本；取消先提交则无新 dispatch；已承诺或未知发送重启不重发；未派发的 qualified reserved 按 ADR-11 恢复首次执行",
+      "delivery_receipt": null
+    },
+    {
+      "id": "D05",
+      "state": "planned",
+      "work": "对话问题和回答绑定；`packages/cli/src/engineering-command.ts`",
+      "depends_on": [
+        "D04",
+        "C02"
+      ],
+      "acceptance": "多问题“继续”不猜测；已有授权内动作不重复索要批准",
+      "delivery_receipt": null
+    },
+    {
+      "id": "D06",
+      "state": "planned",
+      "work": "现有 daemon 内的 obligation reducer；`packages/supervisor/src/engineering/decision-resume.ts`",
+      "depends_on": [
+        "D04"
+      ],
+      "acceptance": "采纳模式只观察原 Session 的回复回合；按 ADR-06/07/12–14 清除、处置与完成，不派发新 Worker",
+      "delivery_receipt": null
+    },
+    {
+      "id": "D07",
+      "state": "planned",
+      "work": "等待场景、属性与竞态测试；上述模块 `*.test.ts`",
+      "depends_on": [
+        "D02",
+        "D03",
+        "D04",
+        "D05",
+        "D06"
+      ],
+      "acceptance": "pilot-scenarios 中 adopt_session 场景全覆盖；真实 API 通过；失败样本可重放",
+      "delivery_receipt": null
+    },
+    {
+      "id": "D08",
+      "state": "planned",
+      "work": "实际本地 Session 采纳试点；`scripts/smoke-engineering-decision.mjs`",
+      "depends_on": [
+        "D07",
+        "V00"
+      ],
+      "acceptance": "单入口回答并观察真实回复回合；重启不重复执行；不加载 registry 或新 Loop adapter",
+      "delivery_receipt": null
+    },
+    {
+      "id": "C01",
+      "state": "planned",
+      "work": "最小 Mission/Binding 协议；`packages/protocol/src/engineering-mission.ts`",
+      "depends_on": [],
+      "acceptance": "adopt_session 与后续 goal_dispatch 分开；固定 task/run/session 和 scope；不引入第二审批权威",
+      "delivery_receipt": null
+    },
+    {
+      "id": "C02",
+      "state": "planned",
+      "work": "最小 Mission、事件和关联存储；`packages/core/src/state/engineering-missions.ts`",
+      "depends_on": [
+        "C01"
+      ],
+      "acceptance": "先于 wait 表迁移；身份归属与投递权威分开；CAS、幂等、bounded log、可导出",
+      "delivery_receipt": null
+    },
+    {
+      "id": "C03",
+      "state": "planned",
+      "work": "主控纯状态机；`packages/supervisor/src/engineering/controller.ts`",
+      "depends_on": [
+        "C02",
+        "D03"
+      ],
+      "acceptance": "事件输入可重放；模型结果作为记录输入；无内置副作用",
+      "delivery_receipt": null
+    },
+    {
+      "id": "C04",
+      "state": "planned",
+      "work": "复用 daemon owner 并扩展跨执行器 fencing；现有 owner 与新 host 接口",
+      "depends_on": [
+        "C02",
+        "D04"
+      ],
+      "acceptance": "不新增 per-mission lease；source 与 daemon 代数不同；旧控制者拒绝；静默证明另行验证",
+      "delivery_receipt": null
+    },
+    {
+      "id": "C05",
+      "state": "planned",
+      "work": "宿主服务生命周期；现有 daemon 安装与运行入口",
+      "depends_on": [
+        "C03",
+        "C04"
+      ],
+      "acceptance": "前台/后台能力明确；无二次 watcher；stop 和恢复可用",
+      "delivery_receipt": null
+    },
+    {
+      "id": "C06",
+      "state": "planned",
+      "work": "模型结构化 action provider；`packages/supervisor/src/engineering/planner.ts`",
+      "depends_on": [
+        "C03"
+      ],
+      "acceptance": "严格输出校验；越权、过期、循环建议被拒绝",
+      "delivery_receipt": null
+    },
+    {
+      "id": "C07",
+      "state": "planned",
+      "work": "上下文和长期记忆边界；现有 attention lesson/context 服务",
+      "depends_on": [
+        "C06"
+      ],
+      "acceptance": "预算、来源、过期、跨项目隔离；无隐式策略升级",
+      "delivery_receipt": null
+    },
+    {
+      "id": "E01",
+      "state": "planned",
+      "work": "ExecutorEnvelope + admission；`packages/protocol/src/engineering-executor.ts`",
+      "depends_on": [
+        "C01",
+        "R02"
+      ],
+      "acceptance": "产物、模板、宿主、Provider、停止语义均可检查",
+      "delivery_receipt": null
+    },
+    {
+      "id": "E02",
+      "state": "planned",
+      "work": "Loop adapter 服务化与 controller_once 派发授权；提取 `deliver-command.ts` 业务接口",
+      "depends_on": [
+        "E01",
+        "C03",
+        "C04"
+      ],
+      "acceptance": "旧 approved 行不自动执行；新授权精确绑定并单次消费；旧 CLI 回归通过",
+      "delivery_receipt": null
+    },
+    {
+      "id": "E03",
+      "state": "planned",
+      "work": "固定 Graph adapter；现有 graph host/registry",
+      "depends_on": [
+        "E01",
+        "C03"
+      ],
+      "acceptance": "仅支持已认证范围；unsupported 明确拒绝；停止/恢复有回执",
+      "delivery_receipt": null
+    },
+    {
+      "id": "E04",
+      "state": "planned",
+      "work": "Scout / bounded direct adapter",
+      "depends_on": [
+        "E01",
+        "C03"
+      ],
+      "acceptance": "读与写权限分开；提升为实施必须重绑当前对象",
+      "delivery_receipt": null
+    },
+    {
+      "id": "E05",
+      "state": "planned",
+      "work": "路由、预算与评分；`packages/supervisor/src/engineering/router.ts`",
+      "depends_on": [
+        "E02",
+        "E03",
+        "E04"
+      ],
+      "acceptance": "先资格后评分；同一任务切换引擎不重置预算",
+      "delivery_receipt": null
+    },
+    {
+      "id": "E06",
+      "state": "planned",
+      "work": "并行写集合与候选集成；现有 worktree 与 graph/loop 集成服务",
+      "depends_on": [
+        "E05"
+      ],
+      "acceptance": "不冲突的任务可并行；集成后同候选重测",
+      "delivery_receipt": null
+    },
+    {
+      "id": "I01",
+      "state": "planned",
+      "work": "事件、回合终止、quiet/away、增量简报接线",
+      "depends_on": [
+        "C05",
+        "D08"
+      ],
+      "acceptance": "FM-02/03/05/06/07/10/11 走默认路径",
+      "delivery_receipt": null
+    },
+    {
+      "id": "I02",
+      "state": "planned",
+      "work": "Worker、source、remote 统一观察接线",
+      "depends_on": [
+        "E05",
+        "I01"
+      ],
+      "acceptance": "FM-16/17/18 按实际宿主资格启用，断线保持 unknown",
+      "delivery_receipt": null
+    },
+    {
+      "id": "I03",
+      "state": "planned",
+      "work": "完成证明、对外承诺、清理与发布接线",
+      "depends_on": [
+        "E06",
+        "I01"
+      ],
+      "acceptance": "FM-13/14/19/22/23 绑定同候选与精确授权",
+      "delivery_receipt": null
+    },
+    {
+      "id": "I04",
+      "state": "planned",
+      "work": "主控版本与多 home 升级兼容",
+      "depends_on": [
+        "C05",
+        "I03"
+      ],
+      "acceptance": "FM-24；旧任务可恢复，新旧版本不竞争写入",
+      "delivery_receipt": null
+    },
+    {
+      "id": "V00",
+      "state": "planned",
+      "work": "现有手工旅程基线与测量协议；仅使用授权脱敏样本",
+      "depends_on": [],
+      "acceptance": "干预数、重复命令、恢复步骤、采样期与分母；无样本明确待测，不伪造收益",
+      "delivery_receipt": null
+    },
+    {
+      "id": "V01",
+      "state": "planned",
+      "work": "独立状态模型与攻击语料",
+      "depends_on": [
+        "D01",
+        "C01"
+      ],
+      "acceptance": "模型不复制实现；候选实现不可修改隐藏测试",
+      "delivery_receipt": null
+    },
+    {
+      "id": "V02",
+      "state": "planned",
+      "work": "变异与故障注入 CI",
+      "depends_on": [
+        "D07",
+        "C04",
+        "V01"
+      ],
+      "acceptance": "删除关键保护会导致测试失败；崩溃点覆盖有报告",
+      "delivery_receipt": null
+    },
+    {
+      "id": "V03",
+      "state": "planned",
+      "work": "宿主/Provider/隔离实测",
+      "depends_on": [
+        "D08",
+        "I01",
+        "I02",
+        "I03",
+        "I04"
+      ],
+      "acceptance": "支持矩阵逐格产出证据；同 UID 无隔离不得认证为安全生产写模式",
+      "delivery_receipt": null
+    },
+    {
+      "id": "V04",
+      "state": "planned",
+      "work": "单入口用户旅程与对照实验",
+      "depends_on": [
+        "V03"
+      ],
+      "acceptance": "不要求用户管理 Agent；比较干预数、费用、完成率",
+      "delivery_receipt": null
+    },
+    {
+      "id": "V05",
+      "state": "planned",
+      "work": "中文/英文 README、帮助与 STE-inspired prompt",
+      "depends_on": [
+        "V04"
+      ],
+      "acceptance": "同一行为事实；示例逐条验证；neat 检查；不虚构子命令",
+      "delivery_receipt": null
+    },
+    {
+      "id": "V06",
+      "state": "planned",
+      "work": "灰度、回退与默认启用",
+      "depends_on": [
+        "R05",
+        "V02",
+        "V03",
+        "V04",
+        "V05"
+      ],
+      "acceptance": "冻结证据包、回退演练、独立审查、版本发布说明",
+      "delivery_receipt": null
+    }
+  ]
+}

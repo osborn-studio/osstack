@@ -1,0 +1,926 @@
+{
+  "schema_version": 1,
+  "kind": "source_task_crosswalk_not_status_upgrade",
+  "runtime_enabled": false,
+  "items": [
+    {
+      "id": "FM:R01",
+      "source_state": "planned",
+      "source_requires": [],
+      "joint_work_items": [
+        "J01",
+        "J02"
+      ],
+      "disposition": "retain_and_scope",
+      "note": "原完整任务门槛保持；联合里程碑的局部通过不升级整项状态"
+    },
+    {
+      "id": "FM:R02",
+      "source_state": "planned",
+      "source_requires": [
+        "FM:R01"
+      ],
+      "joint_work_items": [
+        "J02",
+        "J10"
+      ],
+      "disposition": "retain_and_scope",
+      "note": "原完整任务门槛保持；联合里程碑的局部通过不升级整项状态"
+    },
+    {
+      "id": "FM:R03",
+      "source_state": "planned",
+      "source_requires": [
+        "FM:R01"
+      ],
+      "joint_work_items": [
+        "J02"
+      ],
+      "disposition": "retain_and_scope",
+      "note": "原完整任务门槛保持；联合里程碑的局部通过不升级整项状态"
+    },
+    {
+      "id": "FM:R04",
+      "source_state": "planned",
+      "source_requires": [
+        "FM:R03"
+      ],
+      "joint_work_items": [
+        "J02",
+        "J23"
+      ],
+      "disposition": "retain_and_scope",
+      "note": "原完整任务门槛保持；联合里程碑的局部通过不升级整项状态"
+    },
+    {
+      "id": "FM:R05",
+      "source_state": "planned",
+      "source_requires": [
+        "FM:R02",
+        "FM:R04"
+      ],
+      "joint_work_items": [
+        "J10",
+        "J26"
+      ],
+      "disposition": "retain_and_scope",
+      "note": "原完整任务门槛保持；联合里程碑的局部通过不升级整项状态"
+    },
+    {
+      "id": "FM:D01",
+      "source_state": "local_pilot_complete",
+      "source_requires": [
+        "FM:C01"
+      ],
+      "joint_work_items": [
+        "J01",
+        "J16"
+      ],
+      "disposition": "reuse_implemented_slice_and_extend",
+      "note": "原完整任务门槛保持；联合里程碑的局部通过不升级整项状态"
+    },
+    {
+      "id": "FM:D02",
+      "source_state": "local_pilot_complete",
+      "source_requires": [
+        "FM:C02",
+        "FM:D01"
+      ],
+      "joint_work_items": [
+        "J11",
+        "J16"
+      ],
+      "disposition": "reuse_implemented_slice_and_extend",
+      "note": "原完整任务门槛保持；联合里程碑的局部通过不升级整项状态"
+    },
+    {
+      "id": "FM:D03",
+      "source_state": "local_pilot_complete",
+      "source_requires": [
+        "FM:D02"
+      ],
+      "joint_work_items": [
+        "J16",
+        "J31"
+      ],
+      "disposition": "reuse_implemented_slice_and_extend",
+      "note": "原完整任务门槛保持；联合里程碑的局部通过不升级整项状态"
+    },
+    {
+      "id": "FM:D04",
+      "source_state": "local_pilot_complete",
+      "source_requires": [
+        "FM:D03"
+      ],
+      "joint_work_items": [
+        "J12",
+        "J16"
+      ],
+      "disposition": "reuse_implemented_slice_and_extend",
+      "note": "原完整任务门槛保持；联合里程碑的局部通过不升级整项状态"
+    },
+    {
+      "id": "FM:D05",
+      "source_state": "local_pilot_complete",
+      "source_requires": [
+        "FM:C02",
+        "FM:D04"
+      ],
+      "joint_work_items": [
+        "J15",
+        "J16"
+      ],
+      "disposition": "reuse_implemented_slice_and_extend",
+      "note": "原完整任务门槛保持；联合里程碑的局部通过不升级整项状态"
+    },
+    {
+      "id": "FM:D06",
+      "source_state": "local_pilot_complete",
+      "source_requires": [
+        "FM:D04"
+      ],
+      "joint_work_items": [
+        "J13",
+        "J16"
+      ],
+      "disposition": "reuse_implemented_slice_and_extend",
+      "note": "原完整任务门槛保持；联合里程碑的局部通过不升级整项状态"
+    },
+    {
+      "id": "FM:D07",
+      "source_state": "partial_blocked",
+      "source_requires": [
+        "FM:D02",
+        "FM:D03",
+        "FM:D04",
+        "FM:D05",
+        "FM:D06"
+      ],
+      "joint_work_items": [
+        "J03",
+        "J16",
+        "J23"
+      ],
+      "disposition": "retain_and_scope",
+      "note": "原完整任务门槛保持；联合里程碑的局部通过不升级整项状态"
+    },
+    {
+      "id": "FM:D08",
+      "source_state": "partial_blocked",
+      "source_requires": [
+        "FM:D07",
+        "FM:V00"
+      ],
+      "joint_work_items": [
+        "J03",
+        "J16",
+        "J23"
+      ],
+      "disposition": "retain_and_scope",
+      "note": "原完整任务门槛保持；联合里程碑的局部通过不升级整项状态"
+    },
+    {
+      "id": "FM:C01",
+      "source_state": "local_pilot_complete",
+      "source_requires": [],
+      "joint_work_items": [
+        "J01"
+      ],
+      "disposition": "reuse_implemented_slice_and_extend",
+      "note": "原完整任务门槛保持；联合里程碑的局部通过不升级整项状态"
+    },
+    {
+      "id": "FM:C02",
+      "source_state": "local_pilot_complete",
+      "source_requires": [
+        "FM:C01"
+      ],
+      "joint_work_items": [
+        "J11",
+        "J13"
+      ],
+      "disposition": "reuse_implemented_slice_and_extend",
+      "note": "原完整任务门槛保持；联合里程碑的局部通过不升级整项状态"
+    },
+    {
+      "id": "FM:C03",
+      "source_state": "planned",
+      "source_requires": [
+        "FM:C02",
+        "FM:D03"
+      ],
+      "joint_work_items": [
+        "J13"
+      ],
+      "disposition": "retain_and_scope",
+      "note": "原完整任务门槛保持；联合里程碑的局部通过不升级整项状态"
+    },
+    {
+      "id": "FM:C04",
+      "source_state": "planned",
+      "source_requires": [
+        "FM:C02",
+        "FM:D04"
+      ],
+      "joint_work_items": [
+        "J12",
+        "J14",
+        "J17"
+      ],
+      "disposition": "retain_and_scope",
+      "note": "原完整任务门槛保持；联合里程碑的局部通过不升级整项状态"
+    },
+    {
+      "id": "FM:C05",
+      "source_state": "planned",
+      "source_requires": [
+        "FM:C03",
+        "FM:C04",
+        "FM:DEBT02"
+      ],
+      "joint_work_items": [
+        "J13",
+        "J20"
+      ],
+      "disposition": "retain_and_scope",
+      "note": "原完整任务门槛保持；联合里程碑的局部通过不升级整项状态"
+    },
+    {
+      "id": "FM:C06",
+      "source_state": "planned",
+      "source_requires": [
+        "FM:C03"
+      ],
+      "joint_work_items": [
+        "J13",
+        "J15"
+      ],
+      "disposition": "retain_and_scope",
+      "note": "原完整任务门槛保持；联合里程碑的局部通过不升级整项状态"
+    },
+    {
+      "id": "FM:C07",
+      "source_state": "planned",
+      "source_requires": [
+        "FM:C06"
+      ],
+      "joint_work_items": [
+        "J04",
+        "J19"
+      ],
+      "disposition": "retain_and_scope",
+      "note": "原完整任务门槛保持；联合里程碑的局部通过不升级整项状态"
+    },
+    {
+      "id": "FM:E01",
+      "source_state": "planned",
+      "source_requires": [
+        "FM:C01",
+        "FM:R02",
+        "FM:X05"
+      ],
+      "joint_work_items": [
+        "J01",
+        "J14",
+        "J23"
+      ],
+      "disposition": "retain_and_scope",
+      "note": "原完整任务门槛保持；联合里程碑的局部通过不升级整项状态"
+    },
+    {
+      "id": "FM:E02",
+      "source_state": "planned",
+      "source_requires": [
+        "FM:C03",
+        "FM:C04",
+        "FM:C06",
+        "FM:DEBT02",
+        "FM:E01",
+        "FM:X01",
+        "FM:X02"
+      ],
+      "joint_work_items": [
+        "J14"
+      ],
+      "disposition": "retain_and_scope",
+      "note": "原完整任务门槛保持；联合里程碑的局部通过不升级整项状态"
+    },
+    {
+      "id": "FM:E03",
+      "source_state": "planned",
+      "source_requires": [
+        "FM:C03",
+        "FM:E01"
+      ],
+      "joint_work_items": [
+        "J14"
+      ],
+      "disposition": "retain_and_scope",
+      "note": "原完整任务门槛保持；联合里程碑的局部通过不升级整项状态"
+    },
+    {
+      "id": "FM:E04",
+      "source_state": "planned",
+      "source_requires": [
+        "FM:C03",
+        "FM:DEBT03",
+        "FM:E01"
+      ],
+      "joint_work_items": [
+        "J15",
+        "J31"
+      ],
+      "disposition": "retain_and_scope",
+      "note": "原完整任务门槛保持；联合里程碑的局部通过不升级整项状态"
+    },
+    {
+      "id": "FM:E05",
+      "source_state": "planned",
+      "source_requires": [
+        "FM:E02",
+        "FM:E03",
+        "FM:E04",
+        "FM:R03",
+        "FM:X03"
+      ],
+      "joint_work_items": [
+        "J15",
+        "J17"
+      ],
+      "disposition": "retain_and_scope",
+      "note": "原完整任务门槛保持；联合里程碑的局部通过不升级整项状态"
+    },
+    {
+      "id": "FM:E06",
+      "source_state": "planned",
+      "source_requires": [
+        "FM:E05"
+      ],
+      "joint_work_items": [
+        "J17",
+        "J30"
+      ],
+      "disposition": "retain_and_scope",
+      "note": "原完整任务门槛保持；联合里程碑的局部通过不升级整项状态"
+    },
+    {
+      "id": "FM:I01",
+      "source_state": "planned",
+      "source_requires": [
+        "FM:C05",
+        "FM:D08"
+      ],
+      "joint_work_items": [
+        "J20"
+      ],
+      "disposition": "retain_and_scope",
+      "note": "原完整任务门槛保持；联合里程碑的局部通过不升级整项状态"
+    },
+    {
+      "id": "FM:I02",
+      "source_state": "planned",
+      "source_requires": [
+        "FM:E05",
+        "FM:I01",
+        "FM:X04"
+      ],
+      "joint_work_items": [
+        "J21"
+      ],
+      "disposition": "retain_and_scope",
+      "note": "原完整任务门槛保持；联合里程碑的局部通过不升级整项状态"
+    },
+    {
+      "id": "FM:I03",
+      "source_state": "planned",
+      "source_requires": [
+        "FM:E06",
+        "FM:I01"
+      ],
+      "joint_work_items": [
+        "J07",
+        "J22",
+        "J30",
+        "J31"
+      ],
+      "disposition": "retain_and_scope",
+      "note": "原完整任务门槛保持；联合里程碑的局部通过不升级整项状态"
+    },
+    {
+      "id": "FM:I04",
+      "source_state": "planned",
+      "source_requires": [
+        "FM:C05",
+        "FM:DEBT02",
+        "FM:I03",
+        "FM:X08"
+      ],
+      "joint_work_items": [
+        "J11",
+        "J12",
+        "J24"
+      ],
+      "disposition": "retain_and_scope",
+      "note": "原完整任务门槛保持；联合里程碑的局部通过不升级整项状态"
+    },
+    {
+      "id": "FM:V00",
+      "source_state": "planned",
+      "source_requires": [],
+      "joint_work_items": [
+        "J25"
+      ],
+      "disposition": "retain_and_scope",
+      "note": "原完整任务门槛保持；联合里程碑的局部通过不升级整项状态"
+    },
+    {
+      "id": "FM:V01",
+      "source_state": "planned",
+      "source_requires": [
+        "FM:C01",
+        "FM:D01"
+      ],
+      "joint_work_items": [
+        "J23"
+      ],
+      "disposition": "retain_and_scope",
+      "note": "原完整任务门槛保持；联合里程碑的局部通过不升级整项状态"
+    },
+    {
+      "id": "FM:V02",
+      "source_state": "planned",
+      "source_requires": [
+        "FM:C04",
+        "FM:D07",
+        "FM:V01"
+      ],
+      "joint_work_items": [
+        "J23",
+        "J16"
+      ],
+      "disposition": "retain_and_scope",
+      "note": "原完整任务门槛保持；联合里程碑的局部通过不升级整项状态"
+    },
+    {
+      "id": "FM:V03",
+      "source_state": "partial_blocked",
+      "source_requires": [
+        "FM:D08",
+        "FM:I01",
+        "FM:I02",
+        "FM:I03",
+        "FM:I04",
+        "FM:X04",
+        "FM:X06",
+        "FM:X07",
+        "FM:X08"
+      ],
+      "joint_work_items": [
+        "J23"
+      ],
+      "disposition": "retain_and_scope",
+      "note": "原完整任务门槛保持；联合里程碑的局部通过不升级整项状态"
+    },
+    {
+      "id": "FM:V04",
+      "source_state": "planned",
+      "source_requires": [
+        "FM:V03",
+        "FM:X01",
+        "FM:X06"
+      ],
+      "joint_work_items": [
+        "J32"
+      ],
+      "disposition": "retain_and_scope",
+      "note": "原完整任务门槛保持；联合里程碑的局部通过不升级整项状态"
+    },
+    {
+      "id": "FM:V05",
+      "source_state": "planned",
+      "source_requires": [
+        "FM:V04"
+      ],
+      "joint_work_items": [
+        "J06"
+      ],
+      "disposition": "retain_and_scope",
+      "note": "原完整任务门槛保持；联合里程碑的局部通过不升级整项状态"
+    },
+    {
+      "id": "FM:V06",
+      "source_state": "partial_blocked",
+      "source_requires": [
+        "FM:M01",
+        "FM:M02",
+        "FM:R05",
+        "FM:V02",
+        "FM:V03",
+        "FM:V04",
+        "FM:V05",
+        "FM:X07",
+        "FM:X08"
+      ],
+      "joint_work_items": [
+        "J27"
+      ],
+      "disposition": "retain_and_scope",
+      "note": "原完整任务门槛保持；联合里程碑的局部通过不升级整项状态"
+    },
+    {
+      "id": "FM:X01",
+      "source_state": "planned",
+      "source_requires": [
+        "FM:C03",
+        "FM:D05"
+      ],
+      "joint_work_items": [
+        "J15"
+      ],
+      "disposition": "retain_and_scope",
+      "note": "原完整任务门槛保持；联合里程碑的局部通过不升级整项状态"
+    },
+    {
+      "id": "FM:X02",
+      "source_state": "planned",
+      "source_requires": [
+        "FM:C01"
+      ],
+      "joint_work_items": [
+        "J05",
+        "J30"
+      ],
+      "disposition": "retain_and_scope",
+      "note": "原完整任务门槛保持；联合里程碑的局部通过不升级整项状态"
+    },
+    {
+      "id": "FM:X03",
+      "source_state": "planned",
+      "source_requires": [
+        "FM:C03"
+      ],
+      "joint_work_items": [
+        "J17"
+      ],
+      "disposition": "retain_and_scope",
+      "note": "原完整任务门槛保持；联合里程碑的局部通过不升级整项状态"
+    },
+    {
+      "id": "FM:X04",
+      "source_state": "planned",
+      "source_requires": [
+        "FM:C04",
+        "FM:E05",
+        "FM:I01"
+      ],
+      "joint_work_items": [
+        "J21"
+      ],
+      "disposition": "retain_and_scope",
+      "note": "原完整任务门槛保持；联合里程碑的局部通过不升级整项状态"
+    },
+    {
+      "id": "FM:X05",
+      "source_state": "planned",
+      "source_requires": [
+        "FM:C01",
+        "FM:R02"
+      ],
+      "joint_work_items": [
+        "J23"
+      ],
+      "disposition": "retain_and_scope",
+      "note": "原完整任务门槛保持；联合里程碑的局部通过不升级整项状态"
+    },
+    {
+      "id": "FM:X06",
+      "source_state": "planned",
+      "source_requires": [
+        "FM:I01"
+      ],
+      "joint_work_items": [
+        "J20"
+      ],
+      "disposition": "retain_and_scope",
+      "note": "原完整任务门槛保持；联合里程碑的局部通过不升级整项状态"
+    },
+    {
+      "id": "FM:X07",
+      "source_state": "planned",
+      "source_requires": [
+        "FM:I03",
+        "FM:R03",
+        "FM:X01"
+      ],
+      "joint_work_items": [
+        "J22"
+      ],
+      "disposition": "retain_and_scope",
+      "note": "原完整任务门槛保持；联合里程碑的局部通过不升级整项状态"
+    },
+    {
+      "id": "FM:X08",
+      "source_state": "planned",
+      "source_requires": [
+        "FM:C05",
+        "FM:R02"
+      ],
+      "joint_work_items": [
+        "J24"
+      ],
+      "disposition": "retain_and_scope",
+      "note": "原完整任务门槛保持；联合里程碑的局部通过不升级整项状态"
+    },
+    {
+      "id": "FM:M01",
+      "source_state": "planned",
+      "source_requires": [],
+      "joint_work_items": [
+        "J26"
+      ],
+      "disposition": "retain_and_scope",
+      "note": "原完整任务门槛保持；联合里程碑的局部通过不升级整项状态"
+    },
+    {
+      "id": "FM:M02",
+      "source_state": "planned",
+      "source_requires": [
+        "FM:M01"
+      ],
+      "joint_work_items": [
+        "J26"
+      ],
+      "disposition": "retain_and_scope",
+      "note": "原完整任务门槛保持；联合里程碑的局部通过不升级整项状态"
+    },
+    {
+      "id": "FM:DEBT01",
+      "source_state": "planned",
+      "source_requires": [],
+      "joint_work_items": [
+        "J31"
+      ],
+      "disposition": "retain_and_scope",
+      "note": "原完整任务门槛保持；联合里程碑的局部通过不升级整项状态"
+    },
+    {
+      "id": "FM:DEBT02",
+      "source_state": "planned",
+      "source_requires": [],
+      "joint_work_items": [
+        "J11",
+        "J12",
+        "J17"
+      ],
+      "disposition": "retain_and_scope",
+      "note": "原完整任务门槛保持；联合里程碑的局部通过不升级整项状态"
+    },
+    {
+      "id": "FM:DEBT03",
+      "source_state": "planned",
+      "source_requires": [],
+      "joint_work_items": [
+        "J31"
+      ],
+      "disposition": "retain_and_scope",
+      "note": "原完整任务门槛保持；联合里程碑的局部通过不升级整项状态"
+    },
+    {
+      "id": "PS:W01",
+      "source_state": "specified_not_implemented",
+      "source_requires": [],
+      "joint_work_items": [
+        "J02"
+      ],
+      "disposition": "retain_and_scope",
+      "note": "联合计划补齐前置和验收，不宣告实现"
+    },
+    {
+      "id": "PS:W02",
+      "source_state": "specified_not_implemented",
+      "source_requires": [
+        "PS:W01"
+      ],
+      "joint_work_items": [
+        "J02"
+      ],
+      "disposition": "retain_and_scope",
+      "note": "联合计划补齐前置和验收，不宣告实现"
+    },
+    {
+      "id": "PS:W03",
+      "source_state": "specified_not_implemented",
+      "source_requires": [
+        "PS:W02",
+        "PS:W17",
+        "PS:W18"
+      ],
+      "joint_work_items": [
+        "J05"
+      ],
+      "disposition": "retain_and_scope",
+      "note": "联合计划补齐前置和验收，不宣告实现"
+    },
+    {
+      "id": "PS:W04",
+      "source_state": "specified_not_implemented",
+      "source_requires": [
+        "PS:W03"
+      ],
+      "joint_work_items": [
+        "J05",
+        "J08"
+      ],
+      "disposition": "retain_and_scope",
+      "note": "联合计划补齐前置和验收，不宣告实现"
+    },
+    {
+      "id": "PS:W05",
+      "source_state": "specified_not_implemented",
+      "source_requires": [
+        "PS:W04"
+      ],
+      "joint_work_items": [
+        "J04"
+      ],
+      "disposition": "retain_and_scope",
+      "note": "联合计划补齐前置和验收，不宣告实现"
+    },
+    {
+      "id": "PS:W06",
+      "source_state": "specified_not_implemented",
+      "source_requires": [],
+      "joint_work_items": [
+        "J03"
+      ],
+      "disposition": "retain_and_scope",
+      "note": "联合计划补齐前置和验收，不宣告实现"
+    },
+    {
+      "id": "PS:W07",
+      "source_state": "specified_not_implemented",
+      "source_requires": [
+        "PS:W05",
+        "PS:W06",
+        "PS:W17"
+      ],
+      "joint_work_items": [
+        "J07"
+      ],
+      "disposition": "retain_and_scope",
+      "note": "联合计划补齐前置和验收，不宣告实现"
+    },
+    {
+      "id": "PS:W08",
+      "source_state": "specified_not_implemented",
+      "source_requires": [
+        "PS:W07"
+      ],
+      "joint_work_items": [
+        "J09"
+      ],
+      "disposition": "retain_and_scope",
+      "note": "联合计划补齐前置和验收，不宣告实现"
+    },
+    {
+      "id": "PS:W09",
+      "source_state": "specified_not_implemented",
+      "source_requires": [
+        "PS:W08"
+      ],
+      "joint_work_items": [
+        "J10"
+      ],
+      "disposition": "rescope",
+      "note": "W09 四类方法不是首次资格前置；W11 拆首次受限试验/测量/激活；W16 的形式化与渠道分别交付"
+    },
+    {
+      "id": "PS:W10",
+      "source_state": "specified_not_implemented",
+      "source_requires": [
+        "PS:W08"
+      ],
+      "joint_work_items": [
+        "J16",
+        "J19"
+      ],
+      "disposition": "retain_and_scope",
+      "note": "联合计划补齐前置和验收，不宣告实现"
+    },
+    {
+      "id": "PS:W11",
+      "source_state": "specified_not_implemented",
+      "source_requires": [
+        "PS:W09",
+        "PS:W10",
+        "PS:W19"
+      ],
+      "joint_work_items": [
+        "J10"
+      ],
+      "disposition": "rescope",
+      "note": "W09 四类方法不是首次资格前置；W11 拆首次受限试验/测量/激活；W16 的形式化与渠道分别交付"
+    },
+    {
+      "id": "PS:W12",
+      "source_state": "specified_not_implemented",
+      "source_requires": [
+        "PS:W11"
+      ],
+      "joint_work_items": [
+        "J18"
+      ],
+      "disposition": "retain_and_scope",
+      "note": "联合计划补齐前置和验收，不宣告实现"
+    },
+    {
+      "id": "PS:W13",
+      "source_state": "specified_not_implemented",
+      "source_requires": [
+        "PS:W10"
+      ],
+      "joint_work_items": [
+        "J30"
+      ],
+      "disposition": "retain_and_scope",
+      "note": "联合计划补齐前置和验收，不宣告实现"
+    },
+    {
+      "id": "PS:W14",
+      "source_state": "specified_not_implemented",
+      "source_requires": [
+        "PS:W11"
+      ],
+      "joint_work_items": [
+        "J19"
+      ],
+      "disposition": "retain_and_scope",
+      "note": "联合计划补齐前置和验收，不宣告实现"
+    },
+    {
+      "id": "PS:W15",
+      "source_state": "specified_not_implemented",
+      "source_requires": [
+        "PS:W14"
+      ],
+      "joint_work_items": [
+        "J29"
+      ],
+      "disposition": "retain_and_scope",
+      "note": "联合计划补齐前置和验收，不宣告实现"
+    },
+    {
+      "id": "PS:W16",
+      "source_state": "specified_not_implemented",
+      "source_requires": [
+        "PS:W11"
+      ],
+      "joint_work_items": [
+        "J28",
+        "J22"
+      ],
+      "disposition": "rescope",
+      "note": "W09 四类方法不是首次资格前置；W11 拆首次受限试验/测量/激活；W16 的形式化与渠道分别交付"
+    },
+    {
+      "id": "PS:W17",
+      "source_state": "specified_not_implemented",
+      "source_requires": [
+        "PS:W06"
+      ],
+      "joint_work_items": [
+        "J06"
+      ],
+      "disposition": "retain_and_scope",
+      "note": "联合计划补齐前置和验收，不宣告实现"
+    },
+    {
+      "id": "PS:W18",
+      "source_state": "specified_not_implemented",
+      "source_requires": [
+        "PS:W06"
+      ],
+      "joint_work_items": [
+        "J06"
+      ],
+      "disposition": "retain_and_scope",
+      "note": "联合计划补齐前置和验收，不宣告实现"
+    },
+    {
+      "id": "PS:W19",
+      "source_state": "specified_not_implemented",
+      "source_requires": [
+        "PS:W06",
+        "PS:W18"
+      ],
+      "joint_work_items": [
+        "J06",
+        "J23"
+      ],
+      "disposition": "retain_and_scope",
+      "note": "联合计划补齐前置和验收，不宣告实现"
+    }
+  ],
+  "inherited_gate_snapshot": "evidence/inputs/firstmate-delivery-gates.json",
+  "rule": "Firstmate gate requirements still apply to its release slices; joint graph is a scoped implementation order, not permission to bypass old gates"
+}

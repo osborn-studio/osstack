@@ -1,0 +1,319 @@
+{
+  "algorithm": "joint-canonical-v1",
+  "vectors": [
+    {
+      "id": "ascii-keys",
+      "valid": true,
+      "domain": "osstack.joint.method-binding.v1",
+      "input": {
+        "B": 1,
+        "a": 2,
+        "_": 3,
+        "-": 4
+      },
+      "canonical_json": "{\"-\":4,\"B\":1,\"_\":3,\"a\":2}",
+      "preimage_utf8_hex": "6f73737461636b2e6a6f696e742e6d6574686f642d62696e64696e672e76310a7b222d223a342c2242223a312c225f223a332c2261223a327d",
+      "sha256": "82901cb187ae8d8ab61f833b34abf83508632350a09efaf1f7421da82388e137"
+    },
+    {
+      "id": "unicode",
+      "valid": true,
+      "domain": "osstack.joint.method-binding.v1",
+      "input": {
+        "text": "证据🙂"
+      },
+      "canonical_json": "{\"text\":\"证据🙂\"}",
+      "preimage_utf8_hex": "6f73737461636b2e6a6f696e742e6d6574686f642d62696e64696e672e76310a7b2274657874223a22e8af81e68daef09f9982227d",
+      "sha256": "5757c9922fe5fa0f1a6b8de97a01f0810331f780aa6c68575cfe4a777eebbb1a"
+    },
+    {
+      "id": "null",
+      "valid": true,
+      "domain": "osstack.joint.method-binding.v1",
+      "input": {
+        "value": null
+      },
+      "canonical_json": "{\"value\":null}",
+      "preimage_utf8_hex": "6f73737461636b2e6a6f696e742e6d6574686f642d62696e64696e672e76310a7b2276616c7565223a6e756c6c7d",
+      "sha256": "16d48264cff13506cab8f1a3da8c18d5c3cbc0d90f2aa495131112b41f4e2d78"
+    },
+    {
+      "id": "absent",
+      "valid": true,
+      "domain": "osstack.joint.method-binding.v1",
+      "input": {},
+      "canonical_json": "{}",
+      "preimage_utf8_hex": "6f73737461636b2e6a6f696e742e6d6574686f642d62696e64696e672e76310a7b7d",
+      "sha256": "694cc841cac91bdfa36a8b601ba7d4249acceccaffd3f13cf75d599f17b95f5b"
+    },
+    {
+      "id": "array-order",
+      "valid": true,
+      "domain": "osstack.joint.method-binding.v1",
+      "input": {
+        "roles": [
+          "reviewer",
+          "builder"
+        ]
+      },
+      "canonical_json": "{\"roles\":[\"reviewer\",\"builder\"]}",
+      "preimage_utf8_hex": "6f73737461636b2e6a6f696e742e6d6574686f642d62696e64696e672e76310a7b22726f6c6573223a5b227265766965776572222c226275696c646572225d7d",
+      "sha256": "b16d914509d18f117f642d52ad386e39317f29db56c6cab36f3af4a55aa26ce9"
+    },
+    {
+      "id": "domain-separated",
+      "valid": true,
+      "domain": "osstack.joint.method-proposal.v1",
+      "input": {},
+      "canonical_json": "{}",
+      "preimage_utf8_hex": "6f73737461636b2e6a6f696e742e6d6574686f642d70726f706f73616c2e76310a7b7d",
+      "sha256": "5443c18d99a58b52cdb7cec3728d52d9c94ccbd717433cd62de87ab1cfec3403"
+    },
+    {
+      "id": "duplicate-key",
+      "valid": false,
+      "raw_json": "{\"a\":1,\"a\":2}",
+      "expected": "reject_before_hash"
+    },
+    {
+      "id": "negative-zero",
+      "valid": false,
+      "raw_json": "{\"a\":-0}",
+      "expected": "reject_before_hash"
+    },
+    {
+      "id": "float",
+      "valid": false,
+      "raw_json": "{\"a\":1.5}",
+      "expected": "reject_before_hash"
+    },
+    {
+      "id": "unsafe-integer",
+      "valid": false,
+      "raw_json": "{\"a\":9007199254740992}",
+      "expected": "reject_before_hash"
+    },
+    {
+      "id": "lone-surrogate",
+      "valid": false,
+      "raw_json": "{\"a\":\"\\ud800\"}",
+      "expected": "reject_before_hash"
+    },
+    {
+      "id": "domain-binding_digest",
+      "valid": true,
+      "domain": "osstack.joint.method-binding.v1",
+      "input": {
+        "fixture_field": "binding_digest",
+        "value": "证据🙂"
+      },
+      "canonical_json": "{\"fixture_field\":\"binding_digest\",\"value\":\"证据🙂\"}",
+      "preimage_utf8_hex": "6f73737461636b2e6a6f696e742e6d6574686f642d62696e64696e672e76310a7b22666978747572655f6669656c64223a2262696e64696e675f646967657374222c2276616c7565223a22e8af81e68daef09f9982227d",
+      "sha256": "6c9b1ad42a1e5180a2cc4dcc1db755f86471b372a37d8516c5cdb4931710c876"
+    },
+    {
+      "id": "domain-proposal_digest",
+      "valid": true,
+      "domain": "osstack.joint.method-proposal.v1",
+      "input": {
+        "fixture_field": "proposal_digest",
+        "value": "证据🙂"
+      },
+      "canonical_json": "{\"fixture_field\":\"proposal_digest\",\"value\":\"证据🙂\"}",
+      "preimage_utf8_hex": "6f73737461636b2e6a6f696e742e6d6574686f642d70726f706f73616c2e76310a7b22666978747572655f6669656c64223a2270726f706f73616c5f646967657374222c2276616c7565223a22e8af81e68daef09f9982227d",
+      "sha256": "005687666ea96bddf6d642fa7e4888870f04a5494e5b3eb15030c483dd06c6a7"
+    },
+    {
+      "id": "domain-candidate_method_digest",
+      "valid": true,
+      "domain": "osstack.joint.method-proposal.v1",
+      "input": {
+        "fixture_field": "candidate_method_digest",
+        "value": "证据🙂"
+      },
+      "canonical_json": "{\"fixture_field\":\"candidate_method_digest\",\"value\":\"证据🙂\"}",
+      "preimage_utf8_hex": "6f73737461636b2e6a6f696e742e6d6574686f642d70726f706f73616c2e76310a7b22666978747572655f6669656c64223a2263616e6469646174655f6d6574686f645f646967657374222c2276616c7565223a22e8af81e68daef09f9982227d",
+      "sha256": "5db945c43692815ea7b146cb0cd25b264d9993835d9655027c13a01ba1c468f0"
+    },
+    {
+      "id": "domain-support_profile_digest",
+      "valid": true,
+      "domain": "osstack.joint.support-profile.v2",
+      "input": {
+        "fixture_field": "support_profile_digest",
+        "value": "证据🙂"
+      },
+      "canonical_json": "{\"fixture_field\":\"support_profile_digest\",\"value\":\"证据🙂\"}",
+      "preimage_utf8_hex": "6f73737461636b2e6a6f696e742e737570706f72742d70726f66696c652e76320a7b22666978747572655f6669656c64223a22737570706f72745f70726f66696c655f646967657374222c2276616c7565223a22e8af81e68daef09f9982227d",
+      "sha256": "66b3b97126138e12241ee13ee7dab55a49bc70411beb8f3aa5b8264779332f4e"
+    },
+    {
+      "id": "domain-source_snapshot_digest",
+      "valid": true,
+      "domain": "osstack.joint.source-snapshot.v1",
+      "input": {
+        "fixture_field": "source_snapshot_digest",
+        "value": "证据🙂"
+      },
+      "canonical_json": "{\"fixture_field\":\"source_snapshot_digest\",\"value\":\"证据🙂\"}",
+      "preimage_utf8_hex": "6f73737461636b2e6a6f696e742e736f757263652d736e617073686f742e76310a7b22666978747572655f6669656c64223a22736f757263655f736e617073686f745f646967657374222c2276616c7565223a22e8af81e68daef09f9982227d",
+      "sha256": "20c2096da54984ad7a57b6381cadfbfc17620e0b133b8a674e8838af1360ce37"
+    },
+    {
+      "id": "domain-required_artifacts_digest",
+      "valid": true,
+      "domain": "osstack.joint.artifact-requirements.v1",
+      "input": {
+        "fixture_field": "required_artifacts_digest",
+        "value": "证据🙂"
+      },
+      "canonical_json": "{\"fixture_field\":\"required_artifacts_digest\",\"value\":\"证据🙂\"}",
+      "preimage_utf8_hex": "6f73737461636b2e6a6f696e742e61727469666163742d726571756972656d656e74732e76310a7b22666978747572655f6669656c64223a2272657175697265645f6172746966616374735f646967657374222c2276616c7565223a22e8af81e68daef09f9982227d",
+      "sha256": "7dc6611d70eedef53d0bc7785c0adaf90e92007d98f6f94199841a717b7c408f"
+    },
+    {
+      "id": "domain-check_binding_digest",
+      "valid": true,
+      "domain": "osstack.joint.check-binding.v1",
+      "input": {
+        "fixture_field": "check_binding_digest",
+        "value": "证据🙂"
+      },
+      "canonical_json": "{\"fixture_field\":\"check_binding_digest\",\"value\":\"证据🙂\"}",
+      "preimage_utf8_hex": "6f73737461636b2e6a6f696e742e636865636b2d62696e64696e672e76310a7b22666978747572655f6669656c64223a22636865636b5f62696e64696e675f646967657374222c2276616c7565223a22e8af81e68daef09f9982227d",
+      "sha256": "7c607392ff0c74a5c0be420d873247d02b3e0c720f7ab239d7c76055e8c29a9a"
+    },
+    {
+      "id": "domain-intent_digest",
+      "valid": true,
+      "domain": "osstack.joint.intent.v1",
+      "input": {
+        "fixture_field": "intent_digest",
+        "value": "证据🙂"
+      },
+      "canonical_json": "{\"fixture_field\":\"intent_digest\",\"value\":\"证据🙂\"}",
+      "preimage_utf8_hex": "6f73737461636b2e6a6f696e742e696e74656e742e76310a7b22666978747572655f6669656c64223a22696e74656e745f646967657374222c2276616c7565223a22e8af81e68daef09f9982227d",
+      "sha256": "c512dd1b17d7101fc55e216603c4bdb9e090a4f55d71a80a546dca4c98fe4e08"
+    },
+    {
+      "id": "domain-recipe_digest",
+      "valid": true,
+      "domain": "osstack.joint.method-recipe.v1",
+      "input": {
+        "fixture_field": "recipe_digest",
+        "value": "证据🙂"
+      },
+      "canonical_json": "{\"fixture_field\":\"recipe_digest\",\"value\":\"证据🙂\"}",
+      "preimage_utf8_hex": "6f73737461636b2e6a6f696e742e6d6574686f642d7265636970652e76310a7b22666978747572655f6669656c64223a227265636970655f646967657374222c2276616c7565223a22e8af81e68daef09f9982227d",
+      "sha256": "b333110033807552684a30f0813c8170be5701a55ac90b740d14053c25c5edea"
+    },
+    {
+      "id": "domain-method_input_digest",
+      "valid": true,
+      "domain": "osstack.joint.method-input.v1",
+      "input": {
+        "fixture_field": "method_input_digest",
+        "value": "证据🙂"
+      },
+      "canonical_json": "{\"fixture_field\":\"method_input_digest\",\"value\":\"证据🙂\"}",
+      "preimage_utf8_hex": "6f73737461636b2e6a6f696e742e6d6574686f642d696e7075742e76310a7b22666978747572655f6669656c64223a226d6574686f645f696e7075745f646967657374222c2276616c7565223a22e8af81e68daef09f9982227d",
+      "sha256": "92f52bf2a5c8fd14efe60fdfa2d692788d269507546b60f5766f195aefda64d5"
+    },
+    {
+      "id": "domain-environment_digest",
+      "valid": true,
+      "domain": "osstack.joint.environment.v1",
+      "input": {
+        "fixture_field": "environment_digest",
+        "value": "证据🙂"
+      },
+      "canonical_json": "{\"fixture_field\":\"environment_digest\",\"value\":\"证据🙂\"}",
+      "preimage_utf8_hex": "6f73737461636b2e6a6f696e742e656e7669726f6e6d656e742e76310a7b22666978747572655f6669656c64223a22656e7669726f6e6d656e745f646967657374222c2276616c7565223a22e8af81e68daef09f9982227d",
+      "sha256": "cb35cbeacfd057e36319ddf52cb7466dbc0d2916dcda7ed641f51ee8c588c649"
+    },
+    {
+      "id": "domain-scenario_digest",
+      "valid": true,
+      "domain": "osstack.joint.scenario.v1",
+      "input": {
+        "fixture_field": "scenario_digest",
+        "value": "证据🙂"
+      },
+      "canonical_json": "{\"fixture_field\":\"scenario_digest\",\"value\":\"证据🙂\"}",
+      "preimage_utf8_hex": "6f73737461636b2e6a6f696e742e7363656e6172696f2e76310a7b22666978747572655f6669656c64223a227363656e6172696f5f646967657374222c2276616c7565223a22e8af81e68daef09f9982227d",
+      "sha256": "e822090ec64d64c264ea644e6eaafca81acc0b4471d9efb141da2c55b0980346"
+    },
+    {
+      "id": "domain-check_registry_digest",
+      "valid": true,
+      "domain": "osstack.joint.check-registry.v1",
+      "input": {
+        "fixture_field": "check_registry_digest",
+        "value": "证据🙂"
+      },
+      "canonical_json": "{\"fixture_field\":\"check_registry_digest\",\"value\":\"证据🙂\"}",
+      "preimage_utf8_hex": "6f73737461636b2e6a6f696e742e636865636b2d72656769737472792e76310a7b22666978747572655f6669656c64223a22636865636b5f72656769737472795f646967657374222c2276616c7565223a22e8af81e68daef09f9982227d",
+      "sha256": "4c063aee31480eabddcca310220a0d21175d965351a5cdeb041785eb3c559d29"
+    },
+    {
+      "id": "domain-schema_spec_digest",
+      "valid": true,
+      "domain": "osstack.joint.schema-spec.v1",
+      "input": {
+        "fixture_field": "schema_spec_digest",
+        "value": "证据🙂"
+      },
+      "canonical_json": "{\"fixture_field\":\"schema_spec_digest\",\"value\":\"证据🙂\"}",
+      "preimage_utf8_hex": "6f73737461636b2e6a6f696e742e736368656d612d737065632e76310a7b22666978747572655f6669656c64223a22736368656d615f737065635f646967657374222c2276616c7565223a22e8af81e68daef09f9982227d",
+      "sha256": "becbdc8e772e4012ec66a6810e319fefaecfe07f2c802ac0c1300d03032b732e"
+    },
+    {
+      "id": "domain-subject_digest",
+      "valid": true,
+      "domain": "osstack.joint.recovery-subject.v1",
+      "input": {
+        "fixture_field": "subject_digest",
+        "value": "证据🙂"
+      },
+      "canonical_json": "{\"fixture_field\":\"subject_digest\",\"value\":\"证据🙂\"}",
+      "preimage_utf8_hex": "6f73737461636b2e6a6f696e742e7265636f766572792d7375626a6563742e76310a7b22666978747572655f6669656c64223a227375626a6563745f646967657374222c2276616c7565223a22e8af81e68daef09f9982227d",
+      "sha256": "8efac75cae7662452fa050c754fc125a39f691a41ac250e3a5302979e0f8bd3d"
+    },
+    {
+      "id": "escapes-quote-backslash",
+      "valid": true,
+      "domain": "osstack.joint.method-binding.v1",
+      "input": {
+        "s": "\"\\"
+      },
+      "canonical_json": "{\"s\":\"\\\"\\\\\"}",
+      "preimage_utf8_hex": "6f73737461636b2e6a6f696e742e6d6574686f642d62696e64696e672e76310a7b2273223a225c225c5c227d",
+      "sha256": "199ef4ffa66659f9c1230e3e89dfdf1da4cbfbdf390fe734adeed225abcb6ade"
+    },
+    {
+      "id": "escapes-control",
+      "valid": true,
+      "domain": "osstack.joint.method-binding.v1",
+      "input": {
+        "s": "\b\f\n\r\t\u0000\u001f"
+      },
+      "canonical_json": "{\"s\":\"\\b\\f\\n\\r\\t\\u0000\\u001f\"}",
+      "preimage_utf8_hex": "6f73737461636b2e6a6f696e742e6d6574686f642d62696e64696e672e76310a7b2273223a225c625c665c6e5c725c745c75303030305c7530303166227d",
+      "sha256": "1264ee627652d55ec45d8fb34dd9145e53eda1d6bbac2f0ac1a2160b77d2bdbd"
+    },
+    {
+      "id": "domain-role_required_artifacts_digest",
+      "valid": true,
+      "domain": "osstack.joint.role-artifact-requirements.v1",
+      "input": {
+        "schema_version": 1,
+        "role": "reviewer",
+        "requirements_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      "canonical_json": "{\"requirements_digest\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"role\":\"reviewer\",\"schema_version\":1}",
+      "preimage_utf8_hex": "6f73737461636b2e6a6f696e742e726f6c652d61727469666163742d726571756972656d656e74732e76310a7b22726571756972656d656e74735f646967657374223a2261616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161222c22726f6c65223a227265766965776572222c22736368656d615f76657273696f6e223a317d",
+      "sha256": "74816d1c586fad22cedf7ada79fad3a44ebf74967e4a867dd4632177a8bc3d1e"
+    }
+  ],
+  "note": "Canonical/domain byte unit vectors, not full schema-valid product payloads or product interoperability results"
+}

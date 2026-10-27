@@ -1,0 +1,138 @@
+{
+  "algorithm": "joint-canonical-v1",
+  "definitions": [
+    {
+      "field": "contract_digest",
+      "domain": "existing_delivery_contract",
+      "input": "frozen.contract; exact existing freezeDeliveryContract/deliveryContractDigest rules"
+    },
+    {
+      "field": "binding_digest",
+      "domain": "osstack.joint.method-binding.v1",
+      "input": "all MethodBinding fields except binding_digest; role_materials sorted by role"
+    },
+    {
+      "field": "proposal_digest",
+      "domain": "osstack.joint.method-proposal.v1",
+      "input": "entire strict MethodProposal object"
+    },
+    {
+      "field": "candidate_method_digest",
+      "domain": "osstack.joint.method-proposal.v1",
+      "input": "same entire MethodProposal object as proposal_digest; not recipe digest"
+    },
+    {
+      "field": "context_config_digest",
+      "domain": "raw_sha256",
+      "input": "exact immutable host context config file bytes, including whitespace"
+    },
+    {
+      "field": "support_profile_digest",
+      "domain": "osstack.joint.support-profile.v2",
+      "input": "entire strict SupportProfile schema_version=2; class in hash; trusted measurement and activation checks remain separate"
+    },
+    {
+      "field": "source_snapshot_digest",
+      "domain": "osstack.joint.source-snapshot.v1",
+      "input": "repository identity, commit, subdir, sorted path+mode+blob hashes, adopted dependency records, license refs; no working-tree extras"
+    },
+    {
+      "field": "required_artifacts_digest",
+      "domain": "osstack.joint.artifact-requirements.v1",
+      "input": "entire strict ArtifactRequirements object in recipe/proposal; declaration order retained; duplicate artifact_ref_kind+producer_role rejected"
+    },
+    {
+      "field": "check_binding_digest",
+      "domain": "osstack.joint.check-binding.v1",
+      "input": "entire strict CheckBinding object; checks preserve declaration order, IDs unique"
+    },
+    {
+      "field": "intent_digest",
+      "domain": "osstack.joint.intent.v1",
+      "input": "intent frame body: task/revision/goals/non-goals/observations/hypotheses/unknowns/source_refs; schema frozen J01"
+    },
+    {
+      "field": "recipe_digest",
+      "domain": "osstack.joint.method-recipe.v1",
+      "input": "entire strict MethodRecipe object"
+    },
+    {
+      "field": "method_input_digest",
+      "domain": "osstack.joint.method-input.v1",
+      "input": "immutable role template input body: intent digest + source digest + requested materials; no future binding or receipts"
+    },
+    {
+      "field": "environment_digest",
+      "domain": "osstack.joint.environment.v1",
+      "input": "scope/repo/home, OS/arch/filesystem, build/provider/model/runtime, isolation and setup fixture identities"
+    },
+    {
+      "field": "scenario_digest",
+      "domain": "osstack.joint.scenario.v1",
+      "input": "registered driver scenario definition and action schema + input fixture digest; not results"
+    },
+    {
+      "field": "check_registry_digest",
+      "domain": "osstack.joint.check-registry.v1",
+      "input": "authorized registry entries sorted by ref; ref/command bytes/pass/fail sets; duplicate ref rejected"
+    },
+    {
+      "field": "schema_spec_digest",
+      "domain": "osstack.joint.schema-spec.v1",
+      "input": "schema_change_id, source/target schema numbers, ddl_digest, fixture_digest, expected lineage tables sorted; no future receipt"
+    },
+    {
+      "field": "ddl_digest",
+      "domain": "raw_sha256",
+      "input": "exact frozen migration SQL bytes"
+    },
+    {
+      "field": "fixture_digest",
+      "domain": "raw_sha256",
+      "input": "exact frozen schema fixture bytes"
+    },
+    {
+      "field": "recovery_build_digest",
+      "domain": "raw_sha256",
+      "input": "exact recovery executable artifact bytes; multi-file build uses frozen artifact manifest bytes"
+    },
+    {
+      "field": "host_build_digest",
+      "domain": "raw_sha256",
+      "input": "exact host build artifact bytes/declared immutable artifact manifest bytes"
+    },
+    {
+      "field": "body_schema_digest",
+      "domain": "raw_sha256",
+      "input": "exact versioned body JSON Schema file bytes"
+    },
+    {
+      "field": "verifier_policy_digest",
+      "domain": "raw_sha256",
+      "input": "exact trusted versioned verifier policy file bytes"
+    },
+    {
+      "field": "subject_digest",
+      "domain": "osstack.joint.recovery-subject.v1",
+      "input": "entire strict typed recovery subject; effect and legacy attention keys cannot alias"
+    },
+    {
+      "field": "evidence_digest",
+      "domain": "raw_sha256",
+      "input": "exact immutable trusted proof record bytes; hash is not producer authentication"
+    },
+    {
+      "field": "role_required_artifacts_digest",
+      "domain": "osstack.joint.role-artifact-requirements.v1",
+      "input": "{schema_version:1, role, requirements_digest:<whole ArtifactRequirements digest>}; all roles see the global completion obligations but have distinct role-bound identities; host dispatches producer responsibility by producer_role"
+    }
+  ],
+  "raw_sha_fields": [
+    "content_sha256",
+    "method_text_sha256",
+    "prompt_sha256",
+    "diff_sha256",
+    "workspace_state_sha256"
+  ],
+  "raw_sha_rule": "SHA256 of exact referenced UTF-8/binary content bytes as defined by its producer; candidate diff/workspace algorithms remain existing host rules"
+}

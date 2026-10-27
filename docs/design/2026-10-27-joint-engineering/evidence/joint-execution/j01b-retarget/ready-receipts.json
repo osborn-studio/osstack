@@ -1,0 +1,27 @@
+{
+  "comment": {
+    "comment_id": 300,
+    "card_id": "card_6d5d3d02",
+    "author": "joint-entry",
+    "body": "PR #273 Ready, target main. Final code e3fd9a9ffccbe66ad0cdfee101e0864f1ca277db; full local verification 6160 passed/5 skipped/0 failed, protocol477, checkpoint22. Claude CLI Sonnet5.5 final PASS. Original reports and confirmed fixes preserved in docs/implementation/joint-contracts-retarget. GitHub CI remains separate; awaiting gilberthello approval/merge. No milestone-done or runtime activation claim. #274/#281 require new predecessor integration and revalidation.",
+    "created_at": 1793090347.937
+  },
+  "move": {
+    "card_id": "card_6d5d3d02",
+    "board": "joint-firstmate-pstack",
+    "task_id": null,
+    "title": "[J01] 共享身份、完成与资格契约",
+    "body": "{\"project\": \"Firstmate+pstack absorption into OSStack\", \"owner_thread\": \"01a178ed-616a-7bb1-8d20-13f4c1019245\", \"work_item\": \"J01\", \"depends_on\": [], \"merge_after\": [], \"acceptance_ids\": [\"JA01\", \"JA02\", \"JA59\"], \"progress\": \"candidate_pr_open\", \"runtime_enabled\": false, \"source\": \"docs/design/2026-10-27-joint-engineering/execution-ledger.json\", \"dependency_enforcement\": \"owner checks frozen work graph; board text does not enforce it\"}",
+    "status": "blocked",
+    "priority": 0,
+    "assignee": "joint-entry",
+    "blocked_reason": "#272 merged; #273 Ready after fresh audit and final local validation. Await required GitHub CI and gilberthello approval/merge.",
+    "tenant_id": null,
+    "card_type": "implementation",
+    "meta": null,
+    "created_at": 1793083533.963,
+    "updated_at": 1793090347.938,
+    "started_at": 1793083533.963,
+    "completed_at": null
+  }
+}

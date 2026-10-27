@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { decodeJointContract, JointContract } from './joint-contracts.js';
-import { bindingDigest, roleRequirementsDigest, trialBudgetIssues } from './method-binding.js';
+import { bindingDigest, roleRequirementsDigest, trialBudgetIssues, supportProfileDigest } from './method-binding.js';
 const fixtures = JSON.parse(readFileSync(new URL('../fixtures/joint/contracts.json', import.meta.url), 'utf8')).fixtures as Array<{id: string; valid: boolean; payload: Record<string, unknown>}>;
 const payload = (id: string) => structuredClone(fixtures.find(f => f.id === id)!.payload);
 describe('joint contracts', () => {
@@ -21,7 +21,8 @@ describe('joint contracts', () => {
   it('refuses unsupported hard finance caps without inventing zero usage', () => {
     const p = payload('valid-trial_permit'); const profile = payload('valid-support_profile');
     profile.budget_enforceability = {wall:'enforceable',actions:'enforceable',tokens:'enforceable',cost:'unavailable'};
+    p.support_profile_digest = supportProfileDigest(profile); p.repository = profile.canonical_repo;
     expect(trialBudgetIssues(p, profile)).toContain('cost_not_enforceable');
-    delete p.max_cost_microusd; expect(trialBudgetIssues(p, profile)).toEqual([]);
+    delete p.max_cost_microusd; expect(trialBudgetIssues(p, profile)).toEqual(['adapter_invocations_unattested']);
   });
 });

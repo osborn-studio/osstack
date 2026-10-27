@@ -1,0 +1,109 @@
+ M AGENTS.md
+ M docs/LOOP_ENGINEERING_DESIGN.md
+ M package.json
+ M packages/agents/src/adapters/deepseek-command.ts
+ M packages/agents/src/adapters/kimi-code.ts
+ M packages/agents/src/semantic/anthropic-no-tools.ts
+ M packages/agents/src/worktree.ts
+ M packages/cli/src/product-entry-command.ts
+ M packages/cli/vitest.config.ts
+ M packages/core/src/index.ts
+ M packages/loop/src/executor.ts
+ M packages/loop/src/feedback.test.ts
+ M packages/loop/vitest.config.ts
+ M packages/neat-eval/package.json
+ M packages/neat-eval/src/cli.ts
+ M packages/neat-eval/src/runner.ts
+ M pnpm-lock.yaml
+ M scripts/demo-loop-daemon.mjs
+ M scripts/demo-loop.mjs
+ M scripts/eval-neat-goldens.mjs
+ M scripts/eval-neat-parity-offline.mjs
+ M scripts/notarize-single-binary.mjs
+ M scripts/smoke-bun-single-binary.mjs
+ M scripts/smoke-deliver-proof.mjs
+ M scripts/smoke-guarded-deploy.mjs
+ M scripts/smoke-knowledge-cloud-deploy-assets.mjs
+ M scripts/smoke-knowledge-cloud.mjs
+ M scripts/smoke-loop.mjs
+ M scripts/smoke-neat-semantic-live.mjs
+ M scripts/smoke-neat.mjs
+ M scripts/smoke-npm-broken-deprecation.mjs
+ M scripts/smoke-npm-install.mjs
+ M scripts/smoke-npm-package-artifacts.mjs
+ M scripts/smoke-npm-package-bootstrap.mjs
+ M scripts/smoke-npm-preflight-access.mjs
+ M scripts/smoke-npm-registry-skew.mjs
+ M scripts/smoke-npm-trust-configuration.mjs
+ M scripts/smoke-npm-trusted-publishers.mjs
+ M scripts/smoke-portable-cli.mjs
+ M scripts/smoke-probe-skill.mjs
+ M scripts/smoke-probe.mjs
+ M scripts/smoke-real-repo-deliver.mjs
+ M scripts/smoke-release-plan.mjs
+ M scripts/smoke-single-binary-release-pack.mjs
+ M scripts/smoke-single-binary-release-publish.mjs
+ M scripts/smoke-single-binary-signing.mjs
+ M scripts/soak-kimi-autonomy.test.mjs
+ M scripts/verify-graph-pilot.mjs
+?? docs/design/2026-09-13-executable-graph-plan.md
+?? docs/design/2026-09-13-graph-functional-runtime.md
+?? docs/design/2026-09-13-os-products-definition.md
+?? docs/design/2026-10-25-engineering-agent/
+?? docs/guides/graph-delegation.md
+?? docs/guides/graph-runtime.md
+?? docs/handoffs/
+?? docs/implementation/
+?? docs/reports/2026-09-13-executable-graph-claude-review.md
+?? docs/reports/2026-09-13-executable-graph-context.md
+?? docs/reports/2026-09-13-executable-graph-evidence/
+?? docs/reports/2026-09-13-executable-graph-research.md
+?? docs/reports/2026-09-13-os-products-claude-review.md
+?? docs/reports/2026-09-13-os-products-context.md
+?? docs/reports/2026-09-13-os-products-evidence/
+?? docs/reports/2026-10-08-cost-reduction-status.md
+?? docs/reports/2026-10-26-pstack/
+?? docs/reports/graph-admission-unblock-validation.md
+?? docs/reports/graph-binding-reader-validation.md
+?? docs/reports/graph-bounded-messages-validation.md
+?? docs/reports/graph-bounded-recovery-validation.md
+?? docs/reports/graph-contained-candidate-validation.md
+?? docs/reports/graph-contained-executor-validation.md
+?? docs/reports/graph-contained-proof-validation.md
+?? docs/reports/graph-contained-reopen-validation.md
+?? docs/reports/graph-deepseek-live-validation.md
+?? docs/reports/graph-public-reconcile-validation.md
+?? docs/reports/graph-quiescence-sweep-validation.md
+?? docs/reports/graph-runtime-fault-validation.md
+?? docs/reports/graph-runtime-performance.md
+?? docs/reports/graph-runtime-pilot.md
+?? docs/reports/graph-unstarted-recovery-validation.md
+?? docs/reports/graph-upgrade-completion.md
+?? docs/reports/graph-upgrade-deployment.md
+?? docs/reports/graph-worker-coverage-validation.md
+?? docs/reports/graph-worker-quiescence-validation.md
+?? docs/runbooks/graph-runtime.md
+?? packages/agents/vitest.config.ts
+?? packages/autonomy/vitest.config.ts
+?? packages/compliance/vitest.config.ts
+?? packages/config/vitest.config.ts
+?? packages/conformance/vitest.config.ts
+?? packages/contracts/vitest.config.ts
+?? packages/core/src/scratch.test.ts
+?? packages/core/src/scratch.ts
+?? packages/core/vitest.config.ts
+?? packages/github/vitest.config.ts
+?? packages/governance/vitest.config.ts
+?? packages/hermes-adapter/vitest.config.ts
+?? packages/knowledge-cloud/vitest.config.ts
+?? packages/knowledge/vitest.config.ts
+?? packages/neat-eval/vitest.config.ts
+?? packages/plugins/vitest.config.ts
+?? packages/protocol/vitest.config.ts
+?? packages/runtime/vitest.config.ts
+?? packages/skill-registry/vitest.config.ts
+?? packages/skills/vitest.config.ts
+?? packages/supervisor/vitest.config.ts
+?? scripts/clean-scratch.mjs
+?? scripts/lib/
+?? scripts/vitest-setup-scratch.ts

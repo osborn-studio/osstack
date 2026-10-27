@@ -1,0 +1,58 @@
+{
+  "code_sha": "32bd1bd287a7125fcc71c7312392ec5a3af2413b",
+  "started_at": "2026-10-27T07:15:38.879286+00:00",
+  "checks": [
+    {
+      "name": "final-build",
+      "command": [
+        "pnpm",
+        "build"
+      ],
+      "exit_code": 0,
+      "log": "final-build.log",
+      "sha256": "86aea43b6fecb3de59c360b35db0fc1991204beb70a6aea9fcbeb7e1770a933f"
+    },
+    {
+      "name": "final-typecheck",
+      "command": [
+        "pnpm",
+        "typecheck:check"
+      ],
+      "exit_code": 0,
+      "log": "final-typecheck.log",
+      "sha256": "0f8060260cd0664d652a4748f13227ecfb4dced3a2bf15af17cb709509754ac4"
+    },
+    {
+      "name": "final-lint",
+      "command": [
+        "pnpm",
+        "lint"
+      ],
+      "exit_code": 0,
+      "log": "final-lint.log",
+      "sha256": "d7ccb3bfe798bbaf9036196649b2aa408ea4e84f7020f87d135ec7d35ac95c52"
+    },
+    {
+      "name": "final-inventory",
+      "command": [
+        "node",
+        "scripts/generate-inventory.mjs",
+        "--check"
+      ],
+      "exit_code": 0,
+      "log": "final-inventory.log",
+      "sha256": "a59b7d9a6d962ccf0d22d13d2cc0f8acbb9e3653a63cce339211a5dfb3cd56e9"
+    },
+    {
+      "name": "final-tests",
+      "command": [
+        "pnpm",
+        "test"
+      ],
+      "exit_code": 0,
+      "log": "final-tests.log",
+      "sha256": "d4e09e418c0cd7181850afdfe5f333b0d048a638f7c76dd0d14f7ab50ebb00e5"
+    }
+  ],
+  "finished_at": "2026-10-27T07:24:09.550326+00:00"
+}

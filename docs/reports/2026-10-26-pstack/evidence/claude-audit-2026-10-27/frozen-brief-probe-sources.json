@@ -1,0 +1,18 @@
+{
+  "sources": {
+    "packages/protocol/src/delivery-contract.ts": {
+      "commit": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+      "sha256": "b4ae1d5ef1a5d4497ccbc74a05559f03b35f2db69786e10748594af04ac94ed1"
+    },
+    "packages/core/src/delivery-contract.ts": {
+      "commit": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+      "sha256": "fca14f4dc312e8021f0a3049c3ac8be4981569512fce42a122ec781d11984ce3"
+    }
+  },
+  "only_transform": "core import @osstack/protocol replaced with ./protocol.ts; all logic retained",
+  "exit_code": 0,
+  "runtime": {
+    "bun": "1.3.13",
+    "zod": "3.25.76"
+  }
+}

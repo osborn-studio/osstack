@@ -1,0 +1,237 @@
+CHALLENGE_BEGIN
+
+**审查范围与限制**：以下结论只基于给定文本和源码片段。我没有运行任何测试、校验器或 Provider，也没有读取被省略的 Firstmate 大文件。X 文章未见原文，不据此判断。所有"验收"都是未来要写的测试，不是已有结果。"可信本地试验"不当作恶意同 UID 威胁，下面也没有按此类威胁定级。
+
+---
+
+### CH01｜P0｜recovery_receipt 没有 (phase × decision × proof) 放行矩阵，会放行重发
+
+- **触发/轨迹**：旧库 schema 47 中有一个 `dispatch_committed` 且未 applied 的 hold。操作员提交 `decision:"proven_not_started"`、`proof_refs:["note-1"]`，其余字段都合法。schema 通过，JA47 的"逐字段删除"也不会发现问题。实现者 A 把它当"可释放"，实现者 B 拒绝，两者都满足现有文字。
+- **位置**：`contract.schema.json#/$defs/recovery_receipt` 的 `decision` 枚举和 `proof_refs`（只要求 `minLength:1`）。`contracts.md §7`、JA21、JA47。`validate-design.py::payload_errors` 完全没有 `recovery_receipt` 分支。
+- **为何不足**：ADR-05 规定 committed 之后不得证明"未发送"。这条规则没有进入 schema，也没有进入联合设计。JA47 只做删字段变异，而 `required` 本来就拒绝缺字段，所以它杀不死"字段齐全但错值"的坏变体。
+- **最小修订**：
+  - 增加 `prior_phase` 和类型化的 `proof_kind`，每条 proof 带 `{type, evidence_digest, producer}`。
+  - 给出许可表：
+    - `preserve_unknown` 任何情况可用。
+    - `proven_not_started` 仅限 `reserved`，并走 cancel 路径。
+    - committed 只允许 `proven_stopped`（须有绑定 invocation 的 containment 证明）或 `applied_observed`（须有 applied 消息和完成证明）。
+  - 任何裁决之后，该 effect 的再次派发数必须为 0。
+- **验收**：
+  - 对真实 hold 夹具做全矩阵测试：`committed × proven_not_started` 必须拒绝。
+  - 错值变异：`owner_generation` 少 1、tenant 不符、effect 属于另一个 home、proof 指向别的 effect。
+  - 同一 `request_id` 换 decision 返回 `REQUEST_CONFLICT`。
+  - 删掉矩阵检查后，上述测试必须变红。
+
+### CH02｜P1｜"禁迁移恢复构建"与"持久裁决"自相矛盾，恢复路径可能死锁
+
+- **触发/轨迹**：J12 输出写的是"禁迁移恢复构建、持久裁决"。contracts §7 的"operator recovery receipt 表"需要一次 DDL，也就是一次迁移。ADR-16 和 `engineeringUpgradeHolds` 规定存在 hold 时升级被拒。于是恰好需要恢复的库（带 hold 的 schema 47），既不能迁移出收据表，也没地方持久化裁决。如果实现者绕开，改写 JSON 旁路文件，就丢失 `request_id` 幂等和 owner CAS。
+- **位置**：`work-packages.json` J12 `outputs`/`rollback`；`contracts.md §7`；`legacy-work-map.json` 的 DEBT02/I04。
+- **为何不足**：JA20 的 oracle 只是依赖闭包，且注明"非运行资格"。校验器只证明 J11→J12→J13 无环，证明不了 J12 能在带 hold 的库上落盘。
+- **最小修订**：J11 必须二选一，并写进规格。
+  - (a) 只允许恢复构建执行一次纯增量迁移，作为"hold 阻断升级"的命名例外。要求迁移前后 hold 行字节一致，旧二进制仍拒绝新库。
+  - (b) 裁决先写 fsync 的 owner-fenced 旁路日志，下次允许迁移时并入。
+  - 两种方案都要说明 `request_id` 幂等和 generation CAS 如何原子。
+- **验收**：
+  - schema 47 夹具带 committed-unknown hold，运行 J12 构建后，收据已持久化，`attention_dispatch_phases` 行数和内容不变。
+  - 旧二进制打开新库被拒。
+  - 迁移中途 kill -9 的三个切点，收据要么完整存在要么不存在。
+  - 变异：迁移里加 `UPDATE/DELETE phases`，测试必须失败。
+  - 变异：要求 hold 数为 0 才允许迁移，测试必须失败。
+
+### CH03｜P1｜trial_permit 约束不足，冷启动可以在错误环境放行
+
+- **触发/轨迹**：操作员签发 `repository:"/Users/x/prod"`，`scope` 为常量。schema 合法。签发后改方法文本（`context_config_digest`）或换来源快照，permit 仍然匹配，因为它只绑 `candidate_method_digest`、`contract_digest`、`support_profile_digest`。
+- **位置**：`contract.schema.json#/$defs/trial_permit`；`contracts.md §6`；JA16/JA17。
+- **为何不足**：
+  - `contract_digest` 覆盖 goal、base_head、checks、policy_digest、budget_ref，但不覆盖方法材料、来源快照、`recipe_version`。
+  - `candidate_method_digest` 未定义（proposal？recipe？source？）。
+  - `repository` 是任意字符串，"隔离仓库"没有判定规则。
+  - `issuer_ref` 和 `authorization_ref` 是不透明字符串，没说由谁校验，planner 自签无法被拒。
+  - `support_profile_digest` 的生产者是 J23，而 J08/J09 都不依赖 J23，试验阶段的 profile 无人定义。
+- **最小修订**：
+  - 增加 `context_config_digest`、`source_snapshot_digest`、`recipe_version`、`base_head`。
+  - 把 `candidate_method_digest` 定义为 `proposal_digest`。
+  - J08 定义最小 `TrialSupportProfile`，标 operator_attested，由 J23 日后取代。
+  - 宿主规则：仓库真路径必须位于已登记的 scratch 根下，且不得是任何已注册生产仓库。
+  - `issuer` 必须经现有授权校验，planner 主体做 issuer 一律拒绝。
+  - `MethodBinding` 增加 `mode: trial|qualified` 和 `trial_permit_id`。
+- **验收**：
+  - 对每个被绑定字段在签发后变异，admission 拒绝，且 raw adapter spy 调用数为 0。
+  - 仓库在 scratch 外则拒绝。
+  - issuer 等于 planner 则拒绝。
+  - trial 模式的 binding 缺 `trial_permit_id` 则拒绝。
+
+### CH04｜P1｜permit 单次消费没有账本、单位和 fence 挂点，并发或崩溃会出错
+
+- **触发/轨迹**：
+  - 两个并发 admission 同时读到未消费，各自调用一次。
+  - 一次 Graph run 含 builder、reviewer、repair epoch，多次创建 wrapper，各 wrapper 各有 `started` 标志，"1 次 invocation"没有统一含义。
+  - consume 之后、spawn 之前崩溃，状态无法判定。
+- **位置**：`trial_permit.max_invocations` 常量 1；`graph-execution-context.ts` 的 `check()` 只含 `authorize` 和 `assertCurrent`。`execution-context.ts` 的 `validateContextSync(assembly.selected)` 只传可选条目，看不到 mandatory 的 method。`graph-contract-host.ts::create()` 根本没有向 `createExecutionContextAdapters` 传 `validateContext*`。
+- **为何不足**：JA46"经过同步 dispatch fence"指的是哪个挂点，没有说。现有挂点既看不到 method/permit，也没接线。permit 存在哪里（SQLite 还是文件）没有规定，文件记录做不到原子 CAS。
+- **最小修订**：
+  - 单位定义为一次 Graph run（一个 `effect_id`）。
+  - 消费是 `unconsumed→consumed(effect_id)` 的 CAS，与 dispatch commit 同在 owner-fenced FULL 同步事务内，表为 `trial_permit_consumptions(permit_id PK, effect_id)`。
+  - permit 的过期、撤销、消费状态并入同步 `authorize`。
+  - 消费后无 adapter_observed，记为 `unknown`：既不算失败也不算成功，旧 permit 不可重用。
+- **验收**：
+  - N 个并发 admission 使用同一 permit，spy 显示恰好 1 次 raw 调用，其余返回 `PERMIT_CONSUMED`。
+  - consume 与 spawn 之间崩溃后，状态为 unknown，同 permit 重进被拒。
+  - config 加载后撤销 permit，raw 调用为 0。
+  - 变异："invoke 之后才消费"和"permit 未接入 authorize"都必须失败。
+
+### CH05｜P1｜摘要规则有歧义，两个独立实现的 digest 会互不兼容
+
+- **触发/轨迹**：A 用现有 `deliveryContractDigest`（key 按 `localeCompare(b,"en")` 排序后 `JSON.stringify`）算 binding。B 把四个 hex 按文中顺序拼接再哈希。C 用 RFC 8785。三者都符合"使用宿主现有 canonical JSON 规则 + `+`"。另外，A 写的收据会被 B 拒绝；`artifact.binding_digest` 填入 `contract_digest` 也能通过 schema。
+- **位置**：`contracts.md §2`；`method_binding` 没有 `binding_digest` 字段；`context_receipt` 和 `artifact` 引用 `binding_digest`。`graph-contract-host.ts` 的 `configDigest` 是配置文件原始字节的 SHA-256，而不是 canonical JSON；它同时进入 envelope 的 `contextDigest`。同一段文字写"集合先去重"又写"重复主键拒绝"，而 `freezeDeliveryContract` 对 `allowed_paths` 和 `requested_actions` 是静默去重的。
+- **最小修订**：
+  - 所有新摘要统一为 `sha256(utf8(domain) || 0x0A || JCS(obj))`，JCS 即 RFC 8785。
+  - 列出各 domain 名。
+  - 在 schema 中加入 `binding_digest`，并明确它覆盖的对象，包括 `source_snapshot_digest`、`recipe_version`、`trial_permit_id`、`mode`。
+  - `context_config_digest` 明确标为"沿用现有原始文件字节 SHA-256"，且必须等于 envelope 的 `contextDigest`。
+  - 新对象一律拒绝重复，不去重；旧合同摘要保持原样。
+- **验收**：
+  - 提供一份 TS 与 Python 共用的 golden 向量，覆盖：键序（`B`/`a`/`_`/`-`）、BMP 外 Unicode、null 与 absent、`-0`、重复键、数组内重复元素。
+  - 跨域测试：把 `contract_digest` 放进 `binding_digest`，宿主重算后拒绝。
+  - 变异：去掉 domain 分隔符，golden 必须不匹配。
+
+### CH06｜P1｜旧场景没有变成 J 级门槛，校验器也不加载它们
+
+- **触发/轨迹**：J30 的分类器对"checks 通过 + BLOCKED/REVIEW_REQUIRED"返回 `ready`（pstack A27 和 R1/R2 探针的反例）。J30 只挂 JA41（组合候选、base/head 变化），它通过。JA 里也没有"后写 pass 覆盖可信 failed"（A16）。校验器全绿。
+- **位置**：`validate-design.py::validate` 只加载旧任务（69 项）；`pstack-acceptance-cases.json` 只在 `baseline.json` 里被哈希，Firstmate 的 66 场景完全未被引用。`reconciliation.md §1` 称旧 A 场景"保持原状态"，但没有任何 J 工作包继承它们。
+- **最小修订**：新增 `legacy-case-map.json`，每个旧 case ID 对应三选一：`subsumed_by:{JA, assertion_ids}`、`retained_as_gate under Jxx`、`retired + reason`。校验器必须加载并覆盖全部 pstack A-case，以及已快照的 Firstmate 场景。
+- **验收**：
+  - 删除 A27 的映射，校验器失败。
+  - `retired` 缺 reason，校验器失败。
+  - 保留门槛测试里，分类器对 BLOCKED 返回 `ready` 必须失败。
+
+### CH07｜P2｜"映射非空"和"对称"只证明一致，不证明语义覆盖
+
+- **触发/轨迹**：校验器检查 `set(acceptance_ids) == {cases containing the capability}`，这是同一作者同时写出的两个索引，自然相等。具体缺口：
+  - **FM-02**（busy 语义：unknown 不得升级为 busy，dead 覆盖一切）只映射到 JA22（重放无副作用）和 JA31（quiet），两者都没有 busy/idle/unknown/dead 判定的 oracle。
+  - **FM-11**（增量简报，只讲变化并优先讲待决）只靠 JA31，它测的是空唤醒和 Q1 保留，不测增量正确性。
+  - **FM-14**（清理前保全：脏/未落地/槽位所有权拒绝）只映射到 JA15/21/42，没有 teardown 拒绝的测试。
+  - **PS18** 只映射到 JA41，不测分类结果。
+- **最小修订**：每个能力列出 `semantic_assertions[]`，每个 JA 声明 `asserts:[ids]`，校验器要求每条断言至少被一个 JA 覆盖，未覆盖的必须显式 `uncovered_with_reason`。非作者人员负责签收。
+- **验收**：
+  - 删除 FM-02 的 busy 断言覆盖，校验器失败。
+  - 新增测试注入变异"unknown→busy"，必须被杀死。
+
+### CH08｜P1｜第一条价值路径缺驱动和 reproduction 产物的生产者
+
+- **触发/轨迹**：J03 只交付 `session-answer-receipt` 一个场景。但 J06 依赖 J03，却要产出"复现/等待/取消"三条地图。J07 要求 `reproduction` 由"受控验证 driver"生成。J09 的合成缺陷夹具需要在原表面红→绿（JA18）。没有任何包给这个夹具建驱动动作，J09 的 `write_paths` 只有 smoke 脚本和 `method-report.ts`。实现者会在 smoke 脚本里写一次性 shell，JA18 的"同表面日志"也由这个脚本自己产生，通过，却正是 pstack 反对的一次性脚本。
+- **位置**：`work-packages.json` 的 J03/J06/J07/J09。
+- **最小修订**：J03 的验收加入已注册场景 `bug-fix-fixture`，含 doctor/drive/observe。J06 的地图必须逐条对应已有驱动。`reproduction.producer_role` 必须等于已注册的 driver action ID 加场景 ID。
+- **验收**：
+  - 删除夹具对应的驱动动作，J09 必须失败。
+  - 驱动外生成的 reproduction 返回 `ARTIFACT_MISSING_OR_MISMATCH`。
+
+### CH09｜P1｜价值路径过度工程，且没有价值门槛
+
+- **触发/轨迹**：方法价值验证要先走 J01→J02→J04→J05→J06→J07→J08→J09，即来源、必需通道、编译器、产物消费、试验许可。J25 只依赖 J03；J10/J16 不依赖任何 E0/E1 结论。`verification-spec` 的 E0 没有任何工作包或 JA 负责。
+- **已有手段**：现有 `createPinnedLocalContextLoader` 的 pinned pack 可以把 ≤8KiB 的方法简报作为可选知识送入 prompt，收据的 `selected/omitted` 能证明它是否真的到达。
+- **最小修订**：新增 E0 门槛（在 J05/J07/J08/J09 之前）：同一夹具、同一检查，对比"无方法"和"pinned pack 方法"。要求有封存的配对记录和 continue/shrink/stop 决定。J10 和 J16 要求存在 `decision ∈ {continue, safety_only}` 的记录。safety_only 资格不得宣称价值。J02/J14 不受此门槛约束，避免 Firstmate 路径被方法实验耦合。
+- **验收**：
+  - 校验器：J05/J07/J08/J09 在无 E0 记录时被 `blocked_by` 阻断。
+  - E0 为 stop 时，依赖它的包标为取消，而不是继续 planned。
+  - 变异：缺 E0 记录时 J10 必须拒绝推进。
+
+### CH10｜P1｜实验设计存在臂不对称、夹具泄漏和分辨率问题
+
+- **触发/轨迹**：
+  - E1 的主指标是"在合同与隐藏验收下完成"，而 P 臂的合同检查由 recipe 选择，基线臂不同，所谓"完成"并非同一判据。
+  - E1 的 12 个任务含"跨文件/模糊假设/环境故障"，但首期只有 `bug-fix-v1`，P 臂对这些任务用哪个 recipe 没有定义。
+  - J09 的合成夹具在 J05–J09 调试时已见过，可能被复用进 E1，没有封存的 holdout。
+  - 12 个任务里翻一例就是 8.3pp，所以"≥5pp"等于任意一次净翻转；p95 在 12 个样本里就是最大值；成本 unknown 时"≤1.2×"无定义（O04）。
+- **位置**：`verification-spec.md §4`。
+- **最小修订**：预先登记并哈希承诺：封存任务集（recipe 作者不可见）；隐藏验收在两臂完全相同，且与臂合同检查无关；无 recipe 的任务按 intent-to-treat 计入；判定统计量用任务级配对差的单侧下界与显式 δ，样本不足则标"仅可行性、不作 go/no-go"；成本 unknown 则判"不可判定"，不得靠成本条款通过。
+- **验收**：
+  - 评测脚本断言两臂隐藏验收摘要相同。
+  - holdout 摘要的 commit 早于第一个 recipe commit。
+  - n=12 且仅一次翻转，输出 `inconclusive` 而不是 `continue`。
+  - 变异：剔除失败样本、换基线预算、换顺序，脚本必须拒绝。
+
+### CH11｜P2｜预算维度未区分可强制与不可强制，"未知预留"的守恒断言可能空转
+
+- **触发/轨迹**：pilot 的 `observe` 返回 `hard_cap_enforced:false`、`cost:unknown`，即 token 和费用不可强制。INV07 和 JA23 要求"unknown 不释放、不重置"，却没说 unknown 预留按多少占用。当维度不可强制时，守恒断言对它永远成立，等于没有检查。另外 `trial_permit` 只有 `max_wall_ms`，JA17"permit 绑定预算 B"在 permit 里没有字段。更换 Graph limits 实际由 graph-policy.json 的字节摘要在 `assertCurrent` 中拦住，是间接保护，不是 permit 的约束。
+- **最小修订**：预算维度带 `enforceable` 标记。只有可强制维度参与预留和准入。unknown 的实际消耗按整笔预留占用，仅凭权威回执才能结算。permit 补 `limits_digest`。
+- **验收**：
+  - 只有不可强制维度时，admission 必须拒绝"硬预算"请求。
+  - 变异："超时释放未知预留"必须失败。
+  - 变异：重复 receipt 重复结算必须失败。
+  - 改 limits 后 permit 校验必须失败。
+
+### CH12｜P2｜验收 oracle 可以自证
+
+- **触发/轨迹**：
+  - 48 个 case 的 `required_evidence` 是同一个三行模板，校验器只要求非空，`oracle` 是自由文本。
+  - JA12、JA45、JA36 的"隐藏 rubric"没有指定保管人。JA12 的 owner 是 method-owner，即方法的实现者；"任务作者不能修改隐藏验收器"没有对应的机械约束。
+  - JA22 的"独立 reducer"由 J13 的 controller-owner 编写。
+  - JA37 的 oracle 是负例校验器，由校验器作者自己测试。
+- **最小修订**：每个 case 带结构化 `oracle:{kind, author_role, independence, pinned_digest_before_candidate}`，且 `author_role ≠ owner_role`。`required_evidence` 逐 case 编写。JA47 增加错值变异。语义类 case 只接受人工或确定性裁判。
+- **验收**：
+  - 校验器变异：`author_role = owner_role`、所有 case 复制同一份证据、oracle 摘要晚于候选，均被拒绝。
+
+### CH13｜P2｜write_paths 不完整，merge-order 校验器看不见真正的共享文件
+
+- **触发/轨迹**：
+  - J26（若落库，链 J01→J02→J26）和 J12（链 J01→J11→J12）互不排序，都要新增迁移，并更新 ADR-08 提到的 `assertMigrationLineage` 按版本的期望表集合。合并队列里两个 PR 各自在自己 base 上绿，合并后可能产生重复 `user_version` 或血统断言失败。
+  - 迁移登记文件不在任何 `write_paths` 中。
+  - J14 要持久化 effect 和相位，但 `write_paths` 没有 store/DDL。
+  - J04 要改注册选项类型，但 `graph-rpc.ts` 未列出。
+  - 若各 PR 按 §5 登记实际路径落在 `work-packages.json`，该文件是所有 PR 的热点。
+- **最小修订**：增加虚拟共享资源（`migration_sequence`、`db_schema_version`、`work-packages.json`），按 write_paths 参与 merge-order 校验。迁移号由 state-owner 在 J11 预留。每个 PR 的实际 `git diff --name-only` 必须是声明路径的子集，否则必须登记新增。
+- **验收**：
+  - 变异：新增一个无序且带迁移的包，校验器失败。
+  - CI：候选触及未声明文件则失败。
+  - 两个 PR 的队列模拟里，第二个必须因迁移号冲突失败。
+
+### CH14｜P2｜阻塞 gate 只在叙述里，没有进入机器可校验的结构
+
+- **触发/轨迹**：32 个包的 `blocked_by` 全为 `[]`。`reconciliation.md §4` 的 O01–O06（O02 阻 J04 合入，O03 阻 J11，O01 阻 J14/J23，O04 阻 J25 实验）和 E0 只在文字里。校验器不检查 `blocked_by`。实施者可以直接开始 J04，而 O02 仍未解。
+- **最小修订**：新增 `unknowns.json`（id、`blocks:[Jxx]`、解决证据 schema、状态）。J 项的 `blocked_by` 必须包含对应未知。校验器交叉检查，任何"开始实施"的预检在存在开放未知时拒绝。
+- **验收**：
+  - 删掉 J04 的 O02，校验器失败。
+  - O02 未解时推进 J04，预检拒绝。
+
+### CH15｜P2｜方法材料没有区分角色，reviewer 会拿到 builder 的方法
+
+- **触发/轨迹**：method 是 mandatory，由 `prepareGraphExecutionContext` 按 adapter 粒度包装，文件中没有 role 参数。Graph 里 builder 和 reviewer 都经过它。reviewer 的 prompt 里出现 builder 的"如何修复"简报，独立评审被锚定；若不注入，则 `required_artifacts_digest` 对 reviewer 无意义。两种实现都满足 JA07/JA08。
+- **位置**：`context_receipt` 无 `role` 字段；`required_artifacts_digest` 按 binding 而不是按角色。
+- **最小修订**：receipt 和 binding 增加 `role ∈ {builder, reviewer, verifier}`。recipe 为每个角色声明方法段。binding 包含 role→`method_text_sha256` 映射。
+- **验收**：
+  - 抓取每个角色的实际 prompt，reviewer 的 prompt 不含 builder 专用标记。
+  - receipt 的 role 与 invocation 不符则拒绝。
+  - 变异：全局注入必须失败。
+
+### CH16｜P3｜schema 作为投影，约束比现有代码松
+
+- **位置与问题**：
+  - `check_binding.registry_ref` 只有 `minLength:1`，而现有 `deliveryCheckReference` 产出 `sha256:<hex>`。
+  - `artifact.candidate.head/tree/base_head` 是任意字符串，而 `source_pin.commit` 有 40/64 hex 规则。
+  - `identity_assurance:"host_authenticated"` 可由 JSON 自报，没有字段指向宿主证明。
+  - 以上三项在 `contracts.md` 文字中也没有补充约束。
+- **最小修订**：统一用 `^sha256:[a-f0-9]{64}$` 和 `^(?:[a-f0-9]{40}|[a-f0-9]{64})$`。`host_authenticated` 必须带 `host_record_ref`，且宿主重算后才生效。
+- **验收**：对每项做负例 fixture。
+
+---
+
+### 最小可实施切片（建议顺序）
+
+1. **纯规格 PR，不写产品代码**：落实 CH01、CH02、CH05 的规格修订，以及 CH06、CH12、CH13、CH14 对应的校验器增强。产出 golden 摘要向量和 `unknowns.json`。
+2. **E0 价值验证**：只用现有 pinned pack 可选通道，在一个封存夹具上做"无方法 vs 有方法"配对，收据证明方法到达。先得出 continue/shrink/stop，再决定要不要建 J05/J07/J08。
+3. **窄试验链**：J01（含 golden）→ J03（含 `bug-fix-fixture` 驱动）→ J04 窄版（带 role 的 mandatory method 条目 + v2 收据）→ J08（permit + 消费表）→ J09 单次本地试验。来源用 pinned digest，proposal 手写，只做一张功能地图，产物只含 reproduction、candidate_checks、independent_review。
+4. **并行恢复线**：J11 先裁决 CH02 的方案，再做 J12 的真实 hold 夹具。
+
+### 不能由模型意见证明的事项
+
+- 方法文本是否真的提高完成率或降低干预（只能靠 E0/E1 的原始分母和封存判定）。
+- 真实 Provider 是否支持按 `effect_id` 幂等启动、查询和取消，停止证明（O01），以及目标文件系统的 fsync/崩溃行为。
+- schema 47 真实旧库上的迁移幂等性、旧二进制拒绝新库、kill -9 各切点的结果。
+- 两个语言实现的摘要是否逐字节一致（需要运行 golden 向量）。
+- 隐藏 rubric 和 holdout 的保管人是否独立；"独立评审"是否跨模型家族。reported identity 不等于认证。
+- 合并队列的仓库配置和 `merge_group` 触发是否真实生效。
+- 人工冷用户能否照教程完成场景。
+- 各项 CI 和测试的实际结果，本次审查均未运行。
+
+CHALLENGE_END

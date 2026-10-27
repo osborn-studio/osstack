@@ -1,0 +1,7 @@
+{
+  "packages/protocol/src/joint-recovery.ts": "1872c71c75bf11d6612acef7448757ea9204e16905c4a0f6e5d77617ec5c7044",
+  "packages/protocol/src/joint-admission.test.ts": "348a1d395715bda279aa867f1e6388c42bebb03dc2aed147e32679d9666012c5",
+  "packages/protocol/src/joint-foundation.test.ts": "3657554830459007a85a554a15271fd30fa521182692f7ffe1244a63ef955a4a",
+  "docs/implementation/joint-contracts-retarget/audit-dispositions.md": "c57d062fabbabde99555c982d5e2a8434bec8e429a4ada676206f2a0fc3c86c4",
+  "docs/implementation/joint-contracts-retarget/README.md": "fe041b55a8befe05f841103c091df907754b2b48591fb35ff16c29da600a1e14"
+}

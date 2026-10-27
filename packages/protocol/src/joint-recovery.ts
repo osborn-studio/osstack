@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { RecoveryReceiptShape } from './joint-shapes.js';
 import { Digest, Ref, UInt, issue, unique } from './joint-primitives.js';
-import { jointDigest } from './joint-json.js';
+import { jointDigest, canonicalJointJson } from './joint-json.js';
 export const RecoverySubject = RecoveryReceiptShape.shape.subject;
 export type RecoverySubject = z.infer<typeof RecoverySubject>;
 export const RecoveryProof = RecoveryReceiptShape.shape.proofs.element;
@@ -20,10 +20,15 @@ export type RecoveryRequest = z.infer<typeof RecoveryRequest>;
 export const RecoveryProofEnvelope = z.object({
   kind: z.literal('recovery_proof'), schema_version: z.literal(1), subject: RecoverySubject,
   proof: RecoveryProof, owner_generation: UInt.positive(), observed_at_ms: UInt,
+  binding_generation: UInt.nullable(), support_profile_digest: Digest.nullable(),
+  prior_phase: RecoveryReceiptShape.shape.prior_phase,
+  schema_spec_digest: Digest, recovery_build_digest: Digest,
   record_ref: Ref, authorization_ref: Ref,
 }).strict().superRefine((v, ctx) => {
+  let subjectDigest: string;
+  try { subjectDigest = recoverySubjectDigest(v.subject); } catch { issue(ctx, 'INVALID_SUBJECT'); return; }
   if (v.record_ref !== v.proof.record_ref) issue(ctx, 'PROOF_RECORD_MISMATCH');
-  if (v.proof.subject_digest !== recoverySubjectDigest(v.subject)) issue(ctx, 'PROOF_SUBJECT_MISMATCH');
+  if (v.proof.subject_digest !== subjectDigest) issue(ctx, 'PROOF_SUBJECT_MISMATCH');
   if (v.subject.kind === 'effect' ? v.proof.effect_id !== v.subject.effect_id : v.proof.effect_id !== undefined) issue(ctx, 'PROOF_EFFECT_MISMATCH');
   if (v.subject.kind === 'broker_lease') {
     const b = v.proof.broker_identity;
@@ -34,13 +39,16 @@ export type RecoveryProofEnvelope = z.infer<typeof RecoveryProofEnvelope>;
 
 /** Structural evidence consistency only. J12 must load and authenticate every referenced fact. */
 export const RecoveryReceipt = RecoveryReceiptShape.superRefine((v, ctx) => {
+  let subjectDigest: string;
+  try { subjectDigest = recoverySubjectDigest(v.subject); } catch { issue(ctx, 'INVALID_SUBJECT'); return; }
   const broker = v.subject.kind === 'broker_lease';
-  if (v.subject_digest !== recoverySubjectDigest(v.subject) || v.subject.home_id !== v.target_home_id) issue(ctx, 'SUBJECT_MISMATCH');
+  if (v.subject_digest !== subjectDigest || v.subject.home_id !== v.target_home_id) issue(ctx, 'SUBJECT_MISMATCH');
   if (broker !== (v.target === 'broker') || broker !== (v.prior_phase === 'broker_unknown')) issue(ctx, 'TARGET_PHASE_MISMATCH');
   if (v.subject.kind === 'effect') {
     if (v.effect_id !== v.subject.effect_id || v.binding_generation === null || v.support_profile_digest === null) issue(ctx, 'EFFECT_IDENTITY_MISSING');
   } else if (v.effect_id !== undefined) issue(ctx, 'UNEXPECTED_EFFECT_ID');
   const decision = v.decision;
+  if (v.prior_phase === 'legacy_unknown' && (v.subject.kind !== 'attention_action' || v.binding_generation !== null || v.support_profile_digest !== null)) issue(ctx, 'INVALID_LEGACY_IDENTITY');
   if ((v.prior_phase === 'legacy_unknown' || (v.prior_phase === 'reserved' && v.prior_resolution !== 'none')) && decision !== 'preserve_unknown') issue(ctx, 'UNKNOWN_CANNOT_RESOLVE');
   if (decision === 'proven_not_started' && v.prior_phase !== 'reserved') issue(ctx, 'ALREADY_COMMITTED');
   if ((decision === 'proven_stopped' || decision === 'applied_observed') && v.prior_phase === 'reserved') issue(ctx, 'NOT_COMMITTED');
@@ -58,6 +66,23 @@ export const RecoveryReceipt = RecoveryReceiptShape.superRefine((v, ctx) => {
   }
 });
 export type RecoveryReceipt = z.infer<typeof RecoveryReceipt>;
+
+/** Join host-loaded immutable envelopes to a receipt. Authentication, evidence-byte hashing,
+ * containment/source identity and current-state CAS remain the host's responsibility. */
+export function verifyRecoveryProofEnvelopes(receiptInput: unknown, envelopesInput: unknown): RecoveryReceipt {
+  const receipt = RecoveryReceipt.parse(receiptInput);
+  const envelopes = z.array(RecoveryProofEnvelope).max(256).parse(envelopesInput);
+  if (envelopes.length !== receipt.proofs.length || !unique(envelopes.map(e => e.record_ref))) throw Error('PROOF_REFERENCE_MISMATCH');
+  for (const envelope of envelopes) {
+    const proof = receipt.proofs.find(p => p.record_ref === envelope.record_ref);
+    if (!proof || canonicalJointJson(proof) !== canonicalJointJson(envelope.proof) || recoverySubjectDigest(envelope.subject) !== receipt.subject_digest) throw Error('PROOF_CONTENT_MISMATCH');
+    for (const key of ['owner_generation', 'binding_generation', 'support_profile_digest', 'prior_phase', 'schema_spec_digest', 'recovery_build_digest'] as const) {
+      if (envelope[key] !== receipt[key]) throw Error('PROOF_CONTEXT_MISMATCH');
+    }
+    if (envelope.observed_at_ms > receipt.observed_at_ms) throw Error('PROOF_AFTER_RECEIPT');
+  }
+  return receipt;
+}
 
 export function recoveryRequestInputDigest(input: unknown): string {
   const body = z.object({ schema_version: z.literal(1), principal_ref: Ref.refine(v => v.length <= 256, 'REFERENCE_TOO_LONG'), scope_id: Ref, tenant_id: Ref, request: RecoveryRequest }).strict().parse(input);
