@@ -27,3 +27,13 @@ Original round 1 report remains unchanged in evidence; model severity is advisor
 - P2-3: explicitly name recoveryRequestInputDigest replay/conflict and authority-change cases in J12 acceptance; no fake runtime implementation solely to satisfy a test-local suggestion.
 - P2-4: already ordering-only, as the audit acknowledges. Arbitrary JSON keys would not authenticate hold clearance; J12's typed/current evidence gate remains mandatory.
 - P3-2/P3-3: cosmetic/trusted-fixture suggestions do not change correctness; no unrelated reformat.
+
+## Round 3
+
+- P2-1/P2-2: documented why authority/current source joins intentionally belong to J12's fenced state-owner transaction. daemon_owner alone is not exclusive recovery ownership. Canonical subject digest does not authenticate an Attention tuple; J12 must load and match mission/action/message facts and cannot create an alternate tuple to bypass sealing. No misleading SQL-only ownership guarantee added.
+- P2-3: fixed test illustration to populate DDL/fixture/target-schema/candidate from the pinned manifest; added five mismatch cases before persistence. This is fixture-spec admission, not candidate build/provider qualification. J12 obligations now name these fields explicitly.
+- P2-4: renamed mutation test to accurately describe comparison-oracle sensitivity. First test separately proves actual bootstrap original-row/catalog preservation.
+- P3-1: clarified implicit PK/UNIQUE indexes and future J12 statement allowlist.
+- P3-2: tests cover default recursive-triggers-OFF conflict behavior. ON variant is not claimed; BEFORE INSERT abort remains independent of delete-trigger settings.
+- P3-3/P3-4: cross-row live phase and exclusive maintenance operation requirements remain explicit J12 obligations.
+- P3-5/P3-6: force-build protocol as well as core before dynamic imports; clarify catalog scope and base-label versus build provenance.

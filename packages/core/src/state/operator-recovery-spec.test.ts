@@ -144,7 +144,7 @@ it('guards every immutable template table against replacement and foreign-kind p
   } finally {db.close();}
 });
 
-it.each(["DROP TRIGGER attention_dispatch_no_rewind", "DELETE FROM attention_receipt_resolutions", "UPDATE attention_actions SET state='applied'"])('detects a bootstrap mutant that changes original state: %s', mutation => {
+it.each(["DROP TRIGGER attention_dispatch_no_rewind", "DELETE FROM attention_receipt_resolutions", "UPDATE attention_actions SET state='applied'"])('checks that the comparison oracle detects mutation of original state: %s', mutation => {
   const db=fixture();
   try {
     const before=legacy(db);
@@ -188,17 +188,19 @@ it('rejects typed value mismatches and kills removed ledger equality/home guards
 it('joins host-loaded proofs using the merged J01 context before persisting a resolving receipt', () => {
   const fixtures = JSON.parse(readFileSync(new URL('../../../protocol/fixtures/joint/contracts.json', import.meta.url), 'utf8')).fixtures as Array<{id:string;payload:unknown}>;
   const base = RecoveryReceipt.parse(fixtures.find(f => f.id === 'valid-recovery-attention-subject')!.payload);
-  const spec = JSON.parse(read('manifest.json')) as {schema_spec_digest:string};
+  const spec = JSON.parse(read('manifest.json')) as {base_commit:string;schema_spec_digest:string;spec:{ddl_digest:string;fixture_digest:string;target_schema:number}};
   const proof = {record_ref:'host-proof',type:'invocation_contained' as const,subject_digest:base.subject_digest,evidence_digest:'a'.repeat(64),producer_ref:'host'};
-  const receipt = RecoveryReceipt.parse({...base,if_revision:0,prior_phase:'dispatch_committed',decision:'proven_stopped',schema_spec_digest:spec.schema_spec_digest,proof_refs:[proof.record_ref],proofs:[proof]});
+  const receipt = RecoveryReceipt.parse({...base,if_revision:0,prior_phase:'dispatch_committed',decision:'proven_stopped',schema_spec_digest:spec.schema_spec_digest,ddl_digest:spec.spec.ddl_digest,fixture_digest:spec.spec.fixture_digest,actual_target_schema:spec.spec.target_schema,candidate_sha:spec.base_commit,proof_refs:[proof.record_ref],proofs:[proof]});
   const envelope = {kind:'recovery_proof',schema_version:1,subject:receipt.subject,proof,record_ref:proof.record_ref,authorization_ref:'authenticated-host-grant',
     owner_generation:receipt.owner_generation,binding_generation:receipt.binding_generation,support_profile_digest:receipt.support_profile_digest,
     prior_phase:receipt.prior_phase,schema_spec_digest:receipt.schema_spec_digest,recovery_build_digest:receipt.recovery_build_digest,observed_at_ms:receipt.observed_at_ms};
   const db = fixture();
   try {
     db.exec(ddl);
-    const persist = (loaded: unknown[]) => {
-      const verified = verifyRecoveryProofEnvelopes(receipt,loaded);
+    const persist = (loaded: unknown[],candidate=receipt) => {
+      // Illustration of pinned-spec admission only; J12 still authenticates build/current state.
+      if(candidate.ddl_digest!==spec.spec.ddl_digest || candidate.fixture_digest!==spec.spec.fixture_digest || candidate.actual_target_schema!==spec.spec.target_schema || candidate.schema_spec_digest!==spec.schema_spec_digest || candidate.candidate_sha!==spec.base_commit) throw Error('MIGRATION_SPEC_MISMATCH');
+      const verified = verifyRecoveryProofEnvelopes(candidate,loaded);
       db.prepare('INSERT INTO operator_recovery_decisions VALUES(?,?,?,?,?,?,?,?,?,?,?)').run(
         verified.operator_ref,verified.request_id,'a'.repeat(64),verified.subject_digest,canonicalJointJson(verified.subject),verified.if_revision,
         verified.owner_generation,verified.decision,'resolved_stopped',canonicalJointJson(verified),verified.observed_at_ms);
@@ -212,6 +214,9 @@ it('joins host-loaded proofs using the merged J01 context before persisting a re
     expect(() => persist([envelope,envelope])).toThrow('PROOF_REFERENCE_MISMATCH');
     expect(() => decodeJointContractAs('recovery_request',canonicalJointJson(receipt))).toThrow('JOINT_KIND_MISMATCH');
     expect(db.prepare('SELECT COUNT(*) AS n FROM operator_recovery_decisions').get()).toEqual({n:0});
+    for(const patch of [{ddl_digest:'f'.repeat(64)},{fixture_digest:'f'.repeat(64)},{actual_target_schema:49},{schema_spec_digest:'f'.repeat(64)},{candidate_sha:'f'.repeat(40)}]) {
+      expect(()=>persist([envelope],{...receipt,...patch})).toThrow('MIGRATION_SPEC_MISMATCH');
+    }
     const otherSubject = {...receipt.subject,home_id:'other-home'};
     expect(() => persist([{...envelope,subject:otherSubject,proof:{...proof,subject_digest:recoverySubjectDigest(otherSubject)}}])).toThrow('PROOF_CONTENT_MISMATCH');
     persist([envelope]);
