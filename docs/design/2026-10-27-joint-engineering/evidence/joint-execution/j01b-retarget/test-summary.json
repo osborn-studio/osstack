@@ -1,0 +1,140 @@
+{
+  "code_sha": "e3fd9a9ffccbe66ad0cdfee101e0864f1ca277db",
+  "packages": [
+    {
+      "package": "packages/contracts",
+      "passed": 15,
+      "skipped": 0,
+      "failed": 0
+    },
+    {
+      "package": "packages/compliance",
+      "passed": 17,
+      "skipped": 0,
+      "failed": 0
+    },
+    {
+      "package": "packages/github",
+      "passed": 107,
+      "skipped": 0,
+      "failed": 0
+    },
+    {
+      "package": "packages/knowledge",
+      "passed": 44,
+      "skipped": 0,
+      "failed": 0
+    },
+    {
+      "package": "packages/protocol",
+      "passed": 477,
+      "skipped": 0,
+      "failed": 0
+    },
+    {
+      "package": "packages/runtime",
+      "passed": 1,
+      "skipped": 0,
+      "failed": 0
+    },
+    {
+      "package": "packages/governance",
+      "passed": 301,
+      "skipped": 0,
+      "failed": 0
+    },
+    {
+      "package": "packages/neat-eval",
+      "passed": 16,
+      "skipped": 0,
+      "failed": 0
+    },
+    {
+      "package": "packages/knowledge-cloud",
+      "passed": 36,
+      "skipped": 0,
+      "failed": 0
+    },
+    {
+      "package": "packages/graph",
+      "passed": 257,
+      "skipped": 0,
+      "failed": 0
+    },
+    {
+      "package": "packages/core",
+      "passed": 931,
+      "skipped": 0,
+      "failed": 0
+    },
+    {
+      "package": "packages/hermes-adapter",
+      "passed": 22,
+      "skipped": 0,
+      "failed": 0
+    },
+    {
+      "package": "packages/skill-registry",
+      "passed": 3,
+      "skipped": 0,
+      "failed": 0
+    },
+    {
+      "package": "packages/plugins",
+      "passed": 1,
+      "skipped": 0,
+      "failed": 0
+    },
+    {
+      "package": "packages/skills",
+      "passed": 2,
+      "skipped": 0,
+      "failed": 0
+    },
+    {
+      "package": "packages/autonomy",
+      "passed": 201,
+      "skipped": 0,
+      "failed": 0
+    },
+    {
+      "package": "packages/agents",
+      "passed": 361,
+      "skipped": 0,
+      "failed": 0
+    },
+    {
+      "package": "packages/config",
+      "passed": 30,
+      "skipped": 0,
+      "failed": 0
+    },
+    {
+      "package": "packages/loop",
+      "passed": 515,
+      "skipped": 0,
+      "failed": 0
+    },
+    {
+      "package": "packages/supervisor",
+      "passed": 88,
+      "skipped": 0,
+      "failed": 0
+    },
+    {
+      "package": "packages/conformance",
+      "passed": 9,
+      "skipped": 0,
+      "failed": 0
+    },
+    {
+      "package": "packages/cli",
+      "passed": 2726,
+      "skipped": 5,
+      "failed": 0
+    }
+  ],
+  "passed": 6160,
+  "skipped": 5,
+  "failed": 0
+}

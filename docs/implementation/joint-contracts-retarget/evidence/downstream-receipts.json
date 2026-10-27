@@ -1,0 +1,16 @@
+[
+  {
+    "comment_id": 298,
+    "card_id": "card_79cdb3e7",
+    "author": "joint-entry",
+    "body": "J11/#274 remains blocked: #273 has substantive post-retarget integrity changes. Its RecoveryProofEnvelope now requires binding/profile/phase/schema/build context; consume verifyRecoveryProofEnvelopes before runtime admission. After #273 merges, retarget #274 to main, update fixtures/spec consumers and rerun audit/verification. Prior fad0dd45 evidence is historical.",
+    "created_at": 1793090051.288
+  },
+  {
+    "comment_id": 299,
+    "card_id": "card_a502fa36",
+    "author": "joint-entry",
+    "body": "J02a/#281 remains blocked: #273 moved to main and new audited candidate e3fd9a9f changes shared contract semantics. Preserve old fad0dd45 base and evidence as historical. After #273 merge, retarget and revalidate on actual main before Ready. No activation or whole-J02 completion.",
+    "created_at": 1793090051.288
+  }
+]

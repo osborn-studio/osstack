@@ -64,3 +64,11 @@ pstack 完整 pstack 子目录 200 个文件及 Firstmate harness-adapters 子�
 下批先处理共享契约链 #272 → #273，随后重定向并重验 #274 / #281。Firstmate 交接链为 #275 → #276 与 #277 → #278 → #279。J02b 在确认 J01 合同与 J02a 检查输出后，推进分型注册、R03/R04 映射及实际采用依赖闭包；保留 J03、J12 各自的依赖和验收。不得绕过尚未完成的独立评审。
 
 #280 早期 CI 揭示历史归档日志被全局 *.log 忽略、冻结输入保留源位置相对链接的问题。已显式纳入原始日志；只对 evidence/inputs/pstack-revision2-*.md 这组冻结引用适用仓库已有的归档规则，所有当前文档仍参加完整链接审计。
+
+## #273 main 重定向与新审计
+
+#272、#280、#275、#277 已合入。#273 从旧叠加分支改为 main，并合入 `4924d224ab9e6e2d7f801d68faea389fedf3751e`。初始重定向补丁逐字节一致，随后新审计推动了摘要关联、恢复证明上下文、预算不可证时拒绝和 safeParse 修订。最终代码与原始 J01b 已有明确差异，不再沿用原始测试结果。
+
+新审计与完整处置位于 `docs/implementation/joint-contracts-retarget/`。#274/J11 必须消费新的 RecoveryProofEnvelope 上下文与 verifyRecoveryProofEnvelopes；#281 必须在新合同上重验。两者旧证据均保留为 historical，不自动升级。
+
+账本 candidate_sha/head_sha 是各 PR observed_at 时观察到的提交，不能等于包含账本的提交自身。执行前必须重新读取 GitHub。离线检查器只验证该快照内部一致性；它不联网证明 CI、安装入口或 Git 可达性。新增检查显式识别旧基线、保持节点/卡片阻塞，并保留被替代候选与历史证据。

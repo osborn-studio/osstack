@@ -70,3 +70,5 @@ python3 docs/design/2026-10-27-joint-engineering/test_validate_design.py
 完整审计与47条原始意见处理见 [Claude审计报告](claude-audit.md)；[复审精确规格](closeout-specifications.md) 是共享契约和PR执行时必须读取的规范增量。
 
 当前实现：J02a [Draft PR #281](https://github.com/osborn-studio/osstack/pull/281)，固定 Git 来源检查与证据绑定。本地全仓库 6161 通过 / 5 跳过，Sonnet 5.5 静态审计 PASS。J02b 依赖闭包、方法采用及运行恢复仍待后续批次；详见 [执行记录](execution.md) 和 [交付账本](execution-ledger.json)。
+
+最新共享契约：[#273](https://github.com/osborn-studio/osstack/pull/273) 已改为 main 并转 Ready，等待 gilberthello 审批。最终代码本地全仓库 6160 通过 / 5 跳过，Sonnet 5.5 复审通过；[执行说明](execution.md) 与 [账本](execution-ledger.json) 保留证据及后继重验要求。远端 CI 按当前 PR head 单独检查。
