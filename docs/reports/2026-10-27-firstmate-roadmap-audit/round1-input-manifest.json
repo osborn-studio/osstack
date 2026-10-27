@@ -1,0 +1,231 @@
+{
+  "candidate_sha": "76cb3578f4f491227faf221e11b97c4ca835a59e",
+  "upstream_sha": "af1c6817fc47589b162cbc361671c43cdb150933",
+  "prompt_sha256": "87aaf883b57ed118e891247a24c22fc486e640f07c2217e5856adad71cac6e27",
+  "files": [
+    {
+      "repository": "osstack",
+      "commit": "76cb3578f4f491227faf221e11b97c4ca835a59e",
+      "path": "docs/design/2026-10-26-firstmate-upgrade/README.md",
+      "sha256": "96598a5540e51a9d0ae6077179dc0b8fc478a47949e5f7b8a5684af4a74fb697",
+      "bytes": 24291
+    },
+    {
+      "repository": "osstack",
+      "commit": "76cb3578f4f491227faf221e11b97c4ca835a59e",
+      "path": "docs/design/2026-10-26-firstmate-upgrade/work-packages.json",
+      "sha256": "0f25524ed0660facb6d38c83c643ecc889dbe9963afb6bf0e81bf3f4d5f234b6",
+      "bytes": 23845
+    },
+    {
+      "repository": "osstack",
+      "commit": "76cb3578f4f491227faf221e11b97c4ca835a59e",
+      "path": "docs/design/2026-10-26-firstmate-upgrade/capability-map.json",
+      "sha256": "66e32a89708136500b90b842e67d3f2049cecd55894a43495fa3ea855ae9f6dc",
+      "bytes": 15004
+    },
+    {
+      "repository": "osstack",
+      "commit": "76cb3578f4f491227faf221e11b97c4ca835a59e",
+      "path": "docs/design/2026-10-26-firstmate-upgrade/source-additions.json",
+      "sha256": "9324d8e6e3cdfd43c9c88ade34c86cddb6baa6724ff7e3b36a2b5ddcefa86525",
+      "bytes": 19925
+    },
+    {
+      "repository": "osstack",
+      "commit": "76cb3578f4f491227faf221e11b97c4ca835a59e",
+      "path": "docs/design/2026-10-26-firstmate-upgrade/validate-roadmap.py",
+      "sha256": "1decc56d95917417659e3f8c606f3cb9ca055dc198dd272d844033ab26643c00",
+      "bytes": 6093
+    },
+    {
+      "repository": "osstack",
+      "commit": "76cb3578f4f491227faf221e11b97c4ca835a59e",
+      "path": "docs/design/2026-10-26-firstmate-upgrade/validation.md",
+      "sha256": "dfc42cf602e9124a235eb9895abd4edecbff08771e1499077e81bba37803ea70",
+      "bytes": 3456
+    },
+    {
+      "repository": "osstack",
+      "commit": "76cb3578f4f491227faf221e11b97c4ca835a59e",
+      "path": "docs/design/2026-10-26-firstmate-upgrade/board-receipt.md",
+      "sha256": "bb417418ae377cac22a8f56d1bab8bd9fa7a3f82ce33e95ef3f466bb10e2d8c1",
+      "bytes": 2177
+    },
+    {
+      "repository": "osstack",
+      "commit": "76cb3578f4f491227faf221e11b97c4ca835a59e",
+      "path": "docs/design/2026-10-25-engineering-agent/README.md",
+      "sha256": "5f41597cdd121a63116aa628f31d3537ebac1a8b10ef84237842c617cb3fb994",
+      "bytes": 4978
+    },
+    {
+      "repository": "osstack",
+      "commit": "76cb3578f4f491227faf221e11b97c4ca835a59e",
+      "path": "docs/design/2026-10-25-engineering-agent/design.md",
+      "sha256": "92d996afd5f7a9a99372960b94524c315f94064827868d3f39baef29f3586b58",
+      "bytes": 23452
+    },
+    {
+      "repository": "osstack",
+      "commit": "76cb3578f4f491227faf221e11b97c4ca835a59e",
+      "path": "docs/design/2026-10-25-engineering-agent/runtime-contract-v2.md",
+      "sha256": "e2d3317ab71eb90ccdda4d9f4044fe0ce7ff9a07b7a8f432a1923d8eabe670ee",
+      "bytes": 34771
+    },
+    {
+      "repository": "osstack",
+      "commit": "76cb3578f4f491227faf221e11b97c4ca835a59e",
+      "path": "docs/design/2026-10-25-engineering-agent/implementation-plan.md",
+      "sha256": "b089bf35cb0904febb85ad3bdd604725c2da8db43e1987081e66a6232dc9d7fc",
+      "bytes": 13006
+    },
+    {
+      "repository": "osstack",
+      "commit": "76cb3578f4f491227faf221e11b97c4ca835a59e",
+      "path": "docs/design/2026-10-25-engineering-agent/work-items.json",
+      "sha256": "9e89fcf6f59607ba4f229c9ef98718f3cffa04993341e278a24fa96b41e85770",
+      "bytes": 12371
+    },
+    {
+      "repository": "osstack",
+      "commit": "76cb3578f4f491227faf221e11b97c4ca835a59e",
+      "path": "docs/design/2026-10-25-engineering-agent/capabilities.json",
+      "sha256": "6ed659e7c2c84781fe01fd468d4f78644348e158b716a025791065daa5d7e3ff",
+      "bytes": 51177
+    },
+    {
+      "repository": "osstack",
+      "commit": "76cb3578f4f491227faf221e11b97c4ca835a59e",
+      "path": "docs/design/2026-10-25-engineering-agent/sources.json",
+      "sha256": "30cd9f3a810c981ddb13706676af8394f7ec10a3a49bf42b7e52915e93b9b327",
+      "bytes": 33440
+    },
+    {
+      "repository": "osstack",
+      "commit": "76cb3578f4f491227faf221e11b97c4ca835a59e",
+      "path": "docs/design/2026-10-25-engineering-agent/semantic-divergences.json",
+      "sha256": "9a9684fce53dd8e933ae2e240e2fcf9c63ed5739480d92782353eee12a542865",
+      "bytes": 2236
+    },
+    {
+      "repository": "osstack",
+      "commit": "76cb3578f4f491227faf221e11b97c4ca835a59e",
+      "path": "docs/design/2026-10-25-engineering-agent/evidence-and-methods.md",
+      "sha256": "fcda1f4e7d923e404867fed13911184f9859d11d601766a1a815bf4131976a84",
+      "bytes": 8488
+    },
+    {
+      "repository": "osstack",
+      "commit": "76cb3578f4f491227faf221e11b97c4ca835a59e",
+      "path": "docs/reports/2026-10-26-session-pilot-delivery.json",
+      "sha256": "3fff5bce81fb505b6aaa0aa7dff5e7cd8e353afcf6a7621f4fdb9aa797e8ea3f",
+      "bytes": 12015
+    },
+    {
+      "repository": "osstack",
+      "commit": "76cb3578f4f491227faf221e11b97c4ca835a59e",
+      "path": "docs/reports/2026-10-26-session-pilot-debt.md",
+      "sha256": "5290e4754c54db62526a252e5cc57d01dd01aa73b3c6a0bb9fdbda6bd06d39d5",
+      "bytes": 11880
+    },
+    {
+      "repository": "osstack",
+      "commit": "76cb3578f4f491227faf221e11b97c4ca835a59e",
+      "path": "docs/plans/2026-10-26-session-pilot-debt.md",
+      "sha256": "f664d5d30a5f5094baf1e53850f83ff8c6db323e8b772fe2afdbbce5539be92e",
+      "bytes": 4625
+    },
+    {
+      "repository": "osstack",
+      "commit": "76cb3578f4f491227faf221e11b97c4ca835a59e",
+      "path": "docs/guides/prompt-language.md",
+      "sha256": "894d5e0f91d2352a5df5dbda557f47e2f21c8264e0b16dcc3e6f7b2b09dbd8d1",
+      "bytes": 5045
+    },
+    {
+      "repository": "firstmate",
+      "commit": "af1c6817fc47589b162cbc361671c43cdb150933",
+      "path": "README.md",
+      "sha256": "8d481add11dea0345107d3079b14fec2b568c296284b37657e13e85ff2690661",
+      "bytes": 22217
+    },
+    {
+      "repository": "firstmate",
+      "commit": "af1c6817fc47589b162cbc361671c43cdb150933",
+      "path": "AGENTS.md",
+      "sha256": "1d67d8fea74b30be6b4de1e1eec0d41f5ed7c7d0215c79d873c3facef96e3896",
+      "bytes": 50896
+    },
+    {
+      "repository": "firstmate",
+      "commit": "af1c6817fc47589b162cbc361671c43cdb150933",
+      "path": "docs/architecture.md",
+      "sha256": "95b55e5dd461be17dbf01b1cd88b05f841b4786d33d2a98e5c2be3dee7b6c6ce",
+      "bytes": 117385
+    },
+    {
+      "repository": "firstmate",
+      "commit": "af1c6817fc47589b162cbc361671c43cdb150933",
+      "path": "docs/secondmate-parent-channel.md",
+      "sha256": "bc201844f26c856e87d7a1d29211a328dff65e1682fa7429c5c5735142dde274",
+      "bytes": 8908
+    },
+    {
+      "repository": "firstmate",
+      "commit": "af1c6817fc47589b162cbc361671c43cdb150933",
+      "path": "docs/remote-secondmates.md",
+      "sha256": "8f0d36d7e88568caaabf323b3da67f7f2f074ae147bb0866409f6f7a683f7e00",
+      "bytes": 42793
+    },
+    {
+      "repository": "firstmate",
+      "commit": "af1c6817fc47589b162cbc361671c43cdb150933",
+      "path": "docs/calm.md",
+      "sha256": "44eb6f996322eac6f8f934d516bc54af33d64b296a19ddf0c02fb73260421330",
+      "bytes": 20645
+    },
+    {
+      "repository": "firstmate",
+      "commit": "af1c6817fc47589b162cbc361671c43cdb150933",
+      "path": "bin/fm-capacity.sh",
+      "sha256": "69b18847430f78bce72643b8c6f12335ef23e2003bef6e20f3ac2c4eb360f0ce",
+      "bytes": 30837
+    },
+    {
+      "repository": "firstmate",
+      "commit": "af1c6817fc47589b162cbc361671c43cdb150933",
+      "path": "bin/fm-project-capacity-lib.sh",
+      "sha256": "8722b50acaa6c2988b7b31c1e56a12ec23769c3c3675d5afdc487e1480a0ba94",
+      "bytes": 11086
+    },
+    {
+      "repository": "firstmate",
+      "commit": "af1c6817fc47589b162cbc361671c43cdb150933",
+      "path": "bin/fm-dispatch-resolve.sh",
+      "sha256": "b1c723539770abb6d8d7fbdbdcf8809e9927ce19e69d2cb80256c6d1ff396bdc",
+      "bytes": 34115
+    },
+    {
+      "repository": "firstmate",
+      "commit": "af1c6817fc47589b162cbc361671c43cdb150933",
+      "path": "bin/fm-operational-input.sh",
+      "sha256": "b796910c2ebbc2f77c18ef73722cbe76abb874d6f120cc9e2e326fbae219334d",
+      "bytes": 17263
+    },
+    {
+      "repository": "firstmate",
+      "commit": "af1c6817fc47589b162cbc361671c43cdb150933",
+      "path": "bin/fm-backlog-handoff.sh",
+      "sha256": "6db0062a926a4e133636d7368c75915b1f7054b62c11dc945d38f5906be8895f",
+      "bytes": 42866
+    },
+    {
+      "repository": "firstmate",
+      "commit": "af1c6817fc47589b162cbc361671c43cdb150933",
+      "path": "bin/fm-tool-update-check.sh",
+      "sha256": "a2eeb3ae350808f025f797d7ec71baf6082dfaed9e3148aa115155d8676b3cc5",
+      "bytes": 37826
+    }
+  ]
+}

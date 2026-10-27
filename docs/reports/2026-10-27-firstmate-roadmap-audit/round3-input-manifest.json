@@ -1,0 +1,146 @@
+{
+  "candidate_sha": "9d33811b50bb2830e274149d9450fac10488171b",
+  "prompt_sha256": "47ed9d52797c319bc3e5a2b87334333983286291b32776c3f33e0afb05f871b8",
+  "files": [
+    {
+      "repository": "osstack",
+      "commit": "9d33811b50bb2830e274149d9450fac10488171b",
+      "path": "docs/design/2026-10-26-firstmate-upgrade/README.md",
+      "sha256": "dc0526015a66a984eac7a2e3b9c8f4275bfe84f0533045cfd5897c6cc6127dda",
+      "bytes": 25363
+    },
+    {
+      "repository": "osstack",
+      "commit": "9d33811b50bb2830e274149d9450fac10488171b",
+      "path": "docs/design/2026-10-26-firstmate-upgrade/audit-contracts.json",
+      "sha256": "169c872d0c7bce29b429e09f749c99d07230ea5add40b43cc8510bc4dc2beb1b",
+      "bytes": 18532
+    },
+    {
+      "repository": "osstack",
+      "commit": "9d33811b50bb2830e274149d9450fac10488171b",
+      "path": "docs/design/2026-10-26-firstmate-upgrade/audit-revision.md",
+      "sha256": "f1d8e5cf020e49627b07fb48ffac3124783ca056bfd8f1390b600458888666f1",
+      "bytes": 14301
+    },
+    {
+      "repository": "osstack",
+      "commit": "9d33811b50bb2830e274149d9450fac10488171b",
+      "path": "docs/design/2026-10-26-firstmate-upgrade/board-projection.json",
+      "sha256": "746ab60f83d5022c6e4e3522aa4c0de55b9c2d8f4933bb24a290f5b5ed9e0a33",
+      "bytes": 6088
+    },
+    {
+      "repository": "osstack",
+      "commit": "9d33811b50bb2830e274149d9450fac10488171b",
+      "path": "docs/design/2026-10-26-firstmate-upgrade/board-receipt.md",
+      "sha256": "bb417418ae377cac22a8f56d1bab8bd9fa7a3f82ce33e95ef3f466bb10e2d8c1",
+      "bytes": 2177
+    },
+    {
+      "repository": "osstack",
+      "commit": "9d33811b50bb2830e274149d9450fac10488171b",
+      "path": "docs/design/2026-10-26-firstmate-upgrade/capability-map.json",
+      "sha256": "c57bcd38ca77d2c77a5a81b825758d62666b753fe6fc0a72f563d0ecc6bc7414",
+      "bytes": 16527
+    },
+    {
+      "repository": "osstack",
+      "commit": "9d33811b50bb2830e274149d9450fac10488171b",
+      "path": "docs/design/2026-10-26-firstmate-upgrade/current-evidence.json",
+      "sha256": "7a167e1b9847438faebe10404e106f6dd5a3bbd6860d1d92546a827c5f7b8ca8",
+      "bytes": 5336
+    },
+    {
+      "repository": "osstack",
+      "commit": "9d33811b50bb2830e274149d9450fac10488171b",
+      "path": "docs/design/2026-10-26-firstmate-upgrade/delivery-gates.json",
+      "sha256": "7753061282ffc1ff5081d2eb292fa7aca8c46cf173c90c597743cb97fc89c534",
+      "bytes": 8067
+    },
+    {
+      "repository": "osstack",
+      "commit": "9d33811b50bb2830e274149d9450fac10488171b",
+      "path": "docs/design/2026-10-26-firstmate-upgrade/review-snapshot.json",
+      "sha256": "a9cc5284060a829265ba95c3e1b02c40c3344998bb62f7cfb50a0b2def8a9ab1",
+      "bytes": 2243
+    },
+    {
+      "repository": "osstack",
+      "commit": "9d33811b50bb2830e274149d9450fac10488171b",
+      "path": "docs/design/2026-10-26-firstmate-upgrade/source-additions.json",
+      "sha256": "a6508d953b141a03334d792c5a53aecc933eff4e95d7d0fc876e43921e239c8b",
+      "bytes": 25888
+    },
+    {
+      "repository": "osstack",
+      "commit": "9d33811b50bb2830e274149d9450fac10488171b",
+      "path": "docs/design/2026-10-26-firstmate-upgrade/test_validate_roadmap.py",
+      "sha256": "dc216cad2ff059687b2d540518d4dd066ebde2fdcfe7ec488530e1385bba922e",
+      "bytes": 10936
+    },
+    {
+      "repository": "osstack",
+      "commit": "9d33811b50bb2830e274149d9450fac10488171b",
+      "path": "docs/design/2026-10-26-firstmate-upgrade/validate-roadmap.py",
+      "sha256": "2fb85c49323b7c4203c34d6e3bb0a82c48b12867bab786d9fb4d1389d115bfcc",
+      "bytes": 19605
+    },
+    {
+      "repository": "osstack",
+      "commit": "9d33811b50bb2830e274149d9450fac10488171b",
+      "path": "docs/design/2026-10-26-firstmate-upgrade/validation.md",
+      "sha256": "60782c9fa0c8101266ff4e24e4b253c516187c027e00bdf235e4b8dda28d9516",
+      "bytes": 3998
+    },
+    {
+      "repository": "osstack",
+      "commit": "9d33811b50bb2830e274149d9450fac10488171b",
+      "path": "docs/design/2026-10-26-firstmate-upgrade/work-packages.json",
+      "sha256": "f8828287a5947b25fef6876dab0e3b9936afb0e141c0ad741687250e13ae7b25",
+      "bytes": 34018
+    },
+    {
+      "repository": "osstack",
+      "commit": "9d33811b50bb2830e274149d9450fac10488171b",
+      "path": "docs/reports/2026-10-27-firstmate-roadmap-audit/README.md",
+      "sha256": "3edf8a44e2421d5728a6b6a4e6d302dfe522772ff4fc92638648bd5635bd5274",
+      "bytes": 10186
+    },
+    {
+      "repository": "osstack",
+      "commit": "9d33811b50bb2830e274149d9450fac10488171b",
+      "path": "docs/reports/2026-10-27-firstmate-roadmap-audit/round2.md",
+      "sha256": "bd6cc7033decaf0e31933651fd63f09799f361bf2a916050fe12ad1e727f6f15",
+      "bytes": 12302
+    },
+    {
+      "repository": "osstack",
+      "commit": "9d33811b50bb2830e274149d9450fac10488171b",
+      "path": "docs/design/2026-10-25-engineering-agent/runtime-contract-v2.md",
+      "sha256": "e2d3317ab71eb90ccdda4d9f4044fe0ce7ff9a07b7a8f432a1923d8eabe670ee",
+      "bytes": 34771
+    },
+    {
+      "repository": "osstack",
+      "commit": "9d33811b50bb2830e274149d9450fac10488171b",
+      "path": "docs/design/2026-10-25-engineering-agent/work-items.json",
+      "sha256": "9e89fcf6f59607ba4f229c9ef98718f3cffa04993341e278a24fa96b41e85770",
+      "bytes": 12371
+    },
+    {
+      "repository": "host_observation",
+      "commit": "9d33811b50bb2830e274149d9450fac10488171b",
+      "path": "validator-tests-round2.log",
+      "sha256": "109d8e985af2e9c2a61ce3d50cbbe20cf6386c5de92a605dbeb6d4de953a9d35",
+      "bytes": 130
+    },
+    {
+      "repository": "host_observation",
+      "commit": "9d33811b50bb2830e274149d9450fac10488171b",
+      "path": "source-validation-round2.log",
+      "sha256": "5c5134a7abd40c16d3a8912a81a13f28ab4329bbc5155bfc79070ae249203fb4",
+      "bytes": 245
+    }
+  ]
+}

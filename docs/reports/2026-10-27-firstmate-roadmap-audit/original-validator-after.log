@@ -1,0 +1,37 @@
+{
+  "status": "passed",
+  "scope": "design_consistency_only",
+  "capabilities": 24,
+  "planned_runtime_scenarios": 66,
+  "planned_scenarios_by_stage": {
+    "adopt_session": 58,
+    "integrated_controller": 4,
+    "production_qualification": 1,
+    "runtime_registry": 3
+  },
+  "planned_work_items": 37,
+  "pilot_dependency_closure": [
+    "C01",
+    "C02",
+    "D01",
+    "D02",
+    "D03",
+    "D04",
+    "D05",
+    "D06",
+    "D07",
+    "V00"
+  ],
+  "qualification_schema": "shape_checked_only_no_signature_or_runtime_verification",
+  "declared_semantic_divergences": 3,
+  "source_anchors": 74,
+  "source_hashes_verified": 74,
+  "invalid_fixtures_rejected": [
+    "duplicate_id",
+    "unknown_dependency",
+    "dependency_cycle",
+    "runtime_enabled",
+    "missing_source"
+  ],
+  "production_runtime_verified": false
+}

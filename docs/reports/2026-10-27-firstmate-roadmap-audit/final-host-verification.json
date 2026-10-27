@@ -1,0 +1,27 @@
+{
+  "candidate": "6dd4a1b016927c3225a765719db111c0b8d23813",
+  "validation_tests": 34,
+  "source_anchors": 148,
+  "links": "PASS",
+  "git_diff_check": "PASS",
+  "runtime_qualification": false,
+  "production_tests_rerun_locally_this_audit": false,
+  "historical_main_ci": {
+    "head": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+    "run_id": 40332791896,
+    "check_job_id": 121607448649,
+    "passed": 5950,
+    "skipped": 7,
+    "failed": 0
+  },
+  "board": {
+    "total": 50,
+    "todo": 38,
+    "done_local_only": 8,
+    "blocked": 4,
+    "new_cards": 0,
+    "versioned_comments_added_to_existing_cards": true
+  },
+  "planned_scenarios": 43,
+  "preserved_original_scenarios": 66
+}

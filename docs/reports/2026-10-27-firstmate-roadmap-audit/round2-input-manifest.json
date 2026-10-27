@@ -1,0 +1,209 @@
+{
+  "candidate_sha": "ec1cde6caab2e7603dd455b6e87bfdb23227827c",
+  "prompt_sha256": "cd70a38fcd4a962aa2159fc928892790ac1cf49217ddd342f7025440012def3b",
+  "files": [
+    {
+      "repository": "osstack",
+      "commit": "ec1cde6caab2e7603dd455b6e87bfdb23227827c",
+      "path": "docs/design/2026-10-26-firstmate-upgrade/README.md",
+      "sha256": "dc0526015a66a984eac7a2e3b9c8f4275bfe84f0533045cfd5897c6cc6127dda",
+      "bytes": 25363
+    },
+    {
+      "repository": "osstack",
+      "commit": "ec1cde6caab2e7603dd455b6e87bfdb23227827c",
+      "path": "docs/design/2026-10-26-firstmate-upgrade/audit-contracts.json",
+      "sha256": "ee5c57f814dea79c12063303ee8deaa3e9a9d4f9477824b34b56f211d727349f",
+      "bytes": 15769
+    },
+    {
+      "repository": "osstack",
+      "commit": "ec1cde6caab2e7603dd455b6e87bfdb23227827c",
+      "path": "docs/design/2026-10-26-firstmate-upgrade/audit-revision.md",
+      "sha256": "4314cfe946a1bbbf334bd665b2943c38eb7b1206753e2085f6ab63b499c516ef",
+      "bytes": 10894
+    },
+    {
+      "repository": "osstack",
+      "commit": "ec1cde6caab2e7603dd455b6e87bfdb23227827c",
+      "path": "docs/design/2026-10-26-firstmate-upgrade/board-projection.json",
+      "sha256": "fa11a551f6f646fa971e7f65a834a6a54704b14c2b49b1e210bc371f5bc92dc3",
+      "bytes": 6088
+    },
+    {
+      "repository": "osstack",
+      "commit": "ec1cde6caab2e7603dd455b6e87bfdb23227827c",
+      "path": "docs/design/2026-10-26-firstmate-upgrade/board-receipt.md",
+      "sha256": "bb417418ae377cac22a8f56d1bab8bd9fa7a3f82ce33e95ef3f466bb10e2d8c1",
+      "bytes": 2177
+    },
+    {
+      "repository": "osstack",
+      "commit": "ec1cde6caab2e7603dd455b6e87bfdb23227827c",
+      "path": "docs/design/2026-10-26-firstmate-upgrade/capability-map.json",
+      "sha256": "42d462886b1e223261beb60ca9074314c18a54c2570fd2970fe29d971a6d8992",
+      "bytes": 16346
+    },
+    {
+      "repository": "osstack",
+      "commit": "ec1cde6caab2e7603dd455b6e87bfdb23227827c",
+      "path": "docs/design/2026-10-26-firstmate-upgrade/current-evidence.json",
+      "sha256": "6e926503bbe5b2002918478c750e837f6eff121fb1d74d483481547c85ead2b3",
+      "bytes": 2382
+    },
+    {
+      "repository": "osstack",
+      "commit": "ec1cde6caab2e7603dd455b6e87bfdb23227827c",
+      "path": "docs/design/2026-10-26-firstmate-upgrade/delivery-gates.json",
+      "sha256": "246e2e419f6aae595b0f6a623f7002c194ff07a0694044f2b3d09c3221011466",
+      "bytes": 4226
+    },
+    {
+      "repository": "osstack",
+      "commit": "ec1cde6caab2e7603dd455b6e87bfdb23227827c",
+      "path": "docs/design/2026-10-26-firstmate-upgrade/review-snapshot.json",
+      "sha256": "2ad59ec283998414b6650a7321578e4dc1c4a98d10be4d58af0b9ad6f46c3c14",
+      "bytes": 1968
+    },
+    {
+      "repository": "osstack",
+      "commit": "ec1cde6caab2e7603dd455b6e87bfdb23227827c",
+      "path": "docs/design/2026-10-26-firstmate-upgrade/source-additions.json",
+      "sha256": "a6508d953b141a03334d792c5a53aecc933eff4e95d7d0fc876e43921e239c8b",
+      "bytes": 25888
+    },
+    {
+      "repository": "osstack",
+      "commit": "ec1cde6caab2e7603dd455b6e87bfdb23227827c",
+      "path": "docs/design/2026-10-26-firstmate-upgrade/test_validate_roadmap.py",
+      "sha256": "e07e9f574f1bf4e6f6bf471149c6d8b1d1e0fe5e9f342d81c3277482a96aed41",
+      "bytes": 7922
+    },
+    {
+      "repository": "osstack",
+      "commit": "ec1cde6caab2e7603dd455b6e87bfdb23227827c",
+      "path": "docs/design/2026-10-26-firstmate-upgrade/validate-roadmap.py",
+      "sha256": "75765e1f70f0f0632e78b9452c48eb6c648355b87af0ab7cbb91ade12863fde6",
+      "bytes": 16342
+    },
+    {
+      "repository": "osstack",
+      "commit": "ec1cde6caab2e7603dd455b6e87bfdb23227827c",
+      "path": "docs/design/2026-10-26-firstmate-upgrade/validation.md",
+      "sha256": "60782c9fa0c8101266ff4e24e4b253c516187c027e00bdf235e4b8dda28d9516",
+      "bytes": 3998
+    },
+    {
+      "repository": "osstack",
+      "commit": "ec1cde6caab2e7603dd455b6e87bfdb23227827c",
+      "path": "docs/design/2026-10-26-firstmate-upgrade/work-packages.json",
+      "sha256": "6cfdb90fbe350781a2c1e78c96eadd8013ddfc361edbfbb4c233720548600e8e",
+      "bytes": 33544
+    },
+    {
+      "repository": "osstack",
+      "commit": "ec1cde6caab2e7603dd455b6e87bfdb23227827c",
+      "path": "docs/reports/2026-10-27-firstmate-roadmap-audit/README.md",
+      "sha256": "3b31bb085e8d6b1ef1f9386196e7e69c91299ad508b2c496467872c002f1f079",
+      "bytes": 8066
+    },
+    {
+      "repository": "osstack",
+      "commit": "ec1cde6caab2e7603dd455b6e87bfdb23227827c",
+      "path": "docs/reports/2026-10-27-firstmate-roadmap-audit/round1.md",
+      "sha256": "2aeb9adcadb4e6befcc87778f4b68e557b82fb59c7a3b11cee64b841cf71e758",
+      "bytes": 25793
+    },
+    {
+      "repository": "osstack",
+      "commit": "ec1cde6caab2e7603dd455b6e87bfdb23227827c",
+      "path": "docs/design/2026-10-25-engineering-agent/runtime-contract-v2.md",
+      "sha256": "e2d3317ab71eb90ccdda4d9f4044fe0ce7ff9a07b7a8f432a1923d8eabe670ee",
+      "bytes": 34771
+    },
+    {
+      "repository": "osstack",
+      "commit": "ec1cde6caab2e7603dd455b6e87bfdb23227827c",
+      "path": "docs/design/2026-10-25-engineering-agent/work-items.json",
+      "sha256": "9e89fcf6f59607ba4f229c9ef98718f3cffa04993341e278a24fa96b41e85770",
+      "bytes": 12371
+    },
+    {
+      "repository": "osstack",
+      "commit": "ec1cde6caab2e7603dd455b6e87bfdb23227827c",
+      "path": "docs/design/2026-10-25-engineering-agent/pilot-scenarios.json",
+      "sha256": "b41c4fb3397922b2354f21f2f100c82e3227dd84522354754ea4be634790108e",
+      "bytes": 28718
+    },
+    {
+      "repository": "osstack",
+      "commit": "ec1cde6caab2e7603dd455b6e87bfdb23227827c",
+      "path": "docs/reports/2026-10-25-session-adoption-pilot.md",
+      "sha256": "8481a331aa662227b3775bf1ca0540234b4310112fbe0f9a938c5c1af2ceae9d",
+      "bytes": 10420
+    },
+    {
+      "repository": "osstack",
+      "commit": "ec1cde6caab2e7603dd455b6e87bfdb23227827c",
+      "path": "docs/reports/2026-10-26-session-pilot-delivery.json",
+      "sha256": "3fff5bce81fb505b6aaa0aa7dff5e7cd8e353afcf6a7621f4fdb9aa797e8ea3f",
+      "bytes": 12015
+    },
+    {
+      "repository": "host-observation",
+      "commit": "ec1cde6caab2e7603dd455b6e87bfdb23227827c",
+      "path": "validator-tests-after.log",
+      "sha256": "e4694d467198d81bb299364a09dcad57b6859de65ddd95ddc2b6df345b8054c3",
+      "bytes": 120
+    },
+    {
+      "repository": "host-observation",
+      "commit": "ec1cde6caab2e7603dd455b6e87bfdb23227827c",
+      "path": "source-validation-after.log",
+      "sha256": "5c5134a7abd40c16d3a8912a81a13f28ab4329bbc5155bfc79070ae249203fb4",
+      "bytes": 245
+    },
+    {
+      "repository": "host-observation",
+      "commit": "ec1cde6caab2e7603dd455b6e87bfdb23227827c",
+      "path": "original-validator-after.log",
+      "sha256": "c7a2f0af280d84402855e14b16ae4fd7752502498e5f4014f8e1cc24be04b513",
+      "bytes": 822
+    },
+    {
+      "repository": "firstmate",
+      "commit": "af1c6817fc47589b162cbc361671c43cdb150933",
+      "path": "bin/fm-public-followup-lib.sh (first 80 lines)",
+      "sha256": "81e15227688c9a68c2cd5d6a74a7e4e9d68b7eef4f263b4c62e07edd7d289bf9",
+      "bytes": 5376
+    },
+    {
+      "repository": "firstmate",
+      "commit": "af1c6817fc47589b162cbc361671c43cdb150933",
+      "path": "bin/fm-x-lib.sh (first 40 lines)",
+      "sha256": "fee6c302501135725238563463cb755f9d2ab4684da145f21ab1636a5cfc2d37",
+      "bytes": 2915
+    },
+    {
+      "repository": "firstmate",
+      "commit": "af1c6817fc47589b162cbc361671c43cdb150933",
+      "path": "bin/fm-contributions.sh (first 120 lines)",
+      "sha256": "31ec2a52d592c948c2900d991aeb676815a818db34d717898073f672e1d2672f",
+      "bytes": 7920
+    },
+    {
+      "repository": "firstmate",
+      "commit": "af1c6817fc47589b162cbc361671c43cdb150933",
+      "path": "docs/verification/stow-memory.md (first 100 lines)",
+      "sha256": "ae09fd38a6c252b8056823f4112a5d24ba0999d17fac8b7ba63490923b7be05c",
+      "bytes": 2591
+    },
+    {
+      "repository": "firstmate",
+      "commit": "af1c6817fc47589b162cbc361671c43cdb150933",
+      "path": "bin/fm-stow-cascade.sh (first 45 lines)",
+      "sha256": "36f8910fe92e0e46f26122c044aebe4ceabaf345955914e90cac6a38a37b9eca",
+      "bytes": 2521
+    }
+  ]
+}
