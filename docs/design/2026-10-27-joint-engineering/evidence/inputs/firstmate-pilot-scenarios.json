@@ -1,0 +1,940 @@
+{
+  "version": 2,
+  "status": "planned_runtime_suite",
+  "note": "Planned contracts, not execution receipts. D07/D08 require every adopt_session case; later stages remain mandatory for their named delivery gates and must not be counted as passed in the pilot.",
+  "scenarios": [
+    {
+      "id": "WD-01",
+      "name": "buried-question",
+      "capability_ids": [
+        "FM-04",
+        "FM-08"
+      ],
+      "given": "unrelated progress follows an open decision",
+      "expected": "decision remains open",
+      "required_layer": "contract",
+      "execution_status": "not_run",
+      "delivery_stage": "adopt_session",
+      "owner_work_item": "D07"
+    },
+    {
+      "id": "WD-02",
+      "name": "unrelated-done",
+      "capability_ids": [
+        "FM-04",
+        "FM-13"
+      ],
+      "given": "another step reports done",
+      "expected": "decision and blocked edge remain",
+      "required_layer": "contract",
+      "execution_status": "not_run",
+      "delivery_stage": "adopt_session",
+      "owner_work_item": "D07"
+    },
+    {
+      "id": "WD-03",
+      "name": "empty-wake-queue",
+      "capability_ids": [
+        "FM-04",
+        "FM-05",
+        "FM-11"
+      ],
+      "given": "reconnect with empty event queue",
+      "expected": "all authoritative open decisions appear",
+      "required_layer": "integration",
+      "execution_status": "not_run",
+      "delivery_stage": "adopt_session",
+      "owner_work_item": "D07"
+    },
+    {
+      "id": "WD-04",
+      "name": "source-disappears",
+      "capability_ids": [
+        "FM-02",
+        "FM-04"
+      ],
+      "given": "source cannot be read",
+      "expected": "unknown observation; no implicit clear",
+      "required_layer": "fault",
+      "execution_status": "not_run",
+      "delivery_stage": "adopt_session",
+      "owner_work_item": "D07"
+    },
+    {
+      "id": "WD-05",
+      "name": "exact-choice",
+      "capability_ids": [
+        "FM-04",
+        "FM-08"
+      ],
+      "given": "authenticated choice for current item",
+      "expected": "answer reserved for that subject only",
+      "required_layer": "integration",
+      "execution_status": "not_run",
+      "delivery_stage": "adopt_session",
+      "owner_work_item": "D07"
+    },
+    {
+      "id": "WD-06",
+      "name": "stale-revision",
+      "capability_ids": [
+        "FM-08"
+      ],
+      "given": "answer has old item revision",
+      "expected": "stale_decision; no send",
+      "required_layer": "contract",
+      "execution_status": "not_run",
+      "delivery_stage": "adopt_session",
+      "owner_work_item": "D07"
+    },
+    {
+      "id": "WD-07",
+      "name": "stale-content",
+      "capability_ids": [
+        "FM-08"
+      ],
+      "given": "question content changed",
+      "expected": "hash mismatch; no send",
+      "required_layer": "contract",
+      "execution_status": "not_run",
+      "delivery_stage": "adopt_session",
+      "owner_work_item": "D07"
+    },
+    {
+      "id": "WD-08",
+      "name": "cross-repo",
+      "capability_ids": [
+        "FM-08"
+      ],
+      "given": "valid identity but wrong repository",
+      "expected": "scope_mismatch; no send",
+      "required_layer": "security",
+      "execution_status": "not_run",
+      "delivery_stage": "adopt_session",
+      "owner_work_item": "D07"
+    },
+    {
+      "id": "WD-09",
+      "name": "ambiguous-continue",
+      "capability_ids": [
+        "FM-01",
+        "FM-08"
+      ],
+      "given": "continue with two open questions",
+      "expected": "ask for the named decision; no send",
+      "required_layer": "journey",
+      "execution_status": "not_run",
+      "delivery_stage": "adopt_session",
+      "owner_work_item": "D07"
+    },
+    {
+      "id": "WD-10",
+      "name": "forged-actor",
+      "capability_ids": [
+        "FM-08"
+      ],
+      "given": "request text claims actor human",
+      "expected": "reject unauthenticated actor",
+      "required_layer": "security",
+      "execution_status": "not_run",
+      "delivery_stage": "adopt_session",
+      "owner_work_item": "D07"
+    },
+    {
+      "id": "WD-11",
+      "name": "approval-as-text",
+      "capability_ids": [
+        "FM-08",
+        "FM-23"
+      ],
+      "given": "risk approval answered with ordinary text",
+      "expected": "signed_approval_required",
+      "required_layer": "security",
+      "execution_status": "not_run",
+      "delivery_stage": "adopt_session",
+      "owner_work_item": "D07"
+    },
+    {
+      "id": "WD-12",
+      "name": "revoked-authority",
+      "capability_ids": [
+        "FM-08",
+        "FM-23"
+      ],
+      "given": "grant revoked before resume",
+      "expected": "answer fact retained; no unauthorized execution",
+      "required_layer": "security",
+      "execution_status": "not_run",
+      "delivery_stage": "adopt_session",
+      "owner_work_item": "D07"
+    },
+    {
+      "id": "WD-13",
+      "name": "same-key-replay",
+      "capability_ids": [
+        "FM-09"
+      ],
+      "given": "same action ID and payload submitted twice",
+      "expected": "one original receipt; no duplicate send",
+      "required_layer": "contract",
+      "execution_status": "not_run",
+      "delivery_stage": "adopt_session",
+      "owner_work_item": "D07"
+    },
+    {
+      "id": "WD-14",
+      "name": "same-key-conflict",
+      "capability_ids": [
+        "FM-09"
+      ],
+      "given": "same action ID but different payload",
+      "expected": "action_conflict",
+      "required_layer": "contract",
+      "execution_status": "not_run",
+      "delivery_stage": "adopt_session",
+      "owner_work_item": "D07"
+    },
+    {
+      "id": "WD-15",
+      "name": "two-clients",
+      "capability_ids": [
+        "FM-08",
+        "FM-09"
+      ],
+      "given": "two windows answer same revision",
+      "expected": "one accepted reservation",
+      "required_layer": "race",
+      "execution_status": "not_run",
+      "delivery_stage": "adopt_session",
+      "owner_work_item": "D07"
+    },
+    {
+      "id": "WD-16",
+      "name": "crash-after-reserve",
+      "capability_ids": [
+        "FM-03",
+        "FM-09"
+      ],
+      "given": "kill after reservation before observable result",
+      "expected": "qualified reserved row may perform its first dispatch after proof; committed or legacy unknown never resent",
+      "required_layer": "fault",
+      "execution_status": "not_run",
+      "delivery_stage": "adopt_session",
+      "owner_work_item": "D07"
+    },
+    {
+      "id": "WD-17",
+      "name": "crash-after-send",
+      "capability_ids": [
+        "FM-09",
+        "FM-19"
+      ],
+      "given": "effect occurred but receipt not recorded",
+      "expected": "unknown; query exact original action",
+      "required_layer": "fault",
+      "execution_status": "not_run",
+      "delivery_stage": "adopt_session",
+      "owner_work_item": "D07"
+    },
+    {
+      "id": "WD-18",
+      "name": "unknown-after-restart",
+      "capability_ids": [
+        "FM-03",
+        "FM-09"
+      ],
+      "given": "restart with uncertain transport outcome",
+      "expected": "preserve unknown and original identity",
+      "required_layer": "fault",
+      "execution_status": "not_run",
+      "delivery_stage": "adopt_session",
+      "owner_work_item": "D07"
+    },
+    {
+      "id": "WD-19",
+      "name": "applied-resume",
+      "capability_ids": [
+        "FM-04",
+        "FM-08",
+        "FM-09"
+      ],
+      "given": "adapter confirms application for current generation",
+      "expected": "clear only matching edge; observe existing Session",
+      "required_layer": "live",
+      "execution_status": "not_run",
+      "delivery_stage": "adopt_session",
+      "owner_work_item": "D07"
+    },
+    {
+      "id": "WD-20",
+      "name": "multiple-obligations",
+      "capability_ids": [
+        "FM-04"
+      ],
+      "given": "answer B while C remains open",
+      "expected": "C still blocks its dependent steps",
+      "required_layer": "contract",
+      "execution_status": "not_run",
+      "delivery_stage": "adopt_session",
+      "owner_work_item": "D07"
+    },
+    {
+      "id": "WD-21",
+      "name": "old-owner",
+      "capability_ids": [
+        "FM-03"
+      ],
+      "given": "old controller submits new effect",
+      "expected": "host rejects stale generation",
+      "required_layer": "race",
+      "execution_status": "not_run",
+      "delivery_stage": "adopt_session",
+      "owner_work_item": "D07"
+    },
+    {
+      "id": "WD-22",
+      "name": "cancel-versus-answer",
+      "capability_ids": [
+        "FM-03",
+        "FM-08"
+      ],
+      "given": "cancel recorded before answer resume",
+      "expected": "no new resume; already sent answer not erased",
+      "required_layer": "race",
+      "execution_status": "not_run",
+      "delivery_stage": "adopt_session",
+      "owner_work_item": "D07"
+    },
+    {
+      "id": "WD-23",
+      "name": "quiet-await",
+      "capability_ids": [
+        "FM-05",
+        "FM-10"
+      ],
+      "given": "repeated unchanged polls in quiet mode",
+      "expected": "zero model calls; bounded notifications",
+      "required_layer": "performance",
+      "execution_status": "not_run",
+      "delivery_stage": "adopt_session",
+      "owner_work_item": "D07"
+    },
+    {
+      "id": "WD-24",
+      "name": "defer-not-approve",
+      "capability_ids": [
+        "FM-04",
+        "FM-10"
+      ],
+      "given": "user defers to a future time",
+      "expected": "decision remains unanswered; no authority added",
+      "required_layer": "contract",
+      "execution_status": "not_run",
+      "delivery_stage": "adopt_session",
+      "owner_work_item": "D07"
+    },
+    {
+      "id": "WD-25",
+      "name": "away-not-authority",
+      "capability_ids": [
+        "FM-07",
+        "FM-10"
+      ],
+      "given": "user sets away posture",
+      "expected": "same approval restrictions remain",
+      "required_layer": "security",
+      "execution_status": "not_run",
+      "delivery_stage": "integrated_controller",
+      "owner_work_item": "I01"
+    },
+    {
+      "id": "WD-26",
+      "name": "return-brief",
+      "capability_ids": [
+        "FM-01",
+        "FM-11"
+      ],
+      "given": "user returns after progress and an old decision",
+      "expected": "incremental results plus still-open question",
+      "required_layer": "journey",
+      "execution_status": "not_run",
+      "delivery_stage": "integrated_controller",
+      "owner_work_item": "I01"
+    },
+    {
+      "id": "WD-27",
+      "name": "candidate-changed",
+      "capability_ids": [
+        "FM-13",
+        "FM-19"
+      ],
+      "given": "tests passed for candidate A but deliver B",
+      "expected": "completion refused",
+      "required_layer": "contract",
+      "execution_status": "not_run",
+      "delivery_stage": "integrated_controller",
+      "owner_work_item": "I03"
+    },
+    {
+      "id": "WD-28",
+      "name": "stop-not-confirmed",
+      "capability_ids": [
+        "FM-14",
+        "FM-17"
+      ],
+      "given": "cancel requested but process state unknown",
+      "expected": "no teardown; state is stop_requested/unknown",
+      "required_layer": "live",
+      "execution_status": "not_run",
+      "delivery_stage": "adopt_session",
+      "owner_work_item": "D07"
+    },
+    {
+      "id": "WD-29",
+      "name": "clock-backwards",
+      "capability_ids": [
+        "FM-02",
+        "FM-03"
+      ],
+      "given": "clock moves backwards",
+      "expected": "no freshness or grant extension",
+      "required_layer": "fault",
+      "execution_status": "not_run",
+      "delivery_stage": "adopt_session",
+      "owner_work_item": "D07"
+    },
+    {
+      "id": "WD-30",
+      "name": "queue-overload",
+      "capability_ids": [
+        "FM-05",
+        "FM-07"
+      ],
+      "given": "bounded queue reaches capacity",
+      "expected": "backpressure; stop and decisions preserved",
+      "required_layer": "performance",
+      "execution_status": "not_run",
+      "delivery_stage": "adopt_session",
+      "owner_work_item": "D07"
+    },
+    {
+      "id": "WD-31",
+      "name": "wait-cycle",
+      "capability_ids": [
+        "FM-04"
+      ],
+      "given": "A waits for B and B waits for A",
+      "expected": "detect cycle with owners; no fabricated answers",
+      "required_layer": "contract",
+      "execution_status": "not_run",
+      "delivery_stage": "integrated_controller",
+      "owner_work_item": "C03"
+    },
+    {
+      "id": "WD-32",
+      "name": "manual-intervention",
+      "capability_ids": [
+        "FM-01",
+        "FM-03"
+      ],
+      "given": "human changes Worker task directly",
+      "expected": "needs_reconciliation until exact authorized disposition; no fabricated applied receipt or double resume",
+      "required_layer": "live",
+      "execution_status": "not_run",
+      "delivery_stage": "adopt_session",
+      "owner_work_item": "D07"
+    },
+    {
+      "id": "WD-33",
+      "name": "real-harness",
+      "capability_ids": [
+        "FM-01",
+        "FM-06",
+        "FM-09"
+      ],
+      "given": "real supported harness receives ordinary answer",
+      "expected": "one original resume; exact action, source and completed turn evidence; this is not full engineering delivery certification",
+      "required_layer": "live",
+      "execution_status": "not_run",
+      "delivery_stage": "adopt_session",
+      "owner_work_item": "D08"
+    },
+    {
+      "id": "WD-34",
+      "name": "control-plane-isolation",
+      "capability_ids": [
+        "FM-03",
+        "FM-08",
+        "FM-23"
+      ],
+      "given": "worker tries to read keys or mutate approval DB",
+      "expected": "OS boundary denies access",
+      "required_layer": "security",
+      "execution_status": "not_run",
+      "delivery_stage": "production_qualification",
+      "owner_work_item": "V03"
+    },
+    {
+      "id": "WD-35",
+      "name": "legacy-approved-contract",
+      "capability_ids": [
+        "FM-01",
+        "FM-23"
+      ],
+      "given": "daemon sees historical approved contract without dispatch authorization",
+      "expected": "zero initial Worker dispatches",
+      "required_layer": "security",
+      "execution_status": "not_run",
+      "delivery_stage": "adopt_session",
+      "owner_work_item": "D07"
+    },
+    {
+      "id": "WD-36",
+      "name": "cancel-before-commit",
+      "capability_ids": [
+        "FM-08",
+        "FM-09"
+      ],
+      "given": "T-cancel commits before T-dispatch",
+      "expected": "no resume call; exact not-dispatched proof or unknown retained",
+      "required_layer": "race",
+      "execution_status": "not_run",
+      "delivery_stage": "adopt_session",
+      "owner_work_item": "D07"
+    },
+    {
+      "id": "WD-37",
+      "name": "cancel-after-commit",
+      "capability_ids": [
+        "FM-08",
+        "FM-09"
+      ],
+      "given": "T-dispatch commits before T-cancel",
+      "expected": "out-of-band stop request; do not claim no effect or resend",
+      "required_layer": "race",
+      "execution_status": "not_run",
+      "delivery_stage": "adopt_session",
+      "owner_work_item": "D07"
+    },
+    {
+      "id": "WD-38",
+      "name": "expired-token-replay",
+      "capability_ids": [
+        "FM-08",
+        "FM-09"
+      ],
+      "given": "same authenticated actor repeats same action payload after token expiry",
+      "expected": "read original scoped receipt only; no new write",
+      "required_layer": "security",
+      "execution_status": "not_run",
+      "delivery_stage": "adopt_session",
+      "owner_work_item": "D07"
+    },
+    {
+      "id": "WD-39",
+      "name": "immutable-question",
+      "capability_ids": [
+        "FM-08"
+      ],
+      "given": "same scoped decision ID is projected with changed content",
+      "expected": "reject content conflict; require new question identity",
+      "required_layer": "contract",
+      "execution_status": "not_run",
+      "delivery_stage": "adopt_session",
+      "owner_work_item": "D07"
+    },
+    {
+      "id": "WD-40",
+      "name": "daemon-vs-source-generation",
+      "capability_ids": [
+        "FM-03",
+        "FM-08"
+      ],
+      "given": "daemon restarts while same worker instance survives",
+      "expected": "new daemon can query old action; source identity unchanged; no resend",
+      "required_layer": "fault",
+      "execution_status": "not_run",
+      "delivery_stage": "adopt_session",
+      "owner_work_item": "D07"
+    },
+    {
+      "id": "WD-41",
+      "name": "applied-is-completed-turn",
+      "capability_ids": [
+        "FM-04",
+        "FM-09"
+      ],
+      "given": "resume started but next turn is still running",
+      "expected": "show running only with evidence; do not show applied or require prior wait clearance",
+      "required_layer": "live",
+      "execution_status": "not_run",
+      "delivery_stage": "adopt_session",
+      "owner_work_item": "D07"
+    },
+    {
+      "id": "WD-42",
+      "name": "source-advanced-without-proof",
+      "capability_ids": [
+        "FM-04",
+        "FM-08"
+      ],
+      "given": "latest turn changed without exact decision disposition evidence",
+      "expected": "needs_reconciliation; not automatic supersession",
+      "required_layer": "contract",
+      "execution_status": "not_run",
+      "delivery_stage": "adopt_session",
+      "owner_work_item": "D07"
+    },
+    {
+      "id": "WD-43",
+      "name": "worker-flock-is-insufficient",
+      "capability_ids": [
+        "FM-03",
+        "FM-14"
+      ],
+      "given": "main PID gone and worktree lock released but child still writes",
+      "expected": "refuse quiescence proof and replacement writer",
+      "required_layer": "security",
+      "execution_status": "not_run",
+      "delivery_stage": "adopt_session",
+      "owner_work_item": "D07"
+    },
+    {
+      "id": "WD-44",
+      "name": "released-lineage",
+      "capability_ids": [
+        "FM-03",
+        "FM-24"
+      ],
+      "given": "upgrade canonical main schema 46 and separately an unmatched experimental schema",
+      "expected": "canonical upgrade succeeds; experimental mismatch refused without mutation",
+      "required_layer": "integration",
+      "execution_status": "not_run",
+      "delivery_stage": "adopt_session",
+      "owner_work_item": "D07"
+    },
+    {
+      "id": "WD-45",
+      "name": "qualification-forgery",
+      "capability_ids": [
+        "FM-15",
+        "FM-19"
+      ],
+      "given": "well-shaped record has forged signature or missing evidence object",
+      "expected": "future runtime rejects activation; schema validation alone is insufficient",
+      "required_layer": "security",
+      "execution_status": "not_run",
+      "delivery_stage": "runtime_registry",
+      "owner_work_item": "R05"
+    },
+    {
+      "id": "WD-46",
+      "name": "qualification-profile-mismatch",
+      "capability_ids": [
+        "FM-15",
+        "FM-21"
+      ],
+      "given": "macOS qualified record supplied for Linux or different adapter",
+      "expected": "no qualified route",
+      "required_layer": "contract",
+      "execution_status": "not_run",
+      "delivery_stage": "runtime_registry",
+      "owner_work_item": "R05"
+    },
+    {
+      "id": "WD-47",
+      "name": "observed-cost-not-hard-cap",
+      "capability_ids": [
+        "FM-19",
+        "FM-21"
+      ],
+      "given": "provider lacks enforceable token bound and usage is lost",
+      "expected": "cost remains unknown/observed; no unsupported hard-cap claim",
+      "required_layer": "contract",
+      "execution_status": "not_run",
+      "delivery_stage": "adopt_session",
+      "owner_work_item": "D07"
+    },
+    {
+      "id": "WD-48",
+      "name": "principal-replay-scope",
+      "capability_ids": [
+        "FM-08",
+        "FM-09"
+      ],
+      "given": "another principal repeats known action ID or token/body differ",
+      "expected": "no receipt disclosure and no write",
+      "required_layer": "security",
+      "execution_status": "not_run",
+      "delivery_stage": "adopt_session",
+      "owner_work_item": "D07"
+    },
+    {
+      "id": "WD-49",
+      "name": "legacy-action-phase",
+      "capability_ids": [
+        "FM-03",
+        "FM-09"
+      ],
+      "given": "old accepted message has no dispatch phase proof",
+      "expected": "legacy_unknown; cannot mark not_dispatched or auto-resend",
+      "required_layer": "fault",
+      "execution_status": "not_run",
+      "delivery_stage": "adopt_session",
+      "owner_work_item": "D07"
+    },
+    {
+      "id": "WD-50",
+      "name": "adoption-pilot-no-registry",
+      "capability_ids": [
+        "FM-01",
+        "FM-04"
+      ],
+      "given": "adopt existing admitted Session with runtime registry absent",
+      "expected": "complete decision journey without new Worker or R/E dependencies",
+      "required_layer": "journey",
+      "execution_status": "not_run",
+      "delivery_stage": "adopt_session",
+      "owner_work_item": "D07"
+    },
+    {
+      "id": "WD-51",
+      "name": "restart-first-dispatch",
+      "capability_ids": [
+        "FM-04",
+        "FM-08",
+        "FM-09"
+      ],
+      "given": "new gated protocol reserved with v+1 persisted, valid original source, no stop and exclusive admission",
+      "expected": "one original CAS and resume; committed or legacy messages never retried",
+      "required_layer": "integration",
+      "execution_status": "not_run",
+      "delivery_stage": "adopt_session",
+      "owner_work_item": "D07"
+    },
+    {
+      "id": "WD-52",
+      "name": "dispatch-admission-fails",
+      "capability_ids": [
+        "FM-04",
+        "FM-08",
+        "FM-09"
+      ],
+      "given": "admission denied before phase CAS",
+      "expected": "phase stays reserved; no adapter call; no fabricated failed receipt",
+      "required_layer": "integration",
+      "execution_status": "not_run",
+      "delivery_stage": "adopt_session",
+      "owner_work_item": "D07"
+    },
+    {
+      "id": "WD-53",
+      "name": "cancelled-phase-migration",
+      "capability_ids": [
+        "FM-04",
+        "FM-08",
+        "FM-09"
+      ],
+      "given": "baseline schema 46 upgraded and verified cancellation proof stored",
+      "expected": "lineage passes; old resolution CHECK unchanged; new session instruction is not blocked by proven cancelled message",
+      "required_layer": "integration",
+      "execution_status": "not_run",
+      "delivery_stage": "adopt_session",
+      "owner_work_item": "D07"
+    },
+    {
+      "id": "WD-54",
+      "name": "all-entrances-gated",
+      "capability_ids": [
+        "FM-04",
+        "FM-08",
+        "FM-09"
+      ],
+      "given": "two engineering/attention/session entrances race for one phase row",
+      "expected": "one CAS winner and at most one resume; direct helper call without permit rejected",
+      "required_layer": "integration",
+      "execution_status": "not_run",
+      "delivery_stage": "adopt_session",
+      "owner_work_item": "D07"
+    },
+    {
+      "id": "WD-55",
+      "name": "source-native-replaced",
+      "capability_ids": [
+        "FM-04",
+        "FM-08",
+        "FM-09"
+      ],
+      "given": "same session row changes native ID or native ID becomes NULL",
+      "expected": "old Mission enters reconciliation; no rebinding or send",
+      "required_layer": "integration",
+      "execution_status": "not_run",
+      "delivery_stage": "adopt_session",
+      "owner_work_item": "D07"
+    },
+    {
+      "id": "WD-56",
+      "name": "dispose-without-action",
+      "capability_ids": [
+        "FM-04",
+        "FM-08",
+        "FM-09"
+      ],
+      "given": "authenticated mission.steer actor binds current snapshot and exact wait with no pending action",
+      "expected": "superseded observation dependency; steering receipt; no session message or applied proof",
+      "required_layer": "integration",
+      "execution_status": "not_run",
+      "delivery_stage": "adopt_session",
+      "owner_work_item": "D07"
+    },
+    {
+      "id": "WD-57",
+      "name": "dispose-with-unknown-action",
+      "capability_ids": [
+        "FM-04",
+        "FM-08",
+        "FM-09"
+      ],
+      "given": "user requests wait disposal while original send is unknown",
+      "expected": "reject disposal and preserve unknown receipt; stop/read/query remain available",
+      "required_layer": "integration",
+      "execution_status": "not_run",
+      "delivery_stage": "adopt_session",
+      "owner_work_item": "D07"
+    },
+    {
+      "id": "WD-58",
+      "name": "observed-turn-success",
+      "capability_ids": [
+        "FM-04",
+        "FM-08",
+        "FM-09"
+      ],
+      "given": "own exact reply applied, same latest turn idle/completed, no waits, cancellation or pending effects",
+      "expected": "completed with ObservationProof only; no code/test delivery assertion",
+      "required_layer": "integration",
+      "execution_status": "not_run",
+      "delivery_stage": "adopt_session",
+      "owner_work_item": "D08"
+    },
+    {
+      "id": "WD-59",
+      "name": "historical-run-terminal",
+      "capability_ids": [
+        "FM-04",
+        "FM-08",
+        "FM-09"
+      ],
+      "given": "Run completed before adoption while Session still awaits decision",
+      "expected": "no Mission success; Run terminal is insufficient",
+      "required_layer": "integration",
+      "execution_status": "not_run",
+      "delivery_stage": "adopt_session",
+      "owner_work_item": "D07"
+    },
+    {
+      "id": "WD-60",
+      "name": "end-observation",
+      "capability_ids": [
+        "FM-04",
+        "FM-08",
+        "FM-09"
+      ],
+      "given": "out-of-band handling leaves no owned applied receipt and user explicitly ends observation",
+      "expected": "observation_ended not success; no resume/stop effect; unresolved responsibilities remain addressable",
+      "required_layer": "integration",
+      "execution_status": "not_run",
+      "delivery_stage": "adopt_session",
+      "owner_work_item": "D07"
+    },
+    {
+      "id": "WD-61",
+      "name": "signer-role-confusion",
+      "capability_ids": [
+        "FM-15",
+        "FM-19"
+      ],
+      "given": "ci_verifier key signs host_verified or revocation epoch is rolled back",
+      "expected": "future verifier rejects regardless of payload role",
+      "required_layer": "integration",
+      "execution_status": "not_run",
+      "delivery_stage": "runtime_registry",
+      "owner_work_item": "R05"
+    },
+    {
+      "id": "WD-62",
+      "name": "cancelled-original-item",
+      "capability_ids": [
+        "FM-04",
+        "FM-08",
+        "FM-09"
+      ],
+      "given": "original action known cancelled and user retries or changes answer on same item",
+      "expected": "original cancelled receipt or immutable conflict; explicit limitation, no new action or fabricated question ID",
+      "required_layer": "integration",
+      "execution_status": "not_run",
+      "delivery_stage": "adopt_session",
+      "owner_work_item": "D07"
+    },
+    {
+      "id": "WD-63",
+      "name": "resolution-before-dispatch",
+      "capability_ids": [
+        "FM-04",
+        "FM-08",
+        "FM-09"
+      ],
+      "given": "phase reserved but exact message has abandoned_unknown resolution",
+      "expected": "zero dispatch; preserve resolution and reconcile conflicting phase",
+      "required_layer": "integration",
+      "execution_status": "not_run",
+      "delivery_stage": "adopt_session",
+      "owner_work_item": "D07"
+    },
+    {
+      "id": "WD-64",
+      "name": "reserved-projection-recovery",
+      "capability_ids": [
+        "FM-04",
+        "FM-08",
+        "FM-09"
+      ],
+      "given": "new gated reserved action recovered after crash without resolution",
+      "expected": "projection remains reserved, not uncertain; all other dispatch preconditions still required",
+      "required_layer": "integration",
+      "execution_status": "not_run",
+      "delivery_stage": "adopt_session",
+      "owner_work_item": "D07"
+    },
+    {
+      "id": "WD-65",
+      "name": "abandon-reserved-rejected",
+      "capability_ids": [
+        "FM-04",
+        "FM-08",
+        "FM-09"
+      ],
+      "given": "abandon receipt invoked for reserved phase, then explicit cancel committed",
+      "expected": "abandon itself refuses without writing/sending; cancel creates barrier and prevents first dispatch",
+      "required_layer": "integration",
+      "execution_status": "not_run",
+      "delivery_stage": "adopt_session",
+      "owner_work_item": "D07"
+    },
+    {
+      "id": "WD-66",
+      "name": "steering-owner-only",
+      "capability_ids": [
+        "FM-04",
+        "FM-08",
+        "FM-09"
+      ],
+      "given": "different principal has scope write but is not adopt owner",
+      "expected": "dispose_wait refused; owner also refused if current scope permission revoked",
+      "required_layer": "integration",
+      "execution_status": "not_run",
+      "delivery_stage": "adopt_session",
+      "owner_work_item": "D07"
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "id": "HV01",
+  "priority": "P1",
+  "category": "qualification_bootstrap_underspecified",
+  "evidence": [
+    "integration-spec.md:150",
+    "integration-spec.md:340",
+    "integration-spec.md:417",
+    "integration-spec.md:459",
+    "integration-spec.md:485",
+    "acceptance-cases.json:237"
+  ],
+  "finding": "candidate 仅离线，qualified 才能资格试跑，candidate→qualified 又要求离线与宿主资格测试；首个 active 试点 W08 位于资格模块 W11 之前。应明确首次受限 qualification execution 如何由现有 host 授权、记录及验证，或指定现有实现；不能临时绕过 admission。",
+  "scope_limit": "规格的实施依赖/资格启动缺口，不是现有产品的越权漏洞。",
+  "test": "从没有 active/qualified 方法包的干净状态起，受限资格试跑有显式宿主授权，失败不会 active，成功才可启动常规任务；无需先完成 W09 三类扩展。"
+}

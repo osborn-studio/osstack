@@ -1,0 +1,151 @@
+{
+  "candidate": "20b4a81dfcffd80b4919643be362dcfcefad7cf5",
+  "base": "ce543535be9b1ef96a8c4fb14d13ea8483444051",
+  "files": [
+    {
+      "path": ".changeset/behavior-capability-contracts.md",
+      "sha256": "f5e76194680df8ebc3ae1f156234529004a13f162939dcdf7ea08eb7377d1170",
+      "ranges": null
+    },
+    {
+      "path": ".changeset/behavior-registry-loader.md",
+      "sha256": "a34c420995358f4993a5c8a010dfabf644398d7ce65aececa796a5aa1434625d",
+      "ranges": null
+    },
+    {
+      "path": ".changeset/session-send-receipt.md",
+      "sha256": "b490563eabf9a33ed173eaeb5071256d236a9629bcae224fb906e2ad71d1ce9f",
+      "ranges": null
+    },
+    {
+      "path": ".changeset/session-start-cleanup.md",
+      "sha256": "9d883e25ce1f7327b5bd0380154dcbac5bad2182c38464524da5c8ea63413c7c",
+      "ranges": null
+    },
+    {
+      "path": ".changeset/session-terminal-boundary.md",
+      "sha256": "4773480349dbef8e62f0abec9c6d55ad49b4e54e50bf566fa1c1d5bb525fa6b2",
+      "ranges": null
+    },
+    {
+      "path": "docs/guides/behavior-registry-evaluator.md",
+      "sha256": "ca7478a865f9b28c03f0e730e90ac3ebcc35cc3008a2861aa09d2ca8f8a8eebd",
+      "ranges": null
+    },
+    {
+      "path": "packages/cli/src/daemon.ts",
+      "sha256": "e7f0ede3fb6e72b5703955d78103581bec60e914ff1fbc608b0a6c0ad9234247",
+      "ranges": [
+        [
+          400,
+          1140
+        ],
+        [
+          3330,
+          3430
+        ]
+      ]
+    },
+    {
+      "path": "packages/cli/src/session-send-receipt.test.ts",
+      "sha256": "dcbd81d102edd4a099c5daca09c12a3f3c3f0c265734c5d5e310d7313a0b0ac0",
+      "ranges": null
+    },
+    {
+      "path": "packages/core/src/behavior-registry.test.ts",
+      "sha256": "cd433b6565fa0d9666420754efb6651513e8e1aac3a8215f847d59987418da09",
+      "ranges": null
+    },
+    {
+      "path": "packages/core/src/behavior-registry.ts",
+      "sha256": "ba543f0fdef408661cf010f474df9c3563717c7582aa9dcbf74cce127f1b72e2",
+      "ranges": null
+    },
+    {
+      "path": "packages/core/src/index.ts",
+      "sha256": "5669521986fdefe9d20353a1b9524fd070acbd19a74bd23febb33f4b14a8c81e",
+      "ranges": null
+    },
+    {
+      "path": "packages/protocol/src/behavior-capability.test.ts",
+      "sha256": "934d0930b1ae291f304f6c83d1510b7c39909f4e5d78cd7bee908c691d00eaab",
+      "ranges": null
+    },
+    {
+      "path": "packages/protocol/src/behavior-capability.ts",
+      "sha256": "4e5468e963889fabb882518d694375d9ad145b6ead63fda9a1723cd655d69d5b",
+      "ranges": null
+    },
+    {
+      "path": "packages/protocol/src/index.ts",
+      "sha256": "db201457a045b99a08a8cb941d29201cb04dcbf6bd03a29eb2ef21a68a4cb88d",
+      "ranges": null
+    },
+    {
+      "path": "packages/cli/src/governed-execution.ts",
+      "sha256": "a58688226dfb47465ef317762fd50863d7c8e09a40e99f7eb719e9d243f95698",
+      "ranges": null
+    },
+    {
+      "path": "packages/cli/src/adapter-lifecycle.ts",
+      "sha256": "39ced6878c09460c4ddaecde2a9ed7845c3a5de9ed6db45130e06dc2813d5fff",
+      "ranges": null
+    },
+    {
+      "path": "packages/autonomy/src/repo-lock.ts",
+      "sha256": "be2ca6351a7c9c33e40b66f77749ef216cb72778f9dc9181fcefe471dc2d7a48",
+      "ranges": null
+    },
+    {
+      "path": "packages/core/src/state/sessions.ts",
+      "sha256": "923c69781b1bdf9370e92cefeaef2fdb8128c2105eb5bf20f4163d37d84d5710",
+      "ranges": null
+    },
+    {
+      "path": "packages/cli/src/supervision-service.ts",
+      "sha256": "34e8afb5aed0a8c99b167f2d488d58cbd3d810cddd43e6f4e5caec34049e3cc7",
+      "ranges": [
+        [
+          80,
+          145
+        ]
+      ]
+    },
+    {
+      "path": "packages/agents/src/adapters/claude-code.ts",
+      "sha256": "f183fba64234eb7158a18275aa42e08d14f0c05c52111a2b0730d625cdc5c9e6",
+      "ranges": [
+        [
+          300,
+          450
+        ]
+      ]
+    },
+    {
+      "path": "packages/agents/src/adapters/codex-cli.ts",
+      "sha256": "630aa2ddbae0ed95aa4ebeefa626b36887c3f1e27c7fe579c4ce5d737caa3db8",
+      "ranges": [
+        [
+          390,
+          520
+        ]
+      ]
+    },
+    {
+      "path": "packages/agents/src/controlled-session.ts",
+      "sha256": "8e3acb2b783ba4126edaeddecc7e5c134f9848b013efd1cf03bccb0c1c1cbde2",
+      "ranges": [
+        [
+          170,
+          290
+        ]
+      ]
+    },
+    {
+      "path": "docs/design/2026-10-25-engineering-agent/runtime-contract-v2.md",
+      "sha256": "e2d3317ab71eb90ccdda4d9f4044fe0ce7ff9a07b7a8f432a1923d8eabe670ee",
+      "ranges": null
+    }
+  ],
+  "prompt_sha256": "5691e70f84c3b25de936a08d5350dac8ca34436ee70ed45a7a77e5a9ee866dbc"
+}

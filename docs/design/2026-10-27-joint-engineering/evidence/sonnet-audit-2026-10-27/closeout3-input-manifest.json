@@ -1,0 +1,87 @@
+{
+  "files": [
+    {
+      "path": "architecture.md",
+      "bytes": 9791,
+      "sha256": "d12d067ef6073abdfc94f563a3ffd0f0acca1e949efdeaade556cce78ada5828"
+    },
+    {
+      "path": "closeout-specifications.md",
+      "bytes": 15891,
+      "sha256": "0372fecf3be44148688b8139f4b99494e4dd2dd76ae7ff1dd158df4287be23f3"
+    },
+    {
+      "path": "audit-specifications.md",
+      "bytes": 22923,
+      "sha256": "d26bc710e0d5edd965baf265704eb717c01504c7c02790774e53868266580a1d"
+    },
+    {
+      "path": "execution-gates.json",
+      "bytes": 57506,
+      "sha256": "cd17e1bde66df78b98d97b0d1098ef52ed463fde813e9ccf481de2aea387b180"
+    },
+    {
+      "path": "legacy-case-map.json",
+      "bytes": 91680,
+      "sha256": "80f1975ca2911e69468e7772bc12d25a495ac70a66cc24bc12f27bed2b206564"
+    },
+    {
+      "path": "work-packages.json",
+      "bytes": 73691,
+      "sha256": "6e33692c9e7c872042281ccdaea3c932ad4e7e8ffceb47050ee458c74b203b7c"
+    },
+    {
+      "path": "digest-catalog.json",
+      "bytes": 5384,
+      "sha256": "ad115ecb0ff373d0883a75dec59d3921c31a5958d670d31af980ba6acb0fe408"
+    },
+    {
+      "path": "fixtures/digest-vectors.json",
+      "bytes": 14553,
+      "sha256": "740b46f253e6650d71e600e1976db03176d7ba657bcd8762636b6fae98a3d8d7"
+    },
+    {
+      "path": "validate-design.py",
+      "bytes": 34063,
+      "sha256": "45c66747c57a34d574c11e8dd66ba8cdcbe96b6d0e3982d13c3a4f140b836f5f"
+    },
+    {
+      "path": "test_validate_design.py",
+      "bytes": 16587,
+      "sha256": "dbd31ee347038b3a9a8d830e3a970c07782df6a082754f2bf2a2d81d04e3597b"
+    },
+    {
+      "path": "validation.md",
+      "bytes": 3454,
+      "sha256": "46226d10f0ca557bdc07a4d5cd84114867499828d3573e8f9a49576380750fe3"
+    },
+    {
+      "path": "evidence/sonnet-audit-2026-10-27/closeout2-raw.md",
+      "bytes": 6058,
+      "sha256": "ab25218f35860c5a24f61143b9c45c63d7116449e5dfacaf8ce5865c35266786"
+    },
+    {
+      "path": "evidence/sonnet-audit-2026-10-27/closeout2-dispositions.json",
+      "bytes": 896,
+      "sha256": "db95507af14cb41208984f65e633e077b321d8fd015bf13cb85270d44c3a3f8d"
+    },
+    {
+      "path": "evidence/sonnet-audit-2026-10-27/final-validator-tests.log",
+      "bytes": 7469,
+      "sha256": "1209823237b2dc32c7e59f046f58ca7cedb384fc9f209d14336fe956c9323b93"
+    },
+    {
+      "path": "evidence/sonnet-audit-2026-10-27/final-design-checks.json",
+      "bytes": 770,
+      "sha256": "c5460b2d2e1e12436c858f1e45577014712e2f733e8f3806c14e58c379442fe0"
+    },
+    {
+      "path": "evidence/sonnet-audit-2026-10-27/final-digest-check.json",
+      "bytes": 129,
+      "sha256": "0242d1b8bd775f7a589d261a9dd02c9a7294fea06403119c4a9a40f1ef0ae499"
+    }
+  ],
+  "count": 16,
+  "prompt_sha256": "eff99012b59d8659f12dbb8fac30b8230b3307b5fe40e304b4c940158de494cd",
+  "prompt_bytes": 362719
+}

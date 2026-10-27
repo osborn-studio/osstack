@@ -1,0 +1,128 @@
+{
+  "generated_at_utc": "2026-10-27T04:55:10.131515+00:00",
+  "scope": "design_audit_and_specification_only",
+  "model": "claude-sonnet-5-5",
+  "cli_version": "2.1.291",
+  "rounds": [
+    {
+      "mode": "probe",
+      "requested_model": "claude-sonnet-5-5",
+      "actual_models": [
+        "claude-sonnet-5-5"
+      ],
+      "exit_code": 0,
+      "complete_markers": true,
+      "result_file": "probe-raw.md",
+      "input_manifest": "probe-input.txt.gz (if present); identity result in probe-response.json"
+    },
+    {
+      "mode": "review",
+      "requested_model": "claude-sonnet-5-5",
+      "actual_models": [
+        "claude-sonnet-5-5"
+      ],
+      "exit_code": 0,
+      "complete_markers": false,
+      "result_file": "review-raw.md",
+      "input_manifest": "input-manifest.json"
+    },
+    {
+      "mode": "review-recovered",
+      "requested_model": "claude-sonnet-5-5",
+      "actual_models": [
+        "claude-sonnet-5-5"
+      ],
+      "exit_code": 0,
+      "complete_markers": true,
+      "result_file": "review-recovered-raw.md",
+      "input_manifest": "input-manifest.json"
+    },
+    {
+      "mode": "challenge",
+      "requested_model": "claude-sonnet-5-5",
+      "actual_models": [
+        "claude-sonnet-5-5"
+      ],
+      "exit_code": 0,
+      "complete_markers": true,
+      "result_file": "challenge-raw.md",
+      "input_manifest": "input-manifest.json"
+    },
+    {
+      "mode": "closeout",
+      "requested_model": "claude-sonnet-5-5",
+      "actual_models": [
+        "claude-sonnet-5-5"
+      ],
+      "exit_code": 0,
+      "complete_markers": true,
+      "result_file": "closeout-raw.md",
+      "input_manifest": "closeout-input-manifest.json"
+    },
+    {
+      "mode": "closeout2",
+      "requested_model": "claude-sonnet-5-5",
+      "actual_models": [
+        "claude-sonnet-5-5"
+      ],
+      "exit_code": 0,
+      "complete_markers": true,
+      "result_file": "closeout2-raw.md",
+      "input_manifest": "closeout2-input-manifest.json"
+    },
+    {
+      "mode": "closeout3",
+      "requested_model": "claude-sonnet-5-5",
+      "actual_models": [
+        "claude-sonnet-5-5"
+      ],
+      "exit_code": 0,
+      "complete_markers": true,
+      "result_file": "closeout3-raw.md",
+      "input_manifest": "closeout3-input-manifest.json"
+    }
+  ],
+  "verification_commands": [
+    {
+      "argv": [
+        "python3",
+        "/Volumes/AIMATE_WORK/Developer/CodeX/osstack/docs/design/2026-10-27-joint-engineering/validate-design.py",
+        "--verify-sources"
+      ],
+      "exit_code": 0,
+      "log": "final-design-checks.json"
+    },
+    {
+      "argv": [
+        "python3",
+        "/Volumes/AIMATE_WORK/Developer/CodeX/osstack/docs/design/2026-10-27-joint-engineering/test_validate_design.py"
+      ],
+      "exit_code": 0,
+      "log": "final-validator-tests.log"
+    },
+    {
+      "argv": [
+        "node",
+        "/Volumes/AIMATE_WORK/Developer/CodeX/osstack/docs/design/2026-10-27-joint-engineering/test_digest_vectors.mjs"
+      ],
+      "exit_code": 0,
+      "log": "final-digest-check.json"
+    },
+    {
+      "argv": [
+        "python3",
+        "/Volumes/AIMATE_WORK/Developer/CodeX/osstack/docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/validate-audit.py"
+      ],
+      "exit_code": 0,
+      "log": "audit-integrity-check.json"
+    }
+  ],
+  "final_numbered_finding_dispositions": 47,
+  "accepted": 29,
+  "partially_accepted": 18,
+  "product_implementation_started": false,
+  "product_runtime_acceptance_executed": 0,
+  "final_model_verdict": "PASS_WITH_CONCERNS",
+  "remaining_constraints": "unknowns.json plus closeout-specifications.md future qualification gates",
+  "final_candidate_note": "closeout3 reviewed CF fixes; final additions only report/evidence records and one test with three subcases"
+}

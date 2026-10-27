@@ -1,0 +1,79 @@
+{
+  "schema_version": 1,
+  "observed_at_utc": "2026-10-26T17:03:31.118420+00:00",
+  "retrieval": "Primary X pages opened and fully read through Codex in-app browser accessibility trees; DOM title/headings/length checked through read-only page evaluation.",
+  "initial_web_fetch": "Both direct web fetches returned HTTP 403; browser access to the original pages succeeded. Search mirrors were discovery only, not article evidence.",
+  "source_mutability": "Web pages are not immutable Git snapshots. No content hash or archived full-text copy is claimed. AX indices identify the reading observation, not permanent anchors.",
+  "articles": [
+    {
+      "id": "ART1",
+      "title": "The Complete Guide to pstack Pt. 1",
+      "author_display": "lauren (@poteto)",
+      "canonical_url": "https://x.com/poteto/article/2094457600259842065",
+      "requested_url": "https://x.com/poteto/article/2094457600259842065?lang=en",
+      "displayed_date": "Aug 31",
+      "reading_minutes_displayed": 12,
+      "dom_body_text_characters": 19145,
+      "read_coverage": "Full rendered article text from introduction through final closing; inline example code and feature-map example included. Linked posts, videos and external resources are not claimed read.",
+      "section_locators": [
+        {
+          "topic_zh": "验证基础设施",
+          "observed_ax_index": 70
+        },
+        {
+          "topic_zh": "工具接口与开发环境",
+          "observed_ax_index": 102
+        },
+        {
+          "topic_zh": "并行执行环境",
+          "observed_ax_index": 154
+        },
+        {
+          "topic_zh": "功能地图与共享记忆",
+          "observed_ax_index": 168
+        },
+        {
+          "topic_zh": "日常使用与维护",
+          "observed_ax_index": 187
+        }
+      ]
+    },
+    {
+      "id": "ART2",
+      "title": "The Complete Guide to pstack Pt. 2",
+      "author_display": "lauren (@poteto)",
+      "canonical_url": "https://x.com/poteto/article/2097732320606507506",
+      "requested_url": "https://x.com/poteto/article/2097732320606507506",
+      "displayed_date": "Sep 9",
+      "reading_minutes_displayed": 14,
+      "dom_body_text_characters": 19581,
+      "read_coverage": "Full rendered article text from introduction through final closing, including all four workflow examples. Linked resources and embedded media are not claimed independently inspected.",
+      "section_locators": [
+        {
+          "topic_zh": "意图与上下文两类失败",
+          "observed_ax_index": 50
+        },
+        {
+          "topic_zh": "重述目标与解释机制",
+          "observed_ax_index": 63
+        },
+        {
+          "topic_zh": "从使用方式倒推设计",
+          "observed_ax_index": 101
+        },
+        {
+          "topic_zh": "原型与架构实验",
+          "observed_ax_index": 159
+        },
+        {
+          "topic_zh": "设计确定后的执行计划",
+          "observed_ax_index": 216
+        },
+        {
+          "topic_zh": "四个实际工作示例",
+          "observed_ax_index": 227
+        }
+      ]
+    }
+  ]
+}

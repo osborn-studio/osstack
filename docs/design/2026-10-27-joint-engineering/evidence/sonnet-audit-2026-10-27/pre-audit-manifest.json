@@ -1,0 +1,190 @@
+{
+  "docs/design/2026-10-27-joint-engineering/sources.json": {
+    "sha256": "b8bad71927675319daa7573cd975882687d6ffa407bc08f2c4ebc25c23fba684",
+    "bytes": 93619
+  },
+  "docs/design/2026-10-27-joint-engineering/capability-index.md": {
+    "sha256": "70518b240b78bf04aa959b9714bd99ea95ebac368b516fa8566953091e6ea058",
+    "bytes": 5292
+  },
+  "docs/design/2026-10-27-joint-engineering/contracts.md": {
+    "sha256": "b724f934818739067d6e9c7aee0ab5886c31608f47cf8646642463292f472d8d",
+    "bytes": 13415
+  },
+  "docs/design/2026-10-27-joint-engineering/architecture.md": {
+    "sha256": "ef007165294537a955f3e3752ab26cd967245aad7340110d48d95ec37addd6ae",
+    "bytes": 8473
+  },
+  "docs/design/2026-10-27-joint-engineering/test_validate_design.py": {
+    "sha256": "737bba5ed1fa55045d06c1d3946ccc4d6cf568941b2533fc71af0eda1c27cee6",
+    "bytes": 5542
+  },
+  "docs/design/2026-10-27-joint-engineering/contract.schema.json": {
+    "sha256": "0bedf1aea47b7a08a97107df23be5192e019ecd08fad480cf99982104d2f739c",
+    "bytes": 14189
+  },
+  "docs/design/2026-10-27-joint-engineering/work-packages.json": {
+    "sha256": "9fcd78bbc3e84b1ca9ab9ca21e944142d1fa78cddc63b85424bbaaf44ebe72bf",
+    "bytes": 51949
+  },
+  "docs/design/2026-10-27-joint-engineering/validation.md": {
+    "sha256": "59073bfc745c357443558f59b98414d04c1890e3aaa27ebe7590baa10b33aa97",
+    "bytes": 3713
+  },
+  "docs/design/2026-10-27-joint-engineering/legacy-work-map.json": {
+    "sha256": "bc18aa95637deffeb74fa8bf85985095e573b987446049f3022d6020eb2258a9",
+    "bytes": 23719
+  },
+  "docs/design/2026-10-27-joint-engineering/capability-map.json": {
+    "sha256": "32ba03b34da5d672229f696052bfeae30e4f771c447494d2818e0113e23bb5a7",
+    "bytes": 55522
+  },
+  "docs/design/2026-10-27-joint-engineering/acceptance-cases.json": {
+    "sha256": "ec4eaebebb3bff98facb1d550c7f6386864081227ef7ef56934894123fa76106",
+    "bytes": 37983
+  },
+  "docs/design/2026-10-27-joint-engineering/README.md": {
+    "sha256": "90114de8be5a4750bdd7e5a8a1473f9d17eb79cf507d9e57b8b0903573cb6d09",
+    "bytes": 5195
+  },
+  "docs/design/2026-10-27-joint-engineering/implementation-plan.md": {
+    "sha256": "99fd728f90e5f9ee3734203133130dcf286a084f1b29fbd997eae94db1831f2d",
+    "bytes": 8616
+  },
+  "docs/design/2026-10-27-joint-engineering/reconciliation.md": {
+    "sha256": "25fd2d1b4abdef4ff8ff7507db6704aba21720c4777f134f78a7624433a1f43c",
+    "bytes": 6188
+  },
+  "docs/design/2026-10-27-joint-engineering/baseline.json": {
+    "sha256": "7748ebdf99b013c8102dc176acae7d76422d66976f87063e66f64fe73d1bcf38",
+    "bytes": 5494
+  },
+  "docs/design/2026-10-27-joint-engineering/validate-design.py": {
+    "sha256": "c18f511d4509ab8ddf03cea77da73ec517f5e1c15d5eac6ca0c958cd594f67ba",
+    "bytes": 13401
+  },
+  "docs/design/2026-10-27-joint-engineering/verification-spec.md": {
+    "sha256": "2d808164ea8d60e6f3a5e3f61a8044569edc09003fdf1507afd509874a2d370b",
+    "bytes": 8076
+  },
+  "docs/design/2026-10-27-joint-engineering/work-package-index.md": {
+    "sha256": "db732a1410a17bae3dcac6422fbf15d9ca849c56cfba4c015e3803d3dac40f9f",
+    "bytes": 3474
+  },
+  "docs/design/2026-10-27-joint-engineering/evidence/deliverable-manifest.json": {
+    "sha256": "4f7bd68daa5894cfba92829746a53a1c1a4247d1209bf55f3b11b1b6711df66a",
+    "bytes": 9578
+  },
+  "docs/design/2026-10-27-joint-engineering/evidence/preexisting-file-hashes.json": {
+    "sha256": "94ffaf1d2582e01dea61b901658316bffc433c0eb334e3d5f55ecc6b50f5d3c1",
+    "bytes": 11327
+  },
+  "docs/design/2026-10-27-joint-engineering/evidence/workspace-before.txt": {
+    "sha256": "a4b12b1ca651e97e5b675e1fff065e17e10a0575edb49a5704be5cfeeb545697",
+    "bytes": 4470
+  },
+  "docs/design/2026-10-27-joint-engineering/evidence/validator-tests.log": {
+    "sha256": "e87d4a9f6a9a865da5b2e23f99db97bd4d5793c6ef8db11d189504afd53cc665",
+    "bytes": 2344
+  },
+  "docs/design/2026-10-27-joint-engineering/evidence/scope-check.json": {
+    "sha256": "62481563c7b5133e58a5765f88d566d7bca1deb324757f083a613c032f241890",
+    "bytes": 625
+  },
+  "docs/design/2026-10-27-joint-engineering/evidence/github-pr-271.json": {
+    "sha256": "8841898c2404028681a4762cd3f2d12a70c48c25a43a5fe3af36a464c4bd0c18",
+    "bytes": 460
+  },
+  "docs/design/2026-10-27-joint-engineering/evidence/design-checks.json": {
+    "sha256": "dfc023694a138c4697c15f9c8e5e487b5731fb51b9dbe79288ab31d27f299c3f",
+    "bytes": 658
+  },
+  "docs/design/2026-10-27-joint-engineering/evidence/execution-record.json": {
+    "sha256": "bc9b29f0dbf8804426f9d3d2061870b29600347407c4e17c679e184bc3d8de01",
+    "bytes": 898
+  },
+  "docs/design/2026-10-27-joint-engineering/evidence/inputs/pstack-revision2-README.md": {
+    "sha256": "14f63ad459e3e9256d53d9aefe81ce66fd1bdc17ebb84acfee0ca43dabd96443",
+    "bytes": 35349
+  },
+  "docs/design/2026-10-27-joint-engineering/evidence/inputs/pstack-revision2-author-reading.md": {
+    "sha256": "7bdc3c254670dbe7bd20466a3ce199aa61a562d3a4624c896351bdeabe65903f",
+    "bytes": 7743
+  },
+  "docs/design/2026-10-27-joint-engineering/evidence/inputs/firstmate-sources.json": {
+    "sha256": "30cd9f3a810c981ddb13706676af8394f7ec10a3a49bf42b7e52915e93b9b327",
+    "bytes": 33440
+  },
+  "docs/design/2026-10-27-joint-engineering/evidence/inputs/firstmate-capabilities.json": {
+    "sha256": "c57bcd38ca77d2c77a5a81b825758d62666b753fe6fc0a72f563d0ecc6bc7414",
+    "bytes": 16527
+  },
+  "docs/design/2026-10-27-joint-engineering/evidence/inputs/firstmate-delivery-gates.json": {
+    "sha256": "f99926b17e44af46574073668b7bfbc05bafe658713b1be75a25b4c54b2b15ff",
+    "bytes": 10257
+  },
+  "docs/design/2026-10-27-joint-engineering/evidence/inputs/firstmate-work-packages.json": {
+    "sha256": "c79df92eef7d5a9aba3555f61dc58cfdfe1fa09d35df238abc1944bcec8447c9",
+    "bytes": 34375
+  },
+  "docs/design/2026-10-27-joint-engineering/evidence/inputs/firstmate-source-additions.json": {
+    "sha256": "a6508d953b141a03334d792c5a53aecc933eff4e95d7d0fc876e43921e239c8b",
+    "bytes": 25888
+  },
+  "docs/design/2026-10-27-joint-engineering/evidence/inputs/pstack-revision2-validation.md": {
+    "sha256": "fe93865dbd60b5fb7a150ed87f4a6b9038daec258880287ba3d05449db2b6750",
+    "bytes": 8858
+  },
+  "docs/design/2026-10-27-joint-engineering/evidence/inputs/firstmate-base-work-items.json": {
+    "sha256": "9e89fcf6f59607ba4f229c9ef98718f3cffa04993341e278a24fa96b41e85770",
+    "bytes": 12371
+  },
+  "docs/design/2026-10-27-joint-engineering/evidence/inputs/firstmate-audit-followups.json": {
+    "sha256": "783b7e7297e51ff86c14a9635ae95b79e5b0a744ef972f497ad74818c05c756f",
+    "bytes": 1951
+  },
+  "docs/design/2026-10-27-joint-engineering/evidence/inputs/pstack-acceptance-cases.json": {
+    "sha256": "ea6555865ac1478c6ebd10157b7b0f350827d4adba02aba680d65c32a112a25d",
+    "bytes": 24725
+  },
+  "docs/design/2026-10-27-joint-engineering/evidence/inputs/pstack-revision2-integration-spec.md": {
+    "sha256": "e11209a123253ab579f989d813f961cdcf0eece6f7e0b40424fcba345b356d58",
+    "bytes": 53620
+  },
+  "docs/design/2026-10-27-joint-engineering/evidence/inputs/pstack-revision2-capability-catalog.md": {
+    "sha256": "17dd8b9f347bf7c6882d84a5a2d20e8555c136da2311f669c7e39bc71c4931bb",
+    "bytes": 28352
+  },
+  "docs/design/2026-10-27-joint-engineering/evidence/inputs/pstack-capability-map.json": {
+    "sha256": "465371693560451eb70cee101cd20587e4f4f4d1bf10c43c10749c71448234b0",
+    "bytes": 52944
+  },
+  "docs/design/2026-10-27-joint-engineering/fixtures/contracts.json": {
+    "sha256": "55ea17c5e7fe625419c6111358efa8a34b0f9fddc0abc56cf0859d2e6090f3b0",
+    "bytes": 23640
+  },
+  "docs/reports/2026-10-26-pstack/README.md": {
+    "sha256": "839c14a3de97f903778c326eaabdb797e9b268343a6d1e81bbb613b90dff4929",
+    "bytes": 35722
+  },
+  "docs/reports/2026-10-26-pstack/integration-spec.md": {
+    "sha256": "e2c293dce90793ebcaf360751920050facb71dfd86660f48333415d8ff40ace5",
+    "bytes": 54282
+  },
+  "docs/reports/2026-10-26-pstack/capability-catalog.md": {
+    "sha256": "7b1486ed9212ba4161a792032c05a64ca4f89489e82877ed78364693555ff08a",
+    "bytes": 28793
+  },
+  "docs/reports/2026-10-26-pstack/capability-map.json": {
+    "sha256": "99ad5bc8377f69886247da25275f4fa35fc78d4e47a2acf5bd27d80933a7b240",
+    "bytes": 59054
+  },
+  "docs/reports/2026-10-26-pstack/validation.md": {
+    "sha256": "888ebcae057f6d16089db61d7dc6bff1b55eb16bd535501826aa2fac394eef7c",
+    "bytes": 9231
+  },
+  "docs/design/2026-10-26-firstmate-upgrade/joint-design-addendum.md": {
+    "sha256": "ad875070aafddda1cef114aae9a4c0d7dc33a289b588726bd212d5a796db9118",
+    "bytes": 1738
+  }
+}

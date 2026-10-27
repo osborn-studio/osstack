@@ -1,0 +1,464 @@
+{
+  "note": "Pinned main Git blobs are the integration baseline. Working branch is older and dirty. Inventory hashes are not execution proof.",
+  "files": [
+    {
+      "path": "packages/core/src/capability.ts",
+      "commit": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+      "sha256": "7180332bfdb2b71fefc47c88de1014fb4b2eb9434dcbae757884009cbd2cfdcb",
+      "lines": 89,
+      "url": "https://github.com/osborn-studio/osstack/blob/c1cfccf18df97fa4b8bc2ed1752071feda9c3670/packages/core/src/capability.ts",
+      "workspace_exists": true,
+      "workspace_sha256": "7180332bfdb2b71fefc47c88de1014fb4b2eb9434dcbae757884009cbd2cfdcb"
+    },
+    {
+      "path": "packages/core/src/orchestrator/router.ts",
+      "commit": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+      "sha256": "85e982382efd8e1348940078ddc613362539de0208059f1d1858f1e883ff2fb6",
+      "lines": 212,
+      "url": "https://github.com/osborn-studio/osstack/blob/c1cfccf18df97fa4b8bc2ed1752071feda9c3670/packages/core/src/orchestrator/router.ts",
+      "workspace_exists": true,
+      "workspace_sha256": "85e982382efd8e1348940078ddc613362539de0208059f1d1858f1e883ff2fb6"
+    },
+    {
+      "path": "packages/core/src/state/engineering-store.ts",
+      "commit": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+      "sha256": "a11803e6b2deab290e0fb1707576e99552fe106d1e4ea9725402b988fe8fe705",
+      "lines": 551,
+      "url": "https://github.com/osborn-studio/osstack/blob/c1cfccf18df97fa4b8bc2ed1752071feda9c3670/packages/core/src/state/engineering-store.ts",
+      "workspace_exists": false,
+      "workspace_sha256": null
+    },
+    {
+      "path": "packages/core/src/state/engineering-dispatch.ts",
+      "commit": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+      "sha256": "36b03aea0604875d67c41ac2c2c1e807d0e4cc7d2dc593ac9b4c2a24ae469abd",
+      "lines": 42,
+      "url": "https://github.com/osborn-studio/osstack/blob/c1cfccf18df97fa4b8bc2ed1752071feda9c3670/packages/core/src/state/engineering-dispatch.ts",
+      "workspace_exists": false,
+      "workspace_sha256": null
+    },
+    {
+      "path": "packages/core/src/state/engineering-ddl.ts",
+      "commit": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+      "sha256": "e7067bfc981362f7d9740ac574bebe87c246e62fbd1bb0e2e0ac71b6b18fb5c3",
+      "lines": 84,
+      "url": "https://github.com/osborn-studio/osstack/blob/c1cfccf18df97fa4b8bc2ed1752071feda9c3670/packages/core/src/state/engineering-ddl.ts",
+      "workspace_exists": false,
+      "workspace_sha256": null
+    },
+    {
+      "path": "packages/core/src/state/graph-verification.ts",
+      "commit": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+      "sha256": "b56ec07ec173aaf74ee5cf9def98b2ceac84a14a74ac7861586ee6446ee587ed",
+      "lines": 118,
+      "url": "https://github.com/osborn-studio/osstack/blob/c1cfccf18df97fa4b8bc2ed1752071feda9c3670/packages/core/src/state/graph-verification.ts",
+      "workspace_exists": false,
+      "workspace_sha256": null
+    },
+    {
+      "path": "packages/core/src/state/graph-runs.ts",
+      "commit": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+      "sha256": "74cecc8aeeec533b65e9d98b9664ab0f0f8b3f5fcb47b4711816b9b41663b5d4",
+      "lines": 262,
+      "url": "https://github.com/osborn-studio/osstack/blob/c1cfccf18df97fa4b8bc2ed1752071feda9c3670/packages/core/src/state/graph-runs.ts",
+      "workspace_exists": false,
+      "workspace_sha256": null
+    },
+    {
+      "path": "packages/core/src/state/attention-actions.ts",
+      "commit": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+      "sha256": "795c2d55d41277282b4ca6bc95e115b4e468bc5403e6a81f14c51db8bef04da7",
+      "lines": 365,
+      "url": "https://github.com/osborn-studio/osstack/blob/c1cfccf18df97fa4b8bc2ed1752071feda9c3670/packages/core/src/state/attention-actions.ts",
+      "workspace_exists": true,
+      "workspace_sha256": "1d13f9e5801a4c741644f783367f77bd9103ca1e1f31d1f6cf13c46d445dd68c"
+    },
+    {
+      "path": "packages/cli/src/engineering-command.ts",
+      "commit": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+      "sha256": "e0a6066201e728f0fc7faa9ba9876e3f7213af8c43420b6c99a851a671bd7646",
+      "lines": 169,
+      "url": "https://github.com/osborn-studio/osstack/blob/c1cfccf18df97fa4b8bc2ed1752071feda9c3670/packages/cli/src/engineering-command.ts",
+      "workspace_exists": false,
+      "workspace_sha256": null
+    },
+    {
+      "path": "packages/cli/src/engineering-host.ts",
+      "commit": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+      "sha256": "23f234aa550132bfaf0af44d865d13a86384ce912083efcb554caacbbafe233e",
+      "lines": 203,
+      "url": "https://github.com/osborn-studio/osstack/blob/c1cfccf18df97fa4b8bc2ed1752071feda9c3670/packages/cli/src/engineering-host.ts",
+      "workspace_exists": false,
+      "workspace_sha256": null
+    },
+    {
+      "path": "packages/cli/src/graph-runtime.ts",
+      "commit": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+      "sha256": "47d8182feeadbb9d6f09e301432a5689f260b16f8a9e844a9f7aaccc44719876",
+      "lines": 199,
+      "url": "https://github.com/osborn-studio/osstack/blob/c1cfccf18df97fa4b8bc2ed1752071feda9c3670/packages/cli/src/graph-runtime.ts",
+      "workspace_exists": false,
+      "workspace_sha256": null
+    },
+    {
+      "path": "packages/cli/src/graph-verification.ts",
+      "commit": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+      "sha256": "69626aa604598d5efbe730ecdf4749ae39e34490a201c16a4db03f40dd9a90fd",
+      "lines": 399,
+      "url": "https://github.com/osborn-studio/osstack/blob/c1cfccf18df97fa4b8bc2ed1752071feda9c3670/packages/cli/src/graph-verification.ts",
+      "workspace_exists": false,
+      "workspace_sha256": null
+    },
+    {
+      "path": "packages/cli/src/graph-check-suite.ts",
+      "commit": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+      "sha256": "425976d7561ad9de24e45a373342e56e25fbfb396824cc26ad2001d29263d29b",
+      "lines": 40,
+      "url": "https://github.com/osborn-studio/osstack/blob/c1cfccf18df97fa4b8bc2ed1752071feda9c3670/packages/cli/src/graph-check-suite.ts",
+      "workspace_exists": false,
+      "workspace_sha256": null
+    },
+    {
+      "path": "packages/cli/src/proof-pack.ts",
+      "commit": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+      "sha256": "7535308452b41091768d605a40e132f42a20f9915163e67523427fd8994de380",
+      "lines": 581,
+      "url": "https://github.com/osborn-studio/osstack/blob/c1cfccf18df97fa4b8bc2ed1752071feda9c3670/packages/cli/src/proof-pack.ts",
+      "workspace_exists": true,
+      "workspace_sha256": "530dc17daff742eb334620dad654a72e87e28ff603c87ddd4d3434605ade9ed1"
+    },
+    {
+      "path": "packages/cli/src/deliver-command.ts",
+      "commit": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+      "sha256": "bfc9d583b6c9e35f9019a510df104401ebc79c3373e89097162d705cff0cf006",
+      "lines": 897,
+      "url": "https://github.com/osborn-studio/osstack/blob/c1cfccf18df97fa4b8bc2ed1752071feda9c3670/packages/cli/src/deliver-command.ts",
+      "workspace_exists": true,
+      "workspace_sha256": "cce29df9f0b07efeab8b6ff0fe6461d4202c5a86b40279a350f217b0a196af31"
+    },
+    {
+      "path": "packages/cli/src/control-plane-guard.ts",
+      "commit": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+      "sha256": "0301f5dc1cfeb99a0d439bd47447403b4d53067bfaada2fd9a88d0a0cddf735f",
+      "lines": 217,
+      "url": "https://github.com/osborn-studio/osstack/blob/c1cfccf18df97fa4b8bc2ed1752071feda9c3670/packages/cli/src/control-plane-guard.ts",
+      "workspace_exists": true,
+      "workspace_sha256": "b8455782f0526432d7dd61e74de9cee2f1d0a13f184d214c4be14ee38653cbe5"
+    },
+    {
+      "path": "packages/cli/src/graph-delivery-contract.ts",
+      "commit": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+      "sha256": "530f0be149817440e53c7b5303c9ada1ba9300a40be81407696ee2b964cfef86",
+      "lines": 104,
+      "url": "https://github.com/osborn-studio/osstack/blob/c1cfccf18df97fa4b8bc2ed1752071feda9c3670/packages/cli/src/graph-delivery-contract.ts",
+      "workspace_exists": false,
+      "workspace_sha256": null
+    },
+    {
+      "path": "packages/cli/src/graph-worker-manager.ts",
+      "commit": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+      "sha256": "60f731d2ead77254036aa2d28c79f8fb0ad53a1bc24781615098745fc046d0c5",
+      "lines": 312,
+      "url": "https://github.com/osborn-studio/osstack/blob/c1cfccf18df97fa4b8bc2ed1752071feda9c3670/packages/cli/src/graph-worker-manager.ts",
+      "workspace_exists": false,
+      "workspace_sha256": null
+    },
+    {
+      "path": "packages/graph/src/spec-compiler.ts",
+      "commit": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+      "sha256": "915c91c8285bfe8e4c7fcf5e935e6dd0dbfdd7017441016bdccf69429b98f40c",
+      "lines": 3,
+      "url": "https://github.com/osborn-studio/osstack/blob/c1cfccf18df97fa4b8bc2ed1752071feda9c3670/packages/graph/src/spec-compiler.ts",
+      "workspace_exists": false,
+      "workspace_sha256": null
+    },
+    {
+      "path": "packages/graph/src/registry.ts",
+      "commit": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+      "sha256": "4a0e27f10756fbc64099ac02a8db182e8611637ac03015b1438d77588e4a0484",
+      "lines": 2,
+      "url": "https://github.com/osborn-studio/osstack/blob/c1cfccf18df97fa4b8bc2ed1752071feda9c3670/packages/graph/src/registry.ts",
+      "workspace_exists": false,
+      "workspace_sha256": null
+    },
+    {
+      "path": "packages/graph/src/legacy/code-delivery-v4.ts",
+      "commit": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+      "sha256": "95add8856e1a8a9c05c042caf8c6a3a8cb380fd185871d9d9ab4c89851394061",
+      "lines": 218,
+      "url": "https://github.com/osborn-studio/osstack/blob/c1cfccf18df97fa4b8bc2ed1752071feda9c3670/packages/graph/src/legacy/code-delivery-v4.ts",
+      "workspace_exists": false,
+      "workspace_sha256": null
+    },
+    {
+      "path": "packages/graph/src/legacy/code-delivery-registry-v3.ts",
+      "commit": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+      "sha256": "64bde75484c36e71f0e972d362a1156aff61e097aff90892c9c95cf6340433f4",
+      "lines": 61,
+      "url": "https://github.com/osborn-studio/osstack/blob/c1cfccf18df97fa4b8bc2ed1752071feda9c3670/packages/graph/src/legacy/code-delivery-registry-v3.ts",
+      "workspace_exists": false,
+      "workspace_sha256": null
+    },
+    {
+      "path": "packages/graph/src/program-resolver.ts",
+      "commit": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+      "sha256": "49e5be9f60d3d3b8d50e18e213b05d434eaaee5f9f36eadff11d8270d55a028f",
+      "lines": 48,
+      "url": "https://github.com/osborn-studio/osstack/blob/c1cfccf18df97fa4b8bc2ed1752071feda9c3670/packages/graph/src/program-resolver.ts",
+      "workspace_exists": false,
+      "workspace_sha256": null
+    },
+    {
+      "path": "packages/graph/src/join.ts",
+      "commit": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+      "sha256": "30cea001a760bd7c5c0a0f7cfe9f4de7c695bf293f654609899412043cad75ab",
+      "lines": 68,
+      "url": "https://github.com/osborn-studio/osstack/blob/c1cfccf18df97fa4b8bc2ed1752071feda9c3670/packages/graph/src/join.ts",
+      "workspace_exists": false,
+      "workspace_sha256": null
+    },
+    {
+      "path": "packages/graph/src/nodes/branch.ts",
+      "commit": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+      "sha256": "5d250777869b90fd377f49db70b7ca3fe9ed7efda4e3b95982d5164a69308449",
+      "lines": 79,
+      "url": "https://github.com/osborn-studio/osstack/blob/c1cfccf18df97fa4b8bc2ed1752071feda9c3670/packages/graph/src/nodes/branch.ts",
+      "workspace_exists": false,
+      "workspace_sha256": null
+    },
+    {
+      "path": "packages/protocol/src/engineering.ts",
+      "commit": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+      "sha256": "d251764e375560b6a3146a92cf68887486a9001520ac15c3b8ec27cd3cca46ae",
+      "lines": 94,
+      "url": "https://github.com/osborn-studio/osstack/blob/c1cfccf18df97fa4b8bc2ed1752071feda9c3670/packages/protocol/src/engineering.ts",
+      "workspace_exists": false,
+      "workspace_sha256": null
+    },
+    {
+      "path": "packages/protocol/src/graph.ts",
+      "commit": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+      "sha256": "9ebaafc31621ad490e6af5f48f66112b5d42e1cf439cbb6bcdb1407cd3d6c6d9",
+      "lines": 439,
+      "url": "https://github.com/osborn-studio/osstack/blob/c1cfccf18df97fa4b8bc2ed1752071feda9c3670/packages/protocol/src/graph.ts",
+      "workspace_exists": false,
+      "workspace_sha256": null
+    },
+    {
+      "path": "packages/loop/src/types.ts",
+      "commit": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+      "sha256": "3f6c6a368a9e7ce921c20fb56be4dee27993263101f11482e23f2f57410e326c",
+      "lines": 524,
+      "url": "https://github.com/osborn-studio/osstack/blob/c1cfccf18df97fa4b8bc2ed1752071feda9c3670/packages/loop/src/types.ts",
+      "workspace_exists": true,
+      "workspace_sha256": "86233be74963f03a658bcadb6053816795aae39eb5ab9106f3d62311eb8eb5a1"
+    },
+    {
+      "path": "packages/loop/src/evaluation-spec.ts",
+      "commit": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+      "sha256": "1a0e35f4d8030533607e9cad7b12eac25e7276dac1e4738eacab831cc9d0f5e9",
+      "lines": 109,
+      "url": "https://github.com/osborn-studio/osstack/blob/c1cfccf18df97fa4b8bc2ed1752071feda9c3670/packages/loop/src/evaluation-spec.ts",
+      "workspace_exists": true,
+      "workspace_sha256": "1a0e35f4d8030533607e9cad7b12eac25e7276dac1e4738eacab831cc9d0f5e9"
+    },
+    {
+      "path": "packages/loop/src/feedback.ts",
+      "commit": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+      "sha256": "e008507ea94956573f09728411dea5b47e25abf2cd0b7c7a4ba0720e19079784",
+      "lines": 74,
+      "url": "https://github.com/osborn-studio/osstack/blob/c1cfccf18df97fa4b8bc2ed1752071feda9c3670/packages/loop/src/feedback.ts",
+      "workspace_exists": true,
+      "workspace_sha256": "e008507ea94956573f09728411dea5b47e25abf2cd0b7c7a4ba0720e19079784"
+    },
+    {
+      "path": "packages/loop/src/lesson-draft.ts",
+      "commit": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+      "sha256": "8cde6f2a4dbcb829fca3189320b015247f412296f3adad3256525d5609ad356f",
+      "lines": 399,
+      "url": "https://github.com/osborn-studio/osstack/blob/c1cfccf18df97fa4b8bc2ed1752071feda9c3670/packages/loop/src/lesson-draft.ts",
+      "workspace_exists": true,
+      "workspace_sha256": "44845d43316265f48da60c31d1858dbd6e6d7912f7ebcf3198b1b4f8343445a0"
+    },
+    {
+      "path": "packages/loop/src/reviewer-isolation.ts",
+      "commit": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+      "sha256": "7fede405c975abf0e014939d6be46032d3a7afcf81201d3cf01fd91d027755e1",
+      "lines": 375,
+      "url": "https://github.com/osborn-studio/osstack/blob/c1cfccf18df97fa4b8bc2ed1752071feda9c3670/packages/loop/src/reviewer-isolation.ts",
+      "workspace_exists": true,
+      "workspace_sha256": "07b39a05d149597d6e8d255e0563c794dab5e7496c4e725e8b5a7519d82983fd"
+    },
+    {
+      "path": "packages/governance/src/probe/evaluation-compiler.ts",
+      "commit": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+      "sha256": "8cf49b620eb1c951dda037e0126f056c587d56a33381010060e97705c5560df8",
+      "lines": 366,
+      "url": "https://github.com/osborn-studio/osstack/blob/c1cfccf18df97fa4b8bc2ed1752071feda9c3670/packages/governance/src/probe/evaluation-compiler.ts",
+      "workspace_exists": true,
+      "workspace_sha256": "8cf49b620eb1c951dda037e0126f056c587d56a33381010060e97705c5560df8"
+    },
+    {
+      "path": "packages/github/src/stack.ts",
+      "commit": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+      "sha256": "a6723f71ab062262bbd5cf4380573f9291c419ed926d23019ae6f473715036e3",
+      "lines": 264,
+      "url": "https://github.com/osborn-studio/osstack/blob/c1cfccf18df97fa4b8bc2ed1752071feda9c3670/packages/github/src/stack.ts",
+      "workspace_exists": true,
+      "workspace_sha256": "a6723f71ab062262bbd5cf4380573f9291c419ed926d23019ae6f473715036e3"
+    },
+    {
+      "path": "packages/github/src/delivery.ts",
+      "commit": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+      "sha256": "5a0ab81f10616d953a0c6dca30b46532e03dd42747df700b3dd9b1efde2d7f60",
+      "lines": 1166,
+      "url": "https://github.com/osborn-studio/osstack/blob/c1cfccf18df97fa4b8bc2ed1752071feda9c3670/packages/github/src/delivery.ts",
+      "workspace_exists": true,
+      "workspace_sha256": "1b43c71c72d4e6370a7a649adcd3aa1e879ec79b8377cbae6005ce4f02e00528"
+    },
+    {
+      "path": "packages/github/src/attention-ci.ts",
+      "commit": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+      "sha256": "ff79c491c661c401290dfdc09b6163eb4d54c49ac8b89bab05161f79387e29a0",
+      "lines": 118,
+      "url": "https://github.com/osborn-studio/osstack/blob/c1cfccf18df97fa4b8bc2ed1752071feda9c3670/packages/github/src/attention-ci.ts",
+      "workspace_exists": true,
+      "workspace_sha256": "ff79c491c661c401290dfdc09b6163eb4d54c49ac8b89bab05161f79387e29a0"
+    },
+    {
+      "path": "packages/skill-registry/src/index.ts",
+      "commit": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+      "sha256": "fc46fd55269a52cd50a4313525e59fece718e92353f747b95c07fff44dffd648",
+      "lines": 11,
+      "url": "https://github.com/osborn-studio/osstack/blob/c1cfccf18df97fa4b8bc2ed1752071feda9c3670/packages/skill-registry/src/index.ts",
+      "workspace_exists": true,
+      "workspace_sha256": "fc46fd55269a52cd50a4313525e59fece718e92353f747b95c07fff44dffd648"
+    },
+    {
+      "path": "packages/skill-registry/src/manifest.ts",
+      "commit": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+      "sha256": "dc70df8caa70530a6d9714fa4ea6418770c36f16fdd2535a64535bf4649f3cb6",
+      "lines": 98,
+      "url": "https://github.com/osborn-studio/osstack/blob/c1cfccf18df97fa4b8bc2ed1752071feda9c3670/packages/skill-registry/src/manifest.ts",
+      "workspace_exists": true,
+      "workspace_sha256": "dc70df8caa70530a6d9714fa4ea6418770c36f16fdd2535a64535bf4649f3cb6"
+    },
+    {
+      "path": "packages/skill-registry/src/watcher.ts",
+      "commit": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+      "sha256": "9b288bb0c6668b8214f3210ab12f2b1d6dc1a2ac63b7f34fc56f10003edc9e28",
+      "lines": 77,
+      "url": "https://github.com/osborn-studio/osstack/blob/c1cfccf18df97fa4b8bc2ed1752071feda9c3670/packages/skill-registry/src/watcher.ts",
+      "workspace_exists": true,
+      "workspace_sha256": "9b288bb0c6668b8214f3210ab12f2b1d6dc1a2ac63b7f34fc56f10003edc9e28"
+    },
+    {
+      "path": "packages/skills/src/index.ts",
+      "commit": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+      "sha256": "2564afc97ee342f5ef0086aff87a04b9969358f30c576c3cc496c6e7ec5a7aef",
+      "lines": 7,
+      "url": "https://github.com/osborn-studio/osstack/blob/c1cfccf18df97fa4b8bc2ed1752071feda9c3670/packages/skills/src/index.ts",
+      "workspace_exists": true,
+      "workspace_sha256": "2564afc97ee342f5ef0086aff87a04b9969358f30c576c3cc496c6e7ec5a7aef"
+    },
+    {
+      "path": "packages/plugins/src/index.ts",
+      "commit": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+      "sha256": "fa1c7d874c2eb5597e469f86e7888eb8c3b4db59e09ff71dd40368bb0a0afd1a",
+      "lines": 9,
+      "url": "https://github.com/osborn-studio/osstack/blob/c1cfccf18df97fa4b8bc2ed1752071feda9c3670/packages/plugins/src/index.ts",
+      "workspace_exists": true,
+      "workspace_sha256": "fa1c7d874c2eb5597e469f86e7888eb8c3b4db59e09ff71dd40368bb0a0afd1a"
+    },
+    {
+      "path": "packages/runtime/src/index.ts",
+      "commit": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+      "sha256": "181a4771c3e85ac6156bdcb2155ab4bd3b86889bc52e13c04f347d7cd00513de",
+      "lines": 4,
+      "url": "https://github.com/osborn-studio/osstack/blob/c1cfccf18df97fa4b8bc2ed1752071feda9c3670/packages/runtime/src/index.ts",
+      "workspace_exists": true,
+      "workspace_sha256": "181a4771c3e85ac6156bdcb2155ab4bd3b86889bc52e13c04f347d7cd00513de"
+    },
+    {
+      "path": "packages/supervisor/src/attention-planning.ts",
+      "commit": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+      "sha256": "bc8d24706755796f7dd5ee5330d092338a5b876261eef14c02d832cf68df44cb",
+      "lines": 193,
+      "url": "https://github.com/osborn-studio/osstack/blob/c1cfccf18df97fa4b8bc2ed1752071feda9c3670/packages/supervisor/src/attention-planning.ts",
+      "workspace_exists": true,
+      "workspace_sha256": "bc8d24706755796f7dd5ee5330d092338a5b876261eef14c02d832cf68df44cb"
+    },
+    {
+      "path": "packages/supervisor/src/evaluator-epoch.ts",
+      "commit": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+      "sha256": "f8001f669b8a7cf6a9fd3abd7ac89a142285f2b578930f3b5548886adbd5c257",
+      "lines": 95,
+      "url": "https://github.com/osborn-studio/osstack/blob/c1cfccf18df97fa4b8bc2ed1752071feda9c3670/packages/supervisor/src/evaluator-epoch.ts",
+      "workspace_exists": true,
+      "workspace_sha256": "f8001f669b8a7cf6a9fd3abd7ac89a142285f2b578930f3b5548886adbd5c257"
+    },
+    {
+      "path": "packages/supervisor/src/adversarial-pool.ts",
+      "commit": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+      "sha256": "3fea1d234e7a3440f83f5a8c27b6d3d891fc77911b56aa0648aa1a94c0ceccff",
+      "lines": 56,
+      "url": "https://github.com/osborn-studio/osstack/blob/c1cfccf18df97fa4b8bc2ed1752071feda9c3670/packages/supervisor/src/adversarial-pool.ts",
+      "workspace_exists": true,
+      "workspace_sha256": "3fea1d234e7a3440f83f5a8c27b6d3d891fc77911b56aa0648aa1a94c0ceccff"
+    },
+    {
+      "path": "packages/protocol/src/delivery-contract.ts",
+      "commit": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+      "sha256": "b4ae1d5ef1a5d4497ccbc74a05559f03b35f2db69786e10748594af04ac94ed1",
+      "lines": 104,
+      "url": "https://github.com/osborn-studio/osstack/blob/c1cfccf18df97fa4b8bc2ed1752071feda9c3670/packages/protocol/src/delivery-contract.ts",
+      "workspace_exists": false,
+      "workspace_sha256": null
+    },
+    {
+      "path": "packages/core/src/delivery-contract.ts",
+      "commit": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+      "sha256": "fca14f4dc312e8021f0a3049c3ac8be4981569512fce42a122ec781d11984ce3",
+      "lines": 103,
+      "url": "https://github.com/osborn-studio/osstack/blob/c1cfccf18df97fa4b8bc2ed1752071feda9c3670/packages/core/src/delivery-contract.ts",
+      "workspace_exists": false,
+      "workspace_sha256": null
+    },
+    {
+      "path": "packages/cli/src/delivery-contract-host.ts",
+      "commit": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+      "sha256": "99351ba224b3d6d7667eec217d2a8d62c996951ce688239c4d4616afa5222363",
+      "lines": 213,
+      "url": "https://github.com/osborn-studio/osstack/blob/c1cfccf18df97fa4b8bc2ed1752071feda9c3670/packages/cli/src/delivery-contract-host.ts",
+      "workspace_exists": false,
+      "workspace_sha256": null
+    },
+    {
+      "path": "packages/cli/src/graph-execution-context.ts",
+      "commit": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+      "sha256": "1a96a939552a41908c47c7c6c50bb4338d65643c7faebdd095fabf8243518173",
+      "lines": 103,
+      "url": "https://github.com/osborn-studio/osstack/blob/c1cfccf18df97fa4b8bc2ed1752071feda9c3670/packages/cli/src/graph-execution-context.ts",
+      "workspace_exists": false,
+      "workspace_sha256": null
+    },
+    {
+      "path": "packages/cli/src/execution-context.ts",
+      "commit": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+      "sha256": "aa5298f4ccef92779fd012ec6fed61adef96a805282a19ded76f6a0093afb7f6",
+      "lines": 246,
+      "url": "https://github.com/osborn-studio/osstack/blob/c1cfccf18df97fa4b8bc2ed1752071feda9c3670/packages/cli/src/execution-context.ts",
+      "workspace_exists": false,
+      "workspace_sha256": null
+    },
+    {
+      "path": "packages/cli/src/graph-verification-inventory.ts",
+      "commit": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+      "sha256": "e4da813e14824d392dfbe08ea36aa302058ad03ce8ca5575696bb14458a52b61",
+      "lines": 51,
+      "url": "https://github.com/osborn-studio/osstack/blob/c1cfccf18df97fa4b8bc2ed1752071feda9c3670/packages/cli/src/graph-verification-inventory.ts",
+      "workspace_exists": false,
+      "workspace_sha256": null
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "status": "passed",
+  "preexisting_individually_hashed_files": 102,
+  "changed_preexisting_individually_hashed_files": [],
+  "pstack_revision2_files_changed": [
+    "docs/reports/2026-10-26-pstack/README.md",
+    "docs/reports/2026-10-26-pstack/capability-catalog.md",
+    "docs/reports/2026-10-26-pstack/capability-map.json",
+    "docs/reports/2026-10-26-pstack/integration-spec.md",
+    "docs/reports/2026-10-26-pstack/validation.md"
+  ],
+  "historical_firstmate_documents_modified": false,
+  "product_files_modified_by_this_turn": false,
+  "product_runtime_invoked": false,
+  "links_whitespace_and_fences": "passed"
+}

@@ -1,0 +1,165 @@
+{
+  "schema_version": 1,
+  "host_receipt_kinds": [
+    "intent_frame",
+    "reproduction",
+    "candidate_checks",
+    "independent_review",
+    "cleanup_receipt"
+  ],
+  "materials": [
+    {
+      "kind": "intent_frame",
+      "required_body_fields": [
+        "observations",
+        "hypotheses",
+        "unknowns",
+        "intent_revision"
+      ],
+      "body_schema_owner": "J01",
+      "producer": "J05",
+      "consumer": "J07",
+      "representation": "versioned body referenced by host envelope; not an additional receipt enum",
+      "freeze_before": "J05.scoped",
+      "status": "schema_contract_required_before_implementation"
+    },
+    {
+      "kind": "grounding",
+      "required_body_fields": [
+        "facts",
+        "inferences",
+        "unknowns",
+        "source_refs"
+      ],
+      "body_schema_owner": "J01",
+      "producer": "J06",
+      "consumer": "J07",
+      "representation": "versioned body referenced by host envelope; not an additional receipt enum",
+      "freeze_before": "J05.scoped",
+      "status": "schema_contract_required_before_implementation"
+    },
+    {
+      "kind": "impact_map",
+      "required_body_fields": [
+        "changed_surfaces",
+        "assumptions",
+        "check_refs"
+      ],
+      "body_schema_owner": "J01",
+      "producer": "J06",
+      "consumer": "J07",
+      "representation": "versioned body referenced by host envelope; not an additional receipt enum",
+      "freeze_before": "J05.scoped",
+      "status": "schema_contract_required_before_implementation"
+    },
+    {
+      "kind": "verification_plan",
+      "required_body_fields": [
+        "scenario_refs",
+        "required_checks",
+        "environment_refs"
+      ],
+      "body_schema_owner": "J01",
+      "producer": "J06",
+      "consumer": "J07",
+      "representation": "versioned body referenced by host envelope; not an additional receipt enum",
+      "freeze_before": "J05.scoped",
+      "status": "schema_contract_required_before_implementation"
+    },
+    {
+      "kind": "review_dispositions",
+      "required_body_fields": [
+        "finding_ref",
+        "decision",
+        "rationale",
+        "evidence_refs"
+      ],
+      "body_schema_owner": "J01",
+      "producer": "J07",
+      "consumer": "J07",
+      "representation": "versioned body referenced by host envelope; not an additional receipt enum",
+      "freeze_before": "J05.scoped",
+      "status": "schema_contract_required_before_implementation"
+    },
+    {
+      "kind": "decision_trail",
+      "required_body_fields": [
+        "revision",
+        "supersedes",
+        "decision",
+        "evidence_refs"
+      ],
+      "body_schema_owner": "J01",
+      "producer": "J19",
+      "consumer": "J07",
+      "representation": "versioned body referenced by host envelope; not an additional receipt enum",
+      "freeze_before": "J05.scoped",
+      "status": "schema_contract_required_before_implementation"
+    },
+    {
+      "kind": "feature_map",
+      "required_body_fields": [
+        "entry",
+        "preconditions",
+        "actions",
+        "observable_end",
+        "recovery",
+        "owner"
+      ],
+      "body_schema_owner": "J01",
+      "producer": "J06",
+      "consumer": "J07",
+      "representation": "versioned body referenced by host envelope; not an additional receipt enum",
+      "freeze_before": "J05.scoped",
+      "status": "schema_contract_required_before_implementation"
+    },
+    {
+      "kind": "experiment_result",
+      "required_body_fields": [
+        "protocol",
+        "arms",
+        "ledger",
+        "oracle_digest",
+        "result",
+        "uncertainty"
+      ],
+      "body_schema_owner": "J01",
+      "producer": "J25",
+      "consumer": "J10",
+      "representation": "versioned body referenced by host envelope; not an additional receipt enum",
+      "freeze_before": "J05.scoped",
+      "status": "schema_contract_required_before_implementation"
+    },
+    {
+      "kind": "usage_sketch",
+      "required_body_fields": [
+        "caller",
+        "input",
+        "output",
+        "errors",
+        "alternatives"
+      ],
+      "body_schema_owner": "J01",
+      "producer": "J06",
+      "consumer": "J05",
+      "representation": "versioned body referenced by host envelope; not an additional receipt enum",
+      "freeze_before": "J05.scoped",
+      "status": "schema_contract_required_before_implementation"
+    },
+    {
+      "kind": "prototype_decision",
+      "required_body_fields": [
+        "hypothesis",
+        "observations",
+        "decision",
+        "limits"
+      ],
+      "body_schema_owner": "J01",
+      "producer": "J06",
+      "consumer": "J05",
+      "representation": "versioned body referenced by host envelope; not an additional receipt enum",
+      "freeze_before": "J05.scoped",
+      "status": "schema_contract_required_before_implementation"
+    }
+  ]
+}

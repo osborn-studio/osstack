@@ -1,0 +1,1605 @@
+{
+  "commit": "99b609a72323b70204eab407c622f436e858e112",
+  "files": [
+    {
+      "path": "pstack/.cursor-plugin/plugin.json",
+      "bytes": 722,
+      "lines": 31,
+      "sha256": "66b10ca48989920b65f150f80954a59adb4bb787c197a13e27f91fe793b996a3",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/.cursor-plugin/plugin.json",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/.gitignore",
+      "bytes": 30,
+      "lines": 3,
+      "sha256": "8ffe9de56bd30c1a95cd945262d6e3ac355ada4111551dde41f67851b9f1fc55",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/.gitignore",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/LICENSE",
+      "bytes": 1067,
+      "lines": 21,
+      "sha256": "bc957ca6bee02792566a1a028d105e02e247c6e77cf057061674273da77b200e",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/LICENSE",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/README.md",
+      "bytes": 27884,
+      "lines": 291,
+      "sha256": "ce7d9ab68491d329ca88bd2a4b5f34b46390c196a5838fdcc1eae4633eca5fc9",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/README.md",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/agents/comment-sicko.md",
+      "bytes": 2230,
+      "lines": 32,
+      "sha256": "3e239e40b7b4b9beb2cf7f3ccc57f2388eb8b69bd1ba8ae888ef87ef6e0e2116",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/agents/comment-sicko.md",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/agents/poteto-agent.md",
+      "bytes": 1316,
+      "lines": 9,
+      "sha256": "979f18abd000d185a0b4c41a2a4111c0910596a7f5c81cbb571885bc721b2bf7",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/agents/poteto-agent.md",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/assets/logo.png",
+      "bytes": 361140,
+      "lines": null,
+      "sha256": "672f6791589ef758b0ced2c4c477913fa2758623c438e265639a0d539ce90695",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/assets/logo.png",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/automations/benny/FOR_AGENTS.md",
+      "bytes": 7460,
+      "lines": 89,
+      "sha256": "a125e317dec1b8731fdc71f404c669f1127a73af932f7a7b8b8744a5542328a7",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/automations/benny/FOR_AGENTS.md",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/automations/benny/README.md",
+      "bytes": 1321,
+      "lines": 23,
+      "sha256": "ca3c42cbb7f0bf7068f7407eb355815e6c234d5c2786942f3cbe751a3690024b",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/automations/benny/README.md",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/automations/benny/skills/reproduce-and-fix-issues/SKILL.md",
+      "bytes": 14238,
+      "lines": 310,
+      "sha256": "1363cc07343fe86aab42853b1bd4563288cbcbdf12f1c265b3b3b1afa25c09cb",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/automations/benny/skills/reproduce-and-fix-issues/SKILL.md",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/automations/benny/skills/reproduce-and-fix-issues/references/control-adapter.md",
+      "bytes": 5517,
+      "lines": 169,
+      "sha256": "58b0615d2fca895f9a20df83266e280042b0d585b5f2fd324e2094a682fd846b",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/automations/benny/skills/reproduce-and-fix-issues/references/control-adapter.md",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/automations/benny/skills/reproduce-and-fix-issues/references/feature-map.example.md",
+      "bytes": 5646,
+      "lines": 205,
+      "sha256": "1e5c7c8522daec3e43fcc2e73ceb97289ded65b552949ce65a11cc8eb3d2b6ee",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/automations/benny/skills/reproduce-and-fix-issues/references/feature-map.example.md",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/automations/benny/skills/reproduce-and-fix-issues/references/verify-existing-fix.md",
+      "bytes": 3149,
+      "lines": 93,
+      "sha256": "c90eae00abcdec71a58fa8d60f2c495b082a526ad50b8e8e494837609129bf29",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/automations/benny/skills/reproduce-and-fix-issues/references/verify-existing-fix.md",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/automations/benny/skills/setup-benny/SKILL.md",
+      "bytes": 13992,
+      "lines": 266,
+      "sha256": "5a3cbe63360c9f6373b6cb6c79a1eaf7e0eba181bfaa1577e2e6431af3407282",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/automations/benny/skills/setup-benny/SKILL.md",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/automations/benny/skills/triage-issue-reports/SKILL.md",
+      "bytes": 10320,
+      "lines": 240,
+      "sha256": "216a758b8711e64d19a55e6032c496527daac6364d010611040f3c04ef1a448f",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/automations/benny/skills/triage-issue-reports/SKILL.md",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/automations/benny/skills/triage-issue-reports/references/routing.example.md",
+      "bytes": 1892,
+      "lines": 61,
+      "sha256": "e5e53013692568cf69da8e8b302fff929fe2fbc9aec1a4651fd7997e2c7a4025",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/automations/benny/skills/triage-issue-reports/references/routing.example.md",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/automations/benny/templates/configuration.example.yaml",
+      "bytes": 2424,
+      "lines": 84,
+      "sha256": "13e24b4ce9b9a0913916e85fe3b080b88d45f8e55dccfe8ae38e0751a997b6f5",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/automations/benny/templates/configuration.example.yaml",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/automations/benny/templates/reproduce-automation-prompt.md",
+      "bytes": 1822,
+      "lines": 33,
+      "sha256": "71ec574f1844e379394ae4ef14c48d7df10afbaa319d395c788d7f856f0e6899",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/automations/benny/templates/reproduce-automation-prompt.md",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/automations/benny/templates/triage-automation-prompt.md",
+      "bytes": 1569,
+      "lines": 39,
+      "sha256": "e0bba594547834f013ec805915610eb597e7929efe3ffbe85ae00339ee16d474",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/automations/benny/templates/triage-automation-prompt.md",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/docs/guide/01-setup.md",
+      "bytes": 5431,
+      "lines": 66,
+      "sha256": "384655bdecc713122ca69a485723c58462002a1d512415e94e48597d0dce2fa5",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/docs/guide/01-setup.md",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/docs/guide/02-poteto-mode.md",
+      "bytes": 7893,
+      "lines": 139,
+      "sha256": "d168829def6c410b1afd87d1a6eb297df385f89faa9b31260684074e9e4eb52a",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/docs/guide/02-poteto-mode.md",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/docs/guide/03-understand.md",
+      "bytes": 5141,
+      "lines": 79,
+      "sha256": "1ac97cbad51c15c18b3aade8634d81c8bbe50d2b3135c75c113ddb2a6dcb7af0",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/docs/guide/03-understand.md",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/docs/guide/04-design.md",
+      "bytes": 8759,
+      "lines": 133,
+      "sha256": "cff616278303b533e617c5c4408af6d28895edbb8687d6ce99bb5dd1f6644a6c",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/docs/guide/04-design.md",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/docs/guide/05-build-and-clean.md",
+      "bytes": 5707,
+      "lines": 83,
+      "sha256": "1284e80595ae4f214dfa7c5c5f7758ff90a47b3273aa7b8142e51e574f5c5290",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/docs/guide/05-build-and-clean.md",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/docs/guide/06-verify-and-ship.md",
+      "bytes": 13943,
+      "lines": 166,
+      "sha256": "9276f7a20f72c115536e0a12f08aa2e9699fcd7498c217d9a02a7149c7d3a4a8",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/docs/guide/06-verify-and-ship.md",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/docs/guide/07-overnight.md",
+      "bytes": 9641,
+      "lines": 122,
+      "sha256": "b767a5dc5d7257efdb5cc8cfac92acfbb18fe8e023a3438339f4b45ce4a9264a",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/docs/guide/07-overnight.md",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/docs/guide/08-principles.md",
+      "bytes": 5868,
+      "lines": 72,
+      "sha256": "0b26b85292f0c09768abe727c9e92987dbf81f5b439a4871034c2fd1c4cb1723",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/docs/guide/08-principles.md",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/docs/guide/09-make-it-yours.md",
+      "bytes": 7972,
+      "lines": 100,
+      "sha256": "50642f7f894988f7c263700f46478e7aed7eb94a257683350d91a9a0d70dc141",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/docs/guide/09-make-it-yours.md",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/docs/guide/10-recipes-and-pitfalls.md",
+      "bytes": 8758,
+      "lines": 182,
+      "sha256": "0d4b71436d9646d2e656e19fcdc570624f2d8b66bc09ed73b731d55f554e3a0b",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/docs/guide/10-recipes-and-pitfalls.md",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/docs/guide/README.md",
+      "bytes": 2649,
+      "lines": 38,
+      "sha256": "5c888d034d38f380789fad57c2c6fa7307ace803a0622cdde9e57fa2afe182de",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/docs/guide/README.md",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/docs/guide/images/design.jpg",
+      "bytes": 402373,
+      "lines": null,
+      "sha256": "b8ed07427f6a0c37dd8ba97961fc0eb5071efeee6c4a230648bdb7547f6f2a8f",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/docs/guide/images/design.jpg",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/docs/guide/images/overnight.jpg",
+      "bytes": 347071,
+      "lines": null,
+      "sha256": "4b4405e4df8925c5b3abbe702f681af0f3b1f5f32271b599f95717f578f1a0c8",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/docs/guide/images/overnight.jpg",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/docs/guide/images/recipes.jpg",
+      "bytes": 410550,
+      "lines": null,
+      "sha256": "9fa2d51b476635712737795ddef81806efaa0086bb3bfa9f9f45695d9ab0f8e8",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/docs/guide/images/recipes.jpg",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/docs/guide/images/router.jpg",
+      "bytes": 450945,
+      "lines": null,
+      "sha256": "525843055a4efd2b10acc50a8652fd02b0834ea733a8a2f895c1eb89036017da",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/docs/guide/images/router.jpg",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/docs/guide/images/understanding.jpg",
+      "bytes": 376523,
+      "lines": null,
+      "sha256": "b60587e9a9bbe2550e93be9819cf0cd4acf77d90fac769a0c43d82bd8e34e279",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/docs/guide/images/understanding.jpg",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/docs/guide/images/verification.jpg",
+      "bytes": 331450,
+      "lines": null,
+      "sha256": "2a76b52007a1cd2866ba67fd47d7d9ef3e1118bb5a09c4665eee8c3f161bd09a",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/docs/guide/images/verification.jpg",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/docs/harness/claude-code.md",
+      "bytes": 5678,
+      "lines": 67,
+      "sha256": "c79e2283d3a83c6be3dd1cac33f9c074067c95e610ae6e0a16d9fdee84058927",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/docs/harness/claude-code.md",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/plugin.json",
+      "bytes": 619,
+      "lines": 21,
+      "sha256": "2197363ebd8e7995e2a57417b1fc5fd23f40a4139f9c50634feca61effd23615",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/plugin.json",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/architect/SKILL.md",
+      "bytes": 5469,
+      "lines": 79,
+      "sha256": "31f8e97a52bfa5432edd61f68ade2a8632ef0bacbc2d2a6802d7a0e6821944ac",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/architect/SKILL.md",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/architect/references/design-red-flags.md",
+      "bytes": 3009,
+      "lines": 57,
+      "sha256": "d0e639e4cc588ec865f930d3a4111faad60987ae36925917e319d7ceca7c69ce",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/architect/references/design-red-flags.md",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/architect/references/rationale-template.md",
+      "bytes": 3050,
+      "lines": 35,
+      "sha256": "0cedfccdc7b47fc881febd5a8293eecbc542c20f8df825639904a8102d2eb5d3",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/architect/references/rationale-template.md",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/architect/references/runner-prompt.md",
+      "bytes": 3092,
+      "lines": 20,
+      "sha256": "21dd5314aab778c5007228027a4591d97693fbec6ab86524037772b63f40948e",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/architect/references/runner-prompt.md",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/arena/SKILL.md",
+      "bytes": 4511,
+      "lines": 48,
+      "sha256": "ed72f6c132b1ce3974d949581d0adc5dade424fe20793ac3b4c4fae22ecb9354",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/arena/SKILL.md",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/automate-me/SKILL.md",
+      "bytes": 7297,
+      "lines": 104,
+      "sha256": "30b35f3628c4fd8c11af0ada06d14cdc3b28901810caca2480f627d4d21acfbe",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/automate-me/SKILL.md",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/benchmark-checklist/SKILL.md",
+      "bytes": 5002,
+      "lines": 39,
+      "sha256": "ba109e96c8f6c1c391baccf19e5d11e14370df7b3f2605e1572cd565a6c0fca0",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/benchmark-checklist/SKILL.md",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/blast-radius/SKILL.md",
+      "bytes": 3856,
+      "lines": 50,
+      "sha256": "2e10745b97f5862323dcda3b29ca60d56b5c3c98e37020085d26b48efbe0a436",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/blast-radius/SKILL.md",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/bro/SKILL.md",
+      "bytes": 267,
+      "lines": 7,
+      "sha256": "aa329d0ceeeecb6822a7174ad76bb07a7826a3c52ceb6a588dec4138815084bb",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/bro/SKILL.md",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/correct/SKILL.md",
+      "bytes": 2478,
+      "lines": 32,
+      "sha256": "e347045d00c967a0b831ef883cc6ac79d21329aa10b5968637df95de7febf0ba",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/correct/SKILL.md",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/create-formal-verification-skill/SKILL.md",
+      "bytes": 5672,
+      "lines": 43,
+      "sha256": "5e489d938620883502c27c9c2f32143ae7aa8c0543088dad996b2c815d2acc52",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/create-formal-verification-skill/SKILL.md",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/create-verification-skill/SKILL.md",
+      "bytes": 6533,
+      "lines": 44,
+      "sha256": "d353973547bf8ad8977eca645f4cd4feaed0d32f4b43d1448f906b0a76c4d694",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/create-verification-skill/SKILL.md",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/create-verification-skill/references/feature-map-example/README.md",
+      "bytes": 2601,
+      "lines": 47,
+      "sha256": "cb7bd782cf89968a4ba3d58a5151db837430db92d19a6f52a906973b77b516ba",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/create-verification-skill/references/feature-map-example/README.md",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/create-verification-skill/references/feature-map-example/create-note.md",
+      "bytes": 2926,
+      "lines": 39,
+      "sha256": "644a44c74f35d38c2feb7cd05a0121fdebbb623e8dc376c185b565a581d1ccf7",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/create-verification-skill/references/feature-map-example/create-note.md",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/create-verification-skill/references/feature-map-example/search.md",
+      "bytes": 3478,
+      "lines": 45,
+      "sha256": "6e87b9e7f2791a7776ba1bb83f371cd285c306c67f19d245cc4dd6ca3015c823",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/create-verification-skill/references/feature-map-example/search.md",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/figure-it-out/SKILL.md",
+      "bytes": 4111,
+      "lines": 52,
+      "sha256": "bdb23cdbd82a1e6af094b495691c832a6f7f3ab9706ba9edbeb664ef51a726e1",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/figure-it-out/SKILL.md",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/how/SKILL.md",
+      "bytes": 2651,
+      "lines": 36,
+      "sha256": "08a00079bb15b4258874ac3ff62d4ca7e94350ffedb521d0fd296dc9dd21904e",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/how/SKILL.md",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/how/references/explainer-prompt.md",
+      "bytes": 3085,
+      "lines": 55,
+      "sha256": "ddb89cebefc24e2b54517a331aedfe045b6971e101f45c71b8cef4cccff45bff",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/how/references/explainer-prompt.md",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/how/references/explorer-prompt.md",
+      "bytes": 1135,
+      "lines": 35,
+      "sha256": "6300128385ee940fd42ecb84b0e623435440a2dc283eae54ee4a52ba56947ba1",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/how/references/explorer-prompt.md",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/in-your-own-words/SKILL.md",
+      "bytes": 315,
+      "lines": 7,
+      "sha256": "fa8ba74e27d7be371dc270ec78bbf816411477d0dfab185356c861ac8dd413ad",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/in-your-own-words/SKILL.md",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/interrogate/SKILL.md",
+      "bytes": 4548,
+      "lines": 74,
+      "sha256": "a16dfe179005abc22a4651b82f25b0c8ab953284276efe4e6dc341958fb63647",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/interrogate/SKILL.md",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/interrogate/references/code-quality-review.md",
+      "bytes": 5217,
+      "lines": 47,
+      "sha256": "79162fda183eafd40d51661fbb5e151c7ba250f89e506ba17f5bd135dcbd50a8",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/interrogate/references/code-quality-review.md",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/interrogate/references/lead-judgment.md",
+      "bytes": 2283,
+      "lines": 39,
+      "sha256": "355f5195a76bc75a655125292369f2a8231a2b61fabe5188d8f1386060922b87",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/interrogate/references/lead-judgment.md",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/interrogate/references/reviewer-prompt.md",
+      "bytes": 2275,
+      "lines": 62,
+      "sha256": "f6005cc2b535006fca97a96c5bfda49df57312eedf1ffd8d1aaaf3eb33817c25",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/interrogate/references/reviewer-prompt.md",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/interrogate/references/rubric.md",
+      "bytes": 4772,
+      "lines": 77,
+      "sha256": "0f9c6bdb0b96e26dbde5f6407f417e0c02f54080e7a1268d8994f3c3ec6c5ac0",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/interrogate/references/rubric.md",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/ketchup-video/SKILL.md",
+      "bytes": 2880,
+      "lines": 23,
+      "sha256": "74f1b9e61f8479e2be5b91a4f53136f6ad8e144fd950c9848de6aa1cdbb7645c",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/ketchup-video/SKILL.md",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/ketchup/SKILL.md",
+      "bytes": 6426,
+      "lines": 43,
+      "sha256": "f2923ffd14f6fc778f75a47aaed1f317fb5fd00b5701ca769d6446c74106dead",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/ketchup/SKILL.md",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/maintain-formal-verification-skill/SKILL.md",
+      "bytes": 7012,
+      "lines": 58,
+      "sha256": "0c96f54293542d3818b68754562b338073958781a9684454611dca37592e2d2c",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/maintain-formal-verification-skill/SKILL.md",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/maintain-verification-skill/SKILL.md",
+      "bytes": 4922,
+      "lines": 39,
+      "sha256": "515c0eaa054b3f6be1b1fb06f2c2f173c80fddb58bbcac57576f89c479bc68e8",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/maintain-verification-skill/SKILL.md",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/make-bot-ui/SKILL.md",
+      "bytes": 4649,
+      "lines": 115,
+      "sha256": "ad19d0bc6764287ec08c2521701974e7dac941f72e4d0fe81a24f4614494586f",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/make-bot-ui/SKILL.md",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/no-comments/SKILL.md",
+      "bytes": 2693,
+      "lines": 24,
+      "sha256": "078ecfe224eafbb017f6476870612838bf6dbe38c0b697e12f0c887d0313f17e",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/no-comments/SKILL.md",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/poteto-help/SKILL.md",
+      "bytes": 15804,
+      "lines": 163,
+      "sha256": "587793b0f9959dbea7d5d009b8a6513795380d7150dd478a6cb05e604058e315",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/poteto-help/SKILL.md",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/poteto-help/references/prompting.md",
+      "bytes": 3166,
+      "lines": 51,
+      "sha256": "463f450c44a60afd001a2f69fdf8a5dea174351f339369b12ec3c41515e564d3",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/poteto-help/references/prompting.md",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/poteto-help/references/recipes.md",
+      "bytes": 3674,
+      "lines": 51,
+      "sha256": "f2d573014f72f7c798b1998b45f4360a8a83e7b8026c4ed9074e56c5a9d49338",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/poteto-help/references/recipes.md",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/poteto-mode/SKILL.md",
+      "bytes": 20362,
+      "lines": 149,
+      "sha256": "2755f102e7a6d0496b429d1031a22fb353e1f3d523543367caeaae5c4ed6f544",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/poteto-mode/SKILL.md",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/poteto-mode/playbooks/authoring-a-skill.md",
+      "bytes": 831,
+      "lines": 12,
+      "sha256": "f6a13a445c360b48d6cd72780ac01955f45b82826476efe0e67c7559329407aa",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/poteto-mode/playbooks/authoring-a-skill.md",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/poteto-mode/playbooks/autonomous-run.md",
+      "bytes": 1982,
+      "lines": 13,
+      "sha256": "6ac974fd2b09748add56493e89f578a35a6a9289e1026515878d81ef3cf129d1",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/poteto-mode/playbooks/autonomous-run.md",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/poteto-mode/playbooks/autopilot-full.md",
+      "bytes": 6596,
+      "lines": 25,
+      "sha256": "acf4f4a58c11045f9d3e8807d907a877e61ca6432b079f1087d7d30fc931566f",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/poteto-mode/playbooks/autopilot-full.md",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/poteto-mode/playbooks/autopilot-stack.md",
+      "bytes": 2205,
+      "lines": 12,
+      "sha256": "c6bcb18b2ce605e77a2a2225854590a4b9a687911f79331746d91a4fe9a52e60",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/poteto-mode/playbooks/autopilot-stack.md",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/poteto-mode/playbooks/babysit.md",
+      "bytes": 7619,
+      "lines": 23,
+      "sha256": "e261c1ff5581e0f8fc6c686f34de4b535f87473e77beabea7dd8323021214610",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/poteto-mode/playbooks/babysit.md",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/poteto-mode/playbooks/bug-fix.md",
+      "bytes": 2359,
+      "lines": 15,
+      "sha256": "66e26542dad131cfd7df80ac0cdf81ed4d85e7b5e3f0eb65b933888760c4831f",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/poteto-mode/playbooks/bug-fix.md",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/poteto-mode/playbooks/eval.md",
+      "bytes": 2628,
+      "lines": 25,
+      "sha256": "a93d449a908236afa6645179651844094b1547dbab4e484cffcdda630e4b90bf",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/poteto-mode/playbooks/eval.md",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/poteto-mode/playbooks/feature.md",
+      "bytes": 2870,
+      "lines": 21,
+      "sha256": "af8ce700b99953741cb547e34308fde0cf6b98ce67e1652c800d0deedf53aba1",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/poteto-mode/playbooks/feature.md",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/poteto-mode/playbooks/hillclimb.md",
+      "bytes": 4507,
+      "lines": 21,
+      "sha256": "942c1565b75ad02a2cb6230dd7c1ebd87e19f59a00319ebac2b6616007bf018f",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/poteto-mode/playbooks/hillclimb.md",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/poteto-mode/playbooks/investigation.md",
+      "bytes": 928,
+      "lines": 14,
+      "sha256": "dc66bcf6af3a074fc7f67aa5e12b93ef571a4fb4d8e17f2f1af5ae5359f42e46",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/poteto-mode/playbooks/investigation.md",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/poteto-mode/playbooks/multi-phase-plan.md",
+      "bytes": 13217,
+      "lines": 155,
+      "sha256": "5f239457bfdec3345c92caa06c59bf0257c662b89353f25a1c02ea942dcd00b1",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/poteto-mode/playbooks/multi-phase-plan.md",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/poteto-mode/playbooks/opening-a-pr.md",
+      "bytes": 5669,
+      "lines": 34,
+      "sha256": "a5aef646de8b651306c2d10974623650e4a013a245aec1c00525bbe0e31bfa76",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/poteto-mode/playbooks/opening-a-pr.md",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/poteto-mode/playbooks/orchestrate.md",
+      "bytes": 17127,
+      "lines": 112,
+      "sha256": "08dce6c9e7be1d13bc6944ab9b51665f935c531437f5e088bc53d2a62099ef05",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/poteto-mode/playbooks/orchestrate.md",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/poteto-mode/playbooks/pause-safely.md",
+      "bytes": 1135,
+      "lines": 10,
+      "sha256": "77968cfe5f4a71a8cd33e0ae8ffcdbd88dd693a212c240457773e6c40c96c21d",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/poteto-mode/playbooks/pause-safely.md",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/poteto-mode/playbooks/perf-issue.md",
+      "bytes": 1550,
+      "lines": 25,
+      "sha256": "c12aa2f82de7651a11676a3d5fea168f539b7f0faaa3a501d279255dd2a469c8",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/poteto-mode/playbooks/perf-issue.md",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/poteto-mode/playbooks/prototype.md",
+      "bytes": 2161,
+      "lines": 14,
+      "sha256": "7aa1f52c691c3d46d5afc527b23f90977fce869ce33573c73c81a4c7f0cde962",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/poteto-mode/playbooks/prototype.md",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/poteto-mode/playbooks/refactoring.md",
+      "bytes": 3315,
+      "lines": 16,
+      "sha256": "0f5dd38113379ea8cf61e2182eca0a7478eea9a869eb40c2dddab3335aeca197",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/poteto-mode/playbooks/refactoring.md",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/poteto-mode/playbooks/runtime-forensics.md",
+      "bytes": 1314,
+      "lines": 11,
+      "sha256": "3463372b578c28f27c236f2627f09b5c5b1e85e86db7399fb984f3892fb450f5",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/poteto-mode/playbooks/runtime-forensics.md",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/poteto-mode/playbooks/session-pickup.md",
+      "bytes": 1782,
+      "lines": 11,
+      "sha256": "d194f2a7ef392c1598ef3f0e3b561370ca25c2c7a78308007af4aa46ada8ee12",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/poteto-mode/playbooks/session-pickup.md",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/poteto-mode/playbooks/shipping.md",
+      "bytes": 4387,
+      "lines": 12,
+      "sha256": "bf56339bdf7e0223bcff5abf4e8599e3f5b547b3fcc3b4ce9475e6e7dda14a9f",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/poteto-mode/playbooks/shipping.md",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/poteto-mode/playbooks/trace-forensics.md",
+      "bytes": 1867,
+      "lines": 14,
+      "sha256": "ef0bbf79856a4ae1a8993d54c1a1da159cb97623941b652c0069cf75a017e0f5",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/poteto-mode/playbooks/trace-forensics.md",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/poteto-mode/playbooks/visual-parity.md",
+      "bytes": 1197,
+      "lines": 11,
+      "sha256": "950ca51999a6454c98eee6bcbc3d1bbe501a4e3a5d5439b6f6ddc378991b256c",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/poteto-mode/playbooks/visual-parity.md",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/poteto-mode/playbooks/worktree-cleanup.md",
+      "bytes": 2947,
+      "lines": 12,
+      "sha256": "be04ae0afe19d4a4da5bcc4e94455f68dbebd1cda6eb0f456ca0d358ecf76c00",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/poteto-mode/playbooks/worktree-cleanup.md",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/poteto-mode/references/bugbot-triage.md",
+      "bytes": 9629,
+      "lines": 142,
+      "sha256": "b2d146c770d8d3593e1ef3d77b668039b8e1f78093ea1a86f1d45d7f99614309",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/poteto-mode/references/bugbot-triage.md",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/poteto-mode/scripts/bootstrap.ts",
+      "bytes": 1737,
+      "lines": 62,
+      "sha256": "ccd2ed08fd9da9d0d942e5f2491cfc74bb92d8a08fa51755e0da1ac8de287361",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/poteto-mode/scripts/bootstrap.ts",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/poteto-mode/scripts/bun.lock",
+      "bytes": 6679,
+      "lines": 67,
+      "sha256": "667d9cf7222e9aae3fa42a4be383e657784216e9df115da02227fbc5ac7bbe46",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/poteto-mode/scripts/bun.lock",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/poteto-mode/scripts/check-plan.mjs",
+      "bytes": 8179,
+      "lines": 205,
+      "sha256": "e3d4e9ca638c6fb4a2b52c434c17c7af30da4fdd44605ccfe9906f82fe37b555",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/poteto-mode/scripts/check-plan.mjs",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/poteto-mode/scripts/check-plan.test.ts",
+      "bytes": 3876,
+      "lines": 110,
+      "sha256": "848d321f2b76299d1b2d7bb46c929dbaebef08ca4ba8669dbe09d1d5c86f96e2",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/poteto-mode/scripts/check-plan.test.ts",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/poteto-mode/scripts/orch/orch.test.ts",
+      "bytes": 23292,
+      "lines": 795,
+      "sha256": "c15bbcc17700acb812722bf3330e2b2ee2838407636cdb86784cdd9bb8ee93f3",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/poteto-mode/scripts/orch/orch.test.ts",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/poteto-mode/scripts/orch/orch.ts",
+      "bytes": 15737,
+      "lines": 590,
+      "sha256": "47c92c57e8276616d8de94665a126bd832e748036afa8d0ffdbacb7946decb5c",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/poteto-mode/scripts/orch/orch.ts",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/poteto-mode/scripts/orch/store.ts",
+      "bytes": 44758,
+      "lines": 1681,
+      "sha256": "bf0ed29c44093ee3b333aa10b138612f773c81eda73df7dc5337c59713f35a97",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/poteto-mode/scripts/orch/store.ts",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/poteto-mode/scripts/package.json",
+      "bytes": 371,
+      "lines": 16,
+      "sha256": "fd511a0c01f522e0c781ddd8eccea0e91697a0856c6e6a3261de78a6a0287c72",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/poteto-mode/scripts/package.json",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/poteto-mode/scripts/watch-pr/cli.test.ts",
+      "bytes": 6161,
+      "lines": 224,
+      "sha256": "a35592b4c6da96caf8d47987e9cd503fab6c7774ab87d11a43f24b4b5df2a9d1",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/poteto-mode/scripts/watch-pr/cli.test.ts",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/poteto-mode/scripts/watch-pr/cli.ts",
+      "bytes": 6983,
+      "lines": 223,
+      "sha256": "89c08863089181a232be782c4b2ed90a1552f44aeecb0dcb7aac2c623620e680",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/poteto-mode/scripts/watch-pr/cli.ts",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/poteto-mode/scripts/watch-pr/fakes.test-helper.ts",
+      "bytes": 3357,
+      "lines": 129,
+      "sha256": "cf0c5ee61b4a73444c1b775cfb6c81a40d312e055dd21a1f5eae6276e54de13f",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/poteto-mode/scripts/watch-pr/fakes.test-helper.ts",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/poteto-mode/scripts/watch-pr/github.test.ts",
+      "bytes": 16206,
+      "lines": 498,
+      "sha256": "9d9f644388f3516364d47f5eb96c1f977dd6f560bd6005b660d90d3b367cf4b9",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/poteto-mode/scripts/watch-pr/github.test.ts",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/poteto-mode/scripts/watch-pr/github.ts",
+      "bytes": 25642,
+      "lines": 726,
+      "sha256": "7ba193190d488c8ce0982c85234ebea026e9a595703e99a3c3df0fcd640ddd18",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/poteto-mode/scripts/watch-pr/github.ts",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/poteto-mode/scripts/watch-pr/policy.test.ts",
+      "bytes": 14759,
+      "lines": 482,
+      "sha256": "7ee38c20ed605f4a255f1f78e5a4be56b3563fcd8d3d65cfeea58d44c3f58d53",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/poteto-mode/scripts/watch-pr/policy.test.ts",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/poteto-mode/scripts/watch-pr/policy.ts",
+      "bytes": 25407,
+      "lines": 842,
+      "sha256": "2d4823aeea788acab258ec60eb52e7b9e3a23a6649850af128d6ada5c33d7778",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/poteto-mode/scripts/watch-pr/policy.ts",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/poteto-mode/scripts/watch-pr/render.ts",
+      "bytes": 7083,
+      "lines": 169,
+      "sha256": "2b709e86628d5b8fdb61f860e60ababc342b0626c67576305442cf548283a604",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/poteto-mode/scripts/watch-pr/render.ts",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/poteto-mode/scripts/watch-pr/tsconfig.json",
+      "bytes": 270,
+      "lines": 13,
+      "sha256": "1ecccc72320b086c63ce3f73c959896fd747363e63553b3b1136296ea4069e45",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/poteto-mode/scripts/watch-pr/tsconfig.json",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/poteto-mode/scripts/watch-pr/types.compile.ts",
+      "bytes": 2258,
+      "lines": 93,
+      "sha256": "621af4c9a664fbf699a9737efccdc248abb416df8819c9dc5f824beae2b9b1d6",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/poteto-mode/scripts/watch-pr/types.compile.ts",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/poteto-mode/scripts/watch-pr/types.ts",
+      "bytes": 12688,
+      "lines": 414,
+      "sha256": "daa66c56220bae084c18cc6d3b0a2c66c0e72206d298e40973b44ee085ce16d2",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/poteto-mode/scripts/watch-pr/types.ts",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/poteto-mode/scripts/watch-pr/watch-pr",
+      "bytes": 211,
+      "lines": 6,
+      "sha256": "d955603be6cc0e8b8ffcec722f635192b2261410b1f2929abea94480e47eb5d4",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/poteto-mode/scripts/watch-pr/watch-pr",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/poteto-mode/scripts/worktree-audit.sh",
+      "bytes": 6317,
+      "lines": 134,
+      "sha256": "06be04b38346ded24ce761d373726f98cd9b9737f20ec98214e88b5f08f521b8",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/poteto-mode/scripts/worktree-audit.sh",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/principle-attack-the-premise/SKILL.md",
+      "bytes": 1916,
+      "lines": 21,
+      "sha256": "6a932884daad4aa189e9b5d1665226bbc75621d4d2a398fd4003bebd382f4599",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/principle-attack-the-premise/SKILL.md",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/principle-boundary-discipline/SKILL.md",
+      "bytes": 1883,
+      "lines": 34,
+      "sha256": "62ac2862c2caa22dd14531f51c9c6bb445ceb198ca98a687e25b4d47c1f10a28",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/principle-boundary-discipline/SKILL.md",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/principle-build-the-lever/SKILL.md",
+      "bytes": 2386,
+      "lines": 23,
+      "sha256": "3434b0ad0c640c6f1d7960be7a8986c3bcdc14e26060360dec29903df60074ff",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/principle-build-the-lever/SKILL.md",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/principle-encode-lessons-in-structure/SKILL.md",
+      "bytes": 558,
+      "lines": 11,
+      "sha256": "228963799189f481827d6f28065f278bc2008ffa37030b1234cbd5814d36b9e9",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/principle-encode-lessons-in-structure/SKILL.md",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/principle-exhaust-the-design-space/SKILL.md",
+      "bytes": 395,
+      "lines": 9,
+      "sha256": "2de83d99f93f60ec6313455b0bc9aa9f0bfb93dd59f414f403691322db00d4db",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/principle-exhaust-the-design-space/SKILL.md",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/principle-experience-first/SKILL.md",
+      "bytes": 1184,
+      "lines": 19,
+      "sha256": "58903529d733b1c1a7c9ccf127d45ef3c7d0d9f0b81164a4dc6b80efe6f2912b",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/principle-experience-first/SKILL.md",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/principle-explain-the-number/SKILL.md",
+      "bytes": 1663,
+      "lines": 17,
+      "sha256": "cd5a25f9e7cf023627ccb470dc5faa97542f29b4319496a32b839a8e1e988047",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/principle-explain-the-number/SKILL.md",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/principle-fix-root-causes/SKILL.md",
+      "bytes": 1821,
+      "lines": 21,
+      "sha256": "8df3c8c3fe57eb0055a5c8efab8ab144557fdf301da70b1cdc77a3a3ef3f3052",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/principle-fix-root-causes/SKILL.md",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/principle-foundational-thinking/SKILL.md",
+      "bytes": 1530,
+      "lines": 21,
+      "sha256": "864b827e8199d946ce58beca0f89c4ed4099ed6e426fb698a3aaa45de2a9eea2",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/principle-foundational-thinking/SKILL.md",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/principle-guard-the-context-window/SKILL.md",
+      "bytes": 519,
+      "lines": 12,
+      "sha256": "af0b9dd70b43628ce4a59a4d332e9d9ad055084e460f430e7a757495c627e81a",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/principle-guard-the-context-window/SKILL.md",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/principle-laziness-protocol/SKILL.md",
+      "bytes": 552,
+      "lines": 10,
+      "sha256": "1be6e7a435f26a75a76eb848b9c3d611b9977d0f5822361753244da25ca3ca45",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/principle-laziness-protocol/SKILL.md",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/principle-make-operations-idempotent/SKILL.md",
+      "bytes": 1809,
+      "lines": 22,
+      "sha256": "7aa9327cf1f1aa057e95d47a0a78bd88a8f9d556b608866fee939d455a53a019",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/principle-make-operations-idempotent/SKILL.md",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/principle-migrate-callers-then-delete-legacy-apis/SKILL.md",
+      "bytes": 637,
+      "lines": 14,
+      "sha256": "580ad9bb1a0994ecb924321ba49efc38a2f85c64e22c76fb133f57a78272a2e6",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/principle-migrate-callers-then-delete-legacy-apis/SKILL.md",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/principle-minimize-reader-load/SKILL.md",
+      "bytes": 1996,
+      "lines": 18,
+      "sha256": "1ea2b7fef2391cae5844c4efdbd59031f775e8a52d06b7495d707229a200dcca",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/principle-minimize-reader-load/SKILL.md",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/principle-model-the-domain/SKILL.md",
+      "bytes": 1858,
+      "lines": 24,
+      "sha256": "52c0d85e0c3827c41c18299b642657d7b47eaf77b7b31609e42e0df42b84c75f",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/principle-model-the-domain/SKILL.md",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/principle-never-block-on-the-human/SKILL.md",
+      "bytes": 910,
+      "lines": 15,
+      "sha256": "05030a7a083c337676f793881b4e93cd218e8f1dd676529f56e6ac1d3efb8d1f",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/principle-never-block-on-the-human/SKILL.md",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/principle-outcome-oriented-execution/SKILL.md",
+      "bytes": 1078,
+      "lines": 21,
+      "sha256": "10eb91633aa570355ba4bb37088fcade2b22e498df7a58edc749e65bc5a78e2d",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/principle-outcome-oriented-execution/SKILL.md",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/principle-prove-it-works/SKILL.md",
+      "bytes": 1371,
+      "lines": 22,
+      "sha256": "ec79a15025bac8d33d62011c54f3b612733fd2a024e623b531b3637aa75070e2",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/principle-prove-it-works/SKILL.md",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/principle-redesign-from-first-principles/SKILL.md",
+      "bytes": 758,
+      "lines": 16,
+      "sha256": "170e0a658783e43fee8ec5a8c2422a4abb8f69cef621dd1819a95910b8207034",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/principle-redesign-from-first-principles/SKILL.md",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/principle-separate-before-serializing-shared-state/SKILL.md",
+      "bytes": 1565,
+      "lines": 16,
+      "sha256": "05294b40448e927c5da1c7b6f5c6b9fed3744637e3833d2d948b9154a9dd00bb",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/principle-separate-before-serializing-shared-state/SKILL.md",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/principle-sequence-verifiable-units/SKILL.md",
+      "bytes": 1705,
+      "lines": 17,
+      "sha256": "2ccbbacc56ace5afdfb8670cef19d7bd009fb2a0033b9a741cbdf2b6baf72187",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/principle-sequence-verifiable-units/SKILL.md",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/principle-subtract-before-you-add/SKILL.md",
+      "bytes": 909,
+      "lines": 18,
+      "sha256": "8c93bb9d1a7f38e2ef37655d93f0e790fa59903105af3d500cc8a663ebe45f3f",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/principle-subtract-before-you-add/SKILL.md",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/principle-test-behavior-not-implementation/SKILL.md",
+      "bytes": 2614,
+      "lines": 20,
+      "sha256": "f7223698623b6a26fea49c751e466b38e6691b1f32ce841d3983e7ffbe2b74a6",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/principle-test-behavior-not-implementation/SKILL.md",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/principle-type-system-discipline/SKILL.md",
+      "bytes": 1557,
+      "lines": 13,
+      "sha256": "5cdaf79785e3c12b2592b9469ee8c272143eb86ab7a18d8382197cea5fd30106",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/principle-type-system-discipline/SKILL.md",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/recall/SKILL.md",
+      "bytes": 5345,
+      "lines": 35,
+      "sha256": "b0ceb996259c3404532f61e4b010df4e3d80d7ddbed85b3c302895723eb62a89",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/recall/SKILL.md",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/reflect/SKILL.md",
+      "bytes": 4995,
+      "lines": 69,
+      "sha256": "9648df23cabaae99b78ed59cd93b6f35ebbf02105d228e3d0b5c3a3b3419d753",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/reflect/SKILL.md",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/reflect/references/divergent-reviewer.md",
+      "bytes": 3668,
+      "lines": 38,
+      "sha256": "f6030d88e20e906ef5e2d9ba44cb013ce610c49c2fe2ef74c377d32e0dc9e939",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/reflect/references/divergent-reviewer.md",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/reflect/references/judgment-reviewer.md",
+      "bytes": 3107,
+      "lines": 37,
+      "sha256": "38f917619fbf346062d643e0ad6b12fc952d58678dfcbbf42ffcf6d8b9c08307",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/reflect/references/judgment-reviewer.md",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/reflect/references/synthesizer.md",
+      "bytes": 4141,
+      "lines": 56,
+      "sha256": "6af816963de74d1a1aef4070273c1ff533d2072732e488e159ddc0b299fec3cd",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/reflect/references/synthesizer.md",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/reflect/references/tooling-reviewer.md",
+      "bytes": 4448,
+      "lines": 48,
+      "sha256": "f81b8697e7366fbbc18feba52c6e3253a101f751091364ebc4396a1d9b5753b4",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/reflect/references/tooling-reviewer.md",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/setup-pstack/SKILL.md",
+      "bytes": 6305,
+      "lines": 78,
+      "sha256": "b45512f6ca5e96e81681984683b7472bfe892581da3a89a73cca4159438f29ed",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/setup-pstack/SKILL.md",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/sharpen/SKILL.md",
+      "bytes": 661,
+      "lines": 16,
+      "sha256": "563dfc460c605d311e650726288e2f1cbd61eab817db178d6e7e29643e07e7a2",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/sharpen/SKILL.md",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/show-me-your-work/SKILL.md",
+      "bytes": 6551,
+      "lines": 82,
+      "sha256": "920a8217cbb62f92a2222fb81fc9eab17ecd554a0277e444a95a927195139bd1",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/show-me-your-work/SKILL.md",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/show-me-your-work/references/decision-log-template.tsv",
+      "bytes": 38,
+      "lines": 1,
+      "sha256": "6779378006a2f5225e8c06deb84f1d913fb532041ebbb6e50d94600bfe3f4b76",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/show-me-your-work/references/decision-log-template.tsv",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/show-me-your-work/scripts/log.sh",
+      "bytes": 1377,
+      "lines": 42,
+      "sha256": "a65a4bc5fb7cdeadbdb7b7ff1ca4682f4d9c42420942b2977cd17b46c4ac338e",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/show-me-your-work/scripts/log.sh",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/statechart/SKILL.md",
+      "bytes": 7690,
+      "lines": 36,
+      "sha256": "b1c544782b1527ba09e63311e4faa4c277c86aa33b0506590f8082b7b4bea505",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/statechart/SKILL.md",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/statechart/scripts/bug-states.mjs",
+      "bytes": 3122,
+      "lines": 81,
+      "sha256": "8c138f76542997f4fc8aa00ccb42f5b3510a4bcb475e04e422cf06c77ae6bbf4",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/statechart/scripts/bug-states.mjs",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/statechart/scripts/chart-edges.mjs",
+      "bytes": 2498,
+      "lines": 68,
+      "sha256": "bb1896c1e0eb6b2bfe0f1e5ef71b194a3096c4a6db1879514bcfc3818d3d644a",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/statechart/scripts/chart-edges.mjs",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/statechart/scripts/chart-parts.mjs",
+      "bytes": 612,
+      "lines": 21,
+      "sha256": "567b4700cba97881ec129cc9b2ed6cdbe9e1f041819ea37957dd3def5261b754",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/statechart/scripts/chart-parts.mjs",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/statechart/scripts/chart-to-tla.mjs",
+      "bytes": 7859,
+      "lines": 205,
+      "sha256": "e26b0decb4762ee4c05cc96f4ba1454bd87ab6ae49f0f4bde74a29a4b493117d",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/statechart/scripts/chart-to-tla.mjs",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/statechart/scripts/compare-charts.mjs",
+      "bytes": 2293,
+      "lines": 74,
+      "sha256": "1fa3c1aad875d38d6d1702fcbbcdb7592bc9a3dbe871cdbd4f9ddeda1bc859fc",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/statechart/scripts/compare-charts.mjs",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/statechart/scripts/lib.mjs",
+      "bytes": 34169,
+      "lines": 970,
+      "sha256": "ae8ebe18e09419a63b23465f9a53c9117e04de12a7bc945b1f75ce66a367cc5b",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/statechart/scripts/lib.mjs",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/statechart/scripts/map-view.mjs",
+      "bytes": 3445,
+      "lines": 92,
+      "sha256": "d9ca92ba29a9d5e4143c64826c24b34cc41d5cac28aeee6a25db485e5b2c7d4f",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/statechart/scripts/map-view.mjs",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/statechart/scripts/property-loop.mjs",
+      "bytes": 2390,
+      "lines": 60,
+      "sha256": "437b66fa85d45bddc8f743fc96af3f3a358f6c3d4da5d55e23dd04c4468f00e7",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/statechart/scripts/property-loop.mjs",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/statechart/scripts/read-check.mjs",
+      "bytes": 2872,
+      "lines": 79,
+      "sha256": "f4124d09512b62c056ca81fcde91d9dd1a4d07a99de950ec945df83f044772a9",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/statechart/scripts/read-check.mjs",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/statechart/scripts/regions-chart.mjs",
+      "bytes": 10920,
+      "lines": 307,
+      "sha256": "c234623411a2d5368737c8ef4f4012ec92f902340d8fdd527d08d015a448bde9",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/statechart/scripts/regions-chart.mjs",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/statechart/scripts/render.mjs",
+      "bytes": 19149,
+      "lines": 531,
+      "sha256": "b813236db10ce50a4d04efa68953eabbee0cdc30e3fa96c03b8a2e1f477f3e57",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/statechart/scripts/render.mjs",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/statechart/scripts/rule-book.mjs",
+      "bytes": 3339,
+      "lines": 84,
+      "sha256": "d26a8da74d105b5807ef8333172470660853e61069cc2573817ab7811755dde2",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/statechart/scripts/rule-book.mjs",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/statechart/scripts/second-replay.mjs",
+      "bytes": 4855,
+      "lines": 122,
+      "sha256": "033325ff5440a81a11aebdd485de4e2fd2f703db9f9b84c4fe24bc274d9df285",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/statechart/scripts/second-replay.mjs",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/statechart/scripts/snapshot.mjs",
+      "bytes": 2031,
+      "lines": 74,
+      "sha256": "9ae5040255945474f45d09a150cf4659acdff780e18d62f8a084bcb5c79543eb",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/statechart/scripts/snapshot.mjs",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/statechart/scripts/spec-text.mjs",
+      "bytes": 5875,
+      "lines": 126,
+      "sha256": "494f56d5577a09f9e93057fb6bfe5e3e74df53644e9992f4452ed7008f6f5aab",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/statechart/scripts/spec-text.mjs",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/statechart/scripts/statechart-help.mjs",
+      "bytes": 26502,
+      "lines": 350,
+      "sha256": "ab38345c41028ad76d2866b03b3f5aa2c8303c3223c87dc9979effbeec79e46b",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/statechart/scripts/statechart-help.mjs",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/statechart/scripts/statechart.mjs",
+      "bytes": 36109,
+      "lines": 903,
+      "sha256": "c24a83dda26aec03a3a0e5a961ece983a8283f6c4c66334fd229c2d2e8d7bb36",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/statechart/scripts/statechart.mjs",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/statechart/scripts/test/band.mmd",
+      "bytes": 316,
+      "lines": 15,
+      "sha256": "9ae80a75bce87c8126095b6d9de3669cc69ae65d850acd6d4328ea9b8538d5ed",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/statechart/scripts/test/band.mmd",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/statechart/scripts/test/regions.mmd",
+      "bytes": 2452,
+      "lines": 62,
+      "sha256": "53d12de8df0e4269c2fbee7399285ead307952c98bb8f8e2eefeba4492e42e25",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/statechart/scripts/test/regions.mmd",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/statechart/scripts/test/statechart.test.mjs",
+      "bytes": 260592,
+      "lines": 6854,
+      "sha256": "65b090975ad970f38e7ed06ff3212802705948ce682f0ee90a616a95f874f800",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/statechart/scripts/test/statechart.test.mjs",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/statechart/scripts/test/sync.mmd",
+      "bytes": 597,
+      "lines": 19,
+      "sha256": "cb1f5387058a0f79d6187eb217690588a2e2d384637b4d53cbc4bb050c570757",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/statechart/scripts/test/sync.mmd",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/statechart/scripts/test/upload.mmd",
+      "bytes": 507,
+      "lines": 16,
+      "sha256": "bbc1fa70e26cbcbcc7cde5d8fb7eda26df34b6d973053bf13c40b18527ff0e76",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/statechart/scripts/test/upload.mmd",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/statechart/scripts/tlc-to-chart-args.mjs",
+      "bytes": 2136,
+      "lines": 52,
+      "sha256": "6cfff1104d7024ecb079ac4c6fa539279e2b537824e01a1c8eb3c7f8e9320ffd",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/statechart/scripts/tlc-to-chart-args.mjs",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/statechart/scripts/tlc-to-chart.mjs",
+      "bytes": 30156,
+      "lines": 802,
+      "sha256": "2fc9c866ed1217cd5f107ec059eb9df2d32268c1f582929321a0a4cdbb26b15a",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/statechart/scripts/tlc-to-chart.mjs",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/statechart/scripts/tlc-tools.mjs",
+      "bytes": 3362,
+      "lines": 69,
+      "sha256": "50fba780bb36edeb20804964f2e93f8c5fa85b6fe1e0e1e8d32e4b933eb69e84",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/statechart/scripts/tlc-tools.mjs",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/statechart/scripts/ways-in.mjs",
+      "bytes": 3077,
+      "lines": 69,
+      "sha256": "4728ad85dbd12d192c6bfb5c4374ef3f63ce8d61e03aa120f159dfc607b2af06",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/statechart/scripts/ways-in.mjs",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/swarm/SKILL.md",
+      "bytes": 2739,
+      "lines": 41,
+      "sha256": "fea6bfbbf21e067a4e2d2ebab034bc3af508118e9df1abc9d2ba040d58a6df3a",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/swarm/SKILL.md",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/tdd/SKILL.md",
+      "bytes": 3143,
+      "lines": 42,
+      "sha256": "eeb868e2dfebee528d730a67d7b17498fac4bb85dec2e38bc5c5176aca4d5d2f",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/tdd/SKILL.md",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/teach/SKILL.md",
+      "bytes": 5623,
+      "lines": 21,
+      "sha256": "bd286e5a6290673be2cd28aef7af2ec7f1fb138e6bce156ea657368c7e7fc8a4",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/teach/SKILL.md",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/technical-writing/SKILL.md",
+      "bytes": 9093,
+      "lines": 106,
+      "sha256": "61fe9c424a798ebf36ad94941f87be049cb8827bdf86d21474a0dde37b513c43",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/technical-writing/SKILL.md",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/typescript-best-practices/SKILL.md",
+      "bytes": 2765,
+      "lines": 31,
+      "sha256": "ec1dac086d3708e5940d45d250c30a37dd953b4e3cb2ca0692f5851d7a039e27",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/typescript-best-practices/SKILL.md",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/typescript-best-practices/references/patterns.md",
+      "bytes": 9287,
+      "lines": 328,
+      "sha256": "12e70c9419a8b3f5d6a1ab80e272c1f00a43ac0b3bbf72d68199033570e5de77",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/typescript-best-practices/references/patterns.md",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/unslop/SKILL.md",
+      "bytes": 5827,
+      "lines": 62,
+      "sha256": "ccab208e315ce05e2fab8eeee2f7879f1289b5c6844840b2d307adf31c79144f",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/unslop/SKILL.md",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/why/SKILL.md",
+      "bytes": 8903,
+      "lines": 98,
+      "sha256": "144d42e7712723d763e607bc0a969e5f1cdf83ec7228519d87677cc534571bed",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/why/SKILL.md",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/why/references/epistemics.md",
+      "bytes": 6736,
+      "lines": 71,
+      "sha256": "d54a2361b2d5973bc3fe2edf62f446d87935974d4b40d47f23b9529f956ca758",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/why/references/epistemics.md",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/why/references/investigator-prompt.md",
+      "bytes": 5554,
+      "lines": 84,
+      "sha256": "c44afba186f899094f3694e6c9d6de5d14ff7c4ce28b787a9f50fc789c9a7fc3",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/why/references/investigator-prompt.md",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/why/references/source-playbook.md",
+      "bytes": 1363,
+      "lines": 17,
+      "sha256": "9ae9dcb9d09111c9facc68510331c5aba4aed9b1b057314ff1fc0e166ad3993a",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/why/references/source-playbook.md",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/why/references/sources/code-archaeology.md",
+      "bytes": 1440,
+      "lines": 51,
+      "sha256": "a4a3970e9db448054aed676f3f7feeee667b4b69f0bd57c8fd72b751be687cc7",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/why/references/sources/code-archaeology.md",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/why/references/sources/databricks.md",
+      "bytes": 6994,
+      "lines": 70,
+      "sha256": "236ede7aab6454662a992db088a5393537a5233a4c26719c93188f9e174488f6",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/why/references/sources/databricks.md",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/why/references/sources/datadog.md",
+      "bytes": 4971,
+      "lines": 97,
+      "sha256": "b139faac5dc11b8f26c8255dce6033c1a6ac143b038d3dd103f2034c5dbec9cd",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/why/references/sources/datadog.md",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/why/references/sources/incident-postmortem.md",
+      "bytes": 372,
+      "lines": 5,
+      "sha256": "bf2661f1a81c37700884a45b77d6289be0c802b065febced31990e6564510839",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/why/references/sources/incident-postmortem.md",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/why/references/sources/linear.md",
+      "bytes": 2996,
+      "lines": 48,
+      "sha256": "01304e7f1badfcfb78babbb0edcadeb3cc8dd3f713793420cdff24ba190f907c",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/why/references/sources/linear.md",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/why/references/sources/notion.md",
+      "bytes": 2853,
+      "lines": 55,
+      "sha256": "3bcfa695c49dfad4ac036d5d7181c12585f55ac04f1936198d16ab75a2788997",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/why/references/sources/notion.md",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/why/references/sources/sentry.md",
+      "bytes": 2089,
+      "lines": 66,
+      "sha256": "2d4f83048eac1df530b399e2aed75dd7c9c18577b7665420aaeb96d0ceb0b702",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/why/references/sources/sentry.md",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/why/references/sources/slack.md",
+      "bytes": 1336,
+      "lines": 17,
+      "sha256": "3bc6309f5c7b26ace3b919dbd7f7b048861dd2020f910fe24f656cc74b3b661c",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/why/references/sources/slack.md",
+      "inspection": "inventoried_not_line_by_line_audit"
+    },
+    {
+      "path": "pstack/skills/why/references/synthesizer-prompt.md",
+      "bytes": 7146,
+      "lines": 129,
+      "sha256": "11c62671aa7b7a6e3d36929ffe2b59bf95e6ca664eee4d93e6ee527dd3390ddb",
+      "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/why/references/synthesizer-prompt.md",
+      "inspection": "inventoried_not_line_by_line_audit"
+    }
+  ]
+}

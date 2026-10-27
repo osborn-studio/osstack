@@ -1,0 +1,15 @@
+{
+  "PS01":{"title":"单入口任务路由与渐进方法组合","depends_on":["PS03","PS08","PS21"],"value":"从用户目标按需选择流程、功能地图和证据，解释路由并允许纠正，减少用户记忆技能的负担。","acceptance":["同一固定来源与输入产生稳定 proposal；必需验证能力先就绪。","只加载相关方法与功能路径；模式纠正会形成新材料而不扩权。"]},
+  "PS02":{"depends_on":[],"value":"分别重建当前运行机制、历史动机与证据缺口，保留 fact/inference/unknown。","limitation":"只读取证需要基本来源标识与任务范围约束，不以前置完成注册系统为条件；进入生产 recipe 仍经过 PS21 的来源管理与既有 admission。","acceptance":["机制结论指向当前代码；历史动机带来源与不确定性。","缺证据的根因只能是待检验假设，不能直接成为实现约束。"]},
+  "PS03":{"title":"意图校准与可纠正的问题模型","value":"区分目标理解错误和上下文不足；让模型先独立重述，再把用户假设作为假设核对。","acceptance":["目标、症状、假设、非目标和未知项分别表示；不把重述视为事实证明。","用户纠正更新材料，已有充分信息的可逆工作不新增机械确认步骤。"]},
+  "PS04":{"title":"从使用草图到原型证据的架构循环","priority":"P0","relative_cost":"medium","depends_on":["PS02","PS08","PS23"],"value":"先写调用样例，比较结构不同的备选，以最小原型回答改变实现的未知，再选择接口。","limitation":"P0 是有预算的草图和顺序实验，不需要先扩展 Graph；动态多模型 arena 仍留 P1 并单独资格验证。","phase_scope":{"P0":"usage sketch, interface experiment, design decision and deviation record","P1":"qualified parallel candidate execution"},"acceptance":["每个关键技术未知有实验/证据或明确未解决原因；原型不得当生产代码或交付通过。","相同形态的多处实现偏差触发重审设计；已选方向的合成结果重新验证。"]},
+  "PS06":{"value":"对具体代码、调用草图、不变量与实验结果做独立评审，并逐条处理发现。","acceptance":["review 标明具体对象和依据；无证据猜测进入未知项而非自动扩大实现。","可信 blocking finding 未处理阻止完成；多模型一致不替代证据。"]},
+  "PS08":{"title":"可操控的验证基础设施与功能地图","depends_on":[],"value":"先提供可组合、可诊断的控制工具及真实行为观察，让开发者自行闭合修复循环。","limitation":"只使用已有授权与隔离；self-check 不是正式 local_verified；地图种子不能冒充全覆盖。","acceptance":["冷启动环境可完成 doctor→drive→observe→cleanup，动作和结果证据均保留。","有机器输出、渐进帮助、可行动错误和实际无写入的 dry-run。","按用户路径检索功能地图，明确前提、入口覆盖、陷阱、恢复及版本。"]},
+  "PS09":{"title":"验证基础设施的健康、归属与漂移维护","depends_on":["PS08"],"value":"为控制工具与地图定义 owner、健康状态、变更触发维护和显式配置的周期运行。","acceptance":["文档漂移、harness 故障、产品回归分开处理；不降低 gate 恢复绿色。","工具故障阻止相关验证结论；本轮不创建定时任务。"]},
+  "PS13":{"value":"保留可信决策与证据历史，同时将结束或被替代的战术计划退出当前检索。","acceptance":["追加更正保留旧记录；当前视图不把历史计划当指令。","可读导出不反向修改权威状态。"]},
+  "PS16":{"value":"自包含 brief 与单写者外，还明确端口、DB、身份、依赖和容量，避免把文件隔离当运行隔离。","acceptance":["brief 缺验收/环境前提拒绝派发；共享资源冲突限制并行。","恢复依赖主机事实；不因云模型可用就自动获得部署权限。"]},
+  "PS20":{"value":"按需加载方法和地图，声明宿主工具与环境能力；本地与未来远端使用相同证据语义。","acceptance":["required 功能缺失拒绝；optional 降级明确。","本地 stand-in 成功不标远端 verified；实际 prompt 的材料选择可追踪。"]},
+  "PS21":{"limitation":"完整来源管理在验证工具的价值试点后收敛；基本 pin 和现有权限始终保留，不让 registry 成为探索的虚假前置成果。"},
+  "PS23":{"title":"使用方式驱动的接口与文档设计","priority":"P0","extraction_strategy":"adapt","relative_cost":"medium","depends_on":["PS03","PS08"],"value":"以使用教程和调用样例反推接口，并区分教程、操作指南、参考、解释；个人文风和额外 lint 后置。","phase_scope":{"P0":"consumer usage sketch and documentation-purpose contract","P2":"optional writing style and additional code conventions"},"acceptance":["冷读者能按教程完成命名场景，API 草图通过实际调用验证。","旧计划退出当前上下文；不强制英文标点或无关风格。"]},
+  "PS24":{"title":"历史上下文恢复与可理解的决策说明","priority":"P0","depends_on":["PS02"],"value":"把任务相关历史与当前事实连接，解释取舍以帮助用户纠偏，也暴露 agent 自己的知识缺口。","phase_scope":{"P0":"scoped recall, explain and correction","P2":"optional video, personal-style and webhook UI"},"acceptance":["旧假设必须经当前证据重验；不会因解释流畅就提高事实置信度。","只读任务授权范围，用户能看到目标、关键依据与未决取舍。"]}
+}
