@@ -500,3 +500,33 @@ it.each([
     drained: false, active_runs: 0, execution_lease_holds: 1,
   } });
 });
+
+
+it.each([
+  ["start", "empty"], ["send", "empty"],
+  ["start", "missing_stop_verifier"], ["send", "missing_stop_verifier"],
+] as const)("retains %s admission for %s without terminal evidence", async (route, boundary) => {
+  await fixture({ failCleanup: false });
+  if (boundary === "empty") {
+    adapter.stopUnconfirmed = true;
+    if (route === "start") vi.spyOn(adapter, "startSession").mockImplementation(async function* () {});
+    else vi.spyOn(adapter, "resumeSession").mockImplementation(async function* () {});
+  } else {
+    adapter.omitTerminal = true;
+    Object.defineProperty(adapter, "confirmStopped", { value: undefined });
+  }
+  const response = route === "start"
+    ? await rpc("session.start", { request_id: `preflight-${boundary}`, agent_id: adapter.id,
+      repo_path: join(realpathSync(root!), "repo"), title: "Terminal boundary", prompt: "Start once" })
+    : await rpc("session.send", request);
+  expect(response).toMatchObject({ ok: false, error: { code: "agent_failed" } });
+  expect(adapter.stopChecks).toHaveLength(boundary === "empty" ? 1 : 0);
+  expect(cleanupAttempts).toBe(0);
+  if (route === "send") {
+    expect(persisted().message).toMatchObject({ state: "failed", applied_at: null });
+    expect(persisted().turns).toBe(1);
+  }
+  expect(await rpc("daemon.drain", { timeout_ms: 0 })).toMatchObject({ ok: true, result: {
+    drained: false, active_runs: 0, execution_lease_holds: 1,
+  } });
+});
