@@ -1,0 +1,27 @@
+[
+  {
+    "id": "1",
+    "decision": "addressed",
+    "rationale": "Parametrize completed-then-throw/failed over confirmed and unconfirmed stop on start and send. Four new confirmed branches assert physical release once and no retained hold; all still require failed result/persistent failed state."
+  },
+  {
+    "id": "2",
+    "decision": "rejected_existing_tests",
+    "rationale": "adapter-lifecycle.test.ts second test already rejects whitespace evidence and uses fake timers to assert hung verifier returns false at 1000ms. First audit context omitted that test file; include it in closure input."
+  },
+  {
+    "id": "3",
+    "decision": "acknowledged_inherited_nonblocking",
+    "rationale": "Abort after completion takes the existing conservative stop-confirmation branch on both routes, unchanged by terminal-fence patch. New code does not create a new abort window; do not relax this rule to claim provider stop qualification."
+  },
+  {
+    "id": "4",
+    "decision": "acknowledged_inherited_nonblocking",
+    "rationale": "Extra non-failing events or repeated completed terminals are permitted by existing event stream handling; this change requires at least one completed terminal plus normal exhaustion, not a newly exclusive terminal grammar."
+  },
+  {
+    "id": "scope",
+    "decision": "context_added",
+    "rationale": "Include engineering/collaborator/attention callers and related daemon engineering tests in review context and focused execution, while preserving the shared helper behavior for all routes."
+  }
+]

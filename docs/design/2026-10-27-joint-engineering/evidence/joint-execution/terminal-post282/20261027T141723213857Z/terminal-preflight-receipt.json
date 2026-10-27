@@ -1,0 +1,152 @@
+{
+  "base_sha": "ede5aadced37ac9dc29dd21f0e307ad2c46d2976",
+  "observed_at": "2026-10-27T14:17:20.151886+00:00",
+  "owner": "terminal_preflight",
+  "code_sha": "cb76b6432d597d1c057d241f17e652308286b8ee",
+  "evidence_head": "3202b790952e358b83ced50746d78909cda31c4c",
+  "scope": "Owner-collected agent handoff, fresh final 22-package full run; no runtime qualification",
+  "validation": {
+    "base_sha": "ede5aadced37ac9dc29dd21f0e307ad2c46d2976",
+    "code_sha": "cb76b6432d597d1c057d241f17e652308286b8ee",
+    "passed": 6293,
+    "failed": 0,
+    "skipped": 5,
+    "packages": 22,
+    "source": "test-full-final.log",
+    "detail": [
+      {
+        "package": "packages/contracts",
+        "passed": 15,
+        "failed": 0,
+        "skipped": 0
+      },
+      {
+        "package": "packages/compliance",
+        "passed": 17,
+        "failed": 0,
+        "skipped": 0
+      },
+      {
+        "package": "packages/github",
+        "passed": 107,
+        "failed": 0,
+        "skipped": 0
+      },
+      {
+        "package": "packages/knowledge",
+        "passed": 44,
+        "failed": 0,
+        "skipped": 0
+      },
+      {
+        "package": "packages/protocol",
+        "passed": 477,
+        "failed": 0,
+        "skipped": 0
+      },
+      {
+        "package": "packages/neat-eval",
+        "passed": 16,
+        "failed": 0,
+        "skipped": 0
+      },
+      {
+        "package": "packages/runtime",
+        "passed": 1,
+        "failed": 0,
+        "skipped": 0
+      },
+      {
+        "package": "packages/governance",
+        "passed": 301,
+        "failed": 0,
+        "skipped": 0
+      },
+      {
+        "package": "packages/knowledge-cloud",
+        "passed": 36,
+        "failed": 0,
+        "skipped": 0
+      },
+      {
+        "package": "packages/graph",
+        "passed": 257,
+        "failed": 0,
+        "skipped": 0
+      },
+      {
+        "package": "packages/core",
+        "passed": 1000,
+        "failed": 0,
+        "skipped": 0
+      },
+      {
+        "package": "packages/plugins",
+        "passed": 1,
+        "failed": 0,
+        "skipped": 0
+      },
+      {
+        "package": "packages/hermes-adapter",
+        "passed": 22,
+        "failed": 0,
+        "skipped": 0
+      },
+      {
+        "package": "packages/skills",
+        "passed": 2,
+        "failed": 0,
+        "skipped": 0
+      },
+      {
+        "package": "packages/autonomy",
+        "passed": 201,
+        "failed": 0,
+        "skipped": 0
+      },
+      {
+        "package": "packages/skill-registry",
+        "passed": 37,
+        "failed": 0,
+        "skipped": 0
+      },
+      {
+        "package": "packages/agents",
+        "passed": 361,
+        "failed": 0,
+        "skipped": 0
+      },
+      {
+        "package": "packages/config",
+        "passed": 30,
+        "failed": 0,
+        "skipped": 0
+      },
+      {
+        "package": "packages/loop",
+        "passed": 515,
+        "failed": 0,
+        "skipped": 0
+      },
+      {
+        "package": "packages/supervisor",
+        "passed": 88,
+        "failed": 0,
+        "skipped": 0
+      },
+      {
+        "package": "packages/conformance",
+        "passed": 9,
+        "failed": 0,
+        "skipped": 0
+      },
+      {
+        "package": "packages/cli",
+        "passed": 2756,
+        "failed": 0,
+        "skipped": 5
+      }
+    ]
+  },
+  "historical_runs": "Two failed executions and one superseded interrupted execution remain in original evidence bundle; not counted as passing."
+}

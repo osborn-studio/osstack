@@ -1,0 +1,52 @@
+{
+  "kind": "owner-dispatch-record",
+  "observed_at": "2026-10-27T13:54:17.012240+00:00",
+  "base_sha": "ede5aadced37ac9dc29dd21f0e307ad2c46d2976",
+  "scope": "Original tool messages recorded by owner; not cryptographic remote attestation",
+  "agents": [
+    {
+      "name": "terminal_preflight",
+      "scope": "#279 product/test/audit",
+      "worktree": "terminal-post282",
+      "write_boundary": [
+        "packages/cli/src/daemon.ts",
+        "packages/cli/src/session-send-receipt.test.ts",
+        ".changeset/session-terminal-boundary.md",
+        "docs/implementation/joint-terminal-post282/"
+      ]
+    },
+    {
+      "name": "cleanup_regression",
+      "scope": "independent risk/checkpoint/R02 closure read-only review",
+      "write_boundary": [
+        "scratch independent/"
+      ]
+    },
+    {
+      "name": "loader_adversarial",
+      "scope": "O06/N0/J11 next-wave gate proposal only",
+      "write_boundary": [
+        "scratch next-wave/"
+      ]
+    }
+  ],
+  "sessions": [
+    {
+      "kind": "owner-dispatch-record",
+      "observed_at": "2026-10-27T13:52:51.390496+00:00",
+      "authority": "User authorized independent sessions and more parallel work while owner retains PR integration; tool creation succeeded.",
+      "thread_id": "01a17da2-4810-7543-b9d7-a008fe51c2e0",
+      "host_id": "local",
+      "title": "OSStack J01 独立验收夹具",
+      "base_sha": "ede5aadced37ac9dc29dd21f0e307ad2c46d2976",
+      "scope": "JA01/JA02 independent oracle specification and scratch executable fixture; not formal acceptance pass",
+      "write_boundary": "session-j01-oracle scratch only",
+      "overlap_exclusions": [
+        "O06 and gate graph design owned by loader_adversarial",
+        "PR279 terminal implementation/tests owned by terminal_preflight",
+        "central ledger/PR owned by main coordinator"
+      ],
+      "no_runtime_qualification": true
+    }
+  ]
+}

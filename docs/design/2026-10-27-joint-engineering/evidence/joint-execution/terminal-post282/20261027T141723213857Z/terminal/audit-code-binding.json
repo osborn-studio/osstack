@@ -1,0 +1,33 @@
+{
+  "code_sha": "cb76b6432d597d1c057d241f17e652308286b8ee",
+  "base_sha": "ede5aadced37ac9dc29dd21f0e307ad2c46d2976",
+  "reviewed_base": "ede5aadced37ac9dc29dd21f0e307ad2c46d2976",
+  "model": "claude-sonnet-5-5",
+  "verdict": "PASS",
+  "verdict_parser": "last exact VERDICT line",
+  "final_round": 2,
+  "reviewed_files": {
+    "packages/cli/src/adapter-lifecycle.test.ts": "7f45eca82c1cdf4e43846d73af97da7955c73ecf8741618c0e11cca76958b5e1",
+    "packages/cli/src/daemon-engineering.test.ts": "d818125f8ac6a1a5f567d617917067f78d27765c78c15beccb7bae27d6ecb119",
+    "packages/cli/src/adapter-lifecycle.ts": "39ced6878c09460c4ddaecde2a9ed7845c3a5de9ed6db45130e06dc2813d5fff",
+    "packages/cli/src/governed-execution.ts": "a58688226dfb47465ef317762fd50863d7c8e09a40e99f7eb719e9d243f95698",
+    "packages/cli/src/session-send-receipt.test.ts": "361453faf77e7396103f423e58db8955a6ac79cc5ecff13ce4e87dd3adbf2f5d",
+    "packages/agents/src/session.ts": "5e99fac22134e8795d504c373c327db384205a935f596190770f01140fc61a69",
+    "packages/cli/src/daemon.ts": "e7f0ede3fb6e72b5703955d78103581bec60e914ff1fbc608b0a6c0ad9234247",
+    "packages/agents/src/adapters/codex-cli.ts": "630aa2ddbae0ed95aa4ebeefa626b36887c3f1e27c7fe579c4ce5d737caa3db8"
+  },
+  "reviewed_files_match": true,
+  "validation": {
+    "passed": 6293,
+    "skipped": 5,
+    "failed": 0
+  },
+  "packages": 22,
+  "raw_report": "round2-raw.md.gz",
+  "input": "round2-input.txt.gz",
+  "raw_response": "round2-response.json.gz",
+  "raw_report_sha256": "a41b2696c62e499c6a4881b9b4353cceb90067565f207368a4688c0c849d5a96",
+  "input_sha256": "cd375c6e6389dd8255b7b0e21dae14485c4287ad9f7c06b49e9052d2d72af81d",
+  "raw_response_sha256": "8d05fce650e1d0d610bbb3db55cf40bc7e402865f10ea71827e0108eb831178a",
+  "scope": "Fresh post-PR282 static review. No blocking P0/P1/P2. Reviewer retained non-blocking notes; see raw report and host dispositions. Execution validation separate; no live-provider or cross-process recovery qualification."
+}

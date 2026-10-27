@@ -1,0 +1,15 @@
+{
+  "id": "osstack",
+  "name": "OSStack 联合开发续办",
+  "status": "ACTIVE",
+  "rrule": "FREQ=MINUTELY;INTERVAL=30",
+  "target_thread_id": "01a178ed-616a-7bb1-8d20-13f4c1019245",
+  "created_at": 1793098759153,
+  "updated_at": 1793109241967,
+  "observed_at": "2026-10-27T13:54:17.012240+00:00",
+  "config_sha256": "4cb0156499897cc76c961a1bb47cecdc0866c6e612d8306b044440d33facb493",
+  "queue": "279 then J01/J11 gates; J01 oracle independent session in progress",
+  "authority": "automation_update succeeded, persisted config reread; owner-attested tool result, not runtime scheduler proof",
+  "goal_dispatch_enabled": false,
+  "base_sha": "ede5aadced37ac9dc29dd21f0e307ad2c46d2976"
+}
