@@ -1086,6 +1086,12 @@ async function executeReservedSessionTurn(
         if (await confirmAdapterStopped(adapter, session.run_id)) await lease?.release();
         else lease?.retain("session resume exit unconfirmed");
       } else await lease?.release();
+    } catch {
+      // GovernedExecution retains admission when physical release fails. Keep
+      // that obligation separate from the committed turn (or uncertain receipt).
+      // A cleanup error must not replace the result selected above.
+      try { process.stderr.write("osstack: session cleanup failed; execution admission remains held\n"); }
+      catch { /* Diagnostics must not replace the execution receipt either. */ }
     } finally {
       ctx.activeSessionSends.delete(session.session_id);
       if (ctx.activeRuns.get(session.run_id) === controller) ctx.activeRuns.delete(session.run_id);
