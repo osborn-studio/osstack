@@ -45,6 +45,7 @@ expected=x.pop('inspection_digest')
 if digest('osstack.joint.source-inspection.v1',x)!=expected: raise SystemExit('inspection mismatch')
 print('verified')`], { input: JSON.stringify(a), encoding: 'utf8' });
     expect(independent.trim()).toBe('verified');
+    expect(a.pin.license_refs).toEqual([...new Set(a.files.filter(f=>f.role==='license').map(f=>`sha256:${f.sha256}`))].sort());
     expect(a).not.toHaveProperty('snapshot'); // Not a detached, apparently closed SourceSnapshot.
   });
   it('keeps inspection evidence distinct from latest shared adoption and authority contracts', async () => {
@@ -88,10 +89,28 @@ print('verified')`], { input: JSON.stringify(a), encoding: 'utf8' });
     const commit=execFileSync(gitBinary,['-C',root,'hash-object','-t','commit','-w','--stdin'],{input:body,encoding:'utf8'}).trim();
     expect(()=>inspectGitSource({...options,commit})).toThrow('RESOURCE_LIMIT');
   });
+  it('rejects relative host paths and a whole-tree listing exceeding its byte cap', async () => {
+    const {root,options,git}=await fixture();
+    expect(()=>inspectGitSource({...options,gitBinary:'git'})).toThrow('INVALID_INPUT');
+    expect(()=>inspectGitSource({...options,repositoryPath:'.'})).toThrow('INVALID_INPUT');
+    const blob=git('rev-parse','HEAD:LICENSE');
+    const entries=Array.from({length:17000},(_,i)=>`100644 ${blob}\toutside/${i}-${'x'.repeat(80)}\n`).join('');
+    execFileSync(gitBinary,['-C',root,'update-index','--index-info'],{input:entries});git('commit','-qm','large unselected tree');
+    expect(()=>inspectGitSource({...options,commit:git('rev-parse','HEAD')})).toThrow('RESOURCE_LIMIT');
+  });
+  it('parses batched binary blobs including NUL/newline, duplicate objects and empty files', async () => {
+    const {root,options,git}=await fixture();
+    const bytes=Buffer.from([0,10,255,32,10,0]);
+    writeFileSync(join(root,'method/binary'),bytes);writeFileSync(join(root,'method/copy'),bytes);writeFileSync(join(root,'method/empty'),Buffer.alloc(0));
+    git('add','.');git('commit','-qm','binary batch');
+    const result=inspectGitSource({...options,commit:git('rev-parse','HEAD')});
+    for(const name of ['binary','copy']) expect(result.files.find(f=>f.path===`method/${name}`)).toMatchObject({bytes:bytes.length,sha256:createHash('sha256').update(bytes).digest('hex')});
+    expect(result.files.find(f=>f.path==='method/empty')).toMatchObject({bytes:0,sha256:createHash('sha256').update('').digest('hex')});
+  });
   it('deduplicates a license already in the source tree and binds role and executable mode', async () => {
     const { options, git } = await fixture(); const a = inspectGitSource({ ...options, subdir: '.' });
     expect(a.files).toHaveLength(3); expect(a.files[0]?.role).toBe('license');
-    expect(() => inspectGitSource({ ...options, licensePaths: ['LICENSE', 'LICENSE'] })).toThrow();
+    expect(() => inspectGitSource({ ...options, licensePaths: ['LICENSE', 'LICENSE'] })).toThrow('INVALID_INPUT');
     git('update-index', '--chmod=+x', 'method/SKILL.md'); git('commit', '-qm', 'mode');
     const b = inspectGitSource({ ...options, commit: git('rev-parse', 'HEAD') });
     expect(b.files[1]?.mode).toBe('100755'); expect(b.pin.content_sha256).not.toBe(a.pin.content_sha256);
@@ -113,7 +132,7 @@ print('verified')`], { input: JSON.stringify(a), encoding: 'utf8' });
   it('rejects case collisions in Git even on case-insensitive filesystems', async () => {
     const { options, git } = await fixture(); const oid = git('rev-parse', 'HEAD:method/SKILL.md');
     git('update-index', '--add', '--cacheinfo', `100644,${oid},method/skill.md`); git('commit', '-qm', 'collision');
-    expect(() => inspectGitSource({ ...options, commit: git('rev-parse', 'HEAD') })).toThrow();
+    expect(() => inspectGitSource({ ...options, commit: git('rev-parse', 'HEAD') })).toThrow('UNSAFE_ENTRY');
   });
   it('ignores injected Git locations and config; never applies replacement objects', async () => {
     const { root, options, git } = await fixture(); const old = inspectGitSource(options);
@@ -133,7 +152,7 @@ print('verified')`], { input: JSON.stringify(a), encoding: 'utf8' });
   it('rejects a missing or corrupt blob and never emits a partial result', async () => {
     const { root, options, git } = await fixture(); const oid = git('rev-parse', 'HEAD:method/SKILL.md');
     rmSync(join(root, '.git/objects', oid.slice(0, 2), oid.slice(2)));
-    expect(() => inspectGitSource(options)).toThrow();
+    expect(() => inspectGitSource(options)).toThrow('OBJECT_UNAVAILABLE');
   });
   it('rejects oversized blobs before capture', async () => {
     const { root, options, git } = await fixture(); writeFileSync(join(root, 'method/large'), Buffer.alloc(512 * 1024 + 1));
@@ -142,7 +161,7 @@ print('verified')`], { input: JSON.stringify(a), encoding: 'utf8' });
   });
   it('rejects more than 512 selected files and total content above 8 MiB', async () => {
     const { root, options, git } = await fixture(); const blob = git('rev-parse', 'HEAD:LICENSE');
-    const entries = Array.from({ length: 512 }, (_, i) => `100644 ${blob}\tmethod/f${i}\n`).join('');
+    const entries = Array.from({ length: 510 }, (_, i) => `100644 ${blob}\tmethod/f${i}\n`).join('');
     execFileSync(gitBinary, ['-C', root, 'update-index', '--index-info'], { input: entries }); git('commit', '-qm', 'many');
     expect(() => inspectGitSource({ ...options, commit: git('rev-parse', 'HEAD') })).toThrow('RESOURCE_LIMIT');
     git('reset', '--hard', options.commit); writeFileSync(join(root, 'method/large'), Buffer.alloc(512 * 1024)); git('add', '.');

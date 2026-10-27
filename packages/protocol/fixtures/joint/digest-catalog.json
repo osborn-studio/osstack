@@ -303,7 +303,7 @@
         "files"
       ],
       "array_rule": "files sorted by raw UTF-8 path; pin.license_refs sorted unique ASCII digest refs",
-      "schema_rule": "J02a output includes not_performed/caller_asserted/expected-digest-check markers; exclude inspection_digest only; no adoption authority"
+      "schema_rule": "J02a output includes not_performed/caller_asserted/expected-digest-check markers; exclude inspection_digest only; no adoption authority; pin.license_refs are sorted unique sha256:<raw license file SHA256> content refs for this producer; J02b must explicitly reconcile generic SourcePin refs"
     }
   ]
 }

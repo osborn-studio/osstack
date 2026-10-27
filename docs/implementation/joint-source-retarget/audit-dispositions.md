@@ -12,3 +12,14 @@ Round 1 is preserved without edits. Host validation and final static review are 
 8. Repository is an opaque host-asserted identity, not a normalized remote URL. Distinct exact spellings intentionally produce distinct digests. J02b authenticates/canonicalizes identity before adoption; this inspector must not infer equivalence.
 9. Realpath is the trusted executable selected by this API's contract. Host PATH is trusted provisioning context; no hook/filter/protocol is executed. Changing multicall-wrapper semantics or global PATH policy is not justified by a concrete supported-Git counterexample.
 10. Materialization aliases remain J02b/future writer obligations. No files are written by inspection.
+
+## Round 2
+
+- P1-1: clarified that the linked report records validation status; Draft/pending is explicit until actual results are archived. Historical evidence files already exist, though not all were pasted into the tool-less prompt. Missing prompt context was not missing repository evidence.
+- P2-1: no IPC consumer exists in J02a. Documented mutable evidence and mandatory J02b receiving-boundary parse/digest verification. Adding a new public verifier without its consumer is a separate API design, not necessary to this producer's scope.
+- P2-2: conservative whole-tree UTF-8/output caps are deliberate support-profile rejection, already disclosed. No availability SLA for arbitrary upstream repositories. Retained, not silently broadened to materialization/adoption.
+- P2-3: documented producer-specific sha256 license refs versus generic SourcePin fixtures and added derivation assertion; J02b maps/validates the convention.
+- P2-4: accepted batching improvement. Replaced per-blob subprocesses with bounded batch-check + batch reads; validates all sizes before reading bytes, verifies framing, exact Git IDs and raw byte hashes. Added binary/NUL/newline, empty-object and duplicate-object tests.
+- P2-5: build-before-test is the monorepo workflow, not unique to this PR. Lockfile/direct public protocol dependency already updated; package/publish checks will be archived. No unrelated turbo/pretest pipeline changes.
+- P2-6: tightened collision/missing/duplicate errors; added relative host paths and real >2 MiB tree-output test; corrected file-count negative to exactly 513. Batch timing still uses bounded subprocess deadline; no arbitrary host SLA.
+- P3-1 through P3-10: clarified exact promisor keys, whole commit size, POSIX scope, existing wildcard exports, sanitized opaque repository identity, trusted-tree and independent-digest limits. Shared Ref/collision checks remain required; nonretryable store errors intentionally require host/provisioning review.

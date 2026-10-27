@@ -77,12 +77,12 @@ function inspect(options: GitSourceOptions): GitSourceInspection {
     GIT_CONFIG_NOSYSTEM: '1', GIT_CONFIG_GLOBAL: '/dev/null', GIT_NO_REPLACE_OBJECTS: '1',
     GIT_NO_LAZY_FETCH: '1', GIT_TERMINAL_PROMPT: '0', GIT_OPTIONAL_LOCKS: '0' };
   let gitDir: string | undefined;
-  function git(args: string[], maxBuffer = TREE_LIMIT, allowMissingConfig = false): Buffer {
+  function git(args: string[], maxBuffer = TREE_LIMIT, allowMissingConfig = false, input?: Buffer): Buffer {
     const left = deadline - performance.now(); if (left <= 0) return fail('SOURCE_TIMEOUT');
     try {
       return execFileSync(binary, ['--no-pager', '--no-optional-locks', '-c', 'protocol.allow=never', '-c', 'core.hooksPath=/dev/null', '-c', 'core.fsmonitor=false',
         ...(gitDir ? ['--git-dir', gitDir] : ['-C', repo]), ...args],
-        { env, cwd: gitDir ?? repo, killSignal: 'SIGKILL', timeout: Math.max(1, Math.min(5000, Math.floor(left))), maxBuffer, stdio: ['ignore', 'pipe', 'ignore'] });
+        { env, cwd: gitDir ?? repo, killSignal: 'SIGKILL', timeout: Math.max(1, Math.min(5000, Math.floor(left))), maxBuffer, stdio: [input ? 'pipe' : 'ignore', 'pipe', 'ignore'], ...(input ? {input} : {}) });
     } catch (error) {
       const e = error as { code?: string; status?: number; stdout?: Buffer };
       if (allowMissingConfig && e.status === 1 && e.stdout?.length === 0) return Buffer.alloc(0);
@@ -138,11 +138,36 @@ function inspect(options: GitSourceOptions): GitSourceInspection {
   // Reuse J01's collision and prefix invariants, without exporting a closure claim.
 
   if (!SourceSnapshot.safeParse({ kind: 'source_snapshot', schema_version: 1, pin: placeholder, files: selected, dependencies: [] }).success) return fail('UNSAFE_ENTRY');
-  let total = 0;
-  const files: InspectedSourceFile[] = selected.map(f => {
-    const bytes = object('blob', f.blob, Math.min(BLOB_LIMIT, TOTAL_LIMIT - total)); total += bytes.length;
-    return { ...f, bytes: bytes.length, sha256: sha(bytes), role: licenses.has(f.path) ? 'license' : 'source' };
-  });
+  // Bound every size before reading any blob, then capture each distinct object once.
+  // Two batch subprocesses avoid O(files) spawn overhead on loaded hosts.
+  const oids = [...new Set(selected.map(f => f.blob))];
+  const request = Buffer.from(oids.join('\n') + '\n');
+  const checks = utf8(git(['cat-file', '--batch-check'], 64 * 1024, false, request)).split('\n');
+  if (checks.pop() !== '' || checks.length !== oids.length) return fail('OBJECT_UNAVAILABLE');
+  const sizes = new Map<string, number>();
+  for (let i = 0; i < oids.length; i++) {
+    const parts = checks[i]!.split(' ');
+    if (parts.length !== 3 || parts[0] !== oids[i] || parts[1] !== 'blob') return fail('OBJECT_UNAVAILABLE');
+    const size = Number(parts[2]);
+    if (!/^\d+$/.test(parts[2]!) || !Number.isSafeInteger(size) || size > BLOB_LIMIT) return fail('RESOURCE_LIMIT');
+    sizes.set(oids[i]!, size);
+  }
+  if (selected.reduce((total, f) => total + sizes.get(f.blob)!, 0) > TOTAL_LIMIT) return fail('RESOURCE_LIMIT');
+  const batch = git(['cat-file', '--batch'], TOTAL_LIMIT + 64 * 1024, false, request);
+  let offset = 0;
+  const hashes = new Map<string, string>();
+  for (const oid of oids) {
+    const size = sizes.get(oid)!;
+    const end = batch.indexOf(10, offset);
+    if (end < offset || !batch.subarray(offset,end).equals(Buffer.from(`${oid} blob ${size}`))) return fail('OBJECT_MISMATCH');
+    const start = end + 1;
+    if (start + size >= batch.length || batch[start + size] !== 10) return fail('OBJECT_MISMATCH');
+    const bytes = batch.subarray(start,start + size);
+    if (createHash(format).update(`blob ${size}\0`).update(bytes).digest('hex') !== oid) return fail('OBJECT_MISMATCH');
+    hashes.set(oid,sha(bytes)); offset = start + size + 1;
+  }
+  if (offset !== batch.length) return fail('OBJECT_MISMATCH');
+  const files: InspectedSourceFile[] = selected.map(f => ({...f,bytes:sizes.get(f.blob)!,sha256:hashes.get(f.blob)!,role:licenses.has(f.path) ? 'license' : 'source'}));
   const content = { schema_version: 1, repository: o.repository, commit: o.commit, subdir: o.subdir, files };
   const digest = jointDigest('osstack.joint.source-content.v1', content);
   if (o.expectedContentSha256 !== undefined && digest !== o.expectedContentSha256) return fail('CONTENT_DRIFT');
