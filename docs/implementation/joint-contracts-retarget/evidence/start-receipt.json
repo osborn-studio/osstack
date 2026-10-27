@@ -1,0 +1,7 @@
+{
+  "comment_id": 296,
+  "card_id": "card_6d5d3d02",
+  "author": "joint-entry",
+  "body": "PR #273 retargeted to main after confirmed #272/#280/#275/#277 merges. Main 4924d224ab9e6e2d7f801d68faea389fedf3751e merged without conflicts; candidate 6b822c6cf7d739bc0f48e337fa10542d4ecde5da. J01b product diff byte-for-byte identical to original patch. Full verification and fresh Claude CLI claude-sonnet-5-5 audit running; retain Draft until passed. Human gilberthello owns approval/merge.",
+  "created_at": 1793088405.635
+}

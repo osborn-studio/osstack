@@ -1,0 +1,12 @@
+{
+  "exit_code": 0,
+  "is_error": false,
+  "models": [
+    "claude-sonnet-5-5"
+  ],
+  "started_at_utc": "2026-10-27T05:58:58.281958+00:00",
+  "finished_at_utc": "2026-10-27T06:01:47.527902+00:00",
+  "duration_ms": 167605,
+  "complete_marker": true,
+  "candidate": "d1ab1d5e91c3ac7ebbb3c2192b953044321220c9"
+}

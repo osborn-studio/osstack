@@ -59,7 +59,7 @@ describe('recovery decision matrix', () => {
       const v = original('valid-recovery_receipt');
       const type = {preserve_unknown:'invocation_contained',proven_not_started:'cancelled_before_dispatch',proven_stopped:'invocation_contained',applied_observed:'applied_completion'}[decision];
       Object.assign(v,{prior_phase:phase,decision,proof_refs:decision==='preserve_unknown'?[]:['proof'],proofs:decision==='preserve_unknown'?[]:[{...proof,type}]});
-      const allowed = phase === 'reserved' ? ['preserve_unknown','proven_not_started'] : phase === 'dispatch_committed' ? ['preserve_unknown','proven_stopped','applied_observed'] : phase === 'legacy_unknown' ? ['preserve_unknown'] : [];
+      const allowed = phase === 'reserved' ? ['preserve_unknown','proven_not_started'] : phase === 'dispatch_committed' ? ['preserve_unknown','proven_stopped','applied_observed'] : [];
       expect(RecoveryReceipt.safeParse(v).success, `${phase}/${decision}`).toBe(allowed.includes(decision));
     }
   });
@@ -73,7 +73,7 @@ describe('recovery decision matrix', () => {
     const r = {kind:'recovery_request',schema_version:1,request_id:'r',if_revision:0,subject,decision:'preserve_unknown',proof_refs:[],schema_spec_digest:hash};
     expect(RecoveryRequest.safeParse(r).success).toBe(true);
     expect(RecoveryRequest.safeParse({...r,operator_ref:'admin'}).success).toBe(false);
-    const e = {kind:'recovery_proof',schema_version:1,subject,proof,owner_generation:1,observed_at_ms:1,record_ref:'proof',authorization_ref:'a'};
+    const e = {kind:'recovery_proof',schema_version:1,subject,proof,owner_generation:1,observed_at_ms:1,record_ref:'proof',authorization_ref:'a',binding_generation:1,support_profile_digest:hash,prior_phase:'dispatch_committed',schema_spec_digest:hash,recovery_build_digest:hash};
     expect(RecoveryProofEnvelope.safeParse(e).success).toBe(true);
     expect(RecoveryProofEnvelope.safeParse({...e,proof:{...proof,subject_digest:hash}}).success).toBe(false);
   });
@@ -124,7 +124,7 @@ it('rejects contradictory or unlinked proofs and oversized request IDs before a 
   expect(RecoveryRequest.safeParse(r).success).toBe(false);
   expect(RecoveryRequest.safeParse({...r,request_id:'x',subject:{kind:'effect',home_id:'h',effect_id:'x'.repeat(257)}}).success).toBe(false);
 });
-it('rejects unsafe source trees before adoption', () => {
+it('rejects listed source manifest syntax and collision hazards', () => {
   const file=(path:string,mode='100644')=>({path,mode,blob:'a'.repeat(40)});
   const base={kind:'source_snapshot',schema_version:1,pin:original('valid-source_pin'),dependencies:[]};
   for (const files of [[file('.git/hooks/post-checkout')],[file('A'),file('a')],[file('é'),file('e\u0301')],[file('a'),file('a/b')],[file('link','120000')],[file('module','160000')]]) expect(SourceSnapshot.safeParse({...base,files}).success).toBe(false);
@@ -145,6 +145,14 @@ it('pins effect, legacy and broker identity rejection independently of other pha
   expect(RecoveryReceipt.safeParse({...broker,decision:'proven_stopped',proof_refs:['proof'],proofs:[missingIdentity]}).success).toBe(false);
   for(const receipt of [effect,attention]) {
     const p={...proof,subject_digest:receipt.subject_digest,...(receipt===effect?{effect_id:effect.effect_id}:{})};
-    expect(RecoveryReceipt.safeParse({...receipt,decision:'proven_stopped',proof_refs:['proof'],proofs:[p]}).success).toBe(false);
+    const result=RecoveryReceipt.safeParse({...receipt,decision:'proven_stopped',proof_refs:['proof'],proofs:[p]});
+    expect(result.success).toBe(false);
+    if (!result.success) expect(result.error.issues.map(i=>i.message)).toContain('UNEXPECTED_BROKER_PROOF');
   }
+});
+
+it('accepts a committed Attention containment receipt without broker proof identity', () => {
+  const receipt=original('valid-recovery-attention-subject');
+  const proof={record_ref:'proof',type:'invocation_contained',evidence_digest:hash,producer_ref:'host',subject_digest:receipt.subject_digest};
+  expect(RecoveryReceipt.safeParse({...receipt,prior_phase:'dispatch_committed',decision:'proven_stopped',proof_refs:['proof'],proofs:[proof]}).success).toBe(true);
 });

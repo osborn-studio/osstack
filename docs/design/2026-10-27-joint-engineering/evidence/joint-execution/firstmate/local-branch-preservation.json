@@ -1,0 +1,76 @@
+[
+  {
+    "branch": "codex/firstmate-r01-r02",
+    "head": "d9fce7eaf99d9033f588697a3233fa51db261527",
+    "not_reachable_from_remote_refs": [
+      "d9fce7eaf99d9033f588697a3233fa51db261527 fix(core): scope qualification identities and reject degenerate keys",
+      "10c648122094963e926cf7c5f2d340a2af2d301c fix(core): harden behavior evaluation inputs and provenance",
+      "7c1091a7d8db335b7e1bba4a4be6632fbd715aeb feat(protocol): define pinned behavior source snapshot manifests",
+      "20fcb748b42910fb8863552ab3227a1a2ff1399b feat(core): evaluate trusted behavior registry qualification chains",
+      "0663e62ea95d48b103b3014bfabf5b6b5ab7c886 test(protocol): pin strict qualification draft compatibility",
+      "c5d7cacc343541884a2070811402bcf8d3c50c90 fix(protocol): bind behavior evidence and restrict identity tokens",
+      "b4fabad611e9e5edb25ce6bbc660123aaea79aae feat(protocol): define versioned behavior capability records"
+    ]
+  },
+  {
+    "branch": "codex/session-debt03",
+    "head": "09eb44a7fe19d8a81b2bed255617eb76e1cb44f4",
+    "not_reachable_from_remote_refs": [
+      "09eb44a7fe19d8a81b2bed255617eb76e1cb44f4 test(cli): pin completed Session cleanup without stop proof",
+      "b6eec5e59d0a63841d5d4b13571312bfe8651179 fix(cli): retain incomplete Session execution until stop is confirmed",
+      "87755c27235380ff3ad4171ab82fb9edb0c22b53 test(cli): cover Session start cleanup failure paths",
+      "b8ca61ecc15f0abe9bfc54b6519bd59dc7d23e1d docs(cli): bound Session cleanup verification claims",
+      "d1ab1d5e91c3ac7ebbb3c2192b953044321220c9 fix(cli): preserve completed Session starts during cleanup",
+      "8f2592c7f670b17c6e1c87668148b6c2489d70a6 fix(cli): preserve replay results during admission cleanup",
+      "3087a64aa105fd3ce6836f24796645383d940338 fix(cli): preserve Session send receipts after cleanup failure"
+    ]
+  },
+  {
+    "branch": "codex/firstmate-batch1-integration",
+    "head": "dd0f8d09687c6d77394771f61102c9685ec33b2c",
+    "not_reachable_from_remote_refs": [
+      "dd0f8d09687c6d77394771f61102c9685ec33b2c docs(core): refresh behavior evaluator export inventory",
+      "8a60693c7ea52d8b89a5b3adbb5cd437d7bdc474 docs(protocol): refresh behavior contract export inventory",
+      "20b4a81dfcffd80b4919643be362dcfcefad7cf5 test(cli): pin completed Session cleanup without stop proof",
+      "edd9deedbc73d805f71e7d2b2ce1203b1430d61f fix(core): scope qualification identities and reject degenerate keys",
+      "e8fe7559147622a8e05cc1255b15cc006df8226d fix(cli): retain incomplete Session execution until stop is confirmed",
+      "15baf778f9e21255c5c6db2db4bd07bf233fcc72 test(cli): cover Session start cleanup failure paths",
+      "39a1abd70439b5a229dac6767bf13747e511eef8 docs(cli): bound Session cleanup verification claims",
+      "f79eb4047b4c3bb470a6b5d0b332442f86fae913 fix(core): harden behavior evaluation inputs and provenance",
+      "72ff14baf153cf3b4da96d43f78a13130919b5fd feat(protocol): define pinned behavior source snapshot manifests",
+      "81fe24bd47dcc5fa3fd50760362336b814266dfa fix(cli): preserve completed Session starts during cleanup",
+      "7e2154f5f5e769c2832525ab838d11d6b0b292cc fix(cli): preserve replay results during admission cleanup",
+      "cf5ae0bce6a5ab535f462a4e7cc64e12495b6a19 feat(core): evaluate trusted behavior registry qualification chains",
+      "2e123e0ec862bccfdc329dd0cef7ca830b43f06d test(protocol): pin strict qualification draft compatibility",
+      "e67cd46d24dffa0f9f26912eccb0e5a73aa6712d fix(protocol): bind behavior evidence and restrict identity tokens",
+      "b1c10276222716125e0d96764a5475a4e8a97d95 Merge remote-tracking branch 'origin/main' into codex/firstmate-batch1-integration",
+      "635be2a7de4b83a9d325da789c54626c0c411bd5 fix(cli): preserve Session send receipts after cleanup failure",
+      "9f9177d7cde8c9016610a51561f2ff6dc3ea192d feat(protocol): define versioned behavior capability records"
+    ]
+  },
+  {
+    "branch": "codex/firstmate-behavior-contract",
+    "head": "48d6b927d36e5c673eb80c8956daa69779614cc7",
+    "not_reachable_from_remote_refs": []
+  },
+  {
+    "branch": "codex/firstmate-behavior-loader",
+    "head": "5e86a77859367a333829748908bbf986048132b9",
+    "not_reachable_from_remote_refs": []
+  },
+  {
+    "branch": "codex/session-receipt-fix",
+    "head": "585ed985ac4a8513778470f6443d0ce7ce2c7893",
+    "not_reachable_from_remote_refs": []
+  },
+  {
+    "branch": "codex/session-start-cleanup",
+    "head": "81f01d1a91248396dfdd2dce1132b69d478556cf",
+    "not_reachable_from_remote_refs": []
+  },
+  {
+    "branch": "codex/session-terminal-fence",
+    "head": "cae25bc612e6e6884cf548e5bc8d3a745863a909",
+    "not_reachable_from_remote_refs": []
+  }
+]

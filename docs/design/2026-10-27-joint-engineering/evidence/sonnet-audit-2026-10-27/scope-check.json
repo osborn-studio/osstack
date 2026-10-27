@@ -1,0 +1,13 @@
+{
+  "protected_files_checked": 3709,
+  "changed_outside_joint_directory": [
+    "docs/design/2026-10-26-firstmate-upgrade/joint-design-addendum.md",
+    "docs/reports/2026-10-26-pstack/capability-map.json"
+  ],
+  "allowed_external_doc_changes": [
+    "docs/design/2026-10-26-firstmate-upgrade/joint-design-addendum.md",
+    "docs/reports/2026-10-26-pstack/capability-map.json"
+  ],
+  "unexpected_changes": [],
+  "product_code_changed_by_audit": false
+}

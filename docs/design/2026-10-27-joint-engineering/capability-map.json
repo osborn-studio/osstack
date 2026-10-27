@@ -1,0 +1,3079 @@
+{
+  "schema_version": 1,
+  "kind": "joint_behavior_design_registry",
+  "runtime_enabled": false,
+  "normalized_capabilities": [
+    {
+      "id": "UC01",
+      "title": "目标、范围与单入口"
+    },
+    {
+      "id": "UC02",
+      "title": "执行状态与事件监督"
+    },
+    {
+      "id": "UC03",
+      "title": "决定与未知投递"
+    },
+    {
+      "id": "UC04",
+      "title": "控制权、预算与并发"
+    },
+    {
+      "id": "UC05",
+      "title": "上下文、记忆与解释"
+    },
+    {
+      "id": "UC06",
+      "title": "执行器与支持矩阵"
+    },
+    {
+      "id": "UC07",
+      "title": "工程方法与接口设计"
+    },
+    {
+      "id": "UC08",
+      "title": "验证工具与功能地图"
+    },
+    {
+      "id": "UC09",
+      "title": "候选验收与独立评审"
+    },
+    {
+      "id": "UC10",
+      "title": "来源、资格与漂移"
+    },
+    {
+      "id": "UC11",
+      "title": "远端、外部事件与承诺"
+    },
+    {
+      "id": "UC12",
+      "title": "升级、清理与交付"
+    },
+    {
+      "id": "UC13",
+      "title": "性能、盲评与形式化"
+    }
+  ],
+  "capabilities": [
+    {
+      "id": "FM-01",
+      "title": "单一用户联络入口",
+      "source_family": "firstmate",
+      "normalized_capability": "UC01",
+      "disposition": "adapt",
+      "current_evidence": "partial_existing_components_not_end_to_end_qualified",
+      "runtime_enabled": false,
+      "source_refs": [
+        "FM:SRC-001",
+        "FM:ADD-002",
+        "FM:ADD-004",
+        "FM:ADD-005",
+        "FM:ADD-010",
+        "FM:ADD-012",
+        "FM:ADD-014",
+        "FM:ADD-015"
+      ],
+      "legacy_work_items": [
+        "FM:C01",
+        "FM:C02",
+        "FM:C03",
+        "FM:C05",
+        "FM:C06",
+        "FM:X01",
+        "FM:X04",
+        "FM:X07"
+      ],
+      "joint_work_items": [
+        "J01",
+        "J11",
+        "J13",
+        "J15",
+        "J16",
+        "J20",
+        "J21",
+        "J22",
+        "J32"
+      ],
+      "observable_result": "一次目标输入后在同一入口看见计划、问题、进展和交付",
+      "negative_cases": [
+        "缺仓库、范围冲突、子任务完成冒充总完成"
+      ],
+      "semantic_difference": "保留单一用户入口；OSStack Mission 是权威，来源角色名称不成为第二主控。",
+      "acceptance_ids": [
+        "JA25",
+        "JA26",
+        "JA43"
+      ],
+      "semantic_assertions": [
+        {
+          "id": "FM-01:observable",
+          "statement": "一次目标输入后在同一入口看见计划、问题、进展和交付",
+          "negative_examples": [
+            "缺仓库、范围冲突、子任务完成冒充总完成"
+          ],
+          "coverage_status": "specified_not_run"
+        }
+      ],
+      "negative_case_bindings": [
+        {
+          "id": "FM-01:N01",
+          "statement": "缺仓库、范围冲突、子任务完成冒充总完成",
+          "case_ids": [
+            "JA43"
+          ],
+          "review_state": "specified_requires_independent_semantic_review"
+        }
+      ]
+    },
+    {
+      "id": "FM-02",
+      "title": "执行状态语义",
+      "source_family": "firstmate",
+      "normalized_capability": "UC02",
+      "disposition": "adapt",
+      "current_evidence": "partial_existing_components_not_end_to_end_qualified",
+      "runtime_enabled": false,
+      "source_refs": [
+        "FM:SRC-004"
+      ],
+      "legacy_work_items": [
+        "FM:C03",
+        "FM:I01"
+      ],
+      "joint_work_items": [
+        "J13",
+        "J20"
+      ],
+      "observable_result": "同时呈现执行、业务等待与观察新鲜度",
+      "negative_cases": [
+        "进程存活推导工作推进、陈旧状态清除等待"
+      ],
+      "semantic_difference": "保留 busy/idle/unknown/dead 区分；状态从可信事件投影，普通模型文字不提升可信度。",
+      "acceptance_ids": [
+        "JA22",
+        "JA31",
+        "JA54"
+      ],
+      "semantic_assertions": [
+        {
+          "id": "FM-02:observable",
+          "statement": "同时呈现执行、业务等待与观察新鲜度",
+          "negative_examples": [
+            "进程存活推导工作推进、陈旧状态清除等待"
+          ],
+          "coverage_status": "specified_not_run"
+        },
+        {
+          "id": "FM-02:state-precedence",
+          "statement": "unknown 不猜 busy，dead 覆盖陈旧 busy",
+          "negative_examples": [
+            "unknown 不猜 busy，dead 覆盖陈旧 busy 被违反"
+          ],
+          "coverage_status": "specified_not_run"
+        }
+      ],
+      "negative_case_bindings": [
+        {
+          "id": "FM-02:N01",
+          "statement": "进程存活推导工作推进、陈旧状态清除等待",
+          "case_ids": [
+            "JA54"
+          ],
+          "review_state": "specified_requires_independent_semantic_review"
+        }
+      ]
+    },
+    {
+      "id": "FM-03",
+      "title": "旧实例隔离",
+      "source_family": "firstmate",
+      "normalized_capability": "UC04",
+      "disposition": "adapt",
+      "current_evidence": "partial_existing_components_not_end_to_end_qualified",
+      "runtime_enabled": false,
+      "source_refs": [
+        "FM:SRC-007",
+        "FM:ADD-005",
+        "FM:ADD-012",
+        "FM:ADD-014"
+      ],
+      "legacy_work_items": [
+        "FM:C04",
+        "FM:C05",
+        "FM:X04"
+      ],
+      "joint_work_items": [
+        "J04",
+        "J12",
+        "J13",
+        "J14",
+        "J16",
+        "J17",
+        "J20",
+        "J21",
+        "J15"
+      ],
+      "observable_result": "接管后旧实例不能产生新副作用",
+      "negative_cases": [
+        "旧 owner/代数写入、把接管当作进程已停止"
+      ],
+      "semantic_difference": "上游监督分支禁执行的分工转为 host principal/owner fence；planner 无决定与提权权限。",
+      "acceptance_ids": [
+        "JA21",
+        "JA27",
+        "JA46",
+        "JA51",
+        "JA67"
+      ],
+      "semantic_assertions": [
+        {
+          "id": "FM-03:observable",
+          "statement": "接管后旧实例不能产生新副作用",
+          "negative_examples": [
+            "旧 owner/代数写入、把接管当作进程已停止"
+          ],
+          "coverage_status": "specified_not_run"
+        }
+      ],
+      "negative_case_bindings": [
+        {
+          "id": "FM-03:N01",
+          "statement": "旧 owner/代数写入、把接管当作进程已停止",
+          "case_ids": [
+            "JA67"
+          ],
+          "review_state": "specified_requires_independent_semantic_review"
+        }
+      ]
+    },
+    {
+      "id": "FM-04",
+      "title": "等待责任与解除",
+      "source_family": "firstmate",
+      "normalized_capability": "UC03",
+      "disposition": "adapt",
+      "current_evidence": "partial_existing_components_not_end_to_end_qualified",
+      "runtime_enabled": false,
+      "source_refs": [
+        "FM:SRC-010",
+        "FM:SRC-021",
+        "FM:SRC-023",
+        "FM:SRC-065",
+        "FM:SRC-066",
+        "FM:SRC-067"
+      ],
+      "legacy_work_items": [
+        "FM:D01",
+        "FM:D02",
+        "FM:D03",
+        "FM:D04",
+        "FM:D06",
+        "FM:D07",
+        "FM:D08"
+      ],
+      "joint_work_items": [
+        "J01",
+        "J03",
+        "J11",
+        "J12",
+        "J13",
+        "J16",
+        "J23",
+        "J31",
+        "J15"
+      ],
+      "observable_result": "等待有负责主体和解除证据",
+      "negative_cases": [
+        "超时、来源消失、无关事件解除决定"
+      ],
+      "semantic_difference": "保留未决责任；来源消失、超时和无关进展不解除，只有精确已完成回合或受控终结。",
+      "acceptance_ids": [
+        "JA05",
+        "JA27",
+        "JA63"
+      ],
+      "semantic_assertions": [
+        {
+          "id": "FM-04:observable",
+          "statement": "等待有负责主体和解除证据",
+          "negative_examples": [
+            "超时、来源消失、无关事件解除决定"
+          ],
+          "coverage_status": "specified_not_run"
+        }
+      ],
+      "negative_case_bindings": [
+        {
+          "id": "FM-04:N01",
+          "statement": "超时、来源消失、无关事件解除决定",
+          "case_ids": [
+            "JA63"
+          ],
+          "review_state": "specified_requires_independent_semantic_review"
+        }
+      ]
+    },
+    {
+      "id": "FM-05",
+      "title": "事件驱动监督",
+      "source_family": "firstmate",
+      "normalized_capability": "UC02",
+      "disposition": "adapt",
+      "current_evidence": "partial_existing_components_not_end_to_end_qualified",
+      "runtime_enabled": false,
+      "source_refs": [
+        "FM:SRC-012",
+        "FM:ADD-007",
+        "FM:ADD-008"
+      ],
+      "legacy_work_items": [
+        "FM:C03",
+        "FM:C05",
+        "FM:I01",
+        "FM:X03"
+      ],
+      "joint_work_items": [
+        "J13",
+        "J17",
+        "J20"
+      ],
+      "observable_result": "持久事件驱动有界唤醒，容量不足可解释",
+      "negative_cases": [
+        "游标 gap、事件洪水和超卖"
+      ],
+      "semantic_difference": "保留事件游标与有界唤醒；gap/洪水需回放或背压，不静默丢事件。",
+      "acceptance_ids": [
+        "JA22",
+        "JA31",
+        "JA64"
+      ],
+      "semantic_assertions": [
+        {
+          "id": "FM-05:observable",
+          "statement": "持久事件驱动有界唤醒，容量不足可解释",
+          "negative_examples": [
+            "游标 gap、事件洪水和超卖"
+          ],
+          "coverage_status": "specified_not_run"
+        }
+      ],
+      "negative_case_bindings": [
+        {
+          "id": "FM-05:N01",
+          "statement": "游标 gap、事件洪水和超卖",
+          "case_ids": [
+            "JA64"
+          ],
+          "review_state": "specified_requires_independent_semantic_review"
+        }
+      ]
+    },
+    {
+      "id": "FM-06",
+      "title": "回合结束检查",
+      "source_family": "firstmate",
+      "normalized_capability": "UC02",
+      "disposition": "adapt",
+      "current_evidence": "partial_existing_components_not_end_to_end_qualified",
+      "runtime_enabled": false,
+      "source_refs": [
+        "FM:SRC-015",
+        "FM:ADD-001",
+        "FM:ADD-009",
+        "FM:ADD-017"
+      ],
+      "legacy_work_items": [
+        "FM:I01",
+        "FM:X05"
+      ],
+      "joint_work_items": [
+        "J20",
+        "J23"
+      ],
+      "observable_result": "回合结束触发一次有效检查，开放任务仍归主控",
+      "negative_cases": [
+        "hook 丢失、重复和回合结束冒充任务完成"
+      ],
+      "semantic_difference": "回合结束 hook 只作提示；缺失/重复不替代持久状态检查，不依赖具体模型包装器。",
+      "acceptance_ids": [
+        "JA31"
+      ],
+      "semantic_assertions": [
+        {
+          "id": "FM-06:observable",
+          "statement": "回合结束触发一次有效检查，开放任务仍归主控",
+          "negative_examples": [
+            "hook 丢失、重复和回合结束冒充任务完成"
+          ],
+          "coverage_status": "specified_not_run"
+        }
+      ],
+      "negative_case_bindings": [
+        {
+          "id": "FM-06:N01",
+          "statement": "hook 丢失、重复和回合结束冒充任务完成",
+          "case_ids": [
+            "JA31"
+          ],
+          "review_state": "specified_requires_independent_semantic_review"
+        }
+      ]
+    },
+    {
+      "id": "FM-07",
+      "title": "主会话与监督分工",
+      "source_family": "firstmate",
+      "normalized_capability": "UC02",
+      "disposition": "adapt",
+      "current_evidence": "partial_existing_components_not_end_to_end_qualified",
+      "runtime_enabled": false,
+      "source_refs": [
+        "FM:SRC-018"
+      ],
+      "legacy_work_items": [
+        "FM:C03",
+        "FM:C05",
+        "FM:C06"
+      ],
+      "joint_work_items": [
+        "J13",
+        "J15",
+        "J20"
+      ],
+      "observable_result": "确定性监督只在需要判断时请求结构化建议",
+      "negative_cases": [
+        "文本越权、空轮询模型消耗、重复 watcher"
+      ],
+      "semantic_difference": "主控消费持久事实、模型提出建议；监督分支不直接发送决定或执行 Worker 动作。",
+      "acceptance_ids": [
+        "JA22",
+        "JA31"
+      ],
+      "semantic_assertions": [
+        {
+          "id": "FM-07:observable",
+          "statement": "确定性监督只在需要判断时请求结构化建议",
+          "negative_examples": [
+            "文本越权、空轮询模型消耗、重复 watcher"
+          ],
+          "coverage_status": "specified_not_run"
+        }
+      ],
+      "negative_case_bindings": [
+        {
+          "id": "FM-07:N01",
+          "statement": "文本越权、空轮询模型消耗、重复 watcher",
+          "case_ids": [
+            "JA31"
+          ],
+          "review_state": "specified_requires_independent_semantic_review"
+        }
+      ]
+    },
+    {
+      "id": "FM-08",
+      "title": "决定持久化与绑定",
+      "source_family": "firstmate",
+      "normalized_capability": "UC03",
+      "disposition": "adapt",
+      "current_evidence": "partial_existing_components_not_end_to_end_qualified",
+      "runtime_enabled": false,
+      "source_refs": [
+        "FM:SRC-021",
+        "FM:SRC-023",
+        "FM:SRC-065",
+        "FM:SRC-066",
+        "FM:SRC-067",
+        "FM:ADD-002",
+        "FM:ADD-010"
+      ],
+      "legacy_work_items": [
+        "FM:D01",
+        "FM:D03",
+        "FM:D05",
+        "FM:X01"
+      ],
+      "joint_work_items": [
+        "J01",
+        "J03",
+        "J15",
+        "J16",
+        "J31"
+      ],
+      "observable_result": "明确问题和回答的绑定，复用现有授权",
+      "negative_cases": [
+        "多问题含糊继续、过期批准、跨任务回答"
+      ],
+      "semantic_difference": "明确不复制 answerer 入队即关闭；OSStack 等待 applied/completed-turn，回答主体需原 owner 授权。",
+      "acceptance_ids": [
+        "JA05",
+        "JA25",
+        "JA63",
+        "JA67"
+      ],
+      "semantic_assertions": [
+        {
+          "id": "FM-08:observable",
+          "statement": "明确问题和回答的绑定，复用现有授权",
+          "negative_examples": [
+            "多问题含糊继续、过期批准、跨任务回答"
+          ],
+          "coverage_status": "specified_not_run"
+        }
+      ],
+      "negative_case_bindings": [
+        {
+          "id": "FM-08:N01",
+          "statement": "多问题含糊继续、过期批准、跨任务回答",
+          "case_ids": [
+            "JA67"
+          ],
+          "review_state": "specified_requires_independent_semantic_review"
+        }
+      ]
+    },
+    {
+      "id": "FM-09",
+      "title": "回答幂等与未知投递",
+      "source_family": "firstmate",
+      "normalized_capability": "UC03",
+      "disposition": "adapt",
+      "current_evidence": "partial_existing_components_not_end_to_end_qualified",
+      "runtime_enabled": false,
+      "source_refs": [
+        "FM:SRC-023",
+        "FM:SRC-021",
+        "FM:SRC-065",
+        "FM:SRC-066",
+        "FM:SRC-067"
+      ],
+      "legacy_work_items": [
+        "FM:D03",
+        "FM:D04",
+        "FM:D06",
+        "FM:DEBT03"
+      ],
+      "joint_work_items": [
+        "J12",
+        "J13",
+        "J14",
+        "J16",
+        "J31"
+      ],
+      "observable_result": "未知发送可对账且不重复",
+      "negative_cases": [
+        "换 ID 重发、已应用被 cleanup 错误覆盖"
+      ],
+      "semantic_difference": "同键复用原 receipt，冲突拒绝；未知结果不换键重发，沿用既有 dispatch 权威。",
+      "acceptance_ids": [
+        "JA21",
+        "JA24",
+        "JA42",
+        "JA51"
+      ],
+      "semantic_assertions": [
+        {
+          "id": "FM-09:observable",
+          "statement": "未知发送可对账且不重复",
+          "negative_examples": [
+            "换 ID 重发、已应用被 cleanup 错误覆盖"
+          ],
+          "coverage_status": "specified_not_run"
+        }
+      ],
+      "negative_case_bindings": [
+        {
+          "id": "FM-09:N01",
+          "statement": "换 ID 重发、已应用被 cleanup 错误覆盖",
+          "case_ids": [
+            "JA51"
+          ],
+          "review_state": "specified_requires_independent_semantic_review"
+        }
+      ]
+    },
+    {
+      "id": "FM-10",
+      "title": "低打扰与离开",
+      "source_family": "firstmate",
+      "normalized_capability": "UC02",
+      "disposition": "adapt",
+      "current_evidence": "partial_existing_components_not_end_to_end_qualified",
+      "runtime_enabled": false,
+      "source_refs": [
+        "FM:SRC-026",
+        "FM:ADD-002",
+        "FM:ADD-006"
+      ],
+      "legacy_work_items": [
+        "FM:I01",
+        "FM:X06"
+      ],
+      "joint_work_items": [
+        "J20",
+        "J15"
+      ],
+      "observable_result": "用户离开时控制提醒，回来保留未决项",
+      "negative_cases": [
+        "away 扩权、Calm 隐藏审批"
+      ],
+      "semantic_difference": "away/quiet 只改变提醒强度，不转移 owner 权限，也不抹掉待决。",
+      "acceptance_ids": [
+        "JA31",
+        "JA67"
+      ],
+      "semantic_assertions": [
+        {
+          "id": "FM-10:observable",
+          "statement": "用户离开时控制提醒，回来保留未决项",
+          "negative_examples": [
+            "away 扩权、Calm 隐藏审批"
+          ],
+          "coverage_status": "specified_not_run"
+        }
+      ],
+      "negative_case_bindings": [
+        {
+          "id": "FM-10:N01",
+          "statement": "away 扩权、Calm 隐藏审批",
+          "case_ids": [
+            "JA67"
+          ],
+          "review_state": "specified_requires_independent_semantic_review"
+        }
+      ]
+    },
+    {
+      "id": "FM-11",
+      "title": "增量简报",
+      "source_family": "firstmate",
+      "normalized_capability": "UC05",
+      "disposition": "adapt",
+      "current_evidence": "partial_existing_components_not_end_to_end_qualified",
+      "runtime_enabled": false,
+      "source_refs": [
+        "FM:SRC-029",
+        "FM:ADD-002",
+        "FM:ADD-006"
+      ],
+      "legacy_work_items": [
+        "FM:I01",
+        "FM:X06"
+      ],
+      "joint_work_items": [
+        "J20"
+      ],
+      "observable_result": "只讲变化并优先讲待用户决定",
+      "negative_cases": [
+        "阅读游标清问题、简报遗漏未决项"
+      ],
+      "semantic_difference": "增量简报按持久游标与待决优先级投影，不由模型记忆决定漏报/重报。",
+      "acceptance_ids": [
+        "JA31",
+        "JA55"
+      ],
+      "semantic_assertions": [
+        {
+          "id": "FM-11:observable",
+          "statement": "只讲变化并优先讲待用户决定",
+          "negative_examples": [
+            "阅读游标清问题、简报遗漏未决项"
+          ],
+          "coverage_status": "specified_not_run"
+        },
+        {
+          "id": "FM-11:incremental-brief",
+          "statement": "简报增量完整且待决优先",
+          "negative_examples": [
+            "简报增量完整且待决优先 被违反"
+          ],
+          "coverage_status": "specified_not_run"
+        }
+      ],
+      "negative_case_bindings": [
+        {
+          "id": "FM-11:N01",
+          "statement": "阅读游标清问题、简报遗漏未决项",
+          "case_ids": [
+            "JA55"
+          ],
+          "review_state": "specified_requires_independent_semantic_review"
+        }
+      ]
+    },
+    {
+      "id": "FM-12",
+      "title": "调查与交付分型",
+      "source_family": "firstmate",
+      "normalized_capability": "UC06",
+      "disposition": "adapt",
+      "current_evidence": "partial_existing_components_not_end_to_end_qualified",
+      "runtime_enabled": false,
+      "source_refs": [
+        "FM:SRC-032",
+        "FM:ADD-001",
+        "FM:ADD-004",
+        "FM:ADD-021",
+        "FM:ADD-022"
+      ],
+      "legacy_work_items": [
+        "FM:E04",
+        "FM:X02"
+      ],
+      "joint_work_items": [
+        "J01",
+        "J05",
+        "J15",
+        "J30",
+        "J31"
+      ],
+      "observable_result": "证据不足先调查，经授权再实施",
+      "negative_cases": [
+        "只读自动提升、旧 HEAD/旧范围"
+      ],
+      "semantic_difference": "调查保持只读；切换 implement 要新的合同与授权，不把来源路由当权限。",
+      "acceptance_ids": [
+        "JA02",
+        "JA10",
+        "JA25"
+      ],
+      "semantic_assertions": [
+        {
+          "id": "FM-12:observable",
+          "statement": "证据不足先调查，经授权再实施",
+          "negative_examples": [
+            "只读自动提升、旧 HEAD/旧范围"
+          ],
+          "coverage_status": "specified_not_run"
+        }
+      ],
+      "negative_case_bindings": [
+        {
+          "id": "FM-12:N01",
+          "statement": "只读自动提升、旧 HEAD/旧范围",
+          "case_ids": [
+            "JA25"
+          ],
+          "review_state": "specified_requires_independent_semantic_review"
+        }
+      ]
+    },
+    {
+      "id": "FM-13",
+      "title": "交付完成标准",
+      "source_family": "firstmate",
+      "normalized_capability": "UC09",
+      "disposition": "adapt",
+      "current_evidence": "partial_existing_components_not_end_to_end_qualified",
+      "runtime_enabled": false,
+      "source_refs": [
+        "FM:SRC-035",
+        "FM:ADD-001",
+        "FM:ADD-004",
+        "FM:ADD-021",
+        "FM:ADD-022"
+      ],
+      "legacy_work_items": [
+        "FM:E06",
+        "FM:I03",
+        "FM:X02"
+      ],
+      "joint_work_items": [
+        "J01",
+        "J05",
+        "J07",
+        "J16",
+        "J17",
+        "J22",
+        "J30",
+        "J31",
+        "J27"
+      ],
+      "observable_result": "完成证明绑定实际交付候选及完成级别",
+      "negative_cases": [
+        "分支各自通过但集成失败、检查旧候选"
+      ],
+      "semantic_difference": "区分 observed_turn/local_verified/PR/merge/publish；完成由对应候选和实际回执证明。",
+      "acceptance_ids": [
+        "JA01",
+        "JA14",
+        "JA26",
+        "JA41",
+        "JA50",
+        "JA66",
+        "JA68"
+      ],
+      "semantic_assertions": [
+        {
+          "id": "FM-13:observable",
+          "statement": "完成证明绑定实际交付候选及完成级别",
+          "negative_examples": [
+            "分支各自通过但集成失败、检查旧候选"
+          ],
+          "coverage_status": "specified_not_run"
+        }
+      ],
+      "negative_case_bindings": [
+        {
+          "id": "FM-13:N01",
+          "statement": "分支各自通过但集成失败、检查旧候选",
+          "case_ids": [
+            "JA68"
+          ],
+          "review_state": "specified_requires_independent_semantic_review"
+        }
+      ]
+    },
+    {
+      "id": "FM-14",
+      "title": "清理前保全",
+      "source_family": "firstmate",
+      "normalized_capability": "UC12",
+      "disposition": "adapt",
+      "current_evidence": "partial_existing_components_not_end_to_end_qualified",
+      "runtime_enabled": false,
+      "source_refs": [
+        "FM:SRC-035"
+      ],
+      "legacy_work_items": [
+        "FM:I03",
+        "FM:DEBT01",
+        "FM:DEBT02"
+      ],
+      "joint_work_items": [
+        "J07",
+        "J11",
+        "J12",
+        "J17",
+        "J22",
+        "J30",
+        "J31"
+      ],
+      "observable_result": "未交付产物、未知效果或活进程保持保全",
+      "negative_cases": [
+        "清理丢证据、强解未知锁"
+      ],
+      "semantic_difference": "保留 dirty/unlanded/未知 Worker 与非自有槽位；清理失败不覆盖应用事实。",
+      "acceptance_ids": [
+        "JA15",
+        "JA21",
+        "JA42",
+        "JA52",
+        "JA56"
+      ],
+      "semantic_assertions": [
+        {
+          "id": "FM-14:observable",
+          "statement": "未交付产物、未知效果或活进程保持保全",
+          "negative_examples": [
+            "清理丢证据、强解未知锁"
+          ],
+          "coverage_status": "specified_not_run"
+        },
+        {
+          "id": "FM-14:preserve-before-cleanup",
+          "statement": "dirty/未交付/未知与非自有资源不能被清理",
+          "negative_examples": [
+            "dirty/未交付/未知与非自有资源不能被清理 被违反"
+          ],
+          "coverage_status": "specified_not_run"
+        }
+      ],
+      "negative_case_bindings": [
+        {
+          "id": "FM-14:N01",
+          "statement": "清理丢证据、强解未知锁",
+          "case_ids": [
+            "JA56"
+          ],
+          "review_state": "specified_requires_independent_semantic_review"
+        }
+      ]
+    },
+    {
+      "id": "FM-15",
+      "title": "能力协商",
+      "source_family": "firstmate",
+      "normalized_capability": "UC06",
+      "disposition": "adapt",
+      "current_evidence": "partial_existing_components_not_end_to_end_qualified",
+      "runtime_enabled": false,
+      "source_refs": [
+        "FM:SRC-040",
+        "FM:ADD-001",
+        "FM:ADD-004",
+        "FM:ADD-007",
+        "FM:ADD-008",
+        "FM:ADD-009",
+        "FM:ADD-011",
+        "FM:ADD-017"
+      ],
+      "legacy_work_items": [
+        "FM:R01",
+        "FM:R02",
+        "FM:E01",
+        "FM:X03",
+        "FM:X05",
+        "FM:X08"
+      ],
+      "joint_work_items": [
+        "J01",
+        "J02",
+        "J08",
+        "J10",
+        "J14",
+        "J17",
+        "J23",
+        "J24"
+      ],
+      "observable_result": "未支持组合有明确原因，只有资格范围可派发",
+      "negative_cases": [
+        "声明当实测、版本/账号/宿主不匹配"
+      ],
+      "semantic_difference": "按精确 adapter/provider/host/profile 测量协商；不可查询或停止的能力返回 unsupported。",
+      "acceptance_ids": [
+        "JA17",
+        "JA19",
+        "JA24",
+        "JA34",
+        "JA49",
+        "JA59",
+        "JA61"
+      ],
+      "semantic_assertions": [
+        {
+          "id": "FM-15:observable",
+          "statement": "未支持组合有明确原因，只有资格范围可派发",
+          "negative_examples": [
+            "声明当实测、版本/账号/宿主不匹配"
+          ],
+          "coverage_status": "specified_not_run"
+        }
+      ],
+      "negative_case_bindings": [
+        {
+          "id": "FM-15:N01",
+          "statement": "声明当实测、版本/账号/宿主不匹配",
+          "case_ids": [
+            "JA61"
+          ],
+          "review_state": "specified_requires_independent_semantic_review"
+        }
+      ]
+    },
+    {
+      "id": "FM-16",
+      "title": "可见工作进程",
+      "source_family": "firstmate",
+      "normalized_capability": "UC06",
+      "disposition": "adapt",
+      "current_evidence": "partial_existing_components_not_end_to_end_qualified",
+      "runtime_enabled": false,
+      "source_refs": [
+        "FM:SRC-040",
+        "FM:ADD-001",
+        "FM:ADD-002",
+        "FM:ADD-006",
+        "FM:ADD-009",
+        "FM:ADD-010",
+        "FM:ADD-017"
+      ],
+      "legacy_work_items": [
+        "FM:I02",
+        "FM:X01",
+        "FM:X05",
+        "FM:X06"
+      ],
+      "joint_work_items": [
+        "J15",
+        "J20",
+        "J21",
+        "J23"
+      ],
+      "observable_result": "用户按需查看 Worker，日常无需管理",
+      "negative_cases": [
+        "窗口标题当身份、人工 steering 不留事件"
+      ],
+      "semantic_difference": "提供实际 Worker/invocation 可见性；窗口标题和模型自报不构成身份或完成证明。",
+      "acceptance_ids": [
+        "JA32"
+      ],
+      "semantic_assertions": [
+        {
+          "id": "FM-16:observable",
+          "statement": "用户按需查看 Worker，日常无需管理",
+          "negative_examples": [
+            "窗口标题当身份、人工 steering 不留事件"
+          ],
+          "coverage_status": "specified_not_run"
+        }
+      ],
+      "negative_case_bindings": [
+        {
+          "id": "FM-16:N01",
+          "statement": "窗口标题当身份、人工 steering 不留事件",
+          "case_ids": [
+            "JA32"
+          ],
+          "review_state": "specified_requires_independent_semantic_review"
+        }
+      ]
+    },
+    {
+      "id": "FM-17",
+      "title": "远程 home 与断线未知",
+      "source_family": "firstmate",
+      "normalized_capability": "UC11",
+      "disposition": "adapt",
+      "current_evidence": "partial_existing_components_not_end_to_end_qualified",
+      "runtime_enabled": false,
+      "source_refs": [
+        "FM:SRC-045",
+        "FM:ADD-005",
+        "FM:ADD-012",
+        "FM:ADD-014"
+      ],
+      "legacy_work_items": [
+        "FM:I02",
+        "FM:X04"
+      ],
+      "joint_work_items": [
+        "J21"
+      ],
+      "observable_result": "远端断线保留原绑定和未知状态",
+      "negative_cases": [
+        "断线当停止、偷偷本地替代"
+      ],
+      "semantic_difference": "远端 child 绑定原 parent/home；断连保持 unknown，禁止无依据本地替代执行。",
+      "acceptance_ids": [
+        "JA32",
+        "JA65"
+      ],
+      "semantic_assertions": [
+        {
+          "id": "FM-17:observable",
+          "statement": "远端断线保留原绑定和未知状态",
+          "negative_examples": [
+            "断线当停止、偷偷本地替代"
+          ],
+          "coverage_status": "specified_not_run"
+        }
+      ],
+      "negative_case_bindings": [
+        {
+          "id": "FM-17:N01",
+          "statement": "断线当停止、偷偷本地替代",
+          "case_ids": [
+            "JA65"
+          ],
+          "review_state": "specified_requires_independent_semantic_review"
+        }
+      ]
+    },
+    {
+      "id": "FM-18",
+      "title": "外部事件扩展",
+      "source_family": "firstmate",
+      "normalized_capability": "UC11",
+      "disposition": "adapt",
+      "current_evidence": "partial_existing_components_not_end_to_end_qualified",
+      "runtime_enabled": false,
+      "source_refs": [
+        "FM:SRC-012",
+        "FM:ADD-004",
+        "FM:ADD-015"
+      ],
+      "legacy_work_items": [
+        "FM:R02",
+        "FM:I02",
+        "FM:X07"
+      ],
+      "joint_work_items": [
+        "J02",
+        "J10",
+        "J21",
+        "J22"
+      ],
+      "observable_result": "外部事件按来源归属任务，事实与授权分开",
+      "negative_cases": [
+        "未注册来源、消息文本授予权限"
+      ],
+      "semantic_difference": "外部事件只提供来源事实；principal/channel 授权单独验证，文本不生成许可。",
+      "acceptance_ids": [
+        "JA33",
+        "JA48"
+      ],
+      "semantic_assertions": [
+        {
+          "id": "FM-18:observable",
+          "statement": "外部事件按来源归属任务，事实与授权分开",
+          "negative_examples": [
+            "未注册来源、消息文本授予权限"
+          ],
+          "coverage_status": "specified_not_run"
+        }
+      ],
+      "negative_case_bindings": [
+        {
+          "id": "FM-18:N01",
+          "statement": "未注册来源、消息文本授予权限",
+          "case_ids": [
+            "JA48"
+          ],
+          "review_state": "specified_requires_independent_semantic_review"
+        }
+      ]
+    },
+    {
+      "id": "FM-19",
+      "title": "对外状态账本",
+      "source_family": "firstmate",
+      "normalized_capability": "UC11",
+      "disposition": "adapt",
+      "current_evidence": "partial_existing_components_not_end_to_end_qualified",
+      "runtime_enabled": false,
+      "source_refs": [
+        "FM:SRC-049",
+        "FM:ADD-005",
+        "FM:ADD-012",
+        "FM:ADD-014"
+      ],
+      "legacy_work_items": [
+        "FM:I03",
+        "FM:X04",
+        "FM:M01"
+      ],
+      "joint_work_items": [
+        "J07",
+        "J21",
+        "J22",
+        "J26",
+        "J30",
+        "J31"
+      ],
+      "observable_result": "跨系统意图、回执和关联可追溯导出",
+      "negative_cases": [
+        "SSH 返回码冒充事务、漏父回执"
+      ],
+      "semantic_difference": "child 结果由 host 持久事件发布并确认父 receipt；SSH 退出码和模型口述不能替代。",
+      "acceptance_ids": [
+        "JA32",
+        "JA37",
+        "JA65"
+      ],
+      "semantic_assertions": [
+        {
+          "id": "FM-19:observable",
+          "statement": "跨系统意图、回执和关联可追溯导出",
+          "negative_examples": [
+            "SSH 返回码冒充事务、漏父回执"
+          ],
+          "coverage_status": "specified_not_run"
+        }
+      ],
+      "negative_case_bindings": [
+        {
+          "id": "FM-19:N01",
+          "statement": "SSH 返回码冒充事务、漏父回执",
+          "case_ids": [
+            "JA65"
+          ],
+          "review_state": "specified_requires_independent_semantic_review"
+        }
+      ]
+    },
+    {
+      "id": "FM-20",
+      "title": "记忆预算与衰减",
+      "source_family": "firstmate",
+      "normalized_capability": "UC05",
+      "disposition": "adapt",
+      "current_evidence": "partial_existing_components_not_end_to_end_qualified",
+      "runtime_enabled": false,
+      "source_refs": [
+        "FM:SRC-052",
+        "FM:ADD-001",
+        "FM:ADD-004",
+        "FM:ADD-009",
+        "FM:ADD-016",
+        "FM:ADD-017"
+      ],
+      "legacy_work_items": [
+        "FM:C07",
+        "FM:X05"
+      ],
+      "joint_work_items": [
+        "J04",
+        "J19",
+        "J23"
+      ],
+      "observable_result": "经验有来源、预算和衰减，可纠正归档",
+      "negative_cases": [
+        "跨项目污染、技能/记忆提高权限"
+      ],
+      "semantic_difference": "记忆有来源/范围/过期/预算；跨项目不注入，方法改进仅候选，不直接变成规则。",
+      "acceptance_ids": [
+        "JA30"
+      ],
+      "semantic_assertions": [
+        {
+          "id": "FM-20:observable",
+          "statement": "经验有来源、预算和衰减，可纠正归档",
+          "negative_examples": [
+            "跨项目污染、技能/记忆提高权限"
+          ],
+          "coverage_status": "specified_not_run"
+        }
+      ],
+      "negative_case_bindings": [
+        {
+          "id": "FM-20:N01",
+          "statement": "跨项目污染、技能/记忆提高权限",
+          "case_ids": [
+            "JA30"
+          ],
+          "review_state": "specified_requires_independent_semantic_review"
+        }
+      ]
+    },
+    {
+      "id": "FM-21",
+      "title": "轻任务路由",
+      "source_family": "firstmate",
+      "normalized_capability": "UC06",
+      "disposition": "adapt",
+      "current_evidence": "partial_existing_components_not_end_to_end_qualified",
+      "runtime_enabled": false,
+      "source_refs": [
+        "FM:SRC-001",
+        "FM:ADD-001",
+        "FM:ADD-007",
+        "FM:ADD-008",
+        "FM:ADD-009",
+        "FM:ADD-017"
+      ],
+      "legacy_work_items": [
+        "FM:E02",
+        "FM:E03",
+        "FM:E05",
+        "FM:X03",
+        "FM:X05"
+      ],
+      "joint_work_items": [
+        "J13",
+        "J14",
+        "J15",
+        "J17",
+        "J23"
+      ],
+      "observable_result": "资格和资源满足后选择合适成本的执行器",
+      "negative_cases": [
+        "便宜模型取消审查、切引擎重置预算"
+      ],
+      "semantic_difference": "轻任务路由保持预算与作用域，切换 adapter 不重置累计额度或释放未知预留。",
+      "acceptance_ids": [
+        "JA23",
+        "JA28"
+      ],
+      "semantic_assertions": [
+        {
+          "id": "FM-21:observable",
+          "statement": "资格和资源满足后选择合适成本的执行器",
+          "negative_examples": [
+            "便宜模型取消审查、切引擎重置预算"
+          ],
+          "coverage_status": "specified_not_run"
+        }
+      ],
+      "negative_case_bindings": [
+        {
+          "id": "FM-21:N01",
+          "statement": "便宜模型取消审查、切引擎重置预算",
+          "case_ids": [
+            "JA28"
+          ],
+          "review_state": "specified_requires_independent_semantic_review"
+        }
+      ]
+    },
+    {
+      "id": "FM-22",
+      "title": "对外承诺持久化",
+      "source_family": "firstmate",
+      "normalized_capability": "UC11",
+      "disposition": "adapt",
+      "current_evidence": "partial_existing_components_not_end_to_end_qualified",
+      "runtime_enabled": false,
+      "source_refs": [
+        "FM:SRC-049",
+        "FM:ADD-004",
+        "FM:ADD-015",
+        "FM:ADD-069",
+        "FM:ADD-070"
+      ],
+      "legacy_work_items": [
+        "FM:I03",
+        "FM:X07"
+      ],
+      "joint_work_items": [
+        "J07",
+        "J22",
+        "J30",
+        "J31"
+      ],
+      "observable_result": "承诺形成耐久责任链和最终回执",
+      "negative_cases": [
+        "聊天即发送、未知重发、换任务清预算"
+      ],
+      "semantic_difference": "公开承诺保留持久发送链与未知状态；无现有渠道授权不发送，不依赖模型记得回报。",
+      "acceptance_ids": [
+        "JA33",
+        "JA48"
+      ],
+      "semantic_assertions": [
+        {
+          "id": "FM-22:observable",
+          "statement": "承诺形成耐久责任链和最终回执",
+          "negative_examples": [
+            "聊天即发送、未知重发、换任务清预算"
+          ],
+          "coverage_status": "specified_not_run"
+        }
+      ],
+      "negative_case_bindings": [
+        {
+          "id": "FM-22:N01",
+          "statement": "聊天即发送、未知重发、换任务清预算",
+          "case_ids": [
+            "JA48"
+          ],
+          "review_state": "specified_requires_independent_semantic_review"
+        }
+      ]
+    },
+    {
+      "id": "FM-23",
+      "title": "自仓库发布边界",
+      "source_family": "firstmate",
+      "normalized_capability": "UC12",
+      "disposition": "adapt",
+      "current_evidence": "partial_existing_components_not_end_to_end_qualified",
+      "runtime_enabled": false,
+      "source_refs": [
+        "FM:SRC-059",
+        "FM:ADD-001",
+        "FM:ADD-004",
+        "FM:ADD-015",
+        "FM:ADD-021",
+        "FM:ADD-022"
+      ],
+      "legacy_work_items": [
+        "FM:I03",
+        "FM:X02",
+        "FM:X07"
+      ],
+      "joint_work_items": [
+        "J05",
+        "J07",
+        "J22",
+        "J27",
+        "J30",
+        "J31"
+      ],
+      "observable_result": "区分本地、PR、合并、发布和部署授权",
+      "negative_cases": [
+        "能 push 就自动 merge/deploy，自仓库自动特权"
+      ],
+      "semantic_difference": "自仓库 push/PR/merge/deploy 分别授权；上游自动发版步骤首期不采用。",
+      "acceptance_ids": [
+        "JA33",
+        "JA38",
+        "JA66"
+      ],
+      "semantic_assertions": [
+        {
+          "id": "FM-23:observable",
+          "statement": "区分本地、PR、合并、发布和部署授权",
+          "negative_examples": [
+            "能 push 就自动 merge/deploy，自仓库自动特权"
+          ],
+          "coverage_status": "specified_not_run"
+        }
+      ],
+      "negative_case_bindings": [
+        {
+          "id": "FM-23:N01",
+          "statement": "能 push 就自动 merge/deploy，自仓库自动特权",
+          "case_ids": [
+            "JA66"
+          ],
+          "review_state": "specified_requires_independent_semantic_review"
+        }
+      ]
+    },
+    {
+      "id": "FM-24",
+      "title": "多 home 自更新",
+      "source_family": "firstmate",
+      "normalized_capability": "UC12",
+      "disposition": "adapt",
+      "current_evidence": "partial_existing_components_not_end_to_end_qualified",
+      "runtime_enabled": false,
+      "source_refs": [
+        "FM:SRC-062",
+        "FM:ADD-004",
+        "FM:ADD-011"
+      ],
+      "legacy_work_items": [
+        "FM:I04",
+        "FM:X08"
+      ],
+      "joint_work_items": [
+        "J11",
+        "J12",
+        "J24",
+        "J27",
+        "J26"
+      ],
+      "observable_result": "升级后旧任务可恢复，实际进程版本可确认",
+      "negative_cases": [
+        "降 schema、旧写者复活、已安装冒充已生效"
+      ],
+      "semantic_difference": "每个 home/broker 单独验证实际版本与目标恢复构建；旧 binary 不能写新 schema。",
+      "acceptance_ids": [
+        "JA20",
+        "JA35",
+        "JA38",
+        "JA47",
+        "JA52",
+        "JA60"
+      ],
+      "semantic_assertions": [
+        {
+          "id": "FM-24:observable",
+          "statement": "升级后旧任务可恢复，实际进程版本可确认",
+          "negative_examples": [
+            "降 schema、旧写者复活、已安装冒充已生效"
+          ],
+          "coverage_status": "specified_not_run"
+        }
+      ],
+      "negative_case_bindings": [
+        {
+          "id": "FM-24:N01",
+          "statement": "降 schema、旧写者复活、已安装冒充已生效",
+          "case_ids": [
+            "JA60"
+          ],
+          "review_state": "specified_requires_independent_semantic_review"
+        }
+      ]
+    },
+    {
+      "id": "PS01",
+      "title": "单入口任务路由与渐进方法组合",
+      "source_family": "pstack",
+      "normalized_capability": "UC07",
+      "disposition": "adapt",
+      "current_evidence": "design_only_not_runtime_integrated",
+      "runtime_enabled": false,
+      "source_refs": [
+        "PS:pstack/skills/poteto-mode/SKILL.md",
+        "PS:pstack/skills/figure-it-out/SKILL.md",
+        "PS:pstack/skills/poteto-mode/playbooks/feature.md",
+        "PS:pstack/skills/poteto-mode/playbooks/bug-fix.md",
+        "PS:pstack/skills/poteto-mode/playbooks/investigation.md",
+        "PS:pstack/skills/poteto-mode/playbooks/refactoring.md"
+      ],
+      "legacy_work_items": [
+        "PS:W03",
+        "PS:W04",
+        "PS:W05",
+        "PS:W09",
+        "PS:W17"
+      ],
+      "joint_work_items": [
+        "J04",
+        "J05",
+        "J06",
+        "J08",
+        "J09",
+        "J10",
+        "J15",
+        "J16",
+        "J32"
+      ],
+      "observable_result": "从用户目标按需选择流程、功能地图和证据，解释路由并允许纠正，减少用户记忆技能的负担。",
+      "negative_cases": [
+        "同一固定来源与输入产生稳定 proposal；必需验证能力先就绪。",
+        "只加载相关方法与功能路径；模式纠正会形成新材料而不扩权。"
+      ],
+      "semantic_difference": "不能把 playbook 文本作为 shell 或任意 Graph 程序执行。",
+      "acceptance_ids": [
+        "JA07",
+        "JA09",
+        "JA11",
+        "JA18",
+        "JA26",
+        "JA43"
+      ],
+      "article_delta_work_packages": [
+        "W03",
+        "W05",
+        "W06",
+        "W09"
+      ],
+      "full_work_packages": [
+        "W03",
+        "W04",
+        "W05",
+        "W09",
+        "W17"
+      ],
+      "semantic_assertions": [
+        {
+          "id": "PS01:observable",
+          "statement": "从用户目标按需选择流程、功能地图和证据，解释路由并允许纠正，减少用户记忆技能的负担。",
+          "negative_examples": [
+            "同一固定来源与输入产生稳定 proposal；必需验证能力先就绪。",
+            "只加载相关方法与功能路径；模式纠正会形成新材料而不扩权。"
+          ],
+          "coverage_status": "specified_not_run"
+        }
+      ],
+      "negative_case_bindings": [
+        {
+          "id": "PS01:N01",
+          "statement": "同一固定来源与输入产生稳定 proposal；必需验证能力先就绪。",
+          "case_ids": [
+            "JA43"
+          ],
+          "review_state": "specified_requires_independent_semantic_review"
+        },
+        {
+          "id": "PS01:N02",
+          "statement": "只加载相关方法与功能路径；模式纠正会形成新材料而不扩权。",
+          "case_ids": [
+            "JA43"
+          ],
+          "review_state": "specified_requires_independent_semantic_review"
+        }
+      ]
+    },
+    {
+      "id": "PS02",
+      "title": "代码机制与历史动机取证",
+      "source_family": "pstack",
+      "normalized_capability": "UC05",
+      "disposition": "adapt",
+      "current_evidence": "design_only_not_runtime_integrated",
+      "runtime_enabled": false,
+      "source_refs": [
+        "PS:pstack/skills/how/SKILL.md",
+        "PS:pstack/skills/why/SKILL.md",
+        "PS:pstack/skills/teach/SKILL.md"
+      ],
+      "legacy_work_items": [
+        "PS:W03",
+        "PS:W17"
+      ],
+      "joint_work_items": [
+        "J05",
+        "J06",
+        "J07"
+      ],
+      "observable_result": "分别重建当前运行机制、历史动机与证据缺口，保留 fact/inference/unknown。",
+      "negative_cases": [
+        "机制结论指向当前代码；历史动机带来源与不确定性。",
+        "缺证据的根因只能是待检验假设，不能直接成为实现约束。"
+      ],
+      "semantic_difference": "只读取证需要基本来源标识与任务范围约束，不以前置完成注册系统为条件；进入生产 recipe 仍经过 PS21 的来源管理与既有 admission。",
+      "acceptance_ids": [
+        "JA12",
+        "JA45"
+      ],
+      "article_delta_work_packages": [
+        "W03",
+        "W17"
+      ],
+      "full_work_packages": [
+        "W03",
+        "W17"
+      ],
+      "semantic_assertions": [
+        {
+          "id": "PS02:observable",
+          "statement": "分别重建当前运行机制、历史动机与证据缺口，保留 fact/inference/unknown。",
+          "negative_examples": [
+            "机制结论指向当前代码；历史动机带来源与不确定性。",
+            "缺证据的根因只能是待检验假设，不能直接成为实现约束。"
+          ],
+          "coverage_status": "specified_not_run"
+        }
+      ],
+      "negative_case_bindings": [
+        {
+          "id": "PS02:N01",
+          "statement": "机制结论指向当前代码；历史动机带来源与不确定性。",
+          "case_ids": [
+            "JA45"
+          ],
+          "review_state": "specified_requires_independent_semantic_review"
+        },
+        {
+          "id": "PS02:N02",
+          "statement": "缺证据的根因只能是待检验假设，不能直接成为实现约束。",
+          "case_ids": [
+            "JA45"
+          ],
+          "review_state": "specified_requires_independent_semantic_review"
+        }
+      ]
+    },
+    {
+      "id": "PS03",
+      "title": "意图校准与可纠正的问题模型",
+      "source_family": "pstack",
+      "normalized_capability": "UC01",
+      "disposition": "adapt",
+      "current_evidence": "design_only_not_runtime_integrated",
+      "runtime_enabled": false,
+      "source_refs": [
+        "PS:pstack/skills/sharpen/SKILL.md",
+        "PS:pstack/skills/in-your-own-words/SKILL.md",
+        "PS:pstack/skills/figure-it-out/SKILL.md"
+      ],
+      "legacy_work_items": [
+        "PS:W03",
+        "PS:W17"
+      ],
+      "joint_work_items": [
+        "J01",
+        "J05",
+        "J06",
+        "J15",
+        "J25"
+      ],
+      "observable_result": "区分目标理解错误和上下文不足；让模型先独立重述，再把用户假设作为假设核对。",
+      "negative_cases": [
+        "目标、症状、假设、非目标和未知项分别表示；不把重述视为事实证明。",
+        "用户纠正更新材料，已有充分信息的可逆工作不新增机械确认步骤。"
+      ],
+      "semantic_difference": "改写目标不得扩大授权或隐式增加工作范围。",
+      "acceptance_ids": [
+        "JA02",
+        "JA12",
+        "JA25",
+        "JA62"
+      ],
+      "article_delta_work_packages": [
+        "W03",
+        "W17"
+      ],
+      "full_work_packages": [
+        "W03",
+        "W17"
+      ],
+      "semantic_assertions": [
+        {
+          "id": "PS03:observable",
+          "statement": "区分目标理解错误和上下文不足；让模型先独立重述，再把用户假设作为假设核对。",
+          "negative_examples": [
+            "目标、症状、假设、非目标和未知项分别表示；不把重述视为事实证明。",
+            "用户纠正更新材料，已有充分信息的可逆工作不新增机械确认步骤。"
+          ],
+          "coverage_status": "specified_not_run"
+        }
+      ],
+      "negative_case_bindings": [
+        {
+          "id": "PS03:N01",
+          "statement": "目标、症状、假设、非目标和未知项分别表示；不把重述视为事实证明。",
+          "case_ids": [
+            "JA62"
+          ],
+          "review_state": "specified_requires_independent_semantic_review"
+        },
+        {
+          "id": "PS03:N02",
+          "statement": "用户纠正更新材料，已有充分信息的可逆工作不新增机械确认步骤。",
+          "case_ids": [
+            "JA62"
+          ],
+          "review_state": "specified_requires_independent_semantic_review"
+        }
+      ]
+    },
+    {
+      "id": "PS04",
+      "title": "从使用草图到原型证据的架构循环",
+      "source_family": "pstack",
+      "normalized_capability": "UC07",
+      "disposition": "adapt",
+      "current_evidence": "design_only_not_runtime_integrated",
+      "runtime_enabled": false,
+      "source_refs": [
+        "PS:pstack/skills/architect/SKILL.md",
+        "PS:pstack/skills/arena/SKILL.md",
+        "PS:pstack/skills/poteto-mode/playbooks/prototype.md"
+      ],
+      "legacy_work_items": [
+        "PS:W03",
+        "PS:W12",
+        "PS:W17"
+      ],
+      "joint_work_items": [
+        "J05",
+        "J06",
+        "J18"
+      ],
+      "observable_result": "先写调用样例，比较结构不同的备选，以最小原型回答改变实现的未知，再选择接口。",
+      "negative_cases": [
+        "每个关键技术未知有实验/证据或明确未解决原因；原型不得当生产代码或交付通过。",
+        "相同形态的多处实现偏差触发重审设计；已选方向的合成结果重新验证。"
+      ],
+      "semantic_difference": "P0 是有预算的草图和顺序实验，不需要先扩展 Graph；动态多模型 arena 仍留 P1 并单独资格验证。",
+      "acceptance_ids": [
+        "JA12",
+        "JA29"
+      ],
+      "article_delta_work_packages": [
+        "W03",
+        "W17"
+      ],
+      "full_work_packages": [
+        "W03",
+        "W12",
+        "W17"
+      ],
+      "semantic_assertions": [
+        {
+          "id": "PS04:observable",
+          "statement": "先写调用样例，比较结构不同的备选，以最小原型回答改变实现的未知，再选择接口。",
+          "negative_examples": [
+            "每个关键技术未知有实验/证据或明确未解决原因；原型不得当生产代码或交付通过。",
+            "相同形态的多处实现偏差触发重审设计；已选方向的合成结果重新验证。"
+          ],
+          "coverage_status": "specified_not_run"
+        }
+      ],
+      "negative_case_bindings": [
+        {
+          "id": "PS04:N01",
+          "statement": "每个关键技术未知有实验/证据或明确未解决原因；原型不得当生产代码或交付通过。",
+          "case_ids": [
+            "JA29"
+          ],
+          "review_state": "specified_requires_independent_semantic_review"
+        },
+        {
+          "id": "PS04:N02",
+          "statement": "相同形态的多处实现偏差触发重审设计；已选方向的合成结果重新验证。",
+          "case_ids": [
+            "JA29"
+          ],
+          "review_state": "specified_requires_independent_semantic_review"
+        }
+      ]
+    },
+    {
+      "id": "PS05",
+      "title": "覆盖式并行与预先声明的竞赛",
+      "source_family": "pstack",
+      "normalized_capability": "UC04",
+      "disposition": "adapt",
+      "current_evidence": "design_only_not_runtime_integrated",
+      "runtime_enabled": false,
+      "source_refs": [
+        "PS:pstack/skills/swarm/SKILL.md"
+      ],
+      "legacy_work_items": [
+        "PS:W12"
+      ],
+      "joint_work_items": [
+        "J17",
+        "J18"
+      ],
+      "observable_result": "区分覆盖、竞赛、混合模式，记录缺失 lane 与选胜规则。",
+      "negative_cases": [
+        "缺任一必需覆盖单元不得通过；竞赛规则固定后不能事后切换。"
+      ],
+      "semantic_difference": "不能用模型自述或返回数量当完成证明。",
+      "acceptance_ids": [
+        "JA28",
+        "JA29"
+      ],
+      "article_delta_work_packages": [],
+      "full_work_packages": [
+        "W12"
+      ],
+      "semantic_assertions": [
+        {
+          "id": "PS05:observable",
+          "statement": "区分覆盖、竞赛、混合模式，记录缺失 lane 与选胜规则。",
+          "negative_examples": [
+            "缺任一必需覆盖单元不得通过；竞赛规则固定后不能事后切换。"
+          ],
+          "coverage_status": "specified_not_run"
+        }
+      ],
+      "negative_case_bindings": [
+        {
+          "id": "PS05:N01",
+          "statement": "缺任一必需覆盖单元不得通过；竞赛规则固定后不能事后切换。",
+          "case_ids": [
+            "JA29"
+          ],
+          "review_state": "specified_requires_independent_semantic_review"
+        }
+      ]
+    },
+    {
+      "id": "PS06",
+      "title": "独立评审与意见裁决",
+      "source_family": "pstack",
+      "normalized_capability": "UC09",
+      "disposition": "adapt",
+      "current_evidence": "design_only_not_runtime_integrated",
+      "runtime_enabled": false,
+      "source_refs": [
+        "PS:pstack/skills/interrogate/SKILL.md"
+      ],
+      "legacy_work_items": [
+        "PS:W07",
+        "PS:W08",
+        "PS:W17"
+      ],
+      "joint_work_items": [
+        "J06",
+        "J07",
+        "J09",
+        "J04",
+        "J25"
+      ],
+      "observable_result": "对具体代码、调用草图、不变量与实验结果做独立评审，并逐条处理发现。",
+      "negative_cases": [
+        "review 标明具体对象和依据；无证据猜测进入未知项而非自动扩大实现。",
+        "可信 blocking finding 未处理阻止完成；多模型一致不替代证据。"
+      ],
+      "semantic_difference": "多模型一致不是事实证明，reported identity 不等于独立性认证。",
+      "acceptance_ids": [
+        "JA14",
+        "JA45",
+        "JA50",
+        "JA53",
+        "JA62",
+        "JA68"
+      ],
+      "article_delta_work_packages": [
+        "W06",
+        "W07",
+        "W08",
+        "W17"
+      ],
+      "full_work_packages": [
+        "W07",
+        "W08",
+        "W17"
+      ],
+      "semantic_assertions": [
+        {
+          "id": "PS06:observable",
+          "statement": "对具体代码、调用草图、不变量与实验结果做独立评审，并逐条处理发现。",
+          "negative_examples": [
+            "review 标明具体对象和依据；无证据猜测进入未知项而非自动扩大实现。",
+            "可信 blocking finding 未处理阻止完成；多模型一致不替代证据。"
+          ],
+          "coverage_status": "specified_not_run"
+        },
+        {
+          "id": "PS06:role-isolation",
+          "statement": "reviewer 不接收 builder 专用指令",
+          "negative_examples": [
+            "reviewer 不接收 builder 专用指令 被违反"
+          ],
+          "coverage_status": "specified_not_run"
+        }
+      ],
+      "negative_case_bindings": [
+        {
+          "id": "PS06:N01",
+          "statement": "review 标明具体对象和依据；无证据猜测进入未知项而非自动扩大实现。",
+          "case_ids": [
+            "JA68"
+          ],
+          "review_state": "specified_requires_independent_semantic_review"
+        },
+        {
+          "id": "PS06:N02",
+          "statement": "可信 blocking finding 未处理阻止完成；多模型一致不替代证据。",
+          "case_ids": [
+            "JA68"
+          ],
+          "review_state": "specified_requires_independent_semantic_review"
+        }
+      ]
+    },
+    {
+      "id": "PS07",
+      "title": "影响面与关键前提验证",
+      "source_family": "pstack",
+      "normalized_capability": "UC09",
+      "disposition": "adapt",
+      "current_evidence": "design_only_not_runtime_integrated",
+      "runtime_enabled": false,
+      "source_refs": [
+        "PS:pstack/skills/blast-radius/SKILL.md",
+        "PS:pstack/skills/poteto-mode/playbooks/refactoring.md"
+      ],
+      "legacy_work_items": [
+        "PS:W03",
+        "PS:W07",
+        "PS:W17"
+      ],
+      "joint_work_items": [
+        "J05",
+        "J06",
+        "J07"
+      ],
+      "observable_result": "从调用方、格式、生命周期和配置寻找真正的失效面。",
+      "negative_cases": [
+        "关键前提映射到检查/证据；未验证项不会标记 verified。"
+      ],
+      "semantic_difference": "静态引用列表不能替代实际调用链和副作用验证。",
+      "acceptance_ids": [
+        "JA10",
+        "JA14"
+      ],
+      "article_delta_work_packages": [
+        "W03",
+        "W17"
+      ],
+      "full_work_packages": [
+        "W03",
+        "W07",
+        "W17"
+      ],
+      "semantic_assertions": [
+        {
+          "id": "PS07:observable",
+          "statement": "从调用方、格式、生命周期和配置寻找真正的失效面。",
+          "negative_examples": [
+            "关键前提映射到检查/证据；未验证项不会标记 verified。"
+          ],
+          "coverage_status": "specified_not_run"
+        }
+      ],
+      "negative_case_bindings": [
+        {
+          "id": "PS07:N01",
+          "statement": "关键前提映射到检查/证据；未验证项不会标记 verified。",
+          "case_ids": [
+            "JA14"
+          ],
+          "review_state": "specified_requires_independent_semantic_review"
+        }
+      ]
+    },
+    {
+      "id": "PS08",
+      "title": "可操控的验证基础设施与功能地图",
+      "source_family": "pstack",
+      "normalized_capability": "UC08",
+      "disposition": "adapt",
+      "current_evidence": "design_only_not_runtime_integrated",
+      "runtime_enabled": false,
+      "source_refs": [
+        "PS:pstack/skills/create-verification-skill/SKILL.md"
+      ],
+      "legacy_work_items": [
+        "PS:W06",
+        "PS:W08",
+        "PS:W18"
+      ],
+      "joint_work_items": [
+        "J03",
+        "J06",
+        "J09"
+      ],
+      "observable_result": "先提供可组合、可诊断的控制工具及真实行为观察，让开发者自行闭合修复循环。",
+      "negative_cases": [
+        "冷启动环境可完成 doctor→drive→observe→cleanup，动作和结果证据均保留。",
+        "有机器输出、渐进帮助、可行动错误和实际无写入的 dry-run。",
+        "按用户路径检索功能地图，明确前提、入口覆盖、陷阱、恢复及版本。"
+      ],
+      "semantic_difference": "只使用已有授权与隔离；self-check 不是正式 local_verified；地图种子不能冒充全覆盖。",
+      "acceptance_ids": [
+        "JA05",
+        "JA13",
+        "JA18",
+        "JA44"
+      ],
+      "article_delta_work_packages": [
+        "W03",
+        "W05",
+        "W06",
+        "W07",
+        "W08",
+        "W18"
+      ],
+      "full_work_packages": [
+        "W06",
+        "W08",
+        "W18"
+      ],
+      "semantic_assertions": [
+        {
+          "id": "PS08:observable",
+          "statement": "先提供可组合、可诊断的控制工具及真实行为观察，让开发者自行闭合修复循环。",
+          "negative_examples": [
+            "冷启动环境可完成 doctor→drive→observe→cleanup，动作和结果证据均保留。",
+            "有机器输出、渐进帮助、可行动错误和实际无写入的 dry-run。",
+            "按用户路径检索功能地图，明确前提、入口覆盖、陷阱、恢复及版本。"
+          ],
+          "coverage_status": "specified_not_run"
+        }
+      ],
+      "negative_case_bindings": [
+        {
+          "id": "PS08:N01",
+          "statement": "冷启动环境可完成 doctor→drive→observe→cleanup，动作和结果证据均保留。",
+          "case_ids": [
+            "JA44"
+          ],
+          "review_state": "specified_requires_independent_semantic_review"
+        },
+        {
+          "id": "PS08:N02",
+          "statement": "有机器输出、渐进帮助、可行动错误和实际无写入的 dry-run。",
+          "case_ids": [
+            "JA44"
+          ],
+          "review_state": "specified_requires_independent_semantic_review"
+        },
+        {
+          "id": "PS08:N03",
+          "statement": "按用户路径检索功能地图，明确前提、入口覆盖、陷阱、恢复及版本。",
+          "case_ids": [
+            "JA44"
+          ],
+          "review_state": "specified_requires_independent_semantic_review"
+        }
+      ]
+    },
+    {
+      "id": "PS09",
+      "title": "验证基础设施的健康、归属与漂移维护",
+      "source_family": "pstack",
+      "normalized_capability": "UC08",
+      "disposition": "adapt",
+      "current_evidence": "design_only_not_runtime_integrated",
+      "runtime_enabled": false,
+      "source_refs": [
+        "PS:pstack/skills/maintain-verification-skill/SKILL.md"
+      ],
+      "legacy_work_items": [
+        "PS:W11",
+        "PS:W19"
+      ],
+      "joint_work_items": [
+        "J06",
+        "J10",
+        "J23"
+      ],
+      "observable_result": "为控制工具与地图定义 owner、健康状态、变更触发维护和显式配置的周期运行。",
+      "negative_cases": [
+        "文档漂移、harness 故障、产品回归分开处理；不降低 gate 恢复绿色。",
+        "工具故障阻止相关验证结论；本轮不创建定时任务。"
+      ],
+      "semantic_difference": "不能删除失败 feature 或降低验收来伪造修复。",
+      "acceptance_ids": [
+        "JA13",
+        "JA19"
+      ],
+      "article_delta_work_packages": [
+        "W05",
+        "W11",
+        "W18",
+        "W19"
+      ],
+      "full_work_packages": [
+        "W11",
+        "W19"
+      ],
+      "semantic_assertions": [
+        {
+          "id": "PS09:observable",
+          "statement": "为控制工具与地图定义 owner、健康状态、变更触发维护和显式配置的周期运行。",
+          "negative_examples": [
+            "文档漂移、harness 故障、产品回归分开处理；不降低 gate 恢复绿色。",
+            "工具故障阻止相关验证结论；本轮不创建定时任务。"
+          ],
+          "coverage_status": "specified_not_run"
+        }
+      ],
+      "negative_case_bindings": [
+        {
+          "id": "PS09:N01",
+          "statement": "文档漂移、harness 故障、产品回归分开处理；不降低 gate 恢复绿色。",
+          "case_ids": [
+            "JA19"
+          ],
+          "review_state": "specified_requires_independent_semantic_review"
+        },
+        {
+          "id": "PS09:N02",
+          "statement": "工具故障阻止相关验证结论；本轮不创建定时任务。",
+          "case_ids": [
+            "JA19"
+          ],
+          "review_state": "specified_requires_independent_semantic_review"
+        }
+      ]
+    },
+    {
+      "id": "PS10",
+      "title": "形式化验证生命周期",
+      "source_family": "pstack",
+      "normalized_capability": "UC13",
+      "disposition": "defer_specialized_extension",
+      "current_evidence": "design_only_not_runtime_integrated",
+      "runtime_enabled": false,
+      "source_refs": [
+        "PS:pstack/skills/create-formal-verification-skill/SKILL.md",
+        "PS:pstack/skills/maintain-formal-verification-skill/SKILL.md"
+      ],
+      "legacy_work_items": [
+        "PS:W16"
+      ],
+      "joint_work_items": [
+        "J22",
+        "J28"
+      ],
+      "observable_result": "对高风险不变量建模，维护代码映射并通过 mutation 证明敏感性。",
+      "negative_cases": [
+        "记录模型/代码/工具/上界；坏变体失败；反例可解释。"
+      ],
+      "semantic_difference": "property 模式标签不是形式化证明；有界模型结果不能外推所有执行。",
+      "acceptance_ids": [
+        "JA39"
+      ],
+      "article_delta_work_packages": [],
+      "full_work_packages": [
+        "W16"
+      ],
+      "semantic_assertions": [
+        {
+          "id": "PS10:observable",
+          "statement": "对高风险不变量建模，维护代码映射并通过 mutation 证明敏感性。",
+          "negative_examples": [
+            "记录模型/代码/工具/上界；坏变体失败；反例可解释。"
+          ],
+          "coverage_status": "specified_not_run"
+        }
+      ],
+      "negative_case_bindings": [
+        {
+          "id": "PS10:N01",
+          "statement": "记录模型/代码/工具/上界；坏变体失败；反例可解释。",
+          "case_ids": [
+            "JA39"
+          ],
+          "review_state": "specified_requires_independent_semantic_review"
+        }
+      ]
+    },
+    {
+      "id": "PS11",
+      "title": "状态图与反例解释",
+      "source_family": "pstack",
+      "normalized_capability": "UC13",
+      "disposition": "defer_specialized_extension",
+      "current_evidence": "design_only_not_runtime_integrated",
+      "runtime_enabled": false,
+      "source_refs": [
+        "PS:pstack/skills/statechart/SKILL.md"
+      ],
+      "legacy_work_items": [
+        "PS:W16",
+        "PS:W17"
+      ],
+      "joint_work_items": [
+        "J06",
+        "J22",
+        "J28"
+      ],
+      "observable_result": "把模型状态与反例映射成人可读路径并尝试在代码复现。",
+      "negative_cases": [
+        "图对应模型哈希；轨迹定位有效；超时不等于无反例。"
+      ],
+      "semantic_difference": "渲染与 TLC 依赖隔离；不能把好看的图当验证完成。",
+      "acceptance_ids": [
+        "JA39"
+      ],
+      "article_delta_work_packages": [],
+      "full_work_packages": [
+        "W16",
+        "W17"
+      ],
+      "semantic_assertions": [
+        {
+          "id": "PS11:observable",
+          "statement": "把模型状态与反例映射成人可读路径并尝试在代码复现。",
+          "negative_examples": [
+            "图对应模型哈希；轨迹定位有效；超时不等于无反例。"
+          ],
+          "coverage_status": "specified_not_run"
+        }
+      ],
+      "negative_case_bindings": [
+        {
+          "id": "PS11:N01",
+          "statement": "图对应模型哈希；轨迹定位有效；超时不等于无反例。",
+          "case_ids": [
+            "JA39"
+          ],
+          "review_state": "specified_requires_independent_semantic_review"
+        }
+      ]
+    },
+    {
+      "id": "PS12",
+      "title": "反思转结构化约束",
+      "source_family": "pstack",
+      "normalized_capability": "UC05",
+      "disposition": "adapt",
+      "current_evidence": "design_only_not_runtime_integrated",
+      "runtime_enabled": false,
+      "source_refs": [
+        "PS:pstack/skills/correct/SKILL.md",
+        "PS:pstack/skills/reflect/SKILL.md"
+      ],
+      "legacy_work_items": [
+        "PS:W14"
+      ],
+      "joint_work_items": [
+        "J19"
+      ],
+      "observable_result": "将重复失败变成架构、类型、lint 或行为检查。",
+      "negative_cases": [
+        "新规则能抓到历史错误且通过无关正常用例；保持 draft 直至晋升。"
+      ],
+      "semantic_difference": "不自动修改全局规则、权限或评测门槛。",
+      "acceptance_ids": [
+        "JA30",
+        "JA69"
+      ],
+      "article_delta_work_packages": [],
+      "full_work_packages": [
+        "W14"
+      ],
+      "semantic_assertions": [
+        {
+          "id": "PS12:observable",
+          "statement": "将重复失败变成架构、类型、lint 或行为检查。",
+          "negative_examples": [
+            "新规则能抓到历史错误且通过无关正常用例；保持 draft 直至晋升。"
+          ],
+          "coverage_status": "specified_not_run"
+        }
+      ],
+      "negative_case_bindings": [
+        {
+          "id": "PS12:N01",
+          "statement": "新规则能抓到历史错误且通过无关正常用例；保持 draft 直至晋升。",
+          "case_ids": [
+            "JA69"
+          ],
+          "review_state": "specified_requires_independent_semantic_review"
+        }
+      ]
+    },
+    {
+      "id": "PS13",
+      "title": "决策轨迹与证据归因",
+      "source_family": "pstack",
+      "normalized_capability": "UC09",
+      "disposition": "adapt",
+      "current_evidence": "design_only_not_runtime_integrated",
+      "runtime_enabled": false,
+      "source_refs": [
+        "PS:pstack/skills/show-me-your-work/SKILL.md"
+      ],
+      "legacy_work_items": [
+        "PS:W07",
+        "PS:W10"
+      ],
+      "joint_work_items": [
+        "J04",
+        "J07",
+        "J16",
+        "J19"
+      ],
+      "observable_result": "保留可信决策与证据历史，同时将结束或被替代的战术计划退出当前检索。",
+      "negative_cases": [
+        "追加更正保留旧记录；当前视图不把历史计划当指令。",
+        "可读导出不反向修改权威状态。"
+      ],
+      "semantic_difference": "TSV 为可读导出，不成为第二个权威状态源。",
+      "acceptance_ids": [
+        "JA08",
+        "JA15",
+        "JA26",
+        "JA50"
+      ],
+      "article_delta_work_packages": [
+        "W10",
+        "W17"
+      ],
+      "full_work_packages": [
+        "W07",
+        "W10"
+      ],
+      "semantic_assertions": [
+        {
+          "id": "PS13:observable",
+          "statement": "保留可信决策与证据历史，同时将结束或被替代的战术计划退出当前检索。",
+          "negative_examples": [
+            "追加更正保留旧记录；当前视图不把历史计划当指令。",
+            "可读导出不反向修改权威状态。"
+          ],
+          "coverage_status": "specified_not_run"
+        }
+      ],
+      "negative_case_bindings": [
+        {
+          "id": "PS13:N01",
+          "statement": "追加更正保留旧记录；当前视图不把历史计划当指令。",
+          "case_ids": [
+            "JA50"
+          ],
+          "review_state": "specified_requires_independent_semantic_review"
+        },
+        {
+          "id": "PS13:N02",
+          "statement": "可读导出不反向修改权威状态。",
+          "case_ids": [
+            "JA50"
+          ],
+          "review_state": "specified_requires_independent_semantic_review"
+        }
+      ]
+    },
+    {
+      "id": "PS14",
+      "title": "性能结论审查",
+      "source_family": "pstack",
+      "normalized_capability": "UC13",
+      "disposition": "defer_specialized_extension",
+      "current_evidence": "design_only_not_runtime_integrated",
+      "runtime_enabled": false,
+      "source_refs": [
+        "PS:pstack/skills/benchmark-checklist/SKILL.md",
+        "PS:pstack/skills/principle-explain-the-number/SKILL.md",
+        "PS:pstack/skills/poteto-mode/playbooks/perf-issue.md"
+      ],
+      "legacy_work_items": [
+        "PS:W15"
+      ],
+      "joint_work_items": [
+        "J25",
+        "J29"
+      ],
+      "observable_result": "检查测量是否做了真实工作，交错基线并解释瓶颈与噪声。",
+      "negative_cases": [
+        "保留原始样本/失败/环境；基线不等价时拒绝相对提升。"
+      ],
+      "semantic_difference": "样本数建议不保证统计可靠；不比较不同场景的比例。",
+      "acceptance_ids": [
+        "JA36",
+        "JA40",
+        "JA58"
+      ],
+      "article_delta_work_packages": [
+        "W15"
+      ],
+      "full_work_packages": [
+        "W15"
+      ],
+      "semantic_assertions": [
+        {
+          "id": "PS14:observable",
+          "statement": "检查测量是否做了真实工作，交错基线并解释瓶颈与噪声。",
+          "negative_examples": [
+            "保留原始样本/失败/环境；基线不等价时拒绝相对提升。"
+          ],
+          "coverage_status": "specified_not_run"
+        }
+      ],
+      "negative_case_bindings": [
+        {
+          "id": "PS14:N01",
+          "statement": "保留原始样本/失败/环境；基线不等价时拒绝相对提升。",
+          "case_ids": [
+            "JA58"
+          ],
+          "review_state": "specified_requires_independent_semantic_review"
+        }
+      ]
+    },
+    {
+      "id": "PS15",
+      "title": "有预算的 hillclimb 与盲评",
+      "source_family": "pstack",
+      "normalized_capability": "UC13",
+      "disposition": "defer_specialized_extension",
+      "current_evidence": "design_only_not_runtime_integrated",
+      "runtime_enabled": false,
+      "source_refs": [
+        "PS:pstack/skills/poteto-mode/playbooks/hillclimb.md",
+        "PS:pstack/skills/poteto-mode/playbooks/eval.md"
+      ],
+      "legacy_work_items": [
+        "PS:W15"
+      ],
+      "joint_work_items": [
+        "J13",
+        "J25",
+        "J29"
+      ],
+      "observable_result": "固定 harness、单变量实验、保留或回退并记录评价版本。",
+      "negative_cases": [
+        "预算耗尽停止；judge 标签盲化；评测变更产生新 epoch。"
+      ],
+      "semantic_difference": "不能无限追分、泄漏答案或悄悄调整 gate。",
+      "acceptance_ids": [
+        "JA23",
+        "JA36",
+        "JA40",
+        "JA58"
+      ],
+      "article_delta_work_packages": [
+        "W15"
+      ],
+      "full_work_packages": [
+        "W15"
+      ],
+      "semantic_assertions": [
+        {
+          "id": "PS15:observable",
+          "statement": "固定 harness、单变量实验、保留或回退并记录评价版本。",
+          "negative_examples": [
+            "预算耗尽停止；judge 标签盲化；评测变更产生新 epoch。"
+          ],
+          "coverage_status": "specified_not_run"
+        }
+      ],
+      "negative_case_bindings": [
+        {
+          "id": "PS15:N01",
+          "statement": "预算耗尽停止；judge 标签盲化；评测变更产生新 epoch。",
+          "case_ids": [
+            "JA58"
+          ],
+          "review_state": "specified_requires_independent_semantic_review"
+        }
+      ]
+    },
+    {
+      "id": "PS16",
+      "title": "自包含单元与协调者边界",
+      "source_family": "pstack",
+      "normalized_capability": "UC04",
+      "disposition": "adapt",
+      "current_evidence": "design_only_not_runtime_integrated",
+      "runtime_enabled": false,
+      "source_refs": [
+        "PS:pstack/skills/poteto-mode/playbooks/orchestrate.md",
+        "PS:pstack/skills/poteto-mode/playbooks/autopilot-full.md",
+        "PS:pstack/skills/poteto-mode/playbooks/autopilot-stack.md",
+        "PS:pstack/skills/poteto-mode/scripts/orch/store.ts"
+      ],
+      "legacy_work_items": [
+        "PS:W10",
+        "PS:W12"
+      ],
+      "joint_work_items": [
+        "J13",
+        "J16",
+        "J17",
+        "J18",
+        "J19"
+      ],
+      "observable_result": "自包含 brief 与单写者外，还明确端口、DB、身份、依赖和容量，避免把文件隔离当运行隔离。",
+      "negative_cases": [
+        "brief 缺验收/环境前提拒绝派发；共享资源冲突限制并行。",
+        "恢复依赖主机事实；不因云模型可用就自动获得部署权限。"
+      ],
+      "semantic_difference": "orch 是文件管理器，不是执行器；不替换 core 数据库。",
+      "acceptance_ids": [
+        "JA22",
+        "JA28"
+      ],
+      "article_delta_work_packages": [
+        "W06",
+        "W12"
+      ],
+      "full_work_packages": [
+        "W10",
+        "W12"
+      ],
+      "semantic_assertions": [
+        {
+          "id": "PS16:observable",
+          "statement": "自包含 brief 与单写者外，还明确端口、DB、身份、依赖和容量，避免把文件隔离当运行隔离。",
+          "negative_examples": [
+            "brief 缺验收/环境前提拒绝派发；共享资源冲突限制并行。",
+            "恢复依赖主机事实；不因云模型可用就自动获得部署权限。"
+          ],
+          "coverage_status": "specified_not_run"
+        }
+      ],
+      "negative_case_bindings": [
+        {
+          "id": "PS16:N01",
+          "statement": "brief 缺验收/环境前提拒绝派发；共享资源冲突限制并行。",
+          "case_ids": [
+            "JA28"
+          ],
+          "review_state": "specified_requires_independent_semantic_review"
+        },
+        {
+          "id": "PS16:N02",
+          "statement": "恢复依赖主机事实；不因云模型可用就自动获得部署权限。",
+          "case_ids": [
+            "JA28"
+          ],
+          "review_state": "specified_requires_independent_semantic_review"
+        }
+      ]
+    },
+    {
+      "id": "PS17",
+      "title": "栈前沿与候选绑定验证",
+      "source_family": "pstack",
+      "normalized_capability": "UC09",
+      "disposition": "adapt",
+      "current_evidence": "design_only_not_runtime_integrated",
+      "runtime_enabled": false,
+      "source_refs": [
+        "PS:pstack/skills/poteto-mode/playbooks/shipping.md",
+        "PS:pstack/skills/poteto-mode/playbooks/autopilot-stack.md"
+      ],
+      "legacy_work_items": [
+        "PS:W07",
+        "PS:W12",
+        "PS:W13"
+      ],
+      "joint_work_items": [
+        "J01",
+        "J07",
+        "J18",
+        "J30"
+      ],
+      "observable_result": "连续已验证前缀、一个拓扑拥有者、每次 head 变化明确重判。",
+      "negative_cases": [
+        "head/base/env/acceptance 任一变化使旧验证不可用于新候选。"
+      ],
+      "semantic_difference": "不因 patch-id 相同自动继承证据；当前 Graph host 无发布权限。",
+      "acceptance_ids": [
+        "JA01",
+        "JA29",
+        "JA41"
+      ],
+      "article_delta_work_packages": [],
+      "full_work_packages": [
+        "W07",
+        "W12",
+        "W13"
+      ],
+      "semantic_assertions": [
+        {
+          "id": "PS17:observable",
+          "statement": "连续已验证前缀、一个拓扑拥有者、每次 head 变化明确重判。",
+          "negative_examples": [
+            "head/base/env/acceptance 任一变化使旧验证不可用于新候选。"
+          ],
+          "coverage_status": "specified_not_run"
+        }
+      ],
+      "negative_case_bindings": [
+        {
+          "id": "PS17:N01",
+          "statement": "head/base/env/acceptance 任一变化使旧验证不可用于新候选。",
+          "case_ids": [
+            "JA41"
+          ],
+          "review_state": "specified_requires_independent_semantic_review"
+        }
+      ]
+    },
+    {
+      "id": "PS18",
+      "title": "forge 观察器分类",
+      "source_family": "pstack",
+      "normalized_capability": "UC11",
+      "disposition": "adapt",
+      "current_evidence": "design_only_not_runtime_integrated",
+      "runtime_enabled": false,
+      "source_refs": [
+        "PS:pstack/skills/poteto-mode/playbooks/babysit.md",
+        "PS:pstack/skills/poteto-mode/scripts/watch-pr/policy.ts"
+      ],
+      "legacy_work_items": [
+        "PS:W13"
+      ],
+      "joint_work_items": [
+        "J30"
+      ],
+      "observable_result": "纯读取与纯分类分离，输出阻塞项、未知项和数据新鲜度。",
+      "negative_cases": [
+        "BLOCKED/UNKNOWN 不产出 permit；失败读回明确标 unknown。"
+      ],
+      "semantic_difference": "上游 ready 不是合并许可；watcher 不拥有发布权限。",
+      "acceptance_ids": [
+        "JA41",
+        "JA57"
+      ],
+      "article_delta_work_packages": [],
+      "full_work_packages": [
+        "W13"
+      ],
+      "semantic_assertions": [
+        {
+          "id": "PS18:observable",
+          "statement": "纯读取与纯分类分离，输出阻塞项、未知项和数据新鲜度。",
+          "negative_examples": [
+            "BLOCKED/UNKNOWN 不产出 permit；失败读回明确标 unknown。"
+          ],
+          "coverage_status": "specified_not_run"
+        },
+        {
+          "id": "PS18:non-permissive-classifier",
+          "statement": "BLOCKED/UNKNOWN/缺页不能分类为 ready",
+          "negative_examples": [
+            "BLOCKED/UNKNOWN/缺页不能分类为 ready 被违反"
+          ],
+          "coverage_status": "specified_not_run"
+        }
+      ],
+      "negative_case_bindings": [
+        {
+          "id": "PS18:N01",
+          "statement": "BLOCKED/UNKNOWN 不产出 permit；失败读回明确标 unknown。",
+          "case_ids": [
+            "JA57"
+          ],
+          "review_state": "specified_requires_independent_semantic_review"
+        }
+      ]
+    },
+    {
+      "id": "PS19",
+      "title": "暂停与恢复对账",
+      "source_family": "pstack",
+      "normalized_capability": "UC03",
+      "disposition": "adapt",
+      "current_evidence": "design_only_not_runtime_integrated",
+      "runtime_enabled": false,
+      "source_refs": [
+        "PS:pstack/skills/poteto-mode/playbooks/pause-safely.md",
+        "PS:pstack/skills/poteto-mode/playbooks/session-pickup.md",
+        "PS:pstack/skills/poteto-mode/playbooks/worktree-cleanup.md",
+        "PS:pstack/skills/poteto-mode/playbooks/autonomous-run.md"
+      ],
+      "legacy_work_items": [
+        "PS:W10"
+      ],
+      "joint_work_items": [
+        "J12",
+        "J16",
+        "J19"
+      ],
+      "observable_result": "暂停时保存当前事实，恢复时核对分支、head、会话与副作用。",
+      "negative_cases": [
+        "未知终止状态不作完成；对账幂等；只清理拥有的工作区。"
+      ],
+      "semantic_difference": "笔记不优先于当前事实；observed_turn 不是 delivered。",
+      "acceptance_ids": [
+        "JA21",
+        "JA27"
+      ],
+      "article_delta_work_packages": [],
+      "full_work_packages": [
+        "W10"
+      ],
+      "semantic_assertions": [
+        {
+          "id": "PS19:observable",
+          "statement": "暂停时保存当前事实，恢复时核对分支、head、会话与副作用。",
+          "negative_examples": [
+            "未知终止状态不作完成；对账幂等；只清理拥有的工作区。"
+          ],
+          "coverage_status": "specified_not_run"
+        }
+      ],
+      "negative_case_bindings": [
+        {
+          "id": "PS19:N01",
+          "statement": "未知终止状态不作完成；对账幂等；只清理拥有的工作区。",
+          "case_ids": [
+            "JA27"
+          ],
+          "review_state": "specified_requires_independent_semantic_review"
+        }
+      ]
+    },
+    {
+      "id": "PS20",
+      "title": "跨宿主方法适配",
+      "source_family": "pstack",
+      "normalized_capability": "UC06",
+      "disposition": "adapt",
+      "current_evidence": "design_only_not_runtime_integrated",
+      "runtime_enabled": false,
+      "source_refs": [
+        "PS:pstack/skills/setup-pstack/SKILL.md",
+        "PS:scripts/generate-pstack-harness-trees.mjs"
+      ],
+      "legacy_work_items": [
+        "PS:W05",
+        "PS:W11"
+      ],
+      "joint_work_items": [
+        "J02",
+        "J04",
+        "J10",
+        "J23"
+      ],
+      "observable_result": "按需加载方法和地图，声明宿主工具与环境能力；本地与未来远端使用相同证据语义。",
+      "negative_cases": [
+        "required 功能缺失拒绝；optional 降级明确。",
+        "本地 stand-in 成功不标远端 verified；实际 prompt 的材料选择可追踪。"
+      ],
+      "semantic_difference": "文本替换不证明等价；缺必需工具不能静默跳过验收。",
+      "acceptance_ids": [
+        "JA04",
+        "JA07",
+        "JA08",
+        "JA34",
+        "JA46",
+        "JA53"
+      ],
+      "article_delta_work_packages": [
+        "W05",
+        "W06",
+        "W09",
+        "W12",
+        "W18"
+      ],
+      "full_work_packages": [
+        "W05",
+        "W11"
+      ],
+      "semantic_assertions": [
+        {
+          "id": "PS20:observable",
+          "statement": "按需加载方法和地图，声明宿主工具与环境能力；本地与未来远端使用相同证据语义。",
+          "negative_examples": [
+            "required 功能缺失拒绝；optional 降级明确。",
+            "本地 stand-in 成功不标远端 verified；实际 prompt 的材料选择可追踪。"
+          ],
+          "coverage_status": "specified_not_run"
+        }
+      ],
+      "negative_case_bindings": [
+        {
+          "id": "PS20:N01",
+          "statement": "required 功能缺失拒绝；optional 降级明确。",
+          "case_ids": [
+            "JA53"
+          ],
+          "review_state": "specified_requires_independent_semantic_review"
+        },
+        {
+          "id": "PS20:N02",
+          "statement": "本地 stand-in 成功不标远端 verified；实际 prompt 的材料选择可追踪。",
+          "case_ids": [
+            "JA53"
+          ],
+          "review_state": "specified_requires_independent_semantic_review"
+        }
+      ]
+    },
+    {
+      "id": "PS21",
+      "title": "来源快照与能力资格验证",
+      "source_family": "pstack",
+      "normalized_capability": "UC10",
+      "disposition": "adapt",
+      "current_evidence": "design_only_not_runtime_integrated",
+      "runtime_enabled": false,
+      "source_refs": [
+        "PS:pstack/skills/poteto-help/SKILL.md",
+        "PS:pstack/skills/poteto-mode/playbooks/authoring-a-skill.md"
+      ],
+      "legacy_work_items": [
+        "PS:W01",
+        "PS:W02",
+        "PS:W11"
+      ],
+      "joint_work_items": [
+        "J02",
+        "J08",
+        "J10",
+        "J26",
+        "J01"
+      ],
+      "observable_result": "固定子目录/commit/digest/许可和转换身份，对上游升级分阶段验证。",
+      "negative_cases": [
+        "目录越界拒绝；变更只生成 candidate；旧 run 仍绑定原快照。"
+      ],
+      "semantic_difference": "完整来源管理在验证工具的价值试点后收敛；基本 pin 和现有权限始终保留，不让 registry 成为探索的虚假前置成果。",
+      "acceptance_ids": [
+        "JA03",
+        "JA04",
+        "JA16",
+        "JA17",
+        "JA19",
+        "JA37",
+        "JA49",
+        "JA59",
+        "JA60",
+        "JA61"
+      ],
+      "article_delta_work_packages": [],
+      "full_work_packages": [
+        "W01",
+        "W02",
+        "W11"
+      ],
+      "semantic_assertions": [
+        {
+          "id": "PS21:observable",
+          "statement": "固定子目录/commit/digest/许可和转换身份，对上游升级分阶段验证。",
+          "negative_examples": [
+            "目录越界拒绝；变更只生成 candidate；旧 run 仍绑定原快照。"
+          ],
+          "coverage_status": "specified_not_run"
+        }
+      ],
+      "negative_case_bindings": [
+        {
+          "id": "PS21:N01",
+          "statement": "目录越界拒绝；变更只生成 candidate；旧 run 仍绑定原快照。",
+          "case_ids": [
+            "JA61"
+          ],
+          "review_state": "specified_requires_independent_semantic_review"
+        }
+      ]
+    },
+    {
+      "id": "PS22",
+      "title": "事件 intake 与补偿模式",
+      "source_family": "pstack",
+      "normalized_capability": "UC11",
+      "disposition": "defer_specialized_extension",
+      "current_evidence": "design_only_not_runtime_integrated",
+      "runtime_enabled": false,
+      "source_refs": [
+        "PS:pstack/automations/benny/skills/triage-issue-reports/SKILL.md",
+        "PS:pstack/automations/benny/skills/reproduce-and-fix-issues/SKILL.md",
+        "PS:pstack/automations/benny/skills/setup-benny/SKILL.md"
+      ],
+      "legacy_work_items": [
+        "PS:W16"
+      ],
+      "joint_work_items": [
+        "J22",
+        "J28"
+      ],
+      "observable_result": "借鉴 Benny 的来源定位、去重、复现证据与外部写入补偿。",
+      "negative_cases": [
+        "重复事件不重复副作用；部分成功有 readback/补偿；失败不瞎修。"
+      ],
+      "semantic_difference": "Benny 为独立 dormant automation；不默认开放 Slack、发消息或发布。",
+      "acceptance_ids": [
+        "JA33"
+      ],
+      "article_delta_work_packages": [],
+      "full_work_packages": [
+        "W16"
+      ],
+      "semantic_assertions": [
+        {
+          "id": "PS22:observable",
+          "statement": "借鉴 Benny 的来源定位、去重、复现证据与外部写入补偿。",
+          "negative_examples": [
+            "重复事件不重复副作用；部分成功有 readback/补偿；失败不瞎修。"
+          ],
+          "coverage_status": "specified_not_run"
+        }
+      ],
+      "negative_case_bindings": [
+        {
+          "id": "PS22:N01",
+          "statement": "重复事件不重复副作用；部分成功有 readback/补偿；失败不瞎修。",
+          "case_ids": [
+            "JA33"
+          ],
+          "review_state": "specified_requires_independent_semantic_review"
+        }
+      ]
+    },
+    {
+      "id": "PS23",
+      "title": "使用方式驱动的接口与文档设计",
+      "source_family": "pstack",
+      "normalized_capability": "UC07",
+      "disposition": "adapt",
+      "current_evidence": "design_only_not_runtime_integrated",
+      "runtime_enabled": false,
+      "source_refs": [
+        "PS:pstack/skills/typescript-best-practices/SKILL.md",
+        "PS:pstack/skills/technical-writing/SKILL.md",
+        "PS:pstack/skills/unslop/SKILL.md",
+        "PS:pstack/skills/no-comments/SKILL.md"
+      ],
+      "legacy_work_items": [
+        "PS:W06",
+        "PS:W17",
+        "PS:W18"
+      ],
+      "joint_work_items": [
+        "J03",
+        "J06"
+      ],
+      "observable_result": "以使用教程和调用样例反推接口，并区分教程、操作指南、参考、解释；个人文风和额外 lint 后置。",
+      "negative_cases": [
+        "冷读者能按教程完成命名场景，API 草图通过实际调用验证。",
+        "旧计划退出当前上下文；不强制英文标点或无关风格。"
+      ],
+      "semantic_difference": "个人写作偏好不是产品质量 gate；不硬迁英文标点规则。",
+      "acceptance_ids": [
+        "JA06",
+        "JA12"
+      ],
+      "article_delta_work_packages": [
+        "W10",
+        "W17"
+      ],
+      "full_work_packages": [
+        "W06",
+        "W17",
+        "W18"
+      ],
+      "semantic_assertions": [
+        {
+          "id": "PS23:observable",
+          "statement": "以使用教程和调用样例反推接口，并区分教程、操作指南、参考、解释；个人文风和额外 lint 后置。",
+          "negative_examples": [
+            "冷读者能按教程完成命名场景，API 草图通过实际调用验证。",
+            "旧计划退出当前上下文；不强制英文标点或无关风格。"
+          ],
+          "coverage_status": "specified_not_run"
+        }
+      ],
+      "negative_case_bindings": [
+        {
+          "id": "PS23:N01",
+          "statement": "冷读者能按教程完成命名场景，API 草图通过实际调用验证。",
+          "case_ids": [
+            "JA12"
+          ],
+          "review_state": "specified_requires_independent_semantic_review"
+        },
+        {
+          "id": "PS23:N02",
+          "statement": "旧计划退出当前上下文；不强制英文标点或无关风格。",
+          "case_ids": [
+            "JA12"
+          ],
+          "review_state": "specified_requires_independent_semantic_review"
+        }
+      ]
+    },
+    {
+      "id": "PS24",
+      "title": "历史上下文恢复与可理解的决策说明",
+      "source_family": "pstack",
+      "normalized_capability": "UC05",
+      "disposition": "adapt",
+      "current_evidence": "design_only_not_runtime_integrated",
+      "runtime_enabled": false,
+      "source_refs": [
+        "PS:pstack/skills/recall/SKILL.md",
+        "PS:pstack/skills/ketchup/SKILL.md",
+        "PS:pstack/skills/ketchup-video/SKILL.md",
+        "PS:pstack/skills/bro/SKILL.md",
+        "PS:pstack/skills/automate-me/SKILL.md",
+        "PS:pstack/skills/make-bot-ui/SKILL.md"
+      ],
+      "legacy_work_items": [
+        "PS:W10",
+        "PS:W14",
+        "PS:W17"
+      ],
+      "joint_work_items": [
+        "J06",
+        "J16",
+        "J19",
+        "J20"
+      ],
+      "observable_result": "把任务相关历史与当前事实连接，解释取舍以帮助用户纠偏，也暴露 agent 自己的知识缺口。",
+      "negative_cases": [
+        "旧假设必须经当前证据重验；不会因解释流畅就提高事实置信度。",
+        "只读任务授权范围，用户能看到目标、关键依据与未决取舍。"
+      ],
+      "semantic_difference": "视频/个性化和 Cursor webhook 属可选界面，不进入核心执行依赖。",
+      "acceptance_ids": [
+        "JA30",
+        "JA31"
+      ],
+      "article_delta_work_packages": [
+        "W03",
+        "W05",
+        "W09",
+        "W17"
+      ],
+      "full_work_packages": [
+        "W10",
+        "W14",
+        "W17"
+      ],
+      "semantic_assertions": [
+        {
+          "id": "PS24:observable",
+          "statement": "把任务相关历史与当前事实连接，解释取舍以帮助用户纠偏，也暴露 agent 自己的知识缺口。",
+          "negative_examples": [
+            "旧假设必须经当前证据重验；不会因解释流畅就提高事实置信度。",
+            "只读任务授权范围，用户能看到目标、关键依据与未决取舍。"
+          ],
+          "coverage_status": "specified_not_run"
+        }
+      ],
+      "negative_case_bindings": [
+        {
+          "id": "PS24:N01",
+          "statement": "旧假设必须经当前证据重验；不会因解释流畅就提高事实置信度。",
+          "case_ids": [
+            "JA31"
+          ],
+          "review_state": "specified_requires_independent_semantic_review"
+        },
+        {
+          "id": "PS24:N02",
+          "statement": "只读任务授权范围，用户能看到目标、关键依据与未决取舍。",
+          "case_ids": [
+            "JA31"
+          ],
+          "review_state": "specified_requires_independent_semantic_review"
+        }
+      ]
+    }
+  ],
+  "scope_note": "48 来源能力组是现有研究边界，不声称逐行穷尽两个上游；相同职责合并实现但保留各自行为与验收"
+}

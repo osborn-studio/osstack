@@ -1,0 +1,68 @@
+{
+  "removed": [
+    {
+      "worktree": "/Users/osborn/Developer/CodeX/.worktrees/osstack/firstmate-r01-r02",
+      "branch": "codex/firstmate-r01-r02",
+      "head": "d9fce7eaf99d9033f588697a3233fa51db261527",
+      "clean_before_removal": true,
+      "remove_exit_code": 0
+    },
+    {
+      "worktree": "/Users/osborn/Developer/CodeX/.worktrees/osstack/session-debt03",
+      "branch": "codex/session-debt03",
+      "head": "09eb44a7fe19d8a81b2bed255617eb76e1cb44f4",
+      "clean_before_removal": true,
+      "remove_exit_code": 0
+    },
+    {
+      "worktree": "/Users/osborn/Developer/CodeX/.worktrees/osstack/firstmate-behavior-contract",
+      "branch": "codex/firstmate-behavior-contract",
+      "head": "48d6b927d36e5c673eb80c8956daa69779614cc7",
+      "clean_before_removal": true,
+      "remove_exit_code": 0,
+      "output": ""
+    },
+    {
+      "worktree": "/Users/osborn/Developer/CodeX/.worktrees/osstack/firstmate-behavior-loader",
+      "branch": "codex/firstmate-behavior-loader",
+      "head": "5e86a77859367a333829748908bbf986048132b9",
+      "clean_before_removal": true,
+      "remove_exit_code": 0,
+      "output": ""
+    },
+    {
+      "worktree": "/Users/osborn/Developer/CodeX/.worktrees/osstack/session-receipt-fix",
+      "branch": "codex/session-receipt-fix",
+      "head": "585ed985ac4a8513778470f6443d0ce7ce2c7893",
+      "clean_before_removal": true,
+      "remove_exit_code": 0,
+      "output": ""
+    },
+    {
+      "worktree": "/Users/osborn/Developer/CodeX/.worktrees/osstack/session-start-cleanup",
+      "branch": "codex/session-start-cleanup",
+      "head": "81f01d1a91248396dfdd2dce1132b69d478556cf",
+      "clean_before_removal": true,
+      "remove_exit_code": 0,
+      "output": ""
+    },
+    {
+      "worktree": "/Users/osborn/Developer/CodeX/.worktrees/osstack/session-terminal-fence",
+      "branch": "codex/session-terminal-fence",
+      "head": "cae25bc612e6e6884cf548e5bc8d3a745863a909",
+      "clean_before_removal": true,
+      "remove_exit_code": 0,
+      "output": ""
+    },
+    {
+      "worktree": "/Users/osborn/Developer/CodeX/.worktrees/osstack/firstmate-batch1-integration",
+      "branch": "codex/firstmate-batch1-integration",
+      "head": "dd0f8d09687c6d77394771f61102c9685ec33b2c",
+      "clean_before_removal": true,
+      "remove_exit_code": 0
+    }
+  ],
+  "retained_for_ci": null,
+  "unrelated_worktrees": "untouched",
+  "all_batch_worktrees_removed": true
+}

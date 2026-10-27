@@ -1,0 +1,136 @@
+{
+  "schema_version": 1,
+  "kind": "design_observation_not_runtime_qualification",
+  "observed_at_utc": "2026-10-27T03:16:00.254263+00:00",
+  "workspace_head": "0a61d278a6cede4fa7b3142fae3e7ab13cc4ed41",
+  "osstack_main": "daad404e00c000247fdfb2adda13127c4c1c8e26",
+  "firstmate_design": "4199d9aadf776042d924a0a307c62aef1a729088",
+  "firstmate_upstream": "af1c6817fc47589b162cbc361671c43cdb150933",
+  "pstack_upstream": "99b609a72323b70204eab407c622f436e858e112",
+  "firstmate_pr": {
+    "number": 271,
+    "state": "open",
+    "draft": true,
+    "merged": false,
+    "head": "4199d9aadf776042d924a0a307c62aef1a729088",
+    "base": "daad404e00c000247fdfb2adda13127c4c1c8e26"
+  },
+  "firstmate_plan_counts": {
+    "planned": 38,
+    "local_pilot_complete": 8,
+    "partial_blocked": 4
+  },
+  "pstack_runtime_implemented": false,
+  "main_vs_pstack_research_production_diff": [],
+  "inputs": [
+    {
+      "snapshot": "evidence/inputs/firstmate-capabilities.json",
+      "repository": "osstack",
+      "commit": "4199d9aadf776042d924a0a307c62aef1a729088",
+      "path": "docs/design/2026-10-26-firstmate-upgrade/capability-map.json",
+      "sha256": "c57bcd38ca77d2c77a5a81b825758d62666b753fe6fc0a72f563d0ecc6bc7414"
+    },
+    {
+      "snapshot": "evidence/inputs/firstmate-work-packages.json",
+      "repository": "osstack",
+      "commit": "4199d9aadf776042d924a0a307c62aef1a729088",
+      "path": "docs/design/2026-10-26-firstmate-upgrade/work-packages.json",
+      "sha256": "c79df92eef7d5a9aba3555f61dc58cfdfe1fa09d35df238abc1944bcec8447c9"
+    },
+    {
+      "snapshot": "evidence/inputs/firstmate-base-work-items.json",
+      "repository": "osstack",
+      "commit": "4199d9aadf776042d924a0a307c62aef1a729088",
+      "path": "docs/design/2026-10-25-engineering-agent/work-items.json",
+      "sha256": "9e89fcf6f59607ba4f229c9ef98718f3cffa04993341e278a24fa96b41e85770"
+    },
+    {
+      "snapshot": "evidence/inputs/firstmate-delivery-gates.json",
+      "repository": "osstack",
+      "commit": "4199d9aadf776042d924a0a307c62aef1a729088",
+      "path": "docs/design/2026-10-26-firstmate-upgrade/delivery-gates.json",
+      "sha256": "f99926b17e44af46574073668b7bfbc05bafe658713b1be75a25b4c54b2b15ff"
+    },
+    {
+      "snapshot": "evidence/inputs/firstmate-sources.json",
+      "repository": "osstack",
+      "commit": "4199d9aadf776042d924a0a307c62aef1a729088",
+      "path": "docs/design/2026-10-25-engineering-agent/sources.json",
+      "sha256": "30cd9f3a810c981ddb13706676af8394f7ec10a3a49bf42b7e52915e93b9b327"
+    },
+    {
+      "snapshot": "evidence/inputs/firstmate-source-additions.json",
+      "repository": "osstack",
+      "commit": "4199d9aadf776042d924a0a307c62aef1a729088",
+      "path": "docs/design/2026-10-26-firstmate-upgrade/source-additions.json",
+      "sha256": "a6508d953b141a03334d792c5a53aecc933eff4e95d7d0fc876e43921e239c8b"
+    },
+    {
+      "snapshot": "evidence/inputs/firstmate-audit-followups.json",
+      "repository": "osstack",
+      "commit": "4199d9aadf776042d924a0a307c62aef1a729088",
+      "path": "docs/reports/2026-10-27-firstmate-roadmap-audit/followups.json",
+      "sha256": "783b7e7297e51ff86c14a9635ae95b79e5b0a744ef972f497ad74818c05c756f"
+    },
+    {
+      "snapshot": "evidence/inputs/pstack-capability-map.json",
+      "repository": "workspace",
+      "path": "docs/reports/2026-10-26-pstack/capability-map.json",
+      "sha256": "465371693560451eb70cee101cd20587e4f4f4d1bf10c43c10749c71448234b0",
+      "version": "revision_2_before_joint_overlay"
+    },
+    {
+      "snapshot": "evidence/inputs/pstack-acceptance-cases.json",
+      "repository": "workspace",
+      "path": "docs/reports/2026-10-26-pstack/acceptance-cases.json",
+      "sha256": "ea6555865ac1478c6ebd10157b7b0f350827d4adba02aba680d65c32a112a25d",
+      "version": "revision_2_before_joint_overlay"
+    },
+    {
+      "snapshot": "evidence/inputs/pstack-revision2-README.md",
+      "repository": "workspace",
+      "path": "docs/reports/2026-10-26-pstack/README.md",
+      "sha256": "14f63ad459e3e9256d53d9aefe81ce66fd1bdc17ebb84acfee0ca43dabd96443",
+      "version": "revision_2_before_joint_overlay"
+    },
+    {
+      "snapshot": "evidence/inputs/pstack-revision2-integration-spec.md",
+      "repository": "workspace",
+      "path": "docs/reports/2026-10-26-pstack/integration-spec.md",
+      "sha256": "e11209a123253ab579f989d813f961cdcf0eece6f7e0b40424fcba345b356d58",
+      "version": "revision_2_before_joint_overlay"
+    },
+    {
+      "snapshot": "evidence/inputs/pstack-revision2-capability-catalog.md",
+      "repository": "workspace",
+      "path": "docs/reports/2026-10-26-pstack/capability-catalog.md",
+      "sha256": "17dd8b9f347bf7c6882d84a5a2d20e8555c136da2311f669c7e39bc71c4931bb",
+      "version": "revision_2_before_joint_overlay"
+    },
+    {
+      "snapshot": "evidence/inputs/pstack-revision2-author-reading.md",
+      "repository": "workspace",
+      "path": "docs/reports/2026-10-26-pstack/author-reading.md",
+      "sha256": "7bdc3c254670dbe7bd20466a3ce199aa61a562d3a4624c896351bdeabe65903f",
+      "version": "revision_2_before_joint_overlay"
+    },
+    {
+      "snapshot": "evidence/inputs/pstack-revision2-validation.md",
+      "repository": "workspace",
+      "path": "docs/reports/2026-10-26-pstack/validation.md",
+      "sha256": "fe93865dbd60b5fb7a150ed87f4a6b9038daec258880287ba3d05449db2b6750",
+      "version": "revision_2_before_joint_overlay"
+    },
+    {
+      "snapshot": "evidence/inputs/firstmate-pilot-scenarios.json",
+      "repository": "osstack",
+      "commit": "4199d9aadf776042d924a0a307c62aef1a729088",
+      "path": "docs/design/2026-10-25-engineering-agent/pilot-scenarios.json",
+      "sha256": "b41c4fb3397922b2354f21f2f100c82e3227dd84522354754ea4be634790108e"
+    }
+  ],
+  "scope": "design_and_executable_spec_only",
+  "runtime_enabled": false,
+  "joint_design_revision": 2,
+  "design_revision": 3
+}

@@ -1,0 +1,55 @@
+{
+  "kind": "open_nonblocking_design_followups",
+  "reviewed_candidate": "6dd4a1b016927c3225a765719db111c0b8d23813",
+  "counts_as_new_work_packages": false,
+  "items": [
+    {
+      "id": "R1",
+      "priority": "P3",
+      "owners": [
+        "DEBT02",
+        "X03"
+      ],
+      "state": "open_planned",
+      "required_before": "DEBT02 contract freeze",
+      "work": "明确 DEBT02 的验收覆盖 broker 孤儿租约，或指定受控的独立处置里程碑。",
+      "acceptance": "真实 broker pending/held orphan 与 owner/代数/静默证明进入恢复负例；其他 home 不可释放。"
+    },
+    {
+      "id": "R2",
+      "priority": "P3",
+      "owners": [
+        "DEBT02",
+        "I04",
+        "C03"
+      ],
+      "state": "open_planned",
+      "required_before": "DEBT02 contract freeze and first C03 migration",
+      "work": "确定 operator 回执是否复用现有 schema；若需迁移，先拆出无循环的 schema 规格和存储前置。",
+      "acceptance": "候选 migration diff、依赖图和真实 hold 验收证明没有 DEBT02↔I04 循环；不能用桩通过。"
+    },
+    {
+      "id": "R3",
+      "priority": "P3",
+      "owners": [
+        "R05"
+      ],
+      "state": "open_planned",
+      "required_before": "delivery-record verifier implementation",
+      "work": "校验 recovery receipt_binding 字段集合，增加缺目标 schema 规格的负例。",
+      "acceptance": "删去 required binding 字段或 schema-spec 依赖后验证失败。"
+    },
+    {
+      "id": "R4",
+      "priority": "informational",
+      "owners": [
+        "I04",
+        "E01"
+      ],
+      "state": "open_planned",
+      "required_before": "slice scheduling review",
+      "work": "评估 home/broker 恢复聚合造成的保守耦合，并对齐 opt-in 的实际宿主资格前置。",
+      "acceptance": "可分阶段交付则不牺牲同 schema 恢复证据；S2 仍不能绕过 V03 测量。"
+    }
+  ]
+}

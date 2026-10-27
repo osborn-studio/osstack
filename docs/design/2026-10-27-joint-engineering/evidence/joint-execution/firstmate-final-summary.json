@@ -1,0 +1,229 @@
+{
+  "candidate": "dd0f8d09687c6d77394771f61102c9685ec33b2c",
+  "steps": [
+    {
+      "name": "lint",
+      "command": [
+        "pnpm",
+        "lint"
+      ],
+      "exit_code": 0,
+      "duration_seconds": 1.172,
+      "log": "final-lint.log",
+      "candidate": "20b4a81dfcffd80b4919643be362dcfcefad7cf5"
+    },
+    {
+      "name": "build",
+      "command": [
+        "pnpm",
+        "build"
+      ],
+      "exit_code": 0,
+      "duration_seconds": 10.117,
+      "log": "final-build.log",
+      "candidate": "20b4a81dfcffd80b4919643be362dcfcefad7cf5"
+    },
+    {
+      "name": "typecheck",
+      "command": [
+        "pnpm",
+        "typecheck:check"
+      ],
+      "exit_code": 0,
+      "duration_seconds": 9.562,
+      "log": "final-typecheck.log",
+      "candidate": "20b4a81dfcffd80b4919643be362dcfcefad7cf5"
+    },
+    {
+      "name": "test",
+      "command": [
+        "pnpm",
+        "test"
+      ],
+      "exit_code": 0,
+      "duration_seconds": 489.069,
+      "log": "final-test.log",
+      "candidate": "20b4a81dfcffd80b4919643be362dcfcefad7cf5"
+    },
+    {
+      "name": "decision-smoke",
+      "command": [
+        "pnpm",
+        "smoke:engineering-decision"
+      ],
+      "exit_code": 0,
+      "duration_seconds": 3.667,
+      "log": "final-decision-smoke.log",
+      "candidate": "20b4a81dfcffd80b4919643be362dcfcefad7cf5"
+    },
+    {
+      "name": "startup",
+      "command": [
+        "node",
+        "scripts/bench-cli-startup.mjs"
+      ],
+      "exit_code": 0,
+      "duration_seconds": 0.865,
+      "log": "final-startup.log",
+      "candidate": "20b4a81dfcffd80b4919643be362dcfcefad7cf5"
+    },
+    {
+      "name": "inventory",
+      "command": [
+        "node",
+        "scripts/generate-inventory.mjs",
+        "--check"
+      ],
+      "exit_code": 0,
+      "duration_seconds": 0.198,
+      "log": "final-inventory-recheck.log",
+      "candidate": "dd0f8d09687c6d77394771f61102c9685ec33b2c"
+    },
+    {
+      "name": "changeset",
+      "command": [
+        "node",
+        "scripts/check-changeset-coverage.mjs",
+        "--base",
+        "origin/main"
+      ],
+      "exit_code": 0,
+      "duration_seconds": 0.066,
+      "log": "final-changeset-recheck.log",
+      "candidate": "dd0f8d09687c6d77394771f61102c9685ec33b2c"
+    },
+    {
+      "name": "python-protocol",
+      "command": [
+        "python3",
+        "-m",
+        "unittest",
+        "discover",
+        "legacy-python/deepseek/tests"
+      ],
+      "exit_code": 0,
+      "duration_seconds": 1.296,
+      "log": "final-python-protocol-recheck.log",
+      "candidate": "dd0f8d09687c6d77394771f61102c9685ec33b2c"
+    }
+  ],
+  "test_packages": {
+    "packages/compliance": {
+      "passed": 17,
+      "failed": 0,
+      "skipped": 0
+    },
+    "packages/contracts": {
+      "passed": 15,
+      "failed": 0,
+      "skipped": 0
+    },
+    "packages/github": {
+      "passed": 107,
+      "failed": 0,
+      "skipped": 0
+    },
+    "packages/knowledge": {
+      "passed": 44,
+      "failed": 0,
+      "skipped": 0
+    },
+    "packages/protocol": {
+      "passed": 286,
+      "failed": 0,
+      "skipped": 0
+    },
+    "packages/neat-eval": {
+      "passed": 16,
+      "failed": 0,
+      "skipped": 0
+    },
+    "packages/runtime": {
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0
+    },
+    "packages/governance": {
+      "passed": 301,
+      "failed": 0,
+      "skipped": 0
+    },
+    "packages/knowledge-cloud": {
+      "passed": 36,
+      "failed": 0,
+      "skipped": 0
+    },
+    "packages/graph": {
+      "passed": 257,
+      "failed": 0,
+      "skipped": 0
+    },
+    "packages/core": {
+      "passed": 973,
+      "failed": 0,
+      "skipped": 0
+    },
+    "packages/skill-registry": {
+      "passed": 3,
+      "failed": 0,
+      "skipped": 0
+    },
+    "packages/hermes-adapter": {
+      "passed": 22,
+      "failed": 0,
+      "skipped": 0
+    },
+    "packages/plugins": {
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0
+    },
+    "packages/skills": {
+      "passed": 2,
+      "failed": 0,
+      "skipped": 0
+    },
+    "packages/autonomy": {
+      "passed": 201,
+      "failed": 0,
+      "skipped": 0
+    },
+    "packages/agents": {
+      "passed": 361,
+      "failed": 0,
+      "skipped": 0
+    },
+    "packages/config": {
+      "passed": 30,
+      "failed": 0,
+      "skipped": 0
+    },
+    "packages/loop": {
+      "passed": 515,
+      "failed": 0,
+      "skipped": 0
+    },
+    "packages/supervisor": {
+      "passed": 88,
+      "failed": 0,
+      "skipped": 0
+    },
+    "packages/conformance": {
+      "passed": 9,
+      "failed": 0,
+      "skipped": 0
+    },
+    "packages/cli": {
+      "passed": 2747,
+      "failed": 0,
+      "skipped": 5
+    }
+  },
+  "totals": {
+    "passed": 6032,
+    "failed": 0,
+    "skipped": 5
+  },
+  "test_log_sha256": "73ea2bbb7c2f74adf1879a31734d2ce08699d5d0d3cfbe3c6eacb4e5be509793",
+  "all_steps_passed": true
+}

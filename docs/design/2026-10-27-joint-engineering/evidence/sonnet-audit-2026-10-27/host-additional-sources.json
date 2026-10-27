@@ -1,0 +1,50 @@
+[
+  {
+    "repository": "osstack",
+    "commit": "daad404e00c000247fdfb2adda13127c4c1c8e26",
+    "path": "packages/graph/src/legacy/code-delivery-v4.ts",
+    "sha256": "95add8856e1a8a9c05c042caf8c6a3a8cb380fd185871d9d9ab4c89851394061",
+    "bytes": 13832,
+    "purpose": "Verify permit invocation unit against frozen implement/review and retry slots"
+  },
+  {
+    "repository": "osstack",
+    "commit": "daad404e00c000247fdfb2adda13127c4c1c8e26",
+    "path": "packages/graph/src/templates/code-delivery-v1.ts",
+    "sha256": "823ec9917c77b8b090350c6b422e3200af267c90263bd24b6c8fdd208dc9dfdd",
+    "bytes": 1891,
+    "purpose": "Verify permit invocation unit against frozen implement/review and retry slots"
+  },
+  {
+    "repository": "osstack",
+    "commit": "daad404e00c000247fdfb2adda13127c4c1c8e26",
+    "path": "packages/graph/src/registry.ts",
+    "sha256": "4a0e27f10756fbc64099ac02a8db182e8611637ac03015b1438d77588e4a0484",
+    "bytes": 222,
+    "purpose": "Verify permit invocation unit against frozen implement/review and retry slots"
+  },
+  {
+    "repository": "osstack",
+    "commit": "daad404e00c000247fdfb2adda13127c4c1c8e26",
+    "path": "packages/core/src/state/db.ts",
+    "sha256": "bda761c2999f90292d546b6b871ad83567b851cc605767d6d6cc12417f183fee",
+    "bytes": 6927,
+    "purpose": "Locate actual schema registration and lineage ownership"
+  },
+  {
+    "repository": "osstack",
+    "commit": "daad404e00c000247fdfb2adda13127c4c1c8e26",
+    "path": "packages/core/src/state/migrations.ts",
+    "sha256": "0cc34dcc37827eb56d6aa5b8627be927dc410428fa43593ba3bea4d89a79237b",
+    "bytes": 89613,
+    "purpose": "Locate actual schema registration and lineage ownership"
+  },
+  {
+    "repository": "osstack",
+    "commit": "daad404e00c000247fdfb2adda13127c4c1c8e26",
+    "path": "packages/core/src/state/schema.ts",
+    "sha256": "c021a832b9334503ebeda27ae5fe24eb3d84139fe1bb1df66b846260e9a8ebb5",
+    "bytes": 21064,
+    "purpose": "Locate actual schema registration and lineage ownership"
+  }
+]

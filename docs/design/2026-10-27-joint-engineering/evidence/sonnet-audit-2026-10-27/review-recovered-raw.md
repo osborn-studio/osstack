@@ -1,0 +1,268 @@
+REVIEW_BEGIN
+
+# Firstmate × pstack → OSStack 联合设计：独立外部审查（本版）
+
+## 总体判定：**REVISE**
+
+- 没有 P0。有 5 条 P1，都出在共享契约和 gate 责任上，会让两个独立实施者得到不兼容的实现，或让关键 gate 无人负责。
+- 方向和边界本身站得住：架构 C、INV01–INV12、规划与实现分离的状态标签、`observed_turn` 与 `local_verified` 分层。这些我没有发现需要推翻的地方。
+- 需要修订的是规格的完备性（摘要、持久化、profile、schema 冻结归属）、验收对来源负例的覆盖，以及校验器的盲区。
+- 本版没有继承任何历史审计的通过结论。我只对输入文件做静态对照，没有运行任何代码。修订建议以 errata/追加修订的方式提交，保留原文。
+
+---
+
+## 发现
+
+### RV01 ｜P1｜摘要与规范化没有可复现的定义，`binding_digest` 无来源
+- **位置**：`contracts.md` §2 身份表（MethodBinding 行）、"新增对象摘要使用宿主现有 canonical JSON 规则"；`contract.schema.json` 的 `method_binding`、`artifact.binding_digest`、`context_receipt.binding_digest/required_artifacts_digest/context_config_digest`。
+- **证据**：
+  - 身份表称 MethodBinding 由 4 个摘要构成，但 schema 的 `method_binding` 还有 `task_id/source_snapshot_digest/recipe_version/authorization_ref`。
+  - 任何 schema 都没有 `binding_digest` 字段，artifact 和 receipt 却在引用它。
+  - "现有 canonical JSON 规则"指代不明。基线至少有 `deliveryContractDigest`：键用 `localeCompare("en")` 排序，没有 domain separator。ADR-09/12 又要求 RFC 8785。`workerCanonical` 和 `attentionDigest` 另有实现，本输入没给源码，不知是否等价。
+  - 基线里 `context_config_digest` 实际是配置文件原始字节的 sha256（`graph-contract-host.ts`：`digest(readBounded(path,false))`），但 §2 把它描述为"模板版本、方法字节摘要、预算……"的内容摘要。
+  - `required_artifacts_digest`、`support_profile_digest` 同样没有输入定义。
+- **反例**：实施者 A 对 4 个摘要做 RFC 8785 后哈希，B 复用 `deliveryContractDigest` 并带上 6 个字段，各自通过自己的 fixture。host 校验 `artifact.binding_digest` 时必然不一致。ICU 与码点序对 `a_b`/`a0b` 这类键的顺序也不同。
+- **最小修订**：
+  - 新增 digest 规格：每类摘要的 domain tag、字段集合、数组元素排序键、重复键处理、null 与缺失的区分，并选定一种 canonicalizer。
+  - 定义 `binding_digest` 并补进 schema。
+  - 说明 `context_config_digest` 是文件字节摘要还是规范化内容摘要。
+- **验收**：仓库提供带期望 hex 的测试向量，每类摘要至少含正例、字段重排、重复键、null/缺失各一例，两个独立实现输出一致。校验器要求每个 `*_digest` 字段在规格中都有定义条目。
+
+### RV02 ｜P1｜方法绑定、许可、资格、产物清单的持久化和迁移没有责任人，且与 INV10 排序冲突
+- **位置**：`work-packages.json` 的 J04/J07/J08/J10 `write_paths`；`contracts.md` §6–§7；`architecture.md` INV10、JADR07；`validate-design.py` 的共享写检查。
+- **证据**：
+  - JA16/17/19 的 oracle 需要"授权 lookup""registry 前后""旧 run A 的固定 binding"，即持久且原子的状态。
+  - J08/J10 只写 `method-admission.ts` 和 `skill-registry/recipe-qualification.ts`，没有任何 J 写 `core/state` DDL 或 `migrations.ts`。
+  - skill-registry 的现有持久层是 `manifest.ts` 的 YAML，文件头写着 "Hand-edits are fine"，不事务、可手改。
+  - J13（控制器表）、J17（`resource-leases.ts`）、J21/J22（子主管、承诺）同样没有声明 `migrations.ts`/`db.ts`。
+- **反例**：
+  - 若许可和资格落 SQLite，就是新 migration。J08/J10 与 J12（恢复构建）没有先后关系，违反 INV10"迁移前先有目标 schema 的恢复入口"和 delivery-gates 的 `before_new_schema: I04.compat_recovery`。
+  - 若落 YAML，`max_invocations:1` 的单次消费不是原子的，进程崩溃重放可二次调用。
+  - 共享写校验器只比对声明的路径，看不到 `migrations.ts` 这个真正的热点。
+- **最小修订**：
+  - 决定这些对象的权威存储，并指定 owner。
+  - 若用 DB，把它们并入 J11 的目标 schema 冻结，且排在 J12 之后；若用文件，规定原子创建和读回协议，并禁止手改作为权威。
+  - 所有会改 schema 的 J 项把 `migrations.ts`/`db.ts` 写进 `write_paths`。
+- **验收**：校验器检查"含 DDL 的 J 项必须声明 migrations 路径，且依赖闭包含 J12"。新增 JA：许可单次消费在崩溃点重放不会二次 invoke。
+
+### RV03 ｜P1｜`trial_permit` 约束不足，无消耗语义
+- **位置**：`contract.schema.json` 的 `trial_permit`；`contracts.md` §6；JA16/JA17。
+- **证据**：
+  - `expires_at_ms` 和 `max_wall_ms` 只有 2^53−1 上限，校验器只检查 expires>issued。
+  - `contracts.md` 说许可绑定"预算"，JA17 要改"预算 B"后拒绝，schema 却只有 `max_wall_ms`，没有调用或成本预算引用、tenant、adapter 或 executor 字段。
+  - `issuer_ref/authorization_ref` 是任意字符串，"planner 不得自签"无字段层约束。
+  - JA16 是"先失败试跑再成功试跑"，但 `max_invocations` 固定为 1。失败是否消耗许可、需不需要新 permit、消耗的原子点在哪，都没有规定。
+- **反例**：`expires_at_ms=9007199254740991` 通过 schema 和校验器，许可等于永久。换预算后 permit 不变，JA17 的预算分支无法检测。
+- **最小修订**：
+  - 增加 TTL 上限、预算引用、tenant 字段。
+  - 规定 issuer 必须是受信 operator 主体，及其验证方式。
+  - 规定"消耗 = 在 admission 同一同步事务内写 effect_id 绑定的消耗记录，先于 raw invoke"，失败即消耗。
+- **验收**：JA17 增加换预算和 TTL 超限变体。新增 JA：崩溃重启后同 permit 第二次 invoke 次数为 0。
+
+### RV04 ｜P1｜`support_profile_digest` 对象未定义，且生产者排在消费者之后
+- **位置**：`contract.schema.json`（`method_binding`、`trial_permit`、`recovery_receipt`）；`work-packages.json` 中 J23 与 J04/J08/J09 的依赖。
+- **证据**：
+  - 三个 schema 都要求 `support_profile_digest`，文档没有定义 profile 的字段集合。`contracts.md` §6 只列了 10 个应保留的 digest 名称，没说这个摘要由什么构成。
+  - 它的生产者是 J23（`host-support-matrix.json`），依赖只有 J01、J03。J08/J09 不依赖 J23，J23 也不是它们的前置。
+  - Firstmate E01 对 profile 的要求（actor/tenant/repo identity、允许操作、隔离能力、adapter/host 版本）没有在联合契约里重述。
+- **反例**：J09 做首个受限试验时必须填 `support_profile_digest`，但 J23 的矩阵尚不存在。实施者只能各自发明 profile 内容，摘要互不兼容；`recovery_receipt` 里同一字段又被另一类实施者按不同语义使用。
+- **最小修订**：
+  - 在 J01 的 schema 层定义 `SupportProfile` 对象（字段、tuple 键）。
+  - 定义"试验前未测量"的占位态，如 `measured:false` 并含在摘要内，使 J08/J09 可用。
+  - J23 只填充测量结果，不重定义形状。
+- **验收**：fixture 含一个 profile 对象及其期望摘要。校验器检查被引用的 digest 都有定义，且生产者在依赖闭包中不晚于消费者。
+
+### RV05 ｜P1｜目标 schema 冻结没有 owner；`recovery_receipt` 丢了 gate 要求的绑定字段；`delivery-gates.json` 里程碑图无人校验
+- **位置**：`work-packages.json` 的 J11/J12/J13；`legacy-work-map.json` 的 FM:C03、FM:I04；`contract.schema.json` 的 `recovery_receipt`；`evidence/inputs/firstmate-delivery-gates.json`；`validate-design.py`。
+- **证据**：
+  - Firstmate 的 `C03.schema_spec`、`X03.schema_spec` 要求先冻结实际目标 schema 号、DDL 摘要、fixture 摘要。联合计划里没有 J 项的 outputs 含它们。FM:C03 只映射到 J13，J11 的写路径只是 operator-recovery-schema。
+  - `receipt_binding` 要求 6 项：`actual_target_schema/ddl_digest/fixture_digest/recovery_build_digest/candidate_sha/support_cell`。联合 `recovery_receipt` 只有 `schema_spec_digest`、`recovery_build_digest`、`support_profile_digest`，缺目标 schema 号和 `candidate_sha`。
+  - `validate-design.py` 从不读取 `delivery-gates.json`，里程碑级 gate（含 `release_requirements`）完全不受校验。
+- **反例**：J11 冻结"恢复回执表"的 fixture，J12 据此做恢复构建并通过。J13 随后以迁移号 N+1 同时新增预算、计划、effect 等控制器表。J12 的恢复构建读不懂这些表，却已满足 `I04.compat_recovery`。升级后这些表里的未知 hold 无法恢复，而 gate 显示"已满足"。
+- **最小修订**：
+  - J11 的 outputs 明确包含 `engineering-goal-storage-v1` 与 `host-resource-broker-v1` 两个 schema_change_id 的冻结。
+  - `recovery_receipt` 补 `actual_target_schema` 与 `candidate_sha`。
+  - 把 delivery-gates 里程碑到 J 的映射机器化，校验 J 层闭包不弱于被映射的 gate。
+- **验收**：删去 J11 的任一冻结输出或 J13→J12 依赖时校验器失败。JA47 增加按缺失 `candidate_sha`、`actual_target_schema` 的变异。
+
+### RV06 ｜P2｜方法材料进入 Graph 启动输入摘要的机制未定，JADR10 问错了问题
+- **位置**：`architecture.md` JADR10；`contracts.md` §3；`reconciliation.md` O02；基线 `graph-contract-host.ts`、`graph-delivery-contract.ts`。
+- **证据**：
+  - Graph 启动输入由 `envelopeSchema`（`.strict()`）的摘要决定，唯一的上下文槽是 `contextDigest = 配置文件字节摘要`。
+  - 配置路径被 `relative(repository,path)` 强制限定在 canonical repository 内。
+  - `verifyGraphContractEnvelope` 在恢复时重算 envelope 并要求规范相等。因此任何新增的绑定值必须能由 registration 在重启时确定性重算，不能含随时间变化的许可状态。
+  - O02 只担心"Graph v4 拓扑变化"，没提这一点。
+- **反例**：若 `method_brief` 随 goal/scope 变化（`compileMethod` 输入含 intent），则每个任务需要一份不同的配置文件，只能写进用户的 canonical repo，污染工作树。若改用静态配方文本，绑定就不含任务。若给 envelope 加字段，旧 verify 因 `.strict()` 拒绝，且重启重算要有来源。
+- **最小修订**：J04 先在规格里定死三选一：方法文本按配方静态、envelope 版本化新增字段，或配置在 host 目录，并写出重启时的重算来源。
+- **验收**：JA46/JA08 增加重启后重算 envelope 与持久 envelope 规范相等的断言，以及"canonical repo 在整个流程中保持 clean"。
+
+### RV07 ｜P2｜恢复回执的对象标识与试点遗留 hold、broker 租约不匹配，证明要求按决定未分化
+- **位置**：`contract.schema.json` 的 `recovery_receipt`；`contracts.md` §7；`work-packages.json` 的 J11/J12。
+- **证据**：
+  - 回执只以 `effect_id` 标识被恢复对象。`effect_id` 由未来 C03/C04 引入。
+  - DEBT02 要覆盖的试点 hold 在基线里以 `action_id/message_id/mission_id/stop_intent_id` 标识。
+  - broker 租约没有 lease 标识字段。
+  - `decision` 四个值对应的 `proof_refs` 类型要求没有区分；`proof_refs` 只是 `minLength:1` 的字符串数组。`proven_stopped` 与 `preserve_unknown` 用同样形状的证据即可通过。
+  - 唯一的合法 fixture 是 `preserve_unknown`。
+- **反例**：操作员对一个已有 `dispatch_committed` 的试点动作无法写出合法回执，因为它没有 `effect_id`。有人会自造映射，各实现不同。
+- **最小修订**：J11 spec 增加"遗留对象 → 恢复对象键"的映射表，回执用带类型的 `subject`（`attention_action`/`effect`/`broker_lease`）。按 `decision` 规定 `proof_refs` 的类型化最低集合。
+- **验收**：fixture 含 `attention_action` 类型的合法例，以及 `proven_stopped` 缺停止证明类型的拒绝例。
+
+### RV08 ｜P2｜schema 约束与宿主现有约束不一致，且文档没给出弥补规则
+- **位置**：`contract.schema.json` 的 `check_binding/context_receipt/artifact/source_pin`；`contracts.md` §4。
+- **证据**（对照基线 `graph-delivery-contract.ts`）：
+  - 主检查：宿主按 `request.spec.input.acceptanceRef` 与 `AcceptanceCommandSpec.ref` 匹配。联合契约却用 `primary_id`（check id），`acceptanceRef` 与 `id/registry_ref` 的映射未定义。
+  - `registry_ref` 在宿主是 `sha256:`+64 hex，schema 只要求非空。
+  - 宿主限制 ≤16 项检查、命令总字节 ≤16384，`check_binding` 没有 `maxItems`，文档也没提。
+  - `context_receipt.prompt_bytes` 上限 65536，宿主配置允许到 1,000,000。
+  - `task_id` 上限 256，宿主 `Id` 为 512。
+  - `candidate.base_head/head/tree` 无 hex 模式。
+  - `source_pin.subdir` 的路径语法只由校验器实现：拒绝绝对路径、`\`、`..` 段、NUL。空段、`./`、尾斜杠、控制字符仍通过。联合契约没有写路径语法，旧 pstack 规格里有。
+  - 各 kind 的 `repository` 含义不同（URL 与 canonical 路径），未区分。
+- **反例**：17 个 required checks 通过 schema 和校验器，host 才在 admission 报 `GRAPH_CONTRACT_CHECK_LIMIT`。`subdir:"pstack//x\n"` 通过校验。
+- **最小修订**：在 contracts 写明上述约束的权威（引用宿主常量），schema 加 `pattern/maxItems/maxLength`，补路径语法条款，并写清 `primary_id` → `acceptanceRef` 的映射。
+- **验收**：每条新增约束对应一个拒绝 fixture。保留旧 A10（17 项检查）等价的 JA 变体。
+
+### RV09 ｜P2｜pstack 来源负例在联合验收中被降格；旧 A01–A48 无归属
+- **位置**：`acceptance-cases.json` 的 JA41/JA30/JA14/JA45；`capability-map.json` 的 PS06/PS12/PS18/PS22；`reconciliation.md` §1。
+- **证据**：
+  - 联合文档称旧 A 场景"保持原状态"，J 项只引用 JA，校验器完全不读 A。
+  - PS18 的核心负例"BLOCKED/UNKNOWN 不产出 permit"（旧 A27/A28，也是 R1/R2 探针的发现）。JA41 的 then 只说"组合失败阻止推进"，没有这条断言。
+  - PS06 的"可信 blocking finding 未处理阻止完成"（A17）：JA14（缺 review 产物）和 JA45（reported identity、假设当事实）都不覆盖它。
+  - PS12 的"新规则能抓历史错误且不误伤正常例"（A29）：JA30 只测隔离和 candidate 状态。
+  - 另有无对应 JA 的旧项：A10（17 项检查）、A19（默认关闭与启动预算）、A20（调查不得绑定 implement）、A16（worker 自报不覆盖可信 failed）。
+- **反例**：实现 `ready` 分类器时对 BLOCKED+REVIEW_REQUIRED 仍输出 ready，JA41 的 then 仍可通过，因为它只验组合候选。
+- **最小修订**：每个 A 场景明确为"继承到 JAxx"或"废弃并说明理由"，并给每个 J 项加 `inherited_acceptance`。补 JA：BLOCKED/UNKNOWN 无 permit、未处理 blocking finding 阻止完成、历史坏例/正常例的敏感性与特异性。
+- **验收**：校验器要求 48 个 A 场景各有归属，且 PS06/PS12/PS18 的 negative_cases 在某 JA 的 then 或 bad_variant 中可追溯。
+
+### RV10 ｜P2｜FM 能力的 `negative_cases` 与验收之间没有追溯
+- **位置**：`capability-map.json` 的 `negative_cases/acceptance_ids`；`acceptance-cases.json`。
+- **证据**：
+  - FM-04 的负例"超时、来源消失、无关事件解除决定"，只映射到 JA05（夹具回答和清理）和 JA27（取消与派发竞争），都不覆盖。JA25（Q1 不清 Q2）的 `capabilities` 不含 FM-04。
+  - FM-05 的"游标 gap、事件洪水"：JA22/JA31 是重放和空轮询，不覆盖。
+  - FM-19 的"SSH 返回码冒充事务、漏父回执"：JA32 的 bad_variant 是窗口标题和断连，不覆盖。
+  - FM-23 的"能 push 就自动 merge/deploy"：JA33/JA38 是外部文本和灰度，只靠 `method_binding` 的 `publication/merge` 常量，没有层级分离测试。
+  - `negative_cases` 是自由文本，校验器的对称检查只比对 `capabilities` 字段，无法发现这类缺口。
+- **反例**：把"超时即清除 wait"实现进控制器，48 个 JA 全部仍可通过。
+- **最小修订**：给 negative case 编号，JA 增加 `covers_negative_ids`，补 FM-04/05/19/23 的缺失 JA。
+- **验收**：校验器检查每个 negative id 至少被一个 JA 引用，且该 JA 的 `bad_variant` 非空。
+
+### RV11 ｜P2｜产物种类从 10 缩到 5，PS02/PS07/PS13 失去载体
+- **位置**：`contract.schema.json` 的 `artifact.artifact_kind`；`evidence/inputs/pstack-revision2-integration-spec.md` §4.7。
+- **证据**：
+  - pstack 修订 2 定义了 10 种：`intent_frame/grounding/impact_map/verification_plan/review_dispositions/decision_trail/feature_map/experiment_result/usage_sketch/prototype_decision`。
+  - 联合 schema 只有 `intent_frame/reproduction/candidate_checks/independent_review/cleanup_receipt`。
+  - 没有任何说明去向。
+  - PS02 的 fact/inference/unknown、PS07 的"关键前提→检查/证据"、PS13 的 supersedes 追加记录、PS04/PS08 的原型决定与功能地图，都没有 schema 可表示。
+- **反例**：J06 产出功能地图和调用草图，J07 的 `required_artifacts` 却无法声明它们，各实施者自加 `kind`，host 的 enum 拒绝。
+- **最小修订**：明确哪些 kind 属于"host 消费产物"（5 种），哪些属于"方法材料，不进入 gate"（其余），并为后者保留 schema 或声明由哪个 J 项在何时定义。
+- **验收**：每个 `PS` 能力的 `observable_result` 涉及的产物类型都能在 schema 或明确的延后条目中找到。
+
+### RV12 ｜P2｜"收益不明则停止"没有阻塞边，JA36 的 When 与依赖闭包不符
+- **位置**：`work-packages.json` 的 J25/J05/J07/J08/J10；`verification-spec.md` E0/E1；`implementation-plan.md` §2；`acceptance-cases.json` 的 JA36。
+- **证据**：
+  - J25 `depends_on:[J03]`，其 outputs 写"J09 就绪后做配对 A/B"，这个先后只在文字里。
+  - JA36 的 When 是"运行 baseline/P"，需要 J09 之后的方法，J25 的闭包里没有 P。
+  - E0 的"关键边界失败先修工具，不开始大规模 recipe 平台"也无机器边。
+  - J05/J07/J08/J10/J16 不依赖 J25 的结果，全部可在价值未验证时先建成。
+- **反例**：E1 结果为"无收益"，J25 的 rollback 写着"缩减方法"，但 J10、J16 的依赖图不受影响，仍会按计划合并。J27 才间接受 J32→J25 约束。
+- **最小修订**：拆出 `J25a`（基线，仅依赖 J03）和 `J25b`（A/B，依赖 J09）。加 gate：J10 起 `depends_on` 含 J25b 的"继续/缩减/停止"决定记录，决定规则预先登记。
+- **验收**：校验器检查 `J25b` 在 J10、J16、J18、J19 的闭包中，且 JA36 的 owner 闭包含 J09。
+
+### RV13 ｜P2｜实验阈值在拟定样本量下统计上不可达，决策几乎恒为"不确定"
+- **位置**：`verification-spec.md` §4 E1/E2/"拟议继续阈值"；JA36/JA40/JA43。
+- **证据**：
+  - 完成率提升至少 5pp。E2 为 40 个配对任务，5pp 等于净 2 个任务。
+  - 对配对二分类精确 McNemar，对侧不一致为 0 时，6 个净改进（15pp）才勉强 p≈0.031，5 个为 0.0625。
+  - 设不一致对占 20%，检出 5pp（80% 功效）约需 600 对（估算，假设如此）。
+  - 重复运行不是独立任务。p95 在 40 个样本里是第 38 个次序统计量，1.2× 约束无法判定。
+  - 文档把"是否足够"留给预登记，但没给出样本量依据。
+- **反例**：真实有效的 +5pp 在 E2 里几乎一定落入"区间跨越门槛→保留 opt-in"，J27 的默认启用永远无法通过，而这是设计造成的，不是产品问题。
+- **最小修订**：预登记时先做功效估算，或者把默认启用门槛改成"保护指标无退化 + 非劣效边界"，把 5pp 改成可达的效应量或序贯/贝叶斯规则。
+- **验收**：E2 协议附功效计算，并声明该设计能检出的最小效应量。
+
+### RV14 ｜P2｜24 个 FM 的 `semantic_difference` 是同一句样板，Firstmate 的监督角色分区与"结果由脚本而非模型回报"原则无落点
+- **位置**：`capability-map.json` 所有 FM 行；`architecture.md` INV01–INV12；对照 `fm-lease-lib.sh`、`secondmate-parent-channel.md`、`fm-send.sh`。
+- **证据**：
+  - 24 行全部写"复用 OSStack daemon/attention/合同权威；不复制上游 per-task 监督租约或直接脚本权限"。
+  - 来源明确有三类行为：
+    - 角色分区：`fm_lease_forbid_branch`，监督分支不得合并、派发、回答决定、退役 secondmate，并有 away 记录下的授权转移。
+    - 子主管结果须由持久脚本发布，因"parent channel 不得依赖模型记得写"，teardown 在最终行未送达时拒绝。
+    - 回答在入队时关闭决定（answerer-closes）。
+  - INV 里没有对应条款。联合设计没有说明控制器或 planner 是否可以回答决定，以何种 principal。
+- **反例**：J13/J15 让 planner 在 `owner_principal` 的 write scope 下"代答"含糊决定。JA25 的 Then 只要"含糊不猜、绑定具体 question"，不禁止控制器自批。
+- **最小修订**：逐能力写差异（保留、替换、拒绝），新增 INV：非人类主体不得执行决定回答或扩大授权的动作，子任务结果由持久记录而非模型叙述发布，并说明与 Firstmate away 转移的差异。
+- **验收**：FM-03/08/10/17/19 各有独立的 `semantic_difference`。至少一个 JA 断言"控制器回答决定"被拒绝，以及"子主管终态缺持久回执时 teardown 被拒绝"。
+
+### RV15 ｜P2｜来源台账失真：读取深度被统一抹平，部分上游条目未固定
+- **位置**：`sources.json` 的 `inspection`；`capability-map.json` 的 `source_refs`；`evidence/inputs/pstack-revision2-capability-catalog.md`。
+- **证据**：
+  - 原始 Firstmate 台账区分 `contract_read/contract_excerpt` 与 `path_and_hash_verified/inventory_only`。联合 `sources.json` 的 148 条 Firstmate 锚点全部改写成 `inherited_anchor_rehashed_this_turn_not_new_full_read`，读取深度丢失。
+  - 例如 FM-01 的 `source_refs` 含 `FM:ADD-014`，原台账里它是 `inventory_only`，现在看起来与 `contract_read` 项等价。
+  - pstack 目录列有 58 个技能和 23 个 playbook。联合只固定了 58 个 PS 文件，`tdd`、`multi-phase-plan`、`opening-a-pr`、`runtime-forensics`、`trace-forensics`、`visual-parity`，以及除 `explain-the-number` 外的 23 个 principle 技能，既没有固定，也不在任何能力的 `source_refs` 中。
+  - 校验器只验 `source_refs ⊆ sources`，不检验闭包。
+- **反例**：bug-fix 方法的 playbook 步骤 5 引用 `tdd` 技能，方法文本的"廉价明显路径先写回归测试"来源不在 pin 里，漂移不会触发 candidate。
+- **最小修订**：恢复 `inspection` 的原值并增加 `usage`。给 pstack 目录项补"能力归属或显式排除"，必要的补 pin。
+- **验收**：校验器检查目录里每个条目要么在某个能力的 `source_refs`，要么在 `excluded_sources` 中并带理由。
+
+### RV16 ｜P2｜若干遗留验证类任务被强行映射到不相干的 J 项，实际无人负责
+- **位置**：`legacy-work-map.json` 的 FM:R04、FM:V01、FM:V02、FM:V05；`work-packages.json` 的 J03/J06/J16/J20/J23/J28。
+- **证据**：
+  - FM:R04（24+8 项行为 fixture、来源映射、毒化原文不改变授权）→ J03、J16。J03 是 `session-answer-receipt` 驱动夹具，J16 是联合旅程。
+  - FM:V01（独立状态模型与攻击语料）→ J03/J16/J28（J28 是 TLA+ 试点）。
+  - FM:V02（变异与故障注入 CI）→ J16/J23。
+  - FM:V05（中英文文档与示例逐条执行）→ J06/J20。
+  - `verification-spec.md` §2 要求 fast-check 模型测试、故障注入、"每个坏变体必须被杀死"，但没有 J 项构建这套 harness。
+  - 校验器只检查 `joint_work_items` 非空。
+  - `reconciliation.md` §5 写"后续 J02/R03/R04 继续维护源码覆盖"，R03/R04 是旧 ID，没有 J 落点。
+- **反例**：J16 完成后，"24 项行为 fixture 与毒化测试"和"变异杀死率报告"全无产出，但映射表显示这些任务已被覆盖。
+- **最小修订**：新增 J 项（或扩展某 J 项的 outputs）：行为抽取与 fixture 管线（R03/R04）、模型测试与变异 harness（V01/V02）、文档示例执行（V05），并写明各自在哪个里程碑前必须完成。
+- **验收**：每个遗留任务的 acceptance 在某 J 项的 `outputs` 中字面可追溯。校验器检查 legacy→joint 映射的每个任务描述关键词与目标 J 项的 title/outputs 相交。
+
+### RV17 ｜P2｜校验器会放过哪些关键坏设计
+- **位置**：`validate-design.py`、`test_validate_design.py`、`fixtures/contracts.json`。
+- **证据**与可复现变异：
+  1. 把 J27 的 `depends_on` 置空，或去掉 J14 对 J23 的依赖：DAG、共享写顺序、验收归属、遗留依赖复制都不变，全部通过。校验器从不比对 J 层依赖闭包与任何 gate 清单。
+  2. 把 `trial_permit.max_invocations` 的 `const:1` 改成 `integer`，或删除 digest 的 `pattern`，或放宽 `method_bytes` 上限：valid fixture 仍合法，负例 fixture 只覆盖未知字段、缺一必填、几个 const 与语义检查，不会失败。
+  3. 48 个 JA 的 `required_evidence` 逐字相同；校验器只检查非空，因此无法发现 evidence 与 case 不匹配。
+  4. 不解析 `implementation-plan.md` 的 mermaid，也不核对 `pr.key == JP-<id>`、`requires_further_pr_slicing` 与 `phase` 的一致性。
+  5. 不检查 capability-map 与 legacy-map 之间的一致性。
+- **最小修订**：
+  - 在 validator 中加入 gate 清单到 J 依赖的机械检查。
+  - 每个 schema 约束至少有一个单约束违反的负例（变异测试：删掉每个约束，必须有负例变红）。
+  - `required_evidence` 要求 case 特异。
+  - 解析 mermaid，要求其边是 JSON 边的子集。
+- **验收**：新增的上述变异各自让 `test_validate_design.py` 失败。
+
+### RV18 ｜P3｜校验器的静默跳过与复现前提不一致
+- **位置**：`validate-design.py` 的 `validate()` 与 `main()`；`README.md` 复现章节；`test_validate_design.py::test_frozen_audit_archive`。
+- **证据**：
+  - `validate()` 对 `docs/reports/2026-10-26-pstack/capability-map.json` 用 `if current_path.exists()`，缺失时静默跳过 pstack 完整映射漂移检查。
+  - `main()` 却无条件调用 `verify_historical_audit`，缺同一目录会 `FileNotFoundError` 并退出 1。
+  - README 只声明需要 Python 3 与 `jsonschema`。
+- **反例**：仅 checkout 本设计目录时命令行失败，但在 `validate()` 被导入使用时跳过检查，结果取决于环境而不是设计。
+- **最小修订**：缺失即失败，或显式 `--skip-historical` 并在输出里列出 `skipped`。README 写清额外前置。
+- **验收**：删除 reports 目录后两种入口都给出一致、明确的"缺失"结论。
+
+---
+
+## 四个重点维度的覆盖情况
+
+| 维度 | 覆盖 | 说明 |
+|---|---|---|
+| 来源行为是否遗漏/降格；语义覆盖而非映射非空 | 已对 48 项逐项比对 JA 的 given/when/then/bad_variant | 结论见 RV09–RV11、RV14–RV16。映射非空且双向对称，但至少 10 个来源负例没有断言。上游大文件被省略，FM-02/04/05/10/19 的上游细节只能依据 capability-map 的转述和 `architecture.md`/`secondmate-parent-channel.md` 文本 |
+| 共享契约、strict schema 与文字一致性；是否给足完整约束 | 已逐字段对照 `contracts.md`、schema、fixture、基线 `execution-context/graph-*` 源码 | 结论见 RV01、RV03–RV08。把 schema 视为投影是可接受的，但摘要、profile、许可、路径语法、宿主常量这些该由文字给出的约束缺失 |
+| 里程碑/任务依赖、PR 计划、图表与 gate | 已核对 `work-packages.json`、`work-package-index.md`、mermaid 与文字；手工检查了共享写路径对（J04/J14、J05/J08、J10/J19、J12/J13、J15/J17/J20、J09/J30、J14/J21） | J01–J32 的 `depends_on` 与索引一致，mermaid 边是 JSON 边的子集，除 `migrations.ts` 外共享写已有序。问题见 RV02、RV04、RV05、RV12、RV16 |
+| 验收可证伪性与校验器盲区 | 已通读 48 个 JA、`verification-spec.md`、`validate-design.py` 与 27 个测试名 | 结论见 RV12、RV13、RV17、RV18。多数 JA 的 bad_variant 与 oracle 具体、可证伪；弱点在语义评估类缺少 rubric 版本与通过线（JA12/JA45），以及校验器本身 |
+
+## 真正不确定的项
+
+1. **迁移注册位置与 `attention_dispatch_holds`**：我没有看到 `migrations.ts` 的当前内容，不确定 ADR-16 提到的 `attention_dispatch_holds` 是表名还是概念名。基线 `engineering-ddl.ts` 里只有 `attention_dispatch_phases`，`engineering-upgrade-guard.ts` 按该表行计数。
+2. **canonicalizer 等价性**：`workerCanonical`、`attentionDigest` 的实现没有给出，RV01 只能判断"未指明"，不能判断它们一定不等价。
+3. **校验器与测试的实际执行**：未见 `evidence/design-checks.json`、`validator-tests.log`。`validation.md` 声称的"27 tests passed"我只核对了测试名数量一致（27），没有复核通过。
+4. **来源计数**：我手数了 `sources.json` 的 225 条 id，与声明一致。"222 个不同 Git blob"和 `daad404e` 与 `c1cfccf` 生产路径无差异，我只能看到 15 个 OS 文件的 sha 相同，不能独立验证。
+5. **X 文章**：未提供原文，我没有独立读过，对其影响映射（Pt.1/Pt.2 → J 项）只检查了内部一致性。
+6. **J 层放松的 Firstmate 边是否有意**：例如 J14 不依赖 X01/C06/I03.local_proof（它们分别在 J15/J07 等处）。我按"实现顺序与启用门槛分离"理解，但最终需要作者确认放松清单。
+7. **RV13 的功效估算**：假设"不一致对占 20%"和配对独立；若真实任务集的不一致率更高，所需样本会下降，但 5pp 在 40 对下仍不可达。
+
+REVIEW_END

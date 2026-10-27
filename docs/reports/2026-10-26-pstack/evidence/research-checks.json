@@ -1,0 +1,90 @@
+{
+  "generated_at": "2026-10-26T16:37:25.175Z",
+  "node": "v26.5.0",
+  "upstream": "/Volumes/AIMATE_WORK/Developer/CodeX/cursor-plugins",
+  "scratch_removed": true,
+  "results": [
+    {
+      "id": "tools-install",
+      "command": [
+        "bun",
+        "install",
+        "--frozen-lockfile",
+        "--ignore-scripts"
+      ],
+      "cwd": "/Volumes/AIMATE_WORK/tmp/osstack/smoke/pstack-research-HV4zmK/tools",
+      "code": 0,
+      "signal": null,
+      "timed_out": false,
+      "elapsed_ms": 2302,
+      "log": "tools-install.log"
+    },
+    {
+      "id": "upstream-tools-tests",
+      "command": [
+        "bun",
+        "test",
+        "orch",
+        "watch-pr",
+        "check-plan.test.ts"
+      ],
+      "cwd": "/Volumes/AIMATE_WORK/tmp/osstack/smoke/pstack-research-HV4zmK/tools",
+      "code": 0,
+      "signal": null,
+      "timed_out": false,
+      "elapsed_ms": 7526,
+      "log": "upstream-tools-tests.log"
+    },
+    {
+      "id": "upstream-watch-typecheck",
+      "command": [
+        "/Volumes/AIMATE_WORK/tmp/osstack/smoke/pstack-research-HV4zmK/tools/node_modules/.bin/tsc",
+        "--project",
+        "watch-pr/tsconfig.json",
+        "--noEmit",
+        "--strict"
+      ],
+      "cwd": "/Volumes/AIMATE_WORK/tmp/osstack/smoke/pstack-research-HV4zmK/tools",
+      "code": 0,
+      "signal": null,
+      "timed_out": false,
+      "elapsed_ms": 650,
+      "log": "upstream-watch-typecheck.log"
+    },
+    {
+      "id": "harness-generation-check",
+      "command": [
+        "/opt/homebrew/Cellar/node/26.5.0/bin/node",
+        "scripts/generate-pstack-harness-trees.mjs",
+        "--check"
+      ],
+      "cwd": "/Volumes/AIMATE_WORK/Developer/CodeX/cursor-plugins",
+      "code": 0,
+      "signal": null,
+      "timed_out": false,
+      "elapsed_ms": 143,
+      "log": "harness-generation-check.log"
+    },
+    {
+      "id": "semantic-probes",
+      "command": [
+        "bun",
+        "/Volumes/AIMATE_WORK/Developer/CodeX/osstack/docs/reports/2026-10-26-pstack/evidence/semantic-probes.ts",
+        "/Volumes/AIMATE_WORK/Developer/CodeX/cursor-plugins/pstack",
+        "/Volumes/AIMATE_WORK/tmp/osstack/smoke/pstack-research-HV4zmK"
+      ],
+      "cwd": "/Volumes/AIMATE_WORK/Developer/CodeX/cursor-plugins",
+      "code": 0,
+      "signal": null,
+      "timed_out": false,
+      "elapsed_ms": 28,
+      "log": "semantic-probes.log"
+    }
+  ],
+  "excluded": [
+    "Full statechart/TLC/Java/rendering suite",
+    "Live Cursor agent workflows",
+    "Live GitHub writes or merges",
+    "OSStack application test suite"
+  ]
+}
