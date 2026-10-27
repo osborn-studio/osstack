@@ -1,0 +1,51 @@
+{
+  "candidate": "20b4a81dfcffd80b4919643be362dcfcefad7cf5",
+  "model": "claude-sonnet-5-5",
+  "verdict": "PASS_WITH_CONCERNS",
+  "blocking_findings": {
+    "P0": 0,
+    "P1": 0,
+    "P2": 0
+  },
+  "nonblocking": [
+    {
+      "id": "R6-F1",
+      "priority": "P3",
+      "status": "open_test_clarification",
+      "owner": "Session terminal follow-up",
+      "detail": "Completed terminal plus drained iterator is the accepted stop baseline, even if native ID is missing and the operation returns failure. Shipped adapters convert missing identity to failed terminal. An explicit boundary test/wording can clarify result validity versus stopped execution; no native-provider exploit shown."
+    },
+    {
+      "id": "R6-F2",
+      "priority": "P3",
+      "status": "open_diagnostic_order",
+      "owner": "R02",
+      "detail": "Eligibility and selected chain are deterministic; rejected raw-document diagnostics retain input order. Do not fingerprint the whole snapshot as canonical audit authority; normalize diagnostics if future consumers require that."
+    },
+    {
+      "id": "R6-F3",
+      "priority": "P3",
+      "status": "open_documentation",
+      "owner": "R02",
+      "detail": "readArtifact is a synchronous function value; caller should pass an arrow/bound function when store methods use this. Unbound or async readers fail closed."
+    },
+    {
+      "id": "R6-F4",
+      "priority": "P3",
+      "status": "open_test_cleanup",
+      "owner": "Session terminal follow-up",
+      "detail": "Codex test has one vacuous assertion on the fixture adapter; actual absence of stop verifier, physical cleanup and drained=0-holds checks still catch the mutation. Remove redundant assertion in later test cleanup."
+    }
+  ],
+  "hypothesis_H1": {
+    "status": "not_reproduced_current_platform",
+    "evidence": "ed25519-malleability-probe.json",
+    "detail": "Node22/OpenSSL3.6.4 accepted all 8 valid signatures and rejected all 8 S+L variants. This scratch probe does not certify every supported OpenSSL build."
+  },
+  "remaining_limits": [
+    "R05/V06 authenticated roots, time, policy, persistent epoch and key custody",
+    "DEBT02/J11/J12 cross-process obligations and operator recovery",
+    "live provider fault, reboot, physical power loss, remote host and long soak",
+    "Claude SDK EOF-completion adapter behavior requires dedicated provider qualification"
+  ]
+}

@@ -1,0 +1,9 @@
+[
+  {
+    "comment_id": 288,
+    "card_id": "card_a502fa36",
+    "author": "joint-entry",
+    "body": "J02a final Sonnet 5.5 static review PASS at code32bd1bd287a7125fcc71c7312392ec5a3af2413b, no concrete P0/P1/P2. All31 focused tests pass, max512-files7.3s; final exact-code whole-monorepo run in progress. Candidate, not done. Full source/object/identity and actual upstream replay evidence will be linked to the PR.",
+    "created_at": 1793085515.126
+  }
+]

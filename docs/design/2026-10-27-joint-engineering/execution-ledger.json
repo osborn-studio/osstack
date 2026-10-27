@@ -9,7 +9,7 @@
     "thread": "01a1693a-3d49-7b92-b1b4-5344ff4ad2e7",
     "state": "accepted",
     "accepted_at": "2026-10-27T06:50:10.706240+00:00",
-    "report": "evidence/joint-execution/firstmate-joint-handoff.md",
+    "report": "evidence/joint-execution/firstmate/joint-handoff.md",
     "report_sha256": "bd74e4b31facc398145a8c38b925f5117cf0d7bc2d07f80ca84576d22e64b3dc",
     "code_candidate": "20b4a81dfcffd80b4919643be362dcfcefad7cf5",
     "integration_head": "dd0f8d09687c6d77394771f61102c9685ec33b2c",
@@ -21,7 +21,8 @@
       279
     ],
     "acknowledgement": "Receiving owner accepts sender COMPLETE report. Remaining CI/reviews are explicit PR obligations.",
-    "ci_scope": "PR-head CI does not cover combined candidate 20b4a81d or dd0f8d09. Local integrated tests cover 20b4a81d; dd0f8d09 differs only by documented generated export inventory. Each PR has separate CI; no combined Firstmate+joint runtime tree is verified."
+    "ci_scope": "PR-head CI does not cover combined candidate 20b4a81d or dd0f8d09. Local integrated tests cover 20b4a81d; dd0f8d09 differs only by documented generated export inventory. Each PR has separate CI; no combined Firstmate+joint runtime tree is verified.",
+    "audit_archive": "evidence/joint-execution/firstmate/archive-manifest.json"
   },
   "milestones": [
     {
@@ -54,13 +55,18 @@
       "slices": [
         {
           "id": "J02a",
-          "state": "implementing",
+          "state": "verification",
           "base_pr": 273,
           "base_sha": "fad0dd45377255a2d3dfceb08fb28c1524b88ead",
           "branch": "codex/joint-source-snapshot",
           "scope": "single-source Git inspection, no adoption dependency closure",
           "remaining": "J02b typed registration / R03-R04 mapping / adopted dependency closure",
-          "head_sha": "936aced8"
+          "head_sha": "32bd1bd287a7125fcc71c7312392ec5a3af2413b",
+          "audit": {
+            "model": "claude-sonnet-5-5",
+            "verdict": "PASS",
+            "scope": "static code review; no P0/P1/P2; P3s retained"
+          }
         }
       ],
       "acceptance": "not_executed_as_complete_milestone",
@@ -1029,7 +1035,25 @@
     "binding": "See preserved handoff management entry; never use default home",
     "mode": "owner-driven RPC progress and evidence; no automatic goal_dispatch",
     "dependency_enforcement": "owner verifies work-packages/execution-gates; board text is informational",
-    "snapshot": "evidence/joint-execution/board.json"
+    "snapshot": "evidence/joint-execution/board.json",
+    "entry_sha256": "9e2c366327a31ff71da277a21ea36571ebeca60ebce3372cee137af696eb89dc",
+    "entry_identity": "installed Firstmate registry-install/bin/osstack; exact local binding is in sender handoff"
   },
-  "observation_rule": "PR snapshots carry their own observation time; handoff acceptance does not imply green CI, merged code or runtime qualification."
+  "observation_rule": "PR snapshots carry their own observation time; handoff acceptance does not imply green CI, merged code or runtime qualification.",
+  "design_pr": 280,
+  "unknowns_at_takeover": {
+    "O06": {
+      "state": "resolved_for_observed_main_only",
+      "main": "ce543535be9b1ef96a8c4fb14d13ea8483444051",
+      "rule": "recheck before new slice/retarget"
+    },
+    "O03": {
+      "state": "J11_spec_candidate_only",
+      "prs": [
+        274
+      ],
+      "J12_runtime": "open"
+    },
+    "O01_O02_O04_O05": "retain original stage-specific blocks"
+  }
 }
