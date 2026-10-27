@@ -1,0 +1,54 @@
+{
+  "new_cards": 0,
+  "new_comments": 8,
+  "records": [
+    {
+      "finding": "R1",
+      "work_item": "DEBT02",
+      "card_id": "card_24391107",
+      "comment_id": 253
+    },
+    {
+      "finding": "R1",
+      "work_item": "X03",
+      "card_id": "card_e2f188a7",
+      "comment_id": 254
+    },
+    {
+      "finding": "R2",
+      "work_item": "DEBT02",
+      "card_id": "card_24391107",
+      "comment_id": 255
+    },
+    {
+      "finding": "R2",
+      "work_item": "I04",
+      "card_id": "card_c82848a3",
+      "comment_id": 256
+    },
+    {
+      "finding": "R2",
+      "work_item": "C03",
+      "card_id": "card_9c19fe3d",
+      "comment_id": 257
+    },
+    {
+      "finding": "R3",
+      "work_item": "R05",
+      "card_id": "card_313e9767",
+      "comment_id": 258
+    },
+    {
+      "finding": "R4",
+      "work_item": "I04",
+      "card_id": "card_c82848a3",
+      "comment_id": 259
+    },
+    {
+      "finding": "R4",
+      "work_item": "E01",
+      "card_id": "card_a8b39980",
+      "comment_id": 260
+    }
+  ]
+}

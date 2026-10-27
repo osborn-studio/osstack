@@ -1,0 +1,84 @@
+{
+  "candidate_sha": "6dd4a1b016927c3225a765719db111c0b8d23813",
+  "prompt_sha256": "08cc52dbe7dc37aa0382f4f73f40323d5aa5d44d2953f616c565ce12f722918f",
+  "files": [
+    {
+      "path": "docs/design/2026-10-26-firstmate-upgrade/audit-revision.md",
+      "candidate": "6dd4a1b016927c3225a765719db111c0b8d23813",
+      "sha256": "546965671a4d09448a6bf16fcb15fbe88ec4fcadf916d47a9b1f7bfa04d57de7",
+      "bytes": 15825
+    },
+    {
+      "path": "docs/design/2026-10-26-firstmate-upgrade/delivery-gates.json",
+      "candidate": "6dd4a1b016927c3225a765719db111c0b8d23813",
+      "sha256": "f99926b17e44af46574073668b7bfbc05bafe658713b1be75a25b4c54b2b15ff",
+      "bytes": 10257
+    },
+    {
+      "path": "docs/design/2026-10-26-firstmate-upgrade/validate-roadmap.py",
+      "candidate": "6dd4a1b016927c3225a765719db111c0b8d23813",
+      "sha256": "e50f632d48b485953f7e7ea70f1f5a3fc8e82ffa0121fff4fa9649eb123a61f3",
+      "bytes": 20426
+    },
+    {
+      "path": "docs/design/2026-10-26-firstmate-upgrade/test_validate_roadmap.py",
+      "candidate": "6dd4a1b016927c3225a765719db111c0b8d23813",
+      "sha256": "847c7d0b6b159ba238c7462f63c953dfef4446dbe30c06540ff90804a0be2830",
+      "bytes": 11903
+    },
+    {
+      "path": "docs/design/2026-10-26-firstmate-upgrade/review-snapshot.json",
+      "candidate": "6dd4a1b016927c3225a765719db111c0b8d23813",
+      "sha256": "027deb94db0f605147611ec5d306076fbe926a6c8cb2fe1894f3b3814301214f",
+      "bytes": 2190
+    },
+    {
+      "path": "docs/design/2026-10-26-firstmate-upgrade/README.md",
+      "candidate": "6dd4a1b016927c3225a765719db111c0b8d23813",
+      "sha256": "f9fe5bedddc488bfb0fbcc218ced364ca11f3e3362438b8f3cf6c3a3429c0ecb",
+      "bytes": 25602
+    },
+    {
+      "path": "docs/design/2026-10-26-firstmate-upgrade/validation.md",
+      "candidate": "6dd4a1b016927c3225a765719db111c0b8d23813",
+      "sha256": "89d64873a64b3cf0b01656a513d6da13ba6f439b24d06c215365074a3eef8f56",
+      "bytes": 4237
+    },
+    {
+      "path": "work-packages.json selected complete R05/DEBT02/E01 items",
+      "candidate": "6dd4a1b016927c3225a765719db111c0b8d23813",
+      "sha256": "207406193afc44584ee2bae75f7ee2df054fc27d9d8c184e937675e899d3898a",
+      "bytes": 2509
+    },
+    {
+      "path": "audit-contracts.json selected complete AT-09",
+      "candidate": "6dd4a1b016927c3225a765719db111c0b8d23813",
+      "sha256": "ba9fd9bff7f93a84e6234a864c0ae2655c97cadfcbfee363a81534a8efee1c85",
+      "bytes": 946
+    },
+    {
+      "path": "round3.md",
+      "candidate": "6dd4a1b016927c3225a765719db111c0b8d23813",
+      "sha256": "531c4a2bca4924b4c8fd12ab09007caf5e4dfdfc28f7d62a5e37c9783740801f",
+      "bytes": 8853
+    },
+    {
+      "path": "validator-tests-final.log",
+      "candidate": "6dd4a1b016927c3225a765719db111c0b8d23813",
+      "sha256": "ef49ebe2a96571f28a5e57a13f6678a94e9042fb107217b6afff69dbe437f7f8",
+      "bytes": 133
+    },
+    {
+      "path": "source-validation-final.log",
+      "candidate": "6dd4a1b016927c3225a765719db111c0b8d23813",
+      "sha256": "5c5134a7abd40c16d3a8912a81a13f28ab4329bbc5155bfc79070ae249203fb4",
+      "bytes": 245
+    },
+    {
+      "path": "runtime-contract-v2.md ADR-16 excerpt",
+      "candidate": "6dd4a1b016927c3225a765719db111c0b8d23813",
+      "sha256": "a3f5f21400a3f8f06e9fd7e4c6080cf71c3628b0481c06d567b68536e8792208",
+      "bytes": 3061
+    }
+  ]
+}

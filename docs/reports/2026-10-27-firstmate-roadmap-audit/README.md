@@ -1,5 +1,7 @@
 # Firstmate 路线图：Sonnet 5.5 审计与挑战
 
+**最终状态：DONE_WITH_CONCERNS。四次实际 Sonnet 5.5 调用完成，最终静态设计结论 PASS_WITH_CONCERNS，P0/P1 均为 0；仍有 3 项 P3 和 1 项信息性建议未关闭，已归入现有工作包。**
+
 日期：2026-10-27（Asia/Shanghai）。对象：PR #271 的升级路线图、24 项能力映射、50 个工作包和证据报告；#270 已合入 main。本次是设计审计及报告修订，不是未来控制器实现或生产资格认证。
 
 实际调用 `/opt/homebrew/bin/claude` 2.1.291，先确认已登录，再探测并使用 **`claude-sonnet-5-5`**，没有换用其他模型。两者均由 CLI 返回的 modelUsage 确认。审查禁用工具、MCP、hooks、slash commands 及会话持久化；材料从文件送入 stdin，未给嵌套模型写代码、运行命令或访问控制面数据库的能力。
@@ -77,3 +79,24 @@ The actual model was `claude-sonnet-5-5`. Round one returned REVISE_REQUIRED wit
 候选 `9d33811b50bb2830e274149d9450fac10488171b` 的[第三轮原文](round3.md)结论仍为 **PASS_WITH_CONCERNS，P0/P1 均为 0**；另有 2 项 P2、4 项 P3，模型说明不阻止冻结规划合入。[CLI 结果](round3.json)和[输入清单](round3-input-manifest.json)保留原样。
 
 主持者随后处置 C01–C06：新增只冻结 DDL/夹具的规格里程碑及分别绑定目标 schema 的恢复验收；将“现有 operator 合同”改为“待 DEBT02 交付”，并明确覆盖旧 attention_dispatch_holds；宿主资格必须依赖独立测量；R05 审查 migration diff 与每切片完整 opt-in 集合；删除快照滞后时间戳，并声明本验证器只适用于固定基线的仅文档后代。没有因此宣称新的 operator 接口已经实现。第四次调用只复核这六项收尾修订。
+
+## 最终定向复核与未关闭事项
+
+[第四轮原文](round4.md)对候选 `6dd4a1b016927c3225a765719db111c0b8d23813` 的 C01–C06 修正均未驳回，结论 **PASS_WITH_CONCERNS，P0/P1 为 0**。[CLI 原始结果](round4.json)、[输入清单](round4-input-manifest.json)及[四轮元数据](audit-metadata.json)可核对实际模型和候选。前三轮为广泛审计与复审，第四轮仅定向检查收尾修订，不重复声称整套运行时被复核。
+
+仍未关闭的 [R1–R4](followups.json) 属于现有工作包的设计收尾：
+
+- R1 / P3：DEBT02 需要明确覆盖 broker 孤儿租约的验收。
+- R2 / P3：在冻结 DEBT02 合同和首个 C03 migration 前，确定 operator 回执的存储方式，避免与 I04 形成迁移依赖环。
+- R3 / P3：后续交付记录验证器须检查 recovery receipt 字段集，并补缺 schema-spec 的负例。
+- R4 / 信息性：评估 home/broker 恢复聚合的保守耦合，保持文字与实际宿主资格前置一致。
+
+这些事项没有被标记为已修复，不新增四个 feature，也不提高任何运行时资格。Sonnet 认为它们不阻塞冻结规划合入；R1/R2 必须在对应合同/迁移实施前解决。
+
+本次可执行验证：**34 项验证器测试通过，148 个来源锚点核对通过**；原 24 能力、37 任务、66 场景及 ADR-01–16 保持冻结。[宿主验证记录](final-host-verification.json)、[测试输出](validator-tests-final.log)、[来源输出](source-validation-final.log)独立于模型意见。34 包含正例及负例；另有 43 个行为场景只是 planned。实际 CI check 日志已取回并逐包汇总，原 main 基线为 5,950 passed / 7 skipped / 0 failed；本次没有本地重跑生产全套测试，也没有生产代码改动。PR 最终提交的 CI 状态另以 GitHub 为准。
+
+看板仍为 50 张原卡：38 todo、8 本地范围 done、4 blocked。修订和未关闭事项用版本化评论挂回原卡；当前接口没有原子正文更新，不把评论同步称作已实现 M01。
+
+复现审计材料：每轮 request 文本保留实际审查问题，input-manifest 列出固定提交或宿主观察的路径/摘要，raw JSON 保留完整模型结果。完整输入拼装文件保存在本机审计 scratch 中；仓库未复制数百 KB 的重复上游源码，也未提交认证信息。哈希不是独立签名，审查及回执真实性仍需要 GitHub/测试执行者等外部证据。
+
+Final English verdict: PASS_WITH_CONCERNS, no remaining P0/P1 design blockers. Three P3 follow-ups and one informational note remain open. The four calls used the actual requested model. This is a roadmap review, not proof that Firstmate is fully integrated or qualified for production.
