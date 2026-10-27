@@ -5,7 +5,8 @@ import { describe, expect, it } from 'vitest';
 import { MethodRecipe, methodRecipeDigest, methodProposalDigest, verifyBindingAgainst, bindingDigest, verifyMethodBinding, trialBudgetIssues, supportProfileDigest } from './method-binding.js';
 import { JointContract, decodeJointContractAs, decodeJointContractBytesAs } from './joint-contracts.js';
 import { recoverySubjectDigest, RecoveryProofEnvelope, RecoveryReceipt, verifyRecoveryProofEnvelopes } from './joint-recovery.js';
-import { parseJointJson } from './joint-json.js';
+import { canonicalJointJson, parseJointJson } from './joint-json.js';
+import { createHash } from 'node:crypto';
 const cases = (parseJointJson(readFileSync(new URL('../fixtures/joint/contracts.json', import.meta.url), 'utf8')) as unknown as { fixtures: Array<{ id: string; payload: Record<string, unknown> }> }).fixtures;
 const sample = (id: string) => structuredClone(cases.find(f => f.id === id)!.payload);
 describe('joint integrity boundaries', () => {
@@ -95,4 +96,87 @@ describe('joint integrity boundaries', () => {
     const code = `await import('@osstack/protocol'); await import('@osstack/protocol/joint'); try { await import('@osstack/protocol/dist/joint-generate.js'); process.exit(2); } catch (error) { if (error.code !== 'ERR_PACKAGE_PATH_NOT_EXPORTED') throw error; console.log('blocked'); }`;
     expect(execFileSync(process.execPath,['--input-type=module','-e',code],{cwd:fileURLToPath(new URL('..',import.meta.url)),encoding:'utf8',timeout:10000})).toContain('blocked');
   });
+});
+
+type ComponentRow = { kind: JointContract['kind']; sample: Record<string, unknown>; required: string[]; optional: string[] };
+const componentMatrix = (JSON.parse(readFileSync(new URL('../fixtures/joint/acceptance-oracle.json', import.meta.url), 'utf8')) as {
+  component_matrix: ComponentRow[];
+}).component_matrix;
+
+const componentReference = JSON.parse(execFileSync('python3', ['-I', fileURLToPath(new URL('../scripts/joint-acceptance-oracle.py', import.meta.url))], {encoding: 'utf8', timeout: 10_000, maxBuffer: 1_048_576})) as {components: Array<{kind: string; canonical: string; sha256: string}>};
+
+describe('JA70 full kind/field matrix at the real strict decoder', () => {
+  it('covers all kinds in the published union, including the ten material bodies', () => {
+    type Schema = { properties?: {kind?: {const?: string}}; anyOf?: Schema[] };
+    const schema = JSON.parse(readFileSync(new URL('../schemas/joint/joint-contract.schema.json', import.meta.url), 'utf8')) as {definitions: {JointContract: Schema}};
+    const collect = (node: Schema): string[] => node.properties?.kind?.const
+      ? [node.properties.kind.const] : (node.anyOf ?? []).flatMap(collect);
+    expect(componentMatrix.map(row => row.kind).sort()).toEqual([...new Set(collect(schema.definitions.JointContract))].sort());
+    expect(componentMatrix.filter(row => row.kind.startsWith('material:'))).toHaveLength(10);
+  });
+  for (const row of componentMatrix) describe(row.kind, () => {
+    const decode = (value: Record<string, unknown>) => decodeJointContractAs(row.kind, JSON.stringify(value));
+    it('accepts the declared structure through text and byte entrypoints without granting authority', () => {
+      const raw = JSON.stringify(row.sample);
+      expect(decodeJointContractAs(row.kind, raw)).toEqual(row.sample);
+      expect(decodeJointContractBytesAs(row.kind, Buffer.from(raw))).toEqual(row.sample);
+      const canonical = canonicalJointJson(decodeJointContractAs(row.kind, raw));
+      const reference = componentReference.components.find(item => item.kind === row.kind)!;
+      expect(canonical).toBe(reference.canonical);
+      expect(createHash('sha256').update(canonical, 'utf8').digest('hex')).toBe(reference.sha256);
+    });
+    for (const field of row.required) it(`rejects missing ${field}`, () => {
+      const missing = structuredClone(row.sample); delete missing[field];
+      expect(() => decode(missing)).toThrow();
+    });
+    it('rejects unknown fields, invalid kind/version and duplicated raw keys', () => {
+      expect(() => decode({...row.sample, unregistered_authority: 'run'})).toThrow();
+      expect(() => decode({...row.sample, kind: 'unregistered_kind'})).toThrow();
+      expect(() => decode({...row.sample, schema_version: -1})).toThrow();
+      const duplicated = '{"kind":"ignored",' + JSON.stringify(row.sample).slice(1);
+      expect(() => decodeJointContractAs(row.kind, duplicated)).toThrow('INVALID_JOINT_JSON');
+      expect(() => decodeJointContractBytesAs(row.kind, Buffer.from(duplicated))).toThrow('INVALID_JOINT_JSON');
+    });
+    it('rejects an otherwise valid record at the wrong expected-kind boundary', () => {
+      const other = row.kind === 'source_pin' ? 'method_proposal' : 'source_pin';
+      const raw = JSON.stringify(row.sample);
+      expect(() => decodeJointContractAs(other, raw)).toThrow('JOINT_KIND_MISMATCH');
+      expect(() => decodeJointContractBytesAs(other, Buffer.from(raw))).toThrow('JOINT_KIND_MISMATCH');
+    });
+  });
+});
+
+describe('JA70 identity joins remain mandatory after valid self digests', () => {
+  const linked = () => {
+    const recipe = MethodRecipe.parse(sample('valid-method_recipe'));
+    const proposal = sample('valid-method_proposal');
+    Object.assign(proposal, {recipe_digest: methodRecipeDigest(recipe), recipe_version: recipe.recipe_version,
+      source_snapshot_digest: recipe.source_snapshot_digest, required_artifacts_digest: recipe.required_artifacts_digest});
+    const binding = sample('valid-method_binding');
+    Object.assign(binding, {task_id: proposal.task_id, proposal_digest: methodProposalDigest(proposal),
+      recipe_version: recipe.recipe_version, source_snapshot_digest: recipe.source_snapshot_digest, role_materials: structuredClone(recipe.role_materials)});
+    binding.binding_digest = bindingDigest(binding);
+    return {recipe, proposal, binding};
+  };
+  for (const field of ['task_id', 'proposal_digest', 'recipe_version', 'source_snapshot_digest']) it(`rejects binding ${field} substitution even with a recomputed self digest`, () => {
+    const {recipe, proposal, binding} = linked();
+    binding[field] = field.endsWith('digest') ? 'f'.repeat(64) : 'substituted';
+    binding.binding_digest = bindingDigest(binding);
+    expect(() => verifyBindingAgainst(binding, proposal, recipe)).toThrow('BINDING_PROPOSAL_MISMATCH');
+  });
+  for (const field of ['recipe_digest', 'recipe_version', 'source_snapshot_digest', 'required_artifacts_digest']) it(`rejects proposal ${field} substitution even when the binding names its new digest`, () => {
+    const {recipe, proposal, binding} = linked();
+    proposal[field] = field.endsWith('digest') ? 'f'.repeat(64) : 'substituted';
+    binding.proposal_digest = methodProposalDigest(proposal); binding.binding_digest = bindingDigest(binding);
+    expect(() => verifyBindingAgainst(binding, proposal, recipe)).toThrow('BINDING_PROPOSAL_MISMATCH');
+  });
+  for (const role of ['builder', 'reviewer', 'verifier']) {
+    for (const field of ['method_text_sha256', 'role_required_artifacts_digest']) it(`rejects ${role} ${field} substitution with a valid binding self digest`, () => {
+      const {recipe, proposal, binding} = linked();
+      const materials = binding.role_materials as Array<Record<string, unknown>>;
+      materials.find(material => material.role === role)![field] = 'f'.repeat(64);
+      binding.binding_digest = bindingDigest(binding);
+      expect(() => verifyBindingAgainst(binding, proposal, recipe)).toThrow('BINDING_RECIPE_ROLE_MISMATCH');
+    });
+  }
 });
