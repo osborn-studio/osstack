@@ -41,3 +41,5 @@ Sonnet 5.5 round 1 returned REVISE. Original opinions and exact inputs are prese
 No synthetic test proves provider qualification, independent human identity, real process containment or production crash durability. J12 still owns authenticated proof loading, maintenance ownership, original subject/accounting CAS, actual WAL/FULL process-kill tests and deployment fencing. J17 owns the broker ledger and broker orphan recovery. Five live/qualification tests remain skipped by their existing opt-in guards.
 
 J11 pins a candidate schema/DDL, not a deployed recovery build. Any source schema, catalog, DDL, fixture, candidate or build change invalidates the applicable recovery evidence. PRs remain subject to CI and dependency ordering; this record does not authorize merge or enablement.
+
+Submitted PRs: #272 (`91147f7a`, codec), #273 (`fad0dd45`, contracts), and #274 (recovery specification/evidence). They form a stack; hosted CI and ordered review remain required before merge. No PR was merged by this task.

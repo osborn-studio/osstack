@@ -9,9 +9,9 @@ The user authorized both chats to work in parallel. This chat owns J01/J11. â€œè
 
 | PR | Deliverable | Dependency | Merge condition |
 |---|---|---|---|
-| J01a | strict raw JSON parser, canonical encoding, domain digests, published vectors | latest main | vector and adversarial parser tests; Sonnet review |
-| J01b | method, material, recovery, evidence and lifecycle contracts; opt-in package entry; JSON Schemas | J01a | inherited fixtures, semantic tests, schema drift check; Sonnet review |
-| J11 | candidate recovery DDL, full schema lineage, source hold fixture, future storage templates and verifier specification | J01b | SQL fixture tests, old binary rejection, unchanged original rows; Sonnet review |
+| [#272 J01a](https://github.com/osborn-studio/osstack/pull/272) | strict raw JSON parser, canonical encoding, domain digests, published vectors | latest main | vector and adversarial parser tests; Sonnet review |
+| [#273 J01b](https://github.com/osborn-studio/osstack/pull/273) | method, material, recovery, evidence and lifecycle contracts; opt-in package entry; JSON Schemas | [#272 J01a](https://github.com/osborn-studio/osstack/pull/272) | inherited fixtures, semantic tests, schema drift check; Sonnet review |
+| [#274 J11](https://github.com/osborn-studio/osstack/pull/274) | candidate recovery DDL, full schema lineage, source hold fixture, future storage templates and verifier specification | [#273 J01b](https://github.com/osborn-studio/osstack/pull/273) | SQL fixture tests, old binary rejection, unchanged original rows; Sonnet review |
 
 Stacked PRs must be merged in this order and retargeted after each predecessor merges. R01/R02 can develop alongside these contracts. DEBT03 is independent. Neither thread may allocate a production schema number or introduce a competing method/recovery authority. If file ownership changes, update the manifest before editing the shared path.
 
