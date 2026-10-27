@@ -99,7 +99,20 @@
           "implementation_mode": "regression_only",
           "contract_artifacts": "read_only; changed bytes invalidate prior component evidence"
         }
-      ]
+      ],
+      "invalidates_component_evidence": {
+        "paths": [
+          "packages/protocol/src/engineering.ts",
+          "packages/protocol/src/method-binding.ts"
+        ],
+        "gates": [
+          "J01.contracts",
+          "J08.admission_boundary",
+          "J01.scoped"
+        ],
+        "on": "any_changed_byte_or_candidate",
+        "action": "re_evaluate_composed_candidate_and_all_dependents"
+      }
     },
     {
       "id": "J02",
@@ -392,7 +405,19 @@
         "FM:X02",
         "PS:W03",
         "PS:W04"
-      ]
+      ],
+      "invalidates_component_evidence": {
+        "paths": [
+          "packages/protocol/src/engineering-recipe.ts"
+        ],
+        "gates": [
+          "J01.contracts",
+          "J08.admission_boundary",
+          "J01.scoped"
+        ],
+        "on": "any_changed_byte_or_candidate",
+        "action": "re_evaluate_composed_candidate_and_all_dependents"
+      }
     },
     {
       "id": "J06",
@@ -525,7 +550,19 @@
       "legacy_task_ids": [
         "FM:I03",
         "PS:W07"
-      ]
+      ],
+      "invalidates_component_evidence": {
+        "paths": [
+          "packages/protocol/src/method-artifact.ts"
+        ],
+        "gates": [
+          "J01.contracts",
+          "J08.admission_boundary",
+          "J01.scoped"
+        ],
+        "on": "any_changed_byte_or_candidate",
+        "action": "re_evaluate_composed_candidate_and_all_dependents"
+      }
     },
     {
       "id": "J08",
@@ -548,7 +585,9 @@
         "packages/core/src/state/graph-runs.ts",
         "packages/core/src/state/graph-actions.ts",
         "packages/cli/src/graph-rpc.ts",
-        "packages/cli/src/graph-action-broker.ts"
+        "packages/cli/src/graph-action-broker.ts",
+        "packages/cli/src/method-host-admission.ts",
+        "packages/cli/src/method-host-admission.test.ts"
       ],
       "test_scope": "对应模块邻接测试；只增必要回归，修改共享路径须遵守 owner 队列",
       "inputs": [
@@ -593,7 +632,9 @@
         "packages/core/src/state/graph-runs.ts": "extend_existing",
         "packages/core/src/state/graph-actions.ts": "extend_existing",
         "packages/cli/src/graph-rpc.ts": "extend_existing",
-        "packages/cli/src/graph-action-broker.ts": "extend_existing"
+        "packages/cli/src/graph-action-broker.ts": "extend_existing",
+        "packages/cli/src/method-host-admission.ts": "proposed_new_exclusive_J08_recheck_before_implementation",
+        "packages/cli/src/method-host-admission.test.ts": "proposed_new_exclusive_J08_recheck_before_implementation"
       },
       "legacy_gate_ids": [],
       "entry_gate": "J08.scoped",
@@ -615,14 +656,13 @@
           "id": "JP-08a",
           "gate": "J08.admission_boundary",
           "requires": [
-            "J01.contracts",
-            "J05.scoped"
+            "J01.contracts"
           ],
           "write_paths": [
-            "packages/cli/src/method-admission.ts",
-            "packages/cli/src/method-admission.test.ts"
+            "packages/cli/src/method-host-admission.ts",
+            "packages/cli/src/method-host-admission.test.ts"
           ],
-          "scope": "Actual trusted host entry, strict proposal and current repository/scope authorization comparison; no permit creation, run creation, executor invocation or persistent consumption. The full trial must consume this same checked boundary.",
+          "scope": "Actual trusted host entry, strict proposal and current repository/scope authorization comparison; no permit creation, run creation, executor invocation or persistent consumption. The full trial must consume this same checked boundary. This is the actual host entry, not a standalone helper; JA71 observes real host ingress and JA72 proves full-trial reuse.",
           "case_producer_for": [
             "JA02",
             "JA71"
@@ -635,8 +675,14 @@
             "J01",
             "J08"
           ],
-          "implementation_mode": "extend_existing_after_J05",
-          "contract_artifacts": "read_only; changed bytes invalidate prior component evidence"
+          "implementation_mode": "create_exclusive_real_host_entry",
+          "contract_artifacts": "read_only; changed bytes invalidate prior component evidence",
+          "pr": {
+            "base": "main_after_required_base_gates",
+            "required_base_gates": [
+              "J01.contracts"
+            ]
+          }
         }
       ]
     },
