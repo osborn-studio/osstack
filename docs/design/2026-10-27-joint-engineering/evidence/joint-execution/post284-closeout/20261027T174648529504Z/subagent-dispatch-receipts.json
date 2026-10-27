@@ -1,0 +1,27 @@
+{
+  "base": "3192b424174e5eb977d640cc0418e67c6b1461d1",
+  "receipts": [
+    {
+      "comment_id": 365,
+      "card_id": "card_6d5d3d02",
+      "author": "joint-entry",
+      "body": "2026-10-28 上海时间：核实 #284 已于 2026-10-27T17:39:42Z 合并，main=3192b424174e5eb977d640cc0418e67c6b1461d1，tree=228b2a0b9ae6708bc68bb3019921198484538320，与此前独立合成验证树完全一致。旧测试仍保留各自SHA，不重标。批次joint-post284由主入口唯一管理PR/中央账本。A: JP-01c 契约回归/JA59/JA70；loader_adversarial 独占协议测试。 三worker已领取，定向测试并行、全仓单队列；继续实际Sonnet5.5审计。PR合并不等于正式gate通过，未启运行时。",
+      "created_at": 1793122853.187
+    },
+    {
+      "comment_id": 366,
+      "card_id": "card_79cdb3e7",
+      "author": "joint-entry",
+      "body": "2026-10-28 上海时间：核实 #284 已于 2026-10-27T17:39:42Z 合并，main=3192b424174e5eb977d640cc0418e67c6b1461d1，tree=228b2a0b9ae6708bc68bb3019921198484538320，与此前独立合成验证树完全一致。旧测试仍保留各自SHA，不重标。批次joint-post284由主入口唯一管理PR/中央账本。B: JA20/JA47 home+broker 联合离线规格；terminal_preflight 独占恢复规格测试。 三worker已领取，定向测试并行、全仓单队列；继续实际Sonnet5.5审计。PR合并不等于正式gate通过，未启运行时。",
+      "created_at": 1793122853.188
+    },
+    {
+      "comment_id": 367,
+      "card_id": "card_a502fa36",
+      "author": "joint-entry",
+      "body": "2026-10-28 上海时间：核实 #284 已于 2026-10-27T17:39:42Z 合并，main=3192b424174e5eb977d640cc0418e67c6b1461d1，tree=228b2a0b9ae6708bc68bb3019921198484538320，与此前独立合成验证树完全一致。旧测试仍保留各自SHA，不重标。批次joint-post284由主入口唯一管理PR/中央账本。C: J02b 离线闭包预冻结准备；cleanup_regression 仅scratch，正式产品开工仍等待J01.contracts。 三worker已领取，定向测试并行、全仓单队列；继续实际Sonnet5.5审计。PR合并不等于正式gate通过，未启运行时。",
+      "created_at": 1793122853.188
+    }
+  ],
+  "scope": "three bounded tasks; no formal gate qualification"
+}

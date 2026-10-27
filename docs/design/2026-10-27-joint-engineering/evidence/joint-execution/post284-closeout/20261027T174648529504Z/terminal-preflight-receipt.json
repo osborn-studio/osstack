@@ -1,0 +1,12 @@
+{
+  "main_sha": "3192b424174e5eb977d640cc0418e67c6b1461d1",
+  "main_tree": "228b2a0b9ae6708bc68bb3019921198484538320",
+  "previous_composition_tree": "228b2a0b9ae6708bc68bb3019921198484538320",
+  "same_tree": true,
+  "archive": {
+    "path": "evidence/joint-execution/post284-closeout/20261027T174648529504Z/previous-composition-evidence.tar.gz",
+    "sha256": "e391070dd0f9f49830b92aaf5d1d02d08e37faa2fca8c4199d3e669bf6bcd13e"
+  },
+  "manifest_members_verified": 51,
+  "scope": "Computed comparison against hash-verified historical archive; original test bindings retained, no new test execution or runtime qualification"
+}

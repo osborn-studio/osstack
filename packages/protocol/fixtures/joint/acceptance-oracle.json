@@ -1,0 +1,2743 @@
+{
+  "version": 3,
+  "base_sha": "3192b424174e5eb977d640cc0418e67c6b1461d1",
+  "scope": "component regression oracle only; no authenticated independent principal or gate claim",
+  "domains": [
+    "osstack.joint.method-binding.v1",
+    "osstack.joint.method-proposal.v1",
+    "osstack.joint.support-profile.v2",
+    "osstack.joint.source-snapshot.v1",
+    "osstack.joint.artifact-requirements.v1",
+    "osstack.joint.role-artifact-requirements.v1",
+    "osstack.joint.check-binding.v1",
+    "osstack.joint.intent.v1",
+    "osstack.joint.method-recipe.v1",
+    "osstack.joint.method-input.v1",
+    "osstack.joint.environment.v1",
+    "osstack.joint.scenario.v1",
+    "osstack.joint.check-registry.v1",
+    "osstack.joint.schema-spec.v1",
+    "osstack.joint.recovery-subject.v1",
+    "osstack.joint.trial-root.v1",
+    "osstack.joint.recovery-request-input.v1",
+    "osstack.joint.trial-consumption-input.v1",
+    "osstack.joint.source-content.v1",
+    "osstack.joint.source-inspection.v1"
+  ],
+  "wire_cases": [
+    {
+      "id": "null",
+      "bytes_hex": "6e756c6c",
+      "accepted": true,
+      "canonical": "null",
+      "hashes": {
+        "osstack.joint.method-binding.v1": "407c60b4b420ea8ee6e3fba717f961c8c0509318f00a3d301e644933e9d98dbb",
+        "osstack.joint.method-proposal.v1": "2f98897287727d77177c58c4096ff90769d28ea99c8afd2c41cbbc49672f5e22",
+        "osstack.joint.support-profile.v2": "76ece1aea089fb9dc09b42d93465d9afe19d543999320012e80da81db3e7c861",
+        "osstack.joint.source-snapshot.v1": "cb8c87c744b55374fc396ce6611366ef72c94c9762bbe5397ea4485770fba5e7",
+        "osstack.joint.artifact-requirements.v1": "222c3f121b685bf23a1b938e6ba754e07cc149ce3eb64cf92d2f1b0ba97b22e1",
+        "osstack.joint.role-artifact-requirements.v1": "cdfd06728e1cfd984b96ddacbc9bd7d2801963906223dce98bb03d2b67f88905",
+        "osstack.joint.check-binding.v1": "88b53eb9a2c9e04d097e66dd9fd8ff1e4ea967629011783f64ec96acd95e3685",
+        "osstack.joint.intent.v1": "8c3ddade4cd8d559cb10db3cd73a906e93f0c58b5dcd49dd2814eafbf0c91b9f",
+        "osstack.joint.method-recipe.v1": "121cf11e261854823400c454c262dbbc29b853b0366893398552da3645b75168",
+        "osstack.joint.method-input.v1": "27679933b25acfc47a255fc8aa1397503da8bfbccc391f3d07a32ee1f8d25636",
+        "osstack.joint.environment.v1": "10d6538028cdd62d9b6b9af7ae275f8af8dfb98e9fced7537f33d834e4025411",
+        "osstack.joint.scenario.v1": "d2baf4cfd96bbb5b141ed916f723bda757efae7d06e501597c7b1da436355dcf",
+        "osstack.joint.check-registry.v1": "ce80bef5f7efdaa2120a3b3d055ef94f963a198fc74f41f63d213128dd7eed47",
+        "osstack.joint.schema-spec.v1": "9fb09a6fed160fef8afbcb968c90c64761bcfc8008aea72f347b1f04b21f460e",
+        "osstack.joint.recovery-subject.v1": "af96858f5793278a1a8a34ac3711a818655581eaf1e6c1dfa093bbab4262339a",
+        "osstack.joint.trial-root.v1": "a6efdaad2d1f4db56ebfe4e4ea6d08fefc6a8d09873072b7291f66b045370d1b",
+        "osstack.joint.recovery-request-input.v1": "500e96828e1373c345d5c62f29544b5fc61798d04c78667beee54fa55503eb9c",
+        "osstack.joint.trial-consumption-input.v1": "3dbe53dfa379d372684f604cba05f053e084ff803d56bafdcf718d75693278b5",
+        "osstack.joint.source-content.v1": "6f59f01f5b2e884062bf0d25ccf22a0df2005b8742add4d71cc0af6bab5610ca",
+        "osstack.joint.source-inspection.v1": "2ff2bed653e6eb927b62382d6d6dc88c357661de328cce4f42c2cbf4a2df33e4"
+      }
+    },
+    {
+      "id": "false",
+      "bytes_hex": "66616c7365",
+      "accepted": true,
+      "canonical": "false",
+      "hashes": {
+        "osstack.joint.method-binding.v1": "bee848d8c338d4724171f80cf02b72a0fb5c04aa32fdcbe82c90b47bb07ee7a2",
+        "osstack.joint.method-proposal.v1": "54519eaeb7e59147723fe02fca4063a2860b10d80a7206d01ebec6bba1d82403",
+        "osstack.joint.support-profile.v2": "c64d36d88b7a68fc4bb4f435e38cd02e4f4b045f6e0ecbaa3719e8f5182289b5",
+        "osstack.joint.source-snapshot.v1": "e5669b0303eb5460955fd9d8fcce21ebc98309535f79d5dce33ab8e89349ea37",
+        "osstack.joint.artifact-requirements.v1": "306094ea747b76fdd3121aff0a4f215f2ac02d64e63fb1593a32340e8d8b5b54",
+        "osstack.joint.role-artifact-requirements.v1": "9128896756ceb4b0d50ca09dbf30f0677a70d670bb521ae0e3d9f615dd7a6683",
+        "osstack.joint.check-binding.v1": "be513a8d5b20ceb464620fc5707c5c0bf0eaf08f349f51aa2d77a3603a58a33f",
+        "osstack.joint.intent.v1": "aca464dac830d1ba71a2c760421fda2f0594d30cebad9e78667bd3cd1bc66ce6",
+        "osstack.joint.method-recipe.v1": "249f8a939184d4a53df6acf5927e091249eebc6db844499283fc21594e3f0649",
+        "osstack.joint.method-input.v1": "c3e15035f05c04d49999729e1e6fe11e32fe64b4c9b2da326308e0219b22c7c8",
+        "osstack.joint.environment.v1": "ccd1c98c69da6056bc03d443e09553fefce03a4c428f3ff01afed61f86dc8786",
+        "osstack.joint.scenario.v1": "19bbd03d3771c8a81869af65f9164bf18b0a1fd11c35ea57602b3ddd54cd485a",
+        "osstack.joint.check-registry.v1": "9d83072eebee806cf6e2cedeccfd22e6b5a27d26c518a62a732e1a21369ae2cc",
+        "osstack.joint.schema-spec.v1": "40d2c0f6aed39d2c51620138a15a48398082d5632ff7534ee7ae03e30ef2373e",
+        "osstack.joint.recovery-subject.v1": "c088a46cc37e01570ef03520f68a4089361a674874544f0d1acc67e3d3c4b53c",
+        "osstack.joint.trial-root.v1": "3839c73551abc18ddc830b980fb95090ac44d55e7e36828bba019a47a313c639",
+        "osstack.joint.recovery-request-input.v1": "a4022170f84721c039d767da28b37cc5ffcd7d401d3fcc130c790abf24f72d10",
+        "osstack.joint.trial-consumption-input.v1": "f6ed0728a5c66f3fae640968bd83d236b39fd26edf08bdbfe3cb1cd088d30698",
+        "osstack.joint.source-content.v1": "391afae855dc4b2cb1e6e25100ba67622fa20c8171f543c5fceb5b444bd045e3",
+        "osstack.joint.source-inspection.v1": "0800664f7939755caac0fe441c03de3dabc6edcaa98d327359064dd557bfb370"
+      }
+    },
+    {
+      "id": "safe-low",
+      "bytes_hex": "2d39303037313939323534373430393931",
+      "accepted": true,
+      "canonical": "-9007199254740991",
+      "hashes": {
+        "osstack.joint.method-binding.v1": "db45187d88aa261d7308083a8a3732ea1139d4682da0b2aa958c934950354bbc",
+        "osstack.joint.method-proposal.v1": "d4d27ecfc5a68fa24cadd21ed14369950a237745eafa6b668729c548717b42ff",
+        "osstack.joint.support-profile.v2": "f45ad871899f8f767af5cb6a46f5ec08b25ffa8c967a5d8de25831001ce06d1a",
+        "osstack.joint.source-snapshot.v1": "2e2bd800028d6b2a38c14bb3a8ff0281f983884df199b4319c5d45ccd18fd134",
+        "osstack.joint.artifact-requirements.v1": "a128f86cccf40f080cb56737055ab57a37eb4dbf20b212e45c0456ac46687342",
+        "osstack.joint.role-artifact-requirements.v1": "159f07843202c0edc145b3e36fb892036d81f02b4a5fac41832c421ac18ec6cc",
+        "osstack.joint.check-binding.v1": "2fedca14fc3481f451542a8ed36921aef9f86e5396f58c8cb2cb871bf9a27580",
+        "osstack.joint.intent.v1": "5f69aee2e969c2f39955a8ac331b611b5e893ca60270da7a22763be7784a34e1",
+        "osstack.joint.method-recipe.v1": "60d5c9b654a15f03cea682af781dc07c15ad15cdfe843436bcfa7d3183830ea2",
+        "osstack.joint.method-input.v1": "2beb2f6bbdcb5d22b218c3ed01684438186ba47622ff38bc7960f980239125f5",
+        "osstack.joint.environment.v1": "09a1a449152fb31d35f36856c4f3081ee626756ff36eaf15c1791ddcba00caa4",
+        "osstack.joint.scenario.v1": "d28f0c5ad0241bc206e3b17155a5d41e9dcca1247f7a9cc7fdfa31240fa529c8",
+        "osstack.joint.check-registry.v1": "5b9cea1d2618ad85403c07f2617b8ccb02809e2d07deb0456027bb0cb15837d6",
+        "osstack.joint.schema-spec.v1": "4fb5f442ab07a1a68256b2d683a371f44c7055221cddedaa2e060b0064695f2b",
+        "osstack.joint.recovery-subject.v1": "27ade4f5c5e536393e6d8dd5cb54d4200c7f26093ddf493f46d6564814a7a712",
+        "osstack.joint.trial-root.v1": "24bcc935ca69d02d95ae07bda0cf4ce5eb30ee25c797b0315c6a4f2269c5c6f1",
+        "osstack.joint.recovery-request-input.v1": "cf669cb856113ea3a49c481abb58d9d712f0f762c2a738fd52441b353583a3cd",
+        "osstack.joint.trial-consumption-input.v1": "c397b4ec197c4567403b1d2f6d6735a4f7142a836690123f067d81bd72f81eeb",
+        "osstack.joint.source-content.v1": "061fb714faacb5d0445491a09fc6b048afb00ffeabf76500e9dec120ed9502c6",
+        "osstack.joint.source-inspection.v1": "d1bb737bdcbcdb0eb437c8c69a5227400aab375d32c37861415a402c958e55d8"
+      }
+    },
+    {
+      "id": "safe-high",
+      "bytes_hex": "39303037313939323534373430393931",
+      "accepted": true,
+      "canonical": "9007199254740991",
+      "hashes": {
+        "osstack.joint.method-binding.v1": "a50c6870f8a0939ae2fd900a38624ba525bfe27563934a26f800326e18b32eb9",
+        "osstack.joint.method-proposal.v1": "ded7971a04a4a87597a87609f94606e8df14c4416a04537e96f77bf527dd17d4",
+        "osstack.joint.support-profile.v2": "3c54d9865b771935172803734481935f91bcd37840a9dfaac6c2c8e4c61f982b",
+        "osstack.joint.source-snapshot.v1": "65f74a6a6ee1283540e18f4fe418f9a6ff3818b50b063133a5e9cae60b3c6ad0",
+        "osstack.joint.artifact-requirements.v1": "191abdbf31f53e6863ced7f93afdbe1d49002ac66218d4feb913173eefe996cd",
+        "osstack.joint.role-artifact-requirements.v1": "fe3d1e49562f6244c54437183d4e8848754c37a4fae677ee33055f70358622ec",
+        "osstack.joint.check-binding.v1": "6d900d9f1e855123b8a5bac441a1e11de8d527cb7020792a14850cc9056ccbb5",
+        "osstack.joint.intent.v1": "9dd4511bbc3a79b8fb3ae90e78d67d14249812366a64a4ca74259dda71c8c29c",
+        "osstack.joint.method-recipe.v1": "493494264cb7f3f56176623c5f5c851979f28754a6a5d09ed86eef2d259d48cd",
+        "osstack.joint.method-input.v1": "ec023c50880f5dfb5652c189de7b2459c32fabd2c1ab07fc9676203d0e8aed5b",
+        "osstack.joint.environment.v1": "9f72d7ea126c743b59a80c7690dbc597d4cad1d192daf714341518a150ef688e",
+        "osstack.joint.scenario.v1": "8a3e41e9c1627e7b8145cd3a47a7df857b197225d9518c148cbbac1158fd267a",
+        "osstack.joint.check-registry.v1": "2ea74246da6dcdb2d36a4e7beb53c04e5bd9fbec91c65e17e69c1a0f7b6ac4f5",
+        "osstack.joint.schema-spec.v1": "676ceccba6e35475fe5318ad0477750d7c0b6688bd194c3c9e954fa74c37e345",
+        "osstack.joint.recovery-subject.v1": "ca0cddfbcedb6e51367fd41585c26421c70b4fcb7e25f9a01ea447486b66208a",
+        "osstack.joint.trial-root.v1": "e92f2e9f1d287e63dcda4cfdb33aa109a6c6bb5eb39d40f81f37a66bd2e1a323",
+        "osstack.joint.recovery-request-input.v1": "0bced288048d2d173387d579466d3ae23c01cd9f2ce8216faa581c57c4ffa873",
+        "osstack.joint.trial-consumption-input.v1": "b0cdb1c8aa57c1d35be923d486c4f6a4c1eebe4b8a68661d6607233e830dbf3f",
+        "osstack.joint.source-content.v1": "82802c0a22a4a9a3d58a69b463556b69d1b93f348547169e1049d5e71aedf76d",
+        "osstack.joint.source-inspection.v1": "1c86f42f6e12a90ad88860735a9507a7a0f6cfc6f3922f3c43ddd90810a72bd9"
+      }
+    },
+    {
+      "id": "whitespace",
+      "bytes_hex": "200a207b202262223a322c2261223a31207d09",
+      "accepted": true,
+      "canonical": "{\"a\":1,\"b\":2}",
+      "hashes": {
+        "osstack.joint.method-binding.v1": "e7a7fb0ad5872f68262ecd1c7236ac1c9669d387493fadf92c653ba9f6c5fb15",
+        "osstack.joint.method-proposal.v1": "6d9fe23f09ed80525909cde5a64a07d1ea1c3b2d7aaf1addfdd61f32f8c40b70",
+        "osstack.joint.support-profile.v2": "11e4085d7b9b43d9531ce7a809dd8f951d450b0d2062354ddf6816442a514fc5",
+        "osstack.joint.source-snapshot.v1": "733d8eff801fdf68c7fafa377e4de27bafc88449e05c6c9d1bb2d322c3e2aa7c",
+        "osstack.joint.artifact-requirements.v1": "3e6dfcc29477434a3abbb212a012fe25cfb69c75989e024162328879a9fc3fbf",
+        "osstack.joint.role-artifact-requirements.v1": "02b3565ffedbaffa0082605f6fd8edc866114f848b47bb39b794f386a328e01f",
+        "osstack.joint.check-binding.v1": "058318fa66cd506c5f5e6e198d28e24d9d2cb9926a89874e60c17c94e7852395",
+        "osstack.joint.intent.v1": "9d0dd2f79ba3762e55f96eeec6c394a42be42bb4583e60a2a8e9faf31b7bd363",
+        "osstack.joint.method-recipe.v1": "3aa2ad9f6ebded8c100f0b982876eae7aaae2aa98caea0339faea662a9cb8c1a",
+        "osstack.joint.method-input.v1": "82796ca3a97fae373da6fc56254b0ea41cb1675ded3bc276865ec4809fd14357",
+        "osstack.joint.environment.v1": "e817b33ec4e9b5e58578cc8bbe15baffa7a61dc68d784051a0a84a4b91f2a116",
+        "osstack.joint.scenario.v1": "b9463e2bd0857080fee9e1c620fd0d781fe7b521ed5ac7eead38127e2907ee8e",
+        "osstack.joint.check-registry.v1": "ee4c233f98628a29ed72b2eb4215f608aafecb6633bb1dbd62bf1a279748819d",
+        "osstack.joint.schema-spec.v1": "923e64fee0331bf1b2f0db03ad2dfb20430b000bf717c727be87c773fad0b5f7",
+        "osstack.joint.recovery-subject.v1": "4d7c5677c8a65e93de9703ab5a038006eb2445ebf31ef0dbae65232a499d82bb",
+        "osstack.joint.trial-root.v1": "39019c1a2208f37d72b3dee87b2e2bf21aa7a04606ed9063300dde38004b254b",
+        "osstack.joint.recovery-request-input.v1": "5e0fa4693d399aa09e80f8ae47098bd4ddddfa58650769a5da721144671d5982",
+        "osstack.joint.trial-consumption-input.v1": "f96caf17caa568ff4c0d898b3406de4989d1a4c08b738846238cb0bbd414a2aa",
+        "osstack.joint.source-content.v1": "6d6415fdac588fb85563b44979861d7b244ad965d56e9e0fe8dd1b2b513efe54",
+        "osstack.joint.source-inspection.v1": "3752a7bde7789425039cb976af763f7e3872a193b8c24b702e27bac274c548d1"
+      }
+    },
+    {
+      "id": "numeric-keys",
+      "bytes_hex": "7b2232223a322c223130223a31307d",
+      "accepted": true,
+      "canonical": "{\"10\":10,\"2\":2}",
+      "hashes": {
+        "osstack.joint.method-binding.v1": "6c701421a8dad5da17058604a4c06acb0e3568068f5f894b7b8f4238a2ad6389",
+        "osstack.joint.method-proposal.v1": "69a68af954d3da1c861975f7d7ccdb9201ef9e2f7a15fa85052256d5e43554e2",
+        "osstack.joint.support-profile.v2": "51eb9541cd27e48fb73b2f49faffb31c68fcf6ae25e4e1c65287f40abb6bf4a1",
+        "osstack.joint.source-snapshot.v1": "104e2a9776a45dde42daf0ff3eab923ea009219f25dbdf33d07c6679077da74b",
+        "osstack.joint.artifact-requirements.v1": "36f3f296a50c0eefb72b683b380cce477c46148f933d0563e2168fdee0960baa",
+        "osstack.joint.role-artifact-requirements.v1": "b17e0e856162089615c60a8da825f38e4c25aee1dceed8d1dc8841d762355dec",
+        "osstack.joint.check-binding.v1": "bff3ae1aa41ccfcc462c725c4eb24f0e53b80a0654b20d4c75392b712a975640",
+        "osstack.joint.intent.v1": "de73e2acd386ffdb2ab669a17b6547e299db0df556145f6d30c278fb3f2e3961",
+        "osstack.joint.method-recipe.v1": "8697bf9d5a6c6cdb45ecd66209f00ed3ead019733955e7ea64286aab1f535fba",
+        "osstack.joint.method-input.v1": "2263356d492eeddd500b61efc7a9edf326f7c159fba09592d2b81c6e27c4fa3c",
+        "osstack.joint.environment.v1": "ddb2f2c0205d6ae4035e5715871f352f35730f94e5ec1dffafcf39e834063681",
+        "osstack.joint.scenario.v1": "5137fa4f96e6de02bb93288cc75740929f030e08d85b13ddf4e9c9a197078755",
+        "osstack.joint.check-registry.v1": "c70af5e692775763f9a72ce09bb6977351bd42b19ead14e8aab1ae35b3f3a9b0",
+        "osstack.joint.schema-spec.v1": "1ba420ad57105dda6592c5e4865ab5f693df40cb362f0b9755844b5864c23b5a",
+        "osstack.joint.recovery-subject.v1": "ebb94379ae2d334db10a87a838ae44f2bf4fad5f86f06809b2e0d9becdca0ada",
+        "osstack.joint.trial-root.v1": "cdfdb0e3094c3ab0ef0905762c8ac6cbb589a28813b5823c85308663ed4a52ac",
+        "osstack.joint.recovery-request-input.v1": "638517e72e85933694bd4049188a6710926c0e6efc3053ac57cacb75828b35d2",
+        "osstack.joint.trial-consumption-input.v1": "5262b382339018fae3bca080fa14df44c35f8908125db0d35b99dcae0244884b",
+        "osstack.joint.source-content.v1": "aca936e2721342d4db67cabf8a2cbd5ead580d970f4297ae9d985f3904f9eac8",
+        "osstack.joint.source-inspection.v1": "ea033aaf33ccdb1c9368bde3de7abccf3112acd5d7459a0ffbba3f7d9866b0b8"
+      }
+    },
+    {
+      "id": "null-field",
+      "bytes_hex": "7b2278223a6e756c6c7d",
+      "accepted": true,
+      "canonical": "{\"x\":null}",
+      "hashes": {
+        "osstack.joint.method-binding.v1": "657c8cc54b3a946a3e7fbfe1f67da41bdf5eae8c80359bae050255bb4737507a",
+        "osstack.joint.method-proposal.v1": "d981ea090b584a2cda2a3d266b781bf848ca2739cce80ed61a5fbf29a58ebab7",
+        "osstack.joint.support-profile.v2": "c1604d4e4ef114a6fa23b33e8ccf7ef941b3bb1ed9370855c1f65e529852ffa7",
+        "osstack.joint.source-snapshot.v1": "64a10078f0b29df37ff738841c0d42693f5ba0686b211fb83b98acb7bde8b655",
+        "osstack.joint.artifact-requirements.v1": "3aff5aac574adbe443c908a6512d36319804b907c6cd2911ddfdc2c459a7adcd",
+        "osstack.joint.role-artifact-requirements.v1": "9b1db368402339e3e8cf3338c997a55c4c6d0f61adcacd92c96c1d8ece3b77b0",
+        "osstack.joint.check-binding.v1": "0ae6a7f90ba07c410ebc27ad373a8ba81d4b88ea4ab5b56c3972aa7fc3c33231",
+        "osstack.joint.intent.v1": "5592d1a507b27a3595eeca4b52b5459ade23e363fc2476108baa58f682ad33fe",
+        "osstack.joint.method-recipe.v1": "76b6cc9bcdc6899fd86541c0b5cfe5b97d2ce0e02fd21e0bbe4c848e6b56bdca",
+        "osstack.joint.method-input.v1": "ab615262858b11769c728e27801f80f827bc197eff6d010b6a74136426d01e77",
+        "osstack.joint.environment.v1": "52ae009e2b3641ab1f2b8cf4939c8088a75b4e85b43e4d715d00dadf090309b3",
+        "osstack.joint.scenario.v1": "f78d279de16eb932f3132e54b0e0c9b6149d271ced488e546a4c1ea3efa9ccaf",
+        "osstack.joint.check-registry.v1": "4b2cbf359f20e65085558ae2277e61823379658a90e5188dfbdbbbff3cbf6bd8",
+        "osstack.joint.schema-spec.v1": "c9abe9a269e1d950c8ea24d39f97fb831a0be57cf9ba8c963c6751568a48ecfd",
+        "osstack.joint.recovery-subject.v1": "cc7d84ae8d0ad7d0d737ec3c8790e5af4753343cc593ad6aff3f9f1085d18d96",
+        "osstack.joint.trial-root.v1": "3f567ecb1d33e2ccccf4cbb8b47471eab35feda34500daff376e15f3321787b7",
+        "osstack.joint.recovery-request-input.v1": "c4fd75de34ea3da3e5c72d5189eab14980e9629b1f84f49fbb9786e6301ff98e",
+        "osstack.joint.trial-consumption-input.v1": "e805eef72d84b2df8ee1373ec1e134f2d86e75524571ffb93f0454bf19f6f0e5",
+        "osstack.joint.source-content.v1": "d793f597f602f675997600579714caacad0a0cd3a7657198897d7621a846b690",
+        "osstack.joint.source-inspection.v1": "1451aaee4d7228d462a81b13437cecd2bff2174771e875c32d96279f80a94cd0"
+      }
+    },
+    {
+      "id": "absent-field",
+      "bytes_hex": "7b7d",
+      "accepted": true,
+      "canonical": "{}",
+      "hashes": {
+        "osstack.joint.method-binding.v1": "694cc841cac91bdfa36a8b601ba7d4249acceccaffd3f13cf75d599f17b95f5b",
+        "osstack.joint.method-proposal.v1": "5443c18d99a58b52cdb7cec3728d52d9c94ccbd717433cd62de87ab1cfec3403",
+        "osstack.joint.support-profile.v2": "a21432ea8abcf73332870a6ea516eb6ed75fcb6c9f6c78d3a8ad27d93a508a4b",
+        "osstack.joint.source-snapshot.v1": "68f54ce8a3169638a5ae54cd28de4a90520b998957cf111cc19a0ad862c541cb",
+        "osstack.joint.artifact-requirements.v1": "7d936a9094073aa93be8aacea960e68cc50fac8cb34415d59cffbac17bce5222",
+        "osstack.joint.role-artifact-requirements.v1": "c5ff96556bfb03f2d76b1109ae418f1147c84b742ea301f207d5f6cba7a0e3dd",
+        "osstack.joint.check-binding.v1": "33fb2cacbaeeac7fb9821475cc6c52f93d126a66fb3ed70be09be6b888a1566f",
+        "osstack.joint.intent.v1": "c119e641e1b76f36ef2d3b5e10a2f373218815870b46ebc3367492261f0efaab",
+        "osstack.joint.method-recipe.v1": "fb154ea25ea66749e0c5f9a0bb97a6316e303792422bdec848adad23da52947e",
+        "osstack.joint.method-input.v1": "a88930ce90c136bf658f7ce2744042406f9b1e3cb7802be2fedf827265c38781",
+        "osstack.joint.environment.v1": "6f50581ce6e0e08cc54a9174c34bd76643920d4983a6da14d653bb28af9ebd96",
+        "osstack.joint.scenario.v1": "917fd8d66cee129a4a12bc69854d1132994b12dc5a05c38cb7021e861b576673",
+        "osstack.joint.check-registry.v1": "524d6066475b5878a1e2cfc49a2555e451bcb1b9a6115210d6093762c859ed88",
+        "osstack.joint.schema-spec.v1": "d79a155054ecc3d41f0a190015f129ca768a92324f13169586ff2148d9003c90",
+        "osstack.joint.recovery-subject.v1": "314b988fca3062edc49e3a6cdda5250d181b9c947728d74c2468fbbabdc1a233",
+        "osstack.joint.trial-root.v1": "7768d1a6d9c18816921ada17728ce01a2499aca15a610735cb77938dff7e0a78",
+        "osstack.joint.recovery-request-input.v1": "fa31633cd10941bc2bc374c2657c151bd1fb21492a2311ee2f683851cbe2bab8",
+        "osstack.joint.trial-consumption-input.v1": "d221fdfc07f20fbf054e98e94afa49be215bf349cbc8e057a5c3bceb7e514769",
+        "osstack.joint.source-content.v1": "778fb8d938b7384216329336200036054fd8bd73af59507da3fde66c7716c7f0",
+        "osstack.joint.source-inspection.v1": "e6f25c528de5a38123d01ed95cebd2aaabb09974a0190c59572d970e811c3edd"
+      }
+    },
+    {
+      "id": "array-order",
+      "bytes_hex": "5b322c315d",
+      "accepted": true,
+      "canonical": "[2,1]",
+      "hashes": {
+        "osstack.joint.method-binding.v1": "7d105618166d22c4b618e78da0f2eaffb252a6e619f3b93f4e5f5e8d17aae24e",
+        "osstack.joint.method-proposal.v1": "45704977c58024e82ce07a33e6ddcbf3e2e585719bce7bb4ec23e08d97752ad0",
+        "osstack.joint.support-profile.v2": "e724186e23d94799ee4ac6f9b513efe5073886cc5925aad60827e26ff70257b8",
+        "osstack.joint.source-snapshot.v1": "e42b9745238b502710dcb49e1471c385fb07ead8d7288d554c5790a3b55fdc93",
+        "osstack.joint.artifact-requirements.v1": "cd3dcea972e06e0c00c9aa7fe27da2d4e307ac0c0d017d625dafc3bd20b691b8",
+        "osstack.joint.role-artifact-requirements.v1": "11ba77d3deb203d83f449cba0476300ffabdae10fc9a6df476ab58edffb14b50",
+        "osstack.joint.check-binding.v1": "f916bc41ad2c5d42a9d9f150eb2123c0cfd7463bc162cdaf1338c8f37916f8df",
+        "osstack.joint.intent.v1": "55e36c2096708db5b08864d55917f6c1b0daaeca309e0f66b3e678949e24ee0a",
+        "osstack.joint.method-recipe.v1": "cc700416307770c2af4e770e9fad4ed638c048ef4e3281015fef15bbaf005f09",
+        "osstack.joint.method-input.v1": "84440a871b64558ebe3692acd051689dccefc1db4f6713452314db2bb7dec175",
+        "osstack.joint.environment.v1": "f89d9e8494cc2ab61e4c3fb21bf9873cfb3d37e46dfcdebe7132c53e75ab3ff7",
+        "osstack.joint.scenario.v1": "0ff59ebc0c3cd4d6ad2081ec7c9636e69072d385da23fac249fefc7c878f9dd4",
+        "osstack.joint.check-registry.v1": "46e951b479cdf772af5f606a48a5890cd3c834fce00dceb0220c7b1a676edd53",
+        "osstack.joint.schema-spec.v1": "4e561b946ebf49887d055b947826c1be9f2413a7332bf229dcab0e6b3f6cde08",
+        "osstack.joint.recovery-subject.v1": "11a532d8e847017ab4d79bbe9d9c02646742d60856de5b0cbe7fd413cb8d0f5e",
+        "osstack.joint.trial-root.v1": "726892cf0cf0c64618d44c7b384a757f7e8ad4fe70ed8b4caf719253c67ce93f",
+        "osstack.joint.recovery-request-input.v1": "965e67c1232d968141e5548729a2a067bf9de4f25c738852798633c00ddefba4",
+        "osstack.joint.trial-consumption-input.v1": "f9535c0645a6ed04f8f3f52520ebc2eddb3c5570158c75296659c59ca4bfb67c",
+        "osstack.joint.source-content.v1": "aa4320241d15681c3d64e7a462646a41e6cb331bdbe3dc1d97430ce0657fdc27",
+        "osstack.joint.source-inspection.v1": "dc719ea0935f283b733f8c36580ce13a6f3da814ca181b7170e282f8c43bc7d4"
+      }
+    },
+    {
+      "id": "array-reverse",
+      "bytes_hex": "5b312c325d",
+      "accepted": true,
+      "canonical": "[1,2]",
+      "hashes": {
+        "osstack.joint.method-binding.v1": "5f70b6a0cc7d7c0e75c630cb1a64632d6dc3bc0ac25a320b717796f2d164bec3",
+        "osstack.joint.method-proposal.v1": "780cbf8988684983b288690fce2c842906b427e607649df546db3a62727eee67",
+        "osstack.joint.support-profile.v2": "ec8a69ba64fe133b9a07d5b1b906d2102224d9a9b4d1601a109037f198febb6e",
+        "osstack.joint.source-snapshot.v1": "96ac0816c7926f3a94037649fd16e6b9d9f91de7b048c1a4f1e5e55d5d24402e",
+        "osstack.joint.artifact-requirements.v1": "392961632ebfc9b01e3d022d503441dcccd0919204da2e3febfd29af41521d73",
+        "osstack.joint.role-artifact-requirements.v1": "e53fbc260b9a1f92b3d89104b8bb09380305de20d7f197c09a140eb14b1562f7",
+        "osstack.joint.check-binding.v1": "f264739e000a5aa568c4b7e7980fa10e5da292922e6ceb7e7a37af4565c7a597",
+        "osstack.joint.intent.v1": "9cdaf15c565d2e0c6f5c0ca5ff3b8e02feb4da2b48e59e9f5a3d2e636eaecc81",
+        "osstack.joint.method-recipe.v1": "0b0491092878ba2d7efba76241274d78c403dceccc3defbe0bde6a1f4a0a8e2f",
+        "osstack.joint.method-input.v1": "1ba4575b7b3e82ca4f9b733c3a6daf8a2163792ffe582d854643b2c4dc9f4f8e",
+        "osstack.joint.environment.v1": "5ae34978fd9bc751e620e578d16f7a69f41f0b50ee9b64ab3eb7b50f50810f03",
+        "osstack.joint.scenario.v1": "d1d9ba6c3c09b134b8a983557286384a2a6b226f6fe3bb985a6b96b2e7e9265d",
+        "osstack.joint.check-registry.v1": "ad3b6fed7b83db17a4f56856a2df19a6a56b4be7d93961abc1024d868e1f2d2e",
+        "osstack.joint.schema-spec.v1": "b7ee046d4f6e8bfb3143deb6ae1fb45c67a1488fedd764c3ef9d25476ac11f0d",
+        "osstack.joint.recovery-subject.v1": "842da65eecb186c14ae2394f1c21c51e31e5291aaeee50172f4282c6f92c034a",
+        "osstack.joint.trial-root.v1": "9b83b3ca4481eb4014ab6214f7429e863b9fba6a78241c53deeb78af20d20f03",
+        "osstack.joint.recovery-request-input.v1": "535096c4bc5270405c605cb8d20d5506140d280342e8cbd201f274111de3d3b7",
+        "osstack.joint.trial-consumption-input.v1": "7ead6b2ba5e99346c711b20cdbdb72fec6b008dda8c15fe082152d99606c60f3",
+        "osstack.joint.source-content.v1": "4dd70f65d8015717418a9749317a313b3c32ccac3557111a21d994258b99980c",
+        "osstack.joint.source-inspection.v1": "c2d1062458949a7f2ac4376615b2b6f539b0124d86ec69224d65f96d48b2ea40"
+      }
+    },
+    {
+      "id": "unicode",
+      "bytes_hex": "22e4b8ade69687f09f988022",
+      "accepted": true,
+      "canonical": "\"中文😀\"",
+      "hashes": {
+        "osstack.joint.method-binding.v1": "5696a4b27902f6bdaed004f5f4c49fdcae6d36f79f5af65251e0b5041a1098ea",
+        "osstack.joint.method-proposal.v1": "2bcc1c1ee2eec12fb12224b9e9035acaacebb80572435ff041775b5d6f655c38",
+        "osstack.joint.support-profile.v2": "49b071cbd6f736fec7454a6dc14734859664c0c243038ae45ea8cb252cc0dc49",
+        "osstack.joint.source-snapshot.v1": "5a2cb156df7c33e97430c16581996ab28d540fdf2f8b95db080b38ff5830afcd",
+        "osstack.joint.artifact-requirements.v1": "678eb18709464c442455dd254f7a2363fce9e86f4eabea0ae38d3e69141f66a4",
+        "osstack.joint.role-artifact-requirements.v1": "3c6901cf5eea4b729eb89a2ba95e1a478788201950b40fda1b66995ee99de523",
+        "osstack.joint.check-binding.v1": "dfe4e226e8e377b968c52adcac865e943e6ea0df73ba862f6742a92d0a057003",
+        "osstack.joint.intent.v1": "ed64c6d8525b3a1086b28001fdd4dd246878c8002ec78e37ea185b16e3c2723e",
+        "osstack.joint.method-recipe.v1": "2044b566388de5c93fb7bf10ab17ed588995861016545654c77a77e0b6ae5764",
+        "osstack.joint.method-input.v1": "b6f3bcff304ea789f450f22061cf8027e3c00c5ac2270a5e43b8a6d61304dc23",
+        "osstack.joint.environment.v1": "50b3a99af8b8da8555be694cf91bd72497c92bae40080c5aecb343bab26621c8",
+        "osstack.joint.scenario.v1": "e6f0d798db75ce386b038697cf863fffe7a45fe96a05b58e90a6d994fafbb3fb",
+        "osstack.joint.check-registry.v1": "6ca753927d58392175e20a32f658ff54672655ee9b02989eaf54d5904a0008e0",
+        "osstack.joint.schema-spec.v1": "711a6ad264d380bf18a6aa99d2db288d9c0a5d6cd802c238c5429c5860da1964",
+        "osstack.joint.recovery-subject.v1": "d1926cbd5245b9a8c59471f2a4484372bc81a758dece9b375056e21a5b4cfde3",
+        "osstack.joint.trial-root.v1": "17465e99fed8ee1c589106b83da74a625acc1b8f43f2e3d0bb56c1899ac30c23",
+        "osstack.joint.recovery-request-input.v1": "1e5311edea3eea814471ee6e9ab98b7537fe6109a0b916f48b2a0abb1af4a023",
+        "osstack.joint.trial-consumption-input.v1": "f06085d666209c04e74e4ed8ab32fc9f8dbed0fca3b43591c1543585d64b8337",
+        "osstack.joint.source-content.v1": "5891d70fa01d4c989bb1c7544c8d0e7e875276b4f82381b38301253eb9148004",
+        "osstack.joint.source-inspection.v1": "b7ccd8eea8d8617b1b7ebb5843e1772d93ebcf282f46d51328d531b45317310a"
+      }
+    },
+    {
+      "id": "unicode-escaped",
+      "bytes_hex": "225c75643833645c756465303022",
+      "accepted": true,
+      "canonical": "\"😀\"",
+      "hashes": {
+        "osstack.joint.method-binding.v1": "62627b8feedbf746fc7c91394be274383eec255ac53d38f2afc17fff4e3289dd",
+        "osstack.joint.method-proposal.v1": "a9a5347dc5c263c6bbbf749f810f23bd4853131ed31936e27facabee49c41cfc",
+        "osstack.joint.support-profile.v2": "4a7662f3a1f6b9bbbf404432036e8e7dbe422e1e59fb532add104b59d3a2b3a5",
+        "osstack.joint.source-snapshot.v1": "2222f9831250a8c21a72176f3c08ecda03491caa544cc62d699646490f4ddeb2",
+        "osstack.joint.artifact-requirements.v1": "8570fbe04cccca90f23af72e2a7d8e0329086133dae786b9d7dac53dce49fbd2",
+        "osstack.joint.role-artifact-requirements.v1": "348bb9d08b13e0b30587ea2d23bac77e73cb3fb457da01a6c51652e6b8aa770d",
+        "osstack.joint.check-binding.v1": "61965bef3a57a7dbb3ad4ac380f5ef3bfeafa80a487ef5446feccaaaf009cc0c",
+        "osstack.joint.intent.v1": "f4a57223bcda30756682b0def70de8e4bc238f07f1a894934b7948ee21764a85",
+        "osstack.joint.method-recipe.v1": "3670becbabd3ddcf5625cf425740abcf720a5d6f0c143d8f201eb2cff24cf93b",
+        "osstack.joint.method-input.v1": "c24b0cd20d9d3d4cdb3352d11e2dce907ac146641f7b6a8a76b85f69fb3702ca",
+        "osstack.joint.environment.v1": "3a6f16f50f9e0acee49e59f7281b1dded788cdcad3207168d5103a10a0d5aa6a",
+        "osstack.joint.scenario.v1": "fe5ba3f09dfff9970f24581caf9e61518b8c157404ff2ab89b3a41966f9176a6",
+        "osstack.joint.check-registry.v1": "a92735a26813010aa8174d4e093a7d5150ce75b29805a2d087375622cddd509b",
+        "osstack.joint.schema-spec.v1": "5e0253f473ce2623f9547919d788a1329be2b20e1ee486e698f345e19631aa17",
+        "osstack.joint.recovery-subject.v1": "35106489a0871168113fb0c64df85f0ecd6be96809a41616c1743d59fbd72699",
+        "osstack.joint.trial-root.v1": "a73fd35c14a7df2ed7d74354f6ed1c12627217e6ea4aa1f989cf69f0b1df5633",
+        "osstack.joint.recovery-request-input.v1": "a1f31af538d52ed8cc802804392815448fe7ee41f21a77be3a4a0386ae0a44d7",
+        "osstack.joint.trial-consumption-input.v1": "574e4ef1837be3d470f921bf602db2bc2289a1c7b69e2a0c3fb589e272127e69",
+        "osstack.joint.source-content.v1": "19a7d78fd736bd790c98276a8f8674e3700381b5b90830fde6a10eb0cf5292c3",
+        "osstack.joint.source-inspection.v1": "7103506de3a7ca32ad22c918424a3b75bfbb287625246d13ebb994d3ca78470e"
+      }
+    },
+    {
+      "id": "composed",
+      "bytes_hex": "22c3a922",
+      "accepted": true,
+      "canonical": "\"é\"",
+      "hashes": {
+        "osstack.joint.method-binding.v1": "3e66b5f5ee1390879b1975e8b5555f5261bb1ef43415947e1271d4dcffd598ba",
+        "osstack.joint.method-proposal.v1": "65d971f5013ffe82293b0a3aef350a7a717f2338d440b3dfae451bf66b05cdbf",
+        "osstack.joint.support-profile.v2": "14276a2953d80325c6b4d79bc79682272762b2267ee49ecf4d2c74890f4a4309",
+        "osstack.joint.source-snapshot.v1": "ac92d504635dc1866cc2da7d25953bb9e44976e0ea906439e80cf9a264ead510",
+        "osstack.joint.artifact-requirements.v1": "4808f9ff9da6c394fb2c895152cb36e5739e3ccc8d7a115b6a78739a283121e8",
+        "osstack.joint.role-artifact-requirements.v1": "c450367ef5863ed963d512bcd2819c4c4e14324b232300728aa733008a5344ce",
+        "osstack.joint.check-binding.v1": "7d05fdc3055dc9b3d05eb7dc4b9519f6c1902d7fdc8ddbf9ef021fe2d67240a5",
+        "osstack.joint.intent.v1": "6b6e5a1935b6d2cfc17973058b1369846814dedf7a03de8f9b50383205de85d8",
+        "osstack.joint.method-recipe.v1": "05c0b51a019b8e7df8b8a5519409de7cdfb0786816f26a42af0521745deb44ce",
+        "osstack.joint.method-input.v1": "ec352a926160d7c7734b8e0a3e5e642808a026da59943bb720781d5d5988e0f9",
+        "osstack.joint.environment.v1": "f13045c4299b4651a12c31bb610bd9bf7a9091e652bbadc04068b15f4c51cb3b",
+        "osstack.joint.scenario.v1": "cf9d468d38c6d1e1da4d5a152040971b19ac7865c7ee08ce189cc09c1f4dc61f",
+        "osstack.joint.check-registry.v1": "3f49a1aecb20f650e8b4ebc9abe7b11c2dfd57dc1f7372e5b1eac55fd77e8eae",
+        "osstack.joint.schema-spec.v1": "c7093c710d29463f1df5f5ddc1cd128bb8a3764a505900c2d3217aad8c4dae84",
+        "osstack.joint.recovery-subject.v1": "d3778cf855da98cd08367ddad21f2fdb52c698703941cb4b30dc21ca06331e48",
+        "osstack.joint.trial-root.v1": "49314478150fd4b0ffb77dfe19be8b2eb2b76e50fde1a009be40181a253bb12c",
+        "osstack.joint.recovery-request-input.v1": "2310a8e92c58b288beeb36a8aac890328ebd1026851713f4dd8eb046933fe361",
+        "osstack.joint.trial-consumption-input.v1": "57f16094620e8a7c273a558bfa7cfb9545ec02d94e7b53f022da2a6b18416136",
+        "osstack.joint.source-content.v1": "d439ca7a840034f76e92967ccd0d687d5b8ae2f2d7d8bb752f677c6989b71771",
+        "osstack.joint.source-inspection.v1": "5c968e78741487a79131ca442586275b3533610f071aaf46b41f1c89da19aefd"
+      }
+    },
+    {
+      "id": "decomposed",
+      "bytes_hex": "2265cc8122",
+      "accepted": true,
+      "canonical": "\"é\"",
+      "hashes": {
+        "osstack.joint.method-binding.v1": "2d7214d0b79953791428a09bec3a4aa82b581b618c772aadf01eb169b31f4f99",
+        "osstack.joint.method-proposal.v1": "fd3767c23dd97f1e75ea389c881cb95d57b52f142093e7b1957078b725b9fa1f",
+        "osstack.joint.support-profile.v2": "71bf9fe5eeca4353534d59be01fe6d984b090b2755f740c03351c6d889621d86",
+        "osstack.joint.source-snapshot.v1": "1e025dce47fc04be975368ca33362663e3f440a38b8376357cb85b7127618d65",
+        "osstack.joint.artifact-requirements.v1": "03ad9bbe1b074a534bbaa9218475e7d30650067f97122dc855536f3a96990c7b",
+        "osstack.joint.role-artifact-requirements.v1": "62c13a99a0a0b49a0efcc445b13f78e86a6420c784b243a11364f99782cd26a2",
+        "osstack.joint.check-binding.v1": "ec3dc4e944d7a49a703928c376fd587ad1ecefe7c888db83af07455bb6bea3ef",
+        "osstack.joint.intent.v1": "67f920f97052e4b61b7547cceb44c77d20cfa10f36f1c61f3c7276bbef93840c",
+        "osstack.joint.method-recipe.v1": "d948e30d9a8a7e21685e826139d4c5695ac5198239348567c25b2cb3fa43312c",
+        "osstack.joint.method-input.v1": "83cfd68ddf30388ccef08ccd2e764dfa69d7b76e437b4a7e27bed413b2cf966b",
+        "osstack.joint.environment.v1": "057424aa1a70a693c8147cb449b1395a14022c1ec53cc216699bca65cbb454f7",
+        "osstack.joint.scenario.v1": "b620019c93fb866aabbc36630ca1c540a035377315852155213212e95526fa4a",
+        "osstack.joint.check-registry.v1": "5eff7a10bb207cbadaa1e7e4c4638410cda1ec89c0d453940d15543e64074b58",
+        "osstack.joint.schema-spec.v1": "217987e370a87a9bbb36bfd69c3401d3ab9c6f34fe78ef2d7e82fcbed6d48965",
+        "osstack.joint.recovery-subject.v1": "f4b1b7e667efafdd5063d4cb30ebd5a27b5a1e626ecdd5fe5e977fc62667cee3",
+        "osstack.joint.trial-root.v1": "6c163a54b4fbab679e466e92738ec0f69c8ae42a151e3f9fb245ad10776a76d4",
+        "osstack.joint.recovery-request-input.v1": "36023d5e2aac7bed5c6049cdfb82aa33f8de8a63522e32252034e0a296dba490",
+        "osstack.joint.trial-consumption-input.v1": "9c07f335790fa6e711e7eca7dd41378a4786880e19e3a2b71b5bfa89347830d2",
+        "osstack.joint.source-content.v1": "99086cc9ae729437fdc97df4993f50d7e931105061d9f9bb3711715ef783b903",
+        "osstack.joint.source-inspection.v1": "3f65b2c6f211104d31b798b19ff4e0eb966ec8009ed077e6c54508d4ae258d7a"
+      }
+    },
+    {
+      "id": "escapes",
+      "bytes_hex": "225c625c745c6e5c665c725c753030303022",
+      "accepted": true,
+      "canonical": "\"\\b\\t\\n\\f\\r\\u0000\"",
+      "hashes": {
+        "osstack.joint.method-binding.v1": "9fb02eedc664124da625c1e11996344321c066205605c5c588852bceb7ece37b",
+        "osstack.joint.method-proposal.v1": "c096350132a6400f13f72542a22fce7dad2fec372e5083973b4346b18184e430",
+        "osstack.joint.support-profile.v2": "ec927cec9f4f4d9a86fc7a6b9e26633146d2af8b98e6d28b28852b556c8f98f4",
+        "osstack.joint.source-snapshot.v1": "e8d856d55e994da28c5c73b35e8cd3672fc12eb6a98923b82491628df49c31c5",
+        "osstack.joint.artifact-requirements.v1": "7486e96112c015de109042acf725d4e02759d615695a174e03a2135851d7af98",
+        "osstack.joint.role-artifact-requirements.v1": "5a02148bb386b8ef5df4d4eb7a742cae95b37bd829cbf33f911430717871e99e",
+        "osstack.joint.check-binding.v1": "d28744913b363bfb8e8c1875314413cd20306688747f4756c4469946d803d16d",
+        "osstack.joint.intent.v1": "0e6bef8e9275947a1d66d3cce89be03adecc6e9ed05eff34aaa35c1d58100136",
+        "osstack.joint.method-recipe.v1": "263ed55e1abbc8450008a1f4b0e6330df8a540d6c94eb75554c0ab8bf2f8580c",
+        "osstack.joint.method-input.v1": "510b8e6431a74d2a3877a5153c97a48ae0d0bb96148c3df7637665fbd44cebbd",
+        "osstack.joint.environment.v1": "acb60a2e7b3e68f7794f97365537adb28cd23a1ba59996127804ff2f2b324d94",
+        "osstack.joint.scenario.v1": "be60d083660cbdda2a1d940270f1a4df569ddcfd68c3ef3ea6c42b1dc556d5d7",
+        "osstack.joint.check-registry.v1": "6475d33e4609f64021c3de534c0ee571b8bcf4e73465ef58fcf143377caa4d14",
+        "osstack.joint.schema-spec.v1": "72d0390aca8fa7479cf7180f564778e48e1fca98b6a36907086b114863988d26",
+        "osstack.joint.recovery-subject.v1": "cc4261bcba8d5f67346fdc6b24e84355ed3223ac1ef4aea9f582eb4b2417d182",
+        "osstack.joint.trial-root.v1": "22fdc91a8fc2d96823449ec66e82204e6c2b56cdcd184aaf8edccc57563812c7",
+        "osstack.joint.recovery-request-input.v1": "e8fa8ada54dc954f0234acda4e21423e075909a601e07e535177f8abe37f887a",
+        "osstack.joint.trial-consumption-input.v1": "f903cb5b0d335712c3a24d22ed74e4ddbd3ac7f68f8582d9df250fa179de2b96",
+        "osstack.joint.source-content.v1": "e3d70e4293e7a8bd3793372c88ffa59448e8b85350a0f0328f6724daa94b23d3",
+        "osstack.joint.source-inspection.v1": "3fa9669b22abc3cd93939cd0acb3261600d9eb527eb4be14d76e2411c6febeae"
+      }
+    },
+    {
+      "id": "prototype",
+      "bytes_hex": "7b225f5f70726f746f5f5f223a7b2278223a317d7d",
+      "accepted": true,
+      "canonical": "{\"__proto__\":{\"x\":1}}",
+      "hashes": {
+        "osstack.joint.method-binding.v1": "be621ec803f307039e0865fb1ab05771a03d071bd0c4ea68914bcd8400b3aa0c",
+        "osstack.joint.method-proposal.v1": "e6aa52cf61ee5549eef7853709cde8a04f09c5a752bd8cd19a6df4f5d70d001f",
+        "osstack.joint.support-profile.v2": "5bea5be29a2b9d365e40a699a4663d1a9cc51eced81eb3ab30136a519ffa976b",
+        "osstack.joint.source-snapshot.v1": "1c19428c3ba730c90dbf30cf34584862a0f8583a0918eaab8d74fc6ba8a3dfd7",
+        "osstack.joint.artifact-requirements.v1": "2f66080139aba6166e732ebc8faae85658cc15bc5624ce1765c840a6b301d3cc",
+        "osstack.joint.role-artifact-requirements.v1": "f26f78f6ced7150a00eb1a366206849110cd84c9c4c0e9e2862f89de0b29b8fe",
+        "osstack.joint.check-binding.v1": "ea0521f78cce7b9146ba20bf43a3dd5263779b32039be8456190408880ee1004",
+        "osstack.joint.intent.v1": "2dc48fd4c8c25d318f494c207528c3678fc75f6f1bbae4723d94483827886b3b",
+        "osstack.joint.method-recipe.v1": "ebdba7e41f54377d6519969f47b4dbce2e5e4688b325af433a28102be95de7ae",
+        "osstack.joint.method-input.v1": "36e349cbf6e2c601d9754e8e88a1d804bbf7eb4f6d081a398cd539f00d2e2eb2",
+        "osstack.joint.environment.v1": "9bf1c95769f0dd97bf8ac1c5baf67d3564e7fc3c1d9fb4c2ae05a9916e8c6a77",
+        "osstack.joint.scenario.v1": "6efb0e873929a11a58d34d675b3475f02e520156d583c16a9312cc846ff0892a",
+        "osstack.joint.check-registry.v1": "96375953a1346713c91cc09b3b8a4d2f401e1b7bca8df2f38a6a600864bd9233",
+        "osstack.joint.schema-spec.v1": "42e5111ae636fc3d4a95206518196ce8143a82880d002f7775b701a073dbe098",
+        "osstack.joint.recovery-subject.v1": "03ae31c5009afdb21c28c04a53405c8932166787df228c186eee63412c316650",
+        "osstack.joint.trial-root.v1": "c3d6e053b71a909bf88452cfaa87a7250d264e2d42b3e98fbf16f0207036757a",
+        "osstack.joint.recovery-request-input.v1": "639b04b2a9189a163aff7b1daaa487e6896c3a8068348af80fe60fe3052f03b4",
+        "osstack.joint.trial-consumption-input.v1": "4cb6e11e88162091500ee33516b0d826ec4d2f9b1666c1053bea74e77234cc60",
+        "osstack.joint.source-content.v1": "ed1976fc5b8d2d418ad495752145893bf55d5d691fc6d8c8ba3f0a77488bb2d0",
+        "osstack.joint.source-inspection.v1": "6a78cb8b6ed878c4b0c95809fa994c9f72894129a195eb0e073dc5aa934a7bf5"
+      }
+    },
+    {
+      "id": "ascii-del",
+      "bytes_hex": "7b225c7530303766223a2278227d",
+      "accepted": true,
+      "canonical": "{\"\":\"x\"}",
+      "hashes": {
+        "osstack.joint.method-binding.v1": "8ae7d85bbffca84e551d739cfbb46ebb7c2125b131c7fc74e70de41385563c15",
+        "osstack.joint.method-proposal.v1": "d3ae8b3a9cf7c09458ed1625df3067f4cb8631893ae8a6f8ba15b4b8527f63ce",
+        "osstack.joint.support-profile.v2": "429d098818103403f91693be6ddf7e12661bec8055e34b86570156dfcd0ee3d5",
+        "osstack.joint.source-snapshot.v1": "f3377176bd0f104b5984d857d03236a275480ccaefbae6fef96e68b814e6d9bd",
+        "osstack.joint.artifact-requirements.v1": "cf4ded7f213406ca45e52cc3931df3f0115e76cbc6b75a52d07546452f68a5ac",
+        "osstack.joint.role-artifact-requirements.v1": "0b68d505413dd4baa9d8e76b3835abf91cb27613f279e7d1b6fbc7949123eb6f",
+        "osstack.joint.check-binding.v1": "2677ea35fa45494b607aa498b68bf5b50bc9a64641f7a818d6ccdb6a9e2f0f83",
+        "osstack.joint.intent.v1": "0efb6439b4484497b71b9cd2fd37c06c761afa12755dfc41236ba907fe473404",
+        "osstack.joint.method-recipe.v1": "b2329689f72eaac04fa3cc33b7fbdc27fcf34d206ad587218786e2175862292d",
+        "osstack.joint.method-input.v1": "9a2ce7037aed8ff2502d60ff27d999bd4003fc2bdb1898f70d8854e5fa3a6586",
+        "osstack.joint.environment.v1": "3f2e64f74970d8030c7b5218ead3cef37555fd37e87ec635d4ca61196fbe4e7a",
+        "osstack.joint.scenario.v1": "b2f4b6b64201d43cf2830bcd02a86f9816cc3217d8a7edc4fdd3a419dffd8d3d",
+        "osstack.joint.check-registry.v1": "cbc75c1841f731ef073aad73c46034d42b7dddaf17952f4b11a1e6561aa3a0bf",
+        "osstack.joint.schema-spec.v1": "4e53ae1bbab2592239d15fb6b0d9b285bf0b8f8b5f2c61f288497262529aa0b4",
+        "osstack.joint.recovery-subject.v1": "e405256f01b72c467b0609ef8de5a1bdc9bb64b2a43da9d81e3e6cfd072224cc",
+        "osstack.joint.trial-root.v1": "fa0bc019651d7e2bcc098cfd1b29b7f5f41ad15b8a221b49015c1c26fb14d0bc",
+        "osstack.joint.recovery-request-input.v1": "182eea371b6e3a6380c222d88c3ee606ae92d49619b11755f870cb93a0ed70dd",
+        "osstack.joint.trial-consumption-input.v1": "d5ddf332c6a1da77d6471cf5f372e3bb84a256268c80e95fb4079029864b187d",
+        "osstack.joint.source-content.v1": "cbca62fbe71ff11947ead493f201104f2bd6eaef96399a0d573df0515a0b1870",
+        "osstack.joint.source-inspection.v1": "34650d2fd80eae2ec234031e776d657174e41c36bdb20a26a3fc1f2716aad657"
+      }
+    },
+    {
+      "id": "duplicate",
+      "bytes_hex": "7b2261223a312c2261223a327d",
+      "accepted": false,
+      "error": "INVALID_JOINT_JSON"
+    },
+    {
+      "id": "decoded-duplicate",
+      "bytes_hex": "7b2261223a312c225c7530303631223a327d",
+      "accepted": false,
+      "error": "INVALID_JOINT_JSON"
+    },
+    {
+      "id": "negative-zero",
+      "bytes_hex": "2d30",
+      "accepted": false,
+      "error": "INVALID_JOINT_JSON"
+    },
+    {
+      "id": "nested-negative-zero",
+      "bytes_hex": "5b2d305d",
+      "accepted": false,
+      "error": "INVALID_JOINT_JSON"
+    },
+    {
+      "id": "fraction",
+      "bytes_hex": "312e30",
+      "accepted": false,
+      "error": "INVALID_JOINT_JSON"
+    },
+    {
+      "id": "exponent",
+      "bytes_hex": "316530",
+      "accepted": false,
+      "error": "INVALID_JOINT_JSON"
+    },
+    {
+      "id": "leading-zero",
+      "bytes_hex": "3031",
+      "accepted": false,
+      "error": "INVALID_JOINT_JSON"
+    },
+    {
+      "id": "plus",
+      "bytes_hex": "2b31",
+      "accepted": false,
+      "error": "INVALID_JOINT_JSON"
+    },
+    {
+      "id": "overflow",
+      "bytes_hex": "39303037313939323534373430393932",
+      "accepted": false,
+      "error": "INVALID_JOINT_JSON"
+    },
+    {
+      "id": "nan",
+      "bytes_hex": "4e614e",
+      "accepted": false,
+      "error": "INVALID_JOINT_JSON"
+    },
+    {
+      "id": "infinity",
+      "bytes_hex": "496e66696e697479",
+      "accepted": false,
+      "error": "INVALID_JOINT_JSON"
+    },
+    {
+      "id": "negative-infinity",
+      "bytes_hex": "2d496e66696e697479",
+      "accepted": false,
+      "error": "INVALID_JOINT_JSON"
+    },
+    {
+      "id": "non-ascii-key",
+      "bytes_hex": "7b22c3a9223a317d",
+      "accepted": false,
+      "error": "INVALID_JOINT_JSON"
+    },
+    {
+      "id": "surrogate-high",
+      "bytes_hex": "225c756438303022",
+      "accepted": false,
+      "error": "INVALID_JOINT_JSON"
+    },
+    {
+      "id": "surrogate-low",
+      "bytes_hex": "225c756466666622",
+      "accepted": false,
+      "error": "INVALID_JOINT_JSON"
+    },
+    {
+      "id": "surrogate-pair-invalid",
+      "bytes_hex": "225c75643830307822",
+      "accepted": false,
+      "error": "INVALID_JOINT_JSON"
+    },
+    {
+      "id": "trailing-array",
+      "bytes_hex": "5b312c5d",
+      "accepted": false,
+      "error": "INVALID_JOINT_JSON"
+    },
+    {
+      "id": "trailing-object",
+      "bytes_hex": "7b2261223a312c7d",
+      "accepted": false,
+      "error": "INVALID_JOINT_JSON"
+    },
+    {
+      "id": "trailing-root",
+      "bytes_hex": "747275652066616c7365",
+      "accepted": false,
+      "error": "INVALID_JOINT_JSON"
+    },
+    {
+      "id": "raw-control",
+      "bytes_hex": "220022",
+      "accepted": false,
+      "error": "INVALID_JOINT_JSON"
+    },
+    {
+      "id": "bad-escape",
+      "bytes_hex": "225c78343122",
+      "accepted": false,
+      "error": "INVALID_JOINT_JSON"
+    },
+    {
+      "id": "missing-colon",
+      "bytes_hex": "7b22612220317d",
+      "accepted": false,
+      "error": "INVALID_JOINT_JSON"
+    },
+    {
+      "id": "empty",
+      "bytes_hex": "",
+      "accepted": false,
+      "error": "INVALID_JOINT_JSON"
+    },
+    {
+      "id": "bom",
+      "bytes_hex": "efbbbf7b7d",
+      "accepted": false,
+      "error": "INVALID_JOINT_JSON"
+    },
+    {
+      "id": "depth65",
+      "bytes_hex": "5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b305d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d",
+      "accepted": false,
+      "error": "INVALID_JOINT_JSON"
+    },
+    {
+      "id": "overlong-utf8",
+      "bytes_hex": "22c0af22",
+      "accepted": false,
+      "error": "INVALID_JOINT_JSON"
+    },
+    {
+      "id": "utf8-surrogate",
+      "bytes_hex": "22eda08022",
+      "accepted": false,
+      "error": "INVALID_JOINT_JSON"
+    },
+    {
+      "id": "utf8-truncated",
+      "bytes_hex": "22e422",
+      "accepted": false,
+      "error": "INVALID_JOINT_JSON"
+    },
+    {
+      "id": "ascii-order",
+      "bytes_hex": "7b2261223a322c2242223a312c226131223a332c22615f62223a347d",
+      "accepted": true,
+      "canonical": "{\"B\":1,\"a\":2,\"a1\":3,\"a_b\":4}",
+      "hashes": {
+        "osstack.joint.method-binding.v1": "35713adb943f9bc15e0b7ffb77b0202cc19405ee9036b787f79440189c391939",
+        "osstack.joint.method-proposal.v1": "c2d05de676c5d55c868bb1617987f8ee589aa8964ec1b132e300de246bb33864",
+        "osstack.joint.support-profile.v2": "a569f8289f550b900d1de44269c754e5aae8d58ea7413b23a0528aba24fa8d0a",
+        "osstack.joint.source-snapshot.v1": "d121d6c304ac5ac22b43c2ce35ec1c161c1aa268fabd1bce81acd641bc0da73c",
+        "osstack.joint.artifact-requirements.v1": "0514841baac24738b357a096c09258ddeb1a18b5032d6a16dacdbd7a548263c0",
+        "osstack.joint.role-artifact-requirements.v1": "139af85ba78c2f5e4d8ca0e4503fff0862f335033d976973d7225bbe888a8deb",
+        "osstack.joint.check-binding.v1": "6aa7d7c82508bbbead00e7b91b8932bbdfb71ed447b910b01cda269a1ed5c61e",
+        "osstack.joint.intent.v1": "c9061b1a7685efc6a50df724a3f2c625c5f59b95b682d54bc2c6e2d32b01c61b",
+        "osstack.joint.method-recipe.v1": "af694a5acadce658f9fc951111ed6faa3019360910baeb9ef1daffbdb5471abc",
+        "osstack.joint.method-input.v1": "2cb36cf59992f94a2c9c8c2aa8f80cc54c93ef15809268cbd984fdcf79af0478",
+        "osstack.joint.environment.v1": "15f262a213d0753cc9aa90faa0b43088f058887f3a1e7d166075fdb98a0c3523",
+        "osstack.joint.scenario.v1": "1cf6b08e7e9c739e12214d35243701190081e3e28885065bd3a2703236ad5d10",
+        "osstack.joint.check-registry.v1": "fc82cf27accd7a7610a187f42b6d500d12f30235e102927f9f719e3b06479b74",
+        "osstack.joint.schema-spec.v1": "cd777a301ddb02a447af59b412753ad6d019f768c5e03b41a85beada72f30250",
+        "osstack.joint.recovery-subject.v1": "01478d0ea28658154aec598aa945aa2af7b7e3ccc3b05c6fcee0a264a068c5a8",
+        "osstack.joint.trial-root.v1": "4be2ac44b65fe343962d71d5611d0a71850ceee52e00380215fb7d3cadbef1b8",
+        "osstack.joint.recovery-request-input.v1": "eb4354a141471c667055f9e05690c5a0966faefc8e68e547805be5613a285767",
+        "osstack.joint.trial-consumption-input.v1": "9931dcf603a06ed727a20a6072aea8b4f729adfb9a5f26bd714c30566f7ae25e",
+        "osstack.joint.source-content.v1": "284b60e509baf16ec45f34aa6ec18c188f82c957001debec22a41a2f6c2b9cf4",
+        "osstack.joint.source-inspection.v1": "54dbedeea6185f851728bb8bbeeb5d2179c4e0a4dfd92ef7104333cbd70ff961"
+      }
+    },
+    {
+      "id": "depth64",
+      "bytes_hex": "5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b305d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d",
+      "accepted": true,
+      "canonical": "[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[0]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]",
+      "hashes": {
+        "osstack.joint.method-binding.v1": "fa1307fda6f2db97cb5416e81354ed1a13bc57ba2bd9b9780b2cc4b535b71f08",
+        "osstack.joint.method-proposal.v1": "2708b6c349907705a3e29b4cea441c6b366d1f6e9eb6350506aae484ab52047f",
+        "osstack.joint.support-profile.v2": "90dda0ee86ac01941caaeeb5e5bfdcf776aa401afe2ee3245cabd7fa159ce89c",
+        "osstack.joint.source-snapshot.v1": "6ad9126055acdb393f3aa9a70838cc00477b77dc71c6a57a77cf815028e38265",
+        "osstack.joint.artifact-requirements.v1": "3c88ea6ec67ac6d924fa087a3276bc9717096ebdb516fe5b785fa67aafec7b30",
+        "osstack.joint.role-artifact-requirements.v1": "a47b749c75d5d5674e7492e0b7a53d2abc739d4c2bbca913d4e99e28b71781a1",
+        "osstack.joint.check-binding.v1": "027f258f76efa8a08e06552a12ac0c78523d4cbcc993d5f17d0070701c6e4454",
+        "osstack.joint.intent.v1": "9b1c6c64cbd7ebba24f818a44ebba7e9cdf35ea80ac1193770ed164dbda5de5c",
+        "osstack.joint.method-recipe.v1": "c0803d37fd4a201fad30c7e42c83b064420b29e4174f7715e28fd40677bf55ca",
+        "osstack.joint.method-input.v1": "7185291cb73dda59ee612f1ca61aed62367f20bea07e86cad5d23a486fe8be01",
+        "osstack.joint.environment.v1": "f5634d0a6d249cdf044a62d20964a715e67a1aa3d65e20f82fb6a93e71b44df9",
+        "osstack.joint.scenario.v1": "fe675e3867ff1bbdba640a9fde1bbb0b9801a42d28478878c08bf52756b4a5e3",
+        "osstack.joint.check-registry.v1": "ec38e1f836040d826b6bfb6ada71d2b6ba4f69012023dfdb761b8d73df0f21b2",
+        "osstack.joint.schema-spec.v1": "57c1d7e526a3aec8cf7f68a20b5f402fe459a73f8d4026d3f66ac26ece30fd66",
+        "osstack.joint.recovery-subject.v1": "9b53c2efc804d06991875c372a44d1cb7e2a5a0d8001a9d161aa9e79e415843e",
+        "osstack.joint.trial-root.v1": "86c06f78eb365cd4719fa7af538c15138f85d64c79aef6815fafe6868cd3a2ce",
+        "osstack.joint.recovery-request-input.v1": "b48fde33cb530bf2edc914444b70414a3e20f7c1494d6c7f1e68f8740f7f9dee",
+        "osstack.joint.trial-consumption-input.v1": "25b1b78e0c568c85fd8a54fa50090e21f9e84b68586d444f02e0686544c556f8",
+        "osstack.joint.source-content.v1": "bfcef731e4978b8646a09c5cc1a510805daeeb126cb15204293f4a25f3e566de",
+        "osstack.joint.source-inspection.v1": "bc43a6a85b374142492aa2e59a60849dbb36b6da56bb8c235d3e69e7eb76d829"
+      }
+    },
+    {
+      "id": "object-depth64",
+      "bytes_hex": "7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a307d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d",
+      "accepted": true,
+      "canonical": "{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":0}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}",
+      "hashes": {
+        "osstack.joint.method-binding.v1": "8a9abc2f5bf873707fe1f4d4e0a1e309335c0b7a6ee134dbad46514a3d53b3bb",
+        "osstack.joint.method-proposal.v1": "137329d946e269e40a671dfa8f9e9d048f715514ca2037b62d6c6bebfc717054",
+        "osstack.joint.support-profile.v2": "33ad07c0e4cbd1ffa306488cfd63460be9d2aca8fc83dd230c039196b5bd5e67",
+        "osstack.joint.source-snapshot.v1": "4be67dae6aeccafbe76cda1a7dfc94226dda23efcca08f85908d0c1149bd049c",
+        "osstack.joint.artifact-requirements.v1": "82f1a344b5132e24cb7ef2b7b83ef2da42a7122729eb8c28776103aa49e4df08",
+        "osstack.joint.role-artifact-requirements.v1": "877eb2b7cb25bde8170e6297d1dca695bed3cf37d47e32cb6552d02385e8abfc",
+        "osstack.joint.check-binding.v1": "8696322642600714a573904201178755d5c2ec6bc6f5d4ea1786ed798cb9ac3c",
+        "osstack.joint.intent.v1": "337b3d52be26f173cfc22dde4a9d565c5f3163421015c906b1e0d04259bf132e",
+        "osstack.joint.method-recipe.v1": "789598ca589e17612514e5a5c2a4446a89aeafb62fbb660f85bb4ad69c3c5e1a",
+        "osstack.joint.method-input.v1": "fe959820a5de7910f3d649c6ca1f5f3c60d12cae13b104ff04906e84e8d843a1",
+        "osstack.joint.environment.v1": "0c44d400aaa437b30b594698ae67fb0df21d2938dc31ec35f5a7f3c76d58d0bc",
+        "osstack.joint.scenario.v1": "80938d2283f3fbade443d4bdd35072e4d9236794c317c16ceef83a889f8e186b",
+        "osstack.joint.check-registry.v1": "3f2a0bff1dad145f2b4e7b363047635d8e0c3612f123c0b31f24a038ad3297e6",
+        "osstack.joint.schema-spec.v1": "488be0cd9a1aa67eb9a69ed5b8030e283a4ff5c474b2610428bc67a74ead5f16",
+        "osstack.joint.recovery-subject.v1": "b2f32c5daddf88172e1b6c9851ba0eb5eadd3bef319b71d2705b0e95587fef8a",
+        "osstack.joint.trial-root.v1": "1245f50fc551ac4b01fd5cfca54e22697f7332f0b2260c8f3bfd6333fe66411b",
+        "osstack.joint.recovery-request-input.v1": "3bf635924f2cb7cc1a0123b8bcab037b6dbac2bbbb79a4ad71f6020b166f5a31",
+        "osstack.joint.trial-consumption-input.v1": "d0c4e43b45a4a2b1cac6ff0ea26195f7088b55b966aa5192cb4b68d6ef222772",
+        "osstack.joint.source-content.v1": "5ce727504fcdb2812ffa2cf307cd605186621f91cc50dbd7ed065d960b7f6f16",
+        "osstack.joint.source-inspection.v1": "e42e057d9dc91384d01726fa94ca399c6e3f24f684b98bd3ad8eb3da98e14da5"
+      }
+    },
+    {
+      "id": "underflow",
+      "bytes_hex": "2d39303037313939323534373430393932",
+      "accepted": false,
+      "error": "INVALID_JOINT_JSON"
+    },
+    {
+      "id": "nested-duplicate",
+      "bytes_hex": "7b2278223a7b2261223a312c2261223a327d7d",
+      "accepted": false,
+      "error": "INVALID_JOINT_JSON"
+    },
+    {
+      "id": "escaped-non-ascii-key",
+      "bytes_hex": "7b225c7530306539223a317d",
+      "accepted": false,
+      "error": "INVALID_JOINT_JSON"
+    },
+    {
+      "id": "formfeed-whitespace",
+      "bytes_hex": "0c6e756c6c",
+      "accepted": false,
+      "error": "INVALID_JOINT_JSON"
+    },
+    {
+      "id": "verticaltab-whitespace",
+      "bytes_hex": "0b6e756c6c",
+      "accepted": false,
+      "error": "INVALID_JOINT_JSON"
+    },
+    {
+      "id": "nbsp-whitespace",
+      "bytes_hex": "c2a06e756c6c",
+      "accepted": false,
+      "error": "INVALID_JOINT_JSON"
+    },
+    {
+      "id": "object-depth65",
+      "bytes_hex": "7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a307d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d",
+      "accepted": false,
+      "error": "INVALID_JOINT_JSON"
+    },
+    {
+      "id": "utf8-eof",
+      "bytes_hex": "22e4b8",
+      "accepted": false,
+      "error": "INVALID_JOINT_JSON"
+    },
+    {
+      "id": "utf8-out-of-range",
+      "bytes_hex": "f4908080",
+      "accepted": false,
+      "error": "INVALID_JOINT_JSON"
+    },
+    {
+      "id": "utf8-overlong-three",
+      "bytes_hex": "e08080",
+      "accepted": false,
+      "error": "INVALID_JOINT_JSON"
+    },
+    {
+      "id": "utf8-lone-continuation",
+      "bytes_hex": "80",
+      "accepted": false,
+      "error": "INVALID_JOINT_JSON"
+    },
+    {
+      "id": "utf8-ff",
+      "bytes_hex": "ff",
+      "accepted": false,
+      "error": "INVALID_JOINT_JSON"
+    },
+    {
+      "id": "utf16-bom",
+      "bytes_hex": "fffe",
+      "accepted": false,
+      "error": "INVALID_JOINT_JSON"
+    },
+    {
+      "id": "utf8-outside-string",
+      "bytes_hex": "5bff5d",
+      "accepted": false,
+      "error": "INVALID_JOINT_JSON"
+    },
+    {
+      "id": "utf8-inside-key",
+      "bytes_hex": "7b22ff223a317d",
+      "accepted": false,
+      "error": "INVALID_JOINT_JSON"
+    }
+  ],
+  "helper_cases": [
+    {
+      "id": "bindingDigest",
+      "helper": "bindingDigest",
+      "domain": "osstack.joint.method-binding.v1",
+      "input": {
+        "kind": "method_binding",
+        "schema_version": 1,
+        "task_id": "fixture-ref",
+        "proposal_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "contract_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "context_config_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "support_profile_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "source_snapshot_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "recipe_version": "fixture-ref",
+        "authorization_ref": "fixture-ref",
+        "completion": "local_verified",
+        "publication": "none",
+        "merge": "none",
+        "binding_digest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "mode": "trial",
+        "trial_permit_id": "trial-1",
+        "role_materials": [
+          {
+            "role": "builder",
+            "method_text_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "role_required_artifacts_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          {
+            "role": "reviewer",
+            "method_text_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "role_required_artifacts_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          {
+            "role": "verifier",
+            "method_text_sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "role_required_artifacts_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          }
+        ]
+      },
+      "expected": "76a0f2432a4aaac93177c565436052c2638f42cc5e39cf99b1aa5e9f7dae8eab"
+    },
+    {
+      "id": "recoverySubjectDigest",
+      "helper": "recoverySubjectDigest",
+      "domain": "osstack.joint.recovery-subject.v1",
+      "input": {
+        "kind": "attention_action",
+        "home_id": "fixture-home",
+        "mission_id": "m1",
+        "action_id": "a1",
+        "message_id": "msg1"
+      },
+      "expected": "fc3db101e235f3c2a060c7f78c40fa91a3e1e9514be7ecd01f27d51e4716dae2"
+    },
+    {
+      "id": "schemaSpecDigest",
+      "helper": "schemaSpecDigest",
+      "domain": "osstack.joint.schema-spec.v1",
+      "input": {
+        "kind": "migration_spec",
+        "schema_version": 1,
+        "schema_change_id": "operator-recovery-bootstrap-v1",
+        "source_schema": 47,
+        "target_schema": 48,
+        "ddl_digest": "7002b690cacdbaabac47b69277a56d028a9879222dd7433ae43fbe8ea728f6b2",
+        "fixture_digest": "595ffdf06a1f1e60c8af6344bc6e04ff4340a980148894b1a8ca86085bc3b715",
+        "source_schema_digest": "7b4bb1608b12373cb3225d4c3614dc5cd1d1634b8c97e6db16a2acedb673159c",
+        "target_schema_digest": "7d42339e7d0e14da3be37cc4b2f79df54220425f763248801f7ae9961a38459f",
+        "expected_lineage_tables": [
+          "a_b",
+          "a1"
+        ]
+      },
+      "expected": "88e85b360031fad07c1c2f57bb630001d6ff6e90b3de3336e909a8008616ff9f"
+    },
+    {
+      "id": "recoveryRequestInputDigest",
+      "helper": "recoveryRequestInputDigest",
+      "domain": "osstack.joint.recovery-request-input.v1",
+      "input": {
+        "schema_version": 1,
+        "principal_ref": "operator",
+        "scope_id": "scope",
+        "tenant_id": "default",
+        "request": {
+          "kind": "recovery_request",
+          "schema_version": 1,
+          "request_id": "request",
+          "if_revision": 0,
+          "subject": {
+            "kind": "attention_action",
+            "home_id": "fixture-home",
+            "mission_id": "m1",
+            "action_id": "a1",
+            "message_id": "msg1"
+          },
+          "decision": "preserve_unknown",
+          "proof_refs": [],
+          "schema_spec_digest": "2fbb2df4071358277b6ceb734b4029a8fa433156859dba654de531a6970be083"
+        }
+      },
+      "expected": "2a76034bfce10662a37704fe674b0ce7331e5e1068ee14a5c76ea3488d7c59d0"
+    },
+    {
+      "id": "trialRootEffectId",
+      "helper": "trialRootEffectId",
+      "domain": "osstack.joint.trial-root.v1",
+      "input": {
+        "scope": "scope",
+        "idempotency_key": "request",
+        "permit_id": "permit"
+      },
+      "expected": "trial-c6ae3e31510e74e210a517d25640dc52c6ea928e68397cf45d24d10c38431b0f"
+    },
+    {
+      "id": "trialConsumptionInputDigest",
+      "helper": "trialConsumptionInputDigest",
+      "domain": "osstack.joint.trial-consumption-input.v1",
+      "input": {
+        "schema_version": 1,
+        "principal_ref": "operator",
+        "scope_id": "scope",
+        "tenant_id": "default",
+        "idempotency_key": "request",
+        "permit": {
+          "kind": "trial_permit",
+          "schema_version": 1,
+          "permit_id": "permit",
+          "issuer_ref": "fixture-ref",
+          "authorization_ref": "fixture-ref",
+          "candidate_method_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "contract_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "support_profile_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "repository": "/fixture/repo",
+          "max_wall_ms": 1,
+          "issued_at_ms": 1000,
+          "expires_at_ms": 2000,
+          "scope": "trusted_isolated_development_trial",
+          "production_qualified": false,
+          "max_root_runs": 1,
+          "root_effect_id": "trial-c6ae3e31510e74e210a517d25640dc52c6ea928e68397cf45d24d10c38431b0f",
+          "binding_digest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "max_adapter_invocations": 8,
+          "max_actions": 32,
+          "max_tokens": 100000,
+          "max_cost_microusd": 10000000
+        },
+        "program_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "input_digest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      },
+      "expected": "d919d189020965e4a555972255d9a02ae7596b591d00e56e6d6ecfe5be0b90e8"
+    },
+    {
+      "id": "methodProposalDigest",
+      "helper": "methodProposalDigest",
+      "domain": "osstack.joint.method-proposal.v1",
+      "input": {
+        "kind": "method_proposal",
+        "schema_version": 1,
+        "task_id": "fixture-ref",
+        "intent_revision": 0,
+        "intent_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "source_snapshot_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "recipe_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "recipe_version": "fixture-ref",
+        "check_binding_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "required_artifacts_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "method_input_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "executable": false
+      },
+      "expected": "c8b6a87b14cc3df6e927445a68b6955bd55f1e781af60e337005ad2b558b8b14"
+    },
+    {
+      "id": "supportProfileDigest",
+      "helper": "supportProfileDigest",
+      "domain": "osstack.joint.support-profile.v2",
+      "input": {
+        "kind": "support_profile",
+        "schema_version": 2,
+        "profile_class": "operator_attested_trial",
+        "principal_ref": "fixture-ref",
+        "scope_id": "fixture-ref",
+        "tenant_id": "fixture-ref",
+        "canonical_repo": "fixture-ref",
+        "execution_home_id": "fixture-ref",
+        "host_build_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "adapter_version": "fixture-ref",
+        "provider": "fixture-ref",
+        "model": "fixture-ref",
+        "runtime_version": "fixture-ref",
+        "executor": "fixture-ref",
+        "template_tuple": "fixture-ref",
+        "isolation": "trusted_local",
+        "can_query": false,
+        "can_request_stop": false,
+        "stop_proof_level": "unavailable",
+        "budget_enforceability": {
+          "wall": "enforceable",
+          "actions": "enforceable",
+          "tokens": "enforceable",
+          "cost": "enforceable"
+        },
+        "measurement_refs": [
+          "z",
+          "a"
+        ],
+        "start_identity": "unqualified",
+        "query_by_start_identity": false,
+        "containment_domain": null
+      },
+      "expected": "92b8e1545765e73b73566f47d6ee0299d68333f04b829d30f1eb270b4124af70"
+    },
+    {
+      "id": "sourceSnapshotDigest",
+      "helper": "sourceSnapshotDigest",
+      "domain": "osstack.joint.source-snapshot.v1",
+      "input": {
+        "kind": "source_snapshot",
+        "schema_version": 1,
+        "pin": {
+          "kind": "source_pin",
+          "schema_version": 1,
+          "repository": "https://github.com/cursor/plugins",
+          "commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "subdir": "pstack",
+          "content_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "license_refs": [
+            "LICENSE"
+          ]
+        },
+        "files": [
+          {
+            "path": "a",
+            "mode": "100644",
+            "blob": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          {
+            "path": "B",
+            "mode": "100644",
+            "blob": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          {
+            "path": "a_b",
+            "mode": "100644",
+            "blob": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          {
+            "path": "a1",
+            "mode": "100644",
+            "blob": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          {
+            "path": "😀",
+            "mode": "100644",
+            "blob": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          {
+            "path": "～",
+            "mode": "100644",
+            "blob": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          }
+        ],
+        "dependencies": []
+      },
+      "expected": "b30816773273f2250486ca0ae914503de975ab3d2cf3c4448a53745d27ee0acf"
+    },
+    {
+      "id": "artifactRequirementsDigest",
+      "helper": "artifactRequirementsDigest",
+      "domain": "osstack.joint.artifact-requirements.v1",
+      "input": {
+        "kind": "artifact_requirements",
+        "schema_version": 1,
+        "recipe_version": "fixture-ref",
+        "requirements": [
+          {
+            "artifact_ref_kind": "independent_review",
+            "producer_role": "reviewer",
+            "body_schema_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "verifier_policy_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "required": true
+          },
+          {
+            "artifact_ref_kind": "candidate_checks",
+            "producer_role": "verifier",
+            "body_schema_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "verifier_policy_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "required": true
+          }
+        ]
+      },
+      "expected": "dbbd885fa9f55f1d7d303f7807a98fea598759c3bac50e6d3c3e5b6f908b2052"
+    },
+    {
+      "id": "checkBindingDigest",
+      "helper": "checkBindingDigest",
+      "domain": "osstack.joint.check-binding.v1",
+      "input": {
+        "kind": "check_binding",
+        "schema_version": 1,
+        "repository": "/fixture/repo",
+        "primary_id": "accept",
+        "checks": [
+          {
+            "id": "accept",
+            "role": "acceptance",
+            "registry_ref": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "required": true
+          }
+        ]
+      },
+      "expected": "b1b955b40ec9a70970c77dbcd4584b6a51f04f5d3d110664e751773fff564e24"
+    },
+    {
+      "id": "intentDigest",
+      "helper": "intentDigest",
+      "domain": "osstack.joint.intent.v1",
+      "input": {
+        "kind": "material:intent_frame",
+        "schema_version": 1,
+        "task_id": "t",
+        "intent_revision": 0,
+        "goals": [
+          "z",
+          "a"
+        ],
+        "non_goals": [],
+        "observations": [],
+        "hypotheses": [],
+        "unknowns": [
+          "cause"
+        ],
+        "source_refs": []
+      },
+      "expected": "d7cd19151ff25fa707af76a01af16a73d843546020a99882102943c324c4cf78"
+    },
+    {
+      "id": "methodRecipeDigest",
+      "helper": "methodRecipeDigest",
+      "domain": "osstack.joint.method-recipe.v1",
+      "input": {
+        "kind": "method_recipe",
+        "schema_version": 1,
+        "recipe_id": "fixture-ref",
+        "recipe_version": "fixture-ref",
+        "source_snapshot_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "intent_kind": "bug_fix",
+        "logical_check_roles": [
+          "reproduce"
+        ],
+        "role_materials": [
+          {
+            "role": "builder",
+            "method_text_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "role_required_artifacts_digest": "a182a30f92b1526e83b5b9ff115d0c188b57263c936a63d6e89fd757f883c172"
+          },
+          {
+            "role": "reviewer",
+            "method_text_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "role_required_artifacts_digest": "74816d1c586fad22cedf7ada79fad3a44ebf74967e4a867dd4632177a8bc3d1e"
+          },
+          {
+            "role": "verifier",
+            "method_text_sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "role_required_artifacts_digest": "aa2b51b280a39941f4ed3ef9be51139351d1a23d3356010827b0f0324d681c39"
+          }
+        ],
+        "required_artifacts_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "allowed_completion": "local_verified",
+        "publication": "none"
+      },
+      "expected": "202a4b30093a4c27b7e6b95af1bf36c28363122d4af844bfcb23797ba9811685"
+    },
+    {
+      "id": "methodInputDigest",
+      "helper": "methodInputDigest",
+      "domain": "osstack.joint.method-input.v1",
+      "input": {
+        "kind": "method_input",
+        "schema_version": 1,
+        "role": "builder",
+        "intent_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "source_snapshot_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "requested_materials": [
+          "z",
+          "a"
+        ]
+      },
+      "expected": "aa2cc0dcff083d57956503408f2cdfbad0f8b97064993f2b06635e5df69d43f5"
+    },
+    {
+      "id": "environmentDigest",
+      "helper": "environmentDigest",
+      "domain": "osstack.joint.environment.v1",
+      "input": {
+        "kind": "environment",
+        "schema_version": 1,
+        "scope_id": "s",
+        "repository": "r",
+        "home_id": "h",
+        "os": "linux",
+        "arch": "arm64",
+        "filesystem": "posix",
+        "host_build_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "provider": "p",
+        "model": "m",
+        "runtime": "node",
+        "isolation": "scratch",
+        "setup_fixture_digests": [
+          "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        ]
+      },
+      "expected": "7a616bfafef3240e93f28d801bc2386ae06f616a0aa3b659b452eb5df9d01cb8"
+    },
+    {
+      "id": "scenarioDigest",
+      "helper": "scenarioDigest",
+      "domain": "osstack.joint.scenario.v1",
+      "input": {
+        "kind": "scenario",
+        "schema_version": 1,
+        "driver_ref": "driver",
+        "definition_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "action_schema_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "input_fixture_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      "expected": "b4e7e08d996b61d52da61c00fbfb195486d51d101d5a378e6c3ea17e08aa18c2"
+    },
+    {
+      "id": "checkRegistryDigest",
+      "helper": "checkRegistryDigest",
+      "domain": "osstack.joint.check-registry.v1",
+      "input": {
+        "kind": "check_registry",
+        "schema_version": 1,
+        "entries": [
+          {
+            "ref": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "command_bytes_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "pass_codes": [
+              0
+            ],
+            "fail_codes": [
+              1
+            ]
+          },
+          {
+            "ref": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "command_bytes_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "pass_codes": [
+              0
+            ],
+            "fail_codes": [
+              1
+            ]
+          }
+        ]
+      },
+      "expected": "68d500a8d70b33bc01f53e90f419aac70e59eb3926081d7016cac8c8b389ddf7"
+    },
+    {
+      "id": "roleRequirementsDigest",
+      "helper": "roleRequirementsDigest",
+      "domain": "osstack.joint.role-artifact-requirements.v1",
+      "input": {
+        "schema_version": 1,
+        "role": "reviewer",
+        "requirements_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      "expected": "74816d1c586fad22cedf7ada79fad3a44ebf74967e4a867dd4632177a8bc3d1e"
+    }
+  ],
+  "component_matrix": [
+    {
+      "kind": "artifact",
+      "sample": {
+        "kind": "artifact",
+        "schema_version": 1,
+        "artifact_kind": "independent_review",
+        "task_id": "fixture-ref",
+        "run_id": "fixture-ref",
+        "effect_id": "fixture-ref",
+        "binding_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "candidate": {
+          "base_head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "tree": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "diff_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "workspace_state_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "producer_role": "fixture-ref",
+        "host_record_ref": "fixture-ref",
+        "content_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "bytes": 1,
+        "identity_assurance": "reported",
+        "artifact_phase": "candidate",
+        "scenario_digest": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "environment_digest": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "check_registry_digest": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        "baseline_artifact_ref": "artifact-baseline-1"
+      },
+      "required": [
+        "kind",
+        "schema_version",
+        "artifact_kind",
+        "task_id",
+        "run_id",
+        "effect_id",
+        "binding_digest",
+        "producer_role",
+        "host_record_ref",
+        "content_sha256",
+        "bytes",
+        "identity_assurance",
+        "artifact_phase"
+      ],
+      "optional": [
+        "baseline_artifact_ref",
+        "candidate",
+        "check_registry_digest",
+        "environment_digest",
+        "resource_ledger_ref",
+        "scenario_digest"
+      ],
+      "identity_applicability": "cross-record association not covered by this slice; structural validation only",
+      "role_applicability": "cross-record role association not covered by this slice",
+      "canonical_sha256": "668efe0d30b97843e9d23a7fdff5635cc8f35504c34f00d998fbcd5737326533",
+      "optional_absence": {
+        "baseline_artifact_ref": {
+          "accepted": false,
+          "error": "MISSING_BASELINE"
+        },
+        "candidate": {
+          "accepted": false,
+          "error": "MISSING_CANDIDATE_BINDING"
+        },
+        "check_registry_digest": {
+          "accepted": false,
+          "error": "MISSING_CANDIDATE_BINDING"
+        },
+        "environment_digest": {
+          "accepted": false,
+          "error": "MISSING_CANDIDATE_BINDING"
+        },
+        "resource_ledger_ref": {
+          "accepted": true,
+          "error": null
+        },
+        "scenario_digest": {
+          "accepted": false,
+          "error": "MISSING_CANDIDATE_BINDING"
+        }
+      }
+    },
+    {
+      "kind": "artifact_requirements",
+      "sample": {
+        "kind": "artifact_requirements",
+        "schema_version": 1,
+        "recipe_version": "fixture-ref",
+        "requirements": [
+          {
+            "artifact_ref_kind": "independent_review",
+            "producer_role": "reviewer",
+            "body_schema_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "verifier_policy_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "required": true
+          }
+        ]
+      },
+      "required": [
+        "kind",
+        "schema_version",
+        "recipe_version",
+        "requirements"
+      ],
+      "optional": [],
+      "identity_applicability": "cross-record association not covered by this slice; structural validation only",
+      "role_applicability": "cross-record role association not covered by this slice",
+      "canonical_sha256": "0e757d619c8b4ffdfeb5f53107be5a4d0740f29f94e92655ab209d269b7277d2",
+      "optional_absence": {}
+    },
+    {
+      "kind": "check_binding",
+      "sample": {
+        "kind": "check_binding",
+        "schema_version": 1,
+        "repository": "/fixture/repo",
+        "primary_id": "accept",
+        "checks": [
+          {
+            "id": "accept",
+            "role": "acceptance",
+            "registry_ref": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "required": true
+          }
+        ]
+      },
+      "required": [
+        "kind",
+        "schema_version",
+        "repository",
+        "primary_id",
+        "checks"
+      ],
+      "optional": [],
+      "identity_applicability": "cross-record association not covered by this slice; structural validation only",
+      "role_applicability": "cross-record role association not covered by this slice",
+      "canonical_sha256": "bbd5a110a592017060653c35c791bbdbb23eb86510a7ad3fc94fbcdf3348c0e9",
+      "optional_absence": {}
+    },
+    {
+      "kind": "check_registry",
+      "sample": {
+        "kind": "check_registry",
+        "schema_version": 1,
+        "entries": [
+          {
+            "ref": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "command_bytes_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "pass_codes": [
+              0
+            ],
+            "fail_codes": [
+              1
+            ]
+          },
+          {
+            "ref": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "command_bytes_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "pass_codes": [
+              0
+            ],
+            "fail_codes": [
+              1
+            ]
+          }
+        ]
+      },
+      "required": [
+        "kind",
+        "schema_version",
+        "entries"
+      ],
+      "optional": [],
+      "identity_applicability": "cross-record association not covered by this slice; structural validation only",
+      "role_applicability": "cross-record role association not covered by this slice",
+      "canonical_sha256": "ec529d16ae9128157a0b625de80988a198531e70447b5ace9e7cafbc1f860c6c",
+      "optional_absence": {}
+    },
+    {
+      "kind": "context_receipt",
+      "sample": {
+        "kind": "context_receipt",
+        "schema_version": 2,
+        "phase": "prepared",
+        "evidence_boundary": "agent_task_prompt_not_provider_wire",
+        "task_id": "fixture-ref",
+        "run_id": "fixture-ref",
+        "session_id": "fixture-ref",
+        "binding_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "contract_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "context_config_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "method_text_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "method_bytes": 1024,
+        "prompt_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "prompt_bytes": 4096,
+        "token_window_qualification": "unqualified",
+        "role": "builder",
+        "proposal_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "role_required_artifacts_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      "required": [
+        "kind",
+        "schema_version",
+        "phase",
+        "evidence_boundary",
+        "task_id",
+        "run_id",
+        "session_id",
+        "binding_digest",
+        "contract_digest",
+        "context_config_digest",
+        "method_text_sha256",
+        "method_bytes",
+        "prompt_sha256",
+        "prompt_bytes",
+        "token_window_qualification",
+        "role",
+        "proposal_digest",
+        "role_required_artifacts_digest"
+      ],
+      "optional": [],
+      "identity_applicability": "cross-record association not covered by this slice; structural validation only",
+      "role_applicability": "cross-record role association not covered by this slice",
+      "canonical_sha256": "f2195606a6ebe5ed07d90b175451da6995f8d96becc58087660233405d8ed0c6",
+      "optional_absence": {}
+    },
+    {
+      "kind": "environment",
+      "sample": {
+        "kind": "environment",
+        "schema_version": 1,
+        "scope_id": "s",
+        "repository": "r",
+        "home_id": "h",
+        "os": "linux",
+        "arch": "arm64",
+        "filesystem": "posix",
+        "host_build_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "provider": "p",
+        "model": "m",
+        "runtime": "node",
+        "isolation": "scratch",
+        "setup_fixture_digests": []
+      },
+      "required": [
+        "kind",
+        "schema_version",
+        "scope_id",
+        "repository",
+        "home_id",
+        "os",
+        "arch",
+        "filesystem",
+        "host_build_digest",
+        "provider",
+        "model",
+        "runtime",
+        "isolation",
+        "setup_fixture_digests"
+      ],
+      "optional": [],
+      "identity_applicability": "cross-record association not covered by this slice; structural validation only",
+      "role_applicability": "cross-record role association not covered by this slice",
+      "canonical_sha256": "be2dd31fbd93209766d4782340acaa56ce5f0bebadb2abca3733b93e0f9613d3",
+      "optional_absence": {}
+    },
+    {
+      "kind": "gate_evidence",
+      "sample": {
+        "kind": "gate_evidence",
+        "schema_version": 1,
+        "gate_id": "fixture-case",
+        "stage": "merge",
+        "candidate_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "support_profile_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "dependency_evidence_refs": [],
+        "oracle": {
+          "kind": "oracle_lifecycle",
+          "schema_version": 1,
+          "oracle_id": "o",
+          "revision": 1,
+          "status": "executed",
+          "authors": [
+            "author"
+          ],
+          "reviewers": [
+            "reviewer"
+          ],
+          "implementation_principals": [
+            "implementer"
+          ],
+          "custodian": "custodian",
+          "critical_safety": true,
+          "pinned_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "freeze_record_ref": "freeze",
+          "frozen_at_ms": 10,
+          "candidate_created_at_ms": 11,
+          "candidate_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "support_profile_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "result_ref": "result",
+          "executed_at_ms": 12
+        },
+        "result": "passed",
+        "evidence_refs": [
+          "e"
+        ],
+        "verifier_ref": "v",
+        "observed_at_ms": 12
+      },
+      "required": [
+        "kind",
+        "schema_version",
+        "gate_id",
+        "stage",
+        "candidate_sha",
+        "support_profile_digest",
+        "dependency_evidence_refs",
+        "oracle",
+        "result",
+        "evidence_refs",
+        "verifier_ref",
+        "observed_at_ms"
+      ],
+      "optional": [],
+      "identity_applicability": "cross-record association not covered by this slice; structural validation only",
+      "role_applicability": "cross-record role association not covered by this slice",
+      "canonical_sha256": "0076c2baa27406f8abb3c0fede59bcfea901610080f2656cee9e362ab1aef68f",
+      "optional_absence": {}
+    },
+    {
+      "kind": "joint_error",
+      "sample": {
+        "kind": "joint_error",
+        "schema_version": 1,
+        "code": "INVALID_INPUT",
+        "request_id": "r",
+        "evidence_refs": []
+      },
+      "required": [
+        "kind",
+        "schema_version",
+        "code",
+        "request_id",
+        "evidence_refs"
+      ],
+      "optional": [],
+      "identity_applicability": "cross-record association not covered by this slice; structural validation only",
+      "role_applicability": "cross-record role association not covered by this slice",
+      "canonical_sha256": "321ffed168319a6c73e91a268da9e08210c87c4496cd334764569584af3fbd48",
+      "optional_absence": {}
+    },
+    {
+      "kind": "material:decision_trail",
+      "sample": {
+        "kind": "material:decision_trail",
+        "schema_version": 1,
+        "revision": 0,
+        "supersedes": null,
+        "decision": "keep",
+        "evidence_refs": [
+          "e"
+        ]
+      },
+      "required": [
+        "schema_version",
+        "kind",
+        "revision",
+        "supersedes",
+        "decision",
+        "evidence_refs"
+      ],
+      "optional": [],
+      "identity_applicability": "cross-record association not covered by this slice; structural validation only",
+      "role_applicability": "cross-record role association not covered by this slice",
+      "canonical_sha256": "192a705611ec8e1ce2f521a4f6e79c82506f1fa411a186267c1780ae74edf72e",
+      "optional_absence": {}
+    },
+    {
+      "kind": "material:experiment_result",
+      "sample": {
+        "kind": "material:experiment_result",
+        "schema_version": 1,
+        "protocol": "p",
+        "arms": [
+          {
+            "id": "a",
+            "candidate_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "observation_refs": [
+              "a"
+            ]
+          },
+          {
+            "id": "b",
+            "candidate_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "observation_refs": [
+              "b"
+            ]
+          }
+        ],
+        "ledger": "l",
+        "oracle_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "result": "inconclusive",
+        "uncertainty": "one sample"
+      },
+      "required": [
+        "schema_version",
+        "kind",
+        "protocol",
+        "arms",
+        "ledger",
+        "oracle_digest",
+        "result",
+        "uncertainty"
+      ],
+      "optional": [],
+      "identity_applicability": "cross-record association not covered by this slice; structural validation only",
+      "role_applicability": "cross-record role association not covered by this slice",
+      "canonical_sha256": "544a7648eb49ab30e31a50d16e97d663f8c4911850c2716d94e7f25800b6d4bc",
+      "optional_absence": {}
+    },
+    {
+      "kind": "material:feature_map",
+      "sample": {
+        "kind": "material:feature_map",
+        "schema_version": 1,
+        "entry": "cli",
+        "preconditions": [],
+        "actions": [
+          "run"
+        ],
+        "observable_end": "exit",
+        "recovery": [
+          "preserve"
+        ],
+        "owner": "o"
+      },
+      "required": [
+        "schema_version",
+        "kind",
+        "entry",
+        "preconditions",
+        "actions",
+        "observable_end",
+        "recovery",
+        "owner"
+      ],
+      "optional": [],
+      "identity_applicability": "cross-record association not covered by this slice; structural validation only",
+      "role_applicability": "cross-record role association not covered by this slice",
+      "canonical_sha256": "561cae5a50491053d1846502e5003e10427344d46bfa6e40c19120174e43ed22",
+      "optional_absence": {}
+    },
+    {
+      "kind": "material:grounding",
+      "sample": {
+        "kind": "material:grounding",
+        "schema_version": 1,
+        "facts": [],
+        "inferences": [],
+        "unknowns": [],
+        "source_refs": []
+      },
+      "required": [
+        "schema_version",
+        "kind",
+        "facts",
+        "inferences",
+        "unknowns",
+        "source_refs"
+      ],
+      "optional": [],
+      "identity_applicability": "cross-record association not covered by this slice; structural validation only",
+      "role_applicability": "cross-record role association not covered by this slice",
+      "canonical_sha256": "b021e879c4922bd73029d8ac32b06a657154bad6cf2c133a93664a3b8b87ac49",
+      "optional_absence": {}
+    },
+    {
+      "kind": "material:impact_map",
+      "sample": {
+        "kind": "material:impact_map",
+        "schema_version": 1,
+        "changed_surfaces": [
+          "cli"
+        ],
+        "assumptions": [],
+        "check_refs": [
+          "c"
+        ]
+      },
+      "required": [
+        "schema_version",
+        "kind",
+        "changed_surfaces",
+        "assumptions",
+        "check_refs"
+      ],
+      "optional": [],
+      "identity_applicability": "cross-record association not covered by this slice; structural validation only",
+      "role_applicability": "cross-record role association not covered by this slice",
+      "canonical_sha256": "0f0da494eb547075396fe83ab63690cd148834a6e56f258d0b358b4f88e10c2c",
+      "optional_absence": {}
+    },
+    {
+      "kind": "material:intent_frame",
+      "sample": {
+        "kind": "material:intent_frame",
+        "schema_version": 1,
+        "task_id": "t",
+        "intent_revision": 0,
+        "goals": [
+          "fix"
+        ],
+        "non_goals": [],
+        "observations": [],
+        "hypotheses": [],
+        "unknowns": [
+          "cause"
+        ],
+        "source_refs": []
+      },
+      "required": [
+        "schema_version",
+        "kind",
+        "task_id",
+        "intent_revision",
+        "goals",
+        "non_goals",
+        "observations",
+        "hypotheses",
+        "unknowns",
+        "source_refs"
+      ],
+      "optional": [],
+      "identity_applicability": "cross-record association not covered by this slice; structural validation only",
+      "role_applicability": "cross-record role association not covered by this slice",
+      "canonical_sha256": "2229b68a6f34afe8ba7715c4da40ad5685e08fc58198d9da671bf8c4c3a5ea58",
+      "optional_absence": {}
+    },
+    {
+      "kind": "material:prototype_decision",
+      "sample": {
+        "kind": "material:prototype_decision",
+        "schema_version": 1,
+        "hypothesis": "h",
+        "observations": [
+          "o"
+        ],
+        "decision": "stop",
+        "limits": [
+          "l"
+        ]
+      },
+      "required": [
+        "schema_version",
+        "kind",
+        "hypothesis",
+        "observations",
+        "decision",
+        "limits"
+      ],
+      "optional": [],
+      "identity_applicability": "cross-record association not covered by this slice; structural validation only",
+      "role_applicability": "cross-record role association not covered by this slice",
+      "canonical_sha256": "223c2044fc0713a47ec6ee9f381545d0f023b3cf956b5662b3e1b39cd16208ed",
+      "optional_absence": {}
+    },
+    {
+      "kind": "material:review_dispositions",
+      "sample": {
+        "kind": "material:review_dispositions",
+        "schema_version": 1,
+        "finding_ref": "f",
+        "decision": "reject",
+        "rationale": "evidence",
+        "evidence_refs": [
+          "e"
+        ]
+      },
+      "required": [
+        "schema_version",
+        "kind",
+        "finding_ref",
+        "decision",
+        "rationale",
+        "evidence_refs"
+      ],
+      "optional": [],
+      "identity_applicability": "cross-record association not covered by this slice; structural validation only",
+      "role_applicability": "cross-record role association not covered by this slice",
+      "canonical_sha256": "aa6d14caa17c23eac87d424f32fedc52727bce3fa1cd89946fa960342a9a8c5a",
+      "optional_absence": {}
+    },
+    {
+      "kind": "material:usage_sketch",
+      "sample": {
+        "kind": "material:usage_sketch",
+        "schema_version": 1,
+        "caller": "c",
+        "input": "i",
+        "output": "o",
+        "errors": [],
+        "alternatives": []
+      },
+      "required": [
+        "schema_version",
+        "kind",
+        "caller",
+        "input",
+        "output",
+        "errors",
+        "alternatives"
+      ],
+      "optional": [],
+      "identity_applicability": "cross-record association not covered by this slice; structural validation only",
+      "role_applicability": "cross-record role association not covered by this slice",
+      "canonical_sha256": "a1a86956d4049bd58046404c8a76257ba4a9be72ee7d463b68877433a1e30ded",
+      "optional_absence": {}
+    },
+    {
+      "kind": "material:verification_plan",
+      "sample": {
+        "kind": "material:verification_plan",
+        "schema_version": 1,
+        "scenario_refs": [
+          "s"
+        ],
+        "required_checks": [
+          "c"
+        ],
+        "environment_refs": [
+          "e"
+        ]
+      },
+      "required": [
+        "schema_version",
+        "kind",
+        "scenario_refs",
+        "required_checks",
+        "environment_refs"
+      ],
+      "optional": [],
+      "identity_applicability": "cross-record association not covered by this slice; structural validation only",
+      "role_applicability": "cross-record role association not covered by this slice",
+      "canonical_sha256": "520316f7063e3971fbcd34e095fada8d361c9d2096d9c33a7ddb9bf1966235a5",
+      "optional_absence": {}
+    },
+    {
+      "kind": "method_binding",
+      "sample": {
+        "kind": "method_binding",
+        "schema_version": 1,
+        "task_id": "fixture-ref",
+        "proposal_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "contract_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "context_config_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "support_profile_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "source_snapshot_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "recipe_version": "fixture-ref",
+        "authorization_ref": "fixture-ref",
+        "completion": "local_verified",
+        "publication": "none",
+        "merge": "none",
+        "binding_digest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "mode": "trial",
+        "trial_permit_id": "trial-1",
+        "role_materials": [
+          {
+            "role": "builder",
+            "method_text_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "role_required_artifacts_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          {
+            "role": "reviewer",
+            "method_text_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "role_required_artifacts_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          {
+            "role": "verifier",
+            "method_text_sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "role_required_artifacts_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          }
+        ]
+      },
+      "required": [
+        "kind",
+        "schema_version",
+        "task_id",
+        "proposal_digest",
+        "contract_digest",
+        "context_config_digest",
+        "support_profile_digest",
+        "source_snapshot_digest",
+        "recipe_version",
+        "authorization_ref",
+        "completion",
+        "publication",
+        "merge",
+        "binding_digest",
+        "mode",
+        "role_materials"
+      ],
+      "optional": [
+        "trial_permit_id"
+      ],
+      "identity_applicability": "binding/proposal/recipe association covered",
+      "role_applicability": "binding/proposal/recipe role association covered",
+      "canonical_sha256": "456b24135e227d2e4fb8f6e155b6c7ecbdd0bf6cf45e6a82190da387f9168328",
+      "optional_absence": {
+        "trial_permit_id": {
+          "accepted": false,
+          "error": "TRIAL_PERMIT_MODE_MISMATCH"
+        }
+      }
+    },
+    {
+      "kind": "method_input",
+      "sample": {
+        "kind": "method_input",
+        "schema_version": 1,
+        "role": "builder",
+        "intent_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "source_snapshot_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "requested_materials": []
+      },
+      "required": [
+        "kind",
+        "schema_version",
+        "role",
+        "intent_digest",
+        "source_snapshot_digest",
+        "requested_materials"
+      ],
+      "optional": [],
+      "identity_applicability": "cross-record association not covered by this slice; structural validation only",
+      "role_applicability": "cross-record role association not covered by this slice",
+      "canonical_sha256": "169c2c0cf4fdd17f644cc845c8667f311712286ee8817bdb515a19aed4f9ee1f",
+      "optional_absence": {}
+    },
+    {
+      "kind": "method_proposal",
+      "sample": {
+        "kind": "method_proposal",
+        "schema_version": 1,
+        "task_id": "fixture-ref",
+        "intent_revision": 0,
+        "intent_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "source_snapshot_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "recipe_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "recipe_version": "fixture-ref",
+        "check_binding_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "required_artifacts_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "method_input_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "executable": false
+      },
+      "required": [
+        "kind",
+        "schema_version",
+        "task_id",
+        "intent_revision",
+        "intent_digest",
+        "source_snapshot_digest",
+        "recipe_digest",
+        "recipe_version",
+        "check_binding_digest",
+        "required_artifacts_digest",
+        "method_input_digest",
+        "executable"
+      ],
+      "optional": [],
+      "identity_applicability": "binding/proposal/recipe association covered",
+      "role_applicability": "cross-record role association not covered by this slice",
+      "canonical_sha256": "1ea4b12212e4a32a65d0bec043c1b4cacd0e15d33ea7cdcd939793e2bfb556b9",
+      "optional_absence": {}
+    },
+    {
+      "kind": "method_recipe",
+      "sample": {
+        "kind": "method_recipe",
+        "schema_version": 1,
+        "recipe_id": "fixture-ref",
+        "recipe_version": "fixture-ref",
+        "source_snapshot_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "intent_kind": "bug_fix",
+        "logical_check_roles": [
+          "reproduce"
+        ],
+        "role_materials": [
+          {
+            "role": "builder",
+            "method_text_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "role_required_artifacts_digest": "a182a30f92b1526e83b5b9ff115d0c188b57263c936a63d6e89fd757f883c172"
+          },
+          {
+            "role": "reviewer",
+            "method_text_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "role_required_artifacts_digest": "74816d1c586fad22cedf7ada79fad3a44ebf74967e4a867dd4632177a8bc3d1e"
+          },
+          {
+            "role": "verifier",
+            "method_text_sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "role_required_artifacts_digest": "aa2b51b280a39941f4ed3ef9be51139351d1a23d3356010827b0f0324d681c39"
+          }
+        ],
+        "required_artifacts_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "allowed_completion": "local_verified",
+        "publication": "none"
+      },
+      "required": [
+        "kind",
+        "schema_version",
+        "recipe_id",
+        "recipe_version",
+        "source_snapshot_digest",
+        "intent_kind",
+        "logical_check_roles",
+        "role_materials",
+        "required_artifacts_digest",
+        "allowed_completion",
+        "publication"
+      ],
+      "optional": [],
+      "identity_applicability": "binding/proposal/recipe association covered",
+      "role_applicability": "binding/proposal/recipe role association covered",
+      "canonical_sha256": "8560f2cc3b3d5785b153cef361f6ff0ed4bd696184e9e063031766214d848f39",
+      "optional_absence": {}
+    },
+    {
+      "kind": "migration_spec",
+      "sample": {
+        "kind": "migration_spec",
+        "schema_version": 1,
+        "schema_change_id": "operator-recovery-bootstrap-v1",
+        "source_schema": 47,
+        "target_schema": 48,
+        "ddl_digest": "7002b690cacdbaabac47b69277a56d028a9879222dd7433ae43fbe8ea728f6b2",
+        "fixture_digest": "595ffdf06a1f1e60c8af6344bc6e04ff4340a980148894b1a8ca86085bc3b715",
+        "source_schema_digest": "7b4bb1608b12373cb3225d4c3614dc5cd1d1634b8c97e6db16a2acedb673159c",
+        "target_schema_digest": "7d42339e7d0e14da3be37cc4b2f79df54220425f763248801f7ae9961a38459f",
+        "expected_lineage_tables": [
+          "agent_sessions",
+          "agents",
+          "anchor_cases",
+          "approvals",
+          "attention_actions",
+          "attention_deliveries",
+          "attention_dispatch_phases",
+          "attention_foregrounds",
+          "attention_handoffs",
+          "attention_items",
+          "attention_postures",
+          "attention_receipt_resolutions",
+          "attention_run_cursors",
+          "attention_scopes",
+          "attention_seen",
+          "attention_subjects",
+          "attention_triage_attempts",
+          "autonomy_deploy_freezes",
+          "autonomy_notification_outbox",
+          "autonomy_rollback_drills",
+          "autonomy_run_projection",
+          "autonomy_run_transitions",
+          "clarifies",
+          "contract_approval_decisions",
+          "contract_approvals",
+          "daemon_owner",
+          "declared_dependency_edge_events",
+          "declared_dependency_edge_projection",
+          "dependency_obligation_events",
+          "dependency_obligation_projection",
+          "dependency_registry_scopes",
+          "engineering_completions",
+          "engineering_events",
+          "engineering_interactions",
+          "engineering_missions",
+          "engineering_requests",
+          "engineering_waits",
+          "evaluator_epochs",
+          "evaluator_versions",
+          "events",
+          "feedback_assets",
+          "follow_up_delivery_attempts",
+          "follow_up_delivery_clock",
+          "follow_up_delivery_events",
+          "follow_up_delivery_grants",
+          "follow_up_obligation_events",
+          "follow_up_obligations",
+          "graph_action_admissions",
+          "graph_actions",
+          "graph_apply_intents",
+          "graph_apply_resolutions",
+          "graph_checkpoint_requests",
+          "graph_checkpoint_writes",
+          "graph_checkpoints",
+          "graph_delivery_epochs",
+          "graph_invocation_requests",
+          "graph_invocation_responses",
+          "graph_public_delivery",
+          "graph_recovery_decisions",
+          "graph_requests",
+          "graph_runs",
+          "graph_verification_joins",
+          "graph_worker_launches",
+          "graph_worker_leases",
+          "graph_worker_process_events",
+          "improvement_executions",
+          "improvement_pr_deliveries",
+          "improvement_proposals",
+          "kanban_card_checks",
+          "kanban_card_comments",
+          "kanban_card_events",
+          "kanban_card_links",
+          "kanban_cards",
+          "kanban_notify_subs",
+          "knowledge_hygiene_finding_state_v2",
+          "knowledge_hygiene_findings",
+          "knowledge_hygiene_findings_v2",
+          "knowledge_hygiene_occurrences",
+          "knowledge_hygiene_occurrences_v2",
+          "knowledge_hygiene_plan_events",
+          "knowledge_hygiene_plan_projection",
+          "knowledge_hygiene_resolution_events_v2",
+          "knowledge_hygiene_resolutions",
+          "knowledge_hygiene_runs",
+          "knowledge_hygiene_runs_v2",
+          "memory_facts",
+          "operator_recovery_decisions",
+          "operator_upgrade_journal",
+          "pitfall_lessons",
+          "probe_artifacts",
+          "probe_command_receipts",
+          "probe_events",
+          "probe_items",
+          "probe_sessions",
+          "runs",
+          "score_quarantine",
+          "session_continuation_attempts",
+          "session_continuation_grants",
+          "session_messages",
+          "session_turns",
+          "source_observation_clock",
+          "source_observation_events",
+          "source_observation_generations",
+          "source_observation_streams",
+          "tasks"
+        ]
+      },
+      "required": [
+        "kind",
+        "schema_version",
+        "schema_change_id",
+        "source_schema",
+        "target_schema",
+        "ddl_digest",
+        "fixture_digest",
+        "source_schema_digest",
+        "target_schema_digest",
+        "expected_lineage_tables"
+      ],
+      "optional": [],
+      "identity_applicability": "cross-record association not covered by this slice; structural validation only",
+      "role_applicability": "cross-record role association not covered by this slice",
+      "canonical_sha256": "fd4198912f0229729b11dc561d2449615071d3a6ff2592ae80268defdec4a476",
+      "optional_absence": {}
+    },
+    {
+      "kind": "oracle_lifecycle",
+      "sample": {
+        "kind": "oracle_lifecycle",
+        "schema_version": 1,
+        "oracle_id": "o",
+        "revision": 1,
+        "status": "executed",
+        "authors": [
+          "author"
+        ],
+        "reviewers": [
+          "reviewer"
+        ],
+        "implementation_principals": [
+          "implementer"
+        ],
+        "custodian": "custodian",
+        "critical_safety": true,
+        "pinned_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "freeze_record_ref": "freeze",
+        "frozen_at_ms": 10,
+        "candidate_created_at_ms": 11,
+        "candidate_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "support_profile_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "result_ref": "result",
+        "executed_at_ms": 12
+      },
+      "required": [
+        "kind",
+        "schema_version",
+        "oracle_id",
+        "revision",
+        "status",
+        "authors",
+        "reviewers",
+        "implementation_principals",
+        "custodian",
+        "critical_safety",
+        "pinned_digest",
+        "frozen_at_ms",
+        "freeze_record_ref",
+        "candidate_created_at_ms",
+        "candidate_sha",
+        "support_profile_digest",
+        "result_ref",
+        "executed_at_ms"
+      ],
+      "optional": [],
+      "identity_applicability": "cross-record association not covered by this slice; structural validation only",
+      "role_applicability": "cross-record role association not covered by this slice",
+      "canonical_sha256": "f3da3d18934b32566f9e05add0466b824f503818c5a87ef1e4267716fb187601",
+      "optional_absence": {}
+    },
+    {
+      "kind": "recovery_proof",
+      "sample": {
+        "kind": "recovery_proof",
+        "schema_version": 1,
+        "subject": {
+          "kind": "effect",
+          "home_id": "fixture-home",
+          "effect_id": "fixture-ref"
+        },
+        "proof": {
+          "record_ref": "proof",
+          "type": "invocation_contained",
+          "effect_id": "fixture-ref",
+          "subject_digest": "54fe5083cccf6898dafd569079d7e4b3fb4b572ace57f9ea758939a06c56d08d",
+          "evidence_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "producer_ref": "host"
+        },
+        "record_ref": "proof",
+        "authorization_ref": "host-grant",
+        "observed_at_ms": 1,
+        "owner_generation": 1,
+        "binding_generation": 1,
+        "support_profile_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "prior_phase": "dispatch_committed",
+        "schema_spec_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "recovery_build_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      "required": [
+        "kind",
+        "schema_version",
+        "subject",
+        "proof",
+        "owner_generation",
+        "observed_at_ms",
+        "binding_generation",
+        "support_profile_digest",
+        "prior_phase",
+        "schema_spec_digest",
+        "recovery_build_digest",
+        "record_ref",
+        "authorization_ref"
+      ],
+      "optional": [],
+      "identity_applicability": "cross-record association not covered by this slice; structural validation only",
+      "role_applicability": "cross-record role association not covered by this slice",
+      "canonical_sha256": "1712ac2e579b4c5160f1aac381af097f4861b6ef03520e22131cf42fdc1186ef",
+      "optional_absence": {}
+    },
+    {
+      "kind": "recovery_receipt",
+      "sample": {
+        "kind": "recovery_receipt",
+        "schema_version": 1,
+        "effect_id": "fixture-ref",
+        "binding_generation": 1,
+        "owner_generation": 1,
+        "schema_spec_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "support_profile_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "proof_refs": [],
+        "operator_ref": "fixture-ref",
+        "request_id": "fixture-ref",
+        "decision": "preserve_unknown",
+        "target": "home",
+        "observed_at_ms": 1,
+        "authorization_ref": "fixture-authorization",
+        "scope_id": "fixture-scope",
+        "tenant_id": "default",
+        "target_home_id": "fixture-home",
+        "recovery_build_digest": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "prior_phase": "dispatch_committed",
+        "if_revision": 3,
+        "actual_target_schema": 48,
+        "ddl_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "fixture_digest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "candidate_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "proofs": [],
+        "subject": {
+          "kind": "effect",
+          "home_id": "fixture-home",
+          "effect_id": "fixture-ref"
+        },
+        "subject_digest": "54fe5083cccf6898dafd569079d7e4b3fb4b572ace57f9ea758939a06c56d08d",
+        "prior_resolution": "none"
+      },
+      "required": [
+        "kind",
+        "schema_version",
+        "binding_generation",
+        "owner_generation",
+        "schema_spec_digest",
+        "support_profile_digest",
+        "proof_refs",
+        "operator_ref",
+        "request_id",
+        "decision",
+        "target",
+        "observed_at_ms",
+        "authorization_ref",
+        "scope_id",
+        "tenant_id",
+        "target_home_id",
+        "recovery_build_digest",
+        "prior_phase",
+        "if_revision",
+        "actual_target_schema",
+        "ddl_digest",
+        "fixture_digest",
+        "candidate_sha",
+        "proofs",
+        "subject",
+        "subject_digest",
+        "prior_resolution"
+      ],
+      "optional": [
+        "effect_id"
+      ],
+      "identity_applicability": "cross-record association not covered by this slice; structural validation only",
+      "role_applicability": "cross-record role association not covered by this slice",
+      "canonical_sha256": "146b3f9212a903180a0ae3d05e3b8d8f34e61ae33709159d0fc21a91d25d1887",
+      "optional_absence": {
+        "effect_id": {
+          "accepted": false,
+          "error": "EFFECT_IDENTITY_MISSING"
+        }
+      }
+    },
+    {
+      "kind": "recovery_request",
+      "sample": {
+        "kind": "recovery_request",
+        "schema_version": 1,
+        "request_id": "r",
+        "if_revision": 0,
+        "subject": {
+          "kind": "effect",
+          "home_id": "fixture-home",
+          "effect_id": "fixture-ref"
+        },
+        "decision": "preserve_unknown",
+        "proof_refs": [],
+        "schema_spec_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      "required": [
+        "kind",
+        "schema_version",
+        "request_id",
+        "if_revision",
+        "subject",
+        "decision",
+        "proof_refs",
+        "schema_spec_digest"
+      ],
+      "optional": [],
+      "identity_applicability": "cross-record association not covered by this slice; structural validation only",
+      "role_applicability": "cross-record role association not covered by this slice",
+      "canonical_sha256": "2110225a1af25ae957e912ef598218556a9c72f0e8a0a7f16d963e0078cd246c",
+      "optional_absence": {}
+    },
+    {
+      "kind": "scenario",
+      "sample": {
+        "kind": "scenario",
+        "schema_version": 1,
+        "driver_ref": "driver",
+        "definition_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "action_schema_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "input_fixture_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      "required": [
+        "kind",
+        "schema_version",
+        "driver_ref",
+        "definition_digest",
+        "action_schema_digest",
+        "input_fixture_digest"
+      ],
+      "optional": [],
+      "identity_applicability": "cross-record association not covered by this slice; structural validation only",
+      "role_applicability": "cross-record role association not covered by this slice",
+      "canonical_sha256": "cdf3193a2419367d637be3ce572b8339923e4ce8298b438bb600ca420a2f2a95",
+      "optional_absence": {}
+    },
+    {
+      "kind": "source_pin",
+      "sample": {
+        "kind": "source_pin",
+        "schema_version": 1,
+        "repository": "https://github.com/cursor/plugins",
+        "commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "subdir": "pstack",
+        "content_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "license_refs": [
+          "LICENSE"
+        ]
+      },
+      "required": [
+        "kind",
+        "schema_version",
+        "repository",
+        "commit",
+        "subdir",
+        "content_sha256",
+        "license_refs"
+      ],
+      "optional": [],
+      "identity_applicability": "cross-record association not covered by this slice; structural validation only",
+      "role_applicability": "cross-record role association not covered by this slice",
+      "canonical_sha256": "cc1a6cb000f1ffc4a57ae0be39fec37594b9b343cce7aebb0d4c94d2e0a48723",
+      "optional_absence": {}
+    },
+    {
+      "kind": "source_snapshot",
+      "sample": {
+        "kind": "source_snapshot",
+        "schema_version": 1,
+        "pin": {
+          "kind": "source_pin",
+          "schema_version": 1,
+          "repository": "https://github.com/cursor/plugins",
+          "commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "subdir": "pstack",
+          "content_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "license_refs": [
+            "LICENSE"
+          ]
+        },
+        "files": [
+          {
+            "path": "z",
+            "mode": "100644",
+            "blob": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          {
+            "path": "a",
+            "mode": "100644",
+            "blob": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+          }
+        ],
+        "dependencies": []
+      },
+      "required": [
+        "kind",
+        "schema_version",
+        "pin",
+        "files",
+        "dependencies"
+      ],
+      "optional": [],
+      "identity_applicability": "cross-record association not covered by this slice; structural validation only",
+      "role_applicability": "cross-record role association not covered by this slice",
+      "canonical_sha256": "7771176c4ebb28d2750bb38563b0c2e079f9481afb63306ef73e2d4332f2d3b0",
+      "optional_absence": {}
+    },
+    {
+      "kind": "support_profile",
+      "sample": {
+        "kind": "support_profile",
+        "schema_version": 2,
+        "profile_class": "operator_attested_trial",
+        "principal_ref": "fixture-ref",
+        "scope_id": "fixture-ref",
+        "tenant_id": "fixture-ref",
+        "canonical_repo": "fixture-ref",
+        "execution_home_id": "fixture-ref",
+        "host_build_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "adapter_version": "fixture-ref",
+        "provider": "fixture-ref",
+        "model": "fixture-ref",
+        "runtime_version": "fixture-ref",
+        "executor": "fixture-ref",
+        "template_tuple": "fixture-ref",
+        "isolation": "trusted_local",
+        "can_query": false,
+        "can_request_stop": false,
+        "stop_proof_level": "unavailable",
+        "budget_enforceability": {
+          "wall": "enforceable",
+          "actions": "enforceable",
+          "tokens": "enforceable",
+          "cost": "enforceable"
+        },
+        "measurement_refs": [],
+        "start_identity": "unqualified",
+        "query_by_start_identity": false,
+        "containment_domain": null
+      },
+      "required": [
+        "kind",
+        "schema_version",
+        "profile_class",
+        "principal_ref",
+        "scope_id",
+        "tenant_id",
+        "canonical_repo",
+        "execution_home_id",
+        "host_build_digest",
+        "adapter_version",
+        "provider",
+        "model",
+        "runtime_version",
+        "executor",
+        "template_tuple",
+        "isolation",
+        "can_query",
+        "can_request_stop",
+        "stop_proof_level",
+        "budget_enforceability",
+        "measurement_refs",
+        "start_identity",
+        "query_by_start_identity",
+        "containment_domain"
+      ],
+      "optional": [],
+      "identity_applicability": "cross-record association not covered by this slice; structural validation only",
+      "role_applicability": "cross-record role association not covered by this slice",
+      "canonical_sha256": "fd60a44cd2f68147b2fa83b92b932b9db253a63304386f73523270d8482c0c56",
+      "optional_absence": {}
+    },
+    {
+      "kind": "trial_permit",
+      "sample": {
+        "kind": "trial_permit",
+        "schema_version": 1,
+        "permit_id": "fixture-ref",
+        "issuer_ref": "fixture-ref",
+        "authorization_ref": "fixture-ref",
+        "candidate_method_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "contract_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "support_profile_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "repository": "/fixture/repo",
+        "max_wall_ms": 1,
+        "issued_at_ms": 1000,
+        "expires_at_ms": 2000,
+        "scope": "trusted_isolated_development_trial",
+        "production_qualified": false,
+        "max_root_runs": 1,
+        "root_effect_id": "trial-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "binding_digest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "max_adapter_invocations": 8,
+        "max_actions": 32,
+        "max_tokens": 100000,
+        "max_cost_microusd": 10000000
+      },
+      "required": [
+        "kind",
+        "schema_version",
+        "permit_id",
+        "issuer_ref",
+        "authorization_ref",
+        "candidate_method_digest",
+        "contract_digest",
+        "support_profile_digest",
+        "repository",
+        "max_wall_ms",
+        "issued_at_ms",
+        "expires_at_ms",
+        "scope",
+        "production_qualified",
+        "max_root_runs",
+        "root_effect_id",
+        "binding_digest",
+        "max_adapter_invocations",
+        "max_actions"
+      ],
+      "optional": [
+        "max_cost_microusd",
+        "max_tokens"
+      ],
+      "identity_applicability": "cross-record association not covered by this slice; structural validation only",
+      "role_applicability": "cross-record role association not covered by this slice",
+      "canonical_sha256": "883c82ec231f522188b1e4672a0aa72fead82be42dbd156da6f0abcbd6ff49ea",
+      "optional_absence": {
+        "max_cost_microusd": {
+          "accepted": true,
+          "error": null
+        },
+        "max_tokens": {
+          "accepted": true,
+          "error": null
+        }
+      }
+    }
+  ],
+  "not_applicable": [
+    {
+      "domain": "osstack.joint.source-content.v1",
+      "reason": "Domain primitive checked here; source-inspection producer and adoption closure belong to J02, not protocol helper acceptance"
+    },
+    {
+      "domain": "osstack.joint.source-inspection.v1",
+      "reason": "Domain primitive checked here; source-inspection producer and adoption closure belong to J02, not protocol helper acceptance"
+    }
+  ],
+  "revision_reason": "Post-audit regression revision, not retroactive independent oracle qualification",
+  "boundary_cases": {
+    "max_wire_bytes": 1048576,
+    "max_depth": 64,
+    "expected_error": "INVALID_JOINT_JSON"
+  },
+  "provenance": {
+    "component_samples": "baseline contracts.json and published schema, manually completed in initial prepare.py; existing role/subject constants inherited unchanged from baseline, not newly sampled TypeScript outputs",
+    "new_expectations": "Python standard-library canonical UTF-8 SHA-256 computed from fixed frozen inputs before revised candidate tests; same author, not independent principal"
+  }
+}

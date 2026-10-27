@@ -1,0 +1,26 @@
+{
+  "kind": "prefreeze_regression_expectations_not_formal_gate_oracle",
+  "base_sha": "3192b424174e5eb977d640cc0418e67c6b1461d1",
+  "observed_origin_main": "3192b424174e5eb977d640cc0418e67c6b1461d1",
+  "frozen_at_utc": "2026-10-27T17:43:44.207476+00:00",
+  "oracle_sha256": "b9d35b1a8cba07d1a3ed8990307bc5516b753be53316f27b1e2e400091d015f9",
+  "author": "/root/loader_adversarial model session; not a host-authenticated principal",
+  "implementation_author_same_session": true,
+  "trusted_author_principal": null,
+  "trusted_custodian_principal": null,
+  "trusted_reviewer_principals": [],
+  "formal_independent_oracle_ready": false,
+  "declared_expected_source": "fixed main schema/catalog/fixtures plus explicitly authored raw-wire outcomes; no new TypeScript output sampled",
+  "counts": {
+    "kinds": 32,
+    "wire_cases": 45,
+    "domains": 20,
+    "helper_cases": 18
+  },
+  "gates": {
+    "J01.contracts": "specified_not_run",
+    "JA59": "regression_only",
+    "JA70": "regression_only"
+  },
+  "O06": "origin/main exact input verified; scoped interface observation, no global unknown closed"
+}

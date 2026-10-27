@@ -1,0 +1,168 @@
+{
+  "main_sha": "3192b424174e5eb977d640cc0418e67c6b1461d1",
+  "new_prs": [
+    {
+      "baseRefName": "main",
+      "headRefName": "codex/joint-nextwave-control",
+      "headRefOid": "177176f2c6ceb247f3c4050783487c7fa45aeb5e",
+      "isDraft": false,
+      "mergeCommit": {
+        "oid": "697d0b9c86009a8ee11a1d06931fb787cf600f12"
+      },
+      "mergeStateStatus": "UNKNOWN",
+      "mergeable": "UNKNOWN",
+      "mergedAt": "2026-10-27T17:29:30Z",
+      "number": 283,
+      "reviewDecision": "APPROVED",
+      "state": "MERGED",
+      "statusCheckRollup": [
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T17:00:44Z",
+          "conclusion": "SKIPPED",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40545896121/job/122338371787",
+          "name": "Paid DeepSeek semantic smoke",
+          "startedAt": "2026-10-27T17:00:45Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T17:02:46Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40545896121/job/122338369497",
+          "name": "graph-macos-fixtures (22)",
+          "startedAt": "2026-10-27T17:00:47Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T17:02:42Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40545896121/job/122338368862",
+          "name": "graph-macos-fixtures (24)",
+          "startedAt": "2026-10-27T17:00:48Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T17:04:29Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40545896121/job/122338369276",
+          "name": "graph-runtime-matrix (20.6.0)",
+          "startedAt": "2026-10-27T17:00:47Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T17:04:23Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40545896121/job/122338369291",
+          "name": "graph-runtime-matrix (22.23.1)",
+          "startedAt": "2026-10-27T17:00:47Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T17:13:45Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40545896121/job/122339524271",
+          "name": "check",
+          "startedAt": "2026-10-27T17:02:48Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        }
+      ],
+      "url": "https://github.com/osborn-studio/osstack/pull/283",
+      "observed_at": "2026-10-27T17:46:49.802582+00:00"
+    },
+    {
+      "baseRefName": "main",
+      "headRefName": "codex/joint-broker-spec",
+      "headRefOid": "9cb4b63fce98ee6c0261b5ba3fe5e740aea9418c",
+      "isDraft": false,
+      "mergeCommit": {
+        "oid": "3192b424174e5eb977d640cc0418e67c6b1461d1"
+      },
+      "mergeStateStatus": "UNKNOWN",
+      "mergeable": "UNKNOWN",
+      "mergedAt": "2026-10-27T17:39:42Z",
+      "number": 284,
+      "reviewDecision": "APPROVED",
+      "state": "MERGED",
+      "statusCheckRollup": [
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T17:09:54Z",
+          "conclusion": "SKIPPED",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40547958909/job/122343603997",
+          "name": "Paid DeepSeek semantic smoke",
+          "startedAt": "2026-10-27T17:09:55Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T17:12:25Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40547958909/job/122343602000",
+          "name": "graph-macos-fixtures (22)",
+          "startedAt": "2026-10-27T17:09:57Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T17:12:24Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40547958909/job/122343601619",
+          "name": "graph-macos-fixtures (24)",
+          "startedAt": "2026-10-27T17:09:57Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T17:12:36Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40547958909/job/122343602115",
+          "name": "graph-runtime-matrix (20.6.0)",
+          "startedAt": "2026-10-27T17:09:57Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T17:12:55Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40547958909/job/122343602027",
+          "name": "graph-runtime-matrix (22.23.1)",
+          "startedAt": "2026-10-27T17:09:56Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T17:32:06Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40547958909/job/122345013779",
+          "name": "check",
+          "startedAt": "2026-10-27T17:12:27Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        }
+      ],
+      "url": "https://github.com/osborn-studio/osstack/pull/284",
+      "observed_at": "2026-10-27T17:46:50.827423+00:00"
+    }
+  ],
+  "window": {
+    "started_at": "2026-10-27T17:46:48.527322+00:00",
+    "finished_at": "2026-10-27T17:46:50.885415+00:00",
+    "scope": "Latest #283/#284 and boards observed sequentially; older PRs retain own timestamps; no atomic snapshot claim."
+  }
+}

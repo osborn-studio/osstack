@@ -1,0 +1,65 @@
+{
+  "base_sha": "3192b424174e5eb977d640cc0418e67c6b1461d1",
+  "candidate_sha": "74ec436d28f3f134451d45e35536c5747a7f1cba",
+  "branch": "codex/joint-contract-acceptance",
+  "write_scope": [
+    "packages/protocol/fixtures/joint/acceptance-oracle.json",
+    "packages/protocol/scripts/joint-acceptance-oracle.py",
+    "packages/protocol/src/joint-admission.test.ts",
+    "packages/protocol/src/joint-reference.test.ts"
+  ],
+  "source_hashes": {
+    "packages/protocol/fixtures/joint/acceptance-oracle.json": "279c3ff6bc347913f62cf6ba375b44f4d2a8a30c923de55722041b71b8950bbd",
+    "packages/protocol/scripts/joint-acceptance-oracle.py": "5b14c7271ea803a9bf830cc2d4e9b673296b98e6b28bd1794871911e63c6c345",
+    "packages/protocol/src/joint-admission.test.ts": "b3df55ae963a61c360115b9b7b5b3f46ddea9ed0bbf7fdec7fb30e3036832084",
+    "packages/protocol/src/joint-reference.test.ts": "c6ea27320e163c87301cf2221da5316c67e4b46508225a2f20980b90b31c0d25"
+  },
+  "test_results": {
+    "targeted": 547,
+    "protocol_full": 1012,
+    "protocol_files": 21,
+    "mutation_controls": 20,
+    "mutant_positive_control_selected_pass": 535,
+    "preexisting_filtered_out": 12
+  },
+  "formal_gate_pass": false,
+  "runtime_acceptance_executed": false,
+  "oracle_principal_authenticated": false,
+  "freeze_history": [
+    "prefreeze.json",
+    "prefreeze-v2.json",
+    "prefreeze-v3.json"
+  ],
+  "review_rounds": [
+    {
+      "raw": "audit-round1/response.json",
+      "verdict": "REVISE",
+      "candidate": "e5e5b2980175258ca2f9d1742488f8a3dd35b0d6"
+    },
+    {
+      "raw": "audit-round2/response.json",
+      "verdict": "PASS bounded component regression only",
+      "candidate": "74ec436d28f3f134451d45e35536c5747a7f1cba",
+      "actual_model": "claude-sonnet-5-5",
+      "exit_code": 0,
+      "is_error": false
+    }
+  ],
+  "product_changes": false,
+  "root_responsibilities": [
+    "aggregate archive",
+    "combined ledger PR",
+    "full repository suite attribution",
+    "push/Ready/human merge"
+  ],
+  "independent_evidence": {
+    "package": "contract-independent-evidence.tar.gz",
+    "sha256": "b6e4bbabe338dfa7a9b09032ae7c6a03eb9e891dc855ede2bbbfd6dcc73e1422",
+    "typescript_observations": 27,
+    "python_observations": 25,
+    "schema_kind_matches": 32,
+    "selected_author_tests": 46,
+    "source_mutants": 2,
+    "formal_principal_authenticated": false
+  }
+}
