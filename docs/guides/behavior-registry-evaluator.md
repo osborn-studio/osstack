@@ -26,7 +26,17 @@ predecessor hashes, exact candidate and code identity, source membership, requir
 checker identity, evidence bundles and artifacts, validity windows and revocations.
 It rejects invalid dependencies, version mismatches and cycles.
 Only authenticated, current and correctly bound records participate in record-ID conflicts.
-An unauthenticated duplicate cannot invalidate a valid chain.
+Uniqueness is scoped to `(signer_key_id, record_id)`. One issuer cannot squat on another issuer's ID.
+Within an admitted batch, an unauthenticated duplicate does not create an ID conflict.
+Revocations use `revokedQualificationSha256s`: hashes of complete canonical qualification documents,
+including signatures, exactly as predecessor references do. The experimental host API no longer accepts
+the earlier bare `revokedRecordIds` list. No frozen qualification wire field or signing byte changed.
+
+Evidence artifacts are checked for availability and digest equality. Their contents are not interpreted
+or re-executed. Bundles are checked against signed candidate, limitation and scenario/checker/result claims;
+the signer is responsible for evidence semantics and its applicability to the signed capability, level and
+profile. Shared artifact bytes do not independently establish that applicability. The evaluator also does
+not prove that a remote Git commit contains the cited bytes or that a code digest identifies an actual build.
 
 The CI measurement cell may differ from the deployment cell only in OS, architecture,
 filesystem and host identity. Adapter, provider, model, executor, template, recovery mode,
@@ -55,6 +65,10 @@ The host must not accept the context or clock from a worker or untrusted RPC req
 The host must give behavior qualification keys a dedicated protocol purpose.
 Version 1 retains the frozen draft's signature over the canonical payload.
 It does not add a new signature prefix without an explicit issuer protocol migration.
+Known small-order Ed25519 public-key encodings, both sign-bit variants and the p/p+1 aliases are rejected
+using the fixed encoding table from [libsodium 1.0.18, `ge25519_has_small_order`](https://github.com/jedisct1/libsodium/blob/1.0.18/src/libsodium/crypto_core/ed25519/ref10/ed25519_ref10.c).
+The check examines the parsed key's 32-byte JWK public component; Node crypto still performs verification.
+This is a degenerate-encoding check, not a new curve implementation or authentication of key ownership.
 
 ## Bytes, policy and result
 
@@ -77,7 +91,16 @@ scenario sets. Array order is pinned. The example only shows the digest envelope
 The output has `status: evaluated` or `rejected` and always has `authorization: none`.
 `expectedRegistrySha256` is the caller's pin. `observedRegistrySha256` is the digest actually read,
 or null when no bounded registry document was read. Rejection does not turn the expected pin into an observation.
-The context echoes candidate, code, policy, CI profile, host profile and revocation epoch.
+The context echoes candidate, code, policy, CI profile, host profile, registry version and revocation epoch,
+plus the epoch floor and both window limits. It also records SHA-256 of canonical JSON for:
+
+- `revocationSnapshotSha256`: `{epoch, issuedAtMs, expiresAtMs, revokedKeyIds, revokedQualificationSha256s}`.
+- `trustSha256`: `{keys, minimumRevocationEpoch, maxRevocationAgeMs, maxQualificationLifetimeMs}`.
+  Each key contains exactly `{keyId, publicKeyPem, issuerRole, capabilityIds, profileSha256s}`.
+
+Arrays keep their supplied order and PEM strings keep their exact bytes. These are input fingerprints,
+not semantic set identifiers. A same-epoch snapshot with changed contents has a different digest.
+Each entry also exposes its registry-declared `contractSha256`; a mismatch makes the entry ineligible.
 Those fields describe the evaluation inputs. They are not authenticated-host certificates.
 
 `selectionEligible` means the supplied requirements held at `evaluatedAtMs` under that context.
@@ -85,24 +108,35 @@ Those fields describe the evaluation inputs. They are not authenticated-host cer
 It is not a lease that survives a new revocation or changed candidate.
 Re-evaluate when relevant inputs change. Apply normal host authorization before each effect.
 Nonempty free-text qualification limitations block selection until a versioned policy can enforce them.
+When multiple chains qualify, choose the greatest effective validity bound; ties use the smallest journey
+document digest. Input order does not select the winner. Ineligible entries return an empty
+`qualificationSha256s` and null `validUntilMs`, including source, policy and dependency failures.
 
 ## Bounds and validation scope
 
 | Input | Hard limit |
 |---|---|
 | Registry or qualification document | 1 MiB each |
-| Qualification documents | 256 documents; 64 MiB total |
+| Raw qualification batch | At most 256 documents and 64 MiB total; exceeding either rejects the whole evaluation |
 | Fetched source/evidence object | 8 MiB each; separate 64 MiB total budget |
 | Registry entries / source manifest entries | 24 / 8,192 |
 | Issuer keys / capabilities per key / profiles per key | 100 / 24 / 128 |
 | Public key PEM | 1,024 characters; SPKI `PUBLIC KEY` only |
-| Revoked keys / records | 4,096 / 16,384 |
+| Revoked keys / qualification digests | 4,096 / 16,384 |
 | Revocation cache age | Host-selected limit, at most 24 hours |
 | Qualification lifetime | Host-selected limit, at most 31 days |
 
-Qualification parsing has an independent budget. Malformed qualification documents cannot spend
-the evidence budget. The evaluator remains synchronous. Run it outside latency-critical RPC
-and dispatch work; bounded does not mean low latency.
+The host must select a finite batch from authenticated storage, filtered by intended candidate,
+capabilities and issuer provenance. Do not pass a multi-writer append log directly to this API.
+The raw count/byte limits apply before authentication; invalid padding can reject an oversized batch.
+This is an intentional fail-closed resource limit, not availability protection against arbitrary input.
+Never remove raw limits to scan or verify an unbounded log. Qualification parsing has an independent budget;
+malformed documents do not spend the evidence budget. The evaluator remains synchronous. Run it outside
+latency-critical RPC and dispatch work; bounded does not mean low latency.
+
+Revocations must be a complete current snapshot, not a delta. R05/V06 must define safe retention,
+rotation and pruning that preserve revocation of every still-valid qualification. The evaluator does not
+truncate an oversized revocation set, ratchet a persisted epoch/digest pair or detect equivocation by itself.
 
 Tests use isolated keys, source objects and evidence fixtures. They do not certify actual providers,
 adapters, physical power-loss recovery, process containment or remote hosts. No operator recovery
@@ -116,6 +150,8 @@ or control-plane migration is part of this change.
 来源清单具有独立版本。每项能力只能引用清单中完全一致的来源条目。
 全局清单可以更大；未引用的条目不会因此取得资格。
 资格记录必须通过验签、范围和当前绑定检查，才会参与同 ID 冲突检测。
+ID 按签发者隔离；撤销绑定完整资格文档摘要。输入批次必须由宿主筛选并限制总量；
+超量填充会保守拒绝整批，不承诺任意追加日志下的可用性。证据内容的语义正确性仍由独立签发者负责。
 
 返回结果保留候选、代码、策略、宿主组合和撤销 epoch。
 期望的构建摘要与实际读取的摘要分别记录。

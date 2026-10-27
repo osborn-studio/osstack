@@ -19,7 +19,7 @@ export interface BehaviorRegistryTrust {
   maxRevocationAgeMs: number;
   maxQualificationLifetimeMs: number;
   /** The host verifies the operations-root signature and persists the epoch before calling this evaluator. */
-  revocations: { epoch: number; issuedAtMs: number; expiresAtMs: number; revokedKeyIds: string[]; revokedRecordIds: string[] };
+  revocations: { epoch: number; issuedAtMs: number; expiresAtMs: number; revokedKeyIds: string[]; revokedQualificationSha256s: string[] };
 }
 export interface BehaviorRegistryInput {
   registryBytes: Uint8Array;
@@ -27,6 +27,7 @@ export interface BehaviorRegistryInput {
   expectedRegistryVersion: string;
   /** Evaluation clock asserted by the host, not authenticated wall time. Never accept it from a worker. */
   nowMs: number;
+  /** Host-selected bounded batch, not an unfiltered multi-writer append log. */
   qualificationBytes: Uint8Array[];
   target: {
     candidateSha: string; targetCodeSha256: string;
@@ -42,6 +43,7 @@ export interface BehaviorRegistryInput {
 export interface BehaviorRegistryEntry {
   capabilityId: string;
   contract: BehaviorContractV1;
+  contractSha256: string;
   /** Requirements satisfied only under the echoed input context. Never an authorization or route grant. */
   selectionEligible: boolean;
   reasons: string[];
@@ -55,6 +57,12 @@ export interface BehaviorRegistryEvaluationContext {
   ciProfileSha256: string;
   hostProfileSha256: string;
   revocationEpoch: number;
+  registryVersion: string;
+  revocationSnapshotSha256: string;
+  trustSha256: string;
+  minimumRevocationEpoch: number;
+  maxRevocationAgeMs: number;
+  maxQualificationLifetimeMs: number;
 }
 export interface BehaviorRegistrySnapshot {
   status: "evaluated" | "rejected";
@@ -83,6 +91,26 @@ const MAX_REVOCATION_AGE_MS = 24 * 60 * 60 * 1000;
 const MAX_QUALIFICATION_LIFETIME_MS = 31 * 24 * 60 * 60 * 1000;
 const MAX_REVOKED_KEYS = 4096;
 const MAX_REVOKED_RECORDS = 16384;
+// Known small-order y encodings, including noncanonical p/p+1 aliases. Sign bit is ignored.
+// Source: libsodium 1.0.18 ge25519_has_small_order:
+// https://github.com/jedisct1/libsodium/blob/1.0.18/src/libsodium/crypto_core/ed25519/ref10/ed25519_ref10.c
+const SMALL_ORDER_ED25519_Y = new Set([
+  "0000000000000000000000000000000000000000000000000000000000000000",
+  "0100000000000000000000000000000000000000000000000000000000000000",
+  "26e8958fc2b227b045c3f489f2ef98f0d5dfac05d3c63339b13802886d53fc05",
+  "c7176a703d4dd84fba3c0b760d10670f2a2053fa2c39ccc64ec7fd7792ac037a",
+  "ecffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f",
+  "edffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f",
+  "eeffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f",
+]);
+function hasDegenerateEd25519Encoding(key: KeyObject): boolean {
+  const jwk = key.export({ format: "jwk" });
+  if (typeof jwk.x !== "string") return true;
+  const encoded = Buffer.from(jwk.x, "base64url");
+  if (encoded.length !== 32) return true;
+  encoded[31] = encoded[31]! & 0x7f;
+  return SMALL_ORDER_ED25519_Y.has(encoded.toString("hex"));
+}
 const MAX_KEY_PROFILES = 128;
 const hash = (value: Uint8Array | string): string => createHash("sha256").update(value).digest("hex");
 
@@ -147,8 +175,8 @@ export function evaluateBehaviorRegistry(input: BehaviorRegistryInput): Behavior
         || !Array.isArray(key.capabilityIds) || key.capabilityIds.length > 24
         || !Array.isArray(key.profileSha256s) || key.profileSha256s.length > MAX_KEY_PROFILES)) return reject("invalid_context");
     const rawRevocations = rawTrust.revocations;
-    if (!rawRevocations || !Array.isArray(rawRevocations.revokedKeyIds) || rawRevocations.revokedKeyIds.length > MAX_REVOKED_KEYS
-      || !Array.isArray(rawRevocations.revokedRecordIds) || rawRevocations.revokedRecordIds.length > MAX_REVOKED_RECORDS) return reject("revocation_unavailable");
+    if (!rawRevocations || Object.hasOwn(rawRevocations, "revokedRecordIds") || !Array.isArray(rawRevocations.revokedKeyIds) || rawRevocations.revokedKeyIds.length > MAX_REVOKED_KEYS
+      || !Array.isArray(rawRevocations.revokedQualificationSha256s) || rawRevocations.revokedQualificationSha256s.length > MAX_REVOKED_RECORDS) return reject("revocation_unavailable");
     if (!Array.isArray(input.qualificationBytes) || !Array.isArray(input.policy)) return reject("invalid_context");
     trust = structuredClone(rawTrust);
     if (!safeInteger(nowMs) || !commitPattern.test(target.candidateSha)
@@ -166,7 +194,7 @@ export function evaluateBehaviorRegistry(input: BehaviorRegistryInput): Behavior
       const publicKey = createPublicKey(key.publicKeyPem);
       const fingerprint = hash(publicKey.export({ type: "spki", format: "der" }));
       if (!token(key.keyId) || publicKeys.has(key.keyId) || keyFingerprints.has(fingerprint)
-        || publicKey.asymmetricKeyType !== "ed25519" || !roles.includes(key.issuerRole)
+        || publicKey.asymmetricKeyType !== "ed25519" || hasDegenerateEd25519Encoding(publicKey) || !roles.includes(key.issuerRole)
         || !key.capabilityIds.every((id) => BehaviorCapabilityIdV1.safeParse(id).success)
         || !key.profileSha256s.every((value) => digestPattern.test(value))) return reject("invalid_context");
       publicKeys.set(key.keyId, publicKey); keyFingerprints.add(fingerprint);
@@ -190,9 +218,19 @@ export function evaluateBehaviorRegistry(input: BehaviorRegistryInput): Behavior
     || revocations.epoch < trust.minimumRevocationEpoch || revocations.issuedAtMs > nowMs
     || revocations.expiresAtMs <= nowMs || nowMs - revocations.issuedAtMs >= trust.maxRevocationAgeMs
     || !Array.isArray(revocations.revokedKeyIds)
-    || !Array.isArray(revocations.revokedRecordIds) || !revocations.revokedKeyIds.every(token)
-    || !revocations.revokedRecordIds.every(token)) return reject("revocation_unavailable");
-  snapshot.context = { candidateSha: target.candidateSha, targetCodeSha256: target.targetCodeSha256,
+    || !Array.isArray(revocations.revokedQualificationSha256s) || !revocations.revokedKeyIds.every(token)
+    || !revocations.revokedQualificationSha256s.every((digest) => digestPattern.test(digest))) return reject("revocation_unavailable");
+  const revocationSnapshot = { epoch: revocations.epoch, issuedAtMs: revocations.issuedAtMs,
+    expiresAtMs: revocations.expiresAtMs, revokedKeyIds: revocations.revokedKeyIds,
+    revokedQualificationSha256s: revocations.revokedQualificationSha256s };
+  const trustConfiguration = { keys: trust.keys.map((key) => ({ keyId: key.keyId, publicKeyPem: key.publicKeyPem,
+    issuerRole: key.issuerRole, capabilityIds: key.capabilityIds, profileSha256s: key.profileSha256s })),
+    minimumRevocationEpoch: trust.minimumRevocationEpoch, maxRevocationAgeMs: trust.maxRevocationAgeMs,
+    maxQualificationLifetimeMs: trust.maxQualificationLifetimeMs };
+  snapshot.context = { registryVersion: expectedRegistryVersion, revocationSnapshotSha256: hash(canonical(revocationSnapshot)),
+    trustSha256: hash(canonical(trustConfiguration)), minimumRevocationEpoch: trust.minimumRevocationEpoch,
+    maxRevocationAgeMs: trust.maxRevocationAgeMs, maxQualificationLifetimeMs: trust.maxQualificationLifetimeMs,
+    candidateSha: target.candidateSha, targetCodeSha256: target.targetCodeSha256,
     policyProfileSha256: target.policyProfileSha256, ciProfileSha256: hash(canonical(target.ciProfile)),
     hostProfileSha256: hash(canonical(target.hostProfile)), revocationEpoch: revocations.epoch };
   let registry: BehaviorRegistryV1;
@@ -206,7 +244,12 @@ export function evaluateBehaviorRegistry(input: BehaviorRegistryInput): Behavior
   if (registry.registry_version !== expectedRegistryVersion) return reject("registry_version_mismatch");
   if (registry.candidate_sha !== target.candidateSha || registry.target_code_sha256 !== target.targetCodeSha256) return reject("candidate_mismatch");
   let remainingEvidenceBytes = MAX_EVIDENCE_TOTAL_BYTES;
-  let remainingQualificationBytes = MAX_QUALIFICATION_TOTAL_BYTES;
+  // Bound the raw host-selected batch before parsing, copying or consulting the artifact store.
+  let qualificationTotalBytes = 0;
+  for (const bytes of input.qualificationBytes) {
+    if (bytes instanceof Uint8Array) qualificationTotalBytes += bytes.byteLength;
+    if (qualificationTotalBytes > MAX_QUALIFICATION_TOTAL_BYTES) return reject("qualification_batch_oversized");
+  }
   const artifacts = new Map<string, Buffer>();
   const read = (digest: string): Buffer | undefined => {
     if (artifacts.has(digest)) return artifacts.get(digest);
@@ -223,17 +266,16 @@ export function evaluateBehaviorRegistry(input: BehaviorRegistryInput): Behavior
   const records = new Map<string, BehaviorQualificationV1>();
   // Parse all qualification byte snapshots before invoking the host's artifact reader.
   for (const bytes of [...input.qualificationBytes]) {
-    if (!(bytes instanceof Uint8Array) || bytes.byteLength > MAX_QUALIFICATION_BYTES || bytes.byteLength > remainingQualificationBytes) {
+    if (!(bytes instanceof Uint8Array) || bytes.byteLength > MAX_QUALIFICATION_BYTES) {
       snapshot.qualificationRejections.push({ sha256: "", reason: "qualification_oversized" }); continue;
     }
-    remainingQualificationBytes -= bytes.byteLength;
     const copy = Buffer.from(bytes); const digest = hash(copy);
     try {
       const record = parseArtifact(copy, BehaviorQualificationV1, MAX_QUALIFICATION_BYTES);
       records.set(digest, record);
     } catch { snapshot.qualificationRejections.push({ sha256: digest, reason: "qualification_invalid" }); }
   }
-  function authenticationError(record: BehaviorQualificationV1): string | null {
+  function authenticationError(record: BehaviorQualificationV1, digest: string): string | null {
     const p = record.payload;
     const entry = entries.get(p.capability_id); const policy = policies.get(p.capability_id);
     if (!entry || !policy) return "capability_or_policy_missing";
@@ -241,7 +283,7 @@ export function evaluateBehaviorRegistry(input: BehaviorRegistryInput): Behavior
     if (!key || key.issuerRole !== p.issuer_role || !key.capabilityIds.includes(p.capability_id)
       || !key.profileSha256s.includes(hash(canonical(p.profile)))) return "issuer_scope_mismatch";
     if (!verify(null, Buffer.from(canonical(p)), publicKeys.get(key.keyId)!, Buffer.from(record.signature.value_base64, "base64"))) return "signature_invalid";
-    if (revocations.revokedKeyIds.includes(p.signer_key_id) || revocations.revokedRecordIds.includes(p.record_id)) return "qualification_revoked";
+    if (revocations.revokedKeyIds.includes(p.signer_key_id) || revocations.revokedQualificationSha256s.includes(digest)) return "qualification_revoked";
     if (p.revocation_epoch > revocations.epoch || Date.parse(p.issued_at) > nowMs || Date.parse(p.expires_at) <= nowMs
       || Date.parse(p.expires_at) - Date.parse(p.issued_at) > trust.maxQualificationLifetimeMs) return "qualification_not_current";
     if (p.candidate_sha !== target.candidateSha || p.target_code_sha256 !== target.targetCodeSha256
@@ -274,16 +316,17 @@ export function evaluateBehaviorRegistry(input: BehaviorRegistryInput): Behavior
   }
   const authenticated = new Map<string, BehaviorQualificationV1>();
   const recordIds = new Map<string, string>(); const duplicateIds = new Set<string>();
-  for (const [digest, record] of records) {
-    const error = authenticationError(record);
+  const scopedRecordId = (record: BehaviorQualificationV1) => canonical([record.payload.signer_key_id, record.payload.record_id]);
+  for (const [digest, record] of [...records].sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0)) {
+    const error = authenticationError(record, digest);
     if (error) { snapshot.qualificationRejections.push({ sha256: digest, reason: error }); continue; }
-    const previous = recordIds.get(record.payload.record_id);
-    if (previous && previous !== digest) duplicateIds.add(record.payload.record_id);
-    recordIds.set(record.payload.record_id, digest); authenticated.set(digest, record);
+    const id = scopedRecordId(record); const previous = recordIds.get(id);
+    if (previous && previous !== digest) duplicateIds.add(id);
+    recordIds.set(id, digest); authenticated.set(digest, record);
   }
   const verified = new Map<string, BehaviorQualificationV1>();
   for (const [digest, record] of authenticated) {
-    const error = duplicateIds.has(record.payload.record_id) ? "qualification_id_conflict" : evidenceError(record);
+    const error = duplicateIds.has(scopedRecordId(record)) ? "qualification_id_conflict" : evidenceError(record);
     if (error) snapshot.qualificationRejections.push({ sha256: digest, reason: error }); else verified.set(digest, record);
   }
   const chain = (digest: string, capability: string, level: number): string[] | undefined => {
@@ -317,11 +360,16 @@ export function evaluateBehaviorRegistry(input: BehaviorRegistryInput): Behavior
       !== canonical(policy.requiredScenarios[level].map((scenario) => scenario.id).sort()))) reasons.push("policy_missing_or_mismatch");
     const sourceFailure = sourceError(contract);
     if (sourceFailure) reasons.push(sourceFailure);
-    let qualificationSha256s: string[] = [];
+    let qualificationSha256s: string[] = []; let chainValidUntilMs = -1;
     for (const [digest, record] of verified) {
       if (record.payload.capability_id === contract.capability_id && record.payload.level === "journey_verified") {
         const found = chain(digest, contract.capability_id, 2);
-        if (found) { qualificationSha256s = found; break; }
+        if (found) {
+          const until = Math.min(revocations.expiresAtMs, revocations.issuedAtMs + trust.maxRevocationAgeMs,
+            ...found.map((recordDigest) => Date.parse(verified.get(recordDigest)!.payload.expires_at)));
+          // Records are visited in digest order; equal windows retain the smallest journey digest.
+          if (until > chainValidUntilMs) { qualificationSha256s = found; chainValidUntilMs = until; }
+        }
       }
     }
     if (!qualificationSha256s.length) reasons.push("qualification_missing_or_invalid");
@@ -330,10 +378,8 @@ export function evaluateBehaviorRegistry(input: BehaviorRegistryInput): Behavior
       if (!targetEntry) reasons.push("dependency_missing");
       else if (targetEntry.contract.version !== dependency.version) reasons.push("dependency_version_mismatch");
     }
-    snapshot.entries.push({ capabilityId: contract.capability_id, contract, selectionEligible: reasons.length === 0, reasons,
-      qualificationSha256s, validUntilMs: qualificationSha256s.length ? Math.min(revocations.expiresAtMs,
-        revocations.issuedAtMs + trust.maxRevocationAgeMs,
-        ...qualificationSha256s.map((digest) => Date.parse(verified.get(digest)!.payload.expires_at))) : null });
+    snapshot.entries.push({ capabilityId: contract.capability_id, contract, contractSha256: contract_sha256, selectionEligible: reasons.length === 0, reasons,
+      qualificationSha256s, validUntilMs: qualificationSha256s.length ? chainValidUntilMs : null });
   }
   const projections = new Map(snapshot.entries.map((entry) => [entry.capabilityId, entry]));
   // At most 24 nodes: per-node reachability identifies every cycle member, including diamond joins.
@@ -362,7 +408,7 @@ export function evaluateBehaviorRegistry(input: BehaviorRegistryInput): Behavior
       }
     }
   }
-  for (const entry of snapshot.entries) if (!entry.selectionEligible) entry.validUntilMs = null;
+  for (const entry of snapshot.entries) if (!entry.selectionEligible) { entry.validUntilMs = null; entry.qualificationSha256s = []; }
   snapshot.status = "evaluated";
   return freeze(snapshot);
 }

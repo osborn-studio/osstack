@@ -1,4 +1,4 @@
-import { createHash, generateKeyPairSync, sign } from "node:crypto";
+import { createHash, createPublicKey, generateKeyPairSync, sign } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import type { BehaviorContractV1, BehaviorQualificationV1, BehaviorRegistryV1 } from "@osstack/protocol";
 import { evaluateBehaviorRegistry, type BehaviorRegistryInput } from "./behavior-registry.js";
@@ -75,7 +75,7 @@ function fixture(dependencies: Array<{ capability_id: string; version: string }>
         issuerRole: key.role as BehaviorQualificationV1["payload"]["issuer_role"], capabilityIds: [capabilityId],
         profileSha256s: [hash(encode(index === 0 ? ciProfile : profile))] })),
       minimumRevocationEpoch: 3, maxRevocationAgeMs: 7200000, maxQualificationLifetimeMs: 7 * 24 * 3600000,
-      revocations: { epoch: 3, issuedAtMs: now - 1000, expiresAtMs: now + 3600000, revokedKeyIds: [], revokedRecordIds: [] },
+      revocations: { epoch: 3, issuedAtMs: now - 1000, expiresAtMs: now + 3600000, revokedKeyIds: [], revokedQualificationSha256s: [] },
     },
     readArtifact: (digest) => artifacts.get(digest),
   };
@@ -110,9 +110,14 @@ describe("behavior registry evaluation under caller-supplied trust", () => {
     expect(result.observedRegistrySha256).toBe(input.expectedRegistrySha256);
     expect(result.context).toEqual({ candidateSha: input.target.candidateSha, targetCodeSha256: input.target.targetCodeSha256,
       policyProfileSha256: input.target.policyProfileSha256, ciProfileSha256: hash(encode(input.target.ciProfile)),
-      hostProfileSha256: hash(encode(input.target.hostProfile)), revocationEpoch: input.trust.revocations.epoch });
+      hostProfileSha256: hash(encode(input.target.hostProfile)), revocationEpoch: input.trust.revocations.epoch,
+      registryVersion: input.expectedRegistryVersion, revocationSnapshotSha256: hash(encode(input.trust.revocations)),
+      trustSha256: hash(encode({ keys: input.trust.keys, minimumRevocationEpoch: input.trust.minimumRevocationEpoch,
+        maxRevocationAgeMs: input.trust.maxRevocationAgeMs, maxQualificationLifetimeMs: input.trust.maxQualificationLifetimeMs })),
+      minimumRevocationEpoch: input.trust.minimumRevocationEpoch, maxRevocationAgeMs: input.trust.maxRevocationAgeMs,
+      maxQualificationLifetimeMs: input.trust.maxQualificationLifetimeMs });
     expect(result.entries[0]).toMatchObject({ capabilityId: "FM-09", selectionEligible: true, reasons: [],
-      qualificationSha256s: input.qualificationBytes.map(hash), validUntilMs: input.trust.revocations.expiresAtMs });
+      contractSha256: hash(encode(result.entries[0]!.contract)), qualificationSha256s: input.qualificationBytes.map(hash), validUntilMs: input.trust.revocations.expiresAtMs });
     expect(Object.isFrozen(result.entries[0])).toBe(true);
   });
   it("leaves a correctly shaped but unqualified declaration disabled", () => {
@@ -227,8 +232,8 @@ describe("behavior registry evaluation under caller-supplied trust", () => {
   });
   it("re-evaluates revocations on each load, including predecessor revocation", () => {
     const { input } = fixture(); expect(eligible(input)).toHaveLength(1);
-    input.trust.revocations.revokedRecordIds.push("record-0"); expect(eligible(input)).toHaveLength(0);
-    input.trust.revocations.revokedRecordIds = []; input.trust.revocations.revokedKeyIds.push("key-2");
+    input.trust.revocations.revokedQualificationSha256s.push(hash(input.qualificationBytes[0]!)); expect(eligible(input)).toHaveLength(0);
+    input.trust.revocations.revokedQualificationSha256s = []; input.trust.revocations.revokedKeyIds.push("key-2");
     expect(eligible(input)).toHaveLength(0);
   });
   it("requires the exact trusted scenario set and checker identity", () => {
@@ -289,7 +294,7 @@ describe("behavior registry evaluation under caller-supplied trust", () => {
     expect(eligible(input)).toHaveLength(0);
     const other = fixture(); other.input.qualificationBytes.shift(); expect(eligible(other.input)).toHaveLength(0);
   });
-  it("rejects ambiguous qualification IDs and invalid trust configuration", () => {
+  it("rejects conflicting documents with the same issuer and record ID, and invalid trust configuration", () => {
     const { input, records } = fixture(); const altered = structuredClone(records[2]!); altered.payload.limitations = ["Another receipt"];
     altered.signature.value_base64 = sign(null, encode(altered.payload), keys[2]!.privateKey).toString("base64");
     input.qualificationBytes.push(encode(altered)); expect(eligible(input)).toHaveLength(0);
@@ -306,6 +311,95 @@ describe("behavior registry evaluation under caller-supplied trust", () => {
     expect(result.entries[0]?.selectionEligible).toBe(true);
     expect(result.qualificationRejections).toEqual([{ sha256: hash(encode(forged)), reason: "signature_invalid" }]);
   });
+  it("does not let a CI issuer's same-ID record conflict with the journey issuer", () => {
+    const { input, records } = fixture(); const lowerRole = structuredClone(records[0]!);
+    lowerRole.payload.record_id = records[2]!.payload.record_id;
+    lowerRole.payload.evidence_bundle_sha256 = "0".repeat(64);
+    lowerRole.signature.value_base64 = sign(null, encode(lowerRole.payload), keys[0]!.privateKey).toString("base64");
+    input.qualificationBytes.unshift(encode(lowerRole));
+    const result = evaluateBehaviorRegistry(input);
+    expect(result.entries[0]?.selectionEligible).toBe(true);
+    expect(result.qualificationRejections).toEqual([{ sha256: hash(encode(lowerRole)), reason: "evidence_unavailable" }]);
+  });
+  it("revokes exact qualification documents without revoking another issuer's same-ID record", () => {
+    const { input, records } = fixture(); const lowerRole = structuredClone(records[0]!);
+    lowerRole.payload.record_id = records[2]!.payload.record_id;
+    lowerRole.signature.value_base64 = sign(null, encode(lowerRole.payload), keys[0]!.privateKey).toString("base64");
+    const extra = encode(lowerRole); input.qualificationBytes.push(extra);
+    input.trust.revocations.revokedQualificationSha256s.push(hash(extra));
+    const result = evaluateBehaviorRegistry(input);
+    expect(result.entries[0]?.selectionEligible).toBe(true);
+    expect(result.qualificationRejections).toEqual([{ sha256: hash(extra), reason: "qualification_revoked" }]);
+    input.trust.revocations.revokedQualificationSha256s.push(hash(input.qualificationBytes[2]!));
+    expect(evaluateBehaviorRegistry(input).entries[0]).toMatchObject({ selectionEligible: false, qualificationSha256s: [] });
+    const legacy = fixture();
+    legacy.input.trust.revocations = { epoch: 3, issuedAtMs: now - 1000, expiresAtMs: now + 1000,
+      revokedKeyIds: [], revokedRecordIds: ["record-0"] } as unknown as BehaviorRegistryInput["trust"]["revocations"];
+    expect(evaluateBehaviorRegistry(legacy.input).rejection).toBe("revocation_unavailable");
+    legacy.input.trust.revocations.revokedQualificationSha256s = [];
+    expect(evaluateBehaviorRegistry(legacy.input).rejection).toBe("revocation_unavailable");
+  });
+  it("binds same-epoch revocation changes and evaluation limits to separate context digests", () => {
+    const { input } = fixture(); const original = evaluateBehaviorRegistry(input).context!;
+    input.trust.revocations.revokedQualificationSha256s.push("0".repeat(64));
+    const revoked = evaluateBehaviorRegistry(input).context!;
+    expect(revoked.revocationEpoch).toBe(original.revocationEpoch);
+    expect(revoked.revocationSnapshotSha256).not.toBe(original.revocationSnapshotSha256);
+    expect(revoked.trustSha256).toBe(original.trustSha256);
+    input.trust.minimumRevocationEpoch = 2; input.trust.maxRevocationAgeMs -= 1;
+    input.trust.maxQualificationLifetimeMs -= 1;
+    const changed = evaluateBehaviorRegistry(input).context!;
+    expect(changed.trustSha256).not.toBe(revoked.trustSha256);
+    expect(changed.revocationSnapshotSha256).toBe(revoked.revocationSnapshotSha256);
+    expect(changed).toMatchObject({ minimumRevocationEpoch: 2, maxRevocationAgeMs: input.trust.maxRevocationAgeMs,
+      maxQualificationLifetimeMs: input.trust.maxQualificationLifetimeMs });
+  });
+  it("rejects all seven libsodium 1.0.18 small-order encodings and both sign-bit variants", () => {
+    // Fixed upstream ge25519_has_small_order vectors; production does not supply the test list.
+    const vectors = ["00".repeat(32), `01${"00".repeat(31)}`,
+      "26e8958fc2b227b045c3f489f2ef98f0d5dfac05d3c63339b13802886d53fc05",
+      "c7176a703d4dd84fba3c0b760d10670f2a2053fa2c39ccc64ec7fd7792ac037a",
+      `ec${"ff".repeat(30)}7f`, `ed${"ff".repeat(30)}7f`, `ee${"ff".repeat(30)}7f`];
+    for (const vector of vectors) for (const signBit of [0, 128]) {
+      const bytes = Buffer.from(vector, "hex"); bytes[31] = bytes[31]! | signBit;
+      const key = createPublicKey({ format: "jwk", key: { kty: "OKP", crv: "Ed25519", x: bytes.toString("base64url") } });
+      const { input } = fixture(); input.trust.keys[0]!.publicKeyPem = key.export({ format: "pem", type: "spki" }).toString();
+      expect(evaluateBehaviorRegistry(input).rejection, `${vector}/${signBit}`).toBe("invalid_context");
+    }
+    expect(eligible(fixture().input)).toHaveLength(1);
+  });
+  it("rejects an identity-key qualification with trivial R=identity and S=0 signature", () => {
+    const { input, records, replaceRecord } = fixture(); const identity = Buffer.alloc(32); identity[0] = 1;
+    const key = createPublicKey({ format: "jwk", key: { kty: "OKP", crv: "Ed25519", x: identity.toString("base64url") } });
+    input.trust.keys[0]!.publicKeyPem = key.export({ format: "pem", type: "spki" }).toString();
+    records[0]!.signature.value_base64 = Buffer.concat([identity, Buffer.alloc(32)]).toString("base64");
+    input.qualificationBytes[0] = encode(records[0]);
+    for (const index of [1, 2]) replaceRecord(index, (record) => {
+      record.payload.prerequisite_record_sha256 = [hash(input.qualificationBytes[index - 1]!)];
+    });
+    expect(evaluateBehaviorRegistry(input)).toMatchObject({ status: "rejected", rejection: "invalid_context", entries: [] });
+  });
+  it("selects the longest effective chain with a digest tie-break regardless of input order", () => {
+    for (const tied of [false, true]) {
+      const { input, records } = fixture(); const alternate = structuredClone(records[2]!);
+      alternate.payload.record_id = "alternate-journey";
+      if (!tied) alternate.payload.expires_at = new Date(now + 10000).toISOString();
+      alternate.signature.value_base64 = sign(null, encode(alternate.payload), keys[2]!.privateKey).toString("base64");
+      const original = input.qualificationBytes[2]!; const extra = encode(alternate);
+      const expected = tied ? [hash(original), hash(extra)].sort()[0]! : hash(original);
+      input.qualificationBytes.unshift(extra);
+      const first = evaluateBehaviorRegistry(input);
+      input.qualificationBytes.reverse();
+      expect(evaluateBehaviorRegistry(input)).toEqual(first);
+      expect(first.entries[0]?.qualificationSha256s[2]).toBe(expected);
+      expect(first.entries[0]?.validUntilMs).toBe(input.trust.revocations.expiresAtMs);
+    }
+  });
+  it("does not expose qualification chains for entries with failed source checks", () => {
+    const { input, artifacts, contract } = fixture(); artifacts.delete(contract.source_manifest_sha256);
+    expect(evaluateBehaviorRegistry(input).entries[0]).toMatchObject({ selectionEligible: false,
+      validUntilMs: null, qualificationSha256s: [] });
+  });
   it("bounds trust arrays and PEM before parsing keys and rejects missing revocation snapshots", () => {
     const mutations: Array<(input: BehaviorRegistryInput) => void> = [
       (input) => { input.trust.keys[0]!.publicKeyPem = "x".repeat(1025); },
@@ -318,7 +412,7 @@ describe("behavior registry evaluation under caller-supplied trust", () => {
     for (const mutate of [
       (input: BehaviorRegistryInput) => { input.trust.revocations = null as unknown as BehaviorRegistryInput["trust"]["revocations"]; },
       (input: BehaviorRegistryInput) => { input.trust.revocations.revokedKeyIds = Array.from({ length: 4097 }, () => "key"); },
-      (input: BehaviorRegistryInput) => { input.trust.revocations.revokedRecordIds = Array.from({ length: 16385 }, () => "record"); },
+      (input: BehaviorRegistryInput) => { input.trust.revocations.revokedQualificationSha256s = Array.from({ length: 16385 }, () => "record"); },
     ]) {
       const { input } = fixture(); mutate(input);
       expect(evaluateBehaviorRegistry(input)).toMatchObject({ status: "rejected", rejection: "revocation_unavailable", context: null, observedRegistrySha256: null });
@@ -369,7 +463,7 @@ describe("behavior registry evaluation under caller-supplied trust", () => {
     const result = evaluateBehaviorRegistry(parent.input);
     expect(result.entries.every((entry) => entry.selectionEligible)).toBe(true);
     expect(result.entries.map((entry) => entry.validUntilMs)).toEqual([now + 60000, now + 60000]);
-    parent.input.trust.revocations.revokedRecordIds.push("child-record-2");
+    parent.input.trust.revocations.revokedQualificationSha256s.push(hash(parent.input.qualificationBytes[5]!));
     expect(evaluateBehaviorRegistry(parent.input).entries[0]).toMatchObject({ selectionEligible: false,
       validUntilMs: null, reasons: ["dependency_unqualified"] });
   });
@@ -382,13 +476,14 @@ describe("behavior registry evaluation under caller-supplied trust", () => {
     f.input.registryBytes = encode(f.registry); f.input.expectedRegistrySha256 = hash(f.input.registryBytes);
     expect(evaluateBehaviorRegistry(f.input).entries.map((entry) => entry.reasons.includes("dependency_cycle"))).toEqual([true, true, true, true]);
   });
-  it("captures time, build identity, records and trust before invoking a reentrant artifact reader", () => {
+  it("keeps the evaluated snapshot stable when a later artifact callback mutates caller inputs", () => {
+    // Authentication finishes before artifact callbacks. This tests later snapshot stability, not a clock race inside authentication.
     const { input, artifacts } = fixture(); let readCalls = 0;
     input.readArtifact = (digest) => {
       readCalls++;
       input.nowMs += 2 * 86400000; input.expectedRegistrySha256 = "0".repeat(64);
       input.qualificationBytes = []; input.target.candidateSha = "0".repeat(40);
-      input.trust.revocations.revokedRecordIds.push("record-2");
+      input.trust.revocations.revokedKeyIds.push("key-2");
       return artifacts.get(digest);
     };
     const result = evaluateBehaviorRegistry(input);
@@ -414,5 +509,17 @@ describe("behavior registry evaluation under caller-supplied trust", () => {
     const result = evaluateBehaviorRegistry(input);
     expect(result.entries[0]?.selectionEligible).toBe(true);
     expect(result.qualificationRejections).toHaveLength(60);
+  });
+  it("rejects an excessive raw batch before artifact reads regardless of padding position", () => {
+    for (const byCount of [true, false]) for (const prepend of [true, false]) {
+      const { input } = fixture(); let reads = 0;
+      const junk = Buffer.alloc(byCount ? 1 : 1024 * 1024, 97);
+      const padding = Array.from({ length: byCount ? 257 : 64 }, () => junk);
+      input.qualificationBytes = prepend ? [...padding, ...input.qualificationBytes] : [...input.qualificationBytes, ...padding];
+      input.readArtifact = () => { reads++; throw new Error("oversized batch must not read"); };
+      expect(evaluateBehaviorRegistry(input)).toMatchObject({ status: "rejected", entries: [],
+        rejection: byCount ? "invalid_context" : "qualification_batch_oversized" });
+      expect(reads).toBe(0);
+    }
   });
 });
