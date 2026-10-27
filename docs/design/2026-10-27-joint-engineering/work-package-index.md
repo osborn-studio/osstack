@@ -4,14 +4,14 @@
 
 | 工作包 / PR | 结果 | 功能前置 / 额外合并顺序 | 负责人角色 | 验收 |
 |---|---|---|---|---|
-| J01 / JP-01 | 共享身份、完成与资格契约 | 无 / 无 | contract-owner | JA01, JA02, JA59 |
+| J01 / JP-01 | 共享身份、完成与资格契约 | 无 / 无 | contract-owner | JA01, JA02, JA59, JA70 |
 | J02 / JP-02 | 共用来源快照与分型注册 | J01 / 无 | source-owner | JA03, JA04 |
 | J03 / JP-03 | session-answer-receipt 驱动夹具 | J01 / 无 | verification-owner | JA05, JA06, JA44 |
 | J04 / JP-04 | 必需方法材料与 v2 调用回执 | J01, J02 / 无 | context-owner | JA07, JA08, JA09, JA46, JA53 |
 | J05 / JP-05 | 检查映射与单方法纯编译 | J02, J06 / 无 | method-owner | JA10, JA11 |
 | J06 / JP-06 | 使用草图与三条功能地图 | J03 / 无 | method-owner | JA12, JA13 |
 | J07 / JP-07 | 产物消费与同候选评审 | J04, J05 / 无 | verification-owner | JA14, JA15, JA45, JA50, JA68 |
-| J08 / JP-08 | 首次受限试验准入 | J03, J07, J12 / 无 | qualification-owner | JA16, JA17, JA49, JA61 |
+| J08 / JP-08 | 首次受限试验准入 | J03, J07, J12 / 无 | qualification-owner | JA16, JA17, JA49, JA61, JA71, JA72 |
 | J09 / JP-09 | 首个本地 bug-fix 方法旅程 | J08 / 无 | integration-owner | JA18 |
 | J10 / JP-10 | 方法资格与激活漂移管理 | J09, J23, J12 / 无 | qualification-owner | JA19 |
 | J11 / JP-11 | 恢复回执目标 schema 规格 | J01 / 无 | state-owner | JA20, JA47 |
@@ -37,4 +37,8 @@
 | J31 / JP-31 | 清理前保全与应用回执修复 | J12, J07 / 无 | state-owner | JA42, JA56 |
 | J32 / JP-32 | 联合四组对照与冷用户验收 | J16, J25 / 无 | evaluation-owner | JA43 |
 
-J27 scoped只表示local opt-in；default-enable另要求J32。124个阶段节点包含原full gate wrapper和逐迁移门槛，不能把32个工作包直接视作32个一次性PR。
+J27 scoped只表示local opt-in；default-enable另要求J32。126个阶段节点包含原full gate wrapper和逐迁移门槛，不能把32个工作包直接视作32个一次性PR。
+
+## 组件依赖层
+
+[组件/主机分层](gate-layers.md) 为 J02/J03/J04/J11 显式选择 J01.contracts；表中工作包 J01 依赖保留。J01.scoped 仍要求原 JA01/JA02 真实主机行为，J08完整trial新增该前置；两个新gate不代表已执行。J01新增JA70组件负例，J08拆出无副作用的真实host admission边界。

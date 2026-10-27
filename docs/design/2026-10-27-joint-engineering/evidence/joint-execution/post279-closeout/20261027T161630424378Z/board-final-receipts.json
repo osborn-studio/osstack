@@ -1,0 +1,19 @@
+{
+  "base_sha": "d3fa7ef681efc79a5fb2dff92172ef1be0978774",
+  "observed_at": "2026-10-27T16:16:43.997217+00:00",
+  "board_snapshots": [
+    {
+      "path": "evidence/joint-execution/post279-closeout/20261027T161630424378Z/joint-firstmate-pstack.json",
+      "sha256": "4b35f3d3f3f405868831a30b8b536ef1bd8d81576b3075b3392a16ef6d2435e5"
+    },
+    {
+      "path": "evidence/joint-execution/post279-closeout/20261027T161630424378Z/firstmate-upgrade-roadmap.json",
+      "sha256": "c31518c8dbc5c8f7e784a2fdb67db6c18a2aef9e711cf65e21cc3c4b4e53408f"
+    },
+    {
+      "path": "evidence/joint-execution/post279-closeout/20261027T161630424378Z/session-pilot-debt.json",
+      "sha256": "0cf76f9a97b671452062c1050cf24cb7b86e94bc7bc347ea6c8a28f6cb5405f4"
+    }
+  ],
+  "scope": "read-only post-closeout observations; no whole milestone completion"
+}

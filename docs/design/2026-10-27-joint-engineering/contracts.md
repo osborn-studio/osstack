@@ -128,6 +128,6 @@ J11 先交付目标 DDL/fixture（不运行迁移）→ J12 交付仅能执行�
 
 ## 9. 审计后的规范增量
 
-[审计规格](audit-specifications.md) 明确摘要字节、恢复迁移例外、试验消费事务与预算、材料角色、产物相位、阶段 gate 和原验收继承。J01 必须冻结完整 Recipe/MethodProposal/TrialSupportProfile 与所有产物 body schema；当前 contract.schema.json 是边界 fixture 集，context_receipt 仍是投影，不能直接拿它当完整产品 parser。任何新接口若未通过该冻结门槛，依赖它的接线 PR 不得合入。
+[审计规格](audit-specifications.md) 明确摘要字节、恢复迁移例外、试验消费事务与预算、材料角色、产物相位、阶段 gate 和原验收继承。J01 必须冻结完整 Recipe/MethodProposal/TrialSupportProfile 与所有产物 body schema；当前 contract.schema.json 是边界 fixture 集，context_receipt 仍是投影，不能直接拿它当完整产品 parser。任何新接口若未通过 `J01.contracts` 的组件冻结与独立验收门槛，依赖它的组件接线 PR 不得合入。仅 J02/J03/J04/J11 可按 [组件分层](gate-layers.md) 的显式白名单消费该门槛；它不证明真实主机授权或任务完成。真实无副作用 admission 边界须经 J08.admission_boundary 的 JA02/JA71；首次完整 trial 仍须先通过保留原 JA01/JA02 的 J01.scoped，满足 J08 原恢复/预算等门槛，并由 JA72 证明复用同一受检入口。任何组件资格都不能直接开启方法执行或绕过原 host/release gate。
 
 修订 3：[复审精确规格](closeout-specifications.md) 明确恢复后态、Graph 消费事务、原 gate/case 消费边及 oracle 生命周期；与旧表述冲突时以此增量及同步机器文件为准。

@@ -1,0 +1,2174 @@
+{
+  "schema_version": 1,
+  "purpose": "Absorb Firstmate and pstack capabilities into OSStack",
+  "owner_thread": "01a178ed-616a-7bb1-8d20-13f4c1019245",
+  "main_sha": "ede5aadced37ac9dc29dd21f0e307ad2c46d2976",
+  "observed_at": "2026-10-27T14:17:38.296456+00:00",
+  "runtime_enabled": false,
+  "handoff": {
+    "thread": "01a1693a-3d49-7b92-b1b4-5344ff4ad2e7",
+    "state": "accepted",
+    "accepted_at": "2026-10-27T06:50:10.706240+00:00",
+    "report": "evidence/joint-execution/firstmate/joint-handoff.md",
+    "report_sha256": "bd74e4b31facc398145a8c38b925f5117cf0d7bc2d07f80ca84576d22e64b3dc",
+    "code_candidate": "20b4a81dfcffd80b4919643be362dcfcefad7cf5",
+    "integration_head": "dd0f8d09687c6d77394771f61102c9685ec33b2c",
+    "prs": [
+      275,
+      276,
+      277,
+      278,
+      279
+    ],
+    "acknowledgement": "Receiving owner accepts sender COMPLETE report. Remaining CI/reviews are explicit PR obligations.",
+    "ci_scope": "PR-head CI does not cover combined candidate 20b4a81d or dd0f8d09. Local integrated tests cover 20b4a81d; dd0f8d09 differs only by documented generated export inventory. Each PR has separate CI; no combined Firstmate+joint runtime tree is verified.",
+    "audit_archive": "evidence/joint-execution/firstmate/archive-manifest.json",
+    "successor_obligations": {
+      "276": "merged at observed head 5e86a77859367a333829748908bbf986048132b9; see exact scope/test base. Merge does not qualify full runtime.",
+      "282": "merged at observed head f81b72eb813533357e5317871dcbc5febe004244; see exact scope/test base. Merge does not qualify full runtime.",
+      "278": "merged at observed head a14ba16c55a2aeb13c7f73d61a8b3afb7ec263f3; see exact scope/test base. Merge does not qualify full runtime.",
+      "279": "ready at observed head 3202b790952e358b83ced50746d78909cda31c4c; see exact scope/test base. Merge does not qualify full runtime."
+    },
+    "successor_deliveries": [
+      {
+        "proof_version": 2,
+        "pr": 276,
+        "state": "merged",
+        "head_sha": "5e86a77859367a333829748908bbf986048132b9",
+        "base_branch": "main",
+        "code_sha": "5e86a77859367a333829748908bbf986048132b9",
+        "runtime_enabled": false,
+        "card_id": "card_9ccb91b2",
+        "scope": "Original R02 evaluator only; new audit corrections NOT in this merge",
+        "audit": {
+          "status": "original_handoff_only",
+          "reference": "evidence/joint-execution/firstmate/joint-handoff.md",
+          "reference_sha256": "bd74e4b31facc398145a8c38b925f5117cf0d7bc2d07f80ca84576d22e64b3dc"
+        },
+        "previous_delivery": {
+          "pr": 276,
+          "path": "evidence/joint-execution/loader-cleanup-retarget/20261027T113822101038Z/ledger-before-edb02bf506b2b3fbad09180537867cfbf2e0b8c052cba958158bed9ed3048549.json",
+          "sha256": "edb02bf506b2b3fbad09180537867cfbf2e0b8c052cba958158bed9ed3048549",
+          "scope": "historical observation only; current labels inside prior file were time-bound"
+        },
+        "followup_pr": 282,
+        "merge_sha": "28d116f3f8c15f64bebb314308adf320d8380b2b"
+      },
+      {
+        "proof_version": 2,
+        "pr": 282,
+        "state": "merged",
+        "merge_sha": "ede5aadced37ac9dc29dd21f0e307ad2c46d2976",
+        "head_sha": "f81b72eb813533357e5317871dcbc5febe004244",
+        "base_branch": "main",
+        "base_sha": "28d116f3f8c15f64bebb314308adf320d8380b2b",
+        "code_sha": "85e19da85a734fad6f53dc061b5cbcd28e1bbf02",
+        "code_head_proof": {
+          "code_sha": "85e19da85a734fad6f53dc061b5cbcd28e1bbf02",
+          "head_sha": "f81b72eb813533357e5317871dcbc5febe004244",
+          "changed_paths": [
+            "docs/design/2026-10-26-firstmate-upgrade/joint-design-addendum.md",
+            "docs/design/2026-10-27-joint-engineering/README.md",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T112456124787Z/automation-receipt.json",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T112456124787Z/board-final-receipts.json",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T112456124787Z/cleanup/README.md",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T112456124787Z/cleanup/audit-code-binding.json",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T112456124787Z/cleanup/code-to-observed-head.diff",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T112456124787Z/firstmate-upgrade-roadmap.json",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T112456124787Z/joint-firstmate-pstack.json",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T112456124787Z/ledger-before-d3b9345fab07204e12e71896f6a3f72e0f0d7a45090407b4bd4e30d67317aa3f.json",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T112456124787Z/ledger-rpc-helper.py",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T112456124787Z/loader/README.md",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T112456124787Z/loader/audit-code-binding.json",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T112456124787Z/loader/code-to-observed-head.diff",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T112456124787Z/session-pilot-debt.json",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T112456124787Z/subagent-dispatch-receipts.json",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T112456124787Z/terminal-preflight-receipt.json",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T112743745504Z/automation-receipt.json",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T112743745504Z/board-final-receipts.json",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T112743745504Z/cleanup/README.md",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T112743745504Z/cleanup/audit-code-binding.json",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T112743745504Z/cleanup/code-to-observed-head.diff",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T112743745504Z/firstmate-upgrade-roadmap.json",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T112743745504Z/joint-firstmate-pstack.json",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T112743745504Z/ledger-before-bb927db90bdc401d9bc8119118484ffd026941203c386e3d104723984328a8eb.json",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T112743745504Z/ledger-rpc-helper.py",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T112743745504Z/loader/README.md",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T112743745504Z/loader/audit-code-binding.json",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T112743745504Z/loader/code-to-observed-head.diff",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T112743745504Z/session-pilot-debt.json",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T112743745504Z/subagent-dispatch-receipts.json",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T112743745504Z/terminal-preflight-receipt.json",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T112743745504Z/terminal/README.md",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T112743745504Z/terminal/archive-manifest.json",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T112743745504Z/terminal/audit-closeout.py.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T112743745504Z/terminal/audit-code-binding.json",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T112743745504Z/terminal/audit.py.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T112743745504Z/terminal/build-source-binding.json",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T112743745504Z/terminal/build.log.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T112743745504Z/terminal/changeset-final.log.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T112743745504Z/terminal/changeset.log.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T112743745504Z/terminal/code-to-observed-head.diff",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T112743745504Z/terminal/docs-hygiene.log.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T112743745504Z/terminal/focused-final.log.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T112743745504Z/terminal/focused-preclosure-repeat.log.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T112743745504Z/terminal/focused.log.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T112743745504Z/terminal/install.log.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T112743745504Z/terminal/inventory.log.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T112743745504Z/terminal/lint-docs.log.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T112743745504Z/terminal/lint-final.log.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T112743745504Z/terminal/lint-preclosure-repeat.log.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T112743745504Z/terminal/lint.log.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T112743745504Z/terminal/merge-main.log.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T112743745504Z/terminal/round1-dispositions.json",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T112743745504Z/terminal/round1-input.txt.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T112743745504Z/terminal/round1-manifest.json.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T112743745504Z/terminal/round1-raw.md.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T112743745504Z/terminal/round1-response.json.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T112743745504Z/terminal/round1-stderr.txt.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T112743745504Z/terminal/round2-input.txt.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T112743745504Z/terminal/round2-manifest.json.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T112743745504Z/terminal/round2-raw.md.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T112743745504Z/terminal/round2-response.json.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T112743745504Z/terminal/round2-stderr.txt.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T112743745504Z/terminal/test-full.log.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T112743745504Z/terminal/test-summary.json",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T112743745504Z/terminal/typecheck-final.log.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T112743745504Z/terminal/typecheck-preclosure-repeat.log.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T112743745504Z/terminal/typecheck.log.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T112743745504Z/terminal/verification.json",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113028624366Z/automation-receipt.json",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113028624366Z/board-final-receipts.json",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113028624366Z/cleanup/README.md",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113028624366Z/cleanup/audit-code-binding.json",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113028624366Z/cleanup/code-to-observed-head.diff",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113028624366Z/firstmate-upgrade-roadmap.json",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113028624366Z/joint-firstmate-pstack.json",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113028624366Z/ledger-before-067518e67fc49d34983a837a278dbcc47572b41f653a385583a48d5fa5897abf.json",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113028624366Z/ledger-rpc-helper.py",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113028624366Z/loader/README.md",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113028624366Z/loader/audit-code-binding.json",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113028624366Z/loader/code-to-observed-head.diff",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113028624366Z/session-pilot-debt.json",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113028624366Z/subagent-dispatch-receipts.json",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113028624366Z/terminal-preflight-receipt.json",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113028624366Z/terminal/README.md",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113028624366Z/terminal/archive-manifest.json",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113028624366Z/terminal/audit-closeout.py.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113028624366Z/terminal/audit-code-binding.json",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113028624366Z/terminal/audit.py.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113028624366Z/terminal/build-source-binding.json",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113028624366Z/terminal/build.log.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113028624366Z/terminal/changeset-final.log.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113028624366Z/terminal/changeset.log.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113028624366Z/terminal/code-to-observed-head.diff",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113028624366Z/terminal/docs-hygiene.log.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113028624366Z/terminal/focused-final.log.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113028624366Z/terminal/focused-preclosure-repeat.log.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113028624366Z/terminal/focused.log.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113028624366Z/terminal/install.log.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113028624366Z/terminal/inventory.log.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113028624366Z/terminal/lint-docs.log.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113028624366Z/terminal/lint-final.log.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113028624366Z/terminal/lint-preclosure-repeat.log.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113028624366Z/terminal/lint.log.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113028624366Z/terminal/merge-main.log.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113028624366Z/terminal/round1-dispositions.json",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113028624366Z/terminal/round1-input.txt.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113028624366Z/terminal/round1-manifest.json.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113028624366Z/terminal/round1-raw.md.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113028624366Z/terminal/round1-response.json.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113028624366Z/terminal/round1-stderr.txt.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113028624366Z/terminal/round2-input.txt.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113028624366Z/terminal/round2-manifest.json.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113028624366Z/terminal/round2-raw.md.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113028624366Z/terminal/round2-response.json.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113028624366Z/terminal/round2-stderr.txt.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113028624366Z/terminal/test-full.log.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113028624366Z/terminal/test-summary.json",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113028624366Z/terminal/typecheck-final.log.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113028624366Z/terminal/typecheck-preclosure-repeat.log.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113028624366Z/terminal/typecheck.log.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113028624366Z/terminal/verification.json",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113209809178Z/automation-receipt.json",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113209809178Z/board-final-receipts.json",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113209809178Z/cleanup/README.md",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113209809178Z/cleanup/audit-code-binding.json",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113209809178Z/cleanup/code-to-observed-head.diff",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113209809178Z/firstmate-upgrade-roadmap.json",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113209809178Z/joint-firstmate-pstack.json",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113209809178Z/ledger-before-b008dee83e9d3ccec74dbf696b57f778a6ae6fde012ad2cf42e16f06b66dbfa4.json",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113209809178Z/ledger-rpc-helper.py",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113209809178Z/loader/README.md",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113209809178Z/loader/audit-code-binding.json",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113209809178Z/loader/code-to-observed-head.diff",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113209809178Z/session-pilot-debt.json",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113209809178Z/subagent-dispatch-receipts.json",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113209809178Z/terminal-preflight-receipt.json",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113209809178Z/terminal/README.md",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113209809178Z/terminal/archive-manifest.json",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113209809178Z/terminal/audit-closeout.py.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113209809178Z/terminal/audit-code-binding.json",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113209809178Z/terminal/audit.py.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113209809178Z/terminal/build-source-binding.json",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113209809178Z/terminal/build.log.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113209809178Z/terminal/changeset-final.log.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113209809178Z/terminal/changeset.log.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113209809178Z/terminal/code-to-observed-head.diff",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113209809178Z/terminal/docs-hygiene.log.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113209809178Z/terminal/focused-final.log.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113209809178Z/terminal/focused-preclosure-repeat.log.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113209809178Z/terminal/focused.log.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113209809178Z/terminal/install.log.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113209809178Z/terminal/inventory.log.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113209809178Z/terminal/lint-docs.log.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113209809178Z/terminal/lint-final.log.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113209809178Z/terminal/lint-preclosure-repeat.log.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113209809178Z/terminal/lint.log.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113209809178Z/terminal/merge-main.log.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113209809178Z/terminal/round1-dispositions.json",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113209809178Z/terminal/round1-input.txt.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113209809178Z/terminal/round1-manifest.json.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113209809178Z/terminal/round1-raw.md.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113209809178Z/terminal/round1-response.json.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113209809178Z/terminal/round1-stderr.txt.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113209809178Z/terminal/round2-input.txt.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113209809178Z/terminal/round2-manifest.json.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113209809178Z/terminal/round2-raw.md.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113209809178Z/terminal/round2-response.json.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113209809178Z/terminal/round2-stderr.txt.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113209809178Z/terminal/test-full.log.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113209809178Z/terminal/test-summary.json",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113209809178Z/terminal/typecheck-final.log.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113209809178Z/terminal/typecheck-preclosure-repeat.log.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113209809178Z/terminal/typecheck.log.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113209809178Z/terminal/verification.json",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113822101038Z/automation-receipt.json",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113822101038Z/board-final-receipts.json",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113822101038Z/cleanup/README.md",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113822101038Z/cleanup/archive-manifest.json",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113822101038Z/cleanup/audit-code-binding.json",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113822101038Z/cleanup/code-to-observed-head.diff",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113822101038Z/firstmate-upgrade-roadmap.json",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113822101038Z/joint-firstmate-pstack.json",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113822101038Z/ledger-before-edb02bf506b2b3fbad09180537867cfbf2e0b8c052cba958158bed9ed3048549.json",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113822101038Z/ledger-rpc-helper.py",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113822101038Z/loader/README.md",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113822101038Z/loader/archive-manifest.json",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113822101038Z/loader/audit-code-binding.json",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113822101038Z/loader/code-to-observed-head.diff",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113822101038Z/session-pilot-debt.json",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113822101038Z/subagent-dispatch-receipts.json",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113822101038Z/terminal-preflight-receipt.json",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113822101038Z/terminal/README.md",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113822101038Z/terminal/archive-manifest.json",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113822101038Z/terminal/audit-closeout.py.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113822101038Z/terminal/audit-code-binding.json",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113822101038Z/terminal/audit.py.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113822101038Z/terminal/build-source-binding.json",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113822101038Z/terminal/build.log.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113822101038Z/terminal/changeset-final.log.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113822101038Z/terminal/changeset.log.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113822101038Z/terminal/code-to-observed-head.diff",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113822101038Z/terminal/docs-hygiene.log.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113822101038Z/terminal/focused-final.log.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113822101038Z/terminal/focused-preclosure-repeat.log.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113822101038Z/terminal/focused.log.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113822101038Z/terminal/install.log.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113822101038Z/terminal/inventory.log.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113822101038Z/terminal/lint-docs.log.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113822101038Z/terminal/lint-final.log.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113822101038Z/terminal/lint-preclosure-repeat.log.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113822101038Z/terminal/lint.log.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113822101038Z/terminal/merge-main.log.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113822101038Z/terminal/round1-dispositions.json",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113822101038Z/terminal/round1-input.txt.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113822101038Z/terminal/round1-manifest.json.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113822101038Z/terminal/round1-raw.md.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113822101038Z/terminal/round1-response.json.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113822101038Z/terminal/round1-stderr.txt.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113822101038Z/terminal/round2-input.txt.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113822101038Z/terminal/round2-manifest.json.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113822101038Z/terminal/round2-raw.md.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113822101038Z/terminal/round2-response.json.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113822101038Z/terminal/round2-stderr.txt.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113822101038Z/terminal/test-full.log.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113822101038Z/terminal/test-summary.json",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113822101038Z/terminal/typecheck-final.log.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113822101038Z/terminal/typecheck-preclosure-repeat.log.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113822101038Z/terminal/typecheck.log.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/loader-cleanup-retarget/20261027T113822101038Z/terminal/verification.json",
+            "docs/design/2026-10-27-joint-engineering/execution-ledger.json",
+            "docs/design/2026-10-27-joint-engineering/execution.md",
+            "docs/design/2026-10-27-joint-engineering/project-operations.md",
+            "docs/design/2026-10-27-joint-engineering/test_validate_execution.py",
+            "docs/design/2026-10-27-joint-engineering/validate-execution.py",
+            "docs/implementation/joint-behavior-retarget/README.md",
+            "docs/implementation/joint-behavior-retarget/archive-manifest.json",
+            "docs/implementation/joint-behavior-retarget/audit-code-binding.json",
+            "docs/implementation/joint-behavior-retarget/audit.py.gz",
+            "docs/implementation/joint-behavior-retarget/dispositions.md",
+            "docs/implementation/joint-behavior-retarget/generated-cache-failure/loader-final-frozen-build.log.gz",
+            "docs/implementation/joint-behavior-retarget/generated-cache-failure/loader-final-frozen-typecheck.log.gz",
+            "docs/implementation/joint-behavior-retarget/generated-cache-failure/loader-verification.json.gz",
+            "docs/implementation/joint-behavior-retarget/independent/adversarial-9b13e04.mjs.gz",
+            "docs/implementation/joint-behavior-retarget/independent/adversarial-a2f3a3f.mjs.gz",
+            "docs/implementation/joint-behavior-retarget/independent/adversarial.mjs.gz",
+            "docs/implementation/joint-behavior-retarget/independent/manifest-9b13e04.json.gz",
+            "docs/implementation/joint-behavior-retarget/independent/manifest-a2f3a3f.json.gz",
+            "docs/implementation/joint-behavior-retarget/independent/next-wave-assessment.json.gz",
+            "docs/implementation/joint-behavior-retarget/independent/next-wave-assessment.md",
+            "docs/implementation/joint-behavior-retarget/independent/report-9b13e04.md",
+            "docs/implementation/joint-behavior-retarget/independent/report-a2f3a3f.md",
+            "docs/implementation/joint-behavior-retarget/independent/results-9b13e04.txt.gz",
+            "docs/implementation/joint-behavior-retarget/independent/results-a2f3a3f.txt.gz",
+            "docs/implementation/joint-behavior-retarget/independent/results.txt.gz",
+            "docs/implementation/joint-behavior-retarget/independent/run-final.py.gz",
+            "docs/implementation/joint-behavior-retarget/loader-audit-1-input.txt.gz",
+            "docs/implementation/joint-behavior-retarget/loader-audit-1-stderr.txt.gz",
+            "docs/implementation/joint-behavior-retarget/loader-audit-1.json.gz",
+            "docs/implementation/joint-behavior-retarget/loader-audit-1.md",
+            "docs/implementation/joint-behavior-retarget/loader-audit-2-input.txt.gz",
+            "docs/implementation/joint-behavior-retarget/loader-audit-2-stderr.txt.gz",
+            "docs/implementation/joint-behavior-retarget/loader-audit-2.json.gz",
+            "docs/implementation/joint-behavior-retarget/loader-audit-2.md",
+            "docs/implementation/joint-behavior-retarget/loader-audit-3-input.txt.gz",
+            "docs/implementation/joint-behavior-retarget/loader-audit-3-stderr.txt.gz",
+            "docs/implementation/joint-behavior-retarget/loader-audit-3.json.gz",
+            "docs/implementation/joint-behavior-retarget/loader-audit-3.md",
+            "docs/implementation/joint-behavior-retarget/loader-audit-4-input.txt.gz",
+            "docs/implementation/joint-behavior-retarget/loader-audit-4-stderr.txt.gz",
+            "docs/implementation/joint-behavior-retarget/loader-audit-4.json.gz",
+            "docs/implementation/joint-behavior-retarget/loader-audit-4.md",
+            "docs/implementation/joint-behavior-retarget/loader-before.diff",
+            "docs/implementation/joint-behavior-retarget/loader-changeset.log.gz",
+            "docs/implementation/joint-behavior-retarget/loader-counts.json.gz",
+            "docs/implementation/joint-behavior-retarget/loader-final-frozen-build.log.gz",
+            "docs/implementation/joint-behavior-retarget/loader-final-frozen-inventory.log.gz",
+            "docs/implementation/joint-behavior-retarget/loader-final-frozen-lint.log.gz",
+            "docs/implementation/joint-behavior-retarget/loader-final-frozen-tests.log.gz",
+            "docs/implementation/joint-behavior-retarget/loader-final-frozen-typecheck.log.gz",
+            "docs/implementation/joint-behavior-retarget/loader-fix-lint.log.gz",
+            "docs/implementation/joint-behavior-retarget/loader-focused.log.gz",
+            "docs/implementation/joint-behavior-retarget/loader-followup.txt.gz",
+            "docs/implementation/joint-behavior-retarget/loader-import-cost.json.gz",
+            "docs/implementation/joint-behavior-retarget/loader-install.log.gz",
+            "docs/implementation/joint-behavior-retarget/loader-knowledge-rebuild.log.gz",
+            "docs/implementation/joint-behavior-retarget/loader-main-after-merge.log.gz",
+            "docs/implementation/joint-behavior-retarget/loader-merge.log.gz",
+            "docs/implementation/joint-behavior-retarget/loader-pr-body.md",
+            "docs/implementation/joint-behavior-retarget/loader-retarget.diff",
+            "docs/implementation/joint-behavior-retarget/loader-startup.log.gz",
+            "docs/implementation/joint-behavior-retarget/loader-verification.json.gz",
+            "docs/implementation/joint-behavior-retarget/management-independent/checkpoint-109-tests.log.gz",
+            "docs/implementation/joint-behavior-retarget/management-independent/checkpoint-126-tests.log.gz",
+            "docs/implementation/joint-behavior-retarget/management-independent/checkpoint-128-tests.log.gz",
+            "docs/implementation/joint-behavior-retarget/management-independent/oracle-readiness.md",
+            "docs/implementation/joint-behavior-retarget/management/audit-management.py.gz",
+            "docs/implementation/joint-behavior-retarget/management/management-audit-1-input.txt.gz",
+            "docs/implementation/joint-behavior-retarget/management/management-audit-1-stderr.txt.gz",
+            "docs/implementation/joint-behavior-retarget/management/management-audit-1.json.gz",
+            "docs/implementation/joint-behavior-retarget/management/management-audit-1.md",
+            "docs/implementation/joint-behavior-retarget/management/management-audit-2-input.txt.gz",
+            "docs/implementation/joint-behavior-retarget/management/management-audit-2-stderr.txt.gz",
+            "docs/implementation/joint-behavior-retarget/management/management-audit-2.json.gz",
+            "docs/implementation/joint-behavior-retarget/management/management-audit-2.md",
+            "docs/implementation/joint-behavior-retarget/management/management-audit-3-input.txt.gz",
+            "docs/implementation/joint-behavior-retarget/management/management-audit-3-stderr.txt.gz",
+            "docs/implementation/joint-behavior-retarget/management/management-audit-3.json.gz",
+            "docs/implementation/joint-behavior-retarget/management/management-audit-3.md",
+            "docs/implementation/joint-behavior-retarget/management/management-audit-4-input.txt.gz",
+            "docs/implementation/joint-behavior-retarget/management/management-audit-4-stderr.txt.gz",
+            "docs/implementation/joint-behavior-retarget/management/management-audit-4.json.gz",
+            "docs/implementation/joint-behavior-retarget/management/management-audit-4.md",
+            "docs/implementation/joint-behavior-retarget/management/management-audit-code-binding.json.gz",
+            "docs/implementation/joint-behavior-retarget/management/management-audit-input.txt.gz",
+            "docs/implementation/joint-behavior-retarget/management/management-audit-stderr.txt.gz",
+            "docs/implementation/joint-behavior-retarget/management/management-audit.json.gz",
+            "docs/implementation/joint-behavior-retarget/management/management-audit.md",
+            "docs/implementation/joint-behavior-retarget/management/management-checkpoint-live-file.log.gz",
+            "docs/implementation/joint-behavior-retarget/management/management-checkpoint-tests.log.gz",
+            "docs/implementation/joint-behavior-retarget/management/management-dispositions.md",
+            "docs/implementation/joint-behavior-retarget/management/management-validation.json.gz",
+            "docs/implementation/joint-behavior-retarget/management/refresh-checkpoint.py.gz",
+            "docs/implementation/joint-behavior-retarget/pre-merge-validated/loader-final-frozen-build.log.gz",
+            "docs/implementation/joint-behavior-retarget/pre-merge-validated/loader-final-frozen-inventory.log.gz",
+            "docs/implementation/joint-behavior-retarget/pre-merge-validated/loader-final-frozen-lint.log.gz",
+            "docs/implementation/joint-behavior-retarget/pre-merge-validated/loader-final-frozen-tests.log.gz",
+            "docs/implementation/joint-behavior-retarget/pre-merge-validated/loader-final-frozen-typecheck.log.gz",
+            "docs/implementation/joint-behavior-retarget/pre-merge-validated/loader-verification.json.gz",
+            "docs/implementation/joint-behavior-retarget/subagent-terminal/build.log.gz",
+            "docs/implementation/joint-behavior-retarget/subagent-terminal/execution-gates-main.json.gz",
+            "docs/implementation/joint-behavior-retarget/subagent-terminal/extra-tests.patch",
+            "docs/implementation/joint-behavior-retarget/subagent-terminal/focused.log.gz",
+            "docs/implementation/joint-behavior-retarget/subagent-terminal/install.log.gz",
+            "docs/implementation/joint-behavior-retarget/subagent-terminal/lint.log.gz",
+            "docs/implementation/joint-behavior-retarget/subagent-terminal/merge-cleanup.log.gz",
+            "docs/implementation/joint-behavior-retarget/subagent-terminal/merge-main.log.gz",
+            "docs/implementation/joint-behavior-retarget/subagent-terminal/metadata.json.gz",
+            "docs/implementation/joint-behavior-retarget/subagent-terminal/mutation.log.gz",
+            "docs/implementation/joint-behavior-retarget/subagent-terminal/mutation.patch",
+            "docs/implementation/joint-behavior-retarget/subagent-terminal/next-gates-dag-check.json.gz",
+            "docs/implementation/joint-behavior-retarget/subagent-terminal/next-gates-evidence.json.gz",
+            "docs/implementation/joint-behavior-retarget/subagent-terminal/next-gates.md",
+            "docs/implementation/joint-behavior-retarget/subagent-terminal/report.md",
+            "docs/implementation/joint-behavior-retarget/subagent-terminal/restored.log.gz",
+            "docs/implementation/joint-behavior-retarget/subagent-terminal/typecheck.log.gz",
+            "docs/implementation/joint-behavior-retarget/subagent-terminal/work-packages-main.json.gz",
+            "docs/implementation/joint-behavior-retarget/superseded-round2/loader-final-frozen-build.log.gz",
+            "docs/implementation/joint-behavior-retarget/superseded-round2/loader-final-frozen-inventory.log.gz",
+            "docs/implementation/joint-behavior-retarget/superseded-round2/loader-final-frozen-lint.log.gz",
+            "docs/implementation/joint-behavior-retarget/superseded-round2/loader-final-frozen-tests.log.gz",
+            "docs/implementation/joint-behavior-retarget/superseded-round2/loader-final-frozen-typecheck.log.gz",
+            "docs/implementation/joint-behavior-retarget/superseded-round2/loader-verification.json.gz",
+            "docs/implementation/joint-behavior-retarget/superseded/README.txt.gz",
+            "docs/implementation/joint-behavior-retarget/superseded/loader-final-frozen-build.log.gz",
+            "docs/implementation/joint-behavior-retarget/superseded/loader-final-frozen-inventory.log.gz",
+            "docs/implementation/joint-behavior-retarget/superseded/loader-final-frozen-lint.log.gz",
+            "docs/implementation/joint-behavior-retarget/superseded/loader-final-frozen-tests.log.gz",
+            "docs/implementation/joint-behavior-retarget/superseded/loader-final-frozen-typecheck.log.gz",
+            "docs/implementation/joint-behavior-retarget/superseded/loader-verification.json.gz",
+            "docs/implementation/joint-behavior-retarget/verify.py.gz",
+            "docs/implementation/joint-evidence-link-repair/README.md",
+            "docs/implementation/joint-evidence-link-repair/archive-manifest.json",
+            "docs/implementation/joint-evidence-link-repair/audit-closure-input.txt.gz",
+            "docs/implementation/joint-evidence-link-repair/audit-closure-report.md.gz",
+            "docs/implementation/joint-evidence-link-repair/audit-closure-response.json.gz",
+            "docs/implementation/joint-evidence-link-repair/audit-closure-stderr.txt.gz",
+            "docs/implementation/joint-evidence-link-repair/audit-input.txt.gz",
+            "docs/implementation/joint-evidence-link-repair/audit-report.md.gz",
+            "docs/implementation/joint-evidence-link-repair/audit-response.json.gz",
+            "docs/implementation/joint-evidence-link-repair/audit-stderr.txt.gz",
+            "docs/implementation/joint-evidence-link-repair/board-receipts.json.gz",
+            "docs/implementation/joint-evidence-link-repair/build.log.gz",
+            "docs/implementation/joint-evidence-link-repair/ci-failed.log.gz",
+            "docs/implementation/joint-evidence-link-repair/final-staged-checkpoint.log.gz",
+            "docs/implementation/joint-evidence-link-repair/final-staged-hygiene.log.gz",
+            "docs/implementation/joint-evidence-link-repair/governance-green.log.gz",
+            "docs/implementation/joint-evidence-link-repair/install.log.gz",
+            "docs/implementation/joint-evidence-link-repair/observation.json.gz",
+            "docs/implementation/joint-evidence-link-repair/reproduce.log.gz",
+            "docs/implementation/joint-evidence-link-repair/restore-bundles.py.gz",
+            "docs/implementation/joint-evidence-link-repair/restore-plan.json.gz",
+            "docs/implementation/joint-evidence-link-repair/restore-verification.json.gz"
+          ],
+          "diff_path": "evidence/joint-execution/terminal-post282/20261027T141723213857Z/loader-code-to-merged-head.diff",
+          "diff_sha256": "996c0914312e5f65190973601a51d1268eea2afd826b9d6172159f2934940856",
+          "net_diff_empty": false
+        },
+        "runtime_enabled": false,
+        "card_id": "card_9ccb91b2",
+        "scope": "R02 audit hardening follow-up to merged276",
+        "evidence_status": "historical_merged_code",
+        "audit": {
+          "model": "claude-sonnet-5-5",
+          "verdict": "PASS",
+          "status": "historical_merged_code"
+        },
+        "validation": {
+          "code_sha": "85e19da85a734fad6f53dc061b5cbcd28e1bbf02",
+          "passed": 6269,
+          "skipped": 5,
+          "failed": 0,
+          "packages": 22,
+          "status": "passed_for_code_sha_historical_merged",
+          "report": "evidence/joint-execution/loader-cleanup-retarget/20261027T113822101038Z/loader/README.md",
+          "audit_binding": "evidence/joint-execution/loader-cleanup-retarget/20261027T113822101038Z/loader/audit-code-binding.json",
+          "archive_manifest": "evidence/joint-execution/loader-cleanup-retarget/20261027T113822101038Z/loader/archive-manifest.json",
+          "archive_manifest_sha256": "5aef44914362f307a4c3688fb239a048706b9f5715524fd35a5f8a7761c89202",
+          "report_sha256": "c107159b779c61a978c7d1693d506f03fd53fa62416505e7e75698e73238f1eb",
+          "audit_binding_sha256": "9b490237bb9912dcc920a66928afbaa8f347946d78043270e8b857b591bfd5a1"
+        },
+        "merge_readiness": {
+          "ci": "passed_at_observation",
+          "approval": "user_owned",
+          "mergeable": "UNKNOWN",
+          "merge_state": "UNKNOWN"
+        },
+        "previous_observation": {
+          "path": "evidence/joint-execution/terminal-post282/20261027T141723213857Z/ledger-before-acb133249794c717a31a7730c2913752df9b3cd88f06d3972589613c930ddb59.json",
+          "sha256": "acb133249794c717a31a7730c2913752df9b3cd88f06d3972589613c930ddb59",
+          "scope": "Immutable historical observation; prior current labels are time-bound."
+        },
+        "previous_delivery": {
+          "pr": 282,
+          "path": "evidence/joint-execution/terminal-post282/20261027T141723213857Z/ledger-before-acb133249794c717a31a7730c2913752df9b3cd88f06d3972589613c930ddb59.json",
+          "sha256": "acb133249794c717a31a7730c2913752df9b3cd88f06d3972589613c930ddb59",
+          "scope": "Immutable historical observation; prior current labels are time-bound."
+        },
+        "base_scope": "Original tested base retained; #282 merge does not rebind historical product tests to its merge commit."
+      },
+      {
+        "proof_version": 2,
+        "pr": 278,
+        "state": "merged",
+        "merge_sha": "0f6dc137dbb0975ffe73725d0e184d47c2ac7937",
+        "head_sha": "a14ba16c55a2aeb13c7f73d61a8b3afb7ec263f3",
+        "base_branch": "main",
+        "base_sha": "8fed83136611948ee068801ab5cc1fd471f90078",
+        "code_sha": "39c5df28cea120630f39a8267235c2f7ff5985b4",
+        "code_head_proof": {
+          "code_sha": "39c5df28cea120630f39a8267235c2f7ff5985b4",
+          "head_sha": "a14ba16c55a2aeb13c7f73d61a8b3afb7ec263f3",
+          "changed_paths": [
+            ".changeset/session-start-cleanup.md",
+            "docs/implementation/joint-session-cleanup-retarget/README.md",
+            "docs/implementation/joint-session-cleanup-retarget/archive-manifest.json",
+            "docs/implementation/joint-session-cleanup-retarget/audit-code-binding.json",
+            "docs/implementation/joint-session-cleanup-retarget/audit.py.gz",
+            "docs/implementation/joint-session-cleanup-retarget/cleanup-audit-1-input.txt.gz",
+            "docs/implementation/joint-session-cleanup-retarget/cleanup-audit-1-stderr.txt.gz",
+            "docs/implementation/joint-session-cleanup-retarget/cleanup-audit-1.json.gz",
+            "docs/implementation/joint-session-cleanup-retarget/cleanup-audit-1.md",
+            "docs/implementation/joint-session-cleanup-retarget/cleanup-audit-2-input.txt.gz",
+            "docs/implementation/joint-session-cleanup-retarget/cleanup-audit-2-stderr.txt.gz",
+            "docs/implementation/joint-session-cleanup-retarget/cleanup-audit-2.json.gz",
+            "docs/implementation/joint-session-cleanup-retarget/cleanup-audit-2.md",
+            "docs/implementation/joint-session-cleanup-retarget/cleanup-before.diff",
+            "docs/implementation/joint-session-cleanup-retarget/cleanup-changeset.log.gz",
+            "docs/implementation/joint-session-cleanup-retarget/cleanup-counts.json.gz",
+            "docs/implementation/joint-session-cleanup-retarget/cleanup-final-frozen-build.log.gz",
+            "docs/implementation/joint-session-cleanup-retarget/cleanup-final-frozen-inventory.log.gz",
+            "docs/implementation/joint-session-cleanup-retarget/cleanup-final-frozen-lint.log.gz",
+            "docs/implementation/joint-session-cleanup-retarget/cleanup-final-frozen-tests.log.gz",
+            "docs/implementation/joint-session-cleanup-retarget/cleanup-final-frozen-typecheck.log.gz",
+            "docs/implementation/joint-session-cleanup-retarget/cleanup-focused.log.gz",
+            "docs/implementation/joint-session-cleanup-retarget/cleanup-followup.txt.gz",
+            "docs/implementation/joint-session-cleanup-retarget/cleanup-install.log.gz",
+            "docs/implementation/joint-session-cleanup-retarget/cleanup-merge.log.gz",
+            "docs/implementation/joint-session-cleanup-retarget/cleanup-retarget.diff",
+            "docs/implementation/joint-session-cleanup-retarget/cleanup-verification.json.gz",
+            "docs/implementation/joint-session-cleanup-retarget/dispositions.md",
+            "docs/implementation/joint-session-cleanup-retarget/independent/extra-tests.log.gz",
+            "docs/implementation/joint-session-cleanup-retarget/independent/extra.test.ts.gz",
+            "docs/implementation/joint-session-cleanup-retarget/independent/manifest.json.gz",
+            "docs/implementation/joint-session-cleanup-retarget/independent/report.md",
+            "docs/implementation/joint-session-cleanup-retarget/independent/vitest.config.mts.gz",
+            "docs/implementation/joint-session-cleanup-retarget/verify.py.gz"
+          ],
+          "diff_sha256": "5beec2dbdaad9c8e5b41eeccc3a45f4f921a048597373f2a264a7ed333dc0a9d",
+          "diff_path": "evidence/joint-execution/loader-cleanup-retarget/20261027T113822101038Z/cleanup/code-to-observed-head.diff",
+          "net_diff_empty": false
+        },
+        "runtime_enabled": false,
+        "card_id": "card_4e8147d9",
+        "scope": "Session start cleanup only; DEBT02 and279 separate",
+        "evidence_status": "historical_merged_code",
+        "audit": {
+          "model": "claude-sonnet-5-5",
+          "verdict": "PASS",
+          "status": "historical_merged_code"
+        },
+        "validation": {
+          "code_sha": "39c5df28cea120630f39a8267235c2f7ff5985b4",
+          "passed": 6214,
+          "skipped": 5,
+          "failed": 0,
+          "packages": 22,
+          "status": "passed_for_code_sha_historical_merged",
+          "report": "evidence/joint-execution/loader-cleanup-retarget/20261027T113822101038Z/cleanup/README.md",
+          "audit_binding": "evidence/joint-execution/loader-cleanup-retarget/20261027T113822101038Z/cleanup/audit-code-binding.json",
+          "archive_manifest": "evidence/joint-execution/loader-cleanup-retarget/20261027T113822101038Z/cleanup/archive-manifest.json",
+          "archive_manifest_sha256": "634da679cac85cc05ea3246eb4d2a1f885683fd209696e863cc59026f88eb301",
+          "report_sha256": "ea6bc22ea6d7e8d653b5a0a3ab30aa7280366aa0238e44e8ef8641be51189413",
+          "audit_binding_sha256": "d347e75bca2b3ec0f7cd2520447f5bd1903b5c281ce06dc4fdc5939d0b7f4d9f"
+        },
+        "merge_readiness": {
+          "ci": "passed_at_observation",
+          "approval": "user_owned",
+          "mergeable": "UNKNOWN",
+          "merge_state": "UNKNOWN"
+        },
+        "previous_observation": {
+          "path": "evidence/joint-execution/loader-cleanup-retarget/20261027T113822101038Z/ledger-before-edb02bf506b2b3fbad09180537867cfbf2e0b8c052cba958158bed9ed3048549.json",
+          "sha256": "edb02bf506b2b3fbad09180537867cfbf2e0b8c052cba958158bed9ed3048549"
+        },
+        "previous_delivery": {
+          "pr": 278,
+          "path": "evidence/joint-execution/loader-cleanup-retarget/20261027T113822101038Z/ledger-before-edb02bf506b2b3fbad09180537867cfbf2e0b8c052cba958158bed9ed3048549.json",
+          "sha256": "edb02bf506b2b3fbad09180537867cfbf2e0b8c052cba958158bed9ed3048549",
+          "scope": "historical observation only; current labels inside prior file were time-bound"
+        }
+      },
+      {
+        "proof_version": 2,
+        "pr": 279,
+        "state": "ready",
+        "head_sha": "3202b790952e358b83ced50746d78909cda31c4c",
+        "base_branch": "main",
+        "base_sha": "ede5aadced37ac9dc29dd21f0e307ad2c46d2976",
+        "code_sha": "cb76b6432d597d1c057d241f17e652308286b8ee",
+        "code_head_proof": {
+          "code_sha": "cb76b6432d597d1c057d241f17e652308286b8ee",
+          "head_sha": "3202b790952e358b83ced50746d78909cda31c4c",
+          "changed_paths": [
+            "docs/implementation/joint-terminal-post282/README.md",
+            "docs/implementation/joint-terminal-post282/additional-checks.json",
+            "docs/implementation/joint-terminal-post282/archive-manifest.json",
+            "docs/implementation/joint-terminal-post282/audit-closeout.py.gz",
+            "docs/implementation/joint-terminal-post282/audit-code-binding.json",
+            "docs/implementation/joint-terminal-post282/audit.py.gz",
+            "docs/implementation/joint-terminal-post282/baseline-impact.json",
+            "docs/implementation/joint-terminal-post282/build.log.gz",
+            "docs/implementation/joint-terminal-post282/caller-focused.log.gz",
+            "docs/implementation/joint-terminal-post282/changeset.log.gz",
+            "docs/implementation/joint-terminal-post282/docs-hygiene.log.gz",
+            "docs/implementation/joint-terminal-post282/documentation-checks.json",
+            "docs/implementation/joint-terminal-post282/empty-mcp.json.gz",
+            "docs/implementation/joint-terminal-post282/finalize-verification.py.gz",
+            "docs/implementation/joint-terminal-post282/fix-focused.log.gz",
+            "docs/implementation/joint-terminal-post282/fix-lint.log.gz",
+            "docs/implementation/joint-terminal-post282/focused.log.gz",
+            "docs/implementation/joint-terminal-post282/historical-candidate/build.log.gz",
+            "docs/implementation/joint-terminal-post282/historical-candidate/changeset.log.gz",
+            "docs/implementation/joint-terminal-post282/historical-candidate/focused.log.gz",
+            "docs/implementation/joint-terminal-post282/historical-candidate/install.log.gz",
+            "docs/implementation/joint-terminal-post282/historical-candidate/inventory.log.gz",
+            "docs/implementation/joint-terminal-post282/historical-candidate/lint.log.gz",
+            "docs/implementation/joint-terminal-post282/historical-candidate/test-full.log.gz",
+            "docs/implementation/joint-terminal-post282/historical-candidate/typecheck.log.gz",
+            "docs/implementation/joint-terminal-post282/historical-candidate/verification.json.gz",
+            "docs/implementation/joint-terminal-post282/hygiene-prearchive.log.gz",
+            "docs/implementation/joint-terminal-post282/install.log.gz",
+            "docs/implementation/joint-terminal-post282/installer-environment-diagnosis.json",
+            "docs/implementation/joint-terminal-post282/installer-isolated.log.gz",
+            "docs/implementation/joint-terminal-post282/installer-reproduction.log.gz",
+            "docs/implementation/joint-terminal-post282/inventory.log.gz",
+            "docs/implementation/joint-terminal-post282/lint-docs.log.gz",
+            "docs/implementation/joint-terminal-post282/lint.log.gz",
+            "docs/implementation/joint-terminal-post282/merge-main.log.gz",
+            "docs/implementation/joint-terminal-post282/post-archive-check.py.gz",
+            "docs/implementation/joint-terminal-post282/product-after.patch.gz",
+            "docs/implementation/joint-terminal-post282/product-before.patch.gz",
+            "docs/implementation/joint-terminal-post282/rerun-full-after-docfix.py.gz",
+            "docs/implementation/joint-terminal-post282/rerun-full.py.gz",
+            "docs/implementation/joint-terminal-post282/round1-dispositions.json",
+            "docs/implementation/joint-terminal-post282/round1-input.txt.gz",
+            "docs/implementation/joint-terminal-post282/round1-manifest.json.gz",
+            "docs/implementation/joint-terminal-post282/round1-raw.md.gz",
+            "docs/implementation/joint-terminal-post282/round1-response.json.gz",
+            "docs/implementation/joint-terminal-post282/round1-stderr.txt.gz",
+            "docs/implementation/joint-terminal-post282/round2-dispositions.json",
+            "docs/implementation/joint-terminal-post282/round2-input.txt.gz",
+            "docs/implementation/joint-terminal-post282/round2-manifest.json.gz",
+            "docs/implementation/joint-terminal-post282/round2-raw.md.gz",
+            "docs/implementation/joint-terminal-post282/round2-response.json.gz",
+            "docs/implementation/joint-terminal-post282/round2-stderr.txt.gz",
+            "docs/implementation/joint-terminal-post282/settings.json.gz",
+            "docs/implementation/joint-terminal-post282/superseded-run.json",
+            "docs/implementation/joint-terminal-post282/test-full-final.log.gz",
+            "docs/implementation/joint-terminal-post282/test-full-isolated.log.gz",
+            "docs/implementation/joint-terminal-post282/test-full.log.gz",
+            "docs/implementation/joint-terminal-post282/test-summary-before-socket-isolation.json",
+            "docs/implementation/joint-terminal-post282/test-summary.json",
+            "docs/implementation/joint-terminal-post282/typecheck.log.gz",
+            "docs/implementation/joint-terminal-post282/verification-before-document-link-fix.json",
+            "docs/implementation/joint-terminal-post282/verification-before-socket-isolation.json",
+            "docs/implementation/joint-terminal-post282/verification.json",
+            "docs/implementation/joint-terminal-post282/verify.py.gz"
+          ],
+          "diff_path": "evidence/joint-execution/terminal-post282/20261027T141723213857Z/terminal-code-to-observed-head.diff",
+          "diff_sha256": "e693ce799061bbda6732566fa655cc926569a4012da9f161fd96e9d3415b9ed6",
+          "net_diff_empty": false
+        },
+        "runtime_enabled": false,
+        "card_id": "card_d1a582eb",
+        "scope": "Session terminal fence only; no cross-process DEBT02 recovery",
+        "evidence_status": "current_for_code_sha",
+        "audit": {
+          "model": "claude-sonnet-5-5",
+          "verdict": "PASS",
+          "status": "current_for_code_sha"
+        },
+        "validation": {
+          "code_sha": "cb76b6432d597d1c057d241f17e652308286b8ee",
+          "passed": 6293,
+          "skipped": 5,
+          "failed": 0,
+          "packages": 22,
+          "status": "passed_for_code_sha",
+          "report": "evidence/joint-execution/terminal-post282/20261027T141723213857Z/terminal/README.md",
+          "report_sha256": "f3e7fe96e29cc4ce663b1e45d9e594921becc954c35f6df4888529d7b433d338",
+          "audit_binding": "evidence/joint-execution/terminal-post282/20261027T141723213857Z/terminal/audit-code-binding.json",
+          "audit_binding_sha256": "dc3a0e4bd7b218b6280710351fe3387700700883cdd8197dd7df76631121fb1b",
+          "archive_manifest": "evidence/joint-execution/terminal-post282/20261027T141723213857Z/terminal/archive-manifest.json",
+          "archive_manifest_sha256": "f8d5df51ef8774f3f3181b08797882e6ccc324052ea0f283cecbfe00955c2526"
+        },
+        "merge_readiness": {
+          "ci": "pending_or_failed_at_observation",
+          "approval": "user_owned",
+          "mergeable": "MERGEABLE",
+          "merge_state": "BLOCKED"
+        },
+        "previous_observation": {
+          "path": "evidence/joint-execution/terminal-post282/20261027T141723213857Z/ledger-before-acb133249794c717a31a7730c2913752df9b3cd88f06d3972589613c930ddb59.json",
+          "sha256": "acb133249794c717a31a7730c2913752df9b3cd88f06d3972589613c930ddb59",
+          "scope": "Immutable historical observation; prior current labels are time-bound."
+        },
+        "previous_delivery": {
+          "pr": 279,
+          "path": "evidence/joint-execution/terminal-post282/20261027T141723213857Z/ledger-before-acb133249794c717a31a7730c2913752df9b3cd88f06d3972589613c930ddb59.json",
+          "sha256": "acb133249794c717a31a7730c2913752df9b3cd88f06d3972589613c930ddb59",
+          "scope": "Immutable historical observation; prior current labels are time-bound."
+        }
+      }
+    ]
+  },
+  "milestones": [
+    {
+      "id": "J01",
+      "state": "in_progress",
+      "depends_on": [],
+      "merge_after": [],
+      "slices": [
+        {
+          "pr": 272,
+          "url": "https://github.com/osborn-studio/osstack/pull/272",
+          "state": "merged",
+          "head_sha": "91147f7ade024bda411a9ebe457d3f390031b415",
+          "merge_sha": "baf88ea3fa4f29e1281c72d2696ee0fbdaf58f7d",
+          "evidence_status": "historical_merged_candidate"
+        },
+        {
+          "pr": 273,
+          "url": "https://github.com/osborn-studio/osstack/pull/273",
+          "state": "merged",
+          "base_branch": "main",
+          "candidate_sha": "6b3ad98d0b032a7f3fe69ddc9fa7ab501449697b",
+          "candidate_history": [
+            {
+              "sha": "fad0dd45377255a2d3dfceb08fb28c1524b88ead",
+              "evidence_url": "https://github.com/osborn-studio/osstack/blob/f1d03624af126e6dd1d0ef63686bdd5f1bf6b896/docs/design/2026-10-27-joint-engineering/execution-ledger.json",
+              "status": "historical"
+            }
+          ],
+          "code_sha": "e3fd9a9ffccbe66ad0cdfee101e0864f1ca277db",
+          "observation_scope": "PR head at observed_at; metadata commits follow separately",
+          "audit": {
+            "model": "claude-sonnet-5-5",
+            "verdict": "PASS",
+            "status": "historical_merged_candidate"
+          },
+          "validation": {
+            "passed": 6160,
+            "skipped": 5,
+            "failed": 0,
+            "status": "passed_for_code_sha_historical_merged",
+            "report": "evidence/joint-execution/j01b-retarget/validation.md",
+            "audit_binding": "evidence/joint-execution/j01b-retarget/audit-code-binding.json"
+          },
+          "head_sha": "6b3ad98d0b032a7f3fe69ddc9fa7ab501449697b",
+          "merge_sha": "69859eecfcc84af9d6eff755ed41243ca5f51f95",
+          "evidence_status": "historical_merged_candidate"
+        }
+      ],
+      "acceptance": "not_executed_as_complete_milestone",
+      "card_id": "card_6d5d3d02",
+      "board_status": "running",
+      "merge_blocker": "J01 contract PRs #272/#273 merged; complete milestone acceptance is tracked separately. No runtime qualification."
+    },
+    {
+      "id": "J02",
+      "state": "in_progress",
+      "depends_on": [
+        "J01"
+      ],
+      "merge_after": [],
+      "slices": [
+        {
+          "id": "J02a",
+          "state": "merged",
+          "base_sha": "69859eecfcc84af9d6eff755ed41243ca5f51f95",
+          "branch": "codex/joint-source-snapshot",
+          "scope": "single-source Git inspection, no adoption dependency closure",
+          "remaining": "J02b typed registration / R03-R04 mapping / adopted dependency closure",
+          "head_sha": "87e97760d325c23fb936f9199c5fe792f384b50f",
+          "audit": {
+            "model": "claude-sonnet-5-5",
+            "verdict": "PASS",
+            "status": "historical_merged_code",
+            "scope": "Static review plus documented host-confirmed corrections; no runtime qualification"
+          },
+          "pr": 281,
+          "url": "https://github.com/osborn-studio/osstack/pull/281",
+          "code_sha": "26e7e02d4cdc931aa6d2b852d1b83cedc74238ef",
+          "validation": {
+            "code_sha": "26e7e02d4cdc931aa6d2b852d1b83cedc74238ef",
+            "passed": 6194,
+            "failed": 0,
+            "skipped": 5,
+            "packages": 22,
+            "status": "passed_for_code_sha_historical_merged",
+            "report": "evidence/joint-execution/successors-retarget/source/README.md",
+            "audit_binding": "evidence/joint-execution/successors-retarget/source/audit-code-binding.json"
+          },
+          "evidence_status": "historical_merged_code",
+          "retarget_history": [
+            {
+              "base_pr": 273,
+              "base_sha": "fad0dd45377255a2d3dfceb08fb28c1524b88ead",
+              "status": "historical",
+              "reason": "Retargeted after predecessor merge; historical evidence remains in Git"
+            }
+          ],
+          "base_branch": "main",
+          "merge_sha": "8fed83136611948ee068801ab5cc1fd471f90078",
+          "base_scope": "Historical tested base retained; merge does not rebind prior evidence to current main."
+        }
+      ],
+      "acceptance": "not_executed_as_complete_milestone",
+      "card_id": "card_a502fa36",
+      "board_status": "ready",
+      "merge_blocker": "Precursor merged; whole milestone acceptance remains pending. J02b mapping/registration/dependency closure pending."
+    },
+    {
+      "id": "J03",
+      "state": "planned",
+      "depends_on": [
+        "J01"
+      ],
+      "merge_after": [],
+      "slices": [],
+      "acceptance": "not_executed_as_complete_milestone",
+      "card_id": "card_7d169d5f"
+    },
+    {
+      "id": "J04",
+      "state": "planned",
+      "depends_on": [
+        "J01",
+        "J02"
+      ],
+      "merge_after": [],
+      "slices": [],
+      "acceptance": "not_executed_as_complete_milestone",
+      "card_id": "card_b5bc8c45"
+    },
+    {
+      "id": "J05",
+      "state": "planned",
+      "depends_on": [
+        "J02",
+        "J06"
+      ],
+      "merge_after": [],
+      "slices": [],
+      "acceptance": "not_executed_as_complete_milestone",
+      "card_id": "card_2089b461"
+    },
+    {
+      "id": "J06",
+      "state": "planned",
+      "depends_on": [
+        "J03"
+      ],
+      "merge_after": [],
+      "slices": [],
+      "acceptance": "not_executed_as_complete_milestone",
+      "card_id": "card_2b7cc24a"
+    },
+    {
+      "id": "J07",
+      "state": "planned",
+      "depends_on": [
+        "J04",
+        "J05"
+      ],
+      "merge_after": [],
+      "slices": [],
+      "acceptance": "not_executed_as_complete_milestone",
+      "card_id": "card_f4b5f065"
+    },
+    {
+      "id": "J08",
+      "state": "planned",
+      "depends_on": [
+        "J03",
+        "J07",
+        "J12"
+      ],
+      "merge_after": [],
+      "slices": [],
+      "acceptance": "not_executed_as_complete_milestone",
+      "card_id": "card_38f11aa6"
+    },
+    {
+      "id": "J09",
+      "state": "planned",
+      "depends_on": [
+        "J08"
+      ],
+      "merge_after": [],
+      "slices": [],
+      "acceptance": "not_executed_as_complete_milestone",
+      "card_id": "card_63ad0321"
+    },
+    {
+      "id": "J10",
+      "state": "planned",
+      "depends_on": [
+        "J09",
+        "J23",
+        "J12"
+      ],
+      "merge_after": [],
+      "slices": [],
+      "acceptance": "not_executed_as_complete_milestone",
+      "card_id": "card_9c16af1b"
+    },
+    {
+      "id": "J11",
+      "state": "in_progress",
+      "depends_on": [
+        "J01"
+      ],
+      "merge_after": [],
+      "slices": [
+        {
+          "pr": 274,
+          "url": "https://github.com/osborn-studio/osstack/pull/274",
+          "state": "merged",
+          "base_sha": "69859eecfcc84af9d6eff755ed41243ca5f51f95",
+          "evidence_status": "historical_merged_code",
+          "retarget_history": [
+            {
+              "base_pr": 273,
+              "base_sha": "fad0dd45377255a2d3dfceb08fb28c1524b88ead",
+              "status": "historical",
+              "reason": "Retargeted after predecessor merge; historical evidence remains in Git"
+            }
+          ],
+          "base_branch": "main",
+          "head_sha": "3bfbb46ac5a92d79fbea0add9ac5ce0430e8346c",
+          "code_sha": "7ea45584ce0de01860571100beb5daed4ff83f31",
+          "audit": {
+            "model": "claude-sonnet-5-5",
+            "verdict": "PASS",
+            "status": "historical_merged_code",
+            "scope": "Static review plus documented host-confirmed corrections; no runtime qualification"
+          },
+          "validation": {
+            "code_sha": "7ea45584ce0de01860571100beb5daed4ff83f31",
+            "passed": 6174,
+            "failed": 0,
+            "skipped": 5,
+            "packages": 22,
+            "status": "passed_for_code_sha_historical_merged",
+            "report": "evidence/joint-execution/successors-retarget/recovery/README.md",
+            "audit_binding": "evidence/joint-execution/successors-retarget/recovery/audit-code-binding.json"
+          },
+          "merge_sha": "baee1f6a67a4b753584b94f17c5cd4cbb4877b3e",
+          "base_scope": "Historical tested base retained; merge does not rebind prior evidence to current main."
+        }
+      ],
+      "acceptance": "not_executed_as_complete_milestone",
+      "card_id": "card_79cdb3e7",
+      "board_status": "running",
+      "merge_blocker": "Precursor merged; whole milestone acceptance remains pending. Specification only; J12 runtime recovery pending."
+    },
+    {
+      "id": "J12",
+      "state": "planned",
+      "depends_on": [
+        "J11"
+      ],
+      "merge_after": [],
+      "slices": [],
+      "acceptance": "not_executed_as_complete_milestone",
+      "card_id": "card_e342e365"
+    },
+    {
+      "id": "J13",
+      "state": "planned",
+      "depends_on": [
+        "J12"
+      ],
+      "merge_after": [],
+      "slices": [],
+      "acceptance": "not_executed_as_complete_milestone",
+      "card_id": "card_537006f7"
+    },
+    {
+      "id": "J14",
+      "state": "planned",
+      "depends_on": [
+        "J13",
+        "J02",
+        "J23"
+      ],
+      "merge_after": [
+        "J04"
+      ],
+      "slices": [],
+      "acceptance": "not_executed_as_complete_milestone",
+      "card_id": "card_22901bdf"
+    },
+    {
+      "id": "J15",
+      "state": "planned",
+      "depends_on": [
+        "J14",
+        "J06"
+      ],
+      "merge_after": [],
+      "slices": [],
+      "acceptance": "not_executed_as_complete_milestone",
+      "card_id": "card_94c3d4a8"
+    },
+    {
+      "id": "J16",
+      "state": "planned",
+      "depends_on": [
+        "J15",
+        "J10",
+        "J07"
+      ],
+      "merge_after": [],
+      "slices": [],
+      "acceptance": "not_executed_as_complete_milestone",
+      "card_id": "card_ca7ce849"
+    },
+    {
+      "id": "J17",
+      "state": "planned",
+      "depends_on": [
+        "J14",
+        "J12"
+      ],
+      "merge_after": [
+        "J15"
+      ],
+      "slices": [],
+      "acceptance": "not_executed_as_complete_milestone",
+      "card_id": "card_4fb72988"
+    },
+    {
+      "id": "J18",
+      "state": "planned",
+      "depends_on": [
+        "J17",
+        "J10",
+        "J16"
+      ],
+      "merge_after": [],
+      "slices": [],
+      "acceptance": "not_executed_as_complete_milestone",
+      "card_id": "card_74060d09"
+    },
+    {
+      "id": "J19",
+      "state": "planned",
+      "depends_on": [
+        "J04",
+        "J15"
+      ],
+      "merge_after": [
+        "J10"
+      ],
+      "slices": [],
+      "acceptance": "not_executed_as_complete_milestone",
+      "card_id": "card_0c9a725c"
+    },
+    {
+      "id": "J20",
+      "state": "planned",
+      "depends_on": [
+        "J15"
+      ],
+      "merge_after": [],
+      "slices": [],
+      "acceptance": "not_executed_as_complete_milestone",
+      "card_id": "card_ee602a74"
+    },
+    {
+      "id": "J21",
+      "state": "planned",
+      "depends_on": [
+        "J17",
+        "J20"
+      ],
+      "merge_after": [],
+      "slices": [],
+      "acceptance": "not_executed_as_complete_milestone",
+      "card_id": "card_d9f74fa8"
+    },
+    {
+      "id": "J22",
+      "state": "planned",
+      "depends_on": [
+        "J30",
+        "J20"
+      ],
+      "merge_after": [],
+      "slices": [],
+      "acceptance": "not_executed_as_complete_milestone",
+      "card_id": "card_1f5230a6"
+    },
+    {
+      "id": "J23",
+      "state": "planned",
+      "depends_on": [
+        "J01",
+        "J03"
+      ],
+      "merge_after": [],
+      "slices": [],
+      "acceptance": "not_executed_as_complete_milestone",
+      "card_id": "card_efcfb696"
+    },
+    {
+      "id": "J24",
+      "state": "planned",
+      "depends_on": [
+        "J12",
+        "J20"
+      ],
+      "merge_after": [],
+      "slices": [],
+      "acceptance": "not_executed_as_complete_milestone",
+      "card_id": "card_64284bd4"
+    },
+    {
+      "id": "J25",
+      "state": "planned",
+      "depends_on": [
+        "J03"
+      ],
+      "merge_after": [],
+      "slices": [],
+      "acceptance": "not_executed_as_complete_milestone",
+      "card_id": "card_d4dea44d"
+    },
+    {
+      "id": "J26",
+      "state": "planned",
+      "depends_on": [
+        "J01",
+        "J02"
+      ],
+      "merge_after": [],
+      "slices": [],
+      "acceptance": "not_executed_as_complete_milestone",
+      "card_id": "card_a47872f7"
+    },
+    {
+      "id": "J27",
+      "state": "planned",
+      "depends_on": [
+        "J16",
+        "J23",
+        "J24",
+        "J26",
+        "J31"
+      ],
+      "merge_after": [],
+      "slices": [],
+      "acceptance": "not_executed_as_complete_milestone",
+      "card_id": "card_3a44528e"
+    },
+    {
+      "id": "J28",
+      "state": "planned",
+      "depends_on": [
+        "J11"
+      ],
+      "merge_after": [],
+      "slices": [],
+      "acceptance": "not_executed_as_complete_milestone",
+      "card_id": "card_9044ea8f"
+    },
+    {
+      "id": "J29",
+      "state": "planned",
+      "depends_on": [
+        "J25"
+      ],
+      "merge_after": [],
+      "slices": [],
+      "acceptance": "not_executed_as_complete_milestone",
+      "card_id": "card_539bcf68"
+    },
+    {
+      "id": "J30",
+      "state": "planned",
+      "depends_on": [
+        "J07",
+        "J16"
+      ],
+      "merge_after": [],
+      "slices": [],
+      "acceptance": "not_executed_as_complete_milestone",
+      "card_id": "card_f3e74cf6"
+    },
+    {
+      "id": "J31",
+      "state": "planned",
+      "depends_on": [
+        "J12",
+        "J07"
+      ],
+      "merge_after": [],
+      "slices": [],
+      "acceptance": "not_executed_as_complete_milestone",
+      "card_id": "card_37b3c381"
+    },
+    {
+      "id": "J32",
+      "state": "planned",
+      "depends_on": [
+        "J16",
+        "J25"
+      ],
+      "merge_after": [],
+      "slices": [],
+      "acceptance": "not_executed_as_complete_milestone",
+      "card_id": "card_99e359ff"
+    }
+  ],
+  "prs": [
+    {
+      "baseRefName": "main",
+      "headRefName": "codex/joint-json",
+      "headRefOid": "91147f7ade024bda411a9ebe457d3f390031b415",
+      "isDraft": false,
+      "mergeCommit": {
+        "oid": "baf88ea3fa4f29e1281c72d2696ee0fbdaf58f7d"
+      },
+      "mergeStateStatus": "UNKNOWN",
+      "mergeable": "UNKNOWN",
+      "mergedAt": "2026-10-27T08:00:51Z",
+      "number": 272,
+      "reviewDecision": "APPROVED",
+      "state": "MERGED",
+      "statusCheckRollup": [
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T06:24:06Z",
+          "conclusion": "SKIPPED",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40460878297/job/122044915549",
+          "name": "Paid DeepSeek semantic smoke",
+          "startedAt": "2026-10-27T06:24:07Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T06:26:15Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40460878297/job/122044914428",
+          "name": "graph-macos-fixtures (22)",
+          "startedAt": "2026-10-27T06:24:09Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T06:26:16Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40460878297/job/122044914645",
+          "name": "graph-macos-fixtures (24)",
+          "startedAt": "2026-10-27T06:24:09Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T06:27:37Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40460878297/job/122044914659",
+          "name": "graph-runtime-matrix (20.6.0)",
+          "startedAt": "2026-10-27T06:24:08Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T06:27:28Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40460878297/job/122044914639",
+          "name": "graph-runtime-matrix (22.23.1)",
+          "startedAt": "2026-10-27T06:24:08Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T06:41:16Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40460878297/job/122045644315",
+          "name": "check",
+          "startedAt": "2026-10-27T06:26:18Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        }
+      ],
+      "url": "https://github.com/osborn-studio/osstack/pull/272",
+      "observed_at": "2026-10-27T14:17:24.564534+00:00"
+    },
+    {
+      "baseRefName": "main",
+      "headRefName": "codex/joint-contracts",
+      "headRefOid": "6b3ad98d0b032a7f3fe69ddc9fa7ab501449697b",
+      "isDraft": false,
+      "mergeCommit": {
+        "oid": "69859eecfcc84af9d6eff755ed41243ca5f51f95"
+      },
+      "mergeStateStatus": "UNKNOWN",
+      "mergeable": "UNKNOWN",
+      "mergedAt": "2026-10-27T09:49:33Z",
+      "number": 273,
+      "reviewDecision": "APPROVED",
+      "state": "MERGED",
+      "statusCheckRollup": [
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T08:41:29Z",
+          "conclusion": "SKIPPED",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40475181312/job/122091825728",
+          "name": "Paid DeepSeek semantic smoke",
+          "startedAt": "2026-10-27T08:41:29Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T08:43:31Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40475181312/job/122091824870",
+          "name": "graph-macos-fixtures (22)",
+          "startedAt": "2026-10-27T08:41:31Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T08:43:17Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40475181312/job/122091824538",
+          "name": "graph-macos-fixtures (24)",
+          "startedAt": "2026-10-27T08:41:31Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T08:45:05Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40475181312/job/122091825089",
+          "name": "graph-runtime-matrix (20.6.0)",
+          "startedAt": "2026-10-27T08:41:31Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T08:45:09Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40475181312/job/122091824974",
+          "name": "graph-runtime-matrix (22.23.1)",
+          "startedAt": "2026-10-27T08:41:31Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T09:02:32Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40475181312/job/122092615508",
+          "name": "check",
+          "startedAt": "2026-10-27T08:43:33Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        }
+      ],
+      "url": "https://github.com/osborn-studio/osstack/pull/273",
+      "observed_at": "2026-10-27T14:17:25.747348+00:00"
+    },
+    {
+      "baseRefName": "main",
+      "headRefName": "codex/joint-recovery-spec",
+      "headRefOid": "3bfbb46ac5a92d79fbea0add9ac5ce0430e8346c",
+      "isDraft": false,
+      "mergeCommit": {
+        "oid": "baee1f6a67a4b753584b94f17c5cd4cbb4877b3e"
+      },
+      "mergeStateStatus": "UNKNOWN",
+      "mergeable": "UNKNOWN",
+      "mergedAt": "2026-10-27T10:40:18Z",
+      "number": 274,
+      "reviewDecision": "APPROVED",
+      "state": "MERGED",
+      "statusCheckRollup": [
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T10:34:20Z",
+          "conclusion": "SKIPPED",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40489391508/job/122139608109",
+          "name": "Paid DeepSeek semantic smoke",
+          "startedAt": "2026-10-27T10:34:20Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T10:36:03Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40489391508/job/122139606977",
+          "name": "graph-macos-fixtures (22)",
+          "startedAt": "2026-10-27T10:34:22Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T10:36:23Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40489391508/job/122139606790",
+          "name": "graph-macos-fixtures (24)",
+          "startedAt": "2026-10-27T10:34:23Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T10:36:57Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40489391508/job/122139606520",
+          "name": "graph-runtime-matrix (20.6.0)",
+          "startedAt": "2026-10-27T10:34:22Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T10:37:54Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40489391508/job/122139606866",
+          "name": "graph-runtime-matrix (22.23.1)",
+          "startedAt": "2026-10-27T10:34:22Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T10:55:24Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40489391508/job/122140510785",
+          "name": "check",
+          "startedAt": "2026-10-27T10:36:25Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        }
+      ],
+      "url": "https://github.com/osborn-studio/osstack/pull/274",
+      "observed_at": "2026-10-27T14:17:27.061408+00:00"
+    },
+    {
+      "baseRefName": "main",
+      "headRefName": "codex/firstmate-behavior-contract",
+      "headRefOid": "48d6b927d36e5c673eb80c8956daa69779614cc7",
+      "isDraft": false,
+      "mergeCommit": {
+        "oid": "a5fef9c4488edde29c6afe95c19d37344ab30a71"
+      },
+      "mergeStateStatus": "UNKNOWN",
+      "mergeable": "UNKNOWN",
+      "mergedAt": "2026-10-27T08:03:43Z",
+      "number": 275,
+      "reviewDecision": "APPROVED",
+      "state": "MERGED",
+      "statusCheckRollup": [
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T06:36:58Z",
+          "conclusion": "SKIPPED",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40462158240/job/122049046504",
+          "name": "Paid DeepSeek semantic smoke",
+          "startedAt": "2026-10-27T06:36:58Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T06:38:39Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40462158240/job/122049045285",
+          "name": "graph-macos-fixtures (22)",
+          "startedAt": "2026-10-27T06:37:00Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T06:39:23Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40462158240/job/122049045359",
+          "name": "graph-macos-fixtures (24)",
+          "startedAt": "2026-10-27T06:37:01Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T06:39:46Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40462158240/job/122049045281",
+          "name": "graph-runtime-matrix (20.6.0)",
+          "startedAt": "2026-10-27T06:37:00Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T06:40:32Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40462158240/job/122049045151",
+          "name": "graph-runtime-matrix (22.23.1)",
+          "startedAt": "2026-10-27T06:37:00Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T06:53:56Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40462158240/job/122049804962",
+          "name": "check",
+          "startedAt": "2026-10-27T06:39:25Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        }
+      ],
+      "url": "https://github.com/osborn-studio/osstack/pull/275",
+      "observed_at": "2026-10-27T14:17:28.270311+00:00"
+    },
+    {
+      "baseRefName": "main",
+      "headRefName": "codex/firstmate-behavior-loader",
+      "headRefOid": "5e86a77859367a333829748908bbf986048132b9",
+      "isDraft": false,
+      "mergeCommit": {
+        "oid": "28d116f3f8c15f64bebb314308adf320d8380b2b"
+      },
+      "mergeStateStatus": "UNKNOWN",
+      "mergeable": "UNKNOWN",
+      "mergedAt": "2026-10-27T11:04:47Z",
+      "number": 276,
+      "reviewDecision": "APPROVED",
+      "state": "MERGED",
+      "statusCheckRollup": [
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T06:37:14Z",
+          "conclusion": "SKIPPED",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40462185479/job/122049131722",
+          "name": "Paid DeepSeek semantic smoke",
+          "startedAt": "2026-10-27T06:37:15Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T06:39:22Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40462185479/job/122049130595",
+          "name": "graph-macos-fixtures (22)",
+          "startedAt": "2026-10-27T06:37:17Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T06:38:51Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40462185479/job/122049130625",
+          "name": "graph-macos-fixtures (24)",
+          "startedAt": "2026-10-27T06:37:17Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T06:39:57Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40462185479/job/122049130632",
+          "name": "graph-runtime-matrix (20.6.0)",
+          "startedAt": "2026-10-27T06:37:17Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T06:40:14Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40462185479/job/122049130321",
+          "name": "graph-runtime-matrix (22.23.1)",
+          "startedAt": "2026-10-27T06:37:16Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T06:58:39Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40462185479/job/122049800417",
+          "name": "check",
+          "startedAt": "2026-10-27T06:39:24Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        }
+      ],
+      "url": "https://github.com/osborn-studio/osstack/pull/276",
+      "observed_at": "2026-10-27T14:17:29.356469+00:00"
+    },
+    {
+      "baseRefName": "main",
+      "headRefName": "codex/session-receipt-fix",
+      "headRefOid": "585ed985ac4a8513778470f6443d0ce7ce2c7893",
+      "isDraft": false,
+      "mergeCommit": {
+        "oid": "4924d224ab9e6e2d7f801d68faea389fedf3751e"
+      },
+      "mergeStateStatus": "UNKNOWN",
+      "mergeable": "UNKNOWN",
+      "mergedAt": "2026-10-27T08:04:04Z",
+      "number": 277,
+      "reviewDecision": "APPROVED",
+      "state": "MERGED",
+      "statusCheckRollup": [
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T06:37:20Z",
+          "conclusion": "SKIPPED",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40462194710/job/122049161093",
+          "name": "Paid DeepSeek semantic smoke",
+          "startedAt": "2026-10-27T06:37:20Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T06:40:34Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40462194710/job/122049160166",
+          "name": "graph-macos-fixtures (22)",
+          "startedAt": "2026-10-27T06:38:40Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T06:38:47Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40462194710/job/122049159918",
+          "name": "graph-macos-fixtures (24)",
+          "startedAt": "2026-10-27T06:37:22Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T06:40:18Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40462194710/job/122049160122",
+          "name": "graph-runtime-matrix (20.6.0)",
+          "startedAt": "2026-10-27T06:37:22Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T06:40:03Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40462194710/job/122049160238",
+          "name": "graph-runtime-matrix (22.23.1)",
+          "startedAt": "2026-10-27T06:37:22Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T06:52:07Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40462194710/job/122050172249",
+          "name": "check",
+          "startedAt": "2026-10-27T06:40:36Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        }
+      ],
+      "url": "https://github.com/osborn-studio/osstack/pull/277",
+      "observed_at": "2026-10-27T14:17:30.576496+00:00"
+    },
+    {
+      "baseRefName": "main",
+      "headRefName": "codex/session-start-cleanup",
+      "headRefOid": "a14ba16c55a2aeb13c7f73d61a8b3afb7ec263f3",
+      "isDraft": false,
+      "mergeCommit": {
+        "oid": "0f6dc137dbb0975ffe73725d0e184d47c2ac7937"
+      },
+      "mergeStateStatus": "UNKNOWN",
+      "mergeable": "UNKNOWN",
+      "mergedAt": "2026-10-27T11:03:56Z",
+      "number": 278,
+      "reviewDecision": "APPROVED",
+      "state": "MERGED",
+      "statusCheckRollup": [
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T10:58:21Z",
+          "conclusion": "SKIPPED",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40492585861/job/122149946482",
+          "name": "Paid DeepSeek semantic smoke",
+          "startedAt": "2026-10-27T10:58:21Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T11:00:24Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40492585861/job/122149944915",
+          "name": "graph-macos-fixtures (22)",
+          "startedAt": "2026-10-27T10:58:23Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T11:00:33Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40492585861/job/122149945148",
+          "name": "graph-macos-fixtures (24)",
+          "startedAt": "2026-10-27T10:58:23Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T11:02:04Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40492585861/job/122149944466",
+          "name": "graph-runtime-matrix (20.6.0)",
+          "startedAt": "2026-10-27T10:58:23Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T11:01:22Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40492585861/job/122149944866",
+          "name": "graph-runtime-matrix (22.23.1)",
+          "startedAt": "2026-10-27T10:58:23Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T11:19:52Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40492585861/job/122150900477",
+          "name": "check",
+          "startedAt": "2026-10-27T11:00:36Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        }
+      ],
+      "url": "https://github.com/osborn-studio/osstack/pull/278",
+      "observed_at": "2026-10-27T14:17:32.249708+00:00"
+    },
+    {
+      "baseRefName": "main",
+      "headRefName": "codex/session-terminal-fence",
+      "headRefOid": "3202b790952e358b83ced50746d78909cda31c4c",
+      "isDraft": false,
+      "mergeCommit": null,
+      "mergeStateStatus": "BLOCKED",
+      "mergeable": "MERGEABLE",
+      "mergedAt": null,
+      "number": 279,
+      "reviewDecision": "REVIEW_REQUIRED",
+      "state": "OPEN",
+      "statusCheckRollup": [],
+      "url": "https://github.com/osborn-studio/osstack/pull/279",
+      "observed_at": "2026-10-27T14:17:33.586744+00:00"
+    },
+    {
+      "baseRefName": "main",
+      "headRefName": "codex/joint-delivery",
+      "headRefOid": "f1d03624af126e6dd1d0ef63686bdd5f1bf6b896",
+      "isDraft": false,
+      "mergeCommit": {
+        "oid": "e9a9656ab1cee3da525cf9a3e9df80ebce3d3a4b"
+      },
+      "mergeStateStatus": "UNKNOWN",
+      "mergeable": "UNKNOWN",
+      "mergedAt": "2026-10-27T08:03:19Z",
+      "number": 280,
+      "reviewDecision": "APPROVED",
+      "state": "MERGED",
+      "statusCheckRollup": [
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T07:33:14Z",
+          "conclusion": "SKIPPED",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40467810924/job/122067365171",
+          "name": "Paid DeepSeek semantic smoke",
+          "startedAt": "2026-10-27T07:33:15Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T07:35:25Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40467810924/job/122067364018",
+          "name": "graph-macos-fixtures (22)",
+          "startedAt": "2026-10-27T07:33:16Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T07:35:52Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40467810924/job/122067363664",
+          "name": "graph-macos-fixtures (24)",
+          "startedAt": "2026-10-27T07:33:17Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T07:36:56Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40467810924/job/122067363914",
+          "name": "graph-runtime-matrix (20.6.0)",
+          "startedAt": "2026-10-27T07:33:17Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T07:36:24Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40467810924/job/122067363855",
+          "name": "graph-runtime-matrix (22.23.1)",
+          "startedAt": "2026-10-27T07:33:17Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T07:50:30Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40467810924/job/122068218360",
+          "name": "check",
+          "startedAt": "2026-10-27T07:35:54Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        }
+      ],
+      "url": "https://github.com/osborn-studio/osstack/pull/280",
+      "observed_at": "2026-10-27T14:17:35.510118+00:00"
+    },
+    {
+      "baseRefName": "main",
+      "headRefName": "codex/joint-source-snapshot",
+      "headRefOid": "87e97760d325c23fb936f9199c5fe792f384b50f",
+      "isDraft": false,
+      "mergeCommit": {
+        "oid": "8fed83136611948ee068801ab5cc1fd471f90078"
+      },
+      "mergeStateStatus": "UNKNOWN",
+      "mergeable": "UNKNOWN",
+      "mergedAt": "2026-10-27T10:40:47Z",
+      "number": 281,
+      "reviewDecision": "APPROVED",
+      "state": "MERGED",
+      "statusCheckRollup": [
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T10:34:21Z",
+          "conclusion": "SKIPPED",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40489034786/job/122139616179",
+          "name": "Paid DeepSeek semantic smoke",
+          "startedAt": "2026-10-27T10:34:22Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T10:37:51Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40489034786/job/122139614678",
+          "name": "graph-macos-fixtures (22)",
+          "startedAt": "2026-10-27T10:34:24Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T10:36:39Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40489034786/job/122139614505",
+          "name": "graph-macos-fixtures (24)",
+          "startedAt": "2026-10-27T10:34:24Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T10:37:14Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40489034786/job/122139614649",
+          "name": "graph-runtime-matrix (20.6.0)",
+          "startedAt": "2026-10-27T10:34:23Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T10:37:56Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40489034786/job/122139614262",
+          "name": "graph-runtime-matrix (22.23.1)",
+          "startedAt": "2026-10-27T10:34:24Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T10:50:53Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40489034786/job/122141138509",
+          "name": "check",
+          "startedAt": "2026-10-27T10:37:53Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        }
+      ],
+      "url": "https://github.com/osborn-studio/osstack/pull/281",
+      "observed_at": "2026-10-27T14:17:36.985284+00:00"
+    },
+    {
+      "baseRefName": "main",
+      "headRefName": "codex/joint-behavior-audit-fixes",
+      "headRefOid": "f81b72eb813533357e5317871dcbc5febe004244",
+      "isDraft": false,
+      "mergeCommit": {
+        "oid": "ede5aadced37ac9dc29dd21f0e307ad2c46d2976"
+      },
+      "mergeStateStatus": "UNKNOWN",
+      "mergeable": "UNKNOWN",
+      "mergedAt": "2026-10-27T13:46:58Z",
+      "number": 282,
+      "reviewDecision": "APPROVED",
+      "state": "MERGED",
+      "statusCheckRollup": [
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T12:23:02Z",
+          "conclusion": "SKIPPED",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40503314400/job/122186210358",
+          "name": "Paid DeepSeek semantic smoke",
+          "startedAt": "2026-10-27T12:23:02Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T12:25:08Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40503314400/job/122186208905",
+          "name": "graph-macos-fixtures (22)",
+          "startedAt": "2026-10-27T12:23:04Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T12:25:06Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40503314400/job/122186209121",
+          "name": "graph-macos-fixtures (24)",
+          "startedAt": "2026-10-27T12:23:08Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T12:26:18Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40503314400/job/122186208529",
+          "name": "graph-runtime-matrix (20.6.0)",
+          "startedAt": "2026-10-27T12:23:04Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T12:26:19Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40503314400/job/122186209197",
+          "name": "graph-runtime-matrix (22.23.1)",
+          "startedAt": "2026-10-27T12:23:04Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T12:40:20Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40503314400/job/122187144982",
+          "name": "check",
+          "startedAt": "2026-10-27T12:25:11Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        }
+      ],
+      "url": "https://github.com/osborn-studio/osstack/pull/282",
+      "observed_at": "2026-10-27T14:17:38.296374+00:00"
+    }
+  ],
+  "management": {
+    "board": "joint-firstmate-pstack",
+    "installed_version": "0.22.1",
+    "binding": "See preserved handoff management entry; never use default home",
+    "mode": "owner-driven OSStack ledger and bounded Codex collaboration subagents; no autonomous goal_dispatch",
+    "dependency_enforcement": "owner verifies work-packages/execution-gates; board text is informational",
+    "snapshot": "evidence/joint-execution/terminal-post282/20261027T141723213857Z/joint-firstmate-pstack.json",
+    "entry_sha256": "9e2c366327a31ff71da277a21ea36571ebeca60ebce3372cee137af696eb89dc",
+    "entry_identity": "installed Firstmate registry-install/bin/osstack; exact local binding is in sender handoff",
+    "operations": "project-operations.md",
+    "management_home": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/session-debt-20261026/ledger-home",
+    "management_socket": "/tmp/osstack-debt-ledger.sock",
+    "heartbeat": {
+      "id": "osstack",
+      "name": "OSStack 联合开发续办",
+      "status": "ACTIVE",
+      "rrule": "FREQ=MINUTELY;INTERVAL=30",
+      "target_thread_id": "01a178ed-616a-7bb1-8d20-13f4c1019245",
+      "created_at": 1793098759153,
+      "updated_at": 1793109241967,
+      "observed_at": "2026-10-27T13:54:17.012240+00:00",
+      "config_sha256": "4cb0156499897cc76c961a1bb47cecdc0866c6e612d8306b044440d33facb493",
+      "queue": "279 then J01/J11 gates; J01 oracle independent session in progress",
+      "authority": "automation_update succeeded, persisted config reread; owner-attested tool result, not runtime scheduler proof",
+      "goal_dispatch_enabled": false,
+      "base_sha": "ede5aadced37ac9dc29dd21f0e307ad2c46d2976",
+      "observation_authority": "Owner-attested update tool receipt and re-read config; no scheduler execution attestation"
+    },
+    "socket_observation": {
+      "uid": 501,
+      "mode": "0o600",
+      "observed_at": "2026-10-27T14:17:39.505400+00:00"
+    },
+    "rpc_helper": {
+      "path": "evidence/joint-execution/terminal-post282/20261027T141723213857Z/ledger-rpc-helper.py",
+      "sha256": "b1449d7b95df5012c9889d4afb2517f42fc7dc72c125948ba1018fbc40379e1e",
+      "socket": "/tmp/osstack-debt-ledger.sock",
+      "scope": "Actual helper code and owner-observed socket; home remains deployment metadata."
+    },
+    "receipts": [
+      {
+        "path": "evidence/joint-execution/terminal-post282/20261027T141723213857Z/subagent-dispatch-receipts.json",
+        "sha256": "dfa6c4de296d84c7df23b1fe07fc9949a332d201e49951b4456214c6391026bb"
+      },
+      {
+        "path": "evidence/joint-execution/terminal-post282/20261027T141723213857Z/terminal-preflight-receipt.json",
+        "sha256": "1497532eccfa2066acc4e644a8a7f5650575afed1dda5999042ed1f297603e3e"
+      },
+      {
+        "path": "evidence/joint-execution/terminal-post282/20261027T141723213857Z/board-final-receipts.json",
+        "sha256": "4a94be092fa8560490a90a300027147e61efb5f864fa61de6d8ce24f274307b0"
+      },
+      {
+        "path": "evidence/joint-execution/terminal-post282/20261027T141723213857Z/automation-receipt.json",
+        "sha256": "2d8d98b36ab5d4c92e157baf787dad410421e359d10faa03465bc8b2131639a7"
+      }
+    ],
+    "snapshot_sha256": "f4eb6f88a40b30ac87a6c528dc363d1c935e0c0d350b37989a0628f413c7e72a",
+    "board_snapshots": [
+      {
+        "path": "evidence/joint-execution/terminal-post282/20261027T141723213857Z/joint-firstmate-pstack.json",
+        "sha256": "f4eb6f88a40b30ac87a6c528dc363d1c935e0c0d350b37989a0628f413c7e72a"
+      },
+      {
+        "path": "evidence/joint-execution/terminal-post282/20261027T141723213857Z/firstmate-upgrade-roadmap.json",
+        "sha256": "1144e622f502c2979b8c55365814fc73b81145e43c9c856c8759c36541e1cd4f"
+      },
+      {
+        "path": "evidence/joint-execution/terminal-post282/20261027T141723213857Z/session-pilot-debt.json",
+        "sha256": "395184c1b02dbb9561f64c072310f32fd1e62b275773a531c8b4c22febad4516"
+      }
+    ],
+    "evidence_scope": "Current owner-collected post-#282 evidence for the next metadata commit; not asserted present at earlier observed PR heads. Full historical checkpoints are immutable.",
+    "metadata_scope": "Code/head diff allows docs and changesets, including executable offline checkpoint checks; these have separate Python validation and management audit, not runtime pnpm qualification."
+  },
+  "observation_rule": "PR snapshots carry their own observation time; handoff acceptance does not imply green CI, merged code or runtime qualification.",
+  "design_pr": 280,
+  "unknowns_at_takeover": {
+    "O06": {
+      "state": "resolved_for_observed_main_only",
+      "main": "ce543535be9b1ef96a8c4fb14d13ea8483444051",
+      "rule": "recheck before new slice/retarget"
+    },
+    "O03": {
+      "state": "J11_spec_candidate_only",
+      "prs": [
+        274
+      ],
+      "J12_runtime": "open"
+    },
+    "O01_O02_O04_O05": "retain original stage-specific blocks"
+  },
+  "observation_window": {
+    "started_at": "2026-10-27T14:17:23.223473+00:00",
+    "scope": "Sequential live forge observations; no atomic GitHub/local snapshot claim.",
+    "finished_at": "2026-10-27T14:17:42.693698+00:00"
+  },
+  "checkpoint_history": [
+    {
+      "path": "evidence/joint-execution/loader-cleanup-retarget/20261027T112456124787Z/ledger-before-d3b9345fab07204e12e71896f6a3f72e0f0d7a45090407b4bd4e30d67317aa3f.json",
+      "sha256": "d3b9345fab07204e12e71896f6a3f72e0f0d7a45090407b4bd4e30d67317aa3f"
+    },
+    {
+      "path": "evidence/joint-execution/loader-cleanup-retarget/20261027T112743745504Z/ledger-before-bb927db90bdc401d9bc8119118484ffd026941203c386e3d104723984328a8eb.json",
+      "sha256": "bb927db90bdc401d9bc8119118484ffd026941203c386e3d104723984328a8eb"
+    },
+    {
+      "path": "evidence/joint-execution/loader-cleanup-retarget/20261027T113028624366Z/ledger-before-067518e67fc49d34983a837a278dbcc47572b41f653a385583a48d5fa5897abf.json",
+      "sha256": "067518e67fc49d34983a837a278dbcc47572b41f653a385583a48d5fa5897abf"
+    },
+    {
+      "path": "evidence/joint-execution/loader-cleanup-retarget/20261027T113209809178Z/ledger-before-b008dee83e9d3ccec74dbf696b57f778a6ae6fde012ad2cf42e16f06b66dbfa4.json",
+      "sha256": "b008dee83e9d3ccec74dbf696b57f778a6ae6fde012ad2cf42e16f06b66dbfa4"
+    },
+    {
+      "path": "evidence/joint-execution/loader-cleanup-retarget/20261027T113822101038Z/ledger-before-edb02bf506b2b3fbad09180537867cfbf2e0b8c052cba958158bed9ed3048549.json",
+      "sha256": "edb02bf506b2b3fbad09180537867cfbf2e0b8c052cba958158bed9ed3048549"
+    },
+    {
+      "path": "evidence/joint-execution/terminal-post282/20261027T141723213857Z/ledger-before-acb133249794c717a31a7730c2913752df9b3cd88f06d3972589613c930ddb59.json",
+      "sha256": "acb133249794c717a31a7730c2913752df9b3cd88f06d3972589613c930ddb59"
+    }
+  ],
+  "checkpoint_proof_version": 2,
+  "parallel_preflight": {
+    "pr": 279,
+    "state": "provisional_only",
+    "candidate_sha": "4cdf36e3aed91ad1733c09a8c7dac549817fcad7",
+    "test_commit": "aaa4aa00379361a3f9f28880c007ffedf6652345",
+    "pr_head_sha": "cae25bc612e6e6884cf548e5bc8d3a745863a909",
+    "tests_passed": 89,
+    "files": 6,
+    "current_head_matches": false,
+    "product_qualification": false,
+    "observation_scope": "historical preflight only; head match is time-bound, not live",
+    "report_sha256": "15c2d87838b07e43b2bf2d2d68121fa320828b7daae0c45d0fe29685185610b7",
+    "report": "../../implementation/joint-behavior-retarget/subagent-terminal/report.md"
+  }
+}

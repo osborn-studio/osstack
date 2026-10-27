@@ -1,0 +1,219 @@
+{
+  "candidate_sha": "380e2c618bd5060e2f556f5108fb229d169c932b",
+  "oracle_sha256": "51b34e498292099fa706ecb1f8fe0eccf5f505e715fcae9c880607ad77670c79",
+  "baseline_result": {
+    "source_capabilities": 48,
+    "normalized_capabilities": 13,
+    "legacy_tasks": 69,
+    "joint_milestones": 32,
+    "future_product_cases": 72,
+    "contract_fixtures": 100,
+    "source_anchors": 227,
+    "runtime_cases_executed": 0,
+    "legacy_cases_retained": 114,
+    "stage_gates": 126,
+    "semantic_assertions": 53,
+    "unresolved_unknowns": 6
+  },
+  "source_release_semantics_equal": true,
+  "results": [
+    {
+      "id": "ja01-delete",
+      "expected": "reject",
+      "actual": "reject",
+      "error": "acceptance set incomplete"
+    },
+    {
+      "id": "ja02-parser-only",
+      "expected": "reject",
+      "actual": "reject",
+      "error": "JA02: protected host semantics changed"
+    },
+    {
+      "id": "ja01-completion-rename",
+      "expected": "reject",
+      "actual": "reject",
+      "error": "JA01: protected host semantics changed"
+    },
+    {
+      "id": "host-case-list-drop",
+      "expected": "reject",
+      "actual": "reject",
+      "error": "J01.scoped: joint case coverage drift"
+    },
+    {
+      "id": "component-false-evidence",
+      "expected": "reject",
+      "actual": "reject",
+      "error": "gate overclaims evidence"
+    },
+    {
+      "id": "admission-cycle",
+      "expected": "reject",
+      "actual": "reject",
+      "error": "execution gates: dependency cycle at J01.scoped"
+    },
+    {
+      "id": "legacy-case-drop",
+      "expected": "reject",
+      "actual": "reject",
+      "error": "legacy case coverage incomplete"
+    },
+    {
+      "id": "legacy-producer-drop",
+      "expected": "reject",
+      "actual": "reject",
+      "error": "inherited milestone projection incomplete"
+    },
+    {
+      "id": "release-case-weaken",
+      "expected": "reject",
+      "actual": "reject",
+      "error": "inherited release gate lost"
+    },
+    {
+      "id": "release-contract-only",
+      "expected": "reject",
+      "actual": "reject",
+      "error": "J27: package dependency absent from stage gate"
+    },
+    {
+      "id": "default-contract-only",
+      "expected": "reject",
+      "actual": "reject",
+      "error": "J27.default_enable: release bypasses J01 host acceptance"
+    },
+    {
+      "id": "full-contract-only",
+      "expected": "reject",
+      "actual": "reject",
+      "error": "J27.full_original_completion: release bypasses J01 host acceptance"
+    },
+    {
+      "id": "broker-enabled-override-scope",
+      "expected": "reject",
+      "actual": "reject",
+      "error": "unscoped recovery gate relaxation"
+    },
+    {
+      "id": "broker-enabled-override-text",
+      "expected": "reject",
+      "actual": "reject",
+      "error": "JADR12 home-only exception semantics changed"
+    },
+    {
+      "id": "postaudit-old-edge-J01-legacy_full",
+      "expected": "reject",
+      "actual": "reject",
+      "error": "J01: legacy wrapper drops scoped obligations"
+    },
+    {
+      "id": "postaudit-old-edge-J10-protocol",
+      "expected": "reject",
+      "actual": "reject",
+      "error": "J10.protocol: original host prerequisite lost"
+    },
+    {
+      "id": "postaudit-old-edge-J27-release_channel",
+      "expected": "reject",
+      "actual": "reject",
+      "error": "J27.release_channel: original host prerequisite lost"
+    },
+    {
+      "id": "postaudit-old-edge-J23-harness",
+      "expected": "reject",
+      "actual": "reject",
+      "error": "J23.harness: original host prerequisite lost"
+    },
+    {
+      "id": "postaudit-oracle-JA01",
+      "expected": "reject",
+      "actual": "reject",
+      "error": "JA01: frozen oracle boundary changed"
+    },
+    {
+      "id": "postaudit-oracle-JA02",
+      "expected": "reject",
+      "actual": "reject",
+      "error": "JA02: frozen oracle boundary changed"
+    },
+    {
+      "id": "postaudit-slice-extra-path",
+      "expected": "reject",
+      "actual": "reject",
+      "error": "J08: unregistered or changed component slice"
+    },
+    {
+      "id": "postaudit-slice-effects",
+      "expected": "reject",
+      "actual": "reject",
+      "error": "J08: unregistered or changed component slice"
+    },
+    {
+      "id": "postaudit-obsolete-j05-coupling",
+      "expected": "reject",
+      "actual": "reject",
+      "error": "component producer prerequisites changed"
+    },
+    {
+      "id": "postaudit-positive-control-weaken",
+      "expected": "reject",
+      "actual": "reject",
+      "error": "JA71: frozen case semantics changed"
+    },
+    {
+      "id": "postaudit-same-entry-weaken",
+      "expected": "reject",
+      "actual": "reject",
+      "error": "JA72: frozen case semantics changed"
+    },
+    {
+      "id": "postaudit-ja02-owner-spoof",
+      "expected": "reject",
+      "actual": "reject",
+      "error": "JA02: unregistered oracle implementation producer"
+    },
+    {
+      "id": "postaudit-binding-rule-drop",
+      "expected": "reject",
+      "actual": "reject",
+      "error": "component candidate binding rule changed"
+    },
+    {
+      "id": "postaudit-e0-host-coupling",
+      "expected": "reject",
+      "actual": "reject",
+      "error": "JP-01d: slice/gate prerequisite drift"
+    },
+    {
+      "id": "postaudit-e0-legacy-release-coupling",
+      "expected": "reject",
+      "actual": "reject",
+      "error": "transitive impact graph drift"
+    },
+    {
+      "id": "postaudit-j07-graph-invalidation-drop",
+      "expected": "reject",
+      "actual": "reject",
+      "error": "J07: contract write invalidation missing or changed"
+    },
+    {
+      "id": "postaudit-j08-entry-invalidation-drop",
+      "expected": "reject",
+      "actual": "reject",
+      "error": "J08: contract write invalidation missing or changed"
+    },
+    {
+      "id": "postaudit-j08-harness-invalidation-drop",
+      "expected": "reject",
+      "actual": "reject",
+      "error": "J08: contract write invalidation missing or changed"
+    },
+    {
+      "id": "postaudit-j01-owner-and-invalidation-drop",
+      "expected": "reject",
+      "actual": "reject",
+      "error": "frozen contract artifacts lack J01 ownership"
+    }
+  ]
+}

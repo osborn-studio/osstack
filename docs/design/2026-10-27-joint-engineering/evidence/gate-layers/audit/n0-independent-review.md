@@ -1,0 +1,13 @@
+# N0 final independent review
+
+PASS in the design-validation scope at **380e2c618bd5060e2f556f5108fb229d169c932b**. Positive design validation reports zero executed runtime cases. The original prospective oracle was frozen before receiving new candidates (SHA-256 51b34e498292099fa706ecb1f8fe0eccf5f505e715fcae9c880607ad77670c79). This is process-role separation only, not authenticated principal/custodian or formal JA01/JA02 acceptance.
+
+Original 14 negative mutations plus 19 expressly post-audit regressions all reject. They retain original JA01/JA02 semantics, full integration/legacy/release obligations, broker-disabled limitations, old non-scoped host edges, oracle observation/producer roles, exclusive JP-08a paths/effects, positive-control/same-entry cases and exact candidate evidence binding.
+
+One independently found contradictory-local_override guard gap in b2d9c723 was fixed and its original rejected/accepted traces retained. The historical 1b9d9098 suite required J05 ordering while the slice shared method-admission.ts. Further Sonnet review exposed its E0 propagation; root chose exclusive method-host-admission.ts ownership. That particular post-audit test is retired, not retrospectively portrayed as a permanent frozen requirement. n0-scope-disposition.json records this correction.
+
+The final independent iterative graph algorithm uses the raw d3fa gate graph, not the candidate's closure function. It confirms no new J25.e0 ancestor for any original gate, every legacy direct safety edge and case requirement unchanged, and the original J05 E0 gate preserved. The new JP-08a files have no other work-package owner. Frozen existing contract sources all exist; future extension paths are not initial gate prerequisites.
+
+Evidence: n0-entry-final.py; n0-entry-final.command.json/.stdout/.stderr; n0-entry-final-result.json; n0-entry-final-positive-graph.json; n0-scope-disposition.json. Keep the root's full independent archive for every original input/failure/superseded candidate. This review does not run the JA01/JA02 prototype, implement a host boundary, approve GitHub, qualify runtime or pass a milestone. No product or central ledger edits were made.
+
+Four last-round negative mutations remove J07 graph-verification invalidation, J08 host-entry invalidation, J08 test-harness invalidation, or J01 joint-json ownership together with its invalidation. All four reject, with explicit ownership detection surviving synchronized omission. The first invocation used an incorrect core/ graph-verification path in the independent harness, failed before those four cases, and is preserved as n0-entry-invalidation.*; the corrected CLI path invocation exited 0. This is a harness correction, not a product failure.

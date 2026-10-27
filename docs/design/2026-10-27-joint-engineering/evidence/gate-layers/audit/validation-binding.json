@@ -1,0 +1,67 @@
+{
+  "candidate_sha": "380e2c618bd5060e2f556f5108fb229d169c932b",
+  "base_sha": "d3fa7ef681efc79a5fb2dff92172ef1be0978774",
+  "recorded_at": "2026-10-27T16:43:58.245355+00:00",
+  "source_sha256": {
+    "docs/design/2026-10-27-joint-engineering/README.md": "e485ac92f207aa066a78c6b8321f1b610417ef46f775d4a2d0c72b821165acec",
+    "docs/design/2026-10-27-joint-engineering/acceptance-cases.json": "606b4e894aa7d89af0e225cfc8d12859377c29c664733dfce03839c65eeb003b",
+    "docs/design/2026-10-27-joint-engineering/audit-specifications.md": "e5fd5916b357d28e1a2ff0847cdc635db69fedce3918c67ba7a35ac1f6942bc5",
+    "docs/design/2026-10-27-joint-engineering/capability-map.json": "b6c5bc2b78d54ba83655363f1cf4ee03613eb55d923cfb2652b587424d60e25b",
+    "docs/design/2026-10-27-joint-engineering/contracts.md": "44c0968e4ae336ab683cb28852bdf7d569037374c6be34674e00de9496b3b9c1",
+    "docs/design/2026-10-27-joint-engineering/evidence/gate-layers/component-case-specs.json": "e559ee91429e4908bfc6ec0278d20726c8f2b1023c2a83a5d1ec50e454cec73d",
+    "docs/design/2026-10-27-joint-engineering/evidence/gate-layers/component-slice-specs.json": "d81b5bf43a0af7fdb7695cb8cb4b8460671cc42679e885161ea40c7ef3877ace",
+    "docs/design/2026-10-27-joint-engineering/evidence/gate-layers/ja01-ja02-original.json": "d7740ae67078c478c32a6d7a36f997a7f16ae649d6391b699e4ee22512bd6fbb",
+    "docs/design/2026-10-27-joint-engineering/evidence/gate-layers/o06-preflight.json": "e44819bb3a9d32169cd00673e96a76e5011c0ed3ad9b54e7b706ed0cb57f050b",
+    "docs/design/2026-10-27-joint-engineering/evidence/gate-layers/transitive-impact.json": "fce8d782afebfb87b867620be6cbfcd157c045b056bb145661c4c46f3587d510",
+    "docs/design/2026-10-27-joint-engineering/execution-gates.json": "489a7388a2ed1705deee7aaff76c65f7acd31a15d6b83d3b7f7c9747a35c97ee",
+    "docs/design/2026-10-27-joint-engineering/gate-layers.md": "62d7004df8460c07059657a31510dc697070807a6cb233a6cfc624ff2d7867d0",
+    "docs/design/2026-10-27-joint-engineering/test_validate_design.py": "1fbe5d44178daac4bc2b47707460baf47cb8621755a0c821d2632509d5c4e66a",
+    "docs/design/2026-10-27-joint-engineering/validate-design.py": "9726ef8173ce72d2632884e784b9a2e3066a8d8748de9e0f48fb99472dac3125",
+    "docs/design/2026-10-27-joint-engineering/verification-spec.md": "98483f20dd6eb2d9d9894c115e9ac18106850f667d402bd5e3411cd5457d6d1e",
+    "docs/design/2026-10-27-joint-engineering/work-package-index.md": "98234b1f19a122def52023c35eeed9abfd684271354c6615d7cfc2eb2e4dc45c",
+    "docs/design/2026-10-27-joint-engineering/work-packages.json": "ff2403b1813b42f2a7adac93bd2ede70ea2ac7b654ec27880e2cfd6738bfa750"
+  },
+  "python": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/joint-handoff-20261027/venv/bin/python",
+  "commands": [
+    {
+      "argv": [
+        "python",
+        "docs/design/2026-10-27-joint-engineering/test_validate_design.py"
+      ],
+      "exit_code": 0,
+      "test_count": 113,
+      "log": "design-tests-round5.log"
+    },
+    {
+      "argv": [
+        "python",
+        "-O",
+        "docs/design/2026-10-27-joint-engineering/test_validate_design.py"
+      ],
+      "exit_code": 0,
+      "test_count": 113,
+      "log": "design-tests-final-optimized-v3.log"
+    },
+    {
+      "argv": [
+        "python",
+        "docs/design/2026-10-27-joint-engineering/test_validate_execution.py"
+      ],
+      "exit_code": 0,
+      "test_count": 128,
+      "log": "execution-tests-final-v3.log"
+    },
+    {
+      "argv": [
+        "python",
+        "docs/design/2026-10-27-joint-engineering/validate-design.py"
+      ],
+      "exit_code": 0,
+      "log": "design-validation-round5.json"
+    }
+  ],
+  "runtime_cases_executed": 0,
+  "principal_independence_certified": false,
+  "full_workspace_validation": "parent to run on integration candidate",
+  "central_ledger_edited": false
+}

@@ -1,0 +1,32 @@
+{
+  "base_sha": "d3fa7ef681efc79a5fb2dff92172ef1be0978774",
+  "observed_at": "2026-10-27T16:15:18.243367+00:00",
+  "scope": "post-merge bounded terminal closeout",
+  "receipts": [
+    {
+      "comment_id": 343,
+      "card_id": "card_d1a582eb",
+      "author": "joint-entry",
+      "body": "#279 已由用户审批合并，GitHub mergedAt 2026-10-27T16:12:15Z，head 3a5841eb9c4673c6e2ac924520b0acaf1c749956，merge/latest main d3fa7ef681efc79a5fb2dff92172ef1be0978774。五项必需 CI 成功；产品 cb76b643 全仓6293/5/0与实际Sonnet5.5 PASS保持其原审计基线ede5aadc。此卡仅terminal fence范围完成，不代替DEBT02跨进程恢复或J01/J11/J12整体验收。",
+      "created_at": 1793117718.242
+    },
+    {
+      "card_id": "card_d1a582eb",
+      "board": "session-pilot-debt",
+      "task_id": null,
+      "title": "[AUDIT-R3-H6] Require Session terminal completion before releasing execution",
+      "body": "Confirmed host-boundary counterexample: registered Session adapter ends its iterator without terminal; send returns agent_failed but releases, start records success and releases. Deterministic real SQLite/RPC/lock probe shows confirmStopped false was never consulted. Implement a separate narrow fix for start/send: incomplete terminal protocol is not settled proof; confirm stop or retain. No operator recovery API or per-turn stop-proof redesign. Red/green regressions and parent full tests + Sonnet 5.5 required. Evidence: firstmate-batch1-20261026/thread-b-round3-hypotheses.md. This is an audit defect, not a new roadmap feature.",
+      "status": "done",
+      "priority": 1,
+      "assignee": "thread-b",
+      "blocked_reason": null,
+      "tenant_id": null,
+      "card_type": "implementation",
+      "meta": null,
+      "created_at": 1793081376.111,
+      "updated_at": 1793117718.242,
+      "started_at": 1793081386.278,
+      "completed_at": 1793117718.242
+    }
+  ]
+}

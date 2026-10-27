@@ -1,0 +1,15 @@
+{
+  "merge_sha": "d3fa7ef681efc79a5fb2dff92172ef1be0978774",
+  "parents": [
+    "ede5aadced37ac9dc29dd21f0e307ad2c46d2976",
+    "3a5841eb9c4673c6e2ac924520b0acaf1c749956"
+  ],
+  "head_sha": "3a5841eb9c4673c6e2ac924520b0acaf1c749956",
+  "merge_tree": "307218fdc92255facda2fb95c4cceee92fb74573",
+  "head_tree": "307218fdc92255facda2fb95c4cceee92fb74573",
+  "equal_trees": true,
+  "head_is_ancestor_of_merge": true,
+  "no_rename_paths_match_recorded": true,
+  "observed_at": "2026-10-27T16:20:39.837909+00:00",
+  "scope": "actual local Git object checks; does not claim tests re-executed on merge"
+}

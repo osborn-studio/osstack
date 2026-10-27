@@ -1,0 +1,20 @@
+{
+  "base_sha": "d3fa7ef681efc79a5fb2dff92172ef1be0978774",
+  "observed_at": "2026-10-27T16:15:18.244058+00:00",
+  "receipts": [
+    {
+      "comment_id": 344,
+      "card_id": "card_6d5d3d02",
+      "author": "joint-entry",
+      "body": "批次joint-nextwave-20261028；main d3fa7ef681efc79a5fb2dff92172ef1be0978774；loader_adversarial: N0设计分层与严格验证器，独占joint-gate-layers，禁止中央账本/runtime；保留JA01/JA02与release义务；新gate均specified_not_run。cleanup_regression独立冻结反例。 实际Sonnet5.5审计、定向验证后主入口串行全仓/收口PR；无自动运行资格。",
+      "created_at": 1793117718.243
+    },
+    {
+      "comment_id": 345,
+      "card_id": "card_79cdb3e7",
+      "author": "joint-entry",
+      "body": "批次joint-nextwave-20261028；main d3fa7ef681efc79a5fb2dff92172ef1be0978774；terminal_preflight: JP-17a真实可执行broker DDL/held-orphan规格候选，独占joint-broker-spec；独立SQLite候选namespace 0→1，不抢home编号、不部署、不宣称JA20/J17通过。cleanup_regression独占scratch独立oracle；root拥有中央账本。 实际Sonnet5.5审计、定向验证后主入口串行全仓/收口PR；无自动运行资格。",
+      "created_at": 1793117718.243
+    }
+  ]
+}

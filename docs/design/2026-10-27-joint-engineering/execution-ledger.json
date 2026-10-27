@@ -2,8 +2,8 @@
   "schema_version": 1,
   "purpose": "Absorb Firstmate and pstack capabilities into OSStack",
   "owner_thread": "01a178ed-616a-7bb1-8d20-13f4c1019245",
-  "main_sha": "ede5aadced37ac9dc29dd21f0e307ad2c46d2976",
-  "observed_at": "2026-10-27T14:17:38.296456+00:00",
+  "main_sha": "d3fa7ef681efc79a5fb2dff92172ef1be0978774",
+  "observed_at": "2026-10-27T16:16:43.988910+00:00",
   "runtime_enabled": false,
   "handoff": {
     "thread": "01a1693a-3d49-7b92-b1b4-5344ff4ad2e7",
@@ -27,7 +27,7 @@
       "276": "merged at observed head 5e86a77859367a333829748908bbf986048132b9; see exact scope/test base. Merge does not qualify full runtime.",
       "282": "merged at observed head f81b72eb813533357e5317871dcbc5febe004244; see exact scope/test base. Merge does not qualify full runtime.",
       "278": "merged at observed head a14ba16c55a2aeb13c7f73d61a8b3afb7ec263f3; see exact scope/test base. Merge does not qualify full runtime.",
-      "279": "ready at observed head 3202b790952e358b83ced50746d78909cda31c4c; see exact scope/test base. Merge does not qualify full runtime."
+      "279": "Merged; terminal-fence component closed. Cross-process DEBT02 remains separate."
     },
     "successor_deliveries": [
       {
@@ -593,15 +593,212 @@
       {
         "proof_version": 2,
         "pr": 279,
-        "state": "ready",
-        "head_sha": "3202b790952e358b83ced50746d78909cda31c4c",
+        "state": "merged",
+        "head_sha": "3a5841eb9c4673c6e2ac924520b0acaf1c749956",
         "base_branch": "main",
         "base_sha": "ede5aadced37ac9dc29dd21f0e307ad2c46d2976",
         "code_sha": "cb76b6432d597d1c057d241f17e652308286b8ee",
         "code_head_proof": {
           "code_sha": "cb76b6432d597d1c057d241f17e652308286b8ee",
-          "head_sha": "3202b790952e358b83ced50746d78909cda31c4c",
+          "head_sha": "3a5841eb9c4673c6e2ac924520b0acaf1c749956",
           "changed_paths": [
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/terminal-post282/20261027T141723213857Z/automation-receipt.json",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/terminal-post282/20261027T141723213857Z/board-final-receipts.json",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/terminal-post282/20261027T141723213857Z/firstmate-upgrade-roadmap.json",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/terminal-post282/20261027T141723213857Z/joint-firstmate-pstack.json",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/terminal-post282/20261027T141723213857Z/ledger-before-acb133249794c717a31a7730c2913752df9b3cd88f06d3972589613c930ddb59.json",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/terminal-post282/20261027T141723213857Z/ledger-rpc-helper.py",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/terminal-post282/20261027T141723213857Z/loader-code-to-merged-head.diff",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/terminal-post282/20261027T141723213857Z/session-pilot-debt.json",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/terminal-post282/20261027T141723213857Z/subagent-dispatch-receipts.json",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/terminal-post282/20261027T141723213857Z/terminal-code-to-observed-head.diff",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/terminal-post282/20261027T141723213857Z/terminal-preflight-receipt.json",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/terminal-post282/20261027T141723213857Z/terminal/README.md",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/terminal-post282/20261027T141723213857Z/terminal/additional-checks.json",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/terminal-post282/20261027T141723213857Z/terminal/archive-manifest.json",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/terminal-post282/20261027T141723213857Z/terminal/audit-closeout.py.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/terminal-post282/20261027T141723213857Z/terminal/audit-code-binding.json",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/terminal-post282/20261027T141723213857Z/terminal/audit.py.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/terminal-post282/20261027T141723213857Z/terminal/baseline-impact.json",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/terminal-post282/20261027T141723213857Z/terminal/build.log.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/terminal-post282/20261027T141723213857Z/terminal/caller-focused.log.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/terminal-post282/20261027T141723213857Z/terminal/changeset.log.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/terminal-post282/20261027T141723213857Z/terminal/docs-hygiene.log.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/terminal-post282/20261027T141723213857Z/terminal/documentation-checks.json",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/terminal-post282/20261027T141723213857Z/terminal/empty-mcp.json.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/terminal-post282/20261027T141723213857Z/terminal/finalize-verification.py.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/terminal-post282/20261027T141723213857Z/terminal/fix-focused.log.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/terminal-post282/20261027T141723213857Z/terminal/fix-lint.log.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/terminal-post282/20261027T141723213857Z/terminal/focused.log.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/terminal-post282/20261027T141723213857Z/terminal/historical-candidate/build.log.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/terminal-post282/20261027T141723213857Z/terminal/historical-candidate/changeset.log.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/terminal-post282/20261027T141723213857Z/terminal/historical-candidate/focused.log.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/terminal-post282/20261027T141723213857Z/terminal/historical-candidate/install.log.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/terminal-post282/20261027T141723213857Z/terminal/historical-candidate/inventory.log.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/terminal-post282/20261027T141723213857Z/terminal/historical-candidate/lint.log.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/terminal-post282/20261027T141723213857Z/terminal/historical-candidate/test-full.log.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/terminal-post282/20261027T141723213857Z/terminal/historical-candidate/typecheck.log.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/terminal-post282/20261027T141723213857Z/terminal/historical-candidate/verification.json.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/terminal-post282/20261027T141723213857Z/terminal/hygiene-prearchive.log.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/terminal-post282/20261027T141723213857Z/terminal/install.log.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/terminal-post282/20261027T141723213857Z/terminal/installer-environment-diagnosis.json",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/terminal-post282/20261027T141723213857Z/terminal/installer-isolated.log.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/terminal-post282/20261027T141723213857Z/terminal/installer-reproduction.log.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/terminal-post282/20261027T141723213857Z/terminal/inventory.log.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/terminal-post282/20261027T141723213857Z/terminal/lint-docs.log.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/terminal-post282/20261027T141723213857Z/terminal/lint.log.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/terminal-post282/20261027T141723213857Z/terminal/merge-main.log.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/terminal-post282/20261027T141723213857Z/terminal/post-archive-check.py.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/terminal-post282/20261027T141723213857Z/terminal/product-after.patch.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/terminal-post282/20261027T141723213857Z/terminal/product-before.patch.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/terminal-post282/20261027T141723213857Z/terminal/rerun-full-after-docfix.py.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/terminal-post282/20261027T141723213857Z/terminal/rerun-full.py.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/terminal-post282/20261027T141723213857Z/terminal/round1-dispositions.json",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/terminal-post282/20261027T141723213857Z/terminal/round1-input.txt.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/terminal-post282/20261027T141723213857Z/terminal/round1-manifest.json.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/terminal-post282/20261027T141723213857Z/terminal/round1-raw.md.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/terminal-post282/20261027T141723213857Z/terminal/round1-response.json.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/terminal-post282/20261027T141723213857Z/terminal/round1-stderr.txt.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/terminal-post282/20261027T141723213857Z/terminal/round2-dispositions.json",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/terminal-post282/20261027T141723213857Z/terminal/round2-input.txt.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/terminal-post282/20261027T141723213857Z/terminal/round2-manifest.json.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/terminal-post282/20261027T141723213857Z/terminal/round2-raw.md.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/terminal-post282/20261027T141723213857Z/terminal/round2-response.json.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/terminal-post282/20261027T141723213857Z/terminal/round2-stderr.txt.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/terminal-post282/20261027T141723213857Z/terminal/settings.json.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/terminal-post282/20261027T141723213857Z/terminal/superseded-run.json",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/terminal-post282/20261027T141723213857Z/terminal/test-full-final.log.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/terminal-post282/20261027T141723213857Z/terminal/test-full-isolated.log.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/terminal-post282/20261027T141723213857Z/terminal/test-full.log.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/terminal-post282/20261027T141723213857Z/terminal/test-summary-before-socket-isolation.json",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/terminal-post282/20261027T141723213857Z/terminal/test-summary.json",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/terminal-post282/20261027T141723213857Z/terminal/typecheck.log.gz",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/terminal-post282/20261027T141723213857Z/terminal/verification-before-document-link-fix.json",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/terminal-post282/20261027T141723213857Z/terminal/verification-before-socket-isolation.json",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/terminal-post282/20261027T141723213857Z/terminal/verification.json",
+            "docs/design/2026-10-27-joint-engineering/evidence/joint-execution/terminal-post282/20261027T141723213857Z/terminal/verify.py.gz",
+            "docs/design/2026-10-27-joint-engineering/execution-ledger.json",
+            "docs/design/2026-10-27-joint-engineering/execution.md",
+            "docs/design/2026-10-27-joint-engineering/project-operations.md",
+            "docs/implementation/joint-terminal-post282-management/README.md",
+            "docs/implementation/joint-terminal-post282-management/archive-layout-disposition.json.gz",
+            "docs/implementation/joint-terminal-post282-management/archive-management.py.gz",
+            "docs/implementation/joint-terminal-post282-management/archive-manifest.json",
+            "docs/implementation/joint-terminal-post282-management/audit-management-closure.py.gz",
+            "docs/implementation/joint-terminal-post282-management/audit-management-final.py.gz",
+            "docs/implementation/joint-terminal-post282-management/audit-management.py.gz",
+            "docs/implementation/joint-terminal-post282-management/automation-receipt.json.gz",
+            "docs/implementation/joint-terminal-post282-management/board-final-receipts.json.gz",
+            "docs/implementation/joint-terminal-post282-management/checkpoint-result.json.gz",
+            "docs/implementation/joint-terminal-post282-management/execution-prose-final.md.gz",
+            "docs/implementation/joint-terminal-post282-management/final-hygiene-before-snapshot-compression.log.gz",
+            "docs/implementation/joint-terminal-post282-management/final-hygiene.log.gz",
+            "docs/implementation/joint-terminal-post282-management/final-ledger-check.log.gz",
+            "docs/implementation/joint-terminal-post282-management/final-ledger-tests.log.gz",
+            "docs/implementation/joint-terminal-post282-management/independent-final-refresh-check.json.gz",
+            "docs/implementation/joint-terminal-post282-management/independent-final-refresh-check.py.gz",
+            "docs/implementation/joint-terminal-post282-management/independent-final-refresh-review.md",
+            "docs/implementation/joint-terminal-post282-management/independent/extra-tests.log.gz",
+            "docs/implementation/joint-terminal-post282-management/independent/extra.test.ts.gz",
+            "docs/implementation/joint-terminal-post282-management/independent/git-source-observation.json.gz",
+            "docs/implementation/joint-terminal-post282-management/independent/manifest.json.gz",
+            "docs/implementation/joint-terminal-post282-management/independent/post-test-source-binding.json.gz",
+            "docs/implementation/joint-terminal-post282-management/independent/published-archive-3202b790952e358b83ced50746d78909cda31c4c/README.md.gz",
+            "docs/implementation/joint-terminal-post282-management/independent/published-archive-3202b790952e358b83ced50746d78909cda31c4c/additional-checks.json.gz",
+            "docs/implementation/joint-terminal-post282-management/independent/published-archive-3202b790952e358b83ced50746d78909cda31c4c/archive-manifest.json.gz",
+            "docs/implementation/joint-terminal-post282-management/independent/published-archive-3202b790952e358b83ced50746d78909cda31c4c/audit-closeout.py.gz.gz",
+            "docs/implementation/joint-terminal-post282-management/independent/published-archive-3202b790952e358b83ced50746d78909cda31c4c/audit-code-binding.json.gz",
+            "docs/implementation/joint-terminal-post282-management/independent/published-archive-3202b790952e358b83ced50746d78909cda31c4c/audit.py.gz.gz",
+            "docs/implementation/joint-terminal-post282-management/independent/published-archive-3202b790952e358b83ced50746d78909cda31c4c/baseline-impact.json.gz",
+            "docs/implementation/joint-terminal-post282-management/independent/published-archive-3202b790952e358b83ced50746d78909cda31c4c/build.log.gz.gz",
+            "docs/implementation/joint-terminal-post282-management/independent/published-archive-3202b790952e358b83ced50746d78909cda31c4c/caller-focused.log.gz.gz",
+            "docs/implementation/joint-terminal-post282-management/independent/published-archive-3202b790952e358b83ced50746d78909cda31c4c/changeset.log.gz.gz",
+            "docs/implementation/joint-terminal-post282-management/independent/published-archive-3202b790952e358b83ced50746d78909cda31c4c/docs-hygiene.log.gz.gz",
+            "docs/implementation/joint-terminal-post282-management/independent/published-archive-3202b790952e358b83ced50746d78909cda31c4c/documentation-checks.json.gz",
+            "docs/implementation/joint-terminal-post282-management/independent/published-archive-3202b790952e358b83ced50746d78909cda31c4c/empty-mcp.json.gz.gz",
+            "docs/implementation/joint-terminal-post282-management/independent/published-archive-3202b790952e358b83ced50746d78909cda31c4c/finalize-verification.py.gz.gz",
+            "docs/implementation/joint-terminal-post282-management/independent/published-archive-3202b790952e358b83ced50746d78909cda31c4c/fix-focused.log.gz.gz",
+            "docs/implementation/joint-terminal-post282-management/independent/published-archive-3202b790952e358b83ced50746d78909cda31c4c/fix-lint.log.gz.gz",
+            "docs/implementation/joint-terminal-post282-management/independent/published-archive-3202b790952e358b83ced50746d78909cda31c4c/focused.log.gz.gz",
+            "docs/implementation/joint-terminal-post282-management/independent/published-archive-3202b790952e358b83ced50746d78909cda31c4c/historical-candidate/build.log.gz.gz",
+            "docs/implementation/joint-terminal-post282-management/independent/published-archive-3202b790952e358b83ced50746d78909cda31c4c/historical-candidate/changeset.log.gz.gz",
+            "docs/implementation/joint-terminal-post282-management/independent/published-archive-3202b790952e358b83ced50746d78909cda31c4c/historical-candidate/focused.log.gz.gz",
+            "docs/implementation/joint-terminal-post282-management/independent/published-archive-3202b790952e358b83ced50746d78909cda31c4c/historical-candidate/install.log.gz.gz",
+            "docs/implementation/joint-terminal-post282-management/independent/published-archive-3202b790952e358b83ced50746d78909cda31c4c/historical-candidate/inventory.log.gz.gz",
+            "docs/implementation/joint-terminal-post282-management/independent/published-archive-3202b790952e358b83ced50746d78909cda31c4c/historical-candidate/lint.log.gz.gz",
+            "docs/implementation/joint-terminal-post282-management/independent/published-archive-3202b790952e358b83ced50746d78909cda31c4c/historical-candidate/test-full.log.gz.gz",
+            "docs/implementation/joint-terminal-post282-management/independent/published-archive-3202b790952e358b83ced50746d78909cda31c4c/historical-candidate/typecheck.log.gz.gz",
+            "docs/implementation/joint-terminal-post282-management/independent/published-archive-3202b790952e358b83ced50746d78909cda31c4c/historical-candidate/verification.json.gz.gz",
+            "docs/implementation/joint-terminal-post282-management/independent/published-archive-3202b790952e358b83ced50746d78909cda31c4c/hygiene-prearchive.log.gz.gz",
+            "docs/implementation/joint-terminal-post282-management/independent/published-archive-3202b790952e358b83ced50746d78909cda31c4c/install.log.gz.gz",
+            "docs/implementation/joint-terminal-post282-management/independent/published-archive-3202b790952e358b83ced50746d78909cda31c4c/installer-environment-diagnosis.json.gz",
+            "docs/implementation/joint-terminal-post282-management/independent/published-archive-3202b790952e358b83ced50746d78909cda31c4c/installer-isolated.log.gz.gz",
+            "docs/implementation/joint-terminal-post282-management/independent/published-archive-3202b790952e358b83ced50746d78909cda31c4c/installer-reproduction.log.gz.gz",
+            "docs/implementation/joint-terminal-post282-management/independent/published-archive-3202b790952e358b83ced50746d78909cda31c4c/inventory.log.gz.gz",
+            "docs/implementation/joint-terminal-post282-management/independent/published-archive-3202b790952e358b83ced50746d78909cda31c4c/lint-docs.log.gz.gz",
+            "docs/implementation/joint-terminal-post282-management/independent/published-archive-3202b790952e358b83ced50746d78909cda31c4c/lint.log.gz.gz",
+            "docs/implementation/joint-terminal-post282-management/independent/published-archive-3202b790952e358b83ced50746d78909cda31c4c/merge-main.log.gz.gz",
+            "docs/implementation/joint-terminal-post282-management/independent/published-archive-3202b790952e358b83ced50746d78909cda31c4c/post-archive-check.py.gz.gz",
+            "docs/implementation/joint-terminal-post282-management/independent/published-archive-3202b790952e358b83ced50746d78909cda31c4c/product-after.patch.gz.gz",
+            "docs/implementation/joint-terminal-post282-management/independent/published-archive-3202b790952e358b83ced50746d78909cda31c4c/product-before.patch.gz.gz",
+            "docs/implementation/joint-terminal-post282-management/independent/published-archive-3202b790952e358b83ced50746d78909cda31c4c/rerun-full-after-docfix.py.gz.gz",
+            "docs/implementation/joint-terminal-post282-management/independent/published-archive-3202b790952e358b83ced50746d78909cda31c4c/rerun-full.py.gz.gz",
+            "docs/implementation/joint-terminal-post282-management/independent/published-archive-3202b790952e358b83ced50746d78909cda31c4c/round1-dispositions.json.gz",
+            "docs/implementation/joint-terminal-post282-management/independent/published-archive-3202b790952e358b83ced50746d78909cda31c4c/round1-input.txt.gz.gz",
+            "docs/implementation/joint-terminal-post282-management/independent/published-archive-3202b790952e358b83ced50746d78909cda31c4c/round1-manifest.json.gz.gz",
+            "docs/implementation/joint-terminal-post282-management/independent/published-archive-3202b790952e358b83ced50746d78909cda31c4c/round1-raw.md.gz.gz",
+            "docs/implementation/joint-terminal-post282-management/independent/published-archive-3202b790952e358b83ced50746d78909cda31c4c/round1-response.json.gz.gz",
+            "docs/implementation/joint-terminal-post282-management/independent/published-archive-3202b790952e358b83ced50746d78909cda31c4c/round1-stderr.txt.gz.gz",
+            "docs/implementation/joint-terminal-post282-management/independent/published-archive-3202b790952e358b83ced50746d78909cda31c4c/round2-dispositions.json.gz",
+            "docs/implementation/joint-terminal-post282-management/independent/published-archive-3202b790952e358b83ced50746d78909cda31c4c/round2-input.txt.gz.gz",
+            "docs/implementation/joint-terminal-post282-management/independent/published-archive-3202b790952e358b83ced50746d78909cda31c4c/round2-manifest.json.gz.gz",
+            "docs/implementation/joint-terminal-post282-management/independent/published-archive-3202b790952e358b83ced50746d78909cda31c4c/round2-raw.md.gz.gz",
+            "docs/implementation/joint-terminal-post282-management/independent/published-archive-3202b790952e358b83ced50746d78909cda31c4c/round2-response.json.gz.gz",
+            "docs/implementation/joint-terminal-post282-management/independent/published-archive-3202b790952e358b83ced50746d78909cda31c4c/round2-stderr.txt.gz.gz",
+            "docs/implementation/joint-terminal-post282-management/independent/published-archive-3202b790952e358b83ced50746d78909cda31c4c/settings.json.gz.gz",
+            "docs/implementation/joint-terminal-post282-management/independent/published-archive-3202b790952e358b83ced50746d78909cda31c4c/superseded-run.json.gz",
+            "docs/implementation/joint-terminal-post282-management/independent/published-archive-3202b790952e358b83ced50746d78909cda31c4c/test-full-final.log.gz.gz",
+            "docs/implementation/joint-terminal-post282-management/independent/published-archive-3202b790952e358b83ced50746d78909cda31c4c/test-full-isolated.log.gz.gz",
+            "docs/implementation/joint-terminal-post282-management/independent/published-archive-3202b790952e358b83ced50746d78909cda31c4c/test-full.log.gz.gz",
+            "docs/implementation/joint-terminal-post282-management/independent/published-archive-3202b790952e358b83ced50746d78909cda31c4c/test-summary-before-socket-isolation.json.gz",
+            "docs/implementation/joint-terminal-post282-management/independent/published-archive-3202b790952e358b83ced50746d78909cda31c4c/test-summary.json.gz",
+            "docs/implementation/joint-terminal-post282-management/independent/published-archive-3202b790952e358b83ced50746d78909cda31c4c/typecheck.log.gz.gz",
+            "docs/implementation/joint-terminal-post282-management/independent/published-archive-3202b790952e358b83ced50746d78909cda31c4c/verification-before-document-link-fix.json.gz",
+            "docs/implementation/joint-terminal-post282-management/independent/published-archive-3202b790952e358b83ced50746d78909cda31c4c/verification-before-socket-isolation.json.gz",
+            "docs/implementation/joint-terminal-post282-management/independent/published-archive-3202b790952e358b83ced50746d78909cda31c4c/verification.json.gz",
+            "docs/implementation/joint-terminal-post282-management/independent/published-archive-3202b790952e358b83ced50746d78909cda31c4c/verify.py.gz.gz",
+            "docs/implementation/joint-terminal-post282-management/independent/r02-focused.log.gz",
+            "docs/implementation/joint-terminal-post282-management/independent/r02.config.mts.gz",
+            "docs/implementation/joint-terminal-post282-management/independent/r02.test.ts.gz",
+            "docs/implementation/joint-terminal-post282-management/independent/report.md",
+            "docs/implementation/joint-terminal-post282-management/independent/vitest.config.mts.gz",
+            "docs/implementation/joint-terminal-post282-management/initial-observation.json.gz",
+            "docs/implementation/joint-terminal-post282-management/management-closure-input.txt.gz",
+            "docs/implementation/joint-terminal-post282-management/management-closure-report.md",
+            "docs/implementation/joint-terminal-post282-management/management-closure-response.json.gz",
+            "docs/implementation/joint-terminal-post282-management/management-closure-stderr.txt.gz",
+            "docs/implementation/joint-terminal-post282-management/management-dispositions.json.gz",
+            "docs/implementation/joint-terminal-post282-management/management-final-input.txt.gz",
+            "docs/implementation/joint-terminal-post282-management/management-final-report.md",
+            "docs/implementation/joint-terminal-post282-management/management-final-response.json.gz",
+            "docs/implementation/joint-terminal-post282-management/management-final-stderr.txt.gz",
+            "docs/implementation/joint-terminal-post282-management/management-input.txt.gz",
+            "docs/implementation/joint-terminal-post282-management/management-report.md",
+            "docs/implementation/joint-terminal-post282-management/management-response.json.gz",
+            "docs/implementation/joint-terminal-post282-management/management-stderr.txt.gz",
+            "docs/implementation/joint-terminal-post282-management/next-wave/collect.py.gz",
+            "docs/implementation/joint-terminal-post282-management/next-wave/n0-decision-draft.md.gz",
+            "docs/implementation/joint-terminal-post282-management/next-wave/n0-machine-evidence.json.gz",
+            "docs/implementation/joint-terminal-post282-management/r02-closure-board-receipts.json.gz",
+            "docs/implementation/joint-terminal-post282-management/refresh-checkpoint.py.gz",
+            "docs/implementation/joint-terminal-post282-management/session-dispatch-board-receipt.json.gz",
+            "docs/implementation/joint-terminal-post282-management/session-dispatch.json.gz",
+            "docs/implementation/joint-terminal-post282-management/session-j01-oracle.tar.gz.gz",
+            "docs/implementation/joint-terminal-post282-management/session-j01-receipt.json.gz",
+            "docs/implementation/joint-terminal-post282-management/session-j01-result-board-receipt.json.gz",
+            "docs/implementation/joint-terminal-post282-management/start-board-receipts.json.gz",
+            "docs/implementation/joint-terminal-post282-management/subagent-dispatch-receipts.json.gz",
+            "docs/implementation/joint-terminal-post282-management/terminal-preflight-receipt.json.gz",
             "docs/implementation/joint-terminal-post282/README.md",
             "docs/implementation/joint-terminal-post282/additional-checks.json",
             "docs/implementation/joint-terminal-post282/archive-manifest.json",
@@ -667,8 +864,8 @@
             "docs/implementation/joint-terminal-post282/verification.json",
             "docs/implementation/joint-terminal-post282/verify.py.gz"
           ],
-          "diff_path": "evidence/joint-execution/terminal-post282/20261027T141723213857Z/terminal-code-to-observed-head.diff",
-          "diff_sha256": "e693ce799061bbda6732566fa655cc926569a4012da9f161fd96e9d3415b9ed6",
+          "diff_path": "evidence/joint-execution/post279-closeout/20261027T161630424378Z/terminal-code-to-merged-head.diff",
+          "diff_sha256": "9f07da19fca5009addf29c35546837237a48de782fdf4e8e6b1fc3c690c4ca5e",
           "net_diff_empty": false
         },
         "runtime_enabled": false,
@@ -695,21 +892,28 @@
           "archive_manifest_sha256": "f8d5df51ef8774f3f3181b08797882e6ccc324052ea0f283cecbfe00955c2526"
         },
         "merge_readiness": {
-          "ci": "pending_or_failed_at_observation",
-          "approval": "user_owned",
-          "mergeable": "MERGEABLE",
-          "merge_state": "BLOCKED"
+          "ci": "passed_at_observation",
+          "approval": "APPROVED",
+          "mergeable": "UNKNOWN",
+          "merge_state": "UNKNOWN",
+          "observed_at": "2026-10-27T16:16:40.327548+00:00"
         },
         "previous_observation": {
-          "path": "evidence/joint-execution/terminal-post282/20261027T141723213857Z/ledger-before-acb133249794c717a31a7730c2913752df9b3cd88f06d3972589613c930ddb59.json",
-          "sha256": "acb133249794c717a31a7730c2913752df9b3cd88f06d3972589613c930ddb59",
-          "scope": "Immutable historical observation; prior current labels are time-bound."
+          "path": "evidence/joint-execution/post279-closeout/20261027T161630424378Z/ledger-before-e4ade4ca51da81e332aceec882d0ee2215339da312da8bd744ed6491e69bb566.json",
+          "sha256": "e4ade4ca51da81e332aceec882d0ee2215339da312da8bd744ed6491e69bb566",
+          "scope": "Immutable pre-merge observation; original tested base remains ede5aadc."
         },
         "previous_delivery": {
           "pr": 279,
           "path": "evidence/joint-execution/terminal-post282/20261027T141723213857Z/ledger-before-acb133249794c717a31a7730c2913752df9b3cd88f06d3972589613c930ddb59.json",
           "sha256": "acb133249794c717a31a7730c2913752df9b3cd88f06d3972589613c930ddb59",
           "scope": "Immutable historical observation; prior current labels are time-bound."
+        },
+        "merge_sha": "d3fa7ef681efc79a5fb2dff92172ef1be0978774",
+        "merge_scope": "Merged terminal-fence slice only; historical tests retain code/base binding; no DEBT02 or milestone qualification.",
+        "merge_content_proof": {
+          "path": "evidence/joint-execution/post279-closeout/20261027T161630424378Z/merge-content-proof.json",
+          "sha256": "ec2d9b8daa9af1a7d1da80b31637389e82396b22bcf6aac2ac15df638d361c36"
         }
       }
     ]
@@ -1303,7 +1507,7 @@
         }
       ],
       "url": "https://github.com/osborn-studio/osstack/pull/272",
-      "observed_at": "2026-10-27T14:17:24.564534+00:00"
+      "observed_at": "2026-10-27T16:16:31.627212+00:00"
     },
     {
       "baseRefName": "main",
@@ -1382,7 +1586,7 @@
         }
       ],
       "url": "https://github.com/osborn-studio/osstack/pull/273",
-      "observed_at": "2026-10-27T14:17:25.747348+00:00"
+      "observed_at": "2026-10-27T16:16:32.791500+00:00"
     },
     {
       "baseRefName": "main",
@@ -1461,7 +1665,7 @@
         }
       ],
       "url": "https://github.com/osborn-studio/osstack/pull/274",
-      "observed_at": "2026-10-27T14:17:27.061408+00:00"
+      "observed_at": "2026-10-27T16:16:34.152305+00:00"
     },
     {
       "baseRefName": "main",
@@ -1540,7 +1744,7 @@
         }
       ],
       "url": "https://github.com/osborn-studio/osstack/pull/275",
-      "observed_at": "2026-10-27T14:17:28.270311+00:00"
+      "observed_at": "2026-10-27T16:16:35.485716+00:00"
     },
     {
       "baseRefName": "main",
@@ -1619,7 +1823,7 @@
         }
       ],
       "url": "https://github.com/osborn-studio/osstack/pull/276",
-      "observed_at": "2026-10-27T14:17:29.356469+00:00"
+      "observed_at": "2026-10-27T16:16:36.706155+00:00"
     },
     {
       "baseRefName": "main",
@@ -1698,7 +1902,7 @@
         }
       ],
       "url": "https://github.com/osborn-studio/osstack/pull/277",
-      "observed_at": "2026-10-27T14:17:30.576496+00:00"
+      "observed_at": "2026-10-27T16:16:37.861846+00:00"
     },
     {
       "baseRefName": "main",
@@ -1777,23 +1981,86 @@
         }
       ],
       "url": "https://github.com/osborn-studio/osstack/pull/278",
-      "observed_at": "2026-10-27T14:17:32.249708+00:00"
+      "observed_at": "2026-10-27T16:16:39.062331+00:00"
     },
     {
       "baseRefName": "main",
       "headRefName": "codex/session-terminal-fence",
-      "headRefOid": "3202b790952e358b83ced50746d78909cda31c4c",
+      "headRefOid": "3a5841eb9c4673c6e2ac924520b0acaf1c749956",
       "isDraft": false,
-      "mergeCommit": null,
-      "mergeStateStatus": "BLOCKED",
-      "mergeable": "MERGEABLE",
-      "mergedAt": null,
+      "mergeCommit": {
+        "oid": "d3fa7ef681efc79a5fb2dff92172ef1be0978774"
+      },
+      "mergeStateStatus": "UNKNOWN",
+      "mergeable": "UNKNOWN",
+      "mergedAt": "2026-10-27T16:12:15Z",
       "number": 279,
-      "reviewDecision": "REVIEW_REQUIRED",
-      "state": "OPEN",
-      "statusCheckRollup": [],
+      "reviewDecision": "APPROVED",
+      "state": "MERGED",
+      "statusCheckRollup": [
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T14:23:32Z",
+          "conclusion": "SKIPPED",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40520522689/job/122246534365",
+          "name": "Paid DeepSeek semantic smoke",
+          "startedAt": "2026-10-27T14:23:32Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T14:25:33Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40520522689/job/122246531844",
+          "name": "graph-macos-fixtures (22)",
+          "startedAt": "2026-10-27T14:23:36Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T14:24:59Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40520522689/job/122246531594",
+          "name": "graph-macos-fixtures (24)",
+          "startedAt": "2026-10-27T14:23:37Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T14:27:22Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40520522689/job/122246531949",
+          "name": "graph-runtime-matrix (20.6.0)",
+          "startedAt": "2026-10-27T14:23:34Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T14:27:18Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40520522689/job/122246532110",
+          "name": "graph-runtime-matrix (22.23.1)",
+          "startedAt": "2026-10-27T14:23:36Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T14:44:40Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40520522689/job/122247663267",
+          "name": "check",
+          "startedAt": "2026-10-27T14:25:35Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        }
+      ],
       "url": "https://github.com/osborn-studio/osstack/pull/279",
-      "observed_at": "2026-10-27T14:17:33.586744+00:00"
+      "observed_at": "2026-10-27T16:16:40.327548+00:00"
     },
     {
       "baseRefName": "main",
@@ -1872,7 +2139,7 @@
         }
       ],
       "url": "https://github.com/osborn-studio/osstack/pull/280",
-      "observed_at": "2026-10-27T14:17:35.510118+00:00"
+      "observed_at": "2026-10-27T16:16:41.621282+00:00"
     },
     {
       "baseRefName": "main",
@@ -1951,7 +2218,7 @@
         }
       ],
       "url": "https://github.com/osborn-studio/osstack/pull/281",
-      "observed_at": "2026-10-27T14:17:36.985284+00:00"
+      "observed_at": "2026-10-27T16:16:42.712559+00:00"
     },
     {
       "baseRefName": "main",
@@ -2030,7 +2297,7 @@
         }
       ],
       "url": "https://github.com/osborn-studio/osstack/pull/282",
-      "observed_at": "2026-10-27T14:17:38.296374+00:00"
+      "observed_at": "2026-10-27T16:16:43.890952+00:00"
     }
   ],
   "management": {
@@ -2039,7 +2306,7 @@
     "binding": "See preserved handoff management entry; never use default home",
     "mode": "owner-driven OSStack ledger and bounded Codex collaboration subagents; no autonomous goal_dispatch",
     "dependency_enforcement": "owner verifies work-packages/execution-gates; board text is informational",
-    "snapshot": "evidence/joint-execution/terminal-post282/20261027T141723213857Z/joint-firstmate-pstack.json",
+    "snapshot": "evidence/joint-execution/post279-closeout/20261027T161630424378Z/joint-firstmate-pstack.json",
     "entry_sha256": "9e2c366327a31ff71da277a21ea36571ebeca60ebce3372cee137af696eb89dc",
     "entry_identity": "installed Firstmate registry-install/bin/osstack; exact local binding is in sender handoff",
     "operations": "project-operations.md",
@@ -2052,60 +2319,60 @@
       "rrule": "FREQ=MINUTELY;INTERVAL=30",
       "target_thread_id": "01a178ed-616a-7bb1-8d20-13f4c1019245",
       "created_at": 1793098759153,
-      "updated_at": 1793109241967,
-      "observed_at": "2026-10-27T13:54:17.012240+00:00",
-      "config_sha256": "4cb0156499897cc76c961a1bb47cecdc0866c6e612d8306b044440d33facb493",
-      "queue": "279 then J01/J11 gates; J01 oracle independent session in progress",
+      "updated_at": 1793117689068,
+      "observed_at": "2026-10-27T16:16:43.998072+00:00",
+      "config_sha256": "49661a6c7ad58032324a8f657ad2ac269ddf8dbd800ca5600356be444104d5f0",
+      "queue": "N0 gate layers and JP-17a offline broker fixtures; no runtime qualification",
       "authority": "automation_update succeeded, persisted config reread; owner-attested tool result, not runtime scheduler proof",
       "goal_dispatch_enabled": false,
-      "base_sha": "ede5aadced37ac9dc29dd21f0e307ad2c46d2976",
+      "base_sha": "d3fa7ef681efc79a5fb2dff92172ef1be0978774",
       "observation_authority": "Owner-attested update tool receipt and re-read config; no scheduler execution attestation"
     },
     "socket_observation": {
       "uid": 501,
       "mode": "0o600",
-      "observed_at": "2026-10-27T14:17:39.505400+00:00"
+      "observed_at": "2026-10-27T16:16:43.998070+00:00"
     },
     "rpc_helper": {
-      "path": "evidence/joint-execution/terminal-post282/20261027T141723213857Z/ledger-rpc-helper.py",
+      "path": "evidence/joint-execution/post279-closeout/20261027T161630424378Z/ledger-rpc-helper.py",
       "sha256": "b1449d7b95df5012c9889d4afb2517f42fc7dc72c125948ba1018fbc40379e1e",
       "socket": "/tmp/osstack-debt-ledger.sock",
-      "scope": "Actual helper code and owner-observed socket; home remains deployment metadata."
+      "scope": "pinned helper bytes and observed socket; no development CLI/default DB"
     },
     "receipts": [
       {
-        "path": "evidence/joint-execution/terminal-post282/20261027T141723213857Z/subagent-dispatch-receipts.json",
-        "sha256": "dfa6c4de296d84c7df23b1fe07fc9949a332d201e49951b4456214c6391026bb"
+        "path": "evidence/joint-execution/post279-closeout/20261027T161630424378Z/subagent-dispatch-receipts.json",
+        "sha256": "914e4a8bfcf49abbbcc2a53bf1b4050239dbbe1749798e7ff2d02581b5b98cce"
       },
       {
-        "path": "evidence/joint-execution/terminal-post282/20261027T141723213857Z/terminal-preflight-receipt.json",
-        "sha256": "1497532eccfa2066acc4e644a8a7f5650575afed1dda5999042ed1f297603e3e"
+        "path": "evidence/joint-execution/post279-closeout/20261027T161630424378Z/terminal-preflight-receipt.json",
+        "sha256": "f6061a76ee6aaec9e711639a7b8cb033225aee30ac2258bd307450f179b2b8fd"
       },
       {
-        "path": "evidence/joint-execution/terminal-post282/20261027T141723213857Z/board-final-receipts.json",
-        "sha256": "4a94be092fa8560490a90a300027147e61efb5f864fa61de6d8ce24f274307b0"
+        "path": "evidence/joint-execution/post279-closeout/20261027T161630424378Z/board-final-receipts.json",
+        "sha256": "1da74376298865f272d7b2b5d7ab8c808cf57bdc6df6cdefd051c35c894ff02b"
       },
       {
-        "path": "evidence/joint-execution/terminal-post282/20261027T141723213857Z/automation-receipt.json",
-        "sha256": "2d8d98b36ab5d4c92e157baf787dad410421e359d10faa03465bc8b2131639a7"
+        "path": "evidence/joint-execution/post279-closeout/20261027T161630424378Z/automation-receipt.json",
+        "sha256": "a09cb0615576b9a15a9bb4127eaf36460f1b14d0d83d780f45cb4cc3cf60c350"
       }
     ],
-    "snapshot_sha256": "f4eb6f88a40b30ac87a6c528dc363d1c935e0c0d350b37989a0628f413c7e72a",
+    "snapshot_sha256": "4b35f3d3f3f405868831a30b8b536ef1bd8d81576b3075b3392a16ef6d2435e5",
     "board_snapshots": [
       {
-        "path": "evidence/joint-execution/terminal-post282/20261027T141723213857Z/joint-firstmate-pstack.json",
-        "sha256": "f4eb6f88a40b30ac87a6c528dc363d1c935e0c0d350b37989a0628f413c7e72a"
+        "path": "evidence/joint-execution/post279-closeout/20261027T161630424378Z/joint-firstmate-pstack.json",
+        "sha256": "4b35f3d3f3f405868831a30b8b536ef1bd8d81576b3075b3392a16ef6d2435e5"
       },
       {
-        "path": "evidence/joint-execution/terminal-post282/20261027T141723213857Z/firstmate-upgrade-roadmap.json",
-        "sha256": "1144e622f502c2979b8c55365814fc73b81145e43c9c856c8759c36541e1cd4f"
+        "path": "evidence/joint-execution/post279-closeout/20261027T161630424378Z/firstmate-upgrade-roadmap.json",
+        "sha256": "c31518c8dbc5c8f7e784a2fdb67db6c18a2aef9e711cf65e21cc3c4b4e53408f"
       },
       {
-        "path": "evidence/joint-execution/terminal-post282/20261027T141723213857Z/session-pilot-debt.json",
-        "sha256": "395184c1b02dbb9561f64c072310f32fd1e62b275773a531c8b4c22febad4516"
+        "path": "evidence/joint-execution/post279-closeout/20261027T161630424378Z/session-pilot-debt.json",
+        "sha256": "0cf76f9a97b671452062c1050cf24cb7b86e94bc7bc347ea6c8a28f6cb5405f4"
       }
     ],
-    "evidence_scope": "Current owner-collected post-#282 evidence for the next metadata commit; not asserted present at earlier observed PR heads. Full historical checkpoints are immutable.",
+    "evidence_scope": "Post-#279 merge checkpoint. Prior test/audit inputs remain pinned to their original code/base. Fresh three-board snapshots and bounded closeout receipts.",
     "metadata_scope": "Code/head diff allows docs and changesets, including executable offline checkpoint checks; these have separate Python validation and management audit, not runtime pnpm qualification."
   },
   "observation_rule": "PR snapshots carry their own observation time; handoff acceptance does not imply green CI, merged code or runtime qualification.",
@@ -2126,9 +2393,9 @@
     "O01_O02_O04_O05": "retain original stage-specific blocks"
   },
   "observation_window": {
-    "started_at": "2026-10-27T14:17:23.223473+00:00",
-    "scope": "Sequential live forge observations; no atomic GitHub/local snapshot claim.",
-    "finished_at": "2026-10-27T14:17:42.693698+00:00"
+    "started_at": "2026-10-27T16:16:30.423719+00:00",
+    "finished_at": "2026-10-27T16:16:43.998089+00:00",
+    "scope": "Sequential live forge/board observations; no atomic cross-service snapshot claim."
   },
   "checkpoint_history": [
     {
@@ -2154,6 +2421,10 @@
     {
       "path": "evidence/joint-execution/terminal-post282/20261027T141723213857Z/ledger-before-acb133249794c717a31a7730c2913752df9b3cd88f06d3972589613c930ddb59.json",
       "sha256": "acb133249794c717a31a7730c2913752df9b3cd88f06d3972589613c930ddb59"
+    },
+    {
+      "path": "evidence/joint-execution/post279-closeout/20261027T161630424378Z/ledger-before-e4ade4ca51da81e332aceec882d0ee2215339da312da8bd744ed6491e69bb566.json",
+      "sha256": "e4ade4ca51da81e332aceec882d0ee2215339da312da8bd744ed6491e69bb566"
     }
   ],
   "checkpoint_proof_version": 2,
@@ -2170,5 +2441,40 @@
     "observation_scope": "historical preflight only; head match is time-bound, not live",
     "report_sha256": "15c2d87838b07e43b2bf2d2d68121fa320828b7daae0c45d0fe29685185610b7",
     "report": "../../implementation/joint-behavior-retarget/subagent-terminal/report.md"
+  },
+  "next_batch": {
+    "id": "joint-nextwave-20261028",
+    "base_sha": "d3fa7ef681efc79a5fb2dff92172ef1be0978774",
+    "runtime_enabled": false,
+    "workers": [
+      {
+        "agent": "loader_adversarial",
+        "scope": "N0 gate-layer design and validator; preserves JA01/JA02/legacy/release",
+        "branch": "codex/joint-gate-layers"
+      },
+      {
+        "agent": "terminal_preflight",
+        "scope": "JP-17a offline broker SQL/held-orphan candidate only",
+        "branch": "codex/joint-broker-spec"
+      },
+      {
+        "agent": "cleanup_regression",
+        "scope": "independent frozen counterexamples and candidate verification; scratch only"
+      }
+    ],
+    "shared_owner": "root: execution ledger, execution.md, project-operations.md and PR publishing",
+    "full_regression_queue": "root single queue",
+    "qualification": "all new gates specified_not_run; broker deployment not qualified",
+    "delivery_observations": [
+      {
+        "pr": 283,
+        "branch": "codex/joint-nextwave-control",
+        "observed_head": "f3a56a0ad48b496a5230b5c20f47ca8feb41ff48",
+        "status": "ready_with_ci_pending_at_observation",
+        "observation": "../../implementation/joint-nextwave-control/pr283-published.json.gz",
+        "scope": "N0 layered design and #279 closeout; latest head/CI must be queried before approval",
+        "product_gate_passed": false
+      }
+    ]
   }
 }

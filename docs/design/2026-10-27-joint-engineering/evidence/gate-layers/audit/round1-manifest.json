@@ -1,0 +1,14 @@
+{
+  "code_sha": "b2d9c723c96ccc40ef48fb63e649239b69ab2c6e",
+  "base_sha": "d3fa7ef681efc79a5fb2dff92172ef1be0978774",
+  "files": {
+    "docs/design/2026-10-27-joint-engineering/gate-layers.md": "df3a23e495cd638badf8df429807bdb1abdcdc0d066baa06d763841bc86ba1b0",
+    "docs/design/2026-10-27-joint-engineering/validate-design.py": "4edba41c64f9a9389007ff1a53043f39e497c23398f4338fbf10544a8e9d150d",
+    "docs/design/2026-10-27-joint-engineering/test_validate_design.py": "482452137d5691905aac9cda441ea6eb3c3667a4b2230121d014455360263e16",
+    "docs/design/2026-10-27-joint-engineering/execution-gates.json": "d48b1ba3f53bee0e54bbc77a8745a367e744bdb9321d83c72fb96f01ac3b0742",
+    "docs/design/2026-10-27-joint-engineering/work-packages.json": "e6fb777e4003c826df4603a448e18ad9f76f367cab1316e41331c2aaca6c06d7",
+    "docs/design/2026-10-27-joint-engineering/acceptance-cases.json": "6e797a02fb94cd911da12403e1dccd5266c866f4775b73dcb76f7861b17c25a4",
+    "docs/design/2026-10-27-joint-engineering/contracts.md": "dd896c14c80e08d161e7dcfc8e79144575e81ec88f7529ed924edff3e50a7539",
+    "docs/design/2026-10-27-joint-engineering/audit-specifications.md": "e5fd5916b357d28e1a2ff0847cdc635db69fedce3918c67ba7a35ac1f6942bc5"
+  }
+}

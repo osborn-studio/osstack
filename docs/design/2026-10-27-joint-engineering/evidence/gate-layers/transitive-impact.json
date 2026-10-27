@@ -1,0 +1,657 @@
+{
+  "base_sha": "d3fa7ef681efc79a5fb2dff92172ef1be0978774",
+  "kind": "planning_graph_comparison_not_qualification",
+  "direct_component_overrides": [
+    "J02.scoped",
+    "J03.scoped",
+    "J04.scoped",
+    "J11.scoped"
+  ],
+  "no_longer_inherits_J01_scoped": [
+    "J02.scoped",
+    "J03.scoped",
+    "J04.scoped",
+    "J05.scoped",
+    "J06.scoped",
+    "J07.scoped",
+    "J11.scoped",
+    "J12.scoped",
+    "J13.scoped",
+    "J28.scoped",
+    "J31.scoped",
+    "J25.protocol",
+    "J25.e0",
+    "J17.schema_spec",
+    "J17.recovery",
+    "J12.full_recovery",
+    "J08.schema_spec",
+    "J08.recovery",
+    "J10.schema_spec",
+    "J10.recovery",
+    "J13.schema_spec",
+    "J13.recovery",
+    "J21.schema_spec",
+    "J21.recovery",
+    "J22.schema_spec",
+    "J22.recovery",
+    "J12.bootstrap_preflight",
+    "J03.diagnostics",
+    "legacy:D07.local_fixture",
+    "legacy:C03.budget_storage",
+    "legacy:I03.local_proof",
+    "legacy:I04.compat_recovery",
+    "legacy:DEBT01.safe_failure",
+    "legacy:DEBT02.recovery_contract",
+    "legacy:V03.diagnostic_retention",
+    "legacy:R03.external_contracts",
+    "legacy:C03.schema_spec",
+    "legacy:X03.schema_spec",
+    "legacy:I04.recovery_home",
+    "legacy:I04.recovery_broker",
+    "J02.legacy_full",
+    "J03.legacy_full",
+    "J04.legacy_full",
+    "J05.legacy_full",
+    "J06.legacy_full",
+    "J07.legacy_full",
+    "J11.legacy_full",
+    "J12.legacy_full",
+    "J13.legacy_full",
+    "J28.legacy_full",
+    "J31.legacy_full",
+    "local:C03.budget_storage"
+  ],
+  "execution_gate_closure": {
+    "J08.scoped": [
+      "J01.scoped",
+      "J08.admission_boundary"
+    ],
+    "J09.scoped": [
+      "J01.scoped",
+      "J08.admission_boundary"
+    ],
+    "J14.scoped": [
+      "J01.scoped",
+      "J08.admission_boundary"
+    ],
+    "J16.scoped": [
+      "J01.scoped",
+      "J08.admission_boundary"
+    ],
+    "J17.scoped": [
+      "J01.scoped",
+      "J08.admission_boundary"
+    ]
+  },
+  "legacy_cases_and_producers": "Original own acceptance cases, inherited producer edges and release requirements remain unchanged; incidental joint prerequisite inheritance is explicitly separated.",
+  "baseline_requires": {
+    "J01.scoped": [],
+    "J02.scoped": [
+      "J01.scoped"
+    ],
+    "J03.scoped": [
+      "J01.scoped"
+    ],
+    "J04.scoped": [
+      "J01.scoped",
+      "J02.scoped"
+    ],
+    "J05.scoped": [
+      "J02.scoped",
+      "J06.scoped",
+      "J25.e0"
+    ],
+    "J06.scoped": [
+      "J03.scoped"
+    ],
+    "J07.scoped": [
+      "J04.scoped",
+      "J05.scoped"
+    ],
+    "J08.scoped": [
+      "J03.scoped",
+      "J07.scoped",
+      "J12.scoped",
+      "J08.recovery"
+    ],
+    "J09.scoped": [
+      "J08.scoped"
+    ],
+    "J10.scoped": [
+      "J09.scoped",
+      "J23.scoped",
+      "J25.e1",
+      "J23.method_context",
+      "J12.scoped",
+      "J10.recovery"
+    ],
+    "J11.scoped": [
+      "J01.scoped"
+    ],
+    "J12.scoped": [
+      "J11.scoped",
+      "J12.bootstrap_preflight"
+    ],
+    "J13.scoped": [
+      "J12.scoped",
+      "J13.recovery"
+    ],
+    "J14.scoped": [
+      "J13.scoped",
+      "J02.scoped",
+      "J23.scoped"
+    ],
+    "J15.scoped": [
+      "J14.scoped",
+      "J06.scoped"
+    ],
+    "J16.scoped": [
+      "J15.scoped",
+      "J10.scoped",
+      "J07.scoped",
+      "J14.qualification",
+      "J23.harness"
+    ],
+    "J17.scoped": [
+      "J14.scoped",
+      "J12.scoped",
+      "J17.recovery"
+    ],
+    "J18.scoped": [
+      "J17.scoped",
+      "J10.scoped",
+      "J16.scoped"
+    ],
+    "J19.scoped": [
+      "J04.scoped",
+      "J15.scoped"
+    ],
+    "J20.scoped": [
+      "J15.scoped"
+    ],
+    "J21.scoped": [
+      "J17.scoped",
+      "J20.scoped",
+      "J21.recovery"
+    ],
+    "J22.scoped": [
+      "J30.scoped",
+      "J20.scoped",
+      "J22.recovery"
+    ],
+    "J23.scoped": [
+      "J01.scoped",
+      "J03.scoped"
+    ],
+    "J24.scoped": [
+      "J12.scoped",
+      "J20.scoped"
+    ],
+    "J25.scoped": [
+      "J25.e1"
+    ],
+    "J26.scoped": [
+      "J01.scoped",
+      "J02.scoped"
+    ],
+    "J27.scoped": [
+      "J16.scoped",
+      "J23.scoped",
+      "J24.scoped",
+      "J26.scoped",
+      "J31.scoped",
+      "J25.e1",
+      "J27.release_channel",
+      "local:C03.budget_storage",
+      "local:C04.start_dispatch",
+      "legacy:I03.local_proof",
+      "J13.recovery",
+      "J12.scoped",
+      "legacy:DEBT01.safe_failure",
+      "legacy:DEBT02.recovery_contract",
+      "legacy:V02.S2_faults",
+      "legacy:C06.start_resolver",
+      "legacy:X01.plan_invalidation",
+      "legacy:E01.recoverable_profile",
+      "local:E02.local_dispatch",
+      "legacy:V06.release_channel"
+    ],
+    "J28.scoped": [
+      "J11.scoped"
+    ],
+    "J29.scoped": [
+      "J25.scoped"
+    ],
+    "J30.scoped": [
+      "J07.scoped",
+      "J16.scoped"
+    ],
+    "J31.scoped": [
+      "J12.scoped",
+      "J07.scoped"
+    ],
+    "J32.scoped": [
+      "J16.scoped",
+      "J25.scoped"
+    ],
+    "J25.protocol": [
+      "J03.scoped"
+    ],
+    "J25.e0": [
+      "J25.protocol",
+      "J03.diagnostics"
+    ],
+    "J25.e1": [
+      "J25.e0",
+      "J09.scoped"
+    ],
+    "J23.method_context": [
+      "J23.scoped",
+      "J04.scoped",
+      "J09.scoped",
+      "J23.harness"
+    ],
+    "J14.qualification": [
+      "J14.scoped",
+      "J23.scoped",
+      "J23.harness"
+    ],
+    "J17.schema_spec": [
+      "J11.scoped"
+    ],
+    "J17.recovery": [
+      "J17.schema_spec",
+      "J12.scoped"
+    ],
+    "J23.harness": [
+      "J01.scoped",
+      "J03.scoped"
+    ],
+    "J12.full_recovery": [
+      "J12.scoped",
+      "J17.recovery"
+    ],
+    "J08.schema_spec": [
+      "J11.scoped"
+    ],
+    "J08.recovery": [
+      "J08.schema_spec",
+      "J12.scoped"
+    ],
+    "J10.schema_spec": [
+      "J11.scoped"
+    ],
+    "J10.recovery": [
+      "J10.schema_spec",
+      "J12.scoped"
+    ],
+    "J13.schema_spec": [
+      "J11.scoped"
+    ],
+    "J13.recovery": [
+      "J13.schema_spec",
+      "J12.scoped"
+    ],
+    "J21.schema_spec": [
+      "J11.scoped"
+    ],
+    "J21.recovery": [
+      "J21.schema_spec",
+      "J12.scoped"
+    ],
+    "J22.schema_spec": [
+      "J11.scoped"
+    ],
+    "J22.recovery": [
+      "J22.schema_spec",
+      "J12.scoped"
+    ],
+    "J12.bootstrap_preflight": [
+      "J11.scoped"
+    ],
+    "J10.protocol": [
+      "J01.scoped"
+    ],
+    "J27.release_channel": [
+      "J01.scoped"
+    ],
+    "J03.diagnostics": [
+      "J03.scoped"
+    ],
+    "legacy:D07.local_fixture": [
+      "J03.scoped"
+    ],
+    "legacy:D08.local_journey": [
+      "J16.scoped",
+      "legacy:D07.local_fixture"
+    ],
+    "legacy:I01.local_contract": [
+      "J16.scoped",
+      "legacy:D08.local_journey"
+    ],
+    "legacy:C03.budget_storage": [
+      "J13.scoped",
+      "legacy:I04.compat_recovery"
+    ],
+    "legacy:C04.start_dispatch": [
+      "J14.scoped",
+      "legacy:C03.budget_storage"
+    ],
+    "legacy:I03.local_proof": [
+      "J07.scoped"
+    ],
+    "legacy:I04.compat_recovery": [
+      "J12.full_recovery",
+      "legacy:I04.recovery_home",
+      "legacy:I04.recovery_broker"
+    ],
+    "legacy:DEBT01.safe_failure": [
+      "J31.scoped"
+    ],
+    "legacy:DEBT02.recovery_contract": [
+      "J12.scoped"
+    ],
+    "legacy:V06.release_channel": [
+      "J27.release_channel"
+    ],
+    "legacy:R05.qualifier_protocol": [
+      "J10.protocol"
+    ],
+    "legacy:V03.host_measurement": [
+      "J23.scoped",
+      "legacy:R05.qualifier_protocol"
+    ],
+    "legacy:V06.trust_operations": [
+      "J27.scoped",
+      "legacy:R05.qualifier_protocol"
+    ],
+    "legacy:V03.diagnostic_retention": [
+      "J03.diagnostics"
+    ],
+    "legacy:D07.host_qualification": [
+      "J23.scoped",
+      "legacy:D07.local_fixture",
+      "legacy:V03.host_measurement"
+    ],
+    "legacy:D08.host_qualification": [
+      "J16.scoped",
+      "legacy:D07.host_qualification",
+      "legacy:D08.local_journey"
+    ],
+    "legacy:X03.broker_storage": [
+      "J17.scoped",
+      "legacy:I04.compat_recovery"
+    ],
+    "legacy:C06.start_resolver": [
+      "J15.scoped"
+    ],
+    "legacy:X01.plan_invalidation": [
+      "J15.scoped"
+    ],
+    "legacy:E01.recoverable_profile": [
+      "J23.scoped",
+      "legacy:R05.qualifier_protocol",
+      "legacy:V03.host_measurement"
+    ],
+    "legacy:E02.local_dispatch": [
+      "J14.scoped",
+      "legacy:C03.budget_storage",
+      "legacy:C04.start_dispatch",
+      "legacy:C06.start_resolver",
+      "legacy:X01.plan_invalidation",
+      "legacy:E01.recoverable_profile",
+      "legacy:I03.local_proof",
+      "legacy:DEBT02.recovery_contract"
+    ],
+    "legacy:R03.external_contracts": [
+      "J02.scoped"
+    ],
+    "legacy:V02.S1_faults": [
+      "J23.scoped"
+    ],
+    "legacy:V02.S2_faults": [
+      "J23.scoped"
+    ],
+    "legacy:V02.S3_faults": [
+      "J23.scoped"
+    ],
+    "legacy:V02.S4_faults": [
+      "J23.scoped"
+    ],
+    "legacy:V02.S5_faults": [
+      "J23.scoped"
+    ],
+    "legacy:V02.S6_faults": [
+      "J23.scoped"
+    ],
+    "legacy:C03.schema_spec": [
+      "J11.scoped"
+    ],
+    "legacy:X03.schema_spec": [
+      "J17.schema_spec"
+    ],
+    "legacy:I04.recovery_home": [
+      "J12.scoped",
+      "legacy:C03.schema_spec",
+      "legacy:DEBT02.recovery_contract"
+    ],
+    "legacy:I04.recovery_broker": [
+      "J17.recovery",
+      "legacy:X03.schema_spec",
+      "legacy:DEBT02.recovery_contract"
+    ],
+    "J27.default_enable": [
+      "J27.scoped",
+      "J32.scoped",
+      "local:C03.budget_storage",
+      "local:C04.start_dispatch",
+      "legacy:I03.local_proof",
+      "J13.recovery",
+      "J12.scoped",
+      "legacy:DEBT01.safe_failure",
+      "legacy:DEBT02.recovery_contract",
+      "legacy:V02.S2_faults",
+      "legacy:C06.start_resolver",
+      "legacy:X01.plan_invalidation",
+      "legacy:E01.recoverable_profile",
+      "local:E02.local_dispatch",
+      "legacy:R05.qualifier_protocol",
+      "legacy:V03.host_measurement",
+      "legacy:V06.trust_operations",
+      "legacy:V06.release_channel"
+    ],
+    "J01.legacy_full": [
+      "J01.scoped"
+    ],
+    "J02.legacy_full": [
+      "J02.scoped"
+    ],
+    "J03.legacy_full": [
+      "J03.scoped"
+    ],
+    "J04.legacy_full": [
+      "J04.scoped"
+    ],
+    "J05.legacy_full": [
+      "J05.scoped"
+    ],
+    "J06.legacy_full": [
+      "J06.scoped"
+    ],
+    "J07.legacy_full": [
+      "J07.scoped"
+    ],
+    "J08.legacy_full": [
+      "J08.scoped"
+    ],
+    "J09.legacy_full": [
+      "J09.scoped"
+    ],
+    "J10.legacy_full": [
+      "J10.scoped"
+    ],
+    "J11.legacy_full": [
+      "J11.scoped"
+    ],
+    "J12.legacy_full": [
+      "J12.scoped"
+    ],
+    "J13.legacy_full": [
+      "J13.scoped"
+    ],
+    "J14.legacy_full": [
+      "J14.scoped"
+    ],
+    "J15.legacy_full": [
+      "J15.scoped"
+    ],
+    "J16.legacy_full": [
+      "J16.scoped"
+    ],
+    "J17.legacy_full": [
+      "J17.scoped"
+    ],
+    "J18.legacy_full": [
+      "J18.scoped"
+    ],
+    "J19.legacy_full": [
+      "J19.scoped"
+    ],
+    "J20.legacy_full": [
+      "J20.scoped"
+    ],
+    "J21.legacy_full": [
+      "J21.scoped"
+    ],
+    "J22.legacy_full": [
+      "J22.scoped"
+    ],
+    "J23.legacy_full": [
+      "J23.scoped"
+    ],
+    "J24.legacy_full": [
+      "J24.scoped"
+    ],
+    "J25.legacy_full": [
+      "J25.scoped"
+    ],
+    "J26.legacy_full": [
+      "J26.scoped"
+    ],
+    "J27.legacy_full": [
+      "J27.scoped"
+    ],
+    "J28.legacy_full": [
+      "J28.scoped"
+    ],
+    "J29.legacy_full": [
+      "J29.scoped"
+    ],
+    "J30.legacy_full": [
+      "J30.scoped"
+    ],
+    "J31.legacy_full": [
+      "J31.scoped"
+    ],
+    "J32.legacy_full": [
+      "J32.scoped"
+    ],
+    "local:C03.budget_storage": [
+      "J13.scoped",
+      "J13.recovery",
+      "J12.scoped"
+    ],
+    "local:C04.start_dispatch": [
+      "J14.scoped",
+      "local:C03.budget_storage"
+    ],
+    "local:E02.local_dispatch": [
+      "J14.scoped",
+      "local:C03.budget_storage",
+      "local:C04.start_dispatch",
+      "legacy:C06.start_resolver",
+      "legacy:X01.plan_invalidation",
+      "legacy:E01.recoverable_profile",
+      "legacy:I03.local_proof",
+      "legacy:DEBT02.recovery_contract"
+    ],
+    "J27.full_original_completion": [
+      "J01.legacy_full",
+      "J02.legacy_full",
+      "J03.legacy_full",
+      "J04.legacy_full",
+      "J05.legacy_full",
+      "J06.legacy_full",
+      "J07.legacy_full",
+      "J08.legacy_full",
+      "J09.legacy_full",
+      "J10.legacy_full",
+      "J11.legacy_full",
+      "J12.legacy_full",
+      "J13.legacy_full",
+      "J14.legacy_full",
+      "J15.legacy_full",
+      "J16.legacy_full",
+      "J17.legacy_full",
+      "J18.legacy_full",
+      "J19.legacy_full",
+      "J20.legacy_full",
+      "J21.legacy_full",
+      "J22.legacy_full",
+      "J23.legacy_full",
+      "J24.legacy_full",
+      "J25.legacy_full",
+      "J26.legacy_full",
+      "J27.legacy_full",
+      "J28.legacy_full",
+      "J29.legacy_full",
+      "J30.legacy_full",
+      "J31.legacy_full",
+      "J32.legacy_full",
+      "legacy:D07.local_fixture",
+      "legacy:D08.local_journey",
+      "legacy:I01.local_contract",
+      "legacy:C03.budget_storage",
+      "legacy:C04.start_dispatch",
+      "legacy:I03.local_proof",
+      "legacy:I04.compat_recovery",
+      "legacy:DEBT01.safe_failure",
+      "legacy:DEBT02.recovery_contract",
+      "legacy:V06.release_channel",
+      "legacy:R05.qualifier_protocol",
+      "legacy:V03.host_measurement",
+      "legacy:V06.trust_operations",
+      "legacy:V03.diagnostic_retention",
+      "legacy:D07.host_qualification",
+      "legacy:D08.host_qualification",
+      "legacy:X03.broker_storage",
+      "legacy:C06.start_resolver",
+      "legacy:X01.plan_invalidation",
+      "legacy:E01.recoverable_profile",
+      "legacy:E02.local_dispatch",
+      "legacy:R03.external_contracts",
+      "legacy:V02.S1_faults",
+      "legacy:V02.S2_faults",
+      "legacy:V02.S3_faults",
+      "legacy:V02.S4_faults",
+      "legacy:V02.S5_faults",
+      "legacy:V02.S6_faults",
+      "legacy:C03.schema_spec",
+      "legacy:X03.schema_spec",
+      "legacy:I04.recovery_home",
+      "legacy:I04.recovery_broker"
+    ]
+  },
+  "newly_inherits_J25_e0": [],
+  "host_gates_independent_of_E0": [
+    "J01.contracts",
+    "J01.scoped",
+    "J08.admission_boundary",
+    "J01.legacy_full",
+    "J10.protocol",
+    "J23.harness",
+    "J27.release_channel",
+    "legacy:V06.release_channel",
+    "legacy:V03.host_measurement"
+  ]
+}

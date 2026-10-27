@@ -1,0 +1,21 @@
+{
+  "recorded_at": "2026-10-27T16:40:23.285192+00:00",
+  "original_oracle_sha256": "51b34e498292099fa706ecb1f8fe0eccf5f505e715fcae9c880607ad77670c79",
+  "historical_test_candidate": "1b9d90987e8ba4290f521b60a68f7e62332a031a",
+  "historical_test": "postaudit-j05-unordered",
+  "original_reason": "JP-08a shared method-admission.ts with J05; added audit regression required J05 ordering for that path",
+  "supersession_reason": "Separate Sonnet review showed this new J05 dependency propagates E0 stop into Firstmate legacy; root accepted unique method-host-admission.ts ownership instead",
+  "new_prospective_validation_scope": [
+    "No shared method-admission.ts path in JP-08a; unique owner for method-host-admission.ts",
+    "No newly introduced E0 stop ancestor on Firstmate legacy producer closures",
+    "All original legacy safety dependencies retained",
+    "New registry/impact facts match graph"
+  ],
+  "status": "validated_new_scope",
+  "qualification": "Historical 27 checks remain evidence only for their exact old candidate, not permanent architectural invariants",
+  "new_candidate": "9f26018785f7b2831a0b1cc335328938c5e51b61",
+  "evidence": [
+    "n0-final-result.json",
+    "n0-final-positive-graph.json"
+  ]
+}
