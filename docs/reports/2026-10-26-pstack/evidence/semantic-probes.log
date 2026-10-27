@@ -1,0 +1,48 @@
+{
+  "status": "pass",
+  "probes": [
+    {
+      "probe": "watcher-ready-semantics",
+      "facts": {
+        "mergeStateStatus": "BLOCKED",
+        "reviewDecision": "REVIEW_REQUIRED"
+      },
+      "observed": "ready",
+      "interpretation": "Upstream ready is not sufficient evidence of forge permission or trusted OSStack authorization."
+    },
+    {
+      "probe": "watcher-ready-semantics",
+      "facts": {
+        "mergeStateStatus": "UNKNOWN",
+        "mergeable": "UNKNOWN"
+      },
+      "observed": "ready",
+      "interpretation": "Upstream ready is not sufficient evidence of forge permission or trusted OSStack authorization."
+    },
+    {
+      "probe": "ledger-last-writer",
+      "observed": {
+        "pr": "1",
+        "sha": "not-a-commit",
+        "verdict": "live-ui-verified",
+        "evidence": "also-missing",
+        "verifier": "worker",
+        "ts": "2026-10-26T16:37:25.124Z"
+      },
+      "interpretation": "The store is a bookkeeping layer; SHA validity, evidence existence and verifier precedence are not authenticated here."
+    },
+    {
+      "probe": "ledger-exact-head-key",
+      "observed": "different key rejected"
+    },
+    {
+      "probe": "statechart-parser",
+      "observed": "two observable transitions parsed"
+    },
+    {
+      "probe": "tlc-value-parser",
+      "observed": "TRUE parsed as boolean"
+    }
+  ]
+}
+

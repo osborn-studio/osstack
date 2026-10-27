@@ -1,0 +1,189 @@
+{
+  "kind": "source_inspection",
+  "schema_version": 1,
+  "dependency_resolution": "not_performed",
+  "repository_identity": "caller_asserted",
+  "expected_digest_checked": false,
+  "pin": {
+    "kind": "source_pin",
+    "schema_version": 1,
+    "repository": "https://github.com/kunchenguid/firstmate.git",
+    "commit": "af1c6817fc47589b162cbc361671c43cdb150933",
+    "subdir": ".agents/skills/harness-adapters",
+    "content_sha256": "233e79ef33297f419ab9593a8984b4330b1acc58c10fe3b83f4d4562eb12463d",
+    "license_refs": [
+      "sha256:945016bd37e1ba7211622ef60ee1d23ab727896ba7710edd21e8fbe983863969"
+    ]
+  },
+  "files": [
+    {
+      "path": ".agents/skills/harness-adapters/SKILL.md",
+      "mode": "100644",
+      "blob": "8fb46db929cc493c2fbb44b4a6fd57c84f401920",
+      "bytes": 6817,
+      "sha256": "5ff4680b848cf9fbf3d9a59950abf1b428bd0d90e434e710113b489faf95219c",
+      "role": "source"
+    },
+    {
+      "path": ".agents/skills/harness-adapters/references/common/control-and-recovery.md",
+      "mode": "100644",
+      "blob": "2967f3136f14247d16671753aef134c6a61b77df",
+      "bytes": 3622,
+      "sha256": "c67cb9b0b601d044ada3915483466c3a3760dc7dad64babd8808f64a82ce53ff",
+      "role": "source"
+    },
+    {
+      "path": ".agents/skills/harness-adapters/references/common/dispatch.md",
+      "mode": "100644",
+      "blob": "eda57198865d7df8680e75cb2a263192dcdd24bb",
+      "bytes": 2746,
+      "sha256": "d81478457a53b2e002426cf7dbadd4c018fd547d116848ca0561bc0f42269bfe",
+      "role": "source"
+    },
+    {
+      "path": ".agents/skills/harness-adapters/references/common/model-and-effort.md",
+      "mode": "100644",
+      "blob": "e575645978308c8fe0a6aadde5f3c66ef6f3314e",
+      "bytes": 3050,
+      "sha256": "374585e96d8c138b47aa47d97a987ce04e37cc2db0beada0e2e83d97f4b3d3fd",
+      "role": "source"
+    },
+    {
+      "path": ".agents/skills/harness-adapters/references/common/primary-hooks.md",
+      "mode": "100644",
+      "blob": "b6df64ea3d3e444a7992bfb881e06fa6799bd144",
+      "bytes": 2660,
+      "sha256": "346c708d15c6f1d24e52d6a21c5bc8d866cfea7ce249d53e5d569cf5b1e7256c",
+      "role": "source"
+    },
+    {
+      "path": ".agents/skills/harness-adapters/references/harness/agy.md",
+      "mode": "100644",
+      "blob": "406dcb1b070f50d6bb35d00122aacc64bc5ccdb0",
+      "bytes": 6381,
+      "sha256": "77aae15c4c507fb4e14a7a32543a3a321a67b75ba068332f40847cbdb2891232",
+      "role": "source"
+    },
+    {
+      "path": ".agents/skills/harness-adapters/references/harness/claude.md",
+      "mode": "100644",
+      "blob": "8b6812f08ea429206551d6575bdf4ea1ec500a9e",
+      "bytes": 13355,
+      "sha256": "1328a0d8f07eff43bd72d32cff8d92a8275d31c3950c0528ff424e5e882bf167",
+      "role": "source"
+    },
+    {
+      "path": ".agents/skills/harness-adapters/references/harness/codex.md",
+      "mode": "100644",
+      "blob": "57127ac1bd456db35f073ca188ff5e755867778b",
+      "bytes": 5829,
+      "sha256": "a49098fe06f4f6e49547457c954502111f54908e1bec276b02f2f90d6f4a9a3d",
+      "role": "source"
+    },
+    {
+      "path": ".agents/skills/harness-adapters/references/harness/commandcode.md",
+      "mode": "100644",
+      "blob": "97ffcb6056899552613076981c8a5dce2a7db9b8",
+      "bytes": 4521,
+      "sha256": "80815b0ffa93a98f194d2462e59effe586e7514ad60f769965ab32a500a15458",
+      "role": "source"
+    },
+    {
+      "path": ".agents/skills/harness-adapters/references/harness/cursor.md",
+      "mode": "100644",
+      "blob": "5e1c7932c76eaa74e56ebd1d337a1bea648f26f0",
+      "bytes": 7453,
+      "sha256": "9706cd419090c36aa25b37d674be1afcc5955b7307108209814a117ab9e68031",
+      "role": "source"
+    },
+    {
+      "path": ".agents/skills/harness-adapters/references/harness/devin.md",
+      "mode": "100644",
+      "blob": "c90e3e933642d9979c85130212a5a50f32a83854",
+      "bytes": 4460,
+      "sha256": "534719cf67de8daea135c98040ce47f39e3e282952ed3a812aab742d3ae5336e",
+      "role": "source"
+    },
+    {
+      "path": ".agents/skills/harness-adapters/references/harness/gemini.md",
+      "mode": "100644",
+      "blob": "b73bb8d9eb5c0cbb0cf17040e56664cac01eb4aa",
+      "bytes": 12177,
+      "sha256": "753c0bf9010236d9124be254c6579212615d8d8f2c37f43f1b86e288ffa05684",
+      "role": "source"
+    },
+    {
+      "path": ".agents/skills/harness-adapters/references/harness/grok.md",
+      "mode": "100644",
+      "blob": "8779fe49258889cd671f863799d80e47ffe9ab2d",
+      "bytes": 8459,
+      "sha256": "0dc78ec961bde04d4d19fd4da4dab1257f549a3dd4cc8de438547c9ca3442b85",
+      "role": "source"
+    },
+    {
+      "path": ".agents/skills/harness-adapters/references/harness/kimi.md",
+      "mode": "100644",
+      "blob": "dde113dc590a51aaa37cd1eadc65d3feba92ad23",
+      "bytes": 7717,
+      "sha256": "00ffff5cfbdecface6d704846412da6b33b4dada23e7b6fe9d4ba3ea28e9840e",
+      "role": "source"
+    },
+    {
+      "path": ".agents/skills/harness-adapters/references/harness/muse.md",
+      "mode": "100644",
+      "blob": "d00258e1f45f99e42ccafeec1104bc1169adc8e2",
+      "bytes": 5721,
+      "sha256": "c7e7b519675396d34cf86fb887bb8a5500b7fad46ce23dc81e302ad076e0019c",
+      "role": "source"
+    },
+    {
+      "path": ".agents/skills/harness-adapters/references/harness/omp.md",
+      "mode": "100644",
+      "blob": "e9a4443fdad1e805e6b78af87d759368125634e6",
+      "bytes": 8027,
+      "sha256": "3a1f034f41c24a2248fb05f92f250209347904fe2267523f01a05a3784c2aa92",
+      "role": "source"
+    },
+    {
+      "path": ".agents/skills/harness-adapters/references/harness/opencode.md",
+      "mode": "100644",
+      "blob": "1cab038a632153083c40b14e1b92d1a1217b8fbf",
+      "bytes": 10314,
+      "sha256": "0540706aff329fa66f28193985259c9555300088f5f99fadd83308711bd9b399",
+      "role": "source"
+    },
+    {
+      "path": ".agents/skills/harness-adapters/references/harness/pi.md",
+      "mode": "100644",
+      "blob": "3a84c2f8b441117b531af599808f45f03a48a80a",
+      "bytes": 6312,
+      "sha256": "4cd6edd66a094209fb7c7ead6b2c7f72f8accf5b616d498f43afc3878a570df0",
+      "role": "source"
+    },
+    {
+      "path": ".agents/skills/harness-adapters/references/harness/polytoken.md",
+      "mode": "100644",
+      "blob": "5c515589655b522c5d2c0c1b2e8fb3a954d3950a",
+      "bytes": 8665,
+      "sha256": "3fafcdc0f15fc5ed0887b9c1901b43218aad47cc6f2bdd7314826b3a97c67bbc",
+      "role": "source"
+    },
+    {
+      "path": ".agents/skills/harness-adapters/references/harness/rovo.md",
+      "mode": "100644",
+      "blob": "7cb313d0c48cacbf7d6ca27e504d3dc648ef322f",
+      "bytes": 13289,
+      "sha256": "c1e9d1147a6bb3a1d0fa7a7336fe9f4729baa766ff932d117a5d6e8078112e40",
+      "role": "source"
+    },
+    {
+      "path": "LICENSE",
+      "mode": "100644",
+      "blob": "5043b3a58af9c1ee101d4f7dec2d527d7ba0b2a4",
+      "bytes": 1065,
+      "sha256": "945016bd37e1ba7211622ef60ee1d23ab727896ba7710edd21e8fbe983863969",
+      "role": "license"
+    }
+  ],
+  "inspection_digest": "689b3009c7a9874b435ea4b99464435c291e8001536283ffad56d150003ea949"
+}

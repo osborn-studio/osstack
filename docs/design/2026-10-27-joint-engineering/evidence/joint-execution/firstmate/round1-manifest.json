@@ -1,0 +1,81 @@
+{
+  "base": "daad404e00c000247fdfb2adda13127c4c1c8e26",
+  "candidate": "635be2a7de4b83a9d325da789c54626c0c411bd5",
+  "files": [
+    {
+      "path": ".changeset/behavior-capability-contracts.md",
+      "sha256": "2cec7b91bdfbbf71df38729a5961c06df93c5c06742956d26fef4e6dfadcf636",
+      "bytes": 203
+    },
+    {
+      "path": ".changeset/session-send-receipt.md",
+      "sha256": "593308fbc72bf7428d6a0412e407b0c04f6991a72aafd056d6b263afc36895ba",
+      "bytes": 256
+    },
+    {
+      "path": "packages/cli/src/daemon.ts",
+      "sha256": "bb9c9acb7a0159255064725d46355a34b3257cf60d02007bbfd77df7101c6ea7",
+      "bytes": 205661
+    },
+    {
+      "path": "packages/cli/src/session-send-receipt.test.ts",
+      "sha256": "8cd0564287974f9005fb9d140abbd484e509515518ad5b02afcffaeb84a74bef",
+      "bytes": 9180
+    },
+    {
+      "path": "packages/protocol/src/behavior-capability.test.ts",
+      "sha256": "fec3789302c5ff1ed03d3325236a7b7b7f11a3ee744db51331d15732dedb05ad",
+      "bytes": 9637
+    },
+    {
+      "path": "packages/protocol/src/behavior-capability.ts",
+      "sha256": "c77e9a0681ed2f6c53b4ec41e72d5654cf206e4ee5cd27874d83aa262e51f5b2",
+      "bytes": 7775
+    },
+    {
+      "path": "packages/protocol/src/index.ts",
+      "sha256": "b01966abede11061fef602efea7ff39d105508e985c432e226d04b3e14b9458b",
+      "bytes": 5040
+    },
+    {
+      "path": "packages/core/src/state/session-continuations.ts",
+      "sha256": "c9fb344662206a52dad35d20bd185c9a976a50bd27526f8ea7eda0a5473132a1",
+      "bytes": 20452
+    },
+    {
+      "path": "packages/core/src/state/sessions.ts",
+      "sha256": "923c69781b1bdf9370e92cefeaef2fdb8128c2105eb5bf20f4163d37d84d5710",
+      "bytes": 13767
+    },
+    {
+      "path": "packages/protocol/src/engineering.ts",
+      "sha256": "d251764e375560b6a3146a92cf68887486a9001520ac15c3b8ec27cd3cca46ae",
+      "bytes": 5052
+    },
+    {
+      "path": "packages/core/src/state/engineering-store.ts",
+      "sha256": "a11803e6b2deab290e0fb1707576e99552fe106d1e4ea9725402b988fe8fe705",
+      "bytes": 52841
+    },
+    {
+      "path": "docs/design/2026-10-25-engineering-agent/runtime-contract-v2.md",
+      "ref": "4199d9aa",
+      "sha256": "e2d3317ab71eb90ccdda4d9f4044fe0ce7ff9a07b7a8f432a1923d8eabe670ee",
+      "bytes": 34771
+    },
+    {
+      "path": "docs/design/2026-10-26-firstmate-upgrade/audit-revision.md",
+      "ref": "4199d9aa",
+      "sha256": "546965671a4d09448a6bf16fcb15fbe88ec4fcadf916d47a9b1f7bfa04d57de7",
+      "bytes": 15825
+    },
+    {
+      "path": "docs/design/2026-10-26-firstmate-upgrade/work-packages.json",
+      "ref": "4199d9aa",
+      "sha256": "c79df92eef7d5a9aba3555f61dc58cfdfe1fa09d35df238abc1944bcec8447c9",
+      "bytes": 34375
+    }
+  ],
+  "diff_sha256": "ee247b50575ba9cb0025b57a7e21905e2adc8dae682c5062227ec11bc21ea723",
+  "prompt_sha256": "97579de736d0c1d409aee46807b5f528f6ac4192bc653c7671e0d2f8412b9200"
+}

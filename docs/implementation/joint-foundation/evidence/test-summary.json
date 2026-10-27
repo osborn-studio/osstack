@@ -1,0 +1,31 @@
+{
+  "base_commit": "ce543535be9b1ef96a8c4fb14d13ea8483444051",
+  "node": "22.22.1",
+  "passed_by_package": {
+    "compliance": 17,
+    "contracts": 15,
+    "github": 107,
+    "governance": 301,
+    "knowledge": 44,
+    "neat-eval": 16,
+    "protocol": 455,
+    "runtime": 1,
+    "core": 943,
+    "graph": 257,
+    "knowledge-cloud": 36,
+    "autonomy": 201,
+    "hermes-adapter": 22,
+    "plugins": 1,
+    "skill-registry": 3,
+    "skills": 2,
+    "agents": 361,
+    "config": 30,
+    "loop": 515,
+    "conformance": 9,
+    "supervisor": 88,
+    "cli": 2721
+  },
+  "passed_total": 6145,
+  "skipped": 5,
+  "explanation": "All 22 packages covered: serial workspace pass for unchanged packages; final protocol/core and full CLI re-runs for final candidate and corrected build/scratch environment. Not a single uninterrupted all-green invocation."
+}

@@ -1,0 +1,17 @@
+{
+  "docs/implementation/joint-source-inspection/README.md": "488ddc32d7b7c2ecce96469da0149041a7e0e13ffd1f75f34bf469f0597caa19",
+  "docs/implementation/joint-source-retarget/README.md": "62e973c253ed7dadd2eaf5314e38216aa2dddbe1d3228c5a9e624927bae402ec",
+  "docs/implementation/joint-source-retarget/audit-dispositions.md": "89cb4225438b9e1a46e4d174be1d09119570a6d4734636cbba29af46fa22ec48",
+  "packages/protocol/fixtures/joint/contracts.json": "44678447e55b424aae604b9be665716270230b5abfb94016d46887b1d354ae71",
+  "packages/protocol/fixtures/joint/digest-catalog.json": "638ab61bbf7a0b781e6e7bec356754de996960b0a11e0674b979eabb46f82273",
+  "packages/protocol/fixtures/joint/reference-vectors.json": "ba9dc5a4cfc29cac74b0435d915e99ae422edbd0f2cbf2e3158870bc8ed6b0c9",
+  "packages/protocol/scripts/joint-reference-vectors.py": "885a57e159cce7c8f222a88c68d5d2d7ba89c803075f2b063b522313013019c7",
+  "packages/protocol/src/joint-contracts.ts": "be85625a5105904fed1feae77c940851908e3187290c11e1692e64de8a050be2",
+  "packages/protocol/src/joint-evidence.ts": "364593f6bfdc1d65f7e4c09b7f63b7211ce9305961c5660ae985aad4bdf4a1cb",
+  "packages/protocol/src/joint-json.ts": "74818a6e5f142f7560752cc0b0179b88d9af6069d420d8a137442e8484eb1036",
+  "packages/protocol/src/joint-primitives.ts": "d0eeb917ea6ef91ed39943706ab78c9be84dc81ba89303f5e98d01cf89adc139",
+  "packages/skill-registry/package.json": "124e47fa09d7a81e0f08660ef0943cbbffd8ee627a34862527cbfd8999381ab3",
+  "packages/skill-registry/src/index.ts": "fc46fd55269a52cd50a4313525e59fece718e92353f747b95c07fff44dffd648",
+  "packages/skill-registry/src/source-snapshot.test.ts": "34326f9689ecd5810a8c6cf667acaf2d8e158516bffe9ae5660cc60ffdc875d8",
+  "packages/skill-registry/src/source-snapshot.ts": "b91c9e89a9c37fa02a386c37eccfb92417ffc8164a3e63165184db206d7d7c90"
+}

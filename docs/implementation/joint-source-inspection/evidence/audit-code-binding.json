@@ -1,0 +1,16 @@
+{
+  "code_commit": "32bd1bd287a7125fcc71c7312392ec5a3af2413b",
+  "model": "claude-sonnet-5-5",
+  "verdict": "PASS",
+  "is_error": false,
+  "code_files": {
+    "packages/skill-registry/src/source-snapshot.ts": "23ec6486263be2eaa9fa52e58b3038b022961560f6cd89660deab8ba31e5f923",
+    "packages/skill-registry/src/source-snapshot.test.ts": "bc5390c393acce370b45693af890308fb4a94144af785087c962d4b466467d2a",
+    "packages/skill-registry/package.json": "124e47fa09d7a81e0f08660ef0943cbbffd8ee627a34862527cbfd8999381ab3",
+    "packages/protocol/src/joint-json.ts": "74818a6e5f142f7560752cc0b0179b88d9af6069d420d8a137442e8484eb1036",
+    "packages/protocol/fixtures/joint/digest-catalog.json": "0ce88b493aff009278fb5b90ad9cf04bc2ad0931cb8025025e21574adb6ab4db",
+    "packages/protocol/src/joint-evidence.ts": "364593f6bfdc1d65f7e4c09b7f63b7211ce9305961c5660ae985aad4bdf4a1cb",
+    "packages/protocol/src/joint-primitives.ts": "d0eeb917ea6ef91ed39943706ab78c9be84dc81ba89303f5e98d01cf89adc139"
+  },
+  "scope": "static review; host tests and no runtime qualification are separate"
+}

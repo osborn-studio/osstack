@@ -1,0 +1,30 @@
+{
+  "captured_at_utc": "2026-10-26T17:03:31.075487+00:00",
+  "revision": 1,
+  "files": [
+    {
+      "path": "README.md",
+      "sha256": "91f9ca87c3603693eaa60fab0e813f2904077a01f0a573423766fa55bc0b43d4"
+    },
+    {
+      "path": "integration-spec.md",
+      "sha256": "2862239996d0cfd82bdee5df1fc80dbbeaa9a2953c8d63e02c7e5da6b69737a7"
+    },
+    {
+      "path": "capability-catalog.md",
+      "sha256": "2b07408ac15c9d5380ab3be88c81f677d55893b4d5d9977929b3fdf17ae0ca9a"
+    },
+    {
+      "path": "capability-map.json",
+      "sha256": "c481bf9e335e7a42b35fcff4102a80fcc04de6756cca042712b855242c22cb61"
+    },
+    {
+      "path": "acceptance-cases.json",
+      "sha256": "6c2a9630a3bc3cbca02642c38538d16a3134fc854457c38adcc7eb1a7631445d"
+    },
+    {
+      "path": "validation.md",
+      "sha256": "d417a63fb50b0c6e261841534489987e0248a3aa85c6a990ccdab47bef778e69"
+    }
+  ]
+}

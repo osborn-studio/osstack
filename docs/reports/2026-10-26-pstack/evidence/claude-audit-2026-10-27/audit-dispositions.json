@@ -1,0 +1,77 @@
+{
+  "scope": "host_assessment_of_complete_recovered_audit",
+  "rows": [
+    {
+      "id": "AU01",
+      "disposition": "accepted",
+      "host_priority": "P1",
+      "rationale": "与 CH03 相同的实际映射缺口。应将 article-delta 涉及包与完整实现映射分开；不能让 PS21 无实施项却被 P0 依赖。"
+    },
+    {
+      "id": "AU02",
+      "disposition": "partially_accepted",
+      "host_priority": "P2",
+      "rationale": "报告需注明既有 host 的受控提交身份转换例外。但不能采纳“head 只在 tree/diff 变化时才失效”的宽泛放行：现有实现还要求 expectedHeads、原 base、workspace 状态等。首期 local_verified 禁止 commit，不能把 guarded-git 后续阶段兼容问题说成首期必失败。"
+    },
+    {
+      "id": "AU03",
+      "disposition": "partially_accepted",
+      "host_priority": "P1",
+      "rationale": "通用检查 ID/角色如何映射仓库级注册项、optional check 的处理需明确；CheckReference 尚未定义，不能据此断言所有仓库都必然无法编译。报告 README 没有第 610 行；有效位置是规格 §4.3–4.4。"
+    },
+    {
+      "id": "AU04",
+      "disposition": "partially_accepted",
+      "host_priority": "P1",
+      "rationale": "必需方法材料的实际通道与摘要绑定需要 W17 验证。16KiB 为候选上限而非默认 prompt 预算，不是单独的矛盾；直接改 FrozenDeliveryContractV2.brief 的建议被 host 负例探针证伪。"
+    },
+    {
+      "id": "AU05",
+      "disposition": "partially_accepted",
+      "host_priority": "P2",
+      "rationale": "需定义稳定的失败归属和 timeout/cleanup 的 reason code。现有 evidence_refs/recovery.code 可以区分原因，unknown/blocked 文案也允许 blocked，所以不是类型上绝对无法表达；应补约束而非机械增加字段。"
+    },
+    {
+      "id": "AU06",
+      "disposition": "partially_accepted",
+      "host_priority": "P1",
+      "rationale": "采纳 primaryRef 与授权输入来源要明确；run/task 关联已由规格第 270 行交给现有 host，不能断言 link 相同就一定无法区分执行。父合同和 graph_input_ref 是备选，不能无条件要求所有任务新增父合同。"
+    },
+    {
+      "id": "AU07",
+      "disposition": "accepted",
+      "host_priority": "P2",
+      "rationale": "应分开字段结构、确定性决策逻辑、模型语义评估与真实调用；补固定 transcript/反例/oracle。integration 测试可以含模型，问题不在名称本身。A10 应覆盖新的 method-admission 路径并保留底层 host 回归。"
+    },
+    {
+      "id": "AU08",
+      "disposition": "partially_accepted",
+      "host_priority": "P2",
+      "rationale": "补能力覆盖和 inventory 集合相等检查；原 validation 已明确不证明分析正确。其“删除一条改为 199 仍通过”的证伪用例不成立，因为代码硬编码 len==200；重复一条替换另一条才可能保持计数绕过集合检查。两个工作区快照均存在，各有时间边界，不必强行统一名称。"
+    },
+    {
+      "id": "AU09",
+      "disposition": "partially_accepted",
+      "host_priority": "P2",
+      "rationale": "补 host profile 变化的具体拒绝样例与比较点有价值。规格已要求资格绑定 host profile 并只允许固定组合，不能说完全没有该约束；不必为每种不满足不变量的原因新增状态。"
+    },
+    {
+      "id": "AU10",
+      "disposition": "partially_accepted",
+      "host_priority": "P2",
+      "rationale": "需要对外部技能引用列明“未采用/由本地主机替代/实际依赖并固定版本”。当前集成不直接运行上游跨插件链，因此仅其他插件变化不必总触发新 candidate；区分 pstack 内容未变与运行资格是否仍有效。"
+    },
+    {
+      "id": "AU11",
+      "disposition": "accepted",
+      "host_priority": "P1",
+      "rationale": "required_artifacts 的消费者、可信写入/绑定、传给 reviewer 的方式及缺失的完成门槛未充分指定。需删除必需产物的负例真正阻止相关完成，且不能为此暗改 frozen Graph 拓扑。"
+    },
+    {
+      "id": "AU12",
+      "disposition": "not_accepted_as_defect",
+      "host_priority": "P3",
+      "rationale": "直接把 analysis_preparation 传到执行 admission 是有效的防御性边界测试，无须 compiler 先产生非法 execution_proposal。编译输入模式错误与执行宿主不支持可分别定义错误；现有文字不构成必然矛盾。"
+    }
+  ]
+}

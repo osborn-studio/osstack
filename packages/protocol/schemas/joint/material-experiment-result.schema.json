@@ -1,0 +1,86 @@
+{
+  "$ref": "#/definitions/MaterialExperimentResult",
+  "definitions": {
+    "MaterialExperimentResult": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "type": "number",
+          "const": 1
+        },
+        "kind": {
+          "type": "string",
+          "const": "material:experiment_result"
+        },
+        "protocol": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512
+        },
+        "arms": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "$ref": "#/definitions/MaterialExperimentResult/properties/protocol"
+              },
+              "candidate_digest": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "observation_refs": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/MaterialExperimentResult/properties/protocol"
+                },
+                "minItems": 1,
+                "maxItems": 128
+              }
+            },
+            "required": [
+              "id",
+              "candidate_digest",
+              "observation_refs"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 2,
+          "maxItems": 16
+        },
+        "ledger": {
+          "$ref": "#/definitions/MaterialExperimentResult/properties/protocol"
+        },
+        "oracle_digest": {
+          "$ref": "#/definitions/MaterialExperimentResult/properties/arms/items/properties/candidate_digest"
+        },
+        "result": {
+          "type": "string",
+          "enum": [
+            "inconclusive",
+            "supports_hypothesis",
+            "rejects_hypothesis"
+          ]
+        },
+        "uncertainty": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 16384
+        }
+      },
+      "required": [
+        "schema_version",
+        "kind",
+        "protocol",
+        "arms",
+        "ledger",
+        "oracle_digest",
+        "result",
+        "uncertainty"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$comment": "Shape only. Use @osstack/protocol/joint decodeJointContract for lexical and semantic checks. Host must authenticate provenance, resolve principal aliases, load referenced evidence, verify current authority and enforce durable CAS. Parsing grants no authority."
+}

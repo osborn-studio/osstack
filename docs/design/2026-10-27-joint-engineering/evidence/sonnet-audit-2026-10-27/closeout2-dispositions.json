@@ -1,0 +1,24 @@
+{
+  "original_verdict": "PASS_WITH_CONCERNS",
+  "items": [
+    {
+      "id": "CF01",
+      "severity": "P2",
+      "disposition": "accepted",
+      "resolution": "独立检查与复审发现相同缺口；release_bindings消费S2门槛，local C03/C04/E02变体只去broker前置，full_original_completion合取全部gate/case；三项负例防回归"
+    },
+    {
+      "id": "CF02",
+      "severity": "P2",
+      "disposition": "accepted",
+      "resolution": "恢复后态使用JADR15，保留JADR13试验root且修正Graph事务措辞；同步规范、任务和Firstmate addendum；不改历史原文"
+    },
+    {
+      "id": "CF03",
+      "severity": "P3",
+      "disposition": "accepted",
+      "resolution": "Profile向量更新support-profile.v2并重算；所有向量域匹配目录，补role投影向量和两项域漂移负例"
+    }
+  ],
+  "future_product_validation": "not_run"
+}

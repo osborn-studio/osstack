@@ -406,6 +406,9 @@ importers:
       '@osstack/core':
         specifier: workspace:*
         version: link:../core
+      '@osstack/protocol':
+        specifier: workspace:*
+        version: link:../protocol
       js-yaml:
         specifier: ^4.3.0
         version: 4.3.0

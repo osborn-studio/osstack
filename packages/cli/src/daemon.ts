@@ -899,7 +899,11 @@ async function acquireManualSessionAdmission(
   };
   try {
     const lease = await acquireSessionAdmission(ctx, session.agent_id, session.repo_path, session.run_id, controller.signal);
-    return { lease, controller, release: async () => { try { await lease.release(); } finally { clear(); } } };
+    return { lease, controller, release: async () => {
+      try { await lease.release(); }
+      catch { reportSessionCleanupFailure(session.session_id, session.run_id); }
+      finally { clear(); }
+    } };
   } catch (error) {
     clear();
     throw error;
@@ -1086,12 +1090,23 @@ async function executeReservedSessionTurn(
         if (await confirmAdapterStopped(adapter, session.run_id)) await lease?.release();
         else lease?.retain("session resume exit unconfirmed");
       } else await lease?.release();
+    } catch {
+      // GovernedExecution retains admission when physical release fails. Keep
+      // that obligation separate from the committed turn (or uncertain receipt).
+      // A cleanup error must not replace the result selected above.
+      reportSessionCleanupFailure(session.session_id, session.run_id);
     } finally {
       ctx.activeSessionSends.delete(session.session_id);
       if (ctx.activeRuns.get(session.run_id) === controller) ctx.activeRuns.delete(session.run_id);
       requestSupervisionScan(ctx, "session.send.settled");
     }
   }
+}
+
+function reportSessionCleanupFailure(sessionId: string, runId: string): void {
+  try {
+    process.stderr.write(`${JSON.stringify({ event: "session_cleanup_failed", session_id: sessionId, run_id: runId })}\n`);
+  } catch { /* Diagnostics must not replace the execution receipt. */ }
 }
 
 function requestSupervisionScan(ctx: DaemonContext, reason: string): void {

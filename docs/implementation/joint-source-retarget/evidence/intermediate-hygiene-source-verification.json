@@ -1,0 +1,36 @@
+{
+  "code_sha": "30d45851304852d45827b033da53307b2b17361e",
+  "started_at": "2026-10-27T10:16:34.047196+00:00",
+  "checks": [
+    {
+      "name": "final-frozen-build",
+      "command": [
+        "pnpm",
+        "build"
+      ],
+      "exit_code": 0,
+      "log": "source-final-frozen-build.log",
+      "sha256": "33a4b79d30ba4f59aa83d23893870ea9740679ed956df4e9cf0f0dcaf3e8b82a"
+    },
+    {
+      "name": "final-frozen-typecheck",
+      "command": [
+        "pnpm",
+        "typecheck:check"
+      ],
+      "exit_code": 0,
+      "log": "source-final-frozen-typecheck.log",
+      "sha256": "20b9f65cb8e40c7a95dc98149495bd781c17ed9e75d49cf1c2964bcb7beb899a"
+    },
+    {
+      "name": "final-frozen-lint",
+      "command": [
+        "pnpm",
+        "lint"
+      ],
+      "exit_code": 1,
+      "log": "source-final-frozen-lint.log",
+      "sha256": "91f39e015aa260828d5cd03377f0c7448eef120e82a1439c58c1319c75c78c6e"
+    }
+  ]
+}

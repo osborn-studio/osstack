@@ -1,0 +1,2047 @@
+{
+  "schema_version": 1,
+  "kind": "retained_acceptance_gates_not_execution_results",
+  "runtime_enabled": false,
+  "items": [
+    {
+      "id": "FM:WD-01",
+      "source_snapshot": "evidence/inputs/firstmate-pilot-scenarios.json",
+      "source_case_id": "WD-01",
+      "source_case_sha256": "797624f3b452be563f0822e986050d2a306311d6e825dbe135e4969bd7c2fcc8",
+      "original_status": "not_run",
+      "disposition": "retained_as_gate",
+      "gate_owner_work_item": "J03",
+      "applies_to": "original_capability_completion_and_corresponding_enabled_support_cell",
+      "assertion": "decision remains open",
+      "joint_pass_implies_legacy_pass": false,
+      "gates": [
+        "J03.legacy_full",
+        "J27.scoped"
+      ],
+      "local_opt_in_applicability": "required",
+      "local_opt_in_reason": "assertion applies to declared local bug-fix and Firstmate scope"
+    },
+    {
+      "id": "FM:WD-02",
+      "source_snapshot": "evidence/inputs/firstmate-pilot-scenarios.json",
+      "source_case_id": "WD-02",
+      "source_case_sha256": "05243c8a74cc764f0a5aaf76ad6780a6a9d4f10acfc9f928dbb4884a38eb9244",
+      "original_status": "not_run",
+      "disposition": "retained_as_gate",
+      "gate_owner_work_item": "J03",
+      "applies_to": "original_capability_completion_and_corresponding_enabled_support_cell",
+      "assertion": "decision and blocked edge remain",
+      "joint_pass_implies_legacy_pass": false,
+      "gates": [
+        "J03.legacy_full",
+        "J27.scoped"
+      ],
+      "local_opt_in_applicability": "required",
+      "local_opt_in_reason": "assertion applies to declared local bug-fix and Firstmate scope"
+    },
+    {
+      "id": "FM:WD-03",
+      "source_snapshot": "evidence/inputs/firstmate-pilot-scenarios.json",
+      "source_case_id": "WD-03",
+      "source_case_sha256": "f9c866a1903ef1a39f88d215511d7a1a9a9665ef940c7a7811079d908ed2b4d1",
+      "original_status": "not_run",
+      "disposition": "retained_as_gate",
+      "gate_owner_work_item": "J20",
+      "applies_to": "original_capability_completion_and_corresponding_enabled_support_cell",
+      "assertion": "all authoritative open decisions appear",
+      "joint_pass_implies_legacy_pass": false,
+      "gates": [
+        "J20.legacy_full",
+        "J27.scoped"
+      ],
+      "local_opt_in_applicability": "required",
+      "local_opt_in_reason": "assertion applies to declared local bug-fix and Firstmate scope"
+    },
+    {
+      "id": "FM:WD-04",
+      "source_snapshot": "evidence/inputs/firstmate-pilot-scenarios.json",
+      "source_case_id": "WD-04",
+      "source_case_sha256": "d6d6756642c487a3ff50cee8a929f593ce93340759cb7cd7747b45bf7934ba21",
+      "original_status": "not_run",
+      "disposition": "retained_as_gate",
+      "gate_owner_work_item": "J03",
+      "applies_to": "original_capability_completion_and_corresponding_enabled_support_cell",
+      "assertion": "unknown observation; no implicit clear",
+      "joint_pass_implies_legacy_pass": false,
+      "gates": [
+        "J03.legacy_full",
+        "J27.scoped"
+      ],
+      "local_opt_in_applicability": "required",
+      "local_opt_in_reason": "assertion applies to declared local bug-fix and Firstmate scope"
+    },
+    {
+      "id": "FM:WD-05",
+      "source_snapshot": "evidence/inputs/firstmate-pilot-scenarios.json",
+      "source_case_id": "WD-05",
+      "source_case_sha256": "a0dceff0619027a4dc0fa1c7f0db867ec6e5075c94caf2f25727761fbd8ff374",
+      "original_status": "not_run",
+      "disposition": "retained_as_gate",
+      "gate_owner_work_item": "J15",
+      "applies_to": "original_capability_completion_and_corresponding_enabled_support_cell",
+      "assertion": "answer reserved for that subject only",
+      "joint_pass_implies_legacy_pass": false,
+      "gates": [
+        "J15.legacy_full",
+        "J27.scoped"
+      ],
+      "local_opt_in_applicability": "required",
+      "local_opt_in_reason": "assertion applies to declared local bug-fix and Firstmate scope"
+    },
+    {
+      "id": "FM:WD-06",
+      "source_snapshot": "evidence/inputs/firstmate-pilot-scenarios.json",
+      "source_case_id": "WD-06",
+      "source_case_sha256": "48ac1f500b84bf94504372c99b58a53e4682ffe3ce04509c520010e18100d71a",
+      "original_status": "not_run",
+      "disposition": "retained_as_gate",
+      "gate_owner_work_item": "J15",
+      "applies_to": "original_capability_completion_and_corresponding_enabled_support_cell",
+      "assertion": "stale_decision; no send",
+      "joint_pass_implies_legacy_pass": false,
+      "gates": [
+        "J15.legacy_full",
+        "J27.scoped"
+      ],
+      "local_opt_in_applicability": "required",
+      "local_opt_in_reason": "assertion applies to declared local bug-fix and Firstmate scope"
+    },
+    {
+      "id": "FM:WD-07",
+      "source_snapshot": "evidence/inputs/firstmate-pilot-scenarios.json",
+      "source_case_id": "WD-07",
+      "source_case_sha256": "caf10ab34ccf8085fc77a07b458d98e0a30a17d82e1f922717ce0ee976fb71d8",
+      "original_status": "not_run",
+      "disposition": "retained_as_gate",
+      "gate_owner_work_item": "J15",
+      "applies_to": "original_capability_completion_and_corresponding_enabled_support_cell",
+      "assertion": "hash mismatch; no send",
+      "joint_pass_implies_legacy_pass": false,
+      "gates": [
+        "J15.legacy_full",
+        "J27.scoped"
+      ],
+      "local_opt_in_applicability": "required",
+      "local_opt_in_reason": "assertion applies to declared local bug-fix and Firstmate scope"
+    },
+    {
+      "id": "FM:WD-08",
+      "source_snapshot": "evidence/inputs/firstmate-pilot-scenarios.json",
+      "source_case_id": "WD-08",
+      "source_case_sha256": "7e58f4679f8a87f8bc2735a9b60f462f9ce0a6988f1dfcba1813e76f2d1a771a",
+      "original_status": "not_run",
+      "disposition": "retained_as_gate",
+      "gate_owner_work_item": "J15",
+      "applies_to": "original_capability_completion_and_corresponding_enabled_support_cell",
+      "assertion": "scope_mismatch; no send",
+      "joint_pass_implies_legacy_pass": false,
+      "gates": [
+        "J15.legacy_full",
+        "J27.scoped"
+      ],
+      "local_opt_in_applicability": "required",
+      "local_opt_in_reason": "assertion applies to declared local bug-fix and Firstmate scope"
+    },
+    {
+      "id": "FM:WD-09",
+      "source_snapshot": "evidence/inputs/firstmate-pilot-scenarios.json",
+      "source_case_id": "WD-09",
+      "source_case_sha256": "7c6a67c15f5ace17aa788c0d3b69b26029979b3268ce933de59e290040ff9f99",
+      "original_status": "not_run",
+      "disposition": "retained_as_gate",
+      "gate_owner_work_item": "J15",
+      "applies_to": "original_capability_completion_and_corresponding_enabled_support_cell",
+      "assertion": "ask for the named decision; no send",
+      "joint_pass_implies_legacy_pass": false,
+      "gates": [
+        "J15.legacy_full",
+        "J27.scoped"
+      ],
+      "local_opt_in_applicability": "required",
+      "local_opt_in_reason": "assertion applies to declared local bug-fix and Firstmate scope"
+    },
+    {
+      "id": "FM:WD-10",
+      "source_snapshot": "evidence/inputs/firstmate-pilot-scenarios.json",
+      "source_case_id": "WD-10",
+      "source_case_sha256": "fb5dd7ea67ce0b7fd74e52352a5bd411751e9a0e399a795cc2021ab4615c6ade",
+      "original_status": "not_run",
+      "disposition": "retained_as_gate",
+      "gate_owner_work_item": "J15",
+      "applies_to": "original_capability_completion_and_corresponding_enabled_support_cell",
+      "assertion": "reject unauthenticated actor",
+      "joint_pass_implies_legacy_pass": false,
+      "gates": [
+        "J15.legacy_full",
+        "J27.scoped"
+      ],
+      "local_opt_in_applicability": "required",
+      "local_opt_in_reason": "assertion applies to declared local bug-fix and Firstmate scope"
+    },
+    {
+      "id": "FM:WD-11",
+      "source_snapshot": "evidence/inputs/firstmate-pilot-scenarios.json",
+      "source_case_id": "WD-11",
+      "source_case_sha256": "4129b7584f322916cfc8f6250add438bcab3407d1f57e6776a99bab2694ef303",
+      "original_status": "not_run",
+      "disposition": "retained_as_gate",
+      "gate_owner_work_item": "J15",
+      "applies_to": "original_capability_completion_and_corresponding_enabled_support_cell",
+      "assertion": "signed_approval_required",
+      "joint_pass_implies_legacy_pass": false,
+      "gates": [
+        "J15.legacy_full",
+        "J27.scoped"
+      ],
+      "local_opt_in_applicability": "required",
+      "local_opt_in_reason": "assertion applies to declared local bug-fix and Firstmate scope"
+    },
+    {
+      "id": "FM:WD-12",
+      "source_snapshot": "evidence/inputs/firstmate-pilot-scenarios.json",
+      "source_case_id": "WD-12",
+      "source_case_sha256": "9eae995d2ba19d85fb5fd9e2c36efe63d0cc99cf442c9d1a146b939ca959bf11",
+      "original_status": "not_run",
+      "disposition": "retained_as_gate",
+      "gate_owner_work_item": "J15",
+      "applies_to": "original_capability_completion_and_corresponding_enabled_support_cell",
+      "assertion": "answer fact retained; no unauthorized execution",
+      "joint_pass_implies_legacy_pass": false,
+      "gates": [
+        "J15.legacy_full",
+        "J27.scoped"
+      ],
+      "local_opt_in_applicability": "required",
+      "local_opt_in_reason": "assertion applies to declared local bug-fix and Firstmate scope"
+    },
+    {
+      "id": "FM:WD-13",
+      "source_snapshot": "evidence/inputs/firstmate-pilot-scenarios.json",
+      "source_case_id": "WD-13",
+      "source_case_sha256": "cafc3f659376dff1bd5b1d6d0c6846a252eb9c85c3577231c6861773a29fcc19",
+      "original_status": "not_run",
+      "disposition": "retained_as_gate",
+      "gate_owner_work_item": "J14",
+      "applies_to": "original_capability_completion_and_corresponding_enabled_support_cell",
+      "assertion": "one original receipt; no duplicate send",
+      "joint_pass_implies_legacy_pass": false,
+      "gates": [
+        "J14.legacy_full",
+        "J27.scoped"
+      ],
+      "local_opt_in_applicability": "required",
+      "local_opt_in_reason": "assertion applies to declared local bug-fix and Firstmate scope"
+    },
+    {
+      "id": "FM:WD-14",
+      "source_snapshot": "evidence/inputs/firstmate-pilot-scenarios.json",
+      "source_case_id": "WD-14",
+      "source_case_sha256": "70ddac04c9c1c532d111ce8599b944b1961bab7c0a1051415902779f388ed327",
+      "original_status": "not_run",
+      "disposition": "retained_as_gate",
+      "gate_owner_work_item": "J14",
+      "applies_to": "original_capability_completion_and_corresponding_enabled_support_cell",
+      "assertion": "action_conflict",
+      "joint_pass_implies_legacy_pass": false,
+      "gates": [
+        "J14.legacy_full",
+        "J27.scoped"
+      ],
+      "local_opt_in_applicability": "required",
+      "local_opt_in_reason": "assertion applies to declared local bug-fix and Firstmate scope"
+    },
+    {
+      "id": "FM:WD-15",
+      "source_snapshot": "evidence/inputs/firstmate-pilot-scenarios.json",
+      "source_case_id": "WD-15",
+      "source_case_sha256": "901b44084bfa8d7b1b009bc8f671ab5e02a16ace7833255e4ea5e472cdf55c29",
+      "original_status": "not_run",
+      "disposition": "retained_as_gate",
+      "gate_owner_work_item": "J14",
+      "applies_to": "original_capability_completion_and_corresponding_enabled_support_cell",
+      "assertion": "one accepted reservation",
+      "joint_pass_implies_legacy_pass": false,
+      "gates": [
+        "J14.legacy_full",
+        "J27.scoped"
+      ],
+      "local_opt_in_applicability": "required",
+      "local_opt_in_reason": "assertion applies to declared local bug-fix and Firstmate scope"
+    },
+    {
+      "id": "FM:WD-16",
+      "source_snapshot": "evidence/inputs/firstmate-pilot-scenarios.json",
+      "source_case_id": "WD-16",
+      "source_case_sha256": "366360268441dff13d38430f5787195235f87d2aaefe946bba55ab03d57865e9",
+      "original_status": "not_run",
+      "disposition": "retained_as_gate",
+      "gate_owner_work_item": "J14",
+      "applies_to": "original_capability_completion_and_corresponding_enabled_support_cell",
+      "assertion": "qualified reserved row may perform its first dispatch after proof; committed or legacy unknown never resent",
+      "joint_pass_implies_legacy_pass": false,
+      "gates": [
+        "J14.legacy_full",
+        "J27.scoped"
+      ],
+      "local_opt_in_applicability": "required",
+      "local_opt_in_reason": "assertion applies to declared local bug-fix and Firstmate scope"
+    },
+    {
+      "id": "FM:WD-17",
+      "source_snapshot": "evidence/inputs/firstmate-pilot-scenarios.json",
+      "source_case_id": "WD-17",
+      "source_case_sha256": "8242e8d28a218441f8d357045d017baef2eefa63f99df2426ca74a24ee19cb52",
+      "original_status": "not_run",
+      "disposition": "retained_as_gate",
+      "gate_owner_work_item": "J14",
+      "applies_to": "original_capability_completion_and_corresponding_enabled_support_cell",
+      "assertion": "unknown; query exact original action",
+      "joint_pass_implies_legacy_pass": false,
+      "gates": [
+        "J14.legacy_full",
+        "J27.scoped"
+      ],
+      "local_opt_in_applicability": "required",
+      "local_opt_in_reason": "assertion applies to declared local bug-fix and Firstmate scope"
+    },
+    {
+      "id": "FM:WD-18",
+      "source_snapshot": "evidence/inputs/firstmate-pilot-scenarios.json",
+      "source_case_id": "WD-18",
+      "source_case_sha256": "fbc123bd71f68da83daa84d0b3769e46631155fba145f0ac75d9d54e521ccdaa",
+      "original_status": "not_run",
+      "disposition": "retained_as_gate",
+      "gate_owner_work_item": "J14",
+      "applies_to": "original_capability_completion_and_corresponding_enabled_support_cell",
+      "assertion": "preserve unknown and original identity",
+      "joint_pass_implies_legacy_pass": false,
+      "gates": [
+        "J14.legacy_full",
+        "J27.scoped"
+      ],
+      "local_opt_in_applicability": "required",
+      "local_opt_in_reason": "assertion applies to declared local bug-fix and Firstmate scope"
+    },
+    {
+      "id": "FM:WD-19",
+      "source_snapshot": "evidence/inputs/firstmate-pilot-scenarios.json",
+      "source_case_id": "WD-19",
+      "source_case_sha256": "db013846fdaa19510ac1e271d83c9aa0d18c42eb3000a3945e1422a059a8d508",
+      "original_status": "not_run",
+      "disposition": "retained_as_gate",
+      "gate_owner_work_item": "J14",
+      "applies_to": "original_capability_completion_and_corresponding_enabled_support_cell",
+      "assertion": "clear only matching edge; observe existing Session",
+      "joint_pass_implies_legacy_pass": false,
+      "gates": [
+        "J14.legacy_full",
+        "J27.scoped"
+      ],
+      "local_opt_in_applicability": "required",
+      "local_opt_in_reason": "assertion applies to declared local bug-fix and Firstmate scope"
+    },
+    {
+      "id": "FM:WD-20",
+      "source_snapshot": "evidence/inputs/firstmate-pilot-scenarios.json",
+      "source_case_id": "WD-20",
+      "source_case_sha256": "b647781f3705039ee10b5a62fcdda378a445626b44fc33fa6effd7451dc4bc07",
+      "original_status": "not_run",
+      "disposition": "retained_as_gate",
+      "gate_owner_work_item": "J15",
+      "applies_to": "original_capability_completion_and_corresponding_enabled_support_cell",
+      "assertion": "C still blocks its dependent steps",
+      "joint_pass_implies_legacy_pass": false,
+      "gates": [
+        "J15.legacy_full",
+        "J27.scoped"
+      ],
+      "local_opt_in_applicability": "required",
+      "local_opt_in_reason": "assertion applies to declared local bug-fix and Firstmate scope"
+    },
+    {
+      "id": "FM:WD-21",
+      "source_snapshot": "evidence/inputs/firstmate-pilot-scenarios.json",
+      "source_case_id": "WD-21",
+      "source_case_sha256": "1147993cf8feb986ba5edce380caa805016adcde8a8bea0b0b734080b57b369c",
+      "original_status": "not_run",
+      "disposition": "retained_as_gate",
+      "gate_owner_work_item": "J14",
+      "applies_to": "original_capability_completion_and_corresponding_enabled_support_cell",
+      "assertion": "host rejects stale generation",
+      "joint_pass_implies_legacy_pass": false,
+      "gates": [
+        "J14.legacy_full",
+        "J27.scoped"
+      ],
+      "local_opt_in_applicability": "required",
+      "local_opt_in_reason": "assertion applies to declared local bug-fix and Firstmate scope"
+    },
+    {
+      "id": "FM:WD-22",
+      "source_snapshot": "evidence/inputs/firstmate-pilot-scenarios.json",
+      "source_case_id": "WD-22",
+      "source_case_sha256": "e7ce6848074465a4bf67b36bd5fd6d09c2076ab937941caff2d1828f041a15c5",
+      "original_status": "not_run",
+      "disposition": "retained_as_gate",
+      "gate_owner_work_item": "J14",
+      "applies_to": "original_capability_completion_and_corresponding_enabled_support_cell",
+      "assertion": "no new resume; already sent answer not erased",
+      "joint_pass_implies_legacy_pass": false,
+      "gates": [
+        "J14.legacy_full",
+        "J27.scoped"
+      ],
+      "local_opt_in_applicability": "required",
+      "local_opt_in_reason": "assertion applies to declared local bug-fix and Firstmate scope"
+    },
+    {
+      "id": "FM:WD-23",
+      "source_snapshot": "evidence/inputs/firstmate-pilot-scenarios.json",
+      "source_case_id": "WD-23",
+      "source_case_sha256": "bad3ebb76a7c4f59027da5620a06b382125cd1fc02ed799cfc797e24fd8bf3e2",
+      "original_status": "not_run",
+      "disposition": "retained_as_gate",
+      "gate_owner_work_item": "J20",
+      "applies_to": "original_capability_completion_and_corresponding_enabled_support_cell",
+      "assertion": "zero model calls; bounded notifications",
+      "joint_pass_implies_legacy_pass": false,
+      "gates": [
+        "J20.legacy_full",
+        "J27.scoped"
+      ],
+      "local_opt_in_applicability": "required",
+      "local_opt_in_reason": "assertion applies to declared local bug-fix and Firstmate scope"
+    },
+    {
+      "id": "FM:WD-24",
+      "source_snapshot": "evidence/inputs/firstmate-pilot-scenarios.json",
+      "source_case_id": "WD-24",
+      "source_case_sha256": "364dc1fac0817d9aeec4a07b554d8b48fc6d4c259cd765f4d71b363720635b6b",
+      "original_status": "not_run",
+      "disposition": "retained_as_gate",
+      "gate_owner_work_item": "J15",
+      "applies_to": "original_capability_completion_and_corresponding_enabled_support_cell",
+      "assertion": "decision remains unanswered; no authority added",
+      "joint_pass_implies_legacy_pass": false,
+      "gates": [
+        "J15.legacy_full",
+        "J27.scoped"
+      ],
+      "local_opt_in_applicability": "required",
+      "local_opt_in_reason": "assertion applies to declared local bug-fix and Firstmate scope"
+    },
+    {
+      "id": "FM:WD-25",
+      "source_snapshot": "evidence/inputs/firstmate-pilot-scenarios.json",
+      "source_case_id": "WD-25",
+      "source_case_sha256": "af869fbad2e49543748ee4333d9769728264ce028e1f8cff6ede266f3c3f1015",
+      "original_status": "not_run",
+      "disposition": "retained_as_gate",
+      "gate_owner_work_item": "J20",
+      "applies_to": "original_capability_completion_and_corresponding_enabled_support_cell",
+      "assertion": "same approval restrictions remain",
+      "joint_pass_implies_legacy_pass": false,
+      "gates": [
+        "J20.legacy_full",
+        "J27.scoped"
+      ],
+      "local_opt_in_applicability": "required",
+      "local_opt_in_reason": "assertion applies to declared local bug-fix and Firstmate scope"
+    },
+    {
+      "id": "FM:WD-26",
+      "source_snapshot": "evidence/inputs/firstmate-pilot-scenarios.json",
+      "source_case_id": "WD-26",
+      "source_case_sha256": "a82488815911105ddc4ccc051eb1618608706861c321b50705a69482aa70e811",
+      "original_status": "not_run",
+      "disposition": "retained_as_gate",
+      "gate_owner_work_item": "J20",
+      "applies_to": "original_capability_completion_and_corresponding_enabled_support_cell",
+      "assertion": "incremental results plus still-open question",
+      "joint_pass_implies_legacy_pass": false,
+      "gates": [
+        "J20.legacy_full",
+        "J27.scoped"
+      ],
+      "local_opt_in_applicability": "required",
+      "local_opt_in_reason": "assertion applies to declared local bug-fix and Firstmate scope"
+    },
+    {
+      "id": "FM:WD-27",
+      "source_snapshot": "evidence/inputs/firstmate-pilot-scenarios.json",
+      "source_case_id": "WD-27",
+      "source_case_sha256": "46042ed72b4c320b09d97ec12ab0bd5e9fcab23d4834bbe2cef556e807233429",
+      "original_status": "not_run",
+      "disposition": "retained_as_gate",
+      "gate_owner_work_item": "J07",
+      "applies_to": "original_capability_completion_and_corresponding_enabled_support_cell",
+      "assertion": "completion refused",
+      "joint_pass_implies_legacy_pass": false,
+      "gates": [
+        "J07.legacy_full",
+        "J27.scoped"
+      ],
+      "local_opt_in_applicability": "required",
+      "local_opt_in_reason": "assertion applies to declared local bug-fix and Firstmate scope"
+    },
+    {
+      "id": "FM:WD-28",
+      "source_snapshot": "evidence/inputs/firstmate-pilot-scenarios.json",
+      "source_case_id": "WD-28",
+      "source_case_sha256": "2622b06d98aaaca5d6125fd715a08f92c7c958fd27f6b7923fb05cf834e49970",
+      "original_status": "not_run",
+      "disposition": "retained_as_gate",
+      "gate_owner_work_item": "J14",
+      "applies_to": "original_capability_completion_and_corresponding_enabled_support_cell",
+      "assertion": "no teardown; state is stop_requested/unknown",
+      "joint_pass_implies_legacy_pass": false,
+      "gates": [
+        "J14.legacy_full",
+        "J27.scoped"
+      ],
+      "local_opt_in_applicability": "required",
+      "local_opt_in_reason": "assertion applies to declared local bug-fix and Firstmate scope"
+    },
+    {
+      "id": "FM:WD-29",
+      "source_snapshot": "evidence/inputs/firstmate-pilot-scenarios.json",
+      "source_case_id": "WD-29",
+      "source_case_sha256": "229ae137dfa8d07600702fdbb872ac700ce6f86b8d49c8f47f0144c768651979",
+      "original_status": "not_run",
+      "disposition": "retained_as_gate",
+      "gate_owner_work_item": "J20",
+      "applies_to": "original_capability_completion_and_corresponding_enabled_support_cell",
+      "assertion": "no freshness or grant extension",
+      "joint_pass_implies_legacy_pass": false,
+      "gates": [
+        "J20.legacy_full",
+        "J27.scoped"
+      ],
+      "local_opt_in_applicability": "required",
+      "local_opt_in_reason": "assertion applies to declared local bug-fix and Firstmate scope"
+    },
+    {
+      "id": "FM:WD-30",
+      "source_snapshot": "evidence/inputs/firstmate-pilot-scenarios.json",
+      "source_case_id": "WD-30",
+      "source_case_sha256": "ab5e33930ac841e8fc8b6458b472c67d36c11dd0600f5f87a55247d62e53ac5a",
+      "original_status": "not_run",
+      "disposition": "retained_as_gate",
+      "gate_owner_work_item": "J20",
+      "applies_to": "original_capability_completion_and_corresponding_enabled_support_cell",
+      "assertion": "backpressure; stop and decisions preserved",
+      "joint_pass_implies_legacy_pass": false,
+      "gates": [
+        "J20.legacy_full",
+        "J27.scoped"
+      ],
+      "local_opt_in_applicability": "required",
+      "local_opt_in_reason": "assertion applies to declared local bug-fix and Firstmate scope"
+    },
+    {
+      "id": "FM:WD-31",
+      "source_snapshot": "evidence/inputs/firstmate-pilot-scenarios.json",
+      "source_case_id": "WD-31",
+      "source_case_sha256": "5cd994a0ba5dfee4b85d209b71b231bdf6f18df1bedc657f33ab3cc0ef556486",
+      "original_status": "not_run",
+      "disposition": "retained_as_gate",
+      "gate_owner_work_item": "J13",
+      "applies_to": "original_capability_completion_and_corresponding_enabled_support_cell",
+      "assertion": "detect cycle with owners; no fabricated answers",
+      "joint_pass_implies_legacy_pass": false,
+      "gates": [
+        "J13.legacy_full",
+        "J27.scoped"
+      ],
+      "local_opt_in_applicability": "required",
+      "local_opt_in_reason": "assertion applies to declared local bug-fix and Firstmate scope"
+    },
+    {
+      "id": "FM:WD-32",
+      "source_snapshot": "evidence/inputs/firstmate-pilot-scenarios.json",
+      "source_case_id": "WD-32",
+      "source_case_sha256": "701eae7d30aa45190c51e6fcaec48818bfa795002d5cea20cb23306db13a3177",
+      "original_status": "not_run",
+      "disposition": "retained_as_gate",
+      "gate_owner_work_item": "J21",
+      "applies_to": "original_capability_completion_and_corresponding_enabled_support_cell",
+      "assertion": "needs_reconciliation until exact authorized disposition; no fabricated applied receipt or double resume",
+      "joint_pass_implies_legacy_pass": false,
+      "gates": [
+        "J21.legacy_full"
+      ],
+      "local_opt_in_applicability": "deferred",
+      "local_opt_in_reason": "remote scope J21"
+    },
+    {
+      "id": "FM:WD-33",
+      "source_snapshot": "evidence/inputs/firstmate-pilot-scenarios.json",
+      "source_case_id": "WD-33",
+      "source_case_sha256": "384433cc612526c670e80a45e92d2056626a076c8c1f3658d184ea74bf7a0fab",
+      "original_status": "not_run",
+      "disposition": "retained_as_gate",
+      "gate_owner_work_item": "J03",
+      "applies_to": "original_capability_completion_and_corresponding_enabled_support_cell",
+      "assertion": "one original resume; exact action, source and completed turn evidence; this is not full engineering delivery certification",
+      "joint_pass_implies_legacy_pass": false,
+      "gates": [
+        "J03.legacy_full",
+        "J27.scoped"
+      ],
+      "local_opt_in_applicability": "required",
+      "local_opt_in_reason": "assertion applies to declared local bug-fix and Firstmate scope"
+    },
+    {
+      "id": "FM:WD-34",
+      "source_snapshot": "evidence/inputs/firstmate-pilot-scenarios.json",
+      "source_case_id": "WD-34",
+      "source_case_sha256": "d835b7b7fba7fae6857df2bf1a5fbaa039cce34f797e418735ba81544233b31f",
+      "original_status": "not_run",
+      "disposition": "retained_as_gate",
+      "gate_owner_work_item": "J03",
+      "applies_to": "original_capability_completion_and_corresponding_enabled_support_cell",
+      "assertion": "OS boundary denies access",
+      "joint_pass_implies_legacy_pass": false,
+      "gates": [
+        "J03.legacy_full"
+      ],
+      "local_opt_in_applicability": "deferred",
+      "local_opt_in_reason": "untrusted OS isolation scope, not trusted local profile"
+    },
+    {
+      "id": "FM:WD-35",
+      "source_snapshot": "evidence/inputs/firstmate-pilot-scenarios.json",
+      "source_case_id": "WD-35",
+      "source_case_sha256": "f198cc9cee1ade03c8cef1de3fae06c68bdec38e31c26bc5c4e010943954bde3",
+      "original_status": "not_run",
+      "disposition": "retained_as_gate",
+      "gate_owner_work_item": "J03",
+      "applies_to": "original_capability_completion_and_corresponding_enabled_support_cell",
+      "assertion": "zero initial Worker dispatches",
+      "joint_pass_implies_legacy_pass": false,
+      "gates": [
+        "J03.legacy_full",
+        "J27.scoped"
+      ],
+      "local_opt_in_applicability": "required",
+      "local_opt_in_reason": "assertion applies to declared local bug-fix and Firstmate scope"
+    },
+    {
+      "id": "FM:WD-36",
+      "source_snapshot": "evidence/inputs/firstmate-pilot-scenarios.json",
+      "source_case_id": "WD-36",
+      "source_case_sha256": "c383bd2ce0af6279100a9360940cc8f48e8886ecee4e277d52f1d40e636f3a17",
+      "original_status": "not_run",
+      "disposition": "retained_as_gate",
+      "gate_owner_work_item": "J14",
+      "applies_to": "original_capability_completion_and_corresponding_enabled_support_cell",
+      "assertion": "no resume call; exact not-dispatched proof or unknown retained",
+      "joint_pass_implies_legacy_pass": false,
+      "gates": [
+        "J14.legacy_full",
+        "J27.scoped"
+      ],
+      "local_opt_in_applicability": "required",
+      "local_opt_in_reason": "assertion applies to declared local bug-fix and Firstmate scope"
+    },
+    {
+      "id": "FM:WD-37",
+      "source_snapshot": "evidence/inputs/firstmate-pilot-scenarios.json",
+      "source_case_id": "WD-37",
+      "source_case_sha256": "6e986a269dbbc11d6502e3653b95725efbd1500306a14d13715a15196caa5e77",
+      "original_status": "not_run",
+      "disposition": "retained_as_gate",
+      "gate_owner_work_item": "J14",
+      "applies_to": "original_capability_completion_and_corresponding_enabled_support_cell",
+      "assertion": "out-of-band stop request; do not claim no effect or resend",
+      "joint_pass_implies_legacy_pass": false,
+      "gates": [
+        "J14.legacy_full",
+        "J27.scoped"
+      ],
+      "local_opt_in_applicability": "required",
+      "local_opt_in_reason": "assertion applies to declared local bug-fix and Firstmate scope"
+    },
+    {
+      "id": "FM:WD-38",
+      "source_snapshot": "evidence/inputs/firstmate-pilot-scenarios.json",
+      "source_case_id": "WD-38",
+      "source_case_sha256": "a256f5aef113e35ac1374558997e1055480da6ea8b8f795020ca737e0640f006",
+      "original_status": "not_run",
+      "disposition": "retained_as_gate",
+      "gate_owner_work_item": "J15",
+      "applies_to": "original_capability_completion_and_corresponding_enabled_support_cell",
+      "assertion": "read original scoped receipt only; no new write",
+      "joint_pass_implies_legacy_pass": false,
+      "gates": [
+        "J15.legacy_full",
+        "J27.scoped"
+      ],
+      "local_opt_in_applicability": "required",
+      "local_opt_in_reason": "assertion applies to declared local bug-fix and Firstmate scope"
+    },
+    {
+      "id": "FM:WD-39",
+      "source_snapshot": "evidence/inputs/firstmate-pilot-scenarios.json",
+      "source_case_id": "WD-39",
+      "source_case_sha256": "c00d6a48144c0639f5fca16386220a131ef34865ef5c2ec7373a33109aba2606",
+      "original_status": "not_run",
+      "disposition": "retained_as_gate",
+      "gate_owner_work_item": "J15",
+      "applies_to": "original_capability_completion_and_corresponding_enabled_support_cell",
+      "assertion": "reject content conflict; require new question identity",
+      "joint_pass_implies_legacy_pass": false,
+      "gates": [
+        "J15.legacy_full",
+        "J27.scoped"
+      ],
+      "local_opt_in_applicability": "required",
+      "local_opt_in_reason": "assertion applies to declared local bug-fix and Firstmate scope"
+    },
+    {
+      "id": "FM:WD-40",
+      "source_snapshot": "evidence/inputs/firstmate-pilot-scenarios.json",
+      "source_case_id": "WD-40",
+      "source_case_sha256": "f7d3ef8cd7efc2cec2c750a9f042b25930d0b84e204ad34b2dc16a43db28247b",
+      "original_status": "not_run",
+      "disposition": "retained_as_gate",
+      "gate_owner_work_item": "J14",
+      "applies_to": "original_capability_completion_and_corresponding_enabled_support_cell",
+      "assertion": "new daemon can query old action; source identity unchanged; no resend",
+      "joint_pass_implies_legacy_pass": false,
+      "gates": [
+        "J14.legacy_full",
+        "J27.scoped"
+      ],
+      "local_opt_in_applicability": "required",
+      "local_opt_in_reason": "assertion applies to declared local bug-fix and Firstmate scope"
+    },
+    {
+      "id": "FM:WD-41",
+      "source_snapshot": "evidence/inputs/firstmate-pilot-scenarios.json",
+      "source_case_id": "WD-41",
+      "source_case_sha256": "672d706b4aa1b2d16ad542cd8166798c80029e5bfb5cda8c43ec5a7a1d5da2b7",
+      "original_status": "not_run",
+      "disposition": "retained_as_gate",
+      "gate_owner_work_item": "J14",
+      "applies_to": "original_capability_completion_and_corresponding_enabled_support_cell",
+      "assertion": "show running only with evidence; do not show applied or require prior wait clearance",
+      "joint_pass_implies_legacy_pass": false,
+      "gates": [
+        "J14.legacy_full",
+        "J27.scoped"
+      ],
+      "local_opt_in_applicability": "required",
+      "local_opt_in_reason": "assertion applies to declared local bug-fix and Firstmate scope"
+    },
+    {
+      "id": "FM:WD-42",
+      "source_snapshot": "evidence/inputs/firstmate-pilot-scenarios.json",
+      "source_case_id": "WD-42",
+      "source_case_sha256": "a37ea7ea5451b50b9421ed0ab3fd1614aaaacc48d32a48a01543bfab73084489",
+      "original_status": "not_run",
+      "disposition": "retained_as_gate",
+      "gate_owner_work_item": "J14",
+      "applies_to": "original_capability_completion_and_corresponding_enabled_support_cell",
+      "assertion": "needs_reconciliation; not automatic supersession",
+      "joint_pass_implies_legacy_pass": false,
+      "gates": [
+        "J14.legacy_full",
+        "J27.scoped"
+      ],
+      "local_opt_in_applicability": "required",
+      "local_opt_in_reason": "assertion applies to declared local bug-fix and Firstmate scope"
+    },
+    {
+      "id": "FM:WD-43",
+      "source_snapshot": "evidence/inputs/firstmate-pilot-scenarios.json",
+      "source_case_id": "WD-43",
+      "source_case_sha256": "d3a06698d896d8ef46d151c467a567f39c2e79fd3e772e21a16cdf45630157f4",
+      "original_status": "not_run",
+      "disposition": "retained_as_gate",
+      "gate_owner_work_item": "J23",
+      "applies_to": "original_capability_completion_and_corresponding_enabled_support_cell",
+      "assertion": "refuse quiescence proof and replacement writer",
+      "joint_pass_implies_legacy_pass": false,
+      "gates": [
+        "J23.legacy_full",
+        "J27.scoped"
+      ],
+      "local_opt_in_applicability": "required",
+      "local_opt_in_reason": "assertion applies to declared local bug-fix and Firstmate scope"
+    },
+    {
+      "id": "FM:WD-44",
+      "source_snapshot": "evidence/inputs/firstmate-pilot-scenarios.json",
+      "source_case_id": "WD-44",
+      "source_case_sha256": "34bfa9aac9cd363f17a034a4437e9a52a1bd228edc1481b5b8912b7c24a15778",
+      "original_status": "not_run",
+      "disposition": "retained_as_gate",
+      "gate_owner_work_item": "J12",
+      "applies_to": "original_capability_completion_and_corresponding_enabled_support_cell",
+      "assertion": "canonical upgrade succeeds; experimental mismatch refused without mutation",
+      "joint_pass_implies_legacy_pass": false,
+      "gates": [
+        "J12.legacy_full",
+        "J27.scoped"
+      ],
+      "local_opt_in_applicability": "required",
+      "local_opt_in_reason": "assertion applies to declared local bug-fix and Firstmate scope"
+    },
+    {
+      "id": "FM:WD-45",
+      "source_snapshot": "evidence/inputs/firstmate-pilot-scenarios.json",
+      "source_case_id": "WD-45",
+      "source_case_sha256": "0ed17e2cc9ec76d61accb35b4ab8f3739aa42d5ae27a2216b47d17a251fdf9eb",
+      "original_status": "not_run",
+      "disposition": "retained_as_gate",
+      "gate_owner_work_item": "J23",
+      "applies_to": "original_capability_completion_and_corresponding_enabled_support_cell",
+      "assertion": "future runtime rejects activation; schema validation alone is insufficient",
+      "joint_pass_implies_legacy_pass": false,
+      "gates": [
+        "J23.legacy_full",
+        "J27.scoped"
+      ],
+      "local_opt_in_applicability": "required",
+      "local_opt_in_reason": "assertion applies to declared local bug-fix and Firstmate scope"
+    },
+    {
+      "id": "FM:WD-46",
+      "source_snapshot": "evidence/inputs/firstmate-pilot-scenarios.json",
+      "source_case_id": "WD-46",
+      "source_case_sha256": "60ca599f5c78220b8877cd17a6c9eeeb4dc52b49a518352d184ec42f48ef2554",
+      "original_status": "not_run",
+      "disposition": "retained_as_gate",
+      "gate_owner_work_item": "J23",
+      "applies_to": "original_capability_completion_and_corresponding_enabled_support_cell",
+      "assertion": "no qualified route",
+      "joint_pass_implies_legacy_pass": false,
+      "gates": [
+        "J23.legacy_full",
+        "J27.scoped"
+      ],
+      "local_opt_in_applicability": "required",
+      "local_opt_in_reason": "assertion applies to declared local bug-fix and Firstmate scope"
+    },
+    {
+      "id": "FM:WD-47",
+      "source_snapshot": "evidence/inputs/firstmate-pilot-scenarios.json",
+      "source_case_id": "WD-47",
+      "source_case_sha256": "bdf5b119caf09be28ceee6829e700a0d1d38396f231f38a65173d89be0dde644",
+      "original_status": "not_run",
+      "disposition": "retained_as_gate",
+      "gate_owner_work_item": "J23",
+      "applies_to": "original_capability_completion_and_corresponding_enabled_support_cell",
+      "assertion": "cost remains unknown/observed; no unsupported hard-cap claim",
+      "joint_pass_implies_legacy_pass": false,
+      "gates": [
+        "J23.legacy_full",
+        "J27.scoped"
+      ],
+      "local_opt_in_applicability": "required",
+      "local_opt_in_reason": "assertion applies to declared local bug-fix and Firstmate scope"
+    },
+    {
+      "id": "FM:WD-48",
+      "source_snapshot": "evidence/inputs/firstmate-pilot-scenarios.json",
+      "source_case_id": "WD-48",
+      "source_case_sha256": "2bd9c733e71442a4a75f37db5121ddec39ea8fb71b6bf219042300c61477bdb6",
+      "original_status": "not_run",
+      "disposition": "retained_as_gate",
+      "gate_owner_work_item": "J15",
+      "applies_to": "original_capability_completion_and_corresponding_enabled_support_cell",
+      "assertion": "no receipt disclosure and no write",
+      "joint_pass_implies_legacy_pass": false,
+      "gates": [
+        "J15.legacy_full",
+        "J27.scoped"
+      ],
+      "local_opt_in_applicability": "required",
+      "local_opt_in_reason": "assertion applies to declared local bug-fix and Firstmate scope"
+    },
+    {
+      "id": "FM:WD-49",
+      "source_snapshot": "evidence/inputs/firstmate-pilot-scenarios.json",
+      "source_case_id": "WD-49",
+      "source_case_sha256": "612f2b5f4bf293c2b4741fcae8e2cadb78c6d8836dd27a23b97a1d85b95b872e",
+      "original_status": "not_run",
+      "disposition": "retained_as_gate",
+      "gate_owner_work_item": "J14",
+      "applies_to": "original_capability_completion_and_corresponding_enabled_support_cell",
+      "assertion": "legacy_unknown; cannot mark not_dispatched or auto-resend",
+      "joint_pass_implies_legacy_pass": false,
+      "gates": [
+        "J14.legacy_full",
+        "J27.scoped"
+      ],
+      "local_opt_in_applicability": "required",
+      "local_opt_in_reason": "assertion applies to declared local bug-fix and Firstmate scope"
+    },
+    {
+      "id": "FM:WD-50",
+      "source_snapshot": "evidence/inputs/firstmate-pilot-scenarios.json",
+      "source_case_id": "WD-50",
+      "source_case_sha256": "cd78941755b0f54b05a3f3a0498fb70978ffebb8a04cbf3182fbbe25974cb5ca",
+      "original_status": "not_run",
+      "disposition": "retained_as_gate",
+      "gate_owner_work_item": "J23",
+      "applies_to": "original_capability_completion_and_corresponding_enabled_support_cell",
+      "assertion": "complete decision journey without new Worker or R/E dependencies",
+      "joint_pass_implies_legacy_pass": false,
+      "gates": [
+        "J23.legacy_full",
+        "J27.scoped"
+      ],
+      "local_opt_in_applicability": "required",
+      "local_opt_in_reason": "assertion applies to declared local bug-fix and Firstmate scope"
+    },
+    {
+      "id": "FM:WD-51",
+      "source_snapshot": "evidence/inputs/firstmate-pilot-scenarios.json",
+      "source_case_id": "WD-51",
+      "source_case_sha256": "dd04a358bb1c3042792635cfbc0a2de922ff39376ff3ff39bc01bad750abd782",
+      "original_status": "not_run",
+      "disposition": "retained_as_gate",
+      "gate_owner_work_item": "J14",
+      "applies_to": "original_capability_completion_and_corresponding_enabled_support_cell",
+      "assertion": "one original CAS and resume; committed or legacy messages never retried",
+      "joint_pass_implies_legacy_pass": false,
+      "gates": [
+        "J14.legacy_full",
+        "J27.scoped"
+      ],
+      "local_opt_in_applicability": "required",
+      "local_opt_in_reason": "assertion applies to declared local bug-fix and Firstmate scope"
+    },
+    {
+      "id": "FM:WD-52",
+      "source_snapshot": "evidence/inputs/firstmate-pilot-scenarios.json",
+      "source_case_id": "WD-52",
+      "source_case_sha256": "630fba81e56d8215e6b8db71d4d1bf5cdbdce9184a5261c3bf155d7e27e3f8c8",
+      "original_status": "not_run",
+      "disposition": "retained_as_gate",
+      "gate_owner_work_item": "J14",
+      "applies_to": "original_capability_completion_and_corresponding_enabled_support_cell",
+      "assertion": "phase stays reserved; no adapter call; no fabricated failed receipt",
+      "joint_pass_implies_legacy_pass": false,
+      "gates": [
+        "J14.legacy_full",
+        "J27.scoped"
+      ],
+      "local_opt_in_applicability": "required",
+      "local_opt_in_reason": "assertion applies to declared local bug-fix and Firstmate scope"
+    },
+    {
+      "id": "FM:WD-53",
+      "source_snapshot": "evidence/inputs/firstmate-pilot-scenarios.json",
+      "source_case_id": "WD-53",
+      "source_case_sha256": "5c8a2c85291e8ecabd250012a76bb62fb6eac23c547d7dbbaf397732cb6c0780",
+      "original_status": "not_run",
+      "disposition": "retained_as_gate",
+      "gate_owner_work_item": "J14",
+      "applies_to": "original_capability_completion_and_corresponding_enabled_support_cell",
+      "assertion": "lineage passes; old resolution CHECK unchanged; new session instruction is not blocked by proven cancelled message",
+      "joint_pass_implies_legacy_pass": false,
+      "gates": [
+        "J14.legacy_full",
+        "J27.scoped"
+      ],
+      "local_opt_in_applicability": "required",
+      "local_opt_in_reason": "assertion applies to declared local bug-fix and Firstmate scope"
+    },
+    {
+      "id": "FM:WD-54",
+      "source_snapshot": "evidence/inputs/firstmate-pilot-scenarios.json",
+      "source_case_id": "WD-54",
+      "source_case_sha256": "0c60e99fc447db463bcd906db29a0ee446a9d46eedbd809ef64e919cbf354b6c",
+      "original_status": "not_run",
+      "disposition": "retained_as_gate",
+      "gate_owner_work_item": "J14",
+      "applies_to": "original_capability_completion_and_corresponding_enabled_support_cell",
+      "assertion": "one CAS winner and at most one resume; direct helper call without permit rejected",
+      "joint_pass_implies_legacy_pass": false,
+      "gates": [
+        "J14.legacy_full",
+        "J27.scoped"
+      ],
+      "local_opt_in_applicability": "required",
+      "local_opt_in_reason": "assertion applies to declared local bug-fix and Firstmate scope"
+    },
+    {
+      "id": "FM:WD-55",
+      "source_snapshot": "evidence/inputs/firstmate-pilot-scenarios.json",
+      "source_case_id": "WD-55",
+      "source_case_sha256": "e889d07eb468bce955e60e29d969b2eb470d4fa16dbf4f8afc4fc271517842ce",
+      "original_status": "not_run",
+      "disposition": "retained_as_gate",
+      "gate_owner_work_item": "J15",
+      "applies_to": "original_capability_completion_and_corresponding_enabled_support_cell",
+      "assertion": "old Mission enters reconciliation; no rebinding or send",
+      "joint_pass_implies_legacy_pass": false,
+      "gates": [
+        "J15.legacy_full",
+        "J27.scoped"
+      ],
+      "local_opt_in_applicability": "required",
+      "local_opt_in_reason": "assertion applies to declared local bug-fix and Firstmate scope"
+    },
+    {
+      "id": "FM:WD-56",
+      "source_snapshot": "evidence/inputs/firstmate-pilot-scenarios.json",
+      "source_case_id": "WD-56",
+      "source_case_sha256": "d61bb91d231da0eea9c2e73656c1e50740fa2958d76dc8100bfb0d7ae51a161c",
+      "original_status": "not_run",
+      "disposition": "retained_as_gate",
+      "gate_owner_work_item": "J15",
+      "applies_to": "original_capability_completion_and_corresponding_enabled_support_cell",
+      "assertion": "superseded observation dependency; steering receipt; no session message or applied proof",
+      "joint_pass_implies_legacy_pass": false,
+      "gates": [
+        "J15.legacy_full",
+        "J27.scoped"
+      ],
+      "local_opt_in_applicability": "required",
+      "local_opt_in_reason": "assertion applies to declared local bug-fix and Firstmate scope"
+    },
+    {
+      "id": "FM:WD-57",
+      "source_snapshot": "evidence/inputs/firstmate-pilot-scenarios.json",
+      "source_case_id": "WD-57",
+      "source_case_sha256": "431ea454e735d47e17b70daa577658d338242d81ed51a8208c25068f24a6fe29",
+      "original_status": "not_run",
+      "disposition": "retained_as_gate",
+      "gate_owner_work_item": "J15",
+      "applies_to": "original_capability_completion_and_corresponding_enabled_support_cell",
+      "assertion": "reject disposal and preserve unknown receipt; stop/read/query remain available",
+      "joint_pass_implies_legacy_pass": false,
+      "gates": [
+        "J15.legacy_full",
+        "J27.scoped"
+      ],
+      "local_opt_in_applicability": "required",
+      "local_opt_in_reason": "assertion applies to declared local bug-fix and Firstmate scope"
+    },
+    {
+      "id": "FM:WD-58",
+      "source_snapshot": "evidence/inputs/firstmate-pilot-scenarios.json",
+      "source_case_id": "WD-58",
+      "source_case_sha256": "d2554da37d4f8df4c794768e22955095e5ee1779f6effaf76c01f01654839ce4",
+      "original_status": "not_run",
+      "disposition": "retained_as_gate",
+      "gate_owner_work_item": "J15",
+      "applies_to": "original_capability_completion_and_corresponding_enabled_support_cell",
+      "assertion": "completed with ObservationProof only; no code/test delivery assertion",
+      "joint_pass_implies_legacy_pass": false,
+      "gates": [
+        "J15.legacy_full",
+        "J27.scoped"
+      ],
+      "local_opt_in_applicability": "required",
+      "local_opt_in_reason": "assertion applies to declared local bug-fix and Firstmate scope"
+    },
+    {
+      "id": "FM:WD-59",
+      "source_snapshot": "evidence/inputs/firstmate-pilot-scenarios.json",
+      "source_case_id": "WD-59",
+      "source_case_sha256": "98f13d1741946f6e168593599c2019fdb00dd1f635c1e1142cedcdad8cf95fb9",
+      "original_status": "not_run",
+      "disposition": "retained_as_gate",
+      "gate_owner_work_item": "J15",
+      "applies_to": "original_capability_completion_and_corresponding_enabled_support_cell",
+      "assertion": "no Mission success; Run terminal is insufficient",
+      "joint_pass_implies_legacy_pass": false,
+      "gates": [
+        "J15.legacy_full",
+        "J27.scoped"
+      ],
+      "local_opt_in_applicability": "required",
+      "local_opt_in_reason": "assertion applies to declared local bug-fix and Firstmate scope"
+    },
+    {
+      "id": "FM:WD-60",
+      "source_snapshot": "evidence/inputs/firstmate-pilot-scenarios.json",
+      "source_case_id": "WD-60",
+      "source_case_sha256": "26fcae3e08c2cdde8a010f7f135a56a9d45749c6f0479ad7734cc810e70081ab",
+      "original_status": "not_run",
+      "disposition": "retained_as_gate",
+      "gate_owner_work_item": "J15",
+      "applies_to": "original_capability_completion_and_corresponding_enabled_support_cell",
+      "assertion": "observation_ended not success; no resume/stop effect; unresolved responsibilities remain addressable",
+      "joint_pass_implies_legacy_pass": false,
+      "gates": [
+        "J15.legacy_full",
+        "J27.scoped"
+      ],
+      "local_opt_in_applicability": "required",
+      "local_opt_in_reason": "assertion applies to declared local bug-fix and Firstmate scope"
+    },
+    {
+      "id": "FM:WD-61",
+      "source_snapshot": "evidence/inputs/firstmate-pilot-scenarios.json",
+      "source_case_id": "WD-61",
+      "source_case_sha256": "2f770edf6966c9aa737ed2d116cec734a295e61abbbb07ce264938b23b8feed5",
+      "original_status": "not_run",
+      "disposition": "retained_as_gate",
+      "gate_owner_work_item": "J23",
+      "applies_to": "original_capability_completion_and_corresponding_enabled_support_cell",
+      "assertion": "future verifier rejects regardless of payload role",
+      "joint_pass_implies_legacy_pass": false,
+      "gates": [
+        "J23.legacy_full",
+        "J27.scoped"
+      ],
+      "local_opt_in_applicability": "required",
+      "local_opt_in_reason": "assertion applies to declared local bug-fix and Firstmate scope"
+    },
+    {
+      "id": "FM:WD-62",
+      "source_snapshot": "evidence/inputs/firstmate-pilot-scenarios.json",
+      "source_case_id": "WD-62",
+      "source_case_sha256": "33beee546c3b98b4992c8783fbc6152516668ef79c4f330d32d4ae9cf07fa623",
+      "original_status": "not_run",
+      "disposition": "retained_as_gate",
+      "gate_owner_work_item": "J15",
+      "applies_to": "original_capability_completion_and_corresponding_enabled_support_cell",
+      "assertion": "original cancelled receipt or immutable conflict; explicit limitation, no new action or fabricated question ID",
+      "joint_pass_implies_legacy_pass": false,
+      "gates": [
+        "J15.legacy_full",
+        "J27.scoped"
+      ],
+      "local_opt_in_applicability": "required",
+      "local_opt_in_reason": "assertion applies to declared local bug-fix and Firstmate scope"
+    },
+    {
+      "id": "FM:WD-63",
+      "source_snapshot": "evidence/inputs/firstmate-pilot-scenarios.json",
+      "source_case_id": "WD-63",
+      "source_case_sha256": "a726f9c3d1d211d8dd441d9e62c22722a611d1e614779f9bfc3219333e59840a",
+      "original_status": "not_run",
+      "disposition": "retained_as_gate",
+      "gate_owner_work_item": "J14",
+      "applies_to": "original_capability_completion_and_corresponding_enabled_support_cell",
+      "assertion": "zero dispatch; preserve resolution and reconcile conflicting phase",
+      "joint_pass_implies_legacy_pass": false,
+      "gates": [
+        "J14.legacy_full",
+        "J27.scoped"
+      ],
+      "local_opt_in_applicability": "required",
+      "local_opt_in_reason": "assertion applies to declared local bug-fix and Firstmate scope"
+    },
+    {
+      "id": "FM:WD-64",
+      "source_snapshot": "evidence/inputs/firstmate-pilot-scenarios.json",
+      "source_case_id": "WD-64",
+      "source_case_sha256": "5f99f6af42bb01fc35d149057b018924233f3c29df43c6b2432cfe456ee96981",
+      "original_status": "not_run",
+      "disposition": "retained_as_gate",
+      "gate_owner_work_item": "J14",
+      "applies_to": "original_capability_completion_and_corresponding_enabled_support_cell",
+      "assertion": "projection remains reserved, not uncertain; all other dispatch preconditions still required",
+      "joint_pass_implies_legacy_pass": false,
+      "gates": [
+        "J14.legacy_full",
+        "J27.scoped"
+      ],
+      "local_opt_in_applicability": "required",
+      "local_opt_in_reason": "assertion applies to declared local bug-fix and Firstmate scope"
+    },
+    {
+      "id": "FM:WD-65",
+      "source_snapshot": "evidence/inputs/firstmate-pilot-scenarios.json",
+      "source_case_id": "WD-65",
+      "source_case_sha256": "3b96c6bd5e40faaba7feaf5e0dab8b18d138ab41f72d049cdffabe390e239b50",
+      "original_status": "not_run",
+      "disposition": "retained_as_gate",
+      "gate_owner_work_item": "J14",
+      "applies_to": "original_capability_completion_and_corresponding_enabled_support_cell",
+      "assertion": "abandon itself refuses without writing/sending; cancel creates barrier and prevents first dispatch",
+      "joint_pass_implies_legacy_pass": false,
+      "gates": [
+        "J14.legacy_full",
+        "J27.scoped"
+      ],
+      "local_opt_in_applicability": "required",
+      "local_opt_in_reason": "assertion applies to declared local bug-fix and Firstmate scope"
+    },
+    {
+      "id": "FM:WD-66",
+      "source_snapshot": "evidence/inputs/firstmate-pilot-scenarios.json",
+      "source_case_id": "WD-66",
+      "source_case_sha256": "21bd31d41f69fe3dc729231168a22b3b3ca1872cefc3b33bdb1d73cbb16aad94",
+      "original_status": "not_run",
+      "disposition": "retained_as_gate",
+      "gate_owner_work_item": "J15",
+      "applies_to": "original_capability_completion_and_corresponding_enabled_support_cell",
+      "assertion": "dispose_wait refused; owner also refused if current scope permission revoked",
+      "joint_pass_implies_legacy_pass": false,
+      "gates": [
+        "J15.legacy_full",
+        "J27.scoped"
+      ],
+      "local_opt_in_applicability": "required",
+      "local_opt_in_reason": "assertion applies to declared local bug-fix and Firstmate scope"
+    },
+    {
+      "id": "PS:A01",
+      "source_snapshot": "evidence/inputs/pstack-acceptance-cases.json",
+      "source_case_id": "A01",
+      "source_case_sha256": "fffc57d1bd5e74eb6825080c0640adff93d1ccbfde80b6d845ccb1c4dd596a62",
+      "original_status": "specified_not_implemented",
+      "disposition": "retained_as_gate",
+      "gate_owner_work_item": "J02",
+      "applies_to": "original_capability_completion_and_corresponding_enabled_support_cell",
+      "assertion": "subdir 为 .；其他旧字段语义不变。",
+      "joint_pass_implies_legacy_pass": false,
+      "gates": [
+        "J02.legacy_full",
+        "J27.scoped"
+      ],
+      "local_opt_in_applicability": "required",
+      "local_opt_in_reason": "assertion applies to declared local bug-fix and Firstmate scope"
+    },
+    {
+      "id": "PS:A02",
+      "source_snapshot": "evidence/inputs/pstack-acceptance-cases.json",
+      "source_case_id": "A02",
+      "source_case_sha256": "9d6fc5c780b64de474a58bcc7118a106896a245d23df6b5629c82b81c40c5c70",
+      "original_status": "specified_not_implemented",
+      "disposition": "retained_as_gate",
+      "gate_owner_work_item": "J02",
+      "applies_to": "original_capability_completion_and_corresponding_enabled_support_cell",
+      "assertion": "拒绝；不读取快照根外文件，不把任意字符串当 Git 身份。",
+      "joint_pass_implies_legacy_pass": false,
+      "gates": [
+        "J02.legacy_full",
+        "J27.scoped"
+      ],
+      "local_opt_in_applicability": "required",
+      "local_opt_in_reason": "assertion applies to declared local bug-fix and Firstmate scope"
+    },
+    {
+      "id": "PS:A03",
+      "source_snapshot": "evidence/inputs/pstack-acceptance-cases.json",
+      "source_case_id": "A03",
+      "source_case_sha256": "9780b5927cd606de54ed63f0a1d32725ffc1c7332652bef2095a9f7969cfdcca",
+      "original_status": "specified_not_implemented",
+      "disposition": "retained_as_gate",
+      "gate_owner_work_item": "J02",
+      "applies_to": "original_capability_completion_and_corresponding_enabled_support_cell",
+      "assertion": "摘要一致；未跟踪文件不进入快照，脚本不执行。",
+      "joint_pass_implies_legacy_pass": false,
+      "gates": [
+        "J02.legacy_full",
+        "J27.scoped"
+      ],
+      "local_opt_in_applicability": "required",
+      "local_opt_in_reason": "assertion applies to declared local bug-fix and Firstmate scope"
+    },
+    {
+      "id": "PS:A04",
+      "source_snapshot": "evidence/inputs/pstack-acceptance-cases.json",
+      "source_case_id": "A04",
+      "source_case_sha256": "2d748f42427d947cd9c48fa6837fbcf07ac74176a084cd8481b0b37be96f1d09",
+      "original_status": "specified_not_implemented",
+      "disposition": "retained_as_gate",
+      "gate_owner_work_item": "J02",
+      "applies_to": "original_capability_completion_and_corresponding_enabled_support_cell",
+      "assertion": "相关子树变更产生 candidate；无自动安装/active 更新；无关变化可标无方法内容变化。",
+      "joint_pass_implies_legacy_pass": false,
+      "gates": [
+        "J02.legacy_full",
+        "J27.scoped"
+      ],
+      "local_opt_in_applicability": "required",
+      "local_opt_in_reason": "assertion applies to declared local bug-fix and Firstmate scope"
+    },
+    {
+      "id": "PS:A05",
+      "source_snapshot": "evidence/inputs/pstack-acceptance-cases.json",
+      "source_case_id": "A05",
+      "source_case_sha256": "cb1f086f5753e52ddba8f833b406bdff93bd7fe24b43e8a3f555fd008f4508ad",
+      "original_status": "specified_not_implemented",
+      "disposition": "retained_as_gate",
+      "gate_owner_work_item": "J10",
+      "applies_to": "original_full_recipe_expansion",
+      "assertion": "同输入同 digest；不同 recipe 的材料要求不同；candidate 输出不能直接运行。",
+      "joint_pass_implies_legacy_pass": false,
+      "gates": [
+        "J10.legacy_full"
+      ],
+      "local_opt_in_applicability": "deferred",
+      "local_opt_in_reason": "four recipe completion"
+    },
+    {
+      "id": "PS:A06",
+      "source_snapshot": "evidence/inputs/pstack-acceptance-cases.json",
+      "source_case_id": "A06",
+      "source_case_sha256": "a835f6efcb1e2e8be60e8ac55cb4c328df54c367b12d503793d27fbe0c298e53",
+      "original_status": "specified_not_implemented",
+      "disposition": "retained_as_gate",
+      "gate_owner_work_item": "J05",
+      "applies_to": "original_capability_completion_and_corresponding_enabled_support_cell",
+      "assertion": "未知 check 拒绝；引用文字不被当命令执行；未知字段失败。",
+      "joint_pass_implies_legacy_pass": false,
+      "gates": [
+        "J05.legacy_full",
+        "J27.scoped"
+      ],
+      "local_opt_in_applicability": "required",
+      "local_opt_in_reason": "assertion applies to declared local bug-fix and Firstmate scope"
+    },
+    {
+      "id": "PS:A07",
+      "source_snapshot": "evidence/inputs/pstack-acceptance-cases.json",
+      "source_case_id": "A07",
+      "source_case_sha256": "313e7f0e05d3a0bac41d26edf8b3eb5e41ad8351c16f95f01d3ffd59c58c96cc",
+      "original_status": "specified_not_implemented",
+      "disposition": "retained_as_gate",
+      "gate_owner_work_item": "J05",
+      "applies_to": "original_capability_completion_and_corresponding_enabled_support_cell",
+      "assertion": "前者 unsupported；后者显式记录降级；required 不能改 optional。",
+      "joint_pass_implies_legacy_pass": false,
+      "gates": [
+        "J05.legacy_full",
+        "J27.scoped"
+      ],
+      "local_opt_in_applicability": "required",
+      "local_opt_in_reason": "assertion applies to declared local bug-fix and Firstmate scope"
+    },
+    {
+      "id": "PS:A08",
+      "source_snapshot": "evidence/inputs/pstack-acceptance-cases.json",
+      "source_case_id": "A08",
+      "source_case_sha256": "5468fdf3af6bff4922a2be4f16114c54331812d360b0873c8d72b8c2014c3198",
+      "original_status": "specified_not_implemented",
+      "disposition": "retained_as_gate",
+      "gate_owner_work_item": "J05",
+      "applies_to": "original_capability_completion_and_corresponding_enabled_support_cell",
+      "assertion": "拒绝，不写新授权，不调用外部服务。",
+      "joint_pass_implies_legacy_pass": false,
+      "gates": [
+        "J05.legacy_full",
+        "J27.scoped"
+      ],
+      "local_opt_in_applicability": "required",
+      "local_opt_in_reason": "assertion applies to declared local bug-fix and Firstmate scope"
+    },
+    {
+      "id": "PS:A09",
+      "source_snapshot": "evidence/inputs/pstack-acceptance-cases.json",
+      "source_case_id": "A09",
+      "source_case_sha256": "87042ca81e09eeeda5bc66e2995a6e873c54a45d688f451bb902d9725c6f59e8",
+      "original_status": "specified_not_implemented",
+      "disposition": "retained_as_gate",
+      "gate_owner_work_item": "J05",
+      "applies_to": "original_capability_completion_and_corresponding_enabled_support_cell",
+      "assertion": "合法身份一致；冻结后变更必须新 proposal/contract，旧记录不覆盖。",
+      "joint_pass_implies_legacy_pass": false,
+      "gates": [
+        "J05.legacy_full",
+        "J27.scoped"
+      ],
+      "local_opt_in_applicability": "required",
+      "local_opt_in_reason": "assertion applies to declared local bug-fix and Firstmate scope"
+    },
+    {
+      "id": "PS:A10",
+      "source_snapshot": "evidence/inputs/pstack-acceptance-cases.json",
+      "source_case_id": "A10",
+      "source_case_sha256": "451db6ce91ab0dd5870d1f60e4450a34f657139e6d82e8eb51c6a67a164e7024",
+      "original_status": "specified_not_implemented",
+      "disposition": "retained_as_gate",
+      "gate_owner_work_item": "J05",
+      "applies_to": "original_capability_completion_and_corresponding_enabled_support_cell",
+      "assertion": "按现有边界失败，不拼接多个 shell 绕过限制，不修改 frozen v4。",
+      "joint_pass_implies_legacy_pass": false,
+      "gates": [
+        "J05.legacy_full",
+        "J27.scoped"
+      ],
+      "local_opt_in_applicability": "required",
+      "local_opt_in_reason": "assertion applies to declared local bug-fix and Firstmate scope"
+    },
+    {
+      "id": "PS:A11",
+      "source_snapshot": "evidence/inputs/pstack-acceptance-cases.json",
+      "source_case_id": "A11",
+      "source_case_sha256": "cfc273a335d9451d6cb80ec08fb1d995d2074dc94ae7a538ed8585eae4b4478c",
+      "original_status": "specified_not_implemented",
+      "disposition": "retained_as_gate",
+      "gate_owner_work_item": "J04",
+      "applies_to": "original_capability_completion_and_corresponding_enabled_support_cell",
+      "assertion": "METHOD_CONTEXT_OMITTED；adapter invoke 计数为零；保留失败原因。",
+      "joint_pass_implies_legacy_pass": false,
+      "gates": [
+        "J04.legacy_full",
+        "J27.scoped"
+      ],
+      "local_opt_in_applicability": "required",
+      "local_opt_in_reason": "assertion applies to declared local bug-fix and Firstmate scope"
+    },
+    {
+      "id": "PS:A12",
+      "source_snapshot": "evidence/inputs/pstack-acceptance-cases.json",
+      "source_case_id": "A12",
+      "source_case_sha256": "8305b2361e1925fd8ee62bf199c0f37cdbe9fd626b22abdc08ca0754bdd9816d",
+      "original_status": "specified_not_implemented",
+      "disposition": "retained_as_gate",
+      "gate_owner_work_item": "J04",
+      "applies_to": "original_capability_completion_and_corresponding_enabled_support_cell",
+      "assertion": "原文为 untrusted data；摘要对应实际 task；不声称 provider wire/model compliance。",
+      "joint_pass_implies_legacy_pass": false,
+      "gates": [
+        "J04.legacy_full",
+        "J27.scoped"
+      ],
+      "local_opt_in_applicability": "required",
+      "local_opt_in_reason": "assertion applies to declared local bug-fix and Firstmate scope"
+    },
+    {
+      "id": "PS:A13",
+      "source_snapshot": "evidence/inputs/pstack-acceptance-cases.json",
+      "source_case_id": "A13",
+      "source_case_sha256": "f0947550f0037cb8f10833e4e58f052ad92e2365fd86b50d3b10cb24237aa66f",
+      "original_status": "specified_not_implemented",
+      "disposition": "retained_as_gate",
+      "gate_owner_work_item": "J03",
+      "applies_to": "original_capability_completion_and_corresponding_enabled_support_cell",
+      "assertion": "通过指定行为谓词，而非只检查退出零/--help；不碰默认控制面 DB。",
+      "joint_pass_implies_legacy_pass": false,
+      "gates": [
+        "J03.legacy_full",
+        "J27.scoped"
+      ],
+      "local_opt_in_applicability": "required",
+      "local_opt_in_reason": "assertion applies to declared local bug-fix and Firstmate scope"
+    },
+    {
+      "id": "PS:A14",
+      "source_snapshot": "evidence/inputs/pstack-acceptance-cases.json",
+      "source_case_id": "A14",
+      "source_case_sha256": "a383f2a34a7355f6d6a463fbd642dc28ff1ac28dce2b5160ad75da75cf0cf4f7",
+      "original_status": "specified_not_implemented",
+      "disposition": "retained_as_gate",
+      "gate_owner_work_item": "J03",
+      "applies_to": "original_capability_completion_and_corresponding_enabled_support_cell",
+      "assertion": "只清理自己拥有资源；无关资源不变；失败证据存留且不会标通过。",
+      "joint_pass_implies_legacy_pass": false,
+      "gates": [
+        "J03.legacy_full",
+        "J27.scoped"
+      ],
+      "local_opt_in_applicability": "required",
+      "local_opt_in_reason": "assertion applies to declared local bug-fix and Firstmate scope"
+    },
+    {
+      "id": "PS:A15",
+      "source_snapshot": "evidence/inputs/pstack-acceptance-cases.json",
+      "source_case_id": "A15",
+      "source_case_sha256": "30409de2f6200b64348978e4ec7c99b327f650031ec65538d8b7c0ddaa7d64d3",
+      "original_status": "specified_not_implemented",
+      "disposition": "retained_as_gate",
+      "gate_owner_work_item": "J07",
+      "applies_to": "original_capability_completion_and_corresponding_enabled_support_cell",
+      "assertion": "旧证据不能用于新候选；重新验证或报 stale。",
+      "joint_pass_implies_legacy_pass": false,
+      "gates": [
+        "J07.legacy_full",
+        "J27.scoped"
+      ],
+      "local_opt_in_applicability": "required",
+      "local_opt_in_reason": "assertion applies to declared local bug-fix and Firstmate scope"
+    },
+    {
+      "id": "PS:A16",
+      "source_snapshot": "evidence/inputs/pstack-acceptance-cases.json",
+      "source_case_id": "A16",
+      "source_case_sha256": "f9bd3500db5ee38f3f465097a16981ed0321219c2600ce30f872cdf63f28c482",
+      "original_status": "specified_not_implemented",
+      "disposition": "retained_as_gate",
+      "gate_owner_work_item": "J07",
+      "applies_to": "original_capability_completion_and_corresponding_enabled_support_cell",
+      "assertion": "不覆盖可信裁决；拒绝不可信证据；仅写出字符串不产生批准。",
+      "joint_pass_implies_legacy_pass": false,
+      "gates": [
+        "J07.legacy_full",
+        "J27.scoped"
+      ],
+      "local_opt_in_applicability": "required",
+      "local_opt_in_reason": "assertion applies to declared local bug-fix and Firstmate scope"
+    },
+    {
+      "id": "PS:A17",
+      "source_snapshot": "evidence/inputs/pstack-acceptance-cases.json",
+      "source_case_id": "A17",
+      "source_case_sha256": "660099a699cd178154e193c8f561db527a4d5336d8d438ef1b0188cc35886c9c",
+      "original_status": "specified_not_implemented",
+      "disposition": "retained_as_gate",
+      "gate_owner_work_item": "J07",
+      "applies_to": "original_capability_completion_and_corresponding_enabled_support_cell",
+      "assertion": "不产生 approved；记录未解决发现；多数赞成不能消除阻塞事实。",
+      "joint_pass_implies_legacy_pass": false,
+      "gates": [
+        "J07.legacy_full",
+        "J27.scoped"
+      ],
+      "local_opt_in_applicability": "required",
+      "local_opt_in_reason": "assertion applies to declared local bug-fix and Firstmate scope"
+    },
+    {
+      "id": "PS:A18",
+      "source_snapshot": "evidence/inputs/pstack-acceptance-cases.json",
+      "source_case_id": "A18",
+      "source_case_sha256": "c29fa7d9b36266519bd143a9839f17b3844edbae889701c3373b2775048b3d0f",
+      "original_status": "specified_not_implemented",
+      "disposition": "retained_as_gate",
+      "gate_owner_work_item": "J09",
+      "applies_to": "original_capability_completion_and_corresponding_enabled_support_cell",
+      "assertion": "结果绑定当前候选与方法版本；独立验证通过；无 push/PR/merge。",
+      "joint_pass_implies_legacy_pass": false,
+      "gates": [
+        "J09.legacy_full",
+        "J27.scoped"
+      ],
+      "local_opt_in_applicability": "required",
+      "local_opt_in_reason": "assertion applies to declared local bug-fix and Firstmate scope"
+    },
+    {
+      "id": "PS:A19",
+      "source_snapshot": "evidence/inputs/pstack-acceptance-cases.json",
+      "source_case_id": "A19",
+      "source_case_sha256": "914c5848726d0f97f91c904229780b67a997a3185fc93595fb883cb767591bbb",
+      "original_status": "specified_not_implemented",
+      "disposition": "retained_as_gate",
+      "gate_owner_work_item": "J09",
+      "applies_to": "original_capability_completion_and_corresponding_enabled_support_cell",
+      "assertion": "旧路径保持；--version/--help 不突破仓库预算；无新常驻服务。",
+      "joint_pass_implies_legacy_pass": false,
+      "gates": [
+        "J09.legacy_full",
+        "J27.scoped"
+      ],
+      "local_opt_in_applicability": "required",
+      "local_opt_in_reason": "assertion applies to declared local bug-fix and Firstmate scope"
+    },
+    {
+      "id": "PS:A20",
+      "source_snapshot": "evidence/inputs/pstack-acceptance-cases.json",
+      "source_case_id": "A20",
+      "source_case_sha256": "a1d0246a0f1097aee445c5ed87a1c19bacf605607407d35efc70082e0c5c2644",
+      "original_status": "specified_not_implemented",
+      "disposition": "retained_as_gate",
+      "gate_owner_work_item": "J10",
+      "applies_to": "original_full_recipe_expansion",
+      "assertion": "调查材料可用；不支持的 scout 路径明确拒绝；不返回代码已交付。",
+      "joint_pass_implies_legacy_pass": false,
+      "gates": [
+        "J10.legacy_full"
+      ],
+      "local_opt_in_applicability": "deferred",
+      "local_opt_in_reason": "scout recipe extension"
+    },
+    {
+      "id": "PS:A21",
+      "source_snapshot": "evidence/inputs/pstack-acceptance-cases.json",
+      "source_case_id": "A21",
+      "source_case_sha256": "c0317fd47da3907d66c1bb2b7627f63080d34fef0da9be5b7fd61a6bdb3f8a24",
+      "original_status": "specified_not_implemented",
+      "disposition": "retained_as_gate",
+      "gate_owner_work_item": "J16",
+      "applies_to": "original_capability_completion_and_corresponding_enabled_support_cell",
+      "assertion": "旧记录保留、更正可追踪；导出文件编辑不改变权威状态。",
+      "joint_pass_implies_legacy_pass": false,
+      "gates": [
+        "J16.legacy_full",
+        "J27.scoped"
+      ],
+      "local_opt_in_applicability": "required",
+      "local_opt_in_reason": "assertion applies to declared local bug-fix and Firstmate scope"
+    },
+    {
+      "id": "PS:A22",
+      "source_snapshot": "evidence/inputs/pstack-acceptance-cases.json",
+      "source_case_id": "A22",
+      "source_case_sha256": "8792edd75aabc45d11cc5b779d336ce121d25c87923c6117e3745d0365df5bcc",
+      "original_status": "specified_not_implemented",
+      "disposition": "retained_as_gate",
+      "gate_owner_work_item": "J16",
+      "applies_to": "original_capability_completion_and_corresponding_enabled_support_cell",
+      "assertion": "保留旧 pin；未知不作完成或盲目重试；缺停止证明不称 cancelled。",
+      "joint_pass_implies_legacy_pass": false,
+      "gates": [
+        "J16.legacy_full",
+        "J27.scoped"
+      ],
+      "local_opt_in_applicability": "required",
+      "local_opt_in_reason": "assertion applies to declared local bug-fix and Firstmate scope"
+    },
+    {
+      "id": "PS:A23",
+      "source_snapshot": "evidence/inputs/pstack-acceptance-cases.json",
+      "source_case_id": "A23",
+      "source_case_sha256": "474782e07b7b0f408fd27266f2f6e907c9bbec0806d42d30c37bca6a5326d85f",
+      "original_status": "specified_not_implemented",
+      "disposition": "retained_as_gate",
+      "gate_owner_work_item": "J10",
+      "applies_to": "original_capability_completion_and_corresponding_enabled_support_cell",
+      "assertion": "正确区分原因；不得删除 feature 或降低 predicate 自动晋升。",
+      "joint_pass_implies_legacy_pass": false,
+      "gates": [
+        "J10.legacy_full",
+        "J27.scoped"
+      ],
+      "local_opt_in_applicability": "required",
+      "local_opt_in_reason": "assertion applies to declared local bug-fix and Firstmate scope"
+    },
+    {
+      "id": "PS:A24",
+      "source_snapshot": "evidence/inputs/pstack-acceptance-cases.json",
+      "source_case_id": "A24",
+      "source_case_sha256": "56c7e27ebdc7a78836358c94f4883729c83b63981ef59bfa0ca8f6673cb93b65",
+      "original_status": "specified_not_implemented",
+      "disposition": "retained_as_gate",
+      "gate_owner_work_item": "J10",
+      "applies_to": "original_capability_completion_and_corresponding_enabled_support_cell",
+      "assertion": "新版本不 active；旧 run 继续绑定原记录；隔离停止新任务而非伪称旧任务已停。",
+      "joint_pass_implies_legacy_pass": false,
+      "gates": [
+        "J10.legacy_full",
+        "J27.scoped"
+      ],
+      "local_opt_in_applicability": "required",
+      "local_opt_in_reason": "assertion applies to declared local bug-fix and Firstmate scope"
+    },
+    {
+      "id": "PS:A25",
+      "source_snapshot": "evidence/inputs/pstack-acceptance-cases.json",
+      "source_case_id": "A25",
+      "source_case_sha256": "a81c11d19afa47c0fc7a54cb33c016ed3810270df29fa0450fcbc705ad64c8df",
+      "original_status": "specified_not_implemented",
+      "disposition": "retained_as_gate",
+      "gate_owner_work_item": "J18",
+      "applies_to": "original_capability_completion_and_corresponding_enabled_support_cell",
+      "assertion": "缺口明确且阻止覆盖完成；竞赛不事后改变规则来接受结果。",
+      "joint_pass_implies_legacy_pass": false,
+      "gates": [
+        "J18.legacy_full"
+      ],
+      "local_opt_in_applicability": "deferred",
+      "local_opt_in_reason": "competition"
+    },
+    {
+      "id": "PS:A26",
+      "source_snapshot": "evidence/inputs/pstack-acceptance-cases.json",
+      "source_case_id": "A26",
+      "source_case_sha256": "6dfa71cb8cde4f7f81d23ca4cbe91f15e11a0503938c1164520fb1f7d55e17b8",
+      "original_status": "specified_not_implemented",
+      "disposition": "retained_as_gate",
+      "gate_owner_work_item": "J18",
+      "applies_to": "original_capability_completion_and_corresponding_enabled_support_cell",
+      "assertion": "新 artifact 有新身份；不能沿用任一旧通过结果；必需重新验证。",
+      "joint_pass_implies_legacy_pass": false,
+      "gates": [
+        "J18.legacy_full"
+      ],
+      "local_opt_in_applicability": "deferred",
+      "local_opt_in_reason": "competition integration"
+    },
+    {
+      "id": "PS:A27",
+      "source_snapshot": "evidence/inputs/pstack-acceptance-cases.json",
+      "source_case_id": "A27",
+      "source_case_sha256": "b878b5a5a7e869937f0c3ccf4bff96c994f3e50e5ecadc55b9ddc4c003647446",
+      "original_status": "specified_not_implemented",
+      "disposition": "retained_as_gate",
+      "gate_owner_work_item": "J30",
+      "applies_to": "original_capability_completion_and_corresponding_enabled_support_cell",
+      "assertion": "只输出阻塞/不确定观察，绝不产出 merge permit。",
+      "joint_pass_implies_legacy_pass": false,
+      "gates": [
+        "J30.legacy_full"
+      ],
+      "local_opt_in_applicability": "deferred",
+      "local_opt_in_reason": "merge readiness"
+    },
+    {
+      "id": "PS:A28",
+      "source_snapshot": "evidence/inputs/pstack-acceptance-cases.json",
+      "source_case_id": "A28",
+      "source_case_sha256": "da073e84987d47cef825cae02a99b4970a17fa22abcec8014f37dfbcc7071bda",
+      "original_status": "specified_not_implemented",
+      "disposition": "retained_as_gate",
+      "gate_owner_work_item": "J30",
+      "applies_to": "original_capability_completion_and_corresponding_enabled_support_cell",
+      "assertion": "unknown 原因和 freshness 可见；没有 merge/push 调用。",
+      "joint_pass_implies_legacy_pass": false,
+      "gates": [
+        "J30.legacy_full"
+      ],
+      "local_opt_in_applicability": "deferred",
+      "local_opt_in_reason": "merge monitoring"
+    },
+    {
+      "id": "PS:A29",
+      "source_snapshot": "evidence/inputs/pstack-acceptance-cases.json",
+      "source_case_id": "A29",
+      "source_case_sha256": "0e20182de63ff618d4bcfd76b2ce256ac1a9963011de811e41131e85d73ce220",
+      "original_status": "specified_not_implemented",
+      "disposition": "retained_as_gate",
+      "gate_owner_work_item": "J19",
+      "applies_to": "original_capability_completion_and_corresponding_enabled_support_cell",
+      "assertion": "检查抓坏例且不过度误伤；draft 不自动成为策略；保留评价版本。",
+      "joint_pass_implies_legacy_pass": false,
+      "gates": [
+        "J19.legacy_full"
+      ],
+      "local_opt_in_applicability": "deferred",
+      "local_opt_in_reason": "lesson promotion"
+    },
+    {
+      "id": "PS:A30",
+      "source_snapshot": "evidence/inputs/pstack-acceptance-cases.json",
+      "source_case_id": "A30",
+      "source_case_sha256": "9ef3c714f48542734f88c78ccd3698e2d18b3d2b5b88ee55cbc55450061a405a",
+      "original_status": "specified_not_implemented",
+      "disposition": "retained_as_gate",
+      "gate_owner_work_item": "J29",
+      "applies_to": "original_capability_completion_and_corresponding_enabled_support_cell",
+      "assertion": "失败不从分母删除；拒绝不等价比例；预算耗尽停止；gate 改变用新 epoch。",
+      "joint_pass_implies_legacy_pass": false,
+      "gates": [
+        "J29.legacy_full"
+      ],
+      "local_opt_in_applicability": "deferred",
+      "local_opt_in_reason": "autoresearch"
+    },
+    {
+      "id": "PS:A31",
+      "source_snapshot": "evidence/inputs/pstack-acceptance-cases.json",
+      "source_case_id": "A31",
+      "source_case_sha256": "6f840533be7c5bde4abc15ca151a3a60280f55e1c1dbdedb1607b79496566db5",
+      "original_status": "specified_not_implemented",
+      "disposition": "retained_as_gate",
+      "gate_owner_work_item": "J28",
+      "applies_to": "original_capability_completion_and_corresponding_enabled_support_cell",
+      "assertion": "正常模型结果带边界；坏变体被发现；超时为 unknown；图不冒充证明。",
+      "joint_pass_implies_legacy_pass": false,
+      "gates": [
+        "J28.legacy_full"
+      ],
+      "local_opt_in_applicability": "deferred",
+      "local_opt_in_reason": "model checking expansion"
+    },
+    {
+      "id": "PS:A32",
+      "source_snapshot": "evidence/inputs/pstack-acceptance-cases.json",
+      "source_case_id": "A32",
+      "source_case_sha256": "706c3d060fabffc10515c1391c4416e4adebec95dfbbb6d54b96ef71642bbae2",
+      "original_status": "specified_not_implemented",
+      "disposition": "retained_as_gate",
+      "gate_owner_work_item": "J28",
+      "applies_to": "original_capability_completion_and_corresponding_enabled_support_cell",
+      "assertion": "不重复创建副作用；按事实补偿或记录 unresolved；不接真实发信权限。",
+      "joint_pass_implies_legacy_pass": false,
+      "gates": [
+        "J28.legacy_full"
+      ],
+      "local_opt_in_applicability": "deferred",
+      "local_opt_in_reason": "saga expansion"
+    },
+    {
+      "id": "PS:A33",
+      "source_snapshot": "evidence/inputs/pstack-acceptance-cases.json",
+      "source_case_id": "A33",
+      "source_case_sha256": "6d7bbf724b69fd4dd82c207e92b6e47eeb211b67af5d4515199c42fb51695a61",
+      "original_status": "specified_not_implemented",
+      "disposition": "retained_as_gate",
+      "gate_owner_work_item": "J03",
+      "applies_to": "original_capability_completion_and_corresponding_enabled_support_cell",
+      "assertion": "真实用户终点可观察；JSON 与诊断分开；错误指出可用的登记恢复动作；不要求临时写任意脚本。",
+      "joint_pass_implies_legacy_pass": false,
+      "gates": [
+        "J03.legacy_full",
+        "J27.scoped"
+      ],
+      "local_opt_in_applicability": "required",
+      "local_opt_in_reason": "assertion applies to declared local bug-fix and Firstmate scope"
+    },
+    {
+      "id": "PS:A34",
+      "source_snapshot": "evidence/inputs/pstack-acceptance-cases.json",
+      "source_case_id": "A34",
+      "source_case_sha256": "c8f020f344e8796c0ca8359de8cf1ecbec12e5d7004a47b40cdbacd3830b0fb0",
+      "original_status": "specified_not_implemented",
+      "disposition": "retained_as_gate",
+      "gate_owner_work_item": "J03",
+      "applies_to": "original_capability_completion_and_corresponding_enabled_support_cell",
+      "assertion": "目标资源无写入、服务未被隐式启动、无外部业务调用；必要只读访问范围明确。",
+      "joint_pass_implies_legacy_pass": false,
+      "gates": [
+        "J03.legacy_full",
+        "J27.scoped"
+      ],
+      "local_opt_in_applicability": "required",
+      "local_opt_in_reason": "assertion applies to declared local bug-fix and Firstmate scope"
+    },
+    {
+      "id": "PS:A35",
+      "source_snapshot": "evidence/inputs/pstack-acceptance-cases.json",
+      "source_case_id": "A35",
+      "source_case_sha256": "65cfb5429c9771370380ccfd1eccca383ac4f215a2d68f62915f18886017414a",
+      "original_status": "specified_not_implemented",
+      "disposition": "retained_as_gate",
+      "gate_owner_work_item": "J06",
+      "applies_to": "original_capability_completion_and_corresponding_enabled_support_cell",
+      "assertion": "只加载相关叶子与必要旅程；实际入口/动作/终点有记录；单入口成功不冒充双入口覆盖。",
+      "joint_pass_implies_legacy_pass": false,
+      "gates": [
+        "J06.legacy_full",
+        "J27.scoped"
+      ],
+      "local_opt_in_applicability": "required",
+      "local_opt_in_reason": "assertion applies to declared local bug-fix and Firstmate scope"
+    },
+    {
+      "id": "PS:A36",
+      "source_snapshot": "evidence/inputs/pstack-acceptance-cases.json",
+      "source_case_id": "A36",
+      "source_case_sha256": "54725794c6f967d022291e0884c223d9622c4fb4b8c9233852cba6a89be226df",
+      "original_status": "specified_not_implemented",
+      "disposition": "retained_as_gate",
+      "gate_owner_work_item": "J06",
+      "applies_to": "original_capability_completion_and_corresponding_enabled_support_cell",
+      "assertion": "标记漂移或 blocked；required 场景不静默跳过；不删除功能或降低谓词恢复绿色。",
+      "joint_pass_implies_legacy_pass": false,
+      "gates": [
+        "J06.legacy_full",
+        "J27.scoped"
+      ],
+      "local_opt_in_applicability": "required",
+      "local_opt_in_reason": "assertion applies to declared local bug-fix and Firstmate scope"
+    },
+    {
+      "id": "PS:A37",
+      "source_snapshot": "evidence/inputs/pstack-acceptance-cases.json",
+      "source_case_id": "A37",
+      "source_case_sha256": "ed7d504420980938f57eb477060d98d597cc79d53715800abdf016a9fe8bbac6",
+      "original_status": "specified_not_implemented",
+      "disposition": "retained_as_gate",
+      "gate_owner_work_item": "J06",
+      "applies_to": "original_capability_completion_and_corresponding_enabled_support_cell",
+      "assertion": "观察、目标、假设、非目标分别表示；纠正改变材料但不扩权；已充分说明的可逆工作无需反复确认。",
+      "joint_pass_implies_legacy_pass": false,
+      "gates": [
+        "J06.legacy_full",
+        "J27.scoped"
+      ],
+      "local_opt_in_applicability": "required",
+      "local_opt_in_reason": "assertion applies to declared local bug-fix and Firstmate scope"
+    },
+    {
+      "id": "PS:A38",
+      "source_snapshot": "evidence/inputs/pstack-acceptance-cases.json",
+      "source_case_id": "A38",
+      "source_case_sha256": "5e33bfce4826829301aab16a7d52c79db698c5082a36d2d6af30191bb8bf8dcd",
+      "original_status": "specified_not_implemented",
+      "disposition": "retained_as_gate",
+      "gate_owner_work_item": "J06",
+      "applies_to": "original_capability_completion_and_corresponding_enabled_support_cell",
+      "assertion": "当前事实优先；历史动机保留来源和不确定性；不扫描无关会话；解释不把 inference 改写为 fact。",
+      "joint_pass_implies_legacy_pass": false,
+      "gates": [
+        "J06.legacy_full",
+        "J27.scoped"
+      ],
+      "local_opt_in_applicability": "required",
+      "local_opt_in_reason": "assertion applies to declared local bug-fix and Firstmate scope"
+    },
+    {
+      "id": "PS:A39",
+      "source_snapshot": "evidence/inputs/pstack-acceptance-cases.json",
+      "source_case_id": "A39",
+      "source_case_sha256": "95c994ba092733aec9f77dde541933ac90bddba8c3328c639bacca14f99c2412",
+      "original_status": "specified_not_implemented",
+      "disposition": "retained_as_gate",
+      "gate_owner_work_item": "J06",
+      "applies_to": "original_capability_completion_and_corresponding_enabled_support_cell",
+      "assertion": "教程能产生目标结果和可理解恢复；签名与模块由调用需要推导，不能只验证类型编译。",
+      "joint_pass_implies_legacy_pass": false,
+      "gates": [
+        "J06.legacy_full",
+        "J27.scoped"
+      ],
+      "local_opt_in_applicability": "required",
+      "local_opt_in_reason": "assertion applies to declared local bug-fix and Firstmate scope"
+    },
+    {
+      "id": "PS:A40",
+      "source_snapshot": "evidence/inputs/pstack-acceptance-cases.json",
+      "source_case_id": "A40",
+      "source_case_sha256": "63937fac9e59720cac2e0bba195b4b3458a60485ab23fabad2971872d9e7a3dc",
+      "original_status": "specified_not_implemented",
+      "disposition": "retained_as_gate",
+      "gate_owner_work_item": "J06",
+      "applies_to": "original_capability_completion_and_corresponding_enabled_support_cell",
+      "assertion": "结论带方法/环境/观察/边界；未解决保持 unknown；预算耗尽停止；没有生产交付票据。",
+      "joint_pass_implies_legacy_pass": false,
+      "gates": [
+        "J06.legacy_full",
+        "J27.scoped"
+      ],
+      "local_opt_in_applicability": "required",
+      "local_opt_in_reason": "assertion applies to declared local bug-fix and Firstmate scope"
+    },
+    {
+      "id": "PS:A41",
+      "source_snapshot": "evidence/inputs/pstack-acceptance-cases.json",
+      "source_case_id": "A41",
+      "source_case_sha256": "3eda81ff380259453fea776251d98051f4b7142995183f9c5f30acf42c1946b7",
+      "original_status": "specified_not_implemented",
+      "disposition": "retained_as_gate",
+      "gate_owner_work_item": "J06",
+      "applies_to": "original_capability_completion_and_corresponding_enabled_support_cell",
+      "assertion": "显式记录偏差和原因；必要时重新设计，不静默追加补丁；有根据的复杂性不被机械否定。",
+      "joint_pass_implies_legacy_pass": false,
+      "gates": [
+        "J06.legacy_full",
+        "J27.scoped"
+      ],
+      "local_opt_in_applicability": "required",
+      "local_opt_in_reason": "assertion applies to declared local bug-fix and Firstmate scope"
+    },
+    {
+      "id": "PS:A42",
+      "source_snapshot": "evidence/inputs/pstack-acceptance-cases.json",
+      "source_case_id": "A42",
+      "source_case_sha256": "4298d28e15c6e736412969ed058b5b0d41ca9835bf30b59fe8dc789247f1e11f",
+      "original_status": "specified_not_implemented",
+      "disposition": "retained_as_gate",
+      "gate_owner_work_item": "J07",
+      "applies_to": "original_capability_completion_and_corresponding_enabled_support_cell",
+      "assertion": "真实缺陷/不变量仍可阻塞；猜测形成待检验问题而非自动扩张实现；不靠多数票关闭问题。",
+      "joint_pass_implies_legacy_pass": false,
+      "gates": [
+        "J07.legacy_full",
+        "J27.scoped"
+      ],
+      "local_opt_in_applicability": "required",
+      "local_opt_in_reason": "assertion applies to declared local bug-fix and Firstmate scope"
+    },
+    {
+      "id": "PS:A43",
+      "source_snapshot": "evidence/inputs/pstack-acceptance-cases.json",
+      "source_case_id": "A43",
+      "source_case_sha256": "06f7ba155ced3847ec3cefa3de23c0b55f952e053ecdbafe7c7d792cdffc8251",
+      "original_status": "specified_not_implemented",
+      "disposition": "retained_as_gate",
+      "gate_owner_work_item": "J03",
+      "applies_to": "original_capability_completion_and_corresponding_enabled_support_cell",
+      "assertion": "允许预算内持续试改；self-check 保留上下文但不能产生 local_verified、覆盖失败或弱化 gate。",
+      "joint_pass_implies_legacy_pass": false,
+      "gates": [
+        "J03.legacy_full",
+        "J27.scoped"
+      ],
+      "local_opt_in_applicability": "required",
+      "local_opt_in_reason": "assertion applies to declared local bug-fix and Firstmate scope"
+    },
+    {
+      "id": "PS:A44",
+      "source_snapshot": "evidence/inputs/pstack-acceptance-cases.json",
+      "source_case_id": "A44",
+      "source_case_sha256": "bf757b897fa02166d4687fa36515817692d3114771219d53d186797b91adef00",
+      "original_status": "specified_not_implemented",
+      "disposition": "retained_as_gate",
+      "gate_owner_work_item": "J03",
+      "applies_to": "original_capability_completion_and_corresponding_enabled_support_cell",
+      "assertion": "冲突时隔离或限并发；记录 environment identity；不把本地成功标成云/远端已验证。",
+      "joint_pass_implies_legacy_pass": false,
+      "gates": [
+        "J03.legacy_full",
+        "J27.scoped"
+      ],
+      "local_opt_in_applicability": "required",
+      "local_opt_in_reason": "assertion applies to declared local bug-fix and Firstmate scope"
+    },
+    {
+      "id": "PS:A45",
+      "source_snapshot": "evidence/inputs/pstack-acceptance-cases.json",
+      "source_case_id": "A45",
+      "source_case_sha256": "edc45f0f7ef52dfb0003a064162e216a595bca940e9afaa4b13c2bf9bdeb358e",
+      "original_status": "specified_not_implemented",
+      "disposition": "retained_as_gate",
+      "gate_owner_work_item": "J06",
+      "applies_to": "original_capability_completion_and_corresponding_enabled_support_cell",
+      "assertion": "三类原因分开，修复后真实重驱；工具坏不能产成功；未创建定时任务/通知；证据留存。",
+      "joint_pass_implies_legacy_pass": false,
+      "gates": [
+        "J06.legacy_full",
+        "J27.scoped"
+      ],
+      "local_opt_in_applicability": "required",
+      "local_opt_in_reason": "assertion applies to declared local bug-fix and Firstmate scope"
+    },
+    {
+      "id": "PS:A46",
+      "source_snapshot": "evidence/inputs/pstack-acceptance-cases.json",
+      "source_case_id": "A46",
+      "source_case_sha256": "edd44d97d563dd70204e569307668689b930bd471e9887b54a3ad6b7a7412a04",
+      "original_status": "specified_not_implemented",
+      "disposition": "retained_as_gate",
+      "gate_owner_work_item": "J16",
+      "applies_to": "original_capability_completion_and_corresponding_enabled_support_cell",
+      "assertion": "当前检索不注入旧计划为指令，历史/决定/回执可查；不会删除原始报告或冻结合同。",
+      "joint_pass_implies_legacy_pass": false,
+      "gates": [
+        "J16.legacy_full",
+        "J27.scoped"
+      ],
+      "local_opt_in_applicability": "required",
+      "local_opt_in_reason": "assertion applies to declared local bug-fix and Firstmate scope"
+    },
+    {
+      "id": "PS:A47",
+      "source_snapshot": "evidence/inputs/pstack-acceptance-cases.json",
+      "source_case_id": "A47",
+      "source_case_sha256": "b3037f6ca51ebc3e03b825a4927952dda16bf9efffbcb8e5398b0489f7078cc5",
+      "original_status": "specified_not_implemented",
+      "disposition": "retained_as_gate",
+      "gate_owner_work_item": "J06",
+      "applies_to": "original_capability_completion_and_corresponding_enabled_support_cell",
+      "assertion": "工具失败与产品失败分开；不将 PR 数或作者个人倍数当 ROI；教程成功有真实终点。",
+      "joint_pass_implies_legacy_pass": false,
+      "gates": [
+        "J06.legacy_full",
+        "J27.scoped"
+      ],
+      "local_opt_in_applicability": "required",
+      "local_opt_in_reason": "assertion applies to declared local bug-fix and Firstmate scope"
+    },
+    {
+      "id": "PS:A48",
+      "source_snapshot": "evidence/inputs/pstack-acceptance-cases.json",
+      "source_case_id": "A48",
+      "source_case_sha256": "b09ef2b7aa6df79eb5bceaa1aebc0a3408179f008b984302e9e13c5b5144d941",
+      "original_status": "specified_not_implemented",
+      "disposition": "retained_as_gate",
+      "gate_owner_work_item": "J04",
+      "applies_to": "original_capability_completion_and_corresponding_enabled_support_cell",
+      "assertion": "仅相关方法/地图被加载；理由与缺口可见；纠正形成新材料，不依赖用户记全部命令，不静默省略必需验证。",
+      "joint_pass_implies_legacy_pass": false,
+      "gates": [
+        "J04.legacy_full",
+        "J27.scoped"
+      ],
+      "local_opt_in_applicability": "required",
+      "local_opt_in_reason": "assertion applies to declared local bug-fix and Firstmate scope"
+    }
+  ]
+}

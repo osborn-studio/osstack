@@ -1,0 +1,40 @@
+{
+  "owner": "joint-contract-owner",
+  "shared_resource": "control_plane_schema (specification only; no runtime registration)",
+  "J01a": [
+    "packages/protocol/src/joint-json.ts",
+    "packages/protocol/src/joint-json.test.ts",
+    "packages/protocol/fixtures/joint/digest-vectors.json",
+    "packages/protocol/fixtures/joint/.gitattributes"
+  ],
+  "J01b": [
+    "packages/protocol/src/joint*.ts",
+    "packages/protocol/src/method*.ts",
+    "packages/protocol/fixtures/joint/contracts.json",
+    "packages/protocol/schemas/joint/",
+    "packages/protocol/scripts/generate-joint-schemas.mjs",
+    "packages/protocol/package.json",
+    "packages/protocol/scripts/joint-reference-vectors.py",
+    "packages/protocol/fixtures/joint/digest-catalog.json",
+    "packages/protocol/fixtures/joint/reference-vectors.json"
+  ],
+  "J11": [
+    "packages/core/fixtures/operator-recovery/",
+    "packages/core/src/state/operator-recovery-spec.test.ts",
+    "docs/design/operator-recovery-schema.md",
+    "docs/implementation/joint-foundation/"
+  ],
+  "other_chat": [
+    "R01",
+    "R02",
+    "DEBT03",
+    "PR #271"
+  ],
+  "excluded": [
+    "production migration registration",
+    "runtime recovery",
+    "method activation",
+    "provider trial",
+    "default enablement"
+  ]
+}
