@@ -1,6 +1,6 @@
 {
   "kind": "versioned_board_projection_not_runtime_authority",
-  "work_manifest_sha256": "6cfdb90fbe350781a2c1e78c96eadd8013ddfc361edbfbb4c233720548600e8e",
+  "work_manifest_sha256": "f8828287a5947b25fef6876dab0e3b9936afb0e141c0ad741687250e13ae7b25",
   "historical_receipt_sha256": "bb417418ae377cac22a8f56d1bab8bd9fa7a3f82ce33e95ef3f466bb10e2d8c1",
   "revision_sync": "versioned_comments_written",
   "native_dependency_enforcement": false,
@@ -8,254 +8,254 @@
     "R01": {
       "card_id": "card_126c8bc6",
       "status": "todo",
-      "revision_comment_id": 103
+      "revision_comment_id": 153
     },
     "R02": {
       "card_id": "card_9ccb91b2",
       "status": "todo",
-      "revision_comment_id": 104
+      "revision_comment_id": 154
     },
     "R03": {
       "card_id": "card_2ff6f711",
       "status": "todo",
-      "revision_comment_id": 105
+      "revision_comment_id": 155
     },
     "R04": {
       "card_id": "card_c96c79e2",
       "status": "todo",
-      "revision_comment_id": 106
+      "revision_comment_id": 156
     },
     "R05": {
       "card_id": "card_313e9767",
       "status": "todo",
-      "revision_comment_id": 107
+      "revision_comment_id": 157
     },
     "D01": {
       "card_id": "card_a5b9b8c2",
       "status": "done",
-      "revision_comment_id": 108
+      "revision_comment_id": 158
     },
     "D02": {
       "card_id": "card_54030cc3",
       "status": "done",
-      "revision_comment_id": 109
+      "revision_comment_id": 159
     },
     "D03": {
       "card_id": "card_35443ded",
       "status": "done",
-      "revision_comment_id": 110
+      "revision_comment_id": 160
     },
     "D04": {
       "card_id": "card_6555f2fe",
       "status": "done",
-      "revision_comment_id": 111
+      "revision_comment_id": 161
     },
     "D05": {
       "card_id": "card_dcaeb58b",
       "status": "done",
-      "revision_comment_id": 112
+      "revision_comment_id": 162
     },
     "D06": {
       "card_id": "card_77f937c0",
       "status": "done",
-      "revision_comment_id": 113
+      "revision_comment_id": 163
     },
     "D07": {
       "card_id": "card_2523f673",
       "status": "blocked",
-      "revision_comment_id": 114
+      "revision_comment_id": 164
     },
     "D08": {
       "card_id": "card_eb589671",
       "status": "blocked",
-      "revision_comment_id": 115
+      "revision_comment_id": 165
     },
     "C01": {
       "card_id": "card_81273844",
       "status": "done",
-      "revision_comment_id": 116
+      "revision_comment_id": 166
     },
     "C02": {
       "card_id": "card_fd82846d",
       "status": "done",
-      "revision_comment_id": 117
+      "revision_comment_id": 167
     },
     "C03": {
       "card_id": "card_9c19fe3d",
       "status": "todo",
-      "revision_comment_id": 118
+      "revision_comment_id": 168
     },
     "C04": {
       "card_id": "card_5238e1f0",
       "status": "todo",
-      "revision_comment_id": 119
+      "revision_comment_id": 169
     },
     "C05": {
       "card_id": "card_4c9dfbc8",
       "status": "todo",
-      "revision_comment_id": 120
+      "revision_comment_id": 170
     },
     "C06": {
       "card_id": "card_404bf155",
       "status": "todo",
-      "revision_comment_id": 121
+      "revision_comment_id": 171
     },
     "C07": {
       "card_id": "card_affebc3d",
       "status": "todo",
-      "revision_comment_id": 122
+      "revision_comment_id": 172
     },
     "E01": {
       "card_id": "card_a8b39980",
       "status": "todo",
-      "revision_comment_id": 123
+      "revision_comment_id": 173
     },
     "E02": {
       "card_id": "card_27fb9602",
       "status": "todo",
-      "revision_comment_id": 124
+      "revision_comment_id": 174
     },
     "E03": {
       "card_id": "card_4a4701ef",
       "status": "todo",
-      "revision_comment_id": 125
+      "revision_comment_id": 175
     },
     "E04": {
       "card_id": "card_d86a7e1a",
       "status": "todo",
-      "revision_comment_id": 126
+      "revision_comment_id": 176
     },
     "E05": {
       "card_id": "card_eb24f79b",
       "status": "todo",
-      "revision_comment_id": 127
+      "revision_comment_id": 177
     },
     "E06": {
       "card_id": "card_42904684",
       "status": "todo",
-      "revision_comment_id": 128
+      "revision_comment_id": 178
     },
     "I01": {
       "card_id": "card_0fdae85d",
       "status": "todo",
-      "revision_comment_id": 129
+      "revision_comment_id": 179
     },
     "I02": {
       "card_id": "card_a3d6200d",
       "status": "todo",
-      "revision_comment_id": 130
+      "revision_comment_id": 180
     },
     "I03": {
       "card_id": "card_938d5ae5",
       "status": "todo",
-      "revision_comment_id": 131
+      "revision_comment_id": 181
     },
     "I04": {
       "card_id": "card_c82848a3",
       "status": "todo",
-      "revision_comment_id": 132
+      "revision_comment_id": 182
     },
     "V00": {
       "card_id": "card_f77207fc",
       "status": "todo",
-      "revision_comment_id": 133
+      "revision_comment_id": 183
     },
     "V01": {
       "card_id": "card_f947aee0",
       "status": "todo",
-      "revision_comment_id": 134
+      "revision_comment_id": 184
     },
     "V02": {
       "card_id": "card_a8947302",
       "status": "todo",
-      "revision_comment_id": 135
+      "revision_comment_id": 185
     },
     "V03": {
       "card_id": "card_934c2a5e",
       "status": "blocked",
-      "revision_comment_id": 136
+      "revision_comment_id": 186
     },
     "V04": {
       "card_id": "card_6f5367d5",
       "status": "todo",
-      "revision_comment_id": 137
+      "revision_comment_id": 187
     },
     "V05": {
       "card_id": "card_36837400",
       "status": "todo",
-      "revision_comment_id": 138
+      "revision_comment_id": 188
     },
     "V06": {
       "card_id": "card_67df3d72",
       "status": "blocked",
-      "revision_comment_id": 139
+      "revision_comment_id": 189
     },
     "X01": {
       "card_id": "card_0790d62c",
       "status": "todo",
-      "revision_comment_id": 140
+      "revision_comment_id": 190
     },
     "X02": {
       "card_id": "card_1725bf00",
       "status": "todo",
-      "revision_comment_id": 141
+      "revision_comment_id": 191
     },
     "X03": {
       "card_id": "card_e2f188a7",
       "status": "todo",
-      "revision_comment_id": 142
+      "revision_comment_id": 192
     },
     "X04": {
       "card_id": "card_4f017d09",
       "status": "todo",
-      "revision_comment_id": 143
+      "revision_comment_id": 193
     },
     "X05": {
       "card_id": "card_d7674ba1",
       "status": "todo",
-      "revision_comment_id": 144
+      "revision_comment_id": 194
     },
     "X06": {
       "card_id": "card_47083a19",
       "status": "todo",
-      "revision_comment_id": 145
+      "revision_comment_id": 195
     },
     "X07": {
       "card_id": "card_b800877f",
       "status": "todo",
-      "revision_comment_id": 146
+      "revision_comment_id": 196
     },
     "X08": {
       "card_id": "card_a58e25d0",
       "status": "todo",
-      "revision_comment_id": 147
+      "revision_comment_id": 197
     },
     "M01": {
       "card_id": "card_7cb95b34",
       "status": "todo",
-      "revision_comment_id": 148
+      "revision_comment_id": 198
     },
     "M02": {
       "card_id": "card_59d14e7c",
       "status": "todo",
-      "revision_comment_id": 149
+      "revision_comment_id": 199
     },
     "DEBT01": {
       "card_id": "card_13813d8e",
       "status": "todo",
-      "revision_comment_id": 150
+      "revision_comment_id": 200
     },
     "DEBT02": {
       "card_id": "card_24391107",
       "status": "todo",
-      "revision_comment_id": 151
+      "revision_comment_id": 201
     },
     "DEBT03": {
       "card_id": "card_4676bb72",
       "status": "todo",
-      "revision_comment_id": 152
+      "revision_comment_id": 202
     }
   },
-  "observed_at": "2026-10-26T23:57:29.956429+00:00",
-  "board_observation_sha256": "84646618531c334c7c0cfa1916f14afa8c2c054265d33910baceb6dc1e28287a"
+  "observed_at": "2026-10-27T00:09:44.442149+00:00",
+  "board_observation_sha256": "7d2b69885e559913485f0eea75eb18547f1a4e8f7e7e0dcda871a2634fc8bd29"
 }

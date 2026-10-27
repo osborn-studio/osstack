@@ -4,7 +4,7 @@
 
 ## 1. 完成证据与历史记录
 
-`current-evidence.json` 将当前本地实现范围绑定到 `c1cfccf18df97fa4b8bc2ed1752071feda9c3670`、CI run 40332791896、五个工程模块摘要及历史报告摘要。历史 `64daf4af` 与当前基线的 `packages/ scripts/ package.json pnpm-lock.yaml` 差异为空；验证器重新检查，而非仅信任声明。真实 Provider 记录仍属于历史候选，不能从代码等价推导跨环境资格。
+`current-evidence.json` 将当前本地实现范围绑定到 `c1cfccf18df97fa4b8bc2ed1752071feda9c3670`、CI run 40332791896、五个工程模块摘要及历史报告摘要。历史 `64daf4af` 与当前基线的 整棵树除 `docs/` 与两份根 README 以外差异为空；包括根级构建/测试配置；验证器重新检查，而非仅信任声明。真实 Provider 记录仍属于历史候选，不能从代码等价推导跨环境资格。
 
 八项 done 只指 `adopt_session` 的本地实现。D07/D08/V03/V06 的完整验收仍 blocked。中断且丢失诊断的 LIVE01 关联 V03，不能被 done 覆盖。`review-snapshot.json` 是供审查的完整性快照，能够检测不一致修改；作者若同时改代码、所有摘要和证据仍需要独立审查，摘要不是信任根或证明测试真实运行的签名。
 
@@ -17,7 +17,7 @@
 - I01.local_contract 只要求 D08.local_journey，后者要求 D07.local_fixture；不依赖远端/物理断电认证。
 - D07.host_qualification 要求 V03.host_measurement。V03 的宿主测量里程碑不依赖整个 D08，因而没有“D08 等 V03、V03 等 D08”的语义环。
 - C03.budget_storage、C04.start_dispatch、I03.local_proof、I04.compat_recovery、DEBT02.recovery_contract 是 S2 opt-in 前置。DEBT01.safe_failure 要先证明不会错误解锁，其便利性清理优化可后续交付。
-- V02.slice_faults 随每个切片交付；V06.release_channel 在 S0 处理。真实环境缺失只阻断相关支持组合，不能阻止纯契约和模拟测试开发，也不能被模拟替代。
+- 按切片与候选绑定的 V02.S1_faults–V02.S6_faults 随每个切片交付；V06.release_channel 在 S0 处理。真实环境缺失只阻断相关支持组合，不能阻止纯契约和模拟测试开发，也不能被模拟替代。
 - 默认启用前要求 R05 的 verifier/签发协议、V03 的精确支持组合测量、V06 的独立信任根/轮换/撤销操作及相应变异测试。资格必须绑定当前候选、协议、宿主和 adapter，且可撤销。
 
 每个里程碑须在实施 PR 中给出独立范围、依赖证据、候选和回执。当前工具只校验规划图，不执行调度或声明哪些代码可部署。原 50 个工作包保留，不机械扩成 150 个 PR；先合协议/迁移，再并行 adapter，直接面向 main。
@@ -28,7 +28,7 @@
 
 C03 在现有 engineering store/DDL 中增加版本化 MissionPlan、ExecutorBinding、ActionIntent 与预算 reservation。C04 负责 effect broker；E01 负责 adapter 准入。`start_executor` 经 `proposed → admitted → committed → acknowledged`；无法确认执行结果为 `unknown`，不能回写为未执行。外部调用前先持久化 committed 的唯一 effect 身份并单次消费授权；崩溃后按同一身份对账，不能换 ID 重发。
 
-授权绑定 `actor, tenant, repository_identity, mission_id, mission_revision, plan_revision, binding_generation, candidate_sha, contract_digest, executor_version, method, canonical_typed_parameters, budget_reservation_id, nonce, expiry`。哈希采用带版本/domain separator 的确定性 JSON 编码：只允许 schema 内字段、排序对象键、拒绝重复键/非有限数字，明确 absent 与 null，限制字符串长度并避免隐式数值转换。凭据用受信引用，不把秘密放入可导出摘要。方法及参数 schema 升级即改变 digest。typed service method 不需要构造 shell argv；如 adapter 确实执行子进程，最终固定 argv/env allowlist 也属于宿主核对的 effect 内容。
+授权绑定 `actor, tenant, repository_identity, mission_id, mission_revision, plan_revision, binding_generation, base_head_sha, contract_digest, executor_version, method, canonical_typed_parameters, budget_reservation_id, nonce, expiry`。哈希采用带版本/domain separator 的确定性 JSON 编码：只允许 schema 内字段、排序对象键、拒绝重复键/非有限数字，明确 absent 与 null，限制字符串长度并避免隐式数值转换。凭据用受信引用，不把秘密放入可导出摘要。方法及参数 schema 升级即改变 digest。typed service method 不需要构造 shell argv；如 adapter 确实执行子进程，最终固定 argv/env allowlist 也属于宿主核对的 effect 内容。
 
 取消在 action commit 前线性化则不派发；commit 后只能 stop_requested，必须等待精确进程身份的停止/静默证据。Mission 并行取消逐步保存结果；任何 unknown 仍保留预算、资源和对账义务。不能让一个已停步骤抹去其他在执行步骤。
 
@@ -73,3 +73,19 @@ E05/X05 调用路由模型前先执行出站过滤和额度准入。X08 只探�
 V00/V03 在 S0 准备诊断保全与复验协议；LIVE01 的原因未明，不能写成已恢复。物理断电、恶意同 UID 隔离、残留进程域、受控 Claude 故障、远端/非默认租户和长期运行仍单列；本次模型审计不执行这些实验。发布通道权限须按既有保护规则解决。
 
 The revision keeps 50 work packages and separates full-package completion from scoped prerequisite milestones. Before S2, implement cumulative budget storage, typed one-shot dispatch, local completion evidence, safe recovery and schema-compatible recovery builds. Shared host resources need one lease authority; remote budgets need reserved allocations. Historical evidence remains immutable. Planned scenarios, model review, local implementation, host qualification and default activation are separate facts.
+
+## 7. 第二轮挑战的精化
+
+B01：任何标有 introduces_schema 的里程碑，依赖闭包必须含 I04.compat_recovery；X03 broker 与 C03 存储均受限。恢复构建明确理解目标 N+1 schema，在升级前用 N+1 夹具验证读取、对账、授权取消和派发总开关；先检查空间、版本、锁、备份和旧写者 fencing，再执行事务迁移。迁移失败保留原库/失败回执，禁止自动启动写派发；验证启动前失败与事务中断。
+
+B02：外部调用前持久化 effect_id 派生 run_id 或预建容纳域身份。E01 不允许无法按该身份查询/取消、且无宿主容纳域的 profile 自动 start。handle 回执丢失不等于身份丢失。仍无法取证的 unknown 保持仓库/资源范围内隔离，不声称停机成功。存在 hold 时不绕过 ADR-16 托管升级；预先提供与当前 schema 兼容、禁迁移禁新派发的恢复入口及离线不可变副本诊断，取得静默/无副作用证据后由现有 operator 合同处置；证据不可得则明确没有自动恢复出口。新版本开发可在隔离测试库推进，不能打开生产 home 自动迁移。
+
+B03：E02 依赖 C06 resolver 和 X01 plan invalidation。V02 按 S1–S6 独立里程碑，每个执行回执还绑定精确 candidate/support cell，S1 通过不能替代 S2。默认启用必须是该切片全部 opt-in 门槛加资格/信任根门槛的超集；JSON 给出 S2 显式集合和后续累加规则。
+
+B04：dispatch_digest 机器清单定义 15 个字段及规范化拒绝项，AT-08 逐字段变异，验证器核对集合。开始执行使用 base_head_sha，交付 CompletionProof 使用 delivered_candidate_sha；不能把起始 HEAD 当最终交付候选。
+
+B05：broker 与 home 的两阶段协议使用同一 effect_id。先持久化 home intent，再取得 owner 绑定的 pending lease，提交 intent 后激活 held；只有 held 才能派发。崩溃时 broker 向受信 home 取精确状态证据，未提交且无副作用证明才可释放；未知保持占用。broker 不可用拒绝新派发，不阻止已认证的停止通道。租约释放需匹配 home 身份/代数或显式 operator 权限；同 UID 不等于可信隔离，恶意同 UID 组合必须有独立宿主边界，否则不认证。孤儿租约恢复纳入 DEBT02；schema 进入 I04 门槛。
+
+B06：预算按调用数、毫秒、明确币种微单位分别存储，整数维度不隐式换算。reserved 仅在证明未提交后 CAS 为 released；committed 由权威回执 CAS 为 settled；effect_id+reservation_id 账本键防重复释放。未知子预留只能凭原回执或经资格确认的操作员证据结算，不能凭超时回收。
+
+B07–B09：当前观察记录 CI job 摘要；完整性快照覆盖规范 README、本文及看板投影。代码等价覆盖根配置并检查非忽略的未跟踪生产文件。局部 contract 不得依赖 host_qualified/default_enabled，由验证器直接检查。此目录是固定设计快照，planned 状态有意不能原地升级；未来 achieved 证据在 R05/M01 的独立交付记录中验签及关联，不把本次简易工具提升为资格系统。external_dependencies 仍只能是 unresolved/not_qualified，R03.external_contracts 是 E05/X07 完成交付的前置，FM-22/X07 显式关联新增原文。

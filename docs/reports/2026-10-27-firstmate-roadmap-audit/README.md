@@ -4,7 +4,7 @@
 
 实际调用 `/opt/homebrew/bin/claude` 2.1.291，先确认已登录，再探测并使用 **`claude-sonnet-5-5`**，没有换用其他模型。两者均由 CLI 返回的 modelUsage 确认。审查禁用工具、MCP、hooks、slash commands 及会话持久化；材料从文件送入 stdin，未给嵌套模型写代码、运行命令或访问控制面数据库的能力。
 
-第一轮原始结论为 **REVISE_REQUIRED：0 个 P0、7 个 P1、19 个 P2/P3**。模型没有运行测试；它对验证器行为的判断来自读代码。主持者随后复现了五个可绕过检查的负例，并修订设计和验证器。复审结果将在实际返回后追加；当前不预写 PASS。
+第一轮原始结论为 **REVISE_REQUIRED：0 个 P0、7 个 P1、19 个 P2/P3**。模型没有运行测试；它对验证器行为的判断来自读代码。主持者随后复现了五个可绕过检查的负例，并修订设计和验证器。第二轮返回 PASS_WITH_CONCERNS：0 个 P0/P1，另有 6 个 P2 与 3 个 P3。主持者继续修订其设计边界与机器检查；第三轮只复核这些修改。
 
 - [第一轮原文](round1.md)：保留模型原始意见，不用主持者摘要替代。
 - [第一轮 CLI 原始结果](round1.json)：实际模型、调用结果与用量。
@@ -53,3 +53,21 @@
 ## English summary
 
 The actual model was `claude-sonnet-5-5`. Round one returned REVISE_REQUIRED with seven P1 findings. The host verified the claims, fixed the roadmap and validator, and rejected the unsafe suggestion that an old binary could perform a “read-only” cancellation on a newer database. Raw model reports are preserved separately from host dispositions. This review does not certify future features or production environments.
+
+## 第二轮及追加处置
+
+实际模型仍是 `claude-sonnet-5-5`，候选 `ec1cde6caab2e7603dd455b6e87bfdb23227827c`。[第二轮原文](round2.md)、[CLI 结果](round2.json)、[输入清单](round2-input-manifest.json) 完整保留。模型明确同意拒绝“旧二进制只读 cancel”，并认可七项 P1 的设计修订。
+
+| ID | 主持者处置 |
+|---|---|
+| B01 | introduces_schema 的依赖闭包必须含目标 schema 恢复构建；C03/X03 已关联，补迁移启动失败场景。 |
+| B02 | effect_id 派生身份先持久化；不可查询/取消且无容纳域的 profile 禁止自动 start。未知 hold 不绕过升级限制；预置禁迁移恢复入口，证据不足继续隔离。 |
+| B03 | E02 补 C06/X01 依赖；V02 分 S1–S6；S2 默认启用集合必须包含全部 opt-in 要求，后续切片累加。 |
+| B04 | 机器字段清单及 AT-08 逐字段变异集合一致；补规范化反例，区分 base_head_sha / delivered_candidate_sha。 |
+| B05 | broker pending/held/released 与 home intent 按 effect_id 对账；不可用拒绝准入，认证释放，孤儿恢复沿用 DEBT02，schema 受 I04 限制。 |
+| B06 | 预算单位向量、CAS、单次释放账本键及 unknown 结算证据明确化；增加重复释放和过期竞争验收。 |
+| B07 | 取回 CI check job 原日志，逐包汇总 5,950/7/0；等价范围扩至除 docs/根 README 外全树及未跟踪生产文件；快照覆盖规范文档与看板投影。 |
+| B08 | 将 contract→host_qualified 禁止规则移入验证器，增加候选/代码摘要/等价/实际 Git 来源负例。未把冻结规划工具改造成 achieved 签发器：后续 R05/M01 使用独立交付记录，需另行审计和候选证据；当前 planned 不原地改写历史。 |
+| B09 | 验证外部依赖 unresolved 状态；E05/X07 加 R03 前置与里程碑，FM-22/X07 关联 ADD-069/070 原文。 |
+
+这些是设计、验证器及证据修改；broker、预算、恢复构建等仍没有作为新生产实现交付。

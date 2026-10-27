@@ -34,8 +34,9 @@
       "owner": "C03",
       "phase": "wired",
       "scope": "goal_dispatch_local",
-      "requires": [],
-      "status": "planned"
+      "requires": ["I04.compat_recovery"],
+      "status": "planned",
+      "introduces_schema": true
     },
     {
       "id": "C04.start_dispatch",
@@ -110,14 +111,6 @@
       "status": "planned"
     },
     {
-      "id": "V02.slice_faults",
-      "owner": "V02",
-      "phase": "wired",
-      "scope": "current_slice",
-      "requires": [],
-      "status": "planned"
-    },
-    {
       "id": "V03.diagnostic_retention",
       "owner": "V03",
       "phase": "contract",
@@ -140,13 +133,124 @@
       "scope": "exact_support_cell",
       "requires": ["D07.host_qualification", "D08.local_journey"],
       "status": "planned"
+    },
+    {
+      "id": "X03.broker_storage",
+      "owner": "X03",
+      "phase": "wired",
+      "scope": "host_resource_broker",
+      "requires": ["I04.compat_recovery"],
+      "status": "planned",
+      "introduces_schema": true
+    },
+    {
+      "id": "C06.start_resolver",
+      "owner": "C06",
+      "phase": "wired",
+      "scope": "goal_dispatch_local",
+      "requires": [],
+      "status": "planned"
+    },
+    {
+      "id": "X01.plan_invalidation",
+      "owner": "X01",
+      "phase": "wired",
+      "scope": "goal_dispatch_local",
+      "requires": [],
+      "status": "planned"
+    },
+    {
+      "id": "E01.recoverable_profile",
+      "owner": "E01",
+      "phase": "host_qualified",
+      "scope": "exact_support_cell",
+      "requires": [],
+      "status": "planned"
+    },
+    {
+      "id": "E02.local_dispatch",
+      "owner": "E02",
+      "phase": "wired",
+      "scope": "goal_dispatch_local",
+      "requires": ["C03.budget_storage", "C04.start_dispatch", "C06.start_resolver", "X01.plan_invalidation", "E01.recoverable_profile", "I03.local_proof", "DEBT02.recovery_contract"],
+      "status": "planned"
+    },
+    {
+      "id": "R03.external_contracts",
+      "owner": "R03",
+      "phase": "contract",
+      "scope": "tasks_axi_quota_axi",
+      "requires": [],
+      "status": "planned"
+    },
+    {
+      "id": "V02.S1_faults",
+      "owner": "V02",
+      "phase": "wired",
+      "scope": "S1:exact_candidate_and_support_cell",
+      "requires": [],
+      "status": "planned"
+    },
+    {
+      "id": "V02.S2_faults",
+      "owner": "V02",
+      "phase": "wired",
+      "scope": "S2:exact_candidate_and_support_cell",
+      "requires": [],
+      "status": "planned"
+    },
+    {
+      "id": "V02.S3_faults",
+      "owner": "V02",
+      "phase": "wired",
+      "scope": "S3:exact_candidate_and_support_cell",
+      "requires": [],
+      "status": "planned"
+    },
+    {
+      "id": "V02.S4_faults",
+      "owner": "V02",
+      "phase": "wired",
+      "scope": "S4:exact_candidate_and_support_cell",
+      "requires": [],
+      "status": "planned"
+    },
+    {
+      "id": "V02.S5_faults",
+      "owner": "V02",
+      "phase": "wired",
+      "scope": "S5:exact_candidate_and_support_cell",
+      "requires": [],
+      "status": "planned"
+    },
+    {
+      "id": "V02.S6_faults",
+      "owner": "V02",
+      "phase": "wired",
+      "scope": "S6:exact_candidate_and_support_cell",
+      "requires": [],
+      "status": "planned"
     }
   ],
   "release_requirements": {
     "before_new_schema": ["I04.compat_recovery"],
-    "S2_opt_in": ["C03.budget_storage", "C04.start_dispatch", "I03.local_proof", "I04.compat_recovery", "DEBT01.safe_failure", "DEBT02.recovery_contract", "V02.slice_faults"],
+    "S2_opt_in": ["C03.budget_storage", "C04.start_dispatch", "I03.local_proof", "I04.compat_recovery", "DEBT01.safe_failure", "DEBT02.recovery_contract", "V02.S2_faults", "C06.start_resolver", "X01.plan_invalidation", "E01.recoverable_profile", "E02.local_dispatch"],
     "every_artifact_release": ["V06.release_channel"],
-    "every_default_enable": ["R05.qualifier_protocol", "V03.host_measurement", "V06.trust_operations", "V02.slice_faults"],
-    "before_live_trial": ["V03.diagnostic_retention"]
+    "before_live_trial": ["V03.diagnostic_retention"],
+    "S3_opt_in": ["C03.budget_storage", "C04.start_dispatch", "I03.local_proof", "I04.compat_recovery", "DEBT01.safe_failure", "DEBT02.recovery_contract", "V02.S2_faults", "C06.start_resolver", "X01.plan_invalidation", "E01.recoverable_profile", "E02.local_dispatch", "V02.S3_faults", "R03.external_contracts", "X03.broker_storage"],
+    "S5_public_opt_in": ["C03.budget_storage", "C04.start_dispatch", "I03.local_proof", "I04.compat_recovery", "DEBT01.safe_failure", "DEBT02.recovery_contract", "V02.S2_faults", "C06.start_resolver", "X01.plan_invalidation", "E01.recoverable_profile", "E02.local_dispatch", "V02.S3_faults", "R03.external_contracts", "X03.broker_storage", "V02.S5_faults"],
+    "S2_default_enable": ["C03.budget_storage", "C04.start_dispatch", "I03.local_proof", "I04.compat_recovery", "DEBT01.safe_failure", "DEBT02.recovery_contract", "V02.S2_faults", "C06.start_resolver", "X01.plan_invalidation", "E01.recoverable_profile", "E02.local_dispatch", "R05.qualifier_protocol", "V03.host_measurement", "V06.trust_operations"]
+  },
+  "default_enable_rule": {
+    "requires": "all opt-in prerequisites for the chosen slice plus exact candidate/scope qualification; results cannot be reused across slice/candidate/support cell",
+    "common": ["R05.qualifier_protocol", "V03.host_measurement", "V06.trust_operations"],
+    "slice_faults": {
+      "S1": "V02.S1_faults",
+      "S2": "V02.S2_faults",
+      "S3": "V02.S3_faults",
+      "S4": "V02.S4_faults",
+      "S5": "V02.S5_faults",
+      "S6": "V02.S6_faults"
+    }
   }
 }

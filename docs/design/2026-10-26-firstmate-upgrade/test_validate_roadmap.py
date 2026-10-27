@@ -38,8 +38,11 @@ class RoadmapValidationTests(unittest.TestCase):
         operation(data)
         path.write_text(json.dumps(data, ensure_ascii=False))
 
-    def run_validator(self):
-        return subprocess.run([sys.executable, str(self.folder / 'validate-roadmap.py'), '--osstack-repo', str(REPO)], capture_output=True, text=True, timeout=30)
+    def run_validator(self, verify_sources=False):
+        command = [sys.executable, str(self.folder / 'validate-roadmap.py'), '--osstack-repo', str(REPO)]
+        if verify_sources:
+            command += ['--verify-sources', '--firstmate-repo', os.environ['OSSTACK_FIRSTMATE_REPO']]
+        return subprocess.run(command, capture_output=True, text=True, timeout=30)
 
     def assert_rejected(self, reason=None):
         result = self.run_validator()
@@ -139,15 +142,18 @@ class RoadmapValidationTests(unittest.TestCase):
 
     def test_stale_board_projection(self):
         self.mutate('board-projection.json', lambda d: d.update(work_manifest_sha256='0'*64))
+        self.refresh_snapshot()
         self.assert_rejected('stale board projection')
 
     def test_wrong_board_state(self):
         self.mutate('board-projection.json', lambda d: d['cards']['R01'].update(status='done'))
+        self.refresh_snapshot()
         self.assert_rejected('board status differs')
 
     def test_duplicate_json_key(self):
         path = self.folder/'board-projection.json'
         path.write_text(path.read_text().replace('{', '{"kind":"duplicate",', 1))
+        self.refresh_snapshot()
         self.assert_rejected('duplicate JSON key')
 
     def test_inventory_cannot_claim_contract(self):
@@ -164,6 +170,60 @@ class RoadmapValidationTests(unittest.TestCase):
         self.mutate('capability-map.json', lambda d: d['capabilities'][0].update(negative_cases={'not':'a list'}))
         self.refresh_snapshot()
         self.assert_rejected('expected list')
+
+
+    def test_schema_gate_missing(self):
+        self.mutate('delivery-gates.json', lambda d: [x.update(requires=[]) for x in d['milestones'] if x['id']=='C03.budget_storage'])
+        self.refresh_snapshot()
+        self.assert_rejected('schema lacks prior recovery gate')
+
+    def test_contract_blocked_by_host(self):
+        self.mutate('delivery-gates.json', lambda d: d['milestones'][0]['requires'].append('V03.host_measurement'))
+        self.refresh_snapshot()
+        self.assert_rejected('contract blocked on host qualification')
+
+    def test_default_cannot_skip_opt_in(self):
+        self.mutate('delivery-gates.json', lambda d: d['release_requirements']['S2_default_enable'].remove('DEBT02.recovery_contract'))
+        self.refresh_snapshot()
+        self.assert_rejected('default gate omits')
+
+    def test_digest_mutation_gap(self):
+        self.mutate('audit-contracts.json', lambda d: d['scenarios'][7]['mutated_fields'].remove('executor_version'))
+        self.refresh_snapshot()
+        self.assert_rejected('effect digest mutation coverage')
+
+    def test_external_dependency_fake_qualification(self):
+        self.mutate('audit-contracts.json', lambda d: d['external_dependencies'][0].update(status='qualified',version='invented'))
+        self.refresh_snapshot()
+        self.assert_rejected('unverified external qualification')
+
+    def test_code_digest_changed(self):
+        self.mutate('current-evidence.json', lambda d: d['code_files'][0].update(sha256='0'*64))
+        self.refresh_snapshot()
+        self.assert_rejected('current code evidence changed')
+
+    def test_ci_candidate_changed(self):
+        self.mutate('current-evidence.json', lambda d: d['ci_observation'].update(headSha='0'*40))
+        self.refresh_snapshot()
+        self.assert_rejected('CI candidate mismatch')
+
+    def test_equivalence_scope_narrowed(self):
+        self.mutate('current-evidence.json', lambda d: d['equivalence'].update(paths=['packages']))
+        self.refresh_snapshot()
+        self.assert_rejected('runtime equivalence not established')
+
+    def test_normative_document_changed(self):
+        path=self.folder/'audit-revision.md'
+        path.write_text(path.read_text()+'\nChanged rule.\n')
+        self.assert_rejected('stale review snapshot')
+
+    @unittest.skipUnless(os.environ.get('OSSTACK_FIRSTMATE_REPO'), 'fixed Firstmate clone needed for Git source integration test')
+    def test_actual_git_source_hash_mismatch(self):
+        self.mutate('source-additions.json', lambda d: d['sources'][0].update(sha256='0'*64))
+        self.refresh_snapshot()
+        result=self.run_validator(verify_sources=True)
+        self.assertNotEqual(result.returncode,0)
+        self.assertIn('source hash mismatch',result.stderr)
 
 
 if __name__ == '__main__':

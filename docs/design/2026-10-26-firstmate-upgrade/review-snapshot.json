@@ -1,13 +1,16 @@
 {
   "kind": "reviewed_snapshot_not_signed_authority",
-  "observed_at": "2026-10-26T23:56:54.467745+00:00",
+  "observed_at": "2026-10-27T00:07:44.804775+00:00",
   "file_sha256": {
-    "work-packages.json": "6cfdb90fbe350781a2c1e78c96eadd8013ddfc361edbfbb4c233720548600e8e",
-    "capability-map.json": "42d462886b1e223261beb60ca9074314c18a54c2570fd2970fe29d971a6d8992",
+    "work-packages.json": "f8828287a5947b25fef6876dab0e3b9936afb0e141c0ad741687250e13ae7b25",
+    "capability-map.json": "c57bcd38ca77d2c77a5a81b825758d62666b753fe6fc0a72f563d0ecc6bc7414",
     "source-additions.json": "a6508d953b141a03334d792c5a53aecc933eff4e95d7d0fc876e43921e239c8b",
-    "current-evidence.json": "6e926503bbe5b2002918478c750e837f6eff121fb1d74d483481547c85ead2b3",
-    "delivery-gates.json": "246e2e419f6aae595b0f6a623f7002c194ff07a0694044f2b3d09c3221011466",
-    "audit-contracts.json": "ee5c57f814dea79c12063303ee8deaa3e9a9d4f9477824b34b56f211d727349f"
+    "current-evidence.json": "7a167e1b9847438faebe10404e106f6dd5a3bbd6860d1d92546a827c5f7b8ca8",
+    "delivery-gates.json": "7753061282ffc1ff5081d2eb292fa7aca8c46cf173c90c597743cb97fc89c534",
+    "audit-contracts.json": "169c872d0c7bce29b429e09f749c99d07230ea5add40b43cc8510bc4dc2beb1b",
+    "README.md": "dc0526015a66a984eac7a2e3b9c8f4275bfe84f0533045cfd5897c6cc6127dda",
+    "audit-revision.md": "f1d8e5cf020e49627b07fb48ffac3124783ca056bfd8f1390b600458888666f1",
+    "board-projection.json": "746ab60f83d5022c6e4e3522aa4c0de55b9c2d8f4933bb24a290f5b5ed9e0a33"
   },
   "states": {
     "R01": "planned",

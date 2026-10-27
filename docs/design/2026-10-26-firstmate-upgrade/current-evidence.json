@@ -40,13 +40,16 @@
     "from": "64daf4afb55b7f11f9c700fa595d7d91e0766d18",
     "to": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
     "paths": [
-      "packages",
-      "scripts",
-      "package.json",
-      "pnpm-lock.yaml"
+      "."
     ],
     "changed_paths": [],
-    "meaning": "Identical checked production trees preserve local implementation evidence; no fresh provider qualification is inferred."
+    "meaning": "Identical checked production trees preserve local implementation evidence; no fresh provider qualification is inferred.",
+    "exclusions": [
+      "docs/",
+      "README.md",
+      "README.zh.md"
+    ],
+    "exclusion_reason": "Reports/design and human-facing README only; every other tracked file (including CI, root TS/workspace/test configuration) is compared. Untracked non-ignored non-documentation files also invalidate equivalence."
   },
   "code_files": [
     {
@@ -69,5 +72,41 @@
       "path": "packages/cli/src/engineering-host.ts",
       "sha256": "23f234aa550132bfaf0af44d865d13a86384ce912083efcb554caacbbafe233e"
     }
-  ]
+  ],
+  "ci_test_summary": {
+    "job_id": 121607448649,
+    "url": "https://github.com/osborn-studio/osstack/actions/runs/40332791896/job/121607448649",
+    "runner": "Linux",
+    "counts": {
+      "passed": 5950,
+      "skipped": 7,
+      "failed": 0
+    },
+    "package_suites": 22,
+    "log_sha256": "e8e48609c1ed7aed51d11a5530d703aaaed15fd883d0ca5abb04d851b5cf4576",
+    "summary_lines": [
+      "check\tTest\t2026-10-26T13:45:34.5462571Z packages/contracts test:       Tests  15 passed (15)",
+      "check\tTest\t2026-10-26T13:45:34.8992537Z packages/compliance test:       Tests  17 passed (17)",
+      "check\tTest\t2026-10-26T13:45:36.6764137Z packages/github test:       Tests  107 passed (107)",
+      "check\tTest\t2026-10-26T13:45:39.1285033Z packages/knowledge test:       Tests  44 passed (44)",
+      "check\tTest\t2026-10-26T13:45:42.7429918Z packages/neat-eval test:       Tests  16 passed (16)",
+      "check\tTest\t2026-10-26T13:45:42.8180096Z packages/runtime test:       Tests  1 passed (1)",
+      "check\tTest\t2026-10-26T13:45:45.4802470Z packages/protocol test:       Tests  274 passed (274)",
+      "check\tTest\t2026-10-26T13:45:50.0944820Z packages/governance test:       Tests  301 passed (301)",
+      "check\tTest\t2026-10-26T13:45:52.6570152Z packages/knowledge-cloud test:       Tests  36 passed (36)",
+      "check\tTest\t2026-10-26T13:46:10.9610819Z packages/graph test:       Tests  257 passed (257)",
+      "check\tTest\t2026-10-26T13:46:50.9424588Z packages/core test:       Tests  931 passed (931)",
+      "check\tTest\t2026-10-26T13:46:53.0502550Z packages/plugins test:       Tests  1 passed (1)",
+      "check\tTest\t2026-10-26T13:46:53.3422996Z packages/hermes-adapter test:       Tests  22 passed (22)",
+      "check\tTest\t2026-10-26T13:46:53.4192577Z packages/skill-registry test:       Tests  3 passed (3)",
+      "check\tTest\t2026-10-26T13:46:54.7615194Z packages/skills test:       Tests  2 passed (2)",
+      "check\tTest\t2026-10-26T13:47:01.5618065Z packages/autonomy test:       Tests  201 passed (201)",
+      "check\tTest\t2026-10-26T13:47:18.1790880Z packages/agents test:       Tests  361 passed (361)",
+      "check\tTest\t2026-10-26T13:47:22.3626049Z packages/config test:       Tests  30 passed (30)",
+      "check\tTest\t2026-10-26T13:47:45.1428276Z packages/loop test:       Tests  514 passed | 1 skipped (515)",
+      "check\tTest\t2026-10-26T13:47:52.5412089Z packages/conformance test:       Tests  9 passed (9)",
+      "check\tTest\t2026-10-26T13:47:54.3333110Z packages/supervisor test:       Tests  88 passed (88)",
+      "check\tTest\t2026-10-26T13:57:52.6272943Z packages/cli test:       Tests  2720 passed | 6 skipped (2726)"
+    ]
+  }
 }

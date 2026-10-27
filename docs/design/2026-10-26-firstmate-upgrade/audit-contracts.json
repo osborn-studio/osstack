@@ -7,7 +7,7 @@
       "name": "start_unknown",
       "owners": ["C04", "E02", "DEBT02"],
       "status": "planned",
-      "assertion": "Kill between authorization consumption and handle persistence; retain exact unknown effect and lock, permit safe cancellation request, never replay."
+      "assertion": "Persist effect_id-derived run_id or containment identity before the external call. Kill between commit and handle receipt: query/cancel by that identity without replay. If outcome remains unknowable, retain bounded repository/resource quarantine and explicitly deny automatic start for unrecoverable profiles; a cancellation request is not proof of stopping."
     },
     {
       "id": "AT-02",
@@ -28,14 +28,14 @@
       "name": "budget",
       "owners": ["C03", "X04"],
       "status": "planned",
-      "assertion": "Replan, switch engine and disconnect child; committed spend plus all reservations stays within enforceable admission budget, unknown child allocation is not reclaimed; measured provider cost remains observed/unknown."
+      "assertion": "Replan, switch engine and disconnect child; committed spend plus all reservations stays within enforceable admission budget, unknown child allocation is not reclaimed; measured provider cost remains observed/unknown. Reservation vector uses integer call_count, wall_time_ms and explicit currency_microunits without implicit conversion; each component has its own bound. Single reservation CAS prevents double release across cancellation/expiry/commit. Unknown settlement requires authoritative receipt or qualified operator evidence."
     },
     {
       "id": "AT-05",
       "name": "two_homes",
       "owners": ["X03"],
       "status": "planned",
-      "assertion": "Two homes request one canonical device/repository resource; host broker admits only one, stale lease or home restart cannot oversell."
+      "assertion": "Two homes request one canonical device/repository resource; host broker admits only one, stale lease or home restart cannot oversell. pending/held/released broker states reconcile against durable home intent by effect_id; orphan pending cannot dispatch. Broker outage denies new admission; another home cannot release the owner lease. Operator release requires no-effect or quiescence evidence; broker schema follows the recovery gate."
     },
     {
       "id": "AT-06",
@@ -56,14 +56,16 @@
       "name": "effect_digest",
       "owners": ["C04", "C06"],
       "status": "planned",
-      "assertion": "Change typed method, params, candidate, plan, binding, repository, actor, tenant or budget reservation; old one-shot authorization must fail."
+      "assertion": "Mutate every bound field individually; prior authorization fails. Reject every canonicalization case. Start base_head_sha is distinct from delivered_candidate_sha in CompletionProof.",
+      "mutated_fields": ["actor", "tenant", "repository_identity", "mission_id", "mission_revision", "plan_revision", "binding_generation", "base_head_sha", "contract_digest", "executor_version", "method", "canonical_typed_parameters", "budget_reservation_id", "nonce", "expiry"],
+      "canonicalization_cases": ["duplicate_keys", "non_finite_numbers", "unknown_fields", "implicit_numeric_coercion", "absent_null_conflation", "oversized_strings"]
     },
     {
       "id": "AT-09",
       "name": "schema_recovery",
       "owners": ["I04"],
       "status": "planned",
-      "assertion": "Old binary rejects new schema. Recovery-capable current-schema build reads/query/cancels with authorization; disabling new dispatch retains obligations, backup restoration only before any post-migration effect and with fenced writers."
+      "assertion": "Old binary rejects new schema. Recovery-capable current-schema build reads/query/cancels with authorization; disabling new dispatch retains obligations, backup restoration only before any post-migration effect and with fenced writers. Recovery build understands target schema N+1, is tested on N+1 fixtures before migration, and has dispatch disabled. Inject preflight/migration startup failure. An existing unknown hold cannot be bypassed by upgrade: use current-schema compatible recovery mode with migration disabled, offline immutable-copy diagnosis, then proof-based operator disposition; without proof remain quarantined."
     },
     {
       "id": "AT-10",
@@ -171,14 +173,16 @@
       "version": "unresolved",
       "status": "not_qualified",
       "owner": "R03",
-      "required_behavior": "Typed public commitment state machine and atomic backlog move"
+      "required_behavior": "Typed public commitment state machine and atomic backlog move",
+      "required_before": ["E05", "X07"]
     },
     {
       "name": "quota-axi",
       "version": "unresolved",
       "status": "not_qualified",
       "owner": "R03",
-      "required_behavior": "Account quota observation and freshness"
+      "required_behavior": "Account quota observation and freshness",
+      "required_before": ["E05", "X07"]
     }
   ],
   "supplement_source_refs": ["ADD-064", "ADD-065", "ADD-066", "ADD-067", "ADD-068", "ADD-069", "ADD-070", "ADD-071", "ADD-072", "ADD-073", "ADD-074"],
@@ -376,5 +380,16 @@
       "required_result": "拒绝超范围或过期动作，保留真实状态；不能报告 升级后旧任务可恢复，实际进程版本可确认 已完成。",
       "owner": "R04"
     }
-  ]
+  ],
+  "dispatch_digest": {
+    "domain": "osstack.goal_dispatch.start_executor.v1",
+    "bound_fields": ["actor", "tenant", "repository_identity", "mission_id", "mission_revision", "plan_revision", "binding_generation", "base_head_sha", "contract_digest", "executor_version", "method", "canonical_typed_parameters", "budget_reservation_id", "nonce", "expiry"],
+    "completion_field": "delivered_candidate_sha",
+    "canonicalization_rejections": ["duplicate_keys", "non_finite_numbers", "unknown_fields", "implicit_numeric_coercion", "absent_null_conflation", "oversized_strings"]
+  },
+  "budget_reservation": {
+    "states": ["reserved", "committed", "settled", "released"],
+    "single_release_key": "effect_id + reservation_id",
+    "rule": "Only proven uncommitted reservations release; committed reservations settle from authoritative receipts. Unknown never returns spendable balance without evidence. Every transition uses CAS and an idempotent ledger entry."
+  }
 }

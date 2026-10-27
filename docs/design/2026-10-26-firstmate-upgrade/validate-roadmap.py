@@ -126,11 +126,39 @@ def audit_checks(work, mapping, additions, items, sources, args):
         for dep in strings(g['requires'], gid+' requires', False):visit_gate(dep)
         active.remove(gid); done.add(gid)
     for gid in milestones:visit_gate(gid)
+    def closure(gid):
+        return {gid}.union(*(closure(x) for x in milestones[gid]['requires']))
+    for gid, g in milestones.items():
+        if g.get('introduces_schema'):
+            require('I04.compat_recovery' in closure(gid) - {gid}, 'schema lacks prior recovery gate')
+        if g['phase'] == 'contract':
+            require(not any(milestones[n]['phase'] in {'host_qualified','default_enabled'} for n in closure(gid)), 'contract blocked on host qualification')
+    requirements = gates['release_requirements']
+    require(set(requirements['S2_opt_in']) <= set(requirements['S2_default_enable']), 'default gate omits opt-in requirement')
+    require(set(gates['default_enable_rule']['slice_faults']) == {f'S{i}' for i in range(1,7)}, 'slice fault matrix missing')
+    for slice_id, gid in gates['default_enable_rule']['slice_faults'].items():
+        require(gid in milestones and milestones[gid]['scope'].startswith(slice_id+':'), 'fault receipt reused across slices')
+    require({'C06.start_resolver','X01.plan_invalidation','E01.recoverable_profile'} <= closure('E02.local_dispatch'), 'dispatch lacks resolver or identity gate')
+    digest_contract = contracts['dispatch_digest']
+    require(set(scenarios['AT-08']['mutated_fields']) == set(digest_contract['bound_fields']) and len(digest_contract['bound_fields']) == 15, 'effect digest mutation coverage')
+    require(set(scenarios['AT-08']['canonicalization_cases']) == set(digest_contract['canonicalization_rejections']), 'canonicalization coverage')
+    require({x['name'] for x in contracts['external_dependencies']} == {'tasks-axi','quota-axi'}, 'external dependency coverage')
+    for dep in contracts['external_dependencies']:
+        require(dep['status'] == 'not_qualified' and dep['version'] == 'unresolved', 'unverified external qualification')
+        require(set(dep['required_before']) == {'E05','X07'}, 'external dependency gate missing')
+    require('R03' in items['E05']['depends_on_add'] and 'R03' in items['X07']['depends_on_add'], 'external extraction prerequisite missing')
+    require('R03.external_contracts' in requirements['S3_opt_in'] and 'R03.external_contracts' in requirements['S5_public_opt_in'], 'external contract milestone missing')
+    for wid, refs in mapping['supplemental_work_source_refs'].items():
+        require(wid in items and set(strings(refs, 'work source refs')) <= set(sources), 'unbound supplemental source')
     for requirement in gates['release_requirements'].values():
         require(set(strings(requirement,'release gate')) <= set(milestones), 'unknown release prerequisite')
     evidence = read(confined('current-evidence.json'))
     require(evidence['scope_profile'] == 'adopt_session' and evidence['runtime_qualification'] is False, 'unsupported qualification claim')
     require(evidence['code_candidate'] == work['baseline']['osstack'] and evidence['ci_observation']['headSha'] == evidence['code_candidate'] and evidence['ci_observation']['conclusion'] == 'success', 'CI candidate mismatch')
+    summary = evidence['ci_test_summary']
+    require(summary['package_suites'] == len(summary['summary_lines']), 'CI suite count mismatch')
+    computed = {key: sum(int(n) for line in summary['summary_lines'] for n in re.findall(r'(\d+) '+key, line)) for key in ['passed','skipped','failed']}
+    require(computed == summary['counts'] and computed['failed'] == 0, 'CI test count mismatch')
     historical_paths = [r['path'] for r in evidence['historical_evidence']]
     for ref in evidence['historical_evidence']:
         require(ref['historical'] is True and sha(confined(ref['path']).read_bytes()) == ref['sha256'], 'historical evidence changed')
@@ -140,16 +168,20 @@ def audit_checks(work, mapping, additions, items, sources, args):
     require(set(evidence['local_scoped_items']) == {k for k,v in items.items() if v['current_state']=='local_pilot_complete'}, 'completed work lacks scoped evidence')
     equivalence = evidence['equivalence']
     require(digest_value(equivalence['from'],40) and equivalence['to'] == evidence['code_candidate'], 'invalid equivalence candidates')
-    require(equivalence['paths'] == ['packages','scripts','package.json','pnpm-lock.yaml'] and equivalence['changed_paths'] == [], 'runtime equivalence not established')
+    require(equivalence['paths'] == ['.'] and equivalence['exclusions'] == ['docs/','README.md','README.zh.md'] and equivalence['changed_paths'] == [], 'runtime equivalence not established')
+    def code_paths(output):
+        return [x for x in output.decode().splitlines() if not x.startswith('docs/') and x not in {'README.md','README.zh.md'}]
     changed = subprocess.check_output(['git','diff','--name-only',equivalence['from'],equivalence['to'],'--',*equivalence['paths']],cwd=args.osstack_repo)
-    require(not changed.strip(), 'historical runtime code differs')
+    require(not code_paths(changed), 'historical runtime code differs')
     changed = subprocess.check_output(['git','diff','--name-only',evidence['code_candidate'],'--',*equivalence['paths']],cwd=args.osstack_repo)
-    require(not changed.strip(), 'current tracked runtime differs from observed baseline')
+    require(not code_paths(changed), 'current tracked runtime differs from observed baseline')
+    untracked = subprocess.check_output(['git','ls-files','--others','--exclude-standard'],cwd=args.osstack_repo)
+    require(not code_paths(untracked), 'untracked production files invalidate equivalence')
     for code in evidence['code_files']:
         p = (args.osstack_repo / code['path']).resolve()
         require(p.is_relative_to(args.osstack_repo.resolve()) and p.is_file() and sha(p.read_bytes()) == code['sha256'], 'current code evidence changed')
     snapshot = read(confined('review-snapshot.json'))
-    expected_files = {'work-packages.json','capability-map.json','source-additions.json','current-evidence.json','delivery-gates.json','audit-contracts.json'}
+    expected_files = {'work-packages.json','capability-map.json','source-additions.json','current-evidence.json','delivery-gates.json','audit-contracts.json','README.md','audit-revision.md','board-projection.json'}
     require(set(snapshot['file_sha256']) == expected_files, 'snapshot coverage changed')
     for path,digest in snapshot['file_sha256'].items():
         require(digest_value(digest) and sha(confined(path).read_bytes()) == digest, 'stale review snapshot: '+path)

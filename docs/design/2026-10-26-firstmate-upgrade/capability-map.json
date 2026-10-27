@@ -326,7 +326,7 @@
       "id": "FM-22",
       "name": "对外承诺持久化",
       "upstream_refs": ["SRC-049"],
-      "additional_source_refs": ["ADD-004", "ADD-015"],
+      "additional_source_refs": ["ADD-004", "ADD-015", "ADD-069", "ADD-070"],
       "current_code_refs": ["ADD-049"],
       "required_work_items": ["I03", "X07"],
       "journeys": ["J06"],
@@ -368,5 +368,11 @@
       "negative_scenario_id": "FM-24-NEG"
     }
   ],
-  "source_reference_semantics": "upstream_refs retain frozen provenance; additional_source_refs and current_code_refs may be inventory only. Only sources marked contract_excerpt are read behavior evidence; no hash grants qualification."
+  "source_reference_semantics": "upstream_refs retain frozen provenance; additional_source_refs and current_code_refs may be inventory only. Only sources marked contract_excerpt are read behavior evidence; no hash grants qualification.",
+  "supplemental_work_source_refs": {
+    "X07": ["ADD-069", "ADD-070"],
+    "I03": ["ADD-071"],
+    "I02": ["ADD-072"],
+    "C07": ["ADD-073", "ADD-074"]
+  }
 }
