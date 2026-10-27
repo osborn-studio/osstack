@@ -31,7 +31,7 @@
             "children": 0
           },
           "comment_count": 0,
-          "age_seconds": 74966
+          "age_seconds": 75773
         },
         {
           "card_id": "card_f251dadf",
@@ -55,7 +55,7 @@
             "children": 0
           },
           "comment_count": 1,
-          "age_seconds": 74966
+          "age_seconds": 75773
         }
       ]
     },
@@ -79,20 +79,20 @@
           "status": "blocked",
           "priority": 3,
           "assignee": "future-runtime",
-          "blocked_reason": "Awaiting CI, independent review and merge into main. CI and landing now owned by joint project entry.",
+          "blocked_reason": "#277 Ready, enabled CI green; review and merge pending. No cross-process recovery qualification.",
           "tenant_id": null,
           "card_type": "implementation",
           "meta": null,
           "created_at": 1793010548.833,
-          "updated_at": 1793083499.739,
+          "updated_at": 1793085717.193,
           "started_at": 1793079096.074,
           "completed_at": null,
           "link_counts": {
             "parents": 0,
             "children": 0
           },
-          "comment_count": 4,
-          "age_seconds": 74966
+          "comment_count": 5,
+          "age_seconds": 75773
         },
         {
           "card_id": "card_4e8147d9",
@@ -103,20 +103,20 @@
           "status": "blocked",
           "priority": 2,
           "assignee": "B:01a17bd6-a137-79d3-8a64-f52abcb8bf13",
-          "blocked_reason": "Awaiting #277 merge, retarget to main, CI and independent review. CI and landing now owned by joint project entry.",
+          "blocked_reason": "#278 enabled CI green; Draft depends on #277 merge and retarget/revalidation.",
           "tenant_id": null,
           "card_type": "implementation",
           "meta": null,
           "created_at": 1793080005.347,
-          "updated_at": 1793083499.739,
+          "updated_at": 1793085717.193,
           "started_at": 1793080005.349,
           "completed_at": null,
           "link_counts": {
             "parents": 0,
             "children": 0
           },
-          "comment_count": 2,
-          "age_seconds": 5510
+          "comment_count": 3,
+          "age_seconds": 6316
         },
         {
           "card_id": "card_d1a582eb",
@@ -127,20 +127,20 @@
           "status": "blocked",
           "priority": 1,
           "assignee": "thread-b",
-          "blocked_reason": "Awaiting #278 merge, retarget to main, CI and independent review. CI and landing now owned by joint project entry.",
+          "blocked_reason": "#279 enabled CI green; Draft depends on #278 merge and retarget/revalidation. P3 notes preserved.",
           "tenant_id": null,
           "card_type": "implementation",
           "meta": null,
           "created_at": 1793081376.111,
-          "updated_at": 1793083499.74,
+          "updated_at": 1793085717.194,
           "started_at": 1793081386.278,
           "completed_at": null,
           "link_counts": {
             "parents": 0,
             "children": 0
           },
-          "comment_count": 3,
-          "age_seconds": 4139
+          "comment_count": 4,
+          "age_seconds": 4945
         },
         {
           "card_id": "card_d21a83d5",
@@ -164,7 +164,7 @@
             "children": 0
           },
           "comment_count": 2,
-          "age_seconds": 77884
+          "age_seconds": 78690
         }
       ]
     },
@@ -193,7 +193,7 @@
             "children": 0
           },
           "comment_count": 19,
-          "age_seconds": 77884
+          "age_seconds": 78690
         },
         {
           "card_id": "card_f4e6a395",
@@ -217,7 +217,7 @@
             "children": 0
           },
           "comment_count": 4,
-          "age_seconds": 77884
+          "age_seconds": 78690
         },
         {
           "card_id": "card_6bd0b827",
@@ -241,7 +241,7 @@
             "children": 0
           },
           "comment_count": 5,
-          "age_seconds": 77884
+          "age_seconds": 78690
         },
         {
           "card_id": "card_a0d941ce",
@@ -265,7 +265,7 @@
             "children": 0
           },
           "comment_count": 5,
-          "age_seconds": 77884
+          "age_seconds": 78690
         },
         {
           "card_id": "card_cb0c70ea",
@@ -289,7 +289,7 @@
             "children": 0
           },
           "comment_count": 4,
-          "age_seconds": 77884
+          "age_seconds": 78690
         },
         {
           "card_id": "card_a7b41724",
@@ -313,7 +313,7 @@
             "children": 0
           },
           "comment_count": 5,
-          "age_seconds": 77884
+          "age_seconds": 78690
         }
       ]
     },
@@ -332,7 +332,7 @@
     "root",
     "thread-b"
   ],
-  "latest_event_id": 517,
+  "latest_event_id": 567,
   "stats": {
     "total": 12,
     "by_status": {
