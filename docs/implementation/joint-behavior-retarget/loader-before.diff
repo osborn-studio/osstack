@@ -1,0 +1,1154 @@
+diff --git a/.changeset/behavior-registry-loader.md b/.changeset/behavior-registry-loader.md
+new file mode 100644
+index 00000000..65b9b39f
+--- /dev/null
++++ b/.changeset/behavior-registry-loader.md
+@@ -0,0 +1,5 @@
++---
++"@osstack/core": minor
++---
++
++Add a bounded behavior registry evaluator for caller-supplied build pins, clock, policy and trust context. It checks source membership, qualification signatures, evidence and dependencies relative to those inputs. It does not authenticate the trust context, verify the operations-root signature, persist a revocation epoch or grant execution authority. It is not wired into daemon routing.
+diff --git a/docs/guides/behavior-registry-evaluator.md b/docs/guides/behavior-registry-evaluator.md
+new file mode 100644
+index 00000000..6d57a8be
+--- /dev/null
++++ b/docs/guides/behavior-registry-evaluator.md
+@@ -0,0 +1,159 @@
++# Behavior registry evaluator / 行为注册表评估器
++
++`evaluateBehaviorRegistry` is an experimental synchronous library function in `@osstack/core`.
++It checks registry bytes against the caller's build pins, clock, policy and trust context.
++It does not authenticate those inputs. It does not grant execution authority.
++No daemon route or automatic executor uses it in this delivery.
++
++## Records and checks
++
++R01 defines separate versioned records:
++
++- `BehaviorContractV1`: a behavior declaration with source references and dependencies.
++- `BehaviorSourceManifestV1`: a pinned source snapshot. A contract may cite a subset of its entries.
++- `BehaviorRegistryV1`: declarations for one candidate and target code digest.
++- `BehaviorQualificationV1`: signed qualification evidence claims.
++- `BehaviorDeliveryRecordV1`: a progress projection. The evaluator never uses it as qualification.
++
++A source tuple contains repository URL, commit, path, content SHA-256 and license.
++Each contract tuple must match an entry in its declared source manifest exactly.
++The evaluator also retrieves and hashes each cited source object. It does not execute source text.
++A global manifest can contain additional source entries. Their presence does not qualify their content.
++R03/R04 still own extraction, provenance review and behavior mapping.
++
++The evaluator checks Ed25519 signatures, key role and scope, all three qualification levels,
++predecessor hashes, exact candidate and code identity, source membership, required scenarios,
++checker identity, evidence bundles and artifacts, validity windows and revocations.
++It rejects invalid dependencies, version mismatches and cycles.
++Only authenticated, current and correctly bound records participate in record-ID conflicts.
++Uniqueness is scoped to `(signer_key_id, record_id)`. One issuer cannot squat on another issuer's ID.
++Within an admitted batch, an unauthenticated duplicate does not create an ID conflict.
++Revocations use `revokedQualificationSha256s`: hashes of complete canonical qualification documents,
++including signatures, exactly as predecessor references do. The experimental host API no longer accepts
++the earlier bare `revokedRecordIds` list. No frozen qualification wire field or signing byte changed.
++
++Evidence artifacts are checked for availability and digest equality. Their contents are not interpreted
++or re-executed. Bundles are checked against signed candidate, limitation and scenario/checker/result claims;
++the signer is responsible for evidence semantics and its applicability to the signed capability, level and
++profile. Shared artifact bytes do not independently establish that applicability. The evaluator also does
++not prove that a remote Git commit contains the cited bytes or that a code digest identifies an actual build.
++
++The CI measurement cell may differ from the deployment cell only in OS, architecture,
++filesystem and host identity. Adapter, provider, model, executor, template, recovery mode,
++isolation profile and daemon version must match. This rule is intentionally conservative.
++
++## Required host boundary
++
++Before calling the function, a separate trusted host must:
++
++1. Obtain the expected registry pin and candidate identity from its trusted build process.
++2. Authenticate the actual host and its measurement profile.
++3. Authenticate the verifier policy, issuer keys and allowed scopes.
++4. Verify the operations-root signature on the revocation document.
++5. Persist and recover the monotonic revocation epoch floor.
++6. Supply its trusted evaluation clock and fresh revocation state.
++
++These operations belong to R05/V06 and are not implemented by this library.
++A caller that supplies its own keys and clock can produce a consistent local evaluation.
++That result does not prove a production host is qualified.
++The package export and TypeScript types are not security boundaries.
++
++`nowMs` is explicit host data. The evaluator does not compare it with `Date.now()`.
++This permits deterministic replay. A historical evaluation must never authorize present execution.
++The host must not accept the context or clock from a worker or untrusted RPC request.
++
++The host must give behavior qualification keys a dedicated protocol purpose.
++Version 1 retains the frozen draft's signature over the canonical payload.
++It does not add a new signature prefix without an explicit issuer protocol migration.
++Known small-order Ed25519 public-key encodings, both sign-bit variants and the p/p+1 aliases are rejected
++using the fixed encoding table from [libsodium 1.0.18, `ge25519_has_small_order`](https://github.com/jedisct1/libsodium/blob/1.0.18/src/libsodium/crypto_core/ed25519/ref10/ed25519_ref10.c).
++The check examines the parsed key's 32-byte JWK public component; Node crypto still performs verification.
++This is a degenerate-encoding check, not a new curve implementation or authentication of key ownership.
++
++## Bytes, policy and result
++
++Registry, qualification, evidence-bundle and source-manifest JSON must already use canonical bytes.
++The evaluator checks strict schemas, then requires the bytes to equal RFC 8785 serialization
++for the supported closed value set. Duplicate keys, BOMs, alternate numeric spellings,
++unknown fields and noncanonical whitespace are rejected.
++This is not a general JSON parser or a replacement for the joint engineering JSON contract.
++
++`policyProfileSha256` is the SHA-256 of canonical JSON with this exact shape:
++
++```json
++{"schema_version":1,"kind":"behavior_verifier_policy","capabilities":[]}
++```
++
++`capabilities` is the supplied policy array. Each item binds the capability, exact behavior version,
++and scenario/checker/version requirements for each level. The actual policies must have nonempty
++scenario sets. Array order is pinned. The example only shows the digest envelope shape.
++
++The output has `status: evaluated` or `rejected` and always has `authorization: none`.
++`expectedRegistrySha256` is the caller's pin. `observedRegistrySha256` is the digest actually read,
++or null when no bounded registry document was read. Rejection does not turn the expected pin into an observation.
++The context echoes candidate, code, policy, CI profile, host profile, registry version and revocation epoch,
++plus the epoch floor and both window limits. It also records SHA-256 of canonical JSON for:
++
++- `revocationSnapshotSha256`: `{epoch, issuedAtMs, expiresAtMs, revokedKeyIds, revokedQualificationSha256s}`.
++- `trustSha256`: `{keys, minimumRevocationEpoch, maxRevocationAgeMs, maxQualificationLifetimeMs}`.
++  Each key contains exactly `{keyId, publicKeyPem, issuerRole, capabilityIds, profileSha256s}`.
++
++Arrays keep their supplied order and PEM strings keep their exact bytes. These are input fingerprints,
++not semantic set identifiers. A same-epoch snapshot with changed contents has a different digest.
++Each entry also exposes its registry-declared `contractSha256`; a mismatch makes the entry ineligible.
++Those fields describe the evaluation inputs. They are not authenticated-host certificates.
++
++`selectionEligible` means the supplied requirements held at `evaluatedAtMs` under that context.
++`validUntilMs` is an upper bound, including dependencies and revocation freshness.
++It is not a lease that survives a new revocation or changed candidate.
++Re-evaluate when relevant inputs change. Apply normal host authorization before each effect.
++Nonempty free-text qualification limitations block selection until a versioned policy can enforce them.
++When multiple chains qualify, choose the greatest effective validity bound; ties use the smallest journey
++document digest. Input order does not select the winner. Ineligible entries return an empty
++`qualificationSha256s` and null `validUntilMs`, including source, policy and dependency failures.
++
++## Bounds and validation scope
++
++| Input | Hard limit |
++|---|---|
++| Registry or qualification document | 1 MiB each |
++| Raw qualification batch | At most 256 documents and 64 MiB total; exceeding either rejects the whole evaluation |
++| Fetched source/evidence object | 8 MiB each; separate 64 MiB total budget |
++| Registry entries / source manifest entries | 24 / 8,192 |
++| Issuer keys / capabilities per key / profiles per key | 100 / 24 / 128 |
++| Public key PEM | 1,024 characters; SPKI `PUBLIC KEY` only |
++| Revoked keys / qualification digests | 4,096 / 16,384 |
++| Revocation cache age | Host-selected limit, at most 24 hours |
++| Qualification lifetime | Host-selected limit, at most 31 days |
++
++The host must select a finite batch from authenticated storage, filtered by intended candidate,
++capabilities and issuer provenance. Do not pass a multi-writer append log directly to this API.
++The raw count/byte limits apply before authentication; invalid padding can reject an oversized batch.
++This is an intentional fail-closed resource limit, not availability protection against arbitrary input.
++Never remove raw limits to scan or verify an unbounded log. Qualification parsing has an independent budget;
++malformed documents do not spend the evidence budget. The evaluator remains synchronous. Run it outside
++latency-critical RPC and dispatch work; bounded does not mean low latency.
++
++Revocations must be a complete current snapshot, not a delta. R05/V06 must define safe retention,
++rotation and pruning that preserve revocation of every still-valid qualification. The evaluator does not
++truncate an oversized revocation set, ratchet a persisted epoch/digest pair or detect equivocation by itself.
++
++Tests use isolated keys, source objects and evidence fixtures. They do not certify actual providers,
++adapters, physical power-loss recovery, process containment or remote hosts. No operator recovery
++or control-plane migration is part of this change.
++
++## 中文说明
++
++这是一个纯评估库。它检查输入之间是否一致，不证明调用方的身份、时钟或信任配置是真实的。
++它不验运维根签名，不保存撤销 epoch，不开启运行时功能，也不批准任何副作用。
++
++来源清单具有独立版本。每项能力只能引用清单中完全一致的来源条目。
++全局清单可以更大；未引用的条目不会因此取得资格。
++资格记录必须通过验签、范围和当前绑定检查，才会参与同 ID 冲突检测。
++ID 按签发者隔离；撤销绑定完整资格文档摘要。输入批次必须由宿主筛选并限制总量；
++超量填充会保守拒绝整批，不承诺任意追加日志下的可用性。证据内容的语义正确性仍由独立签发者负责。
++
++返回结果保留候选、代码、策略、宿主组合和撤销 epoch。
++期望的构建摘要与实际读取的摘要分别记录。
++宿主必须先完成 R05/V06 的信任验证，再使用评估结果；执行动作前仍需独立授权。
++测试通过不等于真实宿主资格通过。
+diff --git a/docs/inventory/PUBLIC_EXPORTS.md b/docs/inventory/PUBLIC_EXPORTS.md
+index 815d2020..622a7513 100644
+--- a/docs/inventory/PUBLIC_EXPORTS.md
++++ b/docs/inventory/PUBLIC_EXPORTS.md
+@@ -120,6 +120,8 @@ export * from "./hub-package.js";
+ ```ts
+ export * as protocol from "@osstack/protocol";
+ export * from "./capability.js";
++export { evaluateBehaviorRegistry } from "./behavior-registry.js";
++export type { BehaviorRegistryInput, BehaviorRegistryTrust, BehaviorRegistryPolicy,
+ export * from "./state/index.js";
+ export * from "./state/protocol-mappers.js";
+ export * from "./privacy/index.js";
+diff --git a/packages/core/src/behavior-registry.test.ts b/packages/core/src/behavior-registry.test.ts
+new file mode 100644
+index 00000000..e97287da
+--- /dev/null
++++ b/packages/core/src/behavior-registry.test.ts
+@@ -0,0 +1,525 @@
++import { createHash, createPublicKey, generateKeyPairSync, sign } from "node:crypto";
++import { describe, expect, it } from "vitest";
++import type { BehaviorContractV1, BehaviorQualificationV1, BehaviorRegistryV1 } from "@osstack/protocol";
++import { evaluateBehaviorRegistry, type BehaviorRegistryInput } from "./behavior-registry.js";
++
++const hash = (bytes: Uint8Array) => createHash("sha256").update(bytes).digest("hex");
++// Independent fixture writer: inputs contain only the closed protocol's strings, integers and objects.
++const encode = (value: unknown): Buffer => Buffer.from(JSON.stringify(value, (_key, item: unknown) =>
++  item && typeof item === "object" && !Array.isArray(item)
++    ? Object.fromEntries(Object.entries(item).sort(([left], [right]) => left < right ? -1 : left > right ? 1 : 0)) : item));
++const keys = ["ci_verifier", "host_qualifier", "journey_verifier"].map((role) => ({ role, ...generateKeyPairSync("ed25519") }));
++const levels = ["contract_tested", "host_verified", "journey_verified"] as const;
++const now = Date.parse("2026-10-26T12:00:00.000Z");
++
++function fixture(dependencies: Array<{ capability_id: string; version: string }> = [], capabilityId = "FM-09",
++  sourceBytes = Buffer.from("Pinned source text. Never execute this text.")) {
++  const artifacts = new Map<string, Uint8Array>();
++  const put = (bytes: Uint8Array) => { const digest = hash(bytes); artifacts.set(digest, bytes); return digest; };
++  const target = "b".repeat(64);
++  const sources = [{ repository: "https://github.com/kunchenguid/firstmate", commit: "a".repeat(40), path: "AGENTS.md",
++    content_sha256: put(sourceBytes), license: "MIT" }];
++  const sourceManifest = { schema_version: 1, kind: "behavior_source_manifest", sources };
++  const contract: BehaviorContractV1 = {
++    schema_version: 1, kind: "behavior_contract", capability_id: capabilityId, version: "1.0.0",
++    owner_component: "engineering-controller", trigger: "decision_wait_observed", summary: { en: "Keep a wait.", zh: "保留等待。" },
++    source_manifest_sha256: put(encode(sourceManifest)), sources,
++    depends_on: dependencies,
++    required_scenarios: levels.map((level) => ({ id: `${level}-scenario`, level })),
++    invariants: ["Do not resend an unknown effect."], semantic_differences: [],
++  };
++  const contractHash = hash(encode(contract));
++  const registry: BehaviorRegistryV1 = { schema_version: 1, kind: "behavior_registry", registry_version: "1.0.0",
++    candidate_sha: "c".repeat(40), target_code_sha256: target, entries: [{ contract, contract_sha256: contractHash }] };
++  const bytes = encode(registry);
++  const profile = {
++    os: "darwin", architecture: "arm64", filesystem: "apfs", isolation_profile: "trusted-local",
++    daemon_version: "0.22.1", adapter_id: "codex", adapter_version: "1.0.0", provider: "openai", model: "fixture",
++    executor_id: "session", executor_version: "1.0.0", template_id: "adopt_session", template_version: "1.0.0",
++    recovery_mode: "query_and_deduplicate" as const, host_identity_sha256: "d".repeat(64),
++  };
++  const ciProfile = { ...profile, os: "linux", architecture: "x64", filesystem: "ext4", host_identity_sha256: "e".repeat(64) };
++  const policy: BehaviorRegistryInput["policy"] = [{ capabilityId, contractVersion: "1.0.0", requiredScenarios: {
++    contract_tested: [{ id: "contract_tested-scenario", checkerId: "contract_tested-checker", checkerVersion: "1.0.0" }],
++    host_verified: [{ id: "host_verified-scenario", checkerId: "host_verified-checker", checkerVersion: "1.0.0" }],
++    journey_verified: [{ id: "journey_verified-scenario", checkerId: "journey_verified-checker", checkerVersion: "1.0.0" }],
++  } }];
++  const policyHash = hash(encode({ schema_version: 1, kind: "behavior_verifier_policy", capabilities: policy }));
++  const records: BehaviorQualificationV1[] = [];
++  const qualificationBytes: Uint8Array[] = [];
++  for (const [index, level] of levels.entries()) {
++    const key = keys[index]!;
++    const evidence = [{ scenario_id: `${level}-scenario`, checker_id: `${level}-checker`, checker_version: "1.0.0",
++      result: "passed" as const, artifact_sha256: put(Buffer.from(`Measured ${level} for ${target}`)), subject_sha256: target }];
++    const payload: BehaviorQualificationV1["payload"] = {
++      record_id: `record-${index}`, capability_id: capabilityId, profile: index === 0 ? ciProfile : profile,
++      candidate_sha: registry.candidate_sha, target_code_sha256: target, behavior_contract_sha256: contractHash,
++      source_manifest_sha256: contract.source_manifest_sha256, policy_profile_sha256: policyHash, registry_sha256: hash(bytes),
++      level, evidence_bundle_sha256: put(encode({ schema_version: 1, candidate_sha: registry.candidate_sha, limitations: [], evidence })), evidence_refs: evidence,
++      limitations: [], issuer_role: key.role as BehaviorQualificationV1["payload"]["issuer_role"],
++      issued_at: "2026-10-26T00:00:00.000Z", expires_at: "2026-10-27T00:00:00.000Z", revocation_epoch: 3,
++      signer_key_id: `key-${index}`, required_scenario_set_sha256: hash(encode([`${level}-scenario`])),
++      prerequisite_record_sha256: index === 0 ? [] : [hash(qualificationBytes[index - 1]!)],
++    };
++    const record = { schema_version: 1 as const, canonicalization: "RFC8785" as const, payload,
++      signature: { algorithm: "Ed25519" as const, value_base64: sign(null, encode(payload), key.privateKey).toString("base64") } };
++    records.push(record); qualificationBytes.push(encode(record));
++  }
++  const input: BehaviorRegistryInput = {
++    registryBytes: bytes, expectedRegistrySha256: hash(bytes), expectedRegistryVersion: "1.0.0",
++    nowMs: now, qualificationBytes,
++    target: { candidateSha: registry.candidate_sha, targetCodeSha256: target, policyProfileSha256: policyHash, hostProfile: profile, ciProfile },
++    policy,
++    trust: {
++      keys: keys.map((key, index) => ({ keyId: `key-${index}`, publicKeyPem: key.publicKey.export({ type: "spki", format: "pem" }).toString(),
++        issuerRole: key.role as BehaviorQualificationV1["payload"]["issuer_role"], capabilityIds: [capabilityId],
++        profileSha256s: [hash(encode(index === 0 ? ciProfile : profile))] })),
++      minimumRevocationEpoch: 3, maxRevocationAgeMs: 7200000, maxQualificationLifetimeMs: 7 * 24 * 3600000,
++      revocations: { epoch: 3, issuedAtMs: now - 1000, expiresAtMs: now + 3600000, revokedKeyIds: [], revokedQualificationSha256s: [] },
++    },
++    readArtifact: (digest) => artifacts.get(digest),
++  };
++  // Mutations of signed payloads re-sign only that record. Later hashes intentionally become stale.
++  const replaceRecord = (index: number, mutate: (record: BehaviorQualificationV1) => void) => {
++    mutate(records[index]!);
++    records[index]!.signature.value_base64 = sign(null, encode(records[index]!.payload), keys[index]!.privateKey).toString("base64");
++    input.qualificationBytes[index] = encode(records[index]);
++  };
++  const replaceManifest = (manifest: unknown) => {
++    contract.source_manifest_sha256 = put(encode(manifest));
++    registry.entries[0]!.contract_sha256 = hash(encode(contract));
++    input.registryBytes = encode(registry); input.expectedRegistrySha256 = hash(input.registryBytes);
++    for (const [index, record] of records.entries()) {
++      record.payload.source_manifest_sha256 = contract.source_manifest_sha256;
++      record.payload.behavior_contract_sha256 = registry.entries[0]!.contract_sha256;
++      record.payload.registry_sha256 = input.expectedRegistrySha256;
++      record.payload.prerequisite_record_sha256 = index === 0 ? [] : [hash(input.qualificationBytes[index - 1]!)];
++      replaceRecord(index, () => {});
++    }
++  };
++  return { input, contract, registry, records, artifacts, put, replaceRecord, replaceManifest, sourceManifest };
++}
++const eligible = (input: BehaviorRegistryInput) => evaluateBehaviorRegistry(input).entries.filter((entry) => entry.selectionEligible);
++
++describe("behavior registry evaluation under caller-supplied trust", () => {
++  it("loads a fully verified same-candidate chain while granting no execution authority", () => {
++    const { input } = fixture(); const result = evaluateBehaviorRegistry(input);
++    expect(result.status).toBe("evaluated");
++    expect(result.authorization).toBe("none");
++    expect(result.expectedRegistrySha256).toBe(input.expectedRegistrySha256);
++    expect(result.observedRegistrySha256).toBe(input.expectedRegistrySha256);
++    expect(result.context).toEqual({ candidateSha: input.target.candidateSha, targetCodeSha256: input.target.targetCodeSha256,
++      policyProfileSha256: input.target.policyProfileSha256, ciProfileSha256: hash(encode(input.target.ciProfile)),
++      hostProfileSha256: hash(encode(input.target.hostProfile)), revocationEpoch: input.trust.revocations.epoch,
++      registryVersion: input.expectedRegistryVersion, revocationSnapshotSha256: hash(encode(input.trust.revocations)),
++      trustSha256: hash(encode({ keys: input.trust.keys, minimumRevocationEpoch: input.trust.minimumRevocationEpoch,
++        maxRevocationAgeMs: input.trust.maxRevocationAgeMs, maxQualificationLifetimeMs: input.trust.maxQualificationLifetimeMs })),
++      minimumRevocationEpoch: input.trust.minimumRevocationEpoch, maxRevocationAgeMs: input.trust.maxRevocationAgeMs,
++      maxQualificationLifetimeMs: input.trust.maxQualificationLifetimeMs });
++    expect(result.entries[0]).toMatchObject({ capabilityId: "FM-09", selectionEligible: true, reasons: [],
++      contractSha256: hash(encode(result.entries[0]!.contract)), qualificationSha256s: input.qualificationBytes.map(hash), validUntilMs: input.trust.revocations.expiresAtMs });
++    expect(Object.isFrozen(result.entries[0])).toBe(true);
++  });
++  it("leaves a correctly shaped but unqualified declaration disabled", () => {
++    const { input } = fixture(); input.qualificationBytes = [];
++    expect(evaluateBehaviorRegistry(input).entries[0]).toMatchObject({ selectionEligible: false, reasons: ["qualification_missing_or_invalid"] });
++  });
++  it("rejects substituted registry bytes before consulting evidence", () => {
++    const { input } = fixture(); input.registryBytes = Buffer.from("{}");
++    input.readArtifact = () => { throw new Error("must not read"); };
++    const result = evaluateBehaviorRegistry(input);
++    expect(result.rejection).toBe("registry_digest_mismatch");
++    expect(result.expectedRegistrySha256).toBe(input.expectedRegistrySha256);
++    expect(result.observedRegistrySha256).toBe(hash(Buffer.from("{}")));
++    expect(result.observedRegistrySha256).not.toBe(result.expectedRegistrySha256);
++  });
++  it("requires the expected registry version and current code identity", () => {
++    for (const field of ["candidateSha", "targetCodeSha256"] as const) {
++      const { input } = fixture(); input.target[field] = "0".repeat(field === "candidateSha" ? 40 : 64);
++      expect(evaluateBehaviorRegistry(input).rejection).toBe("candidate_mismatch");
++    }
++    const { input } = fixture(); input.expectedRegistryVersion = "2.0.0";
++    expect(evaluateBehaviorRegistry(input).rejection).toBe("registry_version_mismatch");
++  });
++  it("rejects duplicate JSON keys, unknown fields and noncanonical registry bytes", () => {
++    for (const mutate of [(s: string) => s.replace('"schema_version":1', '"schema_version":1,"schema_version":1'),
++      (s: string) => `${s}\n`, (s: string) => s.replace('"kind":"behavior_registry"', '"kind":"behavior_registry","command":"exec"')]) {
++      const { input } = fixture(); input.registryBytes = Buffer.from(mutate(Buffer.from(input.registryBytes).toString()));
++      input.expectedRegistrySha256 = hash(input.registryBytes);
++      expect(evaluateBehaviorRegistry(input).rejection).toBe("registry_invalid");
++    }
++  });
++  it("does not accept a delivery projection as a qualification", () => {
++    const { input } = fixture(); input.qualificationBytes = [encode({ kind: "behavior_delivery", state: "local_verified" })];
++    expect(eligible(input)).toHaveLength(0);
++  });
++  it("rejects duplicate qualification keys and invalid UTF-8 before signature evaluation", () => {
++    const { input } = fixture();
++    input.qualificationBytes[2] = Buffer.from(Buffer.from(input.qualificationBytes[2]!).toString()
++      .replace('"record_id":"record-2"', '"record_id":"record-2","record_id":"record-2"'));
++    expect(eligible(input)).toHaveLength(0);
++    const other = fixture(); other.input.registryBytes = Buffer.concat([Buffer.from([0xff]), Buffer.from(other.input.registryBytes)]);
++    other.input.expectedRegistrySha256 = hash(other.input.registryBytes);
++    expect(evaluateBehaviorRegistry(other.input).rejection).toBe("registry_invalid");
++  });
++  it("checks the declared behavior digest independently of the registry digest", () => {
++    const { input, registry } = fixture(); registry.entries[0]!.contract_sha256 = "0".repeat(64);
++    input.registryBytes = encode(registry); input.expectedRegistrySha256 = hash(input.registryBytes);
++    expect(evaluateBehaviorRegistry(input).entries[0]?.reasons).toContain("contract_digest_mismatch");
++  });
++  it("verifies signature bytes instead of trusting claimed issuer fields", () => {
++    const { input, records } = fixture(); records[2]!.payload.limitations = ["Altered after signing."];
++    input.qualificationBytes[2] = encode(records[2]);
++    expect(eligible(input)).toHaveLength(0);
++    expect(evaluateBehaviorRegistry(input).qualificationRejections.some((entry) => entry.reason === "signature_invalid")).toBe(true);
++  });
++  it("rejects a host claim signed by a CI-only key, even with a valid signature", () => {
++    const { input, records } = fixture(); const record = records[1]!;
++    record.payload.signer_key_id = "key-0";
++    record.signature.value_base64 = sign(null, encode(record.payload), keys[0]!.privateKey).toString("base64");
++    input.qualificationBytes[1] = encode(record);
++    expect(eligible(input)).toHaveLength(0);
++    expect(evaluateBehaviorRegistry(input).qualificationRejections.some((entry) => entry.reason === "issuer_scope_mismatch")).toBe(true);
++  });
++  it("enforces key capability and exact profile scope", () => {
++    for (const field of ["capabilityIds", "profileSha256s"] as const) {
++      const { input } = fixture(); input.trust.keys[2]![field] = [];
++      expect(eligible(input)).toHaveLength(0);
++    }
++    const { input } = fixture(); input.target.hostProfile.host_identity_sha256 = "0".repeat(64);
++    expect(eligible(input)).toHaveLength(0);
++  });
++  it("allows only the four explicit CI measurement-cell differences", () => {
++    const relaxed = new Set(["os", "architecture", "filesystem", "host_identity_sha256"]);
++    expect(eligible(fixture().input)).toHaveLength(1); // all four CI fields differ from the host
++    for (const field of Object.keys(fixture().input.target.ciProfile)) {
++      if (relaxed.has(field)) continue;
++      const { input } = fixture(); const key = field as keyof typeof input.target.ciProfile;
++      if (key === "recovery_mode") input.target.ciProfile[key] = "stop_and_reconcile";
++      else input.target.ciProfile[key] = `${input.target.ciProfile[key]}-other`;
++      expect(evaluateBehaviorRegistry(input).rejection, field).toBe("ci_profile_mismatch");
++    }
++  });
++  it("invalidates every signed candidate, source, contract and policy binding mutation", () => {
++    for (const field of ["candidate_sha", "target_code_sha256", "behavior_contract_sha256", "source_manifest_sha256", "policy_profile_sha256", "registry_sha256"] as const) {
++      const { input, replaceRecord } = fixture(); replaceRecord(2, (record) => { record.payload[field] = "0".repeat(field === "candidate_sha" ? 40 : 64); });
++      expect(eligible(input), field).toHaveLength(0);
++    }
++  });
++  it("rejects expired, future-issued and future-revocation records", () => {
++    for (const mutate of [(r: BehaviorQualificationV1) => { r.payload.expires_at = "2026-10-26T12:00:00.000Z"; },
++      (r: BehaviorQualificationV1) => { r.payload.issued_at = "2026-10-26T13:00:00.000Z"; },
++      (r: BehaviorQualificationV1) => { r.payload.revocation_epoch = 4; }]) {
++      const { input, replaceRecord } = fixture(); replaceRecord(2, mutate); expect(eligible(input)).toHaveLength(0);
++    }
++  });
++  it("rejects stale or rolled-back revocation state", () => {
++    for (const mutate of [(input: BehaviorRegistryInput) => { input.trust.revocations.epoch = 2; },
++      (input: BehaviorRegistryInput) => { input.trust.revocations.expiresAtMs = now; },
++      (input: BehaviorRegistryInput) => { input.trust.revocations.issuedAtMs = now + 1; }]) {
++      const { input } = fixture(); mutate(input); expect(evaluateBehaviorRegistry(input).rejection).toBe("revocation_unavailable");
++    }
++  });
++  it("enforces the host's maximum qualification lifetime and revocation cache age", () => {
++    const { input } = fixture(); input.trust.maxQualificationLifetimeMs = 3600000;
++    expect(eligible(input)).toHaveLength(0);
++    const other = fixture(); other.input.trust.maxRevocationAgeMs = 1000;
++    expect(evaluateBehaviorRegistry(other.input).rejection).toBe("revocation_unavailable");
++    for (const field of ["maxQualificationLifetimeMs", "maxRevocationAgeMs"] as const) {
++      const f = fixture(); f.input.trust[field] = Number.MAX_SAFE_INTEGER;
++      expect(evaluateBehaviorRegistry(f.input).rejection).toBe("invalid_context");
++    }
++  });
++  it("re-evaluates revocations on each load, including predecessor revocation", () => {
++    const { input } = fixture(); expect(eligible(input)).toHaveLength(1);
++    input.trust.revocations.revokedQualificationSha256s.push(hash(input.qualificationBytes[0]!)); expect(eligible(input)).toHaveLength(0);
++    input.trust.revocations.revokedQualificationSha256s = []; input.trust.revocations.revokedKeyIds.push("key-2");
++    expect(eligible(input)).toHaveLength(0);
++  });
++  it("requires the exact trusted scenario set and checker identity", () => {
++    for (const mutate of [(r: BehaviorQualificationV1) => { r.payload.required_scenario_set_sha256 = "0".repeat(64); },
++      (r: BehaviorQualificationV1) => { r.payload.evidence_refs[0]!.checker_id = "worker-self-report"; },
++      (r: BehaviorQualificationV1) => { r.payload.evidence_refs[0]!.result = "not_run"; },
++      (r: BehaviorQualificationV1) => { r.payload.evidence_refs[0]!.subject_sha256 = "0".repeat(64); }]) {
++      const { input, replaceRecord } = fixture(); replaceRecord(2, mutate); expect(eligible(input)).toHaveLength(0);
++    }
++    const { input } = fixture(); input.policy[0]!.requiredScenarios.journey_verified.push({ id: "missing", checkerId: "check", checkerVersion: "1.0.0" });
++    expect(eligible(input)).toHaveLength(0);
++  });
++  it("binds the actual host verifier policy, including required checkers, to its pinned digest", () => {
++    const { input } = fixture(); input.policy[0]!.requiredScenarios.journey_verified[0]!.checkerId = "replacement-checker";
++    expect(evaluateBehaviorRegistry(input).rejection).toBe("policy_digest_mismatch");
++  });
++  it("requires the evidence bundle to contain the signed evidence and treats limitations conservatively", () => {
++    const f = fixture(); f.replaceRecord(2, (record) => {
++      record.payload.evidence_bundle_sha256 = f.put(encode({ schema_version: 1, candidate_sha: f.registry.candidate_sha, limitations: [],
++        evidence: [{ ...record.payload.evidence_refs[0], checker_version: "2.0.0" }] }));
++    });
++    expect(evaluateBehaviorRegistry(f.input).qualificationRejections.some((entry) => entry.reason === "evidence_bundle_mismatch")).toBe(true);
++    const other = fixture(); other.replaceRecord(2, (record) => { record.payload.limitations = ["Cannot stop the worker."]; });
++    expect(eligible(other.input)).toHaveLength(0);
++  });
++  it("re-reads evidence artifacts and sources and rejects unavailable or substituted bytes", () => {
++    for (const select of [(f: ReturnType<typeof fixture>) => f.records[2]!.payload.evidence_refs[0]!.artifact_sha256,
++      (f: ReturnType<typeof fixture>) => f.records[2]!.payload.evidence_bundle_sha256,
++      (f: ReturnType<typeof fixture>) => f.contract.source_manifest_sha256,
++      (f: ReturnType<typeof fixture>) => f.contract.sources[0]!.content_sha256]) {
++      const f = fixture(); f.artifacts.set(select(f), Buffer.from("replacement")); expect(eligible(f.input)).toHaveLength(0);
++      f.artifacts.delete(select(f)); expect(eligible(f.input)).toHaveLength(0);
++    }
++    const { input } = fixture(); input.readArtifact = () => { throw new Error("unavailable"); }; expect(eligible(input)).toHaveLength(0);
++  });
++  it("requires each full source tuple to belong to the pinned typed snapshot", () => {
++    for (const field of ["repository", "commit", "path", "content_sha256", "license"] as const) {
++      const f = fixture(); const source = { ...f.contract.sources[0]! };
++      source[field] = field === "repository" ? "https://example.com/another-repo"
++        : field === "commit" ? "0".repeat(40) : field === "content_sha256" ? "0".repeat(64) : "other";
++      f.replaceManifest({ ...f.sourceManifest, sources: [source] });
++      expect(evaluateBehaviorRegistry(f.input).entries[0]?.reasons, field).toContain("source_manifest_mismatch");
++    }
++    for (const manifest of [{ sources: ["AGENTS.md"] }, { schema_version: 2, kind: "behavior_source_manifest", sources: [] }]) {
++      const f = fixture(); f.replaceManifest(manifest);
++      expect(evaluateBehaviorRegistry(f.input).entries[0]?.reasons).toContain("source_manifest_invalid");
++    }
++  });
++  it("allows a global snapshot superset without qualifying unreferenced source content", () => {
++    const f = fixture(); f.replaceManifest({ ...f.sourceManifest, sources: [...f.contract.sources,
++      { ...f.contract.sources[0], path: "unreferenced-source.md", content_sha256: "0".repeat(64) }] });
++    expect(eligible(f.input)).toHaveLength(1);
++    f.replaceManifest({ ...f.sourceManifest, sources: [...f.contract.sources, ...f.contract.sources] });
++    expect(evaluateBehaviorRegistry(f.input).entries[0]?.reasons).toContain("source_manifest_invalid");
++  });
++  it("rejects missing, wrong-level or changed predecessor records", () => {
++    const { input, replaceRecord } = fixture(); replaceRecord(2, (record) => { record.payload.prerequisite_record_sha256 = [hash(input.qualificationBytes[0]!)]; });
++    expect(eligible(input)).toHaveLength(0);
++    const other = fixture(); other.input.qualificationBytes.shift(); expect(eligible(other.input)).toHaveLength(0);
++  });
++  it("rejects conflicting documents with the same issuer and record ID, and invalid trust configuration", () => {
++    const { input, records } = fixture(); const altered = structuredClone(records[2]!); altered.payload.limitations = ["Another receipt"];
++    altered.signature.value_base64 = sign(null, encode(altered.payload), keys[2]!.privateKey).toString("base64");
++    input.qualificationBytes.push(encode(altered)); expect(eligible(input)).toHaveLength(0);
++    expect(evaluateBehaviorRegistry(input).qualificationRejections.some((record) => record.reason === "qualification_id_conflict")).toBe(true);
++    const second = fixture(); second.input.trust.keys.push(second.input.trust.keys[0]!);
++    expect(evaluateBehaviorRegistry(second.input).rejection).toBe("invalid_context");
++  });
++  it("does not let an unauthenticated same-ID record poison a legitimate qualification chain", () => {
++    const { input, records } = fixture(); const forged = structuredClone(records[2]!);
++    forged.payload.limitations = ["Forged conflicting contents"];
++    forged.signature.value_base64 = `${"A".repeat(86)}==`;
++    input.qualificationBytes.unshift(encode(forged));
++    const result = evaluateBehaviorRegistry(input);
++    expect(result.entries[0]?.selectionEligible).toBe(true);
++    expect(result.qualificationRejections).toEqual([{ sha256: hash(encode(forged)), reason: "signature_invalid" }]);
++  });
++  it("does not let a CI issuer's same-ID record conflict with the journey issuer", () => {
++    const { input, records } = fixture(); const lowerRole = structuredClone(records[0]!);
++    lowerRole.payload.record_id = records[2]!.payload.record_id;
++    lowerRole.payload.evidence_bundle_sha256 = "0".repeat(64);
++    lowerRole.signature.value_base64 = sign(null, encode(lowerRole.payload), keys[0]!.privateKey).toString("base64");
++    input.qualificationBytes.unshift(encode(lowerRole));
++    const result = evaluateBehaviorRegistry(input);
++    expect(result.entries[0]?.selectionEligible).toBe(true);
++    expect(result.qualificationRejections).toEqual([{ sha256: hash(encode(lowerRole)), reason: "evidence_unavailable" }]);
++  });
++  it("revokes exact qualification documents without revoking another issuer's same-ID record", () => {
++    const { input, records } = fixture(); const lowerRole = structuredClone(records[0]!);
++    lowerRole.payload.record_id = records[2]!.payload.record_id;
++    lowerRole.signature.value_base64 = sign(null, encode(lowerRole.payload), keys[0]!.privateKey).toString("base64");
++    const extra = encode(lowerRole); input.qualificationBytes.push(extra);
++    input.trust.revocations.revokedQualificationSha256s.push(hash(extra));
++    const result = evaluateBehaviorRegistry(input);
++    expect(result.entries[0]?.selectionEligible).toBe(true);
++    expect(result.qualificationRejections).toEqual([{ sha256: hash(extra), reason: "qualification_revoked" }]);
++    input.trust.revocations.revokedQualificationSha256s.push(hash(input.qualificationBytes[2]!));
++    expect(evaluateBehaviorRegistry(input).entries[0]).toMatchObject({ selectionEligible: false, qualificationSha256s: [] });
++    const legacy = fixture();
++    legacy.input.trust.revocations = { epoch: 3, issuedAtMs: now - 1000, expiresAtMs: now + 1000,
++      revokedKeyIds: [], revokedRecordIds: ["record-0"] } as unknown as BehaviorRegistryInput["trust"]["revocations"];
++    expect(evaluateBehaviorRegistry(legacy.input).rejection).toBe("revocation_unavailable");
++    legacy.input.trust.revocations.revokedQualificationSha256s = [];
++    expect(evaluateBehaviorRegistry(legacy.input).rejection).toBe("revocation_unavailable");
++  });
++  it("binds same-epoch revocation changes and evaluation limits to separate context digests", () => {
++    const { input } = fixture(); const original = evaluateBehaviorRegistry(input).context!;
++    input.trust.revocations.revokedQualificationSha256s.push("0".repeat(64));
++    const revoked = evaluateBehaviorRegistry(input).context!;
++    expect(revoked.revocationEpoch).toBe(original.revocationEpoch);
++    expect(revoked.revocationSnapshotSha256).not.toBe(original.revocationSnapshotSha256);
++    expect(revoked.trustSha256).toBe(original.trustSha256);
++    input.trust.minimumRevocationEpoch = 2; input.trust.maxRevocationAgeMs -= 1;
++    input.trust.maxQualificationLifetimeMs -= 1;
++    const changed = evaluateBehaviorRegistry(input).context!;
++    expect(changed.trustSha256).not.toBe(revoked.trustSha256);
++    expect(changed.revocationSnapshotSha256).toBe(revoked.revocationSnapshotSha256);
++    expect(changed).toMatchObject({ minimumRevocationEpoch: 2, maxRevocationAgeMs: input.trust.maxRevocationAgeMs,
++      maxQualificationLifetimeMs: input.trust.maxQualificationLifetimeMs });
++  });
++  it("rejects all seven libsodium 1.0.18 small-order encodings and both sign-bit variants", () => {
++    // Fixed upstream ge25519_has_small_order vectors; production does not supply the test list.
++    const vectors = ["00".repeat(32), `01${"00".repeat(31)}`,
++      "26e8958fc2b227b045c3f489f2ef98f0d5dfac05d3c63339b13802886d53fc05",
++      "c7176a703d4dd84fba3c0b760d10670f2a2053fa2c39ccc64ec7fd7792ac037a",
++      `ec${"ff".repeat(30)}7f`, `ed${"ff".repeat(30)}7f`, `ee${"ff".repeat(30)}7f`];
++    for (const vector of vectors) for (const signBit of [0, 128]) {
++      const bytes = Buffer.from(vector, "hex"); bytes[31] = bytes[31]! | signBit;
++      const key = createPublicKey({ format: "jwk", key: { kty: "OKP", crv: "Ed25519", x: bytes.toString("base64url") } });
++      const { input } = fixture(); input.trust.keys[0]!.publicKeyPem = key.export({ format: "pem", type: "spki" }).toString();
++      expect(evaluateBehaviorRegistry(input).rejection, `${vector}/${signBit}`).toBe("invalid_context");
++    }
++    expect(eligible(fixture().input)).toHaveLength(1);
++  });
++  it("rejects an identity-key qualification with trivial R=identity and S=0 signature", () => {
++    const { input, records, replaceRecord } = fixture(); const identity = Buffer.alloc(32); identity[0] = 1;
++    const key = createPublicKey({ format: "jwk", key: { kty: "OKP", crv: "Ed25519", x: identity.toString("base64url") } });
++    input.trust.keys[0]!.publicKeyPem = key.export({ format: "pem", type: "spki" }).toString();
++    records[0]!.signature.value_base64 = Buffer.concat([identity, Buffer.alloc(32)]).toString("base64");
++    input.qualificationBytes[0] = encode(records[0]);
++    for (const index of [1, 2]) replaceRecord(index, (record) => {
++      record.payload.prerequisite_record_sha256 = [hash(input.qualificationBytes[index - 1]!)];
++    });
++    expect(evaluateBehaviorRegistry(input)).toMatchObject({ status: "rejected", rejection: "invalid_context", entries: [] });
++  });
++  it("selects the longest effective chain with a digest tie-break regardless of input order", () => {
++    for (const tied of [false, true]) {
++      const { input, records } = fixture(); const alternate = structuredClone(records[2]!);
++      alternate.payload.record_id = "alternate-journey";
++      if (!tied) alternate.payload.expires_at = new Date(now + 10000).toISOString();
++      alternate.signature.value_base64 = sign(null, encode(alternate.payload), keys[2]!.privateKey).toString("base64");
++      const original = input.qualificationBytes[2]!; const extra = encode(alternate);
++      const expected = tied ? [hash(original), hash(extra)].sort()[0]! : hash(original);
++      input.qualificationBytes.unshift(extra);
++      const first = evaluateBehaviorRegistry(input);
++      input.qualificationBytes.reverse();
++      expect(evaluateBehaviorRegistry(input)).toEqual(first);
++      expect(first.entries[0]?.qualificationSha256s[2]).toBe(expected);
++      expect(first.entries[0]?.validUntilMs).toBe(input.trust.revocations.expiresAtMs);
++    }
++  });
++  it("does not expose qualification chains for entries with failed source checks", () => {
++    const { input, artifacts, contract } = fixture(); artifacts.delete(contract.source_manifest_sha256);
++    expect(evaluateBehaviorRegistry(input).entries[0]).toMatchObject({ selectionEligible: false,
++      validUntilMs: null, qualificationSha256s: [] });
++  });
++  it("bounds trust arrays and PEM before parsing keys and rejects missing revocation snapshots", () => {
++    const mutations: Array<(input: BehaviorRegistryInput) => void> = [
++      (input) => { input.trust.keys[0]!.publicKeyPem = "x".repeat(1025); },
++      (input) => { input.trust.keys[0]!.publicKeyPem = keys[0]!.privateKey.export({ type: "pkcs8", format: "pem" }).toString(); },
++      (input) => { input.trust.keys[0]!.publicKeyPem = input.trust.keys[0]!.publicKeyPem.replaceAll("PUBLIC KEY", "CERTIFICATE"); },
++      (input) => { input.trust.keys[0]!.capabilityIds = Array.from({ length: 25 }, () => "FM-09"); },
++      (input) => { input.trust.keys[0]!.profileSha256s = Array.from({ length: 129 }, () => "0".repeat(64)); },
++    ];
++    for (const mutate of mutations) { const { input } = fixture(); mutate(input); expect(evaluateBehaviorRegistry(input).rejection).toBe("invalid_context"); }
++    for (const mutate of [
++      (input: BehaviorRegistryInput) => { input.trust.revocations = null as unknown as BehaviorRegistryInput["trust"]["revocations"]; },
++      (input: BehaviorRegistryInput) => { input.trust.revocations.revokedKeyIds = Array.from({ length: 4097 }, () => "key"); },
++      (input: BehaviorRegistryInput) => { input.trust.revocations.revokedQualificationSha256s = Array.from({ length: 16385 }, () => "record"); },
++    ]) {
++      const { input } = fixture(); mutate(input);
++      expect(evaluateBehaviorRegistry(input)).toMatchObject({ status: "rejected", rejection: "revocation_unavailable", context: null, observedRegistrySha256: null });
++    }
++  });
++  it("keeps unresolved and version-mismatched dependencies disabled", () => {
++    const missing = fixture([{ capability_id: "FM-02", version: "1.0.0" }]);
++    expect(evaluateBehaviorRegistry(missing.input).entries[0]?.reasons).toContain("dependency_missing");
++    const f = fixture([{ capability_id: "FM-02", version: "2.0.0" }]);
++    f.registry.entries.push({ contract: { ...f.contract, capability_id: "FM-02", depends_on: [] }, contract_sha256: "0".repeat(64) });
++    f.input.registryBytes = encode(f.registry); f.input.expectedRegistrySha256 = hash(f.input.registryBytes);
++    expect(evaluateBehaviorRegistry(f.input).entries[0]?.reasons).toContain("dependency_version_mismatch");
++  });
++  it("detects cycles and does not let an unqualified dependency become a route", () => {
++    const f = fixture([{ capability_id: "FM-02", version: "1.0.0" }]);
++    const dependency = { ...f.contract, capability_id: "FM-02", depends_on: [{ capability_id: "FM-09", version: "1.0.0" }] };
++    f.registry.entries.push({ contract: dependency, contract_sha256: hash(encode(dependency)) });
++    f.input.registryBytes = encode(f.registry); f.input.expectedRegistrySha256 = hash(f.input.registryBytes);
++    expect(evaluateBehaviorRegistry(f.input).entries.every((entry) => entry.reasons.includes("dependency_cycle"))).toBe(true);
++    dependency.depends_on = []; f.registry.entries[1]!.contract_sha256 = hash(encode(dependency));
++    f.input.registryBytes = encode(f.registry); f.input.expectedRegistrySha256 = hash(f.input.registryBytes);
++    expect(evaluateBehaviorRegistry(f.input).entries[0]?.reasons).toContain("dependency_unqualified");
++  });
++  it("propagates a dependency's earlier expiry and later revocation to the parent", () => {
++    const parent = fixture([{ capability_id: "FM-02", version: "1.0.0" }]);
++    const child = fixture([], "FM-02");
++    parent.registry.entries.push(child.registry.entries[0]!);
++    parent.input.registryBytes = encode(parent.registry); parent.input.expectedRegistrySha256 = hash(parent.input.registryBytes);
++    parent.input.policy.push(child.input.policy[0]!);
++    parent.input.target.policyProfileSha256 = hash(encode({ schema_version: 1, kind: "behavior_verifier_policy", capabilities: parent.input.policy }));
++    for (const key of parent.input.trust.keys) key.capabilityIds.push("FM-02");
++    for (const [digest, bytes] of child.artifacts) parent.artifacts.set(digest, bytes);
++    parent.input.qualificationBytes = [];
++    for (const [group, records] of [parent.records, child.records].entries()) {
++      let previous: string | undefined;
++      for (const [index, record] of records.entries()) {
++        record.payload.registry_sha256 = parent.input.expectedRegistrySha256;
++        record.payload.policy_profile_sha256 = parent.input.target.policyProfileSha256;
++        record.payload.prerequisite_record_sha256 = previous ? [previous] : [];
++        if (group === 1) {
++          record.payload.record_id = `child-record-${index}`;
++          record.payload.expires_at = "2026-10-26T12:01:00.000Z";
++        }
++        record.signature.value_base64 = sign(null, encode(record.payload), keys[index]!.privateKey).toString("base64");
++        const bytes = encode(record); previous = hash(bytes); parent.input.qualificationBytes.push(bytes);
++      }
++    }
++    const result = evaluateBehaviorRegistry(parent.input);
++    expect(result.entries.every((entry) => entry.selectionEligible)).toBe(true);
++    expect(result.entries.map((entry) => entry.validUntilMs)).toEqual([now + 60000, now + 60000]);
++    parent.input.trust.revocations.revokedQualificationSha256s.push(hash(parent.input.qualificationBytes[5]!));
++    expect(evaluateBehaviorRegistry(parent.input).entries[0]).toMatchObject({ selectionEligible: false,
++      validUntilMs: null, reasons: ["dependency_unqualified"] });
++  });
++  it("labels every member of a cycle that includes a diamond join", () => {
++    const f = fixture([{ capability_id: "FM-02", version: "1.0.0" }, { capability_id: "FM-03", version: "1.0.0" }]);
++    for (const [id, target] of [["FM-02", "FM-04"], ["FM-03", "FM-04"], ["FM-04", "FM-09"]] as const) {
++      const contract = { ...f.contract, capability_id: id, depends_on: [{ capability_id: target, version: "1.0.0" }] };
++      f.registry.entries.push({ contract, contract_sha256: hash(encode(contract)) });
++    }
++    f.input.registryBytes = encode(f.registry); f.input.expectedRegistrySha256 = hash(f.input.registryBytes);
++    expect(evaluateBehaviorRegistry(f.input).entries.map((entry) => entry.reasons.includes("dependency_cycle"))).toEqual([true, true, true, true]);
++  });
++  it("keeps the evaluated snapshot stable when a later artifact callback mutates caller inputs", () => {
++    // Authentication finishes before artifact callbacks. This tests later snapshot stability, not a clock race inside authentication.
++    const { input, artifacts } = fixture(); let readCalls = 0;
++    input.readArtifact = (digest) => {
++      readCalls++;
++      input.nowMs += 2 * 86400000; input.expectedRegistrySha256 = "0".repeat(64);
++      input.qualificationBytes = []; input.target.candidateSha = "0".repeat(40);
++      input.trust.revocations.revokedKeyIds.push("key-2");
++      return artifacts.get(digest);
++    };
++    const result = evaluateBehaviorRegistry(input);
++    expect(readCalls).toBeGreaterThan(0);
++    expect(result.evaluatedAtMs).toBe(now); expect(result.entries[0]?.selectionEligible).toBe(true);
++    const expired = fixture(); expired.replaceRecord(2, (record) => { record.payload.expires_at = "2026-10-26T12:00:00.000Z"; });
++    let expiredReadCalls = 0;
++    expired.input.readArtifact = (digest) => { expiredReadCalls++; expired.input.nowMs = now - 1; return expired.artifacts.get(digest); };
++    expect(eligible(expired.input)).toHaveLength(0);
++    expect(expiredReadCalls).toBeGreaterThan(0);
++    expect(expired.input.nowMs).toBe(now - 1);
++  });
++  it("bounds input and artifact reads without filesystem or home discovery", () => {
++    const { input } = fixture(); input.registryBytes = Buffer.alloc(1024 * 1024 + 1);
++    expect(evaluateBehaviorRegistry(input).rejection).toBe("registry_invalid");
++    const other = fixture(); other.input.readArtifact = () => Buffer.alloc(8 * 1024 * 1024 + 1);
++    expect(eligible(other.input)).toHaveLength(0);
++  });
++  it("does not spend the evidence budget parsing unauthenticated qualification documents", () => {
++    const { input } = fixture([], "FM-09", Buffer.alloc(6 * 1024 * 1024, 65));
++    const invalid = Buffer.alloc(1024 * 1024, 97);
++    input.qualificationBytes.unshift(...Array.from({ length: 60 }, () => invalid));
++    const result = evaluateBehaviorRegistry(input);
++    expect(result.entries[0]?.selectionEligible).toBe(true);
++    expect(result.qualificationRejections).toHaveLength(60);
++  });
++  it("rejects an excessive raw batch before artifact reads regardless of padding position", () => {
++    for (const byCount of [true, false]) for (const prepend of [true, false]) {
++      const { input } = fixture(); let reads = 0;
++      const junk = Buffer.alloc(byCount ? 1 : 1024 * 1024, 97);
++      const padding = Array.from({ length: byCount ? 257 : 64 }, () => junk);
++      input.qualificationBytes = prepend ? [...padding, ...input.qualificationBytes] : [...input.qualificationBytes, ...padding];
++      input.readArtifact = () => { reads++; throw new Error("oversized batch must not read"); };
++      expect(evaluateBehaviorRegistry(input)).toMatchObject({ status: "rejected", entries: [],
++        rejection: byCount ? "invalid_context" : "qualification_batch_oversized" });
++      expect(reads).toBe(0);
++    }
++  });
++});
+diff --git a/packages/core/src/behavior-registry.ts b/packages/core/src/behavior-registry.ts
+new file mode 100644
+index 00000000..eb1a4f06
+--- /dev/null
++++ b/packages/core/src/behavior-registry.ts
+@@ -0,0 +1,414 @@
++import { createHash, createPublicKey, verify, type KeyObject } from "node:crypto";
++import {
++  BEHAVIOR_DOCUMENT_MAX_BYTES, BehaviorCapabilityIdV1, BehaviorEvidenceBundleV1, BehaviorQualificationProfileV1,
++  BehaviorQualificationV1, BehaviorRegistryV1, BehaviorSourceManifestV1,
++  type BehaviorContractV1, type BehaviorQualificationLevelV1,
++} from "@osstack/protocol";
++
++type Level = BehaviorQualificationLevelV1;
++type Role = BehaviorQualificationV1["payload"]["issuer_role"];
++export interface BehaviorRegistryPolicy {
++  capabilityId: string;
++  contractVersion: string;
++  requiredScenarios: Record<Level, Array<{ id: string; checkerId: string; checkerVersion: string }>>;
++}
++export interface BehaviorRegistryTrust {
++  keys: Array<{ keyId: string; publicKeyPem: string; issuerRole: Role; capabilityIds: string[]; profileSha256s: string[] }>;
++  /** Persisted high-water mark from the host's independent trust service, never from a registry. */
++  minimumRevocationEpoch: number;
++  maxRevocationAgeMs: number;
++  maxQualificationLifetimeMs: number;
++  /** The host verifies the operations-root signature and persists the epoch before calling this evaluator. */
++  revocations: { epoch: number; issuedAtMs: number; expiresAtMs: number; revokedKeyIds: string[]; revokedQualificationSha256s: string[] };
++}
++export interface BehaviorRegistryInput {
++  registryBytes: Uint8Array;
++  expectedRegistrySha256: string;
++  expectedRegistryVersion: string;
++  /** Evaluation clock asserted by the host, not authenticated wall time. Never accept it from a worker. */
++  nowMs: number;
++  /** Host-selected bounded batch, not an unfiltered multi-writer append log. */
++  qualificationBytes: Uint8Array[];
++  target: {
++    candidateSha: string; targetCodeSha256: string;
++    /** SHA256 of canonical {schema_version:1,kind:"behavior_verifier_policy",capabilities:policy}. */
++    policyProfileSha256: string;
++    hostProfile: BehaviorQualificationProfileV1; ciProfile: BehaviorQualificationProfileV1;
++  };
++  policy: BehaviorRegistryPolicy[];
++  trust: BehaviorRegistryTrust;
++  /** Host-owned content-addressed store. No paths, home discovery, network or script execution. */
++  readArtifact: (sha256: string) => Uint8Array | undefined;
++}
++export interface BehaviorRegistryEntry {
++  capabilityId: string;
++  contract: BehaviorContractV1;
++  contractSha256: string;
++  /** Requirements satisfied only under the echoed input context. Never an authorization or route grant. */
++  selectionEligible: boolean;
++  reasons: string[];
++  qualificationSha256s: string[];
++  validUntilMs: number | null;
++}
++export interface BehaviorRegistryEvaluationContext {
++  candidateSha: string;
++  targetCodeSha256: string;
++  policyProfileSha256: string;
++  ciProfileSha256: string;
++  hostProfileSha256: string;
++  revocationEpoch: number;
++  registryVersion: string;
++  revocationSnapshotSha256: string;
++  trustSha256: string;
++  minimumRevocationEpoch: number;
++  maxRevocationAgeMs: number;
++  maxQualificationLifetimeMs: number;
++}
++export interface BehaviorRegistrySnapshot {
++  status: "evaluated" | "rejected";
++  authorization: "none";
++  rejection: string | null;
++  expectedRegistrySha256: string;
++  observedRegistrySha256: string | null;
++  /** Normalized caller assertions, not a certificate that the host or revocations are authentic. */
++  context: BehaviorRegistryEvaluationContext | null;
++  evaluatedAtMs: number;
++  entries: BehaviorRegistryEntry[];
++  qualificationRejections: Array<{ sha256: string; reason: string }>;
++}
++
++const levels: Level[] = ["contract_tested", "host_verified", "journey_verified"];
++const roles: Role[] = ["ci_verifier", "host_qualifier", "journey_verifier"];
++const digestPattern = /^[a-f0-9]{64}$/;
++const commitPattern = /^[a-f0-9]{40}$/;
++const versionPattern = /^(0|[1-9]\d{0,8})\.(0|[1-9]\d{0,8})\.(0|[1-9]\d{0,8})$/;
++const MAX_REGISTRY_BYTES = BEHAVIOR_DOCUMENT_MAX_BYTES;
++const MAX_QUALIFICATION_BYTES = BEHAVIOR_DOCUMENT_MAX_BYTES;
++const MAX_ARTIFACT_BYTES = 8 * 1024 * 1024;
++const MAX_QUALIFICATION_TOTAL_BYTES = 64 * 1024 * 1024;
++const MAX_EVIDENCE_TOTAL_BYTES = 64 * 1024 * 1024;
++const MAX_REVOCATION_AGE_MS = 24 * 60 * 60 * 1000;
++const MAX_QUALIFICATION_LIFETIME_MS = 31 * 24 * 60 * 60 * 1000;
++const MAX_REVOKED_KEYS = 4096;
++const MAX_REVOKED_RECORDS = 16384;
++// Known small-order y encodings, including noncanonical p/p+1 aliases. Sign bit is ignored.
++// Source: libsodium 1.0.18 ge25519_has_small_order:
++// https://github.com/jedisct1/libsodium/blob/1.0.18/src/libsodium/crypto_core/ed25519/ref10/ed25519_ref10.c
++const SMALL_ORDER_ED25519_Y = new Set([
++  "0000000000000000000000000000000000000000000000000000000000000000",
++  "0100000000000000000000000000000000000000000000000000000000000000",
++  "26e8958fc2b227b045c3f489f2ef98f0d5dfac05d3c63339b13802886d53fc05",
++  "c7176a703d4dd84fba3c0b760d10670f2a2053fa2c39ccc64ec7fd7792ac037a",
++  "ecffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f",
++  "edffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f",
++  "eeffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f",
++]);
++function hasDegenerateEd25519Encoding(key: KeyObject): boolean {
++  const jwk = key.export({ format: "jwk" });
++  if (typeof jwk.x !== "string") return true;
++  const encoded = Buffer.from(jwk.x, "base64url");
++  if (encoded.length !== 32) return true;
++  encoded[31] = encoded[31]! & 0x7f;
++  return SMALL_ORDER_ED25519_Y.has(encoded.toString("hex"));
++}
++const MAX_KEY_PROFILES = 128;
++const hash = (value: Uint8Array | string): string => createHash("sha256").update(value).digest("hex");
++
++// RFC8785 serialization for values already parsed by these closed schemas: only strings,
++// safe integers and fixed-key objects/arrays. Not an inbound JSON parser or a public codec.
++function canonical(value: unknown): string {
++  if (Array.isArray(value)) return `[${value.map(canonical).join(",")}]`;
++  if (value !== null && typeof value === "object") return `{${Object.keys(value).sort()
++    .map((key) => `${JSON.stringify(key)}:${canonical((value as Record<string, unknown>)[key])}`).join(",")}}`;
++  const encoded = JSON.stringify(value);
++  if (encoded === undefined) throw new Error("invalid value");
++  return encoded;
++}
++function parseArtifact<T>(bytes: Uint8Array, parser: { parse: (value: unknown) => T }, maximum: number): T {
++  if (!(bytes instanceof Uint8Array) || bytes.byteLength > maximum) throw new Error("oversized artifact");
++  const raw = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(bytes);
++  const value = parser.parse(JSON.parse(raw));
++  // Requiring canonical bytes rejects duplicate keys, alternate numeric spellings and unknown data
++  // without duplicating the independent joint-json raw parser under development in J01.
++  if (canonical(value) !== raw) throw new Error("noncanonical artifact");
++  return value;
++}
++function freeze<T>(value: T): T {
++  if (value !== null && typeof value === "object") {
++    for (const child of Object.values(value)) freeze(child);
++    Object.freeze(value);
++  }
++  return value;
++}
++const safeInteger = (value: number) => Number.isSafeInteger(value) && value >= 0 && !Object.is(value, -0);
++const token = (value: string) => typeof value === "string" && /^[A-Za-z0-9][A-Za-z0-9._:@+/-]{0,511}$/.test(value);
++
++/**
++ * Evaluate one build against caller-supplied pins, time and trust assertions. This is a library
++ * boundary, not an RPC or authority issuer. Callers must re-evaluate after time/trust changes and
++ * perform normal host authorization before every effect. R05/V06 own policy issuance, operations
++ * signature verification, persistent epoch protection and trust-root custody; this evaluator cannot
++ * authenticate a caller that supplies its own trust context. No daemon path calls this yet.
++ * Work is bounded but synchronous; do not run it on a latency-critical RPC/dispatch event loop.
++ */
++export function evaluateBehaviorRegistry(input: BehaviorRegistryInput): BehaviorRegistrySnapshot {
++  const nowMs = input.nowMs;
++  const expectedRegistrySha256 = input.expectedRegistrySha256;
++  const expectedRegistryVersion = input.expectedRegistryVersion;
++  const readArtifact = input.readArtifact;
++  const snapshot: BehaviorRegistrySnapshot = { status: "rejected", authorization: "none", rejection: null,
++    expectedRegistrySha256, observedRegistrySha256: null, context: null,
++    evaluatedAtMs: nowMs, entries: [], qualificationRejections: [] };
++  const reject = (reason: string) => freeze({ ...snapshot, rejection: reason });
++  let target: BehaviorRegistryInput["target"];
++  let trust: BehaviorRegistryTrust;
++  let policies: Map<string, BehaviorRegistryPolicy>;
++  const publicKeys = new Map<string, KeyObject>();
++  try {
++    target = structuredClone(input.target);
++    target.hostProfile = BehaviorQualificationProfileV1.parse(target.hostProfile);
++    target.ciProfile = BehaviorQualificationProfileV1.parse(target.ciProfile);
++    const rawTrust = input.trust;
++    if (!rawTrust || !Array.isArray(rawTrust.keys) || rawTrust.keys.length > 100
++      || rawTrust.keys.some((key) => !key || typeof key.publicKeyPem !== "string" || key.publicKeyPem.length > 1024
++        || !/^-----BEGIN PUBLIC KEY-----\r?\n(?:[A-Za-z0-9+/=]+\r?\n)+-----END PUBLIC KEY-----\r?\n?$/.test(key.publicKeyPem)
++        || !Array.isArray(key.capabilityIds) || key.capabilityIds.length > 24
++        || !Array.isArray(key.profileSha256s) || key.profileSha256s.length > MAX_KEY_PROFILES)) return reject("invalid_context");
++    const rawRevocations = rawTrust.revocations;
++    if (!rawRevocations || Object.hasOwn(rawRevocations, "revokedRecordIds") || !Array.isArray(rawRevocations.revokedKeyIds) || rawRevocations.revokedKeyIds.length > MAX_REVOKED_KEYS
++      || !Array.isArray(rawRevocations.revokedQualificationSha256s) || rawRevocations.revokedQualificationSha256s.length > MAX_REVOKED_RECORDS) return reject("revocation_unavailable");
++    if (!Array.isArray(input.qualificationBytes) || !Array.isArray(input.policy)) return reject("invalid_context");
++    trust = structuredClone(rawTrust);
++    if (!safeInteger(nowMs) || !commitPattern.test(target.candidateSha)
++      || ![target.targetCodeSha256, target.policyProfileSha256, expectedRegistrySha256].every((value) => digestPattern.test(value))
++      || !versionPattern.test(expectedRegistryVersion)
++      || !safeInteger(trust.minimumRevocationEpoch) || trust.keys.length > 100 || input.qualificationBytes.length > 256
++      || !safeInteger(trust.maxRevocationAgeMs) || !trust.maxRevocationAgeMs || trust.maxRevocationAgeMs > MAX_REVOCATION_AGE_MS
++      || !safeInteger(trust.maxQualificationLifetimeMs) || !trust.maxQualificationLifetimeMs || trust.maxQualificationLifetimeMs > MAX_QUALIFICATION_LIFETIME_MS
++      || input.policy.length > 24) return reject("invalid_context");
++    const ciDifferences = new Set(["os", "architecture", "filesystem", "host_identity_sha256"]);
++    if (Object.entries(target.hostProfile).some(([key, value]) => !ciDifferences.has(key)
++      && target.ciProfile[key as keyof BehaviorQualificationProfileV1] !== value)) return reject("ci_profile_mismatch");
++    const keyFingerprints = new Set<string>();
++    for (const key of trust.keys) {
++      const publicKey = createPublicKey(key.publicKeyPem);
++      const fingerprint = hash(publicKey.export({ type: "spki", format: "der" }));
++      if (!token(key.keyId) || publicKeys.has(key.keyId) || keyFingerprints.has(fingerprint)
++        || publicKey.asymmetricKeyType !== "ed25519" || hasDegenerateEd25519Encoding(publicKey) || !roles.includes(key.issuerRole)
++        || !key.capabilityIds.every((id) => BehaviorCapabilityIdV1.safeParse(id).success)
++        || !key.profileSha256s.every((value) => digestPattern.test(value))) return reject("invalid_context");
++      publicKeys.set(key.keyId, publicKey); keyFingerprints.add(fingerprint);
++    }
++    policies = new Map();
++    for (const policy of structuredClone(input.policy)) {
++      if (policies.has(policy.capabilityId) || !BehaviorCapabilityIdV1.safeParse(policy.capabilityId).success
++        || !versionPattern.test(policy.contractVersion)) return reject("invalid_context");
++      for (const level of levels) {
++        const scenarios = policy.requiredScenarios[level];
++        if (!scenarios.length || scenarios.length > 1000 || new Set(scenarios.map((scenario) => scenario.id)).size !== scenarios.length
++          || !scenarios.every((scenario) => [scenario.id, scenario.checkerId, scenario.checkerVersion].every(token))) return reject("invalid_context");
++      }
++      policies.set(policy.capabilityId, policy);
++    }
++    if (hash(canonical({ schema_version: 1, kind: "behavior_verifier_policy", capabilities: [...policies.values()] }))
++      !== target.policyProfileSha256) return reject("policy_digest_mismatch");
++  } catch { return reject("invalid_context"); }
++  const revocations = trust.revocations;
++  if (!revocations || ![revocations.epoch, revocations.issuedAtMs, revocations.expiresAtMs].every(safeInteger)
++    || revocations.epoch < trust.minimumRevocationEpoch || revocations.issuedAtMs > nowMs
++    || revocations.expiresAtMs <= nowMs || nowMs - revocations.issuedAtMs >= trust.maxRevocationAgeMs
++    || !Array.isArray(revocations.revokedKeyIds)
++    || !Array.isArray(revocations.revokedQualificationSha256s) || !revocations.revokedKeyIds.every(token)
++    || !revocations.revokedQualificationSha256s.every((digest) => digestPattern.test(digest))) return reject("revocation_unavailable");
++  const revocationSnapshot = { epoch: revocations.epoch, issuedAtMs: revocations.issuedAtMs,
++    expiresAtMs: revocations.expiresAtMs, revokedKeyIds: revocations.revokedKeyIds,
++    revokedQualificationSha256s: revocations.revokedQualificationSha256s };
++  const trustConfiguration = { keys: trust.keys.map((key) => ({ keyId: key.keyId, publicKeyPem: key.publicKeyPem,
++    issuerRole: key.issuerRole, capabilityIds: key.capabilityIds, profileSha256s: key.profileSha256s })),
++    minimumRevocationEpoch: trust.minimumRevocationEpoch, maxRevocationAgeMs: trust.maxRevocationAgeMs,
++    maxQualificationLifetimeMs: trust.maxQualificationLifetimeMs };
++  snapshot.context = { registryVersion: expectedRegistryVersion, revocationSnapshotSha256: hash(canonical(revocationSnapshot)),
++    trustSha256: hash(canonical(trustConfiguration)), minimumRevocationEpoch: trust.minimumRevocationEpoch,
++    maxRevocationAgeMs: trust.maxRevocationAgeMs, maxQualificationLifetimeMs: trust.maxQualificationLifetimeMs,
++    candidateSha: target.candidateSha, targetCodeSha256: target.targetCodeSha256,
++    policyProfileSha256: target.policyProfileSha256, ciProfileSha256: hash(canonical(target.ciProfile)),
++    hostProfileSha256: hash(canonical(target.hostProfile)), revocationEpoch: revocations.epoch };
++  let registry: BehaviorRegistryV1;
++  try {
++    if (!(input.registryBytes instanceof Uint8Array) || input.registryBytes.byteLength > MAX_REGISTRY_BYTES) return reject("registry_invalid");
++    const bytes = Buffer.from(input.registryBytes);
++    snapshot.observedRegistrySha256 = hash(bytes);
++    if (snapshot.observedRegistrySha256 !== expectedRegistrySha256) return reject("registry_digest_mismatch");
++    registry = parseArtifact(bytes, BehaviorRegistryV1, MAX_REGISTRY_BYTES);
++  } catch { return reject("registry_invalid"); }
++  if (registry.registry_version !== expectedRegistryVersion) return reject("registry_version_mismatch");
++  if (registry.candidate_sha !== target.candidateSha || registry.target_code_sha256 !== target.targetCodeSha256) return reject("candidate_mismatch");
++  let remainingEvidenceBytes = MAX_EVIDENCE_TOTAL_BYTES;
++  // Bound the raw host-selected batch before parsing, copying or consulting the artifact store.
++  let qualificationTotalBytes = 0;
++  for (const bytes of input.qualificationBytes) {
++    if (bytes instanceof Uint8Array) qualificationTotalBytes += bytes.byteLength;
++    if (qualificationTotalBytes > MAX_QUALIFICATION_TOTAL_BYTES) return reject("qualification_batch_oversized");
++  }
++  const artifacts = new Map<string, Buffer>();
++  const read = (digest: string): Buffer | undefined => {
++    if (artifacts.has(digest)) return artifacts.get(digest);
++    try {
++      const original = readArtifact(digest);
++      if (!(original instanceof Uint8Array) || original.byteLength > MAX_ARTIFACT_BYTES || original.byteLength > remainingEvidenceBytes) return undefined;
++      remainingEvidenceBytes -= original.byteLength;
++      const bytes = Buffer.from(original);
++      if (hash(bytes) !== digest) return undefined;
++      artifacts.set(digest, bytes); return bytes;
++    } catch { return undefined; }
++  };
++  const entries = new Map(registry.entries.map((entry) => [entry.contract.capability_id, entry]));
++  const records = new Map<string, BehaviorQualificationV1>();
++  // Parse all qualification byte snapshots before invoking the host's artifact reader.
++  for (const bytes of [...input.qualificationBytes]) {
++    if (!(bytes instanceof Uint8Array) || bytes.byteLength > MAX_QUALIFICATION_BYTES) {
++      snapshot.qualificationRejections.push({ sha256: "", reason: "qualification_oversized" }); continue;
++    }
++    const copy = Buffer.from(bytes); const digest = hash(copy);
++    try {
++      const record = parseArtifact(copy, BehaviorQualificationV1, MAX_QUALIFICATION_BYTES);
++      records.set(digest, record);
++    } catch { snapshot.qualificationRejections.push({ sha256: digest, reason: "qualification_invalid" }); }
++  }
++  function authenticationError(record: BehaviorQualificationV1, digest: string): string | null {
++    const p = record.payload;
++    const entry = entries.get(p.capability_id); const policy = policies.get(p.capability_id);
++    if (!entry || !policy) return "capability_or_policy_missing";
++    const key = trust.keys.find((candidate) => candidate.keyId === p.signer_key_id);
++    if (!key || key.issuerRole !== p.issuer_role || !key.capabilityIds.includes(p.capability_id)
++      || !key.profileSha256s.includes(hash(canonical(p.profile)))) return "issuer_scope_mismatch";
++    if (!verify(null, Buffer.from(canonical(p)), publicKeys.get(key.keyId)!, Buffer.from(record.signature.value_base64, "base64"))) return "signature_invalid";
++    if (revocations.revokedKeyIds.includes(p.signer_key_id) || revocations.revokedQualificationSha256s.includes(digest)) return "qualification_revoked";
++    if (p.revocation_epoch > revocations.epoch || Date.parse(p.issued_at) > nowMs || Date.parse(p.expires_at) <= nowMs
++      || Date.parse(p.expires_at) - Date.parse(p.issued_at) > trust.maxQualificationLifetimeMs) return "qualification_not_current";
++    if (p.candidate_sha !== target.candidateSha || p.target_code_sha256 !== target.targetCodeSha256
++      || p.behavior_contract_sha256 !== entry.contract_sha256 || p.source_manifest_sha256 !== entry.contract.source_manifest_sha256
++      || p.policy_profile_sha256 !== target.policyProfileSha256 || p.registry_sha256 !== expectedRegistrySha256) return "qualification_binding_mismatch";
++    if (canonical(p.profile) !== canonical(p.level === "contract_tested" ? target.ciProfile : target.hostProfile)) return "profile_mismatch";
++    return null;
++  }
++  function evidenceError(record: BehaviorQualificationV1): string | null {
++    const p = record.payload; const policy = policies.get(p.capability_id)!;
++    // Free text limitations cannot silently loosen automatic eligibility. A later policy version must model them.
++    if (p.limitations.length) return "unresolved_limitations";
++    const scenarios = policy.requiredScenarios[p.level];
++    if (hash(canonical(scenarios.map((scenario) => scenario.id).sort())) !== p.required_scenario_set_sha256
++      || p.evidence_refs.length !== scenarios.length) return "scenario_set_mismatch";
++    for (const scenario of scenarios) {
++      const evidence = p.evidence_refs.find((item) => item.scenario_id === scenario.id);
++      if (evidence?.result !== "passed" || evidence.subject_sha256 !== target.targetCodeSha256
++        || evidence.checker_id !== scenario.checkerId || evidence.checker_version !== scenario.checkerVersion) return "evidence_mismatch";
++      if (!read(evidence.artifact_sha256)) return "evidence_unavailable";
++    }
++    const bundle = read(p.evidence_bundle_sha256);
++    if (!bundle) return "evidence_unavailable";
++    try {
++      const parsed = parseArtifact(bundle, BehaviorEvidenceBundleV1, MAX_ARTIFACT_BYTES);
++      if (parsed.candidate_sha !== p.candidate_sha || canonical(parsed.limitations) !== canonical(p.limitations)
++        || canonical(parsed.evidence) !== canonical(p.evidence_refs)) return "evidence_bundle_mismatch";
++    } catch { return "evidence_bundle_invalid"; }
++    return null;
++  }
++  const authenticated = new Map<string, BehaviorQualificationV1>();
++  const recordIds = new Map<string, string>(); const duplicateIds = new Set<string>();
++  const scopedRecordId = (record: BehaviorQualificationV1) => canonical([record.payload.signer_key_id, record.payload.record_id]);
++  for (const [digest, record] of [...records].sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0)) {
++    const error = authenticationError(record, digest);
++    if (error) { snapshot.qualificationRejections.push({ sha256: digest, reason: error }); continue; }
++    const id = scopedRecordId(record); const previous = recordIds.get(id);
++    if (previous && previous !== digest) duplicateIds.add(id);
++    recordIds.set(id, digest); authenticated.set(digest, record);
++  }
++  const verified = new Map<string, BehaviorQualificationV1>();
++  for (const [digest, record] of authenticated) {
++    const error = duplicateIds.has(scopedRecordId(record)) ? "qualification_id_conflict" : evidenceError(record);
++    if (error) snapshot.qualificationRejections.push({ sha256: digest, reason: error }); else verified.set(digest, record);
++  }
++  const chain = (digest: string, capability: string, level: number): string[] | undefined => {
++    const record = verified.get(digest);
++    if (!record || record.payload.capability_id !== capability || record.payload.level !== levels[level]) return undefined;
++    if (level === 0) return [digest];
++    const previous = chain(record.payload.prerequisite_record_sha256[0]!, capability, level - 1);
++    return previous ? [...previous, digest] : undefined;
++  };
++  const sourceManifests = new Map<string, Set<string>>();
++  const sourceError = (contract: BehaviorContractV1): string | null => {
++    let tuples = sourceManifests.get(contract.source_manifest_sha256);
++    if (!tuples) {
++      const bytes = read(contract.source_manifest_sha256);
++      if (!bytes) return "source_unavailable";
++      try {
++        const manifest = parseArtifact(bytes, BehaviorSourceManifestV1, MAX_ARTIFACT_BYTES);
++        tuples = new Set(manifest.sources.map((source) => canonical(source)));
++        sourceManifests.set(contract.source_manifest_sha256, tuples);
++      } catch { return "source_manifest_invalid"; }
++    }
++    if (contract.sources.some((source) => !tuples.has(canonical(source)))) return "source_manifest_mismatch";
++    if (contract.sources.some((source) => !read(source.content_sha256))) return "source_unavailable";
++    return null;
++  };
++  for (const { contract, contract_sha256 } of registry.entries) {
++    const reasons: string[] = []; const policy = policies.get(contract.capability_id);
++    if (hash(canonical(contract)) !== contract_sha256) reasons.push("contract_digest_mismatch");
++    if (!policy || policy.contractVersion !== contract.version || levels.some((level) =>
++      canonical(contract.required_scenarios.filter((scenario) => scenario.level === level).map((scenario) => scenario.id).sort())
++      !== canonical(policy.requiredScenarios[level].map((scenario) => scenario.id).sort()))) reasons.push("policy_missing_or_mismatch");
++    const sourceFailure = sourceError(contract);
++    if (sourceFailure) reasons.push(sourceFailure);
++    let qualificationSha256s: string[] = []; let chainValidUntilMs = -1;
++    for (const [digest, record] of verified) {
++      if (record.payload.capability_id === contract.capability_id && record.payload.level === "journey_verified") {
++        const found = chain(digest, contract.capability_id, 2);
++        if (found) {
++          const until = Math.min(revocations.expiresAtMs, revocations.issuedAtMs + trust.maxRevocationAgeMs,
++            ...found.map((recordDigest) => Date.parse(verified.get(recordDigest)!.payload.expires_at)));
++          // Records are visited in digest order; equal windows retain the smallest journey digest.
++          if (until > chainValidUntilMs) { qualificationSha256s = found; chainValidUntilMs = until; }
++        }
++      }
++    }
++    if (!qualificationSha256s.length) reasons.push("qualification_missing_or_invalid");
++    for (const dependency of contract.depends_on) {
++      const targetEntry = entries.get(dependency.capability_id);
++      if (!targetEntry) reasons.push("dependency_missing");
++      else if (targetEntry.contract.version !== dependency.version) reasons.push("dependency_version_mismatch");
++    }
++    snapshot.entries.push({ capabilityId: contract.capability_id, contract, contractSha256: contract_sha256, selectionEligible: reasons.length === 0, reasons,
++      qualificationSha256s, validUntilMs: qualificationSha256s.length ? chainValidUntilMs : null });
++  }
++  const projections = new Map(snapshot.entries.map((entry) => [entry.capabilityId, entry]));
++  // At most 24 nodes: per-node reachability identifies every cycle member, including diamond joins.
++  for (const entry of snapshot.entries) {
++    const pending = entry.contract.depends_on.map((dependency) => dependency.capability_id);
++    const visited = new Set<string>();
++    while (pending.length) {
++      const id = pending.pop()!;
++      if (id === entry.capabilityId) { entry.reasons.push("dependency_cycle"); entry.selectionEligible = false; break; }
++      if (visited.has(id)) continue;
++      visited.add(id);
++      for (const dependency of projections.get(id)?.contract.depends_on ?? []) pending.push(dependency.capability_id);
++    }
++  }
++  for (let pass = 0; pass < snapshot.entries.length; pass++) {
++    for (const entry of snapshot.entries) {
++      if (entry.contract.depends_on.some((dependency) => projections.get(dependency.capability_id)?.selectionEligible === false)) {
++        if (!entry.reasons.includes("dependency_unqualified")) entry.reasons.push("dependency_unqualified");
++        entry.selectionEligible = false;
++      }
++      if (entry.validUntilMs !== null) {
++        for (const dependency of entry.contract.depends_on) {
++          const until = projections.get(dependency.capability_id)?.validUntilMs;
++          if (until !== null && until !== undefined) entry.validUntilMs = Math.min(entry.validUntilMs, until);
++        }
++      }
++    }
++  }
++  for (const entry of snapshot.entries) if (!entry.selectionEligible) { entry.validUntilMs = null; entry.qualificationSha256s = []; }
++  snapshot.status = "evaluated";
++  return freeze(snapshot);
++}
+diff --git a/packages/core/src/index.ts b/packages/core/src/index.ts
+index a690f8de..ca27d7a7 100644
+--- a/packages/core/src/index.ts
++++ b/packages/core/src/index.ts
+@@ -6,6 +6,9 @@
+ export * as protocol from "@osstack/protocol";
+ 
+ export * from "./capability.js";
++export { evaluateBehaviorRegistry } from "./behavior-registry.js";
++export type { BehaviorRegistryInput, BehaviorRegistryTrust, BehaviorRegistryPolicy,
++  BehaviorRegistryEntry, BehaviorRegistrySnapshot, BehaviorRegistryEvaluationContext } from "./behavior-registry.js";
+ export * from "./state/index.js";
+ export * from "./state/protocol-mappers.js";
+ export * from "./privacy/index.js";

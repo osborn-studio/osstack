@@ -1,0 +1,23 @@
+[
+  {
+    "comment_id": 311,
+    "card_id": "card_9ccb91b2",
+    "author": "joint-entry",
+    "body": "User authorized subagent parallel testing. Codex collaboration subagent loader_adversarial: Independent adversarial tests of #276 frozen a2f3a3f3; no candidate writes. Parent owns PR mutations/audit/Ready. OSStack tracks scope/evidence; this is owner-driven dispatch, not automatic goal_dispatch runtime qualification.",
+    "created_at": 1793098304.713
+  },
+  {
+    "comment_id": 312,
+    "card_id": "card_4e8147d9",
+    "author": "joint-entry",
+    "body": "User authorized subagent parallel testing. Codex collaboration subagent cleanup_regression: Additional #278 cleanup/replay regression; no candidate writes. Parent owns PR mutations/audit/Ready. OSStack tracks scope/evidence; this is owner-driven dispatch, not automatic goal_dispatch runtime qualification.",
+    "created_at": 1793098304.714
+  },
+  {
+    "comment_id": 313,
+    "card_id": "card_d1a582eb",
+    "author": "joint-entry",
+    "body": "User authorized subagent parallel testing. Codex collaboration subagent terminal_preflight: Next #279 compatibility preflight only; remains Draft/blocked on #278 merge and revalidation. Parent owns PR mutations/audit/Ready. OSStack tracks scope/evidence; this is owner-driven dispatch, not automatic goal_dispatch runtime qualification.",
+    "created_at": 1793098304.714
+  }
+]

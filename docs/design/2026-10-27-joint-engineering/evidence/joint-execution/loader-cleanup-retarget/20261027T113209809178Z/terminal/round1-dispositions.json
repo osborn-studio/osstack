@@ -1,0 +1,32 @@
+[
+  {
+    "id": 1,
+    "decision": "addressed",
+    "rationale": "Preserve invocation/result separation. Trusted completed terminal plus normal iterator exhaustion proves completion; missing native session ID still fails result but does not retain completed invocation. Documented in changeset and regression checks failed state/native null, cleanup 1, no stop proof and drain clear."
+  },
+  {
+    "id": 2,
+    "decision": "addressed",
+    "rationale": "Removed assertion on unused ReceiptAdapter in built-in Codex test. Registered Codex instance absence of verifier plus actual cleanup/drain remains asserted."
+  },
+  {
+    "id": 3,
+    "decision": "rejected",
+    "rationale": "Migration resumable_agent_sessions defines native_session_id TEXT, no UNIQUE constraint/index. Both real Codex fixture tests pass. It is not a schema collision."
+  },
+  {
+    "id": 4,
+    "decision": "addressed",
+    "rationale": "Terminal-free start checks blocked kanban; late-fault start checks failed state/version/run, blocked kanban, zero turns; late-fault send checks failed receipt, unchanged turn and reservation version."
+  },
+  {
+    "id": 5,
+    "decision": "acknowledged_inherited",
+    "rationale": "Start replay is read snapshot; failed state is explicit and changeset already documents ok does not mean execution success."
+  },
+  {
+    "id": 6,
+    "decision": "acknowledged_out_of_scope",
+    "rationale": "Same-process restart only. Cross-process retained-hold recovery remains DEBT02/J12, no claim of qualification."
+  }
+]

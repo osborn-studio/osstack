@@ -1,5 +1,5 @@
 import { createHash, createPublicKey, generateKeyPairSync, sign } from "node:crypto";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { BehaviorContractV1, BehaviorQualificationV1, BehaviorRegistryV1 } from "@osstack/protocol";
 import { evaluateBehaviorRegistry, type BehaviorRegistryInput } from "./behavior-registry.js";
 
@@ -368,7 +368,7 @@ describe("behavior registry evaluation under caller-supplied trust", () => {
     }
     expect(eligible(fixture().input)).toHaveLength(1);
   });
-  it("rejects an identity-key qualification with trivial R=identity and S=0 signature", () => {
+  it("rejects the identity key before verifying its trivial R=identity and S=0 signature", () => {
     const { input, records, replaceRecord } = fixture(); const identity = Buffer.alloc(32); identity[0] = 1;
     const key = createPublicKey({ format: "jwk", key: { kty: "OKP", crv: "Ed25519", x: identity.toString("base64url") } });
     input.trust.keys[0]!.publicKeyPem = key.export({ format: "pem", type: "spki" }).toString();
@@ -522,4 +522,82 @@ describe("behavior registry evaluation under caller-supplied trust", () => {
       expect(reads).toBe(0);
     }
   });
+});
+
+it.each(["target", "trust", "key", "revocations"] as const)("rejects unknown %s context fields", field => {
+  const f = fixture();
+  const value = field === "target" ? f.input.target : field === "trust" ? f.input.trust
+    : field === "key" ? f.input.trust.keys[0]! : f.input.trust.revocations;
+  Object.assign(value, { futureRevocations: ["key-0"] });
+  expect(evaluateBehaviorRegistry(f.input)).toMatchObject({ status: "rejected",
+    rejection: field === "revocations" ? "revocation_unavailable" : "invalid_context" });
+});
+
+it.each(["missing", "corrupt", "throw"] as const)("reads a %s artifact only once per evaluation", failure => {
+  const f = fixture();
+  // All three signed records refer to this same missing or corrupt evidence object.
+  const digest = f.records[0]!.payload.evidence_refs[0]!.artifact_sha256;
+  for (let index = 1; index < f.records.length; index++) {
+    f.replaceRecord(index, record => { record.payload.evidence_refs[0]!.artifact_sha256 = digest; });
+  }
+  let reads = 0;
+  f.input.readArtifact = key => {
+    if (key !== digest) return f.artifacts.get(key);
+    reads++;
+    if (failure === "throw") throw new Error("missing object");
+    return failure === "corrupt" ? Buffer.from("substituted bytes") : undefined;
+  };
+  const result = evaluateBehaviorRegistry(f.input);
+  expect(result.entries[0]!.selectionEligible).toBe(false);
+  expect(result.qualificationRejections.filter(item => item.reason === "evidence_unavailable")).toHaveLength(3);
+  expect(reads).toBe(1);
+});
+
+it("accepts older issuance epochs only against a complete fresh revocation snapshot", () => {
+  const f = fixture();
+  f.input.trust.minimumRevocationEpoch = 4;
+  f.input.trust.revocations.epoch = 4;
+  expect(eligible(f.input)).toHaveLength(1);
+  f.input.trust.revocations.revokedQualificationSha256s.push(hash(f.input.qualificationBytes[0]!));
+  expect(eligible(f.input)).toHaveLength(0);
+  expect(evaluateBehaviorRegistry(f.input).qualificationRejections).toContainEqual({
+    sha256: hash(f.input.qualificationBytes[0]!), reason: "qualification_revoked",
+  });
+});
+
+it.each(["policy", "levels", "scenario"] as const)("rejects unknown %s policy fields even when digest-pinned", field => {
+  const f = fixture();
+  const policy = f.input.policy[0]!;
+  Object.assign(field === "policy" ? policy : field === "levels" ? policy.requiredScenarios
+    : policy.requiredScenarios.contract_tested[0]!, { futureRestriction: true });
+  f.input.target.policyProfileSha256 = hash(encode({ schema_version: 1, kind: "behavior_verifier_policy", capabilities: f.input.policy }));
+  expect(evaluateBehaviorRegistry(f.input)).toMatchObject({ status: "rejected", rejection: "invalid_context" });
+});
+
+it("does not freeze malformed caller echoes or return a nonfinite evaluation time", () => {
+  const f = fixture(); const invalid = { marker: true };
+  Object.assign(f.input, { expectedRegistrySha256: invalid, nowMs: Number.NaN });
+  expect(evaluateBehaviorRegistry(f.input)).toMatchObject({ status: "rejected", rejection: "invalid_context",
+    expectedRegistrySha256: "", evaluatedAtMs: 0 });
+  expect(Object.isFrozen(invalid)).toBe(false);
+  expect(evaluateBehaviorRegistry(undefined as unknown as BehaviorRegistryInput)).toMatchObject({ status: "rejected", rejection: "invalid_context" });
+});
+
+it("parses a shared invalid source manifest only once", () => {
+  const f = fixture();
+  const malformed = Buffer.from('{"schema_version":1,"kind":"invalid_manifest","sources":[]}');
+  const digest = f.put(malformed);
+  f.registry.entries = ["FM-01", "FM-02"].map(capability => {
+    const contract = { ...f.contract, capability_id: capability, source_manifest_sha256: digest };
+    return { contract, contract_sha256: hash(encode(contract)) };
+  });
+  f.input.registryBytes = encode(f.registry); f.input.expectedRegistrySha256 = hash(f.input.registryBytes);
+  f.input.qualificationBytes = [];
+  const parse = vi.spyOn(JSON, "parse");
+  try {
+    const result = evaluateBehaviorRegistry(f.input);
+    expect(result.entries).toHaveLength(2);
+    expect(result.entries.every(entry => entry.reasons.includes("source_manifest_invalid"))).toBe(true);
+    expect(parse.mock.calls.filter(([raw]) => raw === malformed.toString())).toHaveLength(1);
+  } finally { parse.mockRestore(); }
 });

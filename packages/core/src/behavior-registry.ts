@@ -129,7 +129,8 @@ function parseArtifact<T>(bytes: Uint8Array, parser: { parse: (value: unknown) =
   const raw = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(bytes);
   const value = parser.parse(JSON.parse(raw));
   // Requiring canonical bytes rejects duplicate keys, alternate numeric spellings and unknown data
-  // without duplicating the independent joint-json raw parser under development in J01.
+  // while retaining R01 Behavior* signing bytes independently of J01 Joint* codecs.
+  // Any codec unification needs explicit R05/J10 migration vectors; never convert implicitly.
   if (canonical(value) !== raw) throw new Error("noncanonical artifact");
   return value;
 }
@@ -141,6 +142,9 @@ function freeze<T>(value: T): T {
   return value;
 }
 const safeInteger = (value: number) => Number.isSafeInteger(value) && value >= 0 && !Object.is(value, -0);
+const exactKeys = (value: unknown, keys: string[]): boolean => value !== null && typeof value === "object"
+  && !Array.isArray(value) && Object.keys(value).length === keys.length
+  && keys.every((key) => Object.hasOwn(value, key));
 const token = (value: string) => typeof value === "string" && /^[A-Za-z0-9][A-Za-z0-9._:@+/-]{0,511}$/.test(value);
 
 /**
@@ -152,30 +156,33 @@ const token = (value: string) => typeof value === "string" && /^[A-Za-z0-9][A-Za
  * Work is bounded but synchronous; do not run it on a latency-critical RPC/dispatch event loop.
  */
 export function evaluateBehaviorRegistry(input: BehaviorRegistryInput): BehaviorRegistrySnapshot {
-  const nowMs = input.nowMs;
-  const expectedRegistrySha256 = input.expectedRegistrySha256;
-  const expectedRegistryVersion = input.expectedRegistryVersion;
-  const readArtifact = input.readArtifact;
+  const nowMs = input?.nowMs;
+  const expectedRegistrySha256 = input?.expectedRegistrySha256;
+  const expectedRegistryVersion = input?.expectedRegistryVersion;
+  const readArtifact = input?.readArtifact;
   const snapshot: BehaviorRegistrySnapshot = { status: "rejected", authorization: "none", rejection: null,
-    expectedRegistrySha256, observedRegistrySha256: null, context: null,
-    evaluatedAtMs: nowMs, entries: [], qualificationRejections: [] };
+    expectedRegistrySha256: typeof expectedRegistrySha256 === "string" ? expectedRegistrySha256 : "", observedRegistrySha256: null, context: null,
+    evaluatedAtMs: safeInteger(nowMs) ? nowMs : 0, entries: [], qualificationRejections: [] };
   const reject = (reason: string) => freeze({ ...snapshot, rejection: reason });
   let target: BehaviorRegistryInput["target"];
   let trust: BehaviorRegistryTrust;
   let policies: Map<string, BehaviorRegistryPolicy>;
   const publicKeys = new Map<string, KeyObject>();
   try {
+    if (!exactKeys(input.target, ["candidateSha", "targetCodeSha256", "policyProfileSha256", "hostProfile", "ciProfile"])) return reject("invalid_context");
     target = structuredClone(input.target);
     target.hostProfile = BehaviorQualificationProfileV1.parse(target.hostProfile);
     target.ciProfile = BehaviorQualificationProfileV1.parse(target.ciProfile);
     const rawTrust = input.trust;
-    if (!rawTrust || !Array.isArray(rawTrust.keys) || rawTrust.keys.length > 100
-      || rawTrust.keys.some((key) => !key || typeof key.publicKeyPem !== "string" || key.publicKeyPem.length > 1024
+    if (!exactKeys(rawTrust, ["keys", "minimumRevocationEpoch", "maxRevocationAgeMs", "maxQualificationLifetimeMs", "revocations"])
+      || !Array.isArray(rawTrust.keys) || rawTrust.keys.length > 100
+      || rawTrust.keys.some((key) => !exactKeys(key, ["keyId", "publicKeyPem", "issuerRole", "capabilityIds", "profileSha256s"]) || typeof key.publicKeyPem !== "string" || key.publicKeyPem.length > 1024
         || !/^-----BEGIN PUBLIC KEY-----\r?\n(?:[A-Za-z0-9+/=]+\r?\n)+-----END PUBLIC KEY-----\r?\n?$/.test(key.publicKeyPem)
         || !Array.isArray(key.capabilityIds) || key.capabilityIds.length > 24
         || !Array.isArray(key.profileSha256s) || key.profileSha256s.length > MAX_KEY_PROFILES)) return reject("invalid_context");
     const rawRevocations = rawTrust.revocations;
-    if (!rawRevocations || Object.hasOwn(rawRevocations, "revokedRecordIds") || !Array.isArray(rawRevocations.revokedKeyIds) || rawRevocations.revokedKeyIds.length > MAX_REVOKED_KEYS
+    if (!exactKeys(rawRevocations, ["epoch", "issuedAtMs", "expiresAtMs", "revokedKeyIds", "revokedQualificationSha256s"])
+      || !Array.isArray(rawRevocations.revokedKeyIds) || rawRevocations.revokedKeyIds.length > MAX_REVOKED_KEYS
       || !Array.isArray(rawRevocations.revokedQualificationSha256s) || rawRevocations.revokedQualificationSha256s.length > MAX_REVOKED_RECORDS) return reject("revocation_unavailable");
     if (!Array.isArray(input.qualificationBytes) || !Array.isArray(input.policy)) return reject("invalid_context");
     trust = structuredClone(rawTrust);
@@ -198,6 +205,12 @@ export function evaluateBehaviorRegistry(input: BehaviorRegistryInput): Behavior
         || !key.capabilityIds.every((id) => BehaviorCapabilityIdV1.safeParse(id).success)
         || !key.profileSha256s.every((value) => digestPattern.test(value))) return reject("invalid_context");
       publicKeys.set(key.keyId, publicKey); keyFingerprints.add(fingerprint);
+    }
+    for (const policy of input.policy) {
+      if (!exactKeys(policy, ["capabilityId", "contractVersion", "requiredScenarios"])
+        || !exactKeys(policy.requiredScenarios, levels)
+        || levels.some(level => !Array.isArray(policy.requiredScenarios[level])
+          || policy.requiredScenarios[level].some(scenario => !exactKeys(scenario, ["id", "checkerId", "checkerVersion"])))) return reject("invalid_context");
     }
     policies = new Map();
     for (const policy of structuredClone(input.policy)) {
@@ -250,9 +263,12 @@ export function evaluateBehaviorRegistry(input: BehaviorRegistryInput): Behavior
     if (bytes instanceof Uint8Array) qualificationTotalBytes += bytes.byteLength;
     if (qualificationTotalBytes > MAX_QUALIFICATION_TOTAL_BYTES) return reject("qualification_batch_oversized");
   }
-  const artifacts = new Map<string, Buffer>();
+  const artifacts = new Map<string, Buffer | undefined>();
   const read = (digest: string): Buffer | undefined => {
     if (artifacts.has(digest)) return artifacts.get(digest);
+    // Cache every attempt, including missing/corrupt/throwing reads. Charge bounded bytes
+    // before hashing so corrupt objects still count toward actual copy/hash work.
+    artifacts.set(digest, undefined);
     try {
       const original = readArtifact(digest);
       if (!(original instanceof Uint8Array) || original.byteLength > MAX_ARTIFACT_BYTES || original.byteLength > remainingEvidenceBytes) return undefined;
@@ -336,9 +352,10 @@ export function evaluateBehaviorRegistry(input: BehaviorRegistryInput): Behavior
     const previous = chain(record.payload.prerequisite_record_sha256[0]!, capability, level - 1);
     return previous ? [...previous, digest] : undefined;
   };
-  const sourceManifests = new Map<string, Set<string>>();
+  const sourceManifests = new Map<string, Set<string> | null>();
   const sourceError = (contract: BehaviorContractV1): string | null => {
     let tuples = sourceManifests.get(contract.source_manifest_sha256);
+    if (tuples === null) return "source_manifest_invalid";
     if (!tuples) {
       const bytes = read(contract.source_manifest_sha256);
       if (!bytes) return "source_unavailable";
@@ -346,7 +363,7 @@ export function evaluateBehaviorRegistry(input: BehaviorRegistryInput): Behavior
         const manifest = parseArtifact(bytes, BehaviorSourceManifestV1, MAX_ARTIFACT_BYTES);
         tuples = new Set(manifest.sources.map((source) => canonical(source)));
         sourceManifests.set(contract.source_manifest_sha256, tuples);
-      } catch { return "source_manifest_invalid"; }
+      } catch { sourceManifests.set(contract.source_manifest_sha256, null); return "source_manifest_invalid"; }
     }
     if (contract.sources.some((source) => !tuples.has(canonical(source)))) return "source_manifest_mismatch";
     if (contract.sources.some((source) => !read(source.content_sha256))) return "source_unavailable";

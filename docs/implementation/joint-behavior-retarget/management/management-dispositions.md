@@ -1,0 +1,13 @@
+# Management audit dispositions
+
+Raw rounds 1–4 are retained verbatim; all returned REVISE while identifying additional checkpoint integrity gaps. This is an offline owner-collected evidence checker, not runtime authorization or cryptographic authentication of GitHub/OSStack.
+
+Confirmed and fixed: base/code/head binding; no-renames path proof; parsed diff path equality; root-v2 publication enforcement with explicit legacy reading; v2 proof validation even for non-Ready current claims and historical successor artifacts; exact observed merge SHAs; immutable per-run evidence and prior-ledger hashes; mandatory four receipt references and snapshot hash; structured distinct acceptance/CI evidence for whole-node done; precise complete case/merged-PR coverage; separate CI observation field; actual raw log re-count and archive hashing; audit final-verdict parsing and exact supplied Git diff/HEAD binding; owner/mode check on actual management socket; post-push current head and CI recheck.
+
+Current merged J01/J11/J02a slices preserve their original tested base and candidate evidence as historical. #276 original merge is not credited with #282 audit fixes. #278 is historical merged evidence. #282 and #279 have independently tested current candidates. No full milestone has been marked done.
+
+Bounded dispositions: heartbeat and RPC receipts are explicitly owner-attested timestamped observations; hashing them is not remote authentication. GitHub Ready may have pending CI and is not an approvable batch. Executable Python under docs and changesets are not inert; the former have this separate audit and 124 local consistency tests. Future scope or runtime qualification is not inferred from any of these results. The final published commit cannot be contained in its own ledger; post-push evidence binds its product tree to the audited code and checks its current CI separately.
+
+All formal product acceptance cases remain as specified, not executed by these metadata tests. Independent next-wave reports are planning inputs, not passed gates.
+
+Final round5 verdict: PASS with no P0/P1 and non-blocking P2 observations. Original wording retained. Confirmed P2 corrections after that audit: clarify historical tested code (not docs head); validate merged milestone SHA; bind and verify raw archive manifests; derive prior-delivery references from immutable ledger hash; enforce published checker at refresh; hash copied helper bytes; explicitly sequence282 then revalidate279. Four additional consistency cases bring tests to128. These small post-audit corrections are host/subagent-tested deltas, not falsely claimed as included in the prior model input. Projection/owner-attestation limitations remain documented; no hidden assurance upgrade.
