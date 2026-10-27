@@ -1,0 +1,117 @@
+diff --git a/docs/design/broker-recovery-schema.md b/docs/design/broker-recovery-schema.md
+index 2a2d1d58..73414984 100644
+--- a/docs/design/broker-recovery-schema.md
++++ b/docs/design/broker-recovery-schema.md
+@@ -34,17 +34,17 @@ A partial unique index holds one exact exclusive `resource_key` per broker while
+ 
+ `preserve_unknown` appends one decision and advances the recovery revision while preserving the orphan and exclusive slot. `proven_stopped` requires the candidate's matching broker/lease/home/scope/tenant/current generation and structurally matching containment-proof fields, then changes the projection to `resolved_stopped`. An AFTER INSERT trigger performs that projection in the same transaction; a guarded projection update cannot independently release a lease. Stop resolution seals the chain, retaining the immutable original invocation identity and all receipts. No successful product completion or original-message replay is synthesized. A wrong terminal resolution has no reopen/correction operation in this protocol; a reviewed protocol change would be required, never a new request that silently rewrites history. This schema does not implement finance/budget accounting; inherited home and future broker accounting obligations remain outside this slice.
+ 
+-SQL rejects skipped revisions, obsolete broker generations, cross-tuple decisions, missing/mismatched stop proof structure, direct projection mutation, history mutation and replacement. A takeover does not release any slot. A recovered slot can be reused only after the stored stop decision resolves its old lease. There is no automatic restart, resend, expiry-based release or lease-row deletion.
++Decision insertion rejects skipped revisions, obsolete broker generations, cross-tuple decisions, missing/mismatched stop proof structure, direct projection mutation, history mutation and replacement. Lease creation intentionally admits historical grant generations up to the current owner for fixture material; it is not a live owner-fenced admission API. Any future lease creation host must fence old writers and authenticate its current owner generation. A takeover does not release any slot. A recovered slot can be reused only after the stored stop decision resolves its old lease. There is no automatic restart, resend, expiry-based release or lease-row deletion.
+ 
+ ## Host checks that SQL cannot establish
+ 
+-SQLite must provide STRICT tables (version 3.37 or newer) and JSON functions; the validation runner records actual Python and better-sqlite3 SQLite versions in verification.json. The freeze helper refuses older SQLite. All rows are host-owned. This fixture is not a defense against a principal with arbitrary SQL/DDL rights. Before inserting, the future recovery host must:
++SQLite must provide STRICT tables (version 3.38 or newer) and JSON functions; the validation runner records actual Python and better-sqlite3 SQLite versions in verification.json. The freeze helper refuses older SQLite. All rows are host-owned. This fixture is not a defense against a principal with arbitrary SQL/DDL rights. Before inserting, the future recovery host must:
+ 
+ 1. Open only the declared dedicated broker DB using a pinned recovery build; reject empty/mixed/wrong lineage outside the exact supported source/target tuple. Check the complete catalog, namespace, SQL/fixture/spec digests and build/candidate qualification. Fence live and already-open incompatible writers before enabling writes.
+ 2. Authenticate the current operator/grant, scope and tenant. Load broker-local generation and the exact immutable lease/invocation/resource facts inside the write transaction. A home-owner token never substitutes for broker ownership. The singleton owner row is only the current projection; it does not preserve ownership election history. Future qualification must retain immutable authenticated authority/proof provenance elsewhere rather than reconstructing past ownership from this overwritten row.
+ 3. Strictly decode raw RecoveryRequest bytes with the kind-specific decoder (including duplicate-key rejection), construct and validate RecoveryReceipt, recompute `recoverySubjectDigest` and `recoveryRequestInputDigest`, load immutable proof envelopes by trusted refs and call `verifyRecoveryProofEnvelopes`. Compare the receipt schema_spec_digest, ddl_digest, fixture_digest, candidate_sha and recovery_build_digest to the exact pinned qualified tuple and running build, not merely to mutually matching envelope values. Validate all required fields and exact kind; SQL checks a defensive subset, not the complete protocol schema or canonical digest. Store canonicalJointJson output only after that validation, and strictly decode it again on load. Extra/duplicate keys and noncanonical or incomplete receipts are host rejections, not SQL qualification. The offline composition test exercises existing request/digest/receipt/envelope functions and tampering without pretending to authenticate its synthetic grant.
+ 4. Independently authenticate containment provenance, exact invocation/attempt identity, producer rights, current source/binding generations, freshness and evidence bytes. A matching JSON broker tuple or nonempty evidence hash does not prove the invocation stopped. Synthetic proofs in SQL tests are not admissible runtime evidence.
+-5. Under an owner-fenced `synchronous=FULL` transaction, compare current authority/owner/revision and use plain INSERT and require exactly one changed receipt row before accepting the transaction. OR IGNORE returning zero changes is not a receipt or replay success. Insert/projection triggers protect internal storage consistency, but do not replace the preceding protocol/provenance boundary. Look up `(principal,request_id)` first: identical input returns the existing immutable receipt only after current authority checks; different input is an idempotency conflict. SQL deliberately rejects both duplicate forms, so its error is not a replay implementation.
++5. Under an owner-fenced `synchronous=FULL` transaction, compare current authority/owner/revision and use plain INSERT and require exactly one changed receipt row before accepting the transaction. OR IGNORE returning zero changes is not a receipt or replay success. Malformed receipt JSON can fail in the BEFORE INSERT trigger with generic SQLITE_ERROR before CHECK evaluation; any SQLite failure must abort without accepting a receipt, not only SQLITE_CONSTRAINT errors. Insert/projection triggers protect internal storage consistency, but do not replace the preceding protocol/provenance boundary. Look up `(principal,request_id)` first: identical input returns the existing immutable receipt only after current authority checks; different input is an idempotency conflict. SQL deliberately rejects both duplicate forms, so its error is not a replay implementation.
+ 6. Preserve all outstanding accounting and completion obligations outside this broker schema. Dedicated broker/home DBs do not offer a shared atomic transaction. Cross-home reconciliation needs independently qualified broker receipts and a future durable protocol; do not copy a broker resolution into a home completion or claim cross-database atomic release.
+ 
+ ## Dependencies and qualification limits
+diff --git a/packages/core/fixtures/broker-recovery/freeze.py b/packages/core/fixtures/broker-recovery/freeze.py
+index 2a976e25..6086c0a1 100644
+--- a/packages/core/fixtures/broker-recovery/freeze.py
++++ b/packages/core/fixtures/broker-recovery/freeze.py
+@@ -17,10 +17,12 @@ def sha(value):
+ 
+ def generate():
+     assert sha((ROOT/'oracle-freeze.json').read_bytes()) == '51b34e498292099fa706ecb1f8fe0eccf5f505e715fcae9c880607ad77670c79', 'oracle criteria bytes changed'
++    oracle = json.loads((ROOT/'oracle-freeze.json').read_bytes())
+     ddl = (ROOT / 'schema.sql').read_bytes()
+     fixture = (ROOT / 'held-orphan.sql').read_bytes()
+     with sqlite3.connect(':memory:') as db:
+-        assert sqlite3.sqlite_version_info >= (3,37,0), 'SQLite STRICT support required'
++        assert sqlite3.sqlite_version_info >= (3,38,0), 'SQLite 3.38+ STRICT and JSON support required'
++        assert db.execute("SELECT json_valid('{}'), json_extract('{\"probe\":1}', '$.probe')").fetchone() == (1,1), 'SQLite JSON functions required'
+         db.execute('PRAGMA foreign_keys=ON')
+         db.executescript(ddl.decode())
+         db.executescript(fixture.decode())
+@@ -37,7 +39,7 @@ def generate():
+         spec=spec, schema_spec_digest=sha('osstack.joint.schema-spec.v1\n'+canonical(digest_body)),
+         source_catalog=[], target_catalog_file='catalog.json', qualification=dict(J11_scoped='not_asserted', J17_schema_spec='not_asserted', J17_recovery='not_run', file_backed_crash_recovery='not_run', authenticated_operator='not_run'),
+         dependencies=dict(candidate_material_requires=['joint recovery contracts'], schema_qualification_requires=['J11.scoped'], recovery_qualification_requires=['J17.schema_spec','J12.scoped'], runtime_storage_requires=['J14.scoped','J12.scoped','J17.recovery'], recovery_requires_runtime_controller=False),
+-        oracle_prefreeze=dict(path='oracle-freeze.json', claim='prospective_criteria_only_not_candidate_qualification', frozen_at='2026-10-27T16:16:01Z', sha256='51b34e498292099fa706ecb1f8fe0eccf5f505e715fcae9c880607ad77670c79', identity_independence_certified=False),
++        oracle_prefreeze=dict(path='oracle-freeze.json', claim='prospective_criteria_only_not_candidate_qualification', frozen_at=oracle['frozen_at'], sha256='51b34e498292099fa706ecb1f8fe0eccf5f505e715fcae9c880607ad77670c79', identity_independence_certified=False),
+         paths=['packages/core/fixtures/broker-recovery/**','packages/core/src/state/broker-recovery-spec.test.ts','docs/design/broker-recovery-schema.md','docs/implementation/joint-broker-spec/**'])
+     return {'catalog.json': catalog, 'manifest.json': manifest}
+ 
+diff --git a/packages/core/fixtures/broker-recovery/manifest.json b/packages/core/fixtures/broker-recovery/manifest.json
+index d1bfe0d2..71093527 100644
+--- a/packages/core/fixtures/broker-recovery/manifest.json
++++ b/packages/core/fixtures/broker-recovery/manifest.json
+@@ -57,7 +57,7 @@
+   "oracle_prefreeze": {
+     "path": "oracle-freeze.json",
+     "claim": "prospective_criteria_only_not_candidate_qualification",
+-    "frozen_at": "2026-10-27T16:16:01Z",
++    "frozen_at": "2026-10-27T16:16:01.175077+00:00",
+     "sha256": "51b34e498292099fa706ecb1f8fe0eccf5f505e715fcae9c880607ad77670c79",
+     "identity_independence_certified": false
+   },
+diff --git a/packages/core/src/state/broker-recovery-spec.test.ts b/packages/core/src/state/broker-recovery-spec.test.ts
+index 796ae277..24b0a9c8 100644
+--- a/packages/core/src/state/broker-recovery-spec.test.ts
++++ b/packages/core/src/state/broker-recovery-spec.test.ts
+@@ -9,7 +9,7 @@ import { canonicalJointJson, MigrationSpec, RecoveryReceipt, RecoveryRequest, re
+ // Executable offline storage candidate. This never imports the production DB opener.
+ const root = new URL('../../fixtures/broker-recovery/', import.meta.url);
+ const read = (name: string) => readFileSync(new URL(name, root), 'utf8');
+-const hash = (value: string) => createHash('sha256').update(value).digest('hex');
++const hash = (value: string | Uint8Array) => createHash('sha256').update(value).digest('hex');
+ const catalog = (db: Database.Database) => db.prepare("SELECT type,name,tbl_name,sql FROM sqlite_master WHERE substr(name,1,7)<>'sqlite_' ORDER BY type,name").all();
+ function fixture(sql = read('schema.sql')): Database.Database {
+   const db = new Database(':memory:');
+@@ -92,6 +92,23 @@ function changedReceipt(path: string, value: unknown, stopped = true) {
+ }
+ 
+ describe('JP-17a dedicated broker storage candidate', () => {
++  it('requires SQLite 3.38+ and actual JSON capability in the TypeScript engine', () => {
++    const db=fixture();try {
++      const version=(db.prepare('SELECT sqlite_version() AS version').get() as {version:string}).version;
++      const [major=0,minor=0,patch=0]=version.split('.').map(Number);
++      expect(major*1_000_000+minor*1_000+patch).toBeGreaterThanOrEqual(3_038_000);
++      expect(db.prepare(`SELECT json_valid('{}') AS valid,json_extract('{"probe":1}','$.probe') AS probe`).get()).toEqual({valid:1,probe:1});
++    }finally{db.close();}
++  });
++  it('rejects malformed JSON without treating generic SQLITE_ERROR as a receipt', () => {
++    const db=fixture();try {
++      const parameters=args(receipt(0,true));parameters[8]='{';const before=lease(db);let error:unknown;
++      try{db.prepare(insertSql).run(...parameters);}catch(e){error=e;}
++      expect(error).toBeInstanceOf(Database.SqliteError);expect(error).toMatchObject({code:'SQLITE_ERROR'});
++      expect(lease(db)).toEqual(before);expect(decisions(db)).toEqual([]);
++    }finally{db.close();}
++  });
++
+ 
+   it.each(['ON','OFF'])('protects existing lease identity across conflict strategies with foreign_keys=%s', foreignKeys => {
+     for(const stopped of [false,true]) {
+@@ -203,11 +220,12 @@ describe('JP-17a dedicated broker storage candidate', () => {
+     expect(manifest.status).toBe('candidate_spec_only');
+     expect(manifest.storage).toMatchObject({ deployment: 'dedicated_sqlite', namespace: 'osstack.resource-broker', allocation: 'not_reserved', deployment_qualified: false, runtime_registered: false });
+     expect(manifest.base_commit).toBe('d3fa7ef681efc79a5fb2dff92172ef1be0978774');
++    expect(manifest.oracle_prefreeze.frozen_at).toBe(JSON.parse(read('oracle-freeze.json')).frozen_at);
+     expect(createHash('sha256').update(readFileSync(new URL(manifest.oracle_prefreeze.path,root))).digest('hex')).toBe(manifest.oracle_prefreeze.sha256);
+     const spec = MigrationSpec.parse(manifest.spec);
+     expect([spec.source_schema,spec.target_schema]).toEqual([0,1]);
+-    expect(spec.ddl_digest).toBe(hash(read('schema.sql')));
+-    expect(spec.fixture_digest).toBe(hash(read('held-orphan.sql')));
++    expect(spec.ddl_digest).toBe(hash(readFileSync(new URL('schema.sql',root))));
++    expect(spec.fixture_digest).toBe(hash(readFileSync(new URL('held-orphan.sql',root))));
+     expect(manifest.schema_spec_digest).toBe(schemaSpecDigest(spec));
+     const db = fixture();
+     try {

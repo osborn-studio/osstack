@@ -1,0 +1,15 @@
+{
+  "historical_runs": {
+    "red.log": "Initial test-first incomplete candidate: expected red, not final proof",
+    "replace-red.log": "Actual REPLACE eviction regression reproduced against first schema, repaired in858316",
+    "inventory.log": "CLI dist missing before build; superseded by built inventory checks",
+    "audit-fix-focused.log": "Earlier candidate coverage command retained; superseded by full8120 and final core1089",
+    "historical-c454-verification.json": "Earlier valid focused candidate; not reused as final full-suite proof"
+  },
+  "round1": "REVISE; actual REPLACE defect and verification gaps",
+  "round2": "REVISE; missing isolated predicate coverage",
+  "round3": "REVISE; additional existing-ID replacement/cardinality/type coverage and metadata/doc corrections",
+  "round4": "PASS againste877 fullcandidate; complete raw opinions retained",
+  "round5": "small delta closure PASS against finalcandidate",
+  "independent": "35 SQL cases executed against858316. c454/812080/e877 observations inherited by exact byte comparison, not rerun; actual byte-check/freeze commands recorded. 91 author tests are not independent executions."
+}

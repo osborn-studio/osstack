@@ -1,0 +1,42 @@
+[
+  {
+    "id": "P2-1",
+    "disposition": "clarified_in_spec",
+    "details": "Live lease creation relies on current-authority host writer fencing; historical grant_generation fixture admission is not a live API. No SQL tightening/refreeze."
+  },
+  {
+    "id": "P2-2",
+    "disposition": "implemented_capability_checks",
+    "details": "freeze minimum3.38 and real json_valid/json_extract smoke; TS same minimum and actual JSON test."
+  },
+  {
+    "id": "P2-3",
+    "disposition": "implemented_and_documented",
+    "details": "Malformed JSON actual SQLite error test requires SQLITE_ERROR and unchanged rows; host checklist rejects all SQLite failures, not just constraints."
+  },
+  {
+    "id": "P2-4",
+    "disposition": "optional_future_coverage",
+    "details": "No exhaustive mutation claim; size/input-digest/bootstrap variations are optional bounded followup, not runtime qualification."
+  },
+  {
+    "id": "P2-5",
+    "disposition": "parent_owned_fix",
+    "details": "Parent reports central digest catalog correction independently audited in PR283/a679485f; not edited or used as current candidate source proof here."
+  },
+  {
+    "id": "P2-6",
+    "disposition": "implemented_low_cost_details",
+    "details": "TS SQL/fixture hash reads raw Buffer; freeze copies exact oracle.frozen_at including microseconds; TS asserts exact metadata equality. Exact changed paths bound by candidate and archive. .gitattributes contents remain covered by audited snapshot and hash drift."
+  },
+  {
+    "id": "P2-7",
+    "disposition": "bound_to_actual_snapshots",
+    "details": "Full8120 record retained, e877 completecore1089 retained; latest small delta gets fresh fullcore/affected checks, not rebound fullsuite. Versions in actual verification, minimum now tested."
+  },
+  {
+    "id": "P2-8",
+    "disposition": "future_runtime_obligation",
+    "details": "No uniqueness/authentic containment for invocation_ref claimed; future exact invocation/attempt provenance remains mandatory before runtime recovery."
+  }
+]

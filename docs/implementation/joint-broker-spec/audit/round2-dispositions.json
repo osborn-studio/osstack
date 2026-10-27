@@ -1,0 +1,10 @@
+{
+  "P1-A": {
+    "status": "fixed",
+    "details": "43 added tests:25 isolated CHECK predicate counterexamples paired with actual executable mutants;4 proof shape cases;8 initial lease cases;4 invalid decision generations;2 FK modes each exercising five identity conflict strategies. Existing 33 tests retained. No SQL change."
+  },
+  "P2": {
+    "status": "clarified_or_deferred",
+    "details": "Document required foreign_keys and ignore_check_constraints settings, candidate family label versus exact digest identity, host-only prior_resolution derivation, independent storage versus authenticated reviewer, precise OR IGNORE scope. Actual SQLite versions3.53.1 recorded. Original home spec included for raw hash convention. Shared digest catalog prose mismatch reported to parent, not silently edited. Runtime remains deferred."
+  }
+}

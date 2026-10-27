@@ -1,0 +1,174 @@
+{
+  "base_sha": "d3fa7ef681efc79a5fb2dff92172ef1be0978774",
+  "code_sha": "bc25b1cf1889f89178f29a309d7b8c6191d01d40",
+  "status": "passed",
+  "commands": [
+    {
+      "name": "core-finalclosure",
+      "command": [
+        "pnpm",
+        "--filter",
+        "@osstack/core",
+        "test"
+      ],
+      "code_sha": "bc25b1cf1889f89178f29a309d7b8c6191d01d40",
+      "started_at": "2026-10-27T17:04:42.802456+00:00",
+      "ended_at": "2026-10-27T17:05:01.435396+00:00",
+      "exit_code": 0,
+      "log": "core-finalclosure.log",
+      "log_sha256": "6dc4992665eec6b9fbd68bd2c8fa7705d46d4166d5d5ce5c7d64a41571b509a6"
+    },
+    {
+      "name": "typecheck-finalclosure",
+      "command": [
+        "pnpm",
+        "--filter",
+        "@osstack/core",
+        "exec",
+        "tsc",
+        "--noEmit"
+      ],
+      "code_sha": "bc25b1cf1889f89178f29a309d7b8c6191d01d40",
+      "started_at": "2026-10-27T17:05:01.435960+00:00",
+      "ended_at": "2026-10-27T17:05:02.349131+00:00",
+      "exit_code": 0,
+      "log": "typecheck-finalclosure.log",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "freeze-finalclosure",
+      "command": [
+        "python3",
+        "-I",
+        "packages/core/fixtures/broker-recovery/freeze.py",
+        "--check"
+      ],
+      "code_sha": "bc25b1cf1889f89178f29a309d7b8c6191d01d40",
+      "started_at": "2026-10-27T17:05:02.349548+00:00",
+      "ended_at": "2026-10-27T17:05:02.372792+00:00",
+      "exit_code": 0,
+      "log": "freeze-finalclosure.log",
+      "log_sha256": "f2aae06ed268c9510adf772f7ee410de22589273c52a0e8bb056e6622f4ef52b"
+    },
+    {
+      "name": "lint-finalclosure",
+      "command": [
+        "pnpm",
+        "lint"
+      ],
+      "code_sha": "bc25b1cf1889f89178f29a309d7b8c6191d01d40",
+      "started_at": "2026-10-27T17:05:02.373067+00:00",
+      "ended_at": "2026-10-27T17:05:03.165264+00:00",
+      "exit_code": 0,
+      "log": "lint-finalclosure.log",
+      "log_sha256": "faa716c62d839f161e11a11a99500211943ab8767947babaf7516b8ac4efae9f"
+    },
+    {
+      "name": "inventory-finalclosure",
+      "command": [
+        "node",
+        "scripts/generate-inventory.mjs",
+        "--check"
+      ],
+      "code_sha": "bc25b1cf1889f89178f29a309d7b8c6191d01d40",
+      "started_at": "2026-10-27T17:05:03.165641+00:00",
+      "ended_at": "2026-10-27T17:05:03.354139+00:00",
+      "exit_code": 0,
+      "log": "inventory-finalclosure.log",
+      "log_sha256": "a59b7d9a6d962ccf0d22d13d2cc0f8acbb9e3653a63cce339211a5dfb3cd56e9"
+    },
+    {
+      "name": "changeset-finalclosure",
+      "command": [
+        "node",
+        "scripts/check-changeset-coverage.mjs",
+        "--base",
+        "d3fa7ef681efc79a5fb2dff92172ef1be0978774"
+      ],
+      "code_sha": "bc25b1cf1889f89178f29a309d7b8c6191d01d40",
+      "started_at": "2026-10-27T17:05:03.354520+00:00",
+      "ended_at": "2026-10-27T17:05:03.419701+00:00",
+      "exit_code": 0,
+      "log": "changeset-finalclosure.log",
+      "log_sha256": "b19c092cf1224c2cd3cfd5807214b4b82d9c8b8c06d520cc8e803a960c1d879b"
+    },
+    {
+      "name": "docs-hygiene-finalclosure",
+      "command": [
+        "pnpm",
+        "--filter",
+        "@osstack/governance",
+        "exec",
+        "vitest",
+        "run",
+        "src/knowledge-hygiene/osstack-config.test.ts"
+      ],
+      "code_sha": "bc25b1cf1889f89178f29a309d7b8c6191d01d40",
+      "started_at": "2026-10-27T17:05:03.420035+00:00",
+      "ended_at": "2026-10-27T17:05:04.678123+00:00",
+      "exit_code": 0,
+      "log": "docs-hygiene-finalclosure.log",
+      "log_sha256": "5f515d863a5f5f722ca6417e147df8d89691d9a680e0be8724f4da399c499e16"
+    },
+    {
+      "name": "docs-hygiene-archive",
+      "command": [
+        "pnpm",
+        "--filter",
+        "@osstack/governance",
+        "exec",
+        "vitest",
+        "run",
+        "src/knowledge-hygiene/osstack-config.test.ts"
+      ],
+      "code_sha": "bc25b1cf1889f89178f29a309d7b8c6191d01d40",
+      "scope": "Uncommitted evidence archive added after frozen candidate; no candidate source changed",
+      "started_at": "2026-10-27T17:08:17.059795+00:00",
+      "ended_at": "2026-10-27T17:08:18.206166+00:00",
+      "exit_code": 0,
+      "log": "docs-hygiene-archive.log",
+      "log_sha256": "83f10b288a093c4a06a13db062b97235619f86c7ac6181567d41b8e4bf3f93eb"
+    }
+  ],
+  "environment": {
+    "OSSTACK_HOME": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/joint-nextwave-20261028/broker-spec/home",
+    "OSSTACK_SCRATCH_ROOT": "/Volumes/AIMATE_WORK/tmp/osstack",
+    "OSSTACK_SOCKET": "unset; uses explicit scratch home/test fixture home"
+  },
+  "node": "v22.22.1",
+  "pnpm": "11.4.0",
+  "sqlite_versions": {
+    "python": "3.53.1",
+    "better_sqlite3": "3.53.1"
+  },
+  "prior_full_repository": {
+    "record": "full-8120-verification.json",
+    "code_sha": "812080ae697e82362e74e43df5c67e55c921d38b",
+    "validation": {
+      "packages": 22,
+      "passed": 6369,
+      "failed": 0,
+      "skipped": 5
+    },
+    "raw_log": "test-full.log",
+    "not_rerun_on_final_sha": true
+  },
+  "delta_from_full": {
+    "paths": [
+      "docs/design/broker-recovery-schema.md",
+      "packages/core/fixtures/broker-recovery/freeze.py",
+      "packages/core/fixtures/broker-recovery/manifest.json",
+      "packages/core/src/state/broker-recovery-spec.test.ts"
+    ],
+    "sql_fixture_catalog_bytes_unchanged": true,
+    "runtime_product_source_unchanged": true,
+    "manifest_only_change": "runtime_storage_requires matches J17.scoped; oracle time copies exact original field",
+    "validation_decision": "Parent authorized affected core/typecheck/freeze/lint/hygiene instead of repeating full repository for tests/metadata/docs-only delta."
+  },
+  "validation": {
+    "packages": 1,
+    "passed": 1091,
+    "failed": 0,
+    "skipped": 0
+  }
+}

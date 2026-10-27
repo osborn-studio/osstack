@@ -1,0 +1,66 @@
+{
+  "status": "candidate_spec_only",
+  "base_commit": "d3fa7ef681efc79a5fb2dff92172ef1be0978774",
+  "storage": {
+    "deployment": "dedicated_sqlite",
+    "decision_status": "proposed_for_adoption",
+    "namespace": "osstack.resource-broker",
+    "allocation": "not_reserved",
+    "deployment_qualified": false,
+    "runtime_registered": false,
+    "actual_deployment_path": null
+  },
+  "spec": {
+    "kind": "migration_spec",
+    "schema_version": 1,
+    "schema_change_id": "broker-dedicated-recovery-candidate-v1",
+    "source_schema": 0,
+    "target_schema": 1,
+    "ddl_digest": "475da5b56ee089f1dca3a632247188db6d0382c12db6dbd88ea51cd3375148a5",
+    "fixture_digest": "958bbda11aa814a4cb2eab77e361a00205799cf2fe21ce127fc61152ce56d909",
+    "source_schema_digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+    "target_schema_digest": "5a449f9feb167cbd4a41df52ee0f4e9e4279444a23fb79bbb5b304c0df8cada6",
+    "expected_lineage_tables": [
+      "broker_identity",
+      "broker_leases",
+      "broker_recovery_decisions"
+    ]
+  },
+  "schema_spec_digest": "30712be8cfdc955fb30e2076da3777253985140d42adc0c7dde4faf55edb396c",
+  "source_catalog": [],
+  "target_catalog_file": "catalog.json",
+  "qualification": {
+    "J11_scoped": "not_asserted",
+    "J17_schema_spec": "not_asserted",
+    "J17_recovery": "not_run",
+    "file_backed_crash_recovery": "not_run",
+    "authenticated_operator": "not_run"
+  },
+  "dependencies": {
+    "candidate_material_requires": [
+      "joint recovery contracts"
+    ],
+    "schema_qualification_requires": [
+      "J11.scoped"
+    ],
+    "recovery_qualification_requires": [
+      "J17.schema_spec",
+      "J12.scoped"
+    ],
+    "runtime_storage_requires": [
+      "J17.recovery"
+    ],
+    "recovery_requires_runtime_controller": false
+  },
+  "oracle_prefreeze": {
+    "path": "independent/oracle-freeze.json",
+    "frozen_at": "2026-10-27T16:16:01Z",
+    "sha256": "51b34e498292099fa706ecb1f8fe0eccf5f505e715fcae9c880607ad77670c79",
+    "identity_independence_certified": false
+  },
+  "paths": [
+    "packages/core/fixtures/broker-recovery/**",
+    "packages/core/src/state/broker-recovery-spec.test.ts",
+    "docs/design/broker-recovery-schema.md"
+  ]
+}

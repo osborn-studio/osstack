@@ -1,0 +1,18 @@
+{
+  "command": [
+    "python3",
+    "-I",
+    "/Users/osborn/Developer/CodeX/.worktrees/osstack/joint-broker-spec/packages/core/fixtures/broker-recovery/freeze.py",
+    "--check"
+  ],
+  "cwd": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/joint-nextwave-20261028/independent",
+  "code_sha": "c454c0d02108255dcb77395be25034b6911b9bf5",
+  "started_at": "2026-10-27T16:37:21.550852+00:00",
+  "ended_at": "2026-10-27T16:37:21.589739+00:00",
+  "exit_code": 0,
+  "stdout": "broker-c454-freeze-check.stdout",
+  "stdout_sha256": "f2aae06ed268c9510adf772f7ee410de22589273c52a0e8bb056e6622f4ef52b",
+  "stderr": "broker-c454-freeze-check.stderr",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "oracle_sha256": "51b34e498292099fa706ecb1f8fe0eccf5f505e715fcae9c880607ad77670c79"
+}

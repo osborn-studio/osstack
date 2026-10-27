@@ -1,0 +1,86 @@
+[
+  {
+    "type": "index",
+    "name": "broker_one_held_resource",
+    "tbl_name": "broker_leases",
+    "sql": "CREATE UNIQUE INDEX broker_one_held_resource ON broker_leases(broker_id,resource_key) WHERE state='held_orphan'"
+  },
+  {
+    "type": "table",
+    "name": "broker_identity",
+    "tbl_name": "broker_identity",
+    "sql": "CREATE TABLE broker_identity (\n  singleton INTEGER PRIMARY KEY CHECK(singleton=1),\n  broker_id TEXT NOT NULL UNIQUE CHECK(length(trim(broker_id)) BETWEEN 1 AND 256),\n  schema_namespace TEXT NOT NULL CHECK(schema_namespace='osstack.resource-broker'),\n  schema_version INTEGER NOT NULL CHECK(schema_version=1),\n  owner_generation INTEGER NOT NULL CHECK(owner_generation BETWEEN 1 AND 9007199254740991),\n  owner_ref TEXT NOT NULL CHECK(length(trim(owner_ref)) BETWEEN 1 AND 256)\n) STRICT"
+  },
+  {
+    "type": "table",
+    "name": "broker_leases",
+    "tbl_name": "broker_leases",
+    "sql": "CREATE TABLE broker_leases (\n  lease_id TEXT PRIMARY KEY NOT NULL CHECK(length(trim(lease_id)) BETWEEN 1 AND 256),\n  broker_id TEXT NOT NULL REFERENCES broker_identity(broker_id),\n  home_id TEXT NOT NULL CHECK(length(trim(home_id)) BETWEEN 1 AND 256),\n  scope_id TEXT NOT NULL CHECK(length(trim(scope_id)) BETWEEN 1 AND 256),\n  tenant_id TEXT NOT NULL CHECK(length(trim(tenant_id)) BETWEEN 1 AND 256),\n  resource_key TEXT NOT NULL CHECK(length(trim(resource_key)) BETWEEN 1 AND 1024),\n  invocation_ref TEXT NOT NULL CHECK(length(trim(invocation_ref)) BETWEEN 1 AND 512),\n  effect_id TEXT CHECK(effect_id IS NULL OR length(trim(effect_id)) BETWEEN 1 AND 256),\n  grant_generation INTEGER NOT NULL CHECK(grant_generation BETWEEN 1 AND 9007199254740991),\n  state TEXT NOT NULL CHECK(state IN ('held_orphan','resolved_stopped')),\n  recovery_revision INTEGER NOT NULL CHECK(recovery_revision BETWEEN 0 AND 9007199254740991),\n  UNIQUE(broker_id,lease_id)\n) STRICT"
+  },
+  {
+    "type": "table",
+    "name": "broker_recovery_decisions",
+    "tbl_name": "broker_recovery_decisions",
+    "sql": "CREATE TABLE broker_recovery_decisions (\n  principal_ref TEXT NOT NULL CHECK(length(trim(principal_ref)) BETWEEN 1 AND 256),\n  request_id TEXT NOT NULL CHECK(length(trim(request_id)) BETWEEN 1 AND 256),\n  input_digest TEXT NOT NULL CHECK(length(input_digest)=64 AND input_digest NOT GLOB '*[^0-9a-f]*'),\n  broker_id TEXT NOT NULL,\n  lease_id TEXT NOT NULL,\n  prior_revision INTEGER NOT NULL CHECK(prior_revision BETWEEN 0 AND 9007199254740990),\n  owner_generation INTEGER NOT NULL CHECK(owner_generation BETWEEN 1 AND 9007199254740991),\n  decision TEXT NOT NULL CHECK(decision IN ('preserve_unknown','proven_stopped')),\n  receipt_json TEXT NOT NULL CHECK(json_valid(receipt_json) AND length(CAST(receipt_json AS BLOB))<=1048576),\n  PRIMARY KEY(principal_ref,request_id),\n  UNIQUE(broker_id,lease_id,prior_revision),\n  FOREIGN KEY(broker_id,lease_id) REFERENCES broker_leases(broker_id,lease_id),\n  CHECK((json_type(receipt_json)='object'\n    AND json_extract(receipt_json,'$.kind')='recovery_receipt'\n    AND json_type(receipt_json,'$.schema_version')='integer' AND json_extract(receipt_json,'$.schema_version')=1\n    AND json_extract(receipt_json,'$.target')='broker'\n    AND json_extract(receipt_json,'$.prior_phase')='broker_unknown'\n    AND json_extract(receipt_json,'$.prior_resolution') IN ('none','abandoned_unknown')\n    AND json_type(receipt_json,'$.subject')='object'\n    AND json_extract(receipt_json,'$.subject.kind')='broker_lease'\n    AND json_extract(receipt_json,'$.subject.broker_id')=broker_id\n    AND json_extract(receipt_json,'$.subject.lease_id')=lease_id\n    AND json_extract(receipt_json,'$.subject.home_id')=json_extract(receipt_json,'$.target_home_id')\n    AND json_type(receipt_json,'$.if_revision')='integer' AND json_extract(receipt_json,'$.if_revision')=prior_revision\n    AND json_type(receipt_json,'$.owner_generation')='integer' AND json_extract(receipt_json,'$.owner_generation')=owner_generation\n    AND json_type(receipt_json,'$.actual_target_schema')='integer' AND json_extract(receipt_json,'$.actual_target_schema')=1\n    AND json_extract(receipt_json,'$.decision')=decision\n    AND json_extract(receipt_json,'$.request_id')=request_id\n    AND json_extract(receipt_json,'$.operator_ref')=principal_ref\n    AND json_type(receipt_json,'$.proof_refs')='array' AND json_type(receipt_json,'$.proofs')='array') IS 1),\n  CHECK(((decision='preserve_unknown' AND json_array_length(receipt_json,'$.proofs')=0 AND json_array_length(receipt_json,'$.proof_refs')=0)\n    OR (decision='proven_stopped'\n      AND json_array_length(receipt_json,'$.proofs')=1 AND json_array_length(receipt_json,'$.proof_refs')=1\n      AND json_extract(receipt_json,'$.proofs[0].type')='invocation_contained'\n      AND length(trim(json_extract(receipt_json,'$.proofs[0].record_ref')))>0\n      AND json_extract(receipt_json,'$.proofs[0].record_ref')=json_extract(receipt_json,'$.proof_refs[0]')\n      AND json_extract(receipt_json,'$.proofs[0].subject_digest')=json_extract(receipt_json,'$.subject_digest')\n      AND length(json_extract(receipt_json,'$.proofs[0].evidence_digest'))=64\n      AND json_extract(receipt_json,'$.proofs[0].evidence_digest') NOT GLOB '*[^0-9a-f]*'\n      AND length(trim(json_extract(receipt_json,'$.proofs[0].producer_ref')))>0\n      AND json_extract(receipt_json,'$.proofs[0].broker_identity.broker_id')=broker_id\n      AND json_extract(receipt_json,'$.proofs[0].broker_identity.lease_id')=lease_id\n      AND json_type(receipt_json,'$.proofs[0].broker_identity.schema')='integer'\n      AND json_extract(receipt_json,'$.proofs[0].broker_identity.schema')=1\n      AND json_type(receipt_json,'$.proofs[0].broker_identity.owner_generation')='integer'\n      AND json_extract(receipt_json,'$.proofs[0].broker_identity.owner_generation')=owner_generation)) IS 1)\n) STRICT"
+  },
+  {
+    "type": "trigger",
+    "name": "broker_identity_insert_guard",
+    "tbl_name": "broker_identity",
+    "sql": "CREATE TRIGGER broker_identity_insert_guard BEFORE INSERT ON broker_identity\nWHEN EXISTS(SELECT 1 FROM broker_identity)\nBEGIN SELECT RAISE(ABORT,'broker identity already initialized'); END"
+  },
+  {
+    "type": "trigger",
+    "name": "broker_identity_no_delete",
+    "tbl_name": "broker_identity",
+    "sql": "CREATE TRIGGER broker_identity_no_delete BEFORE DELETE ON broker_identity\nBEGIN SELECT RAISE(ABORT,'broker identity immutable'); END"
+  },
+  {
+    "type": "trigger",
+    "name": "broker_identity_update_guard",
+    "tbl_name": "broker_identity",
+    "sql": "CREATE TRIGGER broker_identity_update_guard BEFORE UPDATE ON broker_identity\nWHEN NEW.singleton IS NOT OLD.singleton OR NEW.broker_id IS NOT OLD.broker_id\n  OR NEW.schema_namespace IS NOT OLD.schema_namespace OR NEW.schema_version IS NOT OLD.schema_version\n  OR NEW.owner_generation<>OLD.owner_generation+1\nBEGIN SELECT RAISE(ABORT,'broker identity immutable or generation conflict'); END"
+  },
+  {
+    "type": "trigger",
+    "name": "broker_lease_insert_guard",
+    "tbl_name": "broker_leases",
+    "sql": "CREATE TRIGGER broker_lease_insert_guard BEFORE INSERT ON broker_leases\nWHEN EXISTS(SELECT 1 FROM broker_leases WHERE lease_id=NEW.lease_id)\n  OR EXISTS(SELECT 1 FROM broker_leases WHERE broker_id=NEW.broker_id AND resource_key=NEW.resource_key AND state='held_orphan')\n  OR NEW.state<>'held_orphan' OR NEW.recovery_revision<>0\n  OR NOT EXISTS(SELECT 1 FROM broker_identity WHERE broker_id=NEW.broker_id AND owner_generation>=NEW.grant_generation)\nBEGIN SELECT RAISE(ABORT,'broker lease identity or initial state conflict'); END"
+  },
+  {
+    "type": "trigger",
+    "name": "broker_lease_no_delete",
+    "tbl_name": "broker_leases",
+    "sql": "CREATE TRIGGER broker_lease_no_delete BEFORE DELETE ON broker_leases\nBEGIN SELECT RAISE(ABORT,'broker lease history immutable'); END"
+  },
+  {
+    "type": "trigger",
+    "name": "broker_lease_update_guard",
+    "tbl_name": "broker_leases",
+    "sql": "CREATE TRIGGER broker_lease_update_guard BEFORE UPDATE ON broker_leases\nWHEN NEW.lease_id IS NOT OLD.lease_id OR NEW.broker_id IS NOT OLD.broker_id\n  OR NEW.home_id IS NOT OLD.home_id OR NEW.scope_id IS NOT OLD.scope_id OR NEW.tenant_id IS NOT OLD.tenant_id\n  OR NEW.resource_key IS NOT OLD.resource_key OR NEW.invocation_ref IS NOT OLD.invocation_ref\n  OR NEW.effect_id IS NOT OLD.effect_id OR NEW.grant_generation IS NOT OLD.grant_generation\n  OR OLD.state<>'held_orphan' OR NEW.recovery_revision<>OLD.recovery_revision+1\n  OR NOT EXISTS(SELECT 1 FROM broker_recovery_decisions d JOIN broker_identity b ON b.broker_id=d.broker_id\n    WHERE d.broker_id=OLD.broker_id AND d.lease_id=OLD.lease_id AND d.prior_revision=OLD.recovery_revision\n    AND d.owner_generation=b.owner_generation\n    AND NEW.state=CASE d.decision WHEN 'preserve_unknown' THEN 'held_orphan' ELSE 'resolved_stopped' END)\nBEGIN SELECT RAISE(ABORT,'broker projection requires an immutable current decision'); END"
+  },
+  {
+    "type": "trigger",
+    "name": "broker_recovery_insert_guard",
+    "tbl_name": "broker_recovery_decisions",
+    "sql": "CREATE TRIGGER broker_recovery_insert_guard BEFORE INSERT ON broker_recovery_decisions\nWHEN EXISTS(SELECT 1 FROM broker_recovery_decisions WHERE principal_ref=NEW.principal_ref AND request_id=NEW.request_id)\n  OR NOT EXISTS(SELECT 1 FROM broker_identity WHERE broker_id=NEW.broker_id AND owner_generation=NEW.owner_generation)\n  OR NOT EXISTS(SELECT 1 FROM broker_leases WHERE broker_id=NEW.broker_id AND lease_id=NEW.lease_id\n    AND state='held_orphan' AND recovery_revision=NEW.prior_revision\n    AND home_id=json_extract(NEW.receipt_json,'$.subject.home_id')\n    AND scope_id=json_extract(NEW.receipt_json,'$.scope_id') AND tenant_id=json_extract(NEW.receipt_json,'$.tenant_id'))\nBEGIN SELECT RAISE(ABORT,'broker recovery request, identity, owner or revision conflict'); END"
+  },
+  {
+    "type": "trigger",
+    "name": "broker_recovery_no_delete",
+    "tbl_name": "broker_recovery_decisions",
+    "sql": "CREATE TRIGGER broker_recovery_no_delete BEFORE DELETE ON broker_recovery_decisions\nBEGIN SELECT RAISE(ABORT,'broker recovery history immutable'); END"
+  },
+  {
+    "type": "trigger",
+    "name": "broker_recovery_no_update",
+    "tbl_name": "broker_recovery_decisions",
+    "sql": "CREATE TRIGGER broker_recovery_no_update BEFORE UPDATE ON broker_recovery_decisions\nBEGIN SELECT RAISE(ABORT,'broker recovery history immutable'); END"
+  },
+  {
+    "type": "trigger",
+    "name": "broker_recovery_project",
+    "tbl_name": "broker_recovery_decisions",
+    "sql": "CREATE TRIGGER broker_recovery_project AFTER INSERT ON broker_recovery_decisions\nBEGIN\n  UPDATE broker_leases SET recovery_revision=NEW.prior_revision+1,\n    state=CASE NEW.decision WHEN 'preserve_unknown' THEN 'held_orphan' ELSE 'resolved_stopped' END\n    WHERE broker_id=NEW.broker_id AND lease_id=NEW.lease_id AND recovery_revision=NEW.prior_revision;\n  SELECT CASE WHEN changes()<>1 THEN RAISE(ABORT,'broker projection CAS failed') END;\nEND"
+  }
+]

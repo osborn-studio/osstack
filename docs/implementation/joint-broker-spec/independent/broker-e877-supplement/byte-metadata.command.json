@@ -1,0 +1,16 @@
+{
+  "command": [
+    "python3",
+    "/Volumes/AIMATE_WORK/tmp/osstack/runtime/joint-nextwave-20261028/independent/broker-e877-supplement/check-byte-metadata.py"
+  ],
+  "cwd": "/Users/osborn/Developer/CodeX/.worktrees/osstack/joint-broker-spec",
+  "code_sha": "e8770e3c8dee5b2e57c5c3ca9a7d551607e1a59c",
+  "started_at": "2026-10-27T16:59:58.008973+00:00",
+  "ended_at": "2026-10-27T16:59:58.162844+00:00",
+  "exit_code": 0,
+  "stdout": "byte-metadata.stdout",
+  "stdout_sha256": "a94e0285f7dc4b6c44e56ad4c6087116ee7ec4a39bfe4d45610e74dc54ec824c",
+  "stderr": "byte-metadata.stderr",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "oracle_sha256": "51b34e498292099fa706ecb1f8fe0eccf5f505e715fcae9c880607ad77670c79"
+}
