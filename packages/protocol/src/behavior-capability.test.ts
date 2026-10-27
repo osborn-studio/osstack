@@ -54,7 +54,7 @@ describe("behavior contracts v1", () => {
     expect(BehaviorContractV1.safeParse({ ...contract, version: "2.0.0" }).success).toBe(true);
     expect(BehaviorContractV1.safeParse({ ...contract, schema_version: 2 }).success).toBe(false);
     expect(BehaviorRegistryV1.safeParse({ ...registry, schema_version: 2 }).success).toBe(false);
-    for (const version of ["latest", "^1.0.0", "01.0.0", "1", "1.0.0;sh"])
+    for (const version of ["latest", "^1.0.0", "01.0.0", "1", "1.0.0;sh", "1000000000.0.0"])
       expect(BehaviorContractV1.safeParse({ ...contract, version }).success).toBe(false);
   });
   it("rejects commands, authority, activation and progress in a behavior declaration", () => {
@@ -70,6 +70,8 @@ describe("behavior contracts v1", () => {
     expect(BehaviorContractV1.safeParse({ ...contract, sources: [{ ...source, commit: "main" }] }).success).toBe(false);
     expect(BehaviorContractV1.safeParse({ ...contract, sources: [] }).success).toBe(false);
     expect(BehaviorContractV1.safeParse({ ...contract, source_manifest_sha256: "wrong" }).success).toBe(false);
+    for (const repository of ["file:///tmp/source", "https://secret@example.com/repo", "https://example.com/repo?token=x", "git@github.com:org/repo"])
+      expect(BehaviorContractV1.safeParse({ ...contract, sources: [{ ...source, repository }] }).success).toBe(false);
   });
   it("rejects duplicate dependencies, sources and scenario IDs", () => {
     expect(BehaviorContractV1.safeParse({ ...contract, depends_on: [...contract.depends_on, ...contract.depends_on] }).success).toBe(false);
@@ -81,8 +83,10 @@ describe("behavior contracts v1", () => {
       candidate_sha: commit, target_code_sha256: digest, entries: [entry, entry] }).success).toBe(false);
   });
   it("rejects malformed Unicode, blank strings and unbounded declarations", () => {
-    for (const trigger of ["", " ", "a\0b", "a\ud800b", "x".repeat(513)])
+    for (const trigger of ["", " ", "a\0b", "a\ud800b", "x".repeat(513), "id\n", "\u001bid", "id\u202e", "id\u200b", " id", "id ", "e\u0301"])
       expect(BehaviorContractV1.safeParse({ ...contract, trigger }).success).toBe(false);
+    for (const en of ["a\u001bb", "a\u202eb", "a\u200bb", "e\u0301"])
+      expect(BehaviorContractV1.safeParse({ ...contract, summary: { ...contract.summary, en } }).success).toBe(false);
   });
 });
 
@@ -110,9 +114,12 @@ describe("qualification and delivery are separate records", () => {
     expect(BehaviorQualificationV1.safeParse({ ...qualification, payload: { ...qualification.payload, prerequisite_record_sha256: [digest] } }).success).toBe(false);
   });
   it("keeps failed evidence representable while preventing ambiguous duplicate scenarios", () => {
-    expect(BehaviorEvidenceBundleV1.parse({ schema_version: 1, evidence: [evidence] })).toEqual({ schema_version: 1, evidence: [evidence] });
-    expect(BehaviorEvidenceBundleV1.safeParse({ schema_version: 1, evidence: [{ ...evidence, result: "unknown" }] }).success).toBe(true);
-    expect(BehaviorEvidenceBundleV1.safeParse({ schema_version: 1, evidence: [evidence, evidence] }).success).toBe(false);
+    const bundle = { schema_version: 1, candidate_sha: commit, limitations: [], evidence: [evidence] };
+    expect(BehaviorEvidenceBundleV1.parse(bundle)).toEqual(bundle);
+    expect(BehaviorEvidenceBundleV1.safeParse({ ...bundle, evidence: [{ ...evidence, result: "unknown" }] }).success).toBe(true);
+    expect(BehaviorEvidenceBundleV1.safeParse({ ...bundle, evidence: [evidence, evidence] }).success).toBe(false);
+    expect(BehaviorEvidenceBundleV1.safeParse({ ...bundle, candidate_sha: undefined }).success).toBe(false);
+    expect(BehaviorEvidenceBundleV1.safeParse({ ...bundle, limitations: undefined }).success).toBe(false);
   });
   it("records delivery progress without acting as a host qualification", () => {
     const delivery = { schema_version: 1, kind: "behavior_delivery", capability_id: "FM-09", contract_version: "1.0.0",

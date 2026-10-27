@@ -1,13 +1,16 @@
 import { z } from "zod";
 
 /** R01 wire contracts. Shape validation grants no execution or qualification authority. */
+export const BEHAVIOR_DOCUMENT_MAX_BYTES = 1024 * 1024;
 const text = (maximum: number) => z.string().min(1).max(maximum).refine((value) =>
-  value.trim().length > 0 && !value.includes("\0") && !/[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/u.test(value),
-"must be nonblank Unicode text without NUL or lone surrogates");
-const Id = text(512);
+  value.trim().length > 0 && value.normalize("NFC") === value && !/[\p{Cc}\p{Cf}]/u.test(value)
+    && !/[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/u.test(value),
+"must be nonblank NFC text without control, format characters or lone surrogates");
+// External version/model/profile identities are opaque tokens, not OSStack semver numbers.
+const Id = z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._:@+/-]{0,511}$/);
 const Digest = z.string().regex(/^[a-f0-9]{64}$/);
 const Commit = z.string().regex(/^[a-f0-9]{40}$/);
-const Version = z.string().max(64).regex(/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/);
+const Version = z.string().regex(/^(0|[1-9]\d{0,8})\.(0|[1-9]\d{0,8})\.(0|[1-9]\d{0,8})$/);
 const Epoch = z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER).refine((value) => !Object.is(value, -0));
 const Timestamp = z.string().datetime({ offset: false }).max(40).refine((value) => Number.isFinite(Date.parse(value)));
 const Path = text(4096).refine((value) => !value.includes("\\") && !value.includes(":")
@@ -21,7 +24,13 @@ export const BehaviorQualificationLevelV1 = z.enum(["contract_tested", "host_ver
 export type BehaviorQualificationLevelV1 = z.infer<typeof BehaviorQualificationLevelV1>;
 
 export const BehaviorSourceV1 = z.object({
-  repository: text(2048), commit: Commit, path: Path, content_sha256: Digest, license: text(128),
+  repository: text(2048).refine((value) => {
+    try {
+      const url = new URL(value);
+      return url.protocol === "https:" && !url.username && !url.password && !url.search && !url.hash && url.href === value;
+    } catch { return false; }
+  }, "canonical HTTPS repository URL without credentials, query or fragment required"),
+  commit: Commit, path: Path, content_sha256: Digest, license: text(128),
 }).strict();
 export type BehaviorSourceV1 = z.infer<typeof BehaviorSourceV1>;
 
@@ -46,7 +55,8 @@ export const BehaviorContractV1 = z.object({
 });
 export type BehaviorContractV1 = z.infer<typeof BehaviorContractV1>;
 
-/** Shipped declaration inventory. Qualifications remain outside this digest to avoid circular signatures. */
+/** Shipped declarations. Parsing grants no graph validity; R02 checks closure, exact versions and cycles.
+ * Qualifications remain outside this digest to avoid circular signatures. R02 also enforces byte limits. */
 export const BehaviorRegistryV1 = z.object({
   schema_version: z.literal(1), kind: z.literal("behavior_registry"), registry_version: Version,
   candidate_sha: Commit, target_code_sha256: Digest,
@@ -65,15 +75,21 @@ export type BehaviorQualificationProfileV1 = z.infer<typeof BehaviorQualificatio
 
 export const BehaviorEvidenceV1 = z.object({
   scenario_id: Id, checker_id: Id, checker_version: Id,
-  result: z.enum(["passed", "failed", "unknown", "not_run"]), artifact_sha256: Digest, subject_sha256: Digest,
+  result: z.enum(["passed", "failed", "unknown", "not_run"]), artifact_sha256: Digest,
+  // Always the exact target_code_sha256. The enclosing bundle binds its Git candidate as well.
+  subject_sha256: Digest,
 }).strict();
 export type BehaviorEvidenceV1 = z.infer<typeof BehaviorEvidenceV1>;
 const EvidenceList = z.array(BehaviorEvidenceV1).min(1).max(1000)
   .refine((value) => unique(value, (entry) => entry.scenario_id), "duplicate evidence scenario");
-export const BehaviorEvidenceBundleV1 = z.object({ schema_version: z.literal(1), evidence: EvidenceList }).strict();
+export const BehaviorEvidenceBundleV1 = z.object({
+  schema_version: z.literal(1), candidate_sha: Commit, limitations: z.array(text(512)).max(100), evidence: EvidenceList,
+}).strict();
 export type BehaviorEvidenceBundleV1 = z.infer<typeof BehaviorEvidenceBundleV1>;
 
-/** Compatible with qualification-contract.schema.json v1. Signature and host policy checks belong to R02. */
+/** Narrow runtime subset of qualification-contract.schema.json v1, with unchanged wire field names.
+ * Exactly one preceding level is supported. Failed evidence remains representable for diagnostics;
+ * R02 rejects it. Parsing alone proves neither signature, level completion, authority nor lifetime. */
 export const BehaviorQualificationV1 = z.object({
   schema_version: z.literal(1), canonicalization: z.literal("RFC8785"),
   payload: z.object({
