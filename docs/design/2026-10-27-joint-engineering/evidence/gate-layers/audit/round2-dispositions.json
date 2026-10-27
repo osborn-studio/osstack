@@ -1,0 +1,5 @@
+{
+  "P2-A": "JP08a exclusively owns method-host-admission.ts/test; no J05 prerequisite. Actual host ingress and JA71/72 required, not helper-only. Full trial still waits J05 via J07. Closed host/legacy gate set may not inherit J25.e0. Old method-admission.ts remains J05 production then J08 full-trial extension.",
+  "P2-B": "Pinned registry enumerates current frozen contract source paths, three gate machine identity_fields, entry source paths plus transitive implementation source manifest and lockfile/compiler/runtime/config digest obligation. Planned engineering-recipe.ts/method-artifact.ts separately tracked: not initial component prerequisites; future creation invalidates evidence and requires re-freezing composed candidate. All writer overlaps declare exact invalidation. No runtime evidence consumer implemented or claimed.",
+  "P2-C": "Impact file pinned and loaded, frozen original gate requires snapshot, recompute all removed host inheritance and added E0 inheritance, verify execution closures and independent host/legacy gates not E0-dependent. Negative byte-change test plus E0-stop graph regression."
+}

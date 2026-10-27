@@ -1,0 +1,56 @@
+{
+  "candidate_sha": "380e2c618bd5060e2f556f5108fb229d169c932b",
+  "scope": "N0 design validator; 33 rejected mutations; zero runtime cases; raw complete inputs in root final archive",
+  "files": [
+    {
+      "path": "n0-independent-review.md",
+      "sha256": "c1bdf15c88126ed475cace6a0604846bb4f123f2a632200b2920ccbc0fca9119",
+      "bytes": 2737
+    },
+    {
+      "path": "n0-entry-final.py",
+      "sha256": "63adfe095422198a88f7ec8a77138ee5ac0cd13e157a7b1a8c0f08f056d0177e",
+      "bytes": 8478
+    },
+    {
+      "path": "n0-entry-final.command.json",
+      "sha256": "bbb9cf9234e7c9eeb5ee05a7b96d5a417234863468ac77560e3c854a47edab98",
+      "bytes": 803
+    },
+    {
+      "path": "n0-entry-final.stdout",
+      "sha256": "e261e6df863359f5188408f9b56eb7b9b47b51bb1c709b807807bd75dfdfe7f0",
+      "bytes": 6156
+    },
+    {
+      "path": "n0-entry-final.stderr",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "n0-entry-final-result.json",
+      "sha256": "e261e6df863359f5188408f9b56eb7b9b47b51bb1c709b807807bd75dfdfe7f0",
+      "bytes": 6156
+    },
+    {
+      "path": "n0-entry-final-positive-graph.json",
+      "sha256": "b14944109da3db6252801f379118aca14483389f64e7985f26eab1c5011765eb",
+      "bytes": 487
+    },
+    {
+      "path": "n0-scope-disposition.json",
+      "sha256": "dd62fad22318b66c11af8939b1798a2db60ede62634a6dac7c7059647470ab09",
+      "bytes": 1228
+    },
+    {
+      "path": "oracle-freeze.json",
+      "sha256": "51b34e498292099fa706ecb1f8fe0eccf5f505e715fcae9c880607ad77670c79",
+      "bytes": 21916
+    },
+    {
+      "path": "run-recorded.py",
+      "sha256": "f1b434f5b1dc01bdd7ce4fd8f7ecc714352518f8bb6421140da58057dd44adfe",
+      "bytes": 1501
+    }
+  ]
+}

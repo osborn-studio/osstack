@@ -1,0 +1,5 @@
+{
+  "P2-1": "Invalidation union now includes every binding entry_source_path and harness_paths, with per-work union of write_paths and component slice write_paths. J07 graph-verification, J08 host entry/test, J01 harness require invalidation, negative regression covers each.",
+  "P2-2": "All frozen current contract artifacts explicitly owned by J01 with extend_existing disposition, validated; method-binding disposition corrected to existing main fact. Nine missing producer registrations added without changing runtime.",
+  "suggestions": "J01.contracts entry source paths now explicit; harness_digest and paths specified. J01.contracts added to E0-independent set. Document finite batch freeze/re-evaluate, evidence written outside candidate avoids recursive new commits. Slice PR required gates cross-checked."
+}
