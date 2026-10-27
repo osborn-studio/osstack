@@ -1,0 +1,276 @@
+{
+  "base_sha": "3192b424174e5eb977d640cc0418e67c6b1461d1",
+  "reviewed_base": "3192b424174e5eb977d640cc0418e67c6b1461d1",
+  "code_sha": "6ea2cebc8420a1f26b7aff820f7997c0cbba61ad",
+  "model": "claude-sonnet-5-5",
+  "verdict": "PASS",
+  "rounds": [
+    {
+      "round": 1,
+      "code_sha": "da9a1512b4336a9fb4e7dabd680dfe94d46f9a27",
+      "base_sha": "3192b424174e5eb977d640cc0418e67c6b1461d1",
+      "exit_code": 0,
+      "is_error": false,
+      "model_usage": {
+        "claude-sonnet-5-5": {
+          "inputTokens": 2,
+          "outputTokens": 27843,
+          "cacheReadInputTokens": 1444,
+          "cacheCreationInputTokens": 119504,
+          "webSearchRequests": 0,
+          "costUSD": 0.7567387999999999,
+          "contextWindow": 1000000,
+          "maxOutputTokens": 128000,
+          "thinkingTokens": 24231,
+          "canonicalModel": "claude-sonnet-5-5",
+          "provider": "firstParty",
+          "costBasis": "list"
+        }
+      },
+      "verdict": "REVISE",
+      "raw_report_sha256": "6033e5db6e3ea224f4beec5a5065aa0cab1d54ab3bf9f8b842688884b95de5f7",
+      "input_sha256": "c6dfaa92fbeb9d16de1c03ece87cad69ffe8f6efffd807ef437bdc626f720726",
+      "response_sha256": "b2e6e387f7a087f7eaf7cbd9e834ba1f0fae00fb18a6431b24c0c46a04bd2fd9"
+    },
+    {
+      "round": 2,
+      "code_sha": "5a2acd0d6ddd27e8c572d85e2f7cc99d2e895520",
+      "base_sha": "3192b424174e5eb977d640cc0418e67c6b1461d1",
+      "exit_code": 0,
+      "is_error": false,
+      "model_usage": {
+        "claude-sonnet-5-5": {
+          "inputTokens": 2,
+          "outputTokens": 27822,
+          "cacheReadInputTokens": 1444,
+          "cacheCreationInputTokens": 144702,
+          "webSearchRequests": 0,
+          "costUSD": 0.8573208,
+          "contextWindow": 1000000,
+          "maxOutputTokens": 128000,
+          "thinkingTokens": 25029,
+          "canonicalModel": "claude-sonnet-5-5",
+          "provider": "firstParty",
+          "costBasis": "list"
+        }
+      },
+      "verdict": "PASS",
+      "raw_report_sha256": "2f0d4640093f9deb5777c6fae75bfea5682367756f062010ccfda05face5079d",
+      "input_sha256": "8d239845eaecfb4c522975c14a1e067de604d84d489d21e507c088d50af77e45",
+      "response_sha256": "f32ce9e17209d91a8b52be3386a5dd6381581938eadf44d471a7b0c088a59ee0"
+    },
+    {
+      "round": 3,
+      "code_sha": "6ea2cebc8420a1f26b7aff820f7997c0cbba61ad",
+      "base_sha": "3192b424174e5eb977d640cc0418e67c6b1461d1",
+      "exit_code": 0,
+      "is_error": false,
+      "model_usage": {
+        "claude-sonnet-5-5": {
+          "inputTokens": 2,
+          "outputTokens": 5635,
+          "cacheReadInputTokens": 1444,
+          "cacheCreationInputTokens": 73738,
+          "webSearchRequests": 0,
+          "costUSD": 0.3515948,
+          "contextWindow": 1000000,
+          "maxOutputTokens": 128000,
+          "thinkingTokens": 4121,
+          "canonicalModel": "claude-sonnet-5-5",
+          "provider": "firstParty",
+          "costBasis": "list"
+        }
+      },
+      "verdict": "PASS",
+      "raw_report_sha256": "d479968bcb2a9119ec20991c480b11cb78099a8f8221c3ac92d535b9dbed19dd",
+      "input_sha256": "77c4bd0fbecfb87a8380bf354616b9470aa4c180cfe2e1c09b331bfc99640b17",
+      "response_sha256": "3d83bc1c4c20ccf1aeeda3425d6ac41d6bf9a519cf4145bc15ff98c279a945ff"
+    }
+  ],
+  "reviewed_files": {
+    "packages/core/src/state/operator-recovery-spec.test.ts": "93fa1077cc004038b83e7381574911b024858685744f334dbca270454c472b3c",
+    "docs/design/operator-recovery-schema.md": "979335095c5dd482c455f77533bd8b401388860fcfb8c0c973097d8b2c3dc02c",
+    "docs/design/2026-10-27-joint-engineering/execution-gates.json": "489a7388a2ed1705deee7aaff76c65f7acd31a15d6b83d3b7f7c9747a35c97ee",
+    "packages/core/fixtures/broker-recovery/manifest.json": "7552cba0d22bd1263b841e4540dc5d1fc405d94d2325917ccbc3876ecfbc605f"
+  },
+  "validation": {
+    "passed": 315,
+    "skipped": 0,
+    "failed": 0
+  },
+  "packages": 2,
+  "full_observation": {
+    "base_sha": "3192b424174e5eb977d640cc0418e67c6b1461d1",
+    "commands": [
+      {
+        "name": "full-build",
+        "command": [
+          "pnpm",
+          "build"
+        ],
+        "started_at": "2026-10-27T18:01:31.956953+00:00",
+        "ended_at": "2026-10-27T18:01:44.070590+00:00",
+        "exit_code": 0,
+        "log": "full-build.log",
+        "sha256": "d1d19b4d2834150c32600c9485ca53d49d7393493f88c98f3a9999bbf0b31413",
+        "code_sha_at_start": "5a2acd0d6ddd27e8c572d85e2f7cc99d2e895520"
+      },
+      {
+        "name": "knowledge-smoke",
+        "command": [
+          "node",
+          "--input-type=module",
+          "-e",
+          "const m=await import('./packages/knowledge/dist/index.js');for(const k of ['executionContextDigest','assembleExecutionContext']){console.log(k,typeof m[k]);if(typeof m[k]!=='function')process.exitCode=1}"
+        ],
+        "started_at": "2026-10-27T18:01:44.071247+00:00",
+        "ended_at": "2026-10-27T18:01:44.123116+00:00",
+        "exit_code": 0,
+        "log": "knowledge-smoke.log",
+        "sha256": "4b7790f941f45ae346ba930d8ed8841790b6fc809ceeedf6958d84e861671415",
+        "code_sha_at_start": "5a2acd0d6ddd27e8c572d85e2f7cc99d2e895520"
+      },
+      {
+        "name": "test-full",
+        "command": [
+          "pnpm",
+          "test"
+        ],
+        "started_at": "2026-10-27T18:01:44.123473+00:00",
+        "ended_at": "2026-10-27T18:10:11.651311+00:00",
+        "exit_code": 0,
+        "log": "test-full.log",
+        "sha256": "402b78dc78967715b0e4bf6ce113ffe65db5e80cb0e3eeb34f453dad50ff8555",
+        "code_sha_at_start": "5a2acd0d6ddd27e8c572d85e2f7cc99d2e895520"
+      }
+    ],
+    "status": "passed",
+    "packages": 22,
+    "test_counts": {
+      "passed": 6588,
+      "skipped": 5,
+      "failed": 0
+    },
+    "code_sha_at_start": "5a2acd0d6ddd27e8c572d85e2f7cc99d2e895520",
+    "classification": "mixed-working-tree observation",
+    "working_tree_caveat": {
+      "classification": "mixed-working-tree observation, NOT fixed-SHA full snapshot",
+      "code_sha_at_start": "5a2acd0d6ddd27e8c572d85e2f7cc99d2e895520",
+      "core_completed_before_refinement": true,
+      "core_raw_summary": [
+        "packages/core test:  Test Files  62 passed (62)",
+        "packages/core test:       Tests  1295 passed (1295)",
+        "packages/core test:    Start at  11:01:50",
+        "packages/core test:    Duration  27.92s (transform 1.64s, setup 1.58s, collect 7.33s, tests 104.03s, environment 15ms, prepare 4.07s)",
+        "packages/core test: Done"
+      ],
+      "first_refinement_time_bound": {
+        "not_before_script_creation_utc": "2026-10-27T18:06:54.340724+00:00",
+        "exact_first_file_write_time_not_captured": true,
+        "not_after_document_write_utc": "2026-10-27T18:06:54.368614+00:00"
+      },
+      "final_source_mtimes_utc": {
+        "packages/core/src/state/operator-recovery-spec.test.ts": "2026-10-27T18:07:29.139862+00:00",
+        "docs/design/operator-recovery-schema.md": "2026-10-27T18:06:54.368614+00:00"
+      },
+      "final_refinement_commit": "6ea2cebc8420a1f26b7aff820f7997c0cbba61ad",
+      "instruction": "Freeze all worktree files until full command ends. Final targeted checks cover these test/doc refinements; no fixed-start-SHA full-suite claim."
+    },
+    "package_summaries": [
+      {
+        "package": "contracts",
+        "raw_summary": "15 passed (15)"
+      },
+      {
+        "package": "compliance",
+        "raw_summary": "17 passed (17)"
+      },
+      {
+        "package": "github",
+        "raw_summary": "107 passed (107)"
+      },
+      {
+        "package": "knowledge",
+        "raw_summary": "44 passed (44)"
+      },
+      {
+        "package": "neat-eval",
+        "raw_summary": "16 passed (16)"
+      },
+      {
+        "package": "runtime",
+        "raw_summary": "1 passed (1)"
+      },
+      {
+        "package": "protocol",
+        "raw_summary": "477 passed (477)"
+      },
+      {
+        "package": "governance",
+        "raw_summary": "301 passed (301)"
+      },
+      {
+        "package": "knowledge-cloud",
+        "raw_summary": "36 passed (36)"
+      },
+      {
+        "package": "graph",
+        "raw_summary": "257 passed (257)"
+      },
+      {
+        "package": "core",
+        "raw_summary": "1295 passed (1295)"
+      },
+      {
+        "package": "plugins",
+        "raw_summary": "1 passed (1)"
+      },
+      {
+        "package": "hermes-adapter",
+        "raw_summary": "22 passed (22)"
+      },
+      {
+        "package": "skills",
+        "raw_summary": "2 passed (2)"
+      },
+      {
+        "package": "autonomy",
+        "raw_summary": "201 passed (201)"
+      },
+      {
+        "package": "skill-registry",
+        "raw_summary": "37 passed (37)"
+      },
+      {
+        "package": "agents",
+        "raw_summary": "361 passed (361)"
+      },
+      {
+        "package": "config",
+        "raw_summary": "30 passed (30)"
+      },
+      {
+        "package": "loop",
+        "raw_summary": "515 passed (515)"
+      },
+      {
+        "package": "conformance",
+        "raw_summary": "9 passed (9)"
+      },
+      {
+        "package": "supervisor",
+        "raw_summary": "88 passed (88)"
+      },
+      {
+        "package": "cli",
+        "raw_summary": "2756 passed | 5 skipped (2761)"
+      }
+    ],
+    "counting_note": "Anchored package terminal summary parser replaces original broad regex whose \\s crossed newlines; raw run unchanged, no test re-execution."
+  },
+  "limitations": [
+    "model review is not execution evidence",
+    "independent agent authorship is not authenticated principal qualification",
+    "J01.contracts/O03/O06 and runtime gates remain open"
+  ]
+}
