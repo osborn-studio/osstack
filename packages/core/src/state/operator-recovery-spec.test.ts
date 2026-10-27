@@ -5,7 +5,7 @@ import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import Database from 'better-sqlite3';
 import { describe, expect, it } from 'vitest';
-import { schemaSpecDigest, MigrationSpec, parseJointJson, canonicalJointJson, decodeJointContract, RecoveryReceipt, recoverySubjectDigest } from '@osstack/protocol/joint';
+import { schemaSpecDigest, MigrationSpec, parseJointJson, canonicalJointJson, decodeJointContractAs, RecoveryReceipt, recoverySubjectDigest, verifyRecoveryProofEnvelopes } from '@osstack/protocol/joint';
 import { CURRENT_SCHEMA_VERSION } from './migrations.js';
 import { runMigrations } from './db.js';
 const path = new URL('../../fixtures/operator-recovery/', import.meta.url);
@@ -22,7 +22,8 @@ const legacy = (db: Database.Database) => Object.fromEntries(tables(db).filter(t
 describe('J11 bootstrap candidate', () => {
   it('pins actual source version, exact DDL/fixture digests and complete table lineage', () => {
     expect(execFileSync('python3',['-I',fileURLToPath(new URL('../../../protocol/scripts/joint-reference-vectors.py',import.meta.url)),'--check','--recovery-root',fileURLToPath(path)],{encoding:'utf8',timeout:10000})).toContain('raw DDL/catalog hashes verified');
-    const manifest = parseJointJson(read('manifest.json')) as {spec:unknown;schema_spec_digest:string;future_storage_digest:string;source_lineage_tables:string[];source_schema:unknown;target_schema:unknown};
+    const manifest = parseJointJson(read('manifest.json')) as {base_commit:string;spec:unknown;schema_spec_digest:string;future_storage_digest:string;source_lineage_tables:string[];source_schema:unknown;target_schema:unknown};
+    expect(manifest.base_commit).toBe('69859eecfcc84af9d6eff755ed41243ca5f51f95');
     const spec = MigrationSpec.parse(manifest.spec);
     expect(CURRENT_SCHEMA_VERSION).toBe(47);
     expect(spec.source_schema).toBe(CURRENT_SCHEMA_VERSION);
@@ -77,7 +78,7 @@ describe('J11 bootstrap candidate', () => {
       const sql='INSERT INTO operator_recovery_decisions VALUES(?,?,?,?,?,?,?,?,?,?,?)';
       db.prepare(sql).run(...values);
       const stored=db.prepare('SELECT receipt_json FROM operator_recovery_decisions').get() as {receipt_json:string};
-      expect(decodeJointContract(stored.receipt_json)).toEqual(r);
+      expect(decodeJointContractAs('recovery_receipt', stored.receipt_json)).toEqual(r);
       for (const statement of [sql,sql.replace('INSERT','INSERT OR IGNORE'),sql+' ON CONFLICT DO NOTHING',sql.replace('INSERT','INSERT OR REPLACE'),sql.replace('INSERT INTO','REPLACE INTO'),sql+" ON CONFLICT(principal_ref,request_id) DO UPDATE SET post_state='unknown'"]) expect(()=>db.prepare(statement).run(...values)).toThrow();
       expect(()=>db.prepare(sql).run(...args(receipt(3)))).toThrow('revision conflict');
       expect(()=>db.prepare(sql).run(...args(receipt(1)).map((v,i)=>i===9?'{}':v))).toThrow();
@@ -88,7 +89,7 @@ describe('J11 bootstrap candidate', () => {
       expect(()=>db.exec("UPDATE operator_recovery_decisions SET post_state='unknown'")).toThrow('immutable');
       expect(()=>db.exec('DELETE FROM operator_recovery_decisions')).toThrow('immutable');
       // A terminal decision locks the chain, even if a later receipt claims unknown.
-      const terminal = {...receipt(2),decision:'proven_stopped',proof_refs:['proof'],proofs:[{record_ref:'proof',type:'invocation_contained',subject_digest:r.subject_digest,evidence_digest:'a'.repeat(64),producer_ref:'host'}]};
+      const terminal = {...receipt(2),prior_phase:'dispatch_committed',decision:'proven_stopped',proof_refs:['proof'],proofs:[{record_ref:'proof',type:'invocation_contained',subject_digest:r.subject_digest,evidence_digest:'a'.repeat(64),producer_ref:'host'}]};
       const valid=RecoveryReceipt.parse(terminal);
       db.prepare(sql).run(...args(valid).map((v,i)=>i===8?'resolved_stopped':v));
       expect(()=>db.prepare(sql).run(...args(receipt(3)))).toThrow('revision conflict');
@@ -162,6 +163,7 @@ it('rejects typed value mismatches and kills removed ledger equality/home guards
       anchor:`AND json_extract(receipt_json,'$.${field}')`,
       row:values({...base,[field]:typeof base[field]==='number'?Number(base[field])+1:field==='target'?'broker':field==='decision'?'proven_stopped':field==='subject_digest'?'b'.repeat(64):'different'}),
     })),
+    {anchor:"AND json_extract(receipt_json,'$.target_home_id')=",row:values({...base,target_home_id:'other-home'})},
     {anchor:"AND json(subject_json)=",row:values({...base,subject:{...base.subject,action_id:'different'}})},
     {anchor:"AND json_type(receipt_json,'$.if_revision')",row:values({...base,if_revision:'0'})},
     {anchor:"AND json_extract(subject_json,'$.kind') IN",row:values({...base,subject:{kind:'broker_lease',home_id:'fixture-home',broker_id:'b',lease_id:'l'}},{kind:'broker_lease',home_id:'fixture-home',broker_id:'b',lease_id:'l'})},
@@ -180,4 +182,61 @@ it('rejects typed value mismatches and kills removed ledger equality/home guards
     const broker={...base,target:'broker',subject:{kind:'broker_lease',home_id:'fixture-home',broker_id:'b',lease_id:'l'}};
     expect(()=>db.prepare(sql).run(...values(broker,broker.subject))).toThrow();
   } finally {db.close();}
+});
+
+// Executable J12 boundary specification; this does not install a recovery handler.
+it('joins host-loaded proofs using the merged J01 context before persisting a resolving receipt', () => {
+  const fixtures = JSON.parse(readFileSync(new URL('../../../protocol/fixtures/joint/contracts.json', import.meta.url), 'utf8')).fixtures as Array<{id:string;payload:unknown}>;
+  const base = RecoveryReceipt.parse(fixtures.find(f => f.id === 'valid-recovery-attention-subject')!.payload);
+  const spec = JSON.parse(read('manifest.json')) as {schema_spec_digest:string};
+  const proof = {record_ref:'host-proof',type:'invocation_contained' as const,subject_digest:base.subject_digest,evidence_digest:'a'.repeat(64),producer_ref:'host'};
+  const receipt = RecoveryReceipt.parse({...base,if_revision:0,prior_phase:'dispatch_committed',decision:'proven_stopped',schema_spec_digest:spec.schema_spec_digest,proof_refs:[proof.record_ref],proofs:[proof]});
+  const envelope = {kind:'recovery_proof',schema_version:1,subject:receipt.subject,proof,record_ref:proof.record_ref,authorization_ref:'authenticated-host-grant',
+    owner_generation:receipt.owner_generation,binding_generation:receipt.binding_generation,support_profile_digest:receipt.support_profile_digest,
+    prior_phase:receipt.prior_phase,schema_spec_digest:receipt.schema_spec_digest,recovery_build_digest:receipt.recovery_build_digest,observed_at_ms:receipt.observed_at_ms};
+  const db = fixture();
+  try {
+    db.exec(ddl);
+    const persist = (loaded: unknown[]) => {
+      const verified = verifyRecoveryProofEnvelopes(receipt,loaded);
+      db.prepare('INSERT INTO operator_recovery_decisions VALUES(?,?,?,?,?,?,?,?,?,?,?)').run(
+        verified.operator_ref,verified.request_id,'a'.repeat(64),verified.subject_digest,canonicalJointJson(verified.subject),verified.if_revision,
+        verified.owner_generation,verified.decision,'resolved_stopped',canonicalJointJson(verified),verified.observed_at_ms);
+    };
+    for (const patch of [
+      {owner_generation:receipt.owner_generation+1},{binding_generation:17},{support_profile_digest:'f'.repeat(64)},
+      {prior_phase:'reserved'},{schema_spec_digest:'f'.repeat(64)},{recovery_build_digest:'f'.repeat(64)},
+    ]) expect(() => persist([{...envelope,...patch}])).toThrow('PROOF_CONTEXT_MISMATCH');
+    expect(() => persist([{...envelope,observed_at_ms:receipt.observed_at_ms+1}])).toThrow('PROOF_AFTER_RECEIPT');
+    expect(() => persist([])).toThrow('PROOF_REFERENCE_MISMATCH');
+    expect(() => persist([envelope,envelope])).toThrow('PROOF_REFERENCE_MISMATCH');
+    expect(() => decodeJointContractAs('recovery_request',canonicalJointJson(receipt))).toThrow('JOINT_KIND_MISMATCH');
+    expect(db.prepare('SELECT COUNT(*) AS n FROM operator_recovery_decisions').get()).toEqual({n:0});
+    const otherSubject = {...receipt.subject,home_id:'other-home'};
+    expect(() => persist([{...envelope,subject:otherSubject,proof:{...proof,subject_digest:recoverySubjectDigest(otherSubject)}}])).toThrow('PROOF_CONTENT_MISMATCH');
+    persist([envelope]);
+    const stored=db.prepare('SELECT receipt_json FROM operator_recovery_decisions').get() as {receipt_json:string};
+    expect(decodeJointContractAs('recovery_receipt',stored.receipt_json)).toEqual(receipt);
+  } finally {db.close();}
+});
+
+it('enforces the local-home phase/decision matrix in SQL independently of the TypeScript parser', () => {
+  const fixtures=JSON.parse(readFileSync(new URL('../../../protocol/fixtures/joint/contracts.json',import.meta.url),'utf8')).fixtures as Array<{id:string;payload:Record<string,unknown>}>;
+  const base=RecoveryReceipt.parse({...fixtures.find(f=>f.id==='valid-recovery-attention-subject')!.payload,if_revision:0});
+  const post={preserve_unknown:'unknown',proven_not_started:'cancelled_before_dispatch',proven_stopped:'resolved_stopped',applied_observed:'applied_observed'};
+  for (const phase of ['reserved','dispatch_committed','legacy_unknown','broker_unknown','invalid']) {
+    for (const resolution of ['none','abandoned_unknown']) {
+      for (const decision of ['preserve_unknown','proven_not_started','proven_stopped','applied_observed'] as const) {
+        const db=new Database(':memory:');
+        try {
+          db.exec(ddl);
+          const receipt={...base,prior_phase:phase,prior_resolution:resolution,decision,binding_generation:null,support_profile_digest:null};
+          const insert=()=>db.prepare('INSERT INTO operator_recovery_decisions VALUES(?,?,?,?,?,?,?,?,?,?,?)').run(base.operator_ref,base.request_id,'a'.repeat(64),base.subject_digest,canonicalJointJson(base.subject),0,base.owner_generation,decision,post[decision],canonicalJointJson(receipt),base.observed_at_ms);
+          const allowed=phase==='reserved' ? decision==='preserve_unknown'||(decision==='proven_not_started'&&resolution==='none') : phase==='dispatch_committed' ? decision!=='proven_not_started' : phase==='legacy_unknown'&&decision==='preserve_unknown';
+          if(allowed) expect(insert,`${phase}/${resolution}/${decision}`).not.toThrow();
+          else expect(insert,`${phase}/${resolution}/${decision}`).toThrow();
+        } finally {db.close();}
+      }
+    }
+  }
 });

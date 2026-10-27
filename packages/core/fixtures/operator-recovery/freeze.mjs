@@ -7,6 +7,11 @@ import { runMigrations } from '../../dist/state/db.js';
 import { CURRENT_SCHEMA_VERSION } from '../../dist/state/migrations.js';
 import { canonicalJointJson, schemaSpecDigest } from '@osstack/protocol/joint';
 const root = new URL('./', import.meta.url);
+const base = process.argv[2];
+if (!base || !/^[a-f0-9]{40}$/.test(base)) throw Error('usage: freeze.mjs <reviewed-base-commit>');
+execFileSync('git', ['merge-base', '--is-ancestor', base, 'HEAD']);
+// The compiled migration runner must come from this reviewed source lineage.
+execFileSync('git', ['diff', '--exit-code', base, '--', 'packages/core/src/state/migrations.ts', 'packages/core/src/state/db.ts']);
 const sha = bytes => createHash('sha256').update(bytes).digest('hex');
 const fileSha = name => sha(readFileSync(new URL(name, root)));
 const db = new Database(':memory:');
@@ -20,6 +25,6 @@ try {
   db.exec(readFileSync(new URL('bootstrap.sql', root), 'utf8'));
   const targetCatalog = catalog();
   const spec = {kind:'migration_spec',schema_version:1,schema_change_id:'operator-recovery-bootstrap-v1',source_schema:CURRENT_SCHEMA_VERSION,target_schema:CURRENT_SCHEMA_VERSION+1,ddl_digest:fileSha('bootstrap.sql'),fixture_digest:fileSha('source-hold.sql'),source_schema_digest:sha(canonicalJointJson(sourceCatalog)),target_schema_digest:sha(canonicalJointJson(targetCatalog)),expected_lineage_tables:tables()};
-  const manifest = {status:'candidate_spec_only',base_commit:execFileSync('git',['rev-parse','origin/main'],{encoding:'utf8'}).trim(),spec,schema_spec_digest:schemaSpecDigest(spec),source_lineage_tables:sourceTables,source_schema:sourceCatalog,target_schema:targetCatalog,future_storage_digest:fileSha('future-storage.sql')};
+  const manifest = {status:'candidate_spec_only',base_commit:base,spec,schema_spec_digest:schemaSpecDigest(spec),source_lineage_tables:sourceTables,source_schema:sourceCatalog,target_schema:targetCatalog,future_storage_digest:fileSha('future-storage.sql')};
   writeFileSync(new URL('manifest.json',root), JSON.stringify(manifest,null,2)+'\n');
 } finally { db.close(); }

@@ -34,6 +34,13 @@ CREATE TABLE operator_recovery_decisions (
     AND json_extract(receipt_json,'$.schema_version')=1
     AND json_extract(receipt_json,'$.target')='home'
     AND json_extract(subject_json,'$.kind') IN ('effect','attention_action')
+    AND json_type(subject_json,'$.home_id')='text'
+    AND json_type(receipt_json,'$.target_home_id')='text'
+    AND json_extract(receipt_json,'$.target_home_id')=json_extract(subject_json,'$.home_id')
+    AND json_extract(receipt_json,'$.prior_phase') IN ('reserved','dispatch_committed','legacy_unknown')
+    AND json_extract(receipt_json,'$.prior_resolution') IN ('none','abandoned_unknown')
+    AND (decision='preserve_unknown' OR (decision='proven_not_started' AND json_extract(receipt_json,'$.prior_phase')='reserved' AND json_extract(receipt_json,'$.prior_resolution')='none') OR (decision IN ('proven_stopped','applied_observed') AND json_extract(receipt_json,'$.prior_phase')='dispatch_committed'))
+    AND (json_extract(receipt_json,'$.prior_phase')<>'legacy_unknown' OR (json_extract(subject_json,'$.kind')='attention_action' AND json_type(receipt_json,'$.binding_generation')='null' AND json_type(receipt_json,'$.support_profile_digest')='null'))
     AND json(subject_json)=json_extract(receipt_json,'$.subject')
     AND json_extract(receipt_json,'$.subject_digest')=subject_digest
     AND json_extract(receipt_json,'$.if_revision')=prior_revision
