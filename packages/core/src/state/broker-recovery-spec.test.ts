@@ -93,6 +93,61 @@ function changedReceipt(path: string, value: unknown, stopped = true) {
 
 describe('JP-17a dedicated broker storage candidate', () => {
 
+  it.each(['ON','OFF'])('protects existing lease identity across conflict strategies with foreign_keys=%s', foreignKeys => {
+    for(const stopped of [false,true]) {
+      const db=fixture();try {
+        if(stopped)insert(db,receipt(0,true));db.pragma(`foreign_keys=${foreignKeys}`);
+        const before=lease(db);const history=decisions(db);
+        const values=" INTO broker_leases SELECT lease_id,broker_id,home_id,scope_id,tenant_id,'different-resource',invocation_ref,effect_id,grant_generation,'held_orphan',0 FROM broker_leases WHERE lease_id='lease-a'";
+        for(const prefix of ['INSERT','INSERT OR IGNORE','INSERT OR REPLACE','REPLACE'])sqlReject(()=>db.exec(prefix+values));
+        for(const suffix of [' ON CONFLICT DO NOTHING',' ON CONFLICT(lease_id) DO UPDATE SET resource_key=excluded.resource_key'])sqlReject(()=>db.exec('INSERT'+values+suffix));
+        expect(lease(db)).toEqual(before);expect(decisions(db)).toEqual(history);
+      }finally{db.close();}
+    }
+  });
+  it.each([false,true])('kills existing-id REPLACE guard mutant with stopped=%s', stopped => {
+    const sql=read('schema.sql');const predicate='EXISTS(SELECT 1 FROM broker_leases WHERE lease_id=NEW.lease_id)';expect(sql.split(predicate)).toHaveLength(2);
+    const db=fixture();const mutant=fixture(sql.replace(predicate,'0'));
+    try {
+      if(stopped){insert(db,receipt(0,true));insert(mutant,receipt(0,true));}
+      const statement="INSERT OR REPLACE INTO broker_leases SELECT lease_id,broker_id,home_id,scope_id,tenant_id,'different-resource',invocation_ref,effect_id,grant_generation,'held_orphan',0 FROM broker_leases WHERE lease_id='lease-a'";
+      const before=lease(db);sqlReject(()=>db.exec(statement));expect(lease(db)).toEqual(before);
+      mutant.exec(statement);expect(lease(mutant)).toMatchObject({resource_key:'different-resource',state:'held_orphan',recovery_revision:0});
+    }finally{db.close();mutant.close();}
+  });
+  it.each(['proofs','proof_refs'])('rejects and mutation-kills stop %s cardinality', field => {
+    const r=receipt(0,true);const items=field==='proofs'?r.proofs:r.proof_refs;
+    const parameters=changedReceipt(field,[...items,...items]);const predicate=`json_array_length(receipt_json,'$.${field}')=1`;
+    const sql=read('schema.sql');expect(sql.split(predicate)).toHaveLength(2);const db=fixture();const mutant=fixture(sql.replace(predicate,'1'));
+    try {const before=lease(db);sqlReject(()=>db.prepare(insertSql).run(...parameters));expect(lease(db)).toEqual(before);expect(decisions(db)).toEqual([]);
+      expect(mutant.prepare(insertSql).run(...parameters).changes).toBe(1);expect(lease(mutant).state).toBe('resolved_stopped');
+    }finally{db.close();mutant.close();}
+  });
+  it.each([
+    ['schema_version','$.schema_version','1.0'],['if_revision','$.if_revision','"0"'],
+    ['owner_generation','$.owner_generation','"2"'],['actual_target_schema','$.actual_target_schema','1.0'],
+    ['proofs.0.broker_identity.schema','$.proofs[0].broker_identity.schema','1.0'],
+    ['proofs.0.broker_identity.owner_generation','$.proofs[0].broker_identity.owner_generation','2.0'],
+  ])('rejects and mutation-kills receipt integer type %s', (path,jsonPath,rawValue) => {
+    const parameters=changedReceipt(path,'RAW_NUMBER');parameters[8]=(parameters[8] as string).replace('"RAW_NUMBER"',rawValue);
+    const predicate=`json_type(receipt_json,'${jsonPath}')='integer'`;const sql=read('schema.sql');expect(sql.split(predicate)).toHaveLength(2);
+    const db=fixture();const mutant=fixture(sql.replace(predicate,'1'));
+    try {const before=lease(db);sqlReject(()=>db.prepare(insertSql).run(...parameters));expect(lease(db)).toEqual(before);expect(decisions(db)).toEqual([]);
+      expect(mutant.prepare(insertSql).run(...parameters).changes).toBe(1);expect(lease(mutant).state).toBe('resolved_stopped');
+    }finally{db.close();mutant.close();}
+  });
+  it('rejects NULL generations and identity mutation without relying on foreign keys', () => {
+    const db=fixture();try {
+      db.pragma('foreign_keys=OFF');const before=lease(db);const owner=db.prepare('SELECT * FROM broker_identity').get();
+      sqlReject(()=>db.exec('UPDATE broker_identity SET owner_generation=NULL'));
+      sqlReject(()=>db.exec("UPDATE broker_identity SET broker_id='other',owner_generation=3"));
+      sqlReject(()=>db.exec("INSERT INTO broker_leases SELECT 'null-lease',broker_id,home_id,scope_id,tenant_id,'null-resource',invocation_ref,effect_id,NULL,'held_orphan',0 FROM broker_leases"));
+      const parameters=args(receipt(0,true));sqlReject(()=>db.prepare(insertSql).run(...parameters.slice(0,6),null,...parameters.slice(7)));
+      expect(db.prepare('SELECT * FROM broker_identity').get()).toEqual(owner);expect(lease(db)).toEqual(before);expect(decisions(db)).toEqual([]);
+    }finally{db.close();}
+  });
+
+
   it.each(receiptChecks)('rejects and mutation-kills isolated receipt predicate %s (%s)', (path,value,predicate) => {
     const parameters=changedReceipt(path,value);const sql=read('schema.sql');
     expect(sql.split(predicate)).toHaveLength(2);
@@ -172,6 +227,7 @@ describe('JP-17a dedicated broker storage candidate', () => {
     const gates=JSON.parse(readFileSync(new URL('../../../../docs/design/2026-10-27-joint-engineering/execution-gates.json',import.meta.url),'utf8')).gates as Array<{id:string;requires:string[]}>;
     expect(manifest.dependencies.schema_qualification_requires).toEqual(gates.find(g=>g.id==='J17.schema_spec')?.requires);
     expect(manifest.dependencies.recovery_qualification_requires).toEqual(gates.find(g=>g.id==='J17.recovery')?.requires);
+    expect(manifest.dependencies.runtime_storage_requires).toEqual(gates.find(g=>g.id==='J17.scoped')?.requires);
     expect(manifest.dependencies.recovery_requires_runtime_controller).toBe(false);
     expect(manifest.qualification.J11_scoped).toBe('not_asserted');expect(manifest.qualification.J17_schema_spec).toBe('not_asserted');
   });

@@ -36,7 +36,7 @@ def generate():
         storage=dict(deployment='dedicated_sqlite', decision_status='proposed_for_adoption', namespace='osstack.resource-broker', allocation='not_reserved', deployment_qualified=False, runtime_registered=False, actual_deployment_path=None),
         spec=spec, schema_spec_digest=sha('osstack.joint.schema-spec.v1\n'+canonical(digest_body)),
         source_catalog=[], target_catalog_file='catalog.json', qualification=dict(J11_scoped='not_asserted', J17_schema_spec='not_asserted', J17_recovery='not_run', file_backed_crash_recovery='not_run', authenticated_operator='not_run'),
-        dependencies=dict(candidate_material_requires=['joint recovery contracts'], schema_qualification_requires=['J11.scoped'], recovery_qualification_requires=['J17.schema_spec','J12.scoped'], runtime_storage_requires=['J17.recovery'], recovery_requires_runtime_controller=False),
+        dependencies=dict(candidate_material_requires=['joint recovery contracts'], schema_qualification_requires=['J11.scoped'], recovery_qualification_requires=['J17.schema_spec','J12.scoped'], runtime_storage_requires=['J14.scoped','J12.scoped','J17.recovery'], recovery_requires_runtime_controller=False),
         oracle_prefreeze=dict(path='oracle-freeze.json', claim='prospective_criteria_only_not_candidate_qualification', frozen_at='2026-10-27T16:16:01Z', sha256='51b34e498292099fa706ecb1f8fe0eccf5f505e715fcae9c880607ad77670c79', identity_independence_certified=False),
         paths=['packages/core/fixtures/broker-recovery/**','packages/core/src/state/broker-recovery-spec.test.ts','docs/design/broker-recovery-schema.md','docs/implementation/joint-broker-spec/**'])
     return {'catalog.json': catalog, 'manifest.json': manifest}

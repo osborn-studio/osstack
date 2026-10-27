@@ -48,6 +48,8 @@
       "J12.scoped"
     ],
     "runtime_storage_requires": [
+      "J14.scoped",
+      "J12.scoped",
       "J17.recovery"
     ],
     "recovery_requires_runtime_controller": false
