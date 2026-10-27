@@ -18,7 +18,8 @@
   "dependencies": {
     "@osstack/core": "workspace:*",
     "js-yaml": "^4.3.0",
-    "zod": "^3.25.76"
+    "zod": "^3.25.76",
+    "@osstack/protocol": "workspace:*"
   },
   "devDependencies": {
     "@types/js-yaml": "^4.0.9",
@@ -34,5 +35,18 @@
   },
   "engines": {
     "node": ">=20"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./source-snapshot": {
+      "types": "./dist/source-snapshot.d.ts",
+      "import": "./dist/source-snapshot.js",
+      "default": "./dist/source-snapshot.js"
+    },
+    "./*": "./*"
   }
 }

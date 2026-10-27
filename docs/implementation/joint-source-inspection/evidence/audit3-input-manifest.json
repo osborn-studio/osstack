@@ -1,0 +1,12 @@
+{
+  "/Users/osborn/Developer/CodeX/.worktrees/osstack/joint-source-snapshot/packages/skill-registry/src/source-snapshot.ts": "23ec6486263be2eaa9fa52e58b3038b022961560f6cd89660deab8ba31e5f923",
+  "/Users/osborn/Developer/CodeX/.worktrees/osstack/joint-source-snapshot/packages/skill-registry/src/source-snapshot.test.ts": "bc5390c393acce370b45693af890308fb4a94144af785087c962d4b466467d2a",
+  "/Users/osborn/Developer/CodeX/.worktrees/osstack/joint-source-snapshot/packages/skill-registry/package.json": "124e47fa09d7a81e0f08660ef0943cbbffd8ee627a34862527cbfd8999381ab3",
+  "/Users/osborn/Developer/CodeX/.worktrees/osstack/joint-source-snapshot/packages/protocol/src/joint-json.ts": "74818a6e5f142f7560752cc0b0179b88d9af6069d420d8a137442e8484eb1036",
+  "/Users/osborn/Developer/CodeX/.worktrees/osstack/joint-source-snapshot/packages/protocol/fixtures/joint/digest-catalog.json": "0ce88b493aff009278fb5b90ad9cf04bc2ad0931cb8025025e21574adb6ab4db",
+  "/Users/osborn/Developer/CodeX/.worktrees/osstack/joint-source-snapshot/packages/protocol/src/joint-evidence.ts": "364593f6bfdc1d65f7e4c09b7f63b7211ce9305961c5660ae985aad4bdf4a1cb",
+  "/Users/osborn/Developer/CodeX/.worktrees/osstack/joint-source-snapshot/packages/protocol/src/joint-primitives.ts": "d0eeb917ea6ef91ed39943706ab78c9be84dc81ba89303f5e98d01cf89adc139",
+  "/Users/osborn/Developer/CodeX/.worktrees/osstack/joint-source-snapshot/docs/implementation/joint-source-inspection/README.md": "47d97016a5f02ff036e67c2f5485eadcfae811e48f4cc769b1aafe150b109e53",
+  "/Users/osborn/Developer/CodeX/.worktrees/osstack/joint-delivery/docs/design/2026-10-27-joint-engineering/execution.md": "4df50c957eb15f49845b4f2e52caa1e7393ee97126177bef4c103ad379472143",
+  "/Users/osborn/Developer/CodeX/.worktrees/osstack/joint-delivery/docs/design/2026-10-27-joint-engineering/execution-ledger.json": "2b3d55bec6e8494296a2a823ca98fc0a37dab403f2e1177779290d5a46fa35db"
+}
