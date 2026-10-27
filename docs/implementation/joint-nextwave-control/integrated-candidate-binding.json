@@ -73,5 +73,13 @@
   ],
   "control_audited_sha": "4aaef732",
   "validation": "validation.json",
-  "qualification": "Design and offline specification checks only; no runtime gate passes."
+  "qualification": "Design and offline specification checks only; no runtime gate passes.",
+  "supplemental_audit": {
+    "scope": "schema_spec_digest catalog prose only; no runtime changes",
+    "binding": "registry-closure-binding.json.gz",
+    "candidate_sha": "a679485f04272b5c8003063af2011902d32846e2",
+    "verdict": "PASS",
+    "model": "claude-sonnet-5-5",
+    "affected_validation": "241 Python tests passed; python-registry.log.gz"
+  }
 }

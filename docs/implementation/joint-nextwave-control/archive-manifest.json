@@ -263,6 +263,54 @@
       "raw_sha256": "e02264e71e69ad3d9a49d9cc2798770ec3707606525538b4b7777ec9d94de4a6",
       "archive_sha256": "d5218029101adcf3db49017b6927892bd1903c096429d919bab96b00e5558052",
       "raw_bytes": 165151
+    },
+    {
+      "file": "audit-registry-closure.py.gz",
+      "raw_sha256": "82b55a89bb51e52381810a0042fc8310697ec4dc25c07e1db8fd7722f64b888c",
+      "archive_sha256": "6266bd2bf02af7d1ba4dd9f4fc2e2ac5e81fca2c4aa51862f37acf8d7bc2dc25",
+      "raw_bytes": 2544
+    },
+    {
+      "file": "registry-closure-input.txt.gz",
+      "raw_sha256": "114fe5b04f4c9fcad20320e24f3a60b5ac9ffa5d9e7e9f407d74306824815e24",
+      "archive_sha256": "a7867642b7f646e16b4dcd0369605dff118df615690d373bc581c52c04d19663",
+      "raw_bytes": 30380
+    },
+    {
+      "file": "registry-closure-response.json.gz",
+      "raw_sha256": "b8c782c92a43fb035cdbd40bd030e694fbae3a0409a6cce7b16e50653880658a",
+      "archive_sha256": "a19a2be5164b125f7f4a801134a1ec1eb0f6fe6b0962fe76257d4904766e08c2",
+      "raw_bytes": 3816
+    },
+    {
+      "file": "registry-closure-stderr.txt.gz",
+      "raw_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "archive_sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+      "raw_bytes": 0
+    },
+    {
+      "file": "registry-closure-report.md.gz",
+      "raw_sha256": "5a3dc61b936b776af46ea0d14f711c7a939d67d68b3eba85da462cfeacb878a0",
+      "archive_sha256": "941942f95ed94b83e14fb605676068ddc91214dfe3bcc74542aa542007b3162d",
+      "raw_bytes": 1992
+    },
+    {
+      "file": "registry-closure-binding.json.gz",
+      "raw_sha256": "cbf7a3c9b335953ce6369aabc613c21dda10129a2acbd74ae6df3faac8a8599d",
+      "archive_sha256": "4b96a0105003bd53c1febf3fc2d3f9a121effa2ca6b8ca98065192dc96db5b9f",
+      "raw_bytes": 832
+    },
+    {
+      "file": "python-registry.log.gz",
+      "raw_sha256": "c0a24a7705318004eda5b6eab7f7d9a65c3bfea52b705c2eb044091b11ee927c",
+      "archive_sha256": "a76ebb3fce07281df86cf6a9faf22c9aea76a40753ce07779d65e1f7a46e92f7",
+      "raw_bytes": 341
+    },
+    {
+      "file": "pr283-published.json.gz",
+      "raw_sha256": "9919d076a7eb2a5c85a516d02aeb504e583f4db56623950437161fe9a0062f91",
+      "archive_sha256": "959b85aa3f63add05d91c55f5e0a8d9f8977b3784d534e56912709616f0dcdfc",
+      "raw_bytes": 3128
     }
   ],
   "scope": "original management audits and corrective evidence; product/gate audits separate"

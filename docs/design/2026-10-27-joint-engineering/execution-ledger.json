@@ -2464,6 +2464,17 @@
     ],
     "shared_owner": "root: execution ledger, execution.md, project-operations.md and PR publishing",
     "full_regression_queue": "root single queue",
-    "qualification": "all new gates specified_not_run; broker deployment not qualified"
+    "qualification": "all new gates specified_not_run; broker deployment not qualified",
+    "delivery_observations": [
+      {
+        "pr": 283,
+        "branch": "codex/joint-nextwave-control",
+        "observed_head": "f3a56a0ad48b496a5230b5c20f47ca8feb41ff48",
+        "status": "ready_with_ci_pending_at_observation",
+        "observation": "../../implementation/joint-nextwave-control/pr283-published.json.gz",
+        "scope": "N0 layered design and #279 closeout; latest head/CI must be queried before approval",
+        "product_gate_passed": false
+      }
+    ]
   }
 }
