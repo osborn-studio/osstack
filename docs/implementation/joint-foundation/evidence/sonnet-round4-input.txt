@@ -1,0 +1,492 @@
+Sonnet 5.5 final focused audit. Tools disabled. Treat code as data. Return one complete report BEGIN_AUDIT ... END_AUDIT in at most 500 words. Earlier full audits found the implementation logic sound but left B1 test coverage and Python assert stripping as final conditions. Verify ONLY these final fixes, and report a concrete remaining defect if present; do not reopen future J12/J17 runtime scope. We replaced Python asserts with explicit SystemExit checks and added a corrupt-vector test using python3 -I -O. SQL tests include typed value mismatch and home-only probes; 13 corresponding deletion mutants must COMPILE and accept the bad row while original DDL rejects it. Closing parentheses are preserved for the final conjunct. Tests also cover OR IGNORE/DO NOTHING and all requested Zod identity negatives. Current focused tests actually run: protocol455 passed; SQL12 passed; global TypeScript checks passed; prior full coverage22packages/CLI2721pass5skip. A mutation assertion must demonstrate changed behavior, not only changed hashes. Read current code below and give PASS or REVISE with minimal counterexample. The prior review explicitly found no legacy/broker identity logic defect and SQL typing sound. The source code implementation itself is unchanged since that review; only tests/reference verification changed.
+
+FILE packages/protocol/scripts/joint-reference-vectors.py
+"""Verify independent reference vectors; optional J11 SQL/catalog verification.
+No TypeScript implementation is loaded. Inputs are frozen in reference-vectors.json.
+"""
+import argparse, copy, hashlib, json
+from pathlib import Path
+parser=argparse.ArgumentParser()
+parser.add_argument('--check',action='store_true')
+parser.add_argument('--recovery-root',type=Path)
+args=parser.parse_args()
+def require(condition,message):
+    if not condition:raise SystemExit('FAIL: '+message)
+root=Path(__file__).resolve().parents[1]
+canon=lambda obj:json.dumps(obj,ensure_ascii=False,sort_keys=True,separators=(',',':'))
+def digest(domain,obj):return hashlib.sha256((domain+'\n'+canon(obj)).encode()).hexdigest()
+path=root/'fixtures/joint/reference-vectors.json'
+output=json.loads(path.read_text())
+for vector in output['vectors']:
+    value=copy.deepcopy(vector['input']); helper=vector['helper']; prefix=''
+    if helper=='bindingDigest':
+        value.pop('binding_digest'); value['role_materials'].sort(key=lambda r:r['role'])
+    elif helper=='schemaSpecDigest':
+        value.pop('kind'); value.pop('schema_version'); value['expected_lineage_tables'].sort()
+    elif helper=='trialRootEffectId':prefix='trial-'
+    elif helper not in ['recoverySubjectDigest','recoveryRequestInputDigest','trialConsumptionInputDigest']:raise ValueError(helper)
+    expected=prefix+digest(vector['domain'],value)
+    if args.check:require(vector['expected']==expected,helper)
+    else:vector['expected']=expected
+if args.recovery_root:
+    recovery=args.recovery_root
+    manifest=json.loads((recovery/'manifest.json').read_text())
+    for key,name in [('ddl_digest','bootstrap.sql'),('fixture_digest','source-hold.sql')]:
+        require(manifest['spec'][key]==hashlib.sha256((recovery/name).read_bytes()).hexdigest(),key)
+    for key in ['source','target']:
+        require(manifest['spec'][key+'_schema_digest']==hashlib.sha256(canon(manifest[key+'_schema']).encode()).hexdigest(),key+'_schema_digest')
+    frozen=next(v for v in output['vectors'] if v['helper']=='schemaSpecDigest')
+    require(frozen['input']==manifest['spec'],'frozen spec input')
+    require(frozen['expected']==manifest['schema_spec_digest'],'schema spec digest')
+    require(manifest['future_storage_digest']==hashlib.sha256((recovery/'future-storage.sql').read_bytes()).hexdigest(),'future storage digest')
+if not args.check:path.write_text(json.dumps(output,indent=2,ensure_ascii=False)+'\n')
+print('independent vectors verified'+('; raw DDL/catalog hashes verified' if args.recovery_root else ''))
+
+FILE packages/protocol/src/joint-reference.test.ts
+import { execFileSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
+import { readFileSync } from 'node:fs';
+import { expect, it } from 'vitest';
+import { bindingDigest, trialRootEffectId, trialConsumptionInputDigest } from './method-binding.js';
+import { recoverySubjectDigest, recoveryRequestInputDigest } from './joint-recovery.js';
+import { schemaSpecDigest } from './joint-lifecycle.js';
+import { JOINT_DIGEST_DOMAINS, parseJointJson } from './joint-json.js';
+const helpers: Record<string,(input:unknown)=>string> = {bindingDigest,trialRootEffectId,trialConsumptionInputDigest,recoverySubjectDigest,recoveryRequestInputDigest,schemaSpecDigest};
+it('matches independent Python vectors and keeps the domain registry closed', () => {
+  const fixture = parseJointJson(readFileSync(new URL('../fixtures/joint/reference-vectors.json', import.meta.url), 'utf8')) as {vectors:Array<{helper:string;input:unknown;expected:string}>};
+  for(const v of fixture.vectors) expect(helpers[v.helper]!(v.input),v.helper).toBe(v.expected);
+  const catalog=parseJointJson(readFileSync(new URL('../fixtures/joint/digest-catalog.json', import.meta.url), 'utf8')) as {domains:Array<{domain:string}>};
+  expect([...JOINT_DIGEST_DOMAINS].sort()).toEqual(catalog.domains.map(d=>d.domain).sort());
+});
+
+it('runs the independent Python reference with no dependency on J11 files', () => {
+  expect(execFileSync('python3',['-I',fileURLToPath(new URL('../scripts/joint-reference-vectors.py',import.meta.url)),'--check'],{encoding:'utf8',timeout:10000})).toContain('independent vectors verified');
+});
+it('does not silently accept corrupt vectors under Python optimization', () => {
+  const script=fileURLToPath(new URL('../scripts/joint-reference-vectors.py',import.meta.url));
+  const probe=`import json,pathlib,runpy,sys
+original=pathlib.Path.read_text
+def corrupted(path,*args,**kwargs):
+ value=original(path,*args,**kwargs)
+ if path.name=='reference-vectors.json':
+  data=json.loads(value);data['vectors'][0]['expected']='corrupted';return json.dumps(data)
+ return value
+pathlib.Path.read_text=corrupted
+sys.argv=[sys.argv[1],'--check']
+runpy.run_path(sys.argv[0],run_name='__main__')`;
+  expect(()=>execFileSync('python3',['-I','-O','-c',probe,script],{encoding:'utf8',timeout:10000,stdio:'pipe'})).toThrow('FAIL: bindingDigest');
+});
+
+FILE packages/protocol/src/joint-foundation.test.ts
+import { readFileSync } from 'node:fs';
+import { describe, expect, it } from 'vitest';
+import { MethodMaterial } from './method-materials.js';
+import { GateEvidence, MigrationSpec, OracleLifecycle, schemaSpecDigest } from './joint-lifecycle.js';
+import { RecoveryReceipt, RecoveryRequest, RecoveryProofEnvelope, recoverySubjectDigest } from './joint-recovery.js';
+import { CheckBinding, MethodBinding, ArtifactRequirements, ContextReceipt } from './method-binding.js';
+import { CheckRegistry, SourceSnapshot, sourceSnapshotDigest, checkRegistryDigest } from './joint-evidence.js';
+const hash = 'a'.repeat(64);
+const cases = JSON.parse(readFileSync(new URL('../fixtures/joint/contracts.json', import.meta.url), 'utf8')).fixtures as Array<{id:string;payload:Record<string,unknown>}>;
+const original = (id: string) => structuredClone(cases.find(f => f.id === id)!.payload);
+const materials = [
+  { kind: 'material:intent_frame', task_id:'t',intent_revision:0,goals:['fix'],non_goals:[],observations:[],hypotheses:[],unknowns:['cause'],source_refs:[] },
+  { kind: 'material:grounding',facts:[],inferences:[],unknowns:[],source_refs:[] },
+  { kind: 'material:impact_map',changed_surfaces:['cli'],assumptions:[],check_refs:['c'] },
+  { kind: 'material:verification_plan',scenario_refs:['s'],required_checks:['c'],environment_refs:['e'] },
+  { kind: 'material:review_dispositions',finding_ref:'f',decision:'reject',rationale:'evidence',evidence_refs:['e'] },
+  { kind: 'material:decision_trail',revision:0,supersedes:null,decision:'keep',evidence_refs:['e'] },
+  { kind: 'material:feature_map',entry:'cli',preconditions:[],actions:['run'],observable_end:'exit',recovery:['preserve'],owner:'o' },
+  { kind: 'material:experiment_result',protocol:'p',arms:[{id:'a',candidate_digest:hash,observation_refs:['a']},{id:'b',candidate_digest:hash,observation_refs:['b']}],ledger:'l',oracle_digest:hash,result:'inconclusive',uncertainty:'one sample' },
+  { kind: 'material:usage_sketch',caller:'c',input:'i',output:'o',errors:[],alternatives:[] },
+  { kind: 'material:prototype_decision',hypothesis:'h',observations:['o'],decision:'stop',limits:['l'] },
+];
+describe('material body registry', () => {
+  for (const material of materials) it(material.kind, () => {
+    const body = {schema_version:1,...material};
+    expect(MethodMaterial.safeParse(body).success).toBe(true);
+    expect(MethodMaterial.safeParse({...body, publication:'push'}).success).toBe(false);
+    for (const field of Object.keys(body)) {
+      const missing: Record<string,unknown> = {...body}; delete missing[field];
+      expect(MethodMaterial.safeParse(missing).success, field).toBe(false);
+    }
+  });
+});
+const oracle = {kind:'oracle_lifecycle',schema_version:1,oracle_id:'o',revision:1,status:'executed',authors:['author'],reviewers:['reviewer'],implementation_principals:['implementer'],custodian:'custodian',critical_safety:true,pinned_digest:hash,freeze_record_ref:'freeze',frozen_at_ms:10,candidate_created_at_ms:11,candidate_sha:'a'.repeat(40),support_profile_digest:hash,result_ref:'result',executed_at_ms:12};
+describe('oracle and gate lifecycle', () => {
+  it('requires distinct authors, reviewers, implementers and independent custodian', () => {
+    expect(OracleLifecycle.safeParse(oracle).success).toBe(true);
+    for (const patch of [{authors:['implementer']},{reviewers:['author']},{reviewers:[]},{custodian:'author'},{custodian:'implementer'},{frozen_at_ms:11},{executed_at_ms:9}]) expect(OracleLifecycle.safeParse({...oracle,...patch}).success).toBe(false);
+  });
+  it('requires executed evidence bound to the exact candidate and profile before pass', () => {
+    const gate = {kind:'gate_evidence',schema_version:1,gate_id:'JA01',stage:'merge',candidate_sha:oracle.candidate_sha,support_profile_digest:hash,dependency_evidence_refs:[],oracle,result:'passed',evidence_refs:['e'],verifier_ref:'v',observed_at_ms:12};
+    expect(GateEvidence.safeParse(gate).success).toBe(true);
+    expect(GateEvidence.safeParse({...gate,candidate_sha:'b'.repeat(40)}).success).toBe(false);
+    expect(GateEvidence.safeParse({...gate,oracle:{kind:'oracle_lifecycle',schema_version:1,oracle_id:'o',revision:1,status:'unassigned'}}).success).toBe(false);
+  });
+  it('freezes adjacent migration lineage and makes table order irrelevant', () => {
+    const spec = {kind:'migration_spec',schema_version:1,schema_change_id:'bootstrap',source_schema:47,target_schema:48,ddl_digest:hash,fixture_digest:hash,source_schema_digest:hash,target_schema_digest:hash,expected_lineage_tables:['b','a']};
+    expect(schemaSpecDigest(spec)).toBe(schemaSpecDigest({...spec,expected_lineage_tables:['a','b']}));
+    expect(MigrationSpec.safeParse({...spec,target_schema:49}).success).toBe(false);
+    expect(MigrationSpec.safeParse({...spec,expected_lineage_tables:['a','a']}).success).toBe(false);
+  });
+});
+describe('recovery decision matrix', () => {
+  const subject = {kind:'effect' as const,home_id:'fixture-home',effect_id:'fixture-ref'};
+  const subject_digest = recoverySubjectDigest(subject);
+  const proof = {record_ref:'proof',type:'invocation_contained',effect_id:subject.effect_id,subject_digest,evidence_digest:hash,producer_ref:'trusted-ref'};
+  it.each(['reserved','dispatch_committed','legacy_unknown','broker_unknown'])('restricts decisions for %s', phase => {
+    for (const decision of ['preserve_unknown','proven_not_started','proven_stopped','applied_observed']) {
+      const v = original('valid-recovery_receipt');
+      const type = {preserve_unknown:'invocation_contained',proven_not_started:'cancelled_before_dispatch',proven_stopped:'invocation_contained',applied_observed:'applied_completion'}[decision];
+      Object.assign(v,{prior_phase:phase,decision,proof_refs:decision==='preserve_unknown'?[]:['proof'],proofs:decision==='preserve_unknown'?[]:[{...proof,type}]});
+      const allowed = phase === 'reserved' ? ['preserve_unknown','proven_not_started'] : phase === 'dispatch_committed' ? ['preserve_unknown','proven_stopped','applied_observed'] : phase === 'legacy_unknown' ? ['preserve_unknown'] : [];
+      expect(RecoveryReceipt.safeParse(v).success, `${phase}/${decision}`).toBe(allowed.includes(decision));
+    }
+  });
+  it('rejects a mismatched subject or proof digest', () => {
+    const v = {...original('valid-recovery_receipt'),decision:'proven_stopped',proof_refs:['proof'],proofs:[proof]};
+    expect(RecoveryReceipt.safeParse(v).success).toBe(true);
+    expect(RecoveryReceipt.safeParse({...v,subject_digest:hash}).success).toBe(false);
+    expect(RecoveryReceipt.safeParse({...v,proofs:[{...proof,effect_id:'different'}]}).success).toBe(false);
+  });
+  it('client cannot claim operator or phase, envelope must bind subject', () => {
+    const r = {kind:'recovery_request',schema_version:1,request_id:'r',if_revision:0,subject,decision:'preserve_unknown',proof_refs:[],schema_spec_digest:hash};
+    expect(RecoveryRequest.safeParse(r).success).toBe(true);
+    expect(RecoveryRequest.safeParse({...r,operator_ref:'admin'}).success).toBe(false);
+    const e = {kind:'recovery_proof',schema_version:1,subject,proof,owner_generation:1,observed_at_ms:1,record_ref:'proof',authorization_ref:'a'};
+    expect(RecoveryProofEnvelope.safeParse(e).success).toBe(true);
+    expect(RecoveryProofEnvelope.safeParse({...e,proof:{...proof,subject_digest:hash}}).success).toBe(false);
+  });
+});
+it('enforces uniqueness and role/byte constraints beyond generated shapes', () => {
+  const b=original('valid-method_binding'); const roles=b.role_materials as unknown[];
+  expect(MethodBinding.safeParse({...b,role_materials:[roles[0],roles[0],roles[2]]}).success).toBe(false);
+  const c=original('valid-check_binding');const checks=c.checks as unknown[];
+  expect(CheckBinding.safeParse({...c,checks:[checks[0],checks[0]]}).success).toBe(false);
+  const a=original('valid-artifact_requirements');const req=a.requirements as unknown[];
+  expect(ArtifactRequirements.safeParse({...a,requirements:[req[0],req[0]]}).success).toBe(false);
+  expect(ContextReceipt.safeParse({...original('valid-context_receipt'),method_bytes:100,prompt_bytes:99}).success).toBe(false);
+});
+it('rejects source traversal and conflicting check outcome sets', () => {
+  const s={kind:'source_snapshot',schema_version:1,pin:original('valid-source_pin'),files:[{path:'../outside',mode:'100644',blob:'a'.repeat(40)}],dependencies:[]};
+  expect(SourceSnapshot.safeParse(s).success).toBe(false);
+  const c={kind:'check_registry',schema_version:1,entries:[{ref:`sha256:${hash}`,command_bytes_sha256:hash,pass_codes:[0],fail_codes:[0]}]};
+  expect(CheckRegistry.safeParse(c).success).toBe(false);
+});
+
+it('normalizes declared source/check sets and retains byte binding', () => {
+  const file=(path:string)=>({path,mode:'100644',blob:'a'.repeat(40)});
+  const source={kind:'source_snapshot',schema_version:1,pin:original('valid-source_pin'),files:[file('z'),file('a')],dependencies:[]};
+  expect(sourceSnapshotDigest(source)).toBe(sourceSnapshotDigest({...source,files:[...source.files].reverse()}));
+  const entry=(ch:string)=>({ref:`sha256:${ch.repeat(64)}`,command_bytes_sha256:ch.repeat(64),pass_codes:[0],fail_codes:[1]});
+  const registry={kind:'check_registry',schema_version:1,entries:[entry('b'),entry('a')]};
+  expect(checkRegistryDigest(registry)).toBe(checkRegistryDigest({...registry,entries:[...registry.entries].reverse()}));
+  expect(checkRegistryDigest(registry)).not.toBe(checkRegistryDigest({...registry,entries:[entry('c'),entry('a')]}));
+});
+it('binds orphan containment proof to exact broker, lease, schema and broker generation', () => {
+  const receipt=original('valid-broker-recovery');
+  const proof={record_ref:'proof',type:'invocation_contained',evidence_digest:hash,producer_ref:'broker-measurement',subject_digest:receipt.subject_digest,broker_identity:{broker_id:'broker-1',lease_id:'lease-1',schema:48,owner_generation:1}};
+  Object.assign(receipt,{decision:'proven_stopped',proof_refs:['proof'],proofs:[proof]});
+  expect(RecoveryReceipt.safeParse(receipt).success).toBe(true);
+  for (const change of [{broker_id:'other'},{lease_id:'other'},{schema:47},{owner_generation:2}]) {
+    expect(RecoveryReceipt.safeParse({...receipt,proofs:[{...proof,broker_identity:{...proof.broker_identity,...change}}]}).success).toBe(false);
+  }
+});
+it('freezes oracle before any candidate exists and later binds execution to custody', () => {
+  const {candidate_sha:_sha,candidate_created_at_ms:_created,support_profile_digest:_profile,result_ref:_result,executed_at_ms:_executed,...body}=oracle;
+  expect(OracleLifecycle.safeParse({...body,status:'frozen'}).success).toBe(true);
+  expect(OracleLifecycle.safeParse({...body,status:'frozen',freeze_record_ref:undefined}).success).toBe(false);
+});
+it('rejects contradictory or unlinked proofs and oversized request IDs before a receipt is needed', () => {
+  const v=original('valid-recovery_receipt');
+  expect(RecoveryReceipt.safeParse({...v,proof_refs:['orphan']}).success).toBe(false);
+  const r={kind:'recovery_request',schema_version:1,request_id:'x'.repeat(257),if_revision:0,subject:v.subject,decision:'preserve_unknown',proof_refs:[],schema_spec_digest:hash};
+  expect(RecoveryRequest.safeParse(r).success).toBe(false);
+  expect(RecoveryRequest.safeParse({...r,request_id:'x',subject:{kind:'effect',home_id:'h',effect_id:'x'.repeat(257)}}).success).toBe(false);
+});
+it('rejects unsafe source trees before adoption', () => {
+  const file=(path:string,mode='100644')=>({path,mode,blob:'a'.repeat(40)});
+  const base={kind:'source_snapshot',schema_version:1,pin:original('valid-source_pin'),dependencies:[]};
+  for (const files of [[file('.git/hooks/post-checkout')],[file('A'),file('a')],[file('é'),file('e\u0301')],[file('a'),file('a/b')],[file('link','120000')],[file('module','160000')]]) expect(SourceSnapshot.safeParse({...base,files}).success).toBe(false);
+});
+it('pins effect, legacy and broker identity rejection independently of other phase checks', () => {
+  const effect=original('valid-recovery_receipt');
+  for(const patch of [{binding_generation:null},{support_profile_digest:null}]) expect(RecoveryReceipt.safeParse({...effect,...patch}).success).toBe(false);
+  const attention=original('valid-recovery-attention-subject');
+  expect(RecoveryReceipt.safeParse(attention).success).toBe(true);
+  expect(RecoveryReceipt.safeParse({...attention,effect_id:'unexpected'}).success).toBe(false);
+  const broker=original('valid-broker-recovery');
+  expect(RecoveryReceipt.safeParse(broker).success).toBe(true);
+  const brokerIdentity={broker_id:'broker-1',lease_id:'lease-1',schema:48,owner_generation:1};
+  const proof={record_ref:'proof',type:'invocation_contained',evidence_digest:hash,producer_ref:'p',subject_digest:broker.subject_digest,broker_identity:brokerIdentity};
+  for(const [decision,type] of [['applied_observed','applied_completion'],['proven_not_started','cancelled_before_dispatch']]) expect(RecoveryReceipt.safeParse({...broker,decision,proof_refs:['proof'],proofs:[{...proof,type}]}).success).toBe(false);
+  expect(RecoveryReceipt.safeParse({...broker,target:'home'}).success).toBe(false);
+  const {broker_identity:_identity,...missingIdentity}=proof;
+  expect(RecoveryReceipt.safeParse({...broker,decision:'proven_stopped',proof_refs:['proof'],proofs:[missingIdentity]}).success).toBe(false);
+  for(const receipt of [effect,attention]) {
+    const p={...proof,subject_digest:receipt.subject_digest,...(receipt===effect?{effect_id:effect.effect_id}:{})};
+    expect(RecoveryReceipt.safeParse({...receipt,decision:'proven_stopped',proof_refs:['proof'],proofs:[p]}).success).toBe(false);
+  }
+});
+
+FILE packages/core/src/state/operator-recovery-spec.test.ts
+import { execFileSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
+// J11 executable storage specification. No runtime recovery entry point is installed.
+import { createHash } from 'node:crypto';
+import { readFileSync } from 'node:fs';
+import Database from 'better-sqlite3';
+import { describe, expect, it } from 'vitest';
+import { schemaSpecDigest, MigrationSpec, parseJointJson, canonicalJointJson, decodeJointContract, RecoveryReceipt, recoverySubjectDigest } from '@osstack/protocol/joint';
+import { CURRENT_SCHEMA_VERSION } from './migrations.js';
+import { runMigrations } from './db.js';
+const path = new URL('../../fixtures/operator-recovery/', import.meta.url);
+const bytes = (name: string) => readFileSync(new URL(name, path));
+const read = (name: string) => readFileSync(new URL(name, path), 'utf8');
+const ddl = read('bootstrap.sql'); const source = read('source-hold.sql');
+const sha = (s: string | Uint8Array) => createHash('sha256').update(s).digest('hex');
+function fixture(): Database.Database {
+  const db = new Database(':memory:'); db.pragma('foreign_keys=ON'); db.pragma('synchronous=FULL');
+  try { runMigrations(db); db.exec(source); return db; } catch (e) { db.close(); throw e; }
+}
+function tables(db: Database.Database): string[] { return (db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND substr(name,1,7)<>'sqlite_' ORDER BY name").all() as {name:string}[]).map(r => r.name); }
+const legacy = (db: Database.Database) => Object.fromEntries(tables(db).filter(t => !t.startsWith('operator_')).map(t => [t, db.prepare(`SELECT * FROM ${t} ORDER BY rowid`).all()]));
+describe('J11 bootstrap candidate', () => {
+  it('pins actual source version, exact DDL/fixture digests and complete table lineage', () => {
+    expect(execFileSync('python3',['-I',fileURLToPath(new URL('../../../protocol/scripts/joint-reference-vectors.py',import.meta.url)),'--check','--recovery-root',fileURLToPath(path)],{encoding:'utf8',timeout:10000})).toContain('raw DDL/catalog hashes verified');
+    const manifest = parseJointJson(read('manifest.json')) as {spec:unknown;schema_spec_digest:string;future_storage_digest:string;source_lineage_tables:string[];source_schema:unknown;target_schema:unknown};
+    const spec = MigrationSpec.parse(manifest.spec);
+    expect(CURRENT_SCHEMA_VERSION).toBe(47);
+    expect(spec.source_schema).toBe(CURRENT_SCHEMA_VERSION);
+    expect(spec.ddl_digest).toBe(sha(bytes('bootstrap.sql'))); expect(spec.fixture_digest).toBe(sha(bytes('source-hold.sql')));
+    expect(manifest.schema_spec_digest).toBe(schemaSpecDigest(spec));
+    expect(manifest.future_storage_digest).toBe(sha(bytes('future-storage.sql')));
+    const db = fixture();
+    try {
+      expect(tables(db)).toEqual(manifest.source_lineage_tables);
+      const before = legacy(db);
+      const catalog = () => db.prepare("SELECT type,name,tbl_name,sql FROM sqlite_master WHERE substr(name,1,7)<>'sqlite_' ORDER BY type,name").all();
+      expect(catalog()).toEqual(manifest.source_schema);
+      expect(sha(canonicalJointJson(catalog()))).toBe(spec.source_schema_digest);
+      db.transaction(() => { db.exec(ddl); db.pragma('user_version=48'); })();
+      expect(tables(db)).toEqual(spec.expected_lineage_tables);
+      expect(catalog()).toEqual(manifest.target_schema);
+      expect(sha(canonicalJointJson(catalog()))).toBe(spec.target_schema_digest);
+      const oldObjects = (manifest.source_schema as Array<{name:string}>).map(o=>o.name);
+      expect((catalog() as Array<{name:string;tbl_name:string}>).filter(o=>oldObjects.includes(o.name))).toEqual(manifest.source_schema);
+      expect((catalog() as Array<{name:string;tbl_name:string}>).filter(o=>!oldObjects.includes(o.name)).every(o=>o.name.startsWith('operator_') && o.tbl_name.startsWith('operator_'))).toBe(true);
+      expect(legacy(db)).toEqual(before);
+      expect(db.pragma('foreign_key_check')).toEqual([]);
+      expect(() => runMigrations(db)).toThrow('user_version=48');
+    } finally { db.close(); }
+  });
+  it.each(['before_ddl','after_ddl','after_version'])('rolls back interruption at %s atomically', step => {
+    const db=fixture();
+    try {
+      const before=legacy(db);
+      expect(() => db.transaction(() => {
+        if (step==='before_ddl') throw Error('injected');
+        db.exec(ddl);
+        if (step==='after_ddl') throw Error('injected');
+        db.pragma('user_version=48'); throw Error('injected');
+      })()).toThrow('injected');
+      expect(db.pragma('user_version',{simple:true})).toBe(47);
+      expect(tables(db).some(t => t.startsWith('operator_'))).toBe(false);
+      expect(legacy(db)).toEqual(before);
+    } finally { db.close(); }
+  });
+  it('preserves immutable decisions and rejects request/revision collisions and invalid post-state', () => {
+    const db=fixture();
+    try {
+      db.exec(ddl);
+      const receipt = (revision=0, decision='preserve_unknown') => {
+        const original = JSON.parse(readFileSync(new URL('../../../protocol/fixtures/joint/contracts.json', import.meta.url), 'utf8')).fixtures.find((f: {id:string})=>f.id==='valid-recovery-attention-subject').payload;
+        const subject = {kind:'attention_action',home_id:'fixture-home',mission_id:'mission',action_id:'action',message_id:'msg'};
+        return RecoveryReceipt.parse({...original, subject, subject_digest:recoverySubjectDigest(subject), if_revision:revision, request_id:`request-${revision}`, operator_ref:'operator', decision, proof_refs:[], proofs:[]});
+      };
+      const args = (r: ReturnType<typeof receipt>) => ['operator',r.request_id,'a'.repeat(64),r.subject_digest,canonicalJointJson(r.subject),r.if_revision,r.owner_generation,r.decision,'unknown',canonicalJointJson(r),r.observed_at_ms];
+      const r=receipt(); const values=args(r);
+      const sql='INSERT INTO operator_recovery_decisions VALUES(?,?,?,?,?,?,?,?,?,?,?)';
+      db.prepare(sql).run(...values);
+      const stored=db.prepare('SELECT receipt_json FROM operator_recovery_decisions').get() as {receipt_json:string};
+      expect(decodeJointContract(stored.receipt_json)).toEqual(r);
+      for (const statement of [sql,sql.replace('INSERT','INSERT OR IGNORE'),sql+' ON CONFLICT DO NOTHING',sql.replace('INSERT','INSERT OR REPLACE'),sql.replace('INSERT INTO','REPLACE INTO'),sql+" ON CONFLICT(principal_ref,request_id) DO UPDATE SET post_state='unknown'"]) expect(()=>db.prepare(statement).run(...values)).toThrow();
+      expect(()=>db.prepare(sql).run(...args(receipt(3)))).toThrow('revision conflict');
+      expect(()=>db.prepare(sql).run(...args(receipt(1)).map((v,i)=>i===9?'{}':v))).toThrow();
+      expect(()=>db.prepare(sql).run(...args(receipt(1)).map((v,i)=>i===5?1.5:v))).toThrow();
+      expect(()=>db.prepare(sql).run(...args(receipt(1)).map((v,i)=>i===3?Buffer.from(String(v)):v))).toThrow();
+      for(const field of ['if_revision','owner_generation','observed_at_ms','schema_version']) { const typed=receipt(1); const bad={...typed,[field]:String(typed[field as keyof typeof typed])}; expect(()=>db.prepare(sql).run(...args(typed).map((v,i)=>i===9?canonicalJointJson(bad):v))).toThrow(); }
+      db.prepare(sql).run(...args(receipt(1)));
+      expect(()=>db.exec("UPDATE operator_recovery_decisions SET post_state='unknown'")).toThrow('immutable');
+      expect(()=>db.exec('DELETE FROM operator_recovery_decisions')).toThrow('immutable');
+      // A terminal decision locks the chain, even if a later receipt claims unknown.
+      const terminal = {...receipt(2),decision:'proven_stopped',proof_refs:['proof'],proofs:[{record_ref:'proof',type:'invocation_contained',subject_digest:r.subject_digest,evidence_digest:'a'.repeat(64),producer_ref:'host'}]};
+      const valid=RecoveryReceipt.parse(terminal);
+      db.prepare(sql).run(...args(valid).map((v,i)=>i===8?'resolved_stopped':v));
+      expect(()=>db.prepare(sql).run(...args(receipt(3)))).toThrow('revision conflict');
+    } finally { db.close(); }
+  });
+  it('keeps method and goal templates separate from bootstrap and checks permit uniqueness', () => {
+    const db=fixture();
+    try {
+      db.exec(ddl); expect(tables(db)).not.toContain('trial_permit_consumptions');
+      db.exec(read('future-storage.sql'));
+      const hash='a'.repeat(64);
+      db.prepare("INSERT INTO joint_method_objects VALUES(?,'binding','immutable-ref',1,1)").run(hash);
+      const insert=db.prepare("INSERT INTO trial_permit_consumptions(permit_id,scope_id,tenant_id,root_effect_id,binding_digest,request_id,input_digest,owner_generation,consumption_state,consumption_revision) VALUES(?,'scope','tenant',?,?,'request',?,1,'consumed',1)");
+      insert.run('p','root',hash,hash);
+      expect(()=>insert.run('p','root2',hash,hash)).toThrow();
+      expect(()=>insert.run('p2','root',hash,hash)).toThrow();
+      expect(()=>db.exec('DELETE FROM trial_permit_consumptions')).toThrow();
+      expect(()=>db.prepare(insert.source.replace('INSERT','INSERT OR REPLACE')).run('p','root',hash,hash)).toThrow();
+      expect(()=>db.exec("UPDATE trial_permit_consumptions SET consumption_state='consumed',consumption_revision=2")).toThrow();
+      expect(()=>db.exec("UPDATE joint_method_objects SET content_ref='changed'")).toThrow('immutable');
+    } finally { db.close(); }
+  });
+});
+it('enforces upgrade transition order, immutable owner and replacement resistance', () => {
+  const db=fixture();
+  try {
+    db.exec(ddl);const sql='INSERT INTO operator_upgrade_journal VALUES(?,?,?,?,?,?,?)';
+    const args=(revision:number,state:string,owner=1)=>['upgrade',revision,owner,'a'.repeat(64),state,'{}',1];
+    expect(()=>db.prepare(sql).run(...args(0,'installed_inactive'))).toThrow();
+    db.prepare(sql).run(...args(0,'fenced'));
+    for (const s of [sql.replace('INSERT','INSERT OR IGNORE'),sql+' ON CONFLICT DO NOTHING',sql.replace('INSERT','INSERT OR REPLACE'),sql.replace('INSERT INTO','REPLACE INTO'),sql+" ON CONFLICT(operation_id,revision) DO UPDATE SET state='verified'"]) expect(()=>db.prepare(s).run(...args(0,'fenced'))).toThrow();
+    expect(()=>db.prepare(sql).run(...args(1,'verified',2))).toThrow();
+    expect(()=>db.prepare(sql).run(...args(1,'installed_inactive'))).toThrow();
+    db.prepare(sql).run(...args(1,'verified'));db.prepare(sql).run(...args(2,'installed_inactive'));
+    expect(()=>db.prepare(sql).run(...args(3,'failed'))).toThrow();
+    expect(()=>db.exec('DELETE FROM operator_upgrade_journal')).toThrow('immutable');
+  } finally {db.close();}
+});
+it('guards every immutable template table against replacement and foreign-kind pointers', () => {
+  const db=fixture();
+  try {
+    db.exec(read('future-storage.sql'));const h='a'.repeat(64);
+    const method="INSERT INTO joint_method_objects VALUES(?,'material','object-ref',1,1)";
+    db.prepare(method).run(h);
+    for(const sql of [method.replace('INSERT','INSERT OR REPLACE'),method.replace('INSERT INTO','REPLACE INTO'),method+" ON CONFLICT(digest) DO UPDATE SET content_ref='changed'"]) expect(()=>db.prepare(sql).run(h)).toThrow();
+    const goal="INSERT INTO engineering_goal_specs VALUES('g',?,'{}',1)";db.prepare(goal).run(h);
+    for(const sql of [goal.replace('INSERT','INSERT OR REPLACE'),goal.replace('INSERT INTO','REPLACE INTO'),goal+" ON CONFLICT(goal_id) DO UPDATE SET spec_json='null'"]) expect(()=>db.prepare(sql).run(h)).toThrow();
+    db.prepare("INSERT INTO joint_method_objects VALUES(?,'binding','binding-ref',1,1)").run('b'.repeat(64));
+    db.prepare("INSERT INTO joint_method_objects VALUES(?,'qualification','qualification-ref',1,1)").run('c'.repeat(64));
+    db.prepare("INSERT INTO joint_method_active(scope_id,recipe_id,binding_digest,qualification_digest,revision,owner_generation) VALUES('valid','r',?,?,1,1)").run('b'.repeat(64),'c'.repeat(64));
+    expect(()=>db.prepare("INSERT INTO joint_method_active(scope_id,recipe_id,binding_digest,qualification_digest,revision,owner_generation) VALUES('s','r',?,?,1,1)").run(h,h)).toThrow();
+  } finally {db.close();}
+});
+
+it.each(["DROP TRIGGER attention_dispatch_no_rewind", "DELETE FROM attention_receipt_resolutions", "UPDATE attention_actions SET state='applied'"])('detects a bootstrap mutant that changes original state: %s', mutation => {
+  const db=fixture();
+  try {
+    const before=legacy(db);
+    const catalog=()=>db.prepare("SELECT type,name,tbl_name,sql FROM sqlite_master WHERE substr(name,1,7)<>'sqlite_' AND name NOT LIKE 'operator_%' ORDER BY type,name").all();
+    const original=catalog(); db.exec(ddl);db.exec(mutation);
+    expect(JSON.stringify({rows:legacy(db),catalog:catalog()})).not.toBe(JSON.stringify({rows:before,catalog:original}));
+  } finally {db.close();}
+});
+it('rejects typed value mismatches and kills removed ledger equality/home guards', () => {
+  const fixtures=JSON.parse(readFileSync(new URL('../../../protocol/fixtures/joint/contracts.json',import.meta.url),'utf8')).fixtures as Array<{id:string;payload:Record<string,unknown>}>;
+  const base=RecoveryReceipt.parse({...fixtures.find(f=>f.id==='valid-recovery-attention-subject')!.payload,if_revision:0});
+  const values=(receipt:unknown=base,subject:unknown=base.subject)=>[base.operator_ref,base.request_id,'a'.repeat(64),base.subject_digest,canonicalJointJson(subject),0,base.owner_generation,base.decision,'unknown',canonicalJointJson(receipt),base.observed_at_ms];
+  const sql='INSERT INTO operator_recovery_decisions VALUES(?,?,?,?,?,?,?,?,?,?,?)';
+  const probes: Array<{anchor:string;row:unknown[]}> = [
+    ...(['decision','request_id','operator_ref','subject_digest','observed_at_ms','owner_generation','if_revision','kind','target','schema_version'] as const).map(field=>({
+      anchor:`AND json_extract(receipt_json,'$.${field}')`,
+      row:values({...base,[field]:typeof base[field]==='number'?Number(base[field])+1:field==='target'?'broker':field==='decision'?'proven_stopped':field==='subject_digest'?'b'.repeat(64):'different'}),
+    })),
+    {anchor:"AND json(subject_json)=",row:values({...base,subject:{...base.subject,action_id:'different'}})},
+    {anchor:"AND json_type(receipt_json,'$.if_revision')",row:values({...base,if_revision:'0'})},
+    {anchor:"AND json_extract(subject_json,'$.kind') IN",row:values({...base,subject:{kind:'broker_lease',home_id:'fixture-home',broker_id:'b',lease_id:'l'}},{kind:'broker_lease',home_id:'fixture-home',broker_id:'b',lease_id:'l'})},
+  ];
+  for(const probe of probes) {
+    const db=new Database(':memory:'); const mutant=new Database(':memory:');
+    try {
+      db.exec(ddl);expect(()=>db.prepare(sql).run(...probe.row),probe.anchor).toThrow();
+      const lines=ddl.split('\n');const hits=lines.filter(l=>l.trimStart().startsWith(probe.anchor));expect(hits,probe.anchor).toHaveLength(1);
+      mutant.exec(lines.map(l=>l===hits[0]?(l.endsWith(') IS 1)')?'    AND 1) IS 1)':'    AND 1'):l).join('\n'));
+      expect(()=>mutant.prepare(sql).run(...probe.row),`mutant survived: ${probe.anchor}`).not.toThrow();
+    } finally {db.close();mutant.close();}
+  }
+  const db=new Database(':memory:');try {
+    db.exec(ddl);
+    const broker={...base,target:'broker',subject:{kind:'broker_lease',home_id:'fixture-home',broker_id:'b',lease_id:'l'}};
+    expect(()=>db.prepare(sql).run(...values(broker,broker.subject))).toThrow();
+  } finally {db.close();}
+});
+
+FILE packages/core/fixtures/operator-recovery/bootstrap.sql
+-- Candidate 47 -> 48. Specification fixture only; not a registered migration.
+CREATE TABLE operator_recovery_decisions (
+  principal_ref TEXT NOT NULL CHECK(length(principal_ref) BETWEEN 1 AND 256),
+  request_id TEXT NOT NULL CHECK(length(request_id) BETWEEN 1 AND 256),
+  input_digest TEXT NOT NULL CHECK(length(input_digest)=64 AND input_digest NOT GLOB '*[^0-9a-f]*'),
+  subject_digest TEXT NOT NULL CHECK(length(subject_digest)=64 AND subject_digest NOT GLOB '*[^0-9a-f]*'),
+  subject_json TEXT NOT NULL CHECK(json_valid(subject_json) AND length(CAST(subject_json AS BLOB))<=8192),
+  prior_revision INTEGER NOT NULL CHECK(prior_revision BETWEEN 0 AND 9007199254740991),
+  owner_generation INTEGER NOT NULL CHECK(owner_generation BETWEEN 1 AND 9007199254740991),
+  decision TEXT NOT NULL CHECK(decision IN ('preserve_unknown','proven_not_started','proven_stopped','applied_observed')),
+  post_state TEXT NOT NULL CHECK(post_state IN ('unknown','cancelled_before_dispatch','resolved_stopped','applied_observed')),
+  receipt_json TEXT NOT NULL CHECK(json_valid(receipt_json) AND length(CAST(receipt_json AS BLOB))<=1048576),
+  created_at_ms INTEGER NOT NULL CHECK(created_at_ms BETWEEN 0 AND 9007199254740991),
+  PRIMARY KEY(principal_ref,request_id),
+  UNIQUE(subject_digest,prior_revision),
+  CHECK((decision='preserve_unknown' AND post_state='unknown')
+    OR (decision='proven_not_started' AND post_state='cancelled_before_dispatch')
+    OR (decision='proven_stopped' AND post_state='resolved_stopped')
+    OR (decision='applied_observed' AND post_state='applied_observed')),
+  CHECK((json_type(receipt_json)='object' AND json_type(subject_json)='object'
+    AND json_type(receipt_json,'$.kind')='text'
+    AND json_type(receipt_json,'$.schema_version')='integer'
+    AND json_type(receipt_json,'$.target')='text'
+    AND json_type(receipt_json,'$.subject')='object'
+    AND json_type(receipt_json,'$.subject_digest')='text'
+    AND json_type(receipt_json,'$.if_revision')='integer'
+    AND json_type(receipt_json,'$.owner_generation')='integer'
+    AND json_type(receipt_json,'$.decision')='text'
+    AND json_type(receipt_json,'$.request_id')='text'
+    AND json_type(receipt_json,'$.operator_ref')='text'
+    AND json_type(receipt_json,'$.observed_at_ms')='integer'
+    AND json_type(subject_json,'$.kind')='text'
+    AND json_extract(receipt_json,'$.kind')='recovery_receipt'
+    AND json_extract(receipt_json,'$.schema_version')=1
+    AND json_extract(receipt_json,'$.target')='home'
+    AND json_extract(subject_json,'$.kind') IN ('effect','attention_action')
+    AND json(subject_json)=json_extract(receipt_json,'$.subject')
+    AND json_extract(receipt_json,'$.subject_digest')=subject_digest
+    AND json_extract(receipt_json,'$.if_revision')=prior_revision
+    AND json_extract(receipt_json,'$.owner_generation')=owner_generation
+    AND json_extract(receipt_json,'$.decision')=decision
+    AND json_extract(receipt_json,'$.request_id')=request_id
+    AND json_extract(receipt_json,'$.operator_ref')=principal_ref
+    AND json_extract(receipt_json,'$.observed_at_ms')=created_at_ms) IS 1)
+) STRICT;
+CREATE TRIGGER operator_recovery_insert_guard BEFORE INSERT ON operator_recovery_decisions
+WHEN EXISTS(SELECT 1 FROM operator_recovery_decisions WHERE principal_ref=NEW.principal_ref AND request_id=NEW.request_id)
+  OR NEW.prior_revision<>COALESCE((SELECT MAX(prior_revision)+1 FROM operator_recovery_decisions WHERE subject_digest=NEW.subject_digest),0)
+  OR EXISTS(SELECT 1 FROM operator_recovery_decisions WHERE subject_digest=NEW.subject_digest AND decision<>'preserve_unknown')
+BEGIN SELECT RAISE(ABORT,'operator recovery history immutable or revision conflict'); END;
+CREATE TRIGGER operator_recovery_no_update BEFORE UPDATE ON operator_recovery_decisions
+  BEGIN SELECT RAISE(ABORT,'operator recovery history immutable'); END;
+CREATE TRIGGER operator_recovery_no_delete BEFORE DELETE ON operator_recovery_decisions
+  BEGIN SELECT RAISE(ABORT,'operator recovery history immutable'); END;
+CREATE TABLE operator_upgrade_journal (
+  operation_id TEXT NOT NULL CHECK(length(operation_id) BETWEEN 1 AND 512),
+  revision INTEGER NOT NULL CHECK(revision BETWEEN 0 AND 9007199254740991),
+  owner_generation INTEGER NOT NULL CHECK(owner_generation BETWEEN 1 AND 9007199254740991),
+  schema_spec_digest TEXT NOT NULL CHECK(length(schema_spec_digest)=64 AND schema_spec_digest NOT GLOB '*[^0-9a-f]*'),
+  state TEXT NOT NULL CHECK(state IN ('fenced','verified','installed_inactive','failed')),
+  evidence_json TEXT NOT NULL CHECK(json_valid(evidence_json) AND json_type(evidence_json)='object' AND length(CAST(evidence_json AS BLOB))<=1048576),
+  created_at_ms INTEGER NOT NULL CHECK(created_at_ms BETWEEN 0 AND 9007199254740991),
+  PRIMARY KEY(operation_id,revision)
+) STRICT;
+CREATE TRIGGER operator_upgrade_insert_guard BEFORE INSERT ON operator_upgrade_journal
+WHEN NOT ((NEW.revision=0 AND NEW.state='fenced' AND NOT EXISTS(SELECT 1 FROM operator_upgrade_journal WHERE operation_id=NEW.operation_id))
+  OR (NEW.revision=COALESCE((SELECT MAX(revision)+1 FROM operator_upgrade_journal WHERE operation_id=NEW.operation_id),-1)
+    AND EXISTS(SELECT 1 FROM operator_upgrade_journal WHERE operation_id=NEW.operation_id AND revision=NEW.revision-1
+      AND owner_generation=NEW.owner_generation AND schema_spec_digest=NEW.schema_spec_digest
+      AND ((state='fenced' AND NEW.state IN ('verified','failed')) OR (state='verified' AND NEW.state IN ('installed_inactive','failed'))))))
+BEGIN SELECT RAISE(ABORT,'upgrade transition conflict'); END;
+CREATE TRIGGER operator_upgrade_no_update BEFORE UPDATE ON operator_upgrade_journal
+  BEGIN SELECT RAISE(ABORT,'upgrade history immutable'); END;
+CREATE TRIGGER operator_upgrade_no_delete BEFORE DELETE ON operator_upgrade_journal
+  BEGIN SELECT RAISE(ABORT,'upgrade history immutable'); END;
