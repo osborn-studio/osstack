@@ -5,6 +5,7 @@ import { deflateSync } from 'node:zlib';
 import { existsSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { createScratchDir } from '@osstack/core';
+import { decodeJointContractAs, SourcePin, SourceSnapshot } from '@osstack/protocol/joint';
 import { inspectGitSource } from './source-snapshot.js';
 
 const gitBinary = execFileSync('which', ['git'], { encoding: 'utf8' }).trim();
@@ -46,6 +47,47 @@ print('verified')`], { input: JSON.stringify(a), encoding: 'utf8' });
     expect(independent.trim()).toBe('verified');
     expect(a).not.toHaveProperty('snapshot'); // Not a detached, apparently closed SourceSnapshot.
   });
+  it('keeps inspection evidence distinct from latest shared adoption and authority contracts', async () => {
+    const {options} = await fixture(); const inspected = inspectGitSource(options);
+    expect(SourcePin.parse(inspected.pin)).toEqual(inspected.pin);
+    expect(SourceSnapshot.safeParse(inspected).success).toBe(false);
+    for (const kind of ['source_snapshot','method_proposal','method_binding','trial_permit','recovery_proof'] as const) {
+      expect(() => decodeJointContractAs(kind,JSON.stringify(inspected))).toThrow();
+    }
+    // Merely relabeling the wrapper still retains unsupported authority/closure fields.
+    expect(() => decodeJointContractAs('source_snapshot',JSON.stringify({...inspected,kind:'source_snapshot',dependencies:[]}))).toThrow();
+  });
+  it('exports inspection only through the built opt-in package subpath', () => {
+    const output=execFileSync(process.execPath,['--input-type=module','-e',
+      "import {existsSync} from 'node:fs'; const sub=await import('@osstack/skill-registry/source-snapshot'); const root=await import('@osstack/skill-registry'); if(typeof sub.inspectGitSource!=='function'||'inspectGitSource' in root||!existsSync(new URL('./dist/source-snapshot.d.ts',import.meta.url))) process.exit(1); console.log('exports verified');"],{cwd: new URL('../',import.meta.url),encoding:'utf8'});
+    expect(output.trim()).toBe('exports verified');
+  });
+  it('rejects tracked unsafe path bytes and overlong path/depth before content capture', async () => {
+    const {root,options,git}=await fixture();
+    const blob=git('rev-parse','HEAD:LICENSE');
+    // Build tree objects directly: Git index validation and host filesystem names cannot mask the parser boundary.
+    const commitFor=(name:Buffer) => {
+      const tree=Buffer.concat([Buffer.from('100644 '),name,Buffer.from([0]),Buffer.from(blob,'hex')]);
+      const object=Buffer.concat([Buffer.from(`tree ${tree.length}\0`),tree]);
+      const treeOid=createHash('sha1').update(object).digest('hex');
+      mkdirSync(join(root,'.git/objects',treeOid.slice(0,2)),{recursive:true});
+      writeFileSync(join(root,'.git/objects',treeOid.slice(0,2),treeOid.slice(2)),deflateSync(object));
+      const commit=Buffer.from(`tree ${treeOid}\nauthor Fixture <fixture@example.invalid> 1 +0000\ncommitter Fixture <fixture@example.invalid> 1 +0000\n\nunsafe fixture\n`);
+      return execFileSync(gitBinary,['-C',root,'hash-object','-t','commit','-w','--stdin'],{input:commit,encoding:'utf8'}).trim();
+    };
+    for(const name of ['a:b','x.','.GIT','a\\b','a\u0001b','x'.repeat(513),Array(65).fill('x').join('/')]) {
+      const commit=commitFor(Buffer.from(name));
+      expect(()=>inspectGitSource({...options,commit,subdir:'.'}),name).toThrow('UNSAFE_ENTRY');
+    }
+    const invalid=commitFor(Buffer.from([0xff]));
+    expect(()=>inspectGitSource({...options,commit:invalid,subdir:'.'})).toThrow('UNSAFE_ENTRY');
+  });
+  it('rejects an oversized commit body before reading it', async () => {
+    const {root,options,git}=await fixture();
+    const body=`tree ${git('rev-parse','HEAD^{tree}')}\nauthor F <f@example.invalid> 1 +0000\ncommitter F <f@example.invalid> 1 +0000\n\n${'x'.repeat(65536)}`;
+    const commit=execFileSync(gitBinary,['-C',root,'hash-object','-t','commit','-w','--stdin'],{input:body,encoding:'utf8'}).trim();
+    expect(()=>inspectGitSource({...options,commit})).toThrow('RESOURCE_LIMIT');
+  });
   it('deduplicates a license already in the source tree and binds role and executable mode', async () => {
     const { options, git } = await fixture(); const a = inspectGitSource({ ...options, subdir: '.' });
     expect(a.files).toHaveLength(3); expect(a.files[0]?.role).toBe('license');
@@ -55,12 +97,12 @@ print('verified')`], { input: JSON.stringify(a), encoding: 'utf8' });
     expect(b.files[1]?.mode).toBe('100755'); expect(b.pin.content_sha256).not.toBe(a.pin.content_sha256);
   });
   it.each(['../method', '/method', 'method/../method', 'method\\x', '.git', 'method/', 'method:ads'])('rejects unsafe subdir %s', async subdir => {
-    const { options } = await fixture(); expect(() => inspectGitSource({ ...options, subdir })).toThrow();
+    const { options } = await fixture(); expect(() => inspectGitSource({ ...options, subdir })).toThrow('INVALID_INPUT');
   });
   it('rejects missing objects, missing directories, non-trees and format mismatch', async () => {
     const { options } = await fixture();
-    for (const patch of [{ commit: 'f'.repeat(40) }, { commit: 'f'.repeat(64) }, { commit: 'HEAD' }, { subdir: 'absent' }, { subdir: 'LICENSE' }, { licensePaths: ['absent'] }]) {
-      expect(() => inspectGitSource({ ...options, ...patch })).toThrow();
+    for (const [patch,code] of [[{ commit: 'f'.repeat(40) },'OBJECT_UNAVAILABLE'],[{ commit: 'f'.repeat(64) },'INVALID_INPUT'],[{ commit: 'HEAD' },'INVALID_INPUT'],[{ subdir: 'absent' },'OBJECT_UNAVAILABLE'],[{ subdir: 'LICENSE' },'UNSAFE_ENTRY'],[{ licensePaths: ['absent'] },'OBJECT_UNAVAILABLE']] as const) {
+      expect(() => inspectGitSource({ ...options, ...patch })).toThrow(code);
     }
   });
   it.each(['120000', '160000'])('rejects unsafe Git mode %s without reading the worktree', async mode => {
@@ -77,7 +119,7 @@ print('verified')`], { input: JSON.stringify(a), encoding: 'utf8' });
     const { root, options, git } = await fixture(); const old = inspectGitSource(options);
     writeFileSync(join(root, 'method/SKILL.md'), 'replacement'); git('add', '.'); git('commit', '-qm', 'replacement');
     git('replace', options.commit, git('rev-parse', 'HEAD'));
-    const keys = ['GIT_DIR', 'GIT_OBJECT_DIRECTORY', 'GIT_ALTERNATE_OBJECT_DIRECTORIES', 'GIT_REPLACE_REF_BASE', 'GIT_EXEC_PATH', 'GIT_CONFIG_GLOBAL'];
+    const keys = ['GIT_DIR', 'GIT_OBJECT_DIRECTORY', 'GIT_ALTERNATE_OBJECT_DIRECTORIES', 'GIT_REPLACE_REF_BASE', 'GIT_EXEC_PATH', 'GIT_CONFIG_GLOBAL','GIT_CONFIG_COUNT','GIT_CONFIG_PARAMETERS'];
     const before = keys.map(k => process.env[k]);
     try { keys.forEach(k => { process.env[k] = '/missing/injected'; }); expect(inspectGitSource(options)).toEqual(old); }
     finally { keys.forEach((k, i) => { if (before[i] === undefined) delete process.env[k]; else process.env[k] = before[i]; }); }

@@ -1,0 +1,14 @@
+# Sonnet 5.5 retarget audit dispositions
+
+Round 1 is preserved without edits. Host validation and final static review are separate from runtime qualification.
+
+1. No promised 512-file SLA: 512 is a rejection ceiling, not guaranteed completion on arbitrary hardware. The real test completed in about 7 seconds; a slower host may return typed retryable SOURCE_TIMEOUT by design. Clarified scheduling deadline vs kernel/filesystem wall-clock bounds and host-dependent capacity. Batch I/O is a future optimization, not necessary for this bounded opt-in inspector's correctness.
+2. Explicitly narrowed independent verification to commit and blob bytes; tree mapping remains trusted, including corruption. The original README already declared tree/store trust. No claim of independently authenticated commit-to-tree provenance or materialization is made.
+3. Both domains were already registered in digest-catalog.json. Independent Python checks run on actual SHA1/SHA256 source output, including Unicode and license role; they are not merely same-implementation vectors. Catalog, public index and historical validations now supplied in review. Six protocol constructor vectors are not claimed to cover every domain.
+4. Added exact error assertions for missing/malformed objects and subdirs; hostile raw-tree path, byte/depth, invalid UTF-8 and oversized-commit tests; injected GIT_CONFIG_COUNT/PARAMETERS included. Existing source tests cover format mismatch, gitlink/symlink, duplicate license, blob/aggregate/file caps and normalized collisions. Full branch evidence records the actual supported cases, not an exhaustive fuzz or platform certification.
+5. Added child-Node public export test: opt-in subpath resolves, declaration file exists, root does not export inspector. Build precedes tests.
+6. Fresh test/audit/replay outputs are collected separately and must pass before Ready. Historical Git vendor observations are not current candidate CI qualification. Final report will identify exact code/base and local versus GitHub status.
+7. Conservative non-retryable store error remains intentional; provisioning/binary failures do not automatically schedule retries. No source result is returned on errors. Host installation checks and mirror lifecycle are outside this API.
+8. Repository is an opaque host-asserted identity, not a normalized remote URL. Distinct exact spellings intentionally produce distinct digests. J02b authenticates/canonicalizes identity before adoption; this inspector must not infer equivalence.
+9. Realpath is the trusted executable selected by this API's contract. Host PATH is trusted provisioning context; no hook/filter/protocol is executed. Changing multicall-wrapper semantics or global PATH policy is not justified by a concrete supported-Git counterexample.
+10. Materialization aliases remain J02b/future writer obligations. No files are written by inspection.
