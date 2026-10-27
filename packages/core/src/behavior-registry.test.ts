@@ -368,7 +368,7 @@ describe("behavior registry evaluation under caller-supplied trust", () => {
     }
     expect(eligible(fixture().input)).toHaveLength(1);
   });
-  it("rejects an identity-key qualification with trivial R=identity and S=0 signature", () => {
+  it("rejects the identity key before verifying its trivial R=identity and S=0 signature", () => {
     const { input, records, replaceRecord } = fixture(); const identity = Buffer.alloc(32); identity[0] = 1;
     const key = createPublicKey({ format: "jwk", key: { kty: "OKP", crv: "Ed25519", x: identity.toString("base64url") } });
     input.trust.keys[0]!.publicKeyPem = key.export({ format: "pem", type: "spki" }).toString();
@@ -521,5 +521,46 @@ describe("behavior registry evaluation under caller-supplied trust", () => {
         rejection: byCount ? "invalid_context" : "qualification_batch_oversized" });
       expect(reads).toBe(0);
     }
+  });
+});
+
+it.each(["target", "trust", "key", "revocations"] as const)("rejects unknown %s context fields", field => {
+  const f = fixture();
+  const value = field === "target" ? f.input.target : field === "trust" ? f.input.trust
+    : field === "key" ? f.input.trust.keys[0]! : f.input.trust.revocations;
+  Object.assign(value, { futureRevocations: ["key-0"] });
+  expect(evaluateBehaviorRegistry(f.input)).toMatchObject({ status: "rejected",
+    rejection: field === "revocations" ? "revocation_unavailable" : "invalid_context" });
+});
+
+it.each(["missing", "corrupt", "throw"] as const)("reads a %s artifact only once per evaluation", failure => {
+  const f = fixture();
+  // All three signed records refer to this same missing or corrupt evidence object.
+  const digest = f.records[0]!.payload.evidence_refs[0]!.artifact_sha256;
+  for (let index = 1; index < f.records.length; index++) {
+    f.replaceRecord(index, record => { record.payload.evidence_refs[0]!.artifact_sha256 = digest; });
+  }
+  let reads = 0;
+  f.input.readArtifact = key => {
+    if (key !== digest) return f.artifacts.get(key);
+    reads++;
+    if (failure === "throw") throw new Error("missing object");
+    return failure === "corrupt" ? Buffer.from("substituted bytes") : undefined;
+  };
+  const result = evaluateBehaviorRegistry(f.input);
+  expect(result.entries[0]!.selectionEligible).toBe(false);
+  expect(result.qualificationRejections.filter(item => item.reason === "evidence_unavailable")).toHaveLength(3);
+  expect(reads).toBe(1);
+});
+
+it("accepts older issuance epochs only against a complete fresh revocation snapshot", () => {
+  const f = fixture();
+  f.input.trust.minimumRevocationEpoch = 4;
+  f.input.trust.revocations.epoch = 4;
+  expect(eligible(f.input)).toHaveLength(1);
+  f.input.trust.revocations.revokedQualificationSha256s.push(hash(f.input.qualificationBytes[0]!));
+  expect(eligible(f.input)).toHaveLength(0);
+  expect(evaluateBehaviorRegistry(f.input).qualificationRejections).toContainEqual({
+    sha256: hash(f.input.qualificationBytes[0]!), reason: "qualification_revoked",
   });
 });
