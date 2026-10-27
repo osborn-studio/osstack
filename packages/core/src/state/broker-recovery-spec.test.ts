@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import Database from 'better-sqlite3';
 import { describe, expect, it } from 'vitest';
-import { canonicalJointJson, MigrationSpec, RecoveryReceipt, recoverySubjectDigest, schemaSpecDigest } from '@osstack/protocol/joint';
+import { canonicalJointJson, MigrationSpec, RecoveryReceipt, RecoveryRequest, recoveryRequestInputDigest, recoverySubjectDigest, schemaSpecDigest, verifyRecoveryProofEnvelopes } from '@osstack/protocol/joint';
 
 // Executable offline storage candidate. This never imports the production DB opener.
 const root = new URL('../../fixtures/broker-recovery/', import.meta.url);
@@ -36,7 +36,19 @@ function receipt(revision = 0, stopped = false): RecoveryReceipt {
   });
 }
 const insertSql = 'INSERT INTO broker_recovery_decisions(principal_ref,request_id,input_digest,broker_id,lease_id,prior_revision,owner_generation,decision,receipt_json) VALUES(?,?,?,?,?,?,?,?,?)';
-function args(r: RecoveryReceipt) { return [r.operator_ref,r.request_id,'d'.repeat(64),'broker-fixture','lease-a',r.if_revision,r.owner_generation,r.decision,canonicalJointJson(r)]; }
+function request(r: RecoveryReceipt) {
+  return RecoveryRequest.parse({kind:'recovery_request',schema_version:1,request_id:r.request_id,if_revision:r.if_revision,
+    subject:r.subject,decision:r.decision,proof_refs:r.proof_refs,schema_spec_digest:r.schema_spec_digest});
+}
+function args(r: RecoveryReceipt) {
+  const inputDigest=recoveryRequestInputDigest({schema_version:1,principal_ref:r.operator_ref,scope_id:r.scope_id,tenant_id:r.tenant_id,request:request(r)});
+  return [r.operator_ref,r.request_id,inputDigest,'broker-fixture','lease-a',r.if_revision,r.owner_generation,r.decision,canonicalJointJson(r)];
+}
+function sqlReject(operation: () => unknown) {
+  let error:unknown;try {operation();}catch(e){error=e;}
+  expect(error).toBeInstanceOf(Database.SqliteError);
+  expect(error).toMatchObject({code:expect.stringMatching(/^SQLITE_CONSTRAINT/)});
+}
 function lease(db: Database.Database) { return db.prepare('SELECT * FROM broker_leases WHERE lease_id=?').get('lease-a') as Record<string, unknown>; }
 const decisions = (db: Database.Database) => db.prepare('SELECT * FROM broker_recovery_decisions ORDER BY prior_revision').all();
 const insert = (db: Database.Database, r: RecoveryReceipt) => db.prepare(insertSql).run(...args(r));
@@ -47,6 +59,7 @@ describe('JP-17a independent broker storage candidate', () => {
     expect(manifest.status).toBe('candidate_spec_only');
     expect(manifest.storage).toMatchObject({ deployment: 'dedicated_sqlite', namespace: 'osstack.resource-broker', allocation: 'not_reserved', deployment_qualified: false, runtime_registered: false });
     expect(manifest.base_commit).toBe('d3fa7ef681efc79a5fb2dff92172ef1be0978774');
+    expect(createHash('sha256').update(readFileSync(new URL(manifest.oracle_prefreeze.path,root))).digest('hex')).toBe(manifest.oracle_prefreeze.sha256);
     const spec = MigrationSpec.parse(manifest.spec);
     expect([spec.source_schema,spec.target_schema]).toEqual([0,1]);
     expect(spec.ddl_digest).toBe(hash(read('schema.sql')));
@@ -65,9 +78,17 @@ describe('JP-17a independent broker storage candidate', () => {
       expect(execFileSync('python3',['-I',fileURLToPath(new URL('freeze.py',root)),'--check'],{encoding:'utf8'})).toContain('candidate bytes verified');
     } finally { db.close(); }
   });
+  it('keeps candidate material separate from the existing central schema/recovery stage requirements', () => {
+    const manifest=JSON.parse(read('manifest.json'));
+    const gates=JSON.parse(readFileSync(new URL('../../../../docs/design/2026-10-27-joint-engineering/execution-gates.json',import.meta.url),'utf8')).gates as Array<{id:string;requires:string[]}>;
+    expect(manifest.dependencies.schema_qualification_requires).toEqual(gates.find(g=>g.id==='J17.schema_spec')?.requires);
+    expect(manifest.dependencies.recovery_qualification_requires).toEqual(gates.find(g=>g.id==='J17.recovery')?.requires);
+    expect(manifest.dependencies.recovery_requires_runtime_controller).toBe(false);
+    expect(manifest.qualification.J11_scoped).toBe('not_asserted');expect(manifest.qualification.J17_schema_spec).toBe('not_asserted');
+  });
   it.each([-1,0,1.5,9007199254740992])('rejects invalid owner generation %s', generation => {
     const db=fixture(); try {
-      expect(()=>db.prepare('UPDATE broker_identity SET owner_generation=?,owner_ref=?').run(generation,'next-owner')).toThrow();
+      sqlReject(()=>db.prepare('UPDATE broker_identity SET owner_generation=?,owner_ref=?').run(generation,'next-owner'));
       expect(lease(db).state).toBe('held_orphan');
     } finally {db.close();}
   });
@@ -77,13 +98,13 @@ describe('JP-17a independent broker storage candidate', () => {
       insert(db,receipt());
       expect(lease(db)).toEqual({...original,recovery_revision:1});
       const clone="INSERT INTO broker_leases SELECT 'lease-b',broker_id,home_id,scope_id,tenant_id,resource_key,invocation_ref,effect_id,grant_generation,'held_orphan',0 FROM broker_leases WHERE lease_id='lease-a'";
-      expect(()=>db.exec(clone)).toThrow();
+      sqlReject(()=>db.exec(clone));
       insert(db,receipt(1,true));
       expect(lease(db)).toEqual({...original,recovery_revision:2,state:'resolved_stopped'});
       expect(decisions(db)).toHaveLength(2);
       db.exec(clone);
       expect(db.prepare("SELECT COUNT(*) AS n FROM broker_leases WHERE state='held_orphan'").get()).toEqual({n:1});
-      expect(()=>insert(db,receipt(2))).toThrow();
+      sqlReject(()=>insert(db,receipt(2)));
     } finally {db.close();}
   });
   it.each(['owner','broker','lease','home','scope','tenant','schema','phase','missing-proof','wrong-proof-generation'])('fails closed on %s without releasing or appending', bad => {
@@ -100,7 +121,8 @@ describe('JP-17a independent broker storage candidate', () => {
       if(bad==='missing-proof') {input.proofs=[];input.proof_refs=[];}
       if(bad==='wrong-proof-generation') {const proof=input.proofs[0];if(proof?.broker_identity) proof.broker_identity.owner_generation=1;}
       const original=lease(db);
-      expect(()=>db.prepare(insertSql).run(...args(input))).toThrow();
+      const parameters=args(input);
+      sqlReject(()=>db.prepare(insertSql).run(...parameters));
       expect(lease(db)).toEqual(original);expect(decisions(db)).toEqual([]);
     } finally {db.close();}
   });
@@ -108,7 +130,7 @@ describe('JP-17a independent broker storage candidate', () => {
     const db=fixture(); try {
       const original=lease(db);
       const sql=`${prefix} INTO broker_leases SELECT 'new-lease',broker_id,home_id,scope_id,tenant_id,resource_key,'new-invocation',effect_id,grant_generation,'held_orphan',0 FROM broker_leases WHERE lease_id='lease-a'`;
-      expect(()=>db.exec(sql)).toThrow();
+      sqlReject(()=>db.exec(sql));
       expect(lease(db)).toEqual(original);
       expect(db.prepare('SELECT COUNT(*) AS n FROM broker_leases').get()).toEqual({n:1});
     } finally {db.close();}
@@ -116,7 +138,7 @@ describe('JP-17a independent broker storage candidate', () => {
   it('rejects a stale owner after another generation takes over, without interpreting home ownership as broker authority', () => {
     const db=fixture(); try {
       db.exec("UPDATE broker_identity SET owner_generation=3,owner_ref='third-broker-owner'");
-      expect(()=>insert(db,receipt(0,true))).toThrow();
+      sqlReject(()=>insert(db,receipt(0,true)));
       expect(lease(db).state).toBe('held_orphan');expect(decisions(db)).toEqual([]);
     } finally {db.close();}
   });
@@ -124,25 +146,61 @@ describe('JP-17a independent broker storage candidate', () => {
     const db=fixture(); try {
       const r=receipt();insert(db,r);const original=decisions(db);
       const sql=insertSql.replace('INSERT',prefix);
-      expect(()=>db.prepare(sql).run(...args(r))).toThrow();
+      sqlReject(()=>db.prepare(sql).run(...args(r)));
       const conflict=args(r);conflict[2]='f'.repeat(64);
-      expect(()=>db.prepare(sql).run(...conflict)).toThrow();
+      sqlReject(()=>db.prepare(sql).run(...conflict));
       expect(decisions(db)).toEqual(original);expect(lease(db).recovery_revision).toBe(1);
     } finally {db.close();}
   });
   it('rejects skipped revisions, append-after-terminal, direct release, and mutable identity/history', () => {
     const db=fixture(); try {
-      expect(()=>insert(db,receipt(2))).toThrow();
-      expect(()=>db.exec("UPDATE broker_leases SET state='resolved_stopped',recovery_revision=1")).toThrow();
-      expect(()=>db.exec("UPDATE broker_leases SET home_id='other'")).toThrow();
-      expect(()=>db.exec("UPDATE broker_identity SET broker_id='other',owner_generation=3")).toThrow();
-      expect(()=>db.exec('DELETE FROM broker_identity')).toThrow();
-      expect(()=>db.exec('DELETE FROM broker_leases')).toThrow();
+      sqlReject(()=>insert(db,receipt(2)));
+      sqlReject(()=>db.exec("UPDATE broker_leases SET state='resolved_stopped',recovery_revision=1"));
+      sqlReject(()=>db.exec("UPDATE broker_leases SET home_id='other'"));
+      sqlReject(()=>db.exec("UPDATE broker_identity SET broker_id='other',owner_generation=3"));
+      sqlReject(()=>db.exec('DELETE FROM broker_identity'));
+      sqlReject(()=>db.exec('DELETE FROM broker_leases'));
       insert(db,receipt(0,true));
-      expect(()=>db.exec('DELETE FROM broker_recovery_decisions')).toThrow();
-      expect(()=>db.exec("UPDATE broker_recovery_decisions SET input_digest='x'")).toThrow();
-      expect(()=>insert(db,receipt(1))).toThrow();
+      sqlReject(()=>db.exec('DELETE FROM broker_recovery_decisions'));
+      sqlReject(()=>db.exec("UPDATE broker_recovery_decisions SET input_digest='x'"));
+      sqlReject(()=>insert(db,receipt(1)));
     } finally {db.close();}
+  });
+  it.each([' ON CONFLICT DO NOTHING', ' ON CONFLICT(broker_id,lease_id,prior_revision) DO UPDATE SET input_digest=excluded.input_digest'])('rejects unique-subject collision with different request identity%s', suffix => {
+    const db=fixture();try {
+      insert(db,receipt());const before=decisions(db);const oldLease=lease(db);
+      const r={...receipt(),operator_ref:'another-principal',request_id:'another-request'};
+      const parameters=args(r);
+      for(const sql of [insertSql.replace('INSERT','INSERT OR REPLACE'),insertSql+suffix]) sqlReject(()=>db.prepare(sql).run(...parameters));
+      expect(decisions(db)).toEqual(before);expect(lease(db)).toEqual(oldLease);
+    }finally{db.close();}
+  });
+  it('composes existing request, digest, receipt and proof-envelope contracts before a plain SQL insert', () => {
+    const db=fixture();try {
+      const r=receipt(0,true);const req=request(r);const parameters=args(r);const before=lease(db);
+      const envelope={kind:'recovery_proof',schema_version:1,subject:r.subject,proof:r.proofs[0],owner_generation:r.owner_generation,
+        observed_at_ms:r.observed_at_ms,binding_generation:r.binding_generation,support_profile_digest:r.support_profile_digest,
+        prior_phase:r.prior_phase,schema_spec_digest:r.schema_spec_digest,recovery_build_digest:r.recovery_build_digest,
+        record_ref:r.proof_refs[0],authorization_ref:r.authorization_ref};
+      expect(()=>RecoveryRequest.parse({...req,owner_generation:1})).toThrow();
+      expect(recoveryRequestInputDigest({schema_version:1,principal_ref:r.operator_ref,scope_id:'wrong-scope',tenant_id:r.tenant_id,request:req})).not.toBe(parameters[2]);
+      expect(()=>RecoveryReceipt.parse({...r,subject_digest:'f'.repeat(64)})).toThrow();
+      expect(()=>verifyRecoveryProofEnvelopes(r,[{...envelope,recovery_build_digest:'f'.repeat(64)}])).toThrow('PROOF_CONTEXT_MISMATCH');
+      expect(lease(db)).toEqual(before);expect(decisions(db)).toEqual([]);
+      const valid=verifyRecoveryProofEnvelopes(r,[envelope]);
+      expect(db.prepare(insertSql).run(...args(valid)).changes).toBe(1);
+      const stored=db.prepare('SELECT receipt_json,input_digest FROM broker_recovery_decisions').get() as {receipt_json:string;input_digest:string};
+      expect(RecoveryReceipt.parse(JSON.parse(stored.receipt_json))).toEqual(r);expect(stored.input_digest).toBe(parameters[2]);
+    }finally{db.close();}
+  });
+  it('does not mistake OR IGNORE dropping an invalid shape for a persisted decision', () => {
+    const db=fixture();try {
+      const parameters=args(receipt());const bad={...receipt(),proof_refs:'not-an-array'};parameters[8]=canonicalJointJson(bad);
+      // A CHECK failure can be ignored; zero changed rows is never accepted as a receipt.
+      expect(db.prepare(insertSql.replace('INSERT','INSERT OR IGNORE')).run(...parameters).changes).toBe(0);
+      sqlReject(()=>db.prepare(insertSql).run(...parameters));
+      expect(decisions(db)).toEqual([]);expect(lease(db).recovery_revision).toBe(0);
+    }finally{db.close();}
   });
   it('rolls back receipt and projection together after an injected transaction abort', () => {
     const db=fixture(); try {

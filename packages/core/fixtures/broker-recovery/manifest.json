@@ -53,7 +53,8 @@
     "recovery_requires_runtime_controller": false
   },
   "oracle_prefreeze": {
-    "path": "independent/oracle-freeze.json",
+    "path": "oracle-freeze.json",
+    "claim": "prospective_criteria_only_not_candidate_qualification",
     "frozen_at": "2026-10-27T16:16:01Z",
     "sha256": "51b34e498292099fa706ecb1f8fe0eccf5f505e715fcae9c880607ad77670c79",
     "identity_independence_certified": false
@@ -61,6 +62,7 @@
   "paths": [
     "packages/core/fixtures/broker-recovery/**",
     "packages/core/src/state/broker-recovery-spec.test.ts",
-    "docs/design/broker-recovery-schema.md"
+    "docs/design/broker-recovery-schema.md",
+    "docs/implementation/joint-broker-spec/**"
   ]
 }
