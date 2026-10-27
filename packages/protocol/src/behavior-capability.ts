@@ -34,6 +34,15 @@ export const BehaviorSourceV1 = z.object({
 }).strict();
 export type BehaviorSourceV1 = z.infer<typeof BehaviorSourceV1>;
 
+/** Immutable inventory for a pinned source snapshot. A capability may cite a subset of it.
+ * Each repository/commit/path is unique; content and license must match the full stored tuple. */
+export const BehaviorSourceManifestV1 = z.object({
+  schema_version: z.literal(1), kind: z.literal("behavior_source_manifest"),
+  sources: z.array(BehaviorSourceV1).min(1).max(8192),
+}).strict().refine((value) => unique(value.sources, (source) => JSON.stringify([source.repository, source.commit, source.path])),
+  "duplicate source identity");
+export type BehaviorSourceManifestV1 = z.infer<typeof BehaviorSourceManifestV1>;
+
 /** Descriptions and source references are data. No command, permission or enabled fields exist. */
 export const BehaviorContractV1 = z.object({
   schema_version: z.literal(1), kind: z.literal("behavior_contract"),
